@@ -10,7 +10,6 @@ import { BLADES } from './blades/index.js';
 import { lathe } from './blades/kit.js';
 import { LASSO_MODELS, buildLoopProjectile, lassoLoop, ropeLook } from './lasso_model.js';
 import { buildRigMissile } from './rigmodel.js'; // overdrive rig killstreak
-import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { laserBuild, calculator } from './gearmodels.js'; // the new gear's models (laser pointer, pop quiz calculator)
 import { prepAuthored, authored, AUTHORED, bindAuthored, nodeIn, glossBlade, LAZY, isLazy, queueGlb, setGlbList, landed } from './glbkit.js';
 import { BUILDS, JOKE, JOKE_MAX } from '/shared/looks.js'; // the joke body
@@ -18,11 +17,11 @@ import { LAPTOP_WB } from './laptopmodel.js';
 import { SEC_WB, SEC_HATS, secAuthored } from './secmodels.js'; // water pistol, taser, tv remote, radar gun
 import { laserAuthored } from './laserglb.js'; // a Blender laser pointer's charge hooks (leds, lens, button, charm, orb)
 import { nailgunBuild, tennisBuild, cartCannonBuild, tennisBall, cartModel, nailgunStaple, tennisMachine, cartBasket } from './primmodels.js'; // the new primaries + what they shoot
-import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: cat ears, cat tail, maid dress
+import { catEars, catTail } from './catwear.js'; // Board Approved: cat ears, cat tail (the maid dress: clothes.js)
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { skinCopy } from './softskin.js';
-import { wearTop } from './clothes.js'; // the tops and bottoms
+import { wearTop, wearBottom, topCap } from './clothes.js'; // the tops and bottoms
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1489,30 +1488,6 @@ function bigGlasses(H, fz) {
 }
 // overalls default to denim; a picked bottoms colour wins, and a team game paints them the team colour like any bottoms
 function overallsColor(lk, c) { return lk && lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : lk && lk.teamed ? c : 0x3b64a8; }
-// the bib up the front of the chest with a pocket (and a pencil in it), straps over both shoulders, brass buckles,
-// side buttons at the hips, a little back panel the straps go into. thick = how far a jacket / hoodie sticks out
-function overallsBib(Bd, col, thick) {
-  const D = col, ST = 0xffc21a, SEAM = new THREE.Color(col).offsetHSL(0, -0.05, 0.16).getHex();
-  const fz = -0.15 - thick * 0.6;
-  const bib = bx(0.25, 0.27, 0.03, D, 0, 1.235, fz); bib.rotation.x = -0.1; Bd.add(bib);
-  for (const sx of [-1, 1]) { const sm = bx(0.008, 0.25, 0.034, SEAM, sx * 0.112, 1.235, fz); sm.rotation.x = -0.1; Bd.add(sm); } // stitching down the edges
-  const pk = bx(0.13, 0.1, 0.01, new THREE.Color(col).offsetHSL(0, 0, -0.05).getHex(), 0.0, 1.27, fz - 0.024); pk.rotation.x = -0.1; Bd.add(pk); // bib pocket
-  const pks = bx(0.13, 0.008, 0.012, SEAM, 0, 1.318, fz - 0.03); pks.rotation.x = -0.1; Bd.add(pks); // its top hem
-  // a pencil in the pocket: yellow, a pink eraser, a silver band
-  const pen = cylZ(0.013, 0.14, 0xffd21a, 0.04, 1.35, fz - 0.03, 6); pen.rotation.x = Math.PI / 2 - 0.12; pen.rotation.y = 0.0; pen.rotation.z = -0.15; Bd.add(pen);
-  const er = cylZ(0.013, 0.022, 0xff7ab8, 0.049, 1.43, fz - 0.04, 6); er.rotation.x = Math.PI / 2 - 0.12; er.rotation.z = -0.15; Bd.add(er);
-  const fe = cylZ(0.0135, 0.012, 0xc8ccd4, 0.048, 1.416, fz - 0.038, 6); fe.rotation.x = Math.PI / 2 - 0.12; fe.rotation.z = -0.15; Bd.add(fe);
-  // straps: up from the bib corners, over the shoulders, down the back into the back panel
-  for (const sx of [-1, 1]) {
-    const fr = bx(0.05, 0.2, 0.02, D, sx * 0.1, 1.44, fz - 0.005); fr.rotation.x = 0.18; Bd.add(fr);
-    Bd.add(bx(0.05, 0.022, 0.3, D, sx * 0.105, 1.545, 0.0)); // over the shoulder
-    const bk = bx(0.05, 0.4, 0.02, D, sx * 0.09, 1.34, 0.16 + thick); bk.rotation.z = sx * 0.12; Bd.add(bk);
-    const bu = bx(0.06, 0.04, 0.014, ST, sx * 0.1, 1.355, fz - 0.024); bu.rotation.x = -0.1; Bd.add(bu); // brass buckle
-    Bd.add(bx(0.026, 0.012, 0.016, 0x8a6a10, sx * 0.1, 1.355, fz - 0.03)); // its bar
-    Bd.add(ball(0.016, ST, sx * 0.175, 1.04, -0.03)); // hip button
-  }
-  Bd.add(bx(0.2, 0.12, 0.024, D, 0, 1.12, 0.14 + thick * 0.5)); // back panel
-}
 function addAccessories(ch, look, c) {
   if (!look) return;
   const H = ch.head, Bd = ch.body;
@@ -1548,7 +1523,6 @@ function addAccessories(ch, look, c) {
   }
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
   const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
-  if (look.bottom === 'overalls' && look.top !== 'maid') overallsBib(Bd, overallsColor(look, c), thick); // (the apron covers it)
   const bk = 0.15 + thick;
   const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
   switch (look.back) {
@@ -1654,72 +1628,47 @@ export function buildCharacter(color, look) {
     const WP = { body, head, arm, armL, legL, legR, kneeL, kneeR }; // what the clothes hang on (clothes.js)
     const legs = bottom === 'pants' || bottom === 'overalls'; // full-length legs (overalls are denim unless you pick a colour)
     const LEG = bottom === 'overalls' ? overallsColor(lk, c) : BOT;
-    const sleeves = top === 'tee' ? 'short' : top === 'hoodie' || top === 'jacket' || top === 'suit' ? 'long' : null;
     // legs: hip -> thigh -> knee -> shin -> foot
     for (const [leg, knee, sx] of [[legL, kneeL, -1], [legR, kneeR, 1]]) {
       leg.position.set(0.1 * sx, 0.92, 0);
       leg.add(ball(0.075, JT));
       leg.add(limb(0.07, 0.058, 0.42, SK, -0.22));
-      if (legs) leg.add(limb(0.082, 0.07, 0.44, LEG, -0.22));
       knee.position.y = -0.44;
       knee.add(ball(0.062, JT));
       knee.add(limb(0.056, 0.045, 0.4, SK, -0.21));
-      if (legs) knee.add(limb(0.068, 0.058, 0.38, LEG, -0.2));
-      if (bottom === 'overalls') knee.add(limb(0.074, 0.072, 0.07, new THREE.Color(LEG).offsetHSL(0, -0.1, 0.12).getHex(), -0.34)); // rolled-up cuffs, the paler inside of the denim
       knee.add(bx(0.1, 0.06, 0.22, legs ? (bottom === 'overalls' ? 0x6b3a1a : 0x222222) : SK, 0, -0.43, -0.05)); // (overalls come with brown work boots)
       leg.add(knee);
       body.add(leg);
     }
-    if (top === 'maid') { /* the dress has its own skirt (and covers the top of the pants) */ } else if (bottom === 'skirt') { const sk = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.28, 0.36, 8), M(BOT)); sk.position.y = 0.88; body.add(sk); }
-    else body.add(bx(0.34, 0.18, 0.23, LEG, 0, 0.98, 0)); // shorts / top of the pants
     const MAID = lk.topColor ? TOP : lk.teamed ? c : 0x17141c; // the maid dress: black unless you pick a colour
     body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : top === 'maid' ? MAID : TOP, 1.13)); // waist
     const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
-    if (top === 'tank') { const sash = bx(0.09, 0.56, 0.31, TOP, 0, 1.31, 0); sash.rotation.z = 0.65; body.add(sash); }
-    if (top === 'tee' || top === 'hoodie') { const sh = ball(0.215, TOP, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.74); body.add(sh); }
-    if (top === 'hoodie') {
-      const hood = ball(0.13, TOP, 0, 1.58, 0.13); hood.scale.set(1.2, 0.8, 0.8); body.add(hood);
-      body.add(bx(0.22, 0.1, 0.03, new THREE.Color(TOP).multiplyScalar(0.8).getHex(), 0, 1.2, -0.155)); // front pocket
-      for (const sx of [-1, 1]) body.add(bx(0.012, 0.12, 0.012, 0xffffff, sx * 0.04, 1.42, -0.16));
-    }
-    if (top === 'jacket' || top === 'suit') {
-      const sh = ball(0.208, top === 'suit' ? 0xffffff : 0xf0f0f0, 0, 1.34, 0); sh.scale.set(1.2, 1.1, 0.73); body.add(sh); // shirt under
-      for (const sx of [-1, 1]) { // the two front panels + back
-        const pnl = bx(0.17, 0.5, 0.05, TOP, sx * (top === 'suit' ? 0.07 : 0.11), 1.3, -0.135); pnl.rotation.y = sx * 0.25; body.add(pnl);
-        const lap = bx(0.05, 0.2, 0.03, new THREE.Color(TOP).multiplyScalar(0.75).getHex(), sx * 0.06, 1.45, -0.16); lap.rotation.z = sx * 0.4; body.add(lap);
-      }
-      body.add(bx(0.42, 0.5, 0.06, TOP, 0, 1.3, 0.13));
-      for (const sx of [-1, 1]) body.add(bx(0.07, 0.5, 0.26, TOP, sx * 0.215, 1.3, 0));
-      if (top === 'suit') body.add(bx(0.04, 0.26, 0.02, 0xc02030, 0, 1.36, -0.165)); // tie
-    }
-    if (top === 'runner') wearTop(WP, lk, lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW); // teamed: team colour
-    if (top === 'maid') maidDress({ body, arm, armL, kneeL, kneeR, head }, lk, MAID, legs);
+    const TOPC = top === 'runner' ? (lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW) : top === 'maid' ? MAID : TOP; // the top's colour (teamed: the team colour)
     body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
     const egg = ball(0.14, SK, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);
     head.add(bx(0.005, 0.2, 0.3, JT, 0, 0.14, 0)); // seam where the mold met
     head.rotation.z = jank.tilt;
     body.add(head);
-    for (const sx of [-1, 1]) body.add(ball(0.068, sleeves ? TOP : JT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
+    for (const sx of [-1, 1]) body.add(ball(0.068, topCap(lk, TOPC) ?? JT, 0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0));
     // right arm holds the gun
     arm.add(cylZ(0.048, 0.28, SK, 0, 0, -0.14));
-    if (sleeves) arm.add(cylZ(0.058, sleeves === 'long' ? 0.29 : 0.15, TOP, 0, 0, sleeves === 'long' ? -0.145 : -0.075));
-    arm.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0, 0, -0.29));
+    arm.add(ball(0.05, JT, 0, 0, -0.29));
     arm.add(cylZ(0.042, 0.24, SK, -0.03, -0.01, -0.42));
-    if (sleeves === 'long') arm.add(cylZ(0.052, 0.16, TOP, -0.025, -0.008, -0.38));
     arm.add(ball(0.045, SK, -0.04, -0.02, -0.55));
     const tag = bx(0.05, 0.07, 0.005, 0xffffff, 0.05, -0.06, -0.2); tag.rotation.z = 0.5; arm.add(tag); // price tag still on
     // left arm reaches for the front of the gun, badly
     armL.position.set(-0.25, 1.45, 0);
     const upper = cylZ(0.048, 0.3, SK, 0.07, -0.02, -0.14); upper.rotation.y = -0.45; armL.add(upper);
-    if (sleeves) { const sl = cylZ(0.058, sleeves === 'long' ? 0.31 : 0.15, TOP, sleeves === 'long' ? 0.07 : 0.035, -0.02, sleeves === 'long' ? -0.14 : -0.07); sl.rotation.y = -0.45; armL.add(sl); }
-    armL.add(ball(0.05, sleeves === 'long' ? TOP : JT, 0.14, -0.04, -0.28));
+    armL.add(ball(0.05, JT, 0.14, -0.04, -0.28));
     const fore = cylZ(0.042, 0.3, SK, 0.27, -0.04, -0.4); fore.rotation.y = -0.9; armL.add(fore);
-    if (sleeves === 'long') { const fs = cylZ(0.052, 0.18, TOP, 0.2, -0.035, -0.34); fs.rotation.y = -0.9; armL.add(fs); }
     { const sm = M(SK), jm = M(JT); for (const part of [body, arm, armL]) part.traverse((o) => { if (o.isMesh && (o.material === sm || o.material === jm)) o.material = skinCopy(o.material); }); } // bare skin: the soft skin look (softskin.js). before the hair + clothes extras go on
+    // the clothes (clothes.js): cut for this body, so jokeBody below leaves the torso ones be and fattens the limb ones
+    wearTop(WP, lk, TOPC, legs);
+    if (!wearBottom(WP, lk, LEG) && top !== 'maid') body.add(bx(0.34, 0.18, 0.23, LEG, 0, 0.98, 0)); // (a bottom it doesn't know: the plain seat)
     addHair(head, lk);
     body.add(armL);
-    jokeBody({ body, head, arm, armL, legL, legR, kneeL, kneeR, slot }, lk, top === 'maid' ? MAID : bottom === 'skirt' ? BOT : LEG, top === 'none' || top === 'tank' ? SK : top === 'maid' ? MAID : top === 'runner' ? (lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW) : TOP);
+    jokeBody({ body, head, arm, armL, legL, legR, kneeL, kneeR, slot }, lk, top === 'maid' ? MAID : bottom === 'skirt' ? BOT : LEG, top === 'none' || top === 'tank' ? SK : TOPC);
   }
   arm.position.set(0.25, 1.45 + jank.shoulder, 0);
   slot.position.set(-0.03, -0.03, -0.56);

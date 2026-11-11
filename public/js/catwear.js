@@ -1,11 +1,11 @@
-// Board Approved (pet all 5 hidden cats): Cat Ears, Cat Tail and the Maid Dress, on the mannequin.
+// Board Approved (pet all 5 hidden cats): Cat Ears and Cat Tail on the mannequin (the Maid Dress: clothes.js).
 // The ears and tail are your hair colour (black when you're bald), so they always match each other.
 // They animate themselves (an onBeforeRender on one of their meshes), so the ears twitch and the tail sways in the
 // CHARACTER preview, on other players, in killcams: anywhere the character is drawn, with no update loop to hook.
 import * as THREE from 'three';
 import { M } from './models.js';
 
-const PINK = 0xff9ad5, WHITE = 0xf6f4ef, FRILL = 0xffffff, GOLD = 0xffc21a, INK = 0x15121a;
+const PINK = 0xff9ad5, FRILL = 0xffffff, GOLD = 0xffc21a, INK = 0x15121a;
 const mesh = (g, c) => new THREE.Mesh(g, M(c));
 const box = (w, h, d, c, x, y, z) => { const m = mesh(new THREE.BoxGeometry(w, h, d), c); m.position.set(x, y, z); return m; };
 const sph = (r, c, x, y, z, ws = 8, hs = 6) => { const m = mesh(new THREE.SphereGeometry(r, ws, hs), c); m.position.set(x, y, z); return m; };
@@ -98,88 +98,4 @@ export function catTail(ch, lk, back) {
   };
   ch.tail = base;
   return base;
-}
-
-// ------------------------------------------------------------ maid dress
-// black (or the colour you pick; the team colour in a team game) with a white apron: a bell skirt with pleats and a
-// ruffled petticoat hem showing under it, the apron's frilled bib and straps, a sash round the waist tied in a big bow
-// at the back, a frilly collar with a pink ribbon, puff sleeves with white cuffs, white knee socks and black shoes.
-// with nothing on your head (or the Cat Ears) you also get the frilly headdress
-function ruffleLathe(pts, segs, wave, amp, phiStart = 0, phiLen = Math.PI * 2) {
-  const g = new THREE.LatheGeometry(pts.map(([r, y]) => new THREE.Vector2(r, y)), segs, phiStart, phiLen);
-  const p = g.attributes.position, v = new THREE.Vector3();
-  for (let i = 0; i < p.count; i++) {
-    v.fromBufferAttribute(p, i);
-    const r = Math.hypot(v.x, v.z); if (r < 1e-4) continue;
-    const a = Math.atan2(v.x, v.z), y0 = pts[0][1], y1 = pts[pts.length - 1][1], k = Math.max(0, Math.min(1, (v.y - y0) / (y1 - y0 || 1)));
-    const f = 1 + Math.sin(a * wave) * amp * (1 - k) * (1 - k); // folds grow toward the hem (the first point)
-    p.setXYZ(i, (v.x / r) * r * f, v.y, (v.z / r) * r * f);
-  }
-  g.computeVertexNormals();
-  return g;
-}
-export function maidDress(P, lk, col, legs) {
-  const { body, arm, armL, kneeL, kneeR, head } = P;
-  const D = col, Dk = tone(D, -0.04), add = (m) => { body.add(m); return m; };
-  // bodice over the chest (like the tee shell), a little fitted
-  const bod = sph(0.214, D, 0, 1.34, 0, 10, 8); bod.scale.set(1.18, 1.1, 0.75); add(bod);
-  // skirt: a bell from the waist out to the knees, 12 pleats, the white petticoat ruffle peeking under the hem
-  const sk = mesh(ruffleLathe([[0.36, 0.6], [0.33, 0.7], [0.27, 0.86], [0.19, 1.0], [0.135, 1.1]], 24, 12, 0.07), D);
-  add(sk);
-  add(mesh(new THREE.CylinderGeometry(0.19, 0.19, 0.012, 12), Dk)).position.y = 0.995; // (closes the skirt's top from below)
-  const pet = mesh(ruffleLathe([[0.385, 0.57], [0.37, 0.61], [0.33, 0.63]], 30, 15, 0.12), FRILL); add(pet);
-  // apron: a curved white panel down the front of the skirt with a frilled hem, then the bib, its frills and straps
-  const ap = mesh(ruffleLathe([[0.358, 0.68], [0.33, 0.74], [0.27, 0.88], [0.205, 1.0], [0.15, 1.09]], 10, 0, 0, Math.PI - 0.72, 1.44), WHITE); add(ap);
-  const apf = mesh(ruffleLathe([[0.375, 0.65], [0.365, 0.69], [0.345, 0.7]], 14, 22, 0.1, Math.PI - 0.8, 1.6), FRILL); add(apf);
-  const bib = box(0.17, 0.2, 0.018, WHITE, 0, 1.3, -0.163); bib.rotation.x = -0.12; add(bib);
-  for (const sx of [-1, 1]) {
-    const fr = box(0.022, 0.2, 0.03, FRILL, sx * 0.095, 1.3, -0.165); fr.rotation.set(-0.12, 0, sx * 0.06); add(fr); // frills down the bib's sides
-    for (let i = 0; i < 4; i++) { const n = box(0.024, 0.03, 0.03, FRILL, sx * 0.108, 1.22 + i * 0.05, -0.16 + i * 0.006); n.rotation.z = sx * 0.6; add(n); } // the ruffle teeth
-    const st = box(0.036, 0.022, 0.3, WHITE, sx * 0.11, 1.53, 0.0); add(st); // straps over the shoulders
-    const sb = box(0.036, 0.34, 0.02, WHITE, sx * 0.1, 1.36, 0.155); sb.rotation.z = sx * 0.16; add(sb); // crossing down the back
-  }
-  add(box(0.16, 0.02, 0.022, FRILL, 0, 1.405, -0.168)); // the bib's top frill
-  // the sash round the waist, tied in a big bow at the back
-  add(mesh(new THREE.CylinderGeometry(0.128, 0.136, 0.06, 12, 1, true), WHITE)).position.y = 1.1;
-  const bow = new THREE.Group(); bow.position.set(0, 1.1, 0.14); add(bow);
-  for (const sx of [-1, 1]) {
-    const lp = box(0.12, 0.075, 0.035, WHITE, sx * 0.07, 0.01, 0.02); lp.rotation.set(0, sx * -0.25, sx * 0.3); bow.add(lp);
-    const tl = box(0.04, 0.2, 0.014, WHITE, sx * 0.04, -0.12, 0.03); tl.rotation.set(0.15, 0, sx * 0.22); bow.add(tl);
-  }
-  bow.add(box(0.05, 0.06, 0.05, FRILL, 0, 0.005, 0.02));
-  // collar: a ruffled white ring round the neck with a pink ribbon bow at the front
-  const col2 = mesh(ruffleLathe([[0.135, 1.5], [0.11, 1.535], [0.07, 1.555]], 20, 10, 0.14), FRILL); add(col2);
-  const rb = new THREE.Group(); rb.position.set(0, 1.52, -0.125); add(rb);
-  for (const sx of [-1, 1]) {
-    const lp = box(0.05, 0.035, 0.016, PINK, sx * 0.03, 0, 0); lp.rotation.z = sx * 0.35; rb.add(lp);
-    const tl = box(0.016, 0.055, 0.01, PINK, sx * 0.014, -0.04, 0.002); tl.rotation.z = sx * 0.3; rb.add(tl);
-  }
-  rb.add(sph(0.014, tone(PINK, -0.1), 0, 0, -0.004, 6, 4));
-  for (let i = 0; i < 2; i++) add(sph(0.011, GOLD, 0, 1.47 - i * 0.05, -0.155, 6, 4)); // two buttons above the bib
-  // puff sleeves + white cuffs. the right arm points down -z (it holds the gun); the left one reaches across
-  const puff = (p, x, z, ry) => {
-    const pf = sph(0.088, D, x, -0.005, z, 9, 7); pf.scale.set(1, 0.95, 1.25); pf.rotation.y = ry; p.add(pf);
-    const cuff = mesh(new THREE.TorusGeometry(0.056, 0.016, 5, 12), FRILL);
-    cuff.position.set(x + Math.sin(ry) * -0.07, -0.005, z - Math.cos(ry) * 0.07); cuff.rotation.y = ry; p.add(cuff);
-  };
-  puff(arm, 0, -0.05, 0); puff(armL, 0.025, -0.045, -0.45);
-  for (const sx of [-1, 1]) add(sph(0.085, D, 0.25 * sx, 1.45, 0, 8, 6)).scale.set(1, 0.9, 1); // the puffs over the shoulder joints
-  // knee socks + shoes (bare legs only: pants keep their own)
-  if (!legs) for (const kn of [kneeL, kneeR]) {
-    const sock = mesh(new THREE.CylinderGeometry(0.06, 0.049, 0.3, 7), WHITE); sock.position.y = -0.25; kn.add(sock);
-    const top = mesh(new THREE.TorusGeometry(0.058, 0.01, 4, 10), FRILL); top.position.y = -0.1; top.rotation.x = Math.PI / 2; kn.add(top);
-    kn.add(box(0.108, 0.065, 0.23, INK, 0, -0.43, -0.05)); // black shoes over the bare feet
-    kn.add(box(0.11, 0.012, 0.03, INK, 0, -0.395, -0.1)); // the strap across
-  }
-  // headdress: a frilly white crescent across the top of the head (with nothing else on it, or with the Cat Ears)
-  if (!lk.head || lk.head === 'none' || lk.head === 'catears') {
-    const big = lk.hair === 'afro' ? 1.42 : lk.hair === 'spiky' || lk.hair === 'bun' ? 1.12 : 1, cy = 0.15 + (big - 1) * 0.12, rx = 0.138 * big, ry = 0.176 * big;
-    const hd = new THREE.Group(); hd.position.set(0, -0.01, -0.06); hd.rotation.x = -0.32; head.add(hd);
-    for (let i = 0; i <= 8; i++) { // ruffle petals along the front of the band
-      const a = -1.05 + (i / 8) * 2.1, x = Math.sin(a) * rx, y = cy + Math.cos(a) * ry;
-      const pt = sph(0.027, FRILL, x, y + 0.008, 0, 6, 4); pt.scale.set(1, 1.2, 0.5); pt.rotation.z = -a; hd.add(pt);
-    }
-    const band = mesh(new THREE.TorusGeometry(1, 0.08, 4, 16, 2.2), WHITE);
-    band.scale.set(rx, ry, 0.2); band.rotation.z = Math.PI / 2 - 1.1; band.position.y = cy; hd.add(band);
-  }
 }
