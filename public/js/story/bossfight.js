@@ -9,6 +9,7 @@
 // { type: 'kill', target, kind, boss }                      the quest's killBoss
 import { G } from '../ctx.js';
 import { ME } from '../player.js';
+import { hud } from '../hud.js';
 import { actors, spawnActor, play, CLIPS } from './actors.js';
 import { makeBossRef } from './bossref.js'; // the referee's boss: where he stands, his real hitboxes, the boss bar
 import { OT } from './overtime.js';
@@ -25,7 +26,7 @@ export const ARENA_MARKS = {
 };
 export const HOOKS = {
   overtime_1: {
-    actor: 'overtime', at: 'arena.boss', quest: 'm04_clocking_in', fight: 'fight',
+    actor: 'overtime', at: 'arena.boss', quest: 'm04_clocking_in', fight: 'fight', cp: 'arena.player', face: 0, place: ['THE GUT BORDER GATE', 'top of the long stairs'], // cp: where the fight starts you (and starts you again after a death), facing the gate
     start: { clip: 'ot_idle', hold: true, dmg: 'fresh' },
     phases: [null, { scene: 'ot1_coffee', clip: 'ot_coffee', hold: true, dmg: 'cracked' }, { scene: 'ot1_punching_in', clip: 'ot_stalk', hold: true, dmg: 'sparking' }],
     steps: { rip: { dmg: 'ripped', clip: 'ot_kneel', hold: true }, after: { clip: 'ot_kneel', hold: true } },
@@ -104,14 +105,37 @@ export function makeBoss(ST, { where, playScene }) {
     return { hp: B.hp, phase: B.phase };
   };
   // the real fight: ask the referee for him (it has the HP, the phases and the attacks). at the arena's mark on the
-  // slice; anywhere else (the test lot) a few steps in front of you. nothing happens where no referee runs
+  // slice; anywhere else (the test lot) a few steps in front of you. nothing happens where no referee runs.
+  // in the slice a fight that has a start spot (cp) and finds you far from it cuts there first: a fade, the place's
+  // name, and you're at the foot of the arena facing him (the referee moves you: refsys.js 'warp')
+  const r2 = (x) => Math.round(x * 100) / 100;
   B.spawn = (b) => {
     const h = HOOKS[b]; if (!h || !G.story || !G.story.send) return;
     if (B.on !== b) enter(b);
-    const p = G.cfg && G.cfg.map === 'story_slice' ? where(h.at) : null;
+    const city = G.cfg && G.cfg.map === 'story_slice', p = city ? where(h.at) : null, cp = city && h.cp ? where(h.cp) : null;
     const at = p || [ME.pos[0] - Math.sin(ME.yaw) * 14, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 14];
-    G.story.send('spawn', { kind: b, id: b, at: at.map((x) => Math.round(x * 100) / 100) });
+    const go = () => G.story.send('spawn', { kind: b, id: b, at: at.map(r2) });
+    if (cp && Math.hypot(ME.pos[0] - cp[0], ME.pos[2] - cp[2]) > B.ARRIVE) arrive(cp, h, go); else go();
   };
+  B.ARRIVE = 45; // metres from the arena's start past which a fight cuts you there
+  function arrive(cp, h, then) {
+    if (B.arriving) return; B.arriving = true;
+    const f = document.getElementById('stFade');
+    const wait = () => { if (ST.scene && ST.scene.playing()) { setTimeout(wait, 200); return; } // (after the scene that led here)
+      if (f) { f.style.transition = 'opacity .45s'; f.style.opacity = 1; }
+      setTimeout(() => {
+        G.story.send('warp', { at: cp.map(r2), yaw: h.face || 0 }); then(); // (in order: you're there before he is)
+        setTimeout(() => { B.arriving = false; if (f) { f.style.transition = 'opacity .9s'; f.style.opacity = 0; } if (h.place) hud.msg(h.place[0], 2.6, 'brag'); }, 650);
+      }, 480);
+    };
+    wait();
+  }
+  // the referee moved you (a fight's start) or put you back at a fight's start after a death: face the fight. the
+  // streamed city holds you at your last good spot while chunks load: that spot moves with you, or it pulls you back
+  if (G.story && G.story.on) {
+    G.story.on('warped', (m) => { if (Array.isArray(m.at) && m.at.length === 3 && m.at.every(Number.isFinite)) { ME.hold = m.at.slice(); ME.pos = m.at.slice(); } if (Number.isFinite(m.yaw)) { ME.yaw = m.yaw; ME.pitch = 0; } });
+    G.story.on('cp', (m) => { if (Number.isFinite(m.yaw)) { ME.yaw = m.yaw; ME.pitch = 0; } if (B.on && HOOKS[B.on] && HOOKS[B.on].place) hud.msg('BEEP. CLUNK. BACK IN THE QUEUE.', 2.2, 'brag'); });
+  }
   // the quest side: entering the fight step sets him up; later steps pose him; some steps play a scene when done
   const fightStep = (b, o) => {
     const h = HOOKS[b]; if (h.fight) return o.step === h.fight;
