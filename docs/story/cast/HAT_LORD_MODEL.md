@@ -22,7 +22,7 @@ Tripo renders: `hat_lord_tripo_owner_turn.png`, `hat_lord_tripo_owner_anim.png` 
 | turnaround with a 1.8 m figure | `hl_game_turn.jpg` (the mannequin is you) | |
 | one moment from each clip | `hl_game_poses.jpg` | |
 | a contact strip per clip (12 frames, marks called out) | | `c_hat_lord_clip_<name>.jpg` (made in the game's renderer by `hlshots.cjs clips`) |
-| in the real game, story mode | `hl_ingame_hd_*.jpg` (Too HD: idle at 7 m, talk, the offer, the lunge, the reveal, the hat off, from 30 m), `hl_ingame_potato_*.jpg` | |
+| in the real game, story mode | `hl_ingame_hd_*.jpg` (Too HD: idle at 7 m, talk, the offer, the lunge, the reveal, the hat off, from 30 m), `hl_ingame_potato_*.jpg`. In the 30 m shot she lands on the floor below the balcony and is hidden; the silhouette sheet has the 30 m view | |
 
 In every sheet "her right" is +x: the low wing with the feeler hanging off it. Her left is the long wing.
 
@@ -227,7 +227,8 @@ HL.on((ev) => { /* { type: 'hl', mark, id, clip, at } */ });
 - Past 34 m the far LOD swaps in (30 m coming back).
 - Her mouth is Tripo's (closed lips, it does not move): the game's code mouth is hidden when the model is loaded.
 - **Load her early.** Story mode gives the cast 12 s to load; on a slow machine her skinned glb can miss that and
-  she shows as the code puppet. `loadCast(['hat_lord'])` before her scene avoids it (`hlgame.cjs` does).
+  she shows as the code puppet. `loadCast(['hat_lord'])` before her scene avoids it (`hlgame.cjs` does, and it
+  skips any cutscene story mode opens on, so the shots are from your own eyes).
 - Sounds are not made here. The marks are where they go: `aye` (several voices at once), `stop`, `finger`, `tear`.
 
 ## Look: paint and materials

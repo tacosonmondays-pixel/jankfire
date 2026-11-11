@@ -47,7 +47,8 @@ const SHOTS = [['idle_7m', 'hl_idle', 1.2, 7, 0, 0.12, false], ['talk', 'hl_talk
         window.__her = [a.pos[0], a.pos[1], a.pos[2]];
         window.__stand = { p, yaw: Math.atan2(-(a.pos[0] - p[0]), -(a.pos[2] - p[2])), pitch };
         P.label = clip.toUpperCase(); P.marks = []; window.JF_HL.play(a, clip); }, [clip, dist, side, pitch]);
-      const hold = () => pg.evaluate(() => { const S = window.__stand, ME = window.__ME, A = window.JF_HLP.a; ME.pos[0] = S.p[0]; ME.pos[2] = S.p[2]; ME.vel = [0, 0, 0]; ME.yaw = S.yaw; ME.pitch = S.pitch; A.pos[0] = window.__her[0]; A.pos[1] = window.__her[1]; A.pos[2] = window.__her[2]; const c = window.JF_HLP.a.clip; return c ? [c.name, c.t] : null; });
+      // (story mode can open on a cutscene: its camera is not yours, so skip it, as holding jump would)
+      const hold = () => pg.evaluate(async () => { const sc = await import('/js/story/scene.js'); if (sc.playing()) sc.skipScene(); const S = window.__stand, ME = window.__ME, A = window.JF_HLP.a; ME.pos[0] = S.p[0]; ME.pos[2] = S.p[2]; ME.vel = [0, 0, 0]; ME.yaw = S.yaw; ME.pitch = S.pitch; A.pos[0] = window.__her[0]; A.pos[1] = window.__her[1]; A.pos[2] = window.__her[2]; const c = window.JF_HLP.a.clip; return c ? [c.name, c.t] : null; });
       for (let i = 0; i < 400; i++) { const c = await hold(); if (c && c[0] === clip && c[1] >= t) break; await pump(120); }
       await dismiss(); await hold();
       const png = path.join(OUT, `hl_ingame_${tag}_${name}.png`), jpg = png.replace(/png$/, 'jpg');
