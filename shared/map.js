@@ -3310,7 +3310,7 @@ function wreck(B0, D0, dx, dz, st) {
     if (h > w + 0.05) { add(x0, 0, -69 - h, x1, MD + 1, -69 - w, 'shiphull'); if (w) add(x0, 0, -69 + w, x1, MD + 1, -69 + h, 'shiphull'); }
   }
   D.add(19.6, 4.5, -69.4, 23.6, 4.8, -68.6, 'shipwood'); // the bowsprit
-  add(19.6, 2.6, -69.6, 21, 3.6, -68.4, 'toyyellow'); add(20.4, 3.6, -69.35, 21.1, 4.3, -68.65, 'toyyellow'); D.add(21.1, 3.8, -69.15, 21.6, 4.0, -68.85, 'barrelr'); // the duck
+  add(19.6, 5.5, -69.95, 22.0, 7.0, -68.05, 'toyyellow'); add(21.05, 7.0, -69.5, 22.15, 8.05, -68.5, 'toyyellow'); D.add(22.15, 7.28, -69.25, 22.65, 7.42, -68.75, 'barrelr'); // the duck: a big rubber duck riding the bow, against the sky (it reads from across the map)
   // the stern: the transom (its windows, the name), the cabin's front wall (a door) under the quarterdeck
   wall(W, 'z', -17.8, ZA + 0.4, ZB - 0.4, 0, QD + 1, 0.4, 'shiphull', [{ a: -71, b: -69.8, y0: 5.4, y1: 6.6 }, { a: -68.2, b: -67, y0: 5.4, y1: 6.6 }]);
   own(() => D.add(-18.08, 2.2, -71.4, -18.02, 3.4, -66.6, 'adship', { fit: 1 }));

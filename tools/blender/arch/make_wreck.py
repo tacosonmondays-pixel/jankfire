@@ -23,7 +23,7 @@ MATS.update({
     'hold': ('planks', '#8a6448', {}), 'rib': ('planks', '#6a4a34', {}), 'deck': ('planks', '#f4cc94', {}), 'deck2': ('planks', '#e2b47e', {}),
     'rail': ('planks', '#6a4630', {}), 'timber': ('planks', '#b88458', {}), 'gilt': ('metalplate', '#e8b830', {}), 'iron': ('metalplate', '#4a4644', {}),
     'rope': ('trim', '#c4aa78', {}), 'sail': ('stucco', '#ece2c4', {}), 'sailpatch': ('stucco', '#cdb488', {}), 'cloth': ('stucco', '#c8b490', {}),
-    'duck': ('stucco', '#ffd21c', {}), 'beak': ('stucco', '#ff8a1c', {}), 'eye': ('tar', '#101010', {}), 'eyew': ('stucco', '#ffffff', {}),
+    'duck': ('trim', '#ffd400', {}), 'beak': ('trim', '#ff7a00', {}), 'eye': ('tar', '#101010', {}), 'eyew': ('stucco', '#ffffff', {}),
     'barnacle': ('stucco', '#cfc6ae', {}), 'weed': ('stucco', '#3f8a40', {}), 'star': ('stucco', '#ff6a8c', {}), 'glow': ('stucco', '#ffcc66', {'glow': True}),
     'pane': ('glass', '#3a3040', {}), 'splinter': ('planks', '#c8a070', {}), 'sanddrift': ('stucco', '#e8cf98', {}),
 })
@@ -332,13 +332,13 @@ def blob(c, r, mat, n=10, m=7, squash=None):
             else: K.quad([a, b, cc, d], mat)
 
 
-# the duck: a rubber duck the size of a sofa, stuck on the stem under the bowsprit, looking out to sea
-blob((20.5, 3.12, ZM), (0.8, 0.52, 0.66), 'duck', n=14, m=9, squash=lambda la, lo: 1 + 0.25 * max(0, -math.cos(lo)) * max(0, math.sin(la)))  # (a tail, up at the back)
-blob((20.85, 3.98, ZM), (0.4, 0.38, 0.38), 'duck', n=12, m=8)
-blob((21.32, 3.92, ZM), (0.3, 0.075, 0.21), 'beak', n=10, m=5)
+# the duck: a rubber duck the size of a car riding the bow, perched on the stem head, looking out to sea
+blob((20.8, 6.27, ZM), (1.2, 0.78, 0.95), 'duck', n=18, m=11, squash=lambda la, lo: 1 + 0.3 * max(0, -math.cos(lo)) * max(0, math.sin(la)))  # (a tail, up at the back)
+blob((21.6, 7.45, ZM), (0.56, 0.55, 0.55), 'duck', n=16, m=10)
+blob((22.25, 7.35, ZM), (0.42, 0.1, 0.3), 'beak', n=12, m=6)
 for s in (-1, 1):
-    blob((21.12, 4.12, ZM + s * 0.19), (0.09, 0.11, 0.09), 'eyew', n=8, m=5)
-    blob((21.19, 4.13, ZM + s * 0.2), (0.04, 0.06, 0.045), 'eye', n=6, m=4)
+    blob((21.95, 7.68, ZM + s * 0.27), (0.12, 0.15, 0.12), 'eyew', n=10, m=6)
+    blob((22.05, 7.7, ZM + s * 0.29), (0.055, 0.08, 0.06), 'eye', n=8, m=5)
 
 # ------------------------------------------------------------ the masts, the yard, the torn sail, the crow's nest
 FL.tube(K, (10.0, MD, ZM), (10.0, 17.3, ZM), 0.27, 0.16, 'timber', n=10)
