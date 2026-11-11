@@ -173,6 +173,9 @@ def train_atlas():
     rc = A.put('roofc', 64, 64, rough=0.9); base(rc, 0x34343a, 75, 0.1, 4)                             # tarred canvas: battens, a patch, bird lime
     for xx_ in (15, 31, 47): rc[:, xx_] = hexrgb(0x1c1c20); rc[:, xx_ + 1] = hexrgb(0x4a4a52)
     rc[20:36, 36:52] = rc[20:36, 36:52] * 0.7 + hexrgb(0x55504a) * 0.3; chips(rc, 76, 6, 0x8a8a84, (0.8, 1.6)); grime(rc, 77, 0.2, bottom=False)
+    ns = A.put('nostand', 240, 16, rough=0.5); base(ns, 0xd6a312, 84, 0.06)                            # on the van roof's back beam, facing everyone who is about to stand on it
+    ns[:1] = ns[-1:] = hexrgb(0x5a4410); stencil(ns, 'NO STANDING ON ROOF', 6, 1, 0x16161a, 2, 0.18, 85); blotch(ns, 86, 0xe8d8a0, 0.18, 4)
+    chips(ns, 87, 6, PRIMER, (0.8, 1.8), A.sub_orm('nostand'), rough=0.8, edge=RUST_D); streaks(ns, 88, 5, RUST, (4, 10), 0.35); grime(ns, 89, 0.3)
     ck = A.put('chk', 64, 64, rough=0.5, metal=0.85); base(ck, 0x50545a, 78, 0.08)                     # tread plate: the bars worn bright
     for y_ in range(0, 64, 8):
         for x_ in range(0, 64, 8):

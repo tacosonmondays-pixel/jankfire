@@ -31,18 +31,22 @@ INFO = {}
 # ------------------------------------------------------------ paint
 def brick_tile():
     A = Atlas('tk_brick', 128, 128, rough=0.9); px = A.px; r = rng(5)
-    cols = [0x8a4a3c, 0x7a3e34, 0x96553e, 0x6e3a36, 0x844638, 0x5e3438, 0x9a6046, 0x56424a, 0x744038, 0x8e5040, 0xa0684a]
-    px[:] = hexrgb(0x3a302e)
+    # look pass 2: sixty years of steam. reds gone to brown, one in four a blue engineering brick, dark joints, so the
+    # bulbs make pools on it and the tunnel behind the train goes properly dark when they go out (the mask is the pale thing)
+    cols = [0x8a4a3c, 0x7a3e34, 0x96553e, 0x6e3a36, 0x844638, 0x5e3438, 0x9a6046, 0x56424a, 0x744038, 0x8e5040, 0xa0684a,
+            0x3e3a44, 0x34303a, 0x48404a, 0x2e2c34]
+    px[:] = hexrgb(0x242022)
     for row in range(16):
         off = 8 if row % 2 else 0
         for k in range(8):
             c = hexrgb(cols[int(r.integers(0, len(cols)))]) * (0.86 + 0.26 * r.random())
             x0 = (k * 16 + off) % 128
             for xx in range(15): px[row * 8:row * 8 + 7, (x0 + xx) % 128] = c * (0.92 + 0.16 * r.random((7, 1)))
+            if r.random() < 0.3: px[row * 8:row * 8 + 3, [(x0 + xx) % 128 for xx in range(15)]] *= 0.72   # soot settled on its top edge
     n = blocky(7, 128, 128, 2); px[:] = px * (0.88 + 0.24 * n[:, :, None])
     m = r.random((128, 128)) < 0.03; px[m] = px[m] * 0.55      # pocks
-    m = r.random((128, 128)) < 0.012; px[m] = hexrgb(0xb8a898)  # lime
-    px[:] = np.clip(px * 1.12, 0, 1)
+    m = r.random((128, 128)) < 0.004; px[m] = hexrgb(0x8a8276)  # lime (few, and not white: at a distance white pixels sparkle)
+    px[:] = np.clip(px * 0.84, 0, 1)
     return A
 
 
@@ -107,9 +111,9 @@ def soot(a, z, seed=0.0, L=SEG):
     """the lining's tone at (angle, z): soot along the crown where the exhaust went, damp and green low down, runs of
     lime where water comes through the joints. periodic along z (a segment's two ends match)"""
     cz, sz = math.cos(2 * math.pi * z / L), math.sin(2 * math.pi * z / L); s = math.sin(a); y = CY + R * s
-    crown = max(0.0, s) ** 3
+    crown = max(0.0, s) ** 1.6   # (pass 2: the whole upper half is blacked, the crown most)
     n = fbm(a * 1.7 + seed, cz * 1.3 + 2.0, sz * 1.3, 3)
-    v = 0.78 - 0.42 * crown + 0.24 * n
+    v = 0.8 - 0.55 * crown + 0.24 * n
     damp = max(0.0, 1 - y / 1.9) ** 1.3; col = V3((v, v * 0.96, v * 0.94)) * (1 - 0.45 * damp) + V3((0.05, 0.11, 0.06)) * damp
     seep = fbm(a * 0.9 + 11 + seed, cz * 0.9, sz * 0.9 + 5.0, 2) + 0.12 * fbm(a * 4.0 + seed, cz * 2.0, sz * 2.0, 2)
     if seep > 0.0 and 0.5 < y < 6.8:   # efflorescence: it runs down from where it starts

@@ -45,7 +45,7 @@ export function makeTrainSet() {
   S.load = (env, done) => {
     if (S.off || S.train || S.loading || performance.now() < S.retryAt) return; S.loading = true;
     Promise.all([get('/models/story/rp_train.glb'), get('/models/story/rp_tunnel.glb').catch((e) => { console.warn('tunnel kit', e); return null; }), fetch('/models/story/rp_train.parts.json').then((r) => (r.ok ? r.json() : null)).catch(() => null)]).then(([tr, tk, parts]) => {
-      prep(tr.scene, env, 0.2); if (tk) prep(tk.scene, env, 0.1);
+      prep(tr.scene, env, 0.2); if (tk) prep(tk.scene, env, 0.04); // (the tunnel takes little of the studio: the bulbs light it)
       S.train = tr.scene; S.tunnel = tk ? tk.scene : null; S.parts = parts && typeof parts === 'object' ? parts : null; S.loading = false; S.tries = 0;
       try { done && done(S); } catch (e) { console.warn('train set', e); }
     }).catch((e) => { console.warn('train model', e); S.loading = false; S.err = e; S.retryAt = performance.now() + Math.min(60000, 2000 * 2 ** S.tries++); });

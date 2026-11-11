@@ -544,9 +544,10 @@ def van_bits():
     for i in range(1, n): z = rz0 + (z1 - rz0) * i / n; b.box(-HW + 0.09, yU, z - 0.035, HW - 0.09, yU + 0.1, z + 0.035, 'steel', 0.8, omit=('+y',))
     planks(b, -HW + 0.09, HW - 0.09, rz0 + 0.09, z1 - 0.09, roof - 0.012, 0.26, 23, t=0.04, tint=0.62)
     top_tiles(b, -HW, HW, rz0, z1, roof, 'roofc', 1.05, 1.0, 0.012, 24)
-    L = 0.045
-    for sx in (-1, 1): b.box(sx * (HW - 0.035), roof, rz0, sx * HW, roof + L, z1, 'steel', 0.85, omit=('-y',))
-    b.box(-HW + 0.035, roof, z1 - 0.035, HW - 0.035, roof + L, z1, 'steel', 0.85, omit=('-y',)); b.box(XS, roof, rz0, HW - 0.035, roof + L, rz0 + 0.035, 'steel', 0.85, omit=('-y',))
+    L = 0.045   # (look pass 2: the lips in hazard stripes, so you can see the roof's edge from up there)
+    for sx in (-1, 1): b.box(sx * (HW - 0.035), roof, rz0, sx * HW, roof + L, z1, 'wasp', 1.0, 'u', omit=('-y',))
+    b.box(-HW + 0.035, roof, z1 - 0.035, HW - 0.035, roof + L, z1, 'wasp', 1.0, 'u', omit=('-y',)); b.box(XS, roof, rz0, HW - 0.035, roof + L, rz0 + 0.035, 'wasp', 1.0, 'u', omit=('-y',))
+    b.box(-0.55, yU + 0.012, rz0 - 0.004, 1.55, roof - 0.02, rz0, 'nostand', 1.0, 'e', only=('-z',))                                    # NO STANDING ON ROOF, to the flatbed (and the boss)
     # the steps: four, the table's rise and run, tread plate with a striped nosing. solid under them (it is, in the room): lockers
     for k in range(c.stairs):
         za, zb = z0 + k * run, z0 + (k + 1) * run; y0, y1 = deck + k * rise, deck + (k + 1) * rise
