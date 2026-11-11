@@ -50,6 +50,70 @@ def build_train(N):
     return root, RC
 
 
+def build_tunnel(N):
+    import rptunnel as RT
+    RT.tunnel_materials(); root = empty('rp_tunnel'); N['rp_tunnel'] = root
+    N['tk_lining'] = mk(RT.lining('tk_lining'), 'tk_lining', root); N['tk_niche'] = mk(RT.lining('tk_niche', True, 4.0), 'tk_niche', root)
+    N['tk_track'] = mk(RT.track(), 'tk_track', root); N['tk_cables'] = mk(RT.cables(), 'tk_cables', root)
+    for kit in RT.bulbs(): N[kit.name] = mk(kit, kit.name, root, sharp=62)
+    N['tk_phone'] = mk(RT.phone_alone(), 'tk_phone', root); N['tk_marker'] = mk(RT.marker(), 'tk_marker', root); N['tk_signal'] = mk(RT.signal(), 'tk_signal', root)
+    N['tp_portal'] = mk(RT.portal(), 'tp_portal', root)
+    return root, RT
+
+
+def build_commuter(N):
+    import rpcommuter as CM
+    CM.commuter_materials(); root = empty('rp_commuter'); N['rp_commuter'] = root
+    for name, kit in CM.carriage().items(): N[name] = mk(kit, name, root)
+    N['cm_end_torn'] = mk(CM.torn_end(), 'cm_end_torn', root, hide=True); N['cm_lod'] = mk(CM.far(), 'cm_lod', root, hide=True)
+    return root, CM
+
+
+def bake_commuter(N):
+    S = int(arg('ao', 20)); ms = {k: N[k] for k in N if k.startswith('cm_') and N[k] is not None}
+    for o in N.values():
+        if o is not None and o.type == 'MESH': o.hide_render = True
+    for k in ('cm_car', 'cm_end'): ms[k].hide_render = False
+    bake_ao([ms['cm_car'], ms['cm_end']], dist=0.5, samples=S, lo=0.36)
+    ms['cm_end'].hide_render = True; ms['cm_end_torn'].hide_render = False
+    bake_ao([ms['cm_end_torn']], dist=0.4, samples=S, lo=0.45, also=[ms['cm_car']])
+    flat_ao(ms['cm_lod']); flat_ao(ms['cm_glass'])
+    for o in N.values():
+        if o is not None and o.type == 'MESH': o.hide_render = False
+
+
+TILES = dict(tk_lining=6.0, tk_niche=6.0, tk_track=6.0, tk_cables=6.0, tk_bulbs=12.0)
+
+
+def bake_tunnel(N):
+    """AO for the kit. a piece that tiles is baked between two copies of itself (and of the floor / the wall), so its
+    ends are as dark as its middle and no seam shows every six metres"""
+    names = [k for k in N if k.startswith(('tk_', 'tp_')) and N[k] is not None]; S = int(arg('ao', 20))
+    for k in N:
+        if N[k] is not None and N[k].type == 'MESH': N[k].hide_render = True
+    def ghosts(k, L, n=1):
+        out = []
+        for i in list(range(-n, 0)) + list(range(1, n + 1)):
+            o = N[k].copy(); _link(o); o.name = f'jf_set_{k}_{i}'; o.location = N[k].location + gv(0, 0, i * L); o.hide_render = False; out.append(o)
+        return out
+    for k in names:
+        o = N[k]
+        if k in ('tk_bulb_lit', 'tk_bulb_dead'): flat_ao(o); continue
+        L = TILES.get(k); also = []
+        if L:
+            also += ghosts(k, L)
+            for q in ('tk_track', 'tk_lining'):
+                if q != k and q in N and k != 'tk_bulbs' and not (k == 'tk_niche' and q == 'tk_lining'): N[q].hide_render = False; also += [N[q]] + ghosts(q, 6.0)
+        o.hide_render = False; bpy.context.view_layer.update()
+        bake_ao([o], dist=0.45, samples=S, lo=0.4, also=also)
+        for q in also:
+            if q.name.startswith('jf_set_'): bpy.data.objects.remove(q, do_unlink=True)
+            else: q.hide_render = True
+        o.hide_render = True
+    for k in N:
+        if N[k] is not None and N[k].type == 'MESH': N[k].hide_render = False
+
+
 # ------------------------------------------------------------ pictures
 def studio(key=9000, amb=0.5, c=(0, 2, 16), span=20):
     world(0x1a1220, amb)
@@ -100,7 +164,7 @@ def rig(cam, tgt, key=1.0, amb=0.55):
     for o in list(bpy.data.objects):
         if o.type == 'LIGHT': bpy.data.objects.remove(o, do_unlink=True)
     world(0x1a1220, amb); bpy.context.scene.eevee.light_threshold = 0.0006
-    c, t = V3(cam), V3(tgt); v = t - c; D = max(4.0, v.length); f = v.normalized(); up = V3((0, 1, 0)); rt = f.cross(up).normalized(); E = 26.0 * D * D * key
+    c, t = V3(cam), V3(tgt); v = t - c; D = max(4.0, v.length); f = v.normalized(); up = V3((0, 1, 0)); rt = f.cross(up).normalized(); E = 17.0 * D * D * key
     area(E, tuple(t - f * D * 0.55 + up * D * 0.75 - rt * D * 0.55), tuple(t), D * 0.5, (1.0, 0.97, 0.92))
     area(E / 3.2, tuple(t - f * D * 0.4 + up * D * 0.15 + rt * D * 0.9), tuple(t), D * 0.6, (0.8, 0.88, 1.0))
     area(E / 3.0, tuple(t + f * D * 0.7 + up * D * 0.7 + rt * D * 0.2), tuple(t), D * 0.5, (1.0, 0.8, 0.9))
@@ -110,9 +174,71 @@ def rig(cam, tgt, key=1.0, amb=0.55):
 def shoot(name, path, res=(960, 600), samples=12, ex=None, key=1.0):
     loc, tgt, lens, e = VIEWS[name] if isinstance(name, str) else name
     rig(loc, tgt, key * float(arg('key', 1.0))); ex = (e if ex is None else ex) + float(arg('ex', -1.0))
-    if isinstance(lens, tuple): shot(path, loc, tgt, res=res, ortho=lens[1], exposure=ex, samples=samples)
+    if isinstance(lens, tuple): shot(path, loc, tgt, res=res, ortho=lens[1], exposure=ex, samples=samples, roll=math.pi / 2 if loc[1] > 40 else 0.0)
     else: shot(path, loc, tgt, lens, res=res, exposure=ex, samples=samples)
     return path
+
+
+LAID = []
+def lay_tunnel(N, RT, z0=-12.0, n=10, lit=2, on=True, props=True):
+    """the kit put down for a picture: n six-metre lengths from z0, every fourth with the refuge, the string of bulbs (the
+    first `lit` of them lit, counted from the far end: the rest are out), the phone's niche, a marker, the signal"""
+    for o in LAID:
+        try: bpy.data.objects.remove(o, do_unlink=True)
+        except ReferenceError: pass
+    LAID.clear()
+    for k in N:
+        if k.startswith(('tk_', 'tp_')) and N[k] is not None: N[k].hide_render = True
+    if not on: return
+    def put(k, z, x=0.0, ry=0.0):
+        o = N[k].copy(); _link(o); o.name = f'jf_set_lay_{k}_{len(LAID)}'; o.parent = None; set_game_matrix(o, T(x, 0, z) @ RY(ry)); o.hide_render = False; LAID.append(o); return o
+    for i in range(n):
+        z = z0 + i * 6.0
+        put('tk_niche' if i % 4 == 1 else 'tk_lining', z); put('tk_track', z); put('tk_cables', z)
+    nb = int(n * 6.0 / 12.0)
+    for i in range(nb):
+        z = z0 + 3.0 + i * 12.0; put('tk_bulbs', z); put('tk_bulb_lit' if i >= nb - lit else 'tk_bulb_dead', z)
+    if props:
+        xc = math.sqrt(RT.R ** 2 - RT.CY ** 2) - 0.55
+        put('tk_marker', z0 + 15.0, -xc, math.pi / 2); put('tk_signal', z0 + 27.0, xc - 0.1, 0.0)
+    bpy.context.view_layer.update()
+
+
+TVIEWS = {'in': ((0.9, 2.2, -11.0), (0.2, 2.6, 20), 16, 0.6), 'in_back': ((-0.6, 2.4, 44.0), (0, 2.6, 0), 16, 0.6), 'cut': ((16, 9, -22), (0, 2.5, 14), 30, 0.2), 'niche': ((1.2, 1.9, -8.2), (-4.2, 1.4, -2.9), 24, 0.8),
+          'track': ((2.8, 1.9, -9.0), (-1.2, 0.0, -4.5), 28, 0.6), 'wall': ((-1.8, 2.6, -10.0), (4.3, 3.6, -2.0), 22, 0.6), 'signal': ((-0.5, 2.0, 9.5), (2.7, 2.6, 15.0), 28, 0.8), 'bulb': ((0.8, 5.2, -11.5), (2.2, 6.6, -9.0), 35, 0.6),
+          'portal': ((7, 4.2, 15), (0, 3.6, 0), 24, 0.0), 'portal_f': ((0, 5.0, 60), (0, 5.0, 0), ('o', 19), 0.0)}
+
+
+def preview_tunnel(N, RT, pdir, views, res=(960, 600)):
+    os.makedirs(pdir, exist_ok=True); colour_preview([m for m in RT.MT.values()]); out = []
+    for v in views:
+        if v.startswith('portal'):
+            lay_tunnel(N, RT, on=False); N['tp_portal'].hide_render = False
+        else: lay_tunnel(N, RT, n=int(arg('n', 10)), lit=int(arg('lit', 2)))
+        loc, tgt, lens, e = TVIEWS[v]
+        out.append(shoot((loc, tgt, lens, e), os.path.join(pdir, f'tk_{v}.png'), res, int(arg('samples', 10))))
+    lay_tunnel(N, RT, on=False); clear_studio()
+    for k in N:
+        if N[k] is not None and N[k].type == 'MESH': N[k].hide_render = False
+    print('JF_PREVIEW', ' '.join(out))
+
+
+CVIEWS = {'q': ((9, 4.5, -19), (0, 2.0, -2), 28, 0.0), 'side': ((60, 2.2, 0), (0, 2.2, 0), ('o', 23), 0.0), 'in': ((0.2, 2.75, -8.6), (0.1, 2.2, 6), 16, 0.8), 'door': ((4.2, 2.4, -7.5), (1.3, 2.0, -3.6), 35, 0.2),
+          'torn': ((6.5, 4.2, 18.5), (0, 2.2, 9.8), 30, 0.2), 'torn_f': ((0.6, 2.6, 17.5), (0, 2.3, 9.6), 30, 0.4), 'coffee': ((-0.3, 2.5, 0.4), (-1.2, 1.95, 0.0), 35, 1.0), 'row': ((14, 6, -40), (0, 2.0, 30), 28, 0.0)}
+
+
+def preview_commuter(N, CM, pdir, views, res=(960, 600)):
+    os.makedirs(pdir, exist_ok=True); colour_preview([m for m in CM.MC.values()]); out = []
+    for v in views:
+        torn = v.startswith('torn'); lod = bool(arg('lod'))
+        for k in N:
+            if k.startswith('cm_') and N[k] is not None: N[k].hide_render = (k == 'cm_lod') != lod if k in ('cm_lod', 'cm_car', 'cm_glass') else (lod or (k == 'cm_end_torn') != torn)
+        loc, tgt, lens, e = CVIEWS[v]
+        out.append(shoot((loc, tgt, lens, e), os.path.join(pdir, f'cm_{v}.png'), res, int(arg('samples', 10))))
+    clear_studio()
+    for k in N:
+        if N[k] is not None and N[k].type == 'MESH': N[k].hide_render = False
+    print('JF_PREVIEW', ' '.join(out))
 
 
 def set_state(N, bitten=False, lod=False):
@@ -161,7 +287,10 @@ def finish(N):
     meshes = [o for o in N.values() if o is not None and o.type == 'MESH']
     for o in meshes: o.data.validate(); o.data.update()
     bpy.context.view_layer.update()
-    if not arg('no-ao'): bake_groups(N)
+    if not arg('no-ao'):
+        if 'rp_train' in N: bake_groups(N)
+        if 'rp_tunnel' in N: bake_tunnel(N)
+        if 'rp_commuter' in N: bake_commuter(N)
     for o in meshes:
         if 'AO' not in o.data.color_attributes: flat_ao(o)
         final_colour(o)
@@ -224,9 +353,12 @@ def tri_stats(N):
 
 def main():
     lib.reset(); lib._mats.clear()
-    N = {}; RC = None
+    N = {}; RC = None; RT = None
     if want('train'):
         TX.train_materials(); root, RC = build_train(N)
+    if want('tunnel'): troot, RT = build_tunnel(N)
+    CM = None
+    if want('commuter'): croot, CM = build_commuter(N)
     bpy.context.view_layer.update()
     finish(N)
     tris = tri_stats(N) if RC else {}
@@ -244,8 +376,22 @@ def main():
             with open(os.path.join(OUT, 'rp_train.parts.json'), 'w') as f: json.dump(meta, f, separators=(',', ':'))
             compact_glb(export_glb(N['rp_train'], os.path.join(OUT, 'rp_train.glb')))
             print('JF_GLB', glb_summary(os.path.join(OUT, 'rp_train.glb')))
+    if RT:
+        for k in sorted(N):
+            if k.startswith(('tk_', 'tp_')) and N[k] is not None: print('JF_PART', k, tri_count(N[k]), len(N[k].data.vertices), [m.name for m in N[k].data.materials])
+        N['rp_tunnel']['jf'] = json.dumps(dict(id='rp_tunnel', kind='story', tiles=TILES, info=RT.INFO))
+        if not arg('no-export'):
+            compact_glb(export_glb(N['rp_tunnel'], os.path.join(OUT, 'rp_tunnel.glb'))); print('JF_GLB', glb_summary(os.path.join(OUT, 'rp_tunnel.glb')))
+    if CM:
+        for k in sorted(N):
+            if k.startswith('cm_') and N[k] is not None: print('JF_PART', k, tri_count(N[k]), len(N[k].data.vertices), [m.name for m in N[k].data.materials])
+        N['rp_commuter']['jf'] = json.dumps(dict(id='rp_commuter', kind='story', hidden=['cm_end_torn', 'cm_lod'], info=CM.INFO))
+        if not arg('no-export'):
+            compact_glb(export_glb(N['rp_commuter'], os.path.join(OUT, 'rp_commuter.glb'))); print('JF_GLB', glb_summary(os.path.join(OUT, 'rp_commuter.glb')))
     pdir = arg('preview')
     if isinstance(pdir, str):
+        if CM and not RC and not RT: return preview_commuter(N, CM, pdir, arg('views', 'q').split(','), res=tuple(int(x) for x in arg('res', '960x600').split('x')))
+        if RT and not RC: return preview_tunnel(N, RT, pdir, arg('views', 'in').split(','), res=tuple(int(x) for x in arg('res', '960x600').split('x')))
         preview(N, pdir, arg('views', 'turn_q').split(','), bool(arg('bitten')), res=tuple(int(x) for x in arg('res', '960x600').split('x')))
         return
     if RC and not arg('no-sheet'): sheet_train(N, tris)

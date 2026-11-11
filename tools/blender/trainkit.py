@@ -29,6 +29,21 @@ class Pack(Atlas):
         a = s.cell(key, s.cx, s.cy, w, h, col, **kw); s.cx += w; s.rowh = max(s.rowh, h)
         return a
 
+    def material(s, mname, rough=0.6, metal=0.0, use_orm=False, metal_map=True):
+        """as Atlas.material, but the roughness / metal map keeps its pixels: blender 5.2 wipes a generated image when
+        its colour space is changed after they are set (rpkit's does that, and its maps come out black: roughness 0)"""
+        img = _image(s.name + '_t', np.clip(s.px, 0, 1)); m = mat(mname, 0xffffff, rough=rough, metal=metal, tex=img)
+        if use_orm:
+            nt = m.node_tree; b = nt.nodes['Principled BSDF']
+            im2 = bpy.data.images.new(s.name + '_mr', s.w, s.h, alpha=False); im2.colorspace_settings.is_data = True
+            a = np.ones((s.h, s.w, 4), np.float32); a[:, :, :3] = np.clip(s.orm[::-1], 0, 1)
+            im2.pixels.foreach_set(a.ravel()); im2.file_format = 'PNG'; im2.pack()
+            chk = np.empty(s.h * s.w * 4, np.float32); im2.pixels.foreach_get(chk); assert chk.reshape(-1, 4)[:, 1].max() > 0.05, 'the roughness map came out black'
+            t = nt.nodes.new('ShaderNodeTexImage'); t.image = im2; t.interpolation = 'Closest'
+            sp = nt.nodes.new('ShaderNodeSeparateColor'); nt.links.new(t.outputs['Color'], sp.inputs['Color']); nt.links.new(sp.outputs['Green'], b.inputs['Roughness'])
+            if metal_map: nt.links.new(sp.outputs['Blue'], b.inputs['Metallic'])
+        return m
+
     def rm(s, key, rough=None, metal=None, mask=None):
         """roughness / metal of a cell, or of the pixels of it a mask picks"""
         o = s.sub_orm(key)
