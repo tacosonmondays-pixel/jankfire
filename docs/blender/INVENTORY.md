@@ -14,7 +14,7 @@ How this was counted:
 
 | | Blender today | Still code |
 |---|---|---|
-| Weapons | 42 base guns + 27 skins (`w_*.glb`, 95 files) | shredder, Scales of Justice, Blood Cross, katanas, 3 skins |
+| Weapons | 42 base guns + 27 skins (`w_*.glb`, 95 files) | shredder, Blood Cross, katanas, 3 skins |
 | Projectiles | 16 (`pj_*.glb`) | tennis ball, nails, marbles |
 | Gear and streaks | 32 (`x_*.glb`) | grapple hooks, shield bubble, black hole, medkit pickups, supply crates |
 | Map props | 45 kinds in PR #71 (not merged yet), 10 on main | ~6,400 boxes of one-off set pieces |
@@ -140,7 +140,6 @@ gameplay lanes are changing bodies right now (dismemberment, body sliders), so c
 | What | Where | Note |
 |---|---|---|
 | Shredder (+ chipper skin) | `models.js`:285 / 929 | animated teeth |
-| Scales of Justice (+ kangaroo skin) | `models.js`:416 / 1100 | |
 | Blood Cross finger gun (+ shadow skin) | `models.js`:1198 | a hand: goes with the hands work |
 | katanas (3 code blades) | `public/js/blades/` | the knives are Blender now (`make_knives.py`); the katana's blade must stay its own stretching node |
 | skins: staple gun, ball machine, basket | `primmodels.js`:177-209 | |
