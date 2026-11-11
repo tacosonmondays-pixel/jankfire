@@ -9,6 +9,7 @@ import { rubble, line, PASTEL, pick } from './kit.js';
 import { playCommute } from './playground.js';
 import { shops, shopRects } from './shops.js';
 import { slipRoad, SLIP } from './roads.js';
+import { act1Commute, act1Ramp, RAMP } from './act1set.js';
 
 const H = SLICE.highway;
 const GAP = [86, 100]; // the collapsed span (z)
@@ -50,11 +51,11 @@ export function commute(B, d) {
       if (y - g > 3 && !(z > GAP[0] - 4 && z < GAP[1] + 4)) for (const px of [hx0 + 3, hx1 - 3]) B.add(px - 1, g, z - 1, px + 1, y - 1.2, z + 1, 'concrete', { tint: 0xbab0a8 });
     }
     // jersey barriers closing the lanes before the collapse, cones, the stopped district clock at the on-ramp
-    for (const [z, s] of [[GAP[0] - 3, 1], [GAP[1] + 3, -1]]) for (let x = hx0 + 2; x < hx1 - 1; x += 3.2) if (B.inside(x, z)) { B.prop('jersey', x, hwY(z), z, (s > 0 ? 0 : Math.PI) + (r() - 0.5) * 0.3, 1, 0); B.add(x - 1.5, hwY(z), z - 0.35, x + 1.5, hwY(z) + 0.85, z + 0.35, 'concrete', { hide: true }); }
+    for (const [z, s] of [[GAP[0] - 3, 1], [GAP[1] + 3, -1]]) for (let x = hx0 + 2; x < hx1 - 1; x += 3.2) if (B.inside(x, z)) { const jy = (r() - 0.5) * 0.3; if (RAMP.open(x)) continue; B.prop('jersey', x, hwY(z), z, (s > 0 ? 0 : Math.PI) + jy, 1, 0); B.add(x - 1.5, hwY(z), z - 0.35, x + 1.5, hwY(z) + 0.85, z + 0.35, 'concrete', { hide: true }); } // (the Unpaid's ramp lane is open: act1set.js RAMP)
     if (B.inside(hx1 + 2.5, 238)) { B.prop('brokenclock', hx1 + 2.5, hwY(238, true), 238, Math.PI / 2, 1, 0); B.add(hx1 + 2.3, hwY(238, true), 237.8, hx1 + 2.7, hwY(238, true) + 5, 238.2, 'metal', { hide: true }); }
     // the collapse: the broken ends hang down, slabs in the gap below
     for (const [z, s] of [[GAP[0], -1], [GAP[1], 1]]) if (z >= Z0 && z < Z1) B.obb((hx0 + hx1) / 2, hwY(z) - 1.6, z + s * 1.5, hx1 - hx0, 0.8, 4, 0, 'concrete', { tint: 0xa8a098 });
-    if (B.touches([hx0, GAP[0], hx1, GAP[1]])) rubble(B, (hx0 + hx1) / 2, hwY(93, true), 93, 8, r);
+    if (B.touches([hx0, GAP[0], hx1, GAP[1]])) rubble(B, RAMP.rubbleX, hwY(93, true), 93, 8, r); // (off to the west lanes: the ramp jumps the middle)
     // the jam: dead cars nose to tail, two lanes each way, the odd bus; some on their roofs, some on fire
     const jr = rng(4711);
     for (let z = H.zTop + 6; z < H.zLow - 4; z += 5.2 + jr() * 2) {
@@ -63,8 +64,9 @@ export function commute(B, d) {
         if (go < 0.2 || (z > GAP[0] - 6 && z < GAP[1] + 6)) continue;
         const x = hx0 + (hx1 - hx0) * lane + (jr() - 0.5) * 0.8, y = hwY(z);
         if (!B.inside(x, z)) continue;
-        if (go > 0.96) { B.prop('bus', x, y, z, Math.PI / 2 + (jr() - 0.5) * 0.2, 1, 0); B.add(x - 1.3, y, z - 5.5, x + 1.3, y + 3.1, z + 5.5, 'rust', { hide: true }); z += 7; continue; }
-        wreck(B, x, y, z, 1, jr);
+        const clear = RAMP.lane(lane); // (the Unpaid keep the two middle lanes clear up to their ramp: same random draws, no wreck)
+        if (go > 0.96) { const by = (jr() - 0.5) * 0.2; if (!clear) { B.prop('bus', x, y, z, Math.PI / 2 + by, 1, 0); B.add(x - 1.3, y, z - 5.5, x + 1.3, y + 3.1, z + 5.5, 'rust', { hide: true }); } z += 7; continue; }
+        if (clear) { jr(); jr(); } else wreck(B, x, y, z, 1, jr);
         if (jr() < 0.05) B.prop('skeleton_lanyard', x + 1.3, y, z + (jr() - 0.5), -Math.PI / 2, 1, 0); // still waiting to get home
         if (jr() < 0.04) B.prop('cone', x + 1.6, y, z + 2.6, jr() * 6.28, 1, 0);
         if (jr() < 0.07) { B.prop('firebarrel', x + 1.5, y, z, 0, 1, 0); B.light(x + 1.5, y + 1.6, z, 0xff8a2a, 9, 1); }
@@ -182,6 +184,8 @@ export function commute(B, d) {
   if (B.inside(262, -150)) { const y = hwY(-150, true); B.prop('warmech', 262, y, -150, 0.6, 1, 0); B.add(256, y, -156, 268, y + 6, -144, 'metal', { hide: true }); B.out.marks.push({ id: 'commute.warmech', p: [262, y, -138] }); }
   B.out.triggers.push({ kind: 'paper', box: [X0, -10, Z0, X1, 80, Z1] });
   playCommute(B); // sign gantries, rings, the Pile-Up, the Smile's Hat (playground.js)
+  act1Commute(B); // act I: the Under-Hill Loop's portal (act1set.js)
+  act1Ramp(B); // act I: the Unpaid's jump ramp over the collapse (act1set.js)
   shops(B, 'commute'); // the car dealer, the petrol station (shops.js)
   slipRoad(B); // the Bottom's slip road down onto the Commute (roads.js)
 }

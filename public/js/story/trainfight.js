@@ -27,11 +27,13 @@ import { makeBloodDrive } from './blooddrive.js';
 import { makeHitStop } from './hitstop.js';
 import { makeTrainSet } from './trainset.js';
 import { PLACES } from '/shared/city/slice.js'; // where the Loop comes back out into the world (commute:tunnel_mouth, once the world has it)
+import { handFit, haulHand, haulPath, newHaul, stepHaul, armJoints, flatK, HAUL } from './armgrip.js';
 
 export const RP_ID = 'revenue_protection_1', RP_QUEST = 'm06_tickets_please';
 const SPEED = 12, SEG = 1.5, R = ARENA.boreR, CY = ARENA.cy; // m/s the tunnel goes past · one arm_seg · the bore
 const fin = Number.isFinite, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const v3 = (a) => Array.isArray(a) && a.length === 3 && a.every(fin);
+const BORE = { R, cy: CY }; // what the arms are kept inside (armgrip.js)
 const TRAINQ = /[?&]train=1\b/.test(location.search); // ?story=1&storytest=1&train=1: straight onto the train, the fight starts by itself
 const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o });
 
@@ -138,7 +140,7 @@ export function makeTrainFight(ST, { playScene }) {
   }
   function stepSet(dt) {
     const s = T.set, v = T.fin && T.fin.t > 2.2 ? SPEED : busy() ? SPEED * 0.6 : SPEED;
-    s.off = (s.off + v * dt) % 12;
+    s.off = (s.off + v * dt) % 12; s.run = (s.run || 0) + v * dt; s.v = v; // (run: all of it, for hands planted on the wall)
     s.ribs.position.z = -(s.off % 6); s.sl.position.z = -(s.off % 1.5);
     const maskZ = F.live || T.fin ? -Z() : -200, lit = [];
     for (let i = 0; i < s.bulbs.length; i++) {
@@ -195,7 +197,7 @@ export function makeTrainFight(ST, { playScene }) {
       T.parts = parts; T.geo = geoFrom(parts);
       T.boss = { root, N, A, eyes, red, insp, cross, cm, inspGlow: glow('rp_inspector_glow'), eyeGlow: glow('rp_eye_glow'), hidden: new Set(parts ? parts.parts.filter((p) => p.hidden).map((p) => p.name) : []), debris: [], haul: [] };
       for (const nm of T.boss.hidden) if (N[nm]) N[nm].visible = false;
-      for (const [sock, wa] of [[7, 3.5], [10, -0.36]]) T.boss.haul.push(newArm({ id: 'h' + sock, k: 'haul', sock, mouth: 0, st: 'grip', t: 0, dur: 0, tgt: [0, 0, 0], wa, hp: 1, max: 1 }, true)); // two arms on the walls that do the hauling (not targets: no knot)
+      for (const [sock, wa] of [[7, 3.3], [10, -0.36]]) T.boss.haul.push(newArm({ id: 'h' + sock, k: 'haul', sock, mouth: 0, st: 'grip', t: 0, dur: 0, tgt: [0, 0, 0], wa, hp: 1, max: 1 }, true)); // two arms on the walls that do the hauling (not targets: no knot). the left one plants high enough to be seen over the wagon's rail; the right one stays under the cables
       applyMask(); T.loading = false; T.tries = 0;
       if (!T.on) hideBoss(); // (it landed after you left: it waits, out of sight, for the next visit)
     }).catch((e) => { console.warn('revenue protection model', e); T.loading = false; T.loadErr = true; T.retryAt = performance.now() + Math.min(60000, 2000 * 2 ** T.tries++); });
@@ -234,7 +236,7 @@ export function makeTrainFight(ST, { playScene }) {
   function newArm(a, decor) {
     const b = T.boss, g = new THREE.Group(), v = { a: { ...a, tgt: a.tgt.slice() }, g, segs: [], decor: !!decor, flash: 0, cutDone: false, sideT: 0 };
     if (!b) return v;
-    v.hand = b.A.arm_hand.clone(true); v.joints = []; v.hand.traverse((o) => { if (/^f\d_[abc]$/.test(o.name)) v.joints.push(o); }); g.add(v.hand);
+    v.hand = b.A.arm_hand.clone(true); v.joints = []; v.fingers = []; v.hand.traverse((o) => { if (/^f\d_[abc]$/.test(o.name)) v.joints.push(o); if (/^f\d$/.test(o.name)) { o.userData.sp = o.rotation.y; v.fingers.push(o); } }); g.add(v.hand);
     v.stump = b.A.arm_stump.clone(true); v.stump.visible = false; g.add(v.stump);
     if (!decor) { // the wrist: lanyards and ID cards wound into a ball, lit from inside. it has to stand out in the dark
       v.knot = b.A.arm_knot.clone(true);
@@ -252,37 +254,47 @@ export function makeTrainFight(ST, { playScene }) {
     gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.25, 'rgba(255,255,255,0.55)'); gr.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = gr; x.fillRect(0, 0, 64, 64);
     _halo = new THREE.CanvasTexture(c); return _halo;
   }
-  const _p = new THREE.Vector3(), _q = new THREE.Vector3();
-  function poseArm(v, dt, gap) {
+  const _p = new THREE.Vector3(), _q = new THREE.Vector3(), _x = new THREE.Vector3(), _y = new THREE.Vector3(), _m4 = new THREE.Matrix4();
+  const CLAW = [-0.12, 0.5, 0.6]; // a hand on the brick: each finger's three joints, the first bent back, the tips dug in
+  // H: a hauling arm's own path and hand (armgrip.js) instead of the room's ({ pts, wrist, dir, hand, claw, spread, curl })
+  function poseArm(v, dt, gap, H) {
     const a = v.a, b = T.boss; if (!b || !v.hand) return;
     if (a.k === 'sweep') { a.tgt[2] = sweepZ(a); a.tgt[1] = sweepY(a); }
     if (a.k === 'snatch' && (a.st === 'reach' || a.st === 'hold') && ME.alive) a.tgt = [ME.pos[0], ME.pos[1] + RP.snatch.up, ME.pos[2] - 0.2];
-    const P = armPose(T.geo, a, gap, v.decor ? v.ext : armExt(a)), pts = P.pts, J = [pts[0]];
-    // joints every 1.5 m along the path: each length looks at the next joint
-    let need = SEG, i = 1, cur = pts[0];
-    while (i < pts.length && J.length < 34) {
-      const q = pts[i], l = Math.hypot(q[0] - cur[0], q[1] - cur[1], q[2] - cur[2]);
-      if (l < need) { need -= l; cur = q; i++; continue; }
-      const k = need / l; cur = [cur[0] + (q[0] - cur[0]) * k, cur[1] + (q[1] - cur[1]) * k, cur[2] + (q[2] - cur[2]) * k]; J.push(cur); need = SEG;
+    const P = H || armPose(T.geo, a, gap, v.decor ? v.ext : armExt(a)), J = armJoints(BORE, P, a.mouth, SEG); // (joints every 1.5 m, kept inside the bore)
+    // a severed stump goes limp: as it pulls in, the rope sags off the wall toward the floor with a wobble (looks only:
+    // a cut arm can't be hit). f = how far along the rope: the socket stays put, the cut end drops most
+    let sw = P.wrist, sd = P.dir;
+    if (a.st === 'cut' && J.length > 1) {
+      const u = clamp(a.t / (a.dur || 1), 0, 1), drop = 1.9 * ss(Math.min(1, u * 1.7)), wob = 0.22 * (1 - u);
+      const sag = (q, f) => [q[0] * (1 - 0.14 * (drop / 1.9) * f), Math.max(0.3, q[1] - drop * f + Math.sin(time * 13 + f * 6) * wob * f), q[2] + 0.25 * drop * f];
+      for (let k = 1; k < J.length; k++) J[k] = sag(J[k], (k / (J.length - 1)) ** 1.6);
+      sw = sag(P.wrist, 1); const L = J[J.length - 2], dx = sw[0] - L[0], dy = sw[1] - L[1], dz = sw[2] - L[2], dl0 = Math.hypot(dx, dy, dz) || 1; sd = [dx / dl0, dy / dl0, dz / dl0];
+      if (Math.hypot(J[J.length - 1][0] - P.wrist[0], J[J.length - 1][1] - P.wrist[1], J[J.length - 1][2] - P.wrist[2]) < 1e-6) J[J.length - 1] = sw;
     }
-    if (need < SEG - 0.05) J.push(P.wrist);
     const n = J.length - 1;
     while (v.segs.length < n) { const s = b.A.arm_seg.clone(true); v.g.add(s); v.segs.push(s); }
     for (let k = 0; k < v.segs.length; k++) {
       const s = v.segs[k]; s.visible = k < n; if (k >= n) continue;
       const A0 = J[k], B0 = J[k + 1], rx = A0[0], ry = A0[1] - CY, rl = Math.hypot(rx, ry) || 1;
       s.position.set(A0[0], A0[1], A0[2]); s.up.set(rx / rl, ry / rl, 0); s.lookAt(_p.set(B0[0], B0[1], B0[2])); // (up = out from the bore's axis: the flat side lies on the wall)
-      s.scale.set(1, a.mouth ? 1 : k < 2 ? 0.35 : k < 4 ? 0.35 + 0.325 * (k - 1) : 1, clamp(Math.hypot(B0[0] - A0[0], B0[1] - A0[1], B0[2] - A0[2]) / SEG, 0.05, 1.05)); // the first lengths are flat: a whole rope doesn't fit past the rim
+      s.scale.set(1, flatK(a.mouth, k), clamp(Math.hypot(B0[0] - A0[0], B0[1] - A0[1], B0[2] - A0[2]) / SEG, 0.05, 1.05));
     }
-    const w = P.wrist, cut = a.st === 'cut', d = a.gp && a.st !== 'back' ? [a.gp[0] - w[0], a.gp[1] - w[1], a.gp[2] - w[2]] : P.dir, dl = Math.hypot(d[0], d[1], d[2]) || 1;
+    const w = sw, cut = a.st === 'cut', d = a.gp && a.st !== 'back' ? [a.gp[0] - w[0], a.gp[1] - w[1], a.gp[2] - w[2]] : P.dir, dl = Math.hypot(d[0], d[1], d[2]) || 1;
     v.hand.visible = !cut; v.stump.visible = cut;
-    const tip = _q.set(w[0] + d[0] / dl, w[1] + d[1] / dl, w[2] + d[2] / dl);
-    if (cut) { v.stump.position.set(w[0], w[1], w[2]); v.stump.up.set(0, 1, 0); v.stump.lookAt(_p.set(w[0] + P.dir[0], w[1] + P.dir[1], w[2] + P.dir[2])); v.stump.scale.setScalar(1.15); }
+    if (cut) { v.stump.position.set(w[0], w[1], w[2]); v.stump.up.set(0, 1, 0); v.stump.lookAt(_p.set(w[0] + sd[0], w[1] + sd[1], w[2] + sd[2])); v.stump.scale.setScalar(1.15); }
     else {
-      v.hand.position.set(w[0] + d[0] / dl * 0.4, w[1] + d[1] / dl * 0.4, w[2] + d[2] / dl * 0.4); v.hand.up.set(0, Math.abs(d[1] / dl) > 0.9 ? 0 : 1, Math.abs(d[1] / dl) > 0.9 ? 1 : 0); v.hand.lookAt(tip);
-      const want = a.st === 'grip' ? 0.95 : a.st === 'hold' ? 0.85 : a.st === 'sweep' ? 0.3 : 0.1 + 0.08 * Math.sin(time * 5 + (v.a.sock || 0));
+      // 0.4 m past the wrist, pointing the way it goes; a hand that would go through the lining is laid on it instead
+      const hf = H ? H.hand : handFit(BORE, w, [d[0] / dl, d[1] / dl, d[2] / dl], Math.abs(d[1] / dl) > 0.9 ? [0, 0, 1] : [0, 1, 0]);
+      v.hand.position.set(hf.o[0], hf.o[1], hf.o[2]); _y.set(hf.u[0], hf.u[1], hf.u[2]); _q.set(hf.f[0], hf.f[1], hf.f[2]); _x.crossVectors(_y, _q);
+      v.hand.quaternion.setFromRotationMatrix(_m4.makeBasis(_x, _y, _q));
+      const onWall = !H && (hf.tilt > 0 || hf.wall > 0.6) && a.st !== 'grip' && a.st !== 'hold'; // (crawling along the brick: fingers spread and dug in)
+      const want = H && H.curl != null ? H.curl : a.st === 'grip' ? 0.95 : a.st === 'hold' ? 0.85 : a.st === 'sweep' ? 0.3 : 0.1 + 0.08 * Math.sin(time * 5 + (v.a.sock || 0));
       v.curl = (v.curl ?? 0.1) + (want - (v.curl ?? 0.1)) * Math.min(1, dt * 9);
-      for (const j of v.joints) j.rotation.x = v.curl * (j.name[1] === '0' ? 0.75 : 1);
+      v.claw = (v.claw ?? 0) + ((H ? H.claw || 0 : onWall ? 1 : 0) - (v.claw ?? 0)) * Math.min(1, dt * (H && H.claw ? 30 : 9)); // (a planted hand bites at once)
+      v.spread = (v.spread ?? 1) + ((H ? H.spread || 1 : onWall ? 1.35 : 1) - (v.spread ?? 1)) * Math.min(1, dt * 9);
+      for (const j of v.joints) { const th = j.name[1] === '0' ? 0.75 : 1; j.rotation.x = (v.curl * (1 - v.claw) + CLAW['abc'.indexOf(j.name[3])] * v.claw) * th; }
+      for (const f of v.fingers) f.rotation.y = f.userData.sp * v.spread;
     }
     if (v.knot) {
       const live = armLive(a); v.flash = Math.max(0, v.flash - dt * 5);
@@ -295,6 +307,54 @@ export function makeTrainFight(ST, { playScene }) {
     }
     v.wrist = w; v.dir = P.dir;
   }
+  // ---------------------------------------------------------------- the haul (armgrip.js): two decor arms, no knot
+  // each hand plants flat on the lining well ahead of the face, rides it back with the tunnel (it is the wall that moves:
+  // the train and the face keep pace), skids as the fingers bite, lets go near the rim and reaches again, hand over hand
+  function haulArms(b, dt, z) {
+    const s = T.set, face = z + T.geo.faceZ, dist = s.kit ? s.kit.dist : s.off;
+    for (const [i, v] of b.haul.entries()) {
+      v.g.visible = b.root.visible; if (!v.hand) continue;
+      const wa = v.a.wa, h = v.h ||= newHaul(i, face), S0 = T.geo.sockets[v.a.sock] || T.geo.sockets[0], S = [S0[0], CY + S0[1], z + S0[2]];
+      if (T.fin) { h.zf ??= h.z; const k = ss(T.fin.t / 1.5); h.ph = 'let'; h.t = 0; h.z = h.zf + (S[2] + 1 - h.zf) * k; h.lift = 0.6 * k; if (k >= 1) v.g.visible = false; } // it lets go, and the arms go back in
+      else {
+        h.zf = null;
+        const ev = stepHaul(h, { dt, run: s.run || 0, face, z0: ARENA.z0, dist, side: Math.cos(wa) < 0 ? -1 : 1, a: wa, v: s.v || SPEED, other: b.haul[1 - i] && b.haul[1 - i].h, lead: i === 0 });
+        if (ev === 'plant' && v.g.visible) planted(v, i, face);
+      }
+      const hd = haulHand(BORE, h), L = hd.o[2] - S[2], bow = 0.12 + clamp((7.5 - L) / 5, 0, 1) + h.lift * 0.3; // (an elbow comes as the face hauls up to the hand)
+      v.a.st = h.ph === 'grip' ? 'grip' : 'reach';
+      poseArm(v, dt, 0, { pts: haulPath(BORE, S, hd.o, wa, bow), wrist: hd.o, dir: hd.f, hand: hd, claw: h.ph === 'grip' ? 1 : 0, spread: h.ph === 'reach' ? 1.5 : h.ph === 'grip' ? 1.3 : 1.1, curl: h.ph === 'grip' ? 0 : h.ph === 'let' ? 0.35 : -0.05 });
+    }
+    stepMarks(dt);
+  }
+  // a hand slapped onto the brick: dust and soot off the fingertips, a few sparks, the slap and the grind, claw marks
+  function planted(v, i, face) {
+    const h = v.h, hd = haulHand(BORE, h), tip = [0, 1, 2].map((n) => hd.o[n] + hd.f[n] * 1.7 - hd.u[n] * 0.3), k = clamp(1.4 - F.shown / 30, 0.3, 1.2);
+    fx.dust(tip, 4); fx.spray(tip, 7, [0x7a3424, 0x4a2418, 0x15100e, 0x2a2220], 3.5, 0.55, 0.07, 12, 1); fx.sparks(tip, [0, 0, -1], 5, false);
+    if (F.live) { sfx.rpGrip(tip, k); sfx.rpScrape(tip, clamp((h.zP - face - HAUL.let) / Math.max(1, T.set.v || SPEED), 0.3, 1.2), k); if (i === 0) sfx.rpHaul(tip, k); }
+    mark(h, tip[2] - 0.05); // (under and just ahead of the fingertips: what they gouged as they bit and skidded)
+  }
+  // claw marks: a few dark gouges ahead of where the fingers bit, on the wall (so they go by with it) and fading. pooled
+  let _claw = null;
+  function clawTex() {
+    if (_claw) return _claw;
+    const c = document.createElement('canvas'); c.width = 64; c.height = 64; const x = c.getContext('2d');
+    x.fillStyle = 'rgba(14,8,6,0.3)'; x.beginPath(); x.ellipse(32, 36, 26, 24, 0, 0, Math.PI * 2); x.fill(); // the soot smear
+    for (const [cx, w] of [[12, 4], [25, 5], [39, 5], [52, 4]]) { // a groove a finger, deep at the far end where it bit: dark, with fresh brick along one lip
+      x.fillStyle = 'rgba(214,140,96,0.55)'; x.beginPath(); x.moveTo(cx + 1, 4); x.lineTo(cx + 1 + w * 0.6, 60); x.lineTo(cx + 1 - w * 0.2, 60); x.closePath(); x.fill();
+      x.fillStyle = 'rgba(6,3,2,0.9)'; x.beginPath(); x.moveTo(cx, 4); x.lineTo(cx + w / 2, 60); x.lineTo(cx - w / 2, 60); x.closePath(); x.fill(); }
+    _claw = new THREE.CanvasTexture(c); return _claw;
+  }
+  function mark(h, zc) {
+    const s = T.set;
+    if (!s.marks) { s.marks = []; const geo = new THREE.PlaneGeometry(0.95, 0.75); for (let i = 0; i < 6; i++) { const m = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: clawTex(), transparent: true, opacity: 0, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 })); m.visible = false; m.userData.t = 9; s.g.add(m); s.marks.push(m); } }
+    const m = s.marks.reduce((p, q) => (q.userData.t > p.userData.t ? q : p)), a = h.a, r = R - 0.02;
+    m.userData = { t: 0, z: zc, run: s.run || 0 }; m.visible = true;
+    m.position.set(r * Math.cos(a), CY + r * Math.sin(a), zc); m.up.set(0, 0, 1); m.lookAt(_p.set(0, CY, zc)); // (faces the axis, its length along the tunnel)
+  }
+  function stepMarks(dt) {
+    for (const m of T.set.marks || []) { const u = m.userData; if (!m.visible) continue; u.t += dt; m.position.z = u.z - ((T.set.run || 0) - u.run); m.material.opacity = 0.75 * (1 - ss((u.t - 1.6) / 1.4)); if (u.t > 3) m.visible = false; }
+  }
   function freeArm(v) { G.scene.remove(v.g); if (v.glow) v.glow.dispose(); if (v.halo) v.halo.material.dispose(); }
   function clearArms() { for (const v of F.arms.values()) freeArm(v); F.arms.clear(); }
   function onArm(m) {
@@ -302,7 +362,7 @@ export function makeTrainFight(ST, { playScene }) {
     let v = F.arms.get(m.id);
     if (m.st === 'gone') { if (v) { freeArm(v); F.arms.delete(m.id); } return; }
     if (!v3(m.tgt) || typeof m.k !== 'string' || !fin(m.sock)) return;
-    const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, rear: fin(m.rear) ? m.rear : 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}) };
+    const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, rear: fin(m.rear) ? m.rear : 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}), ...(fin(m.e0) ? { e0: clamp(m.e0, 0, 1) } : {}) };
     if (!v) { v = newArm(a); F.arms.set(m.id, v); if (a.k === 'sweep') { hud.msg(a.hi ? 'HEAD HEIGHT. GET DOWN.' : 'KNEE HEIGHT. JUMP.', 1.3, 'reverse'); sfx.rpSweep(false); } }
     else { const was = v.a.st; v.a = a; if (a.st === 'cut' && was !== 'cut') severed(v, m); if (a.st === 'grip' && was !== 'grip') { sfx.rpHaul(v.wrist, 1.4); G.shake = Math.max(G.shake, 0.2); } if (a.st === 'hold' && was !== 'hold') hud.msg('IT HAS YOU. SHOOT THE WRIST.', 2, 'reverse'); if (a.k === 'sweep' && a.st === 'sweep' && was !== 'sweep') sfx.rpSweep(true); }
   }
@@ -453,14 +513,14 @@ export function makeTrainFight(ST, { playScene }) {
     const b = T.boss;
     if (b) {
       b.root.visible = (F.live || !!T.fin) && !(T.fin && T.fin.gone);
-      // the haul: its two wall arms reach, grip and drag, and the face lurches forward a little on each drag
-      const cyc = (time * 0.42) % 1, drag = cyc > 0.55 ? ss((cyc - 0.55) / 0.45) : 0, lurch = T.fin ? 0 : (cyc > 0.55 ? drag : 1 - ss(cyc / 0.55)) * 0.45 - 0.2;
+      // the haul: its two wall arms go hand over hand (haulArms), and the face lurches forward a little on each drag
+      const lurchT = T.fin ? 0 : -0.2 + 0.5 * Math.max(0, ...b.haul.map((v) => (v.h && v.h.ph === 'grip' ? Math.sin(Math.PI * v.h.prog) : 0)));
+      b.lurch = (b.lurch ?? 0) + (lurchT - (b.lurch ?? 0)) * Math.min(1, dt * 12); const lurch = b.lurch;
       const rear = F.lunge > 0 ? -1.6 * ss(1 - F.lunge / RP.lunge.tell) : 0; b.bite = Math.max(0, (b.bite || 0) - dt * 2.5);
       const z = -Z() + lurch + rear + (b.bite || 0) * 1.2;
       b.root.position.set(0, CY, z); b.root.rotation.z = T.fin ? 0 : Math.sin(time * 0.9) * 0.012 + (b.flinch || 0) * 0.05 * Math.sin(time * 40);
       b.flinch = Math.max(0, (b.flinch || 0) - dt * 1.4); b.redK = Math.max(0, (b.redK || 0) - dt * 3);
-      if (cyc > 0.55 && !b.hauled && F.live && !T.fin) { b.hauled = true; sfx.rpHaul([0, CY, z], clamp(1.4 - F.shown / 30, 0.3, 1.2)); } if (cyc < 0.5) b.hauled = false;
-      for (const [i, v] of b.haul.entries()) { const c2 = (cyc + i * 0.5) % 1, wa = v.a.wa; v.ext = T.fin ? Math.max(0.03, 1 - T.fin.t / 1.5) : c2 < 0.55 ? 0.5 + 0.5 * ss(c2 / 0.55) : 1 - 0.5 * ss((c2 - 0.55) / 0.45); v.a.st = c2 > 0.5 && !T.fin ? 'grip' : 'reach'; v.a.tgt = [4.05 * Math.cos(wa), CY + 4.05 * Math.sin(wa), -Z() + 7]; v.g.visible = b.root.visible; poseArm(v, dt, Z() - lurch); }
+      haulArms(b, dt, z);
       // the eye housings swing open on a flinch; behind the blown left one, eyes
       const open = F.open > 0 && !T.fin ? 1 : 0; b.openK = (b.openK || 0) + (open - (b.openK || 0)) * Math.min(1, dt * 7);
       if (b.N.eye_L) b.N.eye_L.rotation.y = 1.25 * b.openK; if (b.N.eye_R) b.N.eye_R.rotation.y = -1.25 * b.openK;
@@ -484,12 +544,13 @@ export function makeTrainFight(ST, { playScene }) {
     BD.tick(dt, ME.alive && !held && !(T.failT && !F.live), !(G.story.triggerOff && G.story.triggerOff()));
   };
   function leave() {
+    if (T.back === 'fading') setTimeout(() => { if (G.story && G.story.save) G.story.save('checkpoint'); }, 3000); // back out in the world after the end of Act I: a save right there (story/main.js)
     clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; TS.bitten(false); crew(false); HS.clear(); T.jack = 0;
     if (T.set) { G.scene.remove(T.set.g); const w = T.set.cars.wagon; if (w) { w.visible = true; w.position.set(0, 0, 0); w.rotation.set(0, 0, 0); } } // (kept: nothing to rebuild or dispose next time)
     hideBoss();
     if (hudEl) hudEl.classList.add('hidden'); if (failEl) { failEl.classList.remove('on'); failEl.classList.add('hidden'); }
   }
-  function hideBoss() { const b = T.boss; if (!b) return; b.root.visible = false; for (const d of b.debris.splice(0)) G.scene.remove(d.m); for (const v of b.haul) v.g.visible = false; unbreak(); }
+  function hideBoss() { const b = T.boss; if (!b) return; b.root.visible = false; for (const d of b.debris.splice(0)) G.scene.remove(d.m); for (const v of b.haul) v.g.visible = false; for (const m of (T.set && T.set.marks) || []) m.visible = false; unbreak(); }
   // a real hit-stop on a sever (story main.js multiplies the game's dt by this). only on the train, and never past leave()
   T.timeScale = () => (T.on ? HS.scale() : 1); T.hitStop = HS;
   // what your other guns can hit (bossref.js gives the room's bot these boxes): the face and every arm. the room judges the shot

@@ -13,7 +13,7 @@
 //   the BLOOD DRIVE (WEAPONS.blooddrive) is judged here too, in story rooms only: spin-up, rate, range, HP cost
 import { WEAPONS, FLAGS } from '../shared/weapons.js';
 import { raycast, PH } from '../shared/physics.js';
-import { RP, ARENA, PLATES, LOW, geoFrom, rayFight, armLive, sweepZ, sweepY, wallA, deckAt, offTrain, onRoof, gripSpots, backSpot } from '../shared/story/train.js';
+import { RP, ARENA, PLATES, LOW, geoFrom, rayFight, armLive, armExt, sweepZ, sweepY, wallA, deckAt, offTrain, onRoof, gripSpots, backSpot } from '../shared/story/train.js';
 
 const fin = Number.isFinite;
 const isName = (s) => typeof s === 'string' && /^[a-zA-Z0-9_]{1,24}$/.test(s);
@@ -48,7 +48,7 @@ export function installStoryTrain(Room) {
   const ev = (room, b, type, rp) => { if (room.onStory) room.onStory({ type, t: b, rp: rp || {} }); };
   const humans = (room) => [...room.players.values()].filter((p) => !p.sk && !p.isBot);
   const view = (B) => ({ gap: B.gap - B.rear, arms: B.arms, plates: B.plates.map((p) => p.st), open: B.t < B.openUntil, eyeL: B.eyeL, smile: B.smile });
-  const armMsg = (a) => ({ id: a.id, k: a.k, sock: a.sock, mouth: a.mouth ? 1 : 0, st: a.st, dur: r2(a.dur), tgt: a.tgt.map(r2), hi: a.hi ? 1 : 0, side: a.side || 0, ...(a.rear ? { rear: a.rear } : {}), ...(fin(a.wa) ? { wa: r2(a.wa) } : {}), ...(a.gp ? { gp: a.gp.map(r2) } : {}), hp: Math.max(0, Math.round(a.hp)), max: RP.arm.hp });
+  const armMsg = (a) => ({ id: a.id, k: a.k, sock: a.sock, mouth: a.mouth ? 1 : 0, st: a.st, dur: r2(a.dur), tgt: a.tgt.map(r2), hi: a.hi ? 1 : 0, side: a.side || 0, ...(a.rear ? { rear: a.rear } : {}), ...(fin(a.wa) ? { wa: r2(a.wa) } : {}), ...(a.gp ? { gp: a.gp.map(r2) } : {}), ...(fin(a.e0) ? { e0: r2(a.e0) } : {}), hp: Math.max(0, Math.round(a.hp)), max: RP.arm.hp });
   const snap = (B) => ({ phase: B.phase, hp: B.hp, stage: B.stage, eyeL: B.eyeL, smile: B.smile, marrow: B.marrow, plates: B.plates.map((p) => ({ ...p })) });
   const stateMsg = (B) => ({ gap: r2(B.gap), rear: B.rear, hp: Math.round(B.hp), max: B.def.hp, phase: B.phase, name: B.def.phases[B.phase].name, stage: B.stage, plates: B.plates.map((p) => p.st), open: Math.max(0, r2(B.openUntil - B.t)), marrow: B.marrow, arms: B.arms.map(armMsg), jack: B.phase === 0 ? r2(1 - B.jack / RP.jack) : 0 });
   const place = (b, B) => { b.pos = [0, ARENA.cy, B.rear - B.gap]; b.vel = [0, 0, 0]; b.yaw = Math.PI; b.onGround = true; b.f = 0; };
@@ -82,6 +82,7 @@ export function installStoryTrain(Room) {
     ev(room, b, 'flinch', { open: RP.flinch.open, gap: r2(B.gap) });
   }
   function sever(room, b, B, a, by) {
+    a.e0 = armExt(a); // how far out it was: the stump pulls in from there, it never snaps out first
     a.st = 'cut'; a.t = 0; a.dur = RP.arm.cut; a.hp = 0;
     B.gap = Math.min(RP.gap.max, B.gap + RP.gap.sever);
     ev(room, b, 'arm', { ...armMsg(a), blood: heal(room, by, RP.arm.blood) }); // (a severed arm gives blood back)
@@ -196,7 +197,7 @@ export function installStoryTrain(Room) {
   }
   function stepArms(room, b, B, dt) {
     for (let i = B.arms.length - 1; i >= 0; i--) {
-      const a = B.arms[i], done = (a.t += dt) >= a.dur, go = (st, dur) => { a.st = st; a.t = 0; a.dur = dur; ev(room, b, 'arm', armMsg(a)); };
+      const a = B.arms[i], done = (a.t += dt) >= a.dur, go = (st, dur) => { if (st === 'back') a.e0 = armExt(a); a.st = st; a.t = 0; a.dur = dur; ev(room, b, 'arm', armMsg(a)); };
       if (a.st === 'cut' || a.st === 'back') { if (done) { B.arms.splice(i, 1); ev(room, b, 'arm', { id: a.id, k: a.k, st: 'gone' }); } continue; }
       if (a.k === 'grab') { if (a.st === 'reach' && done) go('grip', 0); } // it has the rail: THE GAP closes while it holds
       else if (a.k === 'sweep') {
