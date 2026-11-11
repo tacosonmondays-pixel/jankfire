@@ -250,8 +250,11 @@ function newDeck() {
   for (let i = d.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [d[i], d[j]] = [d[j], d[i]]; }
   return d;
 }
+// test knob: JF_CARD_HAND=s7,s2,s12,h5,c9 deals exactly that hand every time (suit + rank, j0 = joker)
+const CARD_HAND = (process.env.JF_CARD_HAND || '').split(',').map((c) => c.trim()).filter((c) => /^(?:[hscd](?:[1-9]|1[0-3])|j0)$/.test(c)).slice(0, 5);
 function deal(p) {
   if (!p.deck || p.deck.length < 5) p.deck = newDeck();
+  if (CARD_HAND.length) p.deck.unshift(...CARD_HAND, ...p.deck.splice(0, 5 - CARD_HAND.length));
   p.hand = p.deck.splice(0, 5);
   send(p, { t: 'hand', hand: p.hand, left: p.deck.length });
 }
