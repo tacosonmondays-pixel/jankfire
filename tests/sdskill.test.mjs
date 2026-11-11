@@ -25,8 +25,8 @@ import { navPath, navLocate } from '../shared/nav.js';
 import { MAPS } from '../shared/map.js';
 test('cover and corner sense improve tier by tier (bad bots have none)', () => {
   const order = ['cracked', 'good', 'average', 'bad'];
-  for (let i = 0; i < 3; i++) assert.ok(SKILL[order[i]].cover > SKILL[order[i + 1]].cover && SKILL[order[i]].pre > SKILL[order[i + 1]].pre);
-  assert.equal(SKILL.bad.cover, 0); assert.equal(SKILL.bad.pre, 0);
+  for (let i = 0; i < 3; i++) assert.ok(SKILL[order[i]].sneak > SKILL[order[i + 1]].sneak && SKILL[order[i]].pre > SKILL[order[i + 1]].pre);
+  assert.equal(SKILL.bad.sneak, 0); assert.equal(SKILL.bad.pre, 0);
 });
 test('a weighted route avoids the costly nodes and no weights means the old route', () => {
   const m = MAPS.warehouse_sd, g = m.graph, ts = m.teamSpawns;
@@ -39,4 +39,9 @@ test('a weighted route avoids the costly nodes and no weights means the old rout
   const round = navPath(g, a, b, undefined, w), bad = new Set(mid);
   assert.ok(round && round[0] === a && round[round.length - 1] === b);
   assert.ok(round.filter((k) => bad.has(k)).length < mid.length / 2, 'went round most of it');
+});
+test('garbage weights never hang the search', () => {
+  const g = MAPS.warehouse_sd.graph, ts = MAPS.warehouse_sd.teamSpawns, a = navLocate(g, ts.att[0]), b = navLocate(g, ts.def[0]);
+  const w = new Float32Array(g.nodes.length).fill(NaN);
+  assert.deepEqual(navPath(g, a, b, undefined, w), navPath(g, a, b));
 });

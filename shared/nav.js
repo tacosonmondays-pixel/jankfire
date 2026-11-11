@@ -204,7 +204,7 @@ export function navPath(g, a, b, max = g.maxExpand || Infinity, w = null) { // m
     if (done[k] === st) continue;
     done[k] = st;
     for (let e = g.off[k], e1 = g.off[k + 1]; e < e1; e++) {
-      const m = g.to[e], ng = gs[k] + (w ? g.cw[e] * (1 + w[m]) : g.cw[e]);
+      const m = g.to[e], ng = gs[k] + (w && w[m] > 0 ? g.cw[e] * (1 + w[m]) : g.cw[e]); // (w[m] > 0: a NaN or negative weight is just no weight, never a search that can't end)
       if (seen[m] === st && ng >= gs[m]) continue;
       seen[m] = st; gs[m] = ng; fs[m] = ng + h(m); from[m] = k;
       push(m);

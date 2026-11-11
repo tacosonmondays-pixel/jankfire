@@ -20,12 +20,12 @@ import { patternOf } from '../shared/tactical.js';
 import { navLocate } from '../shared/nav.js';
 
 // head: share of fights they go for the head. err / react / turn: x the difficulty's. comp: share of the spray pattern
-// pulled down. cover: how much longer a way round they'll take to stay out of sight. pre: how often they check a corner before stepping out. snap: how well the crosshair is actually on them when they click (1 = on, 0 = still swinging over). tap: stop-to-shoot discipline (0..1). peek: s they hold + jiggle a lost angle. duck: takes cover. hop: jumps in fights
+// pulled down. sneak: how much longer a way round they'll take to stay out of sight. pre: how often they check a corner before stepping out. snap: how well the crosshair is actually on them when they click (1 = on, 0 = still swinging over). tap: stop-to-shoot discipline (0..1). peek: s they hold + jiggle a lost angle. duck: takes cover. hop: jumps in fights
 export const SKILL = {
-  cracked: { name: 'cracked', cover: 1.2, pre: 0.9, snap: 1, head: 0.85, err: 0.45, react: 0.7, turn: 1.5, comp: 0.92, tap: 1, peek: [0.9, 2], duck: 0.9, hop: 0 },
-  good: { name: 'good', cover: 0.9, pre: 0.7, snap: 0.85, head: 0.55, err: 0.75, react: 0.9, turn: 1.2, comp: 0.75, tap: 0.85, peek: [1.2, 2.6], duck: 0.6, hop: 0 },
-  average: { name: 'average', cover: 0.4, pre: 0.25, snap: 0.5, head: 0.25, err: 1.1, react: 1.1, turn: 1, comp: 0.5, tap: 0.45, peek: [0, 1.2], duck: 0.25, hop: 0.25 },
-  bad: { name: 'bad', cover: 0, pre: 0, snap: 0.15, head: 0.06, err: 1.9, react: 1.6, turn: 0.7, comp: 0.15, tap: 0.05, peek: [0, 0], duck: 0, hop: 1 },
+  cracked: { name: 'cracked', sneak: 1.2, pre: 0.9, snap: 1, head: 0.85, err: 0.45, react: 0.7, turn: 1.5, comp: 0.92, tap: 1, peek: [0.9, 2], duck: 0.9, hop: 0 },
+  good: { name: 'good', sneak: 0.9, pre: 0.7, snap: 0.85, head: 0.55, err: 0.75, react: 0.9, turn: 1.2, comp: 0.75, tap: 0.85, peek: [1.2, 2.6], duck: 0.6, hop: 0 },
+  average: { name: 'average', sneak: 0.4, pre: 0.25, snap: 0.5, head: 0.25, err: 1.1, react: 1.1, turn: 1, comp: 0.5, tap: 0.45, peek: [0, 1.2], duck: 0.25, hop: 0.25 },
+  bad: { name: 'bad', sneak: 0, pre: 0, snap: 0.15, head: 0.06, err: 1.9, react: 1.6, turn: 0.7, comp: 0.15, tap: 0.05, peek: [0, 0], duck: 0, hop: 1 },
 };
 // who shows up at each difficulty: [cracked, good, average, bad]
 const ODDS = { easy: [0, 0.15, 0.45, 0.4], normal: [0.1, 0.3, 0.4, 0.2], hard: [0.3, 0.4, 0.25, 0.05] };
@@ -136,7 +136,7 @@ export function installSdSkill(Room) {
       const N = g.nodes.length, w = sk.w && sk.w.length === N ? sk.w : new Float32Array(N), e = E[side].n, seed = Math.random() * 100;
       for (let i = 0; i < N; i++) {
         const q = g.nodes[i], h = Math.sin(Math.floor(q[0] / 14) * 12.9898 + Math.floor(q[2] / 14) * 78.233 + seed) * 43758.5453;
-        w[i] = e[i] * sk.cover + (h - Math.floor(h)) * 0.4;
+        w[i] = e[i] * sk.sneak + (h - Math.floor(h)) * 0.4;
       }
       sk.w = w; sk.wKey = key;
     }
