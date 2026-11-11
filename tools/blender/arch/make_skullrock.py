@@ -71,37 +71,64 @@ for i in range(NP):
         if i == NP - 1: tri(a, b, c, m)  # (the crown: the top row meets in a point)
         else: tri(a, b, c, m); tri(a, c, d, m)
 
-# the cave: a real way in. its mouth is the hole left in the skin; from that edge a passage runs back into the skull,
-# squaring off to the solid's 4 m x 3 m, darker the further in, to its back wall
+# the cave: a throat in under the teeth to a chamber round the chest (the solid's shape: shared/skullshape.js
+# caveProfile / caveBack). its mouth is the hole left in the skin; rings of rough rock run back from that edge, walls
+# standing to the arch's spring, the arch over, bone-pale ribs across the roof every metre and a half (proud only above
+# head height), widening past the chest into a rounded chamber, darker the further in
+CV = SH['cave']
+def csm(t): t = max(0.0, min(1.0, t)); return t * t * (3 - 2 * t)
+def cprof(z):
+    t = csm((z - CV['from']) / CV['len']); w = CV['hw'] + (CV['wide'] - CV['hw']) * t; h = CV['top'] + (CV['high'] - CV['top']) * t
+    return w, h * 0.55, h
+def cback(x): return CV['back'] + 0.7 * math.sqrt(max(0.0, 1 - (x / CV['wide']) ** 2))
 j0, j1 = NT // 2 - JC, NT // 2 + JC
 LOOP = [G[i][j0][0] for i in range(IC + 1)] + [G[IC][j][0] for j in range(j0 + 1, j1)] + [G[i][j1][0] for i in range(IC, -1, -1)]
-HW, HT = SH['cave']['hw'] + 0.05, SH['cave']['top']  # (a hair outside the solid's cave: the boxes are what you touch)
-
-
-def prof(v, k, n):  # where that point of the mouth's edge ends up on the passage's own outline
-    ys = (HT - 0.25 + 0.35) / (LOOP[IC].y + 0.35)  # (the walls' rows squeezed under the passage's roof, none on top of another)
-    if k <= IC: return (-HW, -0.35 + (v.y + 0.35) * ys)
-    if k >= n - IC - 1: return (HW, -0.35 + (v.y + 0.35) * ys)
-    x = max(-HW, min(HW, v.x * HW / abs(LOOP[IC].x))); return (x, HT - 0.25 + 0.3 * math.cos(math.pi / 2 * x / HW))
-
-
-zf = max(v.z for v in LOOP); nL = len(LOOP); RINGS = [LOOP]
-ZB = SH['cave']['back'] + 0.1
-for d, w in ((1.0, 0.7), (3.0, 1.0), (7.0, 1.0), (ZB - zf, 1.0)):
-    RINGS.append([Vector((v.x + (prof(v, k, nL)[0] - v.x) * w, v.y + (prof(v, k, nL)[1] - v.y) * w, zf + d + (hsh(k, d) - 0.5) * 0.12 * (d < 9))) for k, v in enumerate(LOOP)])
+nL = len(LOOP); zf = max(v.z for v in LOOP)
+RIBS = [zf + 1.4 + 1.5 * k for k in range(8)]
+def rib(z): return max(math.exp(-((z - r) / 0.28) ** 2) for r in RIBS)
+def cpt(sv, z, out=0.06):
+    """the cave's outline at z, sv 0..1 round it (left floor, up the wall, over the arch, down to the right floor);
+    out: how far outside the solid's surface (rough: more on the walls, ribs proud inward up the arch)"""
+    w, hs, h = cprof(z)
+    rough = (hsh(round(sv * 23), round(z * 2.1)) - 0.5) * 0.12 + 0.06 * math.sin(z * 2.3 + sv * 9)
+    if sv < 0.25: x, y, nx, ny = -w, hs * sv / 0.25, -1, 0
+    elif sv > 0.75: x, y, nx, ny = w, hs * (1 - sv) / 0.25, 1, 0
+    else:
+        a = math.pi * (1 - (sv - 0.25) / 0.5); x, y = w * math.cos(a), hs + (h - hs) * math.sin(a)
+        nx, ny = math.cos(a) / w, math.sin(a) / max(0.01, h - hs); L = math.hypot(nx, ny); nx, ny = nx / L, ny / L
+    d = out + max(0.0, rough) - (0.16 * rib(z) if y > 2.1 else 0.0)
+    return Vector((x + nx * d, max(-0.3, y + ny * d), z))
+NS = nL  # (one ring point per point of the mouth's edge)
+SV = [k / (NS - 1) for k in range(NS)]
+ZS = [zf + 0.6]
+while ZS[-1] < CV['back'] - 0.2: ZS.append(ZS[-1] + 0.25)
+RINGS = [LOOP] + [[cpt(sv, z) for sv in SV] for z in ZS]
+RINGS[1] = [LOOP[k].lerp(RINGS[1][k], 0.85) for k in range(NS)]  # (the first ring eases off the mouth's edge)
 axis = lambda z: Vector((0, 1.4, z))
 for ri in range(len(RINGS) - 1):
-    A, B2 = RINGS[ri], RINGS[ri + 1]; m = ('skshade', 'skdeep', 'skdeep', 'skhole')[ri]
-    for k in range(nL - 1):
+    A, B2 = RINGS[ri], RINGS[ri + 1]; zc = (A[NS // 2].z + B2[NS // 2].z) / 2
+    for k in range(NS - 1):
+        hy = (A[k].y + A[k + 1].y) / 2
+        m = 'skbone' if (rib(zc) > 0.45 and hy > 2.0) else ('skshade' if zc < zf + 2.5 else 'skdeep')
         for t3 in ([A[k], A[k + 1], B2[k + 1]], [A[k], B2[k + 1], B2[k]]):
             cc = (t3[0] + t3[1] + t3[2]) / 3
             if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot(axis(cc.z) - cc) < 0: t3 = t3[::-1]
             K.tri(t3, m)
-E = RINGS[-1]; ec = Vector((0, 1.3, E[0].z))
-for k in range(nL):  # its back wall (right round: the last one closes it along the sand)
-    t3 = [ec, E[k], E[(k + 1) % nL]]
+# the chamber's back: the last ring closed with a rounded wall, out to caveBack in the middle
+E = RINGS[-1]; NB = 4
+BACK = [E] + [[Vector((p.x * (1 - (b / NB) ** 2 * 0.85), p.y * (1 - (b / NB) ** 2 * 0.6) + 0.4 * (b / NB) ** 2, p.z + (cback(p.x) + 0.08 - p.z) * math.sin(b / NB * math.pi / 2))) for p in E] for b in range(1, NB + 1)]
+for bi in range(NB):
+    A, B2 = BACK[bi], BACK[bi + 1]
+    for k in range(NS - 1):
+        for t3 in ([A[k], A[k + 1], B2[k + 1]], [A[k], B2[k + 1], B2[k]]):
+            cc = (t3[0] + t3[1] + t3[2]) / 3
+            if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot(Vector((0, 1.4, cc.z - 1.0)) - cc) < 0: t3 = t3[::-1]
+            if (t3[1] - t3[0]).cross(t3[2] - t3[0]).length > 1e-9: K.tri(t3, 'skdeep')
+F = BACK[-1]; fc = sum(F, Vector()) / len(F)
+for k in range(NS):
+    t3 = [fc, F[k], F[(k + 1) % NS]]
     if (t3[1] - t3[0]).cross(t3[2] - t3[0]).z > 0: t3 = t3[::-1]
-    K.tri(t3, 'skhole')
+    if (t3[1] - t3[0]).cross(t3[2] - t3[0]).length > 1e-9: K.tri(t3, 'skdeep')
 
 # the teeth: a row of stone pegs along the upper jaw over the cave, a couple missing, one fallen on the sand
 for k in range(-4, 5):
@@ -151,25 +178,35 @@ if os.path.exists(SPJ):
         if (p[1] - p[0]).cross(p[2] - p[0]).dot(Vector(out)) < 0: p = p[::-1]
         kit.quad(p, m, sub=sub)
 
+    def vert_ring(zc, top, w, hgt, ch):  # a vertebra body's cross-section (x, y): flat on top (the step), rounded under
+        return [(-w + ch, top), (w - ch, top), (w, top - ch), (w, top - hgt + ch * 1.6), (w - ch * 1.6, top - hgt), (-w + ch * 1.6, top - hgt), (-w, top - hgt + ch * 1.6), (-w, top - ch)]
+
+    def prism_z(sec, z0, z1, m, kit=K2):  # a cross-section in x, y run along z from z0 to z1, closed at both ends
+        n = len(sec); cen = Vector((sum(p[0] for p in sec) / n, sum(p[1] for p in sec) / n, (z0 + z1) / 2))
+        for k in range(n):
+            a, b2 = sec[k], sec[(k + 1) % n]
+            face([(a[0], a[1], z0), (b2[0], b2[1], z0), (b2[0], b2[1], z1), (a[0], a[1], z1)], m, Vector(((a[0] + b2[0]) / 2, (a[1] + b2[1]) / 2, (z0 + z1) / 2)) - cen, kit=kit)
+        for (zz, sz) in ((z0, -1), (z1, 1)):
+            for k in range(1, n - 1):
+                t3 = [Vector((sec[0][0], sec[0][1], zz)), Vector((sec[k][0], sec[k][1], zz)), Vector((sec[k + 1][0], sec[k + 1][1], zz))]
+                if (t3[1] - t3[0]).cross(t3[2] - t3[0]).z * sz < 0: t3 = t3[::-1]
+                kit.tri(t3, m)
+
     for i, b in enumerate(steps):
         za, zb, top = b['min'][2], b['max'][2], b['max'][1]
-        zc = (za + zb) / 2; d = (zb - za) / 2 + 0.07; w = HS * (0.84 + 0.07 * hsh(i, 5)); ch = 0.17; th = 0.3
-        K2.prism([(-w + ch, 0, zc - d), (w - ch, 0, zc - d), (w, 0, zc - d + ch), (w, 0, zc + d - ch), (w - ch, 0, zc + d), (-w + ch, 0, zc + d), (-w, 0, zc + d - ch), (-w, 0, zc - d + ch)], 1, top - th, top, 'sktooth')
-        for s in (-1, 1):  # the wings
-            x0 = s * (w - 0.03); tip = Vector((s * (w + 0.36 + 0.1 * hsh(i, s, 7)), top + 0.16 + 0.1 * hsh(i, s, 8), zc + 0.05))
-            q = [Vector((x0, top - 0.27, zc - 0.11)), Vector((x0, top - 0.27, zc + 0.11)), Vector((x0, top - 0.03, zc + 0.11)), Vector((x0, top - 0.03, zc - 0.11))]
-            cen = (sum(q, Vector()) / 4 + tip) / 2
-            for c in range(4):
-                t3 = [q[c], q[(c + 1) % 4], tip]
-                if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot(sum(t3, Vector()) / 3 - cen) < 0: t3 = t3[::-1]
-                K2.tri(t3, 'sktooth' if c != 0 else 'skshade')
-        yt = top - DROP; m = 'skdeep' if hsh(i, 9) < 0.3 else 'skshade'
-        for s in (-1, 1): face([(s * WB, YB, za), (s * WB, YB, zb), (s * WT, yt, zb), (s * WT, yt, za)], m, (s, 0, 0), sub=1.5)
-        lo = steps[i - 1]['max'][1] - DROP if i else YB  # the riser between this step's rock and the one below's
-        face([(-WT, lo, zb), (WT, lo, zb), (WT, yt, zb), (-WT, yt, zb)], 'skdeep', (0, 0, 1))
-    zh, yh = steps[-1]['min'][2], steps[-1]['max'][1] - DROP  # its head: on into the back of the skull
-    for s in (-1, 1): face([(s * WB, YB, zh - 0.9), (s * WB, YB, zh), (s * WT, yh, zh), (s * WT, yh, zh - 0.9)], 'skshade', (s, 0, 0), sub=1.5)
-    face([(-WT, yh, zh - 0.9), (WT, yh, zh - 0.9), (WT, yh, zh), (-WT, yh, zh)], 'skshade', (0, 1, 0))
+        w = HS * (0.9 + 0.05 * hsh(i, 5)); g = 0.035  # (a disc between each body and the next: the step's edge)
+        prism_z(vert_ring(0, top, w, 0.62, 0.2), za + g, zb - g, 'sktooth')
+        prism_z(vert_ring(0, top - 0.06, w - 0.08, 0.5, 0.16), za - g - 0.025, za + g + 0.025, 'skdeep')  # (its ends well inside the bodies either side)
+        for s in (-1, 1):  # the transverse processes: big flat bony wings out and down, a knob on the end
+            zc = (za + zb) / 2 + 0.02 * (hsh(i, s) - 0.5)
+            root = Vector((s * (w - 0.05), top - 0.26, zc)); tip = Vector((s * (w + 1.15 + 0.2 * hsh(i, s, 7)), top - 0.3 - 0.35 * hsh(i, s, 8), zc + 0.08))  # (long: the spine's outline from the side)
+            up = Vector((0, 1, 0)); d = (tip - root).normalized(); side = d.cross(up).normalized()
+            hw0, hw1, th0, th1 = 0.1, 0.07, 0.12, 0.08  # (narrower than the body's depth: its sides never lie on the body's ends)
+            A = [root + side * hw0 + up * th0, root - side * hw0 + up * th0, root - side * hw0 - up * th0, root + side * hw0 - up * th0]
+            B3 = [tip + side * hw1 + up * th1, tip - side * hw1 + up * th1, tip - side * hw1 - up * th1, tip + side * hw1 - up * th1]
+            mid = (root + tip) / 2
+            for k in range(4): face([A[k], A[(k + 1) % 4], B3[(k + 1) % 4], B3[k]], 'sktooth', (A[k] + B3[(k + 1) % 4]) / 2 - mid)
+            face([B3[0], B3[1], B3[2], B3[3]], 'sktooth', d)
     for b in K2.boxes: b['_done'] = True
     K2.solids = []
     K2.finish(os.path.join(OD, 'skullspine.glb'))
