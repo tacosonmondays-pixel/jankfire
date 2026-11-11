@@ -133,9 +133,11 @@ export function commute(B, d) {
   // the wasteland: old car parks with their line paint, dead trees, ash mounds, a lot more junk lying about
   const free = (x, z, m = 4) => !keepOut.some((q) => x > q[0] - m && x < q[2] + m && z > q[1] - m && z < q[3] + m);
   if (r() < 0.5) { // a car park
-    const px = Math.min(X1 - 36, X0 + 6 + r() * (X1 - X0 - 36)), pz = Math.min(Z1 - 30, Z0 + 6 + r() * (Z1 - Z0 - 30)); // (all of it in this chunk: it levels its own ground)
-    if (free(px + 15, pz + 12, 14) && px - 6 >= X0 && pz - 6 >= Z0) {
-      const y = gy(px + 15, pz + 12) + 0.02;
+    const px = Math.max(X0 + 10, Math.min(X1 - 40, X0 + 6 + r() * (X1 - X0 - 36))), pz = Math.max(Z0 + 10, Math.min(Z1 - 34, Z0 + 6 + r() * (Z1 - Z0 - 30))); // (well inside this chunk: it levels its own ground, and the slope round it needs room to ease)
+    let lo = Infinity, hi = -Infinity; // (a car park wants fairly level ground: on a real hillside there isn't one)
+    for (let x = px; x <= px + 30; x += 5) for (let z = pz; z <= pz + 24; z += 4) { const h = gy(x, z); lo = Math.min(lo, h); hi = Math.max(hi, h); }
+    if (free(px + 15, pz + 12, 14) && px + 40 <= X1 && hi - lo < 1.6) {
+      const y = (lo + hi) / 2 + 0.02;
       lotFlat.push([px - 0.5, pz - 0.5, px + 30.5, pz + 24.5, y - 0.04, 5]);
       B.add(px, y - 0.02, pz, px + 30, y + 0.03, pz + 24, 'asphalt', { nc: true, tint: 0x6a6460 });
       for (let i = 0; i <= 10; i++) { B.add(px + 1 + i * 2.8, y + 0.03, pz + 2, px + 1.12 + i * 2.8, y + 0.04, pz + 8, 'paint', { nc: true, tint: 0xe8e0d0 }); B.add(px + 1 + i * 2.8, y + 0.03, pz + 16, px + 1.12 + i * 2.8, y + 0.04, pz + 22, 'paint', { nc: true, tint: 0xe8e0d0 }); }

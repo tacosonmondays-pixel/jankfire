@@ -18,6 +18,7 @@ import { districtWeights } from '/shared/city/plan.js';
 import { startGoo, stopGoo, updateGoo } from './gutgoo.js';
 import { startHeart, stopHeart, updateHeart, gutBeat } from './bigheart.js'; // the Big Heart, the Gut's one beat and its ground fog
 import { gradeActive, gradeEnv } from '../story/grade.js'; // story mode's eerie grade (darker, colder, closer fog)
+import { startHills, stopHills, updateHills } from './hillfx.js'; // the hills' dust, loose rocks and litter
 
 let S = null, hooks = null;
 const tmp = new THREE.Color();
@@ -28,7 +29,7 @@ export function startCity(def, h) {
   propEnv(G.renderer);
   S = new CityStream({ scene: G.scene, city: def.stream, preset: G.settings ? G.settings.jank : 1, boxes: BOXES });
   S.useWas = false;
-  startHeart(S.root); startGoo(S.root);
+  startHeart(S.root); startGoo(S.root); startHills(S.root);
   // the city code took a second to arrive and you may have started falling: put you back where the map dropped you
   // (its spawn if you're near it, else a bit above where you are) and hold you there until the ground is in
   const sp = def.spawns && def.spawns[0];
@@ -36,7 +37,7 @@ export function startCity(def, h) {
   S.holding = true;
   return S;
 }
-export function stopCity() { stopHeart(); stopGoo(); if (S) { S.dispose(); S = null; } stopBeds(); }
+export function stopCity() { stopHeart(); stopGoo(); stopHills(); if (S) { S.dispose(); S = null; } stopBeds(); }
 export const cityStream = () => S;
 
 const GUT_FLUSH = new THREE.Color(0xa01428); // the colour the fog flushes (its beat is the Big Heart's: gutbeat.js)
@@ -47,6 +48,7 @@ export function updateCity(dt) {
   S.update(G.camera, dt);
   updateHeart(dt, S, G.camera); // (ticks the Gut's clock: the fog below reads it)
   updateGoo(dt, S, G.camera); // the bile pools: bubbles that pop, green in the mist over them
+  updateHills(dt); // landing dust, loose rocks, litter off the ridges (hillfx.js)
   updateBeds(G.joined ? districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40) : [], dt); // the district music (fades out on the menu: the menu song is on)
   const e = S.env;
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');

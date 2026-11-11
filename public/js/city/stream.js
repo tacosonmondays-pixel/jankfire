@@ -299,6 +299,6 @@ export class CityStream {
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }
     freeProps(this.props.group); this.crowd.dispose(); this.weather.dispose();
-    this.root.removeFromParent(); this.chunks.clear(); this.world.boxes.length = 0;
+    this.root.removeFromParent(); this.chunks.clear(); this.world.boxes.length = 0; this.world.boxes.terrain = null; // (the city's hills go with it)
   }
 }
