@@ -89,6 +89,50 @@ slow on software GL; Cycles was faster for volumes here), anything from Mantaflo
    needed. A new feature, not a redo, so it comes after the redos.
 6. Auras and lightning when a weapon or map needs them: both are mostly shader work.
 
+## Add-on: real subsurface scattering and surface detail maps (flesh ground, character skin)
+The owner asked the Terrain lane: "Are there height map and sub surface scattering on stuff?" Today: no height maps
+anywhere; normal maps only on Blender props and weapons (`models.js` keeps a GLB's `normalMap`); the story's flesh
+ground is a Standard material with a painted canvas texture and a pulse in the vertex shader (`city/mats.js`); skin has
+the soft-skin term from PR #125 (wrap light + back light for the sun, no maps). This section is reading and reasoning
+from the code and from three.js as shipped (0.170); nothing in it was built or measured.
+
+**What "real" SSS costs, and what we can afford**
+| technique | what it is | cost | fits us? |
+|---|---|---|---|
+| wrap + back light (soft skin, have it) | light bleeds past the shadow line, glows through from behind | a few lines in the material's shader, no textures | yes, every preset above Crusty; it is the base |
+| + **thickness map** ("fast SSS") | a baked texture saying how thin the mesh is there; thin parts (ears, fingers, flesh ridges) let more light through. three.js ships this as an example shader (`SubsurfaceScatteringShader`) | 1 extra texture read; the map is baked once in Blender (bake ambient occlusion with normals flipped, or just paint it) | yes at Mid and up. The biggest step up for the price. Needs UVs, so Blender-made meshes only (not the box mannequin) |
+| pre-integrated skin (a lookup ramp by light angle and curvature) | red-tinted soft terminator done by a small ramp texture | 1 tiny texture read | yes, but only shows on smooth curved meshes; our flat-shaded low-poly limbs barely benefit |
+| screen-space SSS (blur the lit skin in screen space) | what AAA faces use | extra full-screen passes + a skin mask | no. Too heavy for our presets and it would smear the pixel look |
+| three.js `MeshPhysicalMaterial` transmission / thickness | made for glass and thin plastic, renders the scene twice | a whole extra scene pass | no for skin or ground |
+
+**Surface detail maps**
+| map | what it does | cost | fits us? |
+|---|---|---|---|
+| normal map | fakes small bumps in the lighting | 1 texture read, no extra geometry | yes, Mid and up. For the flesh ground: bake it from the same painted veins and pores so it lines up |
+| bump map (from a height texture) | same idea from a grey height image | 3 reads of 1 texture | yes; simplest for canvas-painted textures because no baking step is needed, a little softer than a normal map |
+| height / displacement map | really moves the surface | needs many more triangles (tessellated ground) | only where the mesh is already dense: the Terrain lane's real terrain meshes. Not on box maps |
+| parallax mapping | fakes depth by shifting the texture with view angle | 1 to 16 extra reads a pixel, custom shader | maybe, Too HD only, for the flesh ground; low priority |
+
+**Where Blender comes in**: baking. Thickness, normal and ambient-occlusion maps for any Blender-made mesh
+(`blender-texturing`, `blender-pbr-materials` skills); a tiling normal + height pair for the flesh ground rendered from a
+sculpted or noise-displaced plane (the ocean script here is the same idea). Both run headless with `blender52` (Cycles
+baking works here; not exercised for this section).
+
+**Per preset**
+- Potato, Crusty: none of it. Flat colours and the painted textures, as now.
+- Mid: soft skin (have it) + a bump or normal map on the flesh ground.
+- Too HD: the above + thickness-map SSS on Blender-made skin and on the flesh ground's ridges + optional parallax.
+
+**Suggested first step**: the flesh ground, because it is one material and it is all over the story's Big Stomach
+district. Paint a height layer next to the existing colour canvas, feed it as a bump map, and add the soft-skin term
+with a thickness value from the same height (ridges thin, valleys thick). One file (`city/mats.js`), no new assets, and
+a before/after is easy to shoot. Character skin gets the thickness map when the mannequin is replaced by a Blender mesh
+with UVs; on the box mannequin there is nothing to map it onto.
+
+Sources for this section (three.js as vendored in `node_modules/three`, not opened on the web this session):
+`examples/jsm/shaders/SubsurfaceScatteringShader.js`, the `bumpMap` / `normalMap` / `displacementMap` properties of
+`MeshStandardMaterial`, and the transmission pass in `WebGLRenderer`.
+
 ## Tested / not tested
 Tested here: the capability table above; both proof scripts end to end; both proofs loaded in the game (headless
 SwiftShader, Islands, Too HD) with no page errors. Not tested: a real GPU, frame time of the proofs, dark maps, any of
