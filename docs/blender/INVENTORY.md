@@ -14,7 +14,7 @@ How this was counted:
 
 | | Blender today | Still code |
 |---|---|---|
-| Weapons | 42 base guns + 27 skins (`w_*.glb`, 95 files) | shredder, 3 skins |
+| Weapons | 42 base guns + 27 skins (`w_*.glb`, 95 files) | 3 skins |
 | Projectiles | 16 (`pj_*.glb`) | tennis ball, nails, marbles |
 | Gear and streaks | 32 (`x_*.glb`) | grapple hooks, shield bubble, black hole, medkit pickups, supply crates |
 | Map props | 45 kinds in PR #71 (not merged yet), 10 on main | ~6,400 boxes of one-off set pieces |
@@ -139,7 +139,6 @@ gameplay lanes are changing bodies right now (dismemberment, body sliders), so c
 ### 7. Weapons, gear and mode objects still in code
 | What | Where | Note |
 |---|---|---|
-| Shredder (+ chipper skin) | `models.js`:285 / 929 | animated teeth |
 | skins: staple gun, ball machine, basket | `primmodels.js`:177-209 | |
 | grapple hooks (8 looks) | `grapple.js`:204 | ropes stay code |
 | shield bubble, black hole, medkit pickups | `main.js`:1453, `models.js`:1924, `econ3d.js`:306 | their `x_*.glb` exist but only draw the icons |

@@ -111,6 +111,7 @@ import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
 import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
+import { waterPhysics } from './liquids.js';
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -480,6 +481,7 @@ bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
 $('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
+$('fxWaterSim').checked = !!S.fxWaterSim; waterPhysics(!!S.fxWaterSim); $('fxWaterSim').addEventListener('change', () => { S.fxWaterSim = $('fxWaterSim').checked; waterPhysics(S.fxWaterSim); saveSettings(); }); // water physics, a test (watersim.js)
 $('fxRipples').checked = !!S.fxRipples; setRippleMap(!!S.fxRipples); $('fxRipples').addEventListener('change', () => { S.fxRipples = $('fxRipples').checked; setRippleMap(S.fxRipples); saveSettings(); });
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');

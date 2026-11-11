@@ -48,7 +48,7 @@ export function liquidBox(b) {
 
 // ------------------------------------------------------------ shared uniforms (one set: every liquid material points at them)
 export const SH = {
-  uTime: { value: 0 }, uQ: { value: 3 }, uNoiseT: { value: null }, uRip: { value: null },
+  uTime: { value: 0 }, uQ: { value: 3 }, uNoiseT: { value: null }, uRip: { value: null }, uSim: { value: null }, uSimW: { value: new THREE.Vector4() }, // (uSim: the reacting-water heightfield, watersim.js)
   uMask: { value: null }, uMR: { value: new THREE.Vector4(1e9, 1e9, 0, 0) }, // shore map: rect x0, z0, 1/w, 1/h
   uSun: { value: new THREE.Vector3(0.5, 0.6, -0.6).normalize() }, uSunC: { value: new THREE.Color(0xfff6d8) },
   uSkyT: { value: new THREE.Color(0x6ab8ff) }, uSkyM: { value: new THREE.Color(0xcfe8ff) }, uNight: { value: 0 },
@@ -125,6 +125,9 @@ uniform vec3 uSun; uniform vec3 uSunC; uniform vec3 uSkyT; uniform vec3 uSkyM; u
 #ifdef LQ_NMAP
 uniform sampler2D uRip;
 #endif
+#ifdef LQ_SIM
+uniform sampler2D uSim; uniform vec4 uSimW;
+#endif
 #include <fog_pars_fragment>
 float lqCaus(vec2 p, float t) { // a web of bright wobbly lines: two warped sine grids, where either is near zero
   float a = abs(sin(p.x * 1.9 + sin(p.y * 1.3 + t) * 1.4)), b = abs(sin(p.y * 1.7 + sin(p.x * 1.1 - t * 0.8) * 1.4));
@@ -155,7 +158,17 @@ void main() {
   if (dc < 140.0) { vec2 r1 = texture2D(uRip, vW.xz * 0.085 + vec2(t * 0.021, t * 0.013)).xy * 2.0 - 1.0, r2 = texture2D(uRip, vW.zx * 0.19 - vec2(t * 0.034, -t * 0.026)).xy * 2.0 - 1.0;
     float nf = 1.0 - smoothstep(70.0, 140.0, dc); g = mix(g, r1 * 1.5 + r2 * 0.9, nf); nk = mix(0.085, 0.2, nf); }
 #endif
-  vec3 N = normalize(vNw + vec3(-g.x, 0.0, -g.y) * nk * top);
+  vec2 sg = vec2(0.0); float sh = 0.0;
+#ifdef LQ_SIM
+  // water physics (watersim.js): the slope of the simulated ripples under this pixel, and how high the water stands
+  { vec2 su = (vW.xz - uSimW.xy) * uSimW.z;
+    if (su.x > 0.0 && su.y > 0.0 && su.x < 1.0 && su.y < 1.0) {
+      float e = uSimW.w, m = 1.0 / (2.0 * e / uSimW.z);
+      sh = texture2D(uSim, su).r;
+      sg = vec2(texture2D(uSim, su + vec2(e, 0.0)).r - texture2D(uSim, su - vec2(e, 0.0)).r, texture2D(uSim, su + vec2(0.0, e)).r - texture2D(uSim, su - vec2(0.0, e)).r) * m;
+      vec2 ed = min(su, 1.0 - su); float fd = smoothstep(0.0, 0.08, min(ed.x, ed.y)); sg *= fd; sh *= fd; } }
+#endif
+  vec3 N = normalize(vNw + (vec3(-g.x, 0.0, -g.y) * nk + vec3(-sg.x, 0.0, -sg.y) * 1.6) * top);
   float ndv = max(dot(N, V), 0.0), fr = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);
   float dk = smoothstep(0.0, 2.2, depth);
   vec3 col = mix(uShal, uDeep, clamp(max(dk, fr * 0.8), 0.0, 1.0));
@@ -206,6 +219,10 @@ void main() {
   spark = max(spark, step(0.985, tw) * step(0.6, l) * step(0.3, fr) * uSpark * 0.8 * top * (1.0 - uNight * 0.5));
 #endif
   col = mix(col, vec3(1.0), clamp(foam * 0.85, 0.0, 1.0));
+#ifdef LQ_SIM
+  col *= 1.0 + clamp(sh * 4.5, -0.24, 0.3) * top; // troughs darker, crests lighter
+  col = mix(col, vec3(1.0), clamp(smoothstep(0.035, 0.11, sh) * 0.42 + smoothstep(0.3, 0.75, length(sg)) * 0.3, 0.0, 0.6) * top); // only the sharpest crests catch the light
+#endif
   col = mix(col, uSunC * 1.2 + 0.25, clamp(spark, 0.0, 1.0));
   float a = mix(uA.x, uA.y, dk);
   a = top > 0.5 ? clamp(max(max(a, fr * 0.95), max(foam, spark)), 0.0, 1.0) : uA.y;
@@ -332,6 +349,7 @@ function lqDefines(m) {
     if (q >= 1) d.LQ_SPARK2 = '';
     if (L.foam > 0) d.LQ_FOAM = '';
     if (q === 0) d.LQ_CHEAP = '';
+    if (q >= 2 && SH.uSim.value) d.LQ_SIM = ''; // water physics on (watersim.js)
     if ((q > 0 && !L.ocean && SH.uRip.value) || (q >= 2 && L.ocean && OCEAN.value)) d.LQ_NMAP = ''; // painted ripples (setRippleMap) on ponds and pools; the open seas wear the ocean map at Mid and up
   }
   const k = JSON.stringify(d);
@@ -355,4 +373,5 @@ export function setRippleMap(on) {
   SH.uRip.value = on ? ripTex : null;
   for (const m of MATS.values()) lqDefines(m);
 }
+export function liquidDefines() { for (const m of MATS.values()) lqDefines(m); } // (watersim.js switching on or off)
 export function setLiquidQ(i) { SH.uQ.value = i; if ([...MATS.values()].some((m) => m.userData.L.ocean)) oceanMap(); for (const m of MATS.values()) lqDefines(m); }
