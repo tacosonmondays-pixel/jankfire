@@ -480,6 +480,7 @@ bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
+$('fxEerie').checked = S.fxEerie !== false; $('fxEerie').addEventListener('change', () => { S.fxEerie = $('fxEerie').checked; saveSettings(); }); // the story's world grade (story/grade.js: its row only shows in story mode)
 $('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
 $('fxWaterSim').checked = !!S.fxWaterSim; waterPhysics(!!S.fxWaterSim); $('fxWaterSim').addEventListener('change', () => { S.fxWaterSim = $('fxWaterSim').checked; waterPhysics(S.fxWaterSim); saveSettings(); }); // water physics, a test (watersim.js)
 $('fxRipples').checked = !!S.fxRipples; setRippleMap(!!S.fxRipples); $('fxRipples').addEventListener('change', () => { S.fxRipples = $('fxRipples').checked; setRippleMap(S.fxRipples); saveSettings(); });
