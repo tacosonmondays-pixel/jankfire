@@ -5,7 +5,7 @@ import { skinU } from './softskin.js';
 
 const BLOOM = ['off', 'low', 'med', 'high'];
 export const FX_LEVELS = { off: [0, false, false], low: [1, true, false], med: [2, true, true], high: [3, true, true] }; // bloom, soft skin, punch
-const AUTO = ['off', 'off', 'low', 'high']; // Potato, Crusty, Mid, Too HD
+const AUTO = ['off', 'off', 'low', 'med']; // Potato, Crusty, Mid, Too HD (not high on auto: high bloom washes out bright skies and signs, it stays a choice)
 export function fxResolve(S) {
   const lv = S.fx || 'auto';
   if (lv === 'custom') return [Math.max(0, BLOOM.indexOf(S.fxBloom)), !!S.fxSkin, !!S.fxPunch];
