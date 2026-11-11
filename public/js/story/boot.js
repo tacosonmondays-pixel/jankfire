@@ -15,7 +15,8 @@ import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
 import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
-import { npcSpot, HINTS } from '/shared/city/cast_slice.js'; // ...and where the cast stands in it (per mission step)
+import { npcSpot, HINTS } from '/shared/city/cast_slice.js';
+import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: JUMP IT) // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play } from './actors.js';
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
@@ -331,7 +332,7 @@ export function frame(dt, now, cam) {
       else if (!inside && ST.inZone.has(id)) { ST.inZone.delete(id); S.emit({ type: 'leave', zone: id }); }
     }
     // cars: getting in a driver's seat (drive.js) is the enterCar goal (m02's "steal a car")
-    { const drv = !!(G.story && G.story.hideVM && G.story.hideVM()); if (drv && !ST.drv) S.emit({ type: 'enterCar' }); ST.drv = drv; }
+    { const drv = !!(G.story && G.story.hideVM && G.story.hideVM()); if (drv && !ST.drv) S.emit({ type: 'enterCar' }); ST.drv = drv; if (drv && ST.city) rampCalls(); }
     // kills: every kill on the range is a dummy (the "interns")
     if ((G.kills || 0) > ST.kills) { S.emit({ type: 'kill', kind: 'dummy', n: G.kills - ST.kills }); ST.kills = G.kills; }
     else ST.kills = G.kills || 0;
@@ -368,6 +369,14 @@ export function frame(dt, now, cam) {
   ST.saveT += dt;
 }
 
+// the Unpaid's ramp over the collapse: JUMP IT when you line up on it, then how the landing went
+function rampCalls() {
+  const c = G.story.car && G.story.car(); if (!c) return;
+  const R = RAMP, inLane = c.x > R.x0 - 1 && c.x < R.x1 + 1, north = Math.cos(c.h) < -0.6, J = (ST.jump ||= { t: 0 });
+  if (inLane && north && c.z > R.z1 && c.z < R.z1 + 30 && performance.now() > J.t) { J.t = performance.now() + 15000; card('step', 'JUMP IT!', 'the unpaid built a ramp. it is mostly desks.', '', 1.6); sfx.rankUp && sfx.rankUp(); }
+  if (!c.ground && c.z < R.z0 && c.z > R.exit[0] - 4 && inLane) J.air = true;
+  if (J.air && c.ground) { J.air = false; const made = c.z < R.exit[0] + 1; card('step', made ? 'NAILED IT' : 'SHORT!', made ? 'the soup is fine. probably.' : 'drive up the planks at the far end', '', 1.6); (made ? sfx.cash : sfx.hurt) && (made ? sfx.cash() : sfx.hurt()); }
+}
 // the tracked steps for the HUD, with a waypoint where the script gave none but the world has an answer: "steal a car"
 // points at the nearest parked car
 function hudObjs(S) {

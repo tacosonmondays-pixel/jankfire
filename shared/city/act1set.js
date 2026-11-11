@@ -3,7 +3,7 @@
 // clinic on the Gut border and the Under-Hill Loop's portal in the Commute's east cliff. Visual only: props, render-only
 // (nc) boxes, lights and marks, so no collision moves (tests/story/act1world.test.mjs checks). Each district generator
 // calls its pass last. Spots come from PLACES (slice.js), so a place and its dressing move together.
-import { SLICE, PLACES, groundY } from './slice.js';
+import { SLICE, PLACES, groundY, hwY } from './slice.js';
 import { rng } from './plan.js';
 import { pick, hook, line } from './kit.js';
 
@@ -91,4 +91,27 @@ export function act1Commute(B) {
   for (const s of [-1, 1]) { B.add(cliff - 2, y, z + s * 5.6 - 0.12, cliff - 1.76, y + 4, z + s * 5.6 + 0.12, 'metal', { nc: true, tint: 0x2a2a30 }); B.light(cliff - 1.9, y + 4.2, z + s * 5.6, s < 0 ? 0xff3030 : 0x7dff4f, 6, 1.2); }
   B.light(cliff - 3, y + 3, z, 0x4fd8ff, 10, 0.8);
   mark(B, 'commute:underhill_loop'); mark(B, 'commute:tunnel_mouth');
+}
+
+// THE COMMUTE: the Unpaid's jump ramp over the collapsed span of the Ring Road (z 86-100; m02's ambush ends here). The
+// barricades are open in the middle lane, a ramp of desks, doors and filing cabinets climbs from z 110 to a 3 m lip at
+// the south edge of the gap, and a car doing ~20 m/s lands on the deck past it. Too slow: you drop into the gap (only
+// half a metre deep: the deck sits at ground level here) and drive up the scrap ramp at its north end. Cars step 0.65 m
+// (drive.js), the ramp's treads are 0.16 m. The rubble heap moved to the west lanes, out of the flight line.
+export const RAMP = { x0: 179.4, x1: 185.6, z0: 100.2, z1: 110, lift: 3, rubbleX: 172.5, exit: [86, 91.5], open: (x) => x > 177.5 && x < 187.5 };
+export function act1Ramp(B) {
+  const R = RAMP, n = Math.ceil((R.z1 - R.z0) / 0.4), w = R.x1 - R.x0;
+  if (!B.touches([R.x0 - 4, R.exit[0] - 2, R.x1 + 4, R.z1 + 4])) return;
+  const r = rng(13013), top = (z) => hwY(z) + R.lift * (R.z1 - z) / (R.z1 - R.z0); // (the deck under it, plus the climb)
+  for (let i = 0; i < n; i++) { // the treads: alternating office desk wood and door paint, a little uneven (jank)
+    const za = R.z0 + i * 0.4, zb = Math.min(R.z1, za + 0.4), y = top(za);
+    B.add(R.x0, hwY(zb) - 0.3, za, R.x1, y, zb, i % 3 ? 'wood' : 'paint', { tint: i % 3 ? pick(r, [0x8a6a4a, 0x9a7a52, 0x6e5238]) : pick(r, [0xe8e0d0, 0x5fd3c6, 0xff7a9a]) });
+  }
+  for (const sx of [R.x0 - 0.3, R.x1 + 0.3]) for (let z = R.z0 + 0.6; z < R.z1 - 1; z += 2.2) B.prop(r() < 0.5 ? 'filecab' : 'raider_cabinet', sx, hwY(z), z, r() * 0.4 - 0.2 + (sx < R.x0 ? Math.PI / 2 : -Math.PI / 2), 1, (r() * 8) | 0); // filing cabinets holding it up
+  B.prop('raider_chair', R.x0 + 1, top(R.z0 + 0.3), R.z0 + 0.3, Math.PI, 1, 2); B.prop('cone', R.x1 - 0.8, top(R.z0 + 0.4), R.z0 + 0.4, 0, 1, 0); // (someone sat up there to watch)
+  for (const sx of [R.x0, R.x1]) B.light(sx, top(R.z0) + 1.2, R.z0, 0xffe14d, 7, 1.1);
+  // the way out of the gap for anyone who came up short: a scrap ramp from the gap's floor up onto the north deck
+  const [e0, e1] = R.exit, m = Math.ceil((e1 - e0) / 0.5);
+  for (let i = 0; i < m; i++) { const za = e0 + i * 0.5, zb = za + 0.5, k = 1 - (i + 0.5) / m; B.add(R.x0, groundY(R.x0 + w / 2, za) - 0.2, za, R.x1, groundY(R.x0 + w / 2, za) + (hwY(e0) - groundY(R.x0 + w / 2, za)) * k, zb, 'wood', { tint: 0x6e5238 }); }
+  if (B.inside((R.x0 + R.x1) / 2, R.z1 + 6)) B.out.marks.push({ id: 'commute.ramp', p: [(R.x0 + R.x1) / 2, hwY(R.z1 + 6), R.z1 + 6], face: Math.PI }); // (the run-up: JUMP IT)
 }

@@ -59,6 +59,7 @@ export function initStory(a) {
     take: (b, n = 1) => send('qtake', { b, n }),
     coupons: (n) => send('qcoupons', { n }),
   };
+  G.story.car = () => DV.car; // (the car you're driving: boot.js reads it for the world's driving callouts)
   G.story.carNear = () => { let best = null, bd = 1e9; for (const x of DV.meshes.values()) { if (x.c.driver) continue; const d = Math.hypot(ME.pos[0] - x.c.p[0], ME.pos[2] - x.c.p[2]) + Math.abs(ME.pos[1] - x.c.p[1]) * 3; if (d < bd) { bd = d; best = x.c.p.slice(); } } return best; }; // the nearest empty parked car (a waypoint for "steal a car")
   G.story.triggerOff = () => !active() || bagOpen() || clinicOpen() || wheelOpen(); // a held trigger lets go when any of these is up
   storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story); initDrive(G.story);

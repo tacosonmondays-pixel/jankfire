@@ -13,9 +13,11 @@ const PORT = process.env.PORT || 3311;
 const ROUTE = [
   [-60, 4, 227, 'the lane east'], [30, 4, 227, 'past the gym terrace'], [96, 4, 227, 'the slip road'], [157, 2, 227, 'down the slip road'],
   [160, 1, 234, 'the bend south'], [160, 0, 245, 'on the ramp'], [165, 0, 248, 'round the deck end'], [182, 0, 248, 'THE RING ROAD (zone)'],
-  [193, 0, 246, 'the on-ramp'], [188, 2, 222, 'onto the deck'], [188, 10, 140, 'up the Ring Road'], [188, 13, 112, 'to the collapse'],
-  [188, 16, 75, 'over the collapse'], [188, 30, -60, 'the climb'], [180, 40, -172, 'the top'], [100, 40, -164, 'the west turn'], [60, 40, -188, 'into the Gut'],
-  [-44, 40, -188, 'the rib avenue'], [-44, 40, -60, 'down the avenue'], [-44, 36, -30, 'down the cliff stairs'], [-44, 36, -17, 'THE GATE (zone)'],
+  [193, 0, 246, 'the on-ramp'], [182.5, 2, 222, 'onto the deck, middle lane'], [182.5, 10, 150, 'up the Ring Road'], [182.5, 13, 112, 'the run-up'],
+  [182.5, 16, 80, 'JUMP the collapse'], [182.5, 30, -60, 'the climb'], [182.5, 40, -150, 'the top'], [150, 40, -172, 'the west turn'], [60, 40, -164, 'into the Gut'],
+  [60, 40, -188, 'avenue 60'], [-130, 40, -188, 'street -188 west'], [-130, 40, -134, 'PERISTALSIS (m03 zone)'], [-130, 40, -100, 'avenue -130 south'],
+  [-44, 40, -100, 'street -100 east'], [-44, 40, -60, 'down the rib avenue'],
+  [-44, 36, -30, 'down the cliff stairs'], [-44, 36, -17, 'THE GATE (zone)'],
 ];
 
 (async () => {
