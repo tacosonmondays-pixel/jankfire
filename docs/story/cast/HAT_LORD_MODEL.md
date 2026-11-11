@@ -18,7 +18,7 @@ Tripo renders: `hat_lord_tripo_owner_turn.png`, `hat_lord_tripo_owner_anim.png` 
 |---|---|---|
 | before and after: Tripo grey, the rebuild, the old code-built model; front, three-quarter, side, back | | `c_hat_lord_tripo_compare.jpg` |
 | close-ups: her eyes, her right eye, the laced fingers, the socket, the band open (teeth), her hand, the raised finger, the cape from behind, the eyeless reveal, the crown's eyes, the feeler, the brim from below | `hl_game_closeups.jpg` | `c_hat_lord_tripo_closeups.jpg` |
-| her silhouette beside the owner's sketch | `hl_game_silhouette.jpg` | |
+| her silhouette beside the owner's sketch | `hl_game_silhouette.jpg`: the sketch, then from 30 m enlarged, the far model enlarged, and true size on a 16:9 screen | |
 | turnaround with a 1.8 m figure | `hl_game_turn.jpg` (the mannequin is you) | |
 | one moment from each clip | `hl_game_poses.jpg` | |
 | a contact strip per clip (12 frames, marks called out) | | `c_hat_lord_clip_<name>.jpg` (made in the game's renderer by `hlshots.cjs clips`) |
@@ -69,7 +69,7 @@ by clean balls at their place and size, every non-manifold edge split and the no
 
 | file | what |
 |---|---|
-| `public/models/cast/c_hat_lord.glb` | the model: **skinned** `part_<joint>__<tag>` meshes on one skin whose 52 bones are her joints by name, plus a far LOD in rigid `part_<joint>__lod` pieces |
+| `public/models/cast/c_hat_lord.glb` | the model: `part_<joint>__<tag>` meshes. Five are **skinned** (body, cape, brim, crown, neck) on one skin whose 52 bones are her joints by name; the other 21 ride rigid on one joint each. Plus a far LOD in rigid `part_<joint>__lod` pieces |
 | `public/models/cast/c_hat_lord.parts.json` | every named part (joint, box), her joints and their rest, markers, the look-at marks, hit boxes, `skinned: true` |
 | `public/js/story/hatlook.js` | her skeleton (`HATLORD`, `FIT`: the joints moved onto the Tripo body, `EXTRA`: her own 38 joints), the code puppet (the fallback), the markers (`MK`), her faces |
 | `public/js/story/hatlord.js` | `HL`: clips, marks, the hat's look, her walk, the far LOD, the rehearsal |
@@ -130,8 +130,8 @@ run (which finger, which limb), mapped onto our joints and blended across each j
 (hip 12 cm, knee 9.5 cm, shoulder 7.5 cm, elbow 5.5 cm, wrist 3.5 cm, fingers 2-2.6 cm), gated so a limb only takes skin within
 its own radius (the chest beside a shoulder stays on the chest), then smoothed and cut to 4. The brim is weighted
 in lobes along its joint chains, the crown to its clusters, the cape to its halves with the collar blended to the
-spine. Eyes, lids, teeth, clasps and the socket's vessels are rigid on one joint each. Weights are stored as
-normalized bytes.
+spine. The rest are rigid on one joint each: the eyes, lids and eye skin, the teeth, the clasps, the hat's two
+hands over her face (they hinge at her temples), the socket and the yoke. Weights are stored as normalized bytes.
 
 ## Parts and markers
 
@@ -251,7 +251,7 @@ UVs (the crusty speckle), clear coat (`KHR_materials_clearcoat`) on everything w
 | everything in the file | 27,596 | |
 
 `c_hat_lord.glb` **1,137 KB** (under the 1.5 MB goal and the 2 MB cap). One skin, 52 bones, no animations (Tripo's
-Mixamo rig and its 2 clips are dropped). About 38 draw calls up close (26 skinned parts, split by material).
+Mixamo rig and its 2 clips are dropped). About 38 draw calls up close (26 parts, 5 of them skinned, split by material).
 Parts file 16 KB, `hl_clipdata.js` about 72 KB.
 
 ## Rebuild
@@ -284,8 +284,8 @@ test fails until you do). If the Tripo file changes, check `hl_fit.py`'s numbers
   projected tiling textures, on purpose), a few duplicate verts where non-manifold edges were split, back-to-back
   faces between her lids and the skin they tuck under (they slide out when she blinks).
 - **In the game** (`hlshots.cjs check`: `HL_CHECK ok`): `buildLook('hat_lord')` dresses the glb on the skeleton,
-  every skinned part bound, every part, marker and joint of the parts file present, markers within a few tenths of
-  a millimetre of the file; each of the 13 clips is stepped through its own code: joints move, nothing goes NaN,
+  every skinned part bound, every part, marker and joint of the parts file present, markers within 0.1 mm of the
+  file, 25,247 triangles drawn near and 2,349 far; each of the 13 clips is stepped through its own code: joints move, nothing goes NaN,
   all 40 marks fire; the far LOD swaps in and back; the code puppet still stands and takes a clip.
 - **Tests**: `node --test tests/story/*.test.mjs tests/browsable.test.mjs`: 46 pass.
 - **Looked at**: the compare and close-up sheets after every pass, the in-game sheets and clip strips, the
@@ -311,8 +311,9 @@ test fails until you do). If the Tripo file changes, check `hl_fit.py`'s numbers
   projection changes axis can show up close.
 - **Her eyes are still a little stylised**: the pink flush round them reads as a soft plate in strong light, and
   the lids are smooth (no lashes). They read as calm, human and heavy-lidded from about 2 m.
-- **The far LOD is rigid pieces** (cut by joint): past 34 m a gap can open at a bent knee or elbow. At that
-  distance it is a few pixels.
+- **The far LOD is rigid pieces** (cut by joint): past 34 m a gap can open at a bent knee or elbow, and the
+  decimated brim shows hairline slits seen nearly edge on (`hl_game_silhouette.jpg`, the far model enlarged). At
+  that distance it is a few pixels.
 - **The look is approximate**: worked out from her yaw and height, not her posed bones, so in a deep bow or the
   duck the hat's aim is a few degrees off.
 - **Timing was judged from contact sheets and a 60 fps step check**, not watched at speed with sound.
