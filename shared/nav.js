@@ -94,7 +94,9 @@ export function buildNav(boxes, o) {
           if (cx > b.min[0] && cx < b.max[0] && cz > b.min[2] && cz < b.max[2]) floor[i * n + j] = 1;
         }
       }
-      if (b.max[1] > y + (band ? band + 0.06 : 0.3) && b.min[1] < y + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
+      let yl = y, yh = y; // (on a slope a boulder sunk in the uphill side, its top under the ground at its middle, still sticks out on the downhill side: go by the ground at its corners too. small things only: a bridge or a dock's corners hang over the sea bed)
+      if (TR && lv === 0 && !b.ter && b.max[0] - b.min[0] <= 5 && b.max[2] - b.min[2] <= 5 && b.max[1] < y - 0.06) for (const cx of [b.min[0], b.max[0]]) for (const cz of [b.min[2], b.max[2]]) { const v = y0 + gy(cx, cz); if (v < yl) yl = v; if (v > yh) yh = v; }
+      if ((b.max[1] > y + (band ? band + 0.06 : 0.3) || b.max[1] > yl + (band ? band + 0.06 : 0.3) + 0.45) && b.min[1] < yh + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
     }
     // no floor = in the way too (that's how you end up on the level below). a hole cell with holes all round it is
     // skipped: a straight line from any node has to cross a hole cell on the edge of the hole first, and that blocks it
@@ -117,7 +119,12 @@ export function buildNav(boxes, o) {
         const ii = i + di, jj = j + dj;
         if (ii < 0 || jj < 0 || ii >= n || jj >= n || idx[ii * n + jj] < 0) continue;
         const b = idx[ii * n + jj], p = g.nodes[a], q = g.nodes[b];
-        if (navClear(g, lv, p[0], p[2], q[0], q[2])) link(a, b);
+        if (!navClear(g, lv, p[0], p[2], q[0], q[2])) continue;
+        // shaped ground too steep to walk up (a crag, a cliff band: more than TR.climb up per metre, about 0.85): only a way down
+        const up = TR && lv === 0 ? (q[1] - p[1]) / Math.hypot(q[0] - p[0], q[2] - p[2]) : 0;
+        const CLIMB = (TR && TR.climb) || 0.85;
+        if (TR && lv === 0 && di && dj && Math.max(gy(p[0], q[2]), gy(q[0], p[2])) + y0 - Math.min(p[1], q[1]) > CLIMB) continue; // (cutting a corner past a bank that high doesn't work: go round by the straight links)
+        if (up > CLIMB) link(b, a, true); else if (up < -CLIMB) link(a, b, true); else link(a, b);
       }
     }
     at.push(idx);
@@ -179,7 +186,7 @@ export function navLocate(g, p) {
 }
 
 // A* from node a to node b: list of node indices, or null if there's no way
-export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give up after expanding this many nodes (huge maps)
+export function navPath(g, a, b, max = g.maxExpand || Infinity, w = null) { // max: give up after expanding this many nodes (huge maps). w: extra cost per node (0 = none), x the step into it: routes that go round places (Plant & Defuse bots keeping out of sight)
   const N = g.nodes.length;
   if (!g._gs || g._gs.length !== N) Object.assign(g, { _gs: new Float64Array(N), _fs: new Float64Array(N), _from: new Int32Array(N), _seen: new Uint32Array(N), _done: new Uint32Array(N), _stamp: 0 });
   const gs = g._gs, fs = g._fs, from = g._from, seen = g._seen, done = g._done, st = ++g._stamp, goal = g.nodes[b];
@@ -204,7 +211,7 @@ export function navPath(g, a, b, max = g.maxExpand || Infinity) { // max: give u
     if (done[k] === st) continue;
     done[k] = st;
     for (let e = g.off[k], e1 = g.off[k + 1]; e < e1; e++) {
-      const m = g.to[e], ng = gs[k] + g.cw[e];
+      const m = g.to[e], ng = gs[k] + (w && w[m] > 0 ? g.cw[e] * (1 + w[m]) : g.cw[e]); // (w[m] > 0: a NaN or negative weight is just no weight, never a search that can't end)
       if (seen[m] === st && ng >= gs[m]) continue;
       seen[m] = st; gs[m] = ng; fs[m] = ng + h(m); from[m] = k;
       push(m);
@@ -235,9 +242,10 @@ export function navSteer(g, st, pos, goal, now) {
   // plan again when the goal really moved (not every time a moving target steps into the next cell), when the plan is
   // old, and not every tick for a goal there's no way to (that searched the whole graph each time)
   const moved = st.end !== b && !(st.gx != null && Math.hypot(goal[0] - st.gx, goal[2] - st.gz) < 3);
-  if (!st.path || moved || now > st.t + 3500) {
+  const w = st.w && st.w.length === g.nodes.length ? st.w : null; // st.w: this walker's own extra node costs (see navPath)
+  if (!st.path || moved || now > st.t + 3500 || st.wOf !== w) {
     if (st.failB === b && now < st.failT) return null;
-    st.path = navPath(g, a, b); st.k = 0; st.t = now; st.end = b; st.cut = true; st.gx = goal[0]; st.gz = goal[2];
+    st.path = navPath(g, a, b, undefined, w); st.wOf = w; st.k = 0; st.t = now; st.end = b; st.cut = true; st.gx = goal[0]; st.gz = goal[2];
     if (!st.path) { st.failB = b; st.failT = now + 2500; return null; }
   }
   const P = st.path, N = g.nodes;

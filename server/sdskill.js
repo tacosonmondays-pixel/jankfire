@@ -8,25 +8,32 @@
 //   peeks   lost sight of someone: good ones hold the angle at head height and jiggle the corner for a moment before
 //           swinging wide; bad ones just run at where they last saw you
 //   cover   reloading or nearly dead with someone on them: good ones step behind the nearest thing that blocks the shot
+//   routes  the way there costs more where the other side's usual spots can see it, so good ones come round the back of
+//           things instead of down the open lane (and each side has a favourite way round each round). once the push
+//           is called, or the bomb is down, it's the short way again
+//   corners before anyone has seen anyone: about to step out where they're watched, good ones stop at the corner,
+//           put the crosshair on the spot at head height and jiggle out and back before they commit
 // And each side picks a stance per round (attack: rush / default / slow; defense: forward / default / deep / stack).
 // Mixed into Room by installSdSkill, after the econ + tactical installers (it wraps their bot methods). S&D only.
 import { WEAPONS, BOT_DIFF } from '../shared/weapons.js';
-import { PH } from '../shared/physics.js';
+import { PH, raycast } from '../shared/physics.js';
 import { patternOf } from '../shared/tactical.js';
+import { navLocate } from '../shared/nav.js';
 
 // head: share of fights they go for the head. err / react / turn: x the difficulty's. comp: share of the spray pattern
-// pulled down. snap: how well the crosshair is actually on them when they click (1 = on, 0 = still swinging over). tap: stop-to-shoot discipline (0..1). peek: s they hold + jiggle a lost angle. duck: takes cover. hop: jumps in fights
+// pulled down. sneak: how much longer a way round they'll take to stay out of sight. pre: how often they check a corner before stepping out. snap: how well the crosshair is actually on them when they click (1 = on, 0 = still swinging over). tap: stop-to-shoot discipline (0..1). peek: s they hold + jiggle a lost angle. duck: takes cover. hop: jumps in fights
 export const SKILL = {
-  cracked: { name: 'cracked', snap: 1, head: 0.85, err: 0.45, react: 0.7, turn: 1.5, comp: 0.92, tap: 1, peek: [0.9, 2], duck: 0.9, hop: 0 },
-  good: { name: 'good', snap: 0.85, head: 0.55, err: 0.75, react: 0.9, turn: 1.2, comp: 0.75, tap: 0.85, peek: [1.2, 2.6], duck: 0.6, hop: 0 },
-  average: { name: 'average', snap: 0.5, head: 0.25, err: 1.1, react: 1.1, turn: 1, comp: 0.5, tap: 0.45, peek: [0, 1.2], duck: 0.25, hop: 0.25 },
-  bad: { name: 'bad', snap: 0.15, head: 0.06, err: 1.9, react: 1.6, turn: 0.7, comp: 0.15, tap: 0.05, peek: [0, 0], duck: 0, hop: 1 },
+  cracked: { name: 'cracked', sneak: 0.8, pre: 0.9, snap: 1, head: 0.85, err: 0.45, react: 0.7, turn: 1.5, comp: 0.92, tap: 1, peek: [0.9, 2], duck: 0.9, hop: 0 },
+  good: { name: 'good', sneak: 0.6, pre: 0.7, snap: 0.85, head: 0.55, err: 0.75, react: 0.9, turn: 1.2, comp: 0.75, tap: 0.85, peek: [1.2, 2.6], duck: 0.6, hop: 0 },
+  average: { name: 'average', sneak: 0.3, pre: 0.25, snap: 0.5, head: 0.25, err: 1.1, react: 1.1, turn: 1, comp: 0.5, tap: 0.45, peek: [0, 1.2], duck: 0.25, hop: 0.25 },
+  bad: { name: 'bad', sneak: 0, pre: 0, snap: 0.15, head: 0.06, err: 1.9, react: 1.6, turn: 0.7, comp: 0.15, tap: 0.05, peek: [0, 0], duck: 0, hop: 1 },
 };
 // who shows up at each difficulty: [cracked, good, average, bad]
 const ODDS = { easy: [0, 0.15, 0.45, 0.4], normal: [0.1, 0.3, 0.4, 0.2], hard: [0.3, 0.4, 0.25, 0.05] };
 const TIERS = ['cracked', 'good', 'average', 'bad'];
 const FORCE = process.env.JF_SD_SKILL && SKILL[process.env.JF_SD_SKILL] ? process.env.JF_SD_SKILL : null; // test knob: every bot is this tier
 const LOG = !!process.env.JF_SD_LOG;
+const NOCOVER = !!process.env.JF_SD_NOCOVER; // test knob: the old short routes and no corner checks (for before / after numbers)
 export function rollTier(diff, r = Math.random()) {
   const o = ODDS[diff] || ODDS.normal;
   for (let i = 0; i < 4; i++) { if (r < o[i]) return TIERS[i]; r -= o[i]; }
@@ -34,6 +41,8 @@ export function rollTier(diff, r = Math.random()) {
 }
 const now = () => Date.now();
 const lerp = (ab, k) => ab[0] + (ab[1] - ab[0]) * k;
+const EXPO = new WeakMap(); // walk graph -> who can see each of its nodes (worked out a slice at a time once a P&D room plays the map)
+const EXPO_R = 45, EXPO_STEP = 300; // m a watched spot counts from · nodes looked at per call (no hitch on a live server)
 
 export function installSdSkill(Room) {
   const P = Room.prototype;
@@ -80,8 +89,71 @@ export function installSdSkill(Room) {
     try { return o.botFire.call(this, b, t, D); } finally { b.pitch = keep; }
   };
 
+  // who watches what: per walk-graph node, how many of the other side's usual spots see it (0..1) and the nearest one.
+  // att = what attackers walk into (the defenders' holds). def = what defenders walk into (the attackers' entries and stages)
+  P.sdExpo = function () {
+    const g = this.map.graph;
+    if (!g || !g.nodes) return null;
+    let E = EXPO.get(g);
+    if (!E) {
+      const S = this.econAiMap(), N = g.nodes.length, mk = (spots) => ({ n: new Float32Array(N), look: new Int16Array(N).fill(-1), spots });
+      const att = [], def = [];
+      for (const s of Object.values(S.sites)) { for (const h of s.holds) att.push(h.p); for (const l of s.attE) def.push(l.entry, l.stage); }
+      E = { i: 0, done: false, att: mk(att), def: mk(def) };
+      EXPO.set(g, E);
+    }
+    if (E.done) return E;
+    const N = g.nodes.length, end = Math.min(N, E.i + EXPO_STEP);
+    for (; E.i < end; E.i++) {
+      const q = g.nodes[E.i];
+      for (const e of [E.att, E.def]) {
+        let c = 0, bd = 1e9;
+        for (let k = 0; k < e.spots.length; k++) {
+          const w = e.spots[k], d = Math.hypot(w[0] - q[0], w[2] - q[2]);
+          if (d > EXPO_R || d < 4 || !this.econAiSees(w, q)) continue;
+          c++;
+          if (d < bd) { bd = d; e.look[E.i] = k; }
+        }
+        e.n[E.i] = Math.min(c, 3) / 3;
+      }
+    }
+    if (E.i >= N) E.done = true;
+    return E.done ? E : null;
+  };
+  // this bot's own route costs for the round: watched ground x its cover sense, plus a side of the map it fancies today
+  P.sdRoute = function (b) {
+    const ai = b.ai, nav = ai.nav || (ai.nav = {}), B = this.bomb, E = B && this.sdExpo();
+    if (!E) { nav.w = null; return null; }
+    const sk = this.sdSkill(b), side = b.team === B.att ? 'att' : 'def', goal = ai.goalNow, g = this.map.graph;
+    if (LOG && b.alive && !ai.seenAt && B.ph === 'live' && now() > (sk.logT || 0)) { // how much of the walk is in their sights (printed once a minute)
+      sk.logT = now() + 500;
+      const X = this.sdx || (this.sdx = { t: now() + 60000, c: {} }), i = navLocate(g, b.pos), c = X.c[sk.name + ' ' + side] || (X.c[sk.name + ' ' + side] = [0, 0]);
+      if (i >= 0) { c[1]++; if (E[side].n[i] > 0) c[0]++; }
+      if (now() > X.t) { X.t = now() + 60000; console.log('[sdexpo] ' + Object.entries(X.c).map(([k, v]) => `${k} ${v[0]}/${v[1]}`).join(', ')); }
+    }
+    // on the clock: the short way. the carrier, the defuser, attackers once the push is called (arrive together, not
+    // one by one round the back) and defenders once it's planted
+    const A = this.ec && this.ec.tac && this.ec.tac.A;
+    if (NOCOVER || (goal && (goal.force || goal.use || goal.tac === 'defuse')) || (side === 'att' ? B.ph !== 'planted' && A && A.phase === 'exec' : B.ph === 'planted')) { nav.w = null; return E; }
+    const key = B.n + side;
+    if (sk.wKey !== key || !sk.w || sk.w.length !== g.nodes.length) {
+      const N = g.nodes.length, w = sk.w && sk.w.length === N ? sk.w : new Float32Array(N), e = E[side].n;
+      if (!B.sdSeed || B.sdSeed.n !== B.n) B.sdSeed = { n: B.n, att: Math.random() * 100, def: Math.random() * 100 }; // one fancy per side and round: the team goes the same way round
+      const seed = B.sdSeed[side];
+      for (let i = 0; i < N; i++) {
+        const q = g.nodes[i], h = Math.sin(Math.floor(q[0] / 14) * 12.9898 + Math.floor(q[2] / 14) * 78.233 + seed) * 43758.5453;
+        w[i] = e[i] * sk.sneak + (h - Math.floor(h)) * 0.25;
+      }
+      sk.w = w; sk.wKey = key;
+    }
+    nav.w = sk.w;
+    return E;
+  };
+
   // feet, peeks and cover: rework what botThink decided for this tick
   P.botThink = function (b, dt) {
+    let E = null;
+    if (b.ai && !b.ai.dummy) { if (this.isEcon() && this.bomb) E = this.sdRoute(b); else if (b.ai.nav && b.ai.nav.w) b.ai.nav.w = null; } // (another mode on this map: the plain short way)
     const out = o.botThink.call(this, b, dt);
     if (!this.isEcon() || !out || !b.ai || b.ai.dummy || !b.alive) return out;
     const ai = b.ai, sk = this.sdSkill(b), n = now(), goal = ai.goalNow, w = WEAPONS[b.w];
@@ -90,6 +162,29 @@ export function installSdSkill(Room) {
     // on the clock (carrying, defusing, or an attacker once the push is called): still stop to shoot, but no holding angles or hiding
     const B = this.bomb, A = this.ec && this.ec.tac && this.ec.tac.A;
     const push = !!(B && b.team === B.att && B.ph !== 'planted' && A && A.phase === 'exec'), forced = !!(goal && goal.force) || push;
+    // before first contact: about to step out where their usual spots can see. stop at the corner, crosshair on the
+    // nearest of those spots at head height, jiggle out and back, then go
+    if (!ai.seenAt && !forced && E && !NOCOVER && sk.pre > 0 && B && B.ph !== 'done') {
+      const def = b.team !== B.att, e = def ? E.def : E.att, q = sk.prePeek;
+      if (q && n < q.until) {
+        const ex = q.look[0] - b.pos[0], ez = q.look[2] - b.pos[2], el = Math.hypot(ex, ez) || 1;
+        let d = Math.atan2(-ex, -ez) - b.yaw; d = ((d + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+        b.yaw += d * Math.min(1, 12 * dt); b.pitch += (Math.atan2(q.look[1] + 1.7 - (b.pos[1] + PH.eye), el) - b.pitch) * Math.min(1, 12 * dt);
+        const ph = ((n - q.t0) % 700) / 700, s = ph < 0.3 ? 1 : ph < 0.62 ? -1 : 0; // out, back, wait
+        out.wx = q.dir[0] * s; out.wz = q.dir[1] * s; out.jump = false;
+        return out;
+      }
+      const wl = Math.hypot(out.wx, out.wz), T = this.ec && this.ec.tac;
+      if (wl > 0.5 && b.onGround && n > (sk.preT || 0) && n > (sk.preChk || 0) && !(def && T && n - T.live < 9000)) { // (defenders running to their spots at the start: nobody can be there yet)
+        sk.preChk = n + 120;
+        const g = this.map.graph, ux = out.wx / wl, uz = out.wz / wl;
+        const i0 = navLocate(g, b.pos), i1 = navLocate(g, [b.pos[0] + ux * 4, b.pos[1], b.pos[2] + uz * 4]); // 4 m ahead: at a run it takes about 2 m to stop, and the stop should be behind the corner
+        if (i0 >= 0 && i1 >= 0 && e.n[i0] === 0 && e.n[i1] > 0 && e.look[i1] >= 0 && this.sdCorner(b, e.spots[e.look[i1]])) {
+          sk.preT = n + 6000;
+          if (Math.random() < sk.pre) { sk.prePeek = { t0: n, until: n + 450 + lerp(sk.peek, Math.random()) * 450, look: e.spots[e.look[i1]], dir: [ux, uz] }; if (LOG) console.log(`[sdpeek] ${b.name} (${sk.name}, ${def ? 'def' : 'att'}) checks a corner`); }
+        }
+      }
+    }
     if (!t || !t.alive) { sk.lost = null; return out; }
     const dx = t.pos[0] - b.pos[0], dz = t.pos[2] - b.pos[2], hd = Math.hypot(dx, dz) || 1, sx = -dz / hd, sz = dx / hd; // (sx, sz): sideways to them
     if (ai.seenAt) {
@@ -121,6 +216,12 @@ export function installSdSkill(Room) {
       out.wx = (-ez / el) * s; out.wz = (ex / el) * s; out.jump = false;
     }
     return out;
+  };
+  // is this bot behind a corner from that spot? something head-high within a few steps is what hides it (open ground
+  // that's merely too far away to be watched is not a corner, and shuffling about on it looks daft)
+  P.sdCorner = function (b, spot) {
+    const e = [b.pos[0], b.pos[1] + PH.eye, b.pos[2]], d = [spot[0] - e[0], spot[1] + 1.5 - e[1], spot[2] - e[2]], l = Math.hypot(...d);
+    return l > 6 && !!raycast(e, d.map((v) => v / l), 6, this.boxes);
   };
   // somewhere within a few steps where a wall stands between this bot and t
   P.sdCover = function (b, t) {

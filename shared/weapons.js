@@ -63,7 +63,9 @@ export const WEAPONS = {
     slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
     desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).',
     // buffed 2026-11-10 (owner: people zip around too fast to kill with it): quicker draw, faster + fatter arrows, more damage
-    cd: 0.35, draw: 0.7, speed: 45, speedMax: 115, grav: 8, r: 0.24, dmg: 30, dmgMax: 85,
+    // dmgMax 85 -> 70 (owner, 2026-11-11): a full draw did more to the body than the sniper. the head (x1.5 = 105) is still a
+    // one-shot, two body arrows still kill, a power tip is 126
+    cd: 0.35, draw: 0.7, speed: 45, speedMax: 115, grav: 8, r: 0.24, dmg: 30, dmgMax: 70,
     ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
   },
   banana: {

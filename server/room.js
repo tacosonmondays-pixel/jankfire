@@ -250,8 +250,11 @@ function newDeck() {
   for (let i = d.length - 1; i > 0; i--) { const j = (Math.random() * (i + 1)) | 0; [d[i], d[j]] = [d[j], d[i]]; }
   return d;
 }
+// test knob: JF_CARD_HAND=s7,s2,s12,h5,c9 deals exactly that hand every time (suit + rank, j0 = joker)
+const CARD_HAND = (process.env.JF_CARD_HAND || '').split(',').map((c) => c.trim()).filter((c) => /^(?:[hscd](?:[1-9]|1[0-3])|j0)$/.test(c)).slice(0, 5);
 function deal(p) {
   if (!p.deck || p.deck.length < 5) p.deck = newDeck();
+  if (CARD_HAND.length) p.deck.unshift(...CARD_HAND, ...p.deck.splice(0, 5 - CARD_HAND.length));
   p.hand = p.deck.splice(0, 5);
   send(p, { t: 'hand', hand: p.hand, left: p.deck.length });
 }
@@ -1986,8 +1989,9 @@ class Room {
     if (d && w.kind === 'bow') {
       const n = now();
       if (n - (p.lastFire.bow || 0) < w.cd * 750) return;
+      const since = n - (p.lastFire.bow || 0); // the draw is the client's word: it can't be longer than the time since the last arrow (a full draw every 0.26 s was 85 damage a click)
       p.lastFire.bow = n;
-      const c = Math.max(0.15, Math.min(1, num(m.c) || 0));
+      const c = Math.max(0.15, Math.min(1, num(m.c) || 0, since / (w.draw * 850)));
       const tip = p.tip;
       const sp = (w.speed + (w.speedMax - w.speed) * c) * (tip === 'power' ? 1.3 : 1);
       const pr = this.makeProj(p, 'bow', [o[0] + d[0] * 0.7, o[1] + d[1] * 0.7, o[2] + d[2] * 0.7], d.map((x) => x * sp), { tip, charge: c });

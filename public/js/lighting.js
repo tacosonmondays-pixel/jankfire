@@ -148,6 +148,7 @@ export function lightingMap(def, id, night, sunMesh) {
   L.dirty = true; L.lx = NaN;
 }
 export function lightingRefresh() { markStatic(); L.dirty = true; }
+export function shadowDirty() { L.dirty = true; } // (the instanced props' near set changed: propfield.js)
 
 // everything in the scene now is the map (static). anything added later is "dynamic": it makes the shadows refresh
 function markStatic() {
