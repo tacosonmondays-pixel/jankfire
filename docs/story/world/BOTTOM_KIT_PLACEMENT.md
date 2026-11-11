@@ -12,7 +12,7 @@ and is turned with the same yaw the doors and shutters already use.
 
 | piece | where | how it is positioned |
 |---|---|---|
-| `cube_window_a/b/c` | every 1.4 x 1.1 window opening on a dressed wall, unless the old `shutter` prop already fills that opening | on the wall face, bottom middle of the opening (`y + 1.0`). Mix b 60 % / a 30 % / c 10 % from the kit's own random stream (c is 620 triangles). An opening with an AC unit hanging low in it always gets a (the flat barred one). The glowing pane behind stays |
+| `cube_window_a/b/c` | every 1.4 x 1.1 window opening on a dressed wall, unless the old `shutter` prop already fills that opening or a side stair climbs across it | on the wall face, bottom middle of the opening (`y + 1.0`). Mix b 60 % / a 30 % / c 10 % from the kit's own random stream (c is 620 triangles). An opening with an AC unit hanging low in it always gets a (the flat barred one). The glowing pane behind stays |
 | `cube_corner` | ground-floor cubes, the corner whose front is a dressed wall: the lane front and the side walls | the cube's outer corner at floor level, scaled `(h + 0.05) / 3.1` so the top buries in the roof slab (cubes are 2.8 / 3.0 / 3.2 tall). Left out when an opening starts within 1.15 m of the corner (the meter box would sit on it) or a side stair starts there |
 | `cube_eave` | the lane side and the uphill side of every real roof (the top cube of a stack) that is dressed, and the lane side of half the ground floors | on the wall face at the slab's underside, 2 m runs from one end; the last run overlaps back from the far end. Painted with the roof's tint if it has one, else the cube's. Runs above a side stair are left out (they would poke through the steps) |
 | `container_rib` | container cubes whose colour a paint variant matches (pink, teal, yellow: see the Art list), the two long walls | at floor level, tiled from the wall's end to each opening and on after it (windows cut 0.16 m wider than the hole, doors 0.02). Scale `h / 2.8` so the ribs reach the slab; each strip is centred in its stretch of wall, the leftover (under one rib) shows the wall |
@@ -28,7 +28,7 @@ and is turned with the same yaw the doors and shutters already use.
 Two filters, both cheap and both the same on the server and every client:
 
 1. **Hidden walls.** A piece is skipped when the point 0.45 m or 1.0 m out from it is inside another cube (this lot's
-   or either neighbour's) or inside the terrace behind. That drops the slots between neighbours (0.8 m), the gap between
+   or either neighbour's) or inside the terrace behind (counted up to the top of the lip wall of the lane above). That drops the slots between neighbours (0.8 m), the gap between
    a lot's two rows (0.6 m) and every back wall against the retaining wall. A neighbour's cubes come from a dry run of
    its lot (cached), so nothing is built twice for it.
 2. **Walls out of reach.** Only these are dressed: the lane front of the row that stands on the lane, two floors up;
@@ -70,8 +70,9 @@ A chunk's kit is about 36.5k triangles at full detail and 8.2k as far copies. A 
 Node, up from about 2.5 ms (the hidden-wall tests).
 
 **Measured in the game, Too HD, standing on terrace 2's lane (-96, 8, 202.5): 858,799 triangles / 659 draw calls /
-3,734 prop instances on main, 1,131,495 / 741 / 10,040 with the kit.** That is +272k triangles, +82 draw calls,
-+6,306 instances, on a view that was already over WP1's 600k budget.
+3,734 prop instances on main, 1,169,489 / 744 / 10,563 with the kit.** That is +311k triangles (+36 %), +85 draw
+calls, +6,829 instances, on a view that was already over WP1's 600k budget. (One frame each, software GL; which
+chunks sit in the props ring shifts the count by a few hundred instances from run to run.)
 
 **So this should not be merged without two table entries in `public/js/city/props.js`** (not a file this lane may
 edit). The new ids have no `FAR` or `DETAIL` entry, so each one is drawn across the whole props ring, and at full
@@ -85,7 +86,7 @@ from the generator (instances inside the ring at three spots: the depot, a lane,
 | Mid | +4,400 to 5,300, +169k to 213k | +540 to 790, +26k to 38k |
 | Too HD | +6,200 to 6,900, +290k to 327k | +1,000 to 1,250, +58k to 78k |
 
-(The count for Too HD on the lane, +325k, is a little over what the game measured, +272k.) Draw calls: +26 to 40 on
+(The count for Too HD on the lane, +300k and 6,888 instances, agrees with what the game measured.) Draw calls: +26 to 40 on
 Potato, +85 to 102 on Too HD, because the 17 pieces carry 68 materials between them (see the Art list).
 
 Suggested entries (the same kind of numbers the doors and shutters have):
@@ -122,6 +123,7 @@ rough edges.
 | `stair_post` | the rail is drawn for a 0.4 rise; the side stairs rise 0.37 - 0.40 a step, so a rail ends up to 3 cm over the next post's knob (not visible from the lane) | fine as it is |
 | `cube_window_c`, `cube_roofjunk_b`, `longplaque_a` (7 materials each), `cube_roofjunk_a` (6), `cube_corner` (5) | one draw call per material per piece, full and far: the kit adds up to 108 draw calls on Too HD | one atlas material per piece plus the paint slot (the rib and `cube_window_b`'s far copy already do this) |
 | `cube_window_c` | 620 triangles for a window that repeats: the map only uses it for 1 window in 10 | 300 or under and it could be 1 in 3 |
+| every `*_paint` slot | the painted parts (ribs, doors, eaves) read much brighter and more saturated than the map's walls under the Bottom's night light, so a strip of bare wall between two runs of ribs (round a window) looks like a different, duller colour | not a model fault either: props are lit as glossy models, the walls as night-tinted vertex colours. A darker base for the paint slots (0xc8c8c8, not white) would sit closer |
 | all 17 | no entry in `props.js` `FAR` / `DETAIL`, no stand-in in `propcode.js` | see Cost |
 
 Not a model fault, but it shows next to the new frames: the old `shutter` prop is hung either in its window or 0.2 m
@@ -138,3 +140,28 @@ the first. Left alone here (older props were not to move); the world lane could 
 - **The Long Stairs pole's foot** cannot be shown (above).
 - **Nothing was placed in the Lost & Found, the market, the gym or the shops** (they have their own generators and
   props), and nothing outside the Bottom.
+
+## Screenshots (the game, story mode, Too HD, 800 x 450, before = main `13572c3`, after = this branch)
+Each file is the pair side by side, same spot and view.
+
+| file | what it shows |
+|---|---|
+| `bottomkit_street.jpg` | a lane on terrace 2: tin lips with rags along the house fronts, a corner post with downpipe and meter box, a barred window frame on the blue tower |
+| `bottomkit_container.jpg` | a teal container on a first floor: doors on its short end, ribs down its long wall, window frames, a corner post below, treads and posts on the side stair at the left |
+| `bottomkit_container_walls.jpg` | two containers from the gap beside the Long Stairs: the teal one gets ribs (cut round its window), the purple one stays flat (no paint matches it) |
+| `bottomkit_sidestair.jpg` | a side stair: chequer treads, posts and handrail down its open side; the window frame and corner post on the house beside it |
+| `bottomkit_longstairs_foot.jpg` | the Long Stairs from the foot: a stone lip on every step, copings and yellow handrails on the stepped rails, the two neon signs now the same size on their posts |
+| `bottomkit_longstairs_half.jpg` | the Long Stairs from terrace 4: the same, with the pink handrails of that flight, and ribs on the yellow container at the left |
+| `bottomkit_roofjunk.jpg` | terrace 4: the water tank on a roof (centre, small), ribs on the yellow and green containers, a curtain window |
+| `bottomkit_plaque.jpg` | doris's plaque with its jar of flowers on the fourth step of flight 2, the lips, a chipped-off bit of lip in the air (the Art list), the rail copings |
+
+## Not done, not tested
+- Only Too HD was looked at in the game. Potato, Crusty and Mid were not run (the numbers for them above are counted,
+  not measured); every piece has a far copy, which is what Potato draws.
+- The shots are 800 x 450 with the HUD on: one Too HD frame took 5 - 10 s on the shared machine (software GL).
+- No clip, only stills. Walking up to each piece (z-fighting while moving) was not done; nothing z-fights in the stills.
+- The lamp post's loose cable and the plaques' lettering are too small to judge in these shots (the lettering faces
+  a climber by the model's UV rule; not read in the game).
+- The suggested `FAR` / `DETAIL` numbers are worked out, not tried (props.js is outside this lane).
+- A multiplayer map was not run: nothing in `shared/map.js` or the PvP client changed (the kit lives in
+  `shared/city/`, which only the story loads).

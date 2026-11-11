@@ -45,7 +45,7 @@ for (const [cx, cz] of [[-2, 2], [-1, 2], [-2, 3], [-1, 3]]) four.push(...ON.get
 assert.deepEqual(four.sort(), one, 'the kit differs across a chunk border');
 // 4. budget (a prop is one instance; the far copies are 12-224 triangles): see docs/story/world/BOTTOM_KIT_PLACEMENT.md
 const avg = kit / perChunk.length, max = Math.max(...perChunk);
-assert.ok(avg <= 560 && max <= 900, `kit props per Bottom chunk: avg ${avg.toFixed(0)}, max ${max}`);
+assert.ok(avg <= 380 && max <= 620, `kit props per Bottom chunk: avg ${avg.toFixed(0)}, max ${max}`);
 // 5. roof junk and plaques keep out of the way: nothing within 2.5 m of a mark (quests, grapple rings, crowd spots) or a
 // zipline's ends, one of each plaque, on the Long Stairs and well away from the quest spot at its foot
 const marks = [], zips = [];
