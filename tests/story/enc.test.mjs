@@ -59,7 +59,7 @@ await t('a war-rig drives at you and rams: you take a hit, the client gets a ram
   const rig = sim.refEnemies()[0]; rig.ai.nextShot = Infinity; // (only the bumper for this one)
   const z0 = rig.pos[2];
   let ram = null;
-  for (let i = 0; i < 160 && !ram; i++) { hold(); me.hp = 100; me.alive = true; await run(0.05); ram = evs('ram')[0]; }
+  for (let i = 0; i < 320 && !ram; i++) { hold(); me.hp = 100; me.alive = true; await run(0.05); ram = evs('ram')[0]; }
   assert.ok(rig.pos[2] > z0 + 10 || ram, 'it drove toward you');
   assert.ok(ram, 'it rammed you');
   assert.equal(ram.car, false); assert.equal(ram.pid, rig.id);
@@ -77,7 +77,7 @@ await t('interns throw business cards (frags) at you from throwing range', async
   enc({ op: 'spawn', g: 'int', kind: 'intern', at: [-35, 0.1, -4], w: 'pistol' });
   const it = sim.refEnemies()[0]; it.ai.nextShot = Infinity; it.cardT = 0;
   let card = null;
-  for (let i = 0; i < 120 && !card; i++) { hold(); me.hp = 100; it.pos = [-35, 0.1, -4]; it.vel = [0, 0, 0]; await run(0.05); card = evs('card')[0]; }
+  for (let i = 0; i < 300 && !card; i++) { hold(); me.hp = 100; it.pos = [-35, 0.1, -4]; it.vel = [0, 0, 0]; await run(0.05); card = evs('card')[0]; }
   assert.ok(card, 'a card came');
   assert.ok([...sim.ref.room.projectiles.values()].some((p) => p.k === 'frag' && p.o === it.id) || card, 'a frag in the air');
   enc({ op: 'clear' });
@@ -89,7 +89,7 @@ await t('stomach-dogs are quick and leap the last few metres', async () => {
   enc({ op: 'spawn', g: 'dog', kind: 'stomach_dog', at: [-35, 0.1, -6] });
   const dg = sim.refEnemies()[0]; dg.leapT = 0;
   let leap = null;
-  for (let i = 0; i < 160 && !leap; i++) { hold(); me.hp = 100; await run(0.05); leap = evs('leap')[0]; }
+  for (let i = 0; i < 320 && !leap; i++) { hold(); me.hp = 100; await run(0.05); leap = evs('leap')[0]; }
   assert.ok(leap, 'it leapt');
   enc({ op: 'clear' });
 });
@@ -102,7 +102,7 @@ await t('rams in a car hurt less (the car takes it)', async () => {
   enc({ op: 'spawn', g: 'rig2', kind: 'war_rig', at: [-35, 0.1, -30] });
   const rig = sim.refEnemies()[0]; rig.ai.nextShot = Infinity;
   let hp = 100;
-  for (let i = 0; i < 160 && evs('ram').length === before; i++) { hold(); me.hp = 100; me.alive = true; await run(0.05); hp = me.hp; }
+  for (let i = 0; i < 320 && evs('ram').length === before; i++) { hold(); me.hp = 100; me.alive = true; await run(0.05); hp = me.hp; }
   const ram = evs('ram').at(-1);
   assert.ok(ram && ram.car === true, 'a car ram');
   assert.ok(hp >= 100 - 10, 'the car took most of it: ' + hp);

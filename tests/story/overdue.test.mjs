@@ -73,7 +73,8 @@ function player() {
     const g = (s.goals || [s.goal]).find((g0) => g0.type !== 'flag' || !String(g0.flag).startsWith('!(')) || s.goals[0];
     if (g.if && /has\.(\w+)/.test(g.if)) for (const m of g.if.matchAll(/has\.(\w+)/g)) bag.add(m[1]);
     switch (g.type) {
-      case 'reach': case 'escort': S.emit({ type: 'reach', zone: g.zone }); break;
+      case 'reach': S.emit({ type: 'reach', zone: g.zone }); break;
+      case 'escort': S.emit({ type: 'reach', zone: g.zone, npc: g.npc }); break; // (the one you escort has to get there)
       case 'talk': walk(g.npc, g.node); break;
       case 'kill': S.emit({ type: 'kill', npc: g.npc, kind: g.kind, n: g.n || 1 }); break;
       case 'killBoss': S.emit({ type: 'killBoss', boss: g.boss }); break;
