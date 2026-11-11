@@ -46,7 +46,7 @@ export function initGrade() {
   const game = document.getElementById('game'); if (game) game.after(el); else document.body.prepend(el); // right over the canvas: everything else draws on top
   try { // the grain: one small tile of noise, made once (tiled and jittered by CSS, never redrawn)
     const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'), im = x.createImageData(128, 128);
-    for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 2 - 1; im.data[i] = im.data[i + 1] = im.data[i + 2] = v > 0 ? 255 : 0; im.data[i + 3] = (Math.abs(v) * 255) | 0; } // (white or black specks with alpha: a plain blend, no blend mode to pay for)
+    for (let i = 0; i < im.data.length; i += 4) { const v = Math.random() * 2 - 1; im.data[i] = im.data[i + 1] = im.data[i + 2] = v > 0 ? 255 : 0; im.data[i + 3] = (Math.abs(v) * (v > 0 ? 40 : 80)) | 0; } // (faint black or fainter white specks: a plain blend, no blend mode to pay for, and the blacks don't lift)
     x.putImageData(im, 0, 0); el.querySelector('.gg').style.backgroundImage = `url(${c.toDataURL()})`;
   } catch (e) { /* no grain, still graded */ }
 }

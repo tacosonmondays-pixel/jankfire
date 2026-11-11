@@ -135,4 +135,5 @@ body.st-cine .st-lootcard, body.st-cine .st-hint, body.st-cine #storyBar, body.s
 #stGrade .gg { inset: -128px; background-repeat: repeat; background-size: 128px; opacity: var(--gg, 0); animation: stGrain 0.42s steps(1) infinite; }
 #stGrade.chunky .gg { inset: -256px; background-size: 256px; image-rendering: pixelated; }
 @keyframes stGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-41px, 23px); } 40% { transform: translate(17px, -59px); } 60% { transform: translate(-83px, -11px); } 80% { transform: translate(53px, 71px); } }
-body.st-cine #stGrade .gv { opacity: calc(var(--gv, 0) * 0.45); } /* (the cutscene bars bring their own vignette) */
+body.st-cine #stGrade .gv { opacity: calc(var(--gv, 0) * 0.45); } /* (the cutscene bars bring their own vignette and darker grade: they don't stack up to black) */
+body.st-cine #stGrade .gt { opacity: calc(var(--gt, 0) * 0.5); }
