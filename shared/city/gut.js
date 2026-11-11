@@ -12,6 +12,7 @@ import { gateArena, inGateArena } from './arenas.js';
 import { shops, shopRects } from './shops.js';
 import { GUT_LINK } from './roads.js';
 import { bigHeart } from './bigheart.js';
+import { act1Gut, act1Border } from './act1set.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -68,7 +69,7 @@ function peri(B) {
   if (x1 <= x0) return;
   B.add(x0, GY - 0.02, P.z0, x1, GY + 0.04, P.z1, 'rib', { nc: true, tint: 0xa82430 });
   // the tube: a half-buried ribbed tube along the avenue, gaps where the avenues cross it
-  const cuts = [SLICE.stomach.x, -44, ...AVES].filter((a) => a > x0 - 6 && a < x1 + 6).sort((a, b) => a - b);
+  const cuts = [SLICE.stomach.x, -44, ...AVES, PLACES['gut:digester_wall'].p[0]].filter((a) => a > x0 - 6 && a < x1 + 6).sort((a, b) => a - b); // (+ open in front of the Digester Wall, so you see it from the avenue)
   let s = x0;
   for (const c of [...cuts, x1 + 6]) {
     const e = Math.min(x1, c - 6);
@@ -299,6 +300,7 @@ export function gut(B, d) {
   choir(B, r);
   if (B.touches(SLICE.teeth.rect, 2)) toothMarket(B, r);
   playGut(B); // grapple rings, the Wishbone (playground.js)
+  act1Gut(B); // act I: the Digester Wall (act1set.js)
   shops(B, 'gut'); // Meat Mechanics, Bone Arms, the Tooth Market's stalls, vending (shops.js)
   bigHeart(B); // the Big Heart: its collision, light and mark (bigheart.js)
   cutHoles(B); // the pools' pits (last: the ground and the cobbles are all down)
@@ -353,6 +355,7 @@ export function border(B, d) {
   }
   for (let i = 0; i < 4; i++) { const cx = X0 + r0() * (X1 - X0), cz = Z0 + r0() * (Z1 - Z0); if (cz > -21 && cz < -19) B.out.marks.push({ id: 'crowd', p: [cx, y, cz], kind: 'lost' }); }
   gateArena(B); // THE GUT BORDER GATE (arenas.js)
+  act1Border(B); // act I: Bev's clinic (act1set.js)
 }
 
 // the slice's edges: nobody walks off the world. west: a wall of stacked containers; south: a rubble berm; north:

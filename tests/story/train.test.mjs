@@ -13,7 +13,7 @@ import { makeHitStop } from '../../public/js/story/hitstop.js';
 import { BOSSES } from '../../shared/story/content/bosses.js';
 import { WEAPONS, FLAGS, ORDER, SLOTS, validLoadout } from '../../shared/weapons.js';
 import { LADDER } from '../../shared/modes.js';
-import { RP, ARENA, TRAIN, CARS, CAR, HW, COVER, CREW, armPose, plateAt, offTrain, onRoof, gripSpots, backSpot, geoFrom, GEO0 } from '../../shared/story/train.js';
+import { RP, ARENA, TRAIN, CARS, CAR, HW, COVER, CREW, armPose, armExt, plateAt, offTrain, onRoof, gripSpots, backSpot, geoFrom, GEO0 } from '../../shared/story/train.js';
 import { cleanTrain } from '../../server/storytrain.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('ok', name); };
@@ -109,6 +109,30 @@ await t('THE GAP: it closes 1 m/s for every arm that has the rail, not before; a
   assert.ok(!B.arms.includes(a), 'the stump is gone'); assert.equal(ev('arm').filter((x) => x.id === a.id).at(-1).st, 'gone');
 });
 
+await t('a severed or recalled arm pulls in from where it was: it never snaps out to full reach first (owner: "it extends the arm out")', async () => {
+  // never further out than e0, starts at e0, ends near 0.1, and the wrist itself never moves away from the socket
+  const check = (a, e0, what) => {
+    assert.ok(Math.abs(armExt({ ...a, t: 0 }) - e0) < 0.02, `${what} starts where it was: ${armExt({ ...a, t: 0 })} vs ${e0}`);
+    let last = Infinity;
+    for (let k = 0; k <= 20; k++) { const x = armExt({ ...a, t: a.dur * k / 20 }); assert.ok(x <= e0 + 1e-9 && x <= last + 1e-9, `${what} at ${k}/20: ${x} (e0 ${e0})`); last = x; }
+    assert.ok(Math.abs(last - 0.1) < 0.02, `${what} ends pulled in`);
+  };
+  // a grabber shot off 30 % into its reach
+  stand(); quiet(); B.gap = G0;
+  dev({ want: 'grab' }); const a = B.arms.at(-1); assert.equal(a.st, 'reach');
+  await run(RP.grab.reach * 0.3);
+  const before = armExt(a); assert.ok(before < 0.6, 'mid-reach: ' + before);
+  dev({ sever: true }); assert.equal(a.st, 'cut');
+  const m = ev('arm').filter((x) => x.id === a.id).at(-1); assert.equal(m.st, 'cut'); assert.ok(Math.abs(m.e0 - before) < 0.01, 'the client is told how far out it was: ' + m.e0);
+  check(a, before, 'cut');
+  check({ st: 'cut', t: 0, dur: RP.arm.cut, e0: m.e0 }, m.e0, 'cut as the client sees it');
+  // 'back' from mid-reach (a snatcher whose target left: in solo a death ends the fight first, so this is the shared rule)
+  const r = { st: 'reach', t: RP.snatch.reach * 0.3, dur: RP.snatch.reach }, e = armExt(r);
+  check({ st: 'back', t: 0, dur: RP.arm.back, e0: e }, e, 'back');
+  // an old message without e0 (or garbage) still retracts from full reach, never past 1
+  check({ st: 'back', t: 0, dur: 1 }, 1, 'no e0'); check({ st: 'cut', t: 0, dur: 1, e0: 9 }, 1, 'e0 clamped');
+  quiet();
+});
 await t('a sweeper: a tell, then a real window as the bar passes you; jump the knee-high one, slide under the head-high one', async () => {
   const pass = (RP.sweep.tell + (4.5 + RP.sweep.back) / RP.sweep.speed), go = async (hi, mid) => { stand(); quiet(); dev({ want: 'sweep', hi, side: 1 }); await run(RP.sweep.tell - 0.15); assert.equal(me.hp, 100, 'the tell: no damage yet'); assert.equal(B.arms[0].st, 'tell'); mid(); await run(pass - RP.sweep.tell + 0.4); };
   const s0 = ev('swept').length;
