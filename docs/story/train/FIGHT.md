@@ -37,6 +37,15 @@ starts by itself. Add `&storydev=1` to stage it by hand (`G.story.send('bossdev'
   - **Snatcher** (v1: it goes for you): 2.2 s to reach, then 6 s over your head. Shoot the wrist, or 40 damage and 5 m
     of THE GAP. From phase 2 they come in pairs. While you are up on the van's roof the next arm is a Snatcher 6
     times in 10.
+- **Arms against the wall** (the look only, `public/js/story/armgrip.js`, tested in `tests/story/armgrip.test.mjs`): the
+  two arms that haul the mask go hand over hand. Each hand slaps flat on the lining 8–15 m ahead of the face (palm on
+  the brick, fingers spread and dug in, pointing up the tunnel), skids 0.28 m as it bites, then rides back with the
+  tunnel while the face lurches up to it, and lets go 2.6 m from the rim. It plants where no header ring, manhole or
+  drain pipe of the tunnel kit is under it. The slap throws brick dust, soot and a few sparks and leaves claw marks
+  that go by with the wall (`sfx.rpGrip`, `sfx.rpScrape`). Every arm's rope joints are kept 2 cm inside the header
+  rings (rope thickness included), and a hand that would go through the lining is swung in about its wrist and laid on
+  it. The knots are never moved: on a Grabber's walk along the wall the knot (drawn 0.5 m round) still sinks about
+  0.2 m into the brick, because the room's path runs it 4.28 m out.
 - **Phase 1, TICKETS, PLEASE**: the mask shrugs bolts off. Sever four arms inside ten seconds and it flinches: both
   eye housings swing open for 5 s and bolts put into them count (x2). The phase ends at 60%, or when Jack's bar (90 s)
   runs out; either way the room clears the arms, sets THE GAP to 6 m, emits `phase` (PENALTY FARE, `invuln: true`)
