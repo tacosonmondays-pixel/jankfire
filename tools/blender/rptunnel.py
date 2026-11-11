@@ -74,9 +74,11 @@ def tunnel_atlas():
     TX.chips(mk, 220, 5, RUST, (0.8, 2.0), edge=RUST_D); grime(mk, 221, 0.3)
     sg = A.put('sigid', 32, 16, rough=0.45); base(sg, 0xe8e6dc, 222, 0.05); text_px(sg, 'UH 32', 2, 5, 1, 0x16161a); TX.chips(sg, 223, 3, RUST, (0.8, 1.6)); grime(sg, 224, 0.3)
     wsh = A.put('wash', 48, 32, 0x5a3a30, rough=0.9); wsh[:] = hexrgb(0x6a4034)[None, None] * (0.85 + 0.3 * blocky(233, 32, 48, 2)[:, :, None]); stencil(wsh, '61', 6, 5, 0xe8e4d8, 3, 0.22, 234)   # a number in whitewash on the brick
+    blk = A.put('block', 32, 16, rough=0.9); base(blk, 0x8e887c, 235, 0.07, 2); blk[0] *= 0.45; blk[-1] *= 0.6; blk[:, 0] *= 0.45; blk[:, -1] *= 0.6; blk[1] *= 1.12; blk[:, 1] *= 1.1   # one dressed stone: a drafted margin
+    TX.streaks(blk, 236, 2, 0x2a2622, (4, 12), 0.3, 2)
     dt = A.put('date', 48, 32, rough=0.85); base(dt, 0x9a9488, 225, 0.06, 2); stencil(dt, 'UNDER', 9, 3, 0x3a342e, 1, 0.15, 226); stencil(dt, 'HILL', 12, 12, 0x3a342e, 1, 0.15, 227); stencil(dt, '1899', 12, 22, 0x3a342e, 1, 0.2, 228); grime(dt, 229, 0.3)
     for i, (col, sd) in enumerate(((0x3a2e26, 230), (0x44362a, 231), (0x2e2620, 232))): TX.plank(A, 'slp%d' % i, 128, 16, col, sd, nails=False)
-    for nm, col, ro, me, var in (('steel', 0x2c2b30, 0.62, 0.7, 0.14), ('rust', 0x6a3a20, 0.9, 0.1, 0.22), ('railtop', 0x8a8c90, 0.35, 1.0, 0.12), ('black', 0x121214, 0.6, 0.0, 0.1), ('white', 0xe6e4da, 0.4, 0.0, 0.06),
+    for nm, col, ro, me, var in (('steel', 0x2c2b30, 0.62, 0.7, 0.14), ('rust', 0x6a3a20, 0.9, 0.1, 0.22), ('railtop', 0xa4a8ac, 0.45, 0.55, 0.14), ('black', 0x121214, 0.6, 0.0, 0.1), ('white', 0xe6e4da, 0.4, 0.0, 0.06),
                                  ('green', 0x2c5a3c, 0.4, 0.0, 0.1), ('porc', 0xd8d2c0, 0.25, 0.0, 0.06), ('brass', 0xb88a34, 0.35, 1.0, 0.12), ('soot', 0x0c0a0c, 0.96, 0.0, 0.3), ('lensr', 0x3a0c0c, 0.12, 0.0, 0.12),
                                  ('lensg', 0x0c2a1c, 0.12, 0.0, 0.12), ('yellow', 0xd6a312, 0.5, 0.0, 0.08), ('moss', 0x3a4a2a, 0.9, 0.0, 0.2), ('efflo', 0xd8d4c8, 0.9, 0.0, 0.12), ('cable', 0x18181c, 0.6, 0.0, 0.12), ('void', 0x040304, 1.0, 0.0, 0.0)):
         A.put(nm, 16, 16, col, rough=ro, metal=me, var=var, seed=240 + len(nm) + (col & 15))
@@ -110,10 +112,10 @@ def soot(a, z, seed=0.0, L=SEG):
     v = 0.78 - 0.42 * crown + 0.24 * n
     damp = max(0.0, 1 - y / 1.9) ** 1.3; col = V3((v, v * 0.96, v * 0.94)) * (1 - 0.45 * damp) + V3((0.05, 0.11, 0.06)) * damp
     seep = fbm(a * 0.9 + 11 + seed, cz * 0.9, sz * 0.9 + 5.0, 2) + 0.12 * fbm(a * 4.0 + seed, cz * 2.0, sz * 2.0, 2)
-    if seep > 0.1 and 0.5 < y < 6.8:   # efflorescence: it runs down from where it starts
-        k = min(1.0, (seep - 0.1) * 7.0); col = col * (1 - 0.72 * k) + V3((1.0, 0.98, 0.93)) * 0.72 * k
+    if seep > 0.0 and 0.5 < y < 6.8:   # efflorescence: it runs down from where it starts
+        k = min(1.0, seep * 6.0); col = col * (1 - 0.72 * k) + V3((1.0, 0.98, 0.93)) * 0.72 * k
     rust = fbm(a * 2.3 + 31 + seed, cz * 1.6 + 9.0, sz * 1.6, 2)
-    if rust > 0.2 and y > 1.0: k = min(1.0, (rust - 0.2) * 5.0) * 0.5; col = col * (1 - k) + V3((0.5, 0.27, 0.12)) * k
+    if rust > 0.1 and y > 1.0: k = min(1.0, (rust - 0.1) * 5.0) * 0.55; col = col * (1 - k) + V3((0.5, 0.27, 0.12)) * k
     return (max(0.05, min(1.0, col.x)), max(0.05, min(1.0, col.y)), max(0.05, min(1.0, col.z)))
 
 
@@ -152,9 +154,9 @@ def a_of_y(y, left=True):
 
 
 def lining(name, niche=False, seed=0.0, pipe_=False):
-    b = KT(name); na = 27
+    b = KT(name); na = 30
     NB, NT, NZ0, NZ1 = 0.32, 2.36, 2.55, 3.75                     # the refuge: its floor, its head, along the tunnel
-    ast = [A0 + (A1 - A0) * i / na for i in range(na + 1)]; zst = [SEG * j / 6 for j in range(7)]
+    ast = [A0 + (A1 - A0) * i / na for i in range(na + 1)]; zst = [SEG * j / 9 for j in range(10)]
     hole = None
     if niche:
         ab, at_ = a_of_y(NB), a_of_y(NT)                           # (on the left wall the angle grows as you go down)
@@ -372,23 +374,27 @@ def portal():
         b.add((q, [(0, 1, 2, 3)], [[(0, 0), (0.04, 0), (0.04, 0.5), (0, 0.5)]]), MT['br'], ('tile', 1.0), tint=0.6)
         q = [wall_pt(a, 0.0, R), wall_pt(a, 0.06, R), wall_pt(a2, 0.06, R), wall_pt(a2, 0.0, R)]
         b.add((q[::-1], [(0, 1, 2, 3)], [[(0, 0), (0.04, 0), (0.04, 0.5), (0, 0.5)]]), MT['br'], ('tile', 1.0), tint=0.6)
-    # the stone face round it: strips from the ring out to the sides and up to the top (so the stone meets the arch)
-    r = Rnd(331)
-    def face_quad_(p0, p1, p2, p3, tint):
-        us = [p.x for p in (p0, p1, p2, p3)]; ys = [p.y for p in (p0, p1, p2, p3)]
-        rect = TA['tk'].R['stone']; uv = lambda p: px_uv(rect, TA['tk'].tex, (p.x - min(us)) / max(1e-6, max(us) - min(us)), (p.y - min(ys)) / max(1e-6, max(ys) - min(ys)), 0.5)
-        k.add(([p0, p1, p2, p3], [(0, 1, 2, 3)], [[uv(p0), uv(p1), uv(p2), uv(p3)]]), MT['tk'], ('tile', 1.0), None, tint)
-    for i in range(na):
-        a, a2 = ast[i], ast[i + 1]; p0, p1 = wall_pt(a, 0.0, RO), wall_pt(a2, 0.0, RO)
-        def outer(q):   # where a ray from the axis through the ring meets the face's outline
-            c, s_ = math.cos(q), math.sin(q); t = 1e9
-            if abs(c) > 1e-6: t = min(t, (W if c > 0 else -W) / c)
-            if s_ > 1e-6: t = min(t, (TOP - CY) / s_)
-            if s_ < -1e-6: t = min(t, (0.0 - CY) / s_)
-            return V3((c * t, CY + s_ * t, 0.0))
-        q0, q1 = outer(a), outer(a2)
-        face_quad_(p0, q0, q1, p1, r.u(0.8, 1.0))
-    k.box(-W, 0.0, -T0, W, TOP, -T0 + 0.01, 'stone', 0.5, 'q', only=('-z',))                                           # (its back, in the hill)
+    # the stone face round it: coursed ashlar, every stone its own quad, the courses cut to the ring
+    r = Rnd(331); nc = round(TOP / 0.52); ch = TOP / nc
+    def hole(y): d = RO * RO - (y - CY) ** 2; return math.sqrt(d) if d > 0 else 0.0
+    def stone(x0, x1, y0, y1, xi0=None, xi1=None, side=0):
+        """one stone from x0 to x1; on the ring's side its edge leans from xi0 (at y0) to xi1 (at y1)"""
+        if side < 0: q = [V3((x0, y0, 0)), V3((xi0, y0, 0)), V3((xi1, y1, 0)), V3((x0, y1, 0))]
+        elif side > 0: q = [V3((xi0, y0, 0)), V3((x1, y0, 0)), V3((x1, y1, 0)), V3((xi1, y1, 0))]
+        else: q = [V3((x0, y0, 0)), V3((x1, y0, 0)), V3((x1, y1, 0)), V3((x0, y1, 0))]
+        k.put((q, [(0, 1, 2, 3)], [[(0, 0), (1, 0), (1, 1), (0, 1)]]), 'block', r.u(0.78, 1.0), 'e')
+    for i in range(nc):
+        y0, y1 = i * ch, (i + 1) * ch; h0, h1 = hole(y0), hole(y1); off = 0.65 if i % 2 else 0.0
+        if h0 <= 0 and h1 <= 0:   # clear of the ring: one row right across
+            xs_ = [-W] + [x for x in [-W + off + 1.3 * j for j in range(1, 14)] if x < W - 0.3] + [W]
+            for xa, xb in zip(xs_, xs_[1:]): stone(xa, xb, y0, y1)
+            continue
+        for sgn in (-1, 1):
+            edge = max(h0, h1) + 0.25; xs_ = [W] + [x for x in [W - off - 1.3 * j for j in range(1, 8)] if x > edge + 0.4]   # from the outside in
+            for xa, xb in zip(xs_, xs_[1:]): stone(*sorted((sgn * xa, sgn * xb)), y0, y1)
+            xl = xs_[-1]
+            if sgn < 0: stone(-xl, 0, y0, y1, -h0, -h1, -1)
+            else: stone(0, xl, y0, y1, h0, h1, 1)
     for sx in (-1, 1): k.box(sx * W, 0.0, -T0, sx * (W - 0.01), TOP, 0.0, 'stone', 0.7, 'u', only=('+x' if sx > 0 else '-x',))
     k.box(-W - 0.12, TOP, -T0, W + 0.12, TOP + 0.2, 0.14, 'conc', 0.85, 'u', seg=1.2)                                   # the coping
     k.box(-W - 0.04, TOP - 0.62, 0.0, W + 0.04, TOP - 0.46, 0.09, 'conc', 0.8, 'u', seg=1.2, omit=('-z',))              # a string course
@@ -397,8 +403,12 @@ def portal():
     for sx in (-1, 1):
         # pilasters at the face's edges, wing walls raking away and down
         k.box(sx * (W - 0.9), 0.0, 0.0, sx * W, TOP - 0.62, 0.22, 'stone', 0.9, 'e', omit=('-z', '-y'))
-        P = [(0.0, 0.0), (0.0, TOP - 0.3), (5.2, 2.6), (5.2, 0.0)]
-        k.put(p_extrude([(q[0], q[1]) for q in P], 0.0, 0.7), 'stone', 0.85, 'u', M=T(sx * W, 0, 0.0) @ RY(sx * 1.0) @ T(0, 0, -0.35) if sx > 0 else T(sx * W, 0, 0.0) @ RY(sx * 1.0) @ SC(-1, 1, 1) @ T(0, 0, -0.35))
+        Mw = T(sx * W, 0, 0.0) @ RY(-1.0) @ T(0, 0, -0.7) if sx > 0 else T(sx * W, 0, 0.0) @ RY(1.0) @ SC(-1, 1, 1) @ T(0, 0, -0.7)   # (local x runs out along the wall)
+        nw = 9; hw_ = (TOP - 0.3) / nw
+        for i in range(nw):   # stepped down in courses, a coping stone on each step
+            ya, yb = i * hw_, (i + 1) * hw_; Lw = 5.2 if yb <= 2.7 else max(0.9, 5.2 * (1 - (yb - 2.7) / (TOP - 0.3 - 2.7)) + 0.6); n_ = max(1, round(Lw / 1.3))
+            for j in range(n_): k.put(bx(Lw * j / n_, ya, 0.0, Lw * (j + 1) / n_, yb, 0.7, omit=('-y', '+y') + (('-x',) if j else ()) + (('+x',) if j < n_ - 1 else ())), 'block', r.u(0.75, 0.95), 'e', M=Mw)
+            k.put(bx(max(0.0, Lw - 1.4) if i < nw - 1 else 0.0, yb, -0.05, Lw + 0.06, yb + 0.12, 0.75, omit=('-y',)), 'conc', 0.85, 'u', M=Mw)
         # the viaduct's first span: parapet walls with piers and a coping, 12 m out
         xo = sx * (HW + 1.55)
         k.box(xo - 0.22, 0.0, 0.3, xo + 0.22, 1.35, 11.9, 'stone', 0.85, 'e', seg=1.5, omit=('-y',))
