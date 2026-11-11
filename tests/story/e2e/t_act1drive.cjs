@@ -1,4 +1,4 @@
-// playwright e2e: m02's drive in a real car, the way a player does it. Gets in the sedan parked at the market (WASD
+// playwright e2e: m02's drive in a real car, the way a player does it. Gets in the sedan parked above the market (WASD
 // through the real keys, steered at a list of waypoints), drives to the Ring Road (m02 "drive the soup to the gut
 // border": the zone must fire from the driver's seat), then up the wasteland beside the highway (the deck is walled
 // in and broken at the collapse) into the Gut and down to the gate (m02 "deliver"). Reports every waypoint reached,
@@ -11,8 +11,8 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311;
 // [x, y, z, name]: the route, waypoint by waypoint (y is only for the report)
 const ROUTE = [
-  [-90, 0, 245, 'market east'], [-30, 0, 245, 'over the Long Stairs foot'], [60, 0, 245, 'terrace 0 east'], [110, 0.5, 248, 'into the Commute'],
-  [160, 0, 250, 'the slip road bend'], [182, 0.4, 249, 'THE RING ROAD (zone)'], [204, 1, 240, 'beside the highway'], [204, 14, 100, 'past the collapse'],
+  [-60, 4, 227, 'the lane east'], [30, 4, 227, 'past the gym terrace'], [96, 4, 227, 'the slip road'], [157, 2, 227, 'down the slip road'],
+  [160, 0.5, 242, 'the bend'], [182, 0.4, 248, 'THE RING ROAD (zone)'], [204, 1, 240, 'beside the highway'], [204, 14, 100, 'past the collapse'],
   [204, 30, -60, 'the climb'], [204, 40, -172, 'the top'], [100, 40, -172, 'the west turn'], [60, 40, -188, 'into the Gut'], [-44, 40, -188, 'the rib avenue'],
   [-44, 40, -60, 'down the avenue'], [-44, 36, -30, 'down the cliff stairs'], [-44, 36, -17, 'THE GATE (zone)'],
 ];
@@ -39,10 +39,10 @@ const ROUTE = [
   // (the drive step opens Lumps' car-ride talk: close it, or F is "next line")
   for (let i = 0; i < 5; i++) { await ev(async () => { const sc = await import('/js/story/scene.js'), tk = await import('/js/story/talk.js'); if (sc.playing()) sc.skipScene(); if (tk.talking()) tk.endTalk(); }); await sleep(400); }
   // the market sedan: stand by it, F
-  await ev(async () => { const { ME } = await import('/js/player.js'); ME.pos = [-126, 0.3, 232]; ME.vel = [0, 0, 0]; }); await sleep(1500);
+  await ev(async () => { const { ME } = await import('/js/player.js'); ME.pos = [-110, 4.3, 224.4]; ME.vel = [0, 0, 0]; }); await sleep(1500);
   await pg.keyboard.down('KeyF'); await sleep(80); await pg.keyboard.up('KeyF'); await sleep(1500);
   const inCar = await ev(async () => (await import('/js/story/drive.js')).driving());
-  console.log('in the market car:', inCar);
+  console.log('in the Sauce Run car:', inCar);
   if (!inCar) { console.log('ERRORS', errs.join('\n')); await b.close(); return; }
   const held = new Set(); const hold = async (k, on) => { if (on && !held.has(k)) { held.add(k); await pg.keyboard.down(k); } else if (!on && held.has(k)) { held.delete(k); await pg.keyboard.up(k); } };
   const rows = []; let stuckAt = null;

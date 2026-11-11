@@ -18,7 +18,7 @@ const v3 = (a, lim = 1e5) => Array.isArray(a) && a.length === 3 && a.every((x) =
 const r2 = (x) => Math.round(x * 100) / 100;
 // where cars are parked on a fresh game, per world (open floor, checked by the e2e): the Bottom's sofa-car by the Machine
 export const PARKED = {
-  story_slice: [['sofa', [-195, 8.15, 191], Math.PI, '#ff7ab8'], ['hatch', [-200, 8.15, 198], Math.PI, '#f2c230'], ['sedan', [-126, 0, 234.5], Math.PI / 2, '#2f6fe0']], // (+ one at the market, between the stalls: m02's "steal a car" right by Sharon's)
+  story_slice: [['sofa', [-195, 8.15, 191], Math.PI, '#ff7ab8'], ['hatch', [-200, 8.15, 198], Math.PI, '#f2c230'], ['sedan', [-110, 4, 226.5], Math.PI / 2, '#2f6fe0']], // (+ one on the lane above the market, nose east toward the slip road: m02's "steal a car". the market itself is a dead end for cars: the Long Stairs cut its terrace in two)
   story_test: [['sofa', [-36, 0, 30], Math.PI, '#ff7ab8'], ['sedan', [-14, 0, 14], 0.4, '#2f6fe0'], ['pickup', [22, 0, 6], -1.2, '#3fae5a']],
 };
 function cleanCars(v) {
