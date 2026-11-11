@@ -5,6 +5,7 @@ export const PATCH_NOTES = [
     'MOUNT KABOOM is an actual volcano now. bigger, craggy, cliffs and gullies, a lava channel down to the beach. walk up it, grapple it, fall in it. bots know the way up. (plant & defuse keeps the stairs.)',
     'the world got furnished. real trees, street and yard stuff, market stalls, and traffic that looks like traffic: eight cars, a bus, a semi, a box truck.',
     'rocks stopped being clones. every one is its own shape now, with little ones lying about.',
+    'bow: full draw to the body is 70 now, down from 85. headshots still delete people.',
   ] },
   { v: '7.5', date: '2026-11-11', title: 'COME ON IN, THE WATER IS FINE', items: [
     'ISLANDS: the sea stopped being instant death. float, paddle to the next island, climb out. no diving, nobody hides under the waves.',
