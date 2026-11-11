@@ -32,6 +32,8 @@ export const COSTUMES = {
     look: { top: 'robe', topColor: ['#b07dff', '#2a4a8a', '#4fd8ff'], bottom: ['shorts', 'pants'], hair: ['long', 'none', 'short'], hairColor: ['#ffffff', '#f2e6c8'], head: 'wizhat', face: 'fakebeard', back: 'none' } },
   referee: { name: 'Referee', desc: 'Calls every foul. Commits most of them.',
     look: { top: 'refshirt', topColor: '#1a1a1a', bottom: 'shorts', bottomColor: '#1a1a1a', hair: ['short', 'none', 'bowl'], head: ['cap', 'none'], face: ['none', 'mustache', 'shades'], back: 'none' } },
+  grandma: { name: 'Grandma', desc: 'Knits between rounds. Has a mint for you, and a shotgun.',
+    look: { top: 'cardigan', topColor: ['#ff9ad5', '#c8b48a', '#b07dff', '#4fffb0'], bottom: 'skirt', hair: 'bun', hairColor: ['#a3a3ad', '#ffffff', '#f2e6c8'], head: 'none', face: 'readers', back: 'handbag' } },
 };
 export const COSTUME_IDS = Object.keys(COSTUMES);
 

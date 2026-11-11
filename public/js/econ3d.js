@@ -123,7 +123,7 @@ function torso(top, y) {
   if (top === 'runner' && y > 1.08 && y < 1.53) { w = Math.max(w, 0.262); d = Math.max(d, 0.18); } // the puffy bomber
   return [w, d];
 }
-const KNOWN_TOPS = new Set(['tank', 'none', 'tee', 'hoodie', 'jacket', 'suit', 'runner', 'lifetank', 'refshirt', 'robe', 'hotdog']);
+const KNOWN_TOPS = new Set(['tank', 'none', 'tee', 'hoodie', 'jacket', 'suit', 'runner', 'lifetank', 'refshirt', 'robe', 'hotdog', 'cardigan']);
 // coyote tan carrier, darker pouches, near-black webbing; the team colour on the edges, shoulder pads, tabs and patches
 const VC = { tan: 0x9b7d50, tan2: 0x7e6440, web: 0x3a3022 };
 

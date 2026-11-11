@@ -1606,7 +1606,7 @@ function addAccessories(ch, look, c) {
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
     case 'bigglasses': bigGlasses(H, fz); break; // Smarty Pants
-    case 'sunscreen': case 'fakebeard': wearAcc(H, look.face, c); break; // (clothes.js)
+    case 'sunscreen': case 'fakebeard': case 'readers': wearAcc(H, look.face, c); break; // (clothes.js)
     case 'goggles': { // old-school flight goggles: leather strap round the head, two round amber lenses
       const s = new THREE.Mesh(new THREE.CylinderGeometry(0.153, 0.153, 0.035, 12, 1, true), M(0x6a3f1e)); s.position.y = 0.17; H.add(s);
       for (const sx of [-1, 1]) { at(H, cylZ(0.048, 0.04, 0x8a5a2b, sx * 0.058, 0.175, fz + 0.005, 10)); at(H, cylZ(0.036, 0.01, 0xffb84d, sx * 0.058, 0.175, fz - 0.016, 10, true)); }
@@ -1654,7 +1654,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
-    case 'float': wearAcc(Bd, 'float', c, look); break; // the Lifeguard's rescue float (clothes.js: fitted to the body + top)
+    case 'float': case 'handbag': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
