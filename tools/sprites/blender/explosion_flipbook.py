@@ -1,6 +1,6 @@
-# A one-shot explosion flipbook from Blender, without the fluid solver: a ball of noise volume that bursts out white-hot,
-# cools through yellow and orange to red, and is left as rolling dark smoke that rises and thins. Cycles, see-through
-# film, 64 frames packed 8x8 into public/sprites/boom.png (premultiplied colour + alpha).
+# A one-shot explosion flipbook from Blender, without the fluid solver: a lumpy ball of noise volume that bursts out
+# yellow-white, then dark sooty billows roll over it with the fire still showing in the cracks, and it ends as smoke that
+# rises and thins. Cycles, see-through film, 64 frames packed 8x8 into public/sprites/boom.png (premultiplied colour + alpha).
 # Run: blender52 -b -P tools/sprites/blender/explosion_flipbook.py [-- <cell px> <samples>]
 import bpy, sys, os, math, tempfile
 import numpy as np
@@ -25,50 +25,51 @@ def m(op, a, b=None, vb=None):
     elif vb is not None: n.inputs[1].default_value = vb
     return n.outputs[0]
 co = N_('ShaderNodeTexCoord')
-# the cloud climbs a little as it cools
-rise = val([(1, 0.0), (FR, -0.16)]); comb = N_('ShaderNodeCombineXYZ'); L(rise, comb.inputs['Z'])
-pos = N_('ShaderNodeVectorMath'); pos.operation = 'ADD'; L(co.outputs['Object'], pos.inputs[0]); L(comb.outputs[0], pos.inputs[1])
-# bend the space it lives in with slow noise, so the outline is never a ball and the smoke curls
-nw = N_('ShaderNodeTexNoise'); nw.noise_dimensions = '4D'; L(pos.outputs[0], nw.inputs['Vector']); nw.inputs['Scale'].default_value = 1.9; nw.inputs['Detail'].default_value = 2.0
-L(val([(1, 7.0), (FR, 7.7)]), nw.inputs['W'])
-wsub = N_('ShaderNodeVectorMath'); wsub.operation = 'SUBTRACT'; L(nw.outputs['Color'], wsub.inputs[0]); wsub.inputs[1].default_value = (0.5, 0.5, 0.5)
-wscale = N_('ShaderNodeVectorMath'); wscale.operation = 'SCALE'; L(wsub.outputs[0], wscale.inputs[0]); L(val([(1, 0.05), (8, 0.3), (FR, 0.5)]), wscale.inputs['Scale'])
-warped = N_('ShaderNodeVectorMath'); warped.operation = 'ADD'; L(pos.outputs[0], warped.inputs[0]); L(wscale.outputs[0], warped.inputs[1])
-pos = warped
-length = N_('ShaderNodeVectorMath'); length.operation = 'LENGTH'; L(pos.outputs[0], length.inputs[0])
-nz = N_('ShaderNodeTexNoise'); nz.noise_dimensions = '4D'; L(pos.outputs[0], nz.inputs['Vector']); nz.inputs['Scale'].default_value = 7.5; nz.inputs['Detail'].default_value = 9.0; nz.inputs['Roughness'].default_value = 0.72
-L(val([(1, 0.0), (FR, 1.5)]), nz.inputs['W'])  # it boils
-fine = nz.outputs['Fac'] if 'Fac' in nz.outputs else nz.outputs[0]
-nb = N_('ShaderNodeTexNoise'); nb.noise_dimensions = '4D'; L(pos.outputs[0], nb.inputs['Vector']); nb.inputs['Scale'].default_value = 2.3; nb.inputs['Detail'].default_value = 2.0
-L(val([(1, 3.0), (FR, 3.9)]), nb.inputs['W'])  # big slow lumps: it isn't a ball
-big = nb.outputs['Fac'] if 'Fac' in nb.outputs else nb.outputs[0]
-fac = m('ADD', m('MULTIPLY', big, vb=0.5), m('MULTIPLY', fine, vb=0.5))
-R = val([(1, 0.03), (4, 0.15), (10, 0.23), (24, 0.27), (FR, 0.3)])                # bursts out, then creeps
-lump = val([(1, 0.12), (6, 0.5), (20, 0.75), (FR, 0.95)])                                      # smooth at first, lumpier as it rolls
-edge = m('ADD', m('SUBTRACT', R, length.outputs['Value']), m('MULTIPLY', m('SUBTRACT', fac, vb=0.5), lump))
-eat = val([(1, 0.0), (30, 0.0), (FR, 0.21)])                                        # thins from the outside in at the end
-body = N_('ShaderNodeMapRange'); L(m('SUBTRACT', edge, eat), body.inputs['Value']); body.inputs['From Min'].default_value = 0.0; body.inputs['From Max'].default_value = 0.09
-heat = val([(1, 1.0), (5, 1.0), (11, 0.6), (20, 0.28), (38, 0.07), (54, 0.0), (FR, 0.0)])  # white-hot, then only pockets of it, then none
-# colour by how deep in the ball and how hot it still is
-hot = m('MULTIPLY', m('MULTIPLY', edge, vb=5.5), heat)
-ramp = N_('ShaderNodeValToRGB'); rampfac = m('ADD', hot, m('MULTIPLY', heat, vb=0.3))
-cr = ramp.color_ramp; cr.elements[0].position = 0.0; cr.elements[0].color = (0.0, 0.0, 0.0, 1); cr.elements[1].position = 1.0; cr.elements[1].color = (1.0, 0.95, 0.8, 1)
-for p_, c_ in ((0.12, (0.35, 0.02, 0.0, 1)), (0.3, (1.0, 0.2, 0.0, 1)), (0.55, (1.0, 0.6, 0.08, 1))): e = cr.elements.new(p_); e.color = c_
+def noise(vec, scale, detail, w, rough=0.6):
+    n = N_('ShaderNodeTexNoise'); n.noise_dimensions = '4D'; L(vec, n.inputs['Vector']); n.inputs['Scale'].default_value = scale; n.inputs['Detail'].default_value = detail; n.inputs['Roughness'].default_value = rough; L(w, n.inputs['W']); return n
+def vmath(op, a, b=None, vb=None, scale=None):
+    n = N_('ShaderNodeVectorMath'); n.operation = op; L(a, n.inputs[0])
+    if b is not None: L(b, n.inputs[1])
+    if vb is not None: n.inputs[1].default_value = vb
+    if scale is not None: L(scale, n.inputs['Scale'])
+    return n
+def mrange(v, lo, hi):
+    n = N_('ShaderNodeMapRange'); L(v, n.inputs['Value']); n.inputs['From Min'].default_value = lo; n.inputs['From Max'].default_value = hi; return n.outputs[0]
+# the cloud climbs as it cools
+comb = N_('ShaderNodeCombineXYZ'); L(val([(1, 0.0), (FR, -0.09)]), comb.inputs['Z'])
+pos = vmath('ADD', co.outputs['Object'], comb.outputs[0])
+# bend the space with slow noise, so the outline is never a ball and the smoke curls
+nw = noise(pos.outputs[0], 1.8, 2.0, val([(1, 7.0), (FR, 7.6)]))
+pos = vmath('ADD', pos.outputs[0], vmath('SCALE', vmath('SUBTRACT', nw.outputs['Color'], vb=(0.5, 0.5, 0.5)).outputs[0], scale=val([(1, 0.03), (8, 0.2), (FR, 0.34)])).outputs[0])
+dist = vmath('LENGTH', pos.outputs[0]).outputs['Value']
+# billows: round lumps packed together (the cauliflower look), boiling slowly, with smaller lumps on the big ones
+def billow(scale, w):  # folded noise: round tops, sharp creases (4D cell noise does it better but takes minutes a frame)
+    n = noise(pos.outputs[0], scale, 1.0, w, 0.5).outputs[0]
+    return m('MINIMUM', m('MULTIPLY', m('ABSOLUTE', m('SUBTRACT', n, vb=0.5)), vb=4.0), vb=1.0)
+big = billow(2.6, val([(1, 0.0), (FR, 0.55)])); small = billow(6.5, val([(1, 3.0), (FR, 3.9)]))
+fine = noise(pos.outputs[0], 9.0, 5.0, val([(1, 0.0), (FR, 1.3)]), 0.7).outputs[0]
+lumps = m('ADD', m('ADD', m('MULTIPLY', big, vb=0.62), m('MULTIPLY', small, vb=0.26)), m('MULTIPLY', fine, vb=0.2))  # about 0.2 .. 1
+R = val([(1, 0.1), (4, 0.23), (10, 0.3), (24, 0.33), (FR, 0.35)])                    # bursts out, then creeps
+amp = val([(1, 0.05), (5, 0.16), (14, 0.24), (FR, 0.3)])                              # smooth flash first, lumpier as it rolls
+edge = m('ADD', m('SUBTRACT', R, dist), m('MULTIPLY', m('SUBTRACT', lumps, vb=0.6), amp))
+eat = val([(1, 0.0), (34, 0.0), (FR, 0.2)])                                           # thins from the outside in at the end
+body = mrange(m('SUBTRACT', edge, eat), 0.0, 0.05)
+# heat lives in a ball in the middle that shrinks: the lumps that stick out past it go dark, the cracks between them
+# still reach the fire and glow
+hotR = val([(1, 0.2), (4, 0.36), (8, 0.37), (16, 0.31), (28, 0.24), (42, 0.13), (54, -0.1), (FR, -0.2)])
+T = mrange(m('ADD', m('ADD', m('SUBTRACT', hotR, dist), m('MULTIPLY', m('SUBTRACT', fine, vb=0.5), vb=0.22)), m('MULTIPLY', m('SUBTRACT', 0.6, lumps), vb=0.12)), 0.0, 0.22)
+ramp = N_('ShaderNodeValToRGB'); L(T, ramp.inputs['Fac'])
+cr = ramp.color_ramp; cr.elements[0].position = 0.0; cr.elements[0].color = (0.0, 0.0, 0.0, 1); cr.elements[1].position = 1.0; cr.elements[1].color = (1.0, 0.82, 0.4, 1)
+for p_, c_ in ((0.1, (0.3, 0.012, 0.0, 1)), (0.32, (1.0, 0.16, 0.0, 1)), (0.62, (1.0, 0.5, 0.04, 1))): e = cr.elements.new(p_); e.color = c_
 vol = N_('ShaderNodeVolumePrincipled'); out = N_('ShaderNodeOutputMaterial')
-vol.inputs['Color'].default_value = (0.07, 0.065, 0.062, 1)                        # the smoke it leaves: sooty, nearly black, soaking up the light
-dens = val([(1, 3.0), (10, 9.0), (FR, 11.0)])
-L(m('MULTIPLY', body.outputs[0], dens), vol.inputs['Density']); L(ramp.outputs['Color'], vol.inputs['Emission Color'])
-# the fire shows through the smoke in pockets as it cools (all of it while it's hot)
-pk = N_('ShaderNodeMapRange'); L(fine, pk.inputs['Value']); pk.inputs['From Min'].default_value = 0.56; pk.inputs['From Max'].default_value = 0.7
-still = m('MINIMUM', m('MULTIPLY', heat, vb=7.0), vb=1.0)                          # pockets last until the heat is really gone
-pock = m('MULTIPLY', m('MULTIPLY', pk.outputs[0], still), m('SUBTRACT', 1.0, heat))
-L(m('ADD', rampfac, m('MULTIPLY', pock, vb=0.42)), ramp.inputs['Fac'])
-glow = m('ADD', m('MULTIPLY', heat, heat), m('MULTIPLY', pock, vb=0.3))
-L(m('MULTIPLY', m('MULTIPLY', body.outputs[0], glow), vb=30.0), vol.inputs['Emission Strength'])
+vol.inputs['Color'].default_value = (0.13, 0.12, 0.115, 1)                            # sooty, but light enough to show its lumps in the sun
+dens = val([(1, 5.0), (8, 15.0), (20, 22.0), (44, 18.0), (FR, 9.0)])                  # the flash is thin fire, the smoke is thick
+L(m('MULTIPLY', body, dens), vol.inputs['Density']); L(ramp.outputs['Color'], vol.inputs['Emission Color'])
+L(m('MULTIPLY', m('MULTIPLY', body, m('MULTIPLY', T, T)), val([(1, 10.0), (6, 12.0), (12, 24.0), (FR, 28.0)])), vol.inputs['Emission Strength'])
 L(vol.outputs['Volume'], out.inputs['Volume']); box.data.materials.append(mat)
 for fc in (nt.animation_data.action.fcurves if nt.animation_data and hasattr(nt.animation_data.action, 'fcurves') else []):
     for k in fc.keyframe_points: k.interpolation = 'LINEAR'
-sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 3.0; so = bpy.data.objects.new('sun', sun); sc.collection.objects.link(so); so.rotation_euler = (math.radians(50), math.radians(-30), math.radians(-20))
+sun = bpy.data.lights.new('sun', 'SUN'); sun.energy = 4.0; so = bpy.data.objects.new('sun', sun); sc.collection.objects.link(so); so.rotation_euler = (math.radians(50), math.radians(-30), math.radians(-20))
 world = bpy.data.worlds.new('w'); sc.world = world; world.use_nodes = True
 world.node_tree.nodes['Background'].inputs['Color'].default_value = (0.6, 0.62, 0.7, 1); world.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.7
 cam = bpy.data.cameras.new('cam'); cam.type = 'ORTHO'; cam.ortho_scale = 2.4
@@ -80,9 +81,9 @@ sc.render.use_persistent_data = True; sc.render.film_transparent = True; sc.rend
 sc.render.image_settings.file_format = 'PNG'; sc.render.image_settings.color_mode = 'RGBA'; sc.view_settings.view_transform = 'Standard'
 sheet = np.zeros((N * CELL, N * CELL, 4), dtype=np.float32)
 edgefade = np.clip((0.5 - np.abs(np.linspace(-0.5, 0.5, CELL))) * 12, 0, 1); edgefade = edgefade[None, :] * edgefade[:, None]
-for k in range(FR - 2):  # starts two frames in: the first two are an empty dot
+for k in range(FR):
     if ONLY and k not in ONLY: continue
-    sc.frame_set(3 + k); path = os.path.join(tmp, f'f{k:02d}.png'); sc.render.filepath = path
+    sc.frame_set(1 + k); path = os.path.join(tmp, f'f{k:02d}.png'); sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
     img = bpy.data.images.load(path); px = np.array(img.pixels[:], dtype=np.float32).reshape(CELL, CELL, 4) * edgefade[:, :, None]; bpy.data.images.remove(img)
     r_, c_ = k // N, k % N; sheet[(N - 1 - r_) * CELL:(N - r_) * CELL, c_ * CELL:(c_ + 1) * CELL] = px
