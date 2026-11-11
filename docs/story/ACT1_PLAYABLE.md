@@ -25,8 +25,8 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 | name | talk to Gordo | Gordo at the returns counter | works | |
 | bins | pick up a lost property weapon | `bottom:lostfound` | works | |
 | vend | shoot the dead vending machine (interact) | `bottom:lostfound` | stand-in | a glowing USE spot, not a vending machine you shoot (the loot drop: systems) |
-| swing | grapple onto the Wok Roofs | `bottom:rooftops`: the roof stack east of the depot's yard, 10-12 m up, wok dishes on them | works, hand grapple re-testing | a yellow ring on the tall roof's yard edge, GRAPPLE UP! callout with the key; Dumpling scores you when you land (talkAt arrive) |
-| line | ride a washing line back to the Lost & Found | `bottom:lostfound` | works, line ride re-testing | Dumpling's washing line runs from the tall roof down to the depot's front steps (F to grab it), RIDE IT HOME callout |
+| swing | grapple onto the Wok Roofs | `bottom:rooftops`: the roof stack east of the depot's yard, 10-12 m up, wok dishes on them | works (by hand) | a yellow ring on a gallows arm off the tall roof's edge: hold E, let go at the top, push forward (tested headless, two release timings). GRAPPLE UP! callout with the keys; Dumpling scores you when you land |
+| line | ride a washing line back to the Lost & Found | `bottom:lostfound` | works (by hand) | Dumpling's washing line from the tall roof down to the depot's front steps: F to grab it, it drops you at the door (tested headless). RIDE IT HOME callout |
 | dinner | talk to Auntie | Auntie at the fire barrel | works | |
 | sleep | sleep (interact) | `bottom:lostfound` | stand-in | a USE spot in the hall, not the RETURNS box bed |
 
@@ -34,11 +34,11 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 | step | goal | where | status | notes |
 |---|---|---|---|---|
 | brief | talk to Sharon | her soup stall in the market (`bottom:soup_kitchen`) | works | |
-| car | steal a car | a sedan parked at the market (+ the two in the depot) | works | was BLOCKED: no car near the market, no waypoint, and getting in never told the quest engine. All three fixed (run 5: got in) |
+| car | steal a car | a sedan on the lane right above the market, nose toward the slip road (+ the two in the depot) | works | was BLOCKED: no car near the market, no waypoint, getting in never told the quest engine. The market itself is a dead end for cars (the Long Stairs cut its terrace in two), so the car waits on the lane above it |
 | pot | load the soup pot | `bottom:soup_kitchen` | works | |
-| drive | drive to the Ring Road | `commute:ring_road` (the highway's foot, r 14) | works (on foot) | the zone fires; driving there is untested headless |
+| drive | drive to the Ring Road | `commute:ring_road` (the highway's foot, r 14) | works (in a car) | t_act1drive.cjs: lane east, slip road, round the deck's south end; the zone fires from the driver's seat (about 25 s of driving) |
 | ambush | survive the Unpaid (90 s) | | C | |
-| deliver | deliver the soup | `gut:border` (the gate) | works | was finishing by itself the moment you held the soup; now you have to get to the gate, and the trade post talk opens there (run 5) |
+| deliver | deliver the soup | `gut:border` (the gate) | works (on foot) | was finishing by itself the moment you held the soup; now you get to the gate, and the trade post talk opens there. No car route: the Ring Road's deck is walled in and barricaded at the collapse, so after the ambush it's on foot (see below) |
 
 ## m03 SOMETHING'S DIGESTING
 | step | goal | where | status | notes |
@@ -92,8 +92,15 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 - Exact NPC spots and per-step moves: `shared/city/cast_slice.js` (NPC_SPOTS, STAGE).
 
 ## What's left (after run 4, 2026-11-11)
-- **A:** re-run with the car + delivery fixes (run 5); screenshots of the new places; the Wok Roofs grapple by hand
-  (headless doesn't aim a grapple); the Ring Road / Peristalsis drives in a real car.
+- **Run 5 (all fixes but the tutorial's):** END OF ACT I, all six missions done, no step faked except B/C's. Since then
+  the tutorial grapple and line ride are done by hand (t_act1.cjs) and the Sauce Run drive in a real car (t_act1drive.cjs).
+- **A:** screenshots of the new places; the m03 "drive into the Gut" in a car (no car route: see next).
+- **Lead / C:** there's no car route from the Ring Road to the Gut. The deck is walled in by crash barriers and closed by
+  jersey barriers at the collapse (z 81-105, the ambush spot), and the wasteland beside it is 0.5 m terraces. So the
+  soup goes on foot after the ambush, and m03's "drive into the gut" can't be driven. Options: a jump ramp over the gap
+  (very JANKFIRE), or say the car is wrecked in the ambush. A world change either way; A can build the ramp.
+- **A (small):** the narrow stairs between Bottom terraces end at the 0.9 m lip wall of the lane above (jump it). Not
+  blocking, but janky; opening them touches many chunks' collision, so it's left for now.
 - **B:** the train world has no way back: after END OF ACT I you're still on the train, and the next mission
   (m06_option_c) wants you at the Lost & Found. Coming out at `commute:tunnel_mouth` would fit the script.
 - **C:** the ambush (m02), the escort walk (m03), the stomach-dog chase (m03), the truck (m04).
