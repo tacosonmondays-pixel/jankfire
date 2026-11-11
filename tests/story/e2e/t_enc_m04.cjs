@@ -12,10 +12,19 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   const shot = (n) => pg.screenshot({ path: `${OUT}/m04_${n}.png`, timeout: 120000 });
   const has = (id) => ev(async (id) => (await import('/js/story/actors.js')).actors.has(id), id);
   const endTalks = () => ev(async () => { const tk = await import('/js/story/talk.js'); const sc = await import('/js/story/scene.js'); if (sc.playing()) sc.skipScene(); if (tk.talking()) tk.endTalk(); });
-  // ---- the fight step: the truck being loaded at the gate
+  // ---- sunset: the truck and the queue by the Sunset Wall (so c4's shots have them)
+  await settle(ev, [-196, 32.5, 12], 3000);
+  ok(await jump(ev, 'm04_clocking_in', 'sunset__at'), 'm04 at the sunset');
+  await sleep(2500);
+  ok(await ev(() => window.JF_STORY.enc.truck.where === 'sunset' && !!window.JF_STORY.enc.truck.m), 'the truck is parked by the sunset wall');
+  ok(await has('enc_dad') && await has('enc_col0'), 'the queue and the collectors are with it');
+  await ev(async () => { const { ME } = await import('/js/player.js'); window.__h = setInterval(() => { ME.pos = [-200, 33.5, 16]; ME.vel = [0, 0, 0]; ME.yaw = -0.6; ME.pitch = -0.1; }, 30); });
+  await sleep(2000); await shot('sunset'); await ev(() => clearInterval(window.__h));
+  // ---- the fight step: the same truck moved up to the gate, being loaded
   await settle(ev, [-38, 36.5, 2], 3000);
-  ok(await jump(ev, 'm04_clocking_in', 'fight'), 'm04 at the fight');
+  await ev(() => { window.JF_STORY.S.run(['flag:seen_c4']); window.JF_STORY.S.quests.enterStep('m04_clocking_in', 'fight'); });
   await sleep(1500); await skipIntro(pg, 6);
+  ok(await ev(() => window.JF_STORY.enc.truck.where === 'gate'), 'the truck moved up to the gate for the fight');
   await ev(async () => { const { G } = await import('/js/ctx.js'); G.story.send('despawn', { kind: 'overtime_1' }); }); // (his fight is B's: out of the way for this one)
   await ev(async () => { const { ME } = await import('/js/player.js'); window.__h = setInterval(() => { ME.pos = [-40, 36.5, 0]; ME.vel = [0, 0, 0]; ME.yaw = -0.45; ME.pitch = -0.08; ME.hp = 100; }, 30); });
   await sleep(2500);

@@ -75,6 +75,7 @@ export const ENC = {
       ['ken', 'old ken', { body: 'normal', desc: 'an old man in a cardigan, a hip that is not his' }, "mind the hip. it's not mine. bev'll want it back."],
       ['mina', null, null, '...rory?']],
     spots: [[-35.5, 36, -6.5], [-37, 36, -5.2], [-38.6, 36, -4.4]], collectors: [[-33.5, 36, -8.2], [-35.2, 36, -9.2]],
+    sunset: [-200, 32, 6], sunsetD: 14, // (by the Sunset Wall: parked along the top terrace, near enough to be in c4's shots)
     near: 70, every: 5.5, road: [[-30, -13], [-34, -21], [-41, -27], [-44, -36], [-44, -72], [-44, -150]], arch: 4, speed: 6, stall: 6, catch: 5.5 },
   pulls: 5, // m04 'stay': presses of F to get the staple out of Lumps' arm
 };
@@ -509,9 +510,20 @@ export function makeEncounters(ST, { where } = {}) {
   const TR = { m: null, t: 0, i: 0, loaded: 0, road: null, gone: false, said: {} };
   const truckState = () => TR;
   function truckUp() {
-    if (TR.m) return;
-    const T = ENC.truck, y = floorAt(T.at[0], T.at[1], T.at[2]) ?? T.at[1];
-    TR.m = prop(truckModel(), [T.at[0], y, T.at[2]], T.yaw); TR.y = y; TR.road = null; TR.gone = false; TR.mixerOpen = false;
+    truckAt('gate');
+  }
+  // the same truck, the same people: parked by the Sunset Wall for c4, then up at the gate for the fight (moved in the fade)
+  const base = () => TR.base || ENC.truck.at;
+  const off = (p) => { const b = base(), T = ENC.truck, x = b[0] + p[0] - T.at[0], z = b[2] + p[2] - T.at[2]; return [x, floorAt(x, b[1] + 2, z, 6) ?? b[1], z]; };
+  function truckAt(spot) {
+    if (TR.m && TR.where === spot) return;
+    const T = ENC.truck;
+    if (TR.m) { G.scene.remove(TR.m); E.props = E.props.filter((m) => m !== TR.m); TR.m = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken', 'mina']) { const a = actors.get(k); if (a && a.enc) despawnActor(k); } }
+    let at = T.at;
+    if (spot === 'sunset') { const w = sunsetSpot(); at = openSpot(w, T.sunsetD, [Math.PI / 2, -Math.PI / 2, Math.PI, Math.PI * 0.75]) || [w[0] + T.sunsetD, w[1], w[2]]; }
+    const y = floorAt(at[0], at[1] + 2, at[2], 6) ?? at[1];
+    TR.base = [at[0], y, at[2]]; TR.where = spot;
+    TR.m = prop(truckModel(), TR.base, T.yaw); TR.y = y; TR.road = null; TR.gone = false;
     truckClip('open');
   }
   function truckClip(name, back) { // the art lane's baked clips (open / lift_up / drive) when its truck model is in
@@ -530,15 +542,15 @@ export function makeEncounters(ST, { where } = {}) {
   }
   function queueUp() { // the people on the list, waiting by the tail-lift with two collectors
     const T = ENC.truck;
-    T.queue.forEach(([id, name, hint], i) => { if (TR.loaded > i) return; const key = id === 'mina' ? 'mina' : `enc_${id}`; if (actors.has(key)) return; const def = id === 'mina' ? npcDef('mina') : { name, look: `enc_${id}`, hint, idle: 'sway' }; const sp = T.spots[i]; if (def) stand(key, [sp[0], floorAt(sp[0], sp[1], sp[2]) ?? sp[1], sp[2]], -0.6, def); });
-    T.collectors.forEach((c, i) => { const k = `enc_col${i}`; if (!actors.has(k)) stand(k, [c[0], floorAt(c[0], c[1], c[2]) ?? c[1], c[2]], -0.4 + i * 0.5, { name: 'TIMEKEEPING COLLECTOR', look: ENC_LOOKS.collector[0], idle: 'write' }); });
+    T.queue.forEach(([id, name, hint], i) => { if (TR.loaded > i) return; const key = id === 'mina' ? 'mina' : `enc_${id}`; if (actors.has(key)) return; const def = id === 'mina' ? npcDef('mina') : { name, look: `enc_${id}`, hint, idle: 'sway' }; if (def) stand(key, off(T.spots[i]), -0.6, def); });
+    T.collectors.forEach((c, i) => { const k = `enc_col${i}`; if (!actors.has(k)) stand(k, off(c), -0.4 + i * 0.5, { name: 'TIMEKEEPING COLLECTOR', look: ENC_LOOKS.collector[0], idle: 'write' }); });
   }
   function loadTick(dt) { // one at a time: walked to the lift, stamped, gone into the truck
     const T = ENC.truck; if (TR.loaded >= T.queue.length || !TR.m) return;
-    if (Math.hypot(ME.pos[0] - T.at[0], ME.pos[2] - T.at[2]) > T.near) return; // (it happens when you're there to see it)
+    if (TR.where !== 'gate' || Math.hypot(ME.pos[0] - base()[0], ME.pos[2] - base()[2]) > T.near) return; // (at the gate, when you're there to see it)
     TR.t += dt; if (TR.t < T.every) return;
     const [id, , , line] = T.queue[TR.loaded], key = id === 'mina' ? 'mina' : `enc_${id}`, a = actors.get(key), col = actors.get(`enc_col${TR.loaded % 2}`);
-    const lift = [T.at[0] + T.load[0], TR.y, T.at[2] + T.load[2]];
+    const lift = [base()[0] + T.load[0], TR.y, base()[2] + T.load[2]];
     if (!a) { TR.loaded++; TR.t = 0; return; }
     if (!a.path && !TR.walking) {
       TR.walking = true;
@@ -564,9 +576,12 @@ export function makeEncounters(ST, { where } = {}) {
     const y = floorAt(R.x, TR.y + 6, R.z, 10) ?? TR.y;
     TR.m.position.set(R.x, y, R.z); TR.m.rotation.y = Math.atan2(-dx, -dz); // (its front is -z)
   }
+  const sunsetSpot = () => (where && where('bottom:sunset_spot')) || ENC.truck.sunset;
+  const truckNear = () => { const w = sunsetSpot(); return Math.hypot(ME.pos[0] - w[0], ME.pos[2] - w[2]) < 120; };
   function truckFrame(dt) { if (TR.m && TR.m.userData.mixer) TR.m.userData.mixer.update(dt); driveTick(dt); }
   STEPS[M04] = {
-    sunset__at: { enter() { TR.loaded = 0; TR.t = 0; truckModel(); } }, // (start loading the truck's model)
+    sunset__at: { enter() { TR.loaded = 0; TR.t = 0; truckModel(); }, tick() { if (truckNear()) { truckAt('sunset'); queueUp(); } } }, // (parked by the wall when you get near: c4's shots have it)
+    sunset: { tick() { truckAt('sunset'); queueUp(); } },
     fight: { // B's Overtime fight: around it, the truck being loaded and Lumps pinned to its side
       enter() { truckUp(); staple(); queueUp(); },
       tick(st, dt) { truckUp(); staple(); queueUp(); loadTick(dt);
@@ -710,7 +725,7 @@ export function makeEncounters(ST, { where } = {}) {
     const g = MISSIONS_ACT1[M02] && MISSIONS_ACT1[M02].grade; if (!g) return null;
     return flag('soup_spilled') ? g.see_me : soup() >= 98 ? g.exceeds : g.meets;
   };
-  E.soupHit = soupHit; // (tests)
+  E.soupHit = soupHit; E.truck = TR; // (tests)
   E.units0 = E.units;
   return E;
 }
