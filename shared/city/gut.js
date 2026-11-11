@@ -5,6 +5,7 @@
 // THE GUT BORDER: the top of the Bottom, pastel houses half swallowed by flesh, the gate at the top of the Long Stairs.
 import { SLICE, PLACES } from './slice.js';
 import { rng, hash2 } from './plan.js';
+import { FLAGS as CF } from './chunk.js';
 import { cube, stairsZ, line, rubble, stall, flightLen, retaining, PASTEL, pick, hook } from './kit.js';
 import { playGut } from './playground.js';
 import { gateArena, inGateArena } from './arenas.js';
@@ -164,6 +165,48 @@ function toothMarket(B, r) {
   if (B.inside(cx, cz)) B.out.marks.push({ id: 'gut:tooth_market', p: [cx, GY, z1 - 4] }, { id: 'gut.wisdom_tooth', p: [cx, GY, cz] });
 }
 
+// a bile or blood puddle: no square tiles, and it goes DOWN, not up (the owner: "the puddles should go down not
+// protrude"). one lumpy outline (a lathe with a wobble): a dark stain flush on the skin round it, a dark wall dropping
+// 0.34 m from the outline, and the goo lying at the bottom of that. the ground's picture gets a hole for it (cutHoles,
+// below); the ground's collision does not, so you, bots and cars still cross it as flat floor (no pits to get stuck
+// in), and nothing about the district's collision moves. on its own dice.
+// the goo shape carries goo: [x, z, r, y] for the client (bubbles that pop, the mist going green over it: gutgoo.js)
+const PIT = 0.34, P_GOO = [[0.94, -0.72], [0, -0.72]], P_WALL = [[1, 0], [0.97, -0.25], [0.92, -1]], P_STAIN = [[1.22, 1], [1, 1]];
+function puddle(B, cx, cz, rx, rz, blood, joined, X0, Z0, X1, Z1) {
+  const q = rng(hash2(Math.round(cx * 8), Math.round(cz * 8), 0xb11e)), N = 20, wob = [];
+  const k2 = joined ? 0.3 : 0.1 + q() * 0.1, p2 = q() * 6.283, k3 = 0.08 + q() * 0.08, p3 = q() * 6.283, k5 = 0.04 + q() * 0.04, p5 = q() * 6.283;
+  for (let i = 0; i < N; i++) { const t = i / N * 6.283; wob.push(Math.max(0.6, 1 + k2 * Math.cos(2 * t + p2) + k3 * Math.cos(3 * t + p3) + k5 * Math.cos(5 * t + p5))); }
+  // the hole is the outline's bounding box; it has to sit inside this chunk (the next chunk knows nothing about it)
+  const wm = Math.max(...wob), hx = rx * wm + 0.05, hz = rz * wm + 0.05;
+  if (X1 - X0 < 2 * hx + 0.5 || Z1 - Z0 < 2 * hz + 0.5) return;
+  cx = Math.min(X1 - hx - 0.2, Math.max(X0 + hx + 0.2, cx)); cz = Math.min(Z1 - hz - 0.2, Math.max(Z0 + hz + 0.2, cz));
+  if (!B.inside(cx, cz) || stomachD(cx, cz) < SLICE.stomach.r + 5 + Math.max(hx, hz) || inRect(cx - hx, cz - hz, cx + hx, cz + hz, SLICE.arena.rect)) return;
+  (B.holes || (B.holes = [])).push([cx - hx, cz - hz, cx + hx, cz + hz]);
+  const ring = (prof, h, mat, tint, o) => B.shape({ kind: 'lathe', c: [cx, GY, cz], sc: [rx, h, rz], prof, wob, seg: N, mat, tint, lod: false, ...o });
+  // the stain: lumpy at the pool's lip, a round edge wide enough to cover the hole's corners, a hair over the skin
+  const f = 1.45 * wm;
+  ring([[f, 1, 0], [f * 0.8, 1, 0.4], [1, 1]], 0.02, 'flesh', blood ? 0x74101c : 0x76161c, { uvxz: 1 });
+  ring([[1.55, 1, 0.7], [1, 1]], 0.028, 'flesh', blood ? 0x520c16 : 0x541416, { uvxz: 1 });
+  ring(P_STAIN, 0.036, 'flesh', blood ? 0x30070d : 0x2e1109, { uvxz: 1 });
+  ring(P_WALL, PIT, 'flesh', blood ? 0x22050a : 0x200c07, { pulse: 0 });
+  ring(P_GOO, PIT, blood ? 'blood' : 'bile', blood ? 0x8a0a20 : 0xb8ff4a, blood ? { pulse: 0 } : { goo: [cx, cz, Math.max(rx, rz), GY - PIT * 0.72] });
+  if (!blood) B.light(cx, GY + 0.45, cz, 0xa6e22e, 4 + Math.max(rx, rz), 0.6); // every bile pool glows a bit
+}
+// the holes the pools need in the ground's picture. a ground slab keeps its collision and is still drawn far off
+// (L1), and up close is drawn as strips round the hole (L0, no collision); thin things lying on the ground (the
+// street cobbles) are cut the same way. called last, when everything flat is down.
+function cutHoles(B) {
+  const F = CF.NC | CF.L0, out = B.out.boxes;
+  for (const [hx0, hz0, hx1, hz1] of B.holes || []) for (let i = out.length - 1; i >= 0; i--) {
+    const b = out[i], slab = b[1] === -4 && b[4] === GY && !(b[7] & (CF.HIDE | CF.L1)), skin = b[7] & CF.NC && !(b[7] & CF.L1) && b[4] <= GY + 0.06 && (b[1] >= GY - 1e-6 || (b[1] === -4 && b[4] === GY));
+    if (!(slab || skin) || b[0] >= hx1 || b[3] <= hx0 || b[2] >= hz1 || b[5] <= hz0) continue;
+    const fl = skin ? b[7] : F, add = (x0, z0, x1, z1) => { if (x1 - x0 > 0.01 && z1 - z0 > 0.01) out.push([x0, b[1], z0, x1, b[4], z1, b[6], fl, b[8]]); };
+    add(b[0], b[2], b[3], Math.min(b[5], hz0)); add(b[0], Math.max(b[2], hz1), b[3], b[5]); // the strips north and south of the hole
+    add(b[0], Math.max(b[2], hz0), Math.min(b[3], hx0), Math.min(b[5], hz1)); add(Math.max(b[0], hx1), Math.max(b[2], hz0), b[3], Math.min(b[5], hz1)); // west and east
+    if (skin) out.splice(i, 1); else b[7] |= CF.L1;
+  }
+}
+
 export function gut(B, d) {
   const [rx0, rz0, rx1, rz1] = d.rect, r = rng(hash2(B.out.cx, B.out.cz, 0x6a7));
   const X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
@@ -185,8 +228,7 @@ export function gut(B, d) {
     const x = X0 + r() * (X1 - X0 - 6), z = Z0 + r() * (Z1 - Z0 - 6), w = 2 + r() * 5, d0 = 2 + r() * 4;
     if (stomachD(x, z) < S.r + 4 || KEEP().slice(1, 2).some((q) => inRect(x, z, x + w, z + d0, q))) continue;
     const blood = i % 2 === 1;
-    B.add(x, GY, z, x + w, GY + 0.07, z + d0, blood ? 'blood' : 'bile', { nc: true, tint: blood ? 0x8a0a20 : 0xb8ff4a });
-    if (!blood && i < 2) B.light(x + w / 2, GY + 0.6, z + d0 / 2, 0xa6e22e, 6, 0.6);
+    puddle(B, x + w / 2, z + d0 / 2, w * 0.56, d0 * 0.56, blood, i % 3 === 0, X0, Z0, X1, Z1);
   }
 
   // streets: tooth cobbles (texture) with real teeth scattered at the edges, eyes in the gutters, heart lamps
@@ -259,6 +301,7 @@ export function gut(B, d) {
   playGut(B); // grapple rings, the Wishbone (playground.js)
   shops(B, 'gut'); // Meat Mechanics, Bone Arms, the Tooth Market's stalls, vending (shops.js)
   bigHeart(B); // the Big Heart: its collision, light and mark (bigheart.js)
+  cutHoles(B); // the pools' pits (last: the ground and the cobbles are all down)
 }
 
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the
