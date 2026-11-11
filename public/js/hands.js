@@ -42,7 +42,7 @@ function mat(color, textured = true) {
   return mats.get(k);
 }
 const hex = (c, d) => { try { return new THREE.Color(c).getHex(); } catch { return d; } };
-const SLEEVES = { hoodie: 1, jacket: 1, suit: 1, runner: 1, maid: 1, tee: 0.5 };
+const SLEEVES = { hoodie: 1, jacket: 1, suit: 1, runner: 1, maid: 1, tee: 0.5, robe: 1, refshirt: 0.5 };
 // the wrists the clothes have (clothes.js): [the cuff, the sleeve behind it]. a top that isn't here is one colour to the end
 const dimmer = (c) => new THREE.Color(c).multiplyScalar(0.72).getHex();
 const CUFFS = { runner: (c) => [0x1c1c21, c], suit: (c) => [0xf2f1ec, c], hoodie: (c) => [dimmer(c), c], jacket: (c) => [dimmer(c), c] }; // black knit, a shirt cuff, darker ribbing, a darker band
@@ -50,7 +50,7 @@ export function handLook() {
   const lk = (G.settings && G.settings.look) || {};
   const skin = lk.skin ? hex(lk.skin, 0xe6cba2) : 0xe6cba2; // the mannequin tone when you haven't picked one
   const sl = SLEEVES[lk.top];
-  const cuff = sl ? hex(lk.topColor || (lk.top === 'runner' ? '#f2d02a' : lk.top === 'maid' ? '#17141c' : lk.color) || '#2a2440', 0x2a2440) : new THREE.Color(skin).multiplyScalar(0.8).getHex(); // bare arms: just the wrist (a darker end so it reads as cut off)
+  const cuff = sl ? hex(lk.topColor || (lk.top === 'runner' ? '#f2d02a' : lk.top === 'maid' ? '#17141c' : lk.top === 'refshirt' ? '#1c1c21' : lk.color) || '#2a2440', 0x2a2440) : new THREE.Color(skin).multiplyScalar(0.8).getHex(); // bare arms: just the wrist (a darker end so it reads as cut off)
   const two = sl && Object.hasOwn(CUFFS, lk.top) ? CUFFS[lk.top](cuff) : null;
   return { skin, knuck: new THREE.Color(skin).multiplyScalar(0.86).getHex(), nail: new THREE.Color(skin).lerp(new THREE.Color(0xffffff), 0.45).getHex(), cuff: two ? two[0] : cuff, stub: two ? two[1] : null, sleeve: !!sl };
 }

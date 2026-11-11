@@ -21,7 +21,7 @@ import { catEars, catTail } from './catwear.js'; // Board Approved: cat ears, ca
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { skinCopy } from './softskin.js';
-import { wearTop, wearBottom, topCap } from './clothes.js'; // the tops and bottoms
+import { wearTop, wearBottom, topCap, topOwn, topThick, wearAcc } from './clothes.js'; // the tops and bottoms (+ the costume accessories)
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1593,6 +1593,7 @@ function addAccessories(ch, look, c) {
     case 'hardhat': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0xffd21a)); d.position.y = y0 - 0.05; H.add(d); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 10), M(0xffd21a))).position.y = y0 - 0.05; break; }
     case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
     case 'catears': ch.ears = catEars(H, look); break;
+    case 'strawhat': case 'wizhat': wearAcc(H, look.head, c); break; // (clothes.js)
   }
   const fz = -0.15; // front of the face
   switch (look.face) {
@@ -1603,6 +1604,7 @@ function addAccessories(ch, look, c) {
     case 'bandana': at(H, bx(0.22, 0.09, 0.03, 0xc02030, 0, 0.07, fz + 0.01)); break;
     case 'visor': at(H, bx(0.24, 0.05, 0.02, 0x3ee6c8, 0, 0.17, fz - 0.005, true)); break;
     case 'bigglasses': bigGlasses(H, fz); break; // Smarty Pants
+    case 'sunscreen': case 'fakebeard': wearAcc(H, look.face, c); break; // (clothes.js)
     case 'goggles': { // old-school flight goggles: leather strap round the head, two round amber lenses
       const s = new THREE.Mesh(new THREE.CylinderGeometry(0.153, 0.153, 0.035, 12, 1, true), M(0x6a3f1e)); s.position.y = 0.17; H.add(s);
       for (const sx of [-1, 1]) { at(H, cylZ(0.048, 0.04, 0x8a5a2b, sx * 0.058, 0.175, fz + 0.005, 10)); at(H, cylZ(0.036, 0.01, 0xffb84d, sx * 0.058, 0.175, fz - 0.016, 10, true)); }
@@ -1610,7 +1612,7 @@ function addAccessories(ch, look, c) {
     }
   }
   // back stuff hangs off the upper back (chest back surface ~z 0.15) and is strapped over the shoulders
-  const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : 0;
+  const thick = look.top === 'runner' ? 0.04 : look.top === 'jacket' || look.top === 'suit' || look.top === 'hoodie' ? 0.03 : topThick(look.top);
   const bk = 0.15 + thick;
   const straps = (col) => { for (const sx of [-1, 1]) { at(Bd, bx(0.045, 0.025, 0.32, col, sx * 0.11, 1.52, 0.0)); at(Bd, bx(0.045, 0.3, 0.025, col, sx * 0.11, 1.37, -0.16 - thick)); } };
   switch (look.back) {
@@ -1650,6 +1652,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
+    case 'float': wearAcc(Bd, 'float', c, thick); break; // the Lifeguard's rescue float (clothes.js)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
@@ -1732,7 +1735,7 @@ export function buildCharacter(color, look) {
     const MAID = lk.topColor ? TOP : lk.teamed ? c : 0x17141c; // the maid dress: black unless you pick a colour
     body.add(limb(0.1, 0.12, 0.16, top === 'none' || top === 'tank' ? SK : top === 'maid' ? MAID : TOP, 1.13)); // waist
     const chest = ball(0.2, SK, 0, 1.34, 0); chest.scale.set(1.2, 1.1, 0.72); body.add(chest);
-    const TOPC = top === 'runner' ? (lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW) : top === 'maid' ? MAID : TOP; // the top's colour (teamed: the team colour)
+    const TOPC = top === 'runner' ? (lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW) : top === 'maid' ? MAID : topOwn(top) != null && !lk.topColor && !lk.teamed ? topOwn(top) : TOP; // the top's colour (teamed: the team colour)
     body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
     const egg = ball(0.14, SK, 0, 0.14, 0); egg.scale.set(0.85, 1.22, 0.95); head.add(egg);

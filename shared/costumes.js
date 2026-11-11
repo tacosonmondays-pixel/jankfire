@@ -24,6 +24,14 @@ export const COSTUMES = {
     look: { top: 'runner', topColor: ['#1a1a1a', '#b07dff'], bottom: 'pants', bottomColor: '#1a1a1a', hair: ['spiky', 'none'], hairColor: ['#7a4aff', '#ffffff'], head: 'headphones', face: ['visor', 'goggles'], back: 'voidcape' } },
   cowpoke: { name: 'Cowpoke', desc: 'This lobby ain\'t big enough.',
     look: { top: ['jacket', 'tank'], topColor: ['#8a5a2b', '#c8b48a'], bottom: 'pants', bottomColor: ['#2a4a8a', '#8a5a2b'], head: 'cowboy', face: ['mustache', 'bandana'], back: ['none', 'cape'] } },
+  lifeguard: { name: 'Lifeguard', desc: 'Swim between the flags. There are no flags.',
+    look: { top: 'lifetank', topColor: '#ff4f4f', bottom: 'shorts', bottomColor: '#ff4f4f', hair: ['short', 'ponytail', 'long'], head: 'strawhat', face: 'sunscreen', back: 'float' } },
+  hotdog: { name: 'Hot Dog Guy', desc: 'Hands out flyers. Also bullets.',
+    look: { top: 'hotdog', topColor: ['#ff4f4f', '#8a5a2b'], bottom: 'shorts', hair: 'none', head: 'none', face: ['none', 'mustache'], back: 'none' } },
+  wizard: { name: 'Budget Wizard', desc: 'A bathrobe, a cardboard hat and total confidence.',
+    look: { top: 'robe', topColor: ['#b07dff', '#2a4a8a', '#4fd8ff'], bottom: ['shorts', 'pants'], hair: ['long', 'none', 'short'], hairColor: ['#ffffff', '#f2e6c8'], head: 'wizhat', face: 'fakebeard', back: ['none', 'cape'] } },
+  referee: { name: 'Referee', desc: 'Calls every foul. Commits most of them.',
+    look: { top: 'refshirt', topColor: '#1a1a1a', bottom: 'shorts', bottomColor: '#1a1a1a', hair: ['short', 'none', 'bowl'], head: ['cap', 'none'], face: ['none', 'mustache', 'shades'], back: 'none' } },
 };
 export const COSTUME_IDS = Object.keys(COSTUMES);
 

@@ -762,7 +762,7 @@ function buildCharacterUI() {
   };
   swatches('lk-skin', 'skin', SKIN_TONES, 'mannequin');
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
-  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : 'same as your colour');
+  styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : (TOPS[look.top] && TOPS[look.top].own) || 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
   // costumes: a whole outfit in one click (shared/costumes.js, the same table the bots dress from). your colour, build
   // and body sliders stay. locked clothes lock the costume; accessories you haven't earned are just left off
