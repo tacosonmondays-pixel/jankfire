@@ -16,7 +16,7 @@ const mix = (a, b, t) => a + (b - a) * t, cl01 = (t) => Math.max(0, Math.min(1, 
 // ------------------------------------------------------------ palette: one tiny texture per garment colour
 // cells 0-7 come from the garment's own colour (so seams, hems and folds follow whatever you pick); the rest are fixed
 const PW = 32;
-const C = { base: 0, panel: 1, seam: 2, deep: 3, light: 4, hi: 5, btn: 6, pop: 7, popd: 8 };
+const C = { base: 0, panel: 1, seam: 2, deep: 3, light: 4, hi: 5, btn: 6, pop: 7, mark: 8 };
 const FIXED = { white: 0xf2f1ec, cream: 0xe2dccb, grey: 0x8f949c, ink: 0x1c1c21, coal: 0x34343c, silver: 0xc6ccd4, steel: 0x70767f, brass: 0xffc21a, red: 0xc02030, redd: 0x8a1422,
   pink: 0xff4fd8, rose: 0xff9ad5, yellow: 0xffe14d, cyan: 0x4fd8ff, brown: 0x6b3a1a, tan: 0xd9a35b, tee: 0x2b2b31, frill: 0xffffff, pencil: 0xffd21a, eraser: 0xff7ab8, sole: 0x3a2412, shoe: 0x15121a };
 Object.keys(FIXED).forEach((k, i) => { C[k] = 9 + i; });
@@ -34,7 +34,7 @@ function palette(col) {
   TONES.forEach((k, i) => put(i, tone(col, k, i !== 0 && i !== 3)));
   // the accent (linings, pull tabs): hot pink, or yellow on anything already pink / red
   const hsl = new THREE.Color(col).getHSL({}), pop = (hsl.h > 0.78 || hsl.h < 0.05) && hsl.s > 0.35 ? 0xffe14d : 0xff4fd8;
-  put(C.pop, tone(pop, 1)); put(C.popd, tone(pop, 0.72));
+  put(C.pop, tone(pop, 1)); put(C.mark, tone(Math.max((col >> 16) & 255, (col >> 8) & 255, col & 255) < 110 ? pop : col, 1)); // mark: the garment's colour where it has to show on black (a dark one: the accent)
   for (const k of Object.keys(FIXED)) put(C[k], tone(FIXED[k], 1));
   const t = new THREE.DataTexture(d, PW, 1, THREE.RGBAFormat);
   t.colorSpace = THREE.SRGBColorSpace; t.magFilter = t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; t.needsUpdate = true;
@@ -375,7 +375,7 @@ function runnerBody(F, lk, [S, R]) {
   // panel seams down the body, a stitched line across each yellow panel (so the big faces aren't bare)
   for (const d of [26, 130, 230, 334]) seam(K, S, d, 1.14, 1.45);
   for (const back of [false, true]) for (const [x0, x1] of back ? [[-0.2, -0.105], [0.105, 0.2]] : [[-0.215, -0.02], [zx + 0.03, 0.215]]) bar(K, S, [x0, 1.232], [x1, 1.232], 0.007, C.seam, 0.0025, { back, rim: false, step: 0.04 });
-  rib(K, R, 0.996, 1.092, C.ink, 36, [1.03, 1.047, C.base]); // ribbed hem band with a stripe through it
+  rib(K, R, 0.996, 1.092, C.ink, 36, [1.03, 1.047, C.mark]); // ribbed hem band with a stripe through it
   // a dark tee in the open neck
   const N = shell(F.rows([[1.3, 0, 0, 0], [1.42, 0, 0, 0], [1.5, 0, 0, 0], [1.548, 0.07, 0.066, 0.066]], 1, 0.008), 2.2);
   loft(K, N, N.lv(1.36, 1.548), [100, 125, 150, 180, 210, 235, 260].map((d) => d * DEG), C.tee);
@@ -408,8 +408,8 @@ function runnerBody(F, lk, [S, R]) {
   panel(K, S, rect(-0.165, 1.15, 0.165, 1.405), 6, 3, C.ink, 0.006, { back: true });
   for (const [a, b] of [[[-0.15, 1.165], [0.15, 1.165]], [[-0.15, 1.39], [0.15, 1.39]], [[-0.15, 1.165], [-0.15, 1.39]], [[0.15, 1.165], [0.15, 1.39]]]) bar(K, S, a, b, 0.009, C.silver, 0.009, { back: true, rim: false, step: 0.06 });
   if (!covered(lk)) {
-    const B = (a, b, w = 0.024) => bar(K, S, a, b, w, C.base, 0.0105, { back: true, rim: false, step: 0.2 });
-    panel(K, S, rect(0.018, 1.336, 0.056, 1.374), 1, 1, C.base, 0.0105, { back: true, rim: false }); // head
+    const B = (a, b, w = 0.024) => bar(K, S, a, b, w, C.mark, 0.0105, { back: true, rim: false, step: 0.2 });
+    panel(K, S, rect(0.018, 1.336, 0.056, 1.374), 1, 1, C.mark, 0.0105, { back: true, rim: false }); // head
     B([-0.008, 1.262], [0.026, 1.332], 0.036); // body, leaning into it
     B([0.02, 1.322], [0.064, 1.296], 0.02); B([0.064, 1.296], [0.092, 1.322], 0.02); // front arm
     B([0.016, 1.318], [-0.034, 1.306], 0.02); B([-0.034, 1.306], [-0.058, 1.276], 0.02); // back arm
@@ -433,7 +433,7 @@ function runnerSleeve(part, left) {
       for (const [x, c] of [[-0.016, C.pop], [0.004, C.silver]]) K.box(0.009, 0.03, 0.009, c, m.clone().multiply(T(x, 0.04, 0.004)));
     }
   } else {
-    K.lathe([[0.066, -0.03], [0.078, 0.02], [0.08, 0.062], [0.081, 0.066, C.silver], [0.081, 0.084], [0.079, 0.088], [0.072, 0.13], [0.06, 0.148], [0.058, 0.15, C.ink, 0.09], [0.058, 0.166, C.base, 0.09], [0.058, 0.176, C.ink, 0.09], [0.055, 0.202], [0.047, 0.204, C.deep], [0.04, 0.19]], n, C.base);
+    K.lathe([[0.066, -0.03], [0.078, 0.02], [0.08, 0.062], [0.081, 0.066, C.silver], [0.081, 0.084], [0.079, 0.088], [0.072, 0.13], [0.06, 0.148], [0.058, 0.15, C.ink, 0.09], [0.058, 0.166, C.mark, 0.09], [0.058, 0.176, C.ink, 0.09], [0.055, 0.202], [0.047, 0.204, C.deep], [0.04, 0.19]], n, C.base);
   }
   return K.piece('z');
 }
@@ -489,7 +489,7 @@ function hoodieBody(F, lk, [S, R]) {
   // the hood itself, down the back: a soft sack with its opening on top. its edges tuck in against the jacket
   const zb = (x, y) => S.b(x, Math.min(y, S.y1))[2] - 0.006, hang0 = flat ? 0.035 : 0.09, tip = flat ? 1.47 : 1.415;
   const line = [[1.632, hz - 0.004, 0.13], [1.622, hz + hang0 * 0.75, 0.17], [1.565, hz + hang0 + 0.035, 0.18], [1.495, hz + hang0 + 0.028, 0.148], [tip, 0, 0.06]];
-  K.grid(4, 6, (i, j) => { const [y, z, hw] = line[i], s = (j / 6) * 2 - 1, x = hw * s, yy = y - 0.014 * s * s, back = zb(x, yy); return [x, yy, i === 4 ? back + 0.012 : mix(z, back, Math.abs(s) ** 2.4)]; }, (i) => (i ? C.base : C.panel), [0, 0.5, 1]);
+  K.grid(4, 6, (i, j) => { const [y, z, hw] = line[i], s = (j / 6) * 2 - 1, x = hw * s, yy = y - 0.014 * s * s, back = zb(x, yy); return [x, yy, i === 4 ? back + 0.012 : mix(z, back, Math.abs(s) ** 2.4)]; }, (i) => (i ? C.base : C.seam), [0, 0.5, 1]);
   // drawstrings with metal tips
   for (const sx of [-1, 1]) {
     K.tube([S.f(sx * 0.03, 1.505, 0.016), S.f(sx * 0.037, 1.455, 0.012), S.f(sx * 0.041, 1.395, 0.012)], 0.0062, 4, C.cream);
@@ -644,7 +644,8 @@ function maidBody(F, lk, [S]) {
   const bow = S.bf(0, 1.11, 0.012);
   for (const sx of [-1, 1]) {
     K.ball(1, C.white, bow.clone().multiply(T(sx * 0.082, 0.02, 0.022, 0, sx * 0.2, sx * 0.42, 0.082, 0.05, 0.026)), 6, 4);
-    K.box(0.05, 0.2, 0.014, C.white, bow.clone().multiply(T(sx * 0.05, -0.12, 0.04, -0.55, 0, sx * 0.24))); K.box(0.056, 0.03, 0.016, C.frill, bow.clone().multiply(T(sx * 0.072, -0.205, 0.086, -0.55, 0, sx * 0.24)));
+    bar(K, S, [sx * 0.024, 1.1], [sx * 0.085, 0.88], 0.052, C.white, (i) => 0.022 + amp(mix(1.1, 0.88, i / 5)), { back: true, step: 0.045 }); // its two tails, down over the pleats
+    bar(K, S, [sx * 0.079, 0.9], [sx * 0.085, 0.88], 0.058, C.frill, 0.03 + amp(0.89), { back: true, rim: false });
   }
   K.box(0.05, 0.056, 0.05, C.frill, bow.clone().multiply(T(0, 0.008, 0.026)));
   // ruffled collar, a pink ribbon at the throat, two gold buttons
@@ -773,8 +774,8 @@ function legPiece(kind, part, sx) {
     return pc;
   }
   // columns round the leg: a narrow one down the outside and one down the inside are the seams (0 = their right)
-  const o = { y: true, sy: 1.05, angles: [-14, -4, 4, 14, 50, 90, 130, 166, 176, 184, 194, 230, 270, 310] }, out = sx > 0 ? 1 : 8, st = boot ? C.tan : C.seam;
-  const seams = (from) => (i, j, k) => ((j === 1 || j === 8) && i >= from && k === C.base ? st : k);
+  const o = { y: true, sy: 1.05, angles: [-14, -4, 4, 14, 60, 120, 166, 176, 184, 194, 240, 300] }, out = sx > 0 ? 1 : 7, st = boot ? C.tan : C.seam;
+  const seams = (from) => (i, j, k) => ((j === 1 || j === 7) && i >= from && k === C.base ? st : k);
   if (kind === 'shorts') { // wide legs to mid-thigh, hemmed, a stripe down the outside
     K.lathe([[0.001, -0.094], [0.076, -0.072], [0.098, -0.025], [0.101, 0.02], [0.107, 0.166], [0.108, 0.168, C.panel], [0.11, 0.172, C.panel], [0.11, 0.2, C.panel], [0.1, 0.202, C.deep], [0.086, 0.186]], 0, C.base, { ...o, cell: (i, j, k) => (Math.abs(j - out) < 2 && i > 1 && i < 5 ? C.hi : k) });
   } else if (part === 'thigh') {
@@ -809,6 +810,16 @@ const wearOn = (P) => P.wear || (P.wear = P.body.add(new THREE.Group()).children
 const cutKey = (top, lk, F) => `${top}|${F.key}|${TOPS[top] && TOPS[top].key ? TOPS[top].key(lk, F) : ''}`;
 // the colour the mannequin's shoulder balls take under this top (null: bare)
 export function topCap(lk, col) { const top = lk.top || 'tank', G = Object.hasOwn(TOPS, top) && TOPS[top]; return G && G.cap ? (G.cap === 1 ? col : G.cap) : null; }
+// how big a top is on the plain mannequin at a height: [half width, depth], raised trim and all (econ3d.js fits the
+// Plant & Defuse vest round it). null: not one of ours
+const sizes = new Map();
+export function topSize(top, y) {
+  const G = Object.hasOwn(TOPS, top) && TOPS[top];
+  if (!G) return null;
+  if (!sizes.has(top)) { const F = fitOf({}); sizes.set(top, F.dressed(G.cut(F, {}))); }
+  const a = sizes.get(top).at(y), pad = top === 'tank' ? 0.022 : 0.012;
+  return [a[0] + pad, Math.max(a[1], a[2]) + pad];
+}
 // P: the mannequin's parts { body, arm, armL, legL, legR, kneeL, kneeR, head }. col: the top's colour. legs: full-length
 // trousers on (a maid's socks stay off). false: this top isn't one of ours
 export function wearTop(P, lk, col, legs) {
