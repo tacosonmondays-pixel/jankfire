@@ -272,8 +272,7 @@ def track_far(name='tk_track_far'):
         q = [V3((sx * XB, BT, 0)), V3((sx * XB, BT, SEG)), V3((sx * XC, 0.012, SEG)), V3((sx * XC, 0.012, 0))]
         b.put(orient_from((q, [(0, 1, 2, 3)], [[(0, 0), (1.2, 0), (1.2, 0.4), (0, 0.4)]]), V3((0, -5, 3))), 'ballast', 0.8, 'e')
         b.put(bx(sx * XC, 0.0, 0, sx * XW, 0.04, SEG, only=('+y',)), 'conc', 0.72, 'u')
-        for (xa, xb_, y) in ((-0.054, 0.054, RAIL_Y),): b.put(bx(sx * GAUGE + xa, ST, 0, sx * GAUGE + xb_, y, SEG, only=('+y', '+x', '-x')), 'rust', 0.8, 'q')
-        b.put(bx(sx * GAUGE - 0.05, RAIL_Y, 0, sx * GAUGE + 0.05, RAIL_Y + 0.0005, SEG, only=('+y',)), 'railtop', 0.75, 'q')
+        b.put(bx(sx * GAUGE - 0.054, ST, 0, sx * GAUGE + 0.054, RAIL_Y, SEG, only=('+x', '-x')), 'rust', 0.8, 'q'); b.put(bx(sx * GAUGE - 0.054, ST, 0, sx * GAUGE + 0.054, RAIL_Y, SEG, only=('+y',)), 'railtop', 0.75, 'q')
     for i in range(8): b.put(bx(-1.3, 0.0, 0.375 + 0.75 * i - 0.125, 1.3, ST, 0.375 + 0.75 * i + 0.125, only=('+y', '-z')), 'slp%d' % (i % 3), 0.85, 'e')
     b.box(-XC - 0.5, 0.03, 0, -XC - 0.14, 0.245, SEG, 'conc', 0.75, 'u', omit=('-y', '+z', '-z'))
     return b
@@ -288,7 +287,7 @@ def cables(name='tk_cables'):
         b.box(xw - 0.04, 2.66, z - 0.03, xw + 0.02, 3.62, z + 0.03, 'steel', 0.8)                                 # the upright, bolted to the brick
         for y, rr in zip(ys, rad):
             b.box(xw - 0.34, y - 0.05, z - 0.02, xw - 0.02, y - 0.02, z + 0.02, 'steel', 0.85)                    # an arm
-            b.box(xw - 0.34, y - 0.05, z - 0.02, xw - 0.31, y + 0.06, z + 0.02, 'steel', 0.8)                     # its upturned end
+            b.box(xw - 0.34, y - 0.02, z - 0.02, xw - 0.31, y + 0.06, z + 0.02, 'steel', 0.8, omit=('-y',))        # its upturned end
         for yy in (2.72, 3.56): b.bolt((xw - 0.04, yy, z), (-1, 0, 0), 'rust', 0.022, 0.014)
     for y, rr, sg in zip(ys, rad, sag):
         x = wx(3.15) - 0.17 - rr * 0.3; n = 5
@@ -307,7 +306,7 @@ def bulbs():
     for i in range(n):
         z0 = i * span; p = V3((wx_, wy, z0))
         b.put(xf(p_cyl(0.035, 0.1, 6, 0.028), frame(-out, (0, 0, 1), p + out * 0.1) @ RX(math.pi / 2)), 'porc', 1.0)                 # the insulator on its pin
-        b.rod(tuple(p + out * 0.1), tuple(p + out * 0.02), 0.012, 'rust', 0.8, 4)
+        b.rod(tuple(p + out * 0.14), tuple(p + out * 0.02), 0.012, 'rust', 0.8, 4)
         pts = [(wx_, wy - 0.3 * math.sin(math.pi * k / 6), z0 + span * k / 6) for k in range(7)]
         b.put(p_tube(pts, 0.014, 3, up=(0, 1, 0), phase=math.pi / 2), 'cable', 0.9)
     # the drop at z = 0: flex, a holder, an enamel shade (green outside, white in)
@@ -340,7 +339,7 @@ def marker():
 def signal():
     """a two-aspect colour light on a tubular post, dark. it looks back along the line (-z): the way a train comes"""
     k = KT('tk_signal'); H = 3.5
-    k.put(xf(p_cyl(0.065, H, 8), T(0, 0, 0)), 'steel', 0.8); k.box(-0.16, 0, -0.16, 0.16, 0.05, 0.16, 'conc', 0.8)
+    k.put(xf(p_cyl(0.065, H - 0.05, 8), T(0, 0.05, 0)), 'steel', 0.8); k.box(-0.16, 0, -0.16, 0.16, 0.05, 0.16, 'conc', 0.8)
     k.box(-0.3, H - 1.05, -0.02, 0.3, H + 0.1, 0.02, 'black', 1.0, c=0.01)                                           # the backboard
     k.box(-0.15, H - 0.9, -0.2, 0.15, H - 0.05, -0.02, 'black', 0.9, c=0.02)                                        # the head
     for i, (key, y) in enumerate((('lensr', H - 0.28), ('lensg', H - 0.68))):
@@ -350,7 +349,7 @@ def signal():
         k.put(xf(p_grid(hood), Mx), 'black', 0.9); k.put(xf(p_grid(hood, flip=True), Mx), 'soot', 1.0)
     k.box(-0.13, H - 1.32, -0.07, 0.13, H - 1.19, -0.062, 'sigid', 1.0, 'e', only=('-z',)); k.box(-0.14, H - 1.33, -0.062, 0.14, H - 1.18, -0.05, 'steel', 0.8)
     for sx in (-1, 1): k.rod((sx * 0.14, 0.4, 0.2), (sx * 0.14, H - 0.6, 0.12), 0.014, 'steel', 0.85, 4)             # a ladder up the back
-    for i in range(8): y = 0.6 + i * 0.36; k.rod((-0.14, y, 0.2 - 0.08 * (y - 0.4) / (H - 1.0)), (0.14, y, 0.2 - 0.08 * (y - 0.4) / (H - 1.0)), 0.011, 'rust', 0.8, 4, cap=False)
+    for i in range(7): y = 0.6 + i * 0.36; k.rod((-0.14, y, 0.2 - 0.08 * (y - 0.4) / (H - 1.0)), (0.14, y, 0.2 - 0.08 * (y - 0.4) / (H - 1.0)), 0.011, 'rust', 0.8, 4, cap=False)
     for y in (0.5, H - 0.7): k.rod((0, y, 0.0), (0, y, 0.2 - 0.08 * (y - 0.4) / (H - 1.0)), 0.012, 'steel', 0.8, 4)
     k.pipe([(0.07, 0.05, 0.0), (0.09, 0.4, 0.0), (0.09, H - 1.0, 0.0), (0.12, H - 0.9, -0.05)], 0.015, 'cable', 1.0, 4)
     INFO['signal'] = dict(height=H, lenses=[[0, H - 0.28, -0.22], [0, H - 0.68, -0.22]], faces=[0, 0, -1])
@@ -402,8 +401,8 @@ def portal():
         k.put(p_extrude([(q[0], q[1]) for q in P], 0.0, 0.7), 'stone', 0.85, 'u', M=T(sx * W, 0, 0.0) @ RY(sx * 1.0) @ T(0, 0, -0.35) if sx > 0 else T(sx * W, 0, 0.0) @ RY(sx * 1.0) @ SC(-1, 1, 1) @ T(0, 0, -0.35))
         # the viaduct's first span: parapet walls with piers and a coping, 12 m out
         xo = sx * (HW + 1.55)
-        k.box(xo - 0.22, 0.0, 0.3, xo + 0.22, 1.35, 12.0, 'stone', 0.85, 'e', seg=1.5, omit=('-y',))
-        k.box(xo - 0.3, 1.35, 0.3, xo + 0.3, 1.5, 12.0, 'conc', 0.85, 'u', seg=1.5, omit=('-y',))
+        k.box(xo - 0.22, 0.0, 0.3, xo + 0.22, 1.35, 11.9, 'stone', 0.85, 'e', seg=1.5, omit=('-y',))
+        k.box(xo - 0.3, 1.35, 0.3, xo + 0.3, 1.5, 11.9, 'conc', 0.85, 'u', seg=1.5, omit=('-y',))
         for z in (0.55, 6.0, 11.6): k.box(xo - 0.36, 0.0, z - 0.4, xo + 0.36, 1.72, z + 0.4, 'stone', 0.95, 'e', omit=('-y',)); k.box(xo - 0.42, 1.72, z - 0.46, xo + 0.42, 1.86, z + 0.46, 'conc', 0.9, 'u', omit=('-y',))
     # the deck between them: ballast over the arch
     for i in range(4):

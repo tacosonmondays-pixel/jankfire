@@ -502,3 +502,18 @@ def figure(b, key, at, h=1.8, yaw=0.0):
     for sz, p in (((0.2, 0.84, 0.2), (-0.12, 0.42, 0)), ((0.2, 0.84, 0.2), (0.12, 0.42, 0)), ((0.5, 0.62, 0.26), (0, 1.15, 0)), ((0.14, 0.62, 0.16), (-0.33, 1.15, 0)), ((0.14, 0.62, 0.16), (0.33, 1.15, 0)), ((0.24, 0.28, 0.24), (0, 1.66, 0))):
         b.add(bx(p[0] - sz[0] / 2, p[1] - sz[1] / 2, p[2] - sz[2] / 2, p[0] + sz[0] / 2, p[1] + sz[1] / 2, p[2] + sz[2] / 2), key, ('tile', 1.0), Mx)
     return b
+
+
+def qa_gate(tag, objs, eps=0.0008, tol=0.012, quiet=True, zf=30):
+    """the asset-QA gate on one group (as rpkit.qa, with as many z-fight places listed as asked for)"""
+    sys.path.insert(0, os.path.join(ROOT, '.claude', 'skills', 'blender-asset-qa', 'scripts'))
+    import qa_check
+    res = qa_check.run(objects=[o.name for o in objs], profile='game', eps=eps, tol=tol)
+    print('QA_PASS', tag, res.get('pass'), 'tris', sum(m['tris'] for m in res['objects'].values()))
+    for k in ('errors', 'warnings'):
+        for e in res.get(k, []):
+            if not (quiet and k == 'warnings'): print('QA_' + k.upper()[:-1], tag, e)
+    for k in ('floating', 'enclosed'):
+        for e in res.get(k, [])[:40]: c = e['center']; print('QA_' + k.upper(), tag, e['object'], e['island_verts'], 'verts at game', [round(c[0], 3), round(c[2], 3), round(-c[1], 3)])
+    if res.get('zfighting'): zf_where(objs, eps, zf)
+    return res

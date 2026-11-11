@@ -358,18 +358,18 @@ def sheet_train(N, tris):
 def run_qa(N):
     """the asset-QA gate (.claude/skills/blender-asset-qa) on every group that is shown together: each car with what
     stands on it, the torn end with the flatbed, each far version, each kit piece, the carriage with either end"""
-    res = {}; quiet = not arg('qa-warn'); tol = float(arg('qa-tol', 0.012))
+    res = {}; quiet = not arg('qa-warn'); tol = float(arg('qa-tol', 0.012)); zf = int(arg('zf', 30)); only = arg('qa'); only = set(only.split(',')) if isinstance(only, str) else None
     G = lambda pred: [o for k, o in N.items() if o is not None and o.type == 'MESH' and pred(k, o)]
+    def run(tag, objs, tol_=tol):
+        if only is None or tag in only: res[tag] = qa_gate(tag, objs, tol=tol_, quiet=quiet, zf=zf)
     for car in ('wagon', 'flat', 'van', 'loco'):
         if 'car_' + car not in N: continue
-        res[car] = qa(car, G(lambda k, o: o.parent and o.parent.name == 'car_' + car and not o.get('jf_hidden')), tol=tol, quiet=quiet)
-        res[car + '_lod'] = qa(car + '_lod', [N[car + '_lod']], tol=tol, quiet=quiet)
-    if N.get('flat_end_bitten'): res['flat_bitten'] = qa('flat_bitten', [N['flat_end_bitten'], N['flat_body']], tol=0.03, quiet=quiet)
+        run(car, G(lambda k, o: o.parent and o.parent.name == 'car_' + car and not o.get('jf_hidden'))); run(car + '_lod', [N[car + '_lod']])
+    if N.get('flat_end_bitten'): run('flat_bitten', [N['flat_end_bitten'], N['flat_body']], 0.03)
     for k in sorted(N):
-        if k.startswith(('tk_', 'tp_')) and N[k] is not None and k not in ('tk_bulb_lit', 'tk_bulb_dead'): res[k] = qa(k, [N[k]] + ([N['tk_bulb_lit']] if k == 'tk_bulbs' else []), tol=0.03, quiet=quiet)
+        if k.startswith(('tk_', 'tp_')) and N[k] is not None and k not in ('tk_bulb_lit', 'tk_bulb_dead'): run(k, [N[k]] + ([N['tk_bulb_lit']] if k == 'tk_bulbs' else []), 0.03)
     if N.get('cm_car'):
-        res['cm_car'] = qa('cm_car', [N['cm_car'], N['cm_end'], N['cm_glass']], tol=0.03, quiet=quiet)
-        res['cm_last'] = qa('cm_last', [N['cm_car'], N['cm_end_torn']], tol=0.05, quiet=quiet); res['cm_lod'] = qa('cm_lod', [N['cm_lod']], tol=0.03, quiet=quiet)
+        run('cm_car', [N['cm_car'], N['cm_end'], N['cm_glass']], 0.03); run('cm_last', [N['cm_car'], N['cm_end_torn']], 0.05); run('cm_lod', [N['cm_lod']], 0.03)
     print('QA_SUMMARY', json.dumps({k: bool(v.get('pass')) for k, v in res.items()}))
     return res
 

@@ -18,7 +18,7 @@ import rptrain_tex as TX
 from rptrain_tex import blocky, base, grime, stencil, smiley, rivets, RUST, RUST_D, GRIME
 from rptrain_cars import RAIL_Y, GAUGE
 
-PITCH = 20.0; LB = 19.2; HWB = 1.42; FL = 1.16; CANT = 3.08; CROWN = 3.72        # coupling to coupling, the body, half its width, floor, cantrail, roof
+PITCH = 20.0; LB = 19.2; HWB = 1.42; FL = 1.16; CANT = 3.16; CROWN = 3.76        # coupling to coupling, the body, half its width, floor, cantrail, roof
 BAY = 1.9; NB = 9; DW = 0.72; VEST = (LB - NB * BAY) / 2                             # a bay, how many, a door's width, what is left at each end
 WT = 0.06; SILL, HEAD = FL + 0.86, FL + 1.72
 MC = {}; CA = {}
@@ -105,7 +105,7 @@ def carriage():
                 b.box(xa, SILL, pz, xb, HEAD + 0.2, pz + 0.06, 'white', 0.85, 'u', omit=('+y', '-y'))
                 b.box(xa + sx * 0.004, SILL - 0.16, wa, xa, SILL - 0.04, wb, 'band', 1.0, 'u', only=(fo,))        # the waist band
                 if r.chance(0.86): g.add(bx(sx * (HWB - WT / 2) - 0.003, SILL, wa + (0.0 if wa == za else 0.06), sx * (HWB - WT / 2) + 0.003, HEAD + 0.2, wb - (0.06 if wa == za else 0.0), only=('+x', '-x')), MC['glass'], ('tile', 1.0))
-            b.box(xa, FL - 0.02, dz, xb, FL + 0.02, dz + DW, 'chrome', 0.7, omit=('-y',))                        # the door's sill
+            b.box(xa + sx * 0.008, FL - 0.02, dz + 0.004, xb, FL + 0.02, dz + DW - 0.004, 'chrome', 0.7, omit=('-y',))   # the door's sill
             door_leaf(b, g, sx, dz, r.u(1.2, 1.6) if r.chance(0.85) else r.u(0.6, 1.0), r)                      # every door open
         b.box(xa + sx * 0.004, FL + 0.3, z0 + 0.2, xa, FL + 0.42, z0 + 0.68, 'num', 1.0, 'e', only=(fo,))
         b.box(xa, FL - 0.02, z0, xa + sx * 0.03, FL + 0.03, z1, 'steel', 0.7, 'q', omit=('-x' if sx > 0 else '+x',))   # the solebar's lip
@@ -115,7 +115,7 @@ def carriage():
         top = p_grid([[V3((x, roof_y(x), z)) for x in xs] for z in (za, zb)], flip=True); b.put(top, 'roof', r.u(0.85, 1.0), 'e')
         b.put(p_grid([[V3((x * 0.97, roof_y(x) - 0.05, z)) for x in xs] for z in (za, zb)]), 'ceil', r.u(0.8, 0.95), 'e')
     for z, f in ((z0, True), (z1, False)):
-        gb = [(-HWB, CANT)] + [(x, roof_y(x)) for x in xs[1:-1]] + [(HWB, CANT)]
+        gb = [(-HWB, CANT - 0.004)] + [(x, roof_y(x) - 0.006) for x in xs[1:-1]] + [(HWB, CANT - 0.004)]
         (b if f else e).ext_z(gb, z - (0 if f else 0.05), z + (0.05 if f else 0), 'white', 0.85)
     for x in (-0.5, 0.5): b.put(xf(p_cyl(0.11, 0.08, 6, 0.14), T(x, roof_y(x) - 0.01, z0 + 3.0)), 'roof', 0.7); b.put(xf(p_cyl(0.11, 0.08, 6, 0.14), T(x, roof_y(x) - 0.01, z1 - 3.0)), 'roof', 0.7)
     # ---- the ends: a gangway door each (the -z one is part of the car; the +z one is cm_end, so the last can lose it)
@@ -141,7 +141,8 @@ def carriage():
             b.box(-xin, FL + 0.34, zc + s_ * 0.03, xin, FL + 0.46, zc + s_ * 0.5, 'moq', r.u(0.8, 1.0), 'u', seg=1.3, omit=('-y',))   # the cushion
             b.box(-xin, FL + 0.46, zc + s_ * 0.03, xin, FL + 1.06, zc + s_ * 0.12, 'moq', r.u(0.75, 0.95), 'u', seg=1.3, omit=('-y', '-z' if s_ > 0 else '+z'))   # the back
             b.box(-xin, FL, zc + s_ * 0.1, xin, FL + 0.34, zc + s_ * 0.46, 'black', 0.8, omit=('+y', '-y'))
-            b.put(rod((-xin, FL + 1.78, zc + s_ * 0.42), (xin, FL + 1.78, zc + s_ * 0.42), 0.018, 3, cap=False), 'chrome', 0.8)                       # the luggage rail
+            b.put(rod((-xin, FL + 1.78, zc + s_ * 0.42), (xin, FL + 1.78, zc + s_ * 0.42), 0.018, 3, cap=False), 'chrome', 0.8)                       # the luggage rail, on stays off the partition
+            for xs_ in (-0.8, 0.8): b.put(rod((xs_, FL + 1.78, zc + s_ * 0.42), (xs_, FL + 1.1, zc + s_ * 0.02), 0.012, 3, cap=False), 'chrome', 0.7)
     def coat(x, z, key, sx):   # a coat on a hook by a window: a lumpy sheet, sleeves, never collected
         P = [[V3((0.02 + 0.035 * math.sin(i * 1.3 + j), -0.16 * i, -0.17 + 0.17 * j + 0.02 * math.sin(i * 2.0))) for j in range(3)] for i in range(5)]
         b.put(xf(p_grid(P), T(x, HEAD + 0.1, z) @ (RY(math.pi) if sx > 0 else Matrix.Identity(4))), key, r.u(0.8, 1.0)); b.put(xf(p_grid(P, flip=True), T(x, HEAD + 0.1, z) @ (RY(math.pi) if sx > 0 else Matrix.Identity(4))), key, 0.6)
@@ -173,7 +174,7 @@ def carriage():
     for zb in (z0 + 3.0, z1 - 3.0):
         for dz in (-1.1, 1.1):
             for sx in (-1, 1):
-                b.put(p_lathe_x([(-0.06, 0.43), (0.06, 0.4), (0.06, 0.0)], 8, cap0=True, cap1=False), 'steel', 0.75, M=T(sx * GAUGE, RAIL_Y + 0.4, zb + dz) @ (SC(-1, 1, 1) if sx < 0 else Matrix.Identity(4)))
+                b.put(p_lathe_x([(-0.06, 0.43), (0.06, 0.4)], 8, cap0=True, cap1=True), 'steel', 0.75, M=T(sx * GAUGE, RAIL_Y + 0.4, zb + dz) @ (SC(-1, 1, 1) if sx < 0 else Matrix.Identity(4)))
             b.rod((-GAUGE, RAIL_Y + 0.4, zb + dz), (GAUGE, RAIL_Y + 0.4, zb + dz), 0.06, 'rust', 0.7, 6, cap=False)
         for sx in (-1, 1):
             b.box(sx * 1.0, RAIL_Y + 0.3, zb - 1.6, sx * 1.12, RAIL_Y + 0.6, zb + 1.6, 'steel', 0.7)
@@ -224,7 +225,7 @@ def far():
     b.box(-HWB, FL - 0.2, z0, HWB, CANT, z1, 'white', 0.85, 'u', omit=('+y', '-y'), faces={'+x': 'sidelod', '-x': 'sidelod'})
     n = 4; xs = [-(HWB + 0.02) + 2 * (HWB + 0.02) * i / n for i in range(n + 1)]
     b.put(p_grid([[V3((x, roof_y(x), z)) for x in xs] for z in (z0, z1)], flip=True), 'roof', 0.9, 'q')
-    for z in (z0, z1): b.ext_z([(-HWB, CANT)] + [(x, roof_y(x)) for x in xs[1:-1]] + [(HWB, CANT)], z - 0.01, z + 0.01, 'white', 0.8)
+    for z, dz in ((z0, 1), (z1, -1)): b.ext_z([(-HWB, CANT - 0.004)] + [(x, roof_y(x) - 0.006) for x in xs[1:-1]] + [(HWB, CANT - 0.004)], z, z + dz * 0.012, 'white', 0.8)
     b.box(-1.1, 0.42, z0 + 0.3, 1.1, FL - 0.2, z1 - 0.3, 'black', 0.7, omit=('+y',))
     for sx in (-1, 1):
         for i in range(NB):

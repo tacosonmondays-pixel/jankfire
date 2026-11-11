@@ -98,10 +98,10 @@ def running_gear(b, z, r, sole_x, yS, brake=True, tint=0.85):
 def pocket(b, z, dz, y, pin=True, tint=0.9, link=True):
     """a link-and-pin buffer-coupler on a headstock face at z, sticking out along dz (+1 / -1): a cast pocket with a
     slot, the pin through it on a ring"""
-    za, zb = z, z + dz * 0.2
-    b.box(-0.2, y - 0.11, za, 0.2, y + 0.11, zb, 'steel', tint, c=0.03)
+    za, zb = z, z + dz * 0.2; back = '-z' if dz > 0 else '+z'
+    b.box(-0.2, y - 0.11, za + dz * 0.03, 0.2, y + 0.11, zb, 'steel', tint, c=0.03)
     b.box(-0.13, y - 0.035, zb - dz * 0.004, 0.13, y + 0.035, zb + dz * 0.003, 'soot', 1.0)        # the slot's mouth
-    b.box(-0.26, y - 0.15, za, 0.26, y + 0.15, za + dz * 0.03, 'steel', tint * 0.9)                 # its flange
+    b.box(-0.26, y - 0.15, za, 0.26, y + 0.15, za + dz * 0.03, 'steel', tint * 0.9, omit=(back,))   # its flange
     for sx in (-1, 1):
         for sy in (-1, 1): b.bolt((sx * 0.23, y + sy * 0.12, za + dz * 0.03), (0, 0, dz), 'bolt', 0.024)
     if pin:
@@ -113,7 +113,7 @@ def pocket(b, z, dz, y, pin=True, tint=0.9, link=True):
 
 def gusset(b, sx, x_in, x_out, y_top, y_bot, z, t=0.012, key='steel', tint=0.8):
     """an outrigger bracket from the solebar out under the deck's edge"""
-    poly = [(sx * x_in, y_top), (sx * x_out, y_top), (sx * x_out, y_top - 0.05), (sx * (x_in + 0.02), y_bot), (sx * x_in, y_bot)]
+    yt = y_top - 0.012; poly = [(sx * x_in, yt), (sx * x_out, yt), (sx * x_out, yt - 0.04), (sx * (x_in + 0.02), y_bot), (sx * x_in, y_bot)]   # (under its flange)
     b.ext_z(poly, z - t / 2, z + t / 2, key, tint)
     b.box(min(sx * x_in, sx * x_out), y_top - 0.012, z - 0.04, max(sx * x_in, sx * x_out), y_top, z + 0.04, key, tint)   # its flange
 
@@ -124,12 +124,12 @@ def underframe(b, c, wr, axles, sole_x=0.98, sole_d=0.2, ends=(True, True), trus
     z0, z1, deck = c.z0, c.z1, c.deck; yT = deck - PL; yB = deck - 0.2; yS = yB - sole_d; yc = deck - 0.34
     for sx in (-1, 1):
         b.box(sx * (HW - 0.07), yB, z0, sx * HW, deck, z1, 'steel', 0.85)                                            # the rave (the deck's steel edge, flush with the boards)
-        b.box(sx * sole_x - 0.055, yS, z0 + 0.14, sx * sole_x + 0.055, yT - 0.002, z1 - 0.14, 'steel', 0.8)          # the solebar
-        b.box(sx * sole_x - 0.075, yS, z0 + 0.14, sx * sole_x + 0.075, yS + 0.02, z1 - 0.14, 'steel', 0.7)           # its bottom flange
-        b.box(sx * 0.27 - 0.04, yB - 0.06, z0 + 0.14, sx * 0.27 + 0.04, yT - 0.002, z1 - 0.14, 'steel', 0.7)         # the draw beams down the middle
+        b.box(sx * sole_x - 0.055, yS + 0.02, z0 + 0.14, sx * sole_x + 0.055, yT - 0.006, z1 - 0.14, 'steel', 0.8, omit=('+y', '-y'))   # the solebar
+        b.box(sx * sole_x - 0.075, yS, z0 + 0.15, sx * sole_x + 0.075, yS + 0.02, z1 - 0.15, 'steel', 0.7)           # its bottom flange
+        b.box(sx * 0.27 - 0.04, yB - 0.06, z0 + 0.14, sx * 0.27 + 0.04, yT - 0.008, z1 - 0.14, 'steel', 0.7, omit=('+y',))   # the draw beams down the middle
     n = max(2, round(c.L / step)); zs = [z0 + c.L * (i + 0.5) / n for i in range(n)]
     for z in zs:
-        b.box(-HW + 0.07, yB + 0.02, z - 0.045, HW - 0.07, yT - 0.002, z + 0.045, 'steel', 0.75)                     # cross-bearers
+        b.box(-HW + 0.07, yB + 0.02, z - 0.045, HW - 0.07, yT - 0.002, z + 0.045, 'steel', 0.75, omit=('+y',))       # cross-bearers
         for sx in (-1, 1): gusset(b, sx, sole_x + 0.055, HW - 0.07, yB + 0.02, yS + 0.02, z)
     b.box(-HW + 0.07, yB + 0.035, z0 + 0.14, HW - 0.07, yB + 0.05, z1 - 0.14, 'soot', 1.0, only=('-y',))  # the underside of the floor, in shadow
     for k, (za, dz) in enumerate(((z0, 1), (z1, -1))):
@@ -147,17 +147,17 @@ def underframe(b, c, wr, axles, sole_x=0.98, sole_d=0.2, ends=(True, True), trus
 
 def headstock(b, c, z, dz, yc, key='steel', pocket_=True, w=None, tint=0.85):
     """the end beam of a wagon (z = its outer face, dz = which way is into the car) with its coupler pocket"""
-    w = w or HW - 0.02; yT = c.deck - PL
+    w = w or HW - 0.072; yT = c.deck - PL                     # (between the raves)
     b.box(-w, yc - 0.17, z, w, yT - 0.002, z + dz * 0.14, key, tint, c=0.015)
     for x in (-w + 0.12, -0.95, 0.95, w - 0.12):
         for y in (yc - 0.1, yc + 0.1): b.bolt((x, y, z), (0, 0, -dz), 'bolt', 0.022)
     if pocket_: pocket(b, z, -dz, yc)
     for sx in (-1, 1):   # the safety chains' eyes
-        b.put(p_ring_loop([(sx * 0.62 + 0.035 * math.cos(a), yc - 0.02 + 0.035 * math.sin(a), z - dz * 0.02) for a in [i * math.pi / 3 for i in range(6)]], 0.009, 4), 'bright', 0.7)
+        b.put(p_ring_loop([(sx * 0.62 + 0.035 * math.cos(a), yc - 0.02 + 0.035 * math.sin(a), z - dz * 0.008) for a in [i * math.pi / 3 for i in range(6)]], 0.009, 4), 'bright', 0.7)
 
 
 def stanchion(b, x, z, y0, y1, w=0.07, key='steel', tint=0.85):
-    b.box(x - w / 2, y0, z - w / 2, x + w / 2, y1, z + w / 2, key, tint)
+    b.box(x - w / 2, y0 - 0.02, z - w / 2, x + w / 2, y1, z + w / 2, key, tint)
 
 
 def strap_over(b, x0, x1, y0, y1, z, w=0.05, key='strap', lift=0.006, binder=True, side=1):
@@ -179,9 +179,9 @@ def chain_over(b, x0, x1, xa, xb, y0, y1, z, key='chain'):
     b.chain(pts, key, 1.0, 0.1, 0.06, 0.011)
     for x in (x0, x1):   # the rings in the deck
         b.box(x - 0.07, y0, z - 0.05, x + 0.07, y0 + 0.012, z + 0.05, 'steel', 0.8)
-        b.put(p_ring_loop([(x + 0.035 * math.cos(a), y0 + 0.03 + 0.03 * math.sin(a), z) for a in [i * math.pi / 3 for i in range(6)]], 0.009, 4), 'bright', 0.7)
+        b.put(p_ring_loop([(x + 0.035 * math.cos(a + 0.2), y0 + 0.032 + 0.03 * math.sin(a + 0.2), z + 0.016) for a in [i * math.pi / 3 for i in range(6)]], 0.009, 3), 'bright', 0.7)
     # a lever binder on the lane side
-    xm = (xb + x1) / 2 + 0.03; ym = y0 + 0.2
+    xm = (xb + x1) / 2 + 0.05; ym = y0 + 0.22
     b.put(xf(cbx(-0.02, -0.11, -0.03, 0.02, 0.11, 0.03, 0.008), T(xm, ym, z) @ RZ(0.35)), 'red', 0.9)
     b.put(xf(rod((0, 0.05, 0), (0, 0.3, 0.0), 0.012, 5), T(xm, ym, z) @ RZ(0.2)), 'bright', 0.8)
 
@@ -253,7 +253,7 @@ def tool_chest(name, w, h, d):
     planks(b, -hw, hw, -hd, hd, top, 0.2, 5, t=0.05, tint=0.9, across=False)                                   # the bench top: three boards along it
     b.box(hw - 0.03, top, -hd, hw, h, hd, 'pl4', 0.8, 'e')                                                     # a back board with what hangs on it
     for k, z in enumerate((-0.5, -0.3, -0.1, 0.12)):
-        b.box(hw - 0.045, top + 0.03, z - 0.012, hw - 0.03, top + 0.16 - 0.02 * k, z + 0.012, 'bright', 0.75)  # spanners in a row
+        b.box(hw - 0.045, top + 0.03, z - 0.012, hw - 0.03, top + 0.14 - 0.02 * k, z + 0.012, 'bright', 0.75, omit=('+y',))  # spanners in a row
         b.box(hw - 0.045, top + 0.14 - 0.02 * k, z - 0.028, hw - 0.03, top + 0.19 - 0.02 * k, z + 0.028, 'bright', 0.7)
     # the vice, at the end nearest the back of the train
     zv = -hd + 0.2
@@ -266,7 +266,7 @@ def tool_chest(name, w, h, d):
     b.put(xf(bx(-0.014, 0, -0.16, 0.014, 0.022, 0.16), T(-0.05, top + 0.062, 0.44) @ RY(0.3)), 'bright', 0.7); b.put(xf(bx(-0.02, 0, -0.13, 0.02, 0.03, 0.13), T(0.05, top + 0.062, 0.42) @ RY(-0.2)), 'handle', 0.9)
     b.put(xf(p_cyl(0.045, 0.1, 8, 0.05), T(-0.16, top, 0.02)), 'brass', 0.8); b.put(xf(p_cyl(0.05, 0.05, 8, 0.008), T(-0.16, top + 0.1, 0.02)), 'brass', 0.8)
     b.rod((-0.16, top + 0.14, 0.02), (-0.16, top + 0.17, 0.14), 0.007, 'brass', 0.8, 4)
-    b.put(xf(p_cyl(0.04, 0.09, 8), T(0.06, top, 0.02)), 'enamel', 1.0); b.put(xf(p_cyl(0.034, 0.002, 8), T(0.06, top + 0.088, 0.02)), 'oil', 1.0)
+    b.put(xf(p_cyl(0.04, 0.09, 8, cap1=False), T(0.06, top, 0.02)), 'enamel', 1.0); b.put(xf(p_cyl(0.036, 0.002, 8, cap0=False), T(0.06, top + 0.078, 0.02)), 'oil', 1.0)
     return b
 
 
@@ -286,18 +286,18 @@ def cable_drum(name, w, h, d):
     """a wooden cable drum on a welded cradle, half its cable gone. the axle lies across the car (x). local: y from 0"""
     b = K(name); hw, hd = w / 2, d / 2; R = (h - 0.06) / 2; ya = h - R; fw = 0.045
     for sx in (-1, 1):   # the flanges: discs of boards, a steel tyre
-        xa, xb = sorted((sx * hw, sx * (hw - fw)))
+        xa, xb = sorted((sx * (hw - 0.012), sx * (hw - fw - 0.012)))
         b.put(p_lathe_x([(xa, R), (xb, R)], 16, cap0=False, cap1=False), 'steel', 0.8, M=T(0, ya, 0))
         disc_x(b, xa, ya, 0.0, R, -1, 'drum'); disc_x(b, xb, ya, 0.0, R, 1, 'drum')
     b.put(p_lathe_x([(-hw + fw, R * 0.62), (hw - fw, R * 0.62)], 14, cap0=False, cap1=False), 'cable', 1.0, 'q', M=T(0, ya, 0))    # the cable still on it
-    b.put(p_lathe_x([(-hw - 0.0, 0.06), (hw + 0.0, 0.06)], 8), 'bright', 0.7, M=T(0, ya, 0))                                        # the spindle
+    b.put(p_lathe_x([(-hw + 0.003, 0.055), (hw - 0.003, 0.055)], 8), 'bright', 0.7, M=T(0, ya, 0))                                        # the spindle
     # the cradle: two A-frames on skids
     for sx in (-1, 1):
-        x = sx * (hw - 0.012); xo = sx * hw
+        x = sx * (hw - 0.0065); xo = sx * hw
         for sz in (-1, 1):
             a, e = V3((x, 0.06, sz * (hd - 0.06))), V3((x, ya - 0.02, sz * 0.03))
-            b.put(xf(bx(-0.012, -0.03, -(e - a).length / 2, 0.012, 0.03, (e - a).length / 2), frame(e - a, (1, 0, 0), (a + e) / 2)), 'steel', 0.85)
-        b.box(min(x, xo), ya - 0.07, -0.07, max(x, xo) , ya + 0.05, 0.07, 'steel', 0.8)
+            b.put(xf(bx(-0.0045, -0.03, -(e - a).length / 2, 0.0045, 0.03, (e - a).length / 2), frame(e - a, (1, 0, 0), (a + e) / 2)), 'steel', 0.85)
+        b.box(sx * (hw - 0.011), ya - 0.07, -0.07, sx * (hw - 0.0), ya + 0.05, 0.07, 'steel', 0.8, omit=('+x' if sx < 0 else '-x',))
     for sz in (-1, 1): b.box(-hw, 0.0, sz * hd, hw, 0.06, sz * (hd - 0.1), 'steel', 0.8)                                            # skids
     b.pipe([(0.1, ya + R * 0.62, 0.0), (0.12, ya + R * 0.5, R * 0.62 + 0.0), (0.16, 0.12, R * 0.7), (0.2, 0.075, hd - 0.14)], 0.02, 'cable', 0.9, 5)   # the loose end, to the deck
     return b
@@ -448,7 +448,7 @@ def flat_bits():
     b.ext_x([(15.0, deck), (15.3, deck), (15.0, deck + 0.12)], 1.62, 1.86, 'pl1', 0.9)
     # the rear end, twice: whole, and after the mask has bitten the wagon off it
     e = K('flat_end'); headstock(e, c, z0, 1, yc)
-    e.box(-1.12, WAGON.deck - 0.07, z0 - 0.05, 1.12, WAGON.deck - 0.03, z0, 'steel', 0.8)                                               # the ledge the fall plate lies on
+    e.box(-1.12, WAGON.deck - 0.07, z0 - 0.05, 1.12, WAGON.deck - 0.03, z0, 'steel', 0.8, omit=('+z',))                                               # the ledge the fall plate lies on
     for x in (-0.9, 0.9): e.ext_x([(z0, WAGON.deck - 0.07), (z0 - 0.05, WAGON.deck - 0.07), (z0, WAGON.deck - 0.2)], x - 0.006, x + 0.006, 'steel', 0.8)
     for sx in (-1, 1): e.box(sx * (HW - 0.07), deck - 0.2, z0 - 0.004, sx * HW, deck, z0 + 0.004, 'steel', 0.8, only=('-z',))
     t = bitten_end(c, yc)
@@ -468,17 +468,17 @@ def bitten_end(c, yc):
     """the flatbed's back after the first lunge: the headstock folded, the pocket torn open with the bar's stump in it, a
     chain swinging, the last boards chewed, finger tracks in the deck. nothing of the deck you stand on is taken away"""
     t = K('flat_end_bitten'); z0, deck = c.z0, c.deck; r = Rnd(77); w = HW - 0.02; yT = deck - PL
-    def chunk(x0, x1, Mx, tint=0.8):
+    def chunk(x0, x1, Mx, tint=0.8, torn=()):
         t.put(xf(cbx(x0, yc - 0.17, 0, x1, yT - 0.002, 0.14, 0.015), Mx), 'steel', tint)
         for x in (x0 + 0.12, x1 - 0.12):
             for y in (yc - 0.1, yc + 0.1): pr, Mb = bolt((x, y, 0), (0, 0, -1), 0.022); t.put(pr, 'bolt', 1.0, M=Mx @ Mb)
+        for x, sg in torn:   # where it tore: bright ragged steel, standing off the broken edge
+            for k in range(4):
+                y = yc - 0.14 + k * 0.085; L = 0.13 + 0.1 * r.u()
+                t.put(xf(p_box(0.012, 0.07, L, taper=0.15), Mx @ T(x, y, 0.07) @ RY(sg * (1.1 + 0.4 * r.u())) @ RX(r.u(-0.4, 0.4)) @ T(0, 0, L / 2 - 0.02)), 'bright', 0.85)
     chunk(-w, -0.75, T(-w, 0, z0) @ RY(-0.5) @ RZ(-0.12) @ T(w, 0, 0))                # the left third: folded back round its end
-    chunk(-0.75, 0.55, T(0, 0, z0 + 0.03) @ RX(-0.16))                                # the middle: pushed in and up
-    chunk(1.25, w, T(w, -0.02, z0) @ RY(0.22) @ RZ(0.1) @ T(-w, 0, 0), 0.75)          # a stub on the right: the rest went with the wagon
-    for x in (0.55, 1.25):   # where it tore: bright ragged steel
-        for k in range(4):
-            y = yc - 0.15 + k * 0.085
-            t.put(xf(p_box(0.012, 0.07, 0.13 + 0.1 * r.u(), taper=0.15), T(x + (0.03 if x < 1 else -0.03), y, z0 + 0.07) @ RY((1 if x < 1 else -1) * (1.2 + 0.5 * r.u())) @ RX(r.u(-0.4, 0.4))), 'bright', 0.85)
+    chunk(-0.75, 0.55, T(0, 0, z0 + 0.03) @ RX(-0.16) @ T(0, 0, 0.2), torn=((0.55, 1),))   # the middle: pushed in and up
+    chunk(1.25, w, T(w, -0.02, z0) @ RY(0.22) @ RZ(0.1) @ T(-w, 0, 0), 0.75, torn=((1.25, -1),))   # a stub on the right: the rest went with the wagon
     # the pocket: its top half gone, the bar snapped off short and bent down
     t.box(-0.2, yc - 0.11, z0 - 0.2, 0.2, yc - 0.02, z0 + 0.03, 'steel', 0.85, c=0.02)
     t.put(xf(p_box(0.19, 0.012, 0.16, taper=0.5), T(-0.11, yc + 0.02, z0 - 0.1) @ RZ(0.9) @ RX(0.2)), 'bright', 0.8); t.put(xf(p_box(0.16, 0.012, 0.14, taper=0.4), T(0.13, yc + 0.0, z0 - 0.08) @ RZ(-1.1)), 'bright', 0.8)
@@ -528,7 +528,7 @@ def van_bits():
     for sx in (-1, 1):
         for za in (rz0, z1 - P):
             b.box(sx * (HW - P), deck, za, sx * HW, yU, za + P, 'yel', 0.95, 'u', omit=('+y', '-y'))
-            b.box(sx * (HW - P - 0.03), deck, za - 0.03, sx * (HW + 0.0), deck + 0.02, za + P + 0.03, 'steel', 0.8)                        # the foot
+            b.box(sx * (HW - P - 0.03), deck, za - 0.03, sx * (HW - 0.002), deck + 0.02, za + P + 0.03, 'steel', 0.8, omit=('-y', '+x' if sx > 0 else '-x'))   # the foot
             b.box(sx * (HW - P - 0.004), deck + 0.02, za - 0.004, sx * (HW + 0.004), deck + 0.42, za + P + 0.004, 'wasp', 1.0, 'u', omit=('+y', '-y'))   # a hazard band low down
             zk = za + P if za == rz0 else za; dk = 1 if za == rz0 else -1                                                               # a knee brace up to the roof's side beam
             b.ext_x([(zk, yU - 0.42), (zk + dk * 0.42, yU), (zk + dk * 0.36, yU), (zk, yU - 0.34)], sx * (HW - 0.08) - 0.012, sx * (HW - 0.08) + 0.012, 'steel', 0.85)
@@ -576,11 +576,11 @@ def van_bits():
         for y in (deck + chh + 0.25, deck + chh + 0.75): b.box(x - 0.045, y - 0.03, za, x - 0.02, y + 0.03, zb, 'pl2', 0.85, 'e')
         r = Rnd(41)
         for k, kind in enumerate(('shovel', 'pick', 'bar', 'gauge', 'shovel')):
-            z = za + (zb - za) * (k + 0.5) / 5; xt = x - 0.075; y0 = deck + 0.02; ln = r.u(1.4, 1.6)                 # (they stand on the deck behind the bench, their heads under the roof)
+            z = za + (zb - za) * (k + 0.5) / 5; xt = x - 0.06; y0 = deck; ln = r.u(1.4, 1.6)                 # (they stand on the deck behind the bench, their heads under the roof)
             b.rod((xt, y0, z), (xt - 0.01, y0 + ln, z + r.u(-0.04, 0.04)), 0.017, 'handle' if kind != 'bar' else 'steel2', r.u(0.75, 1.0), 6)
             if kind == 'shovel': b.put(xf(bx(-0.01, 0, -0.1, 0.01, 0.26, 0.1), T(xt, y0 + ln - 0.02, z) @ RZ(0.03)), 'steel2', 0.8)
             elif kind == 'pick': b.put(pipe([(xt, y0 + ln, z - 0.24), (xt, y0 + ln + 0.05, z), (xt, y0 + ln, z + 0.24)], [0.012, 0.03, 0.012], 5), 'steel', 0.8)
-            elif kind == 'gauge': b.box(xt - 0.012, y0 + ln - 0.05, z - 0.12, xt + 0.012, y0 + ln, z + 0.12, 'yel2', 0.9)
+            elif kind == 'gauge': b.box(xt - 0.012, y0 + ln - 0.05, z - 0.12, xt + 0.012, y0 + ln + 0.006, z + 0.12, 'yel2', 0.9)
     # a ladder stowed along the left side, high, on hooks from the roof beam
     x = -HW + 0.08; za, zb = rz0 + 1.9, z1 - 0.3
     for y in (yU - 0.32, yU - 0.62): b.box(x - 0.015, y - 0.035, za, x + 0.015, y + 0.035, zb, 'pl2', 0.9, 'e', seg=1.3)
@@ -588,7 +588,7 @@ def van_bits():
     for z in (za + 0.3, zb - 0.3): b.pipe([(x, yU, z), (x, yU - 0.68, z), (x + 0.05, yU - 0.68, z), (x + 0.05, yU - 0.62, z)], 0.008, 'steel', 0.9, 4)
     # the hand brake by the front post, and a board with his rule on it
     bx_, bz = -HW + 0.28, z1 - 0.3
-    b.rod((bx_, deck, bz), (bx_, deck + 1.02, bz), 0.03, 'steel', 0.9, 8); b.box(bx_ - 0.07, deck, bz - 0.07, bx_ + 0.07, deck + 0.02, bz + 0.07, 'steel', 0.8)
+    b.rod((bx_, deck + 0.02, bz), (bx_, deck + 1.02, bz), 0.03, 'steel', 0.9, 8); b.box(bx_ - 0.07, deck, bz - 0.07, bx_ + 0.07, deck + 0.02, bz + 0.07, 'steel', 0.8, omit=('-y',))
     b.put(p_ring_loop([(bx_ + 0.2 * math.cos(a), deck + 1.02, bz + 0.2 * math.sin(a)) for a in [k * math.pi / 5 for k in range(10)]], 0.016, 5), 'red', 0.9)
     for a in (0, math.pi / 2): b.rod((bx_ - 0.2 * math.cos(a), deck + 1.02, bz - 0.2 * math.sin(a)), (bx_ + 0.2 * math.cos(a), deck + 1.02, bz + 0.2 * math.sin(a)), 0.011, 'red', 0.9, 4, cap=False)
     fx_ = HW - 0.2
@@ -600,16 +600,16 @@ def van_bits():
     b.box(1.26, yU + 0.004, rz0 - 0.008, 1.72, yU + 0.134, rz0, 'label', 1.0, 'e', only=('-z',))
     b.box(-0.24, yU + 0.01, rz0 - 0.008, 0.24, yU + 0.13, rz0, 'n11', 1.0, 'e', only=('-z',))
     # the flood on the roof's back edge (the game's lamp is here): one head lit, one long dead, the cable over the edge and down the post
-    fx, fz = 0.4, rz0 + 0.07; fy = roof + 0.4
-    b.rod((fx, roof, fz), (fx, fy + 0.02, fz), 0.022, 'steel', 0.9, 6); b.box(fx - 0.07, roof, fz - 0.07, fx + 0.07, roof + 0.012, fz + 0.07, 'steel', 0.8)
+    fx, fz = 0.4, rz0 + 0.13; fy = roof + 0.4
+    b.rod((fx, roof + 0.012, fz), (fx, fy - 0.02, fz), 0.022, 'steel', 0.9, 6, cap=False); b.box(fx - 0.07, roof, fz - 0.07, fx + 0.07, roof + 0.012, fz + 0.07, 'steel', 0.8, omit=('-y',))
     b.box(fx - 0.36, fy - 0.02, fz - 0.02, fx + 0.36, fy + 0.02, fz + 0.02, 'steel', 0.85)
     for k, dx in enumerate((-0.21, 0.21)):
-        Mx = T(fx + dx, fy, fz - 0.09) @ RX(0.22) @ RY(0.1 if k else -0.06)
+        Mx = T(fx + dx, fy, fz - 0.105) @ RX(0.22) @ RY(0.1 if k else -0.06)
         b.put(xf(cbx(-0.15, -0.11, -0.09, 0.15, 0.11, 0.07, 0.02), Mx), 'yel3', 0.9); b.put(xf(bx(-0.165, -0.125, -0.1, 0.165, 0.125, -0.085), Mx), 'steel', 0.85)
         if k == 0: lamp.add(xf(bx(-0.13, -0.09, -0.104, 0.13, 0.09, -0.1, only=('-z',)), Mx), M['work'], ('tile', 1.0))
         else: b.put(xf(bx(-0.13, -0.09, -0.104, 0.13, 0.09, -0.1, only=('-z',)), Mx), 'lens', 0.8, 'e')
     b.pipe([(fx, roof + 0.3, fz + 0.03), (fx + 0.1, roof + 0.03, fz + 0.06), (HW - 0.2, roof + 0.02, rz0 + 0.06), (HW - 0.07, roof + 0.02, rz0 + 0.02), (HW - 0.07, roof - 0.1, rz0 - 0.014), (HW - 0.07, deck + 0.6, rz0 - 0.014)], 0.012, 'rubber', 1.0, 4)
-    INFO['work_lamp'] = dict(pos=[fx - 0.21, fy, fz - 0.2], aim=[0, CY, -22], node='van_lamp', note='the lit head of the flood on the roof: put the fight\'s spot light here')
+    INFO['work_lamp'] = dict(pos=[fx - 0.21, fy, fz - 0.21], aim=[0, CY, -22], node='van_lamp', note='the lit head of the flood on the roof: put the fight\'s spot light here')
     # the coupling to the loco: the bar, chains, and the low tray the room has between them (0.5 up: you are off the train on it)
     cp = K('van_loco_coupling'); zl = LOCO.z0; yl = 0.76
     cp.put(p_tube([(0, yc, z1 + 0.06), (0, yc, z1 + 0.22), (0, yl, zl - 0.22), (0, yl, zl - 0.06)], 0.034, 4, squash=1.5, up=(0, 1, 0), cap0=True, cap1=True, phase=math.pi / 4), 'bright', 0.6)
@@ -665,12 +665,12 @@ def loco_bits():
     HZ0, HZ1 = CZ1, z1 - 0.38                                                               # the bonnet
     # ---- frames, beams, running boards
     for sx in (-1, 1):
-        b.box(sx * 0.96, 0.4, z0 + 0.12, sx * 1.0, FP - 0.05, z1 - 0.12, 'steel', 0.8, seg=1.2)                                           # outside frames
-        b.box(sx * 0.94, 0.4, z0 + 0.12, sx * 1.02, 0.44, z1 - 0.12, 'steel', 0.7)
-        b.box(sx * 1.0, FP - 0.13, z0 + 0.12, sx * (HW - 0.1), FP - 0.05, z1 - 0.12, 'steel', 0.75, seg=1.2)                             # the running board's bearers
+        b.box(sx * 0.96, 0.44, z0 + 0.12, sx * 1.0, FP - 0.05, z1 - 0.12, 'steel', 0.8, seg=1.2)                                          # outside frames
+        b.box(sx * 0.94, 0.4, z0 + 0.125, sx * 1.02, 0.44, z1 - 0.125, 'steel', 0.7)
+        b.box(sx * 1.035, FP - 0.13, z0 + 0.12, sx * (HW - 0.14), FP - 0.05, z1 - 0.12, 'steel', 0.75, seg=1.2, omit=('+y',))            # the running board's bearers
         b.box(sx * (HW - 0.14), FP - 0.17, z0, sx * (HW - 0.1), FP, z1, 'yel3', 0.95, 'u', seg=0.85, omit=('+y',))                       # its valance
-        for k in range(5): z = z0 + 0.5 + k * (c.L - 1.0) / 4; gusset(b, sx, 1.0, HW - 0.14, FP - 0.13, FP - 0.5, z)
-    top_tiles(b, -HW + 0.1, HW - 0.1, z0, z1, FP, 'chk', 0.62, 0.9, 0.05, 51)
+        for k in range(5): z = z0 + 0.5 + k * (c.L - 1.0) / 4; gusset(b, sx, 1.035, HW - 0.14, FP - 0.13, FP - 0.5, z)
+    top_tiles(b, -HW + 0.104, HW - 0.104, z0 + 0.004, z1 - 0.004, FP, 'chk', 0.62, 0.9, 0.05, 51)
     for za, dz in ((z0, 1), (z1, -1)):   # the buffer beams: wasp stripes, a pocket, sprung buffers
         zb = za + dz * 0.12
         b.box(-HW + 0.14, 0.5, za, HW - 0.14, FP - 0.05, zb, 'red', 0.9, omit=('-z' if dz > 0 else '+z',))
@@ -691,8 +691,8 @@ def loco_bits():
             b.rod((sx * GAUGE, ya, z), (sx * 1.12, ya, z), 0.05, 'steel', 0.9, 8, cap=False)
             b.box(sx * 1.0, ya - 0.14, z - 0.13, sx * 1.07, ya + 0.14, z + 0.13, 'steel', 0.75, c=0.02)                                   # the axlebox in its horns
             for dz_ in (-0.16, 0.16): b.box(sx * 1.0, ya - 0.24, z + dz_ - 0.025, sx * 1.03, ya + 0.3, z + dz_ + 0.025, 'steel', 0.85)
-            for pr in spring_pack(0.8, 5, 0.015, 0.07, 0.06): b.put(xf(pr, T(sx * 1.04, ya + 0.14 + 0.075, z)), 'steel', 0.8)
-            for dz_ in (-0.4, 0.4): b.box(sx * 1.02, ya + 0.25, z + dz_ - 0.025, sx * 1.06, FP - 0.13, z + dz_ + 0.025, 'steel', 0.8)
+            for pr in spring_pack(0.8, 4, 0.014, 0.07, 0.04): b.put(xf(pr, T(sx * 1.075, ya + 0.14 + 0.056, z)), 'steel', 0.8)
+            for dz_ in (-0.4, 0.4): b.box(sx * 1.05, ya + 0.21, z + dz_ - 0.025, sx * 1.1, FP - 0.126, z + dz_ + 0.025, 'steel', 0.8, omit=('+y',))
             Mx = T(sx * 1.1, ya, z) @ (SC(-1, 1, 1) if sx < 0 else Matrix.Identity(4))
             b.put(p_lathe_x([(0, 0.2), (0.035, 0.2), (0.035, 0.07)], 10, cap0=True, cap1=True), 'red', 0.8, M=Mx)                         # the fly crank
             py, pz = ya + 0.15 * math.sin(ph), z + 0.15 * math.cos(ph); pins.append((py, pz))
@@ -701,13 +701,13 @@ def loco_bits():
         b.box(sx * 1.15, ya0 - 0.045, za0 - 0.08, sx * 1.185, ya0 + 0.045, za1 + 0.08, 'red', 0.95, c=0.012)                              # the coupling rod
         for (py, pz) in pins: b.put(p_lathe_x([(0, 0.075), (0.045, 0.075)], 8), 'red', 0.85, M=T(sx * 1.145, py, pz) @ (SC(-1, 1, 1) if sx < 0 else Matrix.Identity(4)))
         # between the axles: an air tank outside the frame, the fuel tank's filler, steps under the cab
-        b.put(xf(p_lathe_x([(-0.62, 0.0), (-0.6, 0.13), (-0.52, 0.17), (0.52, 0.17), (0.6, 0.13), (0.62, 0.0)], 10, cap0=False, cap1=False), T(sx * 1.52, 0.66, (AX[0] + AX[1]) / 2 + 0.25) @ RY(math.pi / 2)), 'steel2', 0.8)
+        b.put(xf(p_lathe_x([(-0.62, 0.05), (-0.6, 0.13), (-0.52, 0.17), (0.52, 0.17), (0.6, 0.13), (0.62, 0.05)], 10, cap0=True, cap1=True), T(sx * 1.52, 0.66, (AX[0] + AX[1]) / 2 + 0.25) @ RY(math.pi / 2)), 'steel2', 0.8)
         for dz_ in (-0.35, 0.35): b.box(sx * 1.5 - 0.02, 0.66, (AX[0] + AX[1]) / 2 + 0.25 + dz_ - 0.03, sx * 1.5 + 0.02, FP - 0.12, (AX[0] + AX[1]) / 2 + 0.25 + dz_ + 0.03, 'steel', 0.8)
         for k, y in enumerate((0.42, 0.7)):
-            b.box(sx * (HW - 0.38), y, CZ0 + 0.55, sx * (HW - 0.1), y + 0.03, CZ0 + 1.05, 'chk', 0.8, 'e')
-        for z in (CZ0 + 0.55, CZ0 + 1.05): b.box(sx * (HW - 0.14), 0.42, z - 0.015, sx * (HW - 0.1), FP - 0.15, z + 0.015, 'steel', 0.85)
+            b.box(sx * (HW - 0.38), y, CZ0 + 0.55, sx * (HW - 0.104), y + 0.03, CZ0 + 1.05, 'chk', 0.8, 'e')
+        for z in (CZ0 + 0.55, CZ0 + 1.05): b.box(sx * (HW - 0.14), 0.4, z - 0.015, sx * (HW - 0.1), FP - 0.17, z + 0.015, 'steel', 0.85, omit=('+y',))
         # sand boxes ahead of the leading wheels, a pipe down to the rail
-        b.box(sx * 1.12, FP - 0.5, AX[1] + 0.5, sx * 1.42, FP - 0.13, AX[1] + 0.85, 'yel3', 0.85, 'e', c=0.02)
+        b.box(sx * 1.12, FP - 0.5, AX[1] + 0.52, sx * 1.42, FP - 0.145, AX[1] + 0.85, 'yel3', 0.85, 'e', c=0.02)
         b.pipe([(sx * 1.2, FP - 0.5, AX[1] + 0.6), (sx * 1.0, 0.5, AX[1] + 0.5), (sx * 0.8, 0.3, AX[1] + 0.46)], 0.016, 'steel', 0.9, 4)
     # ---- the bonnet: one casing with its top corners knocked off, doors with louvres, a radiator, two lamps (one works)
     ch = 0.2
@@ -778,7 +778,7 @@ def loco_bits():
         b.box(sx * BW, HEAD, CZ0, sx * (BW - WT), EAVE, CZ1, 'yel3', 0.85, 'e', seg=1.15, faces={('+x' if sx > 0 else '-x'): 'yel', ('-x' if sx > 0 else '+x'): 'cream'})
         xm = sx * (BW - WT / 2)
         b.box(xm - 0.012, SILL, (wa + wb) / 2 - 0.02, xm + 0.012, HEAD, (wa + wb) / 2 + 0.02, 'steel', 0.85)                             # the sliding sash's meeting bar
-        b.box(sx * (BW + 0.01), SILL - 0.03, wa - 0.03, sx * (BW - WT - 0.01), SILL, wb + 0.03, 'steel', 0.8)                             # the sill
+        b.box(sx * (BW + 0.01), SILL - 0.03, wa - 0.03, sx * (BW - WT - 0.01), SILL + 0.006, wb + 0.03, 'steel', 0.8)                     # the sill
         if sx > 0: pane(g, (xm, SILL, wa), (xm, HEAD, wb), 'x')
         else:      # this side: one sash slid back, the other boarded with a bit of crate
             pane(g, (xm + 0.012, SILL, wa), (xm + 0.012, HEAD, (wa + wb) / 2 + 0.25), 'x')
@@ -792,7 +792,7 @@ def loco_bits():
         xa, xb = sorted((sx * (DH + 0.12), sx * (BW - WT - 0.14)))
         wall_z(CZ0, 1, *sorted((sx * DH, sx * (DH + 0.12))), SILL, HEAD); wall_z(CZ0, 1, *sorted((sx * (BW - WT - 0.14), sx * (BW - WT))), SILL, HEAD)
         pane(g, (xa, SILL, CZ0 + WT / 2), (xb, HEAD, CZ0 + WT / 2), 'z')
-        b.box(xa - 0.03, SILL - 0.03, CZ0 - 0.012, xb + 0.03, SILL, CZ0 + WT + 0.01, 'steel', 0.8)
+        b.box(xa - 0.03, SILL - 0.03, CZ0 - 0.012, xb + 0.03, SILL + 0.006, CZ0 + WT + 0.01, 'steel', 0.8)
         b.box(xa, FP + 0.02, CZ0 - 0.012, xb, FP + 0.5, CZ0, 'wasp', 1.0, 'e', seg=0.7, omit=('+z',))       # stripes low on the back
         b.pipe([(sx * (DH + 0.07), FP + 0.25, CZ0), (sx * (DH + 0.07), FP + 0.25, CZ0 - 0.07), (sx * (DH + 0.07), FP + 1.5, CZ0 - 0.07), (sx * (DH + 0.07), FP + 1.5, CZ0)], 0.016, 'bright', 0.8, 5)   # grab rails
     wall_z(CZ0, 1, -BW + WT, BW - WT, HEAD, EAVE, 'yel')
@@ -826,7 +826,7 @@ def loco_bits():
     b.put(p_grid([[V3((x, arc(x), z)) for x in xs] for z in (CZ0 - ov, CZ1 + ov)]), 'cream', 0.8)                                         # its underside
     for z, dz in ((CZ0 - ov, -1), (CZ1 + ov, 1)):   # the roof's end edges
         pr2 = p_grid([[V3((x, arc(x), z)) for x in xs], [V3((x, arc(x) + 0.03, z)) for x in xs]], flip=dz < 0); b.put(pr2, 'steel', 0.85)
-    for sx in (-1, 1): b.box(sx * (BW + ov), EAVE - 0.0, CZ0 - ov, sx * (BW + ov - 0.012), EAVE + 0.03, CZ1 + ov, 'steel', 0.85)
+    for sx in (-1, 1): b.box(sx * (BW + ov), EAVE - 0.0, CZ0 - ov + 0.004, sx * (BW + ov - 0.012), EAVE + 0.03, CZ1 + ov - 0.004, 'steel', 0.85)
     for z in (CZ0, CZ1):   # the gables between the wall tops and the arc
         gb = [(-BW, EAVE)] + [(x, arc(x)) for x in xs[1:-1]] + [(BW, EAVE)]
         b.ext_z(gb, z - (0 if z == CZ0 else WT), z + (WT if z == CZ0 else 0), 'yel', 0.9)
@@ -835,9 +835,9 @@ def loco_bits():
         Mx = frame((0, 0, 1), (0, 1, 0), (0.6 + dx, arc(0.6) + 0.12, CZ1 - 0.2))
         b.put(xf(p_prism(8, 0.025, ln, 0.07, top=False, bottom=True), Mx), 'brass', 0.7); b.box(0.6 + dx - 0.02, arc(0.6) + 0.02, CZ1 - 0.16, 0.6 + dx + 0.02, arc(0.6) + 0.1, CZ1 - 0.1, 'steel', 0.8)
     # ---- inside: his seat, the desk with the brake handle, gauges, the flask, a kettle on a primus, a mug
-    top_tiles(b, -BW + WT, BW - WT, CZ0 + WT, CZ1 - WT, FP + 0.012, 'pl4', 0.75, 0.8, 0.012, 52)
+    top_tiles(b, -BW + WT + 0.002, BW - WT - 0.002, CZ0 + WT + 0.002, CZ1 - WT - 0.002, FP + 0.012, 'pl4', 0.75, 0.8, 0.012, 52)
     dz0 = CZ1 - WT - 0.5
-    b.box(-BW + WT, FP, dz0, BW - WT, FP + 0.95, CZ1 - WT, 'green', 0.8, omit=('+z', '-y'))                                              # the desk
+    b.box(-BW + WT + 0.004, FP + 0.012, dz0, BW - WT - 0.004, FP + 0.95, CZ1 - WT, 'green', 0.8, omit=('+z', '-y', '+y'))                 # the desk
     b.box(-BW + WT, FP + 0.95, dz0 - 0.03, BW - WT, FP + 0.98, CZ1 - WT, 'pl2', 0.8, 'e', seg=1.1)                                        # its top
     for k_, x in enumerate((-1.3, -0.72, -0.14)):   # its front: three doors and their catches
         b.box(x, FP + 0.12, dz0 - 0.012, x + 0.5, FP + 0.86, dz0, 'cabin', 0.95, 'e', omit=('+z',)); b.box(x + 0.4, FP + 0.5, dz0 - 0.03, x + 0.44, FP + 0.58, dz0 - 0.012, 'brass', 0.8)
@@ -848,7 +848,7 @@ def loco_bits():
         b.put(xf(cbx(-0.14, -0.14, -0.03, 0.14, 0.14, 0.03, 0.012), Mx), 'black', 1.0); b.put(xf(bx(-0.12, -0.12, -0.034, 0.12, 0.12, -0.03, only=('-z',)), Mx), 'gauge', 1.0, 'e')
     b.box(-0.68, FP + 0.98, CZ1 - WT - 0.2, 0.3, FP + 1.06, CZ1 - WT - 0.02, 'black', 0.9)
     sx_, sz_ = 0.95, dz0 - 0.55                                                                                                           # the seat: right side, behind the brake
-    b.rod((sx_, FP, sz_), (sx_, FP + 0.48, sz_), 0.045, 'steel', 0.9, 8); b.box(sx_ - 0.16, FP, sz_ - 0.16, sx_ + 0.16, FP + 0.03, sz_ + 0.16, 'steel', 0.8)
+    b.rod((sx_, FP + 0.04, sz_), (sx_, FP + 0.48, sz_), 0.045, 'steel', 0.9, 8, cap=False); b.box(sx_ - 0.16, FP + 0.012, sz_ - 0.16, sx_ + 0.16, FP + 0.04, sz_ + 0.16, 'steel', 0.8, omit=('-y',))
     b.box(sx_ - 0.23, FP + 0.48, sz_ - 0.22, sx_ + 0.23, FP + 0.58, sz_ + 0.22, 'seat', 1.0, c=0.03)
     b.put(xf(cbx(-0.22, 0, -0.035, 0.22, 0.46, 0.035, 0.03), T(sx_, FP + 0.56, sz_ - 0.2) @ RX(-0.18)), 'seat', 0.95)
     b.box(sx_ - 0.1, FP + 0.585, sz_ - 0.1, sx_ + 0.14, FP + 0.6, sz_ + 0.12, 'tartan', 0.9, 'e')                                         # a folded rug on it
@@ -875,7 +875,7 @@ def loco_bits():
     b.pipe([(kx + 0.375, FP + 1.045, kz - 0.05), (kx + 0.41, FP + 1.03, kz - 0.05), (kx + 0.375, FP + 1.0, kz - 0.05)], 0.007, 'enamel', 1.0, 4)
     # a fire extinguisher by the door, a coat on a hook, a lunch tin on the floor
     b.put(xf(p_cyl(0.07, 0.42, 8), T(-0.7, FP + 0.012, CZ0 + WT + 0.1)), 'red', 1.0); b.put(xf(p_cyl(0.03, 0.08, 6), T(-0.7, FP + 0.43, CZ0 + WT + 0.1)), 'brass', 0.8)
-    b.put(xf(p_grid([[V3((-0.2 + 0.2 * j, 0.0 - 0.33 * i, 0.03 + 0.03 * math.sin(j * 2.1 + i))) for j in range(3)] for i in range(4)], flip=False), T(-BW + WT + 0.04, HEAD - 0.05, CZ0 + 0.9) @ RY(math.pi / 2)), 'hivis', 0.9)
+    b.put(xf(p_grid([[V3((-0.2 + 0.2 * j, 0.0 - 0.33 * i, 0.03 + 0.03 * math.sin(j * 2.1 + i))) for j in range(3)] for i in range(4)], flip=False), T(-BW + WT - 0.022, HEAD - 0.05, CZ0 + 0.9) @ RY(math.pi / 2)), 'hivis', 0.9)
     b.box(-BW + WT, HEAD - 0.08, CZ0 + 0.86, -BW + WT + 0.05, HEAD - 0.04, CZ0 + 0.9, 'brass', 0.8)
     b.box(-1.4, FP + 0.012, dz0 - 0.4, -1.1, FP + 0.2, dz0 - 0.2, 'steel2', 0.85, c=0.02)
     cl = Kit('loco_cablamp', AT['tr'], M['work']); cy_ = HEAD + 0.2; cz_ = (CZ0 + CZ1) / 2 + 0.3                                              # a bulkhead lamp in the cab's roof, lit: you can see in
@@ -903,7 +903,7 @@ def lod_bits():
     for sx in (-1, 1):
         b.box(sx * (HW - 0.085), c.deck, c.z0, sx * (HW - 0.03), c.deck + 0.55, c.z1, 'pl1', 0.85, 'e', seg=3.0, omit=('-y',))
         b.box(sx * (HW - 0.095), yR - 0.09, c.z0, sx * (HW - 0.005), yR, c.z1, 'yel2', 1.0, 'q')
-    b.box(-HW, yR - 0.09, c.z0, HW, yR, c.z0 + 0.09, 'yel2', 1.0, 'q'); b.box(-HW + 0.1, c.deck, c.z0 + 0.02, HW - 0.1, c.deck + 0.19, c.z0 + 0.07, 'pl3', 0.85, 'e', omit=('-y',))
+    b.box(-HW + 0.095, yR - 0.09, c.z0, HW - 0.095, yR, c.z0 + 0.09, 'yel2', 1.0, 'q', omit=('+x', '-x')); b.box(-HW + 0.1, c.deck, c.z0 + 0.02, HW - 0.1, c.deck + 0.19, c.z0 + 0.07, 'pl3', 0.85, 'e', omit=('-y',))
     for x in (-HW + 0.05, -0.7, 0.7, HW - 0.05): b.box(x - 0.04, c.deck, c.z0 + 0.01, x + 0.04, yR - 0.09, c.z0 + 0.09, 'steel', 0.85, omit=('+y', '-y'))
     cover(b, 'wagon'); out['wagon'] = b
     c = FLAT; b = K('flat_lod')
@@ -913,6 +913,7 @@ def lod_bits():
     c = VAN; b = K('van_lod'); yU = c.deck + c.under; rise = (c.roof - c.deck) / c.stairs; run = (c.roofZ0 - c.z0) / c.stairs
     b.box(-HW, c.deck - 0.2, c.z0, HW, c.deck, c.z1, 'steel', 0.8, 'q', seg=3.5, faces={'+y': 'pl2'})
     b.box(-1.9, 0.52, c.z0 + 2.45, 1.9, c.deck - 0.2, c.z1 - 2.45, 'yel3', 0.8, 'e', omit=('+y',)); wheels(b, (c.z0 + 1.45, c.z1 - 1.45), 0.36)
+    b.box(-1.0, 0.6, c.z0 + 0.2, 1.0, c.deck - 0.2, c.z0 + 2.45, 'steel', 0.6, omit=('+y', '+z')); b.box(-1.0, 0.6, c.z1 - 2.45, 1.0, c.deck - 0.2, c.z1 - 0.2, 'steel', 0.6, omit=('+y', '-z'))
     b.box(-HW, yU, c.roofZ0, HW, c.roof, c.z1, 'yel', 0.9, 'e', seg=2.3, faces={'+y': 'roofc', '-y': 'pl3'})
     for sx in (-1, 1):
         for za in (c.roofZ0, c.z1 - 0.14): b.box(sx * (HW - 0.14), c.deck, za, sx * HW, yU, za + 0.14, 'yel', 0.95, 'e', omit=('+y', '-y'))
