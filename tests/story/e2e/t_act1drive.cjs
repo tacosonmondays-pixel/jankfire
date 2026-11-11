@@ -52,7 +52,7 @@ const ROUTE = [
   // bends coming up (cars turn wide at speed). each named waypoint is reported when the car gets near it
   const P = []; const name = []; let from = [-110, 4, 226.5];
   for (const [x, y, z, nm] of ROUTE) { const L = Math.hypot(x - from[0], z - from[2]), n = Math.max(1, Math.ceil(L / 3)); for (let i = 1; i <= n; i++) { P.push([from[0] + (x - from[0]) * i / n, 0, from[2] + (z - from[2]) * i / n]); name.push(i === n ? nm : null); } from = [x, y, z]; }
-  const rows = []; let k = 0, best = 0, bestT = Date.now(), t0 = Date.now(), stuckAt = null, segT = Date.now();
+  let dbg = 0; const rows = []; let k = 0, best = 0, bestT = Date.now(), t0 = Date.now(), stuckAt = null, segT = Date.now();
   const turnAhead = (i) => { let m = 0; for (let j = i; j < Math.min(P.length - 2, i + 6); j++) { const a = Math.atan2(P[j + 1][0] - P[j][0], P[j + 1][2] - P[j][2]), b = Math.atan2(P[j + 2][0] - P[j + 1][0], P[j + 2][2] - P[j + 1][2]); m = Math.max(m, Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b)))); } return m; };
   while (k < P.length && Date.now() - t0 < 600000) {
     const c = await ev(async () => { const { DV } = await import('/js/story/drive.js'); const c = DV.car; return c ? [c.x, c.y, c.z, c.h, Math.hypot(c.vx, c.vz)] : null; });
@@ -66,6 +66,7 @@ const ROUTE = [
     const cap = Math.abs(err) > 0.6 ? 6 : turnAhead(k) > 0.5 ? 10 : 24;
     await hold('KeyW', !wedged && c[4] < cap); await hold('KeyS', wedged || c[4] > cap + 6);
     await hold('KeyA', (wedged ? -err : err) > 0.06); await hold('KeyD', (wedged ? -err : err) < -0.06);
+    if (process.env.DEBUG && (dbg = (dbg || 0) + 1) % 5 === 0 && k >= Number(process.env.DEBUG)) console.log('  dbg k', k, 'car', c.map((v) => +v.toFixed(2)).join(','), 'tgt', tgt.map((v) => +v.toFixed(1)).join(','), 'err', err.toFixed(2), 'keys', [...held].join(''));
     await sleep(70);
   }
   for (const key of [...held]) await hold(key, false);
