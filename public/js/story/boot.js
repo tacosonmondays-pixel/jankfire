@@ -222,7 +222,7 @@ function rehearse() {
   slots.sort((a, b) => Math.hypot(a[0] - c0[0], a[2] - c0[2]) - Math.hypot(b[0] - c0[0], b[2] - c0[2])); // act I's districts sort first, so they land nearest the Lost & Found
   let i = 0;
   // (a real place in the city keeps its height: dropped from just above it, not from 30 m up onto a roof; and its own reach: a car, a roof, a doorway)
-  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], city && fixed[id] ? 1.5 : 30); REH.zones[id] = p; D.zones[id].r = city && PLACES[id] && PLACES[id].r ? PLACES[id].r : Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (!fixed[id] || id === 'bottom:lostfound' || city) REH.signs.push(sign(D.zones[id].name || id, p)); }
+  for (const id of ids) { const p = fixed[id] || slots[i++] || c0.slice(); p[1] = dropTo([p[0], p[1], p[2]], city && fixed[id] ? 1.5 : 30); REH.zones[id] = p; D.zones[id].r = city && PLACES[id] && PLACES[id].r ? PLACES[id].r : Math.min(D.zones[id].r || 2.5, city && fixed[id] ? 4 : 2.5); if (city ? fixed[id] : !fixed[id] || id === 'bottom:lostfound') REH.signs.push(sign(D.zones[id].name || id, p)); } // (the city: only real places get a sign; the rest of the script's zones wait in the yard unseen)
   ROSTER.clear();
   const at = {};
   for (const [id, n] of Object.entries(D.npcs)) {
