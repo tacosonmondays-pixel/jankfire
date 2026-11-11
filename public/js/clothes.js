@@ -902,7 +902,7 @@ function robeBody(F, lk, [S]) {
   // the stars: [x, y, size, turn], front then back
   for (const [x, y, r, a] of [[0.15, 1.35, 0.036, 0.3], [-0.165, 1.255, 0.028, 1.1], [0.145, 0.8, 0.042, 0.7], [-0.13, 0.69, 0.032, 0.2], [0.215, 1.03, 0.026, 1.5], [-0.2, 1.04, 0.022, 0.5]]) star(K, S.ff(x, y, 0.007), r, C.pencil, a);
   for (const [x, y, r, a] of [[0.01, 1.34, 0.064, 0.15], [-0.15, 1.02, 0.036, 0.9], [0.14, 0.82, 0.042, 0.4], [0.165, 1.2, 0.028, 1.2], [-0.09, 0.68, 0.032, 0.6], [-0.17, 1.42, 0.024, 0.2]]) star(K, S.bf(x, y, 0.007), r, C.pencil, a);
-  K.box(0.05, 0.016, 0.004, C.silver, S.bf(0.03, 1.375, 0.009).multiply(T(0, 0, 0, 0, 0, 0.5))); // (that one fell off once)
+  K.box(0.05, 0.016, 0.004, C.tape, S.bf(0.03, 1.375, 0.009).multiply(T(0, 0, 0, 0, 0, 0.5))); // (that one fell off once)
   return K.piece();
 }
 function robeSleeve(part) {

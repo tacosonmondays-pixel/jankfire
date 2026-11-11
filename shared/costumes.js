@@ -27,7 +27,7 @@ export const COSTUMES = {
   lifeguard: { name: 'Lifeguard', desc: 'Swim between the flags. There are no flags.',
     look: { top: 'lifetank', topColor: '#ff4f4f', bottom: 'shorts', bottomColor: '#ff4f4f', hair: ['short', 'ponytail', 'long'], head: 'strawhat', face: 'sunscreen', back: 'float' } },
   hotdog: { name: 'Hot Dog Guy', desc: 'Hands out flyers. Also bullets.',
-    look: { top: 'hotdog', topColor: ['#ff4f4f', '#8a5a2b'], bottom: 'shorts', hair: 'none', head: 'none', face: ['none', 'mustache'], back: 'none' } },
+    look: { top: 'hotdog', topColor: ['#ff4f4f', '#ff7a1a'], bottom: 'shorts', hair: 'none', head: 'none', face: ['none', 'mustache'], back: 'none' } },
   wizard: { name: 'Budget Wizard', desc: 'A bathrobe, a cardboard hat and total confidence.',
     look: { top: 'robe', topColor: ['#b07dff', '#2a4a8a', '#4fd8ff'], bottom: ['shorts', 'pants'], hair: ['long', 'none', 'short'], hairColor: ['#ffffff', '#f2e6c8'], head: 'wizhat', face: 'fakebeard', back: ['none', 'cape'] } },
   referee: { name: 'Referee', desc: 'Calls every foul. Commits most of them.',
