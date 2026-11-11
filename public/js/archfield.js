@@ -45,7 +45,7 @@ function material(name, x) { // one shared material per Blender material name
   const m = new THREE.MeshLambertMaterial({ map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') });
   if (x.alpha) { m.alphaTest = 0.5; m.side = THREE.DoubleSide; }
   if (decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
-  if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(0xffffff); }
+  if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(x.glowcol || 0xffffff); } // (glowcol: a lava orange, say; white = the texture's own light)
   if (x.glowmap) { m.emissiveMap = tex(x.glowmap); m.emissive = new THREE.Color(0xffd890); } // lit windows (facades)
   m.name = 'arch_' + name;
   m.userData.arch = true;
