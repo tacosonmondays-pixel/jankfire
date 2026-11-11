@@ -125,3 +125,15 @@ body.st-talk #crosshair, body.st-talk #hitmarker, body.st-talk #hotbar, body.st-
 @keyframes stSfx { from { transform: rotate(-30deg) scale(3); opacity: 0; } }
 /* the systems lane's story HUD (bar.js / main.js: quick bar, loot compare card, use hint) steps aside for scenes and talks */
 body.st-cine .st-lootcard, body.st-cine .st-hint, body.st-cine #storyBar, body.st-talk .st-lootcard, body.st-talk .st-hint { display: none !important; }
+/* ---- the world grade (story/grade.js): right over the 3D, under the HUD and everything above. not a stacking context
+   (absolute, no z-index) so each layer's blend reaches the canvas; opacity only, nothing on the canvas itself */
+#stGrade { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+#stGrade i { position: absolute; inset: 0; pointer-events: none; }
+#stGrade .gs { background: #808080; mix-blend-mode: saturation; opacity: var(--gs, 0); }
+#stGrade .gt { background: var(--gtc, #9aa6c4); mix-blend-mode: multiply; opacity: var(--gt, 0); }
+#stGrade .gv { background: radial-gradient(ellipse 72% 68% at 50% 48%, transparent 38%, rgba(4, 2, 10, 0.5) 70%, rgba(0, 0, 0, 0.94) 100%); opacity: var(--gv, 0); }
+#stGrade .gg { inset: -128px; background-repeat: repeat; background-size: 128px; opacity: var(--gg, 0); animation: stGrain 0.42s steps(1) infinite; }
+#stGrade.chunky .gg { inset: -256px; background-size: 256px; image-rendering: pixelated; }
+@keyframes stGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-41px, 23px); } 40% { transform: translate(17px, -59px); } 60% { transform: translate(-83px, -11px); } 80% { transform: translate(53px, 71px); } }
+body.st-cine #stGrade .gv { opacity: calc(var(--gv, 0) * 0.45); } /* (the cutscene bars bring their own vignette and darker grade: they don't stack up to black) */
+body.st-cine #stGrade .gt { opacity: calc(var(--gt, 0) * 0.5); }

@@ -24,6 +24,7 @@ import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
 import { loadSlot, saveSlot, clearSlot } from './save.js';
 import { takeCamera, shotOn } from './camctl.js';
+import { initGrade, gradeFrame } from './grade.js'; // the eerie world grade (story maps only)
 
 const $ = (id) => document.getElementById(id);
 // mission cards wait for a conversation or a scene to finish (they'd be hidden behind it)
@@ -45,6 +46,7 @@ function merge(packs) {
 export async function init() {
   const css = document.createElement('link'); css.rel = 'stylesheet'; css.href = '/story.css'; document.head.append(css);
   const layer = document.createElement('div'); layer.id = 'stLayer'; document.body.append(layer);
+  initGrade();
   layer.innerHTML = '<div id="stPrompt" class="hidden"></div>';
   const q = new URLSearchParams(location.search);
   ST.slot = Math.max(0, Math.min(2, Number(q.get('slot')) || 0));
@@ -317,6 +319,7 @@ let nearAct = null, nearThing = null, wasSaveable = 0;
 export function locked() { return talking() || (ST.scene && ST.scene.playing()) || codexOpen(); }
 
 export function frame(dt, now, cam) {
+  gradeFrame(now); // (before the ready check: the grade is on from the first frame in the world)
   if (!ST.ready) return;
   // capture mode (tools/scene.cjs): the story advances one fixed step per recorded frame, however slow the renderer is
   if (ST.capture) { dt = ST.capStep || 0; ST.capStep = 0; now = ST.capNow = (ST.capNow || now) + dt * 1000; }

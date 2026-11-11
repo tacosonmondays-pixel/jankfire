@@ -17,6 +17,7 @@ import { updateBeds, stopBeds } from './beds.js';
 import { districtWeights } from '/shared/city/plan.js';
 import { startGoo, stopGoo, updateGoo } from './gutgoo.js';
 import { startHeart, stopHeart, updateHeart, gutBeat } from './bigheart.js'; // the Big Heart, the Gut's one beat and its ground fog
+import { gradeActive, gradeEnv } from '../story/grade.js'; // story mode's eerie grade (darker, colder, closer fog)
 
 let S = null, hooks = null;
 const tmp = new THREE.Color();
@@ -49,6 +50,7 @@ export function updateCity(dt) {
   updateBeds(G.joined ? districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40) : [], dt); // the district music (fades out on the menu: the menu song is on)
   const e = S.env;
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
+  if (e && gradeActive()) gradeEnv(e, districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40), cityUniforms.uHaze.value);
   if (e && G.scene.fog) {
     G.scene.fog.color.copy(e.fog); G.scene.fog.near = e.near; G.scene.fog.far = e.far;
     if (e.pulse > 0.01) { // the gut's fog has a heartbeat: lub, dub, rest. on each beat it closes in and flushes red
