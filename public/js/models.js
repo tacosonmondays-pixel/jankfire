@@ -22,6 +22,7 @@ import { catEars, catTail, maidDress } from './catwear.js'; // Board Approved: c
 import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst rifle, lmg, marksman, lever-action, auto shotgun)
 import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { skinCopy } from './softskin.js';
+import { wearTop } from './clothes.js'; // the tops and bottoms
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1591,140 +1592,7 @@ function addAccessories(ch, look, c) {
   }
 }
 
-// ------------------------------------------------------------ runner jacket: an oversized hi-vis bomber. black yoke, sides,
-// cuffs and ribbed band, reflective sleeve tape, an off-centre zip left open at the collar. shapes are built once and shared
-const RUN_YELLOW = 0xffd20f, RUN_INK = 0x1c1c21, RUN_TAPE = 0xc6ccd4, RUN_TEE = 0x2b2b31, RUN_WHITE = 0xf4f4f4;
-const RUN_SQ = 2.6, RUN_ZIP = Math.PI * 0.955; // how square the body is; where the zip runs (a bit right of centre)
-// body rings, bottom to top: y, half width, half depth, how far the zip has opened (radians round the body)
-const RUN_RINGS = [
-  [1.085, 0.2, 0.138, 0], [1.115, 0.252, 0.172, 0], [1.25, 0.259, 0.176, 0], [1.38, 0.274, 0.186, 0], // tucked in, blousy, a seam, chest
-  [1.455, 0.272, 0.178, 0.02], [1.505, 0.26, 0.17, 0.06], [1.53, 0.2, 0.142, 0.1], // yoke + shoulders, zip pulled down to here
-  [1.54, 0.12, 0.108, 0.15], [1.652, 0.156, 0.142, 0.27], // stand-up collar, flared and open
-];
-function runPt(y, w, d, u) { // round a squashed superellipse: u = 0 at the back, PI/2 right, PI front
-  const s = Math.sin(u), c = Math.cos(u), e = 2 / RUN_SQ;
-  return [Math.sign(s) * Math.abs(s) ** e * w, y, Math.sign(c) * Math.abs(c) ** e * d];
-}
-// quads between rings of points (rings stacked upwards, points going round). keep(i, j) picks the quads
-function runSheet(rings, keep, inward = false) {
-  const pos = [], idx = [], n = rings[0].length;
-  for (let i = 0; i < rings.length - 1; i++) for (let j = 0; j < n; j++) {
-    if (!keep(i, j)) continue;
-    const k = pos.length / 3;
-    for (const p of [rings[i][j], rings[i][(j + 1) % n], rings[i + 1][(j + 1) % n], rings[i + 1][j]]) pos.push(p[0], p[1], p[2]);
-    if (inward) idx.push(k, k + 2, k + 1, k, k + 3, k + 2); else idx.push(k, k + 1, k + 2, k, k + 2, k + 3);
-  }
-  const g = new THREE.BufferGeometry();
-  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2));
-  g.setIndex(idx);
-  g.computeVertexNormals();
-  return g;
-}
-function runDone(g) { // centred on itself (outlines + gibs scale and spin about the middle); every jacket shares it
-  g.computeBoundingBox();
-  const c = g.boundingBox.getCenter(new THREE.Vector3());
-  g.translate(-c.x, -c.y, -c.z);
-  g.userData.shared = true; g.userData.at = c;
-  return g;
-}
-function runLathe(prof, segs = 6) { // [radius, distance down the arm] pairs -> a tube along -z
-  const g = new THREE.LatheGeometry(prof.map(([r, d]) => new THREE.Vector2(r, -d)).reverse(), segs);
-  return g.rotateX(Math.PI / 2);
-}
-function runRib(r0, r1, d0, d1, n, w = r0, dz = r0) { // ribbed knit: every other column sits in a bit
-  const ring = (d) => Array.from({ length: n }, (_, j) => { const u = (j / n) * Math.PI * 2, f = j % 2 ? r1 / r0 : 1; return [Math.sin(u) * w * f, d, Math.cos(u) * dz * f]; });
-  return runSheet([ring(d0), ring(d1)], () => true);
-}
-function runBox(w, h, d, m) { return new THREE.BoxGeometry(w, h, d).applyMatrix4(m); }
-let runGeo = null;
-function runnerGeo() {
-  if (runGeo) return runGeo;
-  const J = {};
-  // columns round the body (degrees, z = the two sides of the zip); the quad after each one belongs to a panel:
-  // b back, s side (black), f front, - the open zip. lower-case = the right hand side
-  const cols = [0, 30, 50, 70, 110, 130, 150, 'z', 'z', 210, 230, 250, 290, 310, 330], panel = 'bbbsfff-FFFSbbb';
-  const seam = (a, k) => (a === 30 || a === 130 || a === 230 || a === 330 ? k : 1); // stitched panel lines front + back
-  const ring = (y, w, d, g, k = 1) => cols.map((a, j) => runPt(y, w * seam(a, k), d * seam(a, k), a !== 'z' ? (a * Math.PI) / 180 : j === 7 ? RUN_ZIP - g : RUN_ZIP + g));
-  const R = RUN_RINGS.map((r, i) => ring(...r, i > 0 && i < 4 ? 0.982 : 1)), body = (k) => (i, j) => i < 4 && panel[j] === k, open = (i, j) => panel[j] !== '-';
-  J.frontR = runDone(runSheet(R, body('f'))); J.frontL = runDone(runSheet(R, body('F'))); J.back = runDone(runSheet(R, body('b')));
-  J.sideR = runDone(runSheet(R, body('s'))); J.sideL = runDone(runSheet(R, body('S')));
-  const lin = [[1.546, 0.108, 0.097, RUN_RINGS[7][3]], [1.645, 0.144, 0.13, RUN_RINGS[8][3]]].map((r) => ring(...r));
-  J.yoke = runDone(mergeGeometries([runSheet(R, (i, j) => i >= 4 && open(i, j)), runSheet([R[8], lin[1]], open)])); // + collar + its rim
-  J.lining = runDone(runSheet(lin, open, true));
-  J.band = runDone(runRib(1, 0.955, 0.995, 1.095, 28, 0.222, 0.152));
-  J.tee = runDone(new THREE.SphereGeometry(0.2, 6, 4).scale(1.2, 1.05, 0.82).translate(0, 1.34, 0)); // dark tee in the open collar
-  J.cap = new THREE.SphereGeometry(0.086, 8, 6); J.cap.userData.shared = true; J.cap.userData.at = new THREE.Vector3(); // puffy shoulders
-  // zip: tape up the front, pull where it stops. silver bits share it
-  const zipAt = (i, du = 0) => runPt(RUN_RINGS[i][0], RUN_RINGS[i][1] * 1.01, RUN_RINGS[i][2] * 1.01, RUN_ZIP + du);
-  const zt = [zipAt(3, -0.01), zipAt(3, 0.01)], zry = Math.atan2(zt[1][2] - zt[0][2], -(zt[1][0] - zt[0][0])), silver = [];
-  for (let i = 1; i < 4; i++) {
-    const a = zipAt(i), b = zipAt(i + 1), mid = new THREE.Vector3((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2);
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1], b[2] - a[2]);
-    const m = new THREE.Matrix4().makeRotationY(zry).multiply(new THREE.Matrix4().makeRotationX(Math.atan2(b[2] - a[2], b[1] - a[1])));
-    silver.push(runBox(0.014, len + 0.004, 0.008, m.setPosition(mid)));
-  }
-  { const p = zipAt(4); silver.push(runBox(0.022, 0.042, 0.01, new THREE.Matrix4().makeRotationY(zry).setPosition(p[0], p[1] - 0.024, p[2] - 0.006))); }
-  // patches: a black diamond with a white plus on the left chest, a stripe tab on the right. each sits flat on its facet
-  const front = (y, x) => {
-    let i = 1; while (i < 4 && RUN_RINGS[i][0] < y) i++;
-    const t = (y - RUN_RINGS[i - 1][0]) / (RUN_RINGS[i][0] - RUN_RINGS[i - 1][0]), P = R[i].map((b, j) => R[i - 1][j].map((a, k) => a + (b[k] - a) * t));
-    let j = 4; while (j < 10 && !((P[j][0] - x) * (P[j + 1][0] - x) <= 0 && P[j][0] !== P[j + 1][0])) j++;
-    const a = P[j], b = P[j + 1], f = (x - a[0]) / (b[0] - a[0]);
-    const m = new THREE.Matrix4().makeRotationY(Math.atan2(b[2] - a[2], -(b[0] - a[0]))); // local -z out of the facet
-    return m.setPosition(x, y, a[2] + (b[2] - a[2]) * f);
-  };
-  const med = front(1.29, -0.13), tab = front(1.3, 0.13);
-  const on = (m, x, y, z, rz = 0) => m.clone().multiply(new THREE.Matrix4().makeRotationZ(rz).setPosition(x, y, z));
-  J.patch = runDone(mergeGeometries([runBox(0.078, 0.078, 0.012, on(med, 0, 0, -0.004, Math.PI / 4)), runBox(0.05, 0.08, 0.012, on(tab, 0, 0, -0.004))]));
-  J.plus = runDone(mergeGeometries([runBox(0.052, 0.016, 0.008, on(med, 0, 0, -0.012)), runBox(0.016, 0.052, 0.008, on(med, 0, 0, -0.012))]));
-  for (const dy of [-0.018, 0.018]) silver.push(runBox(0.05, 0.012, 0.006, on(tab, 0, dy, -0.011)));
-  J.zip = runDone(mergeGeometries(silver));
-  // a big unit number on the back (seven-segment blocks). left off when something covers the back
-  const seg = { a: [0, 1, 1], b: [1, 0.5, 0], c: [1, -0.5, 0], d: [0, -1, 1], e: [-1, -0.5, 0], f: [-1, 0.5, 0], g: [0, 0, 1] };
-  const digits = [];
-  for (const [dx, segs] of [[-0.048, 'bc'], [0.048, 'abged']]) for (const s of segs) {
-    const [sx, sy, flat] = seg[s];
-    digits.push(runBox(flat ? 0.066 : 0.02, flat ? 0.02 : 0.066, 0.014, new THREE.Matrix4().makeTranslation(dx + sx * 0.023, 1.3 + sy * 0.056, 0.185)));
-  }
-  J.num = runDone(mergeGeometries(digits));
-  // sleeves: puffy, gathered into ribbed cuffs, a reflective band round the upper arm and the forearm
-  const arm = (j0, ry0, el, j1, ry1) => {
-    const put = (g, j, ry) => g.rotateY(ry).translate(j[0], j[1], j[2]);
-    return {
-      sleeve: runDone(mergeGeometries([
-        put(runLathe([[0.03, -0.05], [0.064, -0.02], [0.077, 0.06], [0.075, 0.2], [0.066, 0.295]]), j0, ry0), // rounded into the shoulder
-        new THREE.SphereGeometry(0.066, 6, 4).translate(el[0], el[1], el[2]),
-        put(runLathe([[0.066, -0.01], [0.07, 0.07], [0.064, 0.14], [0.054, 0.152]]), j1, ry1),
-      ])),
-      tape: runDone(mergeGeometries([
-        put(runLathe([[0.074, 0.15], [0.083, 0.156], [0.083, 0.179], [0.074, 0.185]]), j0, ry0),
-        put(runLathe([[0.067, 0.06], [0.076, 0.066], [0.076, 0.084], [0.067, 0.09]]), j1, ry1),
-      ])),
-      cuff: runDone(put(runRib(0.057, 0.051, 0.142, 0.19, 12).rotateX(-Math.PI / 2), j1, ry1)),
-    };
-  };
-  J.armR = arm([0, 0, 0], 0, [-0.015, -0.005, -0.295], [-0.03, -0.01, -0.3], 0);
-  J.armL = arm([0.005, -0.02, -0.005], -0.45, [0.14, -0.04, -0.28], [0.153, -0.04, -0.307], -0.9);
-  return (runGeo = J);
-}
-const runMats = new Map();
-function runMat(color) { // both faces: the jacket is thin sheets, and its bits shouldn't vanish when they flip over as gibs
-  if (!runMats.has(color)) runMats.set(color, jankify(new THREE.MeshLambertMaterial({ color, flatShading: true, side: THREE.DoubleSide })));
-  return runMats.get(color);
-}
-// col: the top colour (yellow unless you picked one; in a team game the team colour, like every other top)
-function runnerJacket(body, arm, armL, lk, col, jank) {
-  const J = runnerGeo(), C = runMat(col), K = runMat(RUN_INK);
-  const at = (p, g, mat) => { const m = new THREE.Mesh(g, mat); m.position.copy(g.userData.at); p.add(m); return m; };
-  at(body, J.tee, M(RUN_TEE));
-  for (const g of [J.frontL, J.frontR, J.back, J.lining]) at(body, g, C);
-  for (const g of [J.sideL, J.sideR, J.yoke, J.band]) at(body, g, K);
-  at(body, J.patch, M(RUN_INK)); at(body, J.plus, M(RUN_WHITE)); at(body, J.zip, M(RUN_TAPE));
-  if (!lk.back || lk.back === 'none') at(body, J.num, M(RUN_INK));
-  for (const sx of [-1, 1]) at(body, J.cap, M(RUN_INK)).position.set(0.25 * sx, 1.45 + (sx > 0 ? jank.shoulder : 0), 0);
-  for (const [p, s] of [[arm, J.armR], [armL, J.armL]]) { at(p, s.sleeve, C); at(p, s.tape, M(RUN_TAPE)); at(p, s.cuff, K); }
-}
+const RUN_YELLOW = 0xffd20f; // the Runner Jacket's hi-vis yellow (the jacket itself: clothes.js)
 
 // the joke body (shared/looks.js): a build reshapes the torso in three bands, the sliders grow the head and the butt.
 // done after the outfit is on, by where each piece sits, so every top / bottom / dress gets it without knowing about it.
@@ -1783,6 +1651,7 @@ export function buildCharacter(color, look) {
     const TOP = lk.topColor ? new THREE.Color(lk.topColor).getHex() : c;
     const BOT = lk.bottomColor ? new THREE.Color(lk.bottomColor).getHex() : c;
     const top = lk.top || 'tank', bottom = lk.bottom || 'shorts';
+    const WP = { body, head, arm, armL, legL, legR, kneeL, kneeR }; // what the clothes hang on (clothes.js)
     const legs = bottom === 'pants' || bottom === 'overalls'; // full-length legs (overalls are denim unless you pick a colour)
     const LEG = bottom === 'overalls' ? overallsColor(lk, c) : BOT;
     const sleeves = top === 'tee' ? 'short' : top === 'hoodie' || top === 'jacket' || top === 'suit' ? 'long' : null;
@@ -1823,7 +1692,7 @@ export function buildCharacter(color, look) {
       for (const sx of [-1, 1]) body.add(bx(0.07, 0.5, 0.26, TOP, sx * 0.215, 1.3, 0));
       if (top === 'suit') body.add(bx(0.04, 0.26, 0.02, 0xc02030, 0, 1.36, -0.165)); // tie
     }
-    if (top === 'runner') runnerJacket(body, arm, armL, lk, lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW, jank); // teamed: team colour
+    if (top === 'runner') wearTop(WP, lk, lk.topColor ? TOP : lk.teamed ? c : RUN_YELLOW); // teamed: team colour
     if (top === 'maid') maidDress({ body, arm, armL, kneeL, kneeR, head }, lk, MAID, legs);
     body.add(limb(0.045, 0.05, 0.12, SK, 1.57));
     head.position.set(0, 1.62, 0);
