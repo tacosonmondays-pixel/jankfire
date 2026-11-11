@@ -5,7 +5,7 @@
 // Landmarks: the Lost & Found (the Machine), the market, Lumps' Gym, the Down Escalator.
 import { SLICE, terraceOf } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook, cubeKit, stairKit, KIT } from './kit.js';
+import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook, cubeKit, stairKit, KIT, KIT_SIZE } from './kit.js';
 import { playBottom, BANISTER } from './playground.js';
 import { shops, shopRects } from './shops.js';
 
@@ -277,13 +277,16 @@ export function bottom(B, d) {
       // rails (graffiti panels on them) and poles with neon that flickers
       for (const [x, sx] of [[LS.x0 - 0.3, -1], [LS.x1, 1]]) {
         for (let i = 0; i < n; i += 2) B.add(x, ya + i * h, zl - (i + 2) * run, x + 0.3, ya + (i + 2) * h + 1.05, zl - i * run, 'metal', { tint: 0x8890a0 }); // the rail climbs with the steps
-        if (KIT.on) for (let i = 0; i < n; i += 2) B.prop('longrail', x + 0.15, ya + (i + 2) * h + 1.05, zl - i * run, 0, 1, [5, 6, 7][k % 3]); // a stone coping and a pipe handrail on each block
+        if (KIT.on) for (let i = 0; i < n; i += 2) B.prop(2 * h < (KIT_SIZE.rail[0] + KIT_SIZE.rail[1]) / 2 ? 'longrail_b' : 'longrail', x + 0.15, ya + (i + 2) * h + 1.05, zl - i * run, 0, 1, [5, 6, 7][k % 3]); // a stone coping and a pipe handrail on each block (_b: the handrail for the top flight's shallow blocks)
         for (let gz = zt + 2; gz < zl - 2; gz += 4 + sr() * 4) if (sr() < 0.55) B.add(sx < 0 ? x - 0.02 : x + 0.3, ya + Math.max(0, zl - gz) / run * h + 0.4, gz, sx < 0 ? x : x + 0.32, ya + Math.max(0, zl - gz) / run * h + 1.0, gz + 1.5 + sr() * 2, 'paint', { nc: true, tint: pick(sr, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a]) });
         const pz = zl - 4 - sr() * 8;
         const py = ya + (zl - pz) / run * h;
         B.add(x + 0.05, py, pz, x + 0.25, py + 6.5, pz + 0.2, 'rust', { hide: true }); // (still bumped; the lamp post model is its look)
-        if (KIT.on) B.prop('longpole', x + 0.15, py, pz + 0.1, sx < 0 ? 0 : Math.PI, 1, 0); // its arm and sign frame reach out over the neon
-        B.add(x + (sx < 0 ? -1.6 : 0.3), py + 5.2, pz - 0.05, x + (sx < 0 ? 0 : 1.9), py + 5.9, pz + 0.25, pick(sr, ['neon', 'cyanglow', 'greenglow']), { nc: true }); // (py: the sign sits in the post's frame)
+        // the pole stands in the rail's thickness, so the lamp post is the one made to sit on the rail block's top
+        // (longpole_b), and the neon box sits in its sign frame
+        const ry = ya + (2 * Math.floor((zl - pz - 0.1) / run / 2) + 2) * h + 1.05;
+        if (KIT.on) B.prop('longpole_b', x + 0.15, ry, pz + 0.1, sx < 0 ? 0 : Math.PI, 1, 0); // its arm and sign frame reach out over the neon
+        B.add(x + (sx < 0 ? -1.6 : 0.3), ry + KIT_SIZE.poleB[1], pz - 0.05, x + (sx < 0 ? 0 : 1.9), ry + KIT_SIZE.poleB[2], pz + 0.25, pick(sr, ['neon', 'cyanglow', 'greenglow']), { nc: true });
         B.light(x + sx * 0.8, py + 5, pz, pick(sr, [0xff4fd8, 0x4fd8ff, 0x7dff4f]), 9, 0.8);
       }
       // the landing at the top of each flight: lost property people put down and never picked up
