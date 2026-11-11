@@ -16,7 +16,7 @@
 // And each side picks a stance per round (attack: rush / default / slow; defense: forward / default / deep / stack).
 // Mixed into Room by installSdSkill, after the econ + tactical installers (it wraps their bot methods). S&D only.
 import { WEAPONS, BOT_DIFF } from '../shared/weapons.js';
-import { PH } from '../shared/physics.js';
+import { PH, raycast } from '../shared/physics.js';
 import { patternOf } from '../shared/tactical.js';
 import { navLocate } from '../shared/nav.js';
 
@@ -178,8 +178,8 @@ export function installSdSkill(Room) {
       if (wl > 0.5 && b.onGround && n > (sk.preT || 0) && n > (sk.preChk || 0) && !(def && T && n - T.live < 9000)) { // (defenders running to their spots at the start: nobody can be there yet)
         sk.preChk = n + 120;
         const g = this.map.graph, ux = out.wx / wl, uz = out.wz / wl;
-        const i0 = navLocate(g, b.pos), i1 = navLocate(g, [b.pos[0] + ux * 2.4, b.pos[1], b.pos[2] + uz * 2.4]);
-        if (i0 >= 0 && i1 >= 0 && e.n[i0] === 0 && e.n[i1] > 0 && e.look[i1] >= 0) {
+        const i0 = navLocate(g, b.pos), i1 = navLocate(g, [b.pos[0] + ux * 4, b.pos[1], b.pos[2] + uz * 4]); // 4 m ahead: at a run it takes about 2 m to stop, and the stop should be behind the corner
+        if (i0 >= 0 && i1 >= 0 && e.n[i0] === 0 && e.n[i1] > 0 && e.look[i1] >= 0 && this.sdCorner(b, e.spots[e.look[i1]])) {
           sk.preT = n + 6000;
           if (Math.random() < sk.pre) { sk.prePeek = { t0: n, until: n + 450 + lerp(sk.peek, Math.random()) * 450, look: e.spots[e.look[i1]], dir: [ux, uz] }; if (LOG) console.log(`[sdpeek] ${b.name} (${sk.name}, ${def ? 'def' : 'att'}) checks a corner`); }
         }
@@ -216,6 +216,12 @@ export function installSdSkill(Room) {
       out.wx = (-ez / el) * s; out.wz = (ex / el) * s; out.jump = false;
     }
     return out;
+  };
+  // is this bot behind a corner from that spot? something head-high within a few steps is what hides it (open ground
+  // that's merely too far away to be watched is not a corner, and shuffling about on it looks daft)
+  P.sdCorner = function (b, spot) {
+    const e = [b.pos[0], b.pos[1] + PH.eye, b.pos[2]], d = [spot[0] - e[0], spot[1] + 1.5 - e[1], spot[2] - e[2]], l = Math.hypot(...d);
+    return l > 6 && !!raycast(e, d.map((v) => v / l), 6, this.boxes);
   };
   // somewhere within a few steps where a wall stands between this bot and t
   P.sdCover = function (b, t) {
