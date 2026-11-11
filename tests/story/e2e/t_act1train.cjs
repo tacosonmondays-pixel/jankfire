@@ -10,7 +10,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
-  const pg = await b.newPage({ viewport: { width: 1280, height: 720 } });
+  const pg = await b.newPage({ viewport: { width: 960, height: 540 } });
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n')[1]));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
@@ -42,14 +42,16 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   for (let i = 0; i < 10; i++) { s = await st(); if (s.step !== 'hold') break; await dev({ dmg: 900, part: 'eye' }); await sleep(800); }
   s = await until((x) => x.scene, 15000); await sleep(4000); await shot('t4_jack_moment'); await log('jack');
   // software GL draws a few frames a second: the scene engine's capture mode (tools/scene.cjs) moves it on 0.25 s a frame
-  const ff = (on) => ev((on) => { const ST = window.JF_STORY; clearInterval(window.__ff); ST.capture = on; if (on) window.__ff = setInterval(() => { ST.capStep = 0.25; }, 10); }, on);
+  const ff = (on) => ev((on) => { const ST = window.JF_STORY; clearInterval(window.__ff); ST.capture = on; if (on) window.__ff = setInterval(() => { ST.capStep = 0.5; }, 5); }, on);
   await ff(true);
-  s = await until((x) => x.talk && x.opts.length === 1, 120000, 1000); await shot('t5_fire_prompt'); await log('fire prompt');
-  await pg.mouse.down(); await sleep(80); await pg.mouse.up(); await sleep(700); await shot('t6_fired'); // your own trigger
-  s = await until((x) => x.talk && x.opts.length === 1 && /TAKE/.test(x.opts[0]), 60000, 1000); await shot('t7_take_prompt');
-  await pg.keyboard.press('KeyF'); await sleep(1500); await shot('t8_taken'); await log('taken');
+  s = await until((x) => x.talk && x.opts.length === 1, 600000, 1000); await shot('t5_fire_prompt'); await log('fire prompt');
   await ff(false);
-  s = await until((x) => x.step === 'break', 60000, 1000); await log('break');
+  await pg.mouse.down(); await sleep(80); await pg.mouse.up(); await sleep(700); await shot('t6_fired'); // your own trigger
+  await ff(true);
+  s = await until((x) => x.talk && x.opts.length === 1 && /TAKE/.test(x.opts[0]), 300000, 1000); await ff(false); await sleep(500); await shot('t7_take_prompt');
+  for (let i = 0; i < 4; i++) { await pg.keyboard.press('KeyF'); await sleep(1200); const x = await st(); if (x.flags.includes('jack_marrow_taken')) break; } // your own use key
+  await ff(true); await sleep(1500); await shot('t8_taken'); await log('taken');
+  s = await until((x) => x.step === 'break', 300000, 1000); await ff(false); await log('break');
   await skipIntro(pg); await sleep(2500); await dev({ calm: true });
   for (let i = 0; i < 30; i++) { s = await st(); if (s.step !== 'break') break; if (s.live) await dev({ dmg: 900, i: i % 8 }); if (i === 4) await shot('t9_phase2'); await sleep(900); if (s.scene || s.talk) await skipIntro(pg); }
   await sleep(3000); await shot('t10_finish'); await log('beaten');
