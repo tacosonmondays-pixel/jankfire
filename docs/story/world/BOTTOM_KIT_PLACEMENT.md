@@ -104,7 +104,7 @@ glared beside the walls. What is left:
 | every new id | each id is its own set of draw calls (one per material, full and far): the new ids add 21 on the street view (690 -> 711) for the same triangles. `cube_corner_b` repeats `cube_corner`'s 5 + 3 materials, the lips are 2 - 3 + 2 - 3 each | one atlas material per piece plus the paint slot, as asked before: it matters more now there are more ids. `cube_window_c` is down to 304 triangles and 1 far material, but still 7 materials up close |
 | `longpole` | no longer placed: every pole on the Long Stairs stands in a rail block, so all 18 are `longpole_b` | keep it for a pole on open ground, or drop it |
 | `cube_eave` | no longer placed (the 6 m piece carries the rags) | drop it, or keep it for a short wall elsewhere |
-| paint `9a7aff` / `ff9a4d` | (seen on the test page, daylight) the ribs on a purple container are a bluer, deeper purple than the flat wall they replace, because the wall is the tint over a pale corrugated texture and the rib is the tint over 0xc8c8c8 with rust specks. It only shows where bare wall is left beside ribs (under 0.25 m at a wall's ends, and the strip round a window) | not a model fault |
+| paint `9a7aff` / `ff9a4d` | (seen on the test page and in the game at night) the ribs on a purple container are a bluer, deeper purple than the flat wall they replace, because the wall is the tint over a pale corrugated texture and the rib is the tint over 0xc8c8c8 with rust specks. It only shows where bare wall is left beside ribs (under 0.25 m at a wall's ends, and the strip round a window) | not a model fault |
 
 Still true from the first list, and not the Art lane's: the old `shutter` prop hung 0.2 m above its window straddles
 the roof slab and reads as a second window stacked on a kit frame (world lane: drop the high position).
@@ -143,7 +143,9 @@ after = the first kit: `bottomkit_street`, `_container`, `_container_walls`, `_s
 
 ## Not done, not tested
 - The second-pass pairs are from the city test page, not the game: one Too HD frame in the game took 5 - 10 s on the
-  shared machine.
+  shared machine. Two spots were then looked at in the game, story mode, Too HD (`bottomkit2_ingame.jpg`: the two
+  containers by the Long Stairs, and the teal container from the lane): the teal ribs sit with their wall under the
+  night light; the purple ribs read bluer and brighter than the flat wall did (the Art list).
 - Only Too HD was run. Potato, Crusty and Mid were not (every new piece has a far copy and a `FAR` / `DETAIL` entry).
 - Stills only, no clip; nobody walked up to each piece.
 - The reach rule (which walls are dressed) is unchanged from the first kit; the switched-off walls were not tried with
