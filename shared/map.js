@@ -2993,7 +2993,7 @@ function desertSD() {
 
 // ------------------------------------------------------------ the island kit (Islands, Islands S&D)
 // the sea is a foot deep over the sand round each island (the shelf), then it isn't: past it you sink (killY)
-const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25, DROWN: -2.3 }; // (DROWN: feet this low = your head's under, and that's that. it used to be 16 m down, through the sea bed)
+const ISL = { SH: -0.55, SB: -0.6, RF: -0.65, WY: -0.25, DROWN: -30 }; // (DROWN: the kill line, far under the waves. the sea doesn't kill you any more, you float in it (seaSwim). what gets you is swimming off the map: map.bounds, 30 m out past the last island)
 void 0; // the shelves' sand, the sandbars' (a hair lower: where one runs into a shelf, the shelf wins), the reef's (lower again), the sea's surface
 // a flight of solid steps along x (alongX) or z, from a0 (its foot, at ya) to a1 (its head, yb), c0..c1 across.
 // rail: +1 / -1 a rail up the c1 / c0 side. returns { bot, top }: points just off each end, for the walk graph (the
@@ -3444,7 +3444,7 @@ function islands() {
   for (const p of spawns) if (KB.f(p[0], p[2]) != null) p[1] = B.boxes.terrain.at(p[0], p[2]) + 0.1; // (the two up the mountain: onto its new slopes)
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
-    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
+    spawns, teamSpawns: { att, def }, edgeGuard: true, sea: true, seaY: ISL.WY, seaSwim: true, bounds: [-127, -115, 127, 115], pits: [lavaPit(T)], // (sea: falls are 'into the sea' in the kill feed)
     peekGraph() { return graph; }, dropGraph() { graph = null; }, get graph() { return graph || (graph = buildNav(B.boxes, { x0: -100, z0: -90, n: 196, cell: 1, levels: [ISL.SB, 3, MD, 6, QD, 9, 13.5, 18], band: 0.6, stairs: st })); },
   };
   return map;
@@ -3537,7 +3537,7 @@ function islandsSD() {
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [6, 0.1, 2.5], [-48, 0.1, -16], [48, 0.1, -16], [-48, 0.1, -62], [48, 0.1, -56]];
   let graph = null;
   const map = { name: 'Islands', size: 'large', boxes: B.boxes, deco: D.boxes, killY: ISL.DROWN, floorY: -1.5, sky: SKY_SUNSET, fogNear: 110, fogFar: 380,
-    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true, seaY: ISL.WY, pits: [lavaPit(T)],
+    spawns, teamSpawns: { att, def }, edgeGuard: true, ceiling: 9.5, sea: true, seaY: ISL.WY, seaSwim: true, bounds: [-97, -117, 105, 85], pits: [lavaPit(T)],
     nav: {
       B: [
         [[0, 46], [-4, 22], [-4, 5], [-17, 3], [-19, -5], [-19, -13], [-22, -13], [-36, -13], [-40, -20], [-40, -30], [-40, -38], [-40, -44], [-42, -54]], // mid, the tiki bar's islet, the sandbar

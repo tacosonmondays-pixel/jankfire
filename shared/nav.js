@@ -94,8 +94,8 @@ export function buildNav(boxes, o) {
           if (cx > b.min[0] && cx < b.max[0] && cz > b.min[2] && cz < b.max[2]) floor[i * n + j] = 1;
         }
       }
-      let yl = y, yh = y; // (on a slope a thing half sunk in the uphill side still sticks out on the downhill side: go by the ground at its corners too)
-      if (TR && lv === 0 && !b.ter) for (const cx of [b.min[0], b.max[0]]) for (const cz of [b.min[2], b.max[2]]) { const v = y0 + gy(cx, cz); if (v < yl) yl = v; if (v > yh) yh = v; }
+      let yl = y, yh = y; // (on a slope a boulder sunk in the uphill side, its top under the ground at its middle, still sticks out on the downhill side: go by the ground at its corners too. small things only: a bridge or a dock's corners hang over the sea bed)
+      if (TR && lv === 0 && !b.ter && b.max[0] - b.min[0] <= 5 && b.max[2] - b.min[2] <= 5 && b.max[1] < y - 0.06) for (const cx of [b.min[0], b.max[0]]) for (const cz of [b.min[2], b.max[2]]) { const v = y0 + gy(cx, cz); if (v < yl) yl = v; if (v > yh) yh = v; }
       if ((b.max[1] > y + (band ? band + 0.06 : 0.3) || b.max[1] > yl + (band ? band + 0.06 : 0.3) + 0.45) && b.min[1] < yh + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
     }
     // no floor = in the way too (that's how you end up on the level below). a hole cell with holes all round it is
