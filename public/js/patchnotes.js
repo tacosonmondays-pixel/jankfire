@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.8', date: '2026-11-11', title: 'SHINY', items: [
+    'SHADERS in settings: bloom (neon and lava actually glow), soft skin (light leaks through your mannequin like a real boy) and punchy colours. pick a level or mix your own. potato and crusty stay off unless you ask; mid and too hd get a bit by default.',
+    'if the shaders break on your machine they switch themselves off and say so. SHADERS BROKE. SHADERS OFF.',
+    'if the map ever goes pitch black the game repaints it by itself now. type /gfx in chat for a nerd readout to screenshot if your graphics look cursed.',
+  ] },
   { v: '7.7', date: '2026-11-11', title: 'DRESS CODE', items: [
     'COSTUMES. character > clothes has whole outfits now, one click each: corpo, rat king, mall cop, delivery guy and more. the bots have been wearing them for weeks. your turn.',
     'click a costume again for another take on it. the maid and night shift ones want their achievements first.',
