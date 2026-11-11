@@ -81,7 +81,7 @@ const HOST = {
       case 'take': bag.take(arg); break;
       case 'coupons': { const n = Number(arg) || 0; if (INV() && INV().coupons) INV().coupons(n); ST.S.st.vars.coupons = (ST.S.st.vars.coupons || 0) + n; toast(`<b>${n >= 0 ? '+' : ''}${n}</b> ☺ coupons`); break; }
       case 'toast': toast(arg); break;
-      case 'scene': if (ST.scene) ST.scene.playScene(arg); break;
+      case 'scene': if (ST.boss && ST.boss.train && ST.boss.train.holdScene && ST.boss.train.holdScene(arg)) break; if (ST.scene) ST.scene.playScene(arg); break; // (a train scene asked for off the train waits for the train: trainfight.js)
       case 'anim': { const [who, clip] = arg.split('/'); const ac = actors.get(who); if (ac) play(ac, clip); break; }
       // the script's host actions (docs/story/SCHEMA.md "Additions from the script"). the systems behind most of these
       // (bosses, loot, implants, late fees, the pager) belong to other lanes: until they land, a toast says what happened
