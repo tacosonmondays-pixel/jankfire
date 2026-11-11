@@ -4,6 +4,8 @@ The Gut's landmark. A giant heart that is about 1,700 human hearts grown into on
 It is what Regrowth made of the war dead: nobody built it. This page is about the model only: what is in the files,
 what placement and shader code can rely on, and how to rebuild it. Where it stands in the world, its collision, the
 shared beat and the ground fog are in `BIG_HEART_PLACEMENT.md`.
+What the heart *is* in the story (whose hearts, why nobody shoots it, whose is in the middle): `docs/story/script/CANON.md`,
+"The Big Heart: what it is", and `docs/story/cast/HAT_LORD.md`.
 
 | file | what |
 |---|---|

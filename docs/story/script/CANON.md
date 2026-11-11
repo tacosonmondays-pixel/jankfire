@@ -79,6 +79,62 @@ were always meant to be a workforce.
 - **Cruelty is never a reward gag** ([TONE.md](../TONE.md)). Two later boss endings (Doctor Upsell's shower of organs as
   loot; shooting Hask's tagged donor organs) are to be softened when Acts III and V get their tone pass.
 
+## The Lords (owner, 2026-11-11)
+> "Every lord oversees their district and an aspect of life. Lady oversees life and death as well as maybe fashion
+> me overtime oversees work and time in his mafia district??"
+
+**The rule: every lord oversees a district and an aspect of life.** A district shows its lord's aspect in everything:
+what the clocks do, what people owe, what kills you there. Two rows are the owner's word. The rest are **proposed**
+readings of who already rules each district in `shared/story/content/world.js`; none of them is in the data.
+
+| district | its lord | the aspect of life | status |
+|---|---|---|---|
+| The Gut | **the Lady** (working name MADAM CHAIR, `hat_lord`: [cast/HAT_LORD.md](../cast/HAT_LORD.md)), over the Stomach Bishop | **life and death**; fashion | **owner's word** (fashion is the owner's "maybe"; kept). Her name is proposed |
+| not settled | **Mr. Overtime** | **work and time** | **owner's word**; the district is the owner's "??" (below) |
+| Corp Hill | Marion Hask | order: the Schedule, permission, who is kept on file | proposed |
+| The Bottom | nobody. Auntie Spreadsheet keeps the books | home, and what is owed | proposed: the one district without a lord |
+| Pinstripe | Nonna Fazzoletto (the strings; the Don is the face) | family and risk: loyalty, luck, being covered | proposed |
+| The Checkout | Gail on the PA (Big Value) | appetite: food, wanting, the queue | proposed |
+| Number Works | Mr. Sevens (Remainder Industries) | money: price, worth, what a person adds up to | proposed |
+| Chrome Gristle | Doctor Upsell (the Meat Mechanics) | the body as parts: repair, pain | proposed. Beside the Lady's: he mends a body, she decides whether there is one |
+| Evergreen Acres | Linda Fairway (the HOA) | appearances: neighbours, manners, the lawn | proposed |
+| The Lates | the Perpetual Tuesday, unless it is Mr. Overtime's | habit: the same day | proposed |
+| The Margins | Penny Plot (Vacancy Holdings) | land and endings: space, ownership, nothing | proposed |
+| The Commute | Employee of the Month (the Unpaid) | ambition: the journey, getting on | proposed |
+| The sims | nobody: the Machine | memory | proposed |
+
+**Mr. Overtime's district (a thought, not settled: the owner wrote it with "??").** Today he has none. He is Head of
+Timekeeping, Employee #1, with an office in the Punctuality Museum on Corp Hill, and he is fought at the Gut Border
+Gate (Act I), the Spiral Freeway (II), the Lates waiting room (III) and the master clock (final).
+- **Proposed: The Lates.** It is the district his aspect made: one Tuesday, 09:00 to 17:30, for sixty-one years. He is
+  reloaded at 17:30 on that same day and has never left it either. His third fight is already there, and it is where
+  he starts asking why he didn't go home.
+- **The mafia flavour, grown from what he already does.** Timekeeping is a family. Late Fees are the protection: pay,
+  or be collected, five stars up. Collectors are made men: clocked in, a lanyard for a ring, on the books for life.
+  Time owed is the debt (244 quarters, and the interest goes back on). The Loopers pay him the same eight and a half
+  hours every day. "this isn't finished. it's rescheduled." Nobody raises their voice.
+- **Alternative: Pinstripe**, the mafia district already in the game. The Fazzoletti insure; Timekeeping collects. He
+  would be their rented muscle, or their lord. It moves far more canon.
+- **Lines that would change** (The Lates): `DISTRICTS.lates.ruler` (`loopers` today; they become the people who live
+  under him, Pauline still their voice), the Perpetual Tuesday's place, his home in CAST.md, a faction of his own (his
+  collectors are `faction: "corp"`). Unchanged: June, 17:30, the reloads, the four fights, clocking out.
+- **Two lords at one gate.** His first fight is on the Lady's border. See HAT_LORD.md section 3: his trucks have right
+  of way to her Feed Dock, and he is her default answer to "something that's in my way too".
+
+## The Big Heart: what it is (owner, 2026-11-11)
+The heart on the bone tower at `gut:big_heart` ([the model](../gut/GUT_HEART_MODEL.md)). Nobody built it.
+- **It is hearts.** The fallen's, and the living's: to live in the Gut you give it your heart, figuratively and
+  literally. It is cut out and kept there, and the district keeps your body running.
+- **So nobody truly dies in the Gut.** A body that is killed comes back. The only real death is that person's own
+  heart, destroyed in the Big Heart.
+- **It cannot be attacked.** Every heart lost from it is a person, and from the ground you cannot tell which.
+- **The Lady's heart is at the centre.** The rest grew round it. Destroy it and the whole heart fails, and everyone
+  in the district dies with her. That is why nobody moves against her.
+- *Proposed, not settled* (HAT_LORD.md): a brass cap on every resident's chest; the count (one thousand seven hundred
+  and twelve, and the ground); the feedstock is on the register too; a heart can be withdrawn and never has been.
+- **Reveal order.** Act I: it beats, and she offers to keep yours. Act II: what it is. Act III, with the Gristle page:
+  why the Gut can do it.
+
 ## Words and numbers to keep consistent
 - back pay: **244 quarters** (61 years).
 - the Machine's final backup: **17:30**. Cale's termination: **17:29:41**.
