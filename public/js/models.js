@@ -1536,7 +1536,7 @@ function limb(r0, r1, len, color, y) { // vertical cylinder hanging down from it
 // ------------------------------------------------------------ hair (sits on the egg head; head group local, top of the egg ~y 0.31)
 function addHair(H, lk) {
   const style = lk.hair || 'none';
-  if (style === 'none' || lk.head === 'helmet') return;
+  if (style === 'none' || lk.head === 'helmet' || lk.head === 'boxhelmet') return; // (in the box: it all goes in the box)
   const hc = new THREE.Color(lk.hairColor || '#1a1a1a').getHex();
   const cap = (cover = 0.45, sx = 0.9, sy = 1.18, r = 0.15) => {
     const m = new THREE.Mesh(new THREE.SphereGeometry(r, 10, 6, 0, Math.PI * 2, 0, Math.PI * cover), M(hc));
@@ -1594,7 +1594,7 @@ function addAccessories(ch, look, c) {
     case 'hardhat': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.16, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0xffd21a)); d.position.y = y0 - 0.05; H.add(d); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.21, 0.21, 0.015, 10), M(0xffd21a))).position.y = y0 - 0.05; break; }
     case 'icepack': at(H, bx(0.14, 0.04, 0.14, 0x6ad0ff, 0, y0 + 0.01, 0)); break;
     case 'catears': ch.ears = catEars(H, look); break;
-    case 'strawhat': case 'wizhat': wearAcc(H, look.head, c); break; // (clothes.js)
+    case 'strawhat': case 'wizhat': case 'boxhelmet': wearAcc(H, look.head, c); break; // (clothes.js)
   }
   H = ch.head;
   const fz = -0.15; // front of the face
@@ -1654,7 +1654,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
-    case 'float': case 'handbag': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
+    case 'float': case 'handbag': case 'bottlepack': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }

@@ -51,6 +51,7 @@ export const ACCESSORIES = {
     crown: { name: 'Champion Crown', ach: 'champion' }, helmet: { name: 'Racing Helmet', ach: 'speed' },
     hardhat: { name: 'Hard Hat', ach: 'waves' }, icepack: { name: 'Ice Pack', ach: 'knees' }, catears: { name: 'Cat Ears', ach: 'board' },
     strawhat: { name: 'Straw Hat' }, wizhat: { name: 'Cardboard Wizard Hat' },
+    boxhelmet: { name: 'Box Helmet' },
   },
   face: {
     none: { name: 'None' }, shades: { name: 'Sunglasses' }, mustache: { name: 'Mustache' }, clown: { name: 'Clown Nose' },
@@ -62,7 +63,7 @@ export const ACCESSORIES = {
   back: {
     none: { name: 'None' }, backpack: { name: 'Backpack' }, cape: { name: 'Cape' },
     wings: { name: 'Wings', ach: 'airborne', legacy: 'oldwings' }, voidcape: { name: 'Void Cape', ach: 'void' }, jetpack: { name: 'Jetpack', ach: 'nolife' }, cattail: { name: 'Cat Tail', ach: 'board' },
-    float: { name: 'Rescue Float' }, handbag: { name: 'Handbag' },
+    float: { name: 'Rescue Float' }, handbag: { name: 'Handbag' }, bottlepack: { name: 'Bottle Rocket Pack' },
   },
 };
 export const LOOK_SLOTS = ['head', 'face', 'back'];
@@ -74,7 +75,7 @@ export const HAIRS = { none: { name: 'Bald' }, short: { name: 'Short' }, bowl: {
 export const TOPS = { tank: { name: 'Sash' }, tee: { name: 'T-Shirt' }, hoodie: { name: 'Hoodie' }, jacket: { name: 'Jacket' }, suit: { name: 'Suit' }, runner: { name: 'Runner Jacket' }, none: { name: 'Nothing' }, maid: { name: 'Maid Dress', ach: 'board' },
   // the costume pieces (shared/costumes.js). own: what the colour picker calls a top's own colour (it isn't yours until you pick one)
   lifetank: { name: 'Lifeguard Tank' }, refshirt: { name: 'Referee Shirt', own: 'referee black' }, robe: { name: 'Bathrobe' }, hotdog: { name: 'Hot Dog Suit', own: 'sausage' },
-  cardigan: { name: 'Cardigan + Dress' } }; // tops can be achievement-locked too
+  cardigan: { name: 'Cardigan + Dress' }, spacesuit: { name: 'Space Suit', own: 'space white' } }; // tops can be achievement-locked too
 export const BOTTOMS = { shorts: { name: 'Shorts' }, pants: { name: 'Pants' }, skirt: { name: 'Skirt' }, overalls: { name: 'Overalls', ach: 'smarty' } }; // bottoms can be achievement-locked too (hasAcc)
 export const OUTFIT = { skin: SKIN_TONES, hairColor: HAIR_COLORS, topColor: CLOTH_COLORS, bottomColor: CLOTH_COLORS };
 // joke body (free, looks only: hitboxes never change). build: the mannequin's shape. bigHead / bigButt: 0 (normal) .. JOKE_MAX

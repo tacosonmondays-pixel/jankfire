@@ -21,7 +21,7 @@ const C = { base: 0, panel: 1, seam: 2, deep: 3, light: 4, hi: 5, btn: 6, pop: 7
 const FIXED = { white: 0xf2f1ec, cream: 0xe2dccb, ink: 0x1c1c21, coal: 0x34343c, silver: 0xc6ccd4, steel: 0x70767f, brass: 0xffc21a, red: 0xc02030, redd: 0x8a1422,
   pink: 0xff4fd8, rose: 0xff9ad5, tan: 0xd9a35b, tee: 0x2b2b31, frill: 0xffffff, pencil: 0xffd21a, eraser: 0xff7ab8, sole: 0x3a2412, shoe: 0x15121a,
   bun: 0xe3ad62, crust: 0xb9783a, bunm: 0xcf9550, crumb: 0xf4dfa8, tape: 0xe9d49a, straw: 0xe8c66a, strawd: 0xc39a45, card: 0xc8a070, cardd: 0xa07c4c, buoy: 0xf03a2a,
-  dress: 0x8db6e6, dressd: 0x6a8fc4, leaf: 0x3f9a4a };
+  dress: 0x8db6e6, dressd: 0x6a8fc4, leaf: 0x3f9a4a, duct: 0x9ea3a8, foil: 0xe2e6ec, bottle: 0x3fae5a, flame: 0xff7a1a };
 Object.keys(FIXED).forEach((k, i) => { C[k] = 10 + i; });
 const TONES = [1, 0.87, 0.72, 0.5, 1.13, 1.3, 0.42]; // base, panel, seam, deep shadow, light, highlight, buttons
 function tone(hex, k, flip) { // in screen (sRGB) values: k < 1 darker, > 1 paler
@@ -1023,6 +1023,44 @@ function cardiganSleeve(part) {
   return K.piece('z');
 }
 
+// ------------------------------------------------------------ Space Suit (Homemade Astronaut): a padded white top
+// quilted in fat rolls, sleeves made of silver dryer hose, a plastic ring round the neck for the helmet, a cardboard
+// control panel on the chest (bottle-cap buttons, a drawn-on dial), tinfoil patches and duct tape everywhere, a patch
+function spacesuitCut(F) { const e = 2.5; return [shell(F.rows([[1.0, 0.25, 0.192, 0.196], [1.05, 0.264, 0.202, 0.206], [1.2, 0.272, 0.206, 0.206], [1.33, 0.29, 0.21, 0.206], [1.43, 0.298, 0.2, 0.2], [1.495, 0.286, 0.18, 0.186], [1.53, 0.2, 0.14, 0.15], [1.552, 0.13, 0.115, 0.12]], 0.6, 0.018), e)]; }
+function spacesuitBody(F, lk, [S]) {
+  const K = new Kit(true), q = [1.06, 1.13, 1.2, 1.27, 1.34, 1.41, 1.48];
+  const lv = S.lv(1.04, 1.552, [...q, ...q.slice(0, -1).map((y) => y + 0.035)]);
+  loft(K, S, lv, cols(S), C.base, { wrap: true, lift: (i) => (q.some((y) => Math.abs(lv[i] - y) < 1e-6) ? -0.004 : lv[i] > 1.04 && lv[i] < 1.48 ? 0.007 : 0) }); // quilted in rolls
+  rib(K, S, 1.0, 1.04, C.panel, 36);
+  const ring = []; for (let i = 0; i <= 16; i++) { const a = (i / 16) * TAU, p = S.p(1.54, a, 0.016); ring.push([p[0] * 1.08, 1.56, p[2] * 1.08]); }
+  K.solid(() => K.tube(ring, 0.024, 6, C.steel)); // the neck ring
+  for (let i = 0; i < 6; i++) { const a = (i / 6) * TAU + 0.3; K.ball(0.008, C.silver, T(Math.sin(a) * 0.16, 1.585, -Math.cos(a) * 0.15), 4, 3); }
+  // the control panel: a cardboard box taped on, bottle-cap buttons, a dial drawn in marker
+  const cp = S.ff(0.0, 1.3, 0.024);
+  K.box(0.17, 0.1, 0.044, C.card, cp);
+  [[-0.05, 0.016, C.red], [-0.016, 0.016, C.pencil], [0.018, 0.016, C.leaf]].forEach(([x, y, c]) => K.cyl(0.012, 0.012, 0.012, 8, c, cp.clone().multiply(T(x, y, 0.026, PI / 2))));
+  K.cyl(0.02, 0.02, 0.003, 10, C.ink, cp.clone().multiply(T(0.056, -0.012, 0.023, PI / 2))); K.box(0.003, 0.016, 0.004, C.white, cp.clone().multiply(T(0.058, -0.006, 0.026, 0, 0, -0.6)));
+  for (const x of [-0.07, 0.07]) K.box(0.028, 0.13, 0.05, C.duct, cp.clone().multiply(T(x, 0, -0.002)));
+  // tinfoil patches, crumpled (a few tilted bits), tape over them
+  const foil = (m, w, h) => { K.box(w, h, 0.004, C.foil, m); for (let i = 0; i < 3; i++) K.box(w * 0.4, h * 0.4, 0.004, i % 2 ? C.silver : C.foil, m.clone().multiply(T((i - 1) * w * 0.25, (i % 2 - 0.5) * h * 0.3, 0.002, 0.3 * (i - 1), 0.2, i))); };
+  foil(S.ff(0.14, 1.12, 0.012), 0.08, 0.07); foil(S.bf(-0.12, 1.25, 0.012), 0.1, 0.08); foil(S.frame(1.45, 95 * DEG, 0.012), 0.07, 0.06);
+  // duct tape: an X across the back, a strip round the waist, a strip over each shoulder
+  for (const sx of [-1, 1]) bar(K, S, [sx * 0.17, 1.42], [-sx * 0.17, 1.12], 0.042, C.duct, 0.012, { back: true, step: 0.04 });
+  loft(K, S, S.lv(1.06, 1.1), cols(S), C.duct, { wrap: true, lift: 0.012 });
+  for (const sx of [-1, 1]) { bar(K, S, [sx * 0.2, 1.42], [sx * 0.21, 1.5], 0.04, C.duct, 0.01, { step: 0.03 }); bar(K, S, [sx * 0.21, 1.5], [sx * 0.2, 1.42], 0.04, C.duct, 0.01, { back: true, step: 0.03 }); }
+  // a home-made mission patch: a round one in the accent colour, a white rocket on it
+  const pt = S.ff(-0.15, 1.4, 0.012);
+  K.cyl(0.036, 0.036, 0.006, 10, C.pop, pt.clone().multiply(T(0, 0, 0, PI / 2))); K.box(0.012, 0.03, 0.004, C.white, pt.clone().multiply(T(0, 0, 0.005, 0, 0, 0.5))); K.box(0.026, 0.008, 0.004, C.white, pt.clone().multiply(T(0.004, -0.006, 0.005, 0, 0, 0.5)));
+  return K.piece();
+}
+// dryer hose: silver ribs, darker in the folds, duct-taped to the suit at the shoulder and at the wrist
+function spacesuitSleeve(part) {
+  const K = new Kit(true), n = 10, rings = (d0, d1, r0, r1) => { const p = []; for (let d = d0, i = 0; d < d1 - 0.004; d += 0.015, i++) p.push([mix(r0, r1, (d - d0) / (d1 - d0)) - (i % 2 ? 0.01 : 0), d, i % 2 ? C.steel : C.silver]); return p; };
+  if (part === 'up') K.lathe([[0.001, -0.094, C.base], [0.066, -0.076, C.base], [0.096, -0.03, C.base], [0.1, 0.0, C.duct], [0.098, 0.03, C.silver], ...rings(0.03, 0.3, 0.09, 0.084), [0.072, 0.318, C.silver], [0.05, 0.33]], n, C.silver);
+  else K.lathe([[0.07, -0.03, C.silver], ...rings(-0.02, 0.15, 0.084, 0.076), [0.074, 0.15, C.duct], [0.074, 0.19, C.duct], [0.064, 0.192, C.deep], [0.05, 0.18]], n, C.silver);
+  return K.piece('z');
+}
+
 // ------------------------------------------------------------ costume accessories (head / face / back)
 // built here like the clothes (one mesh each, + trim), put on by models.js addAccessories. head space: the egg's
 // middle is y 0.14, its top 0.31, the face is at z -0.13
@@ -1103,8 +1141,54 @@ function handbag(E) {
   return K.piece();
 }
 const ACCS = { strawhat: strawHat, wizhat: wizHat, fakebeard: fakeBeard, sunscreen, float: rescueFloat };
-Object.assign(ACCS, { readers, handbag }); // (batch 2)
-const FITTED = new Set(['float', 'handbag']); // cut for the body and the top they're on, like the clothes
+// a cardboard box over the head (head space): a window cut in the front, its edge marked in black, tinfoil and duct tape
+// on it, a coat-hanger antenna with a ping-pong ball, two bottle-cap lights. open underneath. the hair goes in it
+function boxHelmet() {
+  const K = new Kit(true), w = 0.172, y0 = -0.035, y1 = 0.335, zf = -0.172, zb = 0.18, wx = 0.1, wy0 = 0.1, wy1 = 0.245, th = 0.012;
+  const v = (x, y, z) => [x, y, z];
+  K.solid(() => {
+    K.quad(v(-w, y0, zb), v(w, y0, zb), v(w, y1, zb), v(-w, y1, zb), C.card, [0, 0, 1]); // back
+    for (const sx of [-1, 1]) K.quad(v(sx * w, y0, zf), v(sx * w, y0, zb), v(sx * w, y1, zb), v(sx * w, y1, zf), C.card, [sx, 0, 0]); // sides
+    K.quad(v(-w, y1, zf), v(w, y1, zf), v(w, y1, zb), v(-w, y1, zb), C.cardd, [0, 1, 0]); // top
+    // the front round its window
+    K.quad(v(-w, y0, zf), v(w, y0, zf), v(w, wy0, zf), v(-w, wy0, zf), C.card, [0, 0, -1]); K.quad(v(-w, wy1, zf), v(w, wy1, zf), v(w, y1, zf), v(-w, y1, zf), C.card, [0, 0, -1]);
+    for (const sx of [-1, 1]) K.quad(v(sx * wx, wy0, zf), v(sx * w, wy0, zf), v(sx * w, wy1, zf), v(sx * wx, wy1, zf), C.card, [0, 0, -1]);
+    for (const [a, b] of [[v(-wx, wy0, zf), v(wx, wy0, zf)], [v(wx, wy1, zf), v(-wx, wy1, zf)], [v(wx, wy0, zf), v(wx, wy1, zf)], [v(-wx, wy1, zf), v(-wx, wy0, zf)]]) K.quad(a, b, [b[0], b[1], b[2] + th], [a[0], a[1], a[2] + th], C.cardd, [-(a[0] + b[0]) / 2, -((a[1] + b[1]) / 2 - (wy0 + wy1) / 2), 0]); // the cut edge
+  });
+  for (const [a, b] of [[[-wx - 0.008, wy0 - 0.008], [wx + 0.008, wy0 - 0.008]], [[-wx - 0.008, wy1 + 0.008], [wx + 0.008, wy1 + 0.008]], [[-wx - 0.008, wy0 - 0.008], [-wx - 0.008, wy1 + 0.008]], [[wx + 0.008, wy0 - 0.008], [wx + 0.008, wy1 + 0.008]]]) K.box(Math.abs(b[0] - a[0]) + 0.006, Math.abs(b[1] - a[1]) + 0.006, 0.003, C.ink, T((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, zf - 0.002)); // marker round the window
+  K.box(0.07, 0.06, 0.004, C.foil, T(-0.11, 0.03, zf - 0.003, 0, 0, 0.2)).box(0.04, 0.035, 0.004, C.silver, T(-0.12, 0.04, zf - 0.005, 0.3, 0.2, 0.6)); // tinfoil on the front..
+  K.box(0.004, 0.12, 0.13, C.foil, T(w + 0.003, 0.2, 0.03, 0.1, 0, 0)).box(0.004, 0.06, 0.06, C.silver, T(w + 0.005, 0.18, 0.04, 0.4, 0, 0)); // ..and a side
+  K.box(0.05, 0.012, 0.37, C.duct, T(0.02, y1 + 0.004, 0.004)); // tape over the top, down the front and back edges
+  K.box(0.36, 0.05, 0.012, C.duct, T(0, y1 - 0.012, zf - 0.004)).box(0.36, 0.05, 0.012, C.duct, T(0, y1 - 0.012, zb + 0.004));
+  for (const sx of [-1, 1]) K.box(0.012, 0.37, 0.05, C.duct, T(sx * (w + 0.004), 0.15, zb - 0.012));
+  K.tube([[0.06, y1, 0.05], [0.07, y1 + 0.12, 0.06], [0.03, y1 + 0.17, 0.08], [0.05, y1 + 0.22, 0.06]], 0.005, 4, C.steel); K.ball(0.024, C.red, T(0.05, y1 + 0.235, 0.06), 6, 4); // the antenna
+  for (const [z, c] of [[-0.06, C.red], [0.05, C.leaf]]) K.cyl(0.018, 0.018, 0.01, 8, c, T(-w - 0.005, 0.22, z, 0, 0, PI / 2)); // bottle-cap lights
+  return K.piece();
+}
+// a jetpack made at home: two upside-down cola bottles taped to a bit of cardboard, cardboard fins, crepe-paper flames
+// out of the caps, duct-tape straps over the shoulders. E: the dressed torso
+function bottlePack(E) {
+  const K = new Kit(true), L = 0.012, zb = Math.max(E.b(0, 1.4)[2], E.b(0, 1.25)[2]) + 0.014;
+  K.solid(() => {
+    K.box(0.27, 0.34, 0.016, C.card, T(0, 1.37, zb + 0.008));
+    for (const sx of [-1, 1]) {
+      const B = new Kit().lathe([[0.001, 0], [0.036, 0.004], [0.046, 0.02], [0.048, 0.05], [0.048, 0.1, C.red], [0.048, 0.16], [0.048, 0.2], [0.043, 0.23], [0.024, 0.27], [0.015, 0.285], [0.015, 0.296, C.red], [0.018, 0.298, C.red], [0.018, 0.316], [0.001, 0.318]], 10, C.bottle, { y: true });
+      K.add(B, T(sx * 0.075, 1.53, zb + 0.066));
+    }
+  });
+  for (const sx of [-1, 1]) {
+    K.box(0.07, 0.012, 0.008, C.white, T(sx * 0.075, 1.4, zb + 0.066 + 0.048)); // the label's white stripe (on the side facing out)
+    for (const y of [1.45, 1.3]) K.box(0.11, 0.03, 0.1, C.duct, T(sx * 0.075, y, zb + 0.06)); // taped on
+    const fin = (z0) => { K.tri([sx * 0.123, 1.36, z0], [sx * 0.19, 1.2, z0], [sx * 0.123, 1.23, z0], C.card); K.tri([sx * 0.123, 1.36, z0], [sx * 0.123, 1.23, z0], [sx * 0.19, 1.2, z0], C.card); };
+    fin(zb + 0.066);
+    for (let i = 0; i < 4; i++) { const a = (i - 1.5) * 0.35, l = 0.09 + (i % 2) * 0.05; K.box(0.014, l, 0.004, [C.flame, C.pencil, C.red, C.flame][i], T(sx * 0.075 + Math.sin(a) * 0.012, 1.212 - l / 2, zb + 0.066 + Math.cos(a) * 0.012, 0, a, a * 0.4)); } // flames
+    bar(K, E, [sx * 0.1, 1.546], [sx * 0.125, 1.3], 0.036, C.duct, L, { step: 0.03 }); bar(K, E, [sx * 0.1, 1.546], [sx * 0.1, 1.45], 0.036, C.duct, L, { back: true, step: 0.03 }); // straps
+  }
+  return K.piece();
+}
+
+Object.assign(ACCS, { readers, handbag, boxhelmet: boxHelmet, bottlepack: bottlePack }); // (batch 2)
+const FITTED = new Set(['float', 'handbag', 'bottlepack']); // cut for the body and the top they're on, like the clothes
 // parent: the head (hats, faces) or the body (back). col: the player's colour. lk: the look (the float is fitted to the
 // body and the top it's on). false: not ours
 export function wearAcc(parent, id, col, lk = {}) {
@@ -1135,6 +1219,7 @@ const TOPS = {
   robe: { cut: robeCut, body: robeBody, sleeve: robeSleeve, cap: 1, key: legKey, dress: true, thick: 0.03 },
   hotdog: { cut: hotdogCut, body: hotdogBody, key: (lk, F) => `${F.hd}${legKey(lk, F)}`, dress: true, own: 0xd9482f, thick: 0.12 },
   cardigan: { cut: cardiganCut, body: cardiganBody, sleeve: cardiganSleeve, cap: 1, key: legKey, dress: true, thick: 0.03 },
+  spacesuit: { cut: spacesuitCut, body: spacesuitBody, sleeve: spacesuitSleeve, cap: 1, own: FIXED.white, thick: 0.05 },
 };
 const topOf = (top) => (typeof top === 'string' && Object.hasOwn(TOPS, top) ? TOPS[top] : null);
 // a top's own colour when you haven't picked one (null: your colour), and how far it stands off the back (models.js
