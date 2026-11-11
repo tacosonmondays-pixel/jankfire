@@ -100,6 +100,9 @@ await t('a fresh save drives m04 CLOCKING IN through the fight step to done (the
   for (const m of ['m01_return_to_sender', 'm02_soup_run', 'm03_somethings_digesting']) st.st.quests[m] = { done: true, step: '', t: 0 };
   assert.ok(st.quests.start('m04_clocking_in'), 'm04 starts');
   const step = () => (st.quests.objectives().find((o) => o.quest === 'm04_clocking_in') || {}).step;
+  assert.equal(step(), 'sunset__at', 'c4 waits for you at the Sunset Wall');
+  st.emit({ type: 'reach', zone: 'bottom:sunset_spot' }); st.tick(0.1);
+  assert.equal(step(), 'sunset');
   st.run(['flag:seen_c4']); st.tick(0.1);
   assert.equal(step(), 'fight');
   st.emit({ type: 'killBoss', boss: 'overtime_1' }); st.tick(0.1); // (what bossfight.js sends on the referee's kill above)
