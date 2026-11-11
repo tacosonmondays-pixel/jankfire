@@ -1582,7 +1582,8 @@ function addAccessories(ch, look, c) {
   const at = (parent, m) => { parent.add(m); return m; };
   const y0 = 0.3; // top of the egg head (head group local)
   if (look.top === 'hotdog' && look.head && look.head !== 'none') { H = new THREE.Group(); H.position.y = 0.115; ch.head.add(H); } // in the Hot Dog Suit the hat sits on the end of the sausage
-  switch (look.head) {
+  const hood = look.top === 'hotdog' ? { helmet: 1, boxhelmet: 1, bigglasses: 1, fakebeard: 1 } : {}; // too big for the face hole: left off under the hot dog
+  switch (hood[look.head] ? 'none' : look.head) {
     case 'cap': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(c)); d.position.y = y0 - 0.06; H.add(d); at(H, bx(0.22, 0.02, 0.14, c, 0, y0 - 0.06, -0.15)); break; }
     case 'beanie': { const d = new THREE.Mesh(new THREE.SphereGeometry(0.155, 8, 4, 0, Math.PI * 2, 0, Math.PI / 2), M(0x2a4a8a)); d.position.y = y0 - 0.07; d.scale.y = 1.3; H.add(d); at(H, ball(0.045, 0xffffff, 0, y0 + 0.13, 0)); break; }
     case 'cowboy': { const b = cylZ(0.26, 0.02, 0x8a5a2b, 0, y0 - 0.04, 0, 10); b.rotation.x = 0; b.geometry.rotateX(Math.PI / 2); H.add(b); at(H, new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.13, 0.14, 8), M(0x8a5a2b))).position.y = y0 + 0.04; break; }
@@ -1598,7 +1599,7 @@ function addAccessories(ch, look, c) {
   }
   H = ch.head;
   const fz = -0.15; // front of the face
-  switch (look.face) {
+  switch (hood[look.face] ? 'none' : look.face) {
     case 'shades': at(H, bx(0.22, 0.05, 0.02, 0x111111, 0, 0.17, fz, true)); at(H, bx(0.26, 0.015, 0.015, 0x111111, 0, 0.19, fz)); break;
     case 'mustache': at(H, bx(0.12, 0.025, 0.02, 0x4a2a10, 0, 0.09, fz + 0.01)); break;
     case 'clown': at(H, ball(0.035, 0xff2020, 0, 0.12, fz - 0.01, true)); break;
