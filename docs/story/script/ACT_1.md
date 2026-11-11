@@ -274,6 +274,8 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 4. drive the soup to the gut border (don't spill it)
 5. survive the unpaid
 6. deliver the soup to the gristle & sons trade post
+7. let the choir count the soup · if !flag:soup_spilled
+8. explain the pot to the choir · if flag:soup_spilled
 
 #### Scene: `p2_sauce_run` (panels, 14 s)
 - `  0` [panel 1] **BIG SAUCE SHARON:** soup. for medicine. gristle and sons at the gut border. same as every week. (SLOSH) _Sharon holds up a huge red pot._
@@ -387,6 +389,32 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - _Lumps is looking past her, deeper into the Gut, at the pink streets._
   - **LUMPS:** ...it's sunday tomorrow.
   - _does: give:medicine_crate_
+
+#### Talk: `trade_post_empty` (with SISTER AGENDA)
+- **[start]**
+  - _The trade post on the Gut border. The robed Choir clerk takes the lid off the pot and looks in. She tips it. Nothing comes out. She tips it further._
+  - _sung* the soup, the soup, the tomato... *not sung* ...this is a pot._
+  - **SISTER AGENDA:** i can count soup. i can't count a pot. there's no column for a pot.
+  - ➤ _"it was soup."_ → was
+  - ➤ _"there were interns."_ → interns
+  - ➤ _"*say nothing*"_ → silent
+- **[was]**
+  - **SISTER AGENDA:** everything was something. i can't count was.
+  - _She writes it down anyway, very neatly: one (1) pot. empty._
+  - → take
+- **[interns]**
+  - **SISTER AGENDA:** there are always interns. it's a growth sector.
+  - _She writes it down: one (1) pot. interns._
+  - → take
+- **[silent]**
+  - _She waits. You keep not saying it. She writes something down that takes longer than 'empty'._
+  - → take
+- **[take]**
+  - _One box of medicine slides across the counter. She looks at it, then takes half of what's inside back out._
+  - **SISTER AGENDA:** policy's per litre. i don't write the policy. i write it down.
+  - _Lumps looks at the box for a long time. Forty people's medicine, minus whatever half is._
+  - **LUMPS:** ...sharon's going to know which one.
+  - _does: flag:medicine_short, coupons:-100_
 
 #### Choice: Employee of the Month robs you and offers an internship.
 - **ask about the internship**: You keep the Unpaid lanyard. Low-rank raiders sometimes wave you through on The Commute. EOTM remembers you as 'our newest intern' in his world-boss fight.

@@ -7,7 +7,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | file | what | size |
 |---|---|---|
 | [CAST.md](CAST.md) | the cast bible: 56 characters | 20024 words |
-| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 6 missions | 12402 words |
+| [ACT_1.md](ACT_1.md) | Act 1: "Please Take Your Item": 6 missions | 12654 words |
 | [ACT_2.md](ACT_2.md) | Act 2: "Hostile Takeovers": 12 missions | 14161 words |
 | [ACT_3.md](ACT_3.md) | Act 3: "Off the Clock": 8 missions | 9607 words |
 | [ACT_4.md](ACT_4.md) | Act 4: "Quarterly Review": 5 missions | 5887 words |
@@ -21,7 +21,7 @@ Start with [CANON.md](CANON.md): the timeline, why Change is free, the six pages
 | [../GRUDGES.md](../GRUDGES.md) · [../GRUDGE_LEDGER.md](../GRUDGE_LEDGER.md) | the Grudge Ledger: enemies who remember you, 33 adaptations | 5606 words |
 | [COLLECTIBLES.md](COLLECTIBLES.md) | 69 collectibles in 6 sets | 3189 words |
 
-**Total: about 134k words, 33 main missions, 39 scenes.**
+**Total: about 135k words, 33 main missions, 39 scenes.**
 
 ## Main story at a glance
 

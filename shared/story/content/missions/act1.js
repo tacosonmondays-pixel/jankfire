@@ -153,9 +153,11 @@ export const MISSIONS_ACT1 = {
       { id: "brief", text: "get the soup from sharon", goal: { type: "talk", who: "sharon", talk: "pot" }, marker: "bottom:soup_kitchen", scene: "p2_sauce_run" },
       { id: "car", text: "steal a car", goal: { type: "enterCar" } },
       { id: "pot", text: "load the soup pot", goal: { type: "pickup", item: "soup_pot" }, marker: "bottom:soup_kitchen" },
-      { id: "drive", text: "drive the soup to the gut border (don't spill it)", goal: { type: "reach", zone: "commute:ring_road" }, talk: "car_ride", fail: { type: "flag", flag: "soup_spilled" } },
+      { id: "drive", text: "drive the soup to the gut border (don't spill it)", goal: { type: "reach", zone: "commute:ring_road" }, talk: "car_ride", notes: "the slosh meter (public/js/story/encounters.js): a full spill sets soup_spilled; the run goes on with a pot of nothing (count_empty below)" },
       { id: "ambush", text: "survive the unpaid", goal: { type: "survive", secs: 90 }, talk: "eotm_robbery" },
-      { id: "deliver", text: "deliver the soup to the gristle & sons trade post", goal: { type: "deliver", item: "soup_pot", zone: "gut:border" }, marker: "gut:border", talk: "trade_post" },
+      { id: "deliver", text: "deliver the soup to the gristle & sons trade post", goal: { type: "deliver", item: "soup_pot", zone: "gut:border" }, marker: "gut:border" },
+      { id: "count", text: "let the choir count the soup", goal: { type: "talk", who: "sister_agenda", talk: "trade_post" }, marker: "gut:border", if: "!flag:soup_spilled" },
+      { id: "count_empty", text: "explain the pot to the choir", goal: { type: "talk", who: "sister_agenda", talk: "trade_post_empty" }, marker: "gut:border", if: "flag:soup_spilled" },
     ],
     talks: {
       pot: {
@@ -194,6 +196,16 @@ export const MISSIONS_ACT1 = {
           for: { say: ["*sung* for the mouths, for the mouths... *not sung* sorry. i'm not allowed to say. it's a supply chain thing."], next: "take" },
           short: { say: ["it's... one box is for a 'growth adjustment'. it's empty. i'm sorry. it's policy. i don't write the policy. i write it down."], do: ["flag:medicine_short"], next: "take" },
           take: { say: ["*A crate of medicine slides across the counter.*", "same time next week. the tomato. the bishop likes the tomato.", "*Somewhere behind the counter, a long way in, a truck is reversing. It beeps. She sings a little louder until it stops.*", "*Lumps is looking past her, deeper into the Gut, at the pink streets.*", ["lumps", "...it's sunday tomorrow."]], do: ["give:medicine_crate"] },
+        },
+      },
+      trade_post_empty: {
+        with: "sister_agenda", cam: "overShoulder",
+        nodes: {
+          start: { say: ["*The trade post on the Gut border. The robed Choir clerk takes the lid off the pot and looks in. She tips it. Nothing comes out. She tips it further.*", "*sung* the soup, the soup, the tomato... *not sung* ...this is a pot.", "i can count soup. i can't count a pot. there's no column for a pot."], opts: [["it was soup.", "was"], ["there were interns.", "interns"], ["*say nothing*", "silent"]] },
+          was: { say: ["everything was something. i can't count was.", "*She writes it down anyway, very neatly: one (1) pot. empty.*"], next: "take" },
+          interns: { say: ["there are always interns. it's a growth sector.", "*She writes it down: one (1) pot. interns.*"], next: "take" },
+          silent: { say: ["*She waits. You keep not saying it. She writes something down that takes longer than 'empty'.*"], next: "take" },
+          take: { say: ["*One box of medicine slides across the counter. She looks at it, then takes half of what's inside back out.*", "policy's per litre. i don't write the policy. i write it down.", "*Lumps looks at the box for a long time. Forty people's medicine, minus whatever half is.*", ["lumps", "...sharon's going to know which one."]], do: ["flag:medicine_short", "coupons:-100"] },
         },
       },
     },

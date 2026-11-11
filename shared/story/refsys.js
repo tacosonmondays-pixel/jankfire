@@ -96,6 +96,7 @@ async function mapFor(zone) {
     const m = buildTrainMap({ builder: M.builder });
     M.unstick(m.boxes, m.spawns); M.MAPS.story_train = m;
   }
+  if (zone === 'story_slice' && !M.MAPS.story_slice) { const { buildSliceMap } = await import('./slicemap.js'); M.MAPS.story_slice = buildSliceMap(); } // the city slice: all its chunks' boxes (slicemap.js)
   return M.MAPS[zone] ? zone : null;
 }
 

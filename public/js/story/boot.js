@@ -57,6 +57,7 @@ export async function init() {
   window.JF_STORY = ST; // (tests drive it from here)
   try { const sc = await import('./scene.js'); ST.scene = sc; sc.initScenes(ST); } catch (e) { console.warn('story scenes not loaded', e); }
   try { const bf = await import('./bossfight.js'); ST.boss = bf.makeBoss(ST, { where, playScene: (id, o) => ST.scene && ST.scene.playScene(id, o) }); } catch (e) { console.warn('boss hooks not loaded', e); } // (phases, cutscenes, the boss's poses)
+  try { const en = await import('./encounters.js'); ST.enc = en.makeEncounters(ST, { where }); } catch (e) { console.warn('encounters not loaded', e); } // (Act I's set pieces: the soup run, the ambush, the dogs, the collectors)
 }
 
 // ---------------------------------------------------------------- the host: what the engine asks the world to do
@@ -104,7 +105,7 @@ const HOST = {
     const S = ST.S;
     switch (e.type) {
       case 'questStart': card(e.kind === 'main' ? 'start' : 'side', e.title); { const d = S.defs.quests[e.quest]; if (d && d.scenes && d.scenes.start && ST.scene) ST.scene.playScene(d.scenes.start); } break;
-      case 'questDone': setTimeout(autostart, 0); card('done', e.title, '', e.grade || 'MEETS EXPECTATIONS', 3.2); { const d = S.defs.quests[e.quest]; if (d && d.scenes && d.scenes.end && ST.scene) setTimeout(() => ST.scene.playScene(d.scenes.end), 600); } save(); break;
+      case 'questDone': setTimeout(autostart, 0); card('done', e.title, '', (ST.enc && ST.enc.grade(e.quest)) || e.grade || 'MEETS EXPECTATIONS', 3.2); { const d = S.defs.quests[e.quest]; if (d && d.scenes && d.scenes.end && ST.scene) setTimeout(() => ST.scene.playScene(d.scenes.end), 600); } save(); break;
       case 'questFail': card('fail', e.title); break;
       case 'stepFail': card('fail', (e.why || 'nope').toUpperCase(), 'back to the last checkpoint', '', 2); break;
       case 'stepDone': sfx.click && sfx.click(); save(); break;
@@ -241,7 +242,7 @@ function roster(e) {
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
-    else if (a && d > 44 && !a.inScene && !a.boss && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him)
+    else if (a && d > 44 && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him. so does anyone an encounter stood somewhere: encounters.js)
   }
 }
 // what the current steps want picked up / used, as spots at their zones (+ collectibles you can find)
@@ -300,6 +301,7 @@ export function frame(dt, now, cam) {
     if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     if (!LAB && (ST.rT = (ST.rT || 0) + dt) > 0.25) { ST.rT = 0; roster(e); spots(); }
     if (ST.boss && ST.boss.tick) ST.boss.tick(dt); // (the referee's boss: the actor stands where the room has him)
+    if (ST.enc) ST.enc.frame(dt, now); // (before the actors move: whoever rides in a car is placed this frame)
     updateActors(dt * (ST.slowmo ?? 1), now, e);
     otFrame(dt * (ST.slowmo ?? 1), cam);
     if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }

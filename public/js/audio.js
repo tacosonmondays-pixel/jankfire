@@ -809,3 +809,20 @@ Object.assign(sfx, {
     thud(58, 35, 0.26, 0.4 * v, pan, 0); thud(70, 42, 0.18, 0.25 * v, pan, gap);
   },
 });
+
+// ---------------------------------------------------------------- OVERDUE Act I encounters (public/js/story/encounters.js)
+// the soup run, the Unpaid's rigs and interns, the stomach-dogs. pos: [x, y, z] in the world, or null (in your head)
+export const encSfx = {
+  slosh(k = 1, pos = null) { noise(0.35, 0.35 * k, 'lowpass', 1400, 260, pos, 0, 3); tone('sine', 220, 120, 0.25, 0.12 * k, pos, 0.04); noise(0.2, 0.18 * k, 'bandpass', 900, 500, pos, 0.12, 4); }, // a wet slap, then the wave coming back
+  spill(pos = null) { for (let i = 0; i < 5; i++) { tone('sine', 380 - i * 50, 120 - i * 10, 0.16, 0.16, pos, i * 0.11); noise(0.14, 0.12, 'lowpass', 900, 200, pos, i * 0.11, 3); } tone('triangle', 196, 98, 0.9, 0.12, pos, 0.6); }, // glug glug glug... (sad trombone at the end)
+  honk(pos = null) { for (const d of [0, 0.32]) { tone('sawtooth', 392, 388, 0.26, 0.16, pos, d); tone('sawtooth', 494, 490, 0.26, 0.12, pos, d); } }, // a desk rig's horn: two blasts, slightly out of tune
+  ram(k = 1, pos = null) { tone('sine', 90, 30, 0.45, 0.6 * k, pos); noise(0.5, 0.7 * k, 'lowpass', 2600, 90, pos); noise(0.12, 0.4 * k, 'highpass', 4000, 9000, pos, 0.03); tone('square', 640, 300, 0.15, 0.08 * k, pos, 0.05); }, // CRUNCH, plus a drawer flying open
+  card(pos = null) { noise(0.12, 0.25, 'bandpass', 3000, 6000, pos, 0, 2); tone('sine', 1760, 1760, 0.12, 0.08, pos, 0.05); }, // a flicked business card (with a ding: it has a QR code)
+  growl(pos = null) { tone('square', 70, 55, 0.5, 0.12, pos); tone('sawtooth', 110, 60, 0.45, 0.08, pos, 0.05); noise(0.5, 0.25, 'lowpass', 500, 120, pos, 0, 6); }, // a gurgling growl
+  leap(pos = null) { noise(0.25, 0.3, 'bandpass', 800, 2400, pos, 0, 2); tone('sawtooth', 160, 420, 0.22, 0.1, pos); },
+  tick(hi = false) { tone('square', hi ? 1320 : 990, hi ? 1320 : 990, 0.05, 0.08); },
+  clockout() { for (let i = 0; i < 3; i++) tone('triangle', [523, 659, 784][i], [523, 659, 784][i], 0.18, 0.15, null, i * 0.12); tone('square', 1047, 1040, 0.4, 0.08, null, 0.38); noise(0.1, 0.2, 'highpass', 3000, 6000, null, 0.38); }, // a punch-clock ding: shift over
+  rigBoom(pos = null) { tone('sine', 70, 25, 0.9, 0.8, pos); noise(1.1, 0.9, 'lowpass', 3000, 60, pos); for (let i = 0; i < 6; i++) tone('square', 900 + i * 210, 500, 0.08, 0.06, pos, 0.15 + i * 0.07); }, // a war-rig goes up: boom, then the stapler and the drawers landing
+  stamp(pos = null) { tone('sine', 180, 60, 0.12, 0.4, pos); noise(0.06, 0.4, 'lowpass', 2000, 300, pos); }, // the clerk's stamp
+  sung(pos = null) { for (let i = 0; i < 4; i++) tone('sine', 440, 440, 0.4, 0.05, pos, i * 0.02); tone('triangle', 880, 878, 0.6, 0.04, pos); }, // one held note, in harmony with itself
+};

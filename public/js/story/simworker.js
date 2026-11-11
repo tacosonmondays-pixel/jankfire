@@ -8,6 +8,7 @@ import '/shared/story/bodysys.js'; // implants, HYPE, coupons (WP5)
 import '/shared/story/carsys.js'; // story cars (WP7)
 import '/shared/story/solohost.js'; // the card deck's hand and other server-side bits solo needs
 import '/shared/story/refsys.js'; // the combat referee: the game's room code, in here (shared/story/refsys.js)
+import '/shared/story/encsys.js'; // Act I encounters: groups of enemies for the set pieces (rigs, interns, dogs)
 
 let sim = null, last = 0;
 const send = (o) => postMessage(JSON.stringify(o));
