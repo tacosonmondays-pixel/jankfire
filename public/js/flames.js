@@ -74,6 +74,45 @@ void main() {
   #include <colorspace_fragment>
 }`;
 
+// ---- real fire (owner, 2026-11-11: "I want actual effects"): the same cards, but playing a fire flipbook baked in
+// Blender (tools/sprites/blender/fire_flipbook.py: a noise volume rendered in Cycles, 36 looping frames) instead of the
+// cartoon shader. Same single draw. Potato, or "drawn smoke + splashes" switched off, keeps the shader flame.
+const FS_REAL = `
+uniform float uTime; uniform sampler2D uFire;
+varying vec2 vUv; varying vec4 vS; varying float vSeed;
+#include <fog_pars_fragment>
+vec4 cell(float f, vec2 uv) { return texture2D(uFire, (vec2(mod(f, 6.0), 5.0 - floor(f / 6.0)) + uv) / 6.0); }
+void main() {
+  // the card is 1.7 x 1.3 flame sizes; the picture's flame fills about 0.55 of a cell's width and all its height
+  vec2 uv = vec2(vUv.x / 1.7 * 0.94 + 0.5, (vUv.y + 0.15) / 1.3 * 1.12 - 0.02);
+  float fogK = 0.0;
+#ifdef USE_FOG
+  fogK = smoothstep(fogNear, fogFar, vFogDepth);
+#endif
+  vec4 c = vec4(0.0);
+  if (uv.x > 0.01 && uv.x < 0.99 && uv.y > 0.01 && uv.y < 0.99) {
+    float f = fract(uTime * (0.38 + vS.z * 0.08) + vSeed * 7.31) * 36.0, f0 = floor(f);
+    c = mix(cell(f0, uv), cell(mod(f0 + 1.0, 36.0), uv), f - f0); // frames melt into each other: smooth at any frame rate
+    c *= min(1.0, vS.w) * smoothstep(0.0, 0.08, uv.y); // (premultiplied; fades in as it catches, no hard line at its foot)
+  }
+  float glow = exp(-length(vec2(vUv.x * 1.15, (vUv.y - 0.32) * 0.85)) * 3.2) * 0.42 * vS.w;
+  glow *= smoothstep(0.85, 0.45, abs(vUv.x)) * smoothstep(1.15, 0.8, vUv.y) * smoothstep(-0.15, 0.05, vUv.y);
+  // hotter where the flame is thick and low (a white-yellow heart), deep red at its thin edges and tips: the bake is
+  // one orange, the heat comes from how much flame there is
+  float heat = smoothstep(0.25, 0.95, c.a) * (1.0 - 0.55 * smoothstep(0.35, 1.0, uv.y));
+  vec3 tint = mix(vec3(0.95, 0.3, 0.12), vec3(1.25, 0.95, 0.5), heat); tint = mix(tint, vec3(1.5, 1.4, 1.1), smoothstep(0.75, 1.0, heat));
+  float a = min(1.0, c.a * 1.5); // solid enough to read against a bright sky and bright sand
+  vec3 col = c.rgb * tint * (a / max(c.a, 0.001)) + vec3(1.0, 0.42, 0.08) * glow * (1.0 - a); // + a warm halo that only adds
+  if (a + glow < 0.012) discard;
+  gl_FragColor = vec4(col * (1.0 - fogK), a * 0.92 * (1.0 - fogK));
+}`;
+let realMat = null, toonMat = null, fireTex = null, fireState = 0; // 0 not asked, 1 loading, 2 ready, 3 failed
+function realFire() {
+  const S = G.settings || {};
+  if (S.jank === 0 || S.fxSprites === false || fireState === 3) return false;
+  if (!fireState) { fireState = 1; fireTex = new THREE.TextureLoader().load('/sprites/fire.png', () => { fireState = 2; }, undefined, () => { fireState = 3; }); fireTex.colorSpace = THREE.NoColorSpace; fireTex.generateMipmaps = false; fireTex.minFilter = THREE.LinearFilter; }
+  return fireState === 2;
+}
 let mesh = null, aP = null, aS = null;
 function build() {
   if (mesh) return mesh;
@@ -85,6 +124,9 @@ function build() {
   geo.setAttribute('aP', aP); geo.setAttribute('aS', aS);
   geo.instanceCount = 0;
   const mat = new THREE.ShaderMaterial({ uniforms: { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), ...U }, vertexShader: VS, fragmentShader: FS, fog: true,
+    transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide });
+  toonMat = mat;
+  realMat = new THREE.ShaderMaterial({ uniforms: { ...THREE.UniformsUtils.clone(THREE.UniformsLib.fog), ...U, uFire: { value: null } }, vertexShader: VS, fragmentShader: FS_REAL, fog: true,
     transparent: true, depthWrite: false, blending: THREE.CustomBlending, blendSrc: THREE.OneFactor, blendDst: THREE.OneMinusSrcAlphaFactor, side: THREE.DoubleSide });
   mesh = new THREE.Mesh(geo, mat);
   mesh.frustumCulled = false; mesh.renderOrder = 4; mesh.userData.noShadow = true;
@@ -127,6 +169,7 @@ export function updateFlames(dt) {
   if (!mesh) return;
   const now = performance.now();
   U.uTime.value = (now / 1000) % 3600;
+  { const want = realFire() ? realMat : toonMat; if (want === realMat) realMat.uniforms.uFire.value = fireTex; if (mesh.material !== want) mesh.material = want; } // real fire or the cartoon shader (Potato / switched off / still loading)
   const cam = G.camera && G.camera.position, P = fx.parts && fx.parts();
   let n = 0, nearD = 1e9;
   const put = (f, k) => {
@@ -166,4 +209,4 @@ export function updateFlames(dt) {
   crackT -= dt;
   if (crackT <= 0 && nearD < 9) { crackT = 0.08 + Math.random() * 0.25; sfx.crackle(null, Math.max(0.15, 1 - nearD / 9)); }
 }
-export function flameInfo() { return { stat: stat.length, live: live.size, drawn: mesh ? mesh.geometry.instanceCount : 0 }; }
+export function flameInfo() { return { stat: stat.length, live: live.size, drawn: mesh ? mesh.geometry.instanceCount : 0, real: !!(mesh && mesh.material === realMat), sheet: fireState }; }
