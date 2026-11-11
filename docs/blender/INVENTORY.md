@@ -125,7 +125,7 @@ The cone mountains show in almost every outdoor screenshot. Cheap to replace: a 
 | What | Where | Status |
 |---|---|---|
 | the player / bot mannequin (body, egg head, limbs) | `models.js`:1724 `buildCharacter` | code, ~80 parts |
-| hair, tops, bottoms, 23 accessories, cat wear, 10 gun hats | `models.js`:1444-1782, `catwear.js`, `skins.js`:169 | code |
+| hair, tops, bottoms, 23 accessories, cat wear (the 10 gun hats are Blender now: `x_hat_*.glb`) | `models.js`:1444-1782, `catwear.js`, `skins.js`:169 | code |
 | first-person hands | `hands.js`:74 | code, ~260 tris a hand |
 | zombies | `remote.js`:72 | code: a recoloured mannequin, no zombie body of its own |
 | P&D armour, helmet, defuse kit | `econ3d.js`:129-245 | code |
