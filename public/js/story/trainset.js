@@ -44,9 +44,10 @@ export function makeTrainSet() {
   // fetch the two files and the parts list (once; a load that failed waits before it tries again, as the boss's does)
   S.load = (env, done) => {
     if (S.off || S.train || S.loading || performance.now() < S.retryAt) return; S.loading = true;
-    Promise.all([get('/models/story/rp_train.glb'), get('/models/story/rp_tunnel.glb').catch((e) => { console.warn('tunnel kit', e); return null; }), fetch('/models/story/rp_train.parts.json').then((r) => (r.ok ? r.json() : null)).catch(() => null)]).then(([tr, tk, parts]) => {
-      prep(tr.scene, env, 0.2); if (tk) prep(tk.scene, env, 0.04); // (the tunnel takes little of the studio: the bulbs light it)
-      S.train = tr.scene; S.tunnel = tk ? tk.scene : null; S.parts = parts && typeof parts === 'object' ? parts : null; S.loading = false; S.tries = 0;
+    Promise.all([get('/models/story/rp_train.glb'), get('/models/story/rp_tunnel.glb').catch((e) => { console.warn('tunnel kit', e); return null; }), fetch('/models/story/rp_train.parts.json').then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      get('/models/story/s_handtruck.glb').catch(() => null)]).then(([tr, tk, parts, ht]) => { // (Jack's hand truck: the story prop, by the fridge. no file, no truck)
+      prep(tr.scene, env, 0.2); if (tk) prep(tk.scene, env, 0.04); if (ht) prep(ht.scene, env, 0.2); // (the tunnel takes little of the studio: the bulbs light it)
+      S.truck = ht ? ht.scene : null; S.train = tr.scene; S.tunnel = tk ? tk.scene : null; S.parts = parts && typeof parts === 'object' ? parts : null; S.loading = false; S.tries = 0;
       try { done && done(S); } catch (e) { console.warn('train set', e); }
     }).catch((e) => { console.warn('train model', e); S.loading = false; S.err = e; S.retryAt = performance.now() + Math.min(60000, 2000 * 2 ** S.tries++); });
   };
@@ -71,6 +72,8 @@ export function makeTrainSet() {
     const mk = (S.parts && S.parts.markers) || {}, glows = [];
     const glow = (at, car, color, size, op) => { if (!v3(at) || !cars[car]) return; const h = halo(color, size, op); h.position.set(at[0], at[1], at[2]); cars[car].add(h); glows.push(h); };
     glow(mk.tail_lamp, 'wagon', 0xff3020, 1.1, 0.75); glow(mk.headlamp && mk.headlamp.pos, 'loco', 0xfff0c8, 2.6, 0.8); glow(mk.work_lamp && mk.work_lamp.pos, 'van', 0xffe0b0, 1.6, 0.5); glow(mk.van_lantern, 'van', 0xffb060, 0.9, 0.5);
+    // the hand truck stands on the flatbed behind the fridge, its toe plate toward it (markers.handtruck: where Jack's idle wants it)
+    const ht = mk.handtruck; if (S.truck && cars.flat && ht && v3(ht.pos)) { S.truck.position.set(ht.pos[0], ht.pos[1], ht.pos[2]); S.truck.rotation.y = Number.isFinite(ht.yaw) ? ht.yaw : 0; cars.flat.add(S.truck); glows.push(S.truck); }
     S.dressed = { N, cars, glows };
     S.bitten(false);
     return S.dressed;

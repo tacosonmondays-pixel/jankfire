@@ -66,7 +66,7 @@ rp_train
 | `flat_body` | the flatbed: boards, stake pockets, lashing rings, the fridge's two chains with lever binders, chocks round the crates, a stack of spare boards, the yellow edge lines | truss rods underneath |
 | `flat_end` | the flatbed's back, whole: headstock, coupler pocket with its pin, the ledge the fall plate lies on | hide when the wagon is bitten off |
 | `flat_end_bitten` | the same end after the first lunge: the headstock in three folded pieces, the pocket torn open with the bar's stump in it, a chain down to the sleepers, the boards' ends chewed into splinters, the raves peeled out, two sets of four finger tracks dragged off the deck | hidden. Takes nothing of the deck away (the room still has all of it) |
-| `van_body` | the tool van: four posts, a boarded roof under tarred canvas with a low lip, the steps (solid under them, as in the room: locker doors on the lane side), a tool board on the back of the steps, rolled side sheets under the roof's edges, a rack of long tools behind the bench, a ladder, fire buckets, the hand brake, lockers under the floor, the flood lamp's mast | |
+| `van_body` | the tool van: four posts, a boarded roof under tarred canvas with a low lip in hazard stripes (so you can see its edge from up there), NO STANDING ON ROOF stencilled on its back beam for everyone on the flatbed to read while people stand on it, the steps (solid under them, as in the room: locker doors on the lane side), a tool board on the back of the steps, rolled side sheets under the roof's edges, a rack of long tools behind the bench, a ladder, fire buckets, the hand brake, lockers under the floor, the flood lamp's mast | |
 | `van_lamp` | the flood's lit head and the hurricane lamp on the tool board | `tr_worklamp`. The fight's spot light is at this lamp (`markers.work_lamp`) |
 | `van_loco_coupling` | the bar to the loco, chains, the low tray between them | the room has a floor there at 0.5 (you count as off the train on it) |
 | `loco_body` | "more of a tractor, but it's on rails": outside frames, fly cranks and red coupling rods, sprung buffers and wasp-striped beams at both ends, a bonnet with louvred doors (one replaced with a plate in primer), a radiator, two head lamps (the left one's glass is broken), an exhaust stack with its flap, an air cleaner, handrails; the cab with a door at the back (a hand-painted 4), marker lamps, a low arc roof with a vent and twin horns; inside: Dale's seat with a folded rug, the desk, a pedestal brake valve with a brass handle, the throttle, three gauges, a tartan flask, a copper kettle on a primus, a mug, a fire extinguisher, his hi-vis on a hook | UNDER-HILL LOOP ENG DEPT in ghost lettering on the cab sides, TRACTOR and the 4 over it, CREW 2 corrected to 9 |
@@ -98,6 +98,13 @@ Every piece is authored where it goes in the bore, starting at z = 0 and running
 
 Materials: `tk_brick` (a 128 px tile, 1.5 m along the tunnel, 14 times round the barrel), `tk_atlas` (256 px, everything
 else), `tk_bulb_on`, `tk_bulb_off`.
+
+Look pass 2 (after seeing it in the fight): the first brick was a clean, bright red and the room lit it evenly, so dead
+bulbs did not read and the pale mask sat on a wall of its own colour. The brick is now sixty years of steam: reds gone
+to brown, about one in four a blue-black engineering brick, soot on the brick tops, dark joints, the whole upper half of
+the barrel blacked (the crown most), far fewer lime specks and none of them white (white single pixels sparkle at a
+distance with nearest filtering). In the game the kit takes a quarter of the studio reflection the train does, so the
+bulbs' own lights make the pools.
 
 **The second track.** TRAIN.md has "a second track swings in alongside" with the dead train on it. In the fight's bore
 that cannot be: the floor is 6.7 m wide and the train is 4.2 m of it. `tk_track` is one line of track; a twin-track
@@ -148,8 +155,14 @@ TRI_TABLE
   a signal once each. Track detail and cables are only drawn within about 40 m of the train. The bulbs are the fight's
   own bulbs: where it has one lit the kit shows `tk_bulb_lit`, where the mask has passed, `tk_bulb_dead`. Two dark
   discs close the tunnel's ends (the room's end walls are brick).
-- After the first lunge `flat_end` is swapped for `flat_end_bitten`.
-- Everything is built once and kept between visits. `?trainbox=1` keeps the boxes (for a before / after picture).
+- Each lit bulb also glows: one `Points` cloud with a soft halo for every bulb that is on, moved with the scroll and
+  shortened as the mask puts them out (no light comes or goes, so no shader is rebuilt). The tail lamp, the work flood,
+  the van's lantern and the working head lamp get a halo each.
+- After the first lunge `flat_end` is swapped for `flat_end_bitten`; on a retry or when you leave, it is whole again.
+- Pallet Jack's hand truck (`s_handtruck.glb`, the story prop) is fetched on the same path and stood behind the fridge at
+  `markers.handtruck`, its toe plate toward it. It is optional: no file, no truck.
+- Everything is built once and kept between visits. `?trainbox=1` keeps the boxes (for a before / after picture);
+  `JF_TRAIN.model.show(false)` and `JF_TRAIN.set.kit.show(false)` switch back to them on the same frame.
 - Nothing in the rules changed: no size, no server code, nothing about arms or the boss.
 
 ## Sheets
