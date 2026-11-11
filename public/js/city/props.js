@@ -72,6 +72,15 @@ function codeModel(id) {
   return parts;
 }
 
+// a glTF attribute as plain floats. Blender's exporter packs some meshes' uvs as normalized 16-bit ints (mesh
+// quantization) and leaves others as floats, and mergeGeometries won't join the two: the whole material dropped out
+// (the hand truck's wheels and rails, "failed while trying to merge the uv attribute")
+function plainAttr(a) {
+  if (!a.isInterleavedBufferAttribute && !a.normalized && a.array instanceof Float32Array) return a;
+  const n = a.count, s = a.itemSize, out = new Float32Array(n * s);
+  for (let i = 0; i < n; i++) for (let c = 0; c < s; c++) out[i * s + c] = a.getComponent(i, c); // (getComponent undoes the packing)
+  return new THREE.BufferAttribute(out, s);
+}
 // a loaded glTF scene -> parts merged by material (transforms baked in), so one prop = a few draw calls
 function glbParts(scene, lod1 = false) {
   scene.updateMatrixWorld(true);
@@ -89,7 +98,10 @@ function glbParts(scene, lod1 = false) {
   });
   const parts = [];
   for (const [m, list] of byMat) {
-    const norm = list.map((g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k); return g.index ? g : g; });
+    const norm = list.map((g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k); else g.setAttribute(k, plainAttr(g.attributes[k])); return g; });
+    // one mesh of a material with no uv / colour and another with: give it blank ones, so the merge keeps every piece
+    for (const [k, size, v] of [['uv', 2, 0], ['color', 3, 1]]) if (norm.some((g) => g.attributes[k])) for (const g of norm) if (!g.attributes[k]) g.setAttribute(k, new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * size).fill(v), size));
+    if (norm.some((g) => !!g.index) && norm.some((g) => !g.index)) for (let i = 0; i < norm.length; i++) if (norm[i].index) norm[i] = norm[i].toNonIndexed();
     const keys = (g) => Object.keys(g.attributes).sort().join();
     const k0 = keys(norm[0]);
     const geo = norm.every((g) => keys(g) === k0) ? mergeGeometries(norm) : norm[0];
