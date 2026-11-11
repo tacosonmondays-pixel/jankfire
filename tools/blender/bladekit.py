@@ -56,14 +56,15 @@ class Lines:
 def ramp(x, a, b): return max(0.0, min(1.0, (x - a) / (b - a))) if b != a else float(x >= a)
 
 
-def blade(spine, edge, m, n=40, thick=0.004, grind=0.4, taper=0.55, edge_thick=0.0004, grooves=(), swedge=None, name='blade', x=0.0, rows=3):
+def blade(spine, edge, m, n=40, thick=0.004, grind=0.4, taper=0.55, edge_thick=0.0004, grooves=(), swedge=None, name='blade', x=0.0, rows=3, plunge=None, close=0.07):
     """spine / edge: (z, y) lines from the heel to the tip (they may meet at the tip or not: a cleaver's blunt front).
     grind: where the bevel starts, as a share of the height above the edge. taper: how much thinner at the tip.
     grooves: [(lo(s), hi(s), depth(s))] fullers: lo / hi = shares of the height, depth in metres (0 = no groove there).
     swedge: (lo(s), thin(s)) a false edge ground into the spine: from the share lo up, the blade thins to thin(s) of
-    its thickness at the spine. UVs: u = along (0 heel .. 1 tip), v = up (0 edge .. 1 spine): paint it with paint()."""
+    its thickness at the spine. plunge(s) -> 0 (a square unground ricasso) .. 1 (ground). close: the blade is never
+    thicker than this share of its height, so the point closes up. UVs: u = along (0 heel .. 1 tip), v = up (0 edge .. 1 spine): paint it with paint()."""
     L = Lines(spine, edge, n); et = edge_thick / 2
-    half = lambda i: thick * (1 - taper * i / (n - 1)) / 2
+    half = lambda i: min(thick * (1 - taper * i / (n - 1)) / 2, max(et, close * (L.S[i][1] - L.E[i][1])))
     bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap')
     def vrows(s):
         up = []  # the rows above the grind line: fullers' lips and beds, the swedge's start (always the same count)
@@ -79,6 +80,7 @@ def blade(spine, edge, m, n=40, thick=0.004, grind=0.4, taper=0.55, edge_thick=0
     def xat(i, s, v, k, vs):
         t = half(i); e = min(et, t)
         xx = t if v >= grind else e + (t - e) * (v / grind)
+        if plunge: xx = t - (t - xx) * plunge(s)
         for lo, hi, dp in grooves:
             a, b = lo(s), hi(s)
             if a < v < b: xx -= dp(s) * math.sin(math.pi * (v - a) / (b - a)) ** 0.8
@@ -228,3 +230,55 @@ def rivet(r, half, pos, m, dome=0.0007, seg=14, name='rivet'):
     """a through-rivet across the handle (along x), each head a low dome so it never lies flat on the scale"""
     pr = [(0, -half - dome), (r * 0.6, -half - dome * 0.72), (r, -half - dome * 0.08), (r, half + dome * 0.08), (r * 0.6, half + dome * 0.72), (0, half + dome)]
     return lathe(pr, pos, m, seg=seg, axis='x', name=name)
+
+
+def interp(pts):
+    """y at x on a polyline [(x, y)] sorted by x"""
+    def f(x):
+        if x <= pts[0][0]: return pts[0][1]
+        for (x0, y0), (x1, y1) in zip(pts, pts[1:]):
+            if x <= x1: return y0 + (y1 - y0) * (x - x0) / ((x1 - x0) or 1)
+        return pts[-1][1]
+    return f
+
+
+def uv_along(o, z0, z1):
+    """UVs for a part lathed round the grip (game z): u = 0 at z0 .. 1 at z1, v = round it. its end faces get a small
+    flat patch at the u they sit at. for a skin painted in bands along the handle (stacked washers, wraps)"""
+    me = o.data; uvl = me.uv_layers.active or me.uv_layers.new(name='UVMap')
+    for p in me.polygons:
+        cs = [me.vertices[v].co for v in p.vertices]; us = [(-c.y - z0) / (z1 - z0) for c in cs]
+        if max(us) - min(us) < 1e-5:  # an end face
+            u0 = min(0.97, max(0.0, us[0] - 0.015))
+            for li, c in zip(p.loop_indices, cs): uvl.data[li].uv = (u0 + 0.03 * (0.5 + c.x * 20), 0.5 + c.z * 20)
+            continue
+        an = [math.atan2(c.x, c.z) / (2 * math.pi) % 1.0 if math.hypot(c.x, c.z) > 1e-6 else None for c in cs]
+        ok = [a for a in an if a is not None]; lo = min(ok)
+        an = [(sum(ok) / len(ok) if a is None else a) for a in an]
+        if max(ok) - lo > 0.5: an = [a + 1 if a < 0.5 else a for a in an]
+        for li, u, a in zip(p.loop_indices, us, an): uvl.data[li].uv = (u, a)
+
+
+def bands(name, fn, w=128, h=16, grit=0.12):
+    """a skin painted along a handle: fn(u, v) -> 0xRRGGBB (u along 0..1, v round 0..1)"""
+    def draw(px):
+        r = np.random.default_rng(abs(hash(name)) % 9973)
+        for col in range(w):
+            for row in range(h): px[row, col] = hexrgb(fn((col + 0.5) / w, 1 - (row + 0.5) / h)) * (1 - grit / 2 + grit * r.random())
+    return tex_canvas(name, w, h, draw)
+
+
+def uvb(o, size=0.03):
+    """uv_box, then any face the box projection squashed to a line (a bevel's corner, seen edge on) is laid flat on
+    its own plane instead"""
+    apply_mods(o)  # (the bevel's faces have to exist to be mapped)
+    uv_box(o, size); me = o.data; uvl = me.uv_layers.active.data
+    for p in me.polygons:
+        us = [uvl[l].uv for l in p.loop_indices]; cs = [me.vertices[v].co for v in p.vertices]; k = len(us); bad = False
+        for i in range(k):  # any corner whose three points land on one line of the skin (while standing apart in space)
+            a, b, c = us[i - 1], us[i], us[(i + 1) % k]; A, B2, C = cs[i - 1], cs[i], cs[(i + 1) % k]
+            if abs((b - a).cross(c - a)) < 1e-8 and (B2 - A).cross(C - A).length > 1e-12: bad = True
+        if not bad: continue
+        n = p.normal; t1 = n.cross(Vector((0, 0, 1)) if abs(n.z) < 0.9 else Vector((1, 0, 0))).normalized(); t2 = n.cross(t1)
+        for l, v in zip(p.loop_indices, p.vertices):
+            c = me.vertices[v].co; uvl[l].uv = (c.dot(t1) / size, c.dot(t2) / size)

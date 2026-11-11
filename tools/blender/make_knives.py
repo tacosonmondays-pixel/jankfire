@@ -142,7 +142,105 @@ def kitchen():
     return finish('w_knife_kitchen', parts, meta)
 
 
-BUILD = {'knife': (knife, 'w_knife'), 'knife_kitchen': (kitchen, 'w_knife_kitchen')}
+# ------------------------------------------------------------------------------------------------ Bowie
+def bowie():
+    """the big 9 in clip-point Bowie (public/js/blades/bowie.js): quarter-inch stock with a square ricasso, a curved
+    plunge into the grind, a long clip whose swedge is sharpened for its last few inches; a lugged brass hilt; sixteen
+    stacked leather washers swelling to a domed brass butt cap. made fun: JANK on the ricasso, the brass gone spotty"""
+    BLADE_L = 9 * 25.4; SPINE_Y, EDGE_Y, TIP_Y = 22.0, -22.5, 1.5; THICK, TAPER = 6.0, 0.3
+    CLIP_U = 124; SHARP_U = BLADE_L - 3.75 * 25.4; SWEDGE = 6.0; RIC_U, PLUNGE_U = 10, 21; GRIND = 0.58
+    HILT_T, HILT_W, BV = 7.5, 11, 0.9; LEATHER_L = 4 * 25.4; WASHERS = 16; CAP_L = 21
+    Z_HB = -0.030; Z_HF = Z_HB - HILT_T * MM; Z_TIP = Z_HF - BLADE_L * MM; Z_L1 = Z_HB + LEATHER_L * MM; N = 48
+    P = lambda u, y: (Z_HF - u * MM, y * MM)
+    spine = [P(-3, SPINE_Y)] + curve([P(CLIP_U - 20, SPINE_Y), P(CLIP_U, SPINE_Y), P(CLIP_U + 12, 20.4), P(CLIP_U + 30, 15.5), P(CLIP_U + 50, 10.5),
+                                      P(CLIP_U + 70, 6.8), P(CLIP_U + 88, 3.9), P(BLADE_L, TIP_Y)], 40)
+    edge = [P(-3, EDGE_Y)] + curve([P(96, EDGE_Y), P(110, EDGE_Y), P(130, -22.0), P(150, -20.6), P(170, -18.0), P(188, -14.4), P(203, -10.0),
+                                    P(215, -5.2), P(223, -1.6), P(BLADE_L, TIP_Y)], 48)
+    L = Lines(spine, edge, N); sOf = lambda u: (u + 3) / (BLADE_L + 3)
+    sm = lambda a, b, x: (lambda t: t * t * (3 - 2 * t))(ramp(x, a, b))
+    plunge = lambda s: sm(sOf(RIC_U), sOf(PLUNGE_U), s)
+    C0, C1 = sOf(CLIP_U), sOf(SHARP_U + 2)
+    swLo = lambda s: max(GRIND + 0.06, 1 - SWEDGE * MM * sm(C0, sOf(CLIP_U + 12), s) / L.hgt(s)) if s > C0 else 0.999
+    STEEL, BEVEL = 0xb3bbc5, 0xe3e8ed
+
+    def skin(s, v, y):
+        if v < GRIND * (0.35 + 0.65 * plunge(s)) and plunge(s) > 0.5: return BEVEL if v > 0.05 else 0xf4f6f9  # the grind, the plunge line curving into it
+        if s > C0 and v > swLo(s): return BEVEL
+        if sOf(1.5) < s < sOf(9.5) and abs(y - 3 * MM) < 2.2 * MM and int((s - sOf(1.5)) / (sOf(9.5) - sOf(1.5)) * 11) % 3 != 2 and int(y / MM * 2) % 2: return 0x7f8791  # JANK
+        return STEEL - (0x070707 if int(v * 64 + s * 5) % 6 == 0 else 0)
+    bl_m = mat('bw_blade', 0xffffff, rough=0.22, metal=0.9, tex=paint('bw_blade_t', L, skin))
+    bl = blade(spine, edge, bl_m, n=N, thick=THICK * MM, grind=GRIND, taper=TAPER, edge_thick=0.0003, plunge=plunge,
+               swedge=(swLo, lambda s: 1 - 0.93 * sm(C0, C1, s)), name='bw_blade')
+    brass = mat('bw_brass', 0xffffff, rough=0.3, metal=1.0, tex=steel_tex('bw_brass_t', 0xd2a54b, var=0.08, seed=21, speck=0x8d6a2c, p=0.05))
+    up = [(BV, 25.2), (-0.4, 26.3), (-2.6, 27.0), (-4.9, 27.5), (-6.5, 29.0), (-7.3, 31.1), (-7.2, 33.3), (-6.2, 35.2), (-4.3, 36.5), (-1.6, 37.2), (2.6, 37.2), (5.3, 36.5), (HILT_T - BV, 34.8)]
+    out = [(0.0, 25.2)] + up[1:-1] + [(HILT_T, 34.8)]  # (the code model's outline is inset by its rounding: put the faces back where they measure)
+    hilt = side([(Z_HF + z * MM, y * MM) for z, y in out + [(z, -y) for z, y in out[::-1]]], HILT_W * MM, (0, 0, 0), brass, bev=BV * MM, name='bw_hilt')
+    TONE = [0x8a5330, 0x9a6139, 0x76442a]; STACK = [0, 1, 0, 2, 1, 0, 2, 0, 1, 2, 0, 1, 0, 2, 1, 0]
+    rOf = interp(curve([(0, 14.4), (0.1, 14.2), (0.3, 15.0), (0.55, 16.2), (0.78, 16.7), (0.92, 16.5), (1, 16.2)], 24))
+    zt = lambda t: Z_HB - 0.5 * MM + (LEATHER_L + 1) * MM * t
+    prof = [(0.0, zt(0)), ((rOf(0) - 0.6) * MM, zt(0))]
+    for k in range(WASHERS):  # each washer a hair proud of the seam between it and the next
+        t0, t1 = k / WASHERS, (k + 1) / WASHERS; d = 0.16 / WASHERS
+        prof += [(rOf(t0 + d) * MM, zt(t0 + d)), (rOf(t1 - d) * MM, zt(t1 - d))]
+        if k < WASHERS - 1: prof.append(((rOf(t1) - 0.45) * MM, zt(t1)))
+    prof += [((rOf(1) - 0.6) * MM, zt(1)), (0.0, zt(1))]
+    lea_t = bands('bw_leather_t', lambda u, v: 0x3a2114 if abs(u * WASHERS - round(u * WASHERS)) < 0.07 and 0.02 < u < 0.98 else TONE[STACK[min(WASHERS - 1, int(u * WASHERS))]])
+    lea = mat('bw_leather', 0xffffff, rough=0.6, clearcoat=0.3, tex=lea_t)
+    grip = squash(lathe(prof, (0, 0, 0), lea, seg=20, name='bw_grip'), 0.77); uv_along(grip, zt(0), zt(1))
+    z0, r0 = Z_L1 - 0.5 * MM, rOf(1)
+    cap = squash(lathe([(0.0, z0)] + [(r * MM, z0 + z * MM) for r, z in [(r0 - 0.3, 0), (r0 + 0.4, 2.5), (r0 + 0.7, 7), (r0 + 0.4, 12), (r0 - 0.8, 16), (r0 - 3.6, 19), (r0 - 8.2, 20.8)]] + [(0.0, z0 + (CAP_L + 0.5) * MM)],
+                       (0, 0, 0), brass, seg=20, name='bw_cap'), 0.77)
+    for o in (hilt, cap): uvb(o, 0.03)
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_bowie', 'paint': [], 'muzzle': [0, TIP_Y * MM, Z_TIP], 'hatAt': [[0, 0.0163, 0.03], 0.05]}
+    parts = zone_join([grip, hilt, cap], 'kbowie_grip', {}, default='a') + zone_join([bl], 'kbowie_blade', {}, default='b')
+    return finish('w_knife_bowie', parts, meta)
+
+
+# ------------------------------------------------------------------------------------------------ Cleaver
+def cleaver():
+    """the butcher's cleaver (public/js/blades/cleaver.js): one stamped sheet, blade and full tang, 16 cm long and 7 deep,
+    a short bevel with a honed edge, the hanging hole in the top corner, the nose's corner rounded off; black riveted
+    scales with the tang standing proud all round. made fun: it is far too big for the hand it is in"""
+    Z0 = -0.036; BLADE_L, SPINE_V, BLADE_H, SPINE_T = 160, 13.0, 72, 3.2; BEVEL_H, HONE_H, NOSE_R = 16, 1.4, 7
+    HOLE_U, HOLE_V, HOLE_R = 142, SPINE_V - 16, 5.5; TANG_OUT = 0.5; N = 26
+    P = lambda u, v: (Z0 - u * MM, v * MM); V3 = lambda x, u, v: (x * MM, v * MM, Z0 - u * MM)
+    HANDLE = [(0, 12.5, -12.5, 7.4), (-2.5, 12.5, -12.6, 8.2), (-14, 12.5, -12.8, 8.6), (-40, 12.5, -13.1, 8.8), (-70, 12.5, -13.3, 8.8), (-95, 12.5, -13.7, 8.7),
+              (-108, 12.4, -14.4, 8.5), (-116, 11.9, -14.8, 8.2), (-121.2, 10.6, -14.3, 7.7), (-124.8, 8.0, -12.4, 6.9), (-126.9, 4.4, -9.0, 5.7), (-127.6, 0.2, -4.2, 4.0)]
+    RIVETS_U, RIVET_R = (-22, -63, -104), 2.6; BUTT_U = HANDLE[-1][0] - TANG_OUT
+    def section(u, top, bot, w):  # the edges rounded over, the sides a little full, a shallow v under the tang
+        rc = min(3.5, w * 0.45, (top - bot) * 0.3); k = rc * (1 - math.sqrt(0.5)); mid = (top + bot) / 2; d = min(1.6, (top - bot) * 0.25)
+        sd = [(w - rc, top), (w - k, top - k), (w, top - rc), (w + 0.3, mid), (w, bot + rc), (w - k, bot + k), (w - rc, bot)]
+        return [V3(x, u, v) for x, v in sd] + [V3(0, u, bot + d)] + [V3(-x, u, v) for x, v in sd[::-1]] + [V3(0, u, top - d)]
+    EDGE = resample(curve([P(0, SPINE_V - BLADE_H), P(45, SPINE_V - BLADE_H - 0.8), P(100, SPINE_V - BLADE_H - 1.2), P(135, SPINE_V - BLADE_H - 0.6), P(BLADE_L, SPINE_V - BLADE_H + 2.2)], 24), N)
+    GRIND = [(z, y + BEVEL_H * MM) for z, y in EDGE]
+    cz, cy = Z0 - (BLADE_L - NOSE_R) * MM, (SPINE_V - NOSE_R) * MM
+    sheet = [(cz + math.cos(a) * NOSE_R * MM, cy + math.sin(a) * NOSE_R * MM) for a in [math.pi / 2 + math.pi / 2 * k / 5 for k in range(6)]]
+    sheet += GRIND[::-1] + [P(u, b - TANG_OUT) for u, t, b, w in HANDLE]
+    sheet.append(P(BUTT_U, (HANDLE[-1][1] + HANDLE[-1][2]) / 2))
+    sheet += [P(u, t + TANG_OUT) for u, t, b, w in HANDLE[::-1]]
+    hole = [P(HOLE_U + math.cos(2 * math.pi * k / 16) * HOLE_R, HOLE_V + math.sin(2 * math.pi * k / 16) * HOLE_R) for k in range(16)]
+    st = mat('cl_steel', 0xffffff, rough=0.2, metal=0.92, tex=steel_tex('cl_steel_t', 0xcdd3da, var=0.06, seed=31, speck=0x9aa1ab, p=0.04))
+    plate_ = side(decollinear(sheet), SPINE_T * MM, (0, 0, 0), st, name='cl_sheet', holes=[hole], bev=0.0003)
+    L = Lines(GRIND, EDGE, N)
+    bl_m = mat('cl_bevel', 0xffffff, rough=0.16, metal=0.92, tex=paint('cl_bevel_t', L, lambda s, v, y: 0xf6f8fa if v < HONE_H / BEVEL_H else 0xe7ebef - (0x080808 if int(s * 90) % 4 == 0 else 0), w=128, h=16))
+    bl = blade(GRIND, EDGE, bl_m, n=N, thick=SPINE_T * MM, grind=1.0, taper=0.0, edge_thick=0.0007, rows=3, name='cl_bevel', close=1.0)
+    pom = mat('cl_pom', 0xffffff, rough=0.36, clearcoat=0.5, tex=tex_noise('cl_pom_t', 0x1d1e21, var=0.1, size=16, speck=0x34363a, speck_p=0.08, seed=32))
+    rv = mat('cl_rivet', 0xffffff, rough=0.2, metal=0.95, tex=steel_tex('cl_rivet_t', 0xdde2e7, var=0.04, seed=33))
+    grip = loft_loops([section(*h) for h in HANDLE], pom, 'cl_scales', angle=50)
+    riv = []
+    for u in RIVETS_U:
+        i = next(k for k, h in enumerate(HANDLE) if h[0] < u); A, B2 = HANDLE[i - 1], HANDLE[i]; f = (u - A[0]) / (B2[0] - A[0])
+        w = A[3] + (B2[3] - A[3]) * f; mid = (A[1] + A[2]) / 2 * (1 - f) + (B2[1] + B2[2]) / 2 * f
+        riv.append(rivet(RIVET_R * MM, (w + 0.3) * MM, (0, mid * MM, Z0 - u * MM), rv, name='cl_rivet'))
+    for o in [plate_, grip] + riv: uvb(o, 0.03)
+    fz, fy = EDGE[-1]
+    meta = {'kind': 'weapon', 'id': 'knife', 'skin': 'knife_cleaver', 'paint': [], 'muzzle': [0, fy, fz], 'hatAt': [[0, SPINE_V * MM, 0.028], 0.05]}
+    parts = zone_join([grip], 'kcleaver_grip', {}, default='a') + zone_join([plate_, bl], 'kcleaver_blade', {}, default='b') + zone_join(riv, 'kcleaver_rivets', {}, default='n')
+    return finish('w_knife_cleaver', parts, meta)
+
+
+BUILD = {'knife': (knife, 'w_knife'), 'knife_kitchen': (kitchen, 'w_knife_kitchen'),
+         'knife_bowie': (bowie, 'w_knife_bowie'), 'knife_cleaver': (cleaver, 'w_knife_cleaver')}
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 only = set(argv[argv.index('--only') + 1].split(',')) if '--only' in argv else None
 main_multi(lambda: [(fn(), fid) for k, (fn, fid) in BUILD.items() if not only or k in only], exposure=-0.3)
