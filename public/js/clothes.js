@@ -175,7 +175,7 @@ function fitOf(lk) {
     // every lump so the cloth has the points to round it. seat: bottoms sit under a belly, not over it. a row's 5th
     // number is its own fol
     rows(src, fol = 1, gap = 0.012, seat = false) {
-      const ys = src.map((r) => r[0]), lo = ys[0], hi = ys[ys.length - 1], mine = seat ? lumps.filter((L) => L[2] > 0) : lumps, lg = seat ? gap : gap + 0.018; // (tops clear the trousers on a big butt too)
+      const ys = src.map((r) => r[0]), lo = ys[0], hi = ys[ys.length - 1], mine = seat ? lumps.filter((L) => L[2] > 0) : lumps, lg = seat ? gap : gap + 0.024; // (tops clear the trousers on a big butt too)
       for (const L of mine) for (const k of [-0.95, -0.72, -0.4, 0, 0.4, 0.72, 0.95]) { const y = L[1] + (L[4] + lg) * k; if (y > lo + 0.012 && y < hi - 0.012 && !ys.some((v) => Math.abs(v - y) < 0.014)) ys.push(y); }
       ys.sort((p, q) => p - q);
       const out = ys.map((y) => { let i = 1; while (i < src.length - 1 && src[i][0] < y) i++; const a = src[i - 1], c = src[i], t = cl01((y - a[0]) / (c[0] - a[0])); return fitRow(y, mix(a[1], c[1], t), mix(a[2], c[2], t), mix(a[3], c[3], t), a[4] ?? fol, gap); });
@@ -324,7 +324,13 @@ const ROUND = [0, 26, 50, 72, 90, 108, 130, 152, 180, 208, 230, 252, 270, 288, 3
 const DENSE = ROUND.flatMap((a, j) => [a, (a + (j < 15 ? ROUND[j + 1] : TAU)) / 2]); // twice as many: a body with a belly / bust / butt to go round
 const cols = (S) => (S.lumpy ? DENSE : ROUND);
 // columns round a body that's open down the front: edge(y) = how far each edge is from x0
-const openCols = (S, edge, x0 = 0) => [...cols(S).filter((a) => a < 153 * DEG), ...[1, -1].map((k) => Object.assign((y) => S.ux(y, x0 + k * edge(y)), { edge: true })), ...cols(S).filter((a) => a > 207 * DEG)];
+// (round a belly or a bust there's one more column each side of the opening, kept clear of the edge, so the fronts
+// round it too instead of cutting straight across and letting the shirt under them through)
+function openCols(S, edge, x0 = 0) {
+  const [R, L] = [1, -1].map((k) => Object.assign((y) => S.ux(y, x0 + k * edge(y)), { edge: true }));
+  const mid = S.lumpy ? [(y) => Math.min(166 * DEG, R(y) - 0.03), R, L, (y) => Math.max(194 * DEG, L(y) + 0.03)] : [R, L];
+  return [...cols(S).filter((a) => a < 153 * DEG), ...mid, ...cols(S).filter((a) => a > 207 * DEG)];
+}
 const ring = (n) => Array.from({ length: n }, (_, j) => (j / n) * TAU);
 const radial = (i, j, p) => { const a = p[i][j], c = p[i + 1][j + 1]; return [a[0] + c[0], 0, a[2] + c[2]]; };
 const upish = (i, j, p) => { const a = p[i][j], c = p[i + 1][j + 1]; return [(a[0] + c[0]) * 0.3, 1, (a[2] + c[2]) * 0.3]; };
@@ -572,7 +578,7 @@ function suitBody(F, lk, [S]) {
     panel(K, S, quad4([X + sx * 0.004, 1.274], [X + sx * 0.004, 1.274], [X + sx * 0.132, 1.436], [X + sx * edge(1.45), 1.452]), 1, 4, C.panel, 0.01, { rim: C.seam });
     panel(K, S, quad4([X + sx * edge(1.462), 1.462], [X + sx * 0.122, 1.458], [X + sx * 0.142, 1.528], [X + sx * 0.078, 1.546]), 2, 2, C.panel, 0.011, { rim: C.seam });
     panel(K, S, rect(sx * 0.112, 1.078, sx * 0.205, 1.11), 2, 1, C.panel, 0.007, { rim: C.seam }); // hip pocket flaps
-    bar(K, S, [sx * 0.24, 1.3], [sx * 0.225, 1.0], 0.006, C.seam, 0.0025, { back: true, rim: false, step: 0.07 }); // back side seams
+    bar(K, S, [sx * 0.19, 1.4], [sx * 0.165, 1.0], 0.006, C.seam, 0.0025, { back: true, rim: false, step: 0.07 }); // back side seams
   }
   collar(K, S, 1.548, 0.04, C.panel, { a0: 118 * DEG, a1: -118 * DEG, n: 10, lift: 0.011, rim: C.seam, stand: 0.016 });
   bar(K, S, [X + 0.006, 1.27], [X + 0.008, 1.05], 0.006, C.seam, 0.0025, { rim: false, step: 0.06 }); // where the fronts overlap
@@ -611,12 +617,20 @@ function sashBody(F) {
   return K.piece();
 }
 
+// a skirt's rows with room for the thighs under it (the legs slider and fat thicken them; trousers are thicker than
+// skin): everything from the hips down is at least that wide and deep
+const legKey = (lk, F) => `${Math.max(0, Math.min(JOKE_MAX, lk.bigLegs | 0))}${lk.bottom === 'pants' || lk.bottom === 'overalls' ? 1 : 0}`;
+function legRoom(rows, lk, F, trousers) {
+  const kl = 1 + JOKE.legs * Math.max(0, Math.min(JOKE_MAX, lk.bigLegs | 0)) + JOKE.fat * 0.45 * F.ft, r = (trousers ? 0.1 : 0.076) * kl + 0.014;
+  return rows.map(([y, w, f, b]) => { const q = r * (y > 0.97 ? 0.82 : 1); return y > 1.005 ? [y, w, f, b] : [y, Math.max(w, 0.1 + q), Math.max(f, q * 1.05), Math.max(b, q * 1.05)]; }); // (their rounded tops come up to the waist)
+}
+
 // ------------------------------------------------------------ Maid Dress
 // black (or your colour) with a white apron: a fitted bodice, a pleated bell skirt with a ruffled petticoat under the
 // hem, the apron (frilled bib, straps crossing down the back, a frilled skirt panel with a pocket), a white sash tied
 // in a big bow behind, a ruffled collar with a pink ribbon, puff sleeves with frilled cuffs. bare legs get knee socks
 // and strap shoes; with nothing on your head (or the Cat Ears) you also get the frilly headdress
-function maidCut(F) { const e = 2.3; return [shell(F.rows([[0.6, 0.36, 0.36, 0.36], [0.7, 0.33, 0.33, 0.33], [0.86, 0.27, 0.27, 0.27], [1.0, 0.196, 0.188, 0.192], [1.1, 0.14, 0.132, 0.134], [1.2, 0.2, 0.148, 0.146], [1.32, 0.252, 0.164, 0.16], [1.42, 0.262, 0.158, 0.158], [1.49, 0.25, 0.136, 0.142], [1.525, 0.165, 0.108, 0.118], [1.548, 0.1, 0.09, 0.094]], 1, 0.012), e)]; }
+function maidCut(F, lk) { const e = 2.3; return [shell(F.rows(legRoom([[0.6, 0.36, 0.36, 0.36], [0.7, 0.33, 0.33, 0.33], [0.86, 0.27, 0.27, 0.27], [0.95, 0.222, 0.218, 0.22], [1.0, 0.196, 0.188, 0.192], [1.1, 0.14, 0.132, 0.134], [1.2, 0.2, 0.148, 0.146], [1.32, 0.252, 0.164, 0.16], [1.42, 0.262, 0.158, 0.158], [1.49, 0.25, 0.136, 0.142], [1.525, 0.165, 0.108, 0.118], [1.548, 0.1, 0.09, 0.094]], lk, F, lk.bottom === 'pants' || lk.bottom === 'overalls'), 1, 0.012), e)]; }
 function maidBody(F, lk, [S]) {
   const K = new Kit(true), n = 28, amp = (y) => 0.016 * cl01((1.04 - y) / 0.32), zig = (j) => (j % 2 ? 1 : -1);
   const sk = S.lv(0.6, 1.1);
@@ -717,9 +731,9 @@ function pantsBody(F) {
   panel(K, S, rect(0.058, 1.052, 0.112, 1.082), 1, 1, C.tan, 0.006, { back: true }); // the patch on the waistband
   return K.piece();
 }
-function skirtBody(F) {
+function skirtBody(F, lk) {
   const K = new Kit(true), e = 2.3, n = 28;
-  const S = shell(F.rows([[0.69, 0.3, 0.3, 0.3], [0.8, 0.262, 0.258, 0.262], [0.92, 0.218, 0.204, 0.208], [1.0, 0.196, 0.158, 0.162], [1.045, 0.19, 0.136, 0.14], [1.084, 0.188, 0.133, 0.136]], 1, 0.022, true), e); // (it stands off a big butt: the pleats and the shorts under it need the room)
+  const S = shell(F.rows(legRoom([[0.69, 0.3, 0.3, 0.3], [0.8, 0.262, 0.258, 0.262], [0.92, 0.218, 0.204, 0.208], [0.955, 0.208, 0.184, 0.188], [1.0, 0.196, 0.158, 0.162], [1.045, 0.19, 0.136, 0.14], [1.084, 0.188, 0.133, 0.136]], lk, F, false), 1, 0.022, true), e); // (it stands off a big butt: the pleats and the shorts under it need the room)
   const amp = (y) => 0.016 * cl01((1.035 - y) / 0.3), lv = S.lv(0.69, 1.045, [0.716, 0.738]);
   loft(K, S, lv, ring(n), (y) => (y > 0.716 && y < 0.738 ? C.hi : C.base), { wrap: true, lift: (i, j) => (j % 2 ? 1 : -1) * amp(lv[i]) }); // knife pleats, a stripe above the hem
   loft(K, S, S.lv(1.045, 1.084), cols(S), C.panel, { wrap: true, lift: 0.004 }); lid(K, S, 1.084, C.deep, true);
@@ -804,7 +818,7 @@ const TOPS = {
   jacket: { cut: jacketCut, body: jacketBody, sleeve: jacketSleeve, cap: 1 },
   suit: { cut: suitCut, body: suitBody, sleeve: suitSleeve, cap: 1 },
   runner: { cut: runnerCut, body: runnerBody, sleeve: runnerSleeve, cap: FIXED.ink, pocket: true, key: (lk, F) => `${F.hd}${covered(lk) ? 1 : 0}` },
-  maid: { cut: maidCut, body: maidBody, sleeve: maidSleeve, long: false, cap: 1 },
+  maid: { cut: maidCut, body: maidBody, sleeve: maidSleeve, long: false, cap: 1, key: legKey },
 };
 const BOTTOMS = { shorts: shortsBody, pants: pantsBody, skirt: skirtBody, overalls: overallsBody };
 const wearOn = (P) => P.wear || (P.wear = P.body.add(new THREE.Group()).children.at(-1)); // one group for everything on the torso: jokeBody leaves groups alone (these are cut to fit already)
@@ -844,7 +858,7 @@ export function wearBottom(P, lk, col) {
   const bottom = lk.bottom || 'shorts', top = lk.top || 'tank', make = Object.hasOwn(BOTTOMS, bottom) && BOTTOMS[bottom];
   if (!make) return false;
   const F = fitOf(lk), mat = cloth(col), dress = top === 'maid';
-  if (!dress) wear(wearOn(P), cut(`${bottom}|${bottom === 'overalls' ? cutKey(top, lk, F) : F.key}`, () => make(F, lk, bottom === 'overalls' ? F.dressed(TOPS[top] ? TOPS[top].cut(F, lk) : []) : null)), mat);
+  if (!dress) wear(wearOn(P), cut(`${bottom}|${bottom === 'overalls' ? cutKey(top, lk, F) : bottom === 'skirt' ? F.key + legKey(lk, F) : F.key}`, () => make(F, lk, bottom === 'overalls' ? F.dressed(TOPS[top] ? TOPS[top].cut(F, lk) : []) : null)), mat);
   if (bottom === 'skirt' || (dress && bottom === 'shorts')) return true; // bare legs
   for (const [leg, knee, sx] of [[P.legL, P.kneeL, -1], [P.legR, P.kneeR, 1]]) {
     const L = limb(bottom + sx, () => ({ thigh: legPiece(bottom, 'thigh', sx), shin: bottom === 'shorts' ? null : legPiece(bottom, 'shin', sx), shoe: bottom === 'shorts' ? null : legPiece(bottom, 'shoe', sx) }));
