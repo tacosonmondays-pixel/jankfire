@@ -28,7 +28,7 @@ const prep = (root, k) => root.traverse((o) => { if (!o.isMesh) return; for (con
   m.envMap = env; m.envMapIntensity = m.transparent ? 0.7 : k; if (m.emissive && m.emissive.getHex() && m.emissiveIntensity > 0) m.toneMapped = false; if (m.transparent) m.depthWrite = false; } });
 const [gt, gk, gc, parts] = await Promise.all([load('/models/story/rp_train.glb'), load('/models/story/rp_tunnel.glb'), load('/models/story/rp_commuter.glb'), fetch('/models/story/rp_train.parts.json').then((r) => r.json())]);
 const STUDIO = q.get('mood') !== 'tunnel';
-prep(gt.scene, 0.45); prep(gk.scene, 0.3); prep(gc.scene, 0.45);
+prep(gt.scene, 0.45); prep(gk.scene, 0.04); prep(gc.scene, 0.45);   // (the tunnel as trainset.js has it: the bulbs light it)
 const names = (root) => { const N = {}; root.traverse((o) => { if (o.name) N[o.name] = o; }); return N; };
 const TN = names(gt.scene), KN = names(gk.scene), CN = names(gc.scene);
 const missing = [];
