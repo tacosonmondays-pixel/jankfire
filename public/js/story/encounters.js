@@ -29,7 +29,7 @@ import { buildWeapon } from '../models.js';
 // the art lane's models for encounter enemies (one line each to swap): a cast look drawn over the bot (the shared cast
 // skeleton, walked by loco.js), or a vehicle glb. missing / not loaded = the code stand-ins in enc_looks.js
 export const ENC_LOOKS = { intern: ['intern', 'intern_b'], collector: ['collector'] };
-const VEHICLES = { war_rig: '/models/cast/c_war_rig.glb' }; // (front -z, ground y 0: wheel_*, castor_*, turret > gun > barrels)
+const VEHICLES = { war_rig: '/models/cast/c_war_rig.glb', stomach_dog: '/models/story/s_stomachdog.glb' }; // (front -z, ground y 0. rig: wheel_*, castor_*, turret > gun > barrels. dog: hips > legB*, tail; body > legF*, neck > head > jaw)
 const GLB = {};
 // the Gristle & Sons truck (Art's s_gristle_truck.glb: front -z, 'load' on the lowered tail-lift, clips open / lift_up /
 // drive), else the code stand-in. preloaded when m04 starts
@@ -46,6 +46,8 @@ function vehicle(kind) {
   if (!GLB[kind].scene) return null;
   const m = GLB[kind].scene.clone(true), by = (n) => m.getObjectByName(n);
   const lod = by('lod'); if (lod) lod.visible = false;
+  m.traverse((o) => { if (/_lod1$/.test(o.name)) o.visible = false; });
+  if (kind === 'stomach_dog') { m.scale.setScalar(1.5); m.userData = { dogGlb: true, legs: [['legFL', 0], ['legFR', Math.PI], ['legBL', Math.PI], ['legBR', 0]].map(([n, ph]) => ({ hip: by(n), knee: by(n.replace('leg', 'shin')), ph })).filter((l) => l.hip), jaw: by('jaw'), tail: by('tail'), head: by('head') }; return m; }
   m.userData = { glb: true, wheels: ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'].map(by).filter(Boolean), castors: ['castor_l', 'castor_r'].map(by).filter(Boolean), turret: by('turret'), gun: by('gun'), barrels: by('barrels'), body: by('rig') || m };
   return m;
 }
@@ -206,7 +208,7 @@ export function makeEncounters(ST, { where } = {}) {
       return;
     }
     if (u.kind !== 'war_rig' && u.kind !== 'stomach_dog') return;
-    u.mesh = (u.kind === 'war_rig' && vehicle('war_rig')) || (u.kind === 'war_rig' ? rigMesh() : dogMesh());
+    u.mesh = vehicle(u.kind) || (u.kind === 'war_rig' ? rigMesh() : dogMesh());
     G.scene.add(u.mesh);
     const upd = r.update.bind(r);
     r.update = (...a) => { upd(...a); r.ch.root.visible = false; if (r.shadow) r.shadow.visible = false; };
@@ -226,6 +228,7 @@ export function makeEncounters(ST, { where } = {}) {
         continue;
       }
       if (!u.mesh) continue;
+      if (VEHICLES[u.kind] && !u.mesh.userData.glb && !u.mesh.userData.dogGlb && GLB[u.kind] && GLB[u.kind].scene) { const nm = vehicle(u.kind); if (nm) { G.scene.remove(u.mesh); u.mesh = nm; G.scene.add(nm); } } // (the model finished loading: swap the stand-in out)
       const m = u.mesh, sp = Math.hypot(r.vel[0], r.vel[2]);
       if (sp > 1.2) { const h = Math.atan2(r.vel[0], r.vel[2]); u.h = u.h == null ? h : u.h + wrapA(h - u.h) * Math.min(1, dt * (u.kind === 'war_rig' ? 6 : 10)); }
       if (u.h == null) u.h = Math.atan2(ME.pos[0] - r.pos[0], ME.pos[2] - r.pos[2]);
@@ -248,11 +251,12 @@ export function makeEncounters(ST, { where } = {}) {
         if (u.honkT == null) u.honkT = E.t + 2 + Math.random() * 4;
         if (E.t > u.honkT && r.alive) { u.honkT = E.t + 5 + Math.random() * 6; encSfx.honk(r.pos); }
       } else { // the dog: legs at its speed, the jaw open when it's near you, a wag of intestine
+        if (U.dogGlb) m.rotation.y = u.h + Math.PI; // (the art lane's dog faces -z)
         const ph = E.t * (4 + sp * 1.4);
-        for (const l of U.legs) { l.hip.rotation.x = Math.sin(ph + l.ph) * 0.7 * Math.min(1, sp / 3); l.knee.rotation.x = Math.max(0, Math.sin(ph + l.ph + 1)) * 0.9 * Math.min(1, sp / 3); }
+        for (const l of U.legs) { l.hip.rotation.x = Math.sin(ph + l.ph) * 0.7 * Math.min(1, sp / 3); if (l.knee) l.knee.rotation.x = Math.max(0, Math.sin(ph + l.ph + 1)) * 0.9 * Math.min(1, sp / 3) * (U.dogGlb ? -1 : 1); }
         const near = Math.hypot(ME.pos[0] - r.pos[0], ME.pos[2] - r.pos[2]) < 6;
-        U.jaw.rotation.x = (near ? 0.55 : 0.12) + Math.sin(E.t * 14) * 0.08;
-        U.tail.rotation.z = Math.sin(E.t * 10) * 0.5;
+        if (U.jaw) U.jaw.rotation.x = ((near ? 0.55 : 0.12) + Math.sin(E.t * 14) * 0.08) * (U.dogGlb ? -1 : 1);
+        if (U.tail) U.tail.rotation[U.dogGlb ? 'y' : 'z'] = Math.sin(E.t * 10) * 0.5;
         if (U.leapT > 0) { U.leapT -= dt; m.rotation.x = -0.4; } else m.rotation.x = 0;
         if (!r.alive) { m.rotation.z = Math.min(Math.PI / 2, (m.rotation.z || 0) + dt * 5); }
         if (u.growlT == null) u.growlT = E.t + Math.random() * 3;
@@ -430,6 +434,7 @@ export function makeEncounters(ST, { where } = {}) {
       walk: { // Lumps leads you down Peristalsis Avenue to his mum: walks, waits for you, talks, hates every metre of it
         enter(st) {
           st.path = ENC.escort.path.map((p) => p.slice()); st.i = 0; st.said = 0; st.waitT = 0;
+          vehicle('stomach_dog'); // (start loading the dog's model before the chase)
           const a = stand('lumps', st.path[0], -Math.PI / 2); if (a) { a.hold = false; a.ride = null; }
           bark('lumps', "this way. stay close. and don't touch the walls.", 3.5);
         },
@@ -458,7 +463,8 @@ export function makeEncounters(ST, { where } = {}) {
       },
       out: { // the stomach-dogs chase you out of the Gut; Lumps runs with you and carries you over the last bit
         enter(st) {
-          st.cp = [ME.pos[0], ME.pos[1] + 0.2, ME.pos[2]]; st.next = E.t + 1.5; st.wave = 0; st.carry = null; st.done = false;
+          vehicle('stomach_dog');
+          st.cp = [ME.pos[0], ME.pos[1] + 0.2, ME.pos[2]]; st.next = E.t + 2.5; st.wave = 0; st.carry = null; st.done = false;
           encSfx.growl(); setTimeout(() => encSfx.growl(), 600);
           hud.msg('STOMACH-DOGS', 2, 'brag');
           bark('lumps', "that's the bishop's dogs. they're not the nice dogs. RUN.", 3.5);
