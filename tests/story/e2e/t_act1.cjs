@@ -21,7 +21,7 @@ const skipIntro = require('./skipintro.cjs');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const PORT = process.env.PORT || 3311, OUT = (process.env.SP || '.') + '/shots', STOP = process.env.STOP === '1', SHOTS = process.env.SHOTS === '1', FROM = process.env.FROM || '';
 // steps owned by the fight (B) and encounter (C) sessions: [quest, step] -> who
-const OWNED = { 'm02_sauce_run.ambush': 'C', 'm03_somethings_digesting.out': 'C', 'm04_clocking_in.fight': 'B', 'm06_tickets_please.hold': 'B', 'm06_tickets_please.break': 'B' };
+const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_tickets_please.hold': 'B', 'm06_tickets_please.break': 'B' };
 
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
