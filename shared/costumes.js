@@ -36,6 +36,8 @@ export const COSTUMES = {
     look: { top: 'cardigan', topColor: ['#ff9ad5', '#c8b48a', '#b07dff', '#4fffb0'], bottom: 'skirt', hair: 'bun', hairColor: ['#a3a3ad', '#ffffff', '#f2e6c8'], head: 'none', face: 'readers', back: 'handbag' } },
   astronaut: { name: 'Homemade Astronaut', desc: 'One small step for man. Mostly cardboard.',
     look: { top: 'spacesuit', topColor: ['#ffffff', '#c8b48a'], bottom: 'pants', bottomColor: '#ffffff', head: 'boxhelmet', face: 'none', back: 'bottlepack' } },
+  tourist: { name: 'Tourist', desc: 'Took 400 photos of the spawn room. Socks with sandals, on purpose.',
+    look: { top: 'hawaiian', topColor: ['#4fd8ff', '#ff7a1a', '#ff4fd8', '#7dff4f'], bottom: 'cargo', bottomColor: ['#c8b48a', '#3a6a2a'], hair: ['short', 'none', 'bowl'], head: 'bucket', face: 'shades', back: 'camera' } },
 };
 export const COSTUME_IDS = Object.keys(COSTUMES);
 

@@ -1654,7 +1654,7 @@ function addAccessories(ch, look, c) {
       }
       straps(0x333333);
       break;
-    case 'float': case 'handbag': case 'bottlepack': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
+    case 'float': case 'handbag': case 'bottlepack': case 'camera': wearAcc(Bd, look.back, c, look); break; // the Lifeguard's rescue float, Grandma's handbag (clothes.js: fitted to the body + top)
     case 'cattail': catTail(ch, look, look.top === 'maid' ? 0.2 : look.bottom === 'skirt' ? 0.19 : 0.125); break; // out from under the skirt
   }
 }
