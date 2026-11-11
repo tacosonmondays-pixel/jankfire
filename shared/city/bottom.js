@@ -8,12 +8,15 @@ import { rng, hash2 } from './plan.js';
 import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook, cubeKit, stairKit, KIT, KIT_SIZE } from './kit.js';
 import { playBottom, BANISTER } from './playground.js';
 import { shops, shopRects } from './shops.js';
+import { act1Bottom } from './act1set.js';
 
 const T = SLICE.bottom, LANE = 7;
 const zSouth = (k) => 256 - T.terr * k; // the downhill edge of terrace k
 const yOf = (k) => k * T.rise;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
-const KEEP_OUT = () => [SLICE.lostFound.rect, SLICE.plaza.rect, SLICE.gym.rect, [SLICE.longStairs.x0 - 5, 0, SLICE.longStairs.x1 + 5, 256], [SLICE.escalator.x - 5, 40, SLICE.escalator.x + 5, 90], [SLICE.bottom.rect[2] - 6, 0, SLICE.bottom.rect[2] + 2, 256], ...shopRects('bottom')];
+// (the Lost & Found's front yard: its steps come down onto terrace 1, so no houses there, or the hub's door opens into a wall)
+const LF_YARD = () => [SLICE.lostFound.rect[0] + 10, SLICE.lostFound.rect[3], SLICE.lostFound.rect[2] - 10, SLICE.lostFound.rect[3] + 10];
+const KEEP_OUT = () => [SLICE.lostFound.rect, LF_YARD(), SLICE.plaza.rect, SLICE.gym.rect, [SLICE.longStairs.x0 - 5, 0, SLICE.longStairs.x1 + 5, 256], [SLICE.escalator.x - 5, 40, SLICE.escalator.x + 5, 90], [SLICE.bottom.rect[2] - 6, 0, SLICE.bottom.rect[2] + 2, 256], ...shopRects('bottom')];
 
 // the lots of terrace k: [x0, w, seed], laid out once along the whole terrace (deterministic, cached)
 const lotCache = new Map();
@@ -118,11 +121,13 @@ function dress(B, k, lot, near) {
   }
 }
 
+// [a, b] minus the gap [g0, g1]: the pieces either side
+const cut = (a, b, g0, g1) => (g1 <= a || g0 >= b ? [[a, b]] : [[a, Math.min(b, g0)], [Math.max(a, g1), b]]);
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
   B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
-  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) if (b > a) B.add(a, y, zs - 0.4, b, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up)
+  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) for (const [c, d] of k === 2 ? cut(a, b, SLICE.lostFound.rect[0] + 12, SLICE.lostFound.rect[2] - 12) : [[a, b]]) if (d > c) B.add(c, y, zs - 0.4, d, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up, and at the Lost & Found's front steps)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
   const poles = [];
@@ -302,6 +307,7 @@ export function bottom(B, d) {
   if (B.touches(SLICE.gym.rect, 2)) gym(B);
   if (B.touches([SLICE.escalator.x - 3, 0, SLICE.escalator.x + 3, 100])) escalator(B);
   playBottom(B); // grapple rings, the Banister, pads, peels (playground.js)
+  act1Bottom(B); // act I's places: the Wok Roofs, the service tunnel door (act1set.js)
   shops(B, 'bottom'); // shopfronts, vending, the safehouse garage (shops.js)
   // crowd spots along the lanes (WP8 / the crowd sim fills them)
   const cr = rng(hash2(B.out.cx, B.out.cz, 55));

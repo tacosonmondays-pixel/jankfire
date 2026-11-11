@@ -8,7 +8,8 @@
 # nodes (for the game to drive): wheel_rl wheel_rr wheel_ml wheel_mr (axle pivots, spin round x); castor_l castor_r
 # (steer round y at the swivel) > castor_l_spin castor_r_spin (spin round x); turret (yaw round y) > gun (pitch round x)
 # > barrels (spin round z); markers: seat (where the driver sits), muzzle (the barrels' tip); lod (the whole thing,
-# decimated, for far away). jf meta lists them.
+# decimated, for far away). jf meta lists them. rig: everything but lod hangs off it (the clips move it).
+# baked clips (glTF animations): drive (5 s loop = 13.19 m), ram_hit (0.8 s), die (2.4 s, hold the last frame).
 # blender52 -b --python tools/blender/cast/make_cast_war_rig.py [-- --no-sheet]
 import os, sys, math, random
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -183,15 +184,16 @@ def build():
         o.data.transform(Matrix.Translation(o.location)); o.location = (0, 0, 0)  # (join keeps the first piece's origin)
         o.data.transform(Matrix.Translation(-parent.matrix_world.translation)); o.parent = parent; o.location = (0, 0, 0)
         return o
-    under(body, root, 'body')
+    R = node('rig', (0, 0, 0), root)  # (everything but the far copy hangs off this, so the clips can jolt and drop the lot)
+    under(body, R, 'body')
     # ---- the wheels: four car tyres (one hubcap from something red), two giant chair castors that swivel
     for nm, x, z in (('wheel_rl', -1.0, 1.3), ('wheel_rr', 1.0, 1.3), ('wheel_ml', -1.0, 0.35), ('wheel_mr', 1.0, 0.35)):
-        w = node(nm, (x, 0.42, z), root); sx = -1 if x < 0 else 1
+        w = node(nm, (x, 0.42, z), R); sx = -1 if x < 0 else 1
         parts = [lathe([(0.22, -0.14), (0.38, -0.15), (0.42, -0.1), (0.42, 0.1), (0.38, 0.15), (0.22, 0.14)], (x, 0.42, z), tyre, seg=20, axis='x')]
         parts.append(lathe([(0.0, 0.0), (0.22, 0.0), (0.2, 0.04), (0.06, 0.07)], (x + sx * 0.13, 0.42, z), hubR if nm == 'wheel_mr' else hub, seg=14, axis='x', rot=(0, 0, math.pi) if sx < 0 else None))
         under(parts, w, nm + '_mesh')
     for nm, x in (('castor_l', -0.75), ('castor_r', 0.75)):
-        c = node(nm, (x, 0.67, -1.45), root)
+        c = node(nm, (x, 0.67, -1.45), R)
         cp = [rod((x, 0.655, -1.45), (x, 0.82, -1.45), 0.05, chrome, seg=10), box((0.36, 0.08, 0.5), (x, 0.595, -1.6), blackP, bev=0.03)]
         under(cp, c, nm + '_fork')
         sp = node(nm + '_spin', (x, 0.3, -1.65), c)
@@ -200,7 +202,7 @@ def build():
         wh.append(rod((x - 0.18, 0.3, -1.65), (x + 0.18, 0.3, -1.65), 0.04, chrome, seg=8))
         under(wh, sp, nm + '_wheels')
     # ---- the minigun: an upturned chair base on the back deck, a gas lift, the cradle, six barrels, the feed from the bottle
-    T = node('turret', (0, 0.56, 1.0), root)
+    T = node('turret', (0, 0.56, 1.0), R)
     tb = []
     for i in range(5):
         a = i * 2 * math.pi / 5; tip = (math.cos(a) * 0.32, 0.62, 1.0 + math.sin(a) * 0.32)
@@ -223,7 +225,7 @@ def build():
     for z in (0.7, 0.2, -0.22): bp.append(cyl(0.11, 0.04, (0, 1.95, z), steel, axis='z', seg=12))
     under(bp, Bz, 'barrels_mesh')
     node('muzzle', (0, 1.95, -0.27), Bz)
-    node('seat', (0, 0.98, -0.55), root)
+    node('seat', (0, 0.98, -0.55), R)
     # ---- far away: everything as one decimated mesh
     bpy.context.view_layer.update()
     lod_src = [o for o in root.children_recursive if o.type == 'MESH']
@@ -231,16 +233,109 @@ def build():
     for o in lod_src:
         c = o.copy(); c.data = o.data.copy(); bpy.context.scene.collection.objects.link(c); c.parent = None; c.matrix_world = o.matrix_world.copy(); cps.append(c)
     lod = join(cps, 'lod'); d = lod.modifiers.new('dec', 'DECIMATE'); d.ratio = 0.18; apply_mods(lod); lod.parent = root; lod.hide_render = True
-    root['jf'] = json.dumps({'kind': 'vehicle', 'id': ID, 'wheels': ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'], 'steer': ['castor_l', 'castor_r'],
+    clips(J)
+    root['jf'] = json.dumps({'kind': 'vehicle', 'id': ID, 'rig': 'rig', 'clips': {'drive': 5.0, 'ram_hit': 0.8, 'die': 2.4}, 'driveMetres': 13.19, 'wheels': ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'], 'steer': ['castor_l', 'castor_r'],
                              'turret': 'turret', 'gun': 'gun', 'spin': 'barrels', 'muzzle': 'muzzle', 'seat': 'seat', 'lod': 'lod', 'size': [2.2, 2.4, 4.4], 'front': '-z'})
     return root
+
+
+FPS = 30
+
+
+def _fcurves(act):
+    """the action's F-curves (blender 5: layers > strips > channelbags; older: act.fcurves)"""
+    if hasattr(act, 'layers') and len(act.layers):
+        out = []
+        for ly in act.layers:
+            for st in ly.strips:
+                for cb in st.channelbags: out += list(cb.fcurves)
+        return out
+    return list(act.fcurves)
+
+
+def clips(J):
+    """baked clips as muted NLA tracks, one track name per clip on every node it moves (the glTF exporter merges them):
+    drive (5 s loop: the tyres turn 5 times and the castors 7, so it loops clean over 13.19 m; the castors wobble like
+    a shopping trolley, the rig rattles), ram_hit (0.8 s: shoved back nose-up, the turret swings loose), die (2.4 s,
+    hold the end: two wheels come off, a castor folds, the cubicle drops and lists, the gun tips over the back and its
+    barrels spin down). blender axes: rotation_euler x = game x, blender y = game -z, blender z = game y."""
+    bpy.context.scene.render.fps = FPS
+    F = lambda t: 1 + round(t * FPS)
+
+    def key(o, clip, path, frames):
+        ad = o.animation_data_create(); ad.action = None
+        base = getattr(o, path).copy()
+        for f, v in frames:
+            setattr(o, path, v); o.keyframe_insert(path, frame=f)
+        act = ad.action; act.name = clip + '_' + o.name
+        for fc in _fcurves(act):
+            for kp in fc.keyframe_points: kp.interpolation = 'LINEAR'
+        tr = ad.nla_tracks.new(); tr.name = clip; tr.strips.new(clip, 1, act); tr.mute = True; ad.action = None
+        setattr(o, path, base)
+
+    def curve(o, clip, path, base, pts, n=None):
+        """pts: [(t, delta tuple)] smooth (eased) between, sampled every 2 frames; values are base + delta"""
+        fr = []
+        for (t0, v0), (t1, v1) in zip(pts, pts[1:]):
+            steps = max(1, round((t1 - t0) * FPS / 2))
+            for k in range(steps):
+                u = k / steps; e = u * u * (3 - 2 * u)
+                fr.append((F(t0 + (t1 - t0) * u), tuple(b + a + (c - a) * e for b, a, c in zip(base, v0, v1))))
+        fr.append((F(pts[-1][0]), tuple(b + c for b, c in zip(base, pts[-1][1]))))
+        key(o, clip, path, fr)
+    loc = lambda o: tuple(o.location); Z3 = (0, 0, 0)
+    rig, tur, gun, bar = J['rig'], J['turret'], J['gun'], J['barrels']
+    # drive
+    for nm in ('wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr'): key(J[nm], 'drive', 'rotation_euler', [(F(k * 5 / 40), (-2 * math.pi * 5 * k / 40, 0, 0)) for k in range(41)])
+    for nm in ('castor_l_spin', 'castor_r_spin'): key(J[nm], 'drive', 'rotation_euler', [(F(k * 5 / 56), (-2 * math.pi * 7 * k / 56, 0, 0)) for k in range(57)])
+    for k, nm in enumerate(('castor_l', 'castor_r')):
+        key(J[nm], 'drive', 'rotation_euler', [(F(i * 5 / 60), (0, 0, 0.07 * math.sin(2 * math.pi * 4 * i / 60 + k * 1.3) + 0.04 * math.sin(2 * math.pi * 9 * i / 60))) for i in range(61)])
+    key(rig, 'drive', 'location', [(F(i * 5 / 60), (0, 0, 0.012 * math.sin(2 * math.pi * 6 * i / 60) + 0.006 * math.sin(2 * math.pi * 13 * i / 60))) for i in range(61)])
+    key(rig, 'drive', 'rotation_euler', [(F(i * 5 / 60), (0.008 * math.sin(2 * math.pi * 5 * i / 60), 0.012 * math.sin(2 * math.pi * 7 * i / 60 + 1.0), 0)) for i in range(61)])
+    # ram_hit
+    curve(rig, 'ram_hit', 'location', Z3, [(0, Z3), (0.08, (0, -0.2, 0.03)), (0.3, (0, -0.1, 0)), (0.55, (0, -0.02, 0.01)), (0.8, Z3)])
+    curve(rig, 'ram_hit', 'rotation_euler', Z3, [(0, Z3), (0.08, (0.15, 0, 0)), (0.28, (-0.05, 0, 0)), (0.5, (0.03, 0, 0)), (0.8, Z3)])
+    curve(tur, 'ram_hit', 'rotation_euler', Z3, [(0, Z3), (0.1, (0, 0, 0.4)), (0.3, (0, 0, -0.22)), (0.52, (0, 0, 0.1)), (0.8, Z3)])
+    curve(gun, 'ram_hit', 'rotation_euler', Z3, [(0, Z3), (0.08, (-0.25, 0, 0)), (0.3, (0.12, 0, 0)), (0.8, Z3)])
+    for k, nm in enumerate(('castor_l', 'castor_r')):
+        curve(J[nm], 'ram_hit', 'rotation_euler', Z3, [(0, Z3), (0.1, (0, 0, (0.6, -0.5)[k])), (0.3, (0, 0, (-0.3, 0.35)[k])), (0.55, (0, 0, (0.12, -0.1)[k])), (0.8, Z3)])
+    # die
+    curve(rig, 'die', 'location', Z3, [(0, Z3), (0.15, (0, 0.02, 0.06)), (0.3, (0, -0.03, -0.02)), (0.7, (0, 0.05, -0.28)), (0.95, (0, 0.03, -0.22)), (1.3, (0, 0.06, -0.3)), (2.4, (0, 0.06, -0.3))])
+    curve(rig, 'die', 'rotation_euler', Z3, [(0, Z3), (0.15, (0.05, 0.04, 0)), (0.3, (-0.04, -0.05, 0)), (0.7, (-0.1, -0.24, 0.05)), (0.95, (-0.06, -0.18, 0.04)), (1.3, (-0.09, -0.22, 0.06)), (2.4, (-0.09, -0.22, 0.06))])
+    wl, wr = J['wheel_ml'], J['wheel_rr']
+    curve(wl, 'die', 'location', loc(wl), [(0, Z3), (0.3, Z3), (0.55, (-0.9, 0.0, 0.25)), (0.8, (-1.5, 0.0, -0.13)), (1.05, (-1.8, 0.0, 0.05)), (1.35, (-2.0, 0.0, -0.27)), (2.4, (-2.0, 0.0, -0.27))])
+    curve(wl, 'die', 'rotation_euler', Z3, [(0, Z3), (0.3, Z3), (0.8, (-4.0, 0.8, 0)), (1.35, (-6.0, math.pi / 2, 0.3)), (2.4, (-6.0, math.pi / 2, 0.3))])
+    curve(wr, 'die', 'location', loc(wr), [(0, Z3), (0.45, Z3), (0.75, (0.7, -0.6, 0.35)), (1.1, (1.3, -1.4, -0.1)), (1.5, (1.6, -2.2, -0.27)), (2.4, (1.6, -2.2, -0.27))])
+    curve(wr, 'die', 'rotation_euler', Z3, [(0, Z3), (0.45, Z3), (1.1, (-7.0, -0.6, 0)), (1.5, (-9.0, -math.pi / 2, -0.2)), (2.4, (-9.0, -math.pi / 2, -0.2))])
+    curve(J['castor_r'], 'die', 'rotation_euler', Z3, [(0, Z3), (0.5, Z3), (0.75, (0.9, 0, 0.4)), (0.9, (0.7, 0, 0.5)), (2.4, (0.8, 0, 0.5))])
+    curve(J['castor_l'], 'die', 'rotation_euler', Z3, [(0, Z3), (0.2, (0, 0, 0.5)), (0.4, (0, 0, -0.4)), (0.7, (0, 0, 0.9)), (2.4, (0, 0, 0.9))])
+    curve(tur, 'die', 'rotation_euler', Z3, [(0, Z3), (0.6, (0.1, 0, 0.3)), (1.0, (0.5, 0, 0.5)), (1.4, (1.25, 0, 0.6)), (1.6, (1.1, 0, 0.6)), (1.75, (1.2, 0, 0.6)), (2.4, (1.2, 0, 0.6))])
+    curve(gun, 'die', 'rotation_euler', Z3, [(0, Z3), (0.6, Z3), (1.4, (0.5, 0, 0)), (2.4, (0.55, 0, 0))])
+    curve(bar, 'die', 'rotation_euler', Z3, [(0, Z3), (0.2, (0, -2.5, 0)), (1.0, (0, -9.0, 0)), (2.0, (0, -11.5, 0)), (2.4, (0, -11.6, 0))])
+    bpy.context.scene.frame_set(1)
+
+
+def export_anim(root, file_id):
+    os.makedirs(MODELS, exist_ok=True)
+    for s in bpy.context.view_layer.objects.selected: s.select_set(False)
+    root.select_set(True)
+    for c in root.children_recursive: c.select_set(True)
+    path = os.path.join(MODELS, file_id + '.glb')
+    bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=True, export_apply=True,
+                              export_extras=True, export_yup=True, export_texcoords=True, export_normals=True,
+                              export_materials='EXPORT', export_image_format='AUTO', export_lights=False, export_cameras=False,
+                              export_animations=True, export_animation_mode='NLA_TRACKS', export_force_sampling=True,
+                              export_optimize_animation_size=False, export_optimize_animation_keep_anim_object=True)
+    tris, lo, hi = stats(root)
+    print(f'JF_EXPORT {file_id}: {os.path.getsize(path) // 1024} KB, {tris} tris')
+    return path
 
 
 def main():
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     reset()
     root = build()
-    if '--no-export' not in argv: export(root, 'cast/c_' + ID)
+    if '--no-export' not in argv: export_anim(root, 'cast/c_' + ID)
     if '--no-sheet' not in argv: sheet(root, 'c_' + ID, exposure=-0.3)
 
 

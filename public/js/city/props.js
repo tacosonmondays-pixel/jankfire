@@ -72,6 +72,15 @@ function codeModel(id) {
   return parts;
 }
 
+// a glTF attribute as plain floats. Blender's exporter packs some meshes' uvs as normalized 16-bit ints (mesh
+// quantization) and leaves others as floats, and mergeGeometries won't join the two: the whole material dropped out
+// (the hand truck's wheels and rails, "failed while trying to merge the uv attribute")
+function plainAttr(a) {
+  if (!a.isInterleavedBufferAttribute && !a.normalized && a.array instanceof Float32Array) return a;
+  const n = a.count, s = a.itemSize, out = new Float32Array(n * s);
+  for (let i = 0; i < n; i++) for (let c = 0; c < s; c++) out[i * s + c] = a.getComponent(i, c); // (getComponent undoes the packing)
+  return new THREE.BufferAttribute(out, s);
+}
 // a loaded glTF scene -> parts merged by material (transforms baked in), so one prop = a few draw calls
 function glbParts(scene, lod1 = false) {
   scene.updateMatrixWorld(true);
@@ -89,7 +98,10 @@ function glbParts(scene, lod1 = false) {
   });
   const parts = [];
   for (const [m, list] of byMat) {
-    const norm = list.map((g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k); return g.index ? g : g; });
+    const norm = list.map((g) => { for (const k of Object.keys(g.attributes)) if (!['position', 'normal', 'uv', 'color'].includes(k)) g.deleteAttribute(k); else g.setAttribute(k, plainAttr(g.attributes[k])); return g; });
+    // one mesh of a material with no uv / colour and another with: give it blank ones, so the merge keeps every piece
+    for (const [k, size, v] of [['uv', 2, 0], ['color', 3, 1]]) if (norm.some((g) => g.attributes[k])) for (const g of norm) if (!g.attributes[k]) g.setAttribute(k, new THREE.BufferAttribute(new Float32Array(g.attributes.position.count * size).fill(v), size));
+    if (norm.some((g) => !!g.index) && norm.some((g) => !g.index)) for (let i = 0; i < norm.length; i++) if (norm[i].index) norm[i] = norm[i].toNonIndexed();
     const keys = (g) => Object.keys(g.attributes).sort().join();
     const k0 = keys(norm[0]);
     const geo = norm.every((g) => keys(g) === k0) ? mergeGeometries(norm) : norm[0];
@@ -136,6 +148,7 @@ const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vecto
 const DETAIL = { door_bottom: 0.4, shutter: 0.35, acunit: 0.35, pchair: 0.5, laundry_a: 0.5, laundry_b: 0.5, stringlights: 0.5, wokdish: 0.45, tooth: 0.5, tooth_b: 0.5, eyeball: 0.5, crate_soup: 0.5, scooter: 0.6,
   ribarch: 3, lung: 2, machine: 4, gutgate: 4, smilesign: 2, sphincter: 1.4, lostfound_sign: 4, launderette: 3, gristlelogo: 2, choirpipe: 2, bus: 1.5 };
 export const propDetail = (id) => DETAIL[id] || 1;
+DETAIL.gristle_truck = 2; // (the Act I meat truck: a hero prop, keep its doors and skin a street further)
 DETAIL.smilesign = 1; DETAIL.tarp = 0.6; DETAIL.lostpile = 0.5; DETAIL.sofa = 0.6; DETAIL.fridge = 0.6;
 // small things that repeat by the thousand aren't drawn at all past this (x the preset's props radius / 224): the
 // house's own far box carries its look out there

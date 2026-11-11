@@ -366,7 +366,8 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - **LUMPS:** i think there's two departments.
 
 #### Talk: `trade_post` (with SISTER AGENDA)
-- **[start]**
+- **[start]** _branch: flag:soup_spilled → empty; else → count_
+- **[count]**
   - _A trade post on the Gut border, where the last lamp post has grown a fingernail. A turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note. Her staff lanyard is still on, under the robe._
   - _sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it._
   - _She tips a little out and tastes it with a ladle that has a tongue._
@@ -387,6 +388,30 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - _Lumps is looking past her, deeper into the Gut, at the pink streets._
   - **LUMPS:** ...it's sunday tomorrow.
   - _does: give:medicine_crate_
+- **[empty]**
+  - _The trade post on the Gut border. The robed Choir clerk takes the lid off the pot and looks in. She tips it. Nothing comes out. She tips it further._
+  - _sung* the soup, the soup, the tomato... *not sung* ...this is a pot._
+  - **SISTER AGENDA:** i can count soup. i can't count a pot. there's no column for a pot.
+  - ➤ _"it was soup."_ → was
+  - ➤ _"there were interns."_ → interns
+  - ➤ _"*say nothing*"_ → silent
+- **[was]**
+  - **SISTER AGENDA:** everything was something. i can't count was.
+  - _She writes it down anyway, very neatly: one (1) pot. empty._
+  - → halved
+- **[interns]**
+  - **SISTER AGENDA:** there are always interns. it's a growth sector.
+  - _She writes it down: one (1) pot. interns._
+  - → halved
+- **[silent]**
+  - _She waits. You keep not saying it. She writes something down that takes longer than 'empty'._
+  - → halved
+- **[halved]**
+  - _One box of medicine slides across the counter. She looks at it, then takes half of what's inside back out._
+  - **SISTER AGENDA:** policy's per litre. i don't write the policy. i write it down.
+  - _Lumps looks at the box for a long time. Forty people's medicine, minus whatever half is._
+  - **LUMPS:** ...sharon's going to know which one.
+  - _does: flag:medicine_short, coupons:-100_
 
 #### Choice: Employee of the Month robs you and offers an internship.
 - **ask about the internship**: You keep the Unpaid lanyard. Low-rank raiders sometimes wave you through on The Commute. EOTM remembers you as 'our newest intern' in his world-boss fight.

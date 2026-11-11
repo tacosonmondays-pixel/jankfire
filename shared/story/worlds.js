@@ -21,10 +21,11 @@ export function travelTo(save, map) {
   const from = okAt(d.travelFrom) ? d.travelFrom : okAt(save.at) && save.at.map !== map ? { map: save.at.map, p: save.at.p.slice(), yaw: Number.isFinite(save.at.yaw) ? save.at.yaw : 0 } : null;
   return { ...save, at: { map, p: W.spawn.slice(), yaw: W.yaw || 0, fresh: true }, data: { ...d, ...(from ? { travelFrom: from } : {}) } };
 }
-// back to where the last travelTo left from; with nothing (or nonsense) there, the default world's spawn
-export function travelHome(save) {
+// back to where the last travelTo left from; with nothing (or nonsense) there, the default world's spawn. `to` (a
+// spot in that world, { map, p, yaw }): come back out somewhere else (the train comes out at the tunnel mouth)
+export function travelHome(save, to) {
   if (!save) return null;
-  const data = { ...(save.data || {}) }, from = okAt(data.travelFrom) ? data.travelFrom : null, W = WORLDS[DEFAULT_WORLD];
+  const data = { ...(save.data || {}) }, from = okAt(to) ? to : okAt(data.travelFrom) ? data.travelFrom : null, W = WORLDS[DEFAULT_WORLD];
   delete data.travelFrom;
   return { ...save, data, at: from ? { map: from.map, p: from.p.slice(), yaw: Number.isFinite(from.yaw) ? from.yaw : 0 } : { map: DEFAULT_WORLD, p: W.spawn.slice(), yaw: W.yaw || 0, fresh: true } };
 }
