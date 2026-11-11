@@ -362,6 +362,39 @@ function shredderBuild(g, o) {
   g.userData.len = 0.75;
 }
 
+// a Blender shredder's hooks (meta.shred): the same ones shredderBuild sets, so weapons.js / shredder.js / remote.js drive
+// it unchanged. the lamps get their own unlit material, the teeth one steel of their own per gun (it heats red), the
+// motion-blur sleeve is still made here
+function shredAuthored(g, mt) {
+  const s = mt && mt.shred;
+  if (!s) return;
+  const ud = g.userData, v3 = (a) => (Array.isArray(a) && a.length === 3 && a.every(Number.isFinite) ? new THREE.Vector3(a[0], a[1], a[2]) : null);
+  const chute = v3(s.chute), dir = v3(s.chuteDir);
+  if (chute && dir && dir.lengthSq() > 0) { ud.chute = chute; ud.chuteDir = dir.normalize(); }
+  const lamps = (Array.isArray(s.lamps) ? s.lamps : []).map((n) => nodeIn(g, n)).filter((o) => o && o.isMesh);
+  for (const l of lamps) { l.material = jankify(new THREE.MeshBasicMaterial({ color: 0x500000 })); l.userData.noWrap = true; }
+  if (lamps.length) ud.lamps = lamps;
+  const needle = nodeIn(g, s.needle);
+  if (needle) { ud.heatNeedle = needle; needle.rotation.y = 2.3; needle.traverse((o) => { o.userData.noWrap = true; }); }
+  const teeth = nodeIn(g, s.teeth);
+  if (teeth) {
+    ud.teeth = teeth;
+    let steel = null;
+    teeth.traverse((o) => {
+      o.userData.noWrap = true;
+      if (o.isMesh && o.material && o.material.name === s.steel) { steel = steel || o.material.clone(); o.material = steel; ud.blade = o; }
+    });
+    const at = v3(s.blur);
+    if (at && steel) {
+      const blur = new THREE.Mesh(new THREE.CylinderGeometry(0.094, 0.094, 0.13, 18, 1, true).rotateX(Math.PI / 2),
+        jankify(new THREE.MeshLambertMaterial({ color: steel.color.getHex(), map: blurTex(), transparent: true, opacity: 0, depthWrite: false })));
+      blur.position.copy(at); blur.visible = false; blur.userData.noWrap = true; g.add(blur);
+      ud.blur = blur;
+    }
+  }
+  if ([s.mouthR, s.axisY, s.throatZ].every(Number.isFinite)) Object.assign(ud, { mouthR: s.mouthR, axisY: s.axisY, throatZ: s.throatZ }); // where the air goes in (weapons.js draws it)
+}
+
 // ------------------------------------------------------------ weapons (forward = -Z, grip at origin)
 function cardTexture() {
   const c = document.createElement('canvas');
@@ -1419,6 +1452,7 @@ export function buildWeapon(id, skin) {
     secAuthored(id, g, mt); // the radar gun's speed readout, the water pistol's tank level, the taser's ARMED light
     laserAuthored(id, g, mt); // the laser's charge meter, lens glow, button, charm + the charge orb
     bindRifle(g, mt); // rifle pack: mag, charging handle, lever, feed cover, belt links, barrel heat
+    shredAuthored(g, mt); // the shredder: chute, lamps, heat needle, the spinning teeth + their blur
     if (LASSO_MODELS[variant ? model : id]) lassoLoop(g, ropeLook(skin)); // the lasso's hanging loop is simulated rope: still ours
     if (Array.isArray(mt.glint) && mt.glint.length && mt.glint.every((a) => Array.isArray(a) && a.length === 4 && a.every(Number.isFinite))) addGlint(g, mt.glint);
     applySkin(g, skin);
