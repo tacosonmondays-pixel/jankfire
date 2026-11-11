@@ -96,6 +96,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
   const rows = [];
   let last = '', same = 0;
   for (let n = 0; n < 140; n++) {
+    if (await ev(() => !!window.JF_STORY.S.st.flags.act1_done)) { console.log('END OF ACT I (flag act1_done)'); break; }
     let o = await obj();
     if (o.none) { console.log('NO MAIN OBJECTIVE. done:', o.done.join(' ')); break; }
     // a cutscene or a talk in the way: watch a moment, then skip it / talk it through like a player
