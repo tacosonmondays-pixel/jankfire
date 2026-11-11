@@ -9,6 +9,7 @@ import * as THREE from 'three';
 import { jankify } from '../jank.js';
 import { buildFace, skinMat } from './face.js';
 import { glbLoader } from '../glbkit.js';
+import { palletJackLook } from './jacklook.js'; // (pallet jack's skeleton + code puppet live in their own file)
 
 const HIP = 0.92;
 const g = (x = 0, y = 0, z = 0) => { const o = new THREE.Group(); o.position.set(x, y, z); return o; };
@@ -302,6 +303,7 @@ const LOOKS = {
     parts.headJoint = c.head;
     return { ...p, parts, partsAll: all, kind: 'cyborg', height: 4.5, eyeY: 4.3 };
   },
+  pallet_jack: () => palletJackLook({ person, g, sph, cap, box, cyl, flat, patMat, speckle }),
 };
 // everyone else in the script gets a seeded look from their cast entry (body: mannequin / normal / puppet) until they
 // get a hand-made one: skin, clothes and pattern from the palette; puppets pick one huge + one tiny feature, and the
