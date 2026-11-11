@@ -43,12 +43,16 @@ function mat(color, textured = true) {
 }
 const hex = (c, d) => { try { return new THREE.Color(c).getHex(); } catch { return d; } };
 const SLEEVES = { hoodie: 1, jacket: 1, suit: 1, runner: 1, maid: 1, tee: 0.5 };
+// the wrists the clothes have (clothes.js): [the cuff, the sleeve behind it]. a top that isn't here is one colour to the end
+const dimmer = (c) => new THREE.Color(c).multiplyScalar(0.72).getHex();
+const CUFFS = { runner: (c) => [0x1c1c21, c], suit: (c) => [0xf2f1ec, c], hoodie: (c) => [dimmer(c), c], jacket: (c) => [dimmer(c), c] }; // black knit, a shirt cuff, darker ribbing, a darker band
 export function handLook() {
   const lk = (G.settings && G.settings.look) || {};
   const skin = lk.skin ? hex(lk.skin, 0xe6cba2) : 0xe6cba2; // the mannequin tone when you haven't picked one
   const sl = SLEEVES[lk.top];
   const cuff = sl ? hex(lk.topColor || (lk.top === 'runner' ? '#f2d02a' : lk.top === 'maid' ? '#17141c' : lk.color) || '#2a2440', 0x2a2440) : new THREE.Color(skin).multiplyScalar(0.8).getHex(); // bare arms: just the wrist (a darker end so it reads as cut off)
-  return { skin, knuck: new THREE.Color(skin).multiplyScalar(0.86).getHex(), nail: new THREE.Color(skin).lerp(new THREE.Color(0xffffff), 0.45).getHex(), cuff, sleeve: !!sl };
+  const two = sl && Object.hasOwn(CUFFS, lk.top) ? CUFFS[lk.top](cuff) : null;
+  return { skin, knuck: new THREE.Color(skin).multiplyScalar(0.86).getHex(), nail: new THREE.Color(skin).lerp(new THREE.Color(0xffffff), 0.45).getHex(), cuff: two ? two[0] : cuff, stub: two ? two[1] : null, sleeve: !!sl };
 }
 
 // ------------------------------------------------------------ build
@@ -91,6 +95,10 @@ export function makeHand(side = 'R', opts = {}) {
   // the cuff: a short chunky sleeve end back along the arm
   const cuff = new THREE.Mesh(new THREE.CylinderGeometry(lk.sleeve ? 0.024 : 0.0205, lk.sleeve ? 0.026 : 0.0215, lk.sleeve ? 0.045 : 0.01, 7), L.cuffM);
   cuff.userData.noWrap = true; cuff.userData.hand = true; body.add(cuff); h.userData.hand.cuff = cuff;
+  if (lk.stub != null) { // the sleeve carrying on behind a cuff that's its own colour (it rides the cuff: +y is back up the arm)
+    if (!geo.has('stub')) { const g = new THREE.CylinderGeometry(0.0295, 0.028, 0.034, 7); g.userData.shared = true; geo.set('stub', g); }
+    const st = new THREE.Mesh(geo.get('stub'), mat(lk.stub)); st.position.y = 0.0375; st.userData.noWrap = true; st.userData.hand = true; cuff.add(st);
+  }
   if (!lk.sleeve) { const wr = new THREE.Mesh(new THREE.CylinderGeometry(0.0175, 0.019, 0.026, 7), L.skinM); wr.userData.noWrap = true; body.add(wr); h.userData.hand.wrist = wr; }
   pose(h, opts.pose || 'grip', opts.r);
   return h;

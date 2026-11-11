@@ -277,6 +277,8 @@ export const sfx = {
   glorp(pos) { tone('sine', 130, 560, 0.34, 0.45, pos); tone('triangle', 85, 240, 0.42, 0.22, pos, 0.05); noise(0.35, 0.25, 'lowpass', 1200, 180, pos); },
   bigPop(pos) { noise(0.09, 1, 'highpass', 500, 3500, pos); tone('sine', 1150, 150, 0.14, 0.65, pos); tone('square', 2600, 900, 0.05, 0.12, pos); noise(0.5, 0.3, 'highpass', 5000, 9000, pos, 0.06); },
   blub(pos) { const f = 85 + Math.random() * 90; tone('sine', f, f * 2.7, 0.14, 0.3, pos); },
+  // a bubble in a bile pool letting go (city/gutgoo.js): a small wet pop, a different pitch every time
+  gooPop(pos, v = 1) { const f = 150 + Math.random() * 240; tone('sine', f, f * 3.1, 0.085, 0.24 * v, pos); noise(0.03, 0.13 * v, 'highpass', 1700, 4400, pos, 0.06); },
   // out of bounds countdown: a harsh two-tone alarm blip per second, the last one higher
   oob(last) { tone('square', last ? 1320 : 880, last ? 1300 : 860, 0.16, 0.22); tone('square', last ? 660 : 440, last ? 650 : 430, 0.16, 0.14, null, 0.08); },
   error(pos) { tone('square', 880, 880, 0.12, 0.2, pos); tone('square', 660, 660, 0.25, 0.2, pos, 0.14); },
