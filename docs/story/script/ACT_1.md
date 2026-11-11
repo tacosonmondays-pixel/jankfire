@@ -45,9 +45,9 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - `  4` _The bots don't respawn. They stand where they died, get up slowly, and turn to look at the player. All of them. The kill feed keeps scrolling the same line: CALE R. 4417 has left the match. CALE R. 4417 has left the match._
 - `  9` _The camera pulls back from the player. The sky of the Suburb map has a reflection on it, like glass. The camera goes through the glass._
 - ` 15` _We're outside a vending machine. The whole Suburb match is inside its window, tiny, still running. The machine is the original ☺ vending machine, glowing, humming, in a ruined returns depot. Rain through the roof._
-- ` 20` _The camera keeps pulling back: out of the Lost & Found, over the stacked pastel houses of the Bottom, up the rubble hill. Washing lines. Wok dishes. A kid on a basket scooter looks up._
+- ` 20` _The camera keeps pulling back: out of the Lost & Found, over the stacked pastel houses of the Bottom, up the rubble hill. Washing lines. Wok dishes. Here and there a door standing open with a white slip stapled to it at head height. A kid on a basket scooter looks up._
 - ` 30` **JANKFIRE: OVERDUE** _The title slams over the hill._
-- ` 34` _Still pulling back and up: the Gut breathing in its valley, ribcage arches over glowing pink streets; the Lates' dead clock tower; giant fallen digits glowing green in the ash; dead traffic on the ring road; and at the very top, the ☺ Spire, white and lit, the only lit building in the dark._
+- ` 34` _Still pulling back and up: the Gut breathing in its valley, ribcage arches over glowing pink streets; the Lates' dead clock tower; giant fallen digits glowing green in the ash; a flyover wall with a bus queue burnt onto it, eleven shadows and no bus; the ring road, still nose to tail from the evening it stopped; and at the very top, the ☺ Spire, white and lit, the only lit building in the dark._
 - ` 50` _Every public clock on Corp Hill ticks in sync. The camera stops on the Spire's Master Clock: 23:58._
 - ` 53` _Whip pan: we fall back down the hill, through the depot roof, to the Machine._
 - ` 56` _Dale, eighty-three, with his hand over a big round button on the Machine's service panel. It has a sticker on it: DISPENSE (ENGINEER ONLY). The sticker is sixty years old. He has never pressed it. Auntie Spreadsheet is behind him with a torch and a notebook._
@@ -70,9 +70,9 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - `  1` [panel 1] _first they bought the politicians. then the parties. then the countries. ☺ CORP bought ours at an auction. it was the only bidder._ (SOLD) _A politician at a podium with a ☺ price tag dangling off his collar._
 - `  7` [panel 2] _then they merged. every company was a division, every country belonged to one, and every quarter the bottom division got cut. so they went to war over market share._ _A war map shaped like a sales chart, armies in division colours: pink, yellow, red, orange, black._
 - ` 14` [panel 3] _the last day of the last quarter. every division was going to miss its number. at 16:59 six boards signed something called option c._ (SCRITCH) _Six pens over six signature lines, six logos on the letterheads. A clock: 16:59._
-- ` 21` [panel 4] _at 17:30 they launched everything at once._ (DONG) _Three images in one panel: a street frozen mid-step (the Lates), a battlefield standing back up (Regrowth), a city going black._
+- ` 21` [panel 4] _at 17:30 they launched everything at once. the bombs first. then the things that weren't bombs. every product line they had._ (DONG) _Three images in one panel: a street frozen mid-step (the Lates), a battlefield standing back up (Regrowth), a city going black._
 - ` 27` [panel 5] _the long dark. billions dead. the companies waited it out in their towers. the spire had the only lit windows for thirty years._ _Ash falling on a dark city. One tower lit._
-- ` 33` [panel 6] _and we built houses on the hill. the hill breathes. you get used to it._ _Survivors stacking pastel shipping-container houses on a hill of rubble and bone. A kid sleeping on a washing line._
+- ` 33` [panel 6] _and we built houses on the hill. the hill is everybody who didn't have a tower. it breathes. you get used to it._ _Survivors stacking pastel shipping-container houses on a hill of rubble and bone. A kid sleeping on a washing line._
 - ` 38` **AUNTIE SPREADSHEET:** that was the end of the world. sixty-one years ago. you hungry?
 
 #### Talk: `first_words` (with DALE)
@@ -168,6 +168,7 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - **[start]**
   - **DUMPLING:** ghost! ghost! auntie says i'm doing the tour because i'm the most annoying. that's a job.
   - **DUMPLING:** this is the lost property. everything anybody ever lost. there's a whole bus out the back. take something. something that shoots.
+  - **DUMPLING:** not the top shelf! the top shelf's people who went on the truck. auntie says that's not lost, that's owed.
   - ➤ _"what do you shoot out here?"_ → shoot
   - ➤ _"is any of this yours?"_ → yours
 - **[shoot]**
@@ -181,6 +182,7 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - **[start]**
   - **DUMPLING:** grapple the wok on that roof. no, the wok. the WOK. the round thing.
   - **DUMPLING:** let go when you're going up, not when you're going down. going down is how mr. abara broke his everything.
+  - **DUMPLING:** bev put him back together. the hip's off a different man. he says goodnight to it.
   - _you land, roughly, on a roof covered in woks_
   - **DUMPLING:** ...four out of ten. you swung like a fridge. lumps swings like a fridge and he IS a fridge.
   - ➤ _"let me go again."_ → again
@@ -192,7 +194,7 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 
 #### Talk: `dinner` (with AUNTIE SPREADSHEET)
 - **[start]**
-  - _A long table in the depot. Soup in mismatched bowls. Lumps eats four. Gordo reads a binder while he eats. Dale doesn't come; he never leaves the Machine at night._
+  - _A long table in the depot. Soup in mismatched bowls. Twelve places laid, seven people. Nobody sits at the other five and nobody clears them. Lumps eats four. Gordo reads a binder while he eats. Dale doesn't come; he never leaves the Machine at night._
   - **AUNTIE SPREADSHEET:** eat. you're plastic. eat anyway. it's how we know you're one of us.
   - _You eat. It goes somewhere. Nobody asks where._
   - ➤ _"what happened to the world?"_ → world
@@ -208,7 +210,7 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
   - ➤ _"what happened to the world?"_ → world
   - ➤ _"what's the spire?"_ → spire
 - **[spire]**
-  - **AUNTIE SPREADSHEET:** the top of the hill. ☺ corp. the only lit building for thirty years. they're still there. still on time.
+  - **AUNTIE SPREADSHEET:** the top of the hill. ☺ corp. the only lit building for thirty years. i costed those lights once. they'd have kept this whole hill warm. they're still there. still on time.
   - **WEE GORDO:** *without looking up* still sending us the bill.
   - ➤ _"what bill?"_ → bill
   - ➤ _"what happened to the world?"_ → world
@@ -216,6 +218,8 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
   - **AUNTIE SPREADSHEET:** back pay. for the time the world spent ending. two hundred and forty-four quarters of it.
   - **AUNTIE SPREADSHEET:** for a job none of us had. a job most of us weren't born for.
   - **AUNTIE SPREADSHEET:** it doesn't reconcile. nothing they send us reconciles.
+  - **WEE GORDO:** *still not looking up* they don't want it in coupons.
+  - _Auntie looks down the table at the empty places. Then she passes you the bread._
   - ➤ _"what happened to the world?"_ → world
 - **[after]**
   - _The panels fade. The soup's gone cold._
@@ -228,9 +232,11 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - **[knew]**
   - _She looks at the soup._
   - **AUNTIE SPREADSHEET:** i've known a lot of people, change. i'm eighty-five. go to sleep.
+  - _She doesn't go to bed. From the box you can see her at the table, saying something to the cold soup, too quiet to hear. She says it twice._
   - _does: flag:auntie_dodged_
 - **[night]**
   - **AUNTIE SPREADSHEET:** goodnight. *quietly, when she thinks you've gone* ...goodnight.
+  - _The depot goes dark. The Machine doesn't. Through its glass, very small, a match is starting. Somebody in there is laughing._
 
 **Reward:** 50 coupons, lost_property_weapon
 **Review card:** EXCEEDS EXPECTATIONS. you came out of a vending machine and ate soup. very adaptable. / MEETS EXPECTATIONS. returned in good condition. / SEE ME. you fell off the washing line four times. dumpling is telling everyone.
@@ -281,6 +287,7 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - **BIG SAUCE SHARON:** it's the tomato. gristle like the tomato. they pay double for the tomato.
   - **LUMPS:** they pay in medicine.
   - **BIG SAUCE SHARON:** they pay in medicine. i didn't say it was a good double.
+  - **BIG SAUCE SHARON:** there's forty people's medicine in that pot. spill a cup and one of them goes without. i know which one. i'm not telling you.
   - ➤ _"why do they want soup?"_ → why
   - ➤ _"i'll be careful."_ → careful
 - **[why]**
@@ -292,7 +299,7 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 
 #### Talk: `car_ride` (with LUMPS)
 - **[start]**
-  - _Pallet Jack lifts Sharon's pot into the car with one hand and tells Lumps his squat form is "a bit sad"._
+  - _Pallet Jack lifts Sharon's pot into the car with one hand. The boiler in his back hisses when he bends and nobody on the street looks round. He tells Lumps his squat form is "a bit sad"._
   - **PALLET JACK:** that pot's ninety. the soup's another sixty. the worry's free.
   - _Lumps sits with the pot in his lap, both enormous forearms around it like a baby._
   - **LUMPS:** slower on the bumps. she's full to the top.
@@ -305,10 +312,11 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - **LUMPS:** it's where they put the dead. after. millions of them. gristle and sons had this stuff, regrowth. made to bring soldiers back.
   - **LUMPS:** it brought them back. just not as soldiers. as... a place.
   - **LUMPS:** it's warm. it digests. you'll see. try not to touch the walls.
+  - **LUMPS:** it's still in the rain, nan says. leave a chair out for a year and it gets a pulse. so we don't leave things out. or people.
   - ➤ _"why do you go there?"_ → why
 - **[why]**
   - **LUMPS:** sundays. i visit my mum.
-  - _he looks out of the window._
+  - _He looks out of the window. The Ring Road is still the evening rush of the last day: three lanes, nose to tail, for sixty-one years. There is somebody at every wheel. Every one of them has a lanyard on._
   - **LUMPS:** she's at work in the gut. two years. it's a long shift.
   - ➤ _"what kind of work?"_ → work
   - ➤ _"*leave it*"_ → leave
@@ -322,12 +330,13 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - _does: flag:lumps_mentioned_mum, standing.bottom:+1_
 - **[arms]**
   - **LUMPS:** born with them. my mum's got them too. smaller.
-  - **LUMPS:** the doctors in chrome gristle said they'd buy them off me. i said they're my arms. they said not for long.
+  - **LUMPS:** the doctors in chrome gristle said they'd buy them off me. a year of medicine for the left one. i said they're my arms. they said not for long.
   - **LUMPS:** i hit one. by accident. i said sorry.
   - ➤ _"why do you go to the gut?"_ → why
 
 #### Talk: `eotm_robbery` (with EMPLOYEE OF THE MONTH)
 - **[start]**
+  - _The Ring Road, under a flyover. The wall has a bus queue burnt onto it: eleven shadows, waiting. The Unpaid have drawn a lanyard on each one in marker pen._
   - _War-rigs made of buses and forty office desks block the Ring Road. Interns in office-chair armour pile out. A huge man in filing-cabinet armour covered in plaques of his own face climbs on a car roof._
   - **EMPLOYEE OF THE MONTH:** HALT. YOU ARE ENTERING A WORKSPACE.
   - **EMPLOYEE OF THE MONTH:** i am EMPLOYEE OF THE MONTH. every month. since the end of the world.
@@ -340,6 +349,7 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - **EMPLOYEE OF THE MONTH:** you'd start in robbery and work your way up to also robbery.
   - **LUMPS:** we're delivering soup.
   - **EMPLOYEE OF THE MONTH:** SOUP IS A CORE PRODUCT. fine. take the lanyard anyway. think about it. the grind never stops.
+  - _He takes it off a hook on the rig. There are a few hundred on the hook. The INTERN sticker on yours is stuck over somebody's name._
   - → leave
   - _does: give:unpaid_lanyard, flag:eotm_offered_internship_
 - **[pay]**
@@ -357,7 +367,7 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 
 #### Talk: `trade_post` (with SISTER AGENDA)
 - **[start]**
-  - _A trade post on the Gut border: a turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note._
+  - _A trade post on the Gut border, where the last lamp post has grown a fingernail. A turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note. Her staff lanyard is still on, under the robe._
   - _sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it._
   - _She tips a little out and tastes it with a ladle that has a tongue._
   - ➤ _"what's it for?"_ → for (if flag:asked_sharon_soup)
@@ -373,6 +383,7 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 - **[take]**
   - _A crate of medicine slides across the counter._
   - **SISTER AGENDA:** same time next week. the tomato. the bishop likes the tomato.
+  - _Somewhere behind the counter, a long way in, a truck is reversing. It beeps. She sings a little louder until it stops._
   - _Lumps is looking past her, deeper into the Gut, at the pink streets._
   - **LUMPS:** ...it's sunday tomorrow.
   - _does: give:medicine_crate_
@@ -421,8 +432,8 @@ _It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gri
 #### Scene: `c3_its_breathing` (cinematic, 45 s, music: gut_choir_chord)
 - `  0` _Driving into the Gut for the first time. The tarmac goes soft, then pink, then ribbed. The tyres squelch. The headlights catch veins in the kerb._
 - `  6` **LUMPS:** don't touch the walls. they like it.
-- `  9` _A rib arch rises over the avenue like a cathedral roof. Lungs inflate between the buildings and the whole street breathes in. A launderette with a tongue for a door._
-- ` 15` _The Gut Choir, robed, puppet faces stretched into permanent smiles, lining the street, turn their faces to the car all at once._
+- `  9` _A rib arch rises over the avenue like a cathedral roof. It isn't one big rib. It's a great many ordinary ones grown end to end, and there's a helmet in it. Lungs inflate between the buildings and the whole street breathes in. A launderette with a tongue for a door._
+- ` 15` _The Gut Choir, robed, puppet faces stretched into permanent smiles, staff lanyards still on under the robes, lining the street, turn their faces to the car all at once._
 - ` 20` **CHOIR:** *one long chord, held, on the word* welcome.
 - ` 24` _Among the choir, grown half into the wall of a building, are faces that aren't singing: normal faces, Off-Spec faces, people from the Bottom. A small round woman in curlers looks straight at the car._
 - ` 29` **DOT:** ambrose?
@@ -436,7 +447,7 @@ _It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gri
   - **DOT:** ambrose! you came. it's sunday, isn't it? i can tell by your face. you've got your sunday face.
   - **LUMPS:** brought you soup, mum. the yellow.
   - **DOT:** oh, the yellow. lovely. put it there, i'll have it later.
-  - _There's a row of untouched bowls by the wall. Every week's soup. Lumps puts this one at the end of the row._
+  - _There's a row of untouched bowls along the foot of the wall. Every week's soup: a hundred and three of them, the oldest grown over. Lumps puts this one at the end of the row. He counts them. He always counts them._
   - **DOT:** and who's this? oh, look at your knee. it goes the wrong way. that's character.
   - ➤ _"i'm change. i came out of a machine."_ → machine
   - ➤ _"are you all right in there?"_ → allright
@@ -484,6 +495,7 @@ _It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gri
   - _does: standing.bottom:+1_
 - **[bye]**
   - **DOT:** go on. both of you. and eat something. i mean it. i can see your ribs from here, ambrose. and yours, plastic. you've got the plastic kind.
+  - _As you go she turns to the wall beside her, to a face that's in up to the eyes, and starts telling it what you were wearing._
 
 #### Talk: `minutes` (with SISTER AGENDA)
 - **[start]**
@@ -499,13 +511,14 @@ _It's Sunday. Lumps visits his mum in the Gut, and the Choir tells you where Gri
   - → sold
 - **[who]**
   - **SISTER AGENDA:** the ones who owe the most. or the biggest. or the slowest. it's a list. i don't make the list. i get a copy.
-  - _She opens the Filofax. Hundreds of pages of names in tiny neat handwriting. Dates. Truck numbers._
+  - _She opens the Filofax. Hundreds of pages of names in tiny neat handwriting. Dates. Truck numbers. A weight beside each name, to the nearest half kilo._
   - → sold
 - **[why]**
   - **SISTER AGENDA:** somebody should. the bishop sings it. i write it. singing is how you forget a thing. writing is how you keep it.
   - → sold
 - **[sold]**
   - **SISTER AGENDA:** they're sold. ☺ corp sells them to us. gristle and sons. as feedstock.
+  - **SISTER AGENDA:** each one is credited against your hill's back pay. then the interest goes back on. i've checked. the balance has never gone down.
   - **SISTER AGENDA:** the gut grows on them. and we... harvest.
   - _She looks at her own hand, the Filofax grown into it._
   - **SISTER AGENDA:** i'm not proud. i'm just still at my desk.
@@ -593,12 +606,14 @@ _Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four q
   - **MR. OVERTIME:** that's... that's me. i'm company property.
   - _He stands. It takes a while.* this isn't finished. it's rescheduled._
   - _He walks back up the Long Stairs, exactly on time, a little lopsided. At the top he stops and looks back at you for a long moment, like he's trying to remember where he put something._
+  - _When his ticking has gone up the hill the clocks don't start again straight away. Nobody comes out. A washing line is still swinging where somebody let go of it._
 
 #### Talk: `aftermath` (with AUNTIE SPREADSHEET)
 - **[start]**
-  - _The Lost & Found. Gordo stitching Lumps' arm with fishing line. Dumpling asleep under the table with a hat. Auntie, writing names in crayon on the wall, one under another._
+  - _The walk down. Nine doors standing open. On each one a ☺ CORP slip, stapled at head height: COLLECTED, a name, a time to the second, BALANCE CARRIED FORWARD. The dinners are still on the tables. The egg timer on Sharon's pot has started again._
+  - _The Lost & Found. Gordo stitching Lumps' arm with fishing line. Dumpling asleep under the table with his dad's hat out of the lost property bins. Auntie, writing names in crayon on the wall, one under another._
   - **AUNTIE SPREADSHEET:** nine. they took nine.
-  - _She writes the ninth name. Under it, after a pause, she writes: 'mina'. Just the first name. She knew it._
+  - _She writes the eighth name. Under it, after a pause, she writes the ninth: 'mina'. Just the first name. She knew it._
   - _Pallet Jack comes back from a delivery up the Long Stairs to find nine gone. He picks Dumpling up off the floor from under the table and says nothing at all._
   - ➤ _"the old woman on the truck called me rory."_ → rory
   - ➤ _"we'll get them back."_ → back
@@ -626,17 +641,17 @@ _Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four q
 - **[end]**
   - _Dale comes in from the Machine for the first time anyone can remember. He's holding the core in a tea towel. It ticks._
   - **DALE:** it's still going. his heart. well, a bit of it.
-  - **WEE GORDO:** we could sell it.
+  - **WEE GORDO:** we could sell it. chrome gristle'd give a year of medicine for that. same as they offered for his arm.
   - **DALE:** or we could put it in someone who doesn't mind ticking.
-  - _Everyone looks at you._
+  - _Everyone looks at you. Auntie looks at the wall first._
 
 #### Choice: The truck is getting away into the Gut. Lumps is pinned to the ground by a staple through his arm.
 - **chase the truck**: You catch the truck as it passes under the first rib arch. You can't open it: the doors have grown shut. Through the slot the old woman with the braid looks out and says 'rory' again, quieter, like a question she's sure of. You learn the truck's number (it matters in m20). Lumps gets himself free by tearing the staple out of the bumper; it leaves a scar he shows people.
 - **stay with lumps**: You pull the staple out of Lumps' arm. He doesn't cry until it's out, then he does. 'thanks. sorry. thanks.' Lumps trusts you more (his Act III choice is easier to steer). You don't get the truck number; Sister Agenda has to find it for you in m20.
 
 **Reward:** 500 coupons, core_cracked_punch_clock
-**Review card:** EXCEEDS EXPECTATIONS. you made employee #1 take a coffee break. / MEETS EXPECTATIONS. he's been rescheduled. / SEE ME. you were stapled to a truck for eleven seconds.
-_Builder notes: people taken in C4 stay taken unless m20 frees them (DESIGN §7.1). Nine names on the wall: they are the m20 rescue list._
+**Review card:** EXCEEDS EXPECTATIONS. you made employee #1 take a coffee break. the truck left on time. / MEETS EXPECTATIONS. he's been rescheduled. / SEE ME. you were stapled to a truck for eleven seconds.
+_Builder notes: people taken in C4 stay taken unless m20 frees them (DESIGN §7.1). Nine names on the wall: they are the m20 rescue list. The nine doors stay open with their COLLECTED slips on them until m20 (older slips on other doors are already there in C1)._
 
 ---
 
@@ -675,21 +690,24 @@ _A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants 
 - `  7` **AUNTIE SPREADSHEET:** this is a terrible idea.
 - `  9` **BEV:** they're all terrible ideas. this one works.
 - ` 12` **BEV:** chassis, lie back. you're plastic, so this won't hurt. that's a lie. i say it to everyone.
-- ` 17` _Bev opens your mannequin chest like a cupboard. Auntie looks away. Then makes herself look back._
+- ` 17` _Bev opens your mannequin chest like a cupboard. It's empty: a bracket where a heart would go, and a stock number. Auntie looks away. Then makes herself look back._
 - ` 21` **AUNTIE SPREADSHEET:** will they still be... them? after?
 - ` 24` **BEV:** one part, yes. ten parts, ask me again. the more of you that isn't you, the less of you there is. that's not medicine, that's maths.
 - ` 30` _Black. A single TICK._
 - ` 32` _A flash, 0.8 s, washed out like old video: a marble lobby, a revolving door, a pair of scuffed trainers running across the floor, your trainers. A clock on the wall: 17:29._
 - ` 34` _You wake in the chair. A clock face glows in your chest. It ticks._
 - ` 37` **BEV:** welcome back. how many fingers?
+- `38.5` _She is holding up four hands. Two of them are a different colour from the rest of her. One has the dent of a wedding ring._
 - ` 40` **AUNTIE SPREADSHEET:** *quiet* what did you see?
 - ` 43` _Auntie watches your face as if she already knows the answer._
 
 #### Talk: `bev_intro` (with BEV)
 - **[start]**
-  - _Bev's waiting room. Pallet Jack, getting his boiler bled._
+  - _Bev's waiting room. A bench of car seats, full: a woman holding her own jaw in a tea towel, a man with the price still chalked on his new arm, Pallet Jack with a tube in his back and a bucket under it, getting his boiler bled. Nobody is nervous. It's like a barber's._
   - **BEV:** you're next, jack. you're always next.
   - _Bev doesn't look up from a jar.* close the curtain. the flies are union._
+  - _She is writing on the jar's tape: a date, a truck number. The shelf behind her goes up to the ceiling. A few of the jars have a first name on as well._
+  - **BEV:** the named ones go half price. same part. people just don't like being introduced.
   - **BEV:** so you're the thing from the machine. huh. thought you'd be taller.
   - **AUNTIE SPREADSHEET:** can you put this in it? them. in them.
   - _Bev takes the tea towel, unwraps the ticking core with two hands, and lights a cigarette with a third._
@@ -702,12 +720,14 @@ _A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants 
 - **[do]**
   - **BEV:** make you tick. make you fast when you're dying. make you late if you don't clock in. it's a heart. it's got opinions.
 - **[much]**
+  - **BEV:** depends what you want. everything on that shelf, somebody's already paid for once. you'd only be paying me.
   - **BEV:** first one's free. that's not kindness, that's marketing. lie back.
 
 #### Talk: `parts` (with BEV)
 - **[start]**
   - **BEV:** right. listen, chassis, because i only say this once and then i charge.
   - **BEV:** you've got slots. head, eyes, mouth, heart, lungs, guts, spine, arms, legs, skin. that's ten places to put a bad decision.
+  - **BEV:** and don't go precious on me. half your hill's got something of mine in. jack's whole back. ken abara's hip, and that went up on the truck with him, so that's twice somebody's lost it. lumps is the only one who ever said no, and he said sorry first.
   - **BEV:** your body's got a budget. three parts now. more as you... go up in the world. promotions. ask the cats.
   - **BEV:** go over the budget and it'll still work. you'll lump. you'll twitch. and you'll drift.
   - ➤ _"drift?"_ → drift
@@ -728,7 +748,8 @@ _A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants 
 
 #### Talk: `night` (with AUNTIE SPREADSHEET)
 - **[start]**
-  - _The Lost & Found at night. The Machine hums. Your chest ticks in time with it. Auntie at the table with the notebook open and no crayon in her hand._
+  - _The walk back from Bev's. Auntie went ahead; she said she had a column to finish. The Long Stairs at night, nobody on them. Every tick comes back off the houses a little late. The nine doors are still open._
+  - _The Lost & Found at night. The Machine hums. Your chest ticks, and after a minute the hum has moved to be in time with it. Auntie at the table with the notebook open and no crayon in her hand._
   - **AUNTIE SPREADSHEET:** you saw something. in the chair. bev said you went somewhere.
   - ➤ _"a lobby. someone running. 17:29."_ → lobby
   - ➤ _"nothing."_ → nothing

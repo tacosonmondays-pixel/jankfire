@@ -39,7 +39,8 @@ export function surfaces(map) {
   const base = (baseK ?? 0) / 10, lavaTop = base + 0.5;
   const lava = new Set();
   let lavaA = 0, floorA = 0, safeA = 0, maxTop = -1e9;
-  for (const b of boxes) { if (!b.pad && b.max[1] <= lavaTop) lava.add(b); maxTop = Math.max(maxTop, b.max[1]); }
+  for (const b of boxes) { if (!b.pad && (b.max[1] <= lavaTop || b.ter)) lava.add(b); maxTop = Math.max(maxTop, b.max[1]); } // (shaped ground, shared/terrain.js: all of it is floor, hills too)
+  if (boxes.terrain) lava.add(boxes.terrain.box); // (what a ray onto the heightfield says it hit)
   for (const t of tops) {
     if (lava.has(t.b)) { lavaA += t.area; if (t.top >= base - 0.05) floorA += t.area; } else safeA += t.area;
   }
@@ -106,7 +107,8 @@ function pickSpawns(map, spots) {
 
 // feet on a lava top right now? (pos = feet, like everywhere else)
 export function onLava(s, boxes, pos, tol = 0.06) {
-  const hw = PH.halfW;
+  const hw = PH.halfW, T = boxes.terrain;
+  if (T && s.lava.has(T.box)) { const g = T.at(pos[0], pos[2]); if (g != null && Math.abs(pos[1] - g) <= tol) return T.box; } // standing on shaped ground
   for (const b of query(boxes, pos[0] - hw, pos[2] - hw, pos[0] + hw, pos[2] + hw, near)) {
     if (!s.lava.has(b) || Math.abs(pos[1] - b.max[1]) > tol) continue;
     if (pos[0] + hw > b.min[0] && pos[0] - hw < b.max[0] && pos[2] + hw > b.min[2] && pos[2] - hw < b.max[2]) return b;

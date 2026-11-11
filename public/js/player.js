@@ -248,7 +248,8 @@ export function stepPlayer(dt, inp, now) {
   ME.crouching = !!inp.crouch && !ME.sliding;
   ME.walking = !!G.eco && !!inp.sprint && !ME.crouching; // Plant & Defuse: shift is a quiet slow walk, not a sprint
   ME.sprinting = !G.eco && !!inp.sprint && !inp.crouch && fw > 0 && ME.onGround;
-  const moveMul = ME.speedMul * (ME.wadeMul || 1) * (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
+  const moveMul = ME.speedMul * (ME.swim ? Math.min(ME.wadeMul || 1, 0.6) : ME.wadeMul || 1) * // (in a pond, on its bed: wading speed at best)
+    (ME.sprinting ? C.sprintMul : ME.crouching ? C.crouchMul : ME.walking ? TAC.walkMul : 1);
   const eyeT = ME.sliding ? C.slideEye : ME.crouching ? C.crouchEye : C.standEye;
   ME.eyeH += (eyeT - ME.eyeH) * Math.min(1, dt * 14);
 
@@ -270,7 +271,7 @@ export function stepPlayer(dt, inp, now) {
       if (ME.groundTicks > 3 && !ME.sliding) ME.combo = 0;
     }
   } else if (wl && !slipping) {
-    accelerate(v, wx, wz, C.airCap, C.airAccel, dt);
+    accelerate(v, wx, wz, ME.swim ? 3.6 : C.airCap, C.airAccel, dt); // (floating in a pond, shared/pits.js swim: a paddle, faster than air control)
     // W-only air steering: rotates your momentum toward where you look, keeps ALL the speed
     if (fw > 0 && !st && hs > 2) {
       const cur = Math.atan2(v[0], v[2]), tgt = Math.atan2(wx, wz);
@@ -292,7 +293,7 @@ export function stepPlayer(dt, inp, now) {
   if (!ME.onGround) ME.airMaxFall = Math.min(ME.airMaxFall, v[1]);
 
   const was = ME.onGround;
-  const res = movePlayer(p, v, dt, BOXES, was);
+  const res = movePlayer(p, v, dt, BOXES, was || !!ME.seaStep); // (floating in the sea: you can still step up onto the sand shelf beside you)
   ME.onGround = !!res.ground && v[1] <= 0.01;
   if (ME.onGround) {
     if (!was) {

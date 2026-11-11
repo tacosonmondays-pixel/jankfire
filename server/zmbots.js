@@ -6,6 +6,7 @@
 // Installed by server/zombies.js. It wraps a few Room methods (friendly, botThink, fillBots, remove, modeJoin) so
 // server.js needs no changes.
 import { WEAPONS, ITEMS, BOT_DIFF } from '../shared/weapons.js';
+import { ZM_COLAS, zmUpPrice } from '../shared/zmshop.js';
 import { ZM, zmAmmo, zmAreaAt, zmMachPrice } from '../shared/zombies.js';
 import { flow, downhill, cellOf } from './zombies.js';
 import { BOT_DROPS } from './zmextra.js';
@@ -242,20 +243,21 @@ const methods = {
   },
   zhWindowSafe(i) { const w = this.map.zm.windows[i]; for (const o of this.players.values()) if (o.zmz && o.alive && o.zmz.ph === 'hunt' && flat(o.pos, w.in) < 4) return false; return true; },
   zhUseAt(key, at, nrm, out = 1.3, y) { // stand in front of a thing on the wall and look at it
-    return { k: 'buy', key, stand: [at[0] + nrm[0] * out, 0, at[2] + nrm[2] * out], near: 0.5, look: [at[0], y ?? at[1], at[2]] };
+    const fl = (this.map.zm.floors || [0]).reduce((f, yy) => (yy <= at[1] + 0.2 && yy > f ? yy : f), (this.map.zm.floors || [0])[0]); // the floor that thing is on
+    return { k: 'buy', key, stand: [at[0] + nrm[0] * out, fl, at[2] + nrm[2] * out], near: 0.5, look: [at[0], y ?? at[1], at[2]] };
   },
   // what this bot buys right now (null: saving up). personalities shop differently
   zhShop(b, free) {
     const zs = this.zs, Z = this.map.zm, z = b.z, per = b.persona, c = z.c, n = now();
     const price = (p) => this.zxPrice(b, p), inside = (at) => zs.areas.has(zmAreaAt(Z, at));
     // the box offered us a gun: go get it
-    if (zs.box.st === 2 && zs.box.by === b.id && USABLE(zs.box.w)) return { ...this.zhUseAt('crate', [Z.crate.at[0], 0.7, Z.crate.at[2]], [0, 0, 1], 1.5), k: 'take' };
+    if (zs.box.st === 2 && zs.box.by === b.id && USABLE(zs.box.w)) return { ...this.zhUseAt('crate', [Z.crate.at[0], Z.crate.at[1] + 0.7, Z.crate.at[2]], [0, 0, 1], 1.5), k: 'take' };
     // unhinged: the Cheat Machine, right now
     const m = zs.mach, mp = price(zmMachPrice(m.uses));
     const machOk = Z.mach && zs.power && !m.st && n >= m.cd && inside(Z.mach.at) && c >= mp && free('mach');
-    if (machOk && (per === 'unhinged' ? Math.random() < 0.8 : Math.random() < (c > 4000 ? 0.4 : c > mp * 2.5 ? 0.15 : 0.03))) { const at = [Z.mach.at[0] + Z.mach.n[0] * 0.4, 1.4, Z.mach.at[2] + Z.mach.n[2] * 0.4]; return { ...this.zhUseAt('mach', at, Z.mach.n, 1.2), price: mp }; }
+    if (machOk && (per === 'unhinged' ? Math.random() < 0.8 : Math.random() < (c > 4000 ? 0.4 : c > mp * 2.5 ? 0.15 : 0.03))) { const at = [Z.mach.at[0] + Z.mach.n[0] * 0.4, Z.mach.at[1] + 1.4, Z.mach.at[2] + Z.mach.n[2] * 0.4]; return { ...this.zhUseAt('mach', at, Z.mach.n, 1.2), price: mp }; }
     // no power yet: the door that leads to it comes before new guns
-    if (!zs.power && zs.n >= 2) { const d = this.zhDoor(b, free, price); if (d && (d.key === 'd1' || d.key === 'd4' || d.key === 'd2' || d.key === 'd6')) return d; }
+    if (!zs.power && zs.n >= 2) { const d = this.zhDoor(b, free, price); if (d && (d.key === 'd1' || d.key === 'd4' || d.key === 'd2' || d.key === 'd6' || this.zhPowerDoors().has(Number(d.key.slice(1))))) return d; }
     // ammo for the gun we like, when it's running low
     for (const g of z.guns) {
       const bu = Z.buys.find((x) => x.w === g), max = zmAmmo(g);
@@ -263,33 +265,53 @@ const methods = {
       return { ...this.zhUseAt('b' + bu.w, bu.at, bu.n), price: price(Math.ceil(bu.price / 20) * 10) };
     }
     // Jank Cola once the power's on
-    if (Z.cola && zs.power && !z.cola && inside(Z.cola.at) && c >= price(ZM.cola) + 300 && free('cola')) return { ...this.zhUseAt('cola', [Z.cola.at[0], 1.3, Z.cola.at[2]], Z.cola.n, 1.4), price: price(ZM.cola) };
+    if (Z.cola && zs.power && !z.cola && inside(Z.cola.at) && c >= price(ZM.cola) + 300 && free('cola')) return { ...this.zhUseAt('cola', [Z.cola.at[0], Z.cola.at[1] + 1.3, Z.cola.at[2]], Z.cola.n, 1.4), price: price(ZM.cola) };
+    // the other colas a bot gets something out of (more ammo, getting back up), then the Warranty Voider for the gun in its hands
+    for (const cl of Z.colas || []) {
+      const def = ZM_COLAS[cl.id];
+      if (!def || (cl.id !== 'pockets' && cl.id !== 'getup') || !zs.power || this.zsHas(b, cl.id) || this.zsColaN(b) >= ZM.colaMax || !inside(cl.at) || c < price(def.price) + 500 || !free('cola:' + cl.id)) continue;
+      return { ...this.zhUseAt('cola:' + cl.id, [cl.at[0], cl.at[1] + 1.3, cl.at[2]], cl.n, 1.4), price: price(def.price) };
+    }
+    const up = Z.up && zs.power && z.guns.includes(b.w) && inside(Z.up.at) ? zmUpPrice(((z.up || {})[b.w] || { t: 0 }).t) : null;
+    if (up != null && c >= price(up) + (per === 'tryhard' ? 0 : 800) && free('up')) return { ...this.zhUseAt('up', [Z.up.at[0] + Z.up.n[0] * 0.4, Z.up.at[1] + 1.3, Z.up.at[2] + Z.up.n[2] * 0.4], Z.up.n, 1.3), price: price(up) };
     // a better wall gun (tryhards want the priciest one they can get, the rest something decent and some change left)
     const mine = Math.max(...z.guns.filter((g) => z.ammo[g] == null || z.ammo[g] > 0).map((g) => this.zhWorth(g)), 0), keep = per === 'tryhard' ? 0 : 250; // (an empty gun with no wall to refill it is worth nothing)
     const guns = Z.buys.filter((x) => USABLE(x.w) && x.price >= 900 && !z.guns.includes(x.w) && inside(x.at) && x.price > mine && c >= price(x.price) + keep && free('b' + x.w));
     if (guns.length) { guns.sort((x, y) => y.price - x.price); const g = per === 'tryhard' ? guns[0] : pick(guns.slice(0, 2)); return { ...this.zhUseAt('b' + g.w, g.at, g.n), price: price(g.price), swap: true }; }
     // the crate, now and then
-    if (Z.crate && !zs.box.st && inside(Z.crate.at) && c >= price(ZM.crate) + 400 && free('crate') && Math.random() < (per === 'tryhard' ? 0.35 : 0.15)) return { ...this.zhUseAt('crate', [Z.crate.at[0], 0.7, Z.crate.at[2]], [0, 0, 1], 1.5), k: 'crate', price: price(ZM.crate) };
+    if (Z.crate && !zs.box.st && inside(Z.crate.at) && c >= price(ZM.crate) + 400 && free('crate') && Math.random() < (per === 'tryhard' ? 0.35 : 0.15)) return { ...this.zhUseAt('crate', [Z.crate.at[0], Z.crate.at[1] + 0.7, Z.crate.at[2]], [0, 0, 1], 1.5), k: 'crate', price: price(ZM.crate) };
     return this.zhDoor(b, free, price);
   },
 
+  // the shut doors on a shortest way (fewest doors) from what's open to the room with the power switch: any map
+  zhPowerDoors() {
+    const zs = this.zs, Z = this.map.zm, out = new Set();
+    if (!Z.power || zs.power) return out;
+    const goal = zmAreaAt(Z, [Z.power.at[0] + Z.power.n[0], Z.power.at[1], Z.power.at[2] + Z.power.n[2]]);
+    if (!goal || zs.areas.has(goal)) return out;
+    const from = new Map([...zs.areas].map((a) => [a, -1])), q = [...zs.areas]; // area -> the door we came through
+    for (let h = 0; h < q.length && !from.has(goal); h++) Z.doors.forEach((d, i) => { const o = d.a === q[h] ? d.b : d.b === q[h] ? d.a : null; if (o && !from.has(o)) { from.set(o, [i, q[h]]); q.push(o); } });
+    for (let a = goal, n = 0; from.get(a) && from.get(a) !== -1 && n < 32; n++) { const [i, prev] = from.get(a); if (!zs.open[i]) out.add(i); a = prev; }
+    return out;
+  },
   zhDoor(b, free, price) { // a door: toward the power while it's off, otherwise the one nearest the squad
-    const zs = this.zs, Z = this.map.zm, c = b.z.c, per = b.persona;
+    const zs = this.zs, Z = this.map.zm, c = b.z.c, per = b.persona, pw = this.zhPowerDoors();
     let best = null, bs = Infinity;
     Z.doors.forEach((d, i) => {
       if (zs.open[i] || !free('d' + i)) return;
       const ina = zs.areas.has(d.a), inb = zs.areas.has(d.b);
       if (ina === inb || c < price(d.price) + (per === 'corpo' ? 0 : 150)) return;
-      const toPower = d.b === 'toys' || d.b === 'dock';
+      const toPower = d.b === 'toys' || d.b === 'dock' || pw.has(i);
       if (!toPower && c < 3000 && zs.open.filter(Boolean).length >= 2) return; // more doors = more windows to hold: only when rich
-      const s = (!zs.power && (d.b === 'dock' || d.a === 'dock' || d.b === 'toys') ? -80 : 0) + flat(b.pos, d.at) * 0.5 + d.price / 100; // the power first: it turns the cola on
+      const s = (!zs.power && (d.b === 'dock' || d.a === 'dock' || d.b === 'toys' || pw.has(i)) ? -80 : 0) + flat(b.pos, d.at) * 0.5 + Math.abs(b.pos[1] - d.box.min[1]) * 2 + d.price / 100; // the power first: it turns the cola on (a door on another floor is a walk)
       if (s < bs) { bs = s; best = { d, i, side: ina ? d.a : d.b }; }
     });
     if (best && (zs.n >= 2 || per === 'corpo' || per === 'tryhard')) {
       const { d, i, side } = best, thinX = d.box.max[0] - d.box.min[0] < 1;
-      const opts = thinX ? [[d.at[0] - 1.3, 0, d.at[2]], [d.at[0] + 1.3, 0, d.at[2]]] : [[d.at[0], 0, d.at[2] - 1.3], [d.at[0], 0, d.at[2] + 1.3]];
-      const stand = opts.find((p) => zmAreaAt(Z, p) === side) || opts[0];
-      return { k: 'buy', key: 'd' + i, stand, near: 0.5, look: [d.at[0], 1.5, d.at[2]], price: price(d.price) };
+      const fy = d.box.min[1]; // the floor the shutter stands on (maps with an upstairs)
+      const opts = thinX ? [[d.at[0] - 1.3, fy, d.at[2]], [d.at[0] + 1.3, fy, d.at[2]]] : [[d.at[0], fy, d.at[2] - 1.3], [d.at[0], fy, d.at[2] + 1.3]];
+      const stand = opts.find((p) => zmAreaAt(Z, [p[0], p[1] + 0.1, p[2]]) === side) || opts[0];
+      return { k: 'buy', key: 'd' + i, stand, near: 0.5, look: [d.at[0], fy + 1.5, d.at[2]], price: price(d.price) };
     }
     return null;
   },
@@ -307,13 +329,13 @@ const methods = {
   zhWatch(b) { // the nearest window in an open area
     const Z = this.map.zm;
     let best = null, bd = 18;
-    for (const w of Z.windows) if (this.zs.areas.has(w.area)) { const d = flat(b.pos, w.in); if (d < bd) { bd = d; best = [w.at[0], 1.6, w.at[2]]; } }
+    for (const w of Z.windows) if (this.zs.areas.has(w.area)) { const d = flat(b.pos, w.in); if (d < bd) { bd = d; best = [w.at[0], w.at[1] - 0.3, w.at[2]]; } }
     return best;
   },
   // which way to walk to p: straight if nothing's in the way, else downhill on a flow field from p
   zhWay(b, p) {
     const zs = this.zs, dx = p[0] - b.pos[0], dz = p[2] - b.pos[2], d = Math.hypot(dx, dz) || 1e-6;
-    if (d < 10 && this.zmClear(b.pos, [p[0], b.pos[1], p[2]], d)) return [dx / d, dz / d];
+    if (d < 10 && Math.abs((p[1] ?? b.pos[1]) - b.pos[1]) < 1.4 && this.zmClear(b.pos, [p[0], b.pos[1], p[2]], d)) return [dx / d, dz / d]; // (same floor)
     const nav = zs.nav, c = cellOf(nav, p);
     if (c < 0) return [dx / d, dz / d];
     const f = this.zhField(c, p);
@@ -326,8 +348,8 @@ const methods = {
     const zs = this.zs, F = (zs.zhF ||= new Map()), n = now();
     let f = F.get(c);
     if (!f || n - f.t > 4000 || f.t < zs.fieldT) {
-      if (!f) { if (F.size > 24) F.delete(F.keys().next().value); f = { d: new Float32Array(zs.nav.W * zs.nav.D), t: 0 }; F.set(c, f); }
-      flow(zs.nav, zs.open, [p[0], 0.5, p[2]], this.boxes, f.d); f.t = n;
+      if (!f) { if (F.size > 24) F.delete(F.keys().next().value); f = { d: new Float32Array(zs.nav.N), t: 0 }; F.set(c, f); }
+      flow(zs.nav, zs.open, [p[0], (p[1] || 0) + 0.5, p[2]], this.boxes, f.d); f.t = n;
     }
     return f.d;
   },

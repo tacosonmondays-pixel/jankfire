@@ -70,7 +70,7 @@ import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectati
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
-import { sink, bottomOut, mire } from '/shared/pits.js';
+import { sink, bottomOut, swim, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
@@ -106,6 +106,8 @@ import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefr
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
+import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
+import { setRippleMap } from './liquidmats.js';
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -472,6 +474,9 @@ bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
+$('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
+$('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
+$('fxRipples').checked = !!S.fxRipples; setRippleMap(!!S.fxRipples); $('fxRipples').addEventListener('change', () => { S.fxRipples = $('fxRipples').checked; setRippleMap(S.fxRipples); saveSettings(); });
 bindCheck('toggleAim', 'toggleAim');
 bindCheck('blood', 'blood');
 bindCheck('sdNoCross', 'sdNoCross'); // plant & defuse: no spread crosshair (tactical.js)
@@ -2006,7 +2011,7 @@ function frame(t) {
     } : {};
     jumpPressed = false;
     acc += dt;
-    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); mire(MAPS[MAP.id], ME.pos, ME.vel, STEP, !!ME.hook); bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
+    while (acc >= STEP) { if (!(G.story && G.story.drive(STEP, inp, now))) stepPlayer(STEP, inp, now); carCollide(STEP); airTick(now); lavaStep(now); if (ME.alive) { sink(MAPS[MAP.id], ME.pos, ME.vel); mire(MAPS[MAP.id], ME.pos, ME.vel, STEP, !!ME.hook); ME.swim = swim(MAPS[MAP.id], BOXES, ME.pos, ME.vel, STEP, inp.crouch); ME.seaStep = ME.swim && !!MAPS[MAP.id].seaSwim; bottomOut(MAPS[MAP.id], ME.pos, ME.vel); } // (deep sea: you sink, you don't fall through it. the river, the street: you stop on them)
       inp.jumpPressed = false; acc -= STEP; } // (OVERDUE: in a story car, the car steps instead)
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
@@ -2072,6 +2077,7 @@ function frame(t) {
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
+    if (spritesOn()) { smokeCloud(s2, dt); continue; } // drawn puffs (flipbook.js). Potato / switched off: the square particles below
     for (let k = 0; k < 11; k++) { const a = Math.random() * 6.28, rr = Math.sqrt(Math.random()) * s2.r; fx.smoke([s2.p[0] + Math.cos(a) * rr, s2.p[1] + Math.random() * 3.5, s2.p[2] + Math.sin(a) * rr], 1, 0.4); }
   }
   // frost wears off one stack per frostDecay seconds, like on the server (which doesn't tell us)
@@ -2216,6 +2222,7 @@ function frame(t) {
   hud.update(dt);
   updateNoScope(dt, cam, RP.active);
   fx.update(dt);
+  updateFlipbooks(dt);
   G.skinFxWorld.update(dt);
   G.skinFxVM.update(dt);
   skinTick(dt, now);

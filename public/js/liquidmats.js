@@ -48,7 +48,7 @@ export function liquidBox(b) {
 
 // ------------------------------------------------------------ shared uniforms (one set: every liquid material points at them)
 export const SH = {
-  uTime: { value: 0 }, uQ: { value: 3 }, uNoiseT: { value: null },
+  uTime: { value: 0 }, uQ: { value: 3 }, uNoiseT: { value: null }, uRip: { value: null },
   uMask: { value: null }, uMR: { value: new THREE.Vector4(1e9, 1e9, 0, 0) }, // shore map: rect x0, z0, 1/w, 1/h
   uSun: { value: new THREE.Vector3(0.5, 0.6, -0.6).normalize() }, uSunC: { value: new THREE.Color(0xfff6d8) },
   uSkyT: { value: new THREE.Color(0x6ab8ff) }, uSkyM: { value: new THREE.Color(0xcfe8ff) }, uNight: { value: 0 },
@@ -122,6 +122,9 @@ void main() {
 const WATER_FS = HEAD + NOISE + `
 uniform vec3 uDeep; uniform vec3 uShal; uniform vec2 uA; uniform float uFoam; uniform float uSpark; uniform float uRefl; uniform float uSheen; uniform float uCaus;
 uniform vec3 uSun; uniform vec3 uSunC; uniform vec3 uSkyT; uniform vec3 uSkyM; uniform float uNight;
+#ifdef LQ_NMAP
+uniform sampler2D uRip;
+#endif
 #include <fog_pars_fragment>
 float lqCaus(vec2 p, float t) { // a web of bright wobbly lines: two warped sine grids, where either is near zero
   float a = abs(sin(p.x * 1.9 + sin(p.y * 1.3 + t) * 1.4)), b = abs(sin(p.y * 1.7 + sin(p.x * 1.1 - t * 0.8) * 1.4));
@@ -141,14 +144,24 @@ void main() {
 #endif
 #ifdef LQ_RIP2
   if (dc < 45.0) g += lqT(vW.xz * 2.3 - vec2(t * 0.19, -t * 0.27)).yz * 0.55;
+  if (dc < 22.0) { // close up: two finer layers crossing each other, fading in as you get near (small wind ripples)
+    float nr = 1.0 - dc / 22.0;
+    g += (lqT(vW.xz * 5.3 + vec2(-t * 0.31, t * 0.17)).yz * 0.34 + lqT(vW.zx * 9.7 + vec2(t * 0.41, t * 0.29)).zy * 0.2) * nr;
+  }
 #endif
-  vec3 N = normalize(vNw + vec3(-g.x, 0.0, -g.y) * 0.06 * top);
+  float nk = 0.085; // (0.06 before the finer close-up ripples went in)
+#ifdef LQ_NMAP
+  // option B (Settings: painted water ripples): a drawn ripple normal map, two layers sliding across each other
+  if (dc < 140.0) { vec2 r1 = texture2D(uRip, vW.xz * 0.085 + vec2(t * 0.021, t * 0.013)).xy * 2.0 - 1.0, r2 = texture2D(uRip, vW.zx * 0.19 - vec2(t * 0.034, -t * 0.026)).xy * 2.0 - 1.0;
+    float nf = 1.0 - smoothstep(70.0, 140.0, dc); g = mix(g, r1 * 1.5 + r2 * 0.9, nf); nk = mix(0.085, 0.2, nf); }
+#endif
+  vec3 N = normalize(vNw + vec3(-g.x, 0.0, -g.y) * nk * top);
   float ndv = max(dot(N, V), 0.0), fr = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);
-  float dk = smoothstep(0.0, 2.6, depth);
+  float dk = smoothstep(0.0, 2.2, depth);
   vec3 col = mix(uShal, uDeep, clamp(max(dk, fr * 0.8), 0.0, 1.0));
   // light on the wave faces: a lit band toward the sun (2 steps)
   float l = dot(N, uSun);
-  col *= 0.9 + 0.18 * step(0.5, l + g.x * 0.12) * (1.0 - uNight * 0.7);
+  col *= 0.9 + 0.18 * smoothstep(0.38, 0.62, l + g.x * 0.12) * (1.0 - uNight * 0.7); // (a soft edge: the hard band flickered with the finer ripples)
   // the sky in it
   vec3 R = reflect(-V, N);
   vec3 sky = mix(uSkyM, uSkyT, smoothstep(0.0, 0.55, R.y));
@@ -318,8 +331,16 @@ function lqDefines(m) {
     if (q >= 1) d.LQ_SPARK2 = '';
     if (L.foam > 0) d.LQ_FOAM = '';
     if (q === 0) d.LQ_CHEAP = '';
+    if (q > 0 && SH.uRip.value) d.LQ_NMAP = ''; // painted ripples (setRippleMap)
   }
   const k = JSON.stringify(d);
   if (m.userData.dk !== k) { m.defines = d; m.userData.dk = k; m.needsUpdate = true; }
+}
+// option B: painted water ripples on / off (main.js, from Settings). the map loads the first time it's wanted
+let ripTex = null;
+export function setRippleMap(on) {
+  if (on && !ripTex) { ripTex = new THREE.TextureLoader().load('/sprites/ripplenormal.png', () => { if (SH.uRip.value) for (const m of MATS.values()) m.needsUpdate = true; }); ripTex.wrapS = ripTex.wrapT = THREE.RepeatWrapping; ripTex.colorSpace = THREE.NoColorSpace; }
+  SH.uRip.value = on ? ripTex : null;
+  for (const m of MATS.values()) lqDefines(m);
 }
 export function setLiquidQ(i) { SH.uQ.value = i; for (const m of MATS.values()) lqDefines(m); }
