@@ -156,7 +156,7 @@ export function shapeGround(B, D, o) {
     for (const [x, z] of [[(c.x0 + c.x1) / 2, (c.z0 + c.z1) / 2], [c.x0, c.z0], [c.x1, c.z0], [c.x0, c.z1], [c.x1, c.z1]]) dy = Math.min(dy, at0(x, z)); // on the lowest bit under it: nothing floats
     c.dy = dy;
     for (const b of c.list) { b.min[1] += dy; b.max[1] += dy; }
-    for (const L of [B.boxes, D.boxes]) for (const p of L.props || []) if (!p._t && p.p[0] > c.x0 - 0.3 && p.p[0] < c.x1 + 0.3 && p.p[2] > c.z0 - 0.3 && p.p[2] < c.z1 + 0.3) { p.p[1] += dy; p._t = 1; }
+    for (const L of [B.boxes, D.boxes]) for (const p of L.props || []) { const q = p.p || p.a; if (q && !p._t && q[0] > c.x0 - 0.3 && q[0] < c.x1 + 0.3 && q[2] > c.z0 - 0.3 && q[2] < c.z1 + 0.3) { q[1] += dy; p._t = 1; } } // (p: a placed model, a: a kit prop's anchor, shared/propcap.js)
   }
   for (const L of [B.boxes, D.boxes]) for (const p of L.props || []) delete p._t;
   // ---- the hidden steps under it: every cell a box up to the middle of its four corners, runs of the same height merged
