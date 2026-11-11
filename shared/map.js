@@ -3301,6 +3301,12 @@ function wreck(B0, D0, dx, dz, st) {
     add(16, y0, ZA + 2, 19.2, y1, ZA + 2.4, m); add(16, y0, ZB - 2.4, 19.2, y1, ZB - 2, m); add(19.2, y0, ZA + 2, 19.6, y1, ZB - 2, m); // its sides, the stem
   }
   add(15.6, MD - 0.4, ZA + 2.4, 19.2, MD, ZB - 2.4, 'shipwood');
+  // the bow's shoulders: the ship's prow is round (wreck.glb), so the rock-solid part is too. slices under its curve
+  const STEM = 20.05, hb = (x) => 4.5 * Math.max(0, 1 - ((x - 15.6) / (STEM - 15.6)) ** 3) ** (1 / 3) - 0.02;
+  for (const [x0, x1] of [[16, 16.4], [16.4, 16.8], [16.8, 17.2], [17.2, 17.6], [17.6, 18], [18, 18.4], [18.4, 18.8], [18.8, 19.2], [19.2, 19.6], [19.6, 19.85], [19.85, 20]]) {
+    const h = hb(x1), w = x0 < 19.6 ? 2.5 : 0; // (past the stem box: the point of the prow, whole)
+    if (h > w + 0.05) { add(x0, 0, -69 - h, x1, MD + 1, -69 - w, 'shiphull'); if (w) add(x0, 0, -69 + w, x1, MD + 1, -69 + h, 'shiphull'); }
+  }
   D.add(19.6, 4.5, -69.4, 23.6, 4.8, -68.6, 'shipwood'); // the bowsprit
   add(19.6, 2.6, -69.6, 21, 3.6, -68.4, 'toyyellow'); add(20.4, 3.6, -69.35, 21.1, 4.3, -68.65, 'toyyellow'); D.add(21.1, 3.8, -69.15, 21.6, 4.0, -68.85, 'barrelr'); // the duck
   // the stern: the transom (its windows, the name), the cabin's front wall (a door) under the quarterdeck
@@ -3317,7 +3323,7 @@ function wreck(B0, D0, dx, dz, st) {
   own(() => D.add(10.35, 14.5, -70.15, 11.15, 14.53, -67.85, 'missing')); // where the intern ran out of textures (secrets.js: Todd stands on it)
   for (const [x0, z0, x1, z1] of [[8.6, -70.4, 11.4, -70.2], [8.6, -67.8, 11.4, -67.6], [8.6, -70.2, 8.8, -67.8], [11.2, -70.2, 11.4, -67.8]]) add(x0, 14.5, z0, x1, 15.4, z1, 'shipwood');
   D.add(9.8, 11, -73, 10.2, 11.3, -65, 'shipwood'); D.add(10.25, 6.5, -72.4, 10.3, 11, -66.4, 'sail'); D.add(10.25, 5.5, -71.4, 10.3, 6.5, -68.6, 'sail');
-  add(-14.2, QD, -69.2, -13.8, 15, -68.8, 'shipwood'); D.add(-13.8, 12.6, -69.04, -11, 14.4, -68.96, 'flagskull', { fit: 1 });
+  add(-14.2, QD, -69.2, -13.8, 15, -68.8, 'shipwood'); own(() => D.add(-13.8, 12.6, -69.04, -11, 14.4, -68.96, 'flagskull', { fit: 1 })); // (the flag: the game's picture)
   D.add(-12.3, QD, -69.15, -12.1, QD + 1.0, -68.85, 'wood'); D.add(-12.4, QD + 0.6, -69.8, -12.0, QD + 1.4, -68.2, 'wood'); // the wheel
   add(-7, 0, -62.5, 6.5, 0.8, -61.7, 'shipwood'); D.add(-6, 0.03, -61.7, 3, 0.1, -59.4, 'sail'); // the main mast, fallen, and its sail
   // the hold: barrels, crates, two cannons at the gunports, hammocks

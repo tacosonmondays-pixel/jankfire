@@ -106,7 +106,7 @@ PR #71 turns 45 repeated prop kinds into instanced Blender models. What is left 
 | forklift, bus, cart, number balls | round 1 | Blender on main, no far LOD yet |
 | the train: engine, cars, wheels, track | `train()` / `wheels()` / `rails()` map.js:2475 | code, 416 boxes, Desert |
 | parked helicopters | `chopper()` map.js:3510 | code, 90 boxes, Platform + Skyline |
-| the shipwreck, rowboats | `wreck()` map.js:3166 | code, Islands |
+| the shipwreck, rowboats | `wreck()` map.js | shipwreck: Blender (`wreck.glb`); rowboats: code, Islands |
 | royale drop blimp | `royale.js`:126 | code, ~19 parts |
 | walk-in bus and box truck, `semi()` trucks | Suburb, Warehouse | code (known limit of #71) |
 | OVERDUE sofa-car | `story/drive.js`:38 | code; `s_sofacar.glb` exists but isn't wired into driving |
