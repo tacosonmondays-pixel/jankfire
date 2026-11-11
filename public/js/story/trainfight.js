@@ -196,7 +196,7 @@ export function makeTrainFight(ST, { playScene }) {
       T.parts = parts; T.geo = geoFrom(parts);
       T.boss = { root, N, A, eyes, red, insp, cross, cm, inspGlow: glow('rp_inspector_glow'), eyeGlow: glow('rp_eye_glow'), hidden: new Set(parts ? parts.parts.filter((p) => p.hidden).map((p) => p.name) : []), debris: [], haul: [] };
       for (const nm of T.boss.hidden) if (N[nm]) N[nm].visible = false;
-      for (const [sock, wa] of [[7, 3.5], [10, -0.36]]) T.boss.haul.push(newArm({ id: 'h' + sock, k: 'haul', sock, mouth: 0, st: 'grip', t: 0, dur: 0, tgt: [0, 0, 0], wa, hp: 1, max: 1 }, true)); // two arms on the walls that do the hauling (not targets: no knot)
+      for (const [sock, wa] of [[7, 3.3], [10, -0.36]]) T.boss.haul.push(newArm({ id: 'h' + sock, k: 'haul', sock, mouth: 0, st: 'grip', t: 0, dur: 0, tgt: [0, 0, 0], wa, hp: 1, max: 1 }, true)); // two arms on the walls that do the hauling (not targets: no knot). the left one plants high enough to be seen over the wagon's rail; the right one stays under the cables
       applyMask(); T.loading = false; T.tries = 0;
       if (!T.on) hideBoss(); // (it landed after you left: it waits, out of sight, for the next visit)
     }).catch((e) => { console.warn('revenue protection model', e); T.loading = false; T.loadErr = true; T.retryAt = performance.now() + Math.min(60000, 2000 * 2 ** T.tries++); });

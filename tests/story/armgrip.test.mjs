@@ -68,7 +68,7 @@ t('a hand pointing at a rail it grips is left as it was', () => {
 });
 
 t('the haul: hands plant flat on the lining, ride it back with the tunnel, and go hand over hand', () => {
-  const face = -15.36, hs = [newHaul(0, face), newHaul(1, face)], wa = [3.5, -0.36], dt = 1 / 60, plants = [[], []];
+  const face = -15.36, hs = [newHaul(0, face), newHaul(1, face)], wa = [3.3, -0.36], dt = 1 / 60, plants = [[], []];
   let run = 0, dist = 0, both = 0, none = 0;
   for (let f = 0; f < 60 * 12; f++) {
     run += 12 * dt; dist = (dist + 12 * dt) % 96;
