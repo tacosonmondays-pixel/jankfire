@@ -300,6 +300,7 @@ export function bindAuthored(g, meta) {
     if (beam && body && pans.every((p) => p && p.parent === beam)) {
       for (const p of pans) p.userData.pivot = p.position.clone();
       g.userData.court = { beam, pans, body, len: c.len, wobble: !!c.wobble };
+      for (const n of Array.isArray(c.noWrap) ? c.noWrap : []) { const d = nodeIn(g, n); if (d) d.traverse((o) => { o.userData.noWrap = true; }); } // the dial's red / pale halves stay readable under a full wrap
     }
   }
   if (meta.faceOn) g.userData.faceOn = true; // pictures look at it from the front

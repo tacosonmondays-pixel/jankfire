@@ -125,7 +125,7 @@ def scales():
     hparts = [grip, pommel] + ferr
     for o in hparts: uvb(o, 0.04)
     meta = {'kind': 'weapon', 'id': 'scales', 'paint': [], 'muzzle': [0, TOP, 0], 'hatAt': [[0, 0.555, 0], 0.07], 'faceOn': True,
-            'court': {'body': 'sc_body_wzB', 'beam': 'sc_beam_wzB', 'pans': ['sc_pan_l_wzB', 'sc_pan_r_wzB'], 'len': LEN, 'wobble': False}}
+            'court': {'body': 'sc_body_wzB', 'beam': 'sc_beam_wzB', 'pans': ['sc_pan_l_wzB', 'sc_pan_r_wzB'], 'len': LEN, 'wobble': False, 'noWrap': ['sc_dialface_wzN']}}  # (no wrap paints the dial, like the code model's)
     parts = zone_join(hparts, 'sc_handle', {'sc_brass': 'b'}, default='a') + [body]
     return finish('w_scales', parts, meta)
 
