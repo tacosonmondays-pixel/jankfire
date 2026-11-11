@@ -250,11 +250,11 @@ function shell(rows, e = 2.6) {
   return S;
 }
 // cloth on a shell between heights lv and angles us. an angle can be a function of the height (an edge that isn't
-// straight up, like a zip pulled open): two of those side by side are the edges of an open front, nothing between them.
+// straight up, like a zip pulled open). openCols marks the two edges of an open front: nothing is drawn between them.
 // cell: a palette cell or (y, u, i, j) -> cell / null (a hole). o.lift(i, j)
 function loft(K, S, lv, us, cell, o = {}) {
   const U = (i, j) => (typeof us[j] === 'function' ? us[j](lv[i], i) : us[j]), n = o.wrap ? us.length : us.length - 1;
-  const hole = (j) => typeof us[j] === 'function' && typeof us[(j + 1) % us.length] === 'function'; // between the two edges of an open front
+  const hole = (j) => us[j].edge && us[(j + 1) % us.length].edge; // between the two edges of an open front
   return K.grid(lv.length - 1, n, (i, j) => S.p(lv[i], U(i, j), typeof o.lift === 'function' ? o.lift(i, j) : o.lift || 0),
     (i, j) => (hole(j) ? null : typeof cell === 'function' ? cell((lv[i] + lv[i + 1]) / 2, (U(i, j) + (o.wrap && j === n - 1 ? U(i, 0) + TAU : U(i, j + 1))) / 2, i, j) : cell),
     (i, j, p) => { const a = p[i][j], c = p[i + 1][j + 1], x = a[0] + c[0], z = a[2] + c[2]; return o.inward ? [-x, 0, -z] : [x, 0, z]; }, o.wrap);
@@ -323,7 +323,7 @@ const ROUND = [0, 26, 50, 72, 90, 108, 130, 152, 180, 208, 230, 252, 270, 288, 3
 const DENSE = ROUND.flatMap((a, j) => [a, (a + (j < 15 ? ROUND[j + 1] : TAU)) / 2]); // twice as many: a body with a belly / bust / butt to go round
 const cols = (S) => (S.lumpy ? DENSE : ROUND);
 // columns round a body that's open down the front: edge(y) = how far each edge is from x0
-const openCols = (S, edge, x0 = 0) => [...cols(S).filter((a) => a < 153 * DEG), (y) => S.ux(y, x0 + edge(y)), (y) => S.ux(y, x0 - edge(y)), ...cols(S).filter((a) => a > 207 * DEG)];
+const openCols = (S, edge, x0 = 0) => [...cols(S).filter((a) => a < 153 * DEG), ...[1, -1].map((k) => Object.assign((y) => S.ux(y, x0 + k * edge(y)), { edge: true })), ...cols(S).filter((a) => a > 207 * DEG)];
 const ring = (n) => Array.from({ length: n }, (_, j) => (j / n) * TAU);
 const radial = (i, j, p) => { const a = p[i][j], c = p[i + 1][j + 1]; return [a[0] + c[0], 0, a[2] + c[2]]; };
 const upish = (i, j, p) => { const a = p[i][j], c = p[i + 1][j + 1]; return [(a[0] + c[0]) * 0.3, 1, (a[2] + c[2]) * 0.3]; };
@@ -784,10 +784,10 @@ function legPiece(kind, part, sx) {
     if (boot && sx > 0) K.tube([[0.096, -0.1, 0.03], [0.124, -0.135, 0.004], [0.094, -0.17, -0.03]], 0.0065, 4, C.panel); // hammer loop
     if (boot && sx < 0) K.box(0.014, 0.13, 0.062, C.panel, T(-0.098, -0.2, 0.004, 0, 0, 0.04)).box(0.016, 0.008, 0.064, C.tan, T(-0.1, -0.137, 0.004)); // ruler pocket
   } else if (boot) { // straight work legs, knee patches, the cuffs rolled up (the paler inside of the denim)
-    K.lathe([[0.05, -0.07], [0.083, -0.04], [0.087, 0], [0.083, 0.04], [0.077, 0.3], [0.079, 0.332], [0.085, 0.335, C.light], [0.088, 0.342, C.light], [0.088, 0.404, C.light], [0.079, 0.407, C.deep], [0.06, 0.39]], 0, C.base, { ...o, cell: seams(2) });
+    K.lathe([[0.001, -0.09], [0.05, -0.076], [0.083, -0.04], [0.087, 0], [0.083, 0.04], [0.077, 0.3], [0.079, 0.332], [0.085, 0.335, C.light], [0.088, 0.342, C.light], [0.088, 0.404, C.light], [0.079, 0.407, C.deep], [0.06, 0.39]], 0, C.base, { ...o, cell: seams(3) });
     K.box(0.1, 0.105, 0.016, C.panel, T(0, -0.045, -0.083, 0.03)); for (const y of [0.002, -0.092]) K.box(0.09, 0.006, 0.018, C.tan, T(0, y, -0.084, 0.03));
   } else { // pants: creased at the knee, hemmed over the shoe
-    K.lathe([[0.05, -0.07], [0.079, -0.04], [0.083, 0], [0.079, 0.035], [0.071, 0.066], [0.075, 0.086], [0.066, 0.3], [0.068, 0.36], [0.071, 0.364, C.panel], [0.072, 0.397, C.panel], [0.064, 0.399, C.deep], [0.05, 0.386]], 0, C.base, { ...o, cell: seams(2) });
+    K.lathe([[0.001, -0.086], [0.05, -0.072], [0.079, -0.04], [0.083, 0], [0.079, 0.035], [0.071, 0.066], [0.075, 0.086], [0.066, 0.3], [0.068, 0.36], [0.071, 0.364, C.panel], [0.072, 0.397, C.panel], [0.064, 0.399, C.deep], [0.05, 0.386]], 0, C.base, { ...o, cell: seams(3) });
   }
   return K.piece('y');
 }
