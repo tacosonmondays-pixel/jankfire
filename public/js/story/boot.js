@@ -14,7 +14,8 @@ import { makeStory } from '/shared/story/story.js';
 import { toSave, fromSave } from '/shared/story/state.js';
 import * as lab from '/shared/story/content/test/lab.js';
 import * as overdue from '/shared/story/content/overdue.js'; // the full script, as an engine pack (PR #76)
-import { PLACES } from '/shared/city/slice.js'; // the world lane's real spots for the script's zones (the slice city)
+import { PLACES } from '/shared/city/slice.js';
+import { ZoneTracker, stepZones } from '/shared/story/zones.js'; // (reach / leave as you walk in and out; a new step re-arms the zones you're standing in) // the world lane's real spots for the script's zones (the slice city)
 import { npcSpot, HINTS, SITTERS } from '/shared/city/cast_slice.js';
 import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: JUMP IT) // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play, sitActor } from './actors.js';
@@ -30,7 +31,7 @@ const $ = (id) => document.getElementById(id);
 // mission cards wait for a conversation or a scene to finish (they'd be hidden behind it)
 const cardQ = [];
 const card = (...a) => { if (locked()) cardQ.push(a); else card0(...a); };
-export const ST = { S: null, slot: 0, bag: new Set(), staged: '', anchor: [0, 0, 0], things: new Map(), inZone: new Set(), kills: 0, saveT: 0, ready: false, scene: null };
+export const ST = { S: null, slot: 0, bag: new Set(), staged: '', anchor: [0, 0, 0], things: new Map(), inZone: new ZoneTracker(), kills: 0, saveT: 0, ready: false, scene: null };
 // the content: the script (default), or the small engine lab (?lab=1, and always on the Training range ?storylab=1)
 export const LAB = /[?&](lab|storylab)=1\b/.test(location.search);
 const OTPREV = /[?&]otpreview=1\b/.test(location.search);
@@ -113,7 +114,7 @@ const HOST = {
       case 'questFail': card('fail', e.title); break;
       case 'stepFail': card('fail', (e.why || 'nope').toUpperCase(), 'back to the last checkpoint', '', 2); break;
       case 'stepDone': sfx.click && sfx.click(); save(); break;
-      case 'stepStart': { const h = ST.city && HINTS[`${e.quest}.${e.step}`]; if (h) setTimeout(() => { card('step', h.call, '', '', 1.8); toast(h.how.replace(/\{(\w+)\}/g, (_, k) => K.label(k)), 6); }, 900); break; } // (the tutorial's moves: cast_slice.js HINTS)
+      case 'stepStart': { ST.inZone.forget(stepZones(S.defs, e.quest, e.step)); const h = ST.city && HINTS[`${e.quest}.${e.step}`]; if (h) setTimeout(() => { card('step', h.call, '', '', 1.8); toast(h.how.replace(/\{(\w+)\}/g, (_, k) => K.label(k)), 6); }, 900); break; } // (the tutorial's moves: cast_slice.js HINTS)
       case 'codex': if (e.entry) toast(`${e.entry.kind === 'frag' ? 'OPTION C FRAGMENT' : 'NEW IN THE BOOKS'}: <b>${e.entry.title}</b> (J)`); break;
       case 'meet': toast(`met <b>${e.name}</b>`); break;
       case 'warn': console.warn('story:', e.text); break;
@@ -346,12 +347,9 @@ export function frame(dt, now, cam) {
     if (ST.simBack && now > ST.simBack) { ST.simBack = 0; if (!S.st.flags.sim_won) { S.run(['flag:sim_won']); card('step', 'TRAINING COMPLETE', 'the machine hums. something is coming out.', '', 2.4); } }
     S.tick(dt);
     // zones: walking in / out
-    for (const [id, z] of Object.entries(S.defs.zones)) {
-      const p = where(id); if (!p) continue;
-      const inside = Math.hypot(ME.pos[0] - p[0], ME.pos[2] - p[2]) < (z.r || 2) && Math.abs(ME.pos[1] - p[1]) < 4;
-      if (inside && !ST.inZone.has(id)) { ST.inZone.add(id); S.emit({ type: 'reach', zone: id }); }
-      else if (!inside && ST.inZone.has(id)) { ST.inZone.delete(id); S.emit({ type: 'leave', zone: id }); }
-    }
+    { const inside = new Set();
+      for (const [id, z] of Object.entries(S.defs.zones)) { const p = where(id); if (p && Math.hypot(ME.pos[0] - p[0], ME.pos[2] - p[2]) < (z.r || 2) && Math.abs(ME.pos[1] - p[1]) < 4) inside.add(id); }
+      for (const ev of ST.inZone.update(inside)) S.emit(ev); }
     // cars: getting in a driver's seat (drive.js) is the enterCar goal (m02's "steal a car")
     { const drv = !!(G.story && G.story.hideVM && G.story.hideVM()); if (drv && !ST.drv) S.emit({ type: 'enterCar' }); ST.drv = drv; if (drv && ST.city) rampCalls(); }
     // kills: every kill on the range is a dummy (the "interns")
