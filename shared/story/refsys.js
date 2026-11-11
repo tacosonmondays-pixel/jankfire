@@ -216,6 +216,7 @@ addSystem({
       const B = R.boss && R.boss.sk.b; // back at the arena's start: he gives you a moment (he checks his watch) before the next one
       if (B && !B.train) { B.act = null; B.shots.length = 0; B.ring = null; B.next = Math.max(B.next || 0, B.t + REF.grace); }
       if (sim.refCp) sim.sty('cp', { yaw: sim.refCp.face });
+      else if (R.room.map.world) sim.sty('redispensed', {}); // (the slice: the Machine dispensed you, as it did before the referee ran here)
     }
     R.was = me.alive;
     // a beaten boss walks off in the story, not in the room; and the client hears when he's gone, however he went
