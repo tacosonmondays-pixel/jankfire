@@ -3,6 +3,7 @@
 export const PATCH_NOTES = [
   { v: '8.2', date: '2026-11-11', title: 'BOOM, SKULL', items: [
     'explosions are actual fireballs now. a flash, then black smoke rolling over the fire, then it hangs around. guns puff smoke. fires smoke properly. potato keeps its squares.',
+    'explosions lost the weird see-through yellow bubble. flash, then straight into the fireball.',
     'SKULL ROCK is an actual skull now. walk in through its teeth, sit in its eyes, climb its spine to the top. the treasure is still gone.',
     'the office stapler, ball machine and basket case skins got rebuilt in blender. the basket has a price tag. it says stolen.',
   ] },
