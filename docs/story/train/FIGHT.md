@@ -120,6 +120,9 @@ mission it tracks m06.
 | `fight_05_inspector.jpg` | phase 3 from the back of the wagon at 7 m: the lower third gone, the Inspector's chest marked |
 | `fight_06_before_the_bite.jpg` | phase 3 from the flatbed, the wagon still on: THE GAP 12 m |
 | `fight_07_wagon_gone.jpg` | the same view after the first lunge: the wagon is gone, the mask is at the flatbed's back, 8.3 m |
+| `fight_07b_sweeper.jpg` | a knee-high Sweeper's bar across the wagon, wall to wall (held still for the picture) |
+| `fight_07c_blooddrive.jpg` | the Blood Drive firing at the mask: tracers kept on screen for the picture, the HP cost on the HUD |
+| `fight_07d_fail.jpg` | the fail: the hands have closed, "fare evaded. briefly." |
 | `fight_08_blood_crossed.jpg` | the finish: the cross out to the rim (taken on the earlier, narrower wagon) |
 | `fight_09_comes_apart.jpg` | the face flat on the track, the plug splitting along the cross (the earlier wagon too) |
 
@@ -157,10 +160,17 @@ spot moves to the flatbed's back.
 - In a headless browser: the arena, the mask and arms, grips, a flinch, phase 2 and 3 looks, the wagon going, the
   finish, and the mission's steps end to end (the trip to the train, the hold round the middle scene, the defeat,
   the trip back).
-- Not seen in a browser, because a headless frame takes two to four seconds here: the Blood Drive actually firing
-  (the room lets the ring wind down after 1.5 s of silence, so it never gets up to speed at that frame rate), its
-  tracers and sound; a Sweeper's bar in motion; the fail's closing hands (the fight has reset before a frame draws
-  them); every sound; the hit-stop. These need a real play at a real frame rate.
+- In a browser with drawing switched off while the logic runs (so it runs in real time, 6 to 15 frames a second
+  here), then on again for the picture: the Blood Drive really fired at a wrist (the trigger, 6 knot hits, a bloom on
+  the sixth bolt, the sever and its blood back, the bolts-left line on the HUD counting down to "thin blood", tracers,
+  the trigger dropping on window blur); a Sweeper's tell and its bar running the decks (it rides the deck under it,
+  it took 22 off someone standing in it); the fail at 0 m (the hands closed, the line, then gone on the retry).
+- Sounds, by spying on the calls (nobody can listen to a headless page): the ring's wind-up, each bolt, the dry
+  click, a knot hit, a sever, the bloom, a bolt off the enamel, the haul, the heal, being caught were all called on
+  their events. The plate, flinch, lunge, cross and punch-click sounds were not exercised in that run, and the
+  Sweeper's two sounds were added after it.
+- Still not seen: the hit-stop on screen (its clock is tested in node), the fight played by a person at a real frame
+  rate (so the balance is unplayed), co-op.
 
 ## Left for later (from the code review, 2026-11-11)
 - The Blood Drive's path in the room skips the room's other can't-fire checks (stagger, a soap bubble, a pop quiz, the

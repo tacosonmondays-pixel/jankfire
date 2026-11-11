@@ -286,8 +286,8 @@ export function makeTrainFight(ST, { playScene }) {
     if (m.st === 'gone') { if (v) { freeArm(v); F.arms.delete(m.id); } return; }
     if (!v3(m.tgt) || typeof m.k !== 'string' || !fin(m.sock)) return;
     const a = { id: m.id, k: m.k, sock: clamp(m.sock | 0, 0, m.mouth ? 3 : 11), mouth: m.mouth ? 1 : 0, st: String(m.st), t: 0, dur: fin(m.dur) ? m.dur : 0, tgt: m.tgt.slice(), hi: !!m.hi, side: m.side || 0, rear: fin(m.rear) ? m.rear : 0, hp: fin(m.hp) ? m.hp : 1, max: fin(m.max) && m.max > 0 ? m.max : 1, ...(fin(m.wa) ? { wa: m.wa } : {}), ...(v3(m.gp) ? { gp: m.gp.slice() } : {}) };
-    if (!v) { v = newArm(a); F.arms.set(m.id, v); if (a.k === 'sweep') hud.msg(a.hi ? 'HEAD HEIGHT. GET DOWN.' : 'KNEE HEIGHT. JUMP.', 1.3, 'reverse'); }
-    else { const was = v.a.st; v.a = a; if (a.st === 'cut' && was !== 'cut') severed(v, m); if (a.st === 'grip' && was !== 'grip') { sfx.rpHaul(v.wrist, 1.4); G.shake = Math.max(G.shake, 0.2); } if (a.st === 'hold' && was !== 'hold') hud.msg('IT HAS YOU. SHOOT THE WRIST.', 2, 'reverse'); }
+    if (!v) { v = newArm(a); F.arms.set(m.id, v); if (a.k === 'sweep') { hud.msg(a.hi ? 'HEAD HEIGHT. GET DOWN.' : 'KNEE HEIGHT. JUMP.', 1.3, 'reverse'); sfx.rpSweep(false); } }
+    else { const was = v.a.st; v.a = a; if (a.st === 'cut' && was !== 'cut') severed(v, m); if (a.st === 'grip' && was !== 'grip') { sfx.rpHaul(v.wrist, 1.4); G.shake = Math.max(G.shake, 0.2); } if (a.st === 'hold' && was !== 'hold') hud.msg('IT HAS YOU. SHOOT THE WRIST.', 2, 'reverse'); if (a.k === 'sweep' && a.st === 'sweep' && was !== 'sweep') sfx.rpSweep(true); }
   }
   function severed(v, m) {
     const w = v.wrist || [0, 2, 0];

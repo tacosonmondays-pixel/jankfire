@@ -775,6 +775,7 @@ Object.assign(sfx, {
   rpPlate(pos, fall) { noise(0.18, 0.6, 'highpass', 2600, 7000, pos); tone('triangle', 1300, 500, 0.16, 0.2, pos); if (fall) { noise(0.5, 0.7, 'bandpass', 3200, 900, pos, 0.55, 0.8); tone('sine', 90, 40, 0.3, 0.5, pos, 0.55); } }, // crazing; then it smashes on the track
   rpHaul(pos, k = 1) { noise(0.5, 0.2 * k, 'bandpass', 160, 420, pos, 0, 2); tone('sawtooth', 44, 62, 0.5, 0.2 * k, pos); },
   rpFlinch(pos) { tone('sawtooth', 300, 70, 0.7, 0.4, pos); noise(0.6, 0.5, 'bandpass', 500, 1800, pos, 0, 1.5); tone('sine', 1500, 600, 0.5, 0.12, pos, 0.1); },
+  rpSweep(go) { if (go) { whoosh(0.9, 0.5, 240, 900, 1.1); tone('sawtooth', 70, 120, 0.8, 0.25); } else { tone('sawtooth', 52, 44, 1.2, 0.3); noise(1.2, 0.2, 'bandpass', 200, 500, null, 0, 2); } }, // a Sweeper: it lays itself down (a low creak), then it comes (a rush)
   rpLunge(pos) { tone('sawtooth', 60, 160, 1.2, 0.4, pos); noise(1.2, 0.3, 'lowpass', 200, 900, pos); },
   rpCross() { noise(0.9, 1, 'bandpass', 2600, 300, null, 0, 0.8); tone('sawtooth', 110, 28, 1.1, 0.6); tone('sine', 880, 220, 0.9, 0.22); tone('sine', 55, 30, 1.4, 0.7, null, 0.2); },
   rpClick() { tone('square', 2300, 1700, 0.018, 0.2); tone('square', 1200, 900, 0.02, 0.16, null, 0.05); }, // the Inspector's punch
