@@ -848,12 +848,25 @@ function tankBody(F, lk, [S]) {
   return K.piece();
 }
 
+// n columns round a shell evenly spaced by the direction they point from the body's middle (not by its own angle),
+// each a function of the height (the shell's width and depth change with it)
+function evenCols(S, n) {
+  const k = 2 / S.e;
+  return Array.from({ length: n }, (_, j) => {
+    const th = (j / n) * TAU, h = th % PI > PI / 2 ? PI - (th % PI) : th % PI; // (the direction's angle off the back / front line)
+    return (y) => { const [w, f, b] = S.at(y), d = Math.cos(th) > 0 ? b : f, q = Math.atan(((Math.tan(Math.min(h, PI / 2 - 1e-6)) * d) / w) ** (1 / k)); return th <= PI / 2 ? q : th <= PI ? PI - q : th <= 1.5 * PI ? PI + q : TAU - q; };
+  });
+}
+
 // ------------------------------------------------------------ Referee Shirt: stripes, in the shirt's colour and white
 // a fold-down collar and a short placket, a chest pocket with a yellow card in it, a whistle. the shoulders, hem and
 // cuffs are the plain colour
 function refBody(F, lk, [S]) {
-  const K = new Kit(true), st = S.lumpy ? 2 : 1;
-  loft(K, S, S.lv(1.015, 1.525, [1.04, 1.468]), cols(S), (y, u, i, j) => (y < 1.04 || y > 1.468 || ((j / st) | 0) % 2 === 0 ? C.base : C.white), { wrap: true });
+  // a stripe a column, twice the columns of a plain top. over a belly / bust / butt the columns go round evenly by
+  // direction instead (the shell's squareness and the lump together would stretch the front ones into blocks), twice as
+  // many again, two to a stripe
+  const K = new Kit(true), us = S.lumpy ? evenCols(S, 64) : DENSE, st = S.lumpy ? 2 : 1;
+  loft(K, S, S.lv(1.015, 1.525, [1.04, 1.468]), us, (y, u, i, j) => (y < 1.04 || y > 1.468 || ((j / st) | 0) % 2 === 0 ? C.base : C.white), { wrap: true });
   crewNeck(K, S, 1.525, 0.02, C.base, C.base);
   const a0 = S.ux(1.548, 0.024);
   collar(K, S, 1.548, (u) => 0.034 + 0.034 * front(u) ** 3, C.base, { a0, a1: -a0, n: 14, lift: 0.011, rim: C.seam, stand: 0.014 });
