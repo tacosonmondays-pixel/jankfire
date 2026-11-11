@@ -43,6 +43,9 @@ const VS = `varying vec3 vW; void main() { vec4 w = modelMatrix * vec4(position,
 const HEAD = `
 uniform sampler2D uN; uniform float uT, uBeat, uK, uGlow;
 uniform vec3 uCol, uHot, uFogCol; uniform vec2 uFog; uniform vec3 uHeart;
+uniform vec4 uGoo[6]; uniform vec3 uGooCol; // the bile pools nearest the camera (x, z, radius, how much): the mist over them catches their light
+float goo(vec2 p) { float g = 0.0; for (int i = 0; i < 6; i++) { vec4 q = uGoo[i]; g = max(g, q.w * (1.0 - smoothstep(q.z * 0.5, q.z * 1.9 + 2.2, length(p - q.xy)))); } return g; }
+vec3 gooLit(vec3 c, float body, vec2 p) { return mix(c, uGooCol * (0.75 + 0.35 * body), 0.72 * goo(p)); }
 float ghBeat(float t) { return exp(-pow((t - 0.12) / 0.045, 2.0)) + 0.6 * exp(-pow((t - 0.33) / 0.06, 2.0)); }
 // the mist's colour: pale at rest, hot on the lub and where the ring from the heart's roots is passing; far off it
 // melts into the district's fog
@@ -76,7 +79,7 @@ void main() {
   a *= smoothstep(0.4, 1.4, dist) * smoothstep(0.02, 0.3, abs(v.y)); // a sheet fades as it passes your eyes
   a = min(a, uCap);
   if (a < 0.004) discard;
-  gl_FragColor = vec4(mist(dens, ring, dist), a);
+  gl_FragColor = vec4(gooLit(mist(dens, ring, dist), dens, p), a);
   #include <colorspace_fragment>
 }`;
 // a wisp: an upright card that turns to face you, standing on the ground at a fixed spot (wrapped round the camera)
@@ -112,7 +115,7 @@ void main() {
   float a = uA * body * vA * (0.85 + 0.3 * uK + 0.5 * ring) * (1.0 + 0.5 * root) * smoothstep(0.5, 2.0, dist); // it thins as you walk into it
   a *= 1.0 - smoothstep(0.45, 0.8, abs(v.y) / dist); // a card looked down on is a pane of glass: from above the sheets are the fog
   if (a < 0.004) discard;
-  gl_FragColor = vec4(mist(body, ring, dist), min(a, 0.6));
+  gl_FragColor = vec4(gooLit(mist(body, ring, dist), body, vW.xz), min(a, 0.6));
   #include <colorspace_fragment>
 }`;
 
@@ -127,6 +130,7 @@ function clear() {
 }
 export function stopGutFog() { if (!F) return; clear(); if (F.tex) F.tex.dispose(); F = null; }
 const SHARED = { uT: { value: 0 }, uBeat: { value: 0 }, uK: { value: 0 }, uHoles: { value: 0.32 }, uGlow: { value: 0.8 }, uCol: { value: new THREE.Color() }, uHot: { value: new THREE.Color() }, uFogCol: { value: new THREE.Color() }, uFog: { value: new THREE.Vector2(26, 205) },
+  uGoo: { value: [0, 1, 2, 3, 4, 5].map(() => new THREE.Vector4(0, 0, 1, 0)) }, uGooCol: { value: new THREE.Color(0x9dff5a) },
   uHeart: { value: new THREE.Vector3(BIG_HEART.x, BIG_HEART.z, 0) }, uSt: { value: new THREE.Vector3(ST.x, ST.z, ST.r) }, uRect: { value: new THREE.Vector4(G0[0], G0[1], G0[2], G0[3]) } };
 // (re)build for this preset: n sheets a stack, np wisps
 function build(n, np) {
@@ -179,4 +183,6 @@ export function updateGutFog(dt, S, camera, b) {
     m.position.y = m.userData.y0 + m.userData.h * swell; u.uCap.value = cap * k; u.uA.value = cap * k * 1.5; }
   const pu = F.puffs.material.uniforms; pu.uA.value = GUT_FOG.puff; pu.uR.value = GUT_FOG.reach; pu.uTop.value = GUT_FOG.top;
 }
+// gutgoo.js: the (up to six) bile pools nearest the camera, [x, z, r, amount]
+export function setGutGoo(list) { const U = SHARED.uGoo.value; for (let i = 0; i < 6; i++) { const g = list[i]; if (g) U[i].set(g[0], g[1], g[2], g[3]); else U[i].set(0, 0, 1, 0); } }
 export const gutFogState = () => (F ? { on: !!(F.root && F.root.visible), layers: F.n, sheets: F.sheets.length, puffs: F.np } : null);

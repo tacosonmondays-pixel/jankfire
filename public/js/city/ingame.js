@@ -15,6 +15,7 @@ import { K } from '../keys.js';
 import { hud } from '../hud.js';
 import { updateBeds, stopBeds } from './beds.js';
 import { districtWeights } from '/shared/city/plan.js';
+import { startGoo, stopGoo, updateGoo } from './gutgoo.js';
 import { startHeart, stopHeart, updateHeart, gutBeat } from './bigheart.js'; // the Big Heart, the Gut's one beat and its ground fog
 
 let S = null, hooks = null;
@@ -26,7 +27,7 @@ export function startCity(def, h) {
   propEnv(G.renderer);
   S = new CityStream({ scene: G.scene, city: def.stream, preset: G.settings ? G.settings.jank : 1, boxes: BOXES });
   S.useWas = false;
-  startHeart(S.root);
+  startHeart(S.root); startGoo(S.root);
   // the city code took a second to arrive and you may have started falling: put you back where the map dropped you
   // (its spawn if you're near it, else a bit above where you are) and hold you there until the ground is in
   const sp = def.spawns && def.spawns[0];
@@ -34,7 +35,7 @@ export function startCity(def, h) {
   S.holding = true;
   return S;
 }
-export function stopCity() { stopHeart(); if (S) { S.dispose(); S = null; } stopBeds(); }
+export function stopCity() { stopHeart(); stopGoo(); if (S) { S.dispose(); S = null; } stopBeds(); }
 export const cityStream = () => S;
 
 const GUT_FLUSH = new THREE.Color(0xa01428); // the colour the fog flushes (its beat is the Big Heart's: gutbeat.js)
@@ -44,6 +45,7 @@ export function updateCity(dt) {
   if (G.settings && S.preset !== G.settings.jank) S.setPreset(G.settings.jank);
   S.update(G.camera, dt);
   updateHeart(dt, S, G.camera); // (ticks the Gut's clock: the fog below reads it)
+  updateGoo(dt, S, G.camera); // the bile pools: bubbles that pop, green in the mist over them
   updateBeds(G.joined ? districtWeights(S.city, G.camera.position.x, G.camera.position.z, 40) : [], dt); // the district music (fades out on the menu: the menu song is on)
   const e = S.env;
   if (S.weather.started) hud.msg('PAPER STORM', 1.6, 'brag');
