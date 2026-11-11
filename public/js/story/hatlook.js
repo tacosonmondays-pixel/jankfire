@@ -4,8 +4,8 @@
 // joints and replaces every group marked codeOnly; the markers stay for both.
 // She is the cast skeleton (person()) plus joints of her own: the hat creature on its telescoping neck, its brim in
 // six pieces, the crown that lifts off the band (the band is a mouth), three growth clusters, HER eye pair with a lid
-// each, a lid for each of the creature's five eyes, the two hands of fingers laced over where her eyes would be, and
-// two-jointed fingers. EXTRA is the one list of them; the Blender build and the clips read it from joints.json.
+// each, a lid for each of the creature's five eyes, the two hands of fingers laced over where her eyes would be, the
+// two halves of her cape, and two-jointed fingers. EXTRA is the one list of them; the Blender build and the clips read it from joints.json.
 // Her clips and the hat's life are in hatlord.js (HL).
 import { FACES } from './face.js';
 import { hlRegister } from './hatlord.js';
@@ -21,7 +21,7 @@ export const HATLORD = { s: 1, legS: 1.63, hipW: 0.075, torsoH: 0.659, shW: 0.2,
 
 // [name, parent, x, y, z, rx, ry, rz]: where the joint sits in its parent's frame (unit scale) and its rest turn
 // (three.js XYZ euler, radians). front is -z, +x is HER right. the hat's low end and its feeler are on her right.
-const EYE = [0, 0.17, -0.545]; // her pair, crown frame (+- 0.058 in x)
+const EYE = [0.043, 0.17, -0.538]; // her pair, crown frame (+- x): a little over life size, and her left one sits 4 mm low
 export const EXTRA = [
   ['bandR', 'head', 0.16, 0.42, -0.02, 0, 0, 0], ['bandL', 'head', -0.16, 0.42, -0.02, 0, 0, 0], // the hat's fingers over her eyes: hinged at each temple
   ['hatNeck', 'head', 0, 0.5, 0.04, 0, 0, 0], ['hatNeckB', 'hatNeck', 0, 0, 0, 0, 0, 0], // the neck telescopes: B rides out of the first tube, the hat out of B
@@ -31,11 +31,13 @@ export const EXTRA = [
   ['brimL', 'hat', -0.34, 0.02, 0, 0, 0, 0.05], ['brimLb', 'brimL', -0.7, 0, 0, 0, 0, -0.14],
   ['brimF', 'hat', 0, 0.02, -0.33, 0, 0, 0], ['brimB', 'hat', 0, 0.02, 0.33, 0.05, 0, 0],
   ['growthA', 'crown', 0.25, 0.1, -0.3, 0, 0, 0], ['growthB', 'crown', -0.04, 0.24, -0.14, 0, 0, 0], ['growthC', 'crown', -0.24, 0.1, -0.36, 0, 0, 0],
-  ['eyeHR', 'crown', 0.058, EYE[1], EYE[2], 0, 0, 0], ['eyeHL', 'crown', -0.058, EYE[1], EYE[2], 0, 0, 0], // HER eyes: the balls turn to look
-  ['lidHR', 'crown', 0.058, EYE[1], EYE[2], 0, 0, 0], ['lidHL', 'crown', -0.058, EYE[1], EYE[2], 0, 0, 0], // their upper lids: - x shuts
+  ['eyeHR', 'crown', EYE[0], EYE[1], EYE[2], 0, 0, 0], ['eyeHL', 'crown', -EYE[0], EYE[1] - 0.004, EYE[2], 0, 0, 0], // HER eyes: the balls turn to look
+  ['lidHR', 'crown', EYE[0], EYE[1], EYE[2], 0, 0, 0], ['lidHL', 'crown', -EYE[0], EYE[1] - 0.004, EYE[2], 0, 0, 0], // their upper lids: - x shuts
   // the creature's five eyes: each lid sits on its eye, turned to face where that eye faces (- z of the lid's frame)
   ['lidCa', 'growthA', 0.085, 0.07, -0.085, -0.25, -0.75, 0], ['lidCb', 'growthA', 0.02, -0.03, -0.16, 0.2, -0.2, 0], ['lidCc', 'crown', -0.02, 0.29, -0.39, 0.7, 0.15, 0],
   ['lidCd', 'growthC', -0.06, 0.04, -0.07, -0.2, 0.7, 0], ['lidCe', 'growthB', 0.03, 0.01, 0.07, -0.5, 2.9, 0],
+  // the cape's two halves: hinged on the pin down her back (a straight line leaning in to her collar). capeR.y - / capeL.y + parts them
+  ['capeR', 'spine', 0, 0, 0.2085, -0.0605, 0, 0], ['capeL', 'spine', 0, 0, 0.2085, -0.0605, 0, 0],
   ['idxR', 'handR', -0.03, -0.105, 0, 0, 0, 0], ['idxRb', 'idxR', 0, -0.085, 0, 0, 0, 0], ['finR', 'handR', 0.01, -0.105, 0, 0, 0, 0], ['finRb', 'finR', 0, -0.085, 0, 0, 0, 0], ['thumbR', 'handR', -0.04, -0.03, -0.012, 0, 0, 0],
   ['idxL', 'handL', 0.03, -0.105, 0, 0, 0, 0], ['idxLb', 'idxL', 0, -0.085, 0, 0, 0, 0], ['finL', 'handL', -0.01, -0.105, 0, 0, 0, 0], ['finLb', 'finL', 0, -0.085, 0, 0, 0, 0], ['thumbL', 'handL', 0.04, -0.03, -0.012, 0, 0, 0],
 ];
@@ -63,7 +65,7 @@ export function hatLordLook(K) {
   const grp = (name, parent, x = 0, y = 0, z = 0, codeOnly = true) => { const o = g(x, y, z); o.name = 'ot_' + name; o.userData.codeOnly = codeOnly; parent.add(o); parts[name] = o; all[name] = [o]; return o; };
   const p = person({ skin: SK, legMat: suit, shoe: 0x14060c, s: HATLORD.s, legS: HATLORD.legS, hipW: HATLORD.hipW, thigh: 0.8, shin: 0.8, foot: 0.6, torsoH: tH, shW: HATLORD.shW, armR: 0.8,
     upper: HATLORD.upper, fore: HATLORD.fore, sleeveMat: suit, foreMat: suit, hunch: 0, wrongKnee: false, headR: HATLORD.headR, neck: HATLORD.neck, tilt: 0, pelvisMat: suit,
-    torso: (sp) => { sp.add(cyl(0.15, 0.1, tH * 0.9, suit, 0, tH * 0.45, 0, 10)); sp.add(box(1.46, 0.07, 0.16, suit, 0, tH * 0.97, 0.12)); const cl = cyl(0.6, 0.38, 1.55, suit, 0, -0.72, 0.14, 12); cl.scale.z = 0.35; sp.add(cl); },
+    torso: (sp) => { sp.add(cyl(0.15, 0.1, tH * 0.9, suit, 0, tH * 0.45, 0, 10)); sp.add(box(1.46, 0.07, 0.16, suit, 0, tH * 0.97, 0.12)); },
     head: (h, r, m) => { h.add(sph(1, m, 0, r[1], 0, r[0], r[1], r[2], 14)); },
     // (no eyes in her face: the rig's are hidden below. the mouth is the game's, so she talks like everyone else)
     face: { z: -0.13, eyeR: 0.02, eyeSep: 0.04, eyeY: 0.34, brow: false, mouthW: 0.066, mouthY: 0.1, mouthZ: -0.116, lip: 0x5a1230, lipR: 0.008, teeth: 'needle', lidColor: SK } });
@@ -81,7 +83,8 @@ export function hatLordLook(K) {
   for (const [jn, x, w, d] of [['brimR', 0.27, 0.56, 1.3], ['brimRb', 0.24, 0.5, 0.8], ['brimL', -0.36, 0.74, 1.4], ['brimLb', -0.33, 0.68, 0.9]]) { const o = grp(jn + 'Code', c[jn]); o.add(box(w, 0.02, d, pink, x, 0, 0)); }
   for (const [jn, z] of [['brimF', -0.16], ['brimB', 0.18]]) { const o = grp(jn + 'Code', c[jn]); o.add(box(0.7, 0.02, 0.34, pink, 0, 0, z)); }
   const fe = grp('feelerCode', c.feeler); const fr = cyl(0.006, 0.01, 0.2, bone, 0.1, 0, 0, 5); fr.rotation.z = Math.PI / 2; fe.add(fr);
-  for (const jn of ['eyeHR', 'eyeHL']) { const o = grp(jn + 'Code', c[jn]); o.add(sph(0.036, flat(0xf6f2e8), 0, 0, 0)); o.add(sph(0.018, flat(0x7a4a22), 0, 0, -0.026)); }
+  for (const jn of ['eyeHR', 'eyeHL']) { const o = grp(jn + 'Code', c[jn]); o.add(sph(0.0175, flat(0xf6f2e8), 0, 0, 0)); o.add(sph(0.009, flat(0x7a4a22), 0, 0, -0.0125)); }
+  for (const [jn, sx] of [['capeR', 1], ['capeL', -1]]) { const o = grp(jn + 'Code', c[jn]); o.add(box(0.44, 2.05, 0.3, suit, sx * 0.23, -0.5, -0.16)); }
   for (const jn of ['growthA', 'growthB', 'growthC']) { const o = grp(jn + 'Code', c[jn]); o.add(sph(0.1, flat(0xd9a060), 0, 0, 0)); }
   const sock = grp('socketCode', c.spine); const ring = cyl(0.04, 0.04, 0.012, brass, MK.socketAt[1], MK.socketAt[2], MK.socketAt[3], 12); ring.rotation.x = Math.PI / 2; sock.add(ring);
   for (const [name, [joint, x, y, z]] of Object.entries(MK)) grp(name, c[joint], x, y, z, false);

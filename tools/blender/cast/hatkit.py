@@ -250,20 +250,91 @@ def eyeball(c, r, m, look=(0, 0, -1), uv_rect=(0, 0, 0.5, 1), seg=12, rings=8, n
     return o
 
 
-def lid_cap(c, r, m, look=(0, 0, -1), up=(0, 1, 0), open_=0.55, back=2.0, seg=10, rings=4, name='lid', thick=0.12):
-    """an upper eyelid: a strip of a slightly bigger sphere over the top of the eye, hinged on the line through the
-    eye's corners (so it has no pole to fold over). open_ = how far its edge sits above the look axis (0 = on it),
-    back = how far round over the top it reaches (radians from the look axis): enough that a shut lid leaves no white"""
+def lid_cap(c, r, m, look=(0, 0, -1), up=(0, 1, 0), open_=0.55, back=2.0, seg=10, rings=4, name='lid', thick=0.12, almond=0.0):
+    """an eyelid: a strip of a slightly bigger sphere over the top of the eye, hinged on the line through the eye's
+    corners (so it has no pole to fold over). open_ = how far its edge sits above the look axis (0 = on it), back = how
+    far round over the top it reaches (radians from the look axis): enough that a shut lid leaves no white. almond = the
+    edge comes down toward the corners (0 = a straight lid, 1 = it meets the axis there). pass up = down for a lower lid"""
     look = Vector(look).normalized(); upv = (Vector(up) - look * Vector(up).dot(look)).normalized(); sd = upv.cross(look).normalized()
     R = r * (1 + thick)
     a0 = math.asin(max(-0.95, min(0.95, open_)))
+    AZ = [-1.42 + 2.84 * i / seg for i in range(seg + 1)]
     def grid_(rad, lift=0.0):
         P = []
         for j in range(rings + 1):
-            ph = a0 + (back - a0) * j / rings + (lift if j == 0 else 0.0)
-            P.append([tuple(Vector(c) + (sd * math.sin(az) + (look * math.cos(ph) + upv * math.sin(ph)) * math.cos(az)) * rad) for az in [-1.42 + 2.84 * i / seg for i in range(seg + 1)]])
+            row = []
+            for az in AZ:
+                e0 = a0 * (1 - almond * (1 - math.cos(az)) ** 0.8)
+                ph = e0 + (back - e0) * j / rings + (lift if j == 0 else 0.0)
+                row.append(tuple(Vector(c) + (sd * math.sin(az) + (look * math.cos(ph) + upv * math.sin(ph)) * math.cos(az)) * rad))
+            P.append(row)
         return P
     return shell(name, (m, m), grid_(R), grid_(r * 1.02, 0.03), deg=80)
+
+
+def lid_edge(c, r, look, up, open_, almond, thick=0.12, n=7, off=1.0):
+    """the points along a lid's edge (for a lash line or a wet rim)"""
+    look = Vector(look).normalized(); upv = (Vector(up) - look * Vector(up).dot(look)).normalized(); sd = upv.cross(look).normalized()
+    R = r * (1 + thick) * off; a0 = math.asin(max(-0.95, min(0.95, open_))); out = []
+    for i in range(n):
+        az = -1.3 + 2.6 * i / (n - 1); e0 = a0 * (1 - almond * (1 - math.cos(az)) ** 0.8)
+        out.append(tuple(Vector(c) + (sd * math.sin(az) + (look * math.cos(e0) + upv * math.sin(e0)) * math.cos(az)) * R))
+    return out
+
+
+def fist(c, d, size, m, nail=None, name='fist', seed=0, grip=1.25):
+    """a clenched hand growing out of something: wrist toward -d, knuckles toward d. size = half the width of the palm"""
+    rr = random.Random(seed)
+    d = Vector(d).normalized()
+    up = Vector((0, 1, 0)) if abs(d.y) < 0.9 else Vector((1, 0, 0))
+    sx = d.cross(up).normalized(); nz = sx.cross(d).normalized()     # across the knuckles; the back of the hand
+    c = Vector(c)
+    out = [shade(sweep([tuple(c - d * size * 1.5), tuple(c - d * size * 0.7), tuple(c + d * size * 0.2), tuple(c + d * size * 0.75)], [size * 0.42, size * 0.4, size * 0.78, size * 0.7], m, seg=7, name=name, squash=(0.62, 1.0)), 70)]
+    for k in range(4):
+        t = k / 3 - 0.5
+        o, _ = finger(c + d * size * 0.7 + sx * t * size * 1.25 + nz * size * 0.1, (d + nz * 0.25).normalized(), size * (1.7 - 0.25 * abs(t) - 0.2 * (k == 3)), size * 0.2, m, curl=-grip * rr.uniform(0.9, 1.1), side=sx, seg=5, name=name + '_f', n=3, nail=nail, tip=0.7)
+        out += o
+    o, _ = finger(c - sx * size * 0.62 + d * size * 0.1 - nz * size * 0.1, (d * 0.6 - sx * 0.2 - nz * 0.75).normalized(), size * 1.25, size * 0.23, m, curl=0.9, side=d, seg=5, name=name + '_t', n=2, nail=nail)
+    return out + o
+
+
+def ear(c, nrm, up, size, m, name='ear'):
+    """an ear standing off a surface: c = where it joins, nrm = out of the surface, up = toward its top. size = its height"""
+    n = Vector(nrm).normalized(); u = (Vector(up) - n * Vector(up).dot(n)).normalized(); f = u.cross(n).normalized()
+    c = Vector(c)
+    P = lambda a, b, h=0.0: tuple(c + f * (a * size) + u * (b * size) + n * (h * size))   # a = back from the join, b = up, h = out
+    flap = blob(name, (0, 0, 0), (size * 0.3, size * 0.5, size * 0.07), m, seg=8, rings=6)
+    # the flap: an ellipsoid flattened along the direction it leans out in, set at a slant to the surface
+    lean = (n * 0.45 + f * 0.9).normalized(); thick = u.cross(lean).normalized()
+    apply_mods(flap)
+    for v in flap.data.vertices:
+        g = Vector((v.co.x, v.co.z, -v.co.y))                      # (blob is built in game axes: x across, y up, z through)
+        p = c + lean * (size * 0.3) + lean * g.x + u * g.y + thick * g.z
+        v.co = gv(*p)
+    rim = [P(0.5 * math.cos(a) * 0.62 + 0.3, 0.5 * math.sin(a), 0.22 + 0.16 * math.cos(a)) for a in [math.radians(d_) for d_ in (-120, -70, -20, 30, 80, 130, 170)]]
+    helix = shade(sweep(rim, [size * 0.035, size * 0.055, size * 0.06, size * 0.06, size * 0.055, size * 0.045, size * 0.03], m, seg=5, name=name + '_rim'), 80)
+    lobe = blob(name + '_lobe', P(0.2, -0.47, 0.14), (size * 0.1, size * 0.12, size * 0.07), m, seg=6, rings=5)
+    return [flap, helix, lobe]
+
+
+def molars(c, nrm, along, size, gum, tooth, n=6, name='teeth', seed=0):
+    """a row of back teeth come up through a gum mound on a surface: c on the surface, nrm out of it, along = the row"""
+    rr = random.Random(seed)
+    nn = Vector(nrm).normalized(); a = (Vector(along) - nn * Vector(along).dot(nn)).normalized(); b = a.cross(nn).normalized(); c = Vector(c)
+    L = size * n * 0.62
+    out = [shade(sweep([tuple(c - a * L * 0.62 - nn * size * 0.2), tuple(c - a * L * 0.3 + nn * size * 0.25), tuple(c + a * L * 0.3 + nn * size * 0.25), tuple(c + a * L * 0.62 - nn * size * 0.2)], [size * 0.5, size * 0.85, size * 0.85, size * 0.5], gum, seg=6, name=name + '_gum', squash=(0.7, 1.0)), 80)]
+    for k in range(n):
+        t = (k + 0.5) / n - 0.5
+        p = c + a * (t * L * 1.05) + nn * size * (0.7 + rr.uniform(-0.1, 0.15)) + b * size * rr.uniform(-0.15, 0.15)
+        w = size * rr.uniform(0.42, 0.6)
+        o = box((w, size * rr.uniform(0.7, 1.0), w * rr.uniform(0.9, 1.2)), (0, 0, 0), tooth, bev=w * 0.22, name=name + '_m', seg=1)
+        apply_mods(o)
+        tilt = Quaternion(a, rr.uniform(-0.25, 0.25)) @ Quaternion(b, rr.uniform(-0.2, 0.2))
+        X = tilt @ a; Y = tilt @ nn; Z = X.cross(Y)
+        for v in o.data.vertices:
+            g = Vector((v.co.x, v.co.z, -v.co.y)); v.co = gv(*(p + X * g.x + Y * g.y + Z * g.z))
+        out.append(o)
+    return out
 
 
 # ------------------------------------------------------------ small textures
@@ -289,32 +360,43 @@ def tex_veins(name, base, vein, dark, size=128, seed=5):
     return tex_canvas(name, size, size, draw)
 
 
+EYE_UV = {'hers': (0.0, 0.0, 0.25, 1.0), 'slit': (0.25, 0.0, 0.5, 1.0), 'cloud': (0.5, 0.0, 0.75, 1.0), 'red': (0.75, 0.0, 1.0, 1.0)}
+
+
 def tex_eyes(name, size=64):
-    """two tiles side by side: HER iris (warm brown, a round pupil, a catch light) and the creature's (bile yellow, a slit)"""
+    """four tiles side by side: HER iris (brown, a round pupil, a catch light, a pink wet rim to the white); and the
+    creature's: bile yellow with a slit; clouded over; red-rimmed with a slit"""
     def draw(px):
-        h, w = px.shape[:2]; half = w // 2
+        h, w = px.shape[:2]; half = w // 4
         yy, xx = np.mgrid[0:h, 0:half]
         d = np.hypot(xx - half / 2 + 0.5, yy - h / 2 + 0.5) / (half / 2)
         ang = np.arctan2(yy - h / 2 + 0.5, xx - half / 2 + 0.5)
-        # hers
-        t = np.zeros((h, half, 3), np.float32); t[:] = hexrgb(0xf4efe6)
-        t[d > 0.86] = hexrgb(0xe8d4d8)                                   # a pink rim to the white
-        ir = d < 0.52; t[ir] = hexrgb(0x8a5226)
         streak = (np.sin(ang * 9) * 0.5 + 0.5)[..., None]
-        t[ir] = (t * (0.82 + 0.3 * streak))[ir]
-        t[(d < 0.52) & (d > 0.45)] = hexrgb(0x3a1c0c)                   # the limbal ring
-        t[d < 0.22] = hexrgb(0x08060a)
-        gl = np.hypot(xx - half * 0.36, yy - h * 0.66) < half * 0.07; t[gl] = (1, 1, 1)
+        # hers
+        t = np.zeros((h, half, 3), np.float32); t[:] = hexrgb(0xf0ebe2)
+        t[d > 0.8] = hexrgb(0xe6c8cc); t[(d > 0.62) & (np.sin(ang * 3 + d * 7) > 0.96)] = hexrgb(0xc8707a)   # the white goes pink toward the lids; a thread of red
+        ir = d < 0.5; t[ir] = hexrgb(0x7a4a22)
+        t[ir] = (t * (0.78 + 0.34 * streak))[ir]
+        t[(d < 0.3) & (d > 0.2)] = hexrgb(0x9a6a30)                    # lighter round the pupil
+        t[(d < 0.5) & (d > 0.43)] = hexrgb(0x2e1608)                    # the limbal ring
+        t[d < 0.2] = hexrgb(0x060508)
+        gl = np.hypot(xx - half * 0.38, yy - h * 0.64) < half * 0.06; t[gl] = (1, 1, 1)
         px[:, :half] = t
-        # the creature's
-        t = np.zeros((h, half, 3), np.float32); t[:] = hexrgb(0xd8cf9a)
-        vein = (np.sin(ang * 5 + d * 9) > 0.93) & (d > 0.55); t[vein] = hexrgb(0xb04a5a)
-        ir = d < 0.62; t[ir] = hexrgb(0xa6c22e)
-        t[(d < 0.62) & (d > 0.5)] = hexrgb(0x4a5a12)
-        t[ir & (np.sin(ang * 14) > 0.6)] = hexrgb(0xc8dc4a)
-        slit = (np.abs(xx - half / 2 + 0.5) < half * 0.055 * (1.2 - d)) & (d < 0.5); t[slit] = hexrgb(0x08060a)
-        px[:, half:] = t
-    return tex_canvas(name, size * 2, size, draw)
+        def beast(base, iris, ring, vein, slit=True, cloud=False):
+            t = np.zeros((h, half, 3), np.float32); t[:] = hexrgb(base)
+            t[(np.sin(ang * 5 + d * 9) > 0.93) & (d > 0.55)] = hexrgb(vein)
+            ir = d < 0.62; t[ir] = hexrgb(iris)
+            t[(d < 0.62) & (d > 0.5)] = hexrgb(ring)
+            t[ir & (np.sin(ang * 14) > 0.6)] = hexrgb(iris) * 1.18
+            if slit: t[(np.abs(xx - half / 2 + 0.5) < half * 0.055 * (1.2 - d)) & (d < 0.5)] = hexrgb(0x08060a)
+            else: t[d < 0.16] = hexrgb(0x3a3a40)
+            if cloud:
+                k = np.clip(1 - d / 0.66, 0, 1)[..., None] ** 0.6; t[:] = t * (1 - 0.7 * k) + hexrgb(0xc8d2dc)[None, None, :] * 0.7 * k
+            return np.clip(t, 0, 1)
+        px[:, half:half * 2] = beast(0xd8cf9a, 0xa6c22e, 0x4a5a12, 0xb04a5a)
+        px[:, half * 2:half * 3] = beast(0xcfd0c8, 0x6a7a86, 0x3a444c, 0x8a6a70, slit=False, cloud=True)
+        px[:, half * 3:] = beast(0xe0b8a0, 0xd0902a, 0x7a1a14, 0xc02a2a)
+    return tex_canvas(name, size * 4, size, draw)
 
 
 # ------------------------------------------------------------ a posable copy (her whole joint tree) for the sheets

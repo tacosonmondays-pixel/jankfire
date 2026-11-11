@@ -56,7 +56,7 @@ const ends = (name) => !!D[name].len; // (a clip with a length ends by itself; a
 const NEXT = { hl_reveal_end: 'hl_idle' };
 // what the walk owns when she moves, and what it only adds to (the hat keeps doing what the clip has it doing)
 const WALK_SET = ['legL.x', 'legR.x', 'kneeL.x', 'kneeR.x', 'body.py', 'body.z', 'body.y'];
-const WALK_ADD = ['spine.z', 'spine.y', 'head.z', 'arm.x', 'armL.x', 'hatNeck.z', 'hat.z', 'hat.x', 'hatNeck.y', 'brimR.z', 'brimRb.z', 'brimL.z', 'brimLb.z', 'brimF.x', 'brimB.x', 'feeler.z', 'feelerB.z', 'feeler.y', 'growthA.z', 'growthB.x', 'growthC.z'];
+const WALK_ADD = ['spine.z', 'spine.y', 'head.z', 'arm.x', 'armL.x', 'hatNeck.z', 'hat.z', 'hat.x', 'hatNeck.y', 'brimR.z', 'brimRb.z', 'brimL.z', 'brimLb.z', 'brimF.x', 'brimB.x', 'feeler.z', 'feelerB.z', 'feeler.y', 'growthA.z', 'growthB.x', 'growthC.z', 'capeR.y', 'capeL.y'];
 const HAT_ONLY = (ch) => !STD.some((j) => ch.startsWith(j + '.')) && !ch.startsWith('x.') && !/^(idx|fin|thumb)/.test(ch);
 
 const rigs = new Map(), byCh = new WeakMap(), listeners = new Set();

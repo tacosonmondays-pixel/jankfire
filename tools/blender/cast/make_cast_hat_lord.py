@@ -26,10 +26,10 @@ OUT_PARTS = os.path.join(MODELS, 'cast', 'c_hat_lord.parts.json')
 SHEET_DIR = arg('out') or SHEETS
 TMP = os.path.join(SHEETS, '_tmp_hl')
 SKETCH = os.path.join(ROOT, 'docs', 'story', 'cast_refs', 'hat_lord_owner_sketch.jpg')
-FAR_SKIP = ('socket', 'clasps', 'herLid', 'hatLid', 'eyePatch', 'bands')
-# how she stands (the sketch): arms out from narrow shoulders, forearms dropping to hands held at the cape's corners,
-# fingers down. hl_clips.py REST is the same numbers; the glb itself is at the skeleton's rest (arms hanging)
-STANCE = {'arm.z': 0.95, 'armL.z': -0.95, 'arm.x': 0.06, 'armL.x': 0.06, 'foreR.z': -0.7, 'foreL.z': 0.7, 'foreR.x': 0.1, 'foreL.x': 0.1, 'handR.z': -0.25, 'handL.z': 0.25}
+FAR_SKIP = ('socket', 'clasps', 'herLid', 'hatLid', 'herOrbit', 'bands')
+# how she stands (the sketch): arms out from narrow shoulders and clear of the cape, forearms dropping to hands held
+# just outside its corners, fingers down. hl_clips.py REST is the same numbers; the glb itself is at the skeleton's rest (arms hanging)
+STANCE = {'arm.z': 1.0, 'armL.z': -1.0, 'arm.x': 0.04, 'armL.x': 0.04, 'foreR.z': -0.62, 'foreL.z': 0.62, 'foreR.x': 0.08, 'foreL.x': 0.08, 'handR.z': -0.38, 'handL.z': 0.38}
 RIG = {}
 
 

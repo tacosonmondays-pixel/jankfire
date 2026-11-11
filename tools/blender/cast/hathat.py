@@ -16,33 +16,57 @@ import hatbody
 
 AXR, AXL, BZF, BZB = 1.25, 1.6, 0.62, 0.66        # the brim's reach from the middle: her right, her left, front, back
 HOLE = (0.172, 0.196); BAND = (0.3, 0.29)          # the hole her head goes through; the band (the mouth)
-NR = 18                                            # ribs, one every 20 degrees. theta 0 = +x (her right), 90 = front
-STEP = math.radians(20 / 3)
+# the ribs: eighteen, unevenly spaced (degrees round the crown: 0 = +x, her right; 90 = front). it grew; nobody made it
+RIBS = [0, 17, 41, 63, 78, 103, 122, 144, 160, 181, 197, 222, 239, 262, 281, 304, 322, 343]
+TORN = {13: 0.46, 7: 0.3, 16: 0.24}     # gaps (by the rib they start at) where the membrane has torn back toward the crown
 # vertex tints are LINEAR multipliers over the pale flesh texture (three.js multiplies COLOR_0 in the same way):
-# liver hide, bruise, fat yellow, raw pink, the dark of a lip
-HIDE = (0.17, 0.028, 0.07); BRUISE = (0.07, 0.035, 0.15); FAT = (0.92, 0.74, 0.46); RAW = (0.9, 0.2, 0.32); LIP = (0.1, 0.01, 0.04)
+# liver hide, bruise, tallow, raw pink, the dark of a lip, the grey of old skin
+HIDE = (0.17, 0.028, 0.07); BRUISE = (0.07, 0.035, 0.15); FAT = (0.62, 0.5, 0.36); RAW = (0.9, 0.2, 0.32); LIP = (0.1, 0.01, 0.04); OLD = (0.42, 0.3, 0.34)
 
 
 def _ell(th, a, b): c, s = math.cos(th), math.sin(th); return 1.0 / math.sqrt((c / a) ** 2 + (s / b) ** 2)
 def edge_r(th): return _ell(th, AXR if math.cos(th) >= 0 else AXL, BZF if math.sin(th) >= 0 else BZB)
-def edge_s(th): return edge_r(th) * (1 - 0.055 * math.sin(9 * th) ** 2)      # scalloped between the rib tips
 def hole_r(th): return _ell(th, *HOLE)
 def band_r(th): return _ell(th, *BAND)
 
 
+def gap(th):
+    """where th sits between the ribs either side: (0..1 across the gap, the gap's width in degrees, the gap's index)"""
+    d = math.degrees(th) % 360.0
+    R2 = RIBS + [RIBS[0] + 360]
+    for i in range(len(RIBS)):
+        if R2[i] <= d < R2[i + 1]: return (d - R2[i]) / (R2[i + 1] - R2[i]), R2[i + 1] - R2[i], i
+    return 0.0, 20.0, 0
+
+
+def edge_s(th):
+    """the brim's edge: it hangs back between the rib tips, more where the ribs are far apart, and far more where it has torn"""
+    ph, wd, i = gap(th); s = math.sin(math.pi * ph)
+    if i in TORN: return edge_r(th) * (1 - TORN[i] * abs(s) ** 1.3)
+    return edge_r(th) * (1 - 0.05 * (wd / 20.0) ** 1.5 * s * s)
+
+
+def tip_droop(th, r):
+    """the long wing sags under its own weight over its last third of a metre"""
+    x = -r * math.cos(th)
+    return -0.15 * smooth01(x, 1.22, 1.6) if x > 1.22 else 0.0
+
+
 def y_top(th, r):
     b = band_r(th)
-    if r <= b: return 0.036
+    if r <= b: return 0.036 + 0.04
     u = min(1.0, (r - b) / (edge_r(th) - b))
-    # (dips off the band, lifts toward the edge, sags between the ribs, and each rib shows through as a ridge)
-    return 0.036 - 0.062 * smooth01(u, 0.0, 0.5) + 0.034 * u * u - 0.016 * u * math.sin(9 * th) ** 2 + 0.007 * smooth01(u, 0.0, 0.2) * math.cos(9 * th) ** 8
+    ph, wd, i = gap(th); s2 = math.sin(math.pi * ph) ** 2
+    # (a thick fleshy root off the band, a dip, a lift toward the edge, a sag between the ribs, each rib a ridge)
+    return (0.036 + 0.04 * (1 - smooth01(u, 0.0, 0.2)) - 0.062 * smooth01(u, 0.0, 0.5) + 0.034 * u * u - 0.018 * u * (wd / 20.0) ** 1.4 * s2
+            + 0.008 * smooth01(u, 0.0, 0.2) * (1 - s2) ** 4 + tip_droop(th, r))
 
 
 def y_bot(th, r):
     b = band_r(th); h = hole_r(th)
     if r <= b: return -0.022 + (0.012 + 0.022) * max(0.0, (r - h) / (b - h))
     u = min(1.0, (r - b) / (edge_r(th) - b))
-    return y_top(th, r) - (0.018 * (1 - u) + 0.006)
+    return y_top(th, r) - 0.04 * (1 - smooth01(u, 0.0, 0.2)) - (0.018 * (1 - u) + 0.006)
 
 
 def bp(th, r, top=True, dy=0.0): return (r * math.cos(th), (y_top(th, r) if top else y_bot(th, r)) + dy, -r * math.sin(th))
@@ -56,7 +80,7 @@ def hide_tint(p, n, k=1.0):
 # ------------------------------------------------------------ the brim
 def sector(H, joint, ths, rin_t, rin_b, rout, nr=5, dy=0.0, name='brim', lod=False):
     m = H.m
-    if lod: nr = 2; ths = [t for i, t in enumerate(ths) if i % 2 == 0 or i == len(ths) - 1]
+    if lod: nr = 2
     top = [[bp(t, rin_t(t) + (rout(t) - rin_t(t)) * j / nr, True, dy) for t in ths] for j in range(nr + 1)]
     bot = [[bp(t, rin_b(t) + (rout(t) - rin_b(t)) * (j / nr) ** 0.8, False, dy) for t in ths] for j in range(nr + 1)]
     o = shell(name, (m['flesh'], m['membrane']), top, bot, uv_top=(0, len(ths) / 6, 0, 2), uv_bot=(ths[0] * 1.6, ths[-1] * 1.6, 0.0, 1.0), deg=55)
@@ -84,46 +108,69 @@ def badd(H, joint, objs, tag=None, note=None):
     H.P.add(joint, objs, tag=tag, frame=joint, note=note)
 
 
-def rib_pts(th, r0, r1, n=6, hook=True):
-    pts = []
-    for i in range(n):
-        r = r0 + (r1 - r0) * i / (n - 1)
-        pts.append((r * math.cos(th), y_bot(th, min(r, edge_r(th))) - 0.004 - (0.022 * max(0.0, (r - edge_r(th)) / 0.04) if hook else 0.0), -r * math.sin(th)))
-    return pts
+def arc(d0, d1, lod=False):
+    """the columns of a brim piece from d0 to d1 degrees: on every rib in it and at thirds between (the far model: ribs only)"""
+    ds = [d0, d1]
+    for r_ in RIBS:
+        for k in (-360, 0, 360):
+            if d0 < r_ + k < d1: ds.append(r_ + k)
+    ds = sorted(set(ds)); out = [ds[0]]
+    for a, b in zip(ds, ds[1:]):
+        n = 1 if lod else 3 if b - a > 9 else 2 if b - a > 4 else 1
+        out += [a + (b - a) * i / n for i in range(1, n + 1)]
+    return [math.radians(d) for d in out]
+
+
+def rib(H, th, r0, r1, joint, fr=(0.36, 0.27, 0.21, 0.16), rad=(0.017, 0.006), hook=True):
+    """one rib as a row of finger bones: knuckles at every joint, each bone a little off the line of the last"""
+    m = H.m; n = len(fr); acc = 0.0; out = []
+    for k in range(n):
+        a = r0 + (r1 - r0) * acc; acc += fr[k]; b = r0 + (r1 - r0) * acc; last = k == n - 1
+        ra = rad[0] + (rad[1] - rad[0]) * (acc - fr[k]); rb = rad[0] + (rad[1] - rad[0]) * acc
+        P = []
+        for i, r in enumerate((a + 0.004, (a + b) / 2, b - 0.004)):
+            y = y_bot(th, min(r, edge_r(th))) - 0.005 - 0.006 * (i != 1) * (1 if k % 2 else 0.4)
+            if last and hook and i == 2: y -= 0.026
+            P.append((r * math.cos(th), y, -r * math.sin(th)))
+        out.append(bone(P, ra, rb if not last else rad[1] * 0.5, m['bone'], knob=1.5, seg=4, name='rib', knobs=(0,) if last else (0, -1)))
+    badd(H, joint, out)
 
 
 def brim(H, lod=False):
     m = H.m; K = dict(lod=lod)
-    def arc(d0, d1): n = int(round((d1 - d0) / (20 / 3))); return [math.radians(d0 + (d1 - d0) * i / n) for i in range(n + 1)]
     cutR = lambda t: 0.84 / max(0.05, math.cos(t)); cutL = lambda t: 1.04 / max(0.05, -math.cos(t))
     it = lambda t: band_r(t) - 0.035
+    G_ = 0.25   # degrees: a hair of a gap between neighbours: nothing overlaps, so nothing fights
     # her right wing (the low one) in two, hinged on x = 0.84; the left wing (the long one) hinged on x = -1.04
-    G_ = math.radians(0.25)   # a hair of a gap between neighbours: nothing overlaps, so nothing fights
-    sector(H, 'brimR', arc(-50, 50), it, hole_r, lambda t: min(edge_s(t), cutR(t) - 0.0015), nr=5, name='brimR', **K)
-    sector(H, 'brimRb', arc(-80 / 3, 80 / 3), lambda t: cutR(t) + 0.0015, lambda t: cutR(t) + 0.0015, lambda t: max(edge_s(t), cutR(t) + 0.012), nr=4, name='brimRb', **K)
-    sector(H, 'brimL', arc(130, 230), it, hole_r, lambda t: min(edge_s(t), cutL(t) - 0.0015), nr=5, name='brimL', **K)
-    sector(H, 'brimLb', arc(180 - 100 / 3, 180 + 100 / 3), lambda t: cutL(t) + 0.0015, lambda t: cutL(t) + 0.0015, lambda t: max(edge_s(t), cutL(t) + 0.012), nr=5, name='brimLb', **K)
+    sector(H, 'brimR', arc(-50, 50, lod), it, hole_r, lambda t: min(edge_s(t), cutR(t) - 0.0015), nr=5, name='brimR', **K)
+    sector(H, 'brimRb', arc(-27, 27, lod), lambda t: cutR(t) + 0.0015, lambda t: cutR(t) + 0.0015, lambda t: max(edge_s(t), cutR(t) + 0.012), nr=4, name='brimRb', **K)
+    sector(H, 'brimL', arc(130, 230, lod), it, hole_r, lambda t: min(edge_s(t), cutL(t) - 0.0015), nr=5, name='brimL', **K)
+    sector(H, 'brimLb', arc(147, 213, lod), lambda t: cutL(t) + 0.0015, lambda t: cutL(t) + 0.0015, lambda t: max(edge_s(t), cutL(t) + 0.012), nr=5, name='brimLb', **K)
     # front and back meet the wings edge to edge
-    def arcg(d0, d1): a = arc(d0, d1); a[0] += G_; a[-1] -= G_; return a
-    sector(H, 'brimF', arcg(50, 130), it, hole_r, edge_s, nr=5, name='brimF', **K)
-    sector(H, 'brimB', arcg(230, 310), it, hole_r, edge_s, nr=5, name='brimB', **K)
+    sector(H, 'brimF', arc(50 + G_, 130 - G_, lod), it, hole_r, edge_s, nr=5, name='brimF', **K)
+    sector(H, 'brimB', arc(230 + G_, 310 - G_, lod), it, hole_r, edge_s, nr=5, name='brimB', **K)
     if lod: return
-    # the ribs: bone under the skin, a knuckle where a wing folds, a hooked tip past the edge
-    for k in range(NR):
-        d = k * 20; th = math.radians(d); r0 = hole_r(th) + 0.035; r1 = edge_r(th) + 0.035
-        jt = 'brimR' if (d <= 40 or d >= 320) else 'brimF' if d <= 120 else 'brimL' if d <= 220 else 'brimB'
-        dy = 0.0
-        cut = None
-        if jt == 'brimR' and edge_r(th) * math.cos(th) > 0.9: cut = (0.84 / math.cos(th), 'brimRb')
-        if jt == 'brimL' and -edge_r(th) * math.cos(th) > 1.1: cut = (1.04 / -math.cos(th), 'brimLb')
-        lift = lambda pts: [(p[0], p[1] + dy, p[2]) for p in pts]
-        if cut:
-            a = bone(lift(rib_pts(th, r0, cut[0] - 0.02, 5, False)), 0.017, 0.013, m['bone'], knob=1.45, name='rib', knobs=(0,))
-            b = bone(rib_pts(th, cut[0] + 0.004, r1, 5), 0.013, 0.006, m['bone'], knob=1.35, name='rib', knobs=(0,))
-            badd(H, jt, [a]); badd(H, cut[1], [b])
-        else:
-            a = bone(lift(rib_pts(th, r0, r1, 7)), 0.016, 0.006, m['bone'], knob=1.4, name='rib', knobs=(0,))
-            badd(H, jt, [a])
+    # the ribs: finger bones under the skin, a knuckle at every joint and where a wing folds, a hooked tip past the edge
+    for d in RIBS:
+        th = math.radians(d); r0 = hole_r(th) + 0.035; r1 = edge_r(th) + 0.035
+        jt = 'brimR' if (d <= 41 or d >= 320) else 'brimF' if d <= 122 else 'brimL' if d <= 222 else 'brimB'
+        if jt == 'brimR' and edge_r(th) * math.cos(th) > 0.9:
+            c_ = 0.84 / math.cos(th); rib(H, th, r0, c_ - 0.012, 'brimR', fr=(0.58, 0.42), rad=(0.017, 0.012), hook=False); rib(H, th, c_ + 0.008, r1, 'brimRb', fr=(0.58, 0.42), rad=(0.012, 0.006))
+        elif jt == 'brimL' and -edge_r(th) * math.cos(th) > 1.1:
+            c_ = 1.04 / -math.cos(th); rib(H, th, r0, c_ - 0.012, 'brimL', fr=(0.4, 0.33, 0.27), rad=(0.018, 0.012), hook=False); rib(H, th, c_ + 0.008, r1, 'brimLb', fr=(0.58, 0.42), rad=(0.012, 0.006))
+        else: rib(H, th, r0, r1, jt, fr=(0.4, 0.32, 0.28) if r1 - r0 < 0.6 else (0.36, 0.27, 0.21, 0.16))
+    # veins over the top of it, out from the root, wandering between the ribs
+    rr = random.Random(11)
+    for k, d in enumerate((8, 30, 70, 92, 113, 152, 170, 189, 210, 250, 272, 292, 332)):
+        ph0, wd, gi = gap(math.radians(d))
+        jt = 'brimR' if (d <= 50 or d >= 310) else 'brimF' if d <= 130 else 'brimL' if d <= 230 else 'brimB'
+        th = math.radians(d); b = band_r(th); lim = min(edge_s(th) * 0.86, (0.8 / max(0.05, math.cos(th))) if jt == 'brimR' else (1.0 / max(0.05, -math.cos(th))) if jt == 'brimL' else 9)
+        pts = []
+        for i in range(6):
+            r = b + 0.03 + (lim - b - 0.03) * i / 5; t2 = th + math.radians(rr.uniform(-2.2, 2.2)) * (i / 5)
+            pts.append((r * math.cos(t2), y_top(t2, r) + 0.0015, -r * math.sin(t2)))
+        v = sweep(pts, [0.0075 - 0.001 * i for i in range(6)], m['flesh'], seg=4, name='vein', cap=True); tint(v, lambda p, n: mix3(BRUISE, LIP, 0.4))
+        badd(H, jt, [shade(v, 80)])
     # the feeler at the low tip: two thin segments, a bead, a barb (feeler frames: +x runs out along it)
     f1 = bone([(-0.03, -0.012, 0), (0.07, -0.006, 0), (0.2, 0, 0)], 0.012, 0.0075, m['bone'], knob=1.5, name='feeler', knobs=(-1,))
     H.P.add('feeler', [f1], frame='feeler')
@@ -219,75 +266,76 @@ def jdir(frame, joint, d):
     b = M @ gv(*d); b.normalize(); return Vector((b.x, b.z, -b.y))
 
 
+def on_crown(x, y, off=0.0):
+    """the point on the front of the crown at hat-frame (x, y)"""
+    th = math.pi / 2 - x / (BAND[1] * 0.98); lo_, hi_ = 0.0, 0.8
+    for _ in range(24):
+        md = (lo_ + hi_) / 2
+        if crown_pt(th, md).y < y: lo_ = md
+        else: hi_ = md
+    return crown_pt(th, (lo_ + hi_) / 2, off)
+
+
 def her_eyes(H):
-    """HER eyes: a matched pair in a patch of her own pale skin, set into the front of the crown. the pair that looks at
-    whoever she is talking to. eyeH* turn; lidH* shut (rotation.x negative)"""
+    """HER eyes: a matched pair, a little over life size, each in lids of her own grey skin sunk into the front of the
+    crown. heavy upper lids, a wet lower rim, no brows (a scar where one was), her left one 4 mm lower and a little more
+    shut. the pair that looks at whoever she is talking to. eyeH* turn; lidH* shut (rotation.x negative)"""
     m = H.m
     cs = [from_root('hat', JP['eyeHR']), from_root('hat', JP['eyeHL'])]
-    mid = (cs[0] + cs[1]) / 2; R = 0.036
-    # the patch: a mask of her own skin let into the crown, dished where the eyes sit, a healed rim round it
-    NI, NJ = 12, 8; TH0, TH1, V0, V1 = math.radians(90 - 30), math.radians(90 + 30), 0.07, 0.5
-    def sq(a, b): return a * math.sqrt(max(0.0, 1 - b * b / 2)), b * math.sqrt(max(0.0, 1 - a * a / 2))   # a square grid drawn as a rounded one
-    def tv(i, j):
-        a, b = sq(2 * i / NI - 1, 2 * j / NJ - 1)
-        b *= 1 - 0.22 * (1 - abs(a)) ** 2 * (1 if b < 0 else 0.4)             # pinched in over the bridge of the nose it does not have
-        return TH0 + (TH1 - TH0) * (a + 1) / 2, V0 + (V1 - V0) * (b + 1) / 2
-    def pp(th, v, off):
-        p = crown_pt(th, v, off)
-        for c in cs:
-            d = (p - c).length
-            p = p + (c - p).normalized() * 0.03 * gauss(d, 0.055) * (1 if off > 0 else 0.7)
-        return tuple(p)
-    edge = lambda i, j: min(1.0, min(i, NI - i) / 1.5, min(j, NJ - j) / 1.2)
-    P = [[pp(*tv(i, j), 0.002 + 0.008 * edge(i, j)) for i in range(NI + 1)] for j in range(NJ + 1)]
-    Pb = [[pp(*tv(i, j), -0.012) for i in range(NI + 1)] for j in range(NJ + 1)]
-    patch = shell('eyepatch', (m['skin'], m['skin']), P, Pb, deg=80)
-    tint(patch, lambda p, n: mix3((1, 1, 1), (0.62, 0.42, 0.6), max(gauss(min((p - cs[0]).length, (p - cs[1]).length), 0.05) * 0.8, 0.0)))
-    ring = [(0, i) for i in range(NI + 1)] + [(j, NI) for j in range(1, NJ + 1)] + [(NJ, i) for i in range(NI - 1, -1, -1)] + [(j, 0) for j in range(NJ - 1, 0, -1)]
-    rimp = [pp(*tv(i, j), 0.004) for j, i in ring]; rimp.append(rimp[0])
-    rim = shade(sweep(rimp, [0.0085 + 0.003 * math.sin(k * 1.7) for k in range(len(rimp))], m['flesh'], seg=5, name='patchrim', cap=False), 80); rim['no_outward'] = 1
-    tint(rim, lambda p, n: mix3(LIP, RAW, 0.35 + 0.3 * math.sin(p.x * 60 + p.y * 40)))
-    extra = [patch, rim]
-    for sx, c in zip((1, -1), cs):
-        # a lower lid and a brow: enough to read as a person's eye from across a room
-        lo = [tuple(c + Vector((sx * 0.0 + R * 1.08 * math.sin(a) , -R * 1.02 * math.cos(a) * 0.72 - 0.004, -R * 0.74 * abs(math.cos(a)) - 0.004))) for a in [math.radians(d) for d in (-82, -50, -20, 20, 50, 82)]]
-        extra.append(shade(sweep(lo, [0.004, 0.007, 0.008, 0.008, 0.007, 0.004], m['skin'], seg=5, name='lowlid'), 80))
-        # a thin brow lying on the patch, its inner end a little raised: kind
-        def on_patch(x, y):
-            th = math.radians(90) - x / (BAND[1] * 1.0); lo_, hi_ = 0.0, 0.8
-            for _ in range(24):
-                md = (lo_ + hi_) / 2
-                if crown_pt(th, md).y < y: lo_ = md
-                else: hi_ = md
-            return pp(th, (lo_ + hi_) / 2, 0.0075)
-        br = [on_patch(c.x + x, c.y + 0.046 + 0.006 * math.cos(x * 28) + 0.006 * sx * -x / 0.045) for x in (-0.04, -0.016, 0.012, 0.04)]
-        extra.append(shade(sweep(br, [0.0026, 0.0038, 0.0038, 0.0024], m['dark'], seg=4, name='brow'), 80))
-    H.P.add('crown', extra, tag='eyePatch', frame='hat', note='the patch of her own skin her eyes sit in')
-    for nm, c in (('R', cs[0]), ('L', cs[1])):
-        ball_ = eyeball(tuple(c), R, m['eye'], look=(0, 0, -1), uv_rect=(0.0, 0.0, 0.5, 1.0), seg=14, rings=9, name='eyeH')
+    mid = (cs[0] + cs[1]) / 2; R = 0.0175; look = Vector((0, 0, -1))
+    SORE = (0.86, 0.5, 0.56); PALE = (0.92, 0.86, 0.94)
+    stat = []
+    for k, (sx, c) in enumerate(zip((1, -1), cs)):
+        op = (0.36, 0.27)[k]
+        def lidtint(p, n, c=c):
+            d = p - c; a = math.atan2(math.hypot(d.x, d.y), -d.z)        # how far round from straight ahead
+            return mix3(mix3(SORE, PALE, smooth01(a, 0.3, 0.62)), mix3(HIDE, BRUISE, 0.5), smooth01(a, 0.8, 1.2))
+        # the lower lid does not move: a bag of her skin, its edge a little under the middle of the eye, and its wet rim
+        lo = lid_cap(tuple(c), R, m['skin'], look=tuple(look), up=(0, -1, 0), open_=0.2, back=1.7, seg=8, rings=3, name='lowlid', thick=0.17, almond=0.9)
+        tint(lo, lidtint)
+        wet = shade(sweep(lid_edge(tuple(c), R, look, (0, -1, 0), 0.2, 0.9, thick=0.17, n=7, off=1.004), [0.0008, 0.0016, 0.002, 0.0021, 0.002, 0.0016, 0.0008], m['flesh'], seg=4, name='wetrim'), 80)
+        tint(wet, lambda p, n: (1.0, 0.5, 0.52))
+        # the orbit: the hat's own flesh, swollen shut round the lids, darker than anything near it, heaviest above
+        N = 12; ring = []; rr_ = []
+        for i in range(N + 1):
+            a = TAU * i / N; ca, sa = math.cos(a), math.sin(a)
+            ring.append(tuple(c + Vector((0.0228 * ca, 0.0195 * sa + 0.0008, -0.0118 + 0.0012 * abs(ca)))))
+            rr_.append(0.0066 + 0.002 * max(0.0, sa) + 0.001 * math.sin((i % N) * 2.3 + k))
+        orb = shade(sweep(ring, rr_, m['flesh'], seg=6, name='orbit', cap=False), 80); orb['no_outward'] = 1
+        tint(orb, lambda p, n: mix3(LIP, HIDE, 0.3 + 0.25 * math.sin(p.x * 180 + p.y * 130)))
+        stat += [lo, wet, orb]
+        ball_ = eyeball(tuple(c), R, m['eye'], look=(0, 0, -1), uv_rect=EYE_UV['hers'], seg=12, rings=8, name='eyeH')
+        nm = 'RL'[k]
         H.P.add('eyeH' + nm, [ball_], tag='herEye', frame='hat', note='HER eyes (the brown pair). turn eyeH* to look')
-        lid = lid_cap(tuple(c), R, m['skin'], look=(0, 0, -1), up=(0, 1, 0), open_=0.56, seg=10, rings=5, name='lidH')
-        lash = shade(sweep([tuple(c + Vector((R * 1.13 * math.sin(a), R * 1.13 * 0.56, -R * 1.13 * math.cos(a) * math.sqrt(1 - 0.56 ** 2)))) for a in [math.radians(d) for d in (-80, -45, -15, 15, 45, 80)]], [0.002, 0.004, 0.0045, 0.0045, 0.004, 0.002], m['dark'], seg=4, name='lash'), 80)
-        H.P.add('lidH' + nm, [lid, lash], tag='herLid', frame='hat', note='their upper lids: rotation.x negative shuts')
+        lid = lid_cap(tuple(c), R, m['skin'], look=(0, 0, -1), up=(0, 1, 0), open_=op, back=2.0, seg=10, rings=4, name='lidH', thick=0.12, almond=0.92)
+        tint(lid, lidtint)
+        lash = shade(sweep(lid_edge(tuple(c), R, look, (0, 1, 0), op, 0.92, thick=0.12, n=7, off=1.012), [0.0007, 0.0013, 0.0016, 0.0016, 0.0016, 0.0013, 0.0007], m['dark'], seg=3, name='lash'), 80)
+        H.P.add('lidH' + nm, [lid, lash], tag='herLid', frame='hat', note='their upper lids, heavy: rotation.x negative shuts (about -0.6)')
+    # where a brow was, over her right eye: a scar, healed pale
+    c = cs[0]
+    sc = shade(sweep([tuple(on_crown(c.x + dx, c.y + dy, 0.0006)) for dx, dy in ((-0.02, 0.034), (-0.006, 0.039), (0.008, 0.041), (0.022, 0.038))], [0.0012, 0.0021, 0.0019, 0.001], m['skin'], seg=4, name='scar'), 80)
+    tint(sc, lambda p, n: (0.95, 0.74, 0.8)); stat.append(sc)
+    H.P.add('crown', stat, tag='herOrbit', frame='hat', note='what her eyes sit in: the lower lids and their wet rims, the swollen flesh round them, the scar where a brow was')
     H.marks['eyeAt'] = ('crown', tuple(from_root('crown', to_root('hat', mid + Vector((0, 0, -R))))))
     H.marks['eyeHRAt'] = ('crown', tuple(from_root('crown', to_root('hat', cs[0] + Vector((0, 0, -R)))))); H.marks['eyeHLAt'] = ('crown', tuple(from_root('crown', to_root('hat', cs[1] + Vector((0, 0, -R))))))
 
 
-CEYES = [('lidCa', 'growthA', 0.043, 'weakA'), ('lidCb', 'growthA', 0.03, 'weakB'), ('lidCc', 'crown', 0.052, 'weakC'), ('lidCd', 'growthC', 0.037, 'weakD'), ('lidCe', 'growthB', 0.033, 'weakE')]
+# (lid joint, the joint it rides, radius, marker, which iris): none the same size
+CEYES = [('lidCa', 'growthA', 0.046, 'weakA', 'slit'), ('lidCb', 'growthA', 0.022, 'weakB', 'cloud'), ('lidCc', 'crown', 0.056, 'weakC', 'red'), ('lidCd', 'growthC', 0.034, 'weakD', 'slit'), ('lidCe', 'growthB', 0.026, 'weakE', 'cloud')]
 
 
 def creature_eyes(H):
-    """the hat's own five: none the same size, slit pupils, each on a mound, each with a lid on its own joint"""
+    """the hat's own five: none the same size, slit pupils or clouded over, each on a mound, each with a lid on its own joint"""
     m = H.m
-    for lj, gj, R, mk in CEYES:
+    for lj, gj, R, mk, iris in CEYES:
         c = from_root('hat', JP[lj]); look = jdir('hat', lj, (0, 0, -1)); up = jdir('hat', lj, (0, 1, 0))
-        ball_ = eyeball(tuple(c), R, m['eye'], look=tuple(look), uv_rect=(0.5, 0.0, 1.0, 1.0), seg=12, rings=8, name='eyeC')
+        ball_ = eyeball(tuple(c), R, m['eye'], look=tuple(look), uv_rect=EYE_UV[iris], seg=12, rings=8, name='eyeC')
         # the mound it sits in: from the crown out to a rim round the eye
         base = c - look * (R * 1.7)
         mound = shade(sweep([tuple(base), tuple(c - look * R * 1.1), tuple(c - look * R * 0.45), tuple(c + look * R * 0.18)], [R * 1.85, R * 1.6, R * 1.28, R * 1.07], m['flesh'], seg=10, name='mound', cap=False), 80)
         mound['no_outward'] = 1
-        tint(mound, lambda p, n, base=base, look=look, R=R: mix3(hide_tint(p, n), RAW, 0.6 * smooth01((p - base).dot(look), R * 1.0, R * 2.1)))
-        rim = torus(tuple(c + look * R * 0.2), R * 1.08, R * 0.16, m['flesh'], axis=tuple(look), seg=12, rseg=5, name='eyerim'); tint(rim, lambda p, n: RAW)
+        tint(mound, lambda p, n, base=base, look=look, R=R: mix3(hide_tint(p, n), mix3(RAW, LIP, 0.55), 0.7 * smooth01((p - base).dot(look), R * 1.0, R * 2.1)))
+        rim = torus(tuple(c + look * R * 0.2), R * 1.08, R * 0.16, m['flesh'], axis=tuple(look), seg=12, rseg=5, name='eyerim'); tint(rim, lambda p, n: mix3(RAW, LIP, 0.4))
         H.P.add(gj, [ball_, mound, rim], tag='hatEyes', frame='hat', note='the creature\'s five eyes (weak points)')
         lid = lid_cap(tuple(c), R, m['flesh'], look=tuple(look), up=tuple(up), open_=0.5, back=1.9, seg=8, rings=4, name='lidC', thick=0.14)
         tint(lid, lambda p, n: mix3(HIDE, LIP, 0.4))
@@ -295,35 +343,78 @@ def creature_eyes(H):
         H.marks[mk] = (lj, (0, 0, -R))
 
 
-# ------------------------------------------------------------ growths
+# ------------------------------------------------------------ growths: what is left of the five
+LIVER = (0.34, 0.08, 0.13); GREY = (0.5, 0.42, 0.5)
+PAL = [FAT, OLD, LIVER, BRUISE, GREY, (0.7, 0.58, 0.46), (0.26, 0.12, 0.2)]
+
+
 def growths(H):
+    """not fruit. knuckled fists, ears, back teeth come up through gum, polyps with puckered mouths from the size of a
+    thumb to the size of a head, and two small hands still open. tallow, liver, grey: dark where they leave the crown"""
     m = H.m
-    def cluster(joint, seed, spots, hands):
+    def at(d, v, lift=0.0):
+        th = math.radians(d); n = crown_n(th, v); return crown_pt(th, v) + n * lift, n
+    def cluster(joint, seed, lumps=(), fists=(), ears=(), teeth=(), hands=()):
         rr = random.Random(seed); objs = []
-        for (d, v, r, lift) in spots:
-            th = math.radians(d); n = crown_n(th, v); c = crown_pt(th, v) + n * (r * lift)
-            up = (n * 0.75 + Vector((0, 0.45, 0)) + Vector((rr.uniform(-0.25, 0.25), 0, rr.uniform(-0.25, 0.25)))).normalized()
-            o = polyp(tuple(c), r, m['flesh'], up=tuple(up), tall=rr.uniform(1.0, 1.75), pucker=rr.uniform(0.35, 0.6), seg=9 if r > 0.07 else 7 if r > 0.05 else 6, seed=seed * 31 + len(objs))
-            k = rr.uniform(0, 1); cc = Vector(c); R_ = r
-            tint(o, lambda p, n_, k=k, cc=cc, R_=R_, up=up: mix3(mix3(mix3(FAT, RAW, 0.15 + k * 0.6), HIDE, 0.75 * smooth01(-(p - cc).dot(up) / R_, -0.3, 0.9)), LIP, 0.92 * (1 - smooth01(math.sqrt(max(0.0, (p - cc).length_squared - (p - cc).dot(up) ** 2)) / R_, 0.2, 0.42)) * ((p - cc).dot(up) > 0)))
-            objs.append(o)
+        for k, (d, v, r, lift) in enumerate(lumps):
+            c, n = at(d, v, r * lift)
+            up = (n * 0.8 + Vector((0, 0.3, 0)) + Vector((rr.uniform(-0.3, 0.3), rr.uniform(-0.15, 0.1), rr.uniform(-0.3, 0.3)))).normalized()
+            o = polyp(tuple(c), r, m['flesh'], up=tuple(up), tall=rr.uniform(0.75, 1.9), pucker=rr.uniform(0.45, 0.8), seg=9 if r > 0.085 else 7 if r > 0.05 else 5, seed=seed * 31 + k)
+            base = PAL[rr.randrange(len(PAL))]; cc = Vector(c)
+            def tf(p, n_, base=base, cc=cc, R_=r, up=up):
+                q = p - cc; h = q.dot(up) / R_; rad = math.sqrt(max(0.0, q.length_squared - q.dot(up) ** 2)) / R_
+                col = mix3(base, HIDE, 0.9 * (1 - smooth01(h, -0.95, 0.15)))                       # dark where it leaves the crown
+                col = mix3(col, BRUISE, max(0.0, min(0.55, rpkit.fbm(p.x * 30, p.y * 30, p.z * 30) * 1.6)))   # mottled
+                return mix3(col, LIP, 0.95 * (1 - smooth01(rad, 0.15, 0.5)) * (h > 0.2))            # and down its throat
+            tint(o, tf); objs.append(o)
+        for k, (d, v, size, lean, grip) in enumerate(fists):
+            p0, n = at(d, v); dd = (n + Vector(lean)).normalized(); c = p0 + dd * size * 1.35
+            fs = fist(tuple(c), tuple(dd), size, m['flesh'], nail=m['bone'], seed=seed + 7 * k, grip=grip)
+            tone = (GREY, FAT, OLD)[k % 3]
+            for o in fs:
+                if o.data.materials[0] == m['flesh']: tint(o, lambda p, n_, c=c, dd=dd, size=size, tone=tone: mix3(mix3(HIDE, tone, smooth01((p - c).dot(dd) / size, -1.5, -0.2)), (0.82, 0.62, 0.62), 0.5 * smooth01((p - c).dot(dd) / size, 0.4, 1.0)))
+            objs += fs
+        for (d, v, size, upv) in ears:
+            p0, n = at(d, v, -0.004)
+            es = ear(tuple(p0), tuple(n), upv, size, m['flesh'])
+            for o in es: tint(o, lambda p, n_, p0=p0, n=n, size=size: mix3(mix3(HIDE, OLD, smooth01((p - p0).dot(n) / size, 0.0, 0.25)), RAW, 0.35 * smooth01((p - p0).dot(n) / size, 0.25, 0.5)))
+            objs += es
+        for k, (d, v, size, n_t) in enumerate(teeth):
+            p0, n = at(d, v, -0.003); th = math.radians(d)
+            ts = molars(tuple(p0), tuple(n), (-math.sin(th), 0.25, -math.cos(th)), size, m['flesh'], m['bone'], n=n_t, seed=seed + 3 * k)
+            tint(ts[0], lambda p, n_: mix3(RAW, LIP, 0.45))
+            for o in ts[1:]: tint(o, lambda p, n_: (0.95, 0.88, 0.7))
+            objs += ts
         for (d, v, size, aim, curl) in hands:
-            th = math.radians(d); n = crown_n(th, v); c = crown_pt(th, v) + n * size * 0.9
+            p0, n = at(d, v); c = p0 + n * size * 0.9
             hs = little_hand(tuple(c), tuple((n + Vector(aim)).normalized()), size, m['flesh'], nail=m['bone'], curl=curl, seed=seed + int(d))
             for o in hs:
-                if o.data.materials[0] == m['flesh']: tint(o, lambda p, n_: mix3(RAW, (1, 0.72, 0.7), 0.55))
+                if o.data.materials[0] == m['flesh']: tint(o, lambda p, n_, c=c, n=n, size=size: mix3(HIDE, GREY, smooth01((p - c).dot(n) / size, -1.0, 0.3)))
             objs += hs
         H.P.add(joint, objs, frame='hat')
-    # A: her right of the crown, the heavy side, low on the band and spilling onto the brim
-    cluster('growthA', 3, [(6, 0.22, 0.12, 0.6), (-24, 0.14, 0.095, 0.65), (32, 0.1, 0.09, 0.65), (-2, 0.5, 0.08, 0.55), (-10, 0.0, 0.08, 0.95), (24, 0.4, 0.07, 0.6), (-38, 0.36, 0.06, 0.6),
-                          (48, 0.3, 0.06, 0.6), (18, 0.0, 0.065, 1.05), (-44, 0.06, 0.055, 0.8), (40, 0.0, 0.05, 1.1), (-28, 0.0, 0.05, 1.15), (8, 0.0, 0.045, 1.9)],
-            [(-34, 0.24, 0.038, (0.3, -0.5, -0.6), 0.75), (20, 0.6, 0.032, (0.5, 0.6, 0.1), 0.4)])
-    # B: a few over the back
-    cluster('growthB', 5, [(255, 0.5, 0.075, 0.55), (288, 0.66, 0.06, 0.55), (228, 0.3, 0.055, 0.6), (272, 0.22, 0.05, 0.6), (300, 0.36, 0.042, 0.6)],
-            [(262, 0.82, 0.032, (0.0, 1.0, 0.2), 0.3)])
+    # A: her right of the crown, the heavy side, spilling onto the brim. one the size of a head
+    cluster('growthA', 3,
+            lumps=[(-18, 0.26, 0.135, 0.5), (-44, 0.1, 0.07, 0.6), (46, 0.3, 0.085, 0.55), (-2, 0.66, 0.058, 0.55), (4, 0.0, 0.06, 1.0), (-32, 0.0, 0.042, 1.1),
+                   (52, 0.06, 0.032, 0.7), (58, 0.16, 0.024, 0.7), (48, 0.0, 0.036, 1.0), (-52, 0.42, 0.03, 0.6), (-38, 0.58, 0.026, 0.6), (-8, 0.0, 0.028, 1.6), (30, 0.0, 0.03, 1.3)],
+            fists=[(24, 0.74, 0.05, (0.2, 0.55, -0.1), 1.3)], ears=[(-34, 0.44, 0.09, (0, 1, 0.2))], teeth=[(8, 0.07, 0.021, 5)],
+            hands=[(-48, 0.24, 0.036, (0.3, -0.5, -0.6), 0.75)])
+    # B: over the back
+    cluster('growthB', 5,
+            lumps=[(250, 0.42, 0.1, 0.5), (294, 0.62, 0.052, 0.55), (230, 0.18, 0.06, 0.6), (302, 0.2, 0.04, 0.6), (236, 0.7, 0.034, 0.6), (274, 0.1, 0.028, 0.7), (266, 0.0, 0.034, 1.1)],
+            fists=[(284, 0.3, 0.06, (0.1, 0.1, 0.3), 1.2)], ears=[(222, 0.5, 0.078, (0, 1, 0))], teeth=[(258, 0.04, 0.023, 6)],
+            hands=[(238, 0.9, 0.032, (0.0, 1.0, 0.2), 0.3)])
     # C: her left front, the small one
-    cluster('growthC', 7, [(152, 0.24, 0.075, 0.55), (136, 0.46, 0.058, 0.6), (170, 0.1, 0.056, 0.6), (128, 0.14, 0.05, 0.65), (160, 0.56, 0.042, 0.6)],
-            [(142, 0.04, 0.03, (-0.4, -0.4, -0.5), 0.8)])
+    cluster('growthC', 7,
+            lumps=[(168, 0.2, 0.085, 0.5), (132, 0.5, 0.05, 0.55), (178, 0.52, 0.04, 0.6), (124, 0.1, 0.034, 0.7), (140, 0.76, 0.028, 0.6), (184, 0.06, 0.026, 0.8)],
+            fists=[(128, 0.3, 0.033, (-0.2, 0.2, -0.3), 1.35)], ears=[(118, 0.64, 0.066, (0, 1, 0))], teeth=[(176, 0.0, 0.018, 4)])
+    # veins over the crown, up from the band
+    vs = []
+    for k, d in enumerate((62, 118, 196, 214, 316, 338)):
+        rr = random.Random(40 + k); pts = []
+        for i, v in enumerate((0.03, 0.18, 0.34, 0.5, 0.66, 0.8)):
+            pts.append(tuple(crown_pt(math.radians(d + rr.uniform(-7, 7) * (i > 0)), v, 0.001)))
+        o = shade(sweep(pts, [0.0075, 0.0068, 0.006, 0.005, 0.004, 0.0028], m['flesh'], seg=4, name='cvein', cap=True), 80); tint(o, lambda p, n: mix3(BRUISE, LIP, 0.35)); vs.append(o)
+    H.P.add('crown', vs, frame='hat')
 
 
 # ------------------------------------------------------------ its hands over her eyes (head frame; bandR / bandL)
