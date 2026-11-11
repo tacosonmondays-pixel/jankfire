@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '7.7', date: '2026-11-11', title: 'DRESS CODE', items: [
+    'COSTUMES. character > clothes has whole outfits now, one click each: corpo, rat king, mall cop, delivery guy and more. the bots have been wearing them for weeks. your turn.',
+    'click a costume again for another take on it. the maid and night shift ones want their achievements first.',
+  ] },
   { v: '7.6', date: '2026-11-11', title: 'KABOOM, PROPERLY', items: [
     'MOUNT KABOOM is an actual volcano now. bigger, craggy, cliffs and gullies, a lava channel down to the beach. walk up it, grapple it, fall in it. bots know the way up. (plant & defuse keeps the stairs.)',
     'the world got furnished. real trees, street and yard stuff, market stalls, and traffic that looks like traffic: eight cars, a bus, a semi, a box truck.',
