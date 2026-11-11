@@ -157,7 +157,7 @@ const quad = (a, c, b, u) => [0, 1, 2].map((i) => (1 - u) * (1 - u) * a[i] + 2 *
 export function armExt(a) {
   const u = a.dur > 0 ? a.t / a.dur : 1;
   if (a.st === 'reach' || a.st === 'tell') return 0.1 + 0.9 * ss(u);
-  if (a.st === 'back' || a.st === 'cut') return 1 - 0.9 * ss(u);
+  if (a.st === 'back' || a.st === 'cut') { const e0 = fin(a.e0) ? clamp(a.e0, 0.1, 1) : 1; return e0 - (e0 - 0.1) * ss(u); } // (e0: how far out it was when it let go: it only ever pulls in from there)
   return 1;
 }
 // a sweeper's bar: behind the wagon through the tell, then along the deck
