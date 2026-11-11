@@ -12,7 +12,7 @@ async function boot({ hd = false, size = [1280, 720], video = null } = {}) {
   const errs = [];
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message + ' ' + (e.stack || '').split('\n').slice(1, 3).join(' | ')));
   pg.on('console', (m) => { if (m.type() === 'error' || /^enc |encounters/.test(m.text())) errs.push(m.type() + ' ' + m.text()); });
-  await pg.addInitScript((hd) => { localStorage.setItem('jf_giftseen_all', '1'); localStorage.setItem('jankfire', JSON.stringify({ name: 'change', ...(hd ? { jank: 3 } : {}), loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); }, hd);
+  await pg.addInitScript((hd) => { localStorage.setItem('jf_giftseen_all', '1'); localStorage.setItem('jankfire', JSON.stringify({ name: 'change', jank: hd ? 3 : 0, loadout: { primary: 'ar', secondary: 'pistol', melee: 'knife', item: 'frag' } })); }, hd);
   await pg.goto(`http://localhost:${process.env.PORT || 3411}/?story=1&storydev=1&fresh=1`); await sleep(1500);
   await pg.click('#storyBtn', { force: true }); await sleep(700); await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(9000); await skipIntro(pg);
   const ev = (f, a) => pg.evaluate(f, a);

@@ -11,7 +11,7 @@ import { query, raycast } from '../shared/physics.js';
 import { WEAPONS } from '../shared/weapons.js';
 
 export const ENC = {
-  rig: { ty: 'van', top: 0.8, ramCd: 1.6, backFor: 1.1, ramV: 5, maxV: 34 },
+  rig: { ty: 'van', top: 0.8, ramCd: 1.6, backFor: 1.1, ramV: 5, maxV: 34, spray: 2.5, far: 30, farFor: 6 }, // spray: seconds of minigun after a ram; far: you kept more than this away for farFor s, it sprays anyway
   card: { min: 6, max: 24, cd: [5000, 8500] },
   dog: { spd: 1.35, min: 3.5, max: 9, cd: [2200, 3800], v: 15, up: 6.5 },
 };
@@ -48,10 +48,12 @@ export function installStoryEnc(Room) {
     const t = this.encTarget(b), n = now();
     if (!b.encCar) b.encCar = { car: newCar(R.ty, b.pos.slice(), t ? Math.atan2(t.pos[0] - b.pos[0], t.pos[2] - b.pos[2]) : b.yaw + Math.PI), back: 0, ramT: 0 }; // (it arrives facing you)
     const g = b.encCar, c = g.car, T = carType(c.ty);
-    if (!b.sk.hold) this.botThink(b, dt); // aims and fires the minigun (its walking wish is ignored: a rig drives)
+    // it rams, then it sprays: the minigun only opens up in the few seconds after a hit (or when you've kept away a while)
+    if (!b.sk.hold) { if (n > (g.sprayUntil || 0) && n > (g.farT || 0)) b.ai.nextShot = Math.max(b.ai.nextShot || 0, n + 300); this.botThink(b, dt); } // (aims and fires; its walking wish is ignored: a rig drives)
     let inp = { f: false, b: true, l: false, r: false, hand: false, boost: false };
     if (!b.sk.hold && t) {
       const dx = t.pos[0] - c.x, dz = t.pos[2] - c.z, flee = !!b.sk.flee;
+      if (Math.hypot(dx, dz) < R.far) g.farSince = n; else if (n - (g.farSince ??= n) > R.farFor * 1000) { g.farT = n + R.spray * 1000; g.farSince = n; }
       const want = flee ? Math.atan2(-dx, -dz) : Math.atan2(dx, dz), diff = wrapA(want - c.h), rev = g.back > 0;
       if (rev) g.back -= dt;
       const vf = c.vx * Math.sin(c.h) + c.vz * Math.cos(c.h), top = topOf(T) * R.top;
@@ -64,7 +66,7 @@ export function installStoryEnc(Room) {
       const close = Math.hypot(px, pz) < T.W / 2 + 0.9 && t.pos[1] < c.y + T.H + 0.5 && t.pos[1] > c.y - 2.5;
       const rv = [c.vx - (t.vel ? t.vel[0] : 0), c.vz - (t.vel ? t.vel[2] : 0)], closing = (rv[0] * dx + rv[1] * dz) / (Math.hypot(dx, dz) || 1);
       if (!flee && close && closing > R.ramV && n > g.ramT) {
-        g.ramT = n + R.ramCd * 1000; g.back = R.backFor; g.side = 0;
+        g.ramT = n + R.ramCd * 1000; g.back = R.backFor; g.side = 0; g.sprayUntil = n + R.spray * 1000;
         if (this.onEnc) this.onEnc({ type: 'ram', b, t, v: [c.vx, Math.max(4, closing * 0.35), c.vz], speed: closing });
         c.vx *= -0.3; c.vz *= -0.3; // the rig bounces off what it hit
       }

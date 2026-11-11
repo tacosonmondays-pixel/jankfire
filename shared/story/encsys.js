@@ -29,10 +29,11 @@ function onEnc(sim, ev) {
 
 addSystem({
   id: 'enc',
-  init(sim) { sim.enc = { groups: new Map(), n: 0, ops: 0, opsT: 0 }; },
+  init(sim) { sim.enc = { groups: new Map(), n: 0, ops: 0, opsT: 0, q: [] }; },
   tick(sim) {
     const R = sim.ref; if (!R) return;
     if (!R.encHook || R.room.onEnc !== R.encHook) { R.encHook = (ev) => onEnc(sim, ev); R.room.onEnc = R.encHook; }
+    for (const m of sim.enc.q.splice(0)) sim.msg(m); // asked for while the room was loading
     // forget the dead and the gone (the referee clears bodies)
     for (const [g, list] of sim.enc.groups) { const live = list.filter((x) => R.room.players.get(x.pid) === x.p); if (live.length !== list.length) sim.enc.groups.set(g, live); }
   },
@@ -41,7 +42,7 @@ addSystem({
     const E = sim.enc, R = sim.ref;
     if (sim.t - E.opsT >= 1) { E.opsT = sim.t; E.ops = 0; }
     if (m.op === 'spawn' && ++E.ops > ENCSYS.opsPerSec) return true; // (a flood of spawns: dropped. clearing up never is)
-    if (!R) return true; // (no referee: no encounter fights. the director keeps asking)
+    if (!R) { if (!sim.refOff && E.q.length < 16 && m.op === 'spawn') E.q.push(m); return true; } // (the room is still loading: they wait. no referee at all: no fights)
     if (m.op === 'spawn') {
       if (!gid(m.g) || typeof m.kind !== 'string' || !ENCSYS.kinds.includes(m.kind) || !v3(m.at)) return true;
       if (!E.groups.has(m.g) && E.groups.size >= ENCSYS.groups) return true;

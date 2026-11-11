@@ -26,7 +26,7 @@ const pick = (a) => a[(Math.random() * a.length) | 0];
 const wrapA = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // tuning, in one place
 export const ENC = {
-  soup: { jolt: 150, perV: 2.2, cap: 22, ram: [9, 0.45, 24], lowAt: 35, barkCd: 5 }, // jolt: m/s² before soup leaves the pot; a ram: base + per m/s, capped
+  soup: { brake: 34, land: 6, perV: 2.2, cap: 22, ram: [9, 0.45, 24], lowAt: 35, barkCd: 5 }, // brake: m/s² the car can change speed by itself; land: a fall (m/s) the pot shrugs off; a ram: base + per m/s, capped
   ambush: { secs: 90, rigsAt: 96, grace: 2.5 }, // rigsAt: the rigs come once you're this far east (the Commute starts at x 96)
   ringRoad: [182, 0.8, 236], // (shared/city/slice.js PLACES 'commute:ring_road')
 };
@@ -37,7 +37,7 @@ function css() {
   if ($('encCss')) return;
   const s = document.createElement('style'); s.id = 'encCss';
   s.textContent = `
-#encHud{position:fixed;left:50%;top:64px;transform:translateX(-50%) rotate(-1deg);z-index:18;display:flex;gap:12px;pointer-events:none;font-family:var(--font)}
+#encHud{position:fixed;left:22px;top:44px;transform:rotate(-1deg);z-index:18;display:flex;flex-direction:column;align-items:flex-start;gap:12px;pointer-events:none;font-family:var(--font)}
 #encHud.hidden,#encHud>.hidden{display:none}
 #encHud>div{background:rgba(18,8,24,0.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:6px 12px;color:#fff;display:flex;align-items:center;gap:8px;font-weight:700}
 #encHud b{color:#ffe14d;letter-spacing:1px}
@@ -222,12 +222,18 @@ export function makeEncounters(ST, { where } = {}) {
     h.querySelector('.bar i').style.width = `${spilled ? 0 : v}%`;
     h.querySelector('em').textContent = spilled ? 'EMPTY' : `${Math.ceil(v)}%`;
     h.classList.toggle('low', !spilled && v < ENC.soup.lowAt);
-    // jolts: the car's speed changing faster than a hard brake can (a landing, a wall, a kerb at 80) slops it out
+    // jolts: a landing (whatever you were falling at, past a kerb's worth) or the car's speed changing faster than the
+    // brakes can manage (a wall, a parked car, a kerb at 80). by speeds, not per frame, so a slow machine slops the same
     const c = DV.car;
-    if (c && dt > 0 && dt < 0.1) {
-      const vv = [c.vx, c.vy, c.vz];
-      if (E.soupPrev) { const dv = Math.hypot(vv[0] - E.soupPrev[0], vv[1] - E.soupPrev[1], vv[2] - E.soupPrev[2]); if (dv / dt > ENC.soup.jolt) soupHit((dv - ENC.soup.jolt * dt) * ENC.soup.perV, 'jolt'); }
-      E.soupPrev = vv;
+    if (c && dt > 0 && dt < 0.5) {
+      const P = E.soupPrev, vh = [c.vx, c.vz];
+      if (P) {
+        const dvh = Math.hypot(vh[0] - P.vh[0], vh[1] - P.vh[1]) - (ENC.soup.brake * dt + 2.5);
+        const land = c.ground && !P.ground ? -P.vy - ENC.soup.land : 0;
+        const loss = Math.max(0, dvh) * ENC.soup.perV + Math.max(0, land) * ENC.soup.perV;
+        if (loss > 0.5) soupHit(loss, 'jolt');
+      }
+      E.soupPrev = { vh, vy: c.vy, ground: c.ground };
     } else E.soupPrev = null;
   }
 
@@ -285,11 +291,11 @@ export function makeEncounters(ST, { where } = {}) {
       ambush: {
         enter(st) {
           st.phase = 'talk'; st.t0 = E.t; st.wave = 0; st.left = ENC.ambush.secs; st.deaths = 0;
-          const rr = ENC.ringRoad, by = floorAt(rr[0], rr[1], rr[2] - 16) ?? rr[1];
+          const rr = ENC.ringRoad, by = floorAt(rr[0], rr[1], rr[2] - 20) ?? rr[1];
           st.home = [rr[0], (floorAt(rr[0], rr[1], rr[2]) ?? rr[1]) + 0.2, rr[2]];
-          prop(barricadeMesh(24), [rr[0], by, rr[2] - 16], 0);
-          const ey = floorAt(rr[0] + 3, rr[1] + 8, rr[2] - 13, 6) ?? by;
-          stand('eotm', [rr[0] + 3, ey, rr[2] - 13], 0); // up on whatever's there (a car roof, if the jam put one there)
+          prop(barricadeMesh(24), [rr[0], by, rr[2] - 20], 0);
+          const ey = floorAt(rr[0] + 3, rr[1] + 8, rr[2] - 10, 6) ?? by;
+          stand('eotm', [rr[0] + 3, ey, rr[2] - 10], 0); // in front of the desks, up on whatever's there (a car roof, if the jam put one there)
           send('hold', { all: true, on: true });
           encSfx.honk(); setTimeout(() => encSfx.honk(), 450);
           hud.msg('HALT', 1.4, 'brag');

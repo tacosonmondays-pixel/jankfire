@@ -96,7 +96,7 @@ export function makeQuests(S) {
     const d = def(id), q = st().quests[id], s = stepOf(d, q.step);
     if (!s || q.fin === s.id) return;
     const G = goalsOf(s);
-    for (let i = 0; i < G.length; i++) if ((G[i].type === 'flag' || G[i].if) && !(q.n[i] >= need(G[i])) && S.test(G[i].if || G[i].flag)) q.n[i] = need(G[i]);
+    for (let i = 0; i < G.length; i++) if (G[i].type === 'flag' && !(q.n[i] >= need(G[i])) && S.test(G[i].if || G[i].flag)) q.n[i] = need(G[i]); // (another goal's `if` is only a gate: a deliver's reach still needs the reach)
     const bad = s.fail && (typeof s.fail === 'string' || Array.isArray(s.fail) ? S.test(s.fail) : s.fail.type === 'flag' && S.test(s.fail.if || s.fail.flag));
     if (!bad) delete q.hold;
     else if (!q.hold) { fail(id); return; } // (hold: a retry waits for the fail condition to clear before it can fail again)
