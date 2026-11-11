@@ -138,6 +138,8 @@ function school() {
   B.add(-29.6, 0, -23.6, -27, 2.2, -22.6, 'glassblock', K('fume', -28.3, -23.1));
   for (const [x, z] of [[-25, -16.6], [-18, -16.6], [-11.5, -10.4], [-25, -10.4]]) small('stool', x, z, 0, 0, 0.5, 0.6, 'pink');
   small('globe', -9.2, -22.8, 0, 0, 0.6, 1.3, 'blue'); small('bin', -9.2, -1.2, 0, 0, 0.5, 0.8); small('bin', -28.8, -1.4, 0, 0, 0.5, 0.8);
+  for (const x of [-22, -20.5, -15, -13.5]) B.box(x, 0.38, -13.5, 0.7, 0.75, 0.9, 'wood', K('studentdesk', x, -13.5, 2)); // a row for whoever is late
+  for (const x of [-27, -26, -25]) B.add(x - 0.5, 0, -1, x + 0.5, 1.5, -0.3, 'metal', K('filing', x, -0.65, 1));
   // ---- BOILER ROOM: the boiler, pipes, crates. the power switch on the east wall
   { const t = K('boiler', 20, -20); B.add(18, 0, -22, 22, 2.6, -18, 'metal', t); B.add(19.4, 2.6, -20.6, 20.6, F - T, -19.4, 'metal', t); }
   for (const [x, z, n] of [[11, -7, 2], [12.3, -7, 1], [27, -22, 2], [26, -8, 1]]) for (let k = 0; k < n; k++) B.box(x, 0.6 + k * 1.2, z, 1.2, 1.2, 1.2, 'crate');
@@ -148,6 +150,7 @@ function school() {
   B.box(22, 0.5, 2, 1.6, 1, 0.8, 'wood', K('vault', 22, 2)); B.box(26, 0.15, 18, 3, 0.3, 2, 'blue', K('gymmat', 26, 18)); B.box(18, 0.15, -1, 3, 0.3, 2, 'pink', K('gymmatp', 18, -1));
   B.add(29.3, 2.6, 9, 29.9, 3.8, 11, 'backboard', { fit: 1, ...K('hoop', 29.72, 10, 1) }); // the backboard
   B.box(27.5, 0.5, -2.8, 1.6, 1.0, 0.6, 'metal', K('ballrack', 27.5, -2.8)); B.box(16, 0.15, 21.5, 3, 0.3, 2, 'blue', K('gymmat', 16, 21.5));
+  B.box(14.5, 0.5, -3.1, 1.6, 1.0, 0.6, 'metal', K('ballrack', 14.5, -3.1)); B.box(21, 0.15, 21.5, 3, 0.3, 2, 'pink', K('gymmatp', 21, 21.5));
   B.add(29.1, 0, 14, 29.7, 0.45, 17, 'wood', K('bench', 29.4, 15.5, 1)); B.add(29.1, 0, 3, 29.7, 0.45, 6, 'wood', K('bench', 29.4, 4.5, 1));
   const crate = { at: [27.5, 0, 10], price: 950 };
   B.add(26.6, 0, 9.55, 28.4, 0.9, 10.45, 'crate');
@@ -155,10 +158,13 @@ function school() {
   for (const z of [4, 20]) B.add(-1.5, F, z - 0.3, 1.5, F + 0.45, z + 0.3, 'wood', K('bench', 0, z, 0, F));
   small('bin', -7.3, 9, 0, F, 0.5, 0.8); small('bin', 7.3, -15, 0, F, 0.5, 0.8); B.add(7.4, F, 7.75, 7.8, F + 1.0, 8.25, 'metal', K('fountain', 7.6, 8, 1, F));
   for (const z of [-17.5, -20]) B.add(-7.6, F, z - 1, -7.1, F + 2, z + 1, 'lockerb', K('lockers', -7.35, z, 3, F));
+  for (const z of [16, 18]) B.add(7.1, F, z - 1, 7.6, F + 2, z + 1, 'lockerp', K('lockersp', 7.35, z, 1, F));
   // ---- LIBRARY: shelves you weave between, reading tables, a globe
   for (const x of [-26, -21, -16]) for (let z = 8; z < 20; z += 2) B.add(x - 0.35, F, z, x + 0.35, F + 2.2, z + 2, 'books', K('bookshelf', x, z + 1, 1, F));
   for (const [x, z] of [[-12, 4], [-12, 21], [-24, 3.6]]) B.box(x, F + 0.4, z, 2.4, 0.8, 1.4, 'wood', K('readtable', x, z, 0, F));
   small('globe', -28.8, 22.8, 0, F, 0.6, 1.3, 'blue'); small('bin', -9, 9, 0, F, 0.5, 0.8);
+  for (const z of [9, 11, 17, 19]) B.add(-11.85, F, z - 1, -11.15, F + 2.2, z + 1, 'books', K('bookshelf', -11.5, z, 1, F));
+  B.box(-18, F + 0.4, 4.2, 2.4, 0.8, 1.4, 'wood', K('readtable', -18, 4.2, 0, F)); for (const x of [-26.5, -25, -23.5]) B.box(x, F + 0.38, 1, 0.7, 0.75, 0.9, 'wood', K('studentdesk', x, 1, 2, F)); // carrels
   for (const x of [-12, -10]) B.add(x - 1, F, 23.3, x + 1, F + 2.2, 23.9, 'books', K('bookshelf', x, 23.6, 0, F));
   // ---- ART ROOM: easels, a kiln, a table of bad sculptures, paint tables
   for (const [x, z] of [[-25, -8], [-20, -14], [-14, -9], [-27, -13], [-11, -20]]) B.box(x, F + 0.8, z, 0.9, 1.6, 0.5, 'wood', K('easel', x, z, 0, F));
@@ -166,6 +172,10 @@ function school() {
   for (const [x, z] of [[-24, -17], [-13, -15]]) B.box(x, F + 0.4, z, 2.6, 0.8, 1.2, 'wood', K('arttable', x, z, 2, F)); // paint tables
   for (const [x, z] of [[-24.6, -15.7], [-23.2, -18.3], [-13, -13.7], [-18.6, -18.6]]) small('stool', x, z, 0, F, 0.5, 0.6, 'pink');
   small('bin', -9, -1.2, 0, F, 0.5, 0.8);
+  for (const [x, z] of [[-24, -4], [-13, -3.5], [-24, -10.5]]) B.box(x, F + 0.4, z, 2.6, 0.8, 1.2, 'wood', K('arttable', x, z, 0, F));
+  for (const [x, z] of [[-16, -5.5], [-21, -8], [-17, -11.5], [-10.5, -12]]) B.box(x, F + 0.8, z, 0.9, 1.6, 0.5, 'wood', K('easel', x, z, 0, F));
+  for (const x of [-25.5, -24, -22.5]) B.box(x, F + 0.38, -19.9, 0.9, 0.75, 0.7, 'wood', K('studentdesk', x, -19.9, 1, F)); // lines, 100 of them
+  for (const x of [-12, -26]) B.add(x - 1, F, -0.9, x + 1, F + 2.2, -0.2, 'books', K('bookshelf', x, -0.55, 0, F)); for (const [x, z] of [[-23, -2.6], [-12, -5], [-25, -9.2]]) small('stool', x, z, 0, F, 0.5, 0.6, 'pink');
   // ---- PRINCIPAL'S OFFICE: a desk that's too big, filing cabinets, a rug, two desks for detention
   B.box(22, F + 0.45, -12, 3.4, 0.9, 1.6, 'wood', K('desk', 22, -12, 0, F));
   for (const z of [-8.5, -7.5, -6.5]) B.add(28.9, F, z - 0.5, 29.6, F + 1.5, z + 0.5, 'metal', K('filing', 29.25, z, 0, F));
@@ -173,6 +183,8 @@ function school() {
   B.box(22, F + 0.3, -9.6, 0.7, 0.6, 0.7, 'pink', K('stool', 22, -9.6, 0, F)); B.box(22, F + 0.5, -14.6, 0.9, 1.0, 0.9, 'carblack', K('bigchair', 22, -14.6, 0, F)); // the naughty stool, the big chair
   for (const x of [12.5, 14.5]) B.box(x, F + 0.38, -8, 0.7, 0.75, 0.9, 'wood', K('studentdesk', x, -8, 2, F));
   small('globe', 27.5, -22.6, 0, F, 0.6, 1.3, 'blue'); small('bin', 9, -5, 0, F, 0.5, 0.8);
+  B.box(14, F + 0.4, -13, 2.4, 0.8, 1.4, 'wood', K('readtable', 14, -13, 0, F)); B.add(18.5, F, -4.9, 21.5, F + 0.45, -4.3, 'wood', K('bench', 20, -4.6, 0, F)); // a meeting nobody wanted, the bench outside... inside
+  for (const x of [25, 26, 27]) B.add(x - 0.5, F, -4.95, x + 0.5, F + 1.5, -4.25, 'metal', K('filing', x, -4.6, 1, F)); B.add(8.2, F, -13.5, 8.8, F + 2, -10.5, 'glassblock', K('trophy', 8.5, -12, 0, F)); B.box(16.5, F + 0.38, -8, 0.7, 0.75, 0.9, 'wood', K('studentdesk', 16.5, -8, 2, F));
 
   // ---- dressing (look-only): what makes each room read as its room
   sg('x', 8.23, 0, 3.62, 7, 0.9, 'sgnschool'); sg('z', -7.77, 22, 2.5, 2.8, 0.7, 'sgntrophy'); sg('z', 7.77, 19, 1.9, 1.6, 1.0, 'sgnprom');
