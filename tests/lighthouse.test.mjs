@@ -1,9 +1,10 @@
-// node --test tests/lighthouse.test.mjs : the octagonal lighthouse (shared/map.js lighthouse(), octoBoxes): the stair
-// still takes you to the gallery, the gallery's railing holds at its cut corners, the bots' walk graph is whole
+// node --test tests/lighthouse.test.mjs : the octagonal lighthouse (shared/map.js lighthouse(), octoBoxes, lhStair): the
+// iron stair round all eight faces takes you up and down without a snag (small steps, no step you can't just walk up),
+// a bot finds its way up from every side, the gallery's railing holds at its cut corners, the bots' walk graph is whole
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MAPS } from '../shared/map.js';
-import { navPath, navLocate } from '../shared/nav.js';
+import { MAPS, lhStair } from '../shared/map.js';
+import { navPath, navLocate, navSteer } from '../shared/nav.js';
 import { movePlayer } from '../shared/physics.js';
 
 const walk = (boxes, from, pts, speed = 7) => {
@@ -17,11 +18,37 @@ const walk = (boxes, from, pts, speed = 7) => {
   return pos;
 };
 
-test('Islands: up the outside stair onto the gallery, and a bot route there', () => {
-  const m = MAPS.islands, g = m.graph;
-  const end = walk(m.boxes, [78, 0, -2.2], [[86, 4.5, -2.2], [85.8, 4.5, -2.3], [85.8, 9, -9.8], [85.8, 9, -9.8], [78.2, 13.5, -9.8], [78.2, 13.5, -9.6], [78.2, 18, -2.5]]);
-  assert.ok(end[1] > 17.9, 'on the gallery: ' + end);
-  assert.ok(navPath(g, navLocate(g, [80, 0.1, 0]), navLocate(g, [86, 18.1, -11])), 'bot path to the gallery');
+test('Islands: up the iron stair onto the gallery and back down, near the wall, in the middle and by the rail', () => {
+  const m = MAPS.islands, S = lhStair(), C = [82, -6], L = 3 * Math.tan(Math.PI / 8);
+  const line = (u) => { const P = []; for (let k = 0; k < 8; k++) { const a = (135 - 45 * k) * Math.PI / 180, n = [Math.cos(a), Math.sin(a)], t = [Math.sin(a), -Math.cos(a)];
+    for (const s of [-L + 0.1, L - 0.1]) P.push([C[0] + n[0] * u + t[0] * s, 0, C[1] + n[1] * u + t[1] * s]);
+    if (k < 7) { const R = u / Math.cos(Math.PI / 8); P.push([C[0] + Math.cos(a - Math.PI / 8) * R, 0, C[1] + Math.sin(a - Math.PI / 8) * R]); } } return P; };
+  for (const u of [3.6, 3.95, 4.2]) for (const sp of [7, 14]) {
+    const P = line(u), up = walk(m.boxes, [S.bot[0], 0.05, S.bot[2]], [...P, S.top], sp);
+    assert.ok(up[1] > 17.9, `up at ${u}, ${sp} m/s: ${up}`);
+    const down = walk(m.boxes, [S.top[0], 18.05, S.top[2]], [...P].reverse().concat([S.bot, [S.bot[0] - 2, 0, S.bot[2]]]), sp), v = [0, 0, 0];
+    for (let k = 0; k < 30; k++) { v[1] -= 26 / 30; movePlayer(down, v, 1 / 30, m.boxes, false); } // (landed: running off the bottom step at a sprint you're still in the air)
+    assert.ok(down[1] < 0.1, `down at ${u}, ${sp} m/s: ${down}`);
+  }
+  for (let i = 1; i < 80; i++) assert.ok(Math.abs(S.r * i - S.r * (i - 1) - 0.225) < 1e-9 && S.r < 0.6, 'every step one small step');
+  assert.ok(navPath(m.graph, navLocate(m.graph, [80, 0.1, 0]), navLocate(m.graph, [85, 18.1, -10])), 'bot path to the gallery');
+});
+test('Islands: a bot steering by the walk graph gets up to the gallery from every side, and down again', () => {
+  const m = MAPS.islands;
+  const run = (from, goal) => {
+    const pos = from.slice(), vel = [0, 0, 0], st = {}; let ground = true;
+    for (let t = 0; t < 30; t += 1 / 30) {
+      const s = navSteer(m.graph, st, pos, goal, t * 1000), l = Math.hypot(goal[0] - pos[0], goal[2] - pos[2]) || 1;
+      const [dx, dz] = s ? s : [(goal[0] - pos[0]) / l, (goal[2] - pos[2]) / l];
+      if (s && s[2] && ground) vel[1] = 8;
+      vel[0] = dx * 7; vel[2] = dz * 7; vel[1] -= 26 / 30;
+      ground = !!movePlayer(pos, vel, 1 / 30, m.boxes, ground).ground;
+      if (Math.hypot(goal[0] - pos[0], goal[2] - pos[2]) < 0.8 && Math.abs(goal[1] - pos[1]) < 0.5) return true;
+    }
+    return pos;
+  };
+  for (const [from, goal] of [[[80, 0.1, 0], [85, 18.1, -10]], [[70, 0.1, -6], [82, 18.1, -11.2]], [[90, 0.1, -6], [87, 18.1, -6]], [[74, 0.1, -12], [85, 18.1, -10]], [[84, 0.1, 4], [77.5, 18.1, -3.5]],
+    [[86, 18.1, -11], [80, 0.1, 2]], [[82, 18.1, -11], [90, 0.1, 0]], [[86, 18.1, -3], [70, 0.1, -14]]]) assert.equal(run(from, goal), true, from + ' -> ' + goal);
 });
 test('Islands: the gallery railing holds, flats and cut corners', () => {
   const B = MAPS.islands.boxes;
