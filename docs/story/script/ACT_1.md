@@ -274,8 +274,6 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 4. drive the soup to the gut border (don't spill it)
 5. survive the unpaid
 6. deliver the soup to the gristle & sons trade post
-7. let the choir count the soup · if !flag:soup_spilled
-8. explain the pot to the choir · if flag:soup_spilled
 
 #### Scene: `p2_sauce_run` (panels, 14 s)
 - `  0` [panel 1] **BIG SAUCE SHARON:** soup. for medicine. gristle and sons at the gut border. same as every week. (SLOSH) _Sharon holds up a huge red pot._
@@ -368,7 +366,8 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - **LUMPS:** i think there's two departments.
 
 #### Talk: `trade_post` (with SISTER AGENDA)
-- **[start]**
+- **[start]** _branch: flag:soup_spilled → empty; else → count_
+- **[count]**
   - _A trade post on the Gut border, where the last lamp post has grown a fingernail. A turnstile grown over with skin, a counter, a robed Choir clerk with a stretched smile who sings her words on one note. Her staff lanyard is still on, under the robe._
   - _sung* the soup, the soup, the tomato soup... *not sung* thank you. one pot. we'll count it._
   - _She tips a little out and tastes it with a ladle that has a tongue._
@@ -389,9 +388,7 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
   - _Lumps is looking past her, deeper into the Gut, at the pink streets._
   - **LUMPS:** ...it's sunday tomorrow.
   - _does: give:medicine_crate_
-
-#### Talk: `trade_post_empty` (with SISTER AGENDA)
-- **[start]**
+- **[empty]**
   - _The trade post on the Gut border. The robed Choir clerk takes the lid off the pot and looks in. She tips it. Nothing comes out. She tips it further._
   - _sung* the soup, the soup, the tomato... *not sung* ...this is a pot._
   - **SISTER AGENDA:** i can count soup. i can't count a pot. there's no column for a pot.
@@ -401,15 +398,15 @@ _The Bottom trades soup to Gristle & Sons for medicine. Steal a car, cross the e
 - **[was]**
   - **SISTER AGENDA:** everything was something. i can't count was.
   - _She writes it down anyway, very neatly: one (1) pot. empty._
-  - → take
+  - → halved
 - **[interns]**
   - **SISTER AGENDA:** there are always interns. it's a growth sector.
   - _She writes it down: one (1) pot. interns._
-  - → take
+  - → halved
 - **[silent]**
   - _She waits. You keep not saying it. She writes something down that takes longer than 'empty'._
-  - → take
-- **[take]**
+  - → halved
+- **[halved]**
   - _One box of medicine slides across the counter. She looks at it, then takes half of what's inside back out._
   - **SISTER AGENDA:** policy's per litre. i don't write the policy. i write it down.
   - _Lumps looks at the box for a long time. Forty people's medicine, minus whatever half is._

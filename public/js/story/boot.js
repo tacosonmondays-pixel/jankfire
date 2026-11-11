@@ -249,13 +249,13 @@ function sign(text, p) {
 function roster(e) {
   if (ST.city) { // a mission step can move someone (cast_slice.js STAGE): they're there when you arrive (not mid-talk or mid-scene)
     const objs = ST.S.quests.objectives();
-    for (const r of ROSTER.values()) { const sp = npcSpot(r.id, objs); if (!sp || sp === r.spot) continue; const a = actors.get(r.id); if (a && (a.inScene || a.boss || talking())) continue; r.spot = sp; r.p = sp.p.slice(); r.face = sp.face; if (a) despawnActor(r.id); }
+    for (const r of ROSTER.values()) { const sp = npcSpot(r.id, objs); if (!sp || sp === r.spot) continue; const a = actors.get(r.id); if (a && (a.inScene || a.boss || a.enc || talking())) continue; r.spot = sp; r.p = sp.p.slice(); r.face = sp.face; if (a) despawnActor(r.id); }
   }
   // (the city: someone whose home isn't a real place yet only stands in the rehearsal yard while a step wants them)
   const want = ST.city ? new Set(ST.S.quests.objectives().flatMap((o) => [o.marker, ...o.goals.map((g) => g.marker)])) : null;
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
-    if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !talking()) despawnActor(r.id); continue; }
+    if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; }
     if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
     else if (a && d > 44 && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him. so does anyone an encounter stood somewhere: encounters.js)
   }

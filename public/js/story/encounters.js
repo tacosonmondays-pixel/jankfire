@@ -16,9 +16,28 @@ import { raycast, query } from '/shared/physics.js';
 import { carBoxes, carType } from '/shared/story/drive.js';
 import { MISSIONS_ACT1 } from '/shared/story/content/missions/act1.js';
 import { DV } from './drive.js';
+import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: the ambush ends there)
+import { hwY } from '/shared/city/slice.js';
 import { actors, spawnActor, despawnActor, play, walkTo } from './actors.js';
 import { talking } from './talk.js';
-import { rigMesh, dogMesh, internBits, potMesh, potLevel, barricadeMesh, tradePostMesh } from './enc_looks.js';
+import { rigMesh, dogMesh, potMesh, potLevel, tradePostMesh } from './enc_looks.js';
+import { glbLoader } from '../glbkit.js';
+import { buildWeapon } from '../models.js';
+
+// the art lane's models for encounter enemies (one line each to swap): a cast look drawn over the bot (the shared cast
+// skeleton, walked by loco.js), or a vehicle glb. missing / not loaded = the code stand-ins in enc_looks.js
+export const ENC_LOOKS = { intern: ['intern', 'intern_b'], collector: ['collector'] };
+const VEHICLES = { war_rig: '/models/cast/c_war_rig.glb' }; // (front -z, ground y 0: wheel_*, castor_*, turret > gun > barrels)
+const GLB = {};
+function vehicle(kind) {
+  const url = VEHICLES[kind]; if (!url) return null;
+  if (!GLB[kind]) { GLB[kind] = { scene: null }; glbLoader().loadAsync(url).then((g) => { g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); GLB[kind].scene = g.scene; }).catch(() => { GLB[kind].bad = true; }); }
+  if (!GLB[kind].scene) return null;
+  const m = GLB[kind].scene.clone(true), by = (n) => m.getObjectByName(n);
+  const lod = by('lod'); if (lod) lod.visible = false;
+  m.userData = { glb: true, wheels: ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'].map(by).filter(Boolean), castors: ['castor_l', 'castor_r'].map(by).filter(Boolean), turret: by('turret'), gun: by('gun'), barrels: by('barrels'), body: by('rig') || m };
+  return m;
+}
 
 const $ = (id) => document.getElementById(id);
 const fin = Number.isFinite;
@@ -112,7 +131,7 @@ export function makeEncounters(ST, { where } = {}) {
     E.hooked = true;
     G.story.on('encOn', (m) => { for (const u of m.list || []) if (fin(u.pid)) E.units.set(u.pid, { pid: u.pid, id: String(u.id), kind: String(u.kind), g: String(m.g), dead: false, mesh: null, h: null }); });
     G.story.on('enc', (m) => onEnc(m.ev || {}));
-    G.story.on('carIn', (m) => { if (m.car && fin(m.car.id)) E.carId = m.car.id; if (S()) S().emit({ type: 'enterCar', car: m.car && m.car.ty }); }); // any car you get into counts for 'steal a car'
+    G.story.on('carIn', (m) => { if (m.car && fin(m.car.id)) E.carId = m.car.id; }); // (the car Lumps rides in. boot.js counts getting in for 'steal a car')
   }
   function wrapCombat() {
     if (!G.story || G.story.combat === E.wrapped) return;
@@ -151,9 +170,16 @@ export function makeEncounters(ST, { where } = {}) {
   function adopt(u, r) {
     if (u.adopted === r) return;
     u.adopted = r;
-    if (u.kind === 'intern') { const b = internBits(); r.ch.root.add(b); u.bits = b; return; }
+    if (ENC_LOOKS[u.kind]) { // a cast look over the bot: an actor that goes where the bot goes, holding its gun
+      const looks = ENC_LOOKS[u.kind], a = spawnActor(`enc_${u.pid}`, { look: looks[u.pid % looks.length], idle: 'idle' }, r.pos.slice(), r.yaw);
+      a.enc = true; a.encUnit = true; u.actor = a;
+      if (r.w && a.ch.slot) { try { const wm = buildWeapon(r.w); a.ch.slot.add(wm); u.wm = r.w; } catch { /* (no gun drawn: still fights) */ } }
+      const upd = r.update.bind(r);
+      r.update = (...x) => { upd(...x); r.ch.root.visible = false; if (r.shadow) r.shadow.visible = false; };
+      return;
+    }
     if (u.kind !== 'war_rig' && u.kind !== 'stomach_dog') return;
-    u.mesh = u.kind === 'war_rig' ? rigMesh() : dogMesh();
+    u.mesh = (u.kind === 'war_rig' && vehicle('war_rig')) || (u.kind === 'war_rig' ? rigMesh() : dogMesh());
     G.scene.add(u.mesh);
     const upd = r.update.bind(r);
     r.update = (...a) => { upd(...a); r.ch.root.visible = false; if (r.shadow) r.shadow.visible = false; };
@@ -163,16 +189,32 @@ export function makeEncounters(ST, { where } = {}) {
   function drawUnits(dt) {
     for (const [pid, u] of E.units) {
       const r = G.remotes && G.remotes.get(pid);
-      if (!r) { if (u.mesh) { G.scene.remove(u.mesh); u.mesh = null; } if (u.seenGone == null) u.seenGone = E.t; if (E.t - u.seenGone > 3 || u.dead) E.units.delete(pid); continue; }
+      if (!r) { if (u.mesh) { G.scene.remove(u.mesh); u.mesh = null; } if (u.actor) { despawnActor(u.actor.id); u.actor = null; } if (u.seenGone == null) u.seenGone = E.t; if (E.t - u.seenGone > 3 || u.dead) E.units.delete(pid); continue; }
       u.seenGone = null;
       adopt(u, r);
+      if (u.actor) { // walk where the bot walks; down when it's down (tipped over, then gone with the body)
+        const a = u.actor; a.pos[0] = r.pos[0]; a.pos[1] = r.pos[1]; a.pos[2] = r.pos[2]; a.yaw = r.yaw; a.home.face = r.yaw;
+        if (r.w !== u.wm && a.ch.slot) { a.ch.slot.clear(); try { if (r.w) a.ch.slot.add(buildWeapon(r.w)); } catch { /* fine */ } u.wm = r.w; }
+        a.ch.root.rotation.x = r.alive ? 0 : Math.max(-Math.PI / 2, (a.ch.root.rotation.x || 0) - dt * 6);
+        continue;
+      }
       if (!u.mesh) continue;
       const m = u.mesh, sp = Math.hypot(r.vel[0], r.vel[2]);
       if (sp > 1.2) { const h = Math.atan2(r.vel[0], r.vel[2]); u.h = u.h == null ? h : u.h + wrapA(h - u.h) * Math.min(1, dt * (u.kind === 'war_rig' ? 6 : 10)); }
       if (u.h == null) u.h = Math.atan2(ME.pos[0] - r.pos[0], ME.pos[2] - r.pos[2]);
       m.position.set(r.pos[0], r.pos[1], r.pos[2]); m.rotation.y = u.h;
       const U = m.userData;
-      if (u.kind === 'war_rig') {
+      if (u.kind === 'war_rig' && U.glb) { // the art lane's rig: front is -z, so turned round; wheels, castors, the turret on you
+        m.rotation.y = u.h + Math.PI;
+        for (const w of U.wheels) w.rotation.x -= (sp / 0.45) * dt;
+        for (const c of U.castors) c.rotation.y = Math.sin(E.t * 3 + pid) * 0.2;
+        if (U.turret) { const want = Math.atan2(-(ME.pos[0] - r.pos[0]), -(ME.pos[2] - r.pos[2])) - m.rotation.y; U.turret.rotation.y += wrapA(want - U.turret.rotation.y) * Math.min(1, dt * 5); }
+        if (U.barrels && r.alive) U.barrels.rotation.z += dt * 14; // (always spinning up: it's a minigun on a chair base)
+        U.body.rotation.z = r.alive ? Math.sin(E.t * 9 + pid) * 0.012 * Math.min(1, sp / 10) : Math.min(1.1, U.body.rotation.z + dt * 2);
+        if (!r.alive) m.position.y -= Math.min(0.6, (u.deadT = (u.deadT || 0) + dt) * 0.3);
+        if (u.honkT == null) u.honkT = E.t + 2 + Math.random() * 4;
+        if (E.t > u.honkT && r.alive) { u.honkT = E.t + 5 + Math.random() * 6; encSfx.honk(r.pos); }
+      } else if (u.kind === 'war_rig') {
         for (const w of U.wheels) { w.sp.rotation.x += (sp / 0.42) * dt; if (w.steer) w.piv.rotation.y = Math.sin(E.t * 3 + pid) * 0.15; }
         U.body.rotation.z = Math.sin(E.t * 9 + pid) * 0.015 * Math.min(1, sp / 10); // the desks rattle
         if (!r.alive) { U.body.rotation.z = Math.min(1.2, U.body.rotation.z + dt * 2); m.position.y -= Math.min(0.6, (u.deadT = (u.deadT || 0) + dt) * 0.3); }
@@ -277,6 +319,7 @@ export function makeEncounters(ST, { where } = {}) {
       drive: {
         enter(st) { st.rigs = false; S().st.vars[SOUP_VAR] ??= 100; },
         tick(st, dt) {
+          vehicle('war_rig'); // (start loading the rig's model before the Commute)
           if (!ride(true)) { const a = actors.get('lumps'); if (!a) stand('lumps', [ME.pos[0] + 1.5, ME.pos[1], ME.pos[2] + 1.5], ME.yaw); else if (!a.path && Math.hypot(a.pos[0] - ME.pos[0], a.pos[2] - ME.pos[2]) > 4) walkTo(a, [[ME.pos[0] + 1.2, ME.pos[1], ME.pos[2] + 1.2]], 6); }
           // the Commute: the Unpaid come out to meet you before you even reach the road
           if (!st.rigs && ME.pos[0] > ENC.ambush.rigsAt && DV.car) {
@@ -290,12 +333,12 @@ export function makeEncounters(ST, { where } = {}) {
       },
       ambush: {
         enter(st) {
-          st.phase = 'talk'; st.t0 = E.t; st.wave = 0; st.left = ENC.ambush.secs; st.deaths = 0;
-          const rr = ENC.ringRoad, by = floorAt(rr[0], rr[1], rr[2] - 20) ?? rr[1];
+          st.phase = 'talk'; st.t0 = E.t; st.wave = 0; st.left = ENC.ambush.secs; st.won = 0;
+          const rr = ENC.ringRoad;
           st.home = [rr[0], (floorAt(rr[0], rr[1], rr[2]) ?? rr[1]) + 0.2, rr[2]];
-          prop(barricadeMesh(24), [rr[0], by, rr[2] - 20], 0);
-          const ey = floorAt(rr[0] + 3, rr[1] + 8, rr[2] - 10, 6) ?? by;
-          stand('eotm', [rr[0] + 3, ey, rr[2] - 10], 0); // in front of the desks, up on whatever's there (a car roof, if the jam put one there)
+          // EOTM up on the jam beside the clear lanes, to rob you; then he's at the ramp (the Unpaid built it, he's proud of it)
+          const ex = rr[0] + 7, ez = rr[2] - 9, ey = floorAt(ex, rr[1] + 6, ez, 8) ?? rr[1];
+          stand('eotm', [ex, ey, ez], Math.atan2(-(ME.pos[0] - ex), -(ME.pos[2] - ez)));
           send('hold', { all: true, on: true });
           encSfx.honk(); setTimeout(() => encSfx.honk(), 450);
           hud.msg('HALT', 1.4, 'brag');
@@ -310,21 +353,30 @@ export function makeEncounters(ST, { where } = {}) {
             return;
           }
           st.left = Math.max(0, ENC.ambush.secs - (Q ? Q.t : 0));
-          clockHud(true, st.left, st.fight ? 'HOLD THE ROAD' : 'THEY HAVE TWO DEPARTMENTS', `the unpaid: ${alive('m02a') + alive('m02b') + alive('m02c') + alive('m02rig')}`);
+          const n = alive('m02a') + alive('m02b') + alive('m02c') + alive('m02rig');
+          clockHud(!st.won, st.left, 'SURVIVE THE UNPAID', `${n} after you · or jump the collapse`);
           const el = ENC.ambush.secs - st.left;
-          // waves: the second department, then the overtime department
-          if (st.wave === 1 && el > 28) { st.wave = 2; wave(st, st.fight ? 5 : 4, 'm02b'); hud.msg(st.fight ? 'MORE INTERNS' : "THEY DIDN'T GET THE MEMO", 1.5, 'brag'); }
-          if (st.wave === 2 && el > 55) { st.wave = 3; if (st.fight) { spawn('m02rig', 'war_rig', openSpot(st.home, 50, [Math.PI, Math.PI * 0.75, Math.PI * 1.25])); hud.msg('ANOTHER RIG', 1.5, 'brag'); encSfx.honk(); } wave(st, 3, 'm02c'); }
-          if (Math.ceil(st.left) !== st.tickS && st.left <= 10) { st.tickS = Math.ceil(st.left); encSfx.tick(st.left <= 3); }
-          // EOTM up top keeps the meeting going
-          if ((st.motT ??= E.t + 6) < E.t) { st.motT = E.t + 7 + Math.random() * 5; bark('employee of the month', pick(['SYNERGY!', 'the grind never stops.', 'this is a learning opportunity.', 'who wants to be employee of the month? ME. AGAIN.', "we're a family. a family that robs.", 'CIRCLE BACK ON THAT SOUP.']), 2.6); }
-          // you fell behind: ride back to the road (a death restarts the meeting)
-          if (Math.hypot(ME.pos[0] - st.home[0], ME.pos[2] - st.home[2]) > 140 && !st.warned) { st.warned = true; bark('lumps', "we can't leave. they'll follow the soup.", 3); }
+          // waves along the deck: the second department, then the overtime department
+          if (st.wave === 1 && el > 28) { st.wave = 2; deckWave(st, [140, 118], st.fight ? 3 : 2, 'm02b'); wave(st, 3, 'm02b'); hud.msg(st.fight ? 'MORE INTERNS' : "THEY DIDN'T GET THE MEMO", 1.5, 'brag'); }
+          if (st.wave === 2 && el > 55) { st.wave = 3; if (st.fight) { spawn('m02rig', 'war_rig', openSpot(ME.pos, 50, [Math.atan2(0, 1), 0.5, -0.5])); hud.msg('ANOTHER RIG', 1.5, 'brag'); encSfx.honk(); } wave(st, 3, 'm02c'); }
+          if (Math.ceil(st.left) !== st.tickS && st.left <= 10 && !st.won) { st.tickS = Math.ceil(st.left); encSfx.tick(st.left <= 3); }
+          // the climax: the Unpaid's own ramp over the collapse. land it (or climb out of the gap) and they can't follow
+          if (!st.won && ME.pos[2] < RAMP.exit[0] && ME.pos[0] > RAMP.x0 - 12 && ME.pos[0] < RAMP.x1 + 12 && ME.pos[1] > hwY(ME.pos[2]) - 1.5) {
+            st.won = E.t; encSfx.clockout();
+            setTimeout(() => hud.msg("THEY DIDN'T BUDGET FOR THE JUMP", 2.4, 'brag'), 1400);
+            bark('employee of the month', pick(['THAT WAS NOT IN THE BUDGET.', 'THAT RAMP IS COMPANY PROPERTY.', "WE'LL CIRCLE BACK. ON FOOT."]), 3);
+          }
+          if (st.won && E.t - st.won > 2.5 && Q && Q.t < ENC.ambush.secs) Q.t = ENC.ambush.secs; // (survived: they stop at the edge)
+          // on the deck: the ramp comes into view
+          if (!st.rampSaid && ME.pos[2] < RAMP.z1 + 45 && ME.pos[2] > RAMP.z1) { st.rampSaid = true; bark('lumps', "they built a ramp. why did they build a ramp. ...go faster.", 3.5); }
+          // EOTM at the ramp keeps the meeting going
+          if ((st.motT ??= E.t + 6) < E.t && !st.won) { st.motT = E.t + 7 + Math.random() * 5; bark('employee of the month', pick(['SYNERGY!', 'the grind never stops.', 'this is a learning opportunity.', 'who wants to be employee of the month? ME. AGAIN.', "we're a family. a family that robs.", 'JUMP IT! THAT\'S A STRETCH GOAL!']), 2.6); }
+          if (Math.hypot(ME.pos[0] - st.home[0], ME.pos[2] - st.home[2]) > 220 && !st.warned) { st.warned = true; bark('lumps', "we can't leave. they'll follow the soup.", 3); }
         },
-        onDown(st) { st.deaths++; },
         onUp(st) { // back up (the Machine dispensed you miles away): you're put back at the road, and the meeting starts again
+          if (st.won) return;
           ME.pos = st.home.slice(); ME.vel = [0, 0, 0];
-          clear('m02a'); clear('m02b'); clear('m02c');
+          for (const g of ['m02a', 'm02b', 'm02c']) clear(g);
           const Q = q(M02); if (Q) Q.t = 0;
           st.wave = 0; startFight(st, true);
           hud.msg('THE MEETING STARTS AGAIN', 2, 'brag');
@@ -333,8 +385,8 @@ export function makeEncounters(ST, { where } = {}) {
           clockHud(false);
           for (const g of ['m02a', 'm02b', 'm02c', 'm02rig']) clear(g);
           clearProps();
-          const a = actors.get('eotm'); if (a) { bark('employee of the month', "the pizza's gone. WE'LL CIRCLE BACK.", 3.5); setTimeout(() => release('eotm'), 3500); }
-          if (st.phase !== 'talk') { encSfx.clockout(); hud.msg('THE PIZZA RAN OUT', 2.4, 'brag'); }
+          if (actors.get('eotm')) { if (!st.won) bark('employee of the month', "the pizza's gone. WE'LL CIRCLE BACK.", 3.5); setTimeout(() => release('eotm'), 3500); }
+          if (st.phase !== 'talk' && !st.won) { encSfx.clockout(); hud.msg('THE PIZZA RAN OUT', 2.4, 'brag'); }
         },
       },
       deliver: {
@@ -360,12 +412,17 @@ export function makeEncounters(ST, { where } = {}) {
     const a = stand('lumps', [b[0] + 3.5, y, b[2] + 1], Math.PI); if (a) { a.hold = false; a.ride = null; }
     if (pot) pot.visible = false;
   }
+  // a pack of interns where they'll come at you from: behind (they chase you up the road)
   function wave(st, n, g) {
-    const home = st.home, back = Math.atan2(home[0] - ME.pos[0], home[2] - ME.pos[2]); // (they come from the barricade side)
-    const at = openSpot(home, 24, [Math.PI, Math.PI * 0.8, Math.PI * 1.2, back]) || [home[0], home[1], home[2] - 20];
+    const back = DV.car ? DV.car.h + Math.PI : ME.yaw; // (openSpot's angles: x += sin, z += cos. a car faces (sin h, cos h); you face (-sin yaw, -cos yaw))
+    const at = openSpot(ME.pos, 26, [back, back + 0.6, back - 0.6, Math.PI]) || [ME.pos[0], ME.pos[1], ME.pos[2] + 20];
     const shoot = Math.ceil(n * 0.6);
-    spawn(g, 'intern', at, shoot, { w: 'pistol', name: 'UNPAID INTERN' });
-    if (n - shoot > 0) spawn(g, 'intern', at.map((v, i) => (i === 0 ? v + 4 : v)), n - shoot);
+    spawn(g, 'intern', at, shoot, { w: 'pistol' });
+    if (n - shoot > 0) spawn(g, 'intern', [at[0] + 3, at[1], at[2]], n - shoot);
+  }
+  // interns up on the jam either side of the clear lanes, waiting for you to drive past (z: along the deck)
+  function deckWave(st, zs, per, g) {
+    for (const z of zs) for (const x of [RAMP.x0 - 6, RAMP.x1 + 6]) { const y = floorAt(x, hwY(z) + 4, z, 6); if (y != null) spawn(g, 'intern', [x, y + 0.2, z], per, per > 1 ? { w: 'pistol' } : {}); }
   }
   function startFight(st, again) {
     st.phase = 'fight'; st.fight = flag('fought_the_unpaid') || !(flag('paid_the_unpaid') || flag('eotm_offered_internship'));
@@ -374,7 +431,11 @@ export function makeEncounters(ST, { where } = {}) {
       if (st.fight) { hud.msg('ONBOARDING', 1.8, 'brag'); }
       else { send('enc', { op: 'flee', g: 'm02rig' }); encSfx.honk(); setTimeout(() => clear('m02rig'), 7000); hud.msg('THE RIGS PULL BACK', 1.6, 'brag'); setTimeout(() => bark('lumps', "i think there's two departments.", 3), 1800); }
     }
-    st.wave = 1; wave(st, st.fight ? 6 : 4, 'm02a');
+    st.wave = 1; wave(st, st.fight ? 4 : 3, 'm02a');
+    if (!again) deckWave(st, [205, 170], st.fight ? 2 : 1, 'm02a');
+    // EOTM goes to stand by his ramp (the meeting continues there)
+    const R = RAMP, ex = R.x1 + 2.4, ez = R.z0 + 3, ey = floorAt(ex, hwY(ez) + 3, ez, 5);
+    if (ey != null) stand('eotm', [ex, ey, ez], 0);
   }
 
   // ---------------------------------------------------------- every frame (from boot.js, before the actors move)

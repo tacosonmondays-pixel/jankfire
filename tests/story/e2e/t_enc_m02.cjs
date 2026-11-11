@@ -38,7 +38,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   // ---- the ambush at the ring road (on foot here: the car can't be teleported past the sim's checks)
   await ev(async () => { const { endDrive } = await import('/js/story/drive.js'); endDrive(true); });
   await settle(ev, [182, 2, 238], 5000);
-  await ev(() => window.JF_STORY.S.quests.enterStep('m02_sauce_run', 'ambush'));
+  await ev(() => { if (window.JF_STORY.S.st.quests.m02_sauce_run.step !== 'ambush') window.JF_STORY.S.quests.enterStep('m02_sauce_run', 'ambush'); }); // (arriving at the road already started it)
   await sleep(1500);
   ok(await ev(async () => { const { actors } = await import('/js/story/actors.js'); return actors.has('eotm'); }), 'EOTM is up on the road');
   await ev(async () => { const sc = await import('/js/story/scene.js'); if (sc.playing()) sc.skipScene(); });
@@ -55,22 +55,23 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   await sleep(2500); await shot('ambush');
   const hp = await ev(async () => { const { ME } = await import('/js/player.js'); return ME.hp; });
   console.log('hp after 2.5 s of the ambush', hp);
-  // the rest of the 90 s: wound on
-  await ev(() => { window.JF_STORY.S.st.quests.m02_sauce_run.t = 95; });
-  await sleep(1500);
-  ok(await step(ev, 'm02_sauce_run') === 'deliver', 'held the road: on to the delivery: ' + await step(ev, 'm02_sauce_run'));
-  await sleep(1500);
+  // the climax: over the collapse on the Unpaid's own ramp (put down past the gap: headless frames can't drive the jump)
+  const north = await ev(async () => { const { hwY } = await import('/shared/city/slice.js'); return [182.5, hwY(78) + 0.6, 78]; });
+  await settle(ev, north, 1500);
+  for (let i = 0; i < 20 && (await step(ev, 'm02_sauce_run')) === 'ambush'; i++) await sleep(700);
+  ok(await step(ev, 'm02_sauce_run') === 'deliver', 'over the gap: they can\'t follow, on to the delivery: ' + await step(ev, 'm02_sauce_run'));
+  await sleep(2500);
   const left = await ev(async () => { const { G } = await import('/js/ctx.js'); return [...G.remotes.values()].filter((r) => r.alive).length; });
-  ok(left === 0, 'the unpaid clocked off (no enemies left): ' + left);
-  await shot('pizza');
-  // ---- the trade post at the gut border
-  await settle(ev, [-40, 36.5, -6], 5000);
-  await ev(async () => { const { ME } = await import('/js/player.js'); ME.yaw = 0.9; ME.pitch = -0.1; });
-  await sleep(1200);
+  ok(left === 0, 'the unpaid are gone (no enemies left): ' + left);
+  await shot('jumped');
+  // ---- the trade post at the gut border: the clerk talks to you when you get there, with the soup
+  await settle(ev, [-41, 37.2, -10], 4000);
   ok(await ev(async () => { const { actors } = await import('/js/story/actors.js'); return actors.has('sister_agenda'); }), 'the choir clerk is at the counter');
   await settle(ev, [-44, 36.5, -14], 2500);
-  ok(await step(ev, 'm02_sauce_run') === 'count', 'reaching the trade post with the pot delivers it: ' + await step(ev, 'm02_sauce_run'));
+  for (let i = 0; i < 10 && !(await ev(async () => (await import('/js/story/talk.js')).talking())); i++) await sleep(600);
+  ok(await ev(async () => (await import('/js/story/talk.js')).talking()), 'the trade post talk opened on arrival');
   await shot('tradepost');
+  ok(await step(ev, 'm02_sauce_run') === 'DONE', 'soup delivered: SAUCE RUN done: ' + await step(ev, 'm02_sauce_run'));
   console.log('ERRORS', errs.length, errs.slice(0, 10).join('\n'));
   await b.close();
 })();
