@@ -20,10 +20,13 @@ import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
 import { WorkerSocket } from './host.js';
-import { worldOf, DEFAULT_WORLD } from '/shared/story/worlds.js';
+import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
+import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
 // ?storytest=1: new games start on the test lot (the e2e tests), not in the Bottom
 const testLot = () => { try { return new URLSearchParams(location.search).get('storytest') === '1'; } catch { return false; } };
+// ...and with &train=1 on top, on the train (the REVENUE PROTECTION fight starts by itself)
+const trainLot = () => { try { return new URLSearchParams(location.search).get('train') === '1'; } catch { return false; } };
 import { storyKeys, initBar, barTick, barShow, useBar, dropHeld, nearestDrop, atLocker, clearDrops } from './bar.js'; // WP3
 import { openWheel, closeWheel, wheelOpen, wheelLook, wheelScale } from './wheel.js';
 import { initBag, toggleBag, bagOpen } from './bag.js';
@@ -42,11 +45,12 @@ let pausedWas = false, api = null, picker = null, hint = null, cur = null, useWa
 export function initStory(a) {
   api = a; // { startMode(mode, cfg, mkSocket), quitToMenu(), toast(text, ms) }
   if (!MAPS[TEST.id]) { const m = buildTestMap({ builder, horizon, rng, lollipop, conifer }); unstick(m.boxes, m.spawns); MAPS[TEST.id] = m; } // client only: never in MAP_ORDER, so no menu lists it
+  if (!MAPS[TRAIN.id]) { const m = buildTrainMap({ builder }); unstick(m.boxes, m.spawns); MAPS[TRAIN.id] = m; } // (client only, like the test lot)
   import('../city/storymap.js').then((m) => m.registerStoryMaps(MAPS)).catch(() => {}); // the world lane's streamed city (story_slice)
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
-  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, get cur() { return cur; } };
+  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
   // the bag as the story engine sees it (synchronous; kept fresh by the sim's 'inv' messages) + its host verbs
   G.story.inv = {
     has: (b, n = 1) => !!IVref.inv && count(IVref.inv, b) >= n,
@@ -55,6 +59,7 @@ export function initStory(a) {
     take: (b, n = 1) => send('qtake', { b, n }),
     coupons: (n) => send('qcoupons', { n }),
   };
+  G.story.triggerOff = () => !active() || bagOpen() || clinicOpen() || wheelOpen(); // a held trigger lets go when any of these is up
   storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story); initDrive(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
@@ -139,7 +144,7 @@ async function openPicker() {
       const go = el('button', 'st-btn yellow', c ? 'CONTINUE' : 'NEW GAME');
       go.addEventListener('click', async () => {
         go.disabled = true;
-        try { const s = c ? await loadSlot(i) : null; picker.classList.add('hidden'); start(s || newSave(i, testLot() ? 'story_test' : DEFAULT_WORLD)); }
+        try { const s = c ? await loadSlot(i) : null; picker.classList.add('hidden'); start(s || newSave(i, testLot() ? (trainLot() ? TRAIN.id : 'story_test') : DEFAULT_WORLD)); }
         catch (e) { go.disabled = false; api.toast(`couldn't load that slot: ${e.message}`, 3000); }
       });
       card.append(go);
@@ -154,6 +159,27 @@ function start(save) {
   autoT = performance.now();
   api.startMode('story', undefined, () => new WorkerSocket(save));
 }
+
+// ------------------------------------------------------------ travel: another story world, the same run (the train and back)
+// saves where you are, then starts the run again in the other world. where you left from rides in the save itself
+// (data.travelFrom: shared/story/worlds.js), so a Continue on the train still knows the way back; with nothing to go
+// back to, the way back is the default world's spawn (no world is a dead end)
+let going = false;
+function hop(make) {
+  if (going || !cur || !G.joined || G.mode !== 'story') return false;
+  going = true; pendingSave = 'travel';
+  const go = () => {
+    const i = listeners.saved.indexOf(go); if (i >= 0) listeners.saved.splice(i, 1);
+    going = false;
+    const s = make(cur); if (s) start(s);
+  };
+  on('saved', go);
+  try { if (window.JF_STORY && window.JF_STORY.sync) { window.JF_STORY.sync(); window.JF_STORY.recapped = true; } } catch { /* the save goes anyway */ } // (the quest state as it is this frame, not two seconds ago; and no PREVIOUSLY ON: you never left)
+  send('save', { why: 'travel' });
+  return true;
+}
+const travel = (map) => Object.hasOwn(WORLDS, map) && hop((s) => travelTo(s, map));
+const travelBack = () => hop((s) => travelHome(s));
 
 // ------------------------------------------------------------ saving
 function save(why) { if (G.joined && G.mode === 'story') { pendingSave = why || 'manual'; send('save', { why: pendingSave }); } }
@@ -213,6 +239,7 @@ let toSim = false;
 function key(e, down) {
   if (!G.joined || G.mode !== 'story') return false;
   if (!down) {
+    if (G.story.fightKey) G.story.fightKey(e, false); // (a fight's own weapon hears every release)
     if (wheelOpen() && K.up('wheel', e)) closeWheel(true);
     if (K.up('use', e)) { const r = bodyKey(e, false); if (r && r.pick) send('pick', { id: r.pick }); } // (a tap on a weapon with the Second Stomach still picks it up)
     return wheelOpen() || bagOpen() || clinicOpen();
@@ -220,6 +247,7 @@ function key(e, down) {
   if (clinicOpen()) { if (K.matches(['use', 'menu'], e)) toggleClinic(false); return true; }
   if (bagOpen()) { if (K.matches(['bag', 'menu'], e)) toggleBag(false); return true; } // (the bag has the mouse)
   if (wheelOpen()) return true; // nothing leaks out of the wheel: no firing, no slot keys, no jumps
+  if (G.story.fightKey && G.story.fightKey(e, true)) return true; // a fight's own weapon has the trigger (the Blood Drive: story/blooddrive.js), after the clinic, the bag and the wheel
   if (e.repeat && K.matches('wheel', e)) return true;
   if (K.matches('wheel', e)) { openWheel(); return true; }
   if (K.matches('bag', e)) { toggleBag(true); return true; }
@@ -242,7 +270,7 @@ function key(e, down) {
 const atTerminal = () => { const T = worldOf(G.cfg && G.cfg.map).terminal; return Math.hypot(ME.pos[0] - T.p[0], ME.pos[2] - T.p[2]) < T.r && Math.abs(ME.pos[1] - T.p[1]) < 4; };
 function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
 function uiOpen() { return bagOpen() || clinicOpen(); }
-function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) * bodyTimeScale() : 1; }
+function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) * bodyTimeScale() * (G.story.fightScale ? G.story.fightScale() : 1) : 1; } // (fightScale: a boss fight's hit-stop)
 
 function terminal() {
   if (toSim) return; // (one press, one trip)

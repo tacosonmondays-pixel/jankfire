@@ -764,4 +764,20 @@ Object.assign(sfx, {
   gloop(pos, k = 0.5) { tone('sine', 160, 420, 0.12 + k * 0.08, 0.2 + k * 0.15, pos); tone('sine', 260, 120, 0.1, 0.12, pos, 0.1); noise(0.16, 0.2 + k * 0.2, 'lowpass', 900, 200, pos); },
   blorp(pos) { tone('sine', 70 + Math.random() * 30, 160, 0.16, 0.22, pos); tone('sine', 140, 60, 0.12, 0.14, pos, 0.14); noise(0.1, 0.12, 'lowpass', 600, 150, pos, 0.12); },
   crackle(pos, k = 1) { for (let i = 0; i < 1 + (Math.random() * 3 | 0); i++) noise(0.012 + Math.random() * 0.02, (0.06 + Math.random() * 0.1) * k, 'highpass', 1800 + Math.random() * 3000, 1200, pos, i * 0.03 + Math.random() * 0.02, 1); },
+  // OVERDUE, the Blood Drive (public/js/story/blooddrive.js): a dentist's drill winding up into a wet sewing machine
+  bdSpin() { tone('sawtooth', 240, 2900, 0.8, 0.07); tone('sine', 480, 5200, 0.8, 0.05); noise(0.8, 0.07, 'bandpass', 900, 5200, null, 0, 6); },
+  bdBolt() { const f = 150 + Math.random() * 40; tone('square', f * 2, f, 0.035, 0.11); noise(0.045, 0.22, 'bandpass', 1900, 500, null, 0, 1.6); tone('sine', 3300, 2900, 0.05, 0.022); noise(0.03, 0.09, 'lowpass', 500, 150, null, 0.03); },
+  bdDry() { tone('square', 1400, 900, 0.03, 0.06); noise(0.05, 0.08, 'highpass', 4000, 7000); },
+  // ...and REVENUE PROTECTION (public/js/story/trainfight.js)
+  rpTink(pos) { tone('triangle', 2100 + Math.random() * 700, 1500, 0.07, 0.12, pos); noise(0.03, 0.14, 'highpass', 5000, 8000, pos); }, // a bolt off the enamel
+  rpKnot(pos) { noise(0.06, 0.3, 'bandpass', 1200, 400, pos, 0, 2); tone('sine', 520, 260, 0.06, 0.14, pos); },
+  rpSever(pos) { noise(0.3, 0.9, 'lowpass', 1400, 120, pos); tone('sawtooth', 190, 38, 0.34, 0.5, pos); noise(0.5, 0.35, 'bandpass', 700, 200, pos, 0.1, 1.2); tone('sine', 70, 30, 0.4, 0.5, pos, 0.05); },
+  rpPlate(pos, fall) { noise(0.18, 0.6, 'highpass', 2600, 7000, pos); tone('triangle', 1300, 500, 0.16, 0.2, pos); if (fall) { noise(0.5, 0.7, 'bandpass', 3200, 900, pos, 0.55, 0.8); tone('sine', 90, 40, 0.3, 0.5, pos, 0.55); } }, // crazing; then it smashes on the track
+  rpHaul(pos, k = 1) { noise(0.5, 0.2 * k, 'bandpass', 160, 420, pos, 0, 2); tone('sawtooth', 44, 62, 0.5, 0.2 * k, pos); },
+  rpFlinch(pos) { tone('sawtooth', 300, 70, 0.7, 0.4, pos); noise(0.6, 0.5, 'bandpass', 500, 1800, pos, 0, 1.5); tone('sine', 1500, 600, 0.5, 0.12, pos, 0.1); },
+  rpSweep(go) { if (go) { whoosh(0.9, 0.5, 240, 900, 1.1); tone('sawtooth', 70, 120, 0.8, 0.25); } else { tone('sawtooth', 52, 44, 1.2, 0.3); noise(1.2, 0.2, 'bandpass', 200, 500, null, 0, 2); } }, // a Sweeper: it lays itself down (a low creak), then it comes (a rush)
+  rpLunge(pos) { tone('sawtooth', 60, 160, 1.2, 0.4, pos); noise(1.2, 0.3, 'lowpass', 200, 900, pos); },
+  rpCross() { noise(0.9, 1, 'bandpass', 2600, 300, null, 0, 0.8); tone('sawtooth', 110, 28, 1.1, 0.6); tone('sine', 880, 220, 0.9, 0.22); tone('sine', 55, 30, 1.4, 0.7, null, 0.2); },
+  rpClick() { tone('square', 2300, 1700, 0.018, 0.2); tone('square', 1200, 900, 0.02, 0.16, null, 0.05); }, // the Inspector's punch
+  rpCaught() { tone('sine', 120, 30, 1.3, 0.7); noise(1.2, 0.5, 'lowpass', 900, 60); },
 });
