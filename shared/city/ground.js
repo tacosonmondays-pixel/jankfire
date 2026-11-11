@@ -87,9 +87,12 @@ function relax(Hs, fixed, nx, nz, edges) { // edges: the grid's own border moves
     for (let i = e; i <= nx - e; i++) for (let j = e; j <= nz - e; j++) {
       const k = i * vz + j;
       if (fixed[k]) continue;
-      let lo = -Infinity, hi = Infinity;
-      for (const [ok, n] of [[i > 0, k - vz], [i < nx, k + vz], [j > 0, k - 1], [j < nz, k + 1]]) if (ok) { lo = Math.max(lo, Hs[n] - MAXS); hi = Math.min(hi, Hs[n] + MAXS); }
-      const h = Hs[k], t = lo > hi ? (lo + hi) / 2 : Math.max(lo, Math.min(hi, h));
+      let mx = -Infinity, mn = Infinity, v;
+      if (i > 0) { v = Hs[k - vz]; if (v > mx) mx = v; if (v < mn) mn = v; }
+      if (i < nx) { v = Hs[k + vz]; if (v > mx) mx = v; if (v < mn) mn = v; }
+      if (j > 0) { v = Hs[k - 1]; if (v > mx) mx = v; if (v < mn) mn = v; }
+      if (j < nz) { v = Hs[k + 1]; if (v > mx) mx = v; if (v < mn) mn = v; }
+      const lo = mx - MAXS, hi = mn + MAXS, h = Hs[k], t = lo > hi ? (lo + hi) / 2 : h < lo ? lo : h > hi ? hi : h;
       if (Math.abs(t - h) > 1e-4) { Hs[k] = t; any = true; }
     }
     if (!any) break;
