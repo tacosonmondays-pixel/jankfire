@@ -52,19 +52,19 @@ function drawTile(g, fam, r) {
     }
     case 'bone': speck(240, 14, 2); for (let x = 0; x < S; x += 8) line('rgba(120,90,60,0.35)', x, 0, 1, S); for (let y = 0; y < S; y += 10) line('rgba(120,90,60,0.25)', 0, y, S, 1); break;
     case 'paint': line('#fff', 0, 0, S, S); break;
-    case 'rib': speck(230, 12, 2); for (let y = 0; y < S; y += 8) { line('rgba(120,20,50,0.45)', 0, y, S, 2); line('rgba(255,255,255,0.18)', 0, y + 3, S, 1); } break;
+    case 'rib': speck(230, 12, 2); for (let y = 0; y < S; y += 8) { line('rgba(52,6,12,0.55)', 0, y, S, 2); line('rgba(255,230,220,0.16)', 0, y + 3, S, 1); } break;
     case 'window': line('#7a6a50', 0, 0, S, S); for (let x = 2; x < S; x += 16) { line('#fff6d0', x, 6, 12, 22); line('#fff6d0', x, 38, 12, 22); line('rgba(90,60,30,0.6)', x + 5, 6, 2, 22); } break;
     case 'flesh': { // wet skin: soft mottling, pores, and a few branching veins drawn wrapped so the tile repeats
       speck(222, 18, 2);
-      for (let i = 0; i < 14; i++) { g.fillStyle = `rgba(${r() < 0.5 ? '160,40,80' : '255,220,200'},0.14)`; const x = r() * S, y = r() * S, rr = 4 + r() * 9; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.beginPath(); g.arc(x + ox, y + oy, rr, 0, 6.3); g.fill(); } }
+      for (let i = 0; i < 14; i++) { g.fillStyle = `rgba(${r() < 0.5 ? '52,6,12' : '255,200,190'},0.16)`; const x = r() * S, y = r() * S, rr = 4 + r() * 9; for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { g.beginPath(); g.arc(x + ox, y + oy, rr, 0, 6.3); g.fill(); } }
       for (let i = 0; i < 40; i++) line('rgba(90,20,40,0.35)', r() * S, r() * S, 1, 1); // pores
       const vein = (x, y, a, len, w) => {
         for (let k = 0; k < 2 && len > 4; k++) {
           const x2 = x + Math.cos(a) * len, y2 = y + Math.sin(a) * len, cxp = (x + x2) / 2 + (r() - 0.5) * len * 0.6, cyp = (y + y2) / 2 + (r() - 0.5) * len * 0.6;
           for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {
-            g.strokeStyle = 'rgba(110,30,90,0.5)'; g.lineWidth = w; g.lineCap = 'round';
+            g.strokeStyle = 'rgba(34,22,52,0.6)'; g.lineWidth = w; g.lineCap = 'round';
             g.beginPath(); g.moveTo(x + ox, y + oy); g.quadraticCurveTo(cxp + ox, cyp + oy, x2 + ox, y2 + oy); g.stroke();
-            g.strokeStyle = 'rgba(190,90,150,0.35)'; g.lineWidth = Math.max(0.6, w * 0.35);
+            g.strokeStyle = 'rgba(194,90,110,0.3)'; g.lineWidth = Math.max(0.6, w * 0.35);
             g.beginPath(); g.moveTo(x + ox, y + oy - 0.5); g.quadraticCurveTo(cxp + ox, cyp + oy - 0.5, x2 + ox, y2 + oy - 0.5); g.stroke();
           }
           vein(x2, y2, a + (r() - 0.5) * 1.6, len * 0.6, w * 0.7);
@@ -74,16 +74,16 @@ function drawTile(g, fam, r) {
       for (let i = 0; i < 3; i++) vein(r() * S, r() * S, r() * 6.28, 18 + r() * 14, 2.4);
       break;
     }
-    case 'gumcobble': { // tooth cobbles set in wet gum: pink gum, rows of ivory teeth with dark gaps and a shine
-      line('rgb(214,96,128)', 0, 0, S, S);
-      for (let i = 0; i < 30; i++) line('rgba(120,20,60,0.3)', r() * S, r() * S, 2, 1);
+    case 'gumcobble': { // tooth cobbles set in wet gum: dark red gum (the darker Gut), rows of old-bone teeth with dark gaps and a shine
+      line('rgb(142,22,34)', 0, 0, S, S);
+      for (let i = 0; i < 30; i++) line('rgba(52,6,12,0.45)', r() * S, r() * S, 2, 1);
       // irregular cobbles: jittered rows, mixed sizes and tilts, packed tight (so it reads as teeth, not polka dots)
       for (let row = 0; row < 6; row++) for (let c = 0; c < 6; c++) {
         const w = 6 + r() * 6, h = 5 + r() * 5, x = c * 10.7 + (row % 2) * 5 + (r() - 0.5) * 3, y = row * 10.7 + (r() - 0.5) * 3, a = (r() - 0.5) * 0.8;
         for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) {
-          g.fillStyle = 'rgba(70,10,30,0.55)'; g.beginPath(); g.ellipse(x + ox + 1, y + oy + 1.5, w / 2 + 0.5, h / 2 + 0.5, a, 0, 6.3); g.fill();
-          g.fillStyle = `rgb(${232 + r() * 18 | 0},${220 + r() * 20 | 0},${190 + r() * 28 | 0})`; g.beginPath(); g.ellipse(x + ox, y + oy, w / 2, h / 2, a, 0, 6.3); g.fill();
-          g.fillStyle = 'rgba(255,255,255,0.65)'; g.fillRect(x + ox - w / 4, y + oy - h / 4, 2, 1);
+          g.fillStyle = 'rgba(30,4,10,0.6)'; g.beginPath(); g.ellipse(x + ox + 1, y + oy + 1.5, w / 2 + 0.5, h / 2 + 0.5, a, 0, 6.3); g.fill();
+          g.fillStyle = `rgb(${188 + r() * 18 | 0},${170 + r() * 18 | 0},${128 + r() * 22 | 0})`; g.beginPath(); g.ellipse(x + ox, y + oy, w / 2, h / 2, a, 0, 6.3); g.fill();
+          g.fillStyle = 'rgba(255,250,235,0.5)'; g.fillRect(x + ox - w / 4, y + oy - h / 4, 2, 1);
           if (r() < 0.2) { g.fillStyle = 'rgba(150,110,60,0.45)'; g.fillRect(x + ox - 1, y + oy - h / 3, 1, h * 0.6); } // a crack, a cavity
         }
       }
@@ -149,7 +149,7 @@ function patch(mat, opts = {}) {
       diffuseColor.rgb *= vPaint * tx.rgb;
       ${opts.flesh ? `
       float veins = smoothstep(0.55, 0.0, abs(sin(vWpos.x * 1.3 + sin(vWpos.y * 2.1 + uTime * 0.3) * 1.5 + vWpos.z * 0.9)));
-      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.55, 0.12, 0.25), veins * 0.45);
+      diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.22, 0.3, 0.6) + vec3(0.006, 0.003, 0.014), veins * 0.55); // veins go near-black purple (#221634)
       diffuseColor.rgb *= 0.92 + 0.16 * uBeat;` : ''}
       ${opts.glowWin ? `diffuseColor.rgb *= mix(0.55, 1.15, uNight);
       { float id = floor(vWpos.x * 0.4) + floor(vWpos.z * 0.4) * 7.0 + floor(vWpos.y * 0.5) * 13.0; // one sign in eight is on the blink
@@ -160,7 +160,7 @@ function patch(mat, opts = {}) {
     if (opts.lights !== false && !mat.isMeshBasicMaterial) { fs = '#define CITY_LIGHTS\n' + LIGHTS_HEAD + fs.replace('#include <lights_fragment_end>', '#include <lights_fragment_end>\n' + LIGHTS_GLSL); }
     if (opts.flesh) fs = fs.replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
       { float rim = pow(1.0 - abs(dot(normalize(vViewPosition), normal)), 2.5);
-        totalEmissiveRadiance += vec3(0.9, 0.12, 0.2) * rim * 0.55 * (0.7 + 0.5 * uBeat); }`);
+        totalEmissiveRadiance += vec3(0.62, 0.045, 0.07) * rim * 0.6 * (0.7 + 0.5 * uBeat); }`);
     sh.fragmentShader = fs;
   };
   mat.customProgramCacheKey = () => 'city:' + JSON.stringify(opts);

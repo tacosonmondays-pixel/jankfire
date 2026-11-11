@@ -52,6 +52,7 @@ import { defaultCard, cardEl, initCardEditor } from './cards.js';
 import { recordSnap, recordEv, clearRec, localClip, playClip, stopReplay, updateReplay, RP, serverNow } from './replay.js';
 import { EPIC_CAM, epicMul, epicCamMs } from '/shared/epic.js';
 import { BUILDS, JOKE_MAX, BODY_KEYS } from '/shared/looks.js'; // the joke body (character screen)
+import { COSTUMES, costumeFor, costumeLook, wearing } from '/shared/costumes.js';
 import { LOOK_COLORS, ACHIEVEMENTS, ACCESSORIES, LOOK_SLOTS, DEFAULT_LOOK, validLook, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS } from '/shared/looks.js';
 import { startBall, endBall, ballOn, BS, look } from './player.js';
 import { updateWreck, ballCam, wreckFx, wreckDied } from './wreck.js';
@@ -106,6 +107,8 @@ import { initCustomize, czMode, czOpen, czClose, czFrame, czKill, czLate, czRefr
 import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, zmModelsLoaded } from './zombies.js';
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
+import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
+import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
@@ -456,6 +459,7 @@ $('jank').value = String(S.jank);
 $('jank').addEventListener('change', () => { S.jank = Number($('jank').value); setJank(S.jank); saveSettings(); });
 $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
 $('shadows').addEventListener('change', () => { S.shadows = $('shadows').value; setShadowPref(S.shadows); saveSettings(); });
+const fxSync = fxUI($, S, saveSettings); // shaders: bloom, soft skin, punchy colours (fxsettings.js)
 bindRange('fov', 'fov');
 bindRange('vol', 'vol', null, () => setVolume(S.vol));
 // music has its own volume (the main one still scales it). in matches it's on (quieter, its own slider) for bots, co-op
@@ -758,6 +762,33 @@ function buildCharacterUI() {
   styles('lk-hair', 'hair', HAIRS); swatches('lk-hairColor', 'hairColor', HAIR_COLORS);
   styles('lk-top', 'top', TOPS); swatches('lk-topColor', 'topColor', CLOTH_COLORS, look.top === 'runner' ? 'hi-vis yellow' : look.top === 'maid' ? 'classic black' : 'same as your colour');
   styles('lk-bottom', 'bottom', BOTTOMS); swatches('lk-bottomColor', 'bottomColor', CLOTH_COLORS, 'same as your colour');
+  // costumes: a whole outfit in one click (shared/costumes.js, the same table the bots dress from). your colour, build
+  // and body sliders stay. locked clothes lock the costume; accessories you haven't earned are just left off
+  { const el = $('lk-costume');
+    el.innerHTML = '';
+    for (const [id, C] of Object.entries(COSTUMES)) {
+      const f = costumeFor(id, achs), c = document.createElement('button');
+      c.className = 'chip' + (wearing(id, look, achs) ? ' on' : '') + (f.locked ? ' locked' : '');
+      c.textContent = C.name;
+      const lack = (l) => l.map((x) => `${x.name} ("${x.ach}")`).join(', ');
+      c.title = C.desc + (f.locked ? ` Locked: needs ${lack(f.needs)}.` : f.missing.length ? ` Without: ${lack(f.missing)}.` : '');
+      if (f.locked) c.style.setProperty('--rc', '#ffe14d');
+      const full = () => validLook({ ...look, ...costumeLook(id, ALL_ACHS) }, ALL_ACHS); // hover: the whole thing, earned or not
+      c.addEventListener('mouseenter', () => { const t = full(); showCharacter(buildCharacter, t.color || G.myColor || '#ff4fd8', t); });
+      c.addEventListener('mouseleave', () => showCharacter(buildCharacter, shown.color || G.myColor || '#ff4fd8', shown));
+      c.addEventListener('click', () => {
+        if (f.locked) { toast(`${C.name}: needs ${lack(f.needs)}${account.loggedIn ? '' : '. log in so it counts'}`, 3600); return; }
+        // stepping out of another costume: what only that one changed (the Rat King's grey skin) goes back to plain
+        const base = { ...look }, was = Object.keys(COSTUMES).find((o) => o !== id && wearing(o, look, achs));
+        if (was) for (const k of Object.keys(COSTUMES[was].look)) if (!(k in C.look)) base[k] = DEFAULT_LOOK[k];
+        let nl = look;
+        for (let i = 0; i < 6; i++) { nl = { ...base, ...costumeLook(id, achs, (a) => a[(Math.random() * a.length) | 0]) }; if (JSON.stringify(nl) !== JSON.stringify(look)) break; } // already in it: another take
+        setLook(nl); buildCharacterUI();
+        toast(f.missing.length ? `${C.name}. ${C.desc} (no ${f.missing.map((x) => x.name).join(' or ')} yet: "${f.missing[0].ach}")` : `${C.name}. ${C.desc}`, 2800);
+      });
+      el.append(c);
+    }
+  }
   // the joke body: build chips + two sliders. dragging only moves the preview, letting go saves (and tells the server once)
   const bel = $('lk-build');
   bel.innerHTML = '';
@@ -1113,7 +1144,7 @@ function openChat() {
 }
 function closeChat(sendIt) {
   const v = $('chatin').value.trim();
-  if (sendIt && v) net.send({ t: 'chat', m: v });
+  if (sendIt && v && !gfxCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
   chatOpen = false;
   $('chatin').classList.add('hidden');
   $('chatin').blur();
@@ -2642,6 +2673,7 @@ $('scr-cosmetics').prepend(hubTabs('grapple', show, () => { classicLocker = true
 function applySettingsToUI() {
   $('jank').value = String(S.jank); setJank(S.jank);
   $('shadows').value = S.shadows || 'auto'; setShadowPref(S.shadows);
+  fxSync();
   for (const id of ['fov', 'vol', 'sens', 'adsSens']) { $(id).value = String(S[id]); $(id).dispatchEvent(new Event('input')); }
   for (const id of ['fovKick', 'shake', 'showFps', 'toggleAim', 'blood', 'killcam', 'showCards', 'speedLines']) $(id).checked = !!S[id];
   K.attach(S); // the profile may have brought its own key bindings

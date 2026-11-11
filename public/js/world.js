@@ -15,10 +15,14 @@ import { addRig } from './rigmats.js';
 import { addZmMaps } from './zmmats.js';
 import { updateForest, forestMap } from './forest.js';
 import { shredMap, updateShredPit } from './shredpit.js'; // the Warehouse's shredder pit: the drums, the glow, the grind
-import { buildProps, hasProp } from './props.js';
+import { buildPropField, updatePropField, drawnByModel, fetchMapProps, propFieldVisible } from './propfield.js'; // Blender props, instanced (round 4)
+import { TRAFFIC } from '/shared/traffic.js';
+const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.id) ? TRAFFIC[MAP.id] : null; return t && t.mix ? Object.keys(t.mix) : null; }; // (their Blender cars come with the map)
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
+import { gfxGuard, initGfxGuard } from './gfxguard.js';
+import { postBegin, postEnd } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -241,24 +245,45 @@ const mapMeshes = [];
 const chunkMeshes = [];
 // one merged mesh per material: thousands of boxes, a couple dozen draw calls
 // the shaped ground as one mesh: a vertex every metre, the texture laid on from above like every other floor
-function terrainGeo(T, tile, mi = -1) { // mi: only the cells painted with T.mats[mi] (shared/terrain.js drape); -1 = all of it
-  const vz = T.nz + 1, V = (i, j) => i * vz + j, n = (T.nx + 1) * vz;
+function terrainGeo(T, tile, mi = -1, cut = null) { // mi: only the cells painted with T.mats[mi] (shared/terrain.js drape); -1 = all of it. cut: [i0, j0, i1, j1] only those cells (a chunk of a huge map)
+  const [i0, j0, i1, j1] = cut ? [Math.max(0, cut[0]), Math.max(0, cut[1]), Math.min(T.nx, cut[2]), Math.min(T.nz, cut[3])] : [0, 0, T.nx, T.nz];
+  const vz = T.nz + 1, V = (i, j) => i * vz + j, wz = j1 - j0 + 1, W = (i, j) => (i - i0) * wz + (j - j0), n = Math.max(0, i1 - i0 + 1) * Math.max(0, wz);
   const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = [];
-  for (let i = 0; i <= T.nx; i++) for (let j = 0; j <= T.nz; j++) {
-    const k = V(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[k];
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+    const k = W(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[V(i, j)];
     const dx = (T.H[V(Math.min(T.nx, i + 1), j)] - T.H[V(Math.max(0, i - 1), j)]) / 2, dz = (T.H[V(i, Math.min(T.nz, j + 1))] - T.H[V(i, Math.max(0, j - 1))]) / 2, l = Math.hypot(dx, 1, dz);
     pos.set([x, h, z], k * 3); nrm.set([-dx / l, 1 / l, -dz / l], k * 3); uv.set([x / tile, z / tile], k * 2);
   }
-  for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) if (T.ok[i * T.nz + j] && (mi < 0 || (T.paint ? T.paint[i * T.nz + j] : 0) === mi)) idx.push(V(i, j), V(i, j + 1), V(i + 1, j), V(i + 1, j), V(i, j + 1), V(i + 1, j + 1));
+  const cb = T.coarse, S = cb ? cb.s : 1, blk = (i, j) => cb && i < cb.nbx * S && j < cb.nbz * S && cb.blocks[Math.floor(i / S) * cb.nbz + Math.floor(j / S)]; // (shared/terrain.js o.coarse: a whole block drawn as one quad)
+  for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) if (T.ok[i * T.nz + j] && (mi < 0 || (T.paint ? T.paint[i * T.nz + j] : 0) === mi)) {
+    if (blk(i, j)) { const bi = i - (i % S), bj = j - (j % S); if (bi >= i0 && bj >= j0 && bi + S <= i1 && bj + S <= j1) { if (i === bi && j === bj) idx.push(W(bi, bj), W(bi, bj + S), W(bi + S, bj), W(bi + S, bj), W(bi, bj + S), W(bi + S, bj + S)); continue; } } // (a block cut by a chunk's edge is drawn cell by cell)
+    idx.push(W(i, j), W(i, j + 1), W(i + 1, j), W(i + 1, j), W(i, j + 1), W(i + 1, j + 1));
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setIndex(idx);
   return g;
 }
 // so the shape reads: hollows a little darker, crests a little brighter, steep bits shaded (on top of the baked AO)
-function terrainTint(T, g) {
+// rock (T.rocky materials): every triangle its own flat face, so crags, ledges and gullies catch the light as edges
+function terrainFacet(T, tm, g) { if (T.rocky && T.rocky.has(tm)) g.computeVertexNormals(); return g; }
+const sm01 = (k) => { k = Math.max(0, Math.min(1, k)); return k * k * (3 - 2 * k); };
+function terrainTint(T, g, tm) {
   const col = g.attributes.color, nrm = g.attributes.normal, pos = g.attributes.position;
+  const rock = !!(T.rocky && T.rocky.has(tm)), vz = T.nz + 1, Hh = (i, j) => T.H[Math.max(0, Math.min(T.nx, i)) * vz + Math.max(0, Math.min(T.nz, j))];
   for (let i = 0; i < col.count; i++) {
+    if (rock) { // rock gets real colours by shape: mid purple-grey, steep faces dark, ash on the heights and the bench tops, rust patches, dark gully beds
+      const x = pos.getX(i), z = pos.getZ(i), y = pos.getY(i), vi = Math.round(x - T.x0), vj = Math.round(z - T.z0), c = Hh(vi, vj) - (Hh(vi - 1, vj) + Hh(vi + 1, vj) + Hh(vi, vj - 1) + Hh(vi, vj + 1)) / 4;
+      const ny = nrm.getY(i), st = sm01((0.82 - ny) / 0.2), fl = sm01((ny - 0.9) / 0.08), n1 = Math.sin(x * 0.71 + z * 0.37) * Math.sin(z * 0.83 - x * 0.29 + 1.3), n2 = Math.sin(x * 0.23 - 2.1) * Math.sin(z * 0.19 + x * 0.11 + 0.7);
+      let r = 0x6f, gg = 0x63, b = 0x79; const mix = (R, G, B, k) => { r += (R - r) * k; gg += (G - gg) * k; b += (B - b) * k; };
+      mix(0x9b, 0x91, 0x9f, Math.max(sm01((y - 0.72 * T.hi) / (0.12 * T.hi)), fl * sm01((y - 1.5) / 1.5) * 0.75)); // ash: the top fifth, and wherever it lies flat higher up
+      mix(0x7a, 0x4a, 0x3a, fl * sm01((n2 - 0.25) / 0.2) * sm01((y - 1) / 1) * 0.8); // rust, in patches on the flats
+      mix(0x4a, 0x3f, 0x55, st); // steep faces
+      mix(0x3a, 0x31, 0x42, sm01((-c - 0.18) / 0.3)); // gully beds and cracks
+      const a = (0.72 + 0.28 * col.getX(i)) * (1.12 + Math.max(-0.2, Math.min(0.45, c * 0.9)) + 0.07 * n1); // (the baked shade only lightly: on a steep slope it finds the slope itself. edges catch a bit of light; a little mottling)
+      col.setXYZ(i, a * r / 64, a * gg / 56, a * b / 70); // (over the basalt texture's own colour, about 64 56 70)
+      continue;
+    }
     const h = pos.getY(i), k = (h > 0 ? 0.11 * h / Math.max(0.5, T.hi) : 0.24 * h / Math.max(0.5, -T.lo)) - 0.5 * (1 - nrm.getY(i)) * 2.2;
     const a = col.getX(i) * (1 + k);
     col.setXYZ(i, a, a, a * (1 - Math.max(0, -k) * 0.25)); // (the dark bits a touch warmer)
@@ -274,17 +299,17 @@ function buildMap(scene) {
   if (def && def.chunk) { buildChunked(scene, def); return; }
   const groups = new Map();
   const push = (k, g) => { if (!groups.has(k)) groups.set(k, []); groups.get(k).push(g); };
-  // deco: drawn, never bumped into. a Blender prop stands in only for real boxes (props.js draws map.boxes.props): look-only
-  // scenery keeps its boxes (the city alone has hundreds of streetlights and cars, too many models to draw one by one)
+  // deco: drawn, never bumped into. a box tagged with a Blender prop isn't drawn while its model is loaded: the model is
+  // (propfield.js, one instanced draw per prop type, so the scenery's thousands of trees and lights can be models too)
   const TR = BOXES.terrain, real = TR ? BOXES.filter((b) => !b.ter) : BOXES; // shaped ground (shared/terrain.js): its hidden steps aren't drawn, the heightfield is (below)
   const all = def && def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
   const shoreBoxes = TR ? [...BOXES, ...(def && def.deco ? def.deco : [])] : all; // (the water's shore map needs the ground's steps: that's how it knows a pond is deep)
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainTint(TR, aoBake(g, false)).toNonIndexed()); });
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())); });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue;
+    if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue;
     if (liquidBox(b)) { liq.push(b); continue; } // water, lava, fire: liquids.js / flames.js draw those
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -320,6 +345,30 @@ function buildMap(scene) {
   buildLiquids(scene, liq, shoreBoxes, def, hazify);
 }
 
+// tests (tools/blender/shots_r4.cjs): the box version of the props on top of the map as it is, the models hidden, so
+// box and Blender can be shot from the same camera without building the map again
+const propBoxMeshes = [];
+export function showPropBoxes(on) {
+  for (const m of propBoxMeshes) { G.scene.remove(m); m.geometry.dispose(); }
+  propBoxMeshes.length = 0;
+  propFieldVisible(!on);
+  if (on && MAT && MAP.id) {
+    const def = MAPS[MAP.id], all = def && def.deco ? [...BOXES, ...def.deco] : BOXES, groups = new Map();
+    for (const b of all) {
+      if (!(b.pv && drawnByModel(b.pv))) continue;
+      const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
+      const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2, mk = MAT[b.mat] ? b.mat : 'stone';
+      const g = boxGeo(sx, sy, sz);
+      if (b.rot) { if (!b.fit) worldUV(g, 0, 0, 0, MAT[mk].tile); g.rotateY(b.rot); } else if (!b.fit) worldUV(g, cx, cy, cz, MAT[mk].tile);
+      g.translate(cx, cy, cz);
+      if (!groups.has(mk)) groups.set(mk, []);
+      groups.get(mk).push(aoBake(g, aoSmall(sx, sy, sz)).toNonIndexed());
+    }
+    for (const [k, list] of groups) { const merged = mergeGeometries(list, false); for (const g of list) g.dispose(); if (!merged) continue; const m = mapMesh(G.scene, k, merged); G.scene.add(m); propBoxMeshes.push(m); }
+  }
+  lightingRefresh();
+}
+
 // huge maps (map.chunk metres): one merged mesh per material per chunk, so what's behind you or deep in the fog isn't
 // drawn. map.deco boxes are drawn too but never bumped into. boxes bigger than a chunk (floors, ceilings, the long
 // outer walls) go in one mesh per material that's always drawn, or they'd make their whole chunk impossible to cull
@@ -329,10 +378,17 @@ function buildChunked(scene, def) {
   const all = def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainTint(TR, aoBake(g, false)).toNonIndexed()] }); }); // one mesh per ground material, always drawn
+  // the shaped ground, a piece per chunk per ground material (so the far side of the map isn't drawn through the haze)
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone';
+    for (let ci = Math.floor(TR.x0 / C); ci * C < TR.x0 + TR.nx; ci++) for (let cj = Math.floor(TR.z0 / C); cj * C < TR.z0 + TR.nz; cj++) {
+      const g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1, [ci * C - TR.x0, cj * C - TR.z0, (ci + 1) * C - TR.x0, (cj + 1) * C - TR.z0]);
+      if (!g.index.count) { g.dispose(); continue; }
+      const key = tk + '|' + ci + ',' + cj; if (!groups.has(key)) groups.set(key, { k: tk, nc: '', list: [] });
+      groups.get(key).list.push(terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed()));
+    } });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
-    if ((i < nReal && b.pv && hasProp(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap: only real boxes give way to a prop / a building)
+    if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap)
     if (liquidBox(b)) { liq.push(b); continue; } // (liquids.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -458,6 +514,7 @@ export function initWorld(canvas) {
   buildMap(scene);
   addEventListener('resize', resize);
   resize();
+  initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
 export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
@@ -477,8 +534,11 @@ export function loadMap(id) {
   cityFor(MAPS[MAP.id]);
   marbles.clear();
   resetGrid(BOXES);
+  // this map's prop models: asked for first, so the map is built once, without the boxes they stand in for (they pop in
+  // when they land: only the props are redrawn; one that never comes gets its boxes back)
+  fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals);
   buildMap(G.scene);
-  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  buildPropField(G.scene, MAPS[MAP.id], MAT);
   archFor(MAP.id);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
@@ -506,8 +566,10 @@ export function loadMap(id) {
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
 export function refreshMapVisuals() {
   if (!MAP.id || !G.scene || !MAT) return;
+  if (MAPS[MAP.id] && MAPS[MAP.id].stream) return; // a streamed city draws itself (city/ingame.js), and its BOXES are live collision: redrawing them here stood a stone copy of every wall, and every hidden box, in the story's world when the models landed late
+  fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals); // (the model list may have come after the map)
   buildMap(G.scene);
-  buildProps(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.props);
+  buildPropField(G.scene, MAPS[MAP.id], MAT);
   buildArch(G.scene, MAPS[MAP.id] && MAPS[MAP.id].boxes.arch);
   lightingRefresh();
 }
@@ -518,6 +580,37 @@ function archFor(id) {
   buildArch(G.scene, list);
   wantArch(list, () => { if (MAP.id === id) refreshMapVisuals(); });
 }
+
+// ---- gfxguard.js hooks (the "everything renders black" safety net)
+// fresh canvas textures on the map materials that are already in use (same material objects, so nothing has to be rebuilt)
+export function repaintMapTextures() {
+  if (!MAT) return 0;
+  const fresh = makeMaterials();
+  let n = 0;
+  for (const [k, v] of Object.entries(fresh)) {
+    const old = MAT[k];
+    for (const slot of ['map', 'emissiveMap']) {
+      const t = v.mat[slot];
+      if (!t) continue;
+      if (old && old.mat[slot] && old.mat[slot] !== t) { old.mat[slot].dispose(); old.mat[slot] = t; old.mat.needsUpdate = true; n++; } else t.dispose();
+    }
+    v.mat.dispose();
+  }
+  return n;
+}
+// the current map's own fog, sky light and sun again (a streamed city sets its own every frame)
+export function relightMap() {
+  const def = MAPS[MAP.id];
+  if (!def || !G.scene || def.stream) return false;
+  G.scene.fog.color.setHex(MAP.sky.fog); G.scene.fog.near = MAP.fogNear; G.scene.fog.far = MAP.fogFar;
+  const hz = def.haze;
+  hazeUniforms.uHaze.value.set(hz ? hz.k : 0, hz ? hz.top : 0, hz ? hz.bottom : -1, hz ? hz.dist : 100);
+  mapLight(def);
+  lightingMap(def, MAP.id, !!def.night, sun);
+  return true;
+}
+export const mapMats = () => MAT;
+
 
 const TOUCH_MAX_PX = 1280 * 720;
 export function resize() {
@@ -551,9 +644,15 @@ export function updateWorld(dt) {
 let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
+  gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
+  updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
+  const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
+  if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way
+    r.setRenderTarget(null); r.clear(); r.render(G.scene, G.camera); r.clearDepth(); r.render(G.vmScene, G.vmCamera);
+  }
 }

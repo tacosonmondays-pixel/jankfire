@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { CARS } from '/shared/traffic.js';
+import { AUTHORED } from './glbkit.js';
 
 const C = (hex) => new THREE.Color(hex);
 const DARK = '#1d1d22', TRIM = '#2c2c33', CHROME = '#c9ced6', GLASS = '#2e4664', GLASS_HI = '#4f6f96', PLATE = '#f4f1e4', TIRE = '#18181b';
@@ -351,6 +352,8 @@ function decalMat(tex, patch) {
 
 // a car you can put in the scene: root (position + heading), body (pitch / roll / bounce), wheels (spin, steer)
 export function makeCar(ty, colHex, ci, patch) {
+  const glb = AUTHORED['p_car_' + ty] && !CODE_CARS && glbCar(ty, colHex, ci, patch); // the Blender car (round 4), when its file is in
+  if (glb) return glb;
   const d = buildDesign(ty, colHex, ci);
   const root = new THREE.Group(), body = new THREE.Group();
   root.add(body);
@@ -369,4 +372,73 @@ export function makeCar(ty, colHex, ci, patch) {
     return { pivot, spin, ...w };
   });
   return { root, body, bodyMesh, lamps, tails, inds, wheels, wb: d.wb, lampPos: d.lampPos };
+}
+
+// ------------------------------------------------------------ the Blender cars (tools/blender/make_traffic.py, round 4)
+// same parts as the code car: a body (the paint is the `tint` material: each car its own colour), the lamps, tails and
+// indicators (the code car's materials, so traffic.js switches them the same way), a wheel each on a hub pivot
+const CODE_CARS = (() => { try { return /[?&]cars=code/.test(location.search); } catch { return false; } })(); // (tests: ?cars=code)
+const glbPaint = new Map();
+const stripN = (n) => (n || '').replace(/\.\d+$/, '');
+function paintOf(m, hex) {
+  const k = m.uuid + hex;
+  if (!glbPaint.has(k)) { const c = m.clone(); c.color.set(hex); c.onBeforeCompile = m.onBeforeCompile; c.userData.shared = true; glbPaint.set(k, c); }
+  return glbPaint.get(k);
+}
+const lampGeo = new WeakMap(); // (one per model, not one per car: cars come and go all match)
+function whiteColors(g) { // carMats.lamp reads vertex colours
+  if (g.getAttribute('color')) return g;
+  if (!lampGeo.has(g)) { const c = g.clone(), n = c.getAttribute('position').count; c.setAttribute('color', new THREE.BufferAttribute(new Float32Array(n * 3).fill(1), 3)); c.userData.shared = true; lampGeo.set(g, c); }
+  return lampGeo.get(g);
+}
+const PAINT_OF = (ty, col, ci) => ty === 'van' ? ['#f2f2ee', '#e86a22', '#ffe14d', '#ff2fa8'][ci % 4] : ty === 'icecream' ? '#bff5e4' : ty === 'bus' ? BUS_COLS[ci % 4] : ty === 'taxi' ? '#ffd21a' : col;
+const vanTex = new Map(); // (one livery texture each, not one per van: vans come and go all match)
+function glbCar(ty, colHex, ci, patch) {
+  const a = AUTHORED['p_car_' + ty], meta = a.meta || {}, src = a.scene;
+  src.updateMatrixWorld(true);
+  const find = (re) => { let r = null; src.traverse((o) => { if (!r && re.test(stripN(o.name))) r = o; }); return r; };
+  const root = new THREE.Group(), body = new THREE.Group(), bodies = [];
+  root.add(body);
+  const hex = PAINT_OF(ty, colHex, ci), T = CARS[ty];
+  const inv = new THREE.Matrix4().copy(src.matrixWorld).invert(), mw = new THREE.Matrix4();
+  const place = (o, into) => { const c = o.clone(false); mw.multiplyMatrices(inv, o.matrixWorld); mw.decompose(c.position, c.quaternion, c.scale); into.add(c); return c; };
+  let lamps = null, tails = null, inds = null;
+  const under = (o, re) => { for (let p = o; p; p = p.parent) if (re.test(stripN(p.userData.name ?? p.name))) return true; return false; }; // (the file's own name: three drops the dots)
+  src.traverse((o) => {
+    if (!o.isMesh || under(o, /^lod1$/) || under(o, /^wheel_/)) return;
+    const n = stripN(o.name), mn = stripN(o.material && o.material.name);
+    const m = place(o, body);
+    m.castShadow = true;
+    if (n === 'lamps' || mn === 'lamp') { m.geometry = whiteColors(o.geometry); m.material = carMats.lamp; lamps = lamps || m; return; }
+    if (n === 'tails' || mn === 'tail') { m.material = carMats.tail; tails = tails || m; return; }
+    if (n === 'inds' || mn === 'ind') { m.material = carMats.ind; inds = inds || m; return; }
+    if (mn === 'tint' && meta.tint !== false) m.material = paintOf(o.material, hex);
+    bodies.push(m);
+  });
+  // traffic.js swaps the body's material for the burnt one: every body part takes it
+  const bodyMesh = { get material() { return bodies[0] && bodies[0].material; }, set material(v) { for (const b of bodies) b.material = v; } };
+  const wheels = [];
+  for (const [nm, front] of [['wheel_fl', 1], ['wheel_fr', 1], ['wheel_rl', 0], ['wheel_rr', 0]]) {
+    const w = find(new RegExp('^' + nm + '$'));
+    if (!w) continue;
+    const pivot = new THREE.Group(), spin = new THREE.Group(), hub = new THREE.Vector3().setFromMatrixPosition(mw.multiplyMatrices(inv, w.matrixWorld));
+    pivot.position.copy(hub);
+    const wm = w.clone(true); wm.position.set(0, 0, 0); // (the hub is the pivot's)
+    wm.traverse((o) => { if (o.isMesh) o.castShadow = true; });
+    const bb = new THREE.Box3().setFromObject(w), size = bb.getSize(new THREE.Vector3());
+    spin.add(wm); pivot.add(spin); root.add(pivot);
+    wheels.push({ pivot, spin, x: hub.x, y: hub.y, z: hub.z, r: Math.max(0.2, size.y / 2), w: size.x, side: hub.x < 0 ? -1 : 1, front: !!front, dual: false });
+  }
+  if (wheels.length < 4) return null; // (not the parts the traffic needs: the code car)
+  // vans: the code van's livery (plumber, removals, hot dog, cola) on both sides, at the spot the model leaves for it
+  const d = meta.decal;
+  if (ty === 'van' && d && [d.w, d.h, d.x, d.y, d.z].every(Number.isFinite)) {
+    const name = VANS[ci % 4];
+    if (!vanTex.has(name)) vanTex.set(name, LIVERY[name]());
+    for (const sd of [1, -1]) { const g = new THREE.PlaneGeometry(d.w, d.h); g.rotateY(sd * Math.PI / 2); g.translate(sd * d.x, d.y, d.z); body.add(new THREE.Mesh(g, decalMat(vanTex.get(name), patch))); }
+  }
+  const fz = wheels.filter((w) => w.front).map((w) => w.z), bz = wheels.filter((w) => !w.front).map((w) => w.z);
+  const wb = fz.length && bz.length ? fz[0] - bz[0] : (T ? T.L * 0.6 : 2.6);
+  const lampPos = Array.isArray(meta.lamps) && meta.lamps.length ? meta.lamps : [[(T ? T.W : 1.8) / 2 - 0.35, 0.75, (T ? T.L : 4.4) / 2]];
+  return { root, body, bodyMesh, lamps, tails, inds, wheels, wb, lampPos };
 }

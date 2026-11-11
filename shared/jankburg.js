@@ -85,6 +85,8 @@ export const PLAN = {
 // ------------------------------------------------------------ the build
 import { MAPS, MAP_ORDER, prop, builder, rng, wall, stairs, shell, car, tree, streetlight, tower, horizon, home, lollipop, conifer, adBoard, stall, pot, groundHoles, unstick } from './map.js';
 import { buildNav } from './nav.js';
+import { shapeGround } from './terrain.js';
+import { propOf } from './propcap.js'; // (round 4: Blender props over their boxes, look-only)
 import { outOfBounds } from './bounds.js';
 
 const F = 3.4; // storey height
@@ -401,6 +403,10 @@ function jankburg() {
   horizon(D, -G, -G, G, G, 2200, 'dirt');
 
   const bounds = [-G + 1, -G + 1, G - 1, G - 1];
+  // the outer ring's dirt is real ground (shared/terrain.js): humps and hollows between the shacks, the orchard on a roll,
+  // the avenues and the highway ramps dead level. the city inside the firewall stays paved flat (its ground isn't dirt)
+  shapeGround(B, D, { region: [-G, -G, G, G], mat: 'dirt', seed: 9090, up: 3.4, down: 1.8, near: 0.6, far: 3.5, big: 9, step: 0.25, coarse: 2,
+    flat: [[-14, -G, 14, -H], [-14, H, 14, G], [-G, -14, -H, 14], [H, -14, G, 14]], points: [...spawns, ...lootHints] });
   const sp = spawns.filter((p) => Math.max(Math.abs(p[0]), Math.abs(p[2])) < H - 6);
   for (let i = sp.length - 1; i > 0; i--) { const j = (r() * (i + 1)) | 0; [sp[i], sp[j]] = [sp[j], sp[i]]; }
   let graph = null;
@@ -503,8 +509,8 @@ function stallSquare(B, cx, cz, rv) {
   for (let x = cx - 15; x <= cx + 15; x += 7.5) for (let z = cz - 13; z <= cz + 13; z += 8.5) stall(L, x, z, ((x + z) | 0) % 2 ? 0 : 2, rv);
 }
 function vending(B, x, z, r, front) {
-  const L = B.local(0, 0, 0);
-  L.B(x, 1, z, 1.2, 2, 0.9, 'metal'); L.B(x, 1.25, z - 0.46, 0.9, 1.3, 0.05, pickR(r, ['neonpink', 'neoncyan', 'neonyellow', 'adfun']));
+  const L = B.local(0, 0, 0), o = {}; // (the Blender machine, its cabinet the colour of its panel)
+  propOf('vending', L.pt(x, 0, z), L.yaw, () => { L.B(x, 1, z, 1.2, 2, 0.9, 'metal'); L.B(x, 1.25, z - 0.46, 0.9, 1.3, 0.05, o.t = pickR(r, ['neonpink', 'neoncyan', 'neonyellow', 'adfun'])); }, o);
   if (!front) VEND.push([x, z]);
 }
 function numberWorks(B, D, cx, cz, rv) {

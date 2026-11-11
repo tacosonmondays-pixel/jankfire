@@ -1,9 +1,11 @@
 # School bus: a conventional (hood out front) full-size school bus: 11 m box + 1 m hood, 2.44 m wide, 3.1 m tall,
 # nine windows a side, black rub rails, red + amber warning lights, a stop arm, dual rear wheels. Front = +x.
 # Grimy school-bus yellow, a district that doesn't exist, a magenta tag on the back.
-# Collision boxes: shared/props.js PROPS.bus.  run: blender -b --python tools/blender/make_bus.py
+# Collision boxes: shared/props.js PROPS.bus.  run: blender -b --python tools/blender/make_bus.py -- [--qa] [--fresh]
+# Far LOD (lod1, from 60 m): far() below. farlod.main keeps the shipped lod0 byte for byte and adds it (--fresh: all new).
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
+import farlod
 
 
 def build():
@@ -84,7 +86,84 @@ def build():
         P.extend(wheel(0.52, 0.28, (-2.6, 0.52, sz * 0.8), tire, rim, spokes=8))
     for p in P: uv_box(p, 0.4)
     bus = join(P, 'bus')
-    return finish('p_bus', [bus], {'kind': 'prop', 'id': 'bus'})
+    root = finish('p_bus', [bus], {'kind': 'prop', 'id': 'bus', 'lod': 60})
+    farlod.attach_far(root, [join(far(black, rim), 'bus_far')])
+    return root
 
 
-main(build, 'p_bus')
+def far(black, rim):
+    """lod1, the bus from 60 m on (~280 tris): the body and hood outlines with the arches cut, its windows, rub rails,
+    lettering, door, stop arm, signs and lamps painted on one picture (the same yellow), black bumpers and wheel wells,
+    octagon wheels (the rear duals as one wide one)."""
+    W = H = 256
+    X0, X1, Y0, Y1, Z0, Z1 = -5.7, 6.7, 0.3, 3.15, -1.25, 1.25
+    # each side's picture: its pixel rect, the game axis that runs across it (from a0 at the left to a1) and up it
+    V = {'+z': ((0, 0, 256, 60), 0, X0, X1, 1, Y0, Y1), '-z': ((0, 60, 256, 60), 0, X1, X0, 1, Y0, Y1),
+         '+y': ((0, 120, 256, 52), 0, X0, X1, 2, Z0, Z1), '-y': ((104, 172, 8, 8), 0, X0, X1, 2, Z0, Z1),
+         '+x': ((0, 172, 52, 60), 2, Z1, Z0, 1, Y0, Y1), '-x': ((52, 172, 52, 60), 2, Z0, Z1, 1, Y0, Y1)}
+    def to_px(k, a, b):
+        (rx, ry, rw, rh), _, a0, a1, _, b0, b1 = V[k]
+        return rx + (a - a0) / (a1 - a0) * rw, ry + (b1 - b) / (b1 - b0) * rh
+    def rect(px, k, a0, a1, b0, b1, col):
+        (c0, r0), (c1, r1) = to_px(k, a0, b1), to_px(k, a1, b0)
+        c0, c1 = sorted((c0, c1)); r0, r1 = sorted((r0, r1))
+        c0, r0 = int(round(c0)), int(round(r0))
+        px[r0:max(r0 + 1, int(round(r1))), c0:max(c0 + 1, int(round(c1)))] = hexrgb(col)
+    def disc(px, k, a, b, r, col):
+        cx, cy = to_px(k, a, b); (rx, ry, rw, rh), _, a0, a1, _, _, _ = V[k]
+        px_disc(px, cx, cy, max(1.0, r / abs(a1 - a0) * rw), col)
+    def text(px, k, s, a, b, col, w):  # centred on (a, b), squeezed into w metres
+        g = np.zeros((7, 6 * len(s) - 1, 3), np.float32); text_px(g, s, 0, 0, 1, 0xffffff); m = g[:, :, 0] > 0.5
+        cx, cy = to_px(k, a, b); (rx, ry, rw, rh), _, a0, a1, _, _, _ = V[k]
+        wp = max(1, int(round(w / abs(a1 - a0) * rw)))
+        mm = m[:, (np.arange(wp) * m.shape[1] / wp).astype(int)]
+        x0, y0 = int(round(cx - wp / 2)), int(round(cy - 3.5))
+        sub = px[y0:y0 + 7, x0:x0 + wp]; sub[mm[:sub.shape[0], :sub.shape[1]]] = hexrgb(col)
+    GLASS, INK = 0x1c2836, 0x161618
+    def draw(px):
+        px[:] = hexrgb(0xffb400)
+        rect(px, '-y', X0, X1, Z0, Z1, INK)  # (the underside, the arch roofs)
+        for k in ('+z', '-z'):
+            for i in range(9):
+                x = -4.75 + i * 1.05
+                rect(px, k, x - 0.43, x + 0.43, 1.85, 2.63, GLASS); rect(px, k, x - 0.43, x + 0.43, 2.285, 2.315, INK)  # windows, sash
+            for y in (0.78, 1.16, 1.66): rect(px, k, -5.4, 5.4, y - 0.035, y + 0.035, INK)  # rub rails
+            text(px, k, 'JANKFIRE CO SCHOOLS', -0.6, 1.41, 0x111111, 7.2)
+        rect(px, '+z', 4.425, 5.275, 0.55, 2.45, GLASS); rect(px, '+z', 4.835, 4.865, 0.55, 2.45, INK)  # the folding door
+        disc(px, '-z', 3.9, 2.0, 0.24, 0xd01020); rect(px, '-z', 3.78, 4.02, 1.98, 2.02, 0xffffff)  # the stop arm, folded
+        for k in ('+x', '-x'):
+            text(px, k, 'SCHOOL BUS', 0.0, 2.92, 0x111111, 1.5)
+            for z, c in ((1.0, 0xff1a2a), (0.82, 0xffa020), (-0.82, 0xffa020), (-1.0, 0xff1a2a)): disc(px, k, z, 2.92, 0.1, c)
+        for z in (-0.56, 0.56): rect(px, '+x', z - 0.52, z + 0.52, 1.88, 2.78, GLASS)  # windscreen
+        rect(px, '+x', -0.5, 0.5, 0.76, 1.36, INK)  # grille
+        for i in range(6): rect(px, '+x', -0.48, 0.48, 0.825 + i * 0.09, 0.855 + i * 0.09, 0xc8ccd4)
+        for z in (-0.72, 0.72): disc(px, '+x', z, 1.08, 0.11, 0xfff4d0)  # headlamps
+        for z in (-0.5, 0.5): rect(px, '-x', z - 0.35, z + 0.35, 1.4, 2.8, GLASS)  # the emergency door's windows
+        for z in (-0.9, 0.9): disc(px, '-x', z, 1.0, 0.12, 0xff1a2a)  # tail lamps
+        text(px, '-x', 'JANK!', 0.6, 1.4, 0xff1ad0, 0.9)
+    pic = mat('bus_far', 0xffffff, rough=0.3, tex=tex_canvas('bus_far_t', W, H, draw))
+    def uv_views(o):  # each face takes the picture of the side it looks at
+        me = o.data; uv = (me.uv_layers.active or me.uv_layers.new()).data; mw = o.matrix_world; nm = mw.to_3x3()
+        for poly in me.polygons:
+            n = nm @ poly.normal; g = (n.x, n.z, -n.y); i = max(range(3), key=lambda j: abs(g[j]))
+            (rx, ry, rw, rh), ia, a0, a1, ib, b0, b1 = V[('+' if g[i] > 0 else '-') + 'xyz'[i]]
+            for li in poly.loop_indices:
+                v = mw @ me.vertices[me.loops[li].vertex_index].co; q = (v.x, v.z, -v.y)
+                uv[li].uv = ((rx + (q[ia] - a0) / (a1 - a0) * rw) / W, 1 - (ry + (b1 - q[ib]) / (b1 - b0) * rh) / H)
+    arch = lambda cx, cy, r, angs: [(cx + r * math.cos(math.radians(t)), cy + r * math.sin(math.radians(t))) for t in angs]
+    out = [(-5.5, 0.48), (-3.2, 0.48)] + arch(-2.6, 0.5, 0.6, (160, 120, 90, 60, 20)) + [(-2.0, 0.48), (5.17, 0.48)] + \
+          arch(5.75, 0.5, 0.58, (160, 130)) + [(5.5, 1.023), (5.5, 2.96), (5.38, 3.08), (-5.38, 3.08), (-5.5, 2.96)]
+    F = [side_x(out, 2.44, (0, 0, 0), pic, name='far_body'),
+         side_x([(5.4, 0.5), (6.42, 0.5), (6.55, 0.72), (6.5, 1.42), (6.2, 1.72), (5.4, 1.78)], 2.1, (0, 0, 0), pic, name='far_hood')]
+    for o in F: apply_mods(o); uv_views(o)
+    D = [box((1.2, 0.63, 1.34), (-2.6, 0.805, 0), black, name='far_well'),  # wheel wells, just touching the tyres
+         box((1.16, 0.61, 1.84), (5.75, 0.795, 0), black, name='far_well'),
+         box((0.2, 0.3, 2.4), (6.62, 0.62, 0), black, name='far_bumper'), box((0.2, 0.3, 2.43), (-5.58, 0.62, 0), black, name='far_bumper')]
+    for sz in (-1, 1):
+        D.append(farlod.far_wheel(0.5, 0.3, (5.75, 0.5, sz * 1.06), black, rim))
+        D.append(farlod.far_wheel(0.52, 0.58, (-2.6, 0.52, sz * 0.95), black, rim))  # (the duals)
+    for o in D: uv_box(o, 0.4)
+    return F + D
+
+
+farlod.main(build, 'p_bus')

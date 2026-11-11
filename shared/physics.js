@@ -4,7 +4,7 @@
 export const PH = { halfW: 0.4, height: 1.8, eye: 1.6, step: 0.6 };
 // shaped ground (shared/terrain.js): boxes.terrain is a heightfield bodies walk on. the stepped boxes under it ({ ter: 1 })
 // are for everything else, and their top 0.7 m is soft to a body (below that they're a wall: the canyon's face)
-const soft = (b, y) => b.ter === 1 && y > b.max[1] - 0.7;
+const soft = (b, y) => b.ter === 1 && y > b.max[1] - (b.sw || 0.7); // (sw: deeper on a map whose ground is steep rock you still walk up, shapeGround's soft)
 
 // ------------------------------------------------------------ broadphase: a 2D grid over x/z so big maps stay fast
 const CELL = 8;
@@ -115,6 +115,7 @@ export function movePlayer(pos, vel, dt, allBoxes, canStep) {
         if (!overlap(pos[0] - hw, pos[1], pos[2] - hw, pos[0] + hw, pos[1] + h, pos[2] + hw, b)) continue;
         if (T && soft(b, pos[1] + 0.3)) continue; // the heightfield is the ground here, not its steps
         if (ax === 1) {
+          if (d < 0 && T && b.min[1] > pos[1] + 1.1) continue; // shaped ground walked you up under something (a tree's crown, an awning): that's over your head, not a landing. the sideways pass stops you there
           if (d < 0) { pos[1] = b.max[1]; res.ground = b; onBox = true; } else { pos[1] = b.min[1] - h - 1e-4; res.ceil = true; }
           vel[1] = 0;
         } else {

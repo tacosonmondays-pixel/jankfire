@@ -63,7 +63,9 @@ export const WEAPONS = {
     slot: 'primary', kind: 'bow', name: 'Bow', color: '#c88a4a',
     desc: 'Hold to draw, let go to fire. Every arrow gets a random tip: regular, power, knockback, flame, explosion, gas or sleep (knocks them flat for 4 s).',
     // buffed 2026-11-10 (owner: people zip around too fast to kill with it): quicker draw, faster + fatter arrows, more damage
-    cd: 0.35, draw: 0.7, speed: 45, speedMax: 115, grav: 8, r: 0.24, dmg: 30, dmgMax: 85,
+    // dmgMax 85 -> 70 (owner, 2026-11-11): a full draw did more to the body than the sniper. the head (x1.5 = 105) is still a
+    // one-shot, two body arrows still kill, a power tip is 126
+    cd: 0.35, draw: 0.7, speed: 45, speedMax: 115, grav: 8, r: 0.24, dmg: 30, dmgMax: 70,
     ads: { zoom: 1.6, p: [0, -0.1, -0.3] },
   },
   banana: {
@@ -574,3 +576,12 @@ for (const [id, charges, recharge] of [['radar', 2, 32], ['nvg', 2, 28], ['lapto
 // them and they can walk out of it. cd: the long recharge. kills count as the scales' in gun game, but humiliate nobody
 export const GAVEL = { range: 42, cone: 0.16, delay: 1.0, r: 2.3, h: 3.2, dmg: 20, kbUp: 7, cd: 10 };
 WEAPONS.gavel = { slot: null, kind: 'gavel', name: 'Summons', color: '#ffc83a' }; // the kill-feed tag
+// OVERDUE only (story rooms: server/storytrain.js): the Blood Cross as a minigun, on a motor (docs/story/TRAIN.md §3).
+// slot null, so it is never in a loadout, a crate, a ladder or a bot's hands, and only a story room takes its 'fire'.
+// hold fire: the ring spins up (spin), then rate bolts a second, each paid in your own HP (cost); every bloomEvery-th
+// bolt in the same target blooms a cross (bloomDmg on a boss; the Blood Cross's own burst and pop on anyone with a body)
+WEAPONS.blooddrive = {
+  slot: null, kind: 'blooddrive', name: 'Blood Drive', color: '#ff1f3d',
+  desc: 'The finger trick, six at a time, on a motor. It will empty you in three seconds. Do not hold it down unless you mean it.',
+  spin: 0.8, rate: 14, dmg: 18, cost: 2, range: 90, bloomEvery: 6, bloomDmg: 60, heal: 10, // heal: blood back for a kill (a severed arm pays its own: RP.arm.blood)
+};

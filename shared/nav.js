@@ -94,7 +94,9 @@ export function buildNav(boxes, o) {
           if (cx > b.min[0] && cx < b.max[0] && cz > b.min[2] && cz < b.max[2]) floor[i * n + j] = 1;
         }
       }
-      if (b.max[1] > y + (band ? band + 0.06 : 0.3) && b.min[1] < y + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
+      let yl = y, yh = y; // (on a slope a boulder sunk in the uphill side, its top under the ground at its middle, still sticks out on the downhill side: go by the ground at its corners too. small things only: a bridge or a dock's corners hang over the sea bed)
+      if (TR && lv === 0 && !b.ter && b.max[0] - b.min[0] <= 5 && b.max[2] - b.min[2] <= 5 && b.max[1] < y - 0.06) for (const cx of [b.min[0], b.max[0]]) for (const cz of [b.min[2], b.max[2]]) { const v = y0 + gy(cx, cz); if (v < yl) yl = v; if (v > yh) yh = v; }
+      if ((b.max[1] > y + (band ? band + 0.06 : 0.3) || b.max[1] > yl + (band ? band + 0.06 : 0.3) + 0.45) && b.min[1] < yh + 1.75) bucket(ob, [b.min[0] - R, b.min[2] - R, b.max[0] + R, b.max[2] + R]); // a standing body would bump into it
     }
     // no floor = in the way too (that's how you end up on the level below). a hole cell with holes all round it is
     // skipped: a straight line from any node has to cross a hole cell on the edge of the hole first, and that blocks it
@@ -117,7 +119,12 @@ export function buildNav(boxes, o) {
         const ii = i + di, jj = j + dj;
         if (ii < 0 || jj < 0 || ii >= n || jj >= n || idx[ii * n + jj] < 0) continue;
         const b = idx[ii * n + jj], p = g.nodes[a], q = g.nodes[b];
-        if (navClear(g, lv, p[0], p[2], q[0], q[2])) link(a, b);
+        if (!navClear(g, lv, p[0], p[2], q[0], q[2])) continue;
+        // shaped ground too steep to walk up (a crag, a cliff band: more than TR.climb up per metre, about 0.85): only a way down
+        const up = TR && lv === 0 ? (q[1] - p[1]) / Math.hypot(q[0] - p[0], q[2] - p[2]) : 0;
+        const CLIMB = (TR && TR.climb) || 0.85;
+        if (TR && lv === 0 && di && dj && Math.max(gy(p[0], q[2]), gy(q[0], p[2])) + y0 - Math.min(p[1], q[1]) > CLIMB) continue; // (cutting a corner past a bank that high doesn't work: go round by the straight links)
+        if (up > CLIMB) link(b, a, true); else if (up < -CLIMB) link(a, b, true); else link(a, b);
       }
     }
     at.push(idx);

@@ -39,7 +39,7 @@ function css() {
   document.head.appendChild(s);
 }
 
-export function makeBossRef({ actorOf, busy }) {
+export function makeBossRef({ actorOf, busy, boxes, own }) { // boxes(c): a boss that isn't a cast model gives its own hitboxes (the train fight); own(who): ...and has no c_<who>.parts.json
   const R = { cur: null, stuck: [] };
   let bar = null;
   const el = (cls, tag = 'div') => { const d = document.createElement(tag); if (cls) d.className = cls; return d; };
@@ -61,6 +61,7 @@ export function makeBossRef({ actorOf, busy }) {
     r.update = (...a) => { upd(...a); r.ch.root.visible = false; if (r.shadow) r.shadow.visible = false; if (r.marker) r.marker.visible = false; };
     const plain = r.hitboxes.bind(r);
     r.hitboxes = () => {
+      if (own && own(c.who)) return (boxes && boxes(c)) || plain();
       const P = partsOf(c.who); if (!P) return plain();
       const out = [worldBox(r, P.body.c, [P.body.r, P.body.h / 2, P.body.r], 0.85)];
       for (const k of ['head', 'gunR', 'gunL']) if (P.parts[k]) out.push(worldBox(r, P.parts[k].c, P.parts[k].h));
@@ -84,7 +85,7 @@ export function makeBossRef({ actorOf, busy }) {
     if (ev.type === 'hit' && fin(ev.hp)) c.hp = ev.hp;
     if (ev.type === 'phase') { c.inv = !!ev.invuln; if (typeof ev.name === 'string' && ev.name) c.phase = ev.name.slice(0, 40); }
     if (ev.type === 'part' && ev.state === 'plate_off') hud.msg('PLATE OFF. HIT THE CLOCK.', 2.2, 'brag');
-    if (ev.type === 'kill') { c.hp = 0; hud.msg('RESCHEDULED', 2.6, 'brag'); }
+    if (ev.type === 'kill') { c.hp = 0; if (!(own && own(c.who))) hud.msg('RESCHEDULED', 2.6, 'brag'); }
     if (ev.type === 'fx' && ev.k === 'staple' && Array.isArray(ev.at) && ev.at.length === 3 && ev.at.every(fin)) stick(ev.at, Array.isArray(ev.n) && ev.n.length === 3 && ev.n.every(fin) ? ev.n : [0, 1, 0]);
     showBar();
   };
@@ -102,7 +103,7 @@ export function makeBossRef({ actorOf, busy }) {
     if (!m || typeof m.id !== 'string' || !/^[a-z0-9_]{1,40}$/.test(m.id)) return;
     if (m.on === true && fin(m.pid) && fin(m.hp) && fin(m.max) && m.max > 0) R.cur = { id: m.id, pid: m.pid, hp: m.hp, max: m.max, health: fin(m.health) ? m.health : m.max, who: typeof m.who === 'string' ? m.who : '', name: typeof m.name === 'string' ? m.name.slice(0, 24) : 'BOSS', phase: typeof m.phase === 'string' ? m.phase.slice(0, 40) : '', inv: false };
     else if (R.cur && R.cur.id === m.id) R.cur = null;
-    if (R.cur) partsOf(R.cur.who);
+    if (R.cur && !(own && own(R.cur.who))) partsOf(R.cur.who);
     showBar();
   });
   return R;
