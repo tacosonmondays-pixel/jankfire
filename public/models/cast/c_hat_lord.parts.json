@@ -106,14 +106,14 @@
   "neck": {
    "joint": "hatNeck",
    "c": [
-    0.002,
-    2.9471,
+    0.0018,
+    2.947,
     0.0396
    ],
    "h": [
-    0.0369,
-    0.0675,
-    0.0354
+    0.0551,
+    0.0781,
+    0.0539
    ],
    "note": "the neck the hat rides on: from inside her skull (head) to the hat, stretching over hatNeck / hatNeckB"
   },
@@ -176,28 +176,28 @@
   "herLid": {
    "joint": "lidHR",
    "c": [
-    0.1151,
-    3.1786,
-    -0.2249
+    0.1149,
+    3.1771,
+    -0.2258
    ],
    "h": [
-    0.0682,
-    0.0131,
-    0.029
+    0.0667,
+    0.0128,
+    0.0259
    ],
    "note": "her heavy upper lids (- x shuts)"
   },
   "herOrbit": {
    "joint": "crown",
    "c": [
-    0.1153,
-    3.1663,
-    -0.2259
+    0.1102,
+    3.1647,
+    -0.217
    ],
    "h": [
-    0.0727,
-    0.0303,
-    0.0228
+    0.0869,
+    0.037,
+    0.0365
    ],
    "note": "the almond of her own skin round each eye, the wet lower rims"
   },
@@ -218,12 +218,12 @@
   "hatLid": {
    "joint": "lidCa",
    "c": [
-    0.1012,
+    0.1019,
     3.1998,
-    0.2509
+    0.251
    ],
    "h": [
-    0.4097,
+    0.4089,
     0.1266,
     0.4855
    ],

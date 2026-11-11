@@ -206,7 +206,7 @@ def bm_sphere(bm, c, r, seg=16, rings=10, mat=0, axis=Vector((0, -1, 0)), up=Vec
     return faces, info, (x, y, z)
 
 
-def lid_shell(bm, c, r, frame, e0, span, mat, thick=0.18, seg=12, curve=0.25, side_cut=0.92, r_in=1.06):
+def lid_shell(bm, c, r, frame, e0, span, mat, thick=0.18, seg=12, curve=0.25, side_cut=0.92, r_in=1.06, thick_back=None):
     """an eyelid: a band of sphere round the eye's own x axis (so turning on x slides it over the eye), from e0 (its
     edge, radians up from the eye's front) back over the top by span. two surfaces and their rims"""
     x, y, z = frame          # z = the way the eye looks, x across
@@ -214,14 +214,16 @@ def lid_shell(bm, c, r, frame, e0, span, mat, thick=0.18, seg=12, curve=0.25, si
         xx = u * side_cut; rho = math.sqrt(max(1e-6, 1 - xx * xx))
         return c + (x * xx + (y * math.sin(b) + z * math.cos(b)) * rho) * rr
     rows = []
-    for rr in (r * r_in, r * (r_in + thick)):
+    tb = thick if thick_back is None else thick_back
+    for side in (0, 1):
         grid = []
         for j in range(5):
             row = []
+            th = thick + (tb - thick) * (j / 4) ** 1.2      # (a lid can swell out of the skin behind its edge: a heavy fold)
             for i in range(seg + 1):
                 u = -1 + 2 * i / seg
                 b = e0 - curve * (1 - u * u) * 0.35 + span * j / 4
-                row.append(bm.verts.new(p(u, b, rr)))
+                row.append(bm.verts.new(p(u, b, r * (r_in + (th * (1 - 0.35 * u * u) if side else 0.0)))))
             grid.append(row)
         rows.append(grid)
     inner, outer = rows
@@ -361,7 +363,7 @@ def hat_neck():
     bm = bmesh.new()
     a = JW['hatNeck'] - Vector((0, 0, 0.05)); b = JW['hat'] - Vector((0, 0, 0.035))
     n = 14; pts = [a + (b - a) * (i / (n - 1)) for i in range(n)]
-    radii = [0.034 - 0.006 * math.sin(math.pi * i / (n - 1)) + 0.003 * math.sin(i * 1.9) for i in range(n)]
+    radii = [0.052 - 0.008 * math.sin(math.pi * i / (n - 1)) + 0.004 * math.sin(i * 1.9) for i in range(n)]   # (a fleshy cord when it stretches)
     rings = bm_tube(bm, pts, radii, seg=12, mat=M['hl_under'])
     return bm, pts
 
@@ -415,6 +417,38 @@ def clasps_and_teeth(crown, brim, hcut):
     return cl, tu, tl
 
 
+def orbit_skin(bm, c, r, frame, top, lo=0.37, R_out=2.05, n=26, rows=7):
+    """her grafted skin round one eye: it hugs the ball at an almond opening (upper edge `top` radians up, lower `lo`
+    down, pointed corners), swells into a heavy fold over the lid and a softer bag under it, and flows back into the
+    hollow. the wet lower rim follows the opening's lower edge"""
+    x, y, f = frame
+    def edge(t):
+        cx = math.cos(t); sy = math.sin(t)
+        h = (math.sin(top) if sy > 0 else math.sin(lo)) * abs(sy) ** 0.9 * (1 - 0.15 * cx * cx)
+        return Vector((0.99 * cx, h if sy > 0 else -h, 0))
+    ring_pts = []
+    for k in range(rows):
+        u = k / (rows - 1)                                  # 0 at the opening, 1 at the graft
+        row = []
+        for i in range(n):
+            t = 2 * math.pi * i / n
+            e2 = edge(t); d2 = Vector((math.cos(t) * R_out, math.sin(t) * R_out * 0.82, 0))
+            q = e2.lerp(d2, u ** 0.85)
+            rho = min(0.999, q.length)
+            on_ball = math.sqrt(max(0.0, 1 - rho * rho))
+            up_side = max(0.0, math.sin(t))
+            z = (1 - u) * (on_ball + 0.07 + 0.06 * up_side) + u * (-0.95) + (0.3 * up_side + 0.12 * (1 - up_side)) * math.sin(math.pi * min(1.0, u * 1.6)) * (1 - u)
+            v3 = Vector((q.x, q.y, z)); off = 1.0 + (0.16 + 0.3 * u) * up_side + (0.07 + 0.3 * u) * (1 - up_side)
+            if v3.length < off: v3 = v3.normalized() * off      # (never inside the ball: over the lid, and a soft bag under the eye)
+            row.append(bm.verts.new(c + (x * v3.x + y * v3.y + f * v3.z) * r))
+        ring_pts.append(row)
+    for a, b in zip(ring_pts, ring_pts[1:]): H.quads(bm, b, a, M['hl_skin'])
+    lower = [k for k in range(n) if math.sin(2 * math.pi * k / n) < -0.05]
+    pts = [ring_pts[0][k].co + f * 0.01 * r for k in lower]
+    if len(pts) > 2: bm_tube(bm, pts, [r * 0.07] * len(pts), seg=6, mat=M['hl_mouth'])
+    bm.normal_update()
+
+
 def eyes(crown, blobs):
     """the eyes on the crown: HER pair (balls on eyeHR/eyeHL, heavy upper lids on lidHR/lidHL, an almond of her skin
     with a wet lower rim, all sunk in the big front socket) and the creature's (a ball each where Tripo's blob was,
@@ -437,20 +471,10 @@ def eyes(crown, blobs):
     for e, l in (('eyeHR', 'lidHR'), ('eyeHL', 'lidHL')):
         x, y, f = eye_frame(e); c = JW[e]
         bm_sphere(get(e, 'herEye'), c, ER, seg=18, rings=12, mat=M['hl_eye'], axis=f, up=y)
-        heavy = 0.26 if e == 'eyeHR' else 0.18     # (her left lid hangs lower)
-        lid_shell(get(l, 'herLid'), c, ER, (x, y, f), heavy, 1.9, M['hl_skin'], thick=0.09, seg=14, r_in=1.065)
-        o = get('crown', 'herOrbit')
-        # the fold over the lid (heavy, no brow), round from corner to corner
-        A = [math.pi * (0.02 + 0.96 * i / 12) for i in range(13)]
-        bm_tube(o, [c + (x * math.cos(a) * 1.28 + y * (0.78 + 0.42 * math.sin(a)) + f * (0.05 + 0.2 * math.sin(a))) * ER for a in A],
-                [ER * (0.06 + 0.12 * math.sin(a) ** 1.5) for a in A], seg=8, mat=M['hl_skin'])
-        # the lower lid: a thin wet pink rim
-        A = [-math.pi * (0.06 + 0.88 * i / 10) for i in range(11)]
-        bm_tube(o, [c + (x * math.cos(a) * 1.1 + y * (-0.12 + 0.62 * math.sin(a)) + f * (0.55 - 0.1 * math.sin(a))) * ER for a in A],
-                [ER * (0.04 + 0.08 * math.sin(-a)) for a in A], seg=7, mat=M['hl_mouth'])
-        # and under it the skin, puffed (the shadow under the eye is the AO)
-        bm_tube(o, [c + (x * math.cos(a) * 1.25 + y * (-0.3 + 0.75 * math.sin(a)) + f * (0.25 - 0.05 * math.sin(a))) * ER for a in A],
-                [ER * (0.08 + 0.2 * math.sin(-a)) for a in A], seg=7, mat=M['hl_skin'])
+        top = 0.24 if e == 'eyeHR' else 0.19      # (the almond's upper edge, radians up the ball: heavy lids, her left one lower)
+        # the upper lid: a thin shell that lies tucked under the skin at rest and slides down over the ball to shut
+        lid_shell(get(l, 'herLid'), c, ER, (x, y, f), top - 0.02, 1.7, M['hl_skin'], thick=0.03, seg=14, r_in=1.035, curve=0.0, side_cut=0.985)
+        orbit_skin(get('crown', 'herOrbit'), c, ER, (x, y, f), top)
     # the creature's eyes
     pal = [0xe8d84a, 0xb8c0b0, 0xd04030, 0x8ad0e0, 0xc89a40, 0x7de05a, 0xe0e0d0]
     for k, e in enumerate(B):
@@ -500,6 +524,9 @@ def cape_clean(cape):
         big = max(isl, key=len)
         bmesh.ops.delete(cape, geom=[f for fs in isl if fs is not big for f in fs], context='FACES')
     bmesh.ops.holes_fill(cape, edges=[e for e in cape.edges if e.is_boundary], sides=12)
+    for lp in boundary_loops(cape):    # (Tripo left a hole in the hide on her left: the lining showed through it)
+        if len(lp) >= 3:
+            c_ = loop_frame(lp)[0]; H.fan(cape, lp, c_)
     bmesh.ops.triangulate(cape, faces=[f for f in cape.faces if len(f.verts) > 4])
     bmesh.ops.recalc_face_normals(cape, faces=cape.faces)
     cape.normal_update()
@@ -620,7 +647,7 @@ def eye_atlas():
     px = np.zeros((H_, W_, 3), np.float32)
     rng = np.random.default_rng(11)
     # (sclera, iris outer, iris inner, pupil kind, iris size)
-    kinds = [(0xf2ece0, 0x4a2a12, 0x8a5a2a, 'round', 0.44),     # hers: brown, a small pupil, a white a little bloodshot
+    kinds = [(0xe4dac8, 0x3a2010, 0x7a4e26, 'small', 0.4),      # hers: brown, a small pupil, an off-white a little bloodshot
              (0xe8e0a0, 0xc8b020, 0xf0e050, 'slit', 0.62),      # bile yellow, slit
              (0xc8ccc4, 0x8a9490, 0xd8dcd8, 'cloud', 0.5),      # grey, clouded
              (0xf0d0c8, 0x9a1a1a, 0xe04030, 'pin', 0.5),       # red-rimmed, a pin pupil
@@ -632,16 +659,18 @@ def eye_atlas():
         cx, cy = (k % EYE_CELLS[0]) * 64, (k // EYE_CELLS[0]) * 64
         y_, x_ = np.mgrid[0:64, 0:64]; u = (x_ + 0.5) / 32 - 1; v = (y_ + 0.5) / 32 - 1; r = np.hypot(u, v); a = np.arctan2(v, u)
         cell = np.ones((64, 64, 3)) * hexrgb(scl)
-        if k == 0 or k == 3:   # bloodshot: thin red threads coming in from the edge
-            for _ in range(10 if k == 0 else 18):
-                aa = rng.uniform(0, 2 * math.pi); m = (np.abs(np.angle(np.exp(1j * (a - aa - 0.4 * (r - 1))))) < 0.03 + 0.02 * r) & (r > isz * 1.1)
-                cell[m] = cell[m] * 0.4 + hexrgb(0xc02020) * 0.6
+        if k == 0: cell *= np.clip(1.06 - 0.32 * np.clip(r - 0.45, 0, 1), 0.7, 1.0)[:, :, None]   # (shaded: the ball turns away from you)
+        if k == 0 or k == 3:   # bloodshot: thin red threads coming in from the edge (hers few and faint)
+            for _ in range(6 if k == 0 else 18):
+                aa = rng.uniform(0, 2 * math.pi); m = (np.abs(np.angle(np.exp(1j * (a - aa - 0.4 * (r - 1))))) < 0.02 + 0.015 * r) & (r > isz * 1.15)
+                al = 0.3 if k == 0 else 0.6; cell[m] = cell[m] * (1 - al) + hexrgb(0xb02028) * al
         t = np.clip(r / isz, 0, 1)
         iris = hexrgb(ii)[None, None] * (1 - t[:, :, None]) + hexrgb(io)[None, None] * t[:, :, None]
         streak = 0.85 + 0.15 * np.cos(a * 23 + rng.uniform(0, 6))[:, :, None]
         m = r < isz; cell[m] = (iris * streak)[m]
         ring = (r > isz * 0.92) & (r < isz); cell[ring] *= 0.45            # (a dark limbal ring)
         if pk == 'round': pm = r < isz * 0.3
+        elif pk == 'small': pm = r < isz * 0.22
         elif pk == 'pin': pm = r < isz * 0.14
         elif pk == 'slit': pm = (np.abs(u) < isz * 0.13 * np.sqrt(np.clip(1 - (v / isz) ** 2, 0, 1))) & (r < isz * 0.95)
         elif pk == 'bar': pm = (np.abs(v) < isz * 0.16) & (np.abs(u) < isz * 0.7)
@@ -649,7 +678,7 @@ def eye_atlas():
         cell[pm] = hexrgb(0x0a0606)
         if pk == 'cloud':
             cl = r < isz * 0.85; cell[cl] = cell[cl] * 0.45 + hexrgb(0xe8ece8) * 0.55
-        hl = np.hypot(u + isz * 0.35, v + isz * 0.35) < isz * 0.16; cell[hl] = cell[hl] * 0.3 + 0.7   # (a wet highlight)
+        hl = np.hypot(u + isz * 0.35, v + isz * 0.35) < isz * (0.1 if k == 0 else 0.16); cell[hl] = cell[hl] * 0.3 + 0.7   # (a wet highlight)
         px[cy:cy + 64, cx:cx + 64] = cell
     return np.clip(px, 0, 1)
 
@@ -863,6 +892,9 @@ def cut_neckline(bm):
     bm.normal_update()
 
 
+SOCKET_C = []
+
+
 def paint_body(bm, W):
     """skin: her head and neck, a deep V down to below the socket, her hands. the suit: the rest, a burgundy satin.
     her shoes are black patent (tint), the heels and toe caps brass-dark"""
@@ -882,6 +914,10 @@ def paint_body(bm, W):
             return (1.0, 1.0, 1.0) if co.y > -0.02 + 0.0 else (0.7, 0.6, 0.6)
         if f.material_index == M['hl_skin']:
             g = 0.92 + 0.08 * min(1.0, max(0.0, (co.z - 2.5) / 0.4))
+            if 2.05 < co.z < 2.6 and co.y > 0.05:
+                g *= 0.84 + 0.16 * SK.ss(0.0, 0.05, neckline(co))                     # (the skin shades off into the suit)
+                b = SK.ss(0.14, 0.06, (co - SOCKET_C[0]).length) if SOCKET_C else 0.0   # (bruised and swollen round the socket)
+                return (g * (1 - 0.22 * b), g * (1 - 0.45 * b), g * (1 - 0.3 * b))
             return (g, g * 0.98, g)
         return (1.0, 1.0, 1.0)
     tint_bm(bm, tint)
@@ -905,7 +941,7 @@ def paint_hat(bm, part):
         if f.material_index == M['hl_under']:
             g = 0.75 + 0.25 * SK.ss(0.4, 1.2, (co - RING_C).length)
             return (g, g, g)
-        if f.material_index == M['hl_skin']: return (0.95, 0.93, 0.97)
+        if f.material_index == M['hl_skin']: return her_skin_tint(f, co)
         return (1.0, 1.0, 1.0)
     tint_bm(bm, tint)
 
@@ -949,15 +985,24 @@ def lining_by_rays(cape, body, W):
             if nb and sum(x != f.material_index for x in nb) >= 2: f.material_index = max(set(nb), key=nb.count)
 
 
+def her_skin_tint(f, co):
+    """her grafted skin: pale where it touches her eyes, flushing into the crown's crimson flesh further out"""
+    if f.material_index != M['hl_skin']: return (1.0, 1.0, 1.0)
+    d = min((co - JW['eyeHR']).length, (co - JW['eyeHL']).length) / EYE_R
+    k = SK.ss(2.0, 3.4, d)
+    return (0.92 - 0.06 * k, 0.56 - 0.26 * k, 0.65 - 0.25 * k)       # (one flushed skin round both eyes, lids and all, going crimson at the graft)
+
+
 def assemble(G, B):
     materials()
     arm = make_armature()
     objs = []
     # ---- the woman
     S = SK.segments(B, JW, gv)
+    SOCKET_C[:] = [G['socket_c']]
     body = G['body']; cut_neckline(body); body.verts.index_update()
     W = SK.body_weights(body, S); W = SK.smooth(body, W, iters=2)
-    paint_body(body, W); uv_box_bm(body)
+    paint_body(body, W); uv_box_bm(body, skip=lambda f: f.material_index == M['hl_skin']); uv_box_bm(body, tile=0.18, skip=lambda f: f.material_index != M['hl_skin'])
     objs.append(skinned('part_spine__body', body, W, arm, used_mats(body)))
     # ---- the cape, its brooches (the yoke: the collar's brass)
     cape = G['cape']; lining_by_rays(cape, body, W); cape.verts.index_update(); Wc = cape_weights(cape); uv_box_bm(cape, tile=0.4)
@@ -974,7 +1019,7 @@ def assemble(G, B):
     # ---- the hat
     brim = G['brim']; brim.verts.index_update(); paint_hat(brim, 'brim'); uv_box_bm(brim, tile=0.45)
     objs.append(skinned('part_hat__brim', brim, brim_weights(brim), arm, used_mats(brim)))
-    crown = G['crown']; crown.verts.index_update(); paint_hat(crown, 'crown'); uv_box_bm(crown, tile=0.4)
+    crown = G['crown']; crown.verts.index_update(); paint_hat(crown, 'crown'); uv_box_bm(crown, tile=0.4, skip=lambda f: f.material_index == M['hl_skin']); uv_box_bm(crown, tile=0.1, skip=lambda f: f.material_index != M['hl_skin'])
     objs.append(skinned('part_crown__crown', crown, crown_weights(crown, G['blobs']), arm, used_mats(crown)))
     nk = G['neck']; nk.verts.index_update(); uv_box_bm(nk, tile=0.2); tint_bm(nk, lambda f, co: (0.85, 0.75, 0.8))
     objs.append(skinned('part_hatNeck__neck', nk, neck_weights(nk, G['neck_pts']), arm, used_mats(nk)))
@@ -1003,7 +1048,7 @@ def assemble(G, B):
             tint_bm(bm, lambda f, co: (1, 1, 1))
         else:
             uv_box_bm(bm, tile=0.1)
-            tint_bm(bm, lambda f, co: (0.9, 0.86, 0.92) if tag in ('herLid', 'herOrbit') else (0.75, 0.62, 0.66))
+            tint_bm(bm, her_skin_tint if tag in ('herLid', 'herOrbit') else (lambda f, co: (0.75, 0.62, 0.66)))
         objs.append(rigid('part_%s__%s' % (j, tag), bm, j, used_mats(bm)))
     return arm, objs
 
@@ -1368,11 +1413,21 @@ def sheet_close(objs, G, quick=False):
     def at(n, local=(0, 0, 0)): return jmat(n) @ gv(*local)
     pose_scene(objs, stance())
     eyes = (JW['eyeHR'] + JW['eyeHL']) / 2
+    def posed_mid(pose, pre):
+        # (the middle of the skin a joint group carries, in the pose: the hand hangs well away from its rest spot)
+        SM = SK.skin_mats(JD, hl_clips.fk(pose)); acc = []
+        for o in objs:
+            if 'jf_w' not in o or 'jf_rest' not in o: continue
+            W = json.loads(o['jf_w']); R = np.array(o['jf_rest'], float).reshape(-1, 3)
+            ix = [i for i, w in enumerate(W) if max(w, key=w.get).startswith(pre)]
+            if ix: acc.append(SK.pose_points(np.c_[R[ix, 0], R[ix, 2], -R[ix, 1]], [W[i] for i in ix], SM))
+        q = np.concatenate(acc).mean(0); return gv(q[0], q[1], q[2])
+    hand = posed_mid(stance(), ('handR', 'finR', 'idxR', 'thumbR'))
     shots = [('HER eyes: the brown pair in the crown', 'rest', eyes, 8, 4, 0.75, 70), ('her right eye', 'rest', JW['eyeHR'], 14, 4, 0.3, 70),
              ('the hat\'s fingers laced over her face', 'rest', JW['head'] + Vector((0, 0.08, 0.16)), 18, -4, 0.85, 70),
              ('the empty socket: brass lip, real depth', 'rest', G['socket_c'], 12, 10, 0.55, 70),
              ('the band open: the ring of teeth (hl_lunge 1.0 s)', ('hl_lunge', 1.0), None, 55, 10, 1.9, 50),
-             ('her right hand', 'rest', JW['handR'] + Vector((0.06, 0, -0.2)), 50, 5, 0.95, 60),
+             ('her right hand', 'rest', hand, 60, 5, 1.0, 60),
              ('one finger: "not carried." (hl_lunge 1.8 s)', ('hl_lunge', 1.8), None, 330, 5, 1.4, 50),
              ('the cape from behind', 'rest', Vector((0, -0.4, 1.4)), 180, 8, 5.2, 50),
              ('the eyeless reveal (hl_reveal 3.0 s)', ('hl_reveal', 3.0), None, 10, -5, 1.3, 60),

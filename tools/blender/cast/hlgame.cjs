@@ -21,6 +21,9 @@ const SHOTS = [['idle_7m', 'hl_idle', 1.2, 7, 0, 0.12, false], ['talk', 'hl_talk
     const dismiss = () => pg.evaluate(() => { for (const b of document.querySelectorAll('button')) if (/^(LATER|NICE)$/.test(b.textContent.trim()) && b.offsetParent) b.click(); }).catch(() => {});
     await pump(1500);
     for (let i = 0; i < 150 && !(await pg.evaluate(() => !!document.getElementById('storyBtn'))); i++) await pump(100);
+    // (story mode gives the whole cast 12 s to load; on a busy machine her skinned glb can miss that and she is drawn as
+    // the code puppet. load her first, with time to spare: the cast cache is shared)
+    console.log(tag, 'her model loaded first:', await pg.evaluate(async () => (await import('/js/story/looks.js')).loadCast(['hat_lord'], 180000)));
     await pg.evaluate(() => { localStorage.removeItem('jfStorySaves'); document.getElementById('storyBtn').click(); });
     for (let i = 0; i < 150 && !(await pg.evaluate(() => !!document.querySelector('#storyPick .st-slot .st-btn'))); i++) await pump(100);
     await pg.evaluate(() => document.querySelector('#storyPick .st-slot .st-btn').click());

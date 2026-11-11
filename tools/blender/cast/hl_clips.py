@@ -243,7 +243,7 @@ clip('hl_walk', walk_keys, loop=WALK_T, face=[(0, 'chair')], marks=[(0.0, 'stepR
 # like an umbrella half shut; she turns a shoulder to the gap (the bar is 1.46 m), folds at the knee and the waist and
 # follows it through; it opens again. In place: the scene walks her through while it plays. Clears 1.25 x 2.3 m.
 fold = {'hatNeck.y': 1.45, 'hat.x': 0.24, 'hat.z': 0.22, 'brimF.x': -0.62, 'brimB.x': 0.62, 'brimR.z': -0.12, 'brimRb.z': -0.1, 'brimL.z': 0.14, 'brimLb.z': 0.2, 'feeler.z': 0.3, 'feelerB.z': 0.2, 'x.look': 0.0}
-low = P(legs(0.82, 0.3, -0.15), fold, cape(0.5, 0.42), {'spine.x': -0.72, 'spine.y': 0.62, 'head.y': -0.55, 'head.x': 0.34, 'hatNeck.x': 0.16, 'hatNeck.y': 1.98, 'hatNeckB.py': -0.02,
+low = P(legs(0.58, 0.68, 0.6), fold, cape(0.5, 0.42), {'capeR.x': -0.45, 'capeL.x': -0.45, 'spine.x': -0.85, 'spine.y': 0.62, 'head.y': -0.55, 'head.x': 0.34, 'hatNeck.x': 0.16, 'hatNeck.y': 1.98, 'hatNeckB.py': -0.02,
                                       'arm.z': 0.55, 'armL.z': -0.5, 'foreR.z': -0.45, 'foreL.z': 0.45, 'arm.x': -0.2, 'armL.x': 0.3})
 clip('hl_duck', [(0, P()), (0.35, P({'hat.x': -0.1, 'x.look': 0.3})), (1.1, P(fold), 'ss'), (2.0, low, 'ss'), (2.8, low), (3.6, P(fold, legs(0.04), cape(0.2), {'spine.y': 0.2})), (4.4, P({'hat.z': 0.06}), 'ss'), (4.9, P())],
      length=4.9, marks=[(0.4, 'turn'), (1.1, 'folded'), (2.0, 'low'), (3.6, 'up'), (4.4, 'open')], face=[(0, 'chair')],
@@ -341,7 +341,7 @@ clip('hl_stagger', [(0, P()), (0.12, stag, 'snap'), (0.6, stag2, 'ss'), (1.0, P(
 tear = P(cape(0.35), {'hatNeck.x': 0.2, 'hatNeckB.py': 0.26, 'hat.py': 0.22, 'crown.x': 0.5, 'bandR.y': -1.2, 'bandR.z': 0.5, 'bandL.y': 1.3, 'bandL.z': -0.5, 'head.x': 0.25, 'spine.x': 0.1, 'brimR.z': 0.4, 'brimRb.z': 0.5, 'brimL.z': -0.4, 'brimLb.z': -0.5,
           'arm.z': 1.2, 'armL.z': -1.2, 'foreR.x': 0.6, 'foreL.x': 0.6, 'x.look': 0.0, 'lidHR.x': -0.2, 'lidHL.x': -0.2})
 free = P(tear, {'hat.py': 0.95, 'hat.x': 0.2, 'hat.z': 0.25, 'hatNeck.x': 0.1, 'bandR.y': -2.1, 'bandL.y': 2.1, 'crown.x': 0.2, 'head.x': 0.1, 'spine.x': 0.0, 'lidHR.x': 0.0, 'lidHL.x': 0.0})
-knees = P(free, legs(1.1, -0.2, -0.26), cape(0.8, 0.72), {'kneeL.x': -1.85, 'kneeR.x': -1.9, 'legL.x': 0.26, 'legR.x': 0.22, 'spine.x': -0.3, 'head.x': -0.45, 'hat.py': 1.75, 'hatNeck.x': 0.75, 'hat.x': 0.1,
+knees = P(free, legs(1.1, -0.2, -0.26), cape(0.8, 0.72), {'capeR.x': -0.95, 'capeL.x': -0.95, 'kneeL.x': -1.85, 'kneeR.x': -1.9, 'legL.x': 0.26, 'legR.x': 0.22, 'spine.x': -0.3, 'head.x': -0.45, 'hat.py': 1.75, 'hatNeck.x': 0.75, 'hat.x': 0.1,
                                           'arm.z': 0.3, 'armL.z': -0.3, 'arm.x': 0.25, 'armL.x': 0.25, 'foreR.x': 0.15, 'foreL.x': 0.15, 'foreR.z': -0.1, 'foreL.z': 0.1, 'finR.x': -0.5, 'finL.x': -0.5, 'finRb.x': -0.6, 'finLb.x': -0.6})
 clip('hl_hat_off', [(0, P()), (0.6, tear, 'in'), (1.4, free, 'out'), (2.4, free), (3.2, P(knees, {'spine.x': -0.1, 'head.x': -0.15}), 'in'), (3.9, knees, 'out'), (5.0, knees)],
      marks=[(0.6, 'tear'), (1.4, 'free'), (3.2, 'knees'), (3.9, 'down')], face=[(0, 'chair_hurt'), (1.4, 'chair_flat')],
