@@ -44,11 +44,13 @@ if (require.main === module) (async () => {
     await hold(c, [0, 3.9, -3], 420); const s = c.sizz; await hold(c, [0, 9.4, 2], 2600);
     ok('afterburn then it stops', c.alive && c.burns >= 3 && c.burns <= 6 && c.sizz === s, `sizz ${s} burns ${c.burns}`);
   });
-  // 3. the sea: dead as your head goes under, fine while wading
+  // 3. the sea: it doesn't kill you (you float in it). swimming off the map does, after the out-of-bounds countdown
   await run('islands', async (c) => {
     await hold(c, [26, -0.55, 0], 500); ok('wading is fine', c.alive);
     await hold(c, [40, -2.0, 30], 400); ok('neck deep still alive', c.alive);
-    await hold(c, [40, -2.4, 30], 1500); const k = c.kills.find((m) => m.v === c.id); ok('under = void kill', !c.alive && k && k.w === 'void', JSON.stringify(k).slice(0, 120));
+    await hold(c, [40, -2.4, 30], 1500); ok('under the waves is not a kill', c.alive);
+    await hold(c, [110, -1.1, 0], 1500); ok('far out but inside the edge: alive', c.alive);
+    const ms = await hold(c, [135, -1.1, 0], 6000); const k = c.kills.find((m) => m.v === c.id); ok('past the edge = void kill after the countdown', !c.alive && ms > 2800 && ms < 4600 && k && k.w === 'void', `${ms} ms ${JSON.stringify(k).slice(0, 100)}`);
   });
   for (const [map, p, y0, y1] of [['desert', [0, 0, 30], -64, -65.7], ['platform', [60, 0, 0], -15.5, -16.3], ['rooftop', [26, 0, 5], -160, -161.7], ['skyline', [30, 0, 30], -118, -119.8]]) await run(map, async (c) => {
     if (c.first.cfg.map !== map) { ok(map + ' picked', false, c.first.cfg.map); return; }

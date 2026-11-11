@@ -160,6 +160,20 @@ def terrace(gi, g, tops):
                 face(q, P + m)
 
 
+def sats(bi, b):
+    """smaller rocks lying by a boulder, mostly to one side, from a fist to a seat: so a beach isn't six of the same rock"""
+    x0, y0, z0 = b['min']; x1, y1, z1 = b['max']; w, d = x1 - x0, z1 - z0; cx, cz = (x0 + x1) / 2, (z0 + z1) / 2; m = min(w, d)
+    a0 = hsh(bi, 80) * 6.283
+    for k in range(int(2 + 5 * hsh(bi, 81))):
+        a = a0 + (hsh(bi, k, 82) - 0.5) * 2.6; s = min(1.0, m / 2) * (0.1 + 0.5 * hsh(bi, k, 83) ** 2.2); rr = 0.6 + 0.2 * k * hsh(bi, k, 84) + s
+        sx, sz = cx + math.cos(a) * (w / 2 * 1.05 + rr * 0.5), cz + math.sin(a) * (d / 2 * 1.05 + rr * 0.5)
+        if x0 - s < sx < x1 + s and z0 - s * 0.8 < sz < z1 + s * 0.8: continue
+        if y0 > 0.5 and not held(sx, sz, s, y0): continue
+        if any((sx - px) ** 2 + (sz - pz) ** 2 < (s + ps) ** 2 for px, pz, ps in STONES): continue
+        STONES.append((sx, sz, s)); sq = 0.7 + 0.25 * hsh(bi, k, 85)
+        rock(bi * 31 + k + 5, {'min': [sx - s, y0 - 0.06 - 0.003 * (k % 5), sz - s * sq], 'max': [sx + s, y0 + s * (0.8 + 0.7 * hsh(bi, k, 86)), sz + s * sq], 'mat': b['mat'], '_sub': 1})
+
+
 def rock(bi, b):
     P = 'b' if b['mat'] == 'basalt' else ''
     x0, y0, z0 = b['min']; x1, y1, z1 = b['max']
@@ -168,6 +182,21 @@ def rock(bi, b):
     step = 4.6 if big else 0.6
     n = max(8, min(22, int(2 * (w + d) / step)))
     rc = m * (0.22 if big else 0.34)
+    sub = b.get('_sub'); nat = not big and max(w, d) <= 2.5 * m  # an ordinary boulder: no two alike
+    kind = int(hsh(bi, 70) * 10)  # 0-3 a lump, 4-6 a big one with a shoulder against it, 7-9 a leaning slab
+    if nat and not sub and kind in (4, 5, 6) and m > 0.9:
+        f = 0.6 + 0.12 * hsh(bi, 73); lo = hsh(bi, 74) < 0.5; hs = h * (0.38 + 0.25 * hsh(bi, 75)); k2 = 0.12 + 0.12 * hsh(bi, 76)
+        if w >= d:
+            xa, xb = (x0, x0 + w * f) if lo else (x1 - w * f, x1); sa, sb = (x0 + w * (f - 0.16), x1) if lo else (x0, x1 - w * (f - 0.16))
+            rock(bi * 7 + 1, {'min': [xa, y0, z0], 'max': [xb, y1, z1], 'mat': b['mat'], '_sub': 1})
+            rock(bi * 7 + 2, {'min': [sa, y0, z0 + d * k2], 'max': [sb, y0 + hs, z1 - d * (0.24 - k2)], 'mat': b['mat'], '_sub': 1})
+        else:
+            za, zb = (z0, z0 + d * f) if lo else (z1 - d * f, z1); sa, sb = (z0 + d * (f - 0.16), z1) if lo else (z0, z1 - d * (f - 0.16))
+            rock(bi * 7 + 1, {'min': [x0, y0, za], 'max': [x1, y1, zb], 'mat': b['mat'], '_sub': 1})
+            rock(bi * 7 + 2, {'min': [x0 + w * k2, y0, sa], 'max': [x1 - w * (0.24 - k2), y0 + hs, sb], 'mat': b['mat'], '_sub': 1})
+        sats(bi, b); return
+    la = hsh(bi, 77) * 6.283; ll = m * ((0.2 if kind >= 7 else 0.08) if nat else 0.0); lx, lz = math.cos(la) * ll, math.sin(la) * ll  # which way it leans, how far
+    p1, p2 = hsh(bi, 71) * 6.283, hsh(bi, 72) * 6.283
     # the levels: (height 0..1, inset as a share of m: negative = out). a mesa steps in ledges; a boulder is a rounded lump
     if big:
         nl = max(4, min(7, int(h / 3.5))); lv = [(0.0, -0.035), (0.05, 0.0)]
@@ -184,11 +213,17 @@ def rock(bi, b):
         for i, ((px, pz), (nx, nz)) in enumerate(ring(cx, cz, w / 2, d / 2, rc, n)):
             j = (hsh(bi, i, li // 2) - 0.5) * (0.035 if big else 0.07) + (hsh(bi, i) - 0.5) * (0.03 if big else 0.06)  # a face's own bulge + this band's
             e = (ins + j) * m
+            if nat and li:  # an uneven outline: two or three lobes, never a rounded box
+                ang = 6.283 * i / n; e += m * (0.09 * math.sin(2 * ang + p1) + 0.06 * math.sin(3 * ang + p2)) * (0.0 if top else 1.0) + (m * 0.05 if top and kind >= 7 else 0)
+                e = min(e, 0.95 * rc)  # (never cut back past its rounded corners: the ring would fold)
             if not top and li: e = max(e, -0.04 * m)
             if li == 0: e = min(e, 0.0)  # the foot only ever spreads
             if max(w, d) > 2.5 * m: e = min(e, 0.7 * rc)  # (a long thin one, a rim or a lip: never cut back past its rounded ends, the top would fold)
             y = y0 + h * t + (0 if (top or li == 0) else (hsh(bi, i, li, 3) - 0.5) * h * (0.02 if big else 0.05))
-            pts.append(Vector((px - nx * e, min(y, y1), pz - nz * e)))
+            sh = t ** 1.5 * min(1.0, max(0.0, e) / ll) if ll > 1e-6 else 0.0  # (it leans only as far as it's cut back: it stays inside its box)
+            pts.append((Vector((px - nx * e, min(y, y1), pz - nz * e)), sh))
+        st = min(q[1] for q in pts)  # (the top moves over as one piece, or its fan folds)
+        pts = [v + Vector((lx, 0, lz)) * (st if top else q) for v, q in pts]
         rings.append(pts)
     cen = Vector((cx, (y0 + y1) / 2, cz))
     for li in range(len(rings) - 1):
@@ -199,12 +234,15 @@ def rock(bi, b):
             q = [A[i], A[j], B2[j], B2[i]]
             nrm = (q[1] - q[0]).cross(q[2] - q[0])
             if nrm.dot((q[0] + q[2]) / 2 - cen) < 0: q = q[::-1]
-            face(q, band)
-    T = rings[-1]; tc = Vector((cx, y1, cz))
+            if big: face(q, band)
+            else: face([q[0], q[1], q[2]], band); face([q[0], q[2], q[3]], band)  # (a boulder's faces as triangles: they twist)
+    T = rings[-1]; tc = Vector((sum(v.x for v in T) / n, y1, sum(v.z for v in T) / n))
     for i in range(n):
         t3 = [tc, T[i], T[(i + 1) % n]]
         if (t3[1] - t3[0]).cross(t3[2] - t3[0]).y < 0: t3 = t3[::-1]
         face(t3, P + 'rocktop')
+    if sub: return
+    if nat: sats(bi, b); return
     # loose stones round the foot: little wedges, more round a mesa
     for k in range(int(5 + 6 * hsh(bi, 20)) if big else int(1 + 3 * hsh(bi, 21))):
         a = hsh(bi, k, 30) * math.pi * 2; rr = (0.9 + 0.5 * hsh(bi, k, 31)) if big else (0.55 + 0.35 * hsh(bi, k, 31))

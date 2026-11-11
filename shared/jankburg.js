@@ -85,6 +85,7 @@ export const PLAN = {
 // ------------------------------------------------------------ the build
 import { MAPS, MAP_ORDER, prop, builder, rng, wall, stairs, shell, car, tree, streetlight, tower, horizon, home, lollipop, conifer, adBoard, stall, pot, groundHoles, unstick } from './map.js';
 import { buildNav } from './nav.js';
+import { propOf } from './propcap.js'; // (round 4: Blender props over their boxes, look-only)
 import { outOfBounds } from './bounds.js';
 
 const F = 3.4; // storey height
@@ -503,8 +504,8 @@ function stallSquare(B, cx, cz, rv) {
   for (let x = cx - 15; x <= cx + 15; x += 7.5) for (let z = cz - 13; z <= cz + 13; z += 8.5) stall(L, x, z, ((x + z) | 0) % 2 ? 0 : 2, rv);
 }
 function vending(B, x, z, r, front) {
-  const L = B.local(0, 0, 0);
-  L.B(x, 1, z, 1.2, 2, 0.9, 'metal'); L.B(x, 1.25, z - 0.46, 0.9, 1.3, 0.05, pickR(r, ['neonpink', 'neoncyan', 'neonyellow', 'adfun']));
+  const L = B.local(0, 0, 0), o = {}; // (the Blender machine, its cabinet the colour of its panel)
+  propOf('vending', L.pt(x, 0, z), L.yaw, () => { L.B(x, 1, z, 1.2, 2, 0.9, 'metal'); L.B(x, 1.25, z - 0.46, 0.9, 1.3, 0.05, o.t = pickR(r, ['neonpink', 'neoncyan', 'neonyellow', 'adfun'])); }, o);
   if (!front) VEND.push([x, z]);
 }
 function numberWorks(B, D, cx, cz, rv) {

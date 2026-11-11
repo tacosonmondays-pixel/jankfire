@@ -5,7 +5,7 @@
 // Landmarks: the Lost & Found (the Machine), the market, Lumps' Gym, the Down Escalator.
 import { SLICE, terraceOf } from './slice.js';
 import { rng, hash2 } from './plan.js';
-import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook } from './kit.js';
+import { cube, stairsZ, sideStair, line, bulbs, retaining, rubble, stall, flightLen, PASTEL, pick, hook, cubeKit, stairKit, KIT, KIT_SIZE } from './kit.js';
 import { playBottom, BANISTER } from './playground.js';
 import { shops, shopRects } from './shops.js';
 
@@ -32,7 +32,7 @@ function lots(k) {
 
 // one lot: 1-2 rows of cubes stacked 1-4 high, shifted about, outside stairs, a roof garden of junk
 function house(B, k, x0, w, seed) {
-  const r = rng(seed), y = yOf(k), zs = zSouth(k), zBack = zs - T.terr + 0.2, zFront = zs - LANE;
+  const r = rng(seed), y = yOf(k), zs = zSouth(k), zBack = zs - T.terr + 0.2, zFront = zs - LANE, recs = [];
   const depth = zFront - zBack, rows = depth > 13 && r() < 0.6 ? 2 : 1, cx = x0 + w / 2;
   const wallTop = yOf(k + 1); // the next terrace's floor: houses at the back reach it, their roofs join it
   let rowZ = zBack;
@@ -49,11 +49,12 @@ function house(B, k, x0, w, seed) {
         roofTint: r() < 0.3 ? 0xd06a5a : 0,
       });
       // an outside stair up to this floor's roof from the one below (every third house)
-      if (f < floors - 1 && r() < 0.45) sideStair(B, (r() < 0.5 ? c.x1 + 0.7 : c.x0 - 0.7), fy + 0.12, c.top, c.z1 - 0.2, -1);
+      if (f < floors - 1 && r() < 0.45) { const sx = r() < 0.5 ? c.x1 + 0.7 : c.x0 - 0.7; c.stair = [sx, fy + 0.12, c.top, c.z1 - 0.2, sideStair(B, sx, fy + 0.12, c.top, c.z1 - 0.2, -1, 'metal', { rail: false })]; }
+      c.f = f; c.row = row; c.roof = f === floors - 1; recs.push(c); // (for the kit pass below)
       lastTop = c.top; fy = c.top;
       // junk on the roof: plastic chairs, a dish, a smiley sign, a sofa
       if (f === floors - 1) {
-        const pr = r();
+        const pr = r(); c.bare = pr >= 0.55;
         if (pr < 0.25) B.prop('pchair', cx + (r() - 0.5) * (ww - 1), c.top, cz + (r() - 0.5) * (dd - 1), r() * 6.28, 1, (r() * 8) | 0);
         else if (pr < 0.35) B.prop('sofa', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
         else if (pr < 0.42) B.prop('smilesign', cx, c.top, cz, r() * 6.28, 0.7, 0);
@@ -64,8 +65,11 @@ function house(B, k, x0, w, seed) {
     }
     // the back row reaching the terrace above: a little bridge from its roof onto the next terrace
     if (row === 0 && Math.abs(lastTop - wallTop) < 1.2 && k < T.n - 1) B.add(cx - 1, Math.min(lastTop, wallTop) - 0.2, zBack - 1.2, cx + 1, Math.max(lastTop, wallTop) + 0.05, zBack + 0.6, 'wood');
+    if (row === 0 && Math.abs(lastTop - wallTop) < 1.5) recs[recs.length - 1].bare = false; // (people cross that roof)
     rowZ += d + 0.6;
   }
+  stackCache.set(k + ':' + seed, recs); // (the kit pass and the neighbours' kit passes read these)
+  if (!B.out) return recs; // a dry run (stackOf): only the cubes were wanted
   // across the lane: bulbs from the house front to the lip, a banner now and then, an awning over the door
   const lr = rng(seed ^ 0x5eed);
   if (lr() < 0.45) bulbs(B, [cx + (lr() - 0.5) * w, y + 4.2 + lr(), zFront + 0.3], [cx + (lr() - 0.5) * 10, y + 4.5 + lr(), zs - 0.3], lr);
@@ -83,6 +87,35 @@ function house(B, k, x0, w, seed) {
     if (id === 'firebarrel') B.light(px, y + 1.5, fz + 0.5, 0xff8a2a, 8, 1);
   }
   for (let i = 0; i < 2; i++) if (lr() < 0.6) line(B, [x0 + lr() * w, y + 5 + lr() * 2, zFront + 0.2], [x0 + lr() * w + (lr() - 0.5) * 8, y + 5.5 + lr(), zs - 0.2], { r: 0.015, mat: 'metal', tint: 0x202024, sag: 0.6 });
+}
+
+// what stands on a lot, without building it: its cubes (cached), so a neighbour can tell which of its walls are hidden
+const stackCache = new Map(), DRY = { add() {}, prop() {}, light() {} };
+const stackOf = (k, lot) => stackCache.get(k + ':' + lot[2]) || house(DRY, k, lot[0], lot[1], lot[2]);
+// the Blender kit on a lot's cubes (kit.js cubeKit: corner posts, tin eaves, windows, container doors and ribs, roof
+// junk, stair treads and posts). props only, drawn from their own random stream, so every box above stays as it was.
+// pieces on a wall with another cube or the terrace behind right in front of it are left out, and so is every wall
+// that isn't within reach of somewhere you walk (the kit is thousands of instances otherwise): what gets dressed is
+// the lane front of the row on the lane (two floors up), the backs that look over the lip onto the lane above (from
+// its floor to 4 m up), and the low side walls (alleys, the gap beside the Long Stairs)
+function dress(B, k, lot, near) {
+  const recs = stackOf(k, lot), r = rng(lot[2] ^ 0x6b17), top = k === T.n - 1, zN = top ? 0 : zSouth(k + 1), wallTop = yOf(k + 1);
+  const rows = recs[recs.length - 1].row + 1, solids = recs.concat(...near.map((q) => stackOf(k, q)));
+  const hid = (x, y, z, me) => (z < zN && y < wallTop + (top ? 0 : 0.9)) || solids.some( // (+ 0.9: the lip wall of the lane above)
+    (s) => s !== me && x > s.x0 && x < s.x1 && z > s.z0 && z < s.z1 && y > s.y && y < s.top);
+  for (const c of recs) {
+    const st = c.stair;
+    const front = c.row === rows - 1 && c.f < 2, back = !top && c.row === 0 && c.y + c.h > wallTop && c.y < wallTop + 4, low = c.f < 2, lip = c.roof ? 1 : 0;
+    // (a tin lip: on real roofs, and over half the ground floors on the lane)
+    cubeKit(B, c, r, hid, { on: [back, low, front, low], corner: [false, !c.f, front && !c.f, !c.f], eave: [lip, 0, lip || (c.f ? 0 : 0.5), 0], stair: st && [st[0], st[3], st[4] - 1.2] });
+    if (st && low) stairKit(B, st[0], st[1], st[2], st[3], -1, st[0] > c.x1 ? 1 : -1, (r() * 8) | 0, hid);
+    // a water tank or a pigeon loft in a corner of a top roof nothing else stands on and nobody crosses
+    const jr = r(), ja = r(), jb = r(), jy = r();
+    if (c.roof && c.bare && jr < 0.4) {
+      const jx = ja < 0.5 ? c.x0 + 1.1 : c.x1 - 1.1, jz = c.row && jb < 0.5 ? c.z0 + 1.1 : c.z1 - 1.1; // (a back row's back edge is by the lip above: its poles, lines and rings)
+      if (!hid(jx, c.top + 1, jz, c)) B.prop(jr < 0.22 ? 'cube_roofjunk_a' : 'cube_roofjunk_b', jx, c.top, jz, (jy * 4 | 0) * Math.PI / 2 + (jy - 0.5) * 0.3, 1, 0);
+    }
+  }
 }
 
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
@@ -203,11 +236,14 @@ export function bottom(B, d) {
     const zs = zSouth(k), zn = zs - T.terr;
     if (!B.touches([-320, zn, 96, zs], 2)) continue;
     lane(B, k, X0, X1);
-    for (const [x0, w, seed] of lots(k)) {
+    const L = lots(k), did = [], built = (q) => q && !keep.some((kr) => inRect(q[0], zn, q[0] + q[1], zs - LANE, kr));
+    for (let i = 0; i < L.length; i++) {
+      const [x0, w, seed] = L[i];
       if (x0 + w < X0 - 12 || x0 > X1 + 12) continue; // only lots touching this chunk (+ a stair's width)
-      if (keep.some((q) => inRect(x0, zn, x0 + w, zs - LANE, q))) continue;
-      house(B, k, x0, w, seed);
+      if (!built(L[i])) continue;
+      house(B, k, x0, w, seed); did.push(i);
     }
+    if (KIT.on) for (const i of did) dress(B, k, L[i], [L[i - 1], L[i + 1]].filter(built)); // (its neighbours: the kit skips walls they hide)
     // a narrow stair up to the next terrace every ~70 m (plus the Long Stairs), so every lane connects
     if (k < T.n - 1) for (let sx = -300 + (k * 23) % 40; sx < 90; sx += 66 + (k * 7) % 12) {
       if (keep.some((q) => inRect(sx - 1, zn - 6, sx + 1, zn + 6, q))) continue;
@@ -230,16 +266,27 @@ export function bottom(B, d) {
         const za = zl - i * run, zb = zl - (i + 1) * run;
         B.add(LS.x0, ya - 0.2, zb, LS.x1, ya + (i + 1) * h, za, 'concrete', { tint: 0xe8ded4 });
         B.add(LS.x0, ya + i * h, za - 0.004, LS.x1, ya + (i + 1) * h - 0.02, za + 0.012, 'paint', { nc: true, tint: RISERS[(k * 3 + i) % RISERS.length] }); // the riser's paint
+        if (KIT.on) { // the Blender dressing (look only): a worn stone lip on every step, and two settlers' plaques on the
+          // climb from the Lost & Found to the gate (doris, big len: clear of the quest spot at the foot)
+          B.prop(i % 2 ? 'longstep_b' : 'longstep_a', (LS.x0 + LS.x1) / 2, ya + (i + 1) * h, za, 0, 1, 0);
+          if (k === 2 && i === 3) B.prop('longplaque_a', LS.x0 + 2.5, ya + (i + 1) * h, za - 0.5, 0, 1, 0);
+          if (k === 4 && i === 6) B.prop('longplaque_b', LS.x1 - 2.4, ya + (i + 1) * h, za - 0.5, 0, 1, 0);
+        }
         if (sr() < 0.3) B.add(LS.x0 + 0.3 + sr() * 5, ya + (i + 1) * h, zb + 0.15, LS.x0 + 0.7 + sr() * 5.5, ya + (i + 1) * h + 0.03, zb + 0.5, 'bone', { nc: true, tint: 0xf4ecd8 }); // a name plaque
       }
       // rails (graffiti panels on them) and poles with neon that flickers
       for (const [x, sx] of [[LS.x0 - 0.3, -1], [LS.x1, 1]]) {
         for (let i = 0; i < n; i += 2) B.add(x, ya + i * h, zl - (i + 2) * run, x + 0.3, ya + (i + 2) * h + 1.05, zl - i * run, 'metal', { tint: 0x8890a0 }); // the rail climbs with the steps
+        if (KIT.on) for (let i = 0; i < n; i += 2) B.prop(2 * h < (KIT_SIZE.rail[0] + KIT_SIZE.rail[1]) / 2 ? 'longrail_b' : 'longrail', x + 0.15, ya + (i + 2) * h + 1.05, zl - i * run, 0, 1, [5, 6, 7][k % 3]); // a stone coping and a pipe handrail on each block (_b: the handrail for the top flight's shallow blocks)
         for (let gz = zt + 2; gz < zl - 2; gz += 4 + sr() * 4) if (sr() < 0.55) B.add(sx < 0 ? x - 0.02 : x + 0.3, ya + Math.max(0, zl - gz) / run * h + 0.4, gz, sx < 0 ? x : x + 0.32, ya + Math.max(0, zl - gz) / run * h + 1.0, gz + 1.5 + sr() * 2, 'paint', { nc: true, tint: pick(sr, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a]) });
         const pz = zl - 4 - sr() * 8;
         const py = ya + (zl - pz) / run * h;
-        B.add(x + 0.05, py, pz, x + 0.25, py + 6.5, pz + 0.2, 'rust');
-        B.add(x + (sx < 0 ? -1.6 : 0.3), py + 5.2, pz - 0.05, x + (sx < 0 ? 0 : 1.9), ya + 5.9, pz + 0.25, pick(sr, ['neon', 'cyanglow', 'greenglow']), { nc: true });
+        B.add(x + 0.05, py, pz, x + 0.25, py + 6.5, pz + 0.2, 'rust', { hide: true }); // (still bumped; the lamp post model is its look)
+        // the pole stands in the rail's thickness, so the lamp post is the one made to sit on the rail block's top
+        // (longpole_b), and the neon box sits in its sign frame
+        const ry = ya + (2 * Math.floor((zl - pz - 0.1) / run / 2) + 2) * h + 1.05;
+        if (KIT.on) B.prop('longpole_b', x + 0.15, ry, pz + 0.1, sx < 0 ? 0 : Math.PI, 1, 0); // its arm and sign frame reach out over the neon
+        B.add(x + (sx < 0 ? -1.6 : 0.3), ry + KIT_SIZE.poleB[1], pz - 0.05, x + (sx < 0 ? 0 : 1.9), ry + KIT_SIZE.poleB[2], pz + 0.25, pick(sr, ['neon', 'cyanglow', 'greenglow']), { nc: true });
         B.light(x + sx * 0.8, py + 5, pz, pick(sr, [0xff4fd8, 0x4fd8ff, 0x7dff4f]), 9, 0.8);
       }
       // the landing at the top of each flight: lost property people put down and never picked up
