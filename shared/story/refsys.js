@@ -172,6 +172,7 @@ function spawnOne(sim, m, at) {
 function spawnBoss(sim, m, at, boss) {
   const R = sim.ref;
   if (R.boss && R.room.players.get(R.boss.id) === R.boss) return 0;
+  if (boss.train && m.resume === 1) boss.train.start = 1; // (the train fight, picked up after its middle scene: storytrain.js)
   const b = R.room.storySpawn({ kind: m.kind, name: typeof boss.name === 'string' ? boss.name.slice(0, 24) : 'BOSS', hp: boss.hp, w: 'nailgun', tags: ['boss'], npc: '', boss, side: boss.side }, at);
   if (!b.sk.b) { R.room.storyDespawn(b); return 0; } // (the def didn't hold up)
   b.storyId = isId(m.id) ? m.id : m.kind;

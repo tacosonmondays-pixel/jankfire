@@ -61,7 +61,8 @@ starts by itself. Add `&storydev=1` to stage it by hand (`G.story.send('bossdev'
   (spin-up, rate, range, cost, what the ray hit). `slot: null`: it is not in any loadout, ladder, crate or bot.
   It is in your hands whenever you are on the train. Code-built view model: six barrels that show your HP.
 - **The quest**: on `m06`'s `hold` and `break` steps the client goes to the train (`G.story.travel`) and asks the
-  referee for the boss. Phase 1's end sets `rp_phase1_done`; the defeat is the step's `killBoss`. After the mission it
+  referee for the boss. Where you left from is kept in the save (`data.travelFrom`), so a Continue on the train still
+  has its way back; with nothing to go back to, the way back is the default world's spawn. Phase 1's end sets `rp_phase1_done`; the defeat is the step's `killBoss`. After the mission it
   goes back to where you were.
 
 ## The numbers
@@ -160,6 +161,14 @@ spot moves to the flatbed's back.
   (the room lets the ring wind down after 1.5 s of silence, so it never gets up to speed at that frame rate), its
   tracers and sound; a Sweeper's bar in motion; the fail's closing hands (the fight has reset before a frame draws
   them); every sound; the hit-stop. These need a real play at a real frame rate.
+
+## Left for later (from the code review, 2026-11-11)
+- The Blood Drive's path in the room skips the room's other can't-fire checks (stagger, a soap bubble, a pop quiz, the
+  rig, the wrecking ball), and the client decides for itself whether to show blood as free. Neither matters solo;
+  both need doing before co-op.
+- The arm chains make garbage every frame (a fresh path and joint list an arm a frame). Pool them if a profile says so.
+- A run reloaded at m06's `jack` or `break` step picks the fight up at the start of phase 2 (16 m), with the middle
+  scene replayed first if it was the `jack` step. A reload in phase 3 also goes back to phase 2's start.
 
 ## Not built
 - The Brakeman.

@@ -39,7 +39,7 @@ export function cleanTrain(d) {
   }
   phases[2].to = 0;
   const c = d.train.crit && typeof d.train.crit === 'object' ? d.train.crit : {}, cr = (x, def) => (fin(x) ? clamp(x, 1, 10) : def);
-  return { id: d.id, hp, health: fin(d.health) && d.health > 0 && d.health < hp ? d.health : hp, phases, train: true,
+  return { id: d.id, hp, health: fin(d.health) && d.health > 0 && d.health < hp ? d.health : hp, phases, train: true, start: d.train.start === 1 ? 1 : 0, // start 1: from phase 2's beginning (a run reloaded past the middle scene)
     crit: { knot: cr(c.knot, 2), eye: cr(c.eye, 2), insp: cr(c.insp, 2.5) }, geo: geoFrom(d.train.parts) };
 }
 
@@ -68,6 +68,7 @@ export function installStoryTrain(Room) {
       gap: RP.gap.start, sentT: -9, sentGap: -1, sentRate: 0, arms: [], nextId: 1, nextArm: RP.arm.first, severs: [], openUntil: 0,
       plates: Array.from({ length: PLATES }, () => ({ hp: RP.mask.plateHp, st: 0 })), stage: 0, eyeL: false, smile: false, marrow: false,
       jack: 0, bagT: RP.bag.every, lungeT: 0, lunge: null, shrugT: -9, cp: null, ray: null };
+    if (def.start) { const B = b.sk.b; B.phase = 1; B.hp = def.hp * def.phases[0].to / 100; B.marrow = true; B.gap = RP.gap.retry; setHp(b, B); }
     b.ai.nextShot = Infinity; place(b, b.sk.b);
     return true;
   };
@@ -270,7 +271,7 @@ export function installStoryTrain(Room) {
     place(b, B);
     if (B.state === 'done' || b.sk.hold) return; // (held: a cutscene or a talk. nothing moves, THE GAP holds)
     B.t += dt;
-    if (B.first) { B.first = false; B.cp = snap(B); ev(this, b, 'state', stateMsg(B)); }
+    if (B.first) { B.first = false; ev(this, b, 'state', stateMsg(B)); if (B.phase) { this.onStory && this.onStory({ type: 'phase', t: b, phase: B.phase, name: B.def.phases[B.phase].name, line: '', invuln: false }); stages(this, b, B); } B.cp = snap(B); }
     const hs = humans(this), up = hs.filter((p) => p.alive);
     if (B.state === 'cut') { // the client's scene holds it (sk.hold); after it, a beat, then the next phase is on
       if (B.t - B.cutT < RP.cut) return;
@@ -356,7 +357,8 @@ export function installStoryTrain(Room) {
       return;
     }
     B.ray = h;
-    try { this.damage(b, w.dmg + (bloom ? w.bloomDmg : 0), p, 'blooddrive'); } finally { B.ray = null; }
-    if (bloom) ev(this, b, 'bloom', { at: h.at.map(r2), part: h.part });
+    let ok = false;
+    try { ok = this.damage(b, w.dmg + (bloom ? w.bloomDmg : 0), p, 'blooddrive'); } finally { B.ray = null; }
+    if (bloom && ok) ev(this, b, 'bloom', { at: h.at.map(r2), part: h.part }); // (a bolt the mask shrugged off blooms nothing)
   };
 }

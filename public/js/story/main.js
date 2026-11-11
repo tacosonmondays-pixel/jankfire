@@ -20,7 +20,7 @@ import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
 import { WorkerSocket } from './host.js';
-import { worldOf, DEFAULT_WORLD, WORLDS } from '/shared/story/worlds.js';
+import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
 // ?storytest=1: new games start on the test lot (the e2e tests), not in the Bottom
@@ -59,6 +59,7 @@ export function initStory(a) {
     take: (b, n = 1) => send('qtake', { b, n }),
     coupons: (n) => send('qcoupons', { n }),
   };
+  G.story.triggerOff = () => !active() || bagOpen() || clinicOpen() || wheelOpen(); // a held trigger lets go when any of these is up
   storyKeys(); initBar(G.story); initBag(G.story); initBody(G.story); initDrive(G.story);
   on('hello', (m) => { ME.yaw = m.yaw || 0; hud.msg('OVERDUE', 2.2, 'brag'); });
   on('saved', (m) => stored(m.save));
@@ -160,30 +161,25 @@ function start(save) {
 }
 
 // ------------------------------------------------------------ travel: another story world, the same run (the train and back)
-// saves where you are, then starts the run again in `to` (a world id: you arrive at its spawn; or a saved { map, p, yaw })
-const FROM = 'jfStoryFrom';
+// saves where you are, then starts the run again in the other world. where you left from rides in the save itself
+// (data.travelFrom: shared/story/worlds.js), so a Continue on the train still knows the way back; with nothing to go
+// back to, the way back is the default world's spawn (no world is a dead end)
 let going = false;
-function travel(to) {
-  const at = typeof to === 'string' ? { map: to } : to;
-  if (going || !cur || !G.joined || G.mode !== 'story' || !at || !Object.hasOwn(WORLDS, at.map)) return false;
+function hop(make) {
+  if (going || !cur || !G.joined || G.mode !== 'story') return false;
   going = true; pendingSave = 'travel';
   const go = () => {
     const i = listeners.saved.indexOf(go); if (i >= 0) listeners.saved.splice(i, 1);
     going = false;
-    if (typeof to === 'string') { try { sessionStorage.setItem(FROM, JSON.stringify(cur.at)); } catch { /* fine */ } }
-    const W = WORLDS[at.map], p = Array.isArray(at.p) && at.p.length === 3 && at.p.every(Number.isFinite) ? at.p : null;
-    start({ ...cur, at: p ? { map: at.map, p, yaw: Number.isFinite(at.yaw) ? at.yaw : 0 } : { map: at.map, p: W.spawn.slice(), yaw: W.yaw || 0, fresh: true } });
+    const s = make(cur); if (s) start(s);
   };
   on('saved', go);
-  try { if (window.JF_STORY && window.JF_STORY.sync) { window.JF_STORY.sync(); window.JF_STORY.recapped = true; } } catch { /* the save goes anyway */ } // (and no PREVIOUSLY ON: you never left) // (the quest state as it is this frame, not two seconds ago)
+  try { if (window.JF_STORY && window.JF_STORY.sync) { window.JF_STORY.sync(); window.JF_STORY.recapped = true; } } catch { /* the save goes anyway */ } // (the quest state as it is this frame, not two seconds ago; and no PREVIOUSLY ON: you never left)
   send('save', { why: 'travel' });
   return true;
 }
-// back to where the last travel() left from. false = nowhere to go back to
-function travelBack() {
-  let at = null; try { at = JSON.parse(sessionStorage.getItem(FROM) || 'null'); sessionStorage.removeItem(FROM); } catch { /* fine */ }
-  return !!(at && typeof at === 'object' && typeof at.map === 'string') && travel({ map: at.map, p: at.p, yaw: at.yaw });
-}
+const travel = (map) => Object.hasOwn(WORLDS, map) && hop((s) => travelTo(s, map));
+const travelBack = () => hop((s) => travelHome(s));
 
 // ------------------------------------------------------------ saving
 function save(why) { if (G.joined && G.mode === 'story') { pendingSave = why || 'manual'; send('save', { why: pendingSave }); } }
@@ -242,8 +238,8 @@ let toSim = false;
 // main.js hands every key / mouse button here first while story mode is loaded. true = story used it (stop there)
 function key(e, down) {
   if (!G.joined || G.mode !== 'story') return false;
-  if (G.story.fightKey && G.story.fightKey(e, down)) return true; // a fight's own weapon has the trigger (the Blood Drive: story/blooddrive.js)
   if (!down) {
+    if (G.story.fightKey) G.story.fightKey(e, false); // (a fight's own weapon hears every release)
     if (wheelOpen() && K.up('wheel', e)) closeWheel(true);
     if (K.up('use', e)) { const r = bodyKey(e, false); if (r && r.pick) send('pick', { id: r.pick }); } // (a tap on a weapon with the Second Stomach still picks it up)
     return wheelOpen() || bagOpen() || clinicOpen();
@@ -251,6 +247,7 @@ function key(e, down) {
   if (clinicOpen()) { if (K.matches(['use', 'menu'], e)) toggleClinic(false); return true; }
   if (bagOpen()) { if (K.matches(['bag', 'menu'], e)) toggleBag(false); return true; } // (the bag has the mouse)
   if (wheelOpen()) return true; // nothing leaks out of the wheel: no firing, no slot keys, no jumps
+  if (G.story.fightKey && G.story.fightKey(e, true)) return true; // a fight's own weapon has the trigger (the Blood Drive: story/blooddrive.js), after the clinic, the bag and the wheel
   if (e.repeat && K.matches('wheel', e)) return true;
   if (K.matches('wheel', e)) { openWheel(); return true; }
   if (K.matches('bag', e)) { toggleBag(true); return true; }

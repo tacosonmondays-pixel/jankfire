@@ -62,15 +62,19 @@ export function makeBloodDrive({ rayEnd, free }) {
     else if (h.part === 'wall') fx.sparks(h.at, [-dn[0], 0, -dn[2]], 3);
     sfx.bdBolt(); D.kick = 1; punchCam(0.0035, (Math.random() - 0.5) * 0.004, 0);
   }
-  // the fire key is ours while it's in your hands (story main.js asks first)
+  const release = () => { if (D.held) { D.held = false; net.send({ t: 'fire', w: 'blooddrive', k: 'stop' }); } };
+  // the window lost you (alt-tab, another tab): the trigger is up
+  if (typeof window !== 'undefined') { window.addEventListener('blur', release); document.addEventListener('visibilitychange', () => { if (document.hidden) release(); }); }
+  // the fire key is ours while it's in your hands (story main.js asks, once the bag and the wheel have had theirs)
   D.key = (e, down) => {
-    if (!D.on) return false;
+    if (!D.on || (down && D.safe === false)) return false;
     if (down && K.matches('fire', e)) { if (!D.held) { D.held = true; D.keep = 0; net.send({ t: 'fire', w: 'blooddrive', k: 'spin' }); sfx.bdSpin(); } return true; }
-    if (!down && D.held && K.up('fire', e)) { D.held = false; net.send({ t: 'fire', w: 'blooddrive', k: 'stop' }); }
+    if (!down && K.up('fire', e)) release();
     return false;
   };
-  D.tick = (dt, on) => {
-    if (on !== D.on) { D.on = on; specVMKit.own(!on); if (!on && D.held) { D.held = false; net.send({ t: 'fire', w: 'blooddrive', k: 'stop' }); } }
+  D.tick = (dt, on, safe = true) => { // safe false: the bag, the wheel or the pause menu is up (the trigger is off)
+    D.safe = safe; if (!safe) release();
+    if (on !== D.on) { D.on = on; specVMKit.own(!on); if (!on) release(); }
     if (!on) { if (D.vm) D.vm.g.visible = false; D.spin = 0; D.acc = 0; return; }
     if (!D.vm) { D.vm = build(); G.vmScene.add(D.vm.g); }
     const m = D.vm; m.g.visible = true; specVMKit.own(false);

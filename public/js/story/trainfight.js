@@ -22,6 +22,7 @@ import { spawnActor, despawnActor, actors } from './actors.js';
 import { raycast } from '/shared/physics.js';
 import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, armExt, armLive, sweepZ, sweepY, rayFight, SPLIT, PLATES, ss } from '/shared/story/train.js';
 import { makeBloodDrive } from './blooddrive.js';
+import { makeHitStop } from './hitstop.js';
 
 export const RP_ID = 'revenue_protection_1', RP_QUEST = 'm06_tickets_please';
 const SPEED = 12, SEG = 1.5, R = ARENA.boreR, CY = ARENA.cy; // m/s the tunnel goes past · one arm_seg · the bore
@@ -61,9 +62,10 @@ function pivot(node, P, rx, rz) {
 }
 
 export function makeTrainFight(ST, { playScene }) {
-  const T = { on: false, set: null, boss: null, loading: false, geo: GEO0, parts: null, step: '', stepT: 0, spawnT: 0, auto: false, fin: null, failT: 0, hitstop: 0, said: -1 };
+  const T = { on: false, set: null, boss: null, loading: false, geo: GEO0, parts: null, step: '', stepT: 0, spawnT: 0, auto: false, fin: null, failT: 0, retryAt: 0, tries: 0, said: -1 };
   const F = { live: false, gap: RP.gap.start, shown: RP.gap.start, rear: 0, rearS: 0, rate: 0, hp: 1, max: 1, phase: 0, stage: 0, plates: Array(PLATES).fill(0), open: 0, marrow: false, jack: 1, arms: new Map(), lunge: 0 };
   T.F = F;
+  const HS = makeHitStop(); // (real time: the game's own dt is what it slows)
   let hudEl = null, failEl = null, env = null, time = 0;
   const S = () => ST.S;
   const busy = () => !!(ST.scene && ST.scene.playing());
@@ -157,7 +159,7 @@ export function makeTrainFight(ST, { playScene }) {
         m.envMap = env; m.envMapIntensity = (m.metalness > 0.5 ? 0.5 : 0.14) * k; if (m.emissive && m.emissive.getHex() && m.emissiveIntensity > 0) m.toneMapped = false; } });
   }
   function load() {
-    if (T.boss || T.loading) return; T.loading = true;
+    if (T.boss || T.loading || performance.now() < T.retryAt) return; T.loading = true; // (a load that failed waits before it tries again: 2 s, 4 s, ... a minute)
     const get = (u) => new Promise((ok, bad) => glbLoader().load(u, ok, undefined, bad));
     Promise.all([get('/models/story/revenue_protection.glb'), get('/models/story/rp_arm.glb'), fetch('/models/story/revenue_protection.parts.json').then((r) => (r.ok ? r.json() : null)).catch(() => null)]).then(([g, ga, parts]) => {
       prep(g.scene, 1); prep(ga.scene, 0.15);
@@ -177,8 +179,9 @@ export function makeTrainFight(ST, { playScene }) {
       T.boss = { root, N, A, eyes, red, insp, cross, cm, inspGlow: glow('rp_inspector_glow'), eyeGlow: glow('rp_eye_glow'), hidden: new Set(parts ? parts.parts.filter((p) => p.hidden).map((p) => p.name) : []), debris: [], haul: [] };
       for (const nm of T.boss.hidden) if (N[nm]) N[nm].visible = false;
       for (const [sock, wa] of [[7, 3.5], [10, -0.36]]) T.boss.haul.push(newArm({ id: 'h' + sock, k: 'haul', sock, mouth: 0, st: 'grip', t: 0, dur: 0, tgt: [0, 0, 0], wa, hp: 1, max: 1 }, true)); // two arms on the walls that do the hauling (not targets: no knot)
-      applyMask(); T.loading = false;
-    }).catch((e) => { console.warn('revenue protection model', e); T.loading = false; T.loadErr = true; });
+      applyMask(); T.loading = false; T.tries = 0;
+      if (!T.on) hideBoss(); // (it landed after you left: it waits, out of sight, for the next visit)
+    }).catch((e) => { console.warn('revenue protection model', e); T.loading = false; T.loadErr = true; T.retryAt = performance.now() + Math.min(60000, 2000 * 2 ** T.tries++); });
   }
   const pn = (i, suf = '') => `plate_${String(i).padStart(2, '0')}${suf}`;
   // what the room's state says is on the face right now
@@ -288,7 +291,7 @@ export function makeTrainFight(ST, { playScene }) {
   }
   function severed(v, m) {
     const w = v.wrist || [0, 2, 0];
-    sfx.rpSever(w); fx.blood(w, [0, 1, 0], 40, 0); fx.sparks(w, [0, 0, -1], 18, true); G.shake = Math.max(G.shake, 0.7); T.hitstop = 0.09;
+    sfx.rpSever(w); fx.blood(w, [0, 1, 0], 40, 0); fx.sparks(w, [0, 0, -1], 18, true); G.shake = Math.max(G.shake, 0.7); HS.hit(0.09);
     if (T.boss && v.hand) { v.hand.updateWorldMatrix(true, false); const c = v.hand.clone(true); v.hand.matrixWorld.decompose(c.position, c.quaternion, c.scale); G.scene.add(c); T.boss.debris.push({ m: c, v: [0, 2, 1], w: [2, 1, 3], t: 0, life: 2.6, hit: false, name: 'hand' }); } // the hand drops onto the track
     if (fin(m.blood) && m.blood > 0) hud.msg(`SEVERED. +${m.blood} BLOOD`, 1, 'brag'); else hud.msg('SEVERED', 0.8, 'brag');
   }
@@ -363,7 +366,7 @@ export function makeTrainFight(ST, { playScene }) {
       case 'swept': hud.msg(ev.hi ? 'SWEPT. SLIDE NEXT TIME.' : 'SWEPT. JUMP NEXT TIME.', 1.6, 'reverse'); G.shake = 1; break;
       case 'snatched': hud.msg('TAKEN. THE GAP WENT WITH YOU.', 2, 'reverse'); G.shake = 1; break;
       case 'lunge': if (ev.st === 'tell') { F.lunge = fin(ev.dur) ? ev.dur : RP.lunge.tell; hud.msg('IT REARS. OFF THE WAGON.', 1.5, 'reverse'); sfx.rpLunge(); } else { F.lunge = 0; G.shake = 1; if (T.boss) T.boss.bite = 1; if (fin(ev.gap)) F.gap = ev.gap;
-        if (ev.cut) { F.rear = ARENA.cut; setWagon(false, true); T.hitstop = 0.12; hud.msg(ev.bit ? 'IT TOOK THE WAGON. AND SOME OF YOU.' : 'IT TOOK THE WAGON', 2.2, 'reverse'); sfx.rpPlate([0, 1, 4], true); sfx.rpSever([0, 1, 4]); fx.sparks([0, 1.2, CAR.wagon.z1], [0, 0, -1], 40, true); }
+        if (ev.cut) { F.rear = ARENA.cut; setWagon(false, true); HS.hit(0.12); hud.msg(ev.bit ? 'IT TOOK THE WAGON. AND SOME OF YOU.' : 'IT TOOK THE WAGON', 2.2, 'reverse'); sfx.rpPlate([0, 1, 4], true); sfx.rpSever([0, 1, 4]); fx.sparks([0, 1.2, CAR.wagon.z1], [0, 0, -1], 40, true); }
         else if (ev.bit) hud.msg('BITTEN', 1.2, 'reverse'); } break;
       case 'bag': hud.msg(`SOUP BAG. +${fin(ev.hp) ? ev.hp : RP.bag.hp} BLOOD`, 1.2, 'brag'); break;
       case 'off': hud.msg('MIND THE GAP', 1.6, 'reverse'); break;
@@ -386,8 +389,8 @@ export function makeTrainFight(ST, { playScene }) {
   function stageFx(was, st) {
     const b = T.boss; if (st <= was) return;
     if (st >= 1 && was < 1) say('excuse me. excuse me.', 3);
-    if (st >= 2 && was < 2) { hud.msg('THE LEFT EYE', 2, 'brag'); say('is this seat taken', 5); G.shake = 1; T.hitstop = 0.08; if (b) { drop('eye_L'); b.root.getWorldPosition(_p); const p = [_p.x + T.geo.eyes.L.c[0], _p.y + T.geo.eyes.L.c[1], _p.z + 0.4]; fx.sparks(p, [0, 0, 1], 30, true); fx.blood(p, [0, 0, 1], 30, 0); sfx.rpSever(p); } }
-    if (st >= 3 && was < 3) { hud.msg('THE SMILE', 2.2, 'brag'); say('i\'m going to be late', 5); G.shake = 1; T.hitstop = 0.1; if (b) { for (const i of SPLIT) if (F.plates[i] !== 2) drop(pn(i, '_low')); drop('frame_low'); b.root.getWorldPosition(_p); sfx.rpPlate([_p.x, 1, _p.z], true); } }
+    if (st >= 2 && was < 2) { hud.msg('THE LEFT EYE', 2, 'brag'); say('is this seat taken', 5); G.shake = 1; HS.hit(0.08); if (b) { drop('eye_L'); b.root.getWorldPosition(_p); const p = [_p.x + T.geo.eyes.L.c[0], _p.y + T.geo.eyes.L.c[1], _p.z + 0.4]; fx.sparks(p, [0, 0, 1], 30, true); fx.blood(p, [0, 0, 1], 30, 0); sfx.rpSever(p); } }
+    if (st >= 3 && was < 3) { hud.msg('THE SMILE', 2.2, 'brag'); say('i\'m going to be late', 5); G.shake = 1; HS.hit(0.1); if (b) { for (const i of SPLIT) if (F.plates[i] !== 2) drop(pn(i, '_low')); drop('frame_low'); b.root.getWorldPosition(_p); sfx.rpPlate([_p.x, 1, _p.z], true); } }
   }
   // a blood cross blooms where the sixth bolt went in
   function bloom(at) {
@@ -400,7 +403,7 @@ export function makeTrainFight(ST, { playScene }) {
   function finish() {
     if (T.fin) return;
     T.fin = { t: 0, thud: false, click: false }; clearArms(); F.rate = 0;
-    hud.msg('BLOOD CROSSED', 3.6, 'brag'); sfx.rpCross(); G.shake = 1; T.hitstop = 0.22; say('*click.*', 6);
+    hud.msg('BLOOD CROSSED', 3.6, 'brag'); sfx.rpCross(); G.shake = 1; HS.hit(0.22); say('*click.*', 6);
   }
   function stepFinish(dt) {
     const f = T.fin, b = T.boss; f.t += dt; if (!b) return;
@@ -420,11 +423,11 @@ export function makeTrainFight(ST, { playScene }) {
   // ---------------------------------------------------------------- every frame (boot.js, while a story world is on)
   T.tick = (dt) => {
     const on = !!(G.joined && G.mode === 'story' && MAP.id === TRAIN.id);
-    if (on !== T.on) { T.on = on; if (on) { buildSet(); load(); } else leave(); }
+    if (on !== T.on) { T.on = on; if (on) { if (T.set) { G.scene.add(T.set.g); setWagon(true); crew(true); } else buildSet(); load(); } else leave(); } // (the tunnel, the train and the models are built once and kept between visits)
     if (!on) { BD.tick(dt, false); return; }
     if (!T.boss) load();
     const held = busy(), sdt = held ? 0 : dt; // (a scene holds the room: hold the picture of it too)
-    time += dt; T.hitstop = Math.max(0, T.hitstop - dt);
+    time += dt;
     stepSet(dt);
     F.gap = clamp(F.gap + F.rate * sdt, 0, RP.gap.max); F.open = Math.max(0, F.open - sdt); F.lunge = Math.max(0, F.lunge - sdt);
     if (!T.fin) F.shown += (F.gap - F.shown) * Math.min(1, dt * 6);
@@ -460,16 +463,17 @@ export function makeTrainFight(ST, { playScene }) {
     for (const v of F.arms.values()) { v.a.t += sdt; if (b && !v.hand) { freeArm(v); const nv = newArm(v.a); Object.assign(v, nv); } poseArm(v, dt, Z()); } // (an arm that came before the model did gets its body now)
     { const ks = [...F.arms.values()].filter((v) => v.wrist && armLive(v.a)).sort((p, q) => Math.hypot(p.wrist[0] - ME.pos[0], p.wrist[2] - ME.pos[2]) - Math.hypot(q.wrist[0] - ME.pos[0], q.wrist[2] - ME.pos[2])); T.set.knots.forEach((l, i) => { const v = ks[i]; l.intensity = v ? 3.5 + v.flash * 8 : 0; if (v) l.position.set(v.wrist[0], v.wrist[1], v.wrist[2]); }); }
     showHud();
-    BD.tick(dt, ME.alive && !held && !(T.failT && !F.live));
+    BD.tick(dt, ME.alive && !held && !(T.failT && !F.live), !(G.story.triggerOff && G.story.triggerOff()));
   };
   function leave() {
-    clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; crew(false);
-    if (T.set) { G.scene.remove(T.set.g); T.set = null; }
-    if (T.boss) { G.scene.remove(T.boss.root); for (const d of T.boss.debris) G.scene.remove(d.m); for (const v of T.boss.haul) freeArm(v); T.boss = null; }
+    clearArms(); F.live = false; T.fin = null; T.said = -1; T.auto = false; T.back = null; F.rear = F.rearS = 0; T.cutBoxes = null; crew(false); HS.clear(); T.jack = 0;
+    if (T.set) { G.scene.remove(T.set.g); const w = T.set.cars.wagon; if (w) { w.visible = true; w.position.set(0, 0, 0); w.rotation.set(0, 0, 0); } } // (kept: nothing to rebuild or dispose next time)
+    hideBoss();
     if (hudEl) hudEl.classList.add('hidden'); if (failEl) { failEl.classList.remove('on'); failEl.classList.add('hidden'); }
   }
-  // a real hit-stop on a sever (story main.js multiplies the game's dt by this)
-  T.timeScale = () => (T.hitstop > 0 ? 0.06 : 1);
+  function hideBoss() { const b = T.boss; if (!b) return; b.root.visible = false; for (const d of b.debris.splice(0)) G.scene.remove(d.m); for (const v of b.haul) v.g.visible = false; unbreak(); }
+  // a real hit-stop on a sever (story main.js multiplies the game's dt by this). only on the train, and never past leave()
+  T.timeScale = () => (T.on ? HS.scale() : 1); T.hitStop = HS;
   // what your other guns can hit (bossref.js gives the room's bot these boxes): the face and every arm. the room judges the shot
   T.boxes = () => {
     if (!F.live) return null;
@@ -480,7 +484,7 @@ export function makeTrainFight(ST, { playScene }) {
 
   // ---------------------------------------------------------------- the quest: m06's fight steps
   const objective = () => { const os = S().quests.objectives ? S().quests.objectives() : []; return os.find((x) => x.quest === RP_QUEST) || null; };
-  const spawn = () => { if (G.story && G.story.send) G.story.send('spawn', { kind: RP_ID, id: RP_ID, at: [0, CY, -RP.gap.start] }); };
+  const spawn = (resume) => { if (G.story && G.story.send) G.story.send('spawn', { kind: RP_ID, id: RP_ID, at: [0, CY, -RP.gap.start], ...(resume ? { resume: 1 } : {}) }); }; // resume: the fight from phase 2's start (a run reloaded past the middle scene)
   T.spawn = spawn;
   T.frame = () => {
     const o = objective(), step = o ? o.step : '', now = performance.now();
@@ -489,10 +493,14 @@ export function makeTrainFight(ST, { playScene }) {
     if (fight && G.joined && G.mode === 'story' && MAP.id !== TRAIN.id && G.story.travel && !T.going && !busy()) { T.going = G.story.travel(TRAIN.id); return; } // the fight is on the train: go there (story/main.js remembers where from)
     if (!T.on) return;
     T.going = false;
-    if ((fight || (TRAINQ && !o && !T.auto)) && !F.live && !T.fin && now - T.spawnT > 2500 && !busy()) { T.spawnT = now; T.auto = true; spawn(); } // (the room has one boss at a time: asking twice is nothing)
-    // the middle scene's [FIRE] and [TAKE] are not built yet (the scene engine cuts a "moment" at 3 s): once it has
-    // played, the step is given its flags here so the fight can go on. stands in for the two buttons
-    if (step === 'jack' && !busy() && now - T.stepT > 1500) S().run(['flag:jack_fired', 'flag:jack_marrow_taken', 'flag:seen_mo_carry']);
+    if ((fight || (TRAINQ && !o && !T.auto)) && !F.live && !T.fin && now - T.spawnT > 2500 && !busy()) { T.spawnT = now; T.auto = true; spawn(step === 'break'); } // (the room has one boss at a time: asking twice is nothing)
+    // the middle scene's [FIRE] and [TAKE] are not built yet (the scene engine cuts a "moment" at 3 s): once the scene
+    // has really played (seen on screen this visit, then over), the step is given its flags here so the fight can go
+    // on. stands in for the two buttons. a run reloaded at this step plays the scene again first
+    if (step !== 'jack') T.jack = 0;
+    else if (busy()) T.jack = 2; // it is playing
+    else if (T.jack === 2) { T.jack = 3; S().run(['flag:jack_fired', 'flag:jack_marrow_taken', 'flag:seen_mo_carry']); }
+    else if (!T.jack && now - T.stepT > 4000 && S().defs.scenes.mo_carry_the_bit_that_works) { T.jack = 1; playScene('mo_carry_the_bit_that_works'); } // (the step's own scene never came: a reload)
     // done with the mission (or it was never on) after a trip here: back to where you came from
     const q = S().st.quests[RP_QUEST];
     if (!o && q && q.done && !busy() && G.story.travelBack && (!F.live || (T.fin && T.fin.t > 6)) && now - T.stepT > 4000 && !T.back) T.back = G.story.travelBack() || 'nowhere';

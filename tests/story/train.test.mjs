@@ -7,7 +7,9 @@ import { createSim } from '../../shared/story/sim.js';
 import '../../shared/story/invsys.js';
 import '../../shared/story/solohost.js';
 import '../../shared/story/refsys.js';
-import { newSave } from '../../shared/story/save.js';
+import { newSave, cleanSave } from '../../shared/story/save.js';
+import { WORLDS, DEFAULT_WORLD, travelTo, travelHome } from '../../shared/story/worlds.js';
+import { makeHitStop } from '../../public/js/story/hitstop.js';
 import { BOSSES } from '../../shared/story/content/bosses.js';
 import { WEAPONS, FLAGS, ORDER, SLOTS, validLoadout } from '../../shared/weapons.js';
 import { LADDER } from '../../shared/modes.js';
@@ -102,6 +104,7 @@ await t('THE GAP: it closes 1 m/s for every arm that has the rail, not before; a
   assert.equal(cut.st, 'cut'); assert.equal(cut.blood, RP.arm.blood, 'blood back');
   assert.ok(Math.abs(B.gap - gap1 - RP.gap.sever) < 0.01, 'the gap opens');
   assert.equal(me.hp, 60 - (hs.length + 0) * W.cost + RP.arm.blood, '2 HP a bolt, 20 back');
+  assert.equal(ev('bloom').length, 1, 'the sixth bolt in the same arm bloomed a cross'); assert.equal(ev('bloom')[0].part, 'knot'); assert.ok(Array.isArray(ev('bloom')[0].at));
   await run(RP.arm.cut + 0.2);
   assert.ok(!B.arms.includes(a), 'the stump is gone'); assert.equal(ev('arm').filter((x) => x.id === a.id).at(-1).st, 'gone');
 });
@@ -143,6 +146,7 @@ await t('phase 1: the mask shrugs bolts off; four severs inside ten seconds and 
   const s0 = ev('shrug').length;
   assert.equal(bolt(face(1.26, 3.05)).length, 0, 'a plate'); assert.equal(bolt(face(1.25, 0.7)).length, 0, 'a shut eye housing'); assert.equal(B.hp, 5000);
   assert.ok(ev('shrug').length > s0, 'the client hears the tink');
+  const b0 = ev('bloom').length; for (let i = 0; i < 7; i++) bolt(face(1.26, 3.05)); assert.equal(ev('bloom').length, b0, 'six bolts the mask shrugged off bloom nothing');
   assert.equal(bolt([20, 3, -10]).length, 0, 'into the wall');
   for (let i = 0; i < 3; i++) dev({ want: 'grab' });
   dev({ sever: true }); assert.equal(B.severs.length, 3); assert.equal(ev('flinch').length, 0, 'three is not four');
@@ -343,6 +347,43 @@ await t('safety: junk defs, junk dev messages and junk hits do nothing; any othe
   // the first boss still spawns and fights by its own rules in the same room
   sim.msg({ t: 'sty', k: 'spawn', kind: 'overtime_1', at: [0, 1.3, 12] });
   const ot = sim.refEnemies()[0]; assert.ok(ot.sk.b && !ot.sk.b.train); assert.equal(ot.sk.b.hp, 4200); R.room.damage(ot, 100, me, 'ar'); assert.equal(ot.sk.b.hp, 4100);
+});
+await t('a run reloaded past the middle scene picks the fight up at phase 2, not phase 1; junk asks get the whole fight', async () => {
+  const S = await boot(); S.sim.msg({ t: 'sty', k: 'spawn', kind: ID, id: ID, at: [0, 3, -20], resume: 1 });
+  const e2 = S.sim.refEnemies()[0], B2 = e2.sk.b; B2.calm = true; await S.run(0.2);
+  assert.equal(B2.phase, 1); assert.equal(B2.hp, 3000); assert.equal(B2.marrow, true); assert.equal(B2.gap, RP.gap.retry); assert.equal(B2.state, 'fight');
+  assert.deepEqual({ phase: S.ev('state')[0].phase, marrow: S.ev('state')[0].marrow, hp: S.ev('state')[0].hp }, { phase: 1, marrow: true, hp: 3000 });
+  assert.deepEqual(S.ev('phase').map((p) => [p.phase, p.name, p.invuln]), [[1, 'PENALTY FARE', false]]); assert.deepEqual(S.ev('stage').map((x) => x.name), ['hairline']);
+  B2.hp = 2000; S.me.alive = false; await S.run(0.2); S.me.alive = true; S.me.hp = 100; await S.run(RP.fail + 0.3); assert.equal(B2.hp, 3000, 'and a retry goes back to there');
+  S.sim.msg({ t: 'sty', k: 'despawn', id: ID });
+  for (const r of ['yes', 2, true, {}, -1]) { S.sim.msg({ t: 'sty', k: 'spawn', kind: ID, id: ID, at: [0, 3, -20], resume: r }); const x = S.sim.refEnemies()[0]; assert.equal(x.sk.b.phase, 0); assert.equal(x.sk.b.hp, 5000); S.sim.msg({ t: 'sty', k: 'despawn', id: ID }); }
+});
+
+await t('the way back from the train is in the save: Continue on the train still gets home, and no world is a dead end', async () => {
+  const home = { ...newSave(0, 'story_test'), at: { map: 'story_test', p: [3, 0, 9], yaw: 1.2 } };
+  const there = travelTo(home, TRAIN.id);
+  assert.deepEqual(there.at, { map: TRAIN.id, p: TRAIN.spawn, yaw: 0, fresh: true }); assert.deepEqual(there.data.travelFrom, { map: 'story_test', p: [3, 0, 9], yaw: 1.2 }); assert.equal(home.data.travelFrom, undefined, 'the save it was made from is untouched');
+  // through the save's cleaner and a sim's snapshot (closing the tab and pressing Continue), it is still there
+  const kept = cleanSave(JSON.parse(JSON.stringify(there)), { slot: 0 }).save; assert.deepEqual(kept.data.travelFrom, there.data.travelFrom);
+  const s2 = createSim({ send: () => {}, save: kept }); s2.msg({ t: 'join', name: 'x' }); assert.equal(s2.zone, TRAIN.id);
+  const snap = s2.snapshot('auto'); assert.equal(snap.at.map, TRAIN.id); assert.deepEqual(snap.data.travelFrom, there.data.travelFrom);
+  const back = travelHome(snap); assert.deepEqual(back.at, { map: 'story_test', p: [3, 0, 9], yaw: 1.2 }); assert.equal(back.data.travelFrom, undefined, 'used up');
+  assert.deepEqual(travelTo(there, TRAIN.id).data.travelFrom, there.data.travelFrom, 'going there twice keeps the first spot');
+  // nothing to go back to (an old save made on the train, or nonsense in it): the default world's spawn
+  for (const bad of [undefined, null, 'x', { map: 'nowhere', p: [0, 0, 0] }, { map: 'story_test', p: [NaN, 0, 0] }, { map: 'story_test' }]) {
+    const h = travelHome({ ...newSave(0, TRAIN.id), data: { flags: [], quests: {}, seen: [], travelFrom: bad } });
+    assert.equal(h.at.map, DEFAULT_WORLD); assert.deepEqual(h.at.p, WORLDS[DEFAULT_WORLD].spawn); assert.equal(h.at.fresh, true); assert.equal(h.data.travelFrom, undefined);
+  }
+  assert.equal(travelTo(home, 'nowhere'), null); assert.equal(travelTo(null, TRAIN.id), null); assert.equal(travelHome(null), null);
+});
+
+await t('a hit-stop is counted in real time, capped, and can be cleared: it never outlasts itself in slowed time', async () => {
+  let now = 1000; const H = makeHitStop(() => now, 0.25, 0.06);
+  assert.equal(H.scale(), 1); H.hit(0.09); assert.equal(H.scale(), 0.06); assert.ok(H.on());
+  now += 80; assert.equal(H.scale(), 0.06, 'still on at 80 ms'); now += 15; assert.equal(H.scale(), 1, 'over after 90 real ms, however slow the game ran meanwhile');
+  H.hit(9); now += 249; assert.equal(H.scale(), 0.06); now += 2; assert.equal(H.scale(), 1, 'no single one is longer than the cap');
+  H.hit(0.2); H.hit(0.05); now += 100; assert.ok(H.on(), 'a shorter one does not cut a longer one short'); H.clear(); assert.equal(H.scale(), 1, 'leaving the train clears it');
+  for (const junk of [NaN, -1, 'x', null, Infinity]) H.hit(junk); assert.equal(H.scale(), 1);
 });
 console.log(n, 'passed');
 process.exit(0);
