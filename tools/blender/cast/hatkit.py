@@ -146,14 +146,13 @@ def polyp(c, r, m, up=(0, 1, 0), tall=1.0, pucker=0.35, seg=8, name='polyp', see
     """a soft lump with a puckered mouth at its tip (the curls in the sketch): centre c (game), radius r, pointing `up`"""
     rr = random.Random(seed)
     prof = []
-    for i in range(7):
-        t = i / 6
-        a = t * math.pi * 0.93
-        rad = math.sin(a) * r * (1.0 + 0.12 * math.sin(t * 9 + seed))
-        y = -math.cos(a) * r * tall
-        if t > 0.8: y -= (t - 0.8) / 0.2 * r * pucker * tall
-        prof.append((max(rad, r * 0.06), y))
-    prof.append((0.0, prof[-1][1] - r * 0.12))
+    for i in range(8):                       # a bulb: up from its foot, widest above the middle, then over the shoulder
+        t = i / 7
+        a = t * math.pi * 0.86
+        prof.append((max(math.sin(a) * r * (1.0 + 0.1 * math.sin(t * 9 + seed)), r * 0.06), -math.cos(a) * r * tall))
+    top = prof[-1]
+    prof.append((top[0] * 0.62, top[1] + r * 0.05 * tall))      # the lip of its mouth
+    prof.append((top[0] * 0.4, top[1] - r * pucker * 0.6 * tall)); prof.append((0.0, top[1] - r * pucker * tall))   # and down into it
     o = lathe([(x, y) for x, y in prof], (0, 0, 0), m, seg=seg, axis='y', name=name, cap=False)
     apply_mods(o)
     bm = bmesh.new(); bm.from_mesh(o.data)
@@ -162,12 +161,15 @@ def polyp(c, r, m, up=(0, 1, 0), tall=1.0, pucker=0.35, seg=8, name='polyp', see
     bmesh.ops.holes_fill(bm, edges=[e for e in bm.edges if len(e.link_faces) == 1])
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 4])
     for v in bm.verts:   # lopsided, like something that grew
-        v.co.x += rr.uniform(-1, 1) * r * 0.06; v.co.y += rr.uniform(-1, 1) * r * 0.06
+        k = 1 + 0.16 * rpkit.fbm(v.co.x * 14 / max(r, 0.03) * 0.05 + seed, v.co.y * 14 / max(r, 0.03) * 0.05, v.co.z * 0.7 / max(r, 0.03) * 0.05 + seed * 0.37)
+        v.co.x *= k; v.co.y *= k
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     bm.to_mesh(o.data); bm.free()
     for p in o.data.polygons: p.use_smooth = True
+    o.modifiers.clear()
     q = Vector((0, 0, 1)).rotation_difference(gv(*up).normalized())
     o.rotation_euler = q.to_euler(); o.location = gv(*c)
+    o['soft'] = 1
     return o
 
 
@@ -248,25 +250,20 @@ def eyeball(c, r, m, look=(0, 0, -1), uv_rect=(0, 0, 0.5, 1), seg=12, rings=8, n
     return o
 
 
-def lid_cap(c, r, m, look=(0, 0, -1), up=(0, 1, 0), open_=0.55, cover=1.0, seg=10, rings=4, name='lid', thick=0.12):
-    """an upper eyelid: a cap of a slightly bigger sphere covering the top of the eye, hinged on the eye's centre.
-    open_ = how far its edge sits above the look axis (0 = shut to the middle, 1 = fully back)"""
+def lid_cap(c, r, m, look=(0, 0, -1), up=(0, 1, 0), open_=0.55, back=2.0, seg=10, rings=4, name='lid', thick=0.12):
+    """an upper eyelid: a strip of a slightly bigger sphere over the top of the eye, hinged on the line through the
+    eye's corners (so it has no pole to fold over). open_ = how far its edge sits above the look axis (0 = on it),
+    back = how far round over the top it reaches (radians from the look axis): enough that a shut lid leaves no white"""
     look = Vector(look).normalized(); upv = (Vector(up) - look * Vector(up).dot(look)).normalized(); sd = upv.cross(look).normalized()
     R = r * (1 + thick)
-    a0 = math.asin(max(-0.95, min(0.95, open_))) if open_ < 1 else math.pi / 2 - 0.05   # elevation of the lid's lower edge
-    P = []
-    for j in range(rings + 1):
-        el = a0 + (math.pi * 0.5 * cover + 0.25 - a0) * j / rings   # from the edge up over the top and a little behind
-        row = []
-        for i in range(seg + 1):
-            az = -math.pi * 0.52 + math.pi * 1.04 * i / seg
-            dirv = look * (math.cos(el) * math.cos(az)) + sd * (math.cos(el) * math.sin(az)) + upv * math.sin(el)
-            # elevation here is measured from the look/side plane toward `up`: at az +-90 the lid meets the corners
-            row.append(tuple(Vector(c) + dirv * R))
-        P.append(row)
-    Pin = [[tuple(Vector(c) + (Vector(p) - Vector(c)) * (r * 1.02 / R)) for p in row] for row in P]
-    o = shell(name, (m, m), P, Pin, deg=80)
-    return o
+    a0 = math.asin(max(-0.95, min(0.95, open_)))
+    def grid_(rad, lift=0.0):
+        P = []
+        for j in range(rings + 1):
+            ph = a0 + (back - a0) * j / rings + (lift if j == 0 else 0.0)
+            P.append([tuple(Vector(c) + (sd * math.sin(az) + (look * math.cos(ph) + upv * math.sin(ph)) * math.cos(az)) * rad) for az in [-1.42 + 2.84 * i / seg for i in range(seg + 1)]])
+        return P
+    return shell(name, (m, m), grid_(R), grid_(r * 1.02, 0.03), deg=80)
 
 
 # ------------------------------------------------------------ small textures

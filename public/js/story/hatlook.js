@@ -34,21 +34,24 @@ export const EXTRA = [
   ['eyeHR', 'crown', 0.058, EYE[1], EYE[2], 0, 0, 0], ['eyeHL', 'crown', -0.058, EYE[1], EYE[2], 0, 0, 0], // HER eyes: the balls turn to look
   ['lidHR', 'crown', 0.058, EYE[1], EYE[2], 0, 0, 0], ['lidHL', 'crown', -0.058, EYE[1], EYE[2], 0, 0, 0], // their upper lids: - x shuts
   // the creature's five eyes: each lid sits on its eye, turned to face where that eye faces (- z of the lid's frame)
-  ['lidCa', 'growthA', 0.085, 0.07, -0.085, -0.25, -0.75, 0], ['lidCb', 'growthA', 0.02, -0.03, -0.16, 0.2, -0.2, 0], ['lidCc', 'crown', -0.02, 0.29, -0.39, -0.9, 0.1, 0],
+  ['lidCa', 'growthA', 0.085, 0.07, -0.085, -0.25, -0.75, 0], ['lidCb', 'growthA', 0.02, -0.03, -0.16, 0.2, -0.2, 0], ['lidCc', 'crown', -0.02, 0.29, -0.39, 0.7, 0.15, 0],
   ['lidCd', 'growthC', -0.06, 0.04, -0.07, -0.2, 0.7, 0], ['lidCe', 'growthB', 0.03, 0.01, 0.07, -0.5, 2.9, 0],
   ['idxR', 'handR', -0.03, -0.105, 0, 0, 0, 0], ['idxRb', 'idxR', 0, -0.085, 0, 0, 0, 0], ['finR', 'handR', 0.01, -0.105, 0, 0, 0, 0], ['finRb', 'finR', 0, -0.085, 0, 0, 0, 0], ['thumbR', 'handR', -0.04, -0.03, -0.012, 0, 0, 0],
   ['idxL', 'handL', 0.03, -0.105, 0, 0, 0, 0], ['idxLb', 'idxL', 0, -0.085, 0, 0, 0, 0], ['finL', 'handL', -0.01, -0.105, 0, 0, 0, 0], ['finLb', 'finL', 0, -0.085, 0, 0, 0, 0], ['thumbL', 'handL', 0.04, -0.03, -0.012, 0, 0, 0],
 ];
 export const EXTRA_NAMES = EXTRA.map((e) => e[0]);
 
-// markers (joint space): the model's own spots (c_hat_lord.parts.json `markers`). eyeAt / eyeHRAt / eyeHLAt = HER eyes,
-// on the hat: what a camera or a look-at should treat as her eyes. socketAt = the empty heart socket.
+// markers (joint space): the model's own spots, copied from c_hat_lord.parts.json `markers` (tools/blender/cast/hlparts.cjs
+// checks they still agree). eyeAt / eyeHRAt / eyeHLAt = HER eyes, on the hat: what a camera or a look-at should treat as
+// her eyes. weakA..E = the creature's five eyes. socketAt = the empty heart socket.
 const MK = {
-  eyeAt: ['crown', 0, EYE[1], EYE[2] - 0.036], eyeHRAt: ['crown', 0.058, EYE[1], EYE[2] - 0.036], eyeHLAt: ['crown', -0.058, EYE[1], EYE[2] - 0.036],
-  faceAt: ['head', 0, 0.25, -0.14], mouthAt: ['head', 0, 0.1, -0.12], socketAt: ['spine', -0.04, 0.43, -0.105],
-  hatMouthAt: ['hat', 0, 0.06, -0.31], hatTopAt: ['crown', 0, 0.31, -0.27], brimTipR: ['feeler', 0, 0, 0], brimTipL: ['brimLb', -0.58, 0, 0], feelerTip: ['feelerB', 0.23, 0, 0],
-  weakA: ['growthA', 0.085, 0.07, -0.085], weakB: ['growthA', 0.02, -0.03, -0.16], weakC: ['crown', -0.02, 0.29, -0.39], weakD: ['growthC', -0.06, 0.04, -0.07], weakE: ['growthB', 0.03, 0.01, 0.07],
-  palmR: ['handR', 0, -0.06, 0.02], palmL: ['handL', 0, -0.06, 0.02], fingerTipR: ['idxRb', 0, -0.11, 0], fingerTipL: ['idxLb', 0, -0.11, 0],
+  mouthAt: ['head', 0.0, 0.1, -0.12], faceAt: ['head', 0.0, 0.25, -0.14], socketAt: ['spine', -0.0369, 0.4301, -0.111],
+  palmL: ['handL', 0.0, -0.06, 0.02], fingerTipL: ['idxLb', 0.0, -0.108, 0.014], palmR: ['handR', 0.0, -0.06, 0.02],
+  fingerTipR: ['idxRb', 0.0, -0.108, 0.014], feelerTip: ['feelerB', 0.225, 0.0, 0.0], brimTipR: ['feeler', 0.0, 0.0, 0.0],
+  brimTipL: ['brimLb', -0.58, 0.0, 0.0], hatMouthAt: ['hat', 0.0, 0.07, -0.32], hatTopAt: ['hat', 0.02, 0.362, 0.0],
+  eyeAt: ['crown', -0.0, 0.17, -0.581], eyeHRAt: ['crown', 0.058, 0.17, -0.581], eyeHLAt: ['crown', -0.058, 0.17, -0.581],
+  weakA: ['lidCa', 0.0, 0.0, -0.043], weakB: ['lidCb', 0.0, 0.0, -0.03], weakC: ['lidCc', 0.0, 0.0, -0.052],
+  weakD: ['lidCd', 0.0, 0.0, -0.037], weakE: ['lidCe', 0.0, 0.0, -0.033],
 };
 
 export function hatLordLook(K) {

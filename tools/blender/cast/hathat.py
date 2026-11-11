@@ -18,7 +18,9 @@ AXR, AXL, BZF, BZB = 1.25, 1.6, 0.62, 0.66        # the brim's reach from the mi
 HOLE = (0.172, 0.196); BAND = (0.3, 0.29)          # the hole her head goes through; the band (the mouth)
 NR = 18                                            # ribs, one every 20 degrees. theta 0 = +x (her right), 90 = front
 STEP = math.radians(20 / 3)
-HIDE = (0.47, 0.2, 0.33); BRUISE = (0.36, 0.2, 0.46); FAT = (1.0, 0.84, 0.52); RAW = (1.0, 0.56, 0.66); LIP = (0.34, 0.1, 0.2)
+# vertex tints are LINEAR multipliers over the pale flesh texture (three.js multiplies COLOR_0 in the same way):
+# liver hide, bruise, fat yellow, raw pink, the dark of a lip
+HIDE = (0.17, 0.028, 0.07); BRUISE = (0.07, 0.035, 0.15); FAT = (0.92, 0.74, 0.46); RAW = (0.9, 0.2, 0.32); LIP = (0.1, 0.01, 0.04)
 
 
 def _ell(th, a, b): c, s = math.cos(th), math.sin(th); return 1.0 / math.sqrt((c / a) ** 2 + (s / b) ** 2)
@@ -32,7 +34,8 @@ def y_top(th, r):
     b = band_r(th)
     if r <= b: return 0.036
     u = min(1.0, (r - b) / (edge_r(th) - b))
-    return 0.036 - 0.062 * smooth01(u, 0.0, 0.5) + 0.034 * u * u - 0.016 * u * math.sin(9 * th) ** 2
+    # (dips off the band, lifts toward the edge, sags between the ribs, and each rib shows through as a ridge)
+    return 0.036 - 0.062 * smooth01(u, 0.0, 0.5) + 0.034 * u * u - 0.016 * u * math.sin(9 * th) ** 2 + 0.007 * smooth01(u, 0.0, 0.2) * math.cos(9 * th) ** 8
 
 
 def y_bot(th, r):
@@ -51,19 +54,20 @@ def hide_tint(p, n, k=1.0):
 
 
 # ------------------------------------------------------------ the brim
-def sector(H, joint, ths, rin_t, rin_b, rout, nr=5, dy=0.0, name='brim'):
+def sector(H, joint, ths, rin_t, rin_b, rout, nr=5, dy=0.0, name='brim', lod=False):
     m = H.m
+    if lod: nr = 2; ths = [t for i, t in enumerate(ths) if i % 2 == 0 or i == len(ths) - 1]
     top = [[bp(t, rin_t(t) + (rout(t) - rin_t(t)) * j / nr, True, dy) for t in ths] for j in range(nr + 1)]
     bot = [[bp(t, rin_b(t) + (rout(t) - rin_b(t)) * (j / nr) ** 0.8, False, dy) for t in ths] for j in range(nr + 1)]
     o = shell(name, (m['flesh'], m['membrane']), top, bot, uv_top=(0, len(ths) / 6, 0, 2), uv_bot=(ths[0] * 1.6, ths[-1] * 1.6, 0.0, 1.0), deg=55)
     def tf(p, n):
         r = math.hypot(p.x, p.z); th = math.atan2(-p.z, p.x); u = max(0.0, min(1.0, (r - band_r(th)) / (edge_r(th) - band_r(th))))
         if n.y > 0.2:
-            c = hide_tint(p, n); return mix3(mix3(c, RAW, 0.75 * smooth01(u, 0.72, 1.0)), (0.2, 0.08, 0.14), 0.5 * (1 - smooth01(u, 0.0, 0.2)))
-        k = 0.62 + 0.38 * smooth01(u, 0.0, 0.5)
-        return (k, k * 0.92, k * 0.95)
+            c = hide_tint(p, n); return mix3(mix3(c, RAW, 0.7 * smooth01(u, 0.84, 1.0)), LIP, 0.6 * (1 - smooth01(u, 0.0, 0.22)))
+        k = 0.2 + 0.5 * smooth01(u, 0.0, 0.7)
+        return (k, k * 0.62, k * 0.7)
     tint(o, tf)
-    badd(H, joint, [o])
+    badd(H, joint, [o], tag='lod' if lod else None)
     return o
 
 
@@ -88,31 +92,34 @@ def rib_pts(th, r0, r1, n=6, hook=True):
     return pts
 
 
-def brim(H):
-    m = H.m
+def brim(H, lod=False):
+    m = H.m; K = dict(lod=lod)
     def arc(d0, d1): n = int(round((d1 - d0) / (20 / 3))); return [math.radians(d0 + (d1 - d0) * i / n) for i in range(n + 1)]
     cutR = lambda t: 0.84 / max(0.05, math.cos(t)); cutL = lambda t: 1.04 / max(0.05, -math.cos(t))
     it = lambda t: band_r(t) - 0.035
     # her right wing (the low one) in two, hinged on x = 0.84; the left wing (the long one) hinged on x = -1.04
-    sector(H, 'brimR', arc(-50, 50), it, hole_r, lambda t: min(edge_s(t), cutR(t) + 0.02), nr=5, name='brimR')
-    sector(H, 'brimRb', arc(-80 / 3, 80 / 3), lambda t: cutR(t) - 0.0, lambda t: cutR(t) - 0.015, lambda t: max(edge_s(t), cutR(t) + 0.01), nr=4, dy=-0.0035, name='brimRb')
-    sector(H, 'brimL', arc(130, 230), it, hole_r, lambda t: min(edge_s(t), cutL(t) + 0.02), nr=5, name='brimL')
-    sector(H, 'brimLb', arc(180 - 100 / 3, 180 + 100 / 3), lambda t: cutL(t), lambda t: cutL(t) - 0.015, lambda t: max(edge_s(t), cutL(t) + 0.01), nr=5, dy=-0.0035, name='brimLb')
-    # front and back: tucked a few millimetres under the wings where they meet
-    sector(H, 'brimF', arc(50 - 20 / 3, 130 + 20 / 3), it, hole_r, edge_s, nr=5, dy=-0.007, name='brimF')
-    sector(H, 'brimB', arc(230 - 20 / 3, 310 + 20 / 3), it, hole_r, edge_s, nr=5, dy=-0.007, name='brimB')
+    G_ = math.radians(0.25)   # a hair of a gap between neighbours: nothing overlaps, so nothing fights
+    sector(H, 'brimR', arc(-50, 50), it, hole_r, lambda t: min(edge_s(t), cutR(t) - 0.0015), nr=5, name='brimR', **K)
+    sector(H, 'brimRb', arc(-80 / 3, 80 / 3), lambda t: cutR(t) + 0.0015, lambda t: cutR(t) + 0.0015, lambda t: max(edge_s(t), cutR(t) + 0.012), nr=4, name='brimRb', **K)
+    sector(H, 'brimL', arc(130, 230), it, hole_r, lambda t: min(edge_s(t), cutL(t) - 0.0015), nr=5, name='brimL', **K)
+    sector(H, 'brimLb', arc(180 - 100 / 3, 180 + 100 / 3), lambda t: cutL(t) + 0.0015, lambda t: cutL(t) + 0.0015, lambda t: max(edge_s(t), cutL(t) + 0.012), nr=5, name='brimLb', **K)
+    # front and back meet the wings edge to edge
+    def arcg(d0, d1): a = arc(d0, d1); a[0] += G_; a[-1] -= G_; return a
+    sector(H, 'brimF', arcg(50, 130), it, hole_r, edge_s, nr=5, name='brimF', **K)
+    sector(H, 'brimB', arcg(230, 310), it, hole_r, edge_s, nr=5, name='brimB', **K)
+    if lod: return
     # the ribs: bone under the skin, a knuckle where a wing folds, a hooked tip past the edge
     for k in range(NR):
         d = k * 20; th = math.radians(d); r0 = hole_r(th) + 0.035; r1 = edge_r(th) + 0.035
         jt = 'brimR' if (d <= 40 or d >= 320) else 'brimF' if d <= 120 else 'brimL' if d <= 220 else 'brimB'
-        dy = -0.007 if jt in ('brimF', 'brimB') else 0.0
+        dy = 0.0
         cut = None
         if jt == 'brimR' and edge_r(th) * math.cos(th) > 0.9: cut = (0.84 / math.cos(th), 'brimRb')
         if jt == 'brimL' and -edge_r(th) * math.cos(th) > 1.1: cut = (1.04 / -math.cos(th), 'brimLb')
         lift = lambda pts: [(p[0], p[1] + dy, p[2]) for p in pts]
         if cut:
-            a = bone(lift(rib_pts(th, r0, cut[0], 5, False)), 0.017, 0.013, m['bone'], knob=1.45, name='rib', knobs=(0, -1))
-            b = bone([(p[0], p[1] - 0.0035, p[2]) for p in rib_pts(th, cut[0], r1, 5)], 0.013, 0.006, m['bone'], knob=1.35, name='rib', knobs=(0,))
+            a = bone(lift(rib_pts(th, r0, cut[0] - 0.02, 5, False)), 0.017, 0.013, m['bone'], knob=1.45, name='rib', knobs=(0,))
+            b = bone(rib_pts(th, cut[0] + 0.004, r1, 5), 0.013, 0.006, m['bone'], knob=1.35, name='rib', knobs=(0,))
             badd(H, jt, [a]); badd(H, cut[1], [b])
         else:
             a = bone(lift(rib_pts(th, r0, r1, 7)), 0.016, 0.006, m['bone'], knob=1.4, name='rib', knobs=(0,))
@@ -121,7 +128,7 @@ def brim(H):
     f1 = bone([(-0.03, -0.012, 0), (0.07, -0.006, 0), (0.2, 0, 0)], 0.012, 0.0075, m['bone'], knob=1.5, name='feeler', knobs=(-1,))
     H.P.add('feeler', [f1], frame='feeler')
     f2 = bone([(0, 0, 0), (0.1, 0.004, 0), (0.215, 0.0, 0)], 0.007, 0.0032, m['bone'], knob=1.0, name='feelerB', knobs=())
-    bead = ball(0.015, (0.225, 0.0, 0), m['flesh'], seg=8, rings=6, name='bead'); tint(bead, lambda p, n: RAW)
+    bead = ball(0.015, (0.225, 0.0, 0), m['flesh'], seg=8, rings=6, name='bead'); tint(bead, lambda p, n: FAT)
     barb = rod((0.19, -0.002, 0), (0.165, -0.034, 0.004), 0.0045, m['bone'], seg=4, name='barb', r1=0.0008)
     H.P.add('feelerB', [f2, bead, barb], frame='feelerB')
     H.marks['feelerTip'] = ('feelerB', (0.225, 0, 0)); H.marks['brimTipR'] = ('feeler', (0, 0, 0)); H.marks['brimTipL'] = ('brimLb', (-0.58, 0, 0))
@@ -184,7 +191,8 @@ def crown(H):
         b = box((0.038, 0.118, 0.012), (0, 0, 0), m['brass'], bev=0.003, name='clasp', seg=1)
         orient([b], tuple(c + rad * 0.004), tuple(rad), src=(0, 0, -1)); clasps.append(b)
         for dy in (-0.04, 0.04): clasps.append(rivet(tuple(c + rad * 0.011 + Vector((0, dy, 0))), 0.008, m['brass'], nrm=tuple(rad)))
-    H.P.add('hat', [lip2, gum] + teeth2, frame='hat')
+    H.P.add('hat', [lip2] + teeth2[:24], frame='hat')
+    H.P.add('hat', [gum] + teeth2[24:], tag='gum', frame='hat', note='the ring of teeth round the hole her head goes through')
     H.P.add('hat', clasps, tag='clasps', frame='hat', note='the brass clasps that keep the band (its mouth) shut')
     H.marks['hatMouthAt'] = ('hat', (0, 0.07, -BAND[1] - 0.03)); H.marks['hatTopAt'] = ('hat', (0.02, 0.362, 0))
 
@@ -196,7 +204,7 @@ def neck(H):
         pts = [(0, y0 + (y1 - y0) * i / (n - 1), 0) for i in range(n)]
         rr = [r * (1.0 if i % 2 == 0 else 0.86) for i in range(n)]; rr[-1] = r * flare
         o = shade(sweep(pts, rr, m['flesh'], seg=8, name=name, cap=True), 70)
-        tint(o, lambda p, n_: mix3(RAW, LIP, 0.35 + 0.3 * math.sin(p.y * 90)))
+        tint(o, lambda p, n_: mix3(RAW, LIP, 0.45 + 0.3 * math.sin(p.y * 90)))
         return o
     H.P.add('hatNeck', [tube_(-0.03, 0.27, 0.052, 'neck1', 9)], frame='hatNeck')
     H.P.add('hatNeckB', [tube_(0.01, 0.28, 0.041, 'neck2', 9, flare=1.2)], frame='hatNeckB')
@@ -217,32 +225,49 @@ def her_eyes(H):
     m = H.m
     cs = [from_root('hat', JP['eyeHR']), from_root('hat', JP['eyeHL'])]
     mid = (cs[0] + cs[1]) / 2; R = 0.036
-    # the patch: lying on the crown, dished where the eyes sit
-    ths = [math.radians(90 - 34 + 68 * i / 12) for i in range(13)]; vs = [0.08 + (0.47 - 0.08) * j / 7 for j in range(8)]
+    # the patch: a mask of her own skin let into the crown, dished where the eyes sit, a healed rim round it
+    NI, NJ = 12, 8; TH0, TH1, V0, V1 = math.radians(90 - 30), math.radians(90 + 30), 0.07, 0.5
+    def sq(a, b): return a * math.sqrt(max(0.0, 1 - b * b / 2)), b * math.sqrt(max(0.0, 1 - a * a / 2))   # a square grid drawn as a rounded one
+    def tv(i, j):
+        a, b = sq(2 * i / NI - 1, 2 * j / NJ - 1)
+        b *= 1 - 0.22 * (1 - abs(a)) ** 2 * (1 if b < 0 else 0.4)             # pinched in over the bridge of the nose it does not have
+        return TH0 + (TH1 - TH0) * (a + 1) / 2, V0 + (V1 - V0) * (b + 1) / 2
     def pp(th, v, off):
         p = crown_pt(th, v, off)
         for c in cs:
             d = (p - c).length
             p = p + (c - p).normalized() * 0.03 * gauss(d, 0.055) * (1 if off > 0 else 0.7)
         return tuple(p)
-    edge = lambda i, j: min(1.0, min(i, 12 - i) / 1.5, min(j, 7 - j) / 1.2)
-    P = [[pp(th, v, 0.002 + 0.007 * edge(i, j)) for i, th in enumerate(ths)] for j, v in enumerate(vs)]
-    Pb = [[pp(th, v, -0.012) for i, th in enumerate(ths)] for j, v in enumerate(vs)]
+    edge = lambda i, j: min(1.0, min(i, NI - i) / 1.5, min(j, NJ - j) / 1.2)
+    P = [[pp(*tv(i, j), 0.002 + 0.008 * edge(i, j)) for i in range(NI + 1)] for j in range(NJ + 1)]
+    Pb = [[pp(*tv(i, j), -0.012) for i in range(NI + 1)] for j in range(NJ + 1)]
     patch = shell('eyepatch', (m['skin'], m['skin']), P, Pb, deg=80)
-    tint(patch, lambda p, n: mix3((1, 1, 1), (0.82, 0.68, 0.8), max(gauss(min((p - cs[0]).length, (p - cs[1]).length), 0.05) * 0.8, 0.0)))
-    extra = [patch]
+    tint(patch, lambda p, n: mix3((1, 1, 1), (0.62, 0.42, 0.6), max(gauss(min((p - cs[0]).length, (p - cs[1]).length), 0.05) * 0.8, 0.0)))
+    ring = [(0, i) for i in range(NI + 1)] + [(j, NI) for j in range(1, NJ + 1)] + [(NJ, i) for i in range(NI - 1, -1, -1)] + [(j, 0) for j in range(NJ - 1, 0, -1)]
+    rimp = [pp(*tv(i, j), 0.004) for j, i in ring]; rimp.append(rimp[0])
+    rim = shade(sweep(rimp, [0.0085 + 0.003 * math.sin(k * 1.7) for k in range(len(rimp))], m['flesh'], seg=5, name='patchrim', cap=False), 80); rim['no_outward'] = 1
+    tint(rim, lambda p, n: mix3(LIP, RAW, 0.35 + 0.3 * math.sin(p.x * 60 + p.y * 40)))
+    extra = [patch, rim]
     for sx, c in zip((1, -1), cs):
         # a lower lid and a brow: enough to read as a person's eye from across a room
         lo = [tuple(c + Vector((sx * 0.0 + R * 1.08 * math.sin(a) , -R * 1.02 * math.cos(a) * 0.72 - 0.004, -R * 0.74 * abs(math.cos(a)) - 0.004))) for a in [math.radians(d) for d in (-82, -50, -20, 20, 50, 82)]]
         extra.append(shade(sweep(lo, [0.004, 0.007, 0.008, 0.008, 0.007, 0.004], m['skin'], seg=5, name='lowlid'), 80))
-        br = [tuple(c + Vector((x, 0.052 + 0.01 * math.cos(x * 28) - 0.006 * sx * x / 0.045, -0.026 + 0.012 * (abs(x) / 0.045) ** 2))) for x in (-0.046, -0.02, 0.01, 0.046)]
-        extra.append(shade(sweep(br, [0.0035, 0.006, 0.006, 0.003], m['dark'], seg=4, name='brow'), 80))
+        # a thin brow lying on the patch, its inner end a little raised: kind
+        def on_patch(x, y):
+            th = math.radians(90) - x / (BAND[1] * 1.0); lo_, hi_ = 0.0, 0.8
+            for _ in range(24):
+                md = (lo_ + hi_) / 2
+                if crown_pt(th, md).y < y: lo_ = md
+                else: hi_ = md
+            return pp(th, (lo_ + hi_) / 2, 0.0075)
+        br = [on_patch(c.x + x, c.y + 0.046 + 0.006 * math.cos(x * 28) + 0.006 * sx * -x / 0.045) for x in (-0.04, -0.016, 0.012, 0.04)]
+        extra.append(shade(sweep(br, [0.0026, 0.0038, 0.0038, 0.0024], m['dark'], seg=4, name='brow'), 80))
     H.P.add('crown', extra, tag='eyePatch', frame='hat', note='the patch of her own skin her eyes sit in')
     for nm, c in (('R', cs[0]), ('L', cs[1])):
         ball_ = eyeball(tuple(c), R, m['eye'], look=(0, 0, -1), uv_rect=(0.0, 0.0, 0.5, 1.0), seg=14, rings=9, name='eyeH')
         H.P.add('eyeH' + nm, [ball_], tag='herEye', frame='hat', note='HER eyes (the brown pair). turn eyeH* to look')
-        lid = lid_cap(tuple(c), R, m['skin'], look=(0, 0, -1), up=(0, 1, 0), open_=0.42, seg=10, rings=4, name='lidH')
-        lash = shade(sweep([tuple(c + Vector((R * 1.13 * math.sin(a), R * 1.13 * 0.42, -R * 1.13 * math.cos(a) * math.sqrt(1 - 0.42 ** 2)))) for a in [math.radians(d) for d in (-80, -45, -15, 15, 45, 80)]], [0.002, 0.004, 0.0045, 0.0045, 0.004, 0.002], m['dark'], seg=4, name='lash'), 80)
+        lid = lid_cap(tuple(c), R, m['skin'], look=(0, 0, -1), up=(0, 1, 0), open_=0.56, seg=10, rings=5, name='lidH')
+        lash = shade(sweep([tuple(c + Vector((R * 1.13 * math.sin(a), R * 1.13 * 0.56, -R * 1.13 * math.cos(a) * math.sqrt(1 - 0.56 ** 2)))) for a in [math.radians(d) for d in (-80, -45, -15, 15, 45, 80)]], [0.002, 0.004, 0.0045, 0.0045, 0.004, 0.002], m['dark'], seg=4, name='lash'), 80)
         H.P.add('lidH' + nm, [lid, lash], tag='herLid', frame='hat', note='their upper lids: rotation.x negative shuts')
     H.marks['eyeAt'] = ('crown', tuple(from_root('crown', to_root('hat', mid + Vector((0, 0, -R))))))
     H.marks['eyeHRAt'] = ('crown', tuple(from_root('crown', to_root('hat', cs[0] + Vector((0, 0, -R)))))); H.marks['eyeHLAt'] = ('crown', tuple(from_root('crown', to_root('hat', cs[1] + Vector((0, 0, -R))))))
@@ -258,13 +283,13 @@ def creature_eyes(H):
         c = from_root('hat', JP[lj]); look = jdir('hat', lj, (0, 0, -1)); up = jdir('hat', lj, (0, 1, 0))
         ball_ = eyeball(tuple(c), R, m['eye'], look=tuple(look), uv_rect=(0.5, 0.0, 1.0, 1.0), seg=12, rings=8, name='eyeC')
         # the mound it sits in: from the crown out to a rim round the eye
-        base = c - look * (R * 2.4)
-        mound = shade(sweep([tuple(base), tuple(c - look * R * 1.1), tuple(c - look * R * 0.25), tuple(c + look * R * 0.2)], [R * 1.9, R * 1.6, R * 1.32, R * 1.08], m['flesh'], seg=10, name='mound', cap=False), 80)
+        base = c - look * (R * 1.7)
+        mound = shade(sweep([tuple(base), tuple(c - look * R * 1.1), tuple(c - look * R * 0.45), tuple(c + look * R * 0.18)], [R * 1.85, R * 1.6, R * 1.28, R * 1.07], m['flesh'], seg=10, name='mound', cap=False), 80)
         mound['no_outward'] = 1
-        tint(mound, lambda p, n: mix3(hide_tint(p, n), RAW, 0.55 * smooth01((p - base).dot(look), R * 1.6, R * 2.6)))
+        tint(mound, lambda p, n, base=base, look=look, R=R: mix3(hide_tint(p, n), RAW, 0.6 * smooth01((p - base).dot(look), R * 1.0, R * 2.1)))
         rim = torus(tuple(c + look * R * 0.2), R * 1.08, R * 0.16, m['flesh'], axis=tuple(look), seg=12, rseg=5, name='eyerim'); tint(rim, lambda p, n: RAW)
         H.P.add(gj, [ball_, mound, rim], tag='hatEyes', frame='hat', note='the creature\'s five eyes (weak points)')
-        lid = lid_cap(tuple(c), R, m['flesh'], look=tuple(look), up=tuple(up), open_=0.5, seg=9, rings=3, name='lidC', thick=0.14)
+        lid = lid_cap(tuple(c), R, m['flesh'], look=tuple(look), up=tuple(up), open_=0.5, back=1.9, seg=8, rings=4, name='lidC', thick=0.14)
         tint(lid, lambda p, n: mix3(HIDE, LIP, 0.4))
         H.P.add(lj, [lid], tag='hatLid', frame='hat', note='their lids: rotation.x negative shuts')
         H.marks[mk] = (lj, (0, 0, -R))
@@ -278,15 +303,15 @@ def growths(H):
         for (d, v, r, lift) in spots:
             th = math.radians(d); n = crown_n(th, v); c = crown_pt(th, v) + n * (r * lift)
             up = (n * 0.75 + Vector((0, 0.45, 0)) + Vector((rr.uniform(-0.25, 0.25), 0, rr.uniform(-0.25, 0.25)))).normalized()
-            o = polyp(tuple(c), r, m['flesh'], up=tuple(up), tall=rr.uniform(0.95, 1.35), pucker=rr.uniform(0.25, 0.5), seg=8 if r > 0.05 else 6, seed=seed * 31 + len(objs))
+            o = polyp(tuple(c), r, m['flesh'], up=tuple(up), tall=rr.uniform(1.0, 1.75), pucker=rr.uniform(0.35, 0.6), seg=9 if r > 0.07 else 7 if r > 0.05 else 6, seed=seed * 31 + len(objs))
             k = rr.uniform(0, 1); cc = Vector(c); R_ = r
-            tint(o, lambda p, n_, k=k, cc=cc, R_=R_: mix3(mix3(FAT, RAW, k * 0.7), LIP, 0.75 * smooth01((p - cc).length / R_, 0.95, 1.3) * (n_.dot(up) > 0.5)))
+            tint(o, lambda p, n_, k=k, cc=cc, R_=R_, up=up: mix3(mix3(mix3(FAT, RAW, 0.15 + k * 0.6), HIDE, 0.75 * smooth01(-(p - cc).dot(up) / R_, -0.3, 0.9)), LIP, 0.92 * (1 - smooth01(math.sqrt(max(0.0, (p - cc).length_squared - (p - cc).dot(up) ** 2)) / R_, 0.2, 0.42)) * ((p - cc).dot(up) > 0)))
             objs.append(o)
         for (d, v, size, aim, curl) in hands:
             th = math.radians(d); n = crown_n(th, v); c = crown_pt(th, v) + n * size * 0.9
             hs = little_hand(tuple(c), tuple((n + Vector(aim)).normalized()), size, m['flesh'], nail=m['bone'], curl=curl, seed=seed + int(d))
             for o in hs:
-                if o.data.materials[0] == m['flesh']: tint(o, lambda p, n_: mix3(RAW, (1, 0.8, 0.8), 0.5))
+                if o.data.materials[0] == m['flesh']: tint(o, lambda p, n_: mix3(RAW, (1, 0.72, 0.7), 0.55))
             objs += hs
         H.P.add(joint, objs, frame='hat')
     # A: her right of the crown, the heavy side, low on the band and spilling onto the brim
@@ -313,7 +338,7 @@ def bands(H):
             RR = [1.3, 0.92, 1.2, 0.86, 0.82, 1.1, 0.8, 0.86, 0.6, 0.36]
             pts = [tuple(S.p(y - 0.004 * math.sin(i * 0.9 + k), a, r0 * RR[i] * 0.92 + 0.001)) for i, a in enumerate(A)]
             o = shade(sweep(pts, [r0 * q for q in RR], m['flesh'], seg=6, name='band'), 80)
-            tint(o, lambda p, n: mix3(hide_tint(p, n), (0.95, 0.82, 0.8), 0.6 * max(gauss(abs(abs(p.x) - 0.08), 0.016), gauss(abs(p.x) - 0.14, 0.016) * 0.8)))
+            tint(o, lambda p, n: mix3(hide_tint(p, n), (0.9, 0.6, 0.62), 0.7 * max(gauss(abs(abs(p.x) - 0.08), 0.014), gauss(abs(p.x) - 0.14, 0.014) * 0.8, gauss(abs(p.x), 0.012) * 0.6)))
             tipd = (Vector(pts[-1]) - Vector(pts[-2])).normalized()
             nail = rod(tuple(Vector(pts[-1]) - tipd * 0.012), tuple(Vector(pts[-1]) + tipd * 0.008), 0.0065, m['bone'], seg=4, name='bandnail', r1=0.002)
             objs += [o, nail]

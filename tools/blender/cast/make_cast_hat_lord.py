@@ -41,8 +41,56 @@ def build():
     meta = {'face': True, 'parts': sorted(H.P.info), 'joints': JD['order']}
     if arg('pieces'):
         for (k, nm), n in sorted(H.P.tris.items(), key=lambda e: -e[1])[:int(arg('pieces')) if str(arg('pieces')).isdigit() else 60]: print('   JF_PIECE %-22s %-18s %5d' % (k, nm, n))
+    if not arg('no-lod'): hatbody.coat(H, lod=True); hathat.brim(H, lod=True); hatbody.head(H, lod=True); hatbody.torso(H, lod=True)   # (thin shells get a far version built coarse; a decimate would fold them)
     root = H.P.root(meta); lap('join')
     return H, root
+
+
+LOD_JOINTS = ('body', 'legL', 'legR', 'kneeL', 'kneeR', 'spine', 'neck', 'head', 'arm', 'armL', 'foreL', 'foreR', 'handL', 'handR', 'hat', 'crown', 'growthA', 'growthB', 'growthC', 'feeler')
+LOD_TAGS = ('', 'yoke')
+
+
+def islands_drop(o, small=None, verts_under=0):
+    """take out loose islands: small(verts, size) -> True, or fewer than verts_under vertices"""
+    bm = bmesh.new(); bm.from_mesh(o.data); seen = set(); kill = []
+    for v in bm.verts:
+        if v in seen: continue
+        isl = [v]; seen.add(v); st = [v]
+        while st:
+            x = st.pop()
+            for e in x.link_edges:
+                y = e.other_vert(x)
+                if y not in seen: seen.add(y); isl.append(y); st.append(y)
+        lo = Vector((min(w.co.x for w in isl), min(w.co.y for w in isl), min(w.co.z for w in isl))); hi = Vector((max(w.co.x for w in isl), max(w.co.y for w in isl), max(w.co.z for w in isl)))
+        if len(isl) < verts_under or (small and small(len(isl), (hi - lo).length)): kill += isl
+    if kill: bmesh.ops.delete(bm, geom=kill, context='VERTS')
+    bm.to_mesh(o.data); bm.free(); o.data.update()
+
+
+def add_far_hl(root, ratio=0.16):
+    """the far model (past 30 m): each of the big joints' solid shapes decimated, trim and teeth and fingers left off.
+    the cape and the brim are already there, built coarse"""
+    out = []
+    for jn in LOD_JOINTS:
+        src = [o for o in root.children if o.type == 'MESH' and joint_of(o) == jn and tag_of(o) in LOD_TAGS]
+        if not src: continue
+        cs = []
+        for o in src:
+            c = o.copy(); c.data = o.data.copy(); bpy.context.scene.collection.objects.link(c); c.data.transform(o.matrix_world); c.matrix_world = Matrix.Identity(4); c.parent = None; cs.append(c)
+        o = join(cs, 'part_%s__lod' % jn)
+        islands_drop(o, small=lambda n, size: (n < 70 and size < 0.3) or size < 0.07)
+        me = o.data; me.calc_loop_triangles(); n = len(me.loop_triangles)
+        if n == 0: bpy.data.objects.remove(o, do_unlink=True); continue
+        if n > 40:
+            d = o.modifiers.new('dec', 'DECIMATE'); d.ratio = max(ratio, min(1.0, 40 / n)); apply_mods(o)
+            bm = bmesh.new(); bm.from_mesh(o.data)
+            bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges)
+            loose = [v for v in bm.verts if not v.link_faces]
+            if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
+            bm.to_mesh(o.data); bm.free()
+            drop_flakes(o, 6e-6); islands_drop(o, verts_under=10); outward(o)
+        o.parent = root; o.hide_render = True; out.append(o)
+    return out
 
 
 def base_parts(root): return [o for o in root.children if o.type == 'MESH' and '__lod' not in o.name]
@@ -115,11 +163,23 @@ def run_qa(root):
     for k, objs in groups.items():
         if not objs: continue
         for o in objs: o.hide_render = False; o.hide_viewport = False
-        res[k] = rpkit.qa(k, objs, eps=0.0008, tol=0.006, quiet=not arg('qa-warn'))
+        res[k] = rpkit.qa(k, objs, eps=0.0008, tol=0.006 if k == 'whole' else 0.04, quiet=not arg('qa-warn'))   # (the far model is lumps seen from 30 m: its pieces may sit a few centimetres apart)
     return res
 
 
 # ------------------------------------------------------------------------------------------------ pictures
+def standin_mouth(H, smile=0.3, jaw=0.0):
+    """her mouth is the game's code face (face.js): stood in here so the sheets show a mouth. never exported"""
+    M = to_root('head', (0, hatbody.MOUTH_Y, -0.1215)); w = 0.066 * 0.92; lr = 0.008
+    lip = mat('si_lip_hl', 0x5a1230, rough=0.3)
+    curve = lambda x: smile * 1.3 * (x / w) * (x / w) * w * 0.55
+    up = [(M.x + (i / 5 - 0.5) * w * 1.1, M.y + curve((i / 5 - 0.5) * w), M.z - 0.004 * math.cos((i / 5 - 0.5) * 3)) for i in range(6)]
+    lo = [(M.x + (i / 5 - 0.5) * w * 0.9, M.y + curve((i / 5 - 0.5) * w) * 0.8 - lr * 1.6 - jaw * 0.03, M.z + 0.002) for i in range(6)]
+    out = [sweep(up, [lr * 0.6] + [lr] * 4 + [lr * 0.6], lip, seg=6, name='si_lip'), sweep(lo, [lr * 0.7] + [lr * 1.1] * 4 + [lr * 0.7], lip, seg=6, name='si_lip2')]
+    for o in out: o['standin'] = 1
+    return out
+
+
 def scale_figure(x=1.75, z=0.1):
     """a 1.8 m figure: the player's height"""
     g = mat('hl_fig', 0x9a9aa4, rough=0.7)
@@ -218,7 +278,7 @@ def main():
     if not arg('no-ao'): bake(H, root); lap('ao')
     for o in root.children:
         if o.type == 'MESH': ensure_tint(o); rpkit.final_colour(o)
-    if not arg('no-lod'): add_far(root, ratio=0.1, skip_tags=FAR_SKIP, min_tris=20); lap('far')
+    if not arg('no-lod'): add_far_hl(root); lap('far')
     tb, tl = stats(root)
     if arg('qa'): run_qa(root); lap('qa')
     info = write_parts(H, root) if not arg('no-export') else parts_json(H, root)
@@ -229,7 +289,7 @@ def main():
         print('JF_SIZE %d KB' % (os.path.getsize(OUT_GLB) // 1024))
     if not sheets: return
     preview_colours()
-    RIG.update(pose_rig_hl(root)); apply_pose_hl(RIG, STANCE)
+    RIG.update(pose_rig_hl(root, extra=[(o, 'head') for o in standin_mouth(H)])); apply_pose_hl(RIG, STANCE)
     if 'sil' in sheets: sheet_sil(H, root); lap('sil')
     if 'turn' in sheets: sheet_turn(H, root, tb, info); lap('turn')
     if 'close' in sheets: sheet_close(H, root); lap('close')
