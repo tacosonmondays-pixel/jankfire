@@ -77,14 +77,14 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
     await tp(q || p); await sleep(500); return q || p;
   }
   async function shiftR() { await pg.keyboard.down('Shift'); await key('KeyR'); await pg.keyboard.up('Shift'); }
-  // grapple: from `from`, aim at `ring`, hold E (+ W) until we're above `top` m or 4 s pass, let go; did we land up there?
+  // grapple: from `from`, aim at `ring`, hold E until we're above `top` m (or 3 s), let go, W; did we land up there?
   async function grappleUp(ring, from, top) {
     await tp(from); await sleep(500);
     await ev(async (r) => { const { ME } = await import('/js/player.js'); const dx = r[0] - ME.pos[0], dz = r[2] - ME.pos[2]; ME.yaw = Math.atan2(-dx, -dz); ME.pitch = Math.atan2(r[1] - ME.pos[1] - 1.6, Math.hypot(dx, dz)); }, ring);
-    await pg.keyboard.down('KeyE'); await pg.keyboard.down('KeyW');
+    await pg.keyboard.down('KeyE'); // hold the grapple (no W: running at it swings you into the wall), let go up there, push on
     let y = 0; const t0 = Date.now();
-    while (Date.now() - t0 < 4000) { y = (await pos())[1]; if (y > top) break; await sleep(60); }
-    await pg.keyboard.up('KeyE'); await sleep(700); await pg.keyboard.up('KeyW'); await sleep(1200);
+    while (Date.now() - t0 < 3000) { y = (await pos())[1]; if (y > top) break; await sleep(50); }
+    await pg.keyboard.up('KeyE'); await pg.keyboard.down('KeyW'); await sleep(1500); await pg.keyboard.up('KeyW'); await sleep(800);
     const q = await pos(); return { ok: q[1] > 13.5, y: +q[1].toFixed(1) }; // (on a roof: the lane is at 4)
   }
   // play a conversation through: F to the next line, 1 when there are answers
@@ -157,7 +157,7 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
       if (!p) { how = 'BLOCKED'; note = 'zone ' + g.zone + ' has no spot'; }
       else if (g.zone === 'bottom:rooftops') { // by hand: stand in the yard, aim at the yellow ring, hold E and run at it, let go at the top
         const { WOK } = await ev(async () => import('/shared/city/act1set.js').then((m) => ({ WOK: m.WOK })));
-        const up = await grappleUp(WOK.ring, [-186, 4.05, 208.4], 17.8);
+        const up = await grappleUp(WOK.ring, [-186, 4.05, 208.4], 18.5);
         if (!up.ok) { await tp([p[0], p[1] + 0.5, p[2]]); note = `grapple didn't get up there (${up.y}): put on the roof`; how = 'tp'; } else note = `grappled up (top ${up.y} m)`;
       } else if (g.zone === 'bottom:lostfound' && o.step === 'line') { // by hand: from the tall roof, F on Dumpling's washing line
         const { WOK } = await ev(async () => import('/shared/city/act1set.js').then((m) => ({ WOK: m.WOK })));

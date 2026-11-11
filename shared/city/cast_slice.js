@@ -37,6 +37,6 @@ export function npcSpot(id, objs) {
 
 // a callout when a step starts, where the world teaches a move (the m01 tutorial). {grapple} / {use}: the player's keys
 export const HINTS = {
-  'm01_return_to_sender.swing': { call: 'GRAPPLE UP!', how: 'aim at the yellow ring on the roofs and hold <b>{grapple}</b>. let go at the top' },
+  'm01_return_to_sender.swing': { call: 'GRAPPLE UP!', how: 'aim at the yellow ring over the roofs, hold <b>{grapple}</b>, let go at the top and push forward' },
   'm01_return_to_sender.line': { call: 'RIDE IT HOME', how: 'walk to the end of the roof, <b>{use}</b> on the washing line, hang on' },
 };
