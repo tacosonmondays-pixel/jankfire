@@ -21,6 +21,8 @@ const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.i
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
+import { gfxGuard, initGfxGuard } from './gfxguard.js';
+import { postBegin, postEnd } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -243,15 +245,20 @@ const mapMeshes = [];
 const chunkMeshes = [];
 // one merged mesh per material: thousands of boxes, a couple dozen draw calls
 // the shaped ground as one mesh: a vertex every metre, the texture laid on from above like every other floor
-function terrainGeo(T, tile, mi = -1) { // mi: only the cells painted with T.mats[mi] (shared/terrain.js drape); -1 = all of it
-  const vz = T.nz + 1, V = (i, j) => i * vz + j, n = (T.nx + 1) * vz;
+function terrainGeo(T, tile, mi = -1, cut = null) { // mi: only the cells painted with T.mats[mi] (shared/terrain.js drape); -1 = all of it. cut: [i0, j0, i1, j1] only those cells (a chunk of a huge map)
+  const [i0, j0, i1, j1] = cut ? [Math.max(0, cut[0]), Math.max(0, cut[1]), Math.min(T.nx, cut[2]), Math.min(T.nz, cut[3])] : [0, 0, T.nx, T.nz];
+  const vz = T.nz + 1, V = (i, j) => i * vz + j, wz = j1 - j0 + 1, W = (i, j) => (i - i0) * wz + (j - j0), n = Math.max(0, i1 - i0 + 1) * Math.max(0, wz);
   const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), uv = new Float32Array(n * 2), idx = [];
-  for (let i = 0; i <= T.nx; i++) for (let j = 0; j <= T.nz; j++) {
-    const k = V(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[k];
+  for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
+    const k = W(i, j), x = T.x0 + i, z = T.z0 + j, h = T.H[V(i, j)];
     const dx = (T.H[V(Math.min(T.nx, i + 1), j)] - T.H[V(Math.max(0, i - 1), j)]) / 2, dz = (T.H[V(i, Math.min(T.nz, j + 1))] - T.H[V(i, Math.max(0, j - 1))]) / 2, l = Math.hypot(dx, 1, dz);
     pos.set([x, h, z], k * 3); nrm.set([-dx / l, 1 / l, -dz / l], k * 3); uv.set([x / tile, z / tile], k * 2);
   }
-  for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) if (T.ok[i * T.nz + j] && (mi < 0 || (T.paint ? T.paint[i * T.nz + j] : 0) === mi)) idx.push(V(i, j), V(i, j + 1), V(i + 1, j), V(i + 1, j), V(i, j + 1), V(i + 1, j + 1));
+  const cb = T.coarse, S = cb ? cb.s : 1, blk = (i, j) => cb && i < cb.nbx * S && j < cb.nbz * S && cb.blocks[Math.floor(i / S) * cb.nbz + Math.floor(j / S)]; // (shared/terrain.js o.coarse: a whole block drawn as one quad)
+  for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) if (T.ok[i * T.nz + j] && (mi < 0 || (T.paint ? T.paint[i * T.nz + j] : 0) === mi)) {
+    if (blk(i, j)) { const bi = i - (i % S), bj = j - (j % S); if (bi >= i0 && bj >= j0 && bi + S <= i1 && bj + S <= j1) { if (i === bi && j === bj) idx.push(W(bi, bj), W(bi, bj + S), W(bi + S, bj), W(bi + S, bj), W(bi, bj + S), W(bi + S, bj + S)); continue; } } // (a block cut by a chunk's edge is drawn cell by cell)
+    idx.push(W(i, j), W(i, j + 1), W(i + 1, j), W(i + 1, j), W(i, j + 1), W(i + 1, j + 1));
+  }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3)); g.setAttribute('normal', new THREE.BufferAttribute(nrm, 3)); g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setIndex(idx);
@@ -371,7 +378,14 @@ function buildChunked(scene, def) {
   const all = def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
-  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) groups.set(tk, { k: tk, nc: '', list: [terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())] }); }); // one mesh per ground material, always drawn
+  // the shaped ground, a piece per chunk per ground material (so the far side of the map isn't drawn through the haze)
+  if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone';
+    for (let ci = Math.floor(TR.x0 / C); ci * C < TR.x0 + TR.nx; ci++) for (let cj = Math.floor(TR.z0 / C); cj * C < TR.z0 + TR.nz; cj++) {
+      const g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1, [ci * C - TR.x0, cj * C - TR.z0, (ci + 1) * C - TR.x0, (cj + 1) * C - TR.z0]);
+      if (!g.index.count) { g.dispose(); continue; }
+      const key = tk + '|' + ci + ',' + cj; if (!groups.has(key)) groups.set(key, { k: tk, nc: '', list: [] });
+      groups.get(key).list.push(terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed()));
+    } });
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap)
@@ -500,6 +514,7 @@ export function initWorld(canvas) {
   buildMap(scene);
   addEventListener('resize', resize);
   resize();
+  initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
 export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
@@ -566,6 +581,37 @@ function archFor(id) {
   wantArch(list, () => { if (MAP.id === id) refreshMapVisuals(); });
 }
 
+// ---- gfxguard.js hooks (the "everything renders black" safety net)
+// fresh canvas textures on the map materials that are already in use (same material objects, so nothing has to be rebuilt)
+export function repaintMapTextures() {
+  if (!MAT) return 0;
+  const fresh = makeMaterials();
+  let n = 0;
+  for (const [k, v] of Object.entries(fresh)) {
+    const old = MAT[k];
+    for (const slot of ['map', 'emissiveMap']) {
+      const t = v.mat[slot];
+      if (!t) continue;
+      if (old && old.mat[slot] && old.mat[slot] !== t) { old.mat[slot].dispose(); old.mat[slot] = t; old.mat.needsUpdate = true; n++; } else t.dispose();
+    }
+    v.mat.dispose();
+  }
+  return n;
+}
+// the current map's own fog, sky light and sun again (a streamed city sets its own every frame)
+export function relightMap() {
+  const def = MAPS[MAP.id];
+  if (!def || !G.scene || def.stream) return false;
+  G.scene.fog.color.setHex(MAP.sky.fog); G.scene.fog.near = MAP.fogNear; G.scene.fog.far = MAP.fogFar;
+  const hz = def.haze;
+  hazeUniforms.uHaze.value.set(hz ? hz.k : 0, hz ? hz.top : 0, hz ? hz.bottom : -1, hz ? hz.dist : 100);
+  mapLight(def);
+  lightingMap(def, MAP.id, !!def.night, sun);
+  return true;
+}
+export const mapMats = () => MAT;
+
+
 const TOUCH_MAX_PX = 1280 * 720;
 export function resize() {
   const w = innerWidth, h = innerHeight;
@@ -598,10 +644,15 @@ export function updateWorld(dt) {
 let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
+  gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
+  const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
+  if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way
+    r.setRenderTarget(null); r.clear(); r.render(G.scene, G.camera); r.clearDepth(); r.render(G.vmScene, G.vmCamera);
+  }
 }

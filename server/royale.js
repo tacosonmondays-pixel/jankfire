@@ -37,12 +37,13 @@ function findSpots(map) {
   for (let x = b[0] + 2; x < b[2] - 2; x += step) for (let z = b[1] + 2; z < b[3] - 2; z += step) {
     const px = x + (Math.random() - 0.5) * 1.6, pz = z + (Math.random() - 0.5) * 1.6;
     let top = 80;
-    for (let lv = 0; lv < 5; lv++) {
+    for (let lv = 0, bottom = false; lv < 5 && !bottom; lv++) {
       const h = raycast([px, top, pz], [0, -1, 0], top - map.killY, boxes);
       if (!h || h.axis !== 1) break;
       const y = top - h.t;
       if (y < map.killY + 2) break;
       const box = h.box;
+      bottom = !!box.terr; // shaped ground (shared/terrain.js): nothing to stand on under it, only its own hidden slab
       top = box.min[1] - 0.05;
       if (box.pad || box.max[0] - box.min[0] < 1.2 || box.max[2] - box.min[2] < 1.2) continue; // jump pads, beams, railings
       const p = [px, y, pz];
@@ -179,7 +180,7 @@ export function installRoyale(Room, H) {
       for (const s of chosen) {
         const poi = poiAt(map, s.p); // districts loot better or worse (Liberal Lane: liberal helpings)
         const q = Math.min(1, (s.indoor ? 0.5 : s.lv > 0 ? 0.45 : 0.15) + s.lv * 0.1 + Math.random() * 0.25 + (poi ? poi.loot : 0));
-        const at = (k) => [r2(s.p[0] + (k ? (Math.random() - 0.5) * 1.6 : 0)), r2(s.p[1] + 0.02), r2(s.p[2] + (k ? (Math.random() - 0.5) * 1.6 : 0))];
+        const TG = map.boxes.terrain, at = (k) => { const x = s.p[0] + (k ? (Math.random() - 0.5) * 1.6 : 0), z = s.p[2] + (k ? (Math.random() - 0.5) * 1.6 : 0), g = TG ? TG.at(x, z) : null; return [r2(x), r2((g != null && Math.abs(g - s.p[1]) < 0.9 ? g : s.p[1]) + 0.02), r2(z)]; }; // (on shaped ground the second and third item sit on the slope, not at the first one's height)
         const r = Math.random(), big = poi && poi.mod === 'large' ? 2 : 1; // liberal helpings
         if (r < 0.46) {
           const id = wpick(GUNS), l = this.brAddLoot({ k: 'gun', id, tier: rollTier(GUNS[id].tier, q), p: at(0) });
