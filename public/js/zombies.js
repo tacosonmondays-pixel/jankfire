@@ -16,7 +16,7 @@ import { GAMES } from '/shared/modes.js';
 import { ZM, ZM_CRATE, zmTarget, zmAmmo, zmAmmoPrice, zmAreaAt, zmOpenAreas } from '/shared/zombies.js';
 import { buildWeapon, M } from './models.js';
 import { weaponIcon, drawIcon } from './icons.js';
-import { whenGlb } from './glbkit.js';
+import { whenGlb, authored, whenLate, nodeIn, prefetch } from './glbkit.js';
 import { K } from './keys.js';
 import { zxSetup, zxTick, zxTarget, zxPrompt, zxMeter, zxPrice, zxOff } from './zmextra.js'; // boards, drops, the cheat machine
 import { zlSync, zlPose, zlTick, zlClear, zlType, ZL_WHY } from './zmlimbs.js'; // limbs coming off, crawlers, the special zombies
@@ -178,10 +178,32 @@ function buildCrate(cr, group) {
   beam.position.y = 2.45; g.add(beam);
   const hold = new THREE.Group(); hold.position.y = 1.1; g.add(hold);
   group.add(g);
-  return { g, lid, beam, hold, w: null, mesh: null, next: 0, flip: 'ar' };
+  const c = { g, lid, beam, hold, front, w: null, mesh: null, next: 0, flip: 'ar', glb: false };
+  crateModel(c);
+  return c;
 }
+// the Blender crate (p_zmcrate): the map draws its body over the crate's box (propfield.js), its lid swings here. till
+// it lands (or if it never does) the code lid and the ??? sticker stand in
+function crateModel(c) {
+  if (!c || c.glb) return;
+  const bl = authored('p_zmcrate'), lid = bl && nodeIn(bl.obj, 'lid');
+  if (!lid) return;
+  const h = bl.meta && Array.isArray(bl.meta.hinge) ? bl.meta.hinge : [0, 0.9, -0.468];
+  for (const k of [...c.lid.children]) c.lid.remove(k);
+  lid.parent.remove(lid); lid.position.set(0, 0, 0);
+  c.lid.position.set(h[0], h[1], h[2]); c.lid.add(lid);
+  c.front.visible = false; c.glb = true;
+}
+whenLate('p_zmcrate', () => crateModel(Z.crate));
 function buildPower(pw, group) {
   const g = onWall(new THREE.Group(), pw.at, pw.n, 0.1);
+  const bl = authored('x_zmpower'), blLever = bl && nodeIn(bl.obj, 'lever'), blLamp = bl && nodeIn(bl.obj, 'lamp');
+  if (blLever && blLamp && blLamp.isMesh) { // the Blender one (x_zmpower): a knife switch in a cabinet, the blades swing out when it's off
+    const lv = bl.meta && bl.meta.lever, on = lv && Number.isFinite(lv.on) ? lv.on : 0, off = lv && Number.isFinite(lv.off) ? lv.off : 1.05;
+    blLamp.material = new THREE.MeshBasicMaterial({ color: 0xff2020 });
+    blLever.rotation.x = off; g.add(bl.obj); group.add(g);
+    return { g, lever: blLever, lamp: blLamp, on, off, glb: true };
+  }
   const sign = canvasTex(128, 48, (x, w, h) => { x.fillStyle = '#ffd21a'; x.fillRect(0, 0, w, h); x.fillStyle = '#111'; x.font = `bold 30px ${FONT}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('POWER', w / 2, h / 2 + 2); }).t;
   const s = new THREE.Mesh(new THREE.PlaneGeometry(1.3, 0.48), new THREE.MeshBasicMaterial({ map: sign })); s.position.set(0, 0.95, 0.02); g.add(s);
   const lever = new THREE.Group(); lever.position.set(0, -0.05, 0.08);
@@ -190,8 +212,14 @@ function buildPower(pw, group) {
   lever.rotation.x = -0.7; g.add(lever);
   const lamp = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, 0.06), new THREE.MeshBasicMaterial({ color: 0xff2020 })); lamp.position.set(0.32, 0.4, 0.04); g.add(lamp);
   group.add(g);
-  return { lever, lamp };
+  return { g, lever, lamp, on: 0.7, off: -0.7, glb: false };
 }
+whenLate('x_zmpower', () => { // the Blender switch landed after the map was built: swap it in
+  const zm = Z.map, p = Z.power;
+  if (!zm || !p || p.glb || !Z.group) return;
+  p.g.parent && p.g.parent.remove(p.g);
+  Z.power = buildPower(zm.power, Z.group);
+});
 function buildCola(c, group) {
   const tex = canvasTex(96, 168, (x, w, h) => {
     x.fillStyle = '#b8141c'; x.fillRect(0, 0, w, h);
@@ -263,6 +291,7 @@ export function zmSetup(mapId) {
   zxSetup(zm, group); // planks on every window, the cheat machine
   zsSetup(zm, group); // every cola machine (Jank Cola's too), the voider
   Z.cola = null;
+  prefetch(['x_zmpower'], 3);
   Z.crate = buildCrate(zm.crate, group);
   Z.power = buildPower(zm.power, group);
   buildLamps(zm, group);
@@ -305,7 +334,7 @@ export function updateZombies(dt, now) {
   zombiesTick(dt, now);
   zlTick(dt);
   setLights(info.pw ? 'on' : 'off');
-  if (Z.power) { Z.power.lever.rotation.x += ((info.pw ? 0.7 : -0.7) - Z.power.lever.rotation.x) * Math.min(1, dt * 8); Z.power.lamp.material.color.setHex(info.pw ? 0x40ff40 : 0xff2020); }
+  if (Z.power) { Z.power.lever.rotation.x += ((info.pw ? Z.power.on : Z.power.off) - Z.power.lever.rotation.x) * Math.min(1, dt * 8); Z.power.lamp.material.color.setHex(info.pw ? 0x40ff40 : 0xff2020); }
   if (Z.cola) Z.cola.mat.color.setHex(info.pw ? 0xffffff : 0x555555);
   if (Z.lampMat) {
     Z.lampMat.color.setHex(info.pw ? 0xfff2c8 : 0x3a3630);

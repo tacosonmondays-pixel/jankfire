@@ -905,3 +905,12 @@ body.replaying #zmHud { visibility: hidden; }
 
 /* spinbot: the lock marker on whoever your shots will hit */
 #lockMark { display: none; position: absolute; width: 46px; height: 46px; margin: -23px 0 0 -23px; border: 3px solid #39ff14; box-shadow: 3px 3px 0 #000; pointer-events: none; font: 700 11px 'Courier New', monospace; color: #39ff14; text-shadow: 1px 1px 0 #000; text-align: center; line-height: 110px; transform: rotate(45deg); }
+
+/* riding a gun-less killstreak (mech, wrecking ball, overdrive rig: hudhide.js): your normal hotbar, item slot, ammo
+   and weapon name get yanked off screen (a little hop up first), then pop back with an overshoot when you're out.
+   'translate' stacks on top of each layout's own transform, so bottom / right side / touch / small screens all work */
+#hotbar, #ammo, #weaponName { transition: translate 0.22s cubic-bezier(0.2, 1.7, 0.4, 1), rotate 0.22s cubic-bezier(0.2, 1.7, 0.4, 1), opacity 0.12s linear, visibility 0s linear 0s; }
+#weaponName { transition-duration: 0.22s, 0.22s, 0.4s, 0s; } /* (its usual slow fade-out stays) */
+body.piloting #hotbar, body.piloting #ammo, body.piloting #weaponName { translate: 0 190%; rotate: -7deg; opacity: 0 !important; visibility: hidden; pointer-events: none;
+  transition: translate 0.28s cubic-bezier(0.55, -0.6, 0.8, 0.4), rotate 0.28s cubic-bezier(0.55, -0.6, 0.8, 0.4), opacity 0.1s linear 0.18s, visibility 0s linear 0.28s; }
+body.piloting.hotbar-right #hotbar { translate: 190% 0; rotate: 7deg; }

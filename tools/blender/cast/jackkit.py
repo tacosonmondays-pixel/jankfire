@@ -469,7 +469,7 @@ def standin_face(char_id, o, pose):
             out.append(ob)
         if o.get('brow') is not False:
             bw = o.get('browW', 0.065)
-            out.append(box((bw, 0.018, 0.025), (e[0], e[1] + er * 1.45 + pose.get('by', 0), e[2] - er * 0.35 + er * 0.1), browM, rot=(0, 0, sx * -pose.get('bt', 0) * 0.6)))
+            out.append(box((bw, 0.018, 0.025), (e[0], e[1] + er * 1.45 + pose.get('by', 0), e[2] - er * 0.35 + er * 0.1), browM, rot=(0, 0, sx * pose.get('bt', 0) * 0.6)))  # (face.js's brow sign: bt + = inner ends down)
     M = F['mouth']; lr = o.get('lipR', 0.016); st = pose.get('st', 1.0); sm = pose.get('smile', 0.2); jaw = pose.get('jaw', 0.0)
     w = mw * st
     curve = lambda x: sm * 1.3 * (x / w) * (x / w) * w * 0.55
