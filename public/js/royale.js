@@ -348,7 +348,7 @@ function start(m) {
   R.hook = null; R.hookHad = false; R.hookN = BR.hook.charges;
   W.br = hooks; G.noOob = true; G.brStep = step; G.hookGate = hookGate;
   twistsReset(); R.leader = m.leader || 0; for (const c of m.crates || []) addCrate(c); for (const id of m.goblins || []) R.goblins.set(id, null);
-  if (!blimp) { blimp = buildBlimp(); [zoneWall, zoneNext] = buildZone(); myUmb = umbrella(); myUmb.visible = false; }
+  if (!blimp) { blimp = buildBlimp(); [zoneWall, zoneNext] = buildZone(); myUmb = umbrella(); myUmb.visible = false; blimp.name = 'br_blimp'; zoneWall.name = 'br_zone'; zoneNext.name = 'br_zonenext'; } // (named: screenshot tools hide them)
   for (const o of [blimp, zoneWall, zoneNext, myUmb]) if (!o.parent) G.scene.add(o);
   showHud(true);
   if (R.me.inBlimp) { big('JANK ROYALE', `SPACE to jump out of the blimp · F pick up · H heal · ${K.label('scores')} backpack`, 4); sfx.partyHorn(); }
