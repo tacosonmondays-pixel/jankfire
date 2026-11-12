@@ -104,6 +104,26 @@ def solve_ground(mk, mod, clip_list, joints, rest_loc):
     return out
 
 
+def snap_easing(act, cl):
+    """the weight pass (clips.WEIGHT): the segment INTO a snap key accelerates (cubic ease-in: the wind-up hangs, the
+    hit lands hard); every other segment keeps Blender's smooth ease in / out"""
+    keys = cl['keys']; fr = {round(keys[i - 1][0] * C.FPS) for i in cl.get('snap', ()) if 0 < i < len(keys)}
+    if not fr: return
+    for layer in act.layers:
+        for strip in layer.strips:
+            for cb in strip.channelbags:
+                for fc in cb.fcurves:
+                    for kp in fc.keyframe_points:
+                        if round(kp.co.x) in fr: kp.interpolation = 'CUBIC'; kp.easing = 'EASE_IN'
+
+
+def clip_meta(cl):
+    """a clip's entry in the glb meta (the game reads hold / loop; the hero kit reads events)"""
+    m = {k: cl[k] for k in ('name', 'dur', 'loop', 'hold', 'partial', 'note')}
+    if cl.get('events'): m['events'] = cl['events']
+    return m
+
+
 def key_clips(mk, mod, clip_list):
     """one action per clip (a slot per joint), pushed into a muted NLA track per joint named after the clip: the glTF
     exporter's NLA_TRACKS mode merges same-named tracks into one animation"""
@@ -130,6 +150,7 @@ def key_clips(mk, mod, clip_list):
                     if n == 'hips' and (cl['name'], round(t, 4)) in ground: d = (d[0], ground[(cl['name'], round(t, 4))], d[2])
                     e.location = rest_loc[n] + gv(*d); e.keyframe_insert('location', frame=f)
             tracks[n].append((cl['name'], act, e.animation_data.action_slot))
+        snap_easing(act, cl)
     for n in joints:
         e = mk.E[n]
         if not e.animation_data: continue
@@ -167,7 +188,7 @@ def main(which):
     key_clips(mk, mod, clip_list)
     meta = dict(mk.meta); meta.pop('marks', None); meta.pop('wing_layout', None)
     meta.update({'phase': 'rig (concept meshes, Tripo meshes swap in)', 'fps': C.FPS, 'marks': marks, 'root_motion': False,
-                 'clips': [{k: cl[k] for k in ('name', 'dur', 'loop', 'hold', 'partial', 'note')} for cl in clip_list]})
+                 'clips': [clip_meta(cl) for cl in clip_list]})
     mk.root['jf'] = json.dumps(meta)
     print('JF_CLIPS', which, len(clip_list), ' '.join(cl['name'] for cl in clip_list))
     if 'no-export' not in ARGS: export(mk, os.path.join(ARGS.get('out_dir', lib.MODELS), f'x_mech_{which}.glb'))

@@ -34,18 +34,19 @@ for (let i = 0; i < N; i++) {
   sc.add(g.scene);
   const mixer = new THREE.AnimationMixer(g.scene);
   for (const [k, v] of views.entries()) {
-    const [kind, clipName, ts] = v.split(':');
+    const [kind, clipName, ts, camAs] = v.split(':'); // (clip:<name>:<t>:<view> frames a clip from another view's camera)
     mixer.stopAllAction();
     if (kind === 'clip') {
       const clip = g.animations.find((a) => a.name === clipName); if (!clip) { out.missing.push(clipName); continue; }
       const act = mixer.clipAction(clip); act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; act.reset().play(); mixer.setTime(Math.min(+ts, clip.duration - 1e-4));
     } else { const idle = g.animations.find((a) => a.name === 'idle'); if (idle) { mixer.clipAction(idle).reset().play(); mixer.setTime(0); } }
     g.scene.updateMatrixWorld(true);
-    const c = CAM[kind] || CAM.q, dist = tall * 2.55;
+    if (q.get('probe')) for (const pn of q.get('probe').split(',')) { const o = g.scene.getObjectByName(pn); if (o) { const w = o.isMesh ? new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()) : o.getWorldPosition(new THREE.Vector3()); /* (a mesh: its box centre) */ (out.probe ||= []).push(`${labels[i] || i} ${v} ${pn} ${w.toArray().map((x) => x.toFixed(2)).join(' ')}`); } }
+    const c = CAM[camAs] || CAM[kind] || CAM.q, dist = tall * 2.55;
     cam.position.set(c[0] * dist, tall * c[1], c[2] * dist); cam.lookAt(c[4] || 0, tall * (c[3] || 0.46), 0);
     const x = k * CW, y = 30 + i * CH;
     ren.setViewport(x, H - y - CH, CW - 2, CH - 2); ren.setScissor(x, H - y - CH, CW - 2, CH - 2); ren.render(sc, cam);
-    ui.insertAdjacentHTML('beforeend', `<div class="v" style="left:${x + 6}px;top:${y + CH - 22}px">${kind === 'clip' ? clipName + ' ' + ts + 's' : kind}</div>`);
+    ui.insertAdjacentHTML('beforeend', `<div class="v" style="left:${x + 6}px;top:${y + CH - 22}px">${kind === 'clip' ? clipName + ' ' + ts + 's' + (camAs ? ' ' + camAs : '') : kind}</div>`);
   }
   ui.insertAdjacentHTML('beforeend', `<div class="l" style="left:4px;top:${30 + i * CH + 4}px">${labels[i] || 'model ' + i} (${Math.round(tris / 1000)}k tris)</div>`);
   sc.remove(g.scene);

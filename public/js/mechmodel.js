@@ -12,6 +12,7 @@ import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
 import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, whenFailed, missingGlb, glbLoader, metaOf } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
+import { lookMech, lookTick, lookColor, lookFree } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
 
 // the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
 export const GLB_ID = { paperplane: 'x_mech_paperplane', nightshift: 'x_mech_nightshift' };
@@ -328,11 +329,13 @@ export function buildMech(frame, color, opts = {}) {
     const meta = metaOf(glb) || {}, list = Array.isArray(meta.clips) ? meta.clips : Object.entries(meta.clips || {}).map(([name, v]) => ({ name, ...v }));
     inst.clipMeta = Object.fromEntries(list.filter((c) => c && typeof c.name === 'string').map((c) => [c.name, { hold: /hold/.test(String(c.hold ?? c.play ?? '')) || c.hold === true, loop: c.loop }]));
   }
+  if (glb) lookMech(inst, glb, col, a.scene);
   root.userData.mech = inst;
   return inst;
 }
 export function freeMech(inst) {
   if (!inst) return;
+  lookFree(inst);
   inst.root.removeFromParent();
   if (inst.trail) { inst.trail.removeFromParent(); inst.trail.geometry.dispose(); inst.trail.material.dispose(); }
   for (const m of Object.values(inst.own)) m.dispose();
@@ -342,6 +345,7 @@ export function freeMech(inst) {
 export function setMechColor(inst, color) {
   const c = new THREE.Color(color); inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(0.25);
   for (const [k, m] of Object.entries(inst.own)) if (/^paint\d+$/.test(k)) { m.color.copy(c); m.emissive.copy(c).multiplyScalar(PAINT_EMI); }
+  lookColor(inst, c);
 }
 
 // ------------------------------------------------------------ pose
@@ -364,7 +368,8 @@ const SWING = [
 ];
 // which clip this moment is (MECHS.md names): a hero model with clips plays it, the stand-in poses it below
 function clipOf(inst, s) {
-  if (s.empty) return 'drop_in'; // (it ends in a held low hero pose: an empty mech waits like that)
+  if (s.falling && inst.clips && inst.clips.drop_fall) return 'drop_fall'; // (the MECH DROP fall)
+  if (s.empty) return s.intro && inst.clips && inst.clips.hero_intro ? 'hero_intro' : 'drop_in'; // (it ends in a held hero pose: an empty mech waits like that)
   if (inst.frame === 'paperplane') {
     if (s.jet) return 'jet_fly';
     if (s.dash) return 'lunge';
@@ -399,6 +404,7 @@ export function poseMech(inst, s, dt) {
     }
     inst.clip = clip; inst.mixer.update(dt);
     effects(inst, s, T);
+    lookTick(inst, s, dt);
     return;
   }
   inst.clip = clip;

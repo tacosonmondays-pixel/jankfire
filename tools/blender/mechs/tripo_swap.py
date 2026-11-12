@@ -50,6 +50,7 @@ BODY = {'paperplane': ['paperplane_body', 'paperplane_body_a'], 'nightshift': ['
 CONCEPT_PARTS = {'paperplane': ['drone'], 'nightshift': []}
 PAPER = {'paperplane': ('wing_L', 'wing_R', 'drone', 'drone_wing_L', 'drone_wing_R')}  # (stay paper in the metal look)
 BEVEL = {'paperplane': 0.008, 'nightshift': 0.014}  # (metres: edge chamfers on the Tripo plates)
+NUMBER = {'paperplane': '07', 'nightshift': '24/7'}  # (the unit number stencil on the shoulder: herokit.py)
 # hand-placed paint per Tripo body, over the automatic pass (later lines win): the faces of joint j inside the box lo..hi
 # (game metres, the cut pose; mirror: |x|), optionally only those facing a way, or whole plates mostly inside (shell).
 # The heads: white or team-colour helmets, accent V horns, team-colour forehead and chin, glowing eyes
@@ -777,6 +778,9 @@ def main():
             if mk.M['paint'].name not in o.data.materials: o.data.materials.append(mk.M['paint'])
             sm = list(o.data.materials).index(mk.M['paint'])
         a, b = tidy_piece(o, hull=j in hull, drop_rods=ARGS.get('rods', 'keep') == 'drop', side_mat=sm, bev=float(ARGS.get('bevel', BEVEL[MECH]))); nrod += a; nhull += b
+    ndec, slots = 0, []
+    if 'flat' not in ARGS and 'no-decals' not in ARGS:  # (the hero kit's decals and spray slots)
+        import herokit; ndec, slots = herokit.decorate(mk, pieces, posed, number=ARGS.get('number', NUMBER.get(MECH, '00')))
     bpy.data.objects.remove(t, do_unlink=True)
     for n in body_j:
         if n not in keep: bpy.data.objects.remove(mk.meshes.pop(n), do_unlink=True)
@@ -784,6 +788,14 @@ def main():
     report.update({'body_scale': round(k, 4), 'pieces': len(pieces), 'concept_kept': keep, 'rods_dropped': nrod, 'plates_hulled': nhull})
     # the moving parts, at rest
     mk.pose({}); posed_rest = {n: e.matrix_world.copy() for n, e in mk.E.items()}
+    decal_slots, spray = [], {}
+    for sl in slots:  # (the spray / skin slots, from the cut pose to rest)
+        j = sl['joint']; M4 = posed_rest[j] @ posed[j].inverted(); R3 = M4.to_3x3()
+        at, d, u = g_of(M4 @ gv(*sl['at'])), g_of(R3 @ gv(*sl['dir'])), g_of(R3 @ gv(*sl['up']))
+        spray['mk_' + sl['name']] = {'joint': j, 'at': at, 'dir': d}
+        decal_slots.append({'name': sl['name'], 'joint': j, 'at': [round(x, 4) for x in at], 'dir': [round(x, 4) for x in norm(d)], 'up': [round(x, 4) for x in norm(u)], 'size': sl['size']})
+    if spray: marks.update(R.add_marks(mk, spray))
+    report['decals'] = ndec
     concept_only = ARGS['concept'].split(',') if 'concept' in ARGS else CONCEPT_PARTS[MECH]
     for part, joints in parts.items():
         f = os.path.join(IN, f'{MECH}_{part}.glb')
@@ -823,8 +835,8 @@ def main():
     mk.meshes = {o.name[:-5]: o for o in mk.root.children_recursive if o.type == 'MESH' and o.name.endswith('_mesh')}  # (the ground solver reads the legs)
     R.key_clips(mk, mod, clip_list)
     meta = dict(mk.meta); meta.pop('marks', None); meta.pop('wing_layout', None)
-    meta.update({'phase': 'tripo', 'fps': R.C.FPS, 'marks': marks, 'root_motion': False, 'tripo': report,
-                 'clips': [{k2: cl[k2] for k2 in ('name', 'dur', 'loop', 'hold', 'partial', 'note')} for cl in clip_list]})
+    meta.update({'phase': 'tripo', 'fps': R.C.FPS, 'marks': marks, 'root_motion': False, 'tripo': report, 'decal_slots': decal_slots,
+                 'clips': [R.clip_meta(cl) for cl in clip_list]})
     mk.root['jf'] = json.dumps(meta)
     print('JF_TRIPO', MECH, json.dumps(report))
     if 'no-export' not in ARGS: R.export(mk, ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{MECH}.glb')), export_vertex_color='ACTIVE')
