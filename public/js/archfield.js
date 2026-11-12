@@ -27,7 +27,7 @@ export function setArchHaze(fn) { hazeFn = fn; } // world.js hands over its fog 
 
 // one THREE texture per kit image, shared by every model that uses the kit (props too: propfield.js can import this)
 export function kitTexture(name, decal = name === 'decals') { return tex(name, decal); }
-function tex(name, decal) {
+function tex(name, decal, nomip) {
   if (texCache.has(name)) return texCache.get(name);
   const t = new THREE.TextureLoader().load(`/models/arch/kit/${name}.png`);
   t.colorSpace = THREE.SRGBColorSpace;
@@ -35,6 +35,7 @@ function tex(name, decal) {
   // crunchy up close, mipmapped far away (like the world's boxes) so walls don't shimmer; the decal atlas has no mips
   // (they'd bleed one cell into the next)
   if (decal) { t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; } else { t.minFilter = THREE.NearestMipmapLinearFilter; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 4; }
+  if (nomip) { t.minFilter = THREE.NearestFilter; t.generateMipmaps = false; } // (wire mesh: mipmaps would melt it into a sheet or make it vanish)
   texCache.set(name, t);
   return t;
 }
@@ -42,7 +43,9 @@ function tex(name, decal) {
 function material(name, x) { // one shared material per Blender material name
   if (matCache.has(name)) return matCache.get(name);
   const decal = x.tex === 'decals';
-  const m = new THREE.MeshLambertMaterial({ map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') });
+  const o = { map: tex(x.tex, decal, x.nomip), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') };
+  // shine: a glossy coat (the mast yard's paint, zinc and chrome): the same diffuse light as the rest plus a highlight
+  const m = x.shine ? new THREE.MeshPhongMaterial({ ...o, shininess: x.shine, specular: new THREE.Color(x.spec ?? 0.3, x.spec ?? 0.3, x.spec ?? 0.3) }) : new THREE.MeshLambertMaterial(o);
   if (x.alpha) { m.alphaTest = 0.5; m.side = THREE.DoubleSide; }
   if (decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
   if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(x.glowcol || 0xffffff); } // (glowcol: a lava orange, say; white = the texture's own light)

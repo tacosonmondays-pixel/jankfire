@@ -405,6 +405,7 @@ GLYPHS = {
  "'": '010010000000000', ' ': '000000000000000', '4': '101101111001001', '$': '011110010011110', '%': '101001010100101',
 }
 
+GLYPHS[','] = '000000000010100'  # (the mast yard's million watts)
 
 def text_img(s, scale, fg, bg=None, pad=1):
     """chunky pixel text in the 3 x 5 font, blown up with nearest neighbour"""
@@ -550,6 +551,100 @@ def weather(n=64):
     return img, (a > 0.5).astype(np.float32)
 
 
+# ------------------------------------------------------------ the radio mast yard (make_mastyard.py). own seeds: the textures above stay as they were
+def chainlink(n=32):
+    """galvanised chain-link fabric (0.5 m a tile, 1-bit alpha): zig-zag wires woven into 12 cm diamonds, a lit side and
+    a shadow side on each wire, a spot of white rust here and there. light grey (tinted)"""
+    a = np.zeros((n, n), np.float32); g = np.zeros((n, n), np.float32)
+    yy, xx = np.mgrid[0:n, 0:n]
+    up = (xx + yy) % 8 == 0; dn = (xx - yy) % 8 == 0
+    a[up | dn] = 1
+    g[up] = 0.95; g[dn] = 0.72  # (the wires one way catch the light, the other way are in their shade)
+    g[up & dn] = 1.0  # the knuckles where they cross
+    g = g - speck(n, 0.06, seed=901) * 0.25 + (vnoise(n, 4, seed=902) - 0.5) * 0.12
+    return ramp(g, [(0, '#2e3236'), (0.6, '#a9b0b4'), (1, '#f4f8fa')]), a
+
+
+def galv(n=32):
+    """hot-dip galvanised steel (1 m a tile), light grey (tinted): zinc spangle (big flat crystals, each its own shade),
+    a dull bloom of white rust low down"""
+    rg = np.random.default_rng(903)
+    pts = rg.random((26, 2)) * n; sh = 0.72 + rg.random(26) * 0.26
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    d = np.full((n, n), 1e9, np.float32); g = np.zeros((n, n), np.float32)
+    for (px, py), v in zip(pts, sh):
+        dx = np.minimum(abs(xx - px), n - abs(xx - px)); dy = np.minimum(abs(yy - py), n - abs(yy - py))
+        dd = np.hypot(dx, dy); m = dd < d; d[m] = dd[m]; g[m] = v
+    g = g + (vnoise(n, 8, seed=904) - 0.5) * 0.1 - speck(n, 0.04, seed=905) * 0.18
+    return ramp(g, [(0, '#3a3e42'), (0.6, '#9aa2a8'), (1, '#eef2f4')])
+
+
+def barbwire(n=64):
+    """barbed wire (64 x 16, 1-bit alpha, laid along u: 0.25 m a repeat): two twisted strands and a four-point barb"""
+    a = np.zeros((16, n), np.float32); g = np.zeros((16, n), np.float32)
+    for x in range(n):
+        for ph, v in ((0.0, 0.95), (math.pi, 0.7)):
+            y = int(round(7.5 + 1.6 * math.sin(x / n * math.tau * 4 + ph)))
+            a[y, x] = 1; g[y, x] = v
+    for x0 in (14, 46):  # the barbs: two short wires wrapped round, their four points sticking out
+        for (dx, dy) in ((-3, -5), (-2, -4), (-1, -3), (3, -5), (2, -4), (1, -3), (-3, 5), (-2, 4), (-1, 3), (3, 5), (2, 4), (1, 3), (0, -2), (0, -1), (0, 1), (0, 2), (-1, 0), (1, 0)):
+            y = min(15, max(0, 7 + dy)); a[y, x0 + dx] = 1; g[y, x0 + dx] = 0.85
+    return ramp(g, [(0, '#2a2c2e'), (0.6, '#8c9296'), (1, '#e8ecee')]), a
+
+
+
+def rpanel(n=32):
+    """ribbed steel cladding for the equipment shelter (0.5 m a tile, light, tinted): flat pans between four small ribs,
+    each with a lit edge and a shaded one, a little wear and grime (the big ribs are geometry)"""
+    x = np.arange(n)[None, :] % 8
+    g = np.where(x == 3, 0.98, np.where(x == 4, 0.7, 0.86)) * np.ones((n, 1), np.float32)
+    g = g + (vnoise(n, 4, seed=906) - 0.5) * 0.1 - speck(n, 0.03, seed=907) * 0.2 - blobs(n, 2, 2, 5, seed=908) * 0.08
+    return ramp(g, [(0, '#3a3832'), (0.7, '#c4beac'), (1, '#f4f0e4')])
+
+SIGN_CELLS = {}
+
+
+def mastsigns(n=128):
+    """the mast yard's signs and plates (an atlas, 1-bit alpha: the stencil is letters only): the transmitter's spec
+    plate, the station plaque, RF caution, the tower's registration, no trespassing, the generator's labels, the cable
+    reel's stencil, the generator's control panel, hazard stripes. cells by name in kit.json (mastsigns.cells)"""
+    A = Image.new('RGBA', (n, n), (0, 0, 0, 0)); D = ImageDraw.Draw(A)
+    def cell(name, x, y, w, h): SIGN_CELLS[name] = [x / n, y / n, w / n, h / n]
+    def board(x, y, w, h, bg, border, lines, name, gap=1, top=3):
+        D.rectangle([x, y, x + w - 1, y + h - 1], fill=border); D.rectangle([x + 1, y + 1, x + w - 2, y + h - 2], fill=bg)
+        cy = y + top
+        for (s, sc, fg) in lines:
+            im = text_img(s, sc, fg, pad=0); A.alpha_composite(im, (x + (w - im.width) // 2, cy)); cy += im.height + gap
+        cell(name, x, y, w, h)
+    INK, AL = (24, 20, 28, 255), (200, 206, 210, 255)
+    board(0, 0, 64, 24, AL, (120, 126, 132, 255), [('K-JANK FM', 1, INK), ('1,000,000 WATTS', 1, INK), ('OF SMOOTH JAZZ', 1, (180, 30, 40, 255))], 'spec', top=2)
+    for (px, py) in ((2, 2), (61, 2), (2, 21), (61, 21)): D.point([(px, py)], fill=(90, 94, 98, 255))  # (its four rivets)
+    board(64, 0, 64, 24, (24, 60, 140, 255), (240, 240, 240, 255), [('K-JANK 66.6', 1, (255, 225, 77, 255)), ('TRANSMITTER', 1, (240, 240, 240, 255)), ('SITE B', 1, (255, 79, 216, 255))], 'station', top=2)
+    board(0, 24, 32, 40, (255, 210, 26, 255), INK, [('JAZZ', 1, INK), ('ZONE', 1, INK)], 'rf', top=23)
+    D.rectangle([1, 25, 30, 32], fill=INK); A.alpha_composite(text_img('CAUTION', 1, (255, 210, 26, 255), pad=0), (3, 26))
+    D.ellipse([14, 37, 17, 40], fill=INK); D.line([15, 40, 13, 45], fill=INK); D.line([16, 40, 18, 45], fill=INK)  # the RF symbol: a little mast and its waves
+    for r in (4, 7): D.arc([15 - r, 38 - r, 16 + r, 39 + r], 140, 220, fill=INK); D.arc([15 - r, 38 - r, 16 + r, 39 + r], 320, 40, fill=INK)
+    board(32, 24, 48, 24, (245, 245, 240, 255), INK, [('TOWER 13', 1, INK), ('ASR 1024577', 1, INK), ('CALL FIRST', 1, (180, 30, 40, 255))], 'asr', top=2)
+    board(80, 24, 48, 24, (200, 30, 40, 255), (245, 245, 240, 255), [('KEEP OUT', 1, (245, 245, 240, 255)), ('VIOLATORS', 1, (245, 245, 240, 255)), ('GET JAZZED', 1, (255, 225, 77, 255))], 'keep', top=2)
+    board(32, 48, 48, 16, (255, 210, 26, 255), INK, [('DIESEL', 1, INK), ('ONLY', 1, INK)], 'diesel', top=2)
+    board(80, 48, 48, 16, INK, (255, 210, 26, 255), [('JANKPOWER', 1, (255, 210, 26, 255)), ('20 KW-ISH', 1, (240, 240, 240, 255))], 'brand', top=2)
+    for i, (s, sc) in enumerate((('JANK CABLE CO.', 2), ('do not roll', 1))):  # the reel's stencil: letters only
+        im = text_img(s, sc, (232, 226, 210, 255), pad=0); A.alpha_composite(im, ((n - im.width) // 2, 66 + i * 14))
+    cell('stencil', 0, 64, 128, 32)
+    D.rectangle([0, 96, 63, 127], fill=(40, 42, 46, 255)); D.rectangle([1, 97, 62, 126], fill=(58, 60, 66, 255))  # the generator's panel
+    for k, cx in enumerate((10, 26)):
+        D.ellipse([cx - 6, 101, cx + 6, 113], fill=(230, 230, 220, 255), outline=INK); D.line([cx, 107, cx + 4, 103 - k], fill=(200, 30, 40, 255))
+    D.rectangle([38, 101, 59, 109], fill=(16, 30, 20, 255)); A.alpha_composite(text_img('60HZ', 1, (57, 255, 20, 255), pad=0), (41, 103))
+    for k, col in enumerate(((57, 255, 20), (255, 210, 26), (200, 30, 40))): D.ellipse([6 + k * 9, 116, 11 + k * 9, 121], fill=col + (255,))
+    D.rectangle([38, 114, 59, 123], fill=(200, 30, 40, 255)); A.alpha_composite(text_img('STOP', 1, (245, 245, 240, 255), pad=0), (41, 116))
+    cell('panel', 0, 96, 64, 32)
+    for x in range(64, 128):  # hazard stripes, 45 degrees
+        for y in range(96, 128): A.putpixel((x, y), (255, 210, 26, 255) if ((x + y) // 6) % 2 else (24, 20, 28, 255))
+    cell('hazard', 64, 96, 64, 32)
+    arr = np.asarray(A).astype(np.float32) / 255
+    return arr[..., :3], arr[..., 3]
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet_path = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None
@@ -578,6 +673,11 @@ def main():
     KIT['decals']['cells'] = cells
     out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
     wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    cl, ca = chainlink(); out['chainlink'] = save('chainlink', cl, 0.5, alpha=ca, note='tint', colors=8, dither=0.0)
+    out['galv'] = save('galv', galv(), 1.0, note='tint')
+    out['rpanel'] = save('rpanel', rpanel(), 0.5, note='tint')
+    bw, ba = barbwire(); out['barbwire'] = save('barbwire', bw, 0.25, alpha=ba, note='tint', colors=8, dither=0.0)
+    ms, ma = mastsigns(); out['mastsigns'] = save('mastsigns', ms, 0, alpha=ma, colors=48, dither=0.0); KIT['mastsigns']['cells'] = SIGN_CELLS
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
         tiles = []

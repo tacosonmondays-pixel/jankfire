@@ -4942,7 +4942,7 @@ function forest() {
   }
 
   // ---- the radio mast yard (site B): a low chain-link fence, the mast blinking red, a shed full of radio, a generator
-  { const [mx, mz] = MAST, x0 = 42, x1 = 62, z0 = -5, z1 = 13, FH = 1.25;
+  { const [mx, mz] = MAST, x0 = 42, x1 = 62, z0 = -5, z1 = 13, FH = 1.25, n0 = B.boxes.length;
     const fence = (axis, fixed, a0, a1, gaps) => {
       const cuts = [a0, ...gaps.flat(), a1];
       for (let i = 0; i < cuts.length; i += 2) {
@@ -4969,6 +4969,9 @@ function forest() {
     Sd(0.6, 0.2, -1.85, 2.35, 1.0, -0.9, 'metal'); Sd(0.8, 1.0, -1.85, 2.2, 1.8, -1.7, 'radiopanel', { fit: 1 }); Sd(-1.0, 0.2, 1.0, -0.2, 0.7, 1.7, 'officechair');
     B.add(mx + 7, 0, mz - 8, mx + 9.4, 1.3, mz - 6.6, 'generator'); B.add(mx + 7.2, 1.3, mz - 7.9, mx + 7.5, 2.1, mz - 7.6, 'metal');
     for (const [x, z] of [[mx - 6, mz + 6], [mx + 3, mz - 5]]) { B.add(x - 0.8, 0, z - 0.6, x + 0.8, 1.4, z - 0.45, 'logend'); B.add(x - 0.8, 0, z + 0.45, x + 0.8, 1.4, z + 0.6, 'logend'); B.add(x - 0.5, 0.3, z - 0.45, x + 0.5, 1.1, z + 0.45, 'cable'); } // cable drums
+    // look only: a Blender mast and yard over all of it (tools/blender/arch/make_mastyard.py). the blinking lights, the radio's picture and the gravel stay the game's
+    B.boxes.arch.push({ id: 'mastyard', p: [0, 0, 0], r: 0 }); const tag = { av: 'mastyard', ai: B.boxes.arch.length - 1 }, keep = new Set(['mastlight', 'radiopanel', 'gravel']);
+    for (let i = n0; i < B.boxes.length; i++) if (!keep.has(B.boxes[i].mat)) Object.assign(B.boxes[i], tag);
     adSign(B, x0 - 0.6, 8.5, 'signmast', 'z');
   }
 
