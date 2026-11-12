@@ -94,13 +94,14 @@ export function installMech(Room, U) {
         const out = dh > 0.2 ? [(t.pos[0] - m.p[0]) / dh, (t.pos[2] - m.p[2]) / dh] : [0, 0];
         this.hurt(t, owner || null, 'mechdrop', h.dmg, [out[0] * h.kb, h.up, out[1] * h.kb]);
       }
-      if (owner && owner.isBot) setTimeout(safe('botmech', () => { if (this.players.get(owner.id) === owner && owner.alive && this.mechMap().get(m.id) === m && m.st === 'wait') { owner.pos = m.p.slice(); this.mechEnter(owner); } }), 500); // bots climb straight in (if it's still there: a reset may have cleared it)
+      if (owner && (owner.isBot || m.auto)) setTimeout(safe('botmech', () => { if (this.players.get(owner.id) === owner && owner.alive && this.mechMap().get(m.id) === m && m.st === 'wait') { owner.pos = m.p.slice(); this.mechEnter(owner); } }), 500); // bots climb straight in (if it's still there: a reset may have cleared it)
     },
     mechGone(m, why = 'leave') {
       this.mechMap().delete(m.id);
       this.broadcast({ t: 'mech', k: 'gone', m: m.id, why });
       const o = this.players.get(m.o);
-      if (o && this.isleOn) this.isleMechEnd(o); // battle island: it flew off: the meter restarts at 25%
+      if (o && (this.isleOn || this.arenaOn)) this.isleMechEnd(o); // battle island: it flew off: the meter restarts at 25% (island arena: 60%)
+      if (o && this.arenaOn && why === 'boom') this.arenaMechDown(o, this.players.get(m.by) || null); // island arena: an empty one broken (m.by: who broke it)
       if (o && this.mode === 'training') (o.trainCd ||= {}).mechdrop = now() + 3000; // training: it's back in your tray 3 s after it's gone
     },
 
@@ -147,7 +148,7 @@ export function installMech(Room, U) {
         return;
       }
       if (m) this.mechMap().delete(m.id);
-      if (this.isleOn) this.isleMechEnd(p); // battle island: the meter restarts at 25% (server/islemeter.js)
+      if (this.isleOn || this.arenaOn) this.isleMechEnd(p); // battle island: the meter restarts at 25% (server/islemeter.js; island arena: 60%)
       if (why !== 'boom') { this.broadcast({ t: 'mech', k: 'out', id: p.id, m: M.id, why: 'quiet', p: at.map(r2) }); return; }
       // EJECT! EJECT!: flung up and back out of the cockpit, the mech goes up behind you
       let back = [Math.sin(p.yaw), Math.cos(p.yaw)]; const B = MECH.boom;
@@ -162,6 +163,7 @@ export function installMech(Room, U) {
         if (p.isBot) { p.vel = v.slice(); p.onGround = false; } else send(p, { t: 'mech', k: 'pos', p: p.pos.map(r2), v });
       }
       this.broadcast({ t: 'mech', k: 'down', id: p.id, m: M.id, f: M.f, by: by ? by.id : 0, p: at.map(r2), v: v.map(r2) });
+      if (this.arenaOn) this.arenaMechDown(p, by); // island arena: a mech kill scores (server/arena.js)
       this.mechBlast(at, p, by);
     },
     // somewhere to climb out to: d m off in the first of dirs with no wall in the way (knee and head height), a floor

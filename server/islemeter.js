@@ -22,7 +22,7 @@ export function installIsleMeter(Room, H) {
   // measured around the whole hit, after every soak. a 999 telefrag on a 5 HP pilot is 5, not 999
   const damage0 = Room.prototype.damage;
   Room.prototype.damage = function (t, amt, attacker, w, hs, from) {
-    if (!this.isleOn || !attacker || attacker === t || !t || !t.alive) return damage0.call(this, t, amt, attacker, w, hs, from);
+    if (!(this.isleOn || this.arenaOn) || !attacker || attacker === t || !t || !t.alive) return damage0.call(this, t, amt, attacker, w, hs, from); // (island arena: the same meter, server/arena.js)
     const wasDn = !!t.dn, before = this.islePool(t);
     const r = damage0.call(this, t, amt, attacker, w, hs, from);
     const after = !t.alive || (t.dn && !wasDn) ? 0 : this.islePool(t); // (killed, or put down: all of it came off)
@@ -64,13 +64,13 @@ export function installIsleMeter(Room, H) {
     isleHeroList() { return this.fighters().filter((p) => this.isleIn(p) && p.hero).map((p) => [p.id, p.hero]); },
 
     // ---------------------------------------------------------- the MECH METER
-    isleMeterOn(p) { return this.isleIn(p) && this.isleUp(p) && !!p.mm && p.mm.match === this.br.id && !p.br.inBlimp && !p.br.fly && !p.mech && !this.mechOf(p); },
+    isleMeterOn(p) { if (this.arenaOn) return this.arenaMeterOn(p); return this.isleIn(p) && this.isleUp(p) && !!p.mm && p.mm.match === this.br.id && !p.br.inBlimp && !p.br.fly && !p.mech && !this.mechOf(p); },
     // add to p's meter (why: for the log). nothing while your mech is out, you're down or still in the sky
     isleMeter(p, add, why) {
       if (!(add > 0) || !this.isleMeterOn(p)) return;
       const M = p.mm, was = M.v;
       M.v = Math.min(ISLE.meter.max, M.v + add);
-      if (was < ISLE.meter.max && M.v >= ISLE.meter.max) { this.isleMeterSend(p, true); if (LOG && why !== 'time') this.br.isle.log.push(`${p.name} MECH READY (${why})`); }
+      if (was < ISLE.meter.max && M.v >= ISLE.meter.max) { this.isleMeterSend(p, true); if (LOG && why !== 'time' && this.isleOn) this.br.isle.log.push(`${p.name} MECH READY (${why})`); }
     },
     isleMeterSend(p, now1) {
       const M = p.mm, n = now(), v = Math.floor(M.v), out = !!(p.mech || this.mechOf(p));
@@ -82,7 +82,7 @@ export function installIsleMeter(Room, H) {
     isleMeterTick(n, dt) {
       const per = ISLE.meter.max / ISLE.meter.time * dt / 1000;
       for (const p of this.fighters()) {
-        if (!p.mm || !this.isleIn(p)) continue;
+        if (!p.mm || !(this.arenaOn ? this.arenaIn(p) : this.isleIn(p))) continue;
         this.isleMeter(p, per, 'time');
         this.isleMeterSend(p, false);
         if (p.isBot && p.mm.v >= ISLE.meter.max) this.isleBotCall(p, n);
@@ -96,7 +96,7 @@ export function installIsleMeter(Room, H) {
       p.callT = n;
       const at = vec3(m.at);
       if (m.r !== 'mechdrop' || !at || !p.mm) return;
-      if (!this.isleIn(p) || !p.alive || p.dn || p.br.inBlimp || p.br.fly) return;
+      if (!p.alive || p.dn || (this.arenaOn ? !this.arenaIn(p) : !this.isleIn(p) || p.br.inBlimp || p.br.fly)) return; // (island arena: no blimp, no sky)
       if (p.mech || this.mechOf(p)) { this.mechNo(p, 'your mech is already out'); return; }
       if (p.rig || this.isBall(p) || p.ballUntil > n || p.trap) { this.mechNo(p, 'not right now'); return; }
       if (p.mm.v < ISLE.meter.max) { this.mechNo(p, `meter at ${Math.floor(p.mm.v)}%`); this.isleMeterSend(p, true); return; }
@@ -105,15 +105,15 @@ export function installIsleMeter(Room, H) {
       p.mm.v = 0;
       this.isleMeterSend(p, true);
       this.broadcast({ t: 'isle', k: 'call', id: p.id, h: p.hero });
-      if (LOG) this.br.isle.log.push(`${p.name} CALLED ${heroName(p.hero)}`);
+      if (LOG && this.isleOn) this.br.isle.log.push(`${p.name} CALLED ${heroName(p.hero)}`);
     },
     // mech.js hook: your mech is gone (blown up, flew off unused, the match ended it): the meter restarts with a head start
     isleMechEnd(p) {
-      if (!p || !p.mm || !this.isleIn(p) || p.mech || this.mechOf(p)) return;
-      if (LOG && p.isBot) this.br.isle.log.push(`${p.name}'s mech ends: ${p.dn ? 'down' : !p.alive ? 'dead' : 'up'}`);
-      p.mm.v = ISLE.meter.after;
+      if (!p || !p.mm || !(this.arenaOn ? this.arenaIn(p) : this.isleIn(p)) || p.mech || this.mechOf(p)) return;
+      if (LOG && p.isBot && this.isleOn) this.br.isle.log.push(`${p.name}'s mech ends: ${p.dn ? 'down' : !p.alive ? 'dead' : 'up'}`);
+      p.mm.v = this.arenaOn ? this.arenaAfter() : ISLE.meter.after; // (island arena: 60%)
       this.isleMeterSend(p, true);
-      if (LOG) this.br.isle.log.push(`${p.name}'s mech is gone: meter back to ${ISLE.meter.after}`);
+      if (LOG && this.isleOn) this.br.isle.log.push(`${p.name}'s mech is gone: meter back to ${ISLE.meter.after}`);
     },
 
     // ---------------------------------------------------------- energy cells (loot k 'cell')
@@ -151,14 +151,14 @@ export function installIsleMeter(Room, H) {
       if (n < (b.callT || 0) || !this.isleMeterOn(b) || b.rig || this.isBall(b)) return;
       b.callT = n + 1500;
       const t = this.players.get(b.ai && b.ai.target);
-      if (!t || !t.alive || t.goblin || !b.ai.seenAt || hdist(t.pos, b.pos) > 45) return; // near a fight (a real one: not a loot goblin), not just anywhere
+      if (!this.arenaOn && (!t || !t.alive || t.goblin || !b.ai.seenAt || hdist(t.pos, b.pos) > 45)) return; // near a fight (island arena: whenever it's ready) (a real one: not a loot goblin), not just anywhere
       const f = HEROES[b.hero] ? HEROES[b.hero].frame : 'paperplane', spots = [];
       for (const [da, k] of [[0, 6], [0, 3], [0, 0], [0.8, 6], [-0.8, 6], [1.6, 6], [-1.6, 6], [2.4, 6], [-2.4, 6], [Math.PI, 6]]) spots.push([b.pos[0] - Math.sin(b.yaw + da) * k, b.pos[1] + 0.3, b.pos[2] - Math.cos(b.yaw + da) * k]); // ahead first, then round about (facing the sea: the drop refuses water, so it finds land)
       for (const at of spots) {
         if (this.mechCall(b, at, f)) {
           b.mm.v = 0;
           this.broadcast({ t: 'isle', k: 'call', id: b.id, h: b.hero });
-          if (LOG) this.br.isle.log.push(`${b.name} CALLED ${heroName(b.hero)} (fighting ${t.name})`);
+          if (LOG && this.isleOn) this.br.isle.log.push(`${b.name} CALLED ${heroName(b.hero)} (fighting ${t ? t.name : 'nobody'})`);
           return;
         }
       }

@@ -70,6 +70,7 @@ import { inPit, pitUnder, sink, swim, mire } from '../shared/pits.js'; // pits w
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
+import { installArena } from './arena.js'; // ISLAND ARENA: 6v6 in mechs on Battle Island's middle
 import { LOBBY } from '../shared/lobby.js';
 import './env.js'; // .env: read after the modules above (as it was in server.js), before the knobs below
 
@@ -4030,6 +4031,7 @@ installAds(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm }); // the
 installSdSkill(Room); // Plant & Defuse bots with skill tiers + team stances (wraps the econ / tactical bot methods)
 installGavel(Room, { now, send, raycast, r2, eyeOf, lookOf, norm, vec3, center }); // the Scales of Justice's ranged SUMMONS (after installSec: it wraps handle / tickGear)
 installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-op / quick play
+installArena(Room, { send }); // ISLAND ARENA (server/arena.js: wraps startRound / pickSpawn / resetLife / kill / handle / tickMech / mechSnap / botGoal)
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 

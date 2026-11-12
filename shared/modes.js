@@ -73,7 +73,7 @@ export const WIP_ON = (() => { try { if (typeof location !== 'undefined') return
 export function mapsFor(game, maps, order) {
   if (!WIP_ON) order = order.filter((id) => !(maps[id] && maps[id].wip));
   order = order.filter((id) => !GAMES[game].zombies === !(maps[id] && maps[id].zm)); // zombie maps go with zombies and nothing else
-  return order.filter((id) => id !== 'range' && maps[id] && !(maps[id].royaleOnly && !GAMES[game].royale) && (GAMES[game].sites ? maps[id].sites && maps[id].sites.length : !maps[id].sd) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
+  return order.filter((id) => id !== 'range' && maps[id] && !(maps[id].royaleOnly && !GAMES[game].royale && !GAMES[game].islandMap) && (GAMES[game].sites ? maps[id].sites && maps[id].sites.length : !maps[id].sd) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
 }
 // the version of map `id` that `game` plays (switching mode swaps between a map and its S&D version)
 export function mapForGame(game, maps, id) {

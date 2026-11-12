@@ -16,7 +16,7 @@ const shuffle = (a, rnd) => { for (let i = a.length - 1; i > 0; i--) { const j =
 // avoid: a mode that was just voted off with /skip: not on the cards at all, not even as the event
 // Quick Play's vote rotation: Plant & Defuse, Jank Royale and Zombies have their own cards and lobbies, so they're
 // never voted into a quick play room
-export const inQuickPlay = (g) => !!GAMES[g] && !GAMES[g].sites && !GAMES[g].royale && !GAMES[g].zombies;
+export const inQuickPlay = (g) => !!GAMES[g] && !GAMES[g].sites && !GAMES[g].royale && !GAMES[g].zombies && !GAMES[g].islandMap; // (island arena: the island's own mode, not a quick play card)
 export function modeCards(maps, order, cur, rnd = Math.random, avoid = null) {
   let ok = GAME_ORDER.filter((g) => inQuickPlay(g) && mapsFor(g, maps, order).length);
   if (avoid && ok.length > 1) ok = ok.filter((g) => g !== avoid);
