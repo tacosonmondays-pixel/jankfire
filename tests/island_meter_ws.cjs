@@ -44,9 +44,9 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
 (async () => {
   const { ISLE_ZONE, ISLE_FINAL } = await import('../shared/island.js');
   const srv = await server({ JF_ISLE_BLEED: '25', JF_MECH_DROP: '0.6', JF_MECH_WAIT: '4', JF_MECH_HP: '0.05' }, port);
-  const A = client('Alfa', 'nightshift', port); await sleep(400);
-  const B = client('Bravo', 'nightshift', port); await sleep(250);
+  const A = client('Alfa', 'nightshift', port); await sleep(400); // (the 2nd one in starts a second squad: A, C, then B joins A, D joins C)
   const C = client('Charlie', 'paperplane', port); await sleep(250);
+  const B = client('Bravo', 'nightshift', port); await sleep(250);
   const D = client('Delta', undefined, port);
   const all = [A, B, C, D];
   await sleep(1800);
@@ -192,8 +192,8 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
   log = []; T0 = Date.now();
   const p2 = port + 1, srv2 = await server({ JF_ISLE_ZONE: '0.04', JF_ISLE_METER: '60', JF_MECH_DROP: '0.5', JF_MECH_WAIT: '30', JF_ISLE_BLEED: '120' }, p2);
   const P = client('Pilot', 'nightshift', p2); await sleep(400);
-  const W2 = client('Wingman', 'paperplane', p2); await sleep(250);
-  const E = client('Enemy', 'paperplane', p2);
+  const E = client('Enemy', 'paperplane', p2); await sleep(250);
+  const W2 = client('Wingman', 'paperplane', p2);
   const all2 = [P, W2, E];
   await sleep(1800);
   const z2 = (await waitFor((m) => m.t === 'br' && m.k === 'start', 3000))[2].zone, fz = z2.steps[4];
