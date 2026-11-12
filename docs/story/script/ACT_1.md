@@ -956,7 +956,7 @@ _The only other way into the Gut is the commuter line under the hill. Nobody tak
 #### Choice: His hand comes off yours and stays open on the deck.
 - **[TAKE]**: Your hand goes in through the split boiler, the same motion as the Heart Rip, slower. What comes out is a length of spine the colour of a traffic light, wet, and warm, and still making blood: it runs down your arm and into the cradle and all six barrels fill at once.
 
-**Reward:** loop_train, blood_drive, marrow_pallet_jack
+**Reward:** loop_train, blood_drive
 **Review card:** NO REVIEW TODAY. / NO REVIEW TODAY. / NO REVIEW TODAY.
 _Builder notes: the only mission whose grade card has no joke. Jack's vest stays on Dumpling for the rest of the game (it never fits). LEG DAY's intro changes: Lumps is carrying fridges up the Long Stairs because someone has to do Jack's round._
 

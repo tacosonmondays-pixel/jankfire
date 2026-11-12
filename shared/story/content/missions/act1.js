@@ -467,7 +467,7 @@ export const MISSIONS_ACT1 = {
       ] },
     ],
     scenes: ["c6_mind_the_gap", "mo_carry_the_bit_that_works", "c6b_terminus", "p5b_employee_4417"],
-    reward: { items: ["loop_train"], loot: ["blood_drive"], implants: ["marrow_pallet_jack"], flags: ["beat_revenue_protection_1", "train_unlocked", "act1_done"] },
+    reward: { items: ["loop_train"], loot: ["blood_drive"], flags: ["beat_revenue_protection_1", "train_unlocked", "act1_done"] },
     grade: { exceeds: "NO REVIEW TODAY.", meets: "NO REVIEW TODAY.", see_me: "NO REVIEW TODAY." },
     notes: "the only mission whose grade card has no joke. Jack's vest stays on Dumpling for the rest of the game (it never fits). LEG DAY's intro changes: Lumps is carrying fridges up the Long Stairs because someone has to do Jack's round.",
   },
