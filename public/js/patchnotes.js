@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.6', date: '2026-11-12', title: 'LEAVING THE PRODUCT', items: [
+    'jankburg: the firewall got a real wall. precast concrete, pink neon, cameras, a walkable top with a yellow line. it says FIRE WALL on it now so you know which one it is. you are now leaving the product.',
+  ] },
   { v: '9.5', date: '2026-11-12', title: 'SHAKE BEFORE THROWING', items: [
     'skyline: the giant jank cola can is an actual can now. candy red, condensation, a pink ring pull. 0% real cola. shake before throwing.',
     'skyline: the building-site crane is a real crane now. lattice, cab, counterweights, a big red hook. mr. smiles says the view hasn\'t changed.',
