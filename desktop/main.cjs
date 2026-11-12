@@ -14,6 +14,16 @@ let config = { officialServer: '' };
 try { config = { ...config, ...JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8')) }; } catch { /* defaults */ }
 if (process.env.JF_SERVER) config.officialServer = process.env.JF_SERVER;
 
+// use the real graphics card: on laptops with two GPUs ask for the gaming one, and don't let Chromium's driver blocklist
+// drop the game to software drawing (that's the 'everything is choppy' case). JF_SAFE_GPU=1 or "safeGpu": true in
+// config.json turns this off if a driver misbehaves.
+if (!(process.env.JF_SAFE_GPU === '1' || config.safeGpu === true)) {
+  app.commandLine.appendSwitch('force_high_performance_gpu');
+  app.commandLine.appendSwitch('ignore-gpu-blocklist');
+  app.commandLine.appendSwitch('enable-gpu-rasterization');
+  app.commandLine.appendSwitch('enable-zero-copy');
+}
+
 let win = null;
 let local = null; // { port, lan: [...], mod }
 let starting = null;
