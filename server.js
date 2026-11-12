@@ -22,6 +22,7 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
+import { makeBuild } from './server/build.js'; // versioned code urls: the browser keeps this build's scripts, asks about none of them
 import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
 import { makeFriends } from './server/friends.js'; // friends (invites and joins check them)
 import { GAMES, mapsFor } from './shared/modes.js';
@@ -52,6 +53,10 @@ const MIME = {
   '.webmanifest': 'application/manifest+json',
 };
 
+// the file a url is served from (or null): the routes above, never outside their folders
+const fileOf = (u) => { for (const [prefix, dir] of ROUTES) { if (!u.startsWith(prefix)) continue; const f = path.normalize(path.join(dir, u.slice(prefix.length) || 'index.html')); return f.startsWith(dir) ? f : null; } return null; };
+const build = makeBuild(ROOT, fileOf);
+
 function modelList() {
   let cfg = [];
   try { cfg = JSON.parse(fs.readFileSync(path.join(ROOT, 'tools/models.json'), 'utf8')); } catch { /* none */ }
@@ -67,6 +72,7 @@ function modelList() {
 function serve(req, res) {
   let url;
   try { url = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400).end(); return; }
+  if (url.includes('\0')) { res.writeHead(400).end(); return; } // (a null byte: fs would choke on it and the request hung)
   if (url === '/models/list') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
     res.end(JSON.stringify(modelList()));
@@ -91,12 +97,14 @@ function serve(req, res) {
     fs.stat(file, (err, st) => { if (err || !st.isFile()) { res.writeHead(404).end('404'); return; } sendStatic(req, res, file, st, '.js', MIME['.js']); });
     return;
   }
+  if (url.startsWith('/v/')) { build.sendVersioned(req, res, url, (ext) => MIME[ext] || 'application/octet-stream'); return; } // this build's code, kept for good (server/build.js)
   for (const [prefix, dir] of ROUTES) {
     if (!url.startsWith(prefix)) continue;
     const file = path.normalize(path.join(dir, url.slice(prefix.length) || 'index.html'));
     if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404).end('404'); return; }
+      if (path.extname(file) === '.html') { build.sendHtml(req, res, file, st); return; } // (pages name this build's code)
       sendStatic(req, res, file, st, path.extname(file), MIME[path.extname(file)] || 'application/octet-stream'); // (ETag + gzip: server/static.js)
     });
     return;
