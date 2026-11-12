@@ -9,7 +9,8 @@ export const MECH = {
   kills: 9, // (STREAKS.mechdrop in shared/weapons.js mirrors this)
   // calling it in: how far the marker can go, how long it falls, the landing shockwave (damage at the middle -> 35% at
   // the edge, radius, knockback out / up), standing right on the marker = squashed, the headroom it needs
-  drop: { range: 60, delay: 2.5, dmg: 60, r: 6, kb: 14, up: 13, squash: 1.9, sky: 7 },
+  drop: { hit: 0.36, range: 60, // (hit: drop_in's impact frame, played at touchdown)
+    delay: 2.5, dmg: 60, r: 6, kb: 14, up: 13, squash: 1.9, sky: 7 },
   wait: 30, // s it stands waiting for you after landing (then it flies off)
   idle: 10, // s an empty mech waits after you hop out early
   reach: 4.5, // how close you have to be to climb in (F)
@@ -32,16 +33,19 @@ export const MECH = {
     hover: { up: 7, rise: 0.9, drain: 22, speed: 16 }, // climb speed, s of climbing before it just hangs, energy a s, flat speed
     lunge: { cost: 25, speed: 40, dist: 16, lock: 22, cos: 0.9, dmg: 30, kb: 22, kbUp: 8, heal: 0.5, r: 2.2 }, // boost lunge: locks the enemy nearest the crosshair
     crane: { cd: 9, range: 45, cos: 0.85, speed: 30, pecks: 4, dmg: 6, gap: 0.3, life: 6 }, // the origami crane drone
-    swarm: { cd: 10, n: 12, dmg: 9, r: 2.6, kb: 7, gap: 45, spin: 7, wob: 0.35, cos: 0.55, seek: 70, speed: [18, 40], turn: 4.6, boost: 0.3, life: 4.5 }, // missile swarm (rig missile code + a spiral)
+    swarm: { cd: 10, n: 12, kicks: [0.30, 0.52, 0.74], dmg: 9, r: 2.6, kb: 7, gap: 45, // (kicks: s into missile_salvo when the pods fire, 2 pencils a side each)
+      spin: 7, wob: 0.35, cos: 0.55, seek: 70, speed: [18, 40], turn: 4.6, boost: 0.3, life: 4.5 }, // missile swarm (rig missile code + a spiral)
     jet: { dur: 6, cd: 20, speed: 45, dmg: 60, kb: 30, kbUp: 14, r: 2.6 }, // fold into a jet: fly where you look, ram
   },
   nightshift: {
     name: 'NIGHT SHIFT', hp: 1500, h: 5.7, hw: 1.2, c0: 3.3, c1: 4.6, eye: 5.3, cam: 10,
     speed: 11, accel: 7, fric: 4.5, grav: 32, hop: 14, airCap: 6,
-    sword: { dmg: [40, 40, 70], cd: [0.38, 0.38, 0.62], combo: 0.95, reach: 6.2, cos: 0.2, kb: [8, 8, 28], up: [4, 4, 12] }, // three swings
-    shield: { cut: 0.85, cos: 0.35, slow: 0.45, bashWin: 0.8, bash: 30, bashR: 5, bashKb: 22, bashCd: 1.2 }, // tower shield + bash
-    triple: { cost: 35, n: 3, speed: 28, len: 0.18, gap: 0.3, dmg: 25, r: 2.6, kb: 10 }, // TRIPLE SHIFT: three dashing cuts, gap s apart
-    slam: { cd: 18, up: 20, down: 42, dmg: 120, r: 8, kb: 14, kbUp: 16, win: 4 }, // ground slam
+    sword: { dmg: [40, 40, 70], hit: [0.24, 0.22, 0.42], cd: [0.38, 0.38, 0.62], // hit: s into sword_combo_N when the blade lands (the server judges it then)
+      combo: 0.95, reach: 6.2, cos: 0.2, kb: [8, 8, 28], up: [4, 4, 12] }, // three swings
+    shield: { bashHit: 0.22, cut: 0.85, cos: 0.35, slow: 0.45, bashWin: 0.8, bash: 30, bashR: 5, bashKb: 22, bashCd: 1.2 }, // tower shield + bash
+    triple: { cost: 35, n: 3, hits: [0.20, 0.44, 0.68], lead: 0.08, gap: 0.24, speed: 28, len: 0.18, dmg: 25, r: 2.6, kb: 10 }, // TRIPLE SHIFT: three dashing cuts (dash i from lead + i x gap for len s; the triple_shift clip's cuts land at hits)
+    slam: { hit: 0.56, cd: 18, up: 20, // (hit: ground_slam's impact frame. ours is the real landing: the height is physics)
+      down: 42, dmg: 120, r: 8, kb: 14, kbUp: 16, win: 4 }, // ground slam
     overtime: { marks: 4, fade: 4, stun: 1, immune: 3 }, // sword hits stamp marks; the 4th CLOCKS THEM OUT (stun s, then immune s)
   },
 };

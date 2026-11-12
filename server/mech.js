@@ -383,6 +383,7 @@ export function installMech(Room, U) {
       const e = this.mechEyeOf(p), tg = this.rigTargets(p, e, d, S.cos, S.seek).slice(0, 3);
       this.broadcast({ t: 'mech', k: 'swarm', id: p.id, tg: tg.map((t) => t.id) });
       this.mechEn(p, true);
+      const per = Math.ceil(S.n / S.kicks.length); // missile_salvo: each kick fires 2 pencils a side
       for (let i = 0; i < S.n; i++) {
         setTimeout(safe('mechmiss', () => {
           if (this.players.get(p.id) !== p || !this.mechOn(p)) return; // the pods went down with the mech
@@ -393,7 +394,7 @@ export function installMech(Room, U) {
           const vel = [rt[0] * side * out + fw[0] * 4 + p.vel[0] * 0.4, upv, rt[1] * side * out + fw[1] * 4 + p.vel[2] * 0.4];
           const pr = this.makeProj(p, 'mechmissile', pos, vel, { tg: tg.length ? tg[i % tg.length].id : 0, aim: d, seekT: 0, M: S, ph: Math.random() * 6.28 });
           pr.born = now();
-        }), i * S.gap);
+        }), S.kicks[Math.min(S.kicks.length - 1, Math.floor(i / per))] * 1000 + (i % per) * 25);
       }
     },
     // one swarm missile, every tick: a corkscrew on top of the rig missile's homing (it turns back onto the target)
@@ -428,6 +429,11 @@ export function installMech(Room, U) {
       if (C.i >= 0 && n - C.t < S.cd[C.i] * 1000 - 120) return; // the last swing isn't through yet
       C.i = i; C.t = n;
       this.broadcast({ t: 'mech', k: 'swing', id: p.id, i });
+      setTimeout(safe('mechswing', () => this.mechSwingHit(p, M, i)), S.hit[i] * 1000); // judged when the blade lands (sword_combo_N's hit frame)
+    },
+    mechSwingHit(p, M, i) {
+      const S = NS.sword, n = now();
+      if (this.players.get(p.id) !== p || !this.mechOn(p) || p.mech !== M) return;
       const fw = [-Math.sin(p.yaw), -Math.cos(p.yaw)];
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
@@ -454,6 +460,11 @@ export function installMech(Room, U) {
       if (n - M.blockT > S.bashWin * 1000 || !this.mechCd(M, 'bash', S.bashCd, n)) return;
       M.blockT = 0;
       this.broadcast({ t: 'mech', k: 'bash', id: p.id });
+      setTimeout(safe('mechbash', () => this.mechBashHit(p, M)), S.bashHit * 1000); // (shield_bash's hit frame)
+    },
+    mechBashHit(p, M) {
+      const S = NS.shield;
+      if (this.players.get(p.id) !== p || !this.mechOn(p) || p.mech !== M) return;
       const fw = [-Math.sin(p.yaw), -Math.cos(p.yaw)];
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
@@ -467,7 +478,7 @@ export function installMech(Room, U) {
       const M = p.mech, T = NS.triple;
       if ((M.dash && n < M.dash.until) || M.slam) return;
       if (!spend(M.E, T.cost, n)) { this.mechNo(p, 'no energy'); this.mechEn(p, true); return; }
-      M.dash = { k: 'triple', t0: n, until: n + (T.gap * (T.n - 1) + T.len) * 1000 + 300, prev: p.pos.slice(), hit: new Map() };
+      M.dash = { k: 'triple', t0: n, until: n + (T.lead + T.gap * (T.n - 1) + T.len) * 1000 + 300, prev: p.pos.slice(), hit: new Map() };
       this.broadcast({ t: 'mech', k: 'triple', id: p.id });
       this.mechEn(p, true);
     },
@@ -545,7 +556,7 @@ export function installMech(Room, U) {
       D.prev = p.pos.slice();
       const L = PP.lunge, T = NS.triple, lunge = D.k === 'lunge';
       const r = (lunge ? L.r : T.r) + F.hw * 0.5;
-      const cut = lunge ? 0 : Math.min(T.n - 1, Math.floor((n - D.t0) / (T.gap * 1000)));
+      const cut = lunge ? 0 : Math.min(T.n - 1, Math.max(0, Math.floor((n - D.t0 - T.lead * 1000) / (T.gap * 1000))));
       const dir = norm([b[0] - a[0], 0, b[2] - a[2]]) || [-Math.sin(p.yaw), 0, -Math.cos(p.yaw)];
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
@@ -667,7 +678,7 @@ export function installMech(Room, U) {
           this.mechBotWalk(b, v, wx, wz, sp * 0.6, F, dt, false);
           if (b.onGround) this.mechSlamLand(b, b.pos.slice(), n);
         } else if (M.bt && M.dash && n < M.dash.until) { // the three dashes: dash, stop, dash, stop, dash
-          const k = (n - M.bt.t0) / 1000, inDash = k % NS.triple.gap < NS.triple.len;
+          const k = (n - M.bt.t0) / 1000 - NS.triple.lead, inDash = k >= 0 && k % NS.triple.gap < NS.triple.len;
           const d = t ? norm([t.pos[0] - b.pos[0], 0, t.pos[2] - b.pos[2]]) || look : look;
           if (inDash) { v[0] = d[0] * NS.triple.speed; v[2] = d[2] * NS.triple.speed; } else { v[0] *= 0.5; v[2] *= 0.5; }
           v[1] -= F.grav * dt; f |= MF.SLASH;

@@ -235,11 +235,11 @@ export function mechStep(dt, inp, now) {
     if (now > MS.dash.until) { MS.dash = null; v[0] *= 0.3; v[2] *= 0.3; v[1] = Math.min(v[1], 3); }
     else { for (let i = 0; i < 3; i++) v[i] = MS.dash.dir[i] * PP.lunge.speed; fixed = true; }
   } else if (MS.triple) { // three dashing cuts, each a short burst the way you look
-    const T = NS.triple, k = (now - MS.triple.t0) / 1000, n = Math.floor(k / T.gap), inDash = n < T.n && k - n * T.gap < T.len;
+    const T = NS.triple, k = (now - MS.triple.t0) / 1000 - T.lead, n = k < 0 ? -1 : Math.floor(k / T.gap), inDash = n >= 0 && n < T.n && k - n * T.gap < T.len;
     if (n !== MS.triple.cut && n < T.n) { MS.triple.cut = n; const d = look(), hl = Math.hypot(d[0], d[2]) || 1; MS.triple.dir = [d[0] / hl, 0, d[2] / hl]; MS.swingT = 0; MS.swingI = n % 2; mechsfx.boost(null, 0.6); mechsfx.whoosh(null, n === 2); G.shake = Math.max(G.shake, 0.35); punchCam(0.02, n % 2 ? 0.03 : -0.03); }
     if (inDash) { v[0] = MS.triple.dir[0] * T.speed; v[2] = MS.triple.dir[2] * T.speed; fixed = true; grav *= 0.3; }
     else { v[0] *= Math.max(0, 1 - dt * 12); v[2] *= Math.max(0, 1 - dt * 12); }
-    if (k > T.gap * (T.n - 1) + T.len + 0.08) MS.triple = null;
+    if (k > T.gap * (T.n - 1) + T.len + 0.08) MS.triple = null; // (cuts land on triple_shift's hit frames: shared/mech.js)
   }
   if (MS.slam) { // up, hang, then straight down
     if (MS.slam.ph === 1 && v[1] < 0) { MS.slam.ph = 2; mechsfx.boost(null, 1); }
@@ -352,7 +352,7 @@ export function updateMech(dt, now, cam, replaying) {
     const s = Math.sin(ME.yaw), c = Math.cos(ME.yaw);
     poseMech(inst, {
       spd: ME.onGround ? hspeed() : 0, fwd: -(ME.vel[0] * s + ME.vel[2] * c), side: ME.vel[0] * c - ME.vel[2] * s, air: !ME.onGround, vy: ME.vel[1],
-      hover: MS.hover, jet: jet ? 1 : 0, dash: !!MS.dash || !!(MS.triple && MS.triple.dir && (now - MS.triple.t0) / 1000 % NS.triple.gap < NS.triple.len), shield: MS.rmb,
+      hover: MS.hover, jet: jet ? 1 : 0, dash: !!MS.dash || !!(MS.triple && MS.triple.dir && (now - MS.triple.t0) / 1000 - NS.triple.lead >= 0 && ((now - MS.triple.t0) / 1000 - NS.triple.lead) % NS.triple.gap < NS.triple.len), shield: MS.rmb,
       swingT: MS.swingT, swingI: MS.swingI, slam: MS.slam ? MS.slam.ph : 0, gunT: MS.gunT, gunSide: MS.gunSide, swarmT: MS.swarmT, craneOut: MS.craneOut > now,
       landT: MS.landT, landK: MS.landK, pitch: ME.pitch, boost: MS.boostT < 0.3 ? 1 - MS.boostT / 0.3 : 0, slashing: MS.swingT > 0.08 && MS.swingT < 0.32 || !!MS.triple || (MS.slam && MS.slam.ph === 2),
     }, dt);
