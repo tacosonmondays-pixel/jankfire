@@ -26,7 +26,7 @@ const grid = new THREE.GridHelper(8, 8, 0x5a3a6a, 0x3a2a4a); sc.add(grid);
 sc.add(g.scene); g.scene.rotation.y = Math.PI; // (face the camera: the mechs face -z)
 const mixer = new THREE.AnimationMixer(g.scene), ui = document.getElementById('ui'), out = { missing: [], clips: {} };
 const cam = new THREE.PerspectiveCamera(30, CW / CH, 0.1, 200);
-const tall = MECH === 'nightshift' ? 6.0 : 5.6;
+const tall = { nightshift: 6.0, trolley: 3.6, wrecking: 5.2 }[MECH] || 5.6; // (framing height per mech)
 for (const [row, name] of names.entries()) {
   const clip = g.animations.find((a) => a.name === name); if (!clip) { out.missing.push(name); continue; }
   mixer.stopAllAction(); const act = mixer.clipAction(clip); act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; act.reset().play();
