@@ -1,13 +1,14 @@
 // A Battle Island hero's file (public/models/x_mech_<hero>.glb) in the real game before its gameplay code exists:
 // Training range, the game's lights, sky and renderer at a preset, loaded through the game's own glb pipeline
 // (glbkit) with the hero kit on it (public/js/mechlook.js: rim light, ink, glows, stickers), posed by its own clips.
-// usage: node tools/blender/mechs/hero_game.cjs <port> <outDir> <hero> [preset=3]
+// usage: node tools/blender/mechs/hero_game.cjs <port> <outDir> <hero> [preset=3] [set=shots|turn|lod] [tag]
 //   (start a server after the glb is in public/models: it lists the models when it boots)
-//   writes <hero>_<preset>_<shot>.jpg and <hero>_<preset>.jpg (all of them on one sheet)
+//   writes <hero>_<preset><tag>_<shot>.jpg and <hero>_<preset><tag>.jpg (all of them on one sheet)
+//   set turn: a turnaround (8 angles, idle); set lod: the near model over its far LOD at 8, 16 and 30 m
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
 const { execFileSync } = require('child_process');
-const [port = '3100', outDir = '.', hero = 'wrecking', presetArg = '3'] = process.argv.slice(2);
+const [port = '3100', outDir = '.', hero = 'wrecking', presetArg = '3', SET = 'shots', TAG = ''] = process.argv.slice(2);
 const PR = Number(presetArg), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 fs.mkdirSync(outDir, { recursive: true });
 const P = [0, 0, -16]; // (the hero stands here, facing you at the firing line)
@@ -29,10 +30,18 @@ const SHOTS = {
     ['order', 'OUT OF ORDER: slammed into the floor in front of it', 'out_of_order', 0.5, [-6.0, 2.6, 8.6], [0, 1.6, 1.4], 52, 0, true],
     ['restock', 'RESTOCK: everything flung open and lit', 'restock', 0.6, [-4.4, 2.6, 7.6], [0, 3.0, 0], 50],
     ['walk', 'the waddle (side)', 'walk', 0.0, [6.8, 2.4, 1.6], [0, 2.4, 0], 50],
+    ['side', 'detail: skins bolted on the chassis, the shoulder mount, the vent, the arm ram', 'idle', 0.0, [3.4, 2.7, 1.2], [0.2, 2.3, 0], 50],
+    ['back', 'detail: the sign on its back, the coiled power cord, the compressor vent', 'idle', 0.0, [-2.0, 2.4, -4.8], [0, 2.1, 0], 50],
+    ['legs', 'detail: rams behind the knees, greaves, treads, levelling feet', 'idle', 0.0, [-1.9, 0.9, 2.7], [0, 0.6, 0], 50],
     ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 2.6, 0], 75],
   ],
 };
 
+const TALL = { wrecking: 2.4, trolley: 1.2 }[hero] || 2.6; // (where to look: about the middle of it)
+const turn = () => Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4, r = TALL * 3.6; return [`turn${i}`, `${i * 45} degrees`, 'idle', 0.0, [Math.sin(a) * r, TALL * 0.95, Math.cos(a) * r], [0, TALL * 0.92, 0], 50]; });
+const lod = () => [8, 16, 30].flatMap((d) => [false, true].map((f) => [`${f ? 'far' : 'near'}${d}`, `${f ? 'far LOD' : 'near model'} at ${d} m`, 'idle', 0.0, [-d * 0.42, TALL * 0.8, d * 0.91], [0, TALL * 0.85, 0], 40, 0, false, f]))
+  .sort((a, b) => (a[9] - b[9]));
+const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const pg = await b.newPage({ viewport: { width: 1280, height: 720 } }), errs = [];
@@ -62,7 +71,8 @@ const SHOTS = {
     let last = performance.now();
     const tick = () => { const n = performance.now(), dt = Math.min(0.1, (n - last) / 1000); last = n; inst.t += dt; inst.mixer.update(window.__run ? dt : 0); look.lookTick(inst, {}, dt); requestAnimationFrame(tick); };
     tick();
-    window.__show = (clip, t, lift, run) => {
+    window.__show = (clip, t, lift, run, force) => {
+      if (inst.look) inst.look.lodForce = force == null ? null : !!force;
       inst.mixer.stopAllAction(); const act = inst.mixer.clipAction(inst.clips[clip]); act.reset(); act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; act.play();
       act.time = Math.max(0, t); inst.mixer.update(0); inst.act = act; inst.clip = clip; window.__run = !!run;
       root.position.y = P[1] + (lift || 0);
@@ -73,20 +83,20 @@ const SHOTS = {
   if (info.err) { console.log(info.err); await b.close(); process.exit(1); }
   await sleep(4000); // (shaders compile on first sight: software GL is slow)
   const shots = [];
-  for (const [name, cap, clip, t, e, tg, fov, lift = 0, run = false] of SHOTS[hero]) {
-    await pg.evaluate(([clip, t, lift, run, cam]) => { window.__show(clip, t, lift, run); window.__cam = cam; }, [clip, t, lift, run, { e: [P[0] + e[0], P[1] + e[1], P[2] + e[2]], t: [P[0] + tg[0], P[1] + tg[1] + lift, P[2] + tg[2]], fov }]);
+  for (const [name, cap, clip, t, e, tg, fov, lift = 0, run = false, force = null] of LIST) {
+    await pg.evaluate(([clip, t, lift, run, cam, force]) => { window.__show(clip, t, lift, run, force); window.__cam = cam; }, [clip, t, lift, run, { e: [P[0] + e[0], P[1] + e[1], P[2] + e[2]], t: [P[0] + tg[0], P[1] + tg[1] + lift, P[2] + tg[2]], fov }, force]);
     await sleep(run ? 700 : 2200);
     if (run) await pg.evaluate(() => { window.__run = false; });
-    const f = path.join(outDir, `${hero}_${PR}_${name}.jpg`); await pg.screenshot({ path: f, type: 'jpeg', quality: 88 }); shots.push([f, cap]);
+    const f = path.join(outDir, `${hero}_${PR}${TAG}_${name}.jpg`); await pg.screenshot({ path: f, type: 'jpeg', quality: 88, timeout: 180000 }); shots.push([f, cap]);
   }
   await b.close();
-  const n = shots.length, cols = Math.ceil(n / 2), args = [];
+  const n = shots.length, cols = SET === 'turn' ? 4 : Math.ceil(n / 2), args = [];
   for (const [f] of shots) args.push('-i', f);
   const lab = shots.map(([, c], i) => `[${i}:v]scale=640:360,drawtext=text='${c.replace(/[':,]/g, ' ')}':x=10:y=330:fontsize=18:fontcolor=0xffe14d:box=1:boxcolor=0x120818@0.85:boxborderw=6[v${i}]`).join(';');
   const pad = n % 2 ? ';color=c=0x120818:s=640x360:d=1[vpad]' : '';
   const ins = shots.map((_, i) => `[v${i}]`).join('') + (n % 2 ? '[vpad]' : '');
   const lay = Array.from({ length: cols * 2 }, (_, i) => `${(i % cols) * 640}_${Math.floor(i / cols) * 360}`).join('|');
-  const sheet = path.join(outDir, `${hero}_${PR}.jpg`);
+  const sheet = path.join(outDir, `${hero}_${PR}${TAG}${SET === 'shots' ? '' : '_' + SET}.jpg`);
   execFileSync('ffmpeg', ['-y', '-loglevel', 'error', ...args, '-filter_complex', `${lab}${pad};${ins}xstack=inputs=${cols * 2}:layout=${lay}`, '-frames:v', '1', '-q:v', '3', sheet]);
   console.log(sheet, JSON.stringify(info), errs.length ? errs.slice(0, 8) : '(0 page errors)');
   process.exit(errs.length ? 1 : 0);

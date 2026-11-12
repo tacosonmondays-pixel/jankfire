@@ -2,10 +2,15 @@
 # waddling on stubby legs. A glass door full of glowing drinks on shelves, a chrome coin panel for a face (two button
 # eyes, the coin slot as its mouth, a keypad chin), a lit JANK COLA marquee for a hat, a delivery flap, short arms
 # with mitten hands, heel jets, and an OUT OF ORDER sign stowed on its back that it slams down in front of itself.
-# Clean look (the owner's references): glossy paint, pink trims, chrome, few strong glows.
+# Clean look (the owner's references): glossy paint, pink trims, chrome, few strong glows. The detail pass (2026-11-12):
+# cyan armour skins bolted over a gunmetal chassis, hydraulic rams at the knees and elbows, louvred vents, barrel
+# hinges on the door, spiral coils under the drinks, a coiled power cord on its back; details() and dt() parts drop
+# out of the far LOD.
 # Game space: faces -z, its right is +x, feet on y = 0. Body joint at the cabinet's bottom middle.
 from mechkit import *
+import mechkit as MK
 import herokit
+from detailkit import *
 
 FID = 'mech_vending'
 W, D = 1.10, 0.78  # cabinet half width, half depth
@@ -69,6 +74,7 @@ def build():
     T = {}
     cabinet(mk, M, T); face(mk, M, T); drinks(mk, M, T); door(mk, M, T); marquee(mk, M, T); sign(mk, M, T)
     for s, L in ((1, 'R'), (-1, 'L')): arm(mk, M, T, s, L); leg(mk, M, T, s, L)
+    details(mk, M, T)
     stickers(mk, M, T)
     mk.meta.update({'name': 'VENDING MACHINE', 'height': 5.02, 'phase': 'concept',
                     'palettes': {'A': {k: PAL_A[k] for k in ('paint', 'paint2', 'white', 'dark', 'glow2', 'thrust')},
@@ -84,8 +90,9 @@ def rbox(x0, x1, y0, y1, z0, z1, r, m, name='rbox'):
     """a box with round vertical edges (r): the cabinet's soft corners"""
     pts = []
     for (cx, cz) in ((x0 + r, z0 + r), (x1 - r, z0 + r), (x1 - r, z1 - r), (x0 + r, z1 - r)):
-        for k in range(6):
-            a = math.atan2(cz - (z0 + z1) / 2, cx - (x0 + x1) / 2) - math.pi / 4 + math.pi / 2 * k / 5
+        K = MK._n(10)
+        for k in range(K):
+            a = math.atan2(cz - (z0 + z1) / 2, cx - (x0 + x1) / 2) - math.pi / 4 + math.pi / 2 * k / (K - 1)
             for y in (y0, y1): pts.append((cx + math.cos(a) * r, y, cz + math.sin(a) * r))
     return hull(pts, m, 0.03, 2, name)
 
@@ -94,7 +101,7 @@ ZB = -0.42  # (the recessed face behind the door: the drinks sit between it and 
 
 
 def cabinet(mk, M, T):
-    B = [rbox(-W, W, Y0, Y1, ZB, D, 0.18, M['paint'], 'cabinet')]
+    B = [rbox(-W, W, Y0, Y1, ZB, D, 0.18, M['frame'], 'cabinet')]  # (the chassis: gunmetal, the cyan is skins bolted on it)
     # the front: a frame round the drinks recess (left stile, the face column on the right, top and bottom rails)
     B.append(box(-W, -0.98, Y0, Y1, ZF, ZB + 0.02, M['paint'], 0.025, 'stile'))
     B.append(box(0.34, W, Y0, Y1, ZF, ZB + 0.02, M['paint'], 0.025, 'facecol'))
@@ -106,13 +113,10 @@ def cabinet(mk, M, T):
     B.append(box(-W + 0.06, W - 0.06, Y1 - 0.12, Y1 + 0.02, D - 0.06, D + 0.03, M['paint2'], 0.02, 'trim_back'))
     for sx in (-1, 1):
         B.append(box(sx * W - 0.05, sx * W + 0.05, Y0 + 0.14, Y1 - 0.12, ZF - 0.02, ZF + 0.10, M['chrome'], 0.015, 'cornerstrip'))
-        for k in range(5):  # side vents, low at the back
-            y = Y0 + 0.30 + k * 0.12
-            B.append(box(sx * W - 0.02, sx * W + 0.02, y, y + 0.05, 0.20, 0.62, M['dark'], 0.01, 'vent'))
     B.append(box(-0.96, 0.32, 1.04, 1.50, ZF - 0.04, ZF + 0.06, M['dark'], 0.02, 'bay'))  # (round the flap)
     mk.add('body', B); T['body'] = B
     H = [rbox(-W + 0.06, W - 0.06, JT['hips'][1] - 0.12, Y0 + 0.02, -D + 0.06, D - 0.06, 0.16, M['dark'], 'plinth')]
-    for sx in (-1, 1): H.append(cyl((sx * 0.56, 0.74, -0.18), (sx * 0.56, 0.74, 0.18), 0.17, M['frame'], 12, name='hipjoint'))
+    for sx in (-1, 1): H.append(cyl((sx * 0.56, 0.74, -0.18), (sx * 0.56, 0.74, 0.18), 0.17, M['frame'], 24, name='hipjoint'))
     mk.add('hips', H); T['hips'] = H
 
 
@@ -122,8 +126,9 @@ def face(mk, M, T):
     F.append(box(0.40, 1.06, 2.26, 4.46, ZF - 0.03, ZF + 0.03, M['paint2'], 0.02, 'faceborder'))  # (a pink frame round the face)
     for k, x in enumerate((0.60, 0.88)):  # the eyes: big glowing domed buttons in dark rings, and cheeky brows
         c = (x, 4.02, ZF - 0.06)
-        F.append(frustum(c, add(c, (0, 0, -0.06)), 0.150, 0.135, M['dark'], 20, bev=0.01, name='eyering'))
-        F.append(lathe_ax([(0.118, 0.0), (0.112, 0.05), (0.07, 0.09), (0.0, 0.105)], add(c, (0, 0, -0.05)), (0, 0, -1), M['glow2'], 20, 'eye'))
+        F.append(frustum(c, add(c, (0, 0, -0.06)), 0.144, 0.135, M['dark'], 30, bev=0.01, name='eyering'))  # (30: odd on the far LOD, the two rings' side facets don't meet flat)
+        F.append(lathe_ax([(0.118, 0.0), (0.114, 0.03), (0.104, 0.058), (0.084, 0.08), (0.05, 0.097), (0.0, 0.105)], add(c, (0, 0, -0.05)), (0, 0, -1), M['glow2'], 32, 'eye'))
+        F += dt([lathe_ax([(0.121, 0.0), (0.131, 0.004), (0.131, 0.013), (0.122, 0.017)], add(c, (0, 0, -0.057)), (0, 0, -1), M['chrome'], 32, 'eyebezel')])
         tilt = 0.035 if k == 0 else -0.035
         F.append(hull([(x + dx, 4.24 + dy + tilt * dx / 0.12, z) for dx in (-0.12, 0.12) for dy in (0.0, 0.05) for z in (ZF - 0.11, ZF - 0.05)], M['dark'], 0.012, name='brow'))
     F.append(box(0.62, 0.86, 3.72, 3.80, ZF - 0.10, ZF - 0.04, M['dark'], 0.01, 'slotbezel'))  # the coin slot mouth
@@ -150,10 +155,16 @@ def drinks(mk, M, T):
         for k in range(5):
             x = -0.82 + k * 0.255; m = M[roles[(k + r) % 4]]; zc = (ZF + ZB) / 2
             if (k + r) % 3 == 0:  # a bottle
-                G.append(lathe_ax([(0.085, 0.0), (0.09, 0.30), (0.05, 0.40), (0.035, 0.46), (0.038, 0.50)], (x, y, zc), (0, 1, 0), m, 12, 'bottle'))
+                G.append(lathe_ax([(0.08, 0.0), (0.088, 0.012), (0.09, 0.28), (0.082, 0.33), (0.05, 0.40), (0.035, 0.45), (0.036, 0.47)], (x, y, zc), (0, 1, 0), m, 24, 'bottle'))
+                G.append(cyl((x, y + 0.465, zc), (x, y + 0.505, zc), 0.041, M['white'], 24, bev=0.004, name='cap'))
             else:
-                G.append(lathe_ax([(0.085, 0.0), (0.095, 0.03), (0.095, 0.30), (0.08, 0.34)], (x, y, zc), (0, 1, 0), m, 12, 'can'))
-                G.append(cyl((x, y + 0.335, zc), (x, y + 0.355, zc), 0.075, M['chrome'], 12, name='lid'))
+                G.append(lathe_ax([(0.078, 0.0), (0.09, 0.012), (0.095, 0.035), (0.095, 0.30), (0.08, 0.34)], (x, y, zc), (0, 1, 0), m, 24, 'can'))
+                G.append(cyl((x, y + 0.335, zc), (x, y + 0.355, zc), 0.075, M['chrome'], 24, name='lid'))
+            G += dt([box(x - 0.05, x + 0.05, y - 0.03, y - 0.008, ZF + 0.034, ZF + 0.046, M['glow2'], 0.0, 'pricelight')])
+        for k in range(4):  # chrome dividers between the columns (thin fins, front to back)
+            x = -0.82 + (k + 0.5) * 0.255
+            G += dt([box(x - 0.006, x + 0.006, y - 0.004, y + 0.21, ZF + 0.07, ZB - 0.04, M['chrome'], 0.0, 'divider'),
+                     cyl((x, y + 0.21, ZF + 0.062), (x, y - 0.004, ZF + 0.062), 0.009, M['chrome'], 8, bev=0.0, name='dividerlip')])
     mk.add('body', G); T['drinks'] = G
 
 
@@ -166,6 +177,16 @@ def door(mk, M, T):
     for y in (2.40, 3.60): Dr.append(box(x1 - 0.20, x1 - 0.14, y, y + 0.06, z - 0.08, z - 0.04, M['chrome'], 0.01, 'handlepost'))
     for y in (2.30, 2.96, 3.62):  # (no glass pane: in the game it reads as a black slab over the drinks; thin chrome cross rails instead)
         Dr.append(box(x0 + 0.06, x1 - 0.06, y - 0.015, y + 0.015, z - 0.05, z - 0.02, M['chrome'], 0.006, 'doorrail'))
+    hx, hz = JT['door'][0], JT['door'][2]
+    for hy in (1.86, 2.95, 4.04):
+        Dr += knuckles((hx, hy - 0.13, hz), (hx, hy + 0.13, hz), 0.042, M['chrome'], 5, 0, 'hinge')
+        mk.add('body', knuckles((hx, hy - 0.13, hz), (hx, hy + 0.13, hz), 0.042, M['chrome'], 5, 1, 'hinge'))
+        mk.add('body', dt([cyl((hx, hy - 0.135, hz), (hx, hy + 0.135, hz), 0.018, M['frame'], 8, bev=0.0, name='hingepin')]))
+    Ff = fr((0, 0, -1))
+    for bx in (x0 + 0.045, x1 - 0.045):
+        Dr += bolts([(bx, by, z - 0.07) for by in (y0 + 0.14, (y0 + y1) / 2, y1 - 0.14)], (0, 0, -1), M['paint2'], 0.016, 0.009)  # (roles the door already has: no new draw calls)
+    Dr += dt([lathe_ax([(0.036, 0.0), (0.036, 0.022), (0.03, 0.032), (0.0, 0.034)], (x1 - 0.17, 3.86, z - 0.07), (0, 0, -1), M['chrome'], 20, 'lock'),
+              lbox((x1 - 0.17, 3.86, z - 0.07), Ff, 0.008, 0.034, 0.03, 0.037, M['paint2'], 0.0, 'keyhole')])
     mk.add('door', Dr); T['door'] = Dr
     Fl = [box(-0.94, 0.30, 1.08, 1.42, ZF - 0.07, ZF - 0.02, M['dark'], 0.02, 'flap')]
     Fl.append(box(-0.50, -0.14, 1.12, 1.17, ZF - 0.12, ZF - 0.06, M['chrome'], 0.01, 'flaphandle'))
@@ -179,7 +200,8 @@ def marquee(mk, M, T):
     Q.append(box(-W + 0.06, W - 0.06, Y1 + 0.42, Y1 + 0.47, -D + 0.04, D - 0.20, M['white'], 0.008, 'marqueecap'))
     for k in range(9):
         x = -0.96 + k * 0.24
-        Q.append(ball((x, Y1 + 0.46, -D - 0.02), 0.045, M['glow'], 10, 6, 'bulb'))
+        Q.append(ball((x, Y1 + 0.46, -D - 0.02), 0.045, M['glow'], 14, 8, 'bulb'))
+        Q += dt([lathe_ax([(0.036, 0.0), (0.05, 0.012), (0.05, 0.03), (0.04, 0.034)], (x, Y1 + 0.405, -D - 0.02), (0, 1, 0), M['white'], 16, 'bulbsocket')])
     mk.add('marquee', Q); T['marquee'] = Q
     sm = tex_mat('vm_marqueemat', marquee_img(), rough=0.3, emit=2.5, cc=0.4)
     o = decal(Q[:1], (0, Y1 + 0.22, -D - 0.07), (0, 0, -1), (0, 1, 0), 1.84, 0.34, sm, name='marquee_sign', reach=0.2)
@@ -193,7 +215,8 @@ def sign(mk, M, T):
     for k, (a0, a1, b0, b1) in enumerate(((-0.99, 0.99, 0.58, 0.68), (-0.99, 0.99, -0.68, -0.58), (-1.00, -0.89, -0.63, 0.63), (0.89, 1.00, -0.63, 0.63))):
         e = 0.01 if k >= 2 else 0.0  # (the uprights a touch deeper: no coplanar corners)
         S.append(box(c[0] + a0, c[0] + a1, c[1] + b0, c[1] + b1, c[2] - 0.05 - e, c[2] + 0.06 + e, M['hazard'], 0.015, 'signframe'))
-    S.append(tube([add(c, (-0.30, 0.68, 0.0)), add(c, (-0.26, 0.88, 0.0)), add(c, (0.26, 0.88, 0.0)), add(c, (0.30, 0.68, 0.0))], 0.04, M['dark'], 8, 'signhandle'))
+    S.append(tube([add(c, (-0.30, 0.68, 0.0)), add(c, (-0.29, 0.80, 0.0)), add(c, (-0.24, 0.87, 0.0)), add(c, (-0.16, 0.89, 0.0)), add(c, (0.16, 0.89, 0.0)), add(c, (0.24, 0.87, 0.0)), add(c, (0.29, 0.80, 0.0)), add(c, (0.30, 0.68, 0.0))], 0.04, M['dark'], 12, 'signhandle'))
+    S += bolts([add(c, (sx * 0.945, sy, 0.07)) for sx in (-1, 1) for sy in (-0.50, 0.0, 0.50)], (0, 0, 1), M['frame'], 0.018, 0.01)
     S.append(box(-0.30, 0.30, c[1] - 0.20, c[1] + 0.20, D - 0.01, c[2] - 0.03, M['frame'], 0.01, 'signclip'))  # (the clip holding it on)
     mk.add('sign', S); T['sign'] = S
     tm = tex_mat('vm_signmat', sign_img(), rough=0.45, cc=0.3)
@@ -203,47 +226,122 @@ def sign(mk, M, T):
 
 def arm(mk, M, T, s, L):
     sh = J('shoulder', s); ua = J('upperarm', s); fa = J('forearm', s); ha = J('hand', s)
-    mk.add('shoulder_' + L, [ball(add(sh, (s * 0.10, -0.04, 0)), 0.24, M['chrome'], 16, 10, 'shoulderball'),
-                             frustum(add(sh, (s * 0.02, 0.0, 0)), add(sh, (s * 0.18, -0.02, 0)), 0.30, 0.26, M['paint2'], 16, bev=0.02, name='shouldercap')])
-    mk.add('upperarm_' + L, [frustum(add(ua, (0, -0.05, 0)), add(fa, (0, 0.05, 0)), 0.17, 0.15, M['white'], 12, bev=0.02, name='upper'),
-                             frustum(add(ua, (s * 0.01, -0.22, 0)), add(ua, (s * 0.01, -0.34, 0)), 0.20, 0.20, M['paint2'], 12, bev=0.015, name='armband')])
-    mk.add('forearm_' + L, [ball(fa, 0.15, M['chrome'], 12, 8, 'elbow'),
-                            frustum(add(fa, (0, -0.06, 0)), add(ha, (0, 0.08, 0)), 0.17, 0.20, M['paint'], 12, bev=0.02, name='fore'),
-                            frustum(add(ha, (0, 0.10, 0)), add(ha, (0, 0.04, 0)), 0.22, 0.22, M['paint2'], 12, bev=0.015, name='cuff')])
+    mk.add('shoulder_' + L, [ball(add(sh, (s * 0.10, -0.04, 0)), 0.24, M['chrome'], 24, 16, 'shoulderball'),
+                             frustum(add(sh, (s * 0.02, 0.0, 0)), add(sh, (s * 0.18, -0.02, 0)), 0.30, 0.26, M['paint2'], 24, bev=0.02, name='shouldercap', seg=3),
+                             frustum(add(sh, (s * 0.175, -0.02, 0)), add(sh, (s * 0.215, -0.022, 0)), 0.235, 0.20, M['white'], 24, bev=0.008, name='capdisc')])
+    mk.add('shoulder_' + L, bolt_ring(add(sh, (s * 0.215, -0.022, 0)), (s, 0, 0), 0.155, 8, M['chrome'], 0.016, 0.009, math.pi / 8))
+    mk.add('upperarm_' + L, [frustum(add(ua, (0, -0.05, 0)), add(fa, (0, 0.05, 0)), 0.17, 0.15, M['white'], 20, bev=0.02, name='upper'),
+                             frustum(add(ua, (s * 0.035, -0.22, 0)), add(ua, (s * 0.035, -0.34, 0)), 0.20, 0.20, M['paint2'], 20, bev=0.015, name='armband')])
+    mk.add('upperarm_' + L, ram(add(ua, (s * 0.0, -0.10, 0.19)), add(fa, (0, 0.14, 0.19)), 0.042, M, (1, 0, 0), name='armram', gland='paint2'))
+    mk.add('upperarm_' + L, dt([frustum(add(ua, (0, -0.06, 0.13)), add(ua, (0, -0.06, 0.21)), 0.05, 0.05, M['frame'], 12, bev=0.004, name='rammount')]))
+    mk.add('forearm_' + L, [ball(fa, 0.15, M['chrome'], 20, 12, 'elbow'),
+                            frustum(add(fa, (0, -0.06, 0)), add(ha, (0, 0.08, 0)), 0.17, 0.20, M['paint'], 20, bev=0.02, name='fore'),
+                            frustum(add(ha, (0, 0.10, 0)), add(ha, (0, 0.04, 0)), 0.22, 0.22, M['paint2'], 20, bev=0.015, name='cuff'),
+                            lame(mx(add(fa, (0, 0.10, 0)), s), mx(add(fa, (0, -0.10, 0)), s), 0.19, 0.205, 30, 150, 0.03, M['paint2'], 8, bev=0.008, name='elbowguard', s=s)])
+    mk.add('upperarm_' + L, dt([frustum(add(fa, (0, 0.14, 0.10)), add(fa, (0, 0.14, 0.19)), 0.04, 0.04, M['frame'], 12, bev=0.004, name='ramfoot')]))  # (both ends on the upper arm: it reads at any bend)
+    mk.add('forearm_' + L, lame(mx(add(fa, (0, -0.16, 0)), s), mx(add(ha, (0, 0.14, 0)), s), 0.205, 0.235, -40, 40, 0.03, M['white'], 8, bev=0.008, name='foreplate', s=s))
+    mk.add('forearm_' + L, bolts([add(fa, (s * 0.222, -0.24, 0.015)), add(ha, (s * 0.222, 0.20, 0.004))], (s, 0, 0), M['chrome'], 0.016, 0.009))
     # a big mitten hand: a soft block with a thumb
     H = [hull([add(ha, (x, y, z)) for x in (-0.14, 0.14) for y in (0.04, -0.40) for z in (-0.17, 0.17)] + [add(ha, (x, -0.46, 0)) for x in (-0.08, 0.08)], M['white'], 0.035, name='mitten')]
     H.append(hull([add(ha, (s * x, y, z)) for x in (-0.06, 0.06) for (y, z) in ((-0.06, -0.16), (-0.24, -0.26), (-0.10, -0.12), (-0.22, -0.18))], M['white'], 0.012, name='thumb'))
+    H += dt([hull([add(ha, (x + dx, y, z)) for dx in (-0.032, 0.032) for (y, z) in ((-0.30, 0.15), (-0.30, 0.19), (-0.38, 0.15), (-0.37, 0.185))], M['paint2'], 0.008, name='knuckle') for x in (-0.096, -0.032, 0.032, 0.096)])
+    H += dt([hull([add(ha, (x, y, z)) for x in (-0.12, 0.12) for (y, z) in ((-0.06, -0.15), (-0.06, -0.185), (-0.32, -0.15), (-0.32, -0.185))], M['paint2'], 0.01, name='palmpad')])
     mk.add('hand_' + L, H)
 
 
 def leg(mk, M, T, s, L):
     th, sn, ft = J('thigh', s), J('shin', s), J('foot', s)
-    mk.add('thigh_' + L, [frustum(th, add(sn, (0, 0.04, 0)), 0.16, 0.15, M['frame'], 12, bev=0.015, name='thigh'),
-                          cyl(add(th, (s * 0.04, 0.02, 0.10)), add(sn, (s * 0.04, 0.02, 0.12)), 0.05, M['chrome'], 8, name='piston')])
-    mk.add('shin_' + L, [ball(sn, 0.15, M['chrome'], 12, 8, 'knee'), frustum(add(sn, (0, -0.02, 0)), add(ft, (0, 0.06, 0)), 0.19, 0.22, M['paint2'], 12, bev=0.02, name='shin')])
+    mk.add('thigh_' + L, [frustum(th, add(sn, (0, 0.04, 0)), 0.16, 0.15, M['frame'], 20, bev=0.015, name='thigh'),
+                          lame(mx(add(th, (0, -0.04, 0)), s), mx(add(sn, (0, 0.10, 0)), s), 0.20, 0.19, -150, 10, 0.035, M['white'], 10, bev=0.008, name='thighguard', s=s)])
+    mk.add('thigh_' + L, ram(add(th, (0, -0.02, 0.21)), add(sn, (0, 0.02, 0.21)), 0.036, M, (1, 0, 0), name='legram', gland='white'))
+    mk.add('thigh_' + L, dt([cyl(add(th, (-0.05, -0.02, 0.21)), add(th, (0.05, -0.02, 0.21)), 0.026, M['frame'], 10, bev=0.0, name='ramlug'),
+                             frustum(add(th, (0, -0.02, 0.10)), add(th, (0, -0.02, 0.19)), 0.035, 0.035, M['frame'], 10, bev=0.0, name='ramarm'),
+                             frustum(add(sn, (0, 0.05, 0.10)), add(sn, (0, 0.05, 0.19)), 0.032, 0.032, M['frame'], 10, bev=0.0, name='ramfoot')]))
+    mk.add('shin_' + L, [ball(sn, 0.15, M['chrome'], 20, 12, 'knee'), frustum(add(sn, (0, -0.02, 0)), add(ft, (0, 0.06, 0)), 0.19, 0.22, M['paint2'], 20, bev=0.02, name='shin'),
+                         lathe_ax([(0.12, 0.0), (0.115, 0.03), (0.09, 0.055), (0.0, 0.066)], add(sn, (0, 0.01, -0.12)), (0, 0, -1), M['white'], 20, 'kneecap'),
+                         lame(mx(add(sn, (0, -0.06, 0)), s), mx(add(ft, (0, 0.10, 0)), s), 0.215, 0.24, -140, -40, 0.03, M['white'], 8, bev=0.008, name='greave', s=s)])
+    mk.add('shin_' + L, dt([bolt(add(sn, (x, -0.10, -0.2035)), (x * 4.3, 0, -0.95), M['chrome'], 0.014, 0.008) for x in (-0.07, 0.07)]))
     F = [hull([add(ft, (x, y, z)) for x in (-0.24, 0.24) for (y, z) in ((-0.20, -0.52), (-0.20, 0.34), (0.04, -0.36), (0.10, 0.26), (-0.10, -0.56))], M['paint2'], 0.05, name='foot')]
     F.append(hull([add(ft, (x, y, z)) for x in (-0.25, 0.25) for (y, z) in ((-0.22, -0.54), (-0.22, 0.36), (-0.15, -0.54), (-0.15, 0.36))], M['rubber'], 0.02, name='sole'))
     F.append(hull([add(ft, (x, y, z)) for x in (-0.20, 0.20) for (y, z) in ((-0.10, -0.50), (0.0, -0.44), (-0.10, -0.62), (-0.04, -0.60))], M['white'], 0.03, name='toecap'))
-    F += nozzle(add(ft, (0, -0.06, 0.36)), norm((0, -0.6, 0.8)), 0.10, 0.14, M, 'heeljet')
+    F += nozzle(add(ft, (0, -0.06, 0.36)), norm((0, -0.6, 0.8)), 0.10, 0.14, M, 'heeljet', seg=24)
+    F += ribs(add(ft, (0, -0.06, 0.36)), norm((0, -0.6, 0.8)), 0.086, 0.094, 2, 0.08, M['dark'], 'jetrib')
+    F += dt([hull([add(ft, (x + dx, -0.235, z + dz)) for dx in (-0.09, 0.09) for dz in (-0.05, 0.05)] + [add(ft, (x + dx, -0.205, z + dz)) for dx in (-0.09, 0.09) for dz in (-0.05, 0.05)], M['rubber'], 0.008, name='tread')
+             for x in (-0.11, 0.11) for z in (-0.40, -0.20, 0.0, 0.20)])
+    F += bolts([add(ft, (s * 0.24, -0.02, z)) for z in (-0.10, 0.12)], (s, 0, 0), M['frame'], 0.015, 0.008)
     mk.add('foot_' + L, F)
+
+
+def details(mk, M, T):
+    """the detail pass: cyan skins bolted over the gunmetal chassis (the seams between them are real), shoulder mounts,
+    louvred vents, the bill slot, a service hatch behind the sign, a coiled power cord, levelling feet"""
+    K = T['skin'] = []
+    for s in (1, -1):  # side skins: lower (stickers, the vent) and upper (the number, the spray slot, the shoulder)
+        F = fr((s, 0, 0))
+        for yc, h, mid in ((1.86, 1.40, True), (3.51, 1.78, False)):
+            c = (s * W, yc, 0.18); o = skin(c, F, 0.80, h, M['paint'], 0.07, 0.02, 0.05, name='sideskin'); K.append(o); mk.add('body', o)
+            mk.add('body', bolt_rect(at(c, F, 0, 0, 0.02), F, 0.66, h - 0.14, M['frame'], 0.017, 0.009, mid))
+        c = (s * (W + 0.02), 3.34, 0.0)
+        mk.add('body', dt([lathe_ax([(0.27, 0.0), (0.27, 0.016), (0.255, 0.028), (0.0, 0.028)], add(c, (-s * 0.008, 0, 0)), (s, 0, 0), M['frame'], 32, 'shouldermount')]))
+        mk.add('body', bolt_ring(add(c, (s * 0.02, 0, 0)), (s, 0, 0), 0.236, 10, M['chrome'], 0.013, 0.008, math.pi / 10))
+        mk.add('body', louvres((s * (W + 0.02), 1.52, 0.36), (s, 0, 0), (0, 1, 0), 0.34, 0.52, 6, M, name='sidevent'))
+    Fb = fr((0, 0, 1))
+    for yc, h in ((1.72, 1.20), (4.06, 0.66)):  # back skins, the service hatch between them (behind the sign)
+        c = (0, yc, D); o = skin(c, Fb, 1.76, h, M['paint'], 0.07, 0.015, 0.05, name='backskin'); K.append(o); mk.add('body', o)
+        mk.add('body', bolt_rect(at(c, Fb, 0, 0, 0.015), Fb, 1.62, h - 0.14, M['frame'], 0.017, 0.009, True))
+    c = (0, 3.01, D); o = skin(c, Fb, 1.56, 1.26, M['paint'], 0.05, 0.012, 0.05, name='hatch'); K.append(o); mk.add('body', o)
+    for y0 in (2.52, 3.20): mk.add('body', hinge((-0.79, y0, D + 0.03), (-0.79, y0 + 0.30, D + 0.03), 0.024, M['chrome'], 3, M['frame'], 'hatchhinge'))
+    mk.add('body', dt([lbox((0.64, 3.01, D), Fb, 0.10, 0.34, 0.006, 0.02, M['dark'], 0.004, 'hatchgrip'),
+                       cyl((0.64, 2.88, D + 0.045), (0.64, 3.14, D + 0.045), 0.016, M['chrome'], 12, bev=0.0, name='hatchbar')]
+                      + [cyl((0.64, y, D + 0.012), (0.64, y, D + 0.05), 0.014, M['chrome'], 8, bev=0.0, name='hatchpost') for y in (2.90, 3.12)]))
+    mk.add('body', louvres((0.58, 1.66, D + 0.015), (0, 0, 1), (0, 1, 0), 0.44, 0.62, 7, M, name='compvent'))  # (the compressor)
+    # the power cord: out of a socket low on the back, up and coiled on a hook, the plug hanging off the end
+    sk = (-0.70, 1.24, D + 0.015)
+    cord = [lbox(sk, Fb, 0.10, 0.10, -0.004, 0.04, M['dark'], 0.008, 'cordsocket'), tube([add(sk, (0, 0.0, 0.04)), add(sk, (0.0, 0.06, 0.07)), add(sk, (0.03, 0.22, 0.075)), (-0.60, 1.66, D + 0.07)], 0.018, M['dark'], 8, 'cord'),
+            tube([(-0.62, 1.94, D + 0.015), (-0.62, 1.98, D + 0.06), (-0.62, 1.97, D + 0.11), (-0.62, 1.92, D + 0.12)], 0.012, M['chrome'], 8, 'cordhook')]
+    cord += helix((-0.62, 1.80, D + 0.035), (0, 0, 1), 0.15, 0.06, 3.0, 0.018, M['dark'], 20, 'cordcoil', a0=-math.pi * 0.62)
+    pl = (-0.40, 1.42, D + 0.015)
+    cord += [tube([(-0.50, 1.69, D + 0.09), (-0.44, 1.60, D + 0.07), (-0.41, 1.52, D + 0.05)], 0.018, M['dark'], 8, 'cordend'),
+             lbox(pl, Fb, 0.09, 0.13, -0.004, 0.05, M['white'], 0.012, 'plug')] + [lbox(at(pl, Fb, x, -0.09, 0.025), Fb, 0.014, 0.06, -0.006, 0.006, M['chrome'], 0.0, 'prong') for x in (-0.022, 0.022)]
+    mk.add('body', dt(cord))
+    # the front: a bill slot under the face, speaker slots under the keypad, bolts on the chrome face plate
+    Ff = fr((0, 0, -1)); c = (0.72, 1.86, ZF)
+    mk.add('body', dt([lbox(c, Ff, 0.30, 0.22, -0.004, 0.026, M['chrome'], 0.006, 'billbezel'), lbox(at(c, Ff, 0, 0.035), Ff, 0.22, 0.05, 0.02, 0.034, M['dark'], 0.004, 'billmouth'),
+                       lbox(at(c, Ff, 0, 0.035), Ff, 0.17, 0.012, 0.03, 0.037, M['glow2'], 0.0, 'billslit')]))
+    mk.add('body', leds([at(c, Ff, x, -0.06, 0.026) for x in (-0.07, 0.0, 0.07)], (0, 0, -1), 0.012, M['glow2'], 'billled'))
+    mk.add('body', dt([box(0.58, 0.88, y - 0.009, y + 0.009, ZF - 0.066, ZF - 0.058, M['dark'], 0.0, 'speaker') for y in (2.37, 2.42, 2.47, 2.52)]))
+    mk.add('body', bolts([(x, y, ZF - 0.06) for x in (0.49, 0.97) for y in (2.345, 4.375)], (0, 0, -1), M['frame'], 0.014, 0.008))
+    # the plinth: levelling feet (it is a vending machine) and bolts along its front; hub caps on the hip joints
+    H = [lathe_ax([(0.0, 0.0), (0.075, 0.0), (0.078, 0.012), (0.06, 0.026), (0.022, 0.03), (0.022, 0.085), (0.042, 0.085), (0.042, 0.11), (0.03, 0.128), (0.0, 0.128)],
+                  (sx * 0.86, 0.62, sz * 0.56), (0, 1, 0), M['chrome'], 16, 'levelfoot') for sx in (-1, 1) for sz in (-1, 1)]
+    H += [lathe_ax([(0.12, 0.0), (0.12, 0.012), (0.09, 0.026), (0.0, 0.03)], (sx * 0.56, 0.74, sz * 0.177), (0, 0, sz), M['chrome'], 24, 'hubcap') for sx in (-1, 1) for sz in (-1, 1)]
+    mk.add('hips', dt(H))
+    mk.add('hips', bolts([(x, 0.80, -D + 0.06) for x in (-0.80, -0.27, 0.27, 0.80)], (0, 0, -1), M['frame'], 0.016, 0.009))
+    # the marquee: a louvred vent on its back, bolts at the ends of its sign
+    mk.add('marquee', louvres((0, Y1 + 0.22, D - 0.10), (0, 0, 1), (0, 1, 0), 1.20, 0.26, 3, M, name='marqueevent', roles=('white', 'paint2')))
+    mk.add('marquee', bolts([(sx * 0.985, Y1 + 0.22, -D - 0.06) for sx in (-1, 1)], (0, 0, -1), M['white'], 0.018, 0.01))
 
 
 def stickers(mk, M, T):
     m = herokit.atlas_mat(mk, NUMBER)
-    cab = [T['body'][0]]
+    cab = T['skin'] + [T['body'][0]]
     for s in (1, -1):  # the price as a unit number high on both sides
-        o = herokit.stamp(cab, 'number', (s * W, 4.12, 0.12), (s, 0, 0), (0, 1, 0), 0.80, m)
+        o = herokit.stamp(cab, 'number', (s * W, 4.12, 0.18), (s, 0, 0), (0, 1, 0), 0.74, m)
         if o: mk.add('body', o)
-    for cell, c, n, w in (('cola', (W, 2.08, 0.16), (1, 0, 0), 0.72), ('bread', (-W, 2.12, -0.12), (-1, 0, 0), 0.38),
+    for cell, c, n, w in (('cola', (W, 2.08, 0.16), (1, 0, 0), 0.72), ('bread', (-W, 2.12, -0.02), (-1, 0, 0), 0.38),
                           ('tri', (-W, 2.12, 0.40), (-1, 0, 0), 0.24), ('washme', (0.0, 1.40, D), (0, 0, 1), 0.70),
-                          ('piloting', (0.0, 4.20, D), (0, 0, 1), 0.80)):
+                          ('piloting', (0.0, 4.08, D), (0, 0, 1), 0.80), ('hot', (0.24, 3.36, D), (0, 0, 1), 0.40)):
         o = herokit.stamp(cab, cell, c, n, (0, 1, 0), w, m)
         if o: mk.add('body', o)
+    o = herokit.stamp([T['body'][2]], 'serial', (0.72, 1.40, ZF), (0, 0, -1), (0, 1, 0), 0.34, m)
+    if o: mk.add('body', o)
+    o = herokit.stamp([T['hips'][0]], 'stripe', (0, 0.87, -D + 0.06), (0, 0, -1), (0, 1, 0), 1.40, m)
+    if o: mk.add('hips', o)
     pm = tex_mat('vm_pricemat', price_img(), rough=0.3, emit=1.6, cc=0.3)
     o = decal([T['face'][-1]], (0.74, 3.12, ZF - 0.095), (0, 0, -1), (0, 1, 0), 0.30, 0.12, pm, name='price', reach=0.1)
     if o: mk.add('body', o)
-    mk.meta['spray'] = [{'name': 'spray_0', 'joint': 'body', 'at': [-W - 0.004, 3.18, 0.12], 'dir': [-1, 0, 0], 'up': [0, 1, 0], 'size': 0.80},
-                        {'name': 'spray_1', 'joint': 'body', 'at': [W + 0.004, 3.18, 0.12], 'dir': [1, 0, 0], 'up': [0, 1, 0], 'size': 0.80}]
+    mk.meta['spray'] = [{'name': 'spray_0', 'joint': 'body', 'at': [-W - 0.024, 3.18, 0.18], 'dir': [-1, 0, 0], 'up': [0, 1, 0], 'size': 0.80},  # (on the side skins)
+                        {'name': 'spray_1', 'joint': 'body', 'at': [W + 0.024, 3.18, 0.18], 'dir': [1, 0, 0], 'up': [0, 1, 0], 'size': 0.80}]
 
 
 # ------------------------------------------------------------ markers

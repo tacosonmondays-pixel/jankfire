@@ -198,6 +198,7 @@ export function prepAuthored(id, scene) {
   const w = meta.kind === 'weapon' && WEAPONS[meta.id];
   const paint = flat && w && w.color && meta.paint ? new THREE.Color(w.color) : null;
   const swapped = new Map();
+  scene.traverse((o) => { if (/_lod1$/.test(o.name)) o.visible = false; }); // (a hero's far LOD: hidden until mechlook swaps it in by distance)
   scene.traverse((o) => {
     if (!o.isMesh) return;
     o.geometry.userData.shared = true; // clones share it: freeTree leaves it alone
