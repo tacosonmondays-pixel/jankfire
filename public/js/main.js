@@ -93,7 +93,7 @@ import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
 import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
-import { initHome, homeShown, homeLeft, refreshHero } from './home.js';
+import { initHome, homeShown, homeLeft, refreshHero, heroInto } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
 import { initGavel, updateGavel, gavelFx, gavelAim, gavelReset } from './gavel.js'; // scales of justice, ranged
@@ -101,6 +101,7 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
+import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: mode cards on the home menu, each mode's lobby (docs/menu/HUB_LOBBY.md)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -198,6 +199,7 @@ if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it awa
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
+initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings() }); // the hub's mode cards + lobbies
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -233,7 +235,7 @@ function show(id) {
   screen = id;
   for (const el of document.querySelectorAll('.screen')) el.classList.toggle('hidden', el.id !== 'scr-' + id);
   $('menu').classList.remove('hidden');
-  $('menu').classList.toggle('home-on', id === 'main');
+  $('menu').classList.toggle('home-on', id === 'main' || id === 'hubby'); // (the hub's lobby wears the home's frame too)
   hud.show(false);
   if (id !== 'main') homeLeft();
   if (id !== 'customize') czClose();
@@ -251,7 +253,8 @@ function show(id) {
   if (id === 'leaders') { initLeaderTabs(renderLeaders); showLeaders(); } // OVERALL + one tab per mode (leadmodes.js)
   if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
-  if (id === 'main') { renderAcctBar(); homeShown(); }
+  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); }
+  if (id === 'hubby') hubLobbyShown();
 }
 function hideMenu() {
   $('menu').classList.add('hidden');
@@ -2285,7 +2288,7 @@ function frame(t) {
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
   renderFrame();
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
-  if ((screen === 'character' || (screen === 'main' && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more)
+  if ((screen === 'character' || ((screen === 'main' || screen === 'hubby') && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
   if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
 }
