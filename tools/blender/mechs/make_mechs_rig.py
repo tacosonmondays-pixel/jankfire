@@ -88,7 +88,7 @@ def solve_ground(mk, mod, clip_list, joints, rest_loc):
     out = {}
     for cl in clip_list:
         if cl['partial']: continue
-        air = C.AIR.get(cl['name'], set())
+        air = cl.get('air', C.AIR.get(cl['name'], set()))  # (a clip can say it never touches the ground solver)
         for i, (t, P) in enumerate(cl['keys']):
             if air == 'all' or i in air: continue
             for n in joints:
@@ -108,6 +108,12 @@ def snap_easing(act, cl):
     """the weight pass (clips.WEIGHT): the segment INTO a snap key accelerates (cubic ease-in: the wind-up hangs, the
     hit lands hard); every other segment keeps Blender's smooth ease in / out"""
     keys = cl['keys']; fr = {round(keys[i - 1][0] * C.FPS) for i in cl.get('snap', ()) if 0 < i < len(keys)}
+    if cl.get('linear'):  # (a steady spin: the roll, the wheels)
+        for layer in act.layers:
+            for strip in layer.strips:
+                for cb in strip.channelbags:
+                    for fc in cb.fcurves:
+                        for kp in fc.keyframe_points: kp.interpolation = 'LINEAR'
     if not fr: return
     for layer in act.layers:
         for strip in layer.strips:

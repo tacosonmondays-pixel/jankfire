@@ -38,6 +38,7 @@ import { Traffic } from './traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
+import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
@@ -3996,6 +3997,7 @@ class Room {
 
 installRoyale(Room, { send, movePlayer });
 installIsland(Room, { send, movePlayer }); // battle island's squad rules (server/island.js)
+installIsleMeter(Room, { send }); // battle island's heroes + mech meter (server/islemeter.js)
 installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)
@@ -4127,7 +4129,7 @@ function roomFor(mode, ws, cfg) {
   // mode lobbies (home menu ONLINE / WITH BOTS cards): an open lobby for that mode, or a new one. Online Quick Play is the 'ffa' room below
   const lk = cfg && typeof cfg === 'object' && typeof cfg.lobby === 'string' && has(LOBBY.kinds, cfg.lobby) ? cfg.lobby : null;
   if (lk === 'qp' && mode === 'bots') { // With Bots Quick Play: no lobby. drop into a running quick play bots room with a bot to replace, else a new one
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.lobby && !r.closed && r.botWant() > 0) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.priv && !r.lobby && !r.closed && r.botWant() > 0) return r;
     const r = new Room(`bots:qp:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
     r.qp = true; r.cfg.map = pick(mapsFor('dm', MAPS, MAP_ORDER)) || r.cfg.map;
     rooms.set(r.id, r);
@@ -4140,9 +4142,16 @@ function roomFor(mode, ws, cfg) {
     r.lobbyInit(lk, mode === 'ffa');
     return r;
   }
+  // the hub's PRIVATE match (public/js/hubmenu.js): a bots room of your own. nobody else's pick lands in it
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
+    const r = new Room(`bots:priv:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+    r.priv = true;
+    rooms.set(r.id, r);
+    return r;
+  }
   // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
   if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && !r.priv && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
   }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   // Online is playing zombies (or just voted for it) with a full squad of 4: you get a zombies lobby of your own instead (bots fill it)
