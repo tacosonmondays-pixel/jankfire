@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.6.1', date: '2026-11-12', title: 'SWIM NORMAL', items: [
+    'fixed: swimming out to sea made the camera glitchy (things right in front of you blinked in and out). the sea counts as the floor again.',
+  ] },
   { v: '9.6', date: '2026-11-12', title: 'LEAVING THE PRODUCT', items: [
     'jankburg: the firewall got a real wall. precast concrete, pink neon, cameras, a walkable top with a yellow line. it says FIRE WALL on it now so you know which one it is. you are now leaving the product.',
   ] },
