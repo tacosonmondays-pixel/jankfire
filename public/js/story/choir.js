@@ -13,6 +13,7 @@ import * as THREE from 'three';
 import { actors, spawnActor, despawnActor, play, CLIPS } from './actors.js';
 import { CHOIR } from '/shared/city/cast_slice.js';
 import { audioOut } from '../audio.js';
+import { jankify } from '../jank.js';
 
 const ss = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const bump = (t) => (t <= 0 || t >= 1 ? 0 : Math.sin(t * Math.PI));
@@ -62,11 +63,28 @@ const ahead = (a, dist, up) => { a.ch.head.getWorldPosition(v3); return [a.pos[0
 function spawn() {
   D.list = CHOIR.map((s, i) => spawnActor('choir_' + i, { look: s.look, voice: { kind: 'choir', pitch: s.look === 'choir' ? 0.8 : 1.15 }, idle: 'idle' }, s.p, s.face));
   const t0 = Math.random() * 10;
-  for (const a of D.list) { a.t = t0; a.stepAcc = 0; a.choir = true; a.ch.gazeAt = new THREE.Vector3(); a.lookAt = null; } // one clock for all of them
+  for (const a of D.list) { a.t = t0; a.stepAcc = 1; a.choir = true; a.ch.gazeAt = new THREE.Vector3(); a.lookAt = null; glow(a); } // one clock for all of them
   D.on = true; D.next = 5 + Math.random() * 3; D.stareT = -1; D.wasIn = false;
   humStart();
 }
-function despawn() { for (const a of D.list) if (actors.get(a.id) === a) despawnActor(a.id); D.list = []; D.on = false; humStop(); }
+function despawn() { for (const a of D.list) { if (actors.get(a.id) === a) despawnActor(a.id); for (const m of a.lifted || []) m.dispose(); } D.list = []; D.on = false; humStop(); }
+// the lung is dark (the Gut's grade, the lung's own shadow over them): the singers carry a little light of their own,
+// their colours lifted from inside (an emissive copy of each texture). no lamp: a light would rebuild every shader in
+// the city on the way in and again on the way out. the model's materials are shared by every singer (done once); the
+// face rig's are shared with the whole cast, so each singer gets copies of those (dropped when they go)
+const LIFT = 0.26, WHITE = new THREE.Color(1, 1, 1);
+function glow(a) {
+  a.lifted = [];
+  a.ch.root.traverse((o) => {
+    if (!o.isMesh) return;
+    const out = [].concat(o.material).map((m) => {
+      if (/^choir/.test(m.name)) { if (!m.userData.lift) { m.userData.lift = true; if (m.map) m.emissiveMap = m.map; m.emissive.copy(m.map ? WHITE : m.color).multiplyScalar(LIFT); m.needsUpdate = true; } return m; }
+      if (!m.isMeshStandardMaterial) return m;
+      const c = jankify(m.clone()); c.emissive.copy(m.color).multiplyScalar(LIFT); a.lifted.push(c); return c;
+    });
+    o.material = Array.isArray(o.material) ? out : out[0];
+  });
+}
 
 export function choirFrame(dt, eye) {
   if (!eye || !CHOIR.length) { if (D.on) despawn(); return; } // (out of the story, or not in the city)

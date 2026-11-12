@@ -28,10 +28,10 @@ if not SQ:
     MOUTH_Y, MOUTH_Z, MOUTH_HW, SMILE_UP, LIP_R = 0.2, -0.206, 0.1453, 0.0596, 0.0189
     TOR = [(-0.1, 0.168, 0.124, 0.116, 2.2), (-0.03, 0.17, 0.126, 0.118, 2.2), (0.08, 0.168, 0.128, 0.118, 2.3), (0.2, 0.174, 0.132, 0.118, 2.3),
            (0.31, 0.183, 0.124, 0.112, 2.4), (0.39, 0.186, 0.11, 0.106, 2.4), (0.445, 0.158, 0.092, 0.092, 2.2), (0.49, 0.1, 0.07, 0.07, 2.0), (0.525, 0.058, 0.052, 0.052, 2.0)]
-    SKIRT = dict(top=1.05, hip=0.93, rx=(0.158, 0.19, 0.215, 0.235), rzf=(0.118, 0.152, 0.175, 0.19), rzb=(0.11, 0.15, 0.172, 0.19), floor=0.1472)
+    SKIRT = dict(top=1.05, hip=0.93, rx=(0.158, 0.19, 0.232, 0.255), rzf=(0.118, 0.152, 0.178, 0.195), rzb=(0.11, 0.15, 0.175, 0.195), floor=0.1472)
     UPPER, FORE, HAND_Y = 0.3, 0.28, -0.326
     RUFF = dict(y=0.5, R=0.1, rw=0.058, rh=0.036, n=26)
-    STANCE = dict(L=(0.15, -0.4, -0.15, 2.05), R=(0.15, 0.4, 0.15, 2.05))
+    STANCE = dict(L=(0.05, -0.2, -0.1, 2.15), R=(0.05, 0.2, 0.1, 2.15))
     ROBE, FOLD, LINE, STOLE, STOLE2 = 0xe07890, 0xb04866, 0x8a3050, 0xd6d04a, 0x8a2a4a
 else:
     SK, SKD = 0xf2b898, 0xc8805a
@@ -43,7 +43,7 @@ else:
     SKIRT = dict(top=1.05, hip=0.93, rx=(0.232, 0.262, 0.285, 0.3), rzf=(0.172, 0.205, 0.225, 0.238), rzb=(0.16, 0.19, 0.215, 0.228), floor=0.4416)
     UPPER, FORE, HAND_Y = 0.22, 0.2, -0.25
     RUFF = dict(y=0.43, R=0.118, rw=0.068, rh=0.04, n=28)
-    STANCE = dict(L=(0.55, -0.7, -0.1, 1.45), R=(0.55, 0.7, 0.1, 1.45))
+    STANCE = dict(L=(0.25, -0.4, -0.1, 1.7), R=(0.25, 0.4, 0.1, 1.7))
     ROBE, FOLD, LINE, STOLE, STOLE2 = 0xd6cc3c, 0xa4a02a, 0x7a7418, 0x8a2a4a, 0xd6cc3c
 HC = (0, HR[1], 0)  # the skull's centre, head space
 HK = 1.22 if not SQ else 1.32  # the hands: enormous (one thing huge, ART_BIBLE)
@@ -844,14 +844,14 @@ def build():
     U = pR - pL; U -= N * U.dot(N); U /= np.linalg.norm(U)
     Vv = np.cross(N, U)  # (up the page: away from the reader)
     if not SQ:
-        thick = 0.012; C = (pL + pR) / 2 + N * 0.026; C[0] = 0.0  # (its covers on the fingers)
+        thick = 0.012; C = (pL + pR) / 2 + N * 0.03; C[0] = 0.0  # (its covers on the fingers)
         T = frame(C, U, Vv, N)
         bmat = mat(ID + '_binder', 0x1a1a22, rough=0.22, clearcoat=0.8)
         labelM = mat(ID + '_label', 0xffffff, rough=0.4, tex=tex_canvas(ID + '_labelT', 36, 24, label_px))
         pageL = cloth(ID + '_pageL', 0xffffff, tex_canvas(ID + '_pageLT', 36, 36, pages_px(True)))
         pageR = cloth(ID + '_pageR', 0xffffff, tex_canvas(ID + '_pageRT', 36, 36, pages_px(False)))
         pageE = cloth(ID + '_pagee', 0xf2ead4)
-        W_, H_, open_ = 0.235, 0.31, 0.16  # a cover each side, opened to a shallow V
+        W_, H_, open_ = 0.235, 0.31, 0.19  # a cover each side, opened to a shallow V
         B = []
         for side_, pm in ((-1, pageL), (1, pageR)):
             ca, sa = math.cos(open_), math.sin(open_)
@@ -859,11 +859,11 @@ def build():
             B.append(slab('cover%d' % side_, tuple(cc - Vector((0, 0, 0.0035))), tuple(ux * side_), (0, 1, 0), tuple(Vector((-sa * side_, 0, ca)) * side_ * side_), W_, H_, 0.006, bmat, bev=0.002))
             pg = slab('pages%d' % side_, tuple(cc + Vector((0, 0, 0)) + Vector((-sa * side_, 0, ca)) * 0.01 - ux * 0.006), tuple(ux * side_), (0, 1, 0), tuple(Vector((-sa * side_, 0, ca))), W_ - 0.03, H_ - 0.022, 0.013, pageE)
             B.append(pg)
-            B.append(decal_q('print%d' % side_, tuple(cc + Vector((-sa * side_, 0, ca)) * 0.0185 - ux * 0.006), tuple(Vector((ca, 0, side_ * sa))), (0, 1, 0), W_ - 0.05, H_ - 0.04, pm))
+            B.append(decal_q('print%d' % side_, tuple(cc + Vector((-sa * side_, 0, ca)) * 0.018 - ux * 0.006), tuple(Vector((ca, 0, side_ * sa))), (0, 1, 0), W_ - 0.05, H_ - 0.04, pm))
         B.append(slab('spine', (0, 0, -0.0035), (1, 0, 0), (0, 1, 0), (0, 0, 1), 0.03, H_, 0.006, bmat, bev=0.002))
         for k in (-1, 0, 1): B.append(lathe([(0.012 + 0.0022 * math.cos(a), 0.0022 * math.sin(a)) for a in (i * math.pi / 3 for i in range(7))], (0, k * 0.09, 0.006), chrome, seg=14, axis='y'))  # the rings
         ul = Vector((-math.cos(open_), 0, math.sin(open_))); nl = Vector((math.sin(open_), 0, math.cos(open_)))
-        B.append(decal_q('label', tuple(ul * (W_ / 2 + 0.012) - Vector((0, 0, 0.0035)) - nl * 0.0052 + Vector((0, 0.04, 0))), tuple(ul), (0, 1, 0), 0.1, 0.066, labelM))  # (on the back of the left cover: what you see from the front)
+        B.append(decal_q('label', tuple(ul * (W_ / 2 + 0.012) - Vector((0, 0, 0.0035)) - nl * 0.0045 + Vector((0, 0.04, 0))), tuple(ul), (0, 1, 0), 0.1, 0.066, labelM))  # (1.5 mm off the cover: printed on, not floating)  # (on the back of the left cover: what you see from the front)
         place(B, to_local('handL', T))
         add('handL', B)
     else:

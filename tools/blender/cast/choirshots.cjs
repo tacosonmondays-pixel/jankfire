@@ -70,6 +70,11 @@ const [PORT = 3000, OUT = 'choir_shots', MODE = 'both', CODE = ''] = process.arg
     await shoot([-0.7, 2.0, -1.55], [-0.7, 1.82, 0], path.join(OUT, 'choir_face_tall.png'), 30);
     await shoot([0.7, 1.4, -1.35], [0.7, 1.22, 0], path.join(OUT, 'choir_face_squat.png'), 30);
     await shoot([-0.2, 1.55, -1.6], [-0.1, 1.15, -0.3], path.join(OUT, 'choir_hands.png'), 35);
+    await shoot([-0.55, 1.2, -1.15], [-0.7, 1.12, -0.3], path.join(OUT, 'choir_binder_front.png'), 34); // (what you see of the hymns: the back of the binder, the hands under it)
+    await shoot([0.75, 0.85, -1.0], [0.7, 0.8, -0.2], path.join(OUT, 'choir_clipboard_front.png'), 34);
+    await shoot([-0.6, 1.05, -0.9], [-0.68, 0.92, -0.15], path.join(OUT, 'choir_badge_tall.png'), 30);
+    await shoot([0.8, 0.62, -0.85], [0.72, 0.6, -0.2], path.join(OUT, 'choir_badge_squat.png'), 30);
+    await shoot([0.1, 0.35, -1.5], [0.0, 0.1, 0], path.join(OUT, 'choir_shoes.png'), 34);
     await yawOf(Math.PI); await step(30, { look: 'ahead' });
     await shoot([0, 1.45, -5.6], [0, 1.05, 0], path.join(OUT, 'choir_pair_back.png'));
     await yawOf(-Math.PI / 2); await step(30, { look: 'ahead' });

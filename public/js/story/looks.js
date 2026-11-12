@@ -374,7 +374,7 @@ const CHOIR_V = [
   { skin: 0xc8cfe0, dots: ['#9aa2b8', '#e4e8f2'], robe: '#e07890', fold: '#b04866', stole: 0xd6d04a, shoe: 0x18181c, hair: 0x3a2e2a, iris: 0xc8d850, lip: 0x9a5a7a, brow: 0x3a2e2a },
   { skin: 0xf2b898, dots: ['#c8805a', '#ffd8c0'], robe: '#d6cc3c', fold: '#a4a02a', stole: 0x8a2a4a, shoe: 0xf4f0e6, hair: 0x8a5a3a, iris: 0x5aa0d0, lip: 0xd0607a, brow: 0x6a4a3a },
 ];
-export const CHOIR_STANCE = [{ L: [0.15, -0.4, -0.15, 2.05], R: [0.15, 0.4, 0.15, 2.05] }, { L: [0.55, -0.7, -0.1, 1.45], R: [0.55, 0.7, 0.1, 1.45] }]; // per look: arm x, y, z, elbow (elbows at the sides, the shoulders turned in so the hands meet under the hymns; make_cast_choir.py places the binder with these)
+export const CHOIR_STANCE = [{ L: [0.05, -0.2, -0.1, 2.15], R: [0.05, 0.2, 0.1, 2.15] }, { L: [0.25, -0.4, -0.1, 1.7], R: [0.25, 0.4, 0.1, 1.7] }]; // per look: arm x, y, z, elbow (elbows at the sides, the shoulders turned in so the hands meet under the hymns; make_cast_choir.py places the binder with these)
 function choirLook(v) {
   const C = CHOIR_V[v], SK = C.skin, tall = !v;
   const robe = patMat('choirrobe' + v, 64, 64, (c, w, h) => { c.fillStyle = C.robe; c.fillRect(0, 0, w, h); c.fillStyle = C.fold; for (let x = 0; x < w; x += 8) c.fillRect(x, 0, 2, h); }, [3, 1], 0.75);
