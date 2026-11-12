@@ -14,7 +14,7 @@ function hub(name) {
 }
 function player(name, mode, cfg) {
   const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, id: 0, seen: new Set(), color: null, team: null };
-  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'welcome') { c.id = m.id; c.color = m.color; } if (m.t === 'sn' && Array.isArray(m.p)) for (const r of m.p) c.seen.add(r[0]); if (m.t === 'teams') { const e = m.list.find((x) => x[0] === c.id); if (e) c.team = e[1]; } });
+  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'welcome') { c.id = m.id; c.color = m.color; c.cfg = m.cfg; } if (m.t === 'sn' && Array.isArray(m.p)) for (const r of m.p) c.seen.add(r[0]); if (m.t === 'teams') { const e = m.list.find((x) => x[0] === c.id); if (e) c.team = e[1]; } });
   return new Promise((res) => ws.on('open', () => { ws.send(JSON.stringify({ t: 'join', name, mode, cfg })); setTimeout(() => res(c), 1500); }));
 }
 (async () => {
@@ -48,6 +48,8 @@ function player(name, mode, cfg) {
   ok(A.party.ms.length === 6, 'six in the party');
   const D = await hub('late'); D.send({ t: 'pjoin', code: A.party.code }); await sleep(400);
   ok(D.errs.some((e) => /full/.test(e)) && A.party.ms.length === 6, 'the seventh is told it is full');
+  A.errs.length = 0; A.send({ t: 'pgo', mode: 'ffa', cfg: { lobby: 'zm' } }); await sleep(500);
+  ok(A.errs.some((e) => /takes 4/.test(e)) && !A.go.length, 'six can\'t queue for a zombies squad of 4: the leader is told ' + JSON.stringify(A.errs));
   for (const x of extra) x.send({ t: 'pleave' }); await sleep(600);
   ok(A.party.ms.length === 2, 'leave: back to a party of one (and the others see it)');
   // START: a private P&D for the party. everyone gets a ticket to the same room
@@ -55,7 +57,8 @@ function player(name, mode, cfg) {
   A.send({ t: 'pgo', mode: 'bots', cfg: { game: 'bomb', map: 'warehouse_sd', bots: 4, diff: 'easy', hip: 'normal', priv: false, room: 'ffa' } }); await sleep(600);
   const ga = A.go[0], gb = B.go[0];
   ok(ga && gb && ga.cfg.room === gb.cfg.room && ga.cfg.ticket !== gb.cfg.ticket && ga.cfg.priv === true && ga.cfg.game === 'bomb', 'START: same room, a ticket each, always private ' + JSON.stringify(ga && ga.cfg));
-  const PA = await player('lead', ga.mode, ga.cfg), PB = await player('pal', gb.mode, gb.cfg);
+  const PB = await player('pal', gb.mode, { ...gb.cfg, map: 'crate', game: 'dm', bots: 0 }), PA = await player('lead', ga.mode, ga.cfg); // (the member walks in first, with settings of their own)
+  ok(PB.cfg && PB.cfg.map === 'warehouse_sd' && PB.cfg.bots === 4, "the leader's settings apply, not the first member's " + JSON.stringify(PB.cfg));
   await sleep(1500);
   ok(PA.seen.has(PB.id) || PB.seen.has(PA.id), 'the party lands in the same room');
   ok(PA.color && PA.color === PB.color, 'on the same side (P&D) ' + PA.color + ' ' + PB.color);

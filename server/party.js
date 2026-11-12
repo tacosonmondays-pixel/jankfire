@@ -7,7 +7,8 @@
 // rate limits on top of the socket's budget: a wrong code costs you (10 a minute, then a wait), joins 1 a second.
 import crypto from 'node:crypto';
 
-export const PARTY = { max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10 };
+export const PARTY = { max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
+let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
 const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
 const parties = new Map(); // code -> { id, code, lead, members, set }
 let D = null, nextId = 1;
@@ -69,10 +70,11 @@ export function hubMsg(h, m) {
     case 'pjoin': { // join a party by its code
       if (!rate(h, 'join', 1000)) return;
       const t = now(); h.fails = h.fails.filter((x) => t - x < 60000);
-      if (h.fails.length >= PARTY.fails) { h.send({ t: 'perr', m: 'too many wrong codes. give it a minute' }); return; }
+      if (wrong.length && t - wrong[0] > 60000) wrong = wrong.filter((x) => t - x < 60000);
+      if (h.fails.length >= PARTY.fails || wrong.length >= PARTY.allFails) { h.send({ t: 'perr', m: 'too many wrong codes. give it a minute' }); return; }
       const code = typeof m.code === 'string' && m.code.length <= 12 ? m.code.toUpperCase().replace(/[^A-Z0-9]/g, '') : '';
       const to = code.length === PARTY.len && [...code].every((c) => PARTY.abc.includes(c)) ? parties.get(code) : null;
-      if (!to) { h.fails.push(t); h.send({ t: 'perr', m: 'no party with that code' }); return; }
+      if (!to) { h.fails.push(t); wrong.push(t); h.send({ t: 'perr', m: 'no party with that code' }); return; }
       if (to === pt) return;
       if (to.members.length >= PARTY.max) { h.send({ t: 'perr', m: `that party is full (${PARTY.max})` }); return; }
       leave(h); to.members.push(h); h.party = to; h.ready = false;
@@ -124,11 +126,17 @@ function go(pt, m) {
     if (has(D.HIPFIRE, c.hip)) cfg.hip = c.hip;
   }
   const out = pt.members.filter((x) => !x.busy || x === pt.lead);
-  // the fixed rooms (online quick play, coop) need no ticket: everyone joins the one room
-  if ((m.mode === 'ffa' && !cfg.lobby) || m.mode === 'coop') { for (const x of out) x.send({ t: 'pgo', mode: m.mode, cfg }); return; }
+  const cap = cfg.lobby && D.LOBBY.kinds[cfg.lobby].cap;
+  if (cap && out.length > cap) { pt.lead.send({ t: 'perr', m: `${D.LOBBY.kinds[cfg.lobby].name.toLowerCase()} takes ${cap}. there are ${out.length} of you` }); return; }
+  // the last room this party was handed and nobody went to (START, back, START again): gone, so they can't pile up
+  const old = pt.room;
+  if (old && !old.closed && !old.humans().length && old.id !== 'ffa' && old.id !== 'coop') { old.closed = true; D.rooms.delete(old.id); }
+  // every room gets tickets, the fixed ones (online quick play, coop) too: that's how the room knows who's a party
   const r = D.roomFor(m.mode, null, { ...cfg, need: out.length });
   if (!r) return;
+  pt.room = r;
   r.tickets = r.tickets || new Map(); r.partyT = now();
+  if (cfg.priv) r.partyCfg = cfg; // (the leader's settings, checked above: whoever of the party walks in first, these apply)
   for (const x of out) {
     const tk = crypto.randomBytes(9).toString('base64url');
     r.tickets.set(tk, { party: pt.id, until: now() + PARTY.ticket });

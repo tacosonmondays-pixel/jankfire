@@ -168,6 +168,7 @@ function hubOpen(ws, m) {
     if (ws.readyState !== 1) return;
     const achs = u ? achievementsFrom(Object.fromEntries(STAT_KEYS.map((k) => [k, u[k] || 0]))) : new Set();
     const name = u ? u.name : (clean(m.name, 16) || 'guest') + (clean(m.name, 16) && await store.get(clean(m.name, 16).toLowerCase()).catch(() => null) ? ' (guest)' : '');
+    if (ws.readyState !== 1) return; // (gone while the store answered: no party for a closed socket)
     ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null, achs }, m);
   })().catch((e) => { logErr('hub hello', e); ws.close(); });
 }

@@ -243,7 +243,12 @@ function plan() {
 
 // ---------------------------------------------------------------- the party
 // the stage: the party stood in a row, or (alone) the usual hero
+// the lobby scenes (the scene lane's module) own the stage while one is mounted: it registers its lobbySceneOn() here
+// on load (no import from this side: the module may not be there)
+let sceneOn = () => false;
+export function lobbySceneFlag(fn) { if (typeof fn === 'function') sceneOn = fn; }
 function stage() {
+  if (onLobby() && sceneOn()) { showLineup(null); for (const s of [$('heroSlot'), $('hubStage')]) if (s) s.classList.remove('lineup-on'); return; } // (a scene is up: it stands the party itself)
   const slot = onLobby() ? $('hubStage') : onMain() ? $('heroSlot') : null;
   const on = !!slot && inParty() && showLineup(slot, P.ms, P.lead, P.me, opts.look ? opts.look()[1] : null);
   if (!on) showLineup(null);

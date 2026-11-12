@@ -461,6 +461,7 @@ class Room {
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
   addHuman(ws, m) {
+    if (ws && ws.partyId && this.partyCfg) m = { ...m, cfg: this.partyCfg }; // a party's private match: the leader's settings (server/party.js), not whoever got here first
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
       if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
