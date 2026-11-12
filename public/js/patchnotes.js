@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.7', date: '2026-11-12', title: 'MIND THE LAVA', items: [
+    'islands plant & defuse: mount kaboom is a real volcano now. run straight up it, hide behind boulders on the way, and don\'t fall in the glowing bit.',
+    'islands: the rope bridges and boardwalks got rebuilt. worn planks, posts, rope rails, stilts in the sea. same bridges, less sad.',
+  ] },
   { v: '8.6', date: '2026-11-12', title: 'STILL SPLINTERY', items: [
     'islands: fort splinter got renovated. real weathered stone, moss, battlements, arrow slits, a round corner tower, a covered well. same walls to hide behind. still splintery.',
   ] },
