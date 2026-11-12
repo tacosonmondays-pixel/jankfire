@@ -89,3 +89,13 @@ test('Battle Island: off the beach into deep water is the sea kill; wading the l
   assert.ok(SEA - ground(238, 40) <= WADE, 'the lagoon\'s middle is <= 1.5 m deep');
   const riv = walk([136, 60], [0, -1], 6); assert.ok(riv > KILL_Y, `across the river (feet down to ${riv.toFixed(2)})`);
 });
+
+test('Battle Island: Dead Air\'s Blender model is built to exactly its boxes (meta.box = the placement\'s extent)', async () => {
+  const fs = await import('node:fs');
+  const p = m.boxes.props.find((q) => q.id === 'deadair');
+  assert.ok(p, 'the mast is a prop placement');
+  const buf = fs.readFileSync(new URL('../public/models/p_deadair.glb', import.meta.url)), len = buf.readUInt32LE(12);
+  const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')), root = gl.nodes.find((n) => n.extras && n.extras.jf), meta = JSON.parse(root.extras.jf);
+  for (let i = 0; i < 3; i++) { assert.ok(Math.abs(meta.box[0][i] - p.lo[i]) < 0.01, `lo[${i}] ${meta.box[0][i]} vs ${p.lo[i]}`); assert.ok(Math.abs(meta.box[1][i] - p.hi[i]) < 0.01, `hi[${i}] ${meta.box[1][i]} vs ${p.hi[i]}`); }
+  assert.ok(Math.abs(p.a[1] - 50) < 0.01, 'stood on the summit (50 m)');
+});
