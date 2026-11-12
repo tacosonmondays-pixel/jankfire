@@ -737,7 +737,7 @@ net.on('mech', (m) => {
         if (st === 'in') { FRAMEOF.set(o, mechFrame(f)); const w = WM.get(id); if (w) w.st = 'in'; continue; }
         const w = WM.get(id);
         if (!w || w.st !== st) wmSet(id, o, mechFrame(f), p, Number(yaw) || 0, st, st === 'fall' ? Math.max(0, left) : left).ms = 2500;
-        else w.until = now + (Number(left) || 0);
+        else if (st !== 'fall') w.until = now + (Number(left) || 0); // (a fall keeps the clock its 'call' started)
       }
       for (const w of [...WM.values()]) if (!seen.has(w.id) && w.st !== 'leave' && now - w.t0 > 2000) wmDrop(w);
       return;

@@ -83,4 +83,5 @@ Both: F hops out. Energy refills at 30 a second, starting 0.8 s after you last s
 ## Where the numbers live
 Every number above is in `MECH` in `shared/mech.js` (one table, both sides read it). Test knobs: `JF_MECH=<kills>`
 (earn it fast, bots too), `JF_MECH_FRAME=paperplane|nightshift` (the bots' frame), `JF_MECH_HP=<x>` (armour multiplier),
+`JF_MECH_DROP=<s>` (how long it falls), `JF_MECH_WAIT=<s>` (how long an empty one waits),
 `JF_TRAIN_STREAKS=1` (your 3 streaks always ready in any mode).
