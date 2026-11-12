@@ -37,7 +37,7 @@ export function startCity(def, h) {
   S.holding = true;
   return S;
 }
-export function stopCity() { stopHeart(); stopGoo(); stopHills(); if (S) { S.dispose(); S = null; } stopBeds(); }
+export function stopCity() { stopHeart(); stopGoo(); stopHills(); if (S) { S.dispose(); S = null; } stopBeds(); G.cityReady = false; }
 export const cityStream = () => S;
 
 const GUT_FLUSH = new THREE.Color(0xa01428); // the colour the fog flushes (its beat is the Big Heart's: gutbeat.js)
@@ -72,6 +72,7 @@ export function updateCity(dt) {
     if (ME.hold) { ME.pos[0] = ME.hold[0]; ME.pos[1] = ME.hold[1]; ME.pos[2] = ME.hold[2]; }
     if (S.ready(ME.pos[0], ME.pos[2])) S.holding = false; // in: let go
   } else ME.hold = ME.pos.slice();
+  G.cityReady = !S.holding && !S.first; G.cityProgress = S.progress(); // (the story's loading card and its background downloads wait for this)
   // the gimmicks: ziplines (use key), moving streets, lungs, acid
   if (!ME.alive) return;
   const use = K.isDown('use'), press = use && !S.useWas; S.useWas = use;

@@ -22,6 +22,7 @@
   <button id="edRedo" title="redo (Ctrl+Y)">REDO</button>
   <button id="edSnap" title="grid snap (B). [ and ] change the grid size">SNAP 1m</button>
   <button id="edFloors" title="big floors and ground slabs can be picked or not (L)">FLOORS: LOCKED</button>
+  <button id="edBotBtn" title="can bots still get everywhere after your edits? (N)">BOT CHECK <i>N</i></button>
   <button id="edDiff" title="every change you made on this map">CHANGES <i id="edN">0</i></button>
   <button id="edExport" class="edMain" title="save your changes as a file to send us">EXPORT</button>
   <button id="edImport" title="load a changes file">IMPORT</button>
@@ -43,6 +44,11 @@
   <div id="edPalGrid"></div>
   <div class="edPalTip">click one: it appears where you aim, picked up. click again to put it down.</div>
 </div>
+<div id="edBots" class="edp hidden">
+  <small>BOT CHECK</small>
+  <div id="edBotList"></div>
+  <div class="edRow"><button id="edBotClose">CLOSE</button></div>
+</div>
 <div id="edList" class="edp hidden">
   <small>CHANGES ON THIS MAP</small>
   <div id="edOps"></div>
@@ -50,7 +56,7 @@
 </div>
 <div id="edHelp" class="edp">
   <b>right-click to fly</b> · WASD move · SPACE up · C down · SHIFT fast · wheel = speed<br>
-  click = select · shift+click = add more · G carry · R turn · = / - size · X delete · ctrl+D copy · P palette · ctrl+Z undo · arrows / PgUp PgDn nudge · ESC = mouse
+  click = select · shift+click = add more · G carry · R turn · = / - size · X delete · ctrl+D copy · P palette · N bot check · ctrl+Z undo · arrows / PgUp PgDn nudge · ESC = mouse
 </div>
 <div id="edCall"></div>
 <div id="edToast"></div>
