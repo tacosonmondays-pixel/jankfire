@@ -22,6 +22,15 @@ const SHOTS = {
     ['back', 'from behind: the hatch, the hook on its chain, stickers', 'idle', 0.0, [3.8, 3.6, -5.6], [0, 2.6, 0], 50],
     ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 2.2, 0], 75],
   ],
+  vending: [
+    ['hero', 'held after its landing: ta-da, door flung open, a can on offer', 'hero_intro', 1.7, [-4.0, 1.7, 7.0], [0.0, 2.8, 0], 50],
+    ['close', 'close up: the face, coin-slot mouth, keypad chin, the drinks', 'idle', 0.0, [-2.2, 3.7, 3.4], [-0.3, 3.3, 0], 50],
+    ['dispense', 'dispense: the door swings, a cola pops out of the flap', 'dispense', 0.3, [-3.6, 2.0, 6.4], [0, 2.2, 0], 50, 0, true],
+    ['order', 'OUT OF ORDER: slammed into the floor in front of it', 'out_of_order', 0.5, [-6.0, 2.6, 8.6], [0, 1.6, 1.4], 52, 0, true],
+    ['restock', 'RESTOCK: everything flung open and lit', 'restock', 0.6, [-4.4, 2.6, 7.6], [0, 3.0, 0], 50],
+    ['walk', 'the waddle (side)', 'walk', 0.0, [6.8, 2.4, 1.6], [0, 2.4, 0], 50],
+    ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 2.6, 0], 75],
+  ],
 };
 
 (async () => {

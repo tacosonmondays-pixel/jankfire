@@ -15,7 +15,7 @@ function glb(name) {
   return { j, meta: JSON.parse(root.extras.jf), nodes: new Set(j.nodes.map((x) => x.name)), anims: new Set((j.animations || []).map((a) => a.name)) };
 }
 
-for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking']) {
+for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking', 'x_mech_vending']) {
   test(`${id}: the landing clips are in the file and in the meta`, () => {
     const { meta, anims } = glb(id), byName = Object.fromEntries(meta.clips.map((c) => [c.name, c]));
     for (const c of ['drop_fall', 'hero_intro', 'drop_in', 'idle']) assert.ok(anims.has(c) && byName[c], c);
