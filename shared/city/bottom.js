@@ -123,15 +123,57 @@ function dress(B, k, lot, near) {
 
 // [a, b] minus the gap [g0, g1]: the pieces either side
 const cut = (a, b, g0, g1) => (g1 <= a || g0 >= b ? [[a, b]] : [[a, Math.min(b, g0)], [Math.max(a, g1), b]]);
+// the narrow stairs from terrace k up to k + 1 (every ~70 m), and the gaps they need in terrace k + 1's lip wall (they
+// used to end at it: a 0.9 m wall to jump at the top of every flight)
+const stairXs = (k) => { const o = []; for (let sx = -300 + (k * 23) % 40; sx < 90; sx += 66 + (k * 7) % 12) o.push(sx); return o; };
+const stairGaps = (k) => (k > 0 ? stairXs(k - 1) : []);
+// where a retaining wall holds no houses up (an alley between two lots, the terrace's bare east end), the 4 m wall gets
+// a rubble and dirt slope leaning on it from the terrace below: a hill people built on, not a stack of boxes. spans
+// [x0, x1] on terrace k's lip (the slope climbs from terrace k - 1 up to it). the walls with houses against them stay
+const SLOPE_RUN = 9.6, slopeCache = new Map();
+export function slopeSpans(k) {
+  if (k < 1 || k >= T.n) return [];
+  if (slopeCache.has(k)) return slopeCache.get(k);
+  const j = k - 1, zs = zSouth(j), zn = zs - T.terr, keep = KEEP_OUT(), ups = j < T.n - 1 ? stairXs(j) : [], out = [];
+  const houses = lots(j).filter((q) => !keep.some((kr) => inRect(q[0], zn, q[0] + q[1], zs - LANE, kr)) && !ups.some((sx) => q[0] < sx + 2.2 && q[0] + q[1] > sx - 2.2));
+  const consider = (a, b) => {
+    a += 0.3; b -= 0.3;
+    if (b - a < 3.2) return;
+    if (b - a > 7) { const c = (a + b) / 2; a = c - 3.5; b = c + 3.5; }
+    if (keep.some((kr) => kr[0] < 88 && inRect(a, zn, b, zn + SLOPE_RUN + 2, kr)) || ups.some((sx) => sx > a - 1.6 && sx < b + 1.6) || stairXs(k - 1).some((sx) => sx > a - 1.6 && sx < b + 1.6)) return; // (landmarks, the stairs)
+    if (a < BANISTER[1] + 1 && b > BANISTER[0] - 1) return;
+    out.push([a, b]);
+  };
+  let x = -318;
+  for (const q of houses) { consider(x, q[0]); x = Math.max(x, q[0] + q[1]); }
+  consider(x, SLICE.bottom.rect[2]);
+  slopeCache.set(k, out);
+  return out;
+}
+// one slope: stepped collision (0.12 m treads: you walk up it) under a smooth drawn face, dirt sides, rubble and weeds
+function slope(B, k, a, b, r) {
+  const zw = zSouth(k), y0 = yOf(k - 1), y1 = yOf(k), z1 = zw + SLOPE_RUN, t = 0xa89080;
+  if (!B.touches([a, zw, b, z1])) return;
+  const n = Math.ceil((y1 - y0) / 0.12), dz = SLOPE_RUN / n;
+  for (let i = 0; i < n; i++) B.add(a, y0 - 0.3, zw + i * dz, b, y1 - (y1 - y0) * i / n, zw + (i + 1) * dz, 'ground', { hide: true });
+  const at = [a + 0.1, y0, zw + 0.1];
+  B.shape({ kind: 'quad', q: [[a, y1 + 0.04, zw], [b, y1 + 0.04, zw], [b, y0 + 0.04, z1], [a, y0 + 0.04, z1]], mat: 'ground', tint: t, at });
+  for (const x of [a, b]) B.shape({ kind: 'quad', q: [[x, y0, zw], [x, y1 + 0.04, zw], [x, y0 + 0.05, z1], [x, y0, z1]], mat: 'ground', tint: 0x8a7464, at }); // (its sides: dirt)
+  rubble(B, a + 0.9, y0, z1 - 0.6, 1.6, r); if (b - a > 4.5) rubble(B, b - 0.9, y0, z1 - 0.8, 1.3, r);
+  for (let i = 0; i < 6; i++) { // weeds and stones in the dirt
+    const u = r(), x = a + 0.4 + r() * (b - a - 0.8), z = zw + u * SLOPE_RUN, y = y1 - (y1 - y0) * u;
+    B.shape({ kind: 'blob', c: [x, y, z], r: [0.3 + r() * 0.4, 0.2 + r() * 0.3, 0.3 + r() * 0.4], seg: 5, mat: r() < 0.6 ? 'ground' : 'rubble', tint: r() < 0.6 ? pick(r, [0x7a7a3a, 0x8a8040, 0x6a7034]) : 0x9a948e, lod: false, at });
+  }
+}
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
   B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
-  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) for (const [c, d] of k === 2 ? cut(a, b, SLICE.lostFound.rect[0] + 12, SLICE.lostFound.rect[2] - 12) : [[a, b]]) if (d > c) B.add(c, y, zs - 0.4, d, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up, and at the Lost & Found's front steps)
+  if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) for (const [c0, d0] of k === 2 ? cut(a, b, SLICE.lostFound.rect[0] + 12, SLICE.lostFound.rect[2] - 12) : [[a, b]]) for (const [c, d] of [...stairGaps(k).map((sx) => [sx - 1.15, sx + 1.15]), ...slopeSpans(k)].reduce((segs, [g0, g1]) => segs.flatMap(([p, q]) => cut(p, q, g0, g1)), [[c0, d0]])) if (d > c) B.add(c, y, zs - 0.4, d, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up, and at the Lost & Found's front steps)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
   const poles = [];
-  while (px < 92) { poles.push(px); px += 14 + r() * 8; }
+  while (px < 92) { let q = px; for (const sx of stairGaps(k)) if (Math.abs(q - sx) < 1.5) q = sx + (q < sx ? -1.5 : 1.5); for (const [g0, g1] of slopeSpans(k)) if (q > g0 - 0.4 && q < g1 + 0.4) q = q - g0 < g1 - q ? g0 - 0.4 : g1 + 0.4; poles.push(q); px += 14 + r() * 8; } // (stepped aside off a stair's or a slope's top)
   for (let i = 0; i < poles.length; i++) {
     const p = poles[i];
     if (p < x0 - 30 || p > x1 + 30) continue;
@@ -236,12 +278,13 @@ export function bottom(B, d) {
     B.add(X0, -4, Math.max(za, Z0), X1, yOf(k), Math.min(zb, Z1), 'ground', { tint: [0xb89890, 0xa89098, 0xb8a090][k % 3] });
     if (k > 0 && zb > Z0 && zb <= Z1) retaining(B, X0, X1, zb, yOf(k - 1), yOf(k), rng(hash2(k, B.out.cx, 31)));
   }
+  for (let k = 1; k < T.n; k++) for (const [a, b] of slopeSpans(k)) slope(B, k, a, b, rng(hash2(Math.round(a * 4), k, 0x5109))); // the bare stretches of wall: a slope up (each chunk builds its part)
   const keep = KEEP_OUT();
   for (let k = 0; k < T.n; k++) {
     const zs = zSouth(k), zn = zs - T.terr;
     if (!B.touches([-320, zn, 96, zs], 2)) continue;
     lane(B, k, X0, X1);
-    const L = lots(k), did = [], built = (q) => q && !keep.some((kr) => inRect(q[0], zn, q[0] + q[1], zs - LANE, kr));
+    const L = lots(k), did = [], up = k < T.n - 1 ? stairXs(k) : [], built = (q) => q && !keep.some((kr) => inRect(q[0], zn, q[0] + q[1], zs - LANE, kr)) && !up.some((sx) => q[0] < sx + 2.2 && q[0] + q[1] > sx - 2.2); // (no house on a stair: the flight up to the next terrace stands in the gap)
     for (let i = 0; i < L.length; i++) {
       const [x0, w, seed] = L[i];
       if (x0 + w < X0 - 12 || x0 > X1 + 12) continue; // only lots touching this chunk (+ a stair's width)
@@ -250,7 +293,7 @@ export function bottom(B, d) {
     }
     if (KIT.on) for (const i of did) dress(B, k, L[i], [L[i - 1], L[i + 1]].filter(built)); // (its neighbours: the kit skips walls they hide)
     // a narrow stair up to the next terrace every ~70 m (plus the Long Stairs), so every lane connects
-    if (k < T.n - 1) for (let sx = -300 + (k * 23) % 40; sx < 90; sx += 66 + (k * 7) % 12) {
+    if (k < T.n - 1) for (const sx of stairXs(k)) {
       if (keep.some((q) => inRect(sx - 1, zn - 6, sx + 1, zn + 6, q))) continue;
       if (sx < X0 - 3 || sx > X1 + 3) continue;
       stairsZ(B, sx - 1, sx + 1, zn + flightLen(T.rise), -1, yOf(k), yOf(k + 1), 'concrete');
