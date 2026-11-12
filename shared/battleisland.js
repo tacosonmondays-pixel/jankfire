@@ -235,8 +235,8 @@ function battleIsland() {
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
-  D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'sea');
-  horizon(D, -900, -900, 900, 900, 2600, 'sea', SEA);
+  D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
+  horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
   // ---- the spots the mode reads: the POIs' drop pads (open sky, level), energy cells, the finale circles
   const drops = [], cells = [], spawns = [];
   for (const p of PLAN.pois) {
