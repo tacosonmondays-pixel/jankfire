@@ -66,8 +66,9 @@ def atlas(number='07'):
     return px
 
 
-def flat_panels(o, min_area=0.02):
-    """flat regions of a mesh (connected faces within ~10 degrees, game space): (area, centre, normal, faces)"""
+def flat_panels(o, min_area=0.02, tol=0.985):
+    """flat regions of a mesh (connected faces within ~10 degrees of the first, or tol = a looser cosine for gently
+    curved plates; game space): (area, centre, mean normal, faces)"""
     bm = bmesh.new(); bm.from_mesh(o.data); bm.transform(o.matrix_world); bm.faces.ensure_lookup_table()
     seen = [False] * len(bm.faces); out = []
     for f in bm.faces:
@@ -77,11 +78,12 @@ def flat_panels(o, min_area=0.02):
             a = st.pop(); mem.append(a)
             for e in a.edges:
                 for g in e.link_faces:
-                    if not seen[g.index] and g.normal.dot(n0) > 0.985: seen[g.index] = True; st.append(g)
+                    if not seen[g.index] and g.normal.dot(n0) > tol: seen[g.index] = True; st.append(g)
         area = sum(x.calc_area() for x in mem)
         if area < min_area: continue
         c = sum((x.calc_center_median() * x.calc_area() for x in mem), V((0, 0, 0))) / area
-        out.append((area, g_of(c), g_of(n0), len(mem)))
+        nm = sum((x.normal * x.calc_area() for x in mem), V((0, 0, 0)))
+        out.append((area, g_of(c), g_of(nm.normalized() if nm.length > 1e-6 else n0), len(mem)))
     bm.free()
     out.sort(key=lambda r: -r[0])
     return out
@@ -101,7 +103,7 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
     m = tex_mat(f'{mk.prefix}_decalmat', img, rough=0.42, clip=True, cc=0.5)
     used, made = set(), 0
     centre = lambda j: g_of(posed_world[j].translation)
-    def best(j, w, h, avoid=(), face=None, strict=False):
+    def best(j, w, h, avoid=(), face=None, strict=False, tol=0.985):
         o = pieces.get(j)
         if o is None: return None
         rot = posed_world[j].to_3x3(); rest_up = g_of(rot @ gv(0, 1, 0))
@@ -109,19 +111,25 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
         if face == 'out': want = (1 if centre(j)[0] >= 0 else -1, 0, 0)
         if want: want = g_of(rot @ gv(*want))  # (the joint's own front / side, as it is turned in the cut pose)
         cands = []
-        for area, c, n, _ in flat_panels(o):
+        for area, c, n, _ in flat_panels(o, tol=tol):
             if any(sum((a - b) ** 2 for a, b in zip(c, p)) < 0.09 for p in avoid): continue
             out = sub(c, (0, c[1], 0) if j in TORSO else centre(j))  # (torso plates: out from the body's middle line)
             if dot(out, n) < 0 or abs(n[1]) > 0.75: continue  # (facing out of the body, not straight up or down)
             cands.append((area, dot(n, want) if want else 1.0, c, n))
         # the plates that really face that way, the decal shrunk a little if it must; else any outward plate it fits
-        for k, ok in ((1.0, 0.55), (0.8, 0.55), (0.62, 0.55)) + (() if strict else ((1.0, -2),)):
+        for k, ok in ((1.0, 0.55), (0.8, 0.55), (0.62, 0.55)) + (() if strict else ((1.0, -2), (0.8, -2), (0.62, -2))):
             good = [r for r in cands if r[1] >= ok and r[0] >= w * h * k * k * 1.2]
             if good:
                 _, _, c, n = max(good, key=lambda r: r[0] * (1 + r[1]))
                 return c, n, _up_for(n, rest_up), k
         return None
-    placed = []
+    placed, slots = [], []
+    # the spray / skin slots first (the biggest outward plates on the chest and a shoulder or thigh): the stickers
+    # then keep off them, so a spray never lands on top of one
+    for joints in spray:
+        for j in joints:
+            r = best(j, 0.5, 0.5, placed, 'front' if j in TORSO else 'out', tol=0.9)  # (a spray can wrap a curved plate)
+            if r: slots.append({'name': f'spray_{len(slots)}', 'joint': j, 'at': r[0], 'dir': r[1], 'up': r[2], 'size': round(0.6 * r[3], 2)}); placed.append(r[0]); break
     for joints, cell, w, face in plan:
         x, y, cw, ch = CELLS[cell]; h = w * ch / cw
         tries = [(j, True) for j in joints] + [(j, False) for j in joints]  # (a plate facing the right way on any of them first)
@@ -136,9 +144,5 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
             lib.join([pieces[j], d], pieces[j].name); placed.append(c); made += 1
             print(f'JF_DECAL {cell} on {j} at {tuple(round(v, 2) for v in c)} facing {tuple(round(v, 2) for v in n)} ({w * k:.2f} m)')
             break
-    slots = []
-    for k, joints in enumerate(spray):
-        for j in joints:
-            r = best(j, 0.5, 0.5, placed)
-            if r: slots.append({'name': f'spray_{k}', 'joint': j, 'at': r[0], 'dir': r[1], 'up': r[2], 'size': round(0.6 * r[3], 2)}); placed.append(r[0]); break
+    print('JF_SPRAY', ' '.join(f"{sl['name']} on {sl['joint']} ({sl['size']} m)" for sl in slots) or 'none')
     return made, slots
