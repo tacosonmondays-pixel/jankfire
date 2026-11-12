@@ -3787,7 +3787,7 @@ function skyBuild(B, D, x, z, y, r) {
     for (const [sx0, sz0] of [[-8, 5], [3, -8]]) { for (let k = 0; k < 3; k++) add(x + sx0, y + k * 0.35, z + sz0 + k * 0.1, x + sx0 + 5, y + (k + 1) * 0.35, z + sz0 + 0.6 + k * 0.1, 'rust'); }
     add(x + 5, y, z + 5, x + 10, y + 2.6, z + 8, 'containerr'); D.add(x + 5.6, y + 1.0, z + 4.96, x + 8.4, y + 2.0, z + 5, 'adclosed', { fit: 1 }); // the site hut
     for (const [bx, bz] of [[-3, -11], [0, -11], [3, -11]]) add(x + bx - 1.2, y, z + bz - 0.3, x + bx + 1.2, y + 1.0, z + bz + 0.3, 'jersey');
-    crane(B, D, x - 8, z - 8, y, 32, 50, 34); }
+    propOf('crane', [x - 8, y, z - 8], 0, () => crane(B, D, x - 8, z - 8, y, 32, 50, 34)); } // (drawn as the Blender crane, p_crane: tools/blender/make_crane.py)
 }
 // the greenhouse: glass panes on a steel frame, planting beds inside, water tanks, solar panels
 function skyGreen(B, D, x, z, y, r) {
