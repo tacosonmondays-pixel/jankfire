@@ -178,18 +178,36 @@ const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r])
 
 // DEAD AIR (the summit): the island's landmark, a 70 m guyed lattice radio mast (tools/blender/make_deadair.py,
 // p_deadair: one Blender model over all of these boxes). the mast is a column you grapple, its work platform at 50 m
-// you can stand on, the transmitter shack is locked (solid: loot on its roof), the guy wires' three anchor blocks are
-// cover. built at y 0 round the mast's foot: the shaped ground lifts it onto the summit. DA = the numbers the model is
-// built to (the Blender script reads the same table)
-export const DA = { plinth: 2, top: 70, deck: 50, deckW: 2.2, anchors: [80, 200, 320], anchorR: 18, anchorW: 0.9, anchorH: 0.9,
-  shack: [-5.7, -12.4, 2.3, -7.4], shackH: 3.6 };
+// (railed) you can stand on, a fence round its foot (the gate's open), the DEAD AIR board on its south face, the guy
+// wires' three anchor blocks (cover), and the transmitter shack you can walk into: the studio (two transmitter racks,
+// the broadcast desk), a door toward the mast, a window west. built at y 0 round the mast's foot: the shaped ground lifts
+// it onto the summit. DA = the numbers the model is built to (make_deadair.py has the same table)
+export const DA = { plinth: 2, top: 70, deck: 50, deckW: 2.2, rail: 1.1, anchors: [80, 200, 320], anchorR: 18, anchorW: 0.9, anchorH: 0.9,
+  fence: 3.4, fenceH: 2.0, gate: 1.1, board: [18, 19.6, 2.3], // fence half-size, height, the gate's half-width; the board's bottom, top, half-width
+  shack: [-5.7, -12.4, 2.3, -7.4], shackH: 3.6, wallT: 0.2, door: [0.1, 1.3, 2.3], win: [-10.6, -9.2, 1.1, 2.1], // door x0, x1, top (south wall); window z0, z1, y0, y1 (west wall)
+  racks: [[-4.9, -4.1], [-3.9, -3.1]], rackD: 0.7, rackH: 2.1, desk: [1.3, -11.7, 2.1, -9.1, 0.78] }; // racks' x ranges (north wall); desk x0, z0, x1, z1, height (east wall)
 function deadAir(B, cx, cz) {
   propOf('deadair', [cx, 0, cz], 0, () => {
-    B.add(cx - DA.plinth, 0, cz - DA.plinth, cx + DA.plinth, 0.8, cz + DA.plinth, 'concrete'); // the foundation
+    const L = (x0, y0, z0, x1, y1, z1, m) => B.add(cx + x0, y0, cz + z0, cx + x1, y1, cz + z1, m);
+    L(-DA.plinth, 0, -DA.plinth, DA.plinth, 0.8, DA.plinth, 'concrete'); // the foundation
     B.box(cx, 0.8 + (DA.top - 0.8) / 2, cz, 1.8, DA.top - 0.8, 1.8, 'metal'); // the mast (grapple it)
-    B.add(cx - DA.deckW, DA.deck, cz - DA.deckW, cx + DA.deckW, DA.deck + 0.25, cz + DA.deckW, 'grid'); // the work platform
-    for (const a of DA.anchors) { const x = cx + Math.cos(a * Math.PI / 180) * DA.anchorR, z = cz + Math.sin(a * Math.PI / 180) * DA.anchorR; B.add(x - DA.anchorW, 0, z - DA.anchorW, x + DA.anchorW, DA.anchorH, z + DA.anchorW, 'concrete'); }
-    const [x0, z0, x1, z1] = DA.shack; B.add(cx + x0, 0, cz + z0, cx + x1, DA.shackH, cz + z1, 'metal'); // the transmitter shack (locked)
+    const W = DA.deckW, R = 0.06;
+    L(-W, DA.deck, -W, W, DA.deck + 0.25, W, 'grid'); // the work platform, railed round
+    for (const s of [-1, 1]) { L(-W, DA.deck + 0.25, s * W - (s > 0 ? R : 0), W, DA.deck + 0.25 + DA.rail, s * W + (s < 0 ? R : 0), 'metal'); L(s * W - (s > 0 ? R : 0), DA.deck + 0.25, -W + R, s * W + (s < 0 ? R : 0), DA.deck + 0.25 + DA.rail, W - R, 'metal'); }
+    const [b0, b1, bw] = DA.board; L(-bw, b0, 0.9, bw, b1, 1.05, 'metal'); // the DEAD AIR board, on the south face
+    const F = DA.fence, g = DA.gate; // the fence round the foot (thin: chain-link), its gate open on the south side
+    L(-F, 0, -F - 0.05, F, DA.fenceH, -F + 0.05, 'metal'); L(-F - 0.05, 0, -F, -F + 0.05, DA.fenceH, F, 'metal'); L(F - 0.05, 0, -F, F + 0.05, DA.fenceH, F, 'metal');
+    L(-F, 0, F - 0.05, -g, DA.fenceH, F + 0.05, 'metal'); L(g, 0, F - 0.05, F, DA.fenceH, F + 0.05, 'metal');
+    for (const a of DA.anchors) { const x = Math.cos(a * Math.PI / 180) * DA.anchorR, z = Math.sin(a * Math.PI / 180) * DA.anchorR; L(x - DA.anchorW, 0, z - DA.anchorW, x + DA.anchorW, DA.anchorH, z + DA.anchorW, 'concrete'); }
+    // the transmitter shack: floor, walls (the door toward the mast, a window west), roof, the studio's racks and desk
+    const [x0, z0, x1, z1] = DA.shack, H = DA.shackH, t = DA.wallT, [d0, d1, dt] = DA.door, [w0, w1, wy0, wy1] = DA.win, top = H - 0.3;
+    L(x0, 0, z0, x1, 0.15, z1, 'concrete');
+    L(x0, 0.15, z0, x1, top, z0 + t, 'metal'); L(x1 - t, 0.15, z0 + t, x1, top, z1 - t, 'metal'); // north, east
+    L(x0, 0.15, z1 - t, d0, top, z1, 'metal'); L(d1, 0.15, z1 - t, x1, top, z1, 'metal'); L(d0, dt, z1 - t, d1, top, z1, 'metal'); // south: the door
+    L(x0, 0.15, z0 + t, x0 + t, top, w0, 'metal'); L(x0, 0.15, w1, x0 + t, top, z1 - t, 'metal'); L(x0, 0.15, w0, x0 + t, wy0, w1, 'metal'); L(x0, wy1, w0, x0 + t, top, w1, 'metal'); // west: the window
+    L(x0 - 0.15, top, z0 - 0.15, x1 + 0.15, H, z1 + 0.15, 'metal'); // roof
+    for (const [r0, r1] of DA.racks) L(r0, 0.15, z0 + t, r1, 0.15 + DA.rackH, z0 + t + DA.rackD, 'metal');
+    const [k0, kz0, k1, kz1, kh] = DA.desk; L(k0, 0.15, kz0, k1, kh, kz1, 'wood'); // (k1 = the east wall's inside face)
   });
 }
 
