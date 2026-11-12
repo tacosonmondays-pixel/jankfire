@@ -229,7 +229,7 @@ export function installMech(Room, U) {
     mechEmpty(m) { return !!m && (m.st === 'wait' || m.st === 'idle'); },
     mechEmpties() { const out = []; for (const m of this.mechMap().values()) if (this.mechEmpty(m)) out.push(m); return out; },
     mechCanHit(m, by) {
-      if (!this.mechEmpty(m) || !by || !by.alive || (this.round && this.round.over)) return false;
+      if (!this.mechEmpty(m) || this.mechMap().get(m.id) !== m || !by || !by.alive || (this.round && this.round.over)) return false; // (gone mid-blast: a chain skips it)
       const o = this.players.get(m.o);
       return !!o && o !== by && !this.friendly(o, by);
     },
@@ -262,16 +262,19 @@ export function installMech(Room, U) {
       const n = now(), w = typeof m.w === 'string' && Object.hasOwn(WEAPONS, m.w) && WEAPONS[m.w];
       const mm = Number.isInteger(m.mk) ? this.mechMap().get(m.mk) : null, d = norm(vec3(m.d));
       if (!w || !mm || !d || !p.alive || (w.kind !== 'hitscan' && w.kind !== 'melee') || p.w !== m.w) return;
+      if ((w.slot === 'streak' || w.kind === 'dash') && !p.scythe) return; // you have to earn it (like onHit)
       if (this.isBall(p) || n < (p.staggerUntil || 0) || !this.allowed(p, m.w) || (this.zm && !this.zmArm(p, m.w))) return;
       if (!this.mechCanHit(mm, p)) return;
       const melee = w.kind === 'melee', hv = melee && m.heavy === 1 && w.heavy ? w.heavy : null;
-      const rate = melee ? 0 : Math.max(this.rateOf(m.w, w, p.hp), w.fanHammer ? w.fanHammer.rate : 0) * (w.hands || 1);
+      const fan = !!(w.fanHammer && m.fan === 1); // (the revolver: fanning only when you say so, and its cylinder counts below)
+      const rate = melee ? 0 : fan ? w.fanHammer.rate : this.rateOf(m.w, w, p.hp) * (w.hands || 1);
       const iv = melee ? (hv ? hv.cd : w.cd || 0.4) * 750 : 1000 / rate * 0.6;
       const T = p.mkT || (p.mkT = new Map()); // one clock per mech, whatever you hold: swapping guns can't add rates up
       if (n - (T.get(mm.id) || 0) < iv) return;
       if (T.size > 8) for (const k of T.keys()) if (!this.mechMap().has(k)) T.delete(k);
       T.set(mm.id, n);
-      const e = [p.pos[0], p.pos[1] + PH.eye, p.pos[2]], slack = (melee ? 1.5 : 3) + Math.hypot(...p.vel) * 0.3; // (measured to its box, not its feet: less slack than a player gets)
+      const sp = Math.min(40, Math.hypot(...p.vel)); // (your speed buys a little lag slack: capped, the client says what it is)
+      const e = [p.pos[0], p.pos[1] + PH.eye, p.pos[2]], slack = melee ? 1.5 + sp * 0.1 : 3 + sp * 0.3; // (measured to its box, not its feet: less slack than a player gets)
       const reach = (melee ? (hv ? hv.range : w.range + (m.w === 'katana' ? (p.kat || 0) * (w.grow || 0) : 0)) : w.range || 200) + slack;
       const q = this.mechNear(mm, e), dq = Math.hypot(q[0] - e[0], q[1] - e[1], q[2] - e[2]);
       if (dq > reach) return;
@@ -281,10 +284,11 @@ export function installMech(Room, U) {
         if (dq > 1.5 && (d[0] * (q[0] - e[0]) + d[1] * (q[1] - e[1]) + d[2] * (q[2] - e[2])) / dq < Math.cos(cone)) return;
         if (!this.mechSeen(mm, e)) return;
       } else { // a bullet: its line has to pass through the box (a little slack for lag), with no wall before it
-        const h = rayBox(e, d, this.mechBox(mm, 0.6 + Math.hypot(...p.vel) * 0.08), reach);
+        const h = rayBox(e, d, this.mechBox(mm, 0.6 + sp * 0.08), reach);
         if (!h) return;
-        at = [e[0] + d[0] * h.t, e[1] + d[1] * h.t, e[2] + d[2] * h.t];
-        if (h.t > 0.4 && raycast(e, d, h.t - 0.3, this.boxes)) return;
+        const hr = rayBox(e, d, this.mechBox(mm), reach); // where it meets the real box (null: the lag slack's edge)
+        at = hr ? [e[0] + d[0] * hr.t, e[1] + d[1] * hr.t, e[2] + d[2] * hr.t] : [e[0] + d[0] * h.t, e[1] + d[1] * h.t, e[2] + d[2] * h.t];
+        if (raycast(e, d, Math.max(0, (hr ? hr.t : h.t) - 0.3), this.boxes) || !clear(e, q, this.boxes)) return; // no wall before it, ever
         head = at[1] >= mm.p[1] + MECH[mm.f].c0 && at[1] <= mm.p[1] + MECH[mm.f].c1;
       }
       let dmg;
@@ -293,8 +297,11 @@ export function installMech(Room, U) {
         const pellets = w.pellets || 1, F = MECH[mm.f], R = (w.spread || 0) * dq * 0.7; // most pellets that could land on a box this size at this distance
         const most = pellets <= 1 ? 1 : Math.max(1, Math.min(pellets, Math.ceil(pellets * Math.min(1, (2 * F.hw * F.h) / (Math.PI * R * R || 1)) * 1.35 + 2)));
         const pit = { min: [mm.p[0] - F.hw - 0.6, mm.p[1] + F.c0 - 0.6, mm.p[2] - F.hw - 0.6], max: [mm.p[0] + F.hw + 0.6, mm.p[1] + F.c1 + 0.6, mm.p[2] + F.hw + 0.6] }; // the cockpit (+ lag slack)
-        const cnt = Math.max(1, Math.min(most, Math.floor(Number(m.n)) || 1)), hs = rayBox(e, d, pit, reach) ? Math.max(0, Math.min(cnt, Math.floor(Number(m.h)) || 0)) : 0; // (a headshot has to be aimed at the cockpit)
-        dmg = (w.fanHammer && m.fan === 1 ? w.fanHammer.dmg : w.dmg) * (cnt - hs + hs * MECH.head);
+        const hp = rayBox(e, d, pit, reach), hpOk = hp && !raycast(e, d, Math.max(0, hp.t - 0.3), this.boxes);
+        const cnt = Math.max(1, Math.min(most, Math.floor(Number(m.n)) || 1)), hs = hpOk ? Math.max(0, Math.min(cnt, Math.floor(Number(m.h)) || 0)) : 0; // (a headshot has to be aimed at the cockpit, and see it)
+        const mul = w.fanHammer ? this.revolverHit(p, { pos: mm.p, vel: [0, 0, 0] }, fan, w) : 1; // the revolver's own cylinder: 6, then a reload; fanned = fan damage
+        if (!mul) return;
+        dmg = w.dmg * mul * (cnt - hs + hs * MECH.head);
         head = hs > 0;
       }
       this.mechHarm(mm, p, m.w, dmg, head, at);

@@ -504,6 +504,41 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   C.got.length = 0; await crowd(1300, fNear);
   const flist = C.all('mech', (m) => m.k === 'list').pop();
   ok(fgone && flist && !flist.m.some((e) => e[0] === fid), 'and it is gone');
+  // review probes (#413), on G's waiting NIGHT SHIFT by the warehouse wall: an unearned streak gun, the revolver at fan
+  // rate with no reload, a fake velocity through the wall / from too far
+  const G2 = await client('probe', { mf: 'nightshift' }); await sleep(300);
+  const gAt = [-8, Y, -10], gS = [-3, Y, -10], cG = [0, Y, -10], cGE = [cG[0], Y + 1.6, cG[2]];
+  const gring = (ms, cp = cG, co = {}) => hold(ms, [[A, () => P, { f: MF.MECH }], [B, () => B.spos || nsP, { f: MF.MECH }], [C, cp, co], [G2, gS]]);
+  await gring(1800);
+  G2.send({ t: 'deploy', r: 'mechdrop', at: gAt, mf: 'nightshift' });
+  const gc = await G2.wait('mech', (m) => m.k === 'call', 1500);
+  await gring(2900);
+  const gl = G2.take('mech', (m) => m.k === 'land'), gid = gc ? gc.id : -1, gp = gl ? gl.p : gAt, gBody = [gp[0], gp[1] + 2, gp[2]], gPit = [gp[0], gp[1] + 3.9, gp[2]];
+  ok(gc && gl && gc.f === 'nightshift', 'probe mech: G calls a NIGHT SHIFT in by the wall, it waits');
+  await gring(400, cG, { w: 'scythe_rifle' }); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'scythe_rifle', d: aim(cGE, gBody).d, n: 1, h: 0 }); await gring(300, cG, { w: 'scythe_rifle' });
+  ok(!hurts(C, gid).length, `the scythe's rifle without earning the scythe: ${hurts(C, gid).length ? hurts(C, gid)[0].a + ' damage' : 'nothing'}`);
+  const gIn = [-14, Y, -12]; // in the warehouse, the metal wall between it and the mech
+  await gring(400, gIn, { v: [90000, 0, 0] }); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'ar', d: aim([gIn[0], Y + 1.6, gIn[2]], gBody).d, n: 1, h: 0 }); await gring(250, gIn, { v: [90000, 0, 0] });
+  C.send({ t: 'hit', mk: gid, w: 'ar', d: aim([gIn[0], Y + 1.6, gIn[2]], gPit).d, n: 1, h: 1 }); await gring(250, gIn, { v: [90000, 0, 0] });
+  ok(!hurts(C, gid).length, `through the wall with a fake 90 km/s velocity (body + cockpit): ${hurts(C, gid).length} hits`);
+  const gFar = [gp[0] + 12, Y, gp[2]];
+  await gring(400, gFar, { v: [90000, 0, 0], w: 'knife' }); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'knife', d: aim([gFar[0], Y + 1.6, gFar[2]], gBody).d }); await gring(250, gFar, { v: [90000, 0, 0], w: 'knife' });
+  ok(!hurts(C, gid).length, `a knife (2.6 m) from 12 m with a fake velocity: ${hurts(C, gid).length} hits`);
+  await gring(2700, cG, { w: 'revolver' }); C.got.length = 0; // (a fresh cylinder)
+  for (let i = 0; i < 8; i++) { C.send({ t: 'hit', mk: gid, w: 'revolver', d: aim(cGE, gBody).d, n: 1, h: 0 }); await gring(110, cG, { w: 'revolver' }); }
+  const rv = hurts(C, gid), rvd = rv.reduce((a, m) => a + m.a, 0);
+  ok(rv.length >= 1 && rv.length <= 6 && rvd <= 160, `8 revolver taps 110 ms apart: ${rv.length} hits, ${rvd} damage (the cylinder's rules, as for a player: early "taps" are fan damage; old: 8 hits, 320)`);
+  await gring(2700, cG, { w: 'revolver' }); C.got.length = 0;
+  for (let i = 0; i < 9; i++) { C.send({ t: 'hit', mk: gid, w: 'revolver', d: aim(cGE, gBody).d, n: 1, h: 0, fan: 1 }); await gring(110, cG, { w: 'revolver' }); }
+  const rfan = hurts(C, gid);
+  ok(rfan.length >= 1 && rfan.length <= 6 && rfan.every((m) => m.a <= 28), `9 fanned shots: ${rfan.length} hits of ${rfan.map((m) => m.a).join('/')} (6 a cylinder, then a reload; fan damage)`);
+  await gring(300); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'ar', d: aim(cGE, gBody).d, n: 1, h: 0 }); await gring(250);
+  ok((lastHurt(C, gid) || {}).a === 11, 'and a plain AR shot from 8 m still lands: 11');
+  G2.ws.close();
   // a chicken rocket's blast hurts an empty mech too (B hops out again)
   await sleep(1700);
   await hold(300, [[B, () => B.spos, { f: MF.MECH }], [C, [24, Y, -18]]]);
