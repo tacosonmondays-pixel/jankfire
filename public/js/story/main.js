@@ -141,7 +141,7 @@ async function openPicker() {
     card.append(el('b', null, `SLOT ${i + 1}`));
     if (!open) card.append(el('span', null, 'locked: needs a server update'));
     else if (!c) card.append(el('span', null, 'empty. a fresh body, still in the wrapper.'));
-    else card.append(el('span', null, `ACT ${c.act} · ${c.chapter.replace(/_/g, ' ')} · ${Math.floor(c.playtime / 60)} min · ${c.coupons} coupons`));
+    else card.append(el('span', null, `ACT ${c.act} · ${c.title || String(c.chapter).replace(/_/g, ' ')} · ${Math.floor(c.playtime / 60)} min · ${c.coupons} coupons`));
     if (open) {
       const go = el('button', 'st-btn yellow', c ? 'CONTINUE' : 'NEW GAME');
       go.addEventListener('click', async () => {
