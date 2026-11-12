@@ -3,7 +3,7 @@
 // (server/editplay.js); the owner's client builds the same copy from the room's cfg.edit. Never listed anywhere (not in
 // MAP_ORDER, not enumerable), and dropped when the room closes.
 import { MAPS, MAP_BUILDERS, unstick } from './map.js';
-import { applyEdits, validEdits } from './mapedit.js';
+import { applyEdits, validEdits, saneMap, boxSigs } from './mapedit.js';
 import { EDITS } from './mapedits/index.js';
 
 export const MAX_EDIT_OPS = 2000;
@@ -17,10 +17,11 @@ export function buildEdited(id, e) {
   if (Object.hasOwn(MAPS, id)) return id;
   const def = MAP_BUILDERS[e.base]();
   if (EDITS[e.base]) applyEdits(def, EDITS[e.base]); // (the map as it ships, then yours on top)
+  const keep = boxSigs(def);
   applyEdits(def, { ops: e.ops });
+  if (!saneMap(def, keep)) return null; // (moves and sizes stacked op after op: every box must still be a sane size, in sane places)
   unstick(def.boxes, [...def.spawns, ...(def.teamSpawns ? [...def.teamSpawns.att, ...def.teamSpawns.def] : [])]);
-  const src = MAPS[e.base];
-  if (src && src.sd) { def.sd = true; def.base = src.base; }
+  // (no sd / base link: a mode change must never swap the copy for the unedited map)
   def.name = (def.name || e.base) + ' (your edits)';
   Object.defineProperty(MAPS, id, { value: def, configurable: true, enumerable: false, writable: true });
   return id;

@@ -14,7 +14,7 @@ import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { buildEdited, dropEdited } from '../shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS rooms
-import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { warmMap, startGraphSweeper, forgetMap } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
 import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
@@ -550,7 +550,7 @@ class Room {
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
-    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) { dropEdited(this.editMap); console.log('[edit] dropped ' + this.editMap); } } // (the edited map goes with its room)
+    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) { forgetMap(this.editMap); dropEdited(this.editMap); console.log('[edit] dropped ' + this.editMap); } } // (the edited map goes with its room)
     else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
@@ -3205,6 +3205,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
+    if (this.editMap) { const m = MAPS[this.editMap]; if (!m || !GAMES[g].zombies !== !m.zm || (GAMES[g].sites && !(m.sites && m.sites.length)) || (GAMES[g].mapOk && !GAMES[g].mapOk(m))) return false; } // (an edited map's room plays its edited map, or not that mode)
     if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok.includes(ZM.testMap) ? ZM.testMap : ok[0]; this.smokes.clear(); } // zombies comes with its own map (JF_ZM_MAP: which)
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
@@ -4156,7 +4157,7 @@ function roomFor(mode, ws, cfg) {
   }
   // the map editor's PLAY HERE WITH BOTS (owner only: server.js only sets cfg._edit from a checked ticket): a private bots
   // room on a fresh copy of the map with the owner's edits (shared/editmaps.js), gone when the room closes
-  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg._edit) {
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg._edit && [...rooms.values()].filter((r) => r.editMap).length < 2) { // (at most two of these at once: each is a whole map)
     const id = buildEdited('ed_' + cfg._edit.base + '_' + (nextId++), cfg._edit);
     if (id) {
       const r = new Room(`bots:edit:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');

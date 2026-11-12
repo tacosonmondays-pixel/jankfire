@@ -12,6 +12,12 @@ const mem = () => { const u = process.memoryUsage(); return `heap ${(u.heapUsed 
 export function onForget(fn) { forgetters.push(fn); }
 export function onWarm(fn) { warmers.push(fn); }
 export const graphBuilt = (m) => !!(m && m.peekGraph && m.peekGraph());
+// a map that's going away for good (the map editor's PLAY HERE copies): its graph and every cache built from it
+export function forgetMap(id) {
+  const m = MAPS[id];
+  if (m) { if (m.dropGraph) m.dropGraph(); for (const fn of forgetters) fn(m, id); }
+  used.delete(id);
+}
 
 // a room is on map id (just started on it, or still there): note it, and build what its bots need right away
 export function warmMap(room, id) {

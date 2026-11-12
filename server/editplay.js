@@ -14,9 +14,10 @@ export const isOwner = (acctName) => !!OWNER && typeof acctName === 'string' && 
 
 function readBody(req) {
   return new Promise((res, rej) => {
-    let n = 0; const parts = [];
-    req.on('data', (c) => { n += c.length; if (n > MAX_BODY) { rej(new Error('too big')); req.destroy(); } else parts.push(c); });
-    req.on('end', () => { try { res(JSON.parse(Buffer.concat(parts).toString('utf8'))); } catch (e) { rej(e); } });
+    let n = 0, over = false; const parts = [];
+    if (Number(req.headers['content-length']) > MAX_BODY) { over = true; rej(new Error('too big')); req.resume(); return; } // (said so up front: drain it, answer 413)
+    req.on('data', (c) => { if (over) return; n += c.length; if (n > MAX_BODY) { over = true; parts.length = 0; rej(new Error('too big')); } else parts.push(c); });
+    req.on('end', () => { if (over) return; try { res(JSON.parse(Buffer.concat(parts).toString('utf8'))); } catch (e) { rej(e); } });
     req.on('error', rej);
   });
 }
@@ -29,7 +30,7 @@ export async function editTicketHttp(req, res, accounts) {
     const u = auth ? await accounts.verify(auth).catch(() => null) : null;
     if (!u || !isOwner(u.name_lower)) return send(403, { error: 'only the owner can do this' });
     let body = null;
-    try { body = await readBody(req); } catch { return send(400, { error: 'bad or too big' }); }
+    try { body = await readBody(req); } catch (e) { return send(e && e.message === 'too big' ? 413 : 400, { error: e && e.message === 'too big' ? 'too many edits for one go' : 'bad edits' }); }
     const edit = body && typeof body === 'object' ? { base: body.map, ops: body.ops } : null;
     if (!okEdit(edit)) return send(400, { error: 'those edits look broken' });
     const now = Date.now();
@@ -43,8 +44,8 @@ export async function editTicketHttp(req, res, accounts) {
 export function takeTicket(ticket, acctName) {
   if (typeof ticket !== 'string' || ticket.length !== 24) return null;
   const t = tickets.get(ticket);
-  if (!t) return null;
+  if (!t || !isOwner(acctName) || t.acct !== acctName) return null; // (someone else holding it can't burn the owner's ticket)
   tickets.delete(ticket);
-  if (Date.now() - t.t > TTL || !isOwner(acctName) || t.acct !== acctName) return null;
+  if (Date.now() - t.t > TTL) return null;
   return t.edit;
 }
