@@ -15,13 +15,13 @@ import { biLifeMap, updateBiLife } from './bilife.js';
 export const BI_SKY = {
   zen: 0x2a6fe4, mid: 0x74c0ff, hor: 0xe0f3ff, sea: 0xa8dcf2, // zenith, mid sky, horizon haze, under the horizon
   sunCol: 0xfff3d6, glow: 0xfff0c0,
-  cloudLit: 0xffffff, cloudShade: 0xf2cdd2, cloudWarm: 0xffe8d0, // (the owner's refs: pastel clouds with peach-pink undersides)
+  cloudLit: 0xffffff, cloudShade: 0xe2d6ee, cloudWarm: 0xffe9d6, // (the owner's refs: pastel clouds with peach-pink undersides)
   cover: 0.4, // how much of the sky overhead is cloud (0..1)
   towers: 1.0, // how tall the horizon cumulus stand
   drift: 0.004, // overhead clouds' wind (sky units / s)
   fog: 0xc8ecfa, fogNear: 140, fogFar: 1150, // aerial perspective: the far shore fades into the horizon haze
-  grade: [1.08, 0.025, 1.02, 1], // saturation, warmth, contrast, on (post.js final pass; only when shaders are on)
-  film: [0.55, 0.35], // a filmic curve (bright things roll off, never clip flat) and vibrance (post.js)
+  grade: [1.16, 0.02, 1.06, 1], // saturation, warmth, contrast, on (post.js final pass; only when shaders are on)
+  film: [0.3, 0.45], // a filmic curve (bright things roll off, never clip flat) and vibrance (post.js)
   // the light (the owner's refs: "vibrant", high-key): a warm bright sun and a strong blue sky fill bouncing green off the
   // grass, so shade is soft and coloured, never black
   light: { sun: 0xfff1d8, sunK: 1.06, hemi: [0xa9d6ff, 0x8fbf6a], hemiK: 1.18 },
