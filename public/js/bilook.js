@@ -20,6 +20,7 @@ void main() { vDir = normalize( position ); vec4 p = modelViewMatrix * vec4( pos
 const FRAG = `uniform vec3 uZen; uniform vec3 uMid; uniform vec3 uHor; uniform vec3 uSea; uniform vec3 uSun; uniform vec3 uSunCol; uniform vec3 uGlow;
 uniform vec3 uLit; uniform vec3 uShade; uniform vec3 uWarm; uniform float uCover; uniform float uTowers; uniform float uT; uniform float uOct;
 uniform float uStars; uniform float uMoon; uniform float uGlowK; uniform float uDisc;
+uniform float uRidgeT; uniform float uRidgeH; uniform vec3 uRidgeA; uniform vec3 uRidgeB; uniform vec3 uRidgeC; uniform float uNight;
 varying vec3 vDir;
 float h21( vec2 p ) { p = fract( p * vec2( 123.34, 456.21 ) ); p += dot( p, p + 45.32 ); return fract( p.x * p.y ); }
 float vn( vec2 p ) { vec2 i = floor( p ), f = fract( p ); f = f * f * ( 3.0 - 2.0 * f );
@@ -75,6 +76,27 @@ void main() {
     cc = mix( cc, uHor, 0.35 * ( 1.0 - smoothstep( 0.0, 0.08, y ) ) ); // their feet are in the haze
     col = mix( col, cc, a );
   }
+  // the distant land, painted: three layers of silhouette, the far ones paler into the haze. 1 = soft green hills,
+  // 2 = jagged mountains with snow on the peaks, 3 = a city skyline (flat roofs, towers, a few lit windows at night)
+  if ( uRidgeT > 0.5 && y > -0.02 && y < uRidgeH * 0.4 + 0.02 ) {
+    float az2 = atan( d.z, d.x );
+    for ( int k = 2; k >= 0; k-- ) {
+      float fk = float( k ), seed = fk * 7.3 + 1.0, hk = uRidgeH * ( 0.11 - fk * 0.025 ), top = 0.0, win = 0.0;
+      if ( uRidgeT < 1.5 ) top = hk * ( 0.45 + 0.75 * fbm( vec2( az2 * ( 2.2 + fk ), seed ) ) );
+      else if ( uRidgeT < 2.5 ) { float n = fbm( vec2( az2 * ( 3.0 + fk * 1.5 ), seed ) ); float rdg = 1.0 - abs( vn( vec2( az2 * ( 9.0 + fk * 4.0 ), seed + 3.0 ) ) * 2.0 - 1.0 ); top = hk * ( 0.25 + 1.2 * n * n + 0.3 * rdg ); }
+      else { float cw = 160.0 + fk * 90.0, ci = floor( az2 * cw / 6.2832 ), h1 = h21( vec2( ci, seed ) ), tall = step( 0.86, h21( vec2( ci, seed + 1.0 ) ) );
+        top = hk * ( 0.25 + 0.55 * h1 + 0.9 * tall * h21( vec2( ci, seed + 2.0 ) ) ) * ( 0.6 + 0.6 * fbm( vec2( az2 * 1.3, seed ) ) );
+        vec2 wp = vec2( fract( az2 * cw / 6.2832 ) * 6.0, y / max( hk, 0.001 ) * 40.0 ); win = step( 0.82, h21( floor( wp ) + ci * 3.7 ) ) * step( 0.2, fract( wp.x ) ) * step( 0.3, fract( wp.y ) ); }
+      if ( y < top ) {
+        vec3 rc = mix( uRidgeA, uRidgeB, fk / 2.0 );
+        rc *= 0.9 + 0.2 * smoothstep( 0.0, max( top, 0.001 ), y ); // a touch lighter toward the tops
+        if ( uRidgeT > 1.5 && uRidgeT < 2.5 ) rc = mix( rc, uRidgeC, smoothstep( 0.62, 0.8, y / max( uRidgeH * 0.11, 0.001 ) ) * ( 1.0 - fk * 0.3 ) ); // snow caps
+        if ( uRidgeT > 2.5 ) rc = mix( rc, uRidgeC, win * uNight * ( 1.0 - fk * 0.35 ) ); // lit windows
+        rc = mix( rc, uHor, smoothstep( 0.05, -0.01, y ) * 0.5 ); // their feet sink into the haze
+        col = rc;
+      }
+    }
+  }
   // the sun's disc (or the moon's, cratered, cool)
   float disc = smoothstep( 0.9993 - uMoon * 0.0003, 0.9997 - uMoon * 0.0003, sd ) * uDisc;
   vec3 dc = uSunCol * 1.6;
@@ -89,6 +111,7 @@ const U = {
   uLit: { value: new THREE.Color() }, uShade: { value: new THREE.Color() }, uWarm: { value: new THREE.Color() },
   uCover: { value: 0.45 }, uTowers: { value: 0.5 }, uT: { value: 0 }, uOct: { value: 6 },
   uStars: { value: 0 }, uMoon: { value: 0 }, uGlowK: { value: 1 }, uDisc: { value: 1 },
+  uRidgeT: { value: 0 }, uRidgeH: { value: 1 }, uRidgeA: { value: new THREE.Color() }, uRidgeB: { value: new THREE.Color() }, uRidgeC: { value: new THREE.Color() }, uNight: { value: 0 },
 };
 let dome = null, on = false, hidden = [], sunLight = null;
 function make() {
@@ -102,7 +125,10 @@ function paint(S) {
   U.uSunCol.value.setHex(S.sunCol); U.uGlow.value.setHex(S.glow);
   U.uLit.value.setHex(S.cloudLit); U.uShade.value.setHex(S.cloudShade); U.uWarm.value.setHex(S.cloudWarm);
   U.uCover.value = S.cover; U.uTowers.value = S.towers;
-  U.uStars.value = S.stars || 0; U.uMoon.value = S.moon ? 1 : 0; U.uGlowK.value = S.glowK ?? 1; U.uDisc.value = S.disc ?? 1;
+  U.uStars.value = S.stars || 0; U.uMoon.value = S.moon ? 1 : 0; U.uGlowK.value = S.glowK ?? 1; U.uDisc.value = S.disc ?? 1; U.uNight.value = S.moon ? 1 : 0;
+  const R = S.ridges; // { type: 'hills' | 'mountains' | 'city', h, near, far, top (snow / windows) }
+  U.uRidgeT.value = R ? { hills: 1, mountains: 2, city: 3 }[R.type] || 0 : 0;
+  if (R) { U.uRidgeH.value = R.h ?? 1; U.uRidgeA.value.setHex(R.near); U.uRidgeB.value.setHex(R.far); U.uRidgeC.value.setHex(R.top ?? 0xffffff); }
 }
 
 // world.js, after a map is in (and lighting.js has aimed the sun): hide: the usual sky sphere, sun cube, box clouds
@@ -119,6 +145,7 @@ export function biLookMap(id, hide) {
   if (!dome) G.scene.add(make());
   paint(look.sky);
   for (const o of hide) if (o && o.visible) { o.visible = false; hidden.push(o); }
+  if (look.sky.ridges) G.scene.traverse((o) => { if (o.material && o.material.userData && o.material.userData.mtn && o.visible) { o.visible = false; hidden.push(o); } }); // (the sky paints the far land: scenery.js's cone mountains go)
   sunLight = null;
   G.scene.traverse((o) => { if (!sunLight && o.isDirectionalLight && o.castShadow !== undefined && o.parent === G.scene) sunLight = o; });
   const f = G.scene.fog, fg = look.fog; if (fg) { if (fg.color != null) f.color.setHex(fg.color); if (fg.near != null) f.near = fg.near; if (fg.far != null) f.far = fg.far; }

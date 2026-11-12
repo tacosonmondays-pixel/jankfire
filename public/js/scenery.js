@@ -61,6 +61,7 @@ export function buildScenery(scene, map, id, voidMesh) {
 
   // ---- a ring of mountains, far away (unlit, faded into the sky)
   const mtnMat = basic(fade(pal.mtn, fog, 0.5)), snowMat = basic(fade(pal.snow, fog, 0.35));
+  mtnMat.userData.mtn = snowMat.userData.mtn = 1; // (a map with a painted sky hides the mountain ring: bilook.js)
   const drop = cfg.theme === 'sky' ? 50 : 0; // sky maps: the void plane sits under the cloud sea, so the bases go down past it
   for (let i = 0; i < (cfg.mtn === false ? 0 : 34); i++) {
     const a = (i / 34) * Math.PI * 2 + r() * 0.15, d = 700 + r() * 300;

@@ -19,13 +19,15 @@ export const LOOKS = {
   },
   // the cul-de-sac: a pastel late afternoon, pink haze on the horizon, lavender-shaded cumulus, lawns full of tufts
   suburb: {
-    sky: { zen: 0x2c78ee, mid: 0x7fb8ff, hor: 0xffd6ec, sea: 0xd9b4d6, sunCol: 0xfff0d8, glow: 0xffe2cc, cloudLit: 0xfffaf4, cloudShade: 0xc6b6ea, cloudWarm: 0xffe0ea, cover: 0.38, towers: 0.75, glowK: 1.25, drift: 0.004 },
+    sky: { zen: 0x2c78ee, mid: 0x7fb8ff, hor: 0xffd6ec, sea: 0xd9b4d6, sunCol: 0xfff0d8, glow: 0xffe2cc, cloudLit: 0xfffaf4, cloudShade: 0xc6b6ea, cloudWarm: 0xffe0ea, cover: 0.38, towers: 0.75, glowK: 1.25, drift: 0.004,
+      ridges: { type: 'hills', h: 1.1, near: 0x5c8f63, far: 0xb9b4d6 } },
     grade: [1.1, 0.03, 1.05, 1],
     life: { boxGrass: ['grass'], flowers: 0.06, gulls: 1, boats: 0, sway: SWAY },
   },
   // the depot on the night shift: a purple dusk going to night, stars, a moon, the yard's lawn round the fences
   warehouse: {
-    sky: { zen: 0x0b0d2c, mid: 0x2e2660, hor: 0x6a3c7e, sea: 0x2a1a3a, sunCol: 0xe6ecff, glow: 0x8a7cc0, cloudLit: 0x8c88c4, cloudShade: 0x2a2450, cloudWarm: 0xa07cb4, cover: 0.3, towers: 0.55, stars: 0.9, moon: 1, glowK: 0.9, drift: 0.003 },
+    sky: { zen: 0x0b0d2c, mid: 0x2e2660, hor: 0x6a3c7e, sea: 0x2a1a3a, sunCol: 0xe6ecff, glow: 0x8a7cc0, cloudLit: 0x8c88c4, cloudShade: 0x2a2450, cloudWarm: 0xa07cb4, cover: 0.3, towers: 0.55, stars: 0.9, moon: 1, glowK: 0.9, drift: 0.003,
+      ridges: { type: 'city', h: 1.0, near: 0x1c1834, far: 0x3c3060, top: 0xffd27a } },
     grade: [1.06, -0.02, 1.06, 1],
     life: { boxGrass: ['grass'], flowers: 0.02, gulls: 0, boats: 0, sway: SWAY, tint: 0x9aa0c8 },
   },
