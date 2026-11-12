@@ -6,7 +6,6 @@ export const PATCH_NOTES = [
     'battle island\'s grass got deeper, sunnier and blotchier. in a good way.',
     'in a mech, the wrecking ball or the overdrive rig, your normal weapon bar gets out of the way, then pops back when you hop out.',
     'jankburg: the firewall\'s towers got windows, a STAFF ONLY door and a smiley the size of a bus. the jump pads still work. security is watching (badly).',
-    'story mode loads faster and shows a loading bar instead of a frozen screen.',
   ] },
   { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
     'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
