@@ -61,8 +61,17 @@ function findSpots(map) {
 // the points bots can walk to and the zone can close on: open ground inside the play area
 function groundSpots(map) {
   if (map._brGround) return map._brGround;
-  return (map._brGround = findSpots(map).filter((s) => s.p[1] < 1.6 && !outOfBounds(map, s.p)));
+  return (map._brGround = findSpots(map).filter((s) => onGround(map, s.p) && !outOfBounds(map, s.p)));
 }
+// is p down on the ground (not a roof)? a city (Jankburg): street level, under 1.6 m. an island (shaped ground with a
+// sea: map.boxes.terrain + map.seaY): on the terrain's own surface, and above the sea
+export function onGround(map, p) {
+  const T = map.boxes && map.boxes.terrain;
+  if (!T || map.seaY == null) return p[1] < 1.6;
+  const g = T.at(p[0], p[2]);
+  return g != null && Math.abs(g - p[1]) <= 0.3 && (map.seaY == null || g > map.seaY);
+}
+export { groundSpots }; // (tests)
 
 // a tier for a find: its base tier, plus luck (better spots roll higher)
 function rollTier(base, q) {
@@ -99,12 +108,14 @@ export function installRoyale(Room, H) {
         steps.push({ c: cc, r: r2(nr), wait, shrink, dps });
         c = cc; r = nr;
       }
+      if (this.isleOn) this.isleZoneSteps(steps, z0, ground); // battle island: its own 5 rings (server/islemeter.js)
       const zone = { t0: n, c0: [z0[0], z0[1]], r0: z0[2], steps };
       const end = steps.reduce((t, s) => t + (s.wait + s.shrink) * 1000, n) + 90000;
       this.br = { id: n, phase: 'blimp', path, zone, t0: n, peak: 0, winner: 0, endAt: 0, out: [], zoneT: n, loot: new Map(), nextLoot: 1, log: [], leader: 0, crates: [], nextCrate: 1, drops: [75000, 170000], goblins: [42000, 150000], vend: new Map() };
       for (const g of [...this.players.values()]) if (g.goblin) this.remove(g);
       if (this.round) { this.round.target = 0; this.round.ends = end; }
       this.brSpawnLoot();
+      if (this.isleOn) this.isleCells(); // battle island: energy cells for the mech meter
       const list = this.fighters();
       for (const p of list) this.brBoard(p);
       this.br.peak = list.length;
@@ -270,6 +281,8 @@ export function installRoyale(Room, H) {
         const t = Math.min(room, l.n || 1);
         s[l.id] += t;
         if (t < (l.n || 1)) { l.n -= t; this.broadcast({ t: 'br', k: 'loot', l: [this.brLootInfo(l)] }); this.brLoadout(p); return true; }
+      } else if (l.k === 'cell') { // battle island: +20% mech meter (server/islemeter.js)
+        if (!this.isleOn || !this.isleCell(p)) return false;
       } else if (l.k === 'armor') {
         if (s.armor >= BR.armor.max) return false;
         s.armor = Math.min(BR.armor.max, s.armor + ARMOR_OF[l.id]);
@@ -565,18 +578,20 @@ export function installRoyale(Room, H) {
       for (const l of B.loot.values()) {
         const k = Math.floor(l.p[0] / 30) + ',' + Math.floor(l.p[2] / 30), c = cells.get(k) || { v: 0, p: l.p, n: 0, taken: 0 };
         c.v += l.k === 'gun' ? 2 + l.tier : 1; c.n++;
-        if (l.p[1] < 1.6 && !raycast([l.p[0], l.p[1] + 0.3, l.p[2]], [0, 1, 0], 80, this.boxes)) c.p = l.p; // land on open ground in that area (not on the roof over it)
+        if (onGround(this.map, l.p) && !raycast([l.p[0], l.p[1] + 0.3, l.p[2]], [0, 1, 0], 80, this.boxes)) c.p = l.p; // land on open ground in that area (not on the roof over it)
         cells.set(k, c);
       }
       for (const o of this.fighters()) if (o !== b && o.br && o.br.ai && o.br.ai.cell) { const c = cells.get(o.br.ai.cell); if (c) c.taken++; }
       const aggro = Math.random();
       let best = null, bv = -1e9;
       for (const [k, c] of cells) {
-        if (outOfBounds(this.map, c.p) || c.p[1] > 1.6) continue;
+        if (outOfBounds(this.map, c.p) || !onGround(this.map, c.p)) continue; // (the island: land, not the sea)
         const v = (c.v * (aggro > 0.8 ? 1.5 : 1)) / Math.pow(1 + c.taken * (aggro > 0.8 ? 0.4 : 2.5), 2) + Math.random() * 4; // the brave go where the loot is; the rest go where the people aren't
         if (v > bv) { bv = v; best = [k, c]; }
       }
-      const drop = best ? best[1].p.slice() : (spots[0] ? spots[0].p.slice() : [0, 0, 0]);
+      let drop = best ? best[1].p.slice() : (spots[0] ? spots[0].p.slice() : [0, 0, 0]);
+      const pads = (this.map.royale && this.map.royale.drops) || [];
+      if (pads.length && (!best || Math.random() < 0.5)) { const d = pick(pads); drop = [d[0], d[1], d[2]]; } // a map's drop pads (the island: always land)
       if (LOG) B.log.push(`${b.name} wants to land at ${drop[0] | 0},${drop[2] | 0} (${aggro > 0.75 ? 'hot drop' : 'quiet'})`);
       return { drop, cell: best ? best[0] : null, aggro, cautious: Math.random(), jumpR: 25 + Math.random() * 25, lastD: null, loot: 0, lootT: 0, skip: new Map(), roam: null, roamT: 0, pickT: 0, healT: 0, wT: 0 };
     },
@@ -701,6 +716,7 @@ export function installRoyale(Room, H) {
       if (l.k === 'ammo') return s.slots.some((g) => g && g.ammo != null && g.ammo < ammoFor(g.w)) ? 1.6 : 0;
       if (l.k === 'gadget') return !s.gadget || s.gadget.n <= 0 ? 1.2 : s.gadget.i === l.id ? 0.6 : 0;
       if (l.k === 'melee') return s.melee.w === BR.melee ? 1 + l.tier : MELEE[l.id] && l.tier > s.melee.tier ? 1 : 0;
+      if (l.k === 'cell') return this.isleOn ? this.isleCellWant(b) : 0; // battle island: energy cells
       return 0;
     },
     brBotLoot(b, range = 45) {
