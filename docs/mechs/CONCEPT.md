@@ -1,7 +1,8 @@
 # Mechs: concept pass (phase 1)
 
 Owner's ask: "a mech with that feel" (late-2010s anime battle-royale mechs), way higher quality than everything else.
-Two original JANKFIRE frames. Nothing here is copied: no names, logos, silhouettes or signature shapes from any game
+Two original JANKFIRE frames. The research behind them (Super Mecha Champions, mobile-suit design language, the
+anime feel, and what we avoid) is in `docs/mechs/RESEARCH.md`. Nothing here is copied: no names, logos, silhouettes or signature shapes from any game
 or show (no V-fin, no wing binders, no capes, no crests from anything). Working names; the owner can rename them.
 
 **Status: waiting for the owner's look approval.** Phase 2 (final detail, full rigs, clips, LODs, game files) starts
@@ -21,7 +22,11 @@ only after that.
 ## PAPER PLANE (the light flyer)
 - **Size:** 4.85 m to the top of the helmet crest, wing tips at about 5.8 m. Long legs, narrow waist, small head.
 - **Idea:** folded paper. Every plate is a crisp origami facet; the chest is a paper plane's nose with the cockpit
-  canopy on its keel (the nose is the hatch); a crest fold runs over the helmet; the ears are folded flaps.
+  canopy on its keel (the nose is the hatch); a crest fold runs over the helmet; the ears are folded flaps. The face
+  is a **split shutter visor**: three glowing slats either side of a white keel (no eyes, on purpose). A
+  **folded-crane emblem** on the chest.
+- **Wing drone:** a little **origami crane** docked on the left wing (its own joint). It peels off, pecks the target
+  and comes back.
 - **Wings:** two folded paper halves hinged at the shoulder blades. Stowed up and out like a V behind the shoulders
   (the heroic silhouette); for jet mode they swing down flat into a dart. A FOLD HERE line with scissors on top,
   notebook paper underneath (blue rules, red margin, a biro smiley, "80 GSM").
@@ -30,14 +35,16 @@ only after that.
   HOW'S MY PILOTING? sticker on the backpack, a PERMIT 0451 parking sticker on the shin, A4 on the pod, 07 on the thighs.
 - **Jet mode (shown):** body flat, legs together with the feet pointed, arms tucked, head up, pods turned forward,
   wings down. In phase 2 the legs can also fold at the knee if the owner wants a shorter jet.
-- **Colours:** A **SKY MAIL** (sky blue, white, yellow, navy frame, yellow eyes, cyan thrust).
-  B **PINK SLIP** (hot pink, white, yellow, plum frame, cyan eyes, pink thrust).
+- **Colours:** A **SKY MAIL** (sky blue, white, yellow, navy frame, yellow visor, cyan thrust).
+  B **PINK SLIP** (hot pink, white, yellow, plum frame, cyan visor, pink thrust).
 
 ## NIGHT SHIFT (the heavy knight)
 - **Size:** 5.7 m to the top of the helmet, about 6 m to the top of the beacon. Broad, heavy, short legs, big feet.
-- **Idea:** a knight who works night security. A great helm with one glowing visor slit and a spinning amber
-  **security beacon** on top (instead of a plume), a walkie-talkie antenna, a barrel breastplate with **hi-vis
-  reflective bands** and a brass NIGHT SHIFT badge. The breastplate is the cockpit hatch (it drops like a drawbridge).
+- **Idea:** a knight who works night security. A great helm with a **hard-hat ridge and peak** (hi-vis yellow), one
+  glowing visor bar and a spinning amber **security beacon** on top (instead of a plume), a walkie-talkie antenna, a
+  barrel breastplate with **hi-vis reflective bands**, a brass NIGHT SHIFT badge and a **timecard** stuck in a slot
+  (clocked in, never out). The breastplate is the cockpit hatch (it drops like a drawbridge). Boosters on the back
+  and low on each calf.
 - **Sword:** a **snap-off blade** the size of a car (a box cutter's angled tip and snap lines) with glowing energy edges,
   a slider on the housing, a rubber grip and a chunky guard.
 - **Shield:** a tower shield with a **PLEASE HOLD** LED display (a hold-music note, a progress bar stuck at 25%),
@@ -56,7 +63,7 @@ only after that.
   are a colour swap. Glossy clear coat on the paint, metal frame, emissive visor / thrusters / edges.
 - Concept files only: `docs/mechs/concept/*_concept.glb` (rest pose, colour A) + `*_poses.json` (the stance and jet
   mode as three.js quaternions per joint). Nothing is wired into the game yet and nothing ships in `public/`.
-- Blockout tris: PAPER PLANE ~30k, NIGHT SHIFT ~35k (one LOD, solid colours, box UVs). Phase 2 adds the real detail,
+- Blockout tris: PAPER PLANE ~31k, NIGHT SHIFT ~37k (one LOD, solid colours, box UVs). Phase 2 adds the real detail,
   an atlas, crusty wear, LODs and the tri report per LOD.
 - Asset gate: 0 errors on both (`-- mech=<name>` runs it). Warnings accepted for a blockout: box UV overlap, flat n-gons.
 
