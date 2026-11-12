@@ -317,6 +317,7 @@ function battleIsland() {
     spawns.push([p.c[0], 0.2, p.c[1]]);
   }
   // ---- the ground gets its shape: the plan's heights everywhere, painted by what each bit is
+  const HB = PLAN.harbour, onApron = (x, z) => x > HB.x0 - 4 && x < HB.x1 + 4 && z > 104 && z < HB.z;
   const steep = (x, z) => G.slope(x, z) > 1.05, wet = (x, z) => G.at(x, z) < SEA - 0.05, dry = (x, z) => !wet(x, z);
   const T = shapeGround(B, D, { region: REGION, mat: 'sand', seed: 77, up: 0, down: 0, step: 0.5, coarse: 2, soft: 1.15,
     relief: [
@@ -324,7 +325,7 @@ function battleIsland() {
       { f: G.f, mat: 'grass', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.3 && !steep(x, z) },
       { f: G.f, mat: 'leaves', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.1 && jungle(x, z) && !steep(x, z) },
       { f: G.f, mat: 'stone', rock: true, paint: (x, z) => steep(x, z) }, // cliffs, the quarry's terrace faces, the ridge's crags
-      { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && onRoad(x, z) && !steep(x, z) },
+      { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && (onRoad(x, z) || onApron(x, z)) && !steep(x, z) }, // (the port's yard behind the quay too: a working dock, not a lawn)
     ], points: [...spawns, ...drops, ...cells] });
   for (const q of [...drops, ...cells]) q[1] = Math.round(q[1] * 100) / 100; // (lifted onto the ground by shapeGround)
   let graph = null;
