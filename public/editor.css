@@ -35,3 +35,25 @@ body.ed { --pink: #ff4fd8; --yel: #ffe14d; --cyan: #4fd8ff; --green: #39ff14; --
 #edX::after { top: 8px; left: 0; height: 2px; width: 18px; }
 #edCall { position: fixed; left: 50%; top: 16%; transform: translateX(-50%) rotate(-2deg); font: 700 44px var(--font); color: var(--yel); text-shadow: 4px 4px 0 #ff00dc, -2px -2px 0 #000; pointer-events: none; opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
 #edToast { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); background: var(--yel); color: #000; border: 3px solid #000; box-shadow: 5px 5px 0 var(--pink); padding: 4px 12px; font: 700 15px var(--font); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+#edTop button.edMain { transform: rotate(-1.5deg); }
+#edPalBtn { background: var(--cyan) !important; box-shadow: 4px 4px 0 var(--pink) !important; transform: rotate(1.5deg) !important; }
+#edPal { left: 12px; top: 92px; bottom: 74px; width: 300px; padding: 10px 12px; display: flex; flex-direction: column; transform: rotate(-0.4deg); }
+.edTabs button { padding: 4px 4px; font-size: 13px; }
+.edTabs button.on { background: var(--pink); color: #fff; }
+#edPalQ { margin: 8px 0 4px; font: 700 14px var(--font); border: 3px solid #000; box-shadow: 3px 3px 0 var(--cyan); padding: 4px 8px; outline: none; }
+.edSolid { font-size: 13px; margin: 4px 0 6px; cursor: pointer; }
+.edSolid i { font-style: normal; font-size: 11px; color: #bbb; }
+#edPalGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; padding: 4px 6px 8px 0; }
+.edp button.edTile { display: flex; flex-direction: column; align-items: center; padding: 3px; font-size: 11px; line-height: 1.1; background: #2a1436; color: #fff; border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); min-height: 92px; }
+.edp button.edTile:hover { background: #4a2060; }
+.edTile img { width: 72px; height: 72px; object-fit: contain; image-rendering: auto; }
+.edTile span { word-break: break-word; text-align: center; }
+.edPalNone { color: #bbb; font-size: 13px; grid-column: 1 / -1; }
+.edPalTip { font-size: 11px; color: #bbb; margin-top: 6px; }
+#edBots { right: 20px; top: 92px; width: 360px; max-height: 64vh; padding: 10px 12px; display: flex; flex-direction: column; z-index: 3; transform: rotate(-0.5deg); }
+#edBotList { overflow-y: auto; margin: 6px 0; font-size: 13px; }
+#edBotList div { padding: 4px 6px; border-bottom: 2px dashed rgba(255, 79, 216, 0.35); cursor: pointer; }
+#edBotList div.stale { color: var(--red); }
+#edBotList div.undone { opacity: 0.55; }
+#edBotList em { color: var(--cyan); font-style: normal; }
+.edBad { color: var(--red); } .edOk { color: var(--green); }

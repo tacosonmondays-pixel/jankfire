@@ -38,7 +38,7 @@ const MOOD = {
   deadmall: { el: 74, sh: 0.5, fill: [0xffb070, 0.2], indoor: 1 },
   school: { el: 72, sh: 0.5, fill: [0x9ab8ff, 0.22], indoor: 1 },
   hospital: { el: 72, sh: 0.5, fill: [0xa8e0d8, 0.24], indoor: 1 },
-  battleisland: { el: 52, sh: 0.7, fill: [0x7fd8ff, 0.3], sk: 1.25, hk: 0.78 }, // anime noon: a high hot sun, crisp shade, the sea's teal bouncing up (bilook.js does the sky)
+  battleisland: { el: 52, sh: 0.5, fill: [0x7fd8ff, 0.34], sk: 1.25, hk: 0.78 }, // anime noon: a high hot sun, crisp shade, the sea's teal bouncing up (bilook.js does the sky)
   jankburg: { el: 32, sh: 0.7, fill: [0x4fd8ff, 0.3] },
 };
 
@@ -316,6 +316,14 @@ function inSun() {
   }
   return true;
 }
+
+// any point: is it in the sun (bounce.js bakes with this). dir is the map's sun, set by lightingMap
+export function sunAt(x, y, z, maxT = 40) {
+  for (let t = 0.3; t < maxT; t += 0.8) if (aoHit(x + dir.x * t, y + dir.y * t, z + dir.z * t, true)) return false;
+  return true;
+}
+export const sunDir = () => dir;
+export const sunBoxes = () => boxesRef;
 
 const tmpW = new THREE.Vector3();
 const rq = { near2: 0, half2: 0, dyn: false, cx: 0, cz: 0, px: 0, pz: 0 };
