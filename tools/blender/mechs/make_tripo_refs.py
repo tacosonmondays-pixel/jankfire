@@ -12,7 +12,7 @@ ARGS = dict(a.split('=', 1) if '=' in a else (a, '1') for a in (sys.argv[sys.arg
 OUT = os.path.join(ROOT, 'docs', 'mechs', 'tripo')
 SPP, RES = int(ARGS.get('spp', 48)), int(ARGS.get('res', 1024))
 BACKDROP = 0xc9ced6  # light neutral grey (exposure lifts it a little)
-PARTS = {'paperplane': {'wings': ['wing_L', 'wing_R'], 'drone': ['crane']}, 'nightshift': {'sword': ['sword'], 'shield': ['shield']}}
+PARTS = {'paperplane': {'wings': ['wing_L', 'wing_R'], 'drone': ['drone']}, 'nightshift': {'sword': ['sword'], 'shield': ['shield']}}
 r = math.radians
 APOSE = {'upperarm_R': (0, 0, r(32)), 'upperarm_L': (0, 0, r(-32)), 'forearm_R': (0, 0, r(6)), 'forearm_L': (0, 0, r(-6)),
          'thigh_R': (0, 0, r(5)), 'thigh_L': (0, 0, r(-5)), 'foot_R': (0, 0, r(-5)), 'foot_L': (0, 0, r(5))}

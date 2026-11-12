@@ -93,7 +93,8 @@ def build():
         mk.joint('thigh_' + L, J('thigh', s), 'hips'); mk.joint('shin_' + L, J('shin', s), 'thigh_' + L)
         mk.joint('foot_' + L, J('foot', s), 'shin_' + L); mk.joint('toe_' + L, J('toe', s), 'foot_' + L)
         mk.joint('skirt_' + L, J('skirt', s), 'hips'); mk.joint('wing_' + L, J('wing', s), 'backpack')
-    mk.joint('crane', g_of(wing_stow(-1) @ gv(*CRANE_AT)), 'wing_L')
+    mk.joint('drone', g_of(wing_stow(-1) @ gv(*CRANE_AT)), 'wing_L')  # (the origami crane drone)
+    for L in ('L', 'R'): mk.joint('drone_wing_' + L, g_of(wing_stow(-1) @ gv(*add(CRANE_AT, (0, 0, 0.07)))), 'drone')
     T = {}  # decal targets per joint
     head(mk, M, T); torso(mk, M, T)
     for s, L in ((1, 'R'), (-1, 'L')):
@@ -286,8 +287,8 @@ def arm(mk, M, T, s, L):
     # the missile pod: a white wedge of homing pencils (sharpened ends out the front, pink erasers out the back)
     PD = [hull([(x(a), y, z) for a in (0.80, 1.20) for (y, z) in ((4.13, -0.16), (4.13, 0.40), (4.38, -0.20), (4.42, 0.36))] + [(x(1.0), 4.46, 0.10)], M['white'], 0.022, name='pod')]
     PD.append(hull([(x(a), y, z) for a in (0.79, 1.21) for (y, z) in ((4.12, 0.06), (4.12, 0.16), (4.43, 0.06), (4.43, 0.16))], M['paint'], 0.008, name='pod_band'))
-    for cx in (0.87, 1.0, 1.13):
-        c = (x(cx), 4.27, 0.0)
+    for cx, cy in [(cx, cy) for cy in (4.335, 4.21) for cx in (0.87, 1.0, 1.13)]:  # 2 x 3: six homing pencils a side
+        c = (x(cx), cy, 0.0)
         PD.append(frustum(add(c, (0, 0, -0.10)), add(c, (0, 0, -0.30)), 0.056, 0.056, M['pencil'], 6, bev=0.004, ref=(0, 1, 0), rot=0, name='pencil'))
         PD.append(lathe_ax([(0.054, 0.0), (0.012, 0.13)], add(c, (0, 0, -0.298)), (0, 0, -1), M['wood'], 6, 'tip'))
         PD.append(lathe_ax([(0.0135, 0.0), (0.0, 0.035)], add(c, (0, 0, -0.426)), (0, 0, -1), M['lead'], 6, 'lead'))
@@ -359,21 +360,24 @@ def wing(mk, M, T, s, L):
 
 def crane(mk, M, T):
     """the wing drone: a little origami crane (0.7 m across) docked on the left wing's top face. It peels off, pecks
-    the target and comes back (its own joint, 'crane'). Built in the wing's flat jet layout, stowed with the wing"""
+    the target and comes back (its own joint, 'drone', with 'drone_wing_L|R' to flap). Built in the wing's flat jet layout,
+    stowed with the wing"""
     c0 = CRANE_AT; F, U, R = (0, 1, 0), (0, 0, 1), (1, 0, 0)  # forward = toward the hinge, up = off the wing
     def Q(f, u, r): return add(c0, add(mul(F, f), add(mul(U, u), mul(R, r))))
     C = [hull([Q(-0.16, 0.02, 0), Q(0.16, 0.02, 0), Q(0, 0.13, 0), Q(0, 0.03, 0.075), Q(0, 0.03, -0.075), Q(0, -0.012, 0)], M['paper'], 0.006, name='crane_body')]
     C.append(tri_plate(Q(0.08, 0.03, 0), Q(0.15, 0.02, 0), Q(0.31, 0.24, 0), 0.016, M['paper'], 0.0, name='crane_neck'))
     C.append(tri_plate(Q(0.29, 0.235, 0), Q(0.31, 0.215, 0), Q(0.39, 0.19, 0), 0.02, M['paint'], 0.0, name='crane_head'))
     C.append(tri_plate(Q(-0.08, 0.03, 0), Q(-0.15, 0.02, 0), Q(-0.30, 0.22, 0), 0.016, M['paper'], 0.0, name='crane_tail'))
-    for sd in (-1, 1):
-        C.append(tri_plate(Q(-0.08, 0.07, 0), Q(0.08, 0.07, 0), Q(-0.03, 0.17, sd * 0.35), 0.014, M['paper'], 0.0, name='crane_wing'))
-        C.append(tri_plate(Q(-0.045, 0.155, sd * 0.29), Q(-0.02, 0.16, sd * 0.29), Q(-0.03, 0.17, sd * 0.35), 0.02, M['paint'], 0.0, name='crane_wingtip'))
+    W = {'L': [], 'R': []}
+    for sd, L in ((-1, 'L'), (1, 'R')):  # (the crane faces +y here, so its right is +x)
+        W[L].append(tri_plate(Q(-0.08, 0.07, 0), Q(0.08, 0.07, 0), Q(-0.03, 0.17, sd * 0.35), 0.014, M['paper'], 0.0, name='crane_wing'))
+        W[L].append(tri_plate(Q(-0.045, 0.155, sd * 0.29), Q(-0.02, 0.16, sd * 0.29), Q(-0.03, 0.17, sd * 0.35), 0.02, M['paint'], 0.0, name='crane_wingtip'))
     C.append(hull([Q(0.33, 0.215 + dy, dr) for dy in (-0.012, 0.012) for dr in (-0.012, 0.012)] + [Q(0.35, 0.21, 0)], M['thrust'], 0.002, name='crane_eye'))
     C.append(hull([Q(f, u, r) for f in (-0.05, 0.05) for u in (-0.03, 0.005) for r in (-0.03, 0.03)], M['frame'], 0.006, name='crane_dock'))
     Mx = wing_stow(-1)
-    for o in C: xform(o, Mx)
-    mk.add('crane', C); T['crane'] = C
+    for o in C + W['L'] + W['R']: xform(o, Mx)
+    mk.add('drone', C); mk.add('drone_wing_L', W['L']); mk.add('drone_wing_R', W['R']); T['drone'] = C + W['L'] + W['R']
+    mk.meta['drone_axis'] = [round(v, 5) for v in g_of(Mx.to_3x3() @ gv(0, 1, 0))]  # the crane's nose / its wings' flap axis
 
 
 def crane_img():

@@ -295,7 +295,9 @@ def leg(mk, M, T, s, L):
         SH.append(skin(gb, [(x(a), yy, 2) for a in (0.55, 0.73) for yy in (y + 0.05, y + 0.09)], (0, 0, -1), 0.02, 0.03, M['thrust'], 0.002, 'calfglow'))
     for xa in (0.54, 0.74):  # leg boosters (verniers) low on the calf, pointing out and down
         q, n = proj(gb, (x(xa), 0.76, 2), (0, 0, -1))
-        if q: SH += nozzle(add(q, mul(n, -0.015)), norm(add(n, (0, -0.7, 0))), 0.075, 0.15, M, 'calfnozzle')
+        if q:
+            ax = norm(add(n, (0, -0.7, 0))); SH += nozzle(add(q, mul(n, -0.015)), ax, 0.075, 0.15, M, 'calfnozzle')
+            mk.meta.setdefault('marks', {})[f'mk_thrust_calf_{L}{int(xa > 0.6)}'] = {'joint': 'shin_' + L, 'at': add(add(q, mul(n, -0.015)), mul(ax, 0.15)), 'dir': ax}
     mk.add('shin_' + L, SH); T['shin_' + L] = SH
     F = [ball(J('foot', s), 0.17, M['frame'], name='ankle')]
     for sd in (-1, 1):
@@ -385,6 +387,7 @@ def sword(mk, M, T):
                   [P(L1 - 0.47 + 0.02, hw * 0.92 + 0.03, 0), P(L1 + 0.02, -hw * 0.92 - 0.02, 0)], M['glow'], 0.004, name='edge_tip'))
     mk.add('sword', S); T['sword'] = S
     T['sword_frame'] = (G, d, w, t, L0, L1, hw)
+    mk.meta.setdefault('marks', {}).update({'mk_sword_base': {'joint': 'sword', 'at': P(L0, 0, 0), 'dir': d}, 'mk_sword_tip': {'joint': 'sword', 'at': P(L1, 0, 0), 'dir': d}})
 
 
 def shield(mk, M, T):
@@ -411,6 +414,7 @@ def shield(mk, M, T):
     S.append(hull([add(c, (dx, y, z)) for dx in (0.06, 0.16) for y in (2.74 - 2.92, 3.10 - 2.92) for z in (-0.10, 0.22)], M['frame'], 0.015, name='shield_mount'))
     mk.add('shield', S); T['shield'] = S
     T['shield_frame'] = (c, hw, hh, th)
+    mk.meta.setdefault('marks', {})['mk_shield_face'] = {'joint': 'shield', 'at': Q(0, 0, th / 2 + 0.07), 'dir': (-1, 0, 0)}
 
 
 def decals(mk, M, T):
