@@ -3736,9 +3736,11 @@ function spireArch(B, D, id, x, z, y, ranges, dr) {
 function skyCola(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('colacan', [x, y, z - 5], 0, () => { // (drawn as the Blender can, p_colacan: tools/blender/make_colacan.py)
     add(x - 2.1, y, z - 7.1, x + 2.1, y + 9, z - 2.9, 'toyred'); // the can: a core you bump into inside an octagon (four turned slabs)
     for (let k = 0; k < 4; k++) { D.obb(x, y + 4.5, z - 5, 6, 9, 2.49, (k * Math.PI) / 4, 'toyred'); D.obb(x, y + 9.15, z - 5, 5.4, 0.3, 2.2, (k * Math.PI) / 4, 'chrome'); for (const y0 of [0.6, 8.0]) D.obb(x, y + y0 + 0.2, z - 5, 6.12, 0.4, 2.54, (k * Math.PI) / 4, 'chrome'); }
     D.add(x - 1.5, y + 9.3, z - 5.4, x + 1.5, y + 9.5, z - 4.6, 'chrome'); // the ring pull
+    });
     for (const dx of [-9, -6.5, 6.5, 9]) { add(x + dx - 1, y, z + 9, x + dx + 1, y + 2.4, z + 10.2, dx < 0 ? 'toyred' : 'toyblue'); D.add(x + dx - 0.8, y + 0.8, z + 8.96, x + dx + 0.8, y + 2.1, z + 9, 'glass'); } // vending machines
     cratePile({ add: B.local(0, 0, 0, y) }, x - 12, z - 10, 5, r); cratePile({ add: B.local(0, 0, 0, y) }, x + 9, z - 10, 4, r);
     billboard(W, x, z - 11.6, y, 'x'); }
