@@ -1,5 +1,5 @@
-# The Suburb house (shared/map.js home()): two storeys of lap siding over the house's own boxes, a stepped shingle
-# roof with flashing, a brick chimney, a porch on turned-ish posts, the brick garage with its roller door up, the shed,
+# The Suburb house (shared/map.js home()): two storeys of lap siding over the house's own boxes, a shingled hip roof
+# over its curb (hiproof.py), a brick chimney, a porch on turned-ish posts, the brick garage with its roller door up, the shed,
 # the picket fence, real stairs inside (treads, risers, stringers, balusters, a handrail) and the grime of a street
 # the HOA gave up on. siding / roof / shutters / pickets are repainted per house by the game.
 # run: blender52 -b --python tools/blender/arch/make_home.py -- [out.glb]
@@ -7,6 +7,7 @@ import os, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from archkit import Kit, OUTDIR, KIT, corner_boards, cap, bands
 import flair as FL
+import hiproof as HR
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 OUT = argv[0] if argv else os.path.join(OUTDIR, 'home.glb')
@@ -117,15 +118,12 @@ for (sx, sz) in ((1, 0), (-1, 0), (0, 1), (0, -1)):
     zs = sorted([lo[0][2], lo[1][2]]); xs = sorted([lo[0][0], lo[1][0]])
     g0, g1 = ((lo[0][0], zs[0] + sh), (lo[0][0], zs[1] - sh)) if sx else ((xs[0], lo[0][2]), (xs[1], lo[0][2]))
     K.bar([(g0[0], yt - drop - 0.06 - (0.012 if sx else 0), g0[1]), (g1[0], yt - drop - 0.06 - (0.012 if sx else 0), g1[1])], 0.12, 0.12, 'metal')  # the gutter
-# ---- the stepped roof: shingles on every tier, flashing on each step, the chimney with a cap and a flue
-for b in K.take(lambda b: roofm(b) and b['min'][1] >= 2 * F + 0.29):
-    K.plain(b, {'all': 'shingle@roof', 'bottom': None}, sub=1.5)
-    x0, y0, z0 = b['min']; x1, y1, z1 = b['max']
-    e, i = 0.025, 0.03  # flashing round the step: e proud of the tier's faces, i back into it (hidden)
-    for zz, (za, zb) in ((z0, (z0 - e, z0 + i)), (z1, (z1 - i, z1 + e))):
-        K.box((x0 - e, y1 - 0.07, za), (x1 + e, y1 + 0.01, zb), {'all': 'metal'}, cull=False)
-    for xa, xb in ((x0 - e, x0 + i), (x1 - i, x1 + e)):
-        K.box((xa, y1 - 0.07, z0 + i), (xb, y1 + 0.01, z1 - i), {'all': 'metal'}, cull=False)
+# ---- the hip roof (hiproof.py): the curb all round the bottom of it, shingled slopes up to the top deck over the six thin
+# steps you stand on (drawn by the shingles, not themselves), ridge caps, a drip edge, vents. then the chimney
+for b in K.take(lambda b: roofm(b) and eq(b['min'][1], 2 * F + 0.3) and b['max'][0] - b['min'][0] > 12):
+    K.plain(b, {'side': 'trimdark', 'top': None, 'bottom': None}, sub=1.5)
+K.take(lambda b: roofm(b) and b['min'][1] >= 2 * F + 0.74)
+HR.hip_roof(K, 2 * F + 0.75)
 for b in K.take(lambda b: b['mat'] == 'brick' and b['min'][1] > 2 * F):
     K.plain(b, {'all': 'brick'}, sub=0.8)
     x0, y0, z0 = b['min']; x1, y1, z1 = b['max']

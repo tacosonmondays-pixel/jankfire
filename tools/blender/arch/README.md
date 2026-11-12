@@ -25,6 +25,12 @@ bots and hits keep the boxes exactly as they were (`node tools/arch/gamehash.mjs
 6. **Check**: `blender52 -b --python tools/blender/arch/sheet.py -- public/models/arch/<id>.glb out.png` renders a
    turnaround; run the `blender-asset-qa` gate on the glb.
 
+## The Suburb houses
+- `make_home.py` (`home`): the open house; `make_home_shut.py` (`home_shut`): S&D's shut ones (`facadeHouse()`, blinds and
+  curtains in every window, the door and the garage shut, FOR SALE boards; their painted-window deco boxes are tagged
+  too, so the model replaces them). Both share `hiproof.py`: a shingled hip roof on the curb with a walkway round it, over
+  the map's `hipCap()` steps (six of 0.15, each under the shingles within 7.5 cm; `tests/suburb_houses.test.mjs`).
+
 ## Rules
 - Anything solid in the game looks solid, anything open looks open: railings that are boxes are panels, windows stay holes
   (only shards in the corners), doors are swung back against the wall, nothing big hangs out where you'd try to stand.

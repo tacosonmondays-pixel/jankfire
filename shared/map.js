@@ -1410,8 +1410,7 @@ function home(B, ox, oz, rot, o, r) {
   L(-1.3, F + 0.25, -5.8, 2.2, F + 0.8, -3.6, 'carpet');
   L(-1.4, F + 0.25, 4.2, 1.2, F + 0.85, 5.8, 'tile');
   // a stepped toy roof with a chimney
-  A(-6.3, 2 * F + 0.3, -5.3, 6.3, 2 * F + 0.75, 5.3, o.roof); A(-4.6, 2 * F + 0.75, -3.8, 4.6, 2 * F + 1.2, 3.8, o.roof);
-  A(-2.8, 2 * F + 1.2, -2.2, 2.8, 2 * F + 1.65, 2.2, o.roof); A(3.4, 2 * F + 0.75, 1.5, 4.4, 2 * F + 2.6, 2.5, 'brick');
+  A(-6.3, 2 * F + 0.3, -5.3, 6.3, 2 * F + 0.75, 5.3, o.roof); hipCap(A, o.roof, 2 * F + 0.75); A(3.4, 2 * F + 0.75, 1.5, 4.4, 2 * F + 2.6, 2.5, 'brick');
   // porch with a neon OPEN HOUSE sign over the door
   A(-3, 0, -7.6, 3, 0.25, -6, 'wood');
   A(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); A(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood');
@@ -1450,6 +1449,13 @@ function home(B, ox, oz, rot, o, r) {
     L(-6.6, 0, 7.2, -3.8, 0.9, 10, 'toyteal'); L(-6.3, 0.9, 7.5, -4.1, 0.95, 9.7, 'water');
     L(-1.8, 0, 8, -0.8, 1.0, 8.8, 'tire');
   }
+}
+
+// the houses' hip roof on the curb at y0 (a walkway round it at the curb's height, as wide as the old bottom tier left you,
+// so the parapet covers you the same): six 0.15 steps from 5.6 x 4.6 up to the top (2.8 x 2.2 at y0 + 0.9), each as far
+// in as the shingles over the middle of its edge (tools/blender/arch/hiproof.py), so on the roof you stand on its slope
+function hipCap(L, mat, y0) {
+  for (let i = 1; i <= 6; i++) { const m = 0.15 * i - 0.075, hx = 5.6 - m * 2.8 / 0.9, hz = 4.6 - m * 2.4 / 0.9; L(-hx, y0 + 0.15 * (i - 1), -hz, hx, y0 + 0.15 * i, hz, mat); }
 }
 
 // a lollipop tree: trunk and a few chunky stacked canopies, now and then in a colour no tree should be
@@ -1525,15 +1531,17 @@ function adBoard(B, x, z, y, along, ad, w = 12, h = 5) {
 // a show home you can't go into (the S&D layout keeps its lanes clean): solid, with painted-on windows and door, the
 // stepped toy roof, porch, garage, the car on the drive, and its own fences down both sides to the back of the lot
 function facadeHouse(B, D, ox, oz, rot, o, r) {
-  const L = B.local(ox, oz, rot), Ld = D.local(ox, oz, rot);
-  L(-7, 0, -6, 7, 6.8, 6, o.siding);
-  L(-7.2, 6.8, -6.2, 7.2, 7.1, 6.2, o.roof); L(-6.3, 7.1, -5.3, 6.3, 7.55, 5.3, o.roof); L(-4.6, 7.55, -3.8, 4.6, 8.0, 3.8, o.roof);
-  L(-2.8, 8.0, -2.2, 2.8, 8.45, 2.2, o.roof); L(3.4, 7.55, 1.5, 4.4, 9.4, 2.5, 'brick');
+  // the house goes through A (tagged for its Blender model, home_shut), the car, the paths, the fences and the yard through L
+  const A = B.arch('home_shut', ox, oz, rot, 0, { paint: { siding: o.siding, roof: o.roof } }), L = A.plain, Ld = D.local(ox, oz, rot), d0 = D.boxes.length;
+  A(-7, 0, -6, 7, 6.8, 6, o.siding);
+  A(-7.2, 6.8, -6.2, 7.2, 7.1, 6.2, o.roof); A(-6.3, 7.1, -5.3, 6.3, 7.55, 5.3, o.roof); hipCap(A, o.roof, 7.55);
+  A(3.4, 7.55, 1.5, 4.4, 9.4, 2.5, 'brick');
   for (const y of [1.1, 4.5]) for (const x of [-5, -2.2, 2.2, 5]) if (!(y < 2 && Math.abs(x) < 3)) { Ld(x - 0.75, y, -6.05, x + 0.75, y + 1.2, -6.0, 'glass'); Ld(x - 0.75, y, 6.0, x + 0.75, y + 1.2, 6.05, 'glass'); }
   for (const y of [1.1, 4.5]) for (const z of [-3, 3]) { Ld(-7.05, y, z - 0.75, -7.0, y + 1.2, z + 0.75, 'glass'); Ld(7.0, y, z - 0.75, 7.05, y + 1.2, z + 0.75, 'glass'); }
   Ld(-1, 0.25, -6.06, 1, 2.6, -6.0, 'wood'); Ld(-1.4, 2.62, -6.12, 1.4, 3.0, -6.06, 'signopen', { fit: 1 });
-  L(-3, 0, -7.6, 3, 0.25, -6, 'wood'); L(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); L(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood'); L(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
-  L(7, 0, -6, 13, 3.2, 1.2, 'brick'); L(6.8, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg'); Ld(7.6, 0.1, -6.06, 12.4, 2.7, -6.0, 'metal');
+  A(-3, 0, -7.6, 3, 0.25, -6, 'wood'); A(-2.9, 0.25, -7.5, -2.6, 3.0, -7.2, 'wood'); A(2.6, 0.25, -7.5, 2.9, 3.0, -7.2, 'wood'); A(-3.2, 3.0, -7.8, 3.2, 3.25, -6.15, o.roof);
+  A(7, 0, -6, 13, 3.2, 1.2, 'brick'); A(6.8, 3.2, -6.2, 13.2, 3.5, 1.4, 'roofg'); Ld(7.6, 0.1, -6.06, 12.4, 2.7, -6.0, 'metal');
+  for (let i = d0; i < D.boxes.length; i++) if (D.boxes[i].mat !== 'signopen') Object.assign(D.boxes[i], { av: 'home_shut', ai: B.boxes.arch.length - 1 }); // (its painted windows, door and garage door: the model's. the neon sign stays the game's)
   L(7.4, 0, -17, 12.8, 0.12, -6, 'sidewalk'); car(L, 10.1, -11.5, 1, o.car);
   L(-1, 0, -17, 1, 0.12, -7.65, 'sidewalk'); L.B(2.2, 0.6, -15.5, 0.15, 1.2, 0.15, 'wood'); L.B(2.2, 1.35, -15.5, 0.5, 0.35, 0.8, 'toyblue');
   L(-8.1, 0, -6, -7.9, 2.2, 14, 'wood'); L(13.9, 0, -6, 14.1, 2.2, 14, 'wood'); L(13, 0, 1.2, 13.9, 2.2, 1.4, 'wood'); // the lot's side fences
