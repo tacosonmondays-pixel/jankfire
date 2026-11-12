@@ -676,7 +676,7 @@ function livingQuarters(B0, D0, dx, dz, st, o = {}) {
   rail(B, D, true, X1 + 0.3, 53.5, -10.45, 10.2); rail(B, D, true, X1 + 0.3, 53.5, 10.45, 10.2); rail(B, D, false, -10.35, 10.35, 53.45, 10.2); // the net's lip (half a metre over the deck: it catches you, mostly)
   for (let x = 35; x < 52; x += 4) for (const z of [-8.9, 8.75]) D.add(x, 10.8, z, x + 0.15, 10.9, z + 0.15, 'neongreen');
   D.add(52.6, 10.2, -10.3, 52.75, 14, -10.15, 'metal'); D.add(52.75, 13.2, -10.35, 54.2, 13.7, -10.1, 'lifeboat');
-  if (!o.noChopper) chopper(B, D, 45.5, RIG.M3 + 0.03, 0.5, 'toyred'); // (on the H)
+  if (!o.noChopper) propOf('heli', [45.5 + dx, RIG.M3 + 0.03, 0.5 + dz], 0, () => chopper(B, D, 45.5, RIG.M3 + 0.03, 0.5, 'toyred')); // (on the H. drawn as the Blender news chopper, p_heli, like Skyline's)
   D.add(34, 8.1, -9, 46, 10.5, 9, 'truss'); D.add(34, 5, -9, 40, 8.1, 9, 'truss'); // the cantilever under it
   D.add(X1 + 0.02, 9.6, -3.5, X1 + 0.08, 10.4, 3.5, 'adhelideck', { fit: 1 });
 }
