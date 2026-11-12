@@ -7,7 +7,8 @@
 //   a few metres. they fade by scaling down into the ground near the edge of their circle, so there's no line.
 //   gulls: a V of two wings flapping in the vertex shader, flocks circling over the beaches.
 //   boats: little low-poly fishing boats (hull, cabin, mast) bobbing and drifting in slow circles.
-// Potato: a smaller circle of tufts, no flowers; gulls and boats stay. Only on Battle Island.
+// Potato: a smaller circle of tufts, no flowers; gulls and boats stay. Only on Battle Island. No tufts on the roads
+// (they aren't grass paint), the mechs' drop pads or the towns' flat ground (map.royale.drops / pois).
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { BOXES } from '/shared/map.js';
@@ -113,6 +114,9 @@ function build() {
 function placeLife(def) {
   const T = BOXES.terrain, sea = def.seaY ?? -0.25, rnd = ((s) => () => (s = (s * 16807) % 2147483647) / 2147483647)(1234);
   S.flocks = []; S.boatList = [];
+  // kept clear of grass and flowers (the map session's ask): the mechs' drop pads, and the towns' flat ground
+  const R = def.royale || {};
+  S.clear = [...(R.drops || []).map((d) => [d[0], d[2], (d[3] || 8) + 1.5]), ...(R.pois || []).map((p) => [p.c[0], p.c[1], (p.flat || p.r || 0) * 0.85])];
   for (let tries = 0; tries < 4000 && (S.flocks.length < 3 || S.boatList.length < BI_LIFE.boats); tries++) {
     const a = rnd() * Math.PI * 2, r = 200 + rnd() * 260, x = Math.cos(a) * r * 1.2, z = Math.sin(a) * r, g = T ? T.at(x, z) : null;
     if (S.flocks.length < 3 && g != null && g > sea - 0.5 && g < sea + 2) S.flocks.push({ x, z, y: 22 + rnd() * 18, r: 18 + rnd() * 20, w: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd() * 0.1), n: 9 });
@@ -128,10 +132,12 @@ function layField(cx, cz) {
   const R = S.lite ? BI_LIFE.rLite : BI_LIFE.r, C = BI_LIFE.cell, sea = S.sea, vz = T.nz + 1;
   const gi = new Set(['grass', 'leaves'].map((m) => T.mats.indexOf(m)).filter((k) => k >= 0));
   let nt = 0, nf = 0;
+  const clr = (S.clear || []).filter((k) => Math.hypot(k[0] - cx, k[1] - cz) < R + k[2]); // (only the ones that reach this patch)
   const i0 = Math.floor((cx - R) / C), i1 = Math.ceil((cx + R) / C), j0 = Math.floor((cz - R) / C), j1 = Math.ceil((cz + R) / C);
   for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
     const x = (i + hash(i, j, 1)) * C, z = (j + hash(i, j, 2)) * C;
     if ((x - cx) * (x - cx) + (z - cz) * (z - cz) > R * R) continue;
+    if (clr.length && clr.some((k) => (x - k[0]) * (x - k[0]) + (z - k[1]) * (z - k[1]) < k[2] * k[2])) continue;
     const ti = Math.floor(x - T.x0), tj = Math.floor(z - T.z0);
     if (ti < 1 || tj < 1 || ti >= T.nx - 1 || tj >= T.nz - 1 || !T.ok[ti * T.nz + tj] || !gi.has(T.paint[ti * T.nz + tj])) continue;
     const y = T.at(x, z); if (y == null || y < sea + 0.25) continue;
