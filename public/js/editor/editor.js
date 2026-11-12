@@ -9,7 +9,7 @@ import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeTh
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
 import { lockPointer, lookFilter } from '../mouselook.js';
-import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats } from '../world.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats, relightMap } from '../world.js';
 import { whenGlb } from '../glbkit.js';
 import { wantArch } from '../archfield.js';
 import { initPalette, togglePalette, solidOn, modelBounds } from './palette.js';
@@ -69,6 +69,7 @@ function rebuild() {
   BOXES.length = 0; BOXES.push(...def.boxes); resetGrid(BOXES);
   const t0 = performance.now();
   refreshMapVisuals();
+  relightMap(); // (the lamps and neon light where their boxes are now)
   rebuildT = performance.now() - t0;
   drawSel();
 }

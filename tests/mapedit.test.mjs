@@ -2,7 +2,7 @@
 // edit replays to the same layout on a fresh build, undo puts it back exactly, a remodelled map reports stale ops
 import assert from 'node:assert/strict';
 import { MAPS } from '../shared/map.js';
-import { indexMap, bySig, pivotOf, applyOp, applyEdits, xfThing, xfUndo, thingData, validEdits, canScale } from '../shared/mapedit.js';
+import { indexMap, bySig, pivotOf, applyOp, applyEdits, xfThing, xfUndo, thingData, validEdits, canScale, removeThing, insertThing } from '../shared/mapedit.js';
 let n = 0; const t = (name, fn) => { fn(); n++; console.log('ok', name); };
 const snap = (def) => JSON.stringify([def.boxes, def.boxes.props, def.boxes.arch, def.deco, def.deco && def.deco.props]);
 const fresh = async () => (await import('../shared/map.js?v=' + Math.random())).MAPS; // a second build of every map
@@ -66,6 +66,22 @@ t('buildings move and turn round their own walls (not the map centre) but never 
 t('edit files that would crash the replay are refused', () => {
   for (const it of [{ boxes: [] }, { boxes: [], prop: { id: 'car', a: [0, 0, 0] } }, { boxes: [{ min: [0, 0, 0], max: [1, 1, 1], mat: 'x', pad: 5 }] }, { boxes: [], arch: { id: 'home', p: [0, 0, 0] } }])
     assert.equal(validEdits({ map: 'x', ops: [{ t: 'add', items: [it] }] }), false, JSON.stringify(it));
+});
+
+t("a building's look-only extras go with it, and delete + undo puts it back in its own place in the list", () => {
+  const def = MAPS2.islands_sd, idx = indexMap(def), al = def.boxes.arch;
+  for (const b of def.deco) if (b.av !== undefined) assert.ok(idx.of.get(b) && (idx.of.get(b).kind === 'arch' || b.pv), 'every tagged deco box belongs to its building (or is a prop of its own: a barrel in the wreck)');
+  const t = idx.things.find((x) => x.kind === 'arch' && x.arch.id === 'walks_islands_sd'), n0 = t.dboxes.length, order = al.map((a) => a.id).join();
+  assert.ok(n0 > 10, 'the boardwalks have look-only extras: ' + n0);
+  const d0 = JSON.stringify(t.dboxes[0].min), o = pivotOf(t); xfThing(t, o, 1, 0, [5, 0, 0]);
+  assert.notEqual(JSON.stringify(t.dboxes[0].min), d0, 'its extras moved with it');
+  const tag = () => [...def.boxes, ...def.deco].filter((b) => b.ai !== undefined).every((b) => al[b.ai] && al[b.ai].id === b.av);
+  removeThing(def, idx, t); assert.ok(tag(), 'every box still points at its own building after the delete');
+  insertThing(def, idx, t); assert.equal(al.map((a) => a.id).join(), order, 'same order (the extras v0/v1/v2 go by it)'); assert.ok(tag(), 'and after the undo');
+});
+
+t('props on shaped ground keep their draped boxes (desert wagons, islands crate, bazaar pots)', () => {
+  for (const id of ['desert', 'islands', 'bazaar']) { const idx = indexMap(MAPS2[id]); for (const b of MAPS2[id].boxes) if (b.pv && !b.ter) assert.ok(idx.of.get(b) && idx.of.get(b).kind === 'prop', id + ': a ' + b.pv + ' box with no prop'); }
 });
 
 t('ops whose thing is gone (a remodelled map) come back as stale, the rest still apply', () => {
