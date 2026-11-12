@@ -155,3 +155,18 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
             break
     print('JF_SPRAY', ' '.join(f"{sl['name']} on {sl['joint']} ({sl['size']} m)" for sl in slots) or 'none')
     return made, slots
+
+
+def atlas_mat(mk, number):
+    """the sticker sheet as one alpha-tested material (concept builders: stamp() with it)"""
+    return tex_mat(f'{mk.prefix}_decalmat', image_rgba(f'{mk.prefix}_decals', atlas(number)), rough=0.42, clip=True, cc=0.5)
+
+
+def stamp(targets, cell, c, n, up, w, m, reach=0.3, name=None, off=0.0035):
+    """one sticker from the sheet cast onto targets at c facing n (up = its top, w = its width in metres)"""
+    x, y, cw, ch = CELLS[cell]
+    d = decal(targets, c, n, up, w, w * ch / cw, m, name=name or f'dc_{cell}', reach=reach, off=off)  # (3.5 mm up: clear of faceted plates, still touching)
+    if d is None: return None
+    for l in d.data.uv_layers['UVMap'].data: l.uv = ((x + l.uv[0] * cw) / AW, 1 - (y + (1 - l.uv[1]) * ch) / AH)
+    print(f'JF_DECAL {cell} at {tuple(round(v, 2) for v in c)} ({w:.2f} m)')
+    return d
