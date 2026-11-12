@@ -18,7 +18,7 @@ export function looseStep(boxes, o, p, dt, rest = 0.05, bounce = 0.35, drag = 0.
   p.x += o.v[0] * dt; p.y += o.v[1] * dt; p.z += o.v[2] * dt;
   const still = Math.abs(o.v[1]) < 0.7 && hv < 0.3 && p.y <= o.floorY + rest + 0.03;
   o.ft = (o.ft || 0) - dt;
-  if (o.ft <= 0 || p.y < o.floorY + rest) { o.ft = still ? 0.5 : 0.08; o.floorY = floorUnder(boxes, p.x, Math.max(p.y, o.floorY === NONE ? p.y : Math.min(o.floorY, p.y + 1)), p.z); } // (asked again as it moves, and now and then at rest: a shutter it lay on may have opened)
+  if (o.ft <= 0 || p.y < o.floorY + rest) { o.ft = still ? 0.5 : 0.08; o.floorY = floorUnder(boxes, p.x, Number.isFinite(o.floorY) && o.floorY > NONE / 2 ? Math.max(p.y, Math.min(o.floorY, p.y + 1)) : p.y, p.z); } // (asked again as it moves, and now and then at rest: a shutter it lay on may have opened)
   if (p.y >= o.floorY + rest) return 0;
   p.y = o.floorY + rest;
   const hard = Math.abs(o.v[1]) > 3;
