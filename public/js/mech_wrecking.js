@@ -349,3 +349,4 @@ export const WBK = {
   denied(why) { if (/^chain|no energy/.test(why)) { WS.chain = null; WS.launchUntil = 0; } if (/ultimate/.test(why)) WS.pile = null; },
   key, step, update, flags, pose, remote, event,
 };
+export const wbDebug = () => WS; // (screenshot scripts: wait on the kit's own state)

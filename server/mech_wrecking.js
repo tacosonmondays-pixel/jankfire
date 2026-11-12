@@ -61,8 +61,8 @@ export function installWrecking(Room, U) {
       const W = M.wb;
       if (W.slam && n - W.slam.t > WB.slam.win * 1000) W.slam = null;
       if (W.pile) {
-        const P = WB.pile, up = (P.rise / P.up + P.hang) * 1000 + 300;
-        if (n - W.pile.t > P.life * 1000) { W.pile = null; this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); }
+        const P = WB.pile, up = ((P.rise / P.up + P.hang) * 1000 + 300) * P.slow;
+        if (n - W.pile.t > P.life * 1000 * P.slow) { W.pile = null; this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); }
         else if (W.pile.ph !== 'down' && n - W.pile.t > up) this.wbPileDrop(p, [0, -1, 0], n, true); // (hung there too long: straight down)
         else if (W.pile.ph === 'down' && (n > W.pile.dEnd || hdist(p.pos, W.pile.to) > W.pile.dl + 5)) { W.pile = null; M.bank = Math.min(M.bank, MECH.slack); this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); } // (the dive's 70 m/s is for the trip to its spot: no longer, and not away from it)
       }
@@ -192,7 +192,7 @@ export function installWrecking(Room, U) {
       if (!to) { const h = raycast(e, [0, -1, 0], 200, this.boxes); to = h ? h.point.slice() : [p.pos[0], p.pos[1] - 40, p.pos[2]]; }
       W.pile.ph = 'down'; W.pile.to = to; W.pile.dT = n;
       W.pile.dl = hdist(p.pos, to);
-      W.pile.dEnd = n + Math.hypot(to[0] - p.pos[0], to[1] - p.pos[1], to[2] - p.pos[2]) / P.dive * 2500 + 1500; // (room for a slow client: it can't go anywhere but toward the spot anyway)
+      W.pile.dEnd = n + Math.hypot(to[0] - p.pos[0], to[1] - p.pos[1], to[2] - p.pos[2]) / P.dive * 2500 * P.slow + 1500; // (room for a slow client: it can't go anywhere but toward the spot anyway)
       this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'down', to: to.map(r2) });
     },
     wbPileLand(p, drop, n) {

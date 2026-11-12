@@ -59,7 +59,7 @@ export const MECH = {
     rev: { charge: 0.8, min: 0.25, cost: 20, speed: [26, 36], len: 0.55 }, // LMB hold: spin up on the spot; let go: launch (charge s for full)
     chain: { range: 42, cost: 10, cd: 0.7, life: 7, speed: 38, pump: 10, snap: 4 }, // Shift: the chain grapple. speed = the swing's cap, snap = m past its length before it breaks
     slam: { cd: 6, hop: 13, dive: 46, h0: 1.5, h1: 22, dmg: [35, 130], r: [4, 9], kb: [12, 30], up: [8, 19], win: 4 }, // E: dive down; higher = bigger
-    pile: { rise: 30, up: 28, hang: 2.5, range: 55, dive: 70, min: 10, dmg: 200, edge: 0.3, r: 9, kb: 30, up2: 20, life: 9 }, // Q: PILE DRIVER (rise m at up m/s, hang s to aim, then dive)
+    pile: { rise: 30, up: 28, hang: 2.5, range: 55, dive: 70, min: 10, dmg: 200, edge: 0.3, r: 9, kb: 30, up2: 20, life: 9, slow: 1 }, // Q: PILE DRIVER (rise m at up m/s, hang s to aim, then dive)
     ult: { dmg: 650, time: 110 }, shrug: 3, // passive: no knockback while rolling faster than shrug m/s
   },
 };
