@@ -63,8 +63,8 @@ export function installIsland(Room, H) {
     },
     // everyone's squad, for every client (markers, colours, the kill feed)
     isleSquads() { return this.fighters().filter((p) => p.sq && p.br && this.br && p.br.match === this.br.id).map((p) => [p.id, p.sq]); },
-    isleStart() { if (this.br && this.br.isle) this.broadcast({ t: 'isle', k: 'sq', l: this.isleSquads(), size: ISLE.size }); },
-    isleJoin(p) { if (this.br && this.br.isle && !p.isBot) send(p, { t: 'isle', k: 'sq', l: this.isleSquads(), size: ISLE.size, dn: this.fighters().filter((o) => o.dn && o.alive).map((o) => o.id) }); },
+    isleStart() { if (this.br && this.br.isle) { this.isleHeroAll(); this.broadcast({ t: 'isle', k: 'sq', l: this.isleSquads(), size: ISLE.size, hero: this.isleHeroList() }); } },
+    isleJoin(p) { if (this.br && this.br.isle && !p.isBot) send(p, { t: 'isle', k: 'sq', l: this.isleSquads(), size: ISLE.size, dn: this.fighters().filter((o) => o.dn && o.alive).map((o) => o.id), hero: this.isleHeroList() }); },
 
     // ---------------------------------------------------------- down, not dead
     // damage hook: this hit would kill t. down instead, if someone in the squad is still up (true = downed)
@@ -87,6 +87,7 @@ export function installIsland(Room, H) {
     isleHit(t, amt, attacker, w) {
       const d = t.dn;
       d.left -= amt * ISLE.down.hurt * 1000;
+      if (attacker && attacker !== t) this.isleMeter(attacker, amt * ISLE.meter.dmg, 'dmg');
       this.tag(t, attacker, w);
       this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, dn: 1 });
       if (d.left <= 0) {
@@ -187,6 +188,7 @@ export function installIsland(Room, H) {
       if (t.dn) { const rv = t.dn.rv && this.players.get(t.dn.rv); if (rv && rv.irv) rv.irv = null; t.dn = null; this.broadcast({ t: 'isle', k: 'dead', id: t.id }); }
       const B = this.br, I = B && B.isle;
       if (LOG && I && t.sq) I.log.push(`${t.name} (sq${t.sq}) DEAD to ${killer && killer !== t ? killer.name : w}`);
+      if (I && killer && killer !== t && !this.friendly(killer, t) && w !== 'left') this.isleMeter(killer, ISLE.meter.kill, 'kill');
       if (!I || !t.sq || !this.isleIn(t) || this.isleMates(t.sq).some((o) => this.isleUp(o))) return;
       const sq = t.sq, first = !I.done || !I.done.has(sq);
       if (!first) return;
@@ -253,6 +255,7 @@ export function installIsland(Room, H) {
         if (t.dn.left <= 0) this.isleBleed(t);
       }
       for (const p of this.players.values()) if (p.irv && !this.players.get(p.irv.id)) p.irv = null; // (they left)
+      this.isleMeterTick(n, dt); // the mech meters (server/islemeter.js)
       if (n - I.stT >= 400) { I.stT = n; this.isleStatus(n); }
     },
     // the squad HUD: each squad hears about its own (hp, down + bleed left, who's picking them up)
@@ -269,6 +272,8 @@ export function installIsland(Room, H) {
 
     // ---------------------------------------------------------- messages (true = swallowed: a downed pilot can't)
     isleHandle(p, m) {
+      if (m.t === 'hero') { this.isleHeroPick(p, m.h); return true; } // the hero pick (server/islemeter.js)
+      if (m.t === 'deploy' && !p.dn) { this.isleCall(p, m); return true; } // the streak key: your mech, when the meter's full
       if (!p.dn || !p.alive) return false;
       if (m.t === 's') { if (m.q === p.seq) this.isleSnap(p, m); return false; }
       return DOWN_STOP.has(m.t);
@@ -295,6 +300,7 @@ export function installIsland(Room, H) {
       const s = b.br;
       if (!this.isleIn(b) || s.out || !b.alive) return false;
       if (b.dn) { this.isleCrawl(b, dt); return true; }
+      if (!s.inBlimp && !s.fly) this.isleBotMech(b, now()); // (server/islemeter.js: back into a mech that's waiting)
       const lead = this.isleLead(b);
       if (s.inBlimp && lead && lead !== b) { if (!lead.br.inBlimp) { if (!s.ai) s.ai = this.brBotBrain(b); this.brJump(b); s.follow = lead.id; } return true; }
       const f = s.fly && s.ai && this.players.get(s.follow);

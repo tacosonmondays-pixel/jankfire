@@ -16,12 +16,17 @@ import { movePlayer } from '/shared/physics.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { ISLE, ST, squadOf } from '/shared/island.js';
 import { brOn, brBig, brState } from './royale.js';
+import { HEROES, HERO_IDS, heroName, heroCap } from '/shared/heroes.js';
+import { mechDeployBlock } from './mech.js';
+import { eye } from './player.js';
+import { raycast } from '/shared/physics.js';
 
 const $ = (id) => document.getElementById(id);
-const I = { on: false, sq: new Map(), down: new Set(), rows: [], rv: new Map(), mine: 0, me: false, bleed: 0, bleedT: 0, mk: new Map(), wasDown: new Set() };
+const I = { on: false, sq: new Map(), down: new Set(), rows: [], rv: new Map(), mine: 0, me: false, bleed: 0, bleedT: 0, mk: new Map(), wasDown: new Set(), hero: new Map(), mm: 0, mmOut: 0, mmT: 0 };
 export const isleOn = () => I.on;
 export const isleDown = () => I.on && I.me && ME.alive; // (main.js: hands off everything)
-modeFriends.push((r) => I.on && !!I.mine && I.sq.get(r.id) === I.mine); // your squad: see-through for your bullets, never aim-assisted
+modeFriends.push((r) => I.on && !!I.mine && I.sq.get(r.id) === I.mine);
+G.isleCellOk = () => I.on && I.mm < ISLE.meter.max && !I.mmOut; // (royale.js: walk over an energy cell to grab it) // your squad: see-through for your bullets, never aim-assisted
 
 // ------------------------------------------------------------ css + hud
 const CSS = `
@@ -54,6 +59,23 @@ body.isle-down #crosshair, body.isle-down #hotbar, body.isle-down #ammo, body.is
 #isleRv kbd { background: #ffe14d; color: #000; border: 2px solid #000; padding: 0 6px; margin-right: 8px; font: bold 16px var(--font); }
 #isleRv .bar { height: 10px; border: 2px solid #fff; background: rgba(0,0,0,0.6); margin-top: 5px; display: none; }
 #isleRv .bar div { height: 100%; background: #7dff4f; width: 0; }
+#isleMm { position: absolute; left: 50%; bottom: 100px; width: 330px; transform: translateX(-50%) rotate(-1deg); font: bold 14px var(--font); color: #fff; text-shadow: 1px 1px 0 #000; pointer-events: none; }
+#isleMm .row { display: flex; justify-content: space-between; margin-bottom: 2px; } #isleMm .row b { color: var(--hc, #4fd8ff); letter-spacing: 1px; }
+#isleMm .bar { height: 14px; border: 3px solid #fff; background: rgba(18,8,24,0.85); box-shadow: 4px 4px 0 #000; }
+#isleMm .bar div { height: 100%; width: 0; background: repeating-linear-gradient(90deg, #ffe14d 0 16px, #ffb000 16px 19px); }
+#isleMm.ready .bar { border-color: #ffe14d; animation: isleReady 0.5s steps(2) infinite; } #isleMm.ready .bar div { background: repeating-linear-gradient(90deg, #ff4fd8 0 16px, #ffe14d 16px 22px); }
+#isleMm.out .bar div { background: #555; } #isleMm .key { color: #ffe14d; }
+@keyframes isleReady { 50% { box-shadow: 4px 4px 0 #ff00dc; transform: scale(1.03); } }
+#isleHero { position: absolute; left: 50%; bottom: 120px; transform: translateX(-50%) rotate(0.6deg); display: none; background: rgba(18,8,24,0.92); border: 4px solid #ff4fd8; box-shadow: 8px 8px 0 #4fd8ff; padding: 8px 14px 12px; font-family: var(--font); color: #fff; text-align: center; pointer-events: none; }
+#isleHero h3 { margin: 0 0 6px; font-size: 24px; color: #ffe14d; text-shadow: 3px 3px 0 #ff00dc; letter-spacing: 2px; }
+#isleHero .cards { display: flex; gap: 12px; }
+#isleHero .hc { position: relative; width: 190px; padding: 6px 8px 8px; border: 3px solid var(--c); background: rgba(255,255,255,0.05); box-shadow: 4px 4px 0 #000; text-align: left; }
+#isleHero .hc.on { background: var(--c); color: #000; transform: rotate(-1.5deg) scale(1.04); text-shadow: none; }
+#isleHero .hc.taken { opacity: 0.45; border-style: dashed; }
+#isleHero .hc b { display: block; font-size: 19px; } #isleHero .hc i { font-style: normal; font-size: 12px; display: block; opacity: 0.85; } #isleHero .hc small { display: block; font-size: 12px; margin-top: 3px; }
+#isleHero .hc kbd { position: absolute; right: -6px; top: -10px; background: #ffe14d; color: #000; border: 2px solid #000; font: bold 14px var(--font); padding: 0 6px; }
+#isleHero .hint { font-size: 12px; color: #ccc; margin-top: 6px; }
+#isleSq .ir em { display: block; font-style: normal; font-size: 11px; color: var(--hc, #ccc); letter-spacing: 1px; margin-top: -2px; }
 #roundEnd .isle-sq { margin-top: 4px; } #roundEnd .isle-sq b { color: var(--c); }
 `;
 let el = null;
@@ -61,23 +83,27 @@ function ensure() {
   if (el) return el;
   const s = document.createElement('style'); s.textContent = CSS; document.head.append(s);
   const h = $('hud'), mk = (id, html = '') => { const d = document.createElement('div'); d.id = id; d.innerHTML = html; h.append(d); return d; };
-  el = { sq: mk('isleSq'), down: mk('isleDown', '<div class="t"></div><div class="bb"><div></div></div>'), rv: mk('isleRv', '<span></span><div class="bar"><div></div></div>'), marks: mk('isleMarks') };
+  el = { sq: mk('isleSq'), down: mk('isleDown', '<div class="t"></div><div class="bb"><div></div></div>'), rv: mk('isleRv', '<span></span><div class="bar"><div></div></div>'), marks: mk('isleMarks'),
+    mm: mk('isleMm', '<div class="row"><b></b><span></span></div><div class="bar"><div></div></div>'), hero: mk('isleHero') };
   return el;
 }
 function show(v) {
   ensure();
   el.sq.style.display = v ? '' : 'none';
-  if (!v) { el.down.style.display = 'none'; el.rv.style.display = 'none'; for (const m of I.mk.values()) m.remove(); I.mk.clear(); document.body.classList.remove('isle-down'); }
+  el.mm.style.display = v ? '' : 'none';
+  if (!v) { el.hero.style.display = 'none'; el.down.style.display = 'none'; el.rv.style.display = 'none'; for (const m of I.mk.values()) m.remove(); I.mk.clear(); document.body.classList.remove('isle-down'); }
 }
 const nameOf = (id) => (id === G.myId ? G.myName : (G.names.get(id) || {}).name || '???');
 const colOf = (id) => (id === G.myId ? G.myColor : (G.names.get(id) || {}).color || '#fff');
 
 // ------------------------------------------------------------ net
 function start(m) {
-  I.on = true; I.sq = new Map(m.l); I.mine = I.sq.get(G.myId) || 0;
+  const first = !I.on;
+  I.on = true; I.sq = new Map(m.l); I.mine = I.sq.get(G.myId) || 0; I.hero = new Map(m.hero || []);
+  if (first) { I.mm = 0; I.mmOut = 0; }
   I.down = new Set(m.dn || []); I.rv.clear(); I.me = false; I.rows = [];
   show(true);
-  if (I.mine) { const S = squadOf(I.mine); setTimeout(() => { if (I.on) hud.chat(null, null, `you're in ${S.name}. stick together: hold ${K.label('use')} on a downed squadmate to pick them up`); }, 600); }
+  if (I.mine && first) { const S = squadOf(I.mine); setTimeout(() => { if (I.on) hud.chat(null, null, `you're in ${S.name}. stick together: hold ${K.label('use')} on a downed squadmate to pick them up`); }, 600); }
 }
 function stop() { if (!I.on) return; I.on = false; I.sq.clear(); I.down.clear(); I.me = false; I.mine = 0; for (const id of I.wasDown) standUp(G.remotes.get(id)); I.wasDown.clear(); show(false); }
 export function isleReset() { stop(); }
@@ -85,6 +111,15 @@ net.on('isle', (m) => {
   if (m.k === 'sq') { start(m); return; }
   if (!I.on) return;
   const me = m.id === G.myId, mate = I.sq.get(m.id) === I.mine;
+  if (m.k === 'hero') { if (m.id && m.h) I.hero.set(m.id, m.h); if (me && m.no) { hud.msg(m.why ? m.why.toUpperCase() : 'TAKEN', 1.4); sfx.empty(); } else if (me) sfx.cash(); return; }
+  if (m.k === 'mm') { // your mech meter (the server's): MECH READY when it fills
+    const was = I.mm;
+    I.mm = m.v; I.mmOut = m.out; if (m.h) I.hero.set(G.myId, m.h);
+    if (was < ISLE.meter.max && m.v >= ISLE.meter.max) { brBig('MECH READY', `${heroName(I.hero.get(G.myId))} is waiting · press ${K.label('streak1')} where you want it`, 3.5); sfx.choir(); G.shake = Math.max(G.shake || 0, 0.5); }
+    else if (m.v > was + 12 && !m.out) { hud.msg(`+${Math.round(m.v - was)}% MECH`, 0.8, 'brag'); }
+    return;
+  }
+  if (m.k === 'call') { hud.feed([[nameOf(m.id), colOf(m.id)], ['  called in  ', '#ffe14d'], [heroName(m.h), (HEROES[m.h] || {}).color || '#fff']]); if (me) hud.msg(`${heroName(m.h)} INBOUND`, 1.6, 'brag'); return; }
   if (m.k === 'st') { I.rows = m.m; const r = m.m.find((x) => x[0] === G.myId); if (r && r[2] === ST.DOWN) { I.bleed = r[3] * 100; I.bleedT = performance.now(); } return; }
   if (m.k === 'down') {
     I.down.add(m.id);
@@ -147,7 +182,21 @@ export function isleKey(e, startUse) {
   if (!I.on || !ME.alive) return false;
   if (I.me) return DOWN_KEYS.some((a) => K.matches(a, e));
   if (K.matches('use', e) && !e.repeat && reviveTarget()) { startUse(); return true; }
+  const R = brState();
+  if (R.me && R.me.inBlimp) { const k = ['slot1', 'slot2', 'slot3', 'slot4'].findIndex((a) => K.matches(a, e)); if (k >= 0 && HERO_IDS[k]) { if (!e.repeat) net.send({ t: 'hero', h: HERO_IDS[k] }); return true; } } // the hero pick, on the blimp
+  if (['streak1', 'streak2', 'streak3'].some((a) => K.matches(a, e))) { if (!e.repeat) callMech(); return true; } // the streak key: your mech
   return false;
+}
+// the streak key at 100%: MECH DROP's own marker where you aim (mech.js checks it first; the server has the last word)
+function callMech() {
+  const R = brState();
+  if (R.me && (R.me.inBlimp || R.me.fly)) return;
+  if (I.mmOut) { hud.msg('YOUR MECH IS ALREADY OUT', 1.2); sfx.empty(); return; }
+  if (I.mm < ISLE.meter.max) { hud.msg(`MECH METER ${Math.floor(I.mm)}%`, 1.2); sfx.empty(); return; }
+  const e = eye(), cp = Math.cos(ME.pitch), d = [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp];
+  const h = raycast(e, d, 300, BOXES), at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
+  if (mechDeployBlock('mechdrop', at)) return;
+  net.send({ t: 'deploy', r: 'mechdrop', at: at.map((x) => Math.round(x * 100) / 100) });
 }
 function reviveTarget() {
   if (I.me || !I.mine) return null;
@@ -202,6 +251,7 @@ export function isleFrame(dt, now) {
     if (mine) el.rv.querySelector('.bar div').style.width = `${Math.min(100, (now - mine[1].t0) / mine[1].ms * 100)}%`;
   } else el.rv.style.display = 'none';
   squadPanel(now);
+  meterHud(now);
   markers(now);
 }
 let panelT = 0;
@@ -213,9 +263,35 @@ function squadPanel(now) {
   for (const [id, hp, st, left] of rows) {
     const cls = st === ST.DOWN ? 'dn' : st === ST.OUT ? 'out' : '', w = st === ST.DOWN ? Math.min(100, left * 10 / ISLE.down.bleed) : st === ST.OUT ? 0 : Math.min(100, hp);
     const tag = st === ST.DOWN ? `DOWN ${Math.ceil(left / 10)}s` : st === ST.OUT ? 'OUT' : st === ST.SKY ? 'IN THE SKY' : `${hp}`;
-    h += `<div class="ir ${cls}${id === G.myId ? ' me' : ''}" style="--c:${S.color}"><b>${esc(nameOf(id))}</b><i>${tag}</i><div class="bar"><div style="width:${w}%"></div></div></div>`;
+    const hr = I.hero.get(id);
+    h += `<div class="ir ${cls}${id === G.myId ? ' me' : ''}" style="--c:${S.color};--hc:${hr && HEROES[hr] ? HEROES[hr].color : '#ccc'}"><b>${esc(nameOf(id))}</b>${hr ? `<em>${heroName(hr)}</em>` : ''}<i>${tag}</i><div class="bar"><div style="width:${w}%"></div></div></div>`;
   }
   el.sq.innerHTML = h;
+}
+// the mech meter under your crosshair, and the hero pick while you're still on the blimp
+let heroKey = '';
+function meterHud(now) {
+  const R = brState(), sky = R.me && R.me.inBlimp, hr = I.hero.get(G.myId);
+  el.mm.style.display = ME.alive && !sky && !I.me ? '' : 'none';
+  el.mm.classList.toggle('ready', I.mm >= ISLE.meter.max && !I.mmOut);
+  el.mm.classList.toggle('out', !!I.mmOut);
+  el.mm.style.setProperty('--hc', hr && HEROES[hr] ? HEROES[hr].color : '#4fd8ff');
+  el.mm.querySelector('b').textContent = `MECH · ${heroName(hr)}`;
+  el.mm.querySelector('span').innerHTML = I.mmOut ? 'OUT THERE' : I.mm >= ISLE.meter.max ? `READY · <span class="key">${K.label('streak1')}</span>` : `${Math.floor(I.mm)}%`;
+  el.mm.querySelector('.bar div').style.width = `${I.mmOut ? 100 : Math.min(100, I.mm)}%`;
+  el.hero.style.display = sky && ME.alive && I.mine ? 'block' : 'none';
+  if (!sky) return;
+  const mates = [...I.sq].filter(([id, s]) => s === I.mine && id !== G.myId).map(([id]) => [id, I.hero.get(id)]);
+  const key = hr + '|' + mates.map((m) => m.join(':')).join(',');
+  if (key === heroKey) return;
+  heroKey = key;
+  const size = mates.length + 1, cap = heroCap(size);
+  let h = '<h3>PICK YOUR MECH</h3><div class="cards">';
+  HERO_IDS.forEach((id, i) => {
+    const by = mates.filter((m) => m[1] === id), taken = id !== hr && by.length >= cap, H = HEROES[id];
+    h += `<div class="hc${id === hr ? ' on' : ''}${taken ? ' taken' : ''}" style="--c:${H.color}"><kbd>${K.label('slot' + (i + 1))}</kbd><b>${heroName(id)}</b><i>${H.role}</i><small>${taken ? `taken: ${by.map((m) => esc(nameOf(m[0]))).join(', ')}` : H.blurb}</small></div>`;
+  });
+  el.hero.innerHTML = h + `</div><div class="hint">no doubles in a squad · fill your meter on the island, then ${K.label('streak1')} drops it on your crosshair</div>`;
 }
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 // squadmates in the world: a squad-coloured arrow with name + distance over their head, a big red + when they're down

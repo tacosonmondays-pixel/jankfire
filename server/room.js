@@ -38,6 +38,7 @@ import { Traffic } from './traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
+import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
@@ -1341,6 +1342,7 @@ class Room {
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (t.dn && this.isleOn) return this.isleHit(t, amt, attacker, w); // battle island: down already, hits eat the bleed-out clock
     if (t.cam && this.isleOn) return false; // (battle island's test camera, JF_ISLE_CAM: never hurt)
+    if (this.isleOn && attacker && attacker !== t) this.isleMeter(attacker, amt * ISLE.meter.dmg, 'dmg'); // battle island: hits fill your mech meter (armour and mechs too)
     if (this.zm) amt = this.zmDamage(t, amt, attacker, w, hs); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
@@ -3994,6 +3996,7 @@ class Room {
 
 installRoyale(Room, { send, movePlayer });
 installIsland(Room, { send, movePlayer }); // battle island's squad rules (server/island.js)
+installIsleMeter(Room, { send }); // battle island's heroes + mech meter (server/islemeter.js)
 installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)

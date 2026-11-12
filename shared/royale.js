@@ -94,6 +94,7 @@ export const STUFF = {
   plate: { name: 'Cardboard Plate', desc: '+25 armour. it is cardboard', color: '#c9a36a' },
   vest: { name: 'Bin Lid Vest', desc: '+50 armour. two bin lids and some tape', color: '#4fd8ff' },
   fridge: { name: 'Riot Fridge', desc: 'full armour. you are wearing a fridge door', color: '#ff4fd8' },
+  cell: { name: 'Energy Cell', desc: '+20% mech meter. a big battery. do not lick it', color: '#39ff14' }, // (battle island only)
 };
 export const ARMOR_OF = { plate: 25, vest: 50, fridge: 100 };
 
