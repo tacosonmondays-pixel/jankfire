@@ -533,14 +533,14 @@ def build_ship():
         a = k * TAU / 4 + 0.4
         p = V3((41.1, 2.5 - math.sin(a) * 0.95, math.cos(a) * 0.95))  # (out along the blade: it turns with a)
         o = box((0.12, 0.5, 1.5), (0, 0, 0), M, name='wr_blade'); apply_mods(o)
-        o.data.transform(Matrix.Rotation(a, 4, 'X')); o.data.transform(Matrix.Rotation(0.5, 4, 'Z' if False else 'X') if False else Matrix.Identity(4))
+        o.data.transform(Matrix.Rotation(a, 4, 'X'))
         o.data.transform(Matrix.Translation(gv(*p))); uv_fit(o, A, 'brass'); K.add(o)
     K.bx(38.6, 0.0, -0.4, 40.7, 3.4, 0.4, 'red', 'wr_skeg')  # the skeg the shaft comes out of
     # the rubbing strake and the sheer strake's white line along the topsides, the gunwale bar over the deck edge
     for sz in (-1, 1):
         for (xa, xb) in (((-32.84, RS['hole'][0] - 0.8), (RS['hole'][1] + 1.2, 38.0)) if sz > 0 else ((-32.84, 38.0),)):
             K.bx(xa, D - 0.02, sz * B2 - 0.1, xb, D + 0.14, sz * B2 + 0.1, 'navy', 'wr_gunwale')
-            K.bx(xa, 6.9, (sz * B2 if sz > 0 else -B2 - 0.08), xb, 7.1, (B2 + 0.08 if sz > 0 else -B2), 'wht', 'wr_whiteline')
+            K.bx(xa, 8.36, (sz * B2 if sz > 0 else -B2 - 0.06), xb, 8.5, (B2 + 0.06 if sz > 0 else -B2), 'wht', 'wr_whiteline')
     # ---------------- the decks
     def deck_slab(x0, x1, z0, z1, y=D, t=0.25, key='deck', name='wr_deck'):
         n = max(1, math.ceil((z1 - z0) / 2.45 - 1e-6))  # in strakes along the ship (the band spans one: the paint stays square)
@@ -614,7 +614,7 @@ def build_ship():
         az = sz * (deck_hw(-41.6) + 0.06)
         K.bx(-42.6, 6.2, az - 0.2 if sz > 0 else az - 0.05, -40.8, 7.4, az + 0.05 if sz > 0 else az + 0.2, 'black', 'wr_pocket')
         K.rd((-41.7, 6.3, az + sz * 0.22), (-41.7, 7.6, az + sz * 0.22), 0.12, 'black', 'wr_shank')  # the anchor: the shank, the flukes
-        K.bx(-42.5, 6.0, az + sz * 0.05 - 0.15, -40.9, 6.45, az + sz * 0.05 + 0.15 if True else 0, 'black', 'wr_fluke')
+        K.bx(-42.5, 6.0, az + sz * 0.05 - 0.15, -40.9, 6.45, az + sz * 0.05 + 0.15, 'black', 'wr_fluke')
         for x in (-36.0, -34.6):  # bitts
             K.cy(0.22, 0.7, (x, FD + 0.35, sz * (B2 - 1.2)), 'black', 'wr_bitt', seg=10)
         K.bx(-35.8, FD, sz * (B2 - 1.2) - 0.25, -34.8, FD + 0.18, sz * (B2 - 1.2) + 0.25, 'black', 'wr_bittbase')
@@ -640,7 +640,7 @@ def build_ship():
     # SHIP HAPPENS down both sides (the line's name, big)
     for sz in (-1, 1):
         for (xa, xb) in ((-6.0, 30.0),) if sz > 0 else ((-30.0, 6.0),):
-            K.decal(xa, 5.9, sz * (B2 + 0.025) - 0.015, xb, 8.3, sz * (B2 + 0.025) + 0.015, 'happens', 'wr_happens')
+            K.decal(xa, 5.9, sz * (B2 - 0.005), xb, 8.3, sz * (B2 + 0.02), 'happens', 'wr_happens')
     # the stern's name, the free-fall lifeboat ramp (empty: LIFEBOAT 0 OF 1 LEFT)
     K.decal(44.4, 6.4, -2.6, 44.44, 8.2, 2.6, 'sternname', 'wr_sternname')
     # ---------------- hold 1: open to the sky, torn on the beach side. its lining (frames, the bulkheads), the coaming,
@@ -696,7 +696,7 @@ def build_ship():
         o = sweep(P3, [0.13 + 0.05 * math.sin(i * 1.7) for i in range(len(P3))], M, seg=5, name=nm); uv_fit(o, A, 'rust'); K.add(o)
     for (x, y, ang, w, hgt) in ((t0 + 0.7, 5.0, 0.7, 1.6, 2.4), (t0 + 0.4, 2.6, 0.4, 1.2, 1.8), (t1 - 0.9, 6.6, -0.8, 1.4, 2.2), (t1 - 1.2, 3.4, -0.5, 1.7, 2.0), (-21.0, 1.9, 0.0, 2.2, 1.0)):
         o = box((w, hgt, 0.05), (0, 0, 0), M, name='wr_peel'); apply_mods(o)
-        o.data.transform(Matrix.Rotation(ang * 0.6, 4, 'Z' if False else 'Y') if False else Matrix.Rotation(-ang, 4, 'Z'))
+        o.data.transform(Matrix.Rotation(-ang, 4, 'Z'))
         o.data.transform(Matrix.Rotation(0.45, 4, 'X'))  # (bent out toward the beach)
         o.data.transform(Matrix.Translation(gv(x, y, shell_z(x, y) + 0.35)))
         uv_fit(o, A, 'navy' if y > 5.5 else 'red'); K.add(o)
@@ -738,7 +738,7 @@ def build_ship():
         # the A-frame on top, the hoist and luffing wires to the jib's tip
         top = (x, y0 + hhh + 2.6, 0)
         for s in (-1, 1):
-            K.rd((x + s * 1.2 if along == 'z' else x - 1.4, y0 + hhh, 0 if along == 'x' else -1.2 * s) if False else ((x + s * 1.3, y0 + hhh, -1.0) if along == 'z' else (x - 1.6, y0 + hhh, s * 1.3)), top, 0.12, 'yellow', 'wr_aframe', seg=6)
+            K.rd((x + s * 1.3, y0 + hhh, -1.0) if along == 'z' else (x - 1.6, y0 + hhh, s * 1.3), top, 0.12, 'yellow', 'wr_aframe', seg=6)
         (p0, q0), (p1, q1) = jib_pts
         if along == 'z':
             root, tip = V3((x, q0, p0)), V3((x, q1, p1))
@@ -859,6 +859,29 @@ def build_ship():
     flag = poly_obj([(mx_, dR + 4.9, 0.05), (mx_, dR + 4.3, 0.05), (mx_ + 1.3, dR + 4.55, 0.05)], [(0, 1, 2)], M, 'wr_flag'); uv_fit(flag, A, 'pink'); K.add(flag)
     flag2 = poly_obj([(mx_, dR + 4.9, -0.05), (mx_ + 1.3, dR + 4.55, -0.05), (mx_, dR + 4.3, -0.05)], [(0, 1, 2)], M, 'wr_flag'); uv_fit(flag2, A, 'pink'); K.add(flag2)
     K.cy(0.12, 0.6, (mx_ + 0.6, dR + 0.42, 1.2), 'brass', 'wr_horn', axis='x', seg=8, r2=0.25)
+    # the roof: a satcom dome on its post, VHF whips, a searchlight; the name board over the bridge windows
+    K.rd((w0 + 4.2, dR + 0.3, -3.6), (w0 + 4.2, dR + 1.3, -3.6), 0.07, 'wht', 'wr_dompost')
+    o = ball(0.42, (w0 + 4.2, dR + 1.6, -3.6), M, scale=(1, 1.1, 1), seg=12, rings=7, name='wr_dome'); uv_fit(o, A, 'wht'); K.add(o)
+    for zz in (2.6, 3.6): K.rd((w0 + 4.4, dR + 0.3, zz), (w0 + 4.4, dR + 3.4, zz), 0.025, 'black', 'wr_whip', seg=4)
+    K.cy(0.22, 0.4, (w0 + 0.7, dR + 0.6, 4.6), 'galv', 'wr_searchlight', axis='x', seg=10)
+    K.rd((w0 + 0.7, dR + 0.3, 4.6), (w0 + 0.7, dR + 0.42, 4.6), 0.05, 'galv', 'wr_slpost')
+    K.decal(w0 - 0.08, s1 + 0.04, -2.6, w0 + 0.02, dR - 0.04, 2.6, 'name', 'wr_bridgename')
+    # liferaft canisters (white, in their cradles) on the house's sides at B deck, a fire box, an extinguisher
+    for sz in (-1, 1):
+        for xx in (x0 + 1.4, x0 + 3.0):
+            zc = sz * (hw + 0.45)
+            K.bx(xx - 0.5, dB + 0.1, zc - 0.35, xx + 0.5, dB + 0.22, zc + 0.35, 'galv', 'wr_cradle')
+            K.bx(xx - 0.06, dB + 0.12, min(zc, sz * hw), xx + 0.06, dB + 0.2, max(zc, sz * hw), 'galv', 'wr_cradlearm')  # (bracketed to the wall)
+            o = cyl(0.3, 1.1, (xx, dB + 0.52, zc), M, axis='x', seg=12, name='wr_raft'); uv_fit(o, A, 'wht'); K.add(o)
+            for b_ in (-0.3, 0.3): K.cy(0.31, 0.08, (xx + b_, dB + 0.52, zc), 'red', 'wr_raftband', axis='x', seg=12)
+        K.bx(x0 + 6.0, dA + 0.9, sz * (hw - 0.01), x0 + 6.6, dA + 1.7, sz * (hw + 0.2), 'red', 'wr_firebox')
+    # C deck's officers' windows on the house front, B deck's too
+    for yy in (dB + 1.2, dB + 4.0):
+        for zz in (-4.6, -3.2, 3.2, 4.6):
+            K.decal(x0 - 0.02, yy, zz - 0.45, x0 + 0.005, yy + 0.8, zz + 0.45, 'window', 'wr_cabinwin')
+    # the funnel's whistle and its two stays
+    K.cy(0.1, 0.7, ((f0 + f1) / 2 - 0.4, ftop - 0.9, fw + 0.12), 'brass', 'wr_whistle', axis='y', seg=8, r2=0.18)
+    for sz in (-1, 1): K.rd((f1 - 0.4, ftop - 1.0, sz * (fw - 0.1)), (x1 - 0.2, dW + 0.02, sz * (hw - 0.3)), 0.02, 'galv', 'wr_stay2', seg=4)
     # the outside ladder up the house's beach side: stringers, treads, hand rails; the funnel deck's rails
     sx0, sx1, sz0, sz1, nst2 = S['stair']; run2 = (sx1 - sx0) / nst2
     K.add(box_between((sx0 + 0.1, dA - 0.05, sz1 - 0.04), (sx1, dW - 0.05, sz1 - 0.04), 0.08, 0.24, M, 'wr_ostringer')); uv_fit(K.P[-1], A, 'wht')
@@ -1030,7 +1053,7 @@ def build_box(burst=False):
     X, Z = L / 2, W / 2
     def tbox(x0, y0, z0, x1, y1, z1, nm, key='c_tint', grain='x', upm=1 / 12.19):
         o = box((x1 - x0, y1 - y0, z1 - z0), ((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), TN, name=nm); uv_trim(o, A, key, upm=upm, grain=grain); return K.add(o)
-    tbox(-X, 0, -Z, X, fl, Z, 'wr_floorframe', key='steel' if False else 'c_tint')
+    tbox(-X, 0, -Z, X, fl, Z, 'wr_floorframe')
     K.bx(-X + t, fl, -Z + t, X - t, fl + 0.03, Z - t, 'wood', 'wr_floor', trim='x', upm=0.5)  # the plank floor
     tbox(-X, H - t, -Z, X, H, Z, 'wr_roof')
     tbox(-X, fl, -Z, X, H - t, -Z + t, 'wr_side')
@@ -1051,7 +1074,7 @@ def build_box(burst=False):
     for sz in (-1, 1):
         zz = sz * (Z + 0.04)
         o = box((W / 2, H - 0.2, 0.05), (-X + W / 4 + 0.02, H / 2, zz + sz * 0.03), M, name='wr_door'); apply_mods(o)  # (folded right back against the side)
-        uv_fit(o, A, 'd_tint' if True else 'd_red', sel=lambda p, P: abs(MK._gn(p.normal).z) > 0.5); uv_fit(o, A, 'steel', sel=lambda p, P: abs(MK._gn(p.normal).z) <= 0.5)
+        uv_fit(o, A, 'd_tint', sel=lambda p, P: abs(MK._gn(p.normal).z) > 0.5); uv_fit(o, A, 'steel', sel=lambda p, P: abs(MK._gn(p.normal).z) <= 0.5)
         o.material_slots[0].material = TN; K.add(o)
         for k in (0.25, 0.75): K.rd((-X + W / 2 * k + 0.02, 0.2, zz + sz * 0.08), (-X + W / 2 * k + 0.02, H - 0.2, zz + sz * 0.08), 0.025, 'galv', 'wr_lockbar')
         for yy in (0.4, H - 0.4): K.cy(0.05, 0.12, (-X + 0.02, yy, zz - sz * 0.02), 'steel', 'wr_hinge', axis='z', seg=6)
@@ -1101,15 +1124,6 @@ def build_boat():
     B = J['BOAT']; L, W, H, fl, cn = B['L'], B['W'], B['H'], B['floor'], B['canopy']; d0, d1 = B['door']
     X, Z = L / 2, W / 2
     # the hull: lofted sections (round bilge, a fine bow at +x, the stern wedge at -x), the canopy on top
-    def ring(i, tt):
-        x = -X + L * tt
-        bow = sm(X - 2.4, X, x); st = sm(-X + 1.0, -X, x)
-        w = Z * (1 - 0.82 * bow ** 1.4 - 0.25 * st); yk = 0.0 + 0.9 * bow ** 2 + 0.3 * st
-        pts = []
-        for k in range(9):
-            a = math.pi * k / 8
-            pts.append((cn * 0.62 - (cn * 0.62 - yk) * math.sin(a) ** 0.6 - cn * 0.62 + cn * 0.62 if False else 0, 0))
-        return [(0, 0)] * 9
     # (built directly: sections round the hull, gunwale at y 1.6)
     xs = [-X + L * i / 20 for i in range(21)]
     rows = []
@@ -1122,11 +1136,6 @@ def build_boat():
             sec.append((w * math.cos(a) ** 0.35, top - (top - yk) * math.sin(a) ** 0.6))
         rows.append([(x, y, z) for z, y in sec] + [(x, y, -z) for z, y in reversed(sec[:-1])])
     hull = sheet_obj(rows, M, 'wr_lbhull', smooth_angle=40)
-    def uvp(o):
-        apply_mods(o); me = o.data; uv = MK._uvl(o); P = MK._gp(o)
-        u0, v0, u1, v1 = A.uvrect('orange')
-        for poly in me.polygons:
-            for li in poly.loop_indices: uv[li].uv = ((u0 + u1) / 2, (v0 + v1) / 2)
     uv_fit(hull, A, 'orange'); orient(hull, lambda c: V3((0, c.y - 1.0, c.z))); K.add(hull)
     # close the stern (transom) and the bow (stem) ends
     for row, sgn in ((rows[0], -1), (rows[-1], 1)):
