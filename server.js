@@ -2,6 +2,7 @@
 // Rooms: one shared Online room, one shared Coop room, and private Bots / Training rooms per player.
 // Human movement is client-authoritative (it's a jank game). The server owns damage, kills, projectiles,
 // peels, black holes, reverse cards, respawns, bots, coop waves and lobby settings.
+import './shared/mapedits/apply.js'; // the owner's shipped map edits, on every map before anything reads them (shared/mapedits)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
