@@ -52,3 +52,11 @@ taken. Rule from CLAUDE.md: inspired by, never copied.
 
 **Both**: a visible inner frame at the joints, skirt armour, backpack thrusters, verniers, panel lines and caution
 decals (general mecha language), the drop-in from the sky and the pilot climbing in.
+
+## The owner's call (2026-11-12): Tripo look kept as-is
+"no just keep the models as they are, seperate them as you usually do and paint hem. THey look like gundam but its our
+own complete design" (and before that: "no keep the v shaped horns please, they look so cool").
+
+- **Tripo look kept as-is by owner, 2026-11-12.** The Tripo bodies keep their own heads, V horns and faces.
+- The "what we avoid" list above still guides anything made in code. The Tripo meshes are the owner's design, as the owner chose.
+- The mech lane only cuts them onto the joints, fixes what's broken (NIGHT SHIFT's melted hands and lumpy shins) and paints them.

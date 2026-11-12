@@ -15,6 +15,7 @@ import { MECH } from '/shared/mech.js';
 
 // the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
 export const GLB_ID = { paperplane: 'x_mech_paperplane', nightshift: 'x_mech_nightshift' };
+const PAINT_EMI = 0.04; // (the model's metal paint: a hint of your colour in the dark, not a glow)
 // the skeleton (MECHS.md): name -> [pivot in game coords at rest, parent]. from the concept files' jf meta
 const PIV = {
   paperplane: { hips: [[0, 2.62, 0], 'root'], waist: [[0, 2.98, 0.04], 'hips'], chest: [[0, 3.22, 0.04], 'waist'], neck: [[0, 4.06, -0.02], 'chest'], head: [[0, 4.22, -0.03], 'neck'],
@@ -267,10 +268,17 @@ export function buildMech(frame, color, opts = {}) {
     if (skinned) { glb = skClone(a.scene); glb.animations = a.scene.animations || []; }
     root.add(glb);
     const pre = frame === 'paperplane' ? 'pp_' : 'ns_'; // MECHS.md material roles: <p>_paint takes your colour, the glows stay lit
-    glb.traverse((o) => { if (o.isMesh && !Array.isArray(o.material) && o.material.name && o.material.name.startsWith(pre + 'paint')) o.material = own.accent; });
+    let np = 0; const tinted = new Map(); // (a painted-metal model keeps its own paint, maps and clear coat, tinted: own.paint0.. so freeMech frees them)
+    glb.traverse((o) => {
+      if (!o.isMesh || Array.isArray(o.material) || !o.material.name || !o.material.name.startsWith(pre + 'paint')) return;
+      const m = o.material;
+      if (!(m.userData && m.userData.jf_look)) { o.material = own.accent; return; }
+      if (!tinted.has(m)) { const c = m.clone(); c.color.copy(col); c.emissive.copy(col).multiplyScalar(PAINT_EMI); tinted.set(m, c); own['paint' + np++] = c; }
+      o.material = tinted.get(m);
+    });
     for (const k of Object.keys(P)) { const n = nodeIn(glb, k); if (n) { j[k].visible = false; j[k] = n; n.userData.rest = n.position.toArray(); } }
     for (const n of root.children) if (n !== glb) n.visible = false;
-    if (frame === 'paperplane') for (const s of ['L', 'R']) { const sg = s === 'L' ? -1 : 1, fa = j['forearm_' + s]; part2(fa, PIV.paperplane['forearm_' + s][0], [1.12 * sg, 2.45, -0.35], cbox(0.24, 0.24, 0.5, 0.04), lam(0x1d2747, 0.08)); for (const b of [-0.06, 0.06]) part2(fa, PIV.paperplane['forearm_' + s][0], [1.14 * sg + b, 2.4, -0.55], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2)); } // (the twin cannons: ours, the model has none yet)
+    if (frame === 'paperplane' && !nodeIn(glb, 'cannon_L')) for (const s of ['L', 'R']) { const sg = s === 'L' ? -1 : 1, fa = j['forearm_' + s]; part2(fa, PIV.paperplane['forearm_' + s][0], [1.12 * sg, 2.45, -0.35], cbox(0.24, 0.24, 0.5, 0.04), lam(0x1d2747, 0.08)); for (const b of [-0.06, 0.06]) part2(fa, PIV.paperplane['forearm_' + s][0], [1.14 * sg + b, 2.4, -0.55], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2)); } // (the twin cannons: ours, the model has none yet)
   } else if (frame === 'paperplane') buildPaper(j, own);
   else buildKnight(j, own);
   // markers: the hero model's empties, else ours at the same spots
@@ -331,7 +339,10 @@ export function freeMech(inst) {
   inst.flameMat.dispose(); inst.coreMat.dispose();
   inst.root.traverse((o) => { if (o.isMesh && !o.geometry.userData.shared) o.geometry.dispose(); });
 }
-export function setMechColor(inst, color) { const c = new THREE.Color(color); inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(0.25); }
+export function setMechColor(inst, color) {
+  const c = new THREE.Color(color); inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(0.25);
+  for (const [k, m] of Object.entries(inst.own)) if (/^paint\d+$/.test(k)) { m.color.copy(c); m.emissive.copy(c).multiplyScalar(PAINT_EMI); }
+}
 
 // ------------------------------------------------------------ pose
 // s: { spd, fwd, side (local m/s), air, vy, hover, jet (0..1), dash, shield, swingT, swingI, slam (1 up / 2 down), gunT,

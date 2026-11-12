@@ -1,7 +1,7 @@
 # The mechs as game files: the concept models on their joint tree, gameplay markers, every clip from clips.py keyed on
 # the joints and exported as glTF animations (three.js AnimationMixer plays them by name). No skinning: each joint is
 # a node with its rigid parts under it (a Tripo mesh cut at the joints drops into the same nodes: tripo_swap.py).
-#   blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=paperplane|nightshift] [no-export] [qa]
+#   blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=paperplane|nightshift] [no-export] [qa] [out_dir=<dir>]
 #   -> public/models/x_mech_<name>.glb (root meta jf: joints, clips {name, dur, loop, hold, partial, note},
 #      marks {name: {joint, at, dir}}, palettes). The root never moves in a clip.
 import os, sys, json, importlib
@@ -24,6 +24,9 @@ def pp_marks(mod, mk):
     m['mk_drone'] = {'joint': 'drone', 'at': beak, 'dir': list(mk.meta['drone_axis'])}
     m['mk_seat'] = {'joint': 'chest', 'at': (0, 3.62, -0.05), 'dir': (0, 0, -1)}
     m['mk_eject'] = {'joint': 'chest', 'at': (0, 4.15, -0.75), 'dir': (0, 0.7, -0.7)}
+    for s, L in ((1, 'R'), (-1, 'L')):  # the twin highlighter cannons' muzzle, just past the chisel tips
+        m[f'mk_muzzle_{L}'] = {'joint': 'forearm_' + L, 'at': (s * 1.14, 2.40, -0.76), 'dir': (0, 0, -1)}
+    m['mk_mark'] = mark_over_head(mk)
     return m
 
 
@@ -34,7 +37,14 @@ def ns_marks(mod, mk):
     m['mk_beacon'] = {'joint': 'beacon', 'at': add(mod.hp(0, 0.66, 0), (0, 0.16, 0)), 'dir': (0, 1, 0)}
     m['mk_seat'] = {'joint': 'chest', 'at': (0, 4.15, -0.20), 'dir': (0, 0, -1)}
     m['mk_eject'] = {'joint': 'chest', 'at': (0, 4.60, -0.98), 'dir': (0, 0.7, -0.7)}
+    m['mk_mark'] = mark_over_head(mk)
     return m
+
+
+def mark_over_head(mk):
+    """a point half a metre over the top of the head (the OVERTIME badge and other overhead marks), riding the head"""
+    top = max((mk.meshes[n].matrix_world @ v.co).z for n in ('head', 'beacon') if n in mk.meshes for v in mk.meshes[n].data.vertices)
+    return {'joint': 'head', 'at': (0, round(top + 0.5, 3), mk.J['head'][2]), 'dir': (0, 1, 0)}
 
 
 def add_marks(mk, marks):
@@ -131,7 +141,7 @@ def key_clips(mk, mod, clip_list):
     bpy.context.view_layer.update()
 
 
-def export(mk, path):
+def export(mk, path, **extra):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.object.select_all(action='DESELECT')
     for o in [mk.root] + list(mk.root.children_recursive): o.select_set(True)
@@ -139,7 +149,7 @@ def export(mk, path):
                               export_texcoords=True, export_normals=True, export_materials='EXPORT', export_image_format='AUTO',
                               export_lights=False, export_cameras=False, export_animations=True, export_animation_mode='NLA_TRACKS',
                               export_merge_animation='NLA_TRACK', export_force_sampling=True, export_frame_step=1, export_optimize_animation_size=True,
-                              export_optimize_animation_keep_anim_object=True)  # (keep still channels: a joint a clip doesn't move is reset by it)
+                              export_optimize_animation_keep_anim_object=True, **extra)  # (keep still channels: a joint a clip doesn't move is reset by it)
     print(f'JF_EXPORT {os.path.relpath(path, ROOT)}: {os.path.getsize(path) // 1024} KB, {mk.tris()} tris')
 
 
@@ -160,7 +170,7 @@ def main(which):
                  'clips': [{k: cl[k] for k in ('name', 'dur', 'loop', 'hold', 'partial', 'note')} for cl in clip_list]})
     mk.root['jf'] = json.dumps(meta)
     print('JF_CLIPS', which, len(clip_list), ' '.join(cl['name'] for cl in clip_list))
-    if 'no-export' not in ARGS: export(mk, os.path.join(lib.MODELS, f'x_mech_{which}.glb'))
+    if 'no-export' not in ARGS: export(mk, os.path.join(ARGS.get('out_dir', lib.MODELS), f'x_mech_{which}.glb'))
     return mk
 
 

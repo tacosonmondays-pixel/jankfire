@@ -1,18 +1,27 @@
 # Mechs: the rig the game loads (names for the Gameplay session)
 
-**Status:** the rig, markers and clips are real, on the concept meshes. The owner's Tripo meshes will be cut onto the
-same joints later (`tools/blender/mechs/tripo_swap.py`, next PR), so every name below stays. Concept notes are in
-`docs/mechs/CONCEPT.md` and the research in `docs/mechs/RESEARCH.md`.
+**Status:** the game files carry the owner's Tripo bodies as they are (their own heads, V horns and faces: the owner's
+call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/mechs/tripo_swap.py`.
+- From the concept: PAPER PLANE's pods, highlighter cannons, wings and crane; NIGHT SHIFT's hands, sword and shield.
+- PAPER PLANE's body is try A until the owner picks A or B.
+- Every name below is the same as on the concept meshes.
+- Pictures: `docs/mechs/tripo/compare/` and `docs/mechs/tripo/ingame/`. Concept notes: `docs/mechs/CONCEPT.md`; research:
+  `docs/mechs/RESEARCH.md`.
 
 ## Files
 | file | what |
 |---|---|
-| `public/models/x_mech_paperplane.glb` | PAPER PLANE: joints, meshes, markers, 20 clips (~1.8 MB) |
-| `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: joints, meshes, markers, 19 clips (~1.8 MB) |
+| `public/models/x_mech_paperplane.glb` | PAPER PLANE: joints, meshes, markers, 20 clips (~1.5 MB, 21k tris) |
+| `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: joints, meshes, markers, 19 clips (~1.1 MB, 18k tris) |
 
 - The `x_` prefix means they're lazy: load them only when a mech is in play.
 - Each file is ONE model per mech (after the Tripo swap too: wings, drone, sword and shield are inside it).
-- Rebuild: `blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=paperplane|nightshift] [qa]`.
+- Rebuild (Tripo bodies, what ships): `blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=<name> qa`
+  (`body=paperplane_body_b` for PAPER PLANE's other body).
+- Back to the concept meshes: `blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=<name>] [qa]` (same
+  names, clips and markers).
+- No far-LOD copies are in the files (MECH DROP draws every mesh); `tripo_swap.py ... lod_tris=7000` adds
+  `<joint>_lod1` siblings if the game ever wants them.
 - Check: `node tools/blender/mechs/clip_sheets.cjs [outDir] [mech] [rowsPerSheet]` plays every clip in three.js and
   writes contact sheets (`docs/mechs/clips/*.jpg`). It exits 1 if a clip is missing or the page errors.
 
@@ -39,12 +48,13 @@ same joints later (`tools/blender/mechs/tripo_swap.py`, next PR), so every name 
 - Both: `hips` > `skirt_L|R`.
 - PAPER PLANE also has:
   - `shoulder_L|R` > `pod_L|R` (2 x 3 pencils each).
+  - `forearm_L|R` > `cannon_L|R`: the twin highlighter cannons under each forearm (never animated).
   - `backpack` > `wing_L|R` (rest = the stowed V; jet mode swings them flat).
   - `wing_L` > `drone` > `drone_wing_L|R` (the origami crane). To send it out, play `drone_launch`, then reparent `drone`
     to the scene and fly it with `drone_flap` playing. To bring it back, reparent it to `wing_L` and play
     `drone_return`.
 - NIGHT SHIFT also has:
-  - `head` > `beacon`: spin it about y in code, forever.
+  - `head` > `beacon`: spin it about y in code, forever. On the Tripo body it carries no mesh (its forehead lamp glows instead); `mk_beacon` stays.
   - `hand_R` > `sword`.
   - `forearm_L` > `shield`.
 
@@ -53,6 +63,7 @@ same joints later (`tools/blender/mechs/tripo_swap.py`, next PR), so every name 
   - `mk_missile_L0..5` and `mk_missile_R0..5`: pencil tips (0..2 top row, 3..5 bottom row), pointing -z on the pods.
   - `mk_thrust_back_L|R` and `mk_thrust_heel_L|R`: nozzle exits.
   - `mk_drone`: the crane's beak.
+  - `mk_muzzle_L|R` (on `forearm_L|R`): just past the highlighter tips, pointing -z.
   - `mk_seat`, `mk_eject`.
 - NIGHT SHIFT:
   - `mk_sword_base`, `mk_sword_tip`: the blade, for the trail and hit line.
@@ -60,6 +71,7 @@ same joints later (`tools/blender/mechs/tripo_swap.py`, next PR), so every name 
   - `mk_beacon`.
   - `mk_thrust_back_L|R` and `mk_thrust_calf_L0|L1|R0|R1`.
   - `mk_seat`, `mk_eject`.
+- Both: `mk_mark` (on `head`): half a metre over the top of the head (the OVERTIME badge).
 
 ## Materials
 - `pp_paint` / `ns_paint`: the team / player colour. Tint it; colour A is the default.
@@ -67,6 +79,16 @@ same joints later (`tools/blender/mechs/tripo_swap.py`, next PR), so every name 
 - `*_glow`: the visor slats or bar and the sword edges. Emissive.
 - `*_thrust`: the thruster throats. Emissive; scale it with boost.
 - Decals have their own materials, e.g. `ns_ledmat` is the PLEASE HOLD screen.
+- **Painted metal** (`tools/blender/mechs/metalkit.py`, the owner: "they look like plastic toys"):
+  - paint is metallic car paint with a clear coat; white is pearl; `frame` is brushed gunmetal (anisotropic);
+    `accent` is polished gold.
+  - All of them share one small tiling detail set (panel lines, rivets, scratches, chips, grime in the seams;
+    `mech_detail_*`) on box UVs, 2 m per tile.
+  - `COLOR_0` holds baked shading: ambient occlusion and lighter worn edges.
+  - No extra materials or draw calls. Paint materials carry `extras.jf_look = 'painted metal'`.
+- **Tinting:** a model whose paint has `jf_look` keeps its own paint material (maps, clear coat). MECH DROP clones it
+  per mech and sets the colour (`public/js/mechmodel.js`), instead of swapping in the glossy stand-in paint.
+- PAPER PLANE's wings and crane stay paper: `*_paper` copies of the role materials, without the metal look.
 
 ## Clips (all 30 fps; three.js AnimationMixer by name)
 - "hold last frame": play it LoopOnce with `clampWhenFinished = true`.
