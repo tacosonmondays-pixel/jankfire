@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.0', date: '2026-11-12', title: 'ASKS FIRST', items: [
+    'closing or reloading the tab mid-match now asks first, in every mode. the exe closes normally.',
+    'battle island and training got their own pictures in the mode picker. the dummy is very excited about the target on its chest.',
+  ] },
   { v: '9.9', date: '2026-11-12', title: 'IT SAW THAT', items: [
     'crate: the tower is real toy blocks now. carved wooden faces, chunky letters, it spells JANK if you fall far enough. the middle block is a shape sorter.',
     'skyline: the observatory got a real dome and a real telescope. b site has never looked so scientific.',
