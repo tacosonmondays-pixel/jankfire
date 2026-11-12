@@ -150,6 +150,7 @@ const DETAIL = { door_bottom: 0.4, shutter: 0.35, acunit: 0.35, pchair: 0.5, lau
   ribarch: 3, lung: 2, machine: 4, gutgate: 4, smilesign: 2, sphincter: 1.4, lostfound_sign: 4, launderette: 3, gristlelogo: 2, choirpipe: 2, bus: 1.5 };
 export const propDetail = (id) => DETAIL[id] || 1;
 DETAIL.gristle_truck = 2; // (the Act I meat truck: a hero prop, keep its doors and skin a street further)
+DETAIL.digester_wall = 2; // (the Digester Wall: one set piece, its faces and bowls a street further)
 DETAIL.smilesign = 1; DETAIL.tarp = 0.6; DETAIL.lostpile = 0.5; DETAIL.sofa = 0.6; DETAIL.fridge = 0.6;
 // small things that repeat by the thousand aren't drawn at all past this (x the preset's props radius / 224): the
 // house's own far box carries its look out there
