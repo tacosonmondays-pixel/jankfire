@@ -1,6 +1,53 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.9', date: '2026-11-12', title: 'IT SAW THAT', items: [
+    'crate: the tower is real toy blocks now. carved wooden faces, chunky letters, it spells JANK if you fall far enough. the middle block is a shape sorter.',
+    'skyline: the observatory got a real dome and a real telescope. b site has never looked so scientific.',
+    'skyline: JANK NEWS 7 is parked on the helipads. it saw that.',
+  ] },
+  { v: '9.8', date: '2026-11-12', title: 'BRING FRIENDS', items: [
+    'PARTIES. your code\'s under ONLINE / OFFLINE. send it to your friends, they type it in, you all stand there looking cool. the leader picks the match and drags everyone in. same team, obviously. kicking is allowed.',
+    'ctrl+w can\'t close the game any more in fullscreen (crouch is left ctrl too, oops). windowed, you get a tip once.',
+    'backrooms: the walls are real now. wallpaper seams, skirting boards, outlets nobody uses, a thermostat set to "yes", damp creeping up from the carpet and paper peeling off the top. it\'s worse.',
+    'platform: the oil derrick is a real lattice tower now. crown, beacon, top drive, a little platform halfway up, and the GLUG OIL sign.',
+  ] },
+  { v: '9.7', date: '2026-11-12', title: 'HE OWNED ALL OF THIS', items: [
+    'suburb: the founder\'s statue got an upgrade. granite plinth, brass plaque, tulips, and the founder himself as a shiny toy bust. he has a monocle now. a pigeon has opinions about his hat.',
+    'smoother edges on mid and too hd (with shaders on). less shimmer on thin lines and far-away stuff. potato stays crunchy.',
+  ] },
+  { v: '9.6.1', date: '2026-11-12', title: 'SWIM NORMAL', items: [
+    'fixed: swimming out to sea made the camera glitchy (things right in front of you blinked in and out). the sea counts as the floor again.',
+  ] },
+  { v: '9.6', date: '2026-11-12', title: 'LEAVING THE PRODUCT', items: [
+    'jankburg: the firewall got a real wall. precast concrete, pink neon, cameras, a walkable top with a yellow line. it says FIRE WALL on it now so you know which one it is. you are now leaving the product.',
+  ] },
+  { v: '9.5', date: '2026-11-12', title: 'SHAKE BEFORE THROWING', items: [
+    'skyline: the giant jank cola can is an actual can now. candy red, condensation, a pink ring pull. 0% real cola. shake before throwing.',
+    'skyline: the building-site crane is a real crane now. lattice, cab, counterweights, a big red hook. mr. smiles says the view hasn\'t changed.',
+    'offline matches got simpler: pick the map and how many bots. how hard they try and how wobbly your hipfire is are no longer your problem.',
+  ] },
+  { v: '9.4', date: '2026-11-12', title: 'IT MEANS IT', items: [
+    'islands: mount kaboom finally looks like it means it. smoke you can see from the beach, lava that glows, a lava pool in the crater (still a pit. don\'t), stripy rock and a little jungle round its feet.',
+  ] },
+  { v: '9.3', date: '2026-11-12', title: 'STOP FLICKERING', items: [
+    'roads, sidewalks and crossings stopped flickering when you look down from up high (the blimp, gliding, tall buildings). jankburg looks like a city again instead of static.',
+  ] },
+  { v: '9.2', date: '2026-11-12', title: 'DO NOT FEED IT', items: [
+    'jankburg: the smiling fountain got a glow-up. glossy smiley face, one eye wandering, a grin spitting water into a marble pool full of coins. it\'s still smiling. it\'s always smiling. do not feed it.',
+    'training got a real firing line: a proper range bench with earmuffs and spent brass, actual sandbags (one says SAND?), and signs telling you how far you\'re missing by.',
+  ] },
+  { v: '9.1', date: '2026-11-12', title: 'FRONT DOOR', items: [
+    'new main menu. it\'s you in the middle and two buttons: ONLINE or OFFLINE. then pick your mode along the top. TRAINING and the old menu (CLASSIC) are still under the buttons.',
+    'OFFLINE is your own match: pick the map, the bots, how many, how hard they try. nobody else gets in. that\'s the point.',
+    'skyline: the spire got a glow-up. a real glass tower now, chrome fins, lit offices, neon rings and a radio mast with a blinking red light. still can\'t climb the spikes.',
+    'mechs make noises when they show off now: glints, vent hisses, flare whoomphs, sparks, and a pop when you eject.',
+  ] },
+  { v: '9.0', date: '2026-11-12', title: 'ISLAND TIME (BETA)', items: [
+    'NEW (BETA): BATTLE ISLAND. squads of 3 in the royale. get knocked down instead of dying, and hold F to pick your squadmates back up. through a wall doesn\'t count.',
+    'on the blimp, pick your mech hero: PAPER PLANE or NIGHT SHIFT. fill your MECH METER (time, damage, kills, green batteries on the floor), then press 5 to drop your mech on your crosshair. not into the sea.',
+    'how to play: With Bots > CUSTOM > BATTLE ISLAND (BETA). the island itself is still being built, so it\'s on jankburg for now. more heroes coming.',
+  ] },
   { v: '8.9', date: '2026-11-12', title: 'HEAVY METAL', items: [
     'both MECH DROP mechs got brand new bodies, V horns and all. painted metal now, not plastic: clear coat, rivets, chipped edges, gold horns.',
     'mechs land like heroes now: superhero landing, a beat, then a pose. night shift stabs the floor. paper plane does a hand on the hip.',

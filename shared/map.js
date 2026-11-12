@@ -521,8 +521,7 @@ function crate() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(8 * sx, 1, 8 * sz, 2, 2, 2, 'crate'); box(8 * sx + 1.6 * sx, 0.5, 8 * sz, 1.2, 1, 1.2, sx * sz > 0 ? 'toyred' : 'toyblue'); }
   box(0, 1, 10, 5, 2, 1, 'crate');
   box(0, 1, -10, 5, 2, 1, 'crate');
-  box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 });
-  box(0, 3.25, 0, 7, 0.5, 7, 'toyteal');
+  propOf('toysorter', [0, 0, 0], 0, () => { box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 }); box(0, 3.25, 0, 7, 0.5, 7, 'toyteal'); }); // the middle: a shape sorter (Blender: p_toysorter)
   box(-5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [4, 14, 0] });
   box(5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [-4, 14, 0] });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(12 * sx, 15, 12 * sz, 2.5, 1, 2.5, 'toypink');
@@ -530,7 +529,7 @@ function crate() {
   // it's a toy box on top of a tower of giant toy blocks, in a giant kid's playroom (render-only). fall off: you die long
   // before the carpet
   const D = builder(), F = -90; // the floor
-  D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 });
+  propOf('toytower', [0, 0, 0], 0, () => { D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 }); }); // (Blender: p_toytower, giant wooden ABC blocks)
   // (the middle block is turned a little and no wider than the crate: a fall off any edge never passes through it)
   D.add(-420, F - 2, -420, 420, F, 420, 'rubber');
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
@@ -699,6 +698,8 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   for (const s of [-1, 1]) { add(-22, 0, s * 6.5 - 1, -18, 2.2, s * 6.5 + 1, 'rigred'); D.add(-21.6, 2.2, s * 6.5 - 0.5, -18.4, 2.6, s * 6.5 + 0.5, 'rigsteel'); } // the mud pumps
   // the derrick: four legs stepping in as they go up, X-braced lattice on each face, girts, the crown, a beacon
   const H = 30, segs = 5, b0 = 4, b1 = 1.5, cx = -24, cz = 0;
+  // (one Blender model over all of it, the GLUG board too: p_derrick, tools/blender/make_derrick.py. look-only)
+  propOf('derrick', [cx + dx, y, cz + dz], 0, () => {
   for (let i = 0; i < segs; i++) {
     const ya = y + (i * H) / segs, yb = y + ((i + 1) * H) / segs, hw = b0 - ((b0 - b1) * i) / segs, leg = i === 0 ? B : D;
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) leg.add(cx + sx * hw - (sx > 0 ? 0.6 : 0), ya, cz + sz * hw - (sz > 0 ? 0.6 : 0), cx + sx * hw + (sx < 0 ? 0.6 : 0), yb, cz + sz * hw + (sz < 0 ? 0.6 : 0), 'rigred');
@@ -712,6 +713,7 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   add(cx + 3, y + 15, cz - 1.5, cx + 5, y + 15.3, cz + 1.5, 'grating'); // the monkey board, off the east face half way up (grapple up)
   rail(B, D, false, cz - 1.5, cz + 1.5, cx + 4.95, y + 15.3); for (const s of [-1, 1]) rail(B, D, true, cx + 3, cx + 4.9, cz + s * 1.45, y + 15.3);
   D.add(cx + 3.52, y + 9, cz - 2.8, cx + 3.58, y + 12, cz + 2.8, 'adglug', { fit: 1 });
+  });
   D.add(cx - 1, y, cz - 1, cx + 1, y + 0.05, cz + 1, 'rigsteel'); // the rotary table
   add(-31.4, y, -2, -28.8, y + 1.6, 2, 'rigred'); D.add(-31.2, y + 1.6, -1.6, -29, y + 2.0, 1.6, 'tire'); // the drawworks and its drum
   // the doghouse (the driller's cabin), south-east corner
@@ -1616,9 +1618,11 @@ function suburbSD() {
   truck(B, -24, 2.2, 'adtruck2'); // the box truck, back open (a crate to climb in)
   for (const [x, z, c] of [[-44, 5.3, 'carblue'], [-12, -5.3, 'carblack'], [6, 5.3, 'cargreen'], [-36, -5.3, 'carwhite']]) car(W, x, z, 0, c);
   // the cul-de-sac: the founder's statue on its planter (a big googly toy), hedges, the mailboxes
-  add(29, 0.1, -5, 39, 0.6, 5, 'stone'); add(29.5, 0.6, -4.5, 38.5, 0.7, 4.5, 'lawn');
-  add(32.6, 0.7, -1.4, 35.4, 2.6, 1.4, 'chrome'); add(32.2, 2.6, -1.8, 35.8, 6.2, 1.8, 'toyface', { fit: 1 });
-  for (const [x, z] of [[30.5, -3.5], [37.5, 3.5], [30.5, 3.5], [37.5, -3.5]]) W.B(x, 1.3, z, 1.2, 1.2, 1.2, 'hedge');
+  propOf('founder_sd', [34, 0.1, 0], Math.PI / 2, () => { // (Blender: the monument, its plaque to the street; tools/blender/make_founder.py)
+    add(29, 0.1, -5, 39, 0.6, 5, 'stone'); add(29.5, 0.6, -4.5, 38.5, 0.7, 4.5, 'lawn');
+    add(32.6, 0.7, -1.4, 35.4, 2.6, 1.4, 'chrome'); add(32.2, 2.6, -1.8, 35.8, 6.2, 1.8, 'toyface', { fit: 1 });
+    for (const [x, z] of [[30.5, -3.5], [37.5, 3.5], [30.5, 3.5], [37.5, -3.5]]) W.B(x, 1.3, z, 1.2, 1.2, 1.2, 'hedge');
+  });
   for (let i = 0; i < 4; i++) add(44 + i * 1.3, 0.1, -12.5, 45 + i * 1.3, 1.5, -11.8, i % 2 ? 'toyteal' : 'toypink');
   W(46, 0.1, 9, 50, 1.2, 11.5, 'hedge');
   // the HOA gate where the street meets the cul-de-sac: two gatehouses leave one 8 m way through (mid's choke), the
@@ -1812,9 +1816,11 @@ function suburb() {
     P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
     for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
   }
-  add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn'); // the founder's plaza
-  add(-1.4, 0.5, -1.4, 1.4, 2.4, 1.4, 'chrome'); add(-1.8, 2.4, -1.8, 1.8, 6, 1.8, 'toyface', { fit: 1 }); add(-0.8, 0.9, -1.43, 0.8, 1.7, -1.4, 'plaque', { fit: 1 });
-  for (const [x, z] of [[-3.5, -3.5], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5]]) W.B(x, 1.1, z, 1.2, 1.2, 1.2, 'hedge');
+  propOf('founder', [0, 0, 0], 0, () => { // the founder's plaza (Blender: the monument, tools/blender/make_founder.py)
+    add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn');
+    add(-1.4, 0.5, -1.4, 1.4, 2.4, 1.4, 'chrome'); add(-1.8, 2.4, -1.8, 1.8, 6, 1.8, 'toyface', { fit: 1 }); add(-0.8, 0.9, -1.43, 0.8, 1.7, -1.4, 'plaque', { fit: 1 });
+    for (const [x, z] of [[-3.5, -3.5], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5]]) W.B(x, 1.1, z, 1.2, 1.2, 1.2, 'hedge');
+  });
   add(8, -0.4, -9, 26, 0.02, 9, 'sand'); add(8.4, 0.02, -8.6, 25.6, 0.06, 8.6, 'water'); // the pond (ankle deep)
   add(15, 0.06, -9.4, 19, 0.6, 9.4, 'wood'); for (const s of [-1, 1]) add(15, 0.6, s * 9.4 - (s > 0 ? 0.15 : 0), 19, 1.5, s * 9.4 + (s > 0 ? 0 : 0.15), 'wood'); // the footbridge (low rails)
   for (const [x, z] of [[11, -5], [22, 6], [24, -3]]) W.B(x, 0.5, z, 1.4, 1, 1.2, 'rock');
@@ -3725,14 +3731,23 @@ function chopper(B, D, x, y, z, livery = 'toyyellow') {
   D.add(x - 8.5, y + 2.6, z + 0.1, x - 8.3, y + 2.68, z + 1.2, 'tire'); D.add(x - 8.5, y + 2.6, z - 1.2, x - 8.3, y + 2.68, z - 0.1, 'tire');
 }
 
+// the Spire (tools/blender/arch/make_spire.py): the hub tower, its deck's parapet, the glass shaft and the mast drawn as
+// one Blender model over their boxes (look only: the boxes stay for physics, bots and hits). ranges: [from, to) in B, dr in D
+function spireArch(B, D, id, x, z, y, ranges, dr) {
+  B.boxes.arch.push({ id, p: [x, y, z], r: 0 }); const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (const [a, b] of ranges) for (let i = a; i < b; i++) Object.assign(B.boxes[i], tag);
+  for (let i = dr[0]; i < dr[1]; i++) Object.assign(D.boxes[i], tag);
+}
 // the skyline's set pieces, one per top (x, z: the top's middle, y: its roof)
 // Jank Cola HQ: the giant can, vending machines, crates of bottles, the billboard
 function skyCola(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('colacan', [x, y, z - 5], 0, () => { // (drawn as the Blender can, p_colacan: tools/blender/make_colacan.py)
     add(x - 2.1, y, z - 7.1, x + 2.1, y + 9, z - 2.9, 'toyred'); // the can: a core you bump into inside an octagon (four turned slabs)
     for (let k = 0; k < 4; k++) { D.obb(x, y + 4.5, z - 5, 6, 9, 2.49, (k * Math.PI) / 4, 'toyred'); D.obb(x, y + 9.15, z - 5, 5.4, 0.3, 2.2, (k * Math.PI) / 4, 'chrome'); for (const y0 of [0.6, 8.0]) D.obb(x, y + y0 + 0.2, z - 5, 6.12, 0.4, 2.54, (k * Math.PI) / 4, 'chrome'); }
     D.add(x - 1.5, y + 9.3, z - 5.4, x + 1.5, y + 9.5, z - 4.6, 'chrome'); // the ring pull
+    });
     for (const dx of [-9, -6.5, 6.5, 9]) { add(x + dx - 1, y, z + 9, x + dx + 1, y + 2.4, z + 10.2, dx < 0 ? 'toyred' : 'toyblue'); D.add(x + dx - 0.8, y + 0.8, z + 8.96, x + dx + 0.8, y + 2.1, z + 9, 'glass'); } // vending machines
     cratePile({ add: B.local(0, 0, 0, y) }, x - 12, z - 10, 5, r); cratePile({ add: B.local(0, 0, 0, y) }, x + 9, z - 10, 4, r);
     billboard(W, x, z - 11.6, y, 'x'); }
@@ -3752,7 +3767,7 @@ function skyGarden(B, D, x, z, y, r) {
 function skyNews(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
+    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); propOf('heli', [x - 2, y + 0.1, z], 0, () => { chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 }); }); // (drawn as the Blender news chopper, p_heli: JANK NEWS 7)
     add(x - 11, y, z + 8, x - 8, y + 1.2, z + 11, 'metal'); D.add(x - 12.5, y + 1.2, z + 6.5, x - 6.5, y + 1.5, z + 12.5, 'white'); D.add(x - 9.7, y + 1.5, z + 9.3, x - 9.3, y + 3.6, z + 9.7, 'metal'); // the dish
     for (const [lx, lz] of [[6, -10], [9, -10], [6, 10], [9, 10]]) { B.box(x + lx, y + 1.4, z + lz, 0.15, 2.8, 0.15, 'metal'); D.box(x + lx, y + 2.9, z + lz, 0.8, 0.6, 0.5, 'lamp'); }
     for (const lz of [-12.6, 12.6]) { add(x + 4, y, z + lz - 0.6, x + 8, y + 1.6, z + lz + 0.6, 'containerb'); }
@@ -3779,7 +3794,7 @@ function skyBuild(B, D, x, z, y, r) {
     for (const [sx0, sz0] of [[-8, 5], [3, -8]]) { for (let k = 0; k < 3; k++) add(x + sx0, y + k * 0.35, z + sz0 + k * 0.1, x + sx0 + 5, y + (k + 1) * 0.35, z + sz0 + 0.6 + k * 0.1, 'rust'); }
     add(x + 5, y, z + 5, x + 10, y + 2.6, z + 8, 'containerr'); D.add(x + 5.6, y + 1.0, z + 4.96, x + 8.4, y + 2.0, z + 5, 'adclosed', { fit: 1 }); // the site hut
     for (const [bx, bz] of [[-3, -11], [0, -11], [3, -11]]) add(x + bx - 1.2, y, z + bz - 0.3, x + bx + 1.2, y + 1.0, z + bz + 0.3, 'jersey');
-    crane(B, D, x - 8, z - 8, y, 32, 50, 34); }
+    propOf('crane', [x - 8, y, z - 8], 0, () => crane(B, D, x - 8, z - 8, y, 32, 50, 34)); } // (drawn as the Blender crane, p_crane: tools/blender/make_crane.py)
 }
 // the greenhouse: glass panes on a steel frame, planting beds inside, water tanks, solar panels
 function skyGreen(B, D, x, z, y, r) {
@@ -3798,9 +3813,10 @@ function skyGreen(B, D, x, z, y, r) {
 function skyObs(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('observatory', [x, y, z], 0, () => { // (drawn as the Blender observatory, p_observatory: tools/blender/make_observatory.py; its sign stays the map's)
     add(x - 6, y, z - 6, x + 6, y + 4, z + 6, 'white'); dome(D, x, y + 4, z, 6, 'chrome', false);
     D.add(x - 0.6, y + 6.2, z + 2, x + 0.6, y + 7.2, z + 9, 'metal'); D.add(x - 0.8, y + 6.0, z + 8.6, x + 0.8, y + 7.4, z + 9.2, 'glass'); // the telescope
-    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 });
+    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 }); }, { keep: (b) => !!b.fit });
     for (const [bx, bz] of [[-9, 9], [9, 9], [-9, -9], [9, -9]]) add(x + bx - 1.3, y, z + bz - 0.3, x + bx + 1.3, y + 0.5, z + bz + 0.3, 'wood'); }
 }
 // the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock. f = -1 puts the tanks and the
@@ -3808,7 +3824,7 @@ function skyObs(B, D, x, z, y, r) {
 function skyHeli(B, D, x, z, y, r, f = 1) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred'); // (S&D: off the pad's middle, the site's)
+    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); propOf('heli', [x + 1, y + 0.1, z - (f < 0 ? 3 : 1)], 0, () => chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred')); // (S&D: off the pad's middle, the site's. drawn as p_heli)
     for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); }
     add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); // the booth
     B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }
@@ -3825,6 +3841,7 @@ function skyline() {
   const B = builder(), D = builder(), r = rng(1337), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
   const base = -120, S = 72, R = 40, pick = (a) => a[(r() * a.length) | 0];
   const hi = 52, lo = 30;
+  let spireC = null;
   // ---- the nine tops (half sizes): the Spire 13 x 13, the ring 15 x 13 (north/south) / 13 x 15 (east/west), the corners 14 x 14
   const tops = { C: [0, 0, 13, 13, R], N: [0, -S, 15, 13, R], S: [0, S, 15, 13, R], W: [-S, 0, 13, 15, R], E: [S, 0, 13, 15, R],
     NW: [-S, -S, 14, 14, lo], SE: [S, S, 14, 14, lo], NE: [S, -S, 14, 14, hi], SW: [-S, S, 14, 14, hi] };
@@ -3836,6 +3853,7 @@ function skyline() {
     const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
     if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
+    if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
@@ -3848,9 +3866,10 @@ function skyline() {
   }
 
   // ---- C, the Spire: the hub deck round its glass shaft (five floors of windows, stairs inside, a sniper's nest on top)
-  const Sp = B.local(0, 0, 0, R);
+  const Sp = B.local(0, 0, 0, R), sp0 = B.boxes.length, sd0 = D.boxes.length;
   shell(Sp, 12, 12, 5, 4.4, 'glassblock', { floor: 'grid', roof: 'roofg', roofAccess: true, backDoor: true, sideDoor: [-1.5, 1.5], winSpacing: 3 });
   B.box(0, R + 22.3 + 9, 0, 0.6, 18, 0.6, 'metal'); D.box(0, R + 22.3 + 18.3, 0, 0.6, 0.6, 0.6, 'neonred'); D.box(0, R + 22.3 + 12, 0, 1.2, 0.3, 1.2, 'neonpink'); // the mast on the nest
+  spireArch(B, D, 'spire', 0, 0, R, [spireC, [sp0, B.boxes.length]], [sd0, D.boxes.length]);
   for (const [x, z] of [[-9, -9], [9, -9], [-9, 9], [9, 9]]) { add(x - 1.2, R, z - 1.2, x + 1.2, R + 0.8, z + 1.2, 'stone'); D.add(x - 1.0, R + 0.8, z - 1.0, x + 1.0, R + 1.6, z + 1.0, 'hedge'); } // planters at the deck's corners
   for (const [x, z, al] of [[-9.5, -4, false], [9.5, 4, false], [-4, 9.5, true]]) add(al ? x - 1.5 : x - 0.3, R, al ? z - 0.3 : z - 1.5, al ? x + 1.5 : x + 0.3, R + 0.5, al ? z + 0.3 : z + 1.5, 'wood'); // benches
   for (const [px, pz, v] of [[0, -4.5, [0, 14, -30]], [0, 4.5, [0, 14, 30]], [-4.5, -3, [-30, 14, 0]], [4.5, 0, [30, 14, 0]]]) add(px - 1, R + 22.3, pz - 1, px + 1, R + 23.2, pz + 1, 'pad', { pad: v }); // off the nest, out to the ring (on pedestals over the parapet's top: hop up, get flung)
@@ -3925,8 +3944,11 @@ function skylineSD() {
     W: { n: [[-58, -54], [-42, -38]], e: [[-26, -22]], s: [[-50, -46]] }, E: { n: [[38, 42], [54, 58]], w: [[-26, -22]], s: [[46, 50]] },
     SW: { n: [[-50, -46]], e: [[16, 20]] }, SE: { n: [[46, 50]], w: [[16, 20]] } };
   const facade = { N: 'office', C: 'glassblock', S: 'tenement', B: 'tenement', A: 'office', W: 'office', E: 'tenement', SW: 'office', SE: 'tenement' };
+  let spireC = null;
   for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) {
+    const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
+    if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's hub tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'SW' || k === 'E' ? 'lawn' : 'asphalt');
   }
   // ---- the links
@@ -3941,8 +3963,10 @@ function skylineSD() {
   // privacy walls on the spawn towers' edges over mid (open at the stairs)
   for (const [x0, x1] of [[-14.4, -2], [2, 14.4]]) { add(x0, 41, 9.6, x1, 43.2, 10, 'glassblock'); D.add(x0, 43.2, 9.54, x1, 43.35, 10.06, 'neonpink'); add(x0, 41, -50, x1, 43.2, -49.6, 'glassblock'); D.add(x0, 43.2, -50.06, x1, 43.35, -49.54, 'neoncyan'); }
   // ---- mid: the Spire's hub deck, its shaft (four floors, stairs inside, a roof to snipe from), planters, benches, AC
+  const sp0 = B.boxes.length, sd0 = D.boxes.length;
   shell(B.local(0, -19, 0, Cy), 12, 12, 4, 4.4, 'glassblock', { floor: 'grid', roof: 'roofg', roofAccess: true, backDoor: true, sideDoor: [-1.5, 1.5], winSpacing: 3 });
   B.box(0, Cy + 17.9 + 7, -19, 0.6, 14, 0.6, 'metal'); D.box(0, Cy + 17.9 + 14.3, -19, 0.6, 0.6, 0.6, 'neonred');
+  spireArch(B, D, 'spire_sd', 0, -19, Cy, [spireC, [sp0, B.boxes.length]], [sd0, D.boxes.length]);
   for (const [x, z] of [[-9, -36], [9, -36], [-9, -2], [9, -2]]) { add(x - 1.2, Cy, z - 1.2, x + 1.2, Cy + 0.8, z + 1.2, 'stone'); D.add(x - 1.0, Cy + 0.8, z - 1.0, x + 1.0, Cy + 1.6, z + 1.0, 'hedge'); }
   for (const [x, z] of [[-10, -30], [10, -8]]) add(x - 0.3, Cy, z - 1.5, x + 0.3, Cy + 0.5, z + 1.5, 'wood');
   acUnit(W, -10, -10, Cy); acUnit(W, 10, -30, Cy); B.box(-4, Cy + 0.6, -33, 1.2, 1.2, 1.2, 'crate'); B.box(5, Cy + 0.6, -4, 1.2, 1.2, 1.2, 'crate');
@@ -4690,6 +4714,10 @@ function backrooms() {
   spawns.push([mid(14), PY + 0.1, mid(30)], [mid(15), PY + 0.1, mid(45)]);
   const att2 = [[-16, 0.1, 113], [-8, 0.1, 113], [0, 0.1, 113], [8, 0.1, 113], [16, 0.1, 113], [-8, 0.1, 103], [8, 0.1, 103]];
   const def2 = att2.map(([x, y, z]) => [x, y, -z]);
+  // ---- look only: every wallpaper wall, pillar and half wall is drawn by one Blender model (tools/blender/arch/make_backrooms.py,
+  // archfield.js). the boxes stay what you bump into, and come back if the file doesn't
+  B.boxes.arch.push({ id: 'backrooms', p: [0, 0, 0], r: 0 }); const AV = { av: 'backrooms', ai: B.boxes.arch.length - 1 };
+  for (const b of B.boxes) if (b.mat === 'wallpaper') Object.assign(b, AV);
   const HZ = 0xb4a35a; // the haze
   return {
     name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -50,
@@ -4707,8 +4735,8 @@ function range() {
   const { boxes, box } = builder();
   box(0, -1, -60, 40, 2, 150, 'grass');
   box(0, -6, -60, 30, 8, 130, 'dirt');
-  box(0, 0.4, 5, 40, 0.8, 1, 'wood');
-  for (const z of [-10, -25, -50, -100]) box(-17, 0.6, z, 4, 1.2, 0.4, 'wood');
+  propOf('rangebench', [0, 0, 5], 0, () => box(0, 0.4, 5, 40, 0.8, 1, 'wood')); // the shooting bench (Blender: p_rangebench)
+  for (const z of [-10, -25, -50, -100]) propOf('rangemark', [-17, 0, z], 0, () => box(-17, 0.6, z, 4, 1.2, 0.4, 'wood'), { v: 'v' + (5 - z) }); // distance boards: how far from the bench
   box(32, -1, -40, 20, 2, 40, 'grass');
   box(28, 0.15, -25, 2.5, 0.3, 2.5, 'pad', { pad: [0, 30, 0] });
   box(36, 0.15, -35, 2.5, 0.3, 2.5, 'pad', { pad: [0, 22, -22] });
@@ -4724,7 +4752,7 @@ function range() {
   horizon(D, -220, -280, 220, 160, 1500, 'grass'); // the same grass as the field you stand on
   D.add(-58, 0.01, -2.3, -50, 0.07, -1.7, 'sand'); // the spray range's firing line (10 m from its wall)
   D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); // the berm the bullets end up in
-  for (let x = -18; x <= 18; x += 3.2) D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'); // sandbags on the firing line
+  for (let x = -18, k = 0; x <= 18; x += 3.2, k++) propOf('sandbags', [x + 1.5, 0, 6.9], 0, () => D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'), { spin: k % 2 ? Math.PI : 0 }); // sandbags on the firing line (p_sandbags; every other one turned round: no pink bag every 3 m)
   for (const [x, z] of [[-30, 20], [30, 20]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); } // watchtowers
   for (let z = 30; z > -260; z -= 10) for (const x of [-90, 90]) { D.box(x, 1, z, 0.15, 2, 0.15, 'metal'); D.add(x - 0.03, 1.6, z, x + 0.03, 1.65, z + 10, 'tire'); }
   for (let i = 0; i < 30; i++) { const rr = rng(400 + i), a = rr() * Math.PI * 2, d = 150 + rr() * 150; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, -60 + Math.sin(a) * d, 6 + rr() * 4, rr); }
