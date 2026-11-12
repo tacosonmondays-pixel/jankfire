@@ -20,7 +20,7 @@ const presets = presetsArg.split(',').map(Number), N = Number(nArg), MAPVIEWS = 
 const TARGETS = /^targets:/.test(idsArg) ? JSON.parse(fs.readFileSync(idsArg.slice(8), 'utf8')) : null;
 const PRESET = ['Potato', 'Crusty', 'Mid', 'Too HD'];
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const GAME = { jankburg: 'br', deadmall: 'zm' }, gameOf = (m) => GAME[m] || (/_sd$/.test(m) ? 'bomb' : 'dm'); // (the Plant & Defuse layouts are only in that mode's list)
+const GAME = { jankburg: 'br', deadmall: 'zm', battleisland: 'br' }, gameOf = (m) => GAME[m] || (/_sd$/.test(m) ? 'bomb' : 'dm'); // (the Plant & Defuse layouts are only in that mode's list)
 fs.mkdirSync(outdir, { recursive: true });
 const tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'r4shots-'));
 
@@ -43,7 +43,7 @@ async function session(b, map, ids) {
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
   await pg.addInitScript(() => localStorage.setItem('jf_giftseen_all', '1') || localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: 3 })));
-  await pg.goto(`http://localhost:${port}/`); await sleep(2500);
+  await pg.goto(`http://localhost:${port}/${process.env.JF_SHOT_QS || ''}`); await sleep(2500); // (JF_SHOT_QS=?wip=1: maps still being built)
   const T = { timeout: 180000 }; // (a busy machine: the menu can take a while to answer)
   if (map === 'range') await pg.click('#scr-main [data-mode="training"]', T); // (the Training range: only Training plays it)
   else {
