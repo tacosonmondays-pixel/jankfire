@@ -106,7 +106,7 @@ test('Battle Island: Dead Air\'s Blender model is built to exactly its boxes (me
 test('Port Jankton: every model is built to its boxes, everything stands on the town (not under it)', async () => {
   const fs = await import('node:fs');
   const metaOf = (id) => { const buf = fs.readFileSync(new URL(`../public/models/p_${id}.glb`, import.meta.url)), len = buf.readUInt32LE(12); const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')); return JSON.parse(gl.nodes.find((n) => n.extras && n.extras.jf).extras.jf); };
-  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler'];
+  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler', 'pj_bait', 'pj_cod'];
   for (const id of ids) {
     const ps = m.boxes.props.filter((q) => q.id === id), meta = metaOf(id);
     assert.ok(ps.length, id + ' is placed');
@@ -122,4 +122,13 @@ test('Port Jankton: walk in at a warehouse\'s quay door, out at its street door;
   const top = raycast([20, 5, 145.5], [0, -1, 0], 10, m.boxes), below = raycast([20, 5, 146.5], [0, -1, 0], 10, m.boxes);
   assert.ok(top && Math.abs(5 - top.t - 1.6) < 0.05, 'the quay\'s top at the town level');
   assert.ok(below && 5 - below.t < -1.3, 'a step off it: the basin, waist-deep');
+});
+
+test('Port Jankton main street: in at each shop\'s street door, out its back door into the alley; the roof is solid', () => {
+  for (const [x0, dir, x1] of [[23, -1, 3], [33, 1, 53]]) { // Bait & Tackle (front to the east), Oh My Cod! (front to the west)
+    const pos = [x0, 1.65, 120], vel = [0, 0, 0]; let g = true;
+    for (let t = 0; t < 4; t += 1 / 30) { vel[0] = dir * 7; vel[2] = 0; g = sim(pos, vel, g); }
+    assert.ok(dir * (pos[0] - x1) > 0 && Math.abs(pos[2] - 120) < 0.5 && Math.abs(pos[1] - 1.6) < 0.2, 'through the shop and out the back: ' + pos.map((v) => v.toFixed(1)));
+  }
+  for (const x of [12, 44]) { const hit = raycast([x - 2, 20, 118], [0, -1, 0], 30, m.boxes); assert.ok(hit && Math.abs(20 - hit.t - 6.3) < 0.05, 'stand on the roof at ' + x); }
 });
