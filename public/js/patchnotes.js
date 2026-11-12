@@ -1,6 +1,31 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.0', date: '2026-11-12', title: 'BEEP BEEP', items: [
+    'your own mech can\'t squash you any more. stand on your own circle and it goes BEEP BEEP and bonks you out of the way, then you can climb straight in. your squad gets bonked too. enemies still get flattened.',
+    'zombies (and every death): body parts and gibs don\'t hang in mid-air any more. they fall, bounce, settle on the floor and fade.',
+    'zombies: the grappling hook has charges now, like jank royale. two ropes, one comes back every 8 seconds. the ring by your crosshair shows them.',
+  ] },
+  { v: '10.9', date: '2026-11-12', title: 'LOADS LIKE IT MEANS IT', items: [
+    'the game loads a lot faster the second time you open it: your browser keeps this version\'s code instead of asking for 300 files again. an update still gets you the new stuff straight away.',
+  ] },
+  { v: '10.8', date: '2026-11-12', title: 'PLEASE REMAIN SEATED', items: [
+    'jankburg: the cathedral of shareholder value got pews, a real bell and an organ made of servers. the sermon is a quarterly earnings call. please remain seated.',
+  ] },
+  { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
+    'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
+  ] },
+  { v: '10.6', date: '2026-11-12', title: 'PUTT INTO ITS MOUTH', items: [
+    'skyline: the skyscrapers are real buildings now. brick tenements with fire escapes, office towers with chrome fins, lit offices and neon blade signs.',
+    'skyline: the bridges off the spire got steel. portal frames on the glass tubes, big blue trusses under the open ones. the sky stairs are proper steel stairs with handrails and neon. still 160 m of air underneath.',
+    'skyline: putt putt palace got a real windmill and a giant clown head. putt into its mouth. you can\'t.',
+  ] },
+  { v: '10.5', date: '2026-11-12', title: 'SHINY', items: [
+    'RAY-TRACED LOOK now has reflections: glass towers, office windows, wet roads and chrome reflect the world around you. its own checkbox in settings > video > shaders.',
+  ] },
+  { v: '10.4', date: '2026-11-12', title: 'NOBODY TOUCH THE TRAIN', items: [
+    'crate: the playroom is full of real toys now. crayons that are actually round, a ball that is actually a ball, a bed, and a train set nobody is allowed to touch.',
+  ] },
   { v: '10.3', date: '2026-11-12', title: 'HAVE A NICE DAY', items: [
     'jankburg: the city gates got toll booths, boom barriers and big name plates. the toll is your dignity. have a nice day.',
     'warehouse plant & defuse: the defenders spawn behind a real office block now. lit windows, a staff entrance, a NO LOITERING sign nobody reads.',
