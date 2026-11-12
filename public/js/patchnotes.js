@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.0', date: '2026-11-12', title: 'ISLAND TIME (BETA)', items: [
+    'NEW (BETA): BATTLE ISLAND. squads of 3 in the royale. get knocked down instead of dying, and hold F to pick your squadmates back up. through a wall doesn\'t count.',
+    'on the blimp, pick your mech hero: PAPER PLANE or NIGHT SHIFT. fill your MECH METER (time, damage, kills, green batteries on the floor), then press 5 to drop your mech on your crosshair. not into the sea.',
+    'how to play: With Bots > CUSTOM > BATTLE ISLAND (BETA). the island itself is still being built, so it\'s on jankburg for now. more heroes coming.',
+  ] },
   { v: '8.9', date: '2026-11-12', title: 'HEAVY METAL', items: [
     'both MECH DROP mechs got brand new bodies, V horns and all. painted metal now, not plastic: clear coat, rivets, chipped edges, gold horns.',
     'mechs land like heroes now: superhero landing, a beat, then a pose. night shift stabs the floor. paper plane does a hand on the hip.',
