@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.1', date: '2026-11-12', title: 'SO DID THE CORNER', items: [
+    'jankburg: the houses got walls, windows, stairs and real roofs. the streets got rearranged a bit while we were at it. your favourite corner might have moved. so did the corner.',
+  ] },
   { v: '11.0', date: '2026-11-12', title: 'BEEP BEEP', items: [
     'your own mech can\'t squash you any more. stand on your own circle and it goes BEEP BEEP and bonks you out of the way, then you can climb straight in. your squad gets bonked too. enemies still get flattened.',
     'zombies (and every death): body parts and gibs don\'t hang in mid-air any more. they fall, bounce, settle on the floor and fade.',
