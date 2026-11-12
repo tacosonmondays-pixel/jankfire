@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
+    'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
+    'battle island: your party lands in the same squad. a party bigger than a squad splits into full squads. friends who join late go to your squad.',
+    'platform: the wellheads on b site are dressed up as christmas trees. star, tinsel, fairy lights, a santa hat. still full of oil.',
+    'skyline: the helipad got its gear. JET A-1 tanks, a flight-ops shack, a windsock, and a fuel truck parked on a site.',
+  ] },
   { v: '10.0', date: '2026-11-12', title: 'ASKS FIRST', items: [
     'closing or reloading the tab mid-match now asks first, in every mode. the exe closes normally.',
     'battle island and training got their own pictures in the mode picker. the dummy is very excited about the target on its chest.',
