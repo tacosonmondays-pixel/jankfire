@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
-import { authored, glossyPaint, nodeIn, AUTHORED } from './glbkit.js';
+import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, glbLoader } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
 
@@ -30,22 +30,24 @@ for (const P of Object.values(PIV)) for (const [k, [at, par]] of Object.entries(
   if (!k.endsWith('_R')) continue;
   P[k.slice(0, -2) + '_L'] = [[-at[0], at[1], at[2]], par.endsWith('_R') ? par.slice(0, -2) + '_L' : par];
 }
-// gameplay markers (MECHS.md; the mk_muzzle_*, mk_crane and mk_mark ones are ours, asked of the art session): parent
-// joint + offset in game coords at rest
+// gameplay markers (the names agreed with the art lane; mk_muzzle_* and mk_mark are ours, asked of them): parent joint
+// + spot in game coords at rest. a hero model's own empties win; these stand in at the same spots
 const MK = {
-  paperplane: { mk_seat: ['chest', [0, 3.75, -0.1]], mk_eject: ['chest', [0, 4.3, -0.2]], mk_thrust_L: ['backpack', [-0.28, 3.25, 0.82]], mk_thrust_R: ['backpack', [0.28, 3.25, 0.82]],
-    mk_muzzle_L: ['forearm_L', [-1.14, 2.4, -0.75]], mk_muzzle_R: ['forearm_R', [1.14, 2.4, -0.75]], mk_crane: ['wing_L', [-0.9, 4.7, 0.95]], mk_mark: ['head', [0, 5.6, 0]] },
-  nightshift: { mk_seat: ['chest', [0, 4.0, -0.2]], mk_eject: ['chest', [0, 4.6, -0.4]], mk_thrust_L: ['backpack', [-0.45, 3.45, 1.0]], mk_thrust_R: ['backpack', [0.45, 3.45, 1.0]],
-    mk_thrust_leg_L: ['shin_L', [-0.62, 1.0, 0.42]], mk_thrust_leg_R: ['shin_R', [0.62, 1.0, 0.42]], mk_sword_base: ['sword', [1.58, 2.2, -0.75]], mk_sword_tip: ['sword', [1.58, 2.2, -4.6]],
-    mk_shield_face: ['shield', [-1.54, 2.92, -0.75]], mk_beacon: ['beacon', [0, 5.8, 0]], mk_mark: ['head', [0, 6.4, 0]] },
+  paperplane: { mk_seat: ['chest', [0, 3.75, -0.1]], mk_eject: ['chest', [0, 4.3, -0.2]], mk_thrust_back_L: ['backpack', [-0.28, 3.25, 0.82]], mk_thrust_back_R: ['backpack', [0.28, 3.25, 0.82]],
+    mk_thrust_heel_L: ['foot_L', [-0.46, 0.25, 0.35]], mk_thrust_heel_R: ['foot_R', [0.46, 0.25, 0.35]],
+    mk_muzzle_L: ['forearm_L', [-1.14, 2.4, -0.75]], mk_muzzle_R: ['forearm_R', [1.14, 2.4, -0.75]], mk_drone: ['wing_L', [-0.9, 4.7, 0.95]], mk_mark: ['head', [0, 5.6, 0]] },
+  nightshift: { mk_seat: ['chest', [0, 4.0, -0.2]], mk_eject: ['chest', [0, 4.6, -0.4]], mk_thrust_back_L: ['backpack', [-0.45, 3.45, 1.0]], mk_thrust_back_R: ['backpack', [0.45, 3.45, 1.0]],
+    mk_thrust_heel_L: ['foot_L', [-0.64, 0.3, 0.45]], mk_thrust_heel_R: ['foot_R', [0.64, 0.3, 0.45]],
+    mk_thrust_calf_L0: ['shin_L', [-0.62, 1.2, 0.42]], mk_thrust_calf_L1: ['shin_L', [-0.62, 0.85, 0.42]], mk_thrust_calf_R0: ['shin_R', [0.62, 1.2, 0.42]], mk_thrust_calf_R1: ['shin_R', [0.62, 0.85, 0.42]],
+    mk_sword_base: ['sword', [1.58, 2.2, -0.75]], mk_sword_tip: ['sword', [1.58, 2.2, -4.6]], mk_shield_face: ['shield', [-1.54, 2.92, -0.75]], mk_beacon: ['beacon', [0, 5.8, 0]], mk_mark: ['head', [0, 6.4, 0]] },
 };
-for (const s of ['L', 'R']) for (let i = 0; i < 3; i++) MK.paperplane[`mk_missile_${s}${i}`] = [`pod_${s}`, [(s === 'L' ? -1 : 1) * (0.88 + i * 0.11), 4.3, -0.42]];
+for (const s of ['L', 'R']) for (let i = 0; i < 6; i++) MK.paperplane[`mk_missile_${s}${i}`] = [`pod_${s}`, [(s === 'L' ? -1 : 1) * (0.88 + (i % 3) * 0.11), 4.3 - (i > 2 ? 0.1 : 0), -0.42]]; // 12 for the swarm (6 a pod)
 export const JOINTS = [...new Set([...Object.keys(PIV.paperplane), ...Object.keys(PIV.nightshift)])];
 export const MARKERS = { paperplane: Object.keys(MK.paperplane), nightshift: Object.keys(MK.nightshift) };
 // the clips (MECHS.md): poseMech names the one that fits what the mech is doing (inst.clip); a hero model that has it
 // plays it, the stand-in poses it in code
-export const CLIPS = { shared: ['idle', 'walk', 'run', 'boost_dash', 'jump', 'land', 'hover', 'hit_react', 'drop_in', 'pilot_in', 'destroy'],
-  paperplane: ['jet_in', 'jet_fly', 'jet_out', 'missile_salvo'], nightshift: ['sword_combo_1', 'sword_combo_2', 'sword_combo_3', 'dash_slash', 'shield_block', 'shield_bash', 'ground_slam'] };
+export const CLIPS = { shared: ['idle', 'walk', 'run', 'boost_dash', 'jump', 'land', 'hover', 'hit_react', 'drop_in', 'pilot_in', 'destroy', 'eject'],
+  paperplane: ['jet_in', 'jet_fly', 'jet_out', 'missile_salvo', 'lunge', 'drone_launch', 'drone_return', 'drone_flap'], nightshift: ['sword_combo_1', 'sword_combo_2', 'sword_combo_3', 'triple_shift', 'shield_block', 'shield_bash', 'ground_slam'] };
 
 const mats = new Map();
 const cached = (k, mk) => mats.get(k) || mats.set(k, mk()).get(k);
@@ -62,6 +64,7 @@ function add(parent, geo, mat, p = [0, 0, 0], r = null) {
   return m;
 }
 // a part placed in game coords (rest pose) under joint j (pivot `at`)
+function part2(j, pa, world, geo, mat) { return add(j, geo, mat, [world[0] - pa[0], world[1] - pa[1], world[2] - pa[2]]); } // (under a model's own joint: its pivot is pa)
 function part(j, geo, mat, world, r = null) { return add(j, geo, mat, [world[0] - j.userData.at[0], world[1] - j.userData.at[1], world[2] - j.userData.at[2]], r); }
 // a limb box from this joint's pivot toward a point (game coords), w x d thick
 function limb(j, to, w, d, mat, k = 1, c = 0.05) {
@@ -213,6 +216,25 @@ function buildKnight(j, own) {
   part(j.shield, cbox(0.22, 0.08, 0.02, 0.01), own.led, [-1.94, 3.1, -0.78]); // stuck at 25%
 }
 
+// ------------------------------------------------------------ which model: the hero file, the concept, the code
+// 1. public/models/x_mech_<frame>.glb (lazy, glbkit: once listed it loads the first time a mech shows up)
+// 2. the concept glb (docs/mechs/concept, the owner's OK'd placeholder; the server hands it out at /mechs/concept/)
+// 3. the code stand-in below. modelVer goes up whenever a better one lands: mech.js rebuilds what it shows
+const CONCEPT = {}, conceptT = {};
+export let modelVer = 0;
+const bump = () => { modelVer++; };
+for (const f of ['paperplane', 'nightshift']) whenLate(GLB_ID[f], bump);
+function sourceOf(frame) {
+  const a = authored(GLB_ID[frame]); // (asks for the hero file if the server lists it)
+  if (a) return { obj: a.obj, scene: AUTHORED[GLB_ID[frame]].scene };
+  if (CONCEPT[frame]) return { obj: CONCEPT[frame].clone(true), scene: CONCEPT[frame] };
+  if (!conceptT[frame]) {
+    conceptT[frame] = 1;
+    glbLoader().load(`/mechs/concept/mech_${frame}_concept.glb`, (g) => { g.scene.animations = g.animations || []; g.scene.traverse((o) => { if (o.isMesh) o.geometry.userData.shared = true; }); CONCEPT[frame] = g.scene; bump(); }, undefined, () => {}); // (missing: the code stand-in stays)
+  }
+  return null;
+}
+
 // ------------------------------------------------------------ build / free
 export function buildMech(frame, color, opts = {}) {
   frame = frame === 'nightshift' ? 'nightshift' : 'paperplane';
@@ -237,14 +259,17 @@ export function buildMech(frame, color, opts = {}) {
   };
   for (const k of Object.keys(P)) make(k);
   let glb = null;
-  const a = opts.noGlb ? null : authored(GLB_ID[frame]);
-  if (a) { // the hero model: its bones are the joints (same names); the stand-in skeleton is dropped
+  const a = opts.noGlb ? null : sourceOf(frame);
+  if (a) { // a real model: its nodes are the joints (same names, same pivots); the stand-in skeleton is dropped
     glb = a.obj;
     let skinned = false; glb.traverse((o) => { if (o.isSkinnedMesh) skinned = true; });
-    if (skinned) { glb = skClone(AUTHORED[GLB_ID[frame]].scene); glb.animations = AUTHORED[GLB_ID[frame]].scene.animations || []; }
+    if (skinned) { glb = skClone(a.scene); glb.animations = a.scene.animations || []; }
     root.add(glb);
+    const pre = frame === 'paperplane' ? 'pp_' : 'ns_'; // MECHS.md material roles: <p>_paint takes your colour, the glows stay lit
+    glb.traverse((o) => { if (o.isMesh && !Array.isArray(o.material) && o.material.name && o.material.name.startsWith(pre + 'paint')) o.material = own.accent; });
     for (const k of Object.keys(P)) { const n = nodeIn(glb, k); if (n) { j[k].visible = false; j[k] = n; n.userData.rest = n.position.toArray(); } }
     for (const n of root.children) if (n !== glb) n.visible = false;
+    if (frame === 'paperplane') for (const s of ['L', 'R']) { const sg = s === 'L' ? -1 : 1, fa = j['forearm_' + s]; part2(fa, PIV.paperplane['forearm_' + s][0], [1.12 * sg, 2.45, -0.35], cbox(0.24, 0.24, 0.5, 0.04), lam(0x1d2747, 0.08)); for (const b of [-0.06, 0.06]) part2(fa, PIV.paperplane['forearm_' + s][0], [1.14 * sg + b, 2.4, -0.55], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2)); } // (the twin cannons: ours, the model has none yet)
   } else if (frame === 'paperplane') buildPaper(j, own);
   else buildKnight(j, own);
   // markers: the hero model's empties, else ours at the same spots
@@ -255,14 +280,15 @@ export function buildMech(frame, color, opts = {}) {
     att[k] = n;
   }
   for (const k of ['hatch', 'chest', 'head', 'backpack', 'sword', 'shield', 'beacon', 'wing_L', 'wing_R', 'pod_L', 'pod_R']) if (j[k]) att[k] = j[k];
-  if (att.mk_crane) { const c = buildCrane(own.accent.color); c.rotation.y = Math.PI; att.mk_crane.add(c); att.mk_crane.userData.crane = c; }
+  att.drone = (glb && nodeIn(glb, 'drone')) || null; // the crane drone: a joint under wing_L (ours stands in at mk_drone)
+  if (!att.drone && att.mk_drone) { const c = buildCrane(own.accent.color); c.rotation.y = Math.PI; c.name = 'drone'; att.mk_drone.add(c); att.drone = c; }
   // thrust flames on every mk_thrust_* (additive cones, out the back / down)
   const flameMat = new THREE.MeshBasicMaterial({ color: frame === 'nightshift' ? 0xffb43a : 0x5ff0ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
   const flames = [];
   for (const [k, n] of Object.entries(att)) {
     if (!k.startsWith('mk_thrust')) continue;
-    const f = new THREE.Group(), leg = k.includes('leg'), big = leg ? 0.7 : 1;
+    const f = new THREE.Group(), leg = !k.includes('back'), big = leg ? 0.6 : 1;
     f.rotation.set(leg ? Math.PI : Math.PI * 0.75, 0, 0);
     add(f, new THREE.ConeGeometry(0.22 * big, 1.4 * big, 10, 1, true).translate(0, 0.7 * big, 0), flameMat);
     add(f, new THREE.ConeGeometry(0.1 * big, 0.8 * big, 8).translate(0, 0.4 * big, 0), coreMat);
@@ -285,7 +311,7 @@ export function buildMech(frame, color, opts = {}) {
     trail = new THREE.Mesh(geo, mat); trail.frustumCulled = false; trail.renderOrder = 8;
     trail.userData = { N, pts: [] };
   }
-  const inst = { frame, root, j, att, own, flames, flameMat, coreMat, trail, glb: !!glb, mixer: null, clip: 'idle', sp: {}, phase: 0, t: Math.random() * 10,
+  const inst = { v: modelVer, frame, root, j, att, own, flames, flameMat, coreMat, trail, glb: !!glb, mixer: null, clip: 'idle', sp: {}, phase: 0, t: Math.random() * 10,
     jank: { tilt: (Math.random() - 0.5) * 0.1, knee: Math.random() < 0.5 ? 'L' : 'R' }, hatchOpen: 0 };
   if (glb && glb.animations && glb.animations.length) inst.mixer = new THREE.AnimationMixer(glb);
   root.userData.mech = inst;
@@ -324,12 +350,12 @@ function clipOf(inst, s) {
   if (s.empty) return 'idle';
   if (inst.frame === 'paperplane') {
     if (s.jet) return 'jet_fly';
-    if (s.dash) return 'boost_dash';
+    if (s.dash) return 'lunge';
     if (s.swarmT < 0.6) return 'missile_salvo';
     if (s.hover) return 'hover';
   } else {
     if (s.slam) return 'ground_slam';
-    if (s.dash) return 'dash_slash';
+    if (s.dash) return 'triple_shift';
     if (s.swingT < 0.75) return 'sword_combo_' + ((s.swingI | 0) + 1);
     if (s.shield) return 'shield_block';
   }
@@ -388,8 +414,7 @@ export function poseMech(inst, s, dt) {
       w.rotation.z = spr(inst, k + 'z', -sg * (hov * 0.25 + jet * 1.15) + (hov ? Math.sin(T * 9) * 0.04 : 0), 90, dt);
       w.rotation.x = spr(inst, k + 'x', jet * 0.4, 90, dt);
     }
-    const crane = inst.att.mk_crane && inst.att.mk_crane.userData.crane;
-    if (crane) crane.visible = !s.craneOut;
+    if (inst.att.drone) inst.att.drone.visible = !s.craneOut; // (out flying: mech.js flies a copy)
   } else {
     xR = -0.35 + 0.15 * sw; zR = 0.2; fR = -0.55;
     const si = s.swingI | 0, st = s.swingT;

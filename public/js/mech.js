@@ -17,7 +17,7 @@ import { K } from './keys.js';
 import { recordEv } from './replay.js';
 import { rfx, rmesh } from './rigmodel.js';
 import { rigOn } from './rig.js';
-import { buildMech, freeMech, poseMech, mechBurst, buildCrane, GLB_ID } from './mechmodel.js';
+import { buildMech, freeMech, poseMech, mechBurst, buildCrane, GLB_ID, modelVer } from './mechmodel.js';
 import { mechsfx } from './mechsfx.js';
 import { prefetch, whenLate } from './glbkit.js';
 
@@ -72,7 +72,7 @@ function startLocal(m) {
   W.held = false; W.aimHeld = false; W.dashHeld = false; W.charge = 0; W.aim = 0; W.zoom = 1; W.scoped = false;
   ME.dashing = false; ME.sliding = false;
   hud.scope(false); hud.ammo(null); hud.meter(null); hud.cards(null);
-  if (MS.inst && MS.inst.frame !== f) { freeMech(MS.inst); MS.inst = null; }
+  if (MS.inst && (MS.inst.frame !== f || MS.inst.v !== modelVer)) { freeMech(MS.inst); MS.inst = null; } // (another frame, or a better model landed)
   if (!MS.inst) MS.inst = buildMech(f, G.myColor);
   G.scene.add(MS.inst.root); MS.inst.root.visible = true;
   document.body.classList.add('mechin');
@@ -517,6 +517,7 @@ function marker(p) {
 function updateWorld(dt, now, replaying) {
   for (const m of WM.values()) {
     if (m.st === 'in') { if (m.inst) m.inst.root.visible = false; if (m.mk) m.mk.visible = false; continue; }
+    if (m.inst && m.inst.v !== modelVer) { freeMech(m.inst); m.inst = null; } // a better model landed
     if (!m.inst) { m.inst = buildMech(m.f, (nameOf(m.o) || {}).color); G.scene.add(m.inst.root); }
     const inst = m.inst;
     inst.root.visible = !replaying;
@@ -575,7 +576,7 @@ export function mechRemote(r, dt, now) {
   let st = r.mech;
   if (!on) { if (st && st.on) remoteOff(r, st); r.mechOn = false; return; }
   const f = FRAMEOF.get(r.id) || 'paperplane', F = MECH[f];
-  if (!st || st.f !== f || st.color !== r.color || st.root !== r.ch.root) {
+  if (!st || st.f !== f || st.color !== r.color || st.root !== r.ch.root || st.inst.v !== modelVer) {
     if (st) freeMech(st.inst);
     st = r.mech = { inst: buildMech(f, r.color), f, color: r.color, root: r.ch.root, on: false, swingT: 9, swingI: 0, gunT: 9, gunSide: 1, swarmT: 9, landT: 9, landK: 0, minVy: 0, wasAir: false, craneOut: 0, bashT: 9 };
     st.inst.root.scale.setScalar(1 / 1.2); // (the mannequin's root is scaled up 1.2: the mech is its real size, plus the far-away scale)
