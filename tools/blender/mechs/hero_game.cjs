@@ -7,13 +7,13 @@
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
 const { execFileSync } = require('child_process');
-const [port = '3100', outDir = '.', hero = 'wreckingball', presetArg = '3'] = process.argv.slice(2);
+const [port = '3100', outDir = '.', hero = 'wrecking', presetArg = '3'] = process.argv.slice(2);
 const PR = Number(presetArg), sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 fs.mkdirSync(outDir, { recursive: true });
 const P = [0, 0, -16]; // (the hero stands here, facing you at the firing line)
 // per hero: [name, caption, clip, t, camera eye (relative to P), look-at (relative to P), fov, root lift, play: let the clip run (events fire)]
 const SHOTS = {
-  wreckingball: [
+  wrecking: [
     ['hero', 'held after its landing: the window looks up at you', 'hero_intro', 1.7, [-4.6, 1.2, 6.6], [0.2, 2.5, 0], 50],
     ['close', 'close up: clean paint, white trims, the porthole and the pilot seat', 'idle', 0.0, [-1.9, 2.6, 4.2], [0.0, 2.2, 0], 50],
     ['roll', 'rolling: feet tucked, treads on the floor', 'roll', 0.3, [-6.2, 2.0, 2.6], [0, 2.0, 0], 50],

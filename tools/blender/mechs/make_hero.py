@@ -1,7 +1,7 @@
 # A Battle Island hero (docs/mechs/ROSTER.md) as a game file: the concept model on its joint tree, its markers and
 # spray slots, the painted-metal look, the hero kit's stickers, every clip it defines (snap keys, events) keyed and
 # exported. Each hero is a module next to this one with build() (a mechkit Mech), marks(mk) and clips().
-#   blender52 -b -P tools/blender/mechs/make_hero.py -- hero=wreckingball [qa] [no-bake] [flat] [no-export] [out=<glb>]
+#   blender52 -b -P tools/blender/mechs/make_hero.py -- hero=wrecking [qa] [no-bake] [flat] [no-export] [out=<glb>]
 #   -> public/models/x_mech_<hero>.glb (root meta jf: joints, marks, clips, decal_slots, palettes, height)
 import os, sys, json, importlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -38,4 +38,4 @@ def main(hero):
     return mk
 
 
-main(ARGS.get('hero', 'wreckingball'))
+main(ARGS.get('hero', 'wrecking'))

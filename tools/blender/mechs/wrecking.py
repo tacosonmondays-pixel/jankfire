@@ -8,7 +8,7 @@
 from mechkit import *
 import herokit
 
-FID = 'mech_wreckingball'
+FID = 'mech_wrecking'  # (frame id 'wrecking': 'wreckingball' is the killstreak ball's armour pool)
 R, C = 2.0, (0.0, 2.0, 0.0)  # the ball: radius, centre
 HUB = 2.24  # the axle hubs' middle (x)
 PAL_A = {  # "DEMOLITION": safety orange plates on gunmetal, yellow / black hazard, cyan window ring

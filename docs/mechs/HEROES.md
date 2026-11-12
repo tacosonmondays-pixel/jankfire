@@ -17,7 +17,7 @@ loads the file. Every hero also has the shared clips `idle`, `hit_react`, `jump`
 Build: `blender52 -b -P tools/blender/mechs/make_hero.py -- hero=<id> qa`. Sheets: `node tools/blender/mechs/clip_sheets.cjs docs/mechs/clips <id> 6`.
 In the game before its code exists: `node tools/blender/mechs/hero_game.cjs <port> <out> <id> [preset]`.
 
-## WRECKING BALL (`wreckingball`, prefix `wb_`)
+## WRECKING BALL (`wrecking`, prefix `wb_`: not `wreckingball`, the killstreak's id)
 A 4 m armoured steel ball (radius 2, centre at y = 2) that rolls inside a yoke that doesn't: two axle hubs and a pail
 handle with a crane shackle on top. It has:
 - team-colour plates on a gunmetal shell, with twin hazard treads it rolls on and thin white trims;
