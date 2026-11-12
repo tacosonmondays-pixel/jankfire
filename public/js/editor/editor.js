@@ -1,13 +1,20 @@
 // The map editor (editor.html): fly round any map noclip, Minecraft-creative style, pick props, buildings and boxes,
 // carry them, turn them, size them, copy them, delete them. Every change is an op (shared/mapedit.js) kept per map in
 // this browser and exported as a file for us to ship. Nothing here talks to the server: edits never reach a match.
+import '/shared/mapedits/apply.js'; // the shipped edits first: yours go on top of them
 import * as THREE from 'three';
 import { MAPS, BOXES, MAP } from '/shared/map.js';
 import { resetGrid } from '/shared/physics.js';
 import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeThing, insertThing, thingData, thingFrom, applyEdits, validEdits } from '/shared/mapedit.js';
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
-import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from '../world.js';
+import { lockPointer, lookFilter } from '../mouselook.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats } from '../world.js';
+import { whenGlb } from '../glbkit.js';
+import { wantArch } from '../archfield.js';
+import { initPalette, togglePalette, solidOn, modelBounds } from './palette.js';
+import { navCheck } from '/shared/navcheck.js';
+import { EDITS } from '/shared/mapedits/index.js';
 import { loadTripoModels } from '../models.js';
 import { fx } from '../fx.js';
 import { liquidBox } from '../liquids.js';
@@ -49,6 +56,7 @@ let undoN = 0; // how many of the last ops in hist are this session's (undoable)
 const redo = [];
 
 function persist() {
+  clearBotMarks(); // (an edit: the old bot answer is about the old map)
   saved.ops = hist.map((h) => h.op);
   try { localStorage.setItem(store(mapId), JSON.stringify(saved)); } catch { toast('could not save in this browser (export it!)'); }
   $('edN').textContent = hist.length;
@@ -162,7 +170,7 @@ const NAMES = { box: 'box', prop: 'prop', arch: 'building' };
 const nameOf = (t) => (t.kind === 'prop' ? t.prop.id.replace(/_/g, ' ') : t.kind === 'arch' ? t.arch.id.replace(/_/g, ' ') : (t.boxes[0].mat || 'box') + ' box');
 function showSel() {
   const ts = [...sel], el = $('edSel');
-  el.classList.toggle('hidden', !ts.length || !$('edList').classList.contains('hidden'));
+  el.classList.toggle('hidden', !ts.length || !$('edList').classList.contains('hidden') || !$('edBots').classList.contains('hidden'));
   if (!ts.length) return;
   const { lo, hi } = unionBounds(ts), f = (v) => v.toFixed(1);
   $('edSelName').textContent = ts.length > 1 ? ts.length + ' things' : nameOf(ts[0]);
@@ -193,6 +201,20 @@ function startCarry(ts) {
   carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
   callout('YOINK');
 }
+// the snap grid under what you carry: lines every grid step, 20 m across, at its feet (none with snap off)
+let gridH = null, gridStep = 0;
+function showGrid(at) {
+  if (!at || !snap) { if (gridH) gridH.visible = false; return; }
+  if (!gridH || gridStep !== snap) {
+    if (gridH) { G.scene.remove(gridH); gridH.geometry.dispose(); gridH.material.dispose(); }
+    const size = Math.min(80, Math.max(10, snap * 20)); gridStep = snap;
+    gridH = new THREE.GridHelper(size, Math.round(size / snap), 0xffe14d, 0xff4fd8);
+    gridH.material.transparent = true; gridH.material.opacity = 0.55; gridH.material.depthTest = false; gridH.renderOrder = 997;
+    G.scene.add(gridH);
+  }
+  gridH.visible = true;
+  gridH.position.set(Math.round(at[0] / snap) * snap, at[1] + 0.02, Math.round(at[2] / snap) * snap); // (its lines land on whole grid steps)
+}
 // shaped ground (shared/terrain.js heightfield) isn't boxes: march the ray down onto it. returns the distance or null
 let terBoxes = null; // the ground's own steps (b.ter): not things you can pick, but you can put things down on them
 function terrainHit(o, d, max) {
@@ -204,7 +226,7 @@ function terrainHit(o, d, max) {
   return best;
 }
 function updateCarry() {
-  if (!carry) return;
+  if (!carry) { showGrid(null); return; }
   const [o, d] = aimRay(), skip = new Set(carry.ts);
   let h = pick(o, d, skip, true, true);
   const th = terrainHit(o, d, Math.min(200, h ? h.dist : carry.dist * 2.5));
@@ -217,6 +239,7 @@ function updateCarry() {
   carry.d = dd;
   carry.ghost.position.set(carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]);
   carry.ghost.rotation.y = carry.q * Math.PI / 2; carry.ghost.scale.setScalar(carry.k);
+  showGrid([carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]]);
 }
 function dropCarry() {
   if (!carry) return;
@@ -261,6 +284,89 @@ function nudge(dx, dy, dz) {
   opXf(ts, pivotFor(ts), 1, 0, d);
   Object.assign(hist[hist.length - 1], { nudge: performance.now(), ts });
 }
+
+// ---------------------------------------------------------------- placing from the palette
+// a new thing copies one that's already on a map somewhere (a placed house gets that house's real walls, a car its
+// 15 boxes); a model no map uses yet gets one collision box the size of the model
+let TPL = null;
+function tpl() {
+  if (TPL) return TPL;
+  TPL = { props: new Map(), arch: new Map() };
+  const solid = new Set();
+  for (const [mid, d] of Object.entries(MAPS)) {
+    if (d.stream) continue;
+    for (const t of (mid === mapId ? idx : indexMap(d)).things) {
+      if (t.kind === 'arch' && !TPL.arch.has(t.arch.id) && t.boxes.length) TPL.arch.set(t.arch.id, thingData(t));
+      if (t.kind !== 'prop') continue;
+      const id = t.prop.id, good = t.list === 'b' && t.boxes.length > 0;
+      if (!TPL.props.has(id) || (good && !solid.has(id))) { TPL.props.set(id, thingData(t)); if (good) solid.add(id); }
+    }
+  }
+  return TPL;
+}
+let retried = new Set();
+function place(kind, mid) {
+  let data = null;
+  if (kind === 'props') {
+    const id = mid.replace(/^p_/, '');
+    data = tpl().props.get(id);
+    if (!data) {
+      const mb = modelBounds(mid);
+      if (!mb) { if (retried.has(mid)) return toast('that model would not load'); retried.add(mid); toast('loading ' + id.replace(/_/g, ' ') + '...'); whenGlb([mid], () => place(kind, mid)); return; }
+      data = { list: 'b', boxes: [{ min: mb.lo, max: mb.hi, mat: 'metal', pv: id }], prop: { id, a: [0, 0, 0], y: 0, lo: mb.lo, hi: mb.hi } };
+    }
+  } else if (kind === 'arch') { data = tpl().arch.get(mid); if (!data) return toast('no map uses that building yet'); }
+  else data = { list: 'b', boxes: [{ min: [-1, 0, -1], max: [1, 2, 1], mat: mid }] };
+  data = JSON.parse(JSON.stringify(data));
+  if (kind !== 'arch' && !solidOn()) data.list = 'd'; // look-only: drawn, never bumped into (buildings are always solid)
+  // where you aim: on the floor under the crosshair, or 10 m ahead
+  const [o, d] = aimRay(), h = pick(o, d, null, true, true), th = terrainHit(o, d, 120), hd = h ? h.dist : 1e9, dist = Math.min(hd, th ?? 1e9) < 120 ? Math.min(hd, th ?? 1e9) : 10;
+  const at = [o.x + d.x * dist, o.y + d.y * dist, o.z + d.z * dist];
+  if (snap) { at[0] = Math.round(at[0] / snap) * snap; at[2] = Math.round(at[2] / snap) * snap; }
+  const t = thingFrom(data), b = boundsOf(t), from = [(b.lo[0] + b.hi[0]) / 2, b.lo[1], (b.lo[2] + b.hi[2]) / 2];
+  xfThing(t, from, 1, 0, [at[0] - from[0], at[1] - from[1], at[2] - from[2]]);
+  const made = opAdd([thingData(t)]);
+  if (kind === 'arch') wantArch(def.boxes.arch, () => rebuild()); // (a building this map didn't have: its model)
+  sel.clear(); for (const m of made) sel.add(m); drawSel();
+  startCarry(made); if (carry) carry.fresh = true; callout('PLOP');
+}
+
+// ---------------------------------------------------------------- bot check: can bots still get everywhere?
+// the bots' own walk graph, rebuilt from the edited boxes, against the same map without your edits (a second, untouched
+// build of the maps, made the first time you ask). red = cut off by your edits, grey = already unreachable before
+let baseMaps = null, botMarks = null;
+async function botCheck() {
+  toast('asking the bots...');
+  await new Promise((r) => setTimeout(r, 30)); // (let the toast show: the check takes a moment)
+  if (!baseMaps) {
+    try { baseMaps = (await import('/shared/map.js?editorbase=1')).MAPS; } catch { baseMaps = {}; }
+    if (baseMaps[mapId] && EDITS[mapId]) applyEdits(baseMaps[mapId], EDITS[mapId]); // (the map as shipped)
+  }
+  let r = null;
+  try { r = navCheck(def, baseMaps[mapId] || null); } catch (e) { console.error(e); return toast('the bot check broke on this map'); }
+  clearBotMarks();
+  const el = $('edBotList'); el.innerHTML = '';
+  $('edBots').classList.remove('hidden'); $('edList').classList.add('hidden'); showSel();
+  if (!r) { el.innerHTML = '<div>this map has no bot routes: bots walk straight at things here, so nothing to check.</div>'; return; }
+  const bad = r.spots.filter((p) => !p.ok), cut = bad.filter((p) => p.was !== false), old = bad.filter((p) => p.was === false);
+  botMarks = new THREE.Group(); botMarks.name = 'botcheck';
+  const pin = (p, c) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 6, 8), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.75, depthTest: false })); m.position.set(p[0], p[1] + 3, p[2]); m.renderOrder = 998; botMarks.add(m); };
+  for (const p of cut) pin(p.p, 0xff3030); for (const p of old) pin(p.p, 0x888888);
+  if (r.lost.length) {
+    const pos = new Float32Array(r.lost.length * 3); r.lost.forEach((p, i) => pos.set([p[0], p[1] + 0.15, p[2]], i * 3));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xff3030, size: 6, sizeAttenuation: false, depthTest: false })); pts.renderOrder = 998; botMarks.add(pts);
+  }
+  G.scene.add(botMarks);
+  const line = (html, cls, p) => { const d = document.createElement('div'); d.innerHTML = html; if (cls) d.className = cls; if (p) d.onclick = () => { cam.position.set(p[0] + 7, p[1] + 6, p[2] + 7); lookAt(p); }; el.append(d); };
+  line(cut.length || r.lost.length ? '<b class="edBad">' + (cut.length ? cut.length + ' spot' + (cut.length > 1 ? 's' : '') + ' bots can\'t reach any more' : 'all the important spots are fine') + '</b>' : '<b class="edOk">ALL GOOD: bots can still get everywhere they need to</b>');
+  if (r.lost.length) line(r.lost.length + ' m² of floor got cut off (red dots)', 'edBad', r.lost[0]);
+  for (const p of cut) line('CAN\'T REACH <em>' + p.what + '</em>', 'stale', p.p);
+  for (const p of old) line('<em>' + p.what + '</em> (already unreachable before your edits)', 'undone', p.p);
+  line('bots can walk on ' + Math.round(r.reach / Math.max(1, r.nodes) * 100) + '% of the floor · ' + r.spots.filter((p) => p.ok).length + ' of ' + r.spots.length + ' spots fine');
+  callout(cut.length || r.lost.length ? 'BOTS ARE STUCK' : 'BOTS APPROVE');
+}
+function clearBotMarks() { if (!botMarks) return; G.scene.remove(botMarks); botMarks.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); botMarks = null; }
 
 // ---------------------------------------------------------------- the change list (the diff)
 function opWhat(op) {
@@ -324,8 +430,9 @@ canvas.addEventListener('mousedown', (e) => {
   if (document.pointerLockElement !== canvas && e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); }
   if (document.pointerLockElement === canvas) { if (e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); } else if (e.button === 2 && carry) cancelCarry(); }
 });
-canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
+canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) lockPointer(canvas); });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) lockPointer(canvas); });
+const mlook = lookFilter(); // (the game's mouse look: raw mouse, no snapping on Chrome's fake jumps)
 function clickPick(add) {
   const [o, d] = aimRay(), h = pick(o, d);
   if (!add) sel.clear();
@@ -335,9 +442,11 @@ function clickPick(add) {
 addEventListener('mousemove', (e) => {
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); moved = true;
   if (document.pointerLockElement !== canvas) return;
-  cam.rotation.y -= e.movementX * 0.0022 * (G.settings.sens || 1.2) / 1.2; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * 0.0022 * (G.settings.sens || 1.2) / 1.2));
+  if (!mlook.take(e.movementX, e.movementY)) return;
+  const s = 0.0022 * (G.settings.sens || 1.2); // (the same feel as in a match)
+  cam.rotation.order = 'YXZ'; cam.rotation.y -= e.movementX * s; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * s)); cam.rotation.z = 0;
 });
-document.addEventListener('pointerlockchange', () => { $('edX').style.display = document.pointerLockElement === canvas ? '' : 'none'; canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'crosshair'; });
+document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === canvas) mlook.locked(); $('edX').style.display = document.pointerLockElement === canvas ? '' : 'none'; canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'crosshair'; });
 addEventListener('wheel', (e) => {
   if (e.target !== canvas && document.pointerLockElement !== canvas) return;
   if (carry) carry.dist = Math.max(1.5, Math.min(200, carry.dist * (e.deltaY > 0 ? 0.9 : 1.1)));
@@ -361,6 +470,8 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketRight') setSnap(SNAPS[Math.min(SNAPS.length - 1, SNAPS.indexOf(snap) + 1)] || 0.25);
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
+  else if (c === 'KeyN') botCheck();
+  else if (c === 'KeyP') { if (togglePalette() && document.pointerLockElement) document.exitPointerLock(); }
   else if (c === 'Escape' && carry) cancelCarry();
   else if (c === 'ArrowUp') nudge(0, 0, -1); else if (c === 'ArrowDown') nudge(0, 0, 1); else if (c === 'ArrowLeft') nudge(-1, 0, 0); else if (c === 'ArrowRight') nudge(1, 0, 0);
   else if (c === 'PageUp') nudge(0, 1, 0); else if (c === 'PageDown') nudge(0, -1, 0);
@@ -382,6 +493,10 @@ $('edDiff').onclick = () => { $('edList').classList.toggle('hidden'); showList()
 $('edClose').onclick = () => { $('edList').classList.add('hidden'); showSel(); };
 $('edReset').onclick = () => { if (!confirm('Throw away every change on ' + (def.name || mapId) + '?')) return; try { localStorage.removeItem(store(mapId)); } catch { /* fine */ } location.reload(); };
 $('edQuit').onclick = () => { location.href = '/'; };
+$('edPalBtn').onclick = () => togglePalette();
+$('edBotBtn').onclick = () => botCheck();
+$('edBotClose').onclick = () => { $('edBots').classList.add('hidden'); clearBotMarks(); showSel(); };
+initPalette({ pick: (k, id) => place(k, id), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = 'jankfire-edits-' + mapId + '.json'; a.click();
@@ -407,5 +522,5 @@ $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);

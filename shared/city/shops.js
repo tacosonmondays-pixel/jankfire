@@ -75,7 +75,8 @@ function shopfront(B, s) {
   if (s.lot) {
     const [lx0, lz0, lx1, lz1] = s.lot;
     for (let x = lx0 + 3; x < lx1 - 2; x += 5.5) for (const z of [lz0 + 5, lz0 + 14]) { const yy = groundY(x, z); if (B.inside(x, z)) B.out.marks.push({ id: 'park', p: [x, yy, z], yaw: Math.PI / 2, sale: s.sid }); }
-    for (let x = lx0; x < lx1; x += 4) if (B.inside(x, lz1)) B.prop('stringlights', x + 2, groundY(x + 2, lz1) + 3.2, lz1, 0, 1, 0);
+    for (let x = lx0; x < lx1; x += 4) if (B.inside(x, lz1)) { B.prop('stringlights', x + 2, groundY(x + 2, lz1) + 3.2, lz1, 0, 1, 0); B.add(x - 0.05, groundY(x, lz1), lz1 - 0.05, x + 0.05, groundY(x, lz1) + 3.3, lz1 + 0.05, 'metal', { nc: true, tint: 0xd8d8d8 }); } // (a bunting pole every 4 m: the bulbs hung off nothing)
+    { const ex = lx0 + Math.ceil((lx1 - lx0) / 4) * 4; if (B.inside(ex, lz1)) B.add(ex - 0.05, groundY(ex, lz1), lz1 - 0.05, ex + 0.05, groundY(ex, lz1) + 3.3, lz1 + 0.05, 'metal', { nc: true, tint: 0xd8d8d8 }); } // (and one where the last string ends)
   }
 }
 function vending(B, [x, z, yaw, district]) {
