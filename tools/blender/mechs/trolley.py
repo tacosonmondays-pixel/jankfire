@@ -2,10 +2,14 @@
 # wire basket on a low steel chassis with team-colour side covers, a team-colour push handle with a pound-coin lock,
 # a rubber bumper and headlights for ramming, four caster wheels (the front-left one is wonky), a fold-down child seat
 # for a rider, a rear deck where the pilot stands at the handle, a tall safety flag, and two little boosters under the
-# deck for CLEAN UP AISLE 5. Clean look (the owner's references): glossy paint, chrome, few strong glows.
+# deck for CLEAN UP AISLE 5. Clean look (the owner's references): glossy paint, chrome, few strong glows. The detail
+# pass (2026-11-12): coil-over springs and brake pedals on the casters, lug bolts and deep tread on the wheels, a drive
+# motor with cooling fins under the deck, fuel lines to the boosters, headlight visors, a number plate, a chained coin
+# lock and a wing mirror; details and dt() parts drop out of the far LOD.
 # Game space: faces -z (the basket's nose), the handle at the back (+z), its right is +x, wheels on y = 0.
 from mechkit import *
 import herokit
+from detailkit import *
 
 FID = 'mech_trolley'
 WR = 0.32  # wheel radius
@@ -19,7 +23,7 @@ PAL_B = {  # "MIDNIGHT RUN": cyan, pink seat, green boosters
 }
 ROLE_LOOK.setdefault('flag', (0.5, 0.0, 0.3)); ROLE_LOOK.setdefault('hazard', (0.30, 0.0, 1.0))
 NUMBER = 'A5'  # (aisle 5)
-CASTER = {'FL': (-0.92, 0.66, -1.52), 'FR': (0.92, 0.66, -1.52), 'BL': (-1.06, 0.66, 1.40), 'BR': (1.06, 0.66, 1.40)}
+CASTER = {'FL': (-0.92, 0.72, -1.52), 'FR': (0.92, 0.72, -1.52), 'BL': (-1.06, 0.72, 1.40), 'BR': (1.06, 0.72, 1.40)}  # (on top of the rails: the tyres clear the mounts)
 HINGE = (0.0, 0.92, -1.70)  # the basket tips about its front-bottom edge
 BASKET = {'y0': 0.92, 'y1': 1.86, 'zf0': -1.70, 'zf1': -1.84, 'zb0': 1.20, 'zb1': 1.30, 'wf0': 0.84, 'wf1': 0.96, 'wb0': 1.00, 'wb1': 1.12}
 
@@ -49,19 +53,19 @@ def box(x0, x1, y0, y1, z0, z1, m, bev=0.02, name='box'):
     return hull([(x, y, z) for x in (x0, x1) for y in (y0, y1) for z in (z0, z1)], m, bev, 2, name)
 
 
-def bar(a, b, r, m, name='bar'):
-    return cyl(a, b, r, m, 8, name=name)
+def bar(a, b, r, m, name='bar', seg=8):
+    return cyl(a, b, r, m, seg, name=name)
 
 
 def chassis(mk, M, T):
     C = []
     for s in (1, -1):  # two side rails, the covers on them (team colour), cross members
-        C.append(bar((s * 0.92, 0.66, -1.62), (s * 1.06, 0.66, 1.52), 0.06, M['frame'], 'rail'))
+        C.append(bar((s * 0.92, 0.66, -1.62), (s * 1.06, 0.66, 1.52), 0.06, M['frame'], 'rail', 16))
         C.append(hull([(s * x, y, z) for (x, z) in ((0.99, -1.40), (1.13, 1.30)) for y in (0.50, 0.80) for _ in (0,)] +
                       [(s * x, y, z) for (x, z) in ((0.93, -1.40), (1.07, 1.30)) for y in (0.50, 0.80)], M['paint'], 0.025, name='cover'))
     for z in (-1.62, -0.40, 0.70, 1.52):
         w = 0.92 + (z + 1.62) / 3.14 * 0.14
-        C.append(bar((-w, 0.66, z), (w, 0.66, z), 0.045, M['frame'], 'cross'))
+        C.append(bar((-w, 0.66, z), (w, 0.66, z), 0.045, M['frame'], 'cross', 12))
     for x in (-0.6, -0.3, 0.0, 0.3, 0.6):  # the bottom tray (wire)
         C.append(bar((x, 0.62, -1.56), (x, 0.62, 1.46), 0.025, M['chrome'], 'tray'))
     for k, c in CASTER.items():  # caster mount plates under the rails
@@ -72,19 +76,45 @@ def chassis(mk, M, T):
     C.append(box(-0.62, 0.62, 0.58, 0.70, 1.30, 1.92, M['rubber'], 0.02, 'deck'))
     C.append(box(-0.64, 0.64, 0.56, 0.62, 1.88, 1.96, M['chrome'], 0.012, 'deckedge'))
     for x in (-0.38, 0.38):
-        C.append(cyl((x, 0.44, 1.30), (x, 0.44, 1.86), 0.13, M['dark'], 14, name='booster'))
-        C.append(cyl((x, 0.44, 1.36), (x, 0.44, 1.46), 0.145, M['paint'], 14, name='boosterband'))
-        C += nozzle((x, 0.44, 1.86), (0, 0, 1), 0.12, 0.16, M, 'boosternoz')
+        C.append(cyl((x, 0.44, 1.30), (x, 0.44, 1.86), 0.13, M['dark'], 28, name='booster'))
+        C.append(cyl((x, 0.44, 1.36), (x, 0.44, 1.46), 0.145, M['paint'], 28, name='boosterband'))
+        C += nozzle((x, 0.44, 1.86), (0, 0, 1), 0.12, 0.16, M, 'boosternoz', seg=28)
+        C += ribs((x, 0.44, 1.52), (0, 0, 1), 0.138, 0.138, 3, 0.26, M['frame'], 'boosterrib')
     C.append(box(-0.52, 0.52, 0.40, 0.58, 1.27, 1.40, M['frame'], 0.012, 'boostermount'))
     mk.add('chassis', C); T['chassis'] = C
+    chassis_detail(mk, M, T)
+
+
+def cover_x(z, s): return s * (0.99 + (z + 1.40) / 2.70 * 0.14)  # (the cover's slanted outer face)
+
+
+def chassis_detail(mk, M, T):
+    D = []
+    for s in (1, -1):  # the covers: bolts at the ends, a chrome strip along the top
+        n = norm((s, 0, -s * 0.052))
+        D += bolts([(cover_x(z, s) + s * 0.002, y, z) for z in (-1.30, 1.20) for y in (0.56, 0.74)], n, M['chrome'], 0.016, 0.009)
+        D += dt([bar((cover_x(-1.36, s) - s * 0.012, 0.795, -1.36), (cover_x(1.26, s) - s * 0.012, 0.795, 1.26), 0.016, M['chrome'], 'coverstrip', 10)])
+    # the drive motor under the middle: a dark box, cooling fins down its sides, a cable to each booster
+    D += dt([box(-0.38, 0.38, 0.40, 0.585, -0.70, 0.30, M['dark'], 0.02, 'motor'), box(-0.30, 0.30, 0.36, 0.42, -0.60, 0.20, M['frame'], 0.012, 'motorpan')])
+    for s in (1, -1):
+        D += dt([box(s * 0.375 - 0.004, s * 0.425 + 0.004, 0.43, 0.555, z - 0.012, z + 0.012, M['frame'], 0.0, 'fin') for z in (-0.58, -0.46, -0.34, -0.22, -0.10, 0.02, 0.14)])
+        D += hose([(s * 0.20, 0.47, 0.30), (s * 0.24, 0.47, 0.70), (s * 0.34, 0.47, 1.05), (s * 0.38, 0.47, 1.28)], 0.026, M, 'fuelline')
+    # the deck: grip ribs front and back (the NO STEP sticker sits between them)
+    D += dt([box(-0.55, 0.55, 0.698, 0.716, z - 0.016, z + 0.016, M['rubber'], 0.0, 'deckrib') for z in (1.37, 1.45, 1.79, 1.86)])
+    D += bolts([(x, 0.40, 1.335) for x in (-0.44, 0.44)] + [(x, 0.52, 1.402) for x in (-0.44, 0.44)], (0, 0, 1), M['chrome'], 0.016, 0.009)  # (booster mount)
+    for k, c in CASTER.items():  # caster mounts: four bolts underneath
+        D += bolts([(c[0] + dx, c[1] - 0.04, c[2] + dz) for dx in (-0.095, 0.095) for dz in (-0.095, 0.095)], (0, -1, 0), M['chrome'], 0.015, 0.008)
+    for s in (1, -1):  # the hinge brackets under the basket's nose
+        D += dt([box(s * 0.70 - 0.03, s * 0.70 + 0.03, 0.62, 0.90, -1.74, -1.60, M['frame'], 0.01, 'hingebracket')])
+    mk.add('chassis', D)
 
 
 def wall(p00, p10, p01, p11, nu, nv, r, m, name, ends=True):
     """a wire panel on a bilinear quad: nu bars running along v, nv bars along u (ends = the two edge bars too: the
     panel that shares a corner leaves its own out, so no bar is doubled)"""
     L = lambda u, v: lerp(lerp(p00, p10, u), lerp(p01, p11, u), v)
-    out = [bar(L(i / nu, 0), L(i / nu, 1), r, m, name) for i in (range(nu + 1) if ends else range(1, nu))]
-    out += [bar(L(0, j / nv), L(1, j / nv), r * 0.8, m, name) for j in range(1, nv)]
+    out = [bar(L(i / nu, 0), L(i / nu, 1), r, m, name, 12) for i in (range(nu + 1) if ends else range(1, nu))]
+    out += [bar(L(0, j / nv), L(1, j / nv), r * 0.8, m, name, 12) for j in range(1, nv)]
     return out
 
 
@@ -99,15 +129,20 @@ def basket(mk, M, T):
     B += wall(BL0, BR0, BL1, BR1, 9, 4, 0.03, M['chrome'], 'back', ends=False)
     B += wall(FL0, FR0, BL0, BR0, 7, 12, 0.03, M['chrome'], 'floor', ends=False)
     rim = [FL1, FR1, BR1, BL1, FL1]
-    for a, c in zip(rim, rim[1:]): B.append(bar(a, c, 0.055, M['chrome'], 'rim'))
+    for a, c in zip(rim, rim[1:]): B.append(bar(a, c, 0.055, M['chrome'], 'rim', 14))
     for a, c in ((FL0, FR0), (BL0, BR0), (FL0, BL0), (FR0, BR0)): B.append(bar(a, c, 0.05, M['frame'], 'floorframe'))
-    B.append(cyl(add(FL1, (0.10, 0.0, 0.0)), add(FR1, (-0.10, 0.0, 0.0)), 0.085, M['paint'], 14, name='nosetrim'))  # (a team-colour bar on the nose rim)
-    B.append(cyl((-0.70, y0 - 0.02, b['zf0'] + 0.02), (0.70, y0 - 0.02, b['zf0'] + 0.02), 0.07, M['frame'], 12, name='hingebar'))
+    B.append(cyl(add(FL1, (0.10, 0.0, 0.0)), add(FR1, (-0.10, 0.0, 0.0)), 0.085, M['paint'], 24, name='nosetrim'))  # (a team-colour bar on the nose rim)
+    B.append(cyl((-0.70, y0 - 0.02, b['zf0'] + 0.02), (0.70, y0 - 0.02, b['zf0'] + 0.02), 0.07, M['frame'], 24, name='hingebar'))
+    nf = norm((0, 0.14 / 0.94, -1))  # the front wall's slant: a team-colour plate wired onto it (the aisle number goes here)
+    pc = (0, 1.42, lerp((0, y0, b['zf0']), (0, y1, b['zf1']), (1.42 - y0) / (y1 - y0))[2])
+    B.append(skin(pc, fr(nf), 0.86, 0.36, M['paint'], 0.05, 0.05, 0.03, name='nameplate')); T['nameplate'] = B[-1]; T['np_c'] = add(pc, mul(nf, 0.05)); T['np_n'] = nf
+    B += bolts([at(pc, fr(nf), x, y, 0.05) for x in (-0.37, 0.37) for y in (-0.13, 0.13)], nf, M['chrome'], 0.014, 0.008)
+    B += dt([cyl((x, y0 - 0.02, b['zf0'] + 0.02), (x + (0.04 if x > 0 else -0.04), y0 - 0.02, b['zf0'] + 0.02), 0.085, M['chrome'], 20, bev=0.004, name='hingecap') for x in (-0.70, 0.70)])
     mk.add('basket', B); T['basket'] = B
     # the child seat: a yellow plastic panel hinged at the back rim, folded up against the back wall (flips down)
     S = [box(-0.42, 0.42, 1.30, 1.80, 1.12, 1.18, M['paint2'], 0.012, 'seatpanel')]
     for x in (-0.20, 0.20): S.append(box(x - 0.09, x + 0.09, 1.36, 1.50, 1.105, 1.13, M['dark'], 0.004, 'leghole'))
-    S.append(bar((-0.42, 1.82, 1.18), (0.42, 1.82, 1.18), 0.04, M['chrome'], 'seathinge'))
+    S.append(bar((-0.45, 1.82, 1.18), (0.45, 1.82, 1.18), 0.04, M['chrome'], 'seathinge', 14))  # (its ends past the panel's sides: not flush on the far LOD)
     mk.add('seat', S); T['seat'] = S
 
 
@@ -116,10 +151,19 @@ def handle(mk, M, T):
     for s in (1, -1):  # the posts from the chassis' back corners up to the handle
         H.append(bar((s * 1.06, 0.70, 1.52), (s * 1.02, 1.74, 1.68), 0.055, M['chrome'], 'post'))
         H.append(box(s * 1.02 - 0.08, s * 1.02 + 0.08, 1.70, 1.86, 1.62, 1.78, M['dark'], 0.02, 'grip_end'))
-    H.append(cyl((-1.06, 1.78, 1.70), (1.06, 1.78, 1.70), 0.085, M['paint'], 16, name='handlebar'))
+    H.append(cyl((-1.06, 1.78, 1.70), (1.06, 1.78, 1.70), 0.085, M['paint'], 28, name='handlebar'))
     H.append(box(-0.16, 0.16, 1.82, 2.02, 1.60, 1.80, M['paint2'], 0.025, 'coinlock'))  # the pound-coin lock (allies ride)
     H.append(box(-0.05, 0.05, 1.92, 1.97, 1.585, 1.60, M['dark'], 0.004, 'coinslot'))
-    H.append(tube([(0.10, 1.84, 1.60), (0.20, 1.70, 1.52), (0.30, 1.64, 1.46)], 0.018, M['chrome'], 6, 'coinchain'))
+    for i in range(6):  # the coin lock's chain: real links, hanging off the lock
+        c = lerp((0.10, 1.84, 1.585), (0.30, 1.62, 1.46), i / 5); c = (c[0], c[1] - 0.04 * math.sin(math.pi * i / 5), c[2])
+        ax = (0, 0, 1) if i % 2 else (1, 0, 0)
+        H += dt([tube(ring_pts(c, ax, 0.026, 10, (1.0, 0.6), ref=norm((0.2, -0.22, -0.125))) + [ring_pts(c, ax, 0.026, 10, (1.0, 0.6), ref=norm((0.2, -0.22, -0.125)))[0]], 0.006, M['chrome'], 6, 'chainlink')])
+    H += dt([box(0.27, 0.33, 1.56, 1.63, 1.43, 1.49, M['paint2'], 0.006, 'chaintag')])
+    for s in (1, -1):  # clamps where the posts meet the bar
+        H += dt([cyl((s * 0.93, 1.78, 1.70), (s * 0.97, 1.78, 1.70), 0.10, M['chrome'], 20, bev=0.004, name='clamp')])
+    H += dt([tube([(-1.02, 1.86, 1.70), (-1.04, 2.02, 1.66), (-1.10, 2.14, 1.60)], 0.016, M['chrome'], 8, 'mirrorstalk'),  # (a wing mirror: it checks its blind spot)
+             lathe_ax([(0.0, 0.0), (0.11, 0.0), (0.12, 0.02), (0.11, 0.045), (0.0, 0.05)], (-1.12, 2.20, 1.60), (0, 0.1, -1), M['dark'], 20, 'mirror'),  # (its back to the front)
+             lathe_ax([(0.0, 0.0), (0.095, 0.0), (0.095, 0.012), (0.0, 0.012)], (-1.12, 2.2006, 1.594), (0, -0.1, 1), M['chrome'], 20, 'mirrorglass')])  # (the glass faces the pilot)
     mk.add('handle', H); T['handle'] = H
 
 
@@ -128,8 +172,17 @@ def bumper(mk, M, T):
     B.append(box(-0.86, 0.86, 0.40, 0.66, -1.80, -1.68, M['dark'], 0.02, 'nose'))
     for x in (-0.55, 0.55):
         c = (x, 0.53, -1.82)
-        B.append(frustum(c, add(c, (0, 0, -0.06)), 0.11, 0.10, M['chrome'], 16, bev=0.008, name='lampring'))
-        B.append(lathe_ax([(0.085, 0.0), (0.08, 0.03), (0.0, 0.05)], add(c, (0, 0, -0.04)), (0, 0, -1), M['glow'], 16, 'lamp'))
+        B.append(frustum(c, add(c, (0, 0, -0.06)), 0.11, 0.10, M['chrome'], 32, bev=0.008, name='lampring'))
+        B.append(lathe_ax([(0.085, 0.0), (0.084, 0.012), (0.078, 0.03), (0.05, 0.045), (0.0, 0.05)], add(c, (0, 0, -0.04)), (0, 0, -1), M['glow'], 32, 'lamp'))
+        sx = 1 if x > 0 else -1  # a visor over each lamp, tilted in: a scowl
+        B += dt([hull([add(c, (dx, 0.105 + 0.03 * sx * dx / 0.13 + dy, z)) for dx in (-0.13, 0.13) for dy in (0.0, 0.035) for z in (-0.02, -0.13)], M['dark'], 0.01, name='visor')])
+    for sx in (-1, 1):  # corner lights
+        c = (sx * 0.95, 0.60, -1.73)
+        B += dt([frustum(c, add(c, (0, 0, -0.04)), 0.05, 0.045, M['chrome'], 16, bev=0.0, name='blinkring'),
+                 lathe_ax([(0.04, 0.0), (0.03, 0.02), (0.0, 0.026)], add(c, (0, 0, -0.035)), (0, 0, -1), M['paint'], 16, 'blinker')])  # (roles the bumper already has: no new draw calls)
+    pc = (0.0, 0.47, -1.80)  # a number plate on the nose (the serial sticker is its text)
+    B.append(box(-0.22, 0.22, 0.42, 0.53, -1.83, -1.79, M['chrome'], 0.008, 'plate')); T['plate'] = B[-1]
+    B += bolts([(x, 0.475, -1.83) for x in (-0.19, 0.19)], (0, 0, -1), M['chrome'], 0.012, 0.007)
     mk.add('bumper', B); T['bumper'] = B
 
 
@@ -140,25 +193,38 @@ def flag(mk, M, T):
     F.append(hull([add(top, (dx, y, z)) for dx in (-0.012, 0.012) for (y, z) in ((0.0, 0.0), (-0.42, 0.0), (-0.21, 0.62))], M['flag'], 0.004, name='pennant'))
     F.append(ball(top, 0.045, M['paint2'], 10, 6, 'poletip'))
     F.append(box(b[0] - 0.07, b[0] + 0.07, b[1] - 0.02, b[1] + 0.13, b[2] - 0.07, b[2] + 0.07, M['dark'], 0.01, 'poleclamp'))
+    F += bolts([(b[0] - 0.072, b[1] + 0.055, b[2] + dz) for dz in (-0.035, 0.035)], (-1, 0, 0), M['white'], 0.012, 0.007)
     mk.add('flag', F); T['flag'] = F
 
 
 def caster(mk, M, T, k):
     c = CASTER[k]; w = wheel_c(k)
-    Cs = [cyl(add(c, (0, -0.06, 0)), add(c, (0, 0.02, 0)), 0.11, M['chrome'], 16, name='swivel')]
+    Cs = [cyl(add(c, (0, -0.06, 0)), add(c, (0, 0.02, 0)), 0.11, M['chrome'], 28, name='swivel')]
+    Cs += dt([cyl(add(c, (0, -0.075, 0)), add(c, (0, -0.058, 0)), 0.122, M['frame'], 28, bev=0.003, name='bearing')])
+    s = 1 if c[0] > 0 else -1  # a coil-over shock on the outer side: a yellow spring round a dark damper
+    top, bot = add(c, (s * 0.20, -0.07, -0.02)), add(w, (s * 0.20, 0.06, 0.0))
+    Cs += dt([cyl(top, bot, 0.022, M['chrome'], 12, bev=0.0, name='damper'), cyl(add(top, (0, 0.02, 0)), add(top, (0, -0.02, 0)), 0.05, M['frame'], 16, bev=0.003, name='shocktop'),
+              box(c[0] + s * 0.115, c[0] + s * 0.24, c[1] - 0.075, c[1] - 0.045, c[2] - 0.06, c[2] + 0.02, M['frame'], 0.006, 'shockarm')])
+    Cs += helix(add(top, mul(norm(sub(bot, top)), 0.04)), sub(bot, top), 0.042, math.dist(top, bot) - 0.08, 4.5, 0.009, M['paint2'], 14, 'spring')
+    Cs += dt([cyl(add(w, (s * 0.145, 0, 0)), add(w, (s * 0.215, 0, 0)), 0.04, M['chrome'], 6, bev=0.0, name='axlenut')])
+    if c[2] > 0:  # the back casters have brake pedals
+        Cs += dt([hull([add(c, (dx, dy, dz)) for dx in (-0.06, 0.06) for (dy, dz) in ((-0.05, 0.10), (-0.02, 0.10), (-0.07, 0.25), (-0.045, 0.26))], M['paint2'], 0.008, name='brake')])
     for s in (-1, 1):  # the fork: two plates down to the axle, trailing back a little
         Cs.append(hull([add(c, (s * 0.12 + dx, -0.05, -0.08)) for dx in (-0.02, 0.02)] + [add(c, (s * 0.12 + dx, -0.05, 0.10)) for dx in (-0.02, 0.02)] +
                        [add(w, (s * 0.12 + dx, 0.0, dz)) for dx in (-0.02, 0.02) for dz in (-0.07, 0.07)], M['frame'], 0.01, name='fork'))
     Cs.append(bar(add(w, (-0.15, 0, 0)), add(w, (0.15, 0, 0)), 0.03, M['chrome'], 'axle'))
     mk.add('caster_' + k, Cs)
     # the wheel: a fat rubber tyre with a tread, a yellow hub (the wonky front-left one gets a red hub)
-    Wh = [lathe_ax([(WR - 0.11, -0.09), (WR - 0.03, -0.10), (WR, -0.06), (WR, 0.06), (WR - 0.03, 0.10), (WR - 0.11, 0.09), (WR - 0.11, -0.09)], w, (1, 0, 0), M['rubber'], 24, 'tyre', cap=False)]
-    Wh.append(lathe_ax([(0.0, -0.075), (WR - 0.10, -0.075), (WR - 0.10, 0.075), (0.0, 0.075)], w, (1, 0, 0), M['paint' if k == 'FL' else 'paint2'], 20, 'hub'))
-    Wh.append(cyl(add(w, (-0.09, 0, 0)), add(w, (0.09, 0, 0)), 0.06, M['chrome'], 12, name='hubcap'))
-    for i in range(6):  # tread blocks
-        a = 2 * math.pi * i / 6
+    Wh = [lathe_ax([(WR - 0.11, -0.09), (WR - 0.05, -0.098), (WR - 0.018, -0.088), (WR, -0.06), (WR, 0.06), (WR - 0.018, 0.088), (WR - 0.05, 0.098), (WR - 0.11, 0.09), (WR - 0.11, -0.09)], w, (1, 0, 0), M['rubber'], 40, 'tyre', cap=False)]
+    Wh.append(lathe_ax([(0.0, -0.075), (WR - 0.10, -0.075), (WR - 0.10, 0.075), (0.0, 0.075)], w, (1, 0, 0), M['paint' if k == 'FL' else 'paint2'], 32, 'hub'))
+    Wh.append(cyl(add(w, (-0.09, 0, 0)), add(w, (0.09, 0, 0)), 0.06, M['chrome'], 24, name='hubcap'))
+    for sx in (-1, 1):  # a chrome dish ring and five lug bolts on each face of the hub
+        Wh += dt([lathe_ax([(0.14, 0.0), (0.15, 0.006), (0.145, 0.014), (0.125, 0.016), (0.12, 0.0), (0.14, 0.0)], add(w, (sx * 0.068, 0, 0)), (sx, 0, 0), M['chrome'], 28, 'hubring', cap=False)])
+        Wh += bolt_ring(add(w, (sx * 0.075, 0, 0)), (sx, 0, 0), 0.092, 5, M['chrome'], 0.014, 0.01)
+    for i in range(12):  # tread blocks
+        a = 2 * math.pi * i / 12
         p = add(w, (0, math.cos(a) * (WR - 0.005), math.sin(a) * (WR - 0.005)))
-        Wh.append(hull([add(p, (dx, math.cos(a) * dr - math.sin(a) * dt, math.sin(a) * dr + math.cos(a) * dt)) for dx in (-0.07, 0.07) for dr in (-0.01, 0.03) for dt in (-0.035, 0.035)], M['rubber'], 0.006, name='tread'))
+        Wh += dt([hull([add(p, (dx + (0.012 if i % 2 else -0.012), math.cos(a) * dr - math.sin(a) * dt_, math.sin(a) * dr + math.cos(a) * dt_)) for dx in (-0.06, 0.06) for dr in (-0.01, 0.026) for dt_ in (-0.03, 0.03)], M['rubber'], 0.006, name='tread')])
     mk.add('wheel_' + k, Wh)
 
 
@@ -172,6 +238,10 @@ def stickers(mk, M, T):
                           ('tri', (-1.12, 0.65, 0.85), (-1, 0, 0), 0.20)):
         o = herokit.stamp(covers, cell, c, n, (0, 1, 0), w, m)
         if o: mk.add('chassis', o)
+    o = herokit.stamp([T['nameplate']], 'number', add(T['np_c'], (0, 0, 0)), T['np_n'], (0, 1, 0), 0.40, m)
+    if o: mk.add('basket', o)
+    o = herokit.stamp([T['plate']], 'serial', (0.0, 0.475, -1.83), (0, 0, -1), (0, 1, 0), 0.40, m)
+    if o: mk.add('bumper', o)
     o = herokit.stamp([x for x in T['chassis'] if x.name.startswith('deck')], 'nostep', (0, 0.70, 1.62), (0, 1, 0), (0, 0, -1), 0.60, m)  # (where the pilot stands)
     if o: mk.add('chassis', o)
     mk.meta['spray'] = [{'name': 'spray_0', 'joint': 'chassis', 'at': [-1.125, 0.65, -0.25], 'dir': [-1, 0, 0], 'up': [0, 1, 0], 'size': 0.42},

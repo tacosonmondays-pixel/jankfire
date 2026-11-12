@@ -22,6 +22,20 @@ from lib import gv, srgb, hexrgb, text_px, FONT, _link, _obj
 ROOT = lib.ROOT
 V = Vector
 
+# the far LOD: make_mechs_rig.build_lod() builds a mech twice, the second time with LO on: round parts get half their
+# segments, bevels become one chamfer (thin ones go), and parts wrapped in dt() (bolts, vents, hoses...) are left out
+LO = False
+def _n(n, lo=6): return n if not LO or n <= lo else max(lo, n // 2)
+def dt(*objs):
+    """detail parts: kept on the near model, dropped from the far LOD"""
+    out = []
+    for o in objs:
+        if o is None: continue
+        if isinstance(o, (list, tuple)): out += dt(*o); continue
+        if LO: bpy.data.objects.remove(o, do_unlink=True)
+        else: out.append(o)
+    return out
+
 
 def g_of(b):  # blender -> game
     return (b.x, b.z, -b.y)
@@ -79,9 +93,15 @@ class Mats:
             m['jf_color'] = self.pal[role]
 
 
+_TEX = {}
 def tex_mat(name, img, rough=0.35, clip=False, emit=0.0, cc=0.6, metal=0.0):
-    """a material showing an image (decals, displays). clip = alpha-tested (exported as glTF MASK)"""
-    m = bpy.data.materials.new(name); m.use_nodes = True
+    """a material showing an image (decals, displays). clip = alpha-tested (exported as glTF MASK). One per name
+    (the far LOD's build reuses the near one's)"""
+    old = _TEX.get(name)
+    try:
+        if old is not None and old.name in bpy.data.materials: return old
+    except ReferenceError: pass
+    m = bpy.data.materials.new(name); m.use_nodes = True; _TEX[name] = m
     nt = m.node_tree; b = nt.nodes['Principled BSDF']
     t = nt.nodes.new('ShaderNodeTexImage'); t.image = img; t.interpolation = 'Closest'
     nt.links.new(t.outputs['Color'], b.inputs['Base Color'])
@@ -179,6 +199,7 @@ def finish_obj(o, bev=0.0, seg=2, angle=32, uv=True, smooth_angle=None):
     for p in me.polygons: p.use_smooth = True
     sa = math.radians(smooth_angle if smooth_angle is not None else angle)
     me.set_sharp_from_angle(angle=sa)
+    if LO: seg, bev = 1, (bev if bev >= 0.015 else 0.0)  # (far LOD: one chamfer; thin bevels don't read from there)
     if bev > 0:
         md = o.modifiers.new('bevel', 'BEVEL'); md.width = bev; md.segments = seg; md.limit_method = 'ANGLE'
         md.angle_limit = math.radians(angle); md.harden_normals = True; md.miter_outer = 'MITER_ARC'
@@ -246,12 +267,12 @@ def ring_pts(c, axis, r, n=8, squash=(1.0, 1.0), rot=None, ref=None):
 
 
 def frustum(p0, p1, r0, r1, m, n=8, squash=(1.0, 1.0), bev=0.015, ref=None, name='frustum', rot=None, seg=2):
-    ax = sub(p1, p0)
+    ax = sub(p1, p0); n = _n(n)
     return hull(ring_pts(p0, ax, r0, n, squash, rot, ref) + ring_pts(p1, ax, r1, n, squash, rot, ref), m, bev, seg, name)
 
 
 def cyl(p0, p1, r, m, seg=16, r1=None, bev=0.006, name='cyl'):
-    o = lib.rod(p0, p1, r, m, seg=seg, name=name, r1=r1, bev=0)
+    o = lib.rod(p0, p1, r, m, seg=_n(seg), name=name, r1=r1, bev=0)
     lib.apply_mods(o)
     return finish_obj(o, bev, 2, 40)
 
@@ -267,13 +288,13 @@ def quad_slab(pts, t, m, bev=0.008, name='qs'):
 
 
 def ball(c, r, m, seg=16, rings=10, name='ball'):
-    o = lib.ball(r, c, m, seg=seg, rings=rings, name=name)
+    o = lib.ball(r, c, m, seg=_n(seg), rings=_n(rings, 4), name=name)
     return finish_obj(o, 0, uv=True, smooth_angle=80)
 
 
 def lathe_ax(profile, c, axis, m, seg=16, name='lathe', cap=True):
     """profile [(radius, along)] revolved round an axis through c"""
-    a, u, v = basis(axis)
+    a, u, v = basis(axis); seg = _n(seg)
     bm = bmesh.new(); rings = []
     for r, al in profile:
         ring = []
@@ -332,7 +353,7 @@ def nozzle(c, axis, r, length, mats, name='nozzle', seg=16):
 
 
 def tube(points, r, m, seg=8, name='tube'):
-    o = lib.tube(points, r, m, seg, name)
+    o = lib.tube(points, r, m, _n(seg, 4), name)
     return finish_obj(o, 0, smooth_angle=60)
 
 
@@ -386,7 +407,7 @@ def decal(targets, center, normal, up, w, h, m, nx=None, ny=None, off=0.0025, na
     each grid point is cast back along -normal onto the targets and sits `off` above the hit. returns None if the
     patch falls off the armour (a corner misses)"""
     bvh = targets if isinstance(targets, BVHTree) else bvh_of(targets)
-    nx = nx or max(4, int(w / 0.035)); ny = ny or max(2, int(h / 0.035))  # (dense enough that it hugs bevels)
+    g = 0.10 if LO else 0.035; nx = nx or max(4, int(w / g)); ny = ny or max(2, int(h / g))  # (dense enough that it hugs bevels; coarse on the far LOD)
     n = norm(normal); u = norm(sub(up, mul(n, dot(up, n)))); r = cross(u, n)  # r = right as you look at it
     bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap')
     grid = []
@@ -433,6 +454,8 @@ class Mech:
         for o in objs:
             if o is None: continue
             if isinstance(o, (list, tuple)): self.add(joint, *o); continue
+            try: o.name
+            except ReferenceError: continue  # (a detail part the far LOD dropped)
             self.parts[joint].append(o)
         return objs[0] if len(objs) == 1 else objs
 

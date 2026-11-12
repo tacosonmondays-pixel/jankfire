@@ -16,6 +16,7 @@ ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicT
 const env = new THREE.PMREMGenerator(ren).fromScene(new RoomEnvironment(), 0.04).texture;
 const g = await new Promise((ok, bad) => new GLTFLoader().load(`/models/x_mech_${MECH}.glb`, ok, undefined, bad));
 const meta = JSON.parse(g.scene.children[0].userData.jf || g.scene.userData.jf || '{}');
+g.scene.traverse((o) => { if (/_lod1$/.test(o.name)) o.visible = false; }); // (the far LOD: the game swaps it in by distance)
 g.scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) { m.envMap = env; m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.35; if (m.map) { m.map.magFilter = THREE.NearestFilter; } } });
 const names = (q.get('clips') || g.animations.map((a) => a.name).join(',')).split(',');
 const W = CW * NF, H = CH * names.length + 30; ren.setSize(W, H); ren.setScissorTest(true);

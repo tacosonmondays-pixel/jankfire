@@ -78,7 +78,11 @@ A 4 m shopping-trolley mech:
 - a rear deck where the pilot stands at the handle;
 - a tall orange safety flag, and two boosters under the deck for CLEAN UP AISLE 5.
 
-About 35k tris. 2.6 m to the basket top area, 3.15 m to the flag tip.
+2.6 m to the basket top area, 3.15 m to the flag tip. About 51k tris near (it's half VENDING MACHINE's height), 7k on the far LOD. The detail: deep tread,
+chrome hub rings and lug bolts on the wheels, a yellow coil-over spring on each caster and brake pedals on the back
+ones, a drive motor with cooling fins under the middle, fuel lines to the boosters, grip ribs on the deck, scowling
+visors over the headlights, red corner lights, a chrome number plate, a team-colour name plate with the aisle number on the
+basket's nose, a real chain on the coin lock, a wing mirror on the handle, bolts everywhere they hold something on.
 
 **Joints:**
 - root > chassis: body bob, lean, the wheelie (keyed position).
@@ -87,7 +91,7 @@ About 35k tris. 2.6 m to the basket top area, 3.15 m to the flag tip.
 - chassis > handle: the push bar, the coin lock, the posts.
 - chassis > bumper.
 - chassis > flag: waves, streams back at speed.
-- chassis > caster_FL / FR / BL / BR: swivel about y.
+- chassis > caster_FL / FR / BL / BR: swivel about y (pivots at y 0.72, on top of the rails, since the detail pass).
 - each caster > wheel_FL / FR / BL / BR: spin about x. **Negative rx rolls forward (-z).** Radius 0.32.
 
 **Markers:**
