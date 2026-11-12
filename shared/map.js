@@ -3895,8 +3895,15 @@ function skyline() {
   skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']); B.archSince(nb, 'girder', bm, 0, 0);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const cy = sx === sz ? lo : hi; // NW and SE are the low corners
+    // (each drawn as a Blender stair bridge over its boxes: stairhi / stairlo, tools/blender/arch/make_stairbridge.py.
+    // one model per rise, turned to each placement: the bridge's middle, along +x from the low end at rot 0)
+    const sid = cy > R ? 'stairhi' : 'stairlo', mid = (15.4 + S - 14.4) / 2;
+    let n0 = B.boxes.length;
     stairBridge(B, true, sx * 15.4, sx * (S - 14.4), sz * S, R, cy, 4, true); // from the north / south tower along x
+    B.archSince(n0, sid, sx * mid, sz * S, sx > 0 ? 0 : 2);
+    n0 = B.boxes.length;
     stairBridge(B, false, sz * 15.4, sz * (S - 14.4), sx * S, R, cy, 4, true); // from the west / east tower along z
+    B.archSince(n0, sid, sx * S, sz * mid, sz > 0 ? 1 : 3);
   }
 
   // ---- C, the Spire: the hub deck round its glass shaft (five floors of windows, stairs inside, a sniper's nest on top)
