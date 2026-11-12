@@ -14,7 +14,8 @@ let fails = 0;
 const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++; };
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  const { b, pg, ev, errs } = await boot({ hd: process.env.JANK !== '0', size: [960, 540] });
+  const W = Number(process.env.W || 1280), H = Number(process.env.H || 720);
+  const { b, pg, ev, errs } = await boot({ hd: process.env.JANK !== '0', size: [W, H] });
   const dialogs = []; pg.on('dialog', async (d) => { dialogs.push(d.type() + ': ' + d.message()); try { await d.dismiss(); } catch { /* gone */ } });
   for (const [n, q] of MISSIONS.entries()) {
     const e0 = errs.length;
@@ -32,18 +33,18 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) fails++
     await skipIntro(pg, 6); await sleep(1500);
     await ev(async (p) => { const { ME } = await import('/js/player.js'); if (p) ME.yaw = Math.atan2(-(p[0] - ME.pos[0]), -(p[2] - ME.pos[2])); ME.pitch = -0.05; }, at && at.p);
     await sleep(1500);
-    await pg.screenshot({ path: `${OUT}/chap_${n + 1}_${q}.png` });
+    await pg.screenshot({ path: `${OUT}/chap_${n + 1}_${q}.png`, timeout: 180000 }); // (Too HD in software graphics: a frame can take a while)
     const c = await ev(async (q) => {
       const vis = (el) => { if (!el) return false; const s = getComputedStyle(el), r = el.getBoundingClientRect(); return s.display !== 'none' && s.visibility !== 'hidden' && +s.opacity > 0.05 && r.width > 2 && r.height > 2; };
       const $ = (s) => document.querySelector(s);
       const { actors } = await import('/js/story/actors.js'); const { G } = await import('/js/ctx.js');
-      const ids = ['stQuest', 'storyBar', 'ammo', 'hpbox', 'weaponName', 'encHud', 'streak', 'feed', 'scores'];
-      const boxes = ids.map((id) => [id, document.getElementById(id)]).filter(([, el]) => vis(el)).map(([id, el]) => [id, el.getBoundingClientRect()]);
+      const ids = ['#stQuest', '#storyBar', '#ammo', '#hpbox', '#weaponName', '#encHud', '#streak', '#feed', '#scores', '.st-coupons'];
+      const boxes = ids.map((id) => [id.slice(1), document.querySelector(id)]).filter(([, el]) => vis(el)).map(([id, el]) => [id, el.getBoundingClientRect()]);
       const over = [];
       for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
         const [a, A] = boxes[i], [bb, B] = boxes[j];
         const w = Math.min(A.right, B.right) - Math.max(A.left, B.left), h = Math.min(A.bottom, B.bottom) - Math.max(A.top, B.top);
-        if (w > 6 && h > 6) over.push(`${a}x${bb} (${Math.round(w)}x${Math.round(h)})`);
+        if (w > 2 && h > 2) over.push(`${a}x${bb} (${Math.round(w)}x${Math.round(h)})`);
       }
       const qh = $('#stQuest');
       return { mode: G.mode, bar: vis($('#storyBar')), hotbar: vis($('#hotbar')), tray: vis($('#streakTray')), over, mina: actors.has('mina'), quest: qh ? qh.innerText.replace(/\s+/g, ' ').slice(0, 90) : '', shown: boxes.map(([id]) => id) };
