@@ -128,6 +128,7 @@ function shapeInto(S, s, lod) {
       S.v(x, H[k], z, -dx / l, 1 / l, -dz / l, x / tile, z / tile, cr, cg, cb, a);
     }
     for (let a2 = 0; a2 < ni; a2++) for (let c = 0; c < nj; c++) {
+      if (s.ok && !s.ok[Math.min(s.nx - 1, a2 * st) * s.nz + Math.min(s.nz - 1, c * st)] && (st === 1 || !s.ok[Math.min(s.nx - 1, a2 * st + 1) * s.nz + Math.min(s.nz - 1, c * st + 1)])) continue; // (ok: only those cells are ground)
       const p0 = base0 + a2 * (nj + 1) + c, p1 = p0 + nj + 1; // (p0 = (a, c), p1 = (a + 1, c): x then z, ccw from above)
       S.t(p0, p0 + 1, p1); S.t(p1, p0 + 1, p1 + 1);
     }
@@ -236,7 +237,7 @@ export function impostorCells(p) {
       if (by1 > top[c]) { top[c] = by1; const t = p.tint[i]; col[c] = t || (MATS[p.mat[i]] ? MATS[p.mat[i]][2] : 0x888888); }
     }
   }
-  for (const s of p.shapes || []) if (s.kind === 'field') { // shaped ground: its highest point in each cell
+  for (const s of p.shapes || []) if (s.kind === 'field' && !s.ok) { // shaped ground: its highest point in each cell
     const vz = s.nz + 1;
     for (let i = 0; i <= s.nx; i++) for (let j = 0; j <= s.nz; j++) {
       const x = s.x0 + i * s.cell, z = s.z0 + j * s.cell, a = Math.min(N - 1, Math.floor((x - x0c) / S)), b = Math.min(N - 1, Math.floor((z - z0c) / S));
