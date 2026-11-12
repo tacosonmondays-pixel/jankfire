@@ -115,3 +115,54 @@ Cyan cabinet (team colour), hot-pink trims, chrome. About 24k tris. Height 5.0 m
 | `stuck` | 0.5 | loop | | jammed: rattling (an ability "got stuck") |
 | `kicked` | 0.8 | once | spark 0.06, pop 0.22 | an ally's kick: jolts, the flap pops and a can shoots out (unstuck) |
 | shared | | | | `jump` (heel jets at 0.26), `land`, `hit_react` (the door swings open a crack), `drop_fall`, `drop_in`, `hero_intro` (a ta-da: door flung open, offering a can; held), `pilot_in` (the door opens to let the pilot in), `eject` (the door blows open), `destroy` (the marquee and sign come loose, it slumps forward) |
+
+## TROLLEY (`trolley`, prefix `tr_`)
+A 4 m shopping-trolley mech:
+- a chrome wire basket (it tips) on a low steel chassis with team-colour side covers;
+- a team-colour push handle with a yellow pound-coin lock;
+- a rubber bumper and headlights for ramming;
+- four caster wheels; the front-left one is wonky (red hub) and wobbles;
+- a fold-down child seat for a rider;
+- a rear deck where the pilot stands at the handle;
+- a tall orange safety flag, and two boosters under the deck for CLEAN UP AISLE 5.
+
+About 35k tris. 2.6 m to the basket top area, 3.15 m to the flag tip.
+
+**Joints:**
+- root > chassis: body bob, lean, the wheelie (keyed position).
+- chassis > basket: hinged at its front-bottom edge. **rx -38 scoops, rx -82 dumps.**
+- basket > seat: the child seat, hinged at the back rim. **rx +90 folds it down.**
+- chassis > handle: the push bar, the coin lock, the posts.
+- chassis > bumper.
+- chassis > flag: waves, streams back at speed.
+- chassis > caster_FL / FR / BL / BR: swivel about y.
+- each caster > wheel_FL / FR / BL / BR: spin about x. **Negative rx rolls forward (-z).** Radius 0.32.
+
+**Markers:**
+
+| marker | joint | what |
+|---|---|---|
+| `mk_seat` | chassis | the pilot stands here on the deck, at the handle |
+| `mk_rider` | basket | an ally riding in the basket (the pound-coin lock) |
+| `mk_scoop` | basket | the basket's mouth: scooped people go in here |
+| `mk_muzzle` | handle | tin cans lobbed from beside the handle (forward and up) |
+| `mk_bumper` | bumper | the ram's contact point |
+| `mk_thrust_L` / `_R` | chassis | the boosters, pointing back |
+| `mk_wheel_FL` / `FR` / `BL` / `BR` | caster | where each wheel touches the floor (drift sparks and dust; on the casters, so they don't spin) |
+| `mk_eject` | chassis | above the deck (the pilot gets kicked off) |
+| `mk_mark` | flag | above the flag |
+| `mk_spray_0` / `_1` | chassis | the spray / skin slots on the side covers (0.42 m) |
+
+**Clips:**
+
+| clip | dur | play | events | note |
+|---|---|---|---|---|
+| `idle` | 2.0 | loop | | a jiggle; the flag waves, the wonky wheel twitches |
+| `drive` | 1.0 | loop | | **one wheel turn**, linear: `timeScale = speed / (2 * pi * 0.32)`. A rattle, the front-left wobble, the flag streaming back |
+| `drift_L` / `drift_R` | 0.6 | loop | dust + sparks at the wheels | casters at 35 degrees, the chassis yawing into the turn and leaning out |
+| `push` | 0.7 | once | spark at mk_bumper 0.24 (shake 0.35) | TROLLEY PUSH: rock back, ram, hit at 0.24 s |
+| `scoop` | 0.8 | once | dust at mk_scoop 0.26 | the basket dips its nose (scooped people go to `mk_rider`) and comes back up |
+| `dump` | 1.0 | once | dust at mk_scoop 0.34 | tips the basket right over |
+| `seat_down` / `seat_up` | 0.4 | hold | | the child seat flips down / up |
+| `boost` | 0.4 | loop | bursts at the boosters | CLEAN UP AISLE 5: a squat, the nose down, two wheel turns a loop, the flag flat out |
+| shared | | | | `jump` (the casters flop), `land`, `hit_react` (the wonky wheel spins round), `drop_fall`, `drop_in`, `hero_intro` (a cocky wheelie, held), `pilot_in`, `eject`, `destroy` (the wonky wheel finally comes off) |
