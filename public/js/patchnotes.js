@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.6', date: '2026-11-12', title: 'STILL SPLINTERY', items: [
+    'islands: fort splinter got renovated. real weathered stone, moss, battlements, arrow slits, a round corner tower, a covered well. same walls to hide behind. still splintery.',
+  ] },
   { v: '8.5', date: '2026-11-11', title: 'HOT ROCKS', items: [
     'islands plant & defuse: the volcano stopped being a pile of black boxes. big basalt columns, lava pouring down the sides, steam, and comfier stairs up the middle.',
   ] },

@@ -36,19 +36,19 @@ const GLB = {};
 const TRUCK_GLB = '/models/story/s_gristle_truck.glb';
 function truckModel() {
   const G0 = GLB.truck;
-  if (G0 && G0.scene) { const m = G0.scene.clone(true); m.userData = { anims: G0.anims }; return m; }
+  if (G0 && G0.scene) { const m = G0.scene.clone(true); const lod = m.getObjectByName('lod1'); if (lod) lod.visible = false; m.userData = { anims: G0.anims }; return m; }
   if (!G0) { GLB.truck = { scene: null }; glbLoader().loadAsync(TRUCK_GLB).then((g) => { g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); GLB.truck.scene = g.scene; GLB.truck.anims = g.animations; }).catch(() => { GLB.truck.bad = true; }); }
   return truckMesh();
 }
 function vehicle(kind) {
   const url = VEHICLES[kind]; if (!url) return null;
-  if (!GLB[kind]) { GLB[kind] = { scene: null }; glbLoader().loadAsync(url).then((g) => { g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); GLB[kind].scene = g.scene; }).catch(() => { GLB[kind].bad = true; }); }
+  if (!GLB[kind]) { GLB[kind] = { scene: null }; glbLoader().loadAsync(url).then((g) => { g.scene.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } }); GLB[kind].scene = g.scene; GLB[kind].anims = g.animations || []; }).catch(() => { GLB[kind].bad = true; }); }
   if (!GLB[kind].scene) return null;
   const m = GLB[kind].scene.clone(true), by = (n) => m.getObjectByName(n);
   const lod = by('lod'); if (lod) lod.visible = false;
   m.traverse((o) => { if (/_lod1$/.test(o.name)) o.visible = false; });
   if (kind === 'stomach_dog') { m.scale.setScalar(1.5); m.userData = { dogGlb: true, legs: [['legFL', 0], ['legFR', Math.PI], ['legBL', Math.PI], ['legBR', 0]].map(([n, ph]) => ({ hip: by(n), knee: by(n.replace('leg', 'shin')), ph })).filter((l) => l.hip), jaw: by('jaw'), tail: by('tail'), head: by('head') }; return m; }
-  m.userData = { glb: true, wheels: ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'].map(by).filter(Boolean), castors: ['castor_l', 'castor_r'].map(by).filter(Boolean), turret: by('turret'), gun: by('gun'), barrels: by('barrels'), body: by('rig') || m };
+  m.userData = { glb: true, anims: GLB[kind].anims || [], wheels: ['wheel_rl', 'wheel_rr', 'wheel_ml', 'wheel_mr', 'castor_l_spin', 'castor_r_spin'].map(by).filter(Boolean), castors: ['castor_l', 'castor_r'].map(by).filter(Boolean), turret: by('turret'), gun: by('gun'), barrels: by('barrels'), body: by('rig') || m };
   return m;
 }
 
@@ -194,6 +194,7 @@ export function makeEncounters(ST, { where } = {}) {
     } else if (ev.type === 'card') { encSfx.card(pos); if (Math.random() < 0.5) hud.msg(pick(['BUSINESS CARD!', "LET'S CONNECT!", 'NETWORKING!']), 0.8, 'brag'); }
     else if (ev.type === 'leap') encSfx.leap(pos);
     if (u && ev.type === 'leap' && u.mesh) u.mesh.userData.leapT = 0.5;
+    if (u && ev.type === 'ram') { const c = rigClips(u); if (c && c.ram) c.ram.reset().play(); } // (the rig's own ram_hit clip on top of its drive)
   }
 
   // ---------------------------------------------------------- drawing the stand-ins over the referee's bots
@@ -216,6 +217,15 @@ export function makeEncounters(ST, { where } = {}) {
     if (u.kind === 'war_rig') r.hitboxes = () => (r.alive ? carBoxes({ ty: 'van', x: r.pos[0], y: r.pos[1], z: r.pos[2], h: u.h || 0 }) : []); // you shoot the rig, not a man-sized box in it
     else r.hitboxes = () => { const [x, y, z] = r.pos; return r.alive ? [{ min: [x - 0.6, y + 0.35, z - 0.6], max: [x + 0.6, y + 1.35, z + 0.6] }, { min: [x - 0.25, y + 0.95, z - 0.25], max: [x + 0.25, y + 1.4, z + 0.25], head: true }] : []; };
   }
+  // a war-rig's baked clips (c_war_rig.glb: drive / ram_hit / die), one mixer per rig; null on the code stand-in
+  function rigClips(u) {
+    const m = u.mesh, A = m && m.userData.anims; if (!A || !A.length) return null;
+    if (u.clips) return u.clips;
+    const mixer = new THREE.AnimationMixer(m), act = (n, once) => { const c = A.find((a) => a.name === n); if (!c) return null; const a = mixer.clipAction(c); if (once) { a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; } return a; };
+    u.clips = { mixer, drive: act('drive'), ram: act('ram_hit', true), die: act('die', true) };
+    if (u.clips.drive) u.clips.drive.play();
+    return u.clips;
+  }
   function drawUnits(dt) {
     for (const [pid, u] of E.units) {
       const r = G.remotes && G.remotes.get(pid);
@@ -237,12 +247,18 @@ export function makeEncounters(ST, { where } = {}) {
       const U = m.userData;
       if (u.kind === 'war_rig' && U.glb) { // the art lane's rig: front is -z, so turned round; wheels, castors, the turret on you
         m.rotation.y = u.h + Math.PI;
-        for (const w of U.wheels) w.rotation.x -= (sp / 0.45) * dt;
-        for (const c of U.castors) c.rotation.y = Math.sin(E.t * 3 + pid) * 0.2;
+        const clip = rigClips(u);
+        if (clip) { // the art lane's baked clips: drive at its speed (13.19 m of travel per 5 s loop), ram_hit on a ram, die held at the end
+          if (r.alive && clip.drive) clip.drive.timeScale = Math.max(0.15, sp * 5 / 13.19);
+          if (!r.alive && !u.died) { u.died = true; if (clip.drive) clip.drive.stop(); if (clip.die) clip.die.reset().play(); }
+          clip.mixer.update(dt);
+        } else {
+          for (const w of U.wheels) w.rotation.x -= (sp / 0.45) * dt;
+          for (const c of U.castors) c.rotation.y = Math.sin(E.t * 3 + pid) * 0.2;
+        }
         if (U.turret) { const want = Math.atan2(-(ME.pos[0] - r.pos[0]), -(ME.pos[2] - r.pos[2])) - m.rotation.y; U.turret.rotation.y += wrapA(want - U.turret.rotation.y) * Math.min(1, dt * 5); }
         if (U.barrels && r.alive) U.barrels.rotation.z += dt * 14; // (always spinning up: it's a minigun on a chair base)
-        U.body.rotation.z = r.alive ? Math.sin(E.t * 9 + pid) * 0.012 * Math.min(1, sp / 10) : Math.min(1.1, U.body.rotation.z + dt * 2);
-        if (!r.alive) m.position.y -= Math.min(0.6, (u.deadT = (u.deadT || 0) + dt) * 0.3);
+        if (!clip) { U.body.rotation.z = r.alive ? Math.sin(E.t * 9 + pid) * 0.012 * Math.min(1, sp / 10) : Math.min(1.1, U.body.rotation.z + dt * 2); if (!r.alive) m.position.y -= Math.min(0.6, (u.deadT = (u.deadT || 0) + dt) * 0.3); }
         if (u.honkT == null) u.honkT = E.t + 2 + Math.random() * 4;
         if (E.t > u.honkT && r.alive) { u.honkT = E.t + 5 + Math.random() * 6; encSfx.honk(r.pos); }
       } else if (u.kind === 'war_rig') {
@@ -557,6 +573,7 @@ export function makeEncounters(ST, { where } = {}) {
       if (id === 'mina') { a.faceTarget = null; a.lookAt = null; }
       walkTo(a, [lift], 1.1, () => {
         encSfx.stamp(lift); hud.msg('COLLECTED', 1.1, 'brag');
+        truckClip('lift_up'); setTimeout(() => truckClip('lift_up', true), 1800); // (up on the lift, in, the lift comes back down)
         if (col) bark('timekeeping collector', pick(['collected. balance carried forward.', "you're on the list. everyone's on the list.", 'thank you for your patience.']), 2.6);
         despawnActor(key); TR.loaded++; TR.t = 0; TR.walking = false;
         if (TR.loaded >= T.queue.length) { truckClip('open', true); setTimeout(() => hud.msg('THE DOORS CLOSE', 1.6, 'brag'), 900); }
@@ -567,7 +584,7 @@ export function makeEncounters(ST, { where } = {}) {
   // the truck goes: through the gate, up Rib Avenue, a stall under the first rib arch, then into the Gut
   function driveOff() { if (!TR.m || TR.road) return; TR.road = { i: 1, x: TR.m.position.x, z: TR.m.position.z, stall: 0 }; truckClip('drive'); encSfx.honk(TR.m.position.toArray()); }
   function driveTick(dt) {
-    const R = TR.road, T = ENC.truck; if (!R || TR.gone) return;
+    const R = TR.road, T = ENC.truck; if (!R || TR.gone || !TR.m) return; // (the truck was cleared away mid-drive: nothing to move)
     if (R.i === T.arch && R.stall < T.stall && Math.hypot(R.x - T.road[T.arch][0], R.z - T.road[T.arch][1]) < 1) { R.stall += dt; return; } // (the arch is low. it waits for the street to breathe out)
     const to = T.road[R.i]; if (!to) { TR.gone = true; G.scene.remove(TR.m); return; }
     const dx = to[0] - R.x, dz = to[1] - R.z, d = Math.hypot(dx, dz), sp = T.speed * dt;
@@ -577,7 +594,14 @@ export function makeEncounters(ST, { where } = {}) {
   }
   const sunsetSpot = () => (where && where('bottom:sunset_spot')) || ENC.truck.sunset;
   const truckNear = () => { const w = sunsetSpot(); return Math.hypot(ME.pos[0] - w[0], ME.pos[2] - w[2]) < 120; };
-  function truckFrame(dt) { if (TR.m && TR.m.userData.mixer) TR.m.userData.mixer.update(dt); driveTick(dt); }
+  function truckFrame(dt) {
+    if (TR.m && !TR.m.userData.anims && GLB.truck && GLB.truck.scene && !TR.road) { // (Art's truck finished loading: swap the stand-in out where it stands)
+      const old = TR.m, nm = truckModel(); nm.position.copy(old.position); nm.rotation.copy(old.rotation);
+      G.scene.remove(old); E.props = E.props.filter((m) => m !== old); G.scene.add(nm); E.props.push(nm); TR.m = nm;
+      truckClip('open'); if (TR.loaded >= ENC.truck.queue.length) truckClip('open', true);
+    }
+    if (TR.m && TR.m.userData.mixer) TR.m.userData.mixer.update(dt); driveTick(dt);
+  }
   STEPS[M04] = {
     sunset__at: { enter() { TR.loaded = 0; TR.t = 0; truckModel(); }, tick() { if (truckNear()) { truckAt('sunset'); queueUp(); } } }, // (parked by the wall when you get near: c4's shots have it)
     sunset: { tick() { truckAt('sunset'); queueUp(); } },
@@ -714,7 +738,7 @@ export function makeEncounters(ST, { where } = {}) {
     soupFrame(dt);
     drawUnits(dt);
     truckFrame(dt);
-    if (qid !== M04 && TR.m && (!q(M04) || q(M04).done)) { G.scene.remove(TR.m); TR.m = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken']) despawnActor(k); }
+    if (qid !== M04 && TR.m && (!q(M04) || q(M04).done)) { G.scene.remove(TR.m); TR.m = null; TR.road = null; TR.where = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken']) despawnActor(k); }
     const H = hudEl(); H.classList.toggle('hidden', !!(ST.scene && ST.scene.playing()) || talking());
     if (barkT && performance.now() > barkT) { barkT = 0; $('encBark').classList.add('hidden'); }
   };

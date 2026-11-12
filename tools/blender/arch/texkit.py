@@ -515,6 +515,41 @@ def decals(n=256):
     return arr[..., :3], arr[..., 3], cells
 
 
+def stone(n=64):
+    """coursed ashlar (tinted): courses of 8 or 10 px (25-31 cm at 2 m a tile), blocks 12-24 px long with the joints
+    broken course to course, pale mortar, each block its own shade, chisel-dark edges, pits and a little lichen"""
+    img = np.zeros((n, n, 3), np.float32)
+    img[:] = ramp(fbm(n, 4, 3) * 0.5 + 0.45, [(0, '#8e877a'), (1, '#cfc8b6')])  # the mortar
+    y = 0
+    for h in (8, 10, 8, 10, 8, 10, 10):
+        if y >= n: break
+        h = min(h, n - y); x = int(R.integers(0, 12))
+        while x < n + 12:
+            w = int(R.integers(12, 25)); v = 0.72 + R.random() * 0.26
+            for yy in range(y + 1, y + h):
+                for xx in range(x + 1, x + w):
+                    e = 0.9 if (yy == y + 1 or xx == x + 1) else 0.82 if (yy == y + h - 1 or xx == x + w - 1) else 1.0
+                    img[yy % n, xx % n] = (v * e,) * 3
+            x += w
+        y += h
+    img = shade(img, 0.86 + fbm(n, 8, 3) * 0.26)
+    img = shade(img, 1 - speck(n, 0.05) * 0.25)
+    img = mix(img, img * hexc('#7a8a52') * 1.3, blobs(n, 2, 4, 9) * 0.3)
+    return img
+
+
+def weather(n=64):
+    """a cutout overlay for sea walls: moss rising from the foot (greens), salt bloom and white streaks running down
+    (alpha: only where there's something)"""
+    yy = np.arange(n)[:, None] / (n - 1)  # 0 at the top of the tile, 1 at the foot
+    moss = np.clip((fbm(n, 4, 4) - 0.55 + yy * 0.6) * 3.0, 0, 1)
+    salt = np.clip((fbm(n, 8, 3) - 0.62) * 4, 0, 1) * (1 - yy) + streaks(n, 7, length=(0.3, 0.7), width=(1, 2)) * 0.9
+    img = ramp(fbm(n, 8, 3), [(0, '#3f5a26'), (0.5, '#5f7a32'), (1, '#8aa04a')])
+    img = mix(img, hexc('#f2efe4'), np.clip(salt - moss, 0, 1))
+    a = np.clip(np.maximum(moss, salt), 0, 1)
+    return img, (a > 0.5).astype(np.float32)
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet_path = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None
@@ -541,6 +576,8 @@ def main():
     rgb, a, cells = decals()
     out['decals'] = save('decals', rgb, 0, alpha=a, colors=48, dither=0.0)
     KIT['decals']['cells'] = cells
+    out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
+    wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
         tiles = []
