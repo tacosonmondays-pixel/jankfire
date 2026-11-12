@@ -57,10 +57,11 @@ const mats = js.materials.map((m) => m.name), meshes = js.nodes.filter((n) => n.
 assert.ok(mats.includes('dw_flesh_pulse') && mats.includes('dw_skin') && mats.includes('dw_bits'), 'materials: ' + mats);
 for (const n of meshes.filter((n) => !n.endsWith('_lod1'))) assert.ok(meshes.includes(n + '_lod1'), n + ' has no far copy');
 assert.ok(meta.people.length >= 6 && meta.people.some((p) => /waving/.test(p.note)), 'the people in it');
-// canon: Dot names Sharon first because Sharon's soup keeps them alive (Big Sauce Sharon runs her stall all story long),
-// not because she's in the wall. The quiet one deep in it, mouthing a name, is Ambrose
+// canon: nobody in the wall also stands about in the streets (anyone with their own spot in cast_slice.js is alive out
+// there: Dot names some of them because they keep her going, not because they're in here). The quiet one deep in it,
+// mouthing a name, is Ambrose
 assert.ok(meta.people.some((p) => p.who === 'ambrose'), 'ambrose is not in the wall');
-assert.ok(!meta.people.some((p) => /sharon/i.test(p.who + ' ' + p.note)), 'sharon is alive: she is not in the wall');
+for (const p of meta.people) assert.ok(!Object.hasOwn(NPC_SPOTS, p.who), p.who + ' is in the wall and out in the street');
 assert.ok(meta.tris < 70000 && meta.tris_lod1 < meta.tris / 3.5, 'tris ' + meta.tris + ' / ' + meta.tris_lod1);
 // 5. no file = the code stand-in, not a magenta box
 assert.match(fs.readFileSync(new URL('../../public/js/city/propcode.js', import.meta.url), 'utf8'), /\n  digester_wall: \[\[/);
