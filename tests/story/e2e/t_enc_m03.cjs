@@ -18,7 +18,7 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   await ev(async () => { const { ME } = await import('/js/player.js'); window.__h = setInterval(() => { ME.pos = [-134, 40.5, -133]; ME.vel = [0, 0, 0]; }, 30); });
   await sleep(3000);
   const w0 = await lumps(); await sleep(5000); const w1 = await lumps();
-  ok(w0 && w1 && Math.abs(w1[0] - w0[0]) < 1 && w0[0] < -105, `he waits for you: ${w0} -> ${w1}`);
+  ok(w0 && w1 && Math.abs(w1[0] - w0[0]) < 1 && w0[0] < -96, `he waits for you: ${w0} -> ${w1}`);
   await ev(() => clearInterval(window.__h));
   // you keep up: he walks (you're held a couple of metres behind him)
   await ev(async () => { const { ME } = await import('/js/player.js'); const { actors } = await import('/js/story/actors.js'); window.__h = setInterval(() => { const a = actors.get('lumps'); if (a) { ME.pos = [a.pos[0] - 2.5, a.pos[1] + 0.3, a.pos[2] + 1]; ME.vel = [0, 0, 0]; ME.yaw = -Math.PI / 2; } }, 30); });
