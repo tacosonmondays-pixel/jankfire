@@ -49,7 +49,7 @@ export const PLAN = {
   // roads (12 m: two mechs pass): the ring, the cross roads. polylines
   roads: [
     { name: 'Ring Road', w: 12, ring: true, pts: [[-170, 40], [-150, -40], [-120, -128], [-30, -178], [70, -170], [170, -96], [168, -30], [150, 96], [90, 112], [-40, 112], [-140, 120], [-170, 40]] },
-    { name: 'Main Drag', w: 14, pts: [[28, 120], [22, 70], [18, 40], [8, -14]] }, // the harbour up to the radio tower's saddle
+    { name: 'Main Drag', w: 14, pts: [[28, 146], [28, 120], [22, 70], [18, 40], [8, -14]] }, // the harbour up to the radio tower's saddle
     { name: 'Hangar Road', w: 14, pts: [[-170, 40], [-110, 32], [-40, 26], [18, 40]] },
     { name: 'Quarry Track', w: 12, pts: [[-30, -178], [-48, -136]] },
     { name: 'Resort Drive', w: 12, pts: [[150, 96], [176, 112]] },
@@ -59,7 +59,7 @@ export const PLAN = {
   // flat = the radius kept flat round c, r = its radius (HUD, callouts, bots), drop = open-sky flat spots a mech is
   // called down onto ([dx, dz, radius] from c, 12 m+ across), cells = energy-cell spots (tagged apart from loot)
   pois: [
-    { id: 'port', name: 'Port Jankton', c: [28, 118], rect: [-44, 84, 104, 170], y: 1.6, flat: 58, r: 66, drop: [[0, -28, 9], [-30, -6, 7]], cells: 6, color: '#4fd8ff', lab: [0, 36], loot: 0.18, blurb: 'the harbour town: docks, warehouses, a main street. the biggest drop' },
+    { id: 'port', name: 'Port Jankton', c: [28, 118], rect: [-44, 84, 104, 170], y: 1.6, flat: 58, r: 66, drop: [[0, -36, 8], [-18, 20, 6]], cells: 6, color: '#4fd8ff', lab: [0, 36], loot: 0.18, blurb: 'the harbour town: docks, warehouses, a main street. the biggest drop' },
     { id: 'resort', name: 'The All-Inclusive', c: [180, 110], rect: [150, 78, 214, 150], y: 1.2, flat: 34, r: 40, drop: [[18, 26, 8]], cells: 4, color: '#ff4fd8', lab: [20, -40], loot: 0.12, blurb: 'a beach resort on the lagoon. wristbands not checked' },
     { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 26, r: 30, drop: [[-14, 12, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
     { id: 'wreck', name: 'Return to Sender', c: [240, -154], rect: [204, -194, 276, -116], y: 0.9, flat: 0, r: 44, drop: [[-24, 10, 7]], cells: 4, color: '#ff9a3a', loot: 0.12, blurb: 'a cargo ship on the reef, its containers all up the beach' },
@@ -71,6 +71,7 @@ export const PLAN = {
   ],
   islets: [[-372, 40, 30, 24], [354, 20, 26, 20], [-130, 300, 34, 22], [186, 268, 22, 18], [-60, -300, 28, 20]], // [x, z, rx, rz]
   quarry: { c: [-60, -150], r: 40, depth: 16, terraces: 4 }, // the pit: cut into the ridge's north foot
+  harbour: { x0: -30, x1: 100, z: 146, bed: -1.4, out: 26 }, // Port Jankton's quay (a straight wall at z) and the basin in front of it: waist-deep (fall off the quay and wade), then the bay
   blimpY: 210,
   zone0: [0, 0, 330],
 };
@@ -125,6 +126,9 @@ export function islandH(x, z, raw = false) {
   for (const P of PLAN.pois) if (P.flat > 0 && d > 0) { const pd = Math.hypot(x - P.c[0], z - P.c[1]); if (pd < P.flat * 1.6) h = lerp(h, P.y, (1 - sm(P.flat, P.flat * 1.6, pd)) * sm(0, 8, d)); } // (eased out to the waterline: the bay stays a bay)
   // the mech drop pads: open, level ground a mech is called down onto (at the height the land has under the pad's middle)
   if (!raw) for (const q of PADS) { const pd = Math.hypot(x - q[0], z - q[1]); if (pd < q[2] * 1.7) h = lerp(q[3], h, sm(q[2] + 1, q[2] * 1.7, pd)); }
+  // the harbour: the quay's straight wall, the land behind it level with the town, the basin in front wadeable
+  const HB = PLAN.harbour;
+  if (x > HB.x0 && x < HB.x1 && z > HB.z - 12 && z < HB.z + HB.out + 10) { if (z < HB.z) h = Math.max(h, 1.6); else if (z < HB.z + HB.out) h = HB.bed; else h = lerp(HB.bed, h, sm(HB.z + HB.out, HB.z + HB.out + 10, z)); }
   return h;
 }
 // the pads in world space with their level: [x, z, r, y]
@@ -138,7 +142,7 @@ export const poiAt = (x, z) => PLAN.pois.find((p) => x >= p.rect[0] && x <= p.re
 // grapple it, bots path over it, loot lands on it. painted by what it is: sand, wet sand under the water, grass, jungle
 // floor along the river, bare rock on anything steep, the roads. vegetation is the existing Blender props (palms on the
 // beaches, ferns and bushes in the jungle). the POIs' buildings come in their own PRs, Blender from the start
-import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick } from './map.js';
+import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick, forklift, pallets } from './map.js';
 import { shapeGround } from './terrain.js';
 import { buildNav } from './nav.js';
 import { propOf } from './propcap.js';
@@ -160,7 +164,7 @@ function makeGrid() { // the plan's heights on the terrain's 1 m grid, worked ou
   // nothing steeper than a mech can walk up (the ridge, the dunes, the beaches), except where it's meant to be a wall: the
   // north-west cliffs and the quarry's terrace faces (grapple those). peaks keep their height, their flanks are eased
   const MAXS = 0.62, wall = new Uint8Array(vx * vz), C = PLAN.cliffs, Q = PLAN.quarry;
-  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const x = X0 + i, z = Z0 + j; if (Math.hypot((x - C.c[0]) / C.sx, (z - C.c[1]) / C.sz) / C.r < 1.25 || Math.hypot(x - Q.c[0], z - Q.c[1]) < Q.r * 1.3 || PADS.some((q) => Math.hypot(x - q[0], z - q[1]) < q[2] + 1)) wall[i * vz + j] = 1; } // (and the drop pads: level, whatever's round them)
+  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const x = X0 + i, z = Z0 + j; if (Math.hypot((x - C.c[0]) / C.sx, (z - C.c[1]) / C.sz) / C.r < 1.25 || Math.hypot(x - Q.c[0], z - Q.c[1]) < Q.r * 1.3 || PADS.some((q) => Math.hypot(x - q[0], z - q[1]) < q[2] + 1) || (x > PLAN.harbour.x0 - 1 && x < PLAN.harbour.x1 + 1 && Math.abs(z - PLAN.harbour.z) < 3)) wall[i * vz + j] = 1; } // (and the quay: a sheer wall) // (and the drop pads: level, whatever's round them)
   for (let pass = 0; pass < 40; pass++) { // raise the low side of anything too steep (a cut-and-fill that keeps every summit and pad)
     let any = 0;
     for (let i = 1; i < vx - 1; i++) for (let j = 1; j < vz - 1; j++) { const k = i * vz + j; if (wall[k] || H[k] <= SEA) continue;
@@ -214,6 +218,64 @@ function deadAir(B, cx, cz) {
   });
 }
 
+// PORT JANKTON (the harbour town, south): the waterfront. a straight quay along the bay (PLAN.harbour: the wall is the
+// ground's own), bollards on its edge, three timber piers out over the waist-deep basin, two trawlers moored at them,
+// the portal crane on its rails (mechs walk under it), two warehouses you walk (or stomp) straight through (8 m doors on
+// the quay and street sides, a pilot door at the end, crates and containers inside), containers stacked on the apron.
+// every piece is a Blender model over its boxes (tools/blender/make_portjankton.py), built at the town's own height with
+// its boxes `still`. PJ = the numbers the models are built to
+export const PJ = { y: 1.6, quayZ: 146, quayX: [-30, 100], bollards: [-25, -12, 12, 24, 48, 60, 84, 95],
+  piers: [0, 36, 72], pierW: 4, pierL: 30, pierT: 0.3,
+  crane: { x: 56, z: 140, legX: 4, legZ: 3, leg: 1, h: 9, top: [5, 3.2, 5] }, // portal half-spans, leg size, girder top; the machinery house on top
+  sheds: [{ x0: -30, x1: 0, sign: 'cold' }, { x0: 56, x1: 86, sign: 'fish' }], shedZ: [112, 132], shedH: 10, shedT: 0.3, door: [3.5, 8], side: [-3, 3, 2.6], // the mech doors: half-width, height; the pilot door (z range, height) in the west end
+  boats: [{ x: 6, z: 151, side: 1 }, { x: 66, z: 151, side: -1 }], boatW: 4.2, boatL: 18, deck: 1.2, house: [3, 2.6, 4] }; // moored along a pier: hull from z to z + L
+function portJankton(B) {
+  const y = PJ.y, S = { still: 1 };
+  const A = (x0, y0, z0, x1, y1, z1, m) => B.add(x0, y + y0, z0, x1, y + y1, z1, m, S);
+  // the quay's bollards (the wall itself is the ground; its face, coping and fenders are the quay model's: p_pj_quay)
+  for (let x = PJ.quayX[0]; x < PJ.quayX[1]; x += 10) propOf('pj_quay', [x + 5, y, PJ.quayZ], 0, () => A(x, PLAN.harbour.bed - y, PJ.quayZ - 1, x + 10, 0, PJ.quayZ, 'stone')); // (a solid block from the bed up: the ground's 1 m grid can't make a sheer face)
+  for (const x of PJ.bollards) propOf('pj_bollard', [x, y, PJ.quayZ - 0.6], 0, () => A(x - 0.25, 0, PJ.quayZ - 0.85, x + 0.25, 0.75, PJ.quayZ - 0.35, 'metal'));
+  // the piers: a timber deck out over the basin (wade under it), level with the quay
+  for (const x of PJ.piers) propOf('pj_pier', [x, y, PJ.quayZ], 0, () => A(x - PJ.pierW / 2, -PJ.pierT, PJ.quayZ, x + PJ.pierW / 2, 0, PJ.quayZ + PJ.pierL, 'wood'));
+  // the portal crane: four legs, the portal girders, the machinery house on top (the jib out over the water is the model's)
+  { const C = PJ.crane;
+    propOf('pj_crane', [C.x, y, C.z], 0, () => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) A(C.x + sx * C.legX - C.leg / 2, 0, C.z + sz * C.legZ - C.leg / 2, C.x + sx * C.legX + C.leg / 2, C.h, C.z + sz * C.legZ + C.leg / 2, 'metal');
+      A(C.x - C.legX - 0.5, C.h, C.z - C.legZ - 0.5, C.x + C.legX + 0.5, C.h + 1, C.z + C.legZ + 0.5, 'metal');
+      A(C.x - C.top[0] / 2, C.h + 1, C.z - C.top[2] / 2, C.x + C.top[0] / 2, C.h + 1 + C.top[1], C.z + C.top[2] / 2, 'metal');
+    }); }
+  // the warehouses: walls with the mech doors (quay side and street side) and a pilot door in the west end, a roof
+  const [sz0, sz1] = PJ.shedZ, H = PJ.shedH, t = PJ.shedT, [dw, dh] = PJ.door;
+  for (const sh of PJ.sheds) {
+    const cx = (sh.x0 + sh.x1) / 2;
+    propOf('pj_shed_' + sh.sign, [cx, y, (sz0 + sz1) / 2], 0, () => {
+      for (const z of [sz0, sz1 - t]) { A(sh.x0, 0, z, cx - dw, H, z + t, 'brick'); A(cx + dw, 0, z, sh.x1, H, z + t, 'brick'); A(cx - dw, dh, z, cx + dw, H, z + t, 'brick'); }
+      const [p0, p1, ph] = PJ.side, zc = (sz0 + sz1) / 2;
+      A(sh.x0, 0, sz0 + t, sh.x0 + t, H, zc + p0, 'brick'); A(sh.x0, 0, zc + p1, sh.x0 + t, H, sz1 - t, 'brick'); A(sh.x0, ph, zc + p0, sh.x0 + t, H, zc + p1, 'brick');
+      A(sh.x1 - t, 0, sz0 + t, sh.x1, H, sz1 - t, 'brick');
+      A(sh.x0 - 0.3, H, sz0 - 0.3, sh.x1 + 0.3, H + 0.3, sz1 + 0.3, 'roofg');
+    });
+    // inside: crate stacks along the walls (each crate a Blender crate), a container to one side (cover)
+    for (const [dx, dz, n] of [[-11, -7, 3], [-7, 7, 2], [9, -7, 2], [12, 6, 3]]) for (let k = 0; k < n; k++) A(cx + dx + (k % 2) * 1.6, (k >> 1) * 1.5, (sz0 + sz1) / 2 + dz, cx + dx + (k % 2) * 1.6 + 1.5, (k >> 1) * 1.5 + 1.5, (sz0 + sz1) / 2 + dz + 1.5, 'crate');
+    A(cx + 5, 0, (sz0 + sz1) / 2 - 1.2, cx + 11.06, 2.6, (sz0 + sz1) / 2 + 1.24, sh.sign === 'cold' ? 'containerb' : 'containerr'); // (off the doors' line: a mech walks straight through)
+    // a forklift with a load on its forks, pallet stacks (the existing Blender models; built on the ground, the shaped ground puts them on the floor)
+    const zc = (sz0 + sz1) / 2, pr = rng(4300 + sh.x0);
+    forklift(B, cx - 8, zc - 3, sh.sign === 'cold' ? 1 : 3, 1);
+    for (const [dx, dz, n] of [[-12.5, 4, 5], [5, -6.5, 4], [-1 + 6, 4.5, 6]]) pallets(B, cx + dx, zc + dz, n, pr);
+  }
+  // containers stacked on the apron (east of the crane), crates by the quay
+  for (const [x, z, k, m] of [[40, 136, 0, 'containerg'], [40, 136, 1, 'containerr'], [40, 140, 0, 'containerb'], [88, 136, 0, 'containerr'], [88, 140, 0, 'containerg'], [88, 140, 1, 'containerb']]) A(x, k * 2.6, z, x + 6.06, k * 2.6 + 2.6, z + 2.44, m);
+  for (const [x, z] of [[-20, 140], [-18.4, 140], [30, 143], [74, 141]]) A(x, 0, z, x + 1.5, 1.5, z + 1.5, 'crate');
+  // the trawlers, moored alongside the piers: the hull (deck at 1.2 above the water), the wheelhouse aft
+  for (const b of PJ.boats) {
+    const x0 = b.x - PJ.boatW / 2, x1 = b.x + PJ.boatW / 2, z0 = b.z, z1 = b.z + PJ.boatL, [hw, hh, hd] = PJ.house;
+    propOf('pj_trawler', [b.x, PLAN.harbour.bed, z0], 0, () => {
+      B.add(x0, PLAN.harbour.bed, z0 + 1, x1, PJ.deck, z1, 'wood', S); B.add(x0 + 0.6, PLAN.harbour.bed, z0, x1 - 0.6, PJ.deck, z0 + 1, 'wood', S); // the hull (its bow narrows)
+      B.add(b.x - hw / 2, PJ.deck, z1 - 1 - hd, b.x + hw / 2, PJ.deck + hh, z1 - 1, 'white', S); // the wheelhouse
+    });
+  }
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = grid();
@@ -237,6 +299,7 @@ function battleIsland() {
   }
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
+  portJankton(B);
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
   horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
@@ -254,6 +317,7 @@ function battleIsland() {
     spawns.push([p.c[0], 0.2, p.c[1]]);
   }
   // ---- the ground gets its shape: the plan's heights everywhere, painted by what each bit is
+  const HB = PLAN.harbour, onApron = (x, z) => x > HB.x0 - 4 && x < HB.x1 + 4 && z > 104 && z < HB.z;
   const steep = (x, z) => G.slope(x, z) > 1.05, wet = (x, z) => G.at(x, z) < SEA - 0.05, dry = (x, z) => !wet(x, z);
   const T = shapeGround(B, D, { region: REGION, mat: 'sand', seed: 77, up: 0, down: 0, step: 0.5, coarse: 2, soft: 1.15,
     relief: [
@@ -261,7 +325,7 @@ function battleIsland() {
       { f: G.f, mat: 'grass', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.3 && !steep(x, z) },
       { f: G.f, mat: 'leaves', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.1 && jungle(x, z) && !steep(x, z) },
       { f: G.f, mat: 'stone', rock: true, paint: (x, z) => steep(x, z) }, // cliffs, the quarry's terrace faces, the ridge's crags
-      { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && onRoad(x, z) && !steep(x, z) },
+      { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && (onRoad(x, z) || onApron(x, z)) && !steep(x, z) }, // (the port's yard behind the quay too: a working dock, not a lawn)
     ], points: [...spawns, ...drops, ...cells] });
   for (const q of [...drops, ...cells]) q[1] = Math.round(q[1] * 100) / 100; // (lifted onto the ground by shapeGround)
   let graph = null;
