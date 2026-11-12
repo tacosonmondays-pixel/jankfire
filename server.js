@@ -22,6 +22,7 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
+import { editTicketHttp, takeTicket } from './server/editplay.js'; // the map editor's PLAY HERE WITH BOTS (owner only: JF_OWNER)
 import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
 import { makeFriends } from './server/friends.js'; // friends (invites and joins check them)
 import { GAMES, mapsFor } from './shared/modes.js';
@@ -84,6 +85,7 @@ function serve(req, res) {
     res.end(JSON.stringify(lobbyCounts()));
     return;
   }
+  if (url === '/api/edit-ticket') { editTicketHttp(req, res, accounts); return; } // (before accounts: its own size limit and owner check)
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
   if (url.startsWith('/server/')) { // the story's solo referee (a web worker) runs the real room code
     const file = serverFile(url);
@@ -144,6 +146,11 @@ wss.on('connection', (ws) => {
         else {
           const want = clean(m.name, 16);
           if (want && await store.get(want.toLowerCase()).catch(() => null)) m._name = want.slice(0, 10) + ' (guest)';
+        }
+        if (m.cfg && typeof m.cfg === 'object') { // the map editor's PLAY HERE: only a checked ticket for the owner's own account becomes an edited map
+          const tk = m.cfg.editTicket; delete m.cfg.editTicket; delete m.cfg._edit;
+          const ed = typeof tk === 'string' ? takeTicket(tk, m._acct && m._acct.n) : null;
+          if (ed && m.mode === 'bots') m.cfg._edit = ed;
         }
         if (ws.readyState !== 1) return;
         const room = roomFor(m.mode, ws, m.cfg);

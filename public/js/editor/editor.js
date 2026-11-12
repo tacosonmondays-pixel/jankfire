@@ -609,6 +609,20 @@ $('edExport').onclick = () => {
   if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
   toast('saved jankfire-edits-' + mapId + '.json (send it to us!)');
 };
+// PLAY WITH BOTS (owner only): the server checks the login is the owner's (JF_OWNER), takes the edits once and hands back
+// a ticket; the game then starts a private bots match on a copy of this map with them (server/editplay.js)
+$('edPlay').onclick = async () => {
+  let token = null; try { token = localStorage.getItem('jankfire_token'); } catch { /* private mode */ }
+  if (!token) return toast('log in to your account in the game first (owner only)');
+  const ops = hist.map((h) => h.op);
+  toast('asking the server...');
+  let r = null;
+  try { r = await fetch('/api/edit-ticket', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify({ map: mapId, ops }) }); } catch { return toast('could not reach the server'); }
+  let j = {}; try { j = await r.json(); } catch { /* nothing */ }
+  if (!r.ok || !j.ticket) return toast(j.error || 'the server said no');
+  try { sessionStorage.setItem('jfPlayEdit', JSON.stringify({ ticket: j.ticket, map: mapId })); } catch { return toast('could not save in this browser'); }
+  callout('LETS GO'); setTimeout(() => { location.href = '/?playedit=1'; }, 400);
+};
 $('edImport').onclick = () => $('edFile').click();
 $('edFile').onchange = async () => {
   const f = $('edFile').files[0]; if (!f) return;

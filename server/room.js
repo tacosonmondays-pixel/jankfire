@@ -13,6 +13,7 @@ import { installMech } from './mech.js'; // mech drop killstreak
 import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
+import { buildEdited, dropEdited } from '../shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS rooms
 import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
 import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
@@ -464,7 +465,7 @@ class Room {
     if (ws && ws.partyId && this.partyCfg) m = { ...m, cfg: this.partyCfg }; // a party's private match: the leader's settings (server/party.js), not whoever got here first
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
-      if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
+      if (!this.editMap && has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map; // (an edited map's room keeps it)
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
@@ -549,7 +550,7 @@ class Room {
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
-    if (!this.humans().length) rooms.delete(this.id);
+    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) dropEdited(this.editMap); } // (the edited map goes with its room)
     else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
@@ -4150,6 +4151,18 @@ function roomFor(mode, ws, cfg) {
     rooms.set(r.id, r);
     r.lobbyInit(lk, mode === 'ffa');
     return r;
+  }
+  // the map editor's PLAY HERE WITH BOTS (owner only: server.js only sets cfg._edit from a checked ticket): a private bots
+  // room on a fresh copy of the map with the owner's edits (shared/editmaps.js), gone when the room closes
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg._edit) {
+    const id = buildEdited('ed_' + cfg._edit.base + '_' + (nextId++), cfg._edit);
+    if (id) {
+      const r = new Room(`bots:edit:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+      r.priv = true; r.editMap = id; r.cfg.map = id; r.cfg.edit = { base: cfg._edit.base, ops: cfg._edit.ops };
+      rooms.set(r.id, r);
+      console.log(`[edit] PLAY HERE on ${id} (${cfg._edit.ops.length} edits)`);
+      return r;
+    }
   }
   // the hub's PRIVATE match (public/js/hubmenu.js): a bots room of your own. nobody else's pick lands in it
   if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
