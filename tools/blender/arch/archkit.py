@@ -493,6 +493,8 @@ def make_material(name):
     if ex.get('alpha'): m['alpha'] = 1
     if ex.get('glow'): m['glow'] = 1
     if ex.get('glowcol'): m['glowcol'] = ex['glowcol']  # (what colour it glows; white if unset)
+    if ex.get('gloss'): m['gloss'] = ex['gloss']  # (glossy: glass, chrome, candy paint; archfield.js gives it a standard material)
+    if ex.get('metal'): m['metal'] = ex['metal']
     if '@' in name: m['paint'] = name.split('@')[1]
     if name.split('@')[0] in NOCAST: m['nocast'] = 1
     return m
