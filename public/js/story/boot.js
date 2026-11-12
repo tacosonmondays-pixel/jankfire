@@ -27,6 +27,7 @@ import { loadSlot, saveSlot, clearSlot } from './save.js';
 import { takeCamera, shotOn } from './camctl.js';
 import { castLightFrame } from './castlight.js'; // the cast lit by the city's lamps (they were silhouettes in the Gut)
 import { initGrade, gradeFrame } from './grade.js'; // the eerie world grade (story maps only)
+import { choirFrame } from './choir.js'; // the Gut Choir in the Choir Lung's stalls (set dressing: they hum, sing, and all turn to look at you)
 
 const $ = (id) => document.getElementById(id);
 // mission cards wait for a conversation or a scene to finish (they'd be hidden behind it)
@@ -334,6 +335,7 @@ export function frame(dt, now, cam) {
   stage();
   const S = ST.S, e = eye();
   if (!ST.on && ST.boss && ST.boss.train) ST.boss.train.tick(dt); // (left the train for a sim or the menu: it takes its tunnel down)
+  choirFrame(dt * (ST.slowmo ?? 1), ST.on && ST.city && !LAB ? e : null); // (before the actors update; out of the city, or out of the story, they go and so does the hum)
   if (ST.on) {
     if (inStory() && (ST.syncT = (ST.syncT || 0) + dt) > 2) { ST.syncT = 0; sync(); } // (the shell's own auto / pause saves get it too)
     if (!LAB && (ST.rT = (ST.rT || 0) + dt) > 0.25) { ST.rT = 0; roster(e); spots(); }

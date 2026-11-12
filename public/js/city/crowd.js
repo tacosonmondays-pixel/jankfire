@@ -5,6 +5,7 @@
 // some talk (the jaw flaps), the stomach-dogs trot about. The sim's real NPCs (WP8) can reuse the same rigs.
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { SLICE } from '/shared/city/slice.js';
 
 const KINDS = { // crowd mark kind -> the characters it can be
   local: ['local_tiedye', 'local_cook', 'local_scooter'], shopper: ['local_tiedye', 'local_cook'], cook: ['local_cook'], scooter: ['local_scooter'],
@@ -24,6 +25,7 @@ function template(id, have) {
   }, undefined, () => tpl.set(id, null));
   return 'loading';
 }
+const inChoirLung = (p) => Math.hypot((p[0] - SLICE.choir.x) / 21, (p[2] - SLICE.choir.z + 4) / 19) < 1; // (shared/city/gut.js choir(): the colonnade's ring)
 const hash = (x, z) => { let h = Math.imul((x * 100) | 0, 73856093) ^ Math.imul((z * 100) | 0, 19349663); h = Math.imul(h ^ (h >>> 13), 1274126177); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
 export class Crowd {
@@ -50,6 +52,9 @@ export class Crowd {
     }
     // the Gut gets stomach-dogs: every third Gut crowd spot has one sniffing about nearby
     for (const [, m, kind] of want.slice()) if ((kind === 'choir' || kind === 'digester') && hash(m.p[0], m.p[2]) < 0.35) want.push([0, { ...m, p: [m.p[0] + 2, m.p[1], m.p[2] + 1.5] }, 'dog']);
+    // inside the Choir Lung the singers are the story's own cast now (story/choir.js, in the stalls): no stand-ins in
+    // tie-dye wandering among them. their stomach-dogs stay
+    for (let i = want.length - 1; i >= 0; i--) if (want[i][2] === 'choir' && inChoirLung(want[i][1].p)) want.splice(i, 1);
     want.sort((a, b) => a[0] - b[0]);
     const keep = new Set();
     for (const [, m, kind] of want.slice(0, MAX)) {

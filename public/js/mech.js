@@ -387,6 +387,7 @@ export function mechCam(cam, dt) {
       const c0 = [H.p[0], H.p[1] + 0.6, H.p[2]], hit = raycast(c0, d, 7, BOXES), R = Math.max(2.5, Math.min(6.5 - u * 1.2, hit ? hit.t - 0.6 : 99)); // (never inside a wall)
       cam.position.set(c0[0] + d[0] * R, c0[1] + d[1] * R, c0[2] + d[2] * R);
       cam.lookAt(H.p[0], H.p[1] + 3.9, H.p[2]);
+      const sh = (G.shake || 0) * (G.shake || 0) * 0.08; if (sh) cam.rotation.set(cam.rotation.x + (Math.random() - 0.5) * sh, cam.rotation.y + (Math.random() - 0.5) * sh, cam.rotation.z); // (the landing still shakes)
       return;
     }
     MS.hero = null;
@@ -536,7 +537,7 @@ function updateWorld(dt, now, replaying) {
     if (m.st === 'leave') { const k = (now - m.t0) / 1500; y = m.p[1] + 60 * k * k; if (k > 1) { wmDrop(m); continue; } if (Math.random() < dt * 40) rfx.smoke([m.p[0], y + 1, m.p[2]], 2, 0xd8dde2, 1, -0.5, 1.2, 0.5); }
     inst.root.position.set(m.p[0], y, m.p[2]);
     inst.root.rotation.set(0, m.yaw, 0);
-    poseMech(inst, { spd: 0, fwd: 0, side: 0, air: fall > 0.02 || m.st === 'leave', vy: 0, landT: (now - (m.landT || 0)) / 1000, landK: 1, pitch: 0, empty: m.st === 'wait' || m.st === 'idle', boost: m.st === 'leave' || fall > 0 ? 1 : 0, swingT: 9, gunT: 9, swarmT: 9 }, dt);
+    poseMech(inst, { spd: 0, fwd: 0, side: 0, air: fall > 0.02 || m.st === 'leave', vy: 0, landT: (now - (m.landT || 0)) / 1000, landK: 1, pitch: 0, empty: m.st === 'wait' || m.st === 'idle', intro: !!m.landT, falling: m.st === 'fall', boost: m.st === 'leave' || fall > 0 ? 1 : 0, swingT: 9, gunT: 9, swarmT: 9 }, dt);
   }
 }
 function updateDrones(dt) {

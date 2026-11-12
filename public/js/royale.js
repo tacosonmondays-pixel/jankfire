@@ -390,10 +390,11 @@ net.on('br', (m) => {
     if (me) {
       R.me.place = m.place; R.spec = m.by && m.by !== G.myId ? m.by : 0; R.specSnap = true;
       if (m.w === 'zone') hud.dead(true, [['the zone ate you', '#d6b4ff']]);
-      setTimeout(() => { if (R.on && !ME.alive) big(`#${m.place}`, `out of ${R.total} · click to watch someone else`, 4); }, 400);
+      if (m.place) setTimeout(() => { if (R.on && !ME.alive) big(`#${m.place}`, `out of ${R.total} · click to watch someone else`, 4); }, 400);
     }
   } else if (m.k === 'win') {
     R.win = m.id;
+    if (m.sq) return; // battle island: the squad's callout is island.js's
     if (me) { big('LAST IDIOT STANDING', 'you won the jank royale', 5); sfx.choir(); sfx.kill(); }
     else if (m.id) { const n = G.names.get(m.id); big(`${n ? n.name : '???'} WINS`, 'last one standing', 4); }
     else big('NOBODY WINS', 'the zone got everyone', 4);
@@ -781,6 +782,7 @@ export function brFrame(dt, now) {
   }
 }
 export const brState = () => R; // (tests + the console)
+export const brBig = (text, sub, secs) => big(text, sub, secs); // the big royale callout (battle island's squad lines)
 export function brReset() { stop(); } // leaving the room (to the menu, or into another room): no royale left behind
 
 // ------------------------------------------------------------ the twists + POI rules (server decides, this shows them)
