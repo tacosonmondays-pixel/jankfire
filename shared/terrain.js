@@ -74,7 +74,7 @@ export function shapeGround(B, D, o) {
     const r = find(k);
     let c = comps.get(r);
     if (!c) comps.set(r, (c = { list: [], x0: 1e9, z0: 1e9, x1: -1e9, z1: -1e9, y0: 1e9 }));
-    if (b.av) c.av = 1; // (drawn by a baked model, public/js/archfield.js: the model can't move, so neither does this)
+    if (b.av && !(B.boxes.arch && B.boxes.arch[b.ai] || {}).drape) c.av = 1; // (drawn by a baked model, public/js/archfield.js: the model can't move, so neither does this. drape: a model of loose bits (a walkway's planks) that rides the ground as it always did)
     c.list.push(b); c.x0 = Math.min(c.x0, b.min[0]); c.x1 = Math.max(c.x1, b.max[0]); c.z0 = Math.min(c.z0, b.min[2]); c.z1 = Math.max(c.z1, b.max[2]); c.y0 = Math.min(c.y0, b.min[1]);
   });
   const anchors = [], propsC = [];

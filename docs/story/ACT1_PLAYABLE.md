@@ -101,8 +101,9 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
   changed only in the deck's chunk column (2:-3 .. 2:3) and the Lost & Found's yard (-4:3, -3:3).
 - **Not driven in a browser:** the tight turn onto the deck between the dead cars and on (the headless browser steers
   too late); the same car physics drives it in act1drive.test.mjs. The soup sloshing on the landing is C's/content.
-- **A (small):** the narrow stairs between Bottom terraces end at the 0.9 m lip wall of the lane above (jump it). Not
-  blocking, but janky; opening them touches many chunks' collision, so it's left for now.
+- **A (fixed, claude/bottom-stair-gaps):** the narrow stairs between Bottom terraces used to run into the houses built
+  over them and end at the 0.9 m lip wall of the lane above. Now no house stands on a stair, the lip wall has a gap
+  at the top of every flight and the washing-line poles step aside (tests/story/bottomstairs.test.mjs walks all 40).
 - **B:** the train world has no way back: after END OF ACT I you're still on the train, and the next mission
   (m06_option_c) wants you at the Lost & Found. Coming out at `commute:tunnel_mouth` would fit the script.
 - **C:** the ambush (m02), the escort walk (m03), the stomach-dog chase (m03), the truck (m04).

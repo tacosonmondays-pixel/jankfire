@@ -36,6 +36,7 @@ const fieldY = (f, x, z) => {
   const fx = (x - f.x0) / f.cell, fz = (z - f.z0) / f.cell;
   if (fx < 0 || fz < 0 || fx > f.nx || fz > f.nz) return null;
   const i = Math.min(f.nx - 1, Math.floor(fx)), j = Math.min(f.nz - 1, Math.floor(fz)), u = fx - i, v = fz - j, vz = f.nz + 1, H = f.H;
+  if (f.ok && !f.ok[i * f.nz + j]) return null; // (a field drawn only in places: the Gut's swells)
   return (H[i * vz + j] * (1 - u) + H[(i + 1) * vz + j] * u) * (1 - v) + (H[i * vz + j + 1] * (1 - u) + H[(i + 1) * vz + j + 1] * u) * v;
 };
 export function joinFields(chunks) {

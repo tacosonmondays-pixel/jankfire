@@ -17,11 +17,15 @@ export const CELL = 2; // the grid (m): physics, the drawn ground and the hidden
 const base = (z) => hwY(z) - 0.25; // the hill's own climb (smooth: no more half-metre terraces)
 const deck = (z) => hwY(z) - 0.4; // just under the deck and anything built at the old ground's height
 const onBase = (x, z) => base(z), onDeck = (x, z) => deck(z);
+// the town's side of the Commute's west edge (x 96): the Bottom's terraces, the Gut border, the Gut plateau. the
+// hillside climbs to meet them (no more dirt cliff), its edge following their floors smoothed over a terrace's depth
+const BT = SLICE.bottom, westStep = (z) => (z >= 0 ? Math.min(BT.n - 1, Math.max(0, Math.floor((256 - z) / BT.terr))) * BT.rise : z >= -48 ? SLICE.border.y : SLICE.gut.y);
+export const westY = (z) => { let s = 0; for (let k = -6; k <= 6; k++) s += westStep(z + k * 2.2); return s / 13; };
 
 // [x0, z0, x1, z1, y (a number or (x, z) => y), ease (m), 'soft'?]: level ground; the hills come back over `ease` m round it
 const sy = hwY(SLIP.z, true), sz0 = SLIP.z - 2.6;
 export const FLAT = [
-  [40, -256, 96, 256, onBase, 14], // the Bottom / Gut side: kept to the old climb (the border pass blends it in)
+  [40, -256, 96, 256, (x, z) => westY(z) - 0.05, 36], // the town's edge: the hillside climbs to its terraces and the border (the slope pass widens it as it needs)
   [H.x0 - 1.2, H.westZ[0] - 3, H.x1 + 1.2, 256, onDeck, 10], // the deck, its barriers, the gap under the collapse
   [96, H.westZ[0] - 3, H.x0, H.westZ[1] + 3, H.yTop - 0.04, 8], // the top turn west into the Gut (GUT_LINK)
   [GUT_LINK.rect[2] - 1, GUT_LINK.rect[1], 98, GUT_LINK.rect[3], H.yTop - 0.04, 4],
@@ -30,7 +34,8 @@ export const FLAT = [
   [112, 210, 156, 222, (x, z) => base(z) + (hwY(202, true) - 0.04 - base(212)) * (1 - Math.max(0, Math.min(1, (z - 212) / 12))), 6, 'soft'], // PREVIOUSLY LOVED MOTORS' forecourt: a gentle ramp up to the showroom
   [112, 200, 128, 212, hwY(202, true) - 0.02, 6], // ...and the showroom (shops.js) level
   [122, 122, 140, 134, hwY(124, true) - 0.02, 6], // PETROL & PISTOLS
-  [96, sz0 - 0.6, SLIP.ex + 5, SLIP.z + 3.2, sy - 0.02, 7], // the slip road's level stretch (the road is the ground here)
+  [97, sz0 - 0.4, SLIP.x1, SLIP.z + 3, (x) => 4 - (4 - sy) * (x - SLIP.x0) / (SLIP.x1 - SLIP.x0) - 0.15, 3], // under the slip road's ramp off terrace 1 (roads.js)
+  [SLIP.x1, sz0 - 0.6, SLIP.ex + 5, SLIP.z + 3.2, sy - 0.02, 7], // the slip road's level stretch (the road is the ground here)
   [SLIP.ex - 5, sz0, SLIP.ex + 5, SLIP.sz + 3, (x, z) => sy * Math.max(0, Math.min(1, (SLIP.sz - z) / (SLIP.sz - sz0))) - 0.15, 6], // its ramp round the deck's foot
   [SLIP.ex - 6, H.zLow, H.x1 + 6, 256, 0, 6], // the deck's foot: cars come round it at 0
   [286, -104, 320, -88, hwY(-96, true) - 0.02, 10], // the Under-Hill Loop's portal and rails (act1set.js)
@@ -133,7 +138,12 @@ export function groundField(x0, z0, x1, z1, extra) {
     const x = x0 + i * CELL, z = z0 + j * CELL, k = i * vz + j, y = Hs[k];
     if (y < lo) lo = y; if (y > hi) hi = y;
     const rel = y - base(z), ash = 1 - sm(-172, -128, z), lite = Math.max(-1, Math.min(1, rel / 3)) * 0.14 + 0.03 * n3(x / 3.1, z / 3.1);
-    const r = (0xc8 * (1 - ash) + 0x8a * ash) * (1 + lite), gg = (0xa0 * (1 - ash) + 0x7a * ash) * (1 + lite), b = 0x78 * (1 + lite * 0.6);
+    let r = (0xc8 * (1 - ash) + 0x8a * ash) * (1 + lite), gg = (0xa0 * (1 - ash) + 0x7a * ash) * (1 + lite), b = 0x78 * (1 + lite * 0.6);
+    const w = (1 - sm(R.x0, R.x0 + 34, x + 6 * wob(z / 17, x / 17))) * 0.85, fz = sm(-12, 12, z); // near the town: its colours creep out over the dirt
+    if (w > 0) { // (the Bottom's pink-grey terrace dirt to the south, bruised flesh toward the Gut)
+      const t = [0xb8 * fz + 0x8a * (1 - fz), 0x98 * fz + 0x3a * (1 - fz), 0x98 * fz + 0x44 * (1 - fz)];
+      r += (t[0] * (1 + lite) - r) * w; gg += (t[1] * (1 + lite) - gg) * w; b += (t[2] * (1 + lite) - b) * w;
+    }
     col[k * 3] = Math.max(0, Math.min(255, r)); col[k * 3 + 1] = Math.max(0, Math.min(255, gg)); col[k * 3 + 2] = Math.max(0, Math.min(255, b));
   }
   return { kind: 'field', ground: 1, x0, z0, nx, nz, cell: CELL, H: Hs, col, lo, hi, mat: 'ground' };
