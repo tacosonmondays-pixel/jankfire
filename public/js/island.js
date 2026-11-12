@@ -79,7 +79,8 @@ body.isle-down #crosshair, body.isle-down #hotbar, body.isle-down #ammo, body.is
 #isleBig { position: absolute; left: 50%; top: 17%; transform: translateX(-50%) rotate(-2deg); display: none; text-align: center; white-space: nowrap; pointer-events: none; font: bold 54px var(--font); color: #ffe14d; text-shadow: 4px 4px 0 #ff00dc, 7px 7px 0 #000; }
 #isleBig small { display: block; font-size: 20px; color: #fff; text-shadow: 2px 2px 0 #000; margin-top: 2px; }
 #isleBig.pop { animation: islePop 0.35s ease-out; } @keyframes islePop { 0% { transform: translateX(-50%) rotate(-2deg) scale(1.6); } 100% { transform: translateX(-50%) rotate(-2deg) scale(1); } }
-#roundEnd .isle-sq { margin-top: 4px; } #roundEnd .isle-sq b { color: var(--c); }
+#roundEnd .isle-sq { margin-top: 4px; }
+@media (max-height: 520px) { #isleSq { transform: scale(0.72); transform-origin: top left; top: 60px; } #isleMm { bottom: 78px; width: 240px; font-size: 12px; } #isleBig { font-size: 38px; } #isleHero { transform: translateX(-50%) scale(0.8); bottom: 90px; } } /* (small windows: nothing on top of each other) */ #roundEnd .isle-sq b { color: var(--c); }
 `;
 let el = null;
 function ensure() {
