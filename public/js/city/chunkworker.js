@@ -43,7 +43,9 @@ function farMesh(city, ids) {
     quad([[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]], 1, 0, 0, R, G, B, 0.7);
     quad([[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], -1, 0, 0, R, G, B, 0.7);
   }
-  return { pos, col, nrm, idx, verts: v, tris: k / 3 };
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity]; // (its bounds: the main thread used to scan for them)
+  for (let i = 0; i < v * 3; i++) { const a = i % 3; if (pos[i] < min[a]) min[a] = pos[i]; if (pos[i] > max[a]) max[a] = pos[i]; }
+  return { pos, col, nrm, idx, verts: v, tris: k / 3, min, max };
 }
 
 self.onmessage = (ev) => {

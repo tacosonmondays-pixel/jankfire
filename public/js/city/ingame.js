@@ -27,7 +27,7 @@ export function startCity(def, h) {
   stopCity();
   hooks = h;
   propEnv(G.renderer);
-  S = new CityStream({ scene: G.scene, city: def.stream, preset: G.settings ? G.settings.jank : 1, boxes: BOXES });
+  S = new CityStream({ scene: G.scene, city: def.stream, preset: G.settings ? G.settings.jank : 1, boxes: BOXES, renderer: G.renderer }); // (renderer: new models' shaders warm up before they're drawn)
   S.useWas = false;
   startHeart(S.root); startGoo(S.root); startHills(S.root);
   // the city code took a second to arrive and you may have started falling: put you back where the map dropped you
