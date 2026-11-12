@@ -11,8 +11,9 @@
 # Islands only (so it reads as a volcano from across the map): the lava glows, a wider bright core down the channel, hot
 # runs down the cooled flows, glowing fissures across the crater floor, an ash-and-sulphur crust along the lip, broken
 # bands of rust and ash round the cone, a low jungle round the foot (ferns, rosettes, elephant ears: knee high at most),
-# and the smoke plume: a faint wisp up out of the throat, then a fat see-through column well over the rim (material
-# extra `fade`, archfield.js), its belly lit orange.
+# and the smoke plume: a faint wisp up out of the throat, then a billowing column of round see-through puffs well over
+# the rim (material extra `fade`: archfield.js draws it see-through, archkit shades it smooth), pale grey with ash cores,
+# thinning toward the top, loose puffs drifting east, the lava's orange only faintly on its belly.
 # Islands S&D's (kaboom_sd: shared/map.js KABOOM_SD, the same mountain made small) is the same dressing, sparser and lower.
 # run: node tools/arch/dumpground.mjs islands -30 -28 30 22 0.25 tools/blender/arch/boxes/kaboom_ground.json
 #      node tools/arch/dumpground.mjs islands_sd -22 -30 22 6 0.25 tools/blender/arch/boxes/kaboom_sd_ground.json
@@ -38,9 +39,12 @@ if ID == 'kaboom':  # (Islands' look pass: bands of rock, sulphur on the lip, th
     MATS.update({'bbandr': ('stucco', '#a4543a', {}), 'bbanda': ('stucco', '#cdc0d0', {}), 'bbandd': ('stucco', '#3a2f44', {}), 'bsulph': ('stucco', '#ecd04a', {}),
                  'bleaf': ('stucco', '#2f9a3c', {'alpha': True}), 'bleaf2': ('stucco', '#86dc46', {'alpha': True}), 'bleaf3': ('stucco', '#1f7a58', {'alpha': True}),
                  'bflower': ('stucco', '#ff4fd8', {'alpha': True}), 'bflowery': ('stucco', '#ffe14d', {'alpha': True}),
-                 'bsmoke': ('stucco', '#b4a6bc', {'fade': 0.72}), 'bsmoke2': ('stucco', '#ece4f0', {'fade': 0.62}), 'bsmokeglow': ('stucco', '#ff9a6a', {'fade': 0.7, 'glow': True, 'glowcol': '#b84a2a'}),
-                 'bwisp': ('stucco', '#b0a0b8', {'fade': 0.3})})
-    NOCAST.update({'bbandr', 'bbanda', 'bbandd', 'bsulph', 'bleaf', 'bleaf2', 'bleaf3', 'bflower', 'bflowery', 'bsmoke', 'bsmoke2', 'bsmokeglow', 'bwisp'})
+                 # the smoke: warm pale grey outside, ash in the cores, thinner toward the top, lit a little by itself (the sunset
+                 # would make it a black lump), the lowest puffs' bellies warm, then orange, from the lava under them
+                 'bsmokecore': ('stucco', '#8c8286', {'fade': 0.5, 'glow': True, 'glowcol': '#463e40'}), 'bsmoke': ('stucco', '#ddd5d2', {'fade': 0.42, 'glow': True, 'glowcol': '#706866'}),
+                 'bsmoke2': ('stucco', '#f2eeec', {'fade': 0.3, 'glow': True, 'glowcol': '#848080'}), 'bsmokewarm': ('stucco', '#f2c2a6', {'fade': 0.22, 'glow': True, 'glowcol': '#8a4428'}),
+                 'bsmokeglow': ('stucco', '#ffa070', {'fade': 0.26, 'glow': True, 'glowcol': '#c0562a'}), 'bwisp': ('stucco', '#c4b8bc', {'fade': 0.3})})
+    NOCAST.update({'bbandr', 'bbanda', 'bbandd', 'bsulph', 'bleaf', 'bleaf2', 'bleaf3', 'bflower', 'bflowery', 'bsmokecore', 'bsmoke', 'bsmoke2', 'bsmokewarm', 'bsmokeglow', 'bwisp'})
 G = json.load(open(os.path.join(HERE, 'boxes', ID + '_ground.json')))
 json.dump({'map': V['map'], 'id': ID, 'boxes': [], 'places': [{'id': ID, 'p': [0, 0, 0], 'r': 0}]}, open(os.path.join(HERE, 'boxes', ID + '.json'), 'w'))
 K = Kit(os.path.join(HERE, 'boxes', ID + '.json'), seed=3)
@@ -336,7 +340,7 @@ if ID == 'kaboom':  # ======== Islands' look pass: so it reads as a volcano from
     print('jungle', len(PL), 'plants')
     # ---- the plume: out of the throat, a thin see-through wisp up past the rim, then a fat leaning column of smoke high over it,
     # its belly lit orange by the lava. high and see-through: nothing to hide behind (the rim's top is ~16.7, eyes on it ~18.3)
-    def blob(c, r, sq, m, k, seg=1):
+    def blob(c, r, sq, m, k, seg=1, lump=0.3):
         t = (1 + 5 ** 0.5) / 2
         V0 = [Vector(v).normalized() for v in ((-1, t, 0), (1, t, 0), (-1, -t, 0), (1, -t, 0), (0, -1, t), (0, 1, t), (0, -1, -t), (0, 1, -t), (t, 0, -1), (t, 0, 1), (-t, 0, -1), (-t, 0, 1))]
         F0 = [(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11), (1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8), (3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9), (4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1)]
@@ -349,7 +353,7 @@ if ID == 'kaboom':  # ======== Islands' look pass: so it reads as a volcano from
             for (i, j, l) in F0:
                 a2, b2, c2 = mid(i, j), mid(j, l), mid(l, i); F1 += [(i, a2, c2), (j, b2, a2), (l, c2, b2), (a2, b2, c2)]
             F0 = F1
-        P = [Vector((c.x + v.x * r * (0.85 + 0.3 * hsh(k, i, 400)), c.y + v.y * r * sq * (0.85 + 0.3 * hsh(k, i, 401)), c.z + v.z * r * (0.85 + 0.3 * hsh(k, i, 402)))) for i, v in enumerate(V0)]
+        P = [Vector((c.x + v.x * r * (1 - lump / 2 + lump * hsh(k, i, 400)), c.y + v.y * r * sq * (1 - lump / 2 + lump * hsh(k, i, 401)), c.z + v.z * r * (1 - lump / 2 + lump * hsh(k, i, 402)))) for i, v in enumerate(V0)]
         for (i, j, l) in F0:
             t3 = [P[i], P[j], P[l]]
             if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot((t3[0] + t3[1] + t3[2]) / 3 - c) < 0: t3 = t3[::-1]
@@ -358,15 +362,28 @@ if ID == 'kaboom':  # ======== Islands' look pass: so it reads as a volcano from
             K.tri(t3, mm)
     for i in range(7):  # the wisp: thin, faint, wobbling up out of the pool
         y = PY + 0.6 + i * 1.25; blob(Vector((TCX + 0.25 * math.sin(i * 1.3), y, TCZ + 0.2 * math.cos(i * 1.7))), 0.35 + 0.08 * i, 1.4, 'bwisp', 500 + i, seg=0)
-    Y0 = 19.6
-    for i in range(16):  # the column: puffs along a leaning path, fatter and paler as it climbs, a few hangers-on
-        t = i / 15; y = Y0 + 22 * t ** 1.15
-        c = Vector((TCX + 7.5 * t ** 1.6 + 0.6 * math.sin(i * 1.9), y, TCZ + 2.5 * t ** 1.4 + 0.6 * math.cos(i * 1.3)))
-        r = 1.3 + 4.6 * t ** 0.85
-        blob(c, r, 0.72, (lambda yy, ny: 'bsmokeglow' if ny < -0.35 and yy < Y0 + 3.5 else ('bsmoke2' if yy > 29 else 'bsmoke')), 600 + i)  # (its belly, over the crater, lit by the lava)
-        if i > 4 and hsh(i, 610) < 0.7:
-            a = hsh(i, 611) * 6.28
-            blob(c + Vector((math.cos(a) * r * 0.8, r * 0.15, math.sin(a) * r * 0.8)), r * 0.5, 0.75, (lambda yy, ny: 'bsmoke2' if yy > 30 else 'bsmoke'), 620 + i, seg=0)
+    Y0 = 19.6  # (the column: a billow of overlapping round puffs (smooth shaded: archkit), staggered round a leaning path, widening as
+    # it climbs; dark ash cores inside paler, thinner puffs; loose puffs breaking off the top and drifting east)
+    def path(t): return Vector((TCX + 7.0 * t ** 1.7, Y0 + 21 * t ** 1.1, TCZ + 2.2 * t ** 1.5)), 1.1 + 5.2 * t ** 0.8  # (centre, how wide)
+    def shade(core):
+        def m(yy, ny): return 'bsmokecore' if core else ('bsmoke2' if yy > 32 else 'bsmoke')
+        return m
+    for q in range(4):  # the lava's light on its belly: faint orange lenses tucked under the lowest puffs (seen through them: a soft glow, no cap)
+        c, R = path(0.04 * q); a = 2 * math.pi * (q / 4 + 0.1)
+        blob(c + Vector((math.cos(a) * R * 0.35, -0.35 * R - 0.15, math.sin(a) * R * 0.35)), R * (0.75 - 0.08 * q), 0.45, 'bsmokeglow' if q < 2 else 'bsmokewarm', 690 + q, lump=0.14)
+    NLV = 11
+    for i in range(NLV):
+        t = i / (NLV - 1); c, R = path(t)
+        if i % 3 == 0 and i < NLV - 1:  # an ash core inside every third level
+            blob(c + Vector((0, 0.2 * R, 0)), R * 0.55, 0.8, shade(True), 700 + i, lump=0.16)
+        n = 2 + (i > 4)
+        for q in range(n):
+            a = 2 * math.pi * (q / n + hsh(i, q, 701)) ; d = R * (0.3 + 0.25 * hsh(i, q, 702))
+            rr = R * (0.5 + 0.28 * hsh(i, q, 703)); dy = R * (hsh(i, q, 704) - 0.5) * 0.5
+            blob(c + Vector((math.cos(a) * d, dy, math.sin(a) * d)), rr, 0.78 + 0.15 * hsh(i, q, 705), shade(False), 710 + i * 5 + q, lump=0.18)
+    for q in range(4):  # loose puffs breaking off the top, drifting east, smaller and fainter as they go
+        c, R = path(1.0); f = q / 3
+        blob(c + Vector((3.5 + 5.5 * f + 1.2 * hsh(q, 720), -1.0 + 3.2 * f + 1.5 * (hsh(q, 721) - 0.5), (hsh(q, 722) - 0.5) * 4)), R * (0.42 - 0.2 * f), 0.75, 'bsmoke2', 730 + q, lump=0.2)
 
 K.solids = []
 K.finish(OUT)
