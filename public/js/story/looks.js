@@ -474,6 +474,7 @@ function minaLook(v) {
     if (moving || a.talking || a.clip) return;
     const n = Math.floor(t / 5.3), ph = t / 5.3 - n, side = [-1, 1, -1, -0.6][n % 4];
     const g = win(ph, 0.5, 0.58, 0.8, 0.9); cc.head.rotation.y += 0.62 * side * g; cc.head.rotation.x += 0.05 * g;
+    if (g > 0.3 && a.face) a.face.look = null; // (her eyes go down the street with her head, not left on you at the corners)
   };
   c.talk = (cc, t, k) => { cc.foreR.rotation.x += (v ? 0.35 : 0.5) * k; cc.arm.rotation.x += 0.12 * k; cc.foreR.rotation.z -= 0.15 * k; cc.head.rotation.x += (0.03 + Math.sin(t * 11) * 0.025) * k; cc.head.rotation.z += Math.sin(t * 2.3) * 0.04 * k; }; // (small and dry: a flat hand, a tilt)
   return { ...p, kind: 'normal', height: 1.62, eyeY: 1.5 };
@@ -550,6 +551,7 @@ export function buildLook(id, hint) {
   const L = LOOKS[id] ? LOOKS[id]() : hint ? generic(String(id || 'x'), hint) : LOOKS.mannequin();
   L.look = LOOKS[id] ? id : hint ? 'generic' : 'mannequin';
   if (CAST.has(L.look)) dressCast(L, CAST.get(L.look));
+  if (L.face && L.face.fit) L.face.fit(L.ch.head); // (painted dot eyes onto whichever head it ended up with)
   L.ch.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = false; } });
   return L;
 }
