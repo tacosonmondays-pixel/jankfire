@@ -76,3 +76,8 @@ tents and stalls (the harbour market); hay; the news helicopter (`p_heli`, crash
 - `shared/battleisland.js`: the master plan + `islandH(x, z)` (the ground) + `poiAt`.
 - `node tools/battleisland/layout.cjs <dir>`: the layout picture, the silhouette, a heightmap for Blender.
 - `blender52 -b --python tools/battleisland/make_blockout.py -- <dir>`: the blimp pictures.
+
+## Hooks for the mode (agreed with the Gameplay session, wired in PR 1)
+`map.royale = { zone0: [0, 0, 330], blimpY: 210, pois: PLAN.pois, loot, cells: [[x, y, z], ...], drops: [[x, y, z, r], ...], finale: [[x, z, r], ...] }`.
+cells, drops and finale are absolute world points (y = the floor). The finale entries are Dead Air's summit and Scrap Mart. `PLAN.pois` keeps
+`{ id, name, c, r }`. Every water entry carries a depth `d` (m): d <= 1.5 is wading (60% speed), anything deeper is the sea kill.
