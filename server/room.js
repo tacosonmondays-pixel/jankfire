@@ -531,6 +531,7 @@ class Room {
     this.lassoDrop(p, 'gone'); // ropes they held (or hung off) drop
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
     if (this.brOn) this.brLeave(p); // their pockets spill out
+    if (this.isleOn) this.isleKilled(p, null, 'left'); // battle island: their revives stop; the last one up leaving takes the squad out
     if (this.isEcon()) this.econLeave(p);
     this.mechLeave(p); // no orphan mechs
     this.players.delete(p.id);

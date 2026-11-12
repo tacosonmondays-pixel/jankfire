@@ -19,7 +19,8 @@ if (knob('JF_ISLE_SIZE', 1, 6)) ISLE.size = knob('JF_ISLE_SIZE', 1, 6) | 0;
 if (knob('JF_ISLE_SQUADS', 2, 10)) ISLE.squads = knob('JF_ISLE_SQUADS', 2, 10) | 0;
 if (knob('JF_ISLE_BLEED', 1, 300)) ISLE.down.bleed = knob('JF_ISLE_BLEED', 1, 300);
 if (knob('JF_ISLE_REVIVE', 0.5, 30)) ISLE.revive.hold = knob('JF_ISLE_REVIVE', 0.5, 30);
-if (knob('JF_ISLE_ZONE', 0.02, 1)) for (const z of ZONE) { z[0] *= knob('JF_ISLE_ZONE', 0.02, 1); z[1] *= knob('JF_ISLE_ZONE', 0.02, 1); } // x the zone's waits + shrinks (quick test matches; the royale's too)
+if (knob('JF_ISLE_GAP', 200, 10000)) ISLE.revive.gap = knob('JF_ISLE_GAP', 200, 10000); // ms a held F may go quiet (slow test browsers stall for seconds on a screenshot)
+if (knob('JF_ISLE_ZONE', 0.02, 5)) for (const z of ZONE) { z[0] *= knob('JF_ISLE_ZONE', 0.02, 5); z[1] *= knob('JF_ISLE_ZONE', 0.02, 5); } // x the zone's waits + shrinks (quick test matches; the royale's too)
 
 // what a downed pilot can't do: shoot, swing, throw, call streaks, revive, loot, heal, hop in a cart or a mech
 const DOWN_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray', 'cart', 'car', 'rig', 'mech', 'lasso', 'lh', 'nv', 'brpick', 'brheal', 'brkick']);
@@ -42,7 +43,8 @@ export function installIsland(Room, H) {
       if (!B.isle) {
         B.isle = { sqOut: new Map(), peak: 0, t: now(), stT: 0, log: [] };
         const list = this.fighters().filter((o) => !o.goblin).sort((a, b) => (a.isBot - b.isBot) || a.id - b.id);
-        list.forEach((o, i) => { o.sq = Math.floor(i / ISLE.size) + 1; if (o.sq > ISLE.squads) o.sq = (i % ISLE.squads) + 1; o.dn = null; o.irv = null; });
+        const size = list.length <= ISLE.size ? Math.max(1, Math.ceil(list.length / 2)) : ISLE.size; // (too few for two squads: split them, or nobody could win)
+        list.forEach((o, i) => { o.sq = Math.floor(i / size) + 1; if (o.sq > ISLE.squads) o.sq = (i % ISLE.squads) + 1; o.dn = null; o.irv = null; });
       }
       p.br.mailed = true; // no RETURN TO SENDER here: your squad picks you up instead
       p.dn = null; p.irv = null;
@@ -219,6 +221,7 @@ export function installIsland(Room, H) {
       I.win = win;
       B.endAt = n + 3200;
       this.broadcast({ t: 'br', k: 'win', id: B.winner, sq: win, ids: mates.map((p) => p.id) });
+      this.broadcast({ t: 'isle', k: 'win', sq: win, ids: mates.map((p) => p.id) }); // (the squad callout: clients hear 'br' in royale.js)
       if (LOG) {
         I.log.push(win ? `WINNERS: squad ${win} (${mates.map((p) => `${p.name}${p.isBot ? '' : '*'} ${p.br.kills || 0}k ${p.br.knocks || 0}kn ${p.br.revives || 0}rv${this.isleUp(p) ? '' : p.dn ? ' (down)' : ' (dead)'}`).join(', ')}), ${Math.round((n - B.t0) / 1000)}s` : 'no winner');
         console.log('[isle] ' + I.log.join('\n[isle] '));

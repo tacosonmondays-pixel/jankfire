@@ -12,7 +12,7 @@ export const ISLE = {
   down: { bleed: 30, hurt: 0.25, crawl: 1.7, slack: 2.5, flung: 1500 },
   // picking someone up: hold F this long (s), this close (m, flat; + slack for lag, and a height band), back on your
   // feet with this much HP. gap: ms between 'use's that still counts as holding F
-  revive: { hold: 4, r: 2.5, slack: 0.4, dy: 1.8, hp: 30, gap: 600 },
+  revive: { hold: 4, r: 2.5, slack: 0.4, dy: 1.8, hp: 30, gap: 1000 }, // (gap: like the zombies' revive, slow clients send them late)
   stick: 25, // bots stay about this close to a human squadmate (all-bot squads: their leader, a bit looser)
   safe: 22, // a bot picks a squadmate up when no enemy it can see is this close
 };
