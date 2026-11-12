@@ -58,12 +58,18 @@ function house(B, k, x0, w, seed) {
       // junk on the roof: plastic chairs, a dish, a smiley sign, a sofa
       if (f === floors - 1) {
         const pr = r(); c.bare = pr >= 0.55;
-        if (pr < 0.25) B.prop('pchair', cx + (r() - 0.5) * (ww - 1), c.top, cz + (r() - 0.5) * (dd - 1), r() * 6.28, 1, (r() * 8) | 0);
-        else if (pr < 0.35) B.prop('sofa', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
-        else if (pr < 0.42) B.prop('smilesign', cx, c.top, cz, r() * 6.28, 0.7, 0);
-        else if (pr < 0.55) B.prop('tarp', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, 0);
-        if (r() < 0.35) B.prop('wokdish', c.x0, c.top - 0.6, cz, Math.PI / 2, 1, 0);
-        if (r() < 0.3) B.prop('stringlights', cx, c.top + 2.2, cz, r() * 6.28, 1, 0);
+        const rx = (c.x0 + c.x1) / 2, rz = (c.z0 + c.z1) / 2; // (the roof's own middle: the house is shifted off cx, and the junk used to hang off its edge)
+        if (pr < 0.25) B.prop('pchair', rx + (r() - 0.5) * (ww - 1.2), c.top, rz + (r() - 0.5) * (dd - 1.2), r() * 6.28, 1, (r() * 8) | 0);
+        else if (pr < 0.35) B.prop('sofa', rx, c.top, rz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
+        else if (pr < 0.42) B.prop('smilesign', rx, c.top, rz, r() * 6.28, 0.7, 0);
+        else if (pr < 0.55) B.prop('tarp', rx, c.top, rz, (r() * 4 | 0) * Math.PI / 2, 1, 0);
+        if (r() < 0.35) B.prop('wokdish', c.x0, c.top - 0.6, rz, Math.PI / 2, 1, 0);
+        if (r() < 0.3) { // a string of bulbs on two poles (it used to hang 2.2 m over the roof from nothing), short enough that both poles stand on the roof
+          const yaw = r() * 6.28, ca = Math.abs(Math.cos(yaw)), sa = Math.abs(Math.sin(yaw)), half = Math.min(ca > 0.01 ? (c.x1 - c.x0) / 2 - 0.4 : 99, sa > 0.01 ? (c.z1 - c.z0) / 2 - 0.4 : 99) / Math.max(ca, sa, 0.01);
+          const sc = Math.max(0.4, Math.min(1, half / 2.0)), ex = Math.cos(yaw) * 2 * sc, ez = -Math.sin(yaw) * 2 * sc;
+          B.prop('stringlights', rx, c.top + 2.2, rz, yaw, sc, 0);
+          for (const k of [-1, 1]) B.add(rx + k * ex - 0.05, c.top, rz + k * ez - 0.05, rx + k * ex + 0.05, c.top + 2.3, rz + k * ez + 0.05, 'metal', { nc: true, tint: 0x8a8f99 });
+        }
       }
     }
     // the back row reaching the terrace above: a little bridge from its roof onto the next terrace
@@ -168,7 +174,7 @@ function slope(B, k, a, b, r) {
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
-  B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
+  B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs - 0.03, 'concrete', { nc: true, tint: 0xcab8b0 }); // (3 cm short of the lip: its edge was flush with the terrace's face)
   if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) for (const [c0, d0] of k === 2 ? cut(a, b, SLICE.lostFound.rect[0] + 12, SLICE.lostFound.rect[2] - 12) : [[a, b]]) for (const [c, d] of [...stairGaps(k).map((sx) => [sx - 1.15, sx + 1.15]), ...slopeSpans(k)].reduce((segs, [g0, g1]) => segs.flatMap(([p, q]) => cut(p, q, g0, g1)), [[c0, d0]])) if (d > c) B.add(c, y, zs - 0.4, d, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up, and at the Lost & Found's front steps)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
@@ -234,7 +240,7 @@ function lostFound(B) {
 // the market: stalls, fire barrels, a canopy of bulbs, the bottom of the Long Stairs
 function plaza(B) {
   const [x0, z0, x1, z1] = SLICE.plaza.rect, r = rng(9191);
-  B.add(x0, -0.05, z0, x1, 0.02, z1, 'tile', { nc: true, tint: 0xe8c8b8 });
+  B.add(x0, -0.05, z0, x1, 0.04, z1, 'tile', { nc: true, tint: 0xe8c8b8 }); // (2 cm over the lane's paving it overlaps: level with it, they flickered)
   for (let i = 0; i < 14; i++) stall(B, x0 + 6 + (i % 7) * 12.5, 0, z0 + 6 + Math.floor(i / 7) * 12, r() < 0.5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) { const fx = x0 + 10 + i * 14 + r() * 4, fz = z0 + 12 + r() * 6; B.prop('firebarrel', fx, 0, fz, 0, 1, 0); B.light(fx, 1.6, fz, 0xff8a2a, 11, 1.2); }
   for (let i = 0; i < 6; i++) bulbs(B, [x0 + 2 + i * 15, 6.5, z0 + 1], [x0 + 10 + i * 15, 6.5, z1 - 1], rng(400 + i));
