@@ -26,7 +26,7 @@ export const MECH = {
   // speed caps the server holds you to (m/s, flat), with lag slack in metres, and the most you may rise per s
   slack: 3, rise: 32,
   paperplane: {
-    name: 'PAPER PLANE', hp: 900, h: 5, hw: 1.25, ch: 1.3, cw: 0.85, eye: 4.4, cam: 8.5,
+    name: 'PAPER PLANE', hp: 900, h: 4.9, hw: 0.8, c0: 3.1, c1: 4.15, eye: 4.4, cam: 8.5, // (box sizes: docs/mechs/MECHS.md; the cockpit is the chest band)
     speed: 14, accel: 9, fric: 5, grav: 30, hop: 12, airCap: 16,
     gun: { dmg: 14, rate: 8, range: 120, cone: 0.6 }, // twin cannons: per shot, shots a second, metres, how far off your view (cos) a shot may go
     hover: { up: 7, rise: 0.9, drain: 22, speed: 16 }, // climb speed, s of climbing before it just hangs, energy a s, flat speed
@@ -36,7 +36,7 @@ export const MECH = {
     jet: { dur: 6, cd: 20, speed: 45, dmg: 60, kb: 30, kbUp: 14, r: 2.6 }, // fold into a jet: fly where you look, ram
   },
   nightshift: {
-    name: 'NIGHT SHIFT', hp: 1500, h: 6, hw: 1.45, ch: 1.4, cw: 0.9, eye: 5.3, cam: 10,
+    name: 'NIGHT SHIFT', hp: 1500, h: 5.7, hw: 1.2, c0: 3.3, c1: 4.6, eye: 5.3, cam: 10,
     speed: 11, accel: 7, fric: 4.5, grav: 32, hop: 14, airCap: 6,
     sword: { dmg: [40, 40, 70], cd: [0.38, 0.38, 0.62], combo: 0.95, reach: 6.2, cos: 0.2, kb: [8, 8, 28], up: [4, 4, 12] }, // three swings
     shield: { cut: 0.85, cos: 0.35, slow: 0.45, bashWin: 0.8, bash: 30, bashR: 5, bashKb: 22, bashCd: 1.2 }, // tower shield + bash
@@ -81,12 +81,14 @@ Object.assign(WEAPONS, {
 const BODY_STREAKS = new Set(['moonboots', 'spinbot', 'wreckingball', 'overdrive', 'mechdrop']);
 export const mechClash = (id, inMech, inRig, inBall, hasMech) => (inMech && BODY_STREAKS.has(id)) || (id === 'mechdrop' && (inRig || inBall || hasMech));
 
-// what you shoot at: the frame (one big box) and the cockpit on top (headshots). k = the far-away draw scale
+// what you shoot at: the frame as one tall box (MECHS.md's sizes), split at the cockpit: the chest band where the hatch
+// is (the "head": 1.5x) between the legs and the shoulders / helmet. k = the far-away draw scale
 export function mechBoxes(pos, frame, k = 1) {
-  const F = MECH[mechFrame(frame)], [x, y, z] = pos, w = F.hw * k, c = F.cw * k, b = (F.h - F.ch) * k, t = F.h * k;
+  const F = MECH[mechFrame(frame)], [x, y, z] = pos, w = F.hw * k, a = F.c0 * k, b = F.c1 * k, t = F.h * k;
   return [
-    { min: [x - w, y, z - w], max: [x + w, y + b, z + w], head: false },
-    { min: [x - c, y + b, z - c], max: [x + c, y + t, z + c], head: true },
+    { min: [x - w, y, z - w], max: [x + w, y + a, z + w], head: false },
+    { min: [x - w, y + a, z - w], max: [x + w, y + b, z + w], head: true },
+    { min: [x - w, y + b, z - w], max: [x + w, y + t, z + w], head: false },
   ];
 }
 export const mechEye = (frame) => MECH[mechFrame(frame)].eye;

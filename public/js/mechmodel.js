@@ -1,278 +1,289 @@
-// MECH DROP, the looks: code stand-ins for the two frames until the Blender hero models land (docs/mechs/MECHS.md),
-// in each frame's real proportions so it plays right now. PAPER PLANE: a ~5 m folded-paper flyer, origami wings,
-// twin forearm cannons, shoulder missile pods, back jets, a crane drone docked on its left wing. NIGHT SHIFT: a ~6 m
-// knight, helmet cockpit with a glowing visor, a huge sword, a tower shield with a clock-and-moon crest, back and leg
-// boosters. One builder per frame; both expose the same joints and named attachment points (inst.att) so a .glb can
-// replace the stand-in later (GLB_ID: its nodes carry those names; a missing file falls back to the stand-in).
-// Also here: the pose (walk, hover, jet fold, swings with held key poses and overshoot, shield, slam, landings), the
-// sword's glowing arc, jet flames, the glowing hatch, and the gib pop when one blows up.
+// MECH DROP, the looks: code stand-ins for the two frames until the Blender hero models land. They use the hero
+// models' own skeleton, pivots, marker and clip names (docs/mechs/MECHS.md, pivots from the concept files' `jf` meta),
+// so x_mech_<frame>.glb drops in: when it's there it replaces the stand-in (its bones are posed by the same code, or
+// its own clips play), when it's missing or broken the stand-in stays. Space: the mech faces -z, right is +x, feet on
+// y = 0. PAPER PLANE: a ~4.85 m origami flyer (paper-plane nose chest with the canopy on its keel, V wings, pencil
+// missile pods). NIGHT SHIFT: a ~5.7 m security-guard knight (great helm, amber beacon, hi-vis bands, a snap-off blade
+// sword, a PLEASE HOLD tower shield). Also: the code poses (with held key poses and overshoot), the clip name for what
+// it's doing, the sword's glowing arc, thrust flames, the glowing hatch, and the gib pop when it blows up.
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
 import { authored, glossyPaint, nodeIn } from './glbkit.js';
 import { MECH } from '/shared/mech.js';
 
-// the hero models' files (tools/blender, public/models): when one is there it replaces the stand-in
+// the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
 export const GLB_ID = { paperplane: 'x_mech_paperplane', nightshift: 'x_mech_nightshift' };
-// the attachment points every model has (Blender node names = these)
-export const ATT = {
-  paperplane: ['cockpit', 'hatch', 'handL', 'handR', 'muzzleL', 'muzzleR', 'podL', 'podR', 'jetL', 'jetR', 'wingL', 'wingR', 'craneDock'],
-  nightshift: ['cockpit', 'hatch', 'handL', 'handR', 'swordHand', 'sword', 'swordBase', 'swordTip', 'shieldArm', 'shield', 'boosterL', 'boosterR', 'legBoosterL', 'legBoosterR'],
+// the skeleton (MECHS.md): name -> [pivot in game coords at rest, parent]. from the concept files' jf meta
+const PIV = {
+  paperplane: { hips: [[0, 2.62, 0], 'root'], waist: [[0, 2.98, 0.04], 'hips'], chest: [[0, 3.22, 0.04], 'waist'], neck: [[0, 4.06, -0.02], 'chest'], head: [[0, 4.22, -0.03], 'neck'],
+    hatch: [[0, 4.02, -0.4], 'chest'], backpack: [[0, 3.62, 0.5], 'chest'], shoulder_R: [[0.56, 3.92, 0.08], 'chest'], pod_R: [[0.99, 4.24, 0.12], 'shoulder_R'], upperarm_R: [[0.98, 3.86, 0.08], 'shoulder_R'],
+    forearm_R: [[1.06, 3.04, 0.1], 'upperarm_R'], hand_R: [[1.11, 2.26, 0.05], 'forearm_R'], thigh_R: [[0.4, 2.55, 0], 'hips'], shin_R: [[0.44, 1.52, -0.06], 'thigh_R'], foot_R: [[0.46, 0.5, 0.06], 'shin_R'],
+    toe_R: [[0.46, 0.13, -0.4], 'foot_R'], skirt_R: [[0.5, 2.84, 0], 'hips'], wing_R: [[0.3, 4.02, 0.86], 'backpack'] },
+  nightshift: { hips: [[0, 2.8, 0], 'root'], waist: [[0, 3.18, 0.04], 'hips'], chest: [[0, 3.42, 0.04], 'waist'], neck: [[0, 4.78, 0.02], 'chest'], head: [[0, 4.9, 0], 'neck'], beacon: [[0, 5.626, 0], 'head'],
+    hatch: [[0, 3.64, -0.62], 'chest'], backpack: [[0, 4.1, 0.62], 'chest'], shoulder_R: [[0.8, 4.56, 0.06], 'chest'], upperarm_R: [[1.42, 4.4, 0.06], 'shoulder_R'], forearm_R: [[1.52, 3.4, 0.1], 'upperarm_R'],
+    hand_R: [[1.56, 2.44, 0.04], 'forearm_R'], thigh_R: [[0.56, 2.7, 0], 'hips'], shin_R: [[0.62, 1.64, -0.08], 'thigh_R'], foot_R: [[0.64, 0.58, 0.08], 'shin_R'], toe_R: [[0.64, 0.17, -0.52], 'foot_R'],
+    skirt_R: [[0.66, 3.02, 0], 'hips'], sword: [[1.58, 2.2, 0], 'hand_R'], shield: [[-1.54, 2.92, 0.07], 'forearm_L'] },
 };
-const JOINTS = ['hips', 'torso', 'cockpit', 'hatch', 'shoulderL', 'shoulderR', 'armL', 'armR', 'foreL', 'foreR', 'handL', 'handR', 'thighL', 'thighR', 'shinL', 'shinR', 'footL', 'footR'];
+for (const P of Object.values(PIV)) for (const [k, [at, par]] of Object.entries({ ...P })) { // mirror the _R side
+  if (!k.endsWith('_R')) continue;
+  P[k.slice(0, -2) + '_L'] = [[-at[0], at[1], at[2]], par.endsWith('_R') ? par.slice(0, -2) + '_L' : par];
+}
+// gameplay markers (MECHS.md; the mk_muzzle_*, mk_crane and mk_mark ones are ours, asked of the art session): parent
+// joint + offset in game coords at rest
+const MK = {
+  paperplane: { mk_seat: ['chest', [0, 3.75, -0.1]], mk_eject: ['chest', [0, 4.3, -0.2]], mk_thrust_L: ['backpack', [-0.28, 3.25, 0.82]], mk_thrust_R: ['backpack', [0.28, 3.25, 0.82]],
+    mk_muzzle_L: ['forearm_L', [-1.14, 2.4, -0.75]], mk_muzzle_R: ['forearm_R', [1.14, 2.4, -0.75]], mk_crane: ['wing_L', [-0.9, 4.7, 0.95]], mk_mark: ['head', [0, 5.6, 0]] },
+  nightshift: { mk_seat: ['chest', [0, 4.0, -0.2]], mk_eject: ['chest', [0, 4.6, -0.4]], mk_thrust_L: ['backpack', [-0.45, 3.45, 1.0]], mk_thrust_R: ['backpack', [0.45, 3.45, 1.0]],
+    mk_thrust_leg_L: ['shin_L', [-0.62, 1.0, 0.42]], mk_thrust_leg_R: ['shin_R', [0.62, 1.0, 0.42]], mk_sword_base: ['sword', [1.58, 2.2, -0.75]], mk_sword_tip: ['sword', [1.58, 2.2, -4.6]],
+    mk_shield_face: ['shield', [-1.54, 2.92, -0.75]], mk_beacon: ['beacon', [0, 5.8, 0]], mk_mark: ['head', [0, 6.4, 0]] },
+};
+for (const s of ['L', 'R']) for (let i = 0; i < 3; i++) MK.paperplane[`mk_missile_${s}${i}`] = [`pod_${s}`, [(s === 'L' ? -1 : 1) * (0.88 + i * 0.11), 4.3, -0.42]];
+export const JOINTS = [...new Set([...Object.keys(PIV.paperplane), ...Object.keys(PIV.nightshift)])];
+export const MARKERS = { paperplane: Object.keys(MK.paperplane), nightshift: Object.keys(MK.nightshift) };
+// the clips (MECHS.md): poseMech names the one that fits what the mech is doing (inst.clip); a hero model that has it
+// plays it, the stand-in poses it in code
+export const CLIPS = { shared: ['idle', 'walk', 'run', 'boost_dash', 'jump', 'land', 'hover', 'hit_react', 'drop_in', 'pilot_in', 'destroy'],
+  paperplane: ['jet_in', 'jet_fly', 'jet_out', 'missile_salvo'], nightshift: ['sword_combo_1', 'sword_combo_2', 'sword_combo_3', 'dash_slash', 'shield_block', 'shield_bash', 'ground_slam'] };
 
 const mats = new Map();
-const lam = (c, e = 0.1) => mats.get('l' + c + e) || mats.set('l' + c + e, new THREE.MeshLambertMaterial({ color: c, flatShading: true, emissive: new THREE.Color(c).multiplyScalar(e) })).get('l' + c + e);
-const chrome = (c) => mats.get('c' + c) || mats.set('c' + c, new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 110, flatShading: true, emissive: new THREE.Color(c).multiplyScalar(0.1) })).get('c' + c);
-const glow = (c) => mats.get('g' + c) || mats.set('g' + c, new THREE.MeshBasicMaterial({ color: c })).get('g' + c);
-const PAL = { paper: 0xf6f2e6, crease: 0xc9c2b0, ink: 0x22202a, gun: 0x3a4250, steel: 0x8a96a6, yellow: 0xffe14d, cyan: 0x4fd8ff, navy: 0x1c2140, night: 0x2a2f55, gold: 0xe8b730, red: 0xff3030, black: 0x14141a, chrome: 0xd0d8e2 };
+const cached = (k, mk) => mats.get(k) || mats.set(k, mk()).get(k);
+const lam = (c, e = 0.1) => cached('l' + c + e, () => new THREE.MeshLambertMaterial({ color: c, flatShading: true, emissive: new THREE.Color(c).multiplyScalar(e) }));
+const chrome = (c) => cached('c' + c, () => new THREE.MeshPhongMaterial({ color: c, specular: 0xffffff, shininess: 110, flatShading: true, emissive: new THREE.Color(c).multiplyScalar(0.1) }));
+const glow = (c) => cached('g' + c, () => new THREE.MeshBasicMaterial({ color: c }));
+const glass = () => cached('glass', () => new THREE.MeshPhongMaterial({ color: 0x8fe8ff, specular: 0xffffff, shininess: 150, transparent: true, opacity: 0.8, emissive: 0x0c3a4a }));
 
-function add(parent, geo, mat, p = [0, 0, 0], r = null, name = '') {
+function add(parent, geo, mat, p = [0, 0, 0], r = null) {
   const m = new THREE.Mesh(geo, mat);
   m.position.fromArray(p);
   if (r) m.rotation.set(r[0], r[1], r[2]);
-  if (name) m.name = name;
   parent.add(m);
   return m;
 }
-function node(parent, name, p = [0, 0, 0]) { const n = new THREE.Group(); n.name = name; n.position.fromArray(p); n.userData.rest = p.slice(); parent.add(n); return n; }
-// a flat triangle (a paper fold) with some thickness
-function fold(a, b, c, t = 0.05) {
+// a part placed in game coords (rest pose) under joint j (pivot `at`)
+function part(j, geo, mat, world, r = null) { return add(j, geo, mat, [world[0] - j.userData.at[0], world[1] - j.userData.at[1], world[2] - j.userData.at[2]], r); }
+// a limb box from this joint's pivot toward a point (game coords), w x d thick
+function limb(j, to, w, d, mat, k = 1, c = 0.05) {
+  const a = j.userData.at, v = new THREE.Vector3(to[0] - a[0], to[1] - a[1], to[2] - a[2]), l = v.length() * k;
+  const m = add(j, cbox(w, l, d, c), mat);
+  m.position.copy(v.clone().normalize().multiplyScalar(l / 2));
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), v.normalize());
+  return m;
+}
+function fold(a, b, c, t = 0.05) { // a flat triangle (a paper fold) with some thickness, in its own xy plane
   const s = new THREE.Shape([new THREE.Vector2(a[0], a[1]), new THREE.Vector2(b[0], b[1]), new THREE.Vector2(c[0], c[1])]);
   return new THREE.ExtrudeGeometry(s, { depth: t, bevelEnabled: false }).translate(0, 0, -t / 2);
 }
 const wedge = (w, h, d) => { const g = new THREE.CylinderGeometry(0, w, d, 4, 1).rotateX(-Math.PI / 2).rotateZ(Math.PI / 4); g.scale(1, h / w, 1); return g; };
+const at = (P, k) => P[k][0];
 
-// ------------------------------------------------------------ PAPER PLANE
+// ------------------------------------------------------------ PAPER PLANE (colours: SKY MAIL, the paint is yours)
 function buildPaper(j, own) {
-  const P = PAL, paper = lam(P.paper, 0.18), crease = lam(P.crease), ink = lam(P.ink, 0.05), gun = lam(P.gun), acc = own.accent;
-  // legs: light, bird-like, knees forward
-  for (const s of [-1, 1]) {
-    const L = s < 0 ? 'L' : 'R', th = j['thigh' + L], sh = j['shin' + L], ft = j['foot' + L];
-    add(th, cbox(0.36, 1.0, 0.42, 0.06), paper, [0, -0.5, 0]);
-    add(th, cbox(0.4, 0.18, 0.46, 0.04), acc, [0, -0.15, 0]);
-    add(sh, cbox(0.3, 1.0, 0.34, 0.05), paper, [0, -0.5, 0]);
-    add(sh, cbox(0.32, 0.5, 0.06, 0.02), crease, [0, -0.5, -0.19]); // a crease down the shin
-    add(sh, cylX(0.16, 0.42, 8), gun, [0, 0, 0]); // knee joint
-    add(ft, wedge(0.5, 0.22, 0.95), paper, [0, 0.1, -0.12]);
-    add(ft, cbox(0.48, 0.1, 0.5, 0.02), gun, [0, 0.03, 0.18]);
+  const P = PIV.paperplane, white = lam(0xf3f0e6, 0.2), navy = lam(0x1d2747, 0.08), yellow = lam(0xffd23a, 0.25), acc = own.accent, ink = lam(0x2a2a40, 0.05);
+  for (const s of ['L', 'R']) {
+    const sg = s === 'L' ? -1 : 1;
+    limb(j['thigh_' + s], at(P, 'shin_' + s), 0.42, 0.46, white);
+    part(j['thigh_' + s], cbox(0.46, 0.22, 0.5, 0.04), acc, [0.42 * sg, 2.25, -0.02]);
+    limb(j['shin_' + s], at(P, 'foot_' + s), 0.36, 0.42, white);
+    part(j['shin_' + s], wedge(0.5, 0.42, 0.5), acc, [0.44 * sg, 1.5, -0.3]); // a folded knee
+    part(j['shin_' + s], cbox(0.3, 0.6, 0.06, 0.02), ink, [0.45 * sg, 1.0, -0.26]); // the crease down the shin
+    part(j['foot_' + s], cbox(0.42, 0.3, 0.55, 0.05), navy, [0.46 * sg, 0.3, 0.12]);
+    part(j['toe_' + s], wedge(0.44, 0.24, 0.6), white, [0.46 * sg, 0.12, -0.45]);
+    part(j['skirt_' + s], fold([0, 0], [0.32 * sg, 0], [0.12 * sg, -0.5], 0.06), acc, [0.42 * sg, 2.9, -0.1], [0, 0, 0]);
   }
-  add(j.hips, cbox(1.0, 0.45, 0.7, 0.08), gun, [0, 0, 0]);
-  add(j.hips, cbox(1.1, 0.16, 0.74, 0.04), acc, [0, 0.22, 0]);
-  // torso: a folded paper chest, narrow waist
-  add(j.torso, cbox(0.7, 0.6, 0.55, 0.06), gun, [0, 0.35, 0]);
-  add(j.torso, cbox(1.6, 1.15, 1.0, 0.12), paper, [0, 1.05, 0]);
-  add(j.torso, wedge(1.5, 0.5, 1.2), paper, [0, 1.05, -0.6], [0, 0, 0]); // the chest's paper-plane nose
-  add(j.torso, cbox(1.62, 0.08, 1.02, 0.02), crease, [0, 0.95, 0]); // fold line
-  add(j.torso, cbox(0.5, 0.5, 0.1, 0.03), acc, [0, 1.15, -0.53]); // a chest panel in your colour
-  add(j.torso, cbox(0.18, 0.18, 0.04, 0.01), glow(P.cyan), [0, 1.15, -0.6]);
-  // cockpit: the canopy on top (the head: hits here are cockpit hits)
-  add(j.cockpit, cbox(1.15, 0.85, 1.15, 0.1), paper, [0, 0, 0.05]);
-  add(j.cockpit, wedge(1.0, 0.55, 0.9), paper, [0, -0.05, -0.75]);
-  const glass = new THREE.MeshPhongMaterial({ color: 0x5fe8ff, specular: 0xffffff, shininess: 140, transparent: true, opacity: 0.75, emissive: 0x0a3a48 });
-  add(j.cockpit, cbox(0.9, 0.42, 0.7, 0.08), glass, [0, 0.18, -0.35]);
-  add(j.cockpit, cbox(1.2, 0.08, 1.2, 0.02), acc, [0, 0.46, 0.05]);
-  add(j.cockpit, fold([0, 0], [0.5, 0], [0, 0.55], 0.04), paper, [0, 0.45, 0.5], [0, Math.PI / 2, 0]); // a tail fin, folded
-  add(j.hatch, cbox(0.7, 0.5, 0.06, 0.02), own.hatch, [0, -0.25, 0]);
-  // wings: two big origami folds, a V off the back (they sweep flat in jet mode)
-  for (const s of [-1, 1]) {
-    const w = node(j.torso, s < 0 ? 'wingL' : 'wingR', [0.35 * s, 1.35, 0.5]);
-    const pivot = node(w, 'wfold', [0, 0, 0]);
-    add(pivot, fold([0, 0], [2.4 * s, 0.4], [0.3 * s, -0.9], 0.05), paper, [0, 0, 0], [Math.PI / 2 - 0.1, 0, 0]);
-    add(pivot, fold([0.25 * s, -0.1], [2.3 * s, 0.35], [2.0 * s, 0.25], 0.06), acc, [0, 0.02, 0], [Math.PI / 2 - 0.1, 0, 0]); // the leading edge stripe
-    add(pivot, cbox(0.12, 0.12, 0.9, 0.02), crease, [0.9 * s, 0.03, -0.05], [0, -0.35 * s, 0]);
-    w.userData.pivot = pivot;
-    if (s < 0) { const dock = node(pivot, 'craneDock', [1.3 * s, 0.25, 0.2]); dock.add(buildCrane(own.accent)); dock.userData.crane = dock.children[0]; }
+  part(j.hips, cbox(0.85, 0.4, 0.55, 0.06), navy, [0, 2.62, 0]);
+  part(j.waist, cbox(0.55, 0.38, 0.45, 0.05), navy, [0, 3.04, 0.02]);
+  // the chest: a paper plane's nose, white with your colour, the canopy on its keel (the hatch)
+  part(j.chest, cbox(1.15, 0.8, 0.85, 0.1), white, [0, 3.65, 0.08]);
+  part(j.chest, wedge(1.15, 0.7, 0.9), acc, [0, 3.62, -0.55]);
+  part(j.chest, fold([-0.5, 0.3], [0.5, 0.3], [0, -0.4], 0.04), yellow, [0, 3.62, -0.62], [0.35, 0, 0]); // the V chevron
+  part(j.chest, cbox(0.04, 0.8, 0.9, 0.01), ink, [0, 3.65, 0.08]); // the centre fold
+  part(j.hatch, wedge(0.5, 0.32, 0.65), glass(), [0, 3.9, -0.62]);
+  part(j.hatch, cbox(0.52, 0.06, 0.6, 0.02), own.hatch, [0, 4.07, -0.5]);
+  // head: small, folded crest, yellow eyes, ear flaps (and a paperclip antenna)
+  part(j.head, cbox(0.48, 0.4, 0.5, 0.06), white, [0, 4.42, -0.02]);
+  part(j.head, cbox(0.36, 0.08, 0.06, 0.02), own.visor, [0, 4.44, -0.28]);
+  part(j.head, fold([0, 0], [0, 0.32], [0.5, 0.05], 0.05), acc, [0, 4.6, 0.1], [0, Math.PI / 2, 0]);
+  for (const sg of [-1, 1]) part(j.head, fold([0, 0], [0.22 * sg, 0.34], [0.18 * sg, 0], 0.04), white, [0.24 * sg, 4.45, 0]);
+  part(j.head, cbox(0.03, 0.35, 0.03, 0.01), chrome(0xd0d8e2), [-0.3, 4.75, 0.05]);
+  // backpack + its jets, and the wings: two folded halves stowed up and out like a V
+  part(j.backpack, cbox(0.8, 0.8, 0.45, 0.06), navy, [0, 3.62, 0.62]);
+  for (const sg of [-1, 1]) part(j.backpack, cyl(0.16, 0.22, 0.4, 10), navy, [0.28 * sg, 3.3, 0.8]);
+  for (const s of ['L', 'R']) {
+    const sg = s === 'L' ? -1 : 1, w = j['wing_' + s];
+    part(w, fold([0, 0], [1.1 * sg, 1.9], [0.35 * sg, -0.9], 0.05), white, [0.3 * sg, 4.02, 0.9]);
+    part(w, fold([0.12 * sg, 0.3], [1.05 * sg, 1.85], [0.95 * sg, 1.55], 0.06), acc, [0.3 * sg, 4.02, 0.88]); // the leading edge
+    part(w, cbox(0.06, 1.6, 0.07, 0.01), ink, [0.75 * sg, 4.5, 0.93], [0, 0, -0.45 * sg]); // FOLD HERE
   }
-  // back jets
-  for (const s of [-1, 1]) {
-    const jt = node(j.torso, s < 0 ? 'jetL' : 'jetR', [0.42 * s, 0.75, 0.55]);
-    add(jt, cyl(0.2, 0.26, 0.55, 10), gun, [0, 0, 0], [Math.PI / 2 - 0.5, 0, 0]);
-    add(jt, cyl(0.15, 0.15, 0.06, 10), glow(0xff7a3d), [0, -0.12, 0.22], [Math.PI / 2 - 0.5, 0, 0]);
+  // shoulders, the pencil missile pods, arms with a twin cannon under each forearm
+  for (const s of ['L', 'R']) {
+    const sg = s === 'L' ? -1 : 1;
+    part(j['shoulder_' + s], cbox(0.6, 0.45, 0.6, 0.07), white, [0.85 * sg, 3.95, 0.08]);
+    part(j['shoulder_' + s], cbox(0.62, 0.1, 0.62, 0.02), acc, [0.85 * sg, 4.15, 0.08]);
+    part(j['pod_' + s], cbox(0.44, 0.26, 0.5, 0.04), navy, [0.99 * sg, 4.3, 0.1]);
+    for (let i = 0; i < 3; i++) { // pencils: yellow hex bodies, pink erasers out the back, sharpened tips forward
+      const x = (0.88 + i * 0.11) * sg;
+      part(j['pod_' + s], new THREE.CylinderGeometry(0.045, 0.045, 0.55, 6).rotateX(Math.PI / 2), yellow, [x, 4.3, -0.05]);
+      part(j['pod_' + s], new THREE.ConeGeometry(0.045, 0.13, 6).rotateX(-Math.PI / 2), lam(0xe8c9a0), [x, 4.3, -0.38]);
+      part(j['pod_' + s], cylZ(0.046, 0.08, 6), lam(0xff7ab8, 0.2), [x, 4.3, 0.26]);
+    }
+    limb(j['upperarm_' + s], at(P, 'forearm_' + s), 0.3, 0.34, white);
+    limb(j['forearm_' + s], at(P, 'hand_' + s), 0.34, 0.38, navy);
+    part(j['forearm_' + s], cbox(0.38, 0.22, 0.42, 0.04), acc, [1.08 * sg, 2.9, 0.1]);
+    part(j['forearm_' + s], cbox(0.24, 0.24, 0.5, 0.04), navy, [1.12 * sg, 2.45, -0.35]); // the cannon housing
+    for (const b of [-0.06, 0.06]) part(j['forearm_' + s], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2), [1.14 * sg + b, 2.4, -0.55]);
+    part(j['hand_' + s], cbox(0.26, 0.3, 0.3, 0.05), ink, [1.11 * sg, 2.1, 0.05]);
   }
-  // arms: shoulders, then forearms that are the twin cannons
-  for (const s of [-1, 1]) {
-    const L = s < 0 ? 'L' : 'R';
-    add(j['shoulder' + L], cbox(0.62, 0.55, 0.65, 0.08), paper, [0.1 * s, 0, 0]);
-    const pod = node(j['shoulder' + L], 'pod' + L, [0.18 * s, 0.45, 0.05]);
-    add(pod, cbox(0.5, 0.36, 0.62, 0.05), acc, [0, 0, 0]);
-    for (let r = 0; r < 2; r++) for (let c = 0; c < 3; c++) add(pod, cylZ(0.06, 0.04, 6), glow(P.red), [(-0.13 + r * 0.26), 0.02, -0.32 + c * 0.0], null).position.set(-0.14 + r * 0.28, -0.08 + c * 0.08, -0.32);
-    add(j['arm' + L], cbox(0.34, 0.85, 0.38, 0.05), paper, [0, -0.42, 0]);
-    add(j['fore' + L], cbox(0.42, 0.42, 1.0, 0.06), gun, [0, 0, -0.3]);
-    add(j['fore' + L], cbox(0.44, 0.12, 0.9, 0.03), acc, [0, 0.23, -0.3]);
-    for (const b of [-0.1, 0.1]) add(j['fore' + L], cylZ(0.07, 0.75, 8), chrome(P.chrome), [b, -0.05, -1.05]);
-    const mz = node(j['fore' + L], 'muzzle' + L, [0, -0.05, -1.45]);
-    mz.userData.flash = add(mz, new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false }));
-    mz.userData.flash.visible = false;
-    j['hand' + L].position.set(0, -0.05, -0.85);
-  }
-  return { paper, acc };
 }
 // the origami crane drone (also flown by mech.js)
 export function buildCrane(color) {
-  const g = new THREE.Group(), m = color && color.isMaterial ? color : lam(new THREE.Color(color || '#ff4fd8').getHex(), 0.3), w = lam(PAL.paper, 0.25);
-  add(g, wedge(0.22, 0.2, 0.55), w, [0, 0, 0]);
-  add(g, cbox(0.05, 0.32, 0.05, 0.01), w, [0, 0.12, -0.3], [0.6, 0, 0]); // neck
-  add(g, wedge(0.07, 0.07, 0.2), m, [0, 0.27, -0.42]); // head / beak
+  const g = new THREE.Group(), m = lam(new THREE.Color(color || '#ff4fd8').getHex(), 0.3), w = lam(0xf6f2e6, 0.25);
+  add(g, wedge(0.22, 0.2, 0.55), w);
+  add(g, cbox(0.05, 0.32, 0.05, 0.01), w, [0, 0.12, -0.3], [0.6, 0, 0]);
+  add(g, wedge(0.07, 0.07, 0.2), m, [0, 0.27, -0.42]);
   const wl = add(g, fold([0, 0], [-0.55, 0.15], [-0.1, -0.25], 0.02), w, [-0.05, 0.05, 0], [Math.PI / 2, 0, 0]);
   const wr = add(g, fold([0, 0], [0.55, 0.15], [0.1, -0.25], 0.02), w, [0.05, 0.05, 0], [Math.PI / 2, 0, 0]);
-  add(g, wedge(0.12, 0.08, 0.3), m, [0, 0.05, 0.3], [0.4, Math.PI, 0]); // tail
+  add(g, wedge(0.12, 0.08, 0.3), m, [0, 0.05, 0.3], [0.4, Math.PI, 0]);
   g.userData.wings = [wl, wr];
   return g;
 }
 
-// ------------------------------------------------------------ NIGHT SHIFT
+// ------------------------------------------------------------ NIGHT SHIFT (colours: GRAVEYARD SHIFT, the paint is yours)
 function buildKnight(j, own) {
-  const P = PAL, navy = lam(P.navy, 0.12), night = lam(P.night, 0.14), gold = chrome(P.gold), steel = chrome(P.steel), acc = own.accent, black = lam(P.black, 0.05);
-  for (const s of [-1, 1]) {
-    const L = s < 0 ? 'L' : 'R';
-    add(j['thigh' + L], cbox(0.62, 1.25, 0.7, 0.1), navy, [0, -0.62, 0]);
-    add(j['thigh' + L], cbox(0.68, 0.2, 0.76, 0.04), gold, [0, -0.08, 0]);
-    add(j['shin' + L], cbox(0.58, 1.25, 0.66, 0.1), night, [0, -0.62, 0]);
-    add(j['shin' + L], cbox(0.5, 0.6, 0.12, 0.04), steel, [0, -0.45, -0.36]); // greave
-    add(j['shin' + L], cylX(0.24, 0.66, 10), gold, [0, 0, 0]); // knee
-    const lb = node(j['shin' + L], 'legBooster' + L, [0, -0.7, 0.38]);
-    add(lb, cyl(0.16, 0.22, 0.5, 10), black, [0, 0, 0]);
-    add(lb, cyl(0.13, 0.13, 0.05, 10), glow(0x7dffff), [0, -0.26, 0]);
-    add(j['foot' + L], cbox(0.72, 0.36, 1.25, 0.1), navy, [0, 0.16, -0.18]);
-    add(j['foot' + L], cbox(0.74, 0.12, 0.5, 0.04), gold, [0, 0.3, -0.62]);
+  const P = PIV.nightshift, white = lam(0xf0ede4, 0.18), navy = lam(0x161c38, 0.08), hivis = lam(0xffd23a, 0.3), acc = own.accent, steel = chrome(0x9aa6b6), black = lam(0x121218, 0.04);
+  for (const s of ['L', 'R']) {
+    const sg = s === 'L' ? -1 : 1;
+    limb(j['thigh_' + s], at(P, 'shin_' + s), 0.62, 0.68, acc);
+    part(j['thigh_' + s], cbox(0.66, 0.12, 0.72, 0.03), hivis, [0.6 * sg, 2.25, 0]);
+    limb(j['shin_' + s], at(P, 'foot_' + s), 0.66, 0.72, white);
+    part(j['shin_' + s], cbox(0.5, 0.7, 0.14, 0.04), acc, [0.63 * sg, 1.15, -0.42]); // greave
+    part(j['shin_' + s], cylX(0.26, 0.7, 10), navy, [0.62 * sg, 1.64, -0.08]); // knee
+    part(j['foot_' + s], cbox(0.78, 0.42, 0.85, 0.08), acc, [0.64 * sg, 0.3, 0.05]);
+    part(j['toe_' + s], cbox(0.76, 0.3, 0.55, 0.08), white, [0.64 * sg, 0.15, -0.6]);
+    part(j['skirt_' + s], cbox(0.5, 0.7, 0.7, 0.06), navy, [0.72 * sg, 2.75, 0]);
   }
-  add(j.hips, cbox(1.5, 0.6, 0.95, 0.1), night, [0, 0, 0]);
-  add(j.hips, cbox(1.1, 1.1, 0.12, 0.04), acc, [0, -0.55, -0.5]); // tabard front, your colour
-  add(j.hips, cbox(1.3, 1.0, 0.1, 0.04), acc, [0, -0.5, 0.5]);
-  add(j.torso, cbox(1.3, 0.8, 0.95, 0.1), navy, [0, 0.4, 0]);
-  add(j.torso, cbox(2.1, 1.55, 1.3, 0.16), night, [0, 1.35, 0]);
-  add(j.torso, cbox(1.5, 0.95, 0.12, 0.05), steel, [0, 1.45, -0.68]); // breastplate
-  add(j.torso, cbox(0.18, 0.95, 0.04, 0.02), gold, [0, 1.45, -0.75]);
-  add(j.torso, cbox(2.14, 0.12, 1.34, 0.03), gold, [0, 0.62, 0]);
-  // helmet = cockpit, a visor slit that glows, a crest fin
-  add(j.cockpit, cbox(1.2, 1.15, 1.2, 0.14), navy, [0, 0, 0]);
-  add(j.cockpit, cbox(1.25, 0.18, 1.25, 0.04), gold, [0, -0.5, 0]);
-  add(j.cockpit, cbox(0.95, 0.14, 0.08, 0.02), own.visor, [0, 0.05, -0.62]);
-  add(j.cockpit, cbox(1.0, 0.5, 0.1, 0.04), steel, [0, -0.25, -0.62]);
-  add(j.cockpit, cbox(0.12, 0.65, 1.3, 0.04), acc, [0, 0.75, 0.05]); // the crest
-  add(j.hatch, cbox(0.6, 0.45, 0.06, 0.02), own.hatch, [0, -0.22, 0]);
-  // back boosters
-  for (const s of [-1, 1]) {
-    const b = node(j.torso, s < 0 ? 'boosterL' : 'boosterR', [0.55 * s, 1.3, 0.75]);
-    add(b, cyl(0.28, 0.34, 1.3, 10), black, [0, 0, 0]);
-    add(b, cyl(0.3, 0.3, 0.14, 10), gold, [0, 0.55, 0]);
-    add(b, cyl(0.22, 0.22, 0.05, 10), glow(0x7dffff), [0, -0.66, 0]);
+  part(j.hips, cbox(1.3, 0.5, 0.8, 0.08), navy, [0, 2.8, 0]);
+  part(j.hips, cbox(0.5, 0.25, 0.1, 0.03), hivis, [0, 2.85, -0.42]); // the belt buckle
+  part(j.hips, cylX(0.12, 0.3, 8), steel, [0.45, 2.6, -0.45]); // the keyring (jank: it's huge)
+  part(j.waist, cbox(1.0, 0.4, 0.75, 0.06), white, [0, 3.25, 0.04]);
+  // the barrel breastplate: your colour, hi-vis bands, a brass badge. the breastplate is the cockpit hatch
+  part(j.chest, new THREE.CylinderGeometry(0.95, 0.85, 1.25, 12), acc, [0, 4.05, 0.04]);
+  for (const y of [3.75, 3.95]) part(j.chest, new THREE.CylinderGeometry(0.965, 0.95, 0.07, 12), hivis, [0, y, 0.04]);
+  part(j.hatch, cbox(1.0, 0.85, 0.12, 0.05), acc, [0, 4.05, -0.88]);
+  part(j.hatch, cbox(1.02, 0.07, 0.14, 0.02), hivis, [0, 3.85, -0.9]);
+  part(j.hatch, cbox(0.2, 0.2, 0.05, 0.02), chrome(0xd9a63a), [-0.3, 4.25, -0.95]); // NIGHT SHIFT badge
+  part(j.hatch, cbox(0.6, 0.06, 0.16, 0.02), own.hatch, [0, 4.45, -0.88]);
+  // the great helm: one glowing visor slit, the amber beacon on top, a walkie-talkie antenna
+  part(j.head, cbox(0.8, 0.8, 0.8, 0.12), white, [0, 5.25, 0]);
+  part(j.head, cbox(0.82, 0.12, 0.82, 0.02), acc, [0, 5.0, 0]);
+  part(j.head, cbox(0.6, 0.07, 0.06, 0.01), own.visor, [0, 5.3, -0.42]);
+  part(j.head, cbox(0.03, 0.5, 0.03, 0.01), black, [0.32, 5.8, 0.2]);
+  part(j.beacon, cyl(0.16, 0.18, 0.12, 10), steel, [0, 5.68, 0]);
+  part(j.beacon, new THREE.SphereGeometry(0.16, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), own.beacon, [0, 5.74, 0]);
+  part(j.beacon, cbox(0.3, 0.12, 0.04, 0.01), glow(0xffffff), [0, 5.8, -0.1]); // the rotating reflector
+  // backpack + boosters
+  part(j.backpack, cbox(1.2, 1.0, 0.55, 0.08), navy, [0, 4.15, 0.8]);
+  for (const sg of [-1, 1]) part(j.backpack, cyl(0.24, 0.3, 0.8, 10), black, [0.45 * sg, 3.8, 1.0]);
+  part(j.backpack, cbox(0.5, 0.25, 0.02, 0.01), hivis, [0, 4.4, 1.08]); // HOW'S MY PILOTING?
+  // pauldrons, arms, the torch on the right pauldron
+  for (const s of ['L', 'R']) {
+    const sg = s === 'L' ? -1 : 1;
+    part(j['shoulder_' + s], new THREE.SphereGeometry(0.62, 10, 6, 0, Math.PI * 2, 0, Math.PI / 2), acc, [1.25 * sg, 4.45, 0.06]);
+    part(j['shoulder_' + s], cbox(1.0, 0.14, 0.9, 0.04), white, [1.25 * sg, 4.42, 0.06]);
+    limb(j['upperarm_' + s], at(P, 'forearm_' + s), 0.5, 0.54, white);
+    limb(j['forearm_' + s], at(P, 'hand_' + s), 0.58, 0.62, navy);
+    part(j['forearm_' + s], cbox(0.64, 0.16, 0.68, 0.04), hivis, [1.52 * sg, 3.3, 0.1]);
+    part(j['hand_' + s], cbox(0.42, 0.42, 0.46, 0.08), black, [1.56 * sg, 2.25, 0.04]);
   }
-  // arms: pauldrons, heavy forearms
-  for (const s of [-1, 1]) {
-    const L = s < 0 ? 'L' : 'R';
-    add(j['shoulder' + L], cbox(0.95, 0.75, 1.05, 0.14), navy, [0.15 * s, 0.05, 0]);
-    add(j['shoulder' + L], cbox(1.0, 0.16, 1.1, 0.04), gold, [0.15 * s, 0.38, 0]);
-    add(j['arm' + L], cbox(0.52, 1.0, 0.56, 0.08), night, [0, -0.5, 0]);
-    add(j['fore' + L], cbox(0.6, 1.0, 0.64, 0.08), navy, [0, -0.5, 0]);
-    add(j['fore' + L], cbox(0.64, 0.16, 0.68, 0.04), gold, [0, -0.1, 0]);
-    add(j['hand' + L], cbox(0.5, 0.5, 0.5, 0.08), black, [0, 0, 0]);
-  }
-  // the sword in the right hand: grip, gold guard, a long blade with a glowing edge
-  const sh = node(j.handR, 'swordHand', [0, 0, 0]);
-  const sw = node(sh, 'sword', [0, 0, 0]);
-  add(sw, cylZ(0.09, 0.8, 8), black, [0, 0, 0.1]);
-  add(sw, cbox(1.0, 0.18, 0.2, 0.04), gold, [0, 0, -0.32]);
-  add(sw, cbox(0.32, 0.08, 3.6, 0.03), steel, [0, 0, -2.2]);
-  add(sw, cbox(0.06, 0.1, 3.5, 0.01), own.edge, [0.17, 0, -2.2]);
-  add(sw, cbox(0.06, 0.1, 3.5, 0.01), own.edge, [-0.17, 0, -2.2]);
-  add(sw, wedge(0.32, 0.08, 0.5), steel, [0, 0, -4.2]);
-  node(sw, 'swordBase', [0, 0, -0.5]);
-  node(sw, 'swordTip', [0, 0, -4.4]);
-  // the tower shield on the left forearm: the night shift crest (a clock and a moon)
-  const sa = node(j.foreL, 'shieldArm', [-0.38, -0.55, -0.1]);
-  const shd = node(sa, 'shield', [0, 0, 0]);
-  add(shd, cbox(0.18, 2.7, 1.5, 0.08), night, [0, 0, 0]);
-  add(shd, cbox(0.2, 2.8, 0.12, 0.03), gold, [0, 0, -0.75]);
-  add(shd, cbox(0.2, 2.8, 0.12, 0.03), gold, [0, 0, 0.75]);
-  add(shd, cbox(0.2, 0.12, 1.6, 0.03), gold, [0, 1.38, 0]);
-  add(shd, new THREE.CylinderGeometry(0.5, 0.5, 0.06, 20).rotateZ(Math.PI / 2), lam(0xf4f0e0, 0.4), [-0.11, 0.3, 0]); // clock face
-  add(shd, cbox(0.04, 0.4, 0.06, 0.01), black, [-0.15, 0.45, 0]); // hands at ten to midnight
-  add(shd, cbox(0.04, 0.06, 0.3, 0.01), black, [-0.15, 0.32, 0.1], [0.6, 0, 0]);
-  add(shd, new THREE.TorusGeometry(0.32, 0.07, 6, 12, Math.PI * 1.2).rotateY(Math.PI / 2), own.visor, [-0.12, -0.55, 0]); // the moon
-  return {};
+  part(j.shoulder_R, cyl(0.1, 0.12, 0.3, 8).rotateX(Math.PI / 2), glow(0xfff2b0), [1.55, 4.75, -0.2]);
+  // the snap-off blade sword in the right hand: rubber grip, chunky guard, a long dark blade with glowing edges
+  part(j.sword, cylZ(0.11, 0.8, 8), black, [1.58, 2.2, 0.05]);
+  part(j.sword, cbox(0.9, 0.22, 0.24, 0.05), hivis, [1.58, 2.2, -0.42]);
+  part(j.sword, cbox(0.1, 0.42, 3.7, 0.03), lam(0x2a2e3a, 0.1), [1.58, 2.2, -2.4]);
+  for (const y of [-0.22, 0.22]) part(j.sword, cbox(0.12, 0.05, 3.7, 0.01), own.edge, [1.58, 2.2 + y, -2.4]);
+  for (let i = 0; i < 6; i++) part(j.sword, cbox(0.12, 0.42, 0.02, 0.005), black, [1.58, 2.2, -0.9 - i * 0.55], [0.5, 0, 0]); // the snap lines
+  part(j.sword, wedge(0.12, 0.42, 0.55), lam(0x2a2e3a, 0.1), [1.58, 2.2, -4.45]);
+  // the PLEASE HOLD tower shield on the left forearm
+  part(j.shield, cbox(1.5, 2.7, 0.2, 0.08), acc, [-1.6, 2.95, -0.62]);
+  part(j.shield, cbox(1.56, 0.2, 0.24, 0.03), hivis, [-1.6, 4.25, -0.62]);
+  part(j.shield, cbox(1.56, 0.2, 0.24, 0.03), hivis, [-1.6, 1.65, -0.62]);
+  part(j.shield, cbox(1.0, 0.45, 0.06, 0.02), black, [-1.6, 3.2, -0.74]);
+  part(j.shield, cbox(0.9, 0.12, 0.02, 0.01), own.led, [-1.6, 3.28, -0.78]); // PLEASE HOLD
+  part(j.shield, cbox(0.22, 0.08, 0.02, 0.01), own.led, [-1.94, 3.1, -0.78]); // stuck at 25%
 }
 
 // ------------------------------------------------------------ build / free
-const REST = { // joint rest positions per frame (metres, from the parent joint): legs, torso, cockpit, shoulders
-  paperplane: { hips: 2.05, torso: [0, 0.25, 0], cockpit: [0, 2.15, 0.05], hatch: [0, 0.32, -0.62], shoulder: [1.05, 1.45, 0.05], arm: [0, 0, 0], fore: [0, -0.85, 0], hip: [0.36, -0.1, 0], shin: [0, -1.0, 0], foot: [0, -1.02, 0] },
-  nightshift: { hips: 2.55, torso: [0, 0.3, 0], cockpit: [0, 2.7, 0], hatch: [0, 0.35, -0.65], shoulder: [1.45, 1.85, 0], arm: [0, -0.1, 0], fore: [0, -1.0, 0], hip: [0.48, -0.15, 0], shin: [0, -1.25, 0], foot: [0, -1.27, 0] },
-};
 export function buildMech(frame, color, opts = {}) {
   frame = frame === 'nightshift' ? 'nightshift' : 'paperplane';
   const col = new THREE.Color(color || '#ff4fd8');
-  const own = {
+  const own = { // per-mech materials: <p>_paint (your colour), the glows
     accent: glossyPaint(col, 0.25),
-    hatch: new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.95 }),
-    visor: new THREE.MeshBasicMaterial({ color: frame === 'nightshift' ? 0x7dffff : 0x4fd8ff }),
-    edge: new THREE.MeshBasicMaterial({ color: 0xc8a8ff }),
+    hatch: new THREE.MeshBasicMaterial({ color: 0xffe14d }),
+    visor: new THREE.MeshBasicMaterial({ color: frame === 'nightshift' ? 0xffb43a : 0xffe14d }),
+    edge: new THREE.MeshBasicMaterial({ color: 0xffd23a }),
+    beacon: new THREE.MeshBasicMaterial({ color: 0xffa020, transparent: true, opacity: 0.95 }),
+    led: new THREE.MeshBasicMaterial({ color: 0xff8a2a }),
   };
-  const root = new THREE.Group(), j = {};
-  root.name = 'mech_' + frame;
-  const R = REST[frame];
-  j.hips = node(root, 'hips', [0, R.hips, 0]);
-  j.torso = node(j.hips, 'torso', R.torso);
-  j.cockpit = node(j.torso, 'cockpit', R.cockpit);
-  j.hatch = node(j.cockpit, 'hatch', R.hatch);
-  for (const s of [-1, 1]) {
-    const L = s < 0 ? 'L' : 'R';
-    j['shoulder' + L] = node(j.torso, 'shoulder' + L, [R.shoulder[0] * s, R.shoulder[1], R.shoulder[2]]);
-    j['arm' + L] = node(j['shoulder' + L], 'arm' + L, R.arm);
-    j['fore' + L] = node(j['arm' + L], 'fore' + L, R.fore);
-    j['hand' + L] = node(j['fore' + L], 'hand' + L, [0, -1.0, 0]);
-    j['thigh' + L] = node(j.hips, 'thigh' + L, [R.hip[0] * s, R.hip[1], R.hip[2]]);
-    j['shin' + L] = node(j['thigh' + L], 'shin' + L, R.shin);
-    j['foot' + L] = node(j['shin' + L], 'foot' + L, R.foot);
-  }
-  j.torso.rotation.order = 'YXZ';
-  for (const s of ['L', 'R']) j['shoulder' + s].rotation.order = 'XZY';
+  const root = new THREE.Group(), j = { root };
+  root.name = 'root'; root.userData.at = [0, 0, 0];
+  const P = PIV[frame];
+  const make = (k) => { // joints in parent order, local offsets from the rest pivots
+    if (j[k]) return j[k];
+    const [w, par] = P[k], pj = make(par === 'root' ? 'root' : par) || root;
+    const n = new THREE.Group(); n.name = k; n.userData.at = w; n.userData.rest = [w[0] - pj.userData.at[0], w[1] - pj.userData.at[1], w[2] - pj.userData.at[2]];
+    n.position.fromArray(n.userData.rest); pj.add(n); j[k] = n;
+    return n;
+  };
+  for (const k of Object.keys(P)) make(k);
   let glb = null;
   const a = opts.noGlb ? null : authored(GLB_ID[frame]);
-  if (a) { // the hero model: its nodes are the joints and attachment points (same names)
+  if (a) { // the hero model: its bones are the joints (same names); the stand-in skeleton is dropped
     glb = a.obj; root.add(glb);
-    for (const k of JOINTS) { const n = nodeIn(glb, k); if (n) { j[k] = n; n.userData.rest = n.position.toArray(); } }
-    j.hips.visible = false; // (the stand-in's skeleton stays only as a fallback for missing joints)
+    for (const k of Object.keys(P)) { const n = nodeIn(glb, k); if (n) { j[k].visible = false; j[k] = n; n.userData.rest = n.position.toArray(); } }
+    for (const n of root.children) if (n !== glb) n.visible = false;
   } else if (frame === 'paperplane') buildPaper(j, own);
   else buildKnight(j, own);
+  // markers: the hero model's empties, else ours at the same spots
   const att = {};
-  for (const k of ATT[frame]) att[k] = (glb && nodeIn(glb, k)) || j[k] || nodeIn(root, k);
-  // jet flames on every nozzle (additive cones pointing out the back / down)
-  const flameMat = new THREE.MeshBasicMaterial({ color: 0xff7ae8, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+  for (const [k, [jn, w]] of Object.entries(MK[frame])) {
+    let n = glb && nodeIn(glb, k);
+    if (!n) { const pj = j[jn]; n = new THREE.Object3D(); n.name = k; const pa = PIV[frame][jn][0]; n.position.set(w[0] - pa[0], w[1] - pa[1], w[2] - pa[2]); pj.add(n); }
+    att[k] = n;
+  }
+  for (const k of ['hatch', 'chest', 'head', 'backpack', 'sword', 'shield', 'beacon', 'wing_L', 'wing_R', 'pod_L', 'pod_R']) if (j[k]) att[k] = j[k];
+  if (att.mk_crane) { const c = buildCrane(own.accent.color); c.rotation.y = Math.PI; att.mk_crane.add(c); att.mk_crane.userData.crane = c; }
+  // thrust flames on every mk_thrust_* (additive cones, out the back / down)
+  const flameMat = new THREE.MeshBasicMaterial({ color: frame === 'nightshift' ? 0xffb43a : 0x5ff0ff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   const coreMat = new THREE.MeshBasicMaterial({ color: 0xfff4c0, transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false });
   const flames = [];
-  for (const k of ['jetL', 'jetR', 'boosterL', 'boosterR', 'legBoosterL', 'legBoosterR']) {
-    const n = att[k];
-    if (!n) continue;
-    const f = new THREE.Group();
-    const up = k.startsWith('jet') ? [Math.PI / 2 - 0.5 + Math.PI, 0, 0] : [Math.PI, 0, 0];
-    f.rotation.set(up[0], up[1], up[2]);
-    f.position.set(0, k.startsWith('jet') ? -0.1 : -0.7, k.startsWith('jet') ? 0.25 : 0);
-    if (k.startsWith('leg')) f.position.y = -0.3;
-    const big = k.startsWith('leg') ? 0.7 : 1;
+  for (const [k, n] of Object.entries(att)) {
+    if (!k.startsWith('mk_thrust')) continue;
+    const f = new THREE.Group(), leg = k.includes('leg'), big = leg ? 0.7 : 1;
+    f.rotation.set(leg ? Math.PI : Math.PI * 0.75, 0, 0);
     add(f, new THREE.ConeGeometry(0.22 * big, 1.4 * big, 10, 1, true).translate(0, 0.7 * big, 0), flameMat);
     add(f, new THREE.ConeGeometry(0.1 * big, 0.8 * big, 8).translate(0, 0.4 * big, 0), coreMat);
     for (const c of f.children) c.renderOrder = 7;
-    f.visible = false;
-    n.add(f); flames.push(f);
+    f.visible = false; n.add(f); flames.push(f);
   }
+  for (const s of ['L', 'R']) { const mz = att['mk_muzzle_' + s]; if (!mz) continue; const fl = add(mz, new THREE.SphereGeometry(0.22, 8, 6), new THREE.MeshBasicMaterial({ color: 0xfff2a0, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false })); fl.visible = false; mz.userData.flash = fl; }
   // the glowing sword arc (a ribbon behind the blade while it swings)
   let trail = null;
-  if (att.swordTip) {
+  if (att.mk_sword_tip) {
     const N = 14, geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(N * 2 * 3), 3).setUsage(THREE.DynamicDrawUsage));
     geo.setAttribute('a', new THREE.BufferAttribute(new Float32Array(N * 2), 1).setUsage(THREE.DynamicDrawUsage));
     const idx = []; for (let i = 0; i < N - 1; i++) { const a2 = i * 2; idx.push(a2, a2 + 1, a2 + 2, a2 + 1, a2 + 3, a2 + 2); }
     geo.setIndex(idx);
     const mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending,
-      uniforms: { uC: { value: new THREE.Color(0xb98cff) } },
+      uniforms: { uC: { value: new THREE.Color(0xffc23a) } },
       vertexShader: 'attribute float a; varying float vA; void main(){ vA = a; gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0); }',
       fragmentShader: 'uniform vec3 uC; varying float vA; void main(){ gl_FragColor = vec4(mix(uC, vec3(1.0), vA * vA), vA * 0.85); }' });
     trail = new THREE.Mesh(geo, mat); trail.frustumCulled = false; trail.renderOrder = 8;
-    trail.userData = { N, pts: [], on: false };
+    trail.userData = { N, pts: [] };
   }
-  const inst = { frame, root, j, att, own, flames, flameMat, coreMat, trail, glb: !!glb, sp: {}, phase: 0, t: Math.random() * 10, stepSide: 1,
+  const inst = { frame, root, j, att, own, flames, flameMat, coreMat, trail, glb: !!glb, mixer: null, clip: 'idle', sp: {}, phase: 0, t: Math.random() * 10,
     jank: { tilt: (Math.random() - 0.5) * 0.1, knee: Math.random() < 0.5 ? 'L' : 'R' }, hatchOpen: 0 };
+  if (glb && glb.animations && glb.animations.length) inst.mixer = new THREE.AnimationMixer(glb);
   root.userData.mech = inst;
   return inst;
 }
@@ -287,106 +298,127 @@ export function freeMech(inst) {
 export function setMechColor(inst, color) { const c = new THREE.Color(color); inst.own.accent.color.copy(c); inst.own.accent.emissive.copy(c).multiplyScalar(0.25); }
 
 // ------------------------------------------------------------ pose
-// s: { spd, fwd, side (local m/s), air, vy, hover, jet (0..1), dash, shield, swingT, swingI, slamT, slam, tripleT,
-//      gunT, gunSide, swarmT, craneOut, landT, landK, pitch, empty (nobody in it: hatch open + glow), boost, t }
+// s: { spd, fwd, side (local m/s), air, vy, hover, jet (0..1), dash, shield, swingT, swingI, slam (1 up / 2 down), gunT,
+//      gunSide, swarmT, craneOut, landT, landK, pitch, empty (nobody in it: hatch open + glowing), boost, slashing }
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const back = (u) => { const c = 1.9; return 1 + (c + 1) * Math.pow(u - 1, 3) + c * Math.pow(u - 1, 2); }; // overshoot
 const ease = (u) => u * u * (3 - 2 * u);
-function spr(inst, k, target, stiff, dt) { // a critically-ish damped spring per channel (the "settle" after a key pose)
+function spr(inst, k, target, stiff, dt) { // a damped spring per channel: the settle (and overshoot) after a key pose
   const s = inst.sp[k] || (inst.sp[k] = { x: target, v: 0 });
-  const d = 2 * Math.sqrt(stiff) * 0.6;
-  const n = Math.max(1, Math.ceil(dt * 120)), h = dt / n;
+  const d = 2 * Math.sqrt(stiff) * 0.6, n = Math.max(1, Math.ceil(dt * 120)), h = dt / n;
   for (let i = 0; i < n; i++) { s.v += (stiff * (target - s.x) - d * s.v) * h; s.x += s.v * h; }
   return s.x;
 }
-// a sword swing: wind-up (held), strike (fast, overshoots), follow-through (held), recover. returns the arm angles
-const SWING = [ // [shoulder x (raise), shoulder z (out), shoulder y (twist), torso twist] for wind-up and strike end
-  { up: [-2.4, -0.5, 0.6, 0.55], end: [-0.4, 0.2, -0.9, -0.7] }, // right to left, high
-  { up: [-1.2, 0.9, -0.8, -0.6], end: [-0.9, -0.3, 0.9, 0.6] }, // back the other way
-  { up: [-3.0, 0.1, 0.1, 0.2], end: [-0.1, 0.0, 0.0, -0.1] }, // the big overhead
+// the knight's swings: [upperarm x (raise), upperarm z (out), upperarm y (twist), chest twist] at the wind-up and the end
+const SWING = [
+  { up: [-2.3, 0.5, 0.6, 0.55], end: [-0.5, -0.3, -0.9, -0.7] }, // right to left, high
+  { up: [-1.2, -0.9, -0.8, -0.6], end: [-0.9, 0.3, 0.9, 0.6] }, // back the other way
+  { up: [-3.0, -0.1, 0.1, 0.2], end: [-0.2, 0.0, 0.0, -0.1] }, // the big overhead
 ];
+// which clip this moment is (MECHS.md names): a hero model with clips plays it, the stand-in poses it below
+function clipOf(inst, s) {
+  if (s.empty) return 'idle';
+  if (inst.frame === 'paperplane') {
+    if (s.jet) return 'jet_fly';
+    if (s.dash) return 'boost_dash';
+    if (s.swarmT < 0.6) return 'missile_salvo';
+    if (s.hover) return 'hover';
+  } else {
+    if (s.slam) return 'ground_slam';
+    if (s.dash) return 'dash_slash';
+    if (s.swingT < 0.75) return 'sword_combo_' + ((s.swingI | 0) + 1);
+    if (s.shield) return 'shield_block';
+  }
+  if (s.landT < 0.4) return 'land';
+  if (s.air) return 'jump';
+  return s.spd > MECH[inst.frame].speed * 0.7 ? 'run' : s.spd > 0.6 ? 'walk' : 'idle';
+}
 export function poseMech(inst, s, dt) {
-  const j = inst.j, pp = inst.frame === 'paperplane', T = inst.t += dt;
-  const F = MECH[inst.frame];
-  // ---- legs: a stomping walk, planted feet, knees bend on landings
+  const j = inst.j, pp = inst.frame === 'paperplane', T = inst.t += dt, F = MECH[inst.frame];
+  const clip = clipOf(inst, s);
+  if (inst.mixer) { // a hero model with its own clips: play the one that fits (crossfade), skip the code pose
+    const a = inst.glbClips || (inst.glbClips = {});
+    if (clip !== inst.clip) {
+      const anims = inst.root.children.find((c) => c.animations) || {}, c = (anims.animations || []).find((x) => x.name === clip);
+      if (c) { const act = a[clip] || (a[clip] = inst.mixer.clipAction(c)); act.reset().fadeIn(0.15).play(); if (a[inst.clip]) a[inst.clip].fadeOut(0.15); }
+    }
+    inst.clip = clip; inst.mixer.update(dt);
+    effects(inst, s, T);
+    return;
+  }
+  inst.clip = clip;
+  // ---- legs: a stomping walk, knees bend on landings and in the shield crouch
   const run = clamp(s.spd / F.speed, 0, 1.4);
   if (!s.air && s.spd > 0.6) inst.phase += dt * (1.4 + s.spd * (pp ? 0.32 : 0.26));
-  const ph = inst.phase * Math.PI, sw = Math.sin(ph) * 0.55 * run, lift = Math.max(0, Math.cos(ph));
+  const ph = inst.phase * Math.PI, sw = Math.sin(ph) * 0.55 * run;
   const land = s.landT < 0.5 ? Math.sin(clamp(s.landT / 0.5, 0, 1) * Math.PI) * (0.4 + s.landK * 0.6) : 0;
   const crouch = (s.shield ? 0.25 : 0) + land + (s.slam === 1 ? 0.3 : 0);
   const air = s.air ? 1 : 0, jet = s.jet || 0, hov = s.hover ? 1 : 0;
   for (const [L, sg] of [['L', 1], ['R', -1]]) {
     const leg = sw * sg, k = Math.max(0, -Math.sin(ph) * sg) * run;
-    let th = -leg - crouch * 0.9 - air * (0.35 + hov * 0.4) - jet * 1.2, sn = crouch * 1.7 + k * 0.9 + air * (0.7 + hov * 0.5) + jet * 1.9;
-    if (inst.jank.knee === L) sn += 0.08; // a knee that bends just a bit wrong
-    j['thigh' + L].rotation.x = spr(inst, 'th' + L, th, 140, dt);
-    j['shin' + L].rotation.x = spr(inst, 'sn' + L, sn, 140, dt);
-    j['foot' + L].rotation.x = spr(inst, 'ft' + L, -th - sn + (s.air ? 0.4 : 0), 160, dt);
+    const th = -leg - crouch * 0.9 - air * (0.35 + hov * 0.4) * (1 - jet), sn = crouch * 1.7 + k * 0.9 + air * (0.7 + hov * 0.5) * (1 - jet) + (inst.jank.knee === L ? 0.08 : 0); // (a knee that bends just a bit wrong)
+    j['thigh_' + L].rotation.x = spr(inst, 'th' + L, th + jet * 0.15, 140, dt);
+    j['shin_' + L].rotation.x = spr(inst, 'sn' + L, sn, 140, dt);
+    j['foot_' + L].rotation.x = spr(inst, 'ft' + L, -th - sn + (s.air ? 0.4 : 0) + jet * 0.9, 160, dt); // jet: feet pointed
+    j['thigh_' + L].rotation.z = spr(inst, 'tz' + L, jet * 0.06 * sg, 100, dt); // jet: legs together
   }
   const bob = !s.air ? -Math.abs(Math.sin(ph)) * 0.12 * run - crouch * 0.45 : 0;
   j.hips.position.y = spr(inst, 'hy', j.hips.userData.rest[1] + bob + (s.air ? 0.15 * Math.sin(T * 3) * hov : 0), 220, dt);
-  // ---- torso: lean into the run, the dash, the jet; the jank tilt
-  const lean = clamp(s.fwd / F.speed, -1, 1.5) * 0.12 + (s.dash ? 0.35 : 0) + jet * 1.25;
-  j.hips.rotation.x = spr(inst, 'lean', lean, 90, dt);
+  // ---- body: lean into the run, the dash; jet mode lies it flat (head up)
+  const lean = clamp(s.fwd / F.speed, -1, 1.5) * 0.12 + (s.dash ? 0.35 : 0) + jet * 1.35;
+  j.hips.rotation.x = spr(inst, 'lean', -lean, 90, dt);
   j.hips.rotation.z = spr(inst, 'roll', -clamp(s.side / F.speed, -1, 1) * 0.12 + inst.jank.tilt, 80, dt);
-  // ---- arms by frame
-  let sxL = 0.15 * sw, sxR = -0.15 * sw, szL = 0.1, szR = -0.1, syL = 0, syR = 0, fL = -0.3, fR = -0.3, twist = 0;
+  // ---- arms (rest = hanging down: x raises them forward, z swings them out)
+  let xL = 0.15 * sw, xR = -0.15 * sw, zL = -0.08, zR = 0.08, yL = 0, yR = 0, fL = -0.25, fR = -0.25, twist = 0;
   const aim = clamp(s.pitch || 0, -0.8, 0.8);
   if (pp) {
-    // cannons forward where you look; a kick on each shot, alternating
-    sxL = sxR = -1.45 - aim; fL = fR = -0.05; szL = 0.12; szR = -0.12;
-    if (s.gunT < 0.12) { const k = 1 - s.gunT / 0.12; if (s.gunSide > 0) sxR += k * 0.25; else sxL += k * 0.25; }
-    if (jet) { sxL = sxR = -1.4 + 1.4 * jet; szL = 0.12 + 0.2 * jet; szR = -szL; fL = fR = -0.05 - 0.4 * jet; } // tucked back along the body
-    if (s.dash) { sxL = sxR = -1.9; } // arms forward into the lunge
-    // pods pop open on a swarm
-    const pk = s.swarmT < 1.2 ? Math.sin(clamp(s.swarmT / 1.2, 0, 1) * Math.PI) : 0;
-    for (const L of ['L', 'R']) if (inst.att['pod' + L]) inst.att['pod' + L].rotation.x = spr(inst, 'pod' + L, -0.6 * pk, 200, dt);
-    // wings: spread on hover, sweep back flat in jet mode, flutter
-    for (const [k, sg] of [['wingL', -1], ['wingR', 1]]) {
-      const w = inst.att[k];
+    xL = xR = -1.45 - aim; fL = fR = -0.05; zL = -0.1; zR = 0.1; // cannons up where you look
+    if (s.gunT < 0.12) { const k = 1 - s.gunT / 0.12; if (s.gunSide > 0) xR += k * 0.25; else xL += k * 0.25; }
+    if (jet) { xL = xR = -1.45 + 1.6 * jet; zL = -0.1 - 0.15 * jet; zR = -zL; fL = fR = -0.05 - 0.3 * jet; } // tucked along the body
+    if (s.dash) xL = xR = -1.9;
+    const pk = s.swarmT < 1.2 ? Math.sin(clamp(s.swarmT / 1.2, 0, 1) * Math.PI) : 0; // the pods flip up on a salvo
+    for (const L of ['L', 'R']) if (j['pod_' + L]) j['pod_' + L].rotation.x = spr(inst, 'pod' + L, -0.7 * pk, 200, dt);
+    for (const [k, sg] of [['wing_L', -1], ['wing_R', 1]]) { // stowed V; spread on a hover; swung down flat in jet mode
+      const w = j[k];
       if (!w) continue;
-      const open = 0.25 + hov * 0.35 - jet * 0.2;
-      w.rotation.z = spr(inst, k + 'z', sg * open + (hov ? Math.sin(T * 9) * 0.04 : 0), 90, dt);
-      w.rotation.y = spr(inst, k + 'y', -sg * jet * 0.7, 90, dt);
-      w.rotation.x = spr(inst, k + 'x', jet * 1.1, 90, dt);
+      w.rotation.z = spr(inst, k + 'z', -sg * (hov * 0.25 + jet * 1.15) + (hov ? Math.sin(T * 9) * 0.04 : 0), 90, dt);
+      w.rotation.x = spr(inst, k + 'x', jet * 0.4, 90, dt);
     }
-    const crane = inst.att.craneDock && inst.att.craneDock.userData.crane;
+    const crane = inst.att.mk_crane && inst.att.mk_crane.userData.crane;
     if (crane) crane.visible = !s.craneOut;
   } else {
-    // the knight: sword arm by the swing, the shield arm up when blocking
-    sxR = -0.35 + 0.15 * sw; szR = -0.25; fR = -0.55; syR = 0;
+    xR = -0.35 + 0.15 * sw; zR = 0.2; fR = -0.55;
     const si = s.swingI | 0, st = s.swingT;
-    if (st < 0.75 && SWING[si]) { // wind-up held 0.08, strike over 0.12 with overshoot, follow-through held, recover
+    if (st < 0.75 && SWING[si]) { // wind-up held, a fast strike that overshoots, follow-through held, recover
       const S = SWING[si], u = st < 0.1 ? ease(st / 0.1) : 1, v = st < 0.1 ? 0 : st < 0.24 ? back((st - 0.1) / 0.14) : 1, r = st > 0.45 ? ease((st - 0.45) / 0.3) : 0;
-      const pose = S.up.map((a, i) => a + (S.end[i] - a) * v);
-      const k = u * (1 - r);
-      sxR = sxR + (pose[0] - sxR) * k; szR = szR + (pose[1] - szR) * k; syR = pose[2] * k; twist = pose[3] * k; fR = -0.2 * k + fR * (1 - k);
+      const pose = S.up.map((a, i) => a + (S.end[i] - a) * v), k = u * (1 - r);
+      xR += (pose[0] - xR) * k; zR += (pose[1] - zR) * k; yR = pose[2] * k; twist = pose[3] * k; fR = -0.2 * k + fR * (1 - k);
     }
-    if (s.dash) { sxR = -1.6; szR = -0.9; syR = 1.2; twist = -0.5; } // triple shift: blade out to the side, low
-    if (s.slam === 1) { sxR = -3.0; szR = 0; fR = -0.1; } // up: the sword over its head
-    else if (s.slam === 2) { sxR = -1.0; fR = -0.1; twist = 0; }
+    if (s.dash) { xR = -1.6; zR = 0.9; yR = 1.2; twist = -0.5; } // the dash slash: blade out low to the side
+    if (s.slam === 1) { xR = -3.0; zR = 0; fR = -0.1; } else if (s.slam === 2) { xR = -1.0; fR = -0.1; twist = 0; }
     const sh = s.shield ? 1 : 0;
-    sxL = -0.25 - 1.3 * sh + 0.15 * -sw; szL = 0.25 + 0.35 * sh; fL = -0.4 - 1.0 * sh; syL = -0.9 * sh;
-    if (inst.att.shield) inst.att.shield.rotation.y = spr(inst, 'shy', sh * 0.9, 120, dt);
+    xL = -0.25 - 1.25 * sh + 0.15 * -sw; zL = -0.15 + 0.4 * sh; fL = -0.4 - 0.9 * sh; yL = -0.6 * sh;
+    if (j.beacon) j.beacon.rotation.y = T * 6; // the security light spins
   }
-  j.torso.rotation.y = spr(inst, 'tw', twist, pp ? 140 : 260, dt);
-  j.torso.rotation.x = spr(inst, 'tp', pp ? -aim * 0.25 : 0, 90, dt);
+  j.chest.rotation.y = spr(inst, 'tw', twist, pp ? 140 : 260, dt);
+  j.chest.rotation.x = spr(inst, 'tp', pp ? -aim * 0.2 : 0, 90, dt);
   const st2 = pp ? 160 : 420; // the knight's swing snaps (stiff springs keep the overshoot readable)
-  j.shoulderL.rotation.x = spr(inst, 'sxL', sxL, 160, dt); j.shoulderR.rotation.x = spr(inst, 'sxR', sxR, st2, dt);
-  j.shoulderL.rotation.z = spr(inst, 'szL', szL, 160, dt); j.shoulderR.rotation.z = spr(inst, 'szR', szR, st2, dt);
-  j.shoulderL.rotation.y = spr(inst, 'syL', syL, 160, dt); j.shoulderR.rotation.y = spr(inst, 'syR', syR, st2, dt);
-  j.foreL.rotation.x = spr(inst, 'fL', fL, 160, dt); j.foreR.rotation.x = spr(inst, 'fR', fR, st2, dt);
-  j.cockpit.rotation.x = spr(inst, 'ck', -aim * 0.3, 60, dt);
-  j.cockpit.rotation.z = inst.jank.tilt * 0.6;
-  // ---- the hatch: open + glowing while it waits for you
-  inst.hatchOpen = spr(inst, 'hatch', s.empty ? 1 : 0, 40, dt);
-  j.hatch.rotation.x = -inst.hatchOpen * 1.6;
+  j.upperarm_L.rotation.x = spr(inst, 'xL', xL, 160, dt); j.upperarm_R.rotation.x = spr(inst, 'xR', xR, st2, dt);
+  j.upperarm_L.rotation.z = spr(inst, 'zL', zL, 160, dt); j.upperarm_R.rotation.z = spr(inst, 'zR', zR, st2, dt);
+  j.upperarm_L.rotation.y = spr(inst, 'yL', yL, 160, dt); j.upperarm_R.rotation.y = spr(inst, 'yR', yR, st2, dt);
+  j.forearm_L.rotation.x = spr(inst, 'fL', fL, 160, dt); j.forearm_R.rotation.x = spr(inst, 'fR', fR, st2, dt);
+  j.head.rotation.x = spr(inst, 'hd', -aim * 0.3 - jet * 1.0, 60, dt); // (jet: head up)
+  j.head.rotation.z = inst.jank.tilt * 0.6;
+  effects(inst, s, T, dt);
+}
+// what both the code poses and a hero model's clips show: the hatch, flames, muzzle flashes, the sword's arc
+function effects(inst, s, T, dt = 0) {
+  inst.hatchOpen = spr(inst, 'hatch', s.empty ? 1 : 0, 40, dt || 0.016);
+  if (inst.j.hatch) inst.j.hatch.rotation.x = inst.frame === 'paperplane' ? -inst.hatchOpen * 0.9 : inst.hatchOpen * 1.2; // the nose lifts / the breastplate drops
   inst.own.hatch.color.setHex(s.empty ? (Math.sin(T * 6) > 0 ? 0xffe14d : 0xff4fd8) : 0x2a2f45);
-  // ---- flames
-  const burn = Math.max(jet, hov * 0.7, s.dash ? 1 : 0, s.boost || 0);
+  const burn = Math.max(s.jet || 0, s.hover ? 0.7 : 0, s.dash ? 1 : 0, s.boost || 0);
   for (const f of inst.flames) { f.visible = burn > 0.05; if (f.visible) f.scale.set(0.8 + burn * 0.4, (0.6 + burn) * (0.85 + Math.random() * 0.3), 0.8 + burn * 0.4); }
-  // muzzle flashes
-  for (const L of ['L', 'R']) { const mz = inst.att['muzzle' + L]; if (mz && mz.userData.flash) { mz.userData.flash.visible = s.gunT < 0.05 && (s.gunSide > 0) === (L === 'R'); mz.userData.flash.scale.setScalar(0.7 + Math.random() * 0.6); } }
+  for (const L of ['L', 'R']) { const mz = inst.att['mk_muzzle_' + L]; if (mz && mz.userData.flash) { mz.userData.flash.visible = s.gunT < 0.05 && (s.gunSide > 0) === (L === 'R'); mz.userData.flash.scale.setScalar(0.7 + Math.random() * 0.6); } }
   updateTrail(inst, s.slashing);
 }
 const _a = new THREE.Vector3(), _b = new THREE.Vector3();
@@ -397,7 +429,7 @@ function updateTrail(inst, on) {
   const U = tr.userData;
   if (on && inst.root.visible) {
     inst.root.updateMatrixWorld(true);
-    inst.att.swordBase.getWorldPosition(_a); inst.att.swordTip.getWorldPosition(_b);
+    inst.att.mk_sword_base.getWorldPosition(_a); inst.att.mk_sword_tip.getWorldPosition(_b);
     U.pts.unshift([_a.x, _a.y, _a.z, _b.x, _b.y, _b.z]);
   } else if (U.pts.length) U.pts.pop();
   while (U.pts.length > U.N) U.pts.pop();
@@ -415,16 +447,16 @@ function updateTrail(inst, on) {
 export function mechBurst(inst, vel = [0, 0, 0]) {
   inst.root.updateMatrixWorld(true);
   const c = new THREE.Vector3();
-  inst.j.torso.getWorldPosition(c);
-  const at = [c.x, c.y + 0.8, c.z];
+  inst.j.chest.getWorldPosition(c);
+  const at = [c.x, c.y + 0.4, c.z];
   rfx.sparks(at, 120, 18, [0xfff2b0, 0xff9a3a, 0xff4fd8, 0x4fd8ff], 1.1, 0.2);
   rfx.smoke(at, 40, 0x3a3c40, 1.8, 2.5, 2.6, 1.4);
   rmesh.flash(at, 7, 0xff8a3a, 0.4);
   rmesh.flash(at, 4, 0xffffff, 0.15);
-  rmesh.ring([at[0], inst.root.position.y, at[2]], 9, 0xff4fd8, 0.5);
   const floor = inst.root.getWorldPosition(new THREE.Vector3()).y;
+  rmesh.ring([at[0], floor, at[2]], 9, 0xff4fd8, 0.5);
   const meshes = [];
-  inst.root.traverse((o) => { if (o.isMesh && o.visible && o.material.blending !== THREE.AdditiveBlending && !o.material.isShaderMaterial) meshes.push(o); });
+  inst.root.traverse((o) => { if (o.isMesh && o.visible && o.material.blending !== THREE.AdditiveBlending && !o.material.isShaderMaterial && !o.isSkinnedMesh) meshes.push(o); });
   for (const m of meshes) {
     const g = new THREE.Mesh(m.geometry, m.material);
     m.matrixWorld.decompose(g.position, g.quaternion, g.scale);

@@ -336,7 +336,7 @@ export function updateMech(dt, now, cam, replaying) {
     const A = aimDir(), d = A.d;
     net.send({ t: 'mech', k: 'gun', d: d.map(r2) });
     const e = eye(), h = raycast(e, d, PP.gun.range, BOXES), end = h && h.t < Math.hypot(A.p[0] - e[0], A.p[1] - e[1], A.p[2] - e[2]) ? h.point : A.p;
-    const mz = MS.inst && MS.inst.att['muzzle' + (MS.gunSide > 0 ? 'R' : 'L')];
+    const mz = MS.inst && MS.inst.att['mk_muzzle_' + (MS.gunSide > 0 ? 'R' : 'L')];
     const from = mz ? mz.getWorldPosition(new THREE.Vector3()).toArray() : e;
     fx.tracer(from, end, 0x4fd8ff, 0.14, 0.2);
     rfx.sparks(end, 6, 6, [0xffffff, 0x4fd8ff], 0.3, 0.1); rfx.sparks(from, 5, 4, [0xfff2a0, 0xffffff], 0.15, 0.1);
@@ -625,7 +625,7 @@ function mechEvent(m, getR, live) {
       const b = P(m.b), inst = instOf(m.id, getR);
       if (!b || me) break;
       if (st) { st.gunT = 0; st.gunSide = m.s > 0 ? 1 : -1; }
-      const mz = inst && inst.att['muzzle' + (m.s > 0 ? 'R' : 'L')], from = mz ? mz.getWorldPosition(new THREE.Vector3()).toArray() : r ? [r.pos[0], r.pos[1] + 4, r.pos[2]] : null;
+      const mz = inst && inst.att['mk_muzzle_' + (m.s > 0 ? 'R' : 'L')], from = mz ? mz.getWorldPosition(new THREE.Vector3()).toArray() : r ? [r.pos[0], r.pos[1] + 4, r.pos[2]] : null;
       if (from) { fx.tracer(from, b, 0x4fd8ff, 0.09, 0.12); mechsfx.gun(from, 0.7); }
       if (m.h) rfx.sparks(b, 6, 6, [0xffffff, 0x4fd8ff], 0.25, 0.08);
       break;
@@ -667,7 +667,7 @@ function mechEvent(m, getR, live) {
     case 'slam': { const pos = posOf(m.id, getR); if (pos && !me) mechsfx.slamUp(pos); break; }
     case 'quake': { const p = P(m.p); if (p && !me) quakeFx(p, m.r || NS.slam.r, false); if (live && me) hud.msg('GROUND SLAM', 0.8, 'brag'); break; }
     case 'blk': { // the tower shield takes it: a clang and sparks off the shield face
-      const inst = instOf(m.id, getR), sh = inst && inst.att.shield;
+      const inst = instOf(m.id, getR), sh = inst && inst.att.mk_shield_face;
       const at = sh ? sh.getWorldPosition(new THREE.Vector3()).toArray() : posOf(m.id, getR);
       if (at) { rfx.sparks(at, 14, 8, [0xffffff, 0xffe14d, 0x4fd8ff], 0.35, 0.1); mechsfx.clang(me ? null : at, Math.min(1.3, 0.5 + (m.a || 10) / 30)); }
       if (me) { MS.blockT = nowMs(); G.shake = Math.max(G.shake, 0.25); }

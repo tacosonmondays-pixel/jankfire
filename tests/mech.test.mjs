@@ -35,12 +35,14 @@ test('flags: four new bits, all different from every other flag, the frame names
 test('kill feed names for every move', () => {
   for (const w of ['mechdrop', 'mechgun', 'mechlunge', 'mechcrane', 'mechmissile', 'mechjet', 'mechsword', 'mechbash', 'mechtriple', 'mechslam', 'mechstomp', 'mechram', 'mechboom']) assert.ok(WEAPONS[w] && WEAPONS[w].name, w);
 });
-test('hitboxes: a frame box and the cockpit on top (the headshot), sized per frame', () => {
+test('hitboxes: the frame in three stacked boxes, the chest band (the cockpit) is the headshot, sized per frame', () => {
   const b = mechBoxes([10, 2, -4], 'nightshift');
-  assert.equal(b.length, 2); assert.equal(b[0].head, false); assert.equal(b[1].head, true);
-  assert.equal(b[1].max[1], 2 + MECH.nightshift.h);
-  assert.equal(b[0].max[1], b[1].min[1]); // stacked, no overlap
-  assert.ok(mechBoxes([0, 0, 0], 'paperplane')[1].max[1] < b[1].max[1] - 2);
+  assert.equal(b.length, 3); assert.deepEqual(b.map((x) => x.head), [false, true, false]);
+  assert.equal(b[2].max[1], 2 + MECH.nightshift.h);
+  assert.equal(b[0].max[1], b[1].min[1]); assert.equal(b[1].max[1], b[2].min[1]); // stacked, no overlap
+  assert.ok(Math.abs((b[0].max[0] - b[0].min[0]) - 2.4) < 1e-9); // MECHS.md: about 2.4 wide
+  const p = mechBoxes([0, 0, 0], 'paperplane');
+  assert.ok(Math.abs(p[2].max[1] - 4.9) < 1e-9 && Math.abs((p[0].max[0] - p[0].min[0]) - 1.6) < 1e-9);
 });
 test('energy: spends, refuses when short, refills after the delay', () => {
   const E = newEnergy(0);

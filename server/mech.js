@@ -142,7 +142,7 @@ export function installMech(Room, U) {
       const back = [Math.sin(p.yaw), Math.cos(p.yaw)], B = MECH.boom;
       const v = [back[0] * B.back, B.up, back[1] * B.back];
       if (p.alive) {
-        p.pos = [at[0], at[1] + F.h * 0.62, at[2]];
+        p.pos = [at[0], at[1] + F.h * 0.8, at[2]]; // (mk_eject: out of the top of the chest)
         if (p.isBot) { p.vel = v.slice(); p.onGround = false; } else send(p, { t: 'mech', k: 'pos', p: p.pos.map(r2), v });
       }
       this.broadcast({ t: 'mech', k: 'down', id: p.id, m: M.id, f: M.f, by: by ? by.id : 0, p: at.map(r2), v: v.map(r2) });
@@ -388,7 +388,7 @@ export function installMech(Room, U) {
           if (this.players.get(p.id) !== p || !this.mechOn(p)) return; // the pods went down with the mech
           const s = Math.sin(p.yaw), c = Math.cos(p.yaw), side = i % 2 ? 1 : -1, row = (i >> 1) % 3, F = MECH[p.mech.f];
           const fw = [-s, -c], rt = [c, -s];
-          const pos = [p.pos[0] + rt[0] * side * 1.3 - fw[0] * 0.6, p.pos[1] + F.h * 0.78 + row * 0.25, p.pos[2] + rt[1] * side * 1.3 - fw[1] * 0.6];
+          const pos = [p.pos[0] + rt[0] * side * 1.3 - fw[0] * 0.6, p.pos[1] + F.h * 0.86 + row * 0.12, p.pos[2] + rt[1] * side * 1.3 - fw[1] * 0.6];
           const out = 4 + Math.random() * 3, upv = 12 + Math.random() * 5;
           const vel = [rt[0] * side * out + fw[0] * 4 + p.vel[0] * 0.4, upv, rt[1] * side * out + fw[1] * 4 + p.vel[2] * 0.4];
           const pr = this.makeProj(p, 'mechmissile', pos, vel, { tg: tg.length ? tg[i % tg.length].id : 0, aim: d, seekT: 0, M: S, ph: Math.random() * 6.28 });
