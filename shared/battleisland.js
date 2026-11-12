@@ -49,7 +49,7 @@ export const PLAN = {
   // roads (12 m: two mechs pass): the ring, the cross roads. polylines
   roads: [
     { name: 'Ring Road', w: 12, ring: true, pts: [[-170, 40], [-150, -40], [-120, -128], [-30, -178], [70, -170], [170, -96], [168, -30], [150, 96], [90, 112], [-40, 112], [-140, 120], [-170, 40]] },
-    { name: 'Main Drag', w: 14, pts: [[28, 120], [22, 70], [18, 40], [8, -14]] }, // the harbour up to the radio tower's saddle
+    { name: 'Main Drag', w: 14, pts: [[28, 146], [28, 120], [22, 70], [18, 40], [8, -14]] }, // the harbour up to the radio tower's saddle
     { name: 'Hangar Road', w: 14, pts: [[-170, 40], [-110, 32], [-40, 26], [18, 40]] },
     { name: 'Quarry Track', w: 12, pts: [[-30, -178], [-48, -136]] },
     { name: 'Resort Drive', w: 12, pts: [[150, 96], [176, 112]] },
@@ -218,6 +218,60 @@ function deadAir(B, cx, cz) {
   });
 }
 
+// PORT JANKTON (the harbour town, south): the waterfront. a straight quay along the bay (PLAN.harbour: the wall is the
+// ground's own), bollards on its edge, three timber piers out over the waist-deep basin, two trawlers moored at them,
+// the portal crane on its rails (mechs walk under it), two warehouses you walk (or stomp) straight through (8 m doors on
+// the quay and street sides, a pilot door at the end, crates and containers inside), containers stacked on the apron.
+// every piece is a Blender model over its boxes (tools/blender/make_portjankton.py), built at the town's own height with
+// its boxes `still`. PJ = the numbers the models are built to
+export const PJ = { y: 1.6, quayZ: 146, quayX: [-30, 100], bollards: [-25, -12, 12, 24, 48, 60, 84, 95],
+  piers: [0, 36, 72], pierW: 4, pierL: 30, pierT: 0.3,
+  crane: { x: 56, z: 140, legX: 4, legZ: 3, leg: 1, h: 9, top: [5, 3.2, 5] }, // portal half-spans, leg size, girder top; the machinery house on top
+  sheds: [{ x0: -30, x1: 0, sign: 'cold' }, { x0: 56, x1: 86, sign: 'fish' }], shedZ: [112, 132], shedH: 10, shedT: 0.3, door: [3.5, 8], side: [-3, 3, 2.6], // the mech doors: half-width, height; the pilot door (z range, height) in the west end
+  boats: [{ x: 6, z: 151, side: 1 }, { x: 66, z: 151, side: -1 }], boatW: 4.2, boatL: 18, deck: 1.2, house: [3, 2.6, 4] }; // moored along a pier: hull from z to z + L
+function portJankton(B) {
+  const y = PJ.y, S = { still: 1 };
+  const A = (x0, y0, z0, x1, y1, z1, m) => B.add(x0, y + y0, z0, x1, y + y1, z1, m, S);
+  // the quay's bollards (the wall itself is the ground; its face, coping and fenders are the quay model's: p_pj_quay)
+  for (let x = PJ.quayX[0]; x < PJ.quayX[1]; x += 10) propOf('pj_quay', [x + 5, y, PJ.quayZ], 0, () => A(x, PLAN.harbour.bed - y, PJ.quayZ - 1, x + 10, 0, PJ.quayZ, 'stone')); // (a solid block from the bed up: the ground's 1 m grid can't make a sheer face)
+  for (const x of PJ.bollards) propOf('pj_bollard', [x, y, PJ.quayZ - 0.6], 0, () => A(x - 0.25, 0, PJ.quayZ - 0.85, x + 0.25, 0.75, PJ.quayZ - 0.35, 'metal'));
+  // the piers: a timber deck out over the basin (wade under it), level with the quay
+  for (const x of PJ.piers) propOf('pj_pier', [x, y, PJ.quayZ], 0, () => A(x - PJ.pierW / 2, -PJ.pierT, PJ.quayZ, x + PJ.pierW / 2, 0, PJ.quayZ + PJ.pierL, 'wood'));
+  // the portal crane: four legs, the portal girders, the machinery house on top (the jib out over the water is the model's)
+  { const C = PJ.crane;
+    propOf('pj_crane', [C.x, y, C.z], 0, () => {
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) A(C.x + sx * C.legX - C.leg / 2, 0, C.z + sz * C.legZ - C.leg / 2, C.x + sx * C.legX + C.leg / 2, C.h, C.z + sz * C.legZ + C.leg / 2, 'metal');
+      A(C.x - C.legX - 0.5, C.h, C.z - C.legZ - 0.5, C.x + C.legX + 0.5, C.h + 1, C.z + C.legZ + 0.5, 'metal');
+      A(C.x - C.top[0] / 2, C.h + 1, C.z - C.top[2] / 2, C.x + C.top[0] / 2, C.h + 1 + C.top[1], C.z + C.top[2] / 2, 'metal');
+    }); }
+  // the warehouses: walls with the mech doors (quay side and street side) and a pilot door in the west end, a roof
+  const [sz0, sz1] = PJ.shedZ, H = PJ.shedH, t = PJ.shedT, [dw, dh] = PJ.door;
+  for (const sh of PJ.sheds) {
+    const cx = (sh.x0 + sh.x1) / 2;
+    propOf('pj_shed_' + sh.sign, [cx, y, (sz0 + sz1) / 2], 0, () => {
+      for (const z of [sz0, sz1 - t]) { A(sh.x0, 0, z, cx - dw, H, z + t, 'brick'); A(cx + dw, 0, z, sh.x1, H, z + t, 'brick'); A(cx - dw, dh, z, cx + dw, H, z + t, 'brick'); }
+      const [p0, p1, ph] = PJ.side, zc = (sz0 + sz1) / 2;
+      A(sh.x0, 0, sz0 + t, sh.x0 + t, H, zc + p0, 'brick'); A(sh.x0, 0, zc + p1, sh.x0 + t, H, sz1 - t, 'brick'); A(sh.x0, ph, zc + p0, sh.x0 + t, H, zc + p1, 'brick');
+      A(sh.x1 - t, 0, sz0 + t, sh.x1, H, sz1 - t, 'brick');
+      A(sh.x0 - 0.3, H, sz0 - 0.3, sh.x1 + 0.3, H + 0.3, sz1 + 0.3, 'roofg');
+    });
+    // inside: crate stacks along the walls (each crate a Blender crate), a container to one side (cover)
+    for (const [dx, dz, n] of [[-11, -7, 3], [-7, 7, 2], [9, -7, 2], [12, 6, 3]]) for (let k = 0; k < n; k++) A(cx + dx + (k % 2) * 1.6, (k >> 1) * 1.5, (sz0 + sz1) / 2 + dz, cx + dx + (k % 2) * 1.6 + 1.5, (k >> 1) * 1.5 + 1.5, (sz0 + sz1) / 2 + dz + 1.5, 'crate');
+    A(cx + 5, 0, (sz0 + sz1) / 2 - 1.2, cx + 11.06, 2.6, (sz0 + sz1) / 2 + 1.24, sh.sign === 'cold' ? 'containerb' : 'containerr'); // (off the doors' line: a mech walks straight through)
+  }
+  // containers stacked on the apron (east of the crane), crates by the quay
+  for (const [x, z, k, m] of [[40, 136, 0, 'containerg'], [40, 136, 1, 'containerr'], [40, 140, 0, 'containerb'], [88, 136, 0, 'containerr'], [88, 140, 0, 'containerg'], [88, 140, 1, 'containerb']]) A(x, k * 2.6, z, x + 6.06, k * 2.6 + 2.6, z + 2.44, m);
+  for (const [x, z] of [[-20, 140], [-18.4, 140], [30, 143], [74, 141]]) A(x, 0, z, x + 1.5, 1.5, z + 1.5, 'crate');
+  // the trawlers, moored alongside the piers: the hull (deck at 1.2 above the water), the wheelhouse aft
+  for (const b of PJ.boats) {
+    const x0 = b.x - PJ.boatW / 2, x1 = b.x + PJ.boatW / 2, z0 = b.z, z1 = b.z + PJ.boatL, [hw, hh, hd] = PJ.house;
+    propOf('pj_trawler', [b.x, PLAN.harbour.bed, z0], 0, () => {
+      B.add(x0, PLAN.harbour.bed, z0 + 1, x1, PJ.deck, z1, 'wood', S); B.add(x0 + 0.6, PLAN.harbour.bed, z0, x1 - 0.6, PJ.deck, z0 + 1, 'wood', S); // the hull (its bow narrows)
+      B.add(b.x - hw / 2, PJ.deck, z1 - 1 - hd, b.x + hw / 2, PJ.deck + hh, z1 - 1, 'white', S); // the wheelhouse
+    });
+  }
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = grid();
@@ -241,6 +295,7 @@ function battleIsland() {
   }
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
+  portJankton(B);
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
   horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
