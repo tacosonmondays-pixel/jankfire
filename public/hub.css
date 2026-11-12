@@ -1,0 +1,86 @@
+/* THE HUB (public/js/hubmenu.js, docs/menu/HUB_LOBBY.md): the home menu's mode cards and each mode's lobby screen.
+   house look: dark panels, a pink border, a hard cyan shadow, the yellow main button tilted, no blur, no rounding */
+
+/* ---- the home menu: you in the middle, ONLINE + OFFLINE on the right (the big buttons keep the home's own look) */
+.hub-under { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: -4px; }
+#hubLive { font-style: normal; font-size: 13px; font-weight: 700; color: #7dff4f; text-shadow: 2px 2px 0 var(--ink); }
+.hub-links { display: flex; gap: 6px; margin-left: auto; }
+.hub-links .mid { font-size: 12px; padding: 3px 10px; }
+
+/* ---- the lobby (ONLINE / OFFLINE): the mode picker across the top */
+#scr-hubby { --c: var(--pink); position: relative; z-index: 1; width: 100%; min-height: 100%; max-width: none; margin: 0;
+  display: grid; gap: 14px 24px; padding: clamp(26px, 4.4vmin, 48px) clamp(34px, 5vmin, 58px) clamp(22px, 4vmin, 44px);
+  grid-template-columns: minmax(260px, 330px) minmax(0, 1fr) minmax(260px, 330px); grid-template-rows: auto minmax(0, 1fr) auto;
+  align-content: start;
+  grid-template-areas: "head head head" "left stage right" "foot foot foot"; }
+#scr-hubby .home-frame { position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+.hub-head { grid-area: head; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; position: relative; z-index: 2; }
+.hub-head h2 { margin: 0; font-size: clamp(34px, 6vh, 60px); line-height: 1; color: var(--yellow); letter-spacing: 2px; transform: rotate(-1deg);
+  text-shadow: 4px 4px 0 var(--c), 7px 7px 0 var(--ink); }
+.hub-head p { margin: 0; max-width: 300px; font-size: 14px; color: #e8dcef; text-shadow: 2px 2px 0 var(--ink); }
+.hub-panel { position: relative; z-index: 2; align-self: start; background: var(--panel); border: var(--zpanel); box-shadow: var(--zshadow); padding: 14px 16px 12px; min-width: 0; }
+.hub-l { grid-area: left; } .hub-r { grid-area: right; }
+.hub-stage { grid-area: stage; position: relative; min-height: 260px; display: flex; align-items: flex-end; justify-content: center; }
+.hub-stage #preview { width: 100%; height: 100%; min-height: 260px; background: none; border: 0; }
+.hub-tag { display: inline-block; margin-bottom: 10px; padding: 2px 10px; font-weight: 900; font-size: 13px; letter-spacing: 3px; color: var(--ink);
+  background: var(--pink); transform: rotate(-2deg); box-shadow: 3px 3px 0 var(--ink); }
+.hub-seg { display: flex; margin: 0 0 10px; border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink); }
+.hub-seg button { flex: 1; padding: 6px 8px; font: 900 15px var(--font); letter-spacing: 1px; color: #b8a8c8; background: #2a1430; border: 0; border-radius: 0; cursor: pointer; }
+.hub-seg button + button { border-left: 3px solid #000; }
+.hub-seg button.on { background: var(--yellow); color: var(--ink); }
+.hub-seg button:disabled { opacity: 0.35; cursor: not-allowed; }
+.hub-set .hub-seg { margin: 0; box-shadow: 3px 3px 0 var(--pink); } .hub-set .hub-seg button { font-size: 11.5px; padding: 4px 6px; }
+.hub-set { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 2px dashed rgba(255, 79, 216, 0.35); font-size: 15px; }
+.hub-set:last-child { border-bottom: 0; }
+.hub-set em { font-style: normal; font-weight: 900; color: var(--cyan); text-align: right; }
+.hub-set select { font: 700 14px var(--font); max-width: 170px; }
+.hub-tog { width: 48px; height: 24px; flex: none; position: relative; border: 3px solid #000; border-radius: 0; background: #7dff4f; cursor: pointer; padding: 0; }
+.hub-tog::after { content: ''; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; background: var(--ink); }
+.hub-tog.off { background: #3a3a44; } .hub-tog.off::after { right: auto; left: 2px; background: #999; }
+.hub-step { display: flex; align-items: center; gap: 6px; }
+.hub-step button { font: 900 14px var(--font); width: 26px; height: 26px; padding: 0; background: #fff; color: var(--ink); border: 3px solid #000; border-radius: 0; box-shadow: 2px 2px 0 var(--pink); cursor: pointer; }
+.hub-step button:disabled { opacity: 0.4; }
+.hub-step em { min-width: 92px; text-align: center; }
+.hub-range { display: flex; align-items: center; gap: 8px; } .hub-range input { width: 110px; accent-color: var(--pink); } .hub-range em { min-width: 22px; }
+.hub-small { margin-top: 8px; font-size: 12px; color: var(--yellow); }
+.hub-p { margin: 0 0 8px; font-size: 14px; line-height: 1.4; color: #e8dcef; }
+.hub-map { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; border: 3px solid #000; margin-bottom: 10px; image-rendering: pixelated; }
+.hub-r .hub-step { justify-content: space-between; } .hub-r .hub-step em { font-size: 18px; color: #fff; }
+.hub-maps { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; max-height: 136px; overflow-y: auto; }
+.hub-maps button { width: 58px; height: 38px; padding: 0; border: 2px solid #000; border-radius: 0; cursor: pointer; background: #000; opacity: 0.7; }
+.hub-maps button.on { outline: 3px solid var(--yellow); opacity: 1; }
+.hub-maps button:hover { opacity: 1; }
+.hub-maps img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.hub-foot { grid-area: foot; display: flex; justify-content: center; align-items: center; position: relative; z-index: 2; }
+.hub-go { font: 900 clamp(26px, 4.4vh, 40px) var(--font); letter-spacing: 2px; padding: 10px 34px; cursor: pointer; color: var(--ink);
+  background: var(--yellow); border: 4px solid #000; border-radius: 0; box-shadow: 7px 7px 0 var(--pink); transform: rotate(-1.5deg); transition: transform 0.1s; }
+.hub-go:hover { transform: rotate(1.5deg) scale(1.05); }
+.hub-go:active { transform: translate(4px, 4px); box-shadow: 2px 2px 0 var(--pink); }
+
+/* small windows: one column that scrolls */
+@media (max-width: 980px), (max-height: 640px) {
+  #scr-hubby { grid-template-columns: 1fr 1fr; grid-template-areas: "head head" "stage stage" "left right" "foot foot"; }
+  .hub-stage { height: 34vh; }
+}
+@media (max-width: 620px) {
+  #scr-hubby { grid-template-columns: 1fr; grid-template-areas: "head" "stage" "left" "right" "foot"; }
+}
+
+.hub-set select { background: #fff; color: var(--ink); border: 3px solid #000; border-radius: 0; box-shadow: 2px 2px 0 var(--pink); padding: 2px 4px; }
+
+.hub-modes { flex: 1 1 100%; display: flex; gap: 10px; margin-top: 4px; flex-wrap: wrap; }
+.hub-mode { --c: var(--pink); position: relative; flex: 1 1 120px; max-width: 190px; display: flex; flex-direction: column; gap: 4px; padding: 5px 5px 6px; cursor: pointer;
+  font-family: var(--font); color: #fff; text-align: left; background: var(--panel); border: 3px solid #000; border-radius: 0; box-shadow: 4px 4px 0 #000; transition: transform 0.1s; }
+.hub-mode .mthumb { width: 100%; height: clamp(34px, 6vh, 58px); border: 2px solid #000; overflow: hidden; }
+.hub-mode .mthumb img { width: 100%; height: 100%; object-fit: cover; image-rendering: pixelated; display: block; }
+.hub-mode b { font-size: clamp(11px, 1.6vh, 15px); line-height: 1; color: var(--c); text-shadow: 2px 2px 0 var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hub-mode:hover { transform: rotate(-1deg) translateY(-2px); box-shadow: 5px 5px 0 var(--c); }
+.hub-mode.on { border-color: var(--c); box-shadow: 5px 5px 0 var(--c); transform: rotate(-1.5deg) scale(1.05); z-index: 1; }
+.hub-mode.on::after { content: ''; position: absolute; left: 50%; bottom: -14px; margin-left: -9px; border: 9px solid transparent; border-top-color: var(--c); }
+.hub-mode:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: 4px 4px 0 #000; }
+.hm-tag, .hm-ev { position: absolute; top: -10px; font-style: normal; font-weight: 900; font-size: 10.5px; letter-spacing: 1px; padding: 0 6px; color: var(--ink); border: 2px solid #000; box-shadow: 2px 2px 0 #000; white-space: nowrap; }
+.hm-tag { right: -8px; background: #7dff4f; transform: rotate(6deg); }
+.hm-ev { left: -6px; background: var(--yellow); transform: rotate(-5deg); max-width: 110%; overflow: hidden; text-overflow: ellipsis; }
+.hm-off { position: absolute; left: 50%; top: 32%; transform: translate(-50%, -50%) rotate(-8deg); font-style: normal; font-weight: 900; font-size: 11px; color: #fff; background: #ff3030; border: 2px solid #000; padding: 0 5px; white-space: nowrap; }
+#scr-hubby[data-side="offline"] .hub-head h2 { color: #fff; }
+#scr-hubby .hub-l .hub-p { font-size: 13px; color: #c8bcd8; }
