@@ -152,6 +152,9 @@ export function makeBoss(ST, { where, playScene }) {
       if (key === (B.last[b] || '')) continue;
       const prev = B.last[b] || ''; B.last[b] = key;
       if (prev) { const ps = prev.split('/')[1]; if (h.stepDone && h.stepDone[ps] && S().defs.scenes[h.stepDone[ps]]) playScene(h.stepDone[ps]); }
+      // the fight step is over, however it ended (his defeat, a skipped or faked step, a save that moved on): he leaves
+      // the referee's room and his bar goes. after a real defeat he's already gone and this changes nothing
+      if (prev && fightStep(b, { quest: prev.split('/')[0], step: prev.split('/')[1] }) && !(o && fightStep(b, o))) { if (G.story && G.story.send) G.story.send('despawn', { id: b }); REF.clear(b); }
       if (!o) continue;
       if (fightStep(b, o)) { enter(b); B.spawn(b); }
       else if (h.steps && h.steps[o.step]) { if (!actorOf(b)) enter(b); pose(b, h.steps[o.step]); }
@@ -159,5 +162,8 @@ export function makeBoss(ST, { where, playScene }) {
   };
   // listen to the referee
   if (G.story) G.story.combat = B.combat;
+  // a run that starts again (a trip to the sims and back, a travel, a Continue): the new room has no boss, so the steps
+  // are looked at afresh (a fight step spawns him again) and nothing of the old fight hangs about
+  if (G.story && G.story.on) G.story.on('hello', () => { B.last = {}; B.on = null; });
   return B;
 }
