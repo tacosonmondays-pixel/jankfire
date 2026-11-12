@@ -4,6 +4,7 @@
 // escort, then stands by his mum at the wall). public/js/story/boot.js reads both; tests/story/act1world.test.mjs
 // checks every spot is standing room you can walk to.
 // face: yaw (0 looks north, -z; PI looks south, +z; PI/2 looks west; -PI/2 looks east)
+import { BEV } from './act1set.js';
 const N = 0, S = Math.PI, W = Math.PI / 2, E = -Math.PI / 2;
 
 export const NPC_SPOTS = {
@@ -18,7 +19,7 @@ export const NPC_SPOTS = {
   dot: { p: [-87, 40, -139.9], face: S }, // IN the digester wall, up to her chest
   mina: { p: [-80.5, 40, -139.9], face: S }, // a few faces along from Dot
   sister_agenda: { p: [-264, 40, -199], face: S }, // just inside the Choir Lung's door
-  bev: { p: [-84.3, 36.12, -7.2], face: S }, // in her back room, between the chair and the door
+  bev: { p: [-83.25, 36.02, -9.4], face: S }, // in her surgery, beside the dentist's chair (act1set.js BEV), facing the curtain
 };
 
 // [quest, step] -> { npc: spot } while that step is the one being played (the tracked objective)
@@ -40,3 +41,13 @@ export const HINTS = {
   'm01_return_to_sender.swing': { call: 'GRAPPLE UP!', how: 'aim at the yellow ring over the roofs, hold <b>{grapple}</b>, let go at the top and push forward' },
   'm01_return_to_sender.line': { call: 'RIDE IT HOME', how: 'walk to the end of the roof, <b>{use}</b> on the washing line, hang on' },
 };
+
+// people sitting about (set dressing: no lines, not the cast's roster): Bev's waiting room is always full, like a
+// barber's (m05: a woman holding her own jaw in a tea towel, a man with the price still chalked on his new arm, Pallet
+// Jack with a tube in his back and a bucket under it). seat: [x, y, z] hip height; if: a story condition (who's still
+// alive to be waiting). look: a cast look id, or hint: a seeded stand-in (looks.js generic)
+export const SITTERS = [
+  { id: 'wait_jaw', seat: BEV.seats[0], face: BEV.seatFace, hint: { body: 'normal', desc: 'a woman in a headscarf holding her own jaw in a tea towel' } },
+  { id: 'wait_chalk', seat: BEV.seats[1], face: BEV.seatFace, hint: { body: 'normal', desc: 'a big man in a vest, the price still chalked on his new arm' } },
+  { id: 'wait_jack', seat: BEV.seats[2], face: BEV.seatFace, look: 'pallet_jack', if: '!flag.fate.pallet_jack.dead' },
+];

@@ -63,16 +63,44 @@ export function act1Gut(B) {
   mark(B, 'gut:digester_wall');
 }
 
-// THE GUT BORDER: Bev's clinic, a back room in a pastel bungalow the skin is eating (x -89 .. -79.5, z -17.5 .. -4.5,
-// its door on the south side): a dentist's chair, a bucket, a shelf of jars with dates on, a lamp over the door
+// THE GUT BORDER: Bev's clinic (Art's set, tools/blender/make_story_bev.py): the room shell s_bev_room, 6 x 8 m, turned
+// so its street door opens onto the clinic's doorstep (gut:clinic_bev), on the plot of the bungalow it replaces (gut.js
+// border() skips that lot). Its walls are the room's own collision list, its furniture goes on the room's spots: the
+// dentist's chair under the steering-wheel lamp, the jar shelf, the strip curtain, the bench of car seats (who sits on
+// it: cast_slice.js SITTERS). BEV.rect is the room's plot.
+const ROOM = { // (s_bev_room's jf meta, in room space: origin floor centre, street door at -z)
+  walls: [[-3.15, -0.055, -4.14, -3.0, 2.655, 4.14], [3.0, -0.055, -4.14, 3.15, 2.655, 4.14], [-3.145, -0.06, -4.15, 1.4, 2.66, -4.0], [2.5, -0.06, -4.15, 3.145, 2.66, -4.0],
+    [1.4, 2.1, -4.15, 2.5, 2.66, -4.0], [-3.145, -0.06, 4.0, -2.2, 2.66, 4.15], [-1.2, -0.06, 4.0, 3.145, 2.66, 4.15], [-2.2, -0.06, 4.0, -1.2, 1.6, 4.15],
+    [-2.2, 2.2, 4.0, -1.2, 2.66, 4.15], [-3.05, -0.06, -1.06, -0.6, 2.66, -0.94], [0.6, -0.06, -1.06, 3.05, 2.66, -0.94], [-0.6, 2.1, -1.06, 0.6, 2.66, -0.94]],
+  spots: { chair: [0, 0, 1.55, 0], lamp: [0, 2.6, 1.45, 0], shelf: [2.77, 0, 1.6, Math.PI / 2], bench: [-2.68, 0, -2.5, -Math.PI / 2], curtain: [0, 0, -1, 0] },
+  door: [1.95, -4.0], lights: [[0, 1.97, -2.5, 0xffe8a0], [-1.7, 1.9, 3.7, 0xffd0dc]],
+  seats: [[-0.68, 0.47, -0.02], [0, 0.47, -0.02], [0.68, 0.47, -0.02]], // (s_bev_bench: hip height, facing the bench's -z)
+};
+const yawPt = (yaw, x, z) => [x * Math.cos(yaw) + z * Math.sin(yaw), -x * Math.sin(yaw) + z * Math.cos(yaw)]; // (three's Y rotation)
+export const BEV = (() => {
+  const C = PLACES['gut:clinic_bev'].p, yaw = Math.PI, d = yawPt(yaw, ...ROOM.door), c = [C[0] - d[0], C[1], -4.5 - d[1]]; // (the door's outside face on the old house front, z -4.5)
+  const at = (x, y, z) => { const [a, b] = yawPt(yaw, x, z); return [c[0] + a, c[1] + y, c[2] + b]; };
+  const spot = (k) => { const [x, y, z, r] = ROOM.spots[k]; return [...at(x, y, z), r + yaw]; };
+  const bench = spot('bench'), seats = ROOM.seats.map(([x, y, z]) => { const [a, b] = yawPt(bench[3], x, z); return [bench[0] + a, bench[1] + y, bench[2] + b]; });
+  return { c, yaw, at, spot, seats, seatFace: bench[3], rect: [c[0] - 3.3, c[2] - 4.3, c[0] + 3.3, c[2] + 4.3] };
+})();
 export function act1Border(B) {
-  const C = P('gut:clinic_bev'), cx = C[0], fy = C[1] + 0.12;
-  if (!B.touches([cx - 7, -19, cx + 7, 0])) return;
-  B.prop('dentist_chair', cx, fy, -11.6, Math.PI, 1.1, 0);
-  B.prop('jar_shelf', -88.6, fy, -10.5, -Math.PI / 2, 1, 0); B.prop('jar_shelf', -88.6, fy, -14, -Math.PI / 2, 1, 1);
-  B.prop('organjar', -80.6, fy, -15.8, 0.4, 1, 0); B.prop('firebarrel', -81, fy, -9.4, 0, 0.55, 0); // the bucket
-  B.light(cx, fy + 2.4, -10, 0x9ae8ff, 8, 1.3);
-  B.prop('heartlamp', cx + 1.4, C[1] + 2.4, -4.2, Math.PI, 0.8, 0); B.light(cx + 1.4, C[1] + 2.2, -3, 0xff6f91, 6, 1); // the sign of a meat mechanic
+  const R = BEV, [x0, z0, x1, z1] = R.rect;
+  if (!B.touches([x0 - 2, z0 - 2, x1 + 2, z1 + 2])) return;
+  B.prop('bev_room', R.c[0], R.c[1] + 0.02, R.c[2], R.yaw, 1, 0); // (+2 cm: its lino over the street)
+  for (const [a, b, c, d, e, f] of ROOM.walls) { const p = R.at(a, b, c), q = R.at(d, e, f); B.add(Math.min(p[0], q[0]), p[1] + 0.02, Math.min(p[2], q[2]), Math.max(p[0], q[0]), q[1] + 0.02, Math.max(p[2], q[2]), 'plaster', { hide: true }); }
+  B.add(x0 + 0.15, R.c[1] + 2.66, z0 + 0.15, x1 - 0.15, R.c[1] + 2.9, z1 - 0.15, 'plaster', { hide: true }); // (its roof: nobody drops in through the ceiling)
+  for (const [k, id] of [['chair', 'dentist_chair'], ['shelf', 'bev_jarshelf'], ['bench', 'bev_bench'], ['curtain', 'bev_curtain'], ['lamp', 'bev_lamp']]) { const [x, y, z, r] = R.spot(k); B.prop(id, x, y + 0.02, z, r, 1, 0); }
+  { const [x, y, z] = R.spot('lamp'); B.light(x, y - 0.95, z, 0xfff0c8, 6, 1.5); } // (the steering-wheel lamp's headlights, down on the chair)
+  for (const [x, y, z, col] of ROOM.lights) { const p = R.at(x, y, z); B.light(p[0], p[1], p[2], col, 6, 0.9); }
+  // the outside, so it sits in the street like its neighbours: a pastel bungalow skin the flesh is eating, a fleshy roof
+  { const r = rng(2580), t = R.c[1], x0 = R.c[0] - 3.17, x1 = R.c[0] + 3.17, z0 = R.c[2] - 4.17, z1 = R.c[2] + 4.17; // (the room's own wall faces)
+    B.add(x0 - 0.06, t + 2.66, z0 - 0.06, x1 + 0.06, t + 2.95, z1 + 0.06, 'flesh', { nc: true, tint: 0x9a1a26 });
+    const dw = [Math.min(R.at(1.4, 0, -4)[0], R.at(2.5, 0, -4)[0]) - 0.05, Math.max(R.at(1.4, 0, -4)[0], R.at(2.5, 0, -4)[0]) + 0.05]; // (the street door's gap in the skin)
+    for (const [a0, b0, a1, b1, y0] of [[x0 - 0.05, z0 - 0.05, x0, z1 + 0.05, 0], [x1, z0 - 0.05, x1 + 0.05, z1 + 0.05, 0], [x0, z0 - 0.05, x1, z0, 0], [x0, z1, dw[0], z1 + 0.05, 0], [dw[1], z1, x1, z1 + 0.05, 0], [dw[0], z1, dw[1], z1 + 0.05, 2.1]]) B.add(a0, t + y0, b0, a1, t + 2.66, b1, 'plaster', { nc: true, tint: 0xffc6d6 });
+    for (let i = 0; i < 7; i++) { const side = i % 3, w = 1 + r() * 2, drop = 0.8 + r() * 1.8; if (side === 0) { const z = z0 + r() * (z1 - z0 - w); B.add(x0 - 0.12, t + 2.66 - drop, z, x0 - 0.04, t + 2.9, z + w, 'flesh', { nc: true, tint: pick(r, FLESH) }); } else if (side === 1) { const z = z0 + r() * (z1 - z0 - w); B.add(x1 + 0.04, t + 2.66 - drop, z, x1 + 0.12, t + 2.9, z + w, 'flesh', { nc: true, tint: pick(r, FLESH) }); } else { const x = x0 + r() * (x1 - x0 - w); B.add(x, t + 2.66 - drop, z0 - 0.12, x + w, t + 2.9, z0 - 0.04, 'flesh', { nc: true, tint: pick(r, FLESH) }); } }
+    B.prop('fleshblob_a', x0 + 0.3, t + 2.9, z0 + 1.2, 1, 1.3, 0); B.prop('fleshblob_b', x1 + 0.7, t, z0 + 2.5, 2, 1.1, 0); B.prop('veincable', R.c[0], t + 3, z1 + 1.5, Math.PI / 2, 1.3, 0); }
+  B.prop('heartlamp', P('gut:clinic_bev')[0] + 1.6, R.c[1] + 2.4, -4.3, Math.PI, 0.8, 0); B.light(P('gut:clinic_bev')[0] + 1.6, R.c[1] + 2.2, -3, 0xff6f91, 6, 1); // the sign of a meat mechanic, by the door
   mark(B, 'gut:clinic_bev');
 }
 
