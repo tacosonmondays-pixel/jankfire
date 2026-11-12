@@ -93,7 +93,6 @@ export function installIsland(Room, H) {
     isleHit(t, amt, attacker, w) {
       const d = t.dn;
       d.left -= amt * ISLE.down.hurt * 1000;
-      if (attacker && attacker !== t) this.isleMeter(attacker, amt * ISLE.meter.dmg, 'dmg');
       this.tag(t, attacker, w);
       this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, dn: 1 });
       if (d.left <= 0) {
@@ -215,7 +214,7 @@ export function installIsland(Room, H) {
       if (t.dn) { const rv = t.dn.rv && this.players.get(t.dn.rv); if (rv && rv.irv) rv.irv = null; t.dn = null; this.broadcast({ t: 'isle', k: 'dead', id: t.id }); }
       const B = this.br, I = B && B.isle;
       if (LOG && I && t.sq) I.log.push(`${t.name} (sq${t.sq}) DEAD to ${killer && killer !== t ? killer.name : w}`);
-      if (I && killer && killer !== t && !this.friendly(killer, t) && w !== 'left') this.isleMeter(killer, ISLE.meter.kill, 'kill');
+      if (I && killer && killer !== t && !this.friendly(killer, t) && w !== 'left' && !t.goblin) this.isleMeter(killer, ISLE.meter.kill, 'kill'); // (a loot goblin: just its damage)
       if (!I || !t.sq || !this.isleIn(t) || this.isleMates(t.sq).some((o) => this.isleUp(o))) return;
       const sq = t.sq, first = !I.done || !I.done.has(sq);
       if (!first) return;
@@ -357,6 +356,8 @@ export function installIsland(Room, H) {
       if (!this.isleIn(b) || s.out || s.inBlimp || s.fly || !s.ai || b.dn) return this.brBotGoal(b);
       const n = now(), ai = s.ai, zn = zoneAt(this.br.zone, n);
       if (zn && Math.hypot(b.pos[0] - zn.c[0], b.pos[2] - zn.c[1]) > zn.r - 3) return this.brBotGoal(b); // (the royale's zone run)
+      const wm = this.mechOf && this.mechOf(b);
+      if (wm && !b.mech && (wm.st === 'wait' || wm.st === 'idle') && hdist(b.pos, wm.p) < 60) { ai.why = 'mech'; return { p: wm.p, force: true, r: 0 }; } // (its mech is standing there: go get in)
       const t = this.players.get(b.ai.target), threat = t && t.alive && !t.dn && b.ai.seenAt && dist3(t.pos, b.pos) < ISLE.safe;
       let dn = null, dd = 60;
       for (const o of this.isleMates(b.sq)) if (o !== b && o.alive && o.dn && (!o.dn.rv || o.dn.rv === b.id)) { const d = hdist(o.pos, b.pos); if (d < dd) { dd = d; dn = o; } }

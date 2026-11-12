@@ -75,6 +75,12 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
   const noA = await waitFor((m, w) => w === 'Alfa' && m.t === 'isle' && m.k === 'hero' && m.no, 5000, t);
   ok(!!noA && !log.some((e) => e[0] >= t && e[2].t === 'isle' && e[2].k === 'hero' && !e[2].no), 'A asks for B\'s PAPER PLANE: refused too (squads of 2, 2 heroes: one each)');
   ok(!log.some((e) => e[2].t === 'isle' && e[2].k === 'hero' && !e[2].no && e[2].id === A.id && e[2].h !== 'nightshift'), 'the garbage picks and a 40-message flood changed nothing');
+  // (review B #3) someone boards late: nobody else's hero changes (and A's refused PAPER PLANE wasn't kept)
+  const L = client('Latecomer', 'paperplane', port);
+  await inSquads([...all, L]);
+  const sqL = [...log].reverse().find((e) => e[2].t === 'isle' && e[2].k === 'sq')[2], heroL = new Map(sqL.hero);
+  ok(heroL.get(A.id) === 'nightshift' && heroL.get(B.id) === 'paperplane' && heroL.get(C.id) === hero.get(C.id) && heroL.get(D.id) === hero.get(D.id), `a late boarder reshuffles nobody (A ${heroL.get(A.id)}, B ${heroL.get(B.id)}, C ${heroL.get(C.id)}, D ${heroL.get(D.id)})`);
+  L.ws.close();
   t = ms(); C.send({ t: 'deploy', r: 'mechdrop', at: [0, 0, 0] }); await sleep(500);
   ok(!heard((m) => m.t === 'mech' && (m.k === 'call' || m.k === 'no'), t), 'a call from the blimp: ignored');
   // ---------------------------------------------------------- land
@@ -103,6 +109,15 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
   await waitFor((m) => m.t === 'dmg' && m.from === A.id && m.to === C.id, 6000, t); await until(() => A.mm.some((x) => x[0] > t + 50), 4000); await sleep(100);
   const dHit = mmNow(A) - b4 - (ms() - t) / 1000 * 1.11;
   ok(dHit > 2 && dHit < 7, `a 40-damage hit: +${dHit.toFixed(1)}% (4 by the table)`);
+  // (review B #1) the meter counts what really came off: C coughs down to ~12 HP, then A's 40-damage hit downs it: ~1%, not 4
+  for (let i = 0; i < 4; i++) { const tc0 = ms(); C.send({ t: 'cough' }); await waitFor((m) => m.t === 'dmg' && m.to === C.id && m.w === 'cough', 4000, tc0); await sleep(850); }
+  await sleep(300);
+  const tcap = ms(), bcap = mmNow(A);
+  A.send({ t: 'hit', w: 'bread', to: C.id, d: [0, 0, 1] });
+  const hcap = await waitFor((m) => m.t === 'isle' && m.k === 'down' && m.id === C.id, 6000, tcap);
+  await until(() => hcap && A.mm.some((x) => x[0] > hcap[0] + 20), 5000); await sleep(100);
+  const acap = hcap ? (A.mm.find((x) => x[0] > hcap[0] - 30) || [0, bcap])[1] : bcap, dCap = acap - bcap - (ms() - tcap) / 1000 * 1.11 * 0.3;
+  ok(!!hcap && dCap < 2.6, `a 40-damage hit on a 12 HP pilot fills only what came off: +${(acap - bcap).toFixed(1)}% (the old way: +4)`);
   // a kill: +25. C goes down (D's up), then A finishes it off
   for (let i = 0; i < 20 && !heard((m) => m.t === 'isle' && m.k === 'down' && m.id === C.id, t); i++) { A.send({ t: 'hit', w: 'bread', to: C.id, d: [0, 0, 1] }); await sleep(600); }
   let kill = null;
@@ -111,7 +126,7 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
   await until(() => kill && A.mm.some((x) => x[0] > kill[0]), 5000);
   const before = kill ? [...A.mm].reverse().find((x) => x[0] < kill[0] - 30) : null, after = kill ? A.mm.find((x) => x[0] >= kill[0] - 30) : null;
   const dKill = before && after ? after[1] - before[1] : -1; // (the meter messages either side of the kill)
-  ok(!!kill && dKill >= 26 && dKill <= 36, `finishing C: +${dKill}% (25 for the kill + 4 for the hit)`);
+  ok(!!kill && dKill >= 26 && dKill <= 36, `finishing C: +${dKill}% (25 for the kill + what that last hit took off its bleed clock)`);
   // ---------------------------------------------------------- energy cells
   const start = [...log].find((e) => e[2].t === 'br' && e[2].k === 'start')[2];
   const cells = start.loot.filter((l) => l[1] === 'cell').map((l) => ({ i: l[0], p: [l[6], l[7], l[8]] }));
@@ -201,7 +216,7 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
 
   // ---------------------------------------------------------- phase 2: a quick zone. a mech outside it, a pilot on foot outside it
   log = []; T0 = Date.now();
-  const p2 = port + 1, srv2 = await server({ JF_ISLE_ZONE: '0.04', JF_ISLE_METER: '60', JF_MECH_DROP: '0.5', JF_MECH_WAIT: '30', JF_ISLE_BLEED: '120' }, p2);
+  const p2 = port + 1, srv2 = await server({ JF_ISLE_ZONE: '0.04', JF_ISLE_METER: '60', JF_MECH_DROP: '0.5', JF_MECH_WAIT: '30', JF_ISLE_BLEED: '120', JF_MECH_HP: '0.05' }, p2);
   const P = client('Pilot', 'nightshift', p2); await sleep(400);
   const E = client('Enemy', 'paperplane', p2); await sleep(250);
   const W2 = client('Wingman', 'paperplane', p2);
@@ -224,14 +239,36 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
   ok(!!pin, `phase 2: P calls and climbs into its mech (${Math.round(Math.hypot(spot[0] - fz.c[0], spot[2] - fz.c[1]))} m from the last ring's middle, r ${fz.r})`);
   const zoneEnd = z2.t0 + z2.steps.reduce((s, x) => s + (x.wait + x.shrink) * 1000, 0);
   t = ms();
-  await sleep(Math.max(2000, zoneEnd - Date.now() + 2500));
-  const armour = log.filter((e) => e[0] >= t && e[2].t === 'bhp' && e[2].id === P.id).map((e) => e[2].hp);
-  const pHurt = log.some((e) => e[0] >= t && e[2].t === 'dmg' && e[2].to === P.id);
+  W2.pos = [spot[0] + 1.6, 0, spot[2]]; await settle([W2]); // (right next to it when it goes)
+  const ejP = await waitFor((m) => m.t === 'mech' && m.k === 'down' && m.id === P.id, Math.max(20000, zoneEnd - Date.now() + 20000), t);
+  const tEj = ejP ? ejP[0] : ms();
+  const armour = log.filter((e) => e[0] >= t && e[0] <= tEj && e[2].t === 'bhp' && e[2].id === P.id).map((e) => e[2].hp);
+  const pHurt = log.some((e) => e[0] >= t && e[0] < tEj - 50 && e[2].t === 'dmg' && e[2].to === P.id);
+  await sleep(1500);
+  ok(!!ejP && !log.some((e) => e[0] >= tEj - 200 && e[2].t === 'dmg' && e[2].to === W2.id && e[2].w === 'mechboom'), `(review B) the zone breaks P's mech: its blast spares P's own squadmate next to it (${ejP ? 'broke' : 'never broke'})`);
   ok(armour.length >= 2 && armour[armour.length - 1] < armour[0], `outside the zone the mech's armour drains (${armour[0]} -> ${armour[armour.length - 1]})`);
-  ok(!pHurt, 'and the pilot inside takes no HP damage');
+  ok(!pHurt, 'and the pilot inside takes no HP damage (while it lasts)');
   ok(log.some((e) => e[0] >= t && e[2].t === 'dmg' && e[2].to === W2.id && e[2].w === 'zone'), 'a pilot on foot outside it takes HP damage');
   clearInterval(snaps2);
   ok(!/uncaught|TypeError|ReferenceError|RangeError/.test(srv2.err), 'no server errors (phase 2)' + (srv2.err ? ': ' + srv2.err.slice(0, 800) : ''));
   srv2.kill();
+  await stubChecks();
   console.log(fails ? `${fails} FAILED: ${failed.join(' | ')}` : 'ALL OK'); process.exit(fails ? 1 : 0);
 })();
+// in-process, on a stub room: the real Room code against a map we bend for the case
+async function stubChecks() {
+  const R = await import('../server/room.js'); const { MAPS } = await import('../shared/map.js');
+  const room = new R.Room('stub', 'bots'), J = MAPS.jankburg;
+  room.cfg.map = 'jankburg';
+  const onMap = (m) => Object.defineProperty(room, 'map', { value: m, configurable: true });
+  // (review B #2) a sea 5 m over Jankburg's streets: a mech can't drop onto the seabed (no seaY: it can, as always)
+  onMap({ ...J, seaY: 5, wade: 1.5 });
+  const wet = room.mechCall({ id: 9001, isBot: true, alive: true, pos: [0, 0, 24], mechFrame: 'paperplane' }, [0, 0, 18], 'paperplane');
+  onMap(J);
+  const dry = room.mechCall({ id: 9002, isBot: true, alive: true, pos: [0, 0, 24], mechFrame: 'paperplane' }, [0, 0, 18], 'paperplane');
+  ok(!wet && dry, `a mech drop on the seabed (5 m of water) is refused (${wet ? 'dropped' : 'refused'}); on dry ground it's fine (${dry ? 'dropped' : 'refused'})`);
+  // (review B nice) a map finale 48 m round: the last ring is still 40 m across, inside it
+  onMap({ ...J, royale: { ...J.royale, finale: [[0, 0, 48]] } });
+  const st = room.isleZoneSteps([], [0, 0, 300], []), f = st[st.length - 1];
+  ok(Math.abs(f.r - 20) < 0.01 && Math.hypot(f.c[0], f.c[1]) <= 48 - 20 + 0.01, `a finale 96 m across: the last ring is ${f.r * 2} m across at ${f.c.join(',')}, inside it`);
+}

@@ -1344,7 +1344,6 @@ class Room {
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (t.dn && this.isleOn) return this.isleHit(t, amt, attacker, w); // battle island: down already, hits eat the bleed-out clock
     if (t.cam && this.isleOn) return false; // (battle island's test camera, JF_ISLE_CAM: never hurt)
-    if (this.isleOn && attacker && attacker !== t) this.isleMeter(attacker, amt * ISLE.meter.dmg, 'dmg'); // battle island: hits fill your mech meter (armour and mechs too)
     if (this.zm) amt = this.zmDamage(t, amt, attacker, w, hs); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)

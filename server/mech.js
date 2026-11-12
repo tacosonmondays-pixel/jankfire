@@ -65,6 +65,7 @@ export function installMech(Room, U) {
       const fl = raycast([at[0], at[1] + 0.5, at[2]], [0, -1, 0], 4.5, this.boxes);
       if (!fl || fl.box.pad) { this.mechNo(p, 'no floor there'); return false; }
       const g = [at[0], fl.point[1], at[2]];
+      if (this.map.seaY != null && this.map.seaY - g[1] > (this.map.wade || 1.5)) { this.mechNo(p, 'not into deep water'); return false; } // (a sea map: the floor under the water doesn't count)
       if (raycast([g[0], g[1] + 0.2, g[2]], [0, 1, 0], MECH.drop.sky, this.boxes)) { this.mechNo(p, 'it needs open sky'); return false; }
       const f = mechFrame(isFrame(frame) ? frame : p.mechFrame);
       const id = this.nextMech = (this.nextMech || 0) + 1;
@@ -178,7 +179,7 @@ export function installMech(Room, U) {
     mechBlast(at, pilot, by) {
       const B = MECH.boom, c = [at[0], at[1] + 1.5, at[2]];
       for (const t of this.players.values()) {
-        if (!t.alive || t === pilot || t === by || (by && this.friendly(by, t))) continue;
+        if (!t.alive || t === pilot || t === by || this.friendly(by || pilot, t)) continue; // (nobody broke it, e.g. the zone: the pilot's own side is safe)
         const tc = center(t), d = Math.hypot(tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]);
         if (d > B.r || !clear(c, tc, this.boxes)) continue;
         const f = 1 - d / B.r, hl = Math.hypot(tc[0] - c[0], tc[2] - c[2]) || 1;
