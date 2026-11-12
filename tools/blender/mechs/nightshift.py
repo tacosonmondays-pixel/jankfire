@@ -7,6 +7,8 @@
 # Game space: the mech faces -z, its right is +x, feet on y = 0.
 from mechkit import *
 
+DECALS = True  # (off for the Tripo reference pictures: no text or stickers)
+
 FID = 'mech_nightshift'
 PAL_A = {  # "GRAVEYARD SHIFT": royal blue + white + hi-vis yellow on navy, amber visor and edges
     'paint': 0x2f55e8, 'white': 0xf2f0ea, 'dark': 0x161c36, 'accent': 0xffd23a, 'frame': 0x3a3f4e, 'chrome': 0xd2d9e2,
@@ -115,7 +117,8 @@ def build():
     head(mk, M, T); torso(mk, M, T); belt(mk, M, T)
     for s, L in ((1, 'R'), (-1, 'L')):
         leg(mk, M, T, s, L); arm(mk, M, T, s, L); tasset(mk, M, T, s, L)
-    sword(mk, M, T); shield(mk, M, T); decals(mk, M, T)
+    sword(mk, M, T); shield(mk, M, T)
+    if DECALS: decals(mk, M, T)
     mk.meta.update({'name': 'NIGHT SHIFT', 'height': 5.70, 'phase': 'concept', 'grip': GRIP,
                     'palettes': {'A': {k: PAL_A[k] for k in ('paint', 'white', 'dark', 'accent', 'glow', 'thrust')},
                                  'B': {k: PAL_B[k] for k in ('paint', 'white', 'dark', 'accent', 'glow', 'thrust')}}})

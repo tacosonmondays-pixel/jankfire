@@ -6,6 +6,8 @@
 # Game space: the mech faces -z, its right is +x, feet on y = 0.
 from mechkit import *
 
+DECALS = True  # (off for the Tripo reference pictures: no text or stickers)
+
 FID = 'mech_paperplane'
 PAL_A = {  # "SKY MAIL": sky blue + white + yellow on a navy frame, a yellow shutter visor, cyan thrust
     'paint': 0x2fb8ff, 'white': 0xf3f0e8, 'dark': 0x1d2747, 'accent': 0xffd23a, 'frame': 0x3a4152, 'chrome': 0xd2d9e2,
@@ -97,7 +99,7 @@ def build():
     for s, L in ((1, 'R'), (-1, 'L')):
         leg(mk, M, T, s, L); arm(mk, M, T, s, L); wing(mk, M, T, s, L); skirt(mk, M, T, s, L)
     crane(mk, M, T)
-    decals(mk, M, T)
+    if DECALS: decals(mk, M, T)
     mk.meta.update({'name': 'PAPER PLANE', 'height': 4.85, 'phase': 'concept',
                     'palettes': {'A': {k: PAL_A[k] for k in ('paint', 'white', 'dark', 'accent', 'glow', 'thrust')},
                                  'B': {k: PAL_B[k] for k in ('paint', 'white', 'dark', 'accent', 'glow', 'thrust')}},
