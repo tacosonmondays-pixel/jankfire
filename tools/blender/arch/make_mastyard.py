@@ -33,7 +33,7 @@ MATS.update({  # (19 materials = 19 draw calls for the lot)
     'mastchain': ('chainlink', '#d6dce0', {'alpha': True}), 'mastbarb': ('barbwire', '#c8ced2', {'alpha': True}), 'mastconc': ('concrete', '#c9c5bd', {}),
     'mastshell': ('rpanel', '#d8d3bf', {}), 'mastint': ('stucco', '#e6eae6', {}), 'mastdoor': ('trim', '#2f7ad8', {}), 'mastlouvre': ('louvre', '#b8b4a2', {}),
     'mastgen': ('trim', '#ffc414', {}), 'mastblack': ('trim', '#2c2e34', {}), 'mastwood': ('planks', '#d29c6a', {}), 'mastcopper': ('trim', '#d8803e', {}),
-    'mastradome': ('trim', '#ecebe4', {}), 'mastsign': ('mastsigns', '#ffffff', {'alpha': True}), 'mastlamp': ('stucco', '#ffe2a0', {'glow': True}),
+    'mastradome': ('trim', '#ecebe4', {}), 'mastsign': ('mastsigns', '#ffffff', {'alpha': True}), 'mastlamp': ('stucco', '#ffe2a0', {'glow': True, 'glowcol': '#ffd080'}),
 })
 NOCAST.update({'mastgalvdk', 'mastchain', 'mastbarb', 'mastcopper', 'mastsign', 'mastlamp', 'mastlouvre'})
 # the shine (archfield.js: Phong instead of Lambert): (shininess, specular level)
