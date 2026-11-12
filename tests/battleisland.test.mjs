@@ -9,11 +9,21 @@ import '../shared/royale.js';
 import { mapsFor } from '../shared/modes.js';
 import { navSteer } from '../shared/nav.js';
 import { movePlayer, raycast } from '../shared/physics.js';
-import { islandH, PLAN, SEA, WADE, KILL_Y, GRID } from '../shared/battleisland.js';
+import { islandH, PLAN, SEA, WADE, KILL_Y, grid } from '../shared/battleisland.js';
+import { spawnSync } from 'node:child_process';
 
 const m = MAPS.battleisland, T = m.boxes.terrain;
 const sim = (pos, vel, ground) => { vel[1] -= 26 / 30; return !!movePlayer(pos, vel, 1 / 30, m.boxes, ground).ground; };
 const ground = (x, z) => T.at(x, z);
+
+test('Battle Island: importing the maps doesn\'t build it (no cost to boot or page load until something asks)', () => {
+  const code = "const t0 = performance.now(); const { MAPS } = await import('./shared/map.js'); await import('./shared/royale.js'); const t1 = performance.now(); const d = Object.getOwnPropertyDescriptor(MAPS, 'battleisland'); console.log(JSON.stringify({ ms: t1 - t0, lazy: !!(d && d.get), listed: Object.keys(MAPS).includes('battleisland') }));";
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+  const o = JSON.parse(r.stdout.trim().split('\n').pop());
+  assert.ok(o.lazy, 'still a getter after import');
+  assert.ok(!o.listed, 'not in Object.keys(MAPS) until built');
+  console.log('import shared/map.js + royale.js:', o.ms.toFixed(0), 'ms');
+});
 
 test('Battle Island: built, with the mode\'s fields, and hidden from the map lists', () => {
   assert.ok(m && T, 'the map and its shaped ground');
@@ -22,10 +32,11 @@ test('Battle Island: built, with the mode\'s fields, and hidden from the map lis
   assert.equal(m.royale.drops.length, PLAN.pois.reduce((a, p) => a + p.drop.length, 0));
   assert.equal(m.royale.cells.length, PLAN.pois.reduce((a, p) => a + p.cells, 0), 'every POI got its energy cells');
   assert.equal(m.royale.finale.length, 2);
-  assert.ok(MAP_ORDER.includes('battleisland') && m.wip, 'registered, marked wip');
+  assert.ok(!MAP_ORDER.includes('battleisland') && m.wip, 'registered, marked wip, out of MAP_ORDER (no ?wip=1 / JF_WIP_MAPS)');
+  assert.ok(Object.keys(MAPS).includes('battleisland'), 'an ordinary entry once built');
   assert.ok(!mapsFor('br', MAPS, MAP_ORDER).includes('battleisland'), 'not in the royale list without ?wip=1 / JF_WIP_MAPS');
   assert.ok(!mapsFor('dm', MAPS, MAP_ORDER).includes('battleisland'), 'not in the other modes either (royale only)');
-  for (const [x, z] of [[28, 118], [238, 40], [-372, 40], [-110, 30]]) assert.ok(Math.abs(GRID.at(x, z) - Math.max(-4.2, islandH(x, z))) < 0.01, 'grid = plan at ' + x + ',' + z);
+  for (const [x, z] of [[28, 118], [238, 40], [-372, 40], [-110, 30]]) assert.ok(Math.abs(grid().at(x, z) - Math.max(-4.2, islandH(x, z))) < 0.01, 'grid = plan at ' + x + ',' + z);
 });
 
 test('Battle Island: every mech drop pad is dry, level and open to the sky; every cell is on dry land in its POI', () => {
