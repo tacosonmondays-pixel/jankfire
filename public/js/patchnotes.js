@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.1', date: '2026-11-12', title: 'FRONT DOOR', items: [
+    'new main menu. it\'s you in the middle and two buttons: ONLINE or OFFLINE. then pick your mode along the top. TRAINING and the old menu (CLASSIC) are still under the buttons.',
+    'OFFLINE is your own match: pick the map, the bots, how many, how hard they try. nobody else gets in. that\'s the point.',
+    'skyline: the spire got a glow-up. a real glass tower now, chrome fins, lit offices, neon rings and a radio mast with a blinking red light. still can\'t climb the spikes.',
+    'mechs make noises when they show off now: glints, vent hisses, flare whoomphs, sparks, and a pop when you eject.',
+  ] },
   { v: '9.0', date: '2026-11-12', title: 'ISLAND TIME (BETA)', items: [
     'NEW (BETA): BATTLE ISLAND. squads of 3 in the royale. get knocked down instead of dying, and hold F to pick your squadmates back up. through a wall doesn\'t count.',
     'on the blimp, pick your mech hero: PAPER PLANE or NIGHT SHIFT. fill your MECH METER (time, damage, kills, green batteries on the floor), then press 5 to drop your mech on your crosshair. not into the sea.',
