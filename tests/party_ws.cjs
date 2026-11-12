@@ -8,7 +8,7 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 function hub(name) {
   const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, name, party: null, errs: [], go: [], id: 0, lp: [] };
-  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') c.party = m; if (m.t === 'perr') c.errs.push(m.m); if (m.t === 'pgo') c.go.push(m); if (m.t === 'hubok') c.id = m.id; if (m.t === 'plp') c.lp.push(m); });
+  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') c.party = m; if (m.t === 'perr') c.errs.push(m.m); if (m.t === 'pgo') c.go.push(m); if (m.t === 'hubok') { c.id = m.id; c.rk = m.rk; } if (m.t === 'plp') c.lp.push(m); });
   c.send = (m) => ws.send(JSON.stringify(m));
   return new Promise((res) => ws.on('open', () => { c.send({ t: 'hub', name, look: { color: '#ff4fd8' }, gun: name === 'lead' ? 'ar' : 'knife', mf: name === 'lead' ? 'nightshift' : 'junk' }); setTimeout(() => res(c), 400); }));
 }
@@ -81,11 +81,30 @@ function player(name, mode, cfg) {
   ok(PA.color && PA.color === PB.color, 'on the same side (P&D) ' + PA.color + ' ' + PB.color);
   const PX = await player('thief', ga.mode, ga.cfg); await sleep(1200);
   ok(!PX.seen.has(PA.id) && !PA.seen.has(PX.id), 'a used ticket gets you nowhere near the party');
+  // a dropped connection: still in the party (RECONNECTING) for a while, and the key it was given gets the place back
+  { const R = await hub('blip'); R.send({ t: 'pjoin', code: A.party.code }); await sleep(1200);
+    const before = A.party.ms.length, rid = R.id, rk = R.rk;
+    R.ws.close(); await sleep(400);
+    const g = A.party.ms.find((m) => m.id === rid);
+    ok(g && g.gone === 1 && A.party.ms.length === before, 'a dropped member stays in the party, marked gone ' + JSON.stringify(g && g.gone));
+    const T = await hub('thief'); T.send({ t: 'pjoin', code: 'ZZZZZ' }); T.ws.close(); // (a different key: a stranger, not the member)
+    const ws2 = new WS(`ws://localhost:${port}/ws`); const R2 = { party: null, id: 0 }; ws2.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') R2.party = m; if (m.t === 'hubok') R2.id = m.id; });
+    await new Promise((r) => ws2.on('open', r)); ws2.send(JSON.stringify({ t: 'hub', name: 'blip', look: {}, rk })); await sleep(600);
+    ok(R2.id === rid && R2.party && R2.party.code === A.party.code && !A.party.ms.find((m) => m.id === rid).gone, 'back with its key: the same place in the same party');
+    const ws3 = new WS(`ws://localhost:${port}/ws`); let s3 = null; ws3.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') s3 = m; });
+    await new Promise((r) => ws3.on('open', r)); ws3.send(JSON.stringify({ t: 'hub', name: 'copycat', look: {}, rk })); await sleep(600);
+    ok(s3 && s3.code !== A.party.code, "a key that's already back can't be used again");
+    ws2.close(); ws3.close(); }
   // kick + the lead passing on
   A.send({ t: 'pkick', id: B.id }); await sleep(500);
   ok(B.party.code !== A.party.code && B.errs.some((e) => /kicked/.test(e)), 'the leader kicks: you are on your own, and told');
-  B.send({ t: 'pjoin', code: A.party.code }); await sleep(1200); A.ws.close(); await sleep(600);
-  ok(B.party.ms.length === 1 || (B.party.lead === B.id), 'the leader leaves: the lead passes on');
+  B.send({ t: 'pjoin', code: A.party.code }); await sleep(1200);
+  A.send({ t: 'pleave' }); await sleep(600);
+  ok(B.party.code !== A.party.code ? true : B.party.lead !== A.id, 'the leader leaves (LEAVE): the lead passes on at once');
+  { const pa = A.party.code; B.send({ t: 'pjoin', code: pa }); await sleep(1200);
+    A.ws.close(); await sleep(500);
+    const a = B.party.ms.find((m) => m.id === A.id);
+    ok(B.party.code === pa && B.party.lead === A.id && a && a.gone === 1, "the leader's connection drops: still the leader for the grace, marked gone (START waits)"); }
   for (const c of [A, B, C, D, ...extra, PA, PB, PX]) c.ws.close();
   console.log(fails ? `${fails} FAILED` : 'all ok');
   process.exit(fails ? 1 : 0);
