@@ -19,6 +19,7 @@ if (knob('JF_ISLE_SIZE', 1, 6)) ISLE.size = knob('JF_ISLE_SIZE', 1, 6) | 0;
 if (knob('JF_ISLE_SQUADS', 2, 10)) ISLE.squads = knob('JF_ISLE_SQUADS', 2, 10) | 0;
 if (knob('JF_ISLE_BLEED', 1, 300)) ISLE.down.bleed = knob('JF_ISLE_BLEED', 1, 300);
 if (knob('JF_ISLE_REVIVE', 0.5, 30)) ISLE.revive.hold = knob('JF_ISLE_REVIVE', 0.5, 30);
+const CAM = process.env.JF_ISLE_CAM || ''; // test knob: a person with this name is a ride-along camera (can't hurt or be hurt, doesn't count for squads: clips of bots matches)
 if (knob('JF_ISLE_GAP', 200, 10000)) ISLE.revive.gap = knob('JF_ISLE_GAP', 200, 10000); // ms a held F may go quiet (slow test browsers stall for seconds on a screenshot)
 if (knob('JF_ISLE_ZONE', 0.02, 5)) for (const z of ZONE) { z[0] *= knob('JF_ISLE_ZONE', 0.02, 5); z[1] *= knob('JF_ISLE_ZONE', 0.02, 5); } // x the zone's waits + shrinks (quick test matches; the royale's too)
 
@@ -34,7 +35,8 @@ export function installIsland(Room, H) {
     isleIn(p) { return !!(p && p.br && this.br && p.br.match === this.br.id && p.sq); },
     isleMates(sq) { return this.fighters().filter((p) => p.sq === sq && this.isleIn(p)); },
     // up = alive and on their feet (riding the blimp counts: they're not out)
-    isleUp(p) { return !!(p && p.alive && !p.dn && p.br && !p.br.out && !p.goblin); },
+    isleUp(p) { return !!(p && p.alive && !p.dn && p.br && !p.br.out && !p.goblin && !p.cam); },
+    isleFriendly(a, b) { return (!!a.sq && a.sq === b.sq) || !!a.cam || !!b.cam; }, // (friendly() hook: your squad)
     isleSquadsIn() { const s = new Set(); for (const p of this.fighters()) if (this.isleIn(p) && this.isleUp(p)) s.add(p.sq); return s; },
     // a match starts (brBoard hook): everyone gets a squad, people first in the order they came in (so a lobby's
     // people land together), then bots fill the gaps. late boarders get the emptiest squad that's still in
@@ -47,6 +49,7 @@ export function installIsland(Room, H) {
         list.forEach((o, i) => { o.sq = Math.floor(i / size) + 1; if (o.sq > ISLE.squads) o.sq = (i % ISLE.squads) + 1; o.dn = null; o.irv = null; });
       }
       p.br.mailed = true; // no RETURN TO SENDER here: your squad picks you up instead
+      p.cam = !!CAM && !p.isBot && p.name === CAM;
       p.dn = null; p.irv = null;
       if (!p.sq || B.isle.sqOut.has(p.sq) || this.isleMates(p.sq).filter((o) => o !== p).length >= ISLE.size) p.sq = this.isleFreeSquad(p);
     },

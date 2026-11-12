@@ -1323,7 +1323,7 @@ class Room {
     if (this.mode === 'coop') return a.isBot === b.isBot;
     if (this.zm) return a.isBot === b.isBot; // zombies: everyone vs the zombies
     if (GAMES[this.game].infect) return !!a.inf === !!b.inf; // infection: survivors vs zombies, no hurting your own side
-    if (this.isleOn) return !!a.sq && a.sq === b.sq; // battle island: your squad
+    if (this.isleOn) return this.isleFriendly(a, b); // battle island: your squad
     return this.teamsOn() && a.team && a.team === b.team;
   }
   // the rules every hit follows: true = it doesn't land
@@ -1340,6 +1340,7 @@ class Room {
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
     if (t.dn && this.isleOn) return this.isleHit(t, amt, attacker, w); // battle island: down already, hits eat the bleed-out clock
+    if (t.cam && this.isleOn) return false; // (battle island's test camera, JF_ISLE_CAM: never hurt)
     if (this.zm) amt = this.zmDamage(t, amt, attacker, w, hs); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
