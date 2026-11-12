@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.9', date: '2026-11-12', title: 'IT SAW THAT', items: [
+    'crate: the tower is real toy blocks now. carved wooden faces, chunky letters, it spells JANK if you fall far enough. the middle block is a shape sorter.',
+    'skyline: the observatory got a real dome and a real telescope. b site has never looked so scientific.',
+    'skyline: JANK NEWS 7 is parked on the helipads. it saw that.',
+  ] },
   { v: '9.8', date: '2026-11-12', title: 'BRING FRIENDS', items: [
     'PARTIES. your code\'s under ONLINE / OFFLINE. send it to your friends, they type it in, you all stand there looking cool. the leader picks the match and drags everyone in. same team, obviously. kicking is allowed.',
     'ctrl+w can\'t close the game any more in fullscreen (crouch is left ctrl too, oops). windowed, you get a tip once.',

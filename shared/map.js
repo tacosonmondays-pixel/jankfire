@@ -521,8 +521,7 @@ function crate() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(8 * sx, 1, 8 * sz, 2, 2, 2, 'crate'); box(8 * sx + 1.6 * sx, 0.5, 8 * sz, 1.2, 1, 1.2, sx * sz > 0 ? 'toyred' : 'toyblue'); }
   box(0, 1, 10, 5, 2, 1, 'crate');
   box(0, 1, -10, 5, 2, 1, 'crate');
-  box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 });
-  box(0, 3.25, 0, 7, 0.5, 7, 'toyteal');
+  propOf('toysorter', [0, 0, 0], 0, () => { box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 }); box(0, 3.25, 0, 7, 0.5, 7, 'toyteal'); }); // the middle: a shape sorter (Blender: p_toysorter)
   box(-5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [4, 14, 0] });
   box(5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [-4, 14, 0] });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(12 * sx, 15, 12 * sz, 2.5, 1, 2.5, 'toypink');
@@ -530,7 +529,7 @@ function crate() {
   // it's a toy box on top of a tower of giant toy blocks, in a giant kid's playroom (render-only). fall off: you die long
   // before the carpet
   const D = builder(), F = -90; // the floor
-  D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 });
+  propOf('toytower', [0, 0, 0], 0, () => { D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 }); }); // (Blender: p_toytower, giant wooden ABC blocks)
   // (the middle block is turned a little and no wider than the crate: a fall off any edge never passes through it)
   D.add(-420, F - 2, -420, 420, F, 420, 'rubber');
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
@@ -3767,7 +3766,7 @@ function skyGarden(B, D, x, z, y, r) {
 function skyNews(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
+    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); propOf('heli', [x - 2, y + 0.1, z], 0, () => { chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 }); }); // (drawn as the Blender news chopper, p_heli: JANK NEWS 7)
     add(x - 11, y, z + 8, x - 8, y + 1.2, z + 11, 'metal'); D.add(x - 12.5, y + 1.2, z + 6.5, x - 6.5, y + 1.5, z + 12.5, 'white'); D.add(x - 9.7, y + 1.5, z + 9.3, x - 9.3, y + 3.6, z + 9.7, 'metal'); // the dish
     for (const [lx, lz] of [[6, -10], [9, -10], [6, 10], [9, 10]]) { B.box(x + lx, y + 1.4, z + lz, 0.15, 2.8, 0.15, 'metal'); D.box(x + lx, y + 2.9, z + lz, 0.8, 0.6, 0.5, 'lamp'); }
     for (const lz of [-12.6, 12.6]) { add(x + 4, y, z + lz - 0.6, x + 8, y + 1.6, z + lz + 0.6, 'containerb'); }
@@ -3813,9 +3812,10 @@ function skyGreen(B, D, x, z, y, r) {
 function skyObs(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('observatory', [x, y, z], 0, () => { // (drawn as the Blender observatory, p_observatory: tools/blender/make_observatory.py; its sign stays the map's)
     add(x - 6, y, z - 6, x + 6, y + 4, z + 6, 'white'); dome(D, x, y + 4, z, 6, 'chrome', false);
     D.add(x - 0.6, y + 6.2, z + 2, x + 0.6, y + 7.2, z + 9, 'metal'); D.add(x - 0.8, y + 6.0, z + 8.6, x + 0.8, y + 7.4, z + 9.2, 'glass'); // the telescope
-    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 });
+    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 }); }, { keep: (b) => !!b.fit });
     for (const [bx, bz] of [[-9, 9], [9, 9], [-9, -9], [9, -9]]) add(x + bx - 1.3, y, z + bz - 0.3, x + bx + 1.3, y + 0.5, z + bz + 0.3, 'wood'); }
 }
 // the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock. f = -1 puts the tanks and the
@@ -3823,7 +3823,7 @@ function skyObs(B, D, x, z, y, r) {
 function skyHeli(B, D, x, z, y, r, f = 1) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred'); // (S&D: off the pad's middle, the site's)
+    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); propOf('heli', [x + 1, y + 0.1, z - (f < 0 ? 3 : 1)], 0, () => chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred')); // (S&D: off the pad's middle, the site's. drawn as p_heli)
     for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); }
     add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); // the booth
     B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }
