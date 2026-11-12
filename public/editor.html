@@ -26,6 +26,7 @@
   <button id="edDiff" title="every change you made on this map">CHANGES <i id="edN">0</i></button>
   <button id="edExport" class="edMain" title="save your changes as a file to send us">EXPORT</button>
   <button id="edImport" title="load a changes file">IMPORT</button>
+  <button id="edHelpBtn" title="how this works (H)">? <i>H</i></button>
   <button id="edQuit" title="back to the game">QUIT</button>
 </div>
 <div id="edSel" class="edp hidden">
@@ -61,6 +62,19 @@
   <em class="t-yeet">YEET RAY: click to yeet it</em>
   <em class="t-wand">EDIT WAND: click select · G carry · R turn · = / - size · X delete · ctrl+D copy · arrows nudge</em>
   · ctrl+Z undo · N bot check · <b>F</b> walk test · shift+1-4 graphics
+</div>
+<div id="edIntro" class="edp hidden">
+  <b class="edLogo">WELCOME TO THE MAP EDITOR</b>
+  <p>fly round any map and break it. nobody else sees your changes until you send them to us.</p>
+  <ol>
+    <li><b>right-click</b> to fly · WASD · SPACE up · C down · SHIFT fast · <b>F</b> walk test (game physics)</li>
+    <li><b>1</b> GRABBY BEAM: hold click to pick things up, swing and let go to throw · <b>R</b> + mouse turns · right-click freezes</li>
+    <li><b>2</b> PLOP CANNON: <b>E</b> opens the menu, click a prop, click the floor to plop it · drag props onto <b>5-9</b> for later</li>
+    <li><b>3</b> YEET RAY: click a thing, it's gone · <b>ctrl+Z</b> brings it back</li>
+    <li><b>4</b> EDIT WAND: select, copy, size, nudge on the grid · <b>N</b> BOT CHECK: can bots still get everywhere?</li>
+    <li>done? <b>EXPORT</b> (top bar) saves <i>jankfire-edits-map.json</i>. send that file to us and it goes in the game for everyone.</li>
+  </ol>
+  <button id="edIntroOk" class="edMain">GOT IT</button>
 </div>
 <div id="edCall"></div>
 <div id="edToast"></div>

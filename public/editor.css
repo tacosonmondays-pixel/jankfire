@@ -91,3 +91,13 @@ body[data-tool="yeet"] #edX::before, body[data-tool="yeet"] #edX::after { backgr
 #edToast { bottom: 100px; }
 /* panels sit under the top bar whatever its height (it wraps to two rows on a narrow window) */
 #edSel, #edList, #edBots { top: calc(var(--edtop, 76px) + 16px); }
+/* the first-open card (H brings it back) */
+#edIntro { left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-0.8deg); width: min(620px, 92vw); padding: 16px 20px; z-index: 8; font-size: 15px; }
+#edIntro p { margin: 6px 0 8px; color: #ddd; }
+#edIntro ol { margin: 0 0 12px; padding-left: 22px; line-height: 1.45; }
+#edIntro li b { color: var(--yel); }
+#edIntro i { color: var(--cyan); font-style: normal; }
+#edIntroOk { font-size: 18px; padding: 6px 22px; }
+#edTop { gap: 6px; padding: 7px 10px; }
+#edTop button { padding: 4px 8px; font-size: 13px; }
+#edTop .edLogo { font-size: 20px; }

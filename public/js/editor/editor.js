@@ -538,6 +538,8 @@ addEventListener('keydown', (e) => {
   else if (c === 'KeyL') toggleFloors();
   else if (c === 'KeyN') botCheck();
   else if (c === 'KeyF') toggleWalk();
+  else if (c === 'KeyH') intro($('edIntro').classList.contains('hidden'));
+  else if (c === 'Escape' && !$('edIntro').classList.contains('hidden')) intro(false);
   else if (c === 'KeyP' || c === 'KeyE' || c === 'KeyQ') menu();
   else if (c === 'Escape' && paletteOpen()) menu(false);
   else if (c === 'Escape' && carry) cancelCarry();
@@ -597,6 +599,10 @@ let callT = 0, toastT = 0;
 function callout(t) { const el = $('edCall'); el.textContent = t; el.style.opacity = 1; clearTimeout(callT); callT = setTimeout(() => { el.style.opacity = 0; }, 700); }
 function toast(t) { const el = $('edToast'); el.textContent = t; el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => { el.style.opacity = 0; }, 1800); }
 
+// the how-to card: on the first open, and on H / the ? button
+function intro(on) { $('edIntro').classList.toggle('hidden', !on); if (on && document.pointerLockElement) document.exitPointerLock(); if (!on) { try { localStorage.setItem('jfEdIntro', '1'); } catch { /* fine */ } } }
+$('edIntroOk').onclick = () => intro(false); $('edHelpBtn').onclick = () => intro($('edIntro').classList.contains('hidden'));
+try { if (localStorage.getItem('jfEdIntro') !== '1') intro(true); } catch { intro(true); }
 const topBar = () => document.body.style.setProperty('--edtop', Math.round($('edTop').getBoundingClientRect().bottom + 10) + 'px');
 addEventListener('resize', topBar); topBar();
 setSnap(1);
