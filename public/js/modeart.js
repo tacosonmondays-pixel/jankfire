@@ -5,12 +5,13 @@ import * as THREE from 'three';
 import { buildWeapon, buildCharacter, M, freeTree } from './models.js';
 import { withEnv } from './glbkit.js';
 import { DEFAULT_LOOK } from '/shared/looks.js';
+import { buildMech } from './mechmodel.js'; // (Battle Island's picture: a mech)
 
 const COLORS = {
   dm: ['#ff4f6a', '#3a0a18'], tdm: ['#9a7dff', '#1a0a3a'], tags: ['#4fffb0', '#0a2a1e'], bomb: ['#ffb04f', '#2a1206'],
   rand: ['#ff4fd8', '#2a0624'], gun: ['#ffe14d', '#2a2006'], inf: ['#7dff4f', '#0e2406'], spoons: ['#4fd8ff', '#061e2a'],
   duckrain: ['#4fd8ff', '#0a1a3a'], lava: ['#ff5a1a', '#2a0800'], oitc: ['#e0a040', '#24160a'],
-  br: ['#4fd8ff', '#2a0636'], zm: ['#39ff14', '#0a1a06'],
+  br: ['#4fd8ff', '#2a0636'], zm: ['#39ff14', '#0a1a06'], isle: ['#ff4fd8', '#1a0a2a'], train: ['#ffe14d', '#2a2006'],
 };
 export function modeColors(g) { return COLORS[g] || ['#ff4fd8', '#2a0624']; }
 
@@ -51,7 +52,25 @@ function fit(o, size) { // scale a model so its biggest side is `size`, centred,
 const gun = (id, size, rx = 0, ry = 0, rz = 0) => { const g = buildWeapon(id); g.rotation.set(rx, ry, rz); return fit(g, size); };
 const dude = (color, look) => { const ch = buildCharacter(color, { ...DEFAULT_LOOK, ...look }); ch.arm.rotation.x = -0.1; ch.armL.rotation.x = -0.1; return fit(ch.root, 1.25); };
 const BUILD = {
-  // jank royale: someone drifting down under a pink umbrella. zombies: a green one, arms out, after the loaf
+  // battle island: a mech standing on a little island, a palm leaning over. training: a dummy on its stand, a target on
+  // its chest, a rifle propped against it
+  isle: () => {
+    const g = new THREE.Group(), m = buildMech('paperplane', '#ff4fd8');
+    for (const x of [m.trail, ...(m.flames || [])]) if (x && x.parent) x.parent.remove(x); // (the boost trail and flames would size the picture, not the mech)
+    const mf = fit(m.root, 2.3); mf.rotation.y = 0.55; mf.position.set(-0.25, -0.05, -0.35); g.add(mf); // (big: its wings go up past the frame, the body fills it)
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.03, 0.045, 0.75, 6), M(0x8a5a2b)); trunk.position.set(0.55, 0.37, -0.35); trunk.rotation.z = -0.3; g.add(trunk);
+    for (let i = 0; i < 6; i++) { const l = new THREE.Group(), f = box(0.32, 0.025, 0.09, 0x39b02a); f.position.x = 0.16; f.rotation.z = -0.45; l.add(f); l.position.set(0.66, 0.72, -0.35); l.rotation.y = (i / 6) * Math.PI * 2; g.add(l); }
+    return g;
+  },
+  train: () => {
+    const g = new THREE.Group(), d = dude('#d8c8a8', { skin: '#e6cba2' }); d.rotation.y = 0.45; g.add(d);
+    const post = box(0.07, 0.3, 0.07, 0x5a4030); post.position.set(0, 0.15, -0.12); g.add(post);
+    const tg = new THREE.Group(); tg.position.set(0.1, 0.78, 0.22); tg.rotation.y = 0.45;
+    [[0.19, 0xffffff], [0.14, 0xff3030], [0.09, 0xffffff], [0.04, 0xff3030]].forEach(([r, c], i) => { const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 16), M(c, true)); t.rotation.x = Math.PI / 2; t.position.z = i * 0.006; tg.add(t); });
+    g.add(tg);
+    const a = gun('ar', 0.95, 0, -1.2, 1.2); a.position.set(0.55, 0.05, 0.1); g.add(a);
+    return g;
+  },
   br: () => {
     const g = new THREE.Group(), d = dude('#ffe14d', {}); d.rotation.y = 0.5; d.rotation.z = 0.12; g.add(d);
     const um = new THREE.Group(), can = new THREE.Mesh(new THREE.ConeGeometry(0.66, 0.34, 8), M(0xff4fd8)); um.add(can);

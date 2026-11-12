@@ -1,4 +1,5 @@
 // JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
+import '/shared/mapedits/apply.js'; // the owner's shipped map edits (shared/mapedits): first, so every map module sees the edited maps
 import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
@@ -9,6 +10,7 @@ import { STREAK_LOOKS } from '/shared/cosmetics.js'; // killstreak looks in the 
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
+import { lockPointer, lookFilter } from './mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
@@ -63,6 +65,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
@@ -101,7 +104,8 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: mode cards on the home menu, each mode's lobby (docs/menu/HUB_LOBBY.md)
+import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -115,6 +119,7 @@ import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
 import { waterPhysics } from './liquids.js';
+import { kbLock } from './kblock.js'; // fullscreen: Ctrl+W & co go to the game, not the browser (crouch is Left Ctrl)
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -182,6 +187,7 @@ initWeapons();
 setLoadout(G.settings.loadout);
 hud.show(false);
 initPreview($('preview'));
+const homeLook = () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; };
 initHome({
   start: (mode, cfg) => startMode(mode, cfg),
   look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
@@ -199,7 +205,15 @@ if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it awa
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
-initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings() }); // the hub's mode cards + lobbies
+initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings(), look: () => homeLook(), toast: (t, ms) => toast(t, ms) }); // the hub: ONLINE / OFFLINE + the lobby
+// parties (party.js): the menu connection. the leader starting while you're mid-match: you're told, and if you quit to
+// the menu within 25 s (the ticket's good for 30) you go with them
+let partyPending = null;
+initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').trim().slice(0, 16), look: homeLook()[1], token: account.loggedIn ? account.token : undefined, gun: S.loadout.primary, mf: S.loadout.mech }),
+  start: (mode, cfg) => startMode(mode, cfg), joined: () => G.joined, toast: (t, ms) => toast(t, ms),
+  ask: (t, yes) => { partyPending = { yes, at: performance.now() }; toast(t + '. quit this match (menu > QUIT) within 25 s to go with them', 6000); } });
+$('name').addEventListener('change', () => partyRehello()); // (a new name: the party hears it)
+function partyFollow() { const p = partyPending; partyPending = null; if (p && performance.now() - p.at < 25000) setTimeout(p.yes, 300); }
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -253,7 +267,7 @@ function show(id) {
   if (id === 'leaders') { initLeaderTabs(renderLeaders); showLeaders(); } // OVERALL + one tab per mode (leadmodes.js)
   if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
-  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); }
+  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); partyMe(); if (partyPending && !G.joined) partyFollow(); }
   if (id === 'hubby') hubLobbyShown();
 }
 function hideMenu() {
@@ -360,12 +374,7 @@ function quitToMenu(silent) {
   $('status').textContent = '';
 }
 
-function lock() {
-  try {
-    const p = canvas.requestPointerLock({ unadjustedMovement: true });
-    if (p && p.catch) p.catch(() => { try { const q = canvas.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch { /* no lock */ } });
-  } catch { /* headless or denied */ }
-}
+function lock() { lockPointer(canvas); } // (mouselook.js: raw mouse when the browser has it)
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
@@ -376,10 +385,11 @@ function pause() {
   stopUse();
   stopLoops();
 }
-let wasLocked = false, lockedAt = 0, mouseAvg = 8;
+let wasLocked = false;
+const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jump events (the editor uses the same one)
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (locked) { mlook.locked(); esHideClick(); }
   if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
@@ -1271,11 +1281,7 @@ addEventListener('mousemove', (e) => {
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
   // drop any single event that is way bigger than how you've actually been moving the mouse.
-  const mag = Math.abs(mx) + Math.abs(my);
-  const now = performance.now();
-  if (now - lockedAt < 120) return; // first events after locking are often garbage
-  if (mag > 90 && mag > mouseAvg * 6) { mouseAvg = Math.max(mouseAvg, mag / 6) * 0.5 + mouseAvg * 0.5; return; }
-  mouseAvg = mouseAvg * 0.85 + mag * 0.15;
+  if (!mlook.take(mx, my)) return; // (the first ~120 ms after locking, and a single jump way bigger than your recent moves)
   ME.yaw -= mx * s;
   ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
 });
@@ -2045,6 +2051,7 @@ function frame(t) {
   if (dt <= 0) return;
   if (G.story) dt *= G.story.timeScale(); // the weapon wheel slows time (solo)
   const now = performance.now();
+  kbLock(inGame()); // playing: fullscreen key lock, "Leave site?" (kblock.js). let go on the menu, pause, chat
 
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)
@@ -2258,6 +2265,7 @@ function frame(t) {
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   updateMech(dt, now, cam, RP.active); // mech drop: the drops, waiting mechs, you in yours, the HUD
+  hudHideTick(now); // (after the rides update: hotbar out while piloting, back the moment you aren't)
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 

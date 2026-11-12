@@ -53,11 +53,19 @@ t('a quarter turn keeps boxes exact boxes (sizes swap, nothing grows)', () => {
   th.boxes.forEach((b, i) => assert.deepEqual(sz(b), [s0[i][2], s0[i][1], s0[i][0]]));
 });
 
-t('buildings move and turn but never scale', () => {
-  const def = MAPS2.suburb, idx = indexMap(def), th = idx.things.find((x) => x.kind === 'arch');
+t('buildings move and turn round their own walls (not the map centre) but never scale', () => {
+  const def = MAPS2.islands, idx = indexMap(def), th = idx.things.find((x) => x.kind === 'arch' && x.arch.id === 'fort');
   assert.ok(th && th.boxes.length > 4 && !canScale(th));
-  const p0 = [...th.arch.p], r0 = th.arch.r; xfThing(th, pivotOf(th), 2, 1, [3, 0, 0]);
-  assert.deepEqual(th.arch.p, [p0[0] + 3, p0[1], p0[2]]); assert.equal(th.arch.r, (r0 - 1) & 3);
+  const p0 = [...th.arch.p], r0 = th.arch.r, o = pivotOf(th), b0 = JSON.stringify(th.boxes.map((b) => [b.min, b.max]));
+  assert.ok(Math.hypot(o[0] - p0[0], o[2] - p0[2]) > 20, 'the fort sits far from its p: the pivot is its walls');
+  xfThing(th, o, 2, 1, [3, 0, 0]); xfThing(th, [o[0] + 3, o[1], o[2]], 1, 3, [-3, 0, 0]); // turn there and back
+  assert.deepEqual(th.arch.p.map((v) => +v.toFixed(3)), p0.map((v) => +v.toFixed(3))); assert.equal(th.arch.r, r0);
+  assert.equal(JSON.stringify(th.boxes.map((b) => [b.min.map((v) => +v.toFixed(3)), b.max.map((v) => +v.toFixed(3))])), JSON.stringify(JSON.parse(b0).map(([a, z]) => [a.map((v) => +v.toFixed(3)), z.map((v) => +v.toFixed(3))])), 'and the walls are back too (k ignored: same size)');
+});
+
+t('edit files that would crash the replay are refused', () => {
+  for (const it of [{ boxes: [] }, { boxes: [], prop: { id: 'car', a: [0, 0, 0] } }, { boxes: [{ min: [0, 0, 0], max: [1, 1, 1], mat: 'x', pad: 5 }] }, { boxes: [], arch: { id: 'home', p: [0, 0, 0] } }])
+    assert.equal(validEdits({ map: 'x', ops: [{ t: 'add', items: [it] }] }), false, JSON.stringify(it));
 });
 
 t('ops whose thing is gone (a remodelled map) come back as stale, the rest still apply', () => {

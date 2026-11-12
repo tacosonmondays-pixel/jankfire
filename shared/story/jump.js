@@ -16,7 +16,6 @@ import { openTalk } from './dialogue.js';
 import { travelTo, DEFAULT_WORLD } from './worlds.js';
 import { TRAIN } from './train.js';
 import { PLACES } from '../city/slice.js';
-import { IMPLANTS } from './implants.js';
 import * as overdue from './content/overdue.js';
 
 // where each jump lands: the main quest and the step you arrive on, and where you stand
@@ -37,7 +36,7 @@ function content() { // (boot.js merge: the script as one engine pack)
 const GOALEV = { reach: 'reach', leave: 'leave', talk: 'talk', kill: 'kill', killBoss: 'killBoss', pickup: 'pickup', interact: 'interact', photo: 'photo', escort: 'reach', loseFees: 'loseFees', enterCar: 'enterCar', use: 'use', scene: 'sceneEnd', deliver: 'talk' };
 
 export function jump(id, { slot = JUMP_SLOT, loadout = {}, max = 400 } = {}) {
-  const J = JUMPS[id];
+  const J = typeof id === 'object' && id ? { at: { map: DEFAULT_WORLD, p: [0, 0.1, 6], yaw: 0 }, ...id } : JUMPS[id]; // (an object: any { quest, step } to play up to: tests)
   if (!J) throw new Error(`no jump ${id}`);
   const log = [];
   const sim = createSim({ send: () => {}, save: newSave(slot, DEFAULT_WORLD) });
@@ -53,7 +52,7 @@ export function jump(id, { slot = JUMP_SLOT, loadout = {}, max = 400 } = {}) {
         case 'give': sty('qgive', { b: String(a.item ? (a.item.id || a.item.roll || 'item') : arg), n: 1 }); break;
         case 'take': sty('qtake', { b: arg, n: 1 }); break;
         case 'coupons': { const n = Number(arg) || 0; sty('qcoupons', { n }); S.st.vars.coupons = (S.st.vars.coupons || 0) + n; break; }
-        case 'implant': sty('qgive', { b: arg, n: 1 }); break;
+        case 'implant': sty('qimplant', { b: arg }); break;
         case 'fees': S.st.vars.fees = Math.max(0, (S.st.vars.fees || 0) + (Number(arg) || 0)); break;
         case 'scene': scenes.push(arg); break;
         case 'talk': { const [n, node] = arg.split('/'); if (S.defs.npcs[n]) talks.push([n, node || 'start']); break; }
@@ -102,12 +101,7 @@ export function jump(id, { slot = JUMP_SLOT, loadout = {}, max = 400 } = {}) {
     if (i === max - 1) throw new Error(`jump ${id}: still not there after ${max} goals (at ${o.quest}.${o.step})`);
   }
   talks.length = scenes.length = 0;
-  // the bits a player would have by now that only play gives: the implants you were handed, put in at the meat
-  // mechanic's chair (the real clinic message, one per free slot), some HYPE banked, standing where the jump lands
-  if (S.st.flags.implants_unlocked) {
-    sim.me.pos = sim.world.clinic.p.slice();
-    for (const it of sim.inv.bag.slice()) if (it && Object.hasOwn(IMPLANTS, it.b) && !sim.body.slots[IMPLANTS[it.b].slot]) { sty('clinic', { op: 'install', u: it.u }); log.push(`installed ${it.b}`); }
-  }
+  // the bits a player would have by now that only play gives: some HYPE banked, standing where the jump lands
   // the bits a player would have by now that only play gives: some HYPE banked, standing where the jump lands
   sim.hype = Math.max(sim.hype || 0, J.hype || 0);
   sim.me.pos = J.at.p.slice(); sim.me.yaw = J.at.yaw;
