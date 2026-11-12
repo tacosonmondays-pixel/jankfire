@@ -136,6 +136,35 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
 | nightshift | `shield_block` | 0.40 | hold last frame | shield up in front, braced (held) |
 | nightshift | `shield_bash` | 0.55 | once | shoves the shield forward (hit at 0.22 s) |
 | nightshift | `ground_slam` | 1.50 | once | big overhead slam (impact at 0.56 s: shockwave + dust ring), a held beat, recover |
+| both | `drop_fall` | 0.50 / 0.62 | loop | the MECH DROP fall until it lands (knees up, arms up, a flutter) |
+| both | `hero_intro` | 1.75 / 2.12 | hold last frame | the MECH DROP landing, starting AT the impact: superhero landing (knee and fist down), a beat looking up, a gather, then the signature pose, held. PAPER PLANE: wings out, pods up, hand on hip, cannon low. NIGHT SHIFT: sword overhead, then driven into the floor |
+
+- **Weight:** the hits snap in (a cubic ease-in into the impact key: the wind-up hangs, the hit lands, then it eases
+  out into the follow-through). Every other key keeps Blender's smooth in / out.
+- **Events:** `meta.clips[].events` = `[{ t, fx, at, shake?, ground? }]`: at `t` s into the clip, play `fx` at the node
+  `at` (a joint or a marker; `ground` = on the floor under it) and shake the camera by `shake` (0..1) if it is near.
+  `fx`: `dust`, `step`, `slam`, `spark`, `glint`, `burst`, `vent`, `flare`, `pop`. The hero kit plays them.
+
+## Hero kit (`public/js/mechlook.js`; the owner: "higher quality than the base game, same with the mechs")
+For any mech glb that comes through `buildMech` (no frame names in it, so new heroes get it free):
+- **Rim light:** a hard fresnel edge (white, a hint of the mech's colour) added to the emissive of every lit material,
+  on top of the game's vertex snap. Weaker on Potato.
+- **Ink:** one smooth outline hull per joint (inverted hull, thicker far away), built once per model and shared.
+  Off on Potato. About 20 extra draw calls per mech.
+- **Glows:** the emissive materials (eyes, visors, nozzles, the PLEASE HOLD screen) burn hotter with the thrust and
+  flare on a `flare` event; NIGHT SHIFT's blade (`*_blade`) heats up mid-swing. They bloom where bloom is on.
+- **Thrusters:** a contrail (a camera-facing ribbon) behind each `mk_thrust_*` while it burns and moves, and a heat
+  shimmer behind each flame.
+- **Events:** the clip events above; `mechLook.onEvent = (inst, ev, pos) => {}` is the hook for sounds.
+- **Stickers and spray slots** (`tools/blender/mechs/herokit.py`, baked in the file): a unit number (`07`, `24/7`),
+  NO STEP, CAUTION HOT, JANK COLA, POWERED BY BREAD, WASH ME, HOW IS MY PILOTING?, a serial, on the biggest flat plates
+  facing the right way (one shared atlas, `*_decalmat`). Two spray / skin slots, picked first so stickers keep off
+  them: `meta.decal_slots` `[{ name: 'spray_0', joint, at, dir, up, size }]` (rest pose, game space) plus an
+  `mk_spray_<n>` marker each. `sprayOnMech(inst, slot, texture)` projects a texture there; it rides the joint.
+- **Game hooks:** `buildMech` / `poseMech` / `setMechColor` / `freeMech` call it; a falling drop (`s.falling`) plays
+  `drop_fall`, a fresh landing (`s.intro`) plays `hero_intro`, the landing shot keeps the camera shake.
+- **Film it:** `node tools/blender/mechs/mech_drop.cjs <port> <outDir> [frame] [preset] [video]` plays a MECH DROP in
+  Training (the client side only) and saves the stills and an mp4.
 
 ## Hitboxes (server boxes, not in the files)
 - PAPER PLANE: about 1.6 x 4.9 x 1.4 m (wings excluded).
