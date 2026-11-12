@@ -134,15 +134,15 @@ def build_deadair():
         x, z = leg_xz(k)
         for b in range(BANDS):  # each leg in seven pieces (one per band: its own colour)
             y0 = M0 + b * (top - M0) / BANDS; y1 = M0 + (b + 1) * (top - M0) / BANDS
-            P.append(rodk((x, y0, z), (x, y1, z), 0.055, M, A, band_key((y0 + y1) / 2), 'da_leg', seg=6))
+            P.append(rodk((x, y0, z), (x, y1, z), 0.085, M, A, band_key((y0 + y1) / 2), 'da_leg', seg=6))
     for i, y in enumerate(lv):
         for k in range(3):
             a = leg_xz(k); b = leg_xz((k + 1) % 3)
-            P.append(rodk((a[0], y, a[1]), (b[0], y, b[1]), 0.024, M, A, band_key(y), 'da_h'))
+            P.append(rodk((a[0], y, a[1]), (b[0], y, b[1]), 0.04, M, A, band_key(y), 'da_h'))
             if i + 1 < len(lv):
                 y1 = lv[i + 1]
                 p0, p1 = (a, b) if i % 2 == 0 else (b, a)
-                P.append(rodk((p0[0], y, p0[1]), (p1[0], y1, p1[1]), 0.02, M, A, band_key((y + y1) / 2), 'da_d'))
+                P.append(rodk((p0[0], y, p0[1]), (p1[0], y1, p1[1]), 0.032, M, A, band_key((y + y1) / 2), 'da_d'))
     # the ladder up the north face (between legs 1 and 2: the face toward -z), the coax up leg 0
     a, b = leg_xz(1), leg_xz(2)
     fx, fz = (a[0] + b[0]) / 2, (a[1] + b[1]) / 2
@@ -260,17 +260,17 @@ def build_deadair():
         x, z = leg_xz(k)
         for b in range(BANDS):
             y0 = M0 + b * (top - M0) / BANDS; y1 = y0 + (top - M0) / BANDS
-            Q.append(boxk((0.16, y1 - y0, 0.16), (x, (y0 + y1) / 2, z), M, A, band_key((y0 + y1) / 2), 'da1_leg'))
+            Q.append(boxk((0.28, y1 - y0, 0.28), (x, (y0 + y1) / 2, z), M, A, band_key((y0 + y1) / 2), 'da1_leg'))  # (fat: far away it's the island's landmark)
     for b in range(BANDS + 1):
         y = M0 + b * (top - M0) / BANDS
         for k in range(3):
             a, c = leg_xz(k), leg_xz((k + 1) % 3)
-            Q.append(rodk((a[0], y, a[1]), (c[0], y, c[1]), 0.06, M, A, band_key(min(y, top - 1)), 'da1_h', seg=3))
+            Q.append(rodk((a[0], y, a[1]), (c[0], y, c[1]), 0.1, M, A, band_key(min(y, top - 1)), 'da1_h', seg=3))
     Q.append(boxk((2 * DA['plinth'], 1.6, 2 * DA['plinth']), (0, 0.8, 0), M, A, 'concrete', 'da1_pier'))  # (its top inside the insulator)
     Q.append(boxk((2 * W, 0.3, 2 * W), (0, D0 + 0.15, 0), M, A, 'galv', 'da1_deck'))
     Q.append(boxk((ws, H, ds), (cxs, H / 2, czs), M, A, 'white', 'da1_shack'))
     Q.append(boxk((2 * RC + 0.2, 0.2, 2 * RC + 0.2), (0, top + 0.1, 0), M, A, 'galv', 'da1_cap'))
-    o = ball(0.4, (0, top + 0.5, 0), GL, seg=6, rings=4, name='da1_beacon'); uv_fit(o, A, 'white'); Q.append(o)
+    o = ball(0.6, (0, top + 0.7, 0), GL, seg=6, rings=4, name='da1_beacon'); uv_fit(o, A, 'white'); Q.append(o)
     Q.append(boxk((0.6, M0 - 1.5, 0.6), (0, 1.5 + (M0 - 1.5) / 2, 0), M, A, 'porcelain', 'da1_ins'))  # (the insulator: pier to legs)
     Q.append(boxk((0.6, 0.1, -RC - DA['shack'][3] + 0.2), (DA['shack'][2] - 0.4, 2.55, (DA['shack'][3] - RC) / 2), M, A, 'galv', 'da1_bridge'))
     for a in DA['anchors']:
@@ -283,7 +283,7 @@ def build_deadair():
         ax, az = math.cos(math.radians(a)) * DA['anchorR'], math.sin(math.radians(a)) * DA['anchorR']
         xs += [ax - DA['anchorW'], ax + DA['anchorW']]; zs += [az - DA['anchorW'], az + DA['anchorW']]
     lo, hi = (min(xs), 0.0, min(zs)), (max(xs), float(top), max(zs))
-    return dict(lod0=P, lod1=Q, box=(lo, hi), ao=0.9, lod=260, meta={'kind': 'prop'},
+    return dict(lod0=P, lod1=Q, box=(lo, hi), ao=0.9, lod=90, meta={'kind': 'prop'},
                 focus=[((0, 2.0, 0), (0.7, 0.3, 1.0), 6.0), ((0, 60, 0), (0.6, 0.1, 1.0), 9.0), ((-1.7, 2.0, -9.9), (0.2, 0.3, 1.0), 9.0), ((0, 50.5, 0), (1, 0.6, 1), 7.0)])
 
 
