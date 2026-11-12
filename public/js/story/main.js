@@ -242,6 +242,11 @@ function tick(dt = 1 / 60) {
   hint.classList.toggle('hidden', !(car || near || drop || lock || doc) || clinicOpen());
   const inStory = G.joined && G.mode === 'story';
   barShow(inStory);
+  // owner: "when youre in a mech or other killstreak... it should hide your standard inventory". on the train the Blood
+  // Drive has your hands, in a car the wheel does: only their own HUD shows (story.css). takeover streaks: their body class
+  const tr = window.JF_TRAIN;
+  document.body.classList.toggle('st-hands', inStory && !!(tr && tr.on));
+  document.body.classList.toggle('st-car', inStory && driving());
   if (inStory) { barTick(dt); bodyTick(dt, G.camera); standIns(); driveTick(dt, G.camera); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); clearCars(); }
   const use = on && K.isDown('use');
   if (near && use && !useWas) terminal();
