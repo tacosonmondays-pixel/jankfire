@@ -3724,6 +3724,13 @@ function chopper(B, D, x, y, z, livery = 'toyyellow') {
   D.add(x - 8.5, y + 2.6, z + 0.1, x - 8.3, y + 2.68, z + 1.2, 'tire'); D.add(x - 8.5, y + 2.6, z - 1.2, x - 8.3, y + 2.68, z - 0.1, 'tire');
 }
 
+// the Spire (tools/blender/arch/make_spire.py): the hub tower, its deck's parapet, the glass shaft and the mast drawn as
+// one Blender model over their boxes (look only: the boxes stay for physics, bots and hits). ranges: [from, to) in B, dr in D
+function spireArch(B, D, id, x, z, y, ranges, dr) {
+  B.boxes.arch.push({ id, p: [x, y, z], r: 0 }); const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (const [a, b] of ranges) for (let i = a; i < b; i++) Object.assign(B.boxes[i], tag);
+  for (let i = dr[0]; i < dr[1]; i++) Object.assign(D.boxes[i], tag);
+}
 // the skyline's set pieces, one per top (x, z: the top's middle, y: its roof)
 // Jank Cola HQ: the giant can, vending machines, crates of bottles, the billboard
 function skyCola(B, D, x, z, y, r) {
@@ -3824,6 +3831,7 @@ function skyline() {
   const B = builder(), D = builder(), r = rng(1337), add = B.add, W = B.local(0, 0, 0), Dw = D.local(0, 0, 0);
   const base = -120, S = 72, R = 40, pick = (a) => a[(r() * a.length) | 0];
   const hi = 52, lo = 30;
+  let spireC = null;
   // ---- the nine tops (half sizes): the Spire 13 x 13, the ring 15 x 13 (north/south) / 13 x 15 (east/west), the corners 14 x 14
   const tops = { C: [0, 0, 13, 13, R], N: [0, -S, 15, 13, R], S: [0, S, 15, 13, R], W: [-S, 0, 13, 15, R], E: [S, 0, 13, 15, R],
     NW: [-S, -S, 14, 14, lo], SE: [S, S, 14, 14, lo], NE: [S, -S, 14, 14, hi], SW: [-S, S, 14, 14, hi] };
@@ -3835,6 +3843,7 @@ function skyline() {
     const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
     if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
+    if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
@@ -3847,9 +3856,10 @@ function skyline() {
   }
 
   // ---- C, the Spire: the hub deck round its glass shaft (five floors of windows, stairs inside, a sniper's nest on top)
-  const Sp = B.local(0, 0, 0, R);
+  const Sp = B.local(0, 0, 0, R), sp0 = B.boxes.length, sd0 = D.boxes.length;
   shell(Sp, 12, 12, 5, 4.4, 'glassblock', { floor: 'grid', roof: 'roofg', roofAccess: true, backDoor: true, sideDoor: [-1.5, 1.5], winSpacing: 3 });
   B.box(0, R + 22.3 + 9, 0, 0.6, 18, 0.6, 'metal'); D.box(0, R + 22.3 + 18.3, 0, 0.6, 0.6, 0.6, 'neonred'); D.box(0, R + 22.3 + 12, 0, 1.2, 0.3, 1.2, 'neonpink'); // the mast on the nest
+  spireArch(B, D, 'spire', 0, 0, R, [spireC, [sp0, B.boxes.length]], [sd0, D.boxes.length]);
   for (const [x, z] of [[-9, -9], [9, -9], [-9, 9], [9, 9]]) { add(x - 1.2, R, z - 1.2, x + 1.2, R + 0.8, z + 1.2, 'stone'); D.add(x - 1.0, R + 0.8, z - 1.0, x + 1.0, R + 1.6, z + 1.0, 'hedge'); } // planters at the deck's corners
   for (const [x, z, al] of [[-9.5, -4, false], [9.5, 4, false], [-4, 9.5, true]]) add(al ? x - 1.5 : x - 0.3, R, al ? z - 0.3 : z - 1.5, al ? x + 1.5 : x + 0.3, R + 0.5, al ? z + 0.3 : z + 1.5, 'wood'); // benches
   for (const [px, pz, v] of [[0, -4.5, [0, 14, -30]], [0, 4.5, [0, 14, 30]], [-4.5, -3, [-30, 14, 0]], [4.5, 0, [30, 14, 0]]]) add(px - 1, R + 22.3, pz - 1, px + 1, R + 23.2, pz + 1, 'pad', { pad: v }); // off the nest, out to the ring (on pedestals over the parapet's top: hop up, get flung)
@@ -3924,8 +3934,11 @@ function skylineSD() {
     W: { n: [[-58, -54], [-42, -38]], e: [[-26, -22]], s: [[-50, -46]] }, E: { n: [[38, 42], [54, 58]], w: [[-26, -22]], s: [[46, 50]] },
     SW: { n: [[-50, -46]], e: [[16, 20]] }, SE: { n: [[46, 50]], w: [[16, 20]] } };
   const facade = { N: 'office', C: 'glassblock', S: 'tenement', B: 'tenement', A: 'office', W: 'office', E: 'tenement', SW: 'office', SE: 'tenement' };
+  let spireC = null;
   for (const [k, [x, z, hx, hz, y]] of Object.entries(tops)) {
+    const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
+    if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's hub tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'SW' || k === 'E' ? 'lawn' : 'asphalt');
   }
   // ---- the links
@@ -3940,8 +3953,10 @@ function skylineSD() {
   // privacy walls on the spawn towers' edges over mid (open at the stairs)
   for (const [x0, x1] of [[-14.4, -2], [2, 14.4]]) { add(x0, 41, 9.6, x1, 43.2, 10, 'glassblock'); D.add(x0, 43.2, 9.54, x1, 43.35, 10.06, 'neonpink'); add(x0, 41, -50, x1, 43.2, -49.6, 'glassblock'); D.add(x0, 43.2, -50.06, x1, 43.35, -49.54, 'neoncyan'); }
   // ---- mid: the Spire's hub deck, its shaft (four floors, stairs inside, a roof to snipe from), planters, benches, AC
+  const sp0 = B.boxes.length, sd0 = D.boxes.length;
   shell(B.local(0, -19, 0, Cy), 12, 12, 4, 4.4, 'glassblock', { floor: 'grid', roof: 'roofg', roofAccess: true, backDoor: true, sideDoor: [-1.5, 1.5], winSpacing: 3 });
   B.box(0, Cy + 17.9 + 7, -19, 0.6, 14, 0.6, 'metal'); D.box(0, Cy + 17.9 + 14.3, -19, 0.6, 0.6, 0.6, 'neonred');
+  spireArch(B, D, 'spire_sd', 0, -19, Cy, [spireC, [sp0, B.boxes.length]], [sd0, D.boxes.length]);
   for (const [x, z] of [[-9, -36], [9, -36], [-9, -2], [9, -2]]) { add(x - 1.2, Cy, z - 1.2, x + 1.2, Cy + 0.8, z + 1.2, 'stone'); D.add(x - 1.0, Cy + 0.8, z - 1.0, x + 1.0, Cy + 1.6, z + 1.0, 'hedge'); }
   for (const [x, z] of [[-10, -30], [10, -8]]) add(x - 0.3, Cy, z - 1.5, x + 0.3, Cy + 0.5, z + 1.5, 'wood');
   acUnit(W, -10, -10, Cy); acUnit(W, 10, -30, Cy); B.box(-4, Cy + 0.6, -33, 1.2, 1.2, 1.2, 'crate'); B.box(5, Cy + 0.6, -4, 1.2, 1.2, 1.2, 'crate');
