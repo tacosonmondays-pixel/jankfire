@@ -6,7 +6,7 @@ import path from 'path';
 import { pathToFileURL } from 'url';
 const dir = path.resolve(process.argv[2] || '.');
 const { MAPS } = await import(pathToFileURL(path.join(dir, 'shared/map.js')).href);
-const LOOK = new Set(['av', 'ai', 'arch', 'props', 'deco']); // look-only: Blender tags and lists, render-only boxes
+const LOOK = new Set(['av', 'ai', 'pv', 'arch', 'props', 'deco']); // look-only: Blender tags (arch av/ai, props pv) and lists, render-only boxes
 const clean = (k, v) => (LOOK.has(k) || typeof v === 'function' ? undefined : v);
 const h = (o) => createHash('sha1').update(JSON.stringify(o, clean) || '').digest('hex').slice(0, 12);
 for (const id of Object.keys(MAPS).sort()) {

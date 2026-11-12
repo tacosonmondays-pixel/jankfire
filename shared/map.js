@@ -724,7 +724,7 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
 }
 // a pedestal crane at (x, z): the yellow pedestal (9 m), the slewing deck and cab, the boom along +x (alongX) or +z out to
 // len, at the height of the cab's roof (walkable: grapple up and stroll out on it), a hook on its end
-function pedCrane(B, D, x, z, alongX, len, o = {}) {
+function pedCrane(B, D, x, z, alongX, len, o = {}) { propOf(o.rest ? 'crane' : 'crane_short', [x, 0, z], alongX ? 0 : -Math.PI / 2, () => { // (a Blender prop each: tools/blender/make_crane.py, look-only)
   const y = 9;
   B.add(x - 1.3, 0, z - 1.3, x + 1.3, y, z + 1.3, 'rigyellow');
   for (let k = 1; k < 9; k++) D.add(x + 1.3, k, z - 0.3, x + 1.36, k + 0.06, z + 0.3, 'rigsteel'); // the ladder's rungs
@@ -735,7 +735,7 @@ function pedCrane(B, D, x, z, alongX, len, o = {}) {
   P(a + 0.4, y + 1.4, c - 0.7, a + len, y + 2.6, c + 0.7, 'truss'); // the boom
   Q(a + len - 0.06, y - 2.5, c - 0.03, a + len - 0.0, y + 1.4, c + 0.03, 'tire'); Q(a + len - 0.4, y - 3.4, c - 0.35, a + len + 0.3, y - 2.5, c + 0.35, 'rigred'); // the hook
   if (o.rest) B.add(o.rest[0] - 0.4, o.rest[1], o.rest[2] - 0.4, o.rest[0] + 0.4, y + 1.4, o.rest[2] + 0.4, 'rigyellow'); // its rest
-}
+}); }
 // a christmas tree (the wellhead's valve stack, real name) dressed for christmas: valve blocks, wing valves, handwheels,
 // baubles, tinsel, a star on top. on a deck at y
 function xmasTree(B, D, x, z, y, r) {
