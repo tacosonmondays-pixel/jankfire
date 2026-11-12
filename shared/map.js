@@ -2123,8 +2123,10 @@ function warehouse() {
   cratePile(B, -68, -50, 6, r); pallets(B, -46, -24, 5, r); pallets(B, 50, -24, 6, r); pallets(B, 51.4, -24, 4, r); cratePile(B, 66, -38, 5, r); barrier(B, -64, -34, false); barrier(B, 70, -24, true);
   forklift(B, -18, -24, 0, 1.2); forklift(B, 35, -52, 2);
   barrier(B, -48, -36, true); barrier(B, 2, -40, false); barrier(B, 36, -36, true);
+  const cr = [B.boxes.length, D.boxes.length]; // (the gantry crane is a Blender model: wh_crane)
   for (const x of [-30, 30]) box(x, 5, -36, 0.9, 10, 0.9, 'toyorange');
   D.add(-30.5, 10, -36.5, 30.5, 11, -35.5, 'toyorange'); D.add(-3, 8.6, -36.7, 0, 10, -35.3, 'hazard'); D.add(-1.6, 4.2, -36.05, -1.4, 8.6, -35.95, 'tire'); D.add(-2.4, 3.4, -36.7, -0.6, 4.2, -35.3, 'metal');
+  B.archSince(cr[0], 'wh_crane', 0, -36); for (let i = cr[1]; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: 'wh_crane', ai: B.boxes.arch.length - 1 });
 
   // ---- south: the truck dock. two semis backed up beside the dock doors, a row of trailers further out
   semiS(-16, HZ + 1.5, 0, 'adtruck', true); semiS(16, HZ + 1.5, 0, 'adtruck2', true);
@@ -2306,8 +2308,10 @@ function warehouseSD() {
   container(B, 54.75, -33, true, 1, ['containerg'], 6);
   cratePile(B, 32, -33, 6, r); pallets(B, 36, -51, 4, r); pallets(B, 37.4, -51, 6, r); forklift(B, 55, -49, 1, 1.2);
   barrier(B, 46, -28.5, false); palletLoad(B, 36, -46); palletLoad(B, 51, -38, 1);
+  const cr = [B.boxes.length, D.boxes.length]; // (the gantry crane is a Blender model: wh_crane_sd)
   for (const x of [31.5, 57.5]) box(x, 5, -55.5, 0.9, 10, 0.9, 'toyorange'); // a gantry crane over the dock
   D.add(31, 10, -56, 58, 11, -55, 'toyorange'); D.add(43, 8.6, -56.2, 46, 10, -54.8, 'hazard'); D.add(44.4, 4.2, -55.55, 44.6, 8.6, -55.45, 'tire'); D.add(43.6, 3.4, -56.2, 45.4, 4.2, -54.8, 'metal');
+  B.archSince(cr[0], 'wh_crane_sd', 44.5, -55.5); for (let i = cr[1]; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: 'wh_crane_sd', ai: B.boxes.arch.length - 1 });
   siteBoard(D, 45, 4.6, -57.85, 'x', 'sitea', 5); siteBoard(D, 51, 0.6, -24.38, 'x', 'sitea', 2.6);
 
   // ---- the courtyard: the defenders' side, between the hall's east door and both sites
