@@ -57,3 +57,47 @@ body.ed { --pink: #ff4fd8; --yel: #ffe14d; --cyan: #4fd8ff; --green: #39ff14; --
 #edBotList div.undone { opacity: 0.55; }
 #edBotList em { color: var(--cyan); font-style: normal; }
 .edBad { color: var(--red); } .edOk { color: var(--green); }
+
+/* the creative menu (E): big, in the middle */
+#edPal { left: 50%; top: 50%; bottom: auto; width: min(1000px, 94vw); height: min(640px, 78vh); transform: translate(-50%, -54%) rotate(-0.4deg); padding: 12px 16px; z-index: 5; }
+.edPalHead { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.edPalHead .edLogo { font-size: 24px; }
+#edPal #edPalQ { flex: 1; min-width: 160px; margin: 0; }
+#edPal .edSolid { margin: 0; }
+#edPal .edTabs { flex-wrap: wrap; margin: 8px 0 4px; }
+#edPal .edTabs button { flex: 0 1 auto; padding: 4px 10px; }
+#edPalGrid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); }
+.edp button.edTile { cursor: grab; }
+.edTile img { width: 84px; height: 84px; }
+body.edMenu #edX, body.edMenu #edSel { display: none; }
+/* the hotbar: 1-9 along the bottom */
+#edHot { position: fixed; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; gap: 6px; z-index: 6; }
+.edSlot { position: relative; width: 68px; height: 74px; background: rgba(18, 8, 24, 0.92); border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink); display: flex; flex-direction: column; align-items: center; cursor: pointer; color: #fff; font: 700 10px/1.05 var(--font); text-align: center; overflow: hidden; }
+.edSlot b { position: absolute; left: 3px; top: 1px; font-size: 13px; color: var(--yel); text-shadow: 2px 2px 0 #000; }
+.edSlot img { width: 50px; height: 50px; object-fit: contain; margin-top: 3px; }
+.edSlot span { padding: 0 2px; word-break: break-word; }
+.edSlot.on { border-color: var(--yel); box-shadow: 4px 4px 0 var(--cyan); transform: translateY(-6px) rotate(-1.5deg); background: #3a1850; }
+.edSlot.empty img { visibility: hidden; }
+.edSlot.empty span { color: #888; margin-top: -26px; }
+.edSlot.drop, body.edDragging .edSlot:nth-child(2), body.edDragging .edSlot:nth-child(n+5) { border-color: var(--green); }
+.edSlot.drop { transform: translateY(-8px) scale(1.06); }
+/* the help, now up top (the hotbar has the bottom) */
+#edHelp { bottom: auto; top: var(--edtop, 76px); left: 12px; pointer-events: none; font-size: 12px; max-width: min(560px, 60vw); }
+#edHelp em { display: none; font-style: normal; color: #fff; }
+body[data-tool="grab"] #edHelp .t-grab, body[data-tool="plop"] #edHelp .t-plop, body[data-tool="yeet"] #edHelp .t-yeet, body[data-tool="wand"] #edHelp .t-wand { display: inline; }
+body[data-tool="grab"] #edX::before, body[data-tool="grab"] #edX::after { background: var(--cyan); }
+body[data-tool="plop"] #edX::before, body[data-tool="plop"] #edX::after { background: var(--yel); }
+body[data-tool="yeet"] #edX::before, body[data-tool="yeet"] #edX::after { background: var(--red); }
+#edToast { bottom: 100px; }
+/* panels sit under the top bar whatever its height (it wraps to two rows on a narrow window) */
+#edSel, #edList, #edBots { top: calc(var(--edtop, 76px) + 16px); }
+/* the first-open card (H brings it back) */
+#edIntro { left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(-0.8deg); width: min(620px, 92vw); padding: 16px 20px; z-index: 8; font-size: 15px; }
+#edIntro p { margin: 6px 0 8px; color: #ddd; }
+#edIntro ol { margin: 0 0 12px; padding-left: 22px; line-height: 1.45; }
+#edIntro li b { color: var(--yel); }
+#edIntro i { color: var(--cyan); font-style: normal; }
+#edIntroOk { font-size: 18px; padding: 6px 22px; }
+#edTop { gap: 6px; padding: 7px 10px; }
+#edTop button { padding: 4px 8px; font-size: 13px; }
+#edTop .edLogo { font-size: 20px; }
