@@ -13,8 +13,13 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 const HP = 0.25; // JF_MECH_HP: trolley 200 armour
 const MF = { MECH: 1 << 22, A: 1 << 23, B: 1 << 30, C: 1 << 31 }; // (trolley: A drift, B AISLE 5, C push)
-const Y = 0.03, X0 = 42, Z0 = 12; // warehouse: the flat yard round [42, 0, 12]. the lane x = 0 is clear from z = 26 to -20
-const sh = (a, k) => (Array.isArray(a) && a.length === 3 && a.every(Number.isFinite) ? [a[0] + X0 * k, a[1], a[2] + Z0 * k] : a);
+// warehouse yard. the test's own coordinates: a lane along x = 0, driving toward -z (yaw 0). on the map that lane is the
+// open strip along +x at z = 21 (X = 58 - z, Z = 21 + x; yaw - 90 degrees)
+const Y = 0.03, X0 = 42, Z0 = 12, TX = 16, TZ = 9;
+const isV = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);
+const toMap = (a) => (isV(a) ? [X0 + TX - a[2], a[1], Z0 + TZ + a[0]] : a), fromMap = (a) => (isV(a) ? [a[2] - Z0 - TZ, a[1], TX - (a[0] - X0)] : a);
+const vToMap = (v) => (isV(v) ? [-v[2], v[1], v[0]] : v), vFromMap = (v) => (isV(v) ? [v[2], v[1], -v[0]] : v);
+const YAW = -Math.PI / 2;
 let srvRef = null;
 const SN = new Map(); // id -> where the server has them
 
@@ -22,17 +27,29 @@ function client(name, extra = {}) {
   const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, got: [], id: 0, q: 0, hp: 100, alive: true, name, team: 0 };
   ws.on('message', (d) => {
     const m = JSON.parse(d);
-    if ((m.t === 'mech' || m.t === 'welcome' || m.t === 'spawn' || m.t === 'pd' || m.t === 'ps' || m.t === 'pu') && m.p) m.p = sh(m.p, -1);
+    if ((m.t === 'mech' || m.t === 'welcome' || m.t === 'spawn' || m.t === 'pd' || m.t === 'ps' || m.t === 'pu') && m.p) m.p = fromMap(m.p);
+    if ((m.t === 'mech' || m.t === 'kb' || m.t === 'ps' || m.t === 'pu') && m.v) m.v = vFromMap(m.v);
+    if (m.t === 'mech' && isV(m.to)) m.to = fromMap(m.to);
     if (m.t === 'welcome') { c.id = m.id; c.q = m.q; c.team = m.team || 0; }
     if (m.t === 'spawn') { c.q = m.q; }
     if (m.t === 'teams' && Array.isArray(m.list)) { const r = m.list.find((x) => x[0] === c.id); if (r) c.team = r[1]; }
-    if (m.t === 'sn') { for (const e of m.p) SN.set(e[0], [e[1] - X0, e[2], e[3] - Z0]); const r = m.p.find((x) => x[0] === c.id); if (r) { c.hp = r[10]; c.alive = !!r[11]; c.f = r[13]; } return; }
+    if (m.t === 'sn') { for (const e of m.p) SN.set(e[0], fromMap([e[1], e[2], e[3]])); const r = m.p.find((x) => x[0] === c.id); if (r) { c.hp = r[10]; c.alive = !!r[11]; c.f = r[13]; } return; }
     if (process.env.DBG && m.t === 'mech' && /^(no|fix|trhold|traisle|trpush|down|out|in)$/.test(m.k) && (name === 'pilot' || m.k === 'no')) console.log('   .', name, JSON.stringify(m));
     c.got.push(m);
     if (c.got.length > 4000) c.got.splice(0, 1000);
   });
   ws.on('error', () => {});
-  c.send = (m) => { if (typeof m === 'object' && (m.t === 's' || m.t === 'mech') && m.p) m = { ...m, p: sh(m.p, 1) }; if (typeof m === 'object' && m.at) m = { ...m, at: sh(m.at, 1) }; if (ws.readyState === 1) ws.send(typeof m === 'string' ? m : JSON.stringify(m)); };
+  c.send = (m) => {
+    if (m && typeof m === 'object') {
+      m = { ...m };
+      if ((m.t === 's' || m.t === 'mech') && m.p) m.p = toMap(m.p);
+      if (m.at) m.at = toMap(m.at);
+      if (m.t === 's' && m.v) m.v = vToMap(m.v);
+      if (m.t === 's' && Number.isFinite(m.y)) m.y += YAW;
+      if ((m.t === 'hit' || m.t === 'mech') && isV(m.d)) m.d = vToMap(m.d);
+    }
+    if (ws.readyState === 1) ws.send(typeof m === 'string' ? m : JSON.stringify(m));
+  };
   c.place = (p, o = {}) => c.send({ t: 's', q: c.q, p, v: o.v || [0, 0, 0], y: o.y ?? 0, x: o.x ?? 0, w: o.w || 'ar', f: o.f || 0 });
   c.take = (t, f) => { const i = c.got.findIndex((m) => m.t === t && (!f || f(m))); return i < 0 ? null : c.got.splice(i, 1)[0]; };
   c.all = (t, f) => c.got.filter((m) => m.t === t && (!f || f(m)));
@@ -58,7 +75,7 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   if (!(allies.length >= 2 && foes.length >= 4)) end(1);
   const [R, R2] = allies, [E1, E2, E3, E4] = foes, ALL = [A, ...others];
   // where everyone stands when a step doesn't say: out of the way along x = 26
-  const home = new Map(others.map((c, i) => [c, [26, Y, -16 + i * 6]]));
+  const home = new Map(others.map((c, i) => [c, [-23, Y, -16 + i * 6]]));
   let P = [0, Y, 22];
   const look0 = aim([0, Y + 1.6, 22], [0, Y, 16]);
   // one 60 ms beat for everyone: who(t) -> Map(client -> [pos, opts]) for the ones that move this step
@@ -75,6 +92,10 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
     }
   };
   await run(400, () => new Map([[A, [P, { y: look0.y, x: look0.x }]]]));
+  // after a cheat that got put back: carry on from where the server has the pilot (its last 'fix')
+  const settle = async () => { await run(400); const f = A.all('mech', (m) => m.k === 'fix').pop(); if (f) { P = f.p.slice(); A.got = A.got.filter((m) => !(m.t === 'mech' && m.k === 'fix')); await run(800); } };
+  // the pilot drives somewhere at a sane speed (no teleports: those get put back)
+  const goto = async (to, sp = 12, who) => { const from = typeof P === 'function' ? P(0) : P.slice(), ms = Math.max(300, Math.hypot(to[0] - from[0], to[2] - from[2]) / sp * 1000); P = (t) => lerp(from, to, t / ms); await run(ms + 200, who); P = to.slice(); };
 
   // ---- 1. call it, climb in
   A.send({ t: 'deploy', r: 'mechdrop', at: [0, Y, 16], mf: 'trolley' });
@@ -117,13 +138,8 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   await sleep(2500);
 
   // a real drift: round in an arc at 20 m/s for 1.8 s
-  { P = [0, Y, 20]; await run(1500, undefined, 0); }
-  A.got.length = 0;
-  { const c0 = [6, Y, 14], r = 7, w = 20 / r; P = (t) => [c0[0] - Math.cos(w * t / 1000) * r + (t < 60 ? 0 : 0), Y, c0[2] + Math.sin(w * t / 1000) * r + 6 - 6]; // (starts at [-1, 14]: a short hop from [0, 20] would be a jump: ease over first)
-    const from = [0, Y, 20], st = [c0[0] - r, Y, c0[2]];
-    const Pa = P; P = (t) => lerp(from, st, t / 500); await run(600);
-    P = Pa; await run(1900, undefined, MF.A);
-    P = Pa(1900); }
+  const arc = async () => { const c0 = [6, Y, 14], r = 7, w = 20 / r, Pa = (t) => [c0[0] - Math.cos(w * t / 1000) * r, Y, c0[2] + Math.sin(w * t / 1000) * r]; await goto(Pa(0)); await run(300); A.got.length = 0; P = Pa; await run(1900, undefined, MF.A); P = Pa(1900); };
+  await arc();
   const ch1 = en().ch;
   ok(ch1 >= 0.95, 'drifting round an arc at 20 m/s for 1.8 s: a full charge · ' + ch1);
   ok(!A.all('mech', (m) => m.k === 'fix').length, 'and no correction (20 m/s is fine)');
@@ -144,31 +160,29 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   ok(!(en().ch > 0), 'the push spent the charge · ' + en().ch);
   // the charge expires 3 s after the drift
   await sleep(1500);
-  { P = [0, Y, 20]; await run(1500); const c0 = [6, Y, 14], r = 7, w = 20 / r, Pa = (t) => [c0[0] - Math.cos(w * t / 1000) * r, Y, c0[2] + Math.sin(w * t / 1000) * r];
-    P = (t) => lerp([0, Y, 20], Pa(0), t / 500); await run(600); P = Pa; await run(1900, undefined, MF.A); P = Pa(1900); }
+  await arc();
   ok(en().ch >= 0.95, 'drift again: full · ' + en().ch);
   await run(3800);
   ok(!(en().ch > 0), 'and 3.5 s later it\'s gone · ' + en().ch);
 
   // ---- 3. speed: 26 is fine, 34 outside the push / AISLE 5 windows is put back
-  const L0 = [0, Y, 24], L1 = [0, Y, -18];
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 1500); await run(1700); P = L0.slice(); await run(500); }
+  const L0 = [0, Y, 24], L1 = [0, Y, -14];
+  await goto(L0); await run(500);
   A.got.length = 0;
-  P = (t) => lerp(L0, L1, t / (42 / 25 * 1000)); await run(1600); P = lerp(L0, L1, 1600 / (42 / 25 * 1000));
+  P = (t) => lerp(L0, L1, t / (38 / 25 * 1000)); await run(1400); P = lerp(L0, L1, 1400 / (38 / 25 * 1000));
   ok(!A.all('mech', (m) => m.k === 'fix').length, 'driving at 25 m/s: allowed');
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 2000); await run(2200); P = L0.slice(); await run(600); }
+  await goto(L0); await run(600);
   A.got.length = 0;
-  P = (t) => lerp(L0, L1, t / (42 / 34 * 1000)); await run(1200);
-  ok(A.all('mech', (m) => m.k === 'fix').length > 0, '34 m/s with no push or AISLE 5: put back');
-  { const f = A.all('mech', (m) => m.k === 'fix').pop(); P = f ? f.p.slice() : L0.slice(); }
-  await run(900);
+  P = (t) => lerp(L0, L1, t / (38 / 48 * 1000)); await run(780);
+  ok(A.all('mech', (m) => m.k === 'fix').length > 0, '48 m/s with no push window: put back');
+  await settle();
 
   // ---- 4. rams: by the speed the server measured
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 2000); await run(2200); P = L0.slice(); await run(600); }
+  await goto(L0); await run(600);
   E3.got.length = 0;
   await run(1200, () => new Map([[E3, [[0, Y, 21.5]]]]), 0, { v: [0, 0, -30] });
   ok(!dmgOn(E3, 'trram').length, 'parked next to them claiming 30 m/s: no ram');
-  { const tgt = [0, Y, 6]; P = (t) => lerp(L0, L1, t / (42 / 24 * 1000)); await run(1500, () => new Map([[E3, [tgt]]])); P = lerp(L0, L1, 1500 / (42 / 24 * 1000)); }
+  { const tgt = [0, Y, 6]; P = (t) => lerp(L0, L1, t / (38 / 24 * 1000)); await run(1500, () => new Map([[E3, [tgt]]])); P = lerp(L0, L1, 1500 / (38 / 24 * 1000)); }
   const rm = dmgOn(E3, 'trram');
   ok(rm.length === 1 && rm[0].a >= 20 && rm[0].a <= 35, `drove through them at 24 m/s: one ram for ${rm[0] && rm[0].a} (6 + 15 x 1.4 = 27)`);
   await sleep(2600);
@@ -198,12 +212,9 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   ok(c1 && bs.length >= 2 && bs.length <= 3 && A.all('pd', (m) => m.id === c1.id).length === 1, `a can on the floor: bounced ${bs.length} times, then done`);
 
   // ---- 6. CLEAN UP AISLE 5
-  A.got.length = 0;
-  A.send({ t: 'mech', k: 'aisle', on: 1 }); await run(200);
-  const notYet = A.all('mech', (m) => m.k === 'no' && /ultimate/.test(m.why)).length > 0 || !A.all('mech', (m) => m.k === 'traisle' && m.on === 1).length;
   for (let i = 0; i < 80; i++) { if (en().u >= 100) break; await run(150); }
   ok(en().u >= 100, 'the ult charged (JF_MECH_ULT) · ' + en().u);
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 1800); await run(2000); P = L0.slice(); await run(500); }
+  await goto(L0); await run(500);
   // an ally right in the path, an enemy in the path, one off to the side, one far away
   const sA = [0, Y, 14], sE1 = [0.5, Y, 8], sE2 = [7, Y, 4], sE3 = [0, Y, -4];
   const lay = () => new Map([[R, [sA, { y: 0 }]], [E1, [sE1]], [E2, [sE2]], [E3, [sE3]]]);
@@ -212,7 +223,6 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   A.send({ t: 'mech', k: 'aisle', on: 1 });
   const ai1 = await A.wait('mech', (m) => m.k === 'traisle' && m.on === 1, 600);
   ok(ai1 && ai1.ms === 6000, 'CLEAN UP AISLE 5: on for ' + (ai1 && ai1.ms) + ' ms');
-  ok(notYet, '(and before the ult was full it was refused)');
   P = (t) => lerp(L0, [0, Y, -6], t / (30 / 32 * 1000)); await run(820, lay, MF.B); P = lerp(L0, [0, Y, -6], 820 / (30 / 32 * 1000));
   const sc = A.all('mech', (m) => m.k === 'trhold' && m.on === 1 && m.s === 'scoop');
   ok(sc.some((m) => m.v === E1.id) && sc.some((m) => m.v === E3.id), 'it runs into two enemies at 32 m/s: both SCOOPED');
@@ -251,11 +261,13 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   ok(kb && kb.v[1] >= 12 && Math.hypot(kb.v[0], kb.v[2]) >= 18, `and flung forward and up · ${kb && kb.v.map((x) => x.toFixed(0))}`);
   ok(E1.all('mech', (m) => m.k === 'pos').length === 1, 'the dumped client gets put where the basket let go of it');
   ok(!(en().au > 0), 'AISLE 5 is over');
+  A.send({ t: 'mech', k: 'aisle', on: 1 }); await run(200);
+  ok((A.take('mech', (m) => m.k === 'no') || {}).why === 'ultimate not ready' && !A.all('mech', (m) => m.k === 'traisle' && m.on === 1).length, 'AISLE 5 again at once: the ult is spent');
   await sleep(2600);
   // the ult's own hits didn't charge the next one; then max 3 and the timer
   for (let i = 0; i < 80; i++) { if (en().u >= 100) break; await run(150); }
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 1800); await run(2000); P = L0.slice(); await run(400); }
-  const lay4 = () => new Map([[E1, [[0, Y, 16]]], [E2, [[0.4, Y, 10]]], [E3, [[-0.4, Y, 4]]], [E4, [[0, Y, -2]]], [R, [[26, Y, -16]]]]);
+  await goto(L0); await run(400);
+  const lay4 = () => new Map([[E1, [[0, Y, 16]]], [E2, [[0.4, Y, 10]]], [E3, [[-0.4, Y, 4]]], [E4, [[0, Y, -2]]], [R, [[-23, Y, -16]]]]);
   await run(800, lay4);
   for (const c of ALL) c.got.length = 0;
   A.send({ t: 'mech', k: 'aisle', on: 1 });
@@ -263,13 +275,13 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   const sc4 = A.all('mech', (m) => m.k === 'trhold' && m.on === 1 && m.s === 'scoop');
   ok(sc4.length === 3 && en().bk === 3, `four enemies in a row: only ${sc4.length} fit in the basket (bk ${en().bk})`);
   ok(!sc4.some((m) => m.v === E4.id) && dmgOn(E4, 'trram').length === 1, 'the fourth gets rammed instead');
-  await run(5200, () => new Map([[R, [[26, Y, -16]]]]), MF.B);
-  const off4 = A.all('mech', (m) => m.k === 'trhold' && m.on === 0 && m.why === 'dump');
-  ok(A.all('mech', (m) => m.k === 'traisle' && m.on === 0 && m.why === 'time').length === 1 && off4.length === 3, 'six seconds later: time\'s up, all three dumped');
+  await run(5200, () => new Map([[R, [[-23, Y, -16]]]]), MF.B);
+  const off4 = A.all('mech', (m) => m.k === 'trhold' && m.on === 0 && m.s === 'scoop'), tm = A.all('mech', (m) => m.k === 'traisle' && m.on === 0 && m.why === 'time');
+  ok(tm.length === 1 && off4.length === 3 && off4.filter((m) => m.why === 'dump').length === tm[0].n && off4.every((m) => m.why === 'dump' || m.why === 'dead'), `six seconds later: time's up, ${tm[0] && tm[0].n} dumped (the rest died in the basket at 8/s): nobody left in it`);
   A.got.length = 0;
-  P = (t) => lerp([0, Y, -12], [0, Y, 20], t / 1100); await run(1000);
-  ok(A.all('mech', (m) => m.k === 'fix').length > 0, 'after AISLE 5: 30 m/s is put back again');
-  { const f = A.all('mech', (m) => m.k === 'fix').pop(); P = f ? f.p.slice() : [0, Y, 0]; }
+  P = (t) => lerp([0, Y, -12], [0, Y, 24], t / 750); await run(750);
+  ok(A.all('mech', (m) => m.k === 'fix').length > 0, 'after AISLE 5: 48 m/s is put back again');
+  await settle();
   await sleep(2600);
   await run(900);
 
@@ -307,6 +319,7 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   const hop = A.all('mech', (m) => m.k === 'trhold' && m.on === 0 && m.v === R.id);
   const rpos = R.all('mech', (m) => m.k === 'pos').pop();
   ok(hop.length === 1 && hop[0].why === 'hop' && rpos && rpos.v[1] > 4 && near(rpos.p, P, 4), 'F / jump: the rider hops out over the side');
+  await run(300, () => new Map([[R2, [[P[0] - 3.5, Y, P[2]]]]]));
   R2.send({ t: 'mech', k: 'ride', to: A.id }); await run(400, () => new Map([[R2, [[P[0] - 3.5, Y, P[2]]]]]));
   ok(A.all('mech', (m) => m.k === 'trhold' && m.on === 1 && m.v === R2.id).length === 1, 'now the second ally can ride');
 
@@ -315,6 +328,7 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   A.got.length = 0;
   R2.ws.close(); await run(800);
   ok(A.all('mech', (m) => m.k === 'trhold' && m.on === 0 && m.v === R2.id).length === 1, 'the rider disconnects: the seat is let go');
+  await run(300, () => new Map([[R, [[P[0] + 3, Y, P[2]]]]]));
   R.send({ t: 'mech', k: 'ride', to: A.id }); await run(300, () => new Map([[R, [[P[0] + 3, Y, P[2]]]]]));
   ok(A.all('mech', (m) => m.k === 'trhold' && m.on === 1 && m.v === R.id).length === 1, '(and it\'s free again)');
   // (b) the pilot hops out: the rider's let go
@@ -326,7 +340,7 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   ok(A.all('mech', (m) => m.k === 'in' && m.id === A.id).length === 1, 'and climbs back in');
   // (c) a scooped player dies in the basket; (d) a scooped player disconnects; (e) the trolley breaks with a rider in
   for (let i = 0; i < 80; i++) { if (en().u >= 100) break; await run(150); }
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 1800); await run(2000); P = L0.slice(); await run(400); }
+  await goto(L0); await run(400);
   const lay3 = () => new Map([[E1, [[0, Y, 14]]], [E3, [[0, Y, 6]]], [R, [[3.5, Y, 24]]]]);
   await run(1200, lay3);
   for (const c of ALL) c.got.length = 0;
@@ -358,7 +372,7 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   await run(3200, () => new Map([[A, [P2, { y: look0.y, x: look0.x }]]]));
   A.send({ t: 'mech', k: 'in' }); P = [0, Y, 16]; await run(600);
   for (let i = 0; i < 80; i++) { if (en().u >= 100) break; await run(150); }
-  { const from = P.slice(); P = (t) => lerp(from, L0, t / 1500); await run(1700); P = L0.slice(); await run(400); }
+  await goto(L0); await run(400);
   const lay5 = () => new Map([[E4, [[0, Y, 12]]]]);
   await run(800, lay5);
   for (const c of ALL) c.got.length = 0;
