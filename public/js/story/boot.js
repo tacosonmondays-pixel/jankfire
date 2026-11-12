@@ -19,6 +19,7 @@ import { ZoneTracker, stepZones } from '/shared/story/zones.js'; // (reach / lea
 import { npcSpot, HINTS, SITTERS } from '/shared/city/cast_slice.js';
 import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: JUMP IT) // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play, sitActor } from './actors.js';
+import { ensureCast, prefetchCast, LOOK_IDS } from './looks.js'; // the Blender cast, on demand
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
@@ -55,7 +56,7 @@ export async function init() {
   const q = new URLSearchParams(location.search);
   ST.slot = Math.max(0, Math.min(2, Number(q.get('slot')) || 0));
   if (q.get('fresh') === '1') clearSlot(ST.slot);
-  try { const { loadCast, LOOK_IDS } = await import('./looks.js'); await loadCast(LOOK_IDS, 12000); } catch (e) { console.warn('cast models', e); } // (the Blender cast; missing = code puppets)
+  prefetchCast(LOOK_IDS, 6); // the Blender cast starts coming now (while you're on the menu), but the engine no longer waits for it: it used to hold up to 12 s here. the roster waits per actor instead (ensureCast)
   const data = await loadSlot(ST.slot);
   const st = fromSave(data);
   if (data && Array.isArray(data.bagStub)) for (const i of data.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);
@@ -259,7 +260,7 @@ function roster(e) {
   }
   if (ST.city) for (const s0 of SITTERS) { // people sitting about (cast_slice.js): no lines, just there when you're near
     const d = Math.hypot(e[0] - s0.seat[0], e[2] - s0.seat[2]), a = actors.get(s0.id), ok = !s0.if || ST.S.test(s0.if);
-    if (!a && ok && d < 30) sitActor(spawnActor(s0.id, { look: s0.look || s0.id, hint: s0.hint, idle: 'idle' }, s0.seat, s0.face), s0.seat);
+    if (!a && ok && d < 30 && ensureCast(s0.look || s0.id)) sitActor(spawnActor(s0.id, { look: s0.look || s0.id, hint: s0.hint, idle: 'idle' }, s0.seat, s0.face), s0.seat);
     else if (a && (!ok || d > 40)) despawnActor(s0.id);
   }
   // (the city: someone whose home isn't a real place yet only stands in the rehearsal yard while a step wants them)
@@ -268,7 +269,7 @@ function roster(e) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; }
     if (r.spot && r.spot.if && !ST.S.test(r.spot.if)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; } // (spot.if: a story condition, mina's wall only after m04)
-    if (!a && d < 34) spawnActor(r.id, r.spot && r.spot.look ? { ...r.n, look: r.spot.look } : r.n, r.p, r.face); // (spot.look: a look for that spot, mina in her wall)
+    if (!a && d < 34 && ensureCast(r.spot && r.spot.look ? r.spot.look : r.n.look)) spawnActor(r.id, r.spot && r.spot.look ? { ...r.n, look: r.spot.look } : r.n, r.p, r.face); // (ensureCast: their model is in, or a moment's wait for it) // (spot.look: a look for that spot, mina in her wall)
     else if (a && d > 44 && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him. so does anyone an encounter stood somewhere: encounters.js)
   }
 }

@@ -10,6 +10,7 @@ import { STREAK_LOOKS } from '/shared/cosmetics.js'; // killstreak looks in the 
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
+import { lockPointer, lookFilter } from './mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
@@ -64,6 +65,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
@@ -372,12 +374,7 @@ function quitToMenu(silent) {
   $('status').textContent = '';
 }
 
-function lock() {
-  try {
-    const p = canvas.requestPointerLock({ unadjustedMovement: true });
-    if (p && p.catch) p.catch(() => { try { const q = canvas.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch { /* no lock */ } });
-  } catch { /* headless or denied */ }
-}
+function lock() { lockPointer(canvas); } // (mouselook.js: raw mouse when the browser has it)
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
@@ -388,10 +385,11 @@ function pause() {
   stopUse();
   stopLoops();
 }
-let wasLocked = false, lockedAt = 0, mouseAvg = 8;
+let wasLocked = false;
+const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jump events (the editor uses the same one)
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (locked) { mlook.locked(); esHideClick(); }
   if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
@@ -1283,11 +1281,7 @@ addEventListener('mousemove', (e) => {
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
   // drop any single event that is way bigger than how you've actually been moving the mouse.
-  const mag = Math.abs(mx) + Math.abs(my);
-  const now = performance.now();
-  if (now - lockedAt < 120) return; // first events after locking are often garbage
-  if (mag > 90 && mag > mouseAvg * 6) { mouseAvg = Math.max(mouseAvg, mag / 6) * 0.5 + mouseAvg * 0.5; return; }
-  mouseAvg = mouseAvg * 0.85 + mag * 0.15;
+  if (!mlook.take(mx, my)) return; // (the first ~120 ms after locking, and a single jump way bigger than your recent moves)
   ME.yaw -= mx * s;
   ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
 });
@@ -2271,6 +2265,7 @@ function frame(t) {
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   updateMech(dt, now, cam, RP.active); // mech drop: the drops, waiting mechs, you in yours, the HUD
+  hudHideTick(now); // (after the rides update: hotbar out while piloting, back the moment you aren't)
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
