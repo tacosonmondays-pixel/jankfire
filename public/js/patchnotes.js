@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.2', date: '2026-11-12', title: 'DO NOT FEED IT', items: [
+    'jankburg: the smiling fountain got a glow-up. glossy smiley face, one eye wandering, a grin spitting water into a marble pool full of coins. it\'s still smiling. it\'s always smiling. do not feed it.',
+    'training got a real firing line: a proper range bench with earmuffs and spent brass, actual sandbags (one says SAND?), and signs telling you how far you\'re missing by.',
+  ] },
   { v: '9.1', date: '2026-11-12', title: 'FRONT DOOR', items: [
     'new main menu. it\'s you in the middle and two buttons: ONLINE or OFFLINE. then pick your mode along the top. TRAINING and the old menu (CLASSIC) are still under the buttons.',
     'OFFLINE is your own match: pick the map, the bots, how many, how hard they try. nobody else gets in. that\'s the point.',
