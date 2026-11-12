@@ -38,10 +38,11 @@ const hp = (who, of) => { const e = [...log].reverse().find((x) => x[1] === who.
   process.on('exit', () => srv.kill());
   for (let i = 0; i < 60; i++) { try { await new Promise((res, rej) => { const w = new WS(`ws://localhost:${port}/ws`); w.on('open', () => { w.close(); res(); }); w.on('error', rej); }); break; } catch { await sleep(500); } }
 
+  // (the 2nd one in always starts a second squad; after that people fill the fullest squad with room)
   const A = client('Alfa'); await sleep(400);
+  const C = client('Charlie'); await sleep(250);
   const B = client('Bravo'); await sleep(250);
   const E = client('Echo'); await sleep(250);
-  const C = client('Charlie'); await sleep(250);
   const D = client('Delta');
   const all = [A, B, E, C, D];
   await sleep(1500);
@@ -49,7 +50,7 @@ const hp = (who, of) => { const e = [...log].reverse().find((x) => x[1] === who.
   const sqMsg = [...log].reverse().find((e) => e[2].t === 'isle' && e[2].k === 'sq');
   const sq = new Map(sqMsg ? sqMsg[2].l : []);
   console.log('  squads:', all.map((c) => `${c.name}=${sq.get(c.id)}`).join(' '));
-  ok(sq.get(A.id) && sq.get(A.id) === sq.get(B.id) && sq.get(B.id) === sq.get(E.id), 'A, B and E (joined first) share a squad');
+  ok(sq.get(A.id) && sq.get(A.id) === sq.get(B.id) && sq.get(B.id) === sq.get(E.id), 'A, B and E share a squad (C, the 2nd one in, started the other)');
   ok(sq.get(C.id) && sq.get(C.id) === sq.get(D.id) && sq.get(C.id) !== sq.get(A.id), 'C and D are the next squad');
   // a 'use' from the blimp does nothing
   A.send({ t: 'use' });

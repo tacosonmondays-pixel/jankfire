@@ -5,6 +5,7 @@
 import { GAMES } from '../shared/modes.js';
 import { FLAGS } from '../shared/weapons.js';
 import { zoneAt, ZONE } from '../shared/royale.js';
+import { raycast } from '../shared/physics.js';
 import { ISLE, ST } from '../shared/island.js';
 
 const now = () => Date.now();
@@ -24,7 +25,7 @@ if (knob('JF_ISLE_GAP', 200, 10000)) ISLE.revive.gap = knob('JF_ISLE_GAP', 200, 
 if (knob('JF_ISLE_ZONE', 0.02, 5)) for (const z of ZONE) { z[0] *= knob('JF_ISLE_ZONE', 0.02, 5); z[1] *= knob('JF_ISLE_ZONE', 0.02, 5); } // x the zone's waits + shrinks (quick test matches; the royale's too)
 
 // what a downed pilot can't do: shoot, swing, throw, call streaks, revive, loot, heal, hop in a cart or a mech
-const DOWN_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray', 'cart', 'car', 'rig', 'mech', 'lasso', 'lh', 'nv', 'brpick', 'brheal', 'brkick']);
+const DOWN_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray', 'cart', 'car', 'rig', 'mech', 'lasso', 'lh', 'nv', 'brpick', 'brheal', 'brkick', 'brdrop', 'brswap', 'cough', 'lava']); // (cough: no running down your own clock)
 
 export function installIsland(Room, H) {
   const { send, movePlayer } = H;
@@ -42,24 +43,28 @@ export function installIsland(Room, H) {
     // people land together), then bots fill the gaps. late boarders get the emptiest squad that's still in
     isleBoard(p) {
       const B = this.br;
-      if (!B.isle) {
+      const fresh = !B.isle;
+      if (fresh) {
         B.isle = { sqOut: new Map(), peak: 0, t: now(), stT: 0, log: [] };
         const list = this.fighters().filter((o) => !o.goblin).sort((a, b) => (a.isBot - b.isBot) || a.id - b.id);
         const size = list.length <= ISLE.size ? Math.max(1, Math.ceil(list.length / 2)) : ISLE.size; // (too few for two squads: split them, or nobody could win)
-        list.forEach((o, i) => { o.sq = Math.floor(i / size) + 1; if (o.sq > ISLE.squads) o.sq = (i % ISLE.squads) + 1; o.dn = null; o.irv = null; });
+        list.forEach((o, i) => { o.sq = Math.floor(i / size) + 1; o.dn = null; o.irv = null; }); // (more than squads x size: extra squads, never a 4th in one)
       }
       p.br.mailed = true; // no RETURN TO SENDER here: your squad picks you up instead
       p.cam = !!CAM && !p.isBot && p.name === CAM;
       p.dn = null; p.irv = null;
-      if (!p.sq || B.isle.sqOut.has(p.sq) || this.isleMates(p.sq).filter((o) => o !== p).length >= ISLE.size) p.sq = this.isleFreeSquad(p);
+      if (!fresh || !p.sq) p.sq = this.isleFreeSquad(p); // a late boarder
     },
+    // a late boarder's squad: while fewer than two squads are in it, a new one (or nobody could ever win). otherwise the
+    // fullest squad that still has room (you land with whoever came in before you), else a new one. never a full one
     isleFreeSquad(p) {
-      const c = new Map();
-      for (let s = 1; s <= ISLE.squads; s++) if (!this.br.isle.sqOut.has(s)) c.set(s, 0);
-      for (const o of this.fighters()) if (o !== p && o.sq && c.has(o.sq) && this.isleIn(o)) c.set(o.sq, c.get(o.sq) + 1);
+      const I = this.br.isle, c = new Map(), live = new Set();
+      for (const o of this.fighters()) if (o !== p && o.sq && this.isleIn(o)) { c.set(o.sq, (c.get(o.sq) || 0) + 1); if (o.alive && !o.br.out) live.add(o.sq); }
+      const fresh = () => { for (let s = 1; ; s++) if (!c.has(s) && !I.sqOut.has(s)) return s; };
+      if (live.size < 2) return fresh();
       let best = 0, bn = -1;
-      for (const [s, n] of c) if (n < ISLE.size && n > bn) { bn = n; best = s; } // a squad with room that already has people in it (you land with whoever came in before you), else an empty one
-      return best || [...c.keys()][0] || 1;
+      for (const [s, n] of c) if (live.has(s) && !I.sqOut.has(s) && n < ISLE.size && n > bn) { bn = n; best = s; }
+      return best || fresh();
     },
     // everyone's squad, for every client (markers, colours, the kill feed)
     isleSquads() { return this.fighters().filter((p) => p.sq && p.br && this.br && p.br.match === this.br.id).map((p) => [p.id, p.sq]); },
@@ -74,7 +79,8 @@ export function installIsland(Room, H) {
       if (!this.isleMates(t.sq).some((o) => o !== t && this.isleUp(o))) return false; // the last one up: the squad's done
       const n = now();
       t.hp = 1;
-      t.dn = { left: ISLE.down.bleed * 1000, by: attacker && attacker !== t ? attacker.id : 0, w, t0: n, rv: 0, last: t.pos.slice(), bank: ISLE.down.slack + 2, snapT: n, fixT: 0 };
+      const shoved = n - (t.knockT || 0) < 300 && w !== 'zone'; // (the hit that put you down shoved you: you land where it threw you)
+      t.dn = { left: ISLE.down.bleed * 1000, by: attacker && attacker !== t ? attacker.id : 0, w, t0: n, rv: 0, last: t.pos.slice(), bank: ISLE.down.slack + (shoved ? 8 : 2), ub: shoved ? 4 : 1, flung: shoved ? n + ISLE.down.flung : 0, snapT: n, fixT: 0 };
       t.br.heal = null; t.br.fly = null; t.g = null; t.f &= ~FLAGS.GLIDE;
       if (t.irv) this.isleRvStop(t, 'down');
       if (t.isBot && t.ai) { t.ai.hook = null; t.ai.route = null; }
@@ -103,30 +109,51 @@ export function installIsland(Room, H) {
       if (LOG) this.br.isle.log.push(`${t.name} BLED OUT (downed by ${by ? by.name : d.w})`);
       this.kill(t, by, d.w || 'zone');
     },
-    // the crawl: movement is the client's, so the server holds a downed pilot to a crawl (a budget of metres that fills
-    // at crawl speed). a shove (knockback) lets you fly for a moment. no rope, no jumping
+    // the crawl: movement is the client's, so the server holds a downed pilot to a crawl: a budget of metres that fills
+    // at crawl speed, and a budget for going up that fills slowly (slopes, a kerb). a real shove (isleKnock: a hit, not
+    // the zone's push) lets you fly about for a moment and pays for the height it throws you. no rope, no jumping, and
+    // no glide / slide / sprint flags (everyone sees you on the floor)
     isleSnap(p, m) {
       const d = p.dn, pos = vec3(m.p), n = now();
-      m.g = 0;
+      m.g = 0; m.f = 0;
       if (!pos) return;
       const dt = Math.min(0.5, Math.max(0, (n - d.snapT) / 1000));
       d.snapT = n;
-      const flung = n - (p.knockT || 0) < ISLE.down.flung; // shoved (a hit, the zone): you fly about for a moment, not forever
-      d.bank = Math.min(flung ? 8 : ISLE.down.slack, d.bank + (flung ? 22 : ISLE.down.crawl * 1.25) * dt);
+      const flung = n < d.flung, pushed = n < (d.push || 0), S = ISLE.down.slack;
+      const cap = flung ? Math.max(8, d.bank) : pushed ? Math.min(Math.max(S, d.bank), S + 2) : S; // (what a shove paid for only lasts while you're flying)
+      d.bank = Math.min(cap, d.bank + (flung ? 22 : ISLE.down.crawl * 1.25) * dt);
+      d.ub = Math.min(flung ? Math.max(1.2, d.ub) : 1.2, d.ub + 0.6 * dt);
       const moved = hdist(pos, d.last), rise = pos[1] - d.last[1];
       d.bank -= moved;
-      if (d.bank < -0.01 || (rise > 0.75 && !flung)) {
+      if (rise > 0) d.ub -= rise;
+      if (d.bank < -0.01 || d.ub < -0.05) {
         m.p = d.last.slice(); m.v = [0, Math.min(0, Array.isArray(m.v) && Number.isFinite(m.v[1]) ? m.v[1] : 0), 0];
-        d.bank = 0;
+        d.bank = 0; d.ub = Math.max(0, d.ub);
         if (n - d.fixT > 300) { d.fixT = n; d.fixes = (d.fixes || 0) + 1; send(p, { t: 'isle', k: 'fix', p: d.last.map(r2) }); }
         return;
       }
       d.last = pos.slice();
     },
 
+    // knock() hook (people only: bots are moved here): a shove pays for where it throws you. the zone's push buys only
+    // its own few metres, not a free run
+    isleKnock(t, v, w) {
+      const d = t.dn;
+      if (!d || t.isBot) return;
+      const up = Math.max(0, v[1]), h = Math.hypot(v[0], v[2]);
+      if (w === 'zone') { d.push = now() + 600; d.bank += Math.min(2, h / 5); d.ub += Math.min(0.4, up * up / 52 + 0.1); return; } // (a push slides a crawler about v / 5 m)
+      d.flung = now() + ISLE.down.flung;
+      d.bank += h * 1.2; d.ub += up * up / 52 + 1;
+    },
+
     // ---------------------------------------------------------- revives (hold F: 'use' every 200 ms while it's held)
     isleCanRevive(p) { return this.isleIn(p) && this.isleUp(p) && !p.br.inBlimp && !p.br.fly && !(this.mechOn && this.mechOn(p)) && !p.trap; },
-    isleReach(p, t) { const R = ISLE.revive; return hdist(p.pos, t.pos) <= R.r + R.slack && Math.abs(p.pos[1] - t.pos[1]) <= R.dy; },
+    isleReach(p, t) {
+      const R = ISLE.revive;
+      if (hdist(p.pos, t.pos) > R.r + R.slack || Math.abs(p.pos[1] - t.pos[1]) > R.dy) return false;
+      const a = [p.pos[0], p.pos[1] + 1.1, p.pos[2]], clear = (y) => { const dv = [t.pos[0] - a[0], t.pos[1] + y - a[1], t.pos[2] - a[2]], l = Math.hypot(dv[0], dv[1], dv[2]) || 1; return !raycast(a, [dv[0] / l, dv[1] / l, dv[2] / l], l, this.boxes); };
+      return clear(0.35) || clear(0.9); // your chest to their body or shoulders: not through a wall (a kerb in the way is fine)
+    },
     isleUse(p) {
       const n = now(), R = ISLE.revive;
       if (n - (p.isleUseT || 0) < 90) return; // (the client sends 5 a second; anything faster buys nothing)
@@ -251,6 +278,7 @@ export function installIsland(Room, H) {
         if (!t.dn || !t.alive) continue;
         const rv = this.isleReviver(t, n);
         if (rv) { if (n - rv.irv.t0 >= ISLE.revive.hold * 1000 - 30) this.isleRevive(t, rv); continue; } // the clock waits while someone's on it
+        if (this.br.endAt) continue; // (the match is won: nobody bleeds out in the last 3 s)
         t.dn.left -= dt;
         if (t.dn.left <= 0) this.isleBleed(t);
       }
@@ -272,6 +300,8 @@ export function installIsland(Room, H) {
 
     // ---------------------------------------------------------- messages (true = swallowed: a downed pilot can't)
     isleHandle(p, m) {
+      if (m.t === 'use' && m.up === 1) { if (p.irv) this.isleRvStop(p, 'let go'); return true; } // F let go: it stops now, not after the gap
+      if (p.irv && (m.t === 'fire' || m.t === 'hit' || m.t === 'push') && !p.dn) this.isleRvStop(p, 'shot'); // shooting puts the revive down
       if (m.t === 'hero') { this.isleHeroPick(p, m.h); return true; } // the hero pick (server/islemeter.js)
       if (m.t === 'deploy' && !p.dn) { this.isleCall(p, m); return true; } // the streak key: your mech, when the meter's full
       if (!p.dn || !p.alive) return false;

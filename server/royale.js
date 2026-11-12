@@ -127,7 +127,7 @@ export function installRoyale(Room, H) {
     brClear() {
       for (const g of [...this.players.values()]) if (g.goblin) this.remove(g);
       this.br = null;
-      for (const p of this.players.values()) { p.br = null; p.f &= ~FLAGS.GLIDE; }
+      for (const p of this.players.values()) { p.br = null; p.f &= ~FLAGS.GLIDE; p.dn = null; p.irv = null; } // (battle island's down + revives end with it)
       this.broadcast({ t: 'br', k: 'off' });
       if (this.mode === 'bots') this.fillBots();
     },
@@ -151,6 +151,7 @@ export function installRoyale(Room, H) {
       p.pos = [bp[0], bp[1] - 3, bp[2]];
       p.w = BR.melee;
       if (p.isBot) { p.ai.ammo = 1; p.ai.reloadUntil = 0; p.ai.hook = null; p.g = null; }
+      p.dn = null; p.irv = null; // (nobody starts a match down)
       if (this.isleOn) this.isleBoard(p); // battle island: your squad
     },
     // a late joiner: a seat on the blimp if it's still near the start, otherwise watch until the next one
