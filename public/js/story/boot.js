@@ -319,7 +319,7 @@ function reoffer() {
     for (const x of st.do) if (x && typeof x === 'object' && Array.isArray(x.do) && x.do.some((a) => typeof a === 'string' && a.startsWith('talk:choice/')) && (!x.if || S.test(x.if))) { S.run(x.do, 'reoffer'); return; }
   }
 }
-function autostart() { if (LAB) return; for (const id of ST.S.defs.autostart) ST.S.quests.start(id); }
+function autostart() { if (LAB) return; ST.S.quests.repair(); for (const id of ST.S.defs.autostart) ST.S.quests.start(id); } // (repair: an old save's quest on a step that's gone starts over)
 
 // ---------------------------------------------------------------- every frame
 let nearAct = null, nearThing = null, wasSaveable = 0;
