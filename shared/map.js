@@ -2107,9 +2107,9 @@ function warehouse() {
   rack(B, -26, 9, 18, r); rack(B, 8, 9, 18, r);
   for (const x of [-7, 6.5]) add(x - 0.08, 0, -HZ + 0.5, x + 0.08, 0.02, HZ - 0.5, 'neonyellow');
   // the foreman's office: two floors and stairs to the roof, in the north-east corner
-  const O = B.local(26, -13.5, 0);
+  const O = B.arch('wh_office', 26, -13.5, 0); // (a Blender building: archfield.js; the desks and TVs stay the game's)
   shell(O, 11, 8.4, 2, 3.6, 'magenta', { floor: 'leopard', roof: 'roofg', roofAccess: true, backDoor: true });
-  O(-4.5, 0.12, -1.5, -1.5, 0.85, 0.5, 'wood'); O(1.5, 3.85, -1.5, 4.5, 4.6, 0.5, 'wood'); O.B(-3, 1.15, -0.5, 0.9, 0.6, 0.1, 'tvstatic'); O.B(3, 4.9, -0.5, 0.9, 0.6, 0.1, 'tvstatic');
+  O.plain(-4.5, 0.12, -1.5, -1.5, 0.85, 0.5, 'wood'); O.plain(1.5, 3.85, -1.5, 4.5, 4.6, 0.5, 'wood'); O.plain.B(-3, 1.15, -0.5, 0.9, 0.6, 0.1, 'tvstatic'); O.plain.B(3, 4.9, -0.5, 0.9, 0.6, 0.1, 'tvstatic');
   // the shredder (into the void) by the west door: rails on two sides, a sign
   const [px0, pz0, px1, pz1] = pit;
   add(px0, 0, pz0 - 0.3, px1, 0.6, pz0, 'hazard'); add(px0, 0, pz1, px1, 0.6, pz1 + 0.3, 'hazard');
@@ -2146,15 +2146,15 @@ function warehouse() {
 
   // ---- west: the gate side (team 1). the truck that came in, the guard booth
   semiS(-66, -36, 0, 'adtruck2', true); // (parked up the side, out of the spawn's way)
-  const GB = B.local(-68, 14, 2);
+  const GB = B.arch('wh_booth', -68, 14, 2);
   shell(GB, 4, 3.4, 1, 2.8, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false });
-  GB(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
+  GB.plain(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.plain.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
   barrier(B, -50, -8, true); barrier(B, -46, 12, true); cratePile(B, -54, 2, 5, r);
   const west = [[-70, 0.1, -6], [-70, 0.1, 0], [-70, 0.1, 6], [-62, 0.1, -9], [-62, 0.1, -2], [-62, 0.1, 5], [-62, 0.1, 11]];
   // ---- east: the staff car park (team 2). the site office, cars
-  const SO = B.local(52, -10, 0);
+  const SO = B.arch('wh_siteoffice', 52, -10, 0);
   shell(SO, 10, 4.2, 1, 3, 'containerb', { roof: 'roofg', floor: 'carpet', parapet: false });
-  SO(-4, 3.3, -2.5, 4, 4.2, -2.25, 'adoffice', { fit: 1 }); SO(-4.5, 0.12, 0.6, -1.5, 0.85, 1.9, 'wood'); SO(1.5, 0.12, 0.6, 4.5, 0.85, 1.9, 'wood');
+  SO.plain(-4, 3.3, -2.5, 4, 4.2, -2.25, 'adoffice', { fit: 1 }); SO.plain(-4.5, 0.12, 0.6, -1.5, 0.85, 1.9, 'wood'); SO.plain(1.5, 0.12, 0.6, 4.5, 0.85, 1.9, 'wood');
   for (const [x, c] of [[54.3, 'carred'], [58.8, 'carblue'], [63.3, 'caryellow'], [67.8, 'cargreen']]) car(W, x, 11, 1, c); // nose-in, one to a bay
   barrier(B, 44, 2, true); barrier(B, 46, -16, false);
   const east = [[70, 0.1, -6], [70, 0.1, 0], [70, 0.1, 4], [62, 0.1, -14], [62, 0.1, -2], [62, 0.1, 2], [70, 0.1, -12]];
@@ -2273,9 +2273,9 @@ function warehouseSD() {
   // ---- ATTACKERS' SPAWN: inside the gate, behind their trailers
   semiS(-61, -15, 0, 'adtruck', false); semiS(-61, 2.5, 0, 'adtruck2', false); // two trailers screen it (a gap between them)
   semiS(-76.5, 9, 0, 'adtruck2', true); // the truck that brought them
-  const GB = B.local(-75, -13, 0); // the guard booth (nobody home)
+  const GB = B.arch('wh_booth', -75, -13, 0); // the guard booth (nobody home)
   shell(GB, 4, 3.4, 1, 2.8, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false });
-  GB(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
+  GB.plain(-1.6, 0.12, 0.4, 1.6, 0.95, 1.4, 'wood'); GB.plain.B(0.8, 1.2, 0.9, 0.7, 0.45, 0.1, 'tvstatic');
   barrier(B, -66, -20, false); barrier(B, -66, 20, false);
   const att = [[-73, 0.1, -6], [-73, 0.1, 0], [-73, 0.1, 5], [-67, 0.1, -9], [-67, 0.1, -3], [-67, 0.1, 3], [-67, 0.1, 9]];
 
@@ -2298,9 +2298,9 @@ function warehouseSD() {
   hallArch(B, D, hb0, hd0, 'wh_hall_sd');
   for (const z of [-7.4, 7.2]) add(-20, 0, z - 0.06, 20, 0.02, z + 0.06, 'neonyellow'); // the aisle lines
   rack(B, -18, -9, 18, r); rack(B, 0, 9, 18, r); // racking: north side in the west half, south side in the east half
-  const O = B.local(6, 0, 1); // the foreman's office in the middle of the floor (doors west and east, windows all round)
+  const O = B.arch('wh_office_sd', 6, 0, 1); // the foreman's office in the middle of the floor (doors west and east, windows all round)
   shell(O, 8, 10, 1, 3.2, 'magenta', { floor: 'leopard', roof: 'roofg', parapet: false, backDoor: true });
-  O(-3, 0.12, -1, -1, 0.85, 3, 'wood'); O(1.5, 0.12, -1, 3.5, 0.85, 3, 'wood'); O.B(-2, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic'); O.B(2.5, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic');
+  O.plain(-3, 0.12, -1, -1, 0.85, 3, 'wood'); O.plain(1.5, 0.12, -1, 3.5, 0.85, 3, 'wood'); O.plain.B(-2, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic'); O.plain.B(2.5, 1.15, 1, 0.9, 0.6, 0.1, 'tvstatic');
   forklift(B, -12, 15, 0, 1.4); forklift(B, 17, -15, 3);
   pallets(B, -21, -18, 6, r); pallets(B, -19.6, -18, 4, r); pallets(B, 18, 16, 7, r); pallets(B, 19.4, 16, 5, r);
   cratePile(B, -8, -17, 6, r);
@@ -2330,9 +2330,9 @@ function warehouseSD() {
   siteBoard(D, 45, 4.6, -57.85, 'x', 'sitea', 5); siteBoard(D, 51, 0.6, -24.38, 'x', 'sitea', 2.6);
 
   // ---- the courtyard: the defenders' side, between the hall's east door and both sites
-  const DB = B.local(40, -4, 1); // the dispatch booth (in the line from the hall's east door)
+  const DB = B.arch('wh_dispatch', 40, -4, 1); // the dispatch booth (in the line from the hall's east door)
   shell(DB, 6, 4.4, 1, 2.9, 'toyteal', { roof: 'toyred', floor: 'tile', parapet: false, backDoor: true });
-  DB.B(0, 1.15, 1.8, 0.9, 0.6, 0.1, 'tvstatic');
+  DB.plain.B(0, 1.15, 1.8, 0.9, 0.6, 0.1, 'tvstatic');
   forklift(B, 33, 12, 0); pallets(B, 48, 14, 6, r); pallets(B, 49.4, 14, 4, r); barrier(B, 31, -16, true); barrier(B, 52, -14, false);
   trailerS(30, 17, 'adtruck'); palletLoad(B, 36, 4); palletLoad(B, 52, 18, 1);
   for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
