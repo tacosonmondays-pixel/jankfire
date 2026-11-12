@@ -1,6 +1,7 @@
 // playwright: crouch is Left Ctrl too, and Ctrl+W closes a browser tab (the owner: "I just held crouch in liquid and
 // it closed my chrome"). checks the three guards:
-//   1. mid story run, closing the tab asks "Leave site?" first (beforeunload, after a user gesture)
+//   1. mid story run, and mid-round in any match (here: Training), closing the tab asks "Leave site?" first
+//      (beforeunload, after a user gesture). not on the menus
 //   2. in fullscreen while playing, Keyboard Lock holds the shortcut keys (W, Q, T, N, Tab, 1-9) for the game,
 //      and lets go on the menu and when fullscreen ends (public/js/kblock.js)
 //   3. windowed, the first Ctrl crouch shows a one-time tip; and Ctrl+W / Ctrl+Q keydowns are swallowed (preventDefault)
@@ -79,6 +80,23 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
   let asked2 = null; pg.once('dialog', async (d) => { asked2 = d.type(); await d.accept(); });
   await pg.reload({ timeout: 15000 }).catch(() => {}); await sleep(500);
   check(asked2 === null, 'test browsers (guard off) leave without asking, so the other e2e reloads still work');
+
+  // 1b. the same guard mid-round in a normal match (Training), and not on the menus
+  const reloadAsks = async (wait = 15000) => { await ev(() => { window.__jfUnloadGuard = true; }).catch(() => {}); await pg.mouse.click(320, 180); await sleep(300);
+    let t = null; pg.once('dialog', async (d) => { t = d.type(); await d.dismiss(); }); await pg.reload({ timeout: wait }).catch(() => {}); await sleep(1000); pg.removeAllListeners('dialog'); return t; };
+  await pg.goto(`http://localhost:${PORT}/`); await sleep(2500);
+  check(await reloadAsks() === null, 'main menu: leaving does not ask');
+  await sleep(2500);
+  await ev(() => { const b = [...document.querySelectorAll('button')].find((x) => /training/i.test(x.textContent)); if (b) b.click(); }); await sleep(8000);
+  await pg.mouse.click(320, 180); await sleep(1000);
+  const mp = await ev(async () => { const { G } = await import('/js/ctx.js'); return { joined: G.joined, mode: G.mode, menu: !document.getElementById('menu').classList.contains('hidden') }; });
+  console.log('training:', JSON.stringify(mp));
+  check(mp.joined && !mp.menu, 'in a Training round');
+  check(await reloadAsks(4000) === 'beforeunload', 'mid-round in Training: leaving asks first');
+  await pg.keyboard.press('KeyB'); await sleep(800); // the pause menu
+  const paused = await ev(() => !document.getElementById('menu').classList.contains('hidden'));
+  check(paused, 'pause menu open');
+  if (paused) { await ev(() => { window.__jfUnloadGuard = true; }); let t = null; pg.once('dialog', async (d) => { t = d.type(); await d.dismiss(); }); await pg.reload({ timeout: 15000 }).catch(() => {}); await sleep(1000); check(t === null, 'Training pause menu: leaving does not ask'); }
   check(!errs.length, 'no page errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   await b.close();
   console.log(fails.length ? `\n${fails.length} FAILED` : '\nALL OK');
