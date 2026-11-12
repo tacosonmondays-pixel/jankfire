@@ -5,6 +5,7 @@ Live: https://jankfire.onrender.com (Render auto-deploys `main`). Latest shipped
 ## How the coordinator works
 - Lane sessions build on their own branch and open draft PRs. The coordinator re-tests each one on latest `main` and merges it (owner's standing OK).
   - Owner, 2026-11-12, in the coordinator chat: "can you auto merge everything so I dont have to always give the go ahead?" So merge every PR a lane reports done and tested, once it passes the check on latest main (tests, boot; big server features also get a reviewer pass with the must-fixes fixed), without asking. Still ask the owner for supabase.sql changes, exe builds and releases, and look picks they have been asked about. Show the pictures after merging.
+  - Usage (owner, 2026-11-12): "all the maps started workign at once instead of one by one it ran through my 5 hgor limit". Map passes run ONE map at a time (Jankburg first, then the rest in turn); the coordinator wakes the next map session when the current one finishes its top items. Keep builders lean; never run all map sessions at once.
   - Merge with `git checkout -B ship-check origin/main && git merge <branch>`, then `node --check` on the changed files.
   - Boot with `node --max-old-space-size=256 server.js`. It must print no "share bit" warnings.
   - Smoke scripts: handoff/tests (t_all404, t_melee, t_mm, t_zm3, t_story0, t_lobby with `JF_LOBBY_WAIT=9000`, t_lb). They pre-set `jf_giftseen_all` so the gift popup doesn't cover the menu.
