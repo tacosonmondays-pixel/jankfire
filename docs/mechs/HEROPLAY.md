@@ -1,4 +1,4 @@
-# BATTLE ISLAND heroes: how they play (as built)
+# BATTLE ISLAND heroes: how they play (as built; the rigs are docs/mechs/HEROES.md)
 
 The design is docs/mechs/ROSTER.md; this page is what got built, with every number. Each hero is a MECH DROP frame
 (docs/mechs/PLAY.md: drop, climb in, armour, energy, eject all work the same) with its own kit. The numbers live in
@@ -51,5 +51,5 @@ The server keeps it honest:
   - Its own hits don't recharge the ult.
 - **Bots:** they roll at people, rev-launch from mid range, chain up to anyone above or far away, slam crowds and pile-drive whoever they can see.
 
-Tests: `tests/mech_wrecking_ws.cjs` (45 checks incl. the exploits above), `tests/mech_wrecking_bots_ws.cjs`. Knobs:
+Tests: `tests/mech_wrecking_ws.cjs` (46 checks incl. the exploits above), `tests/mech_wrecking_bots_ws.cjs`. Knobs:
 `JF_MECH_FRAME=wrecking` (bots' frame), `JF_MECH_ULT=<x>` (ults charge x times faster).

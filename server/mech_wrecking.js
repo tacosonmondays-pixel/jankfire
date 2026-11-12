@@ -192,7 +192,7 @@ export function installWrecking(Room, U) {
       if (!to) { const h = raycast(e, [0, -1, 0], 200, this.boxes); to = h ? h.point.slice() : [p.pos[0], p.pos[1] - 40, p.pos[2]]; }
       W.pile.ph = 'down'; W.pile.to = to; W.pile.dT = n;
       W.pile.dl = hdist(p.pos, to);
-      W.pile.dEnd = n + Math.hypot(to[0] - p.pos[0], to[1] - p.pos[1], to[2] - p.pos[2]) / P.dive * 1000 + 700;
+      W.pile.dEnd = n + Math.hypot(to[0] - p.pos[0], to[1] - p.pos[1], to[2] - p.pos[2]) / P.dive * 2500 + 1500; // (room for a slow client: it can't go anywhere but toward the spot anyway)
       this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'down', to: to.map(r2) });
     },
     wbPileLand(p, drop, n) {
