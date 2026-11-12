@@ -1614,9 +1614,11 @@ function suburbSD() {
   truck(B, -24, 2.2, 'adtruck2'); // the box truck, back open (a crate to climb in)
   for (const [x, z, c] of [[-44, 5.3, 'carblue'], [-12, -5.3, 'carblack'], [6, 5.3, 'cargreen'], [-36, -5.3, 'carwhite']]) car(W, x, z, 0, c);
   // the cul-de-sac: the founder's statue on its planter (a big googly toy), hedges, the mailboxes
-  add(29, 0.1, -5, 39, 0.6, 5, 'stone'); add(29.5, 0.6, -4.5, 38.5, 0.7, 4.5, 'lawn');
-  add(32.6, 0.7, -1.4, 35.4, 2.6, 1.4, 'chrome'); add(32.2, 2.6, -1.8, 35.8, 6.2, 1.8, 'toyface', { fit: 1 });
-  for (const [x, z] of [[30.5, -3.5], [37.5, 3.5], [30.5, 3.5], [37.5, -3.5]]) W.B(x, 1.3, z, 1.2, 1.2, 1.2, 'hedge');
+  propOf('founder_sd', [34, 0.1, 0], Math.PI / 2, () => { // (Blender: the monument, its plaque to the street; tools/blender/make_founder.py)
+    add(29, 0.1, -5, 39, 0.6, 5, 'stone'); add(29.5, 0.6, -4.5, 38.5, 0.7, 4.5, 'lawn');
+    add(32.6, 0.7, -1.4, 35.4, 2.6, 1.4, 'chrome'); add(32.2, 2.6, -1.8, 35.8, 6.2, 1.8, 'toyface', { fit: 1 });
+    for (const [x, z] of [[30.5, -3.5], [37.5, 3.5], [30.5, 3.5], [37.5, -3.5]]) W.B(x, 1.3, z, 1.2, 1.2, 1.2, 'hedge');
+  });
   for (let i = 0; i < 4; i++) add(44 + i * 1.3, 0.1, -12.5, 45 + i * 1.3, 1.5, -11.8, i % 2 ? 'toyteal' : 'toypink');
   W(46, 0.1, 9, 50, 1.2, 11.5, 'hedge');
   // the HOA gate where the street meets the cul-de-sac: two gatehouses leave one 8 m way through (mid's choke), the
@@ -1810,9 +1812,11 @@ function suburb() {
     P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
     for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
   }
-  add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn'); // the founder's plaza
-  add(-1.4, 0.5, -1.4, 1.4, 2.4, 1.4, 'chrome'); add(-1.8, 2.4, -1.8, 1.8, 6, 1.8, 'toyface', { fit: 1 }); add(-0.8, 0.9, -1.43, 0.8, 1.7, -1.4, 'plaque', { fit: 1 });
-  for (const [x, z] of [[-3.5, -3.5], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5]]) W.B(x, 1.1, z, 1.2, 1.2, 1.2, 'hedge');
+  propOf('founder', [0, 0, 0], 0, () => { // the founder's plaza (Blender: the monument, tools/blender/make_founder.py)
+    add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn');
+    add(-1.4, 0.5, -1.4, 1.4, 2.4, 1.4, 'chrome'); add(-1.8, 2.4, -1.8, 1.8, 6, 1.8, 'toyface', { fit: 1 }); add(-0.8, 0.9, -1.43, 0.8, 1.7, -1.4, 'plaque', { fit: 1 });
+    for (const [x, z] of [[-3.5, -3.5], [3.5, 3.5], [-3.5, 3.5], [3.5, -3.5]]) W.B(x, 1.1, z, 1.2, 1.2, 1.2, 'hedge');
+  });
   add(8, -0.4, -9, 26, 0.02, 9, 'sand'); add(8.4, 0.02, -8.6, 25.6, 0.06, 8.6, 'water'); // the pond (ankle deep)
   add(15, 0.06, -9.4, 19, 0.6, 9.4, 'wood'); for (const s of [-1, 1]) add(15, 0.6, s * 9.4 - (s > 0 ? 0.15 : 0), 19, 1.5, s * 9.4 + (s > 0 ? 0 : 0.15), 'wood'); // the footbridge (low rails)
   for (const [x, z] of [[11, -5], [22, 6], [24, -3]]) W.B(x, 0.5, z, 1.4, 1, 1.2, 'rock');
@@ -3735,9 +3739,11 @@ function spireArch(B, D, id, x, z, y, ranges, dr) {
 function skyCola(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('colacan', [x, y, z - 5], 0, () => { // (drawn as the Blender can, p_colacan: tools/blender/make_colacan.py)
     add(x - 2.1, y, z - 7.1, x + 2.1, y + 9, z - 2.9, 'toyred'); // the can: a core you bump into inside an octagon (four turned slabs)
     for (let k = 0; k < 4; k++) { D.obb(x, y + 4.5, z - 5, 6, 9, 2.49, (k * Math.PI) / 4, 'toyred'); D.obb(x, y + 9.15, z - 5, 5.4, 0.3, 2.2, (k * Math.PI) / 4, 'chrome'); for (const y0 of [0.6, 8.0]) D.obb(x, y + y0 + 0.2, z - 5, 6.12, 0.4, 2.54, (k * Math.PI) / 4, 'chrome'); }
     D.add(x - 1.5, y + 9.3, z - 5.4, x + 1.5, y + 9.5, z - 4.6, 'chrome'); // the ring pull
+    });
     for (const dx of [-9, -6.5, 6.5, 9]) { add(x + dx - 1, y, z + 9, x + dx + 1, y + 2.4, z + 10.2, dx < 0 ? 'toyred' : 'toyblue'); D.add(x + dx - 0.8, y + 0.8, z + 8.96, x + dx + 0.8, y + 2.1, z + 9, 'glass'); } // vending machines
     cratePile({ add: B.local(0, 0, 0, y) }, x - 12, z - 10, 5, r); cratePile({ add: B.local(0, 0, 0, y) }, x + 9, z - 10, 4, r);
     billboard(W, x, z - 11.6, y, 'x'); }
@@ -3784,7 +3790,7 @@ function skyBuild(B, D, x, z, y, r) {
     for (const [sx0, sz0] of [[-8, 5], [3, -8]]) { for (let k = 0; k < 3; k++) add(x + sx0, y + k * 0.35, z + sz0 + k * 0.1, x + sx0 + 5, y + (k + 1) * 0.35, z + sz0 + 0.6 + k * 0.1, 'rust'); }
     add(x + 5, y, z + 5, x + 10, y + 2.6, z + 8, 'containerr'); D.add(x + 5.6, y + 1.0, z + 4.96, x + 8.4, y + 2.0, z + 5, 'adclosed', { fit: 1 }); // the site hut
     for (const [bx, bz] of [[-3, -11], [0, -11], [3, -11]]) add(x + bx - 1.2, y, z + bz - 0.3, x + bx + 1.2, y + 1.0, z + bz + 0.3, 'jersey');
-    crane(B, D, x - 8, z - 8, y, 32, 50, 34); }
+    propOf('crane', [x - 8, y, z - 8], 0, () => crane(B, D, x - 8, z - 8, y, 32, 50, 34)); } // (drawn as the Blender crane, p_crane: tools/blender/make_crane.py)
 }
 // the greenhouse: glass panes on a steel frame, planting beds inside, water tanks, solar panels
 function skyGreen(B, D, x, z, y, r) {
@@ -4703,6 +4709,10 @@ function backrooms() {
   spawns.push([mid(14), PY + 0.1, mid(30)], [mid(15), PY + 0.1, mid(45)]);
   const att2 = [[-16, 0.1, 113], [-8, 0.1, 113], [0, 0.1, 113], [8, 0.1, 113], [16, 0.1, 113], [-8, 0.1, 103], [8, 0.1, 103]];
   const def2 = att2.map(([x, y, z]) => [x, y, -z]);
+  // ---- look only: every wallpaper wall, pillar and half wall is drawn by one Blender model (tools/blender/arch/make_backrooms.py,
+  // archfield.js). the boxes stay what you bump into, and come back if the file doesn't
+  B.boxes.arch.push({ id: 'backrooms', p: [0, 0, 0], r: 0 }); const AV = { av: 'backrooms', ai: B.boxes.arch.length - 1 };
+  for (const b of B.boxes) if (b.mat === 'wallpaper') Object.assign(b, AV);
   const HZ = 0xb4a35a; // the haze
   return {
     name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -50,
@@ -4720,8 +4730,8 @@ function range() {
   const { boxes, box } = builder();
   box(0, -1, -60, 40, 2, 150, 'grass');
   box(0, -6, -60, 30, 8, 130, 'dirt');
-  box(0, 0.4, 5, 40, 0.8, 1, 'wood');
-  for (const z of [-10, -25, -50, -100]) box(-17, 0.6, z, 4, 1.2, 0.4, 'wood');
+  propOf('rangebench', [0, 0, 5], 0, () => box(0, 0.4, 5, 40, 0.8, 1, 'wood')); // the shooting bench (Blender: p_rangebench)
+  for (const z of [-10, -25, -50, -100]) propOf('rangemark', [-17, 0, z], 0, () => box(-17, 0.6, z, 4, 1.2, 0.4, 'wood'), { v: 'v' + (5 - z) }); // distance boards: how far from the bench
   box(32, -1, -40, 20, 2, 40, 'grass');
   box(28, 0.15, -25, 2.5, 0.3, 2.5, 'pad', { pad: [0, 30, 0] });
   box(36, 0.15, -35, 2.5, 0.3, 2.5, 'pad', { pad: [0, 22, -22] });
@@ -4737,7 +4747,7 @@ function range() {
   horizon(D, -220, -280, 220, 160, 1500, 'grass'); // the same grass as the field you stand on
   D.add(-58, 0.01, -2.3, -50, 0.07, -1.7, 'sand'); // the spray range's firing line (10 m from its wall)
   D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); // the berm the bullets end up in
-  for (let x = -18; x <= 18; x += 3.2) D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'); // sandbags on the firing line
+  for (let x = -18, k = 0; x <= 18; x += 3.2, k++) propOf('sandbags', [x + 1.5, 0, 6.9], 0, () => D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'), { spin: k % 2 ? Math.PI : 0 }); // sandbags on the firing line (p_sandbags; every other one turned round: no pink bag every 3 m)
   for (const [x, z] of [[-30, 20], [30, 20]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); } // watchtowers
   for (let z = 30; z > -260; z -= 10) for (const x of [-90, 90]) { D.box(x, 1, z, 0.15, 2, 0.15, 'metal'); D.add(x - 0.03, 1.6, z, x + 0.03, 1.65, z + 10, 'tire'); }
   for (let i = 0; i < 30; i++) { const rr = rng(400 + i), a = rr() * Math.PI * 2, d = 150 + rr() * 150; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, -60 + Math.sin(a) * d, 6 + rr() * 4, rr); }
