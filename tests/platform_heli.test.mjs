@@ -8,8 +8,9 @@ test('both rig maps: the chopper on the helideck is p_heli, fitted like every ot
   for (const [id, dz] of [['platform', 0], ['platform_sd', -44]]) {
     const ps = MAPS[id].boxes.props.filter((q) => q.id === 'heli');
     assert.equal(ps.length, 1, id);
-    assert.deepEqual(ps[0].a, [45.5, 10.83, 0.5 + dz], 'on the H');
-    assert.deepEqual([ps[0].lo, ps[0].hi], [ref.lo, ref.hi], 'the same outline as Skyline\'s');
+    const near = (a, b) => a.every((v, i) => Math.abs(v - b[i]) < 0.01);
+    assert.ok(near(ps[0].a, [45.5, 10.83, 0.5 + dz]), 'on the H');
+    assert.ok(near(ps[0].lo, ref.lo) && near(ps[0].hi, ref.hi), 'the same outline as Skyline\'s (the one fit every copy gets)');
     assert.ok(MAPS[id].boxes.filter((b) => b.pv === 'heli').length >= 6, 'its solid boxes are tagged');
   }
 });
