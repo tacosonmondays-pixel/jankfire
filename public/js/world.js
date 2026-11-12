@@ -22,6 +22,7 @@ import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // B
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
+import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { postBegin, postEnd } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
@@ -437,7 +438,7 @@ function mapLight(map) {
   sun.color.setHex(L.sun[0]); sun.intensity = L.sun[1];
 }
 
-let skyGeo, voidMesh;
+let skyGeo, voidMesh, skyMesh;
 let skyStuff = []; // sun, clouds, void rocks: switched off on sealed maps (map.sealed), where nobody could ever see them
 const voidRocks = []; // and the floating rocks only belong over a void: maps with a real floor (map.floorY) hide them
 function paintSky(sky) {
@@ -453,7 +454,7 @@ function paintSky(sky) {
 function buildSky(scene) {
   skyGeo = new THREE.SphereGeometry(900, 10, 8);
   paintSky(MAP.sky);
-  scene.add(new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
+  scene.add(skyMesh = new THREE.Mesh(skyGeo, new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide, fog: false, depthWrite: false })));
 
   sun = new THREE.Mesh(new THREE.BoxGeometry(40, 40, 40), new THREE.MeshBasicMaterial({ color: 0xffe14d, fog: false }));
   sun.position.set(300, 220, -420);
@@ -562,6 +563,7 @@ export function loadMap(id) {
   forestMap(MAPS[MAP.id], MAP.id);
   shredMap(MAPS[MAP.id], MAT);
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
+  biLookMap(MAP.id, [skyMesh, sun, ...clouds]); // Battle Island's own sky, fog and grade (bilook.js; nothing on other maps)
 }
 
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
@@ -627,6 +629,7 @@ export function resize() {
 }
 
 export function updateWorld(dt) {
+  updateBiLook(dt);
   for (const c of clouds) {
     c.position.x += c.userData.speed * dt;
     if (c.position.x > 320) c.position.x = -320;

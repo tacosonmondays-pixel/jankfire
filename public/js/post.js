@@ -71,7 +71,7 @@ void main() {
   c += ( texture2D( tSrc, vUv + uDir * 3.230769 ).rgb + texture2D( tSrc, vUv - uDir * 3.230769 ).rgb ) * 0.070270;
   gl_FragColor = vec4( c, 1.0 );
 }`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }),
-    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; varying vec2 vUv;
+    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; uniform vec4 uGrade; varying vec2 vUv;
 void main() {
   vec3 c = texture2D( tScene, vUv ).rgb;
   vec3 b = texture2D( tB0, vUv ).rgb * uW.x;
@@ -86,8 +86,14 @@ void main() {
     p *= 1.0 - 0.5 * pow( dot( v, v ) * 1.9, 1.6 ); // dark comic-panel corners
     c = mix( c, clamp( p, 0.0, 1.0 ), uPunch );
   }
+  if ( uGrade.w > 0.0 ) { // one map's own colour grade (setGrade: Battle Island's bilook.js): saturation, warmth, contrast
+    float l = dot( c, vec3( 0.299, 0.587, 0.114 ) );
+    vec3 g = mix( vec3( l ), c, uGrade.x ) + vec3( uGrade.y, uGrade.y * 0.35, -uGrade.y * 0.6 );
+    g = ( g - 0.5 ) * uGrade.z + 0.5;
+    c = clamp( mix( c, g, uGrade.w ), 0.0, 1.0 );
+  }
   gl_FragColor = vec4( c * ( 1.0 - uKill ), 1.0 ); // (uKill: tests only, forces a black frame)
-}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 } }),
+}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 }, uGrade: { value: new THREE.Vector4() } }),
   };
 }
 const target = (w, h, depth, filter) => {
@@ -117,6 +123,8 @@ export function setPost(bloom, punch) {
   P.bloom = BLOOM[bloom] ? bloom : 0; P.punch = !!punch;
   if (!wanted() && P.rt) { P.rt.dispose(); P.rt = null; for (const l of P.lv) { l.a.dispose(); l.b.dispose(); } P.lv = []; } // off: give the memory back
 }
+// a map's own colour grade, [saturation, warmth, contrast, amount] or null (bilook.js). only while shaders are on
+export function setGrade(g) { P.grade = g ? g.slice() : null; }
 export const postOn = () => !SAFE.dead && (P.bloom > 0 || P.punch);
 const wanted = () => P.bloom > 0 || P.punch;
 export const postInfo = () => ({ bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]), on: postOn(), dead: SAFE.dead, why: SAFE.why, checks: SAFE.checks, ok: SAFE.ok });
@@ -170,7 +178,7 @@ function compose(r) {
   F.tB0.value = L[0] ? L[0].a.texture : null; F.tB1.value = L[1] ? L[1].a.texture : null; F.tB2.value = L[2] ? L[2].a.texture : null;
   const k = B ? B.k : 0;
   F.uW.value.set(L[0] ? k * (L[1] ? 0.6 : 1) : 0, L[1] ? k * 0.8 : 0, L[2] ? k : 0); // more layers: a wide soft halo, not a brighter middle (signs stay readable)
-  F.uPunch.value = P.punch ? 1 : 0; F.uKill.value = SAFE.test === 'black' ? 1 : 0;
+  F.uPunch.value = P.punch ? 1 : 0; if (P.grade) F.uGrade.value.fromArray(P.grade); else F.uGrade.value.set(1, 0, 1, 0); F.uKill.value = SAFE.test === 'black' ? 1 : 0;
   if (SAFE.test === 'blackin') { r.setRenderTarget(P.rt); r.setClearColor(0x000000, 1); r.clear(); } // (tests: an empty frame buffer)
   pass(r, M.final, null);
 }
