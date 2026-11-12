@@ -19,7 +19,8 @@ import { organic } from '../organic.js';
 import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared/map.js';
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
-import { WorkerSocket } from './host.js';
+import { WorkerSocket, warmSim } from './host.js';
+import { warmCity } from '../city/warm.js'; // (tiny, no imports of its own: the chunk workers start at once)
 import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
@@ -47,6 +48,7 @@ export function initStory(a) {
   if (!MAPS[TEST.id]) { const m = buildTestMap({ builder, horizon, rng, lollipop, conifer }); unstick(m.boxes, m.spawns); MAPS[TEST.id] = m; } // client only: never in MAP_ORDER, so no menu lists it
   if (!MAPS[TRAIN.id]) { const m = buildTrainMap({ builder }); unstick(m.boxes, m.spawns); MAPS[TRAIN.id] = m; } // (client only, like the test lot)
   import('../city/storymap.js').then((m) => m.registerStoryMaps(MAPS)).catch(() => {}); // the world lane's streamed city (story_slice)
+  warmUp(); // the slow startup bits, now: their workers have threads of their own, the menu doesn't wait on them
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
@@ -120,7 +122,21 @@ async function loadSlot(slot) {
   return localSaves()[slot] || null;
 }
 
+// load time: the slow parts of starting a story game, started while you're still on the menus. the sim's worker
+// (host.js warmSim) and the city's chunk workers with the chunks round where you'll appear (city/warm.js): the new
+// game's spawn and wherever your saves in this browser are. NEW GAME then finds them running
+function warmUp() {
+  if (warmUp.done) return;
+  warmUp.done = true;
+  warmSim();
+  const W = WORLDS[DEFAULT_WORLD], spots = [[W.spawn[0], W.spawn[2]]];
+  for (const sv of localSaves()) if (sv && sv.at && sv.at.map === DEFAULT_WORLD && Array.isArray(sv.at.p) && Number.isFinite(sv.at.p[0]) && Number.isFinite(sv.at.p[2])) spots.push([sv.at.p[0], sv.at.p[2]]);
+  warmCity((MAPS[DEFAULT_WORLD] && MAPS[DEFAULT_WORLD].stream) || 'slice', spots); // ('slice': the story map's stream, before storymap.js has registered it)
+}
+function reWarm() { warmUp.done = false; } // (a game used them up: the next picker warms a fresh set)
+
 async function openPicker() {
+  warmUp(); // (no-op if the menu already did)
   const bk = back();
   if (bk && cur && cur.slot === bk.slot) { setBack(null); return start(cur); } // back from a sim: same spot
   if (bk) setBack(null); // (a reload lost the run we were holding: just pick again)
@@ -242,6 +258,7 @@ function start(save) {
   cur = save;
   autoT = performance.now();
   api.startMode('story', undefined, () => new WorkerSocket(save));
+  reWarm(); // (the warm workers are this game's now: the next time the picker opens it starts a fresh set, not mid-game)
 }
 
 // ------------------------------------------------------------ travel: another story world, the same run (the train and back)

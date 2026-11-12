@@ -14,6 +14,7 @@ import { buildPropGroup, freeProps, onPropModel } from './props.js';
 import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
 import { Crowd } from './crowd.js'; // the people standing about
 import { Weather } from './weather.js'; // paper storms
+import { takeWarm } from './warm.js'; // workers started early, on the menu (load time)
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
@@ -58,7 +59,7 @@ export class CityStream {
     this.mats = cityMaterials();
     this.chunks = new Map(); // id -> record
     this.inbox = []; this.inflight = 0; this.maxInflight = workers * 2; this.colInflight = 0; // collision gets its own lane
-    this.workers = Array.from({ length: workers }, () => { const w = new Worker(workerUrl, { type: 'module' }); w.onmessage = (e) => this.inbox.push(e.data); w.onerror = (e) => { this.errors.push(String(e.message || e)); }; return w; });
+    this.workers = (takeWarm(workers, workerUrl) || Array.from({ length: workers }, () => new Worker(workerUrl, { type: 'module' }))).map((w) => { w.onmessage = (e) => this.inbox.push(e.data); w.onerror = (e) => { this.errors.push(String(e.message || e)); }; return w; }); // (warm.js may have started them on the menu, the spawn's chunks already built)
     this.rr = 0; this.errors = [];
     this.far = { mesh: null, key: '', wantKey: '', busy: false, t: 0, list: [] };
     this.props = { group: null, key: '', t: 0, n: 0 };
