@@ -59,7 +59,7 @@ export const PLAN = {
   // flat = the radius kept flat round c, r = its radius (HUD, callouts, bots), drop = open-sky flat spots a mech is
   // called down onto ([dx, dz, radius] from c, 12 m+ across), cells = energy-cell spots (tagged apart from loot)
   pois: [
-    { id: 'port', name: 'Port Jankton', c: [28, 118], rect: [-44, 84, 104, 170], y: 1.6, flat: 58, r: 66, drop: [[0, -28, 9], [-30, -6, 7]], cells: 6, color: '#4fd8ff', lab: [0, 36], loot: 0.18, blurb: 'the harbour town: docks, warehouses, a main street. the biggest drop' },
+    { id: 'port', name: 'Port Jankton', c: [28, 118], rect: [-44, 84, 104, 170], y: 1.6, flat: 58, r: 66, drop: [[0, -36, 8], [-18, 20, 6]], cells: 6, color: '#4fd8ff', lab: [0, 36], loot: 0.18, blurb: 'the harbour town: docks, warehouses, a main street. the biggest drop' },
     { id: 'resort', name: 'The All-Inclusive', c: [180, 110], rect: [150, 78, 214, 150], y: 1.2, flat: 34, r: 40, drop: [[18, 26, 8]], cells: 4, color: '#ff4fd8', lab: [20, -40], loot: 0.12, blurb: 'a beach resort on the lagoon. wristbands not checked' },
     { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 26, r: 30, drop: [[-14, 12, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
     { id: 'wreck', name: 'Return to Sender', c: [240, -154], rect: [204, -194, 276, -116], y: 0.9, flat: 0, r: 44, drop: [[-24, 10, 7]], cells: 4, color: '#ff9a3a', loot: 0.12, blurb: 'a cargo ship on the reef, its containers all up the beach' },
@@ -71,6 +71,7 @@ export const PLAN = {
   ],
   islets: [[-372, 40, 30, 24], [354, 20, 26, 20], [-130, 300, 34, 22], [186, 268, 22, 18], [-60, -300, 28, 20]], // [x, z, rx, rz]
   quarry: { c: [-60, -150], r: 40, depth: 16, terraces: 4 }, // the pit: cut into the ridge's north foot
+  harbour: { x0: -30, x1: 100, z: 146, bed: -1.4, out: 26 }, // Port Jankton's quay (a straight wall at z) and the basin in front of it: waist-deep (fall off the quay and wade), then the bay
   blimpY: 210,
   zone0: [0, 0, 330],
 };
@@ -125,6 +126,9 @@ export function islandH(x, z, raw = false) {
   for (const P of PLAN.pois) if (P.flat > 0 && d > 0) { const pd = Math.hypot(x - P.c[0], z - P.c[1]); if (pd < P.flat * 1.6) h = lerp(h, P.y, (1 - sm(P.flat, P.flat * 1.6, pd)) * sm(0, 8, d)); } // (eased out to the waterline: the bay stays a bay)
   // the mech drop pads: open, level ground a mech is called down onto (at the height the land has under the pad's middle)
   if (!raw) for (const q of PADS) { const pd = Math.hypot(x - q[0], z - q[1]); if (pd < q[2] * 1.7) h = lerp(q[3], h, sm(q[2] + 1, q[2] * 1.7, pd)); }
+  // the harbour: the quay's straight wall, the land behind it level with the town, the basin in front wadeable
+  const HB = PLAN.harbour;
+  if (x > HB.x0 && x < HB.x1 && z > HB.z - 12 && z < HB.z + HB.out + 10) { if (z < HB.z) h = Math.max(h, 1.6); else if (z < HB.z + HB.out) h = HB.bed; else h = lerp(HB.bed, h, sm(HB.z + HB.out, HB.z + HB.out + 10, z)); }
   return h;
 }
 // the pads in world space with their level: [x, z, r, y]
@@ -160,7 +164,7 @@ function makeGrid() { // the plan's heights on the terrain's 1 m grid, worked ou
   // nothing steeper than a mech can walk up (the ridge, the dunes, the beaches), except where it's meant to be a wall: the
   // north-west cliffs and the quarry's terrace faces (grapple those). peaks keep their height, their flanks are eased
   const MAXS = 0.62, wall = new Uint8Array(vx * vz), C = PLAN.cliffs, Q = PLAN.quarry;
-  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const x = X0 + i, z = Z0 + j; if (Math.hypot((x - C.c[0]) / C.sx, (z - C.c[1]) / C.sz) / C.r < 1.25 || Math.hypot(x - Q.c[0], z - Q.c[1]) < Q.r * 1.3 || PADS.some((q) => Math.hypot(x - q[0], z - q[1]) < q[2] + 1)) wall[i * vz + j] = 1; } // (and the drop pads: level, whatever's round them)
+  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const x = X0 + i, z = Z0 + j; if (Math.hypot((x - C.c[0]) / C.sx, (z - C.c[1]) / C.sz) / C.r < 1.25 || Math.hypot(x - Q.c[0], z - Q.c[1]) < Q.r * 1.3 || PADS.some((q) => Math.hypot(x - q[0], z - q[1]) < q[2] + 1) || (x > PLAN.harbour.x0 - 1 && x < PLAN.harbour.x1 + 1 && Math.abs(z - PLAN.harbour.z) < 3)) wall[i * vz + j] = 1; } // (and the quay: a sheer wall) // (and the drop pads: level, whatever's round them)
   for (let pass = 0; pass < 40; pass++) { // raise the low side of anything too steep (a cut-and-fill that keeps every summit and pad)
     let any = 0;
     for (let i = 1; i < vx - 1; i++) for (let j = 1; j < vz - 1; j++) { const k = i * vz + j; if (wall[k] || H[k] <= SEA) continue;
