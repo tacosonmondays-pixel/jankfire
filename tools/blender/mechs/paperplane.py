@@ -6,13 +6,15 @@
 # Game space: the mech faces -z, its right is +x, feet on y = 0.
 from mechkit import *
 
+DECALS = True  # (off for the Tripo reference pictures: no text or stickers)
+
 FID = 'mech_paperplane'
-PAL_A = {  # "SKY MAIL": sky blue + white + yellow on a navy frame, yellow eyes, cyan thrust
+PAL_A = {  # "SKY MAIL": sky blue + white + yellow on a navy frame, a yellow shutter visor, cyan thrust
     'paint': 0x2fb8ff, 'white': 0xf3f0e8, 'dark': 0x1d2747, 'accent': 0xffd23a, 'frame': 0x3a4152, 'chrome': 0xd2d9e2,
     'rubber': 0x17171c, 'glass': 0x12384f, 'glow': 0xffe14d, 'thrust': 0x5fe4ff, 'brass': 0xd9a640,
     'pencil': 0xffc21a, 'wood': 0xe8bf8a, 'eraser': 0xff8fb4, 'lead': 0x2a2a30, 'paper': 0xf7f4ec, 'cup': 0xfafafa,
 }
-PAL_B = {  # "PINK SLIP": hot pink + white + yellow on plum, cyan eyes, pink thrust
+PAL_B = {  # "PINK SLIP": hot pink + white + yellow on plum, a cyan shutter visor, pink thrust
     'paint': 0xff3fcf, 'white': 0xf6f0f2, 'dark': 0x2c1446, 'accent': 0xffe14d, 'frame': 0x40384e, 'glass': 0x2a1240,
     'glow': 0x4fe8ff, 'thrust': 0xff6ae0,
 }
@@ -28,6 +30,7 @@ JT = {
     'hatch': (0, 4.02, -0.40),
 }
 WING_PHI, WING_PSI = math.radians(100), math.radians(-18)  # the stow: swung up about the back normal, tilted back
+CRANE_AT = (-0.66, 3.30, 0.935)  # the crane drone's seat on the left wing, in the wing's jet layout (on its top face)
 
 
 def J(n, s=1): return mx(JT[n], s)
@@ -90,11 +93,13 @@ def build():
         mk.joint('thigh_' + L, J('thigh', s), 'hips'); mk.joint('shin_' + L, J('shin', s), 'thigh_' + L)
         mk.joint('foot_' + L, J('foot', s), 'shin_' + L); mk.joint('toe_' + L, J('toe', s), 'foot_' + L)
         mk.joint('skirt_' + L, J('skirt', s), 'hips'); mk.joint('wing_' + L, J('wing', s), 'backpack')
+    mk.joint('crane', g_of(wing_stow(-1) @ gv(*CRANE_AT)), 'wing_L')
     T = {}  # decal targets per joint
     head(mk, M, T); torso(mk, M, T)
     for s, L in ((1, 'R'), (-1, 'L')):
         leg(mk, M, T, s, L); arm(mk, M, T, s, L); wing(mk, M, T, s, L); skirt(mk, M, T, s, L)
-    decals(mk, M, T)
+    crane(mk, M, T)
+    if DECALS: decals(mk, M, T)
     mk.meta.update({'name': 'PAPER PLANE', 'height': 4.85, 'phase': 'concept',
                     'palettes': {'A': {k: PAL_A[k] for k in ('paint', 'white', 'dark', 'accent', 'glow', 'thrust')},
                                  'B': {k: PAL_B[k] for k in ('paint', 'white', 'dark', 'accent', 'glow', 'thrust')}},
@@ -127,14 +132,20 @@ def head(mk, M, T):
         H.append(hull(P([(s * 0.29, 0.20, -0.10), (s * 0.29, 0.20, 0.10), (s * 0.235, 0.20, -0.14), (s * 0.235, 0.20, 0.10),
                          (s * 0.27, -0.02, 0.06), (s * 0.22, -0.02, 0.06), (s * 0.20, -0.04, -0.20), (s * 0.235, 0.02, -0.21)]), M['paint'], 0.01, name='jaw'))
         H.append(hull(P([(s * 0.236, 0.07, -0.18), (s * 0.236, 0.10, -0.21), (s * 0.26, 0.09, -0.15), (s * 0.12, 0.045, -0.262), (s * 0.13, 0.075, -0.275)]), M['dark'], 0.004, name='cheekline'))
-    # visor (dark glass): a V across the face, two slanted eyes (glow)
+    # visor (dark glass): a V across the face behind a split shutter: glowing slats either side of the keel
+    # (deliberately not a pair of eyes)
     vis = [(0, 0.235, -0.352), (0, 0.09, -0.342), (0, 0.23, -0.20), (0, 0.09, -0.20)]
     for s in (-1, 1): vis += [(s * 0.262, 0.215, -0.208), (s * 0.252, 0.095, -0.186), (s * 0.20, 0.22, -0.06), (s * 0.20, 0.09, -0.06)]
     H.append(hull(P(vis), M['glass'], 0.005, name='visor'))
     for s in (-1, 1):
         n = norm((s * 0.454, 0, -0.891))
-        a, b, c, d = (s * 0.035, 0.208, -0.340), (s * 0.235, 0.214, -0.236), (s * 0.20, 0.140, -0.232), (s * 0.06, 0.122, -0.332)
-        H.append(hull([hp(*add(p, mul(n, 0.012))) for p in (a, b, c, d)] + [hp(*add(p, mul(n, -0.01))) for p in (a, b, c, d)], M['glow'], 0.003, name='eye'))
+        for k, yc in enumerate((0.200, 0.163, 0.126)):  # three slats, the top one widest
+            x1 = 0.235 - 0.02 * k
+            a, b = (s * 0.03, yc + 0.012, -0.343), (s * x1, yc + 0.012, -0.343 + x1 * 0.48)
+            c, d = (s * x1, yc - 0.012, -0.343 + x1 * 0.48), (s * 0.03, yc - 0.012, -0.343)
+            H.append(hull([hp(*add(p, mul(n, 0.012))) for p in (a, b, c, d)] + [hp(*add(p, mul(n, -0.01))) for p in (a, b, c, d)], M['glow'], 0.003, name='shutter'))
+    H.append(hull(P([(x, y, z) for x in (-0.022, 0.022) for (y, z) in ((0.24, -0.37), (0.085, -0.36), (0.24, -0.30), (0.085, -0.30))]), M['white'], 0.004, name='shutter_split'))
+    for s in (-1, 1):
         H.append(tri_plate(hp(s * 0.27, 0.26, -0.06), hp(s * 0.27, 0.06, 0.10), hp(s * 0.33, 0.39, 0.40), 0.035 * HS, M['white'], name='ear'))
         H.append(tri_plate(hp(s * 0.285, 0.31, 0.12), hp(s * 0.29, 0.24, 0.17), hp(s * 0.336, 0.395, 0.405), 0.045 * HS, M['paint'], name='ear_tip'))
     H.append(hull(P([(0, 0.22, -0.365), (0, 0.525, -0.02), (0, 0.505, 0.20), (0, 0.37, 0.37), (0.04, 0.26, -0.32), (-0.04, 0.26, -0.32),
@@ -346,6 +357,35 @@ def wing(mk, M, T, s, L):
     mk.meta.setdefault('wing_layout', {})[L] = {'R1': R1, 'R2': R2, 'tip': Wt, 'fold': C}
 
 
+def crane(mk, M, T):
+    """the wing drone: a little origami crane (0.7 m across) docked on the left wing's top face. It peels off, pecks
+    the target and comes back (its own joint, 'crane'). Built in the wing's flat jet layout, stowed with the wing"""
+    c0 = CRANE_AT; F, U, R = (0, 1, 0), (0, 0, 1), (1, 0, 0)  # forward = toward the hinge, up = off the wing
+    def Q(f, u, r): return add(c0, add(mul(F, f), add(mul(U, u), mul(R, r))))
+    C = [hull([Q(-0.16, 0.02, 0), Q(0.16, 0.02, 0), Q(0, 0.13, 0), Q(0, 0.03, 0.075), Q(0, 0.03, -0.075), Q(0, -0.012, 0)], M['paper'], 0.006, name='crane_body')]
+    C.append(tri_plate(Q(0.08, 0.03, 0), Q(0.15, 0.02, 0), Q(0.31, 0.24, 0), 0.016, M['paper'], 0.0, name='crane_neck'))
+    C.append(tri_plate(Q(0.29, 0.235, 0), Q(0.31, 0.215, 0), Q(0.39, 0.19, 0), 0.02, M['paint'], 0.0, name='crane_head'))
+    C.append(tri_plate(Q(-0.08, 0.03, 0), Q(-0.15, 0.02, 0), Q(-0.30, 0.22, 0), 0.016, M['paper'], 0.0, name='crane_tail'))
+    for sd in (-1, 1):
+        C.append(tri_plate(Q(-0.08, 0.07, 0), Q(0.08, 0.07, 0), Q(-0.03, 0.17, sd * 0.35), 0.014, M['paper'], 0.0, name='crane_wing'))
+        C.append(tri_plate(Q(-0.045, 0.155, sd * 0.29), Q(-0.02, 0.16, sd * 0.29), Q(-0.03, 0.17, sd * 0.35), 0.02, M['paint'], 0.0, name='crane_wingtip'))
+    C.append(hull([Q(0.33, 0.215 + dy, dr) for dy in (-0.012, 0.012) for dr in (-0.012, 0.012)] + [Q(0.35, 0.21, 0)], M['thrust'], 0.002, name='crane_eye'))
+    C.append(hull([Q(f, u, r) for f in (-0.05, 0.05) for u in (-0.03, 0.005) for r in (-0.03, 0.03)], M['frame'], 0.006, name='crane_dock'))
+    Mx = wing_stow(-1)
+    for o in C: xform(o, Mx)
+    mk.add('crane', C); T['crane'] = C
+
+
+def crane_img():
+    """a folded-crane emblem (the frame's mark), white on a dark disc"""
+    px = canvas(96, 96)
+    lib.px_disc(px[:, :, :3], 48, 48, 46, 0x1d2747); yy, xx = np.mgrid[0:96, 0:96]; px[(xx - 48) ** 2 + (yy - 48) ** 2 <= 46 * 46, 3] = 1
+    for pts, col in ((((20, 30), (48, 52), (76, 30), (48, 44)), 0xf7f4ec), (((48, 44), (40, 62), (48, 72), (56, 62)), 0xf7f4ec),
+                     (((44, 62), (20, 70), (14, 46)), 0xe8e4da), (((52, 62), (78, 66), (84, 50), (88, 54)), 0xe8e4da), (((84, 50), (90, 52), (88, 58)), 0xff4fd8)):
+        poly(px, pts, col)
+    return image_rgba('pp_crane', px)
+
+
 def decals(mk, M, T):
     D = []
     nb = tex_mat('pp_notebook', notebook_img(), rough=0.5, cc=0.3)
@@ -355,6 +395,8 @@ def decals(mk, M, T):
     fo = tex_mat('pp_foldmat', fold_img(), 0.4, clip=True)
     hz = tex_mat('pp_hazardmat', hazard_img(), 0.4)
     num = tex_mat('pp_07', stencil_img('pp_07img', '07', 0x16161c, 80, 40, 4), 0.35, clip=True)
+    cr = tex_mat('pp_cranemat', crane_img(), 0.35, clip=True)
+    mk.add('hatch', decal(T['hatch'], (-0.40, 3.58, -0.55), (-0.42, 0.25, -0.87), (0, 1, 0), 0.20, 0.20, cr, name='crane_mark'))
     for s, L in ((1, 'R'), (-1, 'L')):
         # notebook paper on each wing's underside (the face toward the mech's back = down in jet mode)
         Mx = wing_stow(s); lay = mk.meta['wing_layout'][L]

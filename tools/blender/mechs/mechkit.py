@@ -135,6 +135,17 @@ def border(px, t, col):
     fill(px, 0, 0, w, t, col); fill(px, 0, h - t, w, h, col); fill(px, 0, 0, t, h, col); fill(px, w - t, 0, w, h, col)
 
 
+def poly(px, pts, col):
+    """fill a polygon [(x, y)] (pixels) into an rgba canvas"""
+    h, w = px.shape[:2]; yy, xx = np.mgrid[0:h, 0:w]; X, Y = xx + 0.5, yy + 0.5
+    inside = np.zeros((h, w), bool); n = len(pts)
+    for i in range(n):
+        (x0, y0), (x1, y1) = pts[i], pts[(i + 1) % n]
+        c = ((y0 > Y) != (y1 > Y)) & (X < (x1 - x0) * (Y - y0) / ((y1 - y0) or 1e-9) + x0)
+        inside ^= c
+    px[inside, :3] = hexrgb(col); px[inside, 3] = 1
+
+
 def stripes(px, x0, y0, x1, y1, a, b, width=6):
     yy, xx = np.mgrid[y0:y1, x0:x1]
     k = ((xx + yy) // width) % 2
