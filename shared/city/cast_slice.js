@@ -16,8 +16,8 @@ export const NPC_SPOTS = {
   dumpling: { p: [-175.2, 8.15, 190.5], face: W },
   lumps: { p: [24, 16.2, 140], face: S }, // his gym (the npc.lumps mark)
   sharon: { p: [-104.6, 0, 236.2], face: N }, // in front of her soup stall, looking up the hill at you coming down
-  dot: { p: [-87, 40, -139.9], face: S }, // IN the digester wall, up to her chest
-  mina: { p: [-83.5, 40, -139.62], face: S, look: 'mina_wall', if: 'flag.fate.mina.gut' }, // a few faces along from Dot, in the wall up to her waist (look: the walled model), her back to the skin slabs' face (z -139.78); inside the gap in Peristalsis Avenue's tube (x -93..-81) so you can see her. if: only while her fate is 'gut' (m04's truck sets it; freed in act III clears it)
+  dot: { p: [-87, 40, -139.5], face: S }, // IN the digester wall, up to her chest, in her niche (act1set.js DIGESTER: the model's built round this spot; 0.4 m out from the office face, so her back clears it and she stands on the street, not on the lung pad buried in the wall behind her)
+  mina: { p: [-83.5, 40, -139.62], face: S, look: 'mina_wall', if: 'flag.fate.mina.gut' }, // a few faces along from Dot, in the wall up to her waist (look: the walled model), her back to the wall's niche (act1set.js DIGESTER); inside the gap in Peristalsis Avenue's tube (x -93..-81) so you can see her. if: only while her fate is 'gut' (m04's truck sets it; freed in act III clears it)
   sister_agenda: { p: [-264, 40, -199], face: S }, // just inside the Choir Lung's door
   bev: { p: [-83.25, 36.02, -9.4], face: S }, // in her surgery, beside the dentist's chair (act1set.js BEV), facing the curtain
 };
@@ -50,4 +50,12 @@ export const SITTERS = [
   { id: 'wait_jaw', seat: BEV.seats[0], face: BEV.seatFace, hint: { body: 'normal', desc: 'a woman in a headscarf holding her own jaw in a tea towel' } },
   { id: 'wait_chalk', seat: BEV.seats[1], face: BEV.seatFace, hint: { body: 'normal', desc: 'a big man in a vest, the price still chalked on his new arm' } },
   { id: 'wait_jack', seat: BEV.seats[2], face: BEV.seatFace, look: 'pallet_jack', if: '!flag.fate.pallet_jack.dead' },
+];
+
+// the Gut Choir in the Choir Lung (public/js/story/choir.js): set dressing like the sitters, no lines. two rows of
+// stalls facing each other across the aisle up from the door (the lung's ring is centred x -268, z -218; its door is
+// to the south), so walking in you see them side-on, and every head turns to you at once. look: choir (tall) / choir_b
+export const CHOIR = [
+  { look: 'choir', p: [-270.7, 40, -209.4], face: E }, { look: 'choir_b', p: [-270.7, 40, -210.7], face: E }, { look: 'choir', p: [-270.7, 40, -212.0], face: E },
+  { look: 'choir_b', p: [-265.3, 40, -210.0], face: W }, { look: 'choir', p: [-265.3, 40, -211.35], face: W },
 ];

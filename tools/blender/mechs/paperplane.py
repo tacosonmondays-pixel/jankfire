@@ -89,7 +89,7 @@ def build():
     for s, L in ((1, 'R'), (-1, 'L')):
         mk.joint('shoulder_' + L, J('shoulder', s), 'chest'); mk.joint('pod_' + L, J('pod', s), 'shoulder_' + L)
         mk.joint('upperarm_' + L, J('upperarm', s), 'shoulder_' + L); mk.joint('forearm_' + L, J('forearm', s), 'upperarm_' + L)
-        mk.joint('hand_' + L, J('hand', s), 'forearm_' + L)
+        mk.joint('hand_' + L, J('hand', s), 'forearm_' + L); mk.joint('cannon_' + L, (s * 1.12, 2.45, -0.10), 'forearm_' + L)
         mk.joint('thigh_' + L, J('thigh', s), 'hips'); mk.joint('shin_' + L, J('shin', s), 'thigh_' + L)
         mk.joint('foot_' + L, J('foot', s), 'shin_' + L); mk.joint('toe_' + L, J('toe', s), 'foot_' + L)
         mk.joint('skirt_' + L, J('skirt', s), 'hips'); mk.joint('wing_' + L, J('wing', s), 'backpack')
@@ -98,7 +98,7 @@ def build():
     T = {}  # decal targets per joint
     head(mk, M, T); torso(mk, M, T)
     for s, L in ((1, 'R'), (-1, 'L')):
-        leg(mk, M, T, s, L); arm(mk, M, T, s, L); wing(mk, M, T, s, L); skirt(mk, M, T, s, L)
+        leg(mk, M, T, s, L); arm(mk, M, T, s, L); cannon(mk, M, T, s, L); wing(mk, M, T, s, L); skirt(mk, M, T, s, L)
     crane(mk, M, T)
     if DECALS: decals(mk, M, T)
     mk.meta.update({'name': 'PAPER PLANE', 'height': 4.85, 'phase': 'concept',
@@ -275,6 +275,21 @@ def leg(mk, M, T, s, L):
     TO.append(hull([(x(a), y, z) for (a, y, z) in ((0.285, 0.0, -0.37), (0.635, 0.0, -0.37), (0.46, 0.0, -0.81), (0.29, 0.05, -0.37), (0.63, 0.05, -0.37), (0.46, 0.05, -0.80))], M['rubber'], 0.006, name='toesole'))
     TO.append(cyl((x(0.30), 0.13, -0.40), (x(0.62), 0.13, -0.40), 0.06, M['frame'], 12, name='toepin'))
     mk.add('toe_' + L, TO); T['toe_' + L] = TO
+
+
+def cannon(mk, M, T, s, L):
+    """twin highlighter cannons under the forearm (MECH DROP fires them from mk_muzzle_*, just past the tips): a pencil
+    case clamped on below the cuff, two fat highlighters poking out the front, chisel tips in the team colour"""
+    x = lambda v: s * v
+    C = [hull([(x(a), y, z) for a in (1.00, 1.24) for y in (2.33, 2.57) for z in (-0.12, -0.44)], M['dark'], 0.03, name='case')]
+    C.append(quad_slab([(x(1.02), 2.58, -0.15), (x(1.22), 2.58, -0.15), (x(1.22), 2.58, -0.41), (x(1.02), 2.58, -0.41)], 0.04, M['white'], name='case_lid'))
+    C.append(frustum((x(1.09), 2.47, 0.08), (x(1.09), 2.55, 0.08), 0.25, 0.25, M['frame'], 10, squash=(0.95, 1.1), bev=0.01, ref=(1, 0, 0), name='clamp'))
+    for dx in (-0.056, 0.056):
+        cx = x(1.14) + dx
+        C.append(frustum((cx, 2.40, -0.25), (cx, 2.40, -0.62), 0.052, 0.052, M['accent'], 6, bev=0.006, ref=(0, 1, 0), rot=0, name='highlighter'))
+        C.append(cyl((cx, 2.40, -0.60), (cx, 2.40, -0.665), 0.058, M['frame'], 12, name='cap_ring'))
+        C.append(hull([(cx + a, 2.40 + b, -0.66) for a in (-0.032, 0.032) for b in (-0.03, 0.03)] + [(cx + a, 2.40 + b, -0.75) for a in (-0.03, 0.03) for b in (-0.008, 0.012)], M['paint'], 0.006, name='chisel_tip'))
+    mk.add('cannon_' + L, C); T['cannon_' + L] = C
 
 
 def arm(mk, M, T, s, L):

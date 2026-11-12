@@ -113,6 +113,27 @@ function glbParts(scene, lod1 = false) {
   return parts;
 }
 
+// a Blender prop sat in its place's mood without a re-export: its textured, unlit-by-itself materials multiplied by a
+// colour (darker, redder), wetter (less rough, more clearcoat). glows and emissive bits are left as they are, and the
+// city's own lamps still light it (snap: CITY_LIGHTS). the Digester Wall came out pale pink against the Gut's red-black
+export const PROP_TONE = {
+  digester_wall: { mul: 0x9c3c48, rough: 0.8, clearcoat: 0.3, ccRough: 0.35, env: 0.12 }, // (env: the studio reflection reads grey on wet red: keep it low)
+};
+const TONED = new WeakSet(); // (the full model and its lod1 share materials: each one toned once)
+function toneProp(id, parts) {
+  const T = PROP_TONE[id]; if (!T || !parts) return;
+  const mul = new THREE.Color(T.mul), seen = TONED;
+  for (const p of parts) {
+    const m = p.mat; if (!m || seen.has(m) || !m.map || m.isMeshBasicMaterial) continue; // (textured flesh only: the glow and the deep wet flesh are already right)
+    seen.add(m);
+    if (m.emissive && m.emissive.getHex() && m.emissiveIntensity > 0.05) continue; // (anything that glows keeps its glow)
+    m.color.multiply(mul);
+    if ('roughness' in m) m.roughness = Math.max(0.08, m.roughness * T.rough);
+    if ('clearcoat' in m) { m.clearcoat = Math.max(m.clearcoat || 0, T.clearcoat); m.clearcoatRoughness = T.ccRough ?? 0.25; }
+    if (T.env != null && 'envMapIntensity' in m) m.envMapIntensity = T.env;
+  }
+}
+
 const loader = new GLTFLoader();
 // which files exist: the story's own (public/models/story/index.json, written by the Blender scripts) and the PvP
 // props (the server's /models/list). asked once, so a prop with no file never 404s
@@ -129,6 +150,7 @@ function load(id) {
     if (!u) { e.state = 'code'; return; }
     loader.load(u, (gltf) => {
       const parts = glbParts(gltf.scene), lod1 = glbParts(gltf.scene, true); // full meshes, and the *_lod1 copy for mid distance
+      toneProp(id, parts); toneProp(id, lod1);
       if (parts.length) { e.parts = parts; e.lod1 = lod1.length ? lod1 : null; e.state = 'glb'; e.url = u; for (const f of listeners) f(id); } else e.state = 'code';
     }, undefined, () => { e.state = 'code'; });
   });
@@ -150,6 +172,7 @@ const DETAIL = { door_bottom: 0.4, shutter: 0.35, acunit: 0.35, pchair: 0.5, lau
   ribarch: 3, lung: 2, machine: 4, gutgate: 4, smilesign: 2, sphincter: 1.4, lostfound_sign: 4, launderette: 3, gristlelogo: 2, choirpipe: 2, bus: 1.5 };
 export const propDetail = (id) => DETAIL[id] || 1;
 DETAIL.gristle_truck = 2; // (the Act I meat truck: a hero prop, keep its doors and skin a street further)
+DETAIL.digester_wall = 2; // (the Digester Wall: one set piece, its faces and bowls a street further)
 DETAIL.smilesign = 1; DETAIL.tarp = 0.6; DETAIL.lostpile = 0.5; DETAIL.sofa = 0.6; DETAIL.fridge = 0.6;
 // small things that repeat by the thousand aren't drawn at all past this (x the preset's props radius / 224): the
 // house's own far box carries its look out there

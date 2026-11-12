@@ -21,6 +21,7 @@ export function addIslands(out, canvasTex, speckle) {
   }) }), tile: 3 };
   // ---- the beach: the sea (see-through over the shallows' sand), its surf, wet sand, the huts' thatch and bamboo
   out.sea = { mat: new THREE.MeshBasicMaterial({ color: 0x2ab8d4, transparent: true, opacity: 0.6, depthWrite: false }), tile: 4 };
+  out.bisea = out.sea; // (Battle Island's sea: the same where it isn't a liquid surface)
   out.surf = { mat: new THREE.MeshBasicMaterial({ color: 0xf4fbff, transparent: true, opacity: 0.85 }), tile: 1 };
   out.wetsand = lam(canvasTex(16, (g, s) => speckle(g, s, [178, 150, 104], 18, 1)), 2);
   out.thatch = lam(canvasTex(16, lines([204, 164, 84], '#8a6a30', 3)), 1.2);

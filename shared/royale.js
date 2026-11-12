@@ -4,6 +4,7 @@
 import { GAMES, GAME_ORDER, TARGETS } from './modes.js';
 import { MAPS } from './map.js';
 import { PLAN as JB } from './jankburg.js'; // (registers the Jankburg map)
+import './battleisland.js'; // (registers Battle Island: the mech royale's island, docs/maps/battleisland/DESIGN.md)
 import { WEAPONS, ITEMS, FLAGS } from './weapons.js';
 
 FLAGS.GLIDE = 1 << 18; // under an umbrella (everyone sees it open over your head). its own bit: 32768 is the rig's block, which the server clears on anyone not rigged

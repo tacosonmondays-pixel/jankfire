@@ -38,6 +38,7 @@ const MOOD = {
   deadmall: { el: 74, sh: 0.5, fill: [0xffb070, 0.2], indoor: 1 },
   school: { el: 72, sh: 0.5, fill: [0x9ab8ff, 0.22], indoor: 1 },
   hospital: { el: 72, sh: 0.5, fill: [0xa8e0d8, 0.24], indoor: 1 },
+  battleisland: { el: 52, sh: 0.7, fill: [0x7fd8ff, 0.3], sk: 1.25, hk: 0.78 }, // anime noon: a high hot sun, crisp shade, the sea's teal bouncing up (bilook.js does the sky)
   jankburg: { el: 32, sh: 0.7, fill: [0x4fd8ff, 0.3] },
 };
 
