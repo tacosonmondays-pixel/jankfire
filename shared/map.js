@@ -3868,6 +3868,8 @@ function skyline() {
   const base = -120, S = 72, R = 40, pick = (a) => a[(r() * a.length) | 0];
   const hi = 52, lo = 30;
   let spireC = null;
+  // the towers drawn as Blender models over their boxes: [model, quarter turns] (the east tower: the south one's look, its own boxes)
+  const TOWER_ARCH = { E: ['tenement_e', 0], N: ['office_n', 0], W: ['office_w', 0], SE: ['office_se', 0], SW: ['office_sw', 0], NW: ['concrete_nw', 0], NE: ['tenement_ne', 0] };
   // ---- the nine tops (half sizes): the Spire 13 x 13, the ring 15 x 13 (north/south) / 13 x 15 (east/west), the corners 14 x 14
   const tops = { C: [0, 0, 13, 13, R], N: [0, -S, 15, 13, R], S: [0, S, 15, 13, R], W: [-S, 0, 13, 15, R], E: [S, 0, 13, 15, R],
     NW: [-S, -S, 14, 14, lo], SE: [S, S, 14, 14, lo], NE: [S, -S, 14, 14, hi], SW: [-S, S, 14, 14, hi] };
@@ -3879,6 +3881,7 @@ function skyline() {
     const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
     if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
+    if (k in TOWER_ARCH) B.archSince(n0, TOWER_ARCH[k][0], x, z, TOWER_ARCH[k][1], y); // the rest of the ring and the corners (tools/blender/arch/make_tower.py)
     if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
