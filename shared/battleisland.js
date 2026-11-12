@@ -217,14 +217,14 @@ function battleIsland() {
       { f: G.f, mat: 'wetsand', paint: wet }, // under the water: the shelf, the reef, the lagoon's bed (seen through the sea)
       { f: G.f, mat: 'grass', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.3 && !steep(x, z) },
       { f: G.f, mat: 'leaves', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.1 && jungle(x, z) && !steep(x, z) },
-      { f: G.f, mat: 'basalt', rock: true, paint: (x, z) => steep(x, z) }, // cliffs, the quarry's terrace faces, the ridge's crags
+      { f: G.f, mat: 'stone', rock: true, paint: (x, z) => steep(x, z) }, // cliffs, the quarry's terrace faces, the ridge's crags
       { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && onRoad(x, z) && !steep(x, z) },
     ], points: [...spawns, ...drops, ...cells] });
   for (const q of [...drops, ...cells]) q[1] = Math.round(q[1] * 100) / 100; // (lifted onto the ground by shapeGround)
   let graph = null;
   const map = {
     name: 'Battle Island', size: 'huge', royaleOnly: true, wip: true, // wip: out of the map votes until the mode lands (shared/modes.js)
-    boxes: B.boxes, deco: D.boxes, killY: KILL_Y, floorY: -12, bounds: BOUNDS, chunk: 64,
+    boxes: B.boxes, deco: D.boxes, killY: KILL_Y, floorY: -12, bounds: BOUNDS, chunk: 128,
     sea: true, seaY: SEA, wade: WADE, // the water's depth anywhere = seaY - the ground there (shallows <= wade: walk through)
     sky: { top: 0x1f7fe0, mid: 0xbfeaff, bot: 0x0b4a7a, fog: 0xc6ecf6 }, fogNear: 180, fogFar: 980,
     spawns, plan: PLAN,
