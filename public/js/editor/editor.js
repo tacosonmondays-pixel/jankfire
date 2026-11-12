@@ -189,8 +189,22 @@ function startCarry(ts) {
   carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
   callout('YOINK');
 }
+// the snap grid under what you carry: lines every grid step, 20 m across, at its feet (none with snap off)
+let gridH = null, gridStep = 0;
+function showGrid(at) {
+  if (!at || !snap) { if (gridH) gridH.visible = false; return; }
+  if (!gridH || gridStep !== snap) {
+    if (gridH) { G.scene.remove(gridH); gridH.geometry.dispose(); gridH.material.dispose(); }
+    const size = Math.min(80, Math.max(10, snap * 20)); gridStep = snap;
+    gridH = new THREE.GridHelper(size, Math.round(size / snap), 0xffe14d, 0xff4fd8);
+    gridH.material.transparent = true; gridH.material.opacity = 0.55; gridH.material.depthTest = false; gridH.renderOrder = 997;
+    G.scene.add(gridH);
+  }
+  gridH.visible = true;
+  gridH.position.set(Math.round(at[0] / snap) * snap, at[1] + 0.02, Math.round(at[2] / snap) * snap); // (its lines land on whole grid steps)
+}
 function updateCarry() {
-  if (!carry) return;
+  if (!carry) { showGrid(null); return; }
   const [o, d] = aimRay(), skip = new Set(carry.ts), h = pick(o, d, skip, true);
   let p;
   if (h && h.top && h.dist < carry.dist * 2.5) p = [o.x + d.x * h.dist, o.y + d.y * h.dist, o.z + d.z * h.dist]; // aimed at a floor: it sits on it
@@ -200,6 +214,7 @@ function updateCarry() {
   carry.d = dd;
   carry.ghost.position.set(carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]);
   carry.ghost.rotation.y = carry.q * Math.PI / 2; carry.ghost.scale.setScalar(carry.k);
+  showGrid([carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]]);
 }
 function dropCarry() {
   if (!carry) return;
