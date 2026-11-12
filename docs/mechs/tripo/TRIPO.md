@@ -40,3 +40,22 @@ Use **image to 3D** with the `_3q` picture (3/4 view). If Tripo gets the shape w
 
 ## Remaking the pictures
 `blender52 -b -P tools/blender/mechs/make_tripo_refs.py -- [mech=paperplane|nightshift] [spp=48] [res=1024]`
+
+## After Tripo: putting the meshes on the rig
+```
+blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=paperplane      # (and mech=nightshift)
+node tools/blender/mechs/clip_sheets.cjs                                   # every clip on the new meshes, in three.js
+```
+- `tripo_swap.py` reads the GLBs from `docs/mechs/tripo/in/` (`in=<dir>` for another folder) and writes over
+  `public/models/x_mech_<name>.glb`, keeping every joint, marker and clip.
+- No body file means nothing changes: the concept model stays as the fallback.
+- The cut is done in the same A-pose as the pictures:
+  - Each Tripo face goes to the joint of the nearest concept surface, then pieces are tidied along the seams.
+  - Paint areas get a grey copy of Tripo's texture under the team colour, so team tinting still works.
+  - Glowing areas glow.
+- Moving parts are fitted onto the concept parts automatically. The fit error is printed (`JF_TRIPO ... fit error`).
+- If a part comes out turned wrong, re-run Tripo with its `_flat` picture.
+- `body_tris=45000` and `lod_tris=7000` set the near and far budgets. Each joint gets a far copy named `<joint>_lod1`.
+- Turn the body with `yaw=0` if Tripo's front came out facing the other way (the default `yaw=180` suits glTF's +z front).
+- Test without real files: `-- mech=nightshift make-standin=<dir>` writes a fake Tripo input from the concept model.
+  Then run the swap with `in=<dir> out=<test.glb>`.

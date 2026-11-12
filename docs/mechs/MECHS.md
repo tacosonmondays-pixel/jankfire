@@ -1,58 +1,120 @@
-# Mechs: names for the Gameplay session
+# Mechs: the rig the game loads (names for the Gameplay session)
 
-**Phase 1 (concept) version.** The joint names below are real (they're the node names in the concept files and will
-stay the bone names in phase 2). File names and clip names are the plan; they become real in phase 2, after the owner
-approves the look. Concept notes and pictures: `docs/mechs/CONCEPT.md`.
+**Status:** the rig, markers and clips are real, on the concept meshes. The owner's Tripo meshes will be cut onto the
+same joints later (`tools/blender/mechs/tripo_swap.py`, next PR), so every name below stays. Concept notes are in
+`docs/mechs/CONCEPT.md` and the research in `docs/mechs/RESEARCH.md`.
 
-## Space
-three.js / game space: metres, y up, the mech faces **-z**, its right side is **+x**, feet on y = 0, the root at the
-ground between the feet. Poses are three.js XYZ eulers / quaternions per joint (they drop straight into
-`node.rotation` / `node.quaternion`). `_L` = the mech's left (-x), `_R` = its right (+x).
-
-## Files (phase 2 plan)
+## Files
 | file | what |
 |---|---|
-| `public/models/x_mech_paperplane.glb` | PAPER PLANE: skinned (rigid weights, one bone per joint below), its clips, a `lod1` |
-| `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: the same |
-| `x_` prefix | loaded late (only when a mech is in play), like the Overdrive Rig; a code fallback stands in until it lands |
+| `public/models/x_mech_paperplane.glb` | PAPER PLANE: joints, meshes, markers, 20 clips (~1.8 MB) |
+| `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: joints, meshes, markers, 19 clips (~1.8 MB) |
 
-Concept stand-ins today (not shipped): `docs/mechs/concept/mech_paperplane_concept.glb`, `mech_nightshift_concept.glb`
-(+ `*_poses.json`: `ready` stance, PAPER PLANE `jet`).
+- The `x_` prefix means they're lazy: load them only when a mech is in play.
+- Each file is ONE model per mech (after the Tripo swap too: wings, drone, sword and shield are inside it).
+- Rebuild: `blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=paperplane|nightshift] [qa]`.
+- Check: `node tools/blender/mechs/clip_sheets.cjs [outDir] [mech] [rowsPerSheet]` plays every clip in three.js and
+  writes contact sheets (`docs/mechs/clips/*.jpg`). It exits 1 if a clip is missing or the page errors.
 
-## Joints (both frames)
-`root` > `hips` > `waist` > `chest` > `neck` > `head`
-`chest` > `hatch` (the cockpit hatch: PAPER PLANE's nose lifts, NIGHT SHIFT's breastplate drops), `backpack`
-`chest` > `shoulder_L|R` > `upperarm_L|R` > `forearm_L|R` > `hand_L|R`
-`hips` > `thigh_L|R` > `shin_L|R` > `foot_L|R` > `toe_L|R`
-`hips` > `skirt_L|R` (hip plates on their own hinge so they clear the thighs)
+## Space and rig
+- **Space:** game axes. The mech faces **-z**, its right is **+x**, feet sit on y = 0, and the root is on the ground
+  between the feet. To face it along the player's yaw, turn its holder by the yaw (a yaw of 0 already faces -z).
+- **The rig:** no SkinnedMesh. Every joint is a named node with its rigid mesh child `<joint>_mesh`. Clips animate the
+  nodes' quaternions, the hips' position, and a few parts' positions (destroy, drone).
+- **No root motion:** `root` never moves in any clip. The game moves and turns the root. The hips bob and drop (kneels,
+  landings), and every grounded key is solved so the feet sit on y = 0.
+- **The root node's `userData.jf` meta** lists:
+  - `joints` (name, rest position, parent)
+  - `clips` (name, dur, loop, hold, partial, note)
+  - `marks` (name, joint, rest position, direction)
+  - `palettes` (colour options A / B)
+  - `fps` (30)
+  - PAPER PLANE also has `drone_axis`.
 
-PAPER PLANE also: `shoulder_L|R` > `pod_L|R` (missile pods, 3 pencils each, they point forward), `backpack` >
-`wing_L|R` (hinged at the shoulder blades; rest = stowed V, jet mode = swung down flat), `wing_L` > `crane` (the
-origami crane drone: detach it from here, fly it at the target, bring it back).
-NIGHT SHIFT also: `head` > `beacon` (the security light: spin it about y), `hand_R` > `sword` (grip through the
-fist), `forearm_L` > `shield`.
+## Joints
+- Both: `root` > `hips` > `waist` > `chest` > `neck` > `head`.
+- Both: `chest` > `hatch` (cockpit: PAPER PLANE's nose lifts, NIGHT SHIFT's breastplate drops), `backpack`.
+- Both: `chest` > `shoulder_L|R` > `upperarm_L|R` > `forearm_L|R` > `hand_L|R`.
+- Both: `hips` > `thigh_L|R` > `shin_L|R` > `foot_L|R` > `toe_L|R`.
+- Both: `hips` > `skirt_L|R`.
+- PAPER PLANE also has:
+  - `shoulder_L|R` > `pod_L|R` (2 x 3 pencils each).
+  - `backpack` > `wing_L|R` (rest = the stowed V; jet mode swings them flat).
+  - `wing_L` > `drone` > `drone_wing_L|R` (the origami crane). To send it out, play `drone_launch`, then reparent `drone`
+    to the scene and fly it with `drone_flap` playing. To bring it back, reparent it to `wing_L` and play
+    `drone_return`.
+- NIGHT SHIFT also has:
+  - `head` > `beacon`: spin it about y in code, forever.
+  - `hand_R` > `sword`.
+  - `forearm_L` > `shield`.
 
-Rest pivots (game coords) are in each file's root `jf` meta: `joints: { name: { at: [x, y, z], parent } }`.
+## Markers (empty nodes; positions and directions are also in the meta)
+- PAPER PLANE:
+  - `mk_missile_L0..5` and `mk_missile_R0..5`: pencil tips (0..2 top row, 3..5 bottom row), pointing -z on the pods.
+  - `mk_thrust_back_L|R` and `mk_thrust_heel_L|R`: nozzle exits.
+  - `mk_drone`: the crane's beak.
+  - `mk_seat`, `mk_eject`.
+- NIGHT SHIFT:
+  - `mk_sword_base`, `mk_sword_tip`: the blade, for the trail and hit line.
+  - `mk_shield_face`.
+  - `mk_beacon`.
+  - `mk_thrust_back_L|R` and `mk_thrust_calf_L0|L1|R0|R1`.
+  - `mk_seat`, `mk_eject`.
 
-## Materials (roles)
-`<p>_paint` = the team / player colour (tint it), `<p>_white`, `<p>_dark`, `<p>_accent`, `<p>_frame` (metal),
-`<p>_chrome`, `<p>_glow` (visor slats / bar, sword edges: emissive), `<p>_thrust` (thruster throats: emissive, scale the glow
-with boost), `<p>_glass` (canopy / visor). `<p>` = `pp` (PAPER PLANE), `ns` (NIGHT SHIFT). Decals have their own
-materials (`*_sticker`, `ns_ledmat` = the PLEASE HOLD screen, emissive).
+## Materials
+- `pp_paint` / `ns_paint`: the team / player colour. Tint it; colour A is the default.
+- `*_white`, `*_dark`, `*_accent`, `*_frame` (metal), `*_chrome`, `*_glass`.
+- `*_glow`: the visor slats or bar and the sword edges. Emissive.
+- `*_thrust`: the thruster throats. Emissive; scale it with boost.
+- Decals have their own materials, e.g. `ns_ledmat` is the PLEASE HOLD screen.
 
-## Clips (phase 2 plan, names to use)
-Shared: `idle`, `walk`, `run`, `boost_dash`, `jump`, `land`, `hover`, `hit_react`, `drop_in` (from the sky, with a dust
-ring pose at touchdown), `pilot_in` (the pilot climbs in; hatch opens and closes), `destroy` (armour flies off, the
-cockpit pops: the pilot ejects).
-PAPER PLANE: `jet_in` (transform to jet), `jet_fly`, `jet_out`, `missile_salvo` (pods flip up, 3 + 3 pencils on
-spiralling trails), `lunge` (the dash-at-them that heals), `crane_launch` / `crane_return` (the drone; its own flap clip
-`crane_flap` loops while it flies).
-NIGHT SHIFT: `sword_combo_1`, `sword_combo_2`, `sword_combo_3` (each stamps an OVERTIME mark; the 4th clocks them
-out), `triple_shift` (three dashing slashes), `shield_block`, `shield_bash`, `ground_slam` (the big overhead one).
+## Clips (all 30 fps; three.js AnimationMixer by name)
+- "hold last frame": play it LoopOnce with `clampWhenFinished = true`.
+- "partial": the clip keys only the joints it names, so play it on top of a body clip.
+- Durations are in seconds.
 
-## Markers (phase 2 plan)
-Named empties in the glb for gameplay hooks: `mk_missile_L0..2` / `mk_missile_R0..2` (pencil tips), `mk_thrust_*`
-(nozzle throats, for flames), `mk_seat` (pilot seat + eye), `mk_sword_base` / `mk_sword_tip`, `mk_shield_face`,
-`mk_beacon`, `mk_eject` (where the pilot pops out), `mk_crane_beak` (PAPER PLANE's drone), `mk_calf_L|R*` (NIGHT
-SHIFT's leg boosters). Hitboxes stay boxes on the server; sizes:
-PAPER PLANE about 1.6 x 4.9 x 1.4 m (wings excluded), NIGHT SHIFT about 2.4 x 5.7 x 1.6 m (shield excluded).
+| mech | clip | dur | play | note |
+|---|---|---|---|---|
+| paperplane | `idle` | 2.40 | loop | breathing (spin NIGHT SHIFT's beacon in code: it turns about y forever) |
+| paperplane | `walk` | 1.00 | loop | in place, 2 steps |
+| paperplane | `run` | 0.66 | loop | in place, leaning in |
+| paperplane | `boost_dash` | 0.75 | once | a burst forward: crouch, launch lean with arms back, recover (the game moves it) |
+| paperplane | `jump` | 0.60 | hold last frame | crouch, spring, tuck (last frame held while airborne) |
+| paperplane | `land` | 0.60 | once | impact squash, overshoot, settle |
+| paperplane | `hover` | 1.60 | loop | thrusters holding it up: legs hang, slow bob |
+| paperplane | `hit_react` | 0.50 | once | snaps back and twists, recovers with overshoot |
+| paperplane | `drop_in` | 1.30 | hold last frame | impact at 0.36 s (x time stretch); ends in a held low hero pose: spawn the dust ring at the impact |
+| paperplane | `pilot_in` | 2.60 | once | kneels, hatch opens (pilot climbs in 1.0 to 1.6 s), hatch shuts, stands |
+| paperplane | `eject` | 0.70 | hold last frame | the hatch blows open (the pilot launches at 0.08 s); held open |
+| paperplane | `destroy` | 1.60 | hold last frame | hit, the hatch pops (eject), armour flies off, slumps to one knee; held. hide/replace parts as the game likes |
+| paperplane | `jet_in` | 0.80 | hold last frame | folds into the paper plane: wings swing down flat, legs together |
+| paperplane | `jet_fly` | 1.20 | loop | a gentle bank |
+| paperplane | `jet_out` | 0.80 | hold last frame | unfolds into a hover |
+| paperplane | `missile_salvo` | 1.20 | once | pods flip up 45 deg, three kicks (fire 2 pencils a side on each: 0.30, 0.52, 0.74 s), back down |
+| paperplane | `lunge` | 0.60 | once | dash-and-strike at a target (heals on hit) |
+| paperplane | `drone_launch` | 0.60 | hold last frame, partial | the crane lifts off its dock on the left wing (1.7 m up and out by 0.6 s); then detach it and fly it (play drone_flap on it) |
+| paperplane | `drone_return` | 0.60 | once, partial | back onto its dock (reattach it first) |
+| paperplane | `drone_flap` | 0.36 | loop, partial | the crane's wings (only its wing joints: plays on top of anything) |
+| nightshift | `idle` | 3.00 | loop | breathing (spin NIGHT SHIFT's beacon in code: it turns about y forever) |
+| nightshift | `walk` | 1.25 | loop | in place, 2 steps |
+| nightshift | `run` | 0.83 | loop | in place, leaning in |
+| nightshift | `boost_dash` | 0.94 | once | a burst forward: crouch, launch lean with arms back, recover (the game moves it) |
+| nightshift | `jump` | 0.75 | hold last frame | crouch, spring, tuck (last frame held while airborne) |
+| nightshift | `land` | 0.75 | once | impact squash, overshoot, settle |
+| nightshift | `hover` | 2.00 | loop | thrusters holding it up: legs hang, slow bob |
+| nightshift | `hit_react` | 0.62 | once | snaps back and twists, recovers with overshoot |
+| nightshift | `drop_in` | 1.62 | hold last frame | impact at 0.36 s (x time stretch); ends in a held low hero pose: spawn the dust ring at the impact |
+| nightshift | `pilot_in` | 3.25 | once | kneels, hatch opens (pilot climbs in 1.0 to 1.6 s), hatch shuts, stands |
+| nightshift | `eject` | 0.88 | hold last frame | the hatch blows open (the pilot launches at 0.08 s); held open |
+| nightshift | `destroy` | 2.00 | hold last frame | hit, the hatch pops (eject), armour flies off, slumps to one knee; held. hide/replace parts as the game likes |
+| nightshift | `sword_combo_1` | 0.65 | once | flat cut right to left (hit at 0.24 s): stamps an OVERTIME mark |
+| nightshift | `sword_combo_2` | 0.60 | once | backhand left to right (hit at 0.22 s) |
+| nightshift | `sword_combo_3` | 0.95 | once | overhead chop (hit at 0.42 s): the 4th mark clocks them out |
+| nightshift | `triple_shift` | 1.30 | once | three dashing slashes (hits at 0.20, 0.44, 0.68 s); the game dashes the root |
+| nightshift | `shield_block` | 0.40 | hold last frame | shield up in front, braced (held) |
+| nightshift | `shield_bash` | 0.55 | once | shoves the shield forward (hit at 0.22 s) |
+| nightshift | `ground_slam` | 1.50 | once | big overhead slam (impact at 0.56 s: shockwave + dust ring), a held beat, recover |
+
+## Hitboxes (server boxes, not in the files)
+- PAPER PLANE: about 1.6 x 4.9 x 1.4 m (wings excluded).
+- NIGHT SHIFT: about 2.4 x 5.7 x 1.6 m (shield excluded).
