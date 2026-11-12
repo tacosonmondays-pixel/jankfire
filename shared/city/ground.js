@@ -13,6 +13,7 @@ import { lattice } from '../terrain.js';
 const H = SLICE.highway, C = SLICE.camp, D = SLICE.digit;
 const sm = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
 const n1 = lattice(0x7e11), n2 = lattice(0x7e12), n3 = lattice(0x7e13), wob = lattice(0x7e14);
+export const HILL_SCALE = 2.5; // (experiment: how much bigger than the shipped hills)
 export const CELL = 2; // the grid (m): physics, the drawn ground and the hidden steps all use it
 const base = (z) => hwY(z) - 0.25; // the hill's own climb (smooth: no more half-metre terraces)
 const deck = (z) => hwY(z) - 0.4; // just under the deck and anything built at the old ground's height
@@ -44,7 +45,7 @@ const GULLY = [[246, -235, 230, 1.5, 9, 1], [292, -70, 236, 1.2, 7, 2], [124, -1
 export function hills(x, z) {
   let n = (0.58 * n1(x / 70, z / 70) + 0.32 * n2(x / 32, z / 32) + 0.1 * n3(x / 13, z / 13)) * 2.1;
   n = Math.max(-1, Math.min(1, n));
-  let h = n > 0 ? n * 3 : n * 1.4;
+  let h = (n > 0 ? n * 3 : n * 1.4) * HILL_SCALE;
   for (const [gx, z0, z1, d, w, s] of GULLY) {
     if (z < z0 - w || z > z1 + w) continue;
     const cx = gx + 16 * wob(z / 90, s * 7.3) + 4 * wob(z / 23, s * 3.1), dd = Math.abs(x - cx);
