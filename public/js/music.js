@@ -41,7 +41,7 @@ function where() {
   if (G.joined && G.roundOver) return 'menu'; // scoreboard, play of the round, the map vote: menu music, menu volume
   return 'match';
 }
-function matchOn() { if (G.cityBeds || G.mode === 'story') return false; // OVERDUE's streamed city plays its own district beds (city/beds.js)
+function matchOn() { if (G.cityBeds || G.mode === 'story') return false; // OVERDUE's streamed city plays its own district beds (city/beds.js): no match song to fetch (3 MB) while it loads
   return competitive() ? !!G.settings.musicComp : G.settings.musicMatch !== false; }
 function num(v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d; }
 function vol() { return num(G.settings.musicVol, 0.35); }
@@ -175,7 +175,7 @@ function tick() {
     goal = want;
   }
   if (ac.state !== 'running') return;
-  if (swap && where() === 'match') newSong();
+  if (swap && where() === 'match' && matchOn()) newSong(); // (not in story mode: it'd download a song nobody hears)
   if (goal > 0) { if (!cur && !loading) start(); else chain(); } else if (cur && t - zeroAt > FADE * 8) stop(); // fully faded (well under -60dB): let go
 }
 

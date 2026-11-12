@@ -19,7 +19,7 @@ import { organic } from '../organic.js';
 import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared/map.js';
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
-import { WorkerSocket } from './host.js';
+import { WorkerSocket, warmWorker } from './host.js';
 import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
@@ -50,7 +50,7 @@ export function initStory(a) {
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
-  G.story = { on, send, save, active, tick, onMain, simRound, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
+  G.story = { on, send, save, active, tick, onMain, simRound, loading: () => !!loadT, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
   // the bag as the story engine sees it (synchronous; kept fresh by the sim's 'inv' messages) + its host verbs
   G.story.inv = {
     has: (b, n = 1) => !!IVref.inv && count(IVref.inv, b) >= n,
@@ -122,6 +122,7 @@ async function openPicker() {
     document.body.append(picker);
   }
   picker.innerHTML = '';
+  warmWorker(); // (the story engine starts loading while you pick a slot)
   const panel = el('div', 'st-panel');
   panel.append(el('h2', null, 'OVERDUE'), el('p', 'st-sub', 'pick a save slot. the machine remembers.'));
   const list = el('div', 'st-slots');
@@ -230,7 +231,37 @@ async function wipeSlot(i) {
   const bk = back(); if (bk && bk.slot === i) setBack(null);
 }
 
+// ------------------------------------------------------------ the loading card (owner playtest: "everything takes forever to load")
+// from NEW GAME / CONTINUE until you're standing in the city: what it's doing and how far along
+let loadCard = null, loadT = 0, loadJoin = 0;
+function loadingOn() {
+  loadT = performance.now(); loadJoin = 0; G.cityReady = false;
+  try { performance.mark('jf-story-start'); } catch { /* old browser */ }
+  if (!loadCard) { loadCard = el('div', 'st-load hidden'); loadCard.id = 'stLoad'; loadCard.innerHTML = '<b></b><i><u></u></i><span></span>'; document.body.append(loadCard); }
+  loadCard.classList.remove('hidden');
+}
+function loadingTick() {
+  if (!loadT || !loadCard) return;
+  const inRun = G.joined && G.mode === 'story', secs = (performance.now() - loadT) / 1000;
+  if (inRun && !loadJoin) loadJoin = performance.now(); // (when the engine had us in: the rest is the city)
+  const streamed = !!(G.cfg && MAPS[G.cfg.map] && MAPS[G.cfg.map].stream); // (the train and the test lot aren't streamed: they're in once you've joined)
+  if (inRun && (G.cityReady || !streamed)) return loadingOff();
+  if (!G.joined && secs > 2 && $('menu') && !$('menu').classList.contains('hidden')) return loadingOff(); // (it crashed back to the menu: main.js says why)
+  const creep = (from, k) => 1 - Math.exp(-Math.max(0, secs - from) / k); // (the city's first pass lands all at once: the bar keeps moving meanwhile)
+  const p = inRun ? Math.max(0.15 + 0.7 * creep((loadJoin - loadT) / 1000, 10), Math.min(1, 0.15 + 0.85 * (G.cityProgress || 0))) : 0.14 * creep(0, 4);
+  loadCard.querySelector('b').textContent = inRun ? 'STREAMING THE CITY' : 'WAKING THE MACHINE';
+  loadCard.querySelector('u').style.width = Math.round(p * 100) + '%';
+  loadCard.querySelector('span').textContent = inRun ? `${Math.round(p * 100)}% · the ground first, so you don't fall through it` : 'warming up the story engine...';
+}
+function loadingOff() {
+  const t1 = performance.now(), ms = t1 - loadT, j = loadJoin ? loadJoin - loadT : ms; loadT = 0;
+  if (loadCard) loadCard.classList.add('hidden');
+  try { performance.mark('jf-story-playable'); } catch { /* old browser */ }
+  console.info(`story: playable in ${(ms / 1000).toFixed(1)} s (engine ${(j / 1000).toFixed(1)} s, city ${((ms - j) / 1000).toFixed(1)} s)`); // (the numbers to send when it's slow on a real machine)
+}
+
 function start(save) {
+  loadingOn();
   cur = save;
   autoT = performance.now();
   api.startMode('story', undefined, () => new WorkerSocket(save));
@@ -282,6 +313,7 @@ function tick(dt = 1 / 60) {
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
   if (askOpen() && (!$('menu').classList.contains('hidden') || !G.joined || G.mode !== 'story')) closeAsk(false); // (the pause menu, or the run ended)
   bannerTick();
+  loadingTick();
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
   const car = on && !near && !driving() ? nearestCar() : null;
   const drop = on && !near && !car ? nearestDrop() : null, lock = on && !near && !drop && atLocker(), doc = on && !near && !drop && !lock && atClinic();
@@ -464,6 +496,10 @@ function css() {
 .st-keys{font-size:14px;opacity:.6;margin:10px 0 0}
 .st-back{position:fixed;left:50%;top:14px;transform:translateX(-50%) rotate(-1deg);z-index:55;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;max-width:94vw;background:rgba(18,8,24,.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:10px 16px;font-family:var(--font);color:#fff}
 .st-back.hidden{display:none}.st-back b{color:#ffe14d;font-size:20px;letter-spacing:1px}.st-back span{opacity:.8;font-size:14px}
+.st-load{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#120818;font-family:var(--font);color:#fff}
+.st-load.hidden{display:none}.st-load b{font-size:40px;color:#ffe14d;text-shadow:4px 4px 0 #ff00dc;transform:rotate(-2deg)}
+.st-load i{display:block;width:min(420px,80vw);height:22px;border:4px solid #000;background:#2a1030;box-shadow:6px 6px 0 #4fd8ff}
+.st-load u{display:block;height:100%;width:0;background:#ff4fd8;transition:width .3s}.st-load span{opacity:.8}
 .st-btn.red{background:#ff3030;color:#fff;font-size:14px;padding:4px 10px}
 .st-slotbtns{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .st-wipe{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#000;border:3px solid #ff3030;box-shadow:4px 4px 0 #ffe14d;padding:8px 10px;transform:rotate(-1deg)}

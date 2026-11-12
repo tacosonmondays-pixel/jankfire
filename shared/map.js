@@ -1804,17 +1804,23 @@ function suburb() {
   // ---- the park: the playground (west), the founder's plaza (middle), the pond with a footbridge and the gazebo (east)
   { const P = B.local(-24, 0, 0);
     P(-15, 0, -10, 15, 0.12, 10, 'rubber'); // the noisiest floor money can buy
-    P(-15.2, 0, -10.2, 15.2, 0.6, -10, 'toyred'); P(-15.2, 0, 10, -2, 0.6, 10.2, 'toyred'); P(2, 0, 10, 15.2, 0.6, 10.2, 'toyred'); P(-15.2, 0, -10, -15, 0.6, 10, 'toyred');
-    for (const [x, z] of [[-11, -6], [-7, -6], [-11, -2], [-7, -2]]) P.B(x, 2.7, z, 0.3, 5.4, 0.3, 'toyblue'); // a climbing frame with a slide off it
-    P(-11.3, 2.9, -6.3, -6.7, 3.2, -1.7, 'toygreen'); P(-11.3, 5.4, -6.3, -6.7, 5.7, -1.7, 'toyred');
-    stairs(P, -10.5, -9, 1.8, -1, 0.12, 3.2, 'toyorange', 0.5);
-    for (let i = 0; i < 8; i++) P(-6.7 + i * 0.7, 0.12, -5.2, -6 + i * 0.7, 3.2 - i * 0.38, -2.8, 'toyteal');
-    P(2, 0.12, 2, 9, 1.0, 2.3, 'toyblue'); P(2, 0.12, 8.7, 9, 1.0, 9, 'toyblue'); P(2, 0.12, 2.3, 2.3, 1.0, 8.7, 'toyblue'); P(8.7, 0.12, 2.3, 9, 1.0, 8.7, 'toyblue'); // the ball pit
-    const balls = ['toyred', 'toygreen', 'toyorange', 'toyteal', 'toypink'];
-    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) P.B(3.1 + i * 1.3, 0.35 + ((i + j) % 2) * 0.12, 3.1 + j * 1.3, 0.9, 0.5 + ((i * j) % 3) * 0.08, 0.9, balls[(i * 3 + j) % 5]);
-    P(-13, 0.12, 3, -9, 4.12, 7, 'toyface', { fit: 1 });
-    P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
-    for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
+    propOf('playground', [-24, 0, 0], 0, () => { // (Blender: tools/blender/make_playground.py; the floor stays the map's)
+      P(-15.2, 0, -10.2, 15.2, 0.6, -10, 'toyred'); P(-15.2, 0, 10, -2, 0.6, 10.2, 'toyred'); P(2, 0, 10, 15.2, 0.6, 10.2, 'toyred'); P(-15.2, 0, -10, -15, 0.6, 10, 'toyred');
+      for (const [x, z] of [[-11, -6], [-7, -6], [-11, -2], [-7, -2]]) P.B(x, 2.7, z, 0.3, 5.4, 0.3, 'toyblue'); // a climbing frame with a slide off it
+      P(-11.3, 2.9, -6.3, -6.7, 3.2, -1.7, 'toygreen'); P(-11.3, 5.4, -6.3, -6.7, 5.7, -1.7, 'toyred');
+      stairs(P, -10.5, -9, 1.8, -1, 0.12, 3.2, 'toyorange', 0.5);
+      // the slide: its top, 28 small steps under the chute (walk up it, run down it), the run-out. (the model's chute runs
+      // through the middle of every step's top: tools/blender/make_playground.py)
+      P(-6.7, 0.12, -5.2, -6.14, 3.2, -2.8, 'toyteal');
+      for (let k = 1; k <= 28; k++) P(-6.14 + (k - 1) * 0.1625, 0.12, -5.2, -6.14 + k * 0.1625, 3.2 - 2.66 * (k - 0.5) / 28, -2.8, 'toyteal');
+      P(-1.59, 0.12, -5.2, -1.1, 0.54, -2.8, 'toyteal');
+      P(2, 0.12, 2, 9, 1.0, 2.3, 'toyblue'); P(2, 0.12, 8.7, 9, 1.0, 9, 'toyblue'); P(2, 0.12, 2.3, 2.3, 1.0, 8.7, 'toyblue'); P(8.7, 0.12, 2.3, 9, 1.0, 8.7, 'toyblue'); // the ball pit
+      const balls = ['toyred', 'toygreen', 'toyorange', 'toyteal', 'toypink'];
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) P.B(3.1 + i * 1.3, 0.35 + ((i + j) % 2) * 0.12, 3.1 + j * 1.3, 0.9, 0.5 + ((i * j) % 3) * 0.08, 0.9, balls[(i * 3 + j) % 5]);
+      P(-13, 0.12, 3, -9, 4.12, 7, 'toyface', { fit: 1 });
+      P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
+      for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
+    });
   }
   propOf('founder', [0, 0, 0], 0, () => { // the founder's plaza (Blender: the monument, tools/blender/make_founder.py)
     add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn');
@@ -2332,8 +2338,11 @@ function warehouseSD() {
   for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
   add(24.3, 0, 21.7, 30.25, 2.4, 27.75, 'wood'); // the bin store in the corner (no way through to the trailer park)
   // the staff block: the defenders spawn behind it, it hides them from the courtyard
+  const sb0 = B.boxes.length, sd0 = D.boxes.length; // (the block and its windows are a Blender building: wh_staff)
   add(58, 0, -18, 63, 7.2, 18, 'magenta'); add(57.6, 7.2, -18.4, 63.4, 7.6, 18.4, 'roofg'); // (its roof is over the ceiling: no perch over the spawn)
   for (let z = -14; z <= 14; z += 4) for (const y of [1.2, 4.4]) { D.add(57.96, y, z - 1, 57.98, y + 1.8, z + 1, 'glass'); D.add(63.02, y, z - 1, 63.04, y + 1.8, z + 1, 'glass'); }
+  B.archSince(sb0, 'wh_staff', 60.5, 0);
+  for (let i = sd0; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: 'wh_staff', ai: B.boxes.arch.length - 1 });
   D.add(57.9, 3.3, -6, 57.95, 4.2, 6, 'neonwork', { fit: 1 });
 
   // ---- DEFENDERS' SPAWN: the staff car park
@@ -3837,9 +3846,10 @@ function skyHeli(B, D, x, z, y, r, f = 1) {
   const add = B.add, W = B.local(0, 0, 0);
   {
     add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); propOf('heli', [x + 1, y + 0.1, z - (f < 0 ? 3 : 1)], 0, () => chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred')); // (S&D: off the pad's middle, the site's. drawn as p_heli)
-    for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); }
-    add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); // the booth
-    B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }
+    // (the tanks, the booth and the windsock are drawn as Blender props: tools/blender/make_helipad.py)
+    for (const tx of [-11, -8.5]) propOf('fueltank', [x + tx, y, z + f * 10.5], 0, () => { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); });
+    propOf('flightops', [x + 10.8, y, z + f * 10.8], 0, () => { add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); }); // the booth
+    propOf('windsock', [x + 12.5, y, z - f * 12.5], 0, () => { B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }); }
 }
 
 // ------------------------------------------------------------ SKYLINE: the high city. nine tops in a three by three grid
@@ -4005,8 +4015,9 @@ function skylineSD() {
   add(-51, 46, -55.6, -47.8, 48.6, -52.4, 'concrete'); add(-51.2, 48.6, -55.8, -47.6, 48.9, -52.2, 'roofg');
   D.box(-49.4, 53, -54, 0.3, 8.2, 0.3, 'metal'); for (const [y, w] of [[54.4, 2.6], [56.2, 1.6]]) D.box(-49.4, y, -54, w, 0.12, 0.12, 'metal');
   for (const s of [-1, 1]) D.box(-49.4 + s * 0.55, 51.6, -53.55, 0.8, 1.1, 0.3, 'white'); D.box(-49.4, 57.25, -54, 0.4, 0.3, 0.4, 'neonpink');
+  propOf('fuelcart', [44, 46, -50], 0, () => { // (drawn as the Blender fuel bowser, p_fuelcart)
   add(43, 46.5, -52.6, 45, 48.4, -47.4, 'toyred'); add(43.2, 48.4, -52.3, 44.8, 49.0, -48.2, 'chrome'); // the fuel cart
-  for (const z of [-51.6, -48.4]) for (const x of [42.85, 45.15]) D.box(x, 46.4, z, 0.2, 0.8, 0.8, 'tire');
+  for (const z of [-51.6, -48.4]) for (const x of [42.85, 45.15]) D.box(x, 46.4, z, 0.2, 0.8, 0.8, 'tire'); });
   for (const [x, z] of [[-60.6, -58], [-35.6, -52], [-60.6, -66], [60.6, -60], [35.6, -78], [60.6, -66]]) { B.box(x, 46.25, z, 0.6, 0.5, 0.6, 'metal'); D.box(x, 46.53, z, 0.4, 0.06, 0.4, 'grid'); }
   // ☺ CORP HQ (security): the flag on its mast frame, two machine rooms, AC
   for (const x of [-6, 6]) add(x - 0.2, 40, -77.6, x + 0.2, 47, -77.2, 'metal');

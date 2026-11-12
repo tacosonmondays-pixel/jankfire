@@ -78,6 +78,7 @@ function pump() {
     for (const it of Q.items.values()) if (!it.go && (!best || it.pri > best.pri)) best = it;
     if (!best) return;
     if (best.pri <= 0) { let hi = 0; for (const it of Q.items.values()) if (it.pri > 0) hi++; if (hi || Q.run >= 2) return; } // background fetches: only once everything wanted is in, two at a time
+    if (best.pri <= 0 && G.story && G.story.loading && G.story.loading()) { if (!Q.waitT) Q.waitT = setTimeout(() => { Q.waitT = 0; pump(); }, 500); return; } // ...and not while a story run is loading (story links trickle the PvP set in behind it)
     if (Q.run >= Q.max + (best.pri >= 4 ? 3 : 0)) return; // what you're looking at right now gets three extra lanes
     best.go = true; Q.run++;
     if (glbLog) glbLog.push([Math.round(performance.now()), 'go', best.id, best.pri]);
