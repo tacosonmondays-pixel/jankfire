@@ -127,7 +127,7 @@ const cdLeft = (k, now) => Math.max(0, (MS.cd[k] || 0) - now);
 function denied(what, now, k) { hud.msg(`${what} ${(cdLeft(k, now) / 1000).toFixed(1)}s`, 0.6); mechsfx.denied(); }
 // the enemy nearest the crosshair (cone, range, in plain sight): the lunge's and the crane's lock
 function pick(range, cos) {
-  const o = eye(), d = look();
+  const o = eye(), d = aimDir().d;
   let best = null, bs = -1;
   for (const r of G.remotes.values()) {
     if (!r.alive || isFriend(r)) continue;
@@ -150,7 +150,7 @@ function lunge(now) {
   const l = Math.hypot(dir[0], dir[1], dir[2]) || 1; dir = dir.map((x) => x / l);
   const dist = t ? clamp(t.l - 1.2, 3, L.dist) : L.dist;
   MS.dash = { k: 'lunge', t0: now, until: now + dist / L.speed * 1000, dir };
-  net.send({ t: 'mech', k: 'lunge', to: t ? t.r.id : 0, d: d.map(r2) });
+  net.send({ t: 'mech', k: 'lunge', to: t ? t.r.id : 0, d: aimDir().d.map(r2) });
   mechsfx.boost(null, 1); punchCam(0.03); G.shake = Math.max(G.shake, 0.4); MS.boostT = 0;
   if (t) hud.msg('LOCKED', 0.5, 'brag');
 }
@@ -166,7 +166,7 @@ function swarm(now) {
   if (now < MS.jetUntil) return;
   if (cdLeft('swarm', now)) { denied('SWARM', now, 'swarm'); return; }
   MS.cd.swarm = now + PP.swarm.cd * 1000; MS.swarmT = 0;
-  net.send({ t: 'mech', k: 'swarm', d: look().map(r2) });
+  net.send({ t: 'mech', k: 'swarm', d: aimDir().d.map(r2) });
   mechsfx.swarm(null); punchCam(-0.03); G.shake = Math.max(G.shake, 0.4);
   hud.msg('MISSILE SWARM', 0.9, 'brag');
 }
@@ -333,13 +333,13 @@ export function updateMech(dt, now, cam, replaying) {
   // cannons: held fire, 8 a second, alternating barrels. your tracer right away; the server says what it hit
   if (pp && MS.lmb && !jet && now >= MS.gunNext) {
     MS.gunNext = now + 1000 / PP.gun.rate; MS.gunT = 0; MS.gunSide = -MS.gunSide;
-    const d = look();
+    const A = aimDir(), d = A.d;
     net.send({ t: 'mech', k: 'gun', d: d.map(r2) });
-    const e = eye(), h = raycast(e, d, PP.gun.range, BOXES), end = h ? h.point : e.map((x, i) => x + d[i] * PP.gun.range);
+    const e = eye(), h = raycast(e, d, PP.gun.range, BOXES), end = h && h.t < Math.hypot(A.p[0] - e[0], A.p[1] - e[1], A.p[2] - e[2]) ? h.point : A.p;
     const mz = MS.inst && MS.inst.att['muzzle' + (MS.gunSide > 0 ? 'R' : 'L')];
     const from = mz ? mz.getWorldPosition(new THREE.Vector3()).toArray() : e;
-    fx.tracer(from, end, 0x4fd8ff, 0.09, 0.12);
-    if (h) rfx.sparks(end, 5, 5, [0xffffff, 0x4fd8ff], 0.25, 0.08);
+    fx.tracer(from, end, 0x4fd8ff, 0.14, 0.2);
+    rfx.sparks(end, 6, 6, [0xffffff, 0x4fd8ff], 0.3, 0.1); rfx.sparks(from, 5, 4, [0xfff2a0, 0xffffff], 0.15, 0.1);
     mechsfx.gun(null, 0.8); punchCam(-0.006, (Math.random() - 0.5) * 0.004); G.shake = Math.max(G.shake, 0.08);
   }
   // your mech, in third person
@@ -367,6 +367,7 @@ export function mechVM(dt, now, vmRoot) {
   W.flags = FLAGS.MECH | (pp ? (MS.hover ? MF.HOVER : 0) | (now < MS.jetUntil ? MF.JET : 0) | (MS.dash ? MF.DASH : 0)
     : (MS.rmb ? MF.SHIELD : 0) | (MS.slam ? MF.SLAM : 0) | (MS.triple ? MF.SLASH : 0));
   W.aim = 0; W.scoped = false; W.held = false; W.aimHeld = false;
+  W.zoom = now < MS.jetUntil ? 1.35 : 1; // (the speed's fov kick would make the jet a speck)
   ME.speedMul = 1;
   hud.ammo(null); hud.meter(null);
   const P = G.punch; // the camera's punch spring (weapons.js steps it, but not while we have the viewmodel)
@@ -381,16 +382,20 @@ export function mechCam(cam, dt) {
   if (MS.hero && !MS.on) {
     const H = MS.hero, k = (now - H.t0) / 1000;
     if (k < 1.5 && ME.alive && G.joined) {
-      const u = clamp(k / 1.5, 0, 1), a = H.a + u * 0.35, R = 10 - u * 2;
-      cam.position.set(H.p[0] + Math.sin(a) * R, H.p[1] + 0.7 + u * 0.5, H.p[2] + Math.cos(a) * R);
+      const u = clamp(k / 1.5, 0, 1), a = H.a + u * 0.35, d = [Math.sin(a), 0.08, Math.cos(a)];
+      const c0 = [H.p[0], H.p[1] + 1.2, H.p[2]], hit = raycast(c0, d, 10.5, BOXES), R = Math.max(3, Math.min(10 - u * 2, hit ? hit.t - 0.6 : 99)); // (never inside a wall)
+      cam.position.set(c0[0] + d[0] * R, c0[1] + d[1] * R, c0[2] + d[2] * R);
       cam.lookAt(H.p[0], H.p[1] + 3.6, H.p[2]);
       return;
     }
     MS.hero = null;
   }
   if (!G.joined || !ME.alive || !MS.on) { MS.camLen = 0; return; }
-  const F = MECH[MS.f], e = eye(), d = look();
-  const want = F.cam + Math.min(3, hspeed() * 0.06) + (now < MS.jetUntil ? 3 : 0);
+  const F = MECH[MS.f], d = look(), e0 = eye();
+  // over the right shoulder (a step right and up from the cockpit), so the mech isn't in the way of the crosshair
+  const sh = SHOULDER[MS.f], rt = [Math.cos(ME.yaw), 0, -Math.sin(ME.yaw)], side = raycast(e0, rt, sh[0] + 0.4, BOXES);
+  const sx = side ? Math.max(0, side.t - 0.4) : sh[0], e = [e0[0] + rt[0] * sx, e0[1] + sh[1], e0[2] + rt[2] * sx];
+  const want = F.cam * 0.8 + Math.min(3, hspeed() * 0.06) + (now < MS.jetUntil ? 2 : 0);
   const hit = raycast(e, [-d[0], -d[1], -d[2]], want + 0.5, BOXES);
   const ax = hit && hit.axis >= 0 ? Math.abs(d[hit.axis]) : 1;
   const free = hit ? Math.max(0.15, Math.min(want, hit.t - Math.min(1, 0.3 / Math.max(0.3, ax)))) : want;
@@ -399,12 +404,34 @@ export function mechCam(cam, dt) {
   cam.position.set(e[0] - d[0] * MS.camLen, e[1] - d[1] * MS.camLen, e[2] - d[2] * MS.camLen);
 }
 
+const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6] }; // the camera's step right + up
+// where the crosshair really points (the camera sits off to the side): the direction from the cockpit to whatever the
+// screen centre is on, so shots and locks go where you aim
+export function aimDir() {
+  const c = G.camera.position, d = look(), from = [c.x, c.y, c.z], h = raycast(from, d, 220, BOXES);
+  let far = h ? h.t : 220;
+  for (const r of G.remotes.values()) { if (!r.alive || !r.hitboxes) continue; for (const b of r.hitboxes()) { const t = rayAabb(from, d, b); if (t != null && t < far) far = t; } }
+  const p = [from[0] + d[0] * far, from[1] + d[1] * far, from[2] + d[2] * far], e = eye(), v = [p[0] - e[0], p[1] - e[1], p[2] - e[2]], l = Math.hypot(v[0], v[1], v[2]);
+  return { d: l > 2 ? v.map((x) => x / l) : d, p };
+}
+function rayAabb(o, d, b) {
+  let t0 = 0, t1 = 1e9;
+  for (let i = 0; i < 3; i++) {
+    if (Math.abs(d[i]) < 1e-9) { if (o[i] < b.min[i] || o[i] > b.max[i]) return null; continue; }
+    let a = (b.min[i] - o[i]) / d[i], c = (b.max[i] - o[i]) / d[i];
+    if (a > c) [a, c] = [c, a];
+    t0 = Math.max(t0, a); t1 = Math.min(t1, c);
+    if (t0 > t1) return null;
+  }
+  return t0 > 0.5 ? t0 : null;
+}
+
 // ------------------------------------------------------------ HUD: the mech panel + the climb-in prompt
 let styleOn = false;
 function css() {
   if (styleOn) return; styleOn = true;
   const s = document.createElement('style');
-  s.textContent = `#mechHud{display:none;position:absolute;left:50%;bottom:92px;transform:translateX(-50%) rotate(-1deg);width:380px;padding:7px 13px 9px;font-family:var(--font);font-size:13px;font-weight:bold;color:#fff;background:rgba(18,8,24,.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;pointer-events:none}
+  s.textContent = `#mechHud{display:none;position:absolute;left:18px;bottom:64px;transform:rotate(-1deg);width:360px;padding:7px 13px 9px;font-family:var(--font);font-size:13px;font-weight:bold;color:#fff;background:rgba(18,8,24,.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;pointer-events:none}
 #mechHud .mh-top{display:flex;justify-content:space-between;align-items:baseline}#mechHud .mh-top b{color:#ffe14d;font-size:19px;letter-spacing:2px}#mechHud .mh-top span{font-size:20px;color:#4fd8ff}
 #mechHud .mh-row{display:flex;align-items:center;gap:8px;margin:4px 0}#mechHud .mh-row>span{width:62px}#mechHud .mh-row em{width:44px;text-align:right;font-style:normal}
 #mechHud .mh-bar{position:relative;flex:1;height:12px;background:rgba(255,255,255,.1);border:2px solid #000}#mechHud .mh-bar i{position:absolute;left:0;top:0;bottom:0;display:block}
