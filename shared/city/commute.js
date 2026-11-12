@@ -69,7 +69,7 @@ export function commute(B, d) {
         if (go > 0.96) { const by = (jr() - 0.5) * 0.2; if (!clear) { B.prop('bus', x, y, z, Math.PI / 2 + by, 1, 0); B.add(x - 1.3, y, z - 5.5, x + 1.3, y + 3.1, z + 5.5, 'rust', { hide: true }); } z += 7; continue; }
         if (clear) { jr(); jr(); } else wreck(B, x, y, z, 1, jr);
         if (jr() < 0.05) B.prop('skeleton_lanyard', x + 1.3, y, z + (jr() - 0.5), -Math.PI / 2, 1, 0); // still waiting to get home
-        if (jr() < 0.04) B.prop('cone', x + 1.6, y, z + 2.6, jr() * 6.28, 1, 0);
+        if (jr() < 0.04) B.prop('cone', x + 1.6, hwY(z + 2.6), z + 2.6, jr() * 6.28, 1, 0); // (on the road where it stands: the deck slopes, 2.6 m on it hung in the air)
         if (jr() < 0.07) { B.prop('firebarrel', x + 1.5, y, z, 0, 1, 0); B.light(x + 1.5, y + 1.6, z, 0xff8a2a, 9, 1); }
       }
     }
@@ -92,7 +92,7 @@ export function commute(B, d) {
     B.add(x - w / 2, y, z - dd / 2, x - w / 2 + 0.4, y + h * (0.4 + r() * 0.6), z + dd / 2, 'brick', { tint });
     if (r() < 0.6) B.add(x + w / 2 - 0.4, y, z - dd / 2, x + w / 2, y + h * r(), z + dd / 2, 'brick', { tint });
     rubble(B, x + (r() - 0.5) * w, y, z + (r() - 0.5) * dd, 2 + r() * 3, r);
-    B.prop(r() < 0.5 ? 'rubble_a' : 'rubble_b', x + (r() - 0.5) * w * 0.6, y, z + dd / 2 + 1.5, r() * 6.28, 0.8 + r() * 0.6, 0);
+    { const id = r() < 0.5 ? 'rubble_a' : 'rubble_b', px = x + (r() - 0.5) * w * 0.6, pz = z + dd / 2 + 1.5; B.prop(id, px, Math.min(y, gy(px, pz)), pz, r() * 6.28, 0.8 + r() * 0.6, 0); } // (out the front, where the ground may already have fallen away: on it, not at the floor's height)
     if (r() < 0.5) B.prop('brokenwall', x, y, z + dd / 2 - 0.2, Math.PI, 1, 0); // a shopfront with a blast shadow on it
     if (r() < 0.5) B.prop('filecab', x, y, z, r() * 6.28, 1, 0);
   }
@@ -266,7 +266,7 @@ function hug(B, f) {
   const at = (x, z) => fieldAt(f, x, z);
   for (const p of B.out.props) {
     const g = at(p[1], p[3]);
-    if (g == null || Math.abs(p[2] - g) > 0.25) continue; // (only what rests on the ground: not the deck's jam, the poles' rings)
+    if (g == null || Math.abs(p[2] - g) > 0.4) continue; // (only what rests on the ground: not the deck's jam, the poles' rings. 0.4: a lot's exact height and the drawn 2 m grid can be 0.3 apart)
     const s = p[5] || 1, L = lie(at, p[1], p[3], (FOOT[p[0]] || 0.6) * s);
     if (!L) continue;
     const cap = UPRIGHT.has(p[0]) ? 0.18 : 0.5, len = Math.hypot(L.gx, 1, L.gz);

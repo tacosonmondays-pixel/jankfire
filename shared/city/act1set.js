@@ -21,8 +21,11 @@ export function act1Bottom(B) {
   const R = P('bottom:rooftops');
   if (B.touches([R[0] - 12, R[2] - 8, R[0] + 12, R[2] + 8])) {
     // a wok satellite dish on every roof (aimed at the Spire, still waiting for the signal), bulbs between them
-    for (const [x, y, z, yaw] of [[-169.2, 16.4, 206, 2.4], [-163.4, 14.3, 211.5, 0.6], [-157.5, 13.9, 206.5, -2.2], [-157, 13.9, 211, 3.4]]) B.prop('wokdish', x, y + 0.6, z, yaw, 1.7, 0);
-    B.prop('stringlights', -165, 16.6, 208.5, 0.2, 1.2, 0); B.prop('pchair', -162, 14.3, 207, 1.2, 1, 3); B.prop('pchair', -158.6, 13.9, 209.2, -0.4, 1, 5); // (Dumpling's judges' chairs)
+    for (const [x, y, z, yaw] of [[-169.2, 16.4, 206, 2.4], [-163.4, 14.3, 211.5, 0.6], [-157.5, 13.9, 206.5, -2.2], [-157, 13.9, 211, 3.4]]) {
+      B.prop('wokdish', x, y + 0.6, z, yaw, 1.7, 0);
+      const mx = x + Math.sin(yaw) * 0.1, mz = z + Math.cos(yaw) * 0.1; B.add(mx - 0.07, y, mz - 0.07, mx + 0.07, y + 1.5, mz + 0.07, 'metal', { tint: 0x8a8f99 }); // its mast (it was bolted to the air)
+    }
+    B.prop('stringlights', -165, 16.6, 208.5, 0.2, 1.2, 0); for (const k of [-1, 1]) { const px = -165 + k * Math.cos(0.2) * 2.4, pz = 208.5 - k * Math.sin(0.2) * 2.4; B.add(px - 0.05, 13.9, pz - 0.05, px + 0.05, 16.7, pz + 0.05, 'metal', { nc: true, tint: 0x8a8f99 }); } // (its poles) B.prop('pchair', -162, 14.3, 207, 1.2, 1, 3); B.prop('pchair', -158.6, 13.9, 209.2, -0.4, 1, 5); // (Dumpling's judges' chairs)
     B.prop('smilesign', -163.4, 14.3, 205.4, Math.PI, 0.8, 0); // the scoreboard
     B.light(-163.5, 18, 208.8, 0xffe14d, 14, 1.1);
     mark(B, 'bottom:rooftops');
@@ -107,8 +110,8 @@ export function act1Border(B) {
     B.add(x0 - 0.06, t + 2.66, z0 - 0.06, x1 + 0.06, t + 2.95, z1 + 0.06, 'flesh', { nc: true, tint: 0x9a1a26 });
     const dw = [Math.min(R.at(1.4, 0, -4)[0], R.at(2.5, 0, -4)[0]) - 0.05, Math.max(R.at(1.4, 0, -4)[0], R.at(2.5, 0, -4)[0]) + 0.05]; // (the street door's gap in the skin)
     for (const [a0, b0, a1, b1, y0] of [[x0 - 0.05, z0 - 0.05, x0, z1 + 0.05, 0], [x1, z0 - 0.05, x1 + 0.05, z1 + 0.05, 0], [x0, z0 - 0.05, x1, z0, 0], [x0, z1, dw[0], z1 + 0.05, 0], [dw[1], z1, x1, z1 + 0.05, 0], [dw[0], z1, dw[1], z1 + 0.05, 2.1]]) B.add(a0, t + y0, b0, a1, t + 2.66, b1, 'plaster', { nc: true, tint: 0xffc6d6 });
-    for (let i = 0; i < 7; i++) { const side = i % 3, w = 1 + r() * 2, drop = 0.8 + r() * 1.8; if (side === 0) { const z = z0 + r() * (z1 - z0 - w); B.add(x0 - 0.12, t + 2.66 - drop, z, x0 - 0.04, t + 2.9, z + w, 'flesh', { nc: true, tint: pick(r, FLESH) }); } else if (side === 1) { const z = z0 + r() * (z1 - z0 - w); B.add(x1 + 0.04, t + 2.66 - drop, z, x1 + 0.12, t + 2.9, z + w, 'flesh', { nc: true, tint: pick(r, FLESH) }); } else { const x = x0 + r() * (x1 - x0 - w); B.add(x, t + 2.66 - drop, z0 - 0.12, x + w, t + 2.9, z0 - 0.04, 'flesh', { nc: true, tint: pick(r, FLESH) }); } }
-    B.prop('fleshblob_a', x0 + 0.3, t + 2.9, z0 + 1.2, 1, 1.3, 0); B.prop('fleshblob_b', x1 + 0.7, t, z0 + 2.5, 2, 1.1, 0); B.prop('veincable', R.c[0], t + 3, z1 + 1.5, Math.PI / 2, 1.3, 0); }
+    for (let i = 0; i < 7; i++) { const side = i % 3, w = 1 + r() * 2, drop = 0.8 + r() * 1.8, L = 0.025 * i; /* (L: each slab its own layer, overlapping ones flickered) */ if (side === 0) { const z = z0 + r() * (z1 - z0 - w); B.add(x0 - 0.12 - L, t + 2.66 - drop, z, x0 - 0.04, t + 2.9 + L, z + w, 'flesh', { nc: true, tint: pick(r, FLESH) }); } else if (side === 1) { const z = z0 + r() * (z1 - z0 - w); B.add(x1 + 0.04, t + 2.66 - drop, z, x1 + 0.12 + L, t + 2.9 + L, z + w, 'flesh', { nc: true, tint: pick(r, FLESH) }); } else { const x = x0 + r() * (x1 - x0 - w); B.add(x, t + 2.66 - drop, z0 - 0.12 - L, x + w, t + 2.9 + L, z0 - 0.04, 'flesh', { nc: true, tint: pick(r, FLESH) }); } }
+    B.prop('fleshblob_a', x0 + 0.3, t + 2.9, z0 + 1.2, 1, 1.3, 0); B.prop('fleshblob_b', x1 + 0.06, t, z0 + 2.5, -Math.PI / 2, 1.1, 0); /* (flat on the east wall, not stood in the street) */ B.prop('veincable', R.c[0], t + 2.4, z1 + 0.05, 0, Math.min(1.3, (x1 - x0 - 0.6) / 4.12), 0); } // (draped along the front under the roof: it stuck out over the street from nothing)
   B.prop('heartlamp', P('gut:clinic_bev')[0] + 1.6, R.c[1] + 2.4, -4.3, Math.PI, 0.8, 0); B.light(P('gut:clinic_bev')[0] + 1.6, R.c[1] + 2.2, -3, 0xff6f91, 6, 1); // the sign of a meat mechanic, by the door
   mark(B, 'gut:clinic_bev');
 }
