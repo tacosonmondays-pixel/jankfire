@@ -7,8 +7,10 @@
 // clouds are lit from where the shadows fall from. Plus the map's fog and a light colour grade (post.js) to match.
 import * as THREE from 'three';
 import { G } from './ctx.js';
+import { MAPS } from '/shared/map.js';
 import { setGrade } from './post.js';
 import { biGroundLite, biGroundTime } from './biground.js';
+import { biLifeMap, updateBiLife } from './bilife.js';
 
 export const BI_SKY = {
   zen: 0x2477e6, mid: 0x6cbcff, hor: 0xd2f1ff, sea: 0x9fd8f0, // zenith, mid sky, horizon haze, under the horizon
@@ -105,6 +107,7 @@ export function biLookMap(id, hide) {
   on = id === 'battleisland';
   if (dome) dome.visible = on;
   setGrade(on ? BI_SKY.grade : null);
+  biLifeMap(on, on ? MAPS[id] : null); // (only asks for the island's def when it's the island: building it is not free)
   if (!on) return;
   if (!dome) G.scene.add(make());
   paint();
@@ -121,6 +124,7 @@ export function updateBiLook(dt) {
   U.uT.value += dt * BI_SKY.drift;
   biGroundLite((G.settings && G.settings.jank) === 0); // Potato: the ground's simple mode
   biGroundTime(performance.now() / 1000 % 3600); // the shore's foam and caustics move
+  updateBiLife(dt); // tufts, flowers, gulls, boats, swaying palms (bilife.js)
   if (sunLight) { _d.copy(sunLight.position).sub(sunLight.target.position); if (_d.lengthSq() > 1e-6) U.uSun.value.copy(_d.normalize()); }
 }
 export const biLookOn = () => on;
