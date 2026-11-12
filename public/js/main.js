@@ -63,6 +63,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
@@ -2255,6 +2256,7 @@ function frame(t) {
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   updateMech(dt, now, cam, RP.active); // mech drop: the drops, waiting mechs, you in yours, the HUD
+  hudHideTick(now); // (after the rides update: hotbar out while piloting, back the moment you aren't)
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
