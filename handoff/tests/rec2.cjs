@@ -1,7 +1,6 @@
 require('/tmp/claude-0/-home-user-jankfire/c08cafbd-bcf7-5220-b480-982798f055dc/scratchpad/pwlock.cjs');
 // wrecking ball + backrooms walk + entity, graphics Too HD. usage: node rec2.cjs <port> <outDir>
 const { chromium } = require('playwright');
-{ const L = chromium.launch.bind(chromium); chromium.launch = async (...a) => { const b = await L(...a), seen = () => { try { localStorage.setItem('jf_giftseen_all', '1'); } catch (e) { /* no storage */ } }; const np = b.newPage.bind(b), nc = b.newContext.bind(b); b.newPage = async (...o) => { const p = await np(...o); await p.addInitScript(seen); return p; }; b.newContext = async (...o) => { const c = await nc(...o); await c.addInitScript(seen); return c; }; return b; }; } // the guest gift popup (multiopen.js) would cover the menu: every page starts with it already seen
 const fs = require('fs');
 const [port, out] = process.argv.slice(2);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -45,7 +44,7 @@ const set = (lo, extra) => JSON.stringify({ name: 'JANKFIRE', killcam: false, ja
   await rec('backrooms', async (pg, mark) => {
     await pg.addInitScript((s) => localStorage.setItem('jankfire', s), set({ primary: 'ar', secondary: 'revolver', melee: 'knife', item: 'frag' }));
     await pg.goto(`http://localhost:${port}/`); await sleep(700);
-    await pg.click('[data-pick="bots"]'); await pg.waitForTimeout(700); await pg.click('#mpCustom'); await sleep(500);
+    await pg.click('#scr-main [data-go="setup"]'); await sleep(500);
     await pg.selectOption('#setupMap', 'backrooms');
     await pg.evaluate(() => { const s = document.getElementById('setupBots'); s.value = '1'; s.dispatchEvent(new Event('input')); });
     await pg.click('#setupGo'); await sleep(5000);

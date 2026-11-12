@@ -11,7 +11,7 @@ declare -A ENVS GROUP
 ENVS[short]="JF_ROUND_KILLS=3";                                  GROUP[short]="t_replay"
 ENVS[long]="JF_ROUND_KILLS=50";                                  GROUP[long]="t_items t_katana t_streak t_rand t_cos t_skins t_hotbar2 t_crates t_outfit t_anim t_ads t_knives t_botgrap t_flash t_bazaar_views"
 ENVS[bomb]="JF_BOMB_WINS=2 JF_BOMB_ROUND=60 JF_BOMB_FUSE=12";    GROUP[bomb]="t_bomb"
-ENVS[guns]="JF_ROUND_KILLS=50";                                  GROUP[guns]="t_guns t_gunsoak" # (remote_check needs a tool that was never committed; dropped)
+ENVS[guns]="JF_ROUND_KILLS=50";                                  GROUP[guns]="t_guns t_gunsoak remote_check"
 want=" $* "; pass=0; fail=0; failed=""
 for g in short long bomb guns; do
   list=""
