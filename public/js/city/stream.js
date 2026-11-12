@@ -207,7 +207,7 @@ export class CityStream {
         for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
       if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)
     }
-    if (w.tex.length) { R.initTexture(w.tex.shift()); return; }
+    if (w.tex.length) { R.initTexture(w.tex.shift()); if (w.tex.length) return; }
     this.warmQ.shift();
     if (w.done) w.done();
   }
