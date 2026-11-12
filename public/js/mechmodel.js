@@ -426,7 +426,8 @@ export function poseMech(inst, s, dt) {
     if (s.dash) { xR = -1.6; zR = 0.9; yR = 1.2; twist = -0.5; } // the dash slash: blade out low to the side
     if (s.slam === 1) { xR = -3.0; zR = 0; fR = -0.1; } else if (s.slam === 2) { xR = -1.0; fR = -0.1; twist = 0; }
     const sh = s.shield ? 1 : 0;
-    xL = -0.25 - 1.25 * sh + 0.15 * -sw; zL = -0.15 + 0.4 * sh; fL = -0.4 - 0.9 * sh; yL = -0.6 * sh;
+    xL = -0.25 - 0.3 * sh + 0.15 * -sw * (1 - sh); zL = -0.15 + 0.6 * sh; fL = -0.4 - 0.25 * sh; // shield up: the arm across the front
+    if (j.shield) j.shield.rotation.x = spr(inst, 'shx', 0.85 * sh, 200, dt); // (kept upright, the PLEASE HOLD face forward)
     if (j.beacon) j.beacon.rotation.y = T * 6; // the security light spins
   }
   j.chest.rotation.y = spr(inst, 'tw', twist, pp ? 140 : 260, dt);
