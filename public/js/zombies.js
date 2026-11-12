@@ -16,7 +16,7 @@ import { GAMES } from '/shared/modes.js';
 import { ZM, ZM_CRATE, zmTarget, zmAmmo, zmAmmoPrice, zmAreaAt, zmOpenAreas } from '/shared/zombies.js';
 import { buildWeapon, M } from './models.js';
 import { weaponIcon, drawIcon } from './icons.js';
-import { whenGlb } from './glbkit.js';
+import { whenGlb, authored, whenLate, nodeIn, prefetch } from './glbkit.js';
 import { K } from './keys.js';
 import { zxSetup, zxTick, zxTarget, zxPrompt, zxMeter, zxPrice, zxOff } from './zmextra.js'; // boards, drops, the cheat machine
 import { zlSync, zlPose, zlTick, zlClear, zlType, ZL_WHY } from './zmlimbs.js'; // limbs coming off, crawlers, the special zombies
@@ -111,6 +111,51 @@ function shutterTex(name, price) {
     x.fillStyle = '#ffe14d'; x.font = `bold 46px ${FONT}`; x.fillText(String(price), w / 2, 118);
   }).t;
 }
+// the same name and price, sprayed on the plywood board hung on the Blender shutter (both faces)
+function boardTex(name, price) {
+  return canvasTex(256, 112, (x, w, h) => {
+    x.clearRect(0, 0, w, h);
+    x.fillStyle = 'rgba(12,8,14,0.86)'; x.fillRect(6, 6, w - 12, h - 12);
+    x.strokeStyle = '#ffe14d'; x.lineWidth = 5; x.strokeRect(8, 8, w - 16, h - 16);
+    x.textAlign = 'center'; x.textBaseline = 'middle';
+    x.fillStyle = '#ffffff'; x.font = `bold 24px ${FONT}`; x.fillText(name.toUpperCase(), w / 2, 32);
+    x.fillStyle = '#ffe14d'; x.font = `bold 48px ${FONT}`; x.fillText(String(price), w / 2, 76);
+  }).t;
+}
+// one door's shutter: the Blender one (x_zmshutter: the `curtain` rolls up into the hood, the name and price go on its
+// boards) or a box with the sign on it. d.m is what syncDoors rolls up (scale y from the top) and hides
+function shutterLook(dz, d) {
+  const sx = dz.box.max[0] - dz.box.min[0], sy = dz.box.max[1] - dz.box.min[1], sz = dz.box.max[2] - dz.box.min[2];
+  const cx = (dz.box.min[0] + dz.box.max[0]) / 2, cz = (dz.box.min[2] + dz.box.max[2]) / 2;
+  const bl = authored('x_zmshutter'), cur = bl && nodeIn(bl.obj, 'curtain');
+  if (cur) {
+    const mt = (bl.meta && bl.meta.sign) || { y: 1.72, w: 2.4, h: 1.05, z: 0.105 }, top = (bl.meta && bl.meta.curtain && bl.meta.curtain.top) || 2.95;
+    const tex = boardTex(dz.name, dz.price), mat = new THREE.MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: 0x777777, transparent: true }); // (glows a bit, like the old sign)
+    for (const s of [1, -1]) {
+      const p = new THREE.Mesh(new THREE.PlaneGeometry(mt.w * 0.97, mt.h * 0.95), mat);
+      p.position.set(0, mt.y - top, s * mt.z); p.rotation.y = s < 0 ? Math.PI : 0; cur.add(p);
+    }
+    bl.obj.position.set(cx, dz.box.min[1], cz); bl.obj.rotation.y = sx < sz ? Math.PI / 2 : 0;
+    d.root = bl.obj; d.m = cur; d.glb = true;
+    return d;
+  }
+  const geo = new THREE.BoxGeometry(sx, sy, sz); geo.translate(0, -sy / 2, 0); // pivot at the top: it rolls up into the housing
+  const tex = shutterTex(dz.name, dz.price), sign = new THREE.MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: 0x777777 }), plain = M(0x4a4e54); // the sign glows a bit
+  const m = new THREE.Mesh(geo, sx < sz ? [sign, sign, plain, plain, plain, plain] : [plain, plain, plain, plain, sign, sign]);
+  m.position.set(cx, dz.box.max[1], cz);
+  d.root = m; d.m = m; d.glb = false;
+  return d;
+}
+whenLate('x_zmshutter', () => { // the Blender shutters landed after the map was built: swap them in, rolled up or not
+  if (!Z.map || !Z.group) return;
+  Z.doors.forEach((d, i) => {
+    if (d.glb) return;
+    const was = d.root, sy = d.m.scale.y, vis = d.m.visible;
+    shutterLook(Z.map.doors[i], d);
+    if (!d.glb) return;
+    Z.group.remove(was); Z.group.add(d.root); d.m.scale.y = sy; d.m.visible = vis;
+  });
+});
 // wall gun: a chalkboard with the gun's outline (traced from its hotbar picture), its name and its price
 function drawBoard(x, w, h, b, img) {
   x.fillStyle = '#4a3420'; x.fillRect(0, 0, w, h);
@@ -250,14 +295,11 @@ export function zmSetup(mapId) {
   setLights(zm ? 'off' : '');
   if (!zm) return;
   const group = Z.group = new THREE.Group();
-  for (const d of zm.doors) {
-    const sx = d.box.max[0] - d.box.min[0], sy = d.box.max[1] - d.box.min[1], sz = d.box.max[2] - d.box.min[2];
-    const geo = new THREE.BoxGeometry(sx, sy, sz); geo.translate(0, -sy / 2, 0); // pivot at the top: it rolls up into the housing
-    const tex = shutterTex(d.name, d.price), sign = new THREE.MeshLambertMaterial({ map: tex, emissiveMap: tex, emissive: 0x777777 }), plain = M(0x4a4e54); // the sign glows a bit
-    const m = new THREE.Mesh(geo, sx < sz ? [sign, sign, plain, plain, plain, plain] : [plain, plain, plain, plain, sign, sign]);
-    m.position.set((d.box.min[0] + d.box.max[0]) / 2, d.box.max[1], (d.box.min[2] + d.box.max[2]) / 2);
-    group.add(m);
-    Z.doors.push({ m, open: false, anim: 0 });
+  prefetch(['x_zmshutter'], 3);
+  for (const dz of zm.doors) {
+    const d = shutterLook(dz, { open: false, anim: 0 });
+    group.add(d.root);
+    Z.doors.push(d);
   }
   for (const b of zm.buys) group.add(buyBoard(b));
   zxSetup(zm, group); // planks on every window, the cheat machine
