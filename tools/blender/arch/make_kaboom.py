@@ -7,6 +7,12 @@
 #   - a broken rim: low teeth of rock round the crest (ankle to knee high: nothing you'd expect to stand on or hide behind)
 #   - ledges: about two hundred slabs of rock jutting from the flanks (knee high at most), ash-pale near the top, a few rust
 #   - scree down the gullies' beds, fallen rock round the foot
+#   - the throat: a glowing lava pool just under its lip (you drop through it into the same pit), glowing walls, a crust collar
+# Islands only (so it reads as a volcano from across the map): the lava glows, a wider bright core down the channel, hot
+# runs down the cooled flows, glowing fissures across the crater floor, an ash-and-sulphur crust along the lip, broken
+# bands of rust and ash round the cone, a low jungle round the foot (ferns, rosettes, elephant ears: knee high at most),
+# and the smoke plume: a faint wisp up out of the throat, then a fat see-through column well over the rim (material
+# extra `fade`, archfield.js), its belly lit orange.
 # Islands S&D's (kaboom_sd: shared/map.js KABOOM_SD, the same mountain made small) is the same dressing, sparser and lower.
 # run: node tools/arch/dumpground.mjs islands -30 -28 30 22 0.25 tools/blender/arch/boxes/kaboom_ground.json
 #      node tools/arch/dumpground.mjs islands_sd -22 -30 22 6 0.25 tools/blender/arch/boxes/kaboom_sd_ground.json
@@ -26,8 +32,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({'brock': ('stucco', '#a294b0', {}), 'brockband': ('stucco', '#54485e', {}), 'bflow': ('stucco', '#352c3c', {}), 'bcrust': ('stucco', '#241d2a', {}),
              'bcrack': ('stucco', '#ff7a30', {}), 'bash': ('stucco', '#d2cad6', {}), 'brust': ('stucco', '#c0623a', {}), 'blava': ('stucco', '#ffb030', {}), 'bscree': ('stucco', '#62566c', {})})
 NOCAST.update({'bcrack', 'blava', 'bflow', 'bcrust'})
-if ID == 'kaboom_sd':  # (S&D: the lava glows, so it reads as lava from the far beaches)
-    MATS.update({'bcrack': ('stucco', '#ff7a30', {'glow': True, 'glowcol': '#ff5a10'}), 'blava': ('stucco', '#ffb030', {'glow': True, 'glowcol': '#ff9a20'})})
+# the lava glows (both mountains), so it reads as lava from the far beaches
+MATS.update({'bcrack': ('stucco', '#ff7a30', {'glow': True, 'glowcol': '#ff5a10'}), 'blava': ('stucco', '#ffb030', {'glow': True, 'glowcol': '#ff9a20'})})
+if ID == 'kaboom':  # (Islands' look pass: bands of rock, sulphur on the lip, the jungle at the foot, the smoke plume. fade: see-through, archfield.js)
+    MATS.update({'bbandr': ('stucco', '#a4543a', {}), 'bbanda': ('stucco', '#cdc0d0', {}), 'bbandd': ('stucco', '#3a2f44', {}), 'bsulph': ('stucco', '#ecd04a', {}),
+                 'bleaf': ('stucco', '#2f9a3c', {'alpha': True}), 'bleaf2': ('stucco', '#86dc46', {'alpha': True}), 'bleaf3': ('stucco', '#1f7a58', {'alpha': True}),
+                 'bflower': ('stucco', '#ff4fd8', {'alpha': True}), 'bflowery': ('stucco', '#ffe14d', {'alpha': True}),
+                 'bsmoke': ('stucco', '#b4a6bc', {'fade': 0.72}), 'bsmoke2': ('stucco', '#ece4f0', {'fade': 0.62}), 'bsmokeglow': ('stucco', '#ff9a6a', {'fade': 0.7, 'glow': True, 'glowcol': '#b84a2a'}),
+                 'bwisp': ('stucco', '#b0a0b8', {'fade': 0.3})})
+    NOCAST.update({'bbandr', 'bbanda', 'bbandd', 'bsulph', 'bleaf', 'bleaf2', 'bleaf3', 'bflower', 'bflowery', 'bsmoke', 'bsmoke2', 'bsmokeglow', 'bwisp'})
 G = json.load(open(os.path.join(HERE, 'boxes', ID + '_ground.json')))
 json.dump({'map': V['map'], 'id': ID, 'boxes': [], 'places': [{'id': ID, 'p': [0, 0, 0], 'r': 0}]}, open(os.path.join(HERE, 'boxes', ID + '.json'), 'w'))
 K = Kit(os.path.join(HERE, 'boxes', ID + '.json'), seed=3)
@@ -113,30 +126,39 @@ run = [spoke(aL + 0.04 * math.sin(q * 16) * max(0.0, min(1.0, (0.95 - q) * 6)), 
 ex, ez = run[-1]; dxn, dzn = math.cos(aL), math.sin(aL)
 run += [(ex + dxn * d, ez + dzn * d) for d in [0.5 * k for k in range(1, 9)]]  # the delta: on over the beach and the shelf into the water
 ribbon(run, lambda t: 0.2 + 0.5 * t + 1.3 * max(0, t - 0.8) / 0.2, 0.03, 'bcrack', edge='bcrust', ew=0.4, sea=True, prof=[0.03, 0.34, 0.12, 0.34, 0.03])  # between raised levees
-ribbon(run[6:], (lambda t: 0.12 + 0.2 * t + 0.3 * max(0, t - 0.8) / 0.2) if ID == 'kaboom_sd' else (lambda t: 0.05 + 0.12 * t + 0.3 * max(0, t - 0.8) / 0.2), 0.2, 'blava', sea=True)  # its bright middle
-if ID == 'kaboom_sd':  # ---- the throat (shared/map.js lavaPit: x -2..2, z -15..-11, its real lava at 4.5): a lava pool just under the lip, look only
-    # (step on it and you drop through to the same pit: what it looks like is what it does), glowing walls under it for the fall, a crust collar
-    TX0, TZ0, TX1, TZ1 = -2.0, -15.0, 2.0, -11.0
-    ring = [at(x, z) for x in [TX0 - 0.3 + 0.25 * k for k in range(19)] for z in (TZ0 - 0.3, TZ1 + 0.3)] + [at(x, z) for z in [TZ0 - 0.3 + 0.25 * k for k in range(19)] for x in (TX0 - 0.3, TX1 + 0.3)]
-    LIP = min(v for v in ring if v is not None); PY = LIP - 0.45
-    K.quad([(TX0, PY, TZ1), (TX1, PY, TZ1), (TX1, PY, TZ0), (TX0, PY, TZ0)], 'blava')
-    for (ax, az, bx, bz) in ((TX0, TZ0, TX1, TZ0), (TX1, TZ0, TX1, TZ1), (TX1, TZ1, TX0, TZ1), (TX0, TZ1, TX0, TZ0)):  # walls, facing in
-        K.quad([(ax, 4.5, az), (bx, 4.5, bz), (bx, PY, bz), (ax, PY, az)], 'bcrack')  # (up to the pool's edge: one piece with it)
-    for k in range(40):  # the collar: a lumpy crust skin round the square hole, rounding it off, its inner edge glowing
-        a0, a1 = 2 * math.pi * k / 40, 2 * math.pi * (k + 1) / 40
-        def sq(a, grow):  # the square's edge along angle a, pushed out by grow
-            c, s2 = math.cos(a), math.sin(a); m = 2.0 / max(abs(c), abs(s2)); return 0.0 + c * (m + grow), -13.0 + s2 * (m + grow)
-        for (g0, g1, lf0, lf1, mt) in ((0.0, 0.18, 0.04, 0.1, 'bcrack'), (0.18, 0.75 + 0.25 * hsh(k, 140), 0.1, 0.03, 'bcrust')):
-            P = [sq(a0, g0), sq(a1, g0), sq(a1, g1), sq(a0, g1)]; L2 = [lf0, lf0, lf1, lf1]
-            Q = [on(x, z, l) if g > 0 else Vector((x, PY + 0.02, z)) for (x, z), l, g in zip(P, L2, (g0, g0, g1, g1))]
-            if g0 == 0: Q = [Q[0], Q[1], on(*P[2], lf1), on(*P[3], lf1)]; Q[0] = Vector((Q[0].x, (Q[3].y if Q[3] else PY) - 0.06, Q[0].z)); Q[1] = Vector((Q[1].x, (Q[2].y if Q[2] else PY) - 0.06, Q[1].z))
-            up([Q[0], Q[1], Q[2]], mt); up([Q[0], Q[2], Q[3]], mt)
-    print('throat lip', round(LIP, 2), 'pool', round(PY, 2))
+ribbon(run[6:], (lambda t: 0.12 + 0.2 * t + 0.3 * max(0, t - 0.8) / 0.2) if ID == 'kaboom_sd' else (lambda t: 0.16 + 0.3 * t + 0.4 * max(0, t - 0.8) / 0.2), 0.2, 'blava', sea=True)  # its bright middle
+# ---- the throat (shared/map.js lavaPit: S&D x -2..2, z -15..-11; Islands x -2..2, z -5..-1; its real lava at 4.5): a lava pool just under the lip, look only
+# (step on it and you drop through to the same pit: what it looks like is what it does), glowing walls under it for the fall, a crust collar
+TX0, TZ0, TX1, TZ1 = (-2.0, -15.0, 2.0, -11.0) if ID == 'kaboom_sd' else (-2.0, -5.0, 2.0, -1.0); TCX, TCZ = (TX0 + TX1) / 2, (TZ0 + TZ1) / 2
+ring = [at(x, z) for x in [TX0 - 0.3 + 0.25 * k for k in range(19)] for z in (TZ0 - 0.3, TZ1 + 0.3)] + [at(x, z) for z in [TZ0 - 0.3 + 0.25 * k for k in range(19)] for x in (TX0 - 0.3, TX1 + 0.3)]
+LIP = min(v for v in ring if v is not None); PY = LIP - 0.45
+K.quad([(TX0, PY, TZ1), (TX1, PY, TZ1), (TX1, PY, TZ0), (TX0, PY, TZ0)], 'blava')
+for (ax, az, bx, bz) in ((TX0, TZ0, TX1, TZ0), (TX1, TZ0, TX1, TZ1), (TX1, TZ1, TX0, TZ1), (TX0, TZ1, TX0, TZ0)):  # walls, facing in
+    K.quad([(ax, 4.5, az), (bx, 4.5, bz), (bx, PY, bz), (ax, PY, az)], 'bcrack')  # (up to the pool's edge: one piece with it)
+for k in range(40):  # the collar: a lumpy crust skin round the square hole, rounding it off, its inner edge glowing
+    a0, a1 = 2 * math.pi * k / 40, 2 * math.pi * (k + 1) / 40
+    def sq(a, grow):  # the square's edge along angle a, pushed out by grow
+        c, s2 = math.cos(a), math.sin(a); m = 2.0 / max(abs(c), abs(s2)); return TCX + c * (m + grow), TCZ + s2 * (m + grow)
+    for (g0, g1, lf0, lf1, mt) in ((0.0, 0.18, 0.04, 0.1, 'bcrack'), (0.18, 0.75 + 0.25 * hsh(k, 140), 0.1, 0.03, 'bcrust')):
+        P = [sq(a0, g0), sq(a1, g0), sq(a1, g1), sq(a0, g1)]; L2 = [lf0, lf0, lf1, lf1]
+        Q = [on(x, z, l) if g > 0 else Vector((x, PY + 0.02, z)) for (x, z), l, g in zip(P, L2, (g0, g0, g1, g1))]
+        if g0 == 0: Q = [Q[0], Q[1], on(*P[2], lf1), on(*P[3], lf1)]; Q[0] = Vector((Q[0].x, (Q[3].y if Q[3] else PY) - 0.06, Q[0].z)); Q[1] = Vector((Q[1].x, (Q[2].y if Q[2] else PY) - 0.06, Q[1].z))
+        up([Q[0], Q[1], Q[2]], mt); up([Q[0], Q[2], Q[3]], mt)
+print('throat lip', round(LIP, 2), 'pool', round(PY, 2))
 # ---- cooled lava: tongues down three other gullies, widening into a toe
 for n, (a0, q0) in enumerate(((math.radians(-25), 0.25), (math.radians(195), 0.2), (math.radians(135), 0.3))):  # old flows: down the buttress, the spur and the shoulder, out over the apron
     a = gully_floor(a0, 0.2)
     pts = [spoke(a + 0.02 * math.sin(q * 9 + n), q) for q in [q0 + (1.2 - q0) * k / 44 for k in range(45)]]
     ribbon(pts, lambda t, n=n: 0.25 + 1.5 * t ** 1.6 * (1 + 0.2 * math.sin(t * 9 + n)), 0.03, 'bflow', edge='bcrust', ew=0.45, prof=[0.03, 0.36 + 0.03 * n, 0.5 + 0.04 * n, 0.33 + 0.03 * n, 0.03], toe='bcrust')  # proud of the slope, a blocky front
+    if ID == 'kaboom':  # (Islands: still hot down the middle, in broken runs, so each side of the mountain shows some lava)
+        seg = []
+        for k in range(5, 43):
+            hot = 0.5 + 0.5 * math.sin(k * 0.55 + n * 2.1) > 0.3
+            if hot: seg.append(k)
+            if seg and (not hot or k == 42):
+                if len(seg) > 3:
+                    ribbon([pts[i] for i in seg], lambda t, n=n, k0=seg[0]: (0.08 + 0.18 * k0 / 44) * (0.4 + 0.6 * math.sin(math.pi * t)), 0.5 + 0.04 * n + 0.05, 'bcrack')
+                seg = []
 # ---- cracks still warm: slivers lying on the flank, pointing mostly downhill
 done = 0; CR = []
 for k in range(2500):
@@ -216,6 +238,135 @@ for k in range(int(260 * V['n'])):  # (thick at the foot, breaking up outward ov
             if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot((t3[0] + t3[1] + t3[2]) / 3 - c0) < 0: t3 = t3[::-1]
             K.tri(t3, 'bscree')
     for t3 in ([top[0], top[1], top[2]], [top[0], top[2], top[3]]): up(t3, 'brock')
+
+if ID == 'kaboom':  # ======== Islands' look pass: so it reads as a volcano from across the map (look only: none of it is solid)
+    def an(a, k):  # a smooth wobble round the mountain, 0..1
+        return 0.5 + 0.25 * math.sin(3 * a + k * 1.7) + 0.15 * math.sin(7 * a + k * 2.3) + 0.1 * math.sin(13 * a + k * 0.9)
+    def off_lava(a, w=0.12): return abs(((a - aL + math.pi) % (2 * math.pi)) - math.pi) > w
+    def strip(rows, mats):  # a grid laid on the ground: rows of points (None = a gap), one material per cell
+        for i in range(len(rows) - 1):
+            for j in range(len(rows[i]) - 1):
+                q = [rows[i][j], rows[i][j + 1], rows[i + 1][j + 1], rows[i + 1][j]]
+                if any(v is None for v in q) or mats(i, j) is None: continue
+                mx, mz = sum(v.x for v in q) / 4, sum(v.z for v in q) / 4
+                if any((mx - px) ** 2 + (mz - pz) ** 2 < 0.8 ** 2 for px, pz in CR): continue  # (a warm crack breaks it there)
+                up([q[0], q[1], q[2]], mats(i, j)); up([q[0], q[2], q[3]], mats(i, j))
+    # ---- the lip: a pale crust of ash and sulphur right round the crest, so the crater's edge draws a line against the sky
+    NL = 160; rows = []; keep = []
+    for k in range(NL + 1):
+        a = 2 * math.pi * k / NL; w = 0.45 + 0.5 * an(a, 3)
+        rows.append([on(CX + math.cos(a) * (RC + d), CZ + math.sin(a) * (RC + d), 0.07) for d in (-0.35 * w, 0.0, 0.5 * w, 1.1 * w)])
+        keep.append(off_lava(a, 0.1))
+    strip(rows, lambda i, j: None if not (keep[i] and keep[i + 1]) or (j == 2 and hsh(i, 210) < 0.35) else ('bsulph' if an(2 * math.pi * i / NL, 5) > 0.58 + 0.12 * j else 'bash'))
+    # ---- the crater floor: glowing fissures running out from the throat's collar and up the inner wall
+    for k in range(11):
+        a = 2 * math.pi * (k + 0.3 * hsh(k, 220)) / 11
+        c, s2 = math.cos(a), math.sin(a); r0 = 2.0 / max(abs(c), abs(s2)) + 1.0
+        pts = []
+        for i in range(9):
+            r = r0 + (6.2 - r0) * i / 8; aa = a + (hsh(k, i, 221) - 0.5) * 0.18 * min(1, i)
+            pts.append((TCX + math.cos(aa) * r, TCZ + math.sin(aa) * r))
+        ribbon(pts, lambda t, k=k: (0.05 + 0.06 * hsh(k, 222)) * (1.4 - t), 0.04, 'bcrack')
+    # ---- banded rock: broken rings of rust and pale ash round the cone (old lava layers), dark where they're thin
+    for bi, (q0, wb, mt) in enumerate(((0.17, 0.7, 'bbandr'), (0.38, 0.95, 'bbanda'), (0.59, 0.95, 'bbandr'), (0.8, 0.85, 'bbanda'))):  # (half widths: never reaching the next one)
+        NB = int(2 * math.pi * (RC + (V['foot'] - RC) * q0) / 0.85); rows = []; keep = []
+        for k in range(NB + 1):
+            a = 2 * math.pi * k / NB; x0, z0 = spoke(a, q0 + 0.03 * (an(a, 40 + bi) - 0.5)); ux, uz = math.cos(a), math.sin(a)
+            w = wb * (0.55 + 0.7 * an(a, 20 + bi)) * (foot(a) - RC) / 10.6
+            rows.append([on(x0 + ux * d, z0 + uz * d, 0.055 + 0.01 * bi) for d in (-w, -w / 3, w / 3, w)])
+            near = any((x0 - px) ** 2 + (z0 - pz) ** 2 < (w + 1.3) ** 2 for px, pz in RB[::3])
+            keep.append(an(a, 30 + bi) > 0.36 and not near)
+        strip(rows, lambda i, j, mt=mt: mt if keep[i] and keep[i + 1] else None)
+    # ---- the jungle at the foot: ferns, spiky rosettes, elephant ears, a few flowers. ankle to knee high (nothing to hide behind)
+    PL = []
+    def leafy(pts_l, m):  # a fan of tris from pts_l[0]
+        for i in range(1, len(pts_l) - 1): K.tri([pts_l[0], pts_l[i], pts_l[i + 1]], m)
+    def fern(x, z, s, k):
+        b = on(x, z, 0.02); n = 4 + int(hsh(k, 300) * 2); m = 'bleaf' if hsh(k, 301) < 0.6 else 'bleaf3'
+        for f in range(n):
+            a = 2 * math.pi * (f + 0.4 * hsh(k, f, 302)) / n; L = s * (0.55 + 0.3 * hsh(k, f, 303)); ux, uz = math.cos(a), math.sin(a); vx, vz = -uz, ux
+            prof = [(0.0, 0.0, 0.0), (0.45, 0.42, 0.16), (1.0, 0.16, 0.03)]  # (along, up, half width): up and over, drooping at the tip
+            M, Lf, Rt = [], [], []
+            for (t, hgt, hw) in prof:
+                px, pz = x + ux * L * t, z + uz * L * t; g = at(px, pz)
+                if g is None: break
+                y = max(g + 0.03, b.y + hgt * s) if t > 0 else b.y
+                M.append(Vector((px, y, pz))); Lf.append(Vector((px + vx * hw * L, y - hw * L * 0.35, pz + vz * hw * L))); Rt.append(Vector((px - vx * hw * L, y - hw * L * 0.35, pz - vz * hw * L)))
+            for i in range(len(M) - 1):
+                for side in (Lf, Rt):
+                    if i == 0: up([M[0], side[1], M[1]], m)
+                    else: up([M[i], side[i], side[i + 1]], m); up([M[i], side[i + 1], M[i + 1]], m)
+    def rosette(x, z, s, k):
+        b = on(x, z, 0.0); n = 6 + int(hsh(k, 310) * 2); m = 'bleaf2' if hsh(k, 311) < 0.5 else 'bleaf'; tips = []
+        for f in range(n):
+            a = 2 * math.pi * (f + 0.3 * hsh(k, f, 312)) / n; ux, uz = math.cos(a), math.sin(a); vx, vz = -uz, ux
+            r = s * (0.3 + 0.2 * hsh(k, f, 313)); h = s * (0.32 + 0.25 * hsh(k, f, 314)); w = s * 0.07
+            mid = Vector((x + ux * r * 0.45, b.y + h * 0.62, z + uz * r * 0.45)); tip = Vector((x + ux * r, b.y + h, z + uz * r)); tips.append(tip)
+            l = mid + Vector((vx * w, -w * 0.4, vz * w)); rr = mid - Vector((vx * w, w * 0.4, vz * w))
+            up([b, l, mid], m); up([b, mid, rr], m); up([l, tip, mid], m); up([mid, tip, rr], m)
+        if hsh(k, 315) < 0.35:  # a flower on one leaf's tip
+            t = tips[0]; fm = 'bflower' if hsh(k, 316) < 0.6 else 'bflowery'; fs = 0.09 + 0.05 * hsh(k, 317)
+            star = [t] + [t + Vector((math.cos(2 * math.pi * p / 10) * fs * (1 if p % 2 == 0 else 0.45), 0.02 * (p % 2), math.sin(2 * math.pi * p / 10) * fs * (1 if p % 2 == 0 else 0.45))) for p in range(11)]
+            for i in range(1, 11): up([star[0], star[i], star[i + 1]], fm)
+    def ear(x, z, s, k):  # elephant ears: big heart leaves on stalks, tipped down
+        b = on(x, z, 0.0); n = 3 + int(hsh(k, 320) * 2)
+        for f in range(n):
+            a = 2 * math.pi * (f + 0.35 * hsh(k, f, 321)) / n; ux, uz = math.cos(a), math.sin(a); vx, vz = -uz, ux
+            h = s * (0.38 + 0.18 * hsh(k, f, 322)); L = s * (0.32 + 0.12 * hsh(k, f, 323)); r0 = s * 0.12
+            A = Vector((x + ux * r0, b.y + h, z + uz * r0))  # where the stalk meets the leaf
+            st0 = Vector((x + vx * 0.02, b.y, z + vz * 0.02)); st1 = Vector((x - vx * 0.02, b.y, z - vz * 0.02))
+            up([st0, A, st1], 'bleaf3')
+            def P(al, ac, dy): return Vector((A.x + ux * L * al + vx * L * ac, A.y + dy * L, A.z + uz * L * al + vz * L * ac))
+            heart = [A, P(-0.15, 0.32, 0.05), P(0.35, 0.5, -0.05), P(0.8, 0.3, -0.3), P(1.05, 0.0, -0.48), P(0.8, -0.3, -0.3), P(0.35, -0.5, -0.05), P(-0.15, -0.32, 0.05)]
+            C = P(0.4, 0.0, 0.04)
+            for i in range(1, len(heart)): up([C, heart[i - 1], heart[i]], 'bleaf2' if f % 2 else 'bleaf')
+            up([C, heart[-1], heart[0]], 'bleaf2' if f % 2 else 'bleaf')
+    for cl in range(40):  # clumps round the foot, thicker on the island's green sides
+        a = 2 * math.pi * (cl + 0.6 * hsh(cl, 330)) / 40; q = 0.97 + 0.3 * hsh(cl, 331)
+        if not off_lava(a, 0.22): continue
+        cx2, cz2 = spoke(a, q)
+        for p in range(3 + int(hsh(cl, 332) * 4)):
+            x = cx2 + (hsh(cl, p, 333) - 0.5) * 3.6; z = cz2 + (hsh(cl, p, 334) - 0.5) * 3.6; y = at(x, z); kk = cl * 10 + p
+            if y is None or y < 0.02: continue  # (not on the wet sand)
+            sz = 0.75 + 0.5 * hsh(kk, 335)
+            if any((x - px) ** 2 + (z - pz) ** 2 < (s * 0.85 + 0.15 + sz * 0.3) ** 2 for px, pz, s in ST) or any((x - px) ** 2 + (z - pz) ** 2 < (sz * 0.4 + ps * 0.8) ** 2 for px, pz, ps in PL): continue  # (tucked round the rocks)
+            if any((x - px) ** 2 + (z - pz) ** 2 < 1.5 ** 2 for px, pz in RB[::2]): continue
+            PL.append((x, z, sz * 0.5)); kind = hsh(kk, 336)
+            (fern if kind < 0.45 else rosette if kind < 0.75 else ear)(x, z, sz, kk)
+    print('jungle', len(PL), 'plants')
+    # ---- the plume: out of the throat, a thin see-through wisp up past the rim, then a fat leaning column of smoke high over it,
+    # its belly lit orange by the lava. high and see-through: nothing to hide behind (the rim's top is ~16.7, eyes on it ~18.3)
+    def blob(c, r, sq, m, k, seg=1):
+        t = (1 + 5 ** 0.5) / 2
+        V0 = [Vector(v).normalized() for v in ((-1, t, 0), (1, t, 0), (-1, -t, 0), (1, -t, 0), (0, -1, t), (0, 1, t), (0, -1, -t), (0, 1, -t), (t, 0, -1), (t, 0, 1), (-t, 0, -1), (-t, 0, 1))]
+        F0 = [(0, 11, 5), (0, 5, 1), (0, 1, 7), (0, 7, 10), (0, 10, 11), (1, 5, 9), (5, 11, 4), (11, 10, 2), (10, 7, 6), (7, 1, 8), (3, 9, 4), (3, 4, 2), (3, 2, 6), (3, 6, 8), (3, 8, 9), (4, 9, 5), (2, 4, 11), (6, 2, 10), (8, 6, 7), (9, 8, 1)]
+        for _ in range(seg):
+            mids = {}; F1 = []
+            def mid(i, j):
+                key = (min(i, j), max(i, j))
+                if key not in mids: V0.append((V0[i] + V0[j]).normalized()); mids[key] = len(V0) - 1
+                return mids[key]
+            for (i, j, l) in F0:
+                a2, b2, c2 = mid(i, j), mid(j, l), mid(l, i); F1 += [(i, a2, c2), (j, b2, a2), (l, c2, b2), (a2, b2, c2)]
+            F0 = F1
+        P = [Vector((c.x + v.x * r * (0.85 + 0.3 * hsh(k, i, 400)), c.y + v.y * r * sq * (0.85 + 0.3 * hsh(k, i, 401)), c.z + v.z * r * (0.85 + 0.3 * hsh(k, i, 402)))) for i, v in enumerate(V0)]
+        for (i, j, l) in F0:
+            t3 = [P[i], P[j], P[l]]
+            if (t3[1] - t3[0]).cross(t3[2] - t3[0]).dot((t3[0] + t3[1] + t3[2]) / 3 - c) < 0: t3 = t3[::-1]
+            nrm = (t3[1] - t3[0]).cross(t3[2] - t3[0]).normalized()
+            mm = m(((t3[0] + t3[1] + t3[2]) / 3).y, nrm.y) if callable(m) else m
+            K.tri(t3, mm)
+    for i in range(7):  # the wisp: thin, faint, wobbling up out of the pool
+        y = PY + 0.6 + i * 1.25; blob(Vector((TCX + 0.25 * math.sin(i * 1.3), y, TCZ + 0.2 * math.cos(i * 1.7))), 0.35 + 0.08 * i, 1.4, 'bwisp', 500 + i, seg=0)
+    Y0 = 19.6
+    for i in range(16):  # the column: puffs along a leaning path, fatter and paler as it climbs, a few hangers-on
+        t = i / 15; y = Y0 + 22 * t ** 1.15
+        c = Vector((TCX + 7.5 * t ** 1.6 + 0.6 * math.sin(i * 1.9), y, TCZ + 2.5 * t ** 1.4 + 0.6 * math.cos(i * 1.3)))
+        r = 1.3 + 4.6 * t ** 0.85
+        blob(c, r, 0.72, (lambda yy, ny: 'bsmokeglow' if ny < -0.35 and yy < Y0 + 3.5 else ('bsmoke2' if yy > 29 else 'bsmoke')), 600 + i)  # (its belly, over the crater, lit by the lava)
+        if i > 4 and hsh(i, 610) < 0.7:
+            a = hsh(i, 611) * 6.28
+            blob(c + Vector((math.cos(a) * r * 0.8, r * 0.15, math.sin(a) * r * 0.8)), r * 0.5, 0.75, (lambda yy, ny: 'bsmoke2' if yy > 30 else 'bsmoke'), 620 + i, seg=0)
 
 K.solids = []
 K.finish(OUT)

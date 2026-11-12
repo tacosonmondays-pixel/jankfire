@@ -493,6 +493,7 @@ def make_material(name):
     if ex.get('alpha'): m['alpha'] = 1
     if ex.get('glow'): m['glow'] = 1
     if ex.get('glowcol'): m['glowcol'] = ex['glowcol']  # (what colour it glows; white if unset)
+    if ex.get('fade'): m['fade'] = ex['fade']  # (see-through: smoke. how much of it is there, 0..1)
     if '@' in name: m['paint'] = name.split('@')[1]
     if name.split('@')[0] in NOCAST: m['nocast'] = 1
     return m

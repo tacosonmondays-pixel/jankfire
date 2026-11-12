@@ -47,6 +47,7 @@ function material(name, x) { // one shared material per Blender material name
   if (decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
   if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(x.glowcol || 0xffffff); } // (glowcol: a lava orange, say; white = the texture's own light)
   if (x.glowmap) { m.emissiveMap = tex(x.glowmap); m.emissive = new THREE.Color(0xffd890); } // lit windows (facades)
+  if (x.fade > 0 && x.fade < 1) { m.transparent = true; m.opacity = x.fade; m.depthWrite = false; } // see-through (a volcano's smoke): never hides anything behind it
   m.name = 'arch_' + name;
   m.userData.arch = true;
   if (hazeFn) hazeFn(m);
