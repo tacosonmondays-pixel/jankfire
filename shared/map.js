@@ -2338,8 +2338,11 @@ function warehouseSD() {
   for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
   add(24.3, 0, 21.7, 30.25, 2.4, 27.75, 'wood'); // the bin store in the corner (no way through to the trailer park)
   // the staff block: the defenders spawn behind it, it hides them from the courtyard
+  const sb0 = B.boxes.length, sd0 = D.boxes.length; // (the block and its windows are a Blender building: wh_staff)
   add(58, 0, -18, 63, 7.2, 18, 'magenta'); add(57.6, 7.2, -18.4, 63.4, 7.6, 18.4, 'roofg'); // (its roof is over the ceiling: no perch over the spawn)
   for (let z = -14; z <= 14; z += 4) for (const y of [1.2, 4.4]) { D.add(57.96, y, z - 1, 57.98, y + 1.8, z + 1, 'glass'); D.add(63.02, y, z - 1, 63.04, y + 1.8, z + 1, 'glass'); }
+  B.archSince(sb0, 'wh_staff', 60.5, 0);
+  for (let i = sd0; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: 'wh_staff', ai: B.boxes.arch.length - 1 });
   D.add(57.9, 3.3, -6, 57.95, 4.2, 6, 'neonwork', { fit: 1 });
 
   // ---- DEFENDERS' SPAWN: the staff car park
