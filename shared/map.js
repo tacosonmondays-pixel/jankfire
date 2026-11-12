@@ -688,6 +688,8 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   const { B, D, add, up } = isPiece(B0, D0, dx, dz, st);
   const X0 = -34, X1 = -14, Z0 = -10, Z1 = 10, y = RIG.M2;
   add(X0, y - 0.4, Z0, X1, y, Z1, 'deckplate');
+  // (under the floor and on it: two Blender props, p_substructure and p_drillfloor, tools/blender/make_drillfloor.py. look-only)
+  propOf('substructure', [-24 + dx, 0, dz], 0, () => {
   for (const x of [X0, -24.5, X1 - 1]) for (const z of [Z0, Z1 - 1]) add(x, 0, z, x + 1, y - 0.4, z + 1, 'rigred'); // the substructure's legs
   for (const z of [Z0 + 0.3, Z1 - 0.7]) D.add(X0 + 1, 3.3, z, X1 - 1, 3.7, z + 0.4, 'rigred'); for (const x of [X0 + 0.3, X1 - 0.7]) D.add(x, 3.3, Z0 + 1, x + 0.4, 3.7, Z1 - 1, 'rigred'); // its girders
   // under the drill floor: the BOP (down through the deck), the mud pumps and tanks
@@ -696,6 +698,7 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   D.add(-22.64, 2.6, -1.0, -22.58, 3.5, 1.0, 'adbop', { fit: 1 });
   add(X0 + 0.2, 0, -8, -31.4, 3.2, 8, 'rigblue'); D.add(-31.4, 1.8, -2, -31.34, 2.8, 2, 'admud', { fit: 1 }); // the mud tanks
   for (const s of [-1, 1]) { add(-22, 0, s * 6.5 - 1, -18, 2.2, s * 6.5 + 1, 'rigred'); D.add(-21.6, 2.2, s * 6.5 - 0.5, -18.4, 2.6, s * 6.5 + 0.5, 'rigsteel'); } // the mud pumps
+  });
   // the derrick: four legs stepping in as they go up, X-braced lattice on each face, girts, the crown, a beacon
   const H = 30, segs = 5, b0 = 4, b1 = 1.5, cx = -24, cz = 0;
   // (one Blender model over all of it, the GLUG board too: p_derrick, tools/blender/make_derrick.py. look-only)
@@ -714,10 +717,12 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   rail(B, D, false, cz - 1.5, cz + 1.5, cx + 4.95, y + 15.3); for (const s of [-1, 1]) rail(B, D, true, cx + 3, cx + 4.9, cz + s * 1.45, y + 15.3);
   D.add(cx + 3.52, y + 9, cz - 2.8, cx + 3.58, y + 12, cz + 2.8, 'adglug', { fit: 1 });
   });
+  propOf('drillfloor', [cx + dx, y, cz + dz], 0, () => {
   D.add(cx - 1, y, cz - 1, cx + 1, y + 0.05, cz + 1, 'rigsteel'); // the rotary table
   add(-31.4, y, -2, -28.8, y + 1.6, 2, 'rigred'); D.add(-31.2, y + 1.6, -1.6, -29, y + 2.0, 1.6, 'tire'); // the drawworks and its drum
   // the doghouse (the driller's cabin), south-east corner
   add(-18.5, y, 5.6, -14.3, y + 2.8, 9.7, 'rigblue'); D.add(-18.56, y + 1.2, 6.2, -18.5, y + 2.2, 9.1, 'glass'); D.add(-17.8, y + 2.8, 6.2, -15, y + 3.0, 9.1, 'rigsteel');
+  });
   // the ways up: the V-door ramp from the pipe deck (east), the south and north stairs; rails round the edge
   up(rigStair(B, D, true, -4, X1, -1.4, 1.4, 0, y, { mat: 'deckplate' }));
   up(rigStair(B, D, false, 18, Z1, -31, -29.6, 0, y));
