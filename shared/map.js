@@ -2351,6 +2351,7 @@ function warehouseSD() {
 
   // ---- B: the parcel shed (inside, cyan)
   const BX0 = 30, BX1 = 58, BZ0 = 28, BZ1 = 56, BH = 7.5;
+  const pb0 = B.boxes.length; // (the shed, the belt, the sorter and the cages are a Blender building: wh_parcel)
   wall(W, 'x', BZ0, BX0 - 0.25, BX1 + 0.25, 0, BH, 0.5, 'containerb', [{ a: 40, b: 45, y0: 0, y1: 3.4 }]); // north: from the courtyard
   wall(W, 'x', BZ1, BX0 - 0.25, BX1 + 0.25, 0, BH, 0.5, 'containerb');
   wall(W, 'z', BX0, BZ0 + 0.25, BZ1 - 0.25, 0, BH, 0.5, 'containerb', [{ a: 38, b: 46, y0: 0, y1: 4.5 }]); // west: B main, the roller door
@@ -2361,8 +2362,9 @@ function warehouseSD() {
   for (let x = 35; x < 49; x += 2.6) add(x, 1.06, 44.75, x + 0.7 + r() * 0.4, 1.5 + r() * 0.4, 45.45, 'cardboard');
   add(44, 0, 33, 48, 2.6, 37, 'toyteal'); add(43.9, 1.1, 32.9, 48.1, 1.5, 37.1, 'hazard'); // the sorter
   for (const [x, z] of [[36, 32], [52, 34], [53, 50], [35, 51], [41, 50]]) { add(x, 0, z, x + 1.4, 1.8, z + 1.4, 'grid'); add(x + 0.15, 0, z + 0.15, x + 1.25, 1.1, z + 1.25, 'cardboard'); } // parcel cages
+  B.archSince(pb0, 'wh_parcel', 44, 42); const ptag = { av: 'wh_parcel', ai: B.boxes.arch.length - 1 };
   pallets(B, 51, 41, 5, r); pallets(B, 52.4, 41, 3, r); cratePile(B, 36, 37, 5, r);
-  for (let x = 34; x <= 54; x += 10) { D.add(x - 0.6, BH - 1.2, 42 - 0.6, x + 0.6, BH - 0.9, 42 + 0.6, 'metal'); D.add(x - 0.45, BH - 1.26, 42 - 0.45, x + 0.45, BH - 1.2, 42 + 0.45, 'lamp'); }
+  for (let x = 34; x <= 54; x += 10) { D.add(x - 0.6, BH - 1.2, 42 - 0.6, x + 0.6, BH - 0.9, 42 + 0.6, 'metal', ptag); D.add(x - 0.45, BH - 1.26, 42 - 0.45, x + 0.45, BH - 1.2, 42 + 0.45, 'lamp', ptag); }
   siteBoard(D, 44, 3.2, BZ1 - 0.33, 'x', 'siteb', 3.4); siteBoard(D, BX0 - 0.33, 4.8, 42, 'z', 'siteb', 2.6);
   D.add(BX0 + 0.26, 4.6, 38, BX0 + 0.3, 4.75, 46, 'neoncyan'); D.add(BX0 - 0.3, 4.6, 38, BX0 - 0.26, 4.75, 46, 'neoncyan');
 
