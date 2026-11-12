@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
-import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, glbLoader, metaOf } from './glbkit.js';
+import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, whenFailed, missingGlb, glbLoader, metaOf } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
 
@@ -223,10 +223,11 @@ function buildKnight(j, own) {
 const CONCEPT = {}, conceptT = {};
 export let modelVer = 0;
 const bump = () => { modelVer++; };
-for (const f of ['paperplane', 'nightshift']) whenLate(GLB_ID[f], bump);
+for (const f of ['paperplane', 'nightshift']) { whenLate(GLB_ID[f], bump); whenFailed(GLB_ID[f], bump); } // (failed: the concept gets its turn)
 function sourceOf(frame) {
   const a = authored(GLB_ID[frame]); // (asks for the hero file if the server lists it)
   if (a) return { obj: a.obj, scene: AUTHORED[GLB_ID[frame]].scene };
+  if (missingGlb(GLB_ID[frame])) return null; // the hero file is on its way: the stand-in until it lands
   if (CONCEPT[frame]) return { obj: CONCEPT[frame].clone(true), scene: CONCEPT[frame] };
   if (!conceptT[frame]) {
     conceptT[frame] = 1;
