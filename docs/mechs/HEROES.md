@@ -1,55 +1,69 @@
-# BATTLE ISLAND heroes: how they play (as built)
+# Battle Island heroes: the rigs the game loads (names for the Gameplay session)
 
-The design is docs/mechs/ROSTER.md; this page is what got built, with every number. Each hero is a MECH DROP frame
-(docs/mechs/PLAY.md: drop, climb in, armour, energy, eject all work the same) with its own kit. The numbers live in
-`MECH.<id>` in `shared/mech.js`. Every hero has an **ULTIMATE** on Q that charges from the damage it deals (its
-ultimate's own hits don't count) plus a slow trickle on its own; the charge, energy and cooldowns live on the mech, so
-hopping out and back in doesn't reset them. They're picked in the battle island hero pick (`shared/heroes.js`) and in
-the loadout's MECH DROP frame row.
+Batch 1 from `docs/mechs/ROSTER.md`. These are the concept models: they ship as the defaults so the heroes are playable
+and look right now. When the owner's Tripo meshes come in, `tripo_swap.py` swaps them in onto the same joints, markers
+and clips. Same conventions as PAPER PLANE / NIGHT SHIFT (`MECHS.md`):
+- one glb per hero, `public/models/x_mech_<id>.glb`;
+- joint nodes with rigid parts; rest frames = the world axes; the mech faces -z, +x is its right, y up, it stands on y = 0;
+- markers are empty `mk_*` nodes, also in the meta (`marks`: joint, at, dir);
+- the root never moves in a clip;
+- the meta ("jf" on the root) has `joints`, `marks`, `clips` (name, dur, loop, hold, partial, note, events), `decal_slots` (with `mk_spray_<n>` markers), `palettes`, `height`.
 
-How a hero is built (so the next ones are additive):
+The hero kit (`public/js/mechlook.js`: rim light, ink, glows, contrails, clip events) works as soon as `buildMech`
+loads the file. Every hero also has the shared clips `idle`, `hit_react`, `jump`, `land`, `drop_fall`, `drop_in`,
+`hero_intro`, `pilot_in`, `eject` and `destroy`. Look: clean (the owner's references, `docs/mechs/refs/` on
+`claude/mech-refs`): glossy painted metal, crisp trims, few strong glows.
 
-| part | file | registered in |
+Build: `blender52 -b -P tools/blender/mechs/make_hero.py -- hero=<id> qa`. Sheets: `node tools/blender/mechs/clip_sheets.cjs docs/mechs/clips <id> 6`.
+In the game before its code exists: `node tools/blender/mechs/hero_game.cjs <port> <out> <id> [preset]`.
+
+## WRECKING BALL (`wrecking`, prefix `wb_`: not `wreckingball`, the killstreak's id)
+A 4 m armoured steel ball (radius 2, centre at y = 2) that rolls inside a yoke that doesn't: two axle hubs and a pail
+handle with a crane shackle on top. It has:
+- team-colour plates on a gunmetal shell, with twin hazard treads it rolls on and thin white trims;
+- an open porthole in front, where you see the pilot strapped into a hamster wheel (it spins with the roll);
+- fold-out stabiliser feet on the hubs, and rockets under the hubs for PILE DRIVER;
+- the grapple hook parked on its chain down the back.
+
+About 33k tris. Height 4.86 m to the shackle.
+
+**Joints:**
+- root > hips: the centre, for bob / squash. In clips it moves the whole ball, the slam crater for example.
+- hips > ball: the shell. It rolls about local x; **negative rx rolls it forward (-z)**.
+- hips > cage: the hamster wheel and seat. It spins about x.
+- hips > yoke: the hubs, handle, shackle and rockets. It never rolls.
+- yoke > foot_L / foot_R: the stabiliser feet. Pivots at the hubs; rx -95 tucks them back for rolling.
+- yoke > hook: the grapple hook and its chain. Set its transform after `poseMech`; the clips key its rotation.
+- hook > chain_link: one chain link, the template to repeat along the grapple line.
+
+**Markers:**
+
+| marker | joint | what |
 |---|---|---|
-| numbers + pure rules | `shared/mech.js` (`MECH.<id>`, `FRAMES`, `speedCap`, `WEAPONS` kill-feed names) | |
-| server judging | `server/mech_<id>.js` | `server/mech.js` `KIT` (hooks: enter, exit, flags, cap, budget, land, msg, tick, bot, shrug, soak, en) |
-| client: keys, movement, effects, sounds, events | `public/js/mech_<id>.js` | `public/js/mech.js` `KITS` |
-| code stand-in model + poses + clip names | `public/js/mechmodel_<id>.js` | `public/js/mechmodel.js` `MODELS` |
-| tests | `tests/mech_<id>_ws.cjs`, `tests/mech_<id>_bots_ws.cjs` | |
+| `mk_chain` | yoke | the shackle: where the grapple chain starts (dir up) |
+| `mk_hook_eye` | hook | where the chain meets the hook |
+| `mk_window` | ball | the porthole's centre (dir -z at rest; it rolls with the ball) |
+| `mk_seat` | cage | the pilot's seat in the hamster wheel (it spins with the wheel) |
+| `mk_eject` | ball | the back hatch (rolls up to the top in `eject` / `pilot_in`) |
+| `mk_slam` | hips | the floor under the ball: slam, PILE DRIVER and the landing |
+| `mk_thrust_L` / `_R` | yoke | the rockets under the hubs, pointing down and back |
+| `mk_mark` | yoke | above the shackle (overhead marks) |
+| `mk_spray_0` / `_1` | ball | the spray / skin slots (front left and front right quarters) |
 
-The stand-ins use the mech art session's joint, marker and clip names, so `public/models/x_mech_<id>.glb` replaces
-them when it lands (material prefix: wb_, vm_, tr_).
+**Clips:**
 
-## WRECKING BALL (dive tank, 1400 armour, 22 m/s rolling)
-A 4 m hamster ball: steel side caps on the axle, a clear tread, a hazard-striped yoke that never rolls, a pail handle
-with the chain's shackle, fold-out feet, and the pilot running in a wheel inside (spinning round with every roll: the
-camera shakes with it). Frame id `wrecking` (`wreckingball` is the killstreak's armour pool).
+| clip | dur | play | events | note |
+|---|---|---|---|---|
+| `idle` | 2.4 | loop | | a slow breath; the cage rocks, the hook sways |
+| `roll` | 1.0 | loop | dust at 0, 0.5 | **one full turn**, linear: set `timeScale = speed / (2 * pi * 2)`. Feet tucked, the pilot goes round with it |
+| `cage_spin` | 0.6 | loop, partial | | only the hamster wheel, on top of anything (the pilot gets spun) |
+| `chain_throw` | 0.55 | hold | burst at mk_chain 0.26 | fire the hook from `mk_chain` at 0.26 s; ends hanging-ready |
+| `chain_swing` | 1.4 | loop | | dangling on the chain (the game swings the root) |
+| `slam` | 0.9 | once | slam 0.28 (shake 0.6), dust at the feet | up, then down hard: the impact is at 0.28 s |
+| `pile_driver` | 0.8 | hold | bursts at the rockets 0.34 | crouch, launch at 0.34 s (the game shoots it 30 m up); held |
+| `pile_drop` | 0.6 | hold | | diving at the spot, feet up, spinning; then `slam` on impact |
+| `jump` / `land` / `hit_react` | | | dust | as on the other mechs |
+| `drop_fall` / `drop_in` / `hero_intro` | | | slam at the impact | the MECH DROP flow; hero_intro ends with a show-off roll, held with the window facing you |
+| `pilot_in` / `eject` / `destroy` | | | pop at mk_eject | the hatch rolls up to the top; destroy slumps it on its side |
 
-| key | move | what it does |
-|---|---|---|
-| (rolling) | **ram** | the main weapon. rolling into people hurts by the speed the SERVER measured: 8 + 2.6 per m/s over 6, up to 70 (44 at top rolling speed, 70 from a launch or a swing), knockback with speed. once per target every 0.6 s |
-| LMB (hold) | **rev** | spins up on the spot (feet out, sparks, a rising whine); let go to launch the way you look at 26-36 m/s (full charge at 0.8 s, the server times it). 20 energy |
-| Shift | **chain** | throws the chain at whatever the crosshair's on: something solid, in plain sight, above you, within 42 m. swing on it (W pumps, A / D steer, jump or Shift lets go). 10 energy, 0.7 s cooldown, 7 s max |
-| E | **ground slam** | in the air it dives straight down; on the floor it hops first. the slam's size is the height it really fell (1.5 m: 35 damage in 4 m; 22 m+: 130 in 9 m), it flings. 6 s cooldown |
-| RMB (hold) | **brake** | stops hard (sparks) |
-| Space | hop | |
-| Q (ult) | **PILE DRIVER** | rockets 30 m straight up, hangs there up to 2.5 s while you aim (a red ring shows where it lands), then dives at 70 m/s onto the spot you pick (a floor within 55 m; none: straight down): 200 at the middle, down to 30 % at 9 m, everyone flung. everyone sees an INCOMING ring where it's coming down. ult: 650 damage dealt or 110 s |
-| passive | | no knockback at all while it's rolling (or swinging, or diving) |
-
-The server keeps it honest:
-- **Rams:** the speed comes from where the server has it (claimed velocity counts for nothing).
-- **Launch:** its speed allowance only lasts the launch, then it fades at 7 m/s per s (the client's drag is harder).
-- **Chain:**
-  - The anchor is where the server's own ray bites, not the client's point.
-  - It pays for a climb to the anchor + 3 m, nothing more.
-  - It snaps if the ball ends up 4 m past its length.
-- **Slam:** sized by the height lost since it left the floor, measured from accepted snapshots.
-- **PILE DRIVER:**
-  - It pays for its 30 m rise once.
-  - It fizzles if it never fell 10 m.
-  - The 70 m/s dive only lasts the trip to its spot, and ends at once (with the movement bank cut back) if it heads anywhere else.
-  - Its own hits don't recharge the ult.
-- **Bots:** they roll at people, rev-launch from mid range, chain up to anyone above or far away, slam crowds and pile-drive whoever they can see.
-
-Tests: `tests/mech_wrecking_ws.cjs` (45 checks incl. the exploits above), `tests/mech_wrecking_bots_ws.cjs`. Knobs:
-`JF_MECH_FRAME=wrecking` (bots' frame), `JF_MECH_ULT=<x>` (ults charge x times faster).
+Spray slots: two on the ball's front quarters (0.62 m).

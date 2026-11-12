@@ -15,7 +15,17 @@ export const ISLE = {
   revive: { hold: 4, r: 2.5, slack: 0.4, dy: 1.8, hp: 30, gap: 1000 }, // (gap: like the zombies' revive, slow clients send them late)
   stick: 25, // bots stay about this close to a human squadmate (all-bot squads: their leader, a bit looser)
   safe: 22, // a bot picks a squadmate up when no enemy it can see is this close
+  // the MECH METER (0-100, the server's): full in `time` s on its own (on the ground, up, no mech out), an energy cell,
+  // every 10 damage you deal, a kill. at 100 the streak key calls your hero in (MECH DROP). it breaks: back to `after`
+  meter: { max: 100, time: 90, cell: 20, dmg: 0.1, kill: 25, after: 25 },
+  cells: { every: 8, max: 2 }, // energy cells: one next to about every 8th loot spot (until the map tags its own)
+  zoneMech: 6, // outside the zone a mech's armour takes the zone's damage x this (mechs have 9-15x a pilot's HP)
 };
+// the zone: 5 rings over about 12 minutes. [wait (s), shrink (s), radius as a share of the first, damage per s outside].
+// the last ring is `finalR` m across at least, on land, and leans to the middle (or the map's royale.finale spots)
+export const ISLE_ZONE = [[120, 75, 0.6, 2], [95, 60, 0.36, 4], [80, 50, 0.2, 7], [65, 45, 0.1, 11], [60, 45, 0, 16]];
+export const ISLE_FINAL = { r: 20, lean: 0.45 }; // the last ring's radius (m), how far from the middle it may sit (share of the first ring)
+
 // each squad's colour (markers, the HUD) and a silly-literal name
 export const SQUADS = [
   null,
@@ -28,7 +38,8 @@ export const squadOf = (sq) => SQUADS[sq] || { name: `SQUAD ${sq}`, color: '#fff
 export const ST = { UP: 0, DOWN: 1, OUT: 2, SKY: 3 };
 
 Object.assign(GAMES, {
-  island: { name: 'BATTLE ISLAND', desc: 'squads of 3. drop in together, go down instead of dying, hold F on a downed squadmate to pick them up. last squad standing wins', teams: false, royale: true, squads: true, mapOk: (m) => !!(m && m.royale) },
+  // beta: the mode lists say (BETA) until it plays on the island itself
+  island: { name: 'BATTLE ISLAND', desc: 'squads of 3. drop in together, go down instead of dying, hold F on a downed squadmate to pick them up. last squad standing wins', teams: false, royale: true, squads: true, beta: true, mapOk: (m) => !!(m && m.royale) },
 });
 GAME_ORDER.push('island');
 TARGETS.ffa.island = 0; TARGETS.bots.island = 0; // no kill limit: last squad standing

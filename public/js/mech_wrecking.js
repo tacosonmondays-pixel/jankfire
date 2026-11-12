@@ -272,7 +272,7 @@ function aimMark(p, now = 0) {
 }
 function flags(now) { return (WS.chain ? MF.CHAIN : 0) | (WS.pile || WS.slam ? MF.PILE : 0) | (now < WS.launchUntil ? MF.REV : 0); }
 function pose(now) {
-  return { rev: WS.revT ? 1 : 0, chain: WS.chain ? WS.chain.at : null, slam: WS.slam ? WS.slam.ph : 0, pile: WS.pile ? WS.pile.ph : 0,
+  return { rev: WS.revT ? 1 : 0, chain: WS.chain ? WS.chain.at : null, chainT: WS.chain ? (now - WS.chain.t) / 1000 : 9, slam: WS.slam ? WS.slam.ph : 0, pile: WS.pile ? WS.pile.ph : 0,
     boost: (WS.pile && WS.pile.ph === 1) || now < WS.launchUntil ? 1 : 0 };
 }
 
@@ -284,7 +284,7 @@ function remote(r, st, dt, now) {
   if (!(fl & MF.PILE)) W.pile = 0;
   if (hs > 4 && !W.chain && Math.abs(r.vel[1]) < 2) { W.rollT -= dt * (0.4 + hs / 8); if (W.rollT <= 0) { W.rollT = 1; if (!r.ghost) sfx.roll(r.pos, clamp(hs / WB.speed, 0.2, 1.2)); } }
   if (W.rev && Math.random() < dt * 40) rfx.sparks([r.pos[0], r.pos[1] + 0.1, r.pos[2]], 2, 7, [0xffe14d, 0xffffff], 0.3, 0.09, [0, 1, 0]);
-  return { rev: W.rev, chain: W.chain, pile: W.pile, slam: !W.pile && fl & MF.PILE ? (r.vel[1] < 0 ? 2 : 1) : 0, boost: W.pile === 1 || fl & MF.REV ? 1 : 0 };
+  return { rev: W.rev, chain: W.chain, chainT: W.chain ? (now - (W.chainT0 || 0)) / 1000 : 9, pile: W.pile, slam: !W.pile && fl & MF.PILE ? (r.vel[1] < 0 ? 2 : 1) : 0, boost: W.pile === 1 || fl & MF.REV ? 1 : 0 };
 }
 
 // ------------------------------------------------------------ the server's events
@@ -300,7 +300,7 @@ function event(m, getR, live, me, r, st) {
       break;
     case 'wbchain': {
       const p = P(m.p);
-      if (W) W.chain = m.off ? null : p;
+      if (W) { W.chain = m.off ? null : p; if (!m.off) W.chainT0 = nowMs(); }
       if (me) { if (m.off) WS.chain = null; else if (p && WS.chain) { WS.chain.at = p; if (Number.isFinite(m.len)) WS.chain.len = m.len; } }
       if (pos && !me) { if (m.off) sfx.chain(pos); else { sfx.chain(pos); if (p) setTimeout(() => sfx.bite(p), 120); } }
       if (p && !m.off) rfx.sparks(p, 10, 6, [0xffffff, 0xffe14d], 0.3, 0.08);

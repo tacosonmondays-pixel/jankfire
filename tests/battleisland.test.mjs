@@ -102,3 +102,24 @@ test('Battle Island: Dead Air\'s Blender model is built to exactly its boxes (me
   assert.ok(mine.length > 20, 'its boxes are tagged');
   for (const b of mine) assert.ok(b.min[1] > 49.99, `every Dead Air box on the summit (one at y ${b.min[1].toFixed(2)}: ${b.mat})`);
 });
+
+test('Port Jankton: every model is built to its boxes, everything stands on the town (not under it)', async () => {
+  const fs = await import('node:fs');
+  const metaOf = (id) => { const buf = fs.readFileSync(new URL(`../public/models/p_${id}.glb`, import.meta.url)), len = buf.readUInt32LE(12); const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')); return JSON.parse(gl.nodes.find((n) => n.extras && n.extras.jf).extras.jf); };
+  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler'];
+  for (const id of ids) {
+    const ps = m.boxes.props.filter((q) => q.id === id), meta = metaOf(id);
+    assert.ok(ps.length, id + ' is placed');
+    for (const p of ps) for (let i = 0; i < 3; i++) { assert.ok(Math.abs(meta.box[0][i] - p.lo[i]) < 0.01, `${id} lo[${i}] ${meta.box[0][i]} vs ${p.lo[i]}`); assert.ok(Math.abs(meta.box[1][i] - p.hi[i]) < 0.01, `${id} hi[${i}] ${meta.box[1][i]} vs ${p.hi[i]}`); }
+    for (const b of m.boxes.filter((q) => q.pv === id)) assert.ok(b.min[1] > (id === 'pj_trawler' || id === 'pj_quay' ? -1.45 : 1.25), `${id}: a box at y ${b.min[1].toFixed(2)}`);
+  }
+});
+
+test('Port Jankton: walk in at a warehouse\'s quay door, out at its street door; the quay is a sheer step down to the basin', () => {
+  const pos = [-15, 1.65, 138], vel = [0, 0, 0]; let g = true;
+  for (let t = 0; t < 6; t += 1 / 30) { vel[0] = 0; vel[2] = -7; g = sim(pos, vel, g); }
+  assert.ok(pos[2] < 108 && Math.abs(pos[0] + 15) < 0.5 && Math.abs(pos[1] - 1.6) < 0.2, 'through the cold store, out the street side: ' + pos.map((v) => v.toFixed(1)));
+  const top = raycast([20, 5, 145.5], [0, -1, 0], 10, m.boxes), below = raycast([20, 5, 146.5], [0, -1, 0], 10, m.boxes);
+  assert.ok(top && Math.abs(5 - top.t - 1.6) < 0.05, 'the quay\'s top at the town level');
+  assert.ok(below && 5 - below.t < -1.3, 'a step off it: the basin, waist-deep');
+});

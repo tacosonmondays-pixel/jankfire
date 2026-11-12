@@ -413,6 +413,7 @@ export function poseMech(inst, s, dt) {
     inst.clip = clip;
     if (MODELS[inst.frame] && MODELS[inst.frame].mix) MODELS[inst.frame].mix(inst, s, dt); // (a hero's speed-matched loops, layered partial clips)
     inst.mixer.update(dt);
+    if (MODELS[inst.frame] && MODELS[inst.frame].post) MODELS[inst.frame].post(inst, s, dt); // (what the game moves itself, after the clip: a hero's hook)
     effects(inst, s, T);
     lookTick(inst, s, dt);
     return;
