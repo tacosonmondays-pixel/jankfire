@@ -584,7 +584,7 @@ export function makeEncounters(ST, { where } = {}) {
   // the truck goes: through the gate, up Rib Avenue, a stall under the first rib arch, then into the Gut
   function driveOff() { if (!TR.m || TR.road) return; TR.road = { i: 1, x: TR.m.position.x, z: TR.m.position.z, stall: 0 }; truckClip('drive'); encSfx.honk(TR.m.position.toArray()); }
   function driveTick(dt) {
-    const R = TR.road, T = ENC.truck; if (!R || TR.gone) return;
+    const R = TR.road, T = ENC.truck; if (!R || TR.gone || !TR.m) return; // (the truck was cleared away mid-drive: nothing to move)
     if (R.i === T.arch && R.stall < T.stall && Math.hypot(R.x - T.road[T.arch][0], R.z - T.road[T.arch][1]) < 1) { R.stall += dt; return; } // (the arch is low. it waits for the street to breathe out)
     const to = T.road[R.i]; if (!to) { TR.gone = true; G.scene.remove(TR.m); return; }
     const dx = to[0] - R.x, dz = to[1] - R.z, d = Math.hypot(dx, dz), sp = T.speed * dt;
@@ -738,7 +738,7 @@ export function makeEncounters(ST, { where } = {}) {
     soupFrame(dt);
     drawUnits(dt);
     truckFrame(dt);
-    if (qid !== M04 && TR.m && (!q(M04) || q(M04).done)) { G.scene.remove(TR.m); TR.m = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken']) despawnActor(k); }
+    if (qid !== M04 && TR.m && (!q(M04) || q(M04).done)) { G.scene.remove(TR.m); TR.m = null; TR.road = null; TR.where = null; for (const k of ['enc_col0', 'enc_col1', 'enc_dad', 'enc_ken']) despawnActor(k); }
     const H = hudEl(); H.classList.toggle('hidden', !!(ST.scene && ST.scene.playing()) || talking());
     if (barkT && performance.now() > barkT) { barkT = 0; $('encBark').classList.add('hidden'); }
   };
