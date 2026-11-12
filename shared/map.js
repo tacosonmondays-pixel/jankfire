@@ -3797,9 +3797,10 @@ function skyGreen(B, D, x, z, y, r) {
 function skyObs(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('observatory', [x, y, z], 0, () => { // (drawn as the Blender observatory, p_observatory: tools/blender/make_observatory.py; its sign stays the map's)
     add(x - 6, y, z - 6, x + 6, y + 4, z + 6, 'white'); dome(D, x, y + 4, z, 6, 'chrome', false);
     D.add(x - 0.6, y + 6.2, z + 2, x + 0.6, y + 7.2, z + 9, 'metal'); D.add(x - 0.8, y + 6.0, z + 8.6, x + 0.8, y + 7.4, z + 9.2, 'glass'); // the telescope
-    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 });
+    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 }); }, { keep: (b) => !!b.fit });
     for (const [bx, bz] of [[-9, 9], [9, 9], [-9, -9], [9, -9]]) add(x + bx - 1.3, y, z + bz - 0.3, x + bx + 1.3, y + 0.5, z + bz + 0.3, 'wood'); }
 }
 // the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock. f = -1 puts the tanks and the
