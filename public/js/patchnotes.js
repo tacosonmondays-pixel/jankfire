@@ -1,6 +1,21 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.7', date: '2026-11-12', title: 'HE OWNED ALL OF THIS', items: [
+    'suburb: the founder\'s statue got an upgrade. granite plinth, brass plaque, tulips, and the founder himself as a shiny toy bust. he has a monocle now. a pigeon has opinions about his hat.',
+    'smoother edges on mid and too hd (with shaders on). less shimmer on thin lines and far-away stuff. potato stays crunchy.',
+  ] },
+  { v: '9.6.1', date: '2026-11-12', title: 'SWIM NORMAL', items: [
+    'fixed: swimming out to sea made the camera glitchy (things right in front of you blinked in and out). the sea counts as the floor again.',
+  ] },
+  { v: '9.6', date: '2026-11-12', title: 'LEAVING THE PRODUCT', items: [
+    'jankburg: the firewall got a real wall. precast concrete, pink neon, cameras, a walkable top with a yellow line. it says FIRE WALL on it now so you know which one it is. you are now leaving the product.',
+  ] },
+  { v: '9.5', date: '2026-11-12', title: 'SHAKE BEFORE THROWING', items: [
+    'skyline: the giant jank cola can is an actual can now. candy red, condensation, a pink ring pull. 0% real cola. shake before throwing.',
+    'skyline: the building-site crane is a real crane now. lattice, cab, counterweights, a big red hook. mr. smiles says the view hasn\'t changed.',
+    'offline matches got simpler: pick the map and how many bots. how hard they try and how wobbly your hipfire is are no longer your problem.',
+  ] },
   { v: '9.4', date: '2026-11-12', title: 'IT MEANS IT', items: [
     'islands: mount kaboom finally looks like it means it. smoke you can see from the beach, lava that glows, a lava pool in the crater (still a pit. don\'t), stripy rock and a little jungle round its feet.',
   ] },
