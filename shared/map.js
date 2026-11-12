@@ -4721,8 +4721,8 @@ function range() {
   const { boxes, box } = builder();
   box(0, -1, -60, 40, 2, 150, 'grass');
   box(0, -6, -60, 30, 8, 130, 'dirt');
-  box(0, 0.4, 5, 40, 0.8, 1, 'wood');
-  for (const z of [-10, -25, -50, -100]) box(-17, 0.6, z, 4, 1.2, 0.4, 'wood');
+  propOf('rangebench', [0, 0, 5], 0, () => box(0, 0.4, 5, 40, 0.8, 1, 'wood')); // the shooting bench (Blender: p_rangebench)
+  for (const z of [-10, -25, -50, -100]) propOf('rangemark', [-17, 0, z], 0, () => box(-17, 0.6, z, 4, 1.2, 0.4, 'wood'), { v: 'v' + (5 - z) }); // distance boards: how far from the bench
   box(32, -1, -40, 20, 2, 40, 'grass');
   box(28, 0.15, -25, 2.5, 0.3, 2.5, 'pad', { pad: [0, 30, 0] });
   box(36, 0.15, -35, 2.5, 0.3, 2.5, 'pad', { pad: [0, 22, -22] });
@@ -4738,7 +4738,7 @@ function range() {
   horizon(D, -220, -280, 220, 160, 1500, 'grass'); // the same grass as the field you stand on
   D.add(-58, 0.01, -2.3, -50, 0.07, -1.7, 'sand'); // the spray range's firing line (10 m from its wall)
   D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); // the berm the bullets end up in
-  for (let x = -18; x <= 18; x += 3.2) D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'); // sandbags on the firing line
+  for (let x = -18, k = 0; x <= 18; x += 3.2, k++) propOf('sandbags', [x + 1.5, 0, 6.9], 0, () => D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'), { spin: k % 2 ? Math.PI : 0 }); // sandbags on the firing line (p_sandbags; every other one turned round: no pink bag every 3 m)
   for (const [x, z] of [[-30, 20], [30, 20]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); } // watchtowers
   for (let z = 30; z > -260; z -= 10) for (const x of [-90, 90]) { D.box(x, 1, z, 0.15, 2, 0.15, 'metal'); D.add(x - 0.03, 1.6, z, x + 0.03, 1.65, z + 10, 'tire'); }
   for (let i = 0; i < 30; i++) { const rr = rng(400 + i), a = rr() * Math.PI * 2, d = 150 + rr() * 150; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, -60 + Math.sin(a) * d, 6 + rr() * 4, rr); }

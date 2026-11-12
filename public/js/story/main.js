@@ -50,7 +50,7 @@ export function initStory(a) {
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
-  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
+  G.story = { on, send, save, active, tick, onMain, simRound, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
   // the bag as the story engine sees it (synchronous; kept fresh by the sim's 'inv' messages) + its host verbs
   G.story.inv = {
     has: (b, n = 1) => !!IVref.inv && count(IVref.inv, b) >= n,
@@ -261,8 +261,10 @@ function tick(dt = 1 / 60) {
   const bk = back();
   if (bk && bk.state === 'menu' && G.joined && G.mode !== 'story') setBack({ ...bk, state: 'sim' }); // you picked a sim
   const on = active() && ME.alive;
-  const near = on && atTerminal() && !storyPrompt(); // (the story's own F at the Machine, "take your item", wins over the sims)
+  const near = on && atTerminal() && !storyPrompt() && !askOpen(); // (the story's own F at the Machine, "take your item", wins over the sims)
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
+  if (askOpen() && (!$('menu').classList.contains('hidden') || !G.joined || G.mode !== 'story')) closeAsk(false); // (the pause menu, or the run ended)
+  bannerTick();
   loadingTick();
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
   const car = on && !near && !driving() ? nearestCar() : null;
@@ -305,6 +307,11 @@ function key(e, down) {
     if (K.up('use', e)) { const r = bodyKey(e, false); if (r && r.pick) send('pick', { id: r.pick }); } // (a tap on a weapon with the Second Stomach still picks it up)
     return wheelOpen() || bagOpen() || clinicOpen();
   }
+  if (askOpen()) { // the Machine's question has the keys: F = GO, backspace = nah (enter is the chat's)
+    if (!e.repeat && K.matches('use', e)) { closeAsk(false); leave('sim'); }
+    else if (e.code === 'Backspace') closeAsk(true);
+    return true;
+  }
   if (clinicOpen()) { if (K.matches(['use', 'menu'], e)) toggleClinic(false); return true; }
   if (bagOpen()) { if (K.matches(['bag', 'menu'], e)) toggleBag(false); return true; } // (the bag has the mouse)
   if (wheelOpen()) return true; // nothing leaks out of the wheel: no firing, no slot keys, no jumps
@@ -331,17 +338,78 @@ function key(e, down) {
 const storyPrompt = () => { const p = $('stPrompt'), J = window.JF_STORY; return !!((p && !p.classList.contains('hidden') && p.textContent) || (J && J.scene && J.scene.playing()) || document.body.classList.contains('st-talk')); }; // (a cutscene or a talk has the keys too)
 const atTerminal = () => { const T = worldOf(G.cfg && G.cfg.map).terminal; return Math.hypot(ME.pos[0] - T.p[0], ME.pos[2] - T.p[2]) < T.r && Math.abs(ME.pos[1] - T.p[1]) < 4; };
 function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
-function uiOpen() { return bagOpen() || clinicOpen(); }
+function uiOpen() { return bagOpen() || clinicOpen() || askOpen(); }
 function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) * bodyTimeScale() * (G.story.fightScale ? G.story.fightScale() : 1) : 1; } // (fightScale: a boss fight's hit-stop)
 
-function terminal() {
+// F at the Machine asks first (owner playtest: "the vending machine takes you back to the main menu"). GO = straight
+// into its sim (m01's opening match: bots on Suburb), PICK A SIM = the menu with BACK TO THE CITY on it, nah = stay
+function terminal() { if (!toSim) askSim(); }
+function leave(how) {
   if (toSim) return; // (one press, one trip)
   toSim = true;
   pendingSave = 'terminal';
   const off = () => { toSim = false; const i = listeners.saved.indexOf(go); if (i >= 0) listeners.saved.splice(i, 1); };
-  const go = () => { off(); setBack({ slot: cur.slot, state: 'menu' }); api.quitToMenu(); api.toast('the machine hums. pick a sim. leave it to come back.', 3500); };
+  const go = () => {
+    off(); setBack({ slot: cur.slot, state: 'menu' });
+    if (how === 'menu') { api.quitToMenu(); api.toast('the machine hums. pick any sim. quit it to come back.', 3500); return; }
+    api.startMode('bots', { ...SIM });
+    api.toast(firstSim() ? 'the sim. win the match. (pause → quit to bail back to the city)' : 'the sim. pause → quit to come back to the city.', 5000);
+  };
   on('saved', go);
+  try { if (window.JF_STORY) window.JF_STORY.recapped = true; } catch { /* fine */ } // (a trip to the sims isn't a break: no PREVIOUSLY ON when you're back)
   send('save', { why: 'terminal' });
+}
+const SIM = { map: 'suburb', bots: 5, diff: 'easy', hip: 'normal', game: 'dm', hr: 'off' }; // the opening sim (m01: a normal-looking match on Suburb)
+const firstSim = () => { const S = window.JF_STORY && window.JF_STORY.S, q = S && S.st.quests.m01_return_to_sender; return !!(q && !q.done && q.step === 'sim'); };
+let ask = null;
+const askOpen = () => !!(ask && !ask.classList.contains('hidden'));
+function askSim() {
+  if (!ask) { ask = el('div', 'st-pick hidden'); ask.id = 'stSimAsk'; document.body.append(ask); }
+  ask.innerHTML = '';
+  const panel = el('div', 'st-panel st-simask');
+  const first = firstSim();
+  panel.append(el('h2', null, 'ENTER THE SIM?'),
+    el('p', 'st-sub', first ? "you'll leave the city for a match: bots on Suburb. win it. the machine keeps your spot." : "you'll leave the city for a match. the machine keeps your spot."));
+  const row = el('div', 'st-askrow');
+  const go = el('button', 'st-btn yellow', 'GO'), pick = el('button', 'st-btn', 'PICK A SIM'), nah = el('button', 'st-btn', 'nah');
+  go.dataset.sim = 'go'; pick.dataset.sim = 'pick'; nah.dataset.sim = 'nah';
+  go.addEventListener('click', () => { closeAsk(false); leave('sim'); });
+  pick.addEventListener('click', () => { closeAsk(false); leave('menu'); });
+  nah.addEventListener('click', () => closeAsk(true));
+  row.append(go, pick, nah);
+  panel.append(row, el('p', 'st-sub st-keys', `${K.label('use')}: GO · backspace: nah`));
+  ask.append(panel);
+  ask.classList.remove('hidden');
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closeAsk(relock) {
+  if (!ask) return;
+  ask.classList.add('hidden');
+  if (relock && G.joined) try { G.renderer.domElement.requestPointerLock(); } catch { /* a click on the game grabs it */ }
+}
+// main.js: a sim match's round is over. won it = the machine pulls you back out (onMain takes you to the city)
+function simRound(m) {
+  const bk = back();
+  if (!bk || bk.state !== 'sim' || !G.joined || G.mode === 'story' || !m || !m.over) return;
+  const won = m.sc ? !!(m.winTeam && m.winTeam === G.myTeam) : m.winner === G.myId;
+  if (!won) { api.toast("lost the sim. the machine shrugs. next round, or pause → quit to go back to the city.", 4500); return; }
+  api.toast('you won the sim. the machine is pulling you out...', 3500);
+  setTimeout(() => { const b2 = back(); if (b2 && b2.state === 'sim' && G.joined && G.mode !== 'story') api.quitToMenu(); }, 4000);
+}
+// on the main menu while the machine holds your spot: one big way back
+let banner = null;
+function bannerTick() {
+  const bk = back();
+  const want = !!(bk && bk.state === 'menu' && !G.joined && cur && cur.slot === bk.slot && !$('menu').classList.contains('hidden') && !(picker && !picker.classList.contains('hidden')));
+  if (!want) { if (banner) banner.classList.add('hidden'); return; }
+  if (!banner) {
+    banner = el('div', 'st-back'); banner.id = 'stBackCity';
+    const b = el('button', 'st-btn yellow', 'BACK TO THE CITY');
+    b.addEventListener('click', () => openPicker()); // (the picker sees the held spot: straight back to it)
+    banner.append(el('b', null, 'THE MACHINE IS HOLDING YOUR SPOT'), b, el('span', null, 'or play any match: quit it and you come back.'));
+    document.body.append(banner);
+  }
+  banner.classList.remove('hidden');
 }
 // main.js: the main menu is about to show. true = we took over (back from a sim match: straight into the city)
 function onMain() {
@@ -370,6 +438,11 @@ function css() {
 .st-btn{font-family:var(--font);font-weight:700;font-size:18px;border:3px solid #000;background:#fff;color:#000;padding:6px 14px;box-shadow:4px 4px 0 #000;cursor:pointer}
 .st-btn.yellow{background:#ffe14d;box-shadow:4px 4px 0 #ff4fd8;transform:rotate(-2deg)}
 .st-btn:disabled{opacity:.5}
+.st-simask{width:min(520px,92vw)}.st-simask h2{font-size:40px}
+.st-askrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 4px}
+.st-keys{font-size:14px;opacity:.6;margin:10px 0 0}
+.st-back{position:fixed;left:50%;top:14px;transform:translateX(-50%) rotate(-1deg);z-index:55;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;max-width:94vw;background:rgba(18,8,24,.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:10px 16px;font-family:var(--font);color:#fff}
+.st-back.hidden{display:none}.st-back b{color:#ffe14d;font-size:20px;letter-spacing:1px}.st-back span{opacity:.8;font-size:14px}
 .st-load{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#120818;font-family:var(--font);color:#fff}
 .st-load.hidden{display:none}.st-load b{font-size:40px;color:#ffe14d;text-shadow:4px 4px 0 #ff00dc;transform:rotate(-2deg)}
 .st-load i{display:block;width:min(420px,80vw);height:22px;border:4px solid #000;background:#2a1030;box-shadow:6px 6px 0 #4fd8ff}
