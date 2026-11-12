@@ -1211,7 +1211,9 @@ def sheets(root, parts, lods, refs_objs, tag=''):
     the seams where Dot's and Mina's mounds grow out of it -> docs/story/cast/digester_wall_*.jpg"""
     colour_preview([m for m in bpy.data.materials if m.name.startswith('dw_')], True)
     studio_set(); tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True)
+    only = arg('sheet')
     def go(name, views, cols, label, res, lens_default=35):
+        if isinstance(only, str) and name not in only.split(','): return None
         paths = []; labels = []
         for k, (cap, cam, tg, lens, ortho) in enumerate(views):
             p_ = os.path.join(tmp, 'dw_%s_%d.png' % (name, k))
@@ -1222,7 +1224,7 @@ def sheets(root, parts, lods, refs_objs, tag=''):
     for o in lods: o.hide_render = True
     go('sheet', [('front', (0, 5.5, -30), (0, 5.5, 0), None, 23.5), ('three quarter, from the east', (-9.5, 3.4, -9.0), (-0.6, 2.4, 0), 28, None),
                  ('three quarter, from the west', (9.5, 3.4, -9.0), (0.6, 2.4, 0), 28, None), ('side (from the west)', (14, 4.0, -1.2), (0, 4.0, -0.5), None, 13.0),
-                 ('top', (0, 22, -2.2), (0, 0, -0.9), None, 22.5), ('the gap in the tube (x -6..6), eye height', (0, 1.6, -7.5), (0, 2.2, 0), 26, None)],
+                 ('from above (a rooftop across the avenue)', (0, 13.5, -9.5), (0, 3.5, -0.4), 30, None), ('the gap in the tube (x -6..6), eye height', (0, 1.6, -7.5), (0, 2.2, 0), 26, None)],
        3, 's_digester_wall  %d tris (far copy %d)  20 m of the office front, prop space: front -z, x = west  %s' % (m['tris'], m['tris_lod1'], tag), (720, 460))
     CU = []
     for P in PEOPLE:
@@ -1236,9 +1238,9 @@ def sheets(root, parts, lods, refs_objs, tag=''):
            at('14: the top terrace, over the twins', 5.18, 2.62, (-0.3, 0.0, -1.1), 45), at('a photo frame over dot', -0.42, 2.52, (0.3, 0.1, -1.4), 40),
            at('his hand, waving, his wristband', 2.62, 2.5, (0.15, 0.05, -1.5), 40), at('veins, a glowing node, a wet tuck under a roll', -5.6, 4.5, (-0.2, 0.5, -2.2), 36)]
     go('closeups', CU, 4, 'digester wall: who is in it and what of theirs (face rigs = sculpted, still)', (520, 400))
-    go('seams', [("dot's mound out of her niche", (1.25, 0.95, -1.85), (0.2, 0.55, -0.45), 38, None), ('dot, the other side', (-1.3, 0.9, -1.8), (-0.2, 0.55, -0.45), 38, None),
+    go('seams', [("dot's mound into the wall (west side)", (1.75, 0.95, -1.05), (0.5, 0.45, -0.3), 36, None), ('dot, east side', (-1.75, 0.95, -1.05), (-0.5, 0.45, -0.3), 36, None),
                  ("dot from above: the niche's back behind her", (0.3, 2.3, -1.4), (0, 0.9, -0.25), 34, None),
-                 ("mina's lap into her niche", (-2.3, 0.9, -1.75), (-3.2, 0.55, -0.4), 38, None), ('mina, the other side', (-4.75, 0.95, -1.7), (-3.8, 0.55, -0.4), 38, None),
+                 ("mina's lap into the wall (west side)", (-1.75, 0.95, -1.05), (-2.95, 0.5, -0.3), 36, None), ('mina, east side', (-5.25, 0.95, -1.05), (-4.05, 0.5, -0.3), 36, None),
                  ("mina from above", (-3.3, 2.4, -1.4), (-3.5, 0.95, -0.25), 34, None)],
        3, 'digester wall: where Dot and Mina meet it (their own models, in the pose the game stands them in)', (640, 440))
     try: os.rmdir(tmp)
@@ -1265,7 +1267,7 @@ def main():
     for o in lods: o.hide_render = True
     pv = arg('preview')
     if pv: preview(parts, R_, pv)
-    if '--sheet' in args: sheets(root, parts, lods, R_)
+    if arg('sheet'): sheets(root, parts, lods, R_)
 
 
 main()
