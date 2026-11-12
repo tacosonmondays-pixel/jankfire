@@ -41,7 +41,9 @@ export function initHub(o) {
   $('hubBack').addEventListener('click', () => { click(); opts.show('main'); });
   $('hubGo').addEventListener('click', go);
   addEventListener('keydown', (e) => {
-    if (!onLobby() || e.repeat || /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement && document.activeElement.tagName)) return;
+    const a = document.activeElement;
+    if (!onLobby() || e.repeat || /^(INPUT|SELECT|TEXTAREA)$/.test(a && a.tagName)) return;
+    if (e.key === 'Enter' && a && a !== document.body && a !== $('hubGo')) return; // (Enter on a focused button presses that button)
     if (e.key === 'Escape') { e.preventDefault(); opts.show('main'); }
     else if (e.key === 'Enter') { e.preventDefault(); go(); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const i = ORDER.indexOf(modeOf()); setMode(ORDER[(i + (e.key === 'ArrowRight' ? 1 : ORDER.length - 1)) % ORDER.length]); }
@@ -54,7 +56,7 @@ const onLobby = () => !$('scr-hubby').classList.contains('hidden') && !$('menu')
 export function hubShown() { poll(); }
 async function poll() {
   clearTimeout(pollT);
-  if (!$('scr-hubby') || $('menu').classList.contains('hidden')) return;
+  if (!$('scr-hubby') || $('menu').classList.contains('hidden') || ($('scr-main').classList.contains('hidden') && $('scr-hubby').classList.contains('hidden'))) return; // (only the home and the lobby show counts)
   try { counts = await (await fetch('/lobbies', { cache: 'no-store' })).json(); } catch { counts = null; }
   const live = $('hubLive');
   if (live) { const n = counts ? Object.values(counts.o || {}).reduce((a, v) => a + (v | 0), 0) : null; live.textContent = n == null ? '' : n ? `● ${n} playing online` : ''; }
@@ -173,16 +175,17 @@ function render() {
   } else {
     if (k === 'qp') L.append(row('mode', select(gamesOf(k), st.game, (v) => { st.game = v; if (!mapsOf(v).includes(st.map)) st.map = mapsOf(v)[0]; remember(k); }, (g) => GAMES[g].name)));
     const own = GAMES[st.game] && (GAMES[st.game].royale || GAMES[st.game].zombies); // (a royale brings its crowd, zombies its horde)
+    const team = !own && GAMES[st.game] && GAMES[st.game].teams; // (a team mode with nobody on the other side is no match: bots stay on)
     if (own) L.append(row('bots', el('em', null, GAMES[st.game].zombies ? 'THE HORDE' : 'A CROWD OF THEM')));
-    else L.append(row('bots', toggle(st.botsOn, (v) => { st.botsOn = v; remember(k); })));
-    if (st.botsOn && !own) {
+    else if (!team) L.append(row('bots', toggle(st.botsOn, (v) => { st.botsOn = v; remember(k); })));
+    if ((st.botsOn || team) && !own) {
       const r = el('input'); r.type = 'range'; r.min = 1; r.max = 12; r.step = 1; r.value = st.bots;
       const n = el('em', null, String(st.bots));
       r.addEventListener('input', () => { st.bots = Number(r.value); n.textContent = r.value; });
       r.addEventListener('change', () => remember(k));
       const w = el('span', 'hub-range'); w.append(r, n); L.append(row('bot count', w));
     }
-    if (st.botsOn || own) L.append(row('difficulty', stepper(Object.keys(BOT_DIFF), st.diff, (v) => { st.diff = v; remember(k); }, (d) => BOT_DIFF[d].name.toUpperCase())));
+    if (st.botsOn || own || team) L.append(row('difficulty', stepper(Object.keys(BOT_DIFF), st.diff, (v) => { st.diff = v; remember(k); }, (d) => BOT_DIFF[d].name.toUpperCase())));
     L.append(row('hipfire', stepper(Object.keys(HIPFIRE), st.hip, (v) => { st.hip = v; remember(k); }, (h) => HIPFIRE[h].name.toUpperCase())));
     R.append(el('span', 'hub-tag', 'MAP'));
     const maps = mapsOf(st.game);
@@ -216,5 +219,6 @@ function go() {
   }
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
-  opts.start('bots', { priv: true, game, map, bots: own ? 5 : st.botsOn ? st.bots : 0, diff: st.diff, hip: st.hip });
+  const team = !own && GAMES[game] && GAMES[game].teams;
+  opts.start('bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, diff: st.diff, hip: st.hip });
 }
