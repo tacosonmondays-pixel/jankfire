@@ -114,6 +114,7 @@ import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
 import { waterPhysics } from './liquids.js';
+import { kbLock } from './kblock.js'; // fullscreen: Ctrl+W & co go to the game, not the browser (crouch is Left Ctrl)
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -2042,6 +2043,7 @@ function frame(t) {
   if (dt <= 0) return;
   if (G.story) dt *= G.story.timeScale(); // the weapon wheel slows time (solo)
   const now = performance.now();
+  kbLock(inGame() && !!document.pointerLockElement); // (let go on the menu, pause, chat)
 
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)
