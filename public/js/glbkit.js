@@ -78,7 +78,6 @@ function pump() {
     for (const it of Q.items.values()) if (!it.go && (!best || it.pri > best.pri)) best = it;
     if (!best) return;
     if (best.pri <= 0) { let hi = 0; for (const it of Q.items.values()) if (it.pri > 0) hi++; if (hi || Q.run >= 2) return; } // background fetches: only once everything wanted is in, two at a time
-    if (best.pri < 2 && Q.hold && Q.hold()) return; // a story run is loading: the startup set (every gun, zombies...) waits, what's wanted still goes
     if (Q.run >= Q.max + (best.pri >= 4 ? 3 : 0)) return; // what you're looking at right now gets three extra lanes
     best.go = true; Q.run++;
     if (glbLog) glbLog.push([Math.round(performance.now()), 'go', best.id, best.pri]);
@@ -87,9 +86,6 @@ function pump() {
       () => { LD.prog = performance.now(); }, (e) => { end(); console.warn('model failed', best.id, e); LD.failed.add(best.id); if (best.bad) best.bad(e); emit(best.id); });
   }
 }
-// hold(): true while the startup set should wait (story mode's loading: story/main.js). call again with null to let go
-export function holdGlbs(fn) { Q.hold = fn; pump(); }
-export function pumpGlbs() { pump(); }
 // ask for a model sooner (pri: 0 idle, 1 soon, 2 this screen, 3 on screen right now)
 export function want(id, pri = 2) {
   if (LAZY.has(id)) fetchLate(id, pri);

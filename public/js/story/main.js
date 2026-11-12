@@ -20,7 +20,6 @@ import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
 import { WorkerSocket, warmWorker } from './host.js';
-import { holdGlbs } from '../glbkit.js'; // (the PvP startup models wait while a run loads)
 import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
@@ -188,15 +187,13 @@ async function wipeSlot(i) {
 }
 
 // ------------------------------------------------------------ the loading card (owner playtest: "everything takes forever to load")
-// from NEW GAME / CONTINUE until you're standing in the city: what it's doing and how far along. while it's up, the
-// startup set of PvP models waits (glbkit.js holdGlbs) so the city gets the network and the main thread
+// from NEW GAME / CONTINUE until you're standing in the city: what it's doing and how far along
 let loadCard = null, loadT = 0;
 function loadingOn() {
   loadT = performance.now(); G.cityReady = false;
   try { performance.mark('jf-story-start'); } catch { /* old browser */ }
   if (!loadCard) { loadCard = el('div', 'st-load hidden'); loadCard.id = 'stLoad'; loadCard.innerHTML = '<b></b><i><u></u></i><span></span>'; document.body.append(loadCard); }
   loadCard.classList.remove('hidden');
-  holdGlbs(() => !!loadT);
 }
 function loadingTick() {
   if (!loadT || !loadCard) return;
@@ -212,7 +209,6 @@ function loadingTick() {
 function loadingOff() {
   const ms = performance.now() - loadT; loadT = 0;
   if (loadCard) loadCard.classList.add('hidden');
-  holdGlbs(null);
   try { performance.mark('jf-story-playable'); } catch { /* old browser */ }
   console.info(`story: playable in ${(ms / 1000).toFixed(1)} s`);
 }

@@ -55,7 +55,7 @@ export async function init() {
   const q = new URLSearchParams(location.search);
   ST.slot = Math.max(0, Math.min(2, Number(q.get('slot')) || 0));
   if (q.get('fresh') === '1') clearSlot(ST.slot);
-  // (the Blender cast comes on demand now: ensureCast as each actor is about to show up, the rest once the city is in. it used to be all 21 here, 6 MB before the engine could start)
+  prefetchCast(LOOK_IDS, 6); // the Blender cast starts coming now (while you're on the menu), but the engine no longer waits for it: it used to hold up to 12 s here. the roster waits per actor instead (ensureCast)
   const data = await loadSlot(ST.slot);
   const st = fromSave(data);
   if (data && Array.isArray(data.bagStub)) for (const i of data.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);
@@ -331,7 +331,6 @@ export function locked() { return talking() || (ST.scene && ST.scene.playing()) 
 export function frame(dt, now, cam) {
   gradeFrame(now); // (before the ready check: the grade is on from the first frame in the world)
   if (!ST.ready) return;
-  if (!ST.castAll && G.cityReady && inStory()) { ST.castAll = true; prefetchCast(LOOK_IDS); } // the rest of the cast, once you're standing in the city
   // capture mode (tools/scene.cjs): the story advances one fixed step per recorded frame, however slow the renderer is
   if (ST.capture) { dt = ST.capStep || 0; ST.capStep = 0; now = ST.capNow = (ST.capNow || now) + dt * 1000; }
   stage();

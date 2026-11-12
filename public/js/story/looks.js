@@ -514,11 +514,11 @@ export function ensureCast(id, wait = 6000) {
 function fetchCast(id) {
   return glbLoader().loadAsync(`/models/cast/c_${id}.glb`).then((g) => { prepCast(g.scene); CAST.set(id, g.scene); }).catch(() => { NO_FILE.add(id); });
 }
-// the rest of the cast, quietly, two at a time, once the city is in (so they're there before their scenes need them)
-export async function prefetchCast(ids) {
+// the whole cast in the background, a few at a time (anything ensureCast asks for first jumps the queue)
+export async function prefetchCast(ids, lanes = 4) {
   const left = ids.filter((id) => !CAST.has(id) && !NO_FILE.has(id) && !ASK.has(id));
   const one = async () => { for (let id; (id = left.shift());) { if (ASK.has(id)) continue; const q = { t: performance.now(), done: false }; ASK.set(id, q); await fetchCast(id); q.done = true; } };
-  await Promise.all([one(), one()]);
+  await Promise.all(Array.from({ length: lanes }, one));
 }
 export function buildLookCode(id, hint) { const c = CAST.get(id); CAST.delete(id); try { return buildLook(id, hint); } finally { if (c) CAST.set(id, c); } } // (the code puppet, for side-by-sides)
 function dressCast(L, scene) {
