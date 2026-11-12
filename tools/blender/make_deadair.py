@@ -108,7 +108,7 @@ def atlas():
     A.cell('volt', 48, 16, paint_text(['DANGER', 'HIGH VOLTAGE'], 0xffffff, 0xd8202a, 36, border=0xd8202a))
     A.cell('rack', 16, 32, _rack)
     A.cell('mixer', 32, 16, _mixer)
-    A.cell('tiles', 16, 16, _tiles)
+    A.cell('tiles', 64, 40, _tiles)
     A.cell('streak', 16, 16, _streak)
     for k, c, v, sp in (('orange', 0xff5a1f, 0.05, None), ('white', 0xf4f2ee, 0.04, None), ('concrete', 0xc8c2b6, 0.1, 0x8a8478),
                         ('galv', 0x9aa4ae, 0.08, None), ('porcelain', 0x8a3a22, 0.06, None), ('coax', 0x1c1c20, 0.08, None),
@@ -350,7 +350,7 @@ def build_deadair():
         def side(p):
             n = MK._gn(p.normal)
             if abs(n.y) > 0.5: return 'trim'
-            fc = sum((Pp[k] for k in p.vertices), V3()) / len(p.vertices)
+            fc = sum((Pp[k] for k in p.vertices), V3()) / len(p.vertices) + cen  # (the mesh is local to the box's centre)
             dx, dz = fc.x - C.x, fc.z - C.z
             outward = n.x * dx + n.z * dz > 0
             thin = (abs(n.x) > 0.5 and x1 - x0 > 0.5) or (abs(n.z) > 0.5 and z1 - z0 > 0.5)  # (a jamb: the wall's cut edge)
@@ -365,7 +365,7 @@ def build_deadair():
     wall(sx0, 0.15, sz1 - t, d0, stop, sz1, 'da_ws'); wall(d1, 0.15, sz1 - t, sx1, stop, sz1, 'da_ws'); wall(d0, dt, sz1 - t, d1, stop, sz1, 'da_wsl')
     wall(sx0, 0.15, sz0 + t, sx0 + t, stop, w0, 'da_ww'); wall(sx0, 0.15, w1, sx0 + t, stop, sz1 - t, 'da_ww'); wall(sx0, 0.15, w0, sx0 + t, wy0, w1, 'da_ww'); wall(sx0, wy1, w0, sx0 + t, stop, w1, 'da_ww')
     fl = box((ws, 0.15, ds), (cxs, 0.075, czs), M, name='da_floor')
-    uv_fit(fl, A, 'streak', sel=lambda p, Pp: MK._gn(p.normal).y < 0.5); uv_trim(fl, A, 'tiles', upm=0.5, sel=lambda p, Pp: MK._gn(p.normal).y >= 0.5); P.append(fl)
+    uv_fit(fl, A, 'streak', sel=lambda p, Pp: MK._gn(p.normal).y < 0.5); uv_fit(fl, A, 'tiles', sel=lambda p, Pp: MK._gn(p.normal).y >= 0.5); P.append(fl)  # (8 x 5 checks over the 8 x 5 m floor)
     roof = box((ws + 0.3, 0.3, ds + 0.3), (cxs, H - 0.15, czs), M, bev=0.03, name='da_roof'); uv_fit(roof, A, 'trim'); P.append(roof)
     P.append(boxk((ws + 0.36, 0.08, 0.06), (cxs, H - 0.3, sz1 + 0.17), M, A, 'mug', 'da_fascia'))  # (a cyan fascia under the roof's south edge)
     for sxx in (sx0, sx1):  # corner trims
