@@ -261,6 +261,14 @@ export function validate(C) {
     if (e.base && C.WEAPON_IDS && !C.WEAPON_IDS.includes(e.base)) err(`loot table ${id}`, `unknown base '${e.base}'`);
   }
   for (const [id, m] of Object.entries(C.MODIFIERS || {})) if (!m.name || !m.effect) err(`modifier ${id}`, 'missing name/effect');
+  // ---- items: every one has a name and a line (a card never shows a raw id); a weapon item is a real gun with a name
+  for (const [id, it] of Object.entries(C.ITEMS || {})) {
+    const w = `item ${id}`;
+    if (typeof it.name !== 'string' || !it.name.trim()) err(w, 'missing name');
+    if (typeof it.desc !== 'string' || !it.desc.trim()) err(w, 'missing desc');
+    if (it.rarity && !RARITIES.has(it.rarity)) err(w, `bad rarity '${it.rarity}'`);
+    if (it.kind === 'weapon' && (!it.base || (C.WEAPON_IDS && !C.WEAPON_IDS.includes(it.base)))) err(w, `unknown base weapon '${it.base}'`);
+  }
 
   // ---- collectibles
   for (const [id, c] of Object.entries(C.COLLECTIBLES)) {

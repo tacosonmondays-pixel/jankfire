@@ -54,7 +54,7 @@ export function lootSound(r, pos, pick) {
 
 // ------------------------------------------------------------ the item card (comic arrows against what you hold)
 export function lootCard(it, vs) {
-  const c = el('div', 'st-card');
+  const c = el('div', 'st-lcard'); // (not st-card: story.css's chapter title card has that name, and its centring and slam pulled this one up under the quest panel)
   if (!it) return c;
   const i = infoOf(it) || { name: it.b, desc: '' };
   c.style.borderColor = RCOL[it.r] || RCOL.common;
@@ -82,7 +82,7 @@ export function lootCard(it, vs) {
   return c;
 }
 export const LOOT_CSS = `
-.st-card{font-family:var(--font);background:rgba(18,8,24,.94);border:4px solid #7dff4f;box-shadow:6px 6px 0 #4fd8ff;color:#fff;padding:10px 12px;width:290px;transform:rotate(-1.5deg)}
+.st-lcard{font-family:var(--font);background:rgba(18,8,24,.94);border:4px solid #7dff4f;box-shadow:6px 6px 0 #4fd8ff;color:#fff;padding:10px 12px;width:290px;transform:rotate(-1.5deg)}
 .st-rar{display:inline-block;font-style:normal;font-weight:700;color:#000;border:2px solid #000;padding:0 8px;transform:rotate(-3deg);box-shadow:2px 2px 0 #000}
 .st-cname{display:block;font-size:20px;margin:6px 0 2px;color:#ffe14d;text-transform:uppercase}
 .st-brand{font-size:12px;color:#4fd8ff;margin-bottom:4px}.st-quirk{font-size:13px;color:#ff4fd8;margin:2px 0}.st-flav{font-size:13px;opacity:.85;font-style:italic}
@@ -91,5 +91,5 @@ export const LOOT_CSS = `
 .st-up{color:#39ff14;font-style:normal;font-weight:700;text-align:right}.st-dn{color:#ff3030;font-style:normal;font-weight:700;text-align:right}
 .st-vs{font-size:11px;opacity:.7;margin-top:4px}
 .st-bagcard{position:fixed;right:max(8px,calc(50% - 690px));top:12%;z-index:61;pointer-events:none}
-.st-lootcard{position:fixed;left:calc(50% + 120px);top:40%;z-index:21;pointer-events:none}.st-lootcard.hidden{display:none}
+.st-lootcard{position:fixed;left:min(calc(50% + 120px),calc(100% - 314px));top:max(40%,176px);z-index:21;pointer-events:none}.st-lootcard.hidden{display:none}
 `;
