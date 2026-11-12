@@ -270,7 +270,7 @@ export function buildMech(frame, color, opts = {}) {
     glb.traverse((o) => { if (o.isMesh && !Array.isArray(o.material) && o.material.name && o.material.name.startsWith(pre + 'paint')) o.material = own.accent; });
     for (const k of Object.keys(P)) { const n = nodeIn(glb, k); if (n) { j[k].visible = false; j[k] = n; n.userData.rest = n.position.toArray(); } }
     for (const n of root.children) if (n !== glb) n.visible = false;
-    if (frame === 'paperplane') for (const s of ['L', 'R']) { const sg = s === 'L' ? -1 : 1, fa = j['forearm_' + s]; part2(fa, PIV.paperplane['forearm_' + s][0], [1.12 * sg, 2.45, -0.35], cbox(0.24, 0.24, 0.5, 0.04), lam(0x1d2747, 0.08)); for (const b of [-0.06, 0.06]) part2(fa, PIV.paperplane['forearm_' + s][0], [1.14 * sg + b, 2.4, -0.55], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2)); } // (the twin cannons: ours, the model has none yet)
+    if (frame === 'paperplane' && !nodeIn(glb, 'cannon_L')) for (const s of ['L', 'R']) { const sg = s === 'L' ? -1 : 1, fa = j['forearm_' + s]; part2(fa, PIV.paperplane['forearm_' + s][0], [1.12 * sg, 2.45, -0.35], cbox(0.24, 0.24, 0.5, 0.04), lam(0x1d2747, 0.08)); for (const b of [-0.06, 0.06]) part2(fa, PIV.paperplane['forearm_' + s][0], [1.14 * sg + b, 2.4, -0.55], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2)); } // (the twin cannons: ours, the model has none yet)
   } else if (frame === 'paperplane') buildPaper(j, own);
   else buildKnight(j, own);
   // markers: the hero model's empties, else ours at the same spots
