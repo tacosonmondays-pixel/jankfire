@@ -51,3 +51,11 @@ export const SITTERS = [
   { id: 'wait_chalk', seat: BEV.seats[1], face: BEV.seatFace, hint: { body: 'normal', desc: 'a big man in a vest, the price still chalked on his new arm' } },
   { id: 'wait_jack', seat: BEV.seats[2], face: BEV.seatFace, look: 'pallet_jack', if: '!flag.fate.pallet_jack.dead' },
 ];
+
+// the Gut Choir in the Choir Lung (public/js/story/choir.js): set dressing like the sitters, no lines. two rows of
+// stalls facing each other across the aisle up from the door (the lung's ring is centred x -268, z -218; its door is
+// to the south), so walking in you see them side-on, and every head turns to you at once. look: choir (tall) / choir_b
+export const CHOIR = [
+  { look: 'choir', p: [-270.7, 40, -209.4], face: E }, { look: 'choir_b', p: [-270.7, 40, -210.7], face: E }, { look: 'choir', p: [-270.7, 40, -212.0], face: E },
+  { look: 'choir_b', p: [-265.3, 40, -210.0], face: W }, { look: 'choir', p: [-265.3, 40, -211.35], face: W },
+];

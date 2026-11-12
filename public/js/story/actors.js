@@ -147,7 +147,7 @@ function pose(a, dt, moving, look) {
   if (c.armRest) { const [ax, fx] = c.armRest; c.arm.rotation.x += ax; c.armL.rotation.x += ax; c.foreR.rotation.x += fx; c.foreL.rotation.x += fx; } // (a look whose arms can't hang: dot's rest on her wall)
   c.spine.rotation.set(c.spine.userData.hunch ??= c.spine.rotation.x, 0, 0);
   c.spine.position.y = c.spine.userData.y0 ??= c.spine.position.y;
-  c.head.rotation.x = 0; c.head.rotation.y = 0;
+  c.head.rotation.x = 0; c.head.rotation.y = 0; c.head.rotation.z = c.head.userData.tilt ??= c.head.rotation.z; // (z starts from the jank tilt every frame: clips that add to it, shrug, think, late, no longer wind the head round)
   // breathing (everyone), and the idle style when standing
   const br = Math.sin(t * 1.9);
   c.spine.position.y += br * 0.006; c.spine.rotation.x -= br * 0.012;
@@ -156,6 +156,7 @@ function pose(a, dt, moving, look) {
     if (a.idle === 'fidget') { const f = Math.sin(t * 0.9) > 0.6 ? 1 : 0; c.foreR.rotation.x += 1.2 * f + Math.sin(t * 20) * 0.1 * f; c.arm.rotation.x += 0.4 * f; c.head.rotation.y += Math.sin(t * 0.37) * 0.25; }
     if (a.idle === 'write' && !a.talking) CLIPS.write.f(c, t, 1);
   }
+  if (c.stance) c.stance(c, t, a, moving); // (a look's own stance: mina waits with her hands clasped, or leans on her wall)
   // talking: a hand moves with the words, little nods
   if (a.talking && a.voice.level > 0.05) { const k = a.voice.level; c.foreR.rotation.x += 0.8 * k; c.arm.rotation.x += 0.3 * k; c.head.rotation.x += Math.sin(t * 13) * 0.04 * k; }
   if (a.hold) CLIPS.hold.f(c, t, 1);

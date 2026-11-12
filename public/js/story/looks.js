@@ -254,6 +254,10 @@ const LOOKS = {
     p.ch.handL.add(box(0.14, 0.18, 0.05, flat(0x8a3a2a), 0, -0.09, -0.03)); // the Filofax
     return { ...p, kind: 'puppet', height: 1.9, eyeY: 1.82 };
   },
+  // GUT CHOIR SINGERS (puppets, the Choir Lung): Gristle & Sons staff who stayed at their desks while the building grew
+  // round them. choir: the tall one (pink robe, a combover, glasses); choir_b: the squat one (bile robe, a perm)
+  choir() { return choirLook(0); },
+  choir_b() { return choirLook(1); },
   // DOT (puppet): small and round, Lumps-ish forearms, grown into the pink wall up to her chest. curlers, a soup ladle
   dot() {
     const SK = 0xffc8a0, skin = patMat('dotskin', 64, 64, speckle('#ffc8a0', ['#d08a6a', '#ffe0c8']), [2, 2], 0.42);
@@ -357,6 +361,62 @@ function generic(id, hint = {}) {
     face: { s: bigHead ? 1.5 : tinyHead ? 0.7 : 1, eyeR: huge === 'eye' ? 0.06 : 0.038, eyeY: hr[1] * 1.15, iris: pick([0xe8d030, 0x3fbf5a, 0xd0405a]), redRim: r() < 0.4, mouthW: 0.1, mouthY: hr[1] * 0.45,
       lip: pick([0xb04870, 0xd0607a, 0x7a3a8a]), teeth: pick(['needle', 'tomb', 'none']), brow: 0x2a1a3a, lidColor: SK, z: -hr[2] * 0.94 } });
   return { ...p, kind: 'puppet', height: 1.9, eyeY: 1.8 };
+}
+// THE GUT CHOIR: a robe to the floor (in the Blender model its skirt bends with the legs), a ruff, the office lanyard
+// still out over it, enormous hands, tiny office shoes, a puppet face stretched into a permanent smile (FACES.choir: the
+// mouth grins, the eyes are still at their desks). v 0 tall: a fleshy pink robe, a combover, glasses, an open binder of
+// hymns. v 1 squat: a bile-yellow robe, a perm, a pencil behind the ear, a clipboard.
+// the stance (actors.js calls ch.stance): the hymns held up at reading height, standing or walking (a procession), the
+// free hand on the page, and the hum: a slow sway, everyone together (choir.js lines their clocks up). the 'heads' clip
+// stops the hum dead, mid-sway. the clips (sing, heads) are in choir.js; c.faceRig lets them hold the jaw and the eyes
+const TAU = Math.PI * 2;
+const CHOIR_V = [
+  { skin: 0xc8cfe0, dots: ['#9aa2b8', '#e4e8f2'], robe: '#e07890', fold: '#b04866', stole: 0xd6d04a, shoe: 0x18181c, hair: 0x3a2e2a, iris: 0xc8d850, lip: 0x9a5a7a, brow: 0x3a2e2a },
+  { skin: 0xf2b898, dots: ['#c8805a', '#ffd8c0'], robe: '#d6cc3c', fold: '#a4a02a', stole: 0x8a2a4a, shoe: 0xf4f0e6, hair: 0x8a5a3a, iris: 0x5aa0d0, lip: 0xd0607a, brow: 0x6a4a3a },
+];
+export const CHOIR_STANCE = [{ L: [0.15, -0.4, -0.15, 2.05], R: [0.15, 0.4, 0.15, 2.05] }, { L: [0.55, -0.7, -0.1, 1.45], R: [0.55, 0.7, 0.1, 1.45] }]; // per look: arm x, y, z, elbow (elbows at the sides, the shoulders turned in so the hands meet under the hymns; make_cast_choir.py places the binder with these)
+function choirLook(v) {
+  const C = CHOIR_V[v], SK = C.skin, tall = !v;
+  const robe = patMat('choirrobe' + v, 64, 64, (c, w, h) => { c.fillStyle = C.robe; c.fillRect(0, 0, w, h); c.fillStyle = C.fold; for (let x = 0; x < w; x += 8) c.fillRect(x, 0, 2, h); }, [3, 1], 0.75);
+  const skin = patMat('choirskin' + v, 64, 64, speckle('#' + SK.toString(16).padStart(6, '0'), C.dots), [2, 2], 0.38);
+  const cream = flat(0xf2ead6), hairM = flat(C.hair), floor = HIP * (1 - (tall ? 0.84 : 0.52));
+  const p = person({ skin: SK, skinMat: skin, legMat: robe, shoe: C.shoe, s: 1, wrongKnee: false, legS: tall ? 0.84 : 0.52, hipW: tall ? 0.085 : 0.12, thigh: tall ? 0.8 : 1.1, shin: tall ? 0.8 : 1.0, foot: 0.7,
+    torsoH: tall ? 0.52 : 0.44, shW: tall ? 0.19 : 0.26, hunch: tall ? 0.1 : -0.04, armR: tall ? 0.95 : 1.05, upper: tall ? 0.3 : 0.22, fore: tall ? 0.28 : 0.2, handS: tall ? 2.3 : 2.5, sleeveMat: robe, foreMat: robe,
+    hips: (b) => b.add(cyl(tall ? 0.19 : 0.26, tall ? 0.36 : 0.42, HIP + 0.08 - floor, robe, 0, (HIP + 0.08 + floor) / 2, 0, 16)), // the robe, to the floor
+    torso: (sp, tH) => {
+      sp.add(sph(tall ? 0.19 : 0.27, robe, 0, tH * 0.55, 0, 1.1, 1.3, 0.85, 14));
+      sp.add(cyl(tall ? 0.15 : 0.19, tall ? 0.2 : 0.25, 0.09, cream, 0, tH * 0.95, 0, 14)); // the ruff
+      for (const sx of [-1, 1]) sp.add(box(0.05, tH * 0.8, 0.02, flat(C.stole), sx * 0.08, tH * 0.5, -(tall ? 0.17 : 0.23))); // the stole
+      sp.add(box(0.025, tH * 0.32, 0.012, flat(0x8a2a4a), 0, tH * 0.72, -(tall ? 0.19 : 0.25))); sp.add(box(0.08, 0.1, 0.01, flat(0xfff3d0), 0, tH * 0.5, -(tall ? 0.2 : 0.26))); // the lanyard, still on
+    },
+    headR: tall ? [0.21, 0.34, 0.215] : [0.25, 0.24, 0.235], neck: tall ? 0.17 : 0.02,
+    head: (h, r, m) => {
+      h.add(sph(1, m, 0, r[1], 0, r[0], r[1], r[2], 18));
+      for (const sx of [-1, 1]) h.add(sph(0.05, m, sx * r[0] * 0.98, r[1] * (tall ? 1.0 : 0.95), 0.01, 0.45, 1.2, 0.9)); // ears
+      h.add(sph(0.035, m, 0, r[1] * (tall ? 1.05 : 0.88), -r[2] * 1.0, 1, 1.4, 1.2)); // nose
+      if (tall) for (let i = 0; i < 6; i++) { const s = box(0.4, 0.012, 0.03, hairM, 0, r[1] * 1.86 - Math.abs(i - 2.5) * 0.012, -0.08 + i * 0.035); s.rotation.z = 0.25; h.add(s); } // the combover
+      else for (let i = 0; i < 14; i++) { const a = (i / 14) * TAU; h.add(sph(0.07, hairM, Math.cos(a) * r[0] * 0.75, r[1] * 1.72 + (i % 2) * 0.04, Math.sin(a) * r[2] * 0.7 + 0.02)); } // the perm
+    },
+    face: tall ? { s: 1.35, eyeR: 0.034, eyeSep: 0.058, eyeY: 0.42, iris: C.iris, redRim: true, mouthW: 0.105, mouthY: 0.2, lip: C.lip, lipR: 0.014, teeth: 'tomb', brow: C.brow, browW: 0.06, lidColor: SK, glasses: 0x2a2a30, z: -0.202 }
+      : { s: 1.3, eyeR: 0.032, eyeSep: 0.066, eyeY: 0.28, iris: C.iris, mouthW: 0.12, mouthY: 0.13, lip: C.lip, lipR: 0.013, teeth: 'needle', brow: C.brow, browW: 0.065, lidColor: SK, z: -0.221 } });
+  p.face.set('choir'); FACE_LOCK.set(p.face, 'choir'); // (stretched on: it never changes)
+  const c = p.ch; c.faceRig = p.face;
+  if (tall) { c.handL.add(box(0.2, 0.3, 0.03, flat(0x1a1a22), 0.09, -0.16, -0.08)); c.handL.add(box(0.2, 0.3, 0.03, flat(0x1a1a22), -0.11, -0.16, -0.08)); } // the binder, open
+  else { c.handL.add(box(0.26, 0.36, 0.02, flat(0x9a6a3a), 0.04, -0.17, -0.07)); c.handL.add(box(0.22, 0.28, 0.006, flat(0xf8f4e8), 0.04, -0.15, -0.082)); } // the clipboard
+  const [lx, ly, lz, le] = CHOIR_STANCE[v].L, [rx, ry, rz, re] = CHOIR_STANCE[v].R;
+  c.stance = (cc, t, a, moving) => {
+    const dt = Math.min(0.25, Math.max(0, t - (cc.stT ?? t))); cc.stT = t;
+    cc.armL.rotation.set(lx, ly, lz); cc.foreL.rotation.set(le, 0, 0); cc.arm.rotation.set(rx, ry, rz); cc.foreR.rotation.set(re, 0, 0); // (set, not added: no arm swing, it's a procession)
+    const stare = a.clip && a.clip.name === 'heads';
+    cc.faceRig.sing = 0; // (a clip opens the jaw on top of this, step by step)
+    cc.humT = (cc.humT ?? t) + dt * (stare ? 0 : 1); // (the stare stops the hum dead, mid-sway)
+    const hk = (cc.humK ?? 1) * (moving ? 0.35 : 1), ph = cc.humT * TAU / 3.4, s = Math.sin(ph);
+    cc.spine.rotation.z += s * 0.065 * hk; cc.body.rotation.z += s * 0.025 * hk; cc.head.rotation.z += Math.sin(ph - 0.8) * 0.09 * hk; // the sway, the head a beat behind
+    cc.spine.position.y += Math.abs(Math.cos(ph)) * 0.008 * hk; cc.head.rotation.x -= (0.04 + Math.sin(ph * 2) * 0.025) * hk; // a lift through each middle, a nod on the beat
+    cc.armL.rotation.x += Math.sin(ph * 2 + 0.5) * 0.025 * hk; cc.arm.rotation.x += Math.sin(ph * 2 + 0.5) * 0.025 * hk;
+    if (!stare && cc.faceRig.gaze && !cc.gazeHold) cc.faceRig.gaze = null; // (the eyes come back to the page with the head)
+  };
+  return { ...p, kind: 'puppet', height: tall ? 2.2 : 1.52, eyeY: tall ? 2.0 : 1.32 };
 }
 function internLook(v) {
   const SK = [0xe0a882, 0xb47a58][v], black = flat(0x1e1e22), grey = skinMat(0x8a8e96, 0.5), orange = skinMat(0xff6a1a, 0.4), hoodie = flat([0x5a6a3a, 0x6a3a4a][v]);
