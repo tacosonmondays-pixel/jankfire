@@ -7,7 +7,6 @@
 import { G } from './ctx.js';
 import { GAMES, GAME_ORDER, mapsFor } from '/shared/modes.js';
 import { MAPS, MAP_ORDER } from '/shared/map.js';
-import { BOT_DIFF, HIPFIRE } from '/shared/weapons.js';
 import { LOBBY } from '/shared/lobby.js';
 import { eventGame } from '/shared/vote.js';
 import { modeThumb } from './modeart.js';
@@ -75,7 +74,7 @@ function stateOf(k) {
   const sv = S()[key] && typeof S()[key] === 'object' ? S()[key] : {}, games = gamesOf(k), ev = eventGame();
   const st = { fill: sv.fill !== false, who: ['all', 'bots', 'coop'].includes(sv.who) ? sv.who : 'all',
     game: games.includes(sv.game) ? sv.game : k === 'qp' && games.includes(ev) ? ev : games[0], map: sv.map, botsOn: sv.botsOn !== false,
-    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5, diff: Object.hasOwn(BOT_DIFF, sv.diff) ? sv.diff : 'normal', hip: Object.hasOwn(HIPFIRE, sv.hip) ? sv.hip : 'normal' };
+    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5 }; // (no difficulty or hipfire here, the owner's call: an offline match plays the room's defaults)
   if (!mapsOf(st.game).includes(st.map)) st.map = mapsOf(st.game)[0];
   return (pick[key] = st);
 }
@@ -185,8 +184,6 @@ function render() {
       r.addEventListener('change', () => remember(k));
       const w = el('span', 'hub-range'); w.append(r, n); L.append(row('bot count', w));
     }
-    if (st.botsOn || own || team) L.append(row('difficulty', stepper(Object.keys(BOT_DIFF), st.diff, (v) => { st.diff = v; remember(k); }, (d) => BOT_DIFF[d].name.toUpperCase())));
-    L.append(row('hipfire', stepper(Object.keys(HIPFIRE), st.hip, (v) => { st.hip = v; remember(k); }, (h) => HIPFIRE[h].name.toUpperCase())));
     R.append(el('span', 'hub-tag', 'MAP'));
     const maps = mapsOf(st.game);
     if (!maps.includes(st.map)) st.map = maps[0];
@@ -220,5 +217,5 @@ function go() {
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
   const team = !own && GAMES[game] && GAMES[game].teams;
-  opts.start('bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, diff: st.diff, hip: st.hip });
+  opts.start('bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0 });
 }
