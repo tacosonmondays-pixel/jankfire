@@ -4710,6 +4710,10 @@ function backrooms() {
   spawns.push([mid(14), PY + 0.1, mid(30)], [mid(15), PY + 0.1, mid(45)]);
   const att2 = [[-16, 0.1, 113], [-8, 0.1, 113], [0, 0.1, 113], [8, 0.1, 113], [16, 0.1, 113], [-8, 0.1, 103], [8, 0.1, 103]];
   const def2 = att2.map(([x, y, z]) => [x, y, -z]);
+  // ---- look only: every wallpaper wall, pillar and half wall is drawn by one Blender model (tools/blender/arch/make_backrooms.py,
+  // archfield.js). the boxes stay what you bump into, and come back if the file doesn't
+  B.boxes.arch.push({ id: 'backrooms', p: [0, 0, 0], r: 0 }); const AV = { av: 'backrooms', ai: B.boxes.arch.length - 1 };
+  for (const b of B.boxes) if (b.mat === 'wallpaper') Object.assign(b, AV);
   const HZ = 0xb4a35a; // the haze
   return {
     name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -50,
