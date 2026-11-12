@@ -264,7 +264,7 @@ function roster(e) {
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; }
-    if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
+    if (!a && d < 34) spawnActor(r.id, r.spot && r.spot.look ? { ...r.n, look: r.spot.look } : r.n, r.p, r.face); // (spot.look: a look for that spot, mina in her wall)
     else if (a && d > 44 && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him. so does anyone an encounter stood somewhere: encounters.js)
   }
 }
