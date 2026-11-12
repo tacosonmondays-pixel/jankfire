@@ -9,6 +9,8 @@ import { G } from '../ctx.js';
 import { K } from '../keys.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from '../world.js';
 import { loadTripoModels } from '../models.js';
+import { fx } from '../fx.js';
+import { liquidBox } from '../liquids.js';
 
 const $ = (id) => document.getElementById(id);
 try { Object.assign(G.settings, JSON.parse(localStorage.getItem('jankfire') || '{}')); } catch { /* fresh settings */ }
@@ -16,6 +18,7 @@ K.attach(G.settings); // (the game's key module listens on the page too: it need
 const canvas = $('c');
 initWorld(canvas);
 setJank(G.settings.jank ?? 1);
+fx.init(G.scene); // (the lava's sparks, splashes: liquids.js spawns through it)
 const cam = G.camera;
 cam.fov = 80; cam.updateProjectionMatrix();
 
@@ -29,7 +32,13 @@ try { localStorage.setItem('jfEdMap', mapId); } catch { /* fine */ }
 const def = MAPS[mapId];
 let saved = { map: mapId, v: 1, ops: [] };
 try { const s = JSON.parse(localStorage.getItem(store(mapId)) || 'null'); if (s && validEdits(s) && s.map === mapId) saved = s; } catch { /* a broken save: start clean */ }
-const { idx, stale } = applyEdits(def, saved); // (a map remodelled since: those ops just don't find their thing)
+let rep;
+try { rep = applyEdits(def, saved); } catch (e) { // a save that breaks the replay: keep it aside, start clean (the page reloads the map)
+  console.error('editor: saved edits broke the replay', e);
+  try { localStorage.setItem(store(mapId) + ':broken', JSON.stringify(saved)); localStorage.removeItem(store(mapId)); } catch { /* fine */ }
+  location.reload(); throw e;
+}
+const { idx, stale } = rep; // (a map remodelled since: those ops just don't find their thing)
 const staleOps = new Set(stale.map((s) => s.op));
 loadMap(mapId);
 loadTripoModels().then((n) => { if (n) rebuild(); }); // the Blender models list (props, buildings): then they replace their boxes, like in the game
@@ -107,12 +116,13 @@ function extentBox(p) { // a model with no boxes of its own (deco trees): its fi
   return { min: [cx - hx, p.a[1] + p.lo[1], cz - hz], max: [cx + hx, p.a[1] + p.hi[1], cz + hz], rot: p.y || 1e-6 };
 }
 const boxesOf = (t) => (t.boxes.length ? t.boxes : t.prop && t.prop.a ? [extentBox(t.prop)] : []);
-function pick(o, d, skip, floors = !floorsLocked) { // floors: big ground slabs count (you can always put things down on them)
+function pick(o, d, skip, floors = !floorsLocked, dry = false) { // floors: big ground slabs count (you can always put things down on them). dry: not water / lava (you set things on the bottom)
   let best = null, bt = 1e9, top = false;
   for (const t of idx.things) {
     if (skip && skip.has(t)) continue;
     for (const b of boxesOf(t)) {
       if (!floors && isFloor(b)) continue;
+      if (dry && liquidBox(b)) continue;
       const h = rayBox(o, d, b);
       if (h && h[0] < bt) { bt = h[0]; best = t; top = h[1] === 1 && h[2] === 1; }
     }
@@ -121,6 +131,7 @@ function pick(o, d, skip, floors = !floorsLocked) { // floors: big ground slabs 
 }
 // what's under the crosshair (or under the mouse when it's free)
 const mouse = new THREE.Vector2(), ray = new THREE.Raycaster();
+let moved = false; // (no hover outline until the mouse has been somewhere)
 function aimRay() {
   if (document.pointerLockElement === canvas) { cam.getWorldPosition(_o); cam.getWorldDirection(_d); } else { ray.setFromCamera(mouse, cam); _o.copy(ray.ray.origin); _d.copy(ray.ray.direction); }
   return [_o, _d];
@@ -182,9 +193,22 @@ function startCarry(ts) {
   carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
   callout('YOINK');
 }
+// shaped ground (shared/terrain.js heightfield) isn't boxes: march the ray down onto it. returns the distance or null
+let terBoxes = null; // the ground's own steps (b.ter): not things you can pick, but you can put things down on them
+function terrainHit(o, d, max) {
+  let best = null;
+  const T = def.boxes.terrain;
+  if (T && T.at) for (let t = 0.5; t < max; t += 0.5) { const g = T.at(o.x + d.x * t, o.z + d.z * t); if (g != null && o.y + d.y * t <= g) { best = t; break; } }
+  if (!terBoxes) terBoxes = def.boxes.filter((b) => b.ter);
+  for (const b of terBoxes) { const h = rayBox(o, d, b); if (h && h[1] === 1 && h[2] === 1 && h[0] < max && (best == null || h[0] < best)) best = h[0]; }
+  return best;
+}
 function updateCarry() {
   if (!carry) return;
-  const [o, d] = aimRay(), skip = new Set(carry.ts), h = pick(o, d, skip, true);
+  const [o, d] = aimRay(), skip = new Set(carry.ts);
+  let h = pick(o, d, skip, true, true);
+  const th = terrainHit(o, d, Math.min(200, h ? h.dist : carry.dist * 2.5));
+  if (th != null && (!h || th < h.dist)) h = { dist: th, top: true };
   let p;
   if (h && h.top && h.dist < carry.dist * 2.5) p = [o.x + d.x * h.dist, o.y + d.y * h.dist, o.z + d.z * h.dist]; // aimed at a floor: it sits on it
   else p = [o.x + d.x * carry.dist, o.y + d.y * carry.dist, o.z + d.z * carry.dist];
@@ -200,6 +224,8 @@ function dropCarry() {
   if (c.d.every((v) => Math.abs(v) < 1e-4) && c.q === 0 && c.k === 1) return;
   opXf(c.ts, c.o, c.k, c.q, c.d); callout('PLONK');
 }
+// put it back: a fresh copy (or a new thing from the palette) that never got put down goes away again
+function cancelCarry() { const fresh = carry && carry.fresh; endCarry(); if (fresh && undoN) { undo(); redo.pop(); toast('never mind'); } else toast('put back'); }
 function endCarry() { if (!carry) return; G.scene.remove(carry.ghost); carry.ghost.traverse((o) => o.geometry && o.geometry.dispose()); carry = null; }
 
 // ---------------------------------------------------------------- actions
@@ -218,17 +244,19 @@ function act(a, shift) {
     opXf(ts, pivotFor(ts), k, 0, [0, 0, 0]); callout(a === 'bigger' ? 'THICC' : 'SMOL'); return;
   }
   if (a === 'del') { endCarry(); opDel(ts); drawHover(null); callout('YEET'); return; }
-  if (a === 'dupe') { endCarry(); const made = opAdd(ts.map(thingData)); sel.clear(); for (const t of made) sel.add(t); drawSel(); startCarry(made); callout('COPY PASTA'); }
+  if (a === 'dupe') { endCarry(); const made = opAdd(ts.map(thingData)); sel.clear(); for (const t of made) sel.add(t); drawSel(); startCarry(made); carry.fresh = true; callout('COPY PASTA'); }
 }
+let nudgeT = 0;
 function nudge(dx, dy, dz) {
   const ts = [...sel]; if (!ts.length) return;
   const st = snap || 0.25, yaw = cam.rotation.y, f = Math.round(yaw / (Math.PI / 2)) & 3; // move along the grid axis nearest to where you look
   const [fx, fz] = [[0, -1], [-1, 0], [0, 1], [1, 0]][f], [rx, rz] = [-fz, fx];
   const d = [(fx * -dz + rx * dx) * st, dy * st, (fz * -dz + rz * dx) * st];
   const last = hist[hist.length - 1];
-  if (undoN && last && last.nudge && performance.now() - last.nudge < 1500 && last.ts.length === ts.length && last.ts.every((t) => sel.has(t))) { // (taps in a row: one change)
+  if (undoN && !redo.length && last && last.nudge && performance.now() - last.nudge < 1500 && last.ts.length === ts.length && last.ts.every((t) => sel.has(t))) { // (taps in a row: one change)
     for (const t of ts) xfThing(t, [0, 0, 0], 1, 0, d);
-    last.op.d = last.op.d.map((v, i) => r4(v + d[i])); last.nudge = performance.now(); persist(); rebuild(); return;
+    last.op.d = last.op.d.map((v, i) => r4(v + d[i])); last.nudge = performance.now(); persist(); drawSel();
+    clearTimeout(nudgeT); nudgeT = setTimeout(rebuild, 160); return; // (held arrows: one redraw when they stop)
   }
   opXf(ts, pivotFor(ts), 1, 0, d);
   Object.assign(hist[hist.length - 1], { nudge: performance.now(), ts });
@@ -274,6 +302,11 @@ let speed = 14;
 }
 let last = performance.now();
 function frame(now) {
+  requestAnimationFrame(frame); // (first: one broken piece of the world can't stop the editor)
+  try { step(now); } catch (e) { if (!frameErr) { frameErr = true; console.error('editor frame', e); } }
+}
+let frameErr = false;
+function step(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const f = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0), r = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0), u = (keys.has('Space') ? 1 : 0) - (keys.has('KeyC') ? 1 : 0);
   if (f || r || u) {
@@ -281,16 +314,15 @@ function frame(now) {
     cam.position.x += (-Math.sin(y) * f + Math.cos(y) * r) * v; cam.position.z += (-Math.cos(y) * f - Math.sin(y) * r) * v; cam.position.y += u * v;
   }
   updateCarry();
-  if (!carry) { const [o, d] = aimRay(); const h = pick(o, d); drawHover(h && h.t); } else drawHover(null);
-  updateWorld(dt);
+  if (!carry && (moved || document.pointerLockElement === canvas)) { const [o, d] = aimRay(); const h = pick(o, d); drawHover(h && h.t); } else drawHover(null);
+  try { updateWorld(dt); } catch (e) { if (!frameErr) { frameErr = true; console.error('editor world', e); } }
   renderFrame();
-  requestAnimationFrame(frame);
 }
 
 // ---------------------------------------------------------------- input
 canvas.addEventListener('mousedown', (e) => {
   if (document.pointerLockElement !== canvas && e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); }
-  if (document.pointerLockElement === canvas) { if (e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); } else if (e.button === 2 && carry) { endCarry(); toast('put back'); } }
+  if (document.pointerLockElement === canvas) { if (e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); } else if (e.button === 2 && carry) cancelCarry(); }
 });
 canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
 canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
@@ -301,7 +333,7 @@ function clickPick(add) {
   hover = undefined; drawSel();
 }
 addEventListener('mousemove', (e) => {
-  mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+  mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); moved = true;
   if (document.pointerLockElement !== canvas) return;
   cam.rotation.y -= e.movementX * 0.0022 * (G.settings.sens || 1.2) / 1.2; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * 0.0022 * (G.settings.sens || 1.2) / 1.2));
 });
@@ -329,7 +361,7 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketRight') setSnap(SNAPS[Math.min(SNAPS.length - 1, SNAPS.indexOf(snap) + 1)] || 0.25);
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
-  else if (c === 'Escape' && carry) { endCarry(); toast('put back'); }
+  else if (c === 'Escape' && carry) cancelCarry();
   else if (c === 'ArrowUp') nudge(0, 0, -1); else if (c === 'ArrowDown') nudge(0, 0, 1); else if (c === 'ArrowLeft') nudge(-1, 0, 0); else if (c === 'ArrowRight') nudge(1, 0, 0);
   else if (c === 'PageUp') nudge(0, 1, 0); else if (c === 'PageDown') nudge(0, -1, 0);
   else if (/^Digit[1-4]$/.test(c)) { G.settings.jank = +c.slice(5) - 1; setJank(G.settings.jank); toast(['Potato', 'Crusty', 'Mid', 'Too HD'][G.settings.jank]); }
