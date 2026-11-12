@@ -153,7 +153,7 @@ function school() {
   B.box(14.5, 0.5, -3.1, 1.6, 1.0, 0.6, 'metal', K('ballrack', 14.5, -3.1)); B.box(21, 0.15, 21.5, 3, 0.3, 2, 'pink', K('gymmatp', 21, 21.5));
   B.add(29.1, 0, 14, 29.7, 0.45, 17, 'wood', K('bench', 29.4, 15.5, 1)); B.add(29.1, 0, 3, 29.7, 0.45, 6, 'wood', K('bench', 29.4, 4.5, 1));
   const crate = { at: [27.5, 0, 10], price: 950 };
-  B.add(26.6, 0, 9.55, 28.4, 0.9, 10.45, 'crate');
+  B.add(26.6, 0, 9.55, 28.4, 0.9, 10.45, 'crate', W.P('zmcrate', 27.5, 10, 0, { v: 'body' })); // (the Blender crate, as in the mall)
   // ---- UPSTAIRS HALL: benches, bins, a fountain that never turned off
   for (const z of [4, 20]) B.add(-1.5, F, z - 0.3, 1.5, F + 0.45, z + 0.3, 'wood', K('bench', 0, z, 0, F));
   small('bin', -7.3, 9, 0, F, 0.5, 0.8); small('bin', 7.3, -15, 0, F, 0.5, 0.8); B.add(7.4, F, 7.75, 7.8, F + 1.0, 8.25, 'metal', K('fountain', 7.6, 8, 1, F));

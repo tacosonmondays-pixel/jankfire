@@ -76,21 +76,9 @@ One screen per mode, same layout (mockups: `lobby_public.jpg`, `lobby_private.jp
 - Guests see "friends need an account. guests can still join a party with its code."
 - Limits: 100 friends, 20 requests a day, 1 request per person per day after a NAH.
 
-**The SQL** (the owner runs this once in the Supabase SQL editor; nothing else changes in `jf_users`):
-```sql
--- friends: one row per pair (a < b by name_lower), who asked, and whether it's accepted yet
-create table if not exists jf_friends (
-  a text not null references jf_users(name_lower) on delete cascade,
-  b text not null references jf_users(name_lower) on delete cascade,
-  asked_by text not null,
-  status text not null default 'pending' check (status in ('pending', 'friends', 'blocked')),
-  created_at timestamptz not null default now(),
-  primary key (a, b),
-  check (a < b)
-);
-create index if not exists jf_friends_b on jf_friends (b);
-alter table jf_friends enable row level security; -- (no policies: only the server's service key reads and writes it)
-```
+**The SQL** is the "Friends" block at the end of `supabase.sql` (the owner runs it once in the Supabase SQL editor;
+it's safe to run again, and nothing else changes). Until it's run, the game hides FRIENDS. A request someone says NAH
+to stays as a 'nah' row for a day, so the same person can't ask again straight away.
 The file store (`data/jankfire-db.json`, the exe and LAN hosting) gets the same rows in a `friends` list.
 
 ## 6. What happens to today's buttons
