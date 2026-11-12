@@ -1,72 +1,165 @@
-# JANKFIRE handoff (2026-11-04)
+# JANKFIRE handoff (2026-11-07, coordinator session)
 
-Read this first in a new session. Everything below is on GitHub (tacosonmondays-pixel/jankfire).
-The old session's scratch folder is gone, so the test tooling was copied into `handoff/` on this branch.
+Live: https://jankfire.onrender.com (Render auto-deploys `main`). Latest shipped patch notes: **v6.8**. Read CLAUDE.md first.
 
-## What's live (main, auto-deployed to https://jankfire.onrender.com by Render)
-- Update 1 (PR #1): the review fixes (74 findings), strict server input validation, guns update (Marble Shotgun, Redline),
-  one hotbar (bottom/right), corner killstreaks, rebuilt knife/katana models, sniper headshots kill, revolver headshot 96.
-- Update 1.1 (PR #2): sniper knockback back (minigun + sniper are the only guns that shove); killcam victim stays until the
-  killing shot, then explodes.
-- Update 1.2 (PR #3): sleep arrow knocks you flat for 4 s (everyone sees it); the play of the round is skippable.
-- PR #4: Training gives you your 3 picked killstreaks, always (a used one comes back 3 s after it runs out).
-- A Windows exe of all that was built and sent (JANKFIRE-1.2-win.zip, `npm run dist:win:zip`).
+## How the coordinator works
+- Lane sessions build on their own branch and open draft PRs. The coordinator re-tests each one on latest `main` and merges it (owner's standing OK).
+  - Merge with `git checkout -B ship-check origin/main && git merge <branch>`, then `node --check` on the changed files.
+  - Boot with `node --max-old-space-size=256 server.js`. It must print no "share bit" warnings.
+  - Smoke scripts: handoff/tests (t_all404, t_melee, t_mm, t_zm3, t_story0, t_lobby with `JF_LOBBY_WAIT=9000`, t_lb). They pre-set `jf_giftseen_all` so the gift popup doesn't cover the menu.
+  - Story tests: `node --test tests/story/*.test.mjs tests/browsable.test.mjs`.
+- Add a line to `public/js/patchnotes.js` for anything players notice, push it to the PR branch, then merge with the full 40-char `expectedHeadSha`. Wait until the new version string shows up in /js/patchnotes.js on the live site.
+- Look choices, `supabase.sql` re-runs and exe builds wait for the owner. Original designs only. Secrets never leave the server.
+- Server code: `class Room` now lives in **server/room.js** (#111). New installers go there, and `installModeStats` must stay the LAST installer.
 
-## Update 2: almost done -> `claude/int-features` (head 2b29c0a)
-Already merged and fixed in it: update 1, plus
-bubble wand, Scales of Justice, Wrecking Ball, revolver twirl + fan, unskippable EPIC killcams, no-scope hype, grapple skins,
-duck rework, headshot DINK/TONK + homing slippers, katana parry, pendulum grapple, sprays (Z), popper/reverse as items (8 items),
-Never Landed (wings), Shredder, Blood Cross, Golden Sniper (Sniper Royalty), Backrooms map, Gun Game, Infection,
-Spoons & Grapples, Duck Rain, Floor Is Lava, One in the Chamber, Runner Jacket.
-Since then also on it: Blood Cross is a big upright cross (not an X) with red anime impact frames (482573e).
-Its own commits explain every cross-feature decision (`git log --oneline be76a3a..claude/int-features`).
+## Shipped this run (all on main)
+- Minimap + bot outfits + bot chatter (#82, #92)
+- Fast model loading + 3D icons + streak looks (#86, #87, #95)
+- Side-menu polish (#80, #85, #88)
+- Royale backpack/grapple charges + S&D tactical shop (#89)
+- Zombies:
+  - boards, drops, Cheat Machine, loadouts (#90)
+  - squad bots, cap of 4 (#113, #118)
+- Per-mode leaderboards (#106)
+- Liquids (#103)
+- Gift + bulk container opening (#108, #114)
+- S&D 5v5, 15 rounds, Valorant-style gunplay, learnable sprays, first-person spectate + corner box, Training SPRAY RANGE (#109, #117, #121, #123)
+- Room move (#111)
+- OVERDUE (story, hidden behind `?story=1`):
+  - script (#75, #76, #84, #100 mechanics/bosses)
+  - systems WP3/4/5/7 (#78, #81, #98, #105, #112)
+  - world WP1/2, grapple, GTA data, Gate arena, shops (#79, #91, #99, #101, #107, #110, #116)
+  - WP8 engine + Act I + cast (#77, #102, #104)
+  - solo combat referee v1 (#120)
 
-To ship it:
-1. `git merge origin/main` into claude/int-features (brings in 1.1 + 1.2; expect small conflicts in replay.js / remote.js /
-   main.js / server.js around the killcam alive-flag fix and the sleep knock-down flag).
-2. Run the regression: `handoff/tests/regress2.sh <checkout> <port>` (fix the absolute scratchpad paths in the scripts first:
-   they point at the old session's folder; pwlock.cjs caps headless browsers at 2). Baseline on update 1:
-   `handoff/baseline-main.txt` (18 pass; t_anim and t_flash were already stale/failing).
-3. The owner must re-run `supabase.sql` in Supabase (update 2 adds columns: airborne, wings_old, sniper_feats);
-   `check-supabase` reports what's missing.
-4. PR to main (draft first, owner marks ready + merges), rebuild the exe (`desktop/`, build-desktop.yml).
+## Open PRs / in flight
+- **#122 Overtime model/anims/cutscenes** (session_01Ayo4emQj6kDyzTHXfVXb6p). BLOCKED: `tests/story/ref.test.mjs` hardcodes the old enemy name/tags ('Corp Temp', ['corp']), but its enemies.js now says "☺ CORP TEMP" / ['corp','ranged']. The test should read from ENEMIES. The lane was told to fix this.
+- **#71 Blender round 4 props**, glossy (session_01Ayo4eoPw2pkw8sSnE3MaPX). Finishing the vehicles. After it: a game-wide `docs/blender/INVENTORY.md` of everything still code-built, then a PS1/Cruelty Squad look test (car, palm, TV, pool ladder).
+- **#115 Architecture look test**, PS1/Cruelty Squad buildings + real stairs on Suburb/Skyline (session_01Ayo4en8Pcv3HrjSrvgFhEV). **Waiting for the owner's OK** before converting every map.
+- **#119 Grudge Ledger design** (OVERDUE "nemesis"-style system, kept distinct from WB's patent). **Waiting for the owner's OK** plus 3 questions:
+  - is a 35% file chance right?
+  - do they steal a cosmetic every time or only the first?
+  - OVERDUE only, or multiplayer bots too?
+- **#83 PS1 texture test**: parked by the owner (back burner). The pipeline at tools/blender/ps1.py is reused by the art lanes.
+- **#6**: an old CSS reskin, stale; ignore it.
+- Systems lane (session_01Ayo4epRiUAHmUrMzDPYwVi), next steps:
+  - bosses PR (Overtime 1 at the Gut Border Gate, using #122's parts.json)
+  - the slice world in the worker
+  - civilians (killable, respawning), Late Fees wanted level, shops
+  - grudge hooks
+- World lane (session_01Ayo4enhVSVnYw2M1PfCmzD): standing by for boss-arena needs; swaps stand-ins to the PS1 kit after the look test is approved.
 
-## Update 3 branches (all pushed)
-Finished and reviewed, not merged anywhere yet (built on e8fe212 = int-features before update 1 unless noted):
-- `claude/f-zombies` (e8bc3b5, based on ac5f9eb): co-op Zombies on the Dead Mall (credits, shutters, wall guns, crate, power, Jank Cola, revives).
-- `claude/f-slip` (73b54ae): parry window 0.6 s (perfect 0.25 s) + marbles on the floor make people slip.
-  The commit after it (4fb8e6b) is a WIP parry-animation polish: unfinished, test before keeping.
-- `claude/f-music` (c1e3378): music system + the owner's track (public/music/untitled.mp3, listed as "Untitled": ask for the real name).
-- `claude/f-keys` (cc1fe7c): rebindable keybinds (Settings > Controls), built + reviewed + fixed.
-Partly built (WIP, untested):
-- `claude/f-econ`: competitive Plant & Defuse. Server side DONE and tested (c56d5bf; design in `handoff/econ_DESIGN.md`).
-  Client (buy menu, HUD, drops, armor models) is WIP in e599992.
-- `claude/f-lasso` (495ee7b): lasso secondary with holder-run spring physics (the Roblox fling trick). Build was in progress.
-- `claude/f-pip` (48940b1, WIP): killcam picture-in-picture (killer's POV box + LIVE reaction box).
-- `claude/f-rig` (3e09b6e, WIP, based on update 1): OVERDRIVE RIG killstreak (cyber exo-frame: speed + afterimages,
-  shield, charged punch + block, grapple quickhack, homing missiles, charged leap). Original design, no copied names.
+## Owner decisions still open
+1. Approve the PS1/Cruelty Squad look (#115). Then: convert all maps, and should the existing glossy models be re-baked?
+2. Grudge Ledger design + its 3 questions (#119).
+3. S&D: is the moving inaccuracy harsh enough? Keep bots at 0.7x damage?
+4. Streak-skin rarities in crates OK? (Disco Ball epic, Golden Duck legendary.)
 
-## Queued requests (not started)
-- NEW MODE: BATTLE ROYALE. Original design: a big map (or a new one), everyone drops in, loot on the ground (weapons,
-  items, armor), a shrinking zone that hurts outside it, last one standing wins; works in Online and Bots rooms.
-  TEACH THE BOTS TO PLAY IT: drop somewhere sensible, loot and upgrade their kit, rotate ahead of the zone, avoid or
-  third-party fights, heal/use items, fight at the right ranges, don't die to the zone. Test with a full bots match.
-- IMPROVED SEARCH & DESTROY = the competitive Plant & Defuse (`claude/f-econ`). TEACH THE BOTS TO PLAY IT PROPERLY:
-  sensible buys per economy (eco / force / full, drop weapons for teammates), attackers group up and execute a site
-  (smokes/frags first), plant in safe spots, post-plant positions; defenders split onto sites, hold angles, rotate on
-  info, retake together, defuse with a kit when safe; nobody wanders alone; pick up better weapons; save when the round
-  is lost. The server already has basic bot buying + pickups (server/econ.js); this is the full tactical behaviour.
-  Test: whole bots-only matches, check both sides win rounds for real reasons.
-- Map pass: `handoff/map_todo/MAP_FIXES.md` (+ 2 screenshots): Suburb bigger and Nuketown-like with a tree border,
-  Skyline/Rooftop streets below, Warehouse props + fenced yard, Bazaar gaps, out-of-bounds "RETURN 3 2 1" countdown.
-- Two-stage end-of-match vote: mode first, then map (about 12 modes now).
-- Parry: a dedicated rebindable "Parry" action once keybinds land.
+## Goals the owner set
+- **Everything Blender-made** in the PS1 + Cruelty Squad style: props, buildings, real staircases, vehicles, planes, TVs, pools, trees, terrain, characters. Gameplay and collision stay identical; check with a hash per map.
+- OVERDUE demo: the slice is Act I solo through the first Overtime fight.
+  - Missing: bosses, the slice world in the referee, and polish.
+  - Optional for the first demo: co-op, Late Fees.
+- OVERDUE features: GTA-style driving (done), killable respawning civilians, wanted level, shops, grapple-heavy traversal, Borderlands-style bosses.
 
-## Rules that stay in force
-- The Supabase secret key (sb_secret_..., service_role) stays server-side only (.env / Render env). Never in the exe,
-  desktop/config.json, chat or the repo. Don't ask for or accept the DB password.
-- Commits: identity `Claude <noreply@anthropic.com>`, messages end with the Co-Authored-By + Claude-Session trailers.
-- Original designs only (no copied characters, logos or names from other games/shows).
-- The owner merges PRs on GitHub; GitHub releases are created by the owner (release creation is blocked from sessions).
-- Workflow subagents only see the user's LATEST message as "the request": for work asked earlier, use plain agents with the
-  request quoted in the prompt, or they refuse.
+## Known gotchas
+- The guest gift memo (g20261107, open until 2026-12-07) shows once per browser. Tests must set `jf_giftseen_all`.
+- A merged PR can't take new commits. If a lane pushes after a merge, open a new PR from that branch.
+- Stacked PRs auto-close when their base branch is merged. Reopen them as new PRs against main.
+- Headless runs are slow (SwiftShader). Perf numbers are noisy; use the bench method from #103.
+
+## STOPPED 2026-11-08 (owner out of credit)
+All lane sessions were interrupted. Nothing is merging. The open PRs above are drafts and safe to leave. Restart by reading this file.
+
+## How to recreate the setup (so the models look as good)
+**Cloud environment "jankfire"** (claude.ai > Claude Code > Environments, id env_01PZ5kcs8UzPeASfhX2RCLix):
+- **Network:** limited.
+  - Package managers and MCP servers are allowed.
+  - Hosts: jankfire.onrender.com, plus the huggingface hosts (huggingface.co, cdn-lfs.huggingface.co, cdn-lfs.hf.co, cdn-lfs-us-1.hf.co, cas-bridge/cas-server/transfer.xethub.hf.co).
+  - Network secret: a Freesound API key for freesound.org (CC0 sound effects). Re-add it in the environment's settings; the value never goes in the repo.
+- **Setup script** (runs as root at session start):
+  ```bash
+  retry() { for i in 1 2 3; do "$@" && return 0; sleep $((i * 5)); done; return 1; }
+  retry apt-get update -qq || true
+  DEBIAN_FRONTEND=noninteractive retry apt-get install -y -qq blender python3-numpy python3-venv libegl1 libgl1-mesa-dri libegl-mesa0
+  [ -x /opt/bpy52/bin/python ] || python3 -m venv /opt/bpy52
+  retry /opt/bpy52/bin/pip install -q bpy==5.2.3        # Blender 5.2 LTS as a python module
+  # + a /usr/local/bin/blender52 wrapper that runs scripts like `blender -b -P x.py -- args` through /opt/bpy52/bin/python
+  if [ -d jankfire ]; then (cd jankfire && retry npm ci --silent); fi
+  ```
+  The full script, including the blender52 wrapper, is stored on the environment. Ask the new Claude to read it with the get_environment tool, or recreate the wrapper from the comment above.
+- **Already in the image:** Node 22, Playwright + Chromium (use `--use-gl=swiftshader --enable-unsafe-swiftshader` for headless WebGL), ffmpeg.
+
+**GitHub:** repo tacosonmondays-pixel/jankfire. The Claude GitHub app must be installed on it. Branches:
+- `main`: live.
+- `claude/handoff`: this file + the regression scripts in handoff/tests.
+
+**Skills (vendored in the repo, load automatically):** `.claude/skills/`:
+- `jankfire-toolbox`: start here. It says which skill fits which job and the game's art rules.
+- The `blender-*` set targets Blender 5.2: core, hardsurface-modeling, pbr-materials, texturing, stylized-npr, asset-qa (the mandatory QA gate), retopology-uv, game-optimization, export-pipelines, rendering, lighting-lookdev, animation, environment-kits, geometry-nodes, scene-setup, pipeline-automation, workflow-recipes, time-of-day, weather-fx.
+- Style/design skills: lowpoly-style (PS1), comic-book-style, liminal-space-style, neon-retrofuturism, frutiger-aero-style, game-feel-design, game-sfx, level-design, procgen-design, ai-behavior-patterns.
+- Licenses are in `.claude/skills/_licenses`.
+
+**The model pipeline itself (all in the repo, read `tools/blender/README.md`):**
+- Models are built FROM CODE in headless Blender:
+  - `blender -b --python tools/blender/make_<thing>.py` writes `public/models/<id>.glb` plus a turnaround sheet in `tools/blender/sheets/`.
+  - `tools/blender/lib.py` is the shared kit: game-space primitives, sweeps, lofts, bevels, materials.
+  - There are about 100 `make_*.py` scripts for weapons, skins, props, vehicles and gear. `make_all.sh` runs them all.
+- Story models live in `tools/blender/cast/` (characters), `bottom_kit.py`, `gutkit.py` and `corp.py`. They export into `public/models/story|cast`.
+- The look rules that make them good:
+  - real-reference proportions;
+  - glossy candy/clear-coat paint with chrome and brass (the current look);
+  - the code model's muzzle/grip/sight spots, and wrap zones tagged in part names (`_wzA/_wzB/_wzN`);
+  - a far `lod1`, baked AO, and a code fallback if the file is missing;
+  - every model passes the blender-asset-qa gate and gets compared in game with `tools/blender/shots*.cjs`.
+- **NEW PS1 + Cruelty Squad look** (owner direction; awaiting look-test approval):
+  - `tools/blender/ps1.py` (PR #83, branch claude/map-pass) bakes one tiny dithered 15-bit texture per model.
+  - `texkit.py` + the tiling kit in `public/models/arch/kit` (PR #115, branch claude/blender-buildings) is shared by the props and buildings lanes. The kit fixes a 16-colour palette, dither, and glb material extras (tex/tile/col/paint/alpha/glow/nocast).
+- In-game check: start `PORT=3100 node server.js`, then run the shots scripts (Too HD = `jank: 3`, Potato = `jank: 0`).
+- **Quality bar from the owner: "Models and animation max!!"** Run model/animation work at HIGH effort (xhigh only sometimes; NEVER max: owner rule for Fable 5.2), with sheets, screenshots and iteration.
+
+## 2026-11-10 update (session 011tKQCs)
+- **Effort rule (owner): sessions run on Fable 5.2. Never use max effort.** Models/animation: high, xhigh only sometimes. Everything else: high/medium/low.
+- **PR #124 (v6.9), draft, waiting for the owner to merge:** spinbot is a visor now (free camera, shots go to whoever is nearest the crosshair, LOCKED marker), it spares teammates and the zombies squad, and the party popper works on zombies.
+- **OPEN BUG, not reproduced: "everything renders as black"** (Online, Islands; screenshot showed the map geometry and palms pitch black while the sky, far scenery, water and viewmodel were fine). Tried: Islands fresh, Islands after Zombies via quit, and Zombies -> Islands in the same room (cfg change), at Crusty and Too HD: lights, fog and render all normal. Not the zombies light/fog, not baked AO (floor 0.42). Untested ideas: a lost WebGL context / lost canvas textures (no webglcontextlost handler exists), a map vote path in the Online room, a specific graphics/shadow setting. Ask the owner what happened just before, their graphics preset, and whether a refresh fixes it.
+
+## Queued owner requests (2026-11-08 to 11-10; none started)
+**Top priority (unchanged):** replace ALL buildings and remaining code models with clean Blender ones; replace blocky "natural" code terrain with real rock/formation meshes (like the volcano) so it's less Minecraft; give the normal outdoor maps real terrain shape (hills, dips). S&D versions and Zombies maps stay flat except real stairs, ramps, catwalks, elevated levels, bridges. One test map first, owner approves, then the rest.
+
+**Characters**
+- Joke body sliders: bigger butt and bigger head (separately), plus male / female body type options.
+
+**Zombies**
+- New maps with multiple floors and dynamic structure: a HIGH SCHOOL and a HOSPITAL, each with its own uniquely skinned zombies.
+- Mini bosses. More zombie types.
+- A weapon upgrade machine (our own take on pack-a-punch; original name and look).
+- More cola options.
+- Dismemberment: limbs come off; a zombie with no legs crawls slowly.
+
+**Base game**
+- Laptop utility item: puts pop-up ads on an enemy's screen.
+- Shader options in settings: bloom, subsurface scattering, fidelity levels, etc.
+- Pits: outside Warehouse you just fall through the map. Give pits real bottoms/hazards (the volcano's lava pit should burn you).
+- Remove redundant subtext/captions that are all over the game.
+- S&D: reference CS and Valorant; reduce the fire rate on some weapons.
+- Gun Game: rotate the weapon pool between matches (it's always the same ladder now).
+- Spinbot/aimbot: done in #124.
+
+**Tools**
+- Owner linked https://github.com/gokayfem/image-to-sculpt as a possible model tool. Evaluate it (license, output quality vs the code-built Blender pipeline, whether it fits the PS1 kit) before adopting; keep our own designs.
+
+**OVERDUE, Act I climax (owner's idea + sketch): the train**
+- You're on a train with your crew. One crewmate has body mods that amount to a built-in Overdrive Rig. You take a basic one that turns an upgraded Blood Cross into a minigun.
+- He's already badly hurt. You kill him on the train at his own request: he tells you to take his bio material to strengthen yourself and beat what's chasing you.
+- The chaser: a giant MASK the size of the whole tunnel, with black arm-like tentacles. It reaches the arms out from behind/under the mask and drags itself forward by grabbing the tunnel walls.
+- The fight: shoot the tentacles reaching for you, and shoot the mask to crack it open and expose the ugly thing behind it.
+- Tone (owner): like Cyberpunk. Go serious, gory and dark; characters can and will die. Original designs and names only.
+
+## Lane chats started 2026-11-10 (each has its brief; all on Fable 5.2, never max effort; Default environment, so art lanes install Blender first)
+- Zombies (dismemberment, types, upgrade machine, colas, mini bosses, high school + hospital maps): session_011tKQCtn6dSyhp9bHTehhTL, branch claude/zombies-lane
+- Art (Blender models/buildings/rock formations, INVENTORY, PRs #71 #115, image-to-sculpt evaluation): session_011tKQCrFseJjmPmC88Sb2bs, branch claude/art-lane
+- Terrain (pits that hurt first, then ONE hills/dips test map, wait for OK): session_011tKQCtbApCrod7pHij2Vod, branch claude/terrain-lane
+- Gameplay (Gun Game rotation, subtext cleanup, laptop ads item, S&D tuning, butt/head sliders + body types): session_011tKQCqevCmXkNwmvH5JBXp, branch claude/gameplay-lane
+- Graphics (black-screen bug first, then shader options): session_011tKQCu5LU3i2Y1YbQQYjoj, branch claude/graphics-lane
+- Story (OVERDUE: #122 fix, referee/bosses, then the Act I train + mask boss scene for approval): session_011tKQCrJdaf4PGM8wkY8xV7, branch claude/overdue-train
+All open DRAFT PRs; the owner merges. PR #124 (v6.9) is still waiting for the owner.

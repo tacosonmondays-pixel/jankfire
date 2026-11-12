@@ -1,12 +1,13 @@
-require('/tmp/claude-0/-home-user-jankfire/c08cafbd-bcf7-5220-b480-982798f055dc/scratchpad/pwlock.cjs'); // at most 2 headless browsers machine-wide
+try { require((process.env.SP || __dirname) + '/pwlock.cjs'); } catch {} // at most 2 headless browsers machine-wide
 const { chromium } = require('playwright');
+{ const L = chromium.launch.bind(chromium); chromium.launch = async (...a) => { const b = await L(...a), seen = () => { try { localStorage.setItem('jf_giftseen_all', '1'); } catch (e) { /* no storage */ } }; const np = b.newPage.bind(b), nc = b.newContext.bind(b); b.newPage = async (...o) => { const p = await np(...o); await p.addInitScript(seen); return p; }; b.newContext = async (...o) => { const c = await nc(...o); await c.addInitScript(seen); return c; }; return b; }; } // the guest gift popup (multiopen.js) would cover the menu: every page starts with it already seen
 const out = process.argv[2];
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader'] });
   const pg = await b.newPage({ viewport: { width: 1280, height: 900 } });
   const errs = []; pg.on('pageerror', (e) => errs.push(e.message + e.stack));
   await pg.goto('http://localhost:3000/'); await pg.waitForTimeout(500);
-  await pg.click('#scr-main [data-go="cosmetics"]'); await pg.waitForTimeout(400);
+  await pg.click('#navCustomize', { force: true }); await pg.waitForTimeout(400); // (the home nav's CUSTOMIZE; the preview it drives is the same)
   const list = await pg.evaluate(async () => { const { COSMETICS } = await import('/shared/cosmetics.js'); return Object.entries(COSMETICS.model).filter(([id, v]) => v.weapon && !id.startsWith('knife') && !id.startsWith('slapper') && id !== 'bread_croissant').map(([id, v]) => [v.weapon, id]); });
   let i = 0;
   for (const [w, id] of list) {
