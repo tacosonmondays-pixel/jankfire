@@ -21,7 +21,8 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
-import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
+import { installParty, hubHello, hubMsg, hubClose } from './server/party.js';
+import { makeFriends } from './server/friends.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
 import { GAMES, mapsFor } from './shared/modes.js';
 import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
 import { mechFrame } from './shared/mech.js';
@@ -172,7 +173,8 @@ function hubOpen(ws, m) {
     ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null, achs }, m);
   })().catch((e) => { logErr('hub hello', e); ws.close(); });
 }
-installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook });
+installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook,
+  areFriends: (a, b) => (accounts.friends || (accounts.friends = makeFriends(accounts.store))).areFriends(a, b) }); // (friends: invites + joining a friend's party)
 
 // the bots' walk graphs (and the maze maps' lanes) are built when a room starts on a map (Room.tick -> warmMap), not all
 // at boot (together they were ~150 MB of the heap), and dropped once no room has been on a map for GRAPH_TTL

@@ -11,6 +11,8 @@ export const PARTY = { max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', t
 let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
 const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
 const parties = new Map(); // code -> { id, code, lead, members, set }
+const online = new Map(); // account name_lower -> its menu connections (friends' presence, invites)
+const MODE_NAMES = { qp: 'QUICK PLAY', bomb: 'PLANT & DEFUSE', br: 'JANK ROYALE', zm: 'ZOMBIES', isle: 'BATTLE ISLAND', training: 'TRAINING' };
 let D = null, nextId = 1;
 const now = () => Date.now();
 const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
@@ -58,10 +60,25 @@ export function hubHello(ws, who, m = {}) {
   const h = { id: nextId++, ws, name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, t: {}, fails: [] };
   h.send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
   h.send({ t: 'hubok', id: h.id });
+  if (h.acct) { if (!online.has(h.acct)) online.set(h.acct, new Set()); online.get(h.acct).add(h); }
   solo(h);
   return h;
 }
-export function hubClose(h) { leave(h); }
+export function hubClose(h) {
+  leave(h);
+  const s = h.acct && online.get(h.acct);
+  if (s) { s.delete(h); if (!s.size) online.delete(h.acct); }
+}
+// a friend's presence for the friends list: null = offline, else where they are (in a match: what they told us it is)
+export function presenceOf(nameLower) {
+  const s = online.get(nameLower);
+  if (!s || !s.size) return null;
+  const h = [...s].find((x) => x.busy) || [...s][0], pt = h.party;
+  const size = pt ? pt.members.length : 1, full = size >= PARTY.max;
+  if (h.busy) return { where: 'match', what: h.what || '', size, full };
+  if (pt && pt.set && size > 1) return { where: 'lobby', what: MODE_NAMES[pt.set.mode] || '', size, full };
+  return { where: 'menu', size, full };
+}
 
 export function hubMsg(h, m) {
   if (!h.party || typeof m.t !== 'string') return;
@@ -99,7 +116,26 @@ export function hubMsg(h, m) {
       push(pt);
       return;
     }
-    case 'pbusy': if (rate(h, 'busy', 500)) { h.busy = !!m.on; push(pt); } return; // in a match right now (the lineup greys them out)
+    case 'pbusy': // in a match right now (the lineup greys them out; friends see what it is)
+      if (rate(h, 'busy', 500)) { h.busy = !!m.on; h.what = h.busy && typeof m.what === 'string' ? m.what.replace(/[^\w &'!-]/g, '').slice(0, 24) : ''; push(pt); }
+      return;
+    case 'pinvite': case 'pjoinf': { // friends only (an account each, friends in the store): invite one to your party, or join theirs
+      const to = typeof m.name === 'string' && m.name.length <= 24 ? m.name.trim().toLowerCase() : '';
+      if (!h.acct || !to || to === h.acct || !rate(h, m.t, 1500) || !D.areFriends) return;
+      const t = m.t;
+      D.areFriends(h.acct, to).then((yes) => {
+        if (!h.party || h.ws.readyState !== 1) return;
+        const them = online.get(to);
+        if (!yes || !them || !them.size) { h.send({ t: 'perr', m: yes ? 'they are offline' : 'only friends can do that' }); return; }
+        if (t === 'pinvite') { for (const x of them) x.send({ t: 'pinvite', from: h.name, code: h.party.code, mode: h.party.set ? MODE_NAMES[h.party.set.mode] || '' : '' }); h.send({ t: 'perr', m: 'invite sent' }); return; }
+        const pt2 = [...them].map((x) => x.party).find((p) => p && p !== h.party);
+        if (!pt2) return;
+        if (pt2.members.length >= PARTY.max) { h.send({ t: 'perr', m: `their party is full (${PARTY.max})` }); return; }
+        leave(h); pt2.members.push(h); h.party = pt2; h.ready = false;
+        push(pt2);
+      }).catch(() => {});
+      return;
+    }
     case 'pset': { // the leader's lobby: online / offline and the mode (members' screens follow)
       if (!lead || !rate(h, 'set', 150) || !SIDES.includes(m.side) || !MODES.includes(m.mode)) return;
       pt.set = { side: m.side, mode: m.mode };
