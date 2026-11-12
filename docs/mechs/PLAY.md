@@ -20,7 +20,8 @@ how they play. Every number below is a default the owner can change.
   mech takes every hit. Headshots on a mech hit the cockpit for 1.5x.
 - **Energy meter** (100): the boost, hover and jet / dash moves spend it; it refills when you stop using it.
 - Mechs can't grapple, use items or swap weapons: the mech's moves are your kit. Other killstreaks stay in your tray.
-- Hitbox: one big box the size of the frame, with the cockpit as a box on top (the headshot, 1.5x).
+- Hitbox: one big box the size of the frame (PAPER PLANE 1.6 x 4.9 m, NIGHT SHIFT 2.4 x 5.7 m, from MECHS.md), split at
+  the chest band where the cockpit hatch is: hits there are the headshot (1.5x).
 
 ### PAPER PLANE: the flyer (900 armour)
 | key | move | what it does |

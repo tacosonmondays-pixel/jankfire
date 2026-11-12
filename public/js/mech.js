@@ -40,6 +40,7 @@ const DRONES = new Map(); // crane drones in the air
 const MARKS = new Map(); // player id -> overtime marks over their head { n, until, el }
 for (const f of ['paperplane', 'nightshift']) whenLate(GLB_ID[f], () => { if (MS.inst && !MS.on) { freeMech(MS.inst); MS.inst = null; } }); // a hero model landed: rebuilt next time
 export const mechOn = () => MS.on && ME.alive;
+export const mechHeroOn = () => !!MS.hero && !MS.on && performance.now() - MS.hero.t0 < 1500; // (the landing shot: no gun in the picture)
 export const myFrame = () => mechFrame(G.settings && G.settings.loadout && G.settings.loadout.mech);
 // your loadout has the streak: get its hero model ahead of time
 export function mechPrefetch(lo) { if (lo && Array.isArray(lo.streaks) && lo.streaks.includes('mechdrop')) prefetch([GLB_ID[mechFrame(lo.mech)]]); }
@@ -382,10 +383,10 @@ export function mechCam(cam, dt) {
   if (MS.hero && !MS.on) {
     const H = MS.hero, k = (now - H.t0) / 1000;
     if (k < 1.5 && ME.alive && G.joined) {
-      const u = clamp(k / 1.5, 0, 1), a = H.a + u * 0.35, d = [Math.sin(a), 0.08, Math.cos(a)];
-      const c0 = [H.p[0], H.p[1] + 1.2, H.p[2]], hit = raycast(c0, d, 10.5, BOXES), R = Math.max(3, Math.min(10 - u * 2, hit ? hit.t - 0.6 : 99)); // (never inside a wall)
+      const u = clamp(k / 1.5, 0, 1), a = H.a + 0.55 + u * 0.4, d = [Math.sin(a), 0.04, Math.cos(a)]; // low, off to the side, slowly orbiting
+      const c0 = [H.p[0], H.p[1] + 0.6, H.p[2]], hit = raycast(c0, d, 7, BOXES), R = Math.max(2.5, Math.min(6.5 - u * 1.2, hit ? hit.t - 0.6 : 99)); // (never inside a wall)
       cam.position.set(c0[0] + d[0] * R, c0[1] + d[1] * R, c0[2] + d[2] * R);
-      cam.lookAt(H.p[0], H.p[1] + 3.6, H.p[2]);
+      cam.lookAt(H.p[0], H.p[1] + 3.9, H.p[2]);
       return;
     }
     MS.hero = null;

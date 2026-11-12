@@ -9,7 +9,8 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
-import { authored, glossyPaint, nodeIn } from './glbkit.js';
+import { authored, glossyPaint, nodeIn, AUTHORED } from './glbkit.js';
+import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
 
 // the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
@@ -238,7 +239,10 @@ export function buildMech(frame, color, opts = {}) {
   let glb = null;
   const a = opts.noGlb ? null : authored(GLB_ID[frame]);
   if (a) { // the hero model: its bones are the joints (same names); the stand-in skeleton is dropped
-    glb = a.obj; root.add(glb);
+    glb = a.obj;
+    let skinned = false; glb.traverse((o) => { if (o.isSkinnedMesh) skinned = true; });
+    if (skinned) { glb = skClone(AUTHORED[GLB_ID[frame]].scene); glb.animations = AUTHORED[GLB_ID[frame]].scene.animations || []; }
+    root.add(glb);
     for (const k of Object.keys(P)) { const n = nodeIn(glb, k); if (n) { j[k].visible = false; j[k] = n; n.userData.rest = n.position.toArray(); } }
     for (const n of root.children) if (n !== glb) n.visible = false;
   } else if (frame === 'paperplane') buildPaper(j, own);
@@ -339,7 +343,7 @@ export function poseMech(inst, s, dt) {
   if (inst.mixer) { // a hero model with its own clips: play the one that fits (crossfade), skip the code pose
     const a = inst.glbClips || (inst.glbClips = {});
     if (clip !== inst.clip) {
-      const anims = inst.root.children.find((c) => c.animations) || {}, c = (anims.animations || []).find((x) => x.name === clip);
+      const anims = inst.root.children.find((c) => c.animations && c.animations.length) || {}, c = (anims.animations || []).find((x) => x.name === clip);
       if (c) { const act = a[clip] || (a[clip] = inst.mixer.clipAction(c)); act.reset().fadeIn(0.15).play(); if (a[inst.clip]) a[inst.clip].fadeOut(0.15); }
     }
     inst.clip = clip; inst.mixer.update(dt);

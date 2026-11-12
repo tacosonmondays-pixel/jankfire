@@ -62,7 +62,7 @@ import { oobTick } from './bounds.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
-import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
@@ -2273,7 +2273,7 @@ function frame(t) {
   const fpSpec = specCam && specFPOn(); // plant & defuse: their gun in your hands (specfp.js)
   G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
-  if (mechOn()) G.vmScene.visible = false; // (and inside a mech)
+  if (mechOn() || mechHeroOn()) G.vmScene.visible = false; // (and inside a mech, and in the mech's landing shot)
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
