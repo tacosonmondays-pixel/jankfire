@@ -62,8 +62,19 @@ export const MECH = {
     pile: { rise: 30, up: 28, hang: 2.5, range: 55, dive: 70, min: 10, dmg: 200, edge: 0.3, r: 9, kb: 30, up2: 20, life: 7 }, // Q: PILE DRIVER (rise m at up m/s, hang s to aim, then dive)
     ult: { dmg: 650, time: 110 }, shrug: 3, // passive: no knockback while rolling faster than shrug m/s
   },
+  // VENDING MACHINE (support): a 5 m snack machine on stubby legs. the coin slot is its face (the cockpit band)
+  vending: {
+    name: 'VENDING MACHINE', hp: 1100, h: 5.0, hw: 1.15, c0: 3.5, c1: 4.4, eye: 4.6, cam: 9.5, tip: '5 m support snack machine · 1100 armour',
+    speed: 12, accel: 7, fric: 4.5, grav: 32, hop: 10, airCap: 6, // a waddling walker (night shift's kind of step)
+    coin: { dmg: 9, rate: 10, range: 90, cone: 0.6 }, // LMB hold: the coin turret (server hitscan from the coin slot)
+    cola: { charges: 3, every: 8, gap: 0.35, life: 20, max: 6, hp: 40, armour: 40, boost: 3, reach: 1.8, toss: 6, mine: 0.9 }, // Shift: dispense (toss = how far you can lob it, mine = s before you can drink your own)
+    wall: { hp: 600, w: 8, h: 4.5, at: 3.5, life: 10, cd: 12 }, // E: OUT OF ORDER, slammed down `at` m in front, facing you
+    restock: { r: 15, armour: 250, hp: 150, hold: 1 }, // Q: RESTOCK (hp: on foot outside the armour modes, overheal up to this)
+    stuck: 0.1, jam: { p: 0.06, lock: 4, reach: 4.5 }, // passive STUCK (x2), jank JAMMED (kick it within reach to unstick it)
+    ult: { dmg: 800, time: 120 }, // (healing counts like damage)
+  },
 };
-export const FRAMES = ['paperplane', 'nightshift', 'wrecking'];
+export const FRAMES = ['paperplane', 'nightshift', 'wrecking', 'vending'];
 export const HERO_FRAMES = FRAMES.filter((f) => MECH[f].ult); // (the ones with an ultimate meter: the island heroes)
 export const mechFrame = (f) => (isFrame(f) ? f : 'paperplane'); // anything else is the default
 export function isFrame(f) { return typeof f === 'string' && FRAMES.includes(f); }
@@ -73,7 +84,8 @@ export function isFrame(f) { return typeof f === 'string' && FRAMES.includes(f);
 Object.assign(FLAGS, { MECH: 1 << 22, MECH_A: 1 << 23, MECH_B: 1 << 30, MECH_C: 1 << 31 });
 // (the per-frame names live here, not in FLAGS: room.js checks that every FLAGS entry is its own bit)
 export const MF = { HOVER: FLAGS.MECH_A, SHIELD: FLAGS.MECH_A, JET: FLAGS.MECH_B, SLAM: FLAGS.MECH_B, DASH: FLAGS.MECH_C, SLASH: FLAGS.MECH_C,
-  CHAIN: FLAGS.MECH_A, PILE: FLAGS.MECH_B, REV: FLAGS.MECH_C }; // (wrecking ball: on the chain, slam / pile driver, rev launch)
+  CHAIN: FLAGS.MECH_A, PILE: FLAGS.MECH_B, REV: FLAGS.MECH_C, // (wrecking ball: on the chain, slam / pile driver, rev launch)
+  VJAM: FLAGS.MECH_A, VSTOCK: FLAGS.MECH_B, VCOIN: FLAGS.MECH_C }; // (vending machine: jammed, restocking, coin turret going)
 export const MECH_BITS = FLAGS.MECH | FLAGS.MECH_A | FLAGS.MECH_B | FLAGS.MECH_C;
 
 // its armour is a body pool like the ball's and the rig's (server/bodyhp.js): no drain, it lasts until it breaks
@@ -97,6 +109,7 @@ Object.assign(WEAPONS, {
   wbram: { slot: null, kind: 'mech', name: 'Wrecking Ball', color: '#ffd23a' },
   wbslam: { slot: null, kind: 'mech', name: 'Ball Slam', color: '#ffb000' },
   wbpile: { slot: null, kind: 'mech', name: 'Pile Driver', color: '#ff3030' },
+  vmcoin: { slot: null, kind: 'mech', name: 'Coin Turret', color: '#ffd23a' },
 });
 
 // the body killstreaks fight over your body: no mech drop in the rig or the ball (or with a mech already out), and
@@ -147,6 +160,7 @@ export function speedCap(frame, f) {
     if (f & MF.REV) return F.rev.speed[1];
     return F.speed;
   }
+  if (frame === 'vending') return F.speed; // (a cola's sugar rush: server/mech_vending.js raises it while it lasts)
   if (f & MF.SLASH) return F.triple.speed;
   if (f & MF.SLAM) return F.speed + 6;
   if (f & MF.SHIELD) return F.speed * F.shield.slow; // (behind the shield you trudge)
@@ -204,3 +218,24 @@ export function wbPile(d) {
 }
 // the rev launch's speed for a charge held c s
 export const wbRevSpeed = (c) => { const R = MECH.wrecking.rev, k = Math.max(0, Math.min(1, c / R.charge)); return R.speed[0] + (R.speed[1] - R.speed[0]) * k; };
+
+// ---- VENDING MACHINE
+// cola charges ({ n, t }): one comes back every `every` s (t = when the next started counting), up to `charges`
+export function vmCharges(c, n) {
+  const C = MECH.vending.cola, ms = C.every * 1000;
+  if (c.n >= C.charges) { c.n = C.charges; c.t = n; return c.n; }
+  while (c.n < C.charges && n - c.t >= ms) { c.n++; c.t += ms; }
+  if (c.n >= C.charges) c.t = n;
+  return c.n;
+}
+// the OUT OF ORDER wall standing at p (its foot, the middle) facing yaw: where the segment a-b goes through it, as a
+// fraction of a-b (null: it misses the panel). the panel is a flat sign w wide, h tall
+export function vmWallCross(wall, a, b) {
+  const W = MECH.vending.wall, w = wall.w || W.w, h = wall.h || W.h, fx = -Math.sin(wall.yaw), fz = -Math.cos(wall.yaw);
+  const da = (a[0] - wall.p[0]) * fx + (a[2] - wall.p[2]) * fz, db = (b[0] - wall.p[0]) * fx + (b[2] - wall.p[2]) * fz;
+  if ((da > 0) === (db > 0) || da === db) return null;
+  const s = da / (da - db), q = [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+  const side = (q[0] - wall.p[0]) * -fz + (q[2] - wall.p[2]) * fx, up = q[1] - wall.p[1];
+  if (Math.abs(side) > w / 2 || up < -0.2 || up > h) return null;
+  return { s, at: q };
+}
