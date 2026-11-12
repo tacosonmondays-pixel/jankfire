@@ -12,6 +12,7 @@ let wrong = []; // every wrong code in the last minute, server-wide (many socket
 const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
 const parties = new Map(); // code -> { id, code, lead, members, set }
 const online = new Map(); // account name_lower -> its menu connections (friends' presence, invites)
+const LP_MODES = new Set(['zm', 'isle']); // the walkable lobbies
 const MODE_NAMES = { qp: 'QUICK PLAY', bomb: 'PLANT & DEFUSE', br: 'JANK ROYALE', zm: 'ZOMBIES', isle: 'BATTLE ISLAND', training: 'TRAINING' };
 let D = null, nextId = 1;
 const now = () => Date.now();
@@ -119,6 +120,16 @@ export function hubMsg(h, m) {
     case 'pbusy': // in a match right now (the lineup greys them out; friends see what it is)
       if (rate(h, 'busy', 500)) { h.busy = !!m.on; h.what = h.busy && typeof m.what === 'string' ? m.what.replace(/[^\w &'!-]/g, '').slice(0, 24) : ''; push(pt); }
       return;
+    case 'plp': { // where you're standing in a walkable lobby (zombies, battle island: the lobby scenes). party only, never in a match
+      const t = now(); h.lpT = (h.lpT || []).filter((x) => t - x < 1000);
+      if (h.lpT.length >= 12) return; // (a flood: the extras just drop)
+      h.lpT.push(t);
+      if (h.busy || !pt.set || !LP_MODES.has(pt.set.mode) || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite) || !Number.isFinite(m.yaw)) return;
+      const c = (v, a, b) => Math.round(Math.max(a, Math.min(b, v)) * 100) / 100;
+      const out = { t: 'plp', id: h.id, p: [c(m.p[0], -60, 60), c(m.p[1], -5, 30), c(m.p[2], -60, 60)], yaw: Math.round((((m.yaw % 6.2832) + 6.2832) % 6.2832) * 1000) / 1000, a: Number.isInteger(m.a) ? Math.max(0, Math.min(15, m.a)) : 0 };
+      for (const x of pt.members) if (x !== h && !x.busy) x.send(out);
+      return;
+    }
     case 'pinvite': case 'pjoinf': { // friends only (an account each, friends in the store): invite one to your party, or join theirs
       const to = typeof m.name === 'string' && m.name.length <= 24 ? m.name.trim().toLowerCase() : '';
       if (!h.acct || !to || to === h.acct || !rate(h, m.t, 1500) || !D.areFriends) return;

@@ -17,6 +17,7 @@ import { resizePreview } from './preview.js';
 import { synth } from './audio.js';
 import { P, onParty, inParty, isLead, leadName, partyJoin, partyLeave, partyKick, partyLead, partyReady, partySet, partyGo, meReady } from './party.js';
 import { showLineup } from './lineup.js';
+import { openFriends, friendsLoad, friendsOnline, friendsShown } from './friends.js'; // friends (step 3)
 
 const $ = (id) => document.getElementById(id);
 const click = () => { try { synth.tone('square', 500, 500, 0.03, 0.08); } catch { /* (no audio yet) */ } };
@@ -59,7 +60,7 @@ const onMain = () => !$('scr-main').classList.contains('hidden') && !$('menu').c
 const onLobby = () => !$('scr-hubby').classList.contains('hidden') && !$('menu').classList.contains('hidden');
 
 // every time the main menu shows: the live count on ONLINE
-export function hubShown() { poll(); partyStrip(); stage(); }
+export function hubShown() { poll(); partyStrip(); stage(); friendsLoad().then(partyStrip); }
 async function poll() {
   clearTimeout(pollT);
   if (!$('scr-hubby') || $('menu').classList.contains('hidden') || ($('scr-main').classList.contains('hidden') && $('scr-hubby').classList.contains('hidden'))) return; // (only the home and the lobby show counts)
@@ -276,6 +277,7 @@ function partyStrip() {
   code.addEventListener('click', () => { click(); try { navigator.clipboard.writeText(P.code); opts.toast('party code copied: ' + P.code, 1800); } catch { /* (no clipboard) */ } });
   top.append(code);
   if (inParty()) { const lv = el('button', 'mid danger', 'LEAVE'); lv.addEventListener('click', () => { click(); partyLeave(); }); top.append(lv); }
+  if (friendsShown()) { const fb = el('button', 'mid hp-fr'), n = friendsOnline(); fb.append('FRIENDS'); if (n) fb.append(el('b', null, ` ${n} ON`)); fb.addEventListener('click', () => { click(); openFriends(); }); top.append(fb); }
   box.append(top);
   const row = el('div', 'hp-row');
   const inp = el('input'); inp.maxLength = 5; inp.placeholder = 'CODE'; inp.autocomplete = 'off'; inp.spellcheck = false;
@@ -300,4 +302,18 @@ function partyStrip() {
     }
     box.append(list);
   }
+}
+
+// a friend's invite: a pop-up on the menu (JOIN / NAH, gone in 30 s); in a match, a toast with the code
+export function hubInvite(inv, joined) {
+  if (joined) { opts.toast(`${inv.from} wants you in their party${inv.mode ? ' (' + inv.mode + ')' : ''}. code ${inv.code}`, 6000); return; }
+  document.getElementById('hubInvite')?.remove();
+  const box = el('div', 'hub-invite'); box.id = 'hubInvite';
+  box.append(el('span', 'hub-tag', 'INVITE'), el('b', null, inv.from), el('span', null, ` wants you in their party${inv.mode ? ' (' + inv.mode + ')' : ''}`));
+  const y = el('button', 'hub-go hi-yes', 'JOIN'), n = el('button', 'mid', 'NAH');
+  y.addEventListener('click', () => { click(); partyJoin(inv.code); box.remove(); });
+  n.addEventListener('click', () => { click(); box.remove(); });
+  box.append(y, n);
+  document.getElementById('menu').append(box);
+  setTimeout(() => box.remove(), 30000);
 }
