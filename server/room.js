@@ -550,7 +550,7 @@ class Room {
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
-    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) dropEdited(this.editMap); } // (the edited map goes with its room)
+    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) { dropEdited(this.editMap); console.log('[edit] dropped ' + this.editMap); } } // (the edited map goes with its room)
     else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
