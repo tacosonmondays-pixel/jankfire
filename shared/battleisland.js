@@ -6,7 +6,8 @@
 // islandH(x, z) is the ground's height (the same on the server and every client); the map builder turns it into
 // shared/terrain.js relief + boxes.
 
-export const SEA = -0.25; // the water's surface (Islands' too: you float in it, shared/pits.js seaSwim)
+export const SEA = -0.25; // the water's surface (Islands' too). no swimming here: deeper than WADE is the sea kill
+export const WADE = 1.5; // water up to this deep is walked through (the mode slows you to 60%); deeper and you're gone
 const sm = (a, b, v) => { const k = Math.max(0, Math.min(1, (v - a) / (b - a))); return k * k * (3 - 2 * k); };
 const lerp = (a, b, t) => a + (b - a) * t;
 // a hash noise that's the same everywhere (no Math.random: the server and the clients build the same island)
@@ -63,7 +64,7 @@ export const PLAN = {
     { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 20, r: 30, drop: [[-10, 8, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
     { id: 'wreck', name: 'Return to Sender', c: [240, -154], rect: [204, -194, 276, -116], y: 0.9, flat: 0, r: 44, drop: [[-24, 10, 7]], cells: 4, color: '#ff9a3a', loot: 0.12, blurb: 'a cargo ship on the reef, its containers all up the beach' },
     { id: 'hangar', name: 'Scrap Mart', c: [-110, 30], rect: [-150, -6, -66, 72], y: 3.2, flat: 50, r: 48, drop: [[0, 24, 10], [-30, -24, 7]], cells: 6, color: '#39ff14', lab: [0, 22], loot: 0.14, blurb: 'the mech hangar and scrapyard. some assembly required' },
-    { id: 'temple', name: 'Ancient Temple (Probably)', c: [70, -6], rect: [40, -34, 104, 22], y: 4.5, flat: 26, r: 36, drop: [[-22, -20, 8]], cells: 4, color: '#7dff4f', lab: [10, 0], loot: 0.1, blurb: 'a jungle temple up the river. the gift shop is newer' },
+    { id: 'temple', name: 'Ancient Temple (Probably)', c: [70, -6], rect: [40, -34, 104, 22], y: 4.5, flat: 26, r: 36, drop: [[12, -12, 8]], cells: 4, color: '#7dff4f', lab: [10, 0], loot: 0.1, blurb: 'a jungle temple up the river. the gift shop is newer' },
     { id: 'lighthouse', name: 'Wrong Way Point', c: [-268, -186], rect: [-300, -224, -230, -150], y: 0, flat: 0, r: 36, drop: [[18, 14, 7]], cells: 3, color: '#ff3030', loot: 0.06, blurb: 'a lighthouse on the cliffs. points ships at the rocks' },
     { id: 'farm', name: 'Moo-Tel', c: [-200, 104], rect: [-246, 66, -150, 150], y: 2.4, flat: 46, r: 50, drop: [[24, 24, 10]], cells: 4, color: '#d8b06a', loot: 0.1, blurb: 'a farm on the west flats. the cows have seen things' },
     { id: 'quarry', name: 'The Big Hole', c: [-60, -150], rect: [-104, -190, -16, -112], y: 0, flat: 0, r: 46, drop: [[0, 0, 9]], cells: 5, color: '#b07dff', loot: 0.12, blurb: 'the quarry: terraces down into a pit, a conveyor, a rock crusher' },
@@ -100,7 +101,7 @@ export function islandH(x, z, raw = false) {
   else {
     const beach = sm(0, 26, d); // 0 at the waterline, 1 26 m in
     h = SEA + 0.15 + beach * (2.2 + 4.5 * sm(30, 140, d) + n * 3.2);
-    for (const [px, pz, ph, pr] of PLAN.ridge) { const q = Math.hypot(x - px, z - pz) / pr; if (q < 1.4) h = Math.max(h, h + ph * Math.exp(-q * q * 2.2) * (0.86 + 0.25 * N2(x / 22, z / 22))); }
+    for (const [px, pz, ph, pr] of PLAN.ridge) { const q = Math.hypot(x - px, z - pz) / pr; if (q < 1.4) h = Math.max(h, h + ph * Math.exp(-q * q * 2.2) * (0.92 + 0.1 * N2(x / 40, z / 40))); }
     // the north-west: the land rises to the cliff top and stops; the cliff face goes straight down into the sea
     const C = PLAN.cliffs, cq = Math.hypot((x - C.c[0]) / C.sx, (z - C.c[1]) / C.sz) / C.r;
     if (cq < 1.2) h = Math.max(h, (SEA + C.h * sm(1.2, 0.55, cq)) * sm(0, 4, d) + n * 2);
@@ -111,7 +112,7 @@ export function islandH(x, z, raw = false) {
   if (lq < 1.25) {
     const inner = -1.25 - 0.2 * sm(0.9, 0.3, lq); // the lagoon's bed: waist-deep at most (the mode: up to 1.5 m is walkable, deeper is the sea kill)
     if (lq < 1) h = Math.min(h, lerp(inner, SEA - 0.3, sm(0.55, 1, lq)));
-    else if (G.gap && Math.abs(z - G.gap[1]) < G.gap[2] / 2 && x > G.c[0]) h = Math.min(h, -2.4); // (the channel out through the reef: the boats' way in)
+    else if (G.gap && Math.abs(z - G.gap[1]) < G.gap[2] / 2 && x > G.c[0]) h = Math.min(h, -3.2); // (the channel out through the reef: the boats' way in)
     else { const reef = SEA - 0.32; h = d > 0 ? Math.min(h, lerp(reef, h, sm(1, 1.25, lq))) : Math.max(h, lerp(reef, h, sm(1.05, 1.25, lq))); } // (the reef: shin-deep, all the way round the sea side)
   }
   // the river: a channel cut down below the sea (the sea comes up it), banks sloping up to the jungle
@@ -130,3 +131,110 @@ export function islandH(x, z, raw = false) {
 const PADS = PLAN.pois.flatMap((p) => p.drop.map(([dx, dz, r]) => { const x = p.c[0] + dx, z = p.c[1] + dz; return [x, z, r, Math.max(SEA + 0.6, islandH(x, z, true))]; }));
 // which POI a point is in (null outside them): the HUD's place name
 export const poiAt = (x, z) => PLAN.pois.find((p) => x >= p.rect[0] && x <= p.rect[2] && z >= p.rect[1] && z <= p.rect[3]) || null;
+
+
+// ============================================================ the map (look and collisions from the plan above)
+// the ground is one heightfield over the whole sea area (shared/terrain.js relief, like Islands' volcano): you walk it,
+// grapple it, bots path over it, loot lands on it. painted by what it is: sand, wet sand under the water, grass, jungle
+// floor along the river, bare rock on anything steep, the roads. vegetation is the existing Blender props (palms on the
+// beaches, ferns and bushes in the jungle). the POIs' buildings come in their own PRs, Blender from the start
+import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick } from './map.js';
+import { shapeGround } from './terrain.js';
+import { buildNav } from './nav.js';
+import { propOf } from './propcap.js';
+import { outOfBounds } from './bounds.js';
+
+export const REGION = [-410, -330, 410, 330]; // the shaped ground (whole metres): the island, its shelf, the islets
+const BOUNDS = [-404, -324, 404, 324];
+export const KILL_Y = SEA - WADE - 0.6; // feet this far down = in water over your head: into the sea
+const DEEP = -4.2; // the deep sea's bed (drawn under the water, past where you can stand)
+export const GRID = (() => { // the plan's heights on the terrain's 1 m grid, worked out once (the relief asks for every vertex five times)
+  const [X0, Z0, X1, Z1] = REGION, vx = X1 - X0 + 1, vz = Z1 - Z0 + 1, H = new Float32Array(vx * vz);
+  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) H[i * vz + j] = Math.max(DEEP, islandH(X0 + i, Z0 + j)); // (past the kill line the sea bed is flat: nobody walks there)
+  const at = (x, z) => { const fx = Math.max(0, Math.min(vx - 1.001, x - X0)), fz = Math.max(0, Math.min(vz - 1.001, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
+    return (H[i * vz + j] * (1 - u) + H[(i + 1) * vz + j] * u) * (1 - v) + (H[i * vz + j + 1] * (1 - u) + H[(i + 1) * vz + j + 1] * u) * v; };
+  const slope = (x, z) => Math.hypot(at(x + 0.5, z) - at(x - 0.5, z), at(x, z + 0.5) - at(x, z - 0.5));
+  // nothing steeper than a mech can walk up (the ridge, the dunes, the beaches), except where it's meant to be a wall: the
+  // north-west cliffs and the quarry's terrace faces (grapple those). peaks keep their height, their flanks are eased
+  const MAXS = 0.62, wall = new Uint8Array(vx * vz), C = PLAN.cliffs, Q = PLAN.quarry;
+  for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) { const x = X0 + i, z = Z0 + j; if (Math.hypot((x - C.c[0]) / C.sx, (z - C.c[1]) / C.sz) / C.r < 1.25 || Math.hypot(x - Q.c[0], z - Q.c[1]) < Q.r * 1.3 || PADS.some((q) => Math.hypot(x - q[0], z - q[1]) < q[2] + 1)) wall[i * vz + j] = 1; } // (and the drop pads: level, whatever's round them)
+  for (let pass = 0; pass < 40; pass++) { // raise the low side of anything too steep (a cut-and-fill that keeps every summit and pad)
+    let any = 0;
+    for (let i = 1; i < vx - 1; i++) for (let j = 1; j < vz - 1; j++) { const k = i * vz + j; if (wall[k] || H[k] <= SEA) continue;
+      const top = Math.max(H[k - vz], H[k + vz], H[k - 1], H[k + 1]) - MAXS; if (H[k] < top) { H[k] = top; any++; } }
+    for (let i = vx - 2; i > 0; i--) for (let j = vz - 2; j > 0; j--) { const k = i * vz + j; if (wall[k] || H[k] <= SEA) continue;
+      const top = Math.max(H[k - vz], H[k + vz], H[k - 1], H[k + 1]) - MAXS; if (H[k] < top) { H[k] = top; any++; } }
+    if (!any) break;
+  }
+  return { H, vx, vz, at, slope, f: (x, z) => H[(x - X0) * vz + (z - Z0)] };
+})();
+const onRoad = (x, z) => PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2);
+const jungle = (x, z) => segDist(x, z, PLAN.river.pts) < 46 || Math.hypot(x - 70, z + 6) < 58;
+const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
+const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r]) => Math.hypot(x - p.c[0] - dx, z - p.c[1] - dz) < r + m));
+
+function battleIsland() {
+  const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
+  const [X0, Z0, X1, Z1] = REGION, G = GRID;
+  B.add(X0, -12, Z0, X1, 0, Z1, 'sand'); // the slab shapeGround turns into the island (and its sea floor)
+  // ---- vegetation (Blender props): palms along the beaches, the jungle along the river, bushes on the plateau
+  const taken = [];
+  const free = (x, z, d) => !taken.some(([a, b, e]) => Math.hypot(x - a, z - b) < d + e) && !onRoad(x, z) && !nearPoi(x, z, 4) && !nearPad(x, z, 6);
+  for (let i = 0; i < 2600 && taken.length < 230; i++) { // palms: on the sand and just above it, leaning out to sea
+    const x = X0 + 8 + r() * (X1 - X0 - 16), z = Z0 + 8 + r() * (Z1 - Z0 - 16), h = G.at(x, z), d = coastIn(x, z);
+    if (h < SEA + 0.5 || h > SEA + 5 || G.slope(x, z) > 0.35 || !free(x, z, 3.5)) continue;
+    if (d > 60 && !jungle(x, z) && r() > 0.2) continue; // (mostly the coast and the river)
+    palm(W, x, z, 6 + r() * 4, rv); taken.push([x, z, 3]);
+  }
+  for (let i = 0; i < 6000; i++) { // the jungle floor: ferns and bushes (look only), thicker by the river
+    const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0), h = G.at(x, z);
+    if (h < SEA + 0.8 || G.slope(x, z) > 0.6 || onRoad(x, z) || nearPad(x, z, 3) || nearPoi(x, z, -6)) continue;
+    if (!jungle(x, z) && r() > 0.12) continue;
+    const s = 0.7 + r() * 0.9, a = r() * 3;
+    if (r() < 0.55) propOf('fern', [x, 0, z], 0, () => { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); }, { spin: a || 1e-6 });
+    else propOf('bush', [x, 0, z], 0, () => { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); }, { spin: a || 1e-6 });
+  }
+  // ---- the sea all round (the island's shelf shows through it), on out to the horizon
+  D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'sea');
+  horizon(D, -900, -900, 900, 900, 2600, 'sea', SEA);
+  // ---- the spots the mode reads: the POIs' drop pads (open sky, level), energy cells, the finale circles
+  const drops = [], cells = [], spawns = [];
+  for (const p of PLAN.pois) {
+    for (const [dx, dz, rr] of p.drop) drops.push([p.c[0] + dx, 0, p.c[1] + dz, rr]);
+    const cr = rng(5000 + p.id.length * 97 + p.c[0]);
+    let n = 0;
+    for (let t = 0; t < 400 && n < p.cells; t++) { // cells: inside the POI, on open level-ish ground, apart
+      const a = cr() * Math.PI * 2, d = p.r * (0.2 + cr() * 0.75), x = p.c[0] + Math.cos(a) * d, z = p.c[1] + Math.sin(a) * d;
+      if (G.at(x, z) < SEA + 0.4 || G.slope(x, z) > 0.3 || cells.some((c) => Math.hypot(c[0] - x, c[2] - z) < 10)) continue;
+      cells.push([x, 0, z]); n++;
+    }
+    spawns.push([p.c[0], 0.2, p.c[1]]);
+  }
+  // ---- the ground gets its shape: the plan's heights everywhere, painted by what each bit is
+  const steep = (x, z) => G.slope(x, z) > 1.05, wet = (x, z) => G.at(x, z) < SEA - 0.05, dry = (x, z) => !wet(x, z);
+  const T = shapeGround(B, D, { region: REGION, mat: 'sand', seed: 77, up: 0, down: 0, step: 0.5, coarse: 2, soft: 1.15,
+    relief: [
+      { f: G.f, mat: 'wetsand', paint: wet }, // under the water: the shelf, the reef, the lagoon's bed (seen through the sea)
+      { f: G.f, mat: 'grass', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.3 && !steep(x, z) },
+      { f: G.f, mat: 'leaves', paint: (x, z) => dry(x, z) && G.at(x, z) > SEA + 1.1 && jungle(x, z) && !steep(x, z) },
+      { f: G.f, mat: 'basalt', rock: true, paint: (x, z) => steep(x, z) }, // cliffs, the quarry's terrace faces, the ridge's crags
+      { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && onRoad(x, z) && !steep(x, z) },
+    ], points: [...spawns, ...drops, ...cells] });
+  for (const q of [...drops, ...cells]) q[1] = Math.round(q[1] * 100) / 100; // (lifted onto the ground by shapeGround)
+  let graph = null;
+  const map = {
+    name: 'Battle Island', size: 'huge', royaleOnly: true, wip: true, // wip: out of the map votes until the mode lands (shared/modes.js)
+    boxes: B.boxes, deco: D.boxes, killY: KILL_Y, floorY: -12, bounds: BOUNDS, chunk: 64,
+    sea: true, seaY: SEA, wade: WADE, // the water's depth anywhere = seaY - the ground there (shallows <= wade: walk through)
+    sky: { top: 0x1f7fe0, mid: 0xbfeaff, bot: 0x0b4a7a, fog: 0xc6ecf6 }, fogNear: 180, fogFar: 980,
+    spawns, plan: PLAN,
+    royale: { zone0: PLAN.zone0, blimpY: PLAN.blimpY, pois: PLAN.pois, loot: 400, cells, drops,
+      finale: [[PLAN.pois.find((p) => p.id === 'radio').c[0], PLAN.pois.find((p) => p.id === 'radio').c[1], 20], [-110, 30, 48]] },
+    get graph() { return graph || (graph = buildNav(B.boxes, { x0: X0, z0: Z0, n: X1 - X0, cell: 2, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) && G.at(x, z) > KILL_Y + 0.5 }), graph.maxExpand = 40000, graph); },
+  };
+  unstick(map.boxes, map.spawns);
+  return map;
+}
+export const BATTLE_ISLAND = battleIsland();
+MAPS.battleisland = BATTLE_ISLAND;
+if (!MAP_ORDER.includes('battleisland')) MAP_ORDER.push('battleisland');
