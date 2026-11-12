@@ -82,6 +82,7 @@ export function hubClose(h) {
   if (!h.party || h.gone) return;
   // gone: kept in the party (RECONNECTING) for 30 s, in case it's a blip or a reload; then really gone
   h.gone = now(); h.ready = false; back.set(h.rk, h);
+  if (h.party.lead === h) { const up = h.party.members.find((x) => !x.gone); if (up) h.party.lead = up; } // (the party doesn't wait on a dropped leader)
   h.goneT = setTimeout(() => { if (back.get(h.rk) === h) back.delete(h.rk); if (h.gone) leave(h); }, PARTY.grace);
   if (h.goneT.unref) h.goneT.unref();
   push(h.party);
@@ -120,8 +121,8 @@ export function hubMsg(h, m) {
       if (!lead || !Number.isInteger(m.id) || !rate(h, 'boss', 300)) return;
       const v = pt.members.find((x) => x.id === m.id && x !== h);
       if (!v) return;
-      if (m.t === 'pkick') { solo(v); v.send({ t: 'perr', m: 'you got kicked from the party' }); }
-      else { pt.lead = v; push(pt); }
+      if (m.t === 'pkick') { if (v.gone) leave(v); else { solo(v); v.send({ t: 'perr', m: 'you got kicked from the party' }); } }
+      else if (!v.gone) { pt.lead = v; push(pt); } // (not to someone who's dropped)
       return;
     }
     case 'pready': if (rate(h, 'ready', 200)) { h.ready = !!m.on; push(pt); } return;
@@ -203,7 +204,7 @@ function go(pt, m) {
   for (const x of out) {
     const tk = crypto.randomBytes(9).toString('base64url');
     r.tickets.set(tk, { party: pt.id, until: now() + PARTY.ticket });
-    x.send({ t: 'pgo', mode: m.mode, cfg: { ...cfg, room: r.id, ticket: tk } });
+    x.send({ t: 'pgo', mode: r.mode, /* (the room's own mode: a packed server hands out the online room) */ cfg: { ...cfg, room: r.id, ticket: tk } });
   }
   for (const x of pt.members) x.ready = false;
   push(pt);

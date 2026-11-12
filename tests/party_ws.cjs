@@ -104,7 +104,7 @@ function player(name, mode, cfg) {
   { const pa = A.party.code; B.send({ t: 'pjoin', code: pa }); await sleep(1200);
     A.ws.close(); await sleep(500);
     const a = B.party.ms.find((m) => m.id === A.id);
-    ok(B.party.code === pa && B.party.lead === A.id && a && a.gone === 1, "the leader's connection drops: still the leader for the grace, marked gone (START waits)"); }
+    ok(B.party.code === pa && B.party.lead === B.id && a && a.gone === 1, "the leader's connection drops: the lead goes to someone still here, the leader stays in, marked gone"); }
   for (const c of [A, B, C, D, ...extra, PA, PB, PX]) c.ws.close();
   console.log(fails ? `${fails} FAILED` : 'all ok');
   process.exit(fails ? 1 : 0);
