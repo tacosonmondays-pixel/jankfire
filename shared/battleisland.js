@@ -144,6 +144,7 @@ import { buildNav } from './nav.js';
 import { propOf } from './propcap.js';
 import { outOfBounds } from './bounds.js';
 import { WIP_ON } from './modes.js';
+import { wreck } from './bi_wreck.js';
 
 export const REGION = [-410, -330, 410, 330]; // the shaped ground (whole metres): the island, its shelf, the islets
 const BOUNDS = [-404, -324, 404, 324];
@@ -237,6 +238,7 @@ function battleIsland() {
   }
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
+  wreck(B); // Return to Sender (shared/bi_wreck.js)
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
   horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
