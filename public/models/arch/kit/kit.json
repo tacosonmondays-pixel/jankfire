@@ -362,5 +362,11 @@
   "px": 64,
   "alpha": true,
   "note": ""
+ },
+ "profile": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": false,
+  "note": "tint"
  }
 }

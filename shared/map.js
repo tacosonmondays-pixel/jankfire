@@ -2075,6 +2075,7 @@ function warehouse() {
 
   // ---- the hall: doors on every side (the west and east ones off the same line), racking in a grid of aisles
   const dock = [-24, -8, 8, 24]; // dock doors along the south wall
+  const hb0 = B.boxes.length, hd0 = D.boxes.length; // (the shell from here to the rafters is the Blender hall: wh_hall)
   wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: -18, b: -13, y0: 0, y1: 4 }, { a: 10, b: 15, y0: 0, y1: 4 }, ...windows(2 * HX, 6, 0, 2, 8)]);
   wall(W, 'x', HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [...dock.map((x) => ({ a: x - 2.5, b: x + 2.5, y0: 0, y1: 4.2 })), ...windows(2 * HX, 6, 0, 2, 8)]);
   wall(W, 'z', -HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: 3, b: 10, y0: 0, y1: 5 }]);
@@ -2087,6 +2088,7 @@ function warehouse() {
     add(-HX, H - 1.4, z - 0.25, HX, H - 0.9, z + 0.25, 'wood');
     for (let x = -24; x <= 24; x += 12) if (!(x > 18 && z < -8)) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
+  hallArch(B, D, hb0, hd0, 'wh_hall');
   rack(B, -26, -9, 18, r); rack(B, 7, -9, 12, r); // three rows, each broken by a cross aisle (and the office in the corner)
   rack(B, -21, 0, 18, r); rack(B, 6, 0, 12, r);
   rack(B, -26, 9, 18, r); rack(B, 8, 9, 18, r);
@@ -2160,6 +2162,14 @@ function warehouse() {
 }
 
 // ---- the depot kit (both Warehouse layouts)
+// the hall's shell (walls, roof, rafters, lamps, door dressing: boxes hb0.. and deco hd0..) is a Blender building, in the
+// map's own frame. look-only: the pictures (the company boards) stay the game's, the lamps still light the floor
+function hallArch(B, D, hb0, hd0, id) {
+  B.archSince(hb0, id, 0, 0);
+  const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (let i = hb0; i < B.boxes.length; i++) if (B.boxes[i].fit) { delete B.boxes[i].av; delete B.boxes[i].ai; }
+  for (let i = hd0; i < D.boxes.length; i++) if (!D.boxes[i].fit) Object.assign(D.boxes[i], tag);
+}
 // a chain-link fence on posts with barbed wire on top (solid: you can't walk through it, you can see out)
 function chainFence(B, D, x0, z0, x1, z1) {
   const alongX = z0 === z1, len = alongX ? x1 - x0 : z1 - z0;
@@ -2261,6 +2271,7 @@ function warehouseSD() {
   pallets(B, -30, 17, 5, r); pallets(B, -28.6, 17, 3, r); cratePile(B, -54, -16, 5, r); palletLoad(B, -46, 16);
 
   // ---- MID: the hall
+  const hb0 = B.boxes.length, hd0 = D.boxes.length; // (the shell from here to the rafters is the Blender hall: wh_hall_sd)
   wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: 8, b: 13, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // north: the door to the container yard
   wall(W, 'x', HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: -4, b: 1, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // south: to the trailer park
   wall(W, 'z', -HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: 2, b: 10, y0: 0, y1: 5 }]); // west: the big roller door
@@ -2271,6 +2282,7 @@ function warehouseSD() {
     add(-HX, H - 1.4, z - 0.25, HX, H - 0.9, z + 0.25, 'wood'); // rafters
     for (let x = -18; x <= 18; x += 12) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
+  hallArch(B, D, hb0, hd0, 'wh_hall_sd');
   for (const z of [-7.4, 7.2]) add(-20, 0, z - 0.06, 20, 0.02, z + 0.06, 'neonyellow'); // the aisle lines
   rack(B, -18, -9, 18, r); rack(B, 0, 9, 18, r); // racking: north side in the west half, south side in the east half
   const O = B.local(6, 0, 1); // the foreman's office in the middle of the floor (doors west and east, windows all round)
