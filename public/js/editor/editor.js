@@ -4,7 +4,7 @@
 import '/shared/mapedits/apply.js'; // the shipped edits first: yours go on top of them
 import * as THREE from 'three';
 import { MAPS, BOXES, MAP } from '/shared/map.js';
-import { resetGrid, movePlayer, playerOverlap } from '/shared/physics.js';
+import { resetGrid, movePlayer, playerOverlap, query } from '/shared/physics.js';
 import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeThing, insertThing, thingData, thingFrom, applyEdits, validEdits } from '/shared/mapedit.js';
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
@@ -195,8 +195,31 @@ function startCarry(ts) {
   const o = pivotFor(ts), ghost = ghostOf(ts, o, edgesFor(ts)); // (the real model where there is one)
   ghost.position.set(...o); G.scene.add(ghost);
   cam.getWorldPosition(_o);
-  carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
+  carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0], rel: relBounds(ts, o), skip: new Set(ts.flatMap((t) => t.boxes)) };
   callout('YOINK');
+}
+// edge snap (with snap on): what you carry sticks to the edges of the boxes near it, side to side or flush, and sits on
+// their tops, when it's within 35 cm. rel: its bounds round its pivot o before any turn; q, k: its turn and size; d: the
+// move so far. skip: its own boxes (still in the map while the wand carries it)
+const EDGE = 0.35, TURN4 = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+function relBounds(ts, o) { const { lo, hi } = unionBounds(ts); return { lo: lo.map((v, i) => v - o[i]), hi: hi.map((v, i) => v - o[i]) }; }
+function edgeSnap(rel, o, q, k, d, skip) {
+  if (!snap || !rel) return d;
+  const [c, sn] = TURN4[q & 3], xs = [], zs = [];
+  for (const x of [rel.lo[0], rel.hi[0]]) for (const z of [rel.lo[2], rel.hi[2]]) { xs.push((x * c + z * sn) * k); zs.push((-x * sn + z * c) * k); }
+  const L = [o[0] + d[0] + Math.min(...xs), o[1] + d[1] + rel.lo[1] * k, o[2] + d[2] + Math.min(...zs)], H = [o[0] + d[0] + Math.max(...xs), o[1] + d[1] + rel.hi[1] * k, o[2] + d[2] + Math.max(...zs)];
+  const best = [null, null, null], put = (ax, v) => { if (Math.abs(v) < EDGE && (best[ax] == null || Math.abs(v) < Math.abs(best[ax]))) best[ax] = v; };
+  for (const b of query(BOXES, L[0] - EDGE, L[2] - EDGE, H[0] + EDGE, H[2] + EDGE, [])) {
+    if (b.ter || (skip && skip.has(b)) || isFloor(b) || liquidBox(b)) continue;
+    const yo = b.max[1] > L[1] + 0.05 && b.min[1] < H[1] - 0.05; // (beside it, at its height)
+    for (const ax of [0, 2]) {
+      const o2 = 2 - ax, across = b.max[o2] > L[o2] - EDGE && b.min[o2] < H[o2] + EDGE;
+      if (!across || !yo) continue;
+      put(ax, b.min[ax] - H[ax]); put(ax, b.max[ax] - L[ax]); put(ax, b.min[ax] - L[ax]); put(ax, b.max[ax] - H[ax]); // touching from outside, or lined up
+    }
+    if (b.max[0] > L[0] && b.min[0] < H[0] && b.max[2] > L[2] && b.min[2] < H[2]) put(1, b.max[1] - L[1]); // sitting on its top
+  }
+  return d.map((v, i) => (best[i] == null ? v : Math.round((v + best[i]) * 1e4) / 1e4));
 }
 // the snap grid under what you carry: lines every grid step, 20 m across, at its feet (none with snap off)
 let gridH = null, gridStep = 0;
@@ -233,7 +256,7 @@ function updateCarry() {
   else p = [o.x + d.x * carry.dist, o.y + d.y * carry.dist, o.z + d.z * carry.dist];
   const dd = [p[0] - carry.o[0], p[1] - carry.o[1], p[2] - carry.o[2]];
   if (snap) { dd[0] = Math.round(dd[0] / snap) * snap; dd[2] = Math.round(dd[2] / snap) * snap; if (!(h && h.top)) dd[1] = Math.round(dd[1] / snap) * snap; }
-  carry.d = dd;
+  carry.d = edgeSnap(carry.rel, carry.o, carry.q, carry.k, dd, carry.skip); const ed = carry.d; dd[0] = ed[0]; dd[1] = ed[1]; dd[2] = ed[2];
   carry.ghost.position.set(carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]);
   carry.ghost.rotation.y = carry.q * Math.PI / 2; carry.ghost.scale.setScalar(carry.k);
   showGrid([carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]]);
@@ -577,7 +600,7 @@ function slot(i, it) {
 }
 function onTool(t) { document.body.dataset.tool = t; if (t !== 'wand') { if (carry) cancelCarry(); if (sel.size) { sel.clear(); drawSel(); } } } // (selecting is the wand's thing)
 initPalette({ pick: (k, id) => { const it = { kind: k, id }; loadItem(it); addRecent(it); setActiveSlot(1, it); menu(false); toast('plop cannon: ' + id.replace(/^p_/, '').replace(/_/g, ' ') + ' (click to plop)'); }, slot: (i, it) => slot(i, it), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
-initTools({ G, MAP, sel, aimRay, pick, terrainHit, pivotFor, edgesFor, select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, hide: hideThings, unhide: unhideThings, rebuild, opXf, opAdd, opDel, itemData, thingFrom, thingData, xfThing, boundsOf, snap: () => snap, grid: showGrid, toast, callout, recent: addRecent, onTool });
+initTools({ G, MAP, sel, aimRay, pick, terrainHit, pivotFor, edgesFor, select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, hide: hideThings, unhide: unhideThings, relBounds, edgeSnap, rebuild, opXf, opAdd, opDel, itemData, thingFrom, thingData, xfThing, boundsOf, snap: () => snap, grid: showGrid, toast, callout, recent: addRecent, onTool });
 onTool('grab'); setActiveSlot(0);
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
@@ -610,5 +633,5 @@ $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, toggleWalk, walking: () => walk && { p: walk.p.slice(), ground: walk.ground }, toolState, slot, menu, dropOn, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, edgeSnap, toggleWalk, walking: () => walk && { p: walk.p.slice(), ground: walk.ground }, toolState, slot, menu, dropOn, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);

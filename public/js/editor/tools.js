@@ -50,8 +50,9 @@ function grabStart() {
   const ts = A.sel.has(h.t) && A.sel.size > 1 ? [...A.sel] : [h.t];
   const piv = A.pivotFor(ts), hit = [o.x + d.x * h.dist, o.y + d.y * h.dist, o.z + d.z * h.dist];
   const ghost = ghostOf(ts, piv, A.edgesFor(ts)); ghost.position.set(...piv); A.G.scene.add(ghost);
+  const rel = A.relBounds(ts, piv); // (before it leaves the map: edge snapping needs its size)
   A.select([]); A.hide(ts); // (the real one leaves the map while you hold it)
-  held = { ts, o: piv, off: [piv[0] - hit[0], piv[1] - hit[1], piv[2] - hit[2]], dist: h.dist, q: 0, d: [0, 0, 0], ghost, vel: new THREE.Vector3(), last: null, end: V(hit) };
+  held = { ts, o: piv, off: [piv[0] - hit[0], piv[1] - hit[1], piv[2] - hit[2]], dist: h.dist, q: 0, d: [0, 0, 0], rel, ghost, vel: new THREE.Vector3(), last: null, end: V(hit) };
   sfxEd.grab(); humOn(); vmHold(true); vmKick(0.4); A.callout('YOINK');
   sparks(V(hit), 18);
 }
@@ -61,7 +62,7 @@ function grabMove(dt) {
   const want = [tgt[0] + off[0], tgt[1] + off[1], tgt[2] + off[2]], s = A.snap();
   const dd = [want[0] - H.o[0], want[1] - H.o[1], want[2] - H.o[2]];
   if (s) for (let i = 0; i < 3; i++) dd[i] = Math.round(dd[i] / s) * s;
-  H.d = dd;
+  H.d = A.edgeSnap(H.rel, H.o, H.q, 1, dd); const e = H.d; dd[0] = e[0]; dd[1] = e[1]; dd[2] = e[2];
   const p = new THREE.Vector3(H.o[0] + dd[0], H.o[1] + dd[1], H.o[2] + dd[2]);
   if (H.last && dt > 0) H.vel.lerp(p.clone().sub(H.last).divideScalar(dt), 0.35); // (how fast you're swinging it)
   H.last = p.clone();
@@ -105,7 +106,7 @@ function fallStep(dt) {
 function land(at) {
   const F = fall, H = F.H; fall = null;
   const s = A.snap(), d = [at.x - H.o[0], at.y - H.o[1], at.z - H.o[2]];
-  if (s) { d[0] = Math.round(d[0] / s) * s; d[2] = Math.round(d[2] / s) * s; }
+  if (s) { d[0] = Math.round(d[0] / s) * s; d[2] = Math.round(d[2] / s) * s; const e = A.edgeSnap(H.rel, H.o, H.q, 1, d); d[0] = e[0]; d[2] = e[2]; d[1] = Math.max(d[1], e[1]); }
   H.ghost.position.set(H.o[0] + d[0], H.o[1] + d[1], H.o[2] + d[2]); H.ghost.rotation.set(0, H.q * Math.PI / 2, 0);
   const big = F.v.length() > 12;
   sfxEd.thud(big); sparks(H.ghost.position, big ? 26 : 10);
@@ -132,7 +133,7 @@ function preview() {
     endPreview();
     if (!data) { prv = { key, data: null }; return null; } // (its model is still loading: asked again next frame)
     const t = A.thingFrom(data), b = A.boundsOf(t), pv = [(b.lo[0] + b.hi[0]) / 2, b.lo[1], (b.lo[2] + b.hi[2]) / 2];
-    prv = { key, data, t, pv, ghost: ghostOf([t], pv, A.edgesFor([t]), true), q: 0, k: 1, at: null };
+    prv = { key, data, t, pv, rel: A.relBounds([t], pv), ghost: ghostOf([t], pv, A.edgesFor([t]), true), q: 0, k: 1, at: null };
     A.G.scene.add(prv.ghost);
   }
   return prv;
@@ -141,7 +142,7 @@ function plopMove() {
   const P = preview(); if (!P || !P.ghost) return;
   const a = aimSurface(null), dist = a.dist != null && a.dist < 140 ? a.dist : 12, s = A.snap();
   const at = [a.o.x + a.d.x * dist, a.o.y + a.d.y * dist, a.o.z + a.d.z * dist];
-  if (s) { at[0] = Math.round(at[0] / s) * s; at[2] = Math.round(at[2] / s) * s; }
+  if (s) { at[0] = Math.round(at[0] / s) * s; at[2] = Math.round(at[2] / s) * s; const e = A.edgeSnap(P.rel, P.pv, P.q, item.kind === 'arch' ? 1 : P.k, [at[0] - P.pv[0], at[1] - P.pv[1], at[2] - P.pv[2]]); for (let i = 0; i < 3; i++) at[i] = P.pv[i] + e[i]; }
   P.at = at; P.ghost.position.set(...at); P.ghost.rotation.y = P.q * Math.PI / 2; P.ghost.scale.setScalar(P.k);
   A.grid(at);
 }
