@@ -52,7 +52,9 @@ export function cardFace(id) {
 // ------------------------------------------------------------ Tripo GLB overrides
 export const GLB = {};
 
-export async function loadTripoModels() {
+// o.background (a story link): the startup set trickles in two at a time when nothing else is wanted, except o.first
+// (your own guns), which come straight away. a normal visit gets it all at once, as before
+export async function loadTripoModels(o = {}) {
   let list = [];
   try { list = await (await fetch('/models/list')).json(); } catch { setGlbList([]); return 0; }
   setGlbList(list.map((it) => it.id)); // pictures now know what's coming (and stop waiting for what isn't)
@@ -61,7 +63,7 @@ export async function loadTripoModels() {
   list = list.filter((it) => !LAZY.has(it.id));
   // through the shared queue (a few at a time): anything a picture is waiting on jumps ahead (glbkit.js want)
   await Promise.all(list.map((it) => new Promise((res) => {
-    queueGlb(it.id, it.url, it.id.startsWith('w_') ? 1 : 0.5, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); landed(it.id); res(); }, () => res());
+    queueGlb(it.id, it.url, o.background ? (o.first && o.first.has(it.id) ? 2 : 0) : it.id.startsWith('w_') ? 1 : 0.5, (gltf) => { if (!prepAuthored(it.id, gltf.scene)) GLB[it.id] = prep(gltf.scene, it); landed(it.id); res(); }, () => res());
   })));
   return Object.keys(GLB).length + Object.keys(AUTHORED).length;
 }

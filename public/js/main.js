@@ -15,7 +15,7 @@ import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisual
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
 import { loadTripoModels, buildProjectile, buildPeel, buildHole, makeShadow, tipColor, buildCharacter, teamLook, M } from './models.js';
-import { onLateModel, prefetchLoadout, prefetch } from './glbkit.js';
+import { onLateModel, prefetchLoadout, prefetch, whenGlb } from './glbkit.js';
 import { initCrosses, crossEvent, crossShot, updateCrosses, clearCrosses } from './bloodcross.js';
 import { net } from './net.js';
 import { hud } from './hud.js';
@@ -221,7 +221,12 @@ const myRope = makeRope(myGrapple());
 myRope.visible = false;
 G.scene.add(myRope);
 
-loadTripoModels().then((n) => {
+// a story link (?story=1): the PvP startup set (every gun, zombies, props: ~7 MB) trickles in behind the story instead
+// of all at once. your own guns come first, and you're redrawn as each lands (the rest still redraws you at the end)
+const storyLink = !window.JF_TOUCH && /[?&]story=1\b/.test(location.search);
+const firstGuns = new Set(['primary', 'secondary', 'melee'].map((k) => (G.settings && G.settings.loadout && G.settings.loadout[k] ? 'w_' + G.settings.loadout[k] : '')).filter(Boolean));
+if (storyLink) for (const id of firstGuns) whenGlb([id], () => rebuildOne());
+loadTripoModels(storyLink ? { background: true, first: firstGuns } : undefined).then((n) => {
   if (!n) return;
   console.log(`loaded ${n} models`);
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is

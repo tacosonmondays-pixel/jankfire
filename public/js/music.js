@@ -32,18 +32,23 @@ const cache = new Map(), dead = new Set();
 
 // competitive = real people in the Online room, or Plant & Defuse anywhere: music stays off there unless you ask
 export function competitive() { return G.mode === 'ffa' || G.game === 'bomb' || !!(G.round && G.round.game === 'bomb'); }
+// a story link (?story=1) skips the menu song (3 MB and a ~30 MB decode, fetched on the first click: right when the
+// story starts loading). it plays once you've been in a PvP match
+const STORY_LINK = /[?&]story=1\b/.test(location.search);
+let pvpSeen = false;
 function where() {
   if (!G.joined && !document.getElementById('menu').classList.contains('hidden')) return 'menu'; // (menu hidden + not joined = connecting)
   if (G.joined && G.roundOver) return 'menu'; // scoreboard, play of the round, the map vote: menu music, menu volume
   return 'match';
 }
-function matchOn() { if (G.cityBeds) return false; // OVERDUE's streamed city plays its own district beds (city/beds.js)
+function matchOn() { if (G.cityBeds || G.mode === 'story') return false; // OVERDUE's streamed city plays its own district beds (city/beds.js)
   return competitive() ? !!G.settings.musicComp : G.settings.musicMatch !== false; }
 function num(v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d; }
 function vol() { return num(G.settings.musicVol, 0.35); }
 // how loud the music bus should be right now (0 = off)
 function level() {
-  if (where() === 'menu') return RP.mode === 'hl' ? vol() * DUCK : vol(); // the play of the round talks over it too
+  if (G.joined && G.mode !== 'story') pvpSeen = true;
+  if (where() === 'menu') return STORY_LINK && !pvpSeen ? 0 : RP.mode === 'hl' ? vol() * DUCK : vol(); // the play of the round talks over it too
   if (!matchOn()) return 0;
   const v = num(G.settings.musicMatchVol, 0.15);
   return RP.mode === 'killcam' ? v * DUCK : v; // your killcam (epic ones too) talks over it
