@@ -10,6 +10,7 @@ import { STREAK_LOOKS } from '/shared/cosmetics.js'; // killstreak looks in the 
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
+import { lockPointer, lookFilter } from './mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
@@ -372,12 +373,7 @@ function quitToMenu(silent) {
   $('status').textContent = '';
 }
 
-function lock() {
-  try {
-    const p = canvas.requestPointerLock({ unadjustedMovement: true });
-    if (p && p.catch) p.catch(() => { try { const q = canvas.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch { /* no lock */ } });
-  } catch { /* headless or denied */ }
-}
+function lock() { lockPointer(canvas); } // (mouselook.js: raw mouse when the browser has it)
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
@@ -388,10 +384,11 @@ function pause() {
   stopUse();
   stopLoops();
 }
-let wasLocked = false, lockedAt = 0, mouseAvg = 8;
+let wasLocked = false;
+const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jump events (the editor uses the same one)
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (locked) { mlook.locked(); esHideClick(); }
   if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
@@ -1283,11 +1280,7 @@ addEventListener('mousemove', (e) => {
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
   // drop any single event that is way bigger than how you've actually been moving the mouse.
-  const mag = Math.abs(mx) + Math.abs(my);
-  const now = performance.now();
-  if (now - lockedAt < 120) return; // first events after locking are often garbage
-  if (mag > 90 && mag > mouseAvg * 6) { mouseAvg = Math.max(mouseAvg, mag / 6) * 0.5 + mouseAvg * 0.5; return; }
-  mouseAvg = mouseAvg * 0.85 + mag * 0.15;
+  if (!mlook.take(mx, my)) return; // (the first ~120 ms after locking, and a single jump way bigger than your recent moves)
   ME.yaw -= mx * s;
   ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
 });
