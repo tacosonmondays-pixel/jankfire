@@ -6,11 +6,11 @@
 // P.ms[i] = { id, name, look, gun (a primary's id or null), mf (mech frame), ready, acct, busy }: the lobby scenes read
 // this too (onParty(fn) says when it changed). P.set = the leader's { side, mode } or null
 export const P = { on: false, me: 0, code: '', lead: 0, ms: [], set: null, max: 6 };
-let ws = null, opts = {}, retry = 0, busy = false, subs = [], lastMe = '';
+let ws = null, opts = {}, retry = 0, busy = false, subs = [], lastMe = '', lpSubs = [], lpT = 0;
 export function initParty(o) {
-  opts = o; // { hello() -> { name, look, token, gun, mf }, start(mode, cfg), joined() -> bool, toast(text, ms), ask(text, yes) }
+  opts = o; // { hello() -> { name, look, token, gun, mf }, start(mode, cfg), joined() -> bool, what() -> the match's name, toast(text, ms), ask(text, yes), invite({ from, code, mode }) }
   connect();
-  setInterval(() => { const b = !!opts.joined(); if (b !== busy) { busy = b; send({ t: 'pbusy', on: b }); } }, 1500); // (in a match: the lineup greys you out)
+  setInterval(() => { const b = !!opts.joined(); if (b !== busy) { busy = b; send({ t: 'pbusy', on: b, what: b && opts.what ? opts.what() : '' }); } }, 1500); // (in a match: the lineup greys you out, friends see which)
 }
 export const onParty = (f) => subs.push(f);
 const changed = (why) => { for (const f of subs) try { f(why); } catch (e) { console.error(e); } };
@@ -30,6 +30,8 @@ function connect() {
       changed(was !== (m.set && JSON.stringify(m.set)) ? 'set' : grew ? 'grew' : 'party');
     } else if (m.t === 'perr') opts.toast(String(m.m || 'nope').slice(0, 80), 2600);
     else if (m.t === 'pgo') go(m);
+    else if (m.t === 'plp') { for (const f of lpSubs) try { f(m); } catch (e) { console.error(e); } }
+    else if (m.t === 'pinvite' && typeof m.code === 'string' && opts.invite) opts.invite({ from: String(m.from || '').slice(0, 24), code: m.code.slice(0, 8), mode: String(m.mode || '').slice(0, 24) });
   };
   ws.onclose = () => { P.on = false; ws = null; changed('off'); later(); };
 }
@@ -56,3 +58,14 @@ export function partyMe() {
   const h = opts.hello(), k = JSON.stringify([h.look, h.gun, h.mf]);
   if (k !== lastMe && send({ t: 'pme', look: h.look, gun: h.gun, mf: h.mf })) lastMe = k;
 }
+// the walkable lobbies (zombies, battle island: the lobby scenes): where you stand, to your party, at most ~10 a second.
+// p = [x, y, z] metres in the lobby scene (the server keeps it in a box: x / z within 60, y -5..30), yaw radians,
+// a = an animation id 0..15 (the scene decides what they mean). onLobbyPos(fn): fn({ id, p, yaw, a }) for each
+// party member's move (id = their P.ms id). only relayed while the leader's lobby is ZOMBIES / BATTLE ISLAND
+export function sendLobbyPos(p, yaw, a = 0) {
+  const t = performance.now();
+  if (t - lpT < 95 || !inParty()) return false;
+  lpT = t;
+  return send({ t: 'plp', p, yaw, a });
+}
+export const onLobbyPos = (f) => lpSubs.push(f);
