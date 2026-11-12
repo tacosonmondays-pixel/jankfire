@@ -22,7 +22,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   await pg.screenshot({ path: `${OUT}/w4_named.png` });
   // walk up to the premium one: the card shows with arrows against the AR in hand
   await tp([0, 0.1, -22.5], 0, -0.3); await sleep(800);
-  const card = await pg.evaluate(() => { const c = document.querySelector('.st-lootcard:not(.hidden) .st-card'); return c ? { txt: c.innerText.replace(/\s+/g, ' ').slice(0, 300), ups: c.querySelectorAll('.st-up').length, dns: c.querySelectorAll('.st-dn').length } : null; });
+  const card = await pg.evaluate(() => { const c = document.querySelector('.st-lootcard:not(.hidden) .st-lcard'); return c ? { txt: c.innerText.replace(/\s+/g, ' ').slice(0, 300), ups: c.querySelectorAll('.st-up').length, dns: c.querySelectorAll('.st-dn').length } : null; });
   console.log('card', JSON.stringify(card));
   await pg.screenshot({ path: `${OUT}/w4_card.png` });
   await skipIntro.clearF(pg); // (a memory / quest marker nearby takes F first)
