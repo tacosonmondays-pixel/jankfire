@@ -102,6 +102,7 @@ import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + q
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: mode cards on the home menu, each mode's lobby (docs/menu/HUB_LOBBY.md)
+import { lobbySceneFrame, lobbySceneOn, setLobbyMe } from './lobbyscenes/index.js'; // a 3D place behind each mode's lobby
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -200,6 +201,7 @@ if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, 
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings() }); // the hub's mode cards + lobbies
+setLobbyMe(() => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()), lo = G.settings.loadout || {}, gun = WEAPONS[lo.primary] ? lo.primary : 'ar'; return { name: G.myName || ($('name') && $('name').value.trim()) || G.settings.name || 'you', color: shown.color || G.myColor || '#ff4fd8', look: shown, gun, skin: G.equipped[gun], mech: lo.mech }; }); // the lobby scenes draw you (lobbyscenes/)
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -2286,9 +2288,9 @@ function frame(t) {
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
-  renderFrame();
+  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden'))) renderFrame(); // the hub lobby's 3D place, else the game (or the menu's map orbit)
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
-  if ((screen === 'character' || ((screen === 'main' || screen === 'hubby') && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
+  if ((screen === 'character' || ((screen === 'main' || (screen === 'hubby' && !lobbySceneOn())) && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
   if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
 }

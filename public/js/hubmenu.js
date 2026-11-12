@@ -14,6 +14,7 @@ import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { resizePreview } from './preview.js';
 import { synth } from './audio.js';
+import { mountLobbyScene, lobbyScenePrefetch } from './lobbyscenes/index.js'; // the 3D place behind each mode (LOBBY_SCENES.md)
 
 const $ = (id) => document.getElementById(id);
 const click = () => { try { synth.tone('square', 500, 500, 0.03, 0.08); } catch { /* (no audio yet) */ } };
@@ -117,6 +118,7 @@ function modes() {
     if (k === 'qp' && GAMES[eventGame()]) b.append(el('em', 'hm-ev', 'TODAY: ' + GAMES[eventGame()].name));
     if (off) { b.disabled = true; b.title = 'offline only for now: play it from OFFLINE (online squads come with parties)'; b.append(el('i', 'hm-off', 'OFFLINE ONLY')); }
     b.addEventListener('click', () => setMode(k));
+    b.addEventListener('pointerenter', () => lobbyScenePrefetch(k)); // (its 3D place: fetched before the click)
     box.append(b);
   }
 }
@@ -201,6 +203,7 @@ function render() {
     }
     R.append(strip);
   }
+  mountLobbyScene(k, { side, onMe: () => opts.show('character'), save }); // (the same mode again: a no-op)
   $('hubGo').textContent = H.train ? 'START TRAINING' : side === 'offline' ? 'START MATCH' : k === 'qp' && st.who === 'all' ? 'PLAY NOW' : 'FIND MATCH';
 }
 
