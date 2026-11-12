@@ -273,7 +273,7 @@ function partyStrip() {
   if (inParty()) { const lv = el('button', 'mid danger', 'LEAVE'); lv.addEventListener('click', () => { click(); partyLeave(); }); top.append(lv); }
   box.append(top);
   const row = el('div', 'hp-row');
-  const inp = el('input'); inp.maxLength = 5; inp.placeholder = "a friend's code"; inp.autocomplete = 'off'; inp.spellcheck = false;
+  const inp = el('input'); inp.maxLength = 5; inp.placeholder = 'CODE'; inp.autocomplete = 'off'; inp.spellcheck = false;
   const j = el('button', 'mid', 'JOIN');
   const doJoin = () => { const c = inp.value.trim().toUpperCase(); if (c.length === 5) { click(); partyJoin(c); inp.value = ''; } else opts.toast('party codes are 5 letters', 1600); };
   j.addEventListener('click', doJoin);

@@ -3,10 +3,12 @@
 // lineup stands it on the stage (lineup.js). When the leader starts, the server sends 'pgo' (a mode, a cfg with a
 // one-use ticket to the party's room): in the menu you go straight in, in a match you get asked first.
 
+// P.ms[i] = { id, name, look, gun (a primary's id or null), mf (mech frame), ready, acct, busy }: the lobby scenes read
+// this too (onParty(fn) says when it changed). P.set = the leader's { side, mode } or null
 export const P = { on: false, me: 0, code: '', lead: 0, ms: [], set: null, max: 6 };
-let ws = null, opts = {}, retry = 0, busy = false, subs = [];
+let ws = null, opts = {}, retry = 0, busy = false, subs = [], lastMe = '';
 export function initParty(o) {
-  opts = o; // { hello() -> { name, look, token }, start(mode, cfg), joined() -> bool, toast(text, ms), ask(text, yes) }
+  opts = o; // { hello() -> { name, look, token, gun, mf }, start(mode, cfg), joined() -> bool, toast(text, ms), ask(text, yes) }
   connect();
   setInterval(() => { const b = !!opts.joined(); if (b !== busy) { busy = b; send({ t: 'pbusy', on: b }); } }, 1500); // (in a match: the lineup greys you out)
 }
@@ -19,7 +21,7 @@ export function send(m) { if (ws && ws.readyState === 1) { ws.send(JSON.stringif
 
 function connect() {
   try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch { return later(); }
-  ws.onopen = () => { retry = 0; const h = opts.hello(); send({ t: 'hub', name: h.name, look: h.look, token: h.token }); };
+  ws.onopen = () => { retry = 0; const h = opts.hello(); lastMe = JSON.stringify([h.look, h.gun, h.mf]); send({ t: 'hub', name: h.name, look: h.look, token: h.token, gun: h.gun, mf: h.mf }); };
   ws.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     if (m.t === 'party') {
@@ -48,3 +50,9 @@ export const partyReady = (on) => send({ t: 'pready', on: !!on });
 export const partySet = (side, mode) => { if (inParty() && isLead()) send({ t: 'pset', side, mode }); };
 export const partyGo = (mode, cfg) => send({ t: 'pgo', mode, cfg });
 export const meReady = () => { const me = P.ms.find((m) => m.id === P.me); return !!(me && me.ready); };
+// back in the menu with a new outfit, primary or mech frame: tell the party (only when something changed)
+export function partyMe() {
+  if (!P.on || !opts.hello) return;
+  const h = opts.hello(), k = JSON.stringify([h.look, h.gun, h.mf]);
+  if (k !== lastMe && send({ t: 'pme', look: h.look, gun: h.gun, mf: h.mf })) lastMe = k;
+}

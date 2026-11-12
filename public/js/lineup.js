@@ -55,7 +55,7 @@ export function showLineup(slot, ms, lead, me, myLook) {
     const t = el('div', 'lineup-tag' + (m.id === me ? ' me' : '') + (m.busy ? ' busy' : ''));
     t.style.left = ((v.x + 1) / 2 * 100) + '%'; t.style.top = ((1 - v.y) / 2 * 100) + '%';
     t.append(el('b', null, (m.id === lead ? '👑 ' : '') + m.name));
-    t.append(el('i', m.busy ? 'lt-busy' : m.ready ? 'lt-ready' : 'lt-wait', m.busy ? 'IN A MATCH' : m.ready ? 'READY' : m.id === lead ? 'LEADER' : 'not ready'));
+    t.append(el('i', m.busy ? 'lt-busy' : m.id === lead ? 'lt-lead' : m.ready ? 'lt-ready' : 'lt-wait', m.busy ? 'IN A MATCH' : m.id === lead ? 'LEADER' : m.ready ? 'READY' : 'not ready'));
     tags.append(t);
   });
   ren.render(scene, cam);

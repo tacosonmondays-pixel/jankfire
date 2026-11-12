@@ -102,7 +102,7 @@ import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + q
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
-import { initParty, partyRehello } from './party.js'; // parties: the menu connection (server/party.js)
+import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -205,7 +205,7 @@ initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), he
 // parties (party.js): the menu connection. the leader starting while you're mid-match: you're told, and if you quit to
 // the menu within 25 s (the ticket's good for 30) you go with them
 let partyPending = null;
-initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').trim().slice(0, 16), look: homeLook()[1], token: account.loggedIn ? account.token : undefined }),
+initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').trim().slice(0, 16), look: homeLook()[1], token: account.loggedIn ? account.token : undefined, gun: S.loadout.primary, mf: S.loadout.mech }),
   start: (mode, cfg) => startMode(mode, cfg), joined: () => G.joined, toast: (t, ms) => toast(t, ms),
   ask: (t, yes) => { partyPending = { yes, at: performance.now() }; toast(t + '. quit this match (menu > QUIT) within 25 s to go with them', 6000); } });
 $('name').addEventListener('change', () => partyRehello()); // (a new name: the party hears it)
@@ -263,7 +263,7 @@ function show(id) {
   if (id === 'leaders') { initLeaderTabs(renderLeaders); showLeaders(); } // OVERALL + one tab per mode (leadmodes.js)
   if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
-  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); if (partyPending && !G.joined) partyFollow(); }
+  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); partyMe(); if (partyPending && !G.joined) partyFollow(); }
   if (id === 'hubby') hubLobbyShown();
 }
 function hideMenu() {

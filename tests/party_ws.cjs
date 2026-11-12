@@ -10,7 +10,7 @@ function hub(name) {
   const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, name, party: null, errs: [], go: [], id: 0 };
   ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') c.party = m; if (m.t === 'perr') c.errs.push(m.m); if (m.t === 'pgo') c.go.push(m); if (m.t === 'hubok') c.id = m.id; });
   c.send = (m) => ws.send(JSON.stringify(m));
-  return new Promise((res) => ws.on('open', () => { c.send({ t: 'hub', name, look: { color: '#ff4fd8' } }); setTimeout(() => res(c), 400); }));
+  return new Promise((res) => ws.on('open', () => { c.send({ t: 'hub', name, look: { color: '#ff4fd8' }, gun: name === 'lead' ? 'ar' : 'knife', mf: name === 'lead' ? 'nightshift' : 'junk' }); setTimeout(() => res(c), 400); }));
 }
 function player(name, mode, cfg) {
   const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, id: 0, seen: new Set(), color: null, team: null };
@@ -21,8 +21,11 @@ function player(name, mode, cfg) {
   const A = await hub('lead'), B = await hub('pal'), C = await hub('rando');
   ok(A.party && /^[A-HJKMNP-Z2-9]{5}$/.test(A.party.code) && A.party.ms.length === 1 && A.party.lead === A.id, 'hello: a party of one with a code ' + (A.party && A.party.code));
   ok(A.party.code !== B.party.code, 'everyone gets their own code');
+  { const a = A.party.ms[0], b = B.party.ms[0]; ok(a.gun === 'ar' && a.mf === 'nightshift' && b.gun === null && b.mf === 'paperplane', 'gun + mech frame ride along, checked (a knife is no primary, junk is the default frame) ' + JSON.stringify([a.gun, a.mf, b.gun, b.mf])); }
   B.send({ t: 'pjoin', code: A.party.code.toLowerCase() }); await sleep(400);
   ok(B.party.code === A.party.code && A.party.ms.length === 2, 'join by code (lower case is fine)');
+  B.send({ t: 'pme', gun: 'shotgun', mf: 'nightshift', look: { color: '#4fd8ff', hair: 'nope' } }); await sleep(300);
+  { const b = A.party.ms.find((m) => m.name === 'pal'); ok(b && b.gun === 'shotgun' && b.mf === 'nightshift' && b.look && b.look.color === '#4fd8ff' && b.look.hair !== 'nope', 'pme: a new primary, frame and look reach the party (the look checked) ' + JSON.stringify(b && [b.gun, b.mf, b.look.hair])); }
   C.send({ t: 'pjoin', code: 'QQQQQ' }); await sleep(300);
   ok(C.errs.includes('no party with that code'), 'a wrong code: told so');
   C.send({ t: 'pjoin', code: A.party.code }); await sleep(200);

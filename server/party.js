@@ -14,7 +14,7 @@ let D = null, nextId = 1;
 const now = () => Date.now();
 const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
 
-// server.js: { roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor }
+// server.js: { roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook }
 export function installParty(deps) {
   D = deps;
   setInterval(sweep, PARTY.sweep).unref();
@@ -28,7 +28,7 @@ function newCode() {
     if (!parties.has(s)) return s;
   }
 }
-const view = (h) => ({ id: h.id, name: h.name, look: h.look, ready: h.ready ? 1 : 0, acct: h.acct ? 1 : 0, busy: h.busy ? 1 : 0 });
+const view = (h) => ({ id: h.id, name: h.name, look: h.look, gun: h.gun, mf: h.mf, ready: h.ready ? 1 : 0, acct: h.acct ? 1 : 0, busy: h.busy ? 1 : 0 }); // (gun / mf: the lobby scenes stand you there with them)
 function push(pt) {
   const base = { t: 'party', code: pt.code, lead: pt.lead.id, set: pt.set, ms: pt.members.map(view), max: PARTY.max };
   for (const h of pt.members) h.send({ ...base, me: h.id });
@@ -50,9 +50,11 @@ function leave(h) {
 }
 const rate = (h, k, ms) => { const t = now(); if (t - (h.t[k] || 0) < ms) return false; h.t[k] = t; return true; };
 
-// a menu connection says hello. who = { name, look, acct } (server.js checked the token and the look)
-export function hubHello(ws, who) {
-  const h = { id: nextId++, ws, name: who.name, look: who.look, acct: who.acct || null, party: null, ready: false, busy: false, t: {}, fails: [] };
+// what you're carrying, as the lobby shows it: your primary (a real primary or nothing) and your mech frame
+const gunOf = (g) => (has(D.WEAPONS, g) && D.WEAPONS[g].slot === 'primary' ? g : null);
+// a menu connection says hello. who = { name, look, acct, achs } (server.js checked the token and the look), m = the hello
+export function hubHello(ws, who, m = {}) {
+  const h = { id: nextId++, ws, name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, t: {}, fails: [] };
   h.send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
   h.send({ t: 'hubok', id: h.id });
   solo(h);
@@ -87,6 +89,14 @@ export function hubMsg(h, m) {
       return;
     }
     case 'pready': if (rate(h, 'ready', 200)) { h.ready = !!m.on; push(pt); } return;
+    case 'pme': { // a new outfit, primary or mech frame (back from CUSTOMIZE): the party sees it
+      if (!rate(h, 'me', 1000)) return;
+      if (m.look && typeof m.look === 'object' && !Array.isArray(m.look)) h.look = D.validLook(m.look, h.achs || new Set());
+      if (m.gun !== undefined) h.gun = gunOf(m.gun);
+      if (m.mf !== undefined) h.mf = D.mechFrame(m.mf);
+      push(pt);
+      return;
+    }
     case 'pbusy': if (rate(h, 'busy', 500)) { h.busy = !!m.on; push(pt); } return; // in a match right now (the lineup greys them out)
     case 'pset': { // the leader's lobby: online / offline and the mode (members' screens follow)
       if (!lead || !rate(h, 'set', 150) || !SIDES.includes(m.side) || !MODES.includes(m.mode)) return;

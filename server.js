@@ -23,7 +23,8 @@ import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/
 import { sendStatic } from './server/static.js';
 import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
 import { GAMES, mapsFor } from './shared/modes.js';
-import { BOT_DIFF, HIPFIRE } from './shared/weapons.js';
+import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
+import { mechFrame } from './shared/mech.js';
 import { LOBBY } from './shared/lobby.js';
 import { browsableServer } from './server/browsable.js'; // the room code the story's solo referee runs in the browser
 import { rooms, roomFor, lobbyCounts, humans, flushStats, logErr, safe, tooDeep, clean, now, GRAPH_TTL, GRAPH_SWEEP, setRoomDeps } from './server/room.js'; // the game rooms (class Room + its helpers)
@@ -167,10 +168,10 @@ function hubOpen(ws, m) {
     if (ws.readyState !== 1) return;
     const achs = u ? achievementsFrom(Object.fromEntries(STAT_KEYS.map((k) => [k, u[k] || 0]))) : new Set();
     const name = u ? u.name : (clean(m.name, 16) || 'guest') + (clean(m.name, 16) && await store.get(clean(m.name, 16).toLowerCase()).catch(() => null) ? ' (guest)' : '');
-    ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null });
+    ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null, achs }, m);
   })().catch((e) => { logErr('hub hello', e); ws.close(); });
 }
-installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor });
+installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook });
 
 // the bots' walk graphs (and the maze maps' lanes) are built when a room starts on a map (Room.tick -> warmMap), not all
 // at boot (together they were ~150 MB of the heap), and dropped once no room has been on a map for GRAPH_TTL
