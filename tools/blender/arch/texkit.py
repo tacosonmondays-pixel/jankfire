@@ -566,6 +566,16 @@ def weather(n=64):
     return img, (a > 0.5).astype(np.float32)
 
 
+def chainlink(n=32):
+    """galvanised chain-link fabric (0.8 m a tile, light grey: tinted), a cutout: the wires zig-zag into diamonds 8 px
+    across, a lit and a dark side on every wire, the odd bright glint and a darker weathered patch (alpha: only the wire)"""
+    yy, xx = np.mgrid[0:n, 0:n]
+    a = (((xx + yy) % 8 == 0) | ((xx - yy) % 8 == 0)).astype(np.float32)
+    g = np.where((xx + yy) % 8 == 0, 0.95, 0.72) + (fbm(n, 4, 3) - 0.5) * 0.2 + speck(n, 0.04) * 0.25
+    img = ramp(np.clip(g, 0, 1), [(0, '#3a3e44'), (0.6, '#9ea4aa'), (1, '#eef0f0')])
+    return img, a
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet_path = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None
@@ -595,6 +605,7 @@ def main():
     KIT['decals']['cells'] = cells
     out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
     wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    ci, ca = chainlink(); out['chainlink'] = save('chainlink', ci, 0.8, alpha=ca, note='tint', colors=8, dither=0.5)  # (after the rest: the shared RNG leaves them as they were)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
         tiles = []

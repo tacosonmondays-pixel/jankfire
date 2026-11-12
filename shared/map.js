@@ -2073,11 +2073,15 @@ function warehouse() {
   for (let x = 52; x <= 70; x += 4.5) add(x, 0.03, 6, x + 0.15, 0.045, 16, 'white');
   for (const z of [-HZ - 1.2, HZ + 1.2]) add(-HX + 2, 0.03, z - 0.1, HX - 2, 0.045, z + 0.1, 'neonyellow');
   // ---- the fence (the gate's shut), the world outside, light masts
+  const fr = [B.boxes.length, D.boxes.length]; // (the fence, the gate and the light masts are a Blender model: wh_fence)
   chainFence(B, D, -FX, -FZ, FX, -FZ); chainFence(B, D, -FX, FZ, FX, FZ); chainFence(B, D, FX, -FZ, FX, FZ);
   chainFence(B, D, -FX, -FZ, -FX, -6); chainFence(B, D, -FX, 6, -FX, FZ);
   add(-FX - 0.3, 0.05, -5.9, -FX - 0.15, 4.2, 5.9, 'fence');
+  fr.push(B.boxes.length, D.boxes.length);
   depotOutside(B, D, r, F);
+  fr.push(B.boxes.length, D.boxes.length);
   for (const [x, z] of [[-71, -51], [-71, 51], [71, -51], [71, 51], [0, -51], [0, 51]]) { box(x, 7, z, 0.5, 14, 0.5, 'metal'); D.box(x, 14.2, z, 2.6, 0.5, 1, 'lamp'); }
+  fenceArch(B, D, [...fr, B.boxes.length, D.boxes.length], 'wh_fence');
 
   // ---- the hall: doors on every side (the west and east ones off the same line), racking in a grid of aisles
   const dock = [-24, -8, 8, 24]; // dock doors along the south wall
@@ -2174,6 +2178,16 @@ function chainFence(B, D, x0, z0, x1, z1) {
   if (alongX) { D.add(x0, 4.5, z0 - 0.02, x1, 4.53, z0 + 0.02, 'tire'); D.add(x0, 4.75, z0 - 0.02, x1, 4.78, z0 + 0.02, 'tire'); }
   else { D.add(x0 - 0.02, 4.5, z0, x0 + 0.02, 4.53, z1, 'tire'); D.add(x0 - 0.02, 4.75, z0, x0 + 0.02, 4.78, z1, 'tire'); }
 }
+// the fence, gate and masts (boxes and deco between r[0..1]/[2..3] and r[4..5]/[6..7]: B from, D from, B to, D to) are one
+// Blender model in the map's frame, look-only (the lamps still light the yard)
+function fenceArch(B, D, r, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0 });
+  const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (const [b0, d0, b1, d1] of [[r[0], r[1], r[2], r[3]], [r[4], r[5], r[6], r[7]]]) {
+    for (let i = b0; i < b1; i++) Object.assign(B.boxes[i], tag);
+    for (let i = d0; i < d1; i++) Object.assign(D.boxes[i], tag);
+  }
+}
 // a shipping container (12 m, or len) along x or z, n high
 function container(B, x, z, alongZ, n, mats, len = 12) {
   for (let k = 0; k < n; k++) {
@@ -2247,11 +2261,15 @@ function warehouseSD() {
   for (let x = 66; x <= 78; x += 4) add(x, 0.03, -16, x + 0.15, 0.045, 16, 'white'); // parking bays
   for (const z of [-HZ - 1.2, HZ + 1.2]) add(-60, 0.03, z - 0.1, 22, 0.045, z + 0.1, 'neonyellow'); // walkway lines along the hall
   // ---- the fence (the gate in the west side is shut behind the attackers' truck)
+  const fr = [B.boxes.length, D.boxes.length]; // (the fence, the gate and the light masts are a Blender model: wh_fence_sd)
   chainFence(B, D, -FX, -FZ, FX, -FZ); chainFence(B, D, -FX, FZ, FX, FZ); chainFence(B, D, FX, -FZ, FX, FZ);
   chainFence(B, D, -FX, -FZ, -FX, -6); chainFence(B, D, -FX, 6, -FX, FZ);
   add(-FX - 0.3, 0.05, -5.9, -FX - 0.15, 4.2, 5.9, 'fence'); // the sliding gate, shut
+  fr.push(B.boxes.length, D.boxes.length);
   depotOutside(B, D, r, F);
+  fr.push(B.boxes.length, D.boxes.length);
   for (const [x, z] of [[-76, -54], [-76, 54], [76, -54], [76, 54], [0, -54], [0, 54], [44, -12]]) { box(x, 7, z, 0.5, 14, 0.5, 'metal'); D.box(x, 14.2, z, 2.6, 0.5, 1, 'lamp'); } // light masts
+  fenceArch(B, D, [...fr, B.boxes.length, D.boxes.length], 'wh_fence_sd');
 
   // ---- ATTACKERS' SPAWN: inside the gate, behind their trailers
   semiS(-61, -15, 0, 'adtruck', false); semiS(-61, 2.5, 0, 'adtruck2', false); // two trailers screen it (a gap between them)

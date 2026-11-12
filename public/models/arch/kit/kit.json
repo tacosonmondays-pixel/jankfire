@@ -368,5 +368,11 @@
   "px": 128,
   "alpha": false,
   "note": ""
+ },
+ "chainlink": {
+  "tile": 0.8,
+  "px": 32,
+  "alpha": true,
+  "note": "tint"
  }
 }
