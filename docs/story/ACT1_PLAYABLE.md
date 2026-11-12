@@ -45,7 +45,7 @@ skipped bit) · **B** / **C** (that session's part; faked in the run) · **BLOCK
 |---|---|---|---|---|
 | drive | drive into the Gut | `gut:peristalsis` (r 12) | works (car or foot) | c3 plays when you arrive (it played at the step start). By car: the same road as m02, avenue 8 down to Peristalsis Avenue and west along it (act1drive.test.mjs) |
 | walk | follow Lumps down Peristalsis Avenue | to `gut:digester_wall` | works / C | the zone works; Lumps waits on the avenue (cast_slice.js STAGE); him leading the way is C's escort |
-| dot | talk to Dot | Dot IN the Digester Wall | works | c_dot.glb; Mina has no model (puppet stand-in) |
+| dot | talk to Dot | Dot IN the Digester Wall | works | c_dot.glb; Mina is c_mina_wall.glb (in the wall to her waist, 3.5 m east of Dot in the tube's gap, her back to the skin slabs: cast_slice.js spot.look); c_mina.glb is the whole of her (m04's truck queue) |
 | agenda | talk to Sister Agenda | inside the Choir Lung's door | works | |
 | bishop | (reach the Choir Lung) | `gut:choir_lung` | works | |
 | out | get out of the Gut | `gut:border` | works / C | the stomach-dog chase on the way is C's |

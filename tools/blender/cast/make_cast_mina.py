@@ -24,7 +24,7 @@ HS = 1.08  # the head is modelled at 1 and scaled up about its pivot (looks.js h
 EYES = [(-0.05, 0.155, -0.1025), (0.05, 0.155, -0.1025)]  # eye pivots at that size (x HS = looks.js face: eyeY 0.168, sep 0.053)
 MOUTH_Y = 0.066  # (x HS = 0.072)
 HEAD_Y = 0.55  # the head pivot in spine space (looks.js neck 0.05 over the torso's 0.48, + 0.02)
-STANCE = (0.38, 0.14, 0.7, 0.5, 0.46)  # looks.js minaLook stance on the wall: arm.x +, arm.z in, fore.x +, foreR.z in, foreL.z in
+STANCE = (0.38, 0.14, 0.7, 0.5, 0.46)  # looks.js minaLook stance on the wall: arm.x +, arm.z in, fore.x +, foreR.z, foreL.z (after a half turn of the forearm: palms down)
 TOR = [  # the cardigan's outside, spine space: (y, half width, front depth, back depth, squareness)
     (-0.085, 0.172, 0.12, 0.112, 2.3), (-0.03, 0.168, 0.117, 0.11, 2.3), (0.05, 0.158, 0.11, 0.104, 2.3), (0.15, 0.161, 0.117, 0.106, 2.4),
     (0.24, 0.165, 0.132, 0.108, 2.4), (0.31, 0.168, 0.126, 0.106, 2.5), (0.37, 0.172, 0.112, 0.104, 2.5), (0.41, 0.168, 0.098, 0.097, 2.4),
@@ -87,7 +87,7 @@ def face_px(px):
     r = np.random.default_rng(85)
     sk = hexrgb(SK)
     n = np.kron(r.random((h // 4 + 1, w // 4 + 1)), np.ones((4, 4)))[:h, :w]
-    px[:] = sk[None, None, :] * (0.96 + 0.05 * n[:, :, None] + 0.025 * r.random((h, w, 1)))
+    px[:] = sk[None, None, :] * (0.975 + 0.025 * n[:, :, None] + 0.012 * r.random((h, w, 1)))
     U = lambda x: (0.5 - x / SW) * w; Vr = lambda y: (0.5 - (y - 0.135) / SH) * h  # head-local metres -> px
     def soft(cx, cy, rad, col, k):  # a soft tint (blush, shadows)
         yy, xx = np.mgrid[0:h, 0:w]
@@ -110,13 +110,13 @@ def face_px(px):
             px[:] = px * (1 - ml) + lite * ml
             px[:] = px * (1 - np.minimum(m, 0.7)) + dark * np.minimum(m, 0.7)
     arc = lambda xa, xb, y, bend, n=6: [(xa + (xb - xa) * i / (n - 1), y + bend * math.sin(math.pi * i / (n - 1))) for i in range(n)]
-    for y, k in ((0.214, 0.8), (0.228, 0.78), (0.241, 0.84)): crease(arc(-0.05, -0.004, y, 0.004), k); crease(arc(0.004, 0.048, y + 0.002, 0.004), k)  # forehead
+    for y, k in ((0.214, 0.72), (0.228, 0.7), (0.241, 0.78)): crease(arc(-0.05, -0.004, y, 0.004), k); crease(arc(0.004, 0.048, y + 0.002, 0.004), k)  # forehead
     for sx in (-1, 1):
-        crease([(sx * 0.007, 0.171), (sx * 0.009, 0.185)], 0.86)  # the two lines between the brows (she frowns at things)
-        for dy in (0.007, 0.0, -0.007): crease([(sx * 0.078, 0.156 + dy * 0.3), (sx * 0.093, 0.157 + dy)], 0.82)  # crow's feet
-        crease(arc(sx * 0.032, sx * 0.066, 0.131, -0.004), 0.82)  # bags
-        crease([(sx * 0.021, 0.106), (sx * 0.029, 0.09), (sx * 0.036, 0.075), (sx * 0.039, 0.061)], 0.74)  # nose to mouth
-        crease([(sx * 0.035, 0.054), (sx * 0.036, 0.042), (sx * 0.035, 0.032)], 0.88)  # mouth corners down
+        crease([(sx * 0.007, 0.171), (sx * 0.009, 0.185)], 0.78)  # the two lines between the brows (she frowns at things)
+        for dy in (0.007, 0.0, -0.007): crease([(sx * 0.078, 0.156 + dy * 0.3), (sx * 0.094, 0.157 + dy)], 0.72)  # crow's feet
+        crease(arc(sx * 0.032, sx * 0.066, 0.131, -0.004), 0.74)  # bags
+        crease([(sx * 0.021, 0.106), (sx * 0.029, 0.09), (sx * 0.036, 0.075), (sx * 0.039, 0.061)], 0.64)  # nose to mouth
+        crease([(sx * 0.035, 0.054), (sx * 0.036, 0.042), (sx * 0.035, 0.032)], 0.8)  # mouth corners down
         for dx in (0.009, 0.019): crease([(sx * dx, 0.08), (sx * dx, 0.086)], 0.92)  # lip lines
     for _ in range(16):  # age spots: temples, cheeks, forehead
         x = r.uniform(-0.09, 0.09); y = r.uniform(0.09, 0.25)
@@ -185,7 +185,7 @@ def flesh_px(px):
     lo, hi = hexrgb(0x8e1a34), hexrgb(0xd0485e)
     k = (0.3 + 0.7 * (0.75 * n + 0.25 * r.random((h, w))))[:, :, None]
     px[:] = lo * (1 - k) + hi * k
-    for _ in range(9): px_disc(px, r.integers(0, w), r.integers(0, h), r.uniform(0.8, 1.6), 0xf0a868)  # fat
+    for _ in range(4): px_disc(px, r.integers(0, w), r.integers(0, h), r.uniform(0.8, 1.4), 0xe8a06a)  # fat
     for i in range(3):  # bruise-purple veins
         x, y = r.uniform(0, w), 0.0
         while y < h:
@@ -217,7 +217,7 @@ def blouse_px(px):
     h, w = px.shape[:2]
     px[:] = hexrgb(0xf3ead6)
     for y in range(2, h, 6):
-        for x in range((y // 6) % 2 * 3, w, 6): px_disc(px, x + 0.5, y + 0.5, 1.0, 0xe88aa0)
+        for x in range((y // 6) % 2 * 3, w, 6): px[y:y + 2, x:x + 2] = hexrgb(0xe88aa0)  # (polka dots)
 
 
 # ------------------------------------------------------------ shapes
@@ -476,16 +476,25 @@ def build():
         off += 0.006 * fr * ex(0, MOUTH_Y, 0.038, 0.028)  # the mouth sits forward a touch
         off += 0.011 * fr * ex(0, 0.024, 0.026, 0.02)  # a firm pointed chin
         if g.y < 0.085: off -= 0.013 * min(1.0, (0.085 - g.y) / 0.06) * abs(n.x)  # the jaw narrows
-        if g.y < 0.03 and n.z > -0.3: off -= 0.012 * min(1.0, (0.03 - g.y) / 0.03)  # under the jaw, tucked in
+        if g.y < 0.03 and n.z > -0.3: off -= 0.005 * min(1.0, (0.03 - g.y) / 0.03)  # under the jaw, tucked in a little
         return off
     skull = blob('skull', (0, 0.135, 0), (0.105, 0.135, 0.118), faceM, fn=face_fn, seg=32, rings=24)
     flip_uv(skull, (0, 0.135, -0.12), (SW, SH)); skull['keep_uv'] = 1
+    skull.data.materials.append(skin); uvd = skull.data.uv_layers.active.data
+    for poly in skull.data.polygons:  # (the face texture only where it faces front; it would streak round the sides)
+        nb = poly.normal
+        if nb.y > 0.42 and poly.center.z > 0.035: continue  # (blender +y is the game's front; below 0.035 is under the jaw)
+        poly.material_index = 1
+        for li in poly.loop_indices:
+            v = skull.data.vertices[skull.data.loops[li].vertex_index].co; ax_ = max(range(3), key=lambda k: abs(nb[k]))
+            uvd[li].uv = ((v.y, v.z) if ax_ == 0 else (v.x, v.z) if ax_ == 1 else (v.x, v.y))
+            uvd[li].uv = (uvd[li].uv[0] / 0.12, uvd[li].uv[1] / 0.12)
     head = [skull]
     # the nose: long and straight, a little bump on the bridge, the tip just short of the lip
     nose = limb('nose', [(0, 0.168, -0.104), (0, 0.15, -0.118), (0, 0.128, -0.13), (0, 0.108, -0.142), (0, 0.097, -0.139), (0, 0.093, -0.128)],
                 [0.007, 0.0095, 0.0105, 0.013, 0.0115, 0.006], skin, seg=10, squash=(0.8, 1.0))
     head.append(nose)
-    for sx in (-1, 1): head.append(blob('wing%d' % sx, (sx * 0.0125, 0.099, -0.127), (0.0085, 0.007, 0.0095), skin))
+    for sx in (-1, 1): head.append(blob('wing%d' % sx, (sx * 0.0115, 0.1, -0.124), (0.0072, 0.0062, 0.0085), skin))
     # ears: big (they grow), a bowl in the middle, long lobes
     for sx in (-1, 1):  # a shell standing a little off the head, top leaning back, a bowl, a rim, a long lobe
         ec = (sx * 0.106, 0.126, 0.012)
@@ -498,23 +507,17 @@ def build():
     def edge(a):  # the hairline's elevation round the head: the forehead, the temples, over the ears, down to the nape
         A = abs(a)
         ys = 0.224 - 0.016 * (A / 0.95) ** 2 if A < 0.95 else 0.208 - 0.034 * min(1.0, (A - 0.95) / 0.4) if A < 1.35 else 0.174 if A < 2.0 else 0.174 - 0.145 * ((A - 2.0) / (math.pi - 2.0)) ** 0.8
-        return math.asin(max(-0.99, min(0.99, (ys - 0.142) / 0.1415)))
+        return math.asin(max(-0.99, min(0.99, (ys - 0.1395) / 0.1395)))
     def hair_fn(g, n):
         off = 0.004 * math.exp(-((g.y - 0.27) / 0.03) ** 2) * max(0.0, -n.z + 0.3)  # a little lift at the front top
         off += 0.004 * math.exp(-(((g.x - 0.05) / 0.05) ** 2 + ((g.y - 0.06) / 0.05) ** 2)) * max(0.0, n.z)  # gathered toward the back right
         off += 0.0012 * math.sin(math.atan2(g.x, g.y + 0.1) * 26)  # comb lines
         return off
-    cap = hair_cap('hair', (0, 0.142, 0.006), (0.1115, 0.1415, 0.1245), hairM, edge, fn=hair_fn, na=40, nt=11)
+    cap = hair_cap('hair', (0, 0.1395, 0.004), (0.1095, 0.1395, 0.1225), hairM, edge, fn=hair_fn, na=40, nt=11, tuck=0.003)
     uv_hair(cap)
     head.append(cap)
     head.append(blob('gather', (0.048, 0.04, 0.098), (0.034, 0.03, 0.026), hairM))  # the hair bunched where the braid starts
     uv_hair(head[-1])
-    for i, (a, e, ln, bend) in enumerate(((0.35, 1.2, 0.03, 0.9), (-0.6, 0.95, 0.026, -0.8), (1.15, 0.55, 0.022, 1.0), (-1.3, 0.6, 0.024, -0.9), (2.6, 0.9, 0.028, 0.8))):  # a few that got away
-        d = Vector((math.cos(e) * math.sin(a), math.sin(e), -math.cos(e) * math.cos(a)))
-        q0 = Vector((0, 0.142, 0.006)) + Vector((d.x * 0.112, d.y * 0.142, d.z * 0.125))
-        side = d.cross(Vector((0, 1, 0))).normalized() if abs(d.y) < 0.95 else Vector((1, 0, 0))
-        pts = [tuple(q0 - d * 0.002 + (d * (0.35 - 0.25 * t) + side * bend * t + Vector((0, 0.3, 0)) * (1 - t)).normalized() * ln * t) for t in (0, 0.35, 0.7, 1.0)]
-        head.append(tube(pts, 0.0011, hairM, seg=4, name='fly%d' % i))
     for o in head: apply_mods(o); o.data.transform(Matrix.Scale(HS, 4))  # (up to the game's head size, about the pivot)
     add('head', head)
 
@@ -530,7 +533,7 @@ def build():
                      fn=lambda p, n: 0.002 * math.cos(math.atan2(p.x, -p.z) * 36), cap=(False, False)))
     solid(tor[-1], 0.006)
     # the crew neck's rib and the blouse collar folded out over it
-    tor.append(lathe([(0.061, -0.014), (0.066, 0.0), (0.06, 0.02)], (0, 0.494, -0.004), ribM, seg=24, axis='y', cap=False)); solid(tor[-1], 0.006)
+    tor.append(lathe([(0.061, -0.014), (0.066, 0.0), (0.06, 0.026)], (0, 0.505, -0.004), ribM, seg=24, axis='y', cap=False)); solid(tor[-1], 0.006)
     for sx in (-1, 1):  # two pointed flaps, lying on the rib and the chest below it
         pts = [(sx * 0.006, 0.49), (sx * 0.05, 0.488), (sx * 0.062, 0.47), (sx * 0.036, 0.432), (sx * 0.006, 0.455)]
         bm = bmesh.new(); vs = [bm.verts.new(gv(x, y, front_z(x, y, 0.009 + 0.006 * max(0.0, (y - 0.46) / 0.03)))) for x, y in pts]
@@ -582,9 +585,9 @@ def build():
     bp = [(0.06, 0.584, 0.1), (0.084, 0.542, 0.082), (0.104, 0.5, 0.05), (0.116, 0.463, 0.004)]
     bn = [(0.6, -0.2, 0.8), (0.7, 0.0, 0.7), (0.6, 0.6, 0.4), (0.25, 1.0, -0.1)]
     for y in (0.425, 0.37, 0.31, 0.25, 0.205):
-        x = 0.12 - (0.425 - y) * 0.03; bp.append((x, y, front_z(x, y, 0.014))); bn.append(tuple(front_n(x, y)))
+        x = 0.12 - (0.425 - y) * 0.03; bp.append((x, y, front_z(x, y, 0.007))); bn.append(tuple(front_n(x, y)))  # (sunk a little into the knit: no grazing)
     tor.append(limb('braidcore', bp, [0.013 - 0.004 * i / (len(bp) - 1) for i in range(len(bp))], mat(ID + '_braidcore', 0x8e8b84, rough=0.6), seg=8))  # (fills between the plaits, darker: the gaps)
-    tor += chain('braid', bp, bn, braidM, 24, 0.03, 0.0165, 0.012, 0.8, 0.0078, seg=8, rings=5, taper=0.68)
+    tor += chain('braid', bp, bn, braidM, 24, 0.03, 0.0165, 0.012, 0.8, 0.0078, seg=10, rings=7, taper=0.68)
     ty = 0.198; tx = 0.122 - (0.43 - ty) * 0.03; tz = front_z(tx, ty, 0.015)
     tor.append(lathe([(0.0095, -0.005), (0.0105, 0.0), (0.0095, 0.005)], (tx, ty, tz), tieM, seg=10, axis='y'))
     tor.append(tube([(tx + 0.008, ty, tz - 0.004), (tx + 0.016, ty - 0.012, tz - 0.004), (tx + 0.014, ty - 0.024, tz - 0.002)], 0.0022, tieM, seg=4, name='tieend'))
@@ -675,7 +678,7 @@ def mound(rng, skin, steel, suede, rubberM, sockM):
     """the Digester Wall where it has her (body-local: the floor at y 0.074, her waist at ~1.03, the wall's face ~0.15
     behind her). A lumpy lap of flesh out from the wall to her waist, a roll in front she leans on, a collar where it's
     climbing her cardigan, and the wall's leftovers in it"""
-    flesh = mat(ID + '_flesh', 0xffffff, rough=0.3, clearcoat=0.35, tex=tex_canvas(ID + '_fleshT', 48, 48, flesh_px))
+    flesh = mat(ID + '_flesh', 0xffffff, rough=0.32, clearcoat=0.3, tex=tex_canvas(ID + '_fleshT', 48, 48, flesh_px))
     fat = mat(ID + '_fat', 0xffd27a, rough=0.3, clearcoat=0.4)
     veinM = mat(ID + '_vein', 0x5b3a8f, rough=0.3, clearcoat=0.3)
     paper = mat(ID + '_slip', 0xffffff, rough=0.6, tex=tex_canvas(ID + '_slipT', 64, 50, slip_px))
@@ -689,12 +692,12 @@ def mound(rng, skin, steel, suede, rubberM, sockM):
         off += 0.05 * math.exp(-(((a + 0.9) / 0.6) ** 2 + ((p.y - 0.45) / 0.3) ** 2))
         if p.y < 0.2: off += 0.06 * (0.2 - p.y) / 0.2 * max(0.0, 1 - abs(n.y))
         return off
-    LAP = [(-0.05, 0.7, 0.6, 0.45, 2.6), (0.12, 0.66, 0.56, 0.45, 2.6), (0.4, 0.58, 0.49, 0.45, 2.6), (0.68, 0.5, 0.43, 0.42, 2.5),
-           (0.86, 0.42, 0.38, 0.38, 2.4), (0.97, 0.31, 0.3, 0.3, 2.2), (1.02, 0.17, 0.17, 0.17, 2.0)]
+    LAP = [(-0.05, 0.68, 0.52, 0.45, 3.0), (0.15, 0.64, 0.47, 0.45, 3.0), (0.45, 0.6, 0.44, 0.45, 3.0), (0.75, 0.56, 0.42, 0.45, 3.0),
+           (0.9, 0.52, 0.4, 0.42, 2.8), (0.98, 0.46, 0.36, 0.38, 2.6), (1.02, 0.36, 0.28, 0.3, 2.3), (1.045, 0.2, 0.15, 0.15, 2.0)]  # (a ledge out of the wall: a steep front, a flat-ish top at her waist)
     w = [shell('lap', LAP, flesh, seg=40, fn=lump, cap=(True, True))]
     # the wall bulging out round her: two broad swells either side, flat to the wall behind (its face is ~0.13 behind her)
     for sx in (-1, 1):
-        w.append(blob('swell%d' % sx, (sx * 0.5, 0.75, 0.24), (0.34, 0.72, 0.16), flesh, fn=lambda p, n, sx=sx: 0.012 * math.sin(p.y * 17 + sx) * max(0.0, -n.z), seg=18, rings=14))
+        w.append(blob('swell%d' % sx, (sx * 0.56, 0.5, 0.26), (0.36, 0.5, 0.15), flesh, fn=lambda p, n, sx=sx: 0.012 * math.sin(p.y * 17 + sx) * max(0.0, -n.z), seg=18, rings=12))
     # the roll in front she leans on (STANCE puts her forearms on it at ~1.1)
     arc_ = [(math.sin(t) * 0.3, 1.0 + 0.012 * math.cos(t * 2), -math.cos(t) * 0.27 - 0.03) for t in [math.radians(a) for a in range(-80, 81, 16)]]
     w.append(limb('roll', arc_, [0.05, 0.065, 0.075, 0.082, 0.086, 0.086, 0.082, 0.075, 0.065, 0.05, 0.04][:len(arc_)], flesh, seg=12))
@@ -717,7 +720,7 @@ def mound(rng, skin, steel, suede, rubberM, sockM):
         pts = [tuple(on_lap(a0 + t * 0.18, min(0.95, y0 + t * 0.1), 0.004 + lump(*on_lap(a0 + t * 0.18, min(0.95, y0 + t * 0.1)))) [0]) for t in (0, 0.7, 1.4, 2.1)]
         nn0 = on_lap(a0, y0)[1]; pts = [tuple(Vector(q) - nn0 * (0.004 + (0.02 if k in (0, len(pts) - 1) else 0.0))) for k, q in enumerate(pts)]
         w.append(vein('wvein%d' % i, pts, 0.008, veinM, wob=0.0, seed=200 + i))  # (half sunk, its ends dive in: steep edges, no fighting)
-    for i in range(5):  # fat coming through
+    for i in range(3):  # fat coming through
         a0 = rng.uniform(-1.4, 1.4); y0 = rng.uniform(0.2, 0.8); q, nn = on_lap(a0, y0, lump(*on_lap(a0, y0)) - 0.012)
         r_ = rng.uniform(0.03, 0.05); w.append(ell('fat%d' % i, tuple(q), (Vector((r_, 0, 0)), nn * r_ * 0.55, Vector((0, r_ * 0.8, 0))), fat, 10, 6))
     # the COLLECTED slip, stapled on, front right (her right), its face turned a little toward the street
@@ -747,6 +750,8 @@ def mound(rng, skin, steel, suede, rubberM, sockM):
     tq, tn = on_lap(-0.25, 0.115, 0.0)
     w.append(blob('toe', (tq.x, 0.112, tq.z - 0.035), (0.045, 0.038, 0.06), suede))
     w.append(blob('toerand', (tq.x, 0.094, tq.z - 0.04), (0.0475, 0.026, 0.0605), rubberM))
+    for o in w:  # (the flesh's pattern a bit bigger than the clothes': a tile every 35 cm)
+        if o.data.materials and o.data.materials[0] is flesh and not o.get('keep_uv'): apply_mods(o); uv_box(o, 0.35); o['keep_uv'] = 1
     return w
 
 
@@ -780,7 +785,7 @@ def pose_for_sheet(root):
         return (Matrix.Rotation(x, 4, 'X') @ Matrix.Rotation(y, 4, 'Y') @ Matrix.Rotation(z, 4, 'Z'))
     C = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))
     ax, az, fx, fzr, fzl = STANCE  # (actors.js pose: arm (0.05, 0, +-0.1), fore (0.22, 0, 0), then the stance on top)
-    want = {'arm': ((0.05 + ax, 0, 0.1 - az), (0.22 + fx, 0, -fzr)), 'armL': ((0.05 + ax, 0, -0.1 + az), (0.22 + fx, 0, fzl))}
+    want = {'arm': ((0.05 + ax, 0, 0.1 - az), (0.22 + fx, math.pi, fzr)), 'armL': ((0.05 + ax, 0, -0.1 + az), (0.22 + fx, -math.pi, -fzl))}
     rest_z = {'arm': 0.08, 'armL': -0.08}
     for a, f, h in (('arm', 'foreR', 'handR'), ('armL', 'foreL', 'handL')):
         Ma, Mf, Mh = gmat(a), gmat(f), gmat(h)

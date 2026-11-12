@@ -409,7 +409,7 @@ function minaLook(v) {
   // hands are clasped in front of her (not while she walks). either way, every few seconds a quick look off down the
   // street, held, then back (not mid-sentence, not mid-clip)
   c.stance = (cc, t, a, moving) => {
-    if (v) { cc.arm.rotation.x += 0.38; cc.armL.rotation.x += 0.38; cc.arm.rotation.z -= 0.14; cc.armL.rotation.z += 0.14; cc.foreR.rotation.x += 0.7; cc.foreL.rotation.x += 0.7; cc.foreR.rotation.z -= 0.5; cc.foreL.rotation.z += 0.46; } // (make_cast_mina.py STANCE: the wall's lip is shaped to these)
+    if (v) { cc.arm.rotation.x += 0.38; cc.armL.rotation.x += 0.38; cc.arm.rotation.z -= 0.14; cc.armL.rotation.z += 0.14; cc.foreR.rotation.x += 0.7; cc.foreL.rotation.x += 0.7; cc.foreR.rotation.y += Math.PI; cc.foreL.rotation.y -= Math.PI; cc.foreR.rotation.z += 0.5; cc.foreL.rotation.z -= 0.46; } // (palms down on the wall's lip, turned at the forearm; make_cast_mina.py STANCE shapes the lip to this)
     else if (!moving) { const k = a.talking ? 0.6 : 1; cc.arm.rotation.x += 0.28 * k; cc.armL.rotation.x += 0.3 * k; cc.arm.rotation.z -= 0.12 * k; cc.armL.rotation.z += 0.12 * k; cc.foreR.rotation.x += 0.95 * k; cc.foreL.rotation.x += 1.0 * k; cc.foreR.rotation.z -= 0.62 * k; cc.foreL.rotation.z += 0.6 * k; }
     if (moving || a.talking || a.clip) return;
     const n = Math.floor(t / 5.3), ph = t / 5.3 - n, side = [-1, 1, -1, -0.6][n % 4];
