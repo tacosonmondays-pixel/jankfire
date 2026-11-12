@@ -578,13 +578,13 @@ def build_ship():
     deck_slab(a0, a1, -B2 + 0.03, -aw)  # its sea side deck
     deck_slab(a0, t0 - 0.4, aw, B2 - 0.03); deck_slab(t1 + 0.6, a1, aw, B2 - 0.03)  # its beach side deck (torn back over the hole)
     deck_slab(h1, 40.0, -B2 + 0.03, B2 - 0.03)  # midships to the stern deck (hold 2, the house stand on it)
-    # the torn deck edge over the hole: buckled plates curling down and out
-    for i, x in enumerate([t0 - 0.4 + k * 1.05 for k in range(12)]):
-        if x > t1 + 0.4: break
-        ang = 0.5 + 0.35 * math.sin(i * 2.1)
-        o = box((1.1, 0.06, 1.1), (0, 0, 0), M, name='wr_tornplate'); apply_mods(o)
-        o.data.transform(Matrix.Rotation(-ang, 4, 'X')); o.data.transform(Matrix.Translation(gv(x + 0.5, D - 0.25 - 0.3 * math.sin(ang), aw + 0.45)))
-        uv_fit(o, A, 'rust'); K.add(o)
+    # the torn deck at each end of the hole: its last plates bent down into the tear
+    for xe, sg in ((t0 - 0.4, 1), (t1 + 0.6, -1)):
+        for k, zz in enumerate((aw + 0.75, aw + 1.55)):
+            ang = 0.55 + 0.3 * k
+            o = box((1.5, 0.05, 0.78), (sg * 0.72, 0, 0), M, name='wr_tornplate'); bake(o)
+            o.data.transform(Matrix.Rotation(sg * ang, 4, 'Y')); o.data.transform(Matrix.Translation(gv(xe, D - 0.1, zz)))
+            uv_fit(o, A, 'green', sel=lambda p, P: MK._gn(p.normal).y > 0.3); uv_fit(o, A, 'navy', sel=lambda p, P: MK._gn(p.normal).y <= 0.3); K.add(o)
     # ---------------- the forecastle: its side shell up to the bulwark, the bulwark's inside, the break, the gear on it
     fxs = [-44.6 + 0.55 * i for i in range(22)] + [-33.0]
     for sz in (-1, 1):
@@ -631,11 +631,11 @@ def build_ship():
         xm = (x0n + x1n) / 2; zn = sz * (deck_hw(xm) + 0.04)
         o = K.decal(x0n, 9.1, zn - 0.02, x1n, 10.2, zn + 0.02, 'name', 'wr_name')
         ang = math.atan2(deck_hw(x1n) - deck_hw(x0n), x1n - x0n)  # (turned to follow the bow's curve)
-        turn_about(o, (xm, 0, zn), Matrix.Rotation(sz * ang, 4, 'Z'))
-        zd = sz * (deck_hw(-40.4) + 0.05)
-        o = K.decal(-40.6, 2.0, zd - 0.02, -40.2, 6.1, zd + 0.02, 'draft', 'wr_draft')
+        turn_about(o, (xm, 0, zn), Matrix.Rotation(-sz * ang, 4, 'Z'))
+        zd = sz * shell_z(-40.4, 4.0)  # (on the bow's flare at mid height: a plate thick enough to sit in the curve)
+        o = K.decal(-40.6, 2.0, zd - 0.07, -40.2, 6.1, zd + 0.07, 'draft', 'wr_draft')
         ang = math.atan2(deck_hw(-40.2) - deck_hw(-40.6), 0.4)
-        turn_about(o, (-40.4, 0, zd), Matrix.Rotation(sz * ang, 4, 'Z'))
+        turn_about(o, (-40.4, 0, zd), Matrix.Rotation(-sz * ang, 4, 'Z'))
         K.decal(35.2, 2.0, sz * (B2 + 0.02) - 0.02, 35.6, 6.1, sz * (B2 + 0.02) + 0.02, 'draft', 'wr_draft')
     # SHIP HAPPENS down both sides (the line's name, big)
     for sz in (-1, 1):
@@ -693,7 +693,9 @@ def build_ship():
     for pts, nm in ((left, 'wr_lipl'), (right, 'wr_lipr'), (bottom, 'wr_lipb')):
         if len(pts) < 2: continue
         P3 = [(x, y, shell_z(x, y) - 0.05) for x, y in pts]
-        o = sweep(P3, [0.13 + 0.05 * math.sin(i * 1.7) for i in range(len(P3))], M, seg=5, name=nm); uv_fit(o, A, 'rust'); K.add(o)
+        o = sweep(P3, [0.08 + 0.03 * math.sin(i * 1.7) for i in range(len(P3))], M, seg=5, name=nm)
+        uv_fit(o, A, 'red', sel=lambda p, P: sum((P[k] for k in p.vertices), V3()).y / len(p.vertices) < 5.2)
+        uv_fit(o, A, 'navy', sel=lambda p, P: sum((P[k] for k in p.vertices), V3()).y / len(p.vertices) >= 5.2); K.add(o)
     for (x, y, ang, w, hgt) in ((t0 + 0.7, 5.0, 0.7, 1.6, 2.4), (t0 + 0.4, 2.6, 0.4, 1.2, 1.8), (t1 - 0.9, 6.6, -0.8, 1.4, 2.2), (t1 - 1.2, 3.4, -0.5, 1.7, 2.0), (-21.0, 1.9, 0.0, 2.2, 1.0)):
         o = box((w, hgt, 0.05), (0, 0, 0), M, name='wr_peel'); apply_mods(o)
         o.data.transform(Matrix.Rotation(-ang, 4, 'Z'))

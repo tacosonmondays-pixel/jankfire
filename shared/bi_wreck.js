@@ -167,7 +167,7 @@ export const SPILL = [
   ['wreck_box', 233.5, -124, 3, 0.25, 'cargreen'], ['wreck_hatch', 222, -128, 0, 0.2], ['wreck_boat', 262, -128, 0, 0.35],
 ];
 // 20 ft boxes (the game's own container model): [x, z, along z?, material, y over the sand (- = sunk), on top of SPILL[i]]
-export const BOX20 = [[198, -156.5, 0, 'containerg', -0.9], [264, -158, 1, 'containerr', -0.7], [246, -134, 0, 'containerb', 0, 0], [228.5, -137.5, 1, 'containerr', 0]];
+export const BOX20 = [[198, -156.5, 0, 'containerg', -0.9], [264, -158, 1, 'containerr', -0.7], [246, -134, 0, 'containerb', 0, 0], [213.5, -125.0, 1, 'containerr', 0]]; // (none between the beach and the box on the hook: you see it hanging)
 
 // the build: the ship (one model, its boxes rolled with it), the spill on the beach
 export function wreck(B) {
