@@ -48,6 +48,8 @@ HULL = {'paperplane': [], 'nightshift': ['shin_L', 'shin_R']}
 # and a crane drone that came out a winged helmet (the concept crane stays until Tripo makes a crane)
 BODY = {'paperplane': ['paperplane_body', 'paperplane_body_a'], 'nightshift': ['nightshift_body']}
 CONCEPT_PARTS = {'paperplane': ['drone'], 'nightshift': []}
+PAPER = {'paperplane': ('wing_L', 'wing_R', 'drone', 'drone_wing_L', 'drone_wing_R')}  # (stay paper in the metal look)
+BEVEL = {'paperplane': 0.008, 'nightshift': 0.014}  # (metres: edge chamfers on the Tripo plates)
 # hand-placed paint per Tripo body, over the automatic pass (later lines win): the faces of joint j inside the box lo..hi
 # (game metres, the cut pose; mirror: |x|), optionally only those facing a way, or whole plates mostly inside (shell).
 # The heads: white or team-colour helmets, accent V horns, team-colour forehead and chin, glowing eyes
@@ -540,7 +542,7 @@ def split(t, lab, M, src, drop=()):
     return pieces
 
 
-def tidy_piece(o, hull=False, drop_rods=True, side_mat=None):
+def tidy_piece(o, hull=False, drop_rods=True, side_mat=None, bev=0.0):
     """a cut piece tidied: thin rods dropped (sabre hilts, whip antennas, crest spikes: shells far longer than they are
     thick), and with hull=True every sizeable plate rebuilt as its convex hull with its near-flat facets merged (lumpy
     Tripo plates -> clean chunky armour). Then the concept's hard edges and box UVs. Returns (rods dropped, plates hulled)"""
@@ -571,8 +573,14 @@ def tidy_piece(o, hull=False, drop_rods=True, side_mat=None):
         for f in new:  # (two-tone like the concept's plates: the side facets take the team paint)
             f.material_index = side_mat if side_mat is not None and abs(f.normal.x) > 0.75 else mi; f.tag = True
     fix_winding(bm)
+    if bev: bmesh.ops.dissolve_degenerate(bm, dist=bev * 0.45, edges=bm.edges[:])  # (edges shorter than the chamfer collapse into slivers)
     bm.to_mesh(o.data); bm.free()
-    finish_obj(o, angle=34)
+    finish_obj(o, bev=bev, seg=1, angle=34)  # (a small chamfer on the plate edges: the light catches them, metal not plastic)
+    if bev:
+        bm = bmesh.new(); bm.from_mesh(o.data)
+        bad = [f for f in bm.faces if f.calc_area() < 1e-8]
+        if bad: bmesh.ops.delete(bm, geom=bad, context='FACES'); bm.to_mesh(o.data)
+        bm.free()
     return nrod, len(todo)
 
 
@@ -768,7 +776,7 @@ def main():
         if j in hull and src is None:
             if mk.M['paint'].name not in o.data.materials: o.data.materials.append(mk.M['paint'])
             sm = list(o.data.materials).index(mk.M['paint'])
-        a, b = tidy_piece(o, hull=j in hull, drop_rods=ARGS.get('rods', 'keep') == 'drop', side_mat=sm); nrod += a; nhull += b
+        a, b = tidy_piece(o, hull=j in hull, drop_rods=ARGS.get('rods', 'keep') == 'drop', side_mat=sm, bev=float(ARGS.get('bevel', BEVEL[MECH]))); nrod += a; nhull += b
     bpy.data.objects.remove(t, do_unlink=True)
     for n in body_j:
         if n not in keep: bpy.data.objects.remove(mk.meshes.pop(n), do_unlink=True)
@@ -792,9 +800,19 @@ def main():
         to_joint(mk, pc, posed_rest); report[part] = f'tripo (fit error {err:.3f} m)'
     near = [o for o in mk.root.children_recursive if o.type == 'MESH']
     tripo_objs = [o for o in near if o.data.name.endswith('_tripo')]
+    report['lod0_tris'] = decimate(near, int(ARGS.get('body_tris', 45000)))
+    for o in tripo_objs:  # (after triangulating: welds the chamfer's micro-edges, drops zero-area triangles)
+        bm = bmesh.new(); bm.from_mesh(o.data)
+        bmesh.ops.dissolve_degenerate(bm, dist=1e-5, edges=bm.edges[:])  # (collapses only too-short edges: no welding across plates)
+        bmesh.ops.delete(bm, geom=[f for f in bm.faces if f.calc_area() < 1e-8], context='FACES')
+        bmesh.ops.delete(bm, geom=[v for v in bm.verts if not v.link_faces], context='VERTS')
+        fix_winding(bm)
+        bm.to_mesh(o.data); bm.free()
     report['zfight_tris_dropped'] = drop_zfights(tripo_objs, near)
     report['floaters_dropped'] = drop_floaters(tripo_objs, near)
-    report['lod0_tris'] = decimate(near, int(ARGS.get('body_tris', 45000)))
+    report['lod0_tris'] = sum(len(o.data.polygons) for o in near)
+    if 'flat' not in ARGS:  # (painted metal: the owner, 2026-11-12, "they look like plastic toys")
+        import metalkit; report['metal_look'] = metalkit.apply(mk, bake='no-bake' not in ARGS, skip=PAPER.get(MECH, ()))
     if 'qa' in ARGS:
         sys.path.insert(0, os.path.join(ROOT, '.claude', 'skills', 'blender-asset-qa', 'scripts')); import qa_check
         res = qa_check.run(objects=[o.name for o in near], profile='game', eps=0.0008, tol=0.004)
@@ -809,7 +827,7 @@ def main():
                  'clips': [{k2: cl[k2] for k2 in ('name', 'dur', 'loop', 'hold', 'partial', 'note')} for cl in clip_list]})
     mk.root['jf'] = json.dumps(meta)
     print('JF_TRIPO', MECH, json.dumps(report))
-    if 'no-export' not in ARGS: R.export(mk, ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{MECH}.glb')))
+    if 'no-export' not in ARGS: R.export(mk, ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{MECH}.glb')), export_vertex_color='ACTIVE')
     return mk
 
 

@@ -25,6 +25,8 @@ const SHOTS = [ // name, caption, what stands where, the camera (eye, target, fo
     cam: [[-0.5, 3.2, -4.5], [0.2, 2.7, -16.6], 50] },
   { name: 'jet', cap: 'PAPER PLANE jet mode, 3 m up', put: [['mech_paperplane', 'jet', 'A', [0, 3.0, -16], -0.9]],
     cam: [[-5.0, 4.4, -8.5], [0, 4.2, -16], 46] },
+  { name: 'ns_sun', cap: 'NIGHT SHIFT up close in the sun: painted metal', put: [['mech_nightshift', 'ready', 'A', [0, 0, -16], -0.6]],
+    cam: [[-2.6, 4.2, -11.2], [0.0, 4.3, -16], 40] },
   { name: '30m', cap: 'from the firing line, 30 m away, default fov 95', put: [['mech_paperplane', 'ready', 'A', [-3.2, 0, -20], 0.2], ['mech_nightshift', 'ready', 'A', [3.4, 0, -20], -0.2], ['mq', [0.2, 0, -20], 0]],
     cam: [[0, 1.75, 10], [0, 2.4, -20], 95] },
 ];
@@ -120,7 +122,7 @@ const SHOTS = [ // name, caption, what stands where, the camera (eye, target, fo
   // a contact sheet with captions (3 x 2 at 800 x 450)
   const W = 800, H = 450, tmp = fs.mkdtempSync(path.join(require('os').tmpdir(), 'mechgame-')), cells = [];
   files.forEach(([f, cap], i) => {
-    const o = path.join(tmp, `c${i}.png`), lab = cap.replace(/[:']/g, ' ');
+    const o = path.join(tmp, `c${i}.png`), lab = cap.replace('(too hd)', PR === 3 ? '(too hd)' : `(preset ${PR})`).replace(/[:']/g, ' ');
     execFileSync('ffmpeg', ['-loglevel', 'error', '-y', '-i', f, '-vf', `scale=${W}:${H},drawbox=x=0:y=${H - 30}:w=${W}:h=30:color=0x120818@0.85:t=fill,drawtext=text='${lab}':x=10:y=${H - 23}:fontsize=17:fontcolor=0xffe14d`, o]);
     cells.push(o);
   });

@@ -141,7 +141,7 @@ def key_clips(mk, mod, clip_list):
     bpy.context.view_layer.update()
 
 
-def export(mk, path):
+def export(mk, path, **extra):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.object.select_all(action='DESELECT')
     for o in [mk.root] + list(mk.root.children_recursive): o.select_set(True)
@@ -149,7 +149,7 @@ def export(mk, path):
                               export_texcoords=True, export_normals=True, export_materials='EXPORT', export_image_format='AUTO',
                               export_lights=False, export_cameras=False, export_animations=True, export_animation_mode='NLA_TRACKS',
                               export_merge_animation='NLA_TRACK', export_force_sampling=True, export_frame_step=1, export_optimize_animation_size=True,
-                              export_optimize_animation_keep_anim_object=True)  # (keep still channels: a joint a clip doesn't move is reset by it)
+                              export_optimize_animation_keep_anim_object=True, **extra)  # (keep still channels: a joint a clip doesn't move is reset by it)
     print(f'JF_EXPORT {os.path.relpath(path, ROOT)}: {os.path.getsize(path) // 1024} KB, {mk.tris()} tris')
 
 

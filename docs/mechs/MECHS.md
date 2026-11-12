@@ -79,6 +79,16 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
 - `*_glow`: the visor slats or bar and the sword edges. Emissive.
 - `*_thrust`: the thruster throats. Emissive; scale it with boost.
 - Decals have their own materials, e.g. `ns_ledmat` is the PLEASE HOLD screen.
+- **Painted metal** (`tools/blender/mechs/metalkit.py`, the owner: "they look like plastic toys"):
+  - paint is metallic car paint with a clear coat; white is pearl; `frame` is brushed gunmetal (anisotropic);
+    `accent` is polished gold.
+  - All of them share one small tiling detail set (panel lines, rivets, scratches, chips, grime in the seams;
+    `mech_detail_*`) on box UVs, 2 m per tile.
+  - `COLOR_0` holds baked shading: ambient occlusion and lighter worn edges.
+  - No extra materials or draw calls. Paint materials carry `extras.jf_look = 'painted metal'`.
+- **Tinting:** a model whose paint has `jf_look` keeps its own paint material (maps, clear coat). MECH DROP clones it
+  per mech and sets the colour (`public/js/mechmodel.js`), instead of swapping in the glossy stand-in paint.
+- PAPER PLANE's wings and crane stay paper: `*_paper` copies of the role materials, without the metal look.
 
 ## Clips (all 30 fps; three.js AnimationMixer by name)
 - "hold last frame": play it LoopOnce with `clampWhenFinished = true`.

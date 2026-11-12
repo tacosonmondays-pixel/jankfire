@@ -69,6 +69,12 @@ node tools/blender/mechs/compare.cjs <out.jpg> "front,q,side,back" a=<one.glb> b
   - lumpy plates (`hull=`: NIGHT SHIFT's shins) are rebuilt as clean faceted armour;
   - chips that float at rest, doubled triangles and folded faces go, so the asset gate passes;
   - `rods=drop` also drops thin rods (off by default: the look stays).
+- **Painted metal** (`metalkit.py`):
+  - metallic car paint with a clear coat, brushed gunmetal frames, gold accents;
+  - one shared tiling detail set (panel lines, rivets, scratches, chips, grime);
+  - baked vertex shading (occlusion, worn edges);
+  - small chamfers on the Tripo plate edges so the light catches them (`bevel=`, 1.4 cm NIGHT SHIFT, 8 mm PAPER PLANE).
+  - `flat` builds without it.
 - Moving parts (wings, crane, sword, shield) are fitted onto the concept ones (`JF_TRIPO ... fit error`). A part
   named in `concept=` keeps the concept one.
 - Turn the body with `yaw=0` if Tripo's front came out facing the other way.

@@ -24,7 +24,7 @@ const r = new THREE.DirectionalLight(0x80d0ff, 1.0); r.position.set(6, 5, 8); sc
 sc.add(new THREE.GridHelper(8, 8, 0x5a3a6a, 0x3a2a4a));
 const cam = new THREE.PerspectiveCamera(30, CW / CH, 0.1, 200), ui = document.getElementById('ui'), out = { missing: [], tris: [] };
 const CAM = { front: [0, 0.55, -1], q: [-0.62, 0.62, -0.8], side: [-1, 0.55, 0], back: [0, 0.55, 1], clip: [-0.5, 0.62, -0.9],
-  upper: [-0.17, 0.82, -0.28, 0.78], faceh: [-0.03, 0.86, -0.3, 0.84], bk: [0.12, 0.62, 0.3, 0.62], face: [-0.06, 0.8, -0.16, 0.8], mid: [-0.22, 0.5, -0.3, 0.44], arm: [0.2, 0.47, -0.2, 0.42, 1.1], armside: [0.3, 0.45, 0.02, 0.42, 1.1], legs: [-0.17, 0.3, -0.28, 0.2], uback: [0.2, 0.85, 0.28, 0.78] };  // (x, y, z of the camera per height; close-ups: the look-at height)
+  upper: [-0.17, 0.82, -0.28, 0.78], pauldron: [-0.16, 0.86, -0.2, 0.8, -1.1], shin: [-0.12, 0.25, -0.2, 0.2, -0.55], faceh: [-0.03, 0.86, -0.3, 0.84], bk: [0.12, 0.62, 0.3, 0.62], face: [-0.06, 0.8, -0.16, 0.8], mid: [-0.22, 0.5, -0.3, 0.44], arm: [0.2, 0.47, -0.2, 0.42, 1.1], armside: [0.3, 0.45, 0.02, 0.42, 1.1], legs: [-0.17, 0.3, -0.28, 0.2], uback: [0.2, 0.85, 0.28, 0.78] };  // (x, y, z of the camera per height; close-ups: the look-at height)
 for (let i = 0; i < N; i++) {
   const g = await new Promise((ok, bad) => new GLTFLoader().load(`/f/${i}.glb`, ok, undefined, bad));
   let tris = 0;
