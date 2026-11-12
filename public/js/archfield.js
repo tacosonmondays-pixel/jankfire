@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // the models that exist (so nothing 404s asking for one that doesn't)
-export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd']);
+export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms']);
 // map material keys -> the paint a Blender building takes on (its '@siding' / '@roof' / '@trim' parts)
 const PAINT = {
   hutadobe: '#ffdcae', hutsideorange: '#ffb866', hutsidemint: '#a8ffd8', hutsidelemon: '#fff27a', // (sunlit mud plaster: the Desert's adobe huts)
@@ -44,9 +44,10 @@ function material(name, x) { // one shared material per Blender material name
   const decal = x.tex === 'decals';
   const m = new THREE.MeshLambertMaterial({ map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') });
   if (x.alpha) { m.alphaTest = 0.5; m.side = THREE.DoubleSide; }
-  if (decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
+  if (decal || x.decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
   if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(x.glowcol || 0xffffff); } // (glowcol: a lava orange, say; white = the texture's own light)
   if (x.glowmap) { m.emissiveMap = tex(x.glowmap); m.emissive = new THREE.Color(0xffd890); } // lit windows (facades)
+  if (x.fade > 0 && x.fade < 1) { m.transparent = true; m.opacity = x.fade; m.depthWrite = false; } // see-through (a volcano's smoke): never hides anything behind it
   m.name = 'arch_' + name;
   m.userData.arch = true;
   if (hazeFn) hazeFn(m);
