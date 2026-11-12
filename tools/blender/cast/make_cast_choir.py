@@ -219,6 +219,38 @@ def sheet_px(px):  # her hymn sheet, a tick list
         if i < 4: px_line(px, 3, y + 2, 4.5, y + 3.5, 0xd8203a, 1); px_line(px, 4.5, y + 3.5, 6.5, y + 0.5, 0xd8203a, 1)
 
 
+def thin_tex(name, w, h, base, seed):
+    """the horseshoe's hair as a cut-out (rgba; alpha = hair), v up the image: 0..0.2 the nape (each strand starts at its
+    own height, so the edge is soft and uneven), 0.2..0.6 full, 0.6..1 thinning (strands stop at their own lengths, in
+    clumps with a point each, so it thins into the bald dome, the real scalp showing between them, not a line)"""
+    r = np.random.default_rng(seed); hb = hexrgb(base)
+    L, lock, x = np.zeros(w), np.ones(w), 0
+    while x < w:  # (locks of 3-6 strands: the middle ones longest, a dark parting between locks, a sheen down the middle)
+        cw = int(r.integers(3, 7)); lc = 0.63 + 0.35 * r.random() ** 1.15; lb = 0.88 + 0.24 * r.random()
+        for k in range(cw):
+            if x + k < w:
+                L[x + k] = lc - 0.07 * abs(k - (cw - 1) / 2) / max(1, cw / 2) + 0.03 * (r.random() - 0.5)
+                lock[x + k] = lb * (0.62 if k == 0 else 1.0 + 0.12 * (1 - abs(k - (cw - 1) / 2) / max(1, cw / 2)))
+        x += cw
+    wisp = r.random(w) < 0.1; L[wisp] = 0.86 + 0.13 * r.random(wisp.sum())  # (a few lone long ones)
+    S = 0.01 + 0.15 * r.random(w) ** 1.3; B = (0.86 + 0.2 * r.random(w)) * lock
+    v = 1 - (np.arange(h)[:, None] + 0.5) / h  # (image rows go top down)
+    k = np.clip((L[None, :] - v) / 0.04, 0, 1) * np.clip((v - S[None, :]) / 0.04, 0, 1)
+    groove = 1.0
+    root = 0.8 + 0.2 * np.clip((v - S[None, :]) / 0.12, 0, 1)
+    rgba = np.ones((h, w, 4), dtype=np.float32)
+    rgba[:, :, :3] = np.clip(hb[None, None, :] * (B[None, :] * groove * root)[:, :, None], 0, 1)
+    rgba[:, :, 3] = k
+    img = bpy.data.images.new(name, w, h, alpha=True); img.pixels.foreach_set(rgba[::-1].ravel()); img.file_format = 'PNG'; img.pack()
+    m = mat(name.replace('T', 'M'), 0xffffff, rough=0.62)
+    nt = m.node_tree; bsdf = nt.nodes['Principled BSDF']
+    t = nt.nodes.new('ShaderNodeTexImage'); t.image = img; t.interpolation = 'Closest'
+    rnd = nt.nodes.new('ShaderNodeMath'); rnd.operation = 'ROUND'  # (glTF: alphaMode MASK, cutoff 0.5)
+    nt.links.new(t.outputs['Color'], bsdf.inputs['Base Color']); nt.links.new(t.outputs['Alpha'], rnd.inputs[0]); nt.links.new(rnd.outputs[0], bsdf.inputs['Alpha'])
+    if hasattr(m, 'surface_render_method'): m.surface_render_method = 'DITHERED'
+    return m
+
+
 def hair_px(base, seed):
     def draw(px):
         h, w = px.shape[:2]; r = np.random.default_rng(seed)
@@ -355,10 +387,12 @@ def slab(name, c, U, Vv, N, w, h, t, m, bev=0.0):
     return o
 
 
+_SCALP = {}
 def on_scalp(o, p, off):
     """a point pushed out from the skull's centre onto o's surface (game coords, o not yet moved), plus off along it"""
     from mathutils.bvhtree import BVHTree
-    bm = bmesh.new(); bm.from_mesh(o.data); t = BVHTree.FromBMesh(bm); bm.free()
+    t = _SCALP.get(o.name)
+    if t is None: bm = bmesh.new(); bm.from_mesh(o.data); t = _SCALP[o.name] = BVHTree.FromBMesh(bm); bm.free()
     c = gv(*HC); d = (gv(*p) - c).normalized()
     hit = t.ray_cast(c, d)
     q = hit[0] + d * off if hit[0] is not None else gv(*p)
@@ -414,6 +448,100 @@ def scalp_band(name, skull, cen, wid, h, m, rows=7, along=False):
     me = o.data; me.update()
     if me.polygons and (Vector(me.polygons[len(me.polygons) // 2].normal).dot(gv(*nrm)) < 0): me.flip_normals()  # (outward)
     return o
+
+
+def thinning_horseshoe(skull, hairM, rng):
+    """the tall one's fringe of thinning hair: from over one ear round the back of the head to the other, down to the
+    nape. a shell laid on the scalp, ~5 mm at the back, puffed to ~12 over the ears, coming down to 1.5 mm across its
+    thinning top and its nape (where the texture is mostly scalp), its very edges tucked under: no step anywhere. its
+    top is ragged in clumps, its nape wavy; the columns lean, so the strands sweep down toward the ears, and the
+    thickness ripples across them (grooves that follow the hair). tufts flick out over the ears; a few strays stand up"""
+    thin = thin_tex(ID + '_hairthinT', 64, 96, 0x3a2e2a, 75)
+    A0, NC = 1.24, 116
+    E = lambda a: math.atan2(math.sin(a), math.cos(a))  # (-pi..pi, 0 the front)
+    r2 = random.Random(77)
+    def smooth_noise(n, k, amp):
+        knots = [r2.uniform(-1, 1) for _ in range(n // k + 3)]
+        def f(i):
+            t = i / k; i0 = int(t); u = t - i0; u = u * u * (3 - 2 * u)
+            return amp * (knots[i0] * (1 - u) + knots[i0 + 1] * u)
+        return f
+    top_n, bot_n = smooth_noise(NC, 8, 0.014), smooth_noise(NC, 9, 0.009)
+    def scalp_pt(az, y):
+        return Vector(on_scalp(skull, (math.sin(az) * HR[0], y, -math.cos(az) * HR[2]), 0.0))
+    def nrm_at(q):
+        g = q - Vector(HC); return Vector((g.x / HR[0] ** 2, g.y / HR[1] ** 2, g.z / HR[2] ** 2)).normalized()
+    rxz = lambda y: 0.5 * (HR[0] + HR[2]) * math.sqrt(max(0.05, 1 - ((y - HC[1]) / HR[1]) ** 2))
+    TUCK, DEC = -0.0016, 0.0015
+    # the rows across the band: (zone, s): the tuck under the nape, the nape, the full middle, the thinning top, the tuck
+    ROWS = [('tb', 0)] + [('n', k / 3) for k in range(4)] + [('m', k / 4) for k in range(1, 5)] + [('t', k / 7) for k in range(1, 8)] + [('tt', 1)]
+    R = len(ROWS)
+    def rows_at(top, bot):  # [(zone, y, uv v, s)]: the uv never repeats between neighbouring rows (no zero-area uvs)
+        h = top - bot; zt, zb = min(0.07, 0.32 * h), min(0.028, 0.18 * h); out = []
+        for zone, sv in ROWS:
+            if zone == 'tb': out.append((zone, bot - 0.0028, 0.0, sv))
+            elif zone == 'n': out.append((zone, bot + zb * sv, 0.012 + 0.188 * sv, sv))
+            elif zone == 'm': out.append((zone, bot + zb + (h - zb - zt) * sv, 0.2 + 0.3 * sv, sv))
+            elif zone == 't': out.append((zone, top - zt + zt * sv, 0.5 + 0.488 * sv, sv))
+            else: out.append((zone, top + 0.0028, 1.0, sv))
+        return out
+    bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap'); grid = []; uvv = []; info = []
+    for i in range(NC):
+        a = A0 + (2 * math.pi - 2 * A0) * i / (NC - 1); Aa = abs(E(a)); sg = 1 if E(a) > 0 else -1
+        back = ss_(1.35, 2.45, Aa); over_ear = 1 - ss_(1.9, 2.35, Aa)
+        top0 = 0.497 + 0.04 * ss_(1.9, 2.9, Aa) - 0.048 * (1 - ss_(1.3, 1.66, Aa))  # (up to the crown at the back, lower over the ears, receding at the temples)
+        bot0 = 0.433 - 0.2 * ss_(1.95, 2.38, Aa) - 0.085 * ss_(2.25, 2.95, Aa) - 0.055 * (1 - ss_(1.36, 1.5, Aa))  # (a sideburn in front of the ear, over it, down behind it, a low level nape)
+        top = top0 + top_n(i); bot = bot0 + bot_n(i) * (0.4 + 0.6 * back)  # (only slow wobbles: the cut-out strands make the ragged edge)
+        endf = min(i, NC - 1 - i) / 6.0
+        if endf < 1:  # (the ends' corners rounded off)
+            mid, hh = (top + bot) / 2, (top - bot) / 2; hh *= 0.8 + 0.2 * math.sqrt(endf); top, bot = mid + hh, mid - hh
+        H = (0.0055 + 0.0095 * over_ear) * (0.55 + 0.45 * (0.5 + 0.5 * math.sin(i * 2 * math.pi / 3.3 + 0.7))) * (0.9 + 0.2 * r2.random())
+        H *= 0.25 + 0.75 * ss_(0.0, 1.0, endf)
+        # the lean, from the smooth (noise-free) rows so neighbouring columns shear alike and never fold: the upper
+        # rows further round to the back, the lower ones forward a little (toward the ears), most just behind the ears
+        tl = math.tan(math.radians(40) * ss_(1.45, 1.75, Aa) * (1 - ss_(2.3, 3.12, Aa))); yref = top0 - 0.35 * (top0 - bot0)
+        row, vv = [], []
+        for (zone, y, uv, sv), (_, y0, _, _) in zip(rows_at(top, bot), rows_at(top0, bot0)):
+            if zone == 'tb' or zone == 'tt': off = TUCK
+            elif zone == 'n': off = DEC + (H - DEC) * ss_(0.55, 1.0, sv) * 0.85  # (flat to the scalp where the strands start)
+            elif zone == 'm': off = DEC + (H - DEC) * (0.85 + 0.15 * math.sin(math.pi * sv))
+            else: off = DEC + (H - DEC) * 0.85 * (1 - ss_(0.0, 0.3, sv))  # (down on the scalp before it thins)
+            if i in (0, NC - 1): off = TUCK
+            az = a + sg * max(-0.06, min(0.24, tl * (y0 - yref) / rxz(y0)))
+            q = scalp_pt(az, y); qq = q + nrm_at(q) * off
+            row.append(bm.verts.new(gv(*qq))); vv.append(uv)
+        grid.append(row); uvv.append(vv); info.append((a, [Vector((v.co.x, v.co.z, -v.co.y)) for v in row]))
+    L = 0.0
+    for i in range(NC - 1):
+        du = (Vector(grid[i + 1][R // 2].co) - Vector(grid[i][R // 2].co)).length / 0.09
+        for j in range(R - 1):
+            f = bm.faces.new((grid[i][j], grid[i + 1][j], grid[i + 1][j + 1], grid[i][j + 1]))
+            for lp, (ii, jj) in zip(f.loops, ((0, j), (1, j), (1, j + 1), (0, j + 1))): lp[uvl].uv = (L + du * ii, uvv[i + ii][jj])
+            f.smooth = True
+        L += du
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = lib_obj('horseshoe', bm, thin); o['keep_uv'] = 1
+    me = o.data; pc = me.polygons[len(me.polygons) // 2]; c0 = Vector(pc.center)
+    if Vector(pc.normal).dot(gv(*nrm_at(Vector((c0.x, c0.z, -c0.y))))) < 0: me.flip_normals()  # (outward)
+    out = [o]
+    # tufts: flat clumps out of the puff over each ear, sticking out sideways and a bit down, the tips flicking up
+    for sx in (1, -1):
+        for k in range(3):
+            i = int((1.6 + 0.15 * k + r2.uniform(-0.02, 0.02) - A0) / (2 * math.pi - 2 * A0) * (NC - 1)); i = i if sx > 0 else NC - 1 - i
+            a, pts0 = info[i]; q0 = pts0[5 + k % 2]; n0 = nrm_at(q0)  # (from inside the puff, low on its full hair)
+            bk = Vector((math.sin(a + sx * 0.5) - math.sin(a), 0, -math.cos(a + sx * 0.5) + math.cos(a))).normalized()
+            Lt = 0.036 + 0.01 * ((k + 1) % 2) + r2.uniform(0, 0.006); dn = Vector((0, -1, 0))
+            pts = [q0 - n0 * 0.008, q0 + n0 * Lt * 0.3 + dn * Lt * 0.2 + bk * Lt * 0.05, q0 + n0 * Lt * 0.62 + dn * Lt * 0.34 + bk * Lt * 0.14, q0 + n0 * Lt * 0.9 + dn * Lt * 0.28 + bk * Lt * 0.24]
+            out.append(limb('tuft%d%d' % (sx, k), [tuple(p) for p in pts], [0.01, 0.0085, 0.005, 0.0012], hairM, seg=8, squash=(0.7, 1.0)))
+    # strays: a few hairs that won't lie down, up out of the thinning top at the back
+    for k in range(6):
+        a = math.pi - 0.85 + 0.34 * k + r2.uniform(-0.08, 0.08); i = max(0, min(NC - 1, int((a - A0) / (2 * math.pi - 2 * A0) * (NC - 1))))  # (spread out: no two from one spot)
+        q0 = info[i][1][R - 6]; n0 = nrm_at(q0)
+        side = Vector((math.cos(a), 0, math.sin(a))) * r2.uniform(-1, 1); up = Vector((0, 1, 0))
+        Ls = r2.uniform(0.022, 0.04)
+        pts = [q0 - n0 * 0.002, q0 + n0 * Ls * 0.45 + up * Ls * 0.2 + side * Ls * 0.15, q0 + n0 * Ls * 0.8 + up * Ls * 0.45 + side * Ls * 0.4, q0 + n0 * Ls * 0.95 + up * Ls * 0.75 + side * Ls * 0.8]
+        out.append(limb('stray%d' % k, [tuple(p) for p in pts], [0.0017, 0.0013, 0.0009, 0.0005], hairM, seg=5))
+    return out
 
 
 def uv_hairband(o):
@@ -704,20 +832,10 @@ def build():
             rim = tube([(sx * (HR[0] + 0.006), 0.3, 0.06), (sx * (HR[0] + 0.012), 0.36, 0.078), (sx * (HR[0] + 0.012), 0.41, 0.06), (sx * (HR[0] + 0.01), 0.425, 0.03), (sx * (HR[0] + 0.006), 0.41, 0.004)], 0.01, skin, seg=8, name='helix%d' % sx)
             lobe = blob('lobe%d' % sx, (sx * (HR[0] + 0.0), 0.285, 0.035), (0.015, 0.026, 0.02), skin)
             for q in (e, rim, lobe): rot_about(q, ec, 0.08, sx * 0.38, sx * -0.12); head.append(q)
-        # the hair: a horseshoe from just behind one ear round the back to the other, down to the nape, and a combover:
-        # six flat strands from a low parting on the left, plastered over the dome to the right, the scalp between them.
-        # both are ribbons laid on the scalp itself, thick in the middle, their edges tucked in (no steps, no gaps)
-        def band(a):  # (head space height of the horseshoe's top / bottom at angle a round the head, 0 = the front)
-            A = abs(a)
-            return (0.475 + 0.03 * ss_(1.4, 2.6, A), 0.43 - 0.22 * ss_(1.45, 2.75, A))
-        cen, wid = [], []
-        for i in range(41):
-            a = 1.4 + (2 * math.pi - 2.8) * i / 40  # (from just behind the right ear, round the back, to the left)
-            top, bot = band(a)
-            d = Vector((math.sin(a), 0, -math.cos(a)))
-            cen.append(on_scalp(skull, (d.x * HR[0], (top + bot) / 2, d.z * HR[2]), 0.0))
-            wid.append((top - bot) * (0.35 + 0.65 * ss_(0.0, 0.18, min(i, 40 - i) / 40)))  # (the ends taper over the ears)
-        head.append(scalp_band('horseshoe', skull, cen, wid, 0.013, hairM, rows=9))
+        # the hair: a thinning horseshoe from a sideburn in front of one ear round the back to the other, down to the
+        # nape (a cut-out strand texture on a shell hugging the scalp: thinning_horseshoe), and a combover: six flat
+        # strands from a low parting on the left, plastered over the dome to the right, the scalp between them
+        head += thinning_horseshoe(skull, hairM, rng)
         for i in range(6):  # (each out of the horseshoe above the left ear, up over the dome, down to the right one)
             z0 = -0.12 + i * 0.047; pts = []
             for j in range(16):

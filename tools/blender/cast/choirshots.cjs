@@ -2,7 +2,7 @@
 // choir.js: the hum, sing and heads clips, playTogether), stepped at a fixed 30 fps so a slow software GL still gives
 // smooth frames. A little studio: the lung's red flesh, the bone floor, its pink light.
 //   node tools/blender/cast/choirshots.cjs <port> <outdir> [stills|clip|walk|both] [code]
-// stills: <outdir>/choir_*.png (the pair front, 3/4 and back, faces and hands up close, the stalls)
+// stills: <outdir>/choir_*.png (the pair front, 3/4 and back, faces, hands and the tall one's hair up close, the stalls)
 // clip:   <outdir>/clip/f_0000.jpg ... (hum 5 s, sing 5 s, the heads all turning to you 5 s) -> ffmpeg makes the mp4
 // walk:   <outdir>/walk/f_0000.jpg ... (a procession: loco walks them, the binders stay up)
 // code:   the code puppets instead of the Blender models (for side-by-sides)
@@ -77,6 +77,8 @@ const [PORT = 3000, OUT = 'choir_shots', MODE = 'both', CODE = ''] = process.arg
     await shoot([0.1, 0.35, -1.5], [0.0, 0.1, 0], path.join(OUT, 'choir_shoes.png'), 34);
     await yawOf(Math.PI); await step(30, { look: 'ahead' });
     await shoot([0, 1.45, -5.6], [0, 1.05, 0], path.join(OUT, 'choir_pair_back.png'));
+    await shoot([-0.7, 2.02, -1.45], [-0.7, 1.88, 0], path.join(OUT, 'choir_hair_back.png'), 30); // (the tall one's thinning horseshoe, as the game draws its cut-out strands)
+    await shoot([-1.75, 2.0, -1.0], [-0.7, 1.88, 0], path.join(OUT, 'choir_hair_34back.png'), 30);
     await yawOf(-Math.PI / 2); await step(30, { look: 'ahead' });
     await shoot([0, 1.45, -5.6], [0, 1.05, 0], path.join(OUT, 'choir_pair_side.png'));
     // the stalls: two rows across an aisle, from the door end, then all of them turned to you
