@@ -64,13 +64,14 @@ export function installWrecking(Room, U) {
         const P = WB.pile, up = (P.rise / P.up + P.hang) * 1000 + 300;
         if (n - W.pile.t > P.life * 1000) { W.pile = null; this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); }
         else if (W.pile.ph !== 'down' && n - W.pile.t > up) this.wbPileDrop(p, [0, -1, 0], n, true); // (hung there too long: straight down)
+        else if (W.pile.ph === 'down' && (n > W.pile.dEnd || hdist(p.pos, W.pile.to) > W.pile.dl + 5)) { W.pile = null; M.bank = Math.min(M.bank, MECH.slack); this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); } // (the dive's 70 m/s is for the trip to its spot: no longer, and not away from it)
       }
       if (W.coast && W.coast.v - COAST * (n - W.coast.t) / 1000 < WB.speed) W.coast = null;
       if (!W.pile) this.wbRamTick(p, M, n);
     },
     // passive: rolling (or swinging, or diving) it shrugs off knockback entirely
     shrug(t) {
-      const M = t.mech, W = M.wb, v = t.isBot ? [t.vel[0], t.vel[2]] : M.mv || [0, 0];
+      const M = t.mech, W = M.wb, v = t.isBot ? [t.vel[0], t.vel[2]] : M.mv && now() - M.snapT < 300 ? M.mv : [0, 0]; // (measured, and only while it's still sending)
       if ((W && (W.chain || W.pile)) || Math.hypot(v[0], v[1]) > WB.shrug) return [0, 0, 0];
       return null;
     },
@@ -190,6 +191,8 @@ export function installWrecking(Room, U) {
       }
       if (!to) { const h = raycast(e, [0, -1, 0], 200, this.boxes); to = h ? h.point.slice() : [p.pos[0], p.pos[1] - 40, p.pos[2]]; }
       W.pile.ph = 'down'; W.pile.to = to; W.pile.dT = n;
+      W.pile.dl = hdist(p.pos, to);
+      W.pile.dEnd = n + Math.hypot(to[0] - p.pos[0], to[1] - p.pos[1], to[2] - p.pos[2]) / P.dive * 1000 + 700;
       this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'down', to: to.map(r2) });
     },
     wbPileLand(p, drop, n) {
@@ -259,9 +262,15 @@ export function installWrecking(Room, U) {
           if (this.wbSlamStart(b, n) && b.onGround) { v[1] = WB.slam.hop; b.onGround = false; b.pos[1] += 0.05; }
         } else if (t && vis && b.onGround && flat > 9 && flat < 38 && !(M.dash && n < M.dash.until) && M.E.v >= WB.rev.cost && Math.random() < dt * 0.7 * easy) {
           this.wbRevStart(b, n); B.revUntil = n + (500 + Math.random() * 400);
-        } else if (t && n >= (M.cd.chain || 0) && M.E.v >= WB.chain.cost + 5 && (t.pos[1] - b.pos[1] > 5 || (flat > 30 && Math.random() < dt * 0.3)) && Math.random() < dt * 2 * easy) {
-          const up = [wx * 0.5, 1, wz * 0.5], l = Math.hypot(...up), h = raycast(e, up.map((x) => x / l), WB.chain.range, this.boxes);
-          if (h && !h.box.pad && h.point[1] > b.pos[1] + 4 && this.wbChain(b, h.point, n)) { B.chainUntil = n + 1400 + Math.random() * 900; if (b.onGround) { v[1] = 6; b.onGround = false; b.pos[1] += 0.05; } }
+        } else if (t && n >= (M.cd.chain || 0) && n >= (B.chainTry || 0) && M.E.v >= WB.chain.cost + 5 && (t.pos[1] - b.pos[1] > 4 || flat > 24) && Math.random() < dt * 2 * easy) {
+          // something to swing from: up toward them (steep to shallow), else up to either side of them
+          B.chainTry = n + 700;
+          for (const [ux, uz, uy] of [[wx, wz, 0.6], [wx, wz, 1], [wx, wz, 1.6], [wx - wz * 0.7, wz + wx * 0.7, 0.8], [wx + wz * 0.7, wz - wx * 0.7, 0.8]]) {
+            const l = Math.hypot(ux, uy, uz), h = raycast(e, [ux / l, uy / l, uz / l], WB.chain.range, this.boxes);
+            if (!h || h.box.pad || h.point[1] < b.pos[1] + 4 || h.t < 5) continue;
+            if (this.wbChain(b, h.point, n)) { B.chainUntil = n + 1300 + Math.random() * 1000; if (b.onGround) { v[1] = 6; b.onGround = false; b.pos[1] += 0.05; } }
+            break;
+          }
         }
         // roll: slow to get going, slow to stop, faster than anything once it's going
         const hs = Math.hypot(v[0], v[2]);

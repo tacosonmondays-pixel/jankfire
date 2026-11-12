@@ -304,7 +304,7 @@ export function installMech(Room, U) {
     mechUlt(p, add) { const M = p.mech; if (!M || !MECH[M.f].ult || !(add > 0)) return; M.ult = Math.min(100, (M.ult || 0) + add); },
     // a hero's hit: hurt, and what it really took off them charges the ult. returns what it dealt
     mechKitHurt(p, t, w, dmg, kb, opts) {
-      const pool = () => (this.mechOn(t) && t.body ? t.body.hp : t.alive ? t.hp : 0), hp0 = pool();
+      const pool = () => (t.body ? Math.max(0, t.body.hp) : 0) + (t.alive ? Math.max(0, t.hp) : 0), hp0 = pool(); // (a mech's / rig's / ball's pool, then HP)
       const got = this.hurt(t, p, w, dmg, kb, opts);
       const dealt = got === t ? Math.max(0, hp0 - pool()) : 0;
       if (p.mech && MECH[p.mech.f].ult && !(opts && opts.ult)) this.mechUlt(p, dealt * 100 / MECH[p.mech.f].ult.dmg); // (an ultimate's own hits don't charge the next one)

@@ -25,7 +25,7 @@ function client(name, extra = {}) {
     if (m.t === 'welcome') { c.id = m.id; c.q = m.q; }
     if (m.t === 'spawn') { c.q = m.q; }
     if (m.t === 'sn') { const r = m.p.find((x) => x[0] === c.id); if (r) { c.hp = r[10]; c.alive = !!r[11]; c.f = r[13]; } return; }
-    if (process.env.DBG && m.t === 'mech' && name === 'baller' && /^(no|fix|wbchain|wbpile|wbquake|wbrev|wbslam)$/.test(m.k)) console.log('   .', JSON.stringify(m));
+    if (process.env.DBG && m.t === 'mech' && name === 'baller' && /^(no|fix|wbchain|wbpile|wbquake|wbrev|wbslam|down|out|in|gone)$/.test(m.k)) console.log('   .', JSON.stringify(m));
     c.got.push(m);
   });
   ws.on('error', () => {});
@@ -247,6 +247,19 @@ const lerp = (a, b, k) => a.map((x, i) => x + (b[i] - x) * Math.max(0, Math.min(
   await pilot(400, () => P, MF.B, { b: tgt, c: cNear });
   ok(!A.all('mech', (m) => m.k === 'wbquake' && m.big).length && !C.all('dmg', (m) => m.w === 'wbpile').length, 'a pile driver that never got up there: fizzles, nobody hurt');
   await sleep(2600);
+
+  // a cheat: a real rise and dive call, then it keeps zooming sideways at 65 m/s instead of landing
+  for (let i = 0; i < 60; i++) { const e = A.all('mech', (m) => m.k === 'en').pop(); if (e && e.u >= 100) break; await pilot(150); }
+  A.got.length = 0;
+  A.send({ t: 'mech', k: 'pile' });
+  const top2 = [P[0], Y + 30, P[2]], P2 = P.slice();
+  await pilot(1500, (t) => lerp(P2, top2, t / 1100), MF.B);
+  A.send({ t: 'mech', k: 'pdrop', d: [0, -1, 0] }); await pilot(100, () => top2, MF.B);
+  await pilot(1000, (t) => [top2[0] + 65 * t / 1000, top2[1], top2[2]], MF.B);
+  ok(A.all('mech', (m) => m.k === 'wbpile' && m.ph === 'off').length === 1 && A.all('mech', (m) => m.k === 'fix').length > 0, 'pile driver dive, then zooming sideways at 65 m/s: the dive ends, put back');
+  P = settle(A, top2);
+  await pilot(1800, (t) => lerp(P, [P[0], Y, P[2]], t / 1200)); P = [P[0], Y, P[2]];
+  await pilot(900);
 
   // ---- 8. hop out keeps the ult and cooldowns; disconnect cleans up
   A.got.length = 0;
