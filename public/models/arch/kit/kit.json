@@ -363,6 +363,18 @@
   "alpha": true,
   "note": ""
  },
+ "fac_glass": {
+  "tile": 4.4,
+  "px": 128,
+  "alpha": false,
+  "note": ""
+ },
+ "profile": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": false,
+  "note": "tint"
+ },
  "chainlink": {
   "tile": 0.5,
   "px": 32,
@@ -371,12 +383,6 @@
  },
  "galv": {
   "tile": 1.0,
-  "px": 32,
-  "alpha": false,
-  "note": "tint"
- },
- "rpanel": {
-  "tile": 0.5,
   "px": 32,
   "alpha": false,
   "note": "tint"

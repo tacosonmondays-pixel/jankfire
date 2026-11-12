@@ -36,7 +36,7 @@ bots and hits keep the boxes exactly as they were (`node tools/arch/gamehash.mjs
 instead: buildings are huge and tile, so they get small seamless textures in world-scale UVs plus vertex AO. Both
 use the same treatment: a small palette per texture, 15-bit colour, ordered dither, matte, no mipmaps up close. Shared
 conventions for glbs that use the kit: no embedded images; each material carries extras `tex` (kit image name), `tile`,
-`col` (hex factor), and optionally `paint` (a slot the map repaints), `alpha` (1-bit cutout), `glow` / `glowmap`
+`col` (hex factor), and optionally `paint` (a slot the map repaints), `alpha` (1-bit cutout), `fade` (see-through, 0..1: smoke; shaded smooth, light AO), `glow` / `glowmap`
 (emissive) and `nocast` (no sun shadow); `shine` / `spec` (a glossy coat: Phong, the same diffuse light plus a
 highlight, for paint, zinc and chrome) and `nomip` (no mipmaps: see-through wire mesh, which mipped melts into a sheet or
 vanishes). The client loads each kit image once by name (archfield.js `tex()`).

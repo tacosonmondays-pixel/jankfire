@@ -19,7 +19,7 @@ import { organic } from '../organic.js';
 import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared/map.js';
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
-import { WorkerSocket } from './host.js';
+import { WorkerSocket, warmWorker } from './host.js';
 import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
@@ -38,7 +38,7 @@ import { initBody, bodyTick, bodyKey, bodyLeave, clinicOpen, toggleClinic, atCli
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-const LOCAL = 'jfStorySaves', BACK = 'jfStoryBack';
+const LOCAL = 'jfStorySaves', BACK = 'jfStoryBack', JUMP = 'jfStoryJump';
 const listeners = {};
 let pausedWas = false, api = null, picker = null, hint = null, cur = null, useWas = false, autoT = 0, pendingSave = null, lastPost = 0;
 
@@ -50,7 +50,7 @@ export function initStory(a) {
   css();
   button();
   net.on('sty', (m) => { const fs = listeners[m.k]; if (fs) for (const f of fs) f(m); });
-  G.story = { on, send, save, active, tick, onMain, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
+  G.story = { on, send, save, active, tick, onMain, simRound, key, look, uiOpen, timeScale, drive: driveStep, hideVM: driving, travel, travelBack, get cur() { return cur; } };
   // the bag as the story engine sees it (synchronous; kept fresh by the sim's 'inv' messages) + its host verbs
   G.story.inv = {
     has: (b, n = 1) => !!IVref.inv && count(IVref.inv, b) >= n,
@@ -122,6 +122,7 @@ async function openPicker() {
     document.body.append(picker);
   }
   picker.innerHTML = '';
+  warmWorker(); // (the story engine starts loading while you pick a slot)
   const panel = el('div', 'st-panel');
   panel.append(el('h2', null, 'OVERDUE'), el('p', 'st-sub', 'pick a save slot. the machine remembers.'));
   const list = el('div', 'st-slots');
@@ -150,11 +151,56 @@ async function openPicker() {
         catch (e) { go.disabled = false; api.toast(`couldn't load that slot: ${e.message}`, 3000); }
       });
       if (!c) card.append(go);
-      else { const btns = el('div', 'st-slotbtns'); btns.append(go, wipeBtn(card, i)); card.append(btns); }
+      else { const btns = el('div', 'st-slotbtns'); btns.append(go, beginBtn(card, i), wipeBtn(card, i)); card.append(btns); }
     }
     list.append(card);
   }
+  list.append(jumpRow());
   list.append(el('p', 'st-sub', L.where === 'local' ? 'not logged in: saves stay in this browser.' : L.slots < SAVE.slots ? 'saves are on your account (1 slot until the server update).' : 'saves are on your account.'));
+}
+
+// ------------------------------------------------------------ the chapter select (owner: "for story can you add a start from
+// beggining, start from train start from overtime"). always there, no unlock. FROM THE BEGINNING: a new game in that
+// slot (it asks first: the slot is wiped). the train / Overtime: a TEST RUN in its own scratch slot (JUMP_SLOT, kept in
+// this browser only, never sent to the account), so real progress is never touched. its save is made by playing the
+// story up to there with the real engine (shared/story/jump.js), never written by hand
+const freshSave = (i) => newSave(i, testLot() ? (trainLot() ? TRAIN.id : 'story_test') : DEFAULT_WORLD);
+function beginBtn(card, i) {
+  const b = el('button', 'st-btn', 'FROM THE BEGINNING');
+  b.dataset.begin = String(i);
+  b.addEventListener('click', () => {
+    const ask = el('div', 'st-wipe');
+    const yes = el('button', 'st-btn red', 'WIPE + START'), no = el('button', 'st-btn', 'nah');
+    ask.append(el('span', null, 'are you sure? this wipes your slot.'), yes, no);
+    card.classList.add('wiping'); card.append(ask);
+    no.addEventListener('click', () => { ask.remove(); card.classList.remove('wiping'); });
+    yes.addEventListener('click', async () => {
+      yes.disabled = no.disabled = true;
+      try { await wipeSlot(i); } catch (e) { yes.disabled = no.disabled = false; api.toast(`couldn't wipe it: ${e.message}`, 3000); return; }
+      picker.classList.add('hidden'); start(freshSave(i));
+    });
+  });
+  return b;
+}
+function jumpRow() {
+  const row = el('div', 'st-jumps');
+  row.append(el('b', null, 'CHAPTER SELECT'), el('span', 'st-sub', 'a test run in its own slot, kept in this browser. your 3 slots stay as they are.'));
+  const btns = el('div', 'st-jumpbtns');
+  for (const [id, text] of [['train', 'START FROM THE TRAIN'], ['overtime', 'START FROM OVERTIME']]) {
+    const b = el('button', 'st-btn', text); b.dataset.jump = id;
+    b.addEventListener('click', async () => {
+      for (const x of btns.children) x.disabled = true;
+      b.textContent = 'PLAYING YOUR LIFE BACK...';
+      try {
+        const J = await import('/shared/story/jump.js');
+        const { save } = J.jump(id, { slot: J.JUMP_SLOT, loadout: G.settings.loadout || {} });
+        picker.classList.add('hidden'); start(save);
+      } catch (e) { console.warn('jump', e); api.toast(`couldn't jump there: ${e.message}`, 3500); for (const x of btns.children) x.disabled = false; b.textContent = text; }
+    });
+    btns.append(b);
+  }
+  row.append(btns);
+  return row;
 }
 
 // ------------------------------------------------------------ wiping a slot (the owner: "how do I reset my story slot")
@@ -185,7 +231,37 @@ async function wipeSlot(i) {
   const bk = back(); if (bk && bk.slot === i) setBack(null);
 }
 
+// ------------------------------------------------------------ the loading card (owner playtest: "everything takes forever to load")
+// from NEW GAME / CONTINUE until you're standing in the city: what it's doing and how far along
+let loadCard = null, loadT = 0, loadJoin = 0;
+function loadingOn() {
+  loadT = performance.now(); loadJoin = 0; G.cityReady = false;
+  try { performance.mark('jf-story-start'); } catch { /* old browser */ }
+  if (!loadCard) { loadCard = el('div', 'st-load hidden'); loadCard.id = 'stLoad'; loadCard.innerHTML = '<b></b><i><u></u></i><span></span>'; document.body.append(loadCard); }
+  loadCard.classList.remove('hidden');
+}
+function loadingTick() {
+  if (!loadT || !loadCard) return;
+  const inRun = G.joined && G.mode === 'story', secs = (performance.now() - loadT) / 1000;
+  if (inRun && !loadJoin) loadJoin = performance.now(); // (when the engine had us in: the rest is the city)
+  const streamed = !!(G.cfg && MAPS[G.cfg.map] && MAPS[G.cfg.map].stream); // (the train and the test lot aren't streamed: they're in once you've joined)
+  if (inRun && (G.cityReady || !streamed)) return loadingOff();
+  if (!G.joined && secs > 2 && $('menu') && !$('menu').classList.contains('hidden')) return loadingOff(); // (it crashed back to the menu: main.js says why)
+  const creep = (from, k) => 1 - Math.exp(-Math.max(0, secs - from) / k); // (the city's first pass lands all at once: the bar keeps moving meanwhile)
+  const p = inRun ? Math.max(0.15 + 0.7 * creep((loadJoin - loadT) / 1000, 10), Math.min(1, 0.15 + 0.85 * (G.cityProgress || 0))) : 0.14 * creep(0, 4);
+  loadCard.querySelector('b').textContent = inRun ? 'STREAMING THE CITY' : 'WAKING THE MACHINE';
+  loadCard.querySelector('u').style.width = Math.round(p * 100) + '%';
+  loadCard.querySelector('span').textContent = inRun ? `${Math.round(p * 100)}% · the ground first, so you don't fall through it` : 'warming up the story engine...';
+}
+function loadingOff() {
+  const t1 = performance.now(), ms = t1 - loadT, j = loadJoin ? loadJoin - loadT : ms; loadT = 0;
+  if (loadCard) loadCard.classList.add('hidden');
+  try { performance.mark('jf-story-playable'); } catch { /* old browser */ }
+  console.info(`story: playable in ${(ms / 1000).toFixed(1)} s (engine ${(j / 1000).toFixed(1)} s, city ${((ms - j) / 1000).toFixed(1)} s)`); // (the numbers to send when it's slow on a real machine)
+}
+
 function start(save) {
+  loadingOn();
   cur = save;
   autoT = performance.now();
   api.startMode('story', undefined, () => new WorkerSocket(save));
@@ -218,6 +294,7 @@ async function stored(s) {
   if (!s) return;
   cur = s;
   const why = pendingSave; pendingSave = null;
+  if (s.slot >= SAVE.slots) { try { localStorage.setItem(JUMP, JSON.stringify(s)); } catch { /* full */ } return; } // a chapter-select test run: this browser only, never the account's slots
   const l = localSaves(); l[s.slot] = s; // a local copy always (guests: the only copy)
   try { localStorage.setItem(LOCAL, JSON.stringify(l)); } catch { /* full */ }
   if (!account.loggedIn) return;
@@ -232,8 +309,11 @@ function tick(dt = 1 / 60) {
   const bk = back();
   if (bk && bk.state === 'menu' && G.joined && G.mode !== 'story') setBack({ ...bk, state: 'sim' }); // you picked a sim
   const on = active() && ME.alive;
-  const near = on && atTerminal() && !storyPrompt(); // (the story's own F at the Machine, "take your item", wins over the sims)
+  const near = on && atTerminal() && !storyPrompt() && !askOpen(); // (the story's own F at the Machine, "take your item", wins over the sims)
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
+  if (askOpen() && (!$('menu').classList.contains('hidden') || !G.joined || G.mode !== 'story')) closeAsk(false); // (the pause menu, or the run ended)
+  bannerTick();
+  loadingTick();
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
   const car = on && !near && !driving() ? nearestCar() : null;
   const drop = on && !near && !car ? nearestDrop() : null, lock = on && !near && !drop && atLocker(), doc = on && !near && !drop && !lock && atClinic();
@@ -242,6 +322,11 @@ function tick(dt = 1 / 60) {
   hint.classList.toggle('hidden', !(car || near || drop || lock || doc) || clinicOpen());
   const inStory = G.joined && G.mode === 'story';
   barShow(inStory);
+  // owner: "when youre in a mech or other killstreak... it should hide your standard inventory". on the train the Blood
+  // Drive has your hands, in a car the wheel does: only their own HUD shows (story.css). takeover streaks: their body class
+  const tr = window.JF_TRAIN;
+  document.body.classList.toggle('st-hands', inStory && !!(tr && tr.on));
+  document.body.classList.toggle('st-car', inStory && driving());
   if (inStory) { barTick(dt); bodyTick(dt, G.camera); standIns(); driveTick(dt, G.camera); } else { if (wheelOpen()) closeWheel(false); if (bagOpen()) toggleBag(false); clearDrops(); bodyLeave(); clearCars(); }
   const use = on && K.isDown('use');
   if (near && use && !useWas) terminal();
@@ -275,6 +360,11 @@ function key(e, down) {
     if (K.up('use', e)) { const r = bodyKey(e, false); if (r && r.pick) send('pick', { id: r.pick }); } // (a tap on a weapon with the Second Stomach still picks it up)
     return wheelOpen() || bagOpen() || clinicOpen();
   }
+  if (askOpen()) { // the Machine's question has the keys: F = GO, backspace = nah (enter is the chat's)
+    if (!e.repeat && K.matches('use', e)) { closeAsk(false); leave('sim'); }
+    else if (e.code === 'Backspace') closeAsk(true);
+    return true;
+  }
   if (clinicOpen()) { if (K.matches(['use', 'menu'], e)) toggleClinic(false); return true; }
   if (bagOpen()) { if (K.matches(['bag', 'menu'], e)) toggleBag(false); return true; } // (the bag has the mouse)
   if (wheelOpen()) return true; // nothing leaks out of the wheel: no firing, no slot keys, no jumps
@@ -301,17 +391,78 @@ function key(e, down) {
 const storyPrompt = () => { const p = $('stPrompt'), J = window.JF_STORY; return !!((p && !p.classList.contains('hidden') && p.textContent) || (J && J.scene && J.scene.playing()) || document.body.classList.contains('st-talk')); }; // (a cutscene or a talk has the keys too)
 const atTerminal = () => { const T = worldOf(G.cfg && G.cfg.map).terminal; return Math.hypot(ME.pos[0] - T.p[0], ME.pos[2] - T.p[2]) < T.r && Math.abs(ME.pos[1] - T.p[1]) < 4; };
 function look(e) { return wheelOpen() && wheelLook(e.movementX, e.movementY); }
-function uiOpen() { return bagOpen() || clinicOpen(); }
+function uiOpen() { return bagOpen() || clinicOpen() || askOpen(); }
 function timeScale() { return G.joined && G.mode === 'story' ? wheelScale(false) * bodyTimeScale() * (G.story.fightScale ? G.story.fightScale() : 1) : 1; } // (fightScale: a boss fight's hit-stop)
 
-function terminal() {
+// F at the Machine asks first (owner playtest: "the vending machine takes you back to the main menu"). GO = straight
+// into its sim (m01's opening match: bots on Suburb), PICK A SIM = the menu with BACK TO THE CITY on it, nah = stay
+function terminal() { if (!toSim) askSim(); }
+function leave(how) {
   if (toSim) return; // (one press, one trip)
   toSim = true;
   pendingSave = 'terminal';
   const off = () => { toSim = false; const i = listeners.saved.indexOf(go); if (i >= 0) listeners.saved.splice(i, 1); };
-  const go = () => { off(); setBack({ slot: cur.slot, state: 'menu' }); api.quitToMenu(); api.toast('the machine hums. pick a sim. leave it to come back.', 3500); };
+  const go = () => {
+    off(); setBack({ slot: cur.slot, state: 'menu' });
+    if (how === 'menu') { api.quitToMenu(); api.toast('the machine hums. pick any sim. quit it to come back.', 3500); return; }
+    api.startMode('bots', { ...SIM });
+    api.toast(firstSim() ? 'the sim. win the match. (pause → quit to bail back to the city)' : 'the sim. pause → quit to come back to the city.', 5000);
+  };
   on('saved', go);
+  try { if (window.JF_STORY) window.JF_STORY.recapped = true; } catch { /* fine */ } // (a trip to the sims isn't a break: no PREVIOUSLY ON when you're back)
   send('save', { why: 'terminal' });
+}
+const SIM = { map: 'suburb', bots: 5, diff: 'easy', hip: 'normal', game: 'dm', hr: 'off' }; // the opening sim (m01: a normal-looking match on Suburb)
+const firstSim = () => { const S = window.JF_STORY && window.JF_STORY.S, q = S && S.st.quests.m01_return_to_sender; return !!(q && !q.done && q.step === 'sim'); };
+let ask = null;
+const askOpen = () => !!(ask && !ask.classList.contains('hidden'));
+function askSim() {
+  if (!ask) { ask = el('div', 'st-pick hidden'); ask.id = 'stSimAsk'; document.body.append(ask); }
+  ask.innerHTML = '';
+  const panel = el('div', 'st-panel st-simask');
+  const first = firstSim();
+  panel.append(el('h2', null, 'ENTER THE SIM?'),
+    el('p', 'st-sub', first ? "you'll leave the city for a match: bots on Suburb. win it. the machine keeps your spot." : "you'll leave the city for a match. the machine keeps your spot."));
+  const row = el('div', 'st-askrow');
+  const go = el('button', 'st-btn yellow', 'GO'), pick = el('button', 'st-btn', 'PICK A SIM'), nah = el('button', 'st-btn', 'nah');
+  go.dataset.sim = 'go'; pick.dataset.sim = 'pick'; nah.dataset.sim = 'nah';
+  go.addEventListener('click', () => { closeAsk(false); leave('sim'); });
+  pick.addEventListener('click', () => { closeAsk(false); leave('menu'); });
+  nah.addEventListener('click', () => closeAsk(true));
+  row.append(go, pick, nah);
+  panel.append(row, el('p', 'st-sub st-keys', `${K.label('use')}: GO · backspace: nah`));
+  ask.append(panel);
+  ask.classList.remove('hidden');
+  if (document.pointerLockElement) document.exitPointerLock();
+}
+function closeAsk(relock) {
+  if (!ask) return;
+  ask.classList.add('hidden');
+  if (relock && G.joined) try { G.renderer.domElement.requestPointerLock(); } catch { /* a click on the game grabs it */ }
+}
+// main.js: a sim match's round is over. won it = the machine pulls you back out (onMain takes you to the city)
+function simRound(m) {
+  const bk = back();
+  if (!bk || bk.state !== 'sim' || !G.joined || G.mode === 'story' || !m || !m.over) return;
+  const won = m.sc ? !!(m.winTeam && m.winTeam === G.myTeam) : m.winner === G.myId;
+  if (!won) { api.toast("lost the sim. the machine shrugs. next round, or pause → quit to go back to the city.", 4500); return; }
+  api.toast('you won the sim. the machine is pulling you out...', 3500);
+  setTimeout(() => { const b2 = back(); if (b2 && b2.state === 'sim' && G.joined && G.mode !== 'story') api.quitToMenu(); }, 4000);
+}
+// on the main menu while the machine holds your spot: one big way back
+let banner = null;
+function bannerTick() {
+  const bk = back();
+  const want = !!(bk && bk.state === 'menu' && !G.joined && cur && cur.slot === bk.slot && !$('menu').classList.contains('hidden') && !(picker && !picker.classList.contains('hidden')));
+  if (!want) { if (banner) banner.classList.add('hidden'); return; }
+  if (!banner) {
+    banner = el('div', 'st-back'); banner.id = 'stBackCity';
+    const b = el('button', 'st-btn yellow', 'BACK TO THE CITY');
+    b.addEventListener('click', () => openPicker()); // (the picker sees the held spot: straight back to it)
+    banner.append(el('b', null, 'THE MACHINE IS HOLDING YOUR SPOT'), b, el('span', null, 'or play any match: quit it and you come back.'));
+    document.body.append(banner);
+  }
+  banner.classList.remove('hidden');
 }
 // main.js: the main menu is about to show. true = we took over (back from a sim match: straight into the city)
 function onMain() {
@@ -340,12 +491,24 @@ function css() {
 .st-btn{font-family:var(--font);font-weight:700;font-size:18px;border:3px solid #000;background:#fff;color:#000;padding:6px 14px;box-shadow:4px 4px 0 #000;cursor:pointer}
 .st-btn.yellow{background:#ffe14d;box-shadow:4px 4px 0 #ff4fd8;transform:rotate(-2deg)}
 .st-btn:disabled{opacity:.5}
+.st-simask{width:min(520px,92vw)}.st-simask h2{font-size:40px}
+.st-askrow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin:6px 0 4px}
+.st-keys{font-size:14px;opacity:.6;margin:10px 0 0}
+.st-back{position:fixed;left:50%;top:14px;transform:translateX(-50%) rotate(-1deg);z-index:55;display:flex;align-items:center;gap:14px;flex-wrap:wrap;justify-content:center;max-width:94vw;background:rgba(18,8,24,.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:10px 16px;font-family:var(--font);color:#fff}
+.st-back.hidden{display:none}.st-back b{color:#ffe14d;font-size:20px;letter-spacing:1px}.st-back span{opacity:.8;font-size:14px}
+.st-load{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#120818;font-family:var(--font);color:#fff}
+.st-load.hidden{display:none}.st-load b{font-size:40px;color:#ffe14d;text-shadow:4px 4px 0 #ff00dc;transform:rotate(-2deg)}
+.st-load i{display:block;width:min(420px,80vw);height:22px;border:4px solid #000;background:#2a1030;box-shadow:6px 6px 0 #4fd8ff}
+.st-load u{display:block;height:100%;width:0;background:#ff4fd8;transition:width .3s}.st-load span{opacity:.8}
 .st-btn.red{background:#ff3030;color:#fff;font-size:14px;padding:4px 10px}
 .st-slotbtns{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .st-wipe{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#000;border:3px solid #ff3030;box-shadow:4px 4px 0 #ffe14d;padding:8px 10px;transform:rotate(-1deg)}
 .st-wipe span{flex:1;font-weight:700;color:#ffe14d;font-size:18px}
 .st-wipe .st-btn.red{font-size:18px;padding:6px 14px;transform:rotate(-2deg)}
 .st-slot.wiping .st-slotbtns{display:none}
+.st-jumps{display:flex;flex-direction:column;gap:6px;border:3px solid #000;background:#2a1030;box-shadow:5px 5px 0 #4fd8ff;padding:10px 12px;transform:rotate(-.5deg)}
+.st-jumps>b{color:#ffe14d;font-size:20px;letter-spacing:1px;text-shadow:3px 3px 0 #ff00dc}.st-jumps .st-sub{margin:0;font-size:14px}
+.st-jumpbtns{display:flex;gap:10px;flex-wrap:wrap}.st-jumpbtns .st-btn:nth-child(2){transform:rotate(1deg)}
 .st-hint{position:fixed;left:50%;top:62%;transform:translateX(-50%) rotate(-1.5deg);z-index:20;font-family:var(--font);font-weight:700;font-size:22px;color:#000;background:#ffe14d;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;padding:6px 14px;pointer-events:none}
 .st-on #hotbar{display:none}
 .st-bar{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;z-index:15;pointer-events:none}

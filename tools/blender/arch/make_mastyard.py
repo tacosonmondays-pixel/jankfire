@@ -17,7 +17,8 @@
 # Everything is chunky low poly with chamfered edges; the paint, zinc, chrome and plastic carry a shine (archfield.js
 # `shine`) so flashlights and the moon glint off them. local frame = the map's.
 # run: node tools/arch/dump.mjs forest mastyard tools/blender/arch/boxes/mastyard.json
-#      python3 tools/blender/arch/texkit.py   (the fence, zinc, barbed wire and sign textures)
+#      (its own kit textures: texkit.py chainlink(), galv(), barbwire(), mastsigns(), on their own seeds; the shelter is
+#      clad in the kit's `profile`)
 #      blender52 -b --python tools/blender/arch/make_mastyard.py
 import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -31,7 +32,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({  # (19 materials = 19 draw calls for the lot)
     'mastorange': ('trim', '#ff5a1c', {}), 'mastwhite2': ('trim', '#f4f2ec', {}), 'mastgalv': ('galv', '#c6ced4', {}), 'mastgalvdk': ('galv', '#7c858c', {}),
     'mastchain': ('chainlink', '#d6dce0', {'alpha': True}), 'mastbarb': ('barbwire', '#c8ced2', {'alpha': True}), 'mastconc': ('concrete', '#c9c5bd', {}),
-    'mastshell': ('rpanel', '#d8d3bf', {}), 'mastint': ('stucco', '#e6eae6', {}), 'mastdoor': ('trim', '#2f7ad8', {}), 'mastlouvre': ('louvre', '#b8b4a2', {}),
+    'mastshell': ('profile', '#d8d3bf', {}), 'mastint': ('stucco', '#e6eae6', {}), 'mastdoor': ('trim', '#2f7ad8', {}), 'mastlouvre': ('louvre', '#b8b4a2', {}),
     'mastgen': ('trim', '#ffc414', {}), 'mastblack': ('trim', '#2c2e34', {}), 'mastwood': ('planks', '#d29c6a', {}), 'mastcopper': ('trim', '#d8803e', {}),
     'mastradome': ('trim', '#ecebe4', {}), 'mastsign': ('mastsigns', '#ffffff', {'alpha': True}), 'mastlamp': ('stucco', '#ffe2a0', {'glow': True, 'glowcol': '#ffd080'}),
 })

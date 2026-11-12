@@ -390,6 +390,22 @@ def facade_office(n=128):
     return img
 
 
+def facade_glass(n=128):
+    """1 floor x 2 bays of a blue glass curtain wall (4.4 m a tile: Skyline's Spire): the floor's spandrel at the top
+    (navy panel, a chrome line), then the two panes: the dusk sky in them, bright at the top, a diagonal sheen, a
+    window cleaner's streaks. (it tiles: the lit offices are the model's, scattered)"""
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    sky = ramp(np.clip(1 - yy / n * 1.1 + (fbm(n, 2, 3) - 0.5) * 0.25, 0, 1), [(0, '#1c3a7a'), (0.45, '#3f72c8'), (0.8, '#7ab4f0'), (1, '#c8ecff')])
+    sheen = np.clip(1 - abs((xx * 0.9 + yy * 0.7) % n - n * 0.55) / 9, 0, 1) * 0.45
+    img = mix(sky, hexc('#e6f6ff'), sheen)
+    img = mix(img, img * 0.82, streaks(n, 6, length=(0.15, 0.4)) * 0.6)
+    img[0:16, :] = ramp(0.5 + (fbm(n, 6, 2)[0:16] - 0.5) * 0.3, [(0, '#16203a'), (1, '#2e4470')])  # the spandrel
+    img[14:16, :] = hexc('#dfe8f2')  # its chrome line
+    img[16:18, :] = hexc('#0e1426')  # the pane's top shadow
+    for x in (0, 1, 64, 65): img[:, x] = hexc('#c8d4e0')  # mullions (the model adds proud fins too)
+    return img
+
+
 # ------------------------------------------------------------ decals (one 256 px atlas, 1-bit alpha): ads, signs, grime
 # a 3 x 5 pixel font (PS1 menus and shop signs were this chunky). lowercase draws as uppercase
 GLYPHS = {
@@ -551,6 +567,20 @@ def weather(n=64):
     return img, (a > 0.5).astype(np.float32)
 
 
+def profile(n=32):
+    """trapezoidal profiled steel sheet, the cladding on sheds and depots (1 m a tile, light grey: tinted). four ribs a
+    tile (25 cm), each a lit crown with a shaded and a lit flank, wide flat pans between with a faint stiffening line,
+    the odd dent and fixing screw, a little dirt; no rust (the old corrugated sheet is the rusty one)"""
+    x = np.arange(n) % 8
+    rib = np.select([x == 0, x == 1, x == 2, x == 7], [0.86, 1.1, 0.78, 0.93], 0.97).astype(np.float32)
+    rib = np.where(x == 4, 0.94, rib)  # (the stiffener in the pan)
+    g = rib[None, :] * np.ones((n, 1), np.float32) + (fbm(n, 4, 3) - 0.5) * 0.08 - speck(n, 0.015) * 0.18
+    for _ in range(3):  # screws: a dark dot on a pan, in rows
+        yy = int(R.integers(n)); g[yy, (np.arange(4) * 8 + 5) % n] *= 0.6
+    img = ramp(np.clip(g * 0.82, 0, 1), [(0, '#2c2e32'), (0.6, '#a9adb2'), (0.82, '#d8dbde'), (1, '#f6f7f6')])
+    return shade(img, 1 - np.clip((fbm(n, 2, 4) - 0.6) * 0.6, 0, 0.2))
+
+
 # ------------------------------------------------------------ the radio mast yard (make_mastyard.py). own seeds: the textures above stay as they were
 def chainlink(n=32):
     """galvanised chain-link fabric (0.5 m a tile, 1-bit alpha): zig-zag wires woven into 12 cm diamonds, a lit side and
@@ -591,15 +621,6 @@ def barbwire(n=64):
             y = min(15, max(0, 7 + dy)); a[y, x0 + dx] = 1; g[y, x0 + dx] = 0.85
     return ramp(g, [(0, '#2a2c2e'), (0.6, '#8c9296'), (1, '#e8ecee')]), a
 
-
-
-def rpanel(n=32):
-    """ribbed steel cladding for the equipment shelter (0.5 m a tile, light, tinted): flat pans between four small ribs,
-    each with a lit edge and a shaded one, a little wear and grime (the big ribs are geometry)"""
-    x = np.arange(n)[None, :] % 8
-    g = np.where(x == 3, 0.98, np.where(x == 4, 0.7, 0.86)) * np.ones((n, 1), np.float32)
-    g = g + (vnoise(n, 4, seed=906) - 0.5) * 0.1 - speck(n, 0.03, seed=907) * 0.2 - blobs(n, 2, 2, 5, seed=908) * 0.08
-    return ramp(g, [(0, '#3a3832'), (0.7, '#c4beac'), (1, '#f4f0e4')])
 
 SIGN_CELLS = {}
 
@@ -666,6 +687,7 @@ def main():
     pk, pa = picket(); out['picket'] = save('picket', pk, 1.3, alpha=pa, note='tint', colors=8, dither=0.5)
     out['fac_tenement'] = save('fac_tenement', facade_tenement(), 7.0, colors=24)
     out['fac_office'] = save('fac_office', facade_office(), 7.0, colors=24)
+    out['fac_glass'] = save('fac_glass', facade_glass(), 4.4, colors=24)
     for k, g in FAC_GLOW.items():
         Image.fromarray((g * 255).astype(np.uint8), 'L').save(os.path.join(OUT, k + '_glow.png')); KIT[k]['glow'] = k + '_glow'
     rgb, a, cells = decals()
@@ -673,9 +695,9 @@ def main():
     KIT['decals']['cells'] = cells
     out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
     wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    out['profile'] = save('profile', profile(), 1.0, note='tint')  # (last: the shared RNG leaves every older texture as it was)
     cl, ca = chainlink(); out['chainlink'] = save('chainlink', cl, 0.5, alpha=ca, note='tint', colors=8, dither=0.0)
     out['galv'] = save('galv', galv(), 1.0, note='tint')
-    out['rpanel'] = save('rpanel', rpanel(), 0.5, note='tint')
     bw, ba = barbwire(); out['barbwire'] = save('barbwire', bw, 0.25, alpha=ba, note='tint', colors=8, dither=0.0)
     ms, ma = mastsigns(); out['mastsigns'] = save('mastsigns', ms, 0, alpha=ma, colors=48, dither=0.0); KIT['mastsigns']['cells'] = SIGN_CELLS
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)

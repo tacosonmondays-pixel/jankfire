@@ -17,6 +17,7 @@ LOOK = {
     'accent': (1.00, 0.24, 0.0, 0.0, 0.0),  # polished gold (horns, trims)
     'frame': (1.00, 0.36, 0.0, 0.0, 0.6),  # brushed gunmetal: joints, inner frame, pistons
     'chrome': (1.00, 0.16, 0.0, 0.0, 0.3),
+    'hazard': (0.80, 0.42, 0.8, 0.12, 0.0),  # (hazard-stripe yellow: painted like the paint, not gold)
 }
 TEX_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'tex')
 
@@ -40,9 +41,12 @@ def _noise(rng, cells, n=N):
     return a * (1 - f)[:, None] + b * f[:, None]
 
 
-def detail_maps(seed=7):
+def detail_maps(seed=7, clean=False):
     """the tile (N x N, TILE_M metres): height, colour multiplier, roughness multiplier. Panels from a few wrapping
-    cuts (plates of different sizes), grooves with grime, rivet rows along some grooves, scratches, chips, dents"""
+    cuts (plates of different sizes), grooves with grime, rivet rows along some grooves, scratches, chips, dents.
+    clean (the owner, 2026-11-12, "look how clean the mechs are"): a few crisp panel lines and nothing else: no grime,
+    rivets, scratches or chips, the faintest dents, glossy and even"""
+    if clean: return clean_maps(seed)
     rng = np.random.default_rng(seed)
     H = np.zeros((N, N), np.float32); groove = np.zeros((N, N), np.float32)
     px_m = N / TILE_M
@@ -90,6 +94,23 @@ def detail_maps(seed=7):
     return H, col, rough
 
 
+def clean_maps(seed=7):
+    """the clean tile: one long cut each way and two short hatch cuts, thin and crisp, a breath of shading in them;
+    glossy and even everywhere else"""
+    rng = np.random.default_rng(seed)
+    groove = np.zeros((N, N), np.float32); px_m = N / TILE_M
+    w = max(2, int(0.005 * px_m))  # (a 5 mm line)
+    x, y = int(rng.integers(0, N)), int(rng.integers(0, N))
+    groove[:, [(x + k) % N for k in range(w)]] = 1; groove[[(y + k) % N for k in range(w)], :] = 1
+    for _ in range(2):
+        xx, y0, L = int(rng.integers(0, N)), int(rng.integers(0, N)), int(rng.integers(N // 6, N // 3))
+        groove[[(y0 + k) % N for k in range(L)], xx:xx + w] = 1
+    H = -groove * 0.8 + (_noise(rng, 5) - 0.5) * 0.04
+    col = np.clip(1.0 - 0.10 * np.clip(_blur(groove, 1) * 1.4, 0, 1), 0.85, 1.0)
+    rough = np.clip(0.82 + (_noise(rng, 12) - 0.5) * 0.04 + groove * 0.08, 0.5, 1.0)
+    return H, col, rough
+
+
 def _normal(H, k=3.2):
     gx = (np.roll(H, -1, 1) - np.roll(H, 1, 1)) * 0.5 * k; gy = (np.roll(H, -1, 0) - np.roll(H, 1, 0)) * 0.5 * k
     n = np.dstack([-gx, gy, np.ones_like(H)])  # (image rows go down: +v is up, OpenGL-style green)
@@ -110,15 +131,19 @@ def _image(name, rgb, path, non_color):
     return im
 
 
+CLEAN = True  # (mechs are clean by default since the owner's references, 2026-11-12; False = the old crusty set)
+
+
 def textures():
     """(colour, roughness/metal, normal) images, made once per session"""
     if getattr(textures, 'cache', None): return textures.cache
-    H, col, rough = detail_maps()
+    H, col, rough = detail_maps(clean=CLEAN)
+    tag = 'mech_clean' if CLEAN else 'mech_detail'
     small = lambda a: a.reshape(N // 2, 2, N // 2, 2, *a.shape[2:]).mean((1, 3))
     c = small(np.dstack([col] * 3)); orm = np.dstack([np.ones_like(rough), rough, np.ones_like(rough)])
-    textures.cache = (_image('mech_detail_col', c, os.path.join(TEX_DIR, 'mech_detail_col.jpg'), False),
-                      _image('mech_detail_orm', small(orm), os.path.join(TEX_DIR, 'mech_detail_orm.jpg'), True),
-                      _image('mech_detail_nrm', _normal(H), os.path.join(TEX_DIR, 'mech_detail_nrm.jpg'), True))
+    textures.cache = (_image(f'{tag}_col', c, os.path.join(TEX_DIR, f'{tag}_col.jpg'), False),
+                      _image(f'{tag}_orm', small(orm), os.path.join(TEX_DIR, f'{tag}_orm.jpg'), True),
+                      _image(f'{tag}_nrm', _normal(H), os.path.join(TEX_DIR, f'{tag}_nrm.jpg'), True))
     return textures.cache
 
 
@@ -187,7 +212,7 @@ def bake_shade(objs, samples=48):
         me = o.data; ca = me.color_attributes['Col']; d = ca.data
         for li, lp in enumerate(me.loops):
             c = d[li].color; ao = c[0] ** 0.7
-            k = min(1.0, (0.35 + 0.65 * ao) * (0.95 + 0.05 * edge[lp.vertex_index]))  # (open flat paint ~0.95, worn edges 1)
+            k = min(1.0, ((0.5 + 0.5 * ao) if CLEAN else (0.35 + 0.65 * ao)) * (0.95 + 0.05 * edge[lp.vertex_index]))  # (open flat paint ~0.95, edges 1; clean = softer AO)
             d[li].color = (k, k, k, 1.0)
     sc.render.engine = eng
 
