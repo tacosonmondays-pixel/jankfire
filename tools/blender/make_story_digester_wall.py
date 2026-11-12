@@ -5,12 +5,12 @@
 #   niches     Dot's (x 0) and Mina's (x -3.5): the wall pulled back behind them, a rolled rim round each, and a fillet
 #              where their own mounds (c_dot.glb, c_mina_wall.glb) grow out of it
 #   the people the Bottom's missing at different depths: Dumpling's dad (out to the shoulders, waving), Old Ken (asleep,
-#              snoring, his name badge), the twins from the top terrace (cheek to cheek, chatting), Ambrose (a quiet
-#              one, sunk deeper than the rest in his knitted hat, eyes shut, mouthing his own name the way Dot does her
-#              names), little Pim's nan (just under the skin, her glasses through it), more faces deep in it
+#              snoring, his name badge), the twins from the top terrace (cheek to cheek, chatting), a quiet one nobody
+#              names (sunk deeper than the rest in his knitted hat, eyes shut, his lips moving the way Dot's do when she
+#              does her names), little Pim's nan (just under the skin, her glasses through it), more faces deep in it
 #   their old lives    bathroom tiles, a double plug socket with the kettle still plugged in, wallpaper, a shopping
-#              cart's corner and wheel, a house number, a photo frame, lanyards and wristbands caught in it, Ambrose's
-#              door keys, and the row of soup bowls Lumps leaves every Sunday (the oldest grown over)
+#              cart's corner and wheel, a house number, a photo frame, lanyards and wristbands caught in it, the quiet
+#              one's door keys, and the row of soup bowls Lumps leaves every Sunday (the oldest grown over)
 # Prop space (what public/js/city/props.js instances): origin on the street at the foot of the office face, front -z
 # (act1set.js turns it to face the avenue: x here = west, the viewer's left). Materials named *flesh* / *pulse* breathe
 # in the game (props.js); everything stuck in them is sunk deeper than the breath. *_lod1 = the far copy.
@@ -532,7 +532,7 @@ def head(nm, S, A, M):
                 cell_uv(put('bits', ring_tube(nm + '_rim%d' % sx, pts, [0.0028] * 14, None, seg=5, axis=V3((0, 0, 1)))), A, 'frame')
                 cell_uv(put('bits', limb(nm + '_arm%d' % sx, [tuple(c + V3((sx * 0.025, 0.004, 0))), (sx * rx * 0.96, ey + 0.006, -0.01)], 0.0025, None, seg=5)), A, 'frame')
             cell_uv(put('bits', limb(nm + '_bridgeG', [(-ex + 0.025, ey + 0.004, surf(0, ey) - 0.016), (0, ey + 0.009, surf(0, ey) - 0.02), (ex - 0.025, ey + 0.004, surf(0, ey) - 0.016)], 0.0026, None, seg=5)), A, 'frame')
-        if ex_ == 'beanie':  # a knitted watch cap, the brim turned up (ambrose's: nothing about him stands out but the hat)
+        if ex_ == 'beanie':  # a knitted watch cap, the brim turned up (the quiet one's: nothing about him stands out but the hat)
             cell_uv(put('bits', blob(nm + '_hat', (0, ry * 0.52, 0.018), (rx * 1.06, ry * 0.58, rz * 1.04), None, fn=lambda g, n: (-0.03 if g.y < -0.04 else 0.0), seg=22, rings=12)), A, 'knit_hat')
             bpts = [V3((math.sin(t) * rx * 0.99, ry * 0.36 + 0.005 * math.sin(3 * t), -math.cos(t) * rz * 0.98)) for t in [2 * math.pi * k / 24 for k in range(24)]]
             cell_uv(put('bits', ring_tube(nm + '_brim', bpts, [0.019] * 24, None, seg=8, axis=V3((0, 1, 0)))), A, 'knit_hat')
@@ -639,9 +639,9 @@ PEOPLE = [
          eyes='open', look=(-1.0, 0.0), mouth='open', brows=1.2, nose=0.9, iris='iris_green', hairline=0.35, note='a twin from the top terrace'),
     dict(nm='twinB', x=5.42, y=1.9, out=0.55, yaw=0.5, pitch=0.0, roll=-0.15, r=(0.11, 0.138, 0.12), tone=0xf2c8b0, hair=('hair_ginger', 'bob'),
          eyes='open', look=(1.0, 0.0), mouth='o', brows=1.4, nose=0.9, iris='iris_green', hairline=0.35, note='the other twin'),
-    dict(nm='ambrose', x=-5.32, y=2.1, out=0.36, yaw=0.06, pitch=0.16, roll=-0.06, r=(0.112, 0.142, 0.122), tone=0xdab6a2, hair=('hair_grey', 'bald'),
+    dict(nm='stranger_quiet', x=-5.32, y=2.1, out=0.36, yaw=0.06, pitch=0.16, roll=-0.06, r=(0.112, 0.142, 0.122), tone=0xdab6a2, hair=('hair_grey', 'bald'),
          eyes='closed', mouth='murmur', brows=0.15, nose=1.05, age=0.5, mw=0.85, extras=('beanie',), lip=0.058,
-         note='ambrose: deep in it, mouthing his own name'),
+         note='a quiet one nobody names: sunk deep'),
     dict(nm='nan', x=0.92, y=3.62, out=-0.3, yaw=0.0, pitch=-0.12, roll=0.05, r=(0.12, 0.145, 0.125), tone=0xf0d0c4, hair=('hair_white', 'curls'),
          eyes='closed', mouth='shut', nose=1.0, age=0.8, extras=('glasses',), note="little pim's nan: just under the skin, her glasses through it"),
 ]
@@ -805,7 +805,7 @@ def inserts(A, M):
     out += lanyard('ken_lanyard', -1.74, 2.12, A, 'lanyard_b', 'badge', drop=0.3, wide=0.16, sway=0.03, card_w=0.12, card_h=0.09)
     out += lanyard('corp_lanyard', 1.52, 1.72, A, 'lanyard_y', 'card_corp', drop=0.42, wide=0.12, sway=-0.04)
     out += lanyard('gs_lanyard', -4.62, 2.5, A, 'lanyard_p', 'card_gs', drop=0.34, wide=0.13, sway=0.05)
-    # ambrose's door keys on their ring, caught in a fold by his chin: the ring in the skin, the keys and a brown tag hanging
+    # the quiet one's door keys on their ring, caught in a fold by his chin: the ring in the skin, the keys and a brown tag hanging
     pk, nk = on_wall(KEYS[0], KEYS[1]); ax = V3((1, 0, 0)); c0 = pk - nk * 0.008
     out.append(ring_band('keyring', c0, ax, 0.024, 0.0028, A, 'chrome', k=16))
     side = nk.cross(ax).normalized()  # (down the wall)
@@ -861,7 +861,7 @@ def soup_bowls(A, M):
 # ------------------------------------------------------------ veins, glowing nodes, wet creases, drips
 # (the game breathes these with the wall: a vein's middle sits 6 mm under the skin and it is 4.5 cm round, so it stays
 # on the skin at the bottom of a breath and only fattens on the beat)
-KEYS = (-5.62, 1.74)  # (ambrose's keys: just under his lip of skin)
+KEYS = (-5.62, 1.74)  # (the quiet one's keys: just under his lip of skin)
 STUCK = [KEYS, (-2.72, 3.28), (-1.62, 1.05), (-0.42, 2.52), (5.18, 2.62), (-6.05, 3.35), (3.92, 3.3), (-5.62, 0.5), (-1.74, 2.0), (1.52, 1.55), (-4.62, 2.35), (2.62, 2.5)]  # (the things stuck in it: veins keep off)
 
 
@@ -1251,7 +1251,7 @@ def sheets(root, parts, lods, refs_objs, tag=''):
         p_, n_ = on_wall(x, y); return (cap, tuple(p_ + V3(back)), tuple(p_), lens, None)
     CU += [("lumps' soup bowls, the oldest grown over", (2.4, 0.95, -2.3), (3.3, 0.05, -0.75), 32, None), at('a plug socket, the kettle still in', -1.62, 1.05),
            at('bathroom tiles, one gone, one cracked', -2.72, 3.28, (0.4, -0.25, -1.3)), at('hello my name is ken (his lanyard)', -1.74, 1.86, (0.15, 0.1, -0.9), 45),
-           at("ambrose's door keys under his lip of skin", KEYS[0], KEYS[1] - 0.04, (0.35, 0.15, -0.75), 40), at('a CORP staff card caught in a fold', 1.52, 1.42, (0.2, 0.1, -1.0), 45),
+           at("his door keys, under his lip of skin", KEYS[0], KEYS[1] - 0.04, (0.35, 0.15, -0.75), 40), at('a CORP staff card caught in a fold', 1.52, 1.42, (0.2, 0.1, -1.0), 45),
            at('14: the top terrace, over the twins', 5.18, 2.62, (-0.3, 0.0, -1.1), 45), at('a photo frame over dot', -0.42, 2.52, (0.3, 0.1, -1.4), 40),
            at('his hand, waving, his wristband', 2.62, 2.5, (0.15, 0.05, -1.5), 40), at('veins, a glowing node, a wet tuck under a roll', -5.6, 4.5, (-0.2, 0.5, -2.2), 36)]
     go('closeups', CU, 4, 'digester wall: who is in it and what of theirs (face rigs = sculpted, still)', (520, 400))
