@@ -295,6 +295,7 @@ export class CityStream {
   }
   // is everything round (x, z) that you could stand on loaded? (hold the player until it is)
   ready(x, z) { return this.world.readyAt(this.city, x, z); }
+  progress() { let n = 0, k = 0; for (const r of this.chunks.values()) if (r.used === this.time && r.ring === 1) { n++; if (r.m0) k++; } return n ? k / n : 0; } // the near ring's share that's built (the loading card)
   dispose() {
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }

@@ -19,7 +19,8 @@ import { organic } from '../organic.js';
 import { MAPS, builder, horizon, rng, lollipop, conifer, unstick } from '/shared/map.js';
 import { TEST, buildTestMap } from '/shared/story/testmap.js';
 import { newSave, saveCard, SAVE } from '/shared/story/save.js';
-import { WorkerSocket } from './host.js';
+import { WorkerSocket, warmWorker } from './host.js';
+import { holdGlbs } from '../glbkit.js'; // (the PvP startup models wait while a run loads)
 import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
@@ -122,6 +123,7 @@ async function openPicker() {
     document.body.append(picker);
   }
   picker.innerHTML = '';
+  warmWorker(); // (the story engine starts loading while you pick a slot)
   const panel = el('div', 'st-panel');
   panel.append(el('h2', null, 'OVERDUE'), el('p', 'st-sub', 'pick a save slot. the machine remembers.'));
   const list = el('div', 'st-slots');
@@ -185,7 +187,38 @@ async function wipeSlot(i) {
   const bk = back(); if (bk && bk.slot === i) setBack(null);
 }
 
+// ------------------------------------------------------------ the loading card (owner playtest: "everything takes forever to load")
+// from NEW GAME / CONTINUE until you're standing in the city: what it's doing and how far along. while it's up, the
+// startup set of PvP models waits (glbkit.js holdGlbs) so the city gets the network and the main thread
+let loadCard = null, loadT = 0;
+function loadingOn() {
+  loadT = performance.now(); G.cityReady = false;
+  try { performance.mark('jf-story-start'); } catch { /* old browser */ }
+  if (!loadCard) { loadCard = el('div', 'st-load hidden'); loadCard.id = 'stLoad'; loadCard.innerHTML = '<b></b><i><u></u></i><span></span>'; document.body.append(loadCard); }
+  loadCard.classList.remove('hidden');
+  holdGlbs(() => !!loadT);
+}
+function loadingTick() {
+  if (!loadT || !loadCard) return;
+  const inRun = G.joined && G.mode === 'story', secs = (performance.now() - loadT) / 1000;
+  const streamed = !!(G.cfg && MAPS[G.cfg.map] && MAPS[G.cfg.map].stream); // (the train and the test lot aren't streamed: they're in once you've joined)
+  if (inRun && (G.cityReady || !streamed)) return loadingOff();
+  if (!G.joined && secs > 2 && $('menu') && !$('menu').classList.contains('hidden')) return loadingOff(); // (it crashed back to the menu: main.js says why)
+  const p = inRun ? Math.max(0.15, Math.min(1, 0.15 + 0.85 * (G.cityProgress || 0))) : Math.min(0.14, secs * 0.01);
+  loadCard.querySelector('b').textContent = inRun ? 'STREAMING THE CITY' : 'WAKING THE MACHINE';
+  loadCard.querySelector('u').style.width = Math.round(p * 100) + '%';
+  loadCard.querySelector('span').textContent = inRun ? `${Math.round(p * 100)}% · the ground first, so you don't fall through it` : 'warming up the story engine...';
+}
+function loadingOff() {
+  const ms = performance.now() - loadT; loadT = 0;
+  if (loadCard) loadCard.classList.add('hidden');
+  holdGlbs(null);
+  try { performance.mark('jf-story-playable'); } catch { /* old browser */ }
+  console.info(`story: playable in ${(ms / 1000).toFixed(1)} s`);
+}
+
 function start(save) {
+  loadingOn();
   cur = save;
   autoT = performance.now();
   api.startMode('story', undefined, () => new WorkerSocket(save));
@@ -234,6 +267,7 @@ function tick(dt = 1 / 60) {
   const on = active() && ME.alive;
   const near = on && atTerminal() && !storyPrompt(); // (the story's own F at the Machine, "take your item", wins over the sims)
   if (bagOpen() && !$('menu').classList.contains('hidden')) toggleBag(false); // the pause menu won over the bag
+  loadingTick();
   if (!hint) { hint = el('div', 'st-hint hidden'); document.body.append(hint); }
   const car = on && !near && !driving() ? nearestCar() : null;
   const drop = on && !near && !car ? nearestDrop() : null, lock = on && !near && !drop && atLocker(), doc = on && !near && !drop && !lock && atClinic();
@@ -340,6 +374,10 @@ function css() {
 .st-btn{font-family:var(--font);font-weight:700;font-size:18px;border:3px solid #000;background:#fff;color:#000;padding:6px 14px;box-shadow:4px 4px 0 #000;cursor:pointer}
 .st-btn.yellow{background:#ffe14d;box-shadow:4px 4px 0 #ff4fd8;transform:rotate(-2deg)}
 .st-btn:disabled{opacity:.5}
+.st-load{position:fixed;inset:0;z-index:58;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:#120818;font-family:var(--font);color:#fff}
+.st-load.hidden{display:none}.st-load b{font-size:40px;color:#ffe14d;text-shadow:4px 4px 0 #ff00dc;transform:rotate(-2deg)}
+.st-load i{display:block;width:min(420px,80vw);height:22px;border:4px solid #000;background:#2a1030;box-shadow:6px 6px 0 #4fd8ff}
+.st-load u{display:block;height:100%;width:0;background:#ff4fd8;transition:width .3s}.st-load span{opacity:.8}
 .st-btn.red{background:#ff3030;color:#fff;font-size:14px;padding:4px 10px}
 .st-slotbtns{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .st-wipe{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#000;border:3px solid #ff3030;box-shadow:4px 4px 0 #ffe14d;padding:8px 10px;transform:rotate(-1deg)}
