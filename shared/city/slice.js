@@ -36,9 +36,10 @@ export function groundY(x, z) {
   const S = SLICE;
   if (z >= 0 && x < 96) { const b = S.bottom; return Math.min(b.n - 1, Math.max(0, Math.floor((256 - z) / b.terr))) * b.rise; }
   if (x < 96) return z >= -48 ? S.border.y : S.gut.y;
-  // the Commute: the wasteland follows the highway climb in 0.5 m steps (walkable)
-  return hwY(z, true);
+  // the Commute: the wasteland's hills (ground.js, once it's loaded: it hangs itself on GROUND), else the old 0.5 m steps
+  return GROUND.commute ? GROUND.commute(x, z) : hwY(z, true);
 }
+export const GROUND = { commute: null };
 // the highway deck height at z (smooth, before stepping)
 export function hwY(z, ground) {
   const H = SLICE.highway, t = Math.max(0, Math.min(1, (H.zLow - z) / (H.zLow - H.zTop)));

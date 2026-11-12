@@ -10,11 +10,14 @@ import { playCommute } from './playground.js';
 import { shops, shopRects } from './shops.js';
 import { slipRoad, SLIP } from './roads.js';
 import { act1Commute, act1Ramp, RAMP } from './act1set.js';
+import { commuteY as gy, groundField, CELL } from './ground.js';
 
 const H = SLICE.highway;
 const GAP = [86, 100]; // the collapsed span (z)
 const CAR = [[-2.2, 0.3, -0.92, 2.2, 0.95, 0.92], [-1.1, 0.95, -0.8, 0.9, 1.55, 0.8]]; // a car's collision (front +x)
 
+// the lowest the ground gets under a footprint (things sit on that and sink into the rest: nothing floats)
+const low = (x0, z0, x1, z1) => Math.min(gy(x0, z0), gy(x1, z0), gy(x0, z1), gy(x1, z1), gy((x0 + x1) / 2, (z0 + z1) / 2));
 function wreck(B, x, y, z, yaw4, r, id = 'carwreck') {
   const L = B.local(x, z, yaw4, y);
   for (const [a, b, c, d, e, f] of CAR) L(a, b, c, d, e, f, 'rust', { hide: true });
@@ -25,11 +28,8 @@ export function commute(B, d) {
   const [rx0, rz0, rx1, rz1] = d.rect, r = rng(hash2(B.out.cx, B.out.cz, 0xc0e));
   const X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
-  // wasteland ground: 2 m steps following the climb (a ramp of terraces), ash-orange dirt
-  for (let z = Z0; z < Z1; z += 4) {
-    const zc = z + 2, top = z < H.westZ[1] && z + 4 > -256 ? hwY(H.zTop, true) : hwY(zc, true);
-    B.add(X0, -4, z, X1, top, Math.min(Z1, z + 4), z < -150 ? 'ash' : 'ground', { tint: z < -150 ? 0x8a7a78 : 0xc8a078 });
-  }
+  // wasteland ground: rolling hills, gullies and hollows (ground.js), drawn and walked at the end (ground() below)
+  const lotFlat = []; // (a car park levels its own patch)
   // the highway deck: ~0.12 m steps (smooth to drive and run), crash barriers, lane paint; the gap at the collapse
   const hx0 = H.x0, hx1 = H.x1;
   if (B.touches([hx0 - 2, H.zTop - 40, hx1 + 2, H.zLow + 12])) {
@@ -52,10 +52,10 @@ export function commute(B, d) {
     }
     // jersey barriers closing the lanes before the collapse, cones, the stopped district clock at the on-ramp
     for (const [z, s] of [[GAP[0] - 3, 1], [GAP[1] + 3, -1]]) for (let x = hx0 + 2; x < hx1 - 1; x += 3.2) if (B.inside(x, z)) { const jy = (r() - 0.5) * 0.3; if (RAMP.open(x)) continue; B.prop('jersey', x, hwY(z), z, (s > 0 ? 0 : Math.PI) + jy, 1, 0); B.add(x - 1.5, hwY(z), z - 0.35, x + 1.5, hwY(z) + 0.85, z + 0.35, 'concrete', { hide: true }); } // (the Unpaid's ramp lane is open: act1set.js RAMP)
-    if (B.inside(hx1 + 2.5, 238)) { B.prop('brokenclock', hx1 + 2.5, hwY(238, true), 238, Math.PI / 2, 1, 0); B.add(hx1 + 2.3, hwY(238, true), 237.8, hx1 + 2.7, hwY(238, true) + 5, 238.2, 'metal', { hide: true }); }
+    if (B.inside(hx1 + 2.5, 238)) { const cy = gy(hx1 + 2.5, 238); B.prop('brokenclock', hx1 + 2.5, cy, 238, Math.PI / 2, 1, 0); B.add(hx1 + 2.3, cy, 237.8, hx1 + 2.7, cy + 5, 238.2, 'metal', { hide: true }); }
     // the collapse: the broken ends hang down, slabs in the gap below
     for (const [z, s] of [[GAP[0], -1], [GAP[1], 1]]) if (z >= Z0 && z < Z1) B.obb((hx0 + hx1) / 2, hwY(z) - 1.6, z + s * 1.5, hx1 - hx0, 0.8, 4, 0, 'concrete', { tint: 0xa8a098 });
-    if (B.touches([hx0, GAP[0], hx1, GAP[1]])) rubble(B, RAMP.rubbleX, hwY(93, true), 93, 8, r); // (off to the west lanes: the ramp jumps the middle)
+    if (B.touches([hx0, GAP[0], hx1, GAP[1]])) rubble(B, RAMP.rubbleX, gy(RAMP.rubbleX, 93), 93, 8, r); // (off to the west lanes: the ramp jumps the middle)
     // the jam: dead cars nose to tail, two lanes each way, the odd bus; some on their roofs, some on fire
     const jr = rng(4711);
     for (let z = H.zTop + 6; z < H.zLow - 4; z += 5.2 + jr() * 2) {
@@ -86,7 +86,7 @@ export function commute(B, d) {
   for (let i = 0; i < 6; i++) {
     const x = X0 + 6 + r() * (X1 - X0 - 12), z = Z0 + 6 + r() * (Z1 - Z0 - 12);
     if (keepOut.some((q) => x > q[0] && x < q[2] && z > q[1] && z < q[3])) continue;
-    const y = hwY(z, true), w = 8 + r() * 8, dd = 6 + r() * 6, h = 2 + r() * 6, tint = pick(r, PASTEL);
+    const w = 8 + r() * 8, dd = 6 + r() * 6, h = 2 + r() * 6, tint = pick(r, PASTEL), y = low(x - w / 2, z - dd / 2, x + w / 2, z + dd / 2) - 0.3; // (dug into the slope)
     B.add(x - w / 2, y, z - dd / 2, x + w / 2, y + h, z - dd / 2 + 0.4, 'brick', { tint });
     B.add(x - w / 2, y, z - dd / 2, x - w / 2 + 0.4, y + h * (0.4 + r() * 0.6), z + dd / 2, 'brick', { tint });
     if (r() < 0.6) B.add(x + w / 2 - 0.4, y, z - dd / 2, x + w / 2, y + h * r(), z + dd / 2, 'brick', { tint });
@@ -95,7 +95,7 @@ export function commute(B, d) {
     if (r() < 0.5) B.prop('brokenwall', x, y, z + dd / 2 - 0.2, Math.PI, 1, 0); // a shopfront with a blast shadow on it
     if (r() < 0.5) B.prop('filecab', x, y, z, r() * 6.28, 1, 0);
   }
-  for (let i = 0; i < 5; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); if (!keepOut.some((q) => x > q[0] && x < q[2] && z > q[1] && z < q[3])) wreck(B, x, hwY(z, true), z, (r() * 4) | 0, r); }
+  for (let i = 0; i < 5; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); if (!keepOut.some((q) => x > q[0] && x < q[2] && z > q[1] && z < q[3])) wreck(B, x, low(x - 2.2, z - 2.2, x + 2.2, z + 2.2) - 0.1, z, (r() * 4) | 0, r); }
   // the Unpaid camp under the highway: a ring of filing-cabinet barricades, tents, fire barrels, the war-rig
   const C = SLICE.camp;
   if (B.touches([C.x - 26, C.z - 22, C.x + 26, C.z + 22])) {
@@ -133,9 +133,12 @@ export function commute(B, d) {
   // the wasteland: old car parks with their line paint, dead trees, ash mounds, a lot more junk lying about
   const free = (x, z, m = 4) => !keepOut.some((q) => x > q[0] - m && x < q[2] + m && z > q[1] - m && z < q[3] + m);
   if (r() < 0.5) { // a car park
-    const px = X0 + 6 + r() * (X1 - X0 - 36), pz = Z0 + 6 + r() * (Z1 - Z0 - 30);
-    if (free(px + 15, pz + 12, 14)) {
-      const y = hwY(pz + 12, true) + 0.02;
+    const px = Math.max(X0 + 10, Math.min(X1 - 40, X0 + 6 + r() * (X1 - X0 - 36))), pz = Math.max(Z0 + 10, Math.min(Z1 - 34, Z0 + 6 + r() * (Z1 - Z0 - 30))); // (well inside this chunk: it levels its own ground, and the slope round it needs room to ease)
+    let lo = Infinity, hi = -Infinity; // (a car park wants fairly level ground: on a real hillside there isn't one)
+    for (let x = px; x <= px + 30; x += 5) for (let z = pz; z <= pz + 24; z += 4) { const h = gy(x, z); lo = Math.min(lo, h); hi = Math.max(hi, h); }
+    if (free(px + 15, pz + 12, 14) && px + 40 <= X1 && hi - lo < 1.6) {
+      const y = (lo + hi) / 2 + 0.02;
+      lotFlat.push([px - 0.5, pz - 0.5, px + 30.5, pz + 24.5, y - 0.04, 5]);
       B.add(px, y - 0.02, pz, px + 30, y + 0.03, pz + 24, 'asphalt', { nc: true, tint: 0x6a6460 });
       for (let i = 0; i <= 10; i++) { B.add(px + 1 + i * 2.8, y + 0.03, pz + 2, px + 1.12 + i * 2.8, y + 0.04, pz + 8, 'paint', { nc: true, tint: 0xe8e0d0 }); B.add(px + 1 + i * 2.8, y + 0.03, pz + 16, px + 1.12 + i * 2.8, y + 0.04, pz + 22, 'paint', { nc: true, tint: 0xe8e0d0 }); }
       const taken = new Set();
@@ -146,25 +149,25 @@ export function commute(B, d) {
   for (let i = 0; i < 4; i++) { // dead trees: a trunk and a few bare branches (render only, a box to bump)
     const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0);
     if (!free(x, z)) continue;
-    const y = hwY(z, true), h = 4 + r() * 4, tips = [];
+    const y = gy(x, z), h = 4 + r() * 4, tips = [];
     B.shape({ kind: 'tube', pts: [[x, y - 0.2, z], [x + (r() - 0.5), y + h * 0.5, z + (r() - 0.5)], [x + (r() - 0.5) * 2, y + h, z + (r() - 0.5) * 2]], r: [0.32, 0.12], seg: 6, mat: 'wood', tint: 0x4a3428, step: 1.5 });
     for (let k = 0; k < 4; k++) { const a = r() * 6.28, by = y + h * (0.5 + r() * 0.4); tips.push(1); B.shape({ kind: 'tube', pts: [[x, by, z], [x + Math.cos(a) * 1.6, by + 1 + r(), z + Math.sin(a) * 1.6], [x + Math.cos(a) * 2.6, by + 1.4 + r() * 1.5, z + Math.sin(a) * 2.6]], r: [0.1, 0.03], seg: 4, mat: 'wood', tint: 0x4a3428, step: 1.5, at: [x, by, z] }); }
     B.add(x - 0.3, y, z - 0.3, x + 0.3, y + h * 0.7, z + 0.3, 'wood', { hide: true });
   }
-  for (let i = 0; i < 3; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); if (free(x, z)) B.shape({ kind: 'blob', c: [x, hwY(z, true), z], r: [3 + r() * 4, 0.8 + r(), 3 + r() * 3], seg: 8, mat: 'ash', tint: 0x9a8a80 }); }
+  for (let i = 0; i < 3; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); if (free(x, z)) B.shape({ kind: 'blob', c: [x, gy(x, z), z], r: [3 + r() * 4, 0.8 + r(), 3 + r() * 3], seg: 8, mat: 'ash', tint: 0x9a8a80 }); }
   for (let i = 0; i < 8; i++) {
     const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0);
     if (!free(x, z, 2) || (x > hx0 - 3 && x < hx1 + 3)) continue;
     const id = pick(r, ['rubble_a', 'rubble_b', 'tirestack', 'cone', 'filecab', 'paperdrift', 'officechair', 'cone']);
-    B.prop(id, x, hwY(z, true), z, r() * 6.28, id.startsWith('rubble') ? 0.7 + r() * 0.8 : 1, 0);
+    B.prop(id, x, gy(x, z), z, r() * 6.28, id.startsWith('rubble') ? 0.7 + r() * 0.8 : 1, 0);
   }
   // power poles along the east side of the highway, cables sagging between them, a ☺ billboard now and then
   for (let z = Math.ceil(Math.max(Z0, H.zTop) / 30) * 30; z < Math.min(Z1, H.zLow); z += 30) {
-    const x = hx1 + 7, y = hwY(z, true);
+    const x = hx1 + 7, y = gy(x, z);
     if (!B.inside(x, z)) continue;
     B.add(x - 0.15, y, z - 0.15, x + 0.15, y + 9, z + 0.15, 'wood', { tint: 0x6a4a32 });
     B.add(x - 1.4, y + 8.2, z - 0.08, x + 1.4, y + 8.4, z + 0.08, 'wood', { nc: true, tint: 0x6a4a32 });
-    const y2 = hwY(z + 30, true);
+    const y2 = gy(x, z + 30);
     for (const dx of [-1.2, 1.2]) line(B, [x + dx, y + 8.4, z], [x + dx, y2 + 8.4, z + 30], { r: 0.025, mat: 'metal', tint: 0x202024, sag: 1.4 });
     if ((Math.round(z / 30) & 3) === 1) { // a billboard: the old ☺ on stilts, half the bulbs out
       B.add(x + 4, y, z - 3, x + 4.3, y + 7, z - 2.6, 'metal'); B.add(x + 4, y, z + 2.6, x + 4.3, y + 7, z + 3, 'metal');
@@ -179,7 +182,7 @@ export function commute(B, d) {
     }
   }
   // paper drifts: the paper storm's floor (the storm itself is weather in the client)
-  for (let i = 0; i < 5; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); B.prop('paperdrift', x, hwY(z, true), z, r() * 6.28, 0.8 + r() * 0.8, 0); }
+  for (let i = 0; i < 5; i++) { const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0); B.prop('paperdrift', x, gy(x, z), z, r() * 6.28, 0.8 + r() * 0.8, 0); }
   // the war, still lying where it stopped: a ☺ CORP walker tank, one leg gone, half sunk in the wasteland
   if (B.inside(262, -150)) { const y = hwY(-150, true); B.prop('warmech', 262, y, -150, 0.6, 1, 0); B.add(256, y, -156, 268, y + 6, -144, 'metal', { hide: true }); B.out.marks.push({ id: 'commute.warmech', p: [262, y, -138] }); }
   B.out.triggers.push({ kind: 'paper', box: [X0, -10, Z0, X1, 80, Z1] });
@@ -188,4 +191,28 @@ export function commute(B, d) {
   act1Ramp(B); // act I: the Unpaid's jump ramp over the collapse (act1set.js)
   shops(B, 'commute'); // the car dealer, the petrol station (shops.js)
   slipRoad(B); // the Bottom's slip road down onto the Commute (roads.js)
+  ground(B, X0, Z0, X1, Z1, lotFlat);
+}
+
+// the ground itself: one grid for the chunk (drawn as a 'field' shape: mesh.js), and hidden steps under it, one box per
+// 2 m cell up to the middle of its corners, runs of the same height merged. bodies, cars and bullets go by the grid
+// (world.js joins the chunks' grids into boxes.terrain), the steps are for everything that only knows boxes
+function ground(B, X0, Z0, X1, Z1, extra) {
+  const f = groundField(X0, Z0, X1, Z1, extra);
+  f.at = [X0 + 0.5, f.lo, Z0 + 0.5];
+  if (X0 <= SLICE.commute.rect[0]) f.skirt = ['w']; // (the Bottom's terraces and the border meet it here)
+  B.shape(f);
+  const vz = f.nz + 1, Q = 0.1, base = Math.floor(f.lo) - 2, top = (i, j) => Math.round((f.H[i * vz + j] + f.H[(i + 1) * vz + j] + f.H[i * vz + j + 1] + f.H[(i + 1) * vz + j + 1]) / 4 / Q);
+  const runs = new Map(), put = (r) => B.add(X0 + r.i0 * CELL, base, Z0 + r.j * CELL, X0 + r.i1 * CELL, r.q * Q, Z0 + r.e * CELL, 'ground', { ter: true });
+  for (let i = 0; i <= f.nx; i++) { // runs along z, grown along x while the next column has the very same run
+    const seen = new Set();
+    if (i < f.nx) for (let j = 0; j < f.nz;) {
+      let e = j + 1; const q = top(i, j);
+      while (e < f.nz && top(i, e) === q) e++;
+      const key = j + ',' + e + ',' + q, r = runs.get(key);
+      if (r && r.i1 === i) r.i1 = i + 1; else { if (r) put(r); runs.set(key, { j, e, q, i0: i, i1: i + 1 }); }
+      seen.add(key); j = e;
+    }
+    for (const [key, r] of runs) if (!seen.has(key)) { put(r); runs.delete(key); }
+  }
 }

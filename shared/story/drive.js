@@ -78,6 +78,7 @@ export function stepCar(c, inp, dt, world, opts = {}) {
     const list = world.query(cx - r - 0.5, cz - r - 0.5, cx + r + 0.5, cz + r + 0.5, tmp);
     for (const b of list) {
       if (b.car || b.max[1] <= lo || b.min[1] >= hi) continue; // a kerb (the wheels climb it) or overhead
+      if (b.ter && c.y + 0.3 > b.max[1] - (b.sw || 0.7)) continue; // shaped ground's hidden steps: the wheels ride the hill itself (the ground rays below), no box edges to bounce off
       const px = Math.max(b.min[0], Math.min(cx, b.max[0])), pz = Math.max(b.min[2], Math.min(cz, b.max[2]));
       let dx = cx - px, dz = cz - pz, d = Math.hypot(dx, dz);
       if (d >= r) continue;
@@ -95,13 +96,16 @@ export function stepCar(c, inp, dt, world, opts = {}) {
   if (hit > DRIVE.crash) c.hp = Math.max(0, c.hp - (hit - DRIVE.crash) * 6);
   if (c.spin) { c.h += c.spin * dt; c.spin *= Math.exp(-3 * dt); if (Math.abs(c.spin) < 0.01) c.spin = 0; }
   // ground: the highest floor under the car within a step of its wheels (rays at the nose, the middle, the tail)
-  let floor = -Infinity;
+  let floor = -Infinity, hill = false;
   for (const k of [-0.4, 0, 0.4]) {
     const o = [c.x + f2[0] * T.L * k, c.y + DRIVE.step + 0.05, c.z + f2[2] * T.L * k];
     const g = world.raycast(o, [0, -1, 0], DRIVE.step + 0.05 + Math.max(0.3, -c.vy * dt + 0.05));
-    if (g && g.point[1] > floor) floor = g.point[1];
+    if (g && g.point[1] > floor) { floor = g.point[1]; hill = !!g.box.terr; }
   }
   const was = c.ground;
+  // shaped ground (shared/city/ground.js) falling away under you downhill: the tyres stay on it (no hopping down a
+  // hillside one bounce at a time). a real drop, a ramp's lip, a crest taken flat out: you fly
+  if (hill && was && c.vy <= 0 && c.y > floor + 0.02 && c.y - floor < 0.04 + Math.hypot(c.vx, c.vz) * dt * 0.4) c.y = floor;
   if (floor > -Infinity && c.y <= floor + 0.02) {
     if (!was && c.air > 0.25) ev.push({ land: true, v: -c.vy });
     c.y = floor; if (c.vy < 0) c.vy = 0; c.ground = true; c.air = 0;

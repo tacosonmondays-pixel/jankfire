@@ -231,6 +231,7 @@ export const sfx = {
   hammer(pos) { tone('square', 2300, 1500, 0.018, 0.12, pos); noise(0.025, 0.35, 'highpass', 3500, 6000, pos); }, // fanning: slap the hammer back
   twirl(pos) { noise(0.2, 0.16, 'bandpass', 700, 2400, pos, 0.02, 2.5); tone('square', 320, 260, 0.025, 0.06, pos, 0.24); }, // whirr round the finger, tk into the palm
   clatter(pos) { for (let i = 0; i < 10; i++) { const f = 2000 + Math.random() * 3600; tone('sine', f, f * 0.9, 0.04, 0.1, pos, i * 0.028 + Math.random() * 0.03); } noise(0.3, 0.18, 'highpass', 3000, 5000, pos); }, // a pile of marbles going everywhere
+  rockslide(pos) { noise(1.1, 0.45, 'lowpass', 700, 90, pos); for (let i = 0; i < 7; i++) { const f = 180 + Math.random() * 380; tone('square', f, f * 0.55, 0.06, 0.09, pos, i * 0.11 + Math.random() * 0.07); } }, // a loose rock going down a hillside, bits bouncing after it
   marble(pos) { const f = 2600 + Math.random() * 2600; tone('sine', f, f * 0.92, 0.035, 0.07, pos); },
   ricochet(pos) { tone('sine', 2600, 900, 0.18, 0.15, pos); },
   squeak(pos) { tone('sine', 1100, 1900, 0.08, 0.3, pos); tone('sine', 1900, 1100, 0.1, 0.3, pos, 0.08); },
