@@ -2932,6 +2932,7 @@ net.on('round', (m) => {
     return;
   }
   if (!m.over) return;
+  if (G.story && G.story.simRound) G.story.simRound(m); // OVERDUE: won the Machine's sim = back to the city
   G.roundOver = true;
   box.innerHTML = '';
   const h = document.createElement('h3');
