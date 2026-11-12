@@ -350,5 +350,17 @@
     0.125
    ]
   }
+ },
+ "stone": {
+  "tile": 2.0,
+  "px": 64,
+  "alpha": false,
+  "note": "tint"
+ },
+ "weather": {
+  "tile": 2.0,
+  "px": 64,
+  "alpha": true,
+  "note": ""
  }
 }

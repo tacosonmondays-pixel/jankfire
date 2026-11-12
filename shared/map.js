@@ -3453,8 +3453,9 @@ function cottage(B0, D0, dx, dz) {
 // Fort Splinter (round -77, 0): walls to walk (FW), the gate east (o.westGate: a big one west too, else a back door),
 // the bastions, merlons, the armoury, the well, the flag, cannons on the east wall. o.walk false: no stairs up to the
 // walls. o.pad: the human cannonball on the east wall
-function fort(B0, D0, dx, dz, st, o = {}) {
+function fort(B0, D0, dx, dz, st, o = {}) { // (drawn as one Blender model over these boxes, look only: fort.glb on Islands, fort_sd.glb on S&D)
   const { B, D, add, W, up } = isPiece(B0, D0, dx, dz, st);
+  const n0 = B0.boxes.length;
   wall(W, 'x', -12, -84, -70, 0, FW, 2, 'stone'); wall(W, 'x', 12, -84, -70, 0, FW, 2, 'stone');
   wall(W, 'z', -86, -10, 10, 0, FW, 2, 'stone', [o.westGate ? { a: -2.5, b: 2.5, y0: 0, y1: 3.4 } : { a: -1, b: 1, y0: 0, y1: 2.4 }]); wall(W, 'z', -68, -10, 10, 0, FW, 2, 'stone', [{ a: -2.5, b: 2.5, y0: 0, y1: 3.4 }]);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { const x = sx < 0 ? -86 : -68, z = sz * 12; add(x - 2, 0, z - 2, x + 2, 6, z + 2, 'stone'); } // the bastions (jump up from the walls)
@@ -3467,8 +3468,10 @@ function fort(B0, D0, dx, dz, st, o = {}) {
   // the courtyard: the armoury against the west wall, the well, the flag, barrels and crates, cannonballs
   wall(W, 'x', -3.2, -85, -80.2, 0, 3, 0.4, 'stone'); wall(W, 'x', -8.8, -85, -80.2, 0, 3, 0.4, 'stone');
   wall(W, 'z', -80.4, -8.6, -3.4, 0, 3, 0.4, 'stone', [{ a: -6.7, b: -5.3, y0: 0, y1: 2.2 }]); add(-85, 3, -9, -80, 3.3, -3, 'wood');
-  add(-79.2, 0, 3.2, -77.2, 1.0, 5.2, 'stone'); D.add(-78.9, 1.0, 3.5, -77.5, 1.02, 4.9, 'water'); for (const x of [-79.1, -77.3]) D.add(x - 0.08, 1.0, 4.12, x + 0.08, 2.6, 4.28, 'wood'); D.add(-79.4, 2.6, 3.6, -77.0, 2.8, 4.8, 'thatch');
-  add(-74.1, 0, 5.9, -73.9, 11, 6.1, 'metal'); D.add(-73.9, 8.8, 5.96, -71.2, 10.6, 6.04, 'flagskull', { fit: 1 });
+  if (!o.westGate) B0.archSince(n0, 'fort', dx, dz); // (Islands: the walls, bastions, merlons, stairs and armoury. its well and flagpole ride the dunes (shared/terrain.js drapes them), so they stay the game's)
+  add(-79.2, 0, 3.2, -77.2, 1.0, 5.2, 'stone'); D.add(-78.9, 1.0, 3.5, -77.5, 1.02, 4.9, 'water'); const d0 = D0.boxes.length; for (const x of [-79.1, -77.3]) D.add(x - 0.08, 1.0, 4.12, x + 0.08, 2.6, 4.28, 'wood'); D.add(-79.4, 2.6, 3.6, -77.0, 2.8, 4.8, 'thatch');
+  const d1 = D0.boxes.length; add(-74.1, 0, 5.9, -73.9, 11, 6.1, 'metal'); D.add(-73.9, 8.8, 5.96, -71.2, 10.6, 6.04, 'flagskull', { fit: 1 });
+  if (o.westGate) { B0.archSince(n0, 'fort_sd', dx, dz); for (let i = d0; i < d1; i++) Object.assign(D0.boxes[i], { av: 'fort_sd', ai: B0.boxes.arch.length - 1 }); } // (S&D, flat ground: the walls, bastions, merlons, armoury, the well and its winch frame, the flagpole. barrels, crates, cannons, the flag stay the game's)
   for (const [x, z] of [[-75, -6], [-75, -4.8], [-73.8, -5.4], [-82, 7.5], [-80.8, 7.8], [-71.5, 8]]) B.box(x, 0.55, z, 1.1, 1.1, 1.1, 'barrel');
   for (const [x, z] of [[-77.5, -1.5], [-71.6, -7.6], [-83.6, 1.5]]) B.box(x, 0.6, z, 1.2, 1.2, 1.2, 'crate');
   for (const [x, z] of [[-73, 2.2], [-82.5, -1.5]]) for (const [ox, oz, oy] of [[-0.3, -0.3, 0], [0.3, -0.3, 0], [-0.3, 0.3, 0], [0.3, 0.3, 0], [0, 0, 0.5]]) D.box(x + ox, 0.25 + oy, z + oz, 0.5, 0.5, 0.5, 'tire');
