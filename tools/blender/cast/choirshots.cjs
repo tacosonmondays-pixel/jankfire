@@ -92,15 +92,15 @@ const [PORT = 3000, OUT = 'choir_shots', MODE = 'both', CODE = ''] = process.arg
   }
   if (MODE === 'clip' || MODE === 'both') {
     await setup([['choir', [-2.4, 0, 0], -Math.PI / 2], ['choir_b', [-2.4, 0, -1.3], -Math.PI / 2], ['choir', [-2.4, 0, -2.6], -Math.PI / 2], ['choir_b', [2.4, 0, -0.6], Math.PI / 2], ['choir', [2.4, 0, -1.95], Math.PI / 2]]);
-    const eye = [0.5, 1.7, 6.2], cam = [0.5, 1.75, 6.4], at = [0, 1.25, -1.3];
+    const eye = [0.35, 1.7, 4.2], wide = [[0.6, 1.8, 4.6], [0, 1.3, -1.3], 44], west = [[0.5, 1.85, 0.9], [-2.4, 1.55, -1.4], 40], you = [[0.35, 1.72, 4.2], [0, 1.35, -1.3], 46];
     await step(10, { look: 'page' });
     let f = 0;
-    const frame = async (n, o) => { for (let i = 0; i < n; i++) { await step(1, o); await shoot(cam, at, path.join(OUT, 'clip', `f_${String(f++).padStart(4, '0')}.jpg`), 38); } };
-    await frame(150, { look: 'page' }); // the hum: everyone swaying together
-    await together('sing'); await frame(150, { look: 'up' }); // a phrase, together
-    await frame(15, { look: 'page' });
-    await together('heads', true); await frame(120, { eye, stare: true, look: 'ahead' }); // you walk in: every head, at once
-    await pg.evaluate(() => window.__M.C.releaseTogether(window.__L, 'heads')); await frame(45, { look: 'page' }); // and back to the hymn
+    const frame = async (n, o, [cam, at, fov]) => { for (let i = 0; i < n; i++) { await step(1, o); await shoot(cam, at, path.join(OUT, 'clip', `f_${String(f++).padStart(4, '0')}.jpg`), fov); } };
+    await frame(135, { look: 'page' }, wide); // the hum: everyone swaying together, eyes on the hymns
+    await together('sing'); await frame(150, { look: 'up' }, west); // a phrase, together: a breath, the words, the big note
+    await frame(15, { look: 'page' }, wide);
+    await together('heads', true); await frame(120, { eye, stare: true, look: 'ahead' }, you); // you walk in: every head, at once
+    await pg.evaluate(() => window.__M.C.releaseTogether(window.__L, 'heads')); await frame(45, { look: 'page' }, you); // and back to the hymn, all together
     console.log('frames', f);
   }
   if (MODE === 'walk') {

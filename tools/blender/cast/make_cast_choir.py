@@ -384,6 +384,35 @@ def back_patch(src, c, rad, m):
     return o
 
 
+def scalp_band(name, skull, cen, wid, h, m, rows=7, along=False):
+    """a ribbon of hair laid on the skull: through centre points (on the scalp, game coords) with a width at each,
+    domed h thick in the middle, its two long edges tucked 1.5 mm under the scalp. uv: u along it, v across (the hair
+    texture's stripes run across: combed down a horseshoe; along=True turns them to run along it: a combed strand)"""
+    C = Vector(HC); P = [Vector(p) for p in cen]; n_ = len(P)
+    bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap'); grid = []; L = [0.0]
+    for i in range(1, n_): L.append(L[-1] + (P[i] - P[i - 1]).length)
+    for i, p in enumerate(P):
+        t = (P[min(i + 1, n_ - 1)] - P[max(i - 1, 0)]).normalized(); nrm = (p - C); nrm = Vector((nrm.x / HR[0] ** 2, nrm.y / HR[1] ** 2, nrm.z / HR[2] ** 2)).normalized()
+        acr = t.cross(nrm).normalized(); row = []
+        for j in range(rows):
+            s_ = j / (rows - 1) * 2 - 1
+            q = on_scalp(skull, tuple(p + acr * s_ * wid[i] / 2), 0.0)
+            row.append(bm.verts.new(gv(*(Vector(q) + nrm * (h * (1 - s_ * s_) ** 0.7 - 0.0015)))))
+        grid.append(row)
+    for i in range(n_ - 1):
+        for j in range(rows - 1):
+            f = bm.faces.new((grid[i][j], grid[i][j + 1], grid[i + 1][j + 1], grid[i + 1][j]))
+            for lp, (ii, jj) in zip(f.loops, ((i, j), (i, j + 1), (i + 1, j + 1), (i + 1, j))):
+                u, v = L[ii] / 0.08, jj / (rows - 1)
+                lp[uvl].uv = (v * 0.4, u) if along else (u, v)
+            f.smooth = True
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    o = lib_obj(name, bm, m); o['keep_uv'] = 1
+    me = o.data; me.update()
+    if me.polygons and (Vector(me.polygons[len(me.polygons) // 2].normal).dot(gv(*nrm)) < 0): me.flip_normals()  # (outward)
+    return o
+
+
 def uv_hairband(o):
     """combed UVs for hair round the head: u round it (the texture's strands run down), v up it"""
     me = o.data
@@ -453,7 +482,7 @@ def skirt(name, m, lining):
     """from the waist (body space y top) to the floor: folds deepening down it, the hem rolled, a little raised at the
     front so the shoes show; a closed shell (outside down, round the hem, the lining back up)"""
     S = SKIRT; NA = 56
-    ys = [S['top'], S['hip'], S['hip'] - 0.25 * (S['hip'] - S['floor']), S['hip'] - 0.55 * (S['hip'] - S['floor']), S['floor'] + 0.015]
+    ys = [S['top'], S['hip'], S['hip'] - 0.25 * (S['hip'] - S['floor']), S['hip'] - 0.55 * (S['hip'] - S['floor']), S['floor'] + 0.026]  # (the hem's folds dip: they stay off the floor)
     def lerpk(arr, t):  # radius at t (0 top .. 1 hem) through the 4 key heights (top, hip, mid, hem)
         keys = (0.0, (S['top'] - S['hip']) / (S['top'] - ys[-1]), 0.55, 1.0)
         for i in range(3):
@@ -672,21 +701,26 @@ def build():
             rim = tube([(sx * (HR[0] + 0.006), 0.3, 0.06), (sx * (HR[0] + 0.012), 0.36, 0.078), (sx * (HR[0] + 0.012), 0.41, 0.06), (sx * (HR[0] + 0.01), 0.425, 0.03), (sx * (HR[0] + 0.006), 0.41, 0.004)], 0.01, skin, seg=8, name='helix%d' % sx)
             lobe = blob('lobe%d' % sx, (sx * (HR[0] + 0.0), 0.285, 0.035), (0.015, 0.026, 0.02), skin)
             for q in (e, rim, lobe): rot_about(q, ec, 0.08, sx * 0.38, sx * -0.12); head.append(q)
-        # the hair: a horseshoe from above one ear round the back to the other, down to the nape, and a combover: seven
-        # thin flat strands from a low parting on the left, plastered over the dome to the right, the scalp between them
-        def band(a):  # (head space height of its top / bottom edge at angle a round the head, 0 = the front)
+        # the hair: a horseshoe from just behind one ear round the back to the other, down to the nape, and a combover:
+        # six flat strands from a low parting on the left, plastered over the dome to the right, the scalp between them.
+        # both are ribbons laid on the scalp itself, thick in the middle, their edges tucked in (no steps, no gaps)
+        def band(a):  # (head space height of the horseshoe's top / bottom at angle a round the head, 0 = the front)
             A = abs(a)
-            return (0.47 + 0.035 * ss_(1.4, 2.6, A), 0.41 - 0.2 * ss_(1.5, 2.7, A))
-        hb = sculpt('horseshoe', HC, (HR[0] * 1.006, HR[1] * 1.004, HR[2] * 1.006), hairM, lambda g, n: n * (0.0025 * math.sin(math.atan2(g.x, -g.z) * 40)), seg=40, rings=32)
-        cut_faces(hb, lambda p: abs(math.atan2(p.x, -p.z)) > 1.32 and band(math.atan2(p.x, -p.z))[1] < p.y < band(math.atan2(p.x, -p.z))[0])
-        solid(hb, 0.012, 1.0); apply_mods(hb); uv_hairband(hb); head.append(hb)
-        for i in range(7):
-            z0 = -0.13 + i * 0.038; pts = []
-            for j in range(10):
-                u = j / 9; x = -HR[0] * 0.86 + u * HR[0] * 1.62
-                pts.append(on_scalp(skull, (x, HC[1] + HR[1] * 0.85, z0 + 0.012 * math.sin(u * 2.5 + i * 1.7)), 0.003))
-            rr = [0.007, 0.0095, 0.0105, 0.011, 0.011, 0.0108, 0.0104, 0.0098, 0.008, 0.005]
-            head.append(limb('strand%d' % i, pts, rr, hairM, seg=8, squash=(0.3, 1.0)))
+            return (0.475 + 0.03 * ss_(1.4, 2.6, A), 0.43 - 0.22 * ss_(1.45, 2.75, A))
+        cen, wid = [], []
+        for i in range(41):
+            a = 1.4 + (2 * math.pi - 2.8) * i / 40  # (from just behind the right ear, round the back, to the left)
+            top, bot = band(a)
+            d = Vector((math.sin(a), 0, -math.cos(a)))
+            cen.append(on_scalp(skull, (d.x * HR[0], (top + bot) / 2, d.z * HR[2]), 0.0))
+            wid.append((top - bot) * (0.35 + 0.65 * ss_(0.0, 0.18, min(i, 40 - i) / 40)))  # (the ends taper over the ears)
+        head.append(scalp_band('horseshoe', skull, cen, wid, 0.013, hairM, rows=9))
+        for i in range(6):  # (each out of the horseshoe above the left ear, up over the dome, down to the right one)
+            z0 = -0.12 + i * 0.047; pts = []
+            for j in range(16):
+                u = j / 15; th = -1.3 + u * 2.3 - 0.04 * i
+                pts.append(on_scalp(skull, (math.sin(th) * HR[0], HC[1] + math.cos(th) * HR[1], z0 * (0.85 + 0.15 * math.cos(th)) + 0.012 * math.sin(u * 2.5 + i * 1.7)), 0.0))
+            head.append(scalp_band('strand%d' % i, skull, pts, [0.027 * (0.35 + 0.65 * ss_(0.0, 0.22, min(j, 15 - j) / 15)) for j in range(16)], 0.005, hairM, rows=5, along=True))
     else:
         head.append(blob('nose', (0, EYE_Y - 0.06, EYE_Z - 0.035), (0.034, 0.03, 0.03), skin))  # a button nose
         for sx in (-1, 1): head.append(blob('nostril%d' % sx, (sx * 0.02, EYE_Y - 0.077, EYE_Z - 0.03), (0.014, 0.011, 0.014), skin))
@@ -710,12 +744,18 @@ def build():
             ny = (y - HC[1]) / (HR[1] * 1.12); ny = max(-0.95, min(0.95, ny)); k_ = math.sqrt(1 - ny * ny)
             c = Vector((d.x * HR[0] * 1.06 * k_, y, d.z * HR[2] * 1.08 * k_))
             head.append(ball(0.038 + rng.uniform(-0.004, 0.006), tuple(c), hairM, seg=9, rings=6))
+        for i in range(11):  # a ring of curls round the back, half way up
+            a = 1.25 + (2 * math.pi - 2.5) * i / 10
+            y = (edge(a) + HC[1] + HR[1] * 0.9) / 2; d = Vector((math.sin(a), 0, -math.cos(a)))
+            ny = max(-0.95, min(0.95, (y - HC[1]) / (HR[1] * 1.12))); k_ = math.sqrt(1 - ny * ny)
+            head.append(ball(0.04 + rng.uniform(-0.004, 0.004), (d.x * HR[0] * 1.07 * k_, y, d.z * HR[2] * 1.09 * k_), hairM, seg=9, rings=6))
+        crown = []
         for i in range(10):
             a = rng.uniform(-math.pi, math.pi); e_ = rng.uniform(0.35, 1.3)
             d = Vector((math.sin(a) * math.cos(e_), math.sin(e_), -math.cos(a) * math.cos(e_)))
             c = Vector(HC) + Vector((d.x * HR[0] * 1.1, d.y * HR[1] * 1.16, d.z * HR[2] * 1.12))
-            if c.y < edge(a) + 0.02: continue
-            head.append(ball(0.04 + rng.uniform(-0.005, 0.005), tuple(c), hairM, seg=9, rings=6))
+            if c.y < edge(a) + 0.02 or any((c - q).length < 0.045 for q in crown): continue  # (no two curls on the same spot)
+            crown.append(c); head.append(ball(0.04 + rng.uniform(-0.005, 0.005), tuple(c), hairM, seg=9, rings=6))
         # a pencil behind the right ear
         pc = (HR[0] + 0.012, 0.27, 0.03)
         head.append(rod((pc[0] - 0.01, pc[1] + 0.07, pc[2] - 0.05), (pc[0] + 0.004, pc[1] - 0.04, pc[2] + 0.07), 0.008, mat(ID + '_pencil', 0xffc830, rough=0.4, clearcoat=0.5), seg=6))
@@ -1027,6 +1067,20 @@ def closeups(root):
     print('JF_SHEET', dst)
 
 
+def studio(root):
+    """cast_sheet's lights, world and camera, for the head views on their own"""
+    sc = bpy.context.scene
+    sc.render.engine = 'BLENDER_EEVEE'; sc.eevee.taa_render_samples = 24; sc.view_settings.view_transform = 'Standard'
+    w = bpy.data.worlds.new('w'); sc.world = w; w.use_nodes = True
+    w.node_tree.nodes['Background'].inputs['Color'].default_value = srgb(0x3a3346); w.node_tree.nodes['Background'].inputs['Strength'].default_value = 0.6
+    tris, lo, hi = stats(root); H = hi[1] - lo[1]; c = gv(0, lo[1] + H * 0.5, 0)
+    for e, loc, sz, col in ((70, (0.9, 1.6, 1.0), 0.8, (1, 1, 1)), (25, (-1.4, 0.8, 0.4), 1.0, (0.85, 0.9, 1.0)), (60, (-0.5, -1.6, 0.9), 0.5, (1.0, 0.6, 0.75))):
+        L = bpy.data.lights.new('l', 'AREA'); L.energy = e * H * H; L.size = sz * H; L.color = col
+        o = bpy.data.objects.new('l', L); sc.collection.objects.link(o); o.location = c + Vector(loc) * H
+        d = c - o.location; o.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
+    cam = bpy.data.objects.new('cam', bpy.data.cameras.new('cam')); sc.collection.objects.link(cam); sc.camera = cam
+
+
 def head_views(root):
     """the back and sides of the head up close -> sheets/c_<id>_head.jpg"""
     sc = bpy.context.scene; sc.render.resolution_x, sc.render.resolution_y = 480, 480
@@ -1049,6 +1103,7 @@ def main():
     for o in root.children_recursive:
         if o.type == 'MESH': me = o.data; me.calc_loop_triangles(); print('JF_PART', o.name, len(me.loop_triangles))
     if '--no-export' not in argv: export_all(root, arm)
+    if '--head' in argv: studio(root); face_preview(root); head_views(root); return  # (just the head views: hair checks)
     if '--no-sheet' in argv: return
     face_preview(root)
     pose_sheet(root)

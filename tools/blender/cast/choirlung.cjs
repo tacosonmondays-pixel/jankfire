@@ -13,7 +13,11 @@ const FPS = Number(process.env.FPS) || 12;
   const { b, pg, ev, errs } = await boot({ hd: true });
   const DOOR = [-268, 40, -194.5];
   await tp(ev, DOOR, 0); await settle(ev, DOOR, 9000);
-  await ev(() => { const s = document.createElement('style'); s.textContent = '*{visibility:hidden!important} canvas,#stGrade,#stGrade *{visibility:visible!important}'; document.head.append(s); window.JF_STORY.capture = true; }); // (no HUD: the canvas and the story's grade overlay only)
+  await ev(async () => { // (no HUD, no gun, no quest markers: the canvas and the story's grade overlay only)
+    const s = document.createElement('style'); s.textContent = '*{visibility:hidden!important} canvas,#stGrade,#stGrade *{visibility:visible!important}'; document.head.append(s);
+    const { G } = await import('/js/ctx.js'); Object.defineProperty(G.vmScene, 'visible', { get: () => false, set: () => {}, configurable: true });
+    for (const sp of window.JF_STORY.spots.values()) G.scene.remove(sp.mesh);
+    window.JF_STORY.capture = true; });
   const step = async (n = 1) => { for (let i = 0; i < n; i++) { await ev((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf' }); } };
   const shot = (pos, look, fov = 50) => ev(async ([pos, look, fov]) => { const THREE = await import('three'); const { wantShot } = await import('/js/story/camctl.js'); wantShot({ pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov, cut: true, blend: 0.01, follow: 99 }); }, [pos, look, fov]);
   const me = (p) => ev(async (p) => { const { ME } = await import('/js/player.js'); ME.pos = p.slice(); ME.vel = [0, 0, 0]; }, p);
@@ -35,22 +39,21 @@ const FPS = Number(process.env.FPS) || 12;
     await me(DOOR); await step(Math.round(FPS * 5));
   }
   if (MODE !== 'stills') {
-    await ev(async () => { const c = await import('/js/story/choir.js'); const D = c.choirState(); D.next = 3.5; D.cool = 0; D.wasIn = false; D.stareT = -1; });
+    await ev(async () => { const c = await import('/js/story/choir.js'); const D = c.choirState(); D.next = 2.5; D.cool = 0; D.wasIn = false; D.stareT = -1; });
     await me(DOOR);
     let f = 0;
     const rec = async (n, fn) => { for (let i = 0; i < n; i++) { if (fn) await fn(i / n); await step(); await pg.screenshot({ path: path.join(OUT, 'lung', `f_${String(f++).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 85 }); } };
     const lerp = (a, c, t) => a.map((x, i) => x + (c[i] - x) * t);
-    await shot([-266.9, 41.75, -199.2], [-268.2, 41.15, -210.8], 50);
-    await rec(FPS * 9); // the hum, then a phrase together
-    const IN = [-268, 40, -201.5], UP = [-268, 40, -207.4];
-    await rec(Math.round(FPS * 1.2), (t) => me(lerp(DOOR, IN, t))); // you step in: every head, at once
-    await rec(Math.round(FPS * 2.5));
-    await shot([-266.4, 41.7, -214.6], [-268, 41.3, -205], 55); // (from behind the stalls, looking back at you)
-    await rec(Math.round(FPS * 3.5), (t) => me(lerp(IN, UP, t))); // up the aisle between them: the heads follow you
-    await rec(Math.round(FPS * 1.5));
-    await shot([-266.9, 41.75, -199.2], [-268.2, 41.15, -210.8], 50);
-    await rec(Math.round(FPS * 2.5), (t) => me(lerp(UP, [-268, 40, -192], t))); // and out
-    await rec(Math.round(FPS * 4)); // back to the hymn, all at once
+    await shot([-266.9, 41.75, -199.6], [-268.2, 41.15, -210.8], 50);
+    await rec(Math.round(FPS * 7.5)); // the hum, then a phrase together
+    const IN = [-268, 40, -201.5], UP = [-268, 40, -207.2];
+    await rec(Math.round(FPS * 1), (t) => me(lerp(DOOR, IN, t))); // you step in: every head, at once
+    await rec(Math.round(FPS * 2));
+    await shot([-266.4, 41.7, -214.4], [-268, 41.3, -205], 55); // (from behind the stalls, looking back at you)
+    await rec(Math.round(FPS * 2.5), (t) => me(lerp(IN, UP, t))); // up the aisle between them: the heads follow you
+    await shot([-266.9, 41.75, -199.6], [-268.2, 41.15, -210.8], 50);
+    await rec(Math.round(FPS * 2), (t) => me(lerp(UP, [-268, 40, -192], t))); // and out
+    await rec(Math.round(FPS * 2.5)); // back to the hymn, all at once
     console.log('frames', f);
   }
   console.log(errs.filter((e) => !/favicon|404/.test(e)).join('\n') || 'no errors');
