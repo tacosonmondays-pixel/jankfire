@@ -120,9 +120,10 @@ export function retaining(B, x0, x1, z, y0, y1, r, mat = 'concrete') {
 // rubble: a heap of tilted concrete chunks (render only) on one collision box
 export function rubble(B, x, y, z, s, r) {
   B.add(x - s * 0.5, y, z - s * 0.5, x + s * 0.5, y + s * 0.35, z + s * 0.5, 'rubble', { hide: true });
+  const g0 = B.gy ? B.gy(x, z) : 0; // (B.gy: the ground's height, where a generator has shaped ground: each piece lies on the slope under it)
   for (let i = 0; i < 4 + s * 2; i++) {
-    const a = r() * 6.283, d = r() * s * 0.45, sz = 0.4 + r() * s * 0.35;
-    B.obb(x + Math.cos(a) * d, y + sz * 0.3 + r() * s * 0.15, z + Math.sin(a) * d, sz * (1 + r()), sz * (0.4 + r() * 0.6), sz, r() * 3.14, r() < 0.2 ? 'brick' : 'rubble', { tint: r() < 0.3 ? pick(r, PASTEL) : 0 });
+    const a = r() * 6.283, d = r() * s * 0.45, sz = 0.4 + r() * s * 0.35, px = x + Math.cos(a) * d, pz = z + Math.sin(a) * d;
+    B.obb(px, y + sz * 0.3 + r() * s * 0.15 + (B.gy ? B.gy(px, pz) - g0 : 0), pz, sz * (1 + r()), sz * (0.4 + r() * 0.6), sz, r() * 3.14, r() < 0.2 ? 'brick' : 'rubble', { tint: r() < 0.3 ? pick(r, PASTEL) : 0 });
   }
   if (r() < 0.4) B.obb(x, y + s * 0.3, z, 0.08, 0.08, s, r() * 3.14, 'rust'); // rebar
 }
