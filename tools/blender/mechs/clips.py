@@ -47,8 +47,14 @@ class Kit:
 
     def stance(self, crouch=1.0):
         k = self.k * crouch
-        return M(both('thigh', (7 * k, 0, 3)), both('shin', (-14 * k, 0, 0)), both('foot', (7 * k, 0, -3)),
-                 both('upperarm', (4, 0, self.arm_out)), both('forearm', (14, 0, 0)), hips_at(-0.035 * k))
+        P = M(both('thigh', (7 * k, 0, 3)), both('shin', (-14 * k, 0, 0)), both('foot', (7 * k, 0, -3)),
+              both('upperarm', (4, 0, self.arm_out)), both('forearm', (14, 0, 0)), hips_at(-0.035 * k))
+        if self.heavy: P['hand_R'] = (-48, 0, 0)  # (the sword hangs down and a little forward, not on a diagonal)
+        return P
+
+    def shield_arm(self, lift=1.0):
+        """NIGHT SHIFT's shield held up in front of its left side (it stays there through flinches and landings)"""
+        return M(side('upperarm', (30 * lift, -10, -12), -1), side('forearm', (116, 90, 0), -1))
 
 
 def clip(name, dur, keys, loop=False, hold=False, note='', partial=False):
@@ -116,6 +122,9 @@ def land(K):
     st = K.stance(); fall = M(both('thigh', (30, 0, 4)), both('shin', (-50, 0, 0)), both('foot', (10, 0, 0)), both('upperarm', (30, 0, K.arm_out + 25)), both('forearm', (20, 0, 0)))
     hit = M(K.stance(4.2), {'chest': (-24, 0, 0), 'head': (20, 0, 0)}, both('upperarm', (20, 0, K.arm_out + 35)), both('forearm', (35, 0, 0)), hips_at(-0.42 * K.k))
     over = M(K.stance(0.7), {'chest': (4, 0, 0)}, both('upperarm', (2, 0, K.arm_out + 2)))
+    if K.heavy:
+        fall = M(fall, K.shield_arm(), side('upperarm', (20, 0, 22), 1))
+        hit = M(hit, K.shield_arm(), side('upperarm', (14, 0, 28), 1), side('forearm', (30, 0, 0), 1))
     T = K.t
     return clip('land', 0.6 * T, [(0, fall), (0.06 * T, hit), (0.22 * T, hit), (0.42 * T, over), (0.6 * T, st)], note='impact squash, overshoot, settle')
 
@@ -125,12 +134,17 @@ def hover(K):
           both('upperarm', (12, 0, K.arm_out + 14)), both('forearm', (30, 0, 0)), {'chest': (-4, 0, 0), 'hips': {'r': (0, 0, 0), 'p': (0, 0.05, 0)}})
     b = M(a, side('shin', (-48, 0, 0), 1), side('shin', (-32, 0, 0), -1), both('upperarm', (18, 0, K.arm_out + 18)), {'chest': (-2, 0, 0), 'hips': {'r': (0, 0, 0), 'p': (0, -0.03, 0)}})
     if K.kind == 'pp': a.update({'wing_R': (0, 0, -10), 'wing_L': (0, 0, 10)}); b.update({'wing_R': (0, 0, -16), 'wing_L': (0, 0, 16)})
+    if K.heavy:
+        for p in (a, b): p.update(M({'hand_R': (-55, 0, 0)}, K.shield_arm(0.7)))
     return clip('hover', 1.6 * K.t, [(0, a), (0.8 * K.t, b)], loop=True, note='thrusters holding it up: legs hang, slow bob')
 
 
 def hit_react(K):
     st = K.stance(); snap = M(K.stance(1.4), {'chest': (16, -14, 6), 'head': (24, -16, 8), 'waist': (6, 0, 0)}, side('upperarm', (-30, 0, 30), 1), side('upperarm', (20, 0, 40), -1), both('forearm', (40, 0, 0)))
     back = M(K.stance(1.2), {'chest': (-5, 4, -2), 'head': (-6, 4, 0)})
+    if K.heavy:  # (heavy: a short flinch behind the shield)
+        snap = M(K.stance(1.5), {'chest': (9, -8, 3), 'head': (14, -10, 4), 'waist': (3, 0, 0)}, K.shield_arm(1.1), side('upperarm', (-12, 0, 20), 1), side('forearm', (30, 0, 0), 1))
+        back = M(K.stance(1.25), {'chest': (-3, 3, -1), 'head': (-4, 3, 0)}, K.shield_arm())
     T = K.t
     return clip('hit_react', 0.5 * T, [(0, st), (0.05 * T, snap), (0.2 * T, snap), (0.33 * T, back), (0.5 * T, st)], note='snaps back and twists, recovers with overshoot')
 

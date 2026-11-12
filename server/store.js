@@ -150,6 +150,14 @@ class FileStore {
     this.save();
     return true;
   }
+  async delStory(nameLower, slot) { // wipe one slot (and an old fallback copy of it)
+    const u = this.db.users[nameLower];
+    if (!u) return false;
+    if (u.story && typeof u.story === 'object') delete u.story[slot];
+    if (u.inv && u.inv.story && typeof u.inv.story === 'object') delete u.inv.story[slot];
+    this.save();
+    return true;
+  }
   async addModeStats(nameLower, d) {
     const u = this.db.users[nameLower];
     if (!u) return;
@@ -292,6 +300,18 @@ class SupabaseStore {
     const inv = u.inv || {};
     inv.story = { [slot]: save };
     await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, { inv }, { Prefer: 'return=minimal' });
+    return true;
+  }
+  // wipe one slot: its jf_story row (when the table exists), and an old inv.story copy of it (pre-table saves are still
+  // read from there while the table has none). slot is an integer the route already checked
+  async delStory(nameLower, slot) {
+    if ((await this.storyInfo()).table) await this.req('DELETE', `?name_lower=eq.${encodeURIComponent(nameLower)}&slot=eq.${slot | 0}`, null, { Prefer: 'return=minimal' }, '/jf_story');
+    const u = await this.get(nameLower);
+    const st = u && u.inv && u.inv.story;
+    if (st && typeof st === 'object' && Object.values(st).some((x) => x && x.slot === slot)) {
+      const keep = Object.fromEntries(Object.entries(st).filter(([, x]) => !(x && x.slot === slot)));
+      await this.req('PATCH', `?name_lower=eq.${encodeURIComponent(nameLower)}`, { inv: { ...u.inv, story: keep } }, { Prefer: 'return=minimal' });
+    }
     return true;
   }
   async addModeStats(nameLower, d) {

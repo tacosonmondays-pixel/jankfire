@@ -210,7 +210,8 @@ export class CityStream {
     const inst = [];
     for (const r of list) {
       const P = r.packed.prop, ids = r.packed.ids;
-      for (let i = 0; i < P.length; i += 7) inst.push({ id: ids[P[i]], x: P[i + 1], y: P[i + 2], z: P[i + 3], yaw: P[i + 4], s: P[i + 5], v: P[i + 6] });
+      const TL = r.packed.ptilt; // (some lean with the ground: chunk.js ptilt)
+      for (let i = 0; i < P.length; i += 7) inst.push({ id: ids[P[i]], x: P[i + 1], y: P[i + 2], z: P[i + 3], yaw: P[i + 4], s: P[i + 5], v: P[i + 6], tx: TL ? TL[i / 7 * 2] : 0, tz: TL ? TL[i / 7 * 2 + 1] : 0 });
     }
     freeProps(this.props.group);
     this.props.group = buildPropGroup(inst, this.R.propsHi, this.cam, this.R.props / 224); this.props.n = inst.length;

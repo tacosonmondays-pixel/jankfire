@@ -38,7 +38,7 @@ for (const [row, name] of names.entries()) {
     mixer.setTime(t);
     g.scene.updateMatrixWorld(true);
     const x = k * CW, y = 30 + row * CH;
-    if (jet || /^jet_/.test(name) && k > NF / 2) { cam.position.set(-7.5, 5.5, 8.5); cam.lookAt(0, 2.4, 0); } else { cam.position.set(-6.5, tall * 0.62, 12.5); cam.lookAt(0, tall * 0.45, 0); }
+    if (jet || /^jet_/.test(name) && k > NF / 2) { cam.position.set(-7.5, 5.5, 8.5); cam.lookAt(0, 2.4, 0); } else { cam.position.set(-8.2, tall * 0.62, 16.0); cam.lookAt(0, tall * 0.45, 0); /* (back far enough that a swung sword stays in the frame) */ }
     ren.setViewport(x, H - y - CH, CW - 2, CH - 2); ren.setScissor(x, H - y - CH, CW - 2, CH - 2); ren.render(sc, cam);
     if (k === 0) ui.insertAdjacentHTML('beforeend', `<div class="l" style="left:${x + 4}px;top:${y + 4}px">${name} ${clip.duration.toFixed(2)}s</div>`);
   }

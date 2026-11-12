@@ -3,10 +3,13 @@
 //   POST /api/story/list  -> { slots: n, table, saves: [card|null x n] }
 //   POST /api/story/load  { slot } -> { save }
 //   POST /api/story/save  { slot, save } -> { ok, card }
+//   POST /api/story/delete { slot } -> { ok }   (wipe a slot: the picker's WIPE IT. nothing to undo)
 // every request needs a signed token (Bearer). bodies are capped by readJson (64 KB) and cleaned by shared/story/save.js.
 import { cleanSave, saveCard, SAVE, FALLBACK } from '../shared/story/save.js';
 
 const lastSave = new Map(); // name_lower -> time of the last accepted save (1 per SAVE.minGap per account)
+const lastWipe = new Map(); // name_lower -> time of the last wipe (a few seconds apart: it's a button, not a loop)
+export const WIPE_GAP = 3000;
 const MAX_ROOMS = 8; // TECH_PLAN §4: more co-op rooms than this and the city is full (try solo)
 
 export async function storyApi(accounts, url, body, auth, send) {
@@ -38,6 +41,18 @@ export async function storyApi(accounts, url, body, auth, send) {
       if (lastSave.size > 5000) for (const [k, v] of lastSave) if (t - v > SAVE.minGap) lastSave.delete(k); // (forget old ones)
       await store.putStory(u.name_lower, slot, r.save);
       return send(200, { ok: true, card: saveCard(r.save) });
+    }
+    case '/api/story/delete': {
+      const slot = slotOf(body.slot);
+      if (slot == null) return send(400, { error: 'bad slot' });
+      if (typeof store.delStory !== 'function') return send(503, { error: 'no story saves here' });
+      const t = Date.now();
+      if (t - (lastWipe.get(u.name_lower) || 0) < WIPE_GAP) return send(429, { error: 'wiping too fast' });
+      lastWipe.set(u.name_lower, t);
+      if (lastWipe.size > 5000) for (const [k, v] of lastWipe) if (t - v > WIPE_GAP) lastWipe.delete(k);
+      await store.delStory(u.name_lower, slot); // (your own slots only: the account comes from the token)
+      lastSave.delete(u.name_lower); // (a new game can save straight away)
+      return send(200, { ok: true });
     }
     default: return send(404, { error: 'nope' });
   }

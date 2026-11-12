@@ -56,7 +56,7 @@ export function act1Gut(B) {
   if (!B.touches([x0 - 2, wz - 2, x1 + 2, wz + 4])) return;
   const r = rng(4417);
   for (let x = x0; x < x1; x += 2 + r() * 2) { const h = 3 + r() * 8; B.add(x, y, wz - 0.02, Math.min(x1, x + 1.6 + r() * 2.4), y + h, wz + 0.22, 'flesh', { nc: true, tint: pick(r, FLESH) }); }
-  for (let i = 0; i < 7; i++) { const x = x0 + 1 + i * 3 + (r() - 0.5); if (Math.abs(x - D[0]) < 1.2) continue; B.prop('mannequin', x, y - 0.3 - r() * 0.5, wz + 0.05, Math.PI + (r() - 0.5) * 0.5, 1, i); } // (Dot's spot is left free)
+  for (let i = 0; i < 7; i++) { const x = x0 + 1 + i * 3 + (r() - 0.5); if (Math.abs(x - D[0]) < 1.2 || Math.abs(x - D[0] - 3.5) < 1.2) continue; B.prop('mannequin', x, y - 0.3 - r() * 0.5, wz + 0.05, Math.PI + (r() - 0.5) * 0.5, 1, i); } // (Dot's spot and Mina's, 3.5 m east (cast_slice.js), are left free)
   for (let i = 0; i < 6; i++) B.prop('eyeball', x0 + r() * (x1 - x0), y + 2 + r() * 6, wz + 0.25, Math.PI, 0.8 + r() * 0.8, 0);
   for (let i = 0; i < 3; i++) B.prop(i % 2 ? 'fleshblob_a' : 'fleshblob_b', x0 + 2 + i * 7, y, wz + 0.5, r() * 6.28, 1.2, 0);
   B.light(D[0], y + 4, wz + 3, 0xff6f91, 12, 1.2);
