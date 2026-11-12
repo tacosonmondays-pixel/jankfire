@@ -142,7 +142,7 @@ export const poiAt = (x, z) => PLAN.pois.find((p) => x >= p.rect[0] && x <= p.re
 // grapple it, bots path over it, loot lands on it. painted by what it is: sand, wet sand under the water, grass, jungle
 // floor along the river, bare rock on anything steep, the roads. vegetation is the existing Blender props (palms on the
 // beaches, ferns and bushes in the jungle). the POIs' buildings come in their own PRs, Blender from the start
-import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick } from './map.js';
+import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick, forklift, pallets } from './map.js';
 import { shapeGround } from './terrain.js';
 import { buildNav } from './nav.js';
 import { propOf } from './propcap.js';
@@ -258,6 +258,10 @@ function portJankton(B) {
     // inside: crate stacks along the walls (each crate a Blender crate), a container to one side (cover)
     for (const [dx, dz, n] of [[-11, -7, 3], [-7, 7, 2], [9, -7, 2], [12, 6, 3]]) for (let k = 0; k < n; k++) A(cx + dx + (k % 2) * 1.6, (k >> 1) * 1.5, (sz0 + sz1) / 2 + dz, cx + dx + (k % 2) * 1.6 + 1.5, (k >> 1) * 1.5 + 1.5, (sz0 + sz1) / 2 + dz + 1.5, 'crate');
     A(cx + 5, 0, (sz0 + sz1) / 2 - 1.2, cx + 11.06, 2.6, (sz0 + sz1) / 2 + 1.24, sh.sign === 'cold' ? 'containerb' : 'containerr'); // (off the doors' line: a mech walks straight through)
+    // a forklift with a load on its forks, pallet stacks (the existing Blender models; built on the ground, the shaped ground puts them on the floor)
+    const zc = (sz0 + sz1) / 2, pr = rng(4300 + sh.x0);
+    forklift(B, cx - 8, zc - 3, sh.sign === 'cold' ? 1 : 3, 1);
+    for (const [dx, dz, n] of [[-12.5, 4, 5], [5, -6.5, 4], [-1 + 6, 4.5, 6]]) pallets(B, cx + dx, zc + dz, n, pr);
   }
   // containers stacked on the apron (east of the crane), crates by the quay
   for (const [x, z, k, m] of [[40, 136, 0, 'containerg'], [40, 136, 1, 'containerr'], [40, 140, 0, 'containerb'], [88, 136, 0, 'containerr'], [88, 140, 0, 'containerg'], [88, 140, 1, 'containerb']]) A(x, k * 2.6, z, x + 6.06, k * 2.6 + 2.6, z + 2.44, m);
