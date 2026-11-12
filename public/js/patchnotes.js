@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.2', date: '2026-11-12', title: 'GLINT', items: [
+    'RAY-TRACED LOOK: props, buildings, mechs and your gun now reflect the world around them, with a sun glint on shiny paint and chrome. they pick up the bounced light too, so they stop looking flat. bounce light and soft shadows got stronger and now cover all of jankburg.',
+  ] },
   { v: '11.1', date: '2026-11-12', title: 'SO DID THE CORNER', items: [
     'jankburg: the houses got walls, windows, stairs and real roofs. the streets got rearranged a bit while we were at it. your favourite corner might have moved. so did the corner.',
   ] },
