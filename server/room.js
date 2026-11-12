@@ -37,6 +37,8 @@ import { OOB, outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { Traffic } from './traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
+import { teamPlan } from './partyteams.js'; // parties stay on one side
+import { ticketRoom } from './party.js'; // party tickets (roomFor)
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
 import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
@@ -372,9 +374,10 @@ class Room {
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
     let i = 0;
+    const plan = list.some((p) => p.party) ? teamPlan(list) : null; // (parties stay on one side: server/partyteams.js)
     for (const p of list) {
       if (!p.ownColor) p.ownColor = p.color;
-      if (this.teamsOn()) { p.team = (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
+      if (this.teamsOn()) { p.team = plan ? plan.get(p) : (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
       else { p.team = 0; p.color = (p.look && p.look.color) || p.ownColor; }
     }
     this.broadcast({ t: 'teams', game: this.game, list: list.map((p) => [p.id, p.team, p.color]) });
@@ -407,8 +410,10 @@ class Room {
   }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
+    if (!p.party && p.ws && p.ws.partyId) p.party = p.ws.partyId; // (came in on a party ticket: roomFor)
     if (!this.teamsOn()) { p.team = 0; return; }
-    p.team = this.teamFor();
+    const mate = p.party && [...this.players.values()].find((q) => q !== p && q.party === p.party && q.team);
+    p.team = mate ? mate.team : this.teamFor(); // a party joins its mates' side
     p.color = TEAMS[p.team].color;
   }
 
@@ -4126,6 +4131,9 @@ function lobbyCounts() {
 }
 function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  const tk = ticketRoom(cfg, rooms); // a party's leader started: the room they were all handed a ticket to (server/party.js)
+  if (tk && tk.room.mode === mode) { if (ws) ws.partyId = tk.party; return tk.room; }
+  const need = cfg && typeof cfg === 'object' && Number.isInteger(cfg.need) ? Math.max(1, Math.min(6, cfg.need)) : 1; // (seats the party needs)
   // mode lobbies (home menu ONLINE / WITH BOTS cards): an open lobby for that mode, or a new one. Online Quick Play is the 'ffa' room below
   const lk = cfg && typeof cfg === 'object' && typeof cfg.lobby === 'string' && has(LOBBY.kinds, cfg.lobby) ? cfg.lobby : null;
   if (lk === 'qp' && mode === 'bots') { // With Bots Quick Play: no lobby. drop into a running quick play bots room with a bot to replace, else a new one
@@ -4136,7 +4144,7 @@ function roomFor(mode, ws, cfg) {
     return r;
   }
   if (lk && lk !== 'qp' && (mode === 'bots' || mode === 'ffa')) {
-    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk)) return r;
+    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk, need)) return r;
     const r = new Room(`${mode}:${lk}:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, mode);
     rooms.set(r.id, r);
     r.lobbyInit(lk, mode === 'ffa');

@@ -31,9 +31,9 @@ export function installLobby(Room, H) {
     lobbyMin() { return this.lobby && this.lobby.online ? LOBBY.kinds[this.lobby.kind].min : 1; },
     lobbyHumans() { return this.humans().filter((p) => !p.watch); },
     // can someone who picked `kind` join this room right now?
-    lobbyOpen(mode, kind) {
+    lobbyOpen(mode, kind, need = 1) { // need: seats for a whole party (server/party.js)
       if (!this.lobby || this.mode !== mode || this.lobby.kind !== kind || !this.warm || this.locked || this.closed) return false;
-      const h = this.lobbyHumans().length;
+      const h = this.lobbyHumans().length + need - 1;
       return this.lobby.online ? h < (LOBBY.kinds[kind].cap || LOBBY.cap.online) : h < this.lobbySize(); // (zombies: a squad of 4)
     },
     // a bots lobby: how many fighters it holds (humans take bots' places)
