@@ -1,6 +1,13 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.2', date: '2026-11-12', title: 'RAY-TRACED (ISH)', items: [
+    'new shader level: RAY-TRACED LOOK (settings > video > shaders). sunlight bounces off the ground and walls onto everything around it, and corners and contact spots get soft shadows. on by default on too hd, opt-in on mid. potato stays potato.',
+    'battle island\'s grass got deeper, sunnier and blotchier. in a good way.',
+    'in a mech, the wrecking ball or the overdrive rig, your normal weapon bar gets out of the way, then pops back when you hop out.',
+    'jankburg: the firewall\'s towers got windows, a STAFF ONLY door and a smiley the size of a bus. the jump pads still work. security is watching (badly).',
+    'story mode loads faster and shows a loading bar instead of a frozen screen.',
+  ] },
   { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
     'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
     'battle island: your party lands in the same squad. a party bigger than a squad splits into full squads. friends who join late go to your squad.',
