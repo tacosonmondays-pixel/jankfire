@@ -72,6 +72,7 @@ export function sigOf(t) {
   if (t.kind === 'prop') return 'p|' + t.list + '|' + t.prop.id + '|' + r2(t.prop.a || t.prop.p);
   if (t.kind === 'arch') return 'a|' + t.arch.id + '|' + r2(t.arch.p);
   const b = t.boxes[0];
+  if (!b) return 'b|' + t.list + '|?';
   return 'b|' + t.list + '|' + b.mat + '|' + r2(b.min) + '|' + r2(b.max);
 }
 // sig -> thing (a second thing with the same sig, a box doubled up in one spot, is 'sig#2'). m.sig: thing -> sig
@@ -94,11 +95,10 @@ export function boundsOf(t) {
   if (lo[0] > hi[0]) { const a = (t.prop && (t.prop.a || t.prop.p)) || (t.arch && t.arch.p) || [0, 0, 0]; grow(...a); }
   return { lo, hi };
 }
-// where a thing turns round: its anchor (props, buildings), or the bottom middle of its boxes
+// where a thing turns round: a prop's anchor, else the bottom middle of its boxes
 export function pivotOf(t) {
   if (t.prop) return [...(t.prop.a || t.prop.p)];
-  if (t.arch) return [...t.arch.p];
-  const { lo, hi } = boundsOf(t);
+  const { lo, hi } = boundsOf(t); // (a building too: many sit at p = the map's centre, far from their walls)
   return [(lo[0] + hi[0]) / 2, lo[1], (lo[2] + hi[2]) / 2];
 }
 export const canScale = (t) => t.kind !== 'arch';
@@ -182,11 +182,14 @@ export function applyEdits(def, edits) {
 const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e5;
 const vec = (v) => Array.isArray(v) && v.length === 3 && v.every(num);
 const str = (v, n = 200) => typeof v === 'string' && v.length <= n;
-function okBox(b) { return b && typeof b === 'object' && vec(b.min) && vec(b.max) && str(b.mat, 40) && (b.rot === undefined || num(b.rot)); }
+const opt = (v, f) => v === undefined || f(v);
+function okBox(b) { return b && typeof b === 'object' && vec(b.min) && vec(b.max) && str(b.mat, 40) && opt(b.rot, num) && opt(b.pad, vec) && opt(b.pv, str) && opt(b.av, str) && opt(b.ai, Number.isInteger); }
 function okItem(it) {
   if (!it || typeof it !== 'object' || !Array.isArray(it.boxes) || it.boxes.length > 400 || !it.boxes.every(okBox)) return false;
-  if (it.prop && !(str(it.prop.id, 60) && (vec(it.prop.a) || vec(it.prop.p)))) return false;
-  if (it.arch && !(str(it.arch.id, 60) && vec(it.arch.p))) return false;
+  if (!it.boxes.length && !it.prop && !it.arch) return false; // (nothing to be)
+  const p = it.prop, a = it.arch;
+  if (p && !(typeof p === 'object' && str(p.id, 60) && (p.a !== undefined ? vec(p.a) && vec(p.lo) && vec(p.hi) && opt(p.y, num) && opt(p.f, num) : vec(p.p) && opt(p.r, Number.isInteger) && opt(p.s, num)))) return false;
+  if (a && !(typeof a === 'object' && str(a.id, 60) && vec(a.p) && opt(a.r, Number.isInteger) && it.boxes.length)) return false;
   return true;
 }
 export function validEdits(e) {

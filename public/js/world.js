@@ -25,7 +25,7 @@ import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { biGroundMaterial, disposeBiGround } from './biground.js';
-import { postBegin, postEnd } from './post.js';
+import { postBegin, postEnd, setPostAA } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -536,7 +536,7 @@ export function initWorld(canvas) {
   initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
-export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
+export function setJank(i) { jank = JANK[i] || JANK[1]; setPostAA(i >= 2); resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
 
 // OVERDUE: a streamed map (MAPS[id].stream, the story's city) runs the city streamer instead of one built mesh.
 // loaded on demand, so maps without `stream` (all of PvP) never fetch it
