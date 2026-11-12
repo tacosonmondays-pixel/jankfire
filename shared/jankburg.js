@@ -657,6 +657,9 @@ function cityWall(B, D, r) {
     }
     if (gate) {
       // gatehouses with a side passage each, a sign bridge over the road, barriers, booths and cover both sides
+      // (the Blender gate draws all but the two pictures and the jersey barriers: tools/blender/jankburg/make_jb_gate.py)
+      const gyaw = axis === 'x' ? (out < 0 ? 0 : Math.PI) : (out > 0 ? -Math.PI / 2 : Math.PI / 2);
+      propOf('jb_gate', axis === 'x' ? [0, 0, fixed] : [fixed, 0, 0], gyaw, () => {
       for (const s of [-1, 1]) {
         const A = (u, v) => [Math.min(s * u, s * v), Math.max(s * u, s * v)];
         wb(axis, fixed, ...A(12, 15), -4, 4, 0, 20, 'concrete'); wb(axis, fixed, ...A(15, 18), -4, 4, 3, 20, 'concrete'); wb(axis, fixed, ...A(18, 23), -4, 4, 0, 20, 'concrete');
@@ -668,6 +671,7 @@ function cityWall(B, D, r) {
       wb(axis, fixed, -12, 12, -3, 3, 15, 17.5, 'concrete');
       wd(axis, fixed, -9, 9, out * 3 - (out > 0 ? 0 : 0.2), out * 3 + (out > 0 ? 0.2 : 0), 15.2, 17.3, 'adoffice', { fit: 1 });
       wd(axis, fixed, -9, 9, inn * 3 - (inn > 0 ? 0 : 0.2), inn * 3 + (inn > 0 ? 0.2 : 0), 15.2, 17.3, 'flagcorp', { fit: 1 });
+      }, { v: gate.id, keep: (b) => b.mat === 'adoffice' || b.mat === 'flagcorp', skip: (b) => b.mat === 'jersey' });
     }
     // breaches: rubble everywhere, and a pile beside the hole you can climb up onto the wall
     for (const b of brs) {
