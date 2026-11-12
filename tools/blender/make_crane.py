@@ -1,239 +1,148 @@
-# JANKFIRE Platform: the pedestal cranes (both rig maps), built over shared/map.js pedCrane()'s boxes (same numbers here),
-# origin = the middle of the pedestal on the deck, the boom along +x. Two props from one script: p_crane (the 34 m boom
-# that rests on the compressor house, with its boom rest) and p_crane_short (the 22 m one swung out over the boat).
-# An offshore pedestal crane: a round pedestal on its bolted flange with a caged ladder up to the slew deck, the slew
-# ring, the machinery house (ribbed white cladding, louvres, the exhaust, a beacon and horn) with the operator's cab on
-# the boom side (wrap-round glass, a wiper, the seat and levers inside), the counterweight stacked at the back
-# (DO NOT RIDE THE BOOM), the A-frame gantry with pendant wires down to the boom tip, a box-girder boom (you can walk on
-# it: a grating strip on top, hazard stripes on its edges, SWL 25 T on its side) on its heel pins, the sheave head and
-# the whip line down to a red hook block with its hook. Visual only: the pedestal, the deck, the house, the boom and
-# the rest are the map's boxes.
-# run: blender52 -b --python tools/blender/make_crane.py -- [--only=crane,crane_short] [--qa] [--stats] [--no-sheet]
-#      [--no-export] [--preview=<dir>]
+# p_crane: the tower crane on Skyline's building site (shared/map.js crane(), skyBuild()). Mr. Smiles sits on its jib.
+# A hammerhead tower crane from a real top-slewing pattern (the 2 m square lattice mast of the 140-200 t.m class): mast
+# sections with corner chords, horizontals and zig-zag diagonals, the climbing ladder inside; the slewing ring and the
+# operator's cab on top; a rectangular lattice jib and counter-jib with a grated catwalk along their top (you can stand
+# on it: it's the box's top), the counterweight slabs stacked on the counter-jib's tail, an A-frame tower head with the
+# jib's pendant bars, the trolley on the bottom chords, two falls of rope down to the red hook block and its hook.
+# Candy crane-yellow clear coat, hazard stripes, glossy black rope, crusty concrete ballast.
+# Fits exactly over its boxes (meta.box = the box version's extent; the frame: the mast's foot, the jib along +x).
+# The lattice is see-through where the boxes are solid: the mast (2 x 2 m) and jib (1.2 x 1.2 m) still stop you and
+# bullets, as before.
+# run: blender52 -b --python tools/blender/make_crane.py -- [--no-sheet] [--no-export]
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import make_market as MK
-from make_market import Atlas, uv_fit, uv_trim, run_prop, tnoise, box_between, poly_obj, orient, opt, ONLY
 from lib import *
+from lib import _obj, _link
 import lib
 
-V3 = Vector
-TAU = 2 * math.pi
-Y = 9.0  # the slew deck (pedCrane's y)
+ARGV = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
+BOX = [[-14.0, 0.0, -1.5], [50.0, 41.0, 1.5]]  # propOf('crane') extent (node: MAPS.skyline.boxes.props)
+H = 32.0           # the mast's top (the slewing ring sits on it)
+JB, JT = 34.4, 35.6  # the jib's bottom / top (its catwalk)
+CJ = -14.0         # the counter-jib's tail
+JE = 50.0          # the jib's tip
+HOOK = 34.0        # the trolley's place along the jib
+APEX = 41.0        # the tower head's top
 
 
-def crane_boxes(L, rest):
-    """pedCrane(B, D, 0, 0, true, L, { rest }) in its own frame"""
-    out = []; A_ = lambda *b: out.append(b)
-    A_(-1.3, 0, -1.3, 1.3, Y, 1.3)
-    for k in range(1, 9): A_(1.3, k, -0.3, 1.36, k + 0.06, 0.3)
-    A_(-2.2, Y, -2.2, 2.2, Y + 0.3, 2.2)
-    A_(-1.6, Y + 0.3, -1.1, 0.4, Y + 2.6, 1.1); A_(0.4, Y + 1.3, -0.9, 0.46, Y + 2.3, 0.9)
-    A_(-2.2, Y + 0.3, -1.9, -1.6, Y + 1.6, 1.9)
-    A_(0.4, Y + 1.4, -0.7, L, Y + 2.6, 0.7)
-    A_(L - 0.06, Y - 2.5, -0.03, L, Y + 1.4, 0.03); A_(L - 0.4, Y - 3.4, -0.35, L + 0.3, Y - 2.5, 0.35)
-    if rest: A_(rest - 0.4, 5.0, -0.4, rest + 0.4, Y + 1.4, 0.4)
-    return out
+def bar(a, b, w, m, name='bar'):
+    """a square lattice member from a to b (w across)"""
+    return rod(a, b, w / math.sqrt(2), m=m, seg=4, name=name)
 
 
-# ------------------------------------------------------------ the atlas
-def _chipped(col, seed, rust=0x9a4a22, p=0.05, streaks=3):
-    def d(px):
-        h, w = px.shape[:2]; r = np.random.default_rng(seed)
-        px[:] = hexrgb(col)[None, None] * (0.93 + 0.1 * r.random((h, w, 1)))
-        m = (tnoise(w, h, 4, 4, r) + 0.35 * r.random((h, w))) > 1.12
-        px[m] = hexrgb(rust) * (0.8 + 0.3 * r.random((int(m.sum()), 1)))
-        for k in range(streaks):
-            x = int(r.integers(0, w)); L = int(r.integers(h // 3, h))
-            px[:L, x] = px[:L, x] * 0.55 + hexrgb(rust) * 0.45
-    return d
-
-
-def _label(lines, bg, fg, seed, scale=1, border=None):
-    def d(px):
-        h, w = px.shape[:2]; r = np.random.default_rng(seed)
-        px[:] = hexrgb(bg) * (0.92 + 0.1 * r.random((h, w, 1)))
-        if border is not None: px[:1] = px[-1:] = hexrgb(border); px[:, :1] = px[:, -1:] = hexrgb(border)
-        y = (h - 8 * scale * len(lines)) // 2 + scale
-        for s in lines:
-            tw = (len(s) * 6 - 1) * scale; text_px(px, s, max(0, (w - tw) // 2), y, scale, fg); y += 8 * scale
-    return d
-
-
-def _ribs(px):  # the house's cladding: white trapezoidal sheet, its ribs along v
-    h, w = px.shape[:2]; r = np.random.default_rng(51)
-    s = 0.88 + 0.14 * np.cos(np.arange(w) / w * TAU * 8)
-    px[:] = hexrgb(0xf4f2ee)[None, None] * s[None, :, None] * (0.95 + 0.06 * r.random((h, w, 1)))
-    px[-2:] *= 0.75
-    for k in range(5): x, y = int(r.integers(0, w)), int(r.integers(h // 2, h)); px[y:, x] = px[y:, x] * 0.7 + hexrgb(0x9a5a30) * 0.3
-
-
-def _hazard(px):
-    h, w = px.shape[:2]; yy, xx = np.mgrid[0:h, 0:w]
-    m = ((xx + yy) // 4) % 2 == 0
-    px[:] = np.where(m[:, :, None], hexrgb(0xffd21a)[None, None], hexrgb(0x1a1a1a)[None, None])
-
-
-def _boomtop(px):  # the boom's top: a grating strip down the middle, plate either side
-    h, w = px.shape[:2]; px[:] = hexrgb(0xffcf1a) * 0.95
-    a, b = h // 4, 3 * h // 4
-    px[a:b] = hexrgb(0x2a2c30); px[a:b, ::3] = hexrgb(0x9aa4ae)
-    px[a - 1] = px[b] = hexrgb(0x1a1a1a)
-
-
-def _louvre(px):
-    h, w = px.shape[:2]; px[:] = hexrgb(0x8a929c)
-    px[::3] = hexrgb(0x3a3e44)
-
-
-def atlas():
-    A = Atlas('cr_atlas', 128, 192)
-    A.band('yband', 16, _chipped(0xffcf1a, 61, rust=0x9a6a2a, p=0.02, streaks=5))
-    A.band('ribs', 16, _ribs)
-    A.band('boomtop', 16, _boomtop)
-    A.band('hazard', 8, _hazard)
-    A.cell('yellow', 32, 32, _chipped(0xffcf1a, 62, rust=0x9a6a2a, streaks=1))
-    A.cell('red', 32, 32, _chipped(0xe8202a, 63))
-    A.cell('white', 32, 32, _chipped(0xf4f2ee, 64, rust=0xb07a4a, streaks=2))
-    A.cell('concrete', 32, 32, _chipped(0xb8b2a6, 65, rust=0x6a645a, streaks=2))
-    A.cell('swl', 64, 12, _label(['SWL 25 T'], 0x1a1a1a, 0xffe14d, 66, scale=1))
-    A.cell('ride', 64, 18, _label(['DO NOT RIDE', 'THE BOOM'], 0xffe14d, 0x1a1a1a, 67, border=0x1a1a1a))
-    A.cell('glug', 64, 14, _label(['GLUG CRANE'], 0xff4fd8, 0xffffff, 68))
-    A.cell('louvre', 16, 16, _louvre)
-    for k, c, v, sp in (('galv', 0xa8b0ba, 0.06, None), ('dark', 0x2a2c32, 0.05, None), ('grate', 0x5a6068, 0.1, 0x2a2c30),
-                        ('glass', 0x28384a, 0.04, None), ('rubber', 0x1c1c22, 0.05, None), ('seat', 0x2a6ad8, 0.05, None),
-                        ('steel', 0x6a707a, 0.08, None), ('cyan', 0x4fd8ff, 0.03, None)):
-        A.swatch(k, c, v, 120 + len(A.r), w=8, h=8, speck=sp, p=0.2 if sp else 0.0)
-    return A
-
-
-def rodk(p0, p1, r, M, A, key, name, seg=8):
-    o = rod(p0, p1, r, M, seg=seg, name=name); uv_fit(o, A, key); return o
-
-
-def boxk(size, pos, M, A, key, name, bev=0.0, rot=None):
-    o = box(size, pos, M, bev=bev, rot=rot, name=name); uv_fit(o, A, key); return o
-
-
-def cylk(r, L, pos, M, A, key, name, axis='y', seg=12, bev=0.0, r2=None):
-    o = cyl(r, L, pos, M, axis=axis, seg=seg, name=name, bev=bev, r2=r2); uv_fit(o, A, key); return o
-
-
-def build(L, rest):
-    A = atlas()
-    M = mat('cr_paint', 0xffffff, rough=0.28, metal=0.15, tex=A.image(), clearcoat=0.8)
-    CH = mat('cr_chrome', 0xdfe3ea, rough=0.14, metal=0.95, clearcoat=0.3)
-    GZ = mat('cr_glass', 0x9fd0ea, rough=0.06, metal=0.1, alpha=0.5)
-    GL = mat('cr_glow', 0xffa020, rough=0.5, emit=0xffa020, strength=2.5)
-    P, Q = [], []
-    # ---- the pedestal: its flange bolted to the deck, the column, the slew ring and its gear
-    P.append(cylk(1.55, 0.14, (0, 0.07, 0), M, A, 'yellow', 'cr_baseflange', seg=20))
-    for k in range(12):
-        a = TAU * k / 12; P.append(cylk(0.045, 0.1, (math.cos(a) * 1.42, 0.17, math.sin(a) * 1.42), M, A, 'galv', 'cr_bolt', seg=6))
-    o = cyl(1.26, Y - 0.6, (0, 0.14 + (Y - 0.74) / 2, 0), M, axis='y', seg=20, name='cr_column', cap=False); uv_trim(o, A, 'yband', upm=0.4, grain='y'); P.append(o)
-    P.append(cylk(1.45, 0.2, (0, Y - 0.5, 0), M, A, 'yellow', 'cr_topflange', seg=20))
-    P.append(cylk(1.6, 0.3, (0, Y - 0.25, 0), M, A, 'dark', 'cr_slewring', seg=24))
-    # the ladder up its +x side (the box rungs' side) and its cage, a hatch through the deck
-    for z in (-0.25, 0.25): P.append(rodk((1.45, 0.2, z), (1.45, Y, z), 0.025, M, A, 'galv', 'cr_ladrail', seg=4))
-    for k in range(1, 26): P.append(rodk((1.45, k * 0.34, -0.25), (1.45, k * 0.34, 0.25), 0.015, M, A, 'galv', 'cr_rung', seg=4))
-    for k in range(1, 6): P.append(rodk((1.45, 0.4 + k * 1.4, -0.25), (1.27, 0.4 + k * 1.4, -0.25), 0.015, M, A, 'galv', 'cr_ladarm', seg=4))
-    hoop = [(1.45, 0, -0.25), (1.75, 0, -0.42), (2.05, 0, -0.2), (2.05, 0, 0.2), (1.75, 0, 0.42), (1.45, 0, 0.25)]
-    for k in range(2, 7):
-        y = k * 1.3; P.append(sweep([(x, y, z) for x, _, z in hoop], [0.018] * 6, M, seg=4, name='cr_hoop')); uv_fit(P[-1], A, 'galv')
-    for q in (1, 2, 3, 4): P.append(rodk((hoop[q][0], 2.6, hoop[q][2]), (hoop[q][0], Y - 0.3, hoop[q][2]), 0.015, M, A, 'galv', 'cr_cagebar', seg=4))
-    # ---- the slew deck: grating, its edge plate, a hatch
-    P.append(boxk((4.4, 0.24, 4.4), (0, Y + 0.12, 0), M, A, 'yellow', 'cr_deckframe', bev=0.02))
-    P.append(boxk((4.3, 0.04, 4.3), (0, Y + 0.26, 0), M, A, 'grate', 'cr_deck'))
-    P.append(boxk((0.8, 0.02, 0.8), (1.5, Y + 0.29, 0), M, A, 'hazard', 'cr_hatch'))
-    Q.append(cylk(1.3, Y, (0, Y / 2, 0), M, A, 'yellow', 'cr1_column', seg=8)); Q.append(boxk((4.4, 0.3, 4.4), (0, Y + 0.15, 0), M, A, 'yellow', 'cr1_deck'))
-    # ---- the machinery house: ribbed cladding, a roof with its overhang, louvres, the exhaust, a beacon, the horn
-    hx0, hx1, hz, hy0, hy1 = -1.6, 0.4, 1.1, Y + 0.3, Y + 2.6
-    o = box((hx1 - hx0, hy1 - hy0, 2 * hz), ((hx0 + hx1) / 2, (hy0 + hy1) / 2, 0), M, bev=0.03, name='cr_house'); uv_trim(o, A, 'ribs', upm=0.5, grain='y'); P.append(o)
-    P.append(boxk((hx1 - hx0 + 0.2, 0.1, 2 * hz + 0.2), ((hx0 + hx1) / 2, hy1 + 0.05, 0), M, A, 'white', 'cr_roof', bev=0.02))
-    for z in (-hz - 0.005, hz + 0.005):
-        o = box((1.0, 0.7, 0.02), (-0.9, hy0 + 1.4, z), M, name='cr_louvre'); uv_fit(o, A, 'louvre'); P.append(o)
-    P.append(boxk((1.6, 0.36, 0.02), (-0.6, hy0 + 0.45, -hz - 0.005), M, A, 'glug', 'cr_glug'))  # (on the louvre side, under the louvre)
-    P.append(cylk(0.12, 1.15, (-1.2, hy1 + 0.625, -0.7), M, A, 'dark', 'cr_exhaust', seg=8))
-    P.append(cylk(0.15, 0.08, (-1.2, hy1 + 1.22, -0.7), M, A, 'rubber', 'cr_exhaustcap', seg=8))
-    P.append(cylk(0.1, 0.12, (-0.2, hy1 + 0.16, 0.7), M, A, 'dark', 'cr_beaconbase', seg=8))
-    P.append(ball(0.12, (-0.2, hy1 + 0.3, 0.7), GL, seg=8, rings=5, name='cr_beacon'))
-    P.append(cylk(0.08, 0.3, (0.2, hy1 + 0.18, -0.6), M, A, 'red', 'cr_horn', axis='x', seg=8, r2=0.14))
-    Q.append(boxk((hx1 - hx0, hy1 - hy0 + 0.1, 2 * hz), ((hx0 + hx1) / 2, (hy0 + hy1 + 0.1) / 2, 0), M, A, 'white', 'cr1_house'))
-    # the operator's cab: glazed on the +z side of the house at its front (the boom's heel is across the front), a
-    # wiper, the seat and the levers inside
-    wx0, wx1, cy0, cy1 = -0.55, 0.32, Y + 1.25, Y + 2.35
-    o = box((wx1 - wx0, cy1 - cy0, 0.03), ((wx0 + wx1) / 2, (cy0 + cy1) / 2, hz + 0.02), GZ, name='cr_windscreen'); uv_fit(o, A, 'glass'); P.append(o)
-    for x in (wx0 - 0.03, wx1 + 0.03): P.append(boxk((0.06, cy1 - cy0 + 0.1, 0.09), (x, (cy0 + cy1) / 2, hz + 0.02), M, A, 'white', 'cr_pillar'))
-    P.append(boxk(((wx1 - wx0) - 0.005, 0.06, 0.09), ((wx0 + wx1) / 2, cy1 + 0.03, hz + 0.02), M, A, 'white', 'cr_sill')); P.append(boxk(((wx1 - wx0) - 0.005, 0.06, 0.09), ((wx0 + wx1) / 2, cy0 - 0.03, hz + 0.02), M, A, 'white', 'cr_sill'))
-    P.append(rodk((wx0 + 0.3, cy0 + 0.05, hz + 0.06), (wx0 + 0.6, cy0 + 0.75, hz + 0.06), 0.012, M, A, 'dark', 'cr_wiper', seg=4))
-    P.append(boxk((0.5, 0.08, 0.5), (-0.1, Y + 0.95, hz - 0.45), M, A, 'seat', 'cr_seat')); P.append(boxk((0.5, 0.6, 0.08), (-0.1, Y + 1.25, hz - 0.72), M, A, 'seat', 'cr_seatback'))
-    for x in (-0.45, 0.25): P.append(rodk((x, Y + 0.27, hz - 0.3), (x, Y + 1.25, hz - 0.2), 0.015, M, A, 'dark', 'cr_lever', seg=4))
-    # ---- the counterweight: stacked concrete slabs in a yellow frame, the warning on its back
-    for k in range(3):
-        P.append(boxk((0.6, 0.42, 3.76), (-1.895, Y + 0.49 + k * 0.42, 0), M, A, 'concrete', 'cr_cwslab', bev=0.02))
-    for z in (-1.91, 1.91): P.append(boxk((0.64, 1.3, 0.06), (-1.9, Y + 0.95, z), M, A, 'yellow', 'cr_cwframe'))
-    P.append(boxk((0.02, 0.5, 1.6), (-2.2, Y + 0.95, 0), M, A, 'ride', 'cr_ride'))
-    Q.append(boxk((0.6, 1.3, 3.8), (-1.9, Y + 0.95, 0), M, A, 'concrete', 'cr1_cw'))
-    # ---- the A-frame gantry on the house, the pendant wires to the boom tip
-    gx, gy = -1.0, Y + 5.2
-    for z in (-0.9, 0.9):
-        P.append(rodk((-1.5, hy1 + 0.1, z), (gx, gy, z * 0.3), 0.08, M, A, 'yellow', 'cr_gantry', seg=6))
-        P.append(rodk((0.2, hy1 + 0.1, z), (gx, gy, z * 0.3), 0.08, M, A, 'yellow', 'cr_gantry', seg=6))
-    P.append(rodk((gx, gy, -0.3), (gx, gy, 0.3), 0.1, M, A, 'yellow', 'cr_gantrytop', seg=8))
-    tip = V3((L - 0.25, Y + 2.6, 0))
-    for z in (-0.22, 0.22): P.append(rodk((gx, gy, z), (tip.x, tip.y + 0.05, z * 2), 0.022, M, A, 'dark', 'cr_pendant', seg=4))
-    P.append(rodk((gx, gy, 0.0), (0.0, Y + 2.65, 0.0), 0.025, M, A, 'dark', 'cr_luffwire', seg=4))  # (the luffing wire back to its winch)
-    Q.append(rodk((gx, gy, 0), (tip.x, tip.y, 0), 0.06, M, A, 'dark', 'cr1_pendant', seg=3)); Q.append(rodk((-0.6, hy1, 0), (gx, gy, 0), 0.12, M, A, 'yellow', 'cr1_gantry', seg=4))
-    # ---- the boom: a box girder (its box: walk on it), plated, stiffeners down its sides, a grating strip on top,
-    # hazard stripes along the top edges, SWL 25 T, the heel pins, the sheave head at the tip
-    by0, by1, bz = Y + 1.4, Y + 2.6, 0.7
-    o = box((L - 0.4, by1 - by0, 2 * bz), ((0.4 + L) / 2, (by0 + by1) / 2, 0), M, bev=0.04, name='cr_boom')
-    uv_trim(o, A, 'yband', upm=0.3, grain='x', sel=lambda p, Pp: abs(MK._gn(p.normal).y) < 0.5)
-    uv_trim(o, A, 'boomtop', upm=0.5, grain='x', sel=lambda p, Pp: MK._gn(p.normal).y >= 0.5)
-    uv_fit(o, A, 'yellow', sel=lambda p, Pp: MK._gn(p.normal).y <= -0.5); P.append(o)
-    x = 2.0
-    while x < L - 0.8:  # side stiffeners
-        for z in (-bz - 0.015, bz + 0.015): P.append(boxk((0.08, by1 - by0 - 0.12, 0.03), (x, (by0 + by1) / 2, z), M, A, 'yellow', 'cr_stiff'))
-        x += 2.4
-    for z in (-bz + 0.06, bz - 0.06): P.append(boxk((L - 1.0, 0.012, 0.1), ((0.4 + L) / 2 + 0.2, by1 + 0.006, z), M, A, 'hazard', 'cr_edge'))
-    for s in (-1, 1): P.append(boxk((3.0, 0.4, 0.02), (L * 0.45, (by0 + by1) / 2, s * (bz + 0.03)), M, A, 'swl', 'cr_swl'))
-    for z in (-0.5, 0.5): P.append(boxk((0.5, 0.7, 0.12), (0.8, by0 + 0.1, z), M, A, 'yellow', 'cr_heellug'))
-    P.append(cylk(0.1, 1.3, (0.8, by0, 0), CH, A, 'galv', 'cr_heelpin', axis='z', seg=10))
-    for z in (-0.3, 0.3): P.append(cylk(0.42, 0.06, (L - 0.2, Y + 2.0, z), M, A, 'yellow', 'cr_headplate', axis='z', seg=14))
-    P.append(cylk(0.36, 0.3, (L - 0.2, Y + 2.0, 0), CH, A, 'galv', 'cr_sheave', axis='z', seg=14))
-    Q.append(boxk((L - 0.4, by1 - by0, 2 * bz), ((0.4 + L) / 2, (by0 + by1) / 2, 0), M, A, 'yellow', 'cr1_boom'))
-    # ---- the whip line and the hook block: red cheeks, a sheave, the swivel and the hook
-    hx = L - 0.05
-    P.append(rodk((hx, Y + 1.7, 0), (hx, Y - 2.45, 0), 0.025, M, A, 'dark', 'cr_whip', seg=4))
-    P.append(boxk((0.6, 0.75, 0.14), (hx, Y - 2.95, -0.22), M, A, 'red', 'cr_cheek', bev=0.04)); P.append(boxk((0.6, 0.75, 0.14), (hx, Y - 2.95, 0.22), M, A, 'red', 'cr_cheek', bev=0.04))
-    P.append(cylk(0.24, 0.3, (hx, Y - 2.8, 0), CH, A, 'galv', 'cr_blocksheave', axis='z', seg=12))
-    P.append(boxk((0.5, 0.12, 0.6), (hx, Y - 2.52, 0), M, A, 'hazard', 'cr_blocktop'))
-    P.append(cylk(0.08, 0.2, (hx, Y - 3.4, 0), M, A, 'galv', 'cr_swivel', seg=8))
-    hook = [(hx, Y - 3.5, 0), (hx, Y - 3.75, 0), (hx + 0.06, Y - 3.95, 0), (hx + 0.24, Y - 4.0, 0), (hx + 0.34, Y - 3.86, 0), (hx + 0.32, Y - 3.7, 0)]
-    o = sweep(hook, [0.07, 0.08, 0.08, 0.07, 0.06, 0.05], M, seg=8, name='cr_hook'); uv_fit(o, A, 'red'); P.append(o)
-    Q.append(rodk((hx, Y + 1.4, 0), (hx, Y - 2.5, 0), 0.05, M, A, 'dark', 'cr1_whip', seg=3)); Q.append(boxk((0.6, 0.9, 0.6), (hx, Y - 2.95, 0), M, A, 'red', 'cr1_block'))
-    # ---- the boom rest (the long crane's): a plated post on the compressor house's roof, a rubber-lined cradle
-    if rest:
-        P.append(boxk((0.8, 0.12, 0.8), (rest, 5.06, 0), M, A, 'yellow', 'cr_restbase'))
-        P.append(boxk((0.5, Y + 1.0 - 5.1, 0.5), (rest, 5.1 + (Y + 1.0 - 5.1) / 2, 0), M, A, 'yellow', 'cr_restpost', bev=0.03))
-        for s in (-1, 1):
-            P.append(box_between((rest, Y + 0.95, 0), (rest, Y + 1.38, s * 0.75), 0.4, 0.08, M, 'cr_cradle')); uv_fit(P[-1], A, 'yellow')
-        P.append(boxk((0.42, 0.06, 1.4), (rest, Y + 1.37, 0), M, A, 'rubber', 'cr_restpad'))
-        P.append(boxk((0.02, 1.6, 0.5), (rest + 0.26, 7.0, 0), M, A, 'hazard', 'cr_resthz'))
-        Q.append(boxk((0.8, Y + 1.4 - 5.0, 0.8), (rest, 5.0 + (Y + 1.4 - 5.0) / 2, 0), M, A, 'yellow', 'cr1_rest'))
-    for p in P + Q:
-        if p.type == 'MESH' and not p.data.uv_layers: uv_fit(p, A, 'galv')
-    for p in P: lib.smooth(p, 35)
-    if opt('stats'):
-        import re, collections
-        tot = collections.Counter()
-        for p in P: tot[re.sub(r'\.\d+$', '', p.name)] += MK.tris_of([p])
-        for k, v in tot.most_common(12): print('JF_STAT', k, v)
-    bx = crane_boxes(L, rest); lo = tuple(min(b[k] for b in bx) for k in range(3)); hi = tuple(max(b[k + 3] for b in bx) for k in range(3))
-    return dict(lod0=P, lod1=Q, box=(lo, hi), ao=0.7, lod=90, meta={'kind': 'prop'},
-                focus=[((0, Y + 1.5, 0), (1.0, 0.4, 0.8), 6.5), ((L, Y - 1.5, 0), (0.6, 0.2, 1.0), 4.0), ((1.4, 4.5, 0), (1.0, 0.2, 0.4), 5.0)])
+def build():
+    yel = mat('cr_yellow', 0xffc21a, rough=0.28, metal=0.1, clearcoat=0.8)
+    stripe = mat('cr_hazard', 0xffffff, rough=0.3, clearcoat=0.6, tex=tex_stripes('cr_hazard_t', 0x16161a, 0xffc21a, size=32, width=8))
+    steel = mat('cr_steel', 0x3a3e46, rough=0.45, metal=0.8)
+    grate = mat('cr_grate', 0x6a6e76, rough=0.5, metal=0.8, tex=tex_stripes('cr_grate_t', 0x2a2c30, 0x8a8e96, size=16, width=2, diag=False))
+    conc = mat('cr_conc', 0x8e8a82, rough=0.9, tex=tex_noise('cr_conc_t', 0x8e8a82, var=0.14, size=32, speck=0x7a766e, speck_p=0.08, seed=4))
+    red = mat('cr_red', 0xe8202a, rough=0.25, clearcoat=0.8)
+    glass = mat('cr_glass', 0x1a2a3a, rough=0.05, metal=0.3, clearcoat=1.0)
+    rope = mat('cr_rope', 0x101014, rough=0.2, metal=0.6)
+    white = mat('cr_white', 0xf4f2ec, rough=0.3, clearcoat=0.6)
+    Y, S, G, C, R, GL, RP, W = [], [], [], [], [], [], [], []  # parts per material
+    # ---- the base: a footing plate, bolted (a step's height: you walk over it like the roof)
+    S.append(box((2.8, 0.18, 2.8), pos=(0, 0.09, 0), m=steel, bev=0.03, name='foot'))
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            S.append(cyl(0.09, 0.12, pos=(sx * 1.2, 0.24, sz * 1.2), m=steel, axis='y', seg=8, name='bolt'))
+    # ---- the mast: 2 m square, 2 m sections
+    hw = 0.92  # chords' centres (inside the 1 m half-width box, the chord's face on its face)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            Y.append(bar((sx * hw, 0.18, sz * hw), (sx * hw, H, sz * hw), 0.16, yel, 'chord'))
+    for k in range(16):
+        y0, y1 = k * 2.0 + 0.18, (k + 1) * 2.0
+        for (ax, s) in (('x', -1), ('x', 1), ('z', -1), ('z', 1)):  # each face: a horizontal + a diagonal (alternating)
+            if ax == 'x': a, b = (-hw, y1, s * hw), (hw, y1, s * hw); d0, d1 = (-hw if k % 2 else hw, y0, s * hw), (hw if k % 2 else -hw, y1, s * hw)
+            else: a, b = (s * hw, y1, -hw), (s * hw, y1, hw); d0, d1 = (s * hw, y0, hw if k % 2 else -hw), (s * hw, y1, -hw if k % 2 else hw)
+            Y.append(bar(a, b, 0.09, yel, 'horiz')); Y.append(bar(d0, d1, 0.08, yel, 'diag'))
+    for k in range(int(H / 0.35)):  # the climbing ladder up the middle
+        y = 0.4 + k * 0.35
+        if y > H - 0.3: break
+        S.append(bar((-0.22, y, 0.0), (0.22, y, 0.0), 0.035, steel, 'rung'))
+    for x in (-0.22, 0.22): S.append(bar((x, 0.2, 0.0), (x, H - 0.1, 0.0), 0.05, steel, 'rail'))
+    # ---- the slewing unit: the ring, the turntable, the operator's cab looking down the jib
+    S.append(cyl(1.25, 0.39, pos=(0, H + 0.155, 0), m=steel, axis='y', seg=24, name='ring', cap=False))  # (open: the mast under it, the turntable on it)
+    Y.append(box((2.9, 0.5, 2.9), pos=(0, H + 0.6, 0), m=yel, bev=0.06, name='turntable'))
+    Y.append(box((2.4, 1.85, 2.6), pos=(0.2, H + 1.75, 0), m=yel, bev=0.12, name='cab'))
+    GL.append(box((0.08, 1.2, 2.3), pos=(1.42, H + 1.9, 0), m=glass, bev=0.03, name='cab_front'))
+    for sz in (-1, 1): GL.append(box((1.7, 1.0, 0.06), pos=(0.4, H + 2.0, sz * 1.31), m=glass, bev=0.02, name='cab_side'))
+    W.append(box((1.4, 0.3, 0.04), pos=(-0.4, H + 1.3, 1.32), m=white, name='cab_sign'))
+    # ---- the jib and counter-jib: a rectangular lattice 1.2 x 1.2 m, chords at its corners
+    jw = 0.55
+    for sz in (-1, 1):
+        Y.append(bar((CJ, JB + 0.08, sz * jw), (JE, JB + 0.08, sz * jw), 0.14, yel, 'jchord'))
+        Y.append(bar((CJ, JT - 0.1, sz * jw), (JE, JT - 0.1, sz * jw), 0.14, yel, 'jchord'))
+    x = CJ; k = 0
+    while x < JE - 0.01:
+        x1 = min(JE, x + 2.0)
+        for sz in (-1, 1):
+            Y.append(bar((x, JB + 0.08, sz * jw), (x, JT - 0.1, sz * jw), 0.07, yel, 'jvert'))
+            Y.append(bar((x if k % 2 else x1, JB + 0.08, sz * jw), (x1 if k % 2 else x, JT - 0.1, sz * jw), 0.07, yel, 'jdiag'))
+        Y.append(bar((x, JB + 0.08, -jw), (x, JB + 0.08, jw), 0.06, yel, 'jcross'))
+        x = x1; k += 1
+    for sz in (-1, 1): Y.append(bar((JE, JB + 0.08, sz * jw), (JE, JT - 0.1, sz * jw), 0.07, yel, 'jvert'))
+    # the catwalk: the box's top, grated, a toe board each side
+    G.append(box((JE - CJ - 0.04, 0.06, 1.2), pos=((JE + CJ) / 2, JT - 0.03, 0), m=grate, name='catwalk'))  # (a hair short of the ends' plates)
+    for sz in (-1, 1): Y.append(box((JE - CJ, 0.12, 0.04), pos=((JE + CJ) / 2, JT + 0.06, sz * 0.58), m=yel, name='toeboard'))
+    S.append(box((0.6, 0.6, 0.6), pos=(JE - 0.3, JT - 0.6, 0), m=steel, name='tipblock'))
+    # hazard-striped ends on the jib tip and the counter-jib's tail
+    Y.append(box((0.08, 1.2, 1.24), pos=(JE + 0.04, (JB + JT) / 2, 0), m=stripe, name='tipplate'))
+    # ---- the counterweights: four precast slabs on the tail, lifting lugs, a stencil stripe
+    for k in range(4):
+        y0 = JT + k * 0.75
+        C.append(box((5.9, 0.72, 2.36), pos=(-11.0, y0 + 0.36, 0), m=conc, bev=0.06, name='slab'))
+        for x in (-12.8, -9.2): S.append(box((0.3, 0.12, 0.12), pos=(x, y0 + 0.78, 0), m=steel, name='lug'))
+    Y.append(box((0.06, 2.95, 2.4), pos=(-13.96, JT + 1.5, 0), m=stripe, name='cwstripe'))
+    # ---- the tower head: an A-frame of four legs up to the apex, the pendants out to the jib and down to the tail
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            Y.append(bar((sx * 0.55, JT, sz * 0.55), (0, APEX - 0.25, 0), 0.14, yel, 'aleg'))
+    R.append(box((0.5, 0.5, 0.5), pos=(0, APEX - 0.25, 0), m=red, bev=0.05, name='apex'))
+    R.append(cyl(0.12, 0.3, pos=(0, APEX + 0.05, 0), m=red, axis='y', seg=8, name='beacon'))
+    for sz in (-1, 1):
+        S.append(bar((0, APEX - 0.35, sz * 0.12), (30.0, JT + 0.02, sz * 0.5), 0.06, steel, 'pendant'))
+        S.append(bar((0, APEX - 0.35, sz * 0.12), (-13.0, JT + 3.05, sz * 0.5), 0.06, steel, 'pendant'))
+    # ---- the trolley on the bottom chords, two falls of rope, the hook block and its hook
+    S.append(box((1.6, 0.35, 1.3), pos=(HOOK, JB - 0.05, 0), m=steel, bev=0.04, name='trolley'))
+    for dx in (-0.5, 0.5):
+        for sz in (-1, 1): S.append(cyl(0.14, 0.08, pos=(HOOK + dx, JB + 0.08, sz * 0.47), m=steel, axis='z', seg=10, name='wheel'))
+    for dz in (-0.12, 0.12): RP.append(rod((HOOK, JB - 0.2, dz), (HOOK, 18.2, dz), 0.025, m=rope, seg=5, name='rope'))
+    R.append(box((0.5, 1.2, 1.2), pos=(HOOK, 17.4, 0), m=red, bev=0.08, name='block'))
+    for sz in (-1, 1): S.append(cyl(0.38, 0.06, pos=(HOOK, 17.6, sz * 0.62), m=steel, axis='z', seg=14, name='sheave'))
+    S.append(cyl(0.12, 0.35, pos=(HOOK, 16.65, 0), m=steel, axis='y', seg=10, name='shank'))
+    hook = []
+    for i in range(13):
+        a = math.radians(-90 + i * 22)
+        hook.append((HOOK + 0.28 * math.cos(a) - 0.0, 16.2 + 0.28 * math.sin(a), 0.0))
+    pts = [(HOOK, 16.5, 0)] + hook
+    for a, b in zip(pts, pts[1:]): S.append(rod(a, b, 0.07, m=steel, seg=6, name='hook'))  # (the forged hook: short rods round the bend)
+    Y.append(box((0.06, 0.4, 0.06), pos=(HOOK + 0.27, 16.32, 0), m=yel, name='latch'))
+    for p in Y + S + G + C + R + GL + RP + W: uv_box(p, 0.5)
+    lod0 = [join(Y, 'yellow'), join(S, 'steel'), join(G, 'grate'), join(C, 'ballast'), join(R, 'red'), join(GL, 'glass'), join(RP, 'rope'), join(W, 'sign')]
+    # ---- far: the same outline in a few boxes (the lattice as see-through-ish panels would be worse: chords only)
+    F = []
+    for sx in (-1, 1):
+        for sz in (-1, 1): F.append(box((0.22, H, 0.22), pos=(sx * hw, H / 2, sz * hw), m=yel, name='f'))
+    for k in range(4): F.append(box((2.0, 0.12, 2.0), pos=(0, 4 + k * 8, 0), m=yel, name='f'))
+    for sz in (-1, 1):
+        for y in (JB + 0.08, JT - 0.1): F.append(box((JE - CJ, 0.18, 0.18), pos=((JE + CJ) / 2, y, sz * jw), m=yel, name='f'))
+    F.append(box((2.9, 2.4, 2.9), pos=(0, H + 1.2, 0), m=yel, name='f'))
+    F.append(box((5.9, 3.0, 2.36), pos=(-11.0, JT + 1.5, 0), m=conc, name='f'))
+    F.append(box((0.5, 1.2, 1.2), pos=(HOOK, 17.4, 0), m=red, name='f'))
+    F.append(rod((HOOK, JB, 0), (HOOK, 18, 0), 0.05, m=rope, seg=4, name='f'))
+    F.append(rod((0, APEX, 0), (30, JT, 0), 0.06, m=steel, seg=4, name='f'))
+    for p in F: uv_box(p, 0.5)
+    lod1 = [join(F, 'lod1_mesh')]
+    bake_ao(lod0, dist=0.8)
+    bake_ao(lod1, dist=0.8)
+    root = prop_finish('p_crane', lod0, lod1, {'id': 'crane', 'lod': 160, 'tint': False, 'box': BOX})
+    prop_stats(root)
+    return root
 
 
 if __name__ == '__main__':
-    for fid, L, rest in (('p_crane', 34.0, 32.0), ('p_crane_short', 22.0, None)):
-        if ONLY and fid[2:] not in ONLY: continue
-        run_prop(fid, lambda L=L, rest=rest: build(L, rest))
+    reset()
+    root = build()
+    if '--no-export' not in ARGV: export(root, 'p_crane')
+    if '--no-sheet' not in ARGV: sheet(root, 'p_crane', exposure=-0.3)

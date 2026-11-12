@@ -724,7 +724,7 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
 }
 // a pedestal crane at (x, z): the yellow pedestal (9 m), the slewing deck and cab, the boom along +x (alongX) or +z out to
 // len, at the height of the cab's roof (walkable: grapple up and stroll out on it), a hook on its end
-function pedCrane(B, D, x, z, alongX, len, o = {}) { propOf(o.rest ? 'crane' : 'crane_short', [x, 0, z], alongX ? 0 : -Math.PI / 2, () => { // (a Blender prop each: tools/blender/make_crane.py, look-only)
+function pedCrane(B, D, x, z, alongX, len, o = {}) { propOf(o.rest ? 'pedcrane' : 'pedcrane_short', [x, 0, z], alongX ? 0 : -Math.PI / 2, () => { // (a Blender prop each: tools/blender/make_pedcrane.py, look-only)
   const y = 9;
   B.add(x - 1.3, 0, z - 1.3, x + 1.3, y, z + 1.3, 'rigyellow');
   for (let k = 1; k < 9; k++) D.add(x + 1.3, k, z - 0.3, x + 1.36, k + 0.06, z + 0.3, 'rigsteel'); // the ladder's rungs
