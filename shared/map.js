@@ -5261,6 +5261,10 @@ export const MAPS = {
   desert: desert(), desert_sd: desertSD(), islands: islands(), islands_sd: islandsSD(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
+// each map's builder on its own (the map editor's PLAY HERE WITH BOTS: one fresh copy of one map, with the owner's edits
+// on it, for one private room, without building every map again). same keys as MAPS
+export const MAP_BUILDERS = { crate, platform, platform_sd: platformSD, rooftop, rooftop_sd: rooftopSD, suburb, suburb_sd: suburbSD, warehouse, warehouse_sd: warehouseSD,
+  desert, desert_sd: desertSD, islands, islands_sd: islandsSD, skyline, skyline_sd: skylineSD, bazaar, bazaar_sd: bazaarSD, range, backrooms, forest, deadmall };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
 // the one every other mode plays. switching mode swaps between them (modes.js mapForGame, the server's setGame)
 for (const [id, m] of Object.entries(MAPS)) if (id.endsWith('_sd') && MAPS[id.slice(0, -3)]) { m.sd = true; m.base = id.slice(0, -3); MAPS[m.base].sdMap = id; }
