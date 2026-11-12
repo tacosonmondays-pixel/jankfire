@@ -11,7 +11,7 @@ test('the streak: 9 kills, between the rig and the giant duck, pickable', () => 
   assert.deepEqual(validStreaks(['mechdrop', 'scythe', 'moonboots']), ['moonboots', 'scythe', 'mechdrop']);
 });
 test('frames: two of them, anything else is the paper plane, and the loadout keeps your pick', () => {
-  assert.deepEqual(FRAMES, ['paperplane', 'nightshift']);
+  assert.deepEqual(FRAMES.slice(0, 2), ['paperplane', 'nightshift']); assert.ok(FRAMES.includes('wrecking'));
   assert.equal(mechFrame('nightshift'), 'nightshift');
   for (const bad of [undefined, null, 3, '__proto__', 'NIGHTSHIFT', {}, ['nightshift']]) { assert.equal(mechFrame(bad), 'paperplane'); assert.equal(isFrame(bad), false); }
   assert.equal(validLoadout({ mech: 'nightshift' }).mech, 'nightshift');

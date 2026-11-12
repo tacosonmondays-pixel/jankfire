@@ -48,16 +48,32 @@ export const MECH = {
       down: 42, dmg: 120, r: 8, kb: 14, kbUp: 16, win: 4 }, // ground slam
     overtime: { marks: 4, fade: 4, stun: 1, immune: 3 }, // sword hits stamp marks; the 4th CLOCKS THEM OUT (stun s, then immune s)
   },
+  // ---- battle island heroes (docs/mechs/ROSTER.md). they all have an ULTIMATE on Q that charges from what they deal
+  // (ult.dmg dealt = full) plus a slow trickle (ult.time s from empty), and their kits are judged in server/mech_<id>.js
+  // WRECKING BALL (dive tank): a 4 m steel ball with a hamster cage inside. (frame id 'wrecking': 'wreckingball' is the
+  // killstreak's armour pool)
+  wrecking: {
+    name: 'WRECKING BALL', hp: 1400, h: 4.0, hw: 1.9, c0: 2.3, c1: 3.1, eye: 3.4, cam: 9.5, tip: '4 m dive tank ball · 1400 armour',
+    speed: 22, accel: 1.6, fric: 0.9, grav: 30, hop: 11, airCap: 22, r: 2, // rolls: slow to get going, slow to stop
+    ram: { min: 6, mul: 2.6, base: 8, cap: 70, kb: 1.05, up: 7, cd: 0.6 }, // the main weapon: rolling into people (by the speed the server measures)
+    rev: { charge: 0.8, min: 0.25, cost: 20, speed: [26, 36], len: 0.55 }, // LMB hold: spin up on the spot; let go: launch (charge s for full)
+    chain: { range: 42, cost: 10, cd: 0.7, life: 7, speed: 38, pump: 10, snap: 4 }, // Shift: the chain grapple. speed = the swing's cap, snap = m past its length before it breaks
+    slam: { cd: 6, hop: 13, dive: 46, h0: 1.5, h1: 22, dmg: [35, 130], r: [4, 9], kb: [12, 30], up: [8, 19], win: 4 }, // E: dive down; higher = bigger
+    pile: { rise: 30, up: 28, hang: 2.5, range: 55, dive: 70, min: 10, dmg: 200, edge: 0.3, r: 9, kb: 30, up2: 20, life: 7 }, // Q: PILE DRIVER (rise m at up m/s, hang s to aim, then dive)
+    ult: { dmg: 650, time: 110 }, shrug: 3, // passive: no knockback while rolling faster than shrug m/s
+  },
 };
-export const FRAMES = ['paperplane', 'nightshift'];
-export const mechFrame = (f) => (f === 'nightshift' ? 'nightshift' : 'paperplane'); // anything else is the default
-export const isFrame = (f) => typeof f === 'string' && FRAMES.includes(f);
+export const FRAMES = ['paperplane', 'nightshift', 'wrecking'];
+export const HERO_FRAMES = FRAMES.filter((f) => MECH[f].ult); // (the ones with an ultimate meter: the island heroes)
+export const mechFrame = (f) => (isFrame(f) ? f : 'paperplane'); // anything else is the default
+export function isFrame(f) { return typeof f === 'string' && FRAMES.includes(f); }
 
 // snapshot flags. bits 22, 23, 30 and 31 were the last free ones, so a frame's moves share them (the frame comes from
 // the server's 'mech' events): MECH = in one; A = hover / shield; B = jet / slam; C = lunge / triple shift
 Object.assign(FLAGS, { MECH: 1 << 22, MECH_A: 1 << 23, MECH_B: 1 << 30, MECH_C: 1 << 31 });
 // (the per-frame names live here, not in FLAGS: room.js checks that every FLAGS entry is its own bit)
-export const MF = { HOVER: FLAGS.MECH_A, SHIELD: FLAGS.MECH_A, JET: FLAGS.MECH_B, SLAM: FLAGS.MECH_B, DASH: FLAGS.MECH_C, SLASH: FLAGS.MECH_C };
+export const MF = { HOVER: FLAGS.MECH_A, SHIELD: FLAGS.MECH_A, JET: FLAGS.MECH_B, SLAM: FLAGS.MECH_B, DASH: FLAGS.MECH_C, SLASH: FLAGS.MECH_C,
+  CHAIN: FLAGS.MECH_A, PILE: FLAGS.MECH_B, REV: FLAGS.MECH_C }; // (wrecking ball: on the chain, slam / pile driver, rev launch)
 export const MECH_BITS = FLAGS.MECH | FLAGS.MECH_A | FLAGS.MECH_B | FLAGS.MECH_C;
 
 // its armour is a body pool like the ball's and the rig's (server/bodyhp.js): no drain, it lasts until it breaks
@@ -78,6 +94,9 @@ Object.assign(WEAPONS, {
   mechstomp: { slot: null, kind: 'mech', name: 'Stomp', color: '#ffe14d' },
   mechram: { slot: null, kind: 'mech', name: 'Mech Ram', color: '#ff7a1a' },
   mechboom: { slot: null, kind: 'mech', name: 'Mech Down', color: '#ff3030' },
+  wbram: { slot: null, kind: 'mech', name: 'Wrecking Ball', color: '#ffd23a' },
+  wbslam: { slot: null, kind: 'mech', name: 'Ball Slam', color: '#ffb000' },
+  wbpile: { slot: null, kind: 'mech', name: 'Pile Driver', color: '#ff3030' },
 });
 
 // the body killstreaks fight over your body: no mech drop in the rig or the ball (or with a mech already out), and
@@ -122,6 +141,12 @@ export function speedCap(frame, f) {
     if (f & MF.HOVER) return Math.max(F.speed, F.hover.speed);
     return Math.max(F.speed, F.airCap);
   }
+  if (frame === 'wrecking') { // A = on the chain, B = slam / pile driver, C = a rev launch
+    if (f & MF.CHAIN) return F.chain.speed;
+    if (f & MF.PILE) return Math.max(F.pile.dive, F.speed);
+    if (f & MF.REV) return F.rev.speed[1];
+    return F.speed;
+  }
   if (f & MF.SLASH) return F.triple.speed;
   if (f & MF.SLAM) return F.speed + 6;
   if (f & MF.SHIELD) return F.speed * F.shield.slow; // (behind the shield you trudge)
@@ -157,3 +182,25 @@ export function addMark(o, n) {
   o.n = 0; o.until = 0; o.immune = n + (T.stun + T.immune) * 1000;
   return true;
 }
+
+// ---- WRECKING BALL
+// ramming someone at hs m/s (null below the threshold): damage climbs with speed up to the cap, knockback with it
+export function wbRam(hs) {
+  const R = MECH.wrecking.ram;
+  if (!(hs >= R.min)) return null;
+  return { dmg: Math.min(R.cap, R.base + (hs - R.min) * R.mul), kb: hs * R.kb, up: R.up + hs * 0.15 };
+}
+// how big a slam from h metres up is (k: 0 = off a hop, 1 = from h1 up or more), and what it does at distance d
+export function wbSlam(h) {
+  const S = MECH.wrecking.slam, k = Math.max(0, Math.min(1, (h - S.h0) / (S.h1 - S.h0))), at = (a) => a[0] + (a[1] - a[0]) * k;
+  return { k, dmg: at(S.dmg), r: at(S.r), kb: at(S.kb), up: at(S.up) };
+}
+// the pile driver's blast at distance d (null outside): full at the middle, edge x at the rim
+export function wbPile(d) {
+  const P = MECH.wrecking.pile;
+  if (!(d <= P.r)) return null;
+  const f = 1 - d / P.r;
+  return { dmg: P.dmg * (P.edge + (1 - P.edge) * f), kb: P.kb * (0.4 + 0.6 * f), up: P.up2 * (0.5 + 0.5 * f) };
+}
+// the rev launch's speed for a charge held c s
+export const wbRevSpeed = (c) => { const R = MECH.wrecking.rev, k = Math.max(0, Math.min(1, c / R.charge)); return R.speed[0] + (R.speed[1] - R.speed[0]) * k; };
