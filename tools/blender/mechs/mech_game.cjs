@@ -2,6 +2,7 @@
 // preset (default 3 = Too HD), next to the game's own mannequin. Loads docs/mechs/concept/<fid>_concept.glb through
 // glbkit's prepAuthored (like any Blender model) and poses them from <fid>_poses.json (three.js quaternions per joint).
 // usage: node tools/blender/mechs/mech_game.cjs <port> [outDir=docs/mechs/concept] [preset=3]
+//   MECH_SRC=game: the game's own public/models/x_mech_<name>.glb instead, posed by its clips (ready = idle, jet = jet_fly)
 //   (start a server first: PORT=3100 node server.js). writes ingame_<shot>.jpg + mechs_ingame.jpg (all of them)
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -48,7 +49,7 @@ const SHOTS = [ // name, caption, what stands where, the camera (eye, target, fo
     return G.joined && MAP.id === 'range' ? true : 'never got to the range: ' + MAP.id;
   });
   if (ok !== true) { console.log(ok); await b.close(); process.exit(1); }
-  const info = await pg.evaluate(async () => {
+  const info = await pg.evaluate(async (GAME) => {
     const { G } = await import('/js/ctx.js'); const { ME } = await import('/js/player.js');
     const THREE = await import('three'); const kit = await import('/js/glbkit.js'); const models = await import('/js/models.js');
     const css = document.createElement('style'); css.textContent = 'body > :not(#game) { display: none !important; }'; document.head.append(css);
@@ -64,13 +65,14 @@ const SHOTS = [ // name, caption, what stands where, the camera (eye, target, fo
     const load = (u) => new Promise((ok, bad) => kit.glbLoader().load(u, ok, undefined, bad));
     const M = {}, out = {};
     for (const id of ['mech_paperplane', 'mech_nightshift']) {
-      const g = await load(`/__mech/${id}_concept.glb`), poses = await (await fetch(`/__mech/${id}_poses.json`)).json();
+      const g = await load(GAME ? `/models/x_${id}.glb` : `/__mech/${id}_concept.glb`), poses = GAME ? { poses: {} } : await (await fetch(`/__mech/${id}_poses.json`)).json();
+      const anims = g.animations || [];
       const took = kit.prepAuthored(id, g.scene);
       const meta = kit.metaOf(g.scene) || {};
       let tris = 0; g.scene.traverse((o) => { if (o.isMesh) tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; });
       const nodes = new Set(); g.scene.traverse((o) => o.name && nodes.add(o.name));
       out[id] = { took, tris: Math.round(tris), missing: Object.keys(meta.joints || {}).filter((n) => !nodes.has(n)), pal: meta.palettes };
-      M[id] = { scene: g.scene, poses: poses.poses, meta };
+      M[id] = { scene: g.scene, poses: poses.poses, meta, anims };
     }
     window.__M = M;
     window.__place = (list) => {
@@ -83,6 +85,8 @@ const SHOTS = [ // name, caption, what stands where, the camera (eye, target, fo
           const [id, pose, col, pos, yaw] = it, m = M[id]; o = m.scene.clone(true);
           const P = m.poses[pose] || { joints: {}, root_at: [0, 0, 0] };
           o.traverse((n) => { const q = P.joints[n.name]; if (q) n.quaternion.set(q[0], q[1], q[2], q[3]); });
+          const clip = m.anims.find((a) => a.name === ({ ready: 'idle', jet: 'jet_fly' }[pose] || pose));
+          if (clip) { const mx = new THREE.AnimationMixer(o); const a = mx.clipAction(clip); a.play(); mx.setTime(pose === 'jet' ? 0.3 : 0); }
           const holder = new THREE.Group(); holder.add(o); o.position.set(...P.root_at); holder.position.set(...pos); holder.rotation.y = yaw + Math.PI; o = holder; // (the mechs face -z: turn them to the cameras)
           if (col === 'B') { // colour option B: clone the role materials and swap their colours (names = <prefix>_<role>)
             const pal = m.meta.palettes.B, swap = new Map();
@@ -101,7 +105,7 @@ const SHOTS = [ // name, caption, what stands where, the camera (eye, target, fo
       window.__fov = fov; window.__pin = { p: [eye[0], eye[1] - 1.6, eye[2]], yaw: Math.atan2(-dx, -dz), pitch: Math.atan2(dy, Math.hypot(dx, dz)) };
     };
     return out;
-  });
+  }, process.env.MECH_SRC === 'game');
   console.log(JSON.stringify(info));
   const files = [], only = process.env.MECH_SHOTS ? process.env.MECH_SHOTS.split(',') : null;
   for (const s of SHOTS) {

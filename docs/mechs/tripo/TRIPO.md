@@ -43,19 +43,45 @@ Use **image to 3D** with the `_3q` picture (3/4 view). If Tripo gets the shape w
 
 ## After Tripo: putting the meshes on the rig
 ```
-blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=paperplane      # (and mech=nightshift)
-node tools/blender/mechs/clip_sheets.cjs                                   # every clip on the new meshes, in three.js
+blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=paperplane qa   # (and mech=nightshift)
+node tools/blender/mechs/clip_sheets.cjs                                  # every clip on the new meshes, in three.js
+node tools/blender/mechs/compare.cjs <out.jpg> "front,q,side,back" a=<one.glb> b=<other.glb>   # side by side
 ```
 - `tripo_swap.py` reads the GLBs from `docs/mechs/tripo/in/` (`in=<dir>` for another folder) and writes over
-  `public/models/x_mech_<name>.glb`, keeping every joint, marker and clip.
+  `public/models/x_mech_<name>.glb`, keeping every joint, marker and clip. `qa` runs the asset gate on the result.
 - No body file means nothing changes: the concept model stays as the fallback.
-- The cut is done in the same A-pose as the pictures:
-  - Each Tripo face goes to the joint of the nearest concept surface, then pieces are tidied along the seams.
-  - Paint areas get a grey copy of Tripo's texture under the team colour, so team tinting still works.
-  - Glowing areas glow.
-- Moving parts are fitted onto the concept parts automatically. The fit error is printed (`JF_TRIPO ... fit error`).
-- If a part comes out turned wrong, re-run Tripo with its `_flat` picture.
-- `body_tris=45000` and `lod_tris=7000` set the near and far budgets. Each joint gets a far copy named `<joint>_lod1`.
-- Turn the body with `yaw=0` if Tripo's front came out facing the other way (the default `yaw=180` suits glTF's +z front).
+- **Rigged downloads cut best.** When Tripo's auto-rig is on, the GLB carries a skeleton and skin weights:
+  - each face goes to the joint its bones point at;
+  - the rig's elbows, knees and spine move onto Tripo's own pivots, so limbs bend where the mesh does.
+  - Without a rig, the concept arms are posed to fit inside the mesh, and each face goes to the nearest concept part.
+- Tripo builds bodies out of separate plates, so whole plates stay on one joint.
+- **Kept from the concept** (`keep=` changes the list):
+  - the head (its own visor, crest and beacon: Tripo's V crests never survive);
+  - the hands (they grip the sword and fold for jet mode);
+  - PAPER PLANE's pencil pods and highlighter cannons.
+- **Untextured meshes** take their paint from the concept, one colour per plate. Each part ends up with about the
+  concept's mix of team colour, white, dark and metal. Team colours keep working.
+- **Clean-up, all automatic:**
+  - lumpy plates (`hull=`: NIGHT SHIFT's shins) are rebuilt as clean faceted armour;
+  - thin rods (sabre hilts, whip antennas) are dropped;
+  - chips that float at rest, doubled triangles and folded faces go, so the asset gate passes.
+- Moving parts (wings, crane, sword, shield) are fitted onto the concept ones (`JF_TRIPO ... fit error`). A part
+  named in `concept=` keeps the concept one.
+- Turn the body with `yaw=0` if Tripo's front came out facing the other way.
 - Test without real files: `-- mech=nightshift make-standin=<dir>` writes a fake Tripo input from the concept model.
   Then run the swap with `in=<dir> out=<test.glb>`.
+
+## The first batch (2026-11-12): what went in, what to remake
+Pictures: `compare/paperplane.jpg`, `compare/nightshift.jpg` (three.js, as in the game) and `ingame/` (Training, Too HD).
+
+| file | used? | notes |
+|---|---|---|
+| `paperplane_body_a.glb` | **yes** | Slim and sleek; reads as its own design once the concept head, wings and pods are on. No rig (see below). Its shoulder fins and crest were dropped. |
+| `paperplane_body_b.glb` | no | Too close to a famous anime mech (twin chest vents, sabre hilts on the back). Kept only for the comparison. |
+| `nightshift_body.glb` | **yes** | Heavy and imposing. Its V crest went with its head, and the lumpy shins were rebuilt. It lost the concept's hi-vis stripes and badge. |
+| `paperplane_drone.glb` | no | A winged helmet, not a crane. The concept crane stays. |
+
+To remake in Tripo, if the owner wants:
+1. **PAPER PLANE A with the auto-rig on** (same picture, rig enabled before download): the cut gets Tripo's own elbows.
+2. **The crane drone** from `paperplane_drone_flat.png`, or with "origami paper crane" in the prompt.
+3. Wings, sword and shield whenever wanted (the concept ones are in for now).
