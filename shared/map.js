@@ -3856,8 +3856,13 @@ function skyline() {
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
-  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); tubeBridge(B, D, false, 13.4, S - 13.4, 0, R);
-  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']);
+  // (each drawn as a Blender bridge over its boxes, tools/blender/arch/make_bridges.py: tube = the glass tubes, girder =
+  // the open bridges; one model each, the south / east one at rot 0, the north / west one turned round)
+  const bm = (S - 13.4 + 13.4) / 2; let nb = B.boxes.length;
+  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); B.archSince(nb, 'tube', 0, -bm, 2); nb = B.boxes.length;
+  tubeBridge(B, D, false, 13.4, S - 13.4, 0, R); B.archSince(nb, 'tube', 0, bm, 0); nb = B.boxes.length;
+  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); B.archSince(nb, 'girder', -bm, 0, 2); nb = B.boxes.length;
+  skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']); B.archSince(nb, 'girder', bm, 0, 0);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const cy = sx === sz ? lo : hi; // NW and SE are the low corners
     stairBridge(B, true, sx * 15.4, sx * (S - 14.4), sz * S, R, cy, 4, true); // from the north / south tower along x
