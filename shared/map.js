@@ -5186,7 +5186,7 @@ function deadmall() {
   for (const x of [-7, 7]) for (const z of [-19, 5]) B.box(x, 0.35, z, 2, 0.7, 2, 'hedge');
   for (const z of [-15, 1]) B.add(-1.5, 0, z - 0.3, 1.5, 0.45, z + 0.3, 'wood');
   const crate = { at: [0, 0, -28.55], price: 950 };
-  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate');
+  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate', W.P('zmcrate', 0, -28.55, 0, { v: 'body' })); // (the Blender crate's body is drawn over it, its lid swings in public/js/zombies.js)
   const cola = { at: [-10.4, 0, -24], n: [1, 0, 0] };
   B.add(-10.75, 0, -24.55, -10.05, 2.03, -23.45, 'metal'); // (Jank Cola's machine is drawn over it too)
   // ---- ARCADE: three rows of back-to-back cabinets (gaps halfway down), screens glowing on both sides
