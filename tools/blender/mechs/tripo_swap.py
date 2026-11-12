@@ -836,7 +836,7 @@ def main():
     R.key_clips(mk, mod, clip_list)
     meta = dict(mk.meta); meta.pop('marks', None); meta.pop('wing_layout', None)
     meta.update({'phase': 'tripo', 'fps': R.C.FPS, 'marks': marks, 'root_motion': False, 'tripo': report, 'decal_slots': decal_slots,
-                 'clips': [{k2: cl[k2] for k2 in ('name', 'dur', 'loop', 'hold', 'partial', 'note')} for cl in clip_list]})
+                 'clips': [R.clip_meta(cl) for cl in clip_list]})
     mk.root['jf'] = json.dumps(meta)
     print('JF_TRIPO', MECH, json.dumps(report))
     if 'no-export' not in ARGS: R.export(mk, ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{MECH}.glb')), export_vertex_color='ACTIVE')

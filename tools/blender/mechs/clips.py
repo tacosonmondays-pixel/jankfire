@@ -155,12 +155,14 @@ def drop_in(K):
              both('upperarm', (110, 0, K.arm_out + 30)), both('forearm', (30, 0, 0)), {'chest': (6, 0, 0), 'head': (-20, 0, 0)})
     hd = 1.0 if not K.heavy else 1.05
     impact = M({'hips': {'r': (-14, -8, 0), 'p': (0, -1.18 * hd, -0.10)}, 'waist': (-6, 0, 0), 'chest': (-22, 6, 0), 'head': (30, -4, 0)},
-               side('thigh', (-28, 0, 6), 1), side('shin', (-95, 0, 0), 1), side('foot', (60, 0, 0), 1), side('toe', (30, 0, 0), 1),
-               side('thigh', (95, 0, -10), -1), side('shin', (-95, 0, 0), -1), side('foot', (8, 0, 6), -1),
+               side('thigh', (4, 0, 6), 1), side('shin', (-80, 0, 0), 1), side('foot', (60, 0, 0), 1), side('toe', (30, 0, 0), 1),  # (the right knee ON the floor,
+               side('thigh', (126, 0, -10), -1), side('shin', (-112, 0, 0), -1), side('foot', (0, 0, 6), -1),  # the front knee up high by the chest)
                side('upperarm', (-6, 0, 20), 1), side('forearm', (6, 0, 0), 1), side('hand', (0, 0, 20), 1),
                side('upperarm', (-10, 0, 45), -1), side('forearm', (30, 0, 0), -1))
     deeper = M(impact, {'hips': {'r': (-16, -8, 0), 'p': (0, -1.30 * hd, -0.12)}, 'chest': (-26, 6, 0)})
     hero = M(impact, {'chest': (-12, 10, 0), 'head': (16, -6, 0)})
+    if K.heavy:  # (the sword trails out behind the fist, not through the floor)
+        for p in (impact, deeper, hero): p.update(side('hand', (-115, 0, 20), 1))
     if K.kind == 'pp':
         for p in (fall,): p.update({'wing_R': (0, 0, -25), 'wing_L': (0, 0, 25)})
         for p in (impact, deeper, hero): p.update({'wing_R': (0, 0, 12), 'wing_L': (0, 0, -12)})
@@ -333,6 +335,101 @@ def ground_slam(K):
                 note='big overhead slam (impact at 0.56 s: shockwave + dust ring), a held beat, recover')
 
 
+# ------------------------------------------------------------ the hero kit: the MECH DROP landing, weight, events
+def drop_fall(K):
+    """falling out of the sky before the landing (loops): knees up, arms up and out, a little flutter"""
+    a = drop_in(K)['keys'][0][1]
+    b = M(a, both('upperarm', (118, 0, K.arm_out + 36)), both('forearm', (38, 0, 0)), {'chest': (9, 0, 0), 'head': (-24, 0, 0)}, side('shin', (-66, 0, 0), 1))
+    if K.kind == 'pp': b.update({'wing_R': (0, 0, -31), 'wing_L': (0, 0, 31)})
+    return clip('drop_fall', 0.5 * K.t, [(0, a), (0.25 * K.t, b)], loop=True, note='the MECH DROP fall (loop) until it lands: then hero_intro')
+
+
+def hero_intro(K):
+    """the MECH DROP landing as a show (starts AT the impact): the superhero landing squash, a held beat looking up,
+    a gather, then it stands into its signature pose and holds it (an empty mech waits like that)"""
+    d = drop_in(K)['keys']; deeper, impact, hero = d[2][1], d[3][1], d[4][1]
+    T = K.t
+    look = M(hero, {'head': (24, -14, 0), 'chest': (-8, 12, 0)})  # (looks up at the camera, on the low side)
+    if K.kind == 'pp':
+        gather = M(hero, {'hips': {'r': (-18, -10, 0), 'p': (0, -1.36, -0.14)}, 'chest': (-30, 4, 0), 'head': (34, 0, 0)},
+                   side('upperarm', (-30, 0, 30), 1), side('forearm', (40, 0, 0), 1), {'wing_R': (0, 0, 18), 'wing_L': (0, 0, -18)})
+        # up into the signature pose: wings flared wide, the right arm points the cannon straight at you, left fist on the hip
+        # (its cannons sit across the forearm: a hanging forearm aims them forward, so it aims from the hip, gunslinger style)
+        sig = M(K.stance(1.1), {'chest': (6, -5, 0), 'waist': (0, -2, 0), 'head': (-6, 8, 6), 'hips': {'r': (0, -3, 0), 'p': (0, -0.04, 0)}},
+                side('thigh', (-8, 0, 8), 1), side('thigh', (14, 0, -3), -1), side('shin', (-24, 0, 0), -1), side('foot', (10, 0, 0), -1),
+                side('upperarm', (12, 0, 20), 1), side('forearm', (24, 0, 0), 1),
+                side('upperarm', (-16, 0, 40), -1), side('forearm', (6, 0, -80), -1), side('hand', (0, 0, -10), -1),
+                {'wing_R': (0, 0, -30), 'wing_L': (0, 0, 30), 'pod_R': (32, 0, 0), 'pod_L': (32, 0, 0)})
+        over = M(sig, {'chest': (10, -8, 0), 'head': (-8, 10, 6), 'wing_R': (0, 0, -40), 'wing_L': (0, 0, 40), 'pod_R': (42, 0, 0), 'pod_L': (42, 0, 0)},
+                 side('upperarm', (22, 0, 22), 1), side('forearm', (30, 0, 0), 1))
+        settle = M(sig, {'chest': (4, -4, 0), 'pod_R': (28, 0, 0), 'pod_L': (28, 0, 0)}, side('upperarm', (9, 0, 19), 1))
+        keys = [(0, deeper), (0.18, impact), (0.42, look), (0.64, look), (0.80, gather), (0.98, over), (1.18, sig), (1.40, settle), (1.75, sig)]
+        snap, ev = (5,), [ev_(0, 'slam', 'hand_R', 0.35, ground=True), ev_(0, 'dust', 'foot_L', ground=True), ev_(0.80, 'vent', 'mk_thrust_back_L'),
+                            ev_(0.80, 'vent', 'mk_thrust_back_R'), ev_(0.98, 'burst', 'mk_thrust_back_L', 0.12), ev_(0.98, 'burst', 'mk_thrust_back_R'),
+                            ev_(0.98, 'dust', 'foot_R', ground=True), ev_(1.18, 'flare', 'head'), ev_(1.18, 'glint', 'mk_muzzle_R')]
+    else:
+        gather = M(hero, {'hips': {'r': (-18, -10, 0), 'p': (0, -1.40, -0.14)}, 'chest': (-30, 8, 0), 'head': (30, 0, 0)}, K.shield_arm(1.1))
+        # stands with the sword raised overhead (the wind-up), then drives it into the floor in front of it and leans on it
+        rise = M(K.stance(1.8), {'chest': (14, -10, 0), 'head': (12, 6, 0)}, side('upperarm', (168, 0, 14), 1), side('forearm', (40, 0, 0), 1), side('hand', (30, 0, 0), 1),
+                 K.shield_arm(1.15), hips_at(0.06))
+        plant = M(K.stance(3.3), {'chest': (-16, -6, 0), 'waist': (-4, 0, 0), 'head': (10, 4, 0)},
+                  side('upperarm', (40, -10, 4), 1), side('forearm', (46, 0, 0), 1), side('hand', (-123, 0, 0), 1),
+                  side('thigh', (-6, 0, 8), 1), side('thigh', (16, 0, -6), -1), side('shin', (-26, 0, 0), -1), K.shield_arm(1.05))
+        over = M(plant, {'chest': (-22, -6, 0), 'head': (16, 4, 0)}, hips_at(-0.22))
+        sig = M(plant, {'chest': (-6, -8, 0), 'head': (2, 8, 0)}, side('upperarm', (35, -10, 4), 1), side('hand', (-127, 0, 0), 1))
+        keys = [(0, deeper), (0.18, impact), (0.40, look), (0.58, look), (0.72, gather), (0.92, rise), (1.04, plant), (1.16, over), (1.40, sig), (1.7, sig)]
+        snap, ev = (6,), [ev_(0, 'slam', 'hand_R', 0.45, ground=True), ev_(0, 'dust', 'foot_L', ground=True), ev_(0.72, 'vent', 'mk_thrust_back_L'),
+                            ev_(0.72, 'vent', 'mk_thrust_back_R'), ev_(0.92, 'flare', 'head'), ev_(1.04, 'slam', 'mk_sword_tip', 0.5, ground=True),
+                            ev_(1.04, 'spark', 'mk_sword_tip'), ev_(1.16, 'dust', 'foot_L', ground=True)]
+    cl = clip('hero_intro', keys[-1][0] * T, [(t * T, P) for t, P in keys], hold=True,
+              note='the MECH DROP landing shot: starts at the impact, stands into its signature pose by ~1.2 s and holds it')
+    cl['snap'] = snap; cl['events'] = [dict(e, t=round(e['t'] * T, 3)) for e in ev]
+    return cl
+
+
+def ev_(t, fx, at, shake=0.0, ground=False, k=1.0):
+    """a clip event: at t seconds the game plays fx at the node `at` (a joint or marker; ground = on the floor under it)
+    and shakes the camera this much (0..1) if it is near. fx: dust, step, slam, spark, glint, burst, vent, flare, pop"""
+    e = {'t': round(t, 3), 'fx': fx, 'at': at}
+    if shake: e['shake'] = shake
+    if ground: e['ground'] = True
+    if k != 1.0: e['k'] = k
+    return e
+
+
+# the weight pass on the older clips: snap = key indices it ARRIVES at fast (ease-in: the wind-up hangs, the hit
+# snaps, then it eases out into the follow-through), events = (t / clip length, fx, at, shake, ground)
+WEIGHT = {
+    'hit_react': {'snap': (1,)}, 'drop_in': {'snap': (2,), 'events': [(0.36 / 1.3, 'slam', 'hand_R', 0.35, True), (0.36 / 1.3, 'dust', 'foot_L', 0, True)]},
+    'land': {'snap': (1,), 'events': [(0.1, 'step', 'foot_L', 0, True), (0.1, 'step', 'foot_R', 0, True)]},
+    'jump': {'snap': (2,), 'events': [(0.26 / 0.6, 'burst', 'mk_thrust_back_L'), (0.26 / 0.6, 'burst', 'mk_thrust_back_R'), (0.26 / 0.6, 'dust', 'foot_L', 0, True), (0.26 / 0.6, 'dust', 'foot_R', 0, True)]},
+    'boost_dash': {'snap': (2,), 'events': [(0.20 / 0.75, 'burst', 'mk_thrust_back_L', 0.1), (0.20 / 0.75, 'burst', 'mk_thrust_back_R')]},
+    'run': {'events': [(0.0, 'step', 'foot_R', 0, True), (0.5, 'step', 'foot_L', 0, True)]},
+    'eject': {'snap': (1,), 'events': [(0.08 / 0.7, 'pop', 'hatch', 0.15)]},
+    'destroy': {'snap': (1,)},
+    'missile_salvo': {'snap': (2, 4, 6), 'events': [(t / 1.2, 'vent', p) for t in (0.30, 0.52, 0.74) for p in ('pod_L', 'pod_R')]},
+    'lunge': {'snap': (2,), 'events': [(0.10 / 0.6, 'burst', 'mk_thrust_back_L', 0.1), (0.10 / 0.6, 'burst', 'mk_thrust_back_R'), (0.20 / 0.6, 'glint', 'mk_muzzle_R')]},
+    'sword_combo_1': {'snap': (2,), 'events': [(0.24 / 0.65, 'glint', 'mk_sword_tip')]},
+    'sword_combo_2': {'snap': (2,), 'events': [(0.22 / 0.6, 'glint', 'mk_sword_tip')]},
+    'sword_combo_3': {'snap': (3,), 'events': [(0.42 / 0.95, 'slam', 'mk_sword_tip', 0.25, True), (0.42 / 0.95, 'spark', 'mk_sword_tip')]},
+    'triple_shift': {'snap': (2, 4, 6), 'events': [(t / 1.3, 'glint', 'mk_sword_tip') for t in (0.20, 0.44, 0.68)]},
+    'shield_bash': {'snap': (2,), 'events': [(0.22 / 0.55, 'spark', 'mk_shield_face', 0.15)]},
+    'ground_slam': {'snap': (3,), 'events': [(0.56 / 1.5, 'spark', 'mk_sword_tip'), (0.56 / 1.5, 'step', 'foot_L', 0, True), (0.56 / 1.5, 'step', 'foot_R', 0, True)]},
+}
+WALK_HEAVY = {'walk': {'events': [(0.0, 'step', 'foot_R', 0, True), (0.5, 'step', 'foot_L', 0, True)]}}  # (NIGHT SHIFT's walk kicks up dust too)
+
+
+def weigh(cl, kind):
+    """adds the weight pass to a clip: its snap keys and events (in seconds), dropping events at nodes the mech lacks"""
+    w = WEIGHT.get(cl['name']) or (WALK_HEAVY.get(cl['name']) if kind == 'ns' else None)
+    if not w: return cl
+    if 'snap' in w: cl['snap'] = tuple(w['snap'])
+    ok = lambda at: not (kind == 'ns' and at in ('mk_muzzle_R', 'pod_L', 'pod_R')) and not (kind == 'pp' and at in ('mk_sword_tip', 'mk_shield_face'))
+    evs = [ev_(f * cl['dur'], fx, at, *rest) for f, fx, at, *rest in w.get('events', ()) if ok(at)]
+    if evs: cl['events'] = evs
+    return cl
+
+
 def all_clips(kind, drone_axis=(0, 1, 0)):
     K = Kit(kind)
     out = [idle(K), walk(K), run(K), boost_dash(K), jump(K), land(K), hover(K), hit_react(K), drop_in(K), pilot_in(K), eject(K), destroy(K)]
@@ -340,9 +437,10 @@ def all_clips(kind, drone_axis=(0, 1, 0)):
         out += [jet_in(K), jet_fly(K), jet_out(K), missile_salvo(K), lunge(K), drone_launch(K, drone_axis), drone_return(K, drone_axis), drone_flap(K, drone_axis)]
     else:
         out += [sword_combo_1(K), sword_combo_2(K), sword_combo_3(K), triple_shift(K), shield_block(K), shield_bash(K), ground_slam(K)]
-    return out
+    out += [drop_fall(K), hero_intro(K)]
+    return [weigh(cl, kind) for cl in out]
 
 
 # keys in the air (the ground solver leaves them alone): clip -> key indices, or 'all'
-AIR = {'jump': {2, 3}, 'hover': 'all', 'jet_in': {2, 3, 4}, 'jet_fly': 'all', 'jet_out': 'all', 'drop_in': {0, 1}, 'land': {0},
+AIR = {'jump': {2, 3}, 'hover': 'all', 'jet_in': {2, 3, 4}, 'jet_fly': 'all', 'jet_out': 'all', 'drop_in': {0, 1}, 'land': {0}, 'drop_fall': 'all',
        'boost_dash': {2, 3, 4}, 'run': {1, 3}}
