@@ -185,7 +185,7 @@ export function installWrecking(Room, U) {
       if (!W.pile || W.pile.ph === 'down' || (!auto && n - W.pile.t < 300)) return;
       const e = this.mechEyeOf(p);
       let to = null;
-      if (!auto && this.mechAimOk(p, d, 0.5) && d[1] < -0.15) {
+      if (!auto && this.mechAimOk(p, d, 0.3) && d[1] < -0.15) {
         const h = raycast(e, d, P.range * 1.6, this.boxes);
         if (h && !h.box.pad && hdist(h.point, p.pos) <= P.range && h.point[1] < p.pos[1]) to = h.point.slice();
       }

@@ -132,11 +132,16 @@ function pileTarget(d) {
   const h = raycast(e, [0, -1, 0], 200, BOXES);
   return h ? h.point.slice() : [ME.pos[0], ME.pos[1] - 40, ME.pos[2]];
 }
+// asks the server to dive (it picks the spot the same way); the dive starts when its answer ('wbpile' down) lands, so
+// both sides head for the same spot. no answer in 1.2 s: straight down
 function pdrop(now, auto) {
-  if (!WS.pile || WS.pile.ph === 3 || (!auto && now - WS.pile.t0 < 300)) return;
-  const d = A.aimDir().d;
-  WS.pile.ph = 3; WS.pile.to = pileTarget(auto ? null : d); WS.pile.dT = now;
-  if (!auto) net.send({ t: 'mech', k: 'pdrop', d: d.map(r2) });
+  if (!WS.pile || WS.pile.ph === 3 || WS.pile.ask || (!auto && now - WS.pile.t0 < 300)) return;
+  WS.pile.ask = now;
+  if (!auto) net.send({ t: 'mech', k: 'pdrop', d: A.aimDir().d.map(r2) });
+}
+function dive(to, now) {
+  if (!WS.pile || WS.pile.ph === 3) return;
+  WS.pile.ph = 3; WS.pile.to = to; WS.pile.dT = now;
   sfx.dive(null); punchCam(-0.06); G.shake = Math.max(G.shake, 0.6);
   aimMark(null);
 }
@@ -159,7 +164,8 @@ function step(dt, inp, now) {
       if (p[1] - Wp.y0 >= P.rise || now - Wp.t0 > P.rise / P.up * 1000 + 400) { Wp.ph = 2; Wp.hT = now; v[1] = 0; }
     } else if (Wp.ph === 2) { // hanging up there, aiming
       v[0] = v[1] = v[2] = 0; fixed = true;
-      if (now - Wp.hT > P.hang * 1000) pdrop(now, true);
+      if (now - Wp.hT > P.hang * 1000) pdrop(now, true); // (the server drops it too)
+      if (Wp.ask && now - Wp.ask > 1200) dive(pileTarget(null), now);
     } else { // the dive
       const to = Wp.to, d = [to[0] - p[0], to[1] - p[1], to[2] - p[2]], l = Math.hypot(d[0], d[1], d[2]) || 1;
       for (let i = 0; i < 3; i++) v[i] = d[i] / l * P.dive;
@@ -306,7 +312,7 @@ function event(m, getR, live, me, r, st) {
       const to = P(m.to);
       if (m.ph === 'up' && pos && !me) { sfx.pile(pos); A.shakeNear(pos, 0.6, 30); rfx.smoke([pos[0], pos[1], pos[2]], 20, 0xdfe4ea, 1.8, 1, 2, 0.8); }
       if (m.ph === 'down') {
-        if (me && WS.pile && to) { WS.pile.ph = 3; WS.pile.to = to; WS.pile.dT = WS.pile.dT || nowMs(); aimMark(null); }
+        if (me && WS.pile && to) { if (WS.pile.ph === 3) WS.pile.to = to; else dive(to, nowMs()); }
         if (to) { rmesh.ring(to, WB.pile.r, 0xff3030, 1.1); rmesh.ring(to, WB.pile.r * 0.5, 0xffe14d, 1.1); } // INCOMING: everyone sees where it's coming down
         if (live && to && !me && Math.hypot(to[0] - ME.pos[0], to[2] - ME.pos[2]) < WB.pile.r + 2) hud.msg('INCOMING BALL. MOVE', 1.2, 'slip');
         if (pos && !me) sfx.dive(pos);
