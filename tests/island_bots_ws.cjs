@@ -30,7 +30,7 @@ let fails = 0; const failed = []; const ok = (c, msg) => { console.log((c ? 'ok 
     if (m.k === 'rvx') seen['rvx:' + m.why] = (seen['rvx:' + m.why] || 0) + 1;
     if (m.k === 'sq') { for (const [id, s] of m.l) sq.set(id, s); for (const [id, h] of m.hero || []) heroes.set(id, h); }
   });
-  ws.on('open', () => ws.send(JSON.stringify({ t: 'join', name: 'watcher', mode: 'bots', cfg: { bots: 8, map: 'jankburg', diff: 'hard', game: 'island' } })));
+  ws.on('open', () => ws.send(JSON.stringify({ t: 'join', name: 'watcher', mode: 'bots', cfg: { bots: 8, map: process.env.ISLE_TEST_MAP || 'jankburg', diff: 'hard', game: 'island' } })));
   const t0 = Date.now();
   while (!over && Date.now() - t0 < secs * 1000) await sleep(1000);
   for (const l of srvOut.split('\n').filter((l) => l.startsWith('[isle]'))) console.log('  ' + l);
