@@ -184,6 +184,10 @@ G.isleStep = (dt, inp, now) => {
   return true;
 };
 const DOWN_KEYS = ['fire', 'aim', 'grapple', 'item', 'dash', 'spray', 'streak1', 'streak2', 'streak3', 'slot1', 'slot2', 'slot3', 'slot4', 'lastSlot', 'reload', 'jump', 'crouch', 'scythe', 'use', 'parry'];
+// the blimp's hero pick keys: your 1-4 (weapon slots, rebindable), then plain 5-9 for heroes 5+ (no slot action there)
+const HERO_SLOTS = ['slot1', 'slot2', 'slot3', 'slot4'];
+function heroKeyAt(e) { const k = HERO_SLOTS.findIndex((a) => K.matches(a, e)); if (k >= 0) return k; const d = /^(?:Digit|Numpad)([5-9])$/.exec(e.code || ''); return d ? Number(d[1]) - 1 : -1; }
+const heroKeyLabel = (i) => (i < HERO_SLOTS.length ? K.label(HERO_SLOTS[i]) : String(i + 1));
 // main.js pressed(): true = swallowed. down: nothing but walking, looking, chat and the menu. up next to a downed
 // squadmate: the use key picks them up (before royale.js grabs it for loot)
 export function isleKey(e, startUse) {
@@ -191,7 +195,7 @@ export function isleKey(e, startUse) {
   if (I.me) return DOWN_KEYS.some((a) => K.matches(a, e));
   if (K.matches('use', e) && !e.repeat && reviveTarget()) { startUse(); return true; }
   const R = brState();
-  if (R.me && R.me.inBlimp) { const k = ['slot1', 'slot2', 'slot3', 'slot4'].findIndex((a) => K.matches(a, e)); if (k >= 0 && HERO_IDS[k]) { if (!e.repeat) net.send({ t: 'hero', h: HERO_IDS[k] }); return true; } } // the hero pick, on the blimp
+  if (R.me && R.me.inBlimp) { const k = heroKeyAt(e); if (k >= 0 && HERO_IDS[k]) { if (!e.repeat) net.send({ t: 'hero', h: HERO_IDS[k] }); return true; } } // the hero pick, on the blimp
   if (['streak1', 'streak2', 'streak3'].some((a) => K.matches(a, e))) { if (!e.repeat) callMech(); return true; } // the streak key: your mech
   return false;
 }
@@ -298,7 +302,7 @@ function meterHud(now) {
   let h = '<h3>PICK YOUR MECH</h3><div class="cards">';
   HERO_IDS.forEach((id, i) => {
     const by = mates.filter((m) => m[1] === id), taken = id !== hr && by.length >= cap, H = HEROES[id];
-    h += `<div class="hc${id === hr ? ' on' : ''}${taken ? ' taken' : ''}" style="--c:${H.color}"><kbd>${K.label('slot' + (i + 1))}</kbd><b>${heroName(id)}</b><i>${H.role}</i><small>${taken ? `taken: ${by.map((m) => esc(nameOf(m[0]))).join(', ')}` : H.blurb}</small></div>`;
+    h += `<div class="hc${id === hr ? ' on' : ''}${taken ? ' taken' : ''}" style="--c:${H.color}"><kbd>${heroKeyLabel(i)}</kbd><b>${heroName(id)}</b><i>${H.role}</i><small>${taken ? `taken: ${by.map((m) => esc(nameOf(m[0]))).join(', ')}` : H.blurb}</small></div>`;
   });
   el.hero.innerHTML = h + `</div><div class="hint">no doubles in a squad · fill your meter on the island, then ${K.label('streak1')} drops it on your crosshair</div>`;
 }
