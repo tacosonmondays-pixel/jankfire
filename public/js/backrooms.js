@@ -61,10 +61,26 @@ function appear() {
 }
 export function summonEntity() { gone(); return appear(); } // for testing: try right now
 
+// the Blender ceiling's flickering rooms (archfield.js calls its materials arch_<name>): their lenses and tiles follow
+// the same three flickers as the old ceiling's materials
+let archGroup = null, archFlick = [[], [], []];
+function archFlickMats() {
+  const g = G.scene.children.find((o) => o.name === 'arch') || null;
+  if (g !== archGroup) {
+    archGroup = g; archFlick = [[], [], []];
+    if (g) for (const o of g.children) { const k = /^arch_br_(?:lens|ceil)f([123])$/.exec(o.material && o.material.name); if (k) archFlick[k[1] - 1].push(o.material); }
+  }
+  return archFlick;
+}
+
 export function updateBackrooms(dt, flickMats) {
   const now = performance.now(), here = MAP.id === 'backrooms' && G.joined;
   hum(here, ent ? 0 : 1); // the hum stops while it's there
-  if (MAP.id === 'backrooms') for (const m of flickMats) flicker(m, now);
+  if (MAP.id === 'backrooms') {
+    for (const m of flickMats) flicker(m, now);
+    const af = archFlickMats();
+    flickMats.forEach((m, i) => { for (const a of af[i] || []) a.emissiveIntensity = m.emissiveIntensity; });
+  }
   if (!here) { gone(); return; }
   if (ent) {
     const p = ent.mesh.position, c = G.camera.position;

@@ -4617,6 +4617,10 @@ function backrooms() {
   }
   D.add(gx(8), H - 0.03, gx(30), gx(9), H, gx(41), 'ceildark'); // a long dark stretch of the west hall
   D.add(gx(20), H - 0.03, gx(9), gx(31), H, gx(10), 'ceilflick2');
+  // look only: the drop ceilings and their light overlays are drawn by one Blender model (tools/blender/arch/
+  // make_backrooms_ceil.py, archfield.js): a T-bar grid, recessed troffers that keep the flicker, missing and sagging tiles
+  B.boxes.arch.push({ id: 'backrooms_ceil', p: [0, 0, 0], r: 0 });
+  { const t = { av: 'backrooms_ceil', ai: B.boxes.arch.length - 1 }; for (const b of B.boxes) if (b.mat === 'ceiltile') Object.assign(b, t); for (const b of D.boxes) if (/^ceil/.test(b.mat)) Object.assign(b, t); }
 
   // ---- the big hall: sparse pillars, a few freestanding walls (one has a doorway to nowhere), low walls for cover
   for (const [x, z] of [[-16, -16], [16, -16], [-16, 16], [16, 16], [0, -24], [0, 24], [-24, 0], [24, 0]]) B.box(x, HH / 2, z, 1.6, HH, 1.6, 'wallpaper');
