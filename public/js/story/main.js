@@ -69,14 +69,6 @@ export function initStory(a) {
   // engine, handed to its hook once each (G.story.combat, set by public/js/story/boot.js)
   on('combat', (m) => { if (m.ev && typeof G.story.combat === 'function') { try { G.story.combat(m.ev); } catch (e) { console.warn('story combat', e); } } });
   on('redispensed', () => { if (driving()) endDrive(true); hud.msg('BEEP. CLUNK. RESTOCKING FEE APPLIED.', 2.2, 'brag'); });
-  addEventListener('beforeunload', unloadGuard);
-}
-// crouch is also Left Ctrl, and Ctrl+W (crouch-walking forward) closes a browser tab, Ctrl+R reloads it: the run
-// just vanished ("it crashed the tab"). Chrome won't let a page block those keys, but it does ask "Leave site?" first
-// if we say so. only mid-run, and not for test browsers (their reload-and-check-the-save steps would hang on it)
-function unloadGuard(e) {
-  if (!G.joined || G.mode !== 'story' || (navigator.webdriver && !window.__jfUnloadGuard)) return; // (in a run, paused too)
-  e.preventDefault(); e.returnValue = '';
 }
 function on(k, fn) { (listeners[k] ||= []).push(fn); }
 function send(k, o) { net.send({ t: 'sty', k, ...o }); }

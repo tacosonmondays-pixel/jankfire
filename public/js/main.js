@@ -2046,7 +2046,7 @@ function frame(t) {
   if (dt <= 0) return;
   if (G.story) dt *= G.story.timeScale(); // the weapon wheel slows time (solo)
   const now = performance.now();
-  kbLock(inGame() && !!document.pointerLockElement); // (let go on the menu, pause, chat)
+  kbLock(inGame()); // playing: fullscreen key lock, "Leave site?" (kblock.js). let go on the menu, pause, chat
 
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)
