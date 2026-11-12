@@ -71,9 +71,24 @@ void main() {
   c += ( texture2D( tSrc, vUv + uDir * 3.230769 ).rgb + texture2D( tSrc, vUv - uDir * 3.230769 ).rgb ) * 0.070270;
   gl_FragColor = vec4( c, 1.0 );
 }`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }),
-    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; uniform vec4 uGrade; varying vec2 vUv;
+    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; uniform vec4 uGrade; uniform float uAA; uniform vec2 uPx; uniform vec2 uFilm; varying vec2 vUv;
+// smoothing jaggies (Mid and up): where the brightness steps across a pixel, blend toward the neighbours along the edge
+vec3 aaScene( vec2 uv ) {
+  vec3 m = texture2D( tScene, uv ).rgb;
+  if ( uAA < 0.5 ) return m;
+  vec3 n = texture2D( tScene, uv + vec2( 0.0, uPx.y ) ).rgb, s = texture2D( tScene, uv - vec2( 0.0, uPx.y ) ).rgb;
+  vec3 e = texture2D( tScene, uv + vec2( uPx.x, 0.0 ) ).rgb, w = texture2D( tScene, uv - vec2( uPx.x, 0.0 ) ).rgb;
+  vec3 W = vec3( 0.299, 0.587, 0.114 );
+  float lm = dot( m, W ), ln = dot( n, W ), ls = dot( s, W ), le = dot( e, W ), lw = dot( w, W );
+  float range = max( max( max( ln, ls ), max( le, lw ) ), lm ) - min( min( min( ln, ls ), min( le, lw ) ), lm );
+  if ( range < max( 0.06, lm * 0.15 ) ) return m; // flat: leave it sharp
+  float hz = abs( ln + ls - 2.0 * lm ), vt = abs( le + lw - 2.0 * lm );
+  vec3 along = hz > vt ? ( n + s ) * 0.5 : ( e + w ) * 0.5; // a horizontal edge blends up / down, a vertical one left / right
+  return mix( m, along, clamp( range * 1.6, 0.0, 0.5 ) );
+}
+vec3 acesFit( vec3 x ) { return clamp( ( x * ( 2.51 * x + 0.03 ) ) / ( x * ( 2.43 * x + 0.59 ) + 0.14 ), 0.0, 1.0 ); }
 void main() {
-  vec3 c = texture2D( tScene, vUv ).rgb;
+  vec3 c = aaScene( vUv );
   vec3 b = texture2D( tB0, vUv ).rgb * uW.x;
   if ( uW.y > 0.0 ) b += texture2D( tB1, vUv ).rgb * uW.y;
   if ( uW.z > 0.0 ) b += texture2D( tB2, vUv ).rgb * uW.z;
@@ -86,6 +101,11 @@ void main() {
     p *= 1.0 - 0.5 * pow( dot( v, v ) * 1.9, 1.6 ); // dark comic-panel corners
     c = mix( c, clamp( p, 0.0, 1.0 ), uPunch );
   }
+  if ( uFilm.x > 0.0 ) { // a filmic curve (soft shoulder: bright things don't clip flat) and vibrance (dull colours lifted more than loud ones)
+    c = mix( c, acesFit( c * 1.25 ), uFilm.x );
+    float l = dot( c, vec3( 0.299, 0.587, 0.114 ) ), sat = max( c.r, max( c.g, c.b ) ) - min( c.r, min( c.g, c.b ) );
+    c = clamp( mix( vec3( l ), c, 1.0 + uFilm.y * ( 1.0 - sat ) ), 0.0, 1.0 );
+  }
   if ( uGrade.w > 0.0 ) { // one map's own colour grade (setGrade: Battle Island's bilook.js): saturation, warmth, contrast
     float l = dot( c, vec3( 0.299, 0.587, 0.114 ) );
     vec3 g = mix( vec3( l ), c, uGrade.x ) + vec3( uGrade.y, uGrade.y * 0.35, -uGrade.y * 0.6 );
@@ -93,7 +113,7 @@ void main() {
     c = clamp( mix( c, g, uGrade.w ), 0.0, 1.0 );
   }
   gl_FragColor = vec4( c * ( 1.0 - uKill ), 1.0 ); // (uKill: tests only, forces a black frame)
-}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 }, uGrade: { value: new THREE.Vector4() } }),
+}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 }, uGrade: { value: new THREE.Vector4() }, uAA: { value: 0 }, uPx: { value: new THREE.Vector2() }, uFilm: { value: new THREE.Vector2() } }),
   };
 }
 const target = (w, h, depth, filter) => {
@@ -124,7 +144,8 @@ export function setPost(bloom, punch) {
   if (!wanted() && P.rt) { P.rt.dispose(); P.rt = null; for (const l of P.lv) { l.a.dispose(); l.b.dispose(); } P.lv = []; } // off: give the memory back
 }
 // a map's own colour grade, [saturation, warmth, contrast, amount] or null (bilook.js). only while shaders are on
-export function setGrade(g) { P.grade = g ? g.slice() : null; }
+export function setGrade(g, film) { P.grade = g ? g.slice() : null; P.film = film ? film.slice() : null; } // film: [filmic curve 0..1, vibrance]
+export function setPostAA(on) { P.aa = !!on; } // world.js: Mid and Too HD smooth their edges (Potato and Crusty stay crunchy)
 export const postOn = () => !SAFE.dead && (P.bloom > 0 || P.punch);
 const wanted = () => P.bloom > 0 || P.punch;
 export const postInfo = () => ({ bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]), on: postOn(), dead: SAFE.dead, why: SAFE.why, checks: SAFE.checks, ok: SAFE.ok });
@@ -178,7 +199,8 @@ function compose(r) {
   F.tB0.value = L[0] ? L[0].a.texture : null; F.tB1.value = L[1] ? L[1].a.texture : null; F.tB2.value = L[2] ? L[2].a.texture : null;
   const k = B ? B.k : 0;
   F.uW.value.set(L[0] ? k * (L[1] ? 0.6 : 1) : 0, L[1] ? k * 0.8 : 0, L[2] ? k : 0); // more layers: a wide soft halo, not a brighter middle (signs stay readable)
-  F.uPunch.value = P.punch ? 1 : 0; if (P.grade) F.uGrade.value.fromArray(P.grade); else F.uGrade.value.set(1, 0, 1, 0); F.uKill.value = SAFE.test === 'black' ? 1 : 0;
+  F.uPunch.value = P.punch ? 1 : 0; if (P.grade) F.uGrade.value.fromArray(P.grade); else F.uGrade.value.set(1, 0, 1, 0);
+  F.uAA.value = P.aa ? 1 : 0; F.uPx.value.set(1 / P.w, 1 / P.h); if (P.film) F.uFilm.value.fromArray(P.film); else F.uFilm.value.set(0, 0); F.uKill.value = SAFE.test === 'black' ? 1 : 0;
   if (SAFE.test === 'blackin') { r.setRenderTarget(P.rt); r.setClearColor(0x000000, 1); r.clear(); } // (tests: an empty frame buffer)
   pass(r, M.final, null);
 }

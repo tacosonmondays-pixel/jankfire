@@ -390,6 +390,22 @@ def facade_office(n=128):
     return img
 
 
+def facade_glass(n=128):
+    """1 floor x 2 bays of a blue glass curtain wall (4.4 m a tile: Skyline's Spire): the floor's spandrel at the top
+    (navy panel, a chrome line), then the two panes: the dusk sky in them, bright at the top, a diagonal sheen, a
+    window cleaner's streaks. (it tiles: the lit offices are the model's, scattered)"""
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    sky = ramp(np.clip(1 - yy / n * 1.1 + (fbm(n, 2, 3) - 0.5) * 0.25, 0, 1), [(0, '#1c3a7a'), (0.45, '#3f72c8'), (0.8, '#7ab4f0'), (1, '#c8ecff')])
+    sheen = np.clip(1 - abs((xx * 0.9 + yy * 0.7) % n - n * 0.55) / 9, 0, 1) * 0.45
+    img = mix(sky, hexc('#e6f6ff'), sheen)
+    img = mix(img, img * 0.82, streaks(n, 6, length=(0.15, 0.4)) * 0.6)
+    img[0:16, :] = ramp(0.5 + (fbm(n, 6, 2)[0:16] - 0.5) * 0.3, [(0, '#16203a'), (1, '#2e4470')])  # the spandrel
+    img[14:16, :] = hexc('#dfe8f2')  # its chrome line
+    img[16:18, :] = hexc('#0e1426')  # the pane's top shadow
+    for x in (0, 1, 64, 65): img[:, x] = hexc('#c8d4e0')  # mullions (the model adds proud fins too)
+    return img
+
+
 # ------------------------------------------------------------ decals (one 256 px atlas, 1-bit alpha): ads, signs, grime
 # a 3 x 5 pixel font (PS1 menus and shop signs were this chunky). lowercase draws as uppercase
 GLYPHS = {
@@ -585,6 +601,7 @@ def main():
     pk, pa = picket(); out['picket'] = save('picket', pk, 1.3, alpha=pa, note='tint', colors=8, dither=0.5)
     out['fac_tenement'] = save('fac_tenement', facade_tenement(), 7.0, colors=24)
     out['fac_office'] = save('fac_office', facade_office(), 7.0, colors=24)
+    out['fac_glass'] = save('fac_glass', facade_glass(), 4.4, colors=24)
     for k, g in FAC_GLOW.items():
         Image.fromarray((g * 255).astype(np.uint8), 'L').save(os.path.join(OUT, k + '_glow.png')); KIT[k]['glow'] = k + '_glow'
     rgb, a, cells = decals()
