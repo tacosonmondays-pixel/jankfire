@@ -1,11 +1,18 @@
 // WorkerSocket: a stand-in WebSocket backed by the solo story worker (simworker.js), handed to net.connect so the
 // normal game client plays story mode with no server room. same surface net.js uses: readyState, send, close,
 // onopen / onmessage / onclose.
+// a worker started early (the slot picker opened): its ~40 modules load while you pick, it waits for its { init }
+let spare = null;
+export function warmWorker() {
+  if (spare) return;
+  try { spare = new Worker(new URL('./simworker.js', import.meta.url), { type: 'module' }); spare.onerror = () => { spare.bad = true; }; } catch { spare = null; }
+}
 export class WorkerSocket {
   constructor(save) {
     this.readyState = 0;
     this.onopen = this.onmessage = this.onclose = null;
-    this.w = new Worker(new URL('./simworker.js', import.meta.url), { type: 'module' });
+    const w0 = spare && !spare.bad ? spare : null; spare = null;
+    this.w = w0 || new Worker(new URL('./simworker.js', import.meta.url), { type: 'module' });
     this.w.onmessage = (e) => {
       if (this.readyState === 0 && e.data === '{"t":"__open"}') { this.readyState = 1; if (this.onopen) this.onopen(); return; }
       if (this.readyState === 1 && this.onmessage) this.onmessage({ data: e.data });
