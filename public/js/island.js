@@ -15,7 +15,7 @@ import { BOXES } from '/shared/map.js';
 import { movePlayer } from '/shared/physics.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { ISLE, ST, squadOf } from '/shared/island.js';
-import { brOn, brBig, brState } from './royale.js';
+import { brOn, brState } from './royale.js';
 import { HEROES, HERO_IDS, heroName, heroCap } from '/shared/heroes.js';
 import { mechDeployBlock } from './mech.js';
 import { eye } from './player.js';
@@ -76,6 +76,9 @@ body.isle-down #crosshair, body.isle-down #hotbar, body.isle-down #ammo, body.is
 #isleHero .hc kbd { position: absolute; right: -6px; top: -10px; background: #ffe14d; color: #000; border: 2px solid #000; font: bold 14px var(--font); padding: 0 6px; }
 #isleHero .hint { font-size: 12px; color: #ccc; margin-top: 6px; }
 #isleSq .ir em { display: block; font-style: normal; font-size: 11px; color: var(--hc, #ccc); letter-spacing: 1px; margin-top: -2px; }
+#isleBig { position: absolute; left: 50%; top: 17%; transform: translateX(-50%) rotate(-2deg); display: none; text-align: center; white-space: nowrap; pointer-events: none; font: bold 54px var(--font); color: #ffe14d; text-shadow: 4px 4px 0 #ff00dc, 7px 7px 0 #000; }
+#isleBig small { display: block; font-size: 20px; color: #fff; text-shadow: 2px 2px 0 #000; margin-top: 2px; }
+#isleBig.pop { animation: islePop 0.35s ease-out; } @keyframes islePop { 0% { transform: translateX(-50%) rotate(-2deg) scale(1.6); } 100% { transform: translateX(-50%) rotate(-2deg) scale(1); } }
 #roundEnd .isle-sq { margin-top: 4px; } #roundEnd .isle-sq b { color: var(--c); }
 `;
 let el = null;
@@ -84,15 +87,19 @@ function ensure() {
   const s = document.createElement('style'); s.textContent = CSS; document.head.append(s);
   const h = $('hud'), mk = (id, html = '') => { const d = document.createElement('div'); d.id = id; d.innerHTML = html; h.append(d); return d; };
   el = { sq: mk('isleSq'), down: mk('isleDown', '<div class="t"></div><div class="bb"><div></div></div>'), rv: mk('isleRv', '<span></span><div class="bar"><div></div></div>'), marks: mk('isleMarks'),
-    mm: mk('isleMm', '<div class="row"><b></b><span></span></div><div class="bar"><div></div></div>'), hero: mk('isleHero') };
+    mm: mk('isleMm', '<div class="row"><b></b><span></span></div><div class="bar"><div></div></div>'), hero: mk('isleHero'), big: mk('isleBig') };
   return el;
 }
 function show(v) {
   ensure();
   el.sq.style.display = v ? '' : 'none';
   el.mm.style.display = v ? '' : 'none';
-  if (!v) { el.hero.style.display = 'none'; el.down.style.display = 'none'; el.rv.style.display = 'none'; for (const m of I.mk.values()) m.remove(); I.mk.clear(); document.body.classList.remove('isle-down'); }
+  if (!v) { el.big.style.display = 'none'; el.hero.style.display = 'none'; el.down.style.display = 'none'; el.rv.style.display = 'none'; for (const m of I.mk.values()) m.remove(); I.mk.clear(); document.body.classList.remove('isle-down'); }
 }
+// the island's own big callouts (MECH READY, squad wiped, the win): its own element, so a district name or a royale
+// twist on the shared one can't wipe them
+let bigUntil = 0;
+function isleBig(text, sub, secs) { ensure(); el.big.innerHTML = `${text}${sub ? '<small></small>' : ''}`; if (sub) el.big.querySelector('small').textContent = sub; el.big.style.display = 'block'; el.big.classList.remove('pop'); void el.big.offsetWidth; el.big.classList.add('pop'); bigUntil = performance.now() + secs * 1000; }
 const nameOf = (id) => (id === G.myId ? G.myName : (G.names.get(id) || {}).name || '???');
 const colOf = (id) => (id === G.myId ? G.myColor : (G.names.get(id) || {}).color || '#fff');
 
@@ -115,7 +122,7 @@ net.on('isle', (m) => {
   if (m.k === 'mm') { // your mech meter (the server's): MECH READY when it fills
     const was = I.mm;
     I.mm = m.v; I.mmOut = m.out; if (m.h) I.hero.set(G.myId, m.h);
-    if (was < ISLE.meter.max && m.v >= ISLE.meter.max) { brBig('MECH READY', `${heroName(I.hero.get(G.myId))} is waiting · press ${K.label('streak1')} where you want it`, 3.5); sfx.choir(); G.shake = Math.max(G.shake || 0, 0.5); }
+    if (was < ISLE.meter.max && m.v >= ISLE.meter.max) { isleBig('MECH READY', `${heroName(I.hero.get(G.myId))} is waiting · press ${K.label('streak1')} where you want it`, 3.5); sfx.choir(); G.shake = Math.max(G.shake || 0, 0.5); }
     else if (m.v > was + 12 && !m.out) { hud.msg(`+${Math.round(m.v - was)}% MECH`, 0.8, 'brag'); }
     return;
   }
@@ -147,14 +154,14 @@ net.on('isle', (m) => {
   else if (m.k === 'sqout') {
     const S = squadOf(m.sq), mine = m.sq === I.mine;
     hud.feed([[S.name, S.color], [`  WIPED  #${m.place}`, '#ff3030']]);
-    if (mine) setTimeout(() => { if (I.on) brBig('SQUAD WIPED', `${S.name} finished #${m.place} · click to watch someone else`, 4); }, 300);
+    if (mine) setTimeout(() => { if (I.on) isleBig('SQUAD WIPED', `${S.name} finished #${m.place} · click to watch someone else`, 4); }, 300);
     else hud.chat(null, null, `${S.name} is out (#${m.place}). ${m.left} squad${m.left === 1 ? '' : 's'} left`);
   } else if (m.k === 'win') {
     const S = squadOf(m.sq);
     const names = (m.ids || []).map(nameOf).join(', ');
-    if (m.sq && m.sq === I.mine) { brBig('LAST SQUAD STANDING', `${S.name} took the island: ${names}`, 6); sfx.choir(); sfx.kill(); }
-    else if (m.sq) brBig(`${S.name} WIN`, `last squad standing: ${names}`, 5);
-    else brBig('NOBODY WINS', 'the zone got everyone', 4);
+    if (m.sq && m.sq === I.mine) { isleBig('LAST SQUAD STANDING', `${S.name} took the island: ${names}`, 6); sfx.choir(); sfx.kill(); }
+    else if (m.sq) isleBig(`${S.name} WIN`, `last squad standing: ${names}`, 5);
+    else isleBig('NOBODY WINS', 'the zone got everyone', 4);
   }
 });
 
@@ -228,6 +235,7 @@ export function isleFrame(dt, now) {
   if (!I.on) return;
   if (!brOn()) { stop(); return; } // (the royale ended or switched off)
   ensure();
+  if (bigUntil && now > bigUntil) { el.big.style.display = 'none'; bigUntil = 0; }
   for (const id of I.down) { const r = G.remotes.get(id); if (r && r.alive && r.ch && r.ch.root.visible) { downPose(r, now); I.wasDown.add(id); } }
   for (const id of I.wasDown) if (!I.down.has(id)) { standUp(G.remotes.get(id)); I.wasDown.delete(id); }
   // me down
@@ -336,3 +344,4 @@ export function isleRoundEnd(m, box) {
 }
 export const isleWon = (m) => (m && m.isle && m.isle.win ? m.isle.win === I.mine : null); // (endscreen.js: your squad won)
 export const isleState = () => I; // (tests + the console)
+export { isleBig }; // (screenshot scripts: the callout on a slow test browser)
