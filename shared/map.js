@@ -3778,10 +3778,11 @@ function skyPutt(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
     for (const [a0, b0, a1, b1] of [[-10, -12, -2, -11.6], [-10, -6, -2, -5.6], [2, 5.6, 10, 6], [2, 11.6, 10, 12], [-2.4, -11.6, -2, -6], [2, 6, 2.4, 11.6]]) add(x + a0, y, z + b0, x + a1, y + 0.4, z + b1, 'wood');
+    propOf('windmill', [x + 5.5, y, z - 9.5], 0, () => { // (the Blender windmill, p_windmill: tools/blender/make_puttputt.py)
     add(x + 4, y, z - 11, x + 7, y + 4.5, z - 8, 'white'); D.add(x + 3.6, y + 4.5, z - 11.4, x + 7.4, y + 5.1, z - 7.6, 'roofpink'); D.add(x + 4.5, y + 5.1, z - 10.5, x + 6.5, y + 5.6, z - 8.5, 'roofpink');
-    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); // the windmill's sails
+    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); }); // the windmill's sails
     D.add(x - 10, y + 0.02, z + 6, x - 4, y + 0.06, z + 10, 'sand'); D.add(x + 1, y + 0.02, z - 4, x + 4, y + 0.06, z - 1, 'sand');
-    add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 }); // the clown (putt into its mouth. you can't)
+    propOf('clownhead', [x - 2.5, y, z], 0, () => add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 })); // the clown (putt into its mouth. you can't. the Blender head: p_clownhead)
     for (const [hx, hz] of [[-6, -9], [6, 9], [-7, 2], [8, -3]]) { D.add(x + hx - 0.25, y + 0.02, z + hz - 0.25, x + hx + 0.25, y + 0.04, z + hz + 0.25, 'tire'); D.add(x + hx - 0.03, y, z + hz - 0.03, x + hx + 0.03, y + 1.4, z + hz + 0.03, 'white'); D.add(x + hx + 0.03, y + 1.0, z + hz - 0.02, x + hx + 0.6, y + 1.35, z + hz + 0.02, 'toyred'); } // holes, flags
     D.add(x - 5, y + 2.4, z - 14.42, x + 5, y + 5.4, z - 14.38, 'adputt', { fit: 1 }); for (const px of [-4, 4]) add(x + px - 0.2, y, z - 14.6, x + px + 0.2, y + 5.7, z - 14.2, 'metal'); }
 }
