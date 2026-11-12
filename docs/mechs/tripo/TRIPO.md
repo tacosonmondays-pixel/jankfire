@@ -55,16 +55,20 @@ node tools/blender/mechs/compare.cjs <out.jpg> "front,q,side,back" a=<one.glb> b
   - the rig's elbows, knees and spine move onto Tripo's own pivots, so limbs bend where the mesh does.
   - Without a rig, the concept arms are posed to fit inside the mesh, and each face goes to the nearest concept part.
 - Tripo builds bodies out of separate plates, so whole plates stay on one joint.
+- **The Tripo look stays as it is** (the owner's call, 2026-11-12): its heads, V horns, faces and plates.
 - **Kept from the concept** (`keep=` changes the list):
-  - the head (its own visor, crest and beacon: Tripo's V crests never survive);
-  - the hands (they grip the sword and fold for jet mode);
-  - PAPER PLANE's pencil pods and highlighter cannons.
+  - PAPER PLANE's pencil pods and highlighter cannons (gameplay add-ons, no Tripo face is cut onto them);
+  - NIGHT SHIFT's hands (Tripo's came out melted, and these grip the sword).
+- **Hand-placed paint** (`PAINT_SPEC` in the script, boxes in game metres):
+  - helmets, V horns, forehead and chin;
+  - glowing eyes, NIGHT SHIFT's forehead lamp, PAPER PLANE's back nozzles.
+  - New Tripo bodies need their own entries: `dump_mesh=<path.glb>` writes the fitted mesh to pick spots from.
 - **Untextured meshes** take their paint from the concept, one colour per plate. Each part ends up with about the
   concept's mix of team colour, white, dark and metal. Team colours keep working.
 - **Clean-up, all automatic:**
   - lumpy plates (`hull=`: NIGHT SHIFT's shins) are rebuilt as clean faceted armour;
-  - thin rods (sabre hilts, whip antennas) are dropped;
-  - chips that float at rest, doubled triangles and folded faces go, so the asset gate passes.
+  - chips that float at rest, doubled triangles and folded faces go, so the asset gate passes;
+  - `rods=drop` also drops thin rods (off by default: the look stays).
 - Moving parts (wings, crane, sword, shield) are fitted onto the concept ones (`JF_TRIPO ... fit error`). A part
   named in `concept=` keeps the concept one.
 - Turn the body with `yaw=0` if Tripo's front came out facing the other way.
@@ -72,13 +76,14 @@ node tools/blender/mechs/compare.cjs <out.jpg> "front,q,side,back" a=<one.glb> b
   Then run the swap with `in=<dir> out=<test.glb>`.
 
 ## The first batch (2026-11-12): what went in, what to remake
-Pictures: `compare/paperplane.jpg`, `compare/nightshift.jpg` (three.js, as in the game) and `ingame/` (Training, Too HD).
+Pictures: `compare/paperplane.jpg` and `compare/nightshift.jpg` (three.js, as in the game), and `ingame/` (Training, Too
+HD; `mechdrop_A.jpg` and `mechdrop_B.jpg` through MECH DROP's own loader).
 
 | file | used? | notes |
 |---|---|---|
-| `paperplane_body_a.glb` | **yes** | Slim and sleek; reads as its own design once the concept head, wings and pods are on. No rig (see below). Its shoulder fins and crest were dropped. |
-| `paperplane_body_b.glb` | no | Too close to a famous anime mech (twin chest vents, sabre hilts on the back). Kept only for the comparison. |
-| `nightshift_body.glb` | **yes** | Heavy and imposing. Its V crest went with its head, and the lumpy shins were rebuilt. It lost the concept's hi-vis stripes and badge. |
+| `paperplane_body_a.glb` | **yes (until the owner picks)** | Broad shoulder fins, spiky gauntlets. No rig, so the arms are fitted (see below). |
+| `paperplane_body_b.glb` | **the other pick** | Slimmer and darker, sabre hilts on the back. Rigged, so it cuts cleanly. `body=paperplane_body_b` builds it. |
+| `nightshift_body.glb` | **yes** | Heavy knight. Its melted hands were swapped for the concept's, and its lumpy shins rebuilt. Its forehead lens is the headlamp. |
 | `paperplane_drone.glb` | no | A winged helmet, not a crane. The concept crane stays. |
 
 To remake in Tripo, if the owner wants:

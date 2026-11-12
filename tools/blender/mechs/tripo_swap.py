@@ -2,7 +2,7 @@
 # drone, sword, shield) are fitted where the concept ones were, the paint areas keep taking the team colour, and the
 # result is exported over public/models/x_mech_<name>.glb with every marker and clip from make_mechs_rig.py.
 #   blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=paperplane [body=paperplane_body_a] [in=docs/mechs/tripo/in]
-#       [yaw=180] [keep=head,hand_L,hand_R] [concept=drone] [hull=shin_L,shin_R] [rods=keep] [body_tris=45000]
+#       [yaw=180] [keep=hand_L,hand_R] [concept=drone] [hull=shin_L,shin_R] [rods=drop] [body_tris=45000]
 #       [lod_tris=7000: also far copies <joint>_lod1, off by default] [qa] [no-export] [out=<path.glb>] [dump=<path.npz>]
 #   blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=nightshift make-standin=<dir>   (a fake Tripo input from the
 #       concept model, to test the swap before the real files exist)
@@ -15,8 +15,8 @@
 #   elbows and knees bend where Tripo's do. Unrigged GLBs: the concept is posed to match (a small search over the arm
 #   and leg angles) and every face goes to the nearest concept part.
 # - Tripo builds a body out of separate plates (shells): a shell that mostly belongs to one joint goes to it whole.
-# - The concept parts in keep= (the head with its own visor and crest, the hands that grip, PAPER PLANE's pencil pods)
-#   replace Tripo's, so no borrowed crest or melted fingers survive.
+# - The Tripo look stays as it is (the owner's call, 2026-11-12: heads, V horns, faces). The concept parts in keep= (the
+#   gameplay add-ons, NIGHT SHIFT's hands that grip the sword) go on with it, replacing only what was melted.
 # - Untextured Tripo meshes take their paint from the nearest concept surface, voted per flat panel (team colour, white,
 #   frame, glow); textured ones keep Tripo's texture, its paint areas tinted by the team colour.
 # - Each piece is moved into its joint's frame as posed, so at rest (arms down) it hangs where it should and every clip
@@ -33,7 +33,10 @@ ARGS = dict(a.split('=', 1) if '=' in a else (a, '1') for a in (sys.argv[sys.arg
 MECH = ARGS.get('mech', 'paperplane')
 IN = ARGS.get('in', os.path.join(ROOT, 'docs', 'mechs', 'tripo', 'in'))
 PARTS = {'paperplane': {'wings': ['wing_L', 'wing_R'], 'drone': ['drone', 'drone_wing_L', 'drone_wing_R']}, 'nightshift': {'sword': ['sword'], 'shield': ['shield']}}
-KEEP = {'paperplane': ['head', 'hand_L', 'hand_R', 'pod_L', 'pod_R', 'cannon_L', 'cannon_R'], 'nightshift': ['head', 'beacon', 'hand_L', 'hand_R']}
+# concept parts kept on the Tripo body (the owner's call, 2026-11-12: the Tripo look stays as it is, heads and horns too):
+# the gameplay add-ons, and NIGHT SHIFT's hands (Tripo's came out melted, and these grip the sword)
+KEEP = {'paperplane': ['pod_L', 'pod_R', 'cannon_L', 'cannon_R'], 'nightshift': ['hand_L', 'hand_R']}
+ATTACH = {'pod_L', 'pod_R', 'cannon_L', 'cannon_R', 'beacon'}  # (add-ons: no Tripo face is ever cut onto these)
 GLOW = ('glow', 'thrust', 'beacon', 'led')
 PAINT = ('paint', 'paint2', 'white', 'accent')
 # untextured Tripo plates take one of the concept's main paints (glass, glows and small trims on a Tripo plate would
@@ -45,6 +48,31 @@ HULL = {'paperplane': [], 'nightshift': ['shin_L', 'shin_R']}
 # and a crane drone that came out a winged helmet (the concept crane stays until Tripo makes a crane)
 BODY = {'paperplane': ['paperplane_body', 'paperplane_body_a'], 'nightshift': ['nightshift_body']}
 CONCEPT_PARTS = {'paperplane': ['drone'], 'nightshift': []}
+# hand-placed paint per Tripo body, over the automatic pass (later lines win): the faces of joint j inside the box lo..hi
+# (game metres, the cut pose; mirror: |x|), optionally only those facing a way, or whole plates mostly inside (shell).
+# The heads: white or team-colour helmets, accent V horns, team-colour forehead and chin, glowing eyes
+_ALL = ((-9, -9, -9), (9, 9, 9))
+PAINT_SPEC = {
+    'paperplane_body_a': [
+        dict(j='head', box=_ALL, role='white'),
+        dict(j='head', box=((0.06, 4.44, -1), (0.6, 5.1, 1)), role='accent', shell=True, mirror=True),
+        dict(j='head', box=((0, 4.45, -1), (0.06, 4.75, 0.02)), role='paint', mirror=True),
+        dict(j='head', box=((0, 4.07, -1), (0.06, 4.2, 0.02)), role='paint', mirror=True),
+        dict(j='head', box=((0.02, 4.29, -1), (0.15, 4.37, 0.05)), role='thrust', facing=(0, 0, -1), mirror=True),
+        dict(j=None, box=((-0.16, 3.12, 0.05), (0.16, 3.4, 0.7)), role='thrust', facing=(0, -1, 0))],  # (the backpack can's exhaust)
+    'paperplane_body_b': [
+        dict(j='head', box=_ALL, role='white'),
+        dict(j='head', box=((0.06, 4.42, -1), (0.6, 5.1, 1)), role='accent', shell=True, mirror=True),
+        dict(j='head', box=((0, 4.36, -1), (0.07, 4.62, 0.02)), role='paint', mirror=True),
+        dict(j='head', box=((0, 4.08, -1), (0.05, 4.2, 0.02)), role='paint', mirror=True),
+        dict(j='head', box=((0.03, 4.27, -1), (0.18, 4.36, 0.05)), role='thrust', facing=(0, 0, -1), mirror=True),
+        dict(j=None, box=((-0.13, 3.82, 0.1), (0.13, 4.08, 0.9)), role='thrust', facing=(0, 0, 1))],  # (the round back nozzle)
+    'nightshift_body': [
+        dict(j='head', box=_ALL, role='paint'),
+        dict(j='head', box=((-0.25, 4.76, -1), (0.35, 5.06, 0.05)), role='white', facing=(0, 0, -1)),
+        dict(j='head', box=((0.12, 5.12, -1), (0.7, 5.9, 1)), role='accent', shell=True, mirror=True),
+        dict(j='head', box=((-0.04, 5.07, -1), (0.23, 5.36, 0.05)), role='glow', facing=(0, 0, -1))],  # (the headlamp)
+}
 # Tripo's auto-rig (mixamo-style names) -> our joints. "Left" is the mech's own left (_L, game -x)
 MIX = {'Hips': 'hips', 'Spine': 'waist', 'Spine1': 'chest', 'Spine2': 'chest', 'Neck': 'neck', 'Head': 'head', 'HeadTop_End': 'head'}
 for _l, _s in (('Left', 'L'), ('Right', 'R')):
@@ -548,6 +576,32 @@ def tidy_piece(o, hull=False, drop_rods=True, side_mat=None):
     return nrod, len(todo)
 
 
+def paint_spec(t, lab, sid, spec):
+    """the hand-placed paint (PAINT_SPEC) over the automatic one"""
+    if not spec: return lab
+    lab = [list(l) for l in lab]
+    mw = t.matrix_world; nm = mw.to_3x3()
+    C = [g_of(mw @ p.center) for p in t.data.polygons]; N = [g_of((nm @ p.normal).normalized()) for p in t.data.polygons]
+    A = [p.area for p in t.data.polygons]
+    for e in spec:
+        lo, hi = e['box']
+        def inside(c):
+            x = abs(c[0]) if e.get('mirror') else c[0]
+            return lo[0] <= x <= hi[0] and lo[1] <= c[1] <= hi[1] and lo[2] <= c[2] <= hi[2]
+        fac = e.get('facing')
+        mine = lambda i: e['j'] is None or lab[i][0] == e['j']  # (j=None: any joint)
+        hit = [i for i in range(len(lab)) if mine(i) and inside(C[i]) and (fac is None or sum(a * b for a, b in zip(N[i], fac)) >= 0.4)]
+        if e.get('shell'):  # whole plates that are mostly inside
+            ins, tot = {}, {}
+            for i in range(len(lab)):
+                if mine(i): tot[sid[i]] = tot.get(sid[i], 0) + A[i]
+            for i in hit: ins[sid[i]] = ins.get(sid[i], 0) + A[i]
+            keep = {k for k, a in ins.items() if a >= 0.5 * tot[k]}
+            hit = [i for i in range(len(lab)) if mine(i) and sid[i] in keep]
+        for i in hit: lab[i][1] = e['role']
+    return [tuple(l) for l in lab]
+
+
 def drop_floaters(tripo, everything, tol=0.004, max_verts=400):
     """at rest (arms down), a Tripo chip that touches no other part is dropped (the asset gate's own rule: a floating
     chip reads as a bug). Repeated, since a chip may only have touched another chip that went"""
@@ -680,6 +734,7 @@ def main():
     moving = {k: [mk.meshes[n] for n in v if n in mk.meshes] for k, v in parts.items()}
     moving_objs = {o for v in moving.values() for o in v}
     body_j = [n for n in mk.meshes if mk.meshes[n] not in moving_objs]
+    cut_j = [n for n in body_j if n not in ATTACH]
     t, bones = import_tripo(body_f)
     rigged = all(b in bones for b in ('Hips', 'Head', 'LeftArm', 'RightArm', 'LeftUpLeg', 'RightUpLeg'))
     yaw = float(ARGS.get('yaw', 180))
@@ -697,10 +752,14 @@ def main():
         k = fit_body(t, [mk.meshes[n] for n in body_j], yaw)
         search_pose(mk, t, None)
     posed = {n: e.matrix_world.copy() for n, e in mk.E.items()}
-    bvh = concept_bvh({n: [mk.meshes[n]] for n in body_j})
+    bvh = concept_bvh({n: [mk.meshes[n]] for n in cut_j})
     src = paint_maps(t, mk.M)
-    lab, _ = assign(t, bvh, body_j, rigged, textured=src is not None)
+    lab, sid = assign(t, bvh, cut_j, rigged, textured=src is not None)
+    lab = paint_spec(t, lab, sid, PAINT_SPEC.get(os.path.basename(body_f)[:-4], []))
     if 'dump' in ARGS: dump_points(ARGS['dump'], mk, t, lab)
+    if 'dump_mesh' in ARGS:  # (the fitted Tripo mesh in the cut pose, for picking PAINT_SPEC spots)
+        bpy.ops.object.select_all(action='DESELECT'); t.select_set(True)
+        bpy.ops.export_scene.gltf(filepath=ARGS['dump_mesh'], export_format='GLB', use_selection=True, export_apply=True, export_yup=True)
     pieces = split(t, lab, mk.M, src, drop=keep)
     hull = ARGS['hull'].split(',') if 'hull' in ARGS else HULL[MECH]
     nrod = nhull = 0
@@ -709,7 +768,7 @@ def main():
         if j in hull and src is None:
             if mk.M['paint'].name not in o.data.materials: o.data.materials.append(mk.M['paint'])
             sm = list(o.data.materials).index(mk.M['paint'])
-        a, b = tidy_piece(o, hull=j in hull, drop_rods=ARGS.get('rods', 'drop') == 'drop', side_mat=sm); nrod += a; nhull += b
+        a, b = tidy_piece(o, hull=j in hull, drop_rods=ARGS.get('rods', 'keep') == 'drop', side_mat=sm); nrod += a; nhull += b
     bpy.data.objects.remove(t, do_unlink=True)
     for n in body_j:
         if n not in keep: bpy.data.objects.remove(mk.meshes.pop(n), do_unlink=True)

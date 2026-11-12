@@ -1,19 +1,23 @@
 # Mechs: the rig the game loads (names for the Gameplay session)
 
-**Status:** the game files now carry the owner's Tripo bodies (PAPER PLANE from Tripo try A, NIGHT SHIFT) cut onto the
-rig by `tools/blender/mechs/tripo_swap.py`, with the concept head, hands, pods, cannons, wings, crane, sword and shield
-kept. Every name below is the same as on the concept meshes. Side-by-side pictures: `docs/mechs/tripo/compare/` and
-`docs/mechs/tripo/ingame/`. Concept notes are in `docs/mechs/CONCEPT.md` and the research in `docs/mechs/RESEARCH.md`.
+**Status:** the game files carry the owner's Tripo bodies as they are (their own heads, V horns and faces: the owner's
+call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/mechs/tripo_swap.py`.
+- From the concept: PAPER PLANE's pods, highlighter cannons, wings and crane; NIGHT SHIFT's hands, sword and shield.
+- PAPER PLANE's body is try A until the owner picks A or B.
+- Every name below is the same as on the concept meshes.
+- Pictures: `docs/mechs/tripo/compare/` and `docs/mechs/tripo/ingame/`. Concept notes: `docs/mechs/CONCEPT.md`; research:
+  `docs/mechs/RESEARCH.md`.
 
 ## Files
 | file | what |
 |---|---|
-| `public/models/x_mech_paperplane.glb` | PAPER PLANE: joints, meshes, markers, 20 clips (~1.6 MB, 26k tris) |
-| `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: joints, meshes, markers, 19 clips (~1.2 MB, 19k tris) |
+| `public/models/x_mech_paperplane.glb` | PAPER PLANE: joints, meshes, markers, 20 clips (~1.5 MB, 21k tris) |
+| `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: joints, meshes, markers, 19 clips (~1.1 MB, 18k tris) |
 
 - The `x_` prefix means they're lazy: load them only when a mech is in play.
 - Each file is ONE model per mech (after the Tripo swap too: wings, drone, sword and shield are inside it).
-- Rebuild (Tripo bodies, what ships): `blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=<name> qa`.
+- Rebuild (Tripo bodies, what ships): `blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=<name> qa`
+  (`body=paperplane_body_b` for PAPER PLANE's other body).
 - Back to the concept meshes: `blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=<name>] [qa]` (same
   names, clips and markers).
 - No far-LOD copies are in the files (MECH DROP draws every mesh); `tripo_swap.py ... lod_tris=7000` adds
@@ -50,7 +54,7 @@ kept. Every name below is the same as on the concept meshes. Side-by-side pictur
     to the scene and fly it with `drone_flap` playing. To bring it back, reparent it to `wing_L` and play
     `drone_return`.
 - NIGHT SHIFT also has:
-  - `head` > `beacon`: spin it about y in code, forever.
+  - `head` > `beacon`: spin it about y in code, forever. On the Tripo body it carries no mesh (its forehead lamp glows instead); `mk_beacon` stays.
   - `hand_R` > `sword`.
   - `forearm_L` > `shield`.
 
