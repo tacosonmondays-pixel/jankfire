@@ -148,7 +148,8 @@ function shapeInto(S, s, lod) {
         const ang = (k / seg) * Math.PI * 2, w0 = s.wob ? s.wob[Math.round(k / seg * s.wob.length) % s.wob.length] : 1, wb = prof && prof[i][2] != null ? 1 + (w0 - 1) * prof[i][2] : w0, ca = Math.cos(ang) * wb, sa = Math.sin(ang) * wb; // wob: a lumpy outline (puddles); a profile point's third number is how lumpy that row is (0 = round)
         const n = norm(prof ? [ny0[0] * ca, ny0[1], ny0[0] * sa] : [rr * ca / R[0], y / R[1], rr * sa / R[2]]);
         const vx = c[0] + rr * ca * R[0], vz = c[2] + rr * sa * R[2];
-        S.v(vx, c[1] + y * R[1], vz, n[0], n[1], n[2], s.uvxz ? vx / tile : (k / seg) * 6.283 * Math.max(R[0], rr) / tile, s.uvxz ? vz / tile : (y * R[1]) / tile, r, g, b, a); // uvxz: textured like the floor it lies on (a flat stain)
+        const lean = s.shear ? (s.shear[0] * (vx - c[0]) + s.shear[1] * (vz - c[2])) * (1 - Math.max(0, Math.min(1, y))) : 0; // (shear: lying on a slope. its foot follows the ground, its top stays put)
+        S.v(vx, c[1] + y * R[1] + lean, vz, n[0], n[1], n[2], s.uvxz ? vx / tile : (k / seg) * 6.283 * Math.max(R[0], rr) / tile, s.uvxz ? vz / tile : (y * R[1]) / tile, r, g, b, a); // uvxz: textured like the floor it lies on (a flat stain)
       }
     }
     for (let i = 0; i < rows; i++) for (let k = 0; k < seg; k++) {

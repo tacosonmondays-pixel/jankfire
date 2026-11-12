@@ -10,7 +10,7 @@ import { playCommute } from './playground.js';
 import { shops, shopRects } from './shops.js';
 import { slipRoad, SLIP } from './roads.js';
 import { act1Commute, act1Ramp, RAMP } from './act1set.js';
-import { commuteY as gy, groundField, CELL } from './ground.js';
+import { commuteY as gy, groundField, fieldAt, CELL } from './ground.js';
 
 const H = SLICE.highway;
 const GAP = [86, 100]; // the collapsed span (z)
@@ -28,6 +28,7 @@ export function commute(B, d) {
   const [rx0, rz0, rx1, rz1] = d.rect, r = rng(hash2(B.out.cx, B.out.cz, 0xc0e));
   const X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
+  B.gy = gy; // (rubble heaps lie on the slope: kit.js rubble. only while the Commute builds: the edges pass after it puts its rubble on walls)
   // wasteland ground: rolling hills, gullies and hollows (ground.js), drawn and walked at the end (ground() below)
   const lotFlat = []; // (a car park levels its own patch)
   // the highway deck: ~0.12 m steps (smooth to drive and run), crash barriers, lane paint; the gap at the collapse
@@ -193,6 +194,7 @@ export function commute(B, d) {
   slipRoad(B); // the Bottom's slip road down onto the Commute (roads.js)
   scapes(B, X0, Z0, X1, Z1, keepOut);
   ground(B, X0, Z0, X1, Z1, lotFlat);
+  delete B.gy;
 }
 
 // the land itself, on its own dice (the rest of the chunk's layout doesn't move): boulders half sunk in the slopes,
@@ -244,6 +246,47 @@ function scapes(B, X0, Z0, X1, Z1, keepOut) {
   }
 }
 
+// what lies on the hills follows them (the owner: "follow the curves instead of sticking out on a round surface"). on the
+// chunk's own drawn ground: a prop resting on it tilts to the slope under its footprint (p[7], p[8]: tilt about x and
+// z) and sinks by however much a crest drops away under its edge, so no flat bottom hangs in the air; a mound, a
+// boulder or a scrub tuft is sheared onto the slope (mesh.js 'shear') and sunk the same way. collision stays boxes
+export const FOOT = { rubble_a: 1.7, rubble_b: 1.7, paperdrift: 1.9, carwreck: 2.1, brokenwall: 2.2, bus: 5, warmech: 6, raidertent: 1.6, skeleton_lanyard: 0.9, filecab: 0.5, tirestack: 0.6, cone: 0.25, officechair: 0.45, firebarrel: 0.35, brokenclock: 0.4 };
+const UPRIGHT = new Set(['cone', 'officechair', 'filecab', 'tirestack', 'firebarrel', 'brokenclock', 'raidertent', 'warmech', 'bus']); // (these lean a little, not all the way)
+function lie(at, x, z, rx, rz = rx) {
+  const g = at(x, z); if (g == null) return null;
+  const pts = [];
+  for (const k of [1, 0.5]) for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, dx = Math.cos(a) * rx * k, dz = Math.sin(a) * rz * k, h = at(x + dx, z + dz); if (h == null) return null; pts.push([dx, dz, h]); }
+  let sxx = 0, szz = 0, sxz = 0, sxh = 0, szh = 0; // (least squares plane through the middle point)
+  for (const [dx, dz, h] of pts) { sxx += dx * dx; szz += dz * dz; sxz += dx * dz; sxh += dx * (h - g); szh += dz * (h - g); }
+  const det = sxx * szz - sxz * sxz || 1, gx = (sxh * szz - szh * sxz) / det, gz = (szh * sxx - sxh * sxz) / det;
+  let drop = 0; for (const [dx, dz, h] of pts) drop = Math.max(drop, g + gx * dx + gz * dz - h);
+  return { g, gx, gz, drop };
+}
+function hug(B, f) {
+  const at = (x, z) => fieldAt(f, x, z);
+  for (const p of B.out.props) {
+    const g = at(p[1], p[3]);
+    if (g == null || Math.abs(p[2] - g) > 0.25) continue; // (only what rests on the ground: not the deck's jam, the poles' rings)
+    const s = p[5] || 1, L = lie(at, p[1], p[3], (FOOT[p[0]] || 0.6) * s);
+    if (!L) continue;
+    const cap = UPRIGHT.has(p[0]) ? 0.18 : 0.5, len = Math.hypot(L.gx, 1, L.gz);
+    let ax = Math.asin(Math.max(-1, Math.min(1, -L.gz / len))), az = Math.asin(Math.max(-1, Math.min(1, L.gx / (len * Math.cos(ax))))); // (up turned onto the ground's normal: about x, then z)
+    ax = Math.max(-cap, Math.min(cap, ax)); az = Math.max(-cap, Math.min(cap, az));
+    const ny = Math.cos(az) * Math.cos(ax), sx = Math.sin(az) * Math.cos(ax) / ny, sz = -Math.sin(ax) / ny, r = (FOOT[p[0]] || 0.6) * s; // (its base's slope after the lean, which may be capped)
+    let drop = 0;
+    for (const k of [1, 0.5]) for (let i = 0; i < 12; i++) { const a = i / 12 * 6.283, dx = Math.cos(a) * r * k, dz = Math.sin(a) * r * k, h = at(p[1] + dx, p[3] + dz); if (h != null) drop = Math.max(drop, L.g + sx * dx + sz * dz - h); }
+    p[2] = L.g - drop - 0.02; p[7] = ax; p[8] = az; // (on the ground under it, sunk by whatever falls away under its edge)
+  }
+  for (const sh of B.out.shapes) {
+    if (sh.kind !== 'blob' || !sh.c || sh.shear) continue;
+    const R = Array.isArray(sh.r) ? sh.r : [sh.r, sh.r, sh.r], g = at(sh.c[0], sh.c[2]);
+    if (g == null || sh.c[1] > g + R[1] * 0.6 || sh.c[1] < g - R[1] * 1.2) continue; // (sitting in the ground, not floating or deep under it)
+    const L = lie(at, sh.c[0], sh.c[2], R[0], R[2]);
+    if (!L) continue;
+    sh.shear = [L.gx, L.gz]; sh.c = [sh.c[0], L.g + Math.min(0, sh.c[1] - gy(sh.c[0], sh.c[2])) - L.drop, sh.c[2]]; // (as deep in the drawn ground as it was put in the hills: a car park may have levelled the chunk's own)
+  }
+}
+
 // the ground itself: one grid for the chunk (drawn as a 'field' shape: mesh.js), and hidden steps under it, one box per
 // 2 m cell up to the middle of its corners, runs of the same height merged. bodies, cars and bullets go by the grid
 // (world.js joins the chunks' grids into boxes.terrain), the steps are for everything that only knows boxes
@@ -251,6 +294,7 @@ function ground(B, X0, Z0, X1, Z1, extra) {
   const f = groundField(X0, Z0, X1, Z1, extra);
   f.at = [X0 + 0.5, f.lo, Z0 + 0.5];
   if (X0 <= SLICE.commute.rect[0]) f.skirt = ['w']; // (the Bottom's terraces and the border meet it here)
+  hug(B, f);
   B.shape(f);
   const vz = f.nz + 1, Q = 0.1, base = Math.floor(f.lo) - 2, top = (i, j) => Math.round((f.H[i * vz + j] + f.H[(i + 1) * vz + j] + f.H[i * vz + j + 1] + f.H[(i + 1) * vz + j + 1]) / 4 / Q);
   const runs = new Map(), put = (r) => B.add(X0 + r.i0 * CELL, base, Z0 + r.j * CELL, X0 + r.i1 * CELL, r.q * Q, Z0 + r.e * CELL, 'ground', { ter: true });
