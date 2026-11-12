@@ -137,3 +137,49 @@ test('nowhere in the slice can you see (or fall) through the floor into the void
   for (let x = SLICE.x0 + 0.5; x < SLICE.x1; x += 1) for (let z = SLICE.z0 + 0.5; z < SLICE.z1; z += 1) if (!(ground(x, z, 500, 0) > -3.9)) { const k = Math.floor(x / 16) * 16 + ',' + Math.floor(z / 16) * 16; holes.set(k, (holes.get(k) || 0) + 1); }
   assert.deepEqual([...holes], [], 'm² with nothing under them, by 16 m tile');
 });
+
+// ---- flicker (z-fighting): two drawn surfaces on one plane, or flat layers closer than 1 cm (owner: "the ground
+// flickers, especially in the gut"). the renderer's own depth fixes are the graphics lane's; this is the data
+function fights() {
+  const faces = { y: [], x: [], z: [] }, out = [];
+  for (const b of drawn) {
+    faces.y.push([b[4], b[0], b[2], b[3], b[5], b, 1], [b[1], b[0], b[2], b[3], b[5], b, -1]);
+    faces.x.push([b[0], b[2], b[1], b[5], b[4], b, -1], [b[3], b[2], b[1], b[5], b[4], b, 1]);
+    faces.z.push([b[2], b[0], b[1], b[3], b[4], b, -1], [b[5], b[0], b[1], b[3], b[4], b, 1]);
+  }
+  const inside = ([x, y, z]) => at(gD, x, z).some((b) => x > b[0] && x < b[3] && y > b[1] && y < b[4] && z > b[2] && z < b[5]);
+  for (const ax of ['y', 'x', 'z']) {
+    const F = faces[ax].sort((a, b) => a[0] - b[0]);
+    for (let i = 0; i < F.length; i++) for (let j = i + 1; j < F.length && F[j][0] - F[i][0] < 0.005; j++) {
+      const a = F[i], b = F[j], A = a[5], Bx = b[5]; if (A === Bx || a[6] !== b[6] || (A[6] === Bx[6] && A[8] === Bx[8])) continue; // (facing apart, or one look: nothing to see)
+      if (((A[7] & 16) && (Bx[7] & 32)) || ((A[7] & 32) && (Bx[7] & 16))) continue; // (one drawn near, one far: never both)
+      const w = Math.min(a[3], b[3]) - Math.max(a[1], b[1]), h = Math.min(a[4], b[4]) - Math.max(a[2], b[2]); if (w <= 0.01 || h <= 0.01 || w * h < 0.04) continue;
+      if ({ x: [SLICE.x0, SLICE.x1], z: [SLICE.z0, SLICE.z1], y: [-4] }[ax].some((l) => Math.abs(a[0] - l) < 0.01)) continue; // (the world's outside)
+      const u = (Math.max(a[1], b[1]) + Math.min(a[3], b[3])) / 2, v = (Math.max(a[2], b[2]) + Math.min(a[4], b[4])) / 2, o = a[0] + a[6] * 0.03;
+      const P = ax === 'y' ? [u, o, v] : ax === 'x' ? [o, v, u] : [u, v, o]; if (inside(P)) continue; // (buried against another box)
+      out.push({ area: w * h, p: P });
+    }
+  }
+  return out;
+}
+test("drawn faces don't fight: none in the Gut, and the whole slice is almost clean", () => {
+  const F = fights(), gut = F.filter((f) => f.p[2] < SLICE.gut.rect[3] - 0.5 && f.p[0] < SLICE.gut.rect[2]), total = F.reduce((s, f) => s + f.area, 0);
+  assert.deepEqual(gut.slice(0, 10).map((f) => f.p.map((v) => +v.toFixed(2))), [], `${gut.length} fighting faces in the Gut`);
+  assert.ok(total < 400, `${total.toFixed(0)} m² of fighting faces in the slice (main had 40,500)`);
+});
+test('flat layers (stains, paving, patches on the ground) are at least 1 cm apart', () => {
+  const flat = [];
+  for (const b of drawn) flat.push({ y: b[4], r: [b[0], b[2], b[3], b[5]], k: 'box' });
+  for (const o of chunks) for (const s of o.shapes) {
+    if (s.kind === 'lathe' && s.c && s.prof) { const sc = s.sc || [1, 1, 1], ys = s.prof.map((p) => p[1]), my = Math.max(...ys); if ((my - Math.min(...ys)) * sc[1] >= 0.1) continue;
+      const R = Math.max(...s.prof.map((p) => p[0])) * Math.max(...(s.wob || [1])); flat.push({ y: s.c[1] + my * sc[1], r: [s.c[0] - R * sc[0], s.c[2] - R * sc[2], s.c[0] + R * sc[0], s.c[2] + R * sc[2]], k: s.mat, shape: 1 }); }
+    if (s.kind === 'quad' && s.q.every((p) => Math.abs(p[1] - s.q[0][1]) < 1e-3)) { const xs = s.q.map((p) => p[0]), zs = s.q.map((p) => p[2]); flat.push({ y: s.q[0][1], r: [Math.min(...xs), Math.min(...zs), Math.max(...xs), Math.max(...zs)], k: s.mat, shape: 1 }); }
+  }
+  const bad = [];
+  for (const f of flat) if (f.shape) for (const t of flat) {
+    if (t === f || Math.abs(t.y - f.y) >= 0.0095 || (t.y === f.y && t.k === f.k)) continue;
+    const w = Math.min(f.r[2], t.r[2]) - Math.max(f.r[0], t.r[0]), h = Math.min(f.r[3], t.r[3]) - Math.max(f.r[1], t.r[1]);
+    if (w > 0.05 && h > 0.05) bad.push(`${f.k} at ${f.r[0].toFixed(1)},${f.y.toFixed(3)},${f.r[1].toFixed(1)} vs ${t.k} ${(t.y - f.y).toFixed(3)} m`);
+  }
+  assert.deepEqual(bad.slice(0, 20), [], `${bad.length} flat layers under 1 cm apart`);
+});

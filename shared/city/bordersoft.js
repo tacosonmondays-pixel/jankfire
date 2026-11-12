@@ -25,18 +25,21 @@ export function borderSoft(B) {
   const [rx0, rz0, rx1, rz1] = SLICE.border.rect, X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
   const r = rng(hash2(B.out.cx, B.out.cz, 0xb0a5));
+  // each patch on a layer of its own among the ones it overlaps (1.05 cm apart, 7 layers, all 1.5 cm under the houses' floors at 12 cm):
+  // overlapping patches a few mm apart flickered
+  const laid = [], lift = (x, z, rx, rz) => { const used = new Set(laid.filter((p) => Math.abs(p[0] - x) < p[2] + rx * 1.4 && Math.abs(p[1] - z) < p[3] + rz * 1.4).map((p) => p[4])); const k0 = ((B.out.cx * 3 + B.out.cz * 5) % 7 + 7) % 7; let k = k0, n = 0; while (used.has(k) && n++ < 6) k = (k + 1) % 7; /* (each chunk starts on its own layer: patches spill over the seams) */ laid.push([x, z, rx * 1.4, rz * 1.4, k]); return Y + 0.022 + 0.0105 * k; };
   // the creep: patches every few metres, flesh on the dirt side thinning out south, dirt on the flesh side thinning out north
   for (let i = 0; i < 70; i++) {
     const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0), d = z - LINE; // (d > 0: the dirt side)
     const want = d > 0 ? Math.pow(1 - Math.min(1, d / 24), 1.6) : 0.45 * Math.pow(1 - Math.min(1, -d / 18), 2);
     if (r() > want || inGateArena(x - 3, z - 3, x + 3, z + 3) || (x > BEV.rect[0] - 5 && x < BEV.rect[2] + 5 && z > BEV.rect[1] - 5 && z < BEV.rect[3] + 5)) continue; // (not through Bev's clinic floor)
     const s = 1.2 + r() * 3.2 * (d > 0 ? 1 : 0.7);
-    if (d > 0) blot(B, x, z, s, s * (0.6 + r() * 0.6), 'flesh', pick(r, FLESH), r, Y + 0.012 + r() * 0.01);
-    else blot(B, x, z, s, s * (0.6 + r() * 0.6), 'ground', pick(r, [0xc0a0a0, 0xb09090, 0xa88888]), r, Y + 0.012 + r() * 0.01);
+    const sz = s * (0.6 + r() * 0.6), tint = d > 0 ? pick(r, FLESH) : pick(r, [0xc0a0a0, 0xb09090, 0xa88888]); r(); // (the draw the old random height took)
+    blot(B, x, z, s, sz, d > 0 ? 'flesh' : 'ground', tint, r, lift(x, z, s, sz));
   }
   for (let x = Math.ceil(X0 / 7) * 7; x < X1; x += 7) { // big lobes along the line: never a straight edge
     if (r() < 0.25 || inGateArena(x - 4, LINE - 4, x + 4, LINE + 4) || (x > BEV.rect[0] - 6 && x < BEV.rect[2] + 6 && LINE > BEV.rect[1] - 6 && LINE < BEV.rect[3] + 6)) continue;
-    blot(B, x + (r() - 0.5) * 4, LINE + (r() - 0.3) * 3, 3 + r() * 2.5, 2 + r() * 2.5, 'flesh', pick(r, FLESH), r, Y + 0.022);
+    { const bx = x + (r() - 0.5) * 4, bz = LINE + (r() - 0.3) * 3, rx = 3 + r() * 2.5, rz = 2 + r() * 2.5; blot(B, bx, bz, rx, rz, 'flesh', pick(r, FLESH), r, lift(bx, bz, rx, rz)); }
   }
   // the ramps up the cliff
   for (const [xa, xb] of RAMPS) {

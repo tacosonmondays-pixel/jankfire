@@ -174,7 +174,7 @@ function slope(B, k, a, b, r) {
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
-  B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
+  B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs - 0.03, 'concrete', { nc: true, tint: 0xcab8b0 }); // (3 cm short of the lip: its edge was flush with the terrace's face)
   if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) for (const [c0, d0] of k === 2 ? cut(a, b, SLICE.lostFound.rect[0] + 12, SLICE.lostFound.rect[2] - 12) : [[a, b]]) for (const [c, d] of [...stairGaps(k).map((sx) => [sx - 1.15, sx + 1.15]), ...slopeSpans(k)].reduce((segs, [g0, g1]) => segs.flatMap(([p, q]) => cut(p, q, g0, g1)), [[c0, d0]])) if (d > c) B.add(c, y, zs - 0.4, d, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up, and at the Lost & Found's front steps)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
@@ -240,7 +240,7 @@ function lostFound(B) {
 // the market: stalls, fire barrels, a canopy of bulbs, the bottom of the Long Stairs
 function plaza(B) {
   const [x0, z0, x1, z1] = SLICE.plaza.rect, r = rng(9191);
-  B.add(x0, -0.05, z0, x1, 0.02, z1, 'tile', { nc: true, tint: 0xe8c8b8 });
+  B.add(x0, -0.05, z0, x1, 0.04, z1, 'tile', { nc: true, tint: 0xe8c8b8 }); // (2 cm over the lane's paving it overlaps: level with it, they flickered)
   for (let i = 0; i < 14; i++) stall(B, x0 + 6 + (i % 7) * 12.5, 0, z0 + 6 + Math.floor(i / 7) * 12, r() < 0.5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) { const fx = x0 + 10 + i * 14 + r() * 4, fz = z0 + 12 + r() * 6; B.prop('firebarrel', fx, 0, fz, 0, 1, 0); B.light(fx, 1.6, fz, 0xff8a2a, 11, 1.2); }
   for (let i = 0; i < 6; i++) bulbs(B, [x0 + 2 + i * 15, 6.5, z0 + 1], [x0 + 10 + i * 15, 6.5, z1 - 1], rng(400 + i));

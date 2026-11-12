@@ -48,8 +48,10 @@ function office(B, x0, z0, x1, z1, r) {
     const n = 1 + (r() * 3 | 0);
     for (let i = 0; i < n; i++) {
       const len = ax === 'x' ? c - a : d - b, s0 = r() * len * 0.7, w = 3 + r() * len * 0.4, drop = 2 + r() * h * 0.8;
-      if (ax === 'x') B.add(a + s0, GY + h - drop, b - 0.05, Math.min(c, a + s0 + w), GY + h + 0.3, d + 0.05, pick(r, ['flesh', 'flesh', 'liver', 'fat']), { nc: true, tint: pick(r, FLESH) });
-      else B.add(a - 0.05, GY + h - drop, b + s0, c + 0.05, GY + h + 0.3, Math.min(d, b + s0 + w), pick(r, ['flesh', 'flesh', 'liver', 'fat']), { nc: true, tint: pick(r, FLESH) });
+      const L = 0.03 * i; // (each slab a layer further out: overlapping ones on one plane flickered)
+      const wy = ((h - drop) % 3 + 3) % 3, dropF = drop + (Math.abs(wy) < 0.02 || Math.abs(wy - 1.3) < 0.02 ? 0.04 : 0); // (not ending on a window band's edge either)
+      if (ax === 'x') B.add(a + s0, GY + h - dropF, b - 0.05 - (b < z0 ? L : 0), Math.min(c - 0.02 - L, a + s0 + w), GY + h + 0.3 + L, d + 0.05 + (b < z0 ? 0 : L), pick(r, ['flesh', 'flesh', 'liver', 'fat']), { nc: true, tint: pick(r, FLESH) });
+      else B.add(a - 0.05 - (a < x0 ? L : 0), GY + h - dropF, b + s0, c + 0.05 + (a < x0 ? 0 : L), GY + h + 0.3 + L, Math.min(d - 0.02 - L, b + s0 + w), pick(r, ['flesh', 'flesh', 'liver', 'fat']), { nc: true, tint: pick(r, FLESH) }); // (stops 2 cm short of the corner: flush with the block's end face, the edge flickered)
     }
   }
   B.add(x0 - 0.3, GY + h, z0 - 0.3, x1 + 0.3, GY + h + 0.6, z1 + 0.3, 'flesh', { tint: 0x9a1a26 }); // the roof has grown a skin
@@ -69,7 +71,7 @@ function office(B, x0, z0, x1, z1, r) {
 function peri(B) {
   const P = SLICE.peri, x0 = Math.max(B.X0, P.x0), x1 = Math.min(B.X1, P.x1), zc = (P.z0 + P.z1) / 2;
   if (x1 <= x0) return;
-  B.add(x0, GY - 0.02, P.z0, x1, GY + 0.04, P.z1, 'rib', { nc: true, tint: 0xa82430 });
+  B.add(x0, GY - 0.02, P.z0 + 0.01, x1, GY + 0.04, P.z1 - 0.01, 'rib', { nc: true, tint: 0xa82430 }); // (1 cm in: its edges were flush with the Big Stomach's cells)
   // the tube: a half-buried ribbed tube along the avenue, gaps where the avenues cross it
   const cuts = [SLICE.stomach.x, -44, ...AVES, PLACES['gut:digester_wall'].p[0]].filter((a) => a > x0 - 6 && a < x1 + 6).sort((a, b) => a - b); // (+ open in front of the Digester Wall, so you see it from the avenue)
   let s = x0;
@@ -122,7 +124,7 @@ function lungPad(B, x, z, s = 1) {
 // Clocking In: the old time office (punch clocks on the wall), a plaza with lungs to bounce over his slams
 function arena(B) {
   const [x0, z0, x1, z1] = SLICE.arena.rect, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
+  B.add(x0 + 0.01, GY - 0.02, z0 + 0.01, x1 - 0.01, GY + 0.05, z1 - 0.01, 'gums', { nc: true }); // (1 cm in from the kerbs: flush, the edge flickered)
   // ribs over the plaza (it's a ribcage now), mounds round the edge, the old time-office's queue rails
   for (const az of [z0 + 18, z1 - 16]) if (B.inside(cx, az)) { B.prop('ribarch', cx, GY, az, 0, 1.5, 0); B.add(cx - 13, GY, az - 1.2, cx - 10.5, GY + 9, az + 1.2, 'bone', { hide: true }); B.add(cx + 10.5, GY, az - 1.2, cx + 13, GY + 9, az + 1.2, 'bone', { hide: true }); }
   for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop('fleshblob_a', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0); // (both floor lumps: the wall growth stood here on its own, its flat back to the room)
@@ -161,7 +163,7 @@ function choir(B, r) {
 
 function toothMarket(B, r) {
   const [x0, z0, x1, z1] = SLICE.teeth.rect;
-  B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
+  B.add(x0 + 0.01, GY - 0.02, z0 + 0.01, x1 - 0.01, GY + 0.05, z1 - 0.01, 'gums', { nc: true }); // (1 cm in from the kerbs: flush, the edge flickered)
   for (let i = 0; i < 10; i++) stall(B, x0 + 6 + (i % 5) * 12, GY, z0 + 8 + Math.floor(i / 5) * 30, i < 5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) B.prop('organjar', x0 + 8 + i * 9, GY, z0 + 20, r() * 6.28, 1, 0);
   const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
@@ -175,7 +177,7 @@ function toothMarket(B, r) {
 // below); the ground's collision does not, so you, bots and cars still cross it as flat floor (no pits to get stuck
 // in), and nothing about the district's collision moves. on its own dice.
 // the goo shape carries goo: [x, z, r, y] for the client (bubbles that pop, the mist going green over it: gutgoo.js)
-const PIT = 0.34, P_GOO = [[0.94, -0.72], [0, -0.72]], P_WALL = [[1, 0], [0.97, -0.25], [0.92, -1]], P_STAIN = [[1.22, 1], [1, 1]];
+const PIT = 0.34, P_GOO = [[0.94, -0.72], [0, -0.72]], P_GOO_B = [[0.94, -0.76], [0, -0.76]], /* (blood a hair under bile: where two pools join, the two goos were one plane) */ P_WALL = [[1, 0], [0.97, -0.25], [0.92, -1]], P_STAIN = [[1.22, 1], [1, 1]];
 function puddle(B, cx, cz, rx, rz, blood, joined, X0, Z0, X1, Z1) {
   const q = rng(hash2(Math.round(cx * 8), Math.round(cz * 8), 0xb11e)), N = 20, wob = [];
   const k2 = joined ? 0.3 : 0.1 + q() * 0.1, p2 = q() * 6.283, k3 = 0.08 + q() * 0.08, p3 = q() * 6.283, k5 = 0.04 + q() * 0.04, p5 = q() * 6.283;
@@ -189,11 +191,13 @@ function puddle(B, cx, cz, rx, rz, blood, joined, X0, Z0, X1, Z1) {
   const ring = (prof, h, mat, tint, o) => B.shape({ kind: 'lathe', c: [cx, GY, cz], sc: [rx, h, rz], prof, wob, seg: N, mat, tint, lod: false, ...o });
   // the stain: lumpy at the pool's lip, a round edge wide enough to cover the hole's corners, a hair over the skin
   const f = 1.45 * wm;
-  ring([[f, 1, 0], [f * 0.8, 1, 0.4], [1, 1]], 0.02, 'flesh', blood ? 0x74101c : 0x76161c, { uvxz: 1 });
-  ring([[1.55, 1, 0.7], [1, 1]], 0.028, 'flesh', blood ? 0x520c16 : 0x541416, { uvxz: 1 });
-  ring(P_STAIN, 0.036, 'flesh', blood ? 0x30070d : 0x2e1109, { uvxz: 1 });
+  // (6, 7.2 and 8.4 cm up, each a centimetre clear of the floors' layers: cobbles 3 cm, Peristalsis Avenue's ribs 4 cm,
+  // the gum pads 5 cm. they were at 2-3.6 cm, 8 mm apart, in among those: they flickered)
+  ring([[f, 1, 0], [f * 0.8, 1, 0.4], [1, 1]], 0.06, 'flesh', blood ? 0x74101c : 0x76161c, { uvxz: 1 });
+  ring([[1.55, 1, 0.7], [1, 1]], 0.072, 'flesh', blood ? 0x520c16 : 0x541416, { uvxz: 1 });
+  ring(P_STAIN, 0.084, 'flesh', blood ? 0x30070d : 0x2e1109, { uvxz: 1 });
   ring(P_WALL, PIT, 'flesh', blood ? 0x22050a : 0x200c07, { pulse: 0 });
-  ring(P_GOO, PIT, blood ? 'blood' : 'bile', blood ? 0x8a0a20 : 0xb8ff4a, blood ? { pulse: 0 } : { goo: [cx, cz, Math.max(rx, rz), GY - PIT * 0.72] });
+  ring(blood ? P_GOO_B : P_GOO, PIT, blood ? 'blood' : 'bile', blood ? 0x8a0a20 : 0xb8ff4a, blood ? { pulse: 0 } : { goo: [cx, cz, Math.max(rx, rz), GY - PIT * 0.72] });
   if (!blood) B.light(cx, GY + 0.45, cz, 0xa6e22e, 4 + Math.max(rx, rz), 0.6); // every bile pool glows a bit
 }
 // the holes the pools need in the ground's picture. a ground slab keeps its collision and is still drawn far off
@@ -239,7 +243,7 @@ export function gut(B, d) {
   for (let x = Math.floor(X0 / 2) * 2; x < X1; x += 2) for (let z = Math.floor(Z0 / 2) * 2; z < Z1; z += 2) {
     const s = streetAt(x + 1, z + 1);
     if (!s || s === 'peri' || stomachD(x, z) < S.r + 3) continue;
-    B.add(x, GY, z, x + 2, GY + 0.03, z + 2, 'gums', { nc: true });
+    B.add(x + 0.01, GY, z + 0.01, x + 1.99, GY + 0.03, z + 1.99, 'gums', { nc: true }); // (a hair of grout round each: flush with the kerbs and the gum pads, their edges flickered)
     if (r() < 0.06) B.prop(r() < 0.7 ? 'tooth' : 'tooth_b', x + r() * 2, GY, z + r() * 2, r() * 6.28, 0.8 + r() * 0.6, 0);
   }
   for (const a of AVES) if (a > X0 - 6 && a < X1 + 6) for (let z = Math.ceil(Z0 / 16) * 16; z < Z1; z += 16) {
@@ -346,7 +350,7 @@ export function border(B, d) {
   const [rx0, rz0, rx1, rz1] = d.rect, y = SLICE.border.y;
   const X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
-  for (let z = Z0; z < Z1; z += 8) { const t = (0 - z) / 48; B.add(X0, -4, z, X1, y, Math.min(Z1, z + 8), t > 0.5 ? 'flesh' : 'ground', { tint: t > 0.5 ? 0x8a1822 : 0xc0a0a0 }); }
+  for (let z = Z0; z < Z1; z += 8) { const t = (0 - z) / 48; B.add(X0, -4, z, X1, y, Math.min(Z1 === rz1 ? rz1 - 1.2 : Z1, z + 8), t > 0.5 ? 'flesh' : 'ground', { tint: t > 0.5 ? 0x8a1822 : 0xc0a0a0 }); } // (the last 1.2 m is the lip's retaining wall: both reached z = 0 and its face flickered)
   // the cliff up into the Gut: flesh, with steps at the gate and the avenues
   if (Z0 <= -48 + 0.1 && Z1 > -48) { // (the chunk holds the cliff line)
     B.add(X0, y, -48, X1, SLICE.gut.y, -46, 'flesh', { tint: 0x7a121c });
