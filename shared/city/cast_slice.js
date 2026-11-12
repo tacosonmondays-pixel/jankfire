@@ -17,7 +17,7 @@ export const NPC_SPOTS = {
   lumps: { p: [24, 16.2, 140], face: S }, // his gym (the npc.lumps mark)
   sharon: { p: [-104.6, 0, 236.2], face: N }, // in front of her soup stall, looking up the hill at you coming down
   dot: { p: [-87, 40, -139.9], face: S }, // IN the digester wall, up to her chest
-  mina: { p: [-83.5, 40, -139.62], face: S, look: 'mina_wall' }, // a few faces along from Dot, in the wall up to her waist (look: the walled model), her back to the skin slabs' face (z -139.78); inside the gap in Peristalsis Avenue's tube (x -93..-81) so you can see her
+  mina: { p: [-83.5, 40, -139.62], face: S, look: 'mina_wall', if: 'q.m04_clocking_in.done && !flag.gut_decided' }, // a few faces along from Dot, in the wall up to her waist (look: the walled model), her back to the skin slabs' face (z -139.78); inside the gap in Peristalsis Avenue's tube (x -93..-81) so you can see her. if: only once the m04 truck has taken her there, and not once the Gut's decided (both endings free her)
   sister_agenda: { p: [-264, 40, -199], face: S }, // just inside the Choir Lung's door
   bev: { p: [-83.25, 36.02, -9.4], face: S }, // in her surgery, beside the dentist's chair (act1set.js BEV), facing the curtain
 };
