@@ -300,7 +300,7 @@ export function installIsland(Room, H) {
 
     // ---------------------------------------------------------- messages (true = swallowed: a downed pilot can't)
     isleHandle(p, m) {
-      if (m.t === 'use' && m.up === 1) { if (p.irv) this.isleRvStop(p, 'let go'); return true; } // F let go: it stops now, not after the gap
+      if (m.t === 'use' && m.up === 1) { if (p.irv) this.isleRvStop(p, 'released'); return true; } // F let go: it stops now, not after the gap
       if (p.irv && (m.t === 'fire' || m.t === 'hit' || m.t === 'push') && !p.dn) this.isleRvStop(p, 'shot'); // shooting puts the revive down
       if (m.t === 'hero') { this.isleHeroPick(p, m.h); return true; } // the hero pick (server/islemeter.js)
       if (m.t === 'deploy' && !p.dn) { this.isleCall(p, m); return true; } // the streak key: your mech, when the meter's full

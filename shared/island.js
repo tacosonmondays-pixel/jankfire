@@ -38,7 +38,8 @@ export const squadOf = (sq) => SQUADS[sq] || { name: `SQUAD ${sq}`, color: '#fff
 export const ST = { UP: 0, DOWN: 1, OUT: 2, SKY: 3 };
 
 Object.assign(GAMES, {
-  island: { name: 'BATTLE ISLAND', desc: 'squads of 3. drop in together, go down instead of dying, hold F on a downed squadmate to pick them up. last squad standing wins', teams: false, royale: true, squads: true, mapOk: (m) => !!(m && m.royale) },
+  // beta: the mode lists say (BETA) until it plays on the island itself
+  island: { name: 'BATTLE ISLAND', desc: 'squads of 3. drop in together, go down instead of dying, hold F on a downed squadmate to pick them up. last squad standing wins', teams: false, royale: true, squads: true, beta: true, mapOk: (m) => !!(m && m.royale) },
 });
 GAME_ORDER.push('island');
 TARGETS.ffa.island = 0; TARGETS.bots.island = 0; // no kill limit: last squad standing

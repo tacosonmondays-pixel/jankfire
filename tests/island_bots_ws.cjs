@@ -6,7 +6,7 @@ const { spawn } = require('child_process');
 const path = require('path');
 const port = Number(process.argv[2]) || 3181, secs = Number(process.argv[3]) || 260;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
+let fails = 0; const failed = []; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) { fails++; failed.push(msg.slice(0, 80)); } };
 (async () => {
   const srv = spawn(process.execPath, ['--max-old-space-size=256', 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: String(port), JF_WATCH: '1', JF_ISLE_LOG: '1', JF_ISLE_ZONE: process.env.JF_ISLE_ZONE || '0.45', JF_ISLE_METER: process.env.JF_ISLE_METER || '3' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let srvErr = '', srvOut = ''; srv.stderr.on('data', (d) => { srvErr += d; }); srv.stdout.on('data', (d) => { srvOut += d; if (/Error|uncaught/i.test(String(d))) srvErr += d; });
@@ -54,5 +54,5 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + ms
   ok((seen.call || 0) >= 3 && (mech.in || 0) >= 2, `bots call their mechs in near fights and climb in (${seen.call || 0} calls, ${mech.in || 0} in)`);
   ok((mech.down || 0) + (mech.gone || 0) >= 1, `mechs end (${mech.down || 0} blown up, ${mech.gone || 0} flew off)`);
   ok(!/uncaught|TypeError|ReferenceError|RangeError/.test(srvErr), 'no server errors' + (srvErr ? ': ' + srvErr.slice(0, 800) : ''));
-  console.log(fails ? `${fails} FAILED` : 'ALL OK'); process.exit(fails ? 1 : 0);
+  console.log(fails ? `${fails} FAILED: ${failed.join(' | ')}` : 'ALL OK'); process.exit(fails ? 1 : 0);
 })();

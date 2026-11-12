@@ -142,7 +142,7 @@ net.on('isle', (m) => {
     if (p) fx.ring([p[0], p[1] + 0.3, p[2]], 1.8, 0x7dff4f);
   } else if (m.k === 'dead') { I.down.delete(m.id); I.rv.delete(m.id); if (me) I.me = false; standUp(G.remotes.get(m.id)); }
   else if (m.k === 'rv') I.rv.set(m.id, { by: m.by, t0: performance.now(), ms: m.ms });
-  else if (m.k === 'rvx') { I.rv.delete(m.id); if (m.by === G.myId) hud.msg('REVIVE CANCELLED', 0.8); }
+  else if (m.k === 'rvx') { I.rv.delete(m.id); if (m.by === G.myId && m.why !== 'released') hud.msg(m.why === 'shot' ? 'REVIVE CANCELLED: YOU SHOT' : 'REVIVE CANCELLED', 0.8); }
   else if (m.k === 'fix') { if (Array.isArray(m.p) && m.p.length === 3) { ME.pos[0] = m.p[0]; ME.pos[1] = m.p[1]; ME.pos[2] = m.p[2]; ME.vel = [0, Math.min(0, ME.vel[1]), 0]; } }
   else if (m.k === 'sqout') {
     const S = squadOf(m.sq), mine = m.sq === I.mine;
