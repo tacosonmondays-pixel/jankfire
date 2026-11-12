@@ -370,10 +370,12 @@
         <h3>video</h3>
         <label>quality <select id="jank"><option value="0">Potato</option><option value="1">Crusty</option><option value="2">Mid</option><option value="3">HD</option></select></label>
         <label>shadows <select id="shadows"><option value="auto">auto (by quality)</option><option value="off">off (blobs)</option><option value="low">low</option><option value="med">medium</option><option value="high">high (soft)</option></select></label>
-        <label>shaders <select id="fxLevel"><option value="auto">auto (by quality)</option><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option><option value="custom">custom</option></select></label>
+        <label>shaders <select id="fxLevel"><option value="auto">auto (by quality)</option><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option><option value="rt">RAY-TRACED LOOK</option><option value="custom">custom</option></select></label>
         <label>bloom <select id="fxBloom"><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option></select></label>
         <label><input type="checkbox" id="fxSkin"> soft skin (light glows through)</label>
         <label><input type="checkbox" id="fxPunch"> punchy colours</label>
+        <label><input type="checkbox" id="fxAO"> contact shadows (soft shade where things meet; mid and hd)</label>
+        <label><input type="checkbox" id="fxBounce"> bounce light (sunlit walls and ground tint what's near them; mid and hd)</label>
         <label id="fxEerieRow" class="hidden"><input type="checkbox" id="fxEerie"> eerie story filter (darker, colder, grain)</label>
         <label>fov <input id="fov" type="range" min="70" max="120" step="1"><span id="fovN"></span></label>
         <label><input type="checkbox" id="fovKick"> fov stretches with speed</label>
