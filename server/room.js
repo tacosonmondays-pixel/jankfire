@@ -13,7 +13,8 @@ import { installMech } from './mech.js'; // mech drop killstreak
 import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
-import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { buildEdited, dropEdited } from '../shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS rooms
+import { warmMap, startGraphSweeper, forgetMap } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
 import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
@@ -37,7 +38,10 @@ import { OOB, outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { Traffic } from './traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
+import { teamPlan } from './partyteams.js'; // parties stay on one side
+import { ticketRoom } from './party.js'; // party tickets (roomFor)
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
+import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
@@ -371,9 +375,10 @@ class Room {
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
     let i = 0;
+    const plan = list.some((p) => p.party) ? teamPlan(list) : null; // (parties stay on one side: server/partyteams.js)
     for (const p of list) {
       if (!p.ownColor) p.ownColor = p.color;
-      if (this.teamsOn()) { p.team = (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
+      if (this.teamsOn()) { p.team = plan ? plan.get(p) : (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
       else { p.team = 0; p.color = (p.look && p.look.color) || p.ownColor; }
     }
     this.broadcast({ t: 'teams', game: this.game, list: list.map((p) => [p.id, p.team, p.color]) });
@@ -406,8 +411,10 @@ class Room {
   }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
+    if (!p.party && p.ws && p.ws.partyId) p.party = p.ws.partyId; // (came in on a party ticket: roomFor)
     if (!this.teamsOn()) { p.team = 0; return; }
-    p.team = this.teamFor();
+    const mate = p.party && [...this.players.values()].find((q) => q !== p && q.party === p.party && q.team);
+    p.team = mate ? mate.team : this.teamFor(); // a party joins its mates' side
     p.color = TEAMS[p.team].color;
   }
 
@@ -455,9 +462,10 @@ class Room {
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
   addHuman(ws, m) {
+    if (ws && ws.partyId && this.partyCfg) m = { ...m, cfg: this.partyCfg }; // a party's private match: the leader's settings (server/party.js), not whoever got here first
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
-      if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
+      if (!this.editMap && has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map; // (an edited map's room keeps it)
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
@@ -542,7 +550,7 @@ class Room {
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
-    if (!this.humans().length) rooms.delete(this.id);
+    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) { forgetMap(this.editMap); dropEdited(this.editMap); console.log('[edit] dropped ' + this.editMap); } } // (the edited map goes with its room)
     else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
@@ -1801,6 +1809,7 @@ class Room {
       this.hurt(t, p, 'blower', Math.random() < 0.3 ? 1 : 0, [toT[0] * w.push, toT[1] * w.push + 1.2, toT[2] * w.push]);
     } else if (m.w === 'hook') {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
+      if (this.zm && p.z) { if (!this.zsHookUse(p)) return; p.z.hookPush = now(); } // zombies: a grab spends a charge too (none: no tug)
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
     if (m.w === 'shredder') this.shredPull(p, t);
@@ -2876,6 +2885,7 @@ class Room {
         if (has(WEAPONS, m.w) && (!this.chaosKit || this.chaosKit.slots.includes(m.w))) p.w = m.w;
         const only = this.modeWeapon(p);
         if (only) p.w = only; // everyone sees what you're really allowed to hold
+        if (this.zm && p.z) this.zsHookSnap(p, m); // zombies: the grapple runs on charges (server/zmshop.js)
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
         this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted
@@ -3195,6 +3205,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
+    if (this.editMap) { const m = MAPS[this.editMap]; if (!m || !GAMES[g].zombies !== !m.zm || (GAMES[g].sites && !(m.sites && m.sites.length)) || (GAMES[g].mapOk && !GAMES[g].mapOk(m))) return false; } // (an edited map's room plays its edited map, or not that mode)
     if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok.includes(ZM.testMap) ? ZM.testMap : ok[0]; this.smokes.clear(); } // zombies comes with its own map (JF_ZM_MAP: which)
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
@@ -3996,6 +4007,7 @@ class Room {
 
 installRoyale(Room, { send, movePlayer });
 installIsland(Room, { send, movePlayer }); // battle island's squad rules (server/island.js)
+installIsleMeter(Room, { send }); // battle island's heroes + mech meter (server/islemeter.js)
 installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)
@@ -4124,25 +4136,47 @@ function lobbyCounts() {
 }
 function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  const tk = ticketRoom(cfg, rooms); // a party's leader started: the room they were all handed a ticket to (server/party.js)
+  if (tk && tk.room.mode === mode) { if (ws) ws.partyId = tk.party; return tk.room; }
+  const need = cfg && typeof cfg === 'object' && Number.isInteger(cfg.need) ? Math.max(1, Math.min(6, cfg.need)) : 1; // (seats the party needs)
   // mode lobbies (home menu ONLINE / WITH BOTS cards): an open lobby for that mode, or a new one. Online Quick Play is the 'ffa' room below
   const lk = cfg && typeof cfg === 'object' && typeof cfg.lobby === 'string' && has(LOBBY.kinds, cfg.lobby) ? cfg.lobby : null;
   if (lk === 'qp' && mode === 'bots') { // With Bots Quick Play: no lobby. drop into a running quick play bots room with a bot to replace, else a new one
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.lobby && !r.closed && r.botWant() > 0) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.priv && !r.lobby && !r.closed && r.botWant() > 0) return r;
     const r = new Room(`bots:qp:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
     r.qp = true; r.cfg.map = pick(mapsFor('dm', MAPS, MAP_ORDER)) || r.cfg.map;
     rooms.set(r.id, r);
     return r;
   }
   if (lk && lk !== 'qp' && (mode === 'bots' || mode === 'ffa')) {
-    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk)) return r;
+    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk, need)) return r;
     const r = new Room(`${mode}:${lk}:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, mode);
     rooms.set(r.id, r);
     r.lobbyInit(lk, mode === 'ffa');
     return r;
   }
+  // the map editor's PLAY HERE WITH BOTS (owner only: server.js only sets cfg._edit from a checked ticket): a private bots
+  // room on a fresh copy of the map with the owner's edits (shared/editmaps.js), gone when the room closes
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg._edit && [...rooms.values()].filter((r) => r.editMap).length < 2) { // (at most two of these at once: each is a whole map)
+    const id = buildEdited('ed_' + cfg._edit.base + '_' + (nextId++), cfg._edit);
+    if (id) {
+      const r = new Room(`bots:edit:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+      r.priv = true; r.editMap = id; r.cfg.map = id; r.cfg.edit = { base: cfg._edit.base, ops: cfg._edit.ops };
+      rooms.set(r.id, r);
+      console.log(`[edit] PLAY HERE on ${id} (${cfg._edit.ops.length} edits)`);
+      return r;
+    }
+  }
+  // the hub's PRIVATE match (public/js/hubmenu.js): a bots room of your own. nobody else's pick lands in it
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
+    const r = new Room(`bots:priv:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+    r.priv = true;
+    rooms.set(r.id, r);
+    return r;
+  }
   // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
   if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && !r.priv && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
   }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   // Online is playing zombies (or just voted for it) with a full squad of 4: you get a zombies lobby of your own instead (bots fill it)

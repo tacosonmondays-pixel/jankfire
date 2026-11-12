@@ -19,6 +19,7 @@ import { rfx, rmesh } from './rigmodel.js';
 import { rigOn } from './rig.js';
 import { buildMech, freeMech, poseMech, mechBurst, buildCrane, GLB_ID, modelVer } from './mechmodel.js';
 import { mechsfx } from './mechsfx.js';
+import './mechlooksfx.js'; // (the hero clips' beats: their sounds)
 import { prefetch, whenLate } from './glbkit.js';
 
 export { mechBoxes };
@@ -708,6 +709,11 @@ function mechEvent(m, getR, live) {
       const p = P(m.p); if (p) rfx.sparks([p[0], p[1] + 0.5, p[2]], 30, 9, [0xff3030, 0xffffff], 0.5, 0.15);
       break;
     }
+    case 'bonk': { // your own mech landed on you (or a mate): no squash, a BEEP BEEP and a shove off the circle
+      const p = P(m.p); if (p) { mechsfx.beep(p); rfx.sparks([p[0], p[1] + 1, p[2]], 16, 6, [0xffe14d, 0xffffff], 0.35, 0.1); rmesh.ring([p[0], p[1] + 0.1, p[2]], 2.4, 0xffe14d, 0.35); }
+      if (live && m.to === G.myId) { hud.msg(m.id === G.myId ? 'BEEP BEEP! MECH PARKING' : 'BEEP BEEP! MATE PARKING', 1.8, 'brag'); G.shake = Math.max(G.shake, 0.6); }
+      break;
+    }
     case 'down': { // MECH DOWN: the mech flashes and blows up in a big jank pop, the pilot's flung out
       const p = P(m.p), inst = instOf(m.id, getR);
       if (me) { endLocal('boom'); mechsfx.eject(null); hud.msg('EJECT! EJECT!', 2, 'slip'); G.shake = 1.4; }
@@ -803,7 +809,7 @@ net.on('mech', (m) => {
   mechEvent(m, (id) => G.remotes.get(id), true);
 });
 // replay.js: a recorded mech event, with the replay's ghosts standing in for the players
-const FX = new Set(['gun', 'cut', 'lunge', 'crane', 'cp', 'peck', 'cranex', 'swarm', 'jet', 'swing', 'bash', 'triple', 'slam', 'quake', 'blk', 'stomp', 'ram', 'mark', 'clock', 'squash', 'down']);
+const FX = new Set(['gun', 'cut', 'lunge', 'crane', 'cp', 'peck', 'cranex', 'swarm', 'jet', 'swing', 'bash', 'triple', 'slam', 'quake', 'blk', 'stomp', 'ram', 'mark', 'clock', 'squash', 'bonk', 'down']);
 export function mechFx(m, ghosts) { if (m && FX.has(m.k)) mechEvent(m, (id) => ghosts.get(id), false); }
 // a new round / mode / you left: no mechs left lying around
 export function mechReset() {

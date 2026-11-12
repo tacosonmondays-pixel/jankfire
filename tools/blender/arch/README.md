@@ -14,6 +14,9 @@ bots and hits keep the boxes exactly as they were (`node tools/arch/gamehash.mjs
    `kit.json`: 32-128 px seamless textures cut to a 16-colour clut, 15-bit colour, 4x4 ordered dither, 1-bit alpha. Light
    grey ones (siding, shingle, stucco, trim, louvre, picket, corrugated, metal) are tinted. `decals.png` is an atlas of fake
    ads, signs, stickers, graffiti, grime (cells by name in `kit.json`). Shared with the props lane.
+   **The kit is regenerated, never hand-edited:** a new texture goes into `texkit.py` (or `brtex.py`) with its own
+   pinned seed in `PIN`, then rerun the script; never hand-append a png or a `kit.json` entry. A rerun must leave every
+   committed file byte-identical: `node --test tests/texkit_repro.test.mjs` checks it.
 4. **Build**: `blender52 -b --python tools/blender/arch/make_<id>.py` -> `public/models/arch/<id>.glb`. `archkit.py`
    reads the boxes and builds quads in game space, one mesh per material: walls grouped into planes with their openings
    found and dressed (casings, sills, broken panes, doors swung open), real stairs over solid step boxes (treads with a
@@ -36,5 +39,5 @@ bots and hits keep the boxes exactly as they were (`node tools/arch/gamehash.mjs
 instead: buildings are huge and tile, so they get small seamless textures in world-scale UVs plus vertex AO. Both
 use the same treatment: a small palette per texture, 15-bit colour, ordered dither, matte, no mipmaps up close. Shared
 conventions for glbs that use the kit: no embedded images; each material carries extras `tex` (kit image name), `tile`,
-`col` (hex factor), and optionally `paint` (a slot the map repaints), `alpha` (1-bit cutout), `glow` / `glowmap`
+`col` (hex factor), and optionally `paint` (a slot the map repaints), `alpha` (1-bit cutout), `fade` (see-through, 0..1: smoke; shaded smooth, light AO), `glow` / `glowmap`
 (emissive) and `nocast` (no sun shadow). The client loads each kit image once by name (archfield.js `tex()`).

@@ -8,6 +8,16 @@ function metal(pos, k = 1, base = 1, len = 1) { // a struck plate ringing down
   for (const [f, d, v] of [[160, 1.5, 0.3], [410, 1.0, 0.22], [760, 0.8, 0.16], [1190, 0.6, 0.12], [1850, 0.4, 0.08]]) T('sine', f * base * rnd(0.96, 1.04), f * base * 0.96, d * len * (0.5 + k * 0.5), v * k, pos);
 }
 export const mechsfx = {
+  // the hero clips' own beats (mechlook events, see lookEvent): a pose glint, steam vents, a thruster flare, a part
+  // popping, a scrape of sparks. the dust / step / slam beats already have gameplay sounds, so they stay quiet here
+  look(fx, pos, k = 1) {
+    if (fx === 'glint') { T('sine', 2600, 3400, 0.18, 0.07 * k, pos); T('sine', 3900, 5200, 0.12, 0.04 * k, pos, 0.05); }
+    else if (fx === 'vent') N(0.7 * k, 0.35 * k, 'highpass', 5000, 1800, pos, 0, 0.9);
+    else if (fx === 'flare') { N(0.4, 0.5 * k, 'bandpass', 400, 1600, pos, 0, 1.2); T('sawtooth', 70, 140, 0.35, 0.1 * k, pos); }
+    else if (fx === 'burst') { T('sine', 140, 45, 0.25, 0.4 * k, pos); N(0.12, 0.4 * k, 'lowpass', 1800, 300, pos); }
+    else if (fx === 'spark') { metal(pos, 0.4 * k, 2.2, 0.3); N(0.18, 0.5 * k, 'highpass', 4000, 9000, pos); }
+    else if (fx === 'pop') { T('square', 500, 120, 0.12, 0.2 * k, pos); N(0.25, 0.5 * k, 'bandpass', 1200, 400, pos); }
+  },
   // the call: a radio blip, then the long falling whistle (ms = how long it falls)
   call(pos, ms = 2500) {
     T('square', 880, 880, 0.08, 0.08, pos); T('square', 1320, 1320, 0.08, 0.08, pos, 0.1);
@@ -52,6 +62,8 @@ export const mechsfx = {
   // EJECT! EJECT!: a klaxon, the canopy pop, the boom
   eject(pos) { for (let i = 0; i < 3; i++) { T('square', 800, 560, 0.12, 0.12, pos, i * 0.14); } N(0.12, 0.8, 'highpass', 2000, 5000, pos, 0.42); T('sine', 300, 1200, 0.2, 0.2, pos, 0.42); },
   boom(pos) { T('sine', 70, 18, 1.6, 1, pos); N(1.6, 1, 'lowpass', 2500, 40, pos); N(0.3, 0.9, 'highpass', 1200, 6000, pos); metal(pos, 1, 0.6, 1.5); for (let i = 0; i < 6; i++) metal(pos, 0.4, rnd(0.8, 2.2), 0.4); },
+  // BEEP BEEP: a reversing truck's two square beeps and a rubbery bonk (your own mech parking on you)
+  beep(pos) { for (let i = 0; i < 2; i++) T('square', 1040, 1040, 0.13, 0.16, pos, i * 0.2); T('sine', 520, 180, 0.18, 0.35, pos, 0.02); N(0.06, 0.3, 'bandpass', 1800, 900, pos, 0.02); },
   denied() { T('square', 180, 120, 0.12, 0.12, null); },
   leave(pos) { N(1.6, 0.5, 'bandpass', 600, 2400, pos, 0, 0.8); T('sawtooth', 60, 180, 1.4, 0.1, pos); },
 };

@@ -188,7 +188,7 @@ function hospital() {
   B.add(21.9, 0, 1.2, 23.1, 1.1, 3.2, 'white', K('counter', 22.5, 2.2, 1)); chairs(10.6, 0, 7, 3); B.add(25, 0, 23.1, 28, 0.45, 23.7, 'blue', K('bench', 26.5, 23.4));
   for (const z of [-5, -3.5]) B.add(29.05, 0, z - 0.75, 29.75, 2.2, z + 0.75, 'pills', K('pillshelf', 29.4, z, 1)); curtain(12.6, 0, 19.5, 0); curtain(12.6, 0, 11.5, 0);
   const crate = { at: [16, 0, 15], price: 950 };
-  B.add(15.1, 0, 14.55, 16.9, 0.9, 15.45, 'crate');
+  B.add(15.1, 0, 14.55, 16.9, 0.9, 15.45, 'crate', W.P('zmcrate', 16, 15, 0, { v: 'body' })); // (the Blender crate, as in the mall)
   // ---- UPSTAIRS CORRIDOR: benches, a plant, a wheelchair somebody walked away from
   for (const x of [-4, 3]) B.add(x - 1.5, F, -13.2, x + 1.5, F + 0.45, -12.6, 'blue', K('bench', x, -12.9, 0, F));
   B.box(-9.2, F + 0.4, -11.2, 0.9, 0.8, 0.9, 'brick', K('planter', -9.2, -11.2, 0, F)); small('wheelchair', 7, -17, 3, F, 0.7, 1.0, 'carblack');

@@ -5,6 +5,7 @@
 // adds the methods; room.js calls them from one-line hooks (grep "mech").
 // Mechs live in room._mechs: { id, o (owner), f (frame), p, yaw, st: 'fall' | 'wait' | 'in' | 'idle', t, until, hp }.
 // The pilot carries p.mech: { id, f, E (energy), cd, ... } while inside.
+import { ISLE } from '../shared/island.js'; // (battle island: the zone vs mechs)
 import { FLAGS } from '../shared/weapons.js';
 import { BODY } from '../shared/bodyhp.js';
 import { MECH, MF, MECH_BITS, mechFrame, isFrame, mechBoxes, energyAt, spend, newEnergy, speedCap, inArc, ramHit, dropHit, addMark } from '../shared/mech.js';
@@ -64,6 +65,7 @@ export function installMech(Room, U) {
       const fl = raycast([at[0], at[1] + 0.5, at[2]], [0, -1, 0], 4.5, this.boxes);
       if (!fl || fl.box.pad) { this.mechNo(p, 'no floor there'); return false; }
       const g = [at[0], fl.point[1], at[2]];
+      if (this.map.seaY != null && this.map.seaY - g[1] > (this.map.wade || 1.5)) { this.mechNo(p, 'not into deep water'); return false; } // (a sea map: the floor under the water doesn't count)
       if (raycast([g[0], g[1] + 0.2, g[2]], [0, 1, 0], MECH.drop.sky, this.boxes)) { this.mechNo(p, 'it needs open sky'); return false; }
       const f = mechFrame(isFrame(frame) ? frame : p.mechFrame);
       const id = this.nextMech = (this.nextMech || 0) + 1;
@@ -80,7 +82,8 @@ export function installMech(Room, U) {
       this.broadcast({ t: 'mech', k: 'land', id: m.id, o: m.o, f: m.f, p: m.p.map(r2), yaw: m.yaw });
       const c = [m.p[0], m.p[1] + 0.6, m.p[2]];
       for (const t of this.players.values()) {
-        if (!t.alive || t === owner || (owner && this.friendly(owner, t))) continue;
+        if (!t.alive) continue;
+        if (t === owner || (owner && this.friendly(owner, t))) { this.mechBonk(m, t); continue; } // yours never squashes you or your side: it bonks you off the circle
         const tc = center(t), dh = hdist(t.pos, m.p), dy = t.pos[1] - m.p[1];
         if (dh <= MECH.drop.squash && dy > -1 && dy < 3.5 && !this.mechOn(t)) { // right under it
           this.broadcast({ t: 'mech', k: 'squash', id: m.o, to: t.id, p: t.pos.map(r2) });
@@ -94,10 +97,24 @@ export function installMech(Room, U) {
       }
       if (owner && owner.isBot) setTimeout(safe('botmech', () => { if (this.players.get(owner.id) === owner && owner.alive && this.mechMap().get(m.id) === m && m.st === 'wait') { owner.pos = m.p.slice(); this.mechEnter(owner); } }), 500); // bots climb straight in (if it's still there: a reset may have cleared it)
     },
+    // BEEP BEEP: you (or a mate) were standing on your own landing circle. the server picks the shove: a fixed push
+    // toward clear floor next to it (mechOutSpot: no wall, a floor, inside the map; none: straight up) + a hop. once per
+    // landing per person, nothing the client asks for, so it's no way to fling yourself anywhere
+    mechBonk(m, t) {
+      const B = MECH.bonk, dh = hdist(t.pos, m.p), dy = t.pos[1] - m.p[1];
+      if (dh > B.r || dy <= -1 || dy >= 3.5 || this.mechOn(t) || t.trap) return false;
+      const a = dh > 0.2 ? [(t.pos[0] - m.p[0]) / dh, (t.pos[2] - m.p[2]) / dh] : [Math.sin(m.yaw), Math.cos(m.yaw)]; // (dead centre: out the front of it)
+      const s = this.mechOutSpot(m.p, [a, [-a[1], a[0]], [a[1], -a[0]], [-a[0], -a[1]]], B.d);
+      const dx = s[0] - t.pos[0], dz = s[2] - t.pos[2], l = Math.hypot(dx, dz), k = l > 0.3 ? B.kb / l : 0;
+      this.knock(t, [dx * k, B.up, dz * k], 'mechbonk');
+      this.broadcast({ t: 'mech', k: 'bonk', id: m.o, to: t.id, p: t.pos.map(r2) });
+      return true;
+    },
     mechGone(m, why = 'leave') {
       this.mechMap().delete(m.id);
       this.broadcast({ t: 'mech', k: 'gone', m: m.id, why });
       const o = this.players.get(m.o);
+      if (o && this.isleOn) this.isleMechEnd(o); // battle island: it flew off: the meter restarts at 25%
       if (o && this.mode === 'training') (o.trainCd ||= {}).mechdrop = now() + 3000; // training: it's back in your tray 3 s after it's gone
     },
 
@@ -105,7 +122,7 @@ export function installMech(Room, U) {
     mechEnter(p, n = now()) {
       const m = this.mechOf(p);
       if (!p.alive || !m || (m.st !== 'wait' && m.st !== 'idle') || p.mech) return false;
-      if (p.rig || this.isBall(p) || p.ballUntil > n || p.trap) { this.mechNo(p, 'not right now'); return false; }
+      if (p.rig || this.isBall(p) || p.ballUntil > n || p.trap || p.dn) { this.mechNo(p, 'not right now'); return false; } // (p.dn: battle island, down on the floor)
       if (hdist(p.pos, m.p) > MECH.reach + 0.5 || Math.abs(p.pos[1] - m.p[1]) > 3.5) { this.mechNo(p, 'get closer'); return false; }
       if (n < (m.backT || 0)) { this.mechNo(p, 'still climbing down'); return false; } // (no hop out + in to skip a cooldown)
       const F = MECH[m.f];
@@ -144,6 +161,7 @@ export function installMech(Room, U) {
         return;
       }
       if (m) this.mechMap().delete(m.id);
+      if (this.isleOn) this.isleMechEnd(p); // battle island: the meter restarts at 25% (server/islemeter.js)
       if (why !== 'boom') { this.broadcast({ t: 'mech', k: 'out', id: p.id, m: M.id, why: 'quiet', p: at.map(r2) }); return; }
       // EJECT! EJECT!: flung up and back out of the cockpit, the mech goes up behind you
       let back = [Math.sin(p.yaw), Math.cos(p.yaw)]; const B = MECH.boom;
@@ -175,7 +193,7 @@ export function installMech(Room, U) {
     mechBlast(at, pilot, by) {
       const B = MECH.boom, c = [at[0], at[1] + 1.5, at[2]];
       for (const t of this.players.values()) {
-        if (!t.alive || t === pilot || t === by || (by && this.friendly(by, t))) continue;
+        if (!t.alive || t === pilot || t === by || this.friendly(by || pilot, t)) continue; // (nobody broke it, e.g. the zone: the pilot's own side is safe)
         const tc = center(t), d = Math.hypot(tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]);
         if (d > B.r || !clear(c, tc, this.boxes)) continue;
         const f = 1 - d / B.r, hl = Math.hypot(tc[0] - c[0], tc[2] - c[2]) || 1;
@@ -213,6 +231,7 @@ export function installMech(Room, U) {
         if (n - (M.blkT || 0) > 90) { M.blkT = n; this.broadcast({ t: 'mech', k: 'blk', id: t.id, a: Math.round(b), p: src.map(r2) }); }
       }
       M.hitT = n;
+      if (w === 'zone' && this.isleOn) return this.bodySoak(t, amt * ISLE.zoneMech, attacker, 'islezone'); // battle island: the zone eats a mech's armour (its pilot's HP is safe)
       return this.bodySoak(t, amt, attacker, w);
     },
 

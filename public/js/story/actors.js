@@ -141,14 +141,14 @@ function updateActor(a, dt, now, eye) {
   const step = a.puppet ? 1 / 12 : 0;
   a.voice.update(dt);
   a.face.flap = a.voice.level;
-  a.face.look = look ? hv.set(look[0], look[1], look[2]) : null;
+  a.face.look = look ? (a.lookV ||= new THREE.Vector3()).set(look[0], look[1], look[2]) : null; // (its own vector: pose() reuses hv for the head, and the eyes went cross-eyed at their own chin)
   if (a.stepAcc < step) { a.face.update(dt); return; }
   const pdt = a.stepAcc; a.stepAcc = 0;
   a.r.yaw = a.yaw; a.r.gy = a.pos[1];
   locoPose(a.r, pdt, now);
   pose(a, pdt, moving, look);
   if (a.sit) sitPose(a);
-  a.face.update(pdt);
+  a.face.update(dt); // (the face already ran every frame between steps: pdt here ran its clock twice, blinks and looks jumped on the step)
   if (a.puppet) camKey(a); // (the camera's eased view of the stepped head: camHead)
 }
 

@@ -33,9 +33,29 @@ function lots(k) {
   return out;
 }
 
+// a house's outside stairs, each from one floor up to the roof of the next. a flight is only built where it starts on
+// something (the street, or the roof of the cube below) and nothing (this house's other cubes, the houses either
+// side) stands in its way or on its landing: they used to hang in the air beside the upper floors, or climb into the
+// floor above, stairs that went nowhere
+function outsideStairs(B, k, recs, want, near) {
+  const others = recs.concat(...near.map((q) => stackOf(k, q)));
+  if (k < T.n - 1) { const zw = zSouth(k + 1); for (const [a, b] of slopeSpans(k + 1)) others.push({ x0: a, x1: b, z0: zw, z1: zw + SLOPE_RUN, y: -99, top: 99 }); } // (the dirt slopes up to the next terrace)
+  others.push({ x0: BANISTER[0] - 0.2, x1: BANISTER[1] + 0.2, z0: -1e4, z1: 1e4, y: -99, top: 99 }); // (and THE BANISTER's chute)
+  for (const [c, sx0, y0] of want) {
+    const below = recs.find((q) => q.row === c.row && q.f === c.f - 1), L = flightLen(c.top - y0);
+    // the side and way it was rolled first, then the other side, then running the other way
+    for (const [sx, dir] of [[sx0, -1], [sx0 > c.x1 ? c.x0 - 0.7 : c.x1 + 0.7, -1], [sx0, 1], [sx0 > c.x1 ? c.x0 - 0.7 : c.x1 + 0.7, 1]]) {
+      const z0 = dir < 0 ? c.z1 - 0.2 : c.z0 + 0.2, end = z0 + dir * L, za = Math.min(z0, end + dir * 1.25), zb = Math.max(z0, end + dir * 1.25), zs = Math.min(z0, z0 + dir * 0.55), ze = Math.max(z0, z0 + dir * 0.55);
+      const onFloor = c.f === 0 || (below && sx - 0.6 >= below.x0 - 0.05 && sx + 0.6 <= below.x1 + 0.05 && zs >= below.z0 - 0.05 && ze <= below.z1 + 0.05 && Math.abs(below.top - y0 + 0.12) < 0.2);
+      const hit = (q) => q !== c && sx + 0.65 > q.x0 && sx - 0.65 < q.x1 && zb > q.z0 && za < q.z1 && c.top + 2.1 > q.y && y0 + 0.1 < q.top;
+      if (onFloor && sx - 0.65 > SLICE.x0 + 6 && !others.some(hit)) { c.stair = [sx, y0, c.top, z0, sideStair(B, sx, y0, c.top, z0, dir, 'metal', { rail: false }), dir]; break; }
+    }
+  }
+}
+
 // one lot: 1-2 rows of cubes stacked 1-4 high, shifted about, outside stairs, a roof garden of junk
-function house(B, k, x0, w, seed) {
-  const r = rng(seed), y = yOf(k), zs = zSouth(k), zBack = zs - T.terr + 0.2, zFront = zs - LANE, recs = [];
+function house(B, k, x0, w, seed, near = []) {
+  const r = rng(seed), y = yOf(k), zs = zSouth(k), zBack = zs - T.terr + 0.2, zFront = zs - LANE, recs = [], want = [];
   const depth = zFront - zBack, rows = depth > 13 && r() < 0.6 ? 2 : 1, cx = x0 + w / 2;
   const wallTop = yOf(k + 1); // the next terrace's floor: houses at the back reach it, their roofs join it
   let rowZ = zBack;
@@ -52,18 +72,24 @@ function house(B, k, x0, w, seed) {
         roofTint: r() < 0.3 ? 0xd06a5a : 0,
       });
       // an outside stair up to this floor's roof from the one below (every third house)
-      if (f < floors - 1 && r() < 0.45) { const sx = r() < 0.5 ? c.x1 + 0.7 : c.x0 - 0.7; c.stair = [sx, fy + 0.12, c.top, c.z1 - 0.2, sideStair(B, sx, fy + 0.12, c.top, c.z1 - 0.2, -1, 'metal', { rail: false })]; }
+      if (f < floors - 1 && r() < 0.45) { const sx = r() < 0.5 ? c.x1 + 0.7 : c.x0 - 0.7; want.push([c, sx, fy + 0.12]); } // (built below, once every cube is up: outsideStairs)
       c.f = f; c.row = row; c.roof = f === floors - 1; recs.push(c); // (for the kit pass below)
       lastTop = c.top; fy = c.top;
       // junk on the roof: plastic chairs, a dish, a smiley sign, a sofa
       if (f === floors - 1) {
         const pr = r(); c.bare = pr >= 0.55;
-        if (pr < 0.25) B.prop('pchair', cx + (r() - 0.5) * (ww - 1), c.top, cz + (r() - 0.5) * (dd - 1), r() * 6.28, 1, (r() * 8) | 0);
-        else if (pr < 0.35) B.prop('sofa', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
-        else if (pr < 0.42) B.prop('smilesign', cx, c.top, cz, r() * 6.28, 0.7, 0);
-        else if (pr < 0.55) B.prop('tarp', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, 0);
-        if (r() < 0.35) B.prop('wokdish', c.x0, c.top - 0.6, cz, Math.PI / 2, 1, 0);
-        if (r() < 0.3) B.prop('stringlights', cx, c.top + 2.2, cz, r() * 6.28, 1, 0);
+        const rx = (c.x0 + c.x1) / 2, rz = (c.z0 + c.z1) / 2; // (the roof's own middle: the house is shifted off cx, and the junk used to hang off its edge)
+        if (pr < 0.25) B.prop('pchair', rx + (r() - 0.5) * (ww - 1.2), c.top, rz + (r() - 0.5) * (dd - 1.2), r() * 6.28, 1, (r() * 8) | 0);
+        else if (pr < 0.35) B.prop('sofa', rx, c.top, rz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
+        else if (pr < 0.42) B.prop('smilesign', rx, c.top, rz, r() * 6.28, 0.7, 0);
+        else if (pr < 0.55) B.prop('tarp', rx, c.top, rz, (r() * 4 | 0) * Math.PI / 2, 1, 0);
+        if (r() < 0.35) B.prop('wokdish', c.x0, c.top - 0.6, rz, Math.PI / 2, 1, 0);
+        if (r() < 0.3) { // a string of bulbs on two poles (it used to hang 2.2 m over the roof from nothing), short enough that both poles stand on the roof
+          const yaw = r() * 6.28, ca = Math.abs(Math.cos(yaw)), sa = Math.abs(Math.sin(yaw)), half = Math.min(ca > 0.01 ? (c.x1 - c.x0) / 2 - 0.4 : 99, sa > 0.01 ? (c.z1 - c.z0) / 2 - 0.4 : 99) / Math.max(ca, sa, 0.01);
+          const sc = Math.max(0.4, Math.min(1, half / 2.0)), ex = Math.cos(yaw) * 2 * sc, ez = -Math.sin(yaw) * 2 * sc;
+          B.prop('stringlights', rx, c.top + 2.2, rz, yaw, sc, 0);
+          for (const k of [-1, 1]) B.add(rx + k * ex - 0.05, c.top, rz + k * ez - 0.05, rx + k * ex + 0.05, c.top + 2.3, rz + k * ez + 0.05, 'metal', { nc: true, tint: 0x8a8f99 });
+        }
       }
     }
     // the back row reaching the terrace above: a little bridge from its roof onto the next terrace
@@ -73,6 +99,7 @@ function house(B, k, x0, w, seed) {
   }
   stackCache.set(k + ':' + seed, recs); // (the kit pass and the neighbours' kit passes read these)
   if (!B.out) return recs; // a dry run (stackOf): only the cubes were wanted
+  outsideStairs(B, k, recs, want, near);
   // across the lane: bulbs from the house front to the lip, a banner now and then, an awning over the door
   const lr = rng(seed ^ 0x5eed);
   if (lr() < 0.45) bulbs(B, [cx + (lr() - 0.5) * w, y + 4.2 + lr(), zFront + 0.3], [cx + (lr() - 0.5) * 10, y + 4.5 + lr(), zs - 0.3], lr);
@@ -110,8 +137,8 @@ function dress(B, k, lot, near) {
     const st = c.stair;
     const front = c.row === rows - 1 && c.f < 2, back = !top && c.row === 0 && c.y + c.h > wallTop && c.y < wallTop + 4, low = c.f < 2, lip = c.roof ? 1 : 0;
     // (a tin lip: on real roofs, and over half the ground floors on the lane)
-    cubeKit(B, c, r, hid, { on: [back, low, front, low], corner: [false, !c.f, front && !c.f, !c.f], eave: [lip, 0, lip || (c.f ? 0 : 0.5), 0], stair: st && [st[0], st[3], st[4] - 1.2] });
-    if (st && low) stairKit(B, st[0], st[1], st[2], st[3], -1, st[0] > c.x1 ? 1 : -1, (r() * 8) | 0, hid);
+    cubeKit(B, c, r, hid, { on: [back, low, front, low], corner: [false, !c.f, front && !c.f, !c.f], eave: [lip, 0, lip || (c.f ? 0 : 0.5), 0], stair: st && (st[5] > 0 ? [st[0], st[4] + 1.2, st[3]] : [st[0], st[3], st[4] - 1.2]) });
+    if (st && low) stairKit(B, st[0], st[1], st[2], st[3], st[5] || -1, st[0] > c.x1 ? 1 : -1, (r() * 8) | 0, hid);
     // a water tank or a pigeon loft in a corner of a top roof nothing else stands on and nobody crosses
     const jr = r(), ja = r(), jb = r(), jy = r();
     if (c.roof && c.bare && jr < 0.4) {
@@ -168,7 +195,7 @@ function slope(B, k, a, b, r) {
 // the lane along terrace k: paving, a curb, washing-line poles on the lip with ziplines between them
 function lane(B, k, x0, x1) {
   const y = yOf(k), zs = zSouth(k), r = rng(hash2(k, 777));
-  B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs, 'concrete', { nc: true, tint: 0xcab8b0 });
+  B.add(x0, y - 0.02, zs - LANE, x1, y + 0.02, zs - 0.03, 'concrete', { nc: true, tint: 0xcab8b0 }); // (3 cm short of the lip: its edge was flush with the terrace's face)
   if (k > 0) for (const [a, b] of [[x0, Math.min(x1, SLICE.longStairs.x0)], [Math.max(x0, SLICE.longStairs.x1), Math.min(x1, BANISTER[0])], [Math.max(x0, BANISTER[1]), x1]]) for (const [c0, d0] of k === 2 ? cut(a, b, SLICE.lostFound.rect[0] + 12, SLICE.lostFound.rect[2] - 12) : [[a, b]]) for (const [c, d] of [...stairGaps(k).map((sx) => [sx - 1.15, sx + 1.15]), ...slopeSpans(k)].reduce((segs, [g0, g1]) => segs.flatMap(([p, q]) => cut(p, q, g0, g1)), [[c0, d0]])) if (d > c) B.add(c, y, zs - 0.4, d, y + 0.9, zs, 'concrete', { tint: 0xe0d0c8 }); // the lip wall (you can jump it; open where the Long Stairs come up, and at the Lost & Found's front steps)
   // poles every 14-22 m along the lip, a line between neighbours: laundry on most, bulbs on some
   let px = -316 + r() * 6;
@@ -234,7 +261,7 @@ function lostFound(B) {
 // the market: stalls, fire barrels, a canopy of bulbs, the bottom of the Long Stairs
 function plaza(B) {
   const [x0, z0, x1, z1] = SLICE.plaza.rect, r = rng(9191);
-  B.add(x0, -0.05, z0, x1, 0.02, z1, 'tile', { nc: true, tint: 0xe8c8b8 });
+  B.add(x0, -0.05, z0, x1, 0.04, z1, 'tile', { nc: true, tint: 0xe8c8b8 }); // (2 cm over the lane's paving it overlaps: level with it, they flickered)
   for (let i = 0; i < 14; i++) stall(B, x0 + 6 + (i % 7) * 12.5, 0, z0 + 6 + Math.floor(i / 7) * 12, r() < 0.5 ? 0 : 2, r);
   for (let i = 0; i < 6; i++) { const fx = x0 + 10 + i * 14 + r() * 4, fz = z0 + 12 + r() * 6; B.prop('firebarrel', fx, 0, fz, 0, 1, 0); B.light(fx, 1.6, fz, 0xff8a2a, 11, 1.2); }
   for (let i = 0; i < 6; i++) bulbs(B, [x0 + 2 + i * 15, 6.5, z0 + 1], [x0 + 10 + i * 15, 6.5, z1 - 1], rng(400 + i));
@@ -289,7 +316,7 @@ export function bottom(B, d) {
       const [x0, w, seed] = L[i];
       if (x0 + w < X0 - 12 || x0 > X1 + 12) continue; // only lots touching this chunk (+ a stair's width)
       if (!built(L[i])) continue;
-      house(B, k, x0, w, seed); did.push(i);
+      house(B, k, x0, w, seed, [L[i - 1], L[i + 1]].filter(built)); did.push(i);
     }
     if (KIT.on) for (const i of did) dress(B, k, L[i], [L[i - 1], L[i + 1]].filter(built)); // (its neighbours: the kit skips walls they hide)
     // a narrow stair up to the next terrace every ~70 m (plus the Long Stairs), so every lane connects
