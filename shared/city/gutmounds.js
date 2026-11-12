@@ -15,7 +15,7 @@ const SPOTS = [...Object.values(PLACES).map((p) => p.p), ...Object.values(NPC_SP
 
 // how much flesh swells at (x, z) with nothing in the way: mounds, and a vein web (0 or more, m)
 function swell(x, z) {
-  const m = Math.max(0, (0.62 * n1(x / 21, z / 21) + 0.38 * n2(x / 9, z / 9)) * 2.4 - 0.25) * 1.5;
+  const m = Math.max(0, (0.62 * n1(x / 21, z / 21) + 0.38 * n2(x / 9, z / 9)) * 2.4 - 0.25) * 2.3;
   const wx = x + 4 * w1(x / 19, z / 19), wz = z + 4 * w1(z / 19 + 7.7, x / 19 - 3.3), d = Math.abs(v1(wx / 26, wz / 26)) * 26 * 0.6, t = 1 - d / 1.1;
   return m + (t > 0 ? 0.35 * Math.sqrt(t * (2 - t)) : 0);
 }
@@ -68,7 +68,7 @@ export function gutMounds(B, streetAt, keep, holes) {
     const k = i * vz + j, y = GY + LIFT + h[k], x = X0 + i * C, z = Z0 + j * C;
     H[k] = y; if (y > hi) hi = y;
     const top = Math.min(1, h[k] / 1.6), vein = Math.max(0, 1 - Math.abs(v1((x + 4 * w1(x / 19, z / 19)) / 26, (z + 4 * w1(z / 19 + 7.7, x / 19 - 3.3)) / 26)) * 26 * 0.6 / 1.1);
-    col[k * 3] = Math.min(255, (0x8e + 0x30 * top) * (1 - 0.45 * vein)); col[k * 3 + 1] = Math.min(255, (0x16 + 0x30 * top) * (1 - 0.6 * vein)); col[k * 3 + 2] = Math.min(255, (0x22 + 0x22 * top) * (1 - 0.3 * vein)); // (fatty and pale on top, dark bruised cords)
+    col[k * 3] = Math.min(255, (0xa0 + 0x50 * top) * (1 - 0.45 * vein)); col[k * 3 + 1] = Math.min(255, (0x22 + 0x58 * top) * (1 - 0.6 * vein)); col[k * 3 + 2] = Math.min(255, (0x2c + 0x40 * top) * (1 - 0.3 * vein)); // (fatty and pale on top, dark bruised cords)
   }
   const f = { kind: 'field', ground: 1, x0: X0, z0: Z0, nx, nz, cell: C, H, col, ok, lo: GY, hi, mat: 'flesh', pulse: 3, at: [X0 + 0.5, GY, Z0 + 0.5] };
   B.shape(f);
