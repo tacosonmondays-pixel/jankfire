@@ -89,6 +89,7 @@ function endLocal(why) {
   W.held = false; W.aimHeld = false; W.zoom = 1; W.swap = 1; // the gun comes back up
   document.body.classList.remove('mechin');
   panel(false);
+  if (G.myBody && G.myBody.k === MS.f) G.myBody = null; // (its armour bar goes with it)
   if (MS.inst) { if (why === 'boom') { mechBurst(MS.inst, ME.vel); const dead = MS.inst; MS.inst = null; setTimeout(() => freeMech(dead), 7000); } else MS.inst.root.removeFromParent(); }
   MS.camLen = Math.min(MS.camLen, 3);
 }
@@ -800,3 +801,4 @@ export function mechFrameRow(cur, onPick) {
 }
 // (tests + screenshots: the mechs out in the world)
 export const mechWorld = () => [...WM.values()].map((m) => ({ id: m.id, o: m.o, f: m.f, p: m.p, st: m.st, yaw: m.yaw }));
+export const mechDebug = () => ({ WM, MS, DRONES }); // (screenshot scripts: hold a fall mid-air)
