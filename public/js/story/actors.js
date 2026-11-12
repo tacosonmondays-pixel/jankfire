@@ -35,6 +35,10 @@ export const CLIPS = {
   write: { len: 9e9, f(c, t, k) { c.armL.rotation.x += 0.9 * k; c.foreL.rotation.x += 1.0 * k; c.arm.rotation.x += 0.8 * k; c.foreR.rotation.x += (1.1 + Math.sin(t * 18) * 0.12) * k; c.arm.rotation.z -= 0.2 * k; c.head.rotation.x -= 0.4 * k; } },
   hold: { len: 9e9, f(c, t, k) { c.arm.rotation.x += 0.7 * k; c.armL.rotation.x += 0.7 * k; c.foreR.rotation.x += 0.9 * k; c.foreL.rotation.x += 0.9 * k; c.arm.rotation.z -= 0.1 * k; c.armL.rotation.z += 0.1 * k; } },
   shock: { len: 1.2, f(c, t, k) { const b = ss(t / 0.12) * k; c.arm.rotation.z += 0.9 * b; c.armL.rotation.z -= 0.9 * b; c.foreR.rotation.x += 1.2 * b; c.foreL.rotation.x += 1.2 * b; c.spine.rotation.x += 0.15 * b; c.head.rotation.x += 0.1 * b; } },
+  // "you're late." (mina, act III): a slow look away down the street, chin down, a beat; then the head comes round to
+  // you, sharp, with a little overshoot, she straightens, chin up, a tilt, and holds it (the eyes get there first: face.js)
+  late: { len: 3.2, f(c, t, k) { const away = ss(t / 0.5) * (1 - ss((t - 1.1) / 0.28)), back = ss((t - 1.1) / 0.28), over = bump((t - 1.3) / 0.35) * 0.07, up = back * (1 - ss((t - 2.6) / 0.6));
+    c.head.rotation.y += (-0.7 * away + over) * k; c.head.rotation.x += (-0.06 * away + 0.07 * up) * k; c.head.rotation.z += 0.08 * up * k; c.spine.rotation.x += 0.035 * up * k; c.spine.position.y += 0.008 * up * k; } },
 };
 
 // def: an npc def (shared/story content). at: [x, y, z] world (already offset by the host). face: yaw
@@ -158,7 +162,7 @@ function pose(a, dt, moving, look) {
   }
   if (c.stance) c.stance(c, t, a, moving); // (a look's own stance: mina waits with her hands clasped, or leans on her wall)
   // talking: a hand moves with the words, little nods
-  if (a.talking && a.voice.level > 0.05) { const k = a.voice.level; c.foreR.rotation.x += 0.8 * k; c.arm.rotation.x += 0.3 * k; c.head.rotation.x += Math.sin(t * 13) * 0.04 * k; }
+  if (a.talking && a.voice.level > 0.05) { const k = a.voice.level; if (c.talk) c.talk(c, t, k, a); else { c.foreR.rotation.x += 0.8 * k; c.arm.rotation.x += 0.3 * k; c.head.rotation.x += Math.sin(t * 13) * 0.04 * k; } } // (c.talk: a look's own way of talking)
   if (a.hold) CLIPS.hold.f(c, t, 1);
   // the clip on top, blended in and out
   if (a.clip) {

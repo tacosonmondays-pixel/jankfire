@@ -30,6 +30,13 @@ for (const [id, d] of Object.entries(STORY_CONTENT_ITEMS)) {
   addStoryItem(id, { kind, name: d.name, desc: d.desc, color: kind === 'quest' ? '#ffe14d' : '#7dff4f', quest: kind === 'quest' && !!d.keep, keep: !!d.keep });
 }
 
+// the writer's 'weapon' items (LOST PROPERTY from the bins...): a mission gives or drops them by id, and they land in
+// the bag as their base gun with their name (and rarity). before, the id itself was the base: no such weapon, so the
+// bag refused it and it lay on the floor for good, its card showing the raw id
+export const NAMED_WEAPONS = Object.create(null);
+for (const [id, d] of Object.entries(STORY_CONTENT_ITEMS)) if (d.kind === 'weapon' && typeof d.base === 'string' && Object.hasOwn(WEAPONS, d.base)) NAMED_WEAPONS[id] = { b: d.base, n: d.name, r: RARITIES.includes(d.rarity) ? d.rarity : 'common', desc: d.desc };
+const namedDesc = (it) => { if (!it.n) return ''; for (const w of Object.values(NAMED_WEAPONS)) if (w.b === it.b && w.n === it.n) return w.desc || ''; return ''; }; // (its own line, not the base gun's)
+
 const HELD = new Set(['primary', 'secondary', 'melee']);
 const has = (T, k) => typeof k === 'string' && Object.hasOwn(T, k);
 // what sort of thing a base is: weapon (gun or melee), gear (the G items), streak, snack, junk, quest. null = not a thing
@@ -46,12 +53,13 @@ export function infoOf(it) {
   const b = it && it.b, k = kindOf(b);
   const d = has(WEAPONS, b) ? WEAPONS[b] : has(ITEMS, b) ? ITEMS[b] : has(STREAKS, b) ? STREAKS[b] : has(STORY_ITEMS, b) ? STORY_ITEMS[b] : has(IMPLANTS, b) ? { name: IMPLANTS[b].name, color: '#ff4fd8', desc: `${IMPLANTS[b].text} perk: ${IMPLANTS[b].perk}. downside: ${IMPLANTS[b].downside}.` } : null;
   const L = it.lg && has(LEGENDARIES, it.lg) ? LEGENDARIES[it.lg] : null;
-  return d ? { kind: k, name: L ? L.name : (it.n || d.name), color: d.color || '#ffe14d', desc: L ? `"${L.flavour}" ${L.quirk}` : d.desc || '' } : null;
+  return d ? { kind: k, name: L ? L.name : (it.n || d.name), color: d.color || '#ffe14d', desc: L ? `"${L.flavour}" ${L.quirk}` : namedDesc(it) || d.desc || '' } : null;
 }
 
 export function newInv() { return { bag: Array(INV.bag).fill(null), cap: INV.bag, bar: Array(INV.bar).fill(null), locker: [], next: 1 }; }
 // a fresh item (not in any inventory yet): makeItem('redline', { r: 'rare', s: 12345 })
 export function makeItem(b, o = {}) {
+  if (has(NAMED_WEAPONS, b)) { const w = NAMED_WEAPONS[b]; return makeItem(w.b, { r: w.r, ...o, n: o.n || w.n }); } // a story weapon id: its base gun, with its name
   if (!kindOf(b)) return null;
   const it = { b, r: RARITIES.includes(o.r) ? o.r : 'common', s: Number.isInteger(o.s) ? o.s >>> 0 : 0 };
   if (typeof o.n === 'string' && o.n) it.n = o.n.slice(0, 40);

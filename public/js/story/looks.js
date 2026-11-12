@@ -241,6 +241,11 @@ const LOOKS = {
   // helmet (b: a wastepaper-bin helmet and a cabinet-drawer chest), a laptop strapped to the left arm for a shield
   intern() { return internLook(0); },
   intern_b() { return internLook(1); },
+  // MINA CALE (normal, 70, 1.62 m): wiry and upright, a grey braid over her right shoulder, a hand-knitted cardigan,
+  // Mall Rat climbing gloves she never takes off, a faded Big Value wristband that isn't hers (mina_wall: in the
+  // Digester Wall up to her waist, forearms on its lip)
+  mina() { return minaLook(0); },
+  mina_wall() { return minaLook(1); },
   // SISTER AGENDA (puppet): a Choir robe, a face stretched into a permanent smile, a Filofax grown into her hand
   sister_agenda() {
     const SK = 0xf6e08a, robe = patMat('choirrobe', 64, 64, speckle('#5a2a7a', ['#4a1a6a', '#6a3a8a']), [2, 2], 0.8);
@@ -430,6 +435,48 @@ function internLook(v) {
     face: { eyeR: 0.026, eyeY: 0.15, iris: 0x5a4030, mouthW: 0.07, mouthY: 0.07, lip: 0xa86060, brow: 0x2a1a10, browW: 0.06 } });
   p.ch.foreL.add(box(0.04, 0.26, 0.34, grey, -0.06, -0.14, 0)); // the laptop shield
   return { ...p, kind: 'normal', height: 1.75, eyeY: 1.65 };
+}
+// MINA: v 1 = in the wall (a flesh mound to her waist, no legs, forearms on the lip). her stance and talk are her own
+// (actors.js calls ch.stance / ch.talk): hands clasped in front like someone waiting at a gate, a brisk look round now
+// and then (still waiting), small dry gestures when she talks. her resting face is level and a little narrowed
+const MINA_REST = { lid: 0.84, jaw: 0, st: 0.92, smile: 0.06, by: -0.003, bt: 0.1 };
+const win = (t, a, b, c, d) => { const s = (x) => (x <= 0 ? 0 : x >= 1 ? 1 : x * x * (3 - 2 * x)); return s((t - a) / (b - a)) * (1 - s((t - c) / (d - c))); };
+function minaLook(v) {
+  const SK = 0xe8b49a, knitM = patMat('minaknit', 64, 64, knit('#3a9a8a', '#2c7a6c'), [2, 2]), rib = flat(0xd8a03a), hair = flat(0xcfccc4), glove = flat(0x2e2e36);
+  const cord = patMat('minacord', 32, 32, (c, w, h) => { c.fillStyle = '#8a4a32'; c.fillRect(0, 0, w, h); c.fillStyle = '#6e3a26'; for (let x = 0; x < w; x += 4) c.fillRect(x, 0, 2, h); }, [2, 1]);
+  const wall = v ? patMat('pinkwall', 64, 64, speckle('#e06aa0', ['#b04878', '#ff9ac8']), [3, 3], 0.6) : null;
+  const p = person({ skin: SK, legMat: cord, shoe: 0x5a4a8a, s: 0.92, legS: 0.92, hunch: 0.02, hipW: 0.09, thigh: 0.85, shin: 0.85, foot: 0.85, torsoH: 0.48, shW: 0.19, armR: 0.85, upper: 0.24, fore: 0.21,
+    sleeveMat: knitM, foreMat: knitM, handMat: glove, wrongKnee: false,
+    hips: v ? (b) => { b.add(sph(0.6, wall, 0, 0.42, -0.02, 1, 1, 0.8, 16)); b.add(sph(0.3, wall, 0, 0.98, -0.24, 1.2, 0.43, 0.83, 14)); b.add(sph(0.2, wall, 0, 1.0, 0, 1.08, 0.42, 0.82, 14)); } : null, // (the wall up to her waist, a lip in front she leans on: the floor is at body y 0.07)
+    torso: (sp, tH) => {
+      sp.add(sph(0.2, knitM, 0, tH * 0.48, 0, 1.05, 1.32, 0.72, 14)); sp.add(cyl(0.2, 0.21, 0.06, rib, 0, 0.02, 0, 14)); // the cardigan, its ribbed hem
+      sp.add(box(0.035, 0.3, 0.02, rib, 0, tH * 0.3, -0.14)); for (let i = 0; i < 4; i++) sp.add(sph(0.012, flat([0xb07a3a, 0xc8a040, 0xd03a3a, 0x9aa0aa][i]), 0, tH * (0.42 - i * 0.09), -0.152)); // band, odd buttons
+      for (let i = 0; i < 7; i++) sp.add(sph(0.026 - i * 0.0015, hair, 0.115 + (i % 2 ? 0.012 : -0.012) * (i > 0), tH * (0.98 - i * 0.075), -0.06 - Math.min(i, 2) * 0.04)); // the braid, over her right shoulder
+      sp.add(cyl(0.016, 0.016, 0.02, flat(0xff7a2a), 0.115, tH * 0.47, -0.15, 8)); // its tie (climbing cord)
+    },
+    headR: [0.113, 0.146, 0.127], neck: 0.05,
+    head: (h, r, m) => {
+      h.add(sph(1, m, 0, r[1], 0, r[0], r[1], r[2], 16));
+      h.add(sph(1, hair, 0, r[1] * 1.22, 0.022, r[0] * 1.05, r[1] * 0.86, r[2] * 1.0, 16)); // the hair, pulled back tight
+      h.add(sph(0.022, m, 0, r[1] * 0.92, -r[2] * 1.02, 0.75, 1.5, 1.0)); // a long nose
+      for (const sx of [-1, 1]) h.add(sph(0.03, m, sx * r[0], r[1] * 0.98, 0.005, 0.45, 1.2, 0.85)); // ears
+    },
+    face: { eyeR: 0.025, eyeSep: 0.053, eyeY: 0.168, iris: 0x6f93a8, mouthW: 0.064, mouthY: 0.072, lip: 0xb0706a, lipR: 0.0085, brow: 0xd8d4cc, browW: 0.048, lidColor: SK, rest: MINA_REST } });
+  const c = p.ch;
+  c.handL.add(cyl(0.05, 0.05, 0.03, flat(0xe8d98a), 0, 0.012, 0, 10)); // the wristband (Big Value yellow, faded)
+  if (v) for (const j of [c.legL, c.legR, c.kneeL, c.kneeR]) for (const o of [...j.children]) if (o.isMesh) j.remove(o); // (her legs are in the wall)
+  // the stance on top of actors.js's rest pose: on the wall her forearms lie on its lip, hands together; standing, her
+  // hands are clasped in front of her (not while she walks). either way, every few seconds a quick look off down the
+  // street, held, then back (not mid-sentence, not mid-clip)
+  c.stance = (cc, t, a, moving) => {
+    if (v) { cc.arm.rotation.x += 0.38; cc.armL.rotation.x += 0.38; cc.arm.rotation.z -= 0.14; cc.armL.rotation.z += 0.14; cc.foreR.rotation.x += 0.7; cc.foreL.rotation.x += 0.7; cc.foreR.rotation.y += Math.PI; cc.foreL.rotation.y -= Math.PI; cc.foreR.rotation.z += 0.5; cc.foreL.rotation.z -= 0.46; } // (palms down on the wall's lip, turned at the forearm; make_cast_mina.py STANCE shapes the lip to this)
+    else if (!moving) { const k = a.talking ? 0.6 : 1; cc.arm.rotation.x += 0.28 * k; cc.armL.rotation.x += 0.3 * k; cc.arm.rotation.z -= 0.12 * k; cc.armL.rotation.z += 0.12 * k; cc.foreR.rotation.x += 0.95 * k; cc.foreL.rotation.x += 1.0 * k; cc.foreR.rotation.z -= 0.62 * k; cc.foreL.rotation.z += 0.6 * k; }
+    if (moving || a.talking || a.clip) return;
+    const n = Math.floor(t / 5.3), ph = t / 5.3 - n, side = [-1, 1, -1, -0.6][n % 4];
+    const g = win(ph, 0.5, 0.58, 0.8, 0.9); cc.head.rotation.y += 0.62 * side * g; cc.head.rotation.x += 0.05 * g;
+  };
+  c.talk = (cc, t, k) => { cc.foreR.rotation.x += (v ? 0.35 : 0.5) * k; cc.arm.rotation.x += 0.12 * k; cc.foreR.rotation.z -= 0.15 * k; cc.head.rotation.x += (0.03 + Math.sin(t * 11) * 0.025) * k; cc.head.rotation.z += Math.sin(t * 2.3) * 0.04 * k; }; // (small and dry: a flat hand, a tilt)
+  return { ...p, kind: 'normal', height: 1.62, eyeY: 1.5 };
 }
 const FACE_LOCK = new WeakMap();
 export const faceLocked = (face) => FACE_LOCK.get(face);

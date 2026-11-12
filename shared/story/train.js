@@ -29,6 +29,11 @@ export const CREW = [ // where the three would fight (static stand-ins for now: 
 ];
 const FAR = { p: [0, -900, 0], r: 0.1 }; // no Machine, Locker or clinic on a train
 export const TRAIN = { id: 'story_train', name: 'The Under-Hill Loop', killY: -30, spawn: [0, 1.1, 4.7], yaw: 0, terminal: FAR, locker: FAR, clinic: FAR };
+// m06's steps that happen on the train (the ride in, the fight, Jack, the terminus). on the train at any other time (a slot
+// started on the old ?train=1 demo link, a save from before Act I was joined up) there is nothing to do and no way off,
+// so the client takes you home. q: m06's quest state, step: its current step ('' when it isn't running)
+export const ONBOARD = ['ride', 'hold', 'jack', 'break', 'terminus', 'p5b'];
+export const stranded = (q, step) => !(q && q.done) && !ONBOARD.includes(step);
 export const ARENA = { boreR: 4.6, cy: 3.13, z0: -70, z1: 56, cut: CAR.flat.z0 }; // the bore, its axis above the track bed (y = 0), how far the tunnel's boxes run · the train's back once the wagon is bitten off
 export const deckAt = (z) => (z < (CAR.wagon.z1 + CAR.flat.z0) / 2 ? CAR.wagon.deck : CAR.flat.deck);
 // what you stand on at z: the deck, or the van's roof / stairs if you are up there (feet at y)

@@ -30,11 +30,12 @@ export const FACES = {
 };
 
 // o: { z: face plane (front, < 0), eyeR, eyeSep, eyeY, iris, pupil, mouthW, mouthY, lip, lipR, teeth: 'needle' | 'tomb' | 'none',
-//      skin, brow, browW, inner (mouth inside), glasses, flatFace (normals: painted dot eyes, no lids) }
+//      skin, brow, browW, inner (mouth inside), glasses, flatFace (normals: painted dot eyes, no lids), rest (a FACES-style
+//      pose this face uses for 'neutral': mina's level, narrowed look) }
 export function buildFace(head, o = {}) {
   const S = o.s || 1;
   const z = o.z ?? -0.13, er = (o.eyeR ?? 0.045) * S, sep = (o.eyeSep ?? 0.06) * S, ey = o.eyeY ?? 0.17;
-  const rig = { face: 'neutral', flap: 0, look: null, cur: { ...FACES.neutral }, blinkT: 1 + Math.random() * 3, blink: 0, eyes: [], lids: [], brows: [], t: Math.random() * 10 };
+  const rig = { face: 'neutral', flap: 0, look: null, cur: { ...(o.rest || FACES.neutral) }, rest: o.rest || null, blinkT: 1 + Math.random() * 3, blink: 0, eyes: [], lids: [], brows: [], t: Math.random() * 10 };
   const root = new THREE.Group(); root.position.set(0, 0, 0); head.add(root); rig.root = root;
   // ---- eyes: a white ball, an iris disc and a pupil, in a pivot that turns to look
   for (const sx of [-1, 1]) {
@@ -96,7 +97,7 @@ export function buildFace(head, o = {}) {
 const tv = new THREE.Vector3(), hv = new THREE.Vector3(), hq = new THREE.Quaternion();
 function update(r, dt) {
   r.t += dt;
-  const F = FACES[r.face] || FACES.neutral, c = r.cur, k = dt > 0 ? Math.min(1, dt * 9) : 1;
+  const F = (r.face === 'neutral' && r.rest) || FACES[r.face] || FACES.neutral, c = r.cur, k = dt > 0 ? Math.min(1, dt * 9) : 1;
   for (const key in F) c[key] = lerp(c[key], F[key], k);
   // blinks: every 2-5 s, sometimes a double
   r.blinkT -= dt;

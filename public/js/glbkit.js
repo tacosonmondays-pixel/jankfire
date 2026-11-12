@@ -43,6 +43,7 @@ function fetchLate(id, pri = 3) {
   late.busy++;
   queueGlb(id, url, pri, (gltf) => {
     late.busy--;
+    gltf.scene.animations = gltf.animations || []; // (clips ride along on the scene: clones copy them. the hero mechs play theirs by name)
     if (!prepAuthored(id, gltf.scene)) { landed(id); fail(id); return; }
     for (const f of late.by.get(id) || []) try { f(id); } catch (e) { console.warn('late model', id, e); }
     landed(id);

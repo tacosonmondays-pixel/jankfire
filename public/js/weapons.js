@@ -30,6 +30,7 @@ import { katanaHands, katanaStep, katanaEvent, KAT_VM } from './katanavm.js'; //
 import { weaponIcon, clearIcons, itemIcon, drawIcon } from './icons.js';
 import { whenGlb } from './glbkit.js';
 import { rigFire, rigItem, rigVM, rigBlockKey, rigReload } from './rig.js'; // overdrive rig killstreak
+import { mechVM } from './mech.js'; // mech drop killstreak
 import { tickScalesVM } from './scales.js';
 import { PARRY } from '/shared/weapons.js';
 import { SIDEARMS, reloadAnim, sideParts, sideHand, sideShot, sideStep, stepOffHand, sideEvent } from './sidearms.js'; // Plan B, Lefty & Righty, Half a Shotgun
@@ -1437,6 +1438,7 @@ export function updateWeapons(dt, now) {
   if (ME.alive && now < (ME.ballUntil || 0)) { W.held = false; W.aimHeld = false; W.dashHeld = false; W.exhale = 0; W.charge = 0; } // wrecking ball: no hands
   const id = W.cur, w = WEAPONS[id];
   if (rigVM(dt, now, vmRoot)) return; // overdrive rig: guns holstered, mechanical fists instead (rig.js)
+  if (mechVM(dt, now, vmRoot)) return; // in a mech: no gun, its flags (mech.js)
   const alive = ME.alive;
   let smoking = false, firing = false, blowing = false, spinning = false;
 

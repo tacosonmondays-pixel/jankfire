@@ -9,6 +9,8 @@ import { installRig } from './rig.js';
 import { installBody } from './bodyhp.js'; // the wrecking ball + rig last until they break
 import { BODY, bodyKinds } from '../shared/bodyhp.js';
 import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
+import { installMech } from './mech.js'; // mech drop killstreak
+import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
@@ -185,6 +187,10 @@ if (process.env.JF_TARGET) for (const t of Object.values(TARGETS)) for (const k 
 // test knobs for the overdrive rig: earn it after this many kills, make it last this many seconds
 if (process.env.JF_RIG) STREAKS.overdrive.kills = Number(process.env.JF_RIG) || STREAKS.overdrive.kills;
 if (process.env.JF_RIG_DUR) STREAKS.overdrive.dur = Number(process.env.JF_RIG_DUR) || STREAKS.overdrive.dur;
+if (process.env.JF_MECH) STREAKS.mechdrop.kills = Number(process.env.JF_MECH) || STREAKS.mechdrop.kills; // test knob: earn the mech drop after this many kills (bots too; JF_MECH_FRAME=paperplane|nightshift picks the bots' frame)
+if (process.env.JF_MECH_DROP) MECH.drop.delay = Number(process.env.JF_MECH_DROP) || MECH.drop.delay; // test knob: seconds the mech falls (screenshots on slow browsers)
+if (process.env.JF_MECH_WAIT) MECH.wait = MECH.idle = Number(process.env.JF_MECH_WAIT) || MECH.wait; // test knob: seconds an empty mech waits for you
+if (process.env.JF_MECH_HP) for (const f of FRAMES) BODY[f].hp = MECH[f].hp = Math.max(1, Math.round(MECH[f].hp * (Number(process.env.JF_MECH_HP) || 1))); // test knob: x the mechs' armour (0.2 = quick ejects)
 if (process.env.JF_BODY_DECAY) for (const k of bodyKinds) BODY[k].decay *= Number(process.env.JF_BODY_DECAY) || 1; // test knob: the ball / rig wear out faster
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
@@ -465,6 +471,7 @@ class Room {
     if (p.look.color) p.color = p.look.color;
     p.card = cleanCard(m.card);
     p.streaks = validStreaks(m.streaks);
+    p.mechFrame = mechFrame(m.mf); // mech drop: your frame (the deploy message carries it too)
     p.kfx = rollKfx(p.kfxWant, inv, favs);
     p.grap = ownedGrapple(m.grap, inv);
     p.kc = !!m.kc;
@@ -523,6 +530,7 @@ class Room {
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
     if (this.brOn) this.brLeave(p); // their pockets spill out
     if (this.isEcon()) this.econLeave(p);
+    this.mechLeave(p); // no orphan mechs
     this.players.delete(p.id);
     // whatever they threw goes with them (with no owner it would ignore teams and bubbles); their holes and gas go inert
     for (const pr of this.projectiles.values()) if (pr.o === p.id) this.removeProj(pr);
@@ -923,6 +931,7 @@ class Room {
   // shots per second for a gun right now: Plant & Defuse slows a few down (shared/sdgun.js rof)
   rateOf(id, w, hp) { const r = fireRate(w, hp); return this.isEcon() ? sdRate(id, r) : r; }
   botFire(b, t, D) {
+    if (this.mechOn(b)) return; // in a mech the moves are its guns (mechBotStep)
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
     if (this.isEcon() && !this.econBotShot(b, t, D)) return;
@@ -951,7 +960,7 @@ class Room {
         let maxT = mh ? mh.t : w.range, victim = null, head = false;
         for (const p of this.players.values()) {
           if (p === b || !p.alive || (p.isBot && this.mode === 'coop')) continue;
-          for (const hb of p.trap ? trapBoxes(p.pos) : playerBoxes(p.pos)) { // a soap bubble gets hit on the bubble
+          for (const hb of p.trap ? trapBoxes(p.pos) : this.mechHitBoxes(p) || playerBoxes(p.pos)) { // a soap bubble gets hit on the bubble (a mech on its frame)
             const h = rayBox(o, d, hb, maxT);
             if (h && h.t < maxT) { maxT = h.t; victim = p; head = hb.head; }
           }
@@ -995,6 +1004,7 @@ class Room {
     if (!frozen) this.traffic.botYield(b, think); // look both ways (mostly)
     if (frozen) { b.vel[0] = 0; b.vel[2] = 0; }
     if (b.rig && this.rigOn(b, n)) { this.rigBotStep(b, think, dt, n); return; } // overdrive rig: its own movement + plan (server/rig.js)
+    if (b.mech && this.mechOn(b, n)) { this.mechBotStep(b, think, dt, n); return; } // mech: its own movement + plan (server/mech.js)
     const v = b.vel;
     const slipping = n < b.slipUntil;
     if (!b.ai.dummy || !b.ai.dummy.move) {
@@ -1075,7 +1085,7 @@ class Room {
     this.sendIc(p);
   }
   useItem(p, m) {
-    if (this.rigOn(p)) { this.sendIc(p); return; } // no items in the overdrive rig
+    if (this.rigOn(p) || this.mechOn(p)) { this.sendIc(p); return; } // no items in the overdrive rig (or a mech)
     if (!p.alive || !has(ITEMS, m.i)) return;
     if (this.gearItem(p, m)) return; // instant camera snap (free), goggles flash without goggles on
     const c = this.itemCharges(p);
@@ -1211,7 +1221,7 @@ class Room {
     const it = ITEMS.wand, n = now();
     if (!t.alive || t.trap || n < (t.trapSafe || 0) || (this.round && this.round.over)) return false;
     if (this.isBall(t, n)) return false; // a 2 m steel wrecking ball just bursts the soap (its client rolls it, a bubble can't hold it)
-    if (this.rigOn(t, n)) return false; // so does a 3 m overdrive rig
+    if (this.rigOn(t, n) || this.mechOn(t, n)) return false; // so does a 3 m overdrive rig (or a mech)
     if (owner && owner !== t && !t.isBot && n - t.spawnT < 1200) return false; // spawn protection
     for (const b of this.bubbles.values()) if (this.inBubble(b, t)) return false; // soap can't get into a shield bubble
     if (!reflected && owner && owner !== t && owner.alive && t.reverseUntil > n) { // reverse card: the blower gets sealed in instead
@@ -1286,6 +1296,7 @@ class Room {
   }
   knock(t, v, w) {
     if (this.rigOn(t)) v = this.rigShrug(v); // the overdrive rig shrugs it off
+    if (this.mechOn(t)) v = this.mechShrug(t, v); // so does a mech
     if (Math.hypot(v[0], v[1], v[2]) >= 1) t.knockT = now(); // EPIC anti-farm: getting shoved around isn't moving (0-knockback bullets don't count)
     if (t.isBot) {
       if (t.ai.dummy && t.ai.dummy.move) return;
@@ -1297,7 +1308,7 @@ class Room {
     send(t, { t: 'kb', v: v.map(r2), w });
   }
   slip(t, k) {
-    if (this.rigOn(t)) return; // a rig doesn't slip on peels (or marbles)
+    if (this.rigOn(t) || this.mechOn(t)) return; // a rig (or a mech) doesn't slip on peels (or marbles)
     t.knockT = now(); // sliding on a banana isn't moving either
     if (t.isBot) { t.slipUntil = now() + 1700; t.vel[1] = Math.max(t.vel[1], 6.5); t.onGround = false; return; }
     send(t, k ? { t: 'slip', k } : { t: 'slip' }); // k: what you slipped on (the client says MARBLES! for marbles)
@@ -1326,6 +1337,7 @@ class Room {
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
     if (t.rig) { amt = this.rigSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // overdrive rig: block, then its armour
+    if (t.mech) { amt = this.mechSoak(t, amt, attacker, w, from); if (amt <= 0) return true; } // mech: the knight's shield, then its armour (your HP is safe)
     if (this.isEcon()) amt = this.econArmor(t, amt, attacker, w, hs);
     if (this.brOn) { amt = this.brDamage(t, amt, attacker, w); if (amt <= 0) return false; } // loot tiers + armour
     t.hp -= amt;
@@ -1346,7 +1358,7 @@ class Room {
   sleep(t, by, secs) {
     if (!t.alive) return;
     this.tag(t, by, 'bow');
-    if (this.rigOn(t)) return; // the overdrive rig doesn't nap (the arrow still hurt)
+    if (this.rigOn(t) || this.mechOn(t)) return; // the overdrive rig (or a mech) doesn't nap (the arrow still hurt)
     t.sleepUntil = now() + secs * 1000;
     if (t.isBot) { if (t.ai) t.ai.hook = null; t.g = null; return; } // knocked flat: lets go of the rope too (snapshots show FLAGS.SLEEP)
     send(t, { t: 'sleep', dur: secs }); // players send FLAGS.SLEEP themselves while it lasts
@@ -1419,6 +1431,7 @@ class Room {
     this.lassoDrop(t, 'dead'); // a rope they held (or hung off) drops
     t.alive = false; t.hp = 0; t.deaths++; t.g = null; t.reverseUntil = 0; t.oobAt = 0;
     this.rigDeath(t); // (every client bursts the frame open from the kill message)
+    this.mechDeath(t, attacker); // died in a mech (void, a train): it blows up
     if (t.ai) { t.ai.hook = null; t.ai.route = null; } // a fresh route from the spawn, not the old waypoint index
     // the mode's respawn delay; skipping the killcam ('respawn') can't go below it
     t.respawnAt = t.minRespawnAt = now() + (t.isBot && t.ai.dummy ? 700 : this.game === 'bomb' && this.teamsOn() ? BOMB.respawn : 2500);
@@ -1464,6 +1477,7 @@ class Room {
       }
       // bots have no tray, but the overdrive rig is theirs to earn too (they suit up right away)
       if (killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && !this.warm && killer.streak === STREAKS.overdrive.kills) this.rigBotEarn(killer); // (a lobby's warm-up earns nothing)
+      if (killer.isBot && this.mode !== 'training' && !this.modeWeapon(killer) && !(this.chaosKit && this.chaosKit.noStreaks) && !this.warm && this.streaksOn() && !this.brOn && !this.zm && killer.streak === STREAKS.mechdrop.kills) this.mechBotEarn(killer); // bots call in mechs too
     }
     // killcam: humans who have it on wait for it to finish (or skip it) before respawning
     if (!t.isBot && t.kc && killer && killer !== t && this.mode !== 'training') t.respawnAt = Math.max(t.respawnAt, now() + 9000);
@@ -1652,6 +1666,7 @@ class Room {
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
     if (this.isBall(t) || this.rigOn(t)) h = 0; // a wrecking ball has no head, and the rig's is armoured
+    if (h && this.mechOn(t)) mul *= this.mechHeadMul(WEAPONS[wid], n, h); // a mech's head is the cockpit: MECH.head
     if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
     const w = WEAPONS[wid], pellets = w.pellets || 1;
     const rx = this.rifleShot(p, t, wid, h); // rifle pack: bursts, the lever ramp, quick-scopes
@@ -1671,7 +1686,7 @@ class Room {
   }
 
   onHit(p, m) {
-    if (this.rigOn(p)) return; // no guns in the overdrive rig: its hits are judged in server/rig.js
+    if (this.rigOn(p) || this.mechOn(p)) return; // no guns in the overdrive rig or a mech: their hits are judged in server/rig.js / mech.js
     if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
@@ -1761,7 +1776,7 @@ class Room {
   }
 
   onPush(p, m) {
-    if (this.rigOn(p) || (m.w === 'hook' && p.hackedUntil > now())) return; // no grapple in the rig; a hacked one is fried
+    if (this.rigOn(p) || this.mechOn(p) || (m.w === 'hook' && p.hackedUntil > now())) return; // no grapple in the rig or a mech; a hacked one is fried
     if (m.w !== 'hook' && this.chaosKit && !this.chaosKit.slots.includes(m.w)) return;
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return;
@@ -1964,7 +1979,7 @@ class Room {
   }
 
   onFire(p, m) {
-    if (this.rigOn(p)) return; // no guns in the overdrive rig
+    if (this.rigOn(p) || this.mechOn(p)) return; // no guns in the overdrive rig (or a mech)
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     if (!w || !p.alive || this.isBall(p)) return; // no hands in the wrecking ball
     if (!this.allowed(p, m.w)) return; // gun game rung / zombie claw only
@@ -2266,7 +2281,7 @@ class Room {
     for (const t of this.players.values()) {
       if (!t.alive || skip(t)) continue;
       let best = Infinity;
-      for (const hb of t.trap ? trapBoxes(t.pos) : this.isBall(t) ? ballBoxes(t.pos) : playerBoxes(t.pos)) { // a soap bubble gets hit on the bubble; a wrecking ball is one big ball
+      for (const hb of t.trap ? trapBoxes(t.pos) : this.isBall(t) ? ballBoxes(t.pos) : this.mechHitBoxes(t) || playerBoxes(t.pos)) { // a soap bubble gets hit on the bubble; a wrecking ball is one big ball
         const e = { min: hb.min.map((x) => x - r), max: hb.max.map((x) => x + r) };
         const h = rayBox(prev, dir, e, len + 1e-3);
         if (h && h.t < best) best = h.t;
@@ -2307,6 +2322,7 @@ class Room {
       this.epicProj = pr; // a kill by this projectile counts from where it was fired (epicOf)
       const w = WEAPONS[pr.k];
       if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
+      if (pr.k === 'mechmissile') { this.mechMissileStep(pr, dt); continue; } // mech swarm missiles: the same, corkscrewing
       const age = (n - pr.born) / 1000;
       if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
       if (pr.k === 'tennis') { this.tennisStep(pr, dt, n); continue; } // counted bounces (server/primaries.js)
@@ -2770,6 +2786,7 @@ class Room {
     p.slipUntil = 0; p.burnUntil = 0; p.burnBy = 0; p.burnTick = 0; p.sleepUntil = 0; p.frozenUntil = 0; p.frost = 0; p.frostT = 0; p.pinUntil = 0; p.nails = null; p.held = null;
     p.healLeft = 0; p.reverseUntil = 0; p.g = null; p.lastAttacker = 0; p.ground = null;
     this.rigReset(p); // a new round ends the overdrive rig (and any hack)
+    this.mechLife(p); // ...and a mech (quietly)
     if (p.lz) { this.lassoCut(p, 'gone'); p.lz.fl = null; } // a fresh life: off any rope, no flight still counting
     if (p.ai) { p.ai.hook = null; p.ai.route = null; }
     p.parryT = 0; p.staggerUntil = 0; // katana parry: a new life starts with the guard ready (the client resets too)
@@ -2780,6 +2797,7 @@ class Room {
   }
   resetWorld() {
     this.resetChaos();
+    this.mechReset(); // no mech outlives a round, a map or a mode
     this.gearWorldReset(); // photo frames come down
     this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts();
     this.mpatches.clear(); // clients wipe theirs on 'clear'
@@ -2851,6 +2869,7 @@ class Room {
         this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted
         if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.6, this.boxes)) p.ground = pos.slice(); // standing on something
         this.rigSnap(p); // the rig flags only count from someone who activated it; no rope in the rig or when hacked
+        this.mechSnap(p); // mech flags only from a real pilot, and the speed caps (server/mech.js)
         if (p.trap) this.holdTrapped(p, true); // sealed in a soap bubble: you go where it floats
         if (p.pos[1] < this.map.killY) this.kill(p, null, 'void');
         else if (this.map.shredders && inShredder(this.map, p.pos)) { p.pitT = now(); this.kill(p, null, 'void'); } // the shredder pit's teeth
@@ -2901,6 +2920,7 @@ class Room {
       case 'streaks': { // with a streak going the new picks wait for your next life (no swapping picks mid-streak)
         const v = validStreaks(m.list);
         if (p.streak) p.nextStreaks = v; else { p.streaks = v; p.nextStreaks = null; }
+        if (m.mf !== undefined) p.mechFrame = mechFrame(m.mf);
         break;
       }
       case 'deploy': { // use a killstreak from your tray (aimed ones land where you looked)
@@ -2912,6 +2932,7 @@ class Room {
         if (this.modeWeapon(p)) break; // no killstreaks in gun game or as a zombie (they keep for later)
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         if (rigClash(m.r, this.rigOn(p), this.isBall(p) || p.ballUntil > now())) break; // overdrive rig vs other body streaks: it keeps in the tray
+        if (mechClash(m.r, this.mechOn(p), !!p.rig, this.isBall(p) || p.ballUntil > now(), !!this.mechOf(p)) || (m.r === 'mechdrop' && !this.mechCall(p, at, m.mf))) { if (m.r === 'mechdrop') send(p, { t: 'streak', earned: m.r, n: p.streak || 0 }); break; } // mech drop: the marker's checks; refused = back in your tray
         p.pocket.splice(i, 1);
         if (m.r === 'overdrive') this.rigStart(p);
         if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
@@ -3008,6 +3029,7 @@ class Room {
         }
         break;
       case 'rig': this.onRig(p, m); break; // overdrive rig: punch, hack, missiles, leap, landing (server/rig.js)
+      case 'mech': this.onMech(p, m); break; // mech drop: climb in / out, every move (server/mech.js)
       case 'pi': send(p, { t: 'po', c: Number.isFinite(m.c) ? m.c : 0 }); break; // echo a number, not whatever object came in
       case 'land': this.airFail(p, false); break; // your client saw you touch the ground: run's over
       case 'lasso': this.onLasso(p, m); break; // throw / let go / wriggle
@@ -3478,6 +3500,7 @@ class Room {
     if (w === 'claw' && p.alive) { p.hp = INFECT.hp; p.healLeft = 0; }
     if (w && p.ballUntil) { p.ballUntil = 0; p.f &= ~FLAGS.BALL; } // patient zero mid wrecking ball: claws only (the client ends it on 'modew')
     if (w && p.rig) this.rigEnd(p); // same for the overdrive rig
+    if (w && p.mech) this.mechExit(p, 'quiet'); // and a mech
     if (p.isBot) { p.w = w || pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; p.ai.reloadUntil = 0; }
     else {
       if (w && p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
@@ -3825,6 +3848,7 @@ class Room {
     this.tickCrosses();
     this.tickHoles(dt);
     this.tickRig();
+    this.tickMech(now(), dt); // mech drop: drops, sweeps, rams, drones, bots' plans (server/mech.js)
     this.tickBody(now(), dt); // wrecking ball + rig HP: the slow drain, batched updates
     this.tickStatus(dt);
     tickHR(this, dt); // scary forest: the tall guy from HR
@@ -3961,6 +3985,7 @@ installRoyale(Room, { send, movePlayer });
 installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)
+installMech(Room, { now, num, vec3, norm, r2, center, safe, send, REC_T }); // mech drop killstreak (server/mech.js)
 installGear(Room, { now, send, raycast, r2, dist3, eyeOf, lookOf, norm, vec3, stat, liveStats });
 installTactical(Room, { send });
 installRifles(Room, { now, send });

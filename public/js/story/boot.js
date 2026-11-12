@@ -25,6 +25,7 @@ import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
 import { loadSlot, saveSlot, clearSlot } from './save.js';
 import { takeCamera, shotOn } from './camctl.js';
+import { castLightFrame } from './castlight.js'; // the cast lit by the city's lamps (they were silhouettes in the Gut)
 import { initGrade, gradeFrame } from './grade.js'; // the eerie world grade (story maps only)
 import { choirFrame } from './choir.js'; // the Gut Choir in the Choir Lung's stalls (set dressing: they hum, sing, and all turn to look at you)
 
@@ -265,7 +266,8 @@ function roster(e) {
   for (const r of ROSTER.values()) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; }
-    if (!a && d < 34) spawnActor(r.id, r.n, r.p, r.face);
+    if (r.spot && r.spot.if && !ST.S.test(r.spot.if)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; } // (spot.if: a story condition, mina's wall only after m04)
+    if (!a && d < 34) spawnActor(r.id, r.spot && r.spot.look ? { ...r.n, look: r.spot.look } : r.n, r.p, r.face); // (spot.look: a look for that spot, mina in her wall)
     else if (a && d > 44 && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him. so does anyone an encounter stood somewhere: encounters.js)
   }
 }
@@ -319,7 +321,7 @@ function reoffer() {
     for (const x of st.do) if (x && typeof x === 'object' && Array.isArray(x.do) && x.do.some((a) => typeof a === 'string' && a.startsWith('talk:choice/')) && (!x.if || S.test(x.if))) { S.run(x.do, 'reoffer'); return; }
   }
 }
-function autostart() { if (LAB) return; for (const id of ST.S.defs.autostart) ST.S.quests.start(id); }
+function autostart() { if (LAB) return; ST.S.quests.repair(); for (const id of ST.S.defs.autostart) ST.S.quests.start(id); } // (repair: an old save's quest on a step that's gone starts over)
 
 // ---------------------------------------------------------------- every frame
 let nearAct = null, nearThing = null, wasSaveable = 0;
@@ -340,6 +342,7 @@ export function frame(dt, now, cam) {
     if (ST.boss && ST.boss.tick) ST.boss.tick(dt); // (the referee's boss: the actor stands where the room has him)
     if (ST.enc) ST.enc.frame(dt, now); // (before the actors move: whoever rides in a car is placed this frame)
     updateActors(dt * (ST.slowmo ?? 1), now, e);
+    castLightFrame(dt); // (the cast in the city's own light: castlight.js)
     otFrame(dt * (ST.slowmo ?? 1), cam);
     if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }
     { const busy = !!(ST.scene && ST.scene.playing()) || talking(); if (busy !== !!ST.held) { ST.held = busy; if (G.story && G.story.send) G.story.send('hold', { all: true, on: busy }); } } // (the referee freezes enemies through cutscenes and talks)

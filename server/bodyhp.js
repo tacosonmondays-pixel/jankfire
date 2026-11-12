@@ -20,7 +20,7 @@ export function installBody(Room, U) {
     bodyOn(p, n = now()) {
       const b = p && p.body;
       if (!b || !p.alive) return false;
-      return b.kind === 'wreckingball' ? p.ballUntil > n : this.rigOn(p, n);
+      return b.kind === 'wreckingball' ? p.ballUntil > n : p.mech ? this.mechOn(p, n) : this.rigOn(p, n); // (a mech's pool: server/mech.js)
     },
     // from damage() (and the rig's soak after its block): everything comes off the pool, nothing off your HP.
     // the floor, the zone and your own cough still hurt you. returns what's left for HP
@@ -50,6 +50,7 @@ export function installBody(Room, U) {
       if (!b) return;
       t.body = null;
       this.bodyGone(t, b);
+      if (t.mech) { this.mechBroke(t, by); return; } // a mech: EJECT! EJECT! and the blast (server/mech.js)
       this.broadcast({ t: 'bbreak', id: t.id, k: b.kind, by: by ? by.id : 0, why, p: t.pos.map(r2) });
       if (b.kind === 'wreckingball') { t.ballUntil = 0; t.f &= ~FLAGS.BALL; t.slamT = 0; }
       else if (t.rig) this.rigEnd(t);

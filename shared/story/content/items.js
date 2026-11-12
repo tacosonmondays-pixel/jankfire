@@ -13,7 +13,7 @@ export const ITEMS = {
   page_vacancy: { name: "OPTION C: PAGE (VACANCY)", kind: "page", keep: true, desc: "\"non-productive land clearance.\" void bombs for districts that can't pay. the Bottom is listed as 'phase two'." },
   page_corp: { name: "OPTION C: PAGE (☺ CORP)", kind: "page", keep: true, desc: "\"approval and continuity. execution at close of business (17:30). final backup of all staff to be retained as workforce.\" signed: M. Hask." },
   // ---------------------------------------------------------------- act I
-  lost_property_weapon: { name: "LOST PROPERTY", kind: "weapon", base: "pistol", desc: "Someone lost this. Now you've found it. That's how lost property works. There's a name on the tag. You don't have to read it. (a guaranteed rare Plan B from the bins)" },
+  lost_property_weapon: { name: "LOST PROPERTY", kind: "weapon", base: "pistol", rarity: "rare", desc: "Someone lost this. Now you've found it. That's how lost property works. There's a name on the tag. You don't have to read it." },
   soup_pot: { name: "THE RED POT", kind: "quest", desc: "Sharon's tomato soup, full to the top. Don't spill it. She'll ladle you." },
   medicine_crate: { name: "MEDICINE (MOSTLY)", kind: "quest", desc: "A crate of Gristle & Sons medicine. One box is labelled GROWTH ADJUSTMENT and is empty." },
   unpaid_lanyard: { name: "UNPAID LANYARD", kind: "key", desc: "\"INTERN.\" on a sticker, over somebody else's name. Low-rank raiders on the Commute sometimes wave you through. The lanyard is also an intern." },
