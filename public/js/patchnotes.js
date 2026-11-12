@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.0', date: '2026-11-12', title: 'BEEP BEEP', items: [
+    'your own mech can\'t squash you any more. stand on your own circle and it goes BEEP BEEP and bonks you out of the way, then you can climb straight in. your squad gets bonked too. enemies still get flattened.',
+    'zombies (and every death): body parts and gibs don\'t hang in mid-air any more. they fall, bounce, settle on the floor and fade.',
+    'zombies: the grappling hook has charges now, like jank royale. two ropes, one comes back every 8 seconds. the ring by your crosshair shows them.',
+  ] },
   { v: '10.9', date: '2026-11-12', title: 'LOADS LIKE IT MEANS IT', items: [
     'the game loads a lot faster the second time you open it: your browser keeps this version\'s code instead of asking for 300 files again. an update still gets you the new stuff straight away.',
   ] },
