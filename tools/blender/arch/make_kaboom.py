@@ -7,24 +7,32 @@
 #   - a broken rim: low teeth of rock round the crest (ankle to knee high: nothing you'd expect to stand on or hide behind)
 #   - ledges: about two hundred slabs of rock jutting from the flanks (knee high at most), ash-pale near the top, a few rust
 #   - scree down the gullies' beds, fallen rock round the foot
+# Islands S&D's (kaboom_sd: shared/map.js KABOOM_SD, the same mountain made small) is the same dressing, sparser and lower.
 # run: node tools/arch/dumpground.mjs islands -30 -28 30 22 0.25 tools/blender/arch/boxes/kaboom_ground.json
-#      blender52 -b --python tools/blender/arch/make_kaboom.py -- [out.glb]
+#      node tools/arch/dumpground.mjs islands_sd -22 -30 22 6 0.25 tools/blender/arch/boxes/kaboom_sd_ground.json
+#      blender52 -b --python tools/blender/arch/make_kaboom.py -- [kaboom|kaboom_sd] [out.glb]
 import os, sys, math, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from archkit import Kit, OUTDIR, MATS, NOCAST
 from mathutils import Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
-OUT = argv[0] if argv else os.path.join(OUTDIR, 'kaboom.glb')
+ID = argv.pop(0) if argv and argv[0] in ('kaboom', 'kaboom_sd') else 'kaboom'
+OUT = argv[0] if argv else os.path.join(OUTDIR, ID + '.glb')
+# per mountain: map, centre, crest radius, foot (radius, lobes, south and side limits), how much of each thing (x the Islands' count), ledge and rim height, fallen rock size
+V = {'kaboom': dict(map='islands', cx=0.0, cz=-3.0, rc=6.4, foot=17, lobe=1.0, south=14.5, side=26, n=1.0, ledge=1.0, rock=1.0),
+     'kaboom_sd': dict(map='islands_sd', cx=0.0, cz=-13.0, rc=4.2, foot=15, lobe=0.25, south=13.0, side=15.5, n=0.42, ledge=0.6, rock=0.75)}[ID]
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({'brock': ('stucco', '#a294b0', {}), 'brockband': ('stucco', '#54485e', {}), 'bflow': ('stucco', '#352c3c', {}), 'bcrust': ('stucco', '#241d2a', {}),
              'bcrack': ('stucco', '#ff7a30', {}), 'bash': ('stucco', '#d2cad6', {}), 'brust': ('stucco', '#c0623a', {}), 'blava': ('stucco', '#ffb030', {}), 'bscree': ('stucco', '#62566c', {})})
 NOCAST.update({'bcrack', 'blava', 'bflow', 'bcrust'})
-G = json.load(open(os.path.join(HERE, 'boxes', 'kaboom_ground.json')))
-json.dump({'map': 'islands', 'id': 'kaboom', 'boxes': [], 'places': [{'id': 'kaboom', 'p': [0, 0, 0], 'r': 0}]}, open(os.path.join(HERE, 'boxes', 'kaboom.json'), 'w'))
-K = Kit(os.path.join(HERE, 'boxes', 'kaboom.json'), seed=3)
+if ID == 'kaboom_sd':  # (S&D: the lava glows, so it reads as lava from the far beaches)
+    MATS.update({'bcrack': ('stucco', '#ff7a30', {'glow': True, 'glowcol': '#ff5a10'}), 'blava': ('stucco', '#ffb030', {'glow': True, 'glowcol': '#ff9a20'})})
+G = json.load(open(os.path.join(HERE, 'boxes', ID + '_ground.json')))
+json.dump({'map': V['map'], 'id': ID, 'boxes': [], 'places': [{'id': ID, 'p': [0, 0, 0], 'r': 0}]}, open(os.path.join(HERE, 'boxes', ID + '.json'), 'w'))
+K = Kit(os.path.join(HERE, 'boxes', ID + '.json'), seed=3)
 K.ground = -1e9
-CX, CZ, RC = 0.0, -3.0, 6.4  # shared/map.js KABOOM: the centre, the crest's radius (only to aim things: the heights come from the ground)
+CX, CZ, RC = V['cx'], V['cz'], V['rc']  # shared/map.js KABOOM / KABOOM_SD: the centre, the crest's radius (only to aim things: the heights come from the ground)
 RIM = 0.0  # (along a spoke: 0 at the crest, 1 at the foot)
 
 
@@ -32,10 +40,10 @@ def gb(a, m, w): return math.exp(-(((a - math.radians(m) + math.pi) % (2 * math.
 
 
 def foot(a):  # the foot's radius, as kaboom() has it (uneven: a delta north, a spur west, a buttress east, a scar south-east)
-    r = 17 + 5 * gb(a, -90, 14) + 8 * gb(a, 200, 13) + 4.5 * gb(a, -20, 16) + 3 * gb(a, 140, 18) - 4 * gb(a, 50, 20) + 0.8 * math.sin(5 * a) + 0.5 * math.sin(9 * a)
+    r = V['foot'] + V['lobe'] * (5 * gb(a, -90, 14) + 8 * gb(a, 200, 13) + 4.5 * gb(a, -20, 16) + 3 * gb(a, 140, 18) - 4 * gb(a, 50, 20) + 0.8 * math.sin(5 * a) + 0.5 * math.sin(9 * a))
     sn, cs = math.sin(a), math.cos(a)
-    if sn > 0.05: r = min(r, 14.5 / sn)
-    if abs(cs) > 0.05: r = min(r, 26 / abs(cs))
+    if sn > 0.05: r = min(r, V['south'] / sn)
+    if abs(cs) > 0.05: r = min(r, V['side'] / abs(cs))
     return max(r, RC + 6)
 
 
@@ -105,7 +113,25 @@ run = [spoke(aL + 0.04 * math.sin(q * 16) * max(0.0, min(1.0, (0.95 - q) * 6)), 
 ex, ez = run[-1]; dxn, dzn = math.cos(aL), math.sin(aL)
 run += [(ex + dxn * d, ez + dzn * d) for d in [0.5 * k for k in range(1, 9)]]  # the delta: on over the beach and the shelf into the water
 ribbon(run, lambda t: 0.2 + 0.5 * t + 1.3 * max(0, t - 0.8) / 0.2, 0.03, 'bcrack', edge='bcrust', ew=0.4, sea=True, prof=[0.03, 0.34, 0.12, 0.34, 0.03])  # between raised levees
-ribbon(run[6:], lambda t: 0.05 + 0.12 * t + 0.3 * max(0, t - 0.8) / 0.2, 0.2, 'blava', sea=True)  # its bright middle
+ribbon(run[6:], (lambda t: 0.12 + 0.2 * t + 0.3 * max(0, t - 0.8) / 0.2) if ID == 'kaboom_sd' else (lambda t: 0.05 + 0.12 * t + 0.3 * max(0, t - 0.8) / 0.2), 0.2, 'blava', sea=True)  # its bright middle
+if ID == 'kaboom_sd':  # ---- the throat (shared/map.js lavaPit: x -2..2, z -15..-11, its real lava at 4.5): a lava pool just under the lip, look only
+    # (step on it and you drop through to the same pit: what it looks like is what it does), glowing walls under it for the fall, a crust collar
+    TX0, TZ0, TX1, TZ1 = -2.0, -15.0, 2.0, -11.0
+    ring = [at(x, z) for x in [TX0 - 0.3 + 0.25 * k for k in range(19)] for z in (TZ0 - 0.3, TZ1 + 0.3)] + [at(x, z) for z in [TZ0 - 0.3 + 0.25 * k for k in range(19)] for x in (TX0 - 0.3, TX1 + 0.3)]
+    LIP = min(v for v in ring if v is not None); PY = LIP - 0.45
+    K.quad([(TX0, PY, TZ1), (TX1, PY, TZ1), (TX1, PY, TZ0), (TX0, PY, TZ0)], 'blava')
+    for (ax, az, bx, bz) in ((TX0, TZ0, TX1, TZ0), (TX1, TZ0, TX1, TZ1), (TX1, TZ1, TX0, TZ1), (TX0, TZ1, TX0, TZ0)):  # walls, facing in
+        K.quad([(ax, 4.5, az), (bx, 4.5, bz), (bx, PY, bz), (ax, PY, az)], 'bcrack')  # (up to the pool's edge: one piece with it)
+    for k in range(40):  # the collar: a lumpy crust skin round the square hole, rounding it off, its inner edge glowing
+        a0, a1 = 2 * math.pi * k / 40, 2 * math.pi * (k + 1) / 40
+        def sq(a, grow):  # the square's edge along angle a, pushed out by grow
+            c, s2 = math.cos(a), math.sin(a); m = 2.0 / max(abs(c), abs(s2)); return 0.0 + c * (m + grow), -13.0 + s2 * (m + grow)
+        for (g0, g1, lf0, lf1, mt) in ((0.0, 0.18, 0.04, 0.1, 'bcrack'), (0.18, 0.75 + 0.25 * hsh(k, 140), 0.1, 0.03, 'bcrust')):
+            P = [sq(a0, g0), sq(a1, g0), sq(a1, g1), sq(a0, g1)]; L2 = [lf0, lf0, lf1, lf1]
+            Q = [on(x, z, l) if g > 0 else Vector((x, PY + 0.02, z)) for (x, z), l, g in zip(P, L2, (g0, g0, g1, g1))]
+            if g0 == 0: Q = [Q[0], Q[1], on(*P[2], lf1), on(*P[3], lf1)]; Q[0] = Vector((Q[0].x, (Q[3].y if Q[3] else PY) - 0.06, Q[0].z)); Q[1] = Vector((Q[1].x, (Q[2].y if Q[2] else PY) - 0.06, Q[1].z))
+            up([Q[0], Q[1], Q[2]], mt); up([Q[0], Q[2], Q[3]], mt)
+    print('throat lip', round(LIP, 2), 'pool', round(PY, 2))
 # ---- cooled lava: tongues down three other gullies, widening into a toe
 for n, (a0, q0) in enumerate(((math.radians(-25), 0.25), (math.radians(195), 0.2), (math.radians(135), 0.3))):  # old flows: down the buttress, the spur and the shoulder, out over the apron
     a = gully_floor(a0, 0.2)
@@ -114,7 +140,7 @@ for n, (a0, q0) in enumerate(((math.radians(-25), 0.25), (math.radians(195), 0.2
 # ---- cracks still warm: slivers lying on the flank, pointing mostly downhill
 done = 0; CR = []
 for k in range(2500):
-    if done >= 130: break
+    if done >= int(130 * V['n']): break
     a = hsh(k, 1) * 2 * math.pi; q = 0.02 + 0.85 * hsh(k, 2) ** 1.8
     x, z = spoke(a, q); L = 0.18 + 0.32 * hsh(k, 3); tw = (hsh(k, 4) - 0.5) * 1.6
     ux, uz = math.cos(a + tw), math.sin(a + tw); vx, vz = -uz * 0.035, ux * 0.035
@@ -123,12 +149,14 @@ for k in range(2500):
     CR.append((x, z))
     up([p[0], p[1], p[2]], 'bcrack'); up([p[0], p[2], p[3]], 'bcrack'); done += 1
 # ---- the rim: low broken teeth of rock round the crest
-for k in range(110):
-    a = 2 * math.pi * k / 110 + (hsh(k, 10) - 0.5) * 0.05
+NT = int(110 * (0.6 if ID == 'kaboom_sd' else 1.0))
+for k in range(NT):
+    a = 2 * math.pi * k / NT + (hsh(k, 10) - 0.5) * 0.05
     if hsh(k, 11) < 0.12 or abs(((a - aL + math.pi) % (2 * math.pi)) - math.pi) < 0.1: continue
     x, z = spoke(a, (hsh(k, 12) - 0.5) * 0.09); y = at(x, z)
     if y is None: continue
-    s = 0.25 + 0.4 * hsh(k, 13); h = 0.35 + 0.75 * hsh(k, 14) ** 1.3; yaw = hsh(k, 15) * 6.28
+    s = 0.25 + 0.4 * hsh(k, 13); h = (0.35 + 0.75 * hsh(k, 14) ** 1.3) * V['ledge'];  # (S&D: ankle high, the summit stays open)
+    yaw = hsh(k, 15) * 6.28
     base = [Vector((x + math.cos(yaw + c * 1.57) * s * (0.8 + 0.4 * hsh(k, c, 16)), (at(x + math.cos(yaw + c * 1.57) * s, z + math.sin(yaw + c * 1.57) * s) or y) - 0.12, z + math.sin(yaw + c * 1.57) * s * (0.8 + 0.4 * hsh(k, c, 17)))) for c in range(4)]
     tip = Vector((x + (hsh(k, 18) - 0.5) * s, y + h, z + (hsh(k, 19) - 0.5) * s)); c0 = Vector((x, y, z))
     for c in range(4):
@@ -138,9 +166,9 @@ for k in range(110):
 # ---- ledges: slabs of rock jutting from the flank, level-topped, a dark face downhill. chunky planes, knee high at most
 LG = []
 for k in range(1400):
-    if len(LG) >= 300: break
+    if len(LG) >= int(300 * V['n']): break
     a = hsh(k, 80) * 2 * math.pi; q = 0.04 + 0.9 * hsh(k, 81); x, z = spoke(a, q)
-    W2 = 0.5 + 1.3 * hsh(k, 82) ** 1.4; D2 = 0.45 + 0.8 * hsh(k, 83); hh = 0.28 + 0.34 * hsh(k, 84)
+    W2 = 0.5 + 1.3 * hsh(k, 82) ** 1.4; D2 = 0.45 + 0.8 * hsh(k, 83); hh = (0.28 + 0.34 * hsh(k, 84)) * V['ledge']
     if any((x - px) ** 2 + (z - pz) ** 2 < 1.9 ** 2 for px, pz in RB) or any((x - px) ** 2 + (z - pz) ** 2 < (W2 + pw + 0.2) ** 2 for px, pz, pw in LG): continue
     yaw = a + (hsh(k, 85) - 0.5) * 0.7; dx, dz = math.cos(yaw), math.sin(yaw); cx2, cz2 = -dz, dx  # downhill, along the contour
     cs = [(-W2, -D2 * 0.5), (W2 * (0.8 + 0.3 * hsh(k, 86)), -D2 * (0.3 + 0.4 * hsh(k, 87))), (W2 * (0.75 + 0.4 * hsh(k, 88)), D2), (-W2 * (0.7 + 0.4 * hsh(k, 89)), D2 * (0.7 + 0.5 * hsh(k, 90)))]  # (along, downhill): back two, front two
@@ -160,7 +188,7 @@ for k in range(1400):
             K.tri(t3, 'brockband')
 # ---- scree in the gullies: runs of small stones down their beds
 SC = []
-for k in range(520):
+for k in range(int(520 * V['n'])):
     a = gully_floor(hsh(k // 9, 100) * 2 * math.pi, 0.25, 0.5) + (hsh(k, 101) - 0.5) * 0.09; q = 0.25 + 0.7 * hsh(k, 102); x, z = spoke(a, q); y = at(x, z); s2 = 0.1 + 0.22 * hsh(k, 103) ** 1.5
     if y is None or any((x - px) ** 2 + (z - pz) ** 2 < 1.6 ** 2 for px, pz in RB) or any((x - px) ** 2 + (z - pz) ** 2 < (s2 + ps) ** 2 for px, pz, ps in SC) or any((x - px) ** 2 + (z - pz) ** 2 < (s2 + pw) ** 2 for px, pz, pw in LG): continue
     SC.append((x, z, s2)); yaw = hsh(k, 104) * 6.28
@@ -173,8 +201,8 @@ for k in range(520):
         K.tri(t3, 'bscree' if c else 'brock')
 # ---- fallen rock round the foot (on the sand, off the lava's run)
 ST = []
-for k in range(260):  # (thick at the foot, breaking up outward over the apron; biggest in the scar and off the spurs' ends)
-    a = hsh(k, 60) * 2 * math.pi; far = hsh(k, 61) ** 1.6; s = (0.2 + 0.7 * hsh(k, 62) ** 2) * (1 - 0.6 * far) * (1 + 0.6 * gb(a, 50, 25))
+for k in range(int(260 * V['n'])):  # (thick at the foot, breaking up outward over the apron; biggest in the scar and off the spurs' ends)
+    a = hsh(k, 60) * 2 * math.pi; far = hsh(k, 61) ** 1.6; s = (0.2 + 0.7 * hsh(k, 62) ** 2) * (1 - 0.6 * far) * (1 + 0.6 * gb(a, 50, 25)) * V['rock']
     x, z = spoke(a, 0.9 + 0.5 * far); y = at(x, z)
     if y is None or abs(((a - aL + math.pi) % (2 * math.pi)) - math.pi) < 0.2: continue
     if any((x - px) ** 2 + (z - pz) ** 2 < (s + ps) ** 2 for px, pz, ps in ST): continue
