@@ -72,6 +72,8 @@ function navIcons() {
   }
 }
 let navWait = false;
+// the hub's mode lobby (hubmenu.js): you, with your gun, on its stage
+export function heroInto(slot) { slot.append($('preview')); setPreviewRes(0.75); hero(); }
 // other screens get the crunchy preview back
 export function homeLeft() { setPreviewRes(0.5); }
 // a skin model that downloaded late: put it in the hero's hands
