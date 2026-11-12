@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import net from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { browsableServer } from '../server/browsable.js';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,11 +32,16 @@ await t('a symlink in the closure is never followed', () => {
 });
 
 // the real server: status codes for the tricks, and the same caching as the other static files
-const PORT = 3600 + Math.floor(Math.random() * 300);
+// (a port the OS says is free, not a random one that may be taken; and up to a minute to boot: under a busy machine
+// with the rest of the suite running beside it, the server took over the old 12 s and every request was refused)
+const PORT = await new Promise((res) => { const s = net.createServer().listen(0, () => { const p = s.address().port; s.close(() => res(p)); }); });
 const srv = spawn(process.execPath, ['server.js'], { cwd: ROOT, env: { ...process.env, PORT: String(PORT), JF_DATA_DIR: fs.mkdtempSync(path.join(os.tmpdir(), 'jfbd-')) }, stdio: 'ignore' });
-for (let i = 0; i < 60; i++) { try { await fetch(`http://localhost:${PORT}/health`); break; } catch { await new Promise((r) => setTimeout(r, 200)); } }
-const raw = (p, h = {}) => new Promise((res) => { // (fetch would clean up ../ in the url before sending it)
-  import('node:http').then(({ request }) => { const r = request({ host: 'localhost', port: PORT, path: p, headers: h }, (x) => { let b = ''; x.on('data', (d) => (b += d)); x.on('end', () => res({ status: x.statusCode, headers: x.headers, body: b })); }); r.end(); });
+let gone = null; srv.on('exit', (code) => { gone = code; });
+let up = false;
+for (let i = 0; i < 300 && !up && gone === null; i++) { try { up = (await fetch(`http://localhost:${PORT}/health`)).ok; } catch { await new Promise((r) => setTimeout(r, 200)); } }
+if (!up) { srv.kill(); assert.fail(gone !== null ? `the server exited (${gone}) before it was up` : `the server wasn't up on port ${PORT} after 60 s`); }
+const raw = (p, h = {}) => new Promise((res, rej) => { // (fetch would clean up ../ in the url before sending it)
+  import('node:http').then(({ request }) => { const r = request({ host: 'localhost', port: PORT, path: p, headers: h }, (x) => { let b = ''; x.on('data', (d) => (b += d)); x.on('end', () => res({ status: x.statusCode, headers: x.headers, body: b })); }); r.on('error', rej); r.end(); });
 });
 try {
   await t('served: room.js and its modules (javascript)', async () => {
