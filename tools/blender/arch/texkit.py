@@ -566,6 +566,20 @@ def weather(n=64):
     return img, (a > 0.5).astype(np.float32)
 
 
+def profile(n=32):
+    """trapezoidal profiled steel sheet, the cladding on sheds and depots (1 m a tile, light grey: tinted). four ribs a
+    tile (25 cm), each a lit crown with a shaded and a lit flank, wide flat pans between with a faint stiffening line,
+    the odd dent and fixing screw, a little dirt; no rust (the old corrugated sheet is the rusty one)"""
+    x = np.arange(n) % 8
+    rib = np.select([x == 0, x == 1, x == 2, x == 7], [0.86, 1.1, 0.78, 0.93], 0.97).astype(np.float32)
+    rib = np.where(x == 4, 0.94, rib)  # (the stiffener in the pan)
+    g = rib[None, :] * np.ones((n, 1), np.float32) + (fbm(n, 4, 3) - 0.5) * 0.08 - speck(n, 0.015) * 0.18
+    for _ in range(3):  # screws: a dark dot on a pan, in rows
+        yy = int(R.integers(n)); g[yy, (np.arange(4) * 8 + 5) % n] *= 0.6
+    img = ramp(np.clip(g * 0.82, 0, 1), [(0, '#2c2e32'), (0.6, '#a9adb2'), (0.82, '#d8dbde'), (1, '#f6f7f6')])
+    return shade(img, 1 - np.clip((fbm(n, 2, 4) - 0.6) * 0.6, 0, 0.2))
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet_path = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None
@@ -595,6 +609,7 @@ def main():
     KIT['decals']['cells'] = cells
     out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
     wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    out['profile'] = save('profile', profile(), 1.0, note='tint')  # (last: the shared RNG leaves every older texture as it was)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
         tiles = []

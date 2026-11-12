@@ -23,9 +23,10 @@ import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from '
 import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
+import { bounceMap, updateBounce } from './bounce.js'; // light bounced off the ground and walls (the ray-traced look)
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { biGroundMaterial, disposeBiGround } from './biground.js';
-import { postBegin, postEnd, setPostAA } from './post.js';
+import { postBegin, postEnd, setPostAA, postMid } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -581,6 +582,7 @@ export function loadMap(id) {
   forestMap(MAPS[MAP.id], MAP.id);
   shredMap(MAPS[MAP.id], MAT);
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
+  bounceMap(night ? null : MAPS[MAP.id], MAT); // (needs the sun's direction: after lightingMap. night maps: no sun to bounce)
   biLookMap(MAP.id, [skyMesh, sun, ...clouds]); // Battle Island's own sky, fog and grade (bilook.js; nothing on other maps)
 }
 
@@ -647,6 +649,7 @@ export function resize() {
 }
 
 export function updateWorld(dt) {
+  updateBounce();
   updateBiLook(dt);
   for (const c of clouds) {
     c.position.x += c.userData.speed * dt;
@@ -673,6 +676,7 @@ export function renderFrame() {
   const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
+  if (post) postMid(r, G.camera); // contact shadows from the world's depth, before your gun is drawn (post.js)
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
   if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way

@@ -10,6 +10,7 @@ import { STREAK_LOOKS } from '/shared/cosmetics.js'; // killstreak looks in the 
 import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
+import { lockPointer, lookFilter } from './mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
@@ -64,6 +65,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
@@ -102,7 +104,8 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initHub, hubShown, hubLobbyShown, hubInvite } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
@@ -207,9 +210,11 @@ initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), he
 // parties (party.js): the menu connection. the leader starting while you're mid-match: you're told, and if you quit to
 // the menu within 25 s (the ticket's good for 30) you go with them
 let partyPending = null;
-initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').trim().slice(0, 16), look: homeLook()[1], token: account.loggedIn ? account.token : undefined, gun: S.loadout.primary, mf: S.loadout.mech }),
+initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').trim().slice(0, 16), look: homeLook()[1], token: account.token || undefined, gun: S.loadout.primary, /* (the saved token: the server checks it; account.me may still be loading) */ mf: S.loadout.mech }),
   start: (mode, cfg) => startMode(mode, cfg), joined: () => G.joined, toast: (t, ms) => toast(t, ms),
-  ask: (t, yes) => { partyPending = { yes, at: performance.now() }; toast(t + '. quit this match (menu > QUIT) within 25 s to go with them', 6000); } });
+  ask: (t, yes) => { partyPending = { yes, at: performance.now() }; toast(t + '. quit this match (menu > QUIT) within 25 s to go with them', 6000); },
+  what: () => (G.round && GAMES[G.round.game] ? GAMES[G.round.game].name : G.mode === 'training' ? 'Training' : ''), invite: (inv) => hubInvite(inv, G.joined) });
+initFriends({ toast: (t, ms) => toast(t, ms) }); // friends (friends.js): the panel the party strip's FRIENDS opens
 $('name').addEventListener('change', () => partyRehello()); // (a new name: the party hears it)
 function partyFollow() { const p = partyPending; partyPending = null; if (p && performance.now() - p.at < 25000) setTimeout(p.yes, 300); }
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
@@ -372,12 +377,7 @@ function quitToMenu(silent) {
   $('status').textContent = '';
 }
 
-function lock() {
-  try {
-    const p = canvas.requestPointerLock({ unadjustedMovement: true });
-    if (p && p.catch) p.catch(() => { try { const q = canvas.requestPointerLock(); if (q && q.catch) q.catch(() => {}); } catch { /* no lock */ } });
-  } catch { /* headless or denied */ }
-}
+function lock() { lockPointer(canvas); } // (mouselook.js: raw mouse when the browser has it)
 function pause() {
   show('pause');
   $('pauseMatch').classList.toggle('hidden', !!G.lk); // a mode lobby is everyone's: nobody changes its match
@@ -388,10 +388,11 @@ function pause() {
   stopUse();
   stopLoops();
 }
-let wasLocked = false, lockedAt = 0, mouseAvg = 8;
+let wasLocked = false;
+const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jump events (the editor uses the same one)
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
-  if (locked) { lockedAt = performance.now(); esHideClick(); }
+  if (locked) { mlook.locked(); esHideClick(); }
   if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
@@ -1283,11 +1284,7 @@ addEventListener('mousemove', (e) => {
   const mx = e.movementX, my = e.movementY;
   // Chrome's pointer lock sometimes reports one giant fake jump (often the wrong way) when you move far or fast.
   // drop any single event that is way bigger than how you've actually been moving the mouse.
-  const mag = Math.abs(mx) + Math.abs(my);
-  const now = performance.now();
-  if (now - lockedAt < 120) return; // first events after locking are often garbage
-  if (mag > 90 && mag > mouseAvg * 6) { mouseAvg = Math.max(mouseAvg, mag / 6) * 0.5 + mouseAvg * 0.5; return; }
-  mouseAvg = mouseAvg * 0.85 + mag * 0.15;
+  if (!mlook.take(mx, my)) return; // (the first ~120 ms after locking, and a single jump way bigger than your recent moves)
   ME.yaw -= mx * s;
   ME.pitch = Math.max(-1.55, Math.min(1.55, ME.pitch - my * s));
 });
@@ -2271,6 +2268,7 @@ function frame(t) {
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
   updateMech(dt, now, cam, RP.active); // mech drop: the drops, waiting mechs, you in yours, the HUD
+  hudHideTick(now); // (after the rides update: hotbar out while piloting, back the moment you aren't)
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
@@ -2644,6 +2642,7 @@ async function submitAccount() {
     const me = signup ? await register(name, pass) : await login(name, pass);
     $('acctPass').value = ''; $('acctPass2').value = '';
     onLoggedIn(me, signup);
+    partyRehello(); // (the party and your friends see the account now)
     show('main');
     toast(signup ? `welcome ${me.name}. you got a free crate, duffel bag and box: open them in COSMETICS` : `welcome back ${me.name}`);
   } catch (e) {
@@ -2682,6 +2681,7 @@ function onLoggedIn(me, fresh) {
 }
 function doLogout() {
   logout();
+  partyRehello(); // (back to a guest in the party too)
   G.inv = {};
   recomputeEquipped();
   rebuildOne(); // only the skins changed
