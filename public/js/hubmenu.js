@@ -68,8 +68,10 @@ async function poll() {
   const live = $('hubLive');
   if (live) { const n = counts ? Object.values(counts.o || {}).reduce((a, v) => a + (v | 0), 0) : null; live.textContent = n == null ? '' : n ? `● ${n} playing online` : ''; }
   if (onLobby()) liveRow();
+  if (onMain() && ++pollN % 3 === 1) friendsLoad().then(partyStrip); // (friends coming online: the strip's count, every ~18 s)
   pollT = setTimeout(poll, 6000);
 }
+let pollN = 0;
 
 // ---------------------------------------------------------------- the lobby screen
 const gamesOf = (k) => HUB[k].games || GAME_ORDER.filter((g) => GAMES[g] && !GAMES[g].royale && !GAMES[g].zombies && g !== 'bomb' && g !== 'island'); // (quick play offline: the deathmatch family)

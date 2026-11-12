@@ -21,8 +21,8 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
-import { installParty, hubHello, hubMsg, hubClose } from './server/party.js';
-import { makeFriends } from './server/friends.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
+import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
+import { makeFriends } from './server/friends.js'; // friends (invites and joins check them)
 import { GAMES, mapsFor } from './shared/modes.js';
 import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
 import { mechFrame } from './shared/mech.js';

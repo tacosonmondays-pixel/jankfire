@@ -26,6 +26,8 @@ function hub(token, name) {
   ok((await api('/api/friends/add', { name: A.name }, A.token)).code === 400, "can't friend yourself");
   ok((await api('/api/friends/add', { name: 'nobody' + tag }, A.token)).code === 400, 'no such account: told');
   ok((await api('/api/friends/add', { name: { x: 1 } }, A.token)).code === 400, 'junk name: refused');
+  ok((await api('/api/friends/add', { name: '__proto__' }, A.token)).code === 400 && (await api('/api/friends/add', { name: 'a.b,c)' }, A.token)).code === 400, 'names an account can\'t have: refused before any lookup');
+  { const r = await fetch(base + '/api/friends/add', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + A.token }, body: 'null' }); ok(r.status === 400, 'a null body: a plain 400 ' + r.status); }
   ok((await api('/api/friends/add', { name: B.name.toUpperCase() }, A.token)).ok, 'A asks B (any case)');
   ok((await api('/api/friends/add', { name: B.name }, A.token)).code === 400, 'asking twice: told');
   const lb = await api('/api/friends', null, B.token);
@@ -57,7 +59,16 @@ function hub(token, name) {
   const again = await api('/api/friends/add', { name: A.name }, C.token);
   ok(again.code === 400 && /nah/.test(again.error), 'C asks again the same day: told to wait');
   ok(!(await api('/api/friends', null, A.token)).incoming.length, "the nah'd request is gone from A's list");
+  await api('/api/friends/remove', { name: A.name }, C.token); const sneak = await api('/api/friends/add', { name: A.name }, C.token);
+  ok(sneak.code === 400 && /nah/.test(sneak.error), 'remove + ask again: the nah still holds (for a day, whoever removes it)');
   ok((await api('/api/friends/remove', { name: B.name }, A.token)).ok && !(await api('/api/friends', null, B.token)).friends.length, 'A removes B: gone for both');
+  // 20 requests a day: removing your own request doesn't give it back
+  const D = await account('fd'); let n = 0, last = null;
+  for (let round = 0; round < 3 && !last; round++) {
+    for (let i = 0; i < 9; i++) { const r = await api('/api/friends/add', { name: A.name }, D.token); if (r.ok) n++; else { last = r; break; } await api('/api/friends/remove', { name: A.name }, D.token); }
+    if (!last) await sleep(61000); // (the 40-a-minute limit)
+  }
+  ok(n === 20 && last && /a lot of friend requests/.test(last.error), `add + remove over and over: ${n} requests, then told it's a lot for one day`);
   for (const h of [HA, HB, HC]) h.ws.close();
   console.log(fails ? `${fails} FAILED` : 'all ok');
   process.exit(fails ? 1 : 0);

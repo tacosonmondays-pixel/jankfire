@@ -18,7 +18,7 @@ async function api(path, body) {
 }
 // the list (and whether friends are on at all). quiet: no toast on failure
 export async function friendsLoad(quiet = true) {
-  if (!account.loggedIn) { FR.list = null; return FR; }
+  if (!account.token) { FR.list = null; return FR; }
   try { const d = await api('friends'); FR.off = !!d.off; FR.list = d.off ? null : d; FR.err = ''; }
   catch (e) { FR.err = e.message; if (!quiet) opts.toast(e.message, 2400); }
   return FR;
@@ -55,7 +55,7 @@ function render() {
   const head = el('div', 'fr-head'); head.append(el('span', 'hub-tag', 'FRIENDS'));
   const x = el('button', 'mid', 'X'); x.addEventListener('click', () => { opts.click && opts.click(); closeFriends(); }); head.append(x);
   box.append(head);
-  if (!account.loggedIn) { box.append(el('p', 'fr-note', 'friends need an account. log in (top left) and they show up here. guests can still join a party with its code.')); return; }
+  if (!account.token) { box.append(el('p', 'fr-note', 'friends need an account. log in (top left) and they show up here. guests can still join a party with its code.')); return; }
   if (FR.off) { box.append(el('p', 'fr-note', 'friends aren\'t switched on on this server yet.')); return; }
   const L = FR.list || { friends: [], incoming: [], outgoing: [] };
   const tabs = el('div', 'fr-tabs');

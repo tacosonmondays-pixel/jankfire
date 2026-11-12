@@ -52,7 +52,7 @@ alter table jf_users add column if not exists quiz_right int not null default 0;
 alter table jf_users add column if not exists chicken_kills int not null default 0;
 alter table jf_users add column if not exists melee_kills int not null default 0;
 
--- Friends (the hub's FRIENDS panel, docs/menu/HUB_LOBBY.md section 5): one row per pair of accounts (a < b), who asked,
+-- Friends (the hub's FRIENDS panel, docs/menu/HUB_LOBBY.md section 5): one row per pair of accounts (in order), who asked,
 -- and pending / friends / nah. Until this is run the game just hides FRIENDS. Safe to run again.
 create table if not exists jf_friends (
   a          text not null references jf_users(name_lower) on delete cascade,
@@ -60,8 +60,7 @@ create table if not exists jf_friends (
   asked_by   text not null,
   status     text not null default 'pending' check (status in ('pending', 'friends', 'nah')),
   created_at timestamptz not null default now(),
-  primary key (a, b),
-  check (a < b)
+  primary key (a, b) -- (the game server always puts the pair in order: a before b)
 );
 create index if not exists jf_friends_b on jf_friends (b);
 alter table jf_friends enable row level security; -- (no policies: only the game server's secret key reads and writes it)
