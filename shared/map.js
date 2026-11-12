@@ -738,14 +738,15 @@ function pedCrane(B, D, x, z, alongX, len, o = {}) {
 }
 // a christmas tree (the wellhead's valve stack, real name) dressed for christmas: valve blocks, wing valves, handwheels,
 // baubles, tinsel, a star on top. on a deck at y
-function xmasTree(B, D, x, z, y, r) {
+// (each one a Blender prop, p_xmastree: tools/blender/make_xmastree.py, look-only)
+function xmasTree(B, D, x, z, y, r) { propOf('xmastree', [x, y, z], 0, () => {
   B.add(x - 0.4, y, z - 0.4, x + 0.4, y + 2.3, z + 0.4, 'rigred');
   B.add(x - 1.0, y + 1.0, z - 0.25, x + 1.0, y + 1.5, z + 0.25, 'rigred');
   for (const s of [-1, 1]) D.add(x + s * 1.0 - (s > 0 ? 0 : 0.08), y + 0.85, z - 0.4, x + s * 1.0 + (s > 0 ? 0.08 : 0), y + 1.65, z + 0.4, 'rigyellow');
   D.add(x - 0.45, y + 2.3, z - 0.45, x + 0.45, y + 2.45, z + 0.45, 'rigyellow'); D.add(x - 0.18, y + 2.45, z - 0.18, x + 0.18, y + 2.8, z + 0.18, 'neonyellow'); // the star
-  for (let k = 0; k < 6; k++) { const a = r() * Math.PI * 2, h = 0.3 + r() * 1.9; D.box(x + Math.cos(a) * 0.46, y + h, z + Math.sin(a) * 0.46, 0.14, 0.14, 0.14, ['toypink', 'toyteal', 'toyyellow'][k % 3]); }
+  for (let k = 0; k < 6; k++) { const a = r() * Math.PI * 2, h = 0.3 + r() * 1.9; D.box(x + Math.cos(a) * 0.46, y + h, z + Math.max(-0.38, Math.min(0.38, Math.sin(a) * 0.46)), 0.14, 0.14, 0.14, ['toypink', 'toyteal', 'toyyellow'][k % 3]); } // (within the cap's width: every tree the same outline)
   D.add(x - 0.42, y + 1.7, z - 0.42, x + 0.42, y + 1.76, z + 0.42, 'neongreen'); D.add(x - 0.43, y + 0.6, z - 0.43, x + 0.43, y + 0.66, z + 0.43, 'neonpink'); // tinsel
-}
+}); }
 // THE SNACK RUN, a supply boat moored along the rig's south side: its open cargo deck (-12: containers, pipe, snacks),
 // bulwarks, the bridge forward (east), the boat landing on the jacket beside it and the stair up to the cellar deck
 function snackRun(B0, D0, dx, dz, st, r) {
