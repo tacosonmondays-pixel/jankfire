@@ -3121,6 +3121,13 @@ function lounger(B, D, x, z, m) {
   D.add(x + 0.9, 0, z - 0.05, x + 1.0, 2.2, z + 0.05, 'white'); D.add(x - 0.3, 2.2, z - 1.2, x + 2.2, 2.32, z + 1.2, pickUmb(x + z));
 }
 const pickUmb = (k) => ['toypink', 'toyteal', 'toyyellow', 'sidelemon'][Math.abs(Math.round(k * 7)) % 4];
+// the tiki village (tiki bar, big tiki, huts, surf school) is one Blender model per map (public/models/arch/tiki*.glb,
+// look only): tiki(() => ...) tags what the pieces add. drape: on Islands it rides the dunes exactly as it always did
+// (shared/terrain.js). the crates (a prop model already) and the two signs (the game's own ad textures) stay the game's
+function tikiArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'adtiki', 'adsurf']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
+}
 
 // ---- the set pieces. each is built where the standard Islands has it, moved (dx, dz) (Islands S&D moves them about);
 // st collects their stairs for the walk graph
@@ -3418,7 +3425,7 @@ function lighthouse(B0, D0, dx, dz, st, o = {}) {
   for (const b of octoBoxes(80, -8, 84, -4, LH.lc, 3)) add(b[0], 18, b[1], b[2], 21, b[3], 'glass'); D.add(81.4, 18.6, -6.6, 82.6, 20.2, -5.4, 'light'); // the lantern room, octagonal
   for (const b of octoBoxes(79.6, -8.4, 84.4, -3.6, 1.406, 3)) add(b[0], 21, b[1], b[2], 21.5, b[3], 'toyred'); for (const b of octoBoxes(80.6, -7.4, 83.4, -4.6, 0.82, 2)) add(b[0], 21.5, b[1], b[2], 22.2, b[3], 'toyred'); D.box(82, 22.5, -6, 0.6, 0.6, 0.6, 'metal');
   const id = o.climb === false ? 'lighthouse_sd' : 'lighthouse';
-  B0.boxes.arch.push({ id, p: [dx, 0, dz], r: 0 }); const tag = { av: id, ai: B0.boxes.arch.length - 1 };
+  B0.boxes.arch.push({ id, p: [dx, 0, dz], r: 0, drape: true }); const tag = { av: id, ai: B0.boxes.arch.length - 1 };
   for (let i = n0; i < B0.boxes.length; i++) Object.assign(B0.boxes[i], tag);
   for (let i = d0; i < D0.boxes.length; i++) if (D0.boxes[i].mat !== 'light') Object.assign(D0.boxes[i], tag); // (the light itself: the game's, it glows)
   D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 }); // (the sign: the game's picture)
@@ -3499,10 +3506,11 @@ function islands() {
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
   B.boxes.arch.push({ id: 'kaboom', p: [0, 0, 0], r: 0 }); // (its dressing: lava channel, cooled flows, cracks, rim rocks, scree. one Blender model laid on the cone, look only)
   const KB = kaboom(B, D, 0, 0), T = KB.throat; // (quick play: a real cone you walk and grapple anywhere. Islands S&D has the same mountain made small: KABOOM_SD)
-  tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
-  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
+  const TK = tikiArt(B, D, 'tiki'); // (the village: one Blender model, look only)
+  TK(() => { tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
+  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1); });
   [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
-  surfSchool(B, D, 0, 0);
+  TK(() => surfSchool(B, D, 0, 0));
   // the cannon on the west beach (the human cannonball: it fires you at the fort)
   cannon(B, D, -24.2, 9, 0, -1, 0); add(-27.3, 0, 7.7, -25.5, 0.3, 10.3, 'pad', { pad: [-34, 15, -7.4] }); // (lands in front of the fort's gate)
   D.add(-22.4, 0, 11.4, -22.28, 2.6, 11.52, 'wood'); D.add(-24.6, 1.6, 11.52, -20.4, 2.6, 11.6, 'adcannon', { fit: 1 });
@@ -3620,13 +3628,14 @@ function islandsSD() {
 
   // ---- W, the tiki bar's islet (x -60..-36, z -36..-12); E, the beach huts' (x 36..60, z -36..-12)
   isle(B, D, -60, -36, -36, -12);
-  tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42);
+  const TK = tikiArt(B, D, 'tiki_sd'); // (the tiki islet and the huts' islet: one Blender model, look only)
+  TK(() => { tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42); });
   lounger(B, D, -50, -15, 'toyteal'); lounger(B, D, -46, -15, 'toypink');
   for (const [x, z] of [[-58.5, -14], [-37, -13.5], [-59, -33.5], [-37.5, -24.5]]) palm(W, x, z, 5.5 + r() * 3, r);
   isle(B, D, 36, -36, 60, -12);
-  hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1);
+  TK(() => { hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1); });
   lounger(B, D, 57, -30, 'toyyellow'); lounger(B, D, 57.6, -25.6, 'toyteal');
-  surfSchool(B, D, 16, -29);
+  TK(() => surfSchool(B, D, 16, -29));
   for (const [x, z] of [[58.5, -14], [37.5, -13.5], [58.8, -34], [37.5, -29]]) palm(W, x, z, 5.5 + r() * 3, r);
 
   // ---- B, Lighthouse Point (x -62..-34, z -82..-48): the tower's foot (no way up: the site's big cover), the cottage,
@@ -3727,7 +3736,7 @@ function chopper(B, D, x, y, z, livery = 'toyyellow') {
 // the Spire (tools/blender/arch/make_spire.py): the hub tower, its deck's parapet, the glass shaft and the mast drawn as
 // one Blender model over their boxes (look only: the boxes stay for physics, bots and hits). ranges: [from, to) in B, dr in D
 function spireArch(B, D, id, x, z, y, ranges, dr) {
-  B.boxes.arch.push({ id, p: [x, y, z], r: 0 }); const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  B.boxes.arch.push({ id, p: [x, y, z], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 };
   for (const [a, b] of ranges) for (let i = a; i < b; i++) Object.assign(B.boxes[i], tag);
   for (let i = dr[0]; i < dr[1]; i++) Object.assign(D.boxes[i], tag);
 }
