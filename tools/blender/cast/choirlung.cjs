@@ -2,7 +2,8 @@
 // stills from the door and up the aisle, and a clip: they hum and sway together, sing a phrase, you step in through
 // the door and every head turns to you on the same frame, you walk up the aisle between them (the heads follow), back
 // out, and they snap back to the hymn. The story runs in capture mode: each frame is exactly 1/FPS of story time.
-//   SP=tests/rig PORT=3112 node tools/blender/cast/choirlung.cjs <outdir> [stills|clip|both]
+//   SP=tests/rig PORT=3112 node tools/blender/cast/choirlung.cjs <outdir> [stills|clip|both|boot]
+// boot: a quick check: the singers are up (Blender looks), no crowd stand-ins inside the lung, two stills
 // clip frames go to <outdir>/lung/f_00000.jpg (ffmpeg makes the mp4). slow: a Too HD frame of the city takes ~30 s on
 // software GL (the stills take ~35 min with the boot); choirshots.cjs records the same clips in a studio in minutes
 const path = require('path'), fs = require('fs');
@@ -26,6 +27,14 @@ const FPS = Number(process.env.FPS) || 12;
   const sing = () => ev(async () => { const c = await import('/js/story/choir.js'); c.choirState().next = 0; });
   const snap = (f) => pg.screenshot({ path: path.join(OUT, f), type: 'jpeg', quality: 90 });
   await step(8); console.log('choir', JSON.stringify(await C()));
+  const crowdIn = () => ev(async () => { const { cityStream } = await import('/js/city/ingame.js'); const S = cityStream(); if (!S || !S.crowd) return null; const out = {}; for (const n of S.crowd.live.values()) { const inside = Math.hypot((n.home[0] + 268) / 21, (n.home[2] + 218) / 19) < 1; if (inside) out[n.kind] = (out[n.kind] || 0) + 1; } return out; });
+  console.log('crowd inside the lung', JSON.stringify(await crowdIn()));
+  if (MODE === 'boot') {
+    await shot([-268, 41.75, -194.8], [-268, 41.1, -210.6], 42); await step(4); await snap('boot_door.jpg');
+    await shot([-266.4, 41.8, -206.6], [-270.7, 41.3, -210.7], 46); await step(4); await snap('boot_west_row.jpg');
+    console.log('crowd inside the lung', JSON.stringify(await crowdIn()));
+    console.log(errs.filter((e) => !/favicon|404/.test(e)).join('\n') || 'no errors'); await b.close(); return;
+  }
   if (MODE !== 'clip') {
     await ev(async () => { const c = await import('/js/story/choir.js'); c.choirState().next = 99; c.choirState().cool = 99; }); // (no singing, no stares while we line the stills up)
     await shot([-268, 41.75, -194.8], [-268, 41.1, -210.6], 42); await step(4); await snap('choir_lung_door.jpg');
