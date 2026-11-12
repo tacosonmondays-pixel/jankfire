@@ -13,7 +13,7 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { sunAt, sunDir, sunBoxes } from './lighting.js';
 
-export const BOUNCE = { cell: 2, k: 0.9, wallK: 0.7, reach: 4, blur: 2, max: 320, slice: 6000 };
+export const BOUNCE = { cell: 2, k: 1.3, wallK: 0.8, reach: 4, blur: 2, max: 320, slice: 6000 };
 const U = { uBK: { value: 0 }, uBG: { value: null }, uBW: { value: null }, uBR: { value: new THREE.Vector4(0, 0, 1, 1) }, uBY: { value: new THREE.Vector2(0, 1) } };
 let on = false, ready = false, job = null, patched = new WeakSet();
 
