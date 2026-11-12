@@ -26,6 +26,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({'brock': ('stucco', '#a294b0', {}), 'brockband': ('stucco', '#54485e', {}), 'bflow': ('stucco', '#352c3c', {}), 'bcrust': ('stucco', '#241d2a', {}),
              'bcrack': ('stucco', '#ff7a30', {}), 'bash': ('stucco', '#d2cad6', {}), 'brust': ('stucco', '#c0623a', {}), 'blava': ('stucco', '#ffb030', {}), 'bscree': ('stucco', '#62566c', {})})
 NOCAST.update({'bcrack', 'blava', 'bflow', 'bcrust'})
+if ID == 'kaboom_sd':  # (S&D: the lava glows, so it reads as lava from the far beaches)
+    MATS.update({'bcrack': ('stucco', '#ff7a30', {'glow': True, 'glowcol': '#ff5a10'}), 'blava': ('stucco', '#ffb030', {'glow': True, 'glowcol': '#ff9a20'})})
 G = json.load(open(os.path.join(HERE, 'boxes', ID + '_ground.json')))
 json.dump({'map': V['map'], 'id': ID, 'boxes': [], 'places': [{'id': ID, 'p': [0, 0, 0], 'r': 0}]}, open(os.path.join(HERE, 'boxes', ID + '.json'), 'w'))
 K = Kit(os.path.join(HERE, 'boxes', ID + '.json'), seed=3)
@@ -111,7 +113,25 @@ run = [spoke(aL + 0.04 * math.sin(q * 16) * max(0.0, min(1.0, (0.95 - q) * 6)), 
 ex, ez = run[-1]; dxn, dzn = math.cos(aL), math.sin(aL)
 run += [(ex + dxn * d, ez + dzn * d) for d in [0.5 * k for k in range(1, 9)]]  # the delta: on over the beach and the shelf into the water
 ribbon(run, lambda t: 0.2 + 0.5 * t + 1.3 * max(0, t - 0.8) / 0.2, 0.03, 'bcrack', edge='bcrust', ew=0.4, sea=True, prof=[0.03, 0.34, 0.12, 0.34, 0.03])  # between raised levees
-ribbon(run[6:], lambda t: 0.05 + 0.12 * t + 0.3 * max(0, t - 0.8) / 0.2, 0.2, 'blava', sea=True)  # its bright middle
+ribbon(run[6:], (lambda t: 0.12 + 0.2 * t + 0.3 * max(0, t - 0.8) / 0.2) if ID == 'kaboom_sd' else (lambda t: 0.05 + 0.12 * t + 0.3 * max(0, t - 0.8) / 0.2), 0.2, 'blava', sea=True)  # its bright middle
+if ID == 'kaboom_sd':  # ---- the throat (shared/map.js lavaPit: x -2..2, z -15..-11, its real lava at 4.5): a lava pool just under the lip, look only
+    # (step on it and you drop through to the same pit: what it looks like is what it does), glowing walls under it for the fall, a crust collar
+    TX0, TZ0, TX1, TZ1 = -2.0, -15.0, 2.0, -11.0
+    ring = [at(x, z) for x in [TX0 - 0.3 + 0.25 * k for k in range(19)] for z in (TZ0 - 0.3, TZ1 + 0.3)] + [at(x, z) for z in [TZ0 - 0.3 + 0.25 * k for k in range(19)] for x in (TX0 - 0.3, TX1 + 0.3)]
+    LIP = min(v for v in ring if v is not None); PY = LIP - 0.45
+    K.quad([(TX0, PY, TZ1), (TX1, PY, TZ1), (TX1, PY, TZ0), (TX0, PY, TZ0)], 'blava')
+    for (ax, az, bx, bz) in ((TX0, TZ0, TX1, TZ0), (TX1, TZ0, TX1, TZ1), (TX1, TZ1, TX0, TZ1), (TX0, TZ1, TX0, TZ0)):  # walls, facing in
+        K.quad([(ax, 4.5, az), (bx, 4.5, bz), (bx, PY, bz), (ax, PY, az)], 'bcrack')  # (up to the pool's edge: one piece with it)
+    for k in range(40):  # the collar: a lumpy crust skin round the square hole, rounding it off, its inner edge glowing
+        a0, a1 = 2 * math.pi * k / 40, 2 * math.pi * (k + 1) / 40
+        def sq(a, grow):  # the square's edge along angle a, pushed out by grow
+            c, s2 = math.cos(a), math.sin(a); m = 2.0 / max(abs(c), abs(s2)); return 0.0 + c * (m + grow), -13.0 + s2 * (m + grow)
+        for (g0, g1, lf0, lf1, mt) in ((0.0, 0.18, 0.04, 0.1, 'bcrack'), (0.18, 0.75 + 0.25 * hsh(k, 140), 0.1, 0.03, 'bcrust')):
+            P = [sq(a0, g0), sq(a1, g0), sq(a1, g1), sq(a0, g1)]; L2 = [lf0, lf0, lf1, lf1]
+            Q = [on(x, z, l) if g > 0 else Vector((x, PY + 0.02, z)) for (x, z), l, g in zip(P, L2, (g0, g0, g1, g1))]
+            if g0 == 0: Q = [Q[0], Q[1], on(*P[2], lf1), on(*P[3], lf1)]; Q[0] = Vector((Q[0].x, (Q[3].y if Q[3] else PY) - 0.06, Q[0].z)); Q[1] = Vector((Q[1].x, (Q[2].y if Q[2] else PY) - 0.06, Q[1].z))
+            up([Q[0], Q[1], Q[2]], mt); up([Q[0], Q[2], Q[3]], mt)
+    print('throat lip', round(LIP, 2), 'pool', round(PY, 2))
 # ---- cooled lava: tongues down three other gullies, widening into a toe
 for n, (a0, q0) in enumerate(((math.radians(-25), 0.25), (math.radians(195), 0.2), (math.radians(135), 0.3))):  # old flows: down the buttress, the spur and the shoulder, out over the apron
     a = gully_floor(a0, 0.2)
