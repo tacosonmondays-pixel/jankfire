@@ -8,9 +8,10 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 
 const ZIP = new Set(['.glb', '.js', '.css', '.html', '.json', '.svg', '.webmanifest', '.wav']);
-// models, pictures, sounds: a returning player's browser shows its copy at once and checks for a newer one behind it
-// (stale-while-revalidate). code stays no-cache: an old script next to a new one would break
-const MEDIA = new Set(['.glb', '.png', '.jpg', '.jpeg', '.webp', '.gif', '.ogg', '.mp3', '.wav', '.woff2', '.woff', '.ttf']);
+// fonts and music: a returning player's browser shows its copy at once and checks for a newer one behind it
+// (stale-while-revalidate). they don't change with art PRs. models, pictures and code stay no-cache + ETag (a 304 is
+// cheap): new models and textures ship many times a day, and new code next to a stale .glb could break
+const MEDIA = new Set(['.ogg', '.mp3', '.woff2', '.woff', '.ttf']);
 const gz = new Map(); // file -> { tag, buf | promise }
 let gzBytes = 0;
 const GZ_CAP = 32 * 1024 * 1024; // (the models are ~12 MB gzipped, the scripts a few: fits, and leaves room on a 512 MB box)

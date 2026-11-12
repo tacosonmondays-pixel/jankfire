@@ -1,5 +1,5 @@
 // node --test tests/static.test.mjs : static files (server/static.js). gzip comes back byte-identical, a second ask is
-// a 304, models/sounds may be shown stale while the browser rechecks (code never), and a gzipped copy is kept on disk
+// a 304, fonts and music may be shown stale while the browser rechecks (models, pictures and code never), and a gzipped copy is kept on disk
 // so a file past the memory cap isn't gzipped again for every player.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -25,9 +25,13 @@ test('static files: gzip, 304s, media caching, the disk copy', async () => {
     assert.equal(a.code, 200);
     assert.equal(a.h['content-encoding'], 'gzip');
     assert.ok(zlib.gunzipSync(a.body).equals(raw), 'gzip comes back byte-identical');
-    assert.match(a.h['cache-control'], /stale-while-revalidate/, 'a model may be shown while the browser rechecks it');
+    assert.equal(a.h['cache-control'], 'no-cache', 'models are always rechecked (art changes many times a day)');
     const again = await get('/models/cast/c_dale.glb', { 'if-none-match': a.h.etag });
     assert.equal(again.code, 304, 'same version: 304');
+    const font = fs.readdirSync(path.join(ROOT, 'public/fonts')).find((f) => /\.woff2$/.test(f));
+    if (font) { const f = await get('/fonts/' + font); assert.equal(f.code, 200); assert.match(f.h['cache-control'], /stale-while-revalidate/, 'fonts may be shown while the browser rechecks them'); }
+    const pic = await get('/icons/icon-512.png'); // (any picture)
+    assert.equal(pic.code, 200); assert.equal(pic.h['cache-control'], 'no-cache', 'pictures are always rechecked');
     const j = await get('/js/story/looks.js');
     assert.equal(j.code, 200); assert.equal(j.h['cache-control'], 'no-cache', 'code is always rechecked');
     assert.ok(zlib.gunzipSync(j.body).equals(fs.readFileSync(path.join(ROOT, js))));
