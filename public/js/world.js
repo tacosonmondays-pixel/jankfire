@@ -22,9 +22,10 @@ import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // B
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
+import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { biGroundMaterial, disposeBiGround } from './biground.js';
-import { postBegin, postEnd } from './post.js';
+import { postBegin, postEnd, setPostAA } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -307,6 +308,7 @@ function buildMap(scene) {
   const all = def && def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
+  applyOverlayTiers(MAT, overlayTiers(all)); // (roads over sidewalks over paving: the top layer always wins, zfight.js)
   const shoreBoxes = TR ? [...BOXES, ...(def && def.deco ? def.deco : [])] : all; // (the water's shore map needs the ground's steps: that's how it knows a pond is deep)
   if (TR) (TR.mats || [TR.mat]).forEach((tm, mi) => { const tk = MAT[tm] ? tm : 'stone', g = terrainGeo(TR, MAT[tk].tile, TR.mats ? mi : -1); if (g.index.count) push(tk, terrainFacet(TR, tm, terrainTint(TR, aoBake(g, false), tm).toNonIndexed())); });
   for (let i = 0; i < all.length; i++) {
@@ -387,6 +389,7 @@ function buildChunked(scene, def) {
   const all = def.deco ? [...real, ...(TR ? def.deco.filter((b) => !b.ter) : def.deco)] : real, nReal = real.length;
   const ncf = noCastFn(def), liq = [];
   aoBegin(all, ncf); setSunBoxes(all);
+  applyOverlayTiers(MAT, overlayTiers(all)); // (as in buildMap)
   // Battle Island: its ground is one blended material (biground.js), a piece per chunk, all paints in each piece
   const biG = TR && MAP.id === 'battleisland' ? biGroundFor(TR, def) : null;
   if (biG) for (let ci = Math.floor(TR.x0 / C); ci * C < TR.x0 + TR.nx; ci++) for (let cj = Math.floor(TR.z0 / C); cj * C < TR.z0 + TR.nz; cj++) {
@@ -533,7 +536,7 @@ export function initWorld(canvas) {
   initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
-export function setJank(i) { jank = JANK[i] || JANK[1]; resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
+export function setJank(i) { jank = JANK[i] || JANK[1]; setPostAA(i >= 2); resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
 
 // OVERDUE: a streamed map (MAPS[id].stream, the story's city) runs the city streamer instead of one built mesh.
 // loaded on demand, so maps without `stream` (all of PvP) never fetch it
@@ -664,6 +667,7 @@ let lastT = 0;
 export function renderFrame() {
   const r = G.renderer, now = performance.now();
   gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
+  depthNear(G.camera); // high up (blimp, glide), the near plane moves out: depth precision for the streets below (zfight.js)
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)

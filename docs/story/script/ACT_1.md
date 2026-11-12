@@ -28,7 +28,7 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - _withheld:_ Who you were. Why the barcode has no record. What Option C actually says.
 
 **Objectives**
-1. win the match
+1. win a match in the Machine's sim (use the Machine)
 2. _(scene)_ · scene `c1_please_take_your_item`
 3. take your item
 4. talk to the old man
@@ -674,7 +674,7 @@ _Mr. Overtime comes down the Long Stairs to collect two hundred and forty-four q
 - **chase the truck**: You catch the truck as it passes under the first rib arch. You can't open it: the doors have grown shut. Through the slot the old woman with the braid looks out and says 'rory' again, quieter, like a question she's sure of. You learn the truck's number (it matters in m20). Lumps gets himself free by tearing the staple out of the bumper; it leaves a scar he shows people.
 - **stay with lumps**: You pull the staple out of Lumps' arm. He doesn't cry until it's out, then he does. 'thanks. sorry. thanks.' Lumps trusts you more (his Act III choice is easier to steer). You don't get the truck number; Sister Agenda has to find it for you in m20.
 
-**Reward:** 500 coupons, core_cracked_punch_clock
+**Reward:** 500 coupons
 **Review card:** EXCEEDS EXPECTATIONS. you made employee #1 take a coffee break. the truck left on time. / MEETS EXPECTATIONS. he's been rescheduled. / SEE ME. you were stapled to a truck for eleven seconds.
 _Builder notes: people taken in C4 stay taken unless m20 frees them (DESIGN §7.1). Nine names on the wall: they are the m20 rescue list. The nine doors stay open with their COLLECTED slips on them until m20 (older slips on other doors are already there in C1)._
 
@@ -789,7 +789,7 @@ _A Meat Mechanic installs the piece of Overtime's heart in your chest. Implants 
   - **AUNTIE SPREADSHEET:** you're a terrible liar. good. keep it that way. go to sleep.
   - _does: flag:lied_to_auntie_1_
 
-**Reward:** 200 coupons, core_cracked_punch_clock
+**Reward:** 200 coupons
 **Review card:** EXCEEDS EXPECTATIONS. one heart, installed, ticking. / MEETS EXPECTATIONS. you have a pulse. it's not yours. / SEE ME. you asked bev for a refund.
 
 ---
@@ -956,7 +956,7 @@ _The only other way into the Gut is the commuter line under the hill. Nobody tak
 #### Choice: His hand comes off yours and stays open on the deck.
 - **[TAKE]**: Your hand goes in through the split boiler, the same motion as the Heart Rip, slower. What comes out is a length of spine the colour of a traffic light, wet, and warm, and still making blood: it runs down your arm and into the cradle and all six barrels fill at once.
 
-**Reward:** loop_train, blood_drive, marrow_pallet_jack
+**Reward:** loop_train, blood_drive
 **Review card:** NO REVIEW TODAY. / NO REVIEW TODAY. / NO REVIEW TODAY.
 _Builder notes: the only mission whose grade card has no joke. Jack's vest stays on Dumpling for the rest of the game (it never fits). LEG DAY's intro changes: Lumps is carrying fridges up the Long Stairs because someone has to do Jack's round._
 
