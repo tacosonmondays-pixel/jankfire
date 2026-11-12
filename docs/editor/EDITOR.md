@@ -108,3 +108,19 @@ used to exist. Flags show as red markers you can click to fly to. (PR 5.)
 - Part 3 (#390): shipped edits load on the server and the client (`node tools/mapedits.mjs add <file>`).
 - Part 4 (#391): BOT CHECK (N) and the snap grid. Walling in Forest's bomb site A: ![bots](botcheck.jpg) ![grid](grid.jpg)
 - The Islands fort turning in place after the review fix: ![fort](fix_fort.jpg)
+
+## Sandbox tools (owner: "something like a prop gun, and a move gun? ... and a menu like creative mode")
+You hold a tool in first person. The hotbar along the bottom picks it (1-9):
+
+| slot | tool | what it does |
+|---|---|---|
+| 1 | GRABBY BEAM | hold click on a thing: a wobbly pink/cyan beam picks it up (the real model, not boxes). Wheel pushes/pulls, hold R and move the mouse to turn it (90 degree clicks), right-click freezes it where it floats, let go and it drops to the floor. Swing and let go: it flies, thuds and squashes. Fling it into the void and it comes back ("THE VOID SAID NO"). |
+| 2 | PLOP CANNON | shoots the loaded thing where you aim: a see-through preview on the floor, R turns, wheel sizes, click = pew, it pops in |
+| 3 | YEET RAY | zaps a thing away in a cartoon poof |
+| 4 | EDIT WAND | the old tools: select, G carry, R turn, = / - size, X delete, ctrl+D copy, arrows nudge |
+| 5-9 | favourites | anything dragged here from the menu; pressing it loads the plop cannon |
+
+**E** (or Q, P) opens the CREATIVE MENU: every prop, building and box material with 3D pictures, in tabs (city, nature,
+industrial, island, vehicles, lights, buildings, boxes, recent) and a search. Click one to load the plop cannon, or drag it
+onto hotbar slot 2 or 5-9. Shift+1-4 = graphics now. Every tool's change is an ordinary edit (undo, CHANGES, EXPORT).
+Sounds are synthesized (editor/sfx.js): a hum while the beam holds, a clunk, a pew, a pop, a zap and a poof.

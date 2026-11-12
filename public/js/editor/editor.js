@@ -12,7 +12,9 @@ import { lockPointer, lookFilter } from '../mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats, relightMap } from '../world.js';
 import { whenGlb } from '../glbkit.js';
 import { wantArch } from '../archfield.js';
-import { initPalette, togglePalette, solidOn, modelBounds } from './palette.js';
+import { initPalette, togglePalette, paletteOpen, solidOn, modelBounds, addRecent, setActiveSlot, slotItem, slotTool, dropOn } from './palette.js';
+import { initTools, updateTools, toolDown, toolUp, toolWheel, toolKey, toolMouse, pickTool, loadItem, curTool, busy, toolState, hideVM } from './tools.js';
+import { ghostOf, dropGhost } from './modelghost.js';
 import { navCheck } from '/shared/navcheck.js';
 import { EDITS } from '/shared/mapedits/index.js';
 import { loadTripoModels } from '../models.js';
@@ -190,14 +192,8 @@ let carry = null; // { ts, o, k, q, dist, ghost }
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0xff4fd8, transparent: true, opacity: 0.28, depthWrite: false });
 function startCarry(ts) {
   ts = ts.filter(Boolean); if (!ts.length) return;
-  const o = pivotFor(ts), ghost = new THREE.Group();
-  for (const t of ts) for (const b of boxesOf(t)) {
-    const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2], m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), ghostMat);
-    m.position.set((b.min[0] + b.max[0]) / 2 - o[0], (b.min[1] + b.max[1]) / 2 - o[1], (b.min[2] + b.max[2]) / 2 - o[2]); m.rotation.y = b.rot || 0;
-    ghost.add(m);
-  }
-  const eg = edgesFor(ts); eg.translate(-o[0], -o[1], -o[2]); const el = new THREE.LineSegments(eg, lineMat(0x4fd8ff, 1)); el.renderOrder = 999; ghost.add(el);
-  G.scene.add(ghost);
+  const o = pivotFor(ts), ghost = ghostOf(ts, o, edgesFor(ts)); // (the real model where there is one)
+  ghost.position.set(...o); G.scene.add(ghost);
   cam.getWorldPosition(_o);
   carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
   callout('YOINK');
@@ -250,7 +246,7 @@ function dropCarry() {
 }
 // put it back: a fresh copy (or a new thing from the palette) that never got put down goes away again
 function cancelCarry() { const fresh = carry && carry.fresh; endCarry(); if (fresh && undoN) { undo(); redo.pop(); toast('never mind'); } else toast('put back'); }
-function endCarry() { if (!carry) return; G.scene.remove(carry.ghost); carry.ghost.traverse((o) => o.geometry && o.geometry.dispose()); carry = null; }
+function endCarry() { if (!carry) return; dropGhost(carry.ghost); carry = null; }
 
 // ---------------------------------------------------------------- actions
 let snap = 1;
@@ -304,6 +300,44 @@ function tpl() {
     }
   }
   return TPL;
+}
+// things the grabby beam holds leave the map for a moment (moved far below, exactly as they were kept aside): the beam
+// shows the model instead, and the real move is one ordinary op when you let go
+const hidden = new Map();
+function hideThings(ts) {
+  for (const t of ts) {
+    if (hidden.has(t)) continue;
+    hidden.set(t, { b: t.boxes.map((b) => [b.min, b.max]), d: (t.dboxes || []).map((b) => [b.min, b.max]), a: t.prop && t.prop.a, p: t.prop && t.prop.p, ap: t.arch && t.arch.p });
+    xfThing(t, [0, 0, 0], 1, 0, [0, -10000, 0]);
+  }
+  rebuild();
+}
+function unhideThings(ts) {
+  for (const t of ts) {
+    const h = hidden.get(t); if (!h) continue; hidden.delete(t);
+    t.boxes.forEach((b, i) => { [b.min, b.max] = h.b[i]; }); (t.dboxes || []).forEach((b, i) => { [b.min, b.max] = h.d[i]; });
+    if (t.prop) { if (h.a) t.prop.a = h.a; if (h.p) t.prop.p = h.p; }
+    if (t.arch) t.arch.p = h.ap;
+  }
+}
+// the data a new thing starts from (an 'add' item): a copy of one already on some map, a model's own size, a plain box.
+// null while its model is still loading (asked for; it comes)
+const asked = new Set();
+function itemData(kind, mid) {
+  let data = null;
+  if (kind === 'props') {
+    const id = mid.replace(/^p_/, '');
+    data = tpl().props.get(id);
+    if (!data) {
+      const mb = modelBounds(mid);
+      if (!mb) { if (!asked.has(mid)) { asked.add(mid); whenGlb([mid], () => {}); } return null; }
+      data = { list: 'b', boxes: [{ min: mb.lo, max: mb.hi, mat: 'metal', pv: id }], prop: { id, a: [0, 0, 0], y: 0, lo: mb.lo, hi: mb.hi } };
+    }
+  } else if (kind === 'arch') { data = tpl().arch.get(mid); if (!data) return null; }
+  else data = { list: 'b', boxes: [{ min: [-1, 0, -1], max: [1, 2, 1], mat: mid }] };
+  data = JSON.parse(JSON.stringify(data));
+  if (kind !== 'arch' && !solidOn()) data.list = 'd'; // look-only: drawn, never bumped into (buildings are always solid)
+  return data;
 }
 let retried = new Set();
 function place(kind, mid) {
@@ -421,18 +455,21 @@ function step(now) {
     cam.position.x += (-Math.sin(y) * f + Math.cos(y) * r) * v; cam.position.z += (-Math.cos(y) * f - Math.sin(y) * r) * v; cam.position.y += u * v;
   }
   updateCarry();
-  if (!carry && (moved || document.pointerLockElement === canvas)) { const [o, d] = aimRay(); const h = pick(o, d); drawHover(h && h.t); } else drawHover(null);
+  updateTools(dt, !!(f || r || u));
+  if (!carry && !busy() && curTool() !== 'plop' && (moved || document.pointerLockElement === canvas)) { const [o, d] = aimRay(); const h = pick(o, d); drawHover(h && h.t); } else drawHover(null);
   try { updateWorld(dt); } catch (e) { if (!frameErr) { frameErr = true; console.error('editor world', e); } }
   renderFrame();
 }
 
 // ---------------------------------------------------------------- input
 canvas.addEventListener('mousedown', (e) => {
+  if (!carry && toolDown(e.button)) return; // (the grabby beam, the plop cannon, the yeet ray)
   if (document.pointerLockElement !== canvas && e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); }
   if (document.pointerLockElement === canvas) { if (e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); } else if (e.button === 2 && carry) cancelCarry(); }
 });
+addEventListener('mouseup', (e) => { toolUp(e.button); });
 canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) lockPointer(canvas); });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) lockPointer(canvas); });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas && !busy()) lockPointer(canvas); });
 const mlook = lookFilter(); // (the game's mouse look: raw mouse, no snapping on Chrome's fake jumps)
 function clickPick(add) {
   const [o, d] = aimRay(), h = pick(o, d);
@@ -444,24 +481,29 @@ addEventListener('mousemove', (e) => {
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); moved = true;
   if (document.pointerLockElement !== canvas) return;
   if (!mlook.take(e.movementX, e.movementY)) return;
+  if (toolMouse(e.movementX, e.movementY)) return; // (R held with something on the beam: the mouse turns it)
   const s = 0.0022 * (G.settings.sens || 1.2); // (the same feel as in a match)
   cam.rotation.order = 'YXZ'; cam.rotation.y -= e.movementX * s; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * s)); cam.rotation.z = 0;
 });
 document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === canvas) mlook.locked(); $('edX').style.display = document.pointerLockElement === canvas ? '' : 'none'; canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'crosshair'; });
 addEventListener('wheel', (e) => {
   if (e.target !== canvas && document.pointerLockElement !== canvas) return;
+  if (toolWheel(e.deltaY)) return;
   if (carry) carry.dist = Math.max(1.5, Math.min(200, carry.dist * (e.deltaY > 0 ? 0.9 : 1.1)));
   else { speed = Math.max(2, Math.min(90, speed * (e.deltaY > 0 ? 0.85 : 1.18))); toast('fly speed ' + speed.toFixed(0)); }
 }, { passive: true });
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
   const c = e.code, ctrl = e.ctrlKey || e.metaKey;
+  if (busy() && (ctrl || ['KeyX', 'Delete', 'Backspace', 'KeyG', 'Equal', 'Minus'].includes(c))) return; // (not while the beam holds something)
   if (ctrl && c === 'KeyZ') { e.preventDefault(); if (e.shiftKey) redoIt(); else undo(); return; }
   if (ctrl && c === 'KeyY') { e.preventDefault(); redoIt(); return; }
   if (ctrl && c === 'KeyD') { e.preventDefault(); act('dupe'); return; }
   if (ctrl) return;
   keys.add(c);
   if (c === 'Space' || c.startsWith('Arrow') || c === 'PageUp' || c === 'PageDown') e.preventDefault();
+  if (e.repeat && c === 'KeyR') return;
+  if (c === 'KeyR' && toolKey('KeyR', true, e.shiftKey)) return;
   if (c === 'KeyG') act('grab');
   else if (c === 'KeyR') act('turn', e.shiftKey);
   else if (c === 'Equal' || c === 'NumpadAdd') act('bigger');
@@ -472,13 +514,15 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
   else if (c === 'KeyN') botCheck();
-  else if (c === 'KeyP') { if (togglePalette() && document.pointerLockElement) document.exitPointerLock(); }
+  else if (c === 'KeyP' || c === 'KeyE' || c === 'KeyQ') menu();
+  else if (c === 'Escape' && paletteOpen()) menu(false);
   else if (c === 'Escape' && carry) cancelCarry();
   else if (c === 'ArrowUp') nudge(0, 0, -1); else if (c === 'ArrowDown') nudge(0, 0, 1); else if (c === 'ArrowLeft') nudge(-1, 0, 0); else if (c === 'ArrowRight') nudge(1, 0, 0);
   else if (c === 'PageUp') nudge(0, 1, 0); else if (c === 'PageDown') nudge(0, -1, 0);
+  else if (/^Digit[1-9]$/.test(c) && !e.shiftKey) slot(+c.slice(5) - 1);
   else if (/^Digit[1-4]$/.test(c)) { G.settings.jank = +c.slice(5) - 1; setJank(G.settings.jank); toast(['Potato', 'Crusty', 'Mid', 'Too HD'][G.settings.jank]); }
 });
-addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('keyup', (e) => { keys.delete(e.code); if (e.code === 'KeyR') toolKey('KeyR', false); });
 addEventListener('blur', () => keys.clear());
 function toggleFloors() { floorsLocked = !floorsLocked; $('edFloors').textContent = 'FLOORS: ' + (floorsLocked ? 'LOCKED' : 'PICKABLE'); $('edFloors').classList.toggle('on', !floorsLocked); }
 
@@ -494,10 +538,21 @@ $('edDiff').onclick = () => { $('edList').classList.toggle('hidden'); showList()
 $('edClose').onclick = () => { $('edList').classList.add('hidden'); showSel(); };
 $('edReset').onclick = () => { if (!confirm('Throw away every change on ' + (def.name || mapId) + '?')) return; try { localStorage.removeItem(store(mapId)); } catch { /* fine */ } location.reload(); };
 $('edQuit').onclick = () => { location.href = '/'; };
-$('edPalBtn').onclick = () => togglePalette();
+$('edPalBtn').onclick = () => menu();
 $('edBotBtn').onclick = () => botCheck();
 $('edBotClose').onclick = () => { $('edBots').classList.add('hidden'); clearBotMarks(); showSel(); };
-initPalette({ pick: (k, id) => place(k, id), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
+// the creative menu (E): click = into the plop cannon; the hotbar (1-9): 1-4 tools, 5-9 favourites
+function menu(on) { const open = togglePalette(on); hideVM(open); if (open && document.pointerLockElement) document.exitPointerLock(); return open; }
+function slot(i, it) {
+  if (i < 4) { if (i === 1 && it) { loadItem(it); addRecent(it); setActiveSlot(1, it); return; } pickTool(slotTool(i)); setActiveSlot(i); return; }
+  const x = it || slotItem(i);
+  if (!x) { toast('empty slot: drag something here from the menu (E)'); return; }
+  loadItem(x); setActiveSlot(i, x);
+}
+function onTool(t) { document.body.dataset.tool = t; if (t !== 'wand') { if (carry) cancelCarry(); if (sel.size) { sel.clear(); drawSel(); } } } // (selecting is the wand's thing)
+initPalette({ pick: (k, id) => { const it = { kind: k, id }; loadItem(it); addRecent(it); setActiveSlot(1, it); menu(false); toast('plop cannon: ' + id.replace(/^p_/, '').replace(/_/g, ' ') + ' (click to plop)'); }, slot: (i, it) => slot(i, it), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
+initTools({ G, MAP, sel, aimRay, pick, terrainHit, pivotFor, edgesFor, select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, hide: hideThings, unhide: unhideThings, rebuild, opXf, opAdd, opDel, itemData, thingFrom, thingData, xfThing, boundsOf, snap: () => snap, grid: showGrid, toast, callout, recent: addRecent, onTool });
+onTool('grab'); setActiveSlot(0);
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = 'jankfire-edits-' + mapId + '.json'; a.click();
@@ -518,10 +573,12 @@ let callT = 0, toastT = 0;
 function callout(t) { const el = $('edCall'); el.textContent = t; el.style.opacity = 1; clearTimeout(callT); callT = setTimeout(() => { el.style.opacity = 0; }, 700); }
 function toast(t) { const el = $('edToast'); el.textContent = t; el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => { el.style.opacity = 0; }, 1800); }
 
+const topBar = () => document.body.style.setProperty('--edtop', Math.round($('edTop').getBoundingClientRect().bottom + 10) + 'px');
+addEventListener('resize', topBar); topBar();
 setSnap(1);
 $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, toolState, slot, menu, dropOn, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);
