@@ -16,7 +16,7 @@ from archkit import Kit, OUTDIR, MATS, NOCAST
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({
     'stpanel': ('trim', '#e8389c', {}), 'stpanel2': ('trim', '#ff5cb6', {}), 'stback': ('trim', '#26202c', {}),
-    'stband': ('concrete', '#e2e0da', {}), 'stplinth': ('concrete', '#8c8a92', {}), 'stframe': ('metalplate', '#3a3e46', {}),
+    'stband': ('stucco', '#f4f2ec', {}), 'stplinth': ('concrete', '#8c8a92', {}), 'stframe': ('metalplate', '#3a3e46', {}),
     'stglass': ('glass', '#ffffff', {}), 'stlit': ('louvre', '#ffe2a0', {'glow': True}), 'stsill': ('trim', '#ecebe6', {}),
     'stcope': ('metalplate', '#c8ccd2', {}), 'stroof': ('tar', '#ffffff', {}), 'stglow': ('stucco', '#fff3c8', {'glow': True}),
     'stpipe': ('trim', '#ff4fd8', {}), 'stcanopy': ('metalplate', '#d6dade', {}), 'stdoor': ('trim', '#d83a3a', {}),
