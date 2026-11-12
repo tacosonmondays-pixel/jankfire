@@ -628,14 +628,19 @@ function cityWall(B, D, r) {
     if (gate) ops.push({ a: -12, b: 12, y0: 0, y1: WH + 2 }, { a: 15, b: 18, y0: 0, y1: 3 }, { a: -18, b: -15, y0: 0, y1: 3 });
     for (const b of brs) ops.push({ a: alongOf(b) - 6, b: alongOf(b) + 6, y0: 0, y1: WH + 2 });
     if (axis === 'z' && fixed === H) ops.push({ a: cn.z0, b: cn.z1, y0: -5, y1: 2.5 });
+    const n0 = B.boxes.length;
     wall(L, axis, fixed, -H + CH, H - CH, 0, WH, t, 'concrete', ops);
+    wallKit(B, axis, fixed, n0, out);
     const cut = (a) => ops.some((o) => a > o.a - 1 && a < o.b + 1 && o.y0 <= 0.5);
     // the firewall's neon strip, merlons on the outer edge, a walkway you can run along on top
     for (let a = -H + CH; a < H - CH; a += 6) {
       if (cut(a) || cut(a + 6)) continue;
+      const d0 = D.boxes.length;
       wd(axis, fixed, a, a + 6, out * (t / 2) - 0.05 * (out > 0 ? 0 : 1), out * (t / 2) + 0.05 * (out > 0 ? 1 : 0), WH - 2.2, WH - 1.6, 'neonpink');
       wd(axis, fixed, a, a + 6, inn * (t / 2) - 0.05 * (inn > 0 ? 0 : 1), inn * (t / 2) + 0.05 * (inn > 0 ? 1 : 0), WH - 2.2, WH - 1.6, 'neonpink');
-      wb(axis, fixed, a + 2.3, a + 3.7, out > 0 ? t / 2 - 0.8 : -t / 2, out > 0 ? t / 2 : -t / 2 + 0.8, WH, WH + 1.2, 'concrete');
+      for (let i = d0; i < D.boxes.length; i++) D.boxes[i].pv = 'jb_wall'; // (the Blender module has its own neon)
+      const ma = a + 3, myaw = axis === 'x' ? (out < 0 ? 0 : Math.PI) : (out > 0 ? -Math.PI / 2 : Math.PI / 2), mn = out * (t / 2 - 0.4);
+      propOf('jb_merlon', axis === 'x' ? [ma, WH, fixed + mn] : [fixed + mn, WH, ma], myaw, () => wb(axis, fixed, a + 2.3, a + 3.7, out > 0 ? t / 2 - 0.8 : -t / 2, out > 0 ? t / 2 : -t / 2 + 0.8, WH, WH + 1.2, 'concrete'));
     }
     // towers every 60 m, a jump pad at the foot of each (inside) that throws you up onto it
     for (const a of [-120, -60, 60, 120]) {
@@ -675,6 +680,23 @@ function cityWall(B, D, r) {
     const tx = sx * (H - CH / 2), tz = sz * (H - CH / 2);
     B.box(tx, 12, tz, 11, 24, 11, 'concrete'); B.box(tx, 24.2, tz, 11.6, 0.4, 11.6, 'roofg'); D.add(tx - 5.6, 21, tz - 5.6, tx + 5.6, 21.6, tz + 5.6, 'neonpink');
   }
+}
+// the Blender firewall (tools/blender/jankburg/make_jb_wall.py): a 6 m module over every full-height piece of the wall
+// boxes (stretched to whole modules; the bits over the side passages and the canal stay boxes). seen from outside,
+// neighbouring modules spell FIRE WALL now and then. look only: the boxes stay the collision
+const WALL_ART = [0, 1, 2, 0, 3, 0, 0, 1, 2, 0, 0, 3, 0, 0]; // 1 / 2 = FIRE / WALL, 3 = the LEAVING THE PRODUCT plate
+function wallKit(B, axis, fixed, n0, out) {
+  const WH = PLAN.wall.h, t = PLAN.wall.t, yaw = axis === 'x' ? (out < 0 ? 0 : Math.PI) : (out > 0 ? -Math.PI / 2 : Math.PI / 2), c = Math.cos(yaw), s = Math.sin(yaw);
+  const mods = [];
+  for (let i = n0; i < B.boxes.length; i++) {
+    const b = B.boxes[i];
+    if (b.min[1] > 0.01 || b.max[1] < WH - 0.01) continue;
+    const a0 = axis === 'x' ? b.min[0] : b.min[2], a1 = axis === 'x' ? b.max[0] : b.max[2], n = Math.max(1, Math.round((a1 - a0) / 6)), len = (a1 - a0) / n;
+    b.pv = 'jb_wall';
+    for (let k = 0; k < n; k++) { const m = a0 + (k + 0.5) * len; mods.push(axis === 'x' ? { x: m, z: fixed, len } : { x: fixed, z: m, len }); }
+  }
+  mods.sort((p, q) => (q.x * c - q.z * s) - (p.x * c - p.z * s)); // left to right as you look at it from outside (its local -x)
+  mods.forEach((m, i) => B.boxes.props.push({ id: 'jb_wall', a: [m.x, 0, m.z], y: yaw, lo: [-m.len / 2, 0, -t / 2], hi: [m.len / 2, WH, t / 2], v: WALL_ART[i % WALL_ART.length] }));
 }
 function outerRing(B, D, r, rv) {
   const H = PLAN.wall.half, G = PLAN.ground, L = B.local(0, 0, 0), Ld = D.local(0, 0, 0);
