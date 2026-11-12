@@ -131,3 +131,9 @@ test("the Gut's floor has no holes round the Big Stomach", () => {
   }
   assert.deepEqual(holes.slice(0, 20), [], `${holes.length} spots with no floor`);
 });
+
+test('nowhere in the slice can you see (or fall) through the floor into the void', () => {
+  const holes = new Map();
+  for (let x = SLICE.x0 + 0.5; x < SLICE.x1; x += 1) for (let z = SLICE.z0 + 0.5; z < SLICE.z1; z += 1) if (!(ground(x, z, 500, 0) > -3.9)) { const k = Math.floor(x / 16) * 16 + ',' + Math.floor(z / 16) * 16; holes.set(k, (holes.get(k) || 0) + 1); }
+  assert.deepEqual([...holes], [], 'm² with nothing under them, by 16 m tile');
+});
