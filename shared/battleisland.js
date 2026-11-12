@@ -143,12 +143,15 @@ import { shapeGround } from './terrain.js';
 import { buildNav } from './nav.js';
 import { propOf } from './propcap.js';
 import { outOfBounds } from './bounds.js';
+import { WIP_ON } from './modes.js';
 
 export const REGION = [-410, -330, 410, 330]; // the shaped ground (whole metres): the island, its shelf, the islets
 const BOUNDS = [-404, -324, 404, 324];
 export const KILL_Y = SEA - WADE - 0.6; // feet this far down = in water over your head: into the sea
 const DEEP = -4.2; // the deep sea's bed (drawn under the water, past where you can stand)
-export const GRID = (() => { // the plan's heights on the terrain's 1 m grid, worked out once (the relief asks for every vertex five times)
+let GRID_ = null;
+export const grid = () => GRID_ || (GRID_ = makeGrid()); // (built the first time the island is: nothing at import)
+function makeGrid() { // the plan's heights on the terrain's 1 m grid, worked out once (the relief asks for every vertex five times)
   const [X0, Z0, X1, Z1] = REGION, vx = X1 - X0 + 1, vz = Z1 - Z0 + 1, H = new Float32Array(vx * vz);
   for (let i = 0; i < vx; i++) for (let j = 0; j < vz; j++) H[i * vz + j] = Math.max(DEEP, islandH(X0 + i, Z0 + j)); // (past the kill line the sea bed is flat: nobody walks there)
   const at = (x, z) => { const fx = Math.max(0, Math.min(vx - 1.001, x - X0)), fz = Math.max(0, Math.min(vz - 1.001, z - Z0)), i = Math.floor(fx), j = Math.floor(fz), u = fx - i, v = fz - j;
@@ -167,7 +170,7 @@ export const GRID = (() => { // the plan's heights on the terrain's 1 m grid, wo
     if (!any) break;
   }
   return { H, vx, vz, at, slope, f: (x, z) => H[(x - X0) * vz + (z - Z0)] };
-})();
+}
 const onRoad = (x, z) => PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2);
 const jungle = (x, z) => segDist(x, z, PLAN.river.pts) < 46 || Math.hypot(x - 70, z + 6) < 58;
 const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
@@ -175,7 +178,7 @@ const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r])
 
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
-  const [X0, Z0, X1, Z1] = REGION, G = GRID;
+  const [X0, Z0, X1, Z1] = REGION, G = grid();
   B.add(X0, -12, Z0, X1, 0, Z1, 'sand'); // the slab shapeGround turns into the island (and its sea floor)
   // ---- vegetation (Blender props): palms along the beaches, the jungle along the river, bushes on the plateau
   const taken = [];
@@ -230,11 +233,18 @@ function battleIsland() {
     spawns, plan: PLAN,
     royale: { zone0: PLAN.zone0, blimpY: PLAN.blimpY, pois: PLAN.pois, loot: 400, cells, drops,
       finale: [[PLAN.pois.find((p) => p.id === 'radio').c[0], PLAN.pois.find((p) => p.id === 'radio').c[1], 20], [-110, 30, 48]] },
+    peekGraph() { return graph; }, dropGraph() { graph = null; },
     get graph() { return graph || (graph = buildNav(B.boxes, { x0: X0, z0: Z0, n: X1 - X0, cell: 2, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) && G.at(x, z) > KILL_Y + 0.5 }), graph.maxExpand = 40000, graph); },
   };
   unstick(map.boxes, map.spawns);
   return map;
 }
-export const BATTLE_ISLAND = battleIsland();
-MAPS.battleisland = BATTLE_ISLAND;
-if (!MAP_ORDER.includes('battleisland')) MAP_ORDER.push('battleisland');
+// built the first time something asks for it (a room starting on it, a client loading it, a test): importing the shared
+// map list stays as fast as without it. until then it's a hidden getter, so loops over every map (graph sweeps, prop
+// extents) don't build it either; once built it's an ordinary entry. in the map lists only while it's a WIP and asked for
+Object.defineProperty(MAPS, 'battleisland', { configurable: true, enumerable: false, get() {
+  const m = battleIsland();
+  Object.defineProperty(MAPS, 'battleisland', { value: m, writable: true, configurable: true, enumerable: true });
+  return m;
+} });
+if (WIP_ON && !MAP_ORDER.includes('battleisland')) MAP_ORDER.push('battleisland');
