@@ -28,7 +28,7 @@ _You win a training sim, the camera pulls out through the Machine's glass, and f
 - _withheld:_ Who you were. Why the barcode has no record. What Option C actually says.
 
 **Objectives**
-1. win the match
+1. win a match in the Machine's sim (use the Machine)
 2. _(scene)_ · scene `c1_please_take_your_item`
 3. take your item
 4. talk to the old man
