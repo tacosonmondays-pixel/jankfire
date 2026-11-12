@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.3', date: '2026-11-12', title: 'HAVE A NICE DAY', items: [
+    'jankburg: the city gates got toll booths, boom barriers and big name plates. the toll is your dignity. have a nice day.',
+    'warehouse plant & defuse: the defenders spawn behind a real office block now. lit windows, a staff entrance, a NO LOITERING sign nobody reads.',
+    'zombies: the mystery crate is a real crate now (glowing ??? and a padlock nobody locked), and the power switch is a big copper knife switch you get to SLAM up. works in all three zombies maps.',
+    'suburb: the playground got rebuilt by professionals (the hoa). the slide is an actual slide now. read the rules.',
+  ] },
   { v: '10.2', date: '2026-11-12', title: 'RAY-TRACED (ISH)', items: [
     'new shader level: RAY-TRACED LOOK (settings > video > shaders). sunlight bounces off the ground and walls onto everything around it, and corners and contact spots get soft shadows. on by default on too hd, opt-in on mid. potato stays potato.',
     'battle island\'s grass got deeper, sunnier and blotchier. in a good way.',
