@@ -8,7 +8,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { setGrade } from './post.js';
-import { biGroundLite } from './biground.js';
+import { biGroundLite, biGroundTime } from './biground.js';
 
 export const BI_SKY = {
   zen: 0x2477e6, mid: 0x6cbcff, hor: 0xd2f1ff, sea: 0x9fd8f0, // zenith, mid sky, horizon haze, under the horizon
@@ -120,6 +120,7 @@ export function updateBiLook(dt) {
   if (G.camera) dome.position.copy(G.camera.position);
   U.uT.value += dt * BI_SKY.drift;
   biGroundLite((G.settings && G.settings.jank) === 0); // Potato: the ground's simple mode
+  biGroundTime(performance.now() / 1000 % 3600); // the shore's foam and caustics move
   if (sunLight) { _d.copy(sunLight.position).sub(sunLight.target.position); if (_d.lengthSq() > 1e-6) U.uSun.value.copy(_d.normalize()); }
 }
 export const biLookOn = () => on;
