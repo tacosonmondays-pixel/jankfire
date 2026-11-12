@@ -4,7 +4,7 @@
 // (nc) boxes, lights and marks, so no collision moves (tests/story/act1world.test.mjs checks). Each district generator
 // calls its pass last. Spots come from PLACES (slice.js), so a place and its dressing move together.
 import { SLICE, PLACES, groundY, hwY } from './slice.js';
-import { rng } from './plan.js';
+import { rng, MAT_ID } from './plan.js';
 import { pick, hook, line } from './kit.js';
 
 const P = (id) => PLACES[id].p;
@@ -49,16 +49,25 @@ export function act1Bottom(B) {
   }
 }
 
-// THE GUT: the Digester Wall, the face of the office block across Peristalsis Avenue from the tube (z -140): skin
-// slabs, the Bottom's missing half grown in (mannequin faces), eyes, a sick pink lamp. Dot is IN it (cast_slice.js)
+// THE GUT: the Digester Wall, the face of the office block across Peristalsis Avenue from the tube (z -140): one Blender
+// set piece (s_digester_wall.glb, tools/blender/make_story_digester_wall.py): wet folds of skin over the office front,
+// the Bottom's missing grown into it at different depths (faces, a waving hand, a slipper), bits of their old lives
+// stuck in it, Dot's and Mina's niches, the row of Lumps' soup bowls at its foot. No file = its code stand-in
+// (public/js/city/propcode.js). Visual only: no collision moves. Dot is IN it (cast_slice.js), so is Mina after m04.
+// at: the prop's origin (the foot of the office face), yaw: it faces the avenue. sockets: where the two stand (the
+// model's niches are built round them). face: the office front it covers (x)
+export const DIGESTER = { at: [-87, 40, -140], yaw: Math.PI, sockets: { dot: [-87, 40, -139.5], mina: [-83.5, 40, -139.62] }, face: [-97.5, -76.5] };
+const dropIf = (list, f) => { for (let i = list.length - 1; i >= 0; i--) if (f(list[i])) list.splice(i, 1); };
 export function act1Gut(B) {
-  const D = P('gut:digester_wall'), wz = -140, x0 = D[0] - 10, x1 = D[0] + 10, y = D[1];
-  if (!B.touches([x0 - 2, wz - 2, x1 + 2, wz + 4])) return;
-  const r = rng(4417);
-  for (let x = x0; x < x1; x += 2 + r() * 2) { const h = 3 + r() * 8; B.add(x, y, wz - 0.02, Math.min(x1, x + 1.6 + r() * 2.4), y + h, wz + 0.22, 'flesh', { nc: true, tint: pick(r, FLESH) }); }
-  for (let i = 0; i < 7; i++) { const x = x0 + 1 + i * 3 + (r() - 0.5); if (Math.abs(x - D[0]) < 1.2 || Math.abs(x - D[0] - 3.5) < 1.2) continue; B.prop('mannequin', x, y - 0.3 - r() * 0.5, wz + 0.05, Math.PI + (r() - 0.5) * 0.5, 1, i); } // (Dot's spot and Mina's, 3.5 m east (cast_slice.js), are left free)
-  for (let i = 0; i < 6; i++) B.prop('eyeball', x0 + r() * (x1 - x0), y + 2 + r() * 6, wz + 0.25, Math.PI, 0.8 + r() * 0.8, 0);
-  for (let i = 0; i < 3; i++) B.prop(i % 2 ? 'fleshblob_a' : 'fleshblob_b', x0 + 2 + i * 7, y, wz + 0.5, r() * 6.28, 1.2, 0);
+  const D = P('gut:digester_wall'), [wx, y, wz] = DIGESTER.at, [f0, f1] = DIGESTER.face;
+  if (!B.touches([f0 - 2, wz - 2, f1 + 2, wz + 4])) return;
+  B.prop('digester_wall', wx, y, wz, DIGESTER.yaw, 1, 0);
+  // the office's own skin slabs on this face would poke through the wall, and its door (a tongue, right where Dot is)
+  // out from under her: drop them (render-only boxes and a prop: nothing you bump into)
+  const skin = new Set([MAT_ID.flesh, MAT_ID.liver, MAT_ID.fat]), NC = 1; // (chunk.js FLAGS.NC: drawn, never bumped. not imported: chunk.js -> gens.js -> here)
+  dropIf(B.out.boxes, (b) => (b[7] & NC) && skin.has(b[6]) && b[2] > wz - 0.1 && b[5] < wz + 0.3 && b[3] > f0 && b[0] < f1);
+  dropIf(B.out.props, (p) => (p[0] === 'sphincter' || p[0] === 'tongue') && Math.abs(p[3] - wz) < 0.2 && p[1] > f0 && p[1] < f1);
+  dropIf(B.out.props, (p) => p[0] === 'lung' && p[3] < wz - 0.5 && p[1] > f0 && p[1] < f1); // (the Rib Run's lung pad sunk 1.5 m into this block: only its front showed, behind Dot's head. its bounce stays)
   B.light(D[0], y + 4, wz + 3, 0xff6f91, 12, 1.2);
   mark(B, 'gut:digester_wall');
 }
