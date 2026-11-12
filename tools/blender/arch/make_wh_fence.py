@@ -71,7 +71,7 @@ def build(kind):
                 FL.tube(K, P(axis, c, a, H, out * 0.035), P(axis, c, b, H, out * 0.035), 0.028, 0.028, 'fgalv', n=5, caps=(False, False))  # top rail
                 for j, (oo, up) in enumerate(WIRES):  # barbs on the barbed wire, poking through it
                     yy = H + up
-                    for t in (0.2, 0.45, 0.7, 0.95):
+                    for t in (0.3, 0.8):
                         m = a + (b - a) * t - j * 0.09
                         ribbon(axis, P(axis, c, m - 0.045, yy - 0.045, out * (oo - 0.025)), P(axis, c, m + 0.045, yy + 0.045, out * (oo + 0.025)), 0.014, 'fwire')
                         ribbon(axis, P(axis, c, m - 0.045, yy + 0.045, out * (oo + 0.025)), P(axis, c, m + 0.045, yy - 0.045, out * (oo - 0.025)), 0.014, 'fwire')
