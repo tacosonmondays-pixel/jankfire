@@ -143,6 +143,7 @@ const PAINTS = [0xc8202c, 0x2050b0, 0xe8e8e8, 0x26262a, 0x2a8a4a, 0xe8c020, 0xff
 // after those (container orange, container purple) are asked for from below zero: -1, -2 (shared/city/kit.js paintOf)
 const paintHex = (v) => PAINTS[v < 0 ? Math.min(PAINTS.length - 1, 7 - v) : v % 8];
 const m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), col = new THREE.Color();
+const qt = new THREE.Quaternion(), eu = new THREE.Euler(); // (a prop leaning with the ground)
 // how far out each prop keeps its full Blender model, as a share of the preset's propsHi: small things that repeat
 // a thousand times go simple sooner, landmarks stay detailed further
 const DETAIL = { door_bottom: 0.4, shutter: 0.35, acunit: 0.35, pchair: 0.5, laundry_a: 0.5, laundry_b: 0.5, stringlights: 0.5, wokdish: 0.45, tooth: 0.5, tooth_b: 0.5, eyeball: 0.5, crate_soup: 0.5, scooter: 0.6,
@@ -176,6 +177,7 @@ export function buildPropGroup(list, hiR = 1e9, at = null, farK = 1) {
       const im = new THREE.InstancedMesh(part.geo, part.mat, ps0.length);
       ps0.forEach((p, i) => {
         q.setFromAxisAngle(up, p.yaw); sc.setScalar(p.s || 1); ps.set(p.x, p.y, p.z);
+        if (p.tx || p.tz) q.premultiply(qt.setFromEuler(eu.set(p.tx || 0, 0, p.tz || 0, 'ZXY'))); // (leaning with the slope it lies on: about x, then z)
         im.setMatrixAt(i, m4.compose(ps, q, sc));
         if (part.paint) im.setColorAt(i, col.setHex(paintHex(p.v | 0)));
       });

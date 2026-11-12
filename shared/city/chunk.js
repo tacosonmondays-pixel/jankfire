@@ -75,12 +75,14 @@ export function packChunk(o) {
   const deco = new Float32Array(nd * 7), dmat = new Uint8Array(nd), dtint = new Uint32Array(nd);
   o.deco.forEach((b, i) => { for (let k = 0; k < 7; k++) deco[i * 7 + k] = b[k]; dmat[i] = b[7]; dtint[i] = b[8]; });
   const ids = [], prop = new Float32Array(np * 7);
+  let ptilt = null; // (props that lean with the ground under them: [about x, about z] each; commute.js hug)
   o.props.forEach((p, i) => {
     let k = ids.indexOf(p[0]); if (k < 0) { k = ids.length; ids.push(p[0]); }
     prop[i * 7] = k; for (let j = 1; j < 7; j++) prop[i * 7 + j] = p[j];
+    if (p[7] || p[8]) { if (!ptilt) ptilt = new Float32Array(np * 2); ptilt[i * 2] = p[7] || 0; ptilt[i * 2 + 1] = p[8] || 0; }
   });
   return {
-    id: chunkId(o.city, o.cx, o.cz), city: o.city, cx: o.cx, cz: o.cz, box, mat, flag, tint, deco, dmat, dtint, ids, prop,
+    id: chunkId(o.city, o.cx, o.cz), city: o.city, cx: o.cx, cz: o.cz, box, mat, flag, tint, deco, dmat, dtint, ids, prop, ptilt,
     shapes: o.shapes, lanes: o.lanes, spawns: o.spawns, triggers: o.triggers, marks: o.marks, lights: o.lights || [],
   };
 }
@@ -108,6 +110,7 @@ export function hashChunk(p) {
   let h = 2166136261;
   const bytes = (a) => { const u = new Uint8Array(a.buffer, a.byteOffset, a.byteLength); for (let i = 0; i < u.length; i++) h = Math.imul(h ^ u[i], 16777619); };
   for (const a of [p.box, p.mat, p.flag, p.tint, p.deco, p.dmat, p.dtint, p.prop]) bytes(a);
+  if (p.ptilt) bytes(p.ptilt);
   const s = JSON.stringify([p.ids, p.shapes, p.lanes, p.spawns, p.triggers, p.marks, p.lights], (k, v) => (typeof v === 'number' ? Math.fround(v) : v));
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
   return (h >>> 0).toString(16).padStart(8, '0');
