@@ -4,7 +4,7 @@
 import '/shared/mapedits/apply.js'; // the shipped edits first: yours go on top of them
 import * as THREE from 'three';
 import { MAPS, BOXES, MAP } from '/shared/map.js';
-import { resetGrid } from '/shared/physics.js';
+import { resetGrid, movePlayer, playerOverlap } from '/shared/physics.js';
 import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeThing, insertThing, thingData, thingFrom, applyEdits, validEdits } from '/shared/mapedit.js';
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
@@ -441,6 +441,28 @@ let speed = 14;
   if (mc) cam.position.set(mc[0], mc[1], mc[2]); else cam.position.set(sp[0], sp[1] + 8, sp[2]);
   lookAt([0, 0, 0]);
 }
+// WALK TEST (F): drop out of the sky and walk your edits with the game's own physics (shared/physics.js movePlayer):
+// bump into what you moved, jump what you built, find the gap you left. F again to fly
+let walk = null;
+function toggleWalk() {
+  if (walk) { walk = null; callout('FLY'); toast('flying again (F to walk)'); return; }
+  const p = [cam.position.x, cam.position.y - 1.6, cam.position.z];
+  for (let k = 0; k < 40 && playerOverlap(p, BOXES); k++) p[1] += 0.5; // (noclipped into a wall: come out on top of it)
+  walk = { p, v: [0, 0, 0], ground: false };
+  callout('WALK TEST'); toast('walking: WASD, SPACE jump, SHIFT run. F to fly');
+}
+function walkStep(dt, f, r) {
+  const W = walk, y = cam.rotation.y, sp = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 11 : 7;
+  let wx = -Math.sin(y) * f + Math.cos(y) * r, wz = -Math.cos(y) * f - Math.sin(y) * r; const l = Math.hypot(wx, wz); if (l > 1) { wx /= l; wz /= l; }
+  const acc = W.ground ? 14 : 3; // (a little air control)
+  W.v[0] += (wx * sp - W.v[0]) * Math.min(1, acc * dt); W.v[2] += (wz * sp - W.v[2]) * Math.min(1, acc * dt);
+  W.v[1] -= 25 * dt;
+  if (W.ground && keys.has('Space')) { W.v[1] = 8.5; W.ground = false; }
+  const res = movePlayer(W.p, W.v, dt, BOXES, W.ground);
+  W.ground = !!res.ground;
+  if (W.p[1] < (MAP.killY ?? -45)) { const s = (def.spawns && def.spawns[0]) || [0, 2, 0]; W.p = [s[0], s[1] + 0.2, s[2]]; W.v = [0, 0, 0]; callout('INTO THE VOID'); }
+  cam.position.set(W.p[0], W.p[1] + 1.6, W.p[2]);
+}
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame); // (first: one broken piece of the world can't stop the editor)
@@ -450,7 +472,8 @@ let frameErr = false;
 function step(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const f = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0), r = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0), u = (keys.has('Space') ? 1 : 0) - (keys.has('KeyC') ? 1 : 0);
-  if (f || r || u) {
+  if (walk) walkStep(dt, f, r);
+  else if (f || r || u) {
     const v = speed * (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1) * dt, y = cam.rotation.y;
     cam.position.x += (-Math.sin(y) * f + Math.cos(y) * r) * v; cam.position.z += (-Math.cos(y) * f - Math.sin(y) * r) * v; cam.position.y += u * v;
   }
@@ -514,6 +537,7 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
   else if (c === 'KeyN') botCheck();
+  else if (c === 'KeyF') toggleWalk();
   else if (c === 'KeyP' || c === 'KeyE' || c === 'KeyQ') menu();
   else if (c === 'Escape' && paletteOpen()) menu(false);
   else if (c === 'Escape' && carry) cancelCarry();
@@ -580,5 +604,5 @@ $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, toolState, slot, menu, dropOn, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, toggleWalk, walking: () => walk && { p: walk.p.slice(), ground: walk.ground }, toolState, slot, menu, dropOn, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);
