@@ -11,7 +11,9 @@
 # the rest are rigid parts in their joints (castlib). The hands are modelled open, palm forward: in the game's stance
 # (looks.js CHOIR_STANCE) they come up palm-up under the hymns, which are placed on the left palm through that pose.
 # built in each joint's own frame (the code look's layout, public/js/story/looks.js choirLook), carried to root space.
-# blender52 -b --python tools/blender/cast/make_cast_choir.py [-- b] [--no-sheet] [--no-export]
+# blender52 -b --python tools/blender/cast/make_cast_choir.py [-- b] [--no-sheet] [--no-export] [--head]
+#   b: the squat one. --head: only the head views (hair checks). STANCE below must match looks.js CHOIR_STANCE: the
+#   hymns are placed on the left palm through that pose (a change there means a rebuild here)
 import os, sys, math, random
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from castlib import *  # noqa
@@ -328,8 +330,9 @@ def decal_q(name, c, right, up, w, h, m, lift=0.0):
     return o
 
 
-def slab(name, c, U, Vv, N, w, h, t, m, uv=None, bev=0.0):
-    """a box in a frame (U right, V up, N out of its face), w x h x t; uv: a picture on the N face (the rest plain)"""
+def slab(name, c, U, Vv, N, w, h, t, m, bev=0.0):
+    """a box in a frame (U right, V up, N out of its face), w x h x t; the material's picture on the N face, a sliver
+    of its corner on the rest"""
     U, Vv, N = (Vector(x).normalized() for x in (U, Vv, N))
     bm = bmesh.new(); uvl = bm.loops.layers.uv.new('UVMap')
     P = {}
