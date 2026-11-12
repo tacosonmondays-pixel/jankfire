@@ -54,6 +54,7 @@ export function releaseTogether(list, name) {
 
 // ------------------------------------------------------------ the director at the Choir Lung
 const D = { on: false, list: [], next: 7, stareT: -1, cool: 0, wasIn: false, hum: null };
+export const choirState = () => D; // (tools and tests: who's out, when they sing next, whether they're staring)
 const LUNG = { x: -268, z: -218, rx: 21, rz: 19, y: 40 }; // (shared/city/gut.js choir(): the colonnade's ring)
 const v3 = new THREE.Vector3();
 const ahead = (a, dist, up) => { a.ch.head.getWorldPosition(v3); return [a.pos[0] - Math.sin(a.yaw) * dist, v3.y + up, a.pos[2] - Math.cos(a.yaw) * dist]; };

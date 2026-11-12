@@ -26,7 +26,7 @@ export const FACES = {
   shock: { lid: 1.25, jaw: 0.9, st: 0.75, smile: 0, by: 0.035, bt: -0.1 },
   angry: { lid: 0.62, jaw: 0.1, st: 1.1, smile: -0.6, by: -0.015, bt: 0.55 },
   sleepy: { lid: 0.18, jaw: 0.05, st: 0.9, smile: 0, by: -0.005, bt: -0.1 },
-  choir: { lid: 0.66, jaw: 0.04, st: 2.05, smile: 1.15, by: 0.012, bt: -0.55 }, // (the gut choir: stretched into a smile wider than the face, the eyes still sad at their desks)
+  choir: { lid: 0.66, jaw: 0.04, st: 2.05, smile: 1.15, by: 0.012, bt: 0.5 }, // (the gut choir: stretched into a smile wider than the face, the eyes still sad at their desks; bt + is what draws the inner ends up here)
 };
 
 // o: { z: face plane (front, < 0), eyeR, eyeSep, eyeY, iris, pupil, mouthW, mouthY, lip, lipR, teeth: 'needle' | 'tomb' | 'none',

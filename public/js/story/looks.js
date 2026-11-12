@@ -414,7 +414,7 @@ function choirLook(v) {
     cc.spine.rotation.z += s * 0.065 * hk; cc.body.rotation.z += s * 0.025 * hk; cc.head.rotation.z += Math.sin(ph - 0.8) * 0.09 * hk; // the sway, the head a beat behind
     cc.spine.position.y += Math.abs(Math.cos(ph)) * 0.008 * hk; cc.head.rotation.x -= (0.04 + Math.sin(ph * 2) * 0.025) * hk; // a lift through each middle, a nod on the beat
     cc.armL.rotation.x += Math.sin(ph * 2 + 0.5) * 0.025 * hk; cc.arm.rotation.x += Math.sin(ph * 2 + 0.5) * 0.025 * hk;
-    if (!stare && cc.faceRig.gaze && !cc.gazeHold) cc.faceRig.gaze = null; // (the eyes come back to the page with the head)
+    if (!stare && cc.faceRig.gaze) cc.faceRig.gaze = null; // (the eyes come back to the page with the head)
   };
   return { ...p, kind: 'puppet', height: tall ? 2.2 : 1.52, eyeY: tall ? 2.0 : 1.32 };
 }
