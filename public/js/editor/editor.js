@@ -12,6 +12,8 @@ import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisual
 import { whenGlb } from '../glbkit.js';
 import { wantArch } from '../archfield.js';
 import { initPalette, togglePalette, solidOn, modelBounds } from './palette.js';
+import { navCheck } from '/shared/navcheck.js';
+import { EDITS } from '/shared/mapedits/index.js';
 import { loadTripoModels } from '../models.js';
 import { fx } from '../fx.js';
 import { liquidBox } from '../liquids.js';
@@ -53,6 +55,7 @@ let undoN = 0; // how many of the last ops in hist are this session's (undoable)
 const redo = [];
 
 function persist() {
+  clearBotMarks(); // (an edit: the old bot answer is about the old map)
   saved.ops = hist.map((h) => h.op);
   try { localStorage.setItem(store(mapId), JSON.stringify(saved)); } catch { toast('could not save in this browser (export it!)'); }
   $('edN').textContent = hist.length;
@@ -166,7 +169,7 @@ const NAMES = { box: 'box', prop: 'prop', arch: 'building' };
 const nameOf = (t) => (t.kind === 'prop' ? t.prop.id.replace(/_/g, ' ') : t.kind === 'arch' ? t.arch.id.replace(/_/g, ' ') : (t.boxes[0].mat || 'box') + ' box');
 function showSel() {
   const ts = [...sel], el = $('edSel');
-  el.classList.toggle('hidden', !ts.length || !$('edList').classList.contains('hidden'));
+  el.classList.toggle('hidden', !ts.length || !$('edList').classList.contains('hidden') || !$('edBots').classList.contains('hidden'));
   if (!ts.length) return;
   const { lo, hi } = unionBounds(ts), f = (v) => v.toFixed(1);
   $('edSelName').textContent = ts.length > 1 ? ts.length + ' things' : nameOf(ts[0]);
@@ -197,6 +200,20 @@ function startCarry(ts) {
   carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
   callout('YOINK');
 }
+// the snap grid under what you carry: lines every grid step, 20 m across, at its feet (none with snap off)
+let gridH = null, gridStep = 0;
+function showGrid(at) {
+  if (!at || !snap) { if (gridH) gridH.visible = false; return; }
+  if (!gridH || gridStep !== snap) {
+    if (gridH) { G.scene.remove(gridH); gridH.geometry.dispose(); gridH.material.dispose(); }
+    const size = Math.min(80, Math.max(10, snap * 20)); gridStep = snap;
+    gridH = new THREE.GridHelper(size, Math.round(size / snap), 0xffe14d, 0xff4fd8);
+    gridH.material.transparent = true; gridH.material.opacity = 0.55; gridH.material.depthTest = false; gridH.renderOrder = 997;
+    G.scene.add(gridH);
+  }
+  gridH.visible = true;
+  gridH.position.set(Math.round(at[0] / snap) * snap, at[1] + 0.02, Math.round(at[2] / snap) * snap); // (its lines land on whole grid steps)
+}
 // shaped ground (shared/terrain.js heightfield) isn't boxes: march the ray down onto it. returns the distance or null
 let terBoxes = null; // the ground's own steps (b.ter): not things you can pick, but you can put things down on them
 function terrainHit(o, d, max) {
@@ -208,7 +225,7 @@ function terrainHit(o, d, max) {
   return best;
 }
 function updateCarry() {
-  if (!carry) return;
+  if (!carry) { showGrid(null); return; }
   const [o, d] = aimRay(), skip = new Set(carry.ts);
   let h = pick(o, d, skip, true, true);
   const th = terrainHit(o, d, Math.min(200, h ? h.dist : carry.dist * 2.5));
@@ -221,6 +238,7 @@ function updateCarry() {
   carry.d = dd;
   carry.ghost.position.set(carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]);
   carry.ghost.rotation.y = carry.q * Math.PI / 2; carry.ghost.scale.setScalar(carry.k);
+  showGrid([carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]]);
 }
 function dropCarry() {
   if (!carry) return;
@@ -311,6 +329,43 @@ function place(kind, mid) {
   sel.clear(); for (const m of made) sel.add(m); drawSel();
   startCarry(made); if (carry) carry.fresh = true; callout('PLOP');
 }
+
+// ---------------------------------------------------------------- bot check: can bots still get everywhere?
+// the bots' own walk graph, rebuilt from the edited boxes, against the same map without your edits (a second, untouched
+// build of the maps, made the first time you ask). red = cut off by your edits, grey = already unreachable before
+let baseMaps = null, botMarks = null;
+async function botCheck() {
+  toast('asking the bots...');
+  await new Promise((r) => setTimeout(r, 30)); // (let the toast show: the check takes a moment)
+  if (!baseMaps) {
+    try { baseMaps = (await import('/shared/map.js?editorbase=1')).MAPS; } catch { baseMaps = {}; }
+    if (baseMaps[mapId] && EDITS[mapId]) applyEdits(baseMaps[mapId], EDITS[mapId]); // (the map as shipped)
+  }
+  let r = null;
+  try { r = navCheck(def, baseMaps[mapId] || null); } catch (e) { console.error(e); return toast('the bot check broke on this map'); }
+  clearBotMarks();
+  const el = $('edBotList'); el.innerHTML = '';
+  $('edBots').classList.remove('hidden'); $('edList').classList.add('hidden'); showSel();
+  if (!r) { el.innerHTML = '<div>this map has no bot routes: bots walk straight at things here, so nothing to check.</div>'; return; }
+  const bad = r.spots.filter((p) => !p.ok), cut = bad.filter((p) => p.was !== false), old = bad.filter((p) => p.was === false);
+  botMarks = new THREE.Group(); botMarks.name = 'botcheck';
+  const pin = (p, c) => { const m = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 6, 8), new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 0.75, depthTest: false })); m.position.set(p[0], p[1] + 3, p[2]); m.renderOrder = 998; botMarks.add(m); };
+  for (const p of cut) pin(p.p, 0xff3030); for (const p of old) pin(p.p, 0x888888);
+  if (r.lost.length) {
+    const pos = new Float32Array(r.lost.length * 3); r.lost.forEach((p, i) => pos.set([p[0], p[1] + 0.15, p[2]], i * 3));
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const pts = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xff3030, size: 6, sizeAttenuation: false, depthTest: false })); pts.renderOrder = 998; botMarks.add(pts);
+  }
+  G.scene.add(botMarks);
+  const line = (html, cls, p) => { const d = document.createElement('div'); d.innerHTML = html; if (cls) d.className = cls; if (p) d.onclick = () => { cam.position.set(p[0] + 7, p[1] + 6, p[2] + 7); lookAt(p); }; el.append(d); };
+  line(cut.length || r.lost.length ? '<b class="edBad">' + (cut.length ? cut.length + ' spot' + (cut.length > 1 ? 's' : '') + ' bots can\'t reach any more' : 'all the important spots are fine') + '</b>' : '<b class="edOk">ALL GOOD: bots can still get everywhere they need to</b>');
+  if (r.lost.length) line(r.lost.length + ' m² of floor got cut off (red dots)', 'edBad', r.lost[0]);
+  for (const p of cut) line('CAN\'T REACH <em>' + p.what + '</em>', 'stale', p.p);
+  for (const p of old) line('<em>' + p.what + '</em> (already unreachable before your edits)', 'undone', p.p);
+  line('bots can walk on ' + Math.round(r.reach / Math.max(1, r.nodes) * 100) + '% of the floor · ' + r.spots.filter((p) => p.ok).length + ' of ' + r.spots.length + ' spots fine');
+  callout(cut.length || r.lost.length ? 'BOTS ARE STUCK' : 'BOTS APPROVE');
+}
+function clearBotMarks() { if (!botMarks) return; G.scene.remove(botMarks); botMarks.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); }); botMarks = null; }
 
 // ---------------------------------------------------------------- the change list (the diff)
 function opWhat(op) {
@@ -411,6 +466,7 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketRight') setSnap(SNAPS[Math.min(SNAPS.length - 1, SNAPS.indexOf(snap) + 1)] || 0.25);
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
+  else if (c === 'KeyN') botCheck();
   else if (c === 'KeyP') { if (togglePalette() && document.pointerLockElement) document.exitPointerLock(); }
   else if (c === 'Escape' && carry) cancelCarry();
   else if (c === 'ArrowUp') nudge(0, 0, -1); else if (c === 'ArrowDown') nudge(0, 0, 1); else if (c === 'ArrowLeft') nudge(-1, 0, 0); else if (c === 'ArrowRight') nudge(1, 0, 0);
@@ -434,6 +490,8 @@ $('edClose').onclick = () => { $('edList').classList.add('hidden'); showSel(); }
 $('edReset').onclick = () => { if (!confirm('Throw away every change on ' + (def.name || mapId) + '?')) return; try { localStorage.removeItem(store(mapId)); } catch { /* fine */ } location.reload(); };
 $('edQuit').onclick = () => { location.href = '/'; };
 $('edPalBtn').onclick = () => togglePalette();
+$('edBotBtn').onclick = () => botCheck();
+$('edBotClose').onclick = () => { $('edBots').classList.add('hidden'); clearBotMarks(); showSel(); };
 initPalette({ pick: (k, id) => place(k, id), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
@@ -460,5 +518,5 @@ $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);

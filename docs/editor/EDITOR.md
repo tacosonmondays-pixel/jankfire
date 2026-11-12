@@ -100,3 +100,11 @@ used to exist. Flags show as red markers you can click to fly to. (PR 5.)
 - Should new props from the palette be solid (collision) by default, or look-only? (Plan: solid, with a toggle.)
 - Do you want a "play here" button that drops you in the edited map with bots (a local Training room), or is fly + look
   enough for small fixes?
+
+## Built so far (2026-11-12)
+- Part 1 (#371, fixes #392): fly, select, carry, turn, size, copy, delete, undo, change list, export/import.
+- Part 2 (#389): the PALETTE (P). ![palette](p_search.jpg) ![buildings](p_arch2.jpg)
+  Placing a Suburb house in Warehouse brings its real walls; a bus from the palette: ![placed](p_placed.jpg) ![bus](bus.jpg)
+- Part 3 (#390): shipped edits load on the server and the client (`node tools/mapedits.mjs add <file>`).
+- Part 4 (#391): BOT CHECK (N) and the snap grid. Walling in Forest's bomb site A: ![bots](botcheck.jpg) ![grid](grid.jpg)
+- The Islands fort turning in place after the review fix: ![fort](fix_fort.jpg)
