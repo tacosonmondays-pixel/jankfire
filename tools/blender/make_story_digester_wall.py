@@ -806,16 +806,16 @@ def inserts(A, M):
     out += lanyard('corp_lanyard', 1.52, 1.72, A, 'lanyard_y', 'card_corp', drop=0.42, wide=0.12, sway=-0.04)
     out += lanyard('gs_lanyard', -4.62, 2.5, A, 'lanyard_p', 'card_gs', drop=0.34, wide=0.13, sway=0.05)
     # ambrose's door keys on their ring, caught in a fold by his chin: the ring in the skin, the keys and a brown tag hanging
-    pk, nk = on_wall(-5.84, 1.56); ax = V3((1, 0, 0)); c0 = pk - nk * 0.008
+    pk, nk = on_wall(KEYS[0], KEYS[1]); ax = V3((1, 0, 0)); c0 = pk - nk * 0.008
     out.append(ring_band('keyring', c0, ax, 0.024, 0.0028, A, 'chrome', k=16))
     side = nk.cross(ax).normalized()  # (down the wall)
     for k, (ang, L) in enumerate(((-0.35, 0.062), (0.05, 0.056), (0.42, 0.05))):
-        d = (side * math.cos(ang) + ax * math.sin(ang) + nk * 0.45).normalized(); top = c0 + side * 0.022 + nk * 0.004
+        d = (side * math.cos(ang) + ax * math.sin(ang) + nk * 0.9).normalized(); top = c0 + side * 0.022 + nk * 0.004  # (out from the skin: they hang clear of the swell under him)
         Mk = frame_at(top + d * (0.014 + L / 2) + nk * (0.007 * k - 0.004), nk, up_hint=tuple(-d), roll=0.0)  # (each key its own depth: they lie over each other)
         bow = cyl(0.013, 0.005, (0, L / 2 + 0.006, 0), None, axis='z', seg=10, name='keybow%d' % k); apply_mods(bow)
         blade = box((0.011, L, 0.0024), (0, 0, 0), None, name='keyblade%d' % k); apply_mods(blade)
         out += in_frame([cell_uv(bow, A, 'brass' if k != 1 else 'chrome'), cell_uv(blade, A, 'brass' if k != 1 else 'chrome')], Mk)
-    dt = (side + nk * 0.5).normalized(); Mt = frame_at(c0 + side * 0.03 + dt * 0.05, nk, up_hint=tuple(-dt))
+    dt = (side + nk * 1.1).normalized(); Mt = frame_at(c0 + side * 0.03 + dt * 0.05, nk, up_hint=tuple(-dt))
     out += in_frame([decal_box('keytag', 0.034, 0.05, 0.003, A, 'cardboard', pos=(0, -0.012, 0))], Mt)
     out.append(cell_uv(limb('tagloop', [tuple(c0 + side * 0.0235 + ax * 0.004), tuple(Mt @ V3((0, 0.016, 0)))], 0.0018, None, seg=4), A, 'dark'))  # (string: ring to tag)
     # wristbands: loose ones caught in folds (a loop out of the skin)
@@ -861,7 +861,8 @@ def soup_bowls(A, M):
 # ------------------------------------------------------------ veins, glowing nodes, wet creases, drips
 # (the game breathes these with the wall: a vein's middle sits 6 mm under the skin and it is 4.5 cm round, so it stays
 # on the skin at the bottom of a breath and only fattens on the beat)
-STUCK = [(-5.84, 1.5), (-2.72, 3.28), (-1.62, 1.05), (-0.42, 2.52), (5.18, 2.62), (-6.05, 3.35), (3.92, 3.3), (-5.62, 0.5), (-1.74, 2.0), (1.52, 1.55), (-4.62, 2.35), (2.62, 2.5)]  # (the things stuck in it: veins keep off)
+KEYS = (-5.62, 1.74)  # (ambrose's keys: just under his lip of skin)
+STUCK = [KEYS, (-2.72, 3.28), (-1.62, 1.05), (-0.42, 2.52), (5.18, 2.62), (-6.05, 3.35), (3.92, 3.3), (-5.62, 0.5), (-1.74, 2.0), (1.52, 1.55), (-4.62, 2.35), (2.62, 2.5)]  # (the things stuck in it: veins keep off)
 
 
 def crawl_wall(x, y, heading, n, step, seed, wig=0.35):
@@ -1195,7 +1196,7 @@ def preview(objs, refs, outdir):
     for P in PEOPLE:
         c = V3((P['x'], P['y'], -D_field(P['x'], P['y'])))
         CAMS[P['nm']] = (tuple(c + V3((0.25, 0.08, -1.1))), tuple(c), 50)
-    CAMS['bowls'] = ((2.2, 0.9, -2.2), (3.2, 0.05, -0.7), 35); CAMS['socket'] = ((-1.3, 1.3, -1.4), (-1.62, 1.0, -0.4), 40)
+    CAMS['keys'] = ((-5.25, 1.85, -1.05), (KEYS[0], KEYS[1] - 0.05, -0.45), 45); CAMS['bowls'] = ((2.2, 0.9, -2.2), (3.2, 0.05, -0.7), 35); CAMS['socket'] = ((-1.3, 1.3, -1.4), (-1.62, 1.0, -0.4), 40)
     CAMS['cart'] = ((-5.0, 0.9, -1.6), (-5.6, 0.4, -0.5), 40); CAMS['wave'] = ((2.0, 2.4, -2.0), (2.5, 2.4, -0.6), 40)
     for nm in VIEWS:
         cam, tg, lens = CAMS[nm]
@@ -1250,7 +1251,7 @@ def sheets(root, parts, lods, refs_objs, tag=''):
         p_, n_ = on_wall(x, y); return (cap, tuple(p_ + V3(back)), tuple(p_), lens, None)
     CU += [("lumps' soup bowls, the oldest grown over", (2.4, 0.95, -2.3), (3.3, 0.05, -0.75), 32, None), at('a plug socket, the kettle still in', -1.62, 1.05),
            at('bathroom tiles, one gone, one cracked', -2.72, 3.28, (0.4, -0.25, -1.3)), at('hello my name is ken (his lanyard)', -1.74, 1.86, (0.15, 0.1, -0.9), 45),
-           at("ambrose's door keys, a cart's corner, a hospital band", -5.7, 1.05, (0.5, 0.3, -1.9), 34), at('a CORP staff card caught in a fold', 1.52, 1.42, (0.2, 0.1, -1.0), 45),
+           at("ambrose's door keys under his lip of skin", KEYS[0], KEYS[1] - 0.04, (0.35, 0.15, -0.75), 40), at('a CORP staff card caught in a fold', 1.52, 1.42, (0.2, 0.1, -1.0), 45),
            at('14: the top terrace, over the twins', 5.18, 2.62, (-0.3, 0.0, -1.1), 45), at('a photo frame over dot', -0.42, 2.52, (0.3, 0.1, -1.4), 40),
            at('his hand, waving, his wristband', 2.62, 2.5, (0.15, 0.05, -1.5), 40), at('veins, a glowing node, a wet tuck under a roll', -5.6, 4.5, (-0.2, 0.5, -2.2), 36)]
     go('closeups', CU, 4, 'digester wall: who is in it and what of theirs (face rigs = sculpted, still)', (520, 400))
