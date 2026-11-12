@@ -17,6 +17,8 @@ import { RP, ARENA, TRAIN, CARS, CAR, HW, COVER, CREW, armPose, armExt, plateAt,
 import { cleanTrain } from '../../server/storytrain.js';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let n = 0; const t = async (name, fn) => { await fn(); n++; console.log('ok', name); };
+// a seeded stand-in for Math.random (mulberry32): a sampled check draws the same numbers every run
+const seeded = (seed) => { let s = seed >>> 0; return () => { s = (s + 0x6D2B79F5) >>> 0; let q = s; q = Math.imul(q ^ (q >>> 15), q | 1); q ^= q + Math.imul(q ^ (q >>> 7), q | 61); return ((q ^ (q >>> 14)) >>> 0) / 4294967296; }; };
 
 const G0 = RP.gap.start, ID = 'revenue_protection_1', D = BOSSES[ID], HEALTH = D.layers.find((l) => l.bar === 'health').of, W = WEAPONS.blooddrive;
 async function boot() {
@@ -237,7 +239,11 @@ await t('phase 3: END OF THE LINE at 25%; the Inspector is the crit spot, everyt
   assert.equal(bolt([I.head.c[0], ARENA.cy + I.head.c[1] + 0.1, I.head.c[2] - B.gap])[0].part, 'inspbody');
   const far = bolt(face(-1.3, 3)); assert.equal(far[0].part, 'plate'); assert.equal(far[0].dmg, Math.round(W.dmg * RP.mask.far));
   // they favour whoever is up on the van
-  me.pos = [0, CAR.van.roof, 25]; let sn = 0; for (let i = 0; i < 40; i++) { quiet(); B.calm = false; B.nextArm = 0; B.lungeT = Infinity; await run(0.06); if (B.arms.some((a) => a.k === 'snatch')) sn++; } quiet(); stand();
+  // (the weight itself, then a sample of 40 picks on a seeded Math.random: the same draws every run, so it can't flake)
+  assert.ok(RP.snatch.roof >= 0.5, 'the roof chance favours Snatchers');
+  me.pos = [0, CAR.van.roof, 25]; let sn = 0; const rnd0 = Math.random; Math.random = seeded(4417);
+  try { for (let i = 0; i < 40; i++) { quiet(); B.calm = false; B.nextArm = 0; B.lungeT = Infinity; await run(0.06); if (B.arms.some((a) => a.k === 'snatch')) sn++; } } finally { Math.random = rnd0; }
+  quiet(); stand();
   assert.ok(sn >= 18, 'mostly Snatchers while you are on the roof: ' + sn + '/40');
   // the lunge: a tell, then it takes ground. the first one bites the rear wagon off: the fight is the flatbed and the van from here
   const lunge = async () => { dev({ want: 'lunge' }); assert.equal(ev('lunge').at(-1).st, 'tell'); await run(RP.lunge.tell - 0.25); };
