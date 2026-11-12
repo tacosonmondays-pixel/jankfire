@@ -99,6 +99,10 @@ export function makeBossRef({ actorOf, busy, boxes, own }) { // boxes(c): a boss
     G.scene.add(g); R.stuck.push({ m: g, t: 40 });
     while (R.stuck.length > 24) G.scene.remove(R.stuck.shift().m);
   }
+  // a boss whose fight is over (bossfight.js: the step moved on) or a run that starts again (a travel, a Continue in
+  // the same page: the new sim knows no boss yet): no bar left hanging on the HUD
+  R.clear = (id) => { if (R.cur && (!id || R.cur.id === id)) { R.cur = null; showBar(); } };
+  if (G.story && G.story.on) G.story.on('hello', () => R.clear());
   if (G.story && G.story.on) G.story.on('boss', (m) => {
     if (!m || typeof m.id !== 'string' || !/^[a-z0-9_]{1,40}$/.test(m.id)) return;
     if (m.on === true && fin(m.pid) && fin(m.hp) && fin(m.max) && m.max > 0) R.cur = { id: m.id, pid: m.pid, hp: m.hp, max: m.max, health: fin(m.health) ? m.health : m.max, who: typeof m.who === 'string' ? m.who : '', name: typeof m.name === 'string' ? m.name.slice(0, 24) : 'BOSS', phase: typeof m.phase === 'string' ? m.phase.slice(0, 40) : '', inv: false };
