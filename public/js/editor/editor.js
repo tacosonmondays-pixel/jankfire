@@ -8,6 +8,7 @@ import { resetGrid } from '/shared/physics.js';
 import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeThing, insertThing, thingData, thingFrom, applyEdits, validEdits } from '/shared/mapedit.js';
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
+import { lockPointer, lookFilter } from '../mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats, relightMap } from '../world.js';
 import { whenGlb } from '../glbkit.js';
 import { wantArch } from '../archfield.js';
@@ -430,8 +431,9 @@ canvas.addEventListener('mousedown', (e) => {
   if (document.pointerLockElement !== canvas && e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); }
   if (document.pointerLockElement === canvas) { if (e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); } else if (e.button === 2 && carry) cancelCarry(); }
 });
-canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) canvas.requestPointerLock(); });
+canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) lockPointer(canvas); });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) lockPointer(canvas); });
+const mlook = lookFilter(); // (the game's mouse look: raw mouse, no snapping on Chrome's fake jumps)
 function clickPick(add) {
   const [o, d] = aimRay(), h = pick(o, d);
   if (!add) sel.clear();
@@ -441,9 +443,11 @@ function clickPick(add) {
 addEventListener('mousemove', (e) => {
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); moved = true;
   if (document.pointerLockElement !== canvas) return;
-  cam.rotation.y -= e.movementX * 0.0022 * (G.settings.sens || 1.2) / 1.2; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * 0.0022 * (G.settings.sens || 1.2) / 1.2));
+  if (!mlook.take(e.movementX, e.movementY)) return;
+  const s = 0.0022 * (G.settings.sens || 1.2); // (the same feel as in a match)
+  cam.rotation.order = 'YXZ'; cam.rotation.y -= e.movementX * s; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * s)); cam.rotation.z = 0;
 });
-document.addEventListener('pointerlockchange', () => { $('edX').style.display = document.pointerLockElement === canvas ? '' : 'none'; canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'crosshair'; });
+document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === canvas) mlook.locked(); $('edX').style.display = document.pointerLockElement === canvas ? '' : 'none'; canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'crosshair'; });
 addEventListener('wheel', (e) => {
   if (e.target !== canvas && document.pointerLockElement !== canvas) return;
   if (carry) carry.dist = Math.max(1.5, Math.min(200, carry.dist * (e.deltaY > 0 ? 0.9 : 1.1)));
