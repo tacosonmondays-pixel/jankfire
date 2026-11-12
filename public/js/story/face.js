@@ -2,6 +2,8 @@
 // "stretch" that pulls the mouth corners out (the grin wider than the head). Built from code, on any head group.
 // buildFace(head, o) -> rig. rig.set('grin'), rig.flap = 0..1 (the babble drives it), rig.look = a world point or null,
 // rig.update(dt). Front of a head is -z (like the mannequin).
+// held controls (a clip sets them on its stop-motion steps, they hold between): rig.sing = 0..1 more jaw on top of the
+// babble's flap (the choir singing), rig.gaze = a world point the eyes stay on, over rig.look (the choir staring at you)
 import * as THREE from 'three';
 import { jankify } from '../jank.js';
 
@@ -24,6 +26,7 @@ export const FACES = {
   shock: { lid: 1.25, jaw: 0.9, st: 0.75, smile: 0, by: 0.035, bt: -0.1 },
   angry: { lid: 0.62, jaw: 0.1, st: 1.1, smile: -0.6, by: -0.015, bt: 0.55 },
   sleepy: { lid: 0.18, jaw: 0.05, st: 0.9, smile: 0, by: -0.005, bt: -0.1 },
+  choir: { lid: 0.66, jaw: 0.04, st: 2.05, smile: 1.15, by: 0.012, bt: 0.5 }, // (the gut choir: stretched into a smile wider than the face, the eyes still sad at their desks; bt + is what draws the inner ends up here)
 };
 
 // o: { z: face plane (front, < 0), eyeR, eyeSep, eyeY, iris, pupil, mouthW, mouthY, lip, lipR, teeth: 'needle' | 'tomb' | 'none',
@@ -107,8 +110,8 @@ function update(r, dt) {
   // eyes look at a world point (eased, clamped), or wander a bit
   for (const e of r.eyes) {
     let yx = Math.sin(r.t * 0.7 + e.sx) * 0.08, yy = Math.sin(r.t * 0.43) * 0.12;
-    if (r.look) {
-      e.piv.getWorldPosition(hv); tv.copy(r.look).sub(hv);
+    if (r.gaze || r.look) {
+      e.piv.getWorldPosition(hv); tv.copy(r.gaze || r.look).sub(hv);
       e.piv.parent.getWorldQuaternion(hq); tv.applyQuaternion(hq.invert());
       yy = Math.atan2(-tv.x, -tv.z); yx = Math.atan2(tv.y, Math.hypot(tv.x, tv.z));
     }
@@ -117,7 +120,7 @@ function update(r, dt) {
   }
   for (const b of r.brows) { b.m.position.y = b.y0 + c.by + r.flap * 0.008; b.m.rotation.z = b.sx * -c.bt * 0.6; }
   // mouth: width (stretch), the bend of the lips, the jaw: resting open + the flap of the babble
-  const st = c.st * (1 + r.flap * 0.08), sm = c.smile, jaw = Math.min(1.2, c.jaw + r.flap * 0.85);
+  const st = c.st * (1 + r.flap * 0.08), sm = c.smile, jaw = Math.min(1.2, c.jaw + r.flap * 0.85 + (r.sing || 0));
   const n = r.segs.length, w = r.mw * st, curve = (x) => sm * 1.3 * (x / w) * (x / w) * w * 0.55, slope = (x) => sm * 1.3 * 2 * (x / w) * 0.55;
   for (let i = 0; i < n; i++) { // (the lips spread apart for the stretch instead of scaling, so they stay round)
     const x = (i / (n - 1) - 0.5) * w, s = r.segs[i];
