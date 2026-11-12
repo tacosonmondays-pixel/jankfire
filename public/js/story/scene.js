@@ -99,9 +99,15 @@ export function playScene(id, opts = {}) {
 }
 // a moment with a choice in it (a [FIRE], a [TAKE]): you play it through, it isn't cut at 3 s like the juice ones
 const playableMoment = (d) => !!d && d.kind === 'moment' && (d.tracks || []).some((t) => t.choice);
+// cast with no mark: 3 m in front of you, the first in the middle, the next two either side of it, more in pairs nearer you (they all used to
+// stand in one spot, inside each other, and a close-up on one was a shot from inside another)
+function spread(n) {
+  const f = [-Math.sin(ME.yaw), -Math.cos(ME.yaw)], r = [Math.cos(ME.yaw), -Math.sin(ME.yaw)], rank = Math.floor(n / 2), s = n === 1 ? 0 : (n % 2 ? -1.4 : 1.4), d = Math.max(1.4, 3 - 1.4 * (rank - 1)); // (beside the first, then pairs nearer you: fits a narrow deck, and never further off than the first)
+  return [ME.pos[0] + f[0] * d + r[0] * s, ME.pos[1], ME.pos[2] + f[1] * d + r[1] * s];
+}
 function castOne(k, c) {
   if (c.actor || actors.has(k)) { const a = actors.get(c.actor || k); if (a) { P.cast.set(k, a); a.inScene = true; if (c.at) { a.pos = [...where(c.at)]; a.r.pos = a.pos; } if (c.face != null) a.yaw = a.faceTarget = ST.offYaw(c.face); } return; }
-  const at = c.at ? where(c.at) : k === 'you' ? [ME.pos[0], ME.pos[1], ME.pos[2]] : [ME.pos[0], ME.pos[1], ME.pos[2] - 3];
+  const at = c.at ? where(c.at) : k === 'you' ? [ME.pos[0], ME.pos[1], ME.pos[2]] : spread(P.spread = (P.spread || 0) + 1);
   const def = ST.S.defs.npcs[c.npc] || { look: c.look || (k === 'you' ? 'mannequin' : 'mannequin'), voice: c.voice || { kind: 'beep' }, name: c.name || k.toUpperCase() };
   const id = '_scene_' + k;
   const a = spawnActor(id, { ...def, look: c.look || def.look }, at, c.face != null ? ST.offYaw(c.face) : k === 'you' ? ME.yaw : 0);
