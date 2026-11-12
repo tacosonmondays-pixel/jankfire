@@ -137,3 +137,14 @@ body.st-cine .st-lootcard, body.st-cine .st-hint, body.st-cine #storyBar, body.s
 @keyframes stGrain { 0% { transform: translate(0, 0); } 20% { transform: translate(-41px, 23px); } 40% { transform: translate(17px, -59px); } 60% { transform: translate(-83px, -11px); } 80% { transform: translate(53px, 71px); } }
 body.st-cine #stGrade .gv { opacity: calc(var(--gv, 0) * 0.45); } /* (the cutscene bars bring their own vignette and darker grade: they don't stack up to black) */
 body.st-cine #stGrade .gt { opacity: calc(var(--gt, 0) * 0.5); }
+
+/* ---- the standard inventory (owner: "it should hide your standard inventory"). story has its own bar (#storyBar, bar.js);
+   multiplayer's killstreak tray never shows here (story streaks sit on the bar and cost HYPE). the train's Blood Drive
+   (st-hands) and a takeover streak (mech, rig, wrecking ball) hide the bar, the ammo and the weapon name: only their own
+   HUD shows. in a car (st-car) the bar goes but the ammo stays (drive-bys with your sidearm). a talk hides the bar too */
+body.st-on #streakTray { display: none !important; }
+body.st-hands #storyBar, body.st-hands #hotbar, body.st-hands #ammo, body.st-hands #weaponName,
+body.st-on.mechin #storyBar, body.st-on.mechin #ammo, body.st-on.mechin #weaponName,
+body.st-on.rigging #storyBar, body.st-on.rigging #ammo, body.st-on.rigging #weaponName,
+body.st-on.wrecking #storyBar, body.st-on.wrecking #ammo, body.st-on.wrecking #weaponName,
+body.st-car #storyBar, body.st-car #weaponName, body.st-talk #storyBar { display: none !important; }
