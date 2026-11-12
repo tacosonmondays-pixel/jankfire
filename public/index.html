@@ -107,8 +107,9 @@
       <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
     </div>
     <div class="home-right">
-      <div class="hub-cards" id="hubCards"></div>
-      <div class="hub-old"><small>the old menus</small><button class="mid" data-pick="online" title="real players only: quick play, plant &amp; defuse, royale, zombies">ONLINE</button><button class="mid" data-pick="bots" title="lobbies with bots and people. or make your own">WITH BOTS</button><button class="mid" data-mode="coop" title="friends vs waves of bots">COOP</button></div>
+      <button class="big mode play" data-hub="online"><b>ONLINE</b><span>real players: quick play, plant &amp; defuse, royale, zombies</span></button>
+      <button class="big mode" data-hub="offline"><b>OFFLINE</b><span>just you and bots. your map, your rules</span></button>
+      <div class="hub-under"><i id="hubLive"></i><span class="hub-links"><button class="mid" data-mode="training" title="dummies + infinite ammo">TRAINING</button><button class="mid" data-pick="bots" title="the old bots menu: any mode, CUSTOM">CLASSIC</button></span></div>
       <div class="hidden" id="desktopRow">
         <button class="big mode" id="dChange"><b>HOST / JOIN</b><span>change server, host on this PC</span></button>
         <div class="drow"><button class="mid" id="dFull">FULLSCREEN</button><button class="mid danger" id="dQuit">QUIT GAME</button></div>
@@ -121,7 +122,7 @@
   <!-- the hub: a mode's lobby (public/js/hubmenu.js) -->
   <div class="screen hidden" id="scr-hubby">
     <div class="home-frame" id="hubFrame"></div>
-    <div class="hub-head"><button class="mid" id="hubBack">&lt; HUB</button><h2 id="hubName"></h2><p id="hubDesc"></p></div>
+    <div class="hub-head"><button class="mid" id="hubBack">&lt; HUB</button><h2 id="hubName"></h2><p id="hubDesc"></p><div class="hub-modes" id="hubModes"></div></div>
     <div class="hub-panel hub-l" id="hubMatch"></div>
     <div class="hub-stage" id="hubStage"></div>
     <div class="hub-panel hub-r" id="hubSide"></div>
