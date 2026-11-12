@@ -20,8 +20,8 @@ from archkit import Kit, OUTDIR, MATS, NOCAST, bands
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({
-    'whclad': ('profile', '#d2d8e2', {}), 'whliner': ('profile', '#f2ecdc', {}), 'whplinth': ('concrete', '#c2bcb2', {}),
-    'whdado': ('concrete', '#9a968e', {}), 'whpink': ('profile', '#ff4fd8', {}), 'whpinkflat': ('trim', '#ff4fd8', {}),
+    'whclad': ('profile', '#d2d8e2', {}), 'whliner': ('profile', '#f2ecdc', {}), 'whplinth': ('concrete', '#ece6da', {}),
+    'whdado': ('concrete', '#c4c0b6', {}), 'whpink': ('profile', '#ff4fd8', {}), 'whpinkflat': ('trim', '#ff4fd8', {}),
     'whcope': ('metalplate', '#d8dce2', {}), 'whsteel': ('trim', '#3a3d44', {}), 'whgirder': ('trim', '#ffc21a', {}),
     'whcolumn': ('trim', '#2f6fd0', {}), 'whpurlin': ('trim', '#a4acb8', {}), 'whdeck': ('profile', '#e6eaee', {}),
     'whroof': ('profile', '#4a78c8', {}), 'whshutter': ('louvre', '#ffd23a', {}), 'whdrum': ('metalplate', '#8a919c', {}),
@@ -30,6 +30,7 @@ MATS.update({
     'whsky': ('glass', '#d8f4ff', {'glow': True}), 'whskyin': ('trim', '#a8c4dc', {}), 'whpatch': ('corrugated', '#7fd6c8', {}),
     'whpatch2': ('corrugated', '#e8a0c0', {}), 'whvent': ('louvre', '#c0c4ca', {}), 'whhvac': ('metalplate', '#e4e2da', {}), 'whfan': ('tar', '#1e1e24', {}),
 })
+NOCAST.update({'whgirder', 'whcolumn', 'whdrum', 'whshutter', 'whhvac', 'whseal', 'whpink', 'whdado'})  # (under the roof, or skins on the walls: the sun never needs them)
 NOCAST.update({'whpinkflat', 'whcope', 'whsteel', 'whhazy', 'whhazk', 'whlamp', 'whglow', 'whsign', 'whsky', 'whskyin', 'whpatch', 'whpatch2', 'whvent', 'whfan', 'whpurlin'})
 VAR = {'wh_hall': dict(HX=32.0, HZ=18.0, H=10.0, docks=True), 'wh_hall_sd': dict(HX=24.0, HZ=22.0, H=9.0, docks=False)}
 T = 0.6  # wall thickness

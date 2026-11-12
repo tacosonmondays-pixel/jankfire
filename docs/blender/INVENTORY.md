@@ -90,7 +90,7 @@ PR #71 turns 45 repeated prop kinds into instanced Blender models. What is left 
 | park, playground, corner lots, junk outside | map.js:1782 / 1840 / 1535 | Suburb (+P&D) | 531 | 3-4 |
 | pool deck, cabanas, DJ | map.js:1166 | Rooftop | 121 | 4 |
 | radio mast yard, road, property stakes | map.js:4728 / 4759 / 4786 | Scary Forest | 350 | 4 |
-| warehouse hall insides | map.js:2057 / 2244 | Warehouse (+P&D) | 215 | 4 |
+| warehouse hall insides (the shell: walls, roof, girders, lamps, doors is Blender now, `wh_hall` / `wh_hall_sd`; the office and floor kit are left) | map.js:2057 / 2244 | Warehouse (+P&D) | 215 | 4 |
 | back lots, mine, Main Street | map.js:2660 / 2727 / 2623 | Desert (+P&D) | 388 | 4 |
 | giant toy-block letters, park | jankburg.js:572 / 583 | Jankburg | 119 | 3-4 |
 | the whole CRATE map | map.js:500 | Crate | 57 | 3 |
