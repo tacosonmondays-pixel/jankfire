@@ -7,7 +7,10 @@ import { resetGrid } from '/shared/physics.js';
 import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeThing, insertThing, thingData, thingFrom, applyEdits, validEdits } from '/shared/mapedit.js';
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
-import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from '../world.js';
+import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats } from '../world.js';
+import { whenGlb } from '../glbkit.js';
+import { wantArch } from '../archfield.js';
+import { initPalette, togglePalette, solidOn, modelBounds } from './palette.js';
 import { loadTripoModels } from '../models.js';
 
 const $ = (id) => document.getElementById(id);
@@ -234,6 +237,52 @@ function nudge(dx, dy, dz) {
   Object.assign(hist[hist.length - 1], { nudge: performance.now(), ts });
 }
 
+// ---------------------------------------------------------------- placing from the palette
+// a new thing copies one that's already on a map somewhere (a placed house gets that house's real walls, a car its
+// 15 boxes); a model no map uses yet gets one collision box the size of the model
+let TPL = null;
+function tpl() {
+  if (TPL) return TPL;
+  TPL = { props: new Map(), arch: new Map() };
+  const solid = new Set();
+  for (const [mid, d] of Object.entries(MAPS)) {
+    if (d.stream) continue;
+    for (const t of (mid === mapId ? idx : indexMap(d)).things) {
+      if (t.kind === 'arch' && !TPL.arch.has(t.arch.id) && t.boxes.length) TPL.arch.set(t.arch.id, thingData(t));
+      if (t.kind !== 'prop') continue;
+      const id = t.prop.id, good = t.list === 'b' && t.boxes.length > 0;
+      if (!TPL.props.has(id) || (good && !solid.has(id))) { TPL.props.set(id, thingData(t)); if (good) solid.add(id); }
+    }
+  }
+  return TPL;
+}
+let retried = new Set();
+function place(kind, mid) {
+  let data = null;
+  if (kind === 'props') {
+    const id = mid.replace(/^p_/, '');
+    data = tpl().props.get(id);
+    if (!data) {
+      const mb = modelBounds(mid);
+      if (!mb) { if (retried.has(mid)) return toast('that model would not load'); retried.add(mid); toast('loading ' + id.replace(/_/g, ' ') + '...'); whenGlb([mid], () => place(kind, mid)); return; }
+      data = { list: 'b', boxes: [{ min: mb.lo, max: mb.hi, mat: 'metal', pv: id }], prop: { id, a: [0, 0, 0], y: 0, lo: mb.lo, hi: mb.hi } };
+    }
+  } else if (kind === 'arch') { data = tpl().arch.get(mid); if (!data) return toast('no map uses that building yet'); }
+  else data = { list: 'b', boxes: [{ min: [-1, 0, -1], max: [1, 2, 1], mat: mid }] };
+  data = JSON.parse(JSON.stringify(data));
+  if (kind !== 'arch' && !solidOn()) data.list = 'd'; // look-only: drawn, never bumped into (buildings are always solid)
+  // where you aim: on the floor under the crosshair, or 10 m ahead
+  const [o, d] = aimRay(), h = pick(o, d, null, true), dist = h && h.dist < 120 ? h.dist : 10;
+  const at = [o.x + d.x * dist, o.y + d.y * dist, o.z + d.z * dist];
+  if (snap) { at[0] = Math.round(at[0] / snap) * snap; at[2] = Math.round(at[2] / snap) * snap; }
+  const t = thingFrom(data), b = boundsOf(t), from = [(b.lo[0] + b.hi[0]) / 2, b.lo[1], (b.lo[2] + b.hi[2]) / 2];
+  xfThing(t, from, 1, 0, [at[0] - from[0], at[1] - from[1], at[2] - from[2]]);
+  const made = opAdd([thingData(t)]);
+  if (kind === 'arch') wantArch(def.boxes.arch, () => rebuild()); // (a building this map didn't have: its model)
+  sel.clear(); for (const m of made) sel.add(m); drawSel();
+  startCarry(made); callout('PLOP');
+}
+
 // ---------------------------------------------------------------- the change list (the diff)
 function opWhat(op) {
   const n = (op.sel || []).length, nm = n ? nameFromSig(op.sel[0]) + (n > 1 ? ' +' + (n - 1) : '') : '';
@@ -329,6 +378,7 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketRight') setSnap(SNAPS[Math.min(SNAPS.length - 1, SNAPS.indexOf(snap) + 1)] || 0.25);
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
+  else if (c === 'KeyP') { if (togglePalette() && document.pointerLockElement) document.exitPointerLock(); }
   else if (c === 'Escape' && carry) { endCarry(); toast('put back'); }
   else if (c === 'ArrowUp') nudge(0, 0, -1); else if (c === 'ArrowDown') nudge(0, 0, 1); else if (c === 'ArrowLeft') nudge(-1, 0, 0); else if (c === 'ArrowRight') nudge(1, 0, 0);
   else if (c === 'PageUp') nudge(0, 1, 0); else if (c === 'PageDown') nudge(0, -1, 0);
@@ -350,6 +400,8 @@ $('edDiff').onclick = () => { $('edList').classList.toggle('hidden'); showList()
 $('edClose').onclick = () => { $('edList').classList.add('hidden'); showSel(); };
 $('edReset').onclick = () => { if (!confirm('Throw away every change on ' + (def.name || mapId) + '?')) return; try { localStorage.removeItem(store(mapId)); } catch { /* fine */ } location.reload(); };
 $('edQuit').onclick = () => { location.href = '/'; };
+$('edPalBtn').onclick = () => togglePalette();
+initPalette({ pick: (k, id) => place(k, id), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = 'jankfire-edits-' + mapId + '.json'; a.click();
@@ -375,5 +427,5 @@ $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);
