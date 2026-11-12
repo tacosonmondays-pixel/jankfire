@@ -13,10 +13,11 @@ import { MAP, MAPS } from '/shared/map.js';
 import { HR, HR_LINES, hrSight } from '/shared/hr.js';
 import { PH } from '/shared/physics.js';
 import { nvOn } from './goggles.js';
+import { AUTHORED, LAZY, authored, nodeIn, prefetch, whenLate } from './glbkit.js';
 
 const $ = (id) => document.getElementById(id);
 const pick = (a) => a[(Math.random() * a.length) | 0];
-const S = { on: false, p: null, yaw: 0, pose: 0, tg: 0, st: 0, stShow: 0, near: 0, called: 0, take: 0, mesh: null, nvg: false };
+const S = { on: false, p: null, yaw: 0, pose: 0, tg: 0, st: 0, stShow: 0, near: 0, called: 0, take: 0, mesh: null, nvg: false, code: false }; // code: tests draw the box version
 
 // ------------------------------------------------------------ the model
 function badgeTex() {
@@ -104,6 +105,45 @@ function buildHR() {
   g.userData = { body, head, arms, legs, ear, clip };
   return g;
 }
+// the Blender one (tools/blender/make_hrguy.py, x_hrguy.glb): built on the same rig, an empty per joint at the same spot
+// with the same parents (hr_body > hr_head, hr_armL > hr_foreL, hr_armR > hr_foreR > hr_clip, hr_legL...), so pose()
+// turns the same nodes and nothing else changes. the badge's card gets our canvas (it still flashes in your
+// flashlight), the earpiece's LED is what blinks. downloaded once you're on a map he haunts; the boxes until it lands
+const GLB = 'x_hrguy', GLB_MATS = new Set();
+function buildGlb() {
+  if (S.code || !AUTHORED[GLB]) return null; // (not authored() on a miss: whenLate below swaps him when it lands)
+  const a = authored(GLB), g = a.obj, n = (k) => nodeIn(g, 'hr_' + k);
+  const body = n('body'), head = n('head'), arms = [n('armL'), n('armR')], fore = [n('foreL'), n('foreR')], legs = [n('legL'), n('legR')], clip = n('clip'), ear = n('led');
+  if (![body, head, ...arms, ...fore, ...legs, clip, ear].every(Boolean)) return null;
+  arms[0].userData.fore = fore[0]; arms[1].userData.fore = fore[1];
+  const M = mats();
+  g.traverse((o) => {
+    if (!o.isMesh) return;
+    if (o.material.name === 'hr_badge') { o.material = M.badge; return; }
+    GLB_MATS.add(o.material);
+  });
+  for (const m of GLB_MATS) if (!m.userData.hr) { m.userData.hr = true; if ('envMapIntensity' in m && m.metalness < 0.5) m.envMapIntensity = 0.12; } // (the studio reflection lit him up in the dark woods)
+  Object.assign(g.userData, { body, head, arms, legs, ear, clip, glb: true });
+  return g;
+}
+function makeHR() {
+  const g = buildGlb() || buildHR();
+  if (g.userData.glb && S.nvg) hrNightVision(true); // (goggles already down: his new materials come out of the fog too)
+  return g;
+}
+whenLate(GLB, () => { // it landed while he was about: swap him, same spot, same pose
+  if (!S.mesh || S.mesh.userData.glb) return;
+  const g = buildGlb();
+  if (!g) return;
+  const old = S.mesh, on = !!old.parent;
+  if (on) old.parent.remove(old);
+  old.traverse((o) => { if (o.geometry && !o.geometry.userData.shared) o.geometry.dispose(); });
+  S.mesh = g; pose(g, S.pose);
+  if (S.p) g.position.set(S.p[0], S.p[1], S.p[2]);
+  g.rotation.y = S.yaw;
+  if (on) G.scene.add(g);
+  hrNightVision(S.nvg);
+});
 // a new pose every time he blinks: head tilted further, one shoulder down, the clipboard up to his chest... all wrong
 function pose(g, seed) {
   let s = seed + 1;
@@ -113,7 +153,7 @@ function pose(g, seed) {
   body.rotation.z = (r() - 0.5) * 0.08;
   arms[0].rotation.set((r() - 0.5) * 0.2, 0, -0.06 - r() * 0.12); arms[0].userData.fore.rotation.x = -r() * 0.3;
   const up = r() < 0.4; // reading his clipboard. about you
-  arms[1].rotation.set(up ? -0.5 : (r() - 0.5) * 0.15, 0, 0.06 + r() * 0.1); arms[1].userData.fore.rotation.x = up ? -1.2 : -r() * 0.25;
+  arms[1].rotation.set(up ? 0.5 : (r() - 0.5) * 0.15, 0, 0.06 + r() * 0.1); arms[1].userData.fore.rotation.x = up ? 1.2 : -r() * 0.25; // (+x brings it up in front: the old -x put it behind his back)
 }
 
 // ------------------------------------------------------------ static over your screen
@@ -147,7 +187,7 @@ function distort(k, now) {
 // ------------------------------------------------------------ messages from the server
 let scene = null;
 function show(on) {
-  if (on && !S.mesh) { S.mesh = buildHR(); }
+  if (on && !S.mesh) { S.mesh = makeHR(); }
   if (S.mesh) { if (on && !S.mesh.parent) G.scene.add(S.mesh); if (!on && S.mesh.parent) S.mesh.parent.remove(S.mesh); }
 }
 export function hrMsg(m) {
@@ -190,7 +230,7 @@ function hrUI() {
 }
 export function hrNightVision(on) { // night vision goggles down: he isn't hidden by the fog any more
   S.nvg = !!on;
-  for (const m of Object.values(mats())) if (m.fog !== !on) { m.fog = !on; m.needsUpdate = true; }
+  for (const m of [...Object.values(mats()), ...GLB_MATS]) if (m.fog !== !on) { m.fog = !on; m.needsUpdate = true; }
 }
 
 // ------------------------------------------------------------ every frame
@@ -201,6 +241,7 @@ export function updateHR(dt) {
   staticCanvas();
   const now = performance.now(), here = !!(MAPS[MAP.id] && MAPS[MAP.id].hr) && G.joined;
   if (!here) { if (S.on) { S.on = false; show(false); } hrLevel(0, 0); distort(0, now); return; }
+  if (!S.asked && LAZY.has(GLB)) { S.asked = true; prefetch([GLB], 1); } // his Blender model, before his first visit
   if (nvOn() !== S.nvg) hrNightVision(nvOn()); // night vision goggles (goggles.js): the fog stops hiding him
   let k = 0, near = 0;
   if (S.on && S.p && ME.alive) {
