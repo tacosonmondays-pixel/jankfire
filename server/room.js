@@ -1809,6 +1809,7 @@ class Room {
       this.hurt(t, p, 'blower', Math.random() < 0.3 ? 1 : 0, [toT[0] * w.push, toT[1] * w.push + 1.2, toT[2] * w.push]);
     } else if (m.w === 'hook') {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
+      if (this.zm && p.z) { if (!this.zsHookUse(p)) return; p.z.hookPush = now(); } // zombies: a grab spends a charge too (none: no tug)
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
     if (m.w === 'shredder') this.shredPull(p, t);
@@ -2884,6 +2885,7 @@ class Room {
         if (has(WEAPONS, m.w) && (!this.chaosKit || this.chaosKit.slots.includes(m.w))) p.w = m.w;
         const only = this.modeWeapon(p);
         if (only) p.w = only; // everyone sees what you're really allowed to hold
+        if (this.zm && p.z) this.zsHookSnap(p, m); // zombies: the grapple runs on charges (server/zmshop.js)
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
         this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted

@@ -82,7 +82,8 @@ export function installMech(Room, U) {
       this.broadcast({ t: 'mech', k: 'land', id: m.id, o: m.o, f: m.f, p: m.p.map(r2), yaw: m.yaw });
       const c = [m.p[0], m.p[1] + 0.6, m.p[2]];
       for (const t of this.players.values()) {
-        if (!t.alive || t === owner || (owner && this.friendly(owner, t))) continue;
+        if (!t.alive) continue;
+        if (t === owner || (owner && this.friendly(owner, t))) { this.mechBonk(m, t); continue; } // yours never squashes you or your side: it bonks you off the circle
         const tc = center(t), dh = hdist(t.pos, m.p), dy = t.pos[1] - m.p[1];
         if (dh <= MECH.drop.squash && dy > -1 && dy < 3.5 && !this.mechOn(t)) { // right under it
           this.broadcast({ t: 'mech', k: 'squash', id: m.o, to: t.id, p: t.pos.map(r2) });
@@ -95,6 +96,19 @@ export function installMech(Room, U) {
         this.hurt(t, owner || null, 'mechdrop', h.dmg, [out[0] * h.kb, h.up, out[1] * h.kb]);
       }
       if (owner && owner.isBot) setTimeout(safe('botmech', () => { if (this.players.get(owner.id) === owner && owner.alive && this.mechMap().get(m.id) === m && m.st === 'wait') { owner.pos = m.p.slice(); this.mechEnter(owner); } }), 500); // bots climb straight in (if it's still there: a reset may have cleared it)
+    },
+    // BEEP BEEP: you (or a mate) were standing on your own landing circle. the server picks the shove: a fixed push
+    // toward clear floor next to it (mechOutSpot: no wall, a floor, inside the map; none: straight up) + a hop. once per
+    // landing per person, nothing the client asks for, so it's no way to fling yourself anywhere
+    mechBonk(m, t) {
+      const B = MECH.bonk, dh = hdist(t.pos, m.p), dy = t.pos[1] - m.p[1];
+      if (dh > B.r || dy <= -1 || dy >= 3.5 || this.mechOn(t) || t.trap) return false;
+      const a = dh > 0.2 ? [(t.pos[0] - m.p[0]) / dh, (t.pos[2] - m.p[2]) / dh] : [Math.sin(m.yaw), Math.cos(m.yaw)]; // (dead centre: out the front of it)
+      const s = this.mechOutSpot(m.p, [a, [-a[1], a[0]], [a[1], -a[0]], [-a[0], -a[1]]], B.d);
+      const dx = s[0] - t.pos[0], dz = s[2] - t.pos[2], l = Math.hypot(dx, dz), k = l > 0.3 ? B.kb / l : 0;
+      this.knock(t, [dx * k, B.up, dz * k], 'mechbonk');
+      this.broadcast({ t: 'mech', k: 'bonk', id: m.o, to: t.id, p: t.pos.map(r2) });
+      return true;
     },
     mechGone(m, why = 'leave') {
       this.mechMap().delete(m.id);
