@@ -3751,7 +3751,7 @@ function skyGarden(B, D, x, z, y, r) {
 function skyNews(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
+    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); propOf('heli', [x - 2, y + 0.1, z], 0, () => { chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 }); }); // (drawn as the Blender news chopper, p_heli: JANK NEWS 7)
     add(x - 11, y, z + 8, x - 8, y + 1.2, z + 11, 'metal'); D.add(x - 12.5, y + 1.2, z + 6.5, x - 6.5, y + 1.5, z + 12.5, 'white'); D.add(x - 9.7, y + 1.5, z + 9.3, x - 9.3, y + 3.6, z + 9.7, 'metal'); // the dish
     for (const [lx, lz] of [[6, -10], [9, -10], [6, 10], [9, 10]]) { B.box(x + lx, y + 1.4, z + lz, 0.15, 2.8, 0.15, 'metal'); D.box(x + lx, y + 2.9, z + lz, 0.8, 0.6, 0.5, 'lamp'); }
     for (const lz of [-12.6, 12.6]) { add(x + 4, y, z + lz - 0.6, x + 8, y + 1.6, z + lz + 0.6, 'containerb'); }
@@ -3807,7 +3807,7 @@ function skyObs(B, D, x, z, y, r) {
 function skyHeli(B, D, x, z, y, r, f = 1) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred'); // (S&D: off the pad's middle, the site's)
+    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); propOf('heli', [x + 1, y + 0.1, z - (f < 0 ? 3 : 1)], 0, () => chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred')); // (S&D: off the pad's middle, the site's. drawn as p_heli)
     for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); }
     add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); // the booth
     B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }
