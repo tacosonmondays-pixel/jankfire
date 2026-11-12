@@ -9,6 +9,7 @@ import { FLAGS } from '../shared/weapons.js';
 import { BODY } from '../shared/bodyhp.js';
 import { MECH, MF, MECH_BITS, mechFrame, isFrame, mechBoxes, energyAt, spend, newEnergy, speedCap, inArc, ramHit, dropHit, addMark } from '../shared/mech.js';
 import { inFront } from '../shared/rig.js';
+import { outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { raycast, movePlayer, playerBoxes, rayBox } from '../shared/physics.js';
 
 const PP = MECH.paperplane, NS = MECH.nightshift;
@@ -139,7 +140,11 @@ export function installMech(Room, U) {
       if (m) this.mechMap().delete(m.id);
       if (why !== 'boom') { this.broadcast({ t: 'mech', k: 'out', id: p.id, m: M.id, why: 'quiet', p: at.map(r2) }); return; }
       // EJECT! EJECT!: flung up and back out of the cockpit, the mech goes up behind you
-      const back = [Math.sin(p.yaw), Math.cos(p.yaw)], B = MECH.boom;
+      let back = [Math.sin(p.yaw), Math.cos(p.yaw)]; const B = MECH.boom;
+      if (this.map.bounds && outOfBounds(this.map, [at[0] + back[0] * B.back * 1.4, 0, at[2] + back[1] * B.back * 1.4])) { // (backed up to the edge: fling them inwards, not out of the map)
+        const c = boundsCenter(this.map), dx = c[0] - at[0], dz = c[1] - at[2], l = Math.hypot(dx, dz) || 1;
+        back = [dx / l, dz / l];
+      }
       const v = [back[0] * B.back, B.up, back[1] * B.back];
       if (p.alive) {
         p.pos = [at[0], at[1] + F.h * 0.8, at[2]]; // (mk_eject: out of the top of the chest)
