@@ -117,20 +117,43 @@ function placeLife(def) {
   // kept clear of grass and flowers (the map session's ask): the mechs' drop pads, and the towns' flat ground
   const R = def.royale || {};
   S.clear = [...(R.drops || []).map((d) => [d[0], d[2], (d[3] || 8) + 1.5]), ...(R.pois || []).map((p) => [p.c[0], p.c[1], (p.flat || p.r || 0) * 0.85])];
-  for (let tries = 0; tries < 4000 && (S.flocks.length < 3 || S.boatList.length < BI_LIFE.boats); tries++) {
-    const a = rnd() * Math.PI * 2, r = 200 + rnd() * 260, x = Math.cos(a) * r * 1.2, z = Math.sin(a) * r, g = T ? T.at(x, z) : null;
-    if (S.flocks.length < 3 && g != null && g > sea - 0.5 && g < sea + 2) S.flocks.push({ x, z, y: 22 + rnd() * 18, r: 18 + rnd() * 20, w: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd() * 0.1), n: 9 });
-    const far = r + 120;
+  const C = S.cfg, NF = C.gulls ?? 0, NB = C.boats ?? 0, span = C.span || 260, sea0 = def.sea || def.seaY != null;
+  for (let tries = 0; tries < 4000 && T && sea0 && (S.flocks.length < NF || S.boatList.length < NB); tries++) {
+    const a = rnd() * Math.PI * 2, r = span * (0.75 + rnd()), x = Math.cos(a) * r * 1.2, z = Math.sin(a) * r, g = T ? T.at(x, z) : null;
+    if (S.flocks.length < NF && g != null && g > sea - 0.5 && g < sea + 2) S.flocks.push({ x, z, y: 22 + rnd() * 18, r: 18 + rnd() * 20, w: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd() * 0.1), n: 9 });
+    const far = r + span * 0.45;
     const bx = Math.cos(a) * far * 1.15, bz = Math.sin(a) * far, bg = T ? T.at(bx, bz) : null;
-    if (S.boatList.length < BI_LIFE.boats && (bg == null || bg < sea - 4) && Math.hypot(bx, bz) < 640 && !S.boatList.some((b) => Math.hypot(b.x - bx, b.z - bz) < 60)) S.boatList.push({ x: bx, z: bz, r: 10 + rnd() * 25, w: (rnd() < 0.5 ? -1 : 1) * (0.02 + rnd() * 0.03), p: rnd() * 6.28, y: sea });
+    if (S.boatList.length < NB && (bg == null || bg < sea - 4) && Math.hypot(bx, bz) < span * 2.4 && !S.boatList.some((b) => Math.hypot(b.x - bx, b.z - bz) < 60)) S.boatList.push({ x: bx, z: bz, r: 10 + rnd() * 25, w: (rnd() < 0.5 ? -1 : 1) * (0.02 + rnd() * 0.03), p: rnd() * 6.28, y: sea });
   }
+  // no coast to find (a map of boxes): the flocks circle over the spawns, well up
+  const sp = def.spawns || [];
+  for (let k = 0; S.flocks.length < NF && sp.length && k < 20; k++) { const p = sp[Math.floor(rnd() * sp.length)]; S.flocks.push({ x: p[0] + (rnd() - 0.5) * 60, z: p[2] + (rnd() - 0.5) * 60, y: p[1] + 22 + rnd() * 14, r: 16 + rnd() * 18, w: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd() * 0.1), n: 9 }); }
+  if (C.boxGrass) buildGrid(def, C.boxGrass);
+  else S.grid = null;
 }
+// maps built of boxes: a 1 m grid of the highest box top over each cell, flagged where that top is grass (or lawn...)
+function buildGrid(def, mats) {
+  const want = new Set(mats), all = [...BOXES.filter((b) => !b.ter), ...(def.deco || []).filter((b) => !b.ter)];
+  let [x0, z0, x1, z1] = def.bounds || [-200, -200, 200, 200];
+  x0 = Math.max(-320, Math.floor(x0)); z0 = Math.max(-320, Math.floor(z0)); x1 = Math.min(320, Math.ceil(x1)); z1 = Math.min(320, Math.ceil(z1));
+  const nx = x1 - x0, nz = z1 - z0, top = new Float32Array(nx * nz).fill(-1e9), ok = new Uint8Array(nx * nz);
+  for (const b of all) {
+    if (b.max[1] - b.min[1] > 60 || LIQ_SKIP.test(b.mat || '')) continue; // (skyboxes, the sea: not ground)
+    const i0 = Math.max(0, Math.floor(b.min[0] - x0)), i1 = Math.min(nx, Math.ceil(b.max[0] - x0)), j0 = Math.max(0, Math.floor(b.min[2] - z0)), j1 = Math.min(nz, Math.ceil(b.max[2] - z0)), y = b.max[1], g = want.has(b.mat) ? 1 : 0;
+    for (let i = i0; i < i1; i++) for (let j = j0; j < j1; j++) { const k = i * nz + j; if (y > top[k] + 0.01) { top[k] = y; ok[k] = g; } }
+  }
+  const T = BOXES.terrain; // shaped ground under it all (Suburb's lawns): grass where the terrain is a grass paint and nothing's on top
+  if (T) { const gi = new Set([...want].map((m) => T.mats.indexOf(m)).filter((k) => k >= 0));
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) { const x = x0 + i + 0.5, z = z0 + j + 0.5, ti = Math.floor(x - T.x0), tj = Math.floor(z - T.z0); if (ti < 0 || tj < 0 || ti >= T.nx || tj >= T.nz || !T.ok[ti * T.nz + tj]) continue; const y = T.at(x, z); const k = i * nz + j; if (y != null && y > top[k] + 0.01) { top[k] = y; ok[k] = gi.has(T.paint[ti * T.nz + tj]) ? 1 : 0; } } }
+  S.grid = { x0, z0, nx, nz, top, ok };
+}
+const LIQ_SKIP = /water|sea|lava|oil|acid|slime|cola|dye|bile/;
 
 // the field round the camera: tufts and flowers on grass and jungle floor
 function layField(cx, cz) {
-  const T = BOXES.terrain; if (!T) return;
-  const R = S.lite ? BI_LIFE.rLite : BI_LIFE.r, C = BI_LIFE.cell, sea = S.sea, vz = T.nz + 1;
-  const gi = new Set(['grass', 'leaves'].map((m) => T.mats.indexOf(m)).filter((k) => k >= 0));
+  const T = BOXES.terrain, Gd = S.grid; if (!T && !Gd) return;
+  const R = S.lite ? BI_LIFE.rLite : BI_LIFE.r, C = BI_LIFE.cell, sea = S.sea, vz = T ? T.nz + 1 : 0, FL = S.cfg.flowers ?? BI_LIFE.flowers;
+  const gi = T ? new Set((S.cfg.grass || ['grass', 'leaves']).map((m) => T.mats.indexOf(m)).filter((k) => k >= 0)) : null;
   let nt = 0, nf = 0;
   const clr = (S.clear || []).filter((k) => Math.hypot(k[0] - cx, k[1] - cz) < R + k[2]); // (only the ones that reach this patch)
   const i0 = Math.floor((cx - R) / C), i1 = Math.ceil((cx + R) / C), j0 = Math.floor((cz - R) / C), j1 = Math.ceil((cz + R) / C);
@@ -138,13 +161,18 @@ function layField(cx, cz) {
     const x = (i + hash(i, j, 1)) * C, z = (j + hash(i, j, 2)) * C;
     if ((x - cx) * (x - cx) + (z - cz) * (z - cz) > R * R) continue;
     if (clr.length && clr.some((k) => (x - k[0]) * (x - k[0]) + (z - k[1]) * (z - k[1]) < k[2] * k[2])) continue;
-    const ti = Math.floor(x - T.x0), tj = Math.floor(z - T.z0);
-    if (ti < 1 || tj < 1 || ti >= T.nx - 1 || tj >= T.nz - 1 || !T.ok[ti * T.nz + tj] || !gi.has(T.paint[ti * T.nz + tj])) continue;
-    const y = T.at(x, z); if (y == null || y < sea + 0.25) continue;
-    const sl = Math.abs(T.H[(ti + 1) * vz + tj] - T.H[(ti - 1) * vz + tj]) + Math.abs(T.H[ti * vz + tj + 1] - T.H[ti * vz + tj - 1]);
-    if (sl > 1.4) continue; // (steep: that's rock)
+    let y;
+    if (Gd) { const gx = Math.floor(x - Gd.x0), gz = Math.floor(z - Gd.z0); if (gx < 0 || gz < 0 || gx >= Gd.nx || gz >= Gd.nz || !Gd.ok[gx * Gd.nz + gz]) continue; y = Gd.top[gx * Gd.nz + gz]; }
+    else {
+      const ti = Math.floor(x - T.x0), tj = Math.floor(z - T.z0);
+      if (ti < 1 || tj < 1 || ti >= T.nx - 1 || tj >= T.nz - 1 || !T.ok[ti * T.nz + tj] || !gi.has(T.paint[ti * T.nz + tj])) continue;
+      y = T.at(x, z); if (y == null) continue;
+      const sl = Math.abs(T.H[(ti + 1) * vz + tj] - T.H[(ti - 1) * vz + tj]) + Math.abs(T.H[ti * vz + tj + 1] - T.H[ti * vz + tj - 1]);
+      if (sl > 1.4) continue; // (steep: that's rock)
+    }
+    if (sea != null && y < sea + 0.25) continue;
     const hr = hash(i, j, 3);
-    if (!S.lite && hr < BI_LIFE.flowers && nf < 600) {
+    if (!S.lite && hr < FL && nf < 600) {
       e.set(0, hash(i, j, 4) * 6.28, 0); q.setFromEuler(e); const s = 1.0 + hash(i, j, 5) * 0.7; sc.set(s, s, s);
       S.flowers.setMatrixAt(nf, m4.compose(v.set(x, y - 0.02, z), q, sc)); S.flowers.setColorAt(nf, col.setHex(FLOWER_COLS[Math.floor(hash(i, j, 6) * FLOWER_COLS.length)])); nf++;
     } else if (hr < BI_LIFE.keep && nt < 10000) {
@@ -160,7 +188,7 @@ function layField(cx, cz) {
 // the palms, ferns and bushes (propfield.js's instanced Blender props) get the sway too
 function swayProps() {
   G.scene.traverse((o) => {
-    if (!o.isInstancedMesh || !/^prop:(p_|s_)?(palm|fern|bush)/.test(o.name)) return;
+    if (!o.isInstancedMesh || !S.swayRe.test(o.name)) return;
     for (const m of [].concat(o.material)) {
       if (S.swayed.has(m)) continue;
       S.swayed.add(m);
@@ -175,16 +203,23 @@ function swayProps() {
 }
 
 // bilook.js: the map changed
-export function biLifeMap(on, def) {
+// cfg (maplooks.js, a map's life): { tufts, flowers (share of grass cells), grass (terrain paints), boxGrass (box mats),
+// gulls (flocks), boats, sway (prop names that sway), tint (tufts' colour), wind, span (how far out the coast is) }
+export function biLifeMap(cfg, def) {
+  const on = !!cfg;
   S.on = on;
   if (S.group) S.group.visible = on;
   if (!on) return;
+  S.cfg = cfg;
   if (!S.group) { S.group = build(); }
   if (S.group.parent !== G.scene) G.scene.add(S.group);
-  S.sea = def.seaY ?? -0.25; S.lx = NaN;
+  S.sea = def.seaY ?? (def.sea ? -0.25 : null); S.lx = NaN;
+  S.swayRe = new RegExp('^prop:(p_|s_)?(' + (cfg.sway || 'palm|fern|bush') + ')');
   placeLife(def);
+  S.tufts.visible = cfg.tufts !== false; S.flowers.visible = cfg.tufts !== false;
+  S.tufts.material.color.setHex(cfg.tint ?? 0xffffff); S.flowers.material.color.setHex(0xffffff);
   S.boats.count = S.boatList.length; S.gulls.count = Math.min(BI_LIFE.gulls, S.flocks.length * 9);
-  U.uWind.value.set(...BI_LIFE.wind);
+  U.uWind.value.set(...(cfg.wind || BI_LIFE.wind));
   S.propT = 0;
 }
 export function updateBiLife(dt) {
@@ -194,7 +229,7 @@ export function updateBiLife(dt) {
   if (lite !== S.lite) { S.lite = lite; S.lx = NaN; }
   U.uR.value = lite ? BI_LIFE.rLite : BI_LIFE.r;
   const c = G.camera.position;
-  if (!(Math.hypot(c.x - S.lx, c.z - S.lz) < BI_LIFE.relay)) layField(c.x, c.z);
+  if (S.cfg.tufts !== false && !(Math.hypot(c.x - S.lx, c.z - S.lz) < BI_LIFE.relay)) layField(c.x, c.z);
   if ((S.propT -= dt) <= 0) { S.propT = 2; swayProps(); } // (props stream in: look for new ones now and then)
   const t = U.uTime.value;
   let n = 0;
