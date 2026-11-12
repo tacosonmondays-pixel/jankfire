@@ -1,0 +1,48 @@
+<!doctype html>
+<!-- the mechs' clips played by three.js's AnimationMixer straight from public/models/x_mech_<id>.glb (what the game
+     loads): one row per clip, frames across. rendered by clip_sheets.cjs (?mech=paperplane&clips=a,b,c&frames=7) -->
+<meta charset="utf-8">
+<style>html, body { margin: 0; background: #120818; } canvas { display: block; }
+.l { position: absolute; color: #ffe14d; font: bold 15px monospace; background: rgba(18,8,24,.85); border-left: 3px solid #ff4fd8; padding: 1px 6px; }</style>
+<canvas id="c"></canvas><div id="ui"></div>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const q = new URLSearchParams(location.search), MECH = q.get('mech'), NF = +(q.get('frames') || 7), CW = 230, CH = 290;
+const ren = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.1; ren.setPixelRatio(1);
+const env = new THREE.PMREMGenerator(ren).fromScene(new RoomEnvironment(), 0.04).texture;
+const g = await new Promise((ok, bad) => new GLTFLoader().load(`/models/x_mech_${MECH}.glb`, ok, undefined, bad));
+const meta = JSON.parse(g.scene.children[0].userData.jf || g.scene.userData.jf || '{}');
+g.scene.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) { m.envMap = env; m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.35; if (m.map) { m.map.magFilter = THREE.NearestFilter; } } });
+const names = (q.get('clips') || g.animations.map((a) => a.name).join(',')).split(',');
+const W = CW * NF, H = CH * names.length + 30; ren.setSize(W, H); ren.setScissorTest(true);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x1c1028);
+sc.add(new THREE.HemisphereLight(0xfff4f8, 0x2a2030, 1.3)); const d = new THREE.DirectionalLight(0xfff0dd, 2.2); d.position.set(-6, 10, -8); sc.add(d);
+const r = new THREE.DirectionalLight(0x80d0ff, 1.0); r.position.set(6, 5, 8); sc.add(r);
+const grid = new THREE.GridHelper(8, 8, 0x5a3a6a, 0x3a2a4a); sc.add(grid);
+sc.add(g.scene); g.scene.rotation.y = Math.PI; // (face the camera: the mechs face -z)
+const mixer = new THREE.AnimationMixer(g.scene), ui = document.getElementById('ui'), out = { missing: [], clips: {} };
+const cam = new THREE.PerspectiveCamera(30, CW / CH, 0.1, 200);
+const tall = MECH === 'nightshift' ? 6.0 : 5.6;
+for (const [row, name] of names.entries()) {
+  const clip = g.animations.find((a) => a.name === name); if (!clip) { out.missing.push(name); continue; }
+  mixer.stopAllAction(); const act = mixer.clipAction(clip); act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; act.reset().play();
+  if (/^drone_/.test(name)) { const idle = g.animations.find((a) => a.name === 'idle'); if (idle) mixer.clipAction(idle).play(); }
+  const jet = /^jet_(fly)$/.test(name);
+  out.clips[name] = clip.duration;
+  for (let k = 0; k < NF; k++) {
+    const t = Math.min(clip.duration * k / (NF - 1), clip.duration - 1e-4);
+    mixer.setTime(t);
+    g.scene.updateMatrixWorld(true);
+    const x = k * CW, y = 30 + row * CH;
+    if (jet || /^jet_/.test(name) && k > NF / 2) { cam.position.set(-7.5, 5.5, 8.5); cam.lookAt(0, 2.4, 0); } else { cam.position.set(-6.5, tall * 0.62, 12.5); cam.lookAt(0, tall * 0.45, 0); }
+    ren.setViewport(x, H - y - CH, CW - 2, CH - 2); ren.setScissor(x, H - y - CH, CW - 2, CH - 2); ren.render(sc, cam);
+    if (k === 0) ui.insertAdjacentHTML('beforeend', `<div class="l" style="left:${x + 4}px;top:${y + 4}px">${name} ${clip.duration.toFixed(2)}s</div>`);
+  }
+}
+ui.insertAdjacentHTML('beforeend', `<div class="l" style="left:4px;top:4px">${MECH.toUpperCase()}: clips in three.js (AnimationMixer, from x_mech_${MECH}.glb), frames evenly over each clip</div>`);
+window.INFO = out; window.DONE = true;
+</script>
