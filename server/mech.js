@@ -307,7 +307,7 @@ export function installMech(Room, U) {
       const pool = () => (this.mechOn(t) && t.body ? t.body.hp : t.alive ? t.hp : 0), hp0 = pool();
       const got = this.hurt(t, p, w, dmg, kb, opts);
       const dealt = got === t ? Math.max(0, hp0 - pool()) : 0;
-      if (p.mech && MECH[p.mech.f].ult) this.mechUlt(p, dealt * 100 / MECH[p.mech.f].ult.dmg);
+      if (p.mech && MECH[p.mech.f].ult && !(opts && opts.ult)) this.mechUlt(p, dealt * 100 / MECH[p.mech.f].ult.dmg); // (an ultimate's own hits don't charge the next one)
       return dealt;
     },
     mechCd(M, k, s, n) { if (n < (M.cd[k] || 0) - 150) return false; M.cd[k] = n + s * 1000; return true; },

@@ -193,6 +193,7 @@ if (process.env.JF_MECH) STREAKS.mechdrop.kills = Number(process.env.JF_MECH) ||
 if (process.env.JF_MECH_DROP) MECH.drop.delay = Number(process.env.JF_MECH_DROP) || MECH.drop.delay; // test knob: seconds the mech falls (screenshots on slow browsers)
 if (process.env.JF_MECH_WAIT) MECH.wait = MECH.idle = Number(process.env.JF_MECH_WAIT) || MECH.wait; // test knob: seconds an empty mech waits for you
 if (process.env.JF_MECH_HP) for (const f of FRAMES) BODY[f].hp = MECH[f].hp = Math.max(1, Math.round(MECH[f].hp * (Number(process.env.JF_MECH_HP) || 1))); // test knob: x the mechs' armour (0.2 = quick ejects)
+if (process.env.JF_MECH_ULT) for (const f of FRAMES) if (MECH[f].ult) { const k = Math.max(0.01, Number(process.env.JF_MECH_ULT) || 1); MECH[f].ult.time /= k; MECH[f].ult.dmg /= k; } // test knob: the heroes' ultimates charge x times faster (100 = full in about a second)
 if (process.env.JF_BODY_DECAY) for (const k of bodyKinds) BODY[k].decay *= Number(process.env.JF_BODY_DECAY) || 1; // test knob: the ball / rig wear out faster
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));

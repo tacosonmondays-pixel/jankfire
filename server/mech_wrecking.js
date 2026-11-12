@@ -162,7 +162,7 @@ export function installWrecking(Room, U) {
       W.slam = null;
       const s = wbSlam(drop);
       this.wbBlast(p, s.r, (d) => { const f = 1 - d / s.r; return { dmg: s.dmg * (0.35 + 0.65 * f), kb: s.kb * (0.5 + 0.5 * f), up: s.up * (0.6 + 0.4 * f) }; }, 'wbslam');
-      this.broadcast({ t: 'mech', k: 'wbquake', id: p.id, p: p.pos.map(r2), r: r2(s.r), k: r2(s.k) });
+      this.broadcast({ t: 'mech', k: 'wbquake', id: p.id, p: p.pos.map(r2), r: r2(s.r), sz: r2(s.k) });
       this.mechStomp(p, n);
     },
     // ---- PILE DRIVER (Q, a full ult): straight up, hang there aiming, then dive onto the spot you pick
@@ -198,7 +198,7 @@ export function installWrecking(Room, U) {
       W.coast = null;
       if (drop < P.min) { this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); return; } // (it never really fell: a fizzle)
       this.wbBlast(p, P.r, wbPile, 'wbpile');
-      this.broadcast({ t: 'mech', k: 'wbquake', id: p.id, p: p.pos.map(r2), r: P.r, k: 1, big: 1 });
+      this.broadcast({ t: 'mech', k: 'wbquake', id: p.id, p: p.pos.map(r2), r: P.r, sz: 1, big: 1 });
       this.mechStomp(p, n);
     },
     // a blast round the ball's foot: everyone in r it can see gets hit(d) and flung out and up
@@ -210,7 +210,7 @@ export function installWrecking(Room, U) {
         const d = Math.max(0, Math.hypot(to[0], to[1], to[2]) - (this.mechOn(t) ? MECH[t.mech.f].hw : 0)), h = hit(d);
         if (!h || !clear(c, tc, this.boxes)) continue;
         const hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0];
-        this.mechKitHurt(p, t, w, h.dmg, [out[0] * h.kb, h.up, out[1] * h.kb]);
+        this.mechKitHurt(p, t, w, h.dmg, [out[0] * h.kb, h.up, out[1] * h.kb], w === 'wbpile' ? { ult: 1 } : undefined);
       }
     },
 
