@@ -15,6 +15,7 @@ const SCENES = {
   desert: { theme: 'desert', flat: true }, // the sand just keeps going: no cliff
   bazaar: { theme: 'desert', flat: true }, // sand all round outside the walls, no cliff
   islands: { theme: 'ocean' },
+  battleisland: { theme: 'ocean', mtn: false }, // open ocean round the island: no mountain ring on the horizon, just the far isles
   backrooms: { theme: 'sealed' },
   jankburg: { theme: 'industrial', flat: true }, // sheds, stacks and a crane past the outer ring; the megacity is the map's own deco
   forest: { theme: 'forest', flat: true }, // the woods go on past the fog: a black tree line against the sky
@@ -61,7 +62,7 @@ export function buildScenery(scene, map, id, voidMesh) {
   // ---- a ring of mountains, far away (unlit, faded into the sky)
   const mtnMat = basic(fade(pal.mtn, fog, 0.5)), snowMat = basic(fade(pal.snow, fog, 0.35));
   const drop = cfg.theme === 'sky' ? 50 : 0; // sky maps: the void plane sits under the cloud sea, so the bases go down past it
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < (cfg.mtn === false ? 0 : 34); i++) {
     const a = (i / 34) * Math.PI * 2 + r() * 0.15, d = 700 + r() * 300;
     const h = 140 + r() * 260, rad = 90 + r() * 120;
     const m = new THREE.Mesh(new THREE.ConeGeometry(rad, h + drop, 5 + ((r() * 3) | 0)), mtnMat);
