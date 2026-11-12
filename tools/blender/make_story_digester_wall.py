@@ -26,8 +26,8 @@ ID = 'digester_wall'
 OUT = os.path.join(MODELS, 'story', 's_' + ID + '.glb')
 SHEET_DIR = os.path.join(ROOT, 'docs', 'story', 'cast')
 # the two people who sit in it (act1set.js DIGESTER.sockets, cast_slice.js), in prop space: their root, scale
-DOT = dict(id='dot', ref='dot', at=(0.0, 0.0, -0.5), s=0.95, niche=dict(x=0.0, hw=0.8, h=1.95, d=0.15))
-MINA = dict(id='mina_wall', ref='mina', at=(-3.5, 0.0, -0.38), s=0.92, niche=dict(x=-3.5, hw=0.82, h=2.02, d=0.15))
+DOT = dict(id='dot', ref='dot', at=(0.0, 0.0, -0.5), s=0.95, niche=dict(x=0.0, hw=0.8, h=1.95, d=0.15, low=0.62, lowy=0.78))
+MINA = dict(id='mina_wall', ref='mina', at=(-3.5, 0.0, -0.38), s=0.92, niche=dict(x=-3.5, hw=0.82, h=2.02, d=0.15, low=0.7, lowy=0.95))
 X0, X1 = -10.55, 10.55  # the office front (x), its windows at y 3, 6, 9, 12 (1.3 m), its roof skin at 15 (0.3 m proud)
 
 
@@ -65,6 +65,9 @@ SWELL = [(2.15, 1.75, 0.75, 0.55, 0.26), (-1.8, 2.05, 0.6, 0.5, 0.2), (5.2, 1.45
          (1.9, 7.4, 0.5, 0.55, 0.12), (-6.2, 0.45, 0.45, 0.35, 0.18), (6.3, 0.6, 0.5, 0.4, 0.2), (-7.4, 3.0, 0.7, 0.7, 0.22), (7.2, 2.4, 0.6, 0.7, 0.2)]
 
 
+DEEP = [(-1.02, 5.25, 0.16, 0.2), (3.92, 4.95, 0.15, -0.3), (-4.62, 6.3, 0.17, 0.1), (1.86, 7.45, 0.16, -0.15), (-6.7, 2.1, 0.14, 0.4)]  # (x, y, size, tilt)
+
+
 def ytop(x):
     """where the mass of it stops climbing (then it rolls back into the face); curtains run up into the roof skin"""
     y = 8.0 + 1.1 * math.sin(x * 0.55 + 0.8) + 0.7 * math.sin(x * 1.37 + 2.1) + 0.5 * n2(x, 0, 0.9, 4.0)
@@ -81,6 +84,7 @@ def niche(x, y, N):
     a = math.atan2(y - N['h'] * 0.45, x - N['x'])
     wob = 1 + 0.07 * math.sin(3 * a + N['x']) + 0.05 * math.sin(5 * a + 1.3 + N['x']) + 0.04 * n2(x, y, 2.0, 17.0 + N['x'])
     hw = N['hw'] * wob; yc = N['h'] - hw
+    if y < yc: hw *= N.get('low', 1.0) + (1 - N.get('low', 1.0)) * sst(N.get('lowy', 0.8) - 0.15, N.get('lowy', 0.8) + 0.2, y)  # (narrower round the mound: the wall wraps its back)
     dx = abs(x - N['x']) / hw
     return dx if y < yc else math.hypot(dx, (y - yc) / hw)
 
@@ -112,6 +116,15 @@ def D_raw(x, y):
     for sx, sy, wx, wy, a in SWELL:
         g = math.exp(-((x - sx) / wx) ** 2 - ((y - sy) / wy) ** 2)
         if g > 0.01: d += a * g
+    for fx, fy, fs, tilt in DEEP:  # faces pressing out from deep inside (asleep): a brow, a nose, lips, a chin under the skin
+        u = ((x - fx) * math.cos(tilt) + (y - fy) * math.sin(tilt)) / fs; v = (-(x - fx) * math.sin(tilt) + (y - fy) * math.cos(tilt)) / fs
+        if abs(u) > 1.6 or abs(v) > 1.8: continue
+        f = 0.09 * math.exp(-(u * u / 0.9 + v * v / 1.3))  # (the head)
+        f += 0.035 * math.exp(-((v - 0.32) / 0.12) ** 2) * math.exp(-(u / 0.55) ** 2)  # brow
+        f += 0.05 * math.exp(-(u / 0.13) ** 2 - ((v + 0.02) / 0.3) ** 2)  # nose
+        f += 0.02 * math.exp(-(u / 0.3) ** 2 - ((v + 0.42) / 0.07) ** 2) + 0.016 * math.exp(-(u / 0.26) ** 2 - ((v + 0.56) / 0.06) ** 2)  # lips
+        f -= 0.02 * sum(math.exp(-((u - sx_ * 0.32) / 0.14) ** 2 - ((v - 0.18) / 0.1) ** 2) for sx_ in (-1, 1))  # (shut eyes sink)
+        d += f * fs / 0.16
     # the foot: it has slumped onto the street, a fat lip that overhangs a little (deepest about 12 cm up)
     foot = 0.36 + 0.2 * (0.5 + 0.5 * n2(x, 0, 0.6, 7.0)) + 0.1 * sst(3, 6, abs(x))
     d += foot * (math.exp(-((y - 0.12) / 0.42) ** 2) if y > 0.12 else 1.0 - 0.6 * ((0.12 - y) / 0.18) ** 2)
@@ -242,11 +255,11 @@ def flesh_px(size=128, seed=5):
     r = np.random.default_rng(seed)
     n = 0.5 * vnoise(size, 4, r) + 0.3 * vnoise(size, 8, r) + 0.15 * vnoise(size, 16, r) + 0.05 * vnoise(size, 32, r)
     n = (n - n.min()) / (np.ptp(n) + 1e-6)
-    lo_c, mid_c, hi_c = hexrgb(0x7e2240), hexrgb(0xb04868), hexrgb(0xd27890)
+    lo_c, mid_c, hi_c = hexrgb(0x9a3454), hexrgb(0xb44c6c), hexrgb(0xcc6e88)
     t = n[:, :, None]
     px = np.where(t < 0.5, lo_c * (1 - t * 2) + mid_c * (t * 2), mid_c * (1 - (t - 0.5) * 2) + hi_c * ((t - 0.5) * 2))
     m2 = vnoise(size, 16, r)[:, :, None]  # (a finer mottle of darker skin)
-    px = px * (1 - 0.18 * np.clip((m2 - 0.55) / 0.3, 0, 1))
+    px = px * (1 - 0.1 * np.clip((m2 - 0.55) / 0.3, 0, 1))
     px *= (0.95 + 0.1 * r.random((size, size)))[:, :, None]
     for _ in range(int(size * size * 0.01)):  # pores
         y, x = r.integers(0, size, 2); px[y, x] = px[y, x] * 0.7
@@ -493,7 +506,7 @@ def head(nm, S, A, M):
     if style in ('short', 'bob', 'bun', 'curls'):
         cell_uv(put('bits', blob(nm + '_hair', (0, 0.06 * ry, 0.03 * rz), (rx * 1.07, ry * 0.98, rz * 1.06), None, fn=cap_fn, seg=20, rings=12)), A, hk)
     if style == 'bob':
-        for sx in (-1, 1): cell_uv(put('bits', blob(nm + '_side%d' % sx, (sx * rx * 0.8, -0.25 * ry, 0.0), (rx * 0.32, ry * 0.62, rz * 0.82), None, seg=12, rings=8)), A, hk)
+        for sx in (-1, 1): cell_uv(put('bits', blob(nm + '_side%d' % sx, (sx * rx * 0.84, -0.22 * ry, 0.02), (rx * 0.24, ry * 0.55, rz * 0.7), None, seg=12, rings=8)), A, hk)
         cell_uv(put('bits', limb(nm + '_fringe', [(-rx * 0.7, ry * 0.5, surf(-rx * 0.7, ry * 0.5) - 0.002), (0, ry * 0.42, surf(0, ry * 0.42) - 0.012), (rx * 0.7, ry * 0.5, surf(rx * 0.7, ry * 0.5) - 0.002)], [0.012, 0.022, 0.012], None, seg=8, squash=(0.6, 1.0))), A, hk)
     if style == 'bun':
         cell_uv(put('bits', blob(nm + '_bun', (0, ry * 1.02, 0.03), (0.06, 0.05, 0.06), None, seg=12, rings=8)), A, hk)
@@ -612,17 +625,18 @@ def frame_at(pos, fwd, up_hint=(0, 1, 0), roll=0.0):
     return m
 
 
+HEAD_S = 1.25
 # who's in it: x, y on the wall, how far out (of the head's depth: 0 = half in), turned (yaw, pitch, roll), the face
 PEOPLE = [
-    dict(nm='dad', x=2.12, y=2.18, out=0.62, yaw=-0.25, pitch=0.05, roll=0.12, r=(0.118, 0.148, 0.128), tone=0xe8b08c, hair=('hair_brown', 'short'),
+    dict(nm='dad', x=2.12, y=2.18, out=0.72, yaw=-0.25, pitch=0.05, roll=0.12, r=(0.118, 0.148, 0.128), tone=0xe8b08c, hair=('hair_brown', 'short'),
          eyes='open', look=(0.6, 0.2), mouth='grin', brows=1.0, nose=1.1, iris='iris_blue', note="dumpling's dad: out to the shoulders, waving"),
-    dict(nm='ken', x=-1.78, y=2.42, out=0.32, yaw=0.15, pitch=-0.18, roll=-0.22, r=(0.125, 0.15, 0.13), tone=0xe8a890, hair=('hair_grey', 'bald'),
+    dict(nm='ken', x=-1.78, y=2.42, out=0.45, yaw=0.15, pitch=-0.18, roll=-0.22, r=(0.125, 0.15, 0.13), tone=0xe8a890, hair=('hair_grey', 'bald'),
          eyes='closed', mouth='snore', nose=1.45, age=1.0, extras=('moustache', 'cap'), bushy=1.6, note='old ken: asleep, snoring'),
-    dict(nm='twinA', x=4.98, y=1.92, out=0.45, yaw=-0.55, pitch=0.0, roll=0.18, r=(0.11, 0.138, 0.12), tone=0xf2c8b0, hair=('hair_ginger', 'bob'),
+    dict(nm='twinA', x=4.94, y=1.92, out=0.55, yaw=-0.55, pitch=0.0, roll=0.18, r=(0.11, 0.138, 0.12), tone=0xf2c8b0, hair=('hair_ginger', 'bob'),
          eyes='open', look=(-1.0, 0.0), mouth='open', brows=1.2, nose=0.9, iris='iris_green', hairline=0.35, note='a twin from the top terrace'),
-    dict(nm='twinB', x=5.36, y=1.9, out=0.45, yaw=0.5, pitch=0.0, roll=-0.15, r=(0.11, 0.138, 0.12), tone=0xf2c8b0, hair=('hair_ginger', 'bob'),
+    dict(nm='twinB', x=5.42, y=1.9, out=0.55, yaw=0.5, pitch=0.0, roll=-0.15, r=(0.11, 0.138, 0.12), tone=0xf2c8b0, hair=('hair_ginger', 'bob'),
          eyes='open', look=(1.0, 0.0), mouth='o', brows=1.4, nose=0.9, iris='iris_green', hairline=0.35, note='the other twin'),
-    dict(nm='sharon', x=-5.32, y=2.06, out=0.42, yaw=0.45, pitch=0.05, roll=0.1, r=(0.115, 0.145, 0.125), tone=0xb87a56, hair=('hair_black', 'bun'),
+    dict(nm='sharon', x=-5.32, y=2.06, out=0.52, yaw=0.45, pitch=0.05, roll=0.1, r=(0.115, 0.145, 0.125), tone=0xb87a56, hair=('hair_black', 'bun'),
          eyes='open', look=(-0.9, -0.2), mouth='open', brows=0.6, nose=1.0, extras=('hoops',), mw=1.15, note='sharon: hoops, chatting to mina'),
     dict(nm='nan', x=0.92, y=3.62, out=-0.3, yaw=0.0, pitch=-0.12, roll=0.05, r=(0.12, 0.145, 0.125), tone=0xf0d0c4, hair=('hair_white', 'curls'),
          eyes='closed', mouth='shut', nose=1.0, age=0.8, extras=('glasses',), note="little pim's nan: just under the skin, her glasses through it"),
@@ -638,23 +652,24 @@ def people(A, M):
         sw, nw = on_wall(P['x'], P['y'])
         fwd = (RY(P['yaw']).to_3x3() @ RX(P['pitch']).to_3x3() @ V3((0, 0, -1))).normalized()
         rz = P['r'][2]
-        c = sw + fwd * ((P['out'] - 0.5) * 2 * rz * 0.55)  # (out: 1 = the whole face out, 0 = sunk to the ears)
-        Mh = frame_at(c, fwd, roll=P['roll'])
+        rz = rz * HEAD_S; c = sw + fwd * ((P['out'] - 0.5) * 2 * rz * 0.55)  # (out: 1 = the whole face out, 0 = sunk to the ears)
+        Mh = frame_at(c, fwd, roll=P['roll']) @ SC(HEAD_S)  # (heads a size up from life, like the cast's: they read from the avenue)
         add(head(P['nm'], P, A, Mh))
         right = V3((Mh[0][0], Mh[1][0], Mh[2][0])); up = V3((Mh[0][1], Mh[1][1], Mh[2][1]))
-        add({'rim': [collar(P['nm'] + '_collar', c, fwd, right, up, P['r'][0] * 1.02, P['r'][1] * 1.0, rz * 1.02, 0.034, M['rim'], seed=len(P['nm']))]})
+        right = right.normalized(); up = up.normalized()
+        add({'rim': [collar(P['nm'] + '_collar', c, fwd, right, up, P['r'][0] * HEAD_S * 1.02, P['r'][1] * HEAD_S, rz * 1.02, 0.04, M['rim'], seed=len(P['nm']))]})
         meta.append(dict(who=P['nm'], at=[round(c.x, 3), round(c.y, 3), round(c.z, 3)], note=P['note']))
     # dumpling's dad's arm out of the wall beside him, waving at whoever's come; his wristband
     D_ = PEOPLE[0]; sw, _ = on_wall(D_['x'] + 0.36, D_['y'] - 0.08)
     wrist = sw + V3((0.1, 0.24, -0.34))
     Mw = frame_at(wrist, V3((-0.12, 0.05, -1.0)), up_hint=(0.15, 1, 0.35), roll=0.12)
-    add(hand('dad_hand', A, D_['tone'], Mw))
+    Mw = Mw @ SC(1.3); add(hand('dad_hand', A, D_['tone'], Mw))
     elbow = Mw @ V3((0, -0.36, 0.2)); fdir = (wrist - elbow).normalized()
     upv = fdir.cross(V3((1, 0, 0))).normalized(); rgt = upv.cross(fdir).normalized()
-    add({'rim': [collar('dad_armcollar', elbow, fdir, rgt, upv, 0.05, 0.05, 0.42, 0.03, M['rim'], k=20, seg=8, seed=5)]})
-    add({'bits': [ring_band('dad_band', Mw @ V3((0, -0.035, 0.004)), wrist - elbow, 0.039, 0.007, A, 'wristband_y')]})
+    add({'rim': [collar('dad_armcollar', elbow, fdir, rgt, upv, 0.065, 0.065, 0.55, 0.036, M['rim'], k=20, seg=8, seed=5)]})
+    add({'bits': [ring_band('dad_band', Mw @ V3((0, -0.035, 0.004)), wrist - elbow, 0.05, 0.008, A, 'wristband_y')]})
     sleeve = Mw @ V3((0, -0.2, 0.09))  # (his shirt cuff, rolled, where the arm comes out)
-    add({'bits': [ring_band('dad_cuff', sleeve, wrist - elbow, 0.052, 0.016, A, 'shirt')]})
+    add({'bits': [ring_band('dad_cuff', sleeve, wrist - elbow, 0.066, 0.02, A, 'shirt')]})
     meta.append(dict(who='dad_hand', at=[round(wrist.x, 3), round(wrist.y, 3), round(wrist.z, 3)], note='waving'))
     return K, meta
 
@@ -681,7 +696,7 @@ def decal_box(nm, w, h, t, A, key, pos=(0, 0, 0)):
         if g_of(p.normal).z < -0.9:  # (the front)
             for li in p.loop_indices:
                 g = g_of(me.vertices[me.loops[li].vertex_index].co)
-                su = clamp(0.5 - (g.x - pos[0]) / w * -1, 0.01, 0.99); sv = clamp(0.5 + (g.y - pos[1]) / h, 0.01, 0.99)
+                su = clamp(0.5 - (g.x - pos[0]) / w, 0.01, 0.99); sv = clamp(0.5 + (g.y - pos[1]) / h, 0.01, 0.99)
                 uv[li].uv = ((x + su * cw) / W, 1 - (y + (1 - sv) * ch) / H)
     return o
 
@@ -797,8 +812,8 @@ def soup_bowls(A, M):
     """the row of untouched soup bowls along the foot (Lumps leaves one every Sunday): the oldest, nearest Dot, grown
     over; the newest still yellow on a wet slick"""
     out = []
-    xs = [0.98 + i * 0.33 + 0.04 * math.sin(i * 2.3) for i in range(15)]
-    prof = [(0.0, 0.0), (0.05, 0.0), (0.072, 0.012), (0.085, 0.048), (0.088, 0.062), (0.082, 0.064), (0.074, 0.052), (0.06, 0.02), (0.0, 0.016)]
+    xs = [1.0 + i * 0.36 + 0.04 * math.sin(i * 2.3) for i in range(14)]
+    prof = [(r_ * 1.2, h_ * 1.2) for r_, h_ in ((0.0, 0.0), (0.05, 0.0), (0.072, 0.012), (0.085, 0.048), (0.088, 0.062), (0.082, 0.064), (0.074, 0.052), (0.06, 0.02), (0.0, 0.016))]
     for i, x in enumerate(xs):
         age = 1 - i / (len(xs) - 1)  # (1 = the oldest)
         d_edge = D_field(x, 0.03)
@@ -806,7 +821,7 @@ def soup_bowls(A, M):
         y = -0.03 * age
         lo = lathe(prof, (x, y, z), None, seg=12, axis='y', name='bowl%d' % i); apply_mods(lo)
         out.append(cell_uv(lo, A, 'bowl_rim' if i % 3 else 'bowl'))
-        top = cyl(0.074, 0.006, (x, y + 0.046, z), None, axis='y', seg=12, name='soup%d' % i); apply_mods(top)
+        top = cyl(0.074 * 1.2, 0.006, (x, y + 0.055, z), None, axis='y', seg=12, name='soup%d' % i); apply_mods(top)
         out.append(cell_uv(top, A, 'soup' if age < 0.45 else 'soup_old'))
     # the slick they stand in: a thin sheet from under the foot out round the new ones
     R_ = random.Random(77); P = []
@@ -975,6 +990,52 @@ def dot_xf(s, at, lift=0.0, z0=0.0):
     return f
 
 
+# ------------------------------------------------------------ the seams: where Dot's and Mina's own mounds grow out of it
+def mound_seam(P, M, name, mats=('wall', 'flesh'), rr=0.04, tint=(1, 1, 1)):
+    """a soft roll of skin along the line where a cast model's mound (c_<id>.glb, at its socket, scaled) crosses the wall's
+    face, so the two read as one growth (static: half of it sits in the mound, which doesn't breathe)"""
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.join(MODELS, 'cast', 'c_' + P['id'] + '.glb'))
+    new = [o for o in bpy.data.objects if o not in before]
+    Mx = T(*P['at']) @ SC(P['s']); hits = []
+    for o in new:
+        if o.type != 'MESH' or '__lod' in o.name or not o.name.startswith('part_body'): continue
+        me = o.data; mw = o.matrix_world
+        keep = {i for i, m_ in enumerate(me.materials) if m_ and any(k in m_.name for k in mats) and 'vein' not in m_.name}
+        W = [Mx @ g_of(mw @ v.co) for v in me.vertices]
+        f = [w.z + D_field(w.x, w.y) for w in W]  # (< 0: in front of the wall's face)
+        seen = set()
+        for pg in me.polygons:
+            if pg.material_index not in keep: continue
+            vs = list(pg.vertices)
+            for a_, b_ in zip(vs, vs[1:] + vs[:1]):
+                k = (min(a_, b_), max(a_, b_))
+                if k in seen: continue
+                seen.add(k)
+                if (f[a_] < 0) != (f[b_] < 0):
+                    t = f[a_] / (f[a_] - f[b_]); hits.append(W[a_].lerp(W[b_], t))
+    for o in new: bpy.data.objects.remove(o, do_unlink=True)
+    if len(hits) < 8: print('JF_SEAM', name, 'no seam found'); return []
+    c = sum(hits, V3()) / len(hits); c.y = max(c.y, 0.25)
+    hits.sort(key=lambda q: math.atan2(q.x - c.x, -(q.y - c.y)))  # (round from the floor on one side to the floor on the other)
+    # resample: bins of angle, the mean point in each, then a smoothing pass
+    B = {}
+    for q in hits:
+        a = math.atan2(q.x - c.x, -(q.y - c.y)); B.setdefault(int((a + math.pi) / (2 * math.pi) * 44), []).append(q)
+    pts = [sum(v, V3()) / len(v) for k, v in sorted(B.items())]
+    for _ in range(2): pts = [pts[0]] + [(pts[i - 1] + 2 * pts[i] + pts[i + 1]) / 4 for i in range(1, len(pts) - 1)] + [pts[-1]]
+    pts = [q for q in pts if q.y > -0.02]
+    if len(pts) < 5: return []
+    # the two ends dive under the street
+    pts = [pts[0] + V3((0, -0.06, 0))] + pts + [pts[-1] + V3((0, -0.06, 0))]
+    R_ = random.Random(len(name))
+    rad = [rr * (0.85 + 0.3 * R_.random()) for _ in pts]
+    for _ in range(2): rad = [rad[0]] + [(rad[i - 1] + 2 * rad[i] + rad[i + 1]) / 4 for i in range(1, len(rad) - 1)] + [rad[-1]]
+    o = limb(name, [tuple(q) for q in pts], rad, M['rim'], seg=8, squash=(1.0, 1.0))
+    print('JF_SEAM', name, len(pts), 'points', 'y %.2f..%.2f' % (min(q.y for q in pts), max(q.y for q in pts)))
+    return [o]
+
+
 # ------------------------------------------------------------ build
 def build(args):
     M = make_mats()
@@ -987,6 +1048,7 @@ def build(args):
     K.setdefault('bits', []).extend(inserts(A, M) + soup_bowls(A, M) + drips(A))
     vg = veins(M); K.setdefault('vein', []).extend(vg['vein']); K.setdefault('glow', []).extend(vg['glow'])
     K.setdefault('wet', []).extend(K_wet)
+    K.setdefault('rim', []).extend(mound_seam(DOT, M, 'dot_seam', mats=('dot_wall',), rr=0.042) + mound_seam(MINA, M, 'mina_seam', mats=('flesh',), rr=0.04))
     parts = [wall]
     TINT = {'rim': (0.86, 0.8, 0.84), 'vein': (1, 1, 1), 'glow': (1, 1, 1), 'wet': (1, 1, 1), 'bits': (1, 1, 1)}
     for k, objs in K.items():
@@ -1065,13 +1127,15 @@ def join_by_material(objs, prefix):
     return out
 
 
-def make_lod1(parts, ratio=0.22, drop=('bits',)):
+LOD1 = {'flesh_pulse': 0.18, 'skin': 0.36, 'bits': 0.3, 'rim': 0.25}  # (Potato draws the far copy even up close: keep the faces, the bowls)
+
+
+def make_lod1(parts):
     out = []
     for p in parts:
-        if any(d in p.name for d in drop): continue
         c = p.copy(); c.data = p.data.copy(); _link(c); c.name = p.name + '_lod1'
         if tri_count(c) > 60:
-            md = c.modifiers.new('dec', 'DECIMATE'); md.ratio = ratio; md.use_collapse_triangulate = True
+            md = c.modifiers.new('dec', 'DECIMATE'); md.ratio = LOD1.get(p.name[3:], 0.22); md.use_collapse_triangulate = True
             apply_mods(c)
         out.append(c)
     return out
@@ -1079,10 +1143,11 @@ def make_lod1(parts, ratio=0.22, drop=('bits',)):
 
 def finish_all(B):
     for o in B['parts']:
-        if 'tint' in o.data.color_attributes or 'AO' in o.data.color_attributes: final_colour(o)
-        else:
-            me = o.data; ca = me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER'); ca.data.foreach_set('color', [1.0] * (len(me.loops) * 4))
+        if 'tint' not in o.data.color_attributes: paint(o, (1.0, 1.0, 1.0))
     parts = join_by_material(B['parts'], 'dw')
+    if '--no-ao' not in ARGV:  # (occlusion: under the rolls, in the creases and niches, round every face; times the paint)
+        bake_ao(parts, dist=0.45, samples=24, lo=0.38, gain=1.05)
+    for o in parts: final_colour(o)
     lods = make_lod1(parts)
     meta = dict(kind='prop', id=ID, story=True, district='gut',
                 sockets=dict(dot=list(DOT['at']), mina=list(MINA['at'])), people=B['people'],
@@ -1122,6 +1187,55 @@ def preview(objs, refs, outdir):
     contact(paths, os.path.join(outdir, 'preview'), 'digester wall preview', cols=3)
 
 
+def studio_set():
+    """the Gut-ish set the pictures are taken in: a dull red world, a warm key from the avenue, the wall's pink lamp,
+    a floor, the office front behind it with its window bands"""
+    clear_studio(); world(0x24101a, 0.55)
+    area(2200, (-5, 8, -13), (0, 3, 0), 9, (1.0, 0.88, 0.86))
+    area(700, (9, 3, -7), (0, 2, 0), 5, (1.0, 0.62, 0.78))
+    area(300, (-9, 2, -4), (-3, 1, 0), 4, (0.8, 0.85, 1.0))
+    point(1300, (0, 4, -3), (1.0, 0.45, 0.6), 0.5)
+    box((30, 0.02, 9), pos=(0, -0.01, -3.5), m=mat('pv_floor', 0x4a1824, rough=0.6), name='jf_set_floor')
+    box((21.2, 15.6, 0.05), pos=(0, 7.8, 0.03), m=mat('pv_face', 0xc8c0b8, rough=0.8), name='jf_set_face')
+    for y in (3, 6, 9, 12): box((19, 1.3, 0.02), pos=(0, y + 0.65, -0.01), m=mat('pv_win', 0xffd88a, rough=0.6, emit=0xffd88a, strength=0.4), name='jf_set_win%d' % y)
+    box((21.6, 0.6, 0.6), pos=(0, 15.3, -0.0), m=mat('pv_roof', 0x9a1a26, rough=0.5), name='jf_set_roof')
+
+
+def sheets(root, parts, lods, refs_objs, tag=''):
+    """the model sheet (front, 3/4 both ways, side, top, the far copy), close-ups of the people and their things, and
+    the seams where Dot's and Mina's mounds grow out of it -> docs/story/cast/digester_wall_*.jpg"""
+    colour_preview([m for m in bpy.data.materials if m.name.startswith('dw_')], True)
+    studio_set(); tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True)
+    def go(name, views, cols, label, res, lens_default=35):
+        paths = []; labels = []
+        for k, (cap, cam, tg, lens, ortho) in enumerate(views):
+            p_ = os.path.join(tmp, 'dw_%s_%d.png' % (name, k))
+            shot(p_, cam, tg, lens=lens or lens_default, res=res, ortho=ortho, samples=16); paths.append(p_); labels.append(cap)
+        os.makedirs(SHEET_DIR, exist_ok=True)
+        return contact(paths, os.path.join(SHEET_DIR, 'digester_wall_' + name), label, cols=cols, labels=labels)
+    m = json.loads(root['jf'])
+    for o in lods: o.hide_render = True
+    go('sheet', [('front', (0, 5.5, -30), (0, 5.5, 0), None, 23.5), ('three quarter, from the east', (-9.5, 3.4, -9.0), (-0.6, 2.4, 0), 28, None),
+                 ('three quarter, from the west', (9.5, 3.4, -9.0), (0.6, 2.4, 0), 28, None), ('side (from the west)', (14, 4.0, -1.2), (0, 4.0, -0.5), None, 13.0),
+                 ('top', (0, 22, -2.2), (0, 0, -0.9), None, 22.5), ('the gap in the tube (x -6..6), eye height', (0, 1.6, -7.5), (0, 2.2, 0), 26, None)],
+       3, 's_digester_wall  %d tris (far copy %d)  20 m of the office front, prop space: front -z, x = west  %s' % (m['tris'], m['tris_lod1'], tag), (720, 460))
+    CU = []
+    for P in PEOPLE:
+        c = V3((P['x'], P['y'], -D_field(P['x'], P['y'])))
+        CU.append((P['note'], tuple(c + V3((0.32, 0.1, -1.15))), tuple(c + V3((0.05 if P['nm'] != 'dad' else 0.2, 0.05 if P['nm'] != 'dad' else 0.12, 0))), 50, None))
+    CU += [("lumps' soup bowls, the oldest grown over", (2.4, 0.95, -2.3), (3.3, 0.05, -0.75), 32, None), ('a plug socket, the kettle still in', (-1.25, 1.35, -1.25), (-1.62, 1.02, -0.45), 42, None),
+           ("bathroom tiles, Ken's lanyard", (-2.2, 3.0, -1.7), (-2.3, 2.6, -0.5), 38, None), ("a cart's corner and wheel, a hospital band", (-5.0, 1.0, -1.7), (-5.3, 0.6, -0.5), 36, None),
+           ('a CORP card, the number 14 (the top terrace)', (3.0, 2.3, -2.4), (3.3, 2.0, -0.5), 34, None), ('veins, a glowing node, a roll and its wet tuck', (-5.8, 5.0, -2.6), (-5.6, 4.5, -0.4), 36, None)]
+    go('closeups', CU, 4, 'digester wall: who is in it and what of theirs (face rigs = sculpted, still)', (520, 400))
+    go('seams', [("dot's mound out of her niche", (1.25, 0.95, -1.85), (0.2, 0.55, -0.45), 38, None), ('dot, the other side', (-1.3, 0.9, -1.8), (-0.2, 0.55, -0.45), 38, None),
+                 ("dot from above: the niche's back behind her", (0.3, 2.3, -1.4), (0, 0.9, -0.25), 34, None),
+                 ("mina's lap into her niche", (-2.3, 0.9, -1.75), (-3.2, 0.55, -0.4), 38, None), ('mina, the other side', (-4.75, 0.95, -1.7), (-3.8, 0.55, -0.4), 38, None),
+                 ("mina from above", (-3.3, 2.4, -1.4), (-3.5, 0.95, -0.25), 34, None)],
+       3, 'digester wall: where Dot and Mina meet it (their own models, in the pose the game stands them in)', (640, 440))
+    try: os.rmdir(tmp)
+    except OSError: pass
+
+
 def main():
     args = ARGV
     reset()
@@ -1142,6 +1256,7 @@ def main():
     for o in lods: o.hide_render = True
     pv = arg('preview')
     if pv: preview(parts, R_, pv)
+    if '--sheet' in args: sheets(root, parts, lods, R_)
 
 
 main()
