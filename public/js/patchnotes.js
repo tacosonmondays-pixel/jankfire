@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.9', date: '2026-11-12', title: 'HEAVY METAL', items: [
+    'both MECH DROP mechs got brand new bodies, V horns and all. painted metal now, not plastic: clear coat, rivets, chipped edges, gold horns.',
+    'mechs land like heroes now: superhero landing, a beat, then a pose. night shift stabs the floor. paper plane does a hand on the hip.',
+    'rim light, ink outlines, hotter glows, contrails, landing dust and sparks. plus stickers. one of them says POWERED BY BREAD.',
+  ] },
   { v: '8.8', date: '2026-11-12', title: 'GET IN THE ROBOT', items: [
     'new killstreak: MECH DROP (9 kills). aim at the floor, a giant mech falls out of the sky onto the red circle, press F and climb in. don\'t stand on the red circle.',
     'PAPER PLANE: hovers, fires a 12-pencil missile swarm, sends a paper crane to peck people, lunges to heal and folds into a jet. NIGHT SHIFT: box-cutter sword, a shield that says PLEASE HOLD, ground slams, and TRIPLE SHIFT. its hits clock people out.',
