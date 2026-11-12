@@ -66,7 +66,7 @@ import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mech
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
-import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown } from './island.js'; // battle island: squads, down + crawl, revives
+import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from './island.js'; // battle island: squads, down + crawl, revives
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
@@ -1650,7 +1650,7 @@ function startUse() {
   // F has to still be down: blur, pause and chat clear the keys, so a lost keyup can't root you in place
   useTimer = setInterval(() => { if (!G.using || !ME.alive || !K.isDown('use')) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
-function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
+function stopUse() { if (G.using && isleOn()) net.send({ t: 'use', up: 1 }); clearInterval(useTimer); useTimer = 0; G.using = false; } // (battle island: letting go stops a revive at once)
 // the end-of-match vote (mode first, then map) lives on the end screen (endscreen.js)
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));

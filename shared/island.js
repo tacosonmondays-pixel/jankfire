@@ -21,6 +21,7 @@ export const SQUADS = [
   null,
   { name: 'THE LOAVES', color: '#ff4fd8' }, { name: 'BIN LIDS', color: '#ffe14d' }, { name: 'WET SOCKS', color: '#4fd8ff' },
   { name: 'TAX RETURNS', color: '#7dff4f' }, { name: 'SPARE KEYS', color: '#ff9a3a' }, { name: 'LOOSE CHANGE', color: '#b07dff' },
+  { name: 'HOT SAUCE', color: '#ff3030' }, { name: 'WET PAINT', color: '#39ff14' }, { name: 'LOST SOCKS', color: '#ff00dc' }, { name: 'PARKING TICKETS', color: '#ffffff' }, // (more than 18 people: extra squads)
 ];
 export const squadOf = (sq) => SQUADS[sq] || { name: `SQUAD ${sq}`, color: '#ffffff' };
 // a squad status row: [id, hp, state, bleed left (tenths of a s), who's picking them up]

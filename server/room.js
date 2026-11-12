@@ -938,6 +938,7 @@ class Room {
     if (this.mechOn(b)) return; // in a mech the moves are its guns (mechBotStep)
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
+    if (this.isleOn && b.irv) return; // battle island: hands busy picking someone up
     if (this.isEcon() && !this.econBotShot(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
@@ -1302,6 +1303,7 @@ class Room {
   knock(t, v, w) {
     if (this.rigOn(t)) v = this.rigShrug(v); // the overdrive rig shrugs it off
     if (this.mechOn(t)) v = this.mechShrug(t, v); // so does a mech
+    if (t.dn && this.isleOn) this.isleKnock(t, v, w); // battle island: a downed pilot's crawl check pays for the shove (server/island.js)
     if (Math.hypot(v[0], v[1], v[2]) >= 1) t.knockT = now(); // EPIC anti-farm: getting shoved around isn't moving (0-knockback bullets don't count)
     if (t.isBot) {
       if (t.ai.dummy && t.ai.dummy.move) return;
