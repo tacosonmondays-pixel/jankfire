@@ -662,6 +662,7 @@ export function updateWorld(dt) {
 
 let lastT = 0;
 export function renderFrame() {
+  if (G.coverWorld) return; // (story: a full-screen comic page is up and nothing of the world shows: the frame goes to the page)
   const r = G.renderer, now = performance.now();
   gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
