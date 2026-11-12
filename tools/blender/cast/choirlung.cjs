@@ -3,7 +3,8 @@
 // the door and every head turns to you on the same frame, you walk up the aisle between them (the heads follow), back
 // out, and they snap back to the hymn. The story runs in capture mode: each frame is exactly 1/FPS of story time.
 //   SP=tests/rig PORT=3112 node tools/blender/cast/choirlung.cjs <outdir> [stills|clip|both]
-// clip frames go to <outdir>/lung/f_00000.jpg (ffmpeg makes the mp4)
+// clip frames go to <outdir>/lung/f_00000.jpg (ffmpeg makes the mp4). slow: a Too HD frame of the city takes ~30 s on
+// software GL (the stills take ~35 min with the boot); choirshots.cjs records the same clips in a studio in minutes
 const path = require('path'), fs = require('fs');
 const { boot, tp, settle, sleep } = require(path.join(__dirname, '../../../tests/story/e2e/enc_util.cjs'));
 const [OUT = 'choir_lung', MODE = 'both'] = process.argv.slice(2);
