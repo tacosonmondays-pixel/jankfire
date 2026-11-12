@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { jankUniforms } from './jank.js';
 
 export const BI_GROUND = {
-  grass: [0.30, 0.60, 0.16], grassDry: [0.60, 0.66, 0.26], jungle: [0.16, 0.38, 0.10],
+  grass: [0.22, 0.56, 0.10], grassDry: [0.50, 0.64, 0.18], jungle: [0.16, 0.38, 0.10],
   sand: [0.95, 0.85, 0.62], wet: [0.60, 0.52, 0.38], rock: [0.56, 0.53, 0.50], rockWarm: [0.62, 0.50, 0.40], road: [0.50, 0.36, 0.22],
   bump: 0.9, // how strongly the detail lifts the light
 };
@@ -101,7 +101,7 @@ const GLSL_MAP = `
   float wet = smoothstep( uSea + 0.35, uSea - 0.1, P.y );
   // each surface: its detail texture, its colours
   vec3 g = texture2D( uGrass, P.xz * 0.31 ).rgb;
-  vec3 gc = mix( cGrass, cDry, clamp( g.g * 0.55 + mac.r * 0.6 - 0.35, 0.0, 1.0 ) ) * ( 0.62 + 0.62 * g.r );
+  vec3 gc = mix( cGrass, cDry, clamp( g.g * 0.4 + mac.r * 0.55 - 0.42, 0.0, 1.0 ) ) * ( 0.58 + 0.6 * g.r );
   vec3 jc = cJungle * ( 0.6 + 0.6 * g.r ) * ( 0.85 + 0.3 * mac.b );
   vec3 s = texture2D( uSand, P.xz * 0.13 ).rgb;
   vec3 sc = mix( cSand, cWet, wet ) * ( 0.78 + 0.32 * s.r ) * ( 0.94 + 0.12 * mac.g );
