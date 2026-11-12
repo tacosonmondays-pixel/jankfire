@@ -1799,17 +1799,23 @@ function suburb() {
   // ---- the park: the playground (west), the founder's plaza (middle), the pond with a footbridge and the gazebo (east)
   { const P = B.local(-24, 0, 0);
     P(-15, 0, -10, 15, 0.12, 10, 'rubber'); // the noisiest floor money can buy
-    P(-15.2, 0, -10.2, 15.2, 0.6, -10, 'toyred'); P(-15.2, 0, 10, -2, 0.6, 10.2, 'toyred'); P(2, 0, 10, 15.2, 0.6, 10.2, 'toyred'); P(-15.2, 0, -10, -15, 0.6, 10, 'toyred');
-    for (const [x, z] of [[-11, -6], [-7, -6], [-11, -2], [-7, -2]]) P.B(x, 2.7, z, 0.3, 5.4, 0.3, 'toyblue'); // a climbing frame with a slide off it
-    P(-11.3, 2.9, -6.3, -6.7, 3.2, -1.7, 'toygreen'); P(-11.3, 5.4, -6.3, -6.7, 5.7, -1.7, 'toyred');
-    stairs(P, -10.5, -9, 1.8, -1, 0.12, 3.2, 'toyorange', 0.5);
-    for (let i = 0; i < 8; i++) P(-6.7 + i * 0.7, 0.12, -5.2, -6 + i * 0.7, 3.2 - i * 0.38, -2.8, 'toyteal');
-    P(2, 0.12, 2, 9, 1.0, 2.3, 'toyblue'); P(2, 0.12, 8.7, 9, 1.0, 9, 'toyblue'); P(2, 0.12, 2.3, 2.3, 1.0, 8.7, 'toyblue'); P(8.7, 0.12, 2.3, 9, 1.0, 8.7, 'toyblue'); // the ball pit
-    const balls = ['toyred', 'toygreen', 'toyorange', 'toyteal', 'toypink'];
-    for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) P.B(3.1 + i * 1.3, 0.35 + ((i + j) % 2) * 0.12, 3.1 + j * 1.3, 0.9, 0.5 + ((i * j) % 3) * 0.08, 0.9, balls[(i * 3 + j) % 5]);
-    P(-13, 0.12, 3, -9, 4.12, 7, 'toyface', { fit: 1 });
-    P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
-    for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
+    propOf('playground', [-24, 0, 0], 0, () => { // (Blender: tools/blender/make_playground.py; the floor stays the map's)
+      P(-15.2, 0, -10.2, 15.2, 0.6, -10, 'toyred'); P(-15.2, 0, 10, -2, 0.6, 10.2, 'toyred'); P(2, 0, 10, 15.2, 0.6, 10.2, 'toyred'); P(-15.2, 0, -10, -15, 0.6, 10, 'toyred');
+      for (const [x, z] of [[-11, -6], [-7, -6], [-11, -2], [-7, -2]]) P.B(x, 2.7, z, 0.3, 5.4, 0.3, 'toyblue'); // a climbing frame with a slide off it
+      P(-11.3, 2.9, -6.3, -6.7, 3.2, -1.7, 'toygreen'); P(-11.3, 5.4, -6.3, -6.7, 5.7, -1.7, 'toyred');
+      stairs(P, -10.5, -9, 1.8, -1, 0.12, 3.2, 'toyorange', 0.5);
+      // the slide: its top, 28 small steps under the chute (walk up it, run down it), the run-out. (the model's chute runs
+      // through the middle of every step's top: tools/blender/make_playground.py)
+      P(-6.7, 0.12, -5.2, -6.14, 3.2, -2.8, 'toyteal');
+      for (let k = 1; k <= 28; k++) P(-6.14 + (k - 1) * 0.1625, 0.12, -5.2, -6.14 + k * 0.1625, 3.2 - 2.66 * (k - 0.5) / 28, -2.8, 'toyteal');
+      P(-1.59, 0.12, -5.2, -1.1, 0.54, -2.8, 'toyteal');
+      P(2, 0.12, 2, 9, 1.0, 2.3, 'toyblue'); P(2, 0.12, 8.7, 9, 1.0, 9, 'toyblue'); P(2, 0.12, 2.3, 2.3, 1.0, 8.7, 'toyblue'); P(8.7, 0.12, 2.3, 9, 1.0, 8.7, 'toyblue'); // the ball pit
+      const balls = ['toyred', 'toygreen', 'toyorange', 'toyteal', 'toypink'];
+      for (let i = 0; i < 5; i++) for (let j = 0; j < 5; j++) P.B(3.1 + i * 1.3, 0.35 + ((i + j) % 2) * 0.12, 3.1 + j * 1.3, 0.9, 0.5 + ((i * j) % 3) * 0.08, 0.9, balls[(i * 3 + j) % 5]);
+      P(-13, 0.12, 3, -9, 4.12, 7, 'toyface', { fit: 1 });
+      P.B(10, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P.B(3, 2.6, -7, 0.3, 5.2, 0.3, 'toyred'); P(2.8, 5.2, -7.2, 10.2, 5.5, -6.8, 'toyred'); // swings
+      for (const x of [4.5, 6.5, 8.5]) { P.B(x, 3.6, -7, 0.05, 3.2, 0.05, 'chrome'); P.B(x, 1.85, -7, 0.7, 0.12, 0.4, 'toyteal'); }
+    });
   }
   add(-5, 0, -5, 5, 0.4, 5, 'stone'); add(-4.5, 0.4, -4.5, 4.5, 0.5, 4.5, 'lawn'); // the founder's plaza
   add(-1.4, 0.5, -1.4, 1.4, 2.4, 1.4, 'chrome'); add(-1.8, 2.4, -1.8, 1.8, 6, 1.8, 'toyface', { fit: 1 }); add(-0.8, 0.9, -1.43, 0.8, 1.7, -1.4, 'plaque', { fit: 1 });
