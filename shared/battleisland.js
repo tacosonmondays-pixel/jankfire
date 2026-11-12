@@ -171,10 +171,10 @@ function makeGrid() { // the plan's heights on the terrain's 1 m grid, worked ou
   }
   return { H, vx, vz, at, slope, f: (x, z) => H[(x - X0) * vz + (z - Z0)] };
 }
-const onRoad = (x, z) => PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2);
+export const onRoad = (x, z) => PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2);
 const jungle = (x, z) => segDist(x, z, PLAN.river.pts) < 46 || Math.hypot(x - 70, z + 6) < 58;
-const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
-const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r]) => Math.hypot(x - p.c[0] - dx, z - p.c[1] - dz) < r + m));
+export const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
+export const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r]) => Math.hypot(x - p.c[0] - dx, z - p.c[1] - dz) < r + m));
 
 // DEAD AIR (the summit): the island's landmark, a 70 m guyed lattice radio mast (tools/blender/make_deadair.py,
 // p_deadair: one Blender model over all of these boxes). the mast is a column you grapple, its work platform at 50 m
