@@ -5,9 +5,10 @@
 // a save: { v, slot, act, chapter, playtime, coupons, at: { map, p: [x,y,z], yaw }, data: { ...per-system state } }
 // data is owned by the systems: flags/quests/seen (quest engine), bag/bar/locker (inventory, WP3), implants/cores
 // (WP5), hype... each system validates its own part with SAVE_PARTS (register below), so this file stays small.
+import { CHAPTER_LIST, chapterOf } from './chapters.js';
 export const SAVE = { v: 1, slots: 3, maxBytes: 64 * 1024, minGap: 10000, acts: 5 };
 export const FALLBACK = { slots: 1, maxBytes: 24 * 1024 }; // inv.story until jf_story exists
-export const CHAPTERS = ['return_to_sender']; // act I's first chapter; the quest lane adds the rest
+export const CHAPTERS = CHAPTER_LIST.map((c) => c.id); // every main mission in story order (chapters.js)
 const DEPTH = 8, KEYS = 4000, STR = 2000;
 
 export function newSave(slot = 0, world = 'story_slice') { // at.fresh: no position yet, the sim puts you at the world's spawn
@@ -78,5 +79,6 @@ export function cleanSave(raw, { slot = 0, prev = null, maxBytes = SAVE.maxBytes
 // the little card the slot picker shows (no data blob): what /api/story/list returns per slot
 export function saveCard(s) {
   if (!s) return null;
-  return { slot: s.slot | 0, act: s.act | 0, chapter: s.chapter, playtime: s.playtime | 0, coupons: s.coupons || 0, at: s.at && s.at.map, t: s.t || 0 };
+  const ch = chapterOf(s.data, s.chapter); // (where the quests say you are: the act and mission on the card)
+  return { slot: s.slot | 0, act: ch.act || s.act | 0, chapter: ch.id, title: ch.label, playtime: s.playtime | 0, coupons: s.coupons || 0, at: s.at && s.at.map, t: s.t || 0 };
 }

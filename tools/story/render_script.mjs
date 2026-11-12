@@ -11,7 +11,7 @@ const ACT_Q = { 1: 'What am I?', 2: 'Who did this?', 3: 'What are they planning?
 export function render(C) {
   const name = (id) => (C.CAST[id] ? C.CAST[id].name : id === 'you' ? 'CHANGE' : id.toUpperCase());
   const loc = (id) => (C.LOCATIONS[id] ? `${C.LOCATIONS[id].name} (${C.DISTRICTS[C.LOCATIONS[id].district].name})` : id);
-  const line = (l, def) => (Array.isArray(l) ? `**${name(l[0])}:** ${l[1]}` : l.startsWith('*') ? `_${l.replace(/^\*|\*$/g, '')}_` : `**${name(def)}:** ${l}`);
+  const line = (l, def) => (l && typeof l === 'object' && !Array.isArray(l) ? line(l.who ? [l.who, l.t] : l.t, def) : Array.isArray(l) ? `**${name(l[0])}:** ${l[1]}` : l.startsWith('*') ? `_${l.replace(/^\*|\*$/g, '')}_` : `**${name(def)}:** ${l}`);
 
   function talk(t, id) {
     const out = [`#### Talk: \`${id}\` (with ${name(t.with)})`];

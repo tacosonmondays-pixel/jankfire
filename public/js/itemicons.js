@@ -13,6 +13,7 @@ import { instantCamera, calculator, lcdTexture, nvGoggles } from './gearmodels.j
 import { wandMesh } from './wand.js';
 import { lookModel, modelOf, paintLook, wreckShell } from './streaklooks.js'; // killstreak looks
 import { G } from './ctx.js';
+import { buildMech } from './mechmodel.js'; // mech drop: the frames' pictures
 
 const A = (id) => { const b = authored(id); return b ? b.obj : null; };
 const grp = (...o) => { const g = new THREE.Group(); for (const x of o) if (x) g.add(x); return g; };
@@ -30,6 +31,8 @@ const STREAK = {
   overdrive: { c: '#ff2bd6', b: () => A('x_rig'), yaw: 2.6, rim: '#2ef2ff' },
   spinbot: { c: '#ff4fd8', b: (sk) => alt(sk, 'spinbot') || A('x_spinbot'), yaw: 2.95, pitch: 0.08 },
   wreckingball: { c: '#ffe14d', b: (sk) => { const o = A('x_wreck'); if (o && sk) wreckShell(o, sk); return o; }, yaw: 2.7, own: true },
+  mechdrop: { c: '#ff4fd8', b: () => buildMech('paperplane', '#ff4fd8').root, yaw: 2.5, pitch: 0.12, rim: '#4fd8ff', own: true },
+  mech_nightshift: { c: '#b07dff', b: () => buildMech('nightshift', '#b07dff').root, yaw: 2.5, pitch: 0.12, rim: '#ffe14d', own: true }, // (the loadout's frame pick)
   satellite: { c: '#4fa8ff', b: (sk) => alt(sk, 'satellite') || A('x_satellite'), yaw: 2.5, pitch: 0.35 },
   giantduck: { c: '#b07dff', b: (sk) => { const v = alt(sk, 'giantduck'); return all([A('x_blackhole'), v ? fitTo(v, 0.5) : buildProjectile('duck')], (h, d) => { if (!v) d.scale.setScalar(0.55); d.position.set(-0.34, 0.06, 0.26); d.rotation.y = Math.PI - 0.9; if (sk) paintLook(d, sk); return grp(h, d); }); }, yaw: 0, pitch: 0.22, own: true },
 };

@@ -35,6 +35,7 @@ const serverFile = browsableServer(ROOT); // /server/<file>: only server/room.js
 const ROUTES = [
   ['/vendor/three/', path.join(ROOT, 'node_modules/three/')],
   ['/shared/', path.join(ROOT, 'shared/')],
+  ['/mechs/concept/', path.join(ROOT, 'docs/mechs/concept/')], // the mechs' placeholder models (the client's fallback until public/models/x_mech_*.glb lands)
   ['/', path.join(ROOT, 'public/')],
 ];
 const MIME = {

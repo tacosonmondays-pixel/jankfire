@@ -332,6 +332,9 @@ export function streakIcon2d(id) {
     x.fillStyle = 'rgba(255,43,214,0.35)'; x.beginPath(); x.arc(56, 29, 12, 0, Math.PI * 2); x.fill();
     x.fillStyle = '#ff1e1e'; x.fillRect(26, 20, 14, 3); // a red tally light on the back of the hand
     x.fillStyle = '#2ef2ff'; x.fillRect(24, 38, 20, 2);
+  } else if (id === 'mechdrop') { // a mech under a falling arrow
+    x.fillStyle = '#f6f2e6'; x.fillRect(22, 22, 20, 20); x.strokeRect(22, 22, 20, 20); x.fillRect(16, 26, 6, 14); x.fillRect(42, 26, 6, 14); x.fillRect(24, 42, 6, 16); x.fillRect(34, 42, 6, 16);
+    x.fillStyle = '#4fd8ff'; x.fillRect(26, 26, 12, 6); x.fillStyle = '#ff3030'; x.beginPath(); x.moveTo(32, 18); x.lineTo(24, 6); x.lineTo(40, 6); x.closePath(); x.fill();
   } else if (id === 'giantduck') {
     circle(32, 34, 24, '#120018'); x.strokeStyle = '#b07dff'; x.lineWidth = 2; x.beginPath(); x.arc(32, 34, 27, 0, Math.PI * 2); x.stroke();
     x.strokeStyle = '#000'; x.lineWidth = 3; circle(28, 38, 11, '#ffd23b'); circle(38, 26, 7, '#ffd23b'); x.fillStyle = '#ff7a1a'; x.fillRect(44, 25, 7, 4);

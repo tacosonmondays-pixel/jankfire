@@ -141,7 +141,7 @@ async function openPicker() {
     card.append(el('b', null, `SLOT ${i + 1}`));
     if (!open) card.append(el('span', null, 'locked: needs a server update'));
     else if (!c) card.append(el('span', null, 'empty. a fresh body, still in the wrapper.'));
-    else card.append(el('span', null, `ACT ${c.act} · ${c.chapter.replace(/_/g, ' ')} · ${Math.floor(c.playtime / 60)} min · ${c.coupons} coupons`));
+    else card.append(el('span', null, `ACT ${c.act} · ${c.title || String(c.chapter).replace(/_/g, ' ')} · ${Math.floor(c.playtime / 60)} min · ${c.coupons} coupons`));
     if (open) {
       const go = el('button', 'st-btn yellow', c ? 'CONTINUE' : 'NEW GAME');
       go.addEventListener('click', async () => {
@@ -149,11 +149,40 @@ async function openPicker() {
         try { const s = c ? await loadSlot(i) : null; picker.classList.add('hidden'); start(s || newSave(i, testLot() ? (trainLot() ? TRAIN.id : 'story_test') : DEFAULT_WORLD)); }
         catch (e) { go.disabled = false; api.toast(`couldn't load that slot: ${e.message}`, 3000); }
       });
-      card.append(go);
+      if (!c) card.append(go);
+      else { const btns = el('div', 'st-slotbtns'); btns.append(go, wipeBtn(card, i)); card.append(btns); }
     }
     list.append(card);
   }
   list.append(el('p', 'st-sub', L.where === 'local' ? 'not logged in: saves stay in this browser.' : L.slots < SAVE.slots ? 'saves are on your account (1 slot until the server update).' : 'saves are on your account.'));
+}
+
+// ------------------------------------------------------------ wiping a slot (the owner: "how do I reset my story slot")
+// a filled card gets DELETE / RESTART, then a confirm. guests: the browser copy goes; logged in: the account's slot goes
+// (POST /api/story/delete). nothing to undo, so it asks first
+function wipeBtn(card, i) {
+  const del = el('button', 'st-btn red', 'DELETE / RESTART');
+  del.dataset.wipe = String(i);
+  del.addEventListener('click', () => {
+    const ask = el('div', 'st-wipe');
+    const yes = el('button', 'st-btn red', 'WIPE IT'), no = el('button', 'st-btn', 'nah');
+    ask.append(el('span', null, 'wipe this body? the machine forgets.'), yes, no);
+    card.classList.add('wiping'); card.append(ask);
+    no.addEventListener('click', () => { ask.remove(); card.classList.remove('wiping'); });
+    yes.addEventListener('click', async () => {
+      yes.disabled = no.disabled = true;
+      try { await wipeSlot(i); } catch (e) { yes.disabled = no.disabled = false; api.toast(`couldn't wipe it: ${e.message}`, 3000); return; }
+      api.toast('wiped. a fresh body, still in the wrapper.', 2500);
+      openPicker(); // (redraw: the card is empty, NEW GAME)
+    });
+  });
+  return del;
+}
+async function wipeSlot(i) {
+  if (account.loggedIn) await api2('delete', { slot: i });
+  else { const l = localSaves(); l[i] = null; try { localStorage.setItem(LOCAL, JSON.stringify(l)); } catch { /* full */ } }
+  if (cur && cur.slot === i) cur = null; // (a held run in that slot can't come back from a sim either)
+  const bk = back(); if (bk && bk.slot === i) setBack(null);
 }
 
 function start(save) {
@@ -311,6 +340,12 @@ function css() {
 .st-btn{font-family:var(--font);font-weight:700;font-size:18px;border:3px solid #000;background:#fff;color:#000;padding:6px 14px;box-shadow:4px 4px 0 #000;cursor:pointer}
 .st-btn.yellow{background:#ffe14d;box-shadow:4px 4px 0 #ff4fd8;transform:rotate(-2deg)}
 .st-btn:disabled{opacity:.5}
+.st-btn.red{background:#ff3030;color:#fff;font-size:14px;padding:4px 10px}
+.st-slotbtns{display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.st-wipe{grid-column:1/-1;display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#000;border:3px solid #ff3030;box-shadow:4px 4px 0 #ffe14d;padding:8px 10px;transform:rotate(-1deg)}
+.st-wipe span{flex:1;font-weight:700;color:#ffe14d;font-size:18px}
+.st-wipe .st-btn.red{font-size:18px;padding:6px 14px;transform:rotate(-2deg)}
+.st-slot.wiping .st-slotbtns{display:none}
 .st-hint{position:fixed;left:50%;top:62%;transform:translateX(-50%) rotate(-1.5deg);z-index:20;font-family:var(--font);font-weight:700;font-size:22px;color:#000;background:#ffe14d;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;padding:6px 14px;pointer-events:none}
 .st-on #hotbar{display:none}
 .st-bar{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;z-index:15;pointer-events:none}
