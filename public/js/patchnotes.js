@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.8', date: '2026-11-12', title: 'BRING FRIENDS', items: [
+    'PARTIES. your code\'s under ONLINE / OFFLINE. send it to your friends, they type it in, you all stand there looking cool. the leader picks the match and drags everyone in. same team, obviously. kicking is allowed.',
+    'ctrl+w can\'t close the game any more in fullscreen (crouch is left ctrl too, oops). windowed, you get a tip once.',
+    'backrooms: the walls are real now. wallpaper seams, skirting boards, outlets nobody uses, a thermostat set to "yes", damp creeping up from the carpet and paper peeling off the top. it\'s worse.',
+    'platform: the oil derrick is a real lattice tower now. crown, beacon, top drive, a little platform halfway up, and the GLUG OIL sign.',
+  ] },
   { v: '9.7', date: '2026-11-12', title: 'HE OWNED ALL OF THIS', items: [
     'suburb: the founder\'s statue got an upgrade. granite plinth, brass plaque, tulips, and the founder himself as a shiny toy bust. he has a monocle now. a pigeon has opinions about his hat.',
     'smoother edges on mid and too hd (with shaders on). less shimmer on thin lines and far-away stuff. potato stays crunchy.',
