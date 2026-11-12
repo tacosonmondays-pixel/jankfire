@@ -35,7 +35,7 @@ const [PORT = 3000, OUT = 'choir_shots', MODE = 'both', CODE = ''] = process.arg
     const { A, G, sc, code, looks } = window.__M, g0 = G.scene; G.scene = sc; A.clearActors();
     const list = people.map(([look, at, face], i) => { const a = A.spawnActor('choir_' + i, { look, voice: { kind: 'choir', pitch: 1 }, idle: 'idle' }, at, face); a.pos[1] = 0; a.home.p = a.pos.slice(); return a; });
     G.scene = g0;
-    for (const a of list) { a.t = 3.1; a.stepAcc = 0; a.ch.gazeAt = new window.__M.THREE.Vector3(); }
+    for (const a of list) { a.t = 3.1; a.stepAcc = 1; a.ch.gazeAt = new window.__M.THREE.Vector3(); } // (stepAcc 1: posed on the first update, as choir.js spawns them)
     window.__L = list; window.__t = 0;
     return list.map((a) => `${a.L.look}:${a.L.blender ? 'blender' : 'code'}`);
   }, people);

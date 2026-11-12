@@ -18,7 +18,7 @@ const FPS = Number(process.env.FPS) || 12;
     const { G } = await import('/js/ctx.js'); Object.defineProperty(G.vmScene, 'visible', { get: () => false, set: () => {}, configurable: true });
     for (const sp of window.JF_STORY.spots.values()) G.scene.remove(sp.mesh);
     window.JF_STORY.capture = true; });
-  const step = async (n = 1) => { for (let i = 0; i < n; i++) { await ev((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf' }); } };
+  const step = async (n = 1) => { for (let i = 0; i < n; i++) { await ev((dt) => { window.JF_STORY.capStep = dt; }, 1 / FPS); await pg.waitForFunction(() => window.JF_STORY.capStep === 0, null, { polling: 'raf', timeout: 180000 }); } }; // (a Too HD frame of the city on software GL can take a while)
   const shot = (pos, look, fov = 50) => ev(async ([pos, look, fov]) => { const THREE = await import('three'); const { wantShot } = await import('/js/story/camctl.js'); wantShot({ pos: new THREE.Vector3(...pos), look: new THREE.Vector3(...look), fov, cut: true, blend: 0.01, follow: 99 }); }, [pos, look, fov]);
   const me = (p) => ev(async (p) => { const { ME } = await import('/js/player.js'); ME.pos = p.slice(); ME.vel = [0, 0, 0]; }, p);
   const C = () => ev(async () => { const c = await import('/js/story/choir.js'); const D = c.choirState(); return { on: D.on, n: D.list.length, looks: D.list.map((a) => a.L.look + ':' + (a.L.blender ? 'B' : 'code')), stare: D.stareT, next: D.next }; });
