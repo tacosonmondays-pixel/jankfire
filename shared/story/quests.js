@@ -86,7 +86,7 @@ export function makeQuests(S) {
     S.out({ type: 'stepRetry', quest: id, step: st().quests[id].step });
   }
 
-  const isActive = (id) => { const q = st().quests[id]; return !!(q && !q.done && !q.failed); };
+  const isActive = (id) => { const q = st().quests[id]; return !!(q && !q.done && !q.failed && def(id)); }; // (def: a quest an old save has that the content dropped isn't running)
   const active = () => Object.keys(st().quests).filter(isActive);
   const nextTrack = () => { const a = active(); return a.find((id) => (def(id) || {}).kind === 'main') || a[0] || ''; };
 
@@ -163,7 +163,22 @@ export function makeQuests(S) {
     return out;
   }
 
-  return { start, emit, tick, check, fail, finish, enterStep: (id, sid) => isActive(id) && enterStep(id, sid), isActive, active, objectives };
+  // an old save (made before the content moved or renamed a step) can hold a running quest on a step that isn't there
+  // any more: no objective, nothing finishes it, and every chapter after it waits forever. those start over from their
+  // first step (the host calls this once a save is loaded). returns the quests it restarted
+  function repair() {
+    const out = [];
+    for (const id of active()) {
+      const d = def(id), q = st().quests[id];
+      if (stepOf(d, q.step) || !d.steps.length) continue;
+      S.out({ type: 'warn', text: `quest ${id}: step '${q.step}' is gone, starting it over` });
+      out.push(id); enterStep(id, d.steps[0].id);
+    }
+    if (st().track && !isActive(st().track)) st().track = nextTrack();
+    return out;
+  }
+
+  return { start, emit, tick, check, fail, finish, repair, enterStep: (id, sid) => isActive(id) && enterStep(id, sid), isActive, active, objectives };
 }
 
 // a reward block -> plain actions, so the host only has to know actions
