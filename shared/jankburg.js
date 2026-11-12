@@ -432,6 +432,7 @@ function ball(L, x, cy, z, R, mat, step = 0.8) {
 }
 function fountain(B, D) {
   const L = B.local(0, 0, 0), Ld = D.local(0, 0, 0);
+  propOf('jb_fountain', [0, 0, 0], 0, () => { // (the Blender fountain draws all of it: tools/blender/jankburg/make_jb_fountain.py)
   for (const s of [-1, 1]) { L(-11, 0, s * 10.2 - 0.6, 11, 0.9, s * 10.2 + 0.6, 'marble'); L(s * 10.2 - 0.6, 0, -9.6, s * 10.2 + 0.6, 0.9, 9.6, 'marble'); }
   for (let k = 0; k < 4; k++) D.obb(0, 0.45, 0, 23, 0.9, 1.2, Math.PI / 4 + k * Math.PI / 2, 'marble'); // (octagon corners, for the look)
   Ld(-9.6, 0, -9.6, 9.6, 0.55, 9.6, 'poolwater');
@@ -439,6 +440,7 @@ function fountain(B, D) {
   ball(L, 0, 8.4, 0, 6, 'toyyellow');
   for (const s of [-1, 1]) Ld(-3.4, 6, s * 5.9 - 0.15, 3.4, 11, s * 5.9 + 0.15, 'toyface', { fit: 1 });
   for (const s of [-1, 1]) for (let i = 0; i < 6; i++) { const t = i / 5; D.obb(0, 7.2 - t * t * 6.5, s * (6.2 + t * 4), 0.35, 0.6, 1.2, 0, 'neoncyan'); } // it spits
+  });
   for (let k = 0; k < 8; k++) { const a = k * Math.PI / 4 + Math.PI / 8, x = Math.cos(a) * 15, z = Math.sin(a) * 15; if (Math.abs(x) < 11 && Math.abs(z) < 11) continue; L.B(x, 0.45, z, Math.abs(Math.cos(a)) > 0.7 ? 0.8 : 3, 0.9, Math.abs(Math.cos(a)) > 0.7 ? 3 : 0.8, 'wood'); }
 }
 function plaza(B, D, rv) {

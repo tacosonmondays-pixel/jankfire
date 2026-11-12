@@ -54,7 +54,7 @@ export const MISSIONS_ACT1 = {
       withheld: ["Who you were.", "Why the barcode has no record.", "What Option C actually says."],
     },
     steps: [
-      { id: "sim", text: "win the match", goal: { type: "flag", flag: "sim_won" }, marker: "sims:suburb", notes: "a Training-style local bots match on Suburb, the real multiplayer HUD; any kill count wins; the last kill triggers C1" },
+      { id: "sim", text: "win a match in the Machine's sim (use the Machine)", goal: { type: "flag", flag: "sim_won" }, marker: "sims:suburb", notes: "a Training-style local bots match on Suburb, the real multiplayer HUD; any kill count wins; the last kill triggers C1" },
       { id: "c1", text: "", goal: { type: "flag", flag: "seen_c1" }, scene: "c1_please_take_your_item" },
       { id: "tray", text: "take your item", goal: { type: "interact", target: "bottom:machine" }, marker: "bottom:machine" },
       { id: "first", text: "talk to the old man", goal: { type: "talk", who: "dale", talk: "first_words" } },
