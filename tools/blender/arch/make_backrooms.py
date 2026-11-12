@@ -304,6 +304,13 @@ for (bi, a, u0, u1, yh, ys) in heads:
 
 # skirting round every wall foot, the ceiling's wall angle along every top, corner guards on the pillars
 prof = [(0.0, 0.0), (SK, 0.0), (SK, SKH), (0.0, SKH)]  # (o, y) up the face and back
+
+
+def chop4(a, b):
+    """a..b cut on the 4 m world lines (a strip tens of metres long in one quad sparkles through walls on some GPUs)"""
+    if b - a <= 8.0: return [(a, b)]  # (only the long runs: a wall's ends hang 0.1 m past the grid lines, no slivers there)
+    cuts = [a] + [k * 4.0 for k in range(int(math.floor(a / 4.0)) + 1, int(math.ceil(b / 4.0))) if a + 0.5 < k * 4.0 < b - 0.5] + [b]
+    return list(zip(cuts[:-1], cuts[1:]))
 for F, rs in faces:
     n = F.n(); ue = Vector([0, 0, 0]); ue[F.ua] = 1
     cy = ceil_at(*[F.front(0.5 * (F.u0 + F.u1), 1.0)[k] for k in (0, 2)])
@@ -319,10 +326,11 @@ for F, rs in faces:
                 if o0 == o1 == 0: continue
                 if ya == yb == 0: continue
                 want = (n * (yb - ya) - Vector((0, 1, 0)) * (o1 - o0))
-                fq([F.P(a0, ya, o0), F.P(a1, ya, o0), F.P(a1, yb, o1), F.P(a0, yb, o1)], 'br_skirt', want if want.length > 0 else n)
+                for (c0, c1) in chop4(a0, a1):
+                    fq([F.P(c0, ya, o0), F.P(c1, ya, o0), F.P(c1, yb, o1), F.P(c0, yb, o1)], 'br_skirt', want if want.length > 0 else n)
         if abs(y1 - cy) < 1e-3:
             # the wall angle: a white L the ceiling tiles sit on
-            slab(F, u0, u1, cy - 0.03, cy - 0.003, 0, 0.004, 'br_angle', top=False, sides=False, bottom=True)
+            for (c0, c1) in chop4(u0, u1): slab(F, c0, c1, cy - 0.03, cy - 0.003, 0, 0.004, 'br_angle', top=False, sides=False, bottom=True)
 # corner guards: an ivory L up the pillars' corners to shoulder height
 for (bi, a, s, ua, side, c, u, y0, y1) in chamfers:
     mn, mx = BX[bi]
