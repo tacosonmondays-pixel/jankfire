@@ -98,4 +98,7 @@ test('Battle Island: Dead Air\'s Blender model is built to exactly its boxes (me
   const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')), root = gl.nodes.find((n) => n.extras && n.extras.jf), meta = JSON.parse(root.extras.jf);
   for (let i = 0; i < 3; i++) { assert.ok(Math.abs(meta.box[0][i] - p.lo[i]) < 0.01, `lo[${i}] ${meta.box[0][i]} vs ${p.lo[i]}`); assert.ok(Math.abs(meta.box[1][i] - p.hi[i]) < 0.01, `hi[${i}] ${meta.box[1][i]} vs ${p.hi[i]}`); }
   assert.ok(Math.abs(p.a[1] - 50) < 0.01, 'stood on the summit (50 m)');
+  const mine = m.boxes.filter((b) => b.pv === 'deadair');
+  assert.ok(mine.length > 20, 'its boxes are tagged');
+  for (const b of mine) assert.ok(b.min[1] > 49.99, `every Dead Air box on the summit (one at y ${b.min[1].toFixed(2)}: ${b.mat})`);
 });

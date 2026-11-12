@@ -191,10 +191,13 @@ export const DA = { plinth: 2, top: 70, deck: 50, deckW: 2.2, rail: 1.1, anchors
   shack: [-5.7, -12.4, 2.3, -7.4], shackH: 3.6, wallT: 0.2, door: [0.1, 1.3, 2.3], win: [-10.6, -9.2, 1.1, 2.1], // door x0, x1, top (south wall); window z0, z1, y0, y1 (west wall)
   racks: [[-4.9, -4.1], [-3.9, -3.1]], rackD: 0.7, rackH: 2.1, desk: [1.3, -11.7, 2.1, -9.1, 0.78] }; // racks' x ranges (north wall); desk x0, z0, x1, z1, height (east wall)
 function deadAir(B, cx, cz) {
-  propOf('deadair', [cx, 0, cz], 0, () => {
-    const L = (x0, y0, z0, x1, y1, z1, m) => B.add(cx + x0, y0, cz + z0, cx + x1, y1, cz + z1, m);
+  // built at the summit's own height, every box `still` (the shaped ground leaves it where it is: wider things than 7 m
+  // would otherwise stay at y 0 under the hill while the model drew on top)
+  const y0 = grid().at(cx, cz), S = { still: 1 };
+  propOf('deadair', [cx, y0, cz], 0, () => {
+    const L = (x0, ya, z0, x1, yb, z1, m) => B.add(cx + x0, y0 + ya, cz + z0, cx + x1, y0 + yb, cz + z1, m, S);
     L(-DA.plinth, 0, -DA.plinth, DA.plinth, 0.8, DA.plinth, 'concrete'); // the foundation
-    B.box(cx, 0.8 + (DA.top - 0.8) / 2, cz, 1.8, DA.top - 0.8, 1.8, 'metal'); // the mast (grapple it)
+    L(-0.9, 0.8, -0.9, 0.9, DA.top, 0.9, 'metal'); // the mast (grapple it)
     const W = DA.deckW, R = 0.06;
     L(-W, DA.deck, -W, W, DA.deck + 0.25, W, 'grid'); // the work platform, railed round
     for (const s of [-1, 1]) { L(-W, DA.deck + 0.25, s * W - (s > 0 ? R : 0), W, DA.deck + 0.25 + DA.rail, s * W + (s < 0 ? R : 0), 'metal'); L(s * W - (s > 0 ? R : 0), DA.deck + 0.25, -W + R, s * W + (s < 0 ? R : 0), DA.deck + 0.25 + DA.rail, W - R, 'metal'); }
