@@ -62,8 +62,23 @@ export const MECH = {
     pile: { rise: 30, up: 28, hang: 2.5, range: 55, dive: 70, min: 10, dmg: 200, edge: 0.3, r: 9, kb: 30, up2: 20, life: 7 }, // Q: PILE DRIVER (rise m at up m/s, hang s to aim, then dive)
     ult: { dmg: 650, time: 110 }, shrug: 3, // passive: no knockback while rolling faster than shrug m/s
   },
+  // TROLLEY (speed): a 4 m shopping trolley mech with a tiny pilot pushing it from the handle. the fastest thing on the
+  // island; drifting builds a ram charge, the push spends it, CLEAN UP AISLE 5 scoops people into the basket
+  trolley: {
+    name: 'TROLLEY', hp: 800, h: 2.6, hw: 1.3, c0: 1.7, c1: 2.6, eye: 2.9, cam: 8.5, tip: '4 m speed trolley · 800 armour',
+    speed: 26, accel: 2.6, fric: 1.6, grip: 7, grav: 30, hop: 8, airCap: 26, pull: 0.07, // grip: how fast sideways speed goes (1/s); pull: the wonky wheel's left steer (rad/s at top speed)
+    ram: { min: 9, base: 6, mul: 1.4, cap: 35, kb: 0.8, up: 5, cd: 0.7 }, // driving into people (the speed the server measures)
+    can: { dmg: 22, rate: 3, speed: 26, up: 6, cone: 0.55, bounces: 3, minB: 2.5, e: 0.55, kb: 6, kbUp: 3, life: 3.5 }, // LMB: tin-can toss (bounces off things up to `bounces` times, bonks the first enemy)
+    drift: { grip: 1.1, min: 12, build: 1.5, keep: 3, caster: 35 }, // Shift: drifting faster than min m/s fills the ram charge in `build` s; it keeps `keep` s
+    push: { len: 0.4, v: [30, 40], dmg: [30, 80], kb: [20, 35], up: 6, r: 1.7, cd: 4 }, // E: a lunge forward: speed, damage, knockback by charge (0 -> 1)
+    aisle: { dur: 6, speed: 34, max: 3, reach: 2.2, dps: 8, dmg: 35, fling: 24, up: 14, min: 4 }, // Q: CLEAN UP AISLE 5. top speed, scoop up to max (moving faster than min m/s), 8/s in the basket, the dump
+    ride: { reach: 3, max: 1, hop: 7 }, // jank: the pound coin lock. an ally within reach m of its sides rides in the child seat
+    // where people go (local: x right, y up, +z back toward the handle): the child seat, the basket's three spots
+    seat: [0, 1.05, 0.55], scoop: [[0, 1.05, -0.95], [-0.5, 1.05, -0.4], [0.5, 1.05, -0.4]], muzzle: [0.55, 2.55, 1.25],
+    ult: { dmg: 550, time: 100 },
+  },
 };
-export const FRAMES = ['paperplane', 'nightshift', 'wrecking'];
+export const FRAMES = ['paperplane', 'nightshift', 'wrecking', 'trolley'];
 export const HERO_FRAMES = FRAMES.filter((f) => MECH[f].ult); // (the ones with an ultimate meter: the island heroes)
 export const mechFrame = (f) => (isFrame(f) ? f : 'paperplane'); // anything else is the default
 export function isFrame(f) { return typeof f === 'string' && FRAMES.includes(f); }
@@ -73,7 +88,8 @@ export function isFrame(f) { return typeof f === 'string' && FRAMES.includes(f);
 Object.assign(FLAGS, { MECH: 1 << 22, MECH_A: 1 << 23, MECH_B: 1 << 30, MECH_C: 1 << 31 });
 // (the per-frame names live here, not in FLAGS: room.js checks that every FLAGS entry is its own bit)
 export const MF = { HOVER: FLAGS.MECH_A, SHIELD: FLAGS.MECH_A, JET: FLAGS.MECH_B, SLAM: FLAGS.MECH_B, DASH: FLAGS.MECH_C, SLASH: FLAGS.MECH_C,
-  CHAIN: FLAGS.MECH_A, PILE: FLAGS.MECH_B, REV: FLAGS.MECH_C }; // (wrecking ball: on the chain, slam / pile driver, rev launch)
+  CHAIN: FLAGS.MECH_A, PILE: FLAGS.MECH_B, REV: FLAGS.MECH_C, // (wrecking ball: on the chain, slam / pile driver, rev launch)
+  DRIFT: FLAGS.MECH_A, AISLE: FLAGS.MECH_B, PUSH: FLAGS.MECH_C }; // (trolley: drifting, CLEAN UP AISLE 5, the push)
 export const MECH_BITS = FLAGS.MECH | FLAGS.MECH_A | FLAGS.MECH_B | FLAGS.MECH_C;
 
 // its armour is a body pool like the ball's and the rig's (server/bodyhp.js): no drain, it lasts until it breaks
@@ -97,6 +113,11 @@ Object.assign(WEAPONS, {
   wbram: { slot: null, kind: 'mech', name: 'Wrecking Ball', color: '#ffd23a' },
   wbslam: { slot: null, kind: 'mech', name: 'Ball Slam', color: '#ffb000' },
   wbpile: { slot: null, kind: 'mech', name: 'Pile Driver', color: '#ff3030' },
+  trram: { slot: null, kind: 'mech', name: 'Trolley', color: '#ff3a3a' },
+  trpush: { slot: null, kind: 'mech', name: 'Trolley Push', color: '#ffe14d' },
+  trscoop: { slot: null, kind: 'mech', name: 'Clean Up Aisle 5', color: '#4fd8ff' },
+  trdump: { slot: null, kind: 'mech', name: 'Clean Up Aisle 5', color: '#4fd8ff' },
+  trcan: { slot: 'hidden', kind: 'proj', name: 'Tin Can', color: '#c8d2dc', grav: 22, r: 0.24, bounce: 0.55, life: 3.5, kit: 'trolley' }, // (kit: the trolley's server code steps it)
 });
 
 // the body killstreaks fight over your body: no mech drop in the rig or the ball (or with a mech already out), and
@@ -145,6 +166,11 @@ export function speedCap(frame, f) {
     if (f & MF.CHAIN) return F.chain.speed;
     if (f & MF.PILE) return Math.max(F.pile.dive, F.speed);
     if (f & MF.REV) return F.rev.speed[1];
+    return F.speed;
+  }
+  if (frame === 'trolley') { // B = CLEAN UP AISLE 5, C = the push (drifting is no faster)
+    if (f & MF.PUSH) return F.push.v[1];
+    if (f & MF.AISLE) return F.aisle.speed;
     return F.speed;
   }
   if (f & MF.SLASH) return F.triple.speed;
@@ -204,3 +230,42 @@ export function wbPile(d) {
 }
 // the rev launch's speed for a charge held c s
 export const wbRevSpeed = (c) => { const R = MECH.wrecking.rev, k = Math.max(0, Math.min(1, c / R.charge)); return R.speed[0] + (R.speed[1] - R.speed[0]) * k; };
+
+// ---- TROLLEY
+// a spot on the trolley (l: local, x right, +z back) in the world, for a trolley at pos facing yaw
+export const trSpot = (pos, yaw, l) => { const c = Math.cos(yaw), s = Math.sin(yaw); return [pos[0] + l[0] * c + l[2] * s, pos[1] + l[1], pos[2] - l[0] * s + l[2] * c]; };
+// the push with a ram charge c (0..1): its speed, damage, knockback
+export function trPush(c) {
+  const P = MECH.trolley.push, k = Math.max(0, Math.min(1, c || 0)), at = (a) => a[0] + (a[1] - a[0]) * k;
+  return { v: at(P.v), dmg: at(P.dmg), kb: at(P.kb), up: P.up, k };
+}
+// driving into someone at hs m/s (null below the threshold)
+export function trRam(hs) {
+  const R = MECH.trolley.ram;
+  if (!(hs >= R.min)) return null;
+  return { dmg: Math.min(R.cap, R.base + (hs - R.min) * R.mul), kb: hs * R.kb, up: R.up };
+}
+// one step of the trolley's driving on its flat speed h = [vx, vz] (changed in place): sideways grip relative to the way
+// it's being pushed (hardly any while drifting), a quick shove up to top, rolling to a stop with nothing held, a fast
+// bleed over the top speed, and the wonky wheel's pull to the left (pull: the client's own step; bots drive straight)
+export function trDrive(h, wx, wz, dt, top, drift, ground, pull) {
+  const F = MECH.trolley, wl = Math.hypot(wx, wz);
+  if (wl) { wx /= wl; wz /= wl; }
+  let hs = Math.hypot(h[0], h[1]);
+  if (ground) {
+    if (wl) {
+      const al = h[0] * wx + h[1] * wz, g = Math.exp(-(drift ? F.drift.grip : F.grip) * dt);
+      h[0] = al * wx + (h[0] - al * wx) * g; h[1] = al * wz + (h[1] - al * wz) * g;
+      if (al < top) { const a = Math.min(top - al, F.accel * top * dt); h[0] += a * wx; h[1] += a * wz; }
+    } else if (hs > 0) { const k = Math.max(0, hs - Math.max(hs, 3) * F.fric * (drift ? 0.4 : 1) * dt) / hs; h[0] *= k; h[1] *= k; }
+    hs = Math.hypot(h[0], h[1]);
+    if (hs > top) { const k = Math.max(top, hs - 16 * dt) / hs; h[0] *= k; h[1] *= k; }
+  } else {
+    if (wl) { const al = h[0] * wx + h[1] * wz; if (al < Math.min(top, F.airCap)) { const a = F.accel * 0.25 * top * dt; h[0] += a * wx; h[1] += a * wz; } }
+    hs = Math.hypot(h[0], h[1]);
+    if (hs > top) { const k = Math.max(top, hs - 6 * dt) / hs; h[0] *= k; h[1] *= k; }
+  }
+  hs = Math.hypot(h[0], h[1]);
+  if (pull && ground && hs > 1) { const a = F.pull * Math.min(1, hs / F.speed) * dt, c = Math.cos(a), s = Math.sin(a); const x = h[0]; h[0] = x * c + h[1] * s; h[1] = h[1] * c - x * s; }
+  return hs;
+}
