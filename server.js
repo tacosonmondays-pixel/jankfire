@@ -22,6 +22,11 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
+import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
+import { GAMES, mapsFor } from './shared/modes.js';
+import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
+import { mechFrame } from './shared/mech.js';
+import { LOBBY } from './shared/lobby.js';
 import { browsableServer } from './server/browsable.js'; // the room code the story's solo referee runs in the browser
 import { rooms, roomFor, lobbyCounts, humans, flushStats, logErr, safe, tooDeep, clean, now, GRAPH_TTL, GRAPH_SWEEP, setRoomDeps } from './server/room.js'; // the game rooms (class Room + its helpers)
 
@@ -121,6 +126,8 @@ wss.on('connection', (ws) => {
     let m;
     try { m = JSON.parse(data); } catch { return; }
     if (!m || typeof m !== 'object' || Array.isArray(m) || tooDeep(m)) return;
+    if (ws.hub) { try { hubMsg(ws.hub, m); } catch (e) { logErr('hub ' + (typeof m.t === 'string' ? m.t.slice(0, 12) : '?'), e); } return; } // a menu connection: parties (server/party.js)
+    if (!me && m.t === 'hub' && !ws.joining) { hubOpen(ws, m); return; }
     if (!me) {
       if (m.t !== 'join' || ws.joining) return;
       ws.joining = true;
@@ -146,11 +153,27 @@ wss.on('connection', (ws) => {
     try { me.room.handle(me, m); } catch (e) { logErr('msg ' + (typeof m.t === 'string' ? m.t.slice(0, 12) : '?'), e); }
   });
   ws.on('close', safe('close', () => {
+    if (ws.hub) { hubClose(ws.hub); ws.hub = null; }
     if (!me) return;
     console.log(`- ${me.name} (#${me.id}) <- ${me.room.id}`);
     me.room.remove(me);
   }));
 });
+
+// a menu connection (its first message is { t: 'hub' }, never 'join'): you, in a party (server/party.js). the name and
+// the look are checked the way 'join' checks them; an account's comes from its token
+function hubOpen(ws, m) {
+  ws.joining = true; // (one hello per socket, and no 'join' on it after)
+  (async () => {
+    const u = typeof m.token === 'string' ? await accounts.verify(m.token).catch(() => null) : null;
+    if (ws.readyState !== 1) return;
+    const achs = u ? achievementsFrom(Object.fromEntries(STAT_KEYS.map((k) => [k, u[k] || 0]))) : new Set();
+    const name = u ? u.name : (clean(m.name, 16) || 'guest') + (clean(m.name, 16) && await store.get(clean(m.name, 16).toLowerCase()).catch(() => null) ? ' (guest)' : '');
+    if (ws.readyState !== 1) return; // (gone while the store answered: no party for a closed socket)
+    ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null, achs }, m);
+  })().catch((e) => { logErr('hub hello', e); ws.close(); });
+}
+installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook });
 
 // the bots' walk graphs (and the maze maps' lanes) are built when a room starts on a map (Room.tick -> warmMap), not all
 // at boot (together they were ~150 MB of the heap), and dropped once no room has been on a map for GRAPH_TTL
