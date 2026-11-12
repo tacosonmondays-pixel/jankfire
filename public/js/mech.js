@@ -710,7 +710,8 @@ function mechEvent(m, getR, live) {
     }
     case 'down': { // MECH DOWN: the mech flashes and blows up in a big jank pop, the pilot's flung out
       const p = P(m.p), inst = instOf(m.id, getR);
-      if (me) { endLocal('boom'); mechsfx.eject(null); hud.msg('EJECT! EJECT!', 2, 'slip'); G.shake = 1.4; }
+      if (m.e) { const w = live && WM.get(m.m); if (w && w.inst) { const dead = w.inst; w.inst = null; mechBurst(dead); setTimeout(() => freeMech(dead), 7000); } if (me) hud.msg('YOUR EMPTY MECH GOT WRECKED', 2, 'slip'); } // nobody inside (mechempty.js)
+      else if (me) { endLocal('boom'); mechsfx.eject(null); hud.msg('EJECT! EJECT!', 2, 'slip'); G.shake = 1.4; }
       else if (inst) { mechBurst(inst, r ? r.vel : [0, 0, 0]); if (r && r.mech) { const dead = r.mech.inst; r.mech = null; r.ch.body.visible = true; setTimeout(() => freeMech(dead), 7000); } }
       if (p) {
         mechsfx.boom(me ? null : p);
