@@ -1,0 +1,38 @@
+# Suburb and Suburb S&D: what still needs modelling
+
+The walk-through (2026-11-12, main at #341) was played at Too HD from both spawns, the park, both house rows, the back lanes, the four corner lots, the S&D sites and lanes, and from overhead, plus `tools/blender/inventory_maps.mjs` (Suburb: 970 boxes still drawn as boxes; S&D: 693). The pictures are in `walkthrough.jpg`, five to a row, labelled:
+- rows 1–3 and the first three of row 4: Suburb (spawns, park, gazebo, house rows, back lane, store, building site, corner lots, a backyard, overviews, the woods outside)
+- the rest: Suburb S&D (spawns, mid, the cul-de-sac, A, B outside and in, the alley, the creek, the shut houses, overview), then the house model's turnaround
+
+Already Blender models, so not on this list: the house (`home.glb`, the PS1-kit house with real stairs inside), the corner store (`store.glb`), the cars, the bus, the box truck, the excavator, streetlights, trees (`lollipop` / `conifer`), pallets, crates, cones, the billboard.
+
+Ranked by what players see most. Columns:
+- **now:** what's there today.
+- **plan:** what the model will be.
+- **collision:** what happens to the boxes you bump into.
+- **size:** the triangle budget.
+
+Every model covers its own boxes: the boxes are tagged and hidden once the model loads, and drawn again if the file is missing. Collision stays boxes unless it says otherwise.
+
+| # | What | Maps | Now | Plan | Collision | Size |
+|---|---|---|---|---|---|---|
+| 1 | **The founder's statue** (park plaza; the S&D cul-de-sac) | both (the middle of each map) | A cube with a googly face on a chrome block, on a lawn slab with four cube hedges. It's the map's centrepiece and reads as a crate. | A real monument: a stepped granite plinth with a brass plaque (OUR FOUNDER / HE OWNED ALL OF THIS), a glossy candy-vinyl statue of the founder (a chunky toy tycoon in a suit, waving, googly eyes, a key to the estate), a ring of clipped box hedges and flowers, uplights. Same size as the boxes. | Unchanged. | 6–9k |
+| 2 | **The playground** (`suburb()` the park, west) | suburb (the arena) | Box posts and a flat slab as the climbing frame, a stepped-box slide, box swing frame with box seats, a ball pit of cubes, the toy-face block. | A real play tower: posts with ball caps, a deck, a canopy roof, a wavy plastic slide over the slide steps, a ladder up the stair steps; an A-frame swing set with chains and moulded seats; a net-sided ball pit full of round balls; a giant googly toy-face block. | Unchanged. | 8–12k |
+| 3 | **The shut houses** (`facadeHouse()`) | suburb_sd (four of its six houses) | A solid pink / orange / teal box with flat painted windows and a painted door. From the street they read as shipping containers next to the open houses. | A shut variant of the house model: the same siding, trims, porch, garage and roof as `home.glb`, with drawn curtains and blinds in the windows, the door shut, a FOR SALE sign. | Unchanged. | as `home` |
+| 4 | **The house roofs** (`home()`, `facadeHouse()`) | both (10 + 6 houses) | Three flat slabs stacked like a wedding cake. From any roof, the trampolines, the overview or a sniper's view, the whole street looks flat-topped. | A real low hip roof (shingles, ridge caps, hips, gutters, a chimney with a cap, a vent pipe, a satellite dish), same eaves and same top. | **Gameplay change (small):** the three 0.45 m steps become thin steps that follow the slope, so your feet sit on the shingles. Same eaves, same top height, same way up (trampoline). | in `home` |
+| 5 | **The HOA clubhouse and the gate** | suburb_sd (defenders' spawn, mid's choke) | A 24 m purple box with dark window squares; two gatehouse boxes; booms as hazard sticks. | A members-only clubhouse: lap siding, a colonnaded porch, a hip roof, a cupola with a weathervane, HOA signage, planters. Gatehouses with a window, a sliding hatch and the striped booms stuck up. | Unchanged. | 6–9k |
+| 6 | **MEGA-MART EXPRESS** (site B) | suburb_sd | Brick-textured walls cut by `wall()`, box shelves with a noise texture, wood tills, a chrome fridge bar. | A strip-mall express store: storefront glazing in aluminium frames, an awning, the lit sign, sliding doors; inside, real gondola shelves stocked with products, two checkouts with belts and tills, glass-door fridges, the stockroom's swing doors. | Unchanged. | 10–14k |
+| 7 | **The building sites** (Suburb east spawn; S&D site A) | both | Plywood post boxes, plywood plates, hazard sticks with grid decks, a box-step stair, plywood hoarding slabs. | A timber frame going up (studs, plates, headers, a half floor with joists, a site stair with rails), a tube-and-clip scaffold tower with boards and toe boards, plywood hoarding on posts with the posters, sand piles. | Unchanged. | 8–12k a map |
+| 8 | **The wooden privacy fences** (`woodFence()`) | both (all round the estate, every back yard) | A brown slab with a post box every 2.4 m. | A dog-eared cedar privacy fence: boards with gaps and a few loose, two rails on the back, posts with caps, weathered grey toward the bottom. One model per map (like the Islands walkways). | Unchanged. | 10–20k a map |
+| 9 | **The park's east end:** the gazebo, the footbridge, the pond's rocks, the hedges, benches | suburb | A box deck, box posts, three stacked roof slabs; a slab bridge with slab rails; cube rocks and hedges. | A white Victorian gazebo (turned posts, a spindle rail, a pyramid roof with a finial); a timber footbridge with posts and rails; real rocks; clipped hedges; park benches with iron ends. | Unchanged (the gazebo roof keeps its steps under the model). | 6–9k |
+| 10 | **The four corner lots:** the half-court (bleachers, hoop), the community garden (raised beds, the prize pumpkins, scarecrow, shed), the stock yard (dock, stockroom), Plot 12 (the frame, trusses, skip, portaloo) | suburb | All boxes; the pumpkins are cubes. | One batch of props: aluminium bleachers, a pole hoop with a glass backboard and net, plank raised beds with veg, real ribbed pumpkins with a 1st-prize rosette, a scarecrow, a garden shed, a dock with rubber bumpers, a roller-door stockroom, a stud frame, stacked trusses, a skip, a portaloo. | Unchanged. | 12–16k |
+| 11 | **Back-lane and yard props:** the camper van, wheelie bins, sheds, bus shelters, mailboxes, trampolines, hot tubs, the above-ground pool, the yard's googly toy | both | Boxes. | Props (instanced): a 70s camper van, wheelie bins with lids, a garden shed, a bus shelter with an ad panel, mailboxes, a round trampoline with springs, a hot tub, a round above-ground pool, the googly toy. | Unchanged. | 1–3k each |
+| 12 | **Outside the estate:** the stepped green hills, the pylons, the water tower | both (the skyline) | Hills of four stacked grass slabs, pylons of three stacked boxes, a box water tower. | Rolling hills (one mesh each), lattice transmission towers with insulators and sagging wires, a tall tank water tower with the SUBURBIA logo. Render only. | none (render only) | 8–12k |
+| 13 | **S&D small things:** the median planters, the creek's reeds and rocks, the alley's bins and shed, the mailboxes | suburb_sd | Boxes. | Stone planters with clipped shrubs, reeds and rocks along the creek, the bins and shed from item 11. | Unchanged. | 3–5k |
+
+Order of work: 1, 2, 3 and 4 together (the house model), 5, 6, 7, 8, then the batches (9–13). One landmark or small batch per branch and draft PR, from the latest main. Each gets:
+- the asset gate (0 errors)
+- the tests, plus walk tests and bots wherever stairs, roofs or routes are touched
+- `tools/arch/gamehash.mjs` showing it is look-only, unless the plan above says otherwise
+- before/after pictures in Too HD plus one Potato
+- a patch-notes line in the PR

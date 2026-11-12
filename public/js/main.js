@@ -398,7 +398,7 @@ function fillSelect(sel, entries, value) {
 const mapEntries = MAP_ORDER.map((k) => [k, `${MAPS[k].name} (${MAPS[k].size})`]);
 const hipEntries = Object.entries(HIPFIRE).map(([k, v]) => [k, v.name]);
 const diffEntries = Object.entries(BOT_DIFF).map(([k, v]) => [k, v.name]);
-const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name]);
+const gameEntries = GAME_ORDER.map((k) => [k, GAMES[k].name + (GAMES[k].beta ? ' (BETA)' : '')]); // (a mode still on its stand-in map)
 fillSelect($('setupGame'), gameEntries, 'dm');
 fillSelect($('cfgGame'), gameEntries, 'dm');
 // a mode only offers the maps it can be played on (bomb sites, a floor to turn into lava; Plant & Defuse the S&D versions,
