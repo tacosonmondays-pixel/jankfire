@@ -9,6 +9,7 @@ import { SLICE } from './slice.js';
 import { rng, hash2 } from './plan.js';
 import { pick } from './kit.js';
 import { inGateArena } from './arenas.js';
+import { BEV } from './act1set.js';
 
 const Y = SLICE.border.y, GY = SLICE.gut.y, LINE = -24, FLESH = [0x8a1822, 0x7a121c, 0x9a2430, 0x6a0c18];
 // the ramps: [x where it starts (low, at the border's floor), x where it meets the cliff's top]. between the stairs
@@ -28,13 +29,13 @@ export function borderSoft(B) {
   for (let i = 0; i < 70; i++) {
     const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0), d = z - LINE; // (d > 0: the dirt side)
     const want = d > 0 ? Math.pow(1 - Math.min(1, d / 24), 1.6) : 0.45 * Math.pow(1 - Math.min(1, -d / 18), 2);
-    if (r() > want || inGateArena(x - 3, z - 3, x + 3, z + 3)) continue;
+    if (r() > want || inGateArena(x - 3, z - 3, x + 3, z + 3) || (x > BEV.rect[0] - 5 && x < BEV.rect[2] + 5 && z > BEV.rect[1] - 5 && z < BEV.rect[3] + 5)) continue; // (not through Bev's clinic floor)
     const s = 1.2 + r() * 3.2 * (d > 0 ? 1 : 0.7);
     if (d > 0) blot(B, x, z, s, s * (0.6 + r() * 0.6), 'flesh', pick(r, FLESH), r, Y + 0.012 + r() * 0.01);
     else blot(B, x, z, s, s * (0.6 + r() * 0.6), 'ground', pick(r, [0xc0a0a0, 0xb09090, 0xa88888]), r, Y + 0.012 + r() * 0.01);
   }
   for (let x = Math.ceil(X0 / 7) * 7; x < X1; x += 7) { // big lobes along the line: never a straight edge
-    if (r() < 0.25 || inGateArena(x - 4, LINE - 4, x + 4, LINE + 4)) continue;
+    if (r() < 0.25 || inGateArena(x - 4, LINE - 4, x + 4, LINE + 4) || (x > BEV.rect[0] - 6 && x < BEV.rect[2] + 6 && LINE > BEV.rect[1] - 6 && LINE < BEV.rect[3] + 6)) continue;
     blot(B, x + (r() - 0.5) * 4, LINE + (r() - 0.3) * 3, 3 + r() * 2.5, 2 + r() * 2.5, 'flesh', pick(r, FLESH), r, Y + 0.022);
   }
   // the ramps up the cliff
