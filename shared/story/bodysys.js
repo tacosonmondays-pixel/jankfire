@@ -116,6 +116,18 @@ addSystem({
         return true;
       }
       case 'qcoupons': { if (Number.isFinite(m.n)) { if (!sim.addCoupons(m.n)) sim.sty('coupons', { v: sim.save.coupons, d: 0, short: Math.round(-m.n) }); } return true; } // the story engine's coupons:+n / -n
+      case 'qimplant': { // the story engine's implant:<id> (m05's install: the core you ripped out in m04). the one you carry goes in;
+        // carrying none, a new one does. a slot that already holds something you chose keeps it: the new one goes in the bag
+        const b = m.b;
+        if (typeof b !== 'string' || !Object.hasOwn(IMPLANTS, b)) return true;
+        const slot = IMPLANTS[b].slot, old = sim.body.slots[slot];
+        if (old && old.b === b) return true; // (already in)
+        let it = sim.inv.bag.find((x) => x && x.b === b);
+        if (!it) { if (!invAdd(sim.inv, { b }, { toBar: false })) { sim.invChanged(); return true; } it = sim.inv.bag.find((x) => x && x.b === b); }
+        if (!old && it) { const r = installOp(sim.body, sim.inv, { op: 'install', u: it.u }, { takeItem: (u) => invTake(sim.inv, u), giveItem: (x) => invAdd(sim.inv, x, { toBar: false }) }); if (!r.error) sim.bodyChanged(); } // (no 'installed': that's the clinic screen's)
+        sim.invChanged();
+        return true;
+      }
       case 'devHp': { if (sim.dev && sim.me && Number.isFinite(m.hp)) sim.me.hp = Math.max(1, Math.min(100, m.hp)); return true; } // tests only (?storydev=1)
       case 'fine': { // the Punch-Clock's 10 HP fine (the client times the clock-in)
         const p = perk(sim.body, 'core_cracked_punch_clock', ctxOf(sim));
