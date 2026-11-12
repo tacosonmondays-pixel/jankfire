@@ -198,8 +198,8 @@ function battleIsland() {
     else propOf('bush', [x, 0, z], 0, () => { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); }, { spin: a || 1e-6 });
   }
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
-  D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'sea');
-  horizon(D, -900, -900, 900, 900, 2600, 'sea', SEA);
+  D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
+  horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
   // ---- the spots the mode reads: the POIs' drop pads (open sky, level), energy cells, the finale circles
   const drops = [], cells = [], spawns = [];
   for (const p of PLAN.pois) {

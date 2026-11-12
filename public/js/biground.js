@@ -42,7 +42,7 @@ function makeTextures() {
   }
   const grass = tex(N, (u, v, x, y) => { const c = fbm(u * 6, v * 6, 6, 11), b = blades[y * N + x]; return [cl(0.45 + 0.4 * b + 0.25 * (c - 0.5)), cl(fbm(u * 4, v * 4, 4, 12) * 1.2 - 0.25), cl(0.3 + 0.7 * b)]; });
   // sand: fine grain over soft wind ripples
-  const sand = tex(N, (u, v) => { const r = 0.5 + 0.5 * Math.sin((v * 6 + fbm(u * 3, v * 3, 3, 21) * 2.6) * Math.PI * 2), g = hash(Math.floor(u * N), Math.floor(v * N), 22), f = fbm(u * 8, v * 8, 8, 24); return [cl(0.76 + 0.04 * r + 0.1 * (g - 0.5) + 0.12 * (f - 0.5)), cl(fbm(u * 5, v * 5, 5, 23)), cl(0.25 * r + 0.15 * g + 0.3 * f + 0.15)]; });
+  const sand = tex(N, (u, v) => { const r = 0.5 + 0.5 * Math.sin((v * 6 + fbm(u * 3, v * 3, 3, 21) * 2.6) * Math.PI * 2), g = hash(Math.floor(u * N), Math.floor(v * N), 22), f = fbm(u * 8, v * 8, 8, 24); return [cl(0.76 + 0.04 * r + 0.05 * (g - 0.5) + 0.12 * (f - 0.5)), cl(fbm(u * 5, v * 5, 5, 23)), cl(0.25 * r + 0.15 * g + 0.3 * f + 0.15)]; });
   // rock: lumpy faces split by dark cracks (ridged noise)
   const rock = tex(N, (u, v) => { const f = fbm(u * 4, v * 4, 4, 31, 5), cr = 1 - Math.abs(fbm(u * 6, v * 6, 6, 32, 4) * 2 - 1), crack = Math.pow(cr, 9); return [cl(0.5 + 0.55 * (f - 0.5) - 0.55 * crack), cl(fbm(u * 3, v * 3, 3, 33) * 1.4 - 0.35), cl(f - 0.6 * crack)]; });
   // dirt road: packed earth, pebbles, two worn tyre ruts along u
@@ -76,8 +76,18 @@ function makeSplat(T) {
 const GLSL_PARS = `uniform sampler2D uSplat; uniform vec4 uSplatR; uniform sampler2D uGrass; uniform sampler2D uSand; uniform sampler2D uRock; uniform sampler2D uDirt;
 uniform vec3 cGrass; uniform vec3 cDry; uniform vec3 cJungle; uniform vec3 cSand; uniform vec3 cWet; uniform vec3 cRock; uniform vec3 cRockW; uniform vec3 cRoad;
 uniform float uSea; uniform float uBump; varying vec3 vBiW; varying vec3 vBiN;
-uniform float uLite;
+uniform float uLite; uniform float uTime;
 float biH = 0.5;
+// caustics: the sun focused by the waves into bright wobbling threads on the sea floor (two scrolling layers of cells)
+float biCellEdge( vec2 p ) {
+  vec2 i = floor( p ), f = fract( p ); float d1 = 8.0, d2 = 8.0;
+  for ( int y = -1; y <= 1; y++ ) for ( int x = -1; x <= 1; x++ ) {
+    vec2 o = vec2( float( x ), float( y ) ), h = fract( sin( vec2( dot( i + o, vec2( 127.1, 311.7 ) ), dot( i + o, vec2( 269.5, 183.3 ) ) ) ) * 43758.5453 );
+    h = 0.5 + 0.4 * sin( uTime * 0.9 + 6.2831 * h );
+    float d = length( o + h - f ); if ( d < d1 ) { d2 = d1; d1 = d; } else if ( d < d2 ) d2 = d;
+  }
+  return 1.0 - smoothstep( 0.0, 0.1, d2 - d1 );
+}
 vec3 biRock( vec3 p, vec3 n ) {
   if ( uLite > 0.5 ) return texture2D( uRock, p.xz * 0.11 + p.y * 0.07 ).rgb;
   vec3 w = pow( abs( n ), vec3( 4.0 ) ); w /= ( w.x + w.y + w.z );
@@ -118,6 +128,23 @@ const GLSL_MAP = `
   c = mix( c, dc, sp.b ); h = mix( h, d.b, sp.b );
   c = mix( c, rc, rk ); h = mix( h, r.b, rk );
   c = mix( c, c * vec3( 0.86, 0.95, 1.0 ), wet * 0.6 ); // under the shallows: a cool, damp tint
+  float depth = uSea - P.y;
+  if ( depth > 0.02 && uLite < 0.5 ) { // caustics, strongest a little under the surface, fading out in the deep
+    float k = smoothstep( 0.02, 0.35, depth ) * ( 1.0 - smoothstep( 1.2, 3.5, depth ) ) * ( 1.0 - rk );
+    vec2 cw = P.xz * 0.55 + ( mac.rg - 0.5 ) * 2.5 + vec2( sin( P.z * 0.7 + uTime * 0.6 ), cos( P.x * 0.6 + uTime * 0.5 ) ) * 0.35; // a wobble, so the cells aren't tiles
+    float ca = biCellEdge( cw + vec2( uTime * 0.08, uTime * 0.05 ) ) * 0.7 + biCellEdge( cw * 0.8 - vec2( uTime * 0.05, -uTime * 0.07 ) + 3.1 ) * 0.5;
+    c = mix( c, c * 0.82 + vec3( 0.08, 0.1, 0.1 ), k * 0.7 ); // the sand's grain softens under water
+    c += vec3( 0.7, 0.92, 1.0 ) * ca * k * 0.42;
+  }
+  { // the waterline: a band of foam that laps up the beach and back, broken up so it isn't a ruler line
+    float lap = sin( uTime * 0.9 + mac.r * 9.0 + P.x * 0.05 ) * 0.09 + sin( uTime * 1.7 + P.z * 0.09 ) * 0.04;
+    float d = P.y - ( uSea + lap );
+    float band = smoothstep( -0.16, -0.03, d ) * ( 1.0 - smoothstep( 0.0, 0.06, d ) );
+    float br = smoothstep( 0.35, 0.7, s.r * 0.6 + mac.g * 0.6 + 0.15 * sin( P.x * 1.3 + P.z * 1.1 + uTime * 2.0 ) );
+    float wetEdge = ( 1.0 - smoothstep( 0.06, 0.4, d ) ) * step( 0.0, d ); // a darker rim of just-wet sand above it
+    c *= 1.0 - 0.18 * wetEdge * ( 1.0 - rk );
+    c = mix( c, vec3( 1.0 ), band * br * ( 1.0 - rk * 0.6 ) * 0.9 );
+  }
   diffuseColor.rgb *= c;
   biH = h;
 }
@@ -125,6 +152,7 @@ const GLSL_MAP = `
 
 let cur = null; // the island's ground material while it's built (bilook.js flips Potato's lite mode on it)
 export const biGroundLite = (on) => { if (cur) cur.userData.biGround.U.uLite.value = on ? 1 : 0; };
+export const biGroundTime = (t) => { if (cur) cur.userData.biGround.U.uTime.value = t; };
 export function biGroundMaterial(T, opts = {}) {
   const tx = makeTextures(), splat = makeSplat(T), C = BI_GROUND, v3 = (a) => new THREE.Vector3(...a);
   const m = new THREE.MeshLambertMaterial({ color: 0xffffff, vertexColors: true });
@@ -133,7 +161,7 @@ export function biGroundMaterial(T, opts = {}) {
     uGrass: { value: tx.grass }, uSand: { value: tx.sand }, uRock: { value: tx.rock }, uDirt: { value: tx.dirt },
     cGrass: { value: v3(C.grass) }, cDry: { value: v3(C.grassDry) }, cJungle: { value: v3(C.jungle) }, cSand: { value: v3(C.sand) }, cWet: { value: v3(C.wet) },
     cRock: { value: v3(C.rock) }, cRockW: { value: v3(C.rockWarm) }, cRoad: { value: v3(C.road) },
-    uSea: { value: opts.sea ?? -0.25 }, uBump: { value: C.bump }, uSnap: jankUniforms.uSnap, uLite: { value: opts.lite ? 1 : 0 },
+    uSea: { value: opts.sea ?? -0.25 }, uBump: { value: C.bump }, uSnap: jankUniforms.uSnap, uLite: { value: opts.lite ? 1 : 0 }, uTime: { value: 0 },
   };
   m.onBeforeCompile = (sh) => {
     Object.assign(sh.uniforms, U);

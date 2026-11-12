@@ -16,6 +16,7 @@ export const LIQ = {
   water: W(0x0e5fd8, 0x3fd8ff, { a: [0.55, 0.9] }),
   poolwater: W(0x1296c8, 0x9cf6ff, { a: [0.32, 0.8], amp: 0.02, len: 2.4, foam: 0.7 }),
   sea: W(0x0a6cc8, 0x34f2d6, { a: [0.36, 0.95], amp: 0.34, len: 24, swell: 1, refl: 0.55, ocean: 1 }),
+  bisea: W(0x0a62c4, 0x3ff2dc, { a: [0.2, 0.94], amp: 0.34, len: 24, swell: 1, refl: 0.55, ocean: 1, caus: 0, foam: 1.3 }), // Battle Island: clearer shallows (the floor draws its own caustics, biground.js)
   seanorth: W(0x0a2c44, 0x2a7a84, { a: [0.72, 0.97], amp: 0.62, len: 32, swell: 1, foam: 1.2, spark: 0.8, refl: 0.6, caus: 0.4, ocean: 1 }),
   seawater: W(0x06142a, 0x1a4e6e, { a: [0.82, 0.98], amp: 0.22, len: 18, swell: 0.6, foam: 0.7, spark: 0.8, refl: 0.7, caus: 0.3 }),
   lakewater: W(0x02060e, 0x0d2638, { a: [0.78, 0.97], amp: 0.06, len: 7, foam: 0.4, spark: 1, refl: 0.8, caus: 0.25 }),
