@@ -433,6 +433,16 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, pit).d, n: 1, h: 1 }); await ring(250);
   const e2 = lastHurt(C, nsId);
   ok(e2 && e2.hs === 1 && Math.abs(e2.a - 16.5) <= 0.6, `the cockpit is the head here too: ${e2 && e2.a} (11 x 1.5)`);
+  // a headshot claimed while aiming at its legs: body damage
+  await ring(300); C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, [nsP[0], nsP[1] + 1, nsP[2]]).d, n: 1, h: 1 }); await ring(250);
+  ok((lastHurt(C, nsId) || {}).a === 11 && !(lastHurt(C, nsId) || {}).hs, `"headshot" aimed at its knees: ${(lastHurt(C, nsId) || {}).a} (body)`);
+  // swapping guns to dodge the fire rate: an AR hit, then a sniper hit right after
+  C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, body).d, n: 1, h: 0 }); C.place(cS, { w: 'sniper' }); await sleep(30);
+  C.send({ t: 'hit', mk: nsId, w: 'sniper', d: aim(cE, body).d, n: 1, h: 0 }); await ring(300, cS, { w: 'sniper' });
+  ok(hurts(C, nsId).length === 1, `AR hit then a sniper hit 30 ms later: ${hurts(C, nsId).length} counted (one clock per mech)`);
+  await ring(300);
   // attacks on it: through a wall, pointing the wrong way, too fast, a knife from 8 m, its own owner, garbage ids, a pilot's hands
   const hp0 = lastHurt(C, nsId) ? lastHurt(C, nsId).hp : 0;
   const inside = [-14, Y, -6]; // in the warehouse, the metal wall between it and the mech

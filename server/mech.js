@@ -266,11 +266,11 @@ export function installMech(Room, U) {
       if (!this.mechCanHit(mm, p)) return;
       const melee = w.kind === 'melee', hv = melee && m.heavy === 1 && w.heavy ? w.heavy : null;
       const rate = melee ? 0 : Math.max(this.rateOf(m.w, w, p.hp), w.fanHammer ? w.fanHammer.rate : 0) * (w.hands || 1);
-      const iv = melee ? (hv ? hv.cd : w.cd || 0.4) * 750 : 1000 / rate * 0.6, key = mm.id + ':' + m.w;
-      const T = p.mkT || (p.mkT = new Map());
-      if (n - (T.get(key) || 0) < iv) return;
-      if (T.size > 40) T.clear();
-      T.set(key, n);
+      const iv = melee ? (hv ? hv.cd : w.cd || 0.4) * 750 : 1000 / rate * 0.6;
+      const T = p.mkT || (p.mkT = new Map()); // one clock per mech, whatever you hold: swapping guns can't add rates up
+      if (n - (T.get(mm.id) || 0) < iv) return;
+      if (T.size > 8) for (const k of T.keys()) if (!this.mechMap().has(k)) T.delete(k);
+      T.set(mm.id, n);
       const e = [p.pos[0], p.pos[1] + PH.eye, p.pos[2]], slack = (melee ? 1.5 : 3) + Math.hypot(...p.vel) * 0.3; // (measured to its box, not its feet: less slack than a player gets)
       const reach = (melee ? (hv ? hv.range : w.range + (m.w === 'katana' ? (p.kat || 0) * (w.grow || 0) : 0)) : w.range || 200) + slack;
       const q = this.mechNear(mm, e), dq = Math.hypot(q[0] - e[0], q[1] - e[1], q[2] - e[2]);
@@ -292,7 +292,8 @@ export function installMech(Room, U) {
       else {
         const pellets = w.pellets || 1, F = MECH[mm.f], R = (w.spread || 0) * dq * 0.7; // most pellets that could land on a box this size at this distance
         const most = pellets <= 1 ? 1 : Math.max(1, Math.min(pellets, Math.ceil(pellets * Math.min(1, (2 * F.hw * F.h) / (Math.PI * R * R || 1)) * 1.35 + 2)));
-        const cnt = Math.max(1, Math.min(most, Math.floor(Number(m.n)) || 1)), hs = Math.max(0, Math.min(cnt, Math.floor(Number(m.h)) || 0));
+        const pit = { min: [mm.p[0] - F.hw - 0.6, mm.p[1] + F.c0 - 0.6, mm.p[2] - F.hw - 0.6], max: [mm.p[0] + F.hw + 0.6, mm.p[1] + F.c1 + 0.6, mm.p[2] + F.hw + 0.6] }; // the cockpit (+ lag slack)
+        const cnt = Math.max(1, Math.min(most, Math.floor(Number(m.n)) || 1)), hs = rayBox(e, d, pit, reach) ? Math.max(0, Math.min(cnt, Math.floor(Number(m.h)) || 0)) : 0; // (a headshot has to be aimed at the cockpit)
         dmg = (w.fanHammer && m.fan === 1 ? w.fanHammer.dmg : w.dmg) * (cnt - hs + hs * MECH.head);
         head = hs > 0;
       }
