@@ -19,6 +19,7 @@ import { rfx, rmesh } from './rigmodel.js';
 import { rigOn } from './rig.js';
 import { buildMech, freeMech, poseMech, mechBurst, buildCrane, GLB_ID, modelVer } from './mechmodel.js';
 import { mechsfx } from './mechsfx.js';
+import './mechlooksfx.js'; // (the hero clips' beats: their sounds)
 import { prefetch, whenLate } from './glbkit.js';
 
 export { mechBoxes };

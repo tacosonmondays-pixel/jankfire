@@ -4133,7 +4133,7 @@ function roomFor(mode, ws, cfg) {
   // mode lobbies (home menu ONLINE / WITH BOTS cards): an open lobby for that mode, or a new one. Online Quick Play is the 'ffa' room below
   const lk = cfg && typeof cfg === 'object' && typeof cfg.lobby === 'string' && has(LOBBY.kinds, cfg.lobby) ? cfg.lobby : null;
   if (lk === 'qp' && mode === 'bots') { // With Bots Quick Play: no lobby. drop into a running quick play bots room with a bot to replace, else a new one
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.lobby && !r.closed && r.botWant() > 0) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.priv && !r.lobby && !r.closed && r.botWant() > 0) return r;
     const r = new Room(`bots:qp:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
     r.qp = true; r.cfg.map = pick(mapsFor('dm', MAPS, MAP_ORDER)) || r.cfg.map;
     rooms.set(r.id, r);
@@ -4146,9 +4146,16 @@ function roomFor(mode, ws, cfg) {
     r.lobbyInit(lk, mode === 'ffa');
     return r;
   }
+  // the hub's PRIVATE match (public/js/hubmenu.js): a bots room of your own. nobody else's pick lands in it
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
+    const r = new Room(`bots:priv:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+    r.priv = true;
+    rooms.set(r.id, r);
+    return r;
+  }
   // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
   if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && !r.priv && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
   }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   // Online is playing zombies (or just voted for it) with a full squad of 4: you get a zombies lobby of your own instead (bots fill it)
