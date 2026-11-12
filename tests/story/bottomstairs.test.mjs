@@ -31,3 +31,19 @@ test('walk up every narrow stair onto the lane above, no jump', () => {
   assert.ok(walked >= 30, 'only found ' + walked + ' stairs');
   assert.deepEqual(stuck, [], stuck.join('\n'));
 });
+
+test("the bare stretches of the terraces' walls have slopes: walk up every one onto the lane above", async () => {
+  const { slopeSpans } = await import('../../shared/city/bottom.js');
+  const stuck = [];
+  let n = 0;
+  for (let k = 1; k < T.n; k++) for (const [a, b] of slopeSpans(k)) {
+    n++;
+    const x = (a + b) / 2, zw = zS(k), pos = [x, yOf(k - 1) + 0.05, zw + 12];
+    let ok = false;
+    for (let t = 0; t < 8 && !ok; t += 1 / 60) { movePlayer(pos, [0, -3, -4.5], 1 / 60, W.boxes, true); ok = pos[2] < zw - 2.5 && Math.abs(pos[1] - yOf(k)) < 0.3; }
+    if (!ok) stuck.push(`terrace ${k - 1} -> ${k} slope at x ${a.toFixed(1)}..${b.toFixed(1)}: stopped at ${pos.map((v) => v.toFixed(1))}`);
+  }
+  console.log('  slopes:', n);
+  assert.ok(n >= 12, 'only ' + n + ' slopes');
+  assert.deepEqual(stuck, [], stuck.join('\n'));
+});
