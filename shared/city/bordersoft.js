@@ -21,6 +21,31 @@ function blot(B, x, z, rx, rz, mat, tint, r, y) { // a flat lumpy patch lying on
   B.shape({ kind: 'lathe', c: [x, y, z], sc: [rx, 1, rz], prof: [[1.12, 0, 0.6], [1, 0.02], [0, 0.02]], wob, seg: 14, mat, tint, uvxz: 1, lod: false, pulse: mat === 'flesh' ? 2 : 0 });
 }
 
+// the cliff face itself (z -46, 4 m of flesh up to the Gut's floor): it was one flat red rectangle. now it bulges,
+// veins run down it, its lip is lumpy against the sky and fat and bone have slumped at its foot. render only: walking
+// is unchanged (the stairs at the avenues and the ramps between them are the way up, and the art keeps clear of both)
+const FACE = -46, AVE_X = [-286, -234, -182, -130, -44, 8, 60]; // (gut.js AVES and the gate: their bone stairs)
+export function cliffSkin(B) {
+  const X0 = Math.max(B.X0, SLICE.border.rect[0]), X1 = Math.min(B.X1, SLICE.border.rect[2]);
+  if (X1 <= X0 || !B.touches([X0, FACE - 3, X1, FACE + 3])) return;
+  const clear = (x, m) => !AVE_X.some((a) => Math.abs(x - a) < 3 + m) && !RAMPS.some(([a, b]) => x > a - m && x < b + m);
+  for (let x = Math.ceil(X0 / 2.5) * 2.5; x < X1; x += 2.5) {
+    const r = rng(hash2(Math.round(x * 4), 46, 0xc11f)), xx = x + (r() - 0.5) * 1.2;
+    if (!clear(xx, 1.2)) continue;
+    const arena = inGateArena(xx - 1, FACE - 1, xx + 1, FACE + 1);
+    // a bulge half sunk in the face, or a fat lump
+    const g = 0.9 + r() * 1.3;
+    B.shape({ kind: 'blob', c: [xx, Y + 0.8 + r() * 2.4, FACE + 0.05], r: [g * 1.3, g * (0.7 + r() * 0.4), 0.45 + r() * 0.5], seg: 8, mat: r() < 0.25 ? 'fat' : 'flesh', tint: pick(r, FLESH), pulse: 2, at: [xx, Y, FACE + 0.1] });
+    // a vein from the lip down to the foot, wandering
+    if (r() < 0.55) { const pts = [], vx = xx + (r() - 0.5) * 2; for (let k = 0; k <= 4; k++) { const t = k / 4; pts.push([vx + Math.sin(t * 5 + x) * 0.5, GY + 0.15 - t * (GY - Y - 0.1), FACE + 0.12 + Math.sin(t * 3.1) * 0.06]); } B.shape({ kind: 'tube', pts, r: 0.1 + r() * 0.1, seg: 5, mat: 'flesh', tint: 0x4c0a14, pulse: 3, step: 1, at: [vx, Y, FACE + 0.15] }); }
+    // the lip: a lumpy roll over the top edge (the straight line against the sky goes)
+    B.shape({ kind: 'blob', c: [x + (r() - 0.5) * 0.6, GY - 0.05, FACE - 0.35], r: [1.6 + r() * 0.8, 0.35 + r() * 0.25, 0.75], seg: 7, mat: 'flesh', tint: pick(r, FLESH), pulse: 2, at: [x, GY, FACE - 0.3] });
+    // what slumped off it: fat and bits of bone at the foot (not in the gate arena: its acid gutters run there)
+    if (!arena && r() < 0.6) { const s = 0.4 + r() * 0.6; B.shape({ kind: 'blob', c: [xx + (r() - 0.5) * 1.5, Y + s * 0.3, FACE + 0.5 + r() * 0.7], r: [s * 1.4, s, s * 1.1], seg: 6, mat: r() < 0.5 ? 'fat' : 'flesh', tint: r() < 0.5 ? 0xa8804a : pick(r, FLESH), at: [xx, Y, FACE + 0.6] }); }
+    if (!arena && r() < 0.3) B.obb(xx + (r() - 0.5) * 2, Y + 0.12, FACE + 0.6 + r() * 0.8, 0.9 + r() * 0.6, 0.18, 0.22, r() * 3.14, 'bone', { tint: 0xe8dcc0 });
+  }
+}
+
 export function borderSoft(B) {
   const [rx0, rz0, rx1, rz1] = SLICE.border.rect, X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
@@ -38,6 +63,7 @@ export function borderSoft(B) {
     if (r() < 0.25 || inGateArena(x - 4, LINE - 4, x + 4, LINE + 4) || (x > BEV.rect[0] - 6 && x < BEV.rect[2] + 6 && LINE > BEV.rect[1] - 6 && LINE < BEV.rect[3] + 6)) continue;
     blot(B, x + (r() - 0.5) * 4, LINE + (r() - 0.3) * 3, 3 + r() * 2.5, 2 + r() * 2.5, 'flesh', pick(r, FLESH), r, Y + 0.022);
   }
+  cliffSkin(B);
   // the ramps up the cliff
   for (const [xa, xb] of RAMPS) {
     if (!B.touches([xa, RZ[0], xb, RZ[1]])) continue;

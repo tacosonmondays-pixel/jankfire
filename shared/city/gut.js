@@ -312,6 +312,7 @@ export function gut(B, d) {
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the
 // top of the Long Stairs; a 3 m tissue cliff along z = -48 with steps up into the Gut at the avenues and the gate
 export function border(B, d) {
+  lipStairs(B); // (first: the flights stand on the Bottom's side of the lip, in the chunk row the clip below skips)
   const [rx0, rz0, rx1, rz1] = d.rect, y = SLICE.border.y;
   const X0 = Math.max(B.X0, rx0), X1 = Math.min(B.X1, rx1), Z0 = Math.max(B.Z0, rz0), Z1 = Math.min(B.Z1, rz1);
   if (X1 <= X0 || Z1 <= Z0) return;
@@ -320,12 +321,11 @@ export function border(B, d) {
   if (Z0 <= -48 + 0.1 && Z1 > -48) { // (the chunk holds the cliff line)
     B.add(X0, y, -48, X1, SLICE.gut.y, -46, 'flesh', { tint: 0x7a121c });
   }
-  if (B.touches([X0, -50, X1, -40])) for (const a of [-44, ...AVES]) if (a > X0 - 4 && a < X1 + 4) stairsZ(B, a - 3, a + 3, -48 + flightLen(SLICE.gut.y - y), -1, y, SLICE.gut.y, 'bone', { tint: 0xc4b288 });
+  if (B.touches([X0, -50, X1, -38])) for (const a of [-44, ...AVES]) if (a > X0 - 4 && a < X1 + 4) stairsZ(B, a - 3, a + 3, CLIFF_FACE + flightLen(SLICE.gut.y - y), -1, y, SLICE.gut.y, 'bone', { tint: 0xc4b288 }); // (from the cliff's face: they used to start 2 m deeper and run into it, a step short of the top)
   // the south lip (down to the Bottom's top terrace): a retaining wall with stairs every ~60 m (the Long Stairs has its own)
   if (Z1 >= 0 && Z0 < 0) {
     const top8 = (SLICE.bottom.n - 1) * SLICE.bottom.rise;
     retaining(B, X0, X1, 0, top8, y, rng(hash2(B.out.cx, 0, 0x11)));
-    for (let sx = -290; sx < 90; sx += 58) if (sx > X0 - 2 && sx < X1 + 2 && Math.abs(sx + 44) > 10 && Math.abs(sx + 112) > 8) stairsZ(B, sx - 1.2, sx + 1.2, flightLen(y - top8), -1, top8, y, 'concrete');
   }
   // houses along two rows, eaten more the further north they are
   const G = SLICE.gate, r0 = rng(hash2(B.out.cx, B.out.cz, 0xb0d));
@@ -361,6 +361,19 @@ export function border(B, d) {
   gateArena(B); // THE GUT BORDER GATE (arenas.js)
   act1Border(B); // act I: Bev's clinic (act1set.js)
   borderSoft(B); // the flesh creeping over the dirt, ramps up the cliff (bordersoft.js)
+}
+
+// the south lip's stairs, from the Bottom's top terrace up the retaining wall to the border (every ~58 m; the Long
+// Stairs and the escalator have their own). they stand at z 0..5.5, the Bottom's chunk row: border() used to build
+// them only in its own chunks, where they were clipped away to nothing, so the lip was a bare 4 m wall
+const CLIFF_FACE = -46; // the border's flesh cliff up into the Gut is z -48..-46: its stairs and ramps start at its face
+function lipStairs(B) {
+  const y = SLICE.border.y, top8 = (SLICE.bottom.n - 1) * SLICE.bottom.rise, L = flightLen(y - top8);
+  for (let sx = -290; sx < 90; sx += 58) {
+    if (Math.abs(sx + 44) <= 10 || Math.abs(sx + 112) <= 8 || !B.touches([sx - 1.6, 0, sx + 1.6, L + 1])) continue;
+    stairsZ(B, sx - 1.2, sx + 1.2, L, -1, top8, y, 'concrete', { tint: 0xd8c8c0 });
+    for (const s of [-1, 1]) B.shape({ kind: 'tube', pts: [[sx + s * 1.3, top8 + 1.1, L + 0.2], [sx + s * 1.3, y + 1.0, -0.1]], r: 0.05, seg: 5, mat: 'metal', tint: 0xffe14d, at: [sx + s * 1.3, top8, L * 0.5] }); // a pipe rail each side (the Bottom's yellow)
+  }
 }
 
 // the slice's edges: nobody walks off the world. west: a wall of stacked containers; south: a rubble berm; north:

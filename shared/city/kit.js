@@ -8,14 +8,18 @@ export const pick = (r, a) => a[(r() * a.length) | 0];
 // how far a flight runs for a rise of dy (stairsZ / stairsX steps: <= 0.4 m up, 0.55 m deep)
 export const flightLen = (dy) => Math.max(1, Math.ceil(Math.abs(dy) / 0.4)) * 0.55;
 
+// every flight as it's built, for the stairs sweep (tests/story/stairs.test.mjs): STAIRS.log = (flight) => ...; null in game
+export const STAIRS = { log: null };
 // a flight of steps along z (dir +1 / -1) or x: from (x0..x1) at a0, rising ya -> yb. returns where it ends
 export function stairsZ(B, x0, x1, a0, dir, ya, yb, mat = 'concrete', o) {
   const n = Math.max(1, Math.ceil(Math.abs(yb - ya) / 0.4)), h = (yb - ya) / n, run = 0.55;
+  if (STAIRS.log) STAIRS.log({ axis: 'z', w0: x0, w1: x1, a0, dir, ya, yb, end: a0 + dir * n * run, chunk: B.out ? [B.out.cx, B.out.cz] : null });
   for (let i = 1; i <= n; i++) { const za = a0 + dir * (i - 1) * run, zb = a0 + dir * i * run; B.add(x0, Math.min(ya, yb) - 0.2, za, x1, ya + i * h, zb, mat, o); }
   return a0 + dir * n * run;
 }
 export function stairsX(B, z0, z1, a0, dir, ya, yb, mat = 'concrete', o) {
   const n = Math.max(1, Math.ceil(Math.abs(yb - ya) / 0.4)), h = (yb - ya) / n, run = 0.55;
+  if (STAIRS.log) STAIRS.log({ axis: 'x', w0: z0, w1: z1, a0, dir, ya, yb, end: a0 + dir * n * run, chunk: B.out ? [B.out.cx, B.out.cz] : null });
   for (let i = 1; i <= n; i++) { const xa = a0 + dir * (i - 1) * run, xb = a0 + dir * i * run; B.add(xa, Math.min(ya, yb) - 0.2, z0, xb, ya + i * h, z1, mat, o); }
   return a0 + dir * n * run;
 }
