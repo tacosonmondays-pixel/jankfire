@@ -550,6 +550,30 @@ def weather(n=64):
     return img, (a > 0.5).astype(np.float32)
 
 
+def timber(n=64):
+    """heavy sawn timber (tinted): grain running along v (the member's length), wavy and uneven, a few checks (dark
+    splits along the grain), two knots, weathered patches. light greys so a tower can be creosote brown or silver.
+    its own rng: adding it left every other texture as it was"""
+    rg = np.random.default_rng(5150)
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    wob = vnoise(n, 4, seed=51) * 1.6 + vnoise(n, 8, seed=52) * 0.4  # (tileable in both)
+    rings = np.sin((xx / n * 9 + wob) * math.tau)  # 9 grain lines across a tile, wandering along it
+    g = 0.68 + 0.12 * rings + (vnoise(n, 32, seed=53) - 0.5) * 0.10
+    g += np.repeat(rg.random(n // 4) * 0.08 - 0.04, 4)[None, :]  # (darker and lighter fibres)
+    for _ in range(4):  # checks: thin dark splits along the grain, wrapped
+        x, y0, L = int(rg.integers(n)), int(rg.integers(n)), int(n * (0.25 + rg.random() * 0.5))
+        for j in range(L):
+            yj = (y0 + j) % n; xj = (x + (1 if j > L // 2 and x % 3 == 0 else 0)) % n
+            g[yj, xj] = min(g[yj, xj], 0.18 + 0.2 * abs(j - L / 2) / L)
+    for _ in range(2):  # knots: a dark eye with a lighter ring round it
+        cx, cy, r = rg.random() * n, rg.random() * n, 2.0 + rg.random() * 1.5
+        dx = np.minimum(abs(xx - cx), n - abs(xx - cx)); dy = np.minimum(abs(yy - cy), n - abs(yy - cy)) / 1.8
+        d = np.hypot(dx, dy)
+        g = np.where(d < r, 0.22 + d / r * 0.2, np.where(d < r * 1.8, g + 0.08, g))
+    g -= np.clip(fbm(n, 2, 3, seed=54) - 0.55, 0, 1) * 0.5  # weathering
+    return ramp(np.clip(g, 0, 1), [(0, '#2c2620'), (0.45, '#857a6c'), (0.75, '#c4baa8'), (1, '#efe8da')])
+
+
 def main():
     os.makedirs(OUT, exist_ok=True)
     sheet_path = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None
@@ -578,6 +602,7 @@ def main():
     KIT['decals']['cells'] = cells
     out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
     wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    out['timber'] = save('timber', timber(), 1.5, note='tint')  # (the fire lookout's posts and braces: grain along v)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
         tiles = []

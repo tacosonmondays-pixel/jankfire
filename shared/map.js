@@ -4922,7 +4922,7 @@ function forest() {
   }
 
   // ---- the fire lookout tower: four legs, five flights of switchback stairs inside them, a glassless cab up top
-  { const L = B.local(TWR[0], TWR[1], 0), R = 2.64, top = 5 * R;
+  { const L = B.arch('lookout', TWR[0], TWR[1], 0, 0, { drape: true }), R = 2.64, top = 5 * R; // (drawn as a Blender timber lookout, look only: tools/blender/arch/make_lookout.py. drape: it rides the forest floor on its own pad as it always did)
     for (const sx of [-3.1, 3.1]) for (const sz of [-3.1, 3.1]) L.B(sx, top / 2, sz, 0.34, top, 0.34, 'towerwood');
     for (let k = 1; k <= 4; k++) for (const s of [-3.1, 3.1]) { L(-2.93, k * R - 0.3, s - 0.08, 2.93, k * R - 0.16, s + 0.08, 'towerwood'); L(s - 0.08, k * R - 0.6, -2.93, s + 0.08, k * R - 0.46, 2.93, 'towerwood'); } // girts, above head height
     const A = [-2.9, -1.5], Bl = [-1.45, -0.05];
@@ -4937,7 +4937,7 @@ function forest() {
     wall(L, 'z', -3.3, -3.22, 3.22, cy, cy + 2.5, 0.16, 'towerwood', wins(6.44)); wall(L, 'z', 3.3, -3.22, 3.22, cy, cy + 2.5, 0.16, 'towerwood', wins(6.44));
     L(-3.7, cy + 2.5, -3.7, 3.7, cy + 2.7, 3.7, 'cabinroof'); L(-2.6, cy + 2.7, -2.6, 2.6, cy + 3.1, 2.6, 'cabinroof2'); L(-1.3, cy + 3.1, -1.3, 1.3, cy + 3.5, 1.3, 'cabinroof');
     L(1.0, cy, -0.6, 2.4, cy + 0.9, 0.6, 'planks'); L(1.2, cy + 0.9, -0.4, 2.2, cy + 0.95, 0.4, 'mapsheet'); // the fire finder table, with a map on it
-    B.box(TWR[0] + 0.0, cy + 3.9, TWR[1], 0.1, 0.8, 0.1, 'metal');
+    L.B(0, cy + 3.9, 0, 0.1, 0.8, 0.1, 'metal'); // the lightning rod
     adSign(B, TWR[0] - 4.6, TWR[1] + 4.2, 'signtower');
   }
 
@@ -5011,6 +5011,7 @@ function forest() {
   // the forest floor heaves: rises, hollows, root mounds (shared/terrain.js). the two sites, the cabin, the trails' ends and the lake shore stay level
   shapeGround(B, D, { region: [FOREST.bounds[0], FOREST.bounds[1], FOREST.shore, FOREST.bounds[3]], mat: 'needles', seed: 6161, up: 1.6, down: 1.0, big: 9,
     flat: sites.map((q) => [q.min[0] - 2, q.min[2] - 2, q.max[0] + 2, q.max[2] + 2]), points: [...new Set([...spawns, ...att, ...def])] });
+  { const a = B.boxes.arch.find((q) => q.id === 'lookout'), leg = B.boxes.find((b) => b.av === 'lookout'); a.p[1] = leg.min[1]; } // (the lookout's model goes up or down with its pad: its first box is a leg that stood on y 0)
   let graph = null, nav = null;
   const N = 210, gx0 = -105, gz0 = -105;
   const navGraph = () => graph || (graph = buildNav(B.boxes, { x0: gx0, z0: gz0, n: N, cell: 1, levels: [0], band: 0.5, keep: (x, z) => x > bx0 && x < bx1 && z > bz0 && z < bz1 }));

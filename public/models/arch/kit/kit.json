@@ -362,5 +362,11 @@
   "px": 64,
   "alpha": true,
   "note": ""
+ },
+ "timber": {
+  "tile": 1.5,
+  "px": 64,
+  "alpha": false,
+  "note": "tint"
  }
 }
