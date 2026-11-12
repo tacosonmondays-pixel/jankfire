@@ -7,6 +7,7 @@ import { FLAGS } from '../shared/weapons.js';
 import { zoneAt, ZONE } from '../shared/royale.js';
 import { raycast } from '../shared/physics.js';
 import { ISLE, ST } from '../shared/island.js';
+import { islePlan, islePartySquad } from './isleparty.js';
 
 const now = () => Date.now();
 const r2 = (x) => Math.round(x * 100) / 100;
@@ -48,7 +49,8 @@ export function installIsland(Room, H) {
         B.isle = { sqOut: new Map(), peak: 0, t: now(), stT: 0, log: [] };
         const list = this.fighters().filter((o) => !o.goblin).sort((a, b) => (a.isBot - b.isBot) || a.id - b.id);
         const size = list.length <= ISLE.size ? Math.max(1, Math.ceil(list.length / 2)) : ISLE.size; // (too few for two squads: split them, or nobody could win)
-        list.forEach((o, i) => { o.sq = Math.floor(i / size) + 1; o.dn = null; o.irv = null; }); // (more than squads x size: extra squads, never a 4th in one)
+        const plan = islePlan(list, size); // (parties land together: server/isleparty.js)
+        list.forEach((o) => { o.sq = plan.get(o); o.dn = null; o.irv = null; }); // (more than squads x size: extra squads, never a 4th in one)
       }
       p.br.mailed = true; // no RETURN TO SENDER here: your squad picks you up instead
       p.cam = !!CAM && !p.isBot && p.name === CAM;
@@ -62,6 +64,7 @@ export function installIsland(Room, H) {
       for (const o of this.fighters()) if (o !== p && o.sq && this.isleIn(o)) { c.set(o.sq, (c.get(o.sq) || 0) + 1); if (o.alive && !o.br.out) live.add(o.sq); }
       const fresh = () => { for (let s = 1; ; s++) if (!c.has(s) && !I.sqOut.has(s)) return s; };
       if (live.size < 2) return fresh();
+      const ps = islePartySquad(this, p, ISLE.size); if (ps) return ps > 0 ? ps : fresh(); // a party lands together (server/isleparty.js)
       let best = 0, bn = -1;
       for (const [s, n] of c) if (live.has(s) && !I.sqOut.has(s) && n < ISLE.size && n > bn) { bn = n; best = s; }
       return best || fresh();

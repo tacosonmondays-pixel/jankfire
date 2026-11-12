@@ -27,8 +27,8 @@ export const HUB = {
   bomb: { name: 'PLANT & DEFUSE', art: 'bomb', desc: '5v5. plant it, defuse it, buy guns between rounds', lobby: 'bomb', games: ['bomb'] },
   br: { name: 'JANK ROYALE', art: 'br', desc: 'blimp, umbrella, loot, shrinking zone. last one standing', lobby: 'br', games: ['br'] },
   zm: { name: 'ZOMBIES', art: 'zm', desc: 'you and your friends vs endless rounds. buy doors', lobby: 'zm', games: ['zm'] },
-  isle: { name: 'BATTLE ISLAND', art: 'br', desc: 'squads of 3, mech heroes. go down, get picked up', lobby: null, games: ['island'], tag: 'MECHS' },
-  training: { name: 'TRAINING', art: 'gun', desc: 'dummies and infinite ammo. nobody is judging', train: 1 },
+  isle: { name: 'BATTLE ISLAND', art: 'isle', desc: 'squads of 3, mech heroes. go down, get picked up', lobby: null, games: ['island'], tag: 'MECHS' },
+  training: { name: 'TRAINING', art: 'train', desc: 'dummies and infinite ammo. nobody is judging', train: 1 },
 };
 const ORDER = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
 const COL = { qp: '#ff4f6a', bomb: '#ffb04f', br: '#4fd8ff', zm: '#39ff14', isle: '#ff4fd8', training: '#ffe14d' };
