@@ -12,7 +12,7 @@ built into the loop.
 
 1. **Lobby.** Squads of 3, up to 6 squads (18 players), with bots filling the gaps. Each player picks one of the 14 mech
    heroes (ROSTER.md). A squad can't double-pick a hero, so you get team comps.
-2. **Drop.** The blimp crosses the island, you jump, and the umbrella opens (all of this is Jank Royale's).
+2. **Drop.** The blimp crosses the island (about 200 m up, a random line), you jump, and the umbrella opens (all of this is Jank Royale's).
 3. **On foot.** You're the pilot with a sidearm, loot guns, armour, Jank Cola and **energy cells**. You're weak on purpose:
    pilots hide and run.
 4. **Mech meter.** It fills from time (about 90 s from empty on its own), energy cells (+20% each), damage you deal and
@@ -38,15 +38,28 @@ Bots pick a hero that fills a gap in their squad's roles, loot and pick up cells
 is full and they're near a fight, and use each hero's kit through a small per-hero plan (like mechBotStep). Squad bots
 stick within about 25 m of a human teammate and revive them.
 
-## The island (the map session builds it)
-- An actual island: a beach ring, cliffs on one side, a central hill and a lagoon, about 600 x 600 m playable, ocean all
-  round. Falling in the sea is the void (an "into the sea" kill line).
-- Blender props from day one (owner). Collision stays boxes; visuals are glb.
-- About 8 named POIs (silly-literal: e.g. Gift Shop Docks, Abandoned Waterpark, Lighthouse, Car Ferry, Crab Shack, Radio
-  Hill, Mini Golf, Resort Hotel). Each has 25-40 loot spots and 3-6 energy-cell spots, about 300 loot spots in all.
-- Mech-scale spaces: wide roads and open fields between POIs (mechs are 5-7 m tall), with indoor spaces pilots can hide in.
-- Drop markers: every POI has a flat landing area at least 12 m across.
-- I'll agree exact sizes, POI list and loot counts with the map session.
+## The island (the map session builds it, agreed with it)
+- **Size and shape:** about 560 x 460 m of land, with sea out to about 800 m and a few small islets. The coastline has a
+  harbour bay (south), a lagoon behind a reef (east), cliffs (north-west), a central ridge 45-60 m high with the radio
+  tower, a river down to the lagoon, beaches and dunes.
+- **Blender props from day one.** Collision stays boxes.
+- **9 POIs:** Port Jankton (harbour town, biggest), The All-Inclusive (resort), Dead Air (radio tower, landmark), Return to
+  Sender (wrecked cargo ship), Scrap Mart (mech hangar and scrapyard), Ancient Temple (Probably), Wrong Way Point
+  (lighthouse), Moo-Tel Farm, The Big Hole (quarry). Plus a 12 m ring road and cross roads.
+- **Mech scale:** streets 14 m or wider, bridges 10 m, big doorways 7 x 6 m, a mech-walkable route through most POIs.
+  Small buildings stay pilot-sized, as cover for people on foot.
+- **Loot:** about 400 spots (30-60 per POI plus scatter), 3-6 energy-cell spots per POI, grapple points on everything tall.
+- **What the mode needs placed:**
+  - Each POI gets an id, a centre and a radius (for the HUD, callouts and bots).
+  - Each POI needs at least one open-sky flat area 12 m across or more, because mechs drop from the sky.
+  - Energy-cell spots tagged apart from loot.
+  - No vehicles, parked mechs or supply drops in v1.
+- **Water:**
+  - Reef flats and shallows (up to about 1.5 m deep) are walkable for pilots and mechs, at 60% speed.
+  - Deep water is the sea kill ("into the sea"), like the void.
+- **Zone:** 5 rings over about 12 minutes. It never ends in the sea. The final ring is at least 40 m across, on land flat
+  enough for mechs, and leans toward the middle (Dead Air / Scrap Mart).
+- **No district rule-bends in v1.** We keep it readable; a POI gimmick or two can come later.
 
 ## Server and safety
 - **New code:** squads, the mech meter, picking a hero, and revives.
