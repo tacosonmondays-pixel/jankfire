@@ -521,8 +521,7 @@ function crate() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(8 * sx, 1, 8 * sz, 2, 2, 2, 'crate'); box(8 * sx + 1.6 * sx, 0.5, 8 * sz, 1.2, 1, 1.2, sx * sz > 0 ? 'toyred' : 'toyblue'); }
   box(0, 1, 10, 5, 2, 1, 'crate');
   box(0, 1, -10, 5, 2, 1, 'crate');
-  box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 });
-  box(0, 3.25, 0, 7, 0.5, 7, 'toyteal');
+  propOf('toysorter', [0, 0, 0], 0, () => { box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 }); box(0, 3.25, 0, 7, 0.5, 7, 'toyteal'); }); // the middle: a shape sorter (Blender: p_toysorter)
   box(-5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [4, 14, 0] });
   box(5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [-4, 14, 0] });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(12 * sx, 15, 12 * sz, 2.5, 1, 2.5, 'toypink');
@@ -530,7 +529,7 @@ function crate() {
   // it's a toy box on top of a tower of giant toy blocks, in a giant kid's playroom (render-only). fall off: you die long
   // before the carpet
   const D = builder(), F = -90; // the floor
-  D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 });
+  propOf('toytower', [0, 0, 0], 0, () => { D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 }); }); // (Blender: p_toytower, giant wooden ABC blocks)
   // (the middle block is turned a little and no wider than the crate: a fall off any edge never passes through it)
   D.add(-420, F - 2, -420, 420, F, 420, 'rubber');
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
