@@ -132,7 +132,7 @@ export function compare(a, b) {
 export function nameOf(it) {
   if (!it) return '';
   if (it.lg && has(LEGENDARIES, it.lg)) return LEGENDARIES[it.lg].name;
-  const base = WEAPONS[it.b] ? WEAPONS[it.b].name : it.b;
+  const base = it.n || (WEAPONS[it.b] ? WEAPONS[it.b].name : it.b); // (n: a named story weapon, LOST PROPERTY)
   const mods = (it.m || []).filter((m) => has(MODIFIERS, m)).map((m) => MODIFIERS[m].name);
   return [...mods, base].join(' ');
 }
