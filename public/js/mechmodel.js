@@ -9,7 +9,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
-import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, glbLoader } from './glbkit.js';
+import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, glbLoader, metaOf } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
 
@@ -313,7 +313,12 @@ export function buildMech(frame, color, opts = {}) {
   }
   const inst = { v: modelVer, frame, root, j, att, own, flames, flameMat, coreMat, trail, glb: !!glb, mixer: null, clip: 'idle', sp: {}, phase: 0, t: Math.random() * 10,
     jank: { tilt: (Math.random() - 0.5) * 0.1, knee: Math.random() < 0.5 ? 'L' : 'R' }, hatchOpen: 0 };
-  if (glb && glb.animations && glb.animations.length) inst.mixer = new THREE.AnimationMixer(glb);
+  if (glb && glb.animations && glb.animations.length) { // the rig's clips (MECHS.md), their play rules from its jf meta
+    inst.mixer = new THREE.AnimationMixer(glb);
+    inst.clips = Object.fromEntries(glb.animations.map((c) => [c.name, c]));
+    const meta = metaOf(glb) || {}, list = Array.isArray(meta.clips) ? meta.clips : Object.entries(meta.clips || {}).map(([name, v]) => ({ name, ...v }));
+    inst.clipMeta = Object.fromEntries(list.filter((c) => c && typeof c.name === 'string').map((c) => [c.name, { hold: /hold/.test(String(c.hold ?? c.play ?? '')) || c.hold === true, loop: c.loop }]));
+  }
   root.userData.mech = inst;
   return inst;
 }
@@ -347,7 +352,7 @@ const SWING = [
 ];
 // which clip this moment is (MECHS.md names): a hero model with clips plays it, the stand-in poses it below
 function clipOf(inst, s) {
-  if (s.empty) return 'idle';
+  if (s.empty) return 'drop_in'; // (it ends in a held low hero pose: an empty mech waits like that)
   if (inst.frame === 'paperplane') {
     if (s.jet) return 'jet_fly';
     if (s.dash) return 'lunge';
@@ -367,10 +372,18 @@ export function poseMech(inst, s, dt) {
   const j = inst.j, pp = inst.frame === 'paperplane', T = inst.t += dt, F = MECH[inst.frame];
   const clip = clipOf(inst, s);
   if (inst.mixer) { // a hero model with its own clips: play the one that fits (crossfade), skip the code pose
-    const a = inst.glbClips || (inst.glbClips = {});
-    if (clip !== inst.clip) {
-      const anims = inst.root.children.find((c) => c.animations && c.animations.length) || {}, c = (anims.animations || []).find((x) => x.name === clip);
-      if (c) { const act = a[clip] || (a[clip] = inst.mixer.clipAction(c)); act.reset().fadeIn(0.15).play(); if (a[inst.clip]) a[inst.clip].fadeOut(0.15); }
+    const again = clip === inst.clip && clip.startsWith('sword_combo') && s.swingT < (inst.lastSwing ?? 9); // (the same swing again: from the top)
+    inst.lastSwing = s.swingT;
+    if (clip !== inst.clip || again) {
+      const c = inst.clips[clip];
+      if (c) {
+        const act = inst.mixer.clipAction(c), m = inst.clipMeta[clip] || {};
+        act.reset();
+        if (m.hold || m.loop === false) { act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; } // "hold last frame" / "once"
+        act.fadeIn(0.12).play();
+        if (inst.act && inst.act !== act) inst.act.fadeOut(0.12);
+        inst.act = act;
+      }
     }
     inst.clip = clip; inst.mixer.update(dt);
     effects(inst, s, T);
@@ -443,6 +456,7 @@ export function poseMech(inst, s, dt) {
 }
 // what both the code poses and a hero model's clips show: the hatch, flames, muzzle flashes, the sword's arc
 function effects(inst, s, T, dt = 0) {
+  if (inst.mixer && inst.j.beacon) inst.j.beacon.rotation.y = T * 6; // (the rig leaves the beacon's spin to code)
   inst.hatchOpen = spr(inst, 'hatch', s.empty ? 1 : 0, 40, dt || 0.016);
   if (inst.j.hatch) inst.j.hatch.rotation.x = inst.frame === 'paperplane' ? -inst.hatchOpen * 0.9 : inst.hatchOpen * 1.2; // the nose lifts / the breastplate drops
   inst.own.hatch.color.setHex(s.empty ? (Math.sin(T * 6) > 0 ? 0xffe14d : 0xff4fd8) : 0x2a2f45);
