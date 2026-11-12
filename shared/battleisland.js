@@ -61,7 +61,7 @@ export const PLAN = {
   pois: [
     { id: 'port', name: 'Port Jankton', c: [28, 118], rect: [-44, 84, 104, 170], y: 1.6, flat: 58, r: 66, drop: [[0, -28, 9], [-30, -6, 7]], cells: 6, color: '#4fd8ff', lab: [0, 36], loot: 0.18, blurb: 'the harbour town: docks, warehouses, a main street. the biggest drop' },
     { id: 'resort', name: 'The All-Inclusive', c: [180, 110], rect: [150, 78, 214, 150], y: 1.2, flat: 34, r: 40, drop: [[18, 26, 8]], cells: 4, color: '#ff4fd8', lab: [20, -40], loot: 0.12, blurb: 'a beach resort on the lagoon. wristbands not checked' },
-    { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 20, r: 30, drop: [[-10, 8, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
+    { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 26, r: 30, drop: [[-14, 12, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
     { id: 'wreck', name: 'Return to Sender', c: [240, -154], rect: [204, -194, 276, -116], y: 0.9, flat: 0, r: 44, drop: [[-24, 10, 7]], cells: 4, color: '#ff9a3a', loot: 0.12, blurb: 'a cargo ship on the reef, its containers all up the beach' },
     { id: 'hangar', name: 'Scrap Mart', c: [-110, 30], rect: [-150, -6, -66, 72], y: 3.2, flat: 50, r: 48, drop: [[0, 24, 10], [-30, -24, 7]], cells: 6, color: '#39ff14', lab: [0, 22], loot: 0.14, blurb: 'the mech hangar and scrapyard. some assembly required' },
     { id: 'temple', name: 'Ancient Temple (Probably)', c: [70, -6], rect: [40, -34, 104, 22], y: 4.5, flat: 26, r: 36, drop: [[12, -12, 8]], cells: 4, color: '#7dff4f', lab: [10, 0], loot: 0.1, blurb: 'a jungle temple up the river. the gift shop is newer' },
@@ -173,6 +173,23 @@ const jungle = (x, z) => segDist(x, z, PLAN.river.pts) < 46 || Math.hypot(x - 70
 const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
 const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r]) => Math.hypot(x - p.c[0] - dx, z - p.c[1] - dz) < r + m));
 
+// DEAD AIR (the summit): the island's landmark, a 70 m guyed lattice radio mast (tools/blender/make_deadair.py,
+// p_deadair: one Blender model over all of these boxes). the mast is a column you grapple, its work platform at 50 m
+// you can stand on, the transmitter shack is locked (solid: loot on its roof), the guy wires' three anchor blocks are
+// cover. built at y 0 round the mast's foot: the shaped ground lifts it onto the summit. DA = the numbers the model is
+// built to (the Blender script reads the same table)
+export const DA = { plinth: 2, top: 70, deck: 50, deckW: 2.2, anchors: [80, 200, 320], anchorR: 18, anchorW: 0.9, anchorH: 0.9,
+  shack: [-5.7, -12.4, 2.3, -7.4], shackH: 3.6 };
+function deadAir(B, cx, cz) {
+  propOf('deadair', [cx, 0, cz], 0, () => {
+    B.add(cx - DA.plinth, 0, cz - DA.plinth, cx + DA.plinth, 0.8, cz + DA.plinth, 'concrete'); // the foundation
+    B.box(cx, 0.8 + (DA.top - 0.8) / 2, cz, 1.8, DA.top - 0.8, 1.8, 'metal'); // the mast (grapple it)
+    B.add(cx - DA.deckW, DA.deck, cz - DA.deckW, cx + DA.deckW, DA.deck + 0.25, cz + DA.deckW, 'grid'); // the work platform
+    for (const a of DA.anchors) { const x = cx + Math.cos(a * Math.PI / 180) * DA.anchorR, z = cz + Math.sin(a * Math.PI / 180) * DA.anchorR; B.add(x - DA.anchorW, 0, z - DA.anchorW, x + DA.anchorW, DA.anchorH, z + DA.anchorW, 'concrete'); }
+    const [x0, z0, x1, z1] = DA.shack; B.add(cx + x0, 0, cz + z0, cx + x1, DA.shackH, cz + z1, 'metal'); // the transmitter shack (locked)
+  });
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = GRID;
@@ -194,6 +211,8 @@ function battleIsland() {
     if (r() < 0.55) propOf('fern', [x, 0, z], 0, () => { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); }, { spin: a || 1e-6 });
     else propOf('bush', [x, 0, z], 0, () => { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); }, { spin: a || 1e-6 });
   }
+  // ---- the POIs' landmarks (each one Blender model over its own boxes)
+  deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'sea');
   horizon(D, -900, -900, 900, 900, 2600, 'sea', SEA);
@@ -205,7 +224,7 @@ function battleIsland() {
     let n = 0;
     for (let t = 0; t < 400 && n < p.cells; t++) { // cells: inside the POI, on open level-ish ground, apart
       const a = cr() * Math.PI * 2, d = p.r * (0.2 + cr() * 0.75), x = p.c[0] + Math.cos(a) * d, z = p.c[1] + Math.sin(a) * d;
-      if (G.at(x, z) < SEA + 0.4 || G.slope(x, z) > 0.3 || cells.some((c) => Math.hypot(c[0] - x, c[2] - z) < 10)) continue;
+      if (G.at(x, z) < SEA + 0.4 || G.slope(x, z) > 0.3 || cells.some((c) => Math.hypot(c[0] - x, c[2] - z) < 10) || B.boxes.some((q) => q.max[1] > 0.05 && x > q.min[0] - 1.5 && x < q.max[0] + 1.5 && z > q.min[2] - 1.5 && z < q.max[2] + 1.5)) continue; // (in the open, not in a building)
       cells.push([x, 0, z]); n++;
     }
     spawns.push([p.c[0], 0.2, p.c[1]]);
@@ -229,7 +248,7 @@ function battleIsland() {
     sky: { top: 0x1f7fe0, mid: 0xbfeaff, bot: 0x0b4a7a, fog: 0xc6ecf6 }, fogNear: 180, fogFar: 980,
     spawns, plan: PLAN,
     royale: { zone0: PLAN.zone0, blimpY: PLAN.blimpY, pois: PLAN.pois, loot: 400, cells, drops,
-      finale: [[PLAN.pois.find((p) => p.id === 'radio').c[0], PLAN.pois.find((p) => p.id === 'radio').c[1], 20], [-110, 30, 48]] },
+      finale: [[PLAN.pois.find((p) => p.id === 'radio').c[0], PLAN.pois.find((p) => p.id === 'radio').c[1], 24], [-110, 30, 48]] },
     get graph() { return graph || (graph = buildNav(B.boxes, { x0: X0, z0: Z0, n: X1 - X0, cell: 2, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) && G.at(x, z) > KILL_Y + 0.5 }), graph.maxExpand = 40000, graph); },
   };
   unstick(map.boxes, map.spawns);
