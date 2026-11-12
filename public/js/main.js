@@ -66,6 +66,7 @@ import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mech
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
+import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from './island.js'; // battle island: squads, down + crawl, revives
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
@@ -324,6 +325,7 @@ function resetWorldState() {
   adsReset(); gavelReset();
   secLeave();
   brReset(); // the zone, eviction notice and loot rules stay with the royale room
+  isleReset();
   resetItems(); stopUse(); G.activeStreaks = null; G.itemSent = null;
   clearRec();
   clearKillFx();
@@ -1183,6 +1185,7 @@ function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
   if (story && story.key(e)) { e.preventDefault(); return; } // story mode: talk, pick up, cutscene skip, the codex
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
+  if (isleKey(e, startUse)) { e.preventDefault(); return; } // battle island: down = hands off; F next to a downed squadmate picks them up
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
   if (brOn() && K.matches('scores', e) && !e.repeat && brInvToggle(lock)) { e.preventDefault(); return; } // jank royale: the scores key opens your backpack (alive)
@@ -1399,6 +1402,7 @@ net.on('welcome', (m) => {
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
+  isleReset();
   G.mode = m.mode; G.cfg = m.cfg; G.lk = m.lk || null;
   lobbyMe(m.id); lobbyInfo(m.lobby || null); // a mode lobby: the countdown is on
   G.game = m.game; // (music needs it before the first round info arrives)
@@ -1646,7 +1650,7 @@ function startUse() {
   // F has to still be down: blur, pause and chat clear the keys, so a lost keyup can't root you in place
   useTimer = setInterval(() => { if (!G.using || !ME.alive || !K.isDown('use')) { stopUse(); return; } net.send({ t: 'use' }); }, 200);
 }
-function stopUse() { clearInterval(useTimer); useTimer = 0; G.using = false; }
+function stopUse() { if (G.using && isleOn()) net.send({ t: 'use', up: 1 }); clearInterval(useTimer); useTimer = 0; G.using = false; } // (battle island: letting go stops a revive at once)
 // the end-of-match vote (mode first, then map) lives on the end screen (endscreen.js)
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
@@ -2100,6 +2104,7 @@ function frame(t) {
   updateTraffic(dt, now, RP.active);
   updateLore(dt, now); updateLoreFx(now); // (out of a match it clears them away)
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
+  isleFrame(dt, now); // battle island: the squad panel, markers, downed people
   minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
   updateGibs(dt);
   updateKillFx(dt);
@@ -2274,6 +2279,7 @@ function frame(t) {
   G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
   if (mechOn() || mechHeroOn()) G.vmScene.visible = false; // (and inside a mech, and in the mech's landing shot)
+  if (isleDown()) G.vmScene.visible = false; // battle island: down on the floor, no hands free
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
@@ -2903,7 +2909,8 @@ function renderRound(r) {
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
   const ct = chaosRoundText(r);
   if (ct) el.textContent = ct;
-  if (r.game === 'br' && !r.over) el.textContent = 'last one standing wins'; // jank royale: the zone clock is in its own panel
+  if (r.game === 'br' && !r.over) el.textContent = 'last one standing wins';
+  if (r.game === 'island' && !r.over) el.textContent = 'last squad standing wins'; // battle island // jank royale: the zone clock is in its own panel
 }
 net.on('lobby', (m) => lobbyInfo(m)); // the countdown / who's ready / end: the match is on
 net.on('round', (m) => {
@@ -2946,6 +2953,7 @@ net.on('round', (m) => {
     box.append(row);
   }
   brRoundEnd(m, box); // jank royale: placements (the old box; the end screen gets them too)
+  isleRoundEnd(m, box); // battle island: by squad
   esRound(m); // the end screen replaces the old round box (still built above for anything that reads it)
 });
 // play of the round: the server picked the best moment and sent the recording

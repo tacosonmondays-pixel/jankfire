@@ -109,13 +109,14 @@ export function installRoyale(Room, H) {
       for (const p of list) this.brBoard(p);
       this.br.peak = list.length;
       this.broadcast({ t: 'br', k: 'start', ...this.brState() });
+      if (this.isleOn) this.isleStart(); // battle island: who's in which squad
       for (const p of list) this.brLoadout(p);
       if (LOG) console.log(`[br] start on ${map.name}: ${list.length} in the blimp, ${this.br.loot.size} loot`);
     },
     brClear() {
       for (const g of [...this.players.values()]) if (g.goblin) this.remove(g);
       this.br = null;
-      for (const p of this.players.values()) { p.br = null; p.f &= ~FLAGS.GLIDE; }
+      for (const p of this.players.values()) { p.br = null; p.f &= ~FLAGS.GLIDE; p.dn = null; p.irv = null; } // (battle island's down + revives end with it)
       this.broadcast({ t: 'br', k: 'off' });
       if (this.mode === 'bots') this.fillBots();
     },
@@ -139,6 +140,8 @@ export function installRoyale(Room, H) {
       p.pos = [bp[0], bp[1] - 3, bp[2]];
       p.w = BR.melee;
       if (p.isBot) { p.ai.ammo = 1; p.ai.reloadUntil = 0; p.ai.hook = null; p.g = null; }
+      p.dn = null; p.irv = null; // (nobody starts a match down)
+      if (this.isleOn) this.isleBoard(p); // battle island: your squad
     },
     // a late joiner: a seat on the blimp if it's still near the start, otherwise watch until the next one
     brJoin(p) {
@@ -150,10 +153,12 @@ export function installRoyale(Room, H) {
         this.brBoard(p);
         this.broadcast({ t: 'br', k: 'board', id: p.id });
         this.brLoadout(p);
+        if (this.isleOn) this.isleStart();
       } else {
         p.br = { match: B.id, out: true, late: true, slots: [], melee: null };
         p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity;
         send(p, { t: 'br', k: 'late' });
+        if (this.isleOn) this.isleJoin(p); // (who's who, to watch)
       }
     },
     brLeave(p) {
@@ -396,6 +401,7 @@ export function installRoyale(Room, H) {
       p.spawnT = n; // a moment of grace while you get your bearings
       this.broadcast({ t: 'br', k: 'jump', id: p.id, p: p.pos.map(r2) });
       if (LOG && p.isBot) B.log.push(`${p.name} jumped at ${p.pos[0] | 0},${p.pos[2] | 0}`);
+      if (this.isleOn) this.isleJumped(p); // battle island: the squad's bots jump with you
     },
     brHeal(p, k) {
       const s = p.br;
@@ -449,7 +455,7 @@ export function installRoyale(Room, H) {
       }
       s.out = true; s.heal = null; s.fly = null; t.f &= ~FLAGS.GLIDE;
       const left = this.brAlive().length;
-      s.place = left + 1;
+      s.place = this.isleOn ? this.islePlace(t) : left + 1; // (battle island: the squad's place, once it's out)
       B.out.push({ id: t.id, place: s.place });
       if (killer && killer !== t && killer.br) killer.br.kills++;
       const kit = (s.slots || []).filter(Boolean).map((g) => `${TIERS[g.tier].name[0]}-${g.w}(${g.ammo == null ? 'inf' : g.ammo})`).join('+') || 'bread only';
@@ -511,9 +517,10 @@ export function installRoyale(Room, H) {
         for (const p of alive) if (p.isBot && p.br.ai) { const ai = p.br.ai, l = B.loot.get(ai.loot); console.log(`[dump] ${p.name}#${p.id} ${p.br.inBlimp ? 'blimp' : p.br.fly || 'ground'} at ${p.pos.map((x) => x | 0)} hp ${p.hp | 0} w ${p.w} target ${p.ai.target || '-'}${p.ai.seenAt ? '(seen)' : ''} loot ${l ? l.id + '@' + l.p.map((x) => x | 0) : '-'} goal ${p.br.ai.why || '?'} picks ${p.br.picks}`); }
       }
       this.tickBRTwists(n);
+      if (this.isleOn) { this.tickIsle(n); this.isleWinCheck(n); } // battle island: bleed-outs, revives, last squad standing
       // last one standing (or nobody: the zone got the last two at once)
       const left = this.brAlive();
-      if (!B.endAt && ((B.peak >= 2 && left.length <= 1) || !left.length || n >= this.round.ends)) {
+      if (!this.isleOn && !B.endAt && ((B.peak >= 2 && left.length <= 1) || !left.length || n >= this.round.ends)) {
         B.winner = left.length === 1 ? left[0].id : 0;
         if (left.length === 1) { left[0].br.place = 1; }
         B.endAt = n + 3200;

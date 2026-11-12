@@ -37,6 +37,8 @@ import { OOB, outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { Traffic } from './traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
+import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
+import { ISLE } from '../shared/island.js';
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
 import { HR } from '../shared/hr.js';
@@ -529,6 +531,7 @@ class Room {
     this.lassoDrop(p, 'gone'); // ropes they held (or hung off) drop
     if (this.bomb && this.bomb.carrier === p.id) this.dropBomb(p.pos, p);
     if (this.brOn) this.brLeave(p); // their pockets spill out
+    if (this.isleOn) this.isleKilled(p, null, 'left'); // battle island: their revives stop; the last one up leaving takes the squad out
     if (this.isEcon()) this.econLeave(p);
     this.mechLeave(p); // no orphan mechs
     this.players.delete(p.id);
@@ -571,7 +574,7 @@ class Room {
   botWant() {
     const h = this.humans().filter((p) => !p.watch).length;
     if (this.lobby) return GAMES[this.lobby.next] && GAMES[this.lobby.next].zombies ? 0 : Math.max(0, this.lobbySize() - Math.max(1, h)); // a mode lobby: humans take bots' places (no bots in a zombies warm-up)
-    const size = this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
+    const size = this.isleOn ? ISLE.size * ISLE.squads - 1 : this.brOn ? Math.max(clampInt(this.cfg.bots, 0, 12), clampInt(process.env.JF_BR_BOTS || BR.bots, 0, 31)) : clampInt(this.cfg.bots, 0, 12); // a royale wants a crowd
     return Math.max(0, size + 1 - Math.max(1, h));
   }
   fillBots() {
@@ -637,6 +640,7 @@ class Room {
       if (t.quiz) continue; // sitting a pop quiz: nothing can hurt them till it's marked
       if (this.friendly(b, t)) continue; // infection: zombies hunt survivors, survivors shoot zombies
       if (this.brOn && !this.brTargetable(t)) continue; // on the blimp / out
+      if (this.isleOn && !this.isleBotTargetOk(b, t)) continue; // battle island: leave downed people be (unless they're the last enemy)
       const d = dist3(t.pos, b.pos);
       const vis = this.canSee(eyeOf(b), [t.pos[0], t.pos[1] + 1, t.pos[2]]);
       let score = d * (vis ? 1 : 2.5);
@@ -890,7 +894,7 @@ class Room {
     return [rt[ai.ri][0], rt[ai.ri][2] ?? b.pos[1], rt[ai.ri][1]];
   }
   botGoal(b) {
-    if (this.brOn) return this.brBotGoal(b); // jank royale: zone, heals, loot
+    if (this.brOn) return this.isleOn ? this.isleBotGoal(b) : this.brBotGoal(b); // jank royale: zone, heals, loot (battle island: revives + sticking with the squad first)
     if (this.isEcon()) { const eg = this.econBotGoal(b); if (eg) return eg; }
     const B = this.bomb;
     if (B && this.game === 'bomb' && B.ph !== 'done' && !B.between) {
@@ -934,6 +938,7 @@ class Room {
     if (this.mechOn(b)) return; // in a mech the moves are its guns (mechBotStep)
     if (this.chaosKit && this.botChaosFire(b, t, D)) return;
     if (this.brOn && !this.brBotShot(b)) return; // jank royale: real bullets
+    if (this.isleOn && b.irv) return; // battle island: hands busy picking someone up
     if (this.isEcon() && !this.econBotShot(b, t, D)) return;
     const w = WEAPONS[b.w], n = now();
     if (b.w === 'shredder') { this.botShred(b); return; } // no shots: it sucks for as long as they're in front of it
@@ -996,6 +1001,7 @@ class Room {
   stepBot(b, dt) {
     if (this.lassoBot(b)) return; // on the end of a lasso: whoever holds it moves them
     if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
+    if (this.isleOn && this.isleBotStep(b, dt)) return; // battle island: crawling when down, jumping with the squad
     if (this.brOn && this.brBotStep(b, dt)) return; // jank royale: riding the blimp, falling, gliding
     if (b.zmz) { this.zmStep(b, dt); return; }
     const n = now();
@@ -1297,6 +1303,7 @@ class Room {
   knock(t, v, w) {
     if (this.rigOn(t)) v = this.rigShrug(v); // the overdrive rig shrugs it off
     if (this.mechOn(t)) v = this.mechShrug(t, v); // so does a mech
+    if (t.dn && this.isleOn) this.isleKnock(t, v, w); // battle island: a downed pilot's crawl check pays for the shove (server/island.js)
     if (Math.hypot(v[0], v[1], v[2]) >= 1) t.knockT = now(); // EPIC anti-farm: getting shoved around isn't moving (0-knockback bullets don't count)
     if (t.isBot) {
       if (t.ai.dummy && t.ai.dummy.move) return;
@@ -1318,6 +1325,7 @@ class Room {
     if (this.mode === 'coop') return a.isBot === b.isBot;
     if (this.zm) return a.isBot === b.isBot; // zombies: everyone vs the zombies
     if (GAMES[this.game].infect) return !!a.inf === !!b.inf; // infection: survivors vs zombies, no hurting your own side
+    if (this.isleOn) return this.isleFriendly(a, b); // battle island: your squad
     return this.teamsOn() && a.team && a.team === b.team;
   }
   // the rules every hit follows: true = it doesn't land
@@ -1333,6 +1341,8 @@ class Room {
     if (amt <= 0 || !t.alive) return false;
     if (t.trap) return false; // sealed in a soap bubble: burning, gas and the like can't get in (a real hit pops it, see hurt)
     if (this.hitBlocked(t, attacker, w, from)) return false;
+    if (t.dn && this.isleOn) return this.isleHit(t, amt, attacker, w); // battle island: down already, hits eat the bleed-out clock
+    if (t.cam && this.isleOn) return false; // (battle island's test camera, JF_ISLE_CAM: never hurt)
     if (this.zm) amt = this.zmDamage(t, amt, attacker, w, hs); // credits for hits, claws, the cola
     if (attacker && attacker.isBot && !t.isBot && this.mode !== 'bots') amt *= 0.6; // coop bots hit softer
     if (t.body && t.body.kind === 'wreckingball') { amt = this.bodySoak(t, amt, attacker, w); if (amt <= 0) return true; } // wrecking ball: its own HP takes it (server/bodyhp.js)
@@ -1346,7 +1356,7 @@ class Room {
     if (hs && attacker && attacker !== t && attacker.acct && this.mode !== 'training') stat(attacker, 'headshots', 1);
     this.tag(t, attacker, w);
     this.broadcast({ t: 'dmg', to: t.id, from: attacker ? attacker.id : 0, a: Math.round(Math.min(amt, 999)), w, hs: !!hs, ko: t.hp <= 0 ? 1 : undefined }); // ko: this hit kills (heavier headshot sounds)
-    if (t.hp <= 0) this.kill(t, attacker, w);
+    if (t.hp <= 0 && !(this.isleOn && this.isleDown(t, attacker, w))) this.kill(t, attacker, w); // (battle island: down, not dead, while a squadmate's up)
     return true;
   }
   heal(p, amt, max = 100) {
@@ -1518,6 +1528,7 @@ class Room {
     if (t.isBot && this.mode === 'coop') { setTimeout(safe('coop', () => { if (this.players.get(t.id) === t) this.remove(t); }), 50); }
     this.modeKill(t, killer, via || w);
     if (this.brOn) this.brKill(t, killer, w);
+    if (this.isleOn) this.isleKilled(t, killer, w); // battle island: a squad with nobody up is out
     if (this.isEcon()) this.econOnKill(t, killer, w, via);
   }
   // is this kill the play of the round? multikills, speed, distance and void kills score higher
@@ -2848,6 +2859,7 @@ class Room {
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (this.isleOn && this.isleHandle(p, m)) return; // battle island: down = crawl, no shooting
     if (this.brOn && this.brHandle(p, m)) return; // jank royale: the blimp, loot, heals; only guns you carry, with bullets left
     if (this.isEcon() && this.econHandle(p, m)) return;
     if ((m.t === 'fire' || m.t === 'hit') && this.lassoHolding(p)) return; // both hands are on the lasso
@@ -3105,12 +3117,12 @@ class Room {
         roll = { n: 1, kind, why: 'won the round' };
       }
     }
-    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, br: this.brOn && this.br ? this.brBoardInfo() : undefined, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
+    this.broadcast({ t: 'round', over: 1, skipped: this.round.skipped ? 1 : 0, winner: winner ? winner.id : 0, winTeam, game: this.game, br: this.brOn && this.br ? this.brBoardInfo() : undefined, isle: this.isleOn ? this.isleResults() : undefined, sc: this.teamsOn() ? (this.game === 'bomb' && this.bomb ? [this.bomb.wins[1], this.bomb.wins[2]] : [this.score[1], this.score[2]]) : null,
       top: list.slice(0, 6).map((p) => [p.id, p.name, p.kills, p.deaths, p.team || 0]), next: this.round.next - now(),
       board: list.map((p, i) => [p.id, p.name, p.kills, p.deaths, p.team || 0, p.isBot ? 1 : 0, matchSummary(p, i, list, this).score]) });
     // your own match report (end screen: performance / medals / rewards). guests see the xp they would have kept
     const side = GAMES[this.game].infect && this.round.res && this.round.res.side; // infection: the whole side that took it won
-    const won = (p) => (side ? (side === 'inf') === !!p.inf : p === winner || (winTeam && p.team === winTeam));
+    const won = (p) => (side ? (side === 'inf') === !!p.inf : p === winner || (winTeam && p.team === winTeam) || (this.isleOn && winner && p.sq && p.sq === winner.sq)); // (battle island: the whole squad)
     list.forEach((p, i) => { if (!p.isBot) send(p, { t: 'perf', ...matchSummary(p, i, list, this), won: won(p) ? 1 : 0, acct: p.acct ? 1 : 0 }); });
     this.startVote(); // after the result: clients open the end screen on 'round', then the vote fills it in
     const r = this.round;
@@ -3454,6 +3466,7 @@ class Room {
   // someone is holding F (players send this every ~250ms while it's held; bots call it directly)
   tryUse(p) {
     if (this.zm) { this.zmUse(p); return; } // doors, wall guns, the crate, revives
+    if (this.isleOn) { this.isleUse(p); return; } // battle island: picking a squadmate up
     const b = this.bomb;
     if (!b || !p.alive || b.between || b.ph === 'done') return;
     p.useT = now();
@@ -3982,6 +3995,7 @@ class Room {
 }
 
 installRoyale(Room, { send, movePlayer });
+installIsland(Room, { send, movePlayer }); // battle island's squad rules (server/island.js)
 installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)

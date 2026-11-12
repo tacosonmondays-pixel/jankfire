@@ -199,6 +199,7 @@ export function stepPlayer(dt, inp, now) {
   if (G.lassoStep && G.lassoStep(dt, inp, now)) return; // on the end of a lasso (or tumbling out of a fling): lasso.js moves you
   if (ME.ballUntil) { if (now < ME.ballUntil) { feel.lift = 0; ballStep(dt, inp, now); return; } endBall(); } // wrecking ball killstreak (its chain has its own physics)
   if (G.brStep && G.brStep(dt, inp, now)) return; // jank royale: riding the blimp, falling, the umbrella (royale.js)
+  if (G.isleStep && G.isleStep(dt, inp, now)) return; // battle island: down, crawling (island.js)
   const v = ME.vel, p = ME.pos;
   if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
   if (mechStep(dt, inp, now)) return; // in a mech: its own movement (mech.js)
