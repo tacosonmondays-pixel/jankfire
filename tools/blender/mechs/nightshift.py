@@ -67,6 +67,16 @@ def hazard_img(a=0xffd23a, b=0x16161c):
     return image_rgba('ns_hazard', px)
 
 
+def timecard_img():
+    """the timecard: TIMECARD, punched rows, an OVERTIME stamp"""
+    px = canvas(64, 96, 0xf4f0e2); border(px, 2, 0x8a6a3a)
+    text_c(px, 'TIME', 32, 5, 1, 0x2a1a08); text_c(px, 'CARD', 32, 14, 1, 0x2a1a08)
+    for k in range(6): fill(px, 6, 26 + k * 10, 58, 27 + k * 10, 0xb8a888)
+    for k in range(4): text(px, 'IN', 8, 29 + k * 10, 1, 0x3a3a3a); text(px, '9', 40, 29 + k * 10, 1, 0x3a3a3a)
+    fill(px, 6, 80, 58, 91, 0xd02a2a); text_c(px, 'OVERTIME', 32, 82, 1, 0xf4f0e2)
+    return image_rgba('ns_timecard', px)
+
+
 def breaths_img():
     px = canvas(64, 64)
     for r in range(4):
@@ -137,7 +147,11 @@ def head(mk, M, T):
     H.append(band(0.285, 0.375, 0.30, 0.018, 0.03, M['glass'], 'visor'))
     H.append(band(0.318, 0.342, 0.27, 0.024, 0.03, M['glow'], 'visor_glow'))
     # a white ridge up the forehead to the crown, cheek plates (white), a chin guard (dark)
-    H.append(skin(hb, [hp(x, y, -1.2) for (x, y) in ((-0.035, 0.43), (0.035, 0.43), (-0.03, 0.62), (0.03, 0.62))], (0, 0, 1), 0.012, 0.03, M['white'], 0.004, 'ridge'))
+    # the hard hat: a ridge over the crown (hi-vis yellow) and a short peak above the visor
+    H.append(skin(hb, [hp(x, 2.0, z) for x in (-0.042, 0.042) for z in (-0.30, -0.15, 0.0, 0.15, 0.30)], (0, -1, 0), 0.032, 0.03, M['accent'], 0.008, 'hardhat_ridge'))
+    H.append(skin(hb, [hp(x, y, -1.2) for x in (-0.042, 0.042) for y in (0.45, 0.62)], (0, 0, 1), 0.037, 0.03, M['accent'], 0.008, 'hardhat_ridge_f'))
+    H.append(hull([hp(sx * x, y, z) for sx in (-1, 1) for (x, z) in ((0.27, -0.28), (0.22, -0.50)) for y in (0.435, 0.468)] + [hp(0, y, -0.565) for y in (0.44, 0.472)],
+                  M['accent'], 0.012, name='hardhat_peak'))
     for s in (-1, 1):
         H.append(skin(hb, [hp(s * 1.2, y, z) for (y, z) in ((0.22, -0.18), (0.22, 0.12), (0.02, -0.16), (0.02, 0.14), (0.10, -0.22))], (-s, 0, 0), 0.014, 0.03, M['white'], 0.006, 'cheek'))
     H.append(hull([hp(x, y, z) for x in (-0.26, 0.26) for (y, z) in ((-0.06, -0.20), (-0.06, 0.12), (0.10, -0.30), (0.10, 0.10))] + [hp(0, 0.0, -0.38), hp(0, 0.12, -0.40)], M['dark'], 0.02, name='chin'))
@@ -180,6 +194,14 @@ def torso(mk, M, T):
     # the badge (brass) on the left of the chest
     bc = (-0.42, 4.56)
     hatch.append(skin(pb, [(bc[0] + dx, bc[1] + dy, -2) for (dx, dy) in ((-0.13, 0.11), (0.13, 0.11), (0.15, 0.0), (0.10, -0.12), (0, -0.18), (-0.10, -0.12), (-0.15, 0.0))], fwd, 0.022, 0.03, M['brass'], 0.006, 'badge'))
+    # the timecard slot on the right of the chest, a card stuck in it (clocked in, never out)
+    q, n = proj(pb, (0.44, 4.50, -2), fwd)
+    r_ = norm(sub((1, 0, 0), mul(n, dot((1, 0, 0), n)))); u_ = norm(cross(n, r_))
+    if u_[1] < 0: u_ = mul(u_, -1)
+    def S_(a, b, c): return add(q, add(mul(r_, a), add(mul(u_, b), mul(n, c))))
+    hatch.append(hull([S_(a, b, c) for a in (-0.14, 0.14) for b in (-0.05, 0.05) for c in (-0.03, 0.045)], M['dark'], 0.01, name='timeslot'))
+    card = hull([S_(a, b, c) for a in (-0.10, 0.10) for b in (-0.02, 0.30) for c in (0.008, 0.02)], M['card'], 0.004, name='timecard')
+    hatch.append(card); T['timecard'] = (card, S_(0, 0.17, 0.02), n, u_)
     mk.add('hatch', hatch); T['hatch'] = hatch
     for s in (-1, 1):
         # high collar plates (white) either side of the neck, side plates under the arms (white)
@@ -268,6 +290,9 @@ def leg(mk, M, T, s, L):
     for y in (0.86, 1.10):  # calf vents
         SH.append(skin(gb, [(x(a), yy, 2) for a in (0.52, 0.76) for yy in (y, y + 0.14)], (0, 0, -1), 0.012, 0.03, M['dark'], 0.004, 'calfvent'))
         SH.append(skin(gb, [(x(a), yy, 2) for a in (0.55, 0.73) for yy in (y + 0.05, y + 0.09)], (0, 0, -1), 0.02, 0.03, M['thrust'], 0.002, 'calfglow'))
+    for xa in (0.54, 0.74):  # leg boosters (verniers) low on the calf, pointing out and down
+        q, n = proj(gb, (x(xa), 0.76, 2), (0, 0, -1))
+        if q: SH += nozzle(add(q, mul(n, -0.015)), norm(add(n, (0, -0.7, 0))), 0.075, 0.15, M, 'calfnozzle')
     mk.add('shin_' + L, SH); T['shin_' + L] = SH
     F = [ball(J('foot', s), 0.17, M['frame'], name='ankle')]
     for sd in (-1, 1):
@@ -395,6 +420,9 @@ def decals(mk, M, T):
     num = tex_mat('ns_247', stencil_img('ns_247img', '24/7', 0xffe14d, 104, 40, 4), 0.35, clip=True)
     br = tex_mat('ns_breathmat', breaths_img(), 0.3, clip=True)
     sn = tex_mat('ns_snapmat', snap_img(), 0.3, clip=True)
+    tc = tex_mat('ns_timecardmat', timecard_img(), 0.45, cc=0.2)
+    card, tc_c, tc_n, tc_u = T['timecard']
+    mk.add('hatch', decal([card], tc_c, tc_n, tc_u, 0.18, 0.27, tc, name='timecard_face', reach=0.2))
     cf = tex_mat('ns_coffee', sticker_img('ns_coffeeimg', ['JANK', 'COFFEE'], 0xf6f0e4, 0x5a3010, 72, 44, 2, 0x5a3010), 0.4)
     # the PLEASE HOLD screen, facing out of the shield
     c, hw, hh, th = T['shield_frame']
