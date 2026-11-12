@@ -1,6 +1,31 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
+    'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
+    'battle island: your party lands in the same squad. a party bigger than a squad splits into full squads. friends who join late go to your squad.',
+    'platform: the wellheads on b site are dressed up as christmas trees. star, tinsel, fairy lights, a santa hat. still full of oil.',
+    'skyline: the helipad got its gear. JET A-1 tanks, a flight-ops shack, a windsock, and a fuel truck parked on a site.',
+  ] },
+  { v: '10.0', date: '2026-11-12', title: 'ASKS FIRST', items: [
+    'closing or reloading the tab mid-match now asks first, in every mode. the exe closes normally.',
+    'battle island and training got their own pictures in the mode picker. the dummy is very excited about the target on its chest.',
+  ] },
+  { v: '9.9', date: '2026-11-12', title: 'IT SAW THAT', items: [
+    'crate: the tower is real toy blocks now. carved wooden faces, chunky letters, it spells JANK if you fall far enough. the middle block is a shape sorter.',
+    'skyline: the observatory got a real dome and a real telescope. b site has never looked so scientific.',
+    'skyline: JANK NEWS 7 is parked on the helipads. it saw that.',
+  ] },
+  { v: '9.8', date: '2026-11-12', title: 'BRING FRIENDS', items: [
+    'PARTIES. your code\'s under ONLINE / OFFLINE. send it to your friends, they type it in, you all stand there looking cool. the leader picks the match and drags everyone in. same team, obviously. kicking is allowed.',
+    'ctrl+w can\'t close the game any more in fullscreen (crouch is left ctrl too, oops). windowed, you get a tip once.',
+    'backrooms: the walls are real now. wallpaper seams, skirting boards, outlets nobody uses, a thermostat set to "yes", damp creeping up from the carpet and paper peeling off the top. it\'s worse.',
+    'platform: the oil derrick is a real lattice tower now. crown, beacon, top drive, a little platform halfway up, and the GLUG OIL sign.',
+  ] },
+  { v: '9.7', date: '2026-11-12', title: 'HE OWNED ALL OF THIS', items: [
+    'suburb: the founder\'s statue got an upgrade. granite plinth, brass plaque, tulips, and the founder himself as a shiny toy bust. he has a monocle now. a pigeon has opinions about his hat.',
+    'smoother edges on mid and too hd (with shaders on). less shimmer on thin lines and far-away stuff. potato stays crunchy.',
+  ] },
   { v: '9.6.1', date: '2026-11-12', title: 'SWIM NORMAL', items: [
     'fixed: swimming out to sea made the camera glitchy (things right in front of you blinked in and out). the sea counts as the floor again.',
   ] },

@@ -521,8 +521,7 @@ function crate() {
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) { box(8 * sx, 1, 8 * sz, 2, 2, 2, 'crate'); box(8 * sx + 1.6 * sx, 0.5, 8 * sz, 1.2, 1, 1.2, sx * sz > 0 ? 'toyred' : 'toyblue'); }
   box(0, 1, 10, 5, 2, 1, 'crate');
   box(0, 1, -10, 5, 2, 1, 'crate');
-  box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 });
-  box(0, 3.25, 0, 7, 0.5, 7, 'toyteal');
+  propOf('toysorter', [0, 0, 0], 0, () => { box(0, 1.5, 0, 5, 3, 5, 'toyface', { fit: 1 }); box(0, 3.25, 0, 7, 0.5, 7, 'toyteal'); }); // the middle: a shape sorter (Blender: p_toysorter)
   box(-5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [4, 14, 0] });
   box(5, 0.15, 0, 1.8, 0.3, 1.8, 'pad', { pad: [-4, 14, 0] });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) box(12 * sx, 15, 12 * sz, 2.5, 1, 2.5, 'toypink');
@@ -530,7 +529,7 @@ function crate() {
   // it's a toy box on top of a tower of giant toy blocks, in a giant kid's playroom (render-only). fall off: you die long
   // before the carpet
   const D = builder(), F = -90; // the floor
-  D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 });
+  propOf('toytower', [0, 0, 0], 0, () => { D.box(0, -18, 0, 26, 22, 26, 'toyface', { fit: 1 }); D.obb(0.5, -48, -0.5, 24, 38, 24, 0.2, 'toyface2', { fit: 1 }); D.box(-1, -78, 1, 36, 24, 36, 'toyface', { fit: 1 }); }); // (Blender: p_toytower, giant wooden ABC blocks)
   // (the middle block is turned a little and no wider than the crate: a fall off any edge never passes through it)
   D.add(-420, F - 2, -420, 420, F, 420, 'rubber');
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
@@ -699,6 +698,8 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   for (const s of [-1, 1]) { add(-22, 0, s * 6.5 - 1, -18, 2.2, s * 6.5 + 1, 'rigred'); D.add(-21.6, 2.2, s * 6.5 - 0.5, -18.4, 2.6, s * 6.5 + 0.5, 'rigsteel'); } // the mud pumps
   // the derrick: four legs stepping in as they go up, X-braced lattice on each face, girts, the crown, a beacon
   const H = 30, segs = 5, b0 = 4, b1 = 1.5, cx = -24, cz = 0;
+  // (one Blender model over all of it, the GLUG board too: p_derrick, tools/blender/make_derrick.py. look-only)
+  propOf('derrick', [cx + dx, y, cz + dz], 0, () => {
   for (let i = 0; i < segs; i++) {
     const ya = y + (i * H) / segs, yb = y + ((i + 1) * H) / segs, hw = b0 - ((b0 - b1) * i) / segs, leg = i === 0 ? B : D;
     for (const sx of [-1, 1]) for (const sz of [-1, 1]) leg.add(cx + sx * hw - (sx > 0 ? 0.6 : 0), ya, cz + sz * hw - (sz > 0 ? 0.6 : 0), cx + sx * hw + (sx < 0 ? 0.6 : 0), yb, cz + sz * hw + (sz < 0 ? 0.6 : 0), 'rigred');
@@ -712,6 +713,7 @@ function drillSide(B0, D0, dx, dz, st, o = {}) {
   add(cx + 3, y + 15, cz - 1.5, cx + 5, y + 15.3, cz + 1.5, 'grating'); // the monkey board, off the east face half way up (grapple up)
   rail(B, D, false, cz - 1.5, cz + 1.5, cx + 4.95, y + 15.3); for (const s of [-1, 1]) rail(B, D, true, cx + 3, cx + 4.9, cz + s * 1.45, y + 15.3);
   D.add(cx + 3.52, y + 9, cz - 2.8, cx + 3.58, y + 12, cz + 2.8, 'adglug', { fit: 1 });
+  });
   D.add(cx - 1, y, cz - 1, cx + 1, y + 0.05, cz + 1, 'rigsteel'); // the rotary table
   add(-31.4, y, -2, -28.8, y + 1.6, 2, 'rigred'); D.add(-31.2, y + 1.6, -1.6, -29, y + 2.0, 1.6, 'tire'); // the drawworks and its drum
   // the doghouse (the driller's cabin), south-east corner
@@ -738,14 +740,15 @@ function pedCrane(B, D, x, z, alongX, len, o = {}) {
 }
 // a christmas tree (the wellhead's valve stack, real name) dressed for christmas: valve blocks, wing valves, handwheels,
 // baubles, tinsel, a star on top. on a deck at y
-function xmasTree(B, D, x, z, y, r) {
+// (each one a Blender prop, p_xmastree: tools/blender/make_xmastree.py, look-only)
+function xmasTree(B, D, x, z, y, r) { propOf('xmastree', [x, y, z], 0, () => {
   B.add(x - 0.4, y, z - 0.4, x + 0.4, y + 2.3, z + 0.4, 'rigred');
   B.add(x - 1.0, y + 1.0, z - 0.25, x + 1.0, y + 1.5, z + 0.25, 'rigred');
   for (const s of [-1, 1]) D.add(x + s * 1.0 - (s > 0 ? 0 : 0.08), y + 0.85, z - 0.4, x + s * 1.0 + (s > 0 ? 0.08 : 0), y + 1.65, z + 0.4, 'rigyellow');
   D.add(x - 0.45, y + 2.3, z - 0.45, x + 0.45, y + 2.45, z + 0.45, 'rigyellow'); D.add(x - 0.18, y + 2.45, z - 0.18, x + 0.18, y + 2.8, z + 0.18, 'neonyellow'); // the star
-  for (let k = 0; k < 6; k++) { const a = r() * Math.PI * 2, h = 0.3 + r() * 1.9; D.box(x + Math.cos(a) * 0.46, y + h, z + Math.sin(a) * 0.46, 0.14, 0.14, 0.14, ['toypink', 'toyteal', 'toyyellow'][k % 3]); }
+  for (let k = 0; k < 6; k++) { const a = r() * Math.PI * 2, h = 0.3 + r() * 1.9; D.box(x + Math.cos(a) * 0.46, y + h, z + Math.max(-0.38, Math.min(0.38, Math.sin(a) * 0.46)), 0.14, 0.14, 0.14, ['toypink', 'toyteal', 'toyyellow'][k % 3]); } // (within the cap's width: every tree the same outline)
   D.add(x - 0.42, y + 1.7, z - 0.42, x + 0.42, y + 1.76, z + 0.42, 'neongreen'); D.add(x - 0.43, y + 0.6, z - 0.43, x + 0.43, y + 0.66, z + 0.43, 'neonpink'); // tinsel
-}
+}); }
 // THE SNACK RUN, a supply boat moored along the rig's south side: its open cargo deck (-12: containers, pipe, snacks),
 // bulwarks, the bridge forward (east), the boat landing on the jacket beside it and the stair up to the cellar deck
 function snackRun(B0, D0, dx, dz, st, r) {
@@ -2079,6 +2082,7 @@ function warehouse() {
 
   // ---- the hall: doors on every side (the west and east ones off the same line), racking in a grid of aisles
   const dock = [-24, -8, 8, 24]; // dock doors along the south wall
+  const hb0 = B.boxes.length, hd0 = D.boxes.length; // (the shell from here to the rafters is the Blender hall: wh_hall)
   wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: -18, b: -13, y0: 0, y1: 4 }, { a: 10, b: 15, y0: 0, y1: 4 }, ...windows(2 * HX, 6, 0, 2, 8)]);
   wall(W, 'x', HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [...dock.map((x) => ({ a: x - 2.5, b: x + 2.5, y0: 0, y1: 4.2 })), ...windows(2 * HX, 6, 0, 2, 8)]);
   wall(W, 'z', -HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: 3, b: 10, y0: 0, y1: 5 }]);
@@ -2091,6 +2095,7 @@ function warehouse() {
     add(-HX, H - 1.4, z - 0.25, HX, H - 0.9, z + 0.25, 'wood');
     for (let x = -24; x <= 24; x += 12) if (!(x > 18 && z < -8)) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
+  hallArch(B, D, hb0, hd0, 'wh_hall');
   rack(B, -26, -9, 18, r); rack(B, 7, -9, 12, r); // three rows, each broken by a cross aisle (and the office in the corner)
   rack(B, -21, 0, 18, r); rack(B, 6, 0, 12, r);
   rack(B, -26, 9, 18, r); rack(B, 8, 9, 18, r);
@@ -2164,6 +2169,14 @@ function warehouse() {
 }
 
 // ---- the depot kit (both Warehouse layouts)
+// the hall's shell (walls, roof, rafters, lamps, door dressing: boxes hb0.. and deco hd0..) is a Blender building, in the
+// map's own frame. look-only: the pictures (the company boards) stay the game's, the lamps still light the floor
+function hallArch(B, D, hb0, hd0, id) {
+  B.archSince(hb0, id, 0, 0);
+  const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (let i = hb0; i < B.boxes.length; i++) if (B.boxes[i].fit) { delete B.boxes[i].av; delete B.boxes[i].ai; }
+  for (let i = hd0; i < D.boxes.length; i++) if (!D.boxes[i].fit) Object.assign(D.boxes[i], tag);
+}
 // a chain-link fence on posts with barbed wire on top (solid: you can't walk through it, you can see out)
 function chainFence(B, D, x0, z0, x1, z1) {
   const alongX = z0 === z1, len = alongX ? x1 - x0 : z1 - z0;
@@ -2265,6 +2278,7 @@ function warehouseSD() {
   pallets(B, -30, 17, 5, r); pallets(B, -28.6, 17, 3, r); cratePile(B, -54, -16, 5, r); palletLoad(B, -46, 16);
 
   // ---- MID: the hall
+  const hb0 = B.boxes.length, hd0 = D.boxes.length; // (the shell from here to the rafters is the Blender hall: wh_hall_sd)
   wall(W, 'x', -HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: 8, b: 13, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // north: the door to the container yard
   wall(W, 'x', HZ, -HX - 0.3, HX + 0.3, 0, H, 0.6, 'metal', [{ a: -4, b: 1, y0: 0, y1: 3.6 }, ...windows(2 * HX, 5.5, 0, 2, 8)]); // south: to the trailer park
   wall(W, 'z', -HX, -HZ + 0.3, HZ - 0.3, 0, H, 0.6, 'metal', [{ a: 2, b: 10, y0: 0, y1: 5 }]); // west: the big roller door
@@ -2275,6 +2289,7 @@ function warehouseSD() {
     add(-HX, H - 1.4, z - 0.25, HX, H - 0.9, z + 0.25, 'wood'); // rafters
     for (let x = -18; x <= 18; x += 12) { D.add(x - 0.03, H - 3.6, z - 0.03, x + 0.03, H - 1.4, z + 0.03, 'tire'); D.add(x - 0.6, H - 3.9, z - 0.6, x + 0.6, H - 3.6, z + 0.6, 'metal'); D.add(x - 0.45, H - 3.96, z - 0.45, x + 0.45, H - 3.9, z + 0.45, 'lamp'); }
   }
+  hallArch(B, D, hb0, hd0, 'wh_hall_sd');
   for (const z of [-7.4, 7.2]) add(-20, 0, z - 0.06, 20, 0.02, z + 0.06, 'neonyellow'); // the aisle lines
   rack(B, -18, -9, 18, r); rack(B, 0, 9, 18, r); // racking: north side in the west half, south side in the east half
   const O = B.local(6, 0, 1); // the foreman's office in the middle of the floor (doors west and east, windows all round)
@@ -3764,7 +3779,7 @@ function skyGarden(B, D, x, z, y, r) {
 function skyNews(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 });
+    add(x - 7, y, z - 7, x + 3, y + 0.1, z + 7, 'helipad', { fit: 1 }); propOf('heli', [x - 2, y + 0.1, z], 0, () => { chopper(B, D, x - 2, y + 0.1, z, 'toyblue'); D.add(x - 4.5, y + 1.4, z + 1.21, x - 0.5, y + 2.2, z + 1.25, 'adnews', { fit: 1 }); }); // (drawn as the Blender news chopper, p_heli: JANK NEWS 7)
     add(x - 11, y, z + 8, x - 8, y + 1.2, z + 11, 'metal'); D.add(x - 12.5, y + 1.2, z + 6.5, x - 6.5, y + 1.5, z + 12.5, 'white'); D.add(x - 9.7, y + 1.5, z + 9.3, x - 9.3, y + 3.6, z + 9.7, 'metal'); // the dish
     for (const [lx, lz] of [[6, -10], [9, -10], [6, 10], [9, 10]]) { B.box(x + lx, y + 1.4, z + lz, 0.15, 2.8, 0.15, 'metal'); D.box(x + lx, y + 2.9, z + lz, 0.8, 0.6, 0.5, 'lamp'); }
     for (const lz of [-12.6, 12.6]) { add(x + 4, y, z + lz - 0.6, x + 8, y + 1.6, z + lz + 0.6, 'containerb'); }
@@ -3810,9 +3825,10 @@ function skyGreen(B, D, x, z, y, r) {
 function skyObs(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
+    propOf('observatory', [x, y, z], 0, () => { // (drawn as the Blender observatory, p_observatory: tools/blender/make_observatory.py; its sign stays the map's)
     add(x - 6, y, z - 6, x + 6, y + 4, z + 6, 'white'); dome(D, x, y + 4, z, 6, 'chrome', false);
     D.add(x - 0.6, y + 6.2, z + 2, x + 0.6, y + 7.2, z + 9, 'metal'); D.add(x - 0.8, y + 6.0, z + 8.6, x + 0.8, y + 7.4, z + 9.2, 'glass'); // the telescope
-    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 });
+    D.add(x - 4, y + 1.5, z + 6, x + 4, y + 3.3, z + 6.06, 'adobs', { fit: 1 }); }, { keep: (b) => !!b.fit });
     for (const [bx, bz] of [[-9, 9], [9, 9], [-9, -9], [9, -9]]) add(x + bx - 1.3, y, z + bz - 0.3, x + bx + 1.3, y + 0.5, z + bz + 0.3, 'wood'); }
 }
 // the helipad: the big pad, a parked chopper, fuel tanks, the control booth, a windsock. f = -1 puts the tanks and the
@@ -3820,10 +3836,11 @@ function skyObs(B, D, x, z, y, r) {
 function skyHeli(B, D, x, z, y, r, f = 1) {
   const add = B.add, W = B.local(0, 0, 0);
   {
-    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred'); // (S&D: off the pad's middle, the site's)
-    for (const tx of [-11, -8.5]) { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); }
-    add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); // the booth
-    B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }
+    add(x - 8, y, z - 8, x + 8, y + 0.1, z + 8, 'helipad', { fit: 1 }); propOf('heli', [x + 1, y + 0.1, z - (f < 0 ? 3 : 1)], 0, () => chopper(B, D, x + 1, y + 0.1, z - (f < 0 ? 3 : 1), 'toyred')); // (S&D: off the pad's middle, the site's. drawn as p_heli)
+    // (the tanks, the booth and the windsock are drawn as Blender props: tools/blender/make_helipad.py)
+    for (const tx of [-11, -8.5]) propOf('fueltank', [x + tx, y, z + f * 10.5], 0, () => { add(x + tx - 0.9, y, z + f * 9.6, x + tx + 0.9, y + 2.6, z + f * 11.4, 'barrelr'); });
+    propOf('flightops', [x + 10.8, y, z + f * 10.8], 0, () => { add(x + 9, y, z + f * 9, x + 12.6, y + 2.8, z + f * 12.6, 'metal'); D.add(x + 8.96, y + 1.2, z + f * 9.4, x + 9, y + 2.4, z + f * 12.2, 'glass'); }); // the booth
+    propOf('windsock', [x + 12.5, y, z - f * 12.5], 0, () => { B.box(x + 12.5, y + 2, z - f * 12.5, 0.15, 4, 0.15, 'metal'); D.add(x + 12.5, y + 3.4, z - f * 12.6, x + 14, y + 3.9, z - f * 12.4, 'hazard'); }); }
 }
 
 // ------------------------------------------------------------ SKYLINE: the high city. nine tops in a three by three grid
@@ -3989,8 +4006,9 @@ function skylineSD() {
   add(-51, 46, -55.6, -47.8, 48.6, -52.4, 'concrete'); add(-51.2, 48.6, -55.8, -47.6, 48.9, -52.2, 'roofg');
   D.box(-49.4, 53, -54, 0.3, 8.2, 0.3, 'metal'); for (const [y, w] of [[54.4, 2.6], [56.2, 1.6]]) D.box(-49.4, y, -54, w, 0.12, 0.12, 'metal');
   for (const s of [-1, 1]) D.box(-49.4 + s * 0.55, 51.6, -53.55, 0.8, 1.1, 0.3, 'white'); D.box(-49.4, 57.25, -54, 0.4, 0.3, 0.4, 'neonpink');
+  propOf('fuelcart', [44, 46, -50], 0, () => { // (drawn as the Blender fuel bowser, p_fuelcart)
   add(43, 46.5, -52.6, 45, 48.4, -47.4, 'toyred'); add(43.2, 48.4, -52.3, 44.8, 49.0, -48.2, 'chrome'); // the fuel cart
-  for (const z of [-51.6, -48.4]) for (const x of [42.85, 45.15]) D.box(x, 46.4, z, 0.2, 0.8, 0.8, 'tire');
+  for (const z of [-51.6, -48.4]) for (const x of [42.85, 45.15]) D.box(x, 46.4, z, 0.2, 0.8, 0.8, 'tire'); });
   for (const [x, z] of [[-60.6, -58], [-35.6, -52], [-60.6, -66], [60.6, -60], [35.6, -78], [60.6, -66]]) { B.box(x, 46.25, z, 0.6, 0.5, 0.6, 'metal'); D.box(x, 46.53, z, 0.4, 0.06, 0.4, 'grid'); }
   // ☺ CORP HQ (security): the flag on its mast frame, two machine rooms, AC
   for (const x of [-6, 6]) add(x - 0.2, 40, -77.6, x + 0.2, 47, -77.2, 'metal');
@@ -4710,6 +4728,10 @@ function backrooms() {
   spawns.push([mid(14), PY + 0.1, mid(30)], [mid(15), PY + 0.1, mid(45)]);
   const att2 = [[-16, 0.1, 113], [-8, 0.1, 113], [0, 0.1, 113], [8, 0.1, 113], [16, 0.1, 113], [-8, 0.1, 103], [8, 0.1, 103]];
   const def2 = att2.map(([x, y, z]) => [x, y, -z]);
+  // ---- look only: every wallpaper wall, pillar and half wall is drawn by one Blender model (tools/blender/arch/make_backrooms.py,
+  // archfield.js). the boxes stay what you bump into, and come back if the file doesn't
+  B.boxes.arch.push({ id: 'backrooms', p: [0, 0, 0], r: 0 }); const AV = { av: 'backrooms', ai: B.boxes.arch.length - 1 };
+  for (const b of B.boxes) if (b.mat === 'wallpaper') Object.assign(b, AV);
   const HZ = 0xb4a35a; // the haze
   return {
     name: 'Backrooms', size: 'extra large', boxes: B.boxes, deco: D.boxes, killY: -50,
