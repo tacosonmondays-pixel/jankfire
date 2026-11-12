@@ -35,7 +35,10 @@ test('versioned code urls', async () => {
     assert.equal((await fetch(`${B}/v/${id}/js/main.js`, { method: 'HEAD' })).headers.get('cache-control'), 'public, max-age=31536000, immutable');
     { const r = await fetch(`${B}/v/0123456789/js/main.js`, { method: "HEAD" }); assert.equal(r.status, 200, "an old build still loads"); assert.doesNotMatch(r.headers.get("cache-control") || "", /immutable/); }
     assert.doesNotMatch((await fetch(`${B}/js/main.js`, { method: 'HEAD' })).headers.get('cache-control'), /immutable/);
-    assert.doesNotMatch((await fetch(`${B}/v/${id}/models/cast/c_dale.glb`, { method: 'HEAD' })).headers.get('cache-control') || '', /immutable/, 'media is not part of the build id');
+    { const r = await fetch(`${B}/v/${id}/models/cast/c_dale.glb`, { redirect: 'manual' }); assert.equal(r.status, 302, 'media is not in the build id: its own address'); assert.equal(r.headers.get('location'), '/models/cast/c_dale.glb'); }
+    { const r = await fetch(`${B}/v/${id}/models/story/index.json`, { redirect: 'manual' }); assert.equal(r.status, 302, 'json in a media folder is not in the hash either'); }
+    assert.equal((await fetch(`${B}/v/${id}/vendor/three/build/three.module.js`, { method: 'HEAD' })).headers.get('cache-control'), 'public, max-age=31536000, immutable', 'three.js: its version is in the hash');
+    assert.equal((await fetch(`${B}/js/main.js%00`)).status, 400, 'a null byte: 400, not a hang');
     assert.equal((await fetch(`${B}/v/${id}/../server.js`)).status, 404);
     // the page again: same ETag -> 304
     const again = await fetch(B + '/', { headers: { 'if-none-match': page.headers.get('etag') } });

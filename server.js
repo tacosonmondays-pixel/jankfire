@@ -72,6 +72,7 @@ function modelList() {
 function serve(req, res) {
   let url;
   try { url = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400).end(); return; }
+  if (url.includes('\0')) { res.writeHead(400).end(); return; } // (a null byte: fs would choke on it and the request hung)
   if (url === '/models/list') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
     res.end(JSON.stringify(modelList()));

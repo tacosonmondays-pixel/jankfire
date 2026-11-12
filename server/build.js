@@ -1,15 +1,17 @@
 // versioned code URLs (load times: the owner's #1 complaint). the page's ~550 scripts were all served no-cache, so every
 // visit asked the server about every one again, a round trip each, 4-8 imports deep. now the pages name the code under
 // /v/<build>/..., the browser keeps those for good (immutable) and the next visit asks about none of them.
-//   <build>: a hash of every code file's path, size and mtime (public, shared, the three.js version), checked again at
-//            most every 2 s when a page is asked for: an edit (local dev) or a deploy gives a new build, new URLs, so a
-//            page can never mix old and new code. the unversioned paths are untouched (no-cache, server/static.js)
+//   <build>: a hash of every code file's path, size and mtime (public, shared, the three.js version). a deploy gives a
+//            new build and new URLs, so a fresh page never gets an old script. (a tab left open across a deploy that
+//            lazily imports something then gets the new file, as it did before: an old build's URL isn't immutable.)
+//            in production it's worked out once at boot; locally it's checked again at most every 2 s (your edits)
 //   pages:   each .html gets its import map, module scripts and stylesheets pointed at /v/<build>/, and a
 //            <link rel=modulepreload> for every module its scripts import up front (fetched in parallel, not 4-8
 //            round trips deep). "/js/" and "/shared/" are in the import map too, so an import('/js/x.js') from anywhere
 //            on the page gets the same module the page has
-//   /v/<b>/: the file at the rest of the path. code (.js .css .json) is immutable when <b> is the current build; an old
-//            build's URL, or anything else (models, music fetched next to a script), gets the normal headers
+//   /v/<b>/: the file at the rest of the path. code that's in the hash (.js .css .json, not in the media folders) is
+//            immutable when <b> is the current build, an old build's code gets the normal headers, and anything not in
+//            the hash (models, music, json in the media folders) is sent to its own unversioned address
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -21,7 +23,7 @@ const SKIP = new Set(['models', 'music', 'sounds', 'fonts', 'icons', 'img', 'tex
 const IMMUTABLE = 'public, max-age=31536000, immutable';
 
 // fileOf(url) -> the file a url is served from (server.js ROUTES), or null
-export function makeBuild(ROOT, fileOf, { every = 2000 } = {}) {
+export function makeBuild(ROOT, fileOf, { every = process.env.RENDER || process.env.NODE_ENV === 'production' ? Infinity : 2000 } = {}) { // (production: the files never change under a running server)
   const B = { id: '', at: 0, html: new Map() };
   function walk(dir, h) {
     let es; try { es = fs.readdirSync(dir, { withFileTypes: true }); } catch { return; }
@@ -111,8 +113,9 @@ export function makeBuild(ROOT, fileOf, { every = 2000 } = {}) {
     if (!file) { res.writeHead(404).end('404'); return; }
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404).end('404'); return; }
-      const ext = path.extname(file);
-      if (m[1] === B.now() && CODE.has(ext)) { const wh = res.writeHead.bind(res); res.writeHead = (code, h) => wh(code, { ...h, 'cache-control': IMMUTABLE }); }
+      const ext = path.extname(file), rel = path.relative(ROOT, file).split(path.sep), hashed = CODE.has(ext) && (rel[0] === 'node_modules' || !rel.some((d) => SKIP.has(d))); // (three.js: its version is in the hash)
+      if (!hashed) { res.writeHead(302, { location: m[2] + (req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : ''), 'cache-control': 'no-cache' }).end(); return; } // (not in the build id: its own address, cached the way it always is)
+      if (m[1] === B.now()) { const wh = res.writeHead.bind(res); res.writeHead = (code, h) => wh(code, { ...h, 'cache-control': IMMUTABLE }); }
       sendStatic(req, res, file, st, ext, type(ext));
     });
   };
