@@ -1,0 +1,56 @@
+<!doctype html>
+<!-- mech models side by side in three.js (how the game draws them): one row per model, one column per view.
+     rendered by compare.cjs. ?n=<models>&labels=a|b&views=front,q,side,back,clip:walk:0.25 (clip:<name>:<seconds>)
+     &tall=6 -->
+<meta charset="utf-8">
+<style>html, body { margin: 0; background: #120818; } canvas { display: block; }
+.l { position: absolute; color: #ffe14d; font: bold 15px monospace; background: rgba(18,8,24,.85); border-left: 3px solid #ff4fd8; padding: 1px 6px; }
+.v { position: absolute; color: #4fd8ff; font: bold 13px monospace; }</style>
+<canvas id="c"></canvas><div id="ui"></div>
+<script type="importmap">{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+const q = new URLSearchParams(location.search), N = +q.get('n'), labels = (q.get('labels') || '').split('|');
+const views = (q.get('views') || 'front,q,side,back').split(','), CW = +(q.get('cw') || 300), CH = +(q.get('ch') || 380), tall = +(q.get('tall') || 5.8);
+const ren = new THREE.WebGLRenderer({ canvas: document.getElementById('c'), antialias: true, preserveDrawingBuffer: true });
+ren.outputColorSpace = THREE.SRGBColorSpace; ren.toneMapping = THREE.ACESFilmicToneMapping; ren.toneMappingExposure = 1.1; ren.setPixelRatio(1);
+const env = new THREE.PMREMGenerator(ren).fromScene(new RoomEnvironment(), 0.04).texture;
+const W = CW * views.length, H = CH * N + 30; ren.setSize(W, H); ren.setScissorTest(true);
+const sc = new THREE.Scene(); sc.background = new THREE.Color(0x1c1028);
+sc.add(new THREE.HemisphereLight(0xfff4f8, 0x2a2030, 1.3)); const d = new THREE.DirectionalLight(0xfff0dd, 2.2); d.position.set(-6, 10, -8); sc.add(d);
+const r = new THREE.DirectionalLight(0x80d0ff, 1.0); r.position.set(6, 5, 8); sc.add(r);
+sc.add(new THREE.GridHelper(8, 8, 0x5a3a6a, 0x3a2a4a));
+const cam = new THREE.PerspectiveCamera(30, CW / CH, 0.1, 200), ui = document.getElementById('ui'), out = { missing: [], tris: [] };
+const CAM = { front: [0, 0.55, -1], q: [-0.62, 0.62, -0.8], side: [-1, 0.55, 0], back: [0, 0.55, 1], clip: [-0.5, 0.62, -0.9],
+  upper: [-0.17, 0.82, -0.28, 0.78], pauldron: [-0.16, 0.86, -0.2, 0.8, -1.1], shin: [-0.12, 0.25, -0.2, 0.2, -0.55], faceh: [-0.03, 0.86, -0.3, 0.84], bk: [0.12, 0.62, 0.3, 0.62], face: [-0.06, 0.8, -0.16, 0.8], mid: [-0.22, 0.5, -0.3, 0.44], arm: [0.2, 0.47, -0.2, 0.42, 1.1], armside: [0.3, 0.45, 0.02, 0.42, 1.1], legs: [-0.17, 0.3, -0.28, 0.2], uback: [0.2, 0.85, 0.28, 0.78] };  // (x, y, z of the camera per height; close-ups: the look-at height)
+for (let i = 0; i < N; i++) {
+  const g = await new Promise((ok, bad) => new GLTFLoader().load(`/f/${i}.glb`, ok, undefined, bad));
+  let tris = 0;
+  g.scene.traverse((o) => { if (o.isMesh) { if (/_lod1$/.test(o.name)) { o.visible = false; return; } tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3;
+    for (const m of [].concat(o.material)) { m.envMap = env; m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.35; } } });
+  out.tris.push(Math.round(tris));
+  sc.add(g.scene);
+  const mixer = new THREE.AnimationMixer(g.scene);
+  for (const [k, v] of views.entries()) {
+    const [kind, clipName, ts, camAs] = v.split(':'); // (clip:<name>:<t>:<view> frames a clip from another view's camera)
+    mixer.stopAllAction();
+    if (kind === 'clip') {
+      const clip = g.animations.find((a) => a.name === clipName); if (!clip) { out.missing.push(clipName); continue; }
+      const act = mixer.clipAction(clip); act.setLoop(THREE.LoopOnce); act.clampWhenFinished = true; act.reset().play(); mixer.setTime(Math.min(+ts, clip.duration - 1e-4));
+    } else { const idle = g.animations.find((a) => a.name === 'idle'); if (idle) { mixer.clipAction(idle).reset().play(); mixer.setTime(0); } }
+    g.scene.updateMatrixWorld(true);
+    if (q.get('probe')) for (const pn of q.get('probe').split(',')) { const o = g.scene.getObjectByName(pn); if (o) { const w = o.isMesh ? new THREE.Box3().setFromObject(o).getCenter(new THREE.Vector3()) : o.getWorldPosition(new THREE.Vector3()); /* (a mesh: its box centre) */ (out.probe ||= []).push(`${labels[i] || i} ${v} ${pn} ${w.toArray().map((x) => x.toFixed(2)).join(' ')}`); } }
+    const c = CAM[camAs] || CAM[kind] || CAM.q, dist = tall * 2.55;
+    cam.position.set(c[0] * dist, tall * c[1], c[2] * dist); cam.lookAt(c[4] || 0, tall * (c[3] || 0.46), 0);
+    const x = k * CW, y = 30 + i * CH;
+    ren.setViewport(x, H - y - CH, CW - 2, CH - 2); ren.setScissor(x, H - y - CH, CW - 2, CH - 2); ren.render(sc, cam);
+    ui.insertAdjacentHTML('beforeend', `<div class="v" style="left:${x + 6}px;top:${y + CH - 22}px">${kind === 'clip' ? clipName + ' ' + ts + 's' + (camAs ? ' ' + camAs : '') : kind}</div>`);
+  }
+  ui.insertAdjacentHTML('beforeend', `<div class="l" style="left:4px;top:${30 + i * CH + 4}px">${labels[i] || 'model ' + i} (${Math.round(tris / 1000)}k tris)</div>`);
+  sc.remove(g.scene);
+}
+ui.insertAdjacentHTML('beforeend', `<div class="l" style="left:4px;top:4px">${q.get('title') || 'mechs side by side'} (three.js, as in the game)</div>`);
+window.INFO = out; window.DONE = true;
+</script>
