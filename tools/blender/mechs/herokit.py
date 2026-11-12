@@ -103,7 +103,15 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
     m = tex_mat(f'{mk.prefix}_decalmat', img, rough=0.42, clip=True, cc=0.5)
     used, made = set(), 0
     centre = lambda j: g_of(posed_world[j].translation)
-    def best(j, w, h, avoid=(), face=None, strict=False, tol=0.985):
+    trees = [(o, BVHTree.FromObject(o, bpy.context.evaluated_depsgraph_get())) for o in pieces.values() if o is not None and o.type == 'MESH']
+    def exposed(c, n, reach=1.6):  # (nothing of the mech in front of the plate: a ray straight out of it hits nothing)
+        p, d = V(gv(*c)), V(gv(*n)).normalized()
+        p = p + d * 0.03
+        for o, t in trees:
+            Mi = o.matrix_world.inverted()
+            if t.ray_cast(Mi @ p, (Mi.to_3x3() @ d).normalized(), reach)[0] is not None: return False
+        return True
+    def best(j, w, h, avoid=(), face=None, strict=False, tol=0.985, see=False, steep=0.75):
         o = pieces.get(j)
         if o is None: return None
         rot = posed_world[j].to_3x3(); rest_up = g_of(rot @ gv(0, 1, 0))
@@ -114,7 +122,8 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
         for area, c, n, _ in flat_panels(o, tol=tol):
             if any(sum((a - b) ** 2 for a, b in zip(c, p)) < 0.09 for p in avoid): continue
             out = sub(c, (0, c[1], 0) if j in TORSO else centre(j))  # (torso plates: out from the body's middle line)
-            if dot(out, n) < 0 or abs(n[1]) > 0.75: continue  # (facing out of the body, not straight up or down)
+            if dot(out, n) < 0 or abs(n[1]) > steep: continue  # (facing out of the body, not straight up or down)
+            if see and not exposed(c, n): continue
             cands.append((area, dot(n, want) if want else 1.0, c, n))
         # the plates that really face that way, the decal shrunk a little if it must; else any outward plate it fits
         for k, ok in ((1.0, 0.55), (0.8, 0.55), (0.62, 0.55)) + (() if strict else ((1.0, -2), (0.8, -2), (0.62, -2))):
@@ -128,7 +137,7 @@ def decorate(mk, pieces, posed_world, number='07', plan=PLAN, spray=SPRAY):
     # then keep off them, so a spray never lands on top of one
     for joints in spray:
         for j in joints:
-            r = best(j, 0.5, 0.5, placed, 'front' if j in TORSO else 'out', tol=0.9)  # (a spray can wrap a curved plate)
+            r = best(j, 0.42, 0.42, placed, 'front' if j in TORSO else 'out', tol=0.8, see=True, steep=0.5)  # (a spray can wrap a curved plate; one you can see)
             if r: slots.append({'name': f'spray_{len(slots)}', 'joint': j, 'at': r[0], 'dir': r[1], 'up': r[2], 'size': round(0.6 * r[3], 2)}); placed.append(r[0]); break
     for joints, cell, w, face in plan:
         x, y, cw, ch = CELLS[cell]; h = w * ch / cw

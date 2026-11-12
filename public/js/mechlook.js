@@ -214,8 +214,9 @@ function fire(inst, L, e) {
 }
 
 // ------------------------------------------------------------ sprays / skins on a decal slot
-// k = the slot (0 = the chest plate, 1 = a shoulder / thigh), map = a texture (a spray canvas). Returns the mesh.
-export function sprayOnMech(inst, k, map) {
+// k = the slot (0 = the chest plate, 1 = a shoulder / thigh), map = a texture (a spray canvas), scale = its size
+// against the plate (it wraps over the edges like paint). Returns the mesh.
+export function sprayOnMech(inst, k, map, scale = 1.5) {
   const L = inst && inst.look, sl = L && L.slots[k];
   if (!sl || !map || !Array.isArray(sl.at) || !Array.isArray(sl.dir)) return null;
   const J = nodeIn(L.glb, sl.joint), meta = metaOf(L.glb) || {}, ja = meta.joints && meta.joints[sl.joint] && meta.joints[sl.joint].at;
@@ -224,7 +225,7 @@ export function sprayOnMech(inst, k, map) {
   const at = new THREE.Vector3(sl.at[0] - ja[0], sl.at[1] - ja[1], sl.at[2] - ja[2]), dir = new THREE.Vector3().fromArray(sl.dir).normalize();
   const up = new THREE.Vector3().fromArray(Array.isArray(sl.up) ? sl.up : [0, 1, 0]);
   const rot = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().lookAt(at.clone().add(dir), at, up));
-  const size = Number.isFinite(sl.size) ? sl.size : 0.6, geos = [];
+  const size = (Number.isFinite(sl.size) ? sl.size : 0.6) * (Number.isFinite(scale) ? Math.max(0.3, Math.min(3, scale)) : 1.5), geos = [];
   J.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(J.matrixWorld).invert();
   for (const c of J.children) {
@@ -239,7 +240,9 @@ export function sprayOnMech(inst, k, map) {
   if (!geos.length) return null;
   const g = geos.length > 1 ? mergeGeometries(geos, false) : geos[0];
   if (geos.length > 1) for (const x of geos) x.dispose();
-  const m = jankify(new THREE.MeshStandardMaterial({ map, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.5, metalness: 0.1 }));
+  const env = L.mats.find((x) => x.envMap) || null; // (the mech's own reflections, and a little self-light: paint you can read in the shade)
+  const m = jankify(new THREE.MeshStandardMaterial({ map, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.55, metalness: 0,
+    emissive: 0xffffff, emissiveMap: map, emissiveIntensity: 0.3, envMap: env && env.envMap, envMapIntensity: 0.35 }));
   const d = new THREE.Mesh(g, m); d.name = 'spray_' + k; d.renderOrder = 2; d.userData.noWrap = true;
   J.add(d); L.sprays.push(d);
   return d;
