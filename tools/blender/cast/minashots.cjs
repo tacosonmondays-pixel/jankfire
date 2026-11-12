@@ -29,12 +29,11 @@ const [PORT = 3000, OUT = 'mina_shots', MODE = 'both'] = process.argv.slice(2);
     const wall = new THREE.Group(); sc.add(wall);
     for (const [x0, x1, h, c] of [[-3.5, -0.37, 3.4, 0xa82430], [-0.13, 3.1, 3.2, 0x8e1622], [3.1, 6, 4, 0xc23a40], [-6, -3.5, 4, 0x7a121c]]) { const m = new THREE.Mesh(new THREE.BoxGeometry(x1 - x0, h, 0.24), new THREE.MeshStandardMaterial({ color: c, roughness: 0.45 })); m.position.set((x0 + x1) / 2, h / 2, 0.28); m.receiveShadow = true; wall.add(m); }
     const fac = new THREE.Mesh(new THREE.PlaneGeometry(14, 6), new THREE.MeshStandardMaterial({ color: 0xd8b8b0, roughness: 0.8 })); fac.position.set(0, 3, 0.42); fac.rotation.y = Math.PI; wall.add(fac); // (the office block's face)
-    G.scene = sc;
-    window.__M = { THREE, A, r, sc, wall, fl, looks };
+    window.__M = { THREE, A, r, sc, wall, fl, looks, G }; // (G.scene is only pointed at ours while she's added: the menu behind rebuilds its own)
   });
   const setup = (look, at, face, wallOn) => pg.evaluate(([look, at, face, wallOn]) => {
-    const { A, wall } = window.__M; A.clearActors(); wall.visible = wallOn;
-    const a = A.spawnActor('mina', { look, voice: { kind: 'chirp', pitch: 1.1 }, idle: 'idle', hint: null }, at, face);
+    const { A, wall, G, sc } = window.__M, g0 = G.scene; G.scene = sc; A.clearActors(); wall.visible = wallOn;
+    const a = A.spawnActor('mina', { look, voice: { kind: 'chirp', pitch: 1.1 }, idle: 'idle', hint: null }, at, face); G.scene = g0;
     a.pos[1] = 0; a.home.p = a.pos.slice(); window.__a = a; window.__t = 0;
     return { look: a.L.look, blender: !!a.L.blender };
   }, [look, at, face, wallOn]);

@@ -151,7 +151,7 @@ function pose(a, dt, moving, look) {
   if (c.armRest) { const [ax, fx] = c.armRest; c.arm.rotation.x += ax; c.armL.rotation.x += ax; c.foreR.rotation.x += fx; c.foreL.rotation.x += fx; } // (a look whose arms can't hang: dot's rest on her wall)
   c.spine.rotation.set(c.spine.userData.hunch ??= c.spine.rotation.x, 0, 0);
   c.spine.position.y = c.spine.userData.y0 ??= c.spine.position.y;
-  c.head.rotation.x = 0; c.head.rotation.y = 0;
+  c.head.rotation.x = 0; c.head.rotation.y = 0; c.head.rotation.z = c.head.userData.tilt ??= c.head.rotation.z; // (z starts from the jank tilt every frame: clips that add to it, shrug, think, late, no longer wind the head round)
   // breathing (everyone), and the idle style when standing
   const br = Math.sin(t * 1.9);
   c.spine.position.y += br * 0.006; c.spine.rotation.x -= br * 0.012;

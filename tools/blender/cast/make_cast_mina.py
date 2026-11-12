@@ -619,7 +619,7 @@ def build():
         for poly in rat.data.polygons:
             for li in poly.loop_indices:
                 v = rat.data.vertices[rat.data.loops[li].vertex_index].co
-                rat.data.uv_layers.active.data[li].uv = (0.5 - v.x / 0.025, (v.z + 0.046) / 0.025 + 0.5)  # (seen from behind: her left on the right)
+                rat.data.uv_layers.active.data[li].uv = (min(1, max(0, 0.5 - v.x / 0.025)), min(1, max(0, (v.z + 0.046) / 0.025 + 0.5)))  # (seen from behind: her left on the right; clamped: the edge is plain glove)
         rat['keep_uv'] = 1; hand.append(rat)
         hand.append(lathe([(0.0345, 0.024), (0.0372, 0.018), (0.0365, -0.008), (0.034, -0.014)], (0, 0, 0), gloveM, seg=14, axis='y', cap=False)); solid(hand[-1], 0.004)
         hand.append(box((0.026, 0.014, 0.004), (0, -0.001, 0.0378), mat(ID + '_strap', 0x1a1a20, rough=0.6), bev=0.0015))  # the velcro tab
@@ -697,7 +697,7 @@ def mound(rng, skin, steel, suede, rubberM, sockM):
     w = [shell('lap', LAP, flesh, seg=40, fn=lump, cap=(True, True))]
     # the wall bulging out round her: two broad swells either side, flat to the wall behind (its face is ~0.13 behind her)
     for sx in (-1, 1):
-        w.append(blob('swell%d' % sx, (sx * 0.56, 0.5, 0.26), (0.36, 0.5, 0.15), flesh, fn=lambda p, n, sx=sx: 0.012 * math.sin(p.y * 17 + sx) * max(0.0, -n.z), seg=18, rings=12))
+        w.append(blob('swell%d' % sx, (sx * 0.5, 0.42, 0.28), (0.27, 0.43, 0.13), flesh, fn=lambda p, n, sx=sx: 0.01 * math.sin(p.y * 17 + sx) * max(0.0, -n.z), seg=16, rings=12))
     # the roll in front she leans on (STANCE puts her forearms on it at ~1.1)
     arc_ = [(math.sin(t) * 0.3, 1.0 + 0.012 * math.cos(t * 2), -math.cos(t) * 0.27 - 0.03) for t in [math.radians(a) for a in range(-80, 81, 16)]]
     w.append(limb('roll', arc_, [0.05, 0.065, 0.075, 0.082, 0.086, 0.086, 0.082, 0.075, 0.065, 0.05, 0.04][:len(arc_)], flesh, seg=12))
@@ -809,6 +809,8 @@ def closeups(root):
     shots = [(hc, hc + Vector((0, 0.62, 0.03)), 60), (hc, hc + Vector((-0.42, 0.45, 0.04)), 60), (hc, hc + Vector((0.62, 0.04, 0.03)), 60),
              (wpos('handL', (0, -0.05, 0)), wpos('handL', (-0.3, -0.02, -0.12)), 55), (wpos('handR', (0, -0.05, 0)), wpos('handR', (0.12, 0.04, 0.3)), 55),
              (wpos('spine', (0.0, 0.3, -0.12)), wpos('spine', (-0.2, 0.36, -0.75)), 45)]
+    if WALL:  # (her hands are on the lip in this one: posed for the sheet)
+        shots[3] = (gv(0, 1.05, -0.33), gv(0.22, 1.42, -0.85), 50); shots[4] = (gv(-0.3, 0.62, -0.45), gv(-0.55, 0.95, -1.2), 45)
     out = []
     tmp = os.path.join(SHEETS, '_tmp'); os.makedirs(tmp, exist_ok=True)
     for i, (tg, cp, lens) in enumerate(shots):
