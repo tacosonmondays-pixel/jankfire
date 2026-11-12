@@ -1,0 +1,1 @@
+{"map":"rooftop","id":"liftroom","boxes":[{"min":[-3,0,-5],"max":[3,4.5,5],"mat":"concrete"},{"min":[-3.2,4.5,-5.2],"max":[3.2,4.8,5.2],"mat":"roofg"}],"places":[{"id":"liftroom","p":[-39,0,0],"r":0,"ai":0},{"id":"liftroom","p":[39,0,0],"r":2,"ai":2}]}
