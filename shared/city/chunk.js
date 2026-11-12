@@ -7,7 +7,9 @@ import { CHUNK, CITIES, MAT_ID, MATS, rng, hash2, strHash, chunkId } from './pla
 import { GENS } from './gens.js';
 
 const F_NC = 1, F_HIDE = 2, F_FIT = 4, F_LOD = 8, F_L0 = 16, F_L1 = 32; // render-only, collision-only, texture once per face, keep in lod1 always, drawn in lod0 only, drawn in lod1 only (a cheap stand-in)
-export const FLAGS = { NC: F_NC, HIDE: F_HIDE, FIT: F_FIT, LOD: F_LOD, L0: F_L0, L1: F_L1 };
+const F_TER = 64; // a hidden step under shaped ground (a 'field' shape, shared/city/ground.js): soft on top, bodies walk the field
+export const FLAGS = { NC: F_NC, HIDE: F_HIDE, FIT: F_FIT, LOD: F_LOD, L0: F_L0, L1: F_L1, TER: F_TER };
+export const TER_SOFT = 1.0; // (how deep a ground step's top is soft: physics.js soft)
 
 // a builder for chunk (cx, cz). ox/oz/rot/oy: a local frame like shared/map.js local() (rot = quarter turns)
 export function chunkBuilder(city, cx, cz, rect) {
@@ -23,7 +25,7 @@ export function chunkBuilder(city, cx, cz, rect) {
     const a = Math.max(x0, X0), b = Math.min(x1, X1), c = Math.max(z0, Z0), d = Math.min(z1, Z1);
     if (b - a < 0.005 || d - c < 0.005) return; // not in this chunk (or a sliver)
     const m = MAT_ID[mat] ?? MAT_ID.concrete;
-    out.boxes.push([a, y0, c, b, y1, d, m, o ? (o.nc || o.l1 ? F_NC : 0) | (o.hide ? F_HIDE : 0) | (o.fit ? F_FIT : 0) | (o.lod ? F_LOD : 0) | (o.l0 ? F_L0 : 0) | (o.l1 ? F_L1 : 0) : 0, o && o.tint ? o.tint >>> 0 : 0]);
+    out.boxes.push([a, y0, c, b, y1, d, m, o ? (o.nc || o.l1 ? F_NC : 0) | (o.hide ? F_HIDE : 0) | (o.fit ? F_FIT : 0) | (o.lod ? F_LOD : 0) | (o.l0 ? F_L0 : 0) | (o.l1 ? F_L1 : 0) | (o.ter ? F_TER | F_HIDE : 0) : 0, o && o.tint ? o.tint >>> 0 : 0]);
   };
   const box = (x, y, z, sx, sy, sz, mat, o) => add(x - sx / 2, y - sy / 2, z - sz / 2, x + sx / 2, y + sy / 2, z + sz / 2, mat, o);
   // a turned box, render only (signs, planks, rebar): kept by the chunk its centre is in
@@ -85,14 +87,19 @@ export function packChunk(o) {
 export const transferList = (p) => [p.box.buffer, p.mat.buffer, p.flag.buffer, p.tint.buffer, p.deco.buffer, p.dmat.buffer, p.dtint.buffer, p.prop.buffer];
 
 // collision boxes as the physics wants them ({ min, max, mat }), from the packed floats, so server and client agree
-// to the bit. render-only (nc) boxes are left out
+// to the bit. render-only (nc) boxes are left out. shaped ground (a 'field' shape) comes along as out.fields: ChunkWorld
+// joins the loaded ones into the heightfield bodies walk on, and its hidden steps are marked ter (soft on top)
 export function chunkBoxes(p) {
   const out = [];
   for (let i = 0; i < p.mat.length; i++) {
     if (p.flag[i] & F_NC) continue;
     const j = i * 6, mt = MATS[p.mat[i]];
-    out.push({ min: [p.box[j], p.box[j + 1], p.box[j + 2]], max: [p.box[j + 3], p.box[j + 4], p.box[j + 5]], mat: mt ? mt[0] : 'concrete' });
+    const b = { min: [p.box[j], p.box[j + 1], p.box[j + 2]], max: [p.box[j + 3], p.box[j + 4], p.box[j + 5]], mat: mt ? mt[0] : 'concrete' };
+    if (p.flag[i] & F_TER) { b.ter = 1; b.sw = TER_SOFT; }
+    out.push(b);
   }
+  const f = (p.shapes || []).filter((s) => s.kind === 'field' && s.ground);
+  if (f.length) out.fields = f;
   return out;
 }
 

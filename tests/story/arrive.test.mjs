@@ -68,3 +68,20 @@ test("talkAt 'arrive': Dumpling scores the landing on the roof, Auntie's talks w
   // the car ride is a talk on the way: it stays at the start of the drive
   assert.ok(overdue.quests.m02_sauce_run.steps.find((s) => s.id === 'drive').do.some((a) => typeof a === 'string' && a.includes('car_ride')));
 });
+
+test("already standing at the Sunset Wall when m04 starts: the arrive step still counts you in (no walk out and back)", async () => {
+  const { ZoneTracker, stepZones } = await import('../../shared/story/zones.js');
+  const Z = new ZoneTracker(), scenes = [];
+  let S;
+  const host = { has: () => false, act: (a) => { if (a.do === 'scene') scenes.push(a.arg); }, event: (e) => { if (e.type === 'stepStart') Z.forget(stepZones(S.defs, e.quest, e.step)); } }; // (what boot.js does)
+  S = makeStory({ content: overdue, host });
+  S.run(overdue.init);
+  for (const q of ['m01_return_to_sender', 'm02_sauce_run', 'm03_somethings_digesting']) done(S, q);
+  const here = new Set(['bottom:sunset_spot']); // you're standing there already, from before the step
+  for (const ev of Z.update(here)) S.emit(ev);
+  S.quests.start('m04_clocking_in');
+  assert.equal(S.st.quests.m04_clocking_in.step, 'sunset' + overdue.ARRIVE);
+  for (const ev of Z.update(here)) S.emit(ev); // the next frame, not moving an inch
+  assert.ok(scenes.includes('c4_clocking_in'), 'c4 waited for you to walk out and back in');
+  assert.deepEqual(Z.update(here), [], 'and only once');
+});

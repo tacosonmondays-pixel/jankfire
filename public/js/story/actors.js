@@ -118,7 +118,23 @@ function updateActor(a, dt, now, eye) {
   a.r.yaw = a.yaw; a.r.gy = a.pos[1];
   locoPose(a.r, pdt, now);
   pose(a, pdt, moving, look);
+  if (a.sit) sitPose(a);
   a.face.update(pdt);
+}
+
+// sitting (benches, chairs): thighs out level, shins down, hands on the knees, the hips at the seat's height
+const AX = new THREE.Vector3(1, 0, 0);
+export function sitActor(a, seat) {
+  a.ch.root.position.set(a.pos[0], a.pos[1], a.pos[2]); a.ch.root.updateMatrixWorld(true);
+  a.ch.legL.getWorldPosition(hv); // (hip height on this rig, at its scale)
+  a.sit = true; a.pos = [seat[0], seat[1] - (hv.y - a.pos[1]), seat[2]]; a.r.pos = a.pos; a.home.p = a.pos.slice();
+}
+function sitPose(a) {
+  const c = a.ch, k = 0.08 * Math.sin(a.t * 0.7); // (a jiggling knee)
+  c.legL.quaternion.setFromAxisAngle(AX, 1.5 + k); c.legR.quaternion.setFromAxisAngle(AX, 1.45);
+  c.kneeL.rotation.x = -1.5 - k; c.kneeR.rotation.x = -1.45;
+  c.arm.rotation.x += 0.55; c.armL.rotation.x += 0.55; c.foreR.rotation.x += 0.35; c.foreL.rotation.x += 0.35;
+  c.spine.rotation.x -= 0.08;
 }
 
 // arms, spine, head: rest pose + idle life + walking swing + talking + the current clip

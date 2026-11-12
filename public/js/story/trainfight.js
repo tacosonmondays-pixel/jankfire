@@ -26,6 +26,7 @@ import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, a
 import { makeBloodDrive } from './blooddrive.js';
 import { makeHitStop } from './hitstop.js';
 import { makeTrainSet } from './trainset.js';
+import { PJ } from './palletjack.js'; // Jack's own clips and damage states (pj_*: the middle scene)
 import { PLACES } from '/shared/city/slice.js'; // where the Loop comes back out into the world (commute:tunnel_mouth, once the world has it)
 import { handFit, haulHand, haulPath, newHaul, stepHaul, armJoints, flatK, HAUL } from './armgrip.js';
 
@@ -157,7 +158,7 @@ export function makeTrainFight(ST, { playScene }) {
     s.lamp.target.position.set(0, CY - 0.3, -Math.max(4, Z()));
     if (T.cutBoxes && s.cars.wagon && T.cutT < 9) { T.cutT += dt; const w = s.cars.wagon; w.position.z = -T.cutT * 16; w.position.y = -T.cutT * T.cutT * 2; w.rotation.x = -T.cutT * 0.5; w.visible = T.cutT < 0.9; if (!w.visible) T.cutT = 9; } // it goes back into the dark, and into the face
     else if (T.cutBoxes && s.cars.wagon) s.cars.wagon.visible = false;
-    for (const a of actors.values()) if (a.rpCrew) a.hidden = F.phase > a.rpCrew.until || busy() || (F.rear > 0 && a.rpCrew.p[2] < F.rear);
+    for (const a of actors.values()) if (a.rpCrew) a.hidden = (F.phase > a.rpCrew.until && !(a.rpCrew.id === 'pallet_jack' && S().st.flags.seen_mo_carry)) || busy() || (F.rear > 0 && a.rpCrew.p[2] < F.rear);
   }
 
   // ---------------------------------------------------------------- the mask (and the arm kit)
@@ -583,9 +584,13 @@ export function makeTrainFight(ST, { playScene }) {
     // are the mission's choices, opened by the scene. you fire: the bolt goes into Jack and the cross comes, small.
     // once the scene is over the step gets its flag (and the choices' flags, if the scene was skipped past them).
     // a run reloaded at this step plays the scene again first
-    const fl = S().st.flags;
-    if (step === 'jack' && fl.jack_fired && !T.jackShot) { T.jackShot = true; const a = actors.get('pallet_jack'); if (a) { bloom([a.pos[0], a.pos[1] + 1.1, a.pos[2]]); HS.hit(0.1); } }
-    if (step !== 'jack') { T.jack = 0; T.jackShot = false; }
+    const fl = S().st.flags, ja = actors.get('_scene_jack') || actors.get('rp_pallet_jack'), jc = actors.get('rp_pallet_jack'); // (in the scene he's the scene's own Jack; after it, the crew's)
+    dressJack();
+    if (step === 'jack' && ja && !T.jackHurt) { T.jackHurt = true; PJ.dmg(ja, 'armour_broken'); }
+    if (step === 'jack' && fl.jack_fired && !T.jackShot) { T.jackShot = true; if (ja) { bloom([ja.pos[0], ja.pos[1] + 1.1, ja.pos[2]]); HS.hit(0.1); } }
+    if (step === 'jack' && fl.jack_marrow_taken && ja && !T.jackMarrow) { T.jackMarrow = true; PJ.dmg(ja, 'marrow_taken'); }
+    if (fl.seen_mo_carry && jc && !busy() && (!jc.clip || jc.clip.name !== 'pj_last_breath')) { PJ.play(jc, 'pj_last_breath', { hold: true }); if (jc.clip) jc.clip.t = jc.clip.len; PJ.dmg(jc, 'marrow_taken'); } // after it, he stays down on the deck, hand open
+    if (step !== 'jack') { T.jack = 0; T.jackShot = false; T.jackHurt = false; T.jackMarrow = false; }
     else if (busy()) T.jack = 2; // it is playing
     else if (T.jack === 2) { T.jack = 3; S().run(['flag:jack_fired', 'flag:jack_marrow_taken', 'flag:seen_mo_carry']); }
     else if (!T.jack && now - T.stepT > 4000 && S().defs.scenes.mo_carry_the_bit_that_works) { T.jack = 1; playScene('mo_carry_the_bit_that_works'); } // (the step's own scene never came: a reload)
@@ -600,7 +605,14 @@ export function makeTrainFight(ST, { playScene }) {
   T.outAt = outAt;
   // the ride in (c6) is asked for when m06's ride step starts, at the service tunnel: it waits for the train, where the
   // crew is (T.frame plays it there). anything else plays where it's asked
-  const RIDE = 'c6_mind_the_gap';
+  const RIDE = 'c6_mind_the_gap', MID = 'mo_carry_the_bit_that_works';
+  // the middle scene as written has no clips for Jack: his own (docs/story/train/FIGHT.md, the pj_* table) go in at its
+  // beats: the armour goes and he's down against the fridge, he takes your hand at 26 s, the breath out after you fire
+  function dressJack() {
+    const sc = S().defs.scenes[MID]; if (!sc || sc.pjDressed || !Array.isArray(sc.tracks)) return;
+    sc.pjDressed = true;
+    sc.tracks.push({ t: 0, anim: ['jack', 'pj_armour_break_fall', true] }, { t: 26, anim: ['jack', 'pj_dying_talk', true] }, { t: 52, anim: ['jack', 'pj_last_breath', true] });
+  }
   T.holdScene = (id) => id === RIDE && MAP.id !== TRAIN.id;
   if (typeof window !== 'undefined') window.JF_TRAIN = T; // (tests and screenshots stage it from here)
   return T;

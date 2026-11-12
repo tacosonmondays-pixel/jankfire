@@ -3,7 +3,7 @@
 //   { id: 'shop', shop: <kind>, sid, name, p: <where you stand at the counter>, keeper, face: <keeper's yaw>, door, stock? }
 // kinds: guns, meat_mechanic, tooth_stall, vending, car_dealer, outfits. A garage is { id: 'garage', p, face, home }.
 // Places are fixed (SHOPS): the generators keep their houses / offices out of each shop's rect (shopRects()).
-import { SLICE, hwY } from './slice.js';
+import { SLICE, hwY, groundY } from './slice.js';
 import { rng, hash2 } from './plan.js';
 import { cube } from './kit.js';
 
@@ -74,13 +74,13 @@ function shopfront(B, s) {
   // a car dealer's forecourt: bunting, stock spots (park marks with sale: true)
   if (s.lot) {
     const [lx0, lz0, lx1, lz1] = s.lot;
-    for (let x = lx0 + 3; x < lx1 - 2; x += 5.5) for (const z of [lz0 + 5, lz0 + 14]) { const yy = hwY(z, true); if (B.inside(x, z)) B.out.marks.push({ id: 'park', p: [x, yy, z], yaw: Math.PI / 2, sale: s.sid }); }
-    for (let x = lx0; x < lx1; x += 4) if (B.inside(x, lz1)) B.prop('stringlights', x + 2, hwY(lz1, true) + 3.2, lz1, 0, 1, 0);
+    for (let x = lx0 + 3; x < lx1 - 2; x += 5.5) for (const z of [lz0 + 5, lz0 + 14]) { const yy = groundY(x, z); if (B.inside(x, z)) B.out.marks.push({ id: 'park', p: [x, yy, z], yaw: Math.PI / 2, sale: s.sid }); }
+    for (let x = lx0; x < lx1; x += 4) if (B.inside(x, lz1)) B.prop('stringlights', x + 2, groundY(x + 2, lz1) + 3.2, lz1, 0, 1, 0);
   }
 }
 function vending(B, [x, z, yaw, district]) {
   if (!B.inside(x, z)) return;
-  const y = district === 'gut' ? GY : district === 'commute' ? hwY(z, true) : (() => { for (let k = 0; k < SLICE.bottom.n; k++) if (z <= 256 - SLICE.bottom.terr * k && z > 256 - SLICE.bottom.terr * (k + 1)) return yB(k); return 0; })();
+  const y = district === 'gut' ? GY : district === 'commute' ? groundY(x, z) : (() => { for (let k = 0; k < SLICE.bottom.n; k++) if (z <= 256 - SLICE.bottom.terr * k && z > 256 - SLICE.bottom.terr * (k + 1)) return yB(k); return 0; })();
   B.prop('vendo', x, y, z, yaw, 1, 0);
   B.add(x - 0.5, y, z - 0.5, x + 0.5, y + 1.9, z + 0.5, 'metal', { hide: true });
   B.light(x - Math.sin(yaw) * 0.8, y + 1.4, z - Math.cos(yaw) * 0.8, 0x4fd8ff, 5, 0.6);

@@ -50,7 +50,7 @@ function buildLava(s) {
     n += 4;
   }
   const T = C.boxes && C.boxes.terrain;
-  if (T) for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) { // lava laid over the hills and hollows
+  if (T && T.H) for (let i = 0; i < T.nx; i++) for (let j = 0; j < T.nz; j++) { // lava laid over the hills and hollows
     if (!T.ok[i * T.nz + j]) continue;
     const h = (a, b) => T.H[a * (T.nz + 1) + b] + 0.04, x = T.x0 + i, z = T.z0 + j;
     pos.push(x, h(i, j), z, x + 1, h(i + 1, j), z, x + 1, h(i + 1, j + 1), z + 1, x, h(i, j + 1), z + 1);

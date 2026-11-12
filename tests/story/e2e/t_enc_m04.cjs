@@ -64,6 +64,14 @@ const ok = (c, m) => { console.log((c ? 'ok   ' : 'FAIL ') + m); if (!c) process
   ok(await ev(async () => { const a = (await import('/js/story/actors.js')).actors.get('lumps'); return !!(a && (!a.clip || a.clip.name !== 'stapled')); }), 'lumps is free');
   await shot('staple');
   await ev(() => clearInterval(window.__h));
+  // ---- the mission ends while the truck is still driving off: it's cleared away, and nothing keeps moving it
+  ok(await ev(() => !!window.JF_STORY.enc.truck.road && !window.JF_STORY.enc.truck.gone), 'the truck is driving off');
+  const before = errs.length;
+  await ev(() => window.JF_STORY.S.quests.finish('m04_clocking_in'));
+  await sleep(4000);
+  ok(await ev(() => !window.JF_STORY.enc.truck.m && !window.JF_STORY.enc.truck.road), 'm04 done: the truck is gone and its drive stopped');
+  const after = errs.slice(before).filter((e) => /driveTick|reading 'position'/.test(e));
+  ok(after.length === 0, 'no driveTick errors after the truck is cleared: ' + after.length);
   console.log('ERRORS', errs.length, errs.slice(0, 10).join('\n'));
   await b.close();
 })();

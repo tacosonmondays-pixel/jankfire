@@ -12,7 +12,7 @@ import { gateArena, inGateArena } from './arenas.js';
 import { shops, shopRects } from './shops.js';
 import { GUT_LINK } from './roads.js';
 import { bigHeart } from './bigheart.js';
-import { act1Gut, act1Border } from './act1set.js';
+import { act1Gut, act1Border, BEV } from './act1set.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -335,6 +335,7 @@ export function border(B, d) {
       if (lx0 + w < X0 - 6 || lx0 > X1 + 6) continue;
       if (Math.abs(lx0 + w / 2 - G.x) < 14 || Math.abs(lx0 + w / 2 + 112) < 8) continue; // the gate's avenue, the escalator top
       if (inGateArena(lx0, zz0, lx0 + w, zz1)) continue; // Overtime's arena (arenas.js builds its own houses)
+      if (inRect(lx0, zz0, lx0 + w, zz1, BEV.rect)) continue; // Bev's clinic stands on this plot (act1set.js)
       const hr = rng(seed), floors = 1 + (hr() * 3 | 0);
       let fy = y;
       for (let f = 0; f < floors; f++) {
