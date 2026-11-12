@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '9.4', date: '2026-11-12', title: 'IT MEANS IT', items: [
+    'islands: mount kaboom finally looks like it means it. smoke you can see from the beach, lava that glows, a lava pool in the crater (still a pit. don\'t), stripy rock and a little jungle round its feet.',
+  ] },
   { v: '9.3', date: '2026-11-12', title: 'STOP FLICKERING', items: [
     'roads, sidewalks and crossings stopped flickering when you look down from up high (the blimp, gliding, tall buildings). jankburg looks like a city again instead of static.',
   ] },
