@@ -592,7 +592,7 @@ function rigStair(B, D, alongX, a0, a1, c0, c1, ya, yb, o = {}) {
 // a separator: a horizontal pressure vessel along x (x0..x1) round z = c, 3.4 across: an octagon in section (three boxes),
 // its rounded ends, two yellow saddles, a manway, valves and pipes off its back, a level gauge. cover on the deck, and its
 // back (4.0) is a step up onto the pipe rack
-function separator(B, D, x0, x1, c, y = 0) {
+function separator(B, D, x0, x1, c, y = 0) { propOf('separator', [(x0 + x1) / 2, y, c], 0, () => { // (a Blender prop: p_separator, tools/blender/make_process.py, look-only)
   const r = 1.7, k = 0.7, y0 = y + 0.6;
   B.add(x0 + 0.6, y0, c - r + k, x1 - 0.6, y0 + 2 * r, c + r - k, 'rigsteel');
   B.add(x0 + 0.6, y0 + k, c - r, x1 - 0.6, y0 + 2 * r - k, c - r + k, 'rigsteel'); B.add(x0 + 0.6, y0 + k, c + r - k, x1 - 0.6, y0 + 2 * r - k, c + r, 'rigsteel');
@@ -601,10 +601,10 @@ function separator(B, D, x0, x1, c, y = 0) {
   D.add(x0 - 0.12, y0 + 1.1, c - 0.5, x0, y0 + 2.3, c + 0.5, 'rigyellow'); // the manway in its end
   for (const x of [x0 + 3.5, (x0 + x1) / 2, x1 - 3.5]) { D.add(x - 0.25, y0 + 2 * r, c - 0.25, x + 0.25, y0 + 2 * r + 0.5, c + 0.25, 'rigred'); D.add(x - 0.4, y0 + 2 * r + 0.5, c - 0.06, x + 0.4, y0 + 2 * r + 0.56, c + 0.06, 'rigyellow'); } // nozzles, handwheels
   D.add((x0 + x1) / 2 - 1.4, y0 + 0.9, c - r - 0.08, (x0 + x1) / 2 + 1.4, y0 + 1.3, c - r, 'glass'); // the level gauge
-}
+}); }
 // the pipe rack along x (x0..x1) round z = c: steel frames every 5 m, the walkway on top (3.6, grating, 2.2 wide) between
 // two bundles of pipes, cable trays slung under it. gap: [a, b] where a stair comes up through the pipes on its +z side
-function pipeRack(B, D, x0, x1, c, gap = null) {
+function pipeRack(B, D, x0, x1, c, gap = null) { propOf('piperack', [(x0 + x1) / 2, 0, c], 0, () => { // (a Blender prop: p_piperack, tools/blender/make_process.py, look-only)
   const y = RIG.M1;
   B.add(x0, y - 0.3, c - 1.1, x1, y, c + 1.1, 'grating');
   for (let x = x0 + 0.3; x < x1; x += 5) { B.add(x - 0.18, 0, c - 3.05, x + 0.18, y - 0.6, c - 2.7, 'rigsteel'); B.add(x - 0.18, 0, c + 2.7, x + 0.18, y - 0.6, c + 3.05, 'rigsteel'); B.add(x - 0.18, y - 0.6, c - 3.05, x + 0.18, y - 0.3, c + 3.05, 'rigsteel'); }
@@ -613,7 +613,7 @@ function pipeRack(B, D, x0, x1, c, gap = null) {
     if (s > 0 && gap) { B.add(x0, y - 0.3, z0, gap[0], y + 0.25, z1, m); B.add(gap[1], y - 0.3, z0, x1, y + 0.25, z1, m); } else B.add(x0, y - 0.3, z0, x1, y + 0.25, z1, m);
   }
   for (const s of [-1, 1]) D.add(x0 + 0.5, y - 1.15, c + s * 0.5, x1 - 0.5, y - 1.05, c + s * 1.0, 'grating'); // cable trays
-}
+}); }
 // the living quarters (x 18..34, z -14..14): the galley on the ground floor, bunks on the 1st (3.6), the control room on
 // the 2nd (7.2), the roof (10.8) and the helideck off its east side; a steel stair tower up its north side to every floor and
 // the roof; the lifeboats in their davits off the deck's north edge, the muster point. the pipe rack comes in at the 1st
