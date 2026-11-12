@@ -25,6 +25,7 @@ import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
 import { loadSlot, saveSlot, clearSlot } from './save.js';
+import { B as BODY } from './body.js'; // (what's installed: the sim's 'body' messages)
 import { takeCamera, shotOn } from './camctl.js';
 import { castLightFrame } from './castlight.js'; // the cast lit by the city's lamps (they were silhouettes in the Gut)
 import { initGrade, gradeFrame } from './grade.js'; // the eerie world grade (story maps only)
@@ -73,7 +74,7 @@ const S0 = () => ST.S;
 // the inventory: the systems lane's real bag (G.story.inv, WP3/WP5) when it's there, else the stand-in bag (bagStub)
 const INV = () => (G.story && G.story.inv && typeof G.story.inv.has === 'function' ? G.story.inv : null);
 export const bag = {
-  has: (b) => (INV() ? INV().has(b.startsWith('implant.') ? b.slice(8) : b, 1) || ST.bag.has(b) : ST.bag.has(b)), // (has.implant.X asks for the implant)
+  has: (b) => (b.startsWith('implant.') && Object.values(BODY.body.slots || {}).some((s) => s && s.b === b.slice(8))) || (INV() ? INV().has(b.startsWith('implant.') ? b.slice(8) : b, 1) || ST.bag.has(b) : ST.bag.has(b)), // (has.implant.X: it's in you, or you carry it)
   give: (b, n = 1) => { if (INV()) INV().give(b, n); else ST.bag.add(b); },
   take: (b, n = 1) => { if (INV()) INV().take(b, n); else ST.bag.delete(b); },
 };
@@ -100,7 +101,7 @@ const HOST = {
       case 'despawn': if (G.story && G.story.send) G.story.send('despawn', /^[a-z0-9_]+$/.test(arg) ? (actors.has(arg) || S0().defs.npcs[arg] ? { id: arg } : { kind: arg }) : {}); break;
       case 'hurt': { const [id, d] = arg.split('='); const dmg = Number(d); if (G.story && G.story.send && /^[a-z0-9_]+$/.test(id) && Number.isFinite(dmg)) G.story.send('damage', { id, dmg, why: 'script' }); break; }
       case 'loot': toast(`LOOT DROP: <b>${arg.replace(/_/g, ' ')}</b>`); break;
-      case 'implant': if (INV()) INV().give(arg, 1); ST.bag.add('implant.' + arg); toast(`IMPLANT: <b>${arg.replace(/_/g, ' ')}</b>`); break;
+      case 'implant': if (INV() && G.story.send) G.story.send('qimplant', { b: arg }); ST.bag.add('implant.' + arg); toast(`IMPLANT: <b>${arg.replace(/_/g, ' ')}</b>`); break; // (the one you carry goes in: one Punch-Clock core in the story, not a spare per step)
       case 'fees': S0().st.vars.fees = Math.max(0, (S0().st.vars.fees || 0) + (Number(arg) || 0)); toast(`LATE FEES <b>${'☺'.repeat(Math.min(5, S0().st.vars.fees))}</b>`); break;
       case 'call': toast(`☺ PAGER: <b>${(S0().defs.npcs[arg] || { name: arg }).name}</b> is calling`); break;
       case 'unlock': toast(`unlocked: <b>${(S0().defs.zones[arg] || { name: arg }).name}</b>`); break;
