@@ -3083,9 +3083,9 @@ function reef(B, x0, z0, x1, z1) { B.add(x0, -2.5, z0, x1, ISL.RF, z1, 'wetsand'
 // (or go over), posts, stilts down into the sea. the ropes only run rails[0]..rails[1] (over the deep water): where the
 // deck crosses a shelf you can step on and off it from the shallows beside it (bots walking the shallows used to slide
 // along a rope off the end of the shelf)
-function ropeWalk(B, D, alongX, a0, a1, c, w = 2.6, rails = [a0, a1]) {
+function ropeWalk(B, D, alongX, a0, a1, c, w = 2.6, rails = [a0, a1], tg = null) { // (tg: { av, ai } = drawn by the map's walkway model, look only)
   const [r0, r1] = rails;
-  const R = (p0, y0, q0, p1, y1, q1, m, dd) => (dd ? D : B).add(alongX ? p0 : q0, y0, alongX ? q0 : p0, alongX ? p1 : q1, y1, alongX ? q1 : p1, m);
+  const R = (p0, y0, q0, p1, y1, q1, m, dd) => { const L = dd ? D : B, n = L.boxes.length; L.add(alongX ? p0 : q0, y0, alongX ? q0 : p0, alongX ? p1 : q1, y1, alongX ? q1 : p1, m); if (tg) for (let i = n; i < L.boxes.length; i++) Object.assign(L.boxes[i], tg); };
   R(a0, -0.14, c - w / 2, a1, 0, c + w / 2, 'wood');
   for (let p = a0 + 0.2; p < a1 - 0.1; p += 0.5) R(p, 0, c - w / 2, p + 0.38, 0.03, c + w / 2, 'shipwood', true); // the planks
   for (const s of [-1, 1]) {
@@ -3515,7 +3515,8 @@ function islands() {
   // ---- the ways off it: the rope bridge north (a rock to rest on halfway), the pier east (the bait shack halfway),
   // the rope bridge west (or the cannon), the sandbar south
   isle(B, D, 3, -44, 9, -38, { shelf: 1.5 }); palm(W, 8, -39.5, 5.5, r); add(3.4, 0, -43.6, 4.6, 1.0, -42.4, 'basalt');
-  ropeWalk(B, D, false, -58, -44, 6, 2.6, [-53, -45.5]); ropeWalk(B, D, false, -38, -24, 6, 2.6, [-36.5, -29]);
+  B.boxes.arch.push({ id: 'walks_islands', p: [0, 0, 0], r: 0, drape: true }); const WK = { av: 'walks_islands', ai: B.boxes.arch.length - 1 }; // (every rope walk: one Blender model, look only)
+  ropeWalk(B, D, false, -58, -44, 6, 2.6, [-53, -45.5], WK); ropeWalk(B, D, false, -38, -24, 6, 2.6, [-36.5, -29], WK);
   add(28, -0.3, 4.5, 62, 0, 7.5, 'wood'); add(42, -0.3, 2, 50, 0, 4.5, 'wood'); add(42, -0.3, 7.5, 50, 0, 10.5, 'wood'); // the pier, wider round the shack
   for (let x = 28.4; x < 62; x += 0.6) D.add(x, 0, 4.5, x + 0.5, 0.025, 7.5, 'planks');
   for (let x = 30; x < 62; x += 4) for (const z of [4.6, 7.4]) D.box(x, -1.3, z, 0.3, 2.2, 0.3, 'wood');
@@ -3523,7 +3524,7 @@ function islands() {
   for (const [x0, x1] of [[33, 42], [50, 57]]) for (const z of [4.56, 7.44]) { add(x0, 0.9, z - 0.06, x1, 1.0, z + 0.06, 'wood'); for (let x = x0 + 0.1; x < x1; x += 2) D.add(x, 0, z - 0.05, x + 0.1, 0.9, z + 0.05, 'wood'); } // its rails
   baitShack(B, D, 0, 0);
   isle(B, D, -48, -4, -42, 2, { shelf: 1.5 }); palm(W, -44, 1, 6, r); add(-47.4, 0, -3.8, -46.2, 1.1, -2.7, 'basalt');
-  ropeWalk(B, D, true, -62, -48, -1, 2.6, [-57, -49.5]); ropeWalk(B, D, true, -42, -28, -1, 2.6, [-40.5, -33]);
+  ropeWalk(B, D, true, -62, -48, -1, 2.6, [-57, -49.5], WK); ropeWalk(B, D, true, -42, -28, -1, 2.6, [-40.5, -33], WK);
   sandbar(B, -6, 26.5, -6, 55.5); add(-8.2, -0.6, 36.5, -6.6, 0.6, 38, 'basalt'); add(-5, -0.6, 45, -3.4, 0.8, 46.8, 'basalt');
 
   // ---- N, the Wreck (x -22..22, z -80..-58): the Soggy Biscuit on its reef, rocks, two palms, a rowboat
@@ -3652,13 +3653,14 @@ function islandsSD() {
   // bridge to B. the reef joins the islands round the sites and the middle (the shallows between them used to be a
   // couple of metres of deep water: a jump for a player, a grave for anyone knocked into it); the deep water left is the
   // moat round the fort, the channel under the attackers' bridge and the open sea
-  ropeWalk(B, D, false, 6, 20, -4, 2.6, [11, 15]);
+  B.boxes.arch.push({ id: 'walks_islands_sd', p: [0, 0, 0], r: 0, drape: true }); const WK = { av: 'walks_islands_sd', ai: B.boxes.arch.length - 1 }; // (every walkway and boardwalk: one Blender model, look only)
+  ropeWalk(B, D, false, 6, 20, -4, 2.6, [11, 15], WK);
   sandbar(B, -12.5, 26, -43, -10.5, 20); sandbar(B, 12.5, 26, 43, -10.5, 20); // (wide: they fill the bays between the middle and the islets)
-  ropeWalk(B, D, true, -36, -21, -13, 2.6, [0, 0]); ropeWalk(B, D, true, 21, 36, -13, 2.6, [0, 0]);
+  ropeWalk(B, D, true, -36, -21, -13, 2.6, [0, 0], WK); ropeWalk(B, D, true, 21, 36, -13, 2.6, [0, 0], WK);
   reef(B, -32, -33, -25, -3); reef(B, 25, -33, 32, -3); // C to W / E
-  ropeWalk(B, D, false, -48, -36, -54, 2.6, [0, 0]); reef(B, -65, -44, -31, -40); // W to B
-  ropeWalk(B, D, false, -50, -36, 54, 2.6, [0, 0]); reef(B, 31, -46, 65, -40); // E to A
-  ropeWalk(B, D, true, -34, -18, -64, 2.6, [-29, -21]); ropeWalk(B, D, true, 18, 28, -78, 2.6, [0, 0]); reef(B, 20.5, -85, 23.5, -45); // the fort to A
+  ropeWalk(B, D, false, -48, -36, -54, 2.6, [0, 0], WK); reef(B, -65, -44, -31, -40); // W to B
+  ropeWalk(B, D, false, -50, -36, 54, 2.6, [0, 0], WK); reef(B, 31, -46, 65, -40); // E to A
+  ropeWalk(B, D, true, -34, -18, -64, 2.6, [-29, -21], WK); ropeWalk(B, D, true, 18, 28, -78, 2.6, [0, 0], WK); reef(B, 20.5, -85, 23.5, -45); // the fort to A
   for (const [x, z] of [[-29, 12], [29, 12], [-39, -1.5], [39, -1.5]]) add(x - 0.8, ISL.SB, z - 0.7, x + 0.8, 0.9, z + 0.7, 'rockf', RK);
 
   // ---- spawns, the ways in (for the bots), the sites
