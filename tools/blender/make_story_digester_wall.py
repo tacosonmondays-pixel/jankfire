@@ -286,7 +286,7 @@ def make_mats():
     ft = _image('dw_flesh_t', flesh_px())
     M['flesh'] = coat(mat('dw_flesh_pulse', 0xffffff, rough=0.42, clearcoat=0.35, tex=ft))  # (the game breathes *flesh*)
     M['rim'] = coat(mat('dw_rim', 0xffffff, rough=0.42, clearcoat=0.35, tex=ft))  # (the same skin, still: what hugs a face or a mound)
-    M['wet'] = coat(mat('dw_wet_flesh', 0x4a0818, rough=0.12, clearcoat=0.8), 0.15)
+    M['wet'] = coat(mat('dw_wet_flesh', 0x741430, rough=0.12, clearcoat=0.8), 0.15)
     M['vein'] = coat(mat('dw_vein_flesh', 0x5a2450, rough=0.25, clearcoat=0.5, emit=0x40103a, strength=0.4))
     M['glow'] = mat('dw_glow_pulse', 0xff7aa8, rough=0.3, emit=0xff4f8a, strength=2.2)
     return M
@@ -315,7 +315,7 @@ def bits_atlas():
     # row 1: hair (strands), cloth, fur
     for i, (k, c, d) in enumerate((('hair_brown', 0x4a2e1e, 0x2a180e), ('hair_grey', 0xb8b4ac, 0x8a8680), ('hair_ginger', 0xd06a2a, 0x9a4416), ('hair_black', 0x1e1a1c, 0x0a0808), ('hair_white', 0xeeeae2, 0xbab4ac))):
         sub = sw(k, i * 16, 16, c, rough=0.45, var=0.08)
-        for k2 in range(4): xx = int(r.integers(0, 16)); sub[:, xx] = hexrgb(c) * 0.75 + hexrgb(d) * 0.25
+        sub[::5, :] = hexrgb(c) * 0.85 + hexrgb(d) * 0.15  # (barely: strands don't read at this size, stripes do)
     sub = sw('tweed', 80, 16, 0x7a6a56, rough=0.85, var=0.15)
     for y_ in range(0, 16, 2): sub[y_, (np.arange(16) + y_) % 16 < 8] *= 0.75
     sub = sw('shirt', 96, 16, 0x4a72b8, rough=0.8)
@@ -487,7 +487,7 @@ def head(nm, S, A, M):
         for k in range(7):
             t = -1 + 2 * k / 6; x = t * mw
             y = y0 + bend * t * t + sign * open_ * (1 - t * t)
-            pts.append((x, y, surf(x, y) - 0.005)); rr.append(r * (0.45 + 0.55 * (1 - t * t) ** 0.5))
+            pts.append((x, y, surf(x, y) - 0.0055 - 0.0045 * t * t)); rr.append(r * (0.3 + 0.7 * (1 - t * t) ** 0.5))  # (the corners stand off the cheek: no cap lying on it)
         return paint(put('skin', limb(nm + '_' + name, pts, rr, None, seg=8)), lipc)
     if mo == 'shut':
         lip('lipU', my + 0.006, 0.003, 0.0075); lip('lipL', my - 0.007, -0.002, 0.0085)
@@ -503,10 +503,11 @@ def head(nm, S, A, M):
     hl = S.get('hairline', 0.55)  # (how far down the forehead it comes, 0..1 of ry)
     def cap_fn(g, n):  # (pull the front edge back above the hairline: the forehead shows)
         return -0.06 if (g.y < hl * ry and n.z < -0.25) else 0.0
-    if style in ('short', 'bob', 'bun', 'curls'):
+    if style in ('short', 'bun', 'curls'):
         cell_uv(put('bits', blob(nm + '_hair', (0, 0.06 * ry, 0.03 * rz), (rx * 1.07, ry * 0.98, rz * 1.06), None, fn=cap_fn, seg=20, rings=12)), A, hk)
-    if style == 'bob':
-        for sx in (-1, 1): cell_uv(put('bits', blob(nm + '_side%d' % sx, (sx * rx * 0.84, -0.22 * ry, 0.02), (rx * 0.24, ry * 0.55, rz * 0.7), None, seg=12, rings=8)), A, hk)
+    if style == 'bob':  # (a bowl cut: a helmet of it down over the ears, the fringe straight across)
+        bob_fn = lambda g, n: (-0.06 if (g.y < hl * ry and n.z < -0.25) or (g.y < -0.45 * ry) else 0.0)
+        cell_uv(put('bits', blob(nm + '_hair', (0, -0.02 * ry, 0.035 * rz), (rx * 1.12, ry * 1.04, rz * 1.1), None, fn=bob_fn, seg=22, rings=14)), A, hk)
         cell_uv(put('bits', limb(nm + '_fringe', [(-rx * 0.7, ry * 0.5, surf(-rx * 0.7, ry * 0.5) - 0.002), (0, ry * 0.42, surf(0, ry * 0.42) - 0.012), (rx * 0.7, ry * 0.5, surf(rx * 0.7, ry * 0.5) - 0.002)], [0.012, 0.022, 0.012], None, seg=8, squash=(0.6, 1.0))), A, hk)
     if style == 'bun':
         cell_uv(put('bits', blob(nm + '_bun', (0, ry * 1.02, 0.03), (0.06, 0.05, 0.06), None, seg=12, rings=8)), A, hk)
@@ -516,7 +517,7 @@ def head(nm, S, A, M):
             c = (math.sin(a_) * rx * 0.95 * math.cos(b_ * 0.5), ry * (0.35 + 0.55 * b_ / 1.1), -math.cos(a_) * rz * 0.7)
             cell_uv(put('bits', blob(nm + '_curl%d' % k, c, (0.032, 0.03, 0.032), None, seg=8, rings=6)), A, hk)
     if style == 'bald':
-        for sx in (-1, 1): cell_uv(put('bits', blob(nm + '_tuft%d' % sx, (sx * rx * 0.92, 0.12 * ry, 0.03), (rx * 0.2, ry * 0.3, rz * 0.6), None, seg=10, rings=6)), A, hk)
+        for sx in (-1, 1): cell_uv(put('bits', blob(nm + '_tuft%d' % sx, (sx * rx * 0.9, 0.22 * ry, 0.05), (rx * 0.2, ry * 0.28, rz * 0.55), None, seg=10, rings=6)), A, hk)
     # extras
     for ex_ in S.get('extras', ()):
         if ex_ == 'moustache':
@@ -829,7 +830,7 @@ def soup_bowls(A, M):
         row = []
         for i in range(22):
             x = 0.7 + i * (6.2 - 0.7) / 21; t = j / 8
-            reach = 0.25 + 0.12 * math.sin(x * 2.1) + 0.06 * R_.uniform(-1, 1)
+            reach = 0.25 + 0.12 * math.sin(x * 2.1) + 0.06 * math.sin(x * 5.3 + 1.0)  # (by x only: a row never folds back over the last)
             dz = -(D_field(x, 0.03) - 0.25) - t * (0.25 + reach)
             row.append(V3((x, 0.006 + 0.004 * (1 - t), dz)))
         P.append(row)
@@ -844,6 +845,9 @@ def soup_bowls(A, M):
 # ------------------------------------------------------------ veins, glowing nodes, wet creases, drips
 # (the game breathes these with the wall: a vein's middle sits 6 mm under the skin and it is 4.5 cm round, so it stays
 # on the skin at the bottom of a breath and only fattens on the beat)
+STUCK = [(-2.72, 3.28), (-1.62, 1.05), (-0.42, 2.52), (5.18, 2.62), (-6.05, 3.35), (3.92, 3.3), (-5.62, 0.5), (-1.74, 2.0), (1.52, 1.55), (-4.62, 2.35), (2.62, 2.5)]  # (the things stuck in it: veins keep off)
+
+
 def crawl_wall(x, y, heading, n, step, seed, wig=0.35):
     R_ = random.Random(seed); pts = []; a = heading
     for i in range(n):
@@ -866,7 +870,8 @@ def veins(M):
     out = {'vein': [], 'glow': []}
     R_ = random.Random(404); nodes = []
     def clear(x, y):
-        return all(math.hypot(x - P['x'], y - P['y']) > 0.42 for P in PEOPLE) and all(niche(x, y, N) > 1.35 for N in (DOT['niche'], MINA['niche']))
+        return (all(math.hypot(x - P['x'], y - P['y']) > 0.5 for P in PEOPLE) and all(niche(x, y, N) > 1.35 for N in (DOT['niche'], MINA['niche']))
+                and all(math.hypot(x - a, y - b) > 0.42 for a, b in STUCK))
     for i in range(30):
         if len(out['vein']) >= 11: break
         x = R_.uniform(-7.2, 6.4); y = R_.uniform(3.0, 8.0)
@@ -916,9 +921,9 @@ def creases(M, xs, grid, VV):
         for i in range(24):
             u = 0.06 + 0.88 * i / 23; x = Rl['x0'] + u * (Rl['x1'] - Rl['x0'])
             yc = Rl['y'] + Rl['wob'] * math.sin(u * 5.1 + Rl['y']) - 0.14 * math.sin(math.pi * u)
-            xy.append((x, yc - 0.1))
+            xy.append((x, yc - 0.075))  # (up in the tuck, under the lip)
         xy = [q for q in xy if all(niche(q[0], q[1], N) > 1.25 for N in (DOT['niche'], MINA['niche']))]
-        if len(xy) > 5: out.append(vein_tube('rollcrease%d' % k, xy, 0.034, M['wet'], sink=0.022))
+        if len(xy) > 5: out.append(vein_tube('rollcrease%d' % k, xy, 0.036, M['wet'], sink=0.03))
     return out
 
 
@@ -1223,9 +1228,13 @@ def sheets(root, parts, lods, refs_objs, tag=''):
     for P in PEOPLE:
         c = V3((P['x'], P['y'], -D_field(P['x'], P['y'])))
         CU.append((P['note'], tuple(c + V3((0.32, 0.1, -1.15))), tuple(c + V3((0.05 if P['nm'] != 'dad' else 0.2, 0.05 if P['nm'] != 'dad' else 0.12, 0))), 50, None))
-    CU += [("lumps' soup bowls, the oldest grown over", (2.4, 0.95, -2.3), (3.3, 0.05, -0.75), 32, None), ('a plug socket, the kettle still in', (-1.25, 1.35, -1.25), (-1.62, 1.02, -0.45), 42, None),
-           ("bathroom tiles, Ken's lanyard", (-2.2, 3.0, -1.7), (-2.3, 2.6, -0.5), 38, None), ("a cart's corner and wheel, a hospital band", (-5.0, 1.0, -1.7), (-5.3, 0.6, -0.5), 36, None),
-           ('a CORP card, the number 14 (the top terrace)', (3.0, 2.3, -2.4), (3.3, 2.0, -0.5), 34, None), ('veins, a glowing node, a roll and its wet tuck', (-5.8, 5.0, -2.6), (-5.6, 4.5, -0.4), 36, None)]
+    def at(cap, x, y, back=(0.25, 0.15, -1.2), lens=42):
+        p_, n_ = on_wall(x, y); return (cap, tuple(p_ + V3(back)), tuple(p_), lens, None)
+    CU += [("lumps' soup bowls, the oldest grown over", (2.4, 0.95, -2.3), (3.3, 0.05, -0.75), 32, None), at('a plug socket, the kettle still in', -1.62, 1.05),
+           at('bathroom tiles, one gone, one cracked', -2.72, 3.28, (0.4, -0.25, -1.3)), at('hello my name is ken (his lanyard)', -1.74, 1.86, (0.15, 0.1, -0.9), 45),
+           at("a cart's corner and wheel, a hospital band", -5.45, 0.6, (0.45, 0.35, -1.5), 36), at('a CORP staff card caught in a fold', 1.52, 1.42, (0.2, 0.1, -1.0), 45),
+           at('14: the top terrace, over the twins', 5.18, 2.62, (-0.3, 0.0, -1.1), 45), at('a photo frame over dot', -0.42, 2.52, (0.3, 0.1, -1.4), 40),
+           at('his hand, waving, his wristband', 2.62, 2.5, (0.15, 0.05, -1.5), 40), at('veins, a glowing node, a wet tuck under a roll', -5.6, 4.5, (-0.2, 0.5, -2.2), 36)]
     go('closeups', CU, 4, 'digester wall: who is in it and what of theirs (face rigs = sculpted, still)', (520, 400))
     go('seams', [("dot's mound out of her niche", (1.25, 0.95, -1.85), (0.2, 0.55, -0.45), 38, None), ('dot, the other side', (-1.3, 0.9, -1.8), (-0.2, 0.55, -0.45), 38, None),
                  ("dot from above: the niche's back behind her", (0.3, 2.3, -1.4), (0, 0.9, -0.25), 34, None),
@@ -1248,7 +1257,7 @@ def main():
     for o in parts + lods: print('JF_PART', o.name, tri_count(o))
     if '--no-export' not in args:
         colour_preview([m for m in bpy.data.materials if m.name.startswith('dw_')], False)
-        compact_glb(export_glb(root, OUT))
+        tmp_ = os.path.join(os.path.dirname(OUT), '_tmp_s_' + ID + '.glb'); compact_glb(export_glb(root, tmp_)); os.replace(tmp_, OUT)  # (a game running on this folder never reads half a file)
     if '--qa' in args: qa(ID, parts, eps=0.0005, tol=0.004)
     DOT['xf'] = dot_xf(DOT['s'], DOT['at'], lift=0.7, z0=-0.4)
     MINA['xf'] = dot_xf(MINA['s'], MINA['at'])
