@@ -7,8 +7,8 @@ const port = process.argv[2] || 3100;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 function hub(name) {
-  const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, name, party: null, errs: [], go: [], id: 0 };
-  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') c.party = m; if (m.t === 'perr') c.errs.push(m.m); if (m.t === 'pgo') c.go.push(m); if (m.t === 'hubok') c.id = m.id; });
+  const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, name, party: null, errs: [], go: [], id: 0, lp: [] };
+  ws.on('message', (d) => { const m = JSON.parse(d); if (m.t === 'party') c.party = m; if (m.t === 'perr') c.errs.push(m.m); if (m.t === 'pgo') c.go.push(m); if (m.t === 'hubok') c.id = m.id; if (m.t === 'plp') c.lp.push(m); });
   c.send = (m) => ws.send(JSON.stringify(m));
   return new Promise((res) => ws.on('open', () => { c.send({ t: 'hub', name, look: { color: '#ff4fd8' }, gun: name === 'lead' ? 'ar' : 'knife', mf: name === 'lead' ? 'nightshift' : 'junk' }); setTimeout(() => res(c), 400); }));
 }
@@ -39,6 +39,23 @@ function player(name, mode, cfg) {
   ok(!A.party.set && A.party.ms.length === 2 && A.party.lead === A.id, 'a member cannot set, kick or take the lead');
   A.send({ t: 'pset', side: 'offline', mode: 'bomb' }); await sleep(300);
   ok(B.party.set && B.party.set.side === 'offline' && B.party.set.mode === 'bomb', "the leader's mode reaches the members");
+  // the walkable lobbies' positions: party only, zombies / battle island only, checked, clamped, a flood drops
+  B.send({ t: 'plp', p: [1, 2, 3], yaw: 1 }); await sleep(300);
+  ok(!A.lp.length, 'not in a walkable lobby (P&D): no positions relayed');
+  await sleep(200); A.send({ t: 'pset', side: 'offline', mode: 'zm' }); await sleep(300);
+  B.send({ t: 'plp', p: [1, 'x', 3], yaw: 1 }); B.send({ t: 'plp', p: [1, 2], yaw: 1 }); B.send({ t: 'plp', p: [1, 2, 3], yaw: NaN }); B.send({ t: 'plp', p: { 0: 1 }, yaw: 0 }); await sleep(300);
+  ok(!A.lp.length, 'garbage positions: dropped');
+  await sleep(1100); B.send({ t: 'plp', p: [999, -50, 12.3456], yaw: -1, a: 99 }); await sleep(300);
+  const lp = A.lp[0];
+  ok(lp && lp.id === B.id && lp.p[0] === 60 && lp.p[1] === -5 && lp.p[2] === 12.35 && lp.yaw > 5 && lp.yaw < 6.3 && lp.a === 15 && !B.lp.length, 'a move reaches the party, kept in the lobby box ' + JSON.stringify(lp));
+  ok(!C.lp.length, 'nobody outside the party hears it');
+  A.lp.length = 0; await sleep(1100);
+  for (let i = 0; i < 50; i++) B.send({ t: 'plp', p: [i, 0, 0], yaw: 0 });
+  await sleep(500);
+  ok(A.lp.length <= 12 && A.lp.length >= 8, `a flood of 50 in a moment: ${A.lp.length} get through (12 a second at most)`);
+  A.lp.length = 0; await sleep(1100); A.send({ t: 'pbusy', on: true }); await sleep(600); B.send({ t: 'plp', p: [0, 0, 0], yaw: 0 }); await sleep(300);
+  ok(!A.lp.length, 'someone in a match gets no lobby moves');
+  A.send({ t: 'pbusy', on: false }); await sleep(600); A.send({ t: 'pset', side: 'offline', mode: 'bomb' }); await sleep(300);
   A.send({ t: 'pset', side: 'sideways', mode: 'bomb' }); A.send({ t: 'pjoin', code: 12345 }); A.send({ t: 'pkick', id: '2' }); A.send({ t: 'pgo', mode: 'bots', cfg: [1, 2] }); A.send({ t: 'pready', on: { a: 1 } }); A.send({ t: 'nope' }); await sleep(3200);
   ok(A.party.set.side === 'offline' && A.party.ms.length === 2, 'junk is ignored (and the server is still up)');
   A.go.length = 0; B.go.length = 0;

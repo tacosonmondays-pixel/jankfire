@@ -2,6 +2,7 @@
 // Rooms: one shared Online room, one shared Coop room, and private Bots / Training rooms per player.
 // Human movement is client-authoritative (it's a jank game). The server owns damage, kills, projectiles,
 // peels, black holes, reverse cards, respawns, bots, coop waves and lobby settings.
+import './shared/mapedits/apply.js'; // the owner's shipped map edits, on every map before anything reads them (shared/mapedits)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -23,6 +24,7 @@ import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/
 import { sendStatic } from './server/static.js';
 import { makeBuild } from './server/build.js'; // versioned code urls: the browser keeps this build's scripts, asks about none of them
 import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
+import { makeFriends } from './server/friends.js'; // friends (invites and joins check them)
 import { GAMES, mapsFor } from './shared/modes.js';
 import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
 import { mechFrame } from './shared/mech.js';
@@ -179,7 +181,8 @@ function hubOpen(ws, m) {
     ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null, achs }, m);
   })().catch((e) => { logErr('hub hello', e); ws.close(); });
 }
-installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook });
+installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook,
+  areFriends: (a, b) => (accounts.friends || (accounts.friends = makeFriends(accounts.store))).areFriends(a, b) }); // (friends: invites + joining a friend's party)
 
 // the bots' walk graphs (and the maze maps' lanes) are built when a room starts on a map (Room.tick -> warmMap), not all
 // at boot (together they were ~150 MB of the heap), and dropped once no room has been on a map for GRAPH_TTL

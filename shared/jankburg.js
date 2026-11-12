@@ -457,6 +457,7 @@ function cathedral(B, D, cx, cz) {
   // the Cathedral of Shareholder Value: a corporate megachurch facing the plaza. stock-ticker stained glass, pews,
   // an organ made of server racks, a bell tower you grapple up for the best sniper spot in town
   const L = B.local(cx, cz, 2), Ld = D.local(cx, cz, 2), w = 24, d = 36, hw = 12, hd = 18, h = 14, t = 0.6;
+  propOf('jb_cathedral', L.pt(0, 0, 0), L.yaw, () => { // (the Blender cathedral draws it all but the pictures: tools/blender/jankburg/make_jb_cathedral.py)
   L(-hw, 0, -hd, hw, 0.15, hd, 'marble');
   const tall = (len) => { const o = []; for (let a = -len / 2 + 4; a < len / 2 - 3; a += 6) o.push({ a: a - 1, b: a + 1, y0: 3, y1: 10.5 }); return o; };
   wall(L, 'x', -hd, -hw, hw, 0, h, t, 'stone', [{ a: -3, b: 3, y0: 0, y1: 6.5 }, { a: -2, b: 2, y0: 8.5, y1: 12 }]);
@@ -478,11 +479,12 @@ function cathedral(B, D, cx, cz) {
   for (const ox of [-3.6, 3.6]) for (const oz of [-3.6, 3.6]) L.B(tx + ox, 37, tz + oz, 0.8, 6, 0.8, 'marble');
   L(tx - 4.4, 40, tz - 4.4, tx + 4.4, 40.6, tz + 4.4, 'roofg'); L(tx - 2.6, 40.6, tz - 2.6, tx + 2.6, 42, tz + 2.6, 'gold');
   Ld(tx - 1, 35.5, tz - 1, tx + 1, 38, tz + 1, 'gold'); // the bell (a gold bar)
+  }, { keep: (b) => !!b.fit });
 }
 function hq(B, D, x, z, r) {
   const Ld = D.local(x, z, 0), L = B.local(x, z, 0);
   Ld(-26, 0, -27, 26, 0.09, 27, 'marble');
-  tower(B, x, z, 24, 24, 152, { base: 0, tiers: 4, facade: 'glass', roof: 'helipad', r });
+  propOf('jb_hq', [x, 0, z], 0, () => tower(B, x, z, 24, 24, 152, { base: 0, tiers: 4, facade: 'glass', roof: 'helipad', r }), { keep: (b) => b.mat === 'helipad' }); // (the Blender tower: tools/blender/jankburg/make_jb_hq.py)
   for (const s of [-1, 1]) Ld(s * 12.1 - 0.1, 30, -4, s * 12.1 + 0.1, 70, 4, 'flagcorp', { fit: 1 }); // the logo, 40 m tall
   Ld(-6, 6, 12.05, 6, 9, 12.25, 'neonpink');
   // a gold stock arrow that only goes up, and planters to hide behind
@@ -645,15 +647,21 @@ function cityWall(B, D, r) {
     // towers every 60 m, a jump pad at the foot of each (inside) that throws you up onto it
     for (const a of [-120, -60, 60, 120]) {
       if (cut(a - 5) || cut(a + 5)) continue;
-      wb(axis, fixed, a - 4.5, a + 4.5, -4.5, 4.5, 0, 22, 'concrete');
-      wb(axis, fixed, a - 5, a + 5, -5, 5, 22, 22.4, 'roofg');
-      for (const [p0, p1, q0, q1] of [[-5, 5, -5, -4.6], [-5, 5, 4.6, 5], [-5, -4.6, -4.6, 4.6], [4.6, 5, -4.6, 4.6]]) wb(axis, fixed, a + p0, a + p1, q0, q1, 22.4, 23.4, 'concrete');
-      wd(axis, fixed, a - 4.6, a + 4.6, -4.6, 4.6, 19, 19.6, 'neonpink');
+      const tyaw = axis === 'x' ? (out < 0 ? 0 : Math.PI) : (out > 0 ? -Math.PI / 2 : Math.PI / 2); // (the Blender tower's outside at its -z: make_jb_towers.py)
+      propOf('jb_tower', axis === 'x' ? [a, 0, fixed] : [fixed, 0, a], tyaw, () => {
+        wb(axis, fixed, a - 4.5, a + 4.5, -4.5, 4.5, 0, 22, 'concrete');
+        wb(axis, fixed, a - 5, a + 5, -5, 5, 22, 22.4, 'roofg');
+        for (const [p0, p1, q0, q1] of [[-5, 5, -5, -4.6], [-5, 5, 4.6, 5], [-5, -4.6, -4.6, 4.6], [4.6, 5, -4.6, 4.6]]) wb(axis, fixed, a + p0, a + p1, q0, q1, 22.4, 23.4, 'concrete');
+        wd(axis, fixed, a - 4.6, a + 4.6, -4.6, 4.6, 19, 19.6, 'neonpink');
+      });
       const pv = axis === 'x' ? [0, 35, out * 5] : [out * 5, 35, 0];
       wb(axis, fixed, a - 1.25, a + 1.25, inn * 10.5 - 1.25, inn * 10.5 + 1.25, 0, 0.3, 'pad', { pad: pv });
     }
     if (gate) {
       // gatehouses with a side passage each, a sign bridge over the road, barriers, booths and cover both sides
+      // (the Blender gate draws all but the two pictures and the jersey barriers: tools/blender/jankburg/make_jb_gate.py)
+      const gyaw = axis === 'x' ? (out < 0 ? 0 : Math.PI) : (out > 0 ? -Math.PI / 2 : Math.PI / 2);
+      propOf('jb_gate', axis === 'x' ? [0, 0, fixed] : [fixed, 0, 0], gyaw, () => {
       for (const s of [-1, 1]) {
         const A = (u, v) => [Math.min(s * u, s * v), Math.max(s * u, s * v)];
         wb(axis, fixed, ...A(12, 15), -4, 4, 0, 20, 'concrete'); wb(axis, fixed, ...A(15, 18), -4, 4, 3, 20, 'concrete'); wb(axis, fixed, ...A(18, 23), -4, 4, 0, 20, 'concrete');
@@ -665,6 +673,7 @@ function cityWall(B, D, r) {
       wb(axis, fixed, -12, 12, -3, 3, 15, 17.5, 'concrete');
       wd(axis, fixed, -9, 9, out * 3 - (out > 0 ? 0 : 0.2), out * 3 + (out > 0 ? 0.2 : 0), 15.2, 17.3, 'adoffice', { fit: 1 });
       wd(axis, fixed, -9, 9, inn * 3 - (inn > 0 ? 0 : 0.2), inn * 3 + (inn > 0 ? 0.2 : 0), 15.2, 17.3, 'flagcorp', { fit: 1 });
+      }, { v: gate.id, keep: (b) => b.mat === 'adoffice' || b.mat === 'flagcorp', skip: (b) => b.mat === 'jersey' });
     }
     // breaches: rubble everywhere, and a pile beside the hole you can climb up onto the wall
     for (const b of brs) {
@@ -676,9 +685,9 @@ function cityWall(B, D, r) {
   // chamfered corners: a stepped diagonal, a fat tower in the middle of each
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const n = 13;
-    for (let i = 0; i < n; i++) { const k = (i + 0.5) / n, x = sx * (H - CH + CH * k), z = sz * (H - CH * k); B.box(x, WH / 2, z, 4.6, WH, 4.6, 'concrete'); }
+    for (let i = 0; i < n; i++) { const k = (i + 0.5) / n, x = sx * (H - CH + CH * k), z = sz * (H - CH * k); propOf('jb_chamfer', [x, 0, z], 0, () => B.box(x, WH / 2, z, 4.6, WH, 4.6, 'concrete')); }
     const tx = sx * (H - CH / 2), tz = sz * (H - CH / 2);
-    B.box(tx, 12, tz, 11, 24, 11, 'concrete'); B.box(tx, 24.2, tz, 11.6, 0.4, 11.6, 'roofg'); D.add(tx - 5.6, 21, tz - 5.6, tx + 5.6, 21.6, tz + 5.6, 'neonpink');
+    propOf('jb_cornertower', [tx, 0, tz], sz < 0 ? 0 : Math.PI, () => { B.box(tx, 12, tz, 11, 24, 11, 'concrete'); B.box(tx, 24.2, tz, 11.6, 0.4, 11.6, 'roofg'); D.add(tx - 5.6, 21, tz - 5.6, tx + 5.6, 21.6, tz + 5.6, 'neonpink'); });
   }
 }
 // the Blender firewall (tools/blender/jankburg/make_jb_wall.py): a 6 m module over every full-height piece of the wall

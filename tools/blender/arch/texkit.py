@@ -4,7 +4,10 @@
 # Painted surfaces (siding, shingles, stucco, trim, metal) are drawn in light greys so the game can tint them per house
 # (colour x texture, like PS1 games did); brick, wood, concrete, glass and the decals keep their own colours.
 # writes public/models/arch/kit/<name>.png + kit.json (metres per tile for each), and a contact sheet
-# run: python3 tools/blender/arch/texkit.py [--sheet out.png]
+# run: python3 tools/blender/arch/texkit.py [--sheet out.png] [--out dir]
+# a regenerate must leave the committed kit byte-identical (tests/texkit_repro.test.mjs): every texture starts from its
+# own pinned rng (PIN), so adding, moving or dropping one never shifts another. a new texture gets a new PIN line with a
+# fresh seed and goes in main(); never hand-append a png or a kit.json entry
 import os, sys, json, math
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
@@ -12,7 +15,30 @@ from PIL import Image, ImageDraw, ImageFont
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..', '..', '..'))
 OUT = os.path.join(ROOT, 'public', 'models', 'arch', 'kit')
-R = np.random.default_rng(1997)
+R = np.random.default_rng(1997)  # the rng the unseeded helpers draw from; main() re-pins it before each texture
+
+# where each texture's rng starts: (seed, 64-bit draws already taken, the buffered 32-bit half left over, if any). the first ones
+# were cut one after another from a single shared seed-1997 stream, so their numbers are where that stream stood (that
+# is what keeps their pngs byte-identical). fac_glass was made on a fresh seed-1997 stream. new ones: (new seed, 0)
+PIN = {
+ 'siding': (1997, 0), 'brick': (1997, 1045, 676461607), 'stucco': (1997, 1438, 1056573589), 'concrete': (1997, 10294),
+ 'shingle': (1997, 10685), 'corrugated': (1997, 10695), 'planks': (1997, 10828), 'trim': (1997, 10860),
+ 'lino': (1997, 12142, 3256048685), 'tar': (1997, 12254), 'carpet': (1997, 12265, 220837804), 'metalplate': (1997, 12268, 220837804),
+ 'glass': (1997, 13293), 'louvre': (1997, 13295, 2869370386), 'picket': (1997, 13296), 'fac_tenement': (1997, 17456),
+ 'fac_office': (1997, 17862), 'decals': (1997, 18621), 'stone': (1997, 18659), 'weather': (1997, 22814),
+ 'fac_glass': (1997, 0), 'profile': (1997, 23203, 2522618111),
+}
+
+
+def pin(name):
+    """point R at `name`'s pinned start, whatever ran before it"""
+    global R
+    seed, skip, half = (PIN[name] + (None,))[:3]
+    R = np.random.default_rng(seed); bg = R.bit_generator
+    bg.advance(skip)
+    if half is not None:  # pcg64 keeps the spare half of a split draw for the next small integer (it can be an old one)
+        st = bg.state; st['has_uint32'], st['uinteger'] = 1, half; bg.state = st
+    return R
 
 BAYER = np.array([[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]], np.float32) / 16.0 - 0.5
 
@@ -566,35 +592,54 @@ def weather(n=64):
     return img, (a > 0.5).astype(np.float32)
 
 
+def profile(n=32):
+    """trapezoidal profiled steel sheet, the cladding on sheds and depots (1 m a tile, light grey: tinted). four ribs a
+    tile (25 cm), each a lit crown with a shaded and a lit flank, wide flat pans between with a faint stiffening line,
+    the odd dent and fixing screw, a little dirt; no rust (the old corrugated sheet is the rusty one)"""
+    x = np.arange(n) % 8
+    rib = np.select([x == 0, x == 1, x == 2, x == 7], [0.86, 1.1, 0.78, 0.93], 0.97).astype(np.float32)
+    rib = np.where(x == 4, 0.94, rib)  # (the stiffener in the pan)
+    g = rib[None, :] * np.ones((n, 1), np.float32) + (fbm(n, 4, 3) - 0.5) * 0.08 - speck(n, 0.015) * 0.18
+    for _ in range(3):  # screws: a dark dot on a pan, in rows
+        yy = int(R.integers(n)); g[yy, (np.arange(4) * 8 + 5) % n] *= 0.6
+    img = ramp(np.clip(g * 0.82, 0, 1), [(0, '#2c2e32'), (0.6, '#a9adb2'), (0.82, '#d8dbde'), (1, '#f6f7f6')])
+    return shade(img, 1 - np.clip((fbm(n, 2, 4) - 0.6) * 0.6, 0, 0.2))
+
+
 def main():
+    global OUT
+    if '--out' in sys.argv: OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])  # (the repro test writes to a temp dir)
     os.makedirs(OUT, exist_ok=True)
     sheet_path = sys.argv[sys.argv.index('--sheet') + 1] if '--sheet' in sys.argv else None
     out = {}
-    out['siding'] = save('siding', siding(), 2.0, note='tint')
-    out['brick'] = save('brick', brick(), 2.0)
-    out['stucco'] = save('stucco', stucco(), 3.0, note='tint')
-    out['concrete'] = save('concrete', concrete(), 4.0)
-    out['shingle'] = save('shingle', shingle(), 2.0, note='tint')
-    out['corrugated'] = save('corrugated', corrugated(), 1.0, note='tint')
-    out['planks'] = save('planks', planks(), 2.0)
-    out['trim'] = save('trim', trim(), 1.0, note='tint')
-    out['lino'] = save('lino', lino(), 2.0)
-    out['tar'] = save('tar', tar(), 4.0)
-    out['carpet'] = save('carpet', carpet(), 1.0)
-    out['metalplate'] = save('metalplate', metalplate(), 1.0, note='tint')
-    out['glass'] = save('glass', glass(), 1.0)
-    out['louvre'] = save('louvre', louvre(), 0.5, note='tint')
-    pk, pa = picket(); out['picket'] = save('picket', pk, 1.3, alpha=pa, note='tint', colors=8, dither=0.5)
-    out['fac_tenement'] = save('fac_tenement', facade_tenement(), 7.0, colors=24)
-    out['fac_office'] = save('fac_office', facade_office(), 7.0, colors=24)
-    out['fac_glass'] = save('fac_glass', facade_glass(), 4.4, colors=24)
+    # (pin() first: each texture starts from its own rng, so the order here only sets the kit.json order)
+    pin('siding'); out['siding'] = save('siding', siding(), 2.0, note='tint')
+    pin('brick'); out['brick'] = save('brick', brick(), 2.0)
+    pin('stucco'); out['stucco'] = save('stucco', stucco(), 3.0, note='tint')
+    pin('concrete'); out['concrete'] = save('concrete', concrete(), 4.0)
+    pin('shingle'); out['shingle'] = save('shingle', shingle(), 2.0, note='tint')
+    pin('corrugated'); out['corrugated'] = save('corrugated', corrugated(), 1.0, note='tint')
+    pin('planks'); out['planks'] = save('planks', planks(), 2.0)
+    pin('trim'); out['trim'] = save('trim', trim(), 1.0, note='tint')
+    pin('lino'); out['lino'] = save('lino', lino(), 2.0)
+    pin('tar'); out['tar'] = save('tar', tar(), 4.0)
+    pin('carpet'); out['carpet'] = save('carpet', carpet(), 1.0)
+    pin('metalplate'); out['metalplate'] = save('metalplate', metalplate(), 1.0, note='tint')
+    pin('glass'); out['glass'] = save('glass', glass(), 1.0)
+    pin('louvre'); out['louvre'] = save('louvre', louvre(), 0.5, note='tint')
+    pin('picket'); pk, pa = picket(); out['picket'] = save('picket', pk, 1.3, alpha=pa, note='tint', colors=8, dither=0.5)
+    pin('fac_tenement'); out['fac_tenement'] = save('fac_tenement', facade_tenement(), 7.0, colors=24)
+    pin('fac_office'); out['fac_office'] = save('fac_office', facade_office(), 7.0, colors=24)
     for k, g in FAC_GLOW.items():
         Image.fromarray((g * 255).astype(np.uint8), 'L').save(os.path.join(OUT, k + '_glow.png')); KIT[k]['glow'] = k + '_glow'
-    rgb, a, cells = decals()
+    pin('decals'); rgb, a, cells = decals()
     out['decals'] = save('decals', rgb, 0, alpha=a, colors=48, dither=0.0)
     KIT['decals']['cells'] = cells
-    out['stone'] = save('stone', stone(), 2.0, note='tint')  # (after the decals: the shared RNG leaves every older texture as it was)
-    wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    pin('stone'); out['stone'] = save('stone', stone(), 2.0, note='tint')
+    pin('weather'); wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
+    pin('fac_glass'); out['fac_glass'] = save('fac_glass', facade_glass(), 4.4, colors=24)
+    pin('profile'); out['profile'] = save('profile', profile(), 1.0, note='tint')
+    # new textures go here: a PIN line with a new seed, then pin('name'); out['name'] = save(...)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
         tiles = []
