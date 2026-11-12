@@ -3,11 +3,12 @@
 // ONLINE (real players) and OFFLINE (you and bots). either opens the lobby screen: the mode picker across the top, you
 // on the stage in the middle, MATCH on the left, the map / what happens on the right, the big yellow button.
 // ONLINE goes through today's mode lobbies (server/lobby.js); OFFLINE is a bots room of your own that nobody else drops
-// into (cfg.priv, server/room.js roomFor). parties and friends come in step 2: for now the party is you.
+// into (cfg.priv, server/room.js roomFor). step 2, parties (party.js, server/party.js): the party strip under the big
+// buttons (its code, JOIN a code, LEAVE, who's in it), the party stood on the stage (lineup.js); the leader picks and
+// starts (everyone's lobby follows), everyone else hits READY.
 import { G } from './ctx.js';
 import { GAMES, GAME_ORDER, mapsFor } from '/shared/modes.js';
 import { MAPS, MAP_ORDER } from '/shared/map.js';
-import { BOT_DIFF, HIPFIRE } from '/shared/weapons.js';
 import { LOBBY } from '/shared/lobby.js';
 import { eventGame } from '/shared/vote.js';
 import { modeThumb } from './modeart.js';
@@ -15,6 +16,9 @@ import { fleshFrame } from './flesh.js';
 import { resizePreview } from './preview.js';
 import { synth } from './audio.js';
 import { mountLobbyScene, lobbyScenePrefetch } from './lobbyscenes/index.js'; // the 3D place behind each mode (LOBBY_SCENES.md)
+import { P, onParty, inParty, isLead, leadName, partyJoin, partyLeave, partyKick, partyLead, partyReady, partySet, partyGo, meReady } from './party.js';
+import { showLineup } from './lineup.js';
+import { openFriends, friendsLoad, friendsOnline, friendsShown } from './friends.js'; // friends (step 3)
 
 const $ = (id) => document.getElementById(id);
 const click = () => { try { synth.tone('square', 500, 500, 0.03, 0.08); } catch { /* (no audio yet) */ } };
@@ -25,8 +29,8 @@ export const HUB = {
   bomb: { name: 'PLANT & DEFUSE', art: 'bomb', desc: '5v5. plant it, defuse it, buy guns between rounds', lobby: 'bomb', games: ['bomb'] },
   br: { name: 'JANK ROYALE', art: 'br', desc: 'blimp, umbrella, loot, shrinking zone. last one standing', lobby: 'br', games: ['br'] },
   zm: { name: 'ZOMBIES', art: 'zm', desc: 'you and your friends vs endless rounds. buy doors', lobby: 'zm', games: ['zm'] },
-  isle: { name: 'BATTLE ISLAND', art: 'br', desc: 'squads of 3, mech heroes. go down, get picked up', lobby: null, games: ['island'], tag: 'MECHS' },
-  training: { name: 'TRAINING', art: 'gun', desc: 'dummies and infinite ammo. nobody is judging', train: 1 },
+  isle: { name: 'BATTLE ISLAND', art: 'isle', desc: 'squads of 3, mech heroes. go down, get picked up', lobby: null, games: ['island'], tag: 'MECHS' },
+  training: { name: 'TRAINING', art: 'train', desc: 'dummies and infinite ammo. nobody is judging', train: 1 },
 };
 const ORDER = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
 const COL = { qp: '#ff4f6a', bomb: '#ffb04f', br: '#4fd8ff', zm: '#39ff14', isle: '#ff4fd8', training: '#ffe14d' };
@@ -36,7 +40,7 @@ const pick = {}; // `${side}:${mode}` -> its choices (kept between visits)
 const S = () => (G.settings.hub && typeof G.settings.hub === 'object' ? G.settings.hub : (G.settings.hub = {}));
 
 export function initHub(o) {
-  opts = o; // { start(mode, cfg), show(id), hero(slot), save() }
+  opts = o; // { start(mode, cfg), show(id), hero(slot), save(), look() -> [color, look], toast(text, ms) }
   if (!$('scr-hubby')) return;
   for (const b of document.querySelectorAll('[data-hub]')) b.addEventListener('click', () => { click(); openLobby(b.dataset.hub); });
   $('hubBack').addEventListener('click', () => { click(); opts.show('main'); });
@@ -49,12 +53,15 @@ export function initHub(o) {
     else if (e.key === 'Enter') { e.preventDefault(); go(); }
     else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { const i = ORDER.indexOf(modeOf()); setMode(ORDER[(i + (e.key === 'ArrowRight' ? 1 : ORDER.length - 1)) % ORDER.length]); }
   });
-  addEventListener('resize', () => { if (onLobby()) frame(); });
+  addEventListener('resize', () => { if (onLobby()) frame(); stage(); });
+  onParty(partyChanged);
+  partyStrip();
 }
+const onMain = () => !$('scr-main').classList.contains('hidden') && !$('menu').classList.contains('hidden');
 const onLobby = () => !$('scr-hubby').classList.contains('hidden') && !$('menu').classList.contains('hidden');
 
 // every time the main menu shows: the live count on ONLINE
-export function hubShown() { poll(); }
+export function hubShown() { poll(); partyStrip(); stage(); friendsLoad().then(partyStrip); }
 async function poll() {
   clearTimeout(pollT);
   if (!$('scr-hubby') || $('menu').classList.contains('hidden') || ($('scr-main').classList.contains('hidden') && $('scr-hubby').classList.contains('hidden'))) return; // (only the home and the lobby show counts)
@@ -62,21 +69,23 @@ async function poll() {
   const live = $('hubLive');
   if (live) { const n = counts ? Object.values(counts.o || {}).reduce((a, v) => a + (v | 0), 0) : null; live.textContent = n == null ? '' : n ? `● ${n} playing online` : ''; }
   if (onLobby()) liveRow();
+  if (onMain() && ++pollN % 3 === 1) friendsLoad().then(partyStrip); // (friends coming online: the strip's count, every ~18 s)
   pollT = setTimeout(poll, 6000);
 }
+let pollN = 0;
 
 // ---------------------------------------------------------------- the lobby screen
 const gamesOf = (k) => HUB[k].games || GAME_ORDER.filter((g) => GAMES[g] && !GAMES[g].royale && !GAMES[g].zombies && g !== 'bomb' && g !== 'island'); // (quick play offline: the deathmatch family)
 const mapsOf = (g) => (GAMES[g] ? mapsFor(g, MAPS, MAP_ORDER) : MAP_ORDER);
 const modeOf = () => { const m = S()[side + ':mode']; return HUB[m] && !(side === 'online' && HUB[m].lobby === null) ? m : 'qp'; };
-function setMode(k) { if (!HUB[k] || (side === 'online' && HUB[k].lobby === null && !HUB[k].train)) return; click(); S()[side + ':mode'] = k; save(); render(); }
+function setMode(k) { if (!HUB[k] || (side === 'online' && HUB[k].lobby === null && !HUB[k].train) || (inParty() && !isLead())) return; click(); S()[side + ':mode'] = k; save(); partySet(side, k); render(); }
 function stateOf(k) {
   const key = side + ':' + k;
   if (pick[key]) return pick[key];
   const sv = S()[key] && typeof S()[key] === 'object' ? S()[key] : {}, games = gamesOf(k), ev = eventGame();
   const st = { fill: sv.fill !== false, who: ['all', 'bots', 'coop'].includes(sv.who) ? sv.who : 'all',
     game: games.includes(sv.game) ? sv.game : k === 'qp' && games.includes(ev) ? ev : games[0], map: sv.map, botsOn: sv.botsOn !== false,
-    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5, diff: Object.hasOwn(BOT_DIFF, sv.diff) ? sv.diff : 'normal', hip: Object.hasOwn(HIPFIRE, sv.hip) ? sv.hip : 'normal' };
+    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5 }; // (no difficulty or hipfire here, the owner's call: an offline match plays the room's defaults)
   if (!mapsOf(st.game).includes(st.map)) st.map = mapsOf(st.game)[0];
   return (pick[key] = st);
 }
@@ -85,6 +94,8 @@ function save() { if (opts.save) opts.save(); }
 
 export function openLobby(s) {
   side = s === 'offline' ? 'offline' : 'online';
+  if (inParty() && !isLead()) { opts.toast(`${leadName()} picks the match. they'll bring you in`, 2400); return; }
+  partySet(side, modeOf());
   opts.show('hubby');
 }
 // show() calls this when the lobby screen comes up
@@ -94,7 +105,7 @@ export function hubLobbyShown() {
   $('hubDesc').textContent = SIDES[side].desc;
   $('scr-hubby').dataset.side = side;
   opts.hero($('hubStage'));
-  setTimeout(resizePreview, 0);
+  setTimeout(() => { resizePreview(); stage(); }, 0);
   render();
   poll();
 }
@@ -187,8 +198,6 @@ function render() {
       r.addEventListener('change', () => remember(k));
       const w = el('span', 'hub-range'); w.append(r, n); L.append(row('bot count', w));
     }
-    if (st.botsOn || own || team) L.append(row('difficulty', stepper(Object.keys(BOT_DIFF), st.diff, (v) => { st.diff = v; remember(k); }, (d) => BOT_DIFF[d].name.toUpperCase())));
-    L.append(row('hipfire', stepper(Object.keys(HIPFIRE), st.hip, (v) => { st.hip = v; remember(k); }, (h) => HIPFIRE[h].name.toUpperCase())));
     R.append(el('span', 'hub-tag', 'MAP'));
     const maps = mapsOf(st.game);
     if (!maps.includes(st.map)) st.map = maps[0];
@@ -205,23 +214,111 @@ function render() {
   }
   mountLobbyScene(k, { side, onMe: () => opts.show('character'), save }); // (the same mode again: a no-op)
   $('hubGo').textContent = H.train ? 'START TRAINING' : side === 'offline' ? 'START MATCH' : k === 'qp' && st.who === 'all' ? 'PLAY NOW' : 'FIND MATCH';
+  // in a party: only the leader picks. everyone else watches the leader's choices and gets READY
+  const ro = inParty() && !isLead();
+  $('scr-hubby').classList.toggle('hub-ro', ro);
+  if (ro) { $('hubGo').textContent = meReady() ? 'READY ✓' : 'READY?'; L.append(el('div', 'hub-small', `${leadName()} picks the match. you hit READY.`)); }
+  else if (inParty()) { const r = P.ms.filter((m) => m.ready || m.id === P.lead).length; $('hubGo').title = `${r}/${P.ms.length} ready`; }
 }
 
 // the big button
 function go() {
   if (!onLobby()) return;
-  const k = modeOf(), H = HUB[k], st = stateOf(k);
   click();
-  if (H.train) { opts.start('training'); return; }
+  if (inParty() && !isLead()) { partyReady(!meReady()); return; }
+  const [mode, cfg] = plan() || [];
+  if (!mode) return;
+  if (inParty()) partyGo(mode, cfg || {}); // (the server hands everyone a ticket to one room: party.js 'pgo')
+  else opts.start(mode, cfg);
+}
+// what the big button starts: [mode, cfg] (the same as a solo join's, the party's leader sends it to the server)
+function plan() {
+  const k = modeOf(), H = HUB[k], st = stateOf(k);
+  if (H.train) return ['training'];
   remember(k);
   if (side === 'online') {
-    if (!H.lobby) return;
-    if (k === 'qp') { if (st.who === 'coop') opts.start('coop'); else if (st.who === 'bots') opts.start('bots', { lobby: 'qp' }); else opts.start('ffa'); return; }
-    opts.start(st.fill ? 'bots' : 'ffa', { lobby: H.lobby });
-    return;
+    if (!H.lobby) return null;
+    if (k === 'qp') return st.who === 'coop' ? ['coop'] : st.who === 'bots' ? ['bots', { lobby: 'qp' }] : ['ffa'];
+    return [st.fill ? 'bots' : 'ffa', { lobby: H.lobby }];
   }
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
   const team = !own && GAMES[game] && GAMES[game].teams;
-  opts.start('bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, diff: st.diff, hip: st.hip });
+  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0 }];
+}
+
+// ---------------------------------------------------------------- the party
+// the stage: the party stood in a row, or (alone) the usual hero
+// the lobby scenes (the scene lane's module) own the stage while one is mounted: it registers its lobbySceneOn() here
+// on load (no import from this side: the module may not be there)
+let sceneOn = () => false;
+export function lobbySceneFlag(fn) { if (typeof fn === 'function') sceneOn = fn; }
+function stage() {
+  if (onLobby() && sceneOn()) { showLineup(null); for (const s of [$('heroSlot'), $('hubStage')]) if (s) s.classList.remove('lineup-on'); return; } // (a scene is up: it stands the party itself)
+  const slot = onLobby() ? $('hubStage') : onMain() ? $('heroSlot') : null;
+  const on = !!slot && inParty() && showLineup(slot, P.ms, P.lead, P.me, opts.look ? opts.look()[1] : null);
+  if (!on) showLineup(null);
+  for (const s of [$('heroSlot'), $('hubStage')]) if (s) s.classList.toggle('lineup-on', on && s === slot);
+}
+function partyChanged(why) {
+  partyStrip(); stage();
+  // the leader picked: a member in the menu follows into that lobby (or out of it, when the leader went back)
+  if (inParty() && !isLead() && P.set && (onMain() || onLobby()) && (why === 'set' || why === 'grew')) {
+    side = P.set.side === 'offline' ? 'offline' : 'online';
+    if (HUB[P.set.mode]) S()[side + ':mode'] = P.set.mode;
+    if (onLobby()) hubLobbyShown(); else opts.show('hubby');
+  }
+  else if (onLobby()) render();
+}
+// the strip under ONLINE / OFFLINE: PARTY n/6, its code, JOIN a code, who's in it (the leader can kick or pass the lead)
+function partyStrip() {
+  const box = $('hubParty');
+  if (!box) return;
+  box.innerHTML = '';
+  if (!P.on) { box.append(el('span', 'hp-off', 'parties: connecting...')); return; }
+  const top = el('div', 'hp-row');
+  top.append(el('span', 'hub-tag', `PARTY ${P.ms.length}/${P.max}`));
+  const code = el('button', 'hp-code', P.code); code.title = 'your party code: friends type it in JOIN. click to copy';
+  code.addEventListener('click', () => { click(); try { navigator.clipboard.writeText(P.code); opts.toast('party code copied: ' + P.code, 1800); } catch { /* (no clipboard) */ } });
+  top.append(code);
+  if (inParty()) { const lv = el('button', 'mid danger', 'LEAVE'); lv.addEventListener('click', () => { click(); partyLeave(); }); top.append(lv); }
+  if (friendsShown()) { const fb = el('button', 'mid hp-fr'), n = friendsOnline(); fb.append('FRIENDS'); if (n) fb.append(el('b', null, ` ${n} ON`)); fb.addEventListener('click', () => { click(); openFriends(); }); top.append(fb); }
+  box.append(top);
+  const row = el('div', 'hp-row');
+  const inp = el('input'); inp.maxLength = 5; inp.placeholder = 'CODE'; inp.autocomplete = 'off'; inp.spellcheck = false;
+  const j = el('button', 'mid', 'JOIN');
+  const doJoin = () => { const c = inp.value.trim().toUpperCase(); if (c.length === 5) { click(); partyJoin(c); inp.value = ''; } else opts.toast('party codes are 5 letters', 1600); };
+  j.addEventListener('click', doJoin);
+  inp.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') doJoin(); });
+  row.append(inp, j);
+  box.append(row);
+  if (inParty()) {
+    const list = el('div', 'hp-list');
+    for (const m of P.ms) {
+      const c = el('span', 'hp-m' + (m.id === P.me ? ' me' : '') + (m.ready ? ' rd' : ''));
+      c.append(el('b', null, (m.id === P.lead ? '👑 ' : '') + m.name));
+      if (isLead() && m.id !== P.me) {
+        const kk = el('button', null, 'KICK'), ll = el('button', null, 'LEAD');
+        kk.title = 'kick ' + m.name; ll.title = 'make ' + m.name + ' the leader';
+        kk.addEventListener('click', () => { click(); partyKick(m.id); }); ll.addEventListener('click', () => { click(); partyLead(m.id); });
+        c.append(kk, ll);
+      }
+      list.append(c);
+    }
+    box.append(list);
+  }
+}
+
+// a friend's invite: a pop-up on the menu (JOIN / NAH, gone in 30 s); in a match, a toast with the code
+export function hubInvite(inv, joined) {
+  if (joined) { opts.toast(`${inv.from} wants you in their party${inv.mode ? ' (' + inv.mode + ')' : ''}. code ${inv.code}`, 6000); return; }
+  document.getElementById('hubInvite')?.remove();
+  const box = el('div', 'hub-invite'); box.id = 'hubInvite';
+  box.append(el('span', 'hub-tag', 'INVITE'), el('b', null, inv.from), el('span', null, ` wants you in their party${inv.mode ? ' (' + inv.mode + ')' : ''}`));
+  const y = el('button', 'hub-go hi-yes', 'JOIN'), n = el('button', 'mid', 'NAH');
+  y.addEventListener('click', () => { click(); partyJoin(inv.code); box.remove(); });
+  n.addEventListener('click', () => { click(); box.remove(); });
+  box.append(y, n);
+  document.getElementById('menu').append(box);
+  setTimeout(() => box.remove(), 30000);
 }
