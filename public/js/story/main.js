@@ -188,9 +188,9 @@ async function wipeSlot(i) {
 
 // ------------------------------------------------------------ the loading card (owner playtest: "everything takes forever to load")
 // from NEW GAME / CONTINUE until you're standing in the city: what it's doing and how far along
-let loadCard = null, loadT = 0;
+let loadCard = null, loadT = 0, loadJoin = 0;
 function loadingOn() {
-  loadT = performance.now(); G.cityReady = false;
+  loadT = performance.now(); loadJoin = 0; G.cityReady = false;
   try { performance.mark('jf-story-start'); } catch { /* old browser */ }
   if (!loadCard) { loadCard = el('div', 'st-load hidden'); loadCard.id = 'stLoad'; loadCard.innerHTML = '<b></b><i><u></u></i><span></span>'; document.body.append(loadCard); }
   loadCard.classList.remove('hidden');
@@ -198,19 +198,21 @@ function loadingOn() {
 function loadingTick() {
   if (!loadT || !loadCard) return;
   const inRun = G.joined && G.mode === 'story', secs = (performance.now() - loadT) / 1000;
+  if (inRun && !loadJoin) loadJoin = performance.now(); // (when the engine had us in: the rest is the city)
   const streamed = !!(G.cfg && MAPS[G.cfg.map] && MAPS[G.cfg.map].stream); // (the train and the test lot aren't streamed: they're in once you've joined)
   if (inRun && (G.cityReady || !streamed)) return loadingOff();
   if (!G.joined && secs > 2 && $('menu') && !$('menu').classList.contains('hidden')) return loadingOff(); // (it crashed back to the menu: main.js says why)
-  const p = inRun ? Math.max(0.15, Math.min(1, 0.15 + 0.85 * (G.cityProgress || 0))) : Math.min(0.14, secs * 0.01);
+  const creep = (from, k) => 1 - Math.exp(-Math.max(0, secs - from) / k); // (the city's first pass lands all at once: the bar keeps moving meanwhile)
+  const p = inRun ? Math.max(0.15 + 0.7 * creep((loadJoin - loadT) / 1000, 10), Math.min(1, 0.15 + 0.85 * (G.cityProgress || 0))) : 0.14 * creep(0, 4);
   loadCard.querySelector('b').textContent = inRun ? 'STREAMING THE CITY' : 'WAKING THE MACHINE';
   loadCard.querySelector('u').style.width = Math.round(p * 100) + '%';
   loadCard.querySelector('span').textContent = inRun ? `${Math.round(p * 100)}% · the ground first, so you don't fall through it` : 'warming up the story engine...';
 }
 function loadingOff() {
-  const ms = performance.now() - loadT; loadT = 0;
+  const t1 = performance.now(), ms = t1 - loadT, j = loadJoin ? loadJoin - loadT : ms; loadT = 0;
   if (loadCard) loadCard.classList.add('hidden');
   try { performance.mark('jf-story-playable'); } catch { /* old browser */ }
-  console.info(`story: playable in ${(ms / 1000).toFixed(1)} s`);
+  console.info(`story: playable in ${(ms / 1000).toFixed(1)} s (engine ${(j / 1000).toFixed(1)} s, city ${((ms - j) / 1000).toFixed(1)} s)`); // (the numbers to send when it's slow on a real machine)
 }
 
 function start(save) {

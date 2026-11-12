@@ -506,7 +506,7 @@ export const castLoaded = (id) => CAST.has(id);
 const ASK = new Map(); // id -> { t, done }
 const NO_FILE = new Set(); // looks with no .glb (or one that failed)
 export function ensureCast(id, wait = 6000) {
-  if (!id || CAST.has(id) || NO_FILE.has(id)) return true;
+  if (!id || CAST.has(id) || NO_FILE.has(id) || !Object.hasOwn(LOOKS, id)) return true; // (a look with no file of its own: the code puppet, nothing to fetch)
   let q = ASK.get(id);
   if (!q) { q = { t: performance.now(), done: false }; ASK.set(id, q); fetchCast(id).finally(() => { q.done = true; }); }
   return q.done || performance.now() - q.t > wait;
