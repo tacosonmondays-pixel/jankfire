@@ -191,7 +191,57 @@ export function commute(B, d) {
   act1Ramp(B); // act I: the Unpaid's jump ramp over the collapse (act1set.js)
   shops(B, 'commute'); // the car dealer, the petrol station (shops.js)
   slipRoad(B); // the Bottom's slip road down onto the Commute (roads.js)
+  scapes(B, X0, Z0, X1, Z1, keepOut);
   ground(B, X0, Z0, X1, Z1, lotFlat);
+}
+
+// the land itself, on its own dice (the rest of the chunk's layout doesn't move): boulders half sunk in the slopes,
+// scrub and weeds (thicker toward the Bottom, where the town's runoff waters them), muddy rain puddles in the hollows,
+// and on the Gut side the flesh creeping out over the dirt: veins crawling down the hillside from the town's edge,
+// fat growths swelling out of it, thinning out the further they get
+function scapes(B, X0, Z0, X1, Z1, keepOut) {
+  const r = rng(hash2(B.out.cx, B.out.cz, 0x5ca9e)), W0 = SLICE.commute.rect[0];
+  const clear = (x, z, m = 3) => !keepOut.some((q) => x > q[0] - m && x < q[2] + m && z > q[1] - m && z < q[3] + m) && !(x > SLICE.highway.x0 - 6 && x < SLICE.highway.x1 + 6);
+  const slope = (x, z) => Math.hypot(gy(x + 1, z) - gy(x - 1, z), gy(x, z + 1) - gy(x, z - 1)) / 2;
+  for (let i = 0; i < 7; i++) { // boulders: more on the steep bits
+    const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0), s = slope(x, z), big = 0.6 + r() * 1.4;
+    if (!clear(x, z) || r() > 0.35 + s * 3) continue;
+    const y = gy(x, z), tint = pick(r, [0x8a7a6a, 0x7a6a5e, 0x9a8a78, 0x6e625a]);
+    B.shape({ kind: 'blob', c: [x, y - big * 0.25, z], r: [big * (0.9 + r() * 0.5), big * (0.6 + r() * 0.3), big * (0.8 + r() * 0.5)], seg: 6, mat: 'rubble', tint });
+    if (big > 1.2) B.add(x - big * 0.6, y - 0.5, z - big * 0.6, x + big * 0.6, y + big * 0.4, z + big * 0.6, 'rubble', { hide: true });
+  }
+  for (let i = 0; i < 26; i++) { // scrub: tufts of dry weeds, a dead bush now and then
+    const x = X0 + r() * (X1 - X0), z = Z0 + r() * (Z1 - Z0), town = z > 0 ? 1 - Math.min(1, (x - W0) / 60) : 0;
+    if (!clear(x, z, 1) || r() > 0.3 + town * 0.7) continue;
+    const y = gy(x, z), tint = pick(r, z < -150 ? [0x6a6458, 0x5a564c] : [0x7a7a3a, 0x8a8040, 0x6a7034, 0x9a8a50, 0x5e6a30]);
+    if (r() < 0.8) B.shape({ kind: 'blob', c: [x, y, z], r: [0.4 + r() * 0.5, 0.25 + r() * 0.35, 0.4 + r() * 0.5], seg: 5, mat: 'ground', tint, lod: false });
+    else for (let k = 0; k < 5; k++) { const a = r() * 6.28, l = 0.6 + r() * 0.8; B.shape({ kind: 'tube', pts: [[x, y - 0.05, z], [x + Math.cos(a) * l * 0.5, y + l * 0.6, z + Math.sin(a) * l * 0.5], [x + Math.cos(a) * l, y + l * 0.9, z + Math.sin(a) * l]], r: [0.05, 0.015], seg: 3, mat: 'wood', tint: 0x5a4230, step: 0.6, at: [x, y, z], lod: false }); }
+  }
+  // puddles: the lowest spots round here (a hollow, a gully's bed), if they're near flat. thin, lumpy, wet-looking
+  for (let gx = X0 + 6; gx < X1 - 6; gx += 8) for (let gz = Z0 + 6; gz < Z1 - 6; gz += 8) {
+    const y = gy(gx, gz);
+    if (!clear(gx, gz) || slope(gx, gz) > 0.05) continue;
+    let low = true;
+    for (const [dx, dz] of [[4, 0], [-4, 0], [0, 4], [0, -4], [3, 3], [-3, 3], [3, -3], [-3, -3]]) if (gy(gx + dx, gz + dz) < y + 0.12) { low = false; break; }
+    if (!low) continue;
+    const rx = 1.4 + r() * 1.6, rz = 1.2 + r() * 1.4, wob = Array.from({ length: 12 }, () => 0.75 + r() * 0.4);
+    B.shape({ kind: 'lathe', c: [gx, y + 0.04, gz], sc: [rx, 1, rz], prof: [[1, 0], [0, 0]], wob, seg: 12, mat: 'glass', tint: 0x7a8a96, uvxz: 1, lod: false });
+    B.shape({ kind: 'lathe', c: [gx, y + 0.025, gz], sc: [rx * 1.25, 1, rz * 1.25], prof: [[1, 0], [0, 0]], wob, seg: 12, mat: 'ground', tint: 0x5a4636, uvxz: 1, lod: false }); // (the wet mud round it)
+  }
+  // the flesh creeping out of the Gut and the border onto the hillside
+  if (Z0 < 0 && X0 < W0 + 48) {
+    for (let i = 0; i < 9; i++) { // veins: from the town's edge, wandering downhill, thinning
+      const z0 = Z0 + r() * (Math.min(Z1, 0) - Z0), len = 10 + r() * 34, pts = [];
+      let x = W0 + 0.5, z = z0, a = (r() - 0.5) * 0.9;
+      for (let d = 0; d <= len; d += 2.5) { pts.push([x, gy(x, z) + 0.12, z]); a += (r() - 0.5) * 0.5; x += Math.cos(a) * 2.5; z += Math.sin(a) * 2.5; }
+      if (pts.length > 2 && B.inside(pts[0][0], pts[0][2])) B.shape({ kind: 'tube', pts, r: [0.28 + r() * 0.2, 0.06], seg: 6, mat: 'flesh', tint: pick(r, [0x6a0c1c, 0x7a1424, 0x5a0c18]), step: 1.2, pulse: 4 });
+    }
+    for (let i = 0; i < 6; i++) { // growths: lumps of fat and liver pushing up through the dirt, thicker near the town
+      const x = W0 + Math.pow(r(), 1.8) * 46, z = Z0 + r() * (Math.min(Z1, 0) - Z0), g = 0.8 + r() * 1.8 * (1 - (x - W0) / 50);
+      if (!B.inside(x, z) || !clear(x, z, 2)) continue;
+      B.shape({ kind: 'blob', c: [x, gy(x, z) - g * 0.3, z], r: [g * (1 + r() * 0.6), g * (0.5 + r() * 0.3), g * (1 + r() * 0.6)], seg: 9, mat: r() < 0.4 ? 'fat' : 'flesh', pulse: 5 });
+    }
+  }
 }
 
 // the ground itself: one grid for the chunk (drawn as a 'field' shape: mesh.js), and hidden steps under it, one box per
