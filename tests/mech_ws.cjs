@@ -21,7 +21,7 @@ function client(name, extra = {}) {
     if ((m.t === 'mech' || m.t === 'welcome' || m.t === 'spawn') && m.p) m.p = sh(m.p, -1);
     if (m.t === 'welcome') { c.id = m.id; c.q = m.q; }
     if (m.t === 'spawn') { c.q = m.q; c.spawnT = Date.now(); }
-    if (m.t === 'sn') { c.sn = m.p; const r = m.p.find((x) => x[0] === c.id); if (r) { c.hp = r[10]; c.alive = !!r[11]; c.f = r[13]; } return; }
+    if (m.t === 'sn') { c.sn = m.p; const r = m.p.find((x) => x[0] === c.id); if (r) { c.hp = r[10]; c.alive = !!r[11]; c.f = r[13]; c.spos = [r[1] - X0, r[2], r[3] - Z0]; } return; }
     c.got.push(m);
   });
   ws.on('error', () => {});
@@ -165,7 +165,7 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   const out = await A.wait('mech', (m) => m.k === 'out' && m.id === A.id, 800);
   ok(out && out.why === 'hop' && !A.take('mech', (m) => m.k === 'down'), 'F inside: hops out, no explosion');
   const pos = await A.wait('mech', (m) => m.k === 'pos', 500);
-  await hold(500, [[A, pos ? pos.p : P]]);
+  await hold(1100, [[A, pos ? pos.p : P]]); // (a second to climb down before you can climb back in)
   A.send({ t: 'mech', k: 'in' });
   const in2 = await A.wait('mech', (m) => m.k === 'in', 800);
   ok(in2 && Math.abs(in2.hp - arm1) <= 1, `back in within 10 s, same armour (${arm1} -> ${in2 && in2.hp})`);
@@ -228,7 +228,8 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   ok(!A.take('mech', (m) => m.k === 'gun'), 'clocked out: their mech can\'t shoot');
   A.got.length = 0; A.send({ t: 'mech', k: 'swing' }); await knight(500, 0, bm);
   ok(!A.take('mech', (m) => m.k === 'mark' || m.k === 'clock'), 'right after: immune, no new marks (no stun lock)');
-  await sleep(700); B.send({ t: 'mech', k: 'out' }); await knight(600, 0, bm);
+  await sleep(1700); B.send({ t: 'mech', k: 'out' }); await knight(600, 0, bm); // (not right after a hit: no hopping out under fire)
+  ok(B.take('mech', (m) => m.k === 'out' && m.id === B.id), 'B hops out of theirs once nobody is hitting it');
   await sleep(2600); await knight(1400);
   // shield: B shoots from the front, 85% blocked; then the bash
   await knight(300, MF.A);
@@ -269,11 +270,10 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   // stomp: come down on B from a jump
   await sleep(2600);
   const under = [P[0], Y, P[2]];
-  await knight(1500, 0, under, () => [P[0] + 6, Y, P[2]]);
+  await knight(1500, 0, under, () => [P[0] + 3, Y, P[2]]);
   B.got.length = 0; A.got.length = 0;
-  const st0 = Date.now();
-  await knight(700, 0, under, () => { const k = Math.min(1, (Date.now() - st0) / 500); return [P[0] + 6 - 6 * k, Y + 5 * (1 - k), P[2]]; });
-  for (let i = 0; i < 4; i++) { A.place([P[0], Y + 0.6 - i * 0.2, P[2]], { f: MF.MECH, v: [0, -16, 0] }); B.place(under); await sleep(60); }
+  const st0 = Date.now(); // a real hop (14 m/s up, 32 gravity: 3 m high, 0.875 s) from 3 m off, coming down on B
+  await knight(1100, 0, under, () => { const t = Math.min(0.875, (Date.now() - st0) / 1000); return [P[0] + 3 - 3 * Math.min(1, t / 0.875), Math.max(Y, Y + 14 * t - 16 * t * t), P[2]]; });
   await knight(400, 0, under);
   const sd = B.take('dmg', (m) => m.to === B.id && m.w === 'mechstomp');
   ok(sd && sd.a === 50 && B.take('sleep'), 'STOMPED: 50 and flat on the floor');
@@ -297,6 +297,122 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   const gone = B.take('mech', (m) => (m.k === 'out' && m.id === D.id) || (m.k === 'gone' && m.m === (dcall && dcall.id)));
   const list = B.all('mech', (m) => m.k === 'list').pop();
   ok(dcall && gone && !(list && list.m.some((e) => e[1] === D.id)), 'left mid-mech: no orphan mech');
+
+  // ---- 13. exploits a review found (each of these got through the old server)
+  const mechUp = async (c, f, at, stand, others) => { // call one in, wait for it, climb in
+    await hold(1600, [[c, stand], ...others]);
+    c.got.length = 0;
+    c.send({ t: 'deploy', r: 'mechdrop', at, mf: f });
+    await c.wait('mech', (m) => m.k === 'call', 1500);
+    await hold(2900, [[c, stand], ...others]);
+    await hold(300, [[c, [at[0] + 1.5, Y, at[2] + 1]], ...others]);
+    c.send({ t: 'mech', k: 'in' });
+    return c.wait('mech', (m) => m.k === 'in' && m.id === c.id, 1000);
+  };
+  await sleep(1500);
+  const far = [[B, [-4, Y, 12]], [C, [10, Y, 12]]];
+  const inX = await mechUp(A, 'paperplane', [4, Y, -4], [4, Y, 3], far);
+  ok(inX && inX.f === 'paperplane', 'exploit tests: A in a fresh PAPER PLANE');
+  P = inX ? inX.p : [4, Y, -4];
+  const still = (ms, o = {}, extra = far) => hold(ms, [[A, () => P, { f: MF.MECH, ...o }], ...extra]);
+  await still(800);
+  // speed hack: +1.5 m every 15 ms (each one inside the old 3 m grace window) for 1.7 s
+  A.got.length = 0;
+  { const x0 = P[0]; let x = x0; const t0 = Date.now(); while (Date.now() - t0 < 1700) { x += 1.5; A.place([x, Y, P[2]], { f: MF.MECH, v: [100, 0, 0] }); await sleep(15); } }
+  await sleep(400);
+  const gotX = A.spos[0] - P[0];
+  ok(gotX < 40, `speed hack (+1.5 m every 15 ms for 1.7 s): the server let it go ${gotX.toFixed(1)} m (old: ~144), ${A.all('mech', (m) => m.k === 'fix').length} corrections`);
+  P = A.spos.slice(); P[1] = Y; await still(800);
+  // free flight: +2.4 m up every 30 ms with no hover flag
+  { let y = P[1]; const t0 = Date.now(); while (Date.now() - t0 < 1200) { y += 2.4; A.place([P[0], y, P[2]], { f: MF.MECH, v: [0, 80, 0] }); await sleep(30); } }
+  await sleep(400);
+  ok(A.spos[1] < P[1] + 6, `free flight (+2.4 m up every 30 ms, no hover): got to ${(A.spos[1] - P[1]).toFixed(1)} m up (old: ~79)`);
+  await still(1200);
+  // ...while a real hover climb (hop, then 6.5 m/s up with the hover flag for 1.3 s, then hang) is fine
+  A.got.length = 0;
+  { const t0 = Date.now(); while (Date.now() - t0 < 2200) { const t = (Date.now() - t0) / 1000; A.place([P[0], P[1] + Math.min(t, 1.3) * 6.5, P[2]], { f: MF.MECH | MF.A, v: [0, t < 1.3 ? 6.5 : 0, 0] }); await sleep(50); } }
+  ok(!A.all('mech', (m) => m.k === 'fix').length && A.spos[1] > P[1] + 7, `a real hover climb to ${(A.spos[1] - P[1]).toFixed(1)} m: no corrections`);
+  await still(1500);
+  // stomp spam: B right under it, A on the floor saying it's falling fast / not falling, every 25 ms
+  B.got.length = 0;
+  await hold(400, [[A, () => P, { f: MF.MECH }], [B, () => P], [C, [10, Y, 12]]]);
+  { const t0 = Date.now(); let k = 0; while (Date.now() - t0 < 1000) { A.place(P, { f: MF.MECH, v: [0, k++ % 2 ? 0 : -20, 0] }); if (k % 3 === 0) B.place(P); await sleep(25); } }
+  await still(300, {}, [[B, () => P], [C, [10, Y, 12]]]);
+  const spam = B.all('dmg', (m) => m.to === B.id && m.w === 'mechstomp').length;
+  ok(spam === 0, `stomp spam from a fake fall (on the floor the whole time): ${spam} stomps (old: 2+)`);
+  // ram while standing still: B touching the front, A sends v -15 m/s but doesn't move
+  await sleep(1500);
+  const front = [P[0], Y, P[2] - 1.2];
+  await still(1500, {}, [[B, front], [C, [10, Y, 12]]]);
+  B.got.length = 0;
+  await still(2000, { v: [0, 0, -15] }, [[B, front], [C, [10, Y, 12]]]);
+  const rams = B.all('dmg', (m) => m.to === B.id && m.w === 'mechram').length;
+  ok(rams === 0, `ram while standing still (claims 15 m/s): ${rams} rams (old: 4)`);
+  // ...but really walking into them at speed still rams
+  await sleep(1500);
+  const rf = P.slice(), rt = [P[0], Y, P[2] - 5.5], bt = [P[0], Y, P[2] - 6.5];
+  await still(1200, {}, [[B, bt], [C, [10, Y, 12]]]);
+  B.got.length = 0; const r0 = Date.now();
+  await hold(900, [[A, () => { const k = Math.min(1, (Date.now() - r0) / 480); return [rf[0], Y, rf[2] + (rt[2] - rf[2]) * k]; }, { f: MF.MECH, v: [0, 0, -11.5] }], [B, bt], [C, [10, Y, 12]]]);
+  P = rt.slice();
+  ok(B.all('dmg', (m) => m.to === B.id && m.w === 'mechram').length >= 1, 'really running into someone at ~11 m/s: still a ram');
+  // hop out + back in to skip cooldowns: the swarm's cooldown (and the energy) stay with the mech
+  await sleep(1500); await still(600);
+  A.got.length = 0;
+  A.send({ t: 'mech', k: 'swarm', d: [0, 0, -1] }); await still(400);
+  const sw1 = A.all('mech', (m) => m.k === 'swarm' && m.id === A.id).length;
+  A.send({ t: 'mech', k: 'out' });
+  const ho = await A.wait('mech', (m) => m.k === 'pos', 800);
+  const hp2 = ho ? ho.p : P;
+  await hold(300, [[A, hp2], ...far]);
+  A.send({ t: 'mech', k: 'in' }); await hold(350, [[A, hp2], ...far]);
+  const quick = A.take('mech', (m) => m.k === 'in' && m.id === A.id), qno = A.take('mech', (m) => m.k === 'no');
+  ok(!quick && qno && qno.why === 'still climbing down', `back in straight away: refused (${qno && qno.why})`);
+  await hold(900, [[A, hp2], ...far]);
+  A.send({ t: 'mech', k: 'in' });
+  const back2 = await A.wait('mech', (m) => m.k === 'in' && m.id === A.id, 800);
+  P = back2 ? back2.p : P;
+  await still(400);
+  A.send({ t: 'mech', k: 'swarm', d: [0, 0, -1] }); await still(500);
+  const sw2 = A.all('mech', (m) => m.k === 'swarm' && m.id === A.id).length;
+  ok(sw1 === 1 && back2 && sw2 === 1, `hop out + in, swarm again: still on cooldown (${sw2} swarm${sw2 > 1 ? 's' : ''}, old: 2)`);
+  // B in a NIGHT SHIFT next to a thin wall (warehouse: a wall 1.7 m to its -x)
+  await sleep(2600);
+  const W = [-8, Y, 0], aOff = [[A, () => P, { f: MF.MECH }], [C, [10, Y, 12]]];
+  const inN = await mechUp(B, 'nightshift', W, [-3, Y, 0], aOff);
+  ok(inN && inN.f === 'nightshift', 'B in a NIGHT SHIFT by the wall');
+  const BP = inN ? inN.p : W;
+  // hop out with the wall on the climbing-out side: not through it
+  await hold(800, [[B, BP, { y: Math.PI, f: MF.MECH }], ...aOff]);
+  B.got.length = 0; B.send({ t: 'mech', k: 'out' });
+  const bo = await B.wait('mech', (m) => m.k === 'pos', 800);
+  ok(bo && bo.p[0] > W[0] - 1.4, `hop out next to a wall: out at x ${bo && bo.p[0].toFixed(2)} (the wall's face is at ${(W[0] - 1.7).toFixed(1)}; old: ${(W[0] - 2.2).toFixed(1)}, inside it)`);
+  await hold(1200, [[B, bo ? bo.p : W], ...aOff]);
+  B.send({ t: 'mech', k: 'in' });
+  const inN2 = await B.wait('mech', (m) => m.k === 'in' && m.id === B.id, 800);
+  const BQ = inN2 ? inN2.p : BP;
+  // the shield: no swinging behind it
+  await hold(600, [[B, BQ, { y: 0, f: MF.MECH | MF.A }], ...aOff]);
+  A.got.length = 0;
+  B.send({ t: 'mech', k: 'swing' }); await hold(400, [[B, BQ, { y: 0, f: MF.MECH | MF.A }], ...aOff]);
+  ok(!A.take('mech', (m) => m.k === 'swing' && m.id === B.id), 'swing with the shield up: refused');
+  await hold(300, [[B, BQ, { y: 0, f: MF.MECH }], ...aOff]);
+  B.send({ t: 'mech', k: 'swing' }); await hold(400, [[B, BQ, { y: 0, f: MF.MECH }], ...aOff]);
+  ok(A.take('mech', (m) => m.k === 'swing' && m.id === B.id), 'shield down: swings again');
+  // ...and walking behind it at full speed gets put back (it slows you to 45%)
+  await hold(1400, [[B, BQ, { y: 0, f: MF.MECH | MF.A }], ...aOff]);
+  B.got.length = 0; const sq0 = Date.now();
+  await hold(1500, [[B, () => [BQ[0] + 10.5 * (Date.now() - sq0) / 1000, Y, BQ[2]], { y: 0, f: MF.MECH | MF.A, v: [10.5, 0, 0] }], ...aOff]);
+  ok(B.all('mech', (m) => m.k === 'fix').length >= 1, 'full speed (10.5 m/s) with the shield up: corrected');
+  const half = B.spos.slice(); B.got.length = 0; const sq1 = Date.now();
+  await hold(1500, [[B, () => [half[0] + 4.6 * (Date.now() - sq1) / 1000, Y, half[2]], { y: 0, f: MF.MECH | MF.A, v: [4.6, 0, 0] }], ...aOff]);
+  ok(!B.all('mech', (m) => m.k === 'fix').length, 'shield speed (4.6 m/s) behind it: fine');
+  // hopping out to dodge MECH DOWN: not while you're being hit
+  A.got.length = 0;
+  C.send({ t: 'hit', w: 'ar', to: A.id, d: aim([10, Y + 1.6, 12], P).d, n: 1, h: 0 }); await still(150, {}, [[B, () => B.spos], [C, [10, Y, 12]]]);
+  A.send({ t: 'mech', k: 'out' }); await still(300, {}, [[B, () => B.spos], [C, [10, Y, 12]]]);
+  const uf = A.take('mech', (m) => m.k === 'no');
+  ok(uf && uf.why === "can't hop out under fire" && !A.take('mech', (m) => m.k === 'out'), 'hop out right after a hit: refused (under fire)');
 
   // ---- 12. garbage
   const junk = [{ t: 'mech' }, { t: 'mech', k: 5 }, { t: 'mech', k: 'gun', d: 'x' }, { t: 'mech', k: 'gun', d: [NaN, 1e999, null] }, { t: 'mech', k: '__proto__' },

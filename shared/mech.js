@@ -124,6 +124,7 @@ export function speedCap(frame, f) {
   }
   if (f & MF.SLASH) return F.triple.speed;
   if (f & MF.SLAM) return F.speed + 6;
+  if (f & MF.SHIELD) return F.speed * F.shield.slow; // (behind the shield you trudge)
   return F.speed;
 }
 // sword: is the spot `at` inside the swing's arc in front of a knight at `pos` facing `yaw`? (flat, plus a height band)

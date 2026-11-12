@@ -15,6 +15,7 @@ import { raycast, movePlayer, playerBoxes, rayBox } from '../shared/physics.js';
 const PP = MECH.paperplane, NS = MECH.nightshift;
 const lookOf = (p) => { const c = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw) * c, Math.sin(p.pitch || 0), -Math.cos(p.yaw) * c]; };
 const hdist = (a, b) => Math.hypot(a[0] - b[0], a[2] - b[2]);
+const hopUp = (F) => F.hop * F.hop / (2 * F.grav) + 1.5; // how high a hop goes (+ slack): the rise budget a floor gives you
 // shortest distance from point c to the segment a-b
 function segDist(a, b, c) {
   const ab = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l2 = ab[0] * ab[0] + ab[1] * ab[1] + ab[2] * ab[2];
@@ -42,6 +43,7 @@ export function installMech(Room, U) {
     mechShrug(t, v) { // knockback on a mech: mostly ignored, and the speed check lets the rest through
       const k = v.map((x) => x * MECH.kbTake);
       t.mech.bank = Math.min(40, (t.mech.bank || 0) + Math.hypot(k[0], k[2]) * 0.8);
+      if (k[1] > 0) t.mech.ub = Math.min(60, (t.mech.ub || 0) + k[1] * k[1] / (2 * MECH[t.mech.f].grav) + 0.3); // (and a pop upwards may go up)
       return k;
     },
     mechHitBoxes(t) { return this.mechOn(t) ? mechBoxes(t.pos, t.mech.f) : null; },
@@ -90,7 +92,7 @@ export function installMech(Room, U) {
         const out = dh > 0.2 ? [(t.pos[0] - m.p[0]) / dh, (t.pos[2] - m.p[2]) / dh] : [0, 0];
         this.hurt(t, owner || null, 'mechdrop', h.dmg, [out[0] * h.kb, h.up, out[1] * h.kb]);
       }
-      if (owner && owner.isBot) setTimeout(safe('botmech', () => { if (this.players.get(owner.id) === owner && owner.alive) { owner.pos = m.p.slice(); this.mechEnter(owner); } }), 500); // bots climb straight in
+      if (owner && owner.isBot) setTimeout(safe('botmech', () => { if (this.players.get(owner.id) === owner && owner.alive && this.mechMap().get(m.id) === m && m.st === 'wait') { owner.pos = m.p.slice(); this.mechEnter(owner); } }), 500); // bots climb straight in (if it's still there: a reset may have cleared it)
     },
     mechGone(m, why = 'leave') {
       this.mechMap().delete(m.id);
@@ -105,13 +107,15 @@ export function installMech(Room, U) {
       if (!p.alive || !m || (m.st !== 'wait' && m.st !== 'idle') || p.mech) return false;
       if (p.rig || this.isBall(p) || p.ballUntil > n || p.trap) { this.mechNo(p, 'not right now'); return false; }
       if (hdist(p.pos, m.p) > MECH.reach + 0.5 || Math.abs(p.pos[1] - m.p[1]) > 3.5) { this.mechNo(p, 'get closer'); return false; }
+      if (n < (m.backT || 0)) { this.mechNo(p, 'still climbing down'); return false; } // (no hop out + in to skip a cooldown)
       const F = MECH[m.f];
       m.st = 'in';
       p.pos = m.p.slice(); p.vel = [0, 0, 0]; p.yaw = m.yaw; p.g = null;
       if (p.ai) p.ai.hook = null;
       if (this.lassoDrop) this.lassoDrop(p, 'gone');
-      p.mech = { on: true, id: m.id, f: m.f, E: newEnergy(n), cd: {}, combo: { i: -1, t: 0 }, dash: null, jetUntil: 0, slam: null, blockT: 0, marks: null,
-        last: p.pos.slice(), snapT: n, bank: MECH.slack, grace: n + 600, fixT: 0, minVy: 0, ramT: new Map(), msg: { n: 0, t: n }, enT: 0 };
+      p.mech = { on: true, id: m.id, f: m.f, E: m.E || newEnergy(n), cd: m.cd || {}, combo: { i: -1, t: 0 }, dash: null, jetUntil: 0, slam: null, blockT: 0, marks: null, // (energy + cooldowns live on the mech)
+        last: p.pos.slice(), snapT: n, bank: MECH.slack, grace: n + 600, fixT: 0, minVy: 0, ramT: new Map(), stompT: new Map(), msg: { n: 0, t: n }, enT: 0,
+        ub: hopUp(F), air: false, peak: p.pos[1], peakT: n, mv: null, mvA: { t: n, p: p.pos.slice() } };
       this.bodyStart(p, m.f);
       if (p.body) p.body.hp = Math.min(F.hp, m.hp);
       this.bodyFlush(p, true);
@@ -132,8 +136,10 @@ export function installMech(Room, U) {
       const at = p.pos.slice();
       if (why === 'hop' && m && hp > 0) {
         m.st = 'idle'; m.p = at; m.yaw = r2(p.yaw); m.hp = hp; m.t = now(); m.until = m.t + MECH.idle * 1000;
+        m.E = M.E; m.cd = M.cd; m.backT = m.t + 1000;
         this.broadcast({ t: 'mech', k: 'out', id: p.id, m: M.id, why, p: at.map(r2), yaw: m.yaw, ms: MECH.idle * 1000 });
-        p.pos = [at[0] + Math.cos(p.yaw) * 2.2, at[1], at[2] - Math.sin(p.yaw) * 2.2]; // you climb down off its side
+        const c = Math.cos(p.yaw), s = Math.sin(p.yaw);
+        p.pos = this.mechOutSpot(at, [[c, -s], [-c, s], [s, c], [-s, -c]], 2.2); // you climb down off its side (one with no wall in the way)
         if (p.isBot) p.vel = [0, 4, 0]; else send(p, { t: 'mech', k: 'pos', p: p.pos.map(r2), v: [0, 6, 0] });
         return;
       }
@@ -148,10 +154,22 @@ export function installMech(Room, U) {
       const v = [back[0] * B.back, B.up, back[1] * B.back];
       if (p.alive) {
         p.pos = [at[0], at[1] + F.h * 0.8, at[2]]; // (mk_eject: out of the top of the chest)
+        if (raycast([at[0], at[1] + 1, at[2]], [0, 1, 0], F.h * 0.8 + 0.6, this.boxes)) { const o = this.mechOutSpot(at, [back, [-back[0], -back[1]], [back[1], -back[0]], [-back[1], back[0]]], 2.5); p.pos = [o[0], o[1] + 0.3, o[2]]; } // (a roof over it: out the back instead)
         if (p.isBot) { p.vel = v.slice(); p.onGround = false; } else send(p, { t: 'mech', k: 'pos', p: p.pos.map(r2), v });
       }
       this.broadcast({ t: 'mech', k: 'down', id: p.id, m: M.id, f: M.f, by: by ? by.id : 0, p: at.map(r2), v: v.map(r2) });
       this.mechBlast(at, p, by);
+    },
+    // somewhere to climb out to: d m off in the first of dirs with no wall in the way (knee and head height), a floor
+    // under it, inside the map. none of them: the mech's own spot
+    mechOutSpot(at, dirs, d) {
+      for (const [dx, dz] of dirs) {
+        if (raycast([at[0], at[1] + 0.5, at[2]], [dx, 0, dz], d + 0.5, this.boxes) || raycast([at[0], at[1] + 1.7, at[2]], [dx, 0, dz], d + 0.5, this.boxes)) continue;
+        const s = [at[0] + dx * d, at[1], at[2] + dz * d], fl = raycast([s[0], at[1] + 1.2, s[2]], [0, -1, 0], 4, this.boxes);
+        if (!fl || fl.box.pad || (this.map.bounds && outOfBounds(this.map, s))) continue;
+        return [s[0], fl.point[1] + 0.02, s[2]];
+      }
+      return at.slice();
     },
     // the blast: B.dmg in B.r, on everyone but the pilot, credited to whoever broke it
     mechBlast(at, pilot, by) {
@@ -214,38 +232,48 @@ export function installMech(Room, U) {
         if (n < M.jetUntil) f |= MF.JET;
         if (M.dash && n < M.dash.until) f |= MF.DASH;
       } else {
-        if ((want & MF.SHIELD) && !(M.dash && n < M.dash.until) && !M.slam) f |= MF.SHIELD;
+        if ((want & MF.SHIELD) && !(M.dash && n < M.dash.until) && !M.slam) { f |= MF.SHIELD; if (!M.shUp && n - (M.shT || 0) > 1000) { M.shT = n; M.bank += 2.5; } M.shUp = true; } else M.shUp = false; // (raising it: a moment to slow down)
         if (M.slam && n - M.slam.t < NS.slam.win * 1000) f |= MF.SLAM;
         if (M.dash && n < M.dash.until) f |= MF.SLASH;
       }
       p.f = (want & ~MECH_BITS) | f;
       // speed
+      const F = MECH[M.f], pp = M.f === 'paperplane';
       const pos = p.pos, last = M.last, fl = raycast([last[0], last[1] + 0.3, last[2]], [0, -1, 0], 1.2, this.boxes);
-      if (fl && fl.box.pad) M.bank += Math.hypot(fl.box.pad[0], fl.box.pad[2]) * 1.5 + 4; // a jump pad throws you
+      if (fl && fl.box.pad) { M.bank += Math.hypot(fl.box.pad[0], fl.box.pad[2]) * 1.5 + 4; M.ub = Math.max(M.ub, fl.box.pad[1] * fl.box.pad[1] / (2 * F.grav) + 2); } // a jump pad throws you
       const cap = speedCap(M.f, f) * 1.12, maxBank = MECH.slack + cap * 0.35;
       M.bank = Math.min(Math.max(maxBank, M.bank), M.bank + cap * dt);
       if (M.bank > maxBank) M.bank = Math.max(maxBank, M.bank - 6 * dt); // (knockback allowance drains back to normal)
       const moved = hdist(pos, last), rise = pos[1] - last[1];
-      const riseOk = rise <= MECH.rise * Math.max(dt, 0.05) + 2.5 + (fl && fl.box.pad ? fl.box.pad[1] : 0) + (M.bank > maxBank ? M.bank - maxBank : 0);
-      if (n < M.grace) { // just climbed in / just corrected: snapshots from before that are stale
-        if (hdist(pos, last) > 3 || Math.abs(rise) > 3) { p.pos = last.slice(); p.vel = [0, 0, 0]; }
-        else M.last = pos.slice();
-        return;
-      }
+      // just climbed in / just corrected: a snapshot from before that (far from where the server has you) is stale:
+      // dropped, nothing gained. anything else is checked like always (a grace window is no free pass)
+      if (n < M.grace && (moved > 3 || Math.abs(rise) > 3)) { p.pos = last.slice(); p.vel = [0, 0, 0]; return; }
+      // going up: a budget of metres. a floor under you tops it up to a hop; hovering, the jet, the lunge pay for more
+      // as they go (the slam, pads and knockback add theirs); climbing spends it. no flying without what pays for it
+      if (pp && (f & MF.JET)) M.ub += PP.jet.speed * dt;
+      else if (pp && (f & MF.DASH)) M.ub += PP.lunge.speed * dt;
+      else if (pp && (f & MF.HOVER)) M.ub += PP.hover.up * 1.4 * dt;
+      M.ub = Math.min(60, M.ub);
       M.bank -= moved;
-      if (M.bank < -0.01 || !riseOk) {
+      if (M.bank < -0.01 || rise > M.ub + 0.05) {
         p.pos = last.slice(); p.vel = [0, 0, 0];
-        M.bank = MECH.slack; M.grace = n + 350;
+        M.bank = 0; M.grace = n + 350; // (a correction gives nothing back: the budget refills at the cap from here)
         if (n - M.fixT > 300) { M.fixT = n; M.fixes = (M.fixes || 0) + 1; send(p, { t: 'mech', k: 'fix', p: last.map(r2), v: [0, 0, 0] }); }
         return;
       }
+      if (rise > 0) M.ub -= rise;
       const hv = Math.hypot(p.vel[0], p.vel[2]);
-      if (hv > cap + 2) { p.vel[0] *= cap / hv; p.vel[2] *= cap / hv; } // (what everyone else sees, and what rams count)
+      if (hv > cap + 2) { p.vel[0] *= cap / hv; p.vel[2] *= cap / hv; } // (what everyone else sees)
       M.last = pos.slice();
-      // landing: a stomp if it came down hard (from a hover, a jump, the slam)
-      if (p.vel[1] < M.minVy) M.minVy = p.vel[1];
-      if (M.minVy < MECH.stomp.vy && p.vel[1] > -2 && raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.9, this.boxes)) { this.mechStomp(p, n); M.minVy = 0; }
-      else if (p.vel[1] > -1 && M.minVy < 0 && raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.9, this.boxes)) M.minVy = 0;
+      // how fast it really goes (what rams count): measured from where the server has you, over ~0.15 s
+      const A = M.mvA;
+      if (n - A.t >= 150) { const s = (n - A.t) / 1000; M.mv = [(pos[0] - A.p[0]) / s, (pos[2] - A.p[2]) / s]; M.mvA = { t: n, p: pos.slice() }; }
+      // landing: a stomp if it really came down from high enough (the height lost since it left the floor, over at
+      // least about the time that fall takes), not whatever speed the client says
+      if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.9, this.boxes)) {
+        if (M.air) { const drop = M.peak - pos[1]; if (drop >= MECH.stomp.vy * MECH.stomp.vy / (2 * F.grav) && n - M.peakT >= Math.sqrt(2 * drop / F.grav) * 500) this.mechStomp(p, n); }
+        M.air = false; M.peak = pos[1]; M.peakT = n; M.ub = Math.max(M.ub, hopUp(F));
+      } else { M.air = true; if (pos[1] >= M.peak) { M.peak = pos[1]; M.peakT = n; } } // (peak starts at the floor you left)
     },
     // energy + cooldowns to the pilot (their client predicts, this keeps it honest)
     mechEn(p, force) {
@@ -262,14 +290,14 @@ export function installMech(Room, U) {
     onMech(p, m) {
       const n = now();
       if (!p.alive || typeof m.k !== 'string' || m.k.length > 12) return;
-      if (m.k === 'in') { if (!this.mechEnter(p, n) && !this.mechOf(p)) this.mechNo(p, 'no mech of yours here'); return; }
+      if (m.k === 'in') { if (n - (p.mechInT || 0) < 300) return; p.mechInT = n; if (!this.mechEnter(p, n) && !this.mechOf(p)) this.mechNo(p, 'no mech of yours here'); return; } // (a few a second at most)
       const M = p.mech;
       if (!M || !this.mechOn(p, n)) return;
       const q = M.msg; // rate limit (a busy pilot sends ~10 a second)
       if (n - q.t > 1000) { q.t = n; q.n = 0; }
       if (++q.n > MSG_PER_S) return;
       if (this.secStopped && this.secStopped(p, n) && m.k !== 'out') return; // tased / CLOCKED OUT: hands off everything
-      if (m.k === 'out') { this.mechExit(p, 'hop'); return; }
+      if (m.k === 'out') { if (M.hitT && n - M.hitT < 1500) { this.mechNo(p, "can't hop out under fire"); return; } this.mechExit(p, 'hop'); return; } // (no dodging MECH DOWN)
       const pp = M.f === 'paperplane', d = norm(vec3(m.d));
       switch (m.k) {
         case 'gun': if (pp && d) this.mechGun(p, d, n); break;
@@ -366,7 +394,8 @@ export function installMech(Room, U) {
         const v = [goal[0] - dr.p[0], goal[1] - dr.p[1], goal[2] - dr.p[2]], l = Math.hypot(v[0], v[1], v[2]);
         if (dr.ph === 'peck') { // hovering over them, pecking
           dr.p = goal;
-          if (n >= dr.next) {
+          if (n >= dr.next && !clear(this.mechEyeOf(o), this.mechCenter(t), this.boxes)) dr.ph = 'back'; // (they ducked behind a wall: it gives up)
+          else if (n >= dr.next) {
             dr.next = n + C.gap * 1000; dr.pecks++;
             this.broadcast({ t: 'mech', k: 'peck', d: dr.id, id: o.id, to: t.id, p: dr.p.map(r2) });
             this.hurt(t, o, 'mechcrane', C.dmg, [0, 1.5, 0]);
@@ -429,7 +458,7 @@ export function installMech(Room, U) {
     // sword combo: three swings in a wide arc in front (from the server's own yaw), the third the big one
     mechSwing(p, n) {
       const M = p.mech, S = NS.sword, C = M.combo;
-      if (M.slam || (M.dash && n < M.dash.until)) return;
+      if (M.slam || (M.dash && n < M.dash.until) || (p.f & MF.SHIELD)) return; // (shield up: no swinging behind it)
       const i = C.i >= 0 && C.i < 2 && n - C.t < S.combo * 1000 + S.cd[C.i] * 1000 ? C.i + 1 : 0;
       if (C.i >= 0 && n - C.t < S.cd[C.i] * 1000 - 120) return; // the last swing isn't through yet
       C.i = i; C.t = n;
@@ -492,6 +521,7 @@ export function installMech(Room, U) {
       const M = p.mech, S = NS.slam;
       if (M.slam || !this.mechCd(M, 'slam', S.cd, n)) return;
       M.slam = { t: n, top: p.pos[1] };
+      M.ub = Math.max(M.ub, NS.slam.up * NS.slam.up / (2 * NS.grav) + 1.5); // (the jump up is allowed)
       this.broadcast({ t: 'mech', k: 'slam', id: p.id });
       this.mechEn(p, true);
     },
@@ -522,7 +552,8 @@ export function installMech(Room, U) {
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
         const dy = t.pos[1] - p.pos[1];
-        if (hdist(t.pos, p.pos) > F.hw + 0.45 || dy < -2.4 || dy > 0.9) continue;
+        if (hdist(t.pos, p.pos) > F.hw + 0.45 || dy < -2.4 || dy > 0.9 || n < (p.mech.stompT.get(t.id) || 0)) continue;
+        p.mech.stompT.set(t.id, n + 1000); // (once a second each: no stomp spam)
         if (!this.mechOn(t)) this.sleep(t, p, MECH.stomp.flat);
         this.hurt(t, p, 'mechstomp', MECH.stomp.dmg, [0, -2, 0]);
         this.broadcast({ t: 'mech', k: 'stomp', id: p.id, to: t.id, p: t.pos.map(r2), ms: MECH.stomp.flat * 1000 });
@@ -594,9 +625,10 @@ export function installMech(Room, U) {
     },
     // walking into people at speed shoves them (faster = harder)
     mechRam(p, M, n) {
-      const F = MECH[M.f], v = p.vel, hs = Math.hypot(v[0], v[2]), h = ramHit(hs);
+      const F = MECH[M.f], v = p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0]; // (a player's: measured, not what the client claims)
+      const hs = Math.hypot(v[0], v[1]), h = ramHit(hs);
       if (!h) return;
-      const fx = v[0] / hs, fz = v[2] / hs;
+      const fx = v[0] / hs, fz = v[1] / hs;
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t) || n < (M.ramT.get(t.id) || 0)) continue;
         const dx = t.pos[0] - p.pos[0], dz = t.pos[2] - p.pos[2], l = Math.hypot(dx, dz), dy = t.pos[1] - p.pos[1];
@@ -611,8 +643,9 @@ export function installMech(Room, U) {
     // a bot that earns it calls it in a few metres ahead of itself (near the fight) and climbs in when it lands
     mechBotEarn(b) {
       if (this.mechOf(b) || b.mech) return;
+      const mk = this.cfg.map, rd = this.round;
       setTimeout(safe('botmech', () => {
-        if (this.players.get(b.id) !== b || !b.alive || b.rig || b.mech || this.isBall(b) || (this.round && this.round.over)) return;
+        if (this.players.get(b.id) !== b || !b.alive || b.rig || b.mech || this.isBall(b) || (this.round && this.round.over) || this.cfg.map !== mk || this.round !== rd) return; // (not after a map / round change)
         const env = process.env.JF_MECH_FRAME, f = isFrame(env) ? env : Math.random() < 0.5 ? 'paperplane' : 'nightshift';
         const fw = [-Math.sin(b.yaw), -Math.cos(b.yaw)];
         for (const k of [5, 2.5, 0]) {

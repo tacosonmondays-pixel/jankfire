@@ -57,6 +57,7 @@ test('speed caps follow what you are doing', () => {
   assert.equal(speedCap('paperplane', FLAGS.MECH | MF.DASH), MECH.paperplane.lunge.speed);
   assert.equal(speedCap('nightshift', FLAGS.MECH), MECH.nightshift.speed);
   assert.equal(speedCap('nightshift', FLAGS.MECH | MF.SLASH), MECH.nightshift.triple.speed);
+  assert.equal(speedCap('nightshift', FLAGS.MECH | MF.SHIELD), MECH.nightshift.speed * MECH.nightshift.shield.slow); // behind the shield: 45%
 });
 test('sword arc: in front, in reach; not behind', () => {
   assert.ok(inArc([0, 0, 0], 0, [0, 0, -5], 6.2, 0.2));
