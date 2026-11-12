@@ -61,7 +61,7 @@ export const PLAN = {
   pois: [
     { id: 'port', name: 'Port Jankton', c: [28, 118], rect: [-44, 84, 104, 170], y: 1.6, flat: 58, r: 66, drop: [[0, -28, 9], [-30, -6, 7]], cells: 6, color: '#4fd8ff', lab: [0, 36], loot: 0.18, blurb: 'the harbour town: docks, warehouses, a main street. the biggest drop' },
     { id: 'resort', name: 'The All-Inclusive', c: [180, 110], rect: [150, 78, 214, 150], y: 1.2, flat: 34, r: 40, drop: [[18, 26, 8]], cells: 4, color: '#ff4fd8', lab: [20, -40], loot: 0.12, blurb: 'a beach resort on the lagoon. wristbands not checked' },
-    { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 20, r: 30, drop: [[-10, 8, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
+    { id: 'radio', name: 'Dead Air', c: [20, -62], rect: [-6, -88, 46, -36], y: 50, flat: 26, r: 30, drop: [[-14, 12, 7]], cells: 3, color: '#ffe14d', loot: 0.06, blurb: 'the radio tower on top of the island. broadcasting nothing, loudly' },
     { id: 'wreck', name: 'Return to Sender', c: [240, -154], rect: [204, -194, 276, -116], y: 0.9, flat: 0, r: 44, drop: [[-24, 10, 7]], cells: 4, color: '#ff9a3a', loot: 0.12, blurb: 'a cargo ship on the reef, its containers all up the beach' },
     { id: 'hangar', name: 'Scrap Mart', c: [-110, 30], rect: [-150, -6, -66, 72], y: 3.2, flat: 50, r: 48, drop: [[0, 24, 10], [-30, -24, 7]], cells: 6, color: '#39ff14', lab: [0, 22], loot: 0.14, blurb: 'the mech hangar and scrapyard. some assembly required' },
     { id: 'temple', name: 'Ancient Temple (Probably)', c: [70, -6], rect: [40, -34, 104, 22], y: 4.5, flat: 26, r: 36, drop: [[12, -12, 8]], cells: 4, color: '#7dff4f', lab: [10, 0], loot: 0.1, blurb: 'a jungle temple up the river. the gift shop is newer' },
@@ -171,10 +171,48 @@ function makeGrid() { // the plan's heights on the terrain's 1 m grid, worked ou
   }
   return { H, vx, vz, at, slope, f: (x, z) => H[(x - X0) * vz + (z - Z0)] };
 }
-const onRoad = (x, z) => PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2);
+export const onRoad = (x, z) => PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2);
 const jungle = (x, z) => segDist(x, z, PLAN.river.pts) < 46 || Math.hypot(x - 70, z + 6) < 58;
-const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
-const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r]) => Math.hypot(x - p.c[0] - dx, z - p.c[1] - dz) < r + m));
+export const nearPoi = (x, z, m = 0) => PLAN.pois.some((p) => Math.hypot(x - p.c[0], z - p.c[1]) < p.r + m);
+export const nearPad = (x, z, m = 0) => PLAN.pois.some((p) => p.drop.some(([dx, dz, r]) => Math.hypot(x - p.c[0] - dx, z - p.c[1] - dz) < r + m));
+
+// DEAD AIR (the summit): the island's landmark, a 70 m guyed lattice radio mast (tools/blender/make_deadair.py,
+// p_deadair: one Blender model over all of these boxes). the mast is a column you grapple, its work platform at 50 m
+// (railed) you can stand on, a fence round its foot (the gate's open), the DEAD AIR board on its south face, the guy
+// wires' three anchor blocks (cover), and the transmitter shack you can walk into: the studio (two transmitter racks,
+// the broadcast desk), a door toward the mast, a window west. built at y 0 round the mast's foot: the shaped ground lifts
+// it onto the summit. DA = the numbers the model is built to (make_deadair.py has the same table)
+export const DA = { plinth: 2, top: 70, deck: 50, deckW: 2.2, rail: 1.1, anchors: [80, 200, 320], anchorR: 18, anchorW: 0.9, anchorH: 0.9,
+  fence: 3.4, fenceH: 2.0, gate: 1.1, board: [18, 19.6, 2.3], // fence half-size, height, the gate's half-width; the board's bottom, top, half-width
+  shack: [-5.7, -12.4, 2.3, -7.4], shackH: 3.6, wallT: 0.2, door: [0.1, 1.3, 2.3], win: [-10.6, -9.2, 1.1, 2.1], // door x0, x1, top (south wall); window z0, z1, y0, y1 (west wall)
+  racks: [[-4.9, -4.1], [-3.9, -3.1]], rackD: 0.7, rackH: 2.1, desk: [1.3, -11.7, 2.1, -9.1, 0.78] }; // racks' x ranges (north wall); desk x0, z0, x1, z1, height (east wall)
+function deadAir(B, cx, cz) {
+  // built at the summit's own height, every box `still` (the shaped ground leaves it where it is: wider things than 7 m
+  // would otherwise stay at y 0 under the hill while the model drew on top)
+  const y0 = grid().at(cx, cz), S = { still: 1 };
+  propOf('deadair', [cx, y0, cz], 0, () => {
+    const L = (x0, ya, z0, x1, yb, z1, m) => B.add(cx + x0, y0 + ya, cz + z0, cx + x1, y0 + yb, cz + z1, m, S);
+    L(-DA.plinth, 0, -DA.plinth, DA.plinth, 0.8, DA.plinth, 'concrete'); // the foundation
+    L(-0.9, 0.8, -0.9, 0.9, DA.top, 0.9, 'metal'); // the mast (grapple it)
+    const W = DA.deckW, R = 0.06;
+    L(-W, DA.deck, -W, W, DA.deck + 0.25, W, 'grid'); // the work platform, railed round
+    for (const s of [-1, 1]) { L(-W, DA.deck + 0.25, s * W - (s > 0 ? R : 0), W, DA.deck + 0.25 + DA.rail, s * W + (s < 0 ? R : 0), 'metal'); L(s * W - (s > 0 ? R : 0), DA.deck + 0.25, -W + R, s * W + (s < 0 ? R : 0), DA.deck + 0.25 + DA.rail, W - R, 'metal'); }
+    const [b0, b1, bw] = DA.board; L(-bw, b0, 0.9, bw, b1, 1.05, 'metal'); // the DEAD AIR board, on the south face
+    const F = DA.fence, g = DA.gate; // the fence round the foot (thin: chain-link), its gate open on the south side
+    L(-F, 0, -F - 0.05, F, DA.fenceH, -F + 0.05, 'metal'); L(-F - 0.05, 0, -F, -F + 0.05, DA.fenceH, F, 'metal'); L(F - 0.05, 0, -F, F + 0.05, DA.fenceH, F, 'metal');
+    L(-F, 0, F - 0.05, -g, DA.fenceH, F + 0.05, 'metal'); L(g, 0, F - 0.05, F, DA.fenceH, F + 0.05, 'metal');
+    for (const a of DA.anchors) { const x = Math.cos(a * Math.PI / 180) * DA.anchorR, z = Math.sin(a * Math.PI / 180) * DA.anchorR; L(x - DA.anchorW, 0, z - DA.anchorW, x + DA.anchorW, DA.anchorH, z + DA.anchorW, 'concrete'); }
+    // the transmitter shack: floor, walls (the door toward the mast, a window west), roof, the studio's racks and desk
+    const [x0, z0, x1, z1] = DA.shack, H = DA.shackH, t = DA.wallT, [d0, d1, dt] = DA.door, [w0, w1, wy0, wy1] = DA.win, top = H - 0.3;
+    L(x0, 0, z0, x1, 0.15, z1, 'concrete');
+    L(x0, 0.15, z0, x1, top, z0 + t, 'metal'); L(x1 - t, 0.15, z0 + t, x1, top, z1 - t, 'metal'); // north, east
+    L(x0, 0.15, z1 - t, d0, top, z1, 'metal'); L(d1, 0.15, z1 - t, x1, top, z1, 'metal'); L(d0, dt, z1 - t, d1, top, z1, 'metal'); // south: the door
+    L(x0, 0.15, z0 + t, x0 + t, top, w0, 'metal'); L(x0, 0.15, w1, x0 + t, top, z1 - t, 'metal'); L(x0, 0.15, w0, x0 + t, wy0, w1, 'metal'); L(x0, wy1, w0, x0 + t, top, w1, 'metal'); // west: the window
+    L(x0 - 0.15, top, z0 - 0.15, x1 + 0.15, H, z1 + 0.15, 'metal'); // roof
+    for (const [r0, r1] of DA.racks) L(r0, 0.15, z0 + t, r1, 0.15 + DA.rackH, z0 + t + DA.rackD, 'metal');
+    const [k0, kz0, k1, kz1, kh] = DA.desk; L(k0, 0.15, kz0, k1, kh, kz1, 'wood'); // (k1 = the east wall's inside face)
+  });
+}
 
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
@@ -197,6 +235,8 @@ function battleIsland() {
     if (r() < 0.55) propOf('fern', [x, 0, z], 0, () => { for (let k = 0; k < 3; k++) D.obb(x, s * 0.28, z, s * 1.5, s * 0.56, 0.07, a + k * 1.05, 'fern'); }, { spin: a || 1e-6 });
     else propOf('bush', [x, 0, z], 0, () => { D.obb(x, s * 0.3, z, s * 1.1, s * 0.6, s * 0.9, a, 'bush'); D.obb(x + 0.2, s * 0.75, z - 0.1, s * 0.7, s * 0.4, s * 0.6, a + 0.8, 'bush'); }, { spin: a || 1e-6 });
   }
+  // ---- the POIs' landmarks (each one Blender model over its own boxes)
+  deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
   horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
@@ -208,7 +248,7 @@ function battleIsland() {
     let n = 0;
     for (let t = 0; t < 400 && n < p.cells; t++) { // cells: inside the POI, on open level-ish ground, apart
       const a = cr() * Math.PI * 2, d = p.r * (0.2 + cr() * 0.75), x = p.c[0] + Math.cos(a) * d, z = p.c[1] + Math.sin(a) * d;
-      if (G.at(x, z) < SEA + 0.4 || G.slope(x, z) > 0.3 || cells.some((c) => Math.hypot(c[0] - x, c[2] - z) < 10)) continue;
+      if (G.at(x, z) < SEA + 0.4 || G.slope(x, z) > 0.3 || cells.some((c) => Math.hypot(c[0] - x, c[2] - z) < 10) || B.boxes.some((q) => q.max[1] > 0.05 && x > q.min[0] - 1.5 && x < q.max[0] + 1.5 && z > q.min[2] - 1.5 && z < q.max[2] + 1.5)) continue; // (in the open, not in a building)
       cells.push([x, 0, z]); n++;
     }
     spawns.push([p.c[0], 0.2, p.c[1]]);
@@ -232,7 +272,7 @@ function battleIsland() {
     sky: { top: 0x1f7fe0, mid: 0xbfeaff, bot: 0x0b4a7a, fog: 0xc6ecf6 }, fogNear: 180, fogFar: 980,
     spawns, plan: PLAN,
     royale: { zone0: PLAN.zone0, blimpY: PLAN.blimpY, pois: PLAN.pois, loot: 400, cells, drops,
-      finale: [[PLAN.pois.find((p) => p.id === 'radio').c[0], PLAN.pois.find((p) => p.id === 'radio').c[1], 20], [-110, 30, 48]] },
+      finale: [[PLAN.pois.find((p) => p.id === 'radio').c[0], PLAN.pois.find((p) => p.id === 'radio').c[1], 24], [-110, 30, 48]] }, // (the summit's flat is 26 m now: the guy anchors stand in it)
     peekGraph() { return graph; }, dropGraph() { graph = null; },
     get graph() { return graph || (graph = buildNav(B.boxes, { x0: X0, z0: Z0, n: X1 - X0, cell: 2, levels: [0], band: 0.5, keep: (x, z) => !outOfBounds(map, [x, 0, z]) && G.at(x, z) > KILL_Y + 0.5 }), graph.maxExpand = 40000, graph); },
   };
