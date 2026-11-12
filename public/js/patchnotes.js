@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
+    'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
+  ] },
   { v: '10.6', date: '2026-11-12', title: 'PUTT INTO ITS MOUTH', items: [
     'skyline: the skyscrapers are real buildings now. brick tenements with fire escapes, office towers with chrome fins, lit offices and neon blade signs.',
     'skyline: the bridges off the spire got steel. portal frames on the glass tubes, big blue trusses under the open ones. the sky stairs are proper steel stairs with handrails and neon. still 160 m of air underneath.',

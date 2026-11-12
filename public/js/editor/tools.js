@@ -13,7 +13,7 @@ import { ghostOf, dropGhost } from './modelghost.js';
 import { buildVM, setTool, updateVM, vmKick, vmHold, vmLook, setVMMoving, muzzleNDC, TOOLS, vmVisible } from './vm.js';
 import { sfxEd, humOn, humOff, humPitch, unlockAudio } from './sfx.js';
 
-let A = null, tool = 'grab', item = null, held = null, fall = null, prev = null, rot = null;
+let A = null, tool = 'grab', item = null, held = null, fall = null, prev = null, rot = null, landing = false, frozeAt = 0;
 const anims = []; // { t, dur, fn(k), end() }
 const V = (a) => new THREE.Vector3(a[0], a[1], a[2]);
 const TURN = [[1, 0], [0, 1], [-1, 0], [0, -1]];
@@ -26,7 +26,9 @@ export function initTools(api) {
 }
 export const curTool = () => tool;
 export const curItem = () => item;
-export const busy = () => !!(held || fall);
+export const busy = () => !!(held || fall || landing); // (landing: the squash before the move is saved)
+export const justFroze = () => performance.now() - frozeAt < 400; // (the right-click that froze it isn't a fly click)
+export function resetPreview() { endPreview(); } // (SOLID changed: the next plop is built again)
 export function pickTool(t) {
   if (!TOOLS[t] || t === tool) return;
   if (held) letGo(false);
@@ -76,7 +78,7 @@ function grabMove(dt) {
 function letGo(fling, freeze) {
   const H = held; held = null; humOff(); vmHold(false); rot = null; A.grid(null);
   if (!H) return;
-  if (freeze) { finish(H, H.d); sfxEd.freeze(); A.callout('FROZEN'); return; }
+  if (freeze) { finish(H, H.d); sfxEd.freeze(); A.callout('FROZEN'); frozeAt = performance.now(); return; }
   const v = fling ? H.vel.clone() : new THREE.Vector3();
   if (v.length() < 7) v.set(0, 0, 0); else { v.clampLength(0, 45); sfxEd.whoosh(); }
   fall = { H, p: new THREE.Vector3(H.o[0] + H.d[0], H.o[1] + H.d[1], H.o[2] + H.d[2]), v, t: 0, spin: v.length() > 0 ? new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).normalize().multiplyScalar(v.length() * 0.6) : null };
@@ -111,11 +113,13 @@ function land(at) {
   const big = F.v.length() > 12;
   sfxEd.thud(big); sparks(H.ghost.position, big ? 26 : 10);
   if (big) A.callout(['YEETED', 'SKRRT', 'BONK', 'NICE'][(Math.random() * 4) | 0]);
-  anim(0.16, (k) => { const q = Math.sin(k * Math.PI); H.ghost.scale.set(1 + q * 0.18, 1 - q * 0.25, 1 + q * 0.18); }, () => finish(H, d));
+  landing = true;
+  anim(0.16, (k) => { const q = Math.sin(k * Math.PI); H.ghost.scale.set(1 + q * 0.18, 1 - q * 0.25, 1 + q * 0.18); }, () => { landing = false; finish(H, d); });
 }
 function finish(H, d) {
   dropGhost(H.ghost);
   A.unhide(H.ts); // (back exactly as it was, then the move is an ordinary op)
+  if (!A.alive(H.ts)) { A.rebuild(); return; } // (gone from the map meanwhile: nothing to move)
   if (d.every((v) => Math.abs(v) < 1e-4) && !H.q) { A.rebuild(); return; }
   A.opXf(H.ts, H.o, 1, H.q, d);
   sfxEd.clunk();
@@ -191,7 +195,7 @@ export function toolWheel(dy) {
 // R: hold while grabbing to turn it with the mouse; tap with the plop cannon to turn the preview
 export function toolKey(code, down, shift) {
   if (code !== 'KeyR') return false;
-  if (held) { if (down) { if (!rot) rot = { acc: 0 }; } else rot = null; return true; }
+  if (held) { if (down) { if (!rot) { rot = { acc: 0 }; held.q = (held.q + (shift ? 3 : 1)) & 3; sfxEd.click(); } } else rot = null; return true; } // (a tap turns it once; held, the mouse keeps turning it)
   if (tool === 'plop' && down) { if (prv) { prv.q = (prv.q + (shift ? 3 : 1)) & 3; sfxEd.click(); } return true; }
   return false;
 }

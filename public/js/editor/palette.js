@@ -11,7 +11,7 @@ import { ARCH_IDS } from '../archfield.js';
 import { TOOLS } from './vm.js';
 
 const $ = (id) => document.getElementById(id);
-let tab = 'all', onPick = null, onSlot = null, archOk = () => true, mats = null, built = false;
+let tab = 'all', onPick = null, onSlot = null, onShow = null, archOk = () => true, mats = null, built = false;
 const list = { props: [], arch: [], box: [] };
 const pretty = (id) => id.replace(/^p_/, '').replace(/_/g, ' ');
 const CATS = [
@@ -26,12 +26,13 @@ const CATS = [
 const store = (k, v) => { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || 'null'); localStorage.setItem(k, JSON.stringify(v)); } catch { return null; } return v; };
 
 export function initPalette(o) {
-  onPick = o.pick; onSlot = o.slot; mats = o.mats; if (o.archOk) archOk = o.archOk;
+  onPick = o.pick; onSlot = o.slot; onShow = o.show || null; mats = o.mats; if (o.archOk) archOk = o.archOk;
   const tabs = $('edTabs'); tabs.innerHTML = '';
   for (const [k, name] of CATS) { const b = document.createElement('button'); b.dataset.tab = k; b.textContent = name; b.onclick = () => { tab = k; draw(); }; tabs.append(b); }
   $('edPalQ').oninput = draw;
   $('edPalQ').onkeydown = (e) => { e.stopPropagation(); if (e.key === 'Escape') { if ($('edPalQ').value) { $('edPalQ').value = ''; draw(); } else togglePalette(false); } };
   $('edPalClose').onclick = () => togglePalette(false);
+  $('edSolid').onchange = () => o.solid && o.solid();
   initHotbar();
 }
 export const paletteOpen = () => !$('edPal').classList.contains('hidden');
@@ -39,6 +40,7 @@ export function togglePalette(on) {
   const el = $('edPal'), show = on ?? el.classList.contains('hidden');
   el.classList.toggle('hidden', !show);
   document.body.classList.toggle('edMenu', show);
+  if (onShow) onShow(show); // (the editor hides the tool in your hand while it's open, every way it opens and closes)
   if (show && !built) { built = true; load(); }
   if (show) setTimeout(() => $('edPalQ').focus(), 30);
   return show;

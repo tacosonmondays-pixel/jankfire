@@ -482,7 +482,7 @@ function cathedral(B, D, cx, cz) {
 function hq(B, D, x, z, r) {
   const Ld = D.local(x, z, 0), L = B.local(x, z, 0);
   Ld(-26, 0, -27, 26, 0.09, 27, 'marble');
-  tower(B, x, z, 24, 24, 152, { base: 0, tiers: 4, facade: 'glass', roof: 'helipad', r });
+  propOf('jb_hq', [x, 0, z], 0, () => tower(B, x, z, 24, 24, 152, { base: 0, tiers: 4, facade: 'glass', roof: 'helipad', r }), { keep: (b) => b.mat === 'helipad' }); // (the Blender tower: tools/blender/jankburg/make_jb_hq.py)
   for (const s of [-1, 1]) Ld(s * 12.1 - 0.1, 30, -4, s * 12.1 + 0.1, 70, 4, 'flagcorp', { fit: 1 }); // the logo, 40 m tall
   Ld(-6, 6, 12.05, 6, 9, 12.25, 'neonpink');
   // a gold stock arrow that only goes up, and planters to hide behind
