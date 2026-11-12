@@ -13,6 +13,7 @@ import { emitSkinFx } from './skins.js';
 import { wreckRemote, ballBoxes, wreckDispose } from './wreck.js';
 import { jankify } from './jank.js';
 import { rigRemote, rigBoxes, rigDispose } from './rig.js'; // overdrive rig killstreak
+import { mechRemote, mechBoxes, mechDispose } from './mech.js'; // mech drop killstreak
 import { gearLook, dressGear } from './econ3d.js';
 import { tacLook, tacSteps } from './tactical.js';
 import { bodyBar } from './bodyhp.js';
@@ -227,6 +228,7 @@ export class Remote {
     if ((this.f & FLAGS.BALL) && this.alive) return ballBoxes(this.pos, this.distScale || 1); // a wrecking ball is one big ball
     const k = (this.distScale || 1) * (this.zmK || 1); // (zombies: Chonks are bigger, Ankle Biters smaller)
     if (this.rigOn) return rigBoxes(this.pos, k); // the overdrive rig is a much bigger target
+    if (this.mechOn) return mechBoxes(this.pos, this.mechF, k); // a mech: its frame + the cockpit (headshots)
     let boxes = this.nap && this.napK > 0.5 ? this.napBoxes() : playerBoxes(this.pos);
     if (this.zmHit) boxes = this.zmHit(boxes); // zombies: a legless one is flat on the floor (zmlimbs.js)
     if (this.zmBig) boxes = [boxes[0], { min: [this.pos[0] - 0.75, this.pos[1] + 1.45, this.pos[2] - 0.75], max: [this.pos[0] + 0.75, this.pos[1] + 2.9, this.pos[2] + 0.75], head: true }]; // zombies BIG HEAD MODE (zmextra.js)
@@ -527,6 +529,7 @@ export class Remote {
     if (sh) { this.shadow.visible = true; this.shadow.position.set(x, sh.point[1] + 0.03, z); } else this.shadow.visible = false;
     this.gy = sh ? sh.point[1] : -1e9; // the floor under them: loco.js tells ground from air by it (next frame)
     rigRemote(this, dt, now, sh); // overdrive rig: the exo-frame (and its afterimages) instead of the mannequin
+    mechRemote(this, dt, now); // in a mech: the mech instead of the mannequin
 
     const ld = this.look();
     const head = [x + ld[0] * 0.45, y + 1.5, z + ld[2] * 0.45];
@@ -558,6 +561,7 @@ export class Remote {
     if (G.lassoDispose) G.lassoDispose(this);
     this.free();
     rigDispose(this);
+    mechDispose(this);
     // the rope is a grapple-skin group: its beams + hook share the skin's geometries and materials, nothing to free
     this.shadow.geometry.dispose(); this.shadow.material.dispose();
   }

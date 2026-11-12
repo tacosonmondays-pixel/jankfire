@@ -1805,7 +1805,7 @@ export function makeShadow() {
 
 // ------------------------------------------------------------ projectiles
 export function buildProjectile(k, skin) {
-  if (k === 'rigmissile') return buildRigMissile(); // overdrive rig missiles: they turn along their flight themselves
+  if (k === 'rigmissile' || k === 'mechmissile') return buildRigMissile(); // (the mech's swarm flies the rig's missiles) // overdrive rig missiles: they turn along their flight themselves
   if (k === 'cartp') return buildCart(); // shopping carts (replays draw them from the projectile list)
   const g = buildProjectileRaw(k, skin && typeof skin[3] === 'string' ? skin[3] : null);
   if (!g.userData.glb) g.userData.hatAt = HAT_AT['p_' + k];

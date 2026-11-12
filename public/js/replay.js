@@ -12,6 +12,7 @@ import { sfx } from './audio.js';
 import { tracerColor } from './skins.js';
 import { playKillFx } from './killfx.js';
 import { rigFx, rigDied } from './rig.js'; // overdrive rig killstreak
+import { mechFx } from './mech.js'; // mech drop killstreak
 import { courtReplay } from './scales.js';
 import { replayNoScope } from './noscope.js';
 import { shredKill } from './shredder.js';
@@ -206,6 +207,8 @@ function applyEv(m) {
     fx.blast(m.p, WEAPONS.duck.blastR); sfx.holePop(m.p);
   } else if (m.t === 'rig') {
     rigFx(m, st.ghosts); // overdrive rig punches, hacks, missiles, landings (the ghosts wear the rig from their snapshots)
+  } else if (m.t === 'mech') {
+    mechFx(m, st.ghosts); // mech swings, slams, rams, the eject blast (the ghosts wear their mechs from their snapshots)
   } else if (m.t === 'ns') { // no-scope headshot: the fireworks again, on a faster fuse
     replayNoScope(m, (info[m.k] || {}).name);
   } else if (m.t === 'kat') {

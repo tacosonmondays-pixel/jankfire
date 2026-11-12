@@ -12,6 +12,7 @@ import { query } from '/shared/physics.js';
 import { WRECK, slamSize } from '/shared/weapons.js';
 import { fx } from './fx.js';
 import { rigStep, rigHook } from './rig.js'; // overdrive rig killstreak
+import { mechStep } from './mech.js'; // mech drop killstreak
 import { flashRope, myGrapple } from './grapple.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { holeDrag } from '/shared/physics.js';
@@ -200,6 +201,7 @@ export function stepPlayer(dt, inp, now) {
   if (G.brStep && G.brStep(dt, inp, now)) return; // jank royale: riding the blimp, falling, the umbrella (royale.js)
   const v = ME.vel, p = ME.pos;
   if (rigStep(dt, inp, now)) return; // overdrive rig: heavy, fast, leaps instead of jumping (rig.js)
+  if (mechStep(dt, inp, now)) return; // in a mech: its own movement (mech.js)
   if (rideStep(dt, inp, now)) return; // riding a shopping cart (primaries.js)
   // glitch dash: fly straight where you look, no gravity. letting go keeps all of it.
   if (ME.dashing) {

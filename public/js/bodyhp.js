@@ -15,6 +15,7 @@ import { wreckBurst, wreckDied } from './wreck.js';
 import { RS, rigDied, rigBroke } from './rig.js';
 
 export const BH = new Map(); // player id -> { k, hp, max, t }
+const MECHB = { paperplane: 5, nightshift: 6 }; // mechs' pools (shared/mech.js): their bar goes this high
 const NAME = { wreckingball: 'WRECKING BALL', overdrive: 'OVERDRIVE RIG' };
 const nameOf = (id) => (id === G.myId ? { name: G.myName || 'you', color: G.myColor || '#fff' } : G.names.get(id) || { name: '???', color: '#fff' });
 // your own pool, for the HUD (null when you're in neither)
@@ -81,7 +82,7 @@ function draw(b, k, f) {
 }
 // remote.js, every frame: shows the bar while they're a ball or a rig and the server has told us its HP
 export function bodyBar(r) {
-  const e = BH.get(r.id), on = r.alive && e && ((e.k === 'wreckingball' && (r.f & FLAGS.BALL)) || (e.k === 'overdrive' && (r.f & FLAGS.RIG)));
+  const e = BH.get(r.id), on = r.alive && e && ((e.k === 'wreckingball' && (r.f & FLAGS.BALL)) || (e.k === 'overdrive' && (r.f & FLAGS.RIG)) || (MECHB[e.k] && (r.f & FLAGS.MECH)));
   if (!on) { if (r.bodyBar) r.bodyBar.s.visible = false; return; }
   if (r.bodyBar && r.bodyBar.root !== r.ch.root) r.bodyBar = null; // their model was rebuilt (new look, team, armour)
   const b = r.bodyBar || (r.bodyBar = bar(r));
@@ -89,7 +90,7 @@ export function bodyBar(r) {
   if (b.key !== key) { b.key = key; draw(b, e.k, f); }
   // above the ball (3.6 m) or the rig's head (3.1 m), the same size on screen far away (the root is scaled up)
   const k = r.distScale || 1;
-  b.s.position.set(0, (e.k === 'wreckingball' ? 3.9 : 3.3) / 1.2, 0);
+  b.s.position.set(0, (MECHB[e.k] ? MECHB[e.k] + 0.4 : e.k === 'wreckingball' ? 3.9 : 3.3) / 1.2, 0); // (a mech's bar over its cockpit)
   b.s.scale.set(1.5 * k / 1.2, 0.24 * k / 1.2, 1);
   b.s.visible = true;
 }

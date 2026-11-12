@@ -344,6 +344,7 @@ export const STREAKS = {
   spinbot: { kills: 6, name: 'Spinbot', desc: 'aimbot + spinbot for 10s. you are now a cheater.', auto: true, dur: 10 },
   wreckingball: { kills: 6, name: 'Wrecking Ball', desc: 'become a giant steel wrecking ball until it breaks (900 HP): ram people (faster = harder), swing on the chain (E, W pumps it), crouch in the air to ground slam (higher = bigger)', auto: true, dur: 65 }, // (until it breaks: shared/bodyhp.js)
   satellite: { kills: 7, name: 'Spy Satellite', desc: 'see every enemy through walls for 20s', auto: true, dur: 20 },
+  mechdrop: { kills: 9, name: 'Mech Drop', desc: 'call a giant mech onto your crosshair (F to climb in). PAPER PLANE flies, NIGHT SHIFT swings a sword: pick yours in the loadout', deploy: true }, // shared/mech.js + docs/mechs/PLAY.md
   giantduck: { kills: 10, name: 'Giant Duck', desc: 'a giant black hole where you aim that pulls in everyone but you and eats their momentum', deploy: true },
 };
 export const DEFAULT_LOADOUT = { primary: 'ar', secondary: 'cig', melee: 'bread', item: 'frag', streaks: ['moonboots', 'chickenstrike', 'scythe'] };
@@ -372,6 +373,7 @@ export function validLoadout(lo) {
   const out = { ...DEFAULT_LOADOUT };
   if (lo) for (const s of SLOTS) if (has(WEAPONS, lo[s]) && WEAPONS[lo[s]].slot === s && !WEAPONS[lo[s]].modeOnly) out[s] = lo[s];
   if (lo && has(ITEMS, lo.item)) out.item = lo.item;
+  out.mech = lo && lo.mech === 'nightshift' ? 'nightshift' : 'paperplane'; // mech drop: your frame (shared/mech.js)
   out.streaks = validStreaks(lo && lo.streaks);
   return out;
 }
