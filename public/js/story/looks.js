@@ -501,6 +501,26 @@ function prepCast(scene) {
   });
 }
 export const castLoaded = (id) => CAST.has(id);
+// on demand (owner playtest: "everything takes forever to load"): a cast model is fetched when its actor is about to
+// show up, not all 21 at boot. ensureCast(id) -> true once it's in, failed, or took too long (then the code puppet
+// stands in); false while it's still coming (the roster waits a moment rather than spawn a puppet that never swaps)
+const ASK = new Map(); // id -> { t, done }
+const NO_FILE = new Set(); // looks with no .glb (or one that failed)
+export function ensureCast(id, wait = 6000) {
+  if (!id || CAST.has(id) || NO_FILE.has(id) || !Object.hasOwn(LOOKS, id)) return true; // (a look with no file of its own: the code puppet, nothing to fetch)
+  let q = ASK.get(id);
+  if (!q) { q = { t: performance.now(), done: false }; ASK.set(id, q); fetchCast(id).finally(() => { q.done = true; }); }
+  return q.done || performance.now() - q.t > wait;
+}
+function fetchCast(id) {
+  return glbLoader().loadAsync(`/models/cast/c_${id}.glb`).then((g) => { prepCast(g.scene); CAST.set(id, g.scene); }).catch(() => { NO_FILE.add(id); });
+}
+// the whole cast in the background, a few at a time (anything ensureCast asks for first jumps the queue)
+export async function prefetchCast(ids, lanes = 4) {
+  const left = ids.filter((id) => !CAST.has(id) && !NO_FILE.has(id) && !ASK.has(id));
+  const one = async () => { for (let id; (id = left.shift());) { if (ASK.has(id)) continue; const q = { t: performance.now(), done: false }; ASK.set(id, q); await fetchCast(id); q.done = true; } };
+  await Promise.all(Array.from({ length: lanes }, one));
+}
 export function buildLookCode(id, hint) { const c = CAST.get(id); CAST.delete(id); try { return buildLook(id, hint); } finally { if (c) CAST.set(id, c); } } // (the code puppet, for side-by-sides)
 function dressCast(L, scene) {
   const ch = L.ch, s = ch.root.scale.x;

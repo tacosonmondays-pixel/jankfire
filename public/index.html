@@ -7,6 +7,7 @@
 <script src="/js/touchboot.js"></script>
 <link rel="stylesheet" href="/style.css">
 <link rel="stylesheet" href="/ui.css">
+<link rel="stylesheet" href="/hub.css">
 <link rel="stylesheet" href="/touch.css">
 <link rel="manifest" href="/manifest.webmanifest">
 <meta name="theme-color" content="#ff4fd8">
@@ -75,7 +76,7 @@
 
 <div id="menu">
   <!-- main (home) -->
-  <div class="screen home" id="scr-main">
+  <div class="screen home hub" id="scr-main">
     <div class="home-frame" id="homeFrame"></div>
     <div class="home-top">
       <div id="acctBar"></div>
@@ -106,10 +107,10 @@
       <label class="namerow" id="nameRow">name <input id="name" maxlength="16" placeholder="guest name" autocomplete="off"></label>
     </div>
     <div class="home-right">
-      <button class="big mode play" data-pick="online"><b>ONLINE</b><span>real players only: quick play, plant &amp; defuse, royale, zombies</span></button>
-      <button class="big mode" data-pick="bots"><b>WITH BOTS</b><span>lobbies with bots and people. or make your own</span></button>
-      <button class="big mode" data-mode="coop"><b>COOP</b><span>friends vs waves of bots</span></button>
-      <button class="big mode" data-mode="training"><b>TRAINING</b><span>dummies + infinite ammo</span></button>
+      <button class="big mode play" data-hub="online"><b>ONLINE</b><span>real players: quick play, plant &amp; defuse, royale, zombies</span></button>
+      <button class="big mode" data-hub="offline"><b>OFFLINE</b><span>just you and bots. your map, your rules</span></button>
+      <div class="hub-under"><i id="hubLive"></i><span class="hub-links"><button class="mid" data-mode="training" title="dummies + infinite ammo">TRAINING</button><button class="mid" data-pick="bots" title="the old bots menu: any mode, CUSTOM">CLASSIC</button></span></div>
+      <div class="hub-party" id="hubParty"></div>
       <div class="hidden" id="desktopRow">
         <button class="big mode" id="dChange"><b>HOST / JOIN</b><span>change server, host on this PC</span></button>
         <div class="drow"><button class="mid" id="dFull">FULLSCREEN</button><button class="mid danger" id="dQuit">QUIT GAME</button></div>
@@ -117,6 +118,16 @@
     </div>
     <div class="home-strip" id="homeStrip"><i class="live"></i><span class="seg">asking the server what's on...</span></div>
     <div id="status"></div>
+  </div>
+
+  <!-- the hub: a mode's lobby (public/js/hubmenu.js) -->
+  <div class="screen hidden" id="scr-hubby">
+    <div class="home-frame" id="hubFrame"></div>
+    <div class="hub-head"><button class="mid" id="hubBack">&lt; HUB</button><h2 id="hubName"></h2><p id="hubDesc"></p><div class="hub-modes" id="hubModes"></div></div>
+    <div class="hub-panel hub-l" id="hubMatch"></div>
+    <div class="hub-stage" id="hubStage"></div>
+    <div class="hub-panel hub-r" id="hubSide"></div>
+    <div class="hub-foot"><button class="hub-go" id="hubGo">FIND MATCH</button></div>
   </div>
 
   <!-- guide: controls + how it works -->
@@ -360,10 +371,12 @@
         <h3>video</h3>
         <label>quality <select id="jank"><option value="0">Potato</option><option value="1">Crusty</option><option value="2">Mid</option><option value="3">HD</option></select></label>
         <label>shadows <select id="shadows"><option value="auto">auto (by quality)</option><option value="off">off (blobs)</option><option value="low">low</option><option value="med">medium</option><option value="high">high (soft)</option></select></label>
-        <label>shaders <select id="fxLevel"><option value="auto">auto (by quality)</option><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option><option value="custom">custom</option></select></label>
+        <label>shaders <select id="fxLevel"><option value="auto">auto (by quality)</option><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option><option value="rt">RAY-TRACED LOOK</option><option value="custom">custom</option></select></label>
         <label>bloom <select id="fxBloom"><option value="off">off</option><option value="low">low</option><option value="med">medium</option><option value="high">high</option></select></label>
         <label><input type="checkbox" id="fxSkin"> soft skin (light glows through)</label>
         <label><input type="checkbox" id="fxPunch"> punchy colours</label>
+        <label><input type="checkbox" id="fxAO"> contact shadows (soft shade where things meet; mid and hd)</label>
+        <label><input type="checkbox" id="fxBounce"> bounce light (sunlit walls and ground tint what's near them; mid and hd)</label>
         <label id="fxEerieRow" class="hidden"><input type="checkbox" id="fxEerie"> eerie story filter (darker, colder, grain)</label>
         <label>fov <input id="fov" type="range" min="70" max="120" step="1"><span id="fovN"></span></label>
         <label><input type="checkbox" id="fovKick"> fov stretches with speed</label>
@@ -438,5 +451,6 @@
 </div>
 
 <script type="module" src="/js/main.js"></script>
+<script type="module" src="/js/editorgate.js"></script>
 </body>
 </html>

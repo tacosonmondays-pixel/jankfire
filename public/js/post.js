@@ -71,9 +71,25 @@ void main() {
   c += ( texture2D( tSrc, vUv + uDir * 3.230769 ).rgb + texture2D( tSrc, vUv - uDir * 3.230769 ).rgb ) * 0.070270;
   gl_FragColor = vec4( c, 1.0 );
 }`, { tSrc: { value: null }, uDir: { value: new THREE.Vector2() } }),
-    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; uniform vec4 uGrade; varying vec2 vUv;
+    final: mat(`uniform sampler2D tScene; uniform sampler2D tB0; uniform sampler2D tB1; uniform sampler2D tB2; uniform vec3 uW; uniform float uPunch; uniform float uKill; uniform vec4 uGrade; uniform float uAA; uniform vec2 uPx; uniform vec2 uFilm; uniform sampler2D tAO; uniform sampler2D tDepth; uniform float uAOk; uniform float uAODbg; varying vec2 vUv;
+// smoothing jaggies (Mid and up): where the brightness steps across a pixel, blend toward the neighbours along the edge
+vec3 aaScene( vec2 uv ) {
+  vec3 m = texture2D( tScene, uv ).rgb;
+  if ( uAA < 0.5 ) return m;
+  vec3 n = texture2D( tScene, uv + vec2( 0.0, uPx.y ) ).rgb, s = texture2D( tScene, uv - vec2( 0.0, uPx.y ) ).rgb;
+  vec3 e = texture2D( tScene, uv + vec2( uPx.x, 0.0 ) ).rgb, w = texture2D( tScene, uv - vec2( uPx.x, 0.0 ) ).rgb;
+  vec3 W = vec3( 0.299, 0.587, 0.114 );
+  float lm = dot( m, W ), ln = dot( n, W ), ls = dot( s, W ), le = dot( e, W ), lw = dot( w, W );
+  float range = max( max( max( ln, ls ), max( le, lw ) ), lm ) - min( min( min( ln, ls ), min( le, lw ) ), lm );
+  if ( range < max( 0.06, lm * 0.15 ) ) return m; // flat: leave it sharp
+  float hz = abs( ln + ls - 2.0 * lm ), vt = abs( le + lw - 2.0 * lm );
+  vec3 along = hz > vt ? ( n + s ) * 0.5 : ( e + w ) * 0.5; // a horizontal edge blends up / down, a vertical one left / right
+  return mix( m, along, clamp( range * 1.6, 0.0, 0.5 ) );
+}
+vec3 acesFit( vec3 x ) { return clamp( ( x * ( 2.51 * x + 0.03 ) ) / ( x * ( 2.43 * x + 0.59 ) + 0.14 ), 0.0, 1.0 ); }
 void main() {
-  vec3 c = texture2D( tScene, vUv ).rgb;
+  vec3 c = aaScene( vUv );
+  if ( uAOk > 0.0 && texture2D( tDepth, vUv ).x > 0.99999 ) c *= mix( 1.0, texture2D( tAO, vUv ).r, uAOk ); // contact shadows (the world only: where the gun was drawn the depth isn't the cleared 1.0)
   vec3 b = texture2D( tB0, vUv ).rgb * uW.x;
   if ( uW.y > 0.0 ) b += texture2D( tB1, vUv ).rgb * uW.y;
   if ( uW.z > 0.0 ) b += texture2D( tB2, vUv ).rgb * uW.z;
@@ -86,14 +102,42 @@ void main() {
     p *= 1.0 - 0.5 * pow( dot( v, v ) * 1.9, 1.6 ); // dark comic-panel corners
     c = mix( c, clamp( p, 0.0, 1.0 ), uPunch );
   }
+  if ( uFilm.x > 0.0 ) { // a filmic curve (soft shoulder: bright things don't clip flat) and vibrance (dull colours lifted more than loud ones)
+    c = mix( c, acesFit( c * 1.25 ), uFilm.x );
+    float l = dot( c, vec3( 0.299, 0.587, 0.114 ) ), sat = max( c.r, max( c.g, c.b ) ) - min( c.r, min( c.g, c.b ) );
+    c = clamp( mix( vec3( l ), c, 1.0 + uFilm.y * ( 1.0 - sat ) ), 0.0, 1.0 );
+  }
   if ( uGrade.w > 0.0 ) { // one map's own colour grade (setGrade: Battle Island's bilook.js): saturation, warmth, contrast
     float l = dot( c, vec3( 0.299, 0.587, 0.114 ) );
     vec3 g = mix( vec3( l ), c, uGrade.x ) + vec3( uGrade.y, uGrade.y * 0.35, -uGrade.y * 0.6 );
     g = ( g - 0.5 ) * uGrade.z + 0.5;
     c = clamp( mix( c, g, uGrade.w ), 0.0, 1.0 );
   }
+  if ( uAODbg > 0.5 ) c = texture2D( tAO, vUv ).rgb; // (/gfx ao: the contact shadows on their own)
   gl_FragColor = vec4( c * ( 1.0 - uKill ), 1.0 ); // (uKill: tests only, forces a black frame)
-}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 }, uGrade: { value: new THREE.Vector4() } }),
+}`, { uKill: { value: 0 }, tScene: { value: null }, tB0: { value: null }, tB1: { value: null }, tB2: { value: null }, uW: { value: new THREE.Vector3() }, uPunch: { value: 0 }, uGrade: { value: new THREE.Vector4() }, uAA: { value: 0 }, uPx: { value: new THREE.Vector2() }, uFilm: { value: new THREE.Vector2() }, tAO: { value: null }, tDepth: { value: null }, uAOk: { value: 0 }, uAODbg: { value: 0 } }),
+    // contact shadows (screen-space ambient occlusion): from the depth of the world as drawn, how much of the half-sphere
+    // over each point is shut in by things right next to it: corners, where a crate meets the floor, under a car
+    ao: mat(`uniform sampler2D tDepth; uniform float uNear; uniform float uFar; uniform vec2 uTan; uniform float uR; uniform vec2 uPx; varying vec2 vUv;
+float vz( vec2 uv ) { float d = texture2D( tDepth, uv ).x; return ( uNear * uFar ) / ( ( uFar - uNear ) * d - uFar ); } // (negative: view space looks down -z)
+vec3 vp( vec2 uv ) { float z = vz( uv ); return vec3( ( uv * 2.0 - 1.0 ) * uTan * -z, z ); }
+void main() {
+  float d0 = texture2D( tDepth, vUv ).x;
+  if ( d0 > 0.99999 ) { gl_FragColor = vec4( 1.0 ); return; } // the sky
+  vec3 p = vp( vUv );
+  vec3 r1 = vp( vUv + vec2( uPx.x, 0.0 ) ) - p, l1 = p - vp( vUv - vec2( uPx.x, 0.0 ) ), u1 = vp( vUv + vec2( 0.0, uPx.y ) ) - p, d1 = p - vp( vUv - vec2( 0.0, uPx.y ) );
+  vec3 n = normalize( cross( abs( r1.z ) < abs( l1.z ) ? r1 : l1, abs( u1.z ) < abs( d1.z ) ? u1 : d1 ) ); // (the smoother side each way: no false edges at silhouettes)
+  float r = uR / ( -p.z * 2.0 * uTan.y ), occ = 0.0, a0 = fract( sin( dot( gl_FragCoord.xy, vec2( 12.9898, 78.233 ) ) ) * 43758.5453 ) * 6.2832;
+  for ( int i = 0; i < 12; i++ ) {
+    float fi = float( i ), a = a0 + fi * 2.39996, t = ( fi + 0.5 ) / 12.0;
+    vec2 uv = vUv + vec2( cos( a ) * uTan.y / uTan.x, sin( a ) ) * r * t;
+    if ( uv.x < 0.0 || uv.y < 0.0 || uv.x > 1.0 || uv.y > 1.0 ) continue;
+    vec3 v = vp( uv ) - p; float l = length( v );
+    occ += max( 0.0, dot( n, v / max( l, 1e-4 ) ) - 0.3 ) * ( 1.0 - smoothstep( 0.0, uR, l ) ) * step( 0.02 + 0.002 * -p.z, l ); // (a flat floor doesn't shade itself)
+  }
+  occ *= 1.0 - smoothstep( 25.0, 60.0, -p.z ); // close up only: far off the depth is too coarse to trust, and contacts are too small to see
+  gl_FragColor = vec4( vec3( clamp( 1.0 - occ / 12.0 * 4.0, 0.0, 1.0 ) ), 1.0 );
+}`, { tDepth: { value: null }, uNear: { value: 0.1 }, uFar: { value: 1500 }, uTan: { value: new THREE.Vector2(1, 1) }, uR: { value: 1.2 }, uPx: { value: new THREE.Vector2() } }),
   };
 }
 const target = (w, h, depth, filter) => {
@@ -106,11 +150,16 @@ const target = (w, h, depth, filter) => {
 function fit(r) {
   r.getDrawingBufferSize(P.size);
   const w = P.size.x, h = P.size.y, B = BLOOM[P.bloom], bh = B ? Math.min(B.h, Math.max(8, h >> 1)) : 0;
-  if (P.rt && P.w === w && P.h === h && P.bh === bh && P.lv.length === (B ? B.n : 0)) return;
+  if (P.rt && P.w === w && P.h === h && P.bh === bh && P.lv.length === (B ? B.n : 0) && !!P.rt.depthTexture === !!P.ao) return;
+  if (P.aoA) { P.aoA.dispose(); P.aoB.dispose(); P.aoA = P.aoB = null; }
   if (P.rt) P.rt.dispose();
   for (const l of P.lv) { l.a.dispose(); l.b.dispose(); }
   P.lv = []; P.w = w; P.h = h; P.bh = bh;
   P.rt = target(w, h, true, THREE.NearestFilter);
+  if (P.ao) { // contact shadows need the world's depth as a texture, and two half-size buffers to work in
+    P.rt.depthTexture = new THREE.DepthTexture(w, h); P.rt.depthTexture.minFilter = P.rt.depthTexture.magFilter = THREE.NearestFilter;
+    const aw = Math.max(8, w >> 1), ah = Math.max(8, h >> 1); P.aoA = target(aw, ah, false, THREE.LinearFilter); P.aoB = target(aw, ah, false, THREE.LinearFilter); P.aoW = aw; P.aoH = ah;
+  }
   for (let i = 0; B && i < B.n; i++) {
     const lh = Math.max(4, bh >> i), lw = Math.max(4, Math.round((lh * w) / h));
     P.lv.push({ w: lw, h: lh, a: target(lw, lh, false, THREE.LinearFilter), b: target(lw, lh, false, THREE.LinearFilter) });
@@ -124,10 +173,13 @@ export function setPost(bloom, punch) {
   if (!wanted() && P.rt) { P.rt.dispose(); P.rt = null; for (const l of P.lv) { l.a.dispose(); l.b.dispose(); } P.lv = []; } // off: give the memory back
 }
 // a map's own colour grade, [saturation, warmth, contrast, amount] or null (bilook.js). only while shaders are on
-export function setGrade(g) { P.grade = g ? g.slice() : null; }
+export function setGrade(g, film) { P.grade = g ? g.slice() : null; P.film = film ? film.slice() : null; } // film: [filmic curve 0..1, vibrance]
+export function setPostAA(on) { P.aa = !!on; }
+export function postAODebug(on) { P.aoDbg = !!on; } // (tests, /gfx: show the contact-shadow buffer)
+export function setPostAO(on) { P.ao = !!on && !P.aoDead; } // contact shadows (fxsettings.js: the ray-traced look) // world.js: Mid and Too HD smooth their edges (Potato and Crusty stay crunchy)
 export const postOn = () => !SAFE.dead && (P.bloom > 0 || P.punch);
 const wanted = () => P.bloom > 0 || P.punch;
-export const postInfo = () => ({ bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]), on: postOn(), dead: SAFE.dead, why: SAFE.why, checks: SAFE.checks, ok: SAFE.ok });
+export const postInfo = () => ({ ao: !!P.ao, aoDead: !!P.aoDead, bloom: P.bloom, punch: P.punch, size: [P.w, P.h], glow: P.lv.map((l) => [l.w, l.h]), on: postOn(), dead: SAFE.dead, why: SAFE.why, checks: SAFE.checks, ok: SAFE.ok });
 
 // world.js renderFrame: draw the frame into our buffer instead of the canvas (false = shaders off, draw as always)
 export function postBegin(r) {
@@ -147,6 +199,21 @@ export function postBegin(r) {
     try { r.setRenderTarget(null); } catch (e2) { /* nothing left to try */ }
     fail('begin threw: ' + (e && e.message)); return false;
   }
+}
+// world.js, between the world and your gun: the contact shadows, from the world's depth alone (the gun is drawn after,
+// so it never gets them). if this ever throws, contact shadows switch off and the rest of the shaders carry on
+export function postMid(r, cam) {
+  if (!P.ao || !P.aoA || !P.rt || !P.rt.depthTexture) return;
+  try {
+    const M = P.mats, A = M.ao.uniforms;
+    A.tDepth.value = P.rt.depthTexture; A.uNear.value = cam.near; A.uFar.value = cam.far;
+    const th = Math.tan((cam.fov * Math.PI) / 360); A.uTan.value.set(th * cam.aspect, th); A.uPx.value.set(1 / P.w, 1 / P.h); A.uR.value = 1.8;
+    pass(r, M.ao, P.aoA);
+    M.blur.uniforms.tSrc.value = P.aoA.texture; M.blur.uniforms.uDir.value.set(1 / P.aoW, 0); pass(r, M.blur, P.aoB);
+    M.blur.uniforms.tSrc.value = P.aoB.texture; M.blur.uniforms.uDir.value.set(0, 1 / P.aoH); pass(r, M.blur, P.aoA);
+    P.aoDone = true;
+  } catch (e) { P.aoDead = true; P.ao = false; console.warn('[gfx] contact shadows off:', e && e.message); }
+  r.setRenderTarget(P.rt);
 }
 // ...then glow + grade it onto the canvas. false = it failed: the caller draws this frame again the plain way
 export function postEnd(r) {
@@ -178,7 +245,9 @@ function compose(r) {
   F.tB0.value = L[0] ? L[0].a.texture : null; F.tB1.value = L[1] ? L[1].a.texture : null; F.tB2.value = L[2] ? L[2].a.texture : null;
   const k = B ? B.k : 0;
   F.uW.value.set(L[0] ? k * (L[1] ? 0.6 : 1) : 0, L[1] ? k * 0.8 : 0, L[2] ? k : 0); // more layers: a wide soft halo, not a brighter middle (signs stay readable)
-  F.uPunch.value = P.punch ? 1 : 0; if (P.grade) F.uGrade.value.fromArray(P.grade); else F.uGrade.value.set(1, 0, 1, 0); F.uKill.value = SAFE.test === 'black' ? 1 : 0;
+  F.uPunch.value = P.punch ? 1 : 0; if (P.grade) F.uGrade.value.fromArray(P.grade); else F.uGrade.value.set(1, 0, 1, 0);
+  F.uAOk.value = P.ao && P.aoDone ? 1 : 0; F.tAO.value = P.aoA ? P.aoA.texture : null; F.tDepth.value = P.rt.depthTexture || null; F.uAODbg.value = P.aoDbg && P.aoDone ? 1 : 0; P.aoDone = false;
+  F.uAA.value = P.aa ? 1 : 0; F.uPx.value.set(1 / P.w, 1 / P.h); if (P.film) F.uFilm.value.fromArray(P.film); else F.uFilm.value.set(0, 0); F.uKill.value = SAFE.test === 'black' ? 1 : 0;
   if (SAFE.test === 'blackin') { r.setRenderTarget(P.rt); r.setClearColor(0x000000, 1); r.clear(); } // (tests: an empty frame buffer)
   pass(r, M.final, null);
 }

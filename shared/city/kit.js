@@ -8,14 +8,18 @@ export const pick = (r, a) => a[(r() * a.length) | 0];
 // how far a flight runs for a rise of dy (stairsZ / stairsX steps: <= 0.4 m up, 0.55 m deep)
 export const flightLen = (dy) => Math.max(1, Math.ceil(Math.abs(dy) / 0.4)) * 0.55;
 
+// every flight as it's built, for the stairs sweep (tests/story/stairs.test.mjs): STAIRS.log = (flight) => ...; null in game
+export const STAIRS = { log: null };
 // a flight of steps along z (dir +1 / -1) or x: from (x0..x1) at a0, rising ya -> yb. returns where it ends
 export function stairsZ(B, x0, x1, a0, dir, ya, yb, mat = 'concrete', o) {
   const n = Math.max(1, Math.ceil(Math.abs(yb - ya) / 0.4)), h = (yb - ya) / n, run = 0.55;
+  if (STAIRS.log) STAIRS.log({ axis: 'z', w0: x0, w1: x1, a0, dir, ya, yb, end: a0 + dir * n * run, chunk: B.out ? [B.out.cx, B.out.cz] : null });
   for (let i = 1; i <= n; i++) { const za = a0 + dir * (i - 1) * run, zb = a0 + dir * i * run; B.add(x0, Math.min(ya, yb) - 0.2, za, x1, ya + i * h, zb, mat, o); }
   return a0 + dir * n * run;
 }
 export function stairsX(B, z0, z1, a0, dir, ya, yb, mat = 'concrete', o) {
   const n = Math.max(1, Math.ceil(Math.abs(yb - ya) / 0.4)), h = (yb - ya) / n, run = 0.55;
+  if (STAIRS.log) STAIRS.log({ axis: 'x', w0: z0, w1: z1, a0, dir, ya, yb, end: a0 + dir * n * run, chunk: B.out ? [B.out.cx, B.out.cz] : null });
   for (let i = 1; i <= n; i++) { const xa = a0 + dir * (i - 1) * run, xb = a0 + dir * i * run; B.add(xa, Math.min(ya, yb) - 0.2, z0, xb, ya + i * h, z1, mat, o); }
   return a0 + dir * n * run;
 }
@@ -67,7 +71,7 @@ export function cube(B, x, y, z, w, d, h, r, o = {}) {
       B.prop('door_bottom', ax === 'x' ? mid : f, y, ax === 'x' ? f : mid, yaw, 1, (r() * 8) | 0);
     }
   }
-  B.add(x0, y - 0.15, z0, x1, y + 0.12, z1, 'concrete'); // floor
+  B.add(x0 + 0.02, y - 0.15, z0 + 0.02, x1 - 0.02, y + 0.12, z1 - 0.02, 'concrete'); // floor (2 cm inside the walls: its edge was flush with their faces, a flickering strip at the foot of every house)
   B.add(x0 - 0.1, y + h, z0 - 0.1, x1 + 0.1, y + h + 0.3, z1 + 0.1, o.roofMat || 'concrete', { tint: o.roofTint }); // roof = the next floor
   B.add(x0, y, z0, x1, y + h, z1, mat, { l1: true, tint }); // far away: one box (the mid ring draws this instead of the walls)
   if (o.lit !== false && r() < 0.55) B.light(x + (r() - 0.5) * w, y + h * 0.6, (o.door === 0 ? z0 - 1.2 : z1 + 1.2), pick(r, [0xffc070, 0xffb060, 0xff9ad0, 0x9ae0ff]), 6, 0.55); // a lit window spills out
@@ -111,10 +115,10 @@ export function bulbs(B, a, b, r) {
 
 // a retaining wall along x at z (the face toward +z, i.e. downhill to the south) from y0 up to y1, with buttresses
 export function retaining(B, x0, x1, z, y0, y1, r, mat = 'concrete') {
-  B.add(x0, y0 - 1, z - 1.2, x1, y1, z, mat, { tint: 0xd8c8c0 });
+  B.add(x0, y0 - 1, z - 1.2, x1, y1 - 0.02, z + 0.02, mat, { tint: 0xd8c8c0 }); // (2 cm proud of the ground behind it, its top 2 cm under the terrace: flush, both faces flickered)
   for (let x = x0 + 4 + r() * 4; x < x1 - 2; x += 7 + r() * 6) B.add(x, y0, z, x + 0.8, y1 - 0.5 - r(), z + 0.6, mat, { tint: 0xc8b8b0 });
   // graffiti and patches: render-only paint panels just proud of the face
-  for (let x = x0 + 2; x < x1 - 3; x += 9 + r() * 9) if (r() < 0.6) B.add(x, y0 + 0.5, z + 0.01, x + 2 + r() * 3, y0 + 1.2 + r() * (y1 - y0 - 1.5), z + 0.03, 'paint', { nc: true, tint: pick(r, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a]) });
+  for (let x = x0 + 2; x < x1 - 3; x += 9 + r() * 9) if (r() < 0.6) B.add(x, y0 + 0.5, z + 0.04, x + 2 + r() * 3, y0 + 1.2 + r() * (y1 - y0 - 1.5), z + 0.06, 'paint', { nc: true, tint: pick(r, [0xff4fd8, 0x4fd8ff, 0xffe14d, 0x7dff4f, 0xff7a1a]) });
 }
 
 // rubble: a heap of tilted concrete chunks (render only) on one collision box
