@@ -1,4 +1,5 @@
 // JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
+import '/shared/mapedits/apply.js'; // the owner's shipped map edits (shared/mapedits): first, so every map module sees the edited maps
 import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';

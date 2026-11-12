@@ -1,6 +1,7 @@
 // The map editor (editor.html): fly round any map noclip, Minecraft-creative style, pick props, buildings and boxes,
 // carry them, turn them, size them, copy them, delete them. Every change is an op (shared/mapedit.js) kept per map in
 // this browser and exported as a file for us to ship. Nothing here talks to the server: edits never reach a match.
+import '/shared/mapedits/apply.js'; // the shipped edits first: yours go on top of them
 import * as THREE from 'three';
 import { MAPS, BOXES, MAP } from '/shared/map.js';
 import { resetGrid } from '/shared/physics.js';
