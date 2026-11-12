@@ -1,6 +1,42 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
+    'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
+  ] },
+  { v: '10.6', date: '2026-11-12', title: 'PUTT INTO ITS MOUTH', items: [
+    'skyline: the skyscrapers are real buildings now. brick tenements with fire escapes, office towers with chrome fins, lit offices and neon blade signs.',
+    'skyline: the bridges off the spire got steel. portal frames on the glass tubes, big blue trusses under the open ones. the sky stairs are proper steel stairs with handrails and neon. still 160 m of air underneath.',
+    'skyline: putt putt palace got a real windmill and a giant clown head. putt into its mouth. you can\'t.',
+  ] },
+  { v: '10.5', date: '2026-11-12', title: 'SHINY', items: [
+    'RAY-TRACED LOOK now has reflections: glass towers, office windows, wet roads and chrome reflect the world around you. its own checkbox in settings > video > shaders.',
+  ] },
+  { v: '10.4', date: '2026-11-12', title: 'NOBODY TOUCH THE TRAIN', items: [
+    'crate: the playroom is full of real toys now. crayons that are actually round, a ball that is actually a ball, a bed, and a train set nobody is allowed to touch.',
+  ] },
+  { v: '10.3', date: '2026-11-12', title: 'HAVE A NICE DAY', items: [
+    'jankburg: the city gates got toll booths, boom barriers and big name plates. the toll is your dignity. have a nice day.',
+    'warehouse plant & defuse: the defenders spawn behind a real office block now. lit windows, a staff entrance, a NO LOITERING sign nobody reads.',
+    'zombies: the mystery crate is a real crate now (glowing ??? and a padlock nobody locked), and the power switch is a big copper knife switch you get to SLAM up. works in all three zombies maps.',
+    'suburb: the playground got rebuilt by professionals (the hoa). the slide is an actual slide now. read the rules.',
+  ] },
+  { v: '10.2', date: '2026-11-12', title: 'RAY-TRACED (ISH)', items: [
+    'new shader level: RAY-TRACED LOOK (settings > video > shaders). sunlight bounces off the ground and walls onto everything around it, and corners and contact spots get soft shadows. on by default on too hd, opt-in on mid. potato stays potato.',
+    'battle island\'s grass got deeper, sunnier and blotchier. in a good way.',
+    'in a mech, the wrecking ball or the overdrive rig, your normal weapon bar gets out of the way, then pops back when you hop out.',
+    'jankburg: the firewall\'s towers got windows, a STAFF ONLY door and a smiley the size of a bus. the jump pads still work. security is watching (badly).',
+  ] },
+  { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
+    'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
+    'battle island: your party lands in the same squad. a party bigger than a squad splits into full squads. friends who join late go to your squad.',
+    'platform: the wellheads on b site are dressed up as christmas trees. star, tinsel, fairy lights, a santa hat. still full of oil.',
+    'skyline: the helipad got its gear. JET A-1 tanks, a flight-ops shack, a windsock, and a fuel truck parked on a site.',
+  ] },
+  { v: '10.0', date: '2026-11-12', title: 'ASKS FIRST', items: [
+    'closing or reloading the tab mid-match now asks first, in every mode. the exe closes normally.',
+    'battle island and training got their own pictures in the mode picker. the dummy is very excited about the target on its chest.',
+  ] },
   { v: '9.9', date: '2026-11-12', title: 'IT SAW THAT', items: [
     'crate: the tower is real toy blocks now. carved wooden faces, chunky letters, it spells JANK if you fall far enough. the middle block is a shape sorter.',
     'skyline: the observatory got a real dome and a real telescope. b site has never looked so scientific.',
