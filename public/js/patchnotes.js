@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '10.9', date: '2026-11-12', title: 'LOADS LIKE IT MEANS IT', items: [
+    'the game loads a lot faster the second time you open it: your browser keeps this version\'s code instead of asking for 300 files again. an update still gets you the new stuff straight away.',
+  ] },
+  { v: '10.8', date: '2026-11-12', title: 'PLEASE REMAIN SEATED', items: [
+    'jankburg: the cathedral of shareholder value got pews, a real bell and an organ made of servers. the sermon is a quarterly earnings call. please remain seated.',
+  ] },
   { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
     'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
   ] },

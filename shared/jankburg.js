@@ -466,6 +466,7 @@ function cathedral(B, D, cx, cz) {
   // the Cathedral of Shareholder Value: a corporate megachurch facing the plaza. stock-ticker stained glass, pews,
   // an organ made of server racks, a bell tower you grapple up for the best sniper spot in town
   const L = B.local(cx, cz, 2), Ld = D.local(cx, cz, 2), w = 24, d = 36, hw = 12, hd = 18, h = 14, t = 0.6;
+  propOf('jb_cathedral', L.pt(0, 0, 0), L.yaw, () => { // (the Blender cathedral draws it all but the pictures: tools/blender/jankburg/make_jb_cathedral.py)
   L(-hw, 0, -hd, hw, 0.15, hd, 'marble');
   const tall = (len) => { const o = []; for (let a = -len / 2 + 4; a < len / 2 - 3; a += 6) o.push({ a: a - 1, b: a + 1, y0: 3, y1: 10.5 }); return o; };
   wall(L, 'x', -hd, -hw, hw, 0, h, t, 'stone', [{ a: -3, b: 3, y0: 0, y1: 6.5 }, { a: -2, b: 2, y0: 8.5, y1: 12 }]);
@@ -487,6 +488,7 @@ function cathedral(B, D, cx, cz) {
   for (const ox of [-3.6, 3.6]) for (const oz of [-3.6, 3.6]) L.B(tx + ox, 37, tz + oz, 0.8, 6, 0.8, 'marble');
   L(tx - 4.4, 40, tz - 4.4, tx + 4.4, 40.6, tz + 4.4, 'roofg'); L(tx - 2.6, 40.6, tz - 2.6, tx + 2.6, 42, tz + 2.6, 'gold');
   Ld(tx - 1, 35.5, tz - 1, tx + 1, 38, tz + 1, 'gold'); // the bell (a gold bar)
+  }, { keep: (b) => !!b.fit });
 }
 function hq(B, D, x, z, r) {
   const Ld = D.local(x, z, 0), L = B.local(x, z, 0);
