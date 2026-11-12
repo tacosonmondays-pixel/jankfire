@@ -58,12 +58,18 @@ function house(B, k, x0, w, seed) {
       // junk on the roof: plastic chairs, a dish, a smiley sign, a sofa
       if (f === floors - 1) {
         const pr = r(); c.bare = pr >= 0.55;
-        if (pr < 0.25) B.prop('pchair', cx + (r() - 0.5) * (ww - 1), c.top, cz + (r() - 0.5) * (dd - 1), r() * 6.28, 1, (r() * 8) | 0);
-        else if (pr < 0.35) B.prop('sofa', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
-        else if (pr < 0.42) B.prop('smilesign', cx, c.top, cz, r() * 6.28, 0.7, 0);
-        else if (pr < 0.55) B.prop('tarp', cx, c.top, cz, (r() * 4 | 0) * Math.PI / 2, 1, 0);
-        if (r() < 0.35) B.prop('wokdish', c.x0, c.top - 0.6, cz, Math.PI / 2, 1, 0);
-        if (r() < 0.3) B.prop('stringlights', cx, c.top + 2.2, cz, r() * 6.28, 1, 0);
+        const rx = (c.x0 + c.x1) / 2, rz = (c.z0 + c.z1) / 2; // (the roof's own middle: the house is shifted off cx, and the junk used to hang off its edge)
+        if (pr < 0.25) B.prop('pchair', rx + (r() - 0.5) * (ww - 1.2), c.top, rz + (r() - 0.5) * (dd - 1.2), r() * 6.28, 1, (r() * 8) | 0);
+        else if (pr < 0.35) B.prop('sofa', rx, c.top, rz, (r() * 4 | 0) * Math.PI / 2, 1, (r() * 8) | 0);
+        else if (pr < 0.42) B.prop('smilesign', rx, c.top, rz, r() * 6.28, 0.7, 0);
+        else if (pr < 0.55) B.prop('tarp', rx, c.top, rz, (r() * 4 | 0) * Math.PI / 2, 1, 0);
+        if (r() < 0.35) B.prop('wokdish', c.x0, c.top - 0.6, rz, Math.PI / 2, 1, 0);
+        if (r() < 0.3) { // a string of bulbs on two poles (it used to hang 2.2 m over the roof from nothing), short enough that both poles stand on the roof
+          const yaw = r() * 6.28, ca = Math.abs(Math.cos(yaw)), sa = Math.abs(Math.sin(yaw)), half = Math.min(ca > 0.01 ? (c.x1 - c.x0) / 2 - 0.4 : 99, sa > 0.01 ? (c.z1 - c.z0) / 2 - 0.4 : 99) / Math.max(ca, sa, 0.01);
+          const sc = Math.max(0.4, Math.min(1, half / 2.0)), ex = Math.cos(yaw) * 2 * sc, ez = -Math.sin(yaw) * 2 * sc;
+          B.prop('stringlights', rx, c.top + 2.2, rz, yaw, sc, 0);
+          for (const k of [-1, 1]) B.add(rx + k * ex - 0.05, c.top, rz + k * ez - 0.05, rx + k * ex + 0.05, c.top + 2.3, rz + k * ez + 0.05, 'metal', { nc: true, tint: 0x8a8f99 });
+        }
       }
     }
     // the back row reaching the terrace above: a little bridge from its roof onto the next terrace

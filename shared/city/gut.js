@@ -53,7 +53,7 @@ function office(B, x0, z0, x1, z1, r) {
     }
   }
   B.add(x0 - 0.3, GY + h, z0 - 0.3, x1 + 0.3, GY + h + 0.6, z1 + 0.3, 'flesh', { tint: 0x9a1a26 }); // the roof has grown a skin
-  for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) if (r() < 0.55) B.prop(r() < 0.5 ? 'fleshblob_a' : 'fleshblob_b', px, GY + (r() < 0.5 ? 0 : h * r()), pz, r() * 6.28, 1 + r() * 0.8, 0);
+  for (const [px, pz] of [[x0, z0], [x1, z0], [x0, z1], [x1, z1]]) if (r() < 0.55) cornerBlob(B, r() < 0.5, px, pz, x0, z0, GY + (r() < 0.5 ? 0 : h * r()), r() * 6.28, 1 + r() * 0.8);
   // a sphincter door on the street side, a sign above it on one block in three
   const doorZ = r() < 0.5 ? z0 : z1, yaw = doorZ === z0 ? 0 : Math.PI;
   if (r() < 0.2 && x1 - x0 > 10) { // the odd shop still open under the skin: SUDS & SONS, with its tongue out
@@ -88,7 +88,8 @@ function peri(B) {
 function stomach(B, r) {
   const S = SLICE.stomach;
   const cell = 4;
-  for (let x = Math.max(B.X0, S.x - S.r - 8); x < Math.min(B.X1, S.x + S.r + 8); x += cell) for (let z = Math.max(B.Z0, S.z - S.r - 8); z < Math.min(B.Z1, S.z + S.r + 8); z += cell) {
+  const g0 = (v) => Math.floor(v / cell) * cell; // (on the ground's own 4 m grid: off it by 2 m, the ring where the bowl meets the floor had holes into the void)
+  for (let x = Math.max(B.X0, g0(S.x - S.r - 8)); x < Math.min(B.X1, S.x + S.r + 8); x += cell) for (let z = Math.max(B.Z0, g0(S.z - S.r - 8)); z < Math.min(B.Z1, S.z + S.r + 8); z += cell) {
     const d = stomachD(x + cell / 2, z + cell / 2);
     if (d > S.r + 2) continue;
     // stepped bowl: 1.5 m rings down to the floor (walkable with a jump, climbable with the grapple)
@@ -124,7 +125,7 @@ function arena(B) {
   B.add(x0, GY - 0.02, z0, x1, GY + 0.05, z1, 'gums', { nc: true });
   // ribs over the plaza (it's a ribcage now), mounds round the edge, the old time-office's queue rails
   for (const az of [z0 + 18, z1 - 16]) if (B.inside(cx, az)) { B.prop('ribarch', cx, GY, az, 0, 1.5, 0); B.add(cx - 13, GY, az - 1.2, cx - 10.5, GY + 9, az + 1.2, 'bone', { hide: true }); B.add(cx + 10.5, GY, az - 1.2, cx + 13, GY + 9, az + 1.2, 'bone', { hide: true }); }
-  for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop(mx < cx ? 'fleshblob_a' : 'fleshblob_b', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0);
+  for (const [mx, mz] of [[x0 + 4, cz], [x1 - 4, cz - 8], [x0 + 26, z1 - 4], [x1 - 26, z0 + 22]]) if (B.inside(mx, mz)) B.prop('fleshblob_a', mx, GY, mz, mx < cx ? 0.5 : -0.5, 1.6, 0); // (both floor lumps: the wall growth stood here on its own, its flat back to the room)
   for (let x = x0 + 14; x < x1 - 14; x += 6) if (B.inside(x, z0 + 6)) B.add(x, GY, z0 + 5.9, x + 4, GY + 1.0, z0 + 6.1, 'metal', { nc: true, tint: 0xd0c8b8 });
   // the time office along the north side, its front a wall of punch clocks (glow faces)
   // (an arcade through it where Rib Avenue runs, so the avenue goes on north: walk it or swing it)
@@ -265,10 +266,12 @@ export function gut(B, d) {
       if (keep.some((q) => inRect(ox0, oz0, ox1, oz1, q)) || stomachD((ox0 + ox1) / 2, (oz0 + oz1) / 2) < S.r + 16) { if (br() < 0.3) br(); continue; }
       const h = office(B, ox0, oz0, ox1, oz1, rng((br() * 4294967296) >>> 0));
       if (k < n - 1 && br() < 0.6) line(B, [ox1, GY + h * 0.7, (oz0 + oz1) / 2], [ox1 + 3, GY + h * 0.6, (oz0 + oz1) / 2 + 2], { r: 0.18, mat: 'liver' });
-      if (k < n - 1 && br() < 0.35) { const lx = ox1 + 1.5, lz = (oz0 + oz1) / 2; if (B.inside(lx, lz)) lungPad(B, lx, lz, 0.5); }
+      if (k < n - 1 && br() < 0.35) { const lx = ox1 + 1.5, lz = (oz0 + oz1) / 2; if (B.inside(lx, lz) && stomachD(lx, lz) > S.r + 3) lungPad(B, lx, lz, 0.5); } // (not out over the Big Stomach's bowl, 2 m over its first ring)
     }
-    // vein cables across the street to the next block (they glow)
-    if (br() < 0.7) { const vz = bz0 + 4 + br() * (bz1 - bz0 - 8), vx = bx1 + 2; if (B.inside(vx, vz)) { const vy = GY + 9 + br() * 4; B.prop('veincable', vx + SW / 2, vy, vz, 0, (SW + 6) / 4, 0); hook(B, vx + SW / 2, vy + 0.3, vz, { s: 1.4 }); } }
+    // vein cables across the street to the next block (they glow): under the lowest roof (offices are 9 m and up), each
+    // end half a metre into an office wall (they stopped 26 cm short of both, and hung over the 9 m roofs)
+    if (br() < 0.7) { const vz = bz0 + 4 + br() * (bz1 - bz0 - 8), vx = bx1 + 2; if (B.inside(vx, vz)) { const vy = GY + 6 + br() * 2.5, half = SW / 2 + 4;
+      if (officeAt(vx + SW / 2 - half + 0.3, vz) && officeAt(vx + SW / 2 + half - 0.3, vz)) { B.prop('veincable', vx + SW / 2, vy, vz, 0, half / 2.06, 0); hook(B, vx + SW / 2, vy + 0.3, vz, { s: 1.4 }); } } } // (only between two offices: by the Big Stomach and the arena there's nothing to tie it to)
   }
   // the guts themselves: intestines arcing out of the ground over the streets and back in, veins across the cobbles,
   // wet mounds with eyes. seeded per chunk, anchored in it (keep clear of the arena and the stomach's bowl)
@@ -309,6 +312,34 @@ export function gut(B, d) {
   gutMounds(B, streetAt, KEEP(), B.holes); // the floor swells in the open ground (gutmounds.js)
 }
 
+// is there a campus office at (x, z)? the same blocks and the same skips as gut()'s campus loop, no random draws
+function officeAt(x, z) {
+  const xs = [-320, ...AVES.map((a) => [a - SW / 2, a + SW / 2]).flat(), 96].sort((a, b) => a - b);
+  const zs = [-256, ...STREETS.map((s) => [s - SW / 2, s + SW / 2]).flat(), SLICE.peri.z0 - 1, SLICE.peri.z1 + 1, -48].sort((a, b) => a - b), keep = KEEP(), S = SLICE.stomach;
+  for (let i = 0; i + 1 < xs.length; i += 2) for (let j = 0; j + 1 < zs.length; j++) {
+    const bx0 = xs[i] + 2, bx1 = xs[i + 1] - 2, bz0 = zs[j] + 2, bz1 = zs[j + 1] - 2;
+    if (x < bx0 || x > bx1 || z < bz0 || z > bz1) continue;
+    if (bx1 - bx0 < 10 || bz1 - bz0 < 10 || inRect(bx0, bz0, bx1, bz1, [SLICE.peri.x0, SLICE.peri.z0 - 1, SLICE.peri.x1, SLICE.peri.z1 + 1])) return false;
+    const n = Math.max(1, Math.min(3, Math.floor((bx1 - bx0) / 16))), w = (bx1 - bx0) / n;
+    for (let k = 0; k < n; k++) {
+      const ox0 = bx0 + k * w + 1.5, ox1 = bx0 + (k + 1) * w - 1.5, oz0 = bz0 + 1, oz1 = bz1 - 1;
+      if (x < ox0 || x > ox1 || z < oz0 || z > oz1) continue;
+      return !(keep.some((q) => inRect(ox0, oz0, ox1, oz1, q)) || stomachD((ox0 + ox1) / 2, (oz0 + oz1) / 2) < S.r + 16);
+    }
+    return false;
+  }
+  return false;
+}
+
+// a lump of flesh at a block's corner: a floor lump (fleshblob_a) sits on the street there; the wall growth
+// (fleshblob_b: its back is flat) goes flat on the block's side face next to the corner, at its height. before, both
+// were dropped at a random height on the bare corner: flat-bottomed lumps floating up the side of the building
+function cornerBlob(B, floorLump, px, pz, x0, z0, y, yaw, s) {
+  if (floorLump) { B.prop('fleshblob_a', px, GY, pz, yaw, s, 0); return; }
+  const west = px === x0, zz = pz === z0 ? pz + 1.2 * s : pz - 1.2 * s;
+  B.prop('fleshblob_b', px, y, zz, west ? Math.PI / 2 : -Math.PI / 2, s, 0); // (back against the face: +x for the west face, -x for the east)
+}
+
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the
 // top of the Long Stairs; a 3 m tissue cliff along z = -48 with steps up into the Gut at the avenues and the gate
 export function border(B, d) {
@@ -343,11 +374,13 @@ export function border(B, d) {
       let fy = y;
       for (let f = 0; f < floors; f++) {
         const c = cube(B, lx0 + w / 2, fy, (zz0 + zz1) / 2, w - 0.5, zz1 - zz0 - 0.5, 2.8, hr, { door: f ? 1 : 2 });
-        if (hr() < eat) B.prop(hr() < 0.5 ? 'fleshblob_a' : 'fleshblob_b', lx0 + w * hr(), fy + hr() * 2, zz0 + hr() * (zz1 - zz0), hr() * 6.28, 1 + hr(), 0);
+        if (hr() < eat) { const a = hr() < 0.5, bx = lx0 + w * hr(); hr(); const bz = zz0 + hr() * (zz1 - zz0), yaw = hr() * 6.28, sc = 1 + hr(); // (the same draws as before: nothing else on the street moves)
+          if (a) B.prop('fleshblob_a', bx, y, bz, yaw, sc, 0); // a lump on the ground floor it ate through (it used to hang up to 2 m in the air, or sit on an eaten upper floor)
+          else B.prop('fleshblob_b', Math.min(lx0 + w - 1.5, Math.max(lx0 + 1.5, bx)), fy, zz1 - 0.25, Math.PI, sc, 0); } // the wall growth: flat on the house's street face, not stood up in the room
         if (hr() < eat * 0.7) B.add(c.x0 - 0.1, fy + 2.8 * hr(), c.z0 - 0.15, c.x0 + (c.x1 - c.x0) * (0.3 + hr() * 0.6), c.top + 0.2, c.z0 + 0.05, 'flesh', { nc: true, tint: pick(hr, FLESH) });
         fy = c.top;
       }
-      if (hr() < 0.4) B.prop('veincable', lx0 + w / 2, fy + 1, zz1 + 2, Math.PI / 2, 1.5, 0);
+      if (hr() < 0.4) B.prop('veincable', lx0 + w / 2, fy - 0.4, zz1 - 0.05, 0, Math.min(1.5, (w - 1.2) / 4.12), 0); // a vein draped along the front under the roofline, both ends on the wall (it hung 1 m over the roof, half over the street)
     }
   }
   // the gate: the arch at the top of the Long Stairs, flesh-swallowed pastel, the Gristle & Sons sign over it
