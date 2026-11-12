@@ -25,7 +25,7 @@ MATS.update({
     'lktimber': ('timber', '#b08a62', {}), 'lkdeck': ('planks', '#e6dccc', {}), 'lksteel': ('trim', '#8e939c', {}),
     'lkconc': ('concrete', '#c8c2b6', {}), 'lksiding': ('siding', '#f4ead2', {}), 'lktrim': ('trim', '#3f8c56', {}),
     'lkshut': ('siding', '#469a5e', {}), 'lkroof': ('shingle', '#b44a38', {}), 'lkglass': ('glass', '#ffffff', {}),
-    'lklamp': ('stucco', '#ffd27a', {'glow': True}), 'lkbrass': ('metalplate', '#e8a850', {}), 'lkmap': ('trim', '#e6dab6', {}),
+    'lklamp': ('stucco', '#ffd27a', {'glow': True, 'glowcol': '#ffbe5a'}), 'lkbrass': ('metalplate', '#e8a850', {}), 'lkmap': ('trim', '#e6dab6', {}),
     'lkcloth': ('stucco', '#b0382e', {}),
 })
 NOCAST.update({'lksteel', 'lkglass', 'lklamp', 'lkbrass', 'lkmap', 'lkcloth'})
@@ -169,7 +169,6 @@ def bracing():
     for fi, (n, a, L) in enumerate(FACES):
         for i in range(4):
             y0, y1 = L[i], L[i + 1]
-            ends = [(-P, y0 + G, -1), (P, y1 - G, 1)]
             # the through brace: from the foot of one post to the head of the other, plumb cut short of the posts' edges,
             # cut level at the girt lines (the next bay's braces butt it there)
             c1 = ((-P, y0), (P, y1)) if (fi + i) % 2 == 0 else ((P, y0), (-P, y1))
@@ -345,9 +344,9 @@ def landings():
         # rails on its three open sides
         xe, xw, zr, zn = x1 - 0.035, x0 + 0.035, zo - sz * 0.035, zi + sz * 0.05
         for (px, pz) in ((xe, zn), (xe, zr), (xw, zr), (xw, zn)): member((px, y1 + 0.003, pz), (px, y1 + 1.0, pz), 0.07, 0.07, 'lktimber', side=V((1, 0, 0)), skip=('a',))
-        for yy, w, hh, ch in ((1.03, 0.08, 0.06, 0.0), (0.53, 0.045, 0.06, 0.0)):  # the rail along the face side runs through, the two ends stop against it
-            member(V((xw - 0.05, y1 + yy, zr)), V((xe + 0.05, y1 + yy, zr)), w, hh, 'lktimber', ch=ch)
-            for px in (xe, xw): member(V((px, y1 + yy, zn - sz * 0.04)), V((px, y1 + yy, zr - sz * w / 2)), w, hh, 'lktimber', ch=ch, skip=('b',))
+        for yy, w, hh in ((1.03, 0.08, 0.06), (0.53, 0.045, 0.06)):  # the rail along the face side runs through, the two ends stop against it
+            member(V((xw - 0.05, y1 + yy, zr)), V((xe + 0.05, y1 + yy, zr)), w, hh, 'lktimber')
+            for px in (xe, xw): member(V((px, y1 + yy, zn - sz * 0.04)), V((px, y1 + yy, zr - sz * w / 2)), w, hh, 'lktimber', skip=('b',))
     # steel hanger rods from the cab's joists down through the landings' loose ends
     for sz in (-1, 1):
         y0, y2 = (2.42, 7.70) if sz > 0 else (5.06, 10.34)  # (the landing it carries, the one above it threads through)
@@ -403,7 +402,7 @@ def cab():
 def sash(WP, n, a, s0, s1, yh, tilt, shards=False):
     """a top-hung window sash swung out on a stay (glass long gone): stiles, rails, a muntin"""
     H, FW, FT = 1.1, 0.06, 0.035
-    th = math.radians(90 * 0.0 + 40 + tilt * 20)
+    th = math.radians(40 + tilt * 20)  # (out from the wall, a little different on each)
     dn = (-Y * math.cos(th) + n * math.sin(th))  # down the sash
     nn = a.cross(dn).normalized()
     if nn.dot(n) < 0: nn = -nn  # (its outside face)
@@ -426,8 +425,8 @@ def sash(WP, n, a, s0, s1, yh, tilt, shards=False):
 
 
 def shutter(WP, n, a, s0, s1, crooked=False):
-    """a board-and-batten storm shutter hung from the header, propped out as an awning (a pole at each edge). crooked:
-    one hinge pulled out, its pole slipped down the sill: it hangs steep and skewed"""
+    """a board-and-batten storm shutter hung from the header, propped out as an awning (the poles at the bays' edges: cab()).
+    crooked: one hinge pulled out, its pole slipped down the sill: it hangs steep and skewed"""
     Ls, T = 1.32, 0.035
     ang = SANG
     if crooked:
@@ -441,7 +440,7 @@ def shutter(WP, n, a, s0, s1, crooked=False):
     if up.y < 0: up = -up
     pts = [hA, hB, hB + e * Ls, hA + e * Ls]
     prism(pts, up * T, 'lkshut', along=al, skip=())
-    # battens under it: two across, a brace between (the Z), and the hinge straps over the top
+    # battens under it: two across, a brace between (the Z)
     W = (hB - hA).length
     def B(sa, sb, ta, tb, th=0.03, mat='lktimber'):
         q = [hA + al * sa + e * ta, hA + al * sb + e * ta, hA + al * sb + e * tb, hA + al * sa + e * tb]
