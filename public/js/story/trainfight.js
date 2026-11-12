@@ -22,7 +22,7 @@ import { MAP, MAPS, BOXES } from '/shared/map.js';
 import { glbLoader, AUTHORED } from '../glbkit.js';
 import { spawnActor, despawnActor, actors } from './actors.js';
 import { raycast } from '/shared/physics.js';
-import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, armExt, armLive, sweepZ, sweepY, rayFight, SPLIT, PLATES, ss } from '/shared/story/train.js';
+import { TRAIN, ARENA, RP, CARS, CAR, HW, COVER, CREW, GEO0, geoFrom, armPose, armExt, armLive, sweepZ, sweepY, rayFight, SPLIT, PLATES, ss, stranded } from '/shared/story/train.js';
 import { makeBloodDrive } from './blooddrive.js';
 import { makeHitStop } from './hitstop.js';
 import { makeTrainSet } from './trainset.js';
@@ -597,6 +597,9 @@ export function makeTrainFight(ST, { playScene }) {
     // done with the mission (or it was never on) after a trip here: back to where you came from
     const q = S().st.quests[RP_QUEST];
     if (!o && q && q.done && !busy() && G.story.travelBack && (!F.live || (T.fin && T.fin.t > 6)) && now - T.stepT > 4000 && !T.back) { T.back = 'fading'; fade(1, 0.6); setTimeout(() => { if (!G.story.travelBack(outAt())) { T.back = 'nowhere'; fade(0, 0.4); } }, 650); }
+    // on the train with no business here (a slot started on the old ?train=1 demo link, or m06 not on its train part):
+    // nothing to fight and no way off, so take them home (where they boarded, else the Bottom's spawn)
+    else if (!TRAINQ && stranded(q, step) && !busy() && G.story.travelBack && !F.live && now - T.stepT > 4000 && !T.back) { T.back = 'fading'; fade(1, 0.6); setTimeout(() => { if (!G.story.travelBack(null)) { T.back = 'nowhere'; fade(0, 0.4); } }, 650); }
   };
   // m06 over: the Loop comes out of the hill at the tunnel mouth (the Commute, at dusk), not back where you boarded.
   // until the world has that spot, back where you got on (worlds.js travelHome)

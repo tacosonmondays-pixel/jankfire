@@ -429,6 +429,8 @@ function renderLo() {
     if (next.length < 3) { draft = next; refresh(); return; }
     draft = null; api.setStreaks(next); refresh();
   })));
+  const mf = S.loadout.mech === 'nightshift' ? 'nightshift' : 'paperplane'; // mech drop: which frame falls out of the sky
+  row('MECH DROP FRAME', [['paperplane', 'mechdrop', 'PAPER PLANE', 'a nimble 5 m flyer: cannons, hover, boost lunge, missile swarm, crane drone, jet mode'], ['nightshift', 'mech_nightshift', 'NIGHT SHIFT', 'a 6 m knight: sword combo (overtime marks), tower shield + bash, triple shift, ground slam']].map(([f, pic, name, tip]) => loTile('lo-streak', () => streakIcon(pic), name, f === 'paperplane' ? '900' : '1500', mf === f, ['MECH FRAME · ' + (f === 'paperplane' ? '900' : '1500') + ' ARMOUR', tip], '#ff4fd8', () => { api.setMech(f); refresh(); })));
 }
 
 // ------------------------------------------------------------ the strip: search, filters, tiles

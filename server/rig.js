@@ -251,6 +251,7 @@ export function installRig(Room, U) {
     },
     // one missile, every tick (tickProjectiles hands them over): straight up out of the pod, then it homes in
     rigMissileStep(pr, dt) {
+      const M = pr.M || RIG.miss; // (the mech's swarm brings its own numbers)
       const n = now(), owner = this.players.get(pr.o), age = (n - pr.born) / 1000, v = pr.v;
       if (!owner) { this.removeProj(pr); return; }
       if (age > M.boost) {
@@ -283,6 +284,7 @@ export function installRig(Room, U) {
       if (pr.sync <= 0) { pr.sync = 0.06; this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: v.map(r2) }); }
     },
     rigBoom(pr, owner, direct) {
+      const M = pr.M || RIG.miss;
       this.removeProj(pr);
       this.broadcast({ t: 'rig', k: 'boom', id: pr.o, p: pr.p.map(r2) });
       for (const t of this.players.values()) {
@@ -292,7 +294,7 @@ export function installRig(Room, U) {
         if (t === direct) d = 0;
         else if (d > M.r || (d > 0.4 && raycast(pr.p, [to[0] / d, to[1] / d, to[2] / d], d - 0.3, this.boxes))) continue;
         const f = 1 - d / M.r, dir = d > 0.1 ? to.map((x) => x / d) : norm(pr.v) || [0, 1, 0], k = M.kb * (0.5 + 0.5 * f);
-        this.hurt(t, owner, 'rigmissile', M.dmg * (0.35 + 0.65 * f), [dir[0] * k, dir[1] * k * 0.5 + 5 * f, dir[2] * k], { from: pr.p });
+        this.hurt(t, owner, pr.k, M.dmg * (0.35 + 0.65 * f), [dir[0] * k, dir[1] * k * 0.5 + 5 * f, dir[2] * k], { from: pr.p });
       }
     },
 

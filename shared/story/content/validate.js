@@ -60,6 +60,7 @@ export function validate(C) {
     else if ((m = a.match(/^unlock:([a-z]+:[a-z0-9_]+)$/))) { if (!has(C.LOCATIONS, m[1])) err(where, `unknown location '${m[1]}'`); }
     else if ((m = a.match(/^collect:([a-z0-9_]+)$/))) { if (!has(C.COLLECTIBLES, m[1])) err(where, `unknown collectible '${m[1]}'`); }
     else if ((m = a.match(/^call:([a-z0-9_]+)$/))) { if (!has(C.CAST, m[1])) err(where, `unknown cast '${m[1]}'`); }
+    else if ((m = a.match(/^anim:([a-z0-9_]+)\/([a-z0-9_]+)$/))) { if (!has(C.CAST, m[1])) err(where, `unknown cast '${m[1]}'`); } // (a cast member plays a clip: actors.js CLIPS, the host's 'anim')
     else err(where, `unparsed action '${a}'`);
   }
   const acts = (where, list) => { if (list == null) return; if (!Array.isArray(list)) { err(where, 'do must be an array'); return; } list.forEach((a) => act(where, a)); };
@@ -92,7 +93,7 @@ export function validate(C) {
       for (const [nid, n] of Object.entries(nodes)) {
         const nw = `${tw}.${nid}`;
         if (n.who) cast(nw, n.who);
-        for (const line of n.say || []) if (Array.isArray(line)) { if (!isSpeaker(line[0])) err(nw, `unknown speaker '${line[0]}'`); } else if (typeof line !== 'string') err(nw, 'bad line');
+        for (const line of n.say || []) if (Array.isArray(line)) { if (!isSpeaker(line[0])) err(nw, `unknown speaker '${line[0]}'`); } else if (line && typeof line === 'object' && typeof line.t === 'string') { if (line.who && !isSpeaker(line.who)) err(nw, `unknown speaker '${line.who}'`); if (line.if != null) cond(nw, line.if); acts(nw, line.do); } else if (typeof line !== 'string') err(nw, 'bad line');
         if (n.next && !has(nodes, n.next)) err(nw, `next -> missing node '${n.next}'`);
         for (const br of n.branch || []) { if (!Array.isArray(br) || !has(nodes, br[1])) err(nw, `branch -> missing node '${br && br[1]}'`); else if (br[0] != null) cond(nw, br[0]); }
         for (const o of n.opts || []) {

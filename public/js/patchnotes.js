@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '8.8', date: '2026-11-12', title: 'GET IN THE ROBOT', items: [
+    'new killstreak: MECH DROP (9 kills). aim at the floor, a giant mech falls out of the sky onto the red circle, press F and climb in. don\'t stand on the red circle.',
+    'PAPER PLANE: hovers, fires a 12-pencil missile swarm, sends a paper crane to peck people, lunges to heal and folds into a jet. NIGHT SHIFT: box-cutter sword, a shield that says PLEASE HOLD, ground slams, and TRIPLE SHIFT. its hits clock people out.',
+    'hop out whenever you like. when the armour\'s about to go, hit EJECT. the bots have figured out mechs too. sorry.',
+  ] },
   { v: '8.7', date: '2026-11-12', title: 'MIND THE LAVA', items: [
     'islands plant & defuse: mount kaboom is a real volcano now. run straight up it, hide behind boulders on the way, and don\'t fall in the glowing bit.',
     'islands: the rope bridges and boardwalks got rebuilt. worn planks, posts, rope rails, stilts in the sea. same bridges, less sad.',

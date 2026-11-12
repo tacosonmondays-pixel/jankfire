@@ -70,7 +70,7 @@ export function acts(list) {
 }
 
 // ---------------------------------------------------------------- dialogue lines and nodes
-const line = (l, who) => (Array.isArray(l) ? l : who && !l.startsWith('*') ? [who, l] : l);
+const line = (l, who) => (Array.isArray(l) ? l : l && typeof l === 'object' ? { ...l, who: l.who ?? (who && !String(l.t).startsWith('*') ? who : undefined), ...(l.if ? { if: cond(l.if) } : {}), ...(l.do ? { do: acts(l.do) } : {}) } : who && !l.startsWith('*') ? [who, l] : l); // ({ t, who, if, do }: a line that does something as it shows, mina's 'late')
 function node(n, prefix, defWho) {
   const o = {};
   if (n.say) o.say = n.say.map((l) => line(l, n.who && n.who !== defWho ? n.who : null));
