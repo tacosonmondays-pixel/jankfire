@@ -1,4 +1,5 @@
 // JANKFIRE client entry: menus, modes, input, net handlers and the main loop.
+import '/shared/mapedits/apply.js'; // the owner's shipped map edits (shared/mapedits): first, so every map module sees the edited maps
 import * as THREE from 'three';
 import { BOXES, MAP, MAPS, MAP_ORDER } from '/shared/map.js';
 import { WEAPONS, ORDER, SLOTS, FLAGS, SLIP_TIME, HIPFIRE, BOT_DIFF, MODES, STREAKS, ITEMS, ITEM_ORDER, validLoadout, validStreaks } from '/shared/weapons.js';
@@ -101,7 +102,8 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: mode cards on the home menu, each mode's lobby (docs/menu/HUB_LOBBY.md)
+import { initHub, hubShown, hubLobbyShown } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -115,6 +117,7 @@ import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
 import { waterPhysics } from './liquids.js';
+import { kbLock } from './kblock.js'; // fullscreen: Ctrl+W & co go to the game, not the browser (crouch is Left Ctrl)
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
 const $ = (id) => document.getElementById(id);
@@ -182,6 +185,7 @@ initWeapons();
 setLoadout(G.settings.loadout);
 hud.show(false);
 initPreview($('preview'));
+const homeLook = () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; };
 initHome({
   start: (mode, cfg) => startMode(mode, cfg),
   look: () => { const shown = validLook({ ...DEFAULT_LOOK, ...G.settings.look }, myAchs()); return [shown.color || G.myColor || '#ff4fd8', shown]; },
@@ -199,7 +203,15 @@ if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it awa
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
-initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings() }); // the hub's mode cards + lobbies
+initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings(), look: () => homeLook(), toast: (t, ms) => toast(t, ms) }); // the hub: ONLINE / OFFLINE + the lobby
+// parties (party.js): the menu connection. the leader starting while you're mid-match: you're told, and if you quit to
+// the menu within 25 s (the ticket's good for 30) you go with them
+let partyPending = null;
+initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').trim().slice(0, 16), look: homeLook()[1], token: account.loggedIn ? account.token : undefined, gun: S.loadout.primary, mf: S.loadout.mech }),
+  start: (mode, cfg) => startMode(mode, cfg), joined: () => G.joined, toast: (t, ms) => toast(t, ms),
+  ask: (t, yes) => { partyPending = { yes, at: performance.now() }; toast(t + '. quit this match (menu > QUIT) within 25 s to go with them', 6000); } });
+$('name').addEventListener('change', () => partyRehello()); // (a new name: the party hears it)
+function partyFollow() { const p = partyPending; partyPending = null; if (p && performance.now() - p.at < 25000) setTimeout(p.yes, 300); }
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -253,7 +265,7 @@ function show(id) {
   if (id === 'leaders') { initLeaderTabs(renderLeaders); showLeaders(); } // OVERALL + one tab per mode (leadmodes.js)
   if (id === 'lore') renderLore($('loreList'));
   controlsScreen(id === 'controls', saveSettings);
-  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); }
+  if (id === 'main') { renderAcctBar(); homeShown(); hubShown(); partyMe(); if (partyPending && !G.joined) partyFollow(); }
   if (id === 'hubby') hubLobbyShown();
 }
 function hideMenu() {
@@ -2045,6 +2057,7 @@ function frame(t) {
   if (dt <= 0) return;
   if (G.story) dt *= G.story.timeScale(); // the weapon wheel slows time (solo)
   const now = performance.now();
+  kbLock(inGame() && !!document.pointerLockElement); // (let go on the menu, pause, chat)
 
   if (G.joined) {
     const frozen = now < (ME.frozenUntil || 0) || now < (ME.quizUntil || 0) || secFrozen(now); // (pens down: no walking out of a pop quiz; tased, paused, jailed)

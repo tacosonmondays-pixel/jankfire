@@ -1,0 +1,59 @@
+/* the map editor (editor.html): the game's comic panels, hard offset shadows, no blur */
+body.ed { --pink: #ff4fd8; --yel: #ffe14d; --cyan: #4fd8ff; --green: #39ff14; --red: #ff3030; user-select: none; }
+.ed #c { position: fixed; inset: 0; width: 100vw; height: 100vh; image-rendering: pixelated; }
+.ed .hidden { display: none !important; }
+.edp { position: fixed; background: rgba(18, 8, 24, 0.92); border: 4px solid var(--pink); box-shadow: 8px 8px 0 var(--cyan); color: #fff; font: 700 14px/1.35 var(--font); }
+.edp button { font: 700 14px var(--font); background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #000; padding: 4px 10px; cursor: pointer; }
+.edp button:hover { background: var(--yel); }
+.edp button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #000; }
+.edp button.on { background: var(--green); }
+.edp button.danger { background: var(--red); color: #fff; }
+.edp button.edMain { background: var(--yel); box-shadow: 4px 4px 0 var(--pink); transform: rotate(-1.5deg); }
+.edp button i { font-style: normal; font-size: 11px; opacity: 0.6; margin-left: 4px; }
+.edp small { display: block; color: var(--pink); font-size: 12px; letter-spacing: 1px; }
+#edTop { left: 12px; top: 12px; right: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 12px; }
+.edLogo { font-size: 22px; color: var(--yel); text-shadow: 3px 3px 0 #ff00dc; transform: rotate(-2deg); margin-right: 6px; }
+#edMap { font: 700 14px var(--font); border: 3px solid #000; background: #fff; padding: 3px 6px; box-shadow: 3px 3px 0 #000; }
+#edN { background: var(--pink); color: #fff; padding: 0 6px; border: 2px solid #000; opacity: 1; font-size: 12px; }
+#edSel { right: 20px; top: 92px; width: 250px; padding: 10px 12px; transform: rotate(0.6deg); }
+#edSel b { display: block; font-size: 20px; color: var(--yel); margin: 2px 0 4px; word-break: break-word; }
+#edSelInfo { font-size: 12px; color: #ddd; white-space: pre-line; margin-bottom: 8px; }
+.edRow { display: flex; gap: 6px; margin-top: 6px; }
+.edRow button { flex: 1; }
+#edList { right: 20px; top: 92px; width: 360px; max-height: 64vh; padding: 10px 12px; display: flex; flex-direction: column; z-index: 3; }
+#edOps { overflow-y: auto; margin: 6px 0; font-size: 13px; }
+#edOps div { padding: 4px 6px; border-bottom: 2px dashed rgba(255, 79, 216, 0.35); cursor: pointer; }
+#edOps div:hover { background: rgba(255, 225, 77, 0.15); }
+#edOps div.stale { color: var(--red); }
+#edOps div.undone { opacity: 0.4; text-decoration: line-through; }
+#edOps em { color: var(--cyan); font-style: normal; }
+#edHelp { left: 12px; bottom: 12px; padding: 6px 12px; font-size: 13px; color: #eee; max-width: calc(100vw - 60px); }
+#edHelp b { color: var(--yel); }
+#edX { position: fixed; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px; pointer-events: none; }
+#edX::before, #edX::after { content: ''; position: absolute; background: #fff; box-shadow: 2px 2px 0 #000; }
+#edX::before { left: 8px; top: 0; width: 2px; height: 18px; }
+#edX::after { top: 8px; left: 0; height: 2px; width: 18px; }
+#edCall { position: fixed; left: 50%; top: 16%; transform: translateX(-50%) rotate(-2deg); font: 700 44px var(--font); color: var(--yel); text-shadow: 4px 4px 0 #ff00dc, -2px -2px 0 #000; pointer-events: none; opacity: 0; transition: opacity 0.25s; white-space: nowrap; }
+#edToast { position: fixed; left: 50%; bottom: 64px; transform: translateX(-50%); background: var(--yel); color: #000; border: 3px solid #000; box-shadow: 5px 5px 0 var(--pink); padding: 4px 12px; font: 700 15px var(--font); opacity: 0; transition: opacity 0.2s; pointer-events: none; }
+#edTop button.edMain { transform: rotate(-1.5deg); }
+#edPalBtn { background: var(--cyan) !important; box-shadow: 4px 4px 0 var(--pink) !important; transform: rotate(1.5deg) !important; }
+#edPal { left: 12px; top: 92px; bottom: 74px; width: 300px; padding: 10px 12px; display: flex; flex-direction: column; transform: rotate(-0.4deg); }
+.edTabs button { padding: 4px 4px; font-size: 13px; }
+.edTabs button.on { background: var(--pink); color: #fff; }
+#edPalQ { margin: 8px 0 4px; font: 700 14px var(--font); border: 3px solid #000; box-shadow: 3px 3px 0 var(--cyan); padding: 4px 8px; outline: none; }
+.edSolid { font-size: 13px; margin: 4px 0 6px; cursor: pointer; }
+.edSolid i { font-style: normal; font-size: 11px; color: #bbb; }
+#edPalGrid { flex: 1; overflow-y: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; align-content: start; padding: 4px 6px 8px 0; }
+.edp button.edTile { display: flex; flex-direction: column; align-items: center; padding: 3px; font-size: 11px; line-height: 1.1; background: #2a1436; color: #fff; border: 3px solid #000; box-shadow: 3px 3px 0 var(--pink); min-height: 92px; }
+.edp button.edTile:hover { background: #4a2060; }
+.edTile img { width: 72px; height: 72px; object-fit: contain; image-rendering: auto; }
+.edTile span { word-break: break-word; text-align: center; }
+.edPalNone { color: #bbb; font-size: 13px; grid-column: 1 / -1; }
+.edPalTip { font-size: 11px; color: #bbb; margin-top: 6px; }
+#edBots { right: 20px; top: 92px; width: 360px; max-height: 64vh; padding: 10px 12px; display: flex; flex-direction: column; z-index: 3; transform: rotate(-0.5deg); }
+#edBotList { overflow-y: auto; margin: 6px 0; font-size: 13px; }
+#edBotList div { padding: 4px 6px; border-bottom: 2px dashed rgba(255, 79, 216, 0.35); cursor: pointer; }
+#edBotList div.stale { color: var(--red); }
+#edBotList div.undone { opacity: 0.55; }
+#edBotList em { color: var(--cyan); font-style: normal; }
+.edBad { color: var(--red); } .edOk { color: var(--green); }
