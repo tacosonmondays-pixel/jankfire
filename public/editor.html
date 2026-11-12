@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>JANKFIRE: map editor</title>
+<link rel="stylesheet" href="/style.css">
+<link rel="stylesheet" href="/editor.css">
+<script type="importmap">
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+</script>
+</head>
+<body class="ed">
+<canvas id="c"></canvas>
+<div id="hud" class="hidden"></div>
+<div id="edX"></div>
+<div id="edTop" class="edp">
+  <b class="edLogo">MAP EDITOR</b>
+  <select id="edMap" title="which map"></select>
+  <button id="edPalBtn" class="edMain" title="place new props, buildings and boxes (P)">PALETTE <i>P</i></button>
+  <button id="edUndo" title="undo (Ctrl+Z)">UNDO</button>
+  <button id="edRedo" title="redo (Ctrl+Y)">REDO</button>
+  <button id="edSnap" title="grid snap (B). [ and ] change the grid size">SNAP 1m</button>
+  <button id="edFloors" title="big floors and ground slabs can be picked or not (L)">FLOORS: LOCKED</button>
+  <button id="edDiff" title="every change you made on this map">CHANGES <i id="edN">0</i></button>
+  <button id="edExport" class="edMain" title="save your changes as a file to send us">EXPORT</button>
+  <button id="edImport" title="load a changes file">IMPORT</button>
+  <button id="edQuit" title="back to the game">QUIT</button>
+</div>
+<div id="edSel" class="edp hidden">
+  <small>SELECTED</small>
+  <b id="edSelName"></b>
+  <div id="edSelInfo"></div>
+  <div class="edRow"><button data-a="grab" title="pick it up and carry it (G)">MOVE <i>G</i></button><button data-a="turn" title="turn 90 degrees (R, Shift+R the other way)">TURN <i>R</i></button></div>
+  <div class="edRow"><button data-a="bigger" title="10% bigger (=)">BIGGER <i>=</i></button><button data-a="smaller" title="10% smaller (-)">SMALLER <i>-</i></button></div>
+  <div class="edRow"><button data-a="dupe" title="a copy, picked up (Ctrl+D)">COPY <i>^D</i></button><button data-a="del" class="danger" title="delete (Del or X)">DELETE <i>X</i></button></div>
+</div>
+<div id="edPal" class="edp hidden">
+  <small>PALETTE</small>
+  <div class="edRow edTabs"><button data-tab="props">PROPS</button><button data-tab="arch">BUILDINGS</button><button data-tab="box">BOXES</button></div>
+  <input id="edPalQ" type="text" placeholder="search... (car, crate, palm)" autocomplete="off" spellcheck="false">
+  <label class="edSolid"><input id="edSolid" type="checkbox" checked> SOLID <i>(off = look only, you walk through it)</i></label>
+  <div id="edPalGrid"></div>
+  <div class="edPalTip">click one: it appears where you aim, picked up. click again to put it down.</div>
+</div>
+<div id="edList" class="edp hidden">
+  <small>CHANGES ON THIS MAP</small>
+  <div id="edOps"></div>
+  <div class="edRow"><button id="edClose">CLOSE</button><button id="edReset" class="danger" title="throw away every change on this map">RESET MAP</button></div>
+</div>
+<div id="edHelp" class="edp">
+  <b>right-click to fly</b> · WASD move · SPACE up · C down · SHIFT fast · wheel = speed<br>
+  click = select · shift+click = add more · G carry · R turn · = / - size · X delete · ctrl+D copy · P palette · ctrl+Z undo · arrows / PgUp PgDn nudge · ESC = mouse
+</div>
+<div id="edCall"></div>
+<div id="edToast"></div>
+<input id="edFile" type="file" accept=".json,application/json" hidden>
+<script type="module" src="/js/editor/editor.js"></script>
+</body>
+</html>
