@@ -50,3 +50,10 @@ body.ed { --pink: #ff4fd8; --yel: #ffe14d; --cyan: #4fd8ff; --green: #39ff14; --
 .edTile span { word-break: break-word; text-align: center; }
 .edPalNone { color: #bbb; font-size: 13px; grid-column: 1 / -1; }
 .edPalTip { font-size: 11px; color: #bbb; margin-top: 6px; }
+#edBots { right: 20px; top: 92px; width: 360px; max-height: 64vh; padding: 10px 12px; display: flex; flex-direction: column; z-index: 3; transform: rotate(-0.5deg); }
+#edBotList { overflow-y: auto; margin: 6px 0; font-size: 13px; }
+#edBotList div { padding: 4px 6px; border-bottom: 2px dashed rgba(255, 79, 216, 0.35); cursor: pointer; }
+#edBotList div.stale { color: var(--red); }
+#edBotList div.undone { opacity: 0.55; }
+#edBotList em { color: var(--cyan); font-style: normal; }
+.edBad { color: var(--red); } .edOk { color: var(--green); }
