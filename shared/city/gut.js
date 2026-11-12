@@ -14,6 +14,7 @@ import { GUT_LINK } from './roads.js';
 import { bigHeart } from './bigheart.js';
 import { act1Gut, act1Border, BEV } from './act1set.js';
 import { borderSoft } from './bordersoft.js';
+import { gutMounds } from './gutmounds.js';
 
 const GY = SLICE.gut.y;
 const inRect = (x0, z0, x1, z1, r) => x0 < r[2] && x1 > r[0] && z0 < r[3] && z1 > r[1];
@@ -305,6 +306,7 @@ export function gut(B, d) {
   shops(B, 'gut'); // Meat Mechanics, Bone Arms, the Tooth Market's stalls, vending (shops.js)
   bigHeart(B); // the Big Heart: its collision, light and mark (bigheart.js)
   cutHoles(B); // the pools' pits (last: the ground and the cobbles are all down)
+  gutMounds(B, streetAt, KEEP(), B.holes); // the floor swells in the open ground (gutmounds.js)
 }
 
 // the border: the Bottom's top houses, half eaten. ground creeps from pastel to flesh going north; the gate at the

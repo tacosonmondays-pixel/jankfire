@@ -21,7 +21,7 @@ W.sync();
 const G = new ChunkWorld([]);
 for (const [k, l] of W.chunks) G.set(k, Object.assign(l.filter((b) => b.ter), { fields: l.fields }));
 G.sync();
-const T = W.boxes.terrain, field = (k) => P.get(k).shapes.find((s) => s.kind === 'field');
+const T = W.boxes.terrain, field = (k) => P.get(k).shapes.find((s) => s.kind === 'field' && s.mat === 'ground'); // (the Commute's: a chunk on the Gut's edge can have the Gut's swells too)
 const world = { query: (a, b, c, d, out) => query(G.boxes, a, b, c, d, out), raycast: (o, d, m) => raycast(o, d, m, G.boxes) };
 
 test('every Commute chunk has its ground, and neighbours meet exactly at the seam', () => {
@@ -123,6 +123,39 @@ test('things built on the old flat ground still sit on it', () => {
     assert.ok(Math.abs(commuteY(xx, zz) - f[4]) < 0.06, `the level patch ${f.slice(0, 4)} isn't level at ${xx},${zz}: ${commuteY(xx, zz)} vs ${f[4]}`);
   }
   assert.equal(groundY(250, 0), commuteY(250, 0), "slice.js groundY doesn't know about the hills");
+});
+
+test("the Gut's floor swells in its open ground: walkable, never on a street, a story spot or the chunk's edge", async () => {
+  const { NPC_SPOTS } = await import('../../shared/city/cast_slice.js');
+  const W3 = new ChunkWorld([]);
+  for (let cx = -5; cx < 2; cx++) for (let cz = -4; cz < -1; cz++) W3.set(cx + ':' + cz, chunkBoxes(packChunk(buildChunk('slice', cx, cz))));
+  W3.sync();
+  const T3 = W3.boxes.terrain, gy = SLICE.gut.y;
+  let cells = 0, peak = null;
+  for (const l of T3.fields.values()) for (const f of l) if (f.mat === 'flesh') {
+    for (let i = 0; i < f.nx; i++) for (let j = 0; j < f.nz; j++) if (f.ok[i * f.nz + j]) {
+      cells++;
+      assert.ok(i > 0 && j > 0 && i < f.nx - 1 && j < f.nz - 1, 'a swell at the chunk edge: the next chunk would meet it with a step');
+    }
+    for (let k = 0; k < f.H.length; k++) if (!peak || f.H[k] > peak[1]) peak = [f, f.H[k], k];
+  }
+  assert.ok(cells > 100, 'hardly any swells: ' + cells);
+  for (const p of [...Object.values(PLACES).map((q) => q.p), ...Object.values(NPC_SPOTS).map((s) => s.p)]) if (Math.abs(p[1] - gy) < 3) {
+    const g = T3.at(p[0], p[2]);
+    assert.ok(g == null || g < gy + 0.05, `a swell under ${p}`);
+  }
+  for (let x = -318; x < 94; x += 3) for (const z of [-130, -100, -60]) { const g = T3.at(x, z); assert.ok(g == null || g < gy + 0.1, `a swell on the street at ${x},${z}`); } // (Peristalsis Avenue and the cross streets)
+  let worst = 0;
+  for (const l of T3.fields.values()) for (const f of l) if (f.mat === 'flesh') for (let i = 0; i < f.nx; i++) for (let j = 0; j < f.nz; j++) {
+    const a = f.H[i * (f.nz + 1) + j]; worst = Math.max(worst, Math.abs(f.H[(i + 1) * (f.nz + 1) + j] - a), Math.abs(f.H[i * (f.nz + 1) + j + 1] - a));
+  }
+  assert.ok(worst <= 0.52, `a swell too steep: ${worst.toFixed(2)} m per 2 m`);
+  // walk over the biggest one and off the other side
+  const [f, , k] = peak, px = f.x0 + Math.floor(k / (f.nz + 1)) * f.cell, pz = f.z0 + (k % (f.nz + 1)) * f.cell;
+  const pos = [px - 6, gy + 0.05, pz];
+  let top = 0;
+  for (let t = 0; t < 4; t += 1 / 60) { movePlayer(pos, [3, -2, 0], 1 / 60, W3.boxes, true); top = Math.max(top, pos[1]); }
+  assert.ok(top > gy + 0.25, `walked over the swell at ${px},${pz} without climbing it (top ${top.toFixed(2)})`);
 });
 
 test('the flesh ramps up the tissue cliff: walk up from the border onto the Gut and back down', async () => {
