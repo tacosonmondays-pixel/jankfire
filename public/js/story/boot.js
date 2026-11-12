@@ -25,6 +25,7 @@ import { questHud, card as card0, toast } from './questhud.js';
 import { toggleCodex, codexOpen } from './codex.js';
 import { loadSlot, saveSlot, clearSlot } from './save.js';
 import { takeCamera, shotOn } from './camctl.js';
+import { castLightFrame } from './castlight.js'; // the cast lit by the city's lamps (they were silhouettes in the Gut)
 import { initGrade, gradeFrame } from './grade.js'; // the eerie world grade (story maps only)
 
 const $ = (id) => document.getElementById(id);
@@ -339,6 +340,7 @@ export function frame(dt, now, cam) {
     if (ST.boss && ST.boss.tick) ST.boss.tick(dt); // (the referee's boss: the actor stands where the room has him)
     if (ST.enc) ST.enc.frame(dt, now); // (before the actors move: whoever rides in a car is placed this frame)
     updateActors(dt * (ST.slowmo ?? 1), now, e);
+    castLightFrame(dt); // (the cast in the city's own light: castlight.js)
     otFrame(dt * (ST.slowmo ?? 1), cam);
     if (ST.boss && (ST.bT = (ST.bT || 0) + dt) > 0.25) { ST.bT = 0; ST.boss.frame(); }
     { const busy = !!(ST.scene && ST.scene.playing()) || talking(); if (busy !== !!ST.held) { ST.held = busy; if (G.story && G.story.send) G.story.send('hold', { all: true, on: busy }); } } // (the referee freezes enemies through cutscenes and talks)
