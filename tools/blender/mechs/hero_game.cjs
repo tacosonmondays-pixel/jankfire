@@ -22,6 +22,15 @@ const SHOTS = {
     ['back', 'from behind: the hatch, the hook on its chain, stickers', 'idle', 0.0, [3.8, 3.6, -5.6], [0, 2.6, 0], 50],
     ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 2.2, 0], 75],
   ],
+  trolley: [
+    ['hero', 'held after its landing: a cocky wheelie, the wonky wheel spinning', 'hero_intro', 1.7, [-5.0, 1.2, 4.6], [0.0, 1.2, 0], 50],
+    ['close', 'close up: chrome wire, the team-colour handle, the coin lock, the flag', 'idle', 0.0, [-2.6, 2.4, -3.6], [0.0, 1.4, 0.6], 52],
+    ['drift', 'drift: casters at 35 degrees, sliding, sparks', 'drift_L', 0.25, [-4.6, 2.2, 5.2], [0, 0.9, 0], 50, 0, true],
+    ['push', 'TROLLEY PUSH: the ram, sparks off the bumper', 'push', 0.2, [-5.2, 1.4, 4.0], [0, 0.8, 1.2], 50, 0, true],
+    ['dump', 'dump: the basket tips right over', 'dump', 0.6, [-5.6, 2.0, 1.4], [0, 1.3, 0], 50],
+    ['boost', 'CLEAN UP AISLE 5: squat, boosters, flag flat out', 'boost', 0.1, [3.6, 1.6, -4.8], [0, 0.8, 0.6], 52],
+    ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 1.3, 0], 75],
+  ],
 };
 
 (async () => {
