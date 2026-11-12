@@ -62,6 +62,7 @@ import { oobTick } from './bounds.js';
 import { account, restore, login, register, logout, saveProfile, leaderboard as fetchLeaders } from './account.js';
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
+import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
@@ -210,7 +211,7 @@ loadTripoModels().then((n) => {
   rebuildOne(); // visuals only: a randomizer or pending loadout stays as it is
   refreshMapVisuals(); // Blender props replace their stand-in boxes
   zmModelsLoaded(); // zombies: the wall guns too
-  prefetchLoadout(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // your item's and killstreaks' models (they don't come with the startup download)
+  prefetchLoadout(S.loadout); mechPrefetch(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // your item's and killstreaks' models (they don't come with the startup download)
   for (const r of G.remotes.values()) r.build();
   $('status').textContent = `${n} model(s) loaded`;
 });
@@ -283,7 +284,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), item: S.loadout.item, zl: zlWant(), cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), mf: S.loadout.mech, item: S.loadout.item, zl: zlWant(), cfg, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -295,6 +296,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
 
 function resetWorldState() {
   bodyReset(); // wrecking ball / rig HP bars
+  mechReset(); // mechs
   G.joined = false;
   ME.alive = false;
   releaseHook();
@@ -605,6 +607,7 @@ function buildLoadoutUI() {
     });
     kc.append(b);
   }
+  kc.append(mechFrameRow(S.loadout.mech, (f) => { S.loadout.mech = f; saveSettings(); applyStreaks(); buildLoadoutUI(); })); // mech drop: PAPER PLANE or NIGHT SHIFT
   // items
   const ic = $('lo-item');
   ic.innerHTML = '';
@@ -625,7 +628,7 @@ function applyLoadout(force) {
   if (G.forcedLoadout) { $('loNote').textContent = G.forcedLoadout.only ? 'this mode hands everyone the same weapons' : 'randomizer is on: you get a random loadout every life'; return; }
   if (W.only) { $('loNote').textContent = 'this mode hands you one weapon: your loadout comes back after the match'; return; }
   const canNow = force || !G.joined || !ME.alive || performance.now() - (G.spawnT || 0) < 5000;
-  prefetchLoadout(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // (a new item or killstreak: its model, ahead of time)
+  prefetchLoadout(S.loadout); mechPrefetch(S.loadout); prefetch(lookFiles(validStreaks(S.loadout.streaks))); // (+ your killstreak looks' models) // (a new item or killstreak: its model, ahead of time)
   if (canNow) { setLoadout(S.loadout); G.pendingLoadout = false; $('loNote').textContent = ''; }
   else { G.pendingLoadout = true; $('loNote').textContent = 'loadout switches when you respawn'; }
 }
@@ -642,7 +645,7 @@ const DRAFT_NOTE = 'pick a killstreak for each empty slot', NEXT_NOTE = 'killstr
 const activeStreaks = () => G.activeStreaks || validStreaks(S.loadout.streaks);
 function applyStreaks() {
   const list = validStreaks(S.loadout.streaks);
-  if (G.joined) net.send({ t: 'streaks', list });
+  if (G.joined) net.send({ t: 'streaks', list, mf: S.loadout.mech });
   if (G.joined && (G.streakN || 0) > 0) { $('loNote').textContent = NEXT_NOTE; toast('killstreak picks apply next life'); }
   else G.activeStreaks = list;
   renderStreak(G.streakN || 0);
@@ -1191,6 +1194,7 @@ function pressed(e) {
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
   if (adsKey(e)) return; // pop-up ads: the number on an ad closes it
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
+  if (mechKey(e, true)) return; // in a mech: its moves (mech.js). F next to your waiting mech climbs in
   if (K.matches(BUBBLED, e) && stuckInBubble(true)) return; // sealed in a soap bubble: no shooting, aiming, grapple, items, dash, t-bag, sprays or streaks
   if (K.matches(SEC_STOPPED, e) && secBlocked()) return; // tased, paused or jailed: hands off everything
   const now = performance.now(), out = now < (ME.sleepUntil || 0) || now < (ME.quizUntil || 0); // asleep on the floor / pens down for a pop quiz: no shooting
@@ -1226,6 +1230,7 @@ function released(e) {
   if (e.type === 'keyup' && K.typing(e)) return; // typed in chat / a text box (opening chat already let go of everything)
   if (G.story) G.story.key(e, false); // (the wheel closes on its key's release)
   lassoKey(e, false);
+  mechKey(e, false);
   if (K.up('use', e)) stopUse();
   if (K.up('dash', e)) W.dashHeld = false;
   if (K.up(['scores', 'brScores'], e)) { scoresOpen = false; hud.scores(false); }
@@ -2220,6 +2225,7 @@ function frame(t) {
   const pu = G.punch || { x: 0, y: 0, z: 0 };
   cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
   if (!RP.active) ballCam(cam, dt); // wrecking ball: third person, behind and above the ball
+  if (!RP.active) mechCam(cam, dt); // mech: third person behind the frame (and the drop's heroic low shot)
   const hs = hspeed();
   const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) + (ME.alive ? ME.ropeFov || 0 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
@@ -2243,6 +2249,7 @@ function frame(t) {
   updateWreck(dt, now, RP.active, myShadow, myRope); // your own wrecking ball, its chain (instead of your rope), rumble + timer
   if (now < (G.burnUntil || 0)) fx.burn([ME.pos[0] + Math.sin(ME.yaw) * -0.8, ME.pos[1], ME.pos[2] - Math.cos(ME.yaw) * 0.8]);
   updateRig(dt, now, cam, RP.active); // overdrive rig: you in it (camera, HUD, trail) and its effects
+  updateMech(dt, now, cam, RP.active); // mech drop: the drops, waiting mechs, you in yours, the HUD
   const revLeft = W.reverseUntil - now; // reverse card: red edges, blinking for the last second
   $('reverseFx').style.opacity = revLeft > 0 ? (revLeft > 1000 || Math.floor(revLeft / 150) % 2 ? 1 : 0.25) : 0;
 
@@ -2266,6 +2273,7 @@ function frame(t) {
   const fpSpec = specCam && specFPOn(); // plant & defuse: their gun in your hands (specfp.js)
   G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
   if (ballOn(now)) G.vmScene.visible = false; // weapons are holstered inside the ball
+  if (mechOn()) G.vmScene.visible = false; // (and inside a mech)
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
@@ -2320,8 +2328,9 @@ function deployStreak(slot) {
   const e = eye(), d = lookDir();
   const h = raycast(e, d, 300, BOXES);
   const at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
+  if (mechDeployBlock(id, at)) return; // mech drop: the marker's checks (and no body streaks in a mech)
   G.pocket.splice(G.pocket.indexOf(id), 1);
-  net.send({ t: 'deploy', r: id, at: at.map((x) => Math.round(x * 100) / 100) });
+  net.send({ t: 'deploy', r: id, at: at.map((x) => Math.round(x * 100) / 100), mf: id === 'mechdrop' ? S.loadout.mech : undefined });
   hud.msg(STREAKS[id].name.toUpperCase(), 1.4, 'brag');
   renderStreak(G.streakN || 0);
 }
@@ -2665,6 +2674,7 @@ initCustomize({
   equip: (slot, id) => { S.loadout[slot] = id; G.cosSel = id; saveSettings(); applyLoadout(false); },
   setItem: (id) => { S.loadout.item = id; saveSettings(); applyLoadout(false); },
   setStreaks: (list) => { S.loadout.streaks = validStreaks(list); saveSettings(); applyStreaks(); },
+  setMech: (f) => { S.loadout.mech = f; saveSettings(); applyStreaks(); }, // mech drop frame
   loNote: () => $('loNote').textContent,
   bulk: () => { saveSettings(); recomputeEquipped(); sendSkins(); rebuildOne(); },
   save: () => saveSettings(), sendSkins: () => sendSkins(), recompute: () => recomputeEquipped(),

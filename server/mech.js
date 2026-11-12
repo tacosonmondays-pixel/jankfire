@@ -523,7 +523,7 @@ export function installMech(Room, U) {
       this.tickDrones(n, dt);
       if (n - (this.mechListT || 0) > 1000 && this.mechMap().size) { // late joiners (and anyone who missed an event) catch up
         this.mechListT = n;
-        this.broadcast({ t: 'mech', k: 'list', m: [...this.mechMap().values()].filter((m) => m.st !== 'in').map((m) => [m.id, m.o, m.f, ...m.p.map(r2), m.yaw, m.st, Math.round(m.until - n)]) });
+        this.broadcast({ t: 'mech', k: 'list', m: [...this.mechMap().values()].map((m) => [m.id, m.o, m.f, ...m.p.map(r2), m.yaw, m.st, Math.round(m.until - n)]) });
       }
       for (const p of this.players.values()) {
         const M = p.mech;
