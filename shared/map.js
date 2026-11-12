@@ -6,7 +6,7 @@ import { outOfBounds } from './bounds.js';
 import { shapeGround } from './terrain.js';
 import { SKULL, skullSolid } from './skullshape.js';
 import { prop } from './props.js';
-import { seen, propOf, spinAt } from './propcap.js'; // round 4: which boxes a Blender prop draws instead (look-only)
+import { seen, propOf, spinAt, CAP } from './propcap.js'; // round 4: which boxes a Blender prop draws instead (look-only)
 export { prop, PROPS } from './props.js';
 
 function rng(seed) { // mulberry32
@@ -554,11 +554,22 @@ function crate() {
 // (7.2), the LQ roof and the helideck (10.8). the sea is 14 m down, the supply boat's deck 2 m above it
 const RIG = { CD: -7.2, M1: 3.6, M2: 7.2, M3: 10.8, SEA: -14, BOAT: -12 };
 const rigP = (alongX, bx) => (p0, y0, q0, p1, y1, q1, m, e) => (alongX ? bx.add(p0, y0, q0, p1, y1, q1, m, e) : bx.add(q0, y0, p0, q1, y1, p1, m, e));
+// the rig's rails and stairs: one Blender model per rig map (rigrails_<map>: tools/blender/arch/make_rigrails.py), look
+// only. while a rig map builds (rigKit), rail() and rigStair() tag their boxes for it and note which boxes they made
+// (boxes.rigkit, tools/arch/dumprig.mjs); not the ones inside a kit prop (that prop's model draws those)
+let RIGK = null;
+function rigKit(B, id) { B.boxes.arch.push({ id, p: [0, 0, 0], r: 0 }); RIGK = id && { tag: { av: id, ai: B.boxes.arch.length - 1 }, list: (B.boxes.rigkit = []) }; }
+function rigNote(B, D, n0, d0, k, alongX, ex) {
+  if (!RIGK || CAP.length) return;
+  for (let i = n0; i < B.boxes.length; i++) Object.assign(B.boxes[i], RIGK.tag);
+  for (let i = d0; i < D.boxes.length; i++) Object.assign(D.boxes[i], RIGK.tag);
+  RIGK.list.push({ k, alongX, b: [n0, B.boxes.length], d: [d0, D.boxes.length], ...ex });
+}
 // a handrail along x (alongX) or z, a0..a1 on the line c, on a deck at y. the top rail is the physics (1.1 up: you can't
 // walk off or duck under it, a big enough hit still throws you over it); the posts and the knee rail are only to look at.
 // gaps: [[a, b]] left open (stairs, gangways)
 function rail(B, D, alongX, a0, a1, c, y, gaps = []) {
-  const P = rigP(alongX, B), Q = rigP(alongX, D), cuts = [a0, ...gaps.flat(), a1];
+  const P = rigP(alongX, B), Q = rigP(alongX, D), cuts = [a0, ...gaps.flat(), a1], n0 = B.boxes.length, d0 = D.boxes.length;
   for (let i = 0; i + 1 < cuts.length; i += 2) {
     const s0 = cuts[i], s1 = cuts[i + 1]; if (s1 - s0 < 0.25) continue;
     P(s0, y + 0.98, c - 0.05, s1, y + 1.1, c + 0.05, 'rigyellow');
@@ -566,6 +577,7 @@ function rail(B, D, alongX, a0, a1, c, y, gaps = []) {
     const n = Math.max(1, Math.round((s1 - s0) / 2.2));
     for (let k = 0; k <= n; k++) { const p = s0 + 0.04 + (s1 - s0 - 0.08) * k / n; Q(p - 0.04, y, c - 0.04, p + 0.04, y + 0.98, c + 0.04, 'rigyellow'); }
   }
+  rigNote(B, D, n0, d0, 'rail', alongX, { y });
 }
 // rails round a deck's edge (x0..x1, z0..z1 at y); g = { n, s, w, e: [[a, b]] } gaps along each side
 function railBox(B, D, x0, z0, x1, z1, y, g = {}) {
@@ -577,7 +589,7 @@ function railBox(B, D, x0, z0, x1, z1, y, g = {}) {
 // returns { bot, top } for the walk graph (the foot 1.3 m clear of the first step, the head 0.7 m onto the landing)
 function rigStair(B, D, alongX, a0, a1, c0, c1, ya, yb, o = {}) {
   const n = Math.max(1, Math.ceil((yb - ya) / 0.45 - 1e-9)), h = (yb - ya) / n, run = (a1 - a0) / n, s = Math.sign(run), cm = (c0 + c1) / 2;
-  const P = rigP(alongX, B), Q = rigP(alongX, D), lo = Math.min(c0, c1), hi = Math.max(c0, c1);
+  const P = rigP(alongX, B), Q = rigP(alongX, D), lo = Math.min(c0, c1), hi = Math.max(c0, c1), n0 = B.boxes.length, d0 = D.boxes.length;
   for (let i = 1; i <= n; i++) {
     const p0 = a0 + (i - 1) * run, p1 = a0 + i * run, y = ya + i * h, pm = (p0 + p1) / 2;
     P(p0, o.thin ? y - 0.3 : ya, lo, p1, y, hi, o.mat || 'grating');
@@ -587,6 +599,7 @@ function rigStair(B, D, alongX, a0, a1, c0, c1, ya, yb, o = {}) {
       if (i % 2) Q(pm - 0.04, y, e - 0.04, pm + 0.04, y + 0.98, e + 0.04, 'rigyellow');
     }
   }
+  rigNote(B, D, n0, d0, 'stair', alongX, { thin: !!o.thin, ya, yb, rails: o.rails || [-1, 1] });
   return { bot: alongX ? [a0 - s * 1.3, ya, cm] : [cm, ya, a0 - s * 1.3], top: alongX ? [a1 + s * 0.7, yb, cm] : [cm, yb, a1 + s * 0.7] };
 }
 // a separator: a horizontal pressure vessel along x (x0..x1) round z = c, 3.4 across: an octagon in section (three boxes),
@@ -822,6 +835,7 @@ function oilSlick(D, x, z) {
 }
 function platform() {
   const B = builder(), D = builder(), r = rng(7777), add = B.add, st = [];
+  rigKit(B, 'rigrails_platform');
   // ---- the sea, the far rigs, a tanker going by
   D.add(-420, RIG.SEA - 0.1, -420, 420, RIG.SEA, 420, 'seanorth');
   oilSlick(D, 24, 32);
@@ -898,6 +912,7 @@ function platform() {
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-20, RIG.CD + 0.1, -12], [20, RIG.CD + 0.1, 12], [-22, RIG.CD + 0.1, 12], [12, RIG.CD + 0.1, -8],
     [-8, 0.1, -20], [8, 0.1, 5], [-10, 0.1, 12], [26, 0.1, -23], [-4, 0.1, 19], [-29, RIG.M2 + 0.1, -7], [-18, RIG.M2 + 0.1, 2], [24, RIG.M1 + 0.1, 4],
     [23, RIG.M2 + 0.1, -6], [40, RIG.M3 + 0.1, -6], [-15, RIG.BOAT + 0.1, 32.5], [10, RIG.BOAT + 0.1, 41]];
+  RIGK = null; // (the rig is built: rail() and rigStair() stop noting)
   let graph = null;
   return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -16.2, seaY: -14, floorY: -15.5, // (killY: head under the sea)
     sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 90, fogFar: 360,
@@ -935,6 +950,7 @@ function pipeBridge(B, D, x0, x1, z0, z1, y) {
 // christmas trees (east). the rig's modules stand between the spawns
 function platformSD() {
   const B = builder(), D = builder(), r = rng(7878), add = B.add, st = [], dz = -44, CD = RIG.CD;
+  rigKit(B, 'rigrails_platform_sd');
   D.add(-420, RIG.SEA - 0.1, -420, 420, RIG.SEA, 420, 'seanorth');
   oilSlick(D, 24, 32);
   farRig(D, -420, -300); farRig(D, 520, 220, 0.8); farRig(D, -300, 460, 1.1);
@@ -1016,6 +1032,7 @@ function platformSD() {
   const att = [[-12, 0.1, 56], [-6, 0.1, 60], [0, 0.1, 57], [6, 0.1, 60], [12, 0.1, 56], [-3, 0.1, 65], [3, 0.1, 65]];
   const def = [[21, 0.25, -50], [21, 0.25, -38], [25, 0.25, -55.5], [25, 0.25, -32.5], [29.5, 0.25, -50.5], [29.5, 0.25, -37.5], [25, 0.25, -44]];
   const spawns = [...att.slice(0, 3), ...def.slice(0, 3), [-10, 0.1, 10], [10, CD + 0.1, 9], [-26, 0.1, -28], [8, CD + 0.1, -32], [-24, RIG.M2 + 0.1, -36]];
+  RIGK = null; // (the rig is built: rail() and rigStair() stop noting)
   let graph = null;
   return { name: 'Platform', size: 'medium', boxes: B.boxes, deco: D.boxes, killY: -16.2, seaY: -14, floorY: -15.5, // (killY: head under the sea)
     sky: { top: 0x4a5a78, mid: 0xb4c2d0, bot: 0x2c3846, fog: 0xb4c2d0 }, fogNear: 100, fogFar: 380,
