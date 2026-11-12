@@ -523,15 +523,19 @@ function numberWorks(B, D, cx, cz, rv) {
   for (let i = 0; i < 6; i++) { Lh(-18 + i * 6, 9.3, -11, -14 + i * 6, 11.5, 11, 'roofg'); D.local(-150, 106, 0)(-14.05 + i * 6, 9.3, -10.9, -13.95 + i * 6, 11.4, 10.9, 'glassblock'); }
   for (let i = 0; i < 5; i++) Lh(-15 + i * 6.5, 0.12, -2, -11 + i * 6.5, 1.1, 2, 'rubber'); // conveyor sections
   // three smokestacks you can see from anywhere
-  for (const sz of [98, 116, 134]) {
+  // (the Blender stacks, vats, pipes and posts draw them: tools/blender/jankburg/make_jb_numberworks.py)
+  for (const sz of [98, 116, 134]) propOf('jb_stack', [-107.5, 0, sz], 0, () => {
     L(-110, 0, sz - 2.5, -105, 62, sz + 2.5, 'brick');
     for (const y of [20, 40, 58]) L(-110.4, y, sz - 2.9, -104.6, y + 1.4, sz + 2.9, 'hazard');
     L(-110.5, 62, sz - 3, -104.5, 63, sz + 3, 'rust');
-  }
+  });
   // vats of something green, tubes between everything
-  for (const vx of [-160, -146, -132]) { L(vx - 3.5, 0, 136, vx + 3.5, 7, 143, 'rust'); L(vx - 3.8, 7, 135.7, vx + 3.8, 7.4, 143.3, 'chrome'); Ld(vx - 3.2, 7.05, 136.3, vx + 3.2, 7.2, 142.7, 'neongreen'); }
-  for (const z of [110, 126]) { L(-132, 7, z - 0.6, -110, 8.2, z + 0.6, 'chrome'); for (let x = -128; x < -110; x += 8) L(x - 0.3, 0, z - 0.3, x + 0.3, 7, z + 0.3, 'metal'); }
-  L(-131.6, 7, 117, -130.4, 8.2, 134, 'chrome');
+  for (const vx of [-160, -146, -132]) propOf('jb_vat', [vx, 0, 139.5], 0, () => { L(vx - 3.5, 0, 136, vx + 3.5, 7, 143, 'rust'); L(vx - 3.8, 7, 135.7, vx + 3.8, 7.4, 143.3, 'chrome'); Ld(vx - 3.2, 7.05, 136.3, vx + 3.2, 7.2, 142.7, 'neongreen'); });
+  for (const z of [110, 126]) {
+    propOf('jb_pipe', [-121, 7, z], 0, () => L(-132, 7, z - 0.6, -110, 8.2, z + 0.6, 'chrome'));
+    for (let x = -128; x < -110; x += 8) propOf('jb_pipepost', [x, 0, z], 0, () => L(x - 0.3, 0, z - 0.3, x + 0.3, 7, z + 0.3, 'metal'));
+  }
+  propOf('jb_pipe', [-131, 7, 125.5], Math.PI / 2, () => L(-131.6, 7, 117, -130.4, 8.2, 134, 'chrome'));
   // giant glossy number balls rolled out into the yard (the Blender ones, digits and all: a lucky 7, an unlucky 1 3)
   [[-120, 96, 7], [-124, 143, 1], [-118.5, 143, 3], [-170, 92, 0], [-140, 92, 9], [-172, 140, 4]].forEach(([x, z, v]) => prop(L, 'numball', x, z, (x | 0) & 3, { v, s: 4.4 }));
   prop(L, 'forklift', -132, 97, 1); prop(L, 'pallet_load', -128, 94, 0); prop(L, 'pallet_load', -126.6, 94, 0); prop(L, 'pallet', -127.3, 95.4, 1);
