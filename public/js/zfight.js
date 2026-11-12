@@ -7,7 +7,7 @@
 //  2. height: the camera's near plane was always 10 cm, which wastes nearly all of the depth buffer's precision on the
 //     first few metres. From the blimp or a glide that left about 2 cm of precision at the street. The near plane now
 //     grows with your height over the ground (only above OVERLAY.from metres, where nothing is that close to your eye).
-import { BOXES } from '/shared/map.js';
+import { BOXES, MAP, MAPS } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
 import { overlayTiers, OVERLAY_DY } from '/shared/overlay.js';
 export { overlayTiers };
@@ -30,7 +30,15 @@ export function applyOverlayTiers(MAT, tiers) {
 let gy = 0, frame = 0;
 export function depthNear(cam) {
   if (!cam) return;
-  if (frame++ % 6 === 0) { const h = raycast([cam.position.x, cam.position.y, cam.position.z], [0, -1, 0], 600, BOXES); gy = h ? h.point[1] : Math.min(gy, cam.position.y - 600); }
+  if (frame++ % 6 === 0) {
+    const p = cam.position, h = raycast([p.x, p.y, p.z], [0, -1, 0], 600, BOXES), def = MAPS[MAP.id], sea = def && def.seaY != null ? def.seaY : null;
+    // the sea is the floor: open water has no box under it, and that read as a 600 m drop, so the near plane jumped to
+    // 2.4 m every time you swam out (the owner: "going in water gets glitchy with the camera"). nothing under you at all
+    // and no sea: keep the normal 10 cm
+    let g = h ? h.point[1] : null;
+    if (sea != null && (g == null || g < sea)) g = sea;
+    gy = g != null ? g : p.y;
+  }
   const up = cam.position.y - gy, want = Math.min(OVERLAY.nearMax, Math.max(OVERLAY.base, OVERLAY.base + (up - OVERLAY.from) * OVERLAY.k));
   if (Math.abs(want - cam.near) > 0.02) { cam.near = want; cam.updateProjectionMatrix(); }
 }
