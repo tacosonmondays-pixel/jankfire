@@ -4774,9 +4774,9 @@ function range() {
   const D = builder();
   horizon(D, -220, -280, 220, 160, 1500, 'grass'); // the same grass as the field you stand on
   D.add(-58, 0.01, -2.3, -50, 0.07, -1.7, 'sand'); // the spray range's firing line (10 m from its wall)
-  D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); // the berm the bullets end up in
+  propOf('berm', [0, 0, -167.5], 0, () => { D.add(-60, 0, -175, 60, 12, -160, 'dirt'); D.add(-50, 12, -172, 50, 16, -163, 'dirt'); }); // the berm the bullets end up in (p_berm: targets, a red flag)
   for (let x = -18, k = 0; x <= 18; x += 3.2, k++) propOf('sandbags', [x + 1.5, 0, 6.9], 0, () => D.add(x, 0, 6.4, x + 3, 0.8, 7.4, 'sand'), { spin: k % 2 ? Math.PI : 0 }); // sandbags on the firing line (p_sandbags; every other one turned round: no pink bag every 3 m)
-  for (const [x, z] of [[-30, 20], [30, 20]]) { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); } // watchtowers
+  for (const [x, z] of [[-30, 20], [30, 20]]) propOf('watchtower', [x, 0, z], 0, () => { for (const sx of [-1, 1]) for (const sz of [-1, 1]) D.box(x + sx * 1.6, 4, z + sz * 1.6, 0.3, 8, 0.3, 'wood'); D.add(x - 2.2, 8, z - 2.2, x + 2.2, 8.3, z + 2.2, 'wood'); D.add(x - 2.4, 10.5, z - 2.4, x + 2.4, 10.8, z + 2.4, 'roofg'); }); // watchtowers (p_watchtower)
   for (let z = 30; z > -260; z -= 10) for (const x of [-90, 90]) { D.box(x, 1, z, 0.15, 2, 0.15, 'metal'); D.add(x - 0.03, 1.6, z, x + 0.03, 1.65, z + 10, 'tire'); }
   for (let i = 0; i < 30; i++) { const rr = rng(400 + i), a = rr() * Math.PI * 2, d = 150 + rr() * 150; (rr() < 0.5 ? conifer : lollipop)(D.local(0, 0, 0), Math.cos(a) * d, -60 + Math.sin(a) * d, 6 + rr() * 4, rr); }
   adBoard(D, -26, -70, 0, 'z', 'adcity6', 14, 6); adBoard(D, -26, -110, 0, 'z', 'adcity3', 14, 6); adBoard(D, 0, -130, 0, 'x', 'adcity2', 24, 9);

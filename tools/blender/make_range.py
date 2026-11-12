@@ -8,13 +8,19 @@
 #                 two deep, offset like real ones, the top course stepped in; a pink one says SAND (PROBABLY)
 #   p_rangemark   the distance boards down the left of the lanes (4 x 1.2 x 0.4): posts, white boards in a red frame,
 #                 the distance from the bench in big black numbers on both faces. variants v15 / v30 / v55 / v105
+#   p_berm        the backstop at the end of the lanes (render-only, 120 x 16 x 15): a lumpy earth bank, grass on its
+#                 crown, bullet-pocked front, a crib of timber ties along its toe, six paper targets on frames in front
+#                 (sticking out past its boxes toward the lanes) and a red range flag on top
+#   p_watchtower  the two range towers behind the spawn (render-only, 4.8 x 10.8): timber legs with X bracing, a plank
+#                 deck with a railing and a RANGE CONTROL sign, a ladder up the back, a corrugated roof on corner
+#                 posts, a red beacon, a megaphone
 # run: blender52 -b --python tools/blender/make_range.py -- [--only=rangebench,sandbags] [--no-sheet] [--no-export] [--qa]
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from lib import *
 import lib
 from lib import _link
 import make_market as MK
-from make_market import Atlas, paint_wood, paint_noise, uv_trim, uv_fit, poly_obj, outward, sweep, opt, V3, TAU
+from make_market import Atlas, paint_wood, paint_noise, uv_trim, uv_fit, poly_obj, outward, sweep, opt, V3, TAU, fcen, _gn
 
 ONLY = [s for s in (opt('only', '') or '').split(',') if s]
 PROPS = []
@@ -272,6 +278,196 @@ def build_marks():
             fp = box((2.6, 0.62, 0.01), (0, 0.56, s * (D_ / 2 - 0.025)), M, name=f'rm{d_}_farplate{s}'); uv_fit(fp, A, f'm{d_}'); far.append(fp)
         groups.append((d_, parts, far))
     return dict(groups=groups, box=((-W_ / 2, 0, -D_ / 2), (W_ / 2, H_, D_ / 2)), ao=0.3, lod=45)
+
+
+# ------------------------------------------------------------ p_berm
+def paint_dirt(px):
+    h, w = px.shape[:2]; r = np.random.default_rng(41)
+    n = MK.tnoise(w, h, 16, 4, r)
+    px[:] = hexrgb(0xa8743e)[None, None] * (0.78 + 0.35 * n[:, :, None]) * (0.92 + 0.12 * r.random((h, w, 1)))
+    px[r.random((h, w)) < 0.025] = hexrgb(0x5a3a1c)  # bullet holes
+    px[r.random((h, w)) < 0.02] = hexrgb(0xd8b080)  # pebbles
+
+
+def paint_grass(px):
+    h, w = px.shape[:2]; r = np.random.default_rng(42)
+    px[:] = hexrgb(0x4ad040)[None, None] * (0.8 + 0.3 * MK.tnoise(w, h, 16, 4, r)[:, :, None])
+    m = (np.arange(h)[:, None] > h * 0.7) & (r.random((h, w)) < 0.5)  # ragged edge down into the dirt
+    px[m] = hexrgb(0x8a6a3a)
+
+
+def paint_target(px):
+    h, w = px.shape[:2]
+    yy, xx = np.mgrid[0:h, 0:w]
+    px[:] = hexrgb(0xf4ecd8)
+    d = np.hypot(xx - w / 2 + 0.5, (yy - h * 0.55) * 1.0)
+    for k, c in ((6, 0x141018), (5, 0xffffff), (4, 0x141018), (3, 0xffffff), (2, 0xff2a3a), (1, 0xffe14d)):
+        px[d < k * w * 0.075] = hexrgb(c)
+    text_px(px, 'JANK', (w - 23) // 2, 3, 1, 0xff2a3a)
+    px[d < 1.2] = hexrgb(0x141018)
+    for x_, y_ in ((w * 0.44, h * 0.5), (w * 0.62, h * 0.66), (w * 0.3, h * 0.72)):  # somebody hit it, eventually
+        px[int(y_), int(x_)] = hexrgb(0x000000)
+
+
+def paint_flag(px):
+    h, w = px.shape[:2]; r = np.random.default_rng(43)
+    px[:] = hexrgb(0xff2a3a) * (0.9 + 0.1 * r.random((h, w, 1)))
+
+
+@prop('p_berm')
+def build_berm():
+    A = Atlas('bm_atlas', 128, 128)
+    A.band('dirt', 32, paint_dirt).band('grass', 16, paint_grass).band('tie', 16, paint_wood(0x6a4a2a, 0x3a2614, 44, edge=0.6, knots=2))
+    A.cell('target', 32, 32, paint_target).cell('flag', 16, 16, paint_flag).cell('steel', 8, 8, paint_noise(0x9a9aa6, 0.05, 45))
+    A.cell('card', 16, 16, paint_noise(0xc8a070, 0.08, 46))
+    M = mat('bm_dirt', 0xffffff, rough=0.85, tex=A.image(), clearcoat=0.0)
+    Mp = mat('bm_paint', 0xffffff, rough=0.5, tex=A.image(), clearcoat=0.2)
+    HW, HD, H = 60.0, 7.5, 16.0
+    prof = [(7.5, 0.0), (6.4, 2.4), (5.0, 6.4), (3.4, 10.8), (2.3, 14.0), (1.2, 15.6), (0.0, 16.0), (-1.6, 15.6), (-3.0, 14.0), (-4.8, 9.6), (-6.4, 4.2), (-7.5, 0.0)]
+    xs = list(np.linspace(-HW, HW, 61))
+    def fac(x):
+        t = max(0.0, (abs(x) - 46.0) / 14.0)
+        return 1.0 - 0.8 * (t * t * (3 - 2 * t))
+    rings = []
+    for x in xs:
+        f = fac(x)
+        rings.append([(y * f, z * (0.75 + 0.25 * f)) for z, y in prof])
+    def ring(i, t):  # (up, side): the profile, closed along the ground
+        return rings[i]
+    o = loft([(x, 0, 0) for x in xs], ring, M, name='bm_bank', smooth_angle=55, cap=False)
+    # the ends: a fan down to the ground at each end (no n-gons)
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    bm.verts.ensure_lookup_table()
+    n = len(prof)
+    ends = [(end, [bm.verts[end * n + k] for k in range(n)]) for end in (0, len(xs) - 1)]  # (before adding any)
+    for end, vs in ends:
+        c = bm.verts.new(sum((v.co for v in vs), Vector()) / n)
+        for k in range(n - 1):
+            try: bm.faces.new((vs[k], vs[k + 1], c) if end else (vs[k + 1], vs[k], c))
+            except ValueError: pass
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    rr = np.random.default_rng(47)
+    for v in bm.verts:  # lumpy, not on the ground line
+        if v.co.z > 0.05: v.co += Vector((rr.uniform(-0.25, 0.25), rr.uniform(-0.25, 0.25), rr.uniform(-0.3, 0.3)))
+    bm.to_mesh(o.data); bm.free()
+    grassy = lambda poly, P_: _gn(poly.normal).y > 0.8 and fcen(poly, P_).y > 13.0
+    uv_trim(o, A, 'grass', upm=0.1, grain='x', sel=grassy)
+    uv_trim(o, A, 'dirt', upm=0.08, grain='x', sel=lambda poly, P_: not grassy(poly, P_))
+    parts = [o]
+    rng = random.Random(48)
+    # the timber crib along the toe: two courses of old ties, butted end to end, half buried, the top course on the bottom one
+    for c in range(2):
+        x = -52.0 + c * 1.3
+        while x < 52.0:
+            L = rng.uniform(2.4, 2.7)
+            t = box((L - 0.04, 0.26, 0.24), (x + L / 2, 0.09 + c * 0.22, 6.85 - c * 0.15), M, bev=0.03, rot=(0, rng.uniform(-0.02, 0.02), 0), name=f'bm_tie{c}_{x:.1f}')
+            uv_trim(t, A, 'tie', upm=0.4, grain='x'); parts.append(t)
+            x += L
+    # targets on frames in front (toward the lanes, past the boxes: you see them down the range)
+    for k, x in enumerate((-40.0, -24.0, -8.0, 8.0, 24.0, 40.0)):
+        z = 9.2 + rng.uniform(-0.2, 0.2)
+        for sx in (-0.62, 0.62):
+            p = box((0.09, 2.5, 0.09), (x + sx, 1.25, z), Mp, bev=0.012, name=f'bm_post{k}{sx}'); uv_trim(p, A, 'tie', upm=0.4, grain='y'); parts.append(p)
+        bk = box((1.3, 1.7, 0.03), (x, 1.65, z + 0.06), Mp, bev=0.008, name=f'bm_card{k}'); uv_fit(bk, A, 'card'); parts.append(bk)
+        tg = box((1.1, 1.5, 0.006), (x, 1.65, z + 0.08), Mp, name=f'bm_target{k}'); uv_fit(tg, A, 'target'); parts.append(tg)
+        cl = box((1.36, 0.06, 0.08), (x, 2.48, z + 0.03), Mp, bev=0.01, name=f'bm_clip{k}'); uv_fit(cl, A, 'steel'); parts.append(cl)
+    # the red flag on top
+    pole = cyl(0.06, 5.0, (-44.0, 15.5 + 2.5, 0.0), Mp, axis='y', seg=8, name='bm_pole'); uv_fit(pole, A, 'steel'); parts.append(pole)
+    rows = []
+    for j in range(5):
+        y = 19.9 - j * 0.3
+        rows.append([(-44.0 + 0.06 + i * 0.3, y, 0.12 * math.sin(i * 1.3 + j * 0.2)) for i in range(7)])
+    fl = MK.sheet_obj(rows, Mp, 'bm_flag', smooth_angle=70)
+    sol = fl.modifiers.new('sol', 'SOLIDIFY'); sol.thickness = 0.03; sol.offset = 0.0
+    apply_mods(fl); outward(fl); uv_fit(fl, A, 'flag'); parts.append(fl)
+    far = []
+    xs1 = xs[::6]
+    f = loft([(x, 0, 0) for x in xs1], lambda i, t: [(y * fac(xs1[i]), z * (0.75 + 0.25 * fac(xs1[i]))) for z, y in prof[::2] + [prof[-1]]], M, name='bm_far', smooth_angle=55, cap=False)
+    uv_trim(f, A, 'dirt', upm=0.08, grain='x'); far.append(f)
+    # (no targets far away: a few pixels at 220 m)
+    return dict(lod0=parts, lod1=far, box=((-HW, 0, -HD), (HW, H, HD)), ao=3.0, lod=220, sheet=dict(res=(900, 420)))
+
+
+# ------------------------------------------------------------ p_watchtower
+def paint_sign(px):
+    h, w = px.shape[:2]
+    px[:] = hexrgb(0xffd22e); px[:2] = px[-2:] = hexrgb(0x141018); px[:, :2] = px[:, -2:] = hexrgb(0x141018)
+    text_px(px, 'RANGE', (w - 29) // 2, 3, 1, 0x141018)
+    text_px(px, 'CONTROL', (w - 41) // 2, 12, 1, 0x141018)
+
+
+@prop('p_watchtower')
+def build_tower():
+    A = Atlas('wt_atlas', 128, 128)
+    A.band('timber', 16, paint_wood(0x9a6a3a, 0x5a3a1c, 51, edge=0.65, knots=2))
+    A.band('plank', 16, paint_wood(0xb88850, 0x6a4422, 52, edge=0.55, knots=1))
+    A.cell('sign', 64, 24, paint_sign).cell('red', 8, 8, paint_noise(0xff2a3a, 0.04, 53)).cell('white', 8, 8, paint_noise(0xf4f4f0, 0.04, 54))
+    A.cell('black', 8, 8, paint_noise(0x1a1820, 0.04, 55))
+    M = mat('wt_wood', 0xffffff, rough=0.6, tex=A.image(), clearcoat=0.15)
+    Mm = mat('wt_metal', 0xc8ccd6, rough=0.35, metal=0.9)
+    G_ = mat('glow', 0xff2a3a, rough=0.3, emit=0xff3020, strength=3.0)
+    parts = []
+    L, P = 1.6, 0.3
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            p = box((P, 7.9, P), (sx * L, 4.05, sz * L), M, bev=0.03, name=f'wt_leg{sx}{sz}'); uv_trim(p, A, 'timber', upm=0.25, grain='y'); parts.append(p)
+            fp = box((0.5, 0.12, 0.5), (sx * L, 0.06, sz * L), Mm, bev=0.02, name=f'wt_foot{sx}{sz}'); uv_box(fp, 0.5); parts.append(fp)  # (steel footing plates)
+    # X bracing on all four sides and a girt half way up
+    for yaw in (0.0, math.pi / 2, math.pi, -math.pi / 2):
+        c, s_ = math.cos(yaw), math.sin(yaw)
+        def T(x, y, z): return (x * c + z * s_, y, -x * s_ + z * c)
+        out = L + P / 2 + 0.04
+        for a, b in (((-L, 0.6), (L, 7.4)), ((L, 0.6), (-L, 7.4))):
+            bb = MK.box_between(T(a[0], a[1], out), T(b[0], b[1], out), 0.18, 0.06, M, f'wt_brace{yaw:.2f}{a[0]}')
+            uv_trim(bb, A, 'plank', upm=0.3); parts.append(bb)
+        g = MK.box_between(T(-L - P / 2, 4.0, out + 0.07), T(L + P / 2, 4.0, out + 0.07), 0.2, 0.06, M, f'wt_girt{yaw:.2f}')
+        uv_trim(g, A, 'plank', upm=0.3); parts.append(g)
+    # deck: joists and planks
+    for k in range(3):  # joists across, planks along: every plank sits on all three
+        j = box((0.12, 0.16, 4.4), (-1.5 + k * 1.5, 8.08, 0), M, bev=0.015, name=f'wt_joist{k}'); uv_trim(j, A, 'timber', upm=0.25, grain='z'); parts.append(j)
+    for k in range(11):
+        z = -2.2 + 0.2 + k * 0.4
+        pl = box((4.4, 0.14, 0.37), (0, 8.225, z), M, bev=0.015, name=f'wt_deck{k}'); uv_trim(pl, A, 'plank', upm=0.3, grain='x', uoff=k * 0.37); parts.append(pl)
+    # railing: posts, a top rail, plank walls on three sides (the back is open at the ladder)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            rp = box((0.14, 2.2, 0.14), (sx * 2.06, 8.3 + 1.1, sz * 2.06), M, bev=0.015, name=f'wt_rpost{sx}{sz}'); uv_trim(rp, A, 'timber', upm=0.25, grain='y'); parts.append(rp)
+    for name_, size, pos in (('front', (4.0, 0.9, 0.05), (0, 8.75, -2.06)), ('left', (0.05, 0.9, 4.0), (-2.06, 8.75, 0)), ('right', (0.05, 0.9, 4.0), (2.06, 8.75, 0))):
+        wl = box(size, pos, M, bev=0.01, name=f'wt_wall_{name_}'); uv_trim(wl, A, 'plank', upm=0.3, grain='x' if size[0] > 1 else 'z'); parts.append(wl)
+    for name_, size, pos in (('front', (4.2, 0.08, 0.12), (0, 9.24, -2.06)), ('left', (0.12, 0.08, 4.2), (-2.06, 9.24, 0)), ('right', (0.12, 0.08, 4.2), (2.06, 9.24, 0)),
+                             ('backl', (1.25, 0.08, 0.12), (-1.47, 9.24, 2.06)), ('backr', (1.25, 0.08, 0.12), (1.47, 9.24, 2.06))):
+        tr = box(size, pos, M, bev=0.015, name=f'wt_rail_{name_}'); uv_trim(tr, A, 'timber', upm=0.25, grain='x' if size[0] > 1 else 'z'); parts.append(tr)
+    sg = box((1.8, 0.62, 0.03), (0, 8.75, -2.1), M, bev=0.008, name='wt_sign'); uv_fit(sg, A, 'sign'); parts.append(sg)
+    # the ladder up the back
+    for sx in (-0.34, 0.34):
+        lr = MK.box_between((sx, 0.0, 2.36), (sx, 9.0, 2.0), 0.08, 0.06, M, f'wt_lrail{sx}'); uv_trim(lr, A, 'timber', upm=0.25); parts.append(lr)
+    for k in range(27):
+        y = 0.3 + k * 0.3
+        if y > 8.1: break
+        z = 2.36 - 0.36 * y / 9.0
+        rg = cyl(0.025, 0.66, (0, y, z), Mm, axis='x', seg=6, name=f'wt_rung{k}'); uv_box(rg, 0.2); parts.append(rg)
+    # the corrugated roof on the railing posts (they run on up to it), a hair of fall to the back
+    rows = []
+    for j in range(2):
+        z = -2.4 + j * 4.8
+        rows.append([(-2.4 + i * 0.1, 10.62 - 0.06 * j + 0.04 * math.sin(i * math.pi / 2), z) for i in range(49)])
+    rf = MK.sheet_obj(rows, Mm, 'wt_roof', smooth_angle=80)
+    sol = rf.modifiers.new('sol', 'SOLIDIFY'); sol.thickness = 0.05; sol.offset = 0.0
+    apply_mods(rf); outward(rf); uv_box(rf, 0.5); parts.append(rf)
+    bc = lathe([(0.12, 0.0), (0.12, 0.06), (0.1, 0.2), (0.05, 0.28), (0.0, 0.3)], (1.4, 10.66, -1.4), G_, seg=12, axis='y', name='wt_beacon'); uv_box(bc, 0.2); parts.append(bc)
+    bb_ = cyl(0.14, 0.06, (1.4, 10.66, -1.4), Mm, axis='y', seg=12, name='wt_beaconbase'); uv_box(bb_, 0.2); parts.append(bb_)
+    mg = lathe([(0.05, 0.0), (0.06, 0.18), (0.16, 0.42), (0.17, 0.44), (0.0, 0.44)], (-1.3, 9.32, -2.06), M, seg=12, axis='z', name='wt_megaphone', rot=(0.25, 0, 0))  # (resting on the front rail)
+    uv_fit(mg, A, 'white'); parts.append(mg)
+    far = []
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            p = box((P, 8.0, P), (sx * L, 4.0, sz * L), M, name=f'wt_far_leg{sx}{sz}'); uv_trim(p, A, 'timber', upm=0.25, grain='y'); far.append(p)
+    hut = box((4.4, 1.3, 4.4), (0, 8.65, 0), M, name='wt_far_deck'); uv_trim(hut, A, 'plank', upm=0.3, grain='x'); far.append(hut)
+    fr = box((4.8, 0.2, 4.8), (0, 10.6, 0), Mm, name='wt_far_roof'); uv_box(fr, 0.5); far.append(fr)
+    for sx in (-1, 1):
+        for sz in (-1, 1):
+            cp = box((0.12, 1.0, 0.12), (sx * 2.06, 10.0, sz * 2.06), M, name=f'wt_far_cpost{sx}{sz}'); uv_trim(cp, A, 'timber', upm=0.25, grain='y'); far.append(cp)
+    return dict(lod0=parts, lod1=far, box=((-2.4, 0, -2.4), (2.4, 10.8, 2.4)), ao=0.8, lod=60)
 
 
 def run_variants(fid, fn):
