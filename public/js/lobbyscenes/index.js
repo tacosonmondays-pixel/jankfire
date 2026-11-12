@@ -12,6 +12,9 @@ import { authored, want, whenGlb, missingGlb, withEnv } from '../glbkit.js';
 import { DEFAULT_LOOK, SKIN_TONES, HAIR_COLORS, CLOTH_COLORS, HAIRS, TOPS, BOTTOMS, LOOK_COLORS } from '/shared/looks.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { synth } from '../audio.js';
+import * as party from '../party.js'; // the party (P, onParty) and the walkable lobbies' position relay
+import * as hub from '../hubmenu.js'; // (lobbySceneFlag: the hub's lineup steps aside while a scene is up)
+import { makeWalk, walker, poseWalker, wander, follow } from './walk.js';
 
 const FILES = { isle: 'garage' }; // mode -> scene file (more land with their PRs: zm warehouse, br royale, qp/bomb hangar)
 const mods = {};
@@ -26,7 +29,9 @@ const $ = (id) => document.getElementById(id);
 
 // the hook. mode: the hub's mode key. o: { side: 'online' | 'offline', party, onMe(), onInvite() }
 // party: [{ id, name, color, look, gun, skin, mech, ready, leader, bot, me }] or nothing (just you, the rest is filled in)
+let flagged = false;
 export function mountLobbyScene(mode, o = {}) {
+  if (!flagged) { flagged = true; try { if (hub.lobbySceneFlag) hub.lobbySceneFlag(lobbySceneOn); } catch { /* (an older hub) */ } } // (here, not at load: the two modules import each other)
   const file = FILES[mode];
   if (!file) { ask = null; visit = true; if (cur) { flash(); drop(); } return; }
   const same = cur && cur.file === file, was = visit;
@@ -48,7 +53,7 @@ export function lobbySceneFrame(dt, showing) {
   const c = cur, r = G.renderer;
   if (G.lsHold) { dt = G.lsAdvance || 0; G.lsAdvance = 0; } else dt *= G.lsTimeScale || 1; // (tests: slow motion, or one frame at a time for clips)
   c.t += dt;
-  frameCam(c, dt);
+  if (c.walk) c.walk.frame(dt, c.t); else frameCam(c, dt);
   c.api.update(dt, c.t);
   for (const p of c.people) posePerson(p, dt, c.t);
   plates(c);
@@ -63,11 +68,14 @@ export function lobbySceneFrame(dt, showing) {
 function start(m, a) {
   ensureDom();
   const scene = new THREE.Scene(), cam = new THREE.PerspectiveCamera(36, innerWidth / innerHeight, 0.1, 600);
-  const c = { file: a.file, ask: a, scene, cam, t: 0, people: [], spots: [], made: [], kids: [], ls: [], mx: 0, my: 0, hover: null };
+  const c = { file: a.file, ask: a, scene, cam, t: 0, people: [], spots: [], made: [], kids: [], ls: [], mx: 0, my: 0, hover: null, party, panels: true, walk: null };
   cur = c;
+  c.visible = () => { const s = $('scr-hubby'); return !!s && !s.classList.contains('hidden') && !$('menu').classList.contains('hidden'); };
+  c.setPanels = (on) => { c.panels = on; const s = $('scr-hubby'); if (s) s.classList.toggle('ls-panels', on); const b = $('lsPanBtn'); if (b) b.textContent = on ? 'WALK AROUND [TAB]' : 'MATCH SETTINGS [TAB]'; };
   c.lib = lib(c);
   c.api = m.build(c.lib);
   c.spots = c.api.spots;
+  if (c.api.walk) startWalk(c);
   syncParty();
   document.body.classList.add('ls-on');
   on(c, $('scr-hubby'), 'pointermove', (e) => { c.mx = e.clientX / innerWidth - 0.5; c.my = e.clientY / innerHeight - 0.5; hover(c, e); });
@@ -80,7 +88,7 @@ function drop() {
   if (!c) return;
   cur = null;
   try { if (c.api && c.api.dispose) c.api.dispose(); } catch (e) { console.warn('lobby scene dispose', e); }
-  for (const [el, ty, fn] of c.ls) el.removeEventListener(ty, fn);
+  for (const [el, ty, fn, cap] of c.ls) el.removeEventListener(ty, fn, !!cap);
   for (const p of c.people) freePerson(p);
   c.people.length = 0;
   c.scene.traverse((o) => { if (o.isLight && o.shadow && o.shadow.map) { o.shadow.map.dispose(); o.shadow.map = null; } });
@@ -88,7 +96,8 @@ function drop() {
   for (const x of c.made) x.dispose(); // our own materials and textures (shared Blender ones are left alone)
   c.scene.clear();
   const t = $('lsTags'); if (t) t.innerHTML = '';
-  document.body.classList.remove('ls-on', 'ls-hot');
+  document.body.classList.remove('ls-on', 'ls-hot', 'ls-walk');
+  const s = $('scr-hubby'); if (s) s.classList.remove('ls-panels');
 }
 function on(c, el, ty, fn) { if (!el) return; el.addEventListener(ty, fn); c.ls.push([el, ty, fn]); }
 function flash() { const f = $('lsFlash'); if (!f) return; flashT = 0.22; f.style.opacity = '1'; try { synth.whoosh(0.25, 0.2, 500, 2400); } catch { /* (no audio yet) */ } }
@@ -113,12 +122,32 @@ body.ls-hot #scr-hubby { cursor: pointer; }
 #lsTags .bub small { display: block; font-size: 11px; color: #ff00dc; font-weight: 900; letter-spacing: 1px; margin-bottom: 2px; }
 #lsTags .ui { pointer-events: auto; }
 #lsFlash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 1; }
+body.ls-walk #scr-hubby:not(.ls-panels) .hub-panel { display: none; }
+body.ls-walk #scr-hubby:not(.ls-panels) .hub-head p { display: none; }
+#lsTags .ls-use { display: flex; gap: 6px; align-items: center; font-weight: 900; font-size: 16px; color: #fff; text-shadow: 2px 2px 0 #120818; white-space: nowrap; }
+#lsTags .ls-use kbd { font: 900 15px var(--font); background: #ffe14d; color: #120818; border: 3px solid #000; box-shadow: 3px 3px 0 #ff4fd8; padding: 0 7px; }
+#lsPanBtn { position: fixed; right: clamp(34px, 5vmin, 58px); top: clamp(170px, 26vh, 200px); z-index: 3; font: 900 14px var(--font); letter-spacing: 1px; background: #fff; color: #120818; border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink, #ff4fd8); padding: 5px 12px; cursor: pointer; transform: rotate(1deg); display: none; }
+body.ls-walk #lsPanBtn { display: block; }
+body.ls-walk #scr-hubby.ls-panels #lsPanBtn { top: auto; bottom: clamp(22px, 4vmin, 44px); }
+#lsHelp { position: fixed; left: clamp(34px, 5vmin, 58px); bottom: clamp(22px, 4vmin, 44px); z-index: 2; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #120818; display: none; max-width: 30vw; line-height: 1.35; }
+#lsHelp b { color: #ffe14d; }
+body.ls-walk #scr-hubby:not(.ls-panels) #lsHelp { display: block; }
 `;
   document.head.append(css);
   const t = document.createElement('div'); t.id = 'lsTags';
   const f = document.createElement('div'); f.id = 'lsFlash';
   const scr = $('scr-hubby');
   (scr || document.body).prepend(t, f); // (inside the lobby screen, under its panels)
+  const b = document.createElement('button'); b.id = 'lsPanBtn'; b.textContent = 'MATCH SETTINGS [TAB]';
+  b.addEventListener('click', (e) => { e.stopPropagation(); if (cur) cur.setPanels(!cur.panels); });
+  const h = document.createElement('div'); h.id = 'lsHelp';
+  h.innerHTML = '<b>WASD</b> walk · <b>SHIFT</b> run · <b>SPACE</b> jump · <b>DRAG</b> look · <b>E</b> use · <b>Z</b> wave · <b>TAB</b> match settings';
+  if (scr) scr.append(b, h);
+}
+// a walkable scene: you're a walker the keys drive, the panels fold away (TAB / the corner button / Esc bring them back)
+function startWalk(c) {
+  document.body.classList.add('ls-walk');
+  c.setPanels(false);
 }
 
 // ---------------------------------------------------------------- the camera: frames the scene's focus box in the stage
@@ -163,6 +192,7 @@ function frameCam(c, dt, now) {
 // ---------------------------------------------------------------- people: you, the party, bots, empty spots
 const BOT_NAMES = ['Gary', 'Linda', 'Steve', 'Brenda', 'Kevin', 'Doug', 'Karen', 'Phil', 'Tina', 'Rick', 'Carl', 'Pam']; // (the server's bot names)
 const GUNS = ['ar', 'smg', 'shotgun', 'sniper', 'pistol'].filter((g) => WEAPONS[g]);
+const rndOf = (seed) => rnd(seed);
 function rnd(seed) { let s = seed >>> 0 || 1; return () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296); }
 function botLook(seed) { // a bot outfit, the same one for the same spot (no flicker on every redraw)
   const r = rnd(seed * 7919 + 13), p = (a) => a[Math.floor(r() * a.length)], k = (o) => p(Object.keys(o).filter((x) => !o[x].ach));
@@ -171,7 +201,11 @@ function botLook(seed) { // a bot outfit, the same one for the same spot (no fli
 // who stands where: your party in order (you first), then bots (offline) or + INVITE spots (online)
 function lineup(c) {
   const a = c.ask, me = { ...meFn(), id: 'me', me: true };
-  const list = Array.isArray(a.party) && a.party.length ? a.party.map((p) => (p.me ? { ...me, ...p } : p)) : [me];
+  let given = Array.isArray(a.party) && a.party.length ? a.party : null;
+  const PP = party.P;
+  if (!given && PP && PP.on && PP.ms && PP.ms.length > 1) // the hub's party (party.js): its members, you from your live settings
+    given = PP.ms.map((m) => (m.id === PP.me ? { me: true, leader: m.id === PP.lead, ready: !!m.ready } : { id: m.id, name: m.name, look: m.look, color: (m.look && m.look.color) || LOOK_COLORS[(m.id | 0) % LOOK_COLORS.length], gun: m.gun, mech: m.mf, ready: !!m.ready, leader: m.id === PP.lead, busy: !!m.busy }));
+  const list = given ? given.map((p) => (p.me ? { ...me, ...p } : p)) : [me];
   if (!list.some((p) => p.me)) list.unshift(me);
   list.sort((x, y) => (y.me ? 1 : 0) - (x.me ? 1 : 0));
   const out = list.slice(0, c.spots.length);
@@ -200,14 +234,16 @@ function makePerson(c, i, info, key) {
   c.scene.add(P.wrap);
   if (!info.invite) {
     const ch = buildCharacter(info.color || '#ff4fd8', { ...DEFAULT_LOOK, ...(info.look || {}) });
-    ch.root.rotation.y = Math.PI; // (characters face -z; the spots face the camera)
+    if (c.walk || c.api.walk) { ch.root.scale.setScalar(1.2); P.r = walker(ch, info.gun, [sp.x, 0, sp.z, sp.yaw || 0]); P.wrap.rotation.y = 0; } // (game size; it walks)
+    else ch.root.rotation.y = Math.PI; // (characters face -z; the spots face the camera)
     ch.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.lsMe = info.me ? 1 : 0; } });
     if (info.gun && WEAPONS[info.gun]) { const w = buildWeapon(info.gun, info.skin); w.scale.setScalar(1.5); w.traverse((o) => { if (o.isMesh) o.castShadow = true; }); ch.slot.add(w); ch.gun = w; }
     P.wrap.add(ch.root); P.ch = ch;
   } else if (c.api.inviteSpot) c.api.inviteSpot(P.wrap, i);
   const d = document.createElement('div'); d.className = 'np' + (info.invite ? ' inv' : '');
   $('lsTags').append(d); P.plate = d; plateText(P);
-  P.head = new THREE.Vector3(0, info.invite ? (c.api.inviteH || 1.3) : 2.05, 0);
+  P.head = new THREE.Vector3(0, info.invite ? (c.api.inviteH || 1.3) : P.r ? 2.5 : 2.05, 0);
+  if (P.r && info.me && c.api.walk) { const old = c.walkMe; if (old) { P.r.pos = old.pos.slice(); P.r.yaw = old.yaw; } c.walkMe = P.r; c.walk = c.walk || makeWalk(c, c.lib, c.api.walk, P.r); c.walk.me = P.r; c.walk.reMe && c.walk.reMe(P.r); } // (a new look: same spot)
   return P;
 }
 function plateText(P) {
@@ -231,7 +267,7 @@ function plates(c) {
   for (const P of c.people) {
     if (!P.plate) continue;
     _v.copy(P.head); P.wrap.localToWorld(_v); _v.project(c.cam);
-    const vis = _v.z < 1 && Math.abs(_v.x) < 1.2 && Math.abs(_v.y) < 1.2;
+    const vis = _v.z < 1 && Math.abs(_v.x) < 1.2 && Math.abs(_v.y) < 1.2 && P.wrap.visible;
     P.plate.style.display = vis ? '' : 'none';
     if (vis) P.plate.style.transform = `translate(${((_v.x + 1) / 2) * W}px, ${((1 - _v.y) / 2) * H}px) translate(-50%, -100%)`;
   }
@@ -249,6 +285,14 @@ const POSES = [
 function posePerson(P, dt, t) {
   const ch = P.ch;
   if (!ch) return;
+  if (P.r) { // a walker: you (the keys), a bot (wanders), a party member (the relay)
+    const r = P.r, c = cur;
+    if (!P.info.me) { if (P.info.bot && c.api.walk.wander) wander(r, dt, c.api.walk, P.rnd || (P.rnd = rndOf(P.i * 977 + 3))); else follow(r, dt); }
+    P.wrap.position.set(r.pos[0], r.pos[1], r.pos[2]); P.wrap.rotation.y = r.yaw; P.wrap.visible = !r.hidden;
+    if (P.emo > 0) { r.emo = P.emo; P.emo = 0; }
+    poseWalker(r, dt, t);
+    return;
+  }
   const tt = t + P.t0;
   idlePose(ch, tt);
   const look = Math.sin(tt * 0.37) > 0.82 ? Math.sin(tt * 0.9) * 0.45 : 0; // the odd glance around
@@ -290,6 +334,7 @@ function hover(c, e) {
   if (k !== c.hover) { c.hover = k; if (c.api.hover) c.api.hover(h); }
 }
 function clickAt(c, e) {
+  if (c.walk && c.walk.dragged()) return; // (that was a look-round, not a click)
   const h = hit(c, e);
   if (!h) return;
   if (h.kind === 'me') { if (c.ask.onMe) c.ask.onMe(); return; }
@@ -355,3 +400,17 @@ function lib(c) {
 }
 // tests: what's up and how much it holds
 export const lobbySceneInfo = () => (cur ? { file: cur.file, mode: cur.ask.mode, people: cur.people.map((p) => (p.info.invite ? 'invite' : p.info.bot ? 'bot' : p.info.me ? 'me' : 'mate')), extra: cur.api.info ? cur.api.info() : null } : null);
+
+// the party's spots in the walkable lobbies (party.js relays them ~10 a second): each member walks to theirs.
+// a = what they're doing (walk.js): 1 = in their mech (the scene moves it), 2 = waving
+if (party.onLobbyPos) party.onLobbyPos((m) => {
+  const c = cur;
+  if (!c || !c.walk || !m || !Array.isArray(m.p)) return;
+  const P = c.people.find((x) => x.info && x.info.id === m.id && x.r);
+  if (!P) return;
+  P.r.tgt = m.p; P.r.tyaw = m.yaw;
+  if (m.a === 2 && !(P.r.emo > 0)) P.r.emo = 1.4;
+  P.r.hidden = m.a === 1;
+  if (c.api.remote) c.api.remote(P.i, m);
+});
+if (party.onParty) party.onParty(() => { if (cur) syncParty(); });
