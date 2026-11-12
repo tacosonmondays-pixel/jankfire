@@ -2,7 +2,7 @@
 // hero kit (public/js/mechlook.js), at a graphics preset. Plays the client side of a drop (the server's 'call' then
 // 'land' messages, fed to the client's own handler: nothing on the server changes) and records it.
 // usage: node tools/blender/mechs/mech_drop.cjs <port> <outDir> [frame=nightshift] [preset=3] [video=1]
-//   writes drop_<frame>_<preset>.mp4 (real time, the whole drop), drop_<frame>_<preset>.jpg (stills: the fall, the
+//   writes drop_<frame>_<preset>.mp4 (real time: the call, the fall, the landing, seen from where you stand), drop_<frame>_<preset>.jpg (stills: the fall, the
 //   landing shot frozen at points of hero_intro, the held signature pose, a close-up). start a server first.
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
@@ -16,7 +16,7 @@ const W = 1280, H = 720;
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const vdir = path.join(outDir, `.vid_${tag}`);
   const ctx = await b.newContext({ viewport: { width: W, height: H }, ...(video === '1' ? { recordVideo: { dir: vdir, size: { width: W, height: H } } } : {}) });
-  const pg = await ctx.newPage(), errs = [];
+  const pg = await ctx.newPage(), errs = [], v0 = Date.now(); // (v0: the video's clock, to cut the drop out of it)
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + (e.stack || e.message).split('\n').slice(0, 3).join(' | ')));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text().slice(0, 200)); });
   await pg.addInitScript((pr) => { localStorage.setItem('jf_giftseen_all', '1'); localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: pr })); }, PR);
@@ -49,7 +49,7 @@ const W = 1280, H = 720;
   const shots = []; // [file, caption]
   const shot = async (name, cap) => { const f = path.join(outDir, `.s_${tag}_${name}.jpg`); await pg.screenshot({ path: f, type: 'jpeg', quality: 88 }); shots.push([f, cap]); };
   // 1. the call and the fall (2.5 s), the real thing in real time
-  const tc = Date.now();
+  const tc = Date.now(), cut = [(tc - v0) / 1000 - 1.5, 0];
   await feed({ k: 'call', id: 990, f: frame, p: P, yaw: YAW, ms: 2500 });
   await pg.evaluate(() => { window.__pin.pitch = 0.32; }); // (look up at it)
   await sleep(1100); await shot('fall', 'the fall: drop_fall + contrails');
@@ -57,7 +57,7 @@ const W = 1280, H = 720;
   await sleep(Math.max(0, 2500 - (Date.now() - tc)));
   const t0 = Date.now();
   await feed({ k: 'land', id: 990, f: frame, p: P, yaw: YAW });
-  await sleep(Math.max(0, 3600 - (Date.now() - t0))); await shot('held', 'held: what you see from 13 m away');
+  await sleep(Math.max(0, 3600 - (Date.now() - t0))); await shot('held', 'held: what you see from 13 m away'); cut[1] = (Date.now() - v0) / 1000 + 2;
   await sleep(600);
   // 2. stills: the landing shot frozen at points of hero_intro (the camera held where it was at that moment)
   // the landing shot's own camera (mechCam's hero branch: low, off to the side, orbiting) held at u seconds in,
@@ -95,6 +95,8 @@ const W = 1280, H = 720;
   fs.copyFileSync(shots[shots.length - 1][0], path.join(outDir, `drop_${tag}_close.jpg`));
   await freeze(1.7 * D, 0, { e: [P[0] - 5.2, 2.2, P[2] + 6.4], t: [P[0], hy - 0.6, P[2]], fov: 55 }); await sleep(1800); await shot('q', 'three-quarter, low');
   fs.copyFileSync(shots[shots.length - 1][0], path.join(outDir, `drop_${tag}_q.jpg`));
+  await freeze(1.7 * D, 0, { e: [P[0] + 3.4, hy + 1.2, P[2] - 5.6], t: [P[0], hy - 0.2, P[2]], fov: 50 }); await sleep(1800); await shot('back', 'from behind: stickers, the test sprays');
+  fs.copyFileSync(shots[shots.length - 1][0], path.join(outDir, `drop_${tag}_back.jpg`));
   const info = await pg.evaluate(async () => {
     const { mechDebug } = await import('/js/mech.js'); const w = mechDebug().WM.get(990); const L = w && w.inst && w.inst.look;
     return L ? { glows: L.glows.length, mats: L.mats.length, outline: L.outline.length, trails: L.trails.length, events: Object.keys(L.events).length, slots: L.slots.length } : null;
@@ -112,7 +114,7 @@ const W = 1280, H = 720;
   for (const [f] of shots) fs.unlinkSync(f);
   if (video === '1') {
     const v = fs.readdirSync(vdir).find((x) => x.endsWith('.webm'));
-    if (v) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', path.join(vdir, v), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', path.join(outDir, `drop_${tag}.mp4`)]);
+    if (v) execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(Math.max(0, cut[0])), '-to', String(cut[1]), '-i', path.join(vdir, v), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '24', '-movflags', '+faststart', path.join(outDir, `drop_${tag}.mp4`)]);
     fs.rmSync(vdir, { recursive: true, force: true });
   }
   console.log(sheet, JSON.stringify(info), errs.length ? errs.slice(0, 8) : '(0 page errors)');
