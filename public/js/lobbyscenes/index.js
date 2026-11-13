@@ -52,6 +52,7 @@ export function lobbySceneFrame(dt, showing) {
   if (!cur) return false;
   const c = cur, r = G.renderer;
   if (G.lsHold) { dt = G.lsAdvance || 0; G.lsAdvance = 0; } else dt *= G.lsTimeScale || 1; // (tests: slow motion, or one frame at a time for clips)
+  if (G.lsTele && cur && cur.walk) { const [x, z, yaw, pitch, dist] = G.lsTele, w = cur.walk; w.me.pos[0] = x; w.me.pos[2] = z; if (yaw != null) w.W.camYaw = yaw; if (pitch != null) w.W.camPitch = pitch; if (dist) w.W.dist = dist; G.lsTele = null; } // (tests: stand somewhere, look somewhere)
   c.t += dt;
   if (c.walk) c.walk.frame(dt, c.t); else frameCam(c, dt);
   c.api.update(dt, c.t);

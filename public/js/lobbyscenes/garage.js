@@ -105,15 +105,23 @@ export function build(L) {
   L.box(term, 0.5, 1.0, 0.4, steel, 0, 0.5, 0); L.box(term, 0.8, 0.06, 0.5, yel, 0, 1.02, 0);
   const scr = L.box(term, 0.72, 0.46, 0.06, L.basic(0xffffff, { map: L.label('SWAP >', { bg: '#120818', fg: '#4fd8ff', border: '#ff4fd8', w: 128, h: 80 }) }), 0, 1.3, 0.08); scr.rotation.x = -0.35;
   solid(2.25, MZ + 2.35, 2.95, MZ + 3.05, 1.05);
-  // ---- the break room (front left): the cola machine, a table, a couch, the coffee, a sign
-  const brk = L.mat(0x3a2a4a, 0.8);
-  flat(L.box(root, 8.5, 0.03, 9, L.mat(0x5a3a2a, 0.7), -19.5, 0.02, 16)); // (a rug, of sorts)
+  // ---- the break room (front left): the Blender room (x_lobby_breakroom: the couch, the table, the kitchenette, the
+  // fridge, lockers, the lightbox; boxes until it lands). the cola machine is its own prop
+  const brk = L.mat(0x3a2a4a, 0.8), brG = new THREE.Group(); root.add(brG);
+  flat(L.box(brG, 8.5, 0.03, 9, L.mat(0x5a3a2a, 0.7), -19.5, 0.02, 16)); // (a rug, of sorts)
   prop('p_vending', [-23.2, 13, Math.PI / 2], (g) => L.box(g, 1.2, 2, 0.9, L.mat(0xd0202a, 0.4), 0, 1, 0)); solid(-24, 12.4, -22.6, 13.6, 2);
-  L.box(root, 1.6, 0.08, 1, L.mat(0xe8e0d0, 0.5), -19, 0.78, 16.5); L.box(root, 0.1, 0.74, 0.1, steel, -19, 0.37, 16.5); solid(-19.8, 16, -18.2, 17, 0.82);
-  for (const dx of [-1.2, 1.2]) { L.box(root, 0.5, 0.06, 0.5, L.mat(0xff4fd8, 0.4), -19 + dx, 0.48, 16.5); L.box(root, 0.06, 0.48, 0.06, steel, -19 + dx, 0.24, 16.5); }
-  L.box(root, 3.2, 0.5, 1.0, brk, -22.8, 0.45, 18.6, Math.PI / 2); L.box(root, 3.2, 0.7, 0.3, brk, -23.3, 0.9, 18.6, Math.PI / 2); solid(-23.6, 17, -22.2, 20.2, 0.7); // the couch
-  L.box(root, 1.6, 1, 0.6, steel, -15.6, 0.5, 21.2); L.box(root, 0.35, 0.45, 0.3, L.mat(0x111111, 0.3, 0.5), -15.9, 1.22, 21.2); solid(-16.4, 20.9, -14.8, 21.6, 1.0); // counter + coffee
-  const bs = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), L.basic(0xffffff, { map: L.label('BREAK ROOM · NO MECHS', { w: 512, h: 128 }) })); bs.position.set(-23.95, 4, 16.5); bs.rotation.y = Math.PI / 2; root.add(bs);
+  L.box(brG, 1.6, 0.08, 1, L.mat(0xe8e0d0, 0.5), -19, 0.78, 16.5); L.box(brG, 0.1, 0.74, 0.1, steel, -19, 0.37, 16.5);
+  for (const dx of [-1.2, 1.2]) { L.box(brG, 0.5, 0.06, 0.5, L.mat(0xff4fd8, 0.4), -19 + dx, 0.48, 16.5); L.box(brG, 0.06, 0.48, 0.06, steel, -19 + dx, 0.24, 16.5); }
+  L.box(brG, 3.2, 0.5, 1.0, brk, -22.8, 0.45, 18.6, Math.PI / 2); L.box(brG, 3.2, 0.7, 0.3, brk, -23.3, 0.9, 18.6, Math.PI / 2); // the couch
+  L.box(brG, 3.4, 0.95, 0.6, steel, -21.5, 0.48, 21.7); L.box(brG, 0.35, 0.45, 0.3, L.mat(0x111111, 0.3, 0.5), -20.2, 1.18, 21.6); // counter + coffee
+  const bs = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 0.85), L.basic(0xffffff, { map: L.label('BREAK ROOM · NO MECHS', { w: 512, h: 128 }) })); bs.position.set(-23.95, 4, 17.5); bs.rotation.y = Math.PI / 2; brG.add(bs);
+  let brDoor = null;
+  L.glb('x_lobby_breakroom', (o) => { freeTree(brG); brG.clear(); o.position.set(-19.5, 0, 16); o.traverse((m) => { if (m.isMesh) { m.castShadow = !/rug|lino/.test(m.name); m.receiveShadow = true; } }); brG.add(o); brDoor = o.getObjectByName('door'); if (brDoor) brDoor.userData.ry = brDoor.rotation.y; });
+  solid(-19.8, 15.7, -18.2, 17.3, 0.82); // the table
+  solid(-23.4, 16.95, -22.3, 20.25, 0.75); // the couch (hop on it)
+  solid(-24, 14, -23.5, 16.6, 1.9); // the lockers
+  solid(-23.25, 21.3, -19.75, 22, 0.98); solid(-24, 21.25, -23.2, 22, 1.75); // the counter, the fridge (left of the door's open panel)
+  solid(-18.8, 21.4, -18.3, 21.9, 1.5); solid(-19.6, 21.4, -19.1, 21.9, 0.7); solid(-23.65, 20.45, -23.15, 20.95, 0.4); // the water cooler, the bin, the plant
   // ---- the test-fire range (front right): a counter, three targets on the wall
   L.box(root, 0.8, 1.05, 8, L.mat(0x4a3a2a, 0.7), 16, 0.52, 15); solid(15.6, 11, 16.4, 19, 1.05);
   const targets = [11.5, 15, 18.5].map((z) => { const t = new THREE.Group(); t.position.set(23.6, 1.6, z); root.add(t); L.cyl(t, 0.07, 0.07, 1.6, steel, 0, -0.8, 0, 6); const face = new THREE.Group(); t.add(face);
@@ -320,6 +328,7 @@ export function build(L) {
     },
     inviteSpot(wrap) { wrap.userData.lsPick = 'invite'; const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.9, 8, 1, true), L.basic(0x4fd8ff, { transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })); m.position.y = 0.95; m.userData.lsSee = false; wrap.add(m); },
     update(dt, t) {
+      if (brDoor) brDoor.rotation.y = brDoor.userData.ry + Math.sin(t * 0.9) * 0.05; // (the cabinet door, on its last screw)
       const want2 = myFrame(G);
       if (my().mech && !ride && !ret && want2 !== (swap ? swap.to : my().frame)) startSwap(want2);
       retTick(dt);
