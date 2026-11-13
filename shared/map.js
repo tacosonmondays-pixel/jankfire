@@ -1183,10 +1183,11 @@ function rooftop() {
   for (const z of [-8, -5, 4]) { B.box(54.6, 1.2, z + 0.4, 0.08, 2.4, 0.08, 'metal'); D.box(54.6, 2.46, z + 0.4, 2.2, 0.12, 2.2, pick(['toypink', 'toyteal', 'cloth'])); } // the hotel's umbrellas
   // the bank (west): its water tower, a satellite dish, the JANK BANK sign over the north parapet
   waterTower(W, -52, 12, 0); add(-35, 0, 10.5, -33, 0.6, 12.5, 'metal'); D.add(-35.3, 0.6, 10.2, -32.7, 2.4, 12.8, 'white'); D.add(-34.2, 1.6, 11.3, -33.8, 3.2, 11.7, 'metal');
-  for (const x of [-50, -40]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal');
+  const ST = signArch(B, 'rt_signs'); // (the signs' steel: one Blender model, tools/blender/arch/make_signs.py)
+  for (const x of [-50, -40]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal', ST);
   D.add(-52, 2.2, -17.42, -38, 6.2, -17.38, 'adjankbank', { fit: 1 });
   // the hotel (east): HOTEL 4 HOURS in neon on a frame, a hot tub, loungers, the towel hut
-  for (const x of [40, 52]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal');
+  for (const x of [40, 52]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal', ST);
   D.add(38, 2.2, -17.42, 54, 6.2, -17.38, 'neonhotel', { fit: 1 });
   add(48, 0, 9, 52, 0.9, 9.3, 'tile'); add(48, 0, 12.7, 52, 0.9, 13, 'tile'); add(48, 0, 9.3, 48.3, 0.9, 12.7, 'tile'); add(51.7, 0, 9.3, 52, 0.9, 12.7, 'tile');
   D.add(48.3, 0.02, 9.3, 51.7, 0.75, 12.7, 'water'); // the hot tub
@@ -1272,6 +1273,10 @@ function rooftop() {
 }
 
 
+// the roof signs' steel (JANK BANK, HOTEL 4 HOURS, the ☺ CORP flag): one Blender model per map over their posts, the
+// pictures stay the game's. returns the tag for the posts' boxes. look only
+function signArch(B, id) { B.boxes.arch.push({ id, p: [0, 0, 0], r: 0 }); return { av: id, ai: B.boxes.arch.length - 1 }; }
+
 // ------------------------------------------------------------ ROOFTOP S&D: the roof party (Plant & Defuse). the crashers
 // (attackers) come up the south tower (JANK COLA on its billboard), security (defenders) hold the north tower (☺ CORP).
 // between them, 4 m down, the party block: the penthouse (its walls stand between the two spawns), the pool deck. the
@@ -1330,12 +1335,13 @@ function rooftopSD() {
   archTag(B, D, n0, d0, 'liftroom_sd', -44, -42, 0, 0, { paint: { trim: 'rt_blue' } }); // (a Blender lift motor room, its door west: tools/blender/arch/make_liftroom.py)
   for (const z of [-50, -47]) acUnit(W, -55, z, 0);
   waterTower(W, -53, -31, 0); add(-35, 0, -56, -33, 0.6, -54, 'metal'); D.add(-35.3, 0.6, -56.3, -32.7, 2.4, -53.7, 'white');
-  for (const x of [-52, -40]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal');
+  const ST = signArch(B, 'rt_signs_sd'); // (the signs' steel: one Blender model, tools/blender/arch/make_signs.py)
+  for (const x of [-52, -40]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal', ST);
   D.add(-54, 2.2, -57.42, -38, 6.2, -57.38, 'adjankbank', { fit: 1 });
   B.box(-36, 0.6, -36, 1.2, 1.2, 1.2, 'crate'); B.box(-36, 0.6, -34.6, 1.2, 1.2, 1.2, 'crate'); B.box(-50, 0.45, -36.5, 0.9, 0.9, 0.9, 'metal');
   D.add(-57.7, 0, -57.7, -30.3, 0.02, -26.3, 'asphalt');
   // ---- A, the hotel's roof: the towel hut in the middle, HOTEL 4 HOURS, a hot tub, loungers under umbrellas
-  for (const x of [40, 52]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal');
+  for (const x of [40, 52]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal', ST);
   D.add(38, 2.2, -57.42, 54, 6.2, -57.38, 'neonhotel', { fit: 1 });
   add(41, 0, -45, 47, 2.6, -39, 'wood'); add(40.8, 2.6, -45.2, 47.2, 2.8, -38.8, 'roofpink');
   add(50, 0, -33, 54, 0.9, -32.7, 'tile'); add(50, 0, -29.3, 54, 0.9, -29, 'tile'); add(50, 0, -32.7, 50.3, 0.9, -29.3, 'tile'); add(53.7, 0, -32.7, 54, 0.9, -29.3, 'tile');
@@ -1355,7 +1361,7 @@ function rooftopSD() {
     archTag(B, D, n0, D.boxes.length, 'liftroom_sd', s * 17, 41, 0, 0, { hide: ['door'], paint: { trim: 'rt_pink' } }); // (the crashers': pink. no doors on these: hide the model's)
     acUnit(W, s * 18, -46, 0); acUnit(W, s * 18, 50, 0);
   }
-  for (const x of [-6, 6]) add(x - 0.2, 0, -69.6, x + 0.2, 7, -69.2, 'metal');
+  for (const x of [-6, 6]) add(x - 0.2, 0, -69.6, x + 0.2, 7, -69.2, 'metal', ST);
   D.add(-8, 2.5, -69.42, 8, 6.8, -69.38, 'flagcorp', { fit: 1 });
   billboard(W, 0, 53, 0, 'x'); // over the crashers' backs
   // privacy walls on the two towers' edges over mid (up off their parapets, open at the stairs): neither spawn
