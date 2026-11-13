@@ -27,6 +27,8 @@ export type Fighter = {
 	kat: number, parryT: number, parryN: number, staggerUntil: number,
 	swing: Swing?, tag: Tag?, slipT: number, kills: number, deaths: number,
 	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw)
+	room: string, -- "ffa" (the match) or "training" (the Range): you only fight people in your own room
+	loadout: { string }, -- primary, secondary, melee (keys 1 2 3)
 }
 
 local nextId = 0
@@ -37,6 +39,7 @@ function Rules.newFighter(kind: string, name: string, ref: any): Fighter
 		hp = Weapons.HP, alive = false, spawnT = -math.huge, diedT = -math.huge, held = "redline", equipT = -math.huge,
 		ammo = {}, gate = {}, kat = 0, parryT = -math.huge, parryN = 0, staggerUntil = -math.huge,
 		swing = nil, tag = nil, slipT = -math.huge, kills = 0, deaths = 0,
+		room = "ffa", loadout = table.clone(Weapons.loadout),
 	}
 end
 
@@ -44,8 +47,8 @@ end
 function Rules.spawn(f: Fighter, now: number)
 	f.hp, f.alive, f.spawnT = Weapons.HP, true, now
 	f.kat, f.parryT, f.staggerUntil, f.swing, f.tag = 0, -math.huge, -math.huge, nil, nil
-	f.held, f.equipT = "redline", now
-	for _, id in Weapons.loadout do
+	f.held, f.equipT = f.loadout[1], now
+	for _, id in f.loadout do
 		local w = W[id]
 		if w.mag then f.ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		f.gate[id] = -math.huge
@@ -55,10 +58,30 @@ end
 local function finite(x: any): boolean return type(x) == "number" and x == x and x > -math.huge and x < math.huge end
 Rules.finite = finite
 
-local function inLoadout(w: any): boolean
+local function inLoadout(f: Fighter, w: any): boolean
 	if type(w) ~= "string" then return false end
-	return table.find(Weapons.loadout, w) ~= nil
+	return table.find(f.loadout, w) ~= nil
 end
+
+-- pick your loadout (Training's weapon picker, later the menu): one weapon per slot, each really in that slot
+function Rules.setLoadout(f: Fighter, list: any): string?
+	if type(list) ~= "table" or #list ~= 3 then return "bad loadout" end
+	local slots = { "primary", "secondary", "melee" }
+	for i, slot in slots do
+		local w = list[i]
+		if type(w) ~= "string" or not W[w] or W[w].slot ~= slot then return "not a " .. slot end
+	end
+	f.loadout = { list[1], list[2], list[3] }
+	for _, id in f.loadout do
+		if W[id].mag and not f.ammo[id] then f.ammo[id] = { mag = W[id].mag :: number, reloadUntil = 0 } end
+		f.gate[id] = f.gate[id] or -math.huge
+	end
+	if not table.find(f.loadout, f.held) then f.held, f.equipT, f.swing = f.loadout[1], -math.huge, nil end
+	return nil
+end
+
+-- the Range: infinite ammo, nothing scores
+function Rules.infinite(f: Fighter): boolean return f.room == "training" end
 
 -- the ammo, finishing a reload whose time has come
 local function ammoOf(f: Fighter, wid: string, now: number): Ammo?
@@ -79,7 +102,7 @@ end
 
 -- weapon swap (keys 1 2 3): cancels a reload, like the web game
 function Rules.equip(f: Fighter, wid: any, now: number): string?
-	if not inLoadout(wid) then return "not your weapon" end
+	if not inLoadout(f, wid) then return "not your weapon" end
 	if not f.alive then return "dead" end
 	if f.held == wid then return nil end
 	if now - (f.gate.equip or -math.huge) < 0.15 then return "too fast" end
@@ -92,7 +115,7 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 end
 
 function Rules.reload(f: Fighter, wid: any, now: number): string?
-	if not inLoadout(wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
+	if not inLoadout(f, wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
 	local a = ammoOf(f, wid, now)
@@ -105,7 +128,7 @@ end
 
 -- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it
 function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?): string?
-	if not inLoadout(wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
+	if not inLoadout(f, wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	local w = W[wid]
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
@@ -117,7 +140,7 @@ function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: V
 	if a.mag <= 0 then return "empty" end
 	-- the rate comes from the SERVER's HP (a client can't claim low HP to make the Redline scream)
 	if not Rules.gate(f, wid, now, 1 / Weapons.fireRate(w, f.hp)) then return "too fast" end
-	a.mag -= 1
+	if not Rules.infinite(f) then a.mag -= 1 end
 	return nil
 end
 
@@ -148,6 +171,7 @@ export type HitCtx = { dist: number, speedF: number, speedT: number, los: boolea
 function Rules.hit(f: Fighter, t: Fighter, wid: string, n: any, h: any, _now: number, c: HitCtx): (string?, number, number)
 	local w = W[wid]
 	if t == f then return "yourself", 0, 0 end
+	if Rules.apart(f, t) then return "not in your room", 0, 0 end
 	if not t.alive then return "already dead", 0, 0 end
 	if not finite(n) or not finite(h) then return "bad count", 0, 0 end
 	if c.dist > w.range + Rules.SLACK + 0.3 * (c.speedF + c.speedT) then return "out of range", 0, 0 end
@@ -159,7 +183,7 @@ end
 
 -- a melee swing (the click). the hits come at the animation's hit time, each checked against this swing
 function Rules.swing(f: Fighter, wid: any, now: number): string?
-	if not inLoadout(wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
+	if not inLoadout(f, wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
 	local w = W[wid]
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
@@ -178,6 +202,7 @@ function Rules.meleeHit(f: Fighter, t: Fighter, wid: any, now: number, c: MeleeC
 	if not sw or sw.w ~= wid then return "no swing" end
 	if now - sw.t > Rules.SHOT_LATE then return "swing too old" end
 	if t == f then return "yourself" end
+	if Rules.apart(f, t) then return "not in your room" end
 	if sw.hit[t] then return "already hit" end
 	if not f.alive or not t.alive then return "dead" end
 	if now < f.staggerUntil then return "staggered" end
@@ -231,6 +256,24 @@ function Rules.stagger(f: Fighter, away: Vector3, perfect: boolean, now: number)
 end
 
 -- spawn protection: 1.2 s after spawning a player can't be hurt by others (dummies can)
+-- two fighters in different rooms (the match and the Range) never touch each other
+function Rules.apart(a: Fighter, b: Fighter?): boolean
+	return b ~= nil and a.room ~= b.room
+end
+
+-- the spawn farthest from the nearest living enemy in your room, + a random 0-15 m (MODES.md pickSpawn).
+-- points: candidate feet positions; enemies: their feet; rand() in [0, 1)
+function Rules.pickSpawn(points: { Vector3 }, enemies: { Vector3 }, rand: () -> number): Vector3?
+	local best, bestScore = nil, -math.huge
+	for _, p in points do
+		local near = 1e6
+		for _, e in enemies do near = math.min(near, (e - p).Magnitude) end
+		local score = near + rand() * 15 * S
+		if score > bestScore then best, bestScore = p, score end
+	end
+	return best
+end
+
 function Rules.protected(t: Fighter, by: Fighter?, now: number): boolean
 	return t.kind == "player" and by ~= nil and by ~= t and now - t.spawnT < Weapons.FFA.protect
 end
@@ -255,7 +298,7 @@ function Rules.kill(t: Fighter, by: Fighter?, wid: string, now: number): KillInf
 	end
 	if k == t then k = nil end
 	if k then
-		if t.kind ~= "dummy" then k.kills += 1 end -- (test dummies don't score, but they do feed the katana)
+		if t.kind ~= "dummy" and k.room ~= "training" then k.kills += 1 end -- (dummies and the Range don't score; they do feed the katana)
 		if wid == "katana" or wid == "parry" then k.kat = math.min(W.katana.growMax :: number, k.kat + 1) end
 	end
 	t.tag = nil
@@ -265,7 +308,7 @@ end
 -- the one place HP drops. returns the damage done and the kill, if it killed
 function Rules.damage(t: Fighter, amt: number, by: Fighter?, wid: string, now: number): (number, KillInfo?)
 	if not t.alive or amt <= 0 or not finite(amt) then return 0, nil end
-	if Rules.protected(t, by, now) then return 0, nil end
+	if Rules.apart(t, by) or Rules.protected(t, by, now) then return 0, nil end
 	if by then Rules.tagged(t, by, wid, now) end
 	local done = math.min(amt, t.hp)
 	t.hp -= amt

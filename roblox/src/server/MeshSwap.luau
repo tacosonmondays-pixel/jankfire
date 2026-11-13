@@ -66,13 +66,17 @@ function MeshSwap.run(map: Instance?): number
 	local lib = ServerStorage:FindFirstChild("JankfireMeshes")
 	map = map or workspace:FindFirstChild("Map")
 	if not lib or not map then return 0 end
-	local markers = map:FindFirstChild("ModelMarkers", true)
-	if not markers then return 0 end
+	-- every map's markers (step 3: Rooftop and the Range are both in the place)
+	local folders = {}
+	for _, d in map:GetDescendants() do if d.Name == "ModelMarkers" and d:IsA("Folder") then table.insert(folders, d) end end
+	if #folders == 0 then return 0 end
 	local out = map:FindFirstChild("Models") or Instance.new("Folder")
 	out.Name = "Models"; out.Parent = map
 	local done: { [string]: boolean } = {}
 	local n = 0
-	for _, m in markers:GetChildren() do
+	local all = {}
+	for _, fo in folders do for _, m in fo:GetChildren() do table.insert(all, m) end end
+	for _, m in all do
 		if not m:IsA("BasePart") or m:GetAttribute("Swapped") then continue end
 		local file = m:GetAttribute("Model")
 		local t = typeof(file) == "string" and lib:FindFirstChild(file :: string)

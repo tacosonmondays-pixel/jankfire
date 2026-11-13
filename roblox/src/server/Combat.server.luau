@@ -15,6 +15,8 @@ local Marbles = require(Shared:WaitForChild("Marbles"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Fight = require(script.Parent:WaitForChild("Fight"))
 local Dummies = require(script.Parent:WaitForChild("Dummies"))
+local Bots = require(script.Parent:WaitForChild("Bots"))
+local Vote = require(script.Parent:WaitForChild("Vote"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
@@ -83,7 +85,7 @@ local function applyHitscan(f: Fighter, t: Fighter, wid: string, n: number, h: n
 	local pr = Rules.parryAt(t, eye - c, Fight.facing(t), now())
 	if pr > 0 then parriedShot(t, f, wid, n, h, pr, eye); return end
 	local dmg = Weapons.damage(W[wid], n, h)
-	if f.kind == "dummy" then dmg *= 0.7 end -- bots hit softer (web botDmg)
+	if f.kind ~= "player" and t.kind == "player" then dmg *= 0.7 end -- bots hit people softer (web botDmg)
 	local feet = Fight.feet(t) :: Vector3
 	Fight.hurt(t, dmg, f, wid, h > 0, nil, if h > 0 then feet + Vector3.new(0, Weapons.BOX.bodyTop + 1, 0) else c)
 end
@@ -152,7 +154,7 @@ local function slip(t: Fighter, pt: Patch, n: number)
 	if t.kind == "player" then
 		SlipR:FireClient(t.ref :: Player, "marbles")
 	else
-		Dummies.slip(t)
+		if t.kind == "bot" then Bots.slip(t) else Dummies.slip(t) end
 	end
 	local owner = pt.owner :: Fighter
 	if owner and owner ~= t and table.find(Fight.all, owner) then Rules.tagged(t, owner, "marbles", n) end -- slip off a ledge = their kill
@@ -180,7 +182,37 @@ RunService.Heartbeat:Connect(function(dt: number)
 		end
 	end
 	Dummies.tick(n)
+	Bots.tick(n)
 end)
+
+-- ------------------------------------------------------------------ one melee hit (players' and bots' swings)
+-- the swing must have been accepted (Rules.swing); this checks the hit itself, then the parry, then the damage
+local function applyMelee(f: Fighter, t: Fighter, wid: string, look: Vector3): boolean
+	local eye, fr, tr = Fight.eye(f), Fight.root(f), Fight.root(t)
+	local w = W[wid]
+	if not eye or not fr or not tr or not w or w.kind ~= "melee" then return false end
+	local tp = tr.Position -- feet + 1 m
+	local to = tp - eye
+	local why = Rules.meleeHit(f, t, wid, now(), {
+		dist = to.Magnitude, look = look, to = to, los = to.Magnitude < 0.5 or Fight.castMap(eye, to.Unit, to.Magnitude) == nil,
+		speedF = Fight.speed(f), speedT = Fight.speed(t),
+	})
+	if why then return false end
+	local pr = Rules.parryAt(t, fr.Position - tr.Position, Fight.facing(t), now())
+	if pr > 0 then
+		-- parried: no damage, the attacker staggers and gets shoved off (a fall now is the parrier's)
+		local shove = Rules.stagger(f, fr.Position - tr.Position, pr == 2, now())
+		Fight.knock(f, shove, "parry")
+		Rules.tagged(f, t, "parry", now())
+		FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = uid(t), att = uid(f), pf = pr == 2, kind = "melee", st = f.staggerUntil - now(), from = tp })
+		callout(t, if pr == 2 then "PERFECT PARRY!" else "PARRY!", 0.9)
+		callout(f, "PARRIED", 0.8)
+		return true
+	end
+	local kb = look * (w.kb or 0) + Vector3.new(0, w.kbUp or 0, 0)
+	Fight.hurt(t, w.dmg, f, wid, false, kb, tp)
+	return true
+end
 
 -- ------------------------------------------------------------------ the remotes
 -- a swap. a second swap inside 0.15 s waits its turn instead of being lost (so client and server agree what's held)
@@ -275,31 +307,9 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 	if not array(targets, 6, function(x: any): boolean return typeof(x) == "Instance" end) then return end
 	local eye, fr = Fight.eye(f), Fight.root(f)
 	if not eye or not fr or not W[wid] or W[wid].kind ~= "melee" then return end
-	local w = W[wid]
 	for _, m in targets :: { Instance } do
 		local t = Fight.of(m)
-		local tr = t and Fight.root(t)
-		if not t or not tr then continue end
-		local tp = tr.Position -- feet + 1 m
-		local to = tp - eye
-		local why = Rules.meleeHit(f, t, wid, now(), {
-			dist = to.Magnitude, look = lk.Unit, to = to, los = Fight.castMap(eye, to.Unit, to.Magnitude) == nil,
-			speedF = Fight.speed(f), speedT = Fight.speed(t),
-		})
-		if why then continue end
-		local pr = Rules.parryAt(t, fr.Position - tr.Position, Fight.facing(t), now())
-		if pr > 0 then
-			-- parried: no damage, the attacker staggers and gets shoved off (a fall now is the parrier's)
-			local shove = Rules.stagger(f, fr.Position - tr.Position, pr == 2, now())
-			Fight.knock(f, shove, "parry")
-			Rules.tagged(f, t, "parry", now())
-			FxR:FireAllClients({ k = "parry", model = Fight.model(t), by = uid(t), att = uid(f), pf = pr == 2, kind = "melee", st = f.staggerUntil - now(), from = tp })
-			callout(t, if pr == 2 then "PERFECT PARRY!" else "PARRY!", 0.9)
-			callout(f, "PARRIED", 0.8)
-			continue
-		end
-		local kb = lk.Unit * (w.kb or 0) + Vector3.new(0, w.kbUp or 0, 0)
-		Fight.hurt(t, w.dmg, f, wid, false, kb, tp)
+		if t then applyMelee(f, t, wid, lk.Unit) end
 	end
 end)
 
@@ -310,6 +320,29 @@ ParryR.OnServerEvent:Connect(function(p: Player, yaw: unknown)
 	if Rules.parryStart(f, now(), yaw) then return end
 	FxR:FireAllClients({ k = "guard", model = Fight.model(f), by = p.UserId })
 end)
+
+-- the Range and back: ("training" | "ffa"), at most once a second
+local lastRoom: { [Player]: number } = {}
+remote("Room").OnServerEvent:Connect(function(p: Player, room: unknown)
+	if not spend(p) or (room ~= "training" and room ~= "ffa") then return end
+	local t = now()
+	if t - (lastRoom[p] or -math.huge) < 1 then return end
+	lastRoom[p] = t
+	local f = Fight.byPlayer[p]
+	if f then Fight.setRoom(f, room :: string) end
+end)
+-- the weapon picker (in Training): { primary, secondary, melee }, each a real weapon of that slot
+remote("Loadout").OnServerEvent:Connect(function(p: Player, list: unknown)
+	if not spend(p) then return end
+	local f = Fight.byPlayer[p]
+	if not f or f.room ~= "training" then return end
+	if not array(list, 3, function(x: any): boolean return type(x) == "string" and #x < 40 end) then return end
+	if Rules.setLoadout(f, list) then return end
+	p:SetAttribute("Loadout", table.concat(f.loadout, ","))
+	Fight.showWeapon(f)
+	for _, id in f.loadout do if W[id].mag then ammoSync(p, f, id, nil) end end
+end)
+Players.PlayerRemoving:Connect(function(p) lastRoom[p] = nil end)
 
 -- a late joiner gets the marbles already on the floor
 Players.PlayerAdded:Connect(function(p: Player)
@@ -327,5 +360,13 @@ Fight.onKill(function(info)
 	end
 end)
 
+Vote.init(Fight)
 Dummies.init(Fight, applyHitscan)
+Bots.init(Fight, {
+	applyHitscan = applyHitscan, applyMelee = applyMelee, makePatch = makePatch, body = Dummies.body,
+	shot = function(model: Instance?, wid: string, ends: { Vector3 })
+		for _, o in Players:GetPlayers() do ShotR:FireClient(o, { model = model, w = wid, ends = ends }) end
+	end,
+	fx = function(m: { [string]: any }) FxR:FireAllClients(m) end,
+})
 Fight.init()

@@ -149,6 +149,8 @@ function H.round(target: number, left: number, myKills: number)
 	topText.Text = ("first to %d · %d:%02d · you %d"):format(target, m, s, myKills)
 end
 
+function H.roundLine(text: string) topText.Text = text end
+
 -- ---------------------------------------------------------------- kill feed (top right, 6 lines, 7 s)
 local feed = Instance.new("Frame")
 feed.Name = "Feed"; feed.BackgroundTransparency = 1; feed.AnchorPoint = Vector2.new(1, 0); feed.Position = UDim2.new(1, -16, 0, 80)
@@ -232,7 +234,7 @@ local keysHint = gui.Parent and (gui.Parent :: Instance):FindFirstChild("Jankfir
 local hint = keysHint and keysHint:FindFirstChild("Keys") :: TextLabel?
 if hint then
 	hint.Size = UDim2.fromOffset(760, 22)
-	hint.Text = "1 Redline · 2 Marble Shotgun · 3 Katana · LMB fire · RMB aim / parry · R reload · shift run · C slide · hold E grapple · V camera"
+	hint.Text = "1 2 3 weapons · LMB fire · RMB aim / parry · R reload · shift run · C slide · hold E grapple · V camera · T training"
 end
 
 return H

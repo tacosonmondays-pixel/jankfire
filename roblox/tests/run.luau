@@ -159,6 +159,7 @@ do
 end
 -- ---------------------------------------------------------------- step 2: the weapons (tests/weapons.luau)
 require("./weapons")({ check = check, near = near, load = load, Config = Config, Movement = Movement })
+require("./core")({ check = check, near = near, load = load })
 -- every script compiles (there's no luau-analyze here: this at least catches syntax errors everywhere)
 do
 	local bad = {}
@@ -220,10 +221,15 @@ do
 		check(nSounds == #list and nSounds >= 30, ("a Sound for every rendered .ogg (%d)"):format(nSounds))
 		for _, s in list do check(fs.isFile("assets/sounds/" .. s.name .. ".ogg"), "rendered: " .. s.name) end
 		check(sss.Jankfire:FindFirstChild("Combat") and sss.Jankfire.Combat.ClassName == "Script", "the weapons server script")
-		for _, mn in { "Rules", "Fight", "Dummies" } do check(sss.Jankfire:FindFirstChild(mn) and sss.Jankfire[mn].ClassName == "ModuleScript", "server module " .. mn) end
+		check(ws.Map:FindFirstChild("Range") ~= nil and ws.Map.Range:GetAttribute("MapId") == "range", "step 3: the Range is in the place (Training)")
+		local cfg = game:GetService("ServerStorage"):FindFirstChild("JankfireConfig")
+		check(cfg ~= nil and cfg:GetAttribute("Bots") == 5, "the knobs: ServerStorage.JankfireConfig (Bots 5)")
+		for _, rn in { "Vote", "Room", "Loadout" } do check(rs.JankfireRemotes:FindFirstChild(rn) ~= nil, "step 3 remote " .. rn) end
+		check(game:GetService("Players").CharacterAutoLoads == false, "characters don't auto-load (the server spawns everyone)")
+		for _, mn in { "Rules", "Fight", "Dummies", "Bots", "BotBrain", "Vote" } do check(sss.Jankfire:FindFirstChild(mn) and sss.Jankfire[mn].ClassName == "ModuleScript", "server module " .. mn) end
 		check(cl:FindFirstChild("Arsenal") and cl.Arsenal.ClassName == "LocalScript", "the weapons client script")
-		for _, mn in { "Body", "Viewmodel", "Fx", "Sfx", "FightHud" } do check(cl:FindFirstChild(mn) and cl[mn].ClassName == "ModuleScript", "client module " .. mn) end
-		for _, mn in { "Weapons", "Hitbox", "Marbles", "WeaponModels", "Anims" } do check(rs.Jankfire:FindFirstChild(mn) ~= nil, "shared module " .. mn) end
+		for _, mn in { "Body", "Viewmodel", "Fx", "Sfx", "FightHud", "MatchUi" } do check(cl:FindFirstChild(mn) and cl[mn].ClassName == "ModuleScript", "client module " .. mn) end
+		for _, mn in { "Weapons", "Hitbox", "Marbles", "WeaponModels", "Anims", "Modes", "Maps" } do check(rs.Jankfire:FindFirstChild(mn) ~= nil, "shared module " .. mn) end
 	else
 		print("(no built place yet: node tools/roblox/build.mjs)")
 	end

@@ -19,6 +19,9 @@ local VM = require(script.Parent:WaitForChild("Viewmodel"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Body = require(script.Parent:WaitForChild("Body"))
+local MatchUi = require(script.Parent:WaitForChild("MatchUi"))
+local Maps = require(Shared:WaitForChild("Maps"))
+local Lighting = game:GetService("Lighting")
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
@@ -47,8 +50,19 @@ local view = { pitch = 0, yaw = 0 } -- the visual offsets applied to the camera 
 local equipT = 0
 local smear: Trail? = nil
 
+-- your loadout (the server sets it: the default three, or what you picked on the Range) and your room
+local function loadout(): { string }
+	local v = me:GetAttribute("Loadout")
+	local out = {}
+	if type(v) == "string" then for w in string.gmatch(v, "[^,]+") do if W[w] then table.insert(out, w) end end end
+	return if #out == 3 then out else table.clone(Weapons.loadout)
+end
+local function myRoom(): string
+	local r = me:GetAttribute("Room")
+	return if type(r) == "string" then r else "ffa"
+end
 local function resetAmmo()
-	for _, id in Weapons.loadout do
+	for _, id in loadout() do
 		local w = W[id]
 		if w.mag then ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		nextShot[id] = 0
@@ -94,14 +108,18 @@ local function targets(): { { m: Model, feet: Vector3 } }
 		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if hum and root and hum.Health > 0 then table.insert(out, { m = m, feet = Hitbox.feet(root.Position) }) end
 	end
+	-- only who's in your room: the match has people and bots, the Range has people and dummies
+	local room = myRoom()
 	for _, p in Players:GetPlayers() do
-		if p ~= me and p.Character then addModel(p.Character) end
+		local pr = p:GetAttribute("Room")
+		if p ~= me and p.Character and (pr == nil or pr == room) then addModel(p.Character) end
 	end
-	local d = workspace:FindFirstChild("Dummies")
+	local d = workspace:FindFirstChild(if room == "training" then "Dummies" else "Bots")
 	if d then for _, m in d:GetChildren() do if m:IsA("Model") then addModel(m) end end end
 	return out
 end
 
+local voteOpenRef: () -> boolean = function() return false end
 -- ---------------------------------------------------------------- camera: kick (stays, like the web game) + punch/shake (visual)
 local function kickCam(pitch: number, yaw: number)
 	camera.CFrame = camera.CFrame * CFrame.Angles(pitch, yaw, 0)
@@ -114,6 +132,11 @@ RunService:BindToRenderStep("JankfireCamera", Enum.RenderPriority.Camera.Value +
 	local tp, ty = px + sx, py + sy
 	camera.CFrame = camera.CFrame * CFrame.Angles(tp - view.pitch, ty - view.yaw, 0) * CFrame.Angles(0, 0, pz)
 	view.pitch, view.yaw = tp, ty
+	-- a menu open (the weapon picker, the vote): free the mouse so the cards can be clicked
+	if MatchUi.pickerOpen() or voteOpenRef() then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
 end)
 
 -- ---------------------------------------------------------------- swapping, reloading
@@ -180,7 +203,7 @@ local function fireGun(now: number)
 	if a.mag <= 0 then Sfx.play("empty"); reload(); return end
 	local iv = 1 / Weapons.fireRate(w, hp())
 	nextShot[held] = math.max(nextShot[held], now - math.min(0.04, iv / 2)) + iv
-	a.mag -= 1
+	if myRoom() ~= "training" then a.mag -= 1 end -- the Range: infinite ammo
 	firedT = now
 	local eye, look = eyeAndAim()
 	local spread = ((w.spread or 0) + bloom) * (1 + ((if w.ads then w.ads.spread else 1) - 1) * aim)
@@ -293,10 +316,16 @@ local function tryParry(now: number)
 end
 
 -- ---------------------------------------------------------------- input
-local KEYS = { [Enum.KeyCode.One] = "redline", [Enum.KeyCode.Two] = "marbles", [Enum.KeyCode.Three] = "katana" }
+local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4 }
+local voteOpen: string? = nil -- the open vote stage: 1-4 vote instead of swapping
+voteOpenRef = function() return voteOpen ~= nil end
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp then return end
 	local now = os.clock()
+	if io.KeyCode == Enum.KeyCode.T then MatchUi.onRoom(if myRoom() == "training" then "ffa" else "training"); return end
+	if io.KeyCode == Enum.KeyCode.B then MatchUi.togglePicker(); return end
+	if voteOpen and KEYS[io.KeyCode] then remote("Vote"):FireServer(voteOpen, KEYS[io.KeyCode]); return end
+	if MatchUi.pickerOpen() then return end
 	if io.UserInputType == Enum.UserInputType.MouseButton1 then
 		trigger = true
 		local _, _, root = myChar()
@@ -307,7 +336,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 		aimHeld = true
 		tryParry(now)
 	elseif io.KeyCode == Enum.KeyCode.R then reload()
-	elseif KEYS[io.KeyCode] then equip(KEYS[io.KeyCode])
+	elseif KEYS[io.KeyCode] and loadout()[KEYS[io.KeyCode]] then equip(loadout()[KEYS[io.KeyCode]])
 	end
 end)
 UserInputService.InputEnded:Connect(function(io: InputObject)
@@ -316,9 +345,10 @@ UserInputService.InputEnded:Connect(function(io: InputObject)
 end)
 UserInputService.InputChanged:Connect(function(io: InputObject, gp: boolean)
 	if gp or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
-	local i = table.find(Weapons.loadout, held) or 1
-	i = (i - 1 + (if io.Position.Z > 0 then -1 else 1)) % #Weapons.loadout + 1
-	equip(Weapons.loadout[i])
+	local lo = loadout()
+	local i = table.find(lo, held) or 1
+	i = (i - 1 + (if io.Position.Z > 0 then -1 else 1)) % #lo + 1
+	equip(lo[i])
 end)
 
 -- ---------------------------------------------------------------- the third-person pose for everyone holding something
@@ -369,13 +399,15 @@ local function watchPlayer(p: Player)
 end
 for _, p in Players:GetPlayers() do watchPlayer(p) end
 Players.PlayerAdded:Connect(watchPlayer)
-task.spawn(function()
-	local dummies = workspace:WaitForChild("Dummies", 10)
-	if dummies then
-		dummies.ChildAdded:Connect(function(m) if m:IsA("Model") then watchModel(m) end end)
-		for _, m in dummies:GetChildren() do if m:IsA("Model") then watchModel(m) end end
-	end
-end)
+for _, fname in { "Dummies", "Bots" } do
+	task.spawn(function()
+		local fo = workspace:WaitForChild(fname, 10)
+		if fo then
+			fo.ChildAdded:Connect(function(m) if m:IsA("Model") then watchModel(m) end end)
+			for _, m in fo:GetChildren() do if m:IsA("Model") then watchModel(m) end end
+		end
+	end)
+end
 
 -- ---------------------------------------------------------------- what the server says
 remote("Dmg").OnClientEvent:Connect(function(d: any)
@@ -398,7 +430,7 @@ remote("Kill").OnClientEvent:Connect(function(k: any)
 	if type(k) ~= "table" or type(k.w) ~= "string" then return end
 	local wid = if k.w == "void" and type(k.via) == "string" then k.via else k.w
 	local victim = tostring(k.v)
-	if not k.dummy then
+	if not k.dummy and (k.room == nil or k.room == myRoom()) then
 		H.feed(if type(k.k) == "string" then k.k else nil, wid, victim, if k.w == "void" then "into the smog" else nil)
 	end
 	if k.kid == me.UserId then
@@ -502,8 +534,11 @@ remote("Round").OnClientEvent:Connect(function(r: any)
 	if type(r) ~= "table" then return end
 	if r.start then
 		H.hideEnd()
-		Hud.callout("ROUND START", 1.4)
-		Sfx.play("round_start")
+		MatchUi.voteDone(); voteOpen = nil
+		if myRoom() == "ffa" then
+			Hud.callout("ROUND START", 1.4)
+			Sfx.play("round_start")
+		end
 	elseif r.over then
 		Sfx.play("round_end")
 		H.endScreen(if type(r.winner) == "string" then r.winner else nil, r.winnerId == me.UserId, if type(r.board) == "table" then r.board else {}, if type(r.next) == "number" then r.next else 12)
@@ -524,9 +559,51 @@ me.CharacterAdded:Connect(function()
 	bloom, aim, shake = 0, 0, 0
 	H.dead(nil)
 	held = ""
-	equip("redline")
+	equip(loadout()[1])
 end)
-if me.Character then task.defer(equip, "redline") end
+if me.Character then task.defer(function() equip(loadout()[1]) end) end
+-- a new loadout (the Range's picker): fresh mags for anything new, swap off a weapon you no longer carry
+me:GetAttributeChangedSignal("Loadout"):Connect(function()
+	local lo = loadout()
+	for _, id in lo do if W[id].mag and not ammo[id] then ammo[id] = { mag = W[id].mag :: number, reloadUntil = 0 } end; nextShot[id] = nextShot[id] or 0 end
+	if not table.find(lo, held) then held = ""; equip(lo[1]) end
+end)
+
+-- ---------------------------------------------------------------- step 3: the room button, the picker, the vote
+MatchUi.onRoom = function(room: string) remote("Room"):FireServer(room) end
+MatchUi.onLoadout = function(list: { string }) remote("Loadout"):FireServer(list) end
+MatchUi.onVote = function(stage: string, i: number) remote("Vote"):FireServer(stage, i) end
+remote("Vote").OnClientEvent:Connect(function(v: any)
+	if type(v) ~= "table" then return end
+	if v.op == "stage" and type(v.cards) == "table" and type(v.stage) == "string" then
+		H.hideEnd()
+		MatchUi.voteStage(v.stage, v.cards, if type(v.ends) == "number" then v.ends else 0, v.single == true)
+		voteOpen = if v.single then nil else v.stage
+	elseif v.op == "counts" and type(v.counts) == "table" then MatchUi.voteCounts(v.stage, v.counts)
+	elseif v.op == "result" and type(v.win) == "number" then MatchUi.voteResult(v.stage, v.win, if type(v.counts) == "table" then v.counts else {}); voteOpen = nil
+	elseif v.op == "reveal" then MatchUi.reveal(tostring(v.gameName), tostring(v.mapName)); voteOpen = nil
+	elseif v.op == "done" then MatchUi.voteDone(); voteOpen = nil end
+end)
+
+-- each map's own sky: the Range is a sunny afternoon, Rooftop keeps the place's night (client-side lighting)
+local night = { ClockTime = Lighting.ClockTime, Brightness = Lighting.Brightness, Ambient = Lighting.Ambient, OutdoorAmbient = Lighting.OutdoorAmbient, FogColor = Lighting.FogColor, FogStart = Lighting.FogStart, FogEnd = Lighting.FogEnd }
+local litFor = ""
+local function lightFor(pos: Vector3)
+	local m = Maps.at(pos)
+	local id = m and m:GetAttribute("MapId")
+	if type(id) ~= "string" or id == litFor then return end
+	litFor = id
+	if id == "range" then
+		local fc, fs, fe = m:GetAttribute("FogColor"), m:GetAttribute("FogStart"), m:GetAttribute("FogEnd")
+		Lighting.ClockTime = 14.5; Lighting.Brightness = 2.2
+		Lighting.Ambient = Color3.fromRGB(120, 130, 150); Lighting.OutdoorAmbient = Color3.fromRGB(150, 165, 190)
+		if typeof(fc) == "Color3" then Lighting.FogColor = fc end
+		if type(fs) == "number" then Lighting.FogStart = fs end
+		if type(fe) == "number" then Lighting.FogEnd = fe end
+	else
+		for k, v in night do (Lighting :: any)[k] = v end
+	end
+end
 
 -- ---------------------------------------------------------------- every frame
 RunService.RenderStepped:Connect(function(dt: number)
@@ -584,7 +661,10 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local ends = MatchState:GetAttribute("EndsAt")
 	local target = MatchState:GetAttribute("Target")
 	local kills = me:GetAttribute("Kills")
-	if type(ends) == "number" and type(target) == "number" then
+	if root then lightFor(root.Position) end
+	MatchUi.step()
+	if myRoom() == "training" then H.roundLine("TRAINING · nobody is judging · B weapons · T leave")
+	elseif type(ends) == "number" and type(target) == "number" then
 		H.round(target, if MatchState:GetAttribute("Phase") == "live" then ends - workspace:GetServerTimeNow() else 0, if type(kills) == "number" then kills else 0)
 	end
 	poseStep(now)

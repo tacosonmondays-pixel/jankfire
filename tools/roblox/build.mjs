@@ -11,6 +11,7 @@ const tool = (n) => { for (const d of [...(process.env.PATH || '').split(path.de
 const run = (cmd, args, cwd = ROOT) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
 
 run(process.execPath, [path.join(HERE, 'convert.mjs'), 'rooftop']);
+run(process.execPath, [path.join(HERE, 'convert.mjs'), 'range', '20000,0,0']); // step 3: Training (the Range), 20000 studs east
 // step 2: a Sound per rendered .ogg in ReplicatedStorage.JankfireSounds (SoundId empty until the owner uploads it;
 // the File attribute says which file goes in it). list from tools/roblox/render_sounds.cjs
 {
@@ -25,5 +26,6 @@ run(rojo, ['build', 'place.project.json', '-o', 'build/JANKFIRE-Rooftop.rbxl'], 
 run(rojo, ['build', 'place.project.json', '-o', 'build/JANKFIRE-Rooftop.rbxlx'], RB);
 if (process.argv.includes('--no-test')) process.exit(0);
 run(process.execPath, [path.join(HERE, 'test-convert.mjs'), 'rooftop']);
+run(process.execPath, [path.join(HERE, 'test-convert.mjs'), 'range']);
 const lune = tool('lune');
 if (lune) run(lune, ['run', 'tests/run'], RB); else console.log('(no lune: skipped the Luau tests)');

@@ -23,7 +23,10 @@
         "Slip": { "$className": "RemoteEvent" },
         "Patch": { "$className": "RemoteEvent" },
         "Round": { "$className": "RemoteEvent" },
-        "Spawn": { "$className": "RemoteEvent" }
+        "Spawn": { "$className": "RemoteEvent" },
+        "Vote": { "$className": "RemoteEvent" },
+        "Room": { "$className": "RemoteEvent" },
+        "Loadout": { "$className": "RemoteEvent" }
       },
       "Match": { "$className": "Folder" },
       "JankfireWeapons": { "$className": "Folder" },
@@ -37,7 +40,11 @@
       "Jankfire": { "$path": "src/server" }
     },
     "ServerStorage": {
-      "JankfireMeshes": { "$className": "Folder" }
+      "JankfireMeshes": { "$className": "Folder" },
+      "JankfireConfig": {
+        "$className": "Configuration",
+        "$attributes": { "Bots": 5, "Target": 0, "RoundTime": 0 }
+      }
     },
     "StarterPlayer": {
       "$properties": {
@@ -59,7 +66,8 @@
       },
       "Map": {
         "$className": "Folder",
-        "Rooftop": { "$path": "build/Rooftop.model.json" }
+        "Rooftop": { "$path": "build/Rooftop.model.json" },
+        "Range": { "$path": "build/Range.model.json" }
       }
     },
     "Lighting": {

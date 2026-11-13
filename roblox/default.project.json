@@ -23,7 +23,10 @@
         "Slip": { "$className": "RemoteEvent" },
         "Patch": { "$className": "RemoteEvent" },
         "Round": { "$className": "RemoteEvent" },
-        "Spawn": { "$className": "RemoteEvent" }
+        "Spawn": { "$className": "RemoteEvent" },
+        "Vote": { "$className": "RemoteEvent" },
+        "Room": { "$className": "RemoteEvent" },
+        "Loadout": { "$className": "RemoteEvent" }
       },
       "Match": { "$className": "Folder" }
     },

@@ -1,8 +1,8 @@
 --!strict
--- two test dummies so one person can try everything: "Dummy" strafes back and forth (shoot it, slice it, marble it),
--- "Plinker" stands still and fires short Redline bursts at the nearest player it can see (so you can feel getting
--- shot, and practise the katana parry on real bullets). they never count for score or the kill feed (like the web
--- game's training dummies), but they do grow your katana. bots proper (MODES.md bot brain) come with the match core
+-- the Range's test dummies (Training): one on every dummy spot of the map (shared/map.js range.dummies), some sliding
+-- side to side, back 0.7 s after they die. plus "Plinker" at the back, who fires short Redline bursts at whoever's
+-- training in sight, so you can feel getting shot and practise the katana parry on real bullets. they never score and
+-- never show in the kill feed (like the web game's dummies), but they do grow your katana
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
+local Maps = require(Shared:WaitForChild("Maps"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local ShotR = Remotes:WaitForChild("Shot") :: RemoteEvent
 
@@ -17,7 +18,7 @@ type Fighter = Rules.Fighter
 local Dummies = {}
 local S = Weapons.S
 local list: { Fighter } = {}
-local brain: { [Fighter]: { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number } } = {}
+local brain: { [Fighter]: { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number, move: number } } = {}
 local Fight: any
 local applyHitscan: any
 
@@ -54,7 +55,9 @@ local function body(name: string, color: Color3): Model
 	return mm
 end
 
-local function make(f: Fighter)
+Dummies.body = body
+
+local function make(f: Fighter, _at: Vector3?)
 	local plinker = f.name == "Plinker"
 	local m = body(f.name, if plinker then Color3.fromRGB(255, 59, 59) else Color3.fromRGB(255, 225, 77))
 	local b = brain[f]
@@ -69,6 +72,7 @@ local function make(f: Fighter)
 	local hs = m:FindFirstChild("Health")
 	if hs then hs:Destroy() end
 	m:SetAttribute("Dummy", true)
+	if hum then hum.NameDisplayDistance = 40 end
 	m.Parent = folder
 	local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if root then pcall(function() root:SetNetworkOwner(nil) end) end
@@ -99,7 +103,7 @@ local function plink(f: Fighter)
 	if not eye then return end
 	local best, bestD = nil, 60 * S
 	for _, t in Fight.all do
-		if t.kind == "player" and t.alive then
+		if t.kind == "player" and t.alive and t.room == "training" then
 			local c = Fight.root(t)
 			if c and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) then best, bestD = t, (c.Position - eye).Magnitude end
 		end
@@ -137,18 +141,15 @@ end
 
 function Dummies.tick(n: number)
 	if not Fight then return end
-	local map = workspace:FindFirstChild("Map")
-	local m1 = map and map:FindFirstChildWhichIsA("Model")
-	local killY = (m1 and m1:GetAttribute("KillY")) or -485
 	for _, f in list do
 		local b = brain[f]
 		local hum, root = Fight.hum(f), Fight.root(f)
 		if not f.alive or not hum or not root then continue end
-		if root.Position.Y < (killY :: number) then Fight.void(f); continue end
+		if root.Position.Y < Maps.killY(root.Position) then Fight.void(f); continue end
 		if hum.PlatformStand and n > b.slipUntil then hum.PlatformStand = false; hum:ChangeState(Enum.HumanoidStateType.GettingUp) end
-		if f.name == "Dummy" and n > b.flip and not hum.PlatformStand then
-			b.flip = n + 1.6; b.side = -b.side
-			hum:MoveTo(b.home + Vector3.new(b.side * 4 * S, 0, 0))
+		if b.move > 0 and n > b.flip and not hum.PlatformStand then -- slides side to side (map.js dummies[].move)
+			b.flip = n + math.max(0.8, b.move / 12); b.side = -b.side
+			hum:MoveTo(b.home + Vector3.new(b.side * b.move, 0, 0))
 		elseif f.name == "Plinker" and n > b.shoot then
 			b.shoot = n + 3
 			plink(f)
@@ -159,11 +160,27 @@ end
 function Dummies.init(fight: any, apply: any)
 	Fight, applyHitscan = fight, apply
 	Fight.makeDummy = make
-	local sp = Fight.spawnPoints()
-	for i, name in { "Dummy", "Plinker" } do
-		local f = Rules.newFighter("dummy", name, nil)
-		local home = sp[math.min(#sp, i * 2)] or Vector3.new(i * 10, 0, 0)
-		brain[f] = { home = home, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0 }
+	local range = Maps.byId("range")
+	local spots = range and range:FindFirstChild("Dummies")
+	local homes: { { p: Vector3, move: number } } = {}
+	if spots then
+		for _, d in spots:GetChildren() do
+			if d:IsA("BasePart") then
+				local mv = d:GetAttribute("Move")
+				table.insert(homes, { p = d.Position, move = if type(mv) == "number" then mv else 0 })
+			end
+		end
+	end
+	table.sort(homes, function(a, b) return a.p.Z > b.p.Z end)
+	-- Plinker: at the back of the range, 60 m out, facing the firing line
+	local off = range and range:GetAttribute("Offset")
+	local base = if typeof(off) == "Vector3" then off else Vector3.new(20000, 0, 0)
+	table.insert(homes, { p = base + Vector3.new(14 * S, 0, -60 * S), move = 0 })
+	for i, h in homes do
+		local plinker = i == #homes
+		local f = Rules.newFighter("dummy", if plinker then "Plinker" else "Dummy", nil)
+		f.room = "training"
+		brain[f] = { home = h.p, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0, move = h.move }
 		table.insert(list, f)
 		table.insert(Fight.all, f)
 		Fight.spawn(f)

@@ -9,6 +9,8 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
+local Maps = require(Shared:WaitForChild("Maps"))
+local Modes = require(Shared:WaitForChild("Modes"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local R = {
@@ -26,7 +28,9 @@ local Fight = {}
 Fight.byPlayer = {} :: { [Player]: Fighter }
 Fight.byModel = {} :: { [Model]: Fighter }
 Fight.all = {} :: { Fighter }
-Fight.live = true -- the round is on (false while the end screen shows)
+Fight.live = true -- the round is on (false while the end screen and the vote show)
+-- the match being played in the "ffa" room (the Range runs beside it, untouched by any of this)
+Fight.match = { game = "dm", map = "rooftop", target = Weapons.FFA.kills, time = Weapons.FFA.time, withBots = false }
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -170,10 +174,10 @@ local onKillHooks: { (Rules.KillInfo) -> () } = {}
 function Fight.onKill(fn: (Rules.KillInfo) -> ()) table.insert(onKillHooks, fn) end
 
 local function scheduleRespawn(f: Fighter)
-	local delay = if f.kind == "dummy" then 3 else FFA.respawn
+	local delay = if f.kind == "dummy" then 0.7 else FFA.respawn
 	task.delay(delay, function()
 		if f.alive or not table.find(Fight.all, f) then return end
-		if not Fight.live and f.kind == "player" then return end -- the end screen: everyone spawns with the next round
+		if not Fight.live and f.room == "ffa" then return end -- the end screen + vote: everyone spawns with the next round
 		Fight.spawn(f)
 	end)
 end
@@ -212,7 +216,7 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 	R.Kill:FireAllClients({
 		k = if k then k.name else nil, kid = if k and k.kind == "player" then (k.ref :: Player).UserId else nil,
 		v = v.name, vid = if v.kind == "player" then (v.ref :: Player).UserId else nil, dummy = v.kind == "dummy",
-		w = info.w, via = info.via, kat = if k then k.kat else nil,
+		w = info.w, via = info.via, kat = if k then k.kat else nil, room = v.room,
 	})
 	for _, fn in onKillHooks do fn(info) end
 	scheduleRespawn(v)
@@ -221,7 +225,7 @@ end
 
 -- the one way damage lands: knockback first (it lands even through spawn protection, like the web game), then HP
 function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: boolean, kb: Vector3?, at: Vector3?): number
-	if not Fight.live or not t.alive then return 0 end
+	if (not Fight.live and t.room == "ffa") or not t.alive then return 0 end
 	if kb then Fight.knock(t, kb, wid) end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
@@ -243,35 +247,27 @@ function Fight.void(f: Fighter)
 end
 
 -- ------------------------------------------------------------------ spawning
-local function spawnPoints(): { Vector3 }
-	local out = {}
-	local map = workspace:FindFirstChild("Map")
-	local sp = map and map:FindFirstChild("Spawns", true)
-	if sp then
-		for _, s in sp:GetChildren() do
-			if s:IsA("BasePart") then table.insert(out, s.Position + Vector3.new(0, 0.1, 0)) end
-		end
-	end
+-- the map a fighter plays on: the Range in training, else the match's map
+function Fight.mapOf(f: Fighter): Model?
+	return Maps.byId(if f.room == "training" then "range" else Fight.match.map)
+end
+local function spawnPoints(f: Fighter): { Vector3 }
+	local out = Maps.spawns(Fight.mapOf(f))
 	if #out == 0 then table.insert(out, Vector3.new(0, 5, 0)) end
 	return out
 end
 Fight.spawnPoints = spawnPoints
 
--- the spawn farthest from the nearest living enemy, plus a random 0-45 studs (MODES.md pickSpawn)
+-- the spawn farthest from the nearest living enemy in your room, plus a random 0-45 studs (MODES.md pickSpawn)
 function Fight.pickSpawn(f: Fighter): Vector3
-	local best, bestScore = nil, -math.huge
-	for _, p in spawnPoints() do
-		local near = 1e6
-		for _, o in Fight.all do
-			if o ~= f and o.alive and o.kind == "player" then
-				local ft = Fight.feet(o)
-				if ft then near = math.min(near, (ft - p).Magnitude) end
-			end
+	local enemies = {}
+	for _, o in Fight.all do
+		if o ~= f and o.alive and o.room == f.room and o.kind ~= "dummy" then
+			local ft = Fight.feet(o)
+			if ft then table.insert(enemies, ft) end
 		end
-		local score = near + math.random() * 15 * Weapons.S
-		if score > bestScore then best, bestScore = p, score end
 	end
-	return best :: Vector3
+	return Rules.pickSpawn(spawnPoints(f), enemies, math.random) :: Vector3
 end
 
 local spawning: { [Fighter]: boolean } = {}
@@ -279,8 +275,8 @@ function Fight.spawn(f: Fighter)
 	if f.kind ~= "player" then
 		Rules.spawn(f, now())
 		if f.ref then Fight.byModel[f.ref] = nil; if f.ref.Parent then f.ref:Destroy() end end
-		local make = Fight.makeDummy
-		if make then make(f) end
+		local make = if f.kind == "bot" then Fight.makeBot else Fight.makeDummy
+		if make then make(f, Fight.pickSpawn(f)) end
 		syncHp(f)
 		return
 	end
@@ -319,7 +315,9 @@ function Fight.addPlayer(p: Player): Fighter
 	local f = Rules.newFighter("player", p.DisplayName, p)
 	Fight.byPlayer[p] = f
 	table.insert(Fight.all, f)
-	p:SetAttribute("Kills", 0); p:SetAttribute("Deaths", 0); p:SetAttribute("Kat", 0)
+	p:SetAttribute("Kills", 0); p:SetAttribute("Deaths", 0); p:SetAttribute("Kat", 0); p:SetAttribute("Room", "ffa")
+	p:SetAttribute("Loadout", table.concat(f.loadout, ","))
+	if Fight.onSeats then task.defer(Fight.onSeats :: any) end
 	p.CharacterAdded:Connect(function(ch)
 		Fight.byModel[ch] = f
 		ch.AncestryChanged:Connect(function()
@@ -335,19 +333,26 @@ function Fight.removePlayer(p: Player)
 	Fight.byPlayer[p] = nil
 	local i = table.find(Fight.all, f)
 	if i then table.remove(Fight.all, i) end
+	if Fight.onSeats then task.defer(Fight.onSeats :: any) end
 end
 
--- ------------------------------------------------------------------ the FFA match
+-- ------------------------------------------------------------------ the match (the "ffa" room)
 local function setMatch(phase: string, endsAt: number)
 	MatchState:SetAttribute("Phase", phase)
 	MatchState:SetAttribute("EndsAt", endsAt)
-	MatchState:SetAttribute("Target", FFA.kills)
+	MatchState:SetAttribute("Target", Fight.match.target)
+	MatchState:SetAttribute("Game", Fight.match.game)
+	MatchState:SetAttribute("Map", Fight.match.map)
 end
+Fight.setMatch = setMatch
 
--- the board: kills high to low, then deaths low to high (MODES.md endRound). dummies aren't on it
+local function inMatch(f: Fighter): boolean return f.room == "ffa" and (f.kind == "player" or f.kind == "bot") end
+Fight.inMatch = inMatch
+
+-- the board: kills high to low, then deaths low to high (MODES.md endRound). the match's players and bots
 function Fight.board(): { { any } }
 	local rows = {}
-	for _, f in Fight.all do if f.kind == "player" then table.insert(rows, f) end end
+	for _, f in Fight.all do if inMatch(f) then table.insert(rows, f) end end
 	table.sort(rows, function(a, b)
 		if a.kills ~= b.kills then return a.kills > b.kills end
 		return a.deaths < b.deaths
@@ -357,45 +362,83 @@ function Fight.board(): { { any } }
 	return out
 end
 
-function Fight.startRound()
+-- hooks: the vote (after a round) and the bot seats (before one, and when people come and go)
+Fight.onRoundOver = nil :: ((board: { { any } }) -> ())?
+Fight.onSeats = nil :: (() -> ())?
+
+-- a round: the mode and map (from the vote), everyone's score reset, a fresh body for everyone in the match
+function Fight.startRound(game: string?, map: string?)
+	Fight.match.game = game or Fight.match.game
+	Fight.match.map = map or Fight.match.map
+	if Fight.onSeats then Fight.onSeats() end
+	local bots = 0
+	for _, f in Fight.all do if f.kind == "bot" then bots += 1 end end
+	Fight.match.withBots = bots > 0
+	Fight.match.target, Fight.match.time = Modes.limits(Fight.match.game, Fight.match.withBots)
+	-- the test knobs (ServerStorage.JankfireConfig: Target, RoundTime; 0 = the mode's own)
+	local cfg = game:GetService("ServerStorage"):FindFirstChild("JankfireConfig")
+	local kt, rt = cfg and cfg:GetAttribute("Target"), cfg and cfg:GetAttribute("RoundTime")
+	if type(kt) == "number" and kt > 0 then Fight.match.target = kt end
+	if type(rt) == "number" and rt > 0 then Fight.match.time = rt end
 	Fight.live = true
 	for _, f in Fight.all do
+		if not inMatch(f) then continue end
 		f.kills, f.deaths, f.kat = 0, 0, 0
 		if f.kind == "player" then
 			local p = f.ref :: Player
 			p:SetAttribute("Kills", 0); p:SetAttribute("Deaths", 0); p:SetAttribute("Kat", 0)
 		end
 	end
-	setMatch("live", workspace:GetServerTimeNow() + FFA.time)
+	setMatch("live", workspace:GetServerTimeNow() + Fight.match.time)
 	for _, f in Fight.all do
-		if f.kind == "player" then f.alive = false end -- a fresh body for everyone, alive or not
+		if not inMatch(f) then continue end
+		f.alive = false -- a fresh body for everyone, alive or not
 		task.spawn(Fight.spawn, f)
 	end
-	R.Round:FireAllClients({ start = true, target = FFA.kills })
+	R.Round:FireAllClients({ start = true, target = Fight.match.target, game = Fight.match.game, map = Fight.match.map })
 end
 
+-- the end: the winner is the top of the board, with at least one kill (MODES.md); then the vote
 function Fight.endRound()
 	if not Fight.live then return end
 	Fight.live = false
 	local board = Fight.board()
 	local top = board[1]
-	local winner = if top and top[2] >= 1 then top[1] else nil -- needs at least one kill
-	setMatch("over", workspace:GetServerTimeNow() + FFA.over)
-	R.Round:FireAllClients({ over = true, winner = winner, winnerId = if top and winner then top[4] else nil, board = board, next = FFA.over })
-	task.delay(FFA.over, Fight.startRound)
+	local winner = if top and top[2] >= 1 then top[1] else nil
+	local screen = if Fight.onRoundOver then 5 else FFA.over -- (then the vote)
+	setMatch("over", workspace:GetServerTimeNow() + screen)
+	R.Round:FireAllClients({ over = true, winner = winner, winnerId = if top and winner then top[4] else nil, board = board, next = screen, vote = Fight.onRoundOver ~= nil })
+	if Fight.onRoundOver then
+		task.spawn(Fight.onRoundOver :: any, board)
+	else
+		task.delay(FFA.over, Fight.startRound)
+	end
 end
 
 function Fight.checkWin()
 	if not Fight.live then return end
 	for _, f in Fight.all do
-		if f.kind == "player" and f.kills >= FFA.kills then Fight.endRound(); return end
+		if inMatch(f) and f.kills >= Fight.match.target then Fight.endRound(); return end
 	end
 	local ends = MatchState:GetAttribute("EndsAt")
 	if typeof(ends) == "number" and workspace:GetServerTimeNow() >= ends then Fight.endRound() end
 end
 
+-- go to the Range or back to the match: a fresh body there (no death, no feed)
+function Fight.setRoom(f: Fighter, room: string)
+	if f.kind ~= "player" or (room ~= "ffa" and room ~= "training") or f.room == room then return end
+	f.room = room
+	f.alive = false
+	f.tag = nil
+	local p = f.ref :: Player
+	p:SetAttribute("Room", room)
+	if room == "ffa" and not Fight.live then return end -- the vote's on: you're in with the next round
+	task.spawn(Fight.spawn, f)
+	if Fight.onSeats then Fight.onSeats() end
+end
+
 function Fight.init()
-	setMatch("live", workspace:GetServerTimeNow() + FFA.time)
+	setMatch("live", workspace:GetServerTimeNow() + Fight.match.time)
 	Players.CharacterAutoLoads = false
 	-- spawns are picked by the server; no ForceField (spawn protection is a server check)
 	for _, s in workspace:GetDescendants() do
@@ -404,6 +447,7 @@ function Fight.init()
 	for _, p in Players:GetPlayers() do Fight.addPlayer(p) end
 	Players.PlayerAdded:Connect(Fight.addPlayer)
 	Players.PlayerRemoving:Connect(Fight.removePlayer)
+	task.defer(Fight.startRound) -- the first round (bots take their seats, limits from who's here)
 	task.spawn(function()
 		while true do
 			task.wait(0.5)
