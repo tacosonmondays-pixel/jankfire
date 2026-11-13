@@ -98,7 +98,7 @@ import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
-import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
+import { initEndscreen, esBack, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft, refreshHero, heroInto } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
@@ -107,7 +107,7 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { initHub, hubShown, hubLobbyShown, hubInvite } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { lobbySceneFrame, lobbySceneOn, setLobbyMe } from './lobbyscenes/index.js'; // a 3D place behind each mode's lobby (docs/menu/LOBBY_SCENES.md)
@@ -125,6 +125,7 @@ import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
 import { waterPhysics } from './liquids.js';
+import { updateWeather, wxPre, wxPost } from './weather.js'; // rain and co (the server's timeline, Blender kits)
 import { kbLock } from './kblock.js'; // fullscreen: Ctrl+W & co go to the game, not the browser (crouch is Left Ctrl)
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
@@ -180,6 +181,7 @@ initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
   unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  back: (mode) => backToLobby(mode), // an offline single-mode match: LOBBY
   level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
   gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
     const me = account.me;
@@ -516,6 +518,7 @@ bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
+$('fxWeather').checked = S.weather !== false; $('fxWeather').addEventListener('change', () => { S.weather = $('fxWeather').checked; saveSettings(); }); // rain, clouds, lightning (weather.js)
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
 $('fxEerie').checked = S.fxEerie !== false; $('fxEerie').addEventListener('change', () => { S.fxEerie = $('fxEerie').checked; saveSettings(); }); // the story's world grade (story/grade.js: its row only shows in story mode)
 $('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
@@ -1688,6 +1691,9 @@ function stopUse() { if (G.using && isleOn()) net.send({ t: 'use', up: 1 }); cle
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => esVotes(m));
+// an offline single-mode match is over (server/hubback.js): PLAY AGAIN / LOBBY on the end screen, then 'go' = back to its lobby
+function backToLobby(mode) { quitToMenu(true); hubBackTo(mode); }
+net.on('hubback', (m) => { if (!m || typeof m.mode !== 'string') return; if (m.k === 'go') backToLobby(m.mode); else esBack(m); });
 net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
@@ -2310,6 +2316,7 @@ function frame(t) {
   skinTick(dt, now);
   if (G.story) G.story.tick(dt, now); // OVERDUE (flagged)
   updateWorld(dt);
+  updateWeather(dt); // (after the camera's set: the rain box sits round it)
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
   const fpSpec = specCam && specFPOn(); // plant & defuse: their gun in your hands (specfp.js)
   G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
@@ -2319,7 +2326,7 @@ function frame(t) {
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
-  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden'))) renderFrame(); // the hub lobby's 3D place, else the game (or the menu's map orbit)
+  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden'))) { wxPre(); renderFrame(); wxPost(); } // the hub lobby's 3D place, else the game (or the menu's map orbit). (wxPre/wxPost: the storm's sky + light for this frame only)
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
   if ((screen === 'character' || ((screen === 'main' || (screen === 'hubby' && !lobbySceneOn())) && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);

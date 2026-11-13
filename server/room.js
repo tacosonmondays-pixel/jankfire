@@ -40,6 +40,7 @@ import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { teamPlan } from './partyteams.js'; // parties stay on one side
 import { ticketRoom } from './party.js'; // party tickets (roomFor)
+import { HUB_BACK, hubBackOpen, hubBackPick, hubBackDue, hubBackJoin, hubBackGame } from './hubback.js'; // offline single-mode matches go back to their lobby
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
 import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
@@ -71,6 +72,7 @@ import { inPit, pitUnder, sink, swim, mire } from '../shared/pits.js'; // pits w
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
+import { installWeather } from './weather.js'; // rain and co: the map's weather timeline, sent to everyone (look only)
 import { LOBBY } from '../shared/lobby.js';
 import './env.js'; // .env: read after the modules above (as it was in server.js), before the knobs below
 
@@ -196,6 +198,9 @@ if (process.env.JF_RIG_DUR) STREAKS.overdrive.dur = Number(process.env.JF_RIG_DU
 if (process.env.JF_MECH) STREAKS.mechdrop.kills = Number(process.env.JF_MECH) || STREAKS.mechdrop.kills; // test knob: earn the mech drop after this many kills (bots too; JF_MECH_FRAME=paperplane|nightshift picks the bots' frame)
 if (process.env.JF_MECH_DROP) MECH.drop.delay = Number(process.env.JF_MECH_DROP) || MECH.drop.delay; // test knob: seconds the mech falls (screenshots on slow browsers)
 if (process.env.JF_MECH_WAIT) MECH.wait = MECH.idle = Number(process.env.JF_MECH_WAIT) || MECH.wait; // test knob: seconds an empty mech waits for you
+if (process.env.JF_VM_JAM != null) MECH.vending.jam.p = Number(process.env.JF_VM_JAM) || 0; // test knobs: the vending machine's jam chance (0..1)...
+if (process.env.JF_VM_STUCK != null) MECH.vending.stuck = Number(process.env.JF_VM_STUCK) || 0; // ...and its STUCK (x2) chance
+if (process.env.JF_VM_SLOW) { const k = Number(process.env.JF_VM_SLOW) || 1, V = MECH.vending; V.wall.life *= k; V.cola.life *= k; } // test knob: its walls and colas last k x longer (stills on a slow box)
 if (process.env.JF_MECH_HP) for (const f of FRAMES) BODY[f].hp = MECH[f].hp = Math.max(1, Math.round(MECH[f].hp * (Number(process.env.JF_MECH_HP) || 1))); // test knob: x the mechs' armour (0.2 = quick ejects)
 if (process.env.JF_MECH_ULT) for (const f of FRAMES) if (MECH[f].ult) { const k = Math.max(0.01, Number(process.env.JF_MECH_ULT) || 1); MECH[f].ult.time /= k; MECH[f].ult.dmg /= k; } // test knob: the heroes' ultimates charge x times faster (100 = full in about a second)
 if (process.env.JF_MECH_SLOW) MECH.wrecking.pile.slow = Math.max(1, Math.min(30, Number(process.env.JF_MECH_SLOW) || 1)); // test knob: the pile driver's server windows x this long (screenshots on slow software-GL browsers)
@@ -219,6 +224,7 @@ if (process.env.JF_SEC_SLOW) { const k = Number(process.env.JF_SEC_SLOW) || 1, T
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
 // test knobs for zombies: start on a later round, start rich, short breaks (ms), claw damage, bleed-out (s)
+const WX_FORCE = /^(?:off|[a-z]{1,12})$/.test(process.env.JF_WEATHER || '') ? process.env.JF_WEATHER : ''; // test knob: JF_WEATHER=rain = rain from second 0 on every map that has rain, erupt = Mount Kaboom already erupting (off = never)
 if (process.env.JF_ZM_ROUND) ZM.startRound = Number(process.env.JF_ZM_ROUND) || 1;
 if (process.env.JF_ZM_CREDITS) ZM.start = Number(process.env.JF_ZM_CREDITS) || ZM.start;
 if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) || ZM.rest;
@@ -516,6 +522,7 @@ class Room {
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
+    hubBackJoin(this, p); // the end screen of an offline single-mode match is up: PLAY AGAIN / LOBBY for them too
     if (hasRandom(p.skinWant)) send(p, { t: 'sk', id: p.id, s: p.skins }); // your random slots' first roll
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
@@ -1687,6 +1694,7 @@ class Room {
   }
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
+    if (this.vmBlockShot && this.vmBlockShot(p, t, wid, n, h, d, mul)) return false; // an enemy vending machine's OUT OF ORDER wall in the way takes it (server/mech_vending.js)
     if (this.isBall(t) || this.rigOn(t)) h = 0; // a wrecking ball has no head, and the rig's is armoured
     if (h && this.mechOn(t)) mul *= this.mechHeadMul(WEAPONS[wid], n, h); // a mech's head is the cockpit: MECH.head
     if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
@@ -2162,6 +2170,7 @@ class Room {
       if (!t.alive) continue;
       const c = this.mechBlastPt(t, p), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to); // (a mech: the nearest point of its frame)
       if (dist > R) continue;
+      if (this.vmShield && this.vmShield(owner, p, c)) continue; // behind an enemy OUT OF ORDER wall: the blast doesn't come through (server/mech_vending.js)
       const f = 1 - dist / R, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
       const self = owner && t.id === owner.id;
       const k = kb * (0.4 + 0.6 * f);
@@ -2181,6 +2190,7 @@ class Room {
       const dx = c[0] - pr.p[0], dy = c[1] - pr.p[1], dz = c[2] - pr.p[2];
       const dist = Math.hypot(dx, dy, dz);
       if (dist > w.radius) continue;
+      if (this.vmShield && this.vmShield(owner, pr.p, c)) continue; // (an enemy OUT OF ORDER wall in between takes the blast)
       const f = 1 - dist / w.radius;
       const dir = dist > 0.1 ? [dx / dist, dy / dist, dz / dist] : [0, 1, 0];
       const self = t.id === pr.o;
@@ -2386,6 +2396,7 @@ class Room {
       if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && this.traffic.projHit(pr, prev, owner)) continue; // hit a car
       if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && pr.k !== 'calc' && this.mechProjHit(pr, prev, owner)) continue; // hit an empty mech (server/mech.js)
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
+      if (this.vmProj && this.vmProj(pr, prev, owner)) continue; // stopped by an enemy OUT OF ORDER wall (grenades bounce off it)
       if (pr.k === 'duck') {
         // sky ducks (duck rain) open where they land, and their holes are a bit gentler
         if (pr.sky ? !!hit || age > 8 : age >= w.fuse) { this.removeProj(pr); const h = this.makeHole(pr.p, pr.o); if (pr.sky) Object.assign(h, DUCKRAIN.hole, { sky: true }); continue; }
@@ -2792,7 +2803,7 @@ class Room {
       else this.resetWorld();
     }
     if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
+    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); hubBackGame(this); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
     if (has(BOT_DIFF, m.diff) && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
@@ -3036,6 +3047,9 @@ class Room {
         if (now() - (p.voteT || 0) > 250) this.castVote(p, m.i); else p.votePend = { i: m.i, stage: v.stage };
         break;
       }
+      case 'hbagain': // PLAY AGAIN on the end screen of an offline single-mode match (server/hubback.js)
+        if (this.hubBack && this.round && this.round.over && typeof m.on === 'boolean') hubBackPick(this, p, m.on);
+        break;
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
         if (this.zm) break; // zombies: you wait for a revive or the next round
         if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
@@ -3090,7 +3104,7 @@ class Room {
     const n = now();
     skipTick(this, n);
     if (this.warm) { this.tickWarm(n); return; } // a mode lobby: the countdown (no skip vote, no kill limit)
-    if (r.over) { this.tickVote(n); if (n >= r.next) { if (this.lobby) this.enterWarm(LOBBY.again); else this.startRound(); } return; } // a mode lobby goes back to a short lobby, so the group stays together
+    if (r.over) { this.tickVote(n); if (n >= r.next) { if (this.hubBack && hubBackDue(this, n)) return; if (this.lobby) this.enterWarm(LOBBY.again); else this.startRound(); } return; } // a mode lobby goes back to a short lobby, so the group stays together
     if (!this.humans().length) return;
     if (this.zm) { this.zmRound(n); return; } // zombies ends when everyone's down
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
@@ -3230,6 +3244,7 @@ class Room {
   zmCrowd() { return this.humans().filter((p) => !p.watch).length > (LOBBY.kinds.zm.cap || 4); }
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
+    if (this.hubBack) { hubBackOpen(this); return; } // an offline single-mode match from the hub: back to its lobby, no vote
     let options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
     if (this.zmCrowd() && options.some((o) => GAMES[o.game].zombies)) { // more than 4 of you: no zombies card, another mode in its place
       options = options.filter((o) => !GAMES[o.game].zombies);
@@ -4043,6 +4058,7 @@ installSdSkill(Room); // Plant & Defuse bots with skill tiers + team stances (wr
 installGavel(Room, { now, send, raycast, r2, eyeOf, lookOf, norm, vec3, center }); // the Scales of Justice's ranged SUMMONS (after installSec: it wraps handle / tickGear)
 installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-op / quick play
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
+installWeather(Room, { now, send, force: WX_FORCE }); // the weather timeline (server/weather.js: wraps tick + addHuman)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats
@@ -4186,6 +4202,7 @@ function roomFor(mode, ws, cfg) {
   if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
     const r = new Room(`bots:priv:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
     r.priv = true;
+    if (HUB_BACK.includes(cfg.hub)) r.hubBack = cfg.hub; // (server/hubback.js)
     rooms.set(r.id, r);
     return r;
   }

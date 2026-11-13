@@ -98,6 +98,14 @@ export function openLobby(s) {
   partySet(side, modeOf());
   opts.show('hubby');
 }
+// an offline single-mode match ended (server/hubback.js 'go', or LOBBY on the end screen): back to that mode's lobby.
+// a party member goes straight there too (the leader's lobby is the same one)
+export function hubBackTo(mode) {
+  if (!HUB[mode]) { opts.show('main'); return; }
+  side = 'offline'; S()['offline:mode'] = mode;
+  if (!inParty() || isLead()) partySet(side, mode);
+  opts.show('hubby');
+}
 // show() calls this when the lobby screen comes up
 export function hubLobbyShown() {
   frame();
@@ -244,7 +252,7 @@ function plan() {
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
   const team = !own && GAMES[game] && GAMES[game].teams;
-  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0 }];
+  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, hub: k === 'qp' ? undefined : k }]; // hub: a single-mode pick comes back to this lobby after (server/hubback.js)
 }
 
 // ---------------------------------------------------------------- the party
