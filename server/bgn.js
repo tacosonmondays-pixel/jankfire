@@ -41,7 +41,7 @@ export const BGN_KNOBS = K;
 
 export function installBgn(Room, H) {
   const { send, stat, store } = H;
-  installBgnBots(Room, { T });
+  installBgnBots(Room);
   const P = Room.prototype;
   Object.assign(P, {
     // ---------------------------------------------------------------- start, seats, bench
@@ -182,7 +182,7 @@ export function installBgn(Room, H) {
     },
     bgnState() { this.broadcast({ t: 'bg', k: 'st', s: this.bgnInfo() }); },
     bgnEv(k, o) { this.broadcast({ t: 'bg', k, ...o }); },
-    bgnSay(kind) { const L = BGN_NAMES.host[kind]; if (L) this.bgnEv('say', { line: L[Math.floor(this.bgn.rng() * L.length)] }); },
+    bgnSay(kind) { const L = BGN_NAMES.lines[kind]; if (L) this.bgnEv('say', { line: L[Math.floor(this.bgn.rng() * L.length)] }); },
     bgnCall(c, o) { this.bgnEv('call', { c, ...o }); },
     bgnPrice() { return this.bgn && this.bgn.last === 'cheap' ? 10 : K.price || BGN.price; },
     bgnCash(s, d, why) {
@@ -684,12 +684,13 @@ export function installBgn(Room, H) {
       for (const s of B.seats) { const q = this.bgnPlayer(s); if (q && !q.isBot && q !== p) stat(q, 'xp', 10 + s.bread * 5); }
       if (roll) send(p, { t: 'roll+', ...roll });
       if (this.round) { this.round.over = true; this.round.next = now() + T(BGN.endMs); }
-      if (this.hubBack) hubBackOpen(this);
+      B.hbAt = now() + T(BGN.toastMs); // the end screen's PLAY AGAIN / LOBBY after the toasting
       this.bgnState();
       console.log(`[bgn] ${this.id}: ${win.name} won with ${win.bread} bread`);
     },
     bgnDoneTick(n) {
-      const r = this.round;
+      const r = this.round, B = this.bgn;
+      if (B.hbAt && n >= B.hbAt) { B.hbAt = 0; if (this.hubBack) hubBackOpen(this); }
       if (!r || n < r.next) return true;
       if (this.hubBack && hubBackDue(this, n)) return true;
       const rounds = this.bgn.rounds;

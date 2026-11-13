@@ -5,7 +5,9 @@
 const LOOP = 'L c f c j c s c f c j c f c j c c s f c j c f c c j f c c s j f c c j c'.split(' ');
 const PLATES = [3, 9, 15, 21, 27, 33];
 const CREASE = 'p j p c p f p'.split(' ');
-export const FORK_A = 5, FORK_B = 23, CREASE0 = 36;
+export const FORK_A = 5; // the loop or the crease
+export const FORK_B = 23; // where the crease joins back
+export const CREASE0 = 36;
 
 function loopPos(i) { // grid cell of loop space i
   if (i <= 10) return [i, 0];

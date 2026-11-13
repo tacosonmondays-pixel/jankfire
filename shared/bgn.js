@@ -16,7 +16,7 @@ export const BGN_NAMES = {
     roll: 'ROLL', yourTurn: 'YOUR TURN', sd: 'SUDDEN DEATH', tie: 'TIEBREAKER',
   },
   // the rules guy, deadpan and wrong
-  host: {
+  lines: {
     intro: ["welcome to board game night. i read the rules once.", "most golden bread wins. i think.", "that's not how you play. anyway."],
     one: ['rolled a one. bold.', 'a one. the die believes in you less than i do.'],
     six: ['six. show off.', 'a six. the foam die has favourites.'],
@@ -41,7 +41,7 @@ export const BGN = {
   mgIntro: 5000, mgRes: 6000, mgGrace: 6000,
   duelFrom: 4, duelFee: 10, duelCoupons: 10, botDuelMs: 3000, sudden: 20000,
   trapRounds: 3, signRange: 6, peelBack: 3, bakeryMin: 8, duckLoss: 5, duckSpaces: 3, tax: 10,
-  storeStock: 3, endMs: 15000, again: 20000, rate: 6, // rate: bg messages a second, per player
+  storeStock: 3, endMs: 25000, toastMs: 7000, rate: 6, // rate: bg messages a second, per player
   fmtW: { ffa: 40, '2v2': 25, '3v1': 20, boss: 15 },
   pay: { ffa: [10, 6, 3, 1], v2: [8, 1], v2tie: 4, v31: { one: 15, three: 5 }, boss: { win: 8, mvp: 5, lose: 2 } },
   bossOn: false, // the bosses (THE LANDLORD, THE NIGHT MANAGER) arrive in the next PR: until then no BOSS format
