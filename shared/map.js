@@ -1160,7 +1160,7 @@ function rooftop() {
     let n0 = B.boxes.length, d0 = D.boxes.length;
     add(s * 36, 0, -5, s * 42, 4.5, 5, 'concrete'); add(s * 35.8, 4.5, -5.2, s * 42.2, 4.8, 5.2, 'roofg');
     D.add(s * 42, 0, -0.8, s * 42.05, 2.2, 0.8, 'metal'); D.add(s * 36, 2.6, -3.5, s * 35.95, 3.6, 3.5, 'grid'); // a door on the spawn side, a vent on the other
-    archTag(B, D, n0, d0, 'liftroom', s * 39, 0, s < 0 ? 0 : 2, 0, { paint: { trim: s < 0 ? 'blue' : 'sidepink' } }); // (the bank's stripe blue, the hotel's pink) // (drawn as a Blender lift motor room: tools/blender/arch/make_liftroom.py)
+    archTag(B, D, n0, d0, 'liftroom', s * 39, 0, s < 0 ? 0 : 2, 0, { paint: { trim: s < 0 ? 'rt_blue' : 'rt_pink' } }); // (the bank's stripe blue, the hotel's pink) // (drawn as a Blender lift motor room: tools/blender/arch/make_liftroom.py)
     for (const z of [-11.5, -8.5]) acUnit(W, s * 52, z, 0); // the AC farm
     D.add(s * 30.3, 0, -17.7, s * 57.7, 0.02, 17.7, 'asphalt'); // the tar roof inside its concrete edge
     for (const [x, z] of [[33, -10], [44, 13], [56, -16]]) { B.box(s * x, 0.45, z, 0.9, 0.9, 0.9, 'metal'); D.add(s * x - 0.35, 0.9, z - 0.35, s * x + 0.35, 0.95, z + 0.35, 'grid'); } // vents
@@ -1313,7 +1313,7 @@ function rooftopSD() {
   // ---- B, the bank's roof: its machine room in the middle (cover), the JANK BANK sign, the AC farm, a water tower
   let n0 = B.boxes.length, d0 = D.boxes.length;
   add(-47, 0, -45, -41, 4.5, -39, 'concrete'); add(-47.2, 4.5, -45.2, -40.8, 4.8, -38.8, 'roofg'); D.add(-47.05, 0, -42.8, -47, 2.2, -41.2, 'metal');
-  archTag(B, D, n0, d0, 'liftroom_sd', -44, -42, 0, 0, { paint: { trim: 'blue' } }); // (a Blender lift motor room, its door west: tools/blender/arch/make_liftroom.py)
+  archTag(B, D, n0, d0, 'liftroom_sd', -44, -42, 0, 0, { paint: { trim: 'rt_blue' } }); // (a Blender lift motor room, its door west: tools/blender/arch/make_liftroom.py)
   for (const z of [-50, -47]) acUnit(W, -55, z, 0);
   waterTower(W, -53, -31, 0); add(-35, 0, -56, -33, 0.6, -54, 'metal'); D.add(-35.3, 0.6, -56.3, -32.7, 2.4, -53.7, 'white');
   for (const x of [-52, -40]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal');
@@ -1336,9 +1336,9 @@ function rooftopSD() {
     D.add(s * 30.3, -2, -17.7, s * 57.7, -1.98, 29.7, 'asphalt');
     n0 = B.boxes.length; d0 = D.boxes.length;
     add(s * 12, 0, -68, s * 18, 4.5, -62, 'concrete'); add(s * 11.8, 4.5, -68.2, s * 18.2, 4.8, -61.8, 'roofg'); // the north tower's machine rooms
-    archTag(B, D, n0, d0, 'liftroom_sd', s * 15, -65, 0, 0, { hide: ['door'], paint: { trim: 'blue' } }); // (security's tower: blue) n0 = B.boxes.length;
+    archTag(B, D, n0, d0, 'liftroom_sd', s * 15, -65, 0, 0, { hide: ['door'], paint: { trim: 'rt_blue' } }); // (security's tower: blue) n0 = B.boxes.length;
     add(s * 14, 0, 38, s * 20, 4.5, 44, 'concrete'); add(s * 13.8, 4.5, 37.8, s * 20.2, 4.8, 44.2, 'roofg'); // the south tower's
-    archTag(B, D, n0, D.boxes.length, 'liftroom_sd', s * 17, 41, 0, 0, { hide: ['door'], paint: { trim: 'sidepink' } }); // (the crashers': pink. no doors on these: hide the model's)
+    archTag(B, D, n0, D.boxes.length, 'liftroom_sd', s * 17, 41, 0, 0, { hide: ['door'], paint: { trim: 'rt_pink' } }); // (the crashers': pink. no doors on these: hide the model's)
     acUnit(W, s * 18, -46, 0); acUnit(W, s * 18, 50, 0);
   }
   for (const x of [-6, 6]) add(x - 0.2, 0, -69.6, x + 0.2, 7, -69.2, 'metal');
