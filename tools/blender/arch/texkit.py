@@ -27,6 +27,7 @@ PIN = {
  'glass': (1997, 13293), 'louvre': (1997, 13295, 2869370386), 'picket': (1997, 13296), 'fac_tenement': (1997, 17456),
  'fac_office': (1997, 17862), 'decals': (1997, 18621), 'stone': (1997, 18659), 'weather': (1997, 22814),
  'fac_glass': (1997, 0), 'profile': (1997, 23203, 2522618111), 'fac_paint': (2611, 0),
+ 'ph_glass': (3101, 0),
 }
 
 
@@ -649,6 +650,30 @@ def profile(n=32):
     return shade(img, 1 - np.clip((fbm(n, 2, 4) - 0.6) * 0.6, 0, 0.2))
 
 
+def ph_glass(n=128):
+    """Rooftop's penthouse glass (make_penthouse.py): violet mirror glass reflecting the night sky and the neon city.
+    one tile = 4 m, about a storey: the sky at the top, far towers standing on a pink glow line with lit windows lower
+    down, two slashes of shine (they wrap: the tile is seamless across)"""
+    y = np.linspace(0, 1, n, dtype=np.float32)[:, None] * np.ones((1, n), np.float32)  # 0 = top of the tile
+    x = np.linspace(0, 1, n, endpoint=False, dtype=np.float32)[None, :] * np.ones((n, 1), np.float32)
+    wob = fbm(n, 4, 3, seed=31) - 0.5  # the panes aren't quite flat: the reflection wobbles
+    v = np.clip(y + wob * 0.08, 0, 1)
+    base = ramp(v, [(0, '#1c0c3e'), (0.35, '#3c1e74'), (0.62, '#7a3cb4'), (0.74, '#e266d0'), (0.8, '#a43c9c'), (1, '#2c1250')])
+    sky = np.zeros((n, n), np.float32); xs = 0
+    while xs < n:
+        w = int(R.integers(6, 16)); h = int(R.integers(8, 30)); top = int(n * 0.74) - h
+        sky[top:int(n * 0.74), xs:xs + w] = 1
+        for _ in range(int(w * h / 18)):
+            wy, wx = int(R.integers(top + 2, int(n * 0.74) - 1)), int(R.integers(xs + 1, max(xs + 2, xs + w - 1)))
+            if wx < n: sky[wy, wx] = 2
+        xs += w + int(R.integers(0, 4))
+    base = mix(base, hexc('#241040') * np.ones_like(base), (sky == 1) * 0.75)
+    base = mix(base, hexc('#ffe14d') * np.ones_like(base), (sky == 2) * 0.8)
+    d = (x + y * 0.55) % 1.0
+    shine = np.exp(-((d - 0.3) / 0.035) ** 2) * 0.55 + np.exp(-((d - 0.4) / 0.015) ** 2) * 0.35
+    return np.clip(base + shine[..., None] * hexc('#e8d8ff'), 0, 1)
+
+
 def main():
     global OUT
     if '--out' in sys.argv: OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])  # (the repro test writes to a temp dir)
@@ -684,6 +709,7 @@ def main():
     pin('profile'); out['profile'] = save('profile', profile(), 1.0, note='tint')
     pin('fac_paint'); out['fac_paint'] = save('fac_paint', facade_paint(), 7.0, colors=24, note='tint')
     Image.fromarray((FAC_GLOW['fac_paint'] * 255).astype(np.uint8), 'L').save(os.path.join(OUT, 'fac_paint_glow.png')); KIT['fac_paint']['glow'] = 'fac_paint_glow'
+    pin('ph_glass'); out['ph_glass'] = save('ph_glass', ph_glass(), 4.0)
     # new textures go here: a PIN line with a new seed, then pin('name'); out['name'] = save(...)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show

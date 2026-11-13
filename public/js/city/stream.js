@@ -10,7 +10,7 @@ import { CHUNK, CITIES, RINGS, inCity, districtWeights, chunkId } from '/shared/
 import { chunkBoxes } from '/shared/city/chunk.js';
 import { ChunkWorld } from '/shared/city/world.js';
 import { cityMaterials, cityUniforms, NL } from './mats.js';
-import { buildPropGroup, freeProps, onPropModel } from './props.js';
+import { buildPropGroup, freeProps, onPropModel, propModel } from './props.js';
 import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
 import { Crowd } from './crowd.js'; // the people standing about
 import { Weather } from './weather.js'; // paper storms
@@ -18,6 +18,10 @@ import { takeWarm } from './warm.js'; // workers started early, on the menu (loa
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
+// shader warm-up: a model that just loaded (a Blender prop, a crowd person) gets its shaders compiled and its textures
+// uploaded here, one at a time, a frame apart, BEFORE anything draws it. drawn cold, the Gut's set pieces compiled 3-9
+// programs and uploaded dozens of textures on the one frame they appeared (150-250 ms hitches walking in)
+const TEXK = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'bumpMap', 'lightMap', 'specularMap'];
 
 function geoOf(b) {
   const g = new THREE.BufferGeometry();
@@ -51,7 +55,7 @@ function groupOf(mesh, mats, lod) {
 function freeGroup(g) { if (!g) return; g.removeFromParent(); for (const m of g.children) m.geometry.dispose(); }
 
 export class CityStream {
-  constructor({ scene, city, preset = 1, boxes = [], workers = 2, workerUrl = '/js/city/chunkworker.js' }) {
+  constructor({ scene, city, preset = 1, boxes = [], workers = 2, workerUrl = '/js/city/chunkworker.js', renderer = null }) {
     if (!CITIES[city]) throw new Error('no city ' + city);
     this.scene = scene; this.city = city; this.def = CITIES[city];
     this.world = new ChunkWorld(boxes);
@@ -66,8 +70,18 @@ export class CityStream {
     this.st = { uploadMs: 0, maxUploadMs: 0, built: 0, buildMs: 0, maxBuildMs: 0, hitches: 0 };
     this.time = 0; this.cam = new THREE.Vector3(); this.first = true;
     this.setPreset(preset);
-    onPropModel(() => { this.props.key = ''; }); // a Blender prop landed: rebuild the instances with it
+    this.renderer = renderer; this.warmQ = []; // (no renderer, no warm-up: things compile when first drawn, as before)
+    // where the scene is really drawn (post.js draws it into its own target, which changes the shaders' output end):
+    // warm-ups compile against the same, or they'd build a program nobody uses
+    this.sceneRT = null; const obr = this.obr = scene.onBeforeRender;
+    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.sceneRT = rt || null; obr.call(scene, r, sc, cam, rt); };
+    onPropModel((id) => { // a Blender prop landed: warm it up, then rebuild the instances with it
+      const m = propModel(id), objs = [];
+      if (this.renderer && m && m.parts) for (const part of [...m.parts, ...(m.lod1 || [])]) { const im = new THREE.InstancedMesh(part.geo, part.mat, 1); if (part.paint) im.setColorAt(0, new THREE.Color()); objs.push(im); } // (as props.js draws it: instanced, paint parts coloured)
+      this.warm(objs, () => { this.props.key = ''; for (const o of objs) o.dispose(); }, true);
+    });
     this.crowd = new Crowd(scene); // the people standing about (crowd.js)
+    this.crowd.warm = (objs, done) => this.warm(objs, done, false, true); // (people first: a missing crowd shows more than a late prop)
     this.weather = new Weather(scene); this.storm = 0; // 0-1: a paper storm round you (Late Fees can't see you in one)
     this.horizon = null;
     if (this.def.horizon) this.workers[1 % workers].postMessage({ op: 'horizon', city, gen: this.def.horizon });
@@ -150,6 +164,7 @@ export class CityStream {
       if (r.m1 && (!live || r.d > R.mid + HYST + CHUNK || ring === 1 && r.m0 && r.d < R.near - CHUNK)) { freeGroup(r.m1); r.m1 = null; r.req.mesh1 = false; }
       if (!live && !r.m0 && !r.m1 && this.time - r.used > 20 && !this.world.has(r.id) && !r.req.packed) this.chunks.delete(r.id); // LRU: forgotten 20 s after it left every ring
     }
+    this.warmStep(camera);
     this.updateFar(want);
     this.updateProps(want);
     this.applyEnv(p);
@@ -179,6 +194,31 @@ export class CityStream {
     this.st.built++; this.st.buildMs += m.ms; this.st.maxBuildMs = Math.max(this.st.maxBuildMs, m.buildMs || 0);
   }
 
+  // queue meshes to warm up; done() once their shaders are compiled + checked and their textures are on the GPU
+  warm(objs, done, prop = false, first = false) {
+    if (!this.renderer || !objs.length) { if (done) done(); return; }
+    const w = { objs, i: 0, progs: [], tex: [], seen: new Set(), done, prop };
+    if (first) { let k = 0; while (k < this.warmQ.length && (this.warmQ[k].first || k === 0)) k++; w.first = true; this.warmQ.splice(k, 0, w); } else this.warmQ.push(w); // (behind the one under way and any people already waiting)
+  }
+  // once a frame: at most one new shader compile, or one compiled shader's first-use check (the blocking part: by
+  // now the GPU process has had a frame to finish it), or one texture upload
+  warmStep(camera) {
+    const w = this.warmQ[0], R = this.renderer;
+    if (!w) return;
+    if (w.progs.length) { const pr = w.progs.shift(); try { pr.getUniforms(); } catch { /* reported when drawn */ } return; }
+    while (w.i < w.objs.length) {
+      const o = w.objs[w.i++], n = R.info.programs.length, was = R.getRenderTarget();
+      if (was !== this.sceneRT) R.setRenderTarget(this.sceneRT);
+      try { R.compile(o, camera, this.scene); } finally { if (R.getRenderTarget() !== was) R.setRenderTarget(was); } // (with the real scene and its target: its lights, fog, shadows and output, so the same programs as when drawn)
+      o.traverse((q) => { for (const mt of [].concat(q.material || [])) { const pr = R.properties.get(mt).currentProgram; if (R.info.programs.length > n && pr && !w.seen.has(pr)) { w.seen.add(pr); w.progs.push(pr); }
+        for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
+      if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)
+    }
+    if (w.tex.length) { const t0 = performance.now(); do R.initTexture(w.tex.shift()); while (w.tex.length && performance.now() - t0 < 3); if (w.tex.length) return; } // (textures: ~3 ms of them a frame)
+    this.warmQ.shift();
+    if (w.done) w.done();
+  }
+
   // the far ring: one impostor mesh for every chunk that's in it (rebuilt in the worker when the set changes)
   updateFar(want) {
     const list = want.filter((r) => r.ring === 3 || (r.ring === 2 && !r.m1 && !r.m0));
@@ -197,7 +237,7 @@ export class CityStream {
     g.setAttribute('normal', new THREE.BufferAttribute(m.mesh.nrm.subarray(0, m.mesh.verts * 3), 3, true));
     g.setAttribute('color', new THREE.BufferAttribute(m.mesh.col.subarray(0, m.mesh.verts * 3), 3, true));
     g.setIndex(new THREE.BufferAttribute(m.mesh.idx.subarray(0, m.mesh.tris * 3), 1));
-    g.computeBoundingSphere();
+    if (m.mesh.min) { g.boundingBox = new THREE.Box3(new THREE.Vector3(...m.mesh.min), new THREE.Vector3(...m.mesh.max)); g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere()); } else g.computeBoundingSphere(); // (the worker's bounds: no 25 ms pass over every vertex here)
     this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
     this.root.add(this.far.mesh);
   }
@@ -207,6 +247,7 @@ export class CityStream {
     const hiCell = Math.floor(this.cam.x / 16) + ',' + Math.floor(this.cam.z / 16); // the detail bubbles move with you
     const key = list.map((r) => r.id).sort().join(';') + '|' + hiCell;
     if (key === this.props.key || this.time - this.props.t < 0.3) return;
+    if (this.warmQ.some((w) => w.prop) && this.time - this.props.t < 1) return; // (a prop model is still warming up: a rebuild now would draw it cold. wait a few frames, never more than a second)
     this.props.key = key; this.props.t = this.time;
     const inst = [];
     for (const r of list) {
@@ -298,6 +339,7 @@ export class CityStream {
   ready(x, z) { return this.world.readyAt(this.city, x, z); }
   progress() { let n = 0, k = 0; for (const r of this.chunks.values()) if (r.used === this.time && r.ring === 1) { n++; if (r.m0) k++; } return n ? k / n : 0; } // the near ring's share that's built (the loading card)
   dispose() {
+    if (this.onScene && this.scene.onBeforeRender === this.onScene) this.scene.onBeforeRender = this.obr; // (put back whatever was there)
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }

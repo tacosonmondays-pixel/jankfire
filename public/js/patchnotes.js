@@ -1,6 +1,26 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.17', date: '2026-11-13', title: 'PENTHOUSE', items: [
+    "the rooftop penthouse got a glow-up: violet mirror glass, chrome, a pink stripe, neon round the roof, a real helipad. the furniture is still from ikea's box aisle (for now).",
+  ] },
+  { v: '11.16', date: '2026-11-13', title: 'FOUNTAINS WORK NOW', items: [
+    "fountains finally work. the smiling fountain's spit actually splashes now, its basin ripples, and the bazaar's fountains remembered they're fountains. the school's drinking fountain still never turns off.",
+    "PATH-TRACED PHOTO: shiny props keep their colour now. the news heli is pink again, not a black hole.",
+  ] },
+  { v: '11.15', date: '2026-11-13', title: 'SAY CHEESE', items: [
+    "PATH-TRACED PHOTO: real ray tracing for screenshots. settings > video > shaders, or type /photo in chat. it's slow, it's real, save it and frame it.",
+  ] },
+  { v: '11.14', date: '2026-11-13', title: 'LINE UP', items: [
+    "LINE UP: jank royale's lobby is the blimp's launch deck, gate 7, no refunds. quick play and plant & defuse line you up in a staging hangar with your guns on the rack.",
+  ] },
+  { v: '11.13', date: '2026-11-13', title: 'WAREHOUSE OPEN', items: [
+    'WAREHOUSE OPEN: the zombies lobby is a boarded-up base you walk around. deb does passives, gus does pistols, marge does items. poke the practice zombie.',
+  ] },
+  { v: '11.12', date: '2026-11-13', title: 'GOD RAYS', items: [
+    'RAY-TRACED LOOK: sunbeams stream between buildings when you look toward the sun, and the city far below goes soft and hazy. new "sun shafts and haze" checkbox.',
+    'neon got loud: pink tubes paint the floor pink, cyan ones cyan, and dark asphalt picks up a coloured sheen.',
+  ] },
   { v: '11.11', date: '2026-11-13', title: 'NEON SPILL', items: [
     'RAY-TRACED LOOK: neon signs and lamps now light up the walls and floor around them. the floor under HOTEL 4 HOURS glows yellow. stronger at night.',
   ] },

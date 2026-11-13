@@ -35,7 +35,7 @@ function client(name, token) {
     ok(login.token && login.me.stats.chicken_kills === 24 && login.me.stats.melee_kills === 49, 'logged in: 24 chicken kills, 49 melee kills, neither achievement yet');
     ok(!login.me.achs.includes('poultry') && !login.me.achs.includes('protector'), 'achs: ' + JSON.stringify(login.me.achs));
     const A = await client('Cluckers', login.token), B = await client('target');
-    const y = 90, at = [700, y, 0], bAt = [700, y, -6];
+    const y = 90, at = [0, y, 0], bAt = [0, y, -6];
     // kill B with weapon w: keep both in place (B's spawn number follows its respawns), act() every `every` ms
     const killWith = async (w, act, every, ms = 12000) => {
       A.got.length = 0;
@@ -62,7 +62,7 @@ function client(name, token) {
     ok(!A.take('ach', (m) => m.id === 'protector'), 'and not Sworn Protector');
     await sleep(2800);
     // 3. a knife kill (in reach, B a step away): Sworn Protector
-    const near = [700, y, -1.4];
+    const near = [0, y, -1.4];
     A.got.length = 0;
     let k2 = null;
     for (let t = 0; t < 12000 && !k2; t += 100) {
