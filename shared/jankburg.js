@@ -245,7 +245,9 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
   }
   if (nA > n0) { // (tools/blender/jankburg/make_jb_houses.py: one model per kind, every lot of a kind the same size)
     const id = 'jbh_' + v + (v === 'capsule' ? floors : ''), wall = B.boxes[n0 + 1] ? B.boxes[n0 + 1].mat : paint;
-    B.boxes.arch.push({ id, p: [x, 0, z], r: rot & 3, paint: { siding: wall, roof: wall } });
+    // (candy paint, public/js/archfield.js PAINT jb_*: the walls, the upper floors' own colour, the toy roofs' own colour)
+    const up = B.boxes.slice(n0, nA).find((b) => b.min[1] > F && b.max[1] - b.min[1] > 2), roof = v === 'model' || v === 'pastel' ? B.boxes[nA - 1].mat : wall;
+    B.boxes.arch.push({ id, p: [x, 0, z], r: rot & 3, paint: { siding: 'jb_' + wall, roof: 'jb_' + roof, upper: 'jb_' + (up ? up.mat : wall) } });
     for (let i = n0; i < nA; i++) Object.assign(B.boxes[i], { av: id, ai: B.boxes.arch.length - 1 });
   }
   return { top: top || floors * F + 0.3 };
