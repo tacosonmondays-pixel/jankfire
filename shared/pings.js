@@ -30,3 +30,16 @@ export function pingBox(map) {
   return b;
 }
 export const inPingBox = (map, x, z) => { const b = pingBox(map); return !!b && x >= b[0] && x <= b[2] && z >= b[1] && z <= b[3]; };
+
+// the PENCIL on the big map: lines your side sees on their big map (and faintly on the minimap). a stroke is a flat
+// list [x0, z0, x1, z1, ...] in world metres, snapped to q, at most pts points
+export const DRAW = {
+  life: 30000,     // ms a stroke stays up (the last few seconds it fades)
+  pts: 64,         // points per stroke
+  keep: 6,         // strokes alive per person (a 7th rubs out your oldest)
+  burst: 4,        // at most this many strokes...
+  win: 3000,       // ...in this many ms
+  gap: 200,        // and never closer together than this
+  q: 0.5,          // m: points snap to this grid
+};
+export const drawQ = (v) => Math.round(v / DRAW.q) * DRAW.q;

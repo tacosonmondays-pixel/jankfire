@@ -403,6 +403,7 @@ Object.assign(sfx, {
 Object.assign(sfx, {
   mapOpen() { noise(0.16, 0.32, 'bandpass', 900, 2600, null, 0, 1.2); noise(0.1, 0.22, 'bandpass', 2200, 1200, null, 0.12, 1.5); tone('triangle', 520, 780, 0.08, 0.06, null, 0.04); },
   mapClose() { noise(0.12, 0.28, 'bandpass', 2400, 800, null, 0, 1.2); tone('triangle', 700, 420, 0.07, 0.05, null, 0.05); },
+  mapScribble() { for (let i = 0; i < 3; i++) noise(0.07, 0.22, 'bandpass', 2600 + i * 500, 1800, null, i * 0.08, 3); }, // a felt-tip squeak: a teammate drew on the map
   ping(mine) { const f = mine ? 1175 : 988; tone('square', f, f, 0.05, 0.11); tone('triangle', f * 1.5, f * 2, 0.16, 0.16, null, 0.06); tone('sine', f * 3, f * 3, 0.22, 0.05, null, 0.12); },
 });
 
