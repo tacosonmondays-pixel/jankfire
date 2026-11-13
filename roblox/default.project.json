@@ -1,0 +1,22 @@
+{
+  "name": "JANKFIRE",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Jankfire": { "$path": "src/shared" },
+      "JankfireRemotes": {
+        "$className": "Folder",
+        "Grapple": { "$className": "RemoteEvent" },
+        "Callout": { "$className": "RemoteEvent" }
+      }
+    },
+    "ServerScriptService": {
+      "Jankfire": { "$path": "src/server" }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "Jankfire": { "$path": "src/client" }
+      }
+    }
+  }
+}
