@@ -737,22 +737,25 @@ def build(kind):
     bs = [b for b in d['boxes'] if not b.get('deco')]; ds = [b for b in d['boxes'] if b.get('deco')]
     K.solids = [(b['min'], b['max']) for b in bs]
     def near(b, c, r): return abs((b['min'][0] + b['max'][0]) / 2 - c[0]) < r[0] and abs((b['min'][2] + b['max'][2]) / 2 - c[1]) < r[1]
+    def tris(): return sum(2 if len(f) == 4 else 1 for g in K.geo.values() for f in g['f'])
+    stats = []; mark = lambda name: stats.append((name, tris()))
     # the bar: round its back bar
     back = next(b for b in bs if b['mat'] == 'wood' and b['max'][1] - b['min'][1] > 1.5 and b['max'][0] - b['min'][0] > 7)
     bc = ((back['min'][0] + back['max'][0]) / 2, (back['min'][2] + back['max'][2]) / 2 + 2.6)
-    tiki_bar([b for b in bs if near(b, bc, (6, 4.5))], [b for b in ds if near(b, bc, (6, 4.5))])
+    tiki_bar([b for b in bs if near(b, bc, (6, 4.5))], [b for b in ds if near(b, bc, (6, 4.5))]); mark('tiki bar')
     # the big tiki: round its plinth
     base = next(b for b in bs if b['mat'] == 'basalt'); tc = ((base['min'][0] + base['max'][0]) / 2, (base['min'][2] + base['max'][2]) / 2)
-    big_tiki([b for b in bs if near(b, tc, (1.5, 1.5))], [b for b in ds if near(b, tc, (1.5, 1.5))])
+    big_tiki([b for b in bs if near(b, tc, (1.5, 1.5))], [b for b in ds if near(b, tc, (1.5, 1.5))]); mark('big tiki')
     # the huts: one per lower thatch slab
     for r in [b for b in bs if b['mat'] == 'thatch' and abs(b['max'][0] - b['min'][0] - 5.4) < 1e-3]:
         hc = ((r['min'][0] + r['max'][0]) / 2, (r['min'][2] + r['max'][2]) / 2)
         mine = [b for b in bs if near(b, hc, (3, 2.6))]
-        hut([b for b in mine if b['mat'] == 'bamboo'], [b for b in mine if b['mat'] == 'thatch'], next((b for b in ds if b['mat'] == 'cloth' and near(b, hc, (3, 2.6))), None))
+        hut([b for b in mine if b['mat'] == 'bamboo'], [b for b in mine if b['mat'] == 'thatch'], next((b for b in ds if b['mat'] == 'cloth' and near(b, hc, (3, 2.6))), None)); mark('hut')
     # the surf school: round its post
     post = next(b for b in ds if b['mat'] == 'wood' and b['max'][1] - b['min'][1] > 2.5 and b['max'][0] - b['min'][0] < 0.2)
     sc = ((post['min'][0] + post['max'][0]) / 2 + 2, (post['min'][2] + post['max'][2]) / 2 + 0.6)
-    surf([b for b in ds if near(b, sc, (3.5, 1.5))])
+    surf([b for b in ds if near(b, sc, (3.5, 1.5))]); mark('surf school')
+    print('tris by piece:', ', '.join(f'{n} {t - (stats[i - 1][1] if i else 0)}' for i, (n, t) in enumerate(stats)), '| all', stats[-1][1])
     K.solids = [(b['min'], b['max']) for b in bs]
     K.finish(os.path.join(OUTDIR, kind + '.glb'))
 
