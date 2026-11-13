@@ -286,9 +286,15 @@ async function partDucks(port) {
   hold.B = B.pos.slice();
   const i0 = B.ev.length, curseOf = () => B.ev.slice(i0).find((e) => e.k === 'curse' && e.id === B.id) || null; // (this one, not one that caught B earlier)
   had = pileB();
-  ok(await B.until(() => B.ev.slice(i0).some((e) => e.k === 'cursed'), 12000), 'a cursed duck is coming down');
-  await B.until(() => curseOf(), 8000);
-  cu = curseOf();
+  // (a bot wandering through can take it on the way down: the hole rides them instead. then B waits for the next one)
+  let seen = 0;
+  for (let k = 0; k < 3 && !cu; k++) {
+    const c0 = B.ev.slice(i0).filter((e) => e.k === 'cursed').length;
+    if (await B.until(() => B.ev.slice(i0).filter((e) => e.k === 'cursed').length > c0, 12000)) seen++;
+    await B.until(() => curseOf(), 5000);
+    cu = curseOf();
+  }
+  ok(seen > 0, `a cursed duck is coming down (${seen} before one got B)`);
   ok(!!cu, 'a cursed duck came down on B');
   ok(cu && cu.n === Math.floor((cu.pile + cu.n) / 2) && cu.pile + cu.n >= 2, `the cursed duck halved B's pile (${cu && cu.pile + cu.n} -> ${cu && cu.pile}; ${had} when it was spotted)`);
   clearInterval(tick);
