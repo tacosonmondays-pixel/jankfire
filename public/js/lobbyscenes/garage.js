@@ -282,6 +282,8 @@ export function build(L) {
   const bubbleAt = new THREE.Vector3(-22.6, 2.5, 13);
   const walkSpec = {
     spawn: [0, -2.4, 0, 0], bounds: [-23.6, -15.6, 23.6, 32], solids: SOL, camBox: [-23.3, 0.5, -15.3, 23.3, 15.6, 45], dist: 6.8, pitch: 0.1, // (you, and your mech towering over you)
+    // on foot near the bays: look higher, step back and widen a bit so the whole (MECH.scale-sized) mech fits under the mode cards. fades out across the room
+    camAdj: (p) => { const k = Math.max(0, Math.min(1, (MZ + 20 - p[2]) / 8)) * (K - 1); return [7 * k, 10 * k, 20 * k]; },
     wander: [[-12, -2], [12, -2], [0, 2], [-4, 10], [4, 10], [-18, 14], [-19, 18], [17, 9], [14, 18], [0, 26], [-8, 27], [9, 27], [-6, -3], [6, -3]],
     use: [
       { at: [2.6, 1.2, MZ + 2.7], bayAt: 2.6, r: 1.9, label: () => 'SWAP MECH', show: () => !ride && !ret, act: () => step(1) },

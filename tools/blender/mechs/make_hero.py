@@ -1,7 +1,7 @@
 # A Battle Island hero (docs/mechs/ROSTER.md) as a game file: the concept model on its joint tree, its markers and
 # spray slots, the painted-metal look, the hero kit's stickers, every clip it defines (snap keys, events) keyed and
 # exported. Each hero is a module next to this one with build() (a mechkit Mech), marks(mk) and clips().
-#   blender52 -b -P tools/blender/mechs/make_hero.py -- hero=wrecking [qa] [no-bake] [flat] [no-export] [out=<glb>]
+#   blender52 -b -P tools/blender/mechs/make_hero.py -- hero=wrecking [qa] [no-bake] [no-merge] [flat] [no-export] [out=<glb>]
 #   -> public/models/x_mech_<hero>.glb (root meta jf: joints, marks, clips, decal_slots, palettes, height)
 import os, sys, json, importlib
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -21,6 +21,8 @@ def main(hero):
     look = None
     if 'flat' not in ARGS:  # (painted metal: the house look since 2026-11-12)
         import metalkit; look = metalkit.apply(mk, bake='no-bake' not in ARGS, skip=getattr(mod, 'PAPER', ()))
+        if 'no-merge' not in ARGS and 'no-bake' not in ARGS:  # (the draw-call pass: one trim material for the flat paints)
+            merged = metalkit.merge_trim(mk); print('JF_TRIM', hero, 'merged', ' '.join(merged['trim']), '| kept', ' '.join(merged['kept']))
     if 'qa' in ARGS:
         sys.path.insert(0, os.path.join(ROOT, '.claude', 'skills', 'blender-asset-qa', 'scripts')); import qa_check
         res = qa_check.run(objects=[o.name for o in mk.root.children_recursive if o.type == 'MESH'], profile='game', eps=0.0008, tol=0.004)

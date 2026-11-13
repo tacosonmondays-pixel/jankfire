@@ -25,7 +25,8 @@ handle with a crane shackle on top. It has:
 - fold-out stabiliser feet on the hubs, and rockets under the hubs for PILE DRIVER;
 - the grapple hook parked on its chain down the back.
 
-About 33k tris. Height 4.86 m to the shackle.
+About 33k tris. Height 4.86 m to the shackle. Five materials: `wb_paint` (team colour), `wb_trim` (frame, hazard, dark,
+white, chrome, seat, accent, rubber), `wb_glow`, `wb_thrust`, `wb_decalmat`: 18 draws plus 7 ink outlines.
 
 **Joints:**
 - root > hips: the centre, for bob / squash. In clips it moves the whole ball, the slam crater for example.

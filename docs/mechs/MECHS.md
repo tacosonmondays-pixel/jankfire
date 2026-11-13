@@ -89,6 +89,13 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
 - **Tinting:** a model whose paint has `jf_look` keeps its own paint material (maps, clear coat). MECH DROP clones it
   per mech and sets the colour (`public/js/mechmodel.js`), instead of swapping in the glossy stand-in paint.
 - PAPER PLANE's wings and crane stay paper: `*_paper` copies of the role materials, without the metal look.
+- **Draw calls** (the coordinator, 2026-11-13: a hero draws in 15-30 calls; each material on a joint's mesh is one):
+  the Battle Island heroes merge every flat painted role but the team paint into one `<prefix>_trim` material
+  (`metalkit.merge_trim`, on by default in `make_hero.py`; `no-merge` turns it off). Its colour per part is in
+  `COLOR_0` (times the AO bake); its metal / roughness / clear coat come from a 64 px role atlas
+  (`tools/blender/mechs/tex/<prefix>_trim.png`: R clear coat, G roughness, B metal) read through `TEXCOORD_1`.
+  `extras.jf_trim` lists the roles in it. The team paint, the glows and the decals stay their own materials.
+  Measure a hero in a real game: `node tools/blender/mechs/draws_game.cjs <port> <outDir> <frame> [preset] [map]`.
 
 ## Clips (all 30 fps; three.js AnimationMixer by name)
 - "hold last frame": play it LoopOnce with `clampWhenFinished = true`.
