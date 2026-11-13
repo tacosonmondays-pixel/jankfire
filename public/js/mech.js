@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
-import { MECH, MF, mechFrame, mechBoxes, energyAt, spend, newEnergy, mechClash } from '/shared/mech.js';
+import { MECH, MF, mechFrame, mechBoxes, energyAt, spend, newEnergy, mechClash, mechBody, mechRoom } from '/shared/mech.js';
 import { G } from './ctx.js';
 import { ME, eye, look, hspeed, releaseHook, ballOn } from './player.js';
 import { W, punchCam, isFriend } from './weapons.js';
@@ -48,7 +48,7 @@ export function mechPrefetch(lo) { if (lo && Array.isArray(lo.streaks) && lo.str
 
 // ------------------------------------------------------------ calling it in (main.js deployStreak asks first)
 // the same checks the server makes, so the tray keeps it when it would be refused. returns true = blocked
-export function mechDeployBlock(id, at) {
+export function mechDeployBlock(id, at, frame) { // (frame: battle island's hero, else your loadout's)
   const inBall = ballOn(nowMs());
   if (mechClash(id, mechOn(), rigOn(), inBall, myWaiting() !== null)) {
     hud.msg(id === 'mechdrop' ? (myWaiting() ? 'your mech is already out' : 'not right now (it keeps for later)') : 'not in a mech (it keeps for later)', 1.2); mechsfx.denied(); return true;
@@ -56,8 +56,9 @@ export function mechDeployBlock(id, at) {
   if (id !== 'mechdrop') return false;
   const e = eye(), d = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(d[0], d[1], d[2]);
   const fl = raycast([at[0], at[1] + 0.5, at[2]], [0, -1, 0], 4.5, BOXES);
-  const why = l > MECH.drop.range ? `too far (${MECH.drop.range} m max)` : !fl ? 'aim at the floor' : raycast([at[0], fl.point[1] + 0.2, at[2]], [0, 1, 0], MECH.drop.sky, BOXES) ? 'it needs open sky' : '';
+  const why = l > MECH.drop.range ? `too far (${MECH.drop.range} m max)` : !fl ? 'aim at the floor' : '';
   if (why) { hud.msg(`MECH DROP: ${why.toUpperCase()}`, 1.2); mechsfx.denied(); return true; }
+  if (!mechRoom([at[0], fl.point[1], at[2]], frame ? mechFrame(frame) : myFrame(), BOXES)) { hud.msg('NO ROOM FOR IT HERE', 1.4); mechsfx.denied(); return true; } // (a roof, an overhang, a wall: the whole mech has to fit)
   return false;
 }
 function myWaiting() { for (const m of WM.values()) if (m.o === G.myId && m.st !== 'in') return m; return null; }
@@ -271,7 +272,7 @@ export function mechStep(dt, inp, now) {
   if (!fixed) v[1] -= grav * dt * 0.5;
   const was = ME.onGround;
   if (!was && v[1] < MS.minVy) MS.minVy = v[1];
-  const res = movePlayer(p, v, dt, BOXES, was && !fixed);
+  const res = movePlayer(p, v, dt, BOXES, was && !fixed, mechBody(MS.f)); // (its own big body: a door lower than it stops it)
   if (!fixed && !res.ground) v[1] -= grav * dt * 0.5;
   ME.onGround = !!res.ground && v[1] <= 0.01;
   if (res.wall && MS.dash) { MS.dash = null; v[0] *= 0.3; v[2] *= 0.3; G.shake = Math.max(G.shake, 0.5); mechsfx.ram(null); }
@@ -385,9 +386,9 @@ export function mechCam(cam, dt) {
     const H = MS.hero, k = (now - H.t0) / 1000;
     if (k < 1.5 && ME.alive && G.joined) {
       const u = clamp(k / 1.5, 0, 1), a = H.a + 0.55 + u * 0.4, d = [Math.sin(a), 0.04, Math.cos(a)]; // low, off to the side, slowly orbiting
-      const c0 = [H.p[0], H.p[1] + 0.6, H.p[2]], hit = raycast(c0, d, 7, BOXES), R = Math.max(2.5, Math.min(6.5 - u * 1.2, hit ? hit.t - 0.6 : 99)); // (never inside a wall)
+      const sc = MECH.scale, c0 = [H.p[0], H.p[1] + 0.6 * sc, H.p[2]], hit = raycast(c0, d, 7 * sc, BOXES), R = Math.max(2.5, Math.min((6.5 - u * 1.2) * sc, hit ? hit.t - 0.6 : 99)); // (never inside a wall; it backs off as far as the mech grew)
       cam.position.set(c0[0] + d[0] * R, c0[1] + d[1] * R, c0[2] + d[2] * R);
-      cam.lookAt(H.p[0], H.p[1] + 3.9, H.p[2]);
+      cam.lookAt(H.p[0], H.p[1] + 3.9 * sc, H.p[2]);
       const sh = (G.shake || 0) * (G.shake || 0) * 0.08; if (sh) cam.rotation.set(cam.rotation.x + (Math.random() - 0.5) * sh, cam.rotation.y + (Math.random() - 0.5) * sh, cam.rotation.z); // (the landing still shakes)
       return;
     }
@@ -396,7 +397,7 @@ export function mechCam(cam, dt) {
   if (!G.joined || !ME.alive || !MS.on) { MS.camLen = 0; return; }
   const F = MECH[MS.f], d = look(), e0 = eye();
   // over the right shoulder (a step right and up from the cockpit), so the mech isn't in the way of the crosshair
-  const sh = SHOULDER[MS.f], rt = [Math.cos(ME.yaw), 0, -Math.sin(ME.yaw)], side = raycast(e0, rt, sh[0] + 0.4, BOXES);
+  const sh = SHOULDER[MS.f].map((x) => x * MECH.scale), rt = [Math.cos(ME.yaw), 0, -Math.sin(ME.yaw)], side = raycast(e0, rt, sh[0] + 0.4, BOXES); // (the shoulder grows with the mech)
   const sx = side ? Math.max(0, side.t - 0.4) : sh[0], e = [e0[0] + rt[0] * sx, e0[1] + sh[1], e0[2] + rt[2] * sx];
   const want = F.cam * 0.8 + Math.min(3, hspeed() * 0.06) + (now < MS.jetUntil ? 2 : 0);
   const hit = raycast(e, [-d[0], -d[1], -d[2]], want + 0.5, BOXES);
@@ -530,7 +531,7 @@ function updateWorld(dt, now, replaying) {
       fall = 1 - k;
       y = m.p[1] + 140 * fall * fall;
       const pulse = 0.5 + 0.5 * Math.sin(now * (0.01 + k * 0.04));
-      m.mk.userData.ring.material.opacity = 0.5 + pulse * 0.5; m.mk.userData.ring.scale.setScalar(1.4 - k * 0.5 + pulse * 0.1);
+      m.mk.userData.ring.material.opacity = 0.5 + pulse * 0.5; m.mk.userData.ring.scale.setScalar((1.4 - k * 0.5 + pulse * 0.1) * MECH.scale); // (the red circle is the squash circle: it grows with the mech)
       m.mk.userData.beam.material.opacity = 0.12 + pulse * 0.2;
       if (Math.random() < dt * 60) rfx.smoke([m.p[0], y + 3, m.p[2]], 2, 0xd8dde2, 1.3, 0.4, 1.6, 0.6); // a streak of smoke behind it
       if (Math.random() < dt * 30) rfx.sparks([m.p[0], y + 1, m.p[2]], 3, 6, [0xffe14d, 0xff7a3d], 0.3, 0.1, [0, 1, 0]);
@@ -581,7 +582,7 @@ export function mechRemote(r, dt, now) {
   if (!st || st.f !== f || st.color !== r.color || st.root !== r.ch.root || st.inst.v !== modelVer) {
     if (st) freeMech(st.inst);
     st = r.mech = { inst: buildMech(f, r.color), f, color: r.color, root: r.ch.root, on: false, swingT: 9, swingI: 0, gunT: 9, gunSide: 1, swarmT: 9, landT: 9, landK: 0, minVy: 0, wasAir: false, craneOut: 0, bashT: 9 };
-    st.inst.root.scale.setScalar(1 / 1.2); // (the mannequin's root is scaled up 1.2: the mech is its real size, plus the far-away scale)
+    st.inst.root.scale.setScalar(MECH.scale / 1.2); // (the mannequin's root is scaled up 1.2: the mech is its real size, plus the far-away scale)
     r.ch.root.add(st.inst.root);
   }
   if (!st.on) { st.on = true; if (r.buf.length > 2 && !r.ghost) mechsfx.climb(r.pos); }
@@ -607,7 +608,7 @@ export function mechRemote(r, dt, now) {
     slashing: !pp && ((st.swingT > 0.08 && st.swingT < 0.32) || !!(fl & MF.SLASH)),
   }, dt);
   if (pp && (fl & MF.JET) && Math.random() < dt * 30) rfx.smoke([r.pos[0], r.pos[1] + 2.5, r.pos[2]], 1, 0xdfe4ea, 0.8, 0.2, 0.7, 0.3);
-  r.shadow.scale.setScalar((pp ? 2.6 : 3.2) * (r.distScale || 1));
+  r.shadow.scale.setScalar((pp ? 2.6 : 3.2) * MECH.scale * (r.distScale || 1));
 }
 function remoteOff(r, st) {
   st.on = false; st.inst.root.visible = false;
@@ -629,7 +630,7 @@ function mechEvent(m, getR, live) {
       const b = P(m.b), inst = instOf(m.id, getR);
       if (!b || me) break;
       if (st) { st.gunT = 0; st.gunSide = m.s > 0 ? 1 : -1; }
-      const mz = inst && inst.att['mk_muzzle_' + (m.s > 0 ? 'R' : 'L')], from = mz ? mz.getWorldPosition(new THREE.Vector3()).toArray() : r ? [r.pos[0], r.pos[1] + 4, r.pos[2]] : null;
+      const mz = inst && inst.att['mk_muzzle_' + (m.s > 0 ? 'R' : 'L')], from = mz ? mz.getWorldPosition(new THREE.Vector3()).toArray() : r ? [r.pos[0], r.pos[1] + 4 * MECH.scale, r.pos[2]] : null;
       if (from) { fx.tracer(from, b, 0x4fd8ff, 0.09, 0.12); mechsfx.gun(from, 0.7); }
       if (m.h) rfx.sparks(b, 6, 6, [0xffffff, 0x4fd8ff], 0.25, 0.08);
       break;
@@ -710,7 +711,7 @@ function mechEvent(m, getR, live) {
       break;
     }
     case 'bonk': { // your own mech landed on you (or a mate): no squash, a BEEP BEEP and a shove off the circle
-      const p = P(m.p); if (p) { mechsfx.beep(p); rfx.sparks([p[0], p[1] + 1, p[2]], 16, 6, [0xffe14d, 0xffffff], 0.35, 0.1); rmesh.ring([p[0], p[1] + 0.1, p[2]], 2.4, 0xffe14d, 0.35); }
+      const p = P(m.p); if (p) { mechsfx.beep(p); rfx.sparks([p[0], p[1] + 1, p[2]], 16, 6, [0xffe14d, 0xffffff], 0.35, 0.1); rmesh.ring([p[0], p[1] + 0.1, p[2]], MECH.bonk.r, 0xffe14d, 0.35); }
       if (live && m.to === G.myId) { hud.msg(m.id === G.myId ? 'BEEP BEEP! MECH PARKING' : 'BEEP BEEP! MATE PARKING', 1.8, 'brag'); G.shake = Math.max(G.shake, 0.6); }
       break;
     }

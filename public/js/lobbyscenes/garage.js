@@ -9,7 +9,7 @@ import { MECH, FRAMES, mechFrame } from '/shared/mech.js';
 import { missingGlb, want, whenGlb } from '../glbkit.js';
 import { freeTree } from '../models.js';
 
-const BAY = 9.5, MZ = -9; // bay spacing, where the mechs stand
+const K = MECH.scale, BAY = 9.5 * K, MZ = -9; // the mechs' size (shared/mech.js: the gantries and bays grow with them), bay spacing, where the mechs stand
 const SWAP = 1.6, UP = 8.5; // s, the whole swap; how high the crane hauls (just out of the picture, behind the headers)
 const myFrame = (G) => mechFrame(G.settings && G.settings.loadout && G.settings.loadout.mech);
 
@@ -57,10 +57,10 @@ export function build(L) {
   const bays = [-BAY, 0, BAY].map((x, i) => {
     const b = { i, x, g: new THREE.Group(), mech: null, frame: null, want: null, lamp: null, ring: null, num: null, holo: null };
     b.g.position.set(x, 0, MZ); root.add(b.g);
-    const plate = L.box(b.g, 6.4, 0.06, 5.2, dark, 0, 0.03, 0); plate.castShadow = false;
+    const plate = L.box(b.g, 6.4 * K, 0.06, 5.2, dark, 0, 0.03, 0); plate.castShadow = false;
     const rm = L.basic(i === 1 ? 0xff4fd8 : 0x4fd8ff, { transparent: true, opacity: 0.85 });
-    b.ring = new THREE.Mesh(new THREE.RingGeometry(2.05, 2.3, 8), rm); b.ring.rotation.x = -Math.PI / 2; b.ring.position.y = 0.07; b.g.add(b.ring);
-    const gan = new THREE.Group(); b.g.add(gan); b.gantry = gan;
+    b.ring = new THREE.Mesh(new THREE.RingGeometry(2.05 * K, 2.3 * K, 8), rm); b.ring.rotation.x = -Math.PI / 2; b.ring.position.y = 0.07; b.g.add(b.ring);
+    const gan = new THREE.Group(); gan.scale.x = K; b.g.add(gan); b.gantry = gan; // (wider for a bigger mech: the towers step out, the beams stretch)
     codeGantry(L, gan, { steel, yel, dark });
     b.arms = ['arm_L', 'arm_R'].map((n) => gan.getObjectByName(n)); b.beacons = [gan.getObjectByName('beacon_L'), gan.getObjectByName('beacon_R')];
     L.glb('x_lobby_gantry', (o) => { freeTree(gan); gan.clear(); gan.add(o); o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); b.arms = ['arm_L', 'arm_R'].map((n) => o.getObjectByName(n)).filter(Boolean); b.blender = true; b.beacons = []; o.traverse((m) => { if (/beacon/i.test(m.name) && m.isMesh) b.beacons.push(m); }); });
@@ -73,7 +73,7 @@ export function build(L) {
     return b;
   });
   // ---- the crane: a rail over all three bays, a trolley, a cable and a hook block (they move during a swap)
-  L.box(root, 30, 0.45, 0.55, steel, 0, 13.0, MZ);
+  L.box(root, 30 * K, 0.45, 0.55, steel, 0, 13.0, MZ);
   const trolley = new THREE.Group(); trolley.position.set(0, 12.6, MZ); root.add(trolley);
   L.box(trolley, 1.4, 0.55, 1.0, yel, 0, 0, 0);
   const cable = L.cyl(trolley, 0.035, 0.035, 1, steel, 0, 0, 0, 6); cable.castShadow = false;
@@ -83,7 +83,7 @@ export function build(L) {
   // ---- solid things you bump into (walk.js): [x0, z0, x1, z1, top]. tops under ~1.6 m can be jumped onto
   const SOL = [], solid = (x0, z0, x1, z1, top = 99) => { SOL.push([x0, z0, x1, z1, top]); };
   solid(-24.5, 21.8, -11, 22.6); solid(11, 21.8, 24.5, 22.6); // the front wall either side of the door
-  for (const b of [-BAY, 0, BAY]) { for (const sx of [-3.4, 3.4]) solid(b + sx - 0.55, MZ - 1.45, b + sx + 0.55, MZ + 1.45); solid(b - 3.8, MZ + 1.3, b - 3.0, MZ + 2.1); solid(b - 1.5, MZ - 1.4, b + 1.5, MZ + 1.3); } // towers, ladders, the mechs
+  for (const b of [-BAY, 0, BAY]) { for (const sx of [-3.4 * K, 3.4 * K]) solid(b + sx - 0.55, MZ - 1.45, b + sx + 0.55, MZ + 1.45); solid(b - 3.8 * K, MZ + 1.3, b - 3.0 * K, MZ + 2.1); solid(b - 1.5 * K, MZ - 1.4, b + 1.5 * K, MZ + 1.3); } // towers, ladders, the mechs
   solid(-24.5, 32.3, 24.5, 32.9, 0.9); // the apron barrier (hop it? no: it's the edge of the world)
   // ---- props: crates (Blender, boxes until they land), a tool cart, barrels
   const wood = L.mat(0x7a5530, 0.8);
@@ -159,7 +159,7 @@ export function build(L) {
     if (swap) { swap.to = to; return; }
     trolley.position.x = b.x; dust.position.x = b.x;
     swap = { t: 0, from: b.frame, to, swapped: false, landed: false };
-    const c = L.cur(); if (c.walk && !ride) c.camFocus = { at: [b.x, 4.2, MZ], t: 0, dur: SWAP + 0.5, back: 5 }; // (look up at the bay while it happens)
+    const c = L.cur(); if (c.walk && !ride) c.camFocus = { at: [b.x, 4.2 * K, MZ], t: 0, dur: SWAP + 0.5, back: 5 }; // (look up at the bay while it happens)
     try { L.sfx.tone('square', 520, 380, 0.22, 0.08); L.sfx.tone('square', 520, 380, 0.22, 0.08, null, 0.3); } catch { /* (no audio yet) */ }
   }
   function swapTick(dt) {
@@ -229,7 +229,7 @@ export function build(L) {
     const b = my(), walk = L.cur().walk;
     if (!b.mech || swap || ret || ride || !walk) return;
     const f = b.frame, F = MECH[f];
-    ride = { pos: [b.x, 0, MZ], yaw: Math.PI, vel: [0, 0, 0], air: false, speed: f === 'nightshift' ? 6 : 7.5, r: 1.7, h: F.h + 0.6, camDist: 13, camH: 4.2,
+    ride = { pos: [b.x, 0, MZ], yaw: Math.PI, vel: [0, 0, 0], air: false, speed: f === 'nightshift' ? 6 : 7.5, r: 1.7 * K, h: F.h + 0.6, camDist: 13 * K, camH: 4.2 * K,
       solids: rideSol(), bounds: [-22.5, MZ - 0.2, 22.5, 31],
       moved(dt, hs) {
         const m = b.mech; if (!m) return;
@@ -355,7 +355,7 @@ export function build(L) {
       plateAt.set(0, 7.3, MZ + 0.6); // (stays put while the mechs move)
       L.at(box, plateAt);
       if (bubbleT > 0) L.at(bubble, bubbleAt);
-      holos.forEach((d, k) => { if (d.style.display !== 'none') { holoAt.set(bays[k ? 2 : 0].x, 3.4, MZ); L.at(d, holoAt); } });
+      holos.forEach((d, k) => { if (d.style.display !== 'none') { holoAt.set(bays[k ? 2 : 0].x, 3.4 * K, MZ); L.at(d, holoAt); } });
       void c;
     },
     hover(h) { box.style.outline = h && h.kind === 'mymech' ? '3px solid #ffe14d' : ''; },
