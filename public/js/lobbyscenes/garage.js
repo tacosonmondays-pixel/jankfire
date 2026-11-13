@@ -122,12 +122,25 @@ export function build(L) {
   solid(-24, 14, -23.5, 16.6, 1.9); // the lockers
   solid(-23.25, 21.3, -19.75, 22, 0.98); solid(-24, 21.25, -23.2, 22, 1.75); // the counter, the fridge (left of the door's open panel)
   solid(-18.8, 21.4, -18.3, 21.9, 1.5); solid(-19.6, 21.4, -19.1, 21.9, 0.7); solid(-23.65, 20.45, -23.15, 20.95, 0.4); // the water cooler, the bin, the plant
-  // ---- the test-fire range (front right): a counter, three targets on the wall
-  L.box(root, 0.8, 1.05, 8, L.mat(0x4a3a2a, 0.7), 16, 0.52, 15); solid(15.6, 11, 16.4, 19, 1.05);
-  const targets = [11.5, 15, 18.5].map((z) => { const t = new THREE.Group(); t.position.set(23.6, 1.6, z); root.add(t); L.cyl(t, 0.07, 0.07, 1.6, steel, 0, -0.8, 0, 6); const face = new THREE.Group(); t.add(face);
+  // ---- the test-fire range (front right): the Blender range (x_lobby_range: booths, lane rails, mech-shaped paper
+  // targets, the backstop, sandbags; boxes until it lands). the targets spin when TEST FIRE hits them
+  const rgG = new THREE.Group(); root.add(rgG);
+  L.box(rgG, 0.8, 1.05, 10.2, L.mat(0x4a3a2a, 0.7), 16, 0.52, 15);
+  const targets = [11.5, 15, 18.5].map((z) => { const t = new THREE.Group(); t.position.set(22.6, 1.6, z); rgG.add(t); L.cyl(t, 0.07, 0.07, 1.6, steel, 0, -0.8, 0, 6); const face = new THREE.Group(); t.add(face);
     for (const [r, c] of [[0.55, 0xffffff], [0.42, 0xff3030], [0.28, 0xffffff], [0.14, 0xff3030]]) { const d = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.06 + (0.55 - r) * 0.05, 16), L.mat(c, 0.5)); d.rotation.z = Math.PI / 2; face.add(d); }
-    return { g: t, face, spin: 0 }; });
-  const rs = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.75), L.basic(0xffffff, { map: L.label('TEST FIRE · E', { w: 512, h: 128 }) })); rs.position.set(23.95, 4, 15); rs.rotation.y = -Math.PI / 2; root.add(rs);
+    return { g: t, face, spin: 0, x: 22.6 }; });
+  const rs = new THREE.Mesh(new THREE.PlaneGeometry(3, 0.75), L.basic(0xffffff, { map: L.label('TEST FIRE · E', { w: 512, h: 128 }) })); rs.position.set(23.95, 4, 15); rs.rotation.y = -Math.PI / 2; rgG.add(rs);
+  let beacon = null, fireT = 0;
+  L.glb('x_lobby_range', (o, meta) => {
+    freeTree(rgG); rgG.clear(); o.position.set(20, 0, 15); o.traverse((m) => { if (m.isMesh) { m.castShadow = !/lanemat/.test(m.name); m.receiveShadow = true; } }); rgG.add(o);
+    targets.forEach((t, i) => { const n = o.getObjectByName('target_' + i); if (n) { t.face = n; t.face.userData.ry = n.rotation.y; t.x = 20 + ((meta && meta.targets && meta.targets[i]) ? meta.targets[i][0] : 2.6); } });
+    beacon = o.getObjectByName('beacon');
+  });
+  solid(15.6, 9.9, 16.4, 20.1, 1.08); // the counter
+  for (const z of [9.9, 13.25, 16.75, 20.1]) solid(14.3, z - 0.06, 15.8, z + 0.06, 2.05); // the booth dividers
+  solid(22.75, 9.7, 24, 20.3, 3.5); // the backstop and its sandbags
+  for (const z of [11.5, 15, 18.5]) solid(22.5, z - 0.6, 22.7, z + 0.6, 2.4); // the targets
+  solid(21.2, 20.85, 23.45, 21.55, 1.25); solid(21.7, 21.6, 23.1, 21.78, 2.9); // the ammo crates, the tally board
   // ---- lights: a dim purple room, a key from the front, the bay lamps, a cyan kicker
   S.add(new THREE.HemisphereLight(0x9a88c0, 0x1a1020, 0.9));
   const key = new THREE.DirectionalLight(0xffe6f4, 1.25); key.position.set(-6, 14, 16); key.target.position.set(0, 0, 0); S.add(key, key.target);
@@ -275,13 +288,14 @@ export function build(L) {
     const me = walk.me;
     targets.forEach((t, i) => setTimeout(() => {
       if (gone) return;
-      const from = new THREE.Vector3(me.pos[0], me.pos[1] + 1.7, me.pos[2]), to = new THREE.Vector3(23.4, 1.6, t.g.position.z);
+      const from = new THREE.Vector3(me.pos[0], me.pos[1] + 1.7, me.pos[2]), to = new THREE.Vector3(t.x - 0.05, 1.6, t.g.position.z);
       const g = new THREE.BufferGeometry().setFromPoints([from, to]), ln = new THREE.Line(g, L.basic(0xffe14d, { transparent: true }));
       ln.userData.lsSee = true; root.add(ln); tracers.push({ ln, life: 0.12 });
       t.spin = 1;
       try { L.sfx.noise(0.08, 0.5, 'highpass', 2000, 800); L.sfx.tone('square', 1900, 1500, 0.09, 0.08, null, 0.05); } catch { /* (no audio yet) */ }
     }, i * 220));
     me.yaw = -Math.PI / 2;
+    fireT = 1.6; // (the LIVE FIRE beacon goes mad)
   }
   // ---- the cola machine
   const colaLines = ['a Jank Cola. it\'s warm.', 'it ate your coin. classic.', 'diet Jank Cola. somehow worse.', 'a can of air. limited edition.'];
@@ -337,7 +351,8 @@ export function build(L) {
         if (b.away && b.rem) { const R = b.rem, k = Math.min(1, dt * 10); m.root.position.x += (R.p[0] - b.x - m.root.position.x) * k; m.root.position.z += (R.p[2] - MZ - m.root.position.z) * k; m.root.position.y = R.p[1]; m.root.rotation.y = R.yaw; b.st.spd = R.spd; b.st.empty = false; }
         else if (b.home) { const H = b.home; H.t += dt; const k = Math.min(1, H.t / 1.3), e = k * k * (3 - 2 * k); m.root.position.set((H.from[0] - b.x) * (1 - e), Math.sin(k * Math.PI) * 3.5, (H.from[2] - MZ) * (1 - e)); let d = Math.PI - H.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); m.root.rotation.y = H.yaw + d * e; b.st.air = k < 1; b.st.spd = 0; if (k >= 1) { b.home = null; b.st.empty = true; b.st.landT = 0; m.root.position.set(0, 0, 0); m.root.rotation.y = Math.PI; } }
       }
-      for (const t of targets) if (t.spin > 0) { t.spin = Math.max(0, t.spin - dt * 1.2); t.face.rotation.y = (1 - t.spin) * Math.PI * 4; }
+      for (const t of targets) if (t.spin > 0) { t.spin = Math.max(0, t.spin - dt * 1.2); t.face.rotation.y = (t.face.userData.ry || 0) + (1 - t.spin) * Math.PI * 4; }
+      if (beacon) { fireT = Math.max(0, fireT - dt); beacon.visible = fireT > 0 ? Math.sin(t * 30) > 0 : Math.sin(t * 2.5) > -0.6; }
       for (let i = tracers.length - 1; i >= 0; i--) { const tr = tracers[i]; tr.life -= dt; tr.ln.material.opacity = Math.max(0, tr.life / 0.12); if (tr.life <= 0) { root.remove(tr.ln); tr.ln.geometry.dispose(); tr.ln.material.dispose(); tracers.splice(i, 1); } }
       if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubble.style.display = 'none'; }
       swapTick(dt);
