@@ -12,6 +12,7 @@ import { WX_KINDS, wxAt, wxStrikes, wxCheck, wxOf } from '/shared/weather.js';
 import { glbLoader } from './glbkit.js';
 import { net } from './net.js';
 import { skyParts } from './world.js';
+import { sceneryGroup } from './scenery.js';
 import { rainLoop, sfx } from './audio.js';
 
 const W = {
@@ -113,7 +114,7 @@ function curtain(K, cam, k, potato) {
   W.key = key;
   const m = K.P.curtain;
   let c = 0;
-  for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+  for (let i = 0; i < n && k > 0; i++) for (let j = 0; j < n; j++) {
     const ix = bx + i, iz = bz + j;
     if (hash(ix, iz) > 0.25 + 0.75 * k) continue; // light rain: some columns stay dry (they fill in as it picks up)
     if (cam.x > ix * T - 0.7 && cam.x < ix * T + T + 0.7 && cam.z > iz * T - 0.7 && cam.z < iz * T + T + 0.7) continue; // (streaks right in your face are giant bars: not in your own column)
@@ -202,8 +203,9 @@ export function updateWeather(dt) {
   const prev = { a: phase(K, 'wx_splash_a_clip'), b: phase(K, 'wx_splash_b_clip') };
   K.mixer.update(Math.min(dt, 0.1));
   const ph = { a: phase(K, 'wx_splash_a_clip'), b: phase(K, 'wx_splash_b_clip') }, ns = potato ? 0 : Math.round(MAXI.splash * k);
-  if ((prev.a < 0.5 && ph.a >= 0.5) || K.P.splashA.userData.n !== ns) splashes(K, p, k, 'splashA', ns);
-  if (ph.b < prev.b || K.P.splashB.userData.n !== ns) splashes(K, p, k, 'splashB', ns);
+  const more = (m) => ns > (m.userData.n || 0) + 4 || (ns && !m.userData.n); // (fewer: just show fewer; a lot more asked for: fresh spots now)
+  if ((prev.a < 0.5 && ph.a >= 0.5) || more(K.P.splashA)) splashes(K, p, k, 'splashA', ns); else K.P.splashA.count = Math.min(ns, (K.P.splashA.userData.spots || []).length);
+  if (ph.b < prev.b || more(K.P.splashB)) splashes(K, p, k, 'splashB', ns); else K.P.splashB.count = Math.min(ns, (K.P.splashB.userData.spots || []).length);
   poseCopies(K.P.splashA, K.P.px_wx_splash_a); poseCopies(K.P.splashB, K.P.px_wx_splash_b);
   curtain(K, p, k, potato);
   puddles(K, p, k, potato ? 16 : MAXI.puddle);
@@ -218,7 +220,7 @@ function phase(K, n) { const a = K.acts[n]; return a ? (a.time / a.getClip().dur
 
 function lightning(K, plan, i, t, p, k) {
   const S = W.strikes;
-  if (plan && i !== S.i) { S.i = i; S.list = i >= 0 ? wxStrikes(plan, i) : []; S.next = 0; while (S.next < S.list.length && S.list[S.next][0] < t - 0.5) S.next++; }
+  if (plan && i !== S.i && !W.test) { S.i = i; S.list = i >= 0 ? wxStrikes(plan, i) : []; S.next = 0; while (S.next < S.list.length && S.list[S.next][0] < t - 0.5) S.next++; }
   if (W.test && W.test.strike) { S.list = [[t, W.test.strike[0], W.test.strike[1], W.test.strike[2] | 0]]; S.next = 0; W.test.strike = null; }
   while (S.next < S.list.length && S.list[S.next][0] <= t) {
     const [, ang, dist, b] = S.list[S.next++];
@@ -252,10 +254,14 @@ export function wxPre() {
   SAVE.sun = sun ? [sun, sun.intensity] : null;
   SAVE.sky = sky.sky ? sky.sky.material.color.getHex() : null;
   SAVE.vis = [sky.sun, ...sky.clouds].filter(Boolean).map((o) => [o, o.visible]);
+  SAVE.far = [];
+  const g = sceneryGroup(); // the mountains / far skyline are unlit colours pre-mixed with the sky: they dim with it
+  if (g) g.traverse((o) => { const m = o.material; if (m && m.isMeshBasicMaterial && !SAVE.far.some((x) => x[0] === m)) SAVE.far.push([m, m.color.getHex()]); });
   const dk = Math.min(1, d);
   fog.near *= 1 - 0.45 * dk; fog.far *= 1 - 0.4 * dk;
-  fog.color.lerp(STORM_FOG, 0.55 * dk).lerp(FLASH, 0.35 * f);
-  if (hemi) { hemi.intensity *= (1 - 0.3 * d) * (1 + 2.2 * f); hemi.color.lerp(HEMI_T, 0.4 * dk); }
+  fog.color.lerp(STORM_FOG, 0.65 * dk).lerp(FLASH, 0.35 * f);
+  if (hemi) { hemi.intensity *= (1 - 0.4 * d) * (1 + 2.2 * f); hemi.color.lerp(HEMI_T, 0.4 * dk); }
+  for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(STORM_SKY, 0.6 * dk)).lerp(FLASH, 0.3 * f);
   if (sun) sun.intensity = sun.intensity * (1 - 0.65 * dk) + 1.5 * f;
   if (sky.sky) sky.sky.material.color.lerp(STORM_SKY, 0.75 * dk).lerp(FLASH, 0.6 * f);
   if (dk > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
@@ -270,6 +276,7 @@ export function wxPost() {
   const sky = skyParts();
   if (sky.sky && SAVE.sky != null) sky.sky.material.color.setHex(SAVE.sky);
   for (const [o, v] of SAVE.vis) o.visible = v;
+  for (const [m, hx] of SAVE.far) m.color.setHex(hx);
 }
 
 // tests + screenshots: what the weather's doing, and forcing it (k: kind, s: strength; strike: [angle, dist, bolt])
