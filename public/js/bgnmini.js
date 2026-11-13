@@ -94,7 +94,7 @@ function addDuck(m) {
   if (!G.scene || !Array.isArray(m.p) || S.ducks.has(m.id)) return;
   const mesh = buildProjectile('duck');
   if (m.g) mesh.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xffd23b) o.material = GOLD; });
-  mesh.scale.setScalar(m.g ? 1.9 : 1.5);
+  mesh.scale.setScalar(m.g ? 1.9 : 1.5 + Math.min(0.5, ((m.v | 0) > 1 ? m.v - 1 : 0) * 0.12)); // (a spat-out duck carrying a few is a bit fatter)
   const line = new THREE.Mesh(LINE, new THREE.MeshBasicMaterial({ color: m.g ? 0xffc400 : 0xffe14d, transparent: true, opacity: 0.35, depthWrite: false, fog: false }));
   const disc = new THREE.Mesh(DISC, new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.25, ...PO }));
   const ring = new THREE.Mesh(RING, new THREE.MeshBasicMaterial({ color: m.g ? 0xffc400 : 0xffe14d, opacity: 0.9, fog: false, ...PO }));

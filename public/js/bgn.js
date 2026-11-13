@@ -73,6 +73,11 @@ function loadBoard() {
 }
 
 // ---------------------------------------------------------------- messages
+// a guest's rejoin ticket: the server hands one out at the table, and it's the only way back to your own seat after a
+// drop (a name alone isn't: anyone can type it). this tab only
+const TK = 'jf_bgn_tk';
+export function bgnTicket() { try { const t = sessionStorage.getItem(TK); return t && /^[A-Za-z0-9_-]{24}$/.test(t) ? t : undefined; } catch { return undefined; } }
+net.tap((m) => { if (m.t === 'welcome' && typeof m.bt === 'string') try { sessionStorage.setItem(TK, m.bt); } catch { /* storage off: no seat back */ } });
 net.on('bg', (m) => {
   if (!m || typeof m.k !== 'string') return;
   if (m.k === 'st') { const was = B; B = m.s; if (!B) { bgnReset(); return; } miniState(B); ensureDom(); loadBoard(); if (board) board.sync(B); onState(was); render(); return; }

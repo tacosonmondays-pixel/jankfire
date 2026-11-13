@@ -11,7 +11,8 @@
 //           off the floor is +1, a catch in the air +2, a slap drops 3 ducks, the cursed duck halves your pile
 //   duck2   bots-only 2v2: the team total decides it
 //   bigguy  the leader gets a fresh overdrive rig every life and their kills count x3
-//   online  the online lobby: a person who comes back takes "<name>'s bot" back; the warm-up after a game is on the crate
+//   online  the online lobby: a guest who comes back with their rejoin ticket takes "<name>'s bot" back (a stranger with the
+//           same name, or a made-up ticket, doesn't); the warm-up after a game is on the crate
 //   node tests/bgnmini_ws.cjs [basePort=3500] [part ...]
 const { spawn } = require('child_process');
 const path = require('path');
@@ -45,7 +46,7 @@ function client(port, name, join) {
   ws.on('message', (d) => {
     const m = JSON.parse(d);
     c.msgs.push(m); if (c.msgs.length > 6000) c.msgs.splice(0, 3000);
-    if (m.t === 'welcome') { c.id = m.id; c.q = m.q || 1; }
+    if (m.t === 'welcome') { c.id = m.id; c.q = m.q || 1; c.bt = m.bt; }
     if (m.t === 'spawn') { c.q = m.q; c.pos = m.p.slice(); }
     if (m.t === 'bg') { if (m.k === 'st') { m.s.at = Date.now(); c.st = m.s; c.sts.push(m.s); if (c.auto) c.answer(); } else { m.at = Date.now(); c.ev.push(m); } }
     if (m.t === 'sn') for (const r of m.p) { c.alive.set(r[0], r[11]); c.ppos.set(r[0], [r[1], r[2], r[3]]); }
@@ -342,15 +343,23 @@ async function partOnline(port) {
   const A = await client(port, 'alice', { mode: 'bots', cfg: { lobby: 'bgn' } });
   A.auto = true; Bo.auto = true;
   ok(await W.until(() => W.st && W.st.seats && W.st.seats.some((s) => s.name === 'alice') && W.st.seats.some((s) => s.name === 'bob'), 15000), 'bob and alice sit down');
+  ok(typeof A.bt === 'string' && /^[A-Za-z0-9_-]{24}$/.test(A.bt) && A.bt !== Bo.bt, 'guests get their own random rejoin ticket');
   const i0 = W.st.seats.find((s) => s.name === 'alice').i, ib = W.st.seats.find((s) => s.name === 'bob').i;
   Bo.ws.close();
   ok(await W.until(() => W.st.seats[ib].name === "bob's bot", 4000), "bob left: bob's bot keeps his seat");
   A.ws.close();
   ok(await W.until(() => W.st.seats[i0].name === "alice's bot", 4000), "alice left: alice's bot keeps her seat");
   ok(ib < i0, `(bob's bot sits before alice's: ${ib} < ${i0}, so the first bot seat isn't hers)`);
-  const A2 = await client(port, 'alice', { mode: 'bots', cfg: { lobby: 'bgn' } });
+  // a stranger who types her name (and makes up a ticket) gets a seat, but not hers: a name isn't a ticket
+  const X = await client(port, 'alice', { mode: 'bots', cfg: { lobby: 'bgn' }, back: 'AAAAAAAAAAAAAAAAAAAAAAAA' });
+  X.auto = true;
+  ok(await X.until(() => X.id && X.seat(), 8000), 'a stranger called alice (with a made-up ticket) sits down');
+  ok(!W.st.seats.some((s) => s.id === X.id) && W.st.seats[i0].name === "alice's bot" && W.st.seats[i0].bot, `but not in alice's seat: that's still alice's bot (${W.st.seats.map((s) => s.name).join(', ')})`);
+  ok(X.bt && X.bt !== A.bt && X.bt !== 'AAAAAAAAAAAAAAAAAAAAAAAA', 'and the made-up ticket is swapped for a fresh one');
+  const A2 = await client(port, 'alice', { mode: 'bots', cfg: { lobby: 'bgn' }, back: A.bt });
   A2.auto = true;
-  ok(await W.until(() => W.st.seats[i0].name === 'alice' && !W.st.seats[i0].bot, 30000), 'she came back and took her own seat back');
+  ok(await W.until(() => W.st.seats[i0].id === A2.id && !W.st.seats[i0].bot, 30000), 'the real alice came back with her ticket and took her own seat back');
+  ok(A2.bt === A.bt, 'and keeps the same ticket');
   ok(W.st.seats[ib].name === "bob's bot", "bob's bot still has bob's seat");
   ok(await W.until(() => W.st.ph === 'done', 120000), 'the game ran to the end');
   const n0 = W.msgs.length;
@@ -360,7 +369,7 @@ async function partOnline(port) {
   ok(cfg && cfg.cfg.map === 'crate', `the warm-up is on the crate (${cfg && cfg.cfg.map}), not the last minigame's platform`);
   const errs = errorsIn(S.log());
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
-  for (const c of [W, A2]) c.ws.close();
+  for (const c of [W, A2, X]) c.ws.close();
   S.stop();
 }
 

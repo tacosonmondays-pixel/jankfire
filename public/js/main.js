@@ -76,7 +76,7 @@ import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from '.
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
-import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
+import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack, bgnTicket } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
 import { miniMouse, miniCam, miniFeed, miniRideCam, miniHideVM, miniRoundText } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
@@ -330,7 +330,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), mf: S.loadout.mech, item: S.loadout.item, zl: zlWant(), cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), mf: S.loadout.mech, item: S.loadout.item, zl: zlWant(), cfg, back: cfg && cfg.lobby === 'bgn' && !account.loggedIn ? bgnTicket() : undefined, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');

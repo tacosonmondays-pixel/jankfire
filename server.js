@@ -9,6 +9,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import os from 'node:os';
 import { spawn } from 'node:child_process';
+import crypto from 'node:crypto';
 import { WebSocketServer } from 'ws';
 import { makeStore } from './server/store.js';
 import { Accounts, levelOf } from './server/accounts.js';
@@ -27,6 +28,7 @@ import { makeBuild } from './server/build.js'; // versioned code urls: the brows
 import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
 import { makeFriends } from './server/friends.js'; // friends (invites and joins check them)
 import { GAMES, mapsFor } from './shared/modes.js';
+const BGN_TK = /^[A-Za-z0-9_-]{24}$/; // a board game night guest's rejoin ticket (18 random bytes, base64url)
 import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
 import { mechFrame } from './shared/mech.js';
 import { LOBBY } from './shared/lobby.js';
@@ -162,10 +164,14 @@ wss.on('connection', (ws) => {
           const ed = typeof tk === 'string' ? takeTicket(tk, m._acct && m._acct.n) : null;
           if (ed && m.mode === 'bots') m.cfg._edit = ed;
           delete m.cfg._back; // (only the server says who's asking)
-          if (m.cfg.lobby === 'bgn') m.cfg._back = m._acct ? 'a:' + m._acct.n : 'n:' + (m._name || clean(m.name, 16)); // board game night: a seat kept warm for you? (server/bgn.js bgnBackFor)
+          // board game night: a seat kept warm for you? an account, or a guest's rejoin ticket (never just a name: a stranger could type it)
+          const bt = !m._acct && typeof m.back === 'string' && BGN_TK.test(m.back) ? m.back : null;
+          if (m.cfg.lobby === 'bgn' && (m._acct || bt)) m.cfg._back = m._acct ? 'a:' + m._acct.n : 'g:' + bt; // (server/bgn.js bgnBackFor)
         }
         if (ws.readyState !== 1) return;
         const room = roomFor(m.mode, ws, m.cfg);
+        // a guest at the table gets a ticket: the one they came back with if it's really a seat here, else a fresh random one
+        if (!m._acct && m.cfg && typeof m.cfg === 'object' && m.cfg.lobby === 'bgn') m._tk = typeof m.cfg._back === 'string' && room.bgnBackFor && room.bgnBackFor(m.cfg._back) ? m.cfg._back.slice(2) : crypto.randomBytes(18).toString('base64url');
         me = room.addHuman(ws, m);
       })().catch((e) => { console.error('join failed', e); ws.close(); });
       return;

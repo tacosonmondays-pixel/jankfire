@@ -76,7 +76,7 @@ export function installBgn(Room, H) {
       console.log(`[bgn] ${this.id}: board game night, ${want} rounds, ${people.length} human(s)`);
     },
     bgnName(p) { return String(p.name || '').replace(/ \[bot\]$/, '').slice(0, 20); },
-    bgnKey(p) { return p.acct ? 'a:' + p.acct.n : 'n:' + p.name; }, // who someone is, for coming back to their seat (an account, else the name)
+    bgnKey(p) { return p.acct ? 'a:' + p.acct.n : p.tk ? 'g:' + p.tk : null; }, // who someone is, for coming back to their seat: an account, or a guest's random rejoin ticket (null: no seat back). the seats' back keys are the ticket -> seat map, and they go when the game does
     // roomFor (online lobby): is a seat here kept warm for whoever this is? (they dropped out: their bot has it)
     bgnBackFor(key) { const B = this.bgn; return !!(B && this.lobby && !this.closed && B.ph !== 'done' && B.seats.some((s) => s.bot && s.back === key)); },
     // sitting out: dead with no respawn (the JF_WATCH observer's trick, but switchable)
@@ -109,13 +109,16 @@ export function installBgn(Room, H) {
     // between turns: people waiting take bots' seats (coupons, bread and bag come with the seat)
     bgnSeatQueue() {
       const B = this.bgn;
-      while (B.queue.length) {
-        const p = this.players.get(B.queue[0]);
-        if (!p || this.bgnSeatOf(p)) { B.queue.shift(); continue; }
-        const free = (x) => x.bot && !(B.ask && B.ask.seat === x.i) && !(B.walk && B.walk.seat === x.i);
-        const own = B.seats.find((x) => x.bot && x.back === this.bgnKey(p)), s = own ? (free(own) ? own : null) : B.seats.find(free); // back from a disconnect: your own seat ("<name>'s bot" gives it back), as soon as it's between turns
-        if (!s) return;
-        B.queue.shift();
+      const free = (x) => x.bot && !(B.ask && B.ask.seat === x.i) && !(B.walk && B.walk.seat === x.i);
+      for (const id of B.queue.slice()) {
+        const p = this.players.get(id);
+        if (!p || this.bgnSeatOf(p)) { B.queue = B.queue.filter((q) => q !== id); continue; }
+        const key = this.bgnKey(p), own = key && B.seats.find((x) => x.bot && x.back === key);
+        // back from a disconnect: your own seat ("<name>'s bot" gives it back), as soon as it's between turns (busy: you wait,
+        // the rest of the queue doesn't). anyone else: a seat nobody's coming back to first
+        const s = own ? (free(own) ? own : null) : B.seats.find((x) => free(x) && !x.back) || B.seats.find(free);
+        if (!s) continue;
+        B.queue = B.queue.filter((q) => q !== id);
         const b = this.players.get(s.pid);
         s.pid = p.id; s.bot = false; s.name = this.bgnName(p); s.back = null;
         if (b) this.remove(b);

@@ -199,6 +199,9 @@ export function installBgnMini(Room, H) {
       let out = true;
       if (mg.teams && mg.sides) { const side = mg.sides[0].includes(s.i) ? 1 : 2; if (S.pool[side] > 0) { S.pool[side]--; out = false; } }
       else { S.lives[s.i] = Math.max(0, (S.lives[s.i] ?? CM.solo) - 1); out = S.lives[s.i] <= 0; } // (1v1v1v1 / duel: your own lives)
+      // the other(s) already went over this same tick: the round is decided, so the last one down still stands
+      const rivals = mg.teams && mg.sides ? mg.sides.find((sd) => !sd.includes(s.i)) || [] : mg.seats.filter((i) => i !== s.i);
+      if (out && rivals.length && rivals.every((i) => S.out.has(i))) out = false;
       if (out) { S.out.add(s.i); S.outAt[s.i] = ++S.outN; t.respawnAt = t.minRespawnAt = Infinity; }
       this.bgnEv('fell', { seat: s.i, id: t.id, out: out ? 1 : 0, by: by && by !== t ? by.id : 0, x: this.bgmInfo() });
     },
@@ -218,6 +221,14 @@ export function installBgnMini(Room, H) {
         if (!ai.cw || n > ai.cwT || Math.hypot(ai.cw[0] - b.pos[0], ai.cw[1] - b.pos[2]) < 2.5) { ai.cw = inside(S.cx + (Math.random() * 2 - 1) * sx, S.cz + (Math.random() * 2 - 1) * sz); ai.cwT = n + 3500; }
         want = ai.cw;
       }
+      // a crate (or the toy box in the middle) in the way: drive round it, not into it. without this two bots on either side
+      // of a crate pushed at each other through it for minutes (bots-only games stuck at the clock)
+      const me = [b.pos[0], b.pos[2]], direct = this.bgmCartClear(me, want);
+      if (direct) ai.det = null;
+      else {
+        if (!ai.det || n > ai.detT || Math.hypot(ai.det[0] - me[0], ai.det[1] - me[1]) < 1.2 || (n > (ai.detChk || 0) && !this.bgmCartClear(me, ai.det))) { ai.det = this.bgmDetour(me, want, inside); ai.detT = n + 1600; ai.detChk = n + 300; }
+        if (ai.det) want = ai.det;
+      }
       const px = b.pos[0] + v[0] * 0.65, pz = b.pos[2] + v[2] * 0.65, out = Math.abs(px - S.cx) > sx || Math.abs(pz - S.cz) > sz; // where it'll be in a moment
       if (out) want = [S.cx + (b.pos[0] - S.cx) * 0.3, S.cz + (b.pos[2] - S.cz) * 0.3];
       const park = K.peace >= 2;
@@ -232,12 +243,17 @@ export function installBgnMini(Room, H) {
       let fw = 0;
       if (ai.cg) {
         const outward = (b.pos[0] - S.cx) * v[0] + (b.pos[2] - S.cz) * v[2] > 0;
-        fw = park ? 0 : back ? -1 : out && outward && along > 1.5 ? -1 : Math.abs(off) > 2.2 ? 0 : 1; // heading off the edge: feet down. facing the wrong way: turn first
+        const circling = t && direct && bd < 9 && Math.abs(off) > 0.8 && along > 2.5; // close but not facing them: two bots could chase each other's tails for minutes. brake to turn tighter, then go
+        // nose to tail right up close (too close to get up ram speed, too tight to turn in): back off for a run-up
+        ai.orb = t && direct && bd < 4.5 && Math.abs(off) > 0.5 ? (ai.orb || 0) + dt : Math.max(0, (ai.orb || 0) - dt * 2);
+        if (ai.orb > 1.4) { ai.orb = 0; ai.runT = n + 750; }
+        const runup = n < (ai.runT || 0) && !out;
+        fw = park ? 0 : back || runup ? -1 : out && outward && along > 1.5 ? -1 : circling ? -1 : Math.abs(off) > 2.2 ? 0 : 1; // heading off the edge: feet down. facing the wrong way: turn first
         if (fw > 0 && along < R.top) along = Math.min(R.top, along + R.acc * dt);
         if (fw < 0) along = Math.max(-4, along - R.acc * 1.4 * dt);
         if (!fw) along -= Math.sign(along) * Math.min(Math.abs(along), R.fric * dt);
         const easy = ai.diff === 'easy' ? 1200 : 0;
-        if (t && !out && bd < 10 && Math.abs(off) < 0.3 && n - (b.bgBoostT || 0) >= CM.boostCd + easy) { along += CM.boost; b.bgBoostT = n; this.bgnEv('boost', { id: b.id }); } // lined up, close: BOOST
+        if (t && direct && !out && bd < 10 && Math.abs(off) < 0.3 && n - (b.bgBoostT || 0) >= CM.boostCd + easy) { along += CM.boost; b.bgBoostT = n; this.bgnEv('boost', { id: b.id }); } // lined up, close: BOOST
       }
       along = Math.max(-R.maxSp, Math.min(R.maxSp, along));
       v[0] = fx * along - fz * side; v[2] = fz * along + fx * side;
@@ -252,6 +268,26 @@ export function installBgnMini(Room, H) {
       b.pos = [cp[0], cp[1] + CART.top, cp[2]]; b.yaw = ai.ry; b.pitch = 0; b.onGround = false; b.f = 0;
       if (b.pos[1] < this.map.killY) this.kill(b, null, 'void');
       return true;
+    },
+    // can a cart drive straight from a to b ([x, z])? rays at bumper and handle height, a cart's width apart
+    bgmCartClear(a, b2) {
+      const S = this.bgm, dx = b2[0] - a[0], dz = b2[1] - a[1], l = Math.hypot(dx, dz);
+      if (l < 0.6) return true;
+      const d = [dx / l, 0, dz / l], ox = -d[2] * 0.35, oz = d[0] * 0.35;
+      for (const sd of [-1, 1]) for (const h of [0.4, 0.95]) if (raycast([a[0] + ox * sd, S.top + h, a[1] + oz * sd], d, l, this.boxes)) return false;
+      return true;
+    },
+    // somewhere to drive to first: a point in the safe square the cart can reach straight and that sees the target
+    // (shortest way round), else the reachable one nearest the target. null = nowhere better
+    bgmDetour(me, want, inside) {
+      let best = null, bc = 1e9;
+      for (const r of [3, 5, 7.5]) for (let k = 0; k < 16; k++) {
+        const a = (k / 16) * Math.PI * 2, q = inside(me[0] + Math.cos(a) * r, me[1] + Math.sin(a) * r);
+        if (Math.hypot(q[0] - me[0], q[1] - me[1]) < 1.5 || !this.bgmCartClear(me, q)) continue;
+        const left = Math.hypot(want[0] - q[0], want[1] - q[1]), cost = this.bgmCartClear(q, want) ? r + left : 100 + left;
+        if (cost < bc) { bc = cost; best = q; }
+      }
+      return best;
     },
     bgmCartsTick(n) {
       const S = this.bgm, mg = S.mg;
@@ -276,14 +312,14 @@ export function installBgnMini(Room, H) {
 
     // ---------------------------------------------------------------- DUCK CATCH
     // somewhere a duck can land: open sky over it, a floor near whoever it's for (or near a spawn)
-    bgmDuckSpot(near, r0 = 2, r1 = 9) {
+    bgmDuckSpot(near, r0 = 2, r1 = 9, drop = DK.h) {
       const sp = this.map.spawns || [[0, 0, 0]];
       for (let i = 0; i < 12; i++) {
         const c = near ? near.pos : sp[Math.floor(Math.random() * sp.length)], a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0);
         const x = c[0] + Math.cos(a) * r, z = c[2] + Math.sin(a) * r;
         const h = raycast([x, c[1] + 3, z], [0, -1, 0], 9, this.boxes);
         if (!h || h.normal[1] < 0.7 || h.box.pad || h.point[1] < this.map.killY + 3) continue;
-        if (raycast([x, h.point[1] + 0.3, z], [0, 1, 0], DK.h, this.boxes)) continue; // a roof over it: it'd come through the roof
+        if (raycast([x, h.point[1] + 0.3, z], [0, 1, 0], drop, this.boxes)) continue; // a roof over it (as high as it drops from): it'd come through the roof
         return [x, h.point[1], z];
       }
       return null;
@@ -293,16 +329,20 @@ export function installBgnMini(Room, H) {
       const S = this.bgm, n = now(), at = o.at || this.bgmDuckSpot(near);
       if (!at) return null;
       const h = o.h ?? DK.h, ms = o.ms ?? (h / DK.fall) * 1000;
-      const d = { id: this.bgmDuckN = (this.bgmDuckN || 0) + 1, p: at, h, t0: n, t1: n + ms, g: gold ? 1 : 0, one: o.one ? 1 : 0, not: o.not || 0, notT: n + 800 };
+      const d = { id: this.bgmDuckN = (this.bgmDuckN || 0) + 1, p: at, h, t0: n, t1: n + ms, g: gold ? 1 : 0, one: o.one ? 1 : 0, v: o.one ? Math.max(1, o.v | 0) : 0, not: o.not || 0, notT: n + 800 };
       S.ducks.set(d.id, d);
-      this.bgnEv('duck', { id: d.id, p: at.map(r2), h: r2(h), ms: Math.round(ms), g: d.g, one: d.one });
+      this.bgnEv('duck', { id: d.id, p: at.map(r2), h: r2(h), ms: Math.round(ms), g: d.g, one: d.one, ...(d.v > 1 ? { v: d.v } : {}) });
       return d;
     },
-    // ducks popping out of someone (a slap, the curse): up to DK.spit of them land round them, worth 1 each
+    // ducks popping out of someone (a slap, the curse): k ducks' worth in up to DK.spit ducks round them (worth 1 each,
+    // more when there's more to share out). nowhere to land round them: at their feet. a pile never just vanishes
     bgmSpit(t, k) {
-      for (let i = 0; i < Math.min(k, DK.spit); i++) {
-        const at = this.bgmDuckSpot(t, 1.4, 3.6);
-        if (at) this.bgmDuckDrop(null, false, { at, h: 2.4, ms: 520, one: 1, not: t.id });
+      const n = Math.min(k, DK.spit);
+      for (let i = 0; i < n; i++) {
+        const v = Math.floor(k / n) + (i < k % n ? 1 : 0);
+        let at = this.bgmDuckSpot(t, 1.4, 3.6, 2.4);
+        if (!at) { const f = raycast([t.pos[0], t.pos[1] + 0.5, t.pos[2]], [0, -1, 0], 4, this.boxes); at = [t.pos[0], f ? f.point[1] : t.pos[1], t.pos[2]]; }
+        this.bgmDuckDrop(null, false, { at, h: 2.4, ms: 520, one: 1, v, not: t.id });
       }
     },
     bgmSlap(t, by) {
@@ -313,7 +353,7 @@ export function installBgnMini(Room, H) {
       this.bgnEv('slap', { a: by.id, b: t.id, seat: s.i, n: lose, pile: S.pile[s.i] || 0 });
       if (lose) this.bgmSpit(t, lose);
     },
-    // pulled into the cursed duck's hole: half your pile, gone (some of it spat back out)
+    // pulled into the cursed duck's hole: half your pile sprays back out round you (grab it back before they do)
     bgmCurse(t) {
       const S = this.bgm, s = this.bgnSeatOf(t), n = now();
       if (!s || n - (S.curseT[s.i] || 0) < 3000) return;
@@ -321,7 +361,7 @@ export function installBgnMini(Room, H) {
       const lose = Math.floor((S.pile[s.i] || 0) / 2);
       S.pile[s.i] = (S.pile[s.i] || 0) - lose;
       this.bgnEv('curse', { id: t.id, seat: s.i, n: lose, pile: S.pile[s.i] });
-      if (lose) this.bgmSpit(t, Math.ceil(lose / 2));
+      if (lose) this.bgmSpit(t, lose);
     },
     // the cursed duck: a real sky duck (it lands as a black hole: tickHoles pulls), the usual red marker first
     bgmCursed(list) {
@@ -358,7 +398,7 @@ export function installBgnMini(Room, H) {
         }
         const s = got && this.bgnSeatOf(got);
         if (!s) continue;
-        const v = d.g ? DK.gold : d.one ? 1 : fall ? DK.air : DK.floor;
+        const v = d.g ? DK.gold : d.one ? d.v || 1 : fall ? DK.air : DK.floor;
         S.pile[s.i] = (S.pile[s.i] || 0) + v;
         S.ducks.delete(d.id);
         this.bgnEv('duckx', { id: d.id, by: got.id, seat: s.i, v, air: fall ? 1 : 0, g: d.g, pile: S.pile[s.i] });
@@ -387,7 +427,7 @@ export function installBgnMini(Room, H) {
       for (const d of S.ducks.values()) {
         if (Math.abs(d.p[1] - b.pos[1]) > 3 || S.curses.some((c) => hd(c.p, d.p) < 5)) continue; // another deck / under the curse: no
         const need = hd(b.pos, d.p) / sp, left = (d.t1 - n) / 1000;
-        const val = d.g ? DK.gold : d.one ? 1 : left > need - 0.3 ? DK.air : DK.floor;
+        const val = d.g ? DK.gold : d.one ? d.v || 1 : left > need - 0.3 ? DK.air : DK.floor;
         const cost = need - val * 0.9 - (b.ai.duck === d.id ? 0.4 : 0);
         if (cost < bc) { bc = cost; best = d; }
       }
@@ -414,7 +454,7 @@ export function installBgnMini(Room, H) {
           const hp = S.lastHp; S.lostT = 0;
           console.log(`[bgn] ${this.id}: the boss lost his mech without it breaking: back in`);
           if (this.mechSpawnIn(b, S.mg && BGN_MINIS[S.mg.id] ? BGN_MINIS[S.mg.id].boss : 'nightshift', S.mul) && b.body) { b.body.hp = Math.max(1, hp); this.bodyFlush(b, true); } else this.bgmBossDown(null, 'no mech');
-        } else if (b.mech) S.lostT = 0; // (no mech: on foot, a kill counts as a break)
+        } else if (b && b.mech) S.lostT = 0; // (no mech: on foot, a kill counts as a break)
         if (S.down && n - S.down > BS.down) this.endRound();
       }
     },
@@ -504,6 +544,7 @@ export function installBgnMini(Room, H) {
   // the boss doesn't earn killstreaks (a rig on top of his mech was a bit much), and in the big guy nobody else earns the rig
   wrap(P, 'rigBotEarn', function (base, b) { if (b.bgBoss || (this.bgm && this.bgm.k === 'bigguy' && this.bgnOne() !== b)) return; return base.call(this, b); }); // (the big guy: only the leader is in a rig)
   wrap(P, 'mechBotEarn', function (base, b) { if (b.bgBoss) return; return base.call(this, b); });
+  wrap(P, 'streaksOn', function (base) { if (this.bgm && this.bgm.k === 'bigguy') return false; return base.call(this); }); // (the big guy: the three can't farm him for their own rig or mech, and he has his rig already)
   // a boss is no seat: he's always team 2
   wrap(P, 'bgnSide', function (base, p) {
     if (p.bgBoss && this.bgn && this.bgn.mg) { if (!p.ownColor) p.ownColor = p.color; p.team = 2; p.color = TEAMS[2].color; return true; }
