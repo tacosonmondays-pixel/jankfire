@@ -928,12 +928,12 @@ def limewash(n=64):
     d = np.sort(np.stack(d), 0); edge = d[1] - d[0]; own = np.stack([np.hypot(np.minimum(abs(xx - px), n - abs(xx - px)) * 0.62, np.minimum(abs(yy - py), n - abs(yy - py))) for px, py in P]).argmin(0)
     tone = (np.random.default_rng(4702).random(len(P)) - 0.5)[own] * 0.08
     bump = np.clip(1 - d[0] / 9, 0, 1) * 0.1  # the stone's face rounds out from its middle
-    g = 0.84 + tone + bump + (vnoise(n, 8, 4703) - 0.5) * 0.08
-    g = np.where(edge < 1.4, 0.98, np.where(edge < 2.8, g - 0.3, g))  # lime thick in the joints, a shadow at the stone's lip
-    bare = np.clip((fbm(n, 4, 3, seed=4704) - 0.66) * 6, 0, 1) * (edge > 2.6)  # flaked: the grey stone shows
+    g = 0.88 + tone * 0.7 + bump * 0.8 + (vnoise(n, 8, 4703) - 0.5) * 0.06
+    g = np.where(edge < 1.4, 0.98, np.where(edge < 2.8, g - 0.17, g))  # lime thick in the joints, a shadow at the stone's lip
+    bare = np.clip((fbm(n, 4, 3, seed=4704) - 0.72) * 6, 0, 1) * (edge > 2.6)  # flaked: the grey stone shows
     img = ramp(np.clip(g, 0, 1), [(0, '#8a8a90'), (0.8, '#e8e8ea'), (1, '#ffffff')])
-    img = mix(img, ramp(np.clip(g - 0.15, 0, 1), [(0, '#5a5650'), (1, '#b0aaa0')]), bare * 0.8)
-    return np.clip(img - speck(n, 0.02, seed=4705)[..., None] * 0.18, 0, 1)
+    img = mix(img, ramp(np.clip(g - 0.15, 0, 1), [(0, '#7a7670'), (1, '#c8c2b8')]), bare * 0.6)
+    return np.clip(img - speck(n, 0.015, seed=4705)[..., None] * 0.12, 0, 1)
 
 
 def pantile(n=32):
