@@ -15,7 +15,6 @@ import { skyParts } from './world.js';
 import { sceneryGroup } from './scenery.js';
 import { rainLoop, sfx } from './audio.js';
 import { eruptFrame, eruptLook, eruptState } from './wxerupt.js'; // Mount Kaboom erupts (Islands)
-import { biSkyU } from './bilook.js'; // (Battle Island paints its own sky)
 
 const W = {
   plan: null, t0: 0, snap: false, k: 0, kind: '', test: null, // test: { k, s } forced from a test (wxTest)
@@ -101,8 +100,8 @@ function floorAt(x, z, cy, lo, hi) {
   _o[0] = x; _o[1] = cy + 30; _o[2] = z;
   const h = raycast(_o, DOWN, 60, roofBoxes());
   if (!h || h.axis !== 1) return null;
-  const y = _o[1] - h.t;
-  return y >= cy - lo && y <= cy + hi ? { y, b: h.box } : null;
+  const def = MAPS[MAP.id], sea = def && Number.isFinite(def.seaY) ? def.seaY : -Infinity, y0 = _o[1] - h.t, y = Math.max(y0, sea); // (the shallows: on the water, not the sea bed)
+  return y >= cy - lo && y <= cy + hi ? { y, b: h.box, wet: y0 < sea } : null;
 }
 const hash = (a, b, c = 0) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); h = Math.imul(h ^ (h >>> 13), 1103515245); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
@@ -160,7 +159,7 @@ function puddles(K, cam, k, max) {
       if (hash(gx, gz, 7) > 0.3) continue;
       const x = (gx + 0.15 + hash(gx, gz, 8) * 0.7) * C, z = (gz + 0.15 + hash(gx, gz, 9) * 0.7) * C, s = 0.8 + hash(gx, gz, 10) * 0.9;
       const f = floorAt(x, z, cam.y, 9, 4);
-      if (!f || !f.b || !f.b.min) continue;
+      if (!f || !f.b || !f.b.min || f.wet) continue; // (no puddles on the sea)
       const r = 0.95 * s;
       if (x - r < f.b.min[0] || x + r > f.b.max[0] || z - r < f.b.min[2] || z + r > f.b.max[2]) continue; // all of it on the one floor
       L.push([x, f.y + 0.015, z, hash(gx, gz, 11) * 6.28, s, (hash(gx, gz, 12) - 0.5) * 0.7 * s, (hash(gx, gz, 13) - 0.5) * 0.7 * s]);
@@ -265,8 +264,6 @@ export function wxPre() {
   SAVE.sky = sky.sky ? sky.sky.material.color.getHex() : null;
   SAVE.vis = [sky.sun, ...sky.clouds].filter(Boolean).map((o) => [o, o.visible]);
   SAVE.far = [];
-  const bu = biSkyU(); // Battle Island's painted sky: its colours go grey and its cloud cover closes in
-  SAVE.bi = bu ? [bu, ['uZen', 'uMid', 'uHor', 'uSea', 'uLit', 'uShade', 'uWarm', 'uGlow'].map((n) => [n, bu[n].value.getHex()]), bu.uCover.value] : null;
   const g = sceneryGroup(); // the mountains / far skyline are unlit colours pre-mixed with the sky: they dim with it
   if (g) g.traverse((o) => { const m = o.material; if (m && m.isMeshBasicMaterial && !SAVE.far.some((x) => x[0] === m)) SAVE.far.push([m, m.color.getHex()]); });
   const dk = Math.min(1, d);
@@ -283,7 +280,6 @@ export function wxPre() {
     if (sky.sky) sky.sky.material.color.lerp(ASH_SKY, 0.8 * e).lerp(ERUPT_FLASH, 0.5 * ef);
     for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(ASH_SKY, 0.55 * e));
   }
-  if (SAVE.bi && dk > 0) { const [bu, cols, cov] = SAVE.bi; for (const [n] of cols) bu[n].value.lerp(n === 'uLit' || n === 'uGlow' ? HEMI_T : STORM_SKY, 0.55 * dk).lerp(FLASH, 0.5 * f); bu.uCover.value = cov + (0.95 - cov) * dk; }
   if (Math.max(dk, e) > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
 }
 const ASH_FOG = new THREE.Color(0x5a3a34), ASH_SKY = new THREE.Color(0x9a5a44), ASH_HEMI = new THREE.Color(0xffa070), ASH_SUN = new THREE.Color(0xff6a2a), ERUPT_FLASH = new THREE.Color(0xffb060);
@@ -298,7 +294,6 @@ export function wxPost() {
   if (sky.sky && SAVE.sky != null) sky.sky.material.color.setHex(SAVE.sky);
   for (const [o, v] of SAVE.vis) o.visible = v;
   for (const [m, hx] of SAVE.far) m.color.setHex(hx);
-  if (SAVE.bi) { const [bu, cols, cov] = SAVE.bi; for (const [n, hx] of cols) bu[n].value.setHex(hx); bu.uCover.value = cov; }
 }
 
 // tests + screenshots: what the weather's doing, and forcing it (k: kind, s: strength; strike: [angle, dist, bolt])

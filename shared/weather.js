@@ -22,7 +22,6 @@ export const WX_MAPS = {
   platform: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, platform_sd: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, // storm at sea
   deadmall: { k: 'rain', s: [0.7, 1], bolts: 4, dark: 0.5 }, // all roof: you hear it and the windows flash
   jankburg: { ...RAIN, s: [0.5, 0.9] },
-  battleisland: { k: 'rain', s: [0.5, 0.9], bolts: 2, dark: 0.6 }, // tropical: warm and short (its own painted sky clouds over, bilook.js)
   islands: { k: 'erupt', s: [1, 1], rs: [0.75, 1], bolts: 2, dark: 0.7, vent: [0, 11.5, -3] }, // (shared/map.js KABOOM: the crater floor round the throat)
   islands_sd: { k: 'erupt', s: [1, 1], rs: [0.75, 1], bolts: 2, dark: 0.7, vent: [0, 9.0, -13] }, // (KABOOM_SD: the same mountain, small)
 };
