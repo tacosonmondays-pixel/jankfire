@@ -5,7 +5,7 @@
 // each opens a small picker with the same choices (and the same saved setting) as CUSTOMIZE > LOADOUT > ZOMBIES, and
 // says something about what you picked. nothing new on the server: it's your zombies loadout (shared/zombies.js).
 import * as THREE from 'three';
-import { buildCharacter, buildWeapon } from '../models.js';
+import { buildCharacter, buildWeapon, buildProjectile } from '../models.js';
 import { idlePose } from '../loco.js';
 import { WEAPONS, ITEMS, ITEM_ORDER } from '/shared/weapons.js';
 import { ZM_PISTOLS, ZM_PASSIVES, zmValidLoadout } from '/shared/zombies.js';
@@ -84,7 +84,12 @@ export function build(L) {
   const pile = new THREE.Group(); pile.position.set(9.6, 0, -7.8); root.add(pile);
   for (const [x, y, z, r] of [[0, 0, 0, 0.1], [1.25, 0, 0.2, -0.2], [0.6, 1.2, 0.1, 0.3], [-1.1, 0, 0.6, 0.4]]) { const c = L.box(pile, 1.2, 1.2, 1.2, wood, x, y + 0.6, z); c.rotation.y = r; }
   solid(8.2, -9, 11.4, -6.6, 1.2);
-  ITEM_ORDER.slice(0, 6).forEach((id, i) => { const it = ITEMS[id]; try { const m = buildWeapon(it.w || id); m.scale.setScalar(1.6); m.position.set(8.3 + (i % 3) * 0.55, 1.35 + Math.floor(i / 3) * 0.1, -8.6 + Math.floor(i / 3) * 0.5); m.rotation.y = i; root.add(m); } catch { /* (no model) */ } });
+  // the goods on the crates: grenades, a smoke, the duck, a medkit, a shield bubble (the items' own models)
+  const goods = [['p', 'frag', 8.3, -8.7], ['p', 'frag', 8.6, -8.5], ['p', 'smokegren', 8.9, -8.75], ['p', 'duck', 10.4, -7.4], ['g', 'x_medkit', 9.9, -8.6], ['g', 'x_bubble', 10.6, -8.3]];
+  for (const [k, id, x, z] of goods) {
+    const put = (m, sc) => { m.scale.multiplyScalar(sc); m.position.set(x, 1.22, z); m.rotation.y = x * 3; m.traverse((o) => { if (o.isMesh) o.castShadow = true; }); root.add(m); };
+    if (k === 'p') { try { put(buildProjectile(id), 1.4); } catch { /* (no model) */ } } else L.glb(id, (o) => put(o, 0.9));
+  }
   // signs over the stations
   for (const [txt, x, z, ry] of [['PASSIVES', -9.6, -9.4, Math.PI * 0.25], ['PISTOLS', 0, -13.4, 0], ['THE ITEM', 10.8, -9.6, -Math.PI * 0.25]]) {
     const sg = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.5), L.basic(0xffffff, { map: L.label(txt, { bg: '#39ff14', w: 256, h: 64 }) })); sg.position.set(x, 4.6, z); sg.rotation.y = ry; root.add(sg);
@@ -115,6 +120,7 @@ export function build(L) {
   // ---- the three NPCs (the game's own mannequins, dressed for work), each with a little job to do while they wait
   const npcs = {};
   for (const [k, n] of Object.entries(NPC)) {
+    n.yaw = Math.atan2(n.at[0], n.at[1] - 2); // (facing the middle of the room)
     const ch = buildCharacter(n.color, { ...DEFAULT_LOOK, ...n.look });
     ch.root.scale.setScalar(1.2); ch.root.position.set(n.at[0], 0, n.at[1]); ch.root.rotation.y = n.yaw; root.add(ch.root);
     ch.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
@@ -156,7 +162,7 @@ export function build(L) {
     }
     panel.style.display = '';
     say(npcs[k], pick(n.hi), n.name);
-    const c = L.cur(); if (c.walk) c.camFocus = { at: [n.at[0], n.sit ? 2.6 : 2.3, n.at[1]], t: c.camFocus && c.camFocus.talk ? 1 : 0, dur: 1e9, back: -1.2, talk: true }; // (over your shoulder at them while you talk)
+    const c = L.cur(); if (c.walk) c.camFocus = { at: [n.at[0], n.sit ? 3.3 : 2.3, n.at[1]], t: c.camFocus && c.camFocus.talk ? 1 : 0, dur: 1e9, back: -1.2, talk: true }; // (over your shoulder at them while you talk)
     try { L.sfx.tone('square', 520, 780, 0.06, 0.05); } catch { /* (no audio yet) */ }
   }
   function closePick() { open = null; panel.style.display = 'none'; const c = L.cur(), F = c.camFocus; if (F && F.talk) { F.t = Math.max(F.t, 0.35); F.dur = F.t + 0.45; } }
@@ -201,7 +207,7 @@ export function build(L) {
       for (const [k, o] of Object.entries(npcs)) {
         o.t += dt; idlePose(o.ch, o.t);
         const n = o.n, d = me ? Math.hypot(me.pos[0] - n.at[0], me.pos[2] - n.at[1]) : 99;
-        const want = d < 7 && me ? Math.atan2(-(me.pos[0] - n.at[0]), -(me.pos[2] - n.at[1])) + Math.PI : n.yaw;
+        const want = d < 7 && me ? Math.atan2(-(me.pos[0] - n.at[0]), -(me.pos[2] - n.at[1])) : n.yaw; // (characters face -z at yaw 0)
         let dd = want - o.face; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); o.face += dd * Math.min(1, dt * 3); o.ch.root.rotation.y = o.face;
         if (k === 'deb') { o.ch.arm.rotation.set(-0.9 + Math.max(0, Math.sin(t * 3.1)) * 0.5, 0, 0); o.ch.armL.rotation.set(-1.3, 0, -0.1); }
         if (k === 'gus') { o.ch.arm.rotation.set(-0.5 + Math.sin(o.t * 5) * 0.06, 0.4, 0); o.ch.armL.rotation.set(-0.7 + Math.sin(o.t * 5) * 0.15, -0.5, 0.2); } // (polishing it)
@@ -224,7 +230,7 @@ export function build(L) {
       if (zomBub.bubT > 0) { zomBub.bubT -= dt; if (zomBub.bubT <= 0) zomBub.bub.style.display = 'none'; }
     },
     tags() {
-      for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.9, o.n.at[1]); L.at(o.bub, _v); }
+      for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.75, o.n.at[1]); L.at(o.bub, _v); }
       if (zomBub.bub.style.display !== 'none') { _v.copy(zch.root.position); _v.y = 2.8; L.at(zomBub.bub, _v); }
     },
     info: () => ({ open, zload: zl0() }),
