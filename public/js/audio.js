@@ -863,3 +863,46 @@ Object.assign(sfx, {
   cardWhoosh(pos = null) { whoosh(0.2, 0.45, 1100, 4200, 2.2, pos); tone('sine', 1800, 900, 0.12, 0.05, pos); },
   cardFlop(pos = null) { noise(0.06, 0.3, 'lowpass', 1800, 500, pos); tone('sine', 420, 260, 0.06, 0.08, pos); },
 });
+
+// rain (weather.js): k 0..1 how hard, cover 1 = under a roof (the hiss turns into a dull drum on it). in loops, so
+// stopLoops() shuts it up with everything else
+export function rainLoop(k, cover = 0) {
+  if (!ac) return;
+  let l = loops.rain;
+  if (!l) {
+    if (!(k > 0.01)) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; // the hiss
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000; lp.Q.value = 0.5;
+    const pk = ac.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 3200; pk.gain.value = 5; pk.Q.value = 0.8;
+    s.connect(hp); hp.connect(pk); pk.connect(lp); lp.connect(g); s.start(0, Math.random() * 1.5);
+    const s2 = ac.createBufferSource(); s2.buffer = nbuf; s2.loop = true; // a low wash under it: the big drops
+    const lp2 = ac.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 420;
+    const g2 = ac.createGain(); g2.gain.value = 0.9; s2.connect(lp2); lp2.connect(g2); g2.connect(g); s2.start(0, Math.random() * 1.5);
+    l = loops.rain = { g, on: false, def: { vol: 0 }, hp, lp };
+  }
+  const t = ac.currentTime, on = k > 0.01;
+  if (on || l.on) {
+    l.g.gain.setTargetAtTime(on ? 0.05 + 0.2 * Math.min(1, k) * (cover ? 0.75 : 1) : 0, t, 0.4);
+    l.lp.frequency.setTargetAtTime(cover ? 650 : 7000, t, 0.25); l.hp.frequency.setTargetAtTime(cover ? 120 : 900, t, 0.25);
+  }
+  l.on = on;
+}
+// a long low roll (noise() is cut at the 2 s noise buffer: this one loops it), swelling in and dying away
+function rumble(dur, v, f0, f1, delay = 0) {
+  const t = ac.currentTime + delay, s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.12); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+}
+// thunder: a crack when it's close, then a long rolling rumble (k 0..1: how close + how big). muffled under a roof
+sfx.thunder = (k = 0.6, cover = 0) => {
+  if (!ac) return;
+  const lo = cover ? 0.6 : 1;
+  if (k > 0.55 && !cover) { noise(0.25, 0.5 * k, 'highpass', 2600, 900); noise(0.4, 0.6 * k, 'bandpass', 1400, 300, null, 0.03, 0.8); }
+  rumble(3.2, 0.9 * k * lo, 900 * lo, 50, 0.05);
+  rumble(2.4, 0.6 * k * lo, 320, 35, 0.5 + Math.random() * 0.3);
+  tone('sine', 62, 28, 2.2, 0.45 * k * lo, null, 0.1);
+  if (Math.random() < 0.6) rumble(1.6, 0.4 * k * lo, 520, 40, 1.3 + Math.random() * 0.6); // (a second roll)
+};

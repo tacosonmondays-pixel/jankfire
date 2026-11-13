@@ -1,0 +1,86 @@
+// Weather: which maps get which weather, and the timeline the server picks for a match (server/weather.js sends it,
+// public/js/weather.js plays it). Look only: nothing here touches movement, hits or bots.
+// A plan is a list of phases [start s, end s, kind, strength 0-1], seconds from when the server picked it. Everyone
+// gets the same plan, and the lightning strikes come out of its seed, so the whole lobby sees the same storm.
+// Adding a weather later = a kind below + its kit (tools/blender/weather/make_<kind>.py) + the maps that get it.
+
+// kind -> its Blender kit (public/models/wx/<kit>.glb) and how it rolls in
+export const WX_KINDS = {
+  rain: { kit: 'wx_rain', fade: 14, len: [90, 210], gap: [120, 300], first: [60, 120] }, // fade: s to roll in / out
+};
+// map id -> its weather. s: strength range of a shower, bolts: lightning per minute at full strength, dark: how much the
+// sky + sun dim (0-1). maps not listed stay clear (crate, backrooms, desert, bazaar, islands, forest: theirs come later)
+const RAIN = { k: 'rain', s: [0.6, 1], bolts: 3, dark: 1 };
+export const WX_MAPS = {
+  suburb: RAIN, suburb_sd: RAIN, warehouse: RAIN, warehouse_sd: RAIN, skyline: RAIN, skyline_sd: RAIN,
+  rooftop: { ...RAIN, bolts: 4 }, rooftop_sd: { ...RAIN, bolts: 4 }, range: { ...RAIN, s: [0.5, 0.85] },
+  platform: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, platform_sd: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, // storm at sea
+  deadmall: { k: 'rain', s: [0.7, 1], bolts: 4, dark: 0.5 }, // all roof: you hear it and the windows flash
+  jankburg: { ...RAIN, s: [0.5, 0.9] },
+};
+export const WX_SPAN = 3600; // a plan covers an hour (the server picks a fresh one before it runs out)
+export const WX_MAXPH = 40;
+
+const has = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+export const wxOf = (map) => (typeof map === 'string' && has(WX_MAPS, map) ? WX_MAPS[map] : null);
+// a small seeded random (mulberry32): the same seed gives the same plan and the same strikes everywhere
+export function wxRand(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6d2b79f5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const lerp = (r, [a, b]) => a + (b - a) * r();
+const r1 = (x) => Math.round(x * 10) / 10;
+
+// the plan for a map. force: 'kind' = that weather from second 0 for the whole span (test knob JF_WEATHER), 'off' = none
+export function wxPlan(map, seed, force = '') {
+  const w = wxOf(map), ph = [];
+  if (!w || force === 'off') return { m: map, s: seed >>> 0, ph };
+  const K = WX_KINDS[w.k], r = wxRand(seed);
+  if (force) { if (force === w.k) ph.push([0, WX_SPAN, w.k, w.s[1]]); return { m: map, s: seed >>> 0, ph }; }
+  // starts clear, the first shower rolls in after a minute or two, passes, and comes back now and then
+  for (let t = lerp(r, K.first); t < WX_SPAN - 60 && ph.length < WX_MAXPH; ) {
+    const len = lerp(r, K.len), end = Math.min(WX_SPAN, t + len);
+    ph.push([r1(t), r1(end), w.k, Math.round(lerp(r, w.s) * 100) / 100]);
+    t = end + lerp(r, K.gap);
+  }
+  return { m: map, s: seed >>> 0, ph };
+}
+
+// how strong the weather is t seconds into a plan (0 when clear): each phase ramps in and out over its kind's fade
+export function wxAt(plan, t) {
+  if (!plan || !plan.ph) return { k: '', s: 0, i: -1 };
+  for (let i = 0; i < plan.ph.length; i++) {
+    const [a, b, k, s] = plan.ph[i];
+    if (t < a || t >= b) continue;
+    const f = WX_KINDS[k] ? WX_KINDS[k].fade : 10;
+    return { k, s: s * Math.max(0, Math.min(1, (t - a) / f, (b - t) / f)), i };
+  }
+  return { k: '', s: 0, i: -1 };
+}
+
+// lightning in phase i: [time s, angle rad, distance m, bolt 0-2], from the plan's seed (no messages needed)
+export function wxStrikes(plan, i) {
+  const p = plan && plan.ph && plan.ph[i], w = plan && wxOf(plan.m);
+  if (!p || !w || !w.bolts) return [];
+  const [a, b, , s] = p, r = wxRand((plan.s ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0), out = [];
+  const gap = 60 / (w.bolts * Math.max(0.3, s)); // seconds between strikes, on average
+  for (let t = a + 12 + r() * gap; t < b - 6 && out.length < 400; t += gap * (0.4 + r() * 1.2)) out.push([r1(t), r() * Math.PI * 2, 140 + r() * 160, (r() * 3) | 0]);
+  return out;
+}
+
+// the 'wx' message: m map, s seed, el seconds since the plan started (when it was sent), ph the phases
+export const wxMsg = (plan, el) => ({ t: 'wx', m: plan.m, s: plan.s, el: r1(el), ph: plan.ph });
+// a client checks what it's sent: known map, finite numbers in range, known kinds, not too many phases. null = ignore
+export function wxCheck(m) {
+  if (!m || typeof m !== 'object' || typeof m.m !== 'string' || m.m.length > 40) return null;
+  if (!Number.isFinite(m.s) || !Number.isFinite(m.el) || m.el < 0 || m.el > WX_SPAN * 2) return null;
+  if (!Array.isArray(m.ph) || m.ph.length > WX_MAXPH) return null;
+  const ph = [];
+  for (const p of m.ph) {
+    if (!Array.isArray(p) || p.length !== 4) return null;
+    const [a, b, k, s] = p;
+    if (!Number.isFinite(a) || !Number.isFinite(b) || !(a >= 0 && b > a && b <= WX_SPAN) || typeof k !== 'string' || !has(WX_KINDS, k) || !Number.isFinite(s) || s < 0 || s > 1) return null;
+    ph.push([a, b, k, s]);
+  }
+  return { m: m.m, s: m.s >>> 0, el: m.el, ph };
+}
