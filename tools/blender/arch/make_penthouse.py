@@ -50,6 +50,17 @@ def sub_rect(r, c):
     return out
 
 
+# fewer draw calls (one per material in the game): small parts share a bigger part's material
+MERGE = {'ph_sockr': 'ph_pink', 'ph_sockw': 'ph_white', 'ph_padh': 'ph_white', 'trimdark': 'ph_chrome', 'ph_tread': 'ph_chrome', 'ph_ceiling': 'ph_white'}
+
+
+def merge_mats(K, m):
+    for (mat, node) in list(K.geo):
+        if mat not in m: continue
+        src = K.geo.pop((mat, node)); dst = K._bucket(m[mat], node); b = len(dst['v'])
+        dst['v'] += src['v']; dst['uv'] += src['uv']; dst['f'] += [tuple(i + b for i in f) for f in src['f']]
+
+
 def build(kind):
     K = Kit(os.path.join(HERE, 'boxes', kind + '.json'), seed=11)
     K.inside.append(((-X1 + T, 0, -Z1 + T), (X1 - T, ROOF, Z1 - T)))
@@ -275,4 +286,5 @@ def build(kind):
 
 for kind in ([a for a in argv if a in ('penthouse', 'penthouse_sd')] or ['penthouse', 'penthouse_sd']):
     K = build(kind)
+    merge_mats(K, MERGE)
     K.finish(os.path.join(OUTDIR, kind + '.glb'))
