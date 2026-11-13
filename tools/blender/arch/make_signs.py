@@ -17,7 +17,7 @@ from archkit import Kit, OUTDIR, MATS, NOCAST
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({
-    'sg_steel': ('metalplate', '#ff5ad8', {}), 'sg_chrome': ('metalplate', '#f4f6fb', {'gloss': 0.5}),  # (candy pink steel, white trim: bright, like the map)
+    'sg_steel': ('trim', '#ff70e0', {}), 'sg_chrome': ('metalplate', '#f4f6fb', {'gloss': 0.5}),  # (candy pink steel, white trim: bright, like the map)
     'sg_grate': ('metalplate', '#6a6e78', {}), 'sg_lamp': ('stucco', '#fff4d8', {'glow': True, 'glowcol': '#ffe8b0'}),
     'sg_neonpink': ('trim', '#ff7ae0', {'glow': True, 'glowcol': '#ff4fd8'}), 'sg_neoncyan': ('trim', '#8aeaff', {'glow': True, 'glowcol': '#4fd8ff'}),
 })
