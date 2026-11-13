@@ -55,8 +55,7 @@ for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking', '
   });
   test(`${id}: every joint is a node by its own name (a part named like one must not push it to 'name.001')`, () => {
     const { meta, nodes } = glb(id);
-    const KNOWN = { x_mech_nightshift: ['shield'] }; // (exported as shield.001 before mechkit's build_tree fixed the clash; renamed when NIGHT SHIFT's file is next rebuilt)
-    for (const k of Object.keys(meta.joints)) if (!(KNOWN[id] || []).includes(k)) assert.ok(nodes.has(k), 'no node named ' + k);
+    for (const k of Object.keys(meta.joints)) assert.ok(nodes.has(k), 'no node named ' + k);
   });
   test(`${id}: a skinned file, if it is one, skins every joint, rigidly, and keeps the joints as nodes`, () => {
     const { j, d, meta } = glb(id);
