@@ -297,7 +297,7 @@ export const fx = {
   impact(p, n) {
     const nn = n || [0, 1, 0];
     for (let i = 0; i < 5; i++) misc.spawn(p[0], p[1], p[2], nn[0] * 4 + R(3), nn[1] * 4 + R(3), nn[2] * 4 + R(3), 0.45, 0.1, 0.05, 0xbbbbaa, 0x666660, 0.8, 12, 1.5); // (dust)
-    chunks([p[0] + nn[0] * 0.04, p[1] + nn[1] * 0.04, p[2] + nn[2] * 0.04], 4, 3.5, nn, 0.8, [0x999988, 0x7a7a6e, 0xb0ab9c], 1.3, 0.02); // (chips off the wall)
+    chunks([p[0] + nn[0] * 0.04, p[1] + nn[1] * 0.04, p[2] + nn[2] * 0.04], 5, 3.5, nn, 1.25, [0xa8a596, 0x8a877a, 0xc4bfae], 1.3, 0.02); // (chips off the wall)
   },
   // katana parry: hot sparks off the blade and a tiny white pop. dir = the way the hit came from: sparks spray out
   // sideways and up off the edge, only a little back along it (straight back would be into a swordsman's face)
