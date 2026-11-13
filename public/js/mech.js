@@ -435,7 +435,7 @@ export function mechCam(cam, dt) {
   cam.position.set(e[0] - d[0] * MS.camLen, e[1] - d[1] * MS.camLen, e[2] - d[2] * MS.camLen);
 }
 
-const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6], wrecking: [1.2, 1.4], vending: [1.9, 0.5], trolley: [1.1, 1.0] }; // the camera's step right + up
+const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6], wrecking: [1.2, 1.4], vending: [1.9, 0.5], trolley: [1.2, -0.8] }; // the camera's step right + up (the trolley's low and long: the camera sits down by the basket)
 // where the crosshair really points (the camera sits off to the side): the direction from the cockpit to whatever the
 // screen centre is on, so shots and locks go where you aim
 export function aimDir() {
