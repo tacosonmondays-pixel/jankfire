@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.32', date: '2026-11-13', title: 'SIGN HERE', items: [
+    "SIGN HERE: rooftop's big signs got real steel. pink posts, bracing, a catwalk, floodlights and neon round the hotel. the bank still won't give you a loan.",
+  ] },
   { v: '11.31', date: '2026-11-13', title: "POOL'S OPEN", items: [
     "POOL'S OPEN: rooftop's pool party got real furniture. striped cabanas, sun loungers, a dj booth with actual decks, pink speakers, a light rig and a flamingo floatie. still can't swim.",
   ] },
