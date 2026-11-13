@@ -528,7 +528,8 @@ function css() {
 .st-jumpbtns{display:flex;gap:10px;flex-wrap:wrap}.st-jumpbtns .st-btn:nth-child(2){transform:rotate(1deg)}
 .st-hint{position:fixed;left:50%;top:62%;transform:translateX(-50%) rotate(-1.5deg);z-index:20;font-family:var(--font);font-weight:700;font-size:22px;color:#000;background:#ffe14d;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;padding:6px 14px;pointer-events:none}
 .st-on #hotbar{display:none}
-.st-bar{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);display:flex;gap:6px;z-index:15;pointer-events:none}
+.st-bar{position:fixed;left:max(50%,680px);bottom:10px;transform:translateX(-50%);display:flex;gap:6px;z-index:15;pointer-events:none}
+@media (max-width:1180px){.st-bar{transform:translateX(-50%) scale(.82);transform-origin:50% 100%}}
 .st-bar.hidden,.st-wheel.hidden{display:none}
 .st-cell{position:relative;width:62px;height:52px;background:rgba(18,8,24,.85);border:3px solid #444;box-shadow:3px 3px 0 #000;display:flex;align-items:center;justify-content:center;font-family:var(--font);color:#fff;user-select:none}
 .st-cell img{max-width:56px;max-height:44px;image-rendering:auto;pointer-events:none}
