@@ -2393,7 +2393,8 @@ class Room {
         }
       } else {
         const ownerImmune = pr.k === 'slipper' ? Infinity : pr.k === 'bowling' ? 0.5 : 0.25;
-        const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
+        // (a thrown card never hurts its thrower, and leaving the hand on a diagonal it starts inside their box: it used to hit them and vanish)
+        const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && (age < ownerImmune || pr.k === 'card')) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
         if (victims.length) {
           if (pr.k === 'calc') { this.calcHit(pr, owner, victims[0]); continue; } // pop quiz: freeze them with a question
           if (pr.k === 'chicken') { pr.p = victims[0].at; this.projectiles.delete(pr.id); this.explode(pr); continue; }
