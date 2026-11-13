@@ -262,7 +262,7 @@ def window(axis, c, s, a0, a1, shut):
     for (b0, b1) in ((a0 - w - 0.8, a0 - w - 0.01), (a1 + w + 0.01, a1 + w + 0.8)):
         box(b0, b1, 1.06, y1 + 0.06, 0.004, 0.05, shut, bev=0.012, skip=(back,))
     # the window box: under the sill, soil, flowers in the game's colours, a few leaves
-    box(a0 + 0.04, a1 - 0.04, 0.72, 0.97, 0.0, 0.26, 'cbox', bev=0.015, skip=(back,))
+    box(a0 + 0.04, a1 - 0.04, 0.72, 0.97, 0.0, 0.26, 'cbox', skip=(back,))
     box(a0 + 0.07, a1 - 0.07, 0.94, 0.95, 0.03, 0.23, 'csoil')
     rr = K.rng; cols = ['cfl1', 'cfl2', 'cfl3', 'cfl4', 'cfl1']
     for k in range(5):
@@ -374,7 +374,7 @@ def chimney():
     x0, x1, z0, z1 = 68.4, 69.1, 10.35, 11.05
     foot = min(roof_y(x, z) for x in (x0, x1) for z in (z0, z1)) - 0.06
     cbox((x0, foot, z0), (x1, 4.86, z1), 'cchim', bev=0.025, skip=('ny',))
-    cbox((x0 - 0.015, 4.62, z0 - 0.015), (x1 + 0.015, 4.72, z1 + 0.015), 'cchimb', bev=0.01)
+    cbox((x0 - 0.015, 4.62, z0 - 0.015), (x1 + 0.015, 4.72, z1 + 0.015), 'cchimb')
     cbox((x0 - 0.05, 4.86, z0 - 0.05), (x1 + 0.05, 4.94, z1 + 0.05), 'csill', bev=0.015)
     for (cx, h, lean) in ((68.72, 0.3, 0.0), (69.06, 0.24, 0.03)):
         c = Vector((cx - 0.15, 4.94, (z0 + z1) / 2))
