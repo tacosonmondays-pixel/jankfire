@@ -27,7 +27,7 @@ const R = {
   me: { inBlimp: false, fly: null, late: false, place: 0 }, inv: null, key: '', held: new Set(), reserve: {}, shots: {},
   ar: 0, heal: null, spec: 0, specSnap: true, win: -1, focus: null, autoT: new Map(), zoneTick: 0, umb: new Map(),
   leader: 0, crates: new Map(), goblins: new Map(), poi: null, vend: -1, mailAt: 0,
-  glass: { on: false, zoom: 3, z: 1 }, // the blimp spyglass: zoom held, the wanted level, the eased level
+  glass: { on: false, zoom: 3, z: 1, ly: null, lp: null }, // the blimp spyglass: zoom held, the wanted level, the eased level, last look (for the slow aim)
 };
 export const brOn = () => R.on;
 export const brDead = () => R.on && !ME.alive;
@@ -463,13 +463,13 @@ const camPos = new THREE.Vector3(), tmp = new THREE.Vector3();
 let glassEl = null;
 function glassHud() {
   if (glassEl) return glassEl;
-  const s = document.createElement('style'); s.textContent = '#brGlass{position:fixed;inset:0;pointer-events:none;z-index:28;display:none;font-family:var(--font)}#brGlass .ring{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, transparent 0 32%, transparent 33%, rgba(8,4,16,0.55) 35%, rgba(8,4,16,0.96) 46%)}#brGlass .ring::before{content:"";position:absolute;left:50%;top:50%;width:62vmin;height:62vmin;transform:translate(-50%,-50%);border:4px solid #ff4fd8;border-radius:50%;box-shadow:0 0 0 3px #000, inset 0 0 0 3px #000}#brGlass .x{position:absolute;left:50%;top:50%;width:30px;height:30px;transform:translate(-50%,-50%);color:#ff4fd8}#brGlass .x::before,#brGlass .x::after{content:"";position:absolute;background:#ff4fd8;box-shadow:1px 1px 0 #000}#brGlass .x::before{left:14px;top:0;width:2px;height:30px}#brGlass .x::after{top:14px;left:0;height:2px;width:30px}#brGlass .z{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);background:#ffe14d;color:#000;border:3px solid #000;box-shadow:3px 3px 0 #ff4fd8;font:bold 15px var(--font);padding:1px 10px}#brGlass .tip{position:absolute;left:50%;top:15%;transform:translateX(-50%) rotate(-1.5deg);color:#fff;text-shadow:2px 2px 0 #000;font:bold 15px var(--font);white-space:nowrap}#brGlass .tip kbd{background:#ffe14d;color:#000;border:2px solid #000;padding:0 5px}'; document.head.appendChild(s);
+  const s = document.createElement('style'); s.textContent = '#brGlass{position:fixed;inset:0;pointer-events:none;z-index:28;display:none;font-family:var(--font)}#brGlass .ring{position:absolute;inset:0;background:radial-gradient(circle at 50% 50%, transparent 0 32%, transparent 33%, rgba(8,4,16,0.55) 35%, rgba(8,4,16,0.96) 46%)}#brGlass .ring::before{content:"";position:absolute;left:50%;top:50%;width:62vmin;height:62vmin;transform:translate(-50%,-50%);border:4px solid #ff4fd8;border-radius:50%;box-shadow:0 0 0 3px #000, inset 0 0 0 3px #000}#brGlass .x{position:absolute;left:50%;top:50%;width:30px;height:30px;transform:translate(-50%,-50%);color:#ff4fd8}#brGlass .x::before,#brGlass .x::after{content:"";position:absolute;background:#ff4fd8;box-shadow:1px 1px 0 #000}#brGlass .x::before{left:14px;top:0;width:2px;height:30px}#brGlass .x::after{top:14px;left:0;height:2px;width:30px}#brGlass .z{position:absolute;left:50%;bottom:16%;transform:translateX(-50%);background:#ffe14d;color:#000;border:3px solid #000;box-shadow:3px 3px 0 #ff4fd8;font:bold 15px var(--font);padding:1px 10px}#brGlass .tip{position:absolute;left:50%;top:15%;transform:translateX(-50%) rotate(-1.5deg);color:#fff;text-shadow:2px 2px 0 #000;font:bold 15px var(--font);white-space:nowrap}#brGlass .tip kbd{background:#ffe14d;color:#000;border:2px solid #000;padding:0 5px}body.br-glass #isleHero,body.br-glass #brBig,body.br-glass #isleBig,body.br-glass #isleMm,body.br-glass #isleSq,body.br-glass #brHud,body.br-glass #brPrompt,body.br-glass #brHeals,body.br-glass #brArmor,body.br-glass #hpbox,body.br-glass #mmWrap{visibility:hidden !important}'; document.head.appendChild(s);
   glassEl = document.createElement('div'); glassEl.id = 'brGlass';
   glassEl.innerHTML = `<div class="ring"></div><div class="x"></div><div class="z"></div><div class="tip">SCROLL to zoom · <kbd>${K.label('ping')}</kbd> ping the spot for your squad</div>`;
   document.body.appendChild(glassEl);
   return glassEl;
 }
-function glassOff() { R.glass.on = false; R.glass.z = 1; W.zoom = 1; if (glassEl) glassEl.style.display = 'none'; }
+function glassOff() { R.glass.on = false; R.glass.z = 1; R.glass.ly = R.glass.lp = null; W.zoom = 1; if (glassEl) glassEl.style.display = 'none'; document.body.classList.remove('br-glass'); }
 // called each frame while you ride: aim held = zoom. eased so it doesn't snap
 function glassStep(dt) {
   const inB = R.on && ME.alive && R.me.inBlimp && !RP.active;
@@ -480,9 +480,14 @@ function glassStep(dt) {
   R.glass.z += (target - R.glass.z) * Math.min(1, dt * 12);
   if (R.glass.z < 1.02) R.glass.z = target === 1 ? 1 : R.glass.z;
   W.zoom = inB ? R.glass.z : 1; // main.js divides the camera fov by W.zoom
+  // slower look while scoped, by the zoom: scale this frame's mouse turn (only here: weapon ADS state is never touched)
+  const g0 = R.glass;
+  if (inB && g0.z > 1.02 && g0.ly != null) { ME.yaw = g0.ly + (ME.yaw - g0.ly) / g0.z; ME.pitch = g0.lp + (ME.pitch - g0.lp) / g0.z; }
+  g0.ly = ME.yaw; g0.lp = ME.pitch;
   const g = glassHud();
   const show = inB && R.glass.z > 1.08;
   g.style.display = show ? 'block' : 'none';
+  document.body.classList.toggle('br-glass', show); // the hero pick + big callouts get out of the scope's way
   if (show) g.querySelector('.z').textContent = `x${R.glass.z.toFixed(1)}`;
   if (!inB && R.glass.on) glassOff();
 }
@@ -494,6 +499,7 @@ export function brCam(dt, cam) {
   if (ME.alive && R.me.inBlimp) {
     const bp = blimpAt(R.path, st()), cp = Math.cos(ME.pitch);
     const d = [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp];
+    if (R.glass.z > 1.08) { cam.position.set(bp[0], bp[1] - 4.5, bp[2]); cam.rotation.set(ME.pitch, ME.yaw, 0); return true; } // scoped: you look through it from the gondola, so the blimp isn't in the way
     cam.position.set(bp[0] - d[0] * 46, bp[1] + 6 - d[1] * 46, bp[2] - d[2] * 46);
     cam.lookAt(bp[0], bp[1] - 2, bp[2]);
     return true;
