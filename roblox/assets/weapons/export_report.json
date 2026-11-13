@@ -1,0 +1,226 @@
+{
+ "w_redline": {
+  "pieces": [
+   {
+    "name": "needle_wzN__rl_black",
+    "tris": 44
+   },
+   {
+    "name": "redline_body_wzA__rl_grip",
+    "tris": 451
+   },
+   {
+    "name": "redline_body_wzB__rl_dark",
+    "tris": 2671
+   },
+   {
+    "name": "redline_body_wzN__rl_tach",
+    "tris": 92
+   },
+   {
+    "name": "needle_wzN__rl_needle",
+    "tris": 12
+   },
+   {
+    "name": "redline_body_wzA__rl_steel",
+    "tris": 1387
+   },
+   {
+    "name": "redline_body_wzA__rl_dark",
+    "tris": 372
+   },
+   {
+    "name": "redline_body_wzB__rl_steel",
+    "tris": 2857
+   },
+   {
+    "name": "redline_body_wzB__redline_vents",
+    "tris": 52
+   },
+   {
+    "name": "redline_body_wzB__rl_red",
+    "tris": 12
+   },
+   {
+    "name": "redline_body_wzN__rl_black",
+    "tris": 446
+   },
+   {
+    "name": "redline_body_wzN__rl_dot",
+    "tris": 108
+   },
+   {
+    "name": "redline_body_wzN__rl_chrome",
+    "tris": 412
+   },
+   {
+    "name": "redline_body_wzN__rl_white",
+    "tris": 52
+   },
+   {
+    "name": "redline_body_wzN__rl_red",
+    "tris": 240
+   },
+   {
+    "name": "redline_body_wzN__rl_tape",
+    "tris": 108
+   }
+  ],
+  "tris": 9316,
+  "lo": [
+   -0.0408,
+   -0.2822,
+   -0.47
+  ],
+  "hi": [
+   0.0657,
+   0.0808,
+   0.5047
+  ],
+  "bytes": 370520
+ },
+ "w_marbles": {
+  "pieces": [
+   {
+    "name": "marbles_body_wzA__mb_ramrod",
+    "tris": 28
+   },
+   {
+    "name": "marbles_body_wzB__mb_zinc",
+    "tris": 276
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble6",
+    "tris": 336
+   },
+   {
+    "name": "marbles_body_wzA__mb_walnut",
+    "tris": 500
+   },
+   {
+    "name": "marbles_body_wzB__mb_brass",
+    "tris": 1916
+   },
+   {
+    "name": "marbles_body_wzB__mb_black",
+    "tris": 54
+   },
+   {
+    "name": "marbles_body_wzB__mb_steel",
+    "tris": 920
+   },
+   {
+    "name": "marbles_body_wzN__mb_plaque",
+    "tris": 76
+   },
+   {
+    "name": "marbles_body_wzN__mb_leather",
+    "tris": 12
+   },
+   {
+    "name": "marbles_body_wzN__mb_flint",
+    "tris": 12
+   },
+   {
+    "name": "marbles_body_wzN__mb_jar",
+    "tris": 390
+   },
+   {
+    "name": "marbles_body_wzN__mb_label",
+    "tris": 12
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble0",
+    "tris": 504
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble1",
+    "tris": 504
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble2",
+    "tris": 504
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble3",
+    "tris": 504
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble4",
+    "tris": 336
+   },
+   {
+    "name": "marbles_body_wzN__mb_marble5",
+    "tris": 336
+   }
+  ],
+  "tris": 7220,
+  "lo": [
+   -0.0419,
+   -0.136,
+   -0.37
+  ],
+  "hi": [
+   0.0407,
+   0.1677,
+   0.112
+  ],
+  "bytes": 284524
+ },
+ "w_katana": {
+  "pieces": [
+   {
+    "name": "kat_blade_wzB__kt_blade",
+    "tris": 742
+   },
+   {
+    "name": "kat_guard_wzB__kt_rim",
+    "tris": 576
+   },
+   {
+    "name": "kat_trims_wzN__kt_mekugi",
+    "tris": 96
+   },
+   {
+    "name": "kat_tsuka_wzA__kt_ito",
+    "tris": 4360
+   },
+   {
+    "name": "kat_guard_wzB__kt_gold",
+    "tris": 64
+   },
+   {
+    "name": "kat_guard_wzB__kt_seppa",
+    "tris": 568
+   },
+   {
+    "name": "kat_guard_wzB__kt_iron",
+    "tris": 472
+   },
+   {
+    "name": "kat_trims_wzN__kt_menuki",
+    "tris": 260
+   },
+   {
+    "name": "kat_tsuka_wzA__kt_same",
+    "tris": 200
+   },
+   {
+    "name": "kat_tsuka_wzA__kt_shakudo",
+    "tris": 400
+   }
+  ],
+  "tris": 7738,
+  "lo": [
+   -0.0374,
+   -0.0394,
+   -0.8357
+  ],
+  "hi": [
+   0.0374,
+   0.0829,
+   0.1306
+  ],
+  "bytes": 338840
+ }
+}

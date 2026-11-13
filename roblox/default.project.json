@@ -7,8 +7,31 @@
       "JankfireRemotes": {
         "$className": "Folder",
         "Grapple": { "$className": "RemoteEvent" },
-        "Callout": { "$className": "RemoteEvent" }
-      }
+        "Callout": { "$className": "RemoteEvent" },
+        "Equip": { "$className": "RemoteEvent" },
+        "Fire": { "$className": "RemoteEvent" },
+        "Reload": { "$className": "RemoteEvent" },
+        "Swing": { "$className": "RemoteEvent" },
+        "MeleeHit": { "$className": "RemoteEvent" },
+        "Parry": { "$className": "RemoteEvent" },
+        "Shot": { "$className": "RemoteEvent" },
+        "Fx": { "$className": "RemoteEvent" },
+        "Ammo": { "$className": "RemoteEvent" },
+        "Dmg": { "$className": "RemoteEvent" },
+        "Kill": { "$className": "RemoteEvent" },
+        "Knock": { "$className": "RemoteEvent" },
+        "Slip": { "$className": "RemoteEvent" },
+        "Patch": { "$className": "RemoteEvent" },
+        "Round": { "$className": "RemoteEvent" },
+        "Spawn": { "$className": "RemoteEvent" },
+        "Vote": { "$className": "RemoteEvent" },
+        "Room": { "$className": "RemoteEvent" },
+        "Loadout": { "$className": "RemoteEvent" }
+      },
+      "Match": { "$className": "Folder" }
+    },
+    "Players": {
+      "$properties": { "CharacterAutoLoads": false }
     },
     "ServerScriptService": {
       "Jankfire": { "$path": "src/server" }

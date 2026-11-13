@@ -5,7 +5,9 @@
 // Scale: 1 m = 3 studs (S below). A JANKFIRE player is 1.8 m tall = 5.4 studs, about a Roblox R15 character.
 // Axes are the same in both (y up, right-handed), so a point is just (x, y, z) * 3. No offset: the roofs stay at y 0
 // and Rooftop's street is 486 studs down, so the place lowers Workspace.FallenPartsDestroyHeight to -1500.
-// usage: node tools/roblox/convert.mjs [mapId=rooftop]
+// usage: node tools/roblox/convert.mjs [mapId=rooftop] [offsetX,offsetY,offsetZ (studs)]
+// an offset moves the whole map in the place (the Range sits 20000 studs east of Rooftop, in the same place); the
+// parts.json list and the placements stay where shared/map.js has them (the tests compare those)
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -162,13 +164,15 @@ function archPlacements(def) {
 
 // ---------------------------------------------------------------- Rojo JSON model
 const MATERIAL_ENUM = { Plastic: 256, SmoothPlastic: 272, Neon: 288, Wood: 512, WoodPlanks: 528, Marble: 784, Slate: 800, Concrete: 816, Granite: 832, Brick: 848, Pebble: 864, Cobblestone: 880, CorrodedMetal: 1040, DiamondPlate: 1056, Foil: 1072, Metal: 1088, Grass: 1280, Sand: 1296, Fabric: 1312, Ice: 1536, Glass: 1568, Asphalt: 1376, Pavement: 1440, LeafyGrass: 1284, Rubber: 1808, Carpet: 2065, CeramicTiles: 2066, ClayRoofTiles: 2067, Cardboard: 1824, Leather: 2068, Plaster: 2069 };
+let OFF = [0, 0, 0]; // studs: where this map sits in the place
+const off = (v) => v.map((x, i) => r3(x + OFF[i]));
 function rojoPart(p) {
   const solid = p.kind === 'solid' || p.kind === 'pad';
   return {
     Name: p.name, ClassName: 'Part',
     Properties: {
       Anchored: true, CanCollide: solid, CanQuery: solid, CanTouch: p.kind === 'pad', CastShadow: p.kind !== 'city' && p.transparency < 0.5,
-      Size: { Vector3: p.size.map((x) => Math.max(0.01, x)) }, CFrame: { CFrame: { position: p.pos, orientation: p.rot } },
+      Size: { Vector3: p.size.map((x) => Math.max(0.01, x)) }, CFrame: { CFrame: { position: off(p.pos), orientation: p.rot } },
       Color: { Color3: p.color }, Material: { Enum: MATERIAL_ENUM[p.material] ?? 272 }, Transparency: p.transparency,
       TopSurface: { Enum: 0 }, BottomSurface: { Enum: 0 }, Attributes: { Attributes: p.attrs },
     },
@@ -186,11 +190,12 @@ function markerPart(m) { // an invisible box where a Blender model goes: MeshSwa
   if (m.paint) a.Paint = { String: JSON.stringify(m.paint) };
   return {
     Name: `${m.kind}:${m.id}`, ClassName: 'Part',
-    Properties: { Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, CastShadow: false, Transparency: 1, Size: { Vector3: m.size }, CFrame: { CFrame: { position: m.pos, orientation: m.rot } }, Attributes: { Attributes: a } },
+    Properties: { Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, CastShadow: false, Transparency: 1, Size: { Vector3: m.size }, CFrame: { CFrame: { position: off(m.pos), orientation: m.rot } }, Attributes: { Attributes: a } },
   };
 }
 
-export function convert(mapId = 'rooftop') {
+export function convert(mapId = 'rooftop', offset = [0, 0, 0]) {
+  OFF = offset;
   const def = MAPS[mapId];
   if (!def) throw new Error('no map ' + mapId);
   const parts = [];
@@ -201,16 +206,23 @@ export function convert(mapId = 'rooftop') {
   const props = propPlacements(def), arch = archPlacements(def);
   const markers = [...arch, ...props.out];
   const k = (kind) => parts.filter((p) => p.kind === kind).map(rojoPart);
-  const sky = def.sky || {}, hex = (n) => [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => r3(x / 255));
+  const sky = def.sky || {}, hexc = (n) => [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => r3(x / 255)), hex = (n) => [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((x) => r3(x / 255));
   const Name = def.name.replace(/[^A-Za-z0-9]/g, '');
   const model = {
     ClassName: 'Model',
-    Properties: { Attributes: { Attributes: { MapId: { String: mapId }, KillY: { Float64: r3((def.killY ?? -45) * S) }, StudsPerMetre: { Float64: S } } } },
+    Properties: { Attributes: { Attributes: {
+      MapId: { String: mapId }, KillY: { Float64: r3((def.killY ?? -45) * S + OFF[1]) }, StudsPerMetre: { Float64: S }, Offset: { Vector3: OFF },
+      // where the play area is (studs, in the place) and its sky, so the game knows which map you're on and can light it
+      Bounds: { Vector3: [r3((def.bounds?.[0] ?? -100) * S + OFF[0]), r3((def.bounds?.[2] ?? 100) * S + OFF[0]), 0] },
+      BoundsZ: { Vector3: [r3((def.bounds?.[1] ?? -100) * S + OFF[2]), r3((def.bounds?.[3] ?? 100) * S + OFF[2]), 0] },
+      FogColor: { Color3: hexc(sky.fog ?? 0x2a2050) }, SkyTop: { Color3: hexc(sky.top ?? 0x05051a) }, FogStart: { Float64: r3((def.fogNear ?? 90) * S) }, FogEnd: { Float64: r3((def.fogFar ?? 330) * S) },
+    } } },
     Children: [
       folder('Solid', k('solid')), folder('Pads', k('pad')), folder('Deco', k('deco')), folder('City', k('city')),
-      folder('Spawns', spawns.map((p, i) => ({ Name: 'Spawn' + (i + 1), ClassName: 'SpawnLocation', Properties: { Anchored: true, Neutral: true, CanCollide: false, CanQuery: false, CanTouch: true, Transparency: 1, Duration: 0, Size: { Vector3: [4, 0.2, 4] }, CFrame: { CFrame: { position: [p[0], r3(p[1] - 0.1), p[2]], orientation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] } } } }))),
-      folder('TeamSpawns', ['att', 'def'].flatMap((t) => (team[t] || []).map((p) => ({ Name: t, ClassName: 'Part', Properties: { Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1, Size: { Vector3: [2, 0.2, 2] }, CFrame: { CFrame: { position: v3(p), orientation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] } } } })))),
+      folder('Spawns', spawns.map((p, i) => ({ Name: 'Spawn' + (i + 1), ClassName: 'SpawnLocation', Properties: { Anchored: true, Neutral: true, CanCollide: false, CanQuery: false, CanTouch: true, Transparency: 1, Duration: 0, Size: { Vector3: [4, 0.2, 4] }, CFrame: { CFrame: { position: off([p[0], r3(p[1] - 0.1), p[2]]), orientation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] } } } }))),
+      folder('TeamSpawns', ['att', 'def'].flatMap((t) => (team[t] || []).map((p) => ({ Name: t, ClassName: 'Part', Properties: { Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1, Size: { Vector3: [2, 0.2, 2] }, CFrame: { CFrame: { position: off(v3(p)), orientation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] } } } })))),
       folder('ModelMarkers', markers.map(markerPart)),
+      folder('Dummies', (def.dummies || []).map((d, i) => ({ Name: 'Dummy' + (i + 1), ClassName: 'Part', Properties: { Anchored: true, CanCollide: false, CanQuery: false, CanTouch: false, Transparency: 1, Size: { Vector3: [2, 0.2, 2] }, CFrame: { CFrame: { position: off(v3(d.p)), orientation: [[1, 0, 0], [0, 1, 0], [0, 0, 1]] } }, Attributes: { Attributes: { Move: { Float64: r3((d.move || 0) * S) } } } } }))),
     ],
   };
   const lighting = { fog: hex(sky.fog ?? 0x2a2050), top: hex(sky.top ?? 0x05051a), mid: hex(sky.mid ?? 0x4a2a7a), fogStart: r3((def.fogNear ?? 90) * S), fogEnd: r3((def.fogFar ?? 330) * S) };
@@ -220,7 +232,7 @@ export function convert(mapId = 'rooftop') {
 // ---------------------------------------------------------------- cli
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const mapId = process.argv[2] || 'rooftop';
-  const r = convert(mapId);
+  const r = convert(mapId, process.argv[3] ? process.argv[3].split(',').map(Number) : [0, 0, 0]);
   const build = path.join(ROOT, 'roblox', 'build'), assets = path.join(ROOT, 'roblox', 'assets', mapId);
   fs.mkdirSync(build, { recursive: true }); fs.mkdirSync(assets, { recursive: true });
   fs.writeFileSync(path.join(build, r.Name + '.model.json'), JSON.stringify(r.model));
