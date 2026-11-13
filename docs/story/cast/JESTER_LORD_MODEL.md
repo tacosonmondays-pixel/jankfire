@@ -248,8 +248,8 @@ If his skeleton changes (`jl_rig.py`), run `jl_clips.py` first, then the build. 
   only while the leg is away, every bell within 0.8 degrees of straight down while he hangs upside down; the far LOD
   swaps in and back (25,220 -> 3,098 triangles, 9 -> 4 meshes); the code puppet (115 meshes, its jester half grown to
   match, a cream disc for the ruff, a red nose) stands and takes a clip.
-- **Tests**: `node --test $(find tests -name "*.test.*")`: 300 pass, 0 fail on the branch merged with the latest main (his own file: 4).
-- **Gameplay hash** (`node tools/arch/gamehash.mjs`): identical to main on all 21 maps (he is look only).
+- **Tests**: `node --test $(find tests -name "*.test.*")`: 305 pass, 0 fail on the branch merged with the latest main (96fc6ab0) after the look pass (his own file: 4).
+- **Gameplay hash** (`node tools/arch/gamehash.mjs`): identical to a clean main checkout (96fc6ab0) on all 21 maps after the look pass (he is look only).
 - **Looked at**: the Blender sheets after every pass, the in-game sheets and every clip strip, the story-mode shots
   and the film. Passes: (1) the first build; (2) a bigger head and torso, a smaller big top; (3) the eyes (they
   were scaled twice), the hood, a thinner nose, the marotte off his face; (4) the clips: a shallower bow that keeps
