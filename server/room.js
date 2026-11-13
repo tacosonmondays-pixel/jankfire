@@ -226,7 +226,7 @@ if (process.env.JF_SEC_SLOW) { const k = Number(process.env.JF_SEC_SLOW) || 1, T
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
 // test knobs for zombies: start on a later round, start rich, short breaks (ms), claw damage, bleed-out (s)
-const WX_FORCE = /^(?:off|[a-z]{1,12})$/.test(process.env.JF_WEATHER || '') ? process.env.JF_WEATHER : ''; // test knob: JF_WEATHER=rain = rain from second 0 on every map that has rain, erupt = Mount Kaboom already erupting (off = never)
+const WX_FORCE = /^(?:off|[a-z]{1,12})$/.test(process.env.JF_WEATHER || '') ? process.env.JF_WEATHER : ''; // test knob: JF_WEATHER=rain = rain from second 0 on every map that has rain, erupt = Mount Kaboom already erupting, snow / stars likewise where a map gets them (off = never)
 if (process.env.JF_ZM_ROUND) ZM.startRound = Number(process.env.JF_ZM_ROUND) || 1;
 if (process.env.JF_ZM_CREDITS) ZM.start = Number(process.env.JF_ZM_CREDITS) || ZM.start;
 if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) || ZM.rest;

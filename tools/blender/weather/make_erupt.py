@@ -69,7 +69,7 @@ def trail_tex(u, v, w, h):  # v = 1 at the bomb: hot orange there, sooty grey to
     d = np.abs(u - 0.5)
     inside = (d < half) & (v > 0.03)
     col = mix(0x2a2230, 0x6a5e66, (1 - v) * 1.3)
-    col = np.where((v > 0.8)[..., None], mix(0xff8a2a, 0xffe14d, (v - 0.8) * 5), col)
+    col = np.where((v > 0.5)[..., None], mix(0xff6a1a, 0xffe14d, (v - 0.5) * 2.5), col)  # (the hot half glows: a comet tail)
     col = np.where((d > half - 0.06)[..., None], solid(0x140c18, u.shape), col)  # inked edges
     return np.concatenate([col, inside[..., None].astype(np.float32)], -1)
 
@@ -80,8 +80,8 @@ sc = reset()
 bpy.context.preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
 IMG = AT.image('wx_erupt_atlas')
 M_ASH = material('wx_m_ash', vcol=True, rough=1.0, double=False)  # (no glow: a flat glow would wash the bands out to one grey)
-M_BOMB = material('wx_m_bomb', IMG, rough=0.8, emit=1.4)
-M_TRAIL = material('wx_m_trail', IMG, rough=1.0, emit=0.5, clip=True)
+M_BOMB = material('wx_m_bomb', IMG, rough=0.8, emit=3.2)  # (bright: it has to read flying over the island from the beach)
+M_TRAIL = material('wx_m_trail', IMG, rough=1.0, emit=1.5, clip=True)
 M_SPLAT = material('wx_m_splat', IMG, rough=0.4, emit=1.6, clip=True)
 M_LAVA = material('wx_m_lava', IMG, rough=0.35, emit=1.3)
 root = bpy.data.objects.new('wx_erupt', None); sc.collection.objects.link(root)
