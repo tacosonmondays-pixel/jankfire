@@ -3158,6 +3158,13 @@ function lounger(B, D, x, z, m) {
   D.add(x + 0.9, 0, z - 0.05, x + 1.0, 2.2, z + 0.05, 'white'); D.add(x - 0.3, 2.2, z - 1.2, x + 2.2, 2.32, z + 1.2, pickUmb(x + z));
 }
 const pickUmb = (k) => ['toypink', 'toyteal', 'toyyellow', 'sidelemon'][Math.abs(Math.round(k * 7)) % 4];
+// the tiki village (tiki bar, big tiki, huts, surf school) is one Blender model per map (public/models/arch/tiki*.glb,
+// look only): tiki(() => ...) tags what the pieces add. drape: on Islands it rides the dunes exactly as it always did
+// (shared/terrain.js). the crates (a prop model already) and the two signs (the game's own ad textures) stay the game's
+function tikiArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'adtiki', 'adsurf']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
+}
 
 // ---- the set pieces. each is built where the standard Islands has it, moved (dx, dz) (Islands S&D moves them about);
 // st collects their stairs for the walk graph
@@ -3295,6 +3302,13 @@ function surfSchool(B0, D0, dx, dz) {
   const { D } = isPiece(B0, D0, dx, dz, []);
   for (const [i, m] of ['toypink', 'toyyellow', 'toyteal'].entries()) D.box(24 + i * 0.8, 1.1, 14.6, 0.6, 2.2, 0.12, m); // surfboards stuck in the sand
   D.add(22.6, 0, 13.4, 22.72, 2.6, 13.52, 'wood'); D.add(21.4, 1.6, 13.52, 23.9, 2.6, 13.6, 'adsurf', { fit: 1 });
+}
+// the long pier east and the bait shack on it are one Blender model (public/models/arch/pier.glb, look only): pierArt(() => ...)
+// tags what they add. drape: the boxes ride the ground exactly as they always did (shared/terrain.js). the crates and the
+// barrel (prop models already) and the shack's sign (the game's own ad texture) stay the game's
+function pierArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'barrel', 'adbait']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
 }
 // the bait shack (round 46, 9, on the pier's wide bit): its hatch, its sign, crates and a barrel out front
 function baitShack(B0, D0, dx, dz) {
@@ -3536,10 +3550,11 @@ function islands() {
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
   B.boxes.arch.push({ id: 'kaboom', p: [0, 0, 0], r: 0 }); // (its dressing: lava channel, cooled flows, cracks, rim rocks, scree. one Blender model laid on the cone, look only)
   const KB = kaboom(B, D, 0, 0), T = KB.throat; // (quick play: a real cone you walk and grapple anywhere. Islands S&D has the same mountain made small: KABOOM_SD)
-  tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
-  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
+  const TK = tikiArt(B, D, 'tiki'); // (the village: one Blender model, look only)
+  TK(() => { tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
+  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1); });
   [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
-  surfSchool(B, D, 0, 0);
+  TK(() => surfSchool(B, D, 0, 0));
   // the cannon on the west beach (the human cannonball: it fires you at the fort)
   cannon(B, D, -24.2, 9, 0, -1, 0); add(-27.3, 0, 7.7, -25.5, 0.3, 10.3, 'pad', { pad: [-34, 15, -7.4] }); // (lands in front of the fort's gate)
   D.add(-22.4, 0, 11.4, -22.28, 2.6, 11.52, 'wood'); D.add(-24.6, 1.6, 11.52, -20.4, 2.6, 11.6, 'adcannon', { fit: 1 });
@@ -3554,12 +3569,14 @@ function islands() {
   isle(B, D, 3, -44, 9, -38, { shelf: 1.5 }); palm(W, 8, -39.5, 5.5, r); add(3.4, 0, -43.6, 4.6, 1.0, -42.4, 'basalt');
   B.boxes.arch.push({ id: 'walks_islands', p: [0, 0, 0], r: 0, drape: true }); const WK = { av: 'walks_islands', ai: B.boxes.arch.length - 1 }; // (every rope walk: one Blender model, look only)
   ropeWalk(B, D, false, -58, -44, 6, 2.6, [-53, -45.5], WK); ropeWalk(B, D, false, -38, -24, 6, 2.6, [-36.5, -29], WK);
+  const PR = pierArt(B, D, 'pier'); // (the pier and the bait shack: one Blender model, look only)
+  PR(() => {
   add(28, -0.3, 4.5, 62, 0, 7.5, 'wood'); add(42, -0.3, 2, 50, 0, 4.5, 'wood'); add(42, -0.3, 7.5, 50, 0, 10.5, 'wood'); // the pier, wider round the shack
   for (let x = 28.4; x < 62; x += 0.6) D.add(x, 0, 4.5, x + 0.5, 0.025, 7.5, 'planks');
   for (let x = 30; x < 62; x += 4) for (const z of [4.6, 7.4]) D.box(x, -1.3, z, 0.3, 2.2, 0.3, 'wood');
   for (const x of [32, 38, 54, 60]) for (const z of [4.75, 7.25]) B.box(x, 0.3, z, 0.36, 0.6, 0.36, 'tire'); // bollards
   for (const [x0, x1] of [[33, 42], [50, 57]]) for (const z of [4.56, 7.44]) { add(x0, 0.9, z - 0.06, x1, 1.0, z + 0.06, 'wood'); for (let x = x0 + 0.1; x < x1; x += 2) D.add(x, 0, z - 0.05, x + 0.1, 0.9, z + 0.05, 'wood'); } // its rails
-  baitShack(B, D, 0, 0);
+  baitShack(B, D, 0, 0); });
   isle(B, D, -48, -4, -42, 2, { shelf: 1.5 }); palm(W, -44, 1, 6, r); add(-47.4, 0, -3.8, -46.2, 1.1, -2.7, 'basalt');
   ropeWalk(B, D, true, -62, -48, -1, 2.6, [-57, -49.5], WK); ropeWalk(B, D, true, -42, -28, -1, 2.6, [-40.5, -33], WK);
   sandbar(B, -6, 26.5, -6, 55.5); add(-8.2, -0.6, 36.5, -6.6, 0.6, 38, 'basalt'); add(-5, -0.6, 45, -3.4, 0.8, 46.8, 'basalt');
@@ -3657,13 +3674,14 @@ function islandsSD() {
 
   // ---- W, the tiki bar's islet (x -60..-36, z -36..-12); E, the beach huts' (x 36..60, z -36..-12)
   isle(B, D, -60, -36, -36, -12);
-  tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42);
+  const TK = tikiArt(B, D, 'tiki_sd'); // (the tiki islet and the huts' islet: one Blender model, look only)
+  TK(() => { tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42); });
   lounger(B, D, -50, -15, 'toyteal'); lounger(B, D, -46, -15, 'toypink');
   for (const [x, z] of [[-58.5, -14], [-37, -13.5], [-59, -33.5], [-37.5, -24.5]]) palm(W, x, z, 5.5 + r() * 3, r);
   isle(B, D, 36, -36, 60, -12);
-  hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1);
+  TK(() => { hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1); });
   lounger(B, D, 57, -30, 'toyyellow'); lounger(B, D, 57.6, -25.6, 'toyteal');
-  surfSchool(B, D, 16, -29);
+  TK(() => surfSchool(B, D, 16, -29));
   for (const [x, z] of [[58.5, -14], [37.5, -13.5], [58.8, -34], [37.5, -29]]) palm(W, x, z, 5.5 + r() * 3, r);
 
   // ---- B, Lighthouse Point (x -62..-34, z -82..-48): the tower's foot (no way up: the site's big cover), the cottage,

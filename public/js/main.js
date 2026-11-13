@@ -67,6 +67,7 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { MECH, mechScale } from '/shared/mech.js'; // (the server's mech size, from the welcome)
 import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
 import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
@@ -1434,6 +1435,7 @@ net.on('welcome', (m) => {
   brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
   isleReset();
   G.mode = m.mode; G.cfg = m.cfg; G.lk = m.lk || null;
+  if (Number.isFinite(m.ms) && m.ms !== MECH.scale) mechScale(m.ms); // (the server's mech size: hits and drops have to agree with it)
   lobbyMe(m.id); lobbyInfo(m.lobby || null); // a mode lobby: the countdown is on
   G.game = m.game; // (music needs it before the first round info arrives)
   musicNewMatch(); // a fresh random song for this match

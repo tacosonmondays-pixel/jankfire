@@ -203,7 +203,8 @@ function callMech() {
   if (I.mm < ISLE.meter.max) { hud.msg(`MECH METER ${Math.floor(I.mm)}%`, 1.2); sfx.empty(); return; }
   const e = eye(), cp = Math.cos(ME.pitch), d = [-Math.sin(ME.yaw) * cp, Math.sin(ME.pitch), -Math.cos(ME.yaw) * cp];
   const h = raycast(e, d, 300, BOXES), at = h ? h.point : [e[0] + d[0] * 60, e[1] + d[1] * 60, e[2] + d[2] * 60];
-  if (mechDeployBlock('mechdrop', at)) return;
+  const hr = I.hero.get(G.myId);
+  if (mechDeployBlock('mechdrop', at, hr && HEROES[hr] ? HEROES[hr].frame : 'paperplane')) return;
   net.send({ t: 'deploy', r: 'mechdrop', at: at.map((x) => Math.round(x * 100) / 100) });
 }
 function reviveTarget() {

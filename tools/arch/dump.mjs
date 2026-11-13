@@ -1,19 +1,19 @@
 // Dump a Blender building's boxes (tagged { av: id } in shared/map.js) in its own local frame, for tools/blender/arch.
-// usage: node tools/arch/dump.mjs <map> <id> [out.json]. checks every placement of id on the map has the same boxes
+// usage: node tools/arch/dump.mjs <map> <id> [out.json] [--deco]. checks every placement of id on the map has the same boxes
 // (the paint may differ: mats are written as the first placement's, plus the placement list)
 import fs from 'fs';
 import { MAPS } from '../../shared/map.js';
-const [mapId, id, out] = process.argv.slice(2);
+const [mapId, id, out] = process.argv.slice(2).filter((a) => a !== '--deco'), withDeco = process.argv.includes('--deco'); // (--deco: the render-only boxes tagged too, marked deco: 1)
 const m = MAPS[mapId]; if (!m) throw new Error('no map ' + mapId);
 const places = m.boxes.arch.map((a, i) => ({ ...a, ai: i })).filter((a) => a.id === id); if (!places.length) throw new Error('no ' + id + ' on ' + mapId);
-const tagged = m.boxes.filter((b) => b.av === id);
+const tagged = [...m.boxes, ...(withDeco ? (m.deco || []).map((b) => ({ ...b, deco: 1 })) : [])].filter((b) => b.av === id);
 // world -> local: undo the quarter turn of builder local(): T(x, z) = [[x, z], [-z, x], [-x, -z], [z, -x]][rot]
 const inv = (x, z, r) => [[x, z], [z, -x], [-x, -z], [-z, x]][r & 3];
 const r3 = (v) => Math.round(v * 1000) / 1000;
 const inside = (b, p) => b.ai === p.ai;
 const sets = places.map((p) => tagged.filter((b) => inside(b, p)).map((b) => {
   const [ax, az] = inv(b.min[0] - p.p[0], b.min[2] - p.p[2], p.r), [bx, bz] = inv(b.max[0] - p.p[0], b.max[2] - p.p[2], p.r);
-  return { min: [r3(Math.min(ax, bx)), r3(b.min[1] - p.p[1]), r3(Math.min(az, bz))], max: [r3(Math.max(ax, bx)), r3(b.max[1] - p.p[1]), r3(Math.max(az, bz))], mat: b.mat };
+  return { min: [r3(Math.min(ax, bx)), r3(b.min[1] - p.p[1]), r3(Math.min(az, bz))], max: [r3(Math.max(ax, bx)), r3(b.max[1] - p.p[1]), r3(Math.max(az, bz))], mat: b.mat, ...(b.deco ? { deco: 1 } : {}) };
 }).sort((a, b) => JSON.stringify(a.min.concat(a.max)) < JSON.stringify(b.min.concat(b.max)) ? -1 : 1));
 const key = (s) => s.map((b) => b.min.concat(b.max).join(',')).join(';');
 let maxSet = 0;
