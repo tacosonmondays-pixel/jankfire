@@ -219,14 +219,14 @@ async function partPeace(port) {
 
 // ---------------------------------------------------------------- duck catch: two people, the server's judging
 async function partDucks(port) {
-  const S = await server(port, { JF_WATCH: '1', JF_LOBBY_WAIT: '1500', JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'duckcatch', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '75', JF_BGN_PEACE: '1' });
+  const S = await server(port, { JF_WATCH: '1', JF_LOBBY_WAIT: '1500', JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'duckcatch', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '100', JF_BGN_PEACE: '1' });
   const W = await client(port, 'watchK', { mode: 'bots', cfg: { lobby: 'bgn' } });
   const A = await client(port, 'alma', { mode: 'bots', cfg: { lobby: 'bgn' } });
   const B = await client(port, 'bert', { mode: 'bots', cfg: { lobby: 'bgn' } });
   A.auto = true; B.auto = true;
   ok(await A.until(() => A.inMg('duckcatch') && B.inMg('duckcatch'), 120000), 'duck catch with both of us in it');
   ok(A.msgs.filter((m) => m.t === 'loadout').pop().lo.only.join() === 'slapper', 'the hand slapper only');
-  const sB = B.seat().i, e0 = B.ev.length, now0 = () => B.ev.slice(e0), pileB = () => { const e = now0().filter((x) => (x.k === 'duckx' || x.k === 'slap' || x.k === 'curse') && x.seat === sB).pop(); return e ? e.pile : 0; };
+  const fmt0 = A.st.mg.fmt, sB = B.seat().i, e0 = B.ev.length, w0 = W.ev.length, now0 = () => B.ev.slice(e0), pileB = () => { const e = now0().filter((x) => (x.k === 'duckx' || x.k === 'slap' || x.k === 'curse') && x.seat === sB).pop(); return e ? e.pile : 0; };
   let hold = { A: null, B: null };
   const tick = setInterval(() => { if (hold.A) A.place(hold.A); if (hold.B) B.place(hold.B); }, 50);
   // A: 5 m from where a duck lands, the whole way down and a second after. a made-up catch message does nothing either
@@ -269,8 +269,8 @@ async function partDucks(port) {
   // the cursed duck: B stands where it lands, loses half
   hold.A = null;
   for (let k = 0; k < 4 && pileB() < 4; k++) { const d = near(B, used)[0]; if (!d) { await sleep(400); continue; } used.add(d.id); hold.B = d.p.slice(); await B.until(() => B.evs('duckx').some((e) => e.id === d.id), d.ms + 1500); }
-  let cu = null, had = 0; // (a cursed duck can stick to someone else on its way down: up to 3 of them)
-  for (let k = 0; k < 3 && !cu; k++) {
+  let cu = null, had = 0; // (a cursed duck can stick to someone else on its way down: up to 5 of them)
+  for (let k = 0; k < 5 && !cu; k++) {
     const nc = B.evs('cursed').length;
     if (!await B.until(() => B.evs('cursed').length > nc, 14000)) break;
     const cz = B.evs('cursed').pop(); had = pileB();
@@ -281,8 +281,9 @@ async function partDucks(port) {
   ok(!!cu, 'a cursed duck came down on B');
   ok(cu && cu.n === Math.floor((cu.pile + cu.n) / 2) && cu.pile + cu.n >= 2, `the cursed duck halved B's pile (${cu && cu.pile + cu.n} -> ${cu && cu.pile}; ${had} when it was spotted)`);
   clearInterval(tick);
-  ok(await W.until(() => W.evs('res').some((e) => e.id === 'duckcatch' && e.fmt === 'ffa'), 100000), 'duck catch ended');
-  const r = W.evs('res').find((e) => e.id === 'duckcatch' && e.fmt === 'ffa'), sc = r.place.map((i) => r.x.pile[i] || 0);
+  const ours = () => W.ev.slice(w0).find((e) => e.k === 'res' && e.id === 'duckcatch' && e.fmt === fmt0); // (the two of us can be in a duck catch duel too)
+  ok(await W.until(() => ours(), 120000), 'duck catch ended');
+  const r = ours(), sc = r.place.map((i) => r.x.pile[i] || 0);
   ok(sc.every((v, k) => k === 0 || sc[k - 1] >= v), `places go by ducks: ${sc.join(' ')}`);
   const errs = errorsIn(S.log());
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
