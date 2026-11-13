@@ -175,6 +175,27 @@ do
 	end
 	walk("src")
 	check(#bad == 0, "every script compiles " .. table.concat(bad, "; "))
+	-- (a reviewer caught a round-start crash: a parameter called `game` hid the global. never again)
+	local shadow = {}
+	local function scan(dir: string)
+		for _, n in fs.readDir(dir) do
+			local p = dir .. "/" .. n
+			if fs.isDir(p) then scan(p)
+			elseif string.sub(n, -5) == ".luau" then
+				local src = fs.readFile(p)
+				for args in string.gmatch(src, "function[%w%.:_ ]*%(([^)]*)%)") do
+					for _, g in { "game", "workspace", "script" } do
+						if string.find(args, "%f[%w_]" .. g .. "%f[^%w_]") then table.insert(shadow, p .. " (" .. g .. ")") end
+					end
+				end
+				for _, g in { "game", "workspace", "script" } do
+					if string.find(src, "local " .. g .. "%f[^%w_]") then table.insert(shadow, p .. " (local " .. g .. ")") end
+				end
+			end
+		end
+	end
+	scan("src")
+	check(#shadow == 0, "no parameter or local hides game / workspace / script " .. table.concat(shadow, "; "))
 end
 -- ---------------------------------------------------------------- the built place file
 do

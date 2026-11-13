@@ -14,7 +14,7 @@ local VoteR = Remotes:WaitForChild("Vote") :: RemoteEvent
 local Vote = {}
 local V = Modes.VOTE
 local Fight: any
-local cur: { stage: string, cards: { string }, humans: { [Player]: number }, bots: { [any]: number }, allAt: number? }? = nil
+local cur: { stage: string, cards: { string }, humans: { [Player]: number }, bots: { [any]: number }, allAt: number?, ends: number }? = nil
 local lastVote: { [Player]: number } = {}
 local lastGame, lastMap = "dm", "rooftop"
 Vote.END_SCREEN = 5 -- s of the end screen (board + winner) before the first stage
@@ -49,9 +49,9 @@ local function stage(name: string, cards: { string }, dur: number): string
 	for _, id in cards do table.insert(infos, cardInfo(name, id)) end
 	local single = #cards == 1
 	local start = os.clock()
-	local c = { stage = name, cards = cards, humans = {}, bots = {}, allAt = nil }
+	local c = { stage = name, cards = cards, humans = {}, bots = {}, allAt = nil, ends = workspace:GetServerTimeNow() + (if single then V.single else dur) }
 	cur = c
-	VoteR:FireAllClients({ op = "stage", stage = name, cards = infos, ends = workspace:GetServerTimeNow() + (if single then V.single else dur), single = single })
+	VoteR:FireAllClients({ op = "stage", stage = name, cards = infos, ends = c.ends, single = single })
 	if single then task.wait(V.single); cur = nil; return cards[1] end
 	-- bots vote at a random moment (they only break ties)
 	for _, f in Fight.all do
@@ -62,6 +62,7 @@ local function stage(name: string, cards: { string }, dur: number): string
 	while true do
 		task.wait(0.1)
 		local people = voters()
+		for p in c.humans do if not table.find(people, p) then c.humans[p] = nil end end -- (went to the Range: no say)
 		local all = #people > 0
 		for _, p in people do if not c.humans[p] then all = false; break end end
 		if all and not c.allAt then c.allAt = os.clock() end
@@ -111,7 +112,7 @@ function Vote.init(fight: any)
 		if not c then return end
 		local infos = {}
 		for _, id in c.cards do table.insert(infos, cardInfo(c.stage, id)) end
-		VoteR:FireClient(p, { op = "stage", stage = c.stage, cards = infos, ends = workspace:GetServerTimeNow() + 3, single = #c.cards == 1 })
+		VoteR:FireClient(p, { op = "stage", stage = c.stage, cards = infos, ends = c.ends, single = #c.cards == 1 })
 	end)
 end
 

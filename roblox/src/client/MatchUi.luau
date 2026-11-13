@@ -178,18 +178,20 @@ function U.voteStage(stage: string, infos: { any }, ends: number, single: boolea
 		end
 		local cnt = label(b, "", UDim2.new(0, 8, 1, -44), UDim2.new(1, -16, 0, 36), Color3.new(0, 0, 0))
 		cnt.Name = "Count"; cnt.TextStrokeTransparency = 1
-		b.Activated:Connect(function()
-			if single then return end
-			myPick = i
-			for j, o in cards do o.BackgroundColor3 = if j == i then YELLOW else Color3.new(1, 1, 1) end
-			if U.onVote then U.onVote(stage, i) end
-		end)
+		b.Activated:Connect(function() if not single then U.pick(i) end end)
 		b.Parent = cardRow
 		table.insert(cards, b)
 	end
 	vote.Visible = true
 	vote.Size = UDim2.fromOffset(920, 360)
 	TweenService:Create(vote, TweenInfo.new(0.15, Enum.EasingStyle.Back), { Size = UDim2.fromOffset(880, 340) }):Play()
+end
+-- your vote (a click on a card, or keys 1-4): the card lights up
+function U.pick(i: number)
+	if voteEnds <= 0 or not cards[i] then return end
+	myPick = i
+	for j, o in cards do o.BackgroundColor3 = if j == i then YELLOW else Color3.new(1, 1, 1) end
+	if U.onVote then U.onVote(voteStage, i) end
 end
 function U.voteCounts(stage: string, counts: { number })
 	if stage ~= voteStage then return end

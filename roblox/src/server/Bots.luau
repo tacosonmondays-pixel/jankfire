@@ -48,6 +48,8 @@ Bots.knob = knob
 -- ------------------------------------------------------------------ bodies
 local function make(f: Fighter, at: Vector3?)
 	local m = api.body(f.name, COLORS[(f.id % #COLORS) + 1]) :: Model
+	-- (making a body can yield: if this bot left, or another spawn already gave it a body meanwhile, drop this one)
+	if not table.find(Fight.all, f) or (f.ref and f.ref.Parent) then m:Destroy(); return end
 	m:PivotTo(CFrame.new((at or Vector3.new(0, 5, 0)) + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)))
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	if hum then
@@ -102,7 +104,7 @@ local function removeBot(f: Fighter)
 end
 
 -- people came, went, or a round starts: add bots, or mark extra ones to leave (now if dead, else when they die)
-function Bots.seats()
+function Bots.seats(fromRound: boolean?)
 	local humans = 0
 	for _, f in Fight.all do if f.kind == "player" and f.room == "ffa" then humans += 1 end end
 	local want = BotBrain.wanted(humans, knob("Bots", 5) + 1)
@@ -114,9 +116,13 @@ function Bots.seats()
 		if not f.alive or not Fight.live then removeBot(f) end
 	end
 	while #staying < want do
+		-- a bot that was about to leave stays instead (no pile of bots from people hopping in and out)
+		local back = nil
+		for _, f in list do if brain[f].leaving then back = f; break end end
+		if back then brain[back].leaving = false; table.insert(staying, back); continue end
 		local f = newBot()
 		table.insert(staying, f)
-		if Fight.live then task.spawn(Fight.spawn, f) end
+		if Fight.live and not fromRound then task.spawn(Fight.spawn, f) end -- (a new round spawns everyone itself)
 	end
 end
 
@@ -295,11 +301,13 @@ function Bots.tick(n: number)
 			if wish.Magnitude > 0 and not b.hook then
 				local ahead = root.Position + wish * 6 + Vector3.new(0, 1, 0)
 				local floor = Fight.castMap(ahead, Vector3.new(0, -1, 0), 30)
-				local need = BotBrain.wantHook(floor ~= nil, dist, false, 0)
-				if need == "cross" and grounded then
-					local p = hookPoint(eye, (tr.Position + Vector3.new(0, 6, 0)) - eye)
-					if p then hookTo(f, b, p) else wish = Vector3.zero end
-				elseif floor == nil then wish = Vector3.zero end
+				if floor == nil then
+					local need = BotBrain.wantHook(false, dist, false, 0)
+					-- across the gap: hook the floor they're standing on (a ray at their feet lands on it)
+					local p = if need == "cross" and grounded then hookPoint(eye, (tr.Position - Vector3.new(0, Hitbox.ROOT_UP + 1, 0)) - eye) else nil
+					if p then hookTo(f, b, p) end
+					wish = Vector3.zero
+				end
 			end
 		else
 			-- nobody to fight: wander to a spawn
@@ -307,6 +315,7 @@ function Bots.tick(n: number)
 			local goal = sp[(f.id % #sp) + 1]
 			local to = goal - root.Position
 			if Vector3.new(to.X, 0, to.Z).Magnitude > 8 then wish = Vector3.new(to.X, 0, to.Z).Unit end
+			if wish.Magnitude > 0 and not Fight.castMap(root.Position + wish * 6 + Vector3.new(0, 1, 0), Vector3.new(0, -1, 0), 30) then wish = Vector3.zero end
 		end
 		-- falling into the smog: grapple back up toward the nearest spawn
 		local below = b.floorY - root.Position.Y
@@ -314,7 +323,7 @@ function Bots.tick(n: number)
 			local best, bd = nil, math.huge
 			for _, sp in Fight.spawnPoints(f) do local d = (sp - root.Position).Magnitude; if d < bd then best, bd = sp, d end end
 			if best then
-				local p = hookPoint(eye, (best + Vector3.new(0, 10, 0)) - eye)
+				local p = hookPoint(eye, (best - Vector3.new(0, 1, 0)) - eye) -- the floor at that spawn
 				if p then hookTo(f, b, p) end
 			end
 		end

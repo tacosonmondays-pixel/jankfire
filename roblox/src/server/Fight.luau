@@ -4,6 +4,7 @@
 -- the rules themselves are in Rules.luau (pure, tested); this wires them to Roblox
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
@@ -200,6 +201,7 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 		end)
 	end
 	local k = info.k
+	if k and k.kind == "bot" and (info.w == "katana" or info.w == "parry") and k.held == "katana" then Fight.showWeapon(k) end
 	if k and k.kind == "player" then
 		local kp = k.ref :: Player
 		kp:SetAttribute("Kat", k.kat)
@@ -242,6 +244,11 @@ end
 -- the street: "into the smog". whoever shoved you in the last 10 s gets it
 function Fight.void(f: Fighter)
 	if not f.alive then return end
+	if f.room == "ffa" and not Fight.live then -- (the end screen / vote: a fall is just a fall, nobody scores)
+		f.alive, f.hp = false, 0
+		syncHp(f)
+		return
+	end
 	local info = Rules.kill(f, nil, "void", now())
 	Fight.died(info, nil)
 end
@@ -286,11 +293,12 @@ function Fight.spawn(f: Fighter)
 	spawning[f] = true
 	local old = p.Character
 	if old then Fight.byModel[old] = nil end
-	local at = Fight.pickSpawn(f)
 	local ok = pcall(function() p:LoadCharacter() end)
 	spawning[f] = nil
 	local ch = p.Character
 	if not ok or not ch or not p.Parent or f.alive or not table.find(Fight.all, f) then return end
+	if f.room == "ffa" and not Fight.live then return end -- the vote started while loading: in with the next round
+	local at = Fight.pickSpawn(f) -- (after the load: the room may have changed while it yielded)
 	Rules.spawn(f, now())
 	-- no regen: HP is the server's
 	local hs = ch:FindFirstChild("Health")
@@ -364,19 +372,19 @@ end
 
 -- hooks: the vote (after a round) and the bot seats (before one, and when people come and go)
 Fight.onRoundOver = nil :: ((board: { { any } }) -> ())?
-Fight.onSeats = nil :: (() -> ())?
+Fight.onSeats = nil :: ((fromRound: boolean?) -> ())?
 
 -- a round: the mode and map (from the vote), everyone's score reset, a fresh body for everyone in the match
-function Fight.startRound(game: string?, map: string?)
-	Fight.match.game = game or Fight.match.game
-	Fight.match.map = map or Fight.match.map
-	if Fight.onSeats then Fight.onSeats() end
+function Fight.startRound(gameId: string?, mapId: string?)
+	Fight.match.game = gameId or Fight.match.game
+	Fight.match.map = mapId or Fight.match.map
+	if Fight.onSeats then Fight.onSeats(true) end
 	local bots = 0
 	for _, f in Fight.all do if f.kind == "bot" then bots += 1 end end
 	Fight.match.withBots = bots > 0
 	Fight.match.target, Fight.match.time = Modes.limits(Fight.match.game, Fight.match.withBots)
 	-- the test knobs (ServerStorage.JankfireConfig: Target, RoundTime; 0 = the mode's own)
-	local cfg = game:GetService("ServerStorage"):FindFirstChild("JankfireConfig")
+	local cfg = ServerStorage:FindFirstChild("JankfireConfig")
 	local kt, rt = cfg and cfg:GetAttribute("Target"), cfg and cfg:GetAttribute("RoundTime")
 	if type(kt) == "number" and kt > 0 then Fight.match.target = kt end
 	if type(rt) == "number" and rt > 0 then Fight.match.time = rt end
@@ -427,14 +435,22 @@ end
 -- go to the Range or back to the match: a fresh body there (no death, no feed)
 function Fight.setRoom(f: Fighter, room: string)
 	if f.kind ~= "player" or (room ~= "ffa" and room ~= "training") or f.room == room then return end
+	-- leaving a fight hurt or freshly hit is a death (whoever tagged you gets it), not an escape
+	if f.alive and f.room == "ffa" and Fight.live and (f.hp < Weapons.HP or (f.tag and now() - f.tag.t <= 10)) then
+		Fight.void(f)
+	end
 	f.room = room
 	f.alive = false
 	f.tag = nil
 	local p = f.ref :: Player
 	p:SetAttribute("Room", room)
-	if room == "ffa" and not Fight.live then return end -- the vote's on: you're in with the next round
-	task.spawn(Fight.spawn, f)
 	if Fight.onSeats then Fight.onSeats() end
+	if room == "ffa" and not Fight.live then return end -- the vote's on: you're in with the next round
+	-- back into the match: no faster than a normal respawn after your last death
+	local wait = if room == "ffa" then math.max(0, f.diedT + FFA.respawn - now()) else 0
+	task.delay(wait, function()
+		if f.room == room and not f.alive and table.find(Fight.all, f) then Fight.spawn(f) end
+	end)
 end
 
 function Fight.init()

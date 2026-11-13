@@ -33,9 +33,9 @@ Modes.MAP_ORDER = { "rooftop" }
 Modes.VOTE = { mode = 11, map = 9, reveal = 3, cards = 4, single = 2, early = 2.5, botMin = 1.2, botMax = 7 }
 
 -- kill limit + clock: an Online room (people only) vs a room with bots (room.js ROUND, modes.js TARGETS)
-function Modes.limits(game: string, withBots: boolean): (number, number)
-	if game == "tdm" then return if withBots then 30 else 40, if withBots then 300 else 360 end
-	if game == "tags" then return if withBots then 20 else 25, if withBots then 300 else 360 end
+function Modes.limits(gid: string, withBots: boolean): (number, number)
+	if gid == "tdm" then return if withBots then 30 else 40, if withBots then 300 else 360 end
+	if gid == "tags" then return if withBots then 20 else 25, if withBots then 300 else 360 end
 	return if withBots then 15 else 20, if withBots then 300 else 360
 end
 
@@ -76,8 +76,8 @@ function Modes.modeCards(last: string?, day: number, rand: () -> number): { stri
 end
 
 -- stage 2: up to 4 maps for the mode; the map just played goes last in line
-function Modes.mapCards(game: string, last: string?): { string }
-	local _ = game
+function Modes.mapCards(gid: string, last: string?): { string }
+	local _ = gid
 	local cards = {}
 	for _, id in Modes.MAP_ORDER do if id ~= last then table.insert(cards, id) end end
 	if last and Modes.MAPS[last] then table.insert(cards, last) end

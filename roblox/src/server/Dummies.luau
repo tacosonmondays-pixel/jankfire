@@ -60,6 +60,7 @@ Dummies.body = body
 local function make(f: Fighter, _at: Vector3?)
 	local plinker = f.name == "Plinker"
 	local m = body(f.name, if plinker then Color3.fromRGB(255, 59, 59) else Color3.fromRGB(255, 225, 77))
+	if not table.find(Fight.all, f) or (f.ref and f.ref.Parent) then m:Destroy(); return end -- (body() can yield)
 	local b = brain[f]
 	m:PivotTo(CFrame.new(b.home + Vector3.new(0, Hitbox.ROOT_UP + 0.5, 0)))
 	local hum = m:FindFirstChildOfClass("Humanoid")

@@ -324,7 +324,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	local now = os.clock()
 	if io.KeyCode == Enum.KeyCode.T then MatchUi.onRoom(if myRoom() == "training" then "ffa" else "training"); return end
 	if io.KeyCode == Enum.KeyCode.B then MatchUi.togglePicker(); return end
-	if voteOpen and KEYS[io.KeyCode] then remote("Vote"):FireServer(voteOpen, KEYS[io.KeyCode]); return end
+	if voteOpen and KEYS[io.KeyCode] then MatchUi.pick(KEYS[io.KeyCode]); return end
 	if MatchUi.pickerOpen() then return end
 	if io.UserInputType == Enum.UserInputType.MouseButton1 then
 		trigger = true
@@ -540,6 +540,7 @@ remote("Round").OnClientEvent:Connect(function(r: any)
 			Sfx.play("round_start")
 		end
 	elseif r.over then
+		if myRoom() ~= "ffa" then return end -- (on the Range: the match's end screen isn't yours)
 		Sfx.play("round_end")
 		H.endScreen(if type(r.winner) == "string" then r.winner else nil, r.winnerId == me.UserId, if type(r.board) == "table" then r.board else {}, if type(r.next) == "number" then r.next else 12)
 	end
@@ -575,6 +576,7 @@ MatchUi.onLoadout = function(list: { string }) remote("Loadout"):FireServer(list
 MatchUi.onVote = function(stage: string, i: number) remote("Vote"):FireServer(stage, i) end
 remote("Vote").OnClientEvent:Connect(function(v: any)
 	if type(v) ~= "table" then return end
+	if myRoom() ~= "ffa" then MatchUi.voteDone(); voteOpen = nil; return end -- (the Range doesn't vote)
 	if v.op == "stage" and type(v.cards) == "table" and type(v.stage) == "string" then
 		H.hideEnd()
 		MatchUi.voteStage(v.stage, v.cards, if type(v.ends) == "number" then v.ends else 0, v.single == true)
