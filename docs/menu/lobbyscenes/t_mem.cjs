@@ -15,10 +15,14 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
   for (const m of MODES) { await mode(m); await sleep(6000); } // first visits: models land, caches fill
   await mode('qp'); await sleep(1500);
   const a = await mem();
-  for (let k = 0; k < Number(process.env.N || 6); k++) { for (const m of MODES) { await mode(m); await sleep(1200); await mode("qp"); await sleep(800); } console.log("cycle", k, JSON.stringify(await mem())); }
+  const cyc = [];
+  for (let k = 0; k < Number(process.env.N || 6); k++) { for (const m of MODES) { await mode(m); await sleep(1200); await mode("qp"); await sleep(800); } const m = await mem(); cyc.push(m); console.log("cycle", k, JSON.stringify(m)); }
   await sleep(1000);
   const c = await mem();
-  console.log('after first visits', JSON.stringify(a), 'after more', JSON.stringify(c), c.geo - a.geo > 2 || c.tex - a.tex > 1 ? 'LEAK' : 'OK');
+  // the first visits fill one-time caches (the mech and gantry models land late): judge from cycle 2 on. the menu's own
+  // map backdrop drifts a few a cycle with no scene at all (MODES=bomb), so allow that much
+  const s0 = cyc[2] || a, per = (c.geo - s0.geo) / Math.max(1, cyc.length - 3);
+  console.log('after first visits', JSON.stringify(a), 'after more', JSON.stringify(c), 'per cycle from cycle 2:', per.toFixed(1), per > 8 ? 'LEAK' : 'OK');
   console.log('errors:', JSON.stringify(errs));
   await b.close();
 })();

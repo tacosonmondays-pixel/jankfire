@@ -9,7 +9,7 @@ import { locoPose } from '../loco.js';
 
 const GRAV = 26, JUMP = 8.6, WALK = 5.2, RUN = 8.4, R = 0.42; // m/s², m/s, the body's radius
 const cl = (v, a, b) => (v < a ? a : v > b ? b : v);
-const typing = () => { const a = document.activeElement; return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName); };
+const typing = () => { const a = document.activeElement; return !!a && /^(INPUT|SELECT|TEXTAREA)$/.test(a.tagName) && a.offsetParent !== null; }; // (a box on a hidden screen, like the home's name field, doesn't count)
 
 // push a circle (x, z, r) at height y out of the scene's solid boxes; returns the floor under it
 // solids: [x0, z0, x1, z1, top]. something you're above (or nearly: a step) is a floor, not a wall
@@ -48,7 +48,7 @@ export function poseWalker(r, dt, now) {
 
 export function makeWalk(c, L, spec, me0) {
   let me = me0;
-  const W = { keys: new Set(), camYaw: spec.spawn[3] || 0, camPitch: 0.28, dist: spec.dist || 5.6, drag: null, dragged: false, near: null, ride: null, sent: 0, t: 0 };
+  const W = { keys: new Set(), camYaw: spec.spawn[3] || 0, camPitch: spec.pitch ?? 0.28, dist: spec.dist || 5.6, drag: null, dragged: false, near: null, ride: null, sent: 0, t: 0 };
   const cam = c.cam, tgt = new THREE.Vector3(), want = new THREE.Vector3(), camPos = new THREE.Vector3(), _v = new THREE.Vector3();
   let camInit = false;
   const prompt = L.tag('ls-use', '<kbd>E</kbd><b></b>'); prompt.style.display = 'none';

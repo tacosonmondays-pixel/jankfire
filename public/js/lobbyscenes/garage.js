@@ -142,31 +142,33 @@ export function build(L) {
     b.frame = frame; b.color = color;
     if (!frame) return;
     const id = GLB_ID[frame];
-    if (missingGlb(id)) { want(id, b.i === 1 ? 3 : 2); whenGlb([id], () => { if (b.frame === frame && b.mech && !b.mech.glb && !gone) setMech(b, frame, color); }); }
+    if (missingGlb(id)) { want(id, b.i === MB ? 3 : 2); whenGlb([id], () => { if (b.frame === frame && b.mech && !b.mech.glb && !gone) setMech(b, frame, color); }); }
     const m = buildMech(frame, color);
     m.root.position.set(0, 0, 0); m.root.rotation.y = Math.PI; // (mechs face -z too)
     m.root.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.userData.lsPickMech = 1; } });
-    m.root.userData.lsPick = b.i === 1 ? 'mymech' : 'mech';
+    m.root.userData.lsPick = b.i === MB ? 'mymech' : 'mech';
     b.mech = m; b.g.add(m.root);
     b.st = { spd: 0, fwd: 0, side: 0, air: false, vy: 0, landT: 9, landK: 1, pitch: 0, empty: true, intro: false, falling: false, boost: 0, swingT: 9, gunT: 9, swarmT: 9 };
   }
-  let gone = false, list = [], swap = null, shown = null;
+  let gone = false, list = [], swap = null, shown = null, MB = 1; // MB: your bay (your place in the party: 1st the middle, 2nd the left, 3rd the right)
+  const BAY_OF = [1, 0, 2], my = () => bays[MB];
   // the swap: lights go red + a klaxon, the hook comes down and hauls the old one up, the new one comes down swinging,
   // CLANK, dust, sparks off the gantry, the lights come back one bank at a time, the plate stamps the new name
   function startSwap(to) {
-    const b = bays[1];
+    const b = my();
     if (swap) { swap.to = to; return; }
+    trolley.position.x = b.x; dust.position.x = b.x;
     swap = { t: 0, from: b.frame, to, swapped: false, landed: false };
-    const c = L.cur(); if (c.walk && !ride) c.camFocus = { at: [0, 4.2, MZ], t: 0, dur: SWAP + 0.5, back: 5 }; // (look up at the bay while it happens)
+    const c = L.cur(); if (c.walk && !ride) c.camFocus = { at: [b.x, 4.2, MZ], t: 0, dur: SWAP + 0.5, back: 5 }; // (look up at the bay while it happens)
     try { L.sfx.tone('square', 520, 380, 0.22, 0.08); L.sfx.tone('square', 520, 380, 0.22, 0.08, null, 0.3); } catch { /* (no audio yet) */ }
   }
   function swapTick(dt) {
-    const b = bays[1], s = swap;
+    const b = my(), s = swap;
     if (!s) return;
     s.t += dt;
     const t = s.t, red = t < 1.15 ? 1 : Math.max(0, 1 - (t - 1.15) / 0.35);
     b.lamp.color.copy(b.lampBase).lerp(RED, red); b.lamp.intensity = b.lampI * (red ? 0.55 + 0.45 * (Math.sin(t * 22) > 0 ? 1 : 0.35) : 1);
-    for (const o of [bays[0], bays[2]]) o.lamp.intensity = o.lampI * (t < 1.2 ? 0.25 : t < 1.32 ? 0.6 : 1); // the banks come back one at a time
+    for (const o of bays) if (o !== b) o.lamp.intensity = o.lampI * (t < 1.2 ? 0.25 : t < 1.32 ? 0.6 : 1); // the banks come back one at a time
     if (b.arms) for (const a of b.arms) a.rotation.y = (a.name === 'arm_L' ? 1 : -1) * Math.min(1, t / 0.2, Math.max(0, (1.45 - t) / 0.25)) * 0.9; // clamps open, then shut
     const hookY = (y) => { crane.y = y - 12.6; };
     const top = (f) => (f ? MECH[f].h + 0.4 : 3);
@@ -182,7 +184,7 @@ export function build(L) {
         if (b.mech) { b.mech.root.position.y = 0; b.mech.root.rotation.z = 0; b.st.air = false; b.st.landT = 0; b.st.landK = 1; }
         try { L.sfx.noise(0.5, 0.9, 'lowpass', 1400, 60); L.sfx.tone('sine', 120, 40, 0.4, 0.6); L.sfx.tone('square', 1800, 900, 0.06, 0.08); L.sfx.noise(0.35, 0.25, 'bandpass', 4000, 2500, null, 0.12); } catch { /* (no audio yet) */ }
         dust.material.opacity = 0.75; dust.scale.setScalar(1);
-        for (const sx of [-3.1, 3.1]) burst(sx, 4.4, MZ + 0.6, 26, 4);
+        for (const sx of [-3.1, 3.1]) burst(b.x + sx, 4.4, MZ + 0.6, 26, 4);
         stamp = 0.4;
       }
       hookY(top(s.to) + Math.min(1, (t - 1.15) / 0.45) * (14 - top(s.to)));
@@ -222,16 +224,16 @@ export function build(L) {
 
   // ---- your mech as a ride: E at its feet, it walks where you push, E again and you hop down, it flies home
   let ride = null, ret = null, stompT = 0;
-  const RIDE_SOL = SOL.filter((b) => !(b[0] > -1.6 && b[2] < 1.6 && b[1] < MZ + 1.4 && b[3] > MZ - 1.5)); // (not your own bay's mech box)
+  const rideSol = () => SOL.filter((q) => !(q[0] > my().x - 1.6 && q[2] < my().x + 1.6 && q[1] < MZ + 1.4 && q[3] > MZ - 1.5)); // (not your own bay's mech box)
   function hopIn() {
-    const b = bays[1], walk = L.cur().walk;
+    const b = my(), walk = L.cur().walk;
     if (!b.mech || swap || ret || ride || !walk) return;
     const f = b.frame, F = MECH[f];
-    ride = { pos: [0, 0, MZ], yaw: Math.PI, vel: [0, 0, 0], air: false, speed: f === 'nightshift' ? 6 : 7.5, r: 1.7, h: F.h + 0.6, camDist: 13, camH: 4.2,
-      solids: RIDE_SOL, bounds: [-22.5, MZ - 0.2, 22.5, 31],
+    ride = { pos: [b.x, 0, MZ], yaw: Math.PI, vel: [0, 0, 0], air: false, speed: f === 'nightshift' ? 6 : 7.5, r: 1.7, h: F.h + 0.6, camDist: 13, camH: 4.2,
+      solids: rideSol(), bounds: [-22.5, MZ - 0.2, 22.5, 31],
       moved(dt, hs) {
         const m = b.mech; if (!m) return;
-        m.root.position.set(this.pos[0], this.pos[1], this.pos[2] - MZ); m.root.rotation.y = this.yaw;
+        m.root.position.set(this.pos[0] - b.x, this.pos[1], this.pos[2] - MZ); m.root.rotation.y = this.yaw;
         b.st.spd = hs; b.st.fwd = hs; b.st.air = this.air;
         stompT -= dt * hs / 4;
         if (hs > 1 && stompT <= 0) { stompT = 1; L.shake = Math.max(L.shake, 0.12); try { L.sfx.noise(0.18, 0.35, 'lowpass', 500, 60); } catch { /* (no audio yet) */ } }
@@ -241,7 +243,7 @@ export function build(L) {
     try { L.sfx.tone('sawtooth', 120, 260, 0.35, 0.12); L.sfx.tone('square', 900, 1400, 0.08, 0.05, null, 0.25); } catch { /* (no audio yet) */ }
   }
   function hopOut() {
-    const b = bays[1], walk = L.cur().walk;
+    const b = my(), walk = L.cur().walk;
     if (!ride || !walk) return;
     const me = walk.me, sy = Math.sin(ride.yaw), cy = Math.cos(ride.yaw);
     me.pos = [ride.pos[0] + cy * 2.4, 0, ride.pos[2] - sy * 2.4]; me.vel = [cy * 2, 5, -sy * 2]; me.air = true; me.hidden = false; me.yaw = ride.yaw;
@@ -250,10 +252,10 @@ export function build(L) {
     try { L.sfx.whoosh(0.5, 0.3, 300, 1600); } catch { /* (no audio yet) */ }
   }
   function retTick(dt) { // home: a jet-hop back into the bay, turning round on the way, CLANK
-    const b = bays[1], m = b.mech;
+    const b = my(), m = b.mech;
     if (!ret || !m) { ret = null; return; }
     ret.t += dt;
-    const k = Math.min(1, ret.t / 1.3), e = k * k * (3 - 2 * k), x = ret.from[0] * (1 - e), z = ret.from[2] + (MZ - ret.from[2]) * e, y = Math.sin(k * Math.PI) * 3.5;
+    const k = Math.min(1, ret.t / 1.3), e = k * k * (3 - 2 * k), x = (ret.from[0] - b.x) * (1 - e), z = ret.from[2] + (MZ - ret.from[2]) * e, y = Math.sin(k * Math.PI) * 3.5;
     m.root.position.set(x, y, z - MZ); let d = Math.PI - ret.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); m.root.rotation.y = ret.yaw + d * e;
     b.st.air = k < 1; b.st.boost = k < 0.9 ? 1 : 0; b.st.spd = 0;
     if (k >= 1) { ret = null; m.root.position.set(0, 0, 0); m.root.rotation.y = Math.PI; b.st.landT = 0; b.st.landK = 0.7; b.st.boost = 0; L.shake = 0.25; dust.material.opacity = 0.6; dust.scale.setScalar(1); try { L.sfx.noise(0.4, 0.7, 'lowpass', 1200, 60); } catch { /* (no audio yet) */ } }
@@ -279,11 +281,11 @@ export function build(L) {
   function cola() { bubble.innerHTML = '<small>THE MACHINE</small>' + colaLines[Math.floor(Math.random() * colaLines.length)]; bubble.style.display = ''; bubbleT = 2.6; try { L.sfx.tone('square', 300, 200, 0.12, 0.06); L.sfx.noise(0.25, 0.3, 'lowpass', 900, 200, null, 0.15); } catch { /* (no audio yet) */ } }
   const bubbleAt = new THREE.Vector3(-22.6, 2.5, 13);
   const walkSpec = {
-    spawn: [0, -2.4, 0, 0], bounds: [-23.6, -15.6, 23.6, 32], solids: SOL, camBox: [-23.3, 0.5, -15.3, 23.3, 15.6, 45], dist: 5.6,
+    spawn: [0, -2.4, 0, 0], bounds: [-23.6, -15.6, 23.6, 32], solids: SOL, camBox: [-23.3, 0.5, -15.3, 23.3, 15.6, 45], dist: 6.8, pitch: 0.1, // (you, and your mech towering over you)
     wander: [[-12, -2], [12, -2], [0, 2], [-4, 10], [4, 10], [-18, 14], [-19, 18], [17, 9], [14, 18], [0, 26], [-8, 27], [9, 27], [-6, -3], [6, -3]],
     use: [
-      { at: [2.6, 1.2, MZ + 2.7], r: 1.9, label: () => 'SWAP MECH', show: () => !ride && !ret, act: () => step(1) },
-      { at: [0, 1.4, MZ + 1.9], r: 2.1, label: () => 'HOP IN', show: () => !ride && !ret && !swap && !!bays[1].mech, act: hopIn },
+      { at: [2.6, 1.2, MZ + 2.7], bayAt: 2.6, r: 1.9, label: () => 'SWAP MECH', show: () => !ride && !ret, act: () => step(1) },
+      { at: [0, 1.4, MZ + 1.9], bayAt: 0, r: 2.1, label: () => 'HOP IN', show: () => !ride && !ret && !swap && !!my().mech, act: hopIn },
       { at: [-22.4, 1.4, 13], r: 1.9, label: () => 'GET A COLA', act: cola },
       { at: [15.3, 1.3, 15], r: 2.2, label: () => 'TEST FIRE', act: testFire },
     ],
@@ -293,11 +295,22 @@ export function build(L) {
     focus: { at: new THREE.Vector3(0, 3.0, -4.6), top: new THREE.Vector3(0, 7.6, MZ), bot: new THREE.Vector3(0, 0, -0.2), w: 7.2, dir: new THREE.Vector3(0, 0.1, 1).normalize(), fov: 34, drift: 0.05 },
     party(l) {
       list = l;
-      const myF = myFrame(G), me = l[0] || {};
-      if (!bays[1].mech && !swap) { setMech(bays[1], myF, me.color || '#ff4fd8'); shown = myF; plate(); }
-      else if (bays[1].mech && me.color && me.color !== bays[1].color && !swap) setMech(bays[1], bays[1].frame, me.color);
-      [[1, 0], [2, 2]].forEach(([pi, bi]) => { // party slot -> bay
-        const p = l[pi], b = bays[bi];
+      const myF = myFrame(G), me = l.find((p) => p.me) || l[0] || {};
+      const mb = BAY_OF[(me.slot | 0) % 3];
+      if (mb !== MB && !ride && !ret && !swap) { // (your place in the party changed: your mech moves to your bay)
+        for (const b of bays) { if (b.mech) freeMech(b.mech); b.mech = null; b.frame = null; b.color = null; }
+        MB = mb; term.position.x = my().x + 2.6; trolley.position.x = my().x;
+        for (const u of walkSpec.use) if (u.bayAt != null) u.at[0] = my().x + u.bayAt;
+        for (const b of bays) { b.lampBase.set(b.i === MB ? 0xffe8f6 : 0xbfe6ff); b.lamp.color.copy(b.lampBase); b.ring.material.color.set(b.i === MB ? 0xff4fd8 : 0x4fd8ff); }
+      }
+      const b0 = my();
+      if (!b0.mech && !swap) { setMech(b0, myF, me.color || '#ff4fd8'); shown = myF; plate(); }
+      else if (b0.mech && me.color && me.color !== b0.color && !swap && !ride && !ret) setMech(b0, b0.frame, me.color);
+      const taken = new Set([MB]);
+      l.forEach((p, pi) => { if (p.me) return; const bi = BAY_OF[(p.slot ?? pi) % 3]; if (taken.has(bi)) return; taken.add(bi); p._bay = bi; });
+      bays.forEach((b, bi) => { // everyone else's mech in their bay (bots: theirs; empty bays stay empty)
+        if (bi === MB) return;
+        const pi = l.findIndex((p) => p._bay === bi), p = l[pi];
         const f = p && !p.invite ? mechFrame(p.mech || FRAMES[(pi + (G.myId | 0)) % FRAMES.length]) : null, c = p && !p.invite ? p.color || '#4fd8ff' : null;
         if (f !== b.frame || c !== b.color) setMech(b, f, c);
         holos[bi ? 1 : 0].style.display = 'none'; // (walking: the + INVITE spot in front of the bay says it)
@@ -306,8 +319,13 @@ export function build(L) {
     inviteSpot(wrap) { wrap.userData.lsPick = 'invite'; const m = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 1.9, 8, 1, true), L.basic(0x4fd8ff, { transparent: true, opacity: 0.12, depthWrite: false, side: THREE.DoubleSide })); m.position.y = 0.95; m.userData.lsSee = false; wrap.add(m); },
     update(dt, t) {
       const want2 = myFrame(G);
-      if (bays[1].mech && !ride && !ret && want2 !== (swap ? swap.to : bays[1].frame)) startSwap(want2);
+      if (my().mech && !ride && !ret && want2 !== (swap ? swap.to : my().frame)) startSwap(want2);
       retTick(dt);
+      for (const b of bays) { // party members' mechs: following them, or flying home
+        const m = b.mech; if (!m || b.i === MB) continue;
+        if (b.away && b.rem) { const R = b.rem, k = Math.min(1, dt * 10); m.root.position.x += (R.p[0] - b.x - m.root.position.x) * k; m.root.position.z += (R.p[2] - MZ - m.root.position.z) * k; m.root.position.y = R.p[1]; m.root.rotation.y = R.yaw; b.st.spd = R.spd; b.st.empty = false; }
+        else if (b.home) { const H = b.home; H.t += dt; const k = Math.min(1, H.t / 1.3), e = k * k * (3 - 2 * k); m.root.position.set((H.from[0] - b.x) * (1 - e), Math.sin(k * Math.PI) * 3.5, (H.from[2] - MZ) * (1 - e)); let d = Math.PI - H.yaw; d = Math.atan2(Math.sin(d), Math.cos(d)); m.root.rotation.y = H.yaw + d * e; b.st.air = k < 1; b.st.spd = 0; if (k >= 1) { b.home = null; b.st.empty = true; b.st.landT = 0; m.root.position.set(0, 0, 0); m.root.rotation.y = Math.PI; } }
+      }
       for (const t of targets) if (t.spin > 0) { t.spin = Math.max(0, t.spin - dt * 1.2); t.face.rotation.y = (1 - t.spin) * Math.PI * 4; }
       for (let i = tracers.length - 1; i >= 0; i--) { const tr = tracers[i]; tr.life -= dt; tr.ln.material.opacity = Math.max(0, tr.life / 0.12); if (tr.life <= 0) { root.remove(tr.ln); tr.ln.geometry.dispose(); tr.ln.material.dispose(); tracers.splice(i, 1); } }
       if (bubbleT > 0) { bubbleT -= dt; if (bubbleT <= 0) bubble.style.display = 'none'; }
@@ -330,7 +348,7 @@ export function build(L) {
           if (sp.life[i] <= 0) sp.p[j + 1] = -99;
         }
         sg.attributes.position.needsUpdate = true;
-        if (!swap && Math.random() < dt * 0.6) burst(bays[1].x + (Math.random() < 0.5 ? -3.1 : 3.1), 4.4, MZ + 0.6, 6, 2); // the odd weld, idle
+        if (!swap && Math.random() < dt * 0.6) burst(my().x + (Math.random() < 0.5 ? -3.1 : 3.1), 4.4, MZ + 0.6, 6, 2); // the odd weld, idle
       }
     },
     tags(c) {
@@ -342,7 +360,13 @@ export function build(L) {
     },
     hover(h) { box.style.outline = h && h.kind === 'mymech' ? '3px solid #ffe14d' : ''; },
     click(h) { if (h.kind === 'mymech') step(1); },
-    info: () => ({ mine: bays[1].frame, swapping: !!swap, riding: !!ride, home: !ret, bays: bays.map((b) => b.frame), glb: bays.map((b) => !!(b.mech && b.mech.glb)), gantry: bays.map((b) => !!b.blender) }),
+    // a party member in their mech (the relay's a = 1): their bay's mech goes where they are; out again, it flies home
+    remote(i, m) {
+      const P = list[i], b = P && P._bay != null ? bays[P._bay] : null; if (!b || !b.mech || !Array.isArray(m.p)) return;
+      if (m.a === 1) { const R = b.rem || (b.rem = { p: [b.x, 0, MZ], yaw: Math.PI, spd: 0 }); const d = Math.hypot(m.p[0] - R.p[0], m.p[2] - R.p[2]); R.spd = d * 10; R.p = m.p.slice(); R.yaw = m.yaw; b.away = true; b.home = null; }
+      else if (b.away) { b.away = false; b.home = { t: 0, from: (b.rem && b.rem.p.slice()) || [b.x, 0, MZ], yaw: (b.rem && b.rem.yaw) || Math.PI }; }
+    },
+    info: () => ({ myBay: MB, mine: my().frame, swapping: !!swap, riding: !!ride, home: !ret, bays: bays.map((b) => b.frame), glb: bays.map((b) => !!(b.mech && b.mech.glb)), gantry: bays.map((b) => !!b.blender) }),
     dispose() { gone = true; for (const tr of tracers) { tr.ln.geometry.dispose(); tr.ln.material.dispose(); } for (const b of bays) if (b.mech) { freeMech(b.mech); b.mech = null; } },
   };
 }

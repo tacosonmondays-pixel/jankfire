@@ -128,7 +128,7 @@ body.ls-walk #scr-hubby:not(.ls-panels) .hub-head p { display: none; }
 #lsTags .ls-use kbd { font: 900 15px var(--font); background: #ffe14d; color: #120818; border: 3px solid #000; box-shadow: 3px 3px 0 #ff4fd8; padding: 0 7px; }
 #lsPanBtn { position: fixed; right: clamp(34px, 5vmin, 58px); top: clamp(170px, 26vh, 200px); z-index: 3; font: 900 14px var(--font); letter-spacing: 1px; background: #fff; color: #120818; border: 3px solid #000; box-shadow: 4px 4px 0 var(--pink, #ff4fd8); padding: 5px 12px; cursor: pointer; transform: rotate(1deg); display: none; }
 body.ls-walk #lsPanBtn { display: block; }
-body.ls-walk #scr-hubby.ls-panels #lsPanBtn { top: auto; bottom: clamp(22px, 4vmin, 44px); }
+body.ls-walk #scr-hubby.ls-panels #lsPanBtn { top: auto; right: auto; left: clamp(34px, 5vmin, 58px); bottom: clamp(22px, 4vmin, 44px); }
 #lsHelp { position: fixed; left: clamp(34px, 5vmin, 58px); bottom: clamp(22px, 4vmin, 44px); z-index: 2; font-size: 13px; color: #fff; text-shadow: 2px 2px 0 #120818; display: none; max-width: 30vw; line-height: 1.35; }
 #lsHelp b { color: #ffe14d; }
 body.ls-walk #scr-hubby:not(.ls-panels) #lsHelp { display: block; }
@@ -204,7 +204,7 @@ function lineup(c) {
   let given = Array.isArray(a.party) && a.party.length ? a.party : null;
   const PP = party.P;
   if (!given && PP && PP.on && PP.ms && PP.ms.length > 1) // the hub's party (party.js): its members, you from your live settings
-    given = PP.ms.map((m) => (m.id === PP.me ? { me: true, leader: m.id === PP.lead, ready: !!m.ready } : { id: m.id, name: m.name, look: m.look, color: (m.look && m.look.color) || LOOK_COLORS[(m.id | 0) % LOOK_COLORS.length], gun: m.gun, mech: m.mf, ready: !!m.ready, leader: m.id === PP.lead, busy: !!m.busy }));
+    given = PP.ms.map((m, slot) => (m.id === PP.me ? { me: true, slot, leader: m.id === PP.lead, ready: !!m.ready } : { id: m.id, slot, name: m.name, look: m.look, color: (m.look && m.look.color) || LOOK_COLORS[(m.id | 0) % LOOK_COLORS.length], gun: m.gun, mech: m.mf, ready: !!m.ready, leader: m.id === PP.lead, busy: !!m.busy }));
   const list = given ? given.map((p) => (p.me ? { ...me, ...p } : p)) : [me];
   if (!list.some((p) => p.me)) list.unshift(me);
   list.sort((x, y) => (y.me ? 1 : 0) - (x.me ? 1 : 0));
@@ -229,7 +229,8 @@ function syncParty() {
   if (c.api.party) c.api.party(list);
 }
 function makePerson(c, i, info, key) {
-  const sp = c.spots[i], P = { key, info, i, wrap: new THREE.Group(), ch: null, plate: null, pose: POSES[(i * 3 + 1) % POSES.length], t0: i * 2.3, emo: 0 };
+  const n = c.spots.length, k = c.api.walk ? info.slot ?? i : i, s0 = c.spots[k % n], sp = k < n ? s0 : { ...s0, x: s0.x + 1.3 * Math.ceil((k - n + 1) / 2) * (k % 2 ? 1 : -1) }; // (everyone in their own place: your spot is your place in the party)
+  const P = { key, info, i, wrap: new THREE.Group(), ch: null, plate: null, pose: POSES[(i * 3 + 1) % POSES.length], t0: i * 2.3, emo: 0 };
   P.wrap.position.set(sp.x, sp.y || 0, sp.z); P.wrap.rotation.y = sp.ry || 0;
   c.scene.add(P.wrap);
   if (!info.invite) {
@@ -243,7 +244,7 @@ function makePerson(c, i, info, key) {
   const d = document.createElement('div'); d.className = 'np' + (info.invite ? ' inv' : '');
   $('lsTags').append(d); P.plate = d; plateText(P);
   P.head = new THREE.Vector3(0, info.invite ? (c.api.inviteH || 1.3) : P.r ? 2.5 : 2.05, 0);
-  if (P.r && info.me && c.api.walk) { const old = c.walkMe; if (old) { P.r.pos = old.pos.slice(); P.r.yaw = old.yaw; } c.walkMe = P.r; c.walk = c.walk || makeWalk(c, c.lib, c.api.walk, P.r); c.walk.me = P.r; c.walk.reMe && c.walk.reMe(P.r); } // (a new look: same spot)
+  if (P.r && info.me && c.api.walk) { if (c.walk) { const w = c.walk.me; w.ch = P.r.ch; w.w = P.r.w; w.lo = null; P.r = w; } else c.walk = makeWalk(c, c.lib, c.api.walk, P.r); } // (a new look: the same you, same spot, new clothes)
   return P;
 }
 function plateText(P) {
@@ -398,8 +399,9 @@ function lib(c) {
   };
   return L;
 }
+export const lobbySceneWalk = () => (cur && cur.walk) || null; // (tests: the walker)
 // tests: what's up and how much it holds
-export const lobbySceneInfo = () => (cur ? { file: cur.file, mode: cur.ask.mode, people: cur.people.map((p) => (p.info.invite ? 'invite' : p.info.bot ? 'bot' : p.info.me ? 'me' : 'mate')), extra: cur.api.info ? cur.api.info() : null } : null);
+export const lobbySceneInfo = () => (cur ? { file: cur.file, mode: cur.ask.mode, people: cur.people.map((p) => (p.info.invite ? 'invite' : p.info.bot ? 'bot' : p.info.me ? 'me' : 'mate')), at: cur.people.map((p) => (p.r ? p.r.pos.map((v) => +v.toFixed(2)) : null)), walk: !!cur.walk, near: cur.walk && cur.walk.W.near ? cur.walk.W.near.label() : null, wme: cur.walk ? cur.walk.me.pos.map((v) => +v.toFixed(2)) : null, same: !!cur.walk && cur.people.some((p) => p.r === cur.walk.me), keys: cur.walk ? [...cur.walk.W.keys] : null, panels: cur.panels, extra: cur.api.info ? cur.api.info() : null } : null);
 
 // the party's spots in the walkable lobbies (party.js relays them ~10 a second): each member walks to theirs.
 // a = what they're doing (walk.js): 1 = in their mech (the scene moves it), 2 = waving

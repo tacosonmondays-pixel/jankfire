@@ -20,13 +20,16 @@ const OUT = process.env.OUT, [W, H] = (process.env.SIZE || '1280x720').split('x'
   await pg.screenshot({ path: `${OUT}/w0_${J}_${W}.jpg`, quality: 85 });
   const hold = async (key, ms) => { await pg.keyboard.down(key); await sleep(ms); await pg.keyboard.up(key); };
   // walk back toward the camera (out to the pad), turn the camera by dragging
-  await hold('KeyS', 2500); await pg.screenshot({ path: `${OUT}/w1.jpg`, quality: 85 });
-  await pg.mouse.move(640, 400); await pg.mouse.down(); await pg.mouse.move(900, 380, { steps: 8 }); await pg.mouse.up(); await sleep(400);
+  await pg.keyboard.down('KeyS'); await sleep(400); console.log('holding S', JSON.stringify(await pg.evaluate(async () => { const i = (await import('/js/lobbyscenes/index.js')).lobbySceneInfo(); return [i.keys, i.wme, document.activeElement && (document.activeElement.id || document.activeElement.tagName)]; }))); await sleep(2100); await pg.keyboard.up('KeyS'); await pg.screenshot({ path: `${OUT}/w1.jpg`, quality: 85 });
+  if (!process.env.FULL) { await pg.mouse.move(640, 400); await pg.mouse.down(); }
+  if (!process.env.FULL) await pg.mouse.move(900, 380, { steps: 8 }); await pg.mouse.up(); await sleep(400);
   await pg.screenshot({ path: `${OUT}/w2.jpg`, quality: 85 });
-  if (process.env.FULL) {
-    // back to the bay and hop in
-    await pg.evaluate(async () => { const m = await import('/js/lobbyscenes/index.js'); }); 
-    await pg.evaluate(() => { const w = window.__lsWalk; });
+  console.log('after drag', JSON.stringify(await pg.evaluate(async () => { const i = (await import('/js/lobbyscenes/index.js')).lobbySceneInfo(); return [i.wme, i.file, document.getElementById('scr-hubby').classList.contains('hidden')]; })));
+  if (process.env.FULL) { // back to the bay and hop in
+    await pg.evaluate(async () => { const m = await import('/js/lobbyscenes/index.js'); m.lobbySceneWalk().me.pos = [0, 0, -6.6]; }); await sleep(800); // (software GL runs a few frames a second: walking there takes ages)
+    console.log('near the mech', JSON.stringify(await info()));
+    await pg.keyboard.press('KeyE'); await sleep(1200);
+    console.log('after E', JSON.stringify(await info()));
   }
   console.log('errors:', JSON.stringify(errs));
   await b.close();
