@@ -24,6 +24,14 @@ const SHOTS = {
     ['back', 'from behind: the hatch, the hook on its chain, stickers', 'idle', 0.0, [3.8, 3.6, -5.6], [0, 2.6, 0], 50],
     ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 2.2, 0], 75],
   ],
+  paperplane: [
+    ['hero', 'held after its landing: wings up, visor lit', 'hero_intro', 1.7, [-3.9, 2.9, 6.6], [0.2, 3.15, 0], 50],
+    ['close', 'close up: the visor and eyes, the paper-dart crest, the folded chest plates', 'idle', 0.0, [-1.7, 4.4, 3.4], [0.0, 3.95, 0], 45],
+    ['wings', 'from behind: the folded delta wings, their creases glow', 'idle', 0.0, [3.8, 4.4, -6.6], [0, 3.7, 0], 50],
+    ['jet', 'jet mode: a paper dart', 'jet_fly', 0.3, [-4.6, 8.8, 5.6], [0, 2.2, -0.6], 50],
+    ['salvo', 'missile salvo: six hex tubes a side', 'missile_salvo', 0.45, [-4.6, 3.4, 6.4], [0, 3.4, 0], 50],
+    ['far', 'from the firing line, 30 m: the silhouette', 'idle', 0.0, [0, 1.75, 30], [0, 2.4, 0], 75],
+  ],
   vending: [
     ['hero', 'held after its landing: ta-da, door flung open, a can on offer', 'hero_intro', 1.7, [-4.0, 1.7, 7.0], [0.0, 2.8, 0], 50],
     ['close', 'close up: the face, coin-slot mouth, keypad chin, the drinks', 'idle', 0.0, [-2.2, 3.7, 3.4], [-0.3, 3.3, 0], 50],
