@@ -13,7 +13,8 @@ import { installMech } from './mech.js'; // mech drop killstreak
 import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
-import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { buildEdited, dropEdited } from '../shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS rooms
+import { warmMap, startGraphSweeper, forgetMap } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
 import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
@@ -464,7 +465,7 @@ class Room {
     if (ws && ws.partyId && this.partyCfg) m = { ...m, cfg: this.partyCfg }; // a party's private match: the leader's settings (server/party.js), not whoever got here first
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
-      if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
+      if (!this.editMap && has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map; // (an edited map's room keeps it)
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
@@ -549,7 +550,7 @@ class Room {
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
-    if (!this.humans().length) rooms.delete(this.id);
+    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) { forgetMap(this.editMap); dropEdited(this.editMap); console.log('[edit] dropped ' + this.editMap); } } // (the edited map goes with its room)
     else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
@@ -1706,6 +1707,7 @@ class Room {
   onHit(p, m) {
     if (this.rigOn(p) || this.mechOn(p)) return; // no guns in the overdrive rig or a mech: their hits are judged in server/rig.js / mech.js
     if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
+    if (m.mk !== undefined) { this.mechShot(p, m); return; } // a shot / swing at an empty mech (server/mech.js)
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
@@ -1808,6 +1810,7 @@ class Room {
       this.hurt(t, p, 'blower', Math.random() < 0.3 ? 1 : 0, [toT[0] * w.push, toT[1] * w.push + 1.2, toT[2] * w.push]);
     } else if (m.w === 'hook') {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
+      if (this.zm && p.z) { if (!this.zsHookUse(p)) return; p.z.hookPush = now(); } // zombies: a grab spends a charge too (none: no tug)
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
     if (m.w === 'shredder') this.shredPull(p, t);
@@ -2151,6 +2154,7 @@ class Room {
   explodeAt(p, owner, wid, R, dmg, kb) {
     this.broadcast({ t: 'boom', p: p.map(r2), r: R });
     this.traffic.blast(p, R, dmg, kb, owner);
+    this.mechBoom(p, R, dmg, owner, wid); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       const c = center(t), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
@@ -2167,6 +2171,7 @@ class Room {
     const owner = this.players.get(pr.o);
     this.broadcast({ t: 'pd', id: pr.id, p: pr.p.map(r2), x: 1 });
     this.traffic.blast(pr.p, w.radius, w.dmg, w.kb, owner);
+    this.mechBoom(pr.p, w.radius, w.dmg, owner, 'chicken'); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       const c = center(t);
@@ -2376,6 +2381,7 @@ class Room {
         hit = stepProjectile(pr, dt, this.boxes, w.grav);
       }
       if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && this.traffic.projHit(pr, prev, owner)) continue; // hit a car
+      if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && pr.k !== 'calc' && this.mechProjHit(pr, prev, owner)) continue; // hit an empty mech (server/mech.js)
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (pr.k === 'duck') {
         // sky ducks (duck rain) open where they land, and their holes are a bit gentler
@@ -2883,6 +2889,7 @@ class Room {
         if (has(WEAPONS, m.w) && (!this.chaosKit || this.chaosKit.slots.includes(m.w))) p.w = m.w;
         const only = this.modeWeapon(p);
         if (only) p.w = only; // everyone sees what you're really allowed to hold
+        if (this.zm && p.z) this.zsHookSnap(p, m); // zombies: the grapple runs on charges (server/zmshop.js)
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
         this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted
@@ -3202,6 +3209,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
+    if (this.editMap) { const m = MAPS[this.editMap]; if (!m || !GAMES[g].zombies !== !m.zm || (GAMES[g].sites && !(m.sites && m.sites.length)) || (GAMES[g].mapOk && !GAMES[g].mapOk(m))) return false; } // (an edited map's room plays its edited map, or not that mode)
     if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok.includes(ZM.testMap) ? ZM.testMap : ok[0]; this.smokes.clear(); } // zombies comes with its own map (JF_ZM_MAP: which)
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
@@ -4150,6 +4158,18 @@ function roomFor(mode, ws, cfg) {
     rooms.set(r.id, r);
     r.lobbyInit(lk, mode === 'ffa');
     return r;
+  }
+  // the map editor's PLAY HERE WITH BOTS (owner only: server.js only sets cfg._edit from a checked ticket): a private bots
+  // room on a fresh copy of the map with the owner's edits (shared/editmaps.js), gone when the room closes
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg._edit && [...rooms.values()].filter((r) => r.editMap).length < 2) { // (at most two of these at once: each is a whole map)
+    const id = buildEdited('ed_' + cfg._edit.base + '_' + (nextId++), cfg._edit);
+    if (id) {
+      const r = new Room(`bots:edit:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+      r.priv = true; r.editMap = id; r.cfg.map = id; r.cfg.edit = { base: cfg._edit.base, ops: cfg._edit.ops };
+      rooms.set(r.id, r);
+      console.log(`[edit] PLAY HERE on ${id} (${cfg._edit.ops.length} edits)`);
+      return r;
+    }
   }
   // the hub's PRIVATE match (public/js/hubmenu.js): a bots room of your own. nobody else's pick lands in it
   if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {

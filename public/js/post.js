@@ -136,7 +136,7 @@ void main() {
     occ += max( 0.0, dot( n, v / max( l, 1e-4 ) ) - 0.3 ) * ( 1.0 - smoothstep( 0.0, uR, l ) ) * step( 0.02 + 0.002 * -p.z, l ); // (a flat floor doesn't shade itself)
   }
   occ *= 1.0 - smoothstep( 25.0, 60.0, -p.z ); // close up only: far off the depth is too coarse to trust, and contacts are too small to see
-  gl_FragColor = vec4( vec3( clamp( 1.0 - occ / 12.0 * 4.0, 0.0, 1.0 ) ), 1.0 );
+  gl_FragColor = vec4( vec3( pow( clamp( 1.0 - occ / 12.0 * 5.5, 0.0, 1.0 ), 1.3 ) ), 1.0 );
 }`, { tDepth: { value: null }, uNear: { value: 0.1 }, uFar: { value: 1500 }, uTan: { value: new THREE.Vector2(1, 1) }, uR: { value: 1.2 }, uPx: { value: new THREE.Vector2() } }),
   };
 }
@@ -207,7 +207,7 @@ export function postMid(r, cam) {
   try {
     const M = P.mats, A = M.ao.uniforms;
     A.tDepth.value = P.rt.depthTexture; A.uNear.value = cam.near; A.uFar.value = cam.far;
-    const th = Math.tan((cam.fov * Math.PI) / 360); A.uTan.value.set(th * cam.aspect, th); A.uPx.value.set(1 / P.w, 1 / P.h); A.uR.value = 1.8;
+    const th = Math.tan((cam.fov * Math.PI) / 360); A.uTan.value.set(th * cam.aspect, th); A.uPx.value.set(1 / P.w, 1 / P.h); A.uR.value = 2.4;
     pass(r, M.ao, P.aoA);
     M.blur.uniforms.tSrc.value = P.aoA.texture; M.blur.uniforms.uDir.value.set(1 / P.aoW, 0); pass(r, M.blur, P.aoB);
     M.blur.uniforms.tSrc.value = P.aoB.texture; M.blur.uniforms.uDir.value.set(0, 1 / P.aoH); pass(r, M.blur, P.aoA);

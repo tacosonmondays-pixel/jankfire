@@ -165,10 +165,14 @@ export function insertThing(def, idx, t) {
 // a thing as plain data (an 'add' op item), and back
 const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => (k.startsWith('_') ? undefined : v)));
 export function thingData(t) { const o = { list: t.list, boxes: t.boxes.map(clean) }; if (t.dboxes && t.dboxes.length) o.dboxes = t.dboxes.map(clean); if (t.prop) o.prop = clean(t.prop); if (t.arch) o.arch = clean(t.arch); return o; }
+// only the keys a map's boxes and placements really have (a file can't slip in a terrain step, a nested object...)
+const BOX_KEYS = ['mat', 'pv', 'fit', 'pad', 'rot', 'av', 'ai', 'rug', 'still', 'sw'], PROP_KEYS = ['id', 'a', 'y', 'f', 'lo', 'hi', 't', 'v', 'p', 'r', 's', 'color'], ARCH_KEYS = ['id', 'p', 'r', 'paint', 'fence', 'drape'];
+const pickKeys = (o, keys) => { const r = {}; for (const k of keys) if (o[k] !== undefined && (typeof o[k] !== 'object' || Array.isArray(o[k]) || k === 'paint')) r[k] = Array.isArray(o[k]) ? o[k].filter((x) => typeof x === 'number').slice(0, 3) : o[k]; return r; };
+const boxFrom = (b) => ({ ...pickKeys(b, BOX_KEYS), min: [...b.min], max: [...b.max] });
 export function thingFrom(o) {
-  const boxes = (o.boxes || []).map((b) => ({ ...b, min: [...b.min], max: [...b.max] }));
+  const boxes = (o.boxes || []).map(boxFrom);
   const t = { kind: o.arch ? 'arch' : o.prop ? 'prop' : 'box', list: o.list === 'd' ? 'd' : 'b', boxes };
-  if (o.prop) t.prop = clean(o.prop); if (o.arch) { t.arch = clean(o.arch); t.dboxes = (o.dboxes || []).map((b) => ({ ...b, min: [...b.min], max: [...b.max] })); }
+  if (o.prop) t.prop = clean(pickKeys(o.prop, PROP_KEYS)); if (o.arch) { t.arch = clean(pickKeys(o.arch, ARCH_KEYS)); t.dboxes = (o.dboxes || []).map(boxFrom); }
   return t;
 }
 
@@ -206,29 +210,53 @@ export function applyEdits(def, edits) {
 }
 
 // ---- checking an edit file that came from outside (import, and later the server): shapes, numbers, sizes
-const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e5;
+// limits: every map sits well inside +-1000 m; nothing real is bigger than 500 m a side. a bigger box would make the
+// bots' walk graph walk millions of cells (one oversized box ran a 256 MB server out of memory)
+const LIM = 1000, SIDE = 500;
+const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= LIM;
 const vec = (v) => Array.isArray(v) && v.length === 3 && v.every(num);
+const side = (lo, hi) => [0, 1, 2].every((i) => hi[i] >= lo[i] && hi[i] - lo[i] <= SIDE);
 const str = (v, n = 200) => typeof v === 'string' && v.length <= n;
 const opt = (v, f) => v === undefined || f(v);
-function okBox(b) { return b && typeof b === 'object' && vec(b.min) && vec(b.max) && str(b.mat, 40) && opt(b.rot, num) && opt(b.pad, vec) && opt(b.pv, str) && opt(b.av, str) && opt(b.ai, Number.isInteger); }
+function okBox(b) { return b && typeof b === 'object' && vec(b.min) && vec(b.max) && side(b.min, b.max) && str(b.mat, 40) && opt(b.rot, num) && opt(b.pad, vec) && opt(b.pv, str) && opt(b.av, str) && opt(b.ai, Number.isInteger); }
 function okItem(it) {
   if (!it || typeof it !== 'object' || !Array.isArray(it.boxes) || it.boxes.length > 400 || !it.boxes.every(okBox)) return false;
   if (!it.boxes.length && !it.prop && !it.arch) return false; // (nothing to be)
   if (it.dboxes !== undefined && !(it.arch && Array.isArray(it.dboxes) && it.dboxes.length <= 600 && it.dboxes.every(okBox))) return false;
   const p = it.prop, a = it.arch;
-  if (p && !(typeof p === 'object' && str(p.id, 60) && (p.a !== undefined ? vec(p.a) && vec(p.lo) && vec(p.hi) && opt(p.y, num) && opt(p.f, num) : vec(p.p) && opt(p.r, Number.isInteger) && opt(p.s, num)))) return false;
-  if (a && !(typeof a === 'object' && str(a.id, 60) && vec(a.p) && opt(a.r, Number.isInteger) && it.boxes.length)) return false;
+  if (p && !(typeof p === 'object' && str(p.id, 60) && (p.a !== undefined ? vec(p.a) && vec(p.lo) && vec(p.hi) && side(p.lo, p.hi) && opt(p.y, num) && opt(p.f, num) : vec(p.p) && opt(p.r, Number.isInteger) && opt(p.s, num)))) return false;
+  const okPaint = (pt) => pt && typeof pt === 'object' && !Array.isArray(pt) && Object.keys(pt).length <= 8 && Object.entries(pt).every(([k, v]) => k.length <= 20 && str(v, 40));
+  if (a && !(typeof a === 'object' && str(a.id, 60) && vec(a.p) && opt(a.r, Number.isInteger) && opt(a.paint, okPaint) && opt(a.fence, (v) => typeof v === 'boolean') && opt(a.drape, (v) => typeof v === 'boolean') && it.boxes.length)) return false;
   return true;
 }
 export function validEdits(e) {
   if (!e || typeof e !== 'object' || !str(e.map, 40) || !Array.isArray(e.ops) || e.ops.length > 5000) return false;
+  let sels = 0, boxes = 0, grow = 1, shrink = 1;
   for (const op of e.ops) {
     if (!op || typeof op !== 'object') return false;
     if (op.sel !== undefined && !(Array.isArray(op.sel) && op.sel.length <= 2000 && op.sel.every((s) => str(s)))) return false;
-    if (op.t === 'xf') { if (!vec(op.o) || !vec(op.d) || !num(op.k) || op.k <= 0.01 || op.k > 100 || !Number.isInteger(op.q)) return false; }
-    else if (op.t === 'del') { if (!op.sel) return false; }
-    else if (op.t === 'add') { if (!Array.isArray(op.items) || op.items.length > 500 || !op.items.every(okItem)) return false; }
-    else return false;
+    if (op.sel && (sels += op.sel.length) > 20000) return false; // (each one is a lookup on load)
+    if (op.t === 'xf') {
+      if (!vec(op.o) || !vec(op.d) || !num(op.k) || op.k < 0.1 || op.k > 10 || !Number.isInteger(op.q) || op.q < 0 || op.q > 3) return false;
+      if (op.k > 1) grow *= op.k; else shrink /= op.k;
+      if (grow > 64 || shrink > 64) return false; // (sizes stacked op after op: a 2 m crate can't end up a 500 m slab)
+    } else if (op.t === 'del') { if (!op.sel) return false; }
+    else if (op.t === 'add') {
+      if (!Array.isArray(op.items) || op.items.length > 500 || !op.items.every(okItem)) return false;
+      for (const it of op.items) boxes += it.boxes.length + (it.dboxes ? it.dboxes.length : 0);
+      if (boxes > 20000) return false;
+    } else return false;
+  }
+  return true;
+}
+// after a replay: every box the edits added or changed still inside the limits (moves and sizes stacked op after op
+// can't be judged one op at a time). keep: boxSigs() of the map before the edits (its own ground and horizon can be huge)
+const boxSig = (b) => b.min.join(',') + '|' + b.max.join(',');
+export function boxSigs(def) { const s = new Set(); for (const l of [def.boxes, def.deco || []]) for (const b of l) s.add(boxSig(b)); return s; }
+export function saneMap(def, keep) {
+  for (const l of [def.boxes, def.deco || []]) for (const b of l) {
+    if (b.ter || (keep && keep.has(boxSig(b)))) continue;
+    if (!vec(b.min) || !vec(b.max) || !side(b.min, b.max)) return false;
   }
   return true;
 }

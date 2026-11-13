@@ -5,7 +5,7 @@
 // When the leader starts, the server picks or makes the room once and hands every member a one-use ticket to it, so the
 // whole party lands in the same room (roomFor honours the ticket) and on the same side (room.js joinTeam / partyteams.js).
 // rate limits on top of the socket's budget: a wrong code costs you (10 a minute, then a wait), joins 1 a second.
-import crypto from 'node:crypto';
+const rnd = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n)); // (web crypto, no node: import: room.js imports this file and the story's referee runs room.js in a browser worker, where 'node:crypto' can't load)
 
 export const PARTY = { max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
 let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
@@ -28,7 +28,7 @@ export const partyCount = () => parties.size;
 function newCode() {
   for (;;) {
     let s = '';
-    for (const b of crypto.randomBytes(PARTY.len)) s += PARTY.abc[b % PARTY.abc.length];
+    for (const b of rnd(PARTY.len)) s += PARTY.abc[b % PARTY.abc.length];
     if (!parties.has(s)) return s;
   }
 }
@@ -185,7 +185,7 @@ function go(pt, m) {
   r.tickets = r.tickets || new Map(); r.partyT = now();
   if (cfg.priv) r.partyCfg = cfg; // (the leader's settings, checked above: whoever of the party walks in first, these apply)
   for (const x of out) {
-    const tk = crypto.randomBytes(9).toString('base64url');
+    const tk = Buffer.from(rnd(9)).toString('base64url');
     r.tickets.set(tk, { party: pt.id, until: now() + PARTY.ticket });
     x.send({ t: 'pgo', mode: m.mode, cfg: { ...cfg, room: r.id, ticket: tk } });
   }

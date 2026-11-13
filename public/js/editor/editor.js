@@ -13,7 +13,7 @@ import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisual
 import { whenGlb } from '../glbkit.js';
 import { wantArch } from '../archfield.js';
 import { initPalette, togglePalette, paletteOpen, solidOn, modelBounds, addRecent, setActiveSlot, slotItem, slotTool, dropOn } from './palette.js';
-import { initTools, updateTools, toolDown, toolUp, toolWheel, toolKey, toolMouse, pickTool, loadItem, curTool, busy, toolState, hideVM } from './tools.js';
+import { initTools, updateTools, toolDown, toolUp, toolWheel, toolKey, toolMouse, pickTool, loadItem, curTool, busy, justFroze, resetPreview, toolState, hideVM } from './tools.js';
 import { ghostOf, dropGhost } from './modelghost.js';
 import { navCheck } from '/shared/navcheck.js';
 import { EDITS } from '/shared/mapedits/index.js';
@@ -40,7 +40,7 @@ if (!mapIds.includes(mapId)) mapId = mapIds.includes('warehouse') ? 'warehouse' 
 try { localStorage.setItem('jfEdMap', mapId); } catch { /* fine */ }
 const def = MAPS[mapId];
 let saved = { map: mapId, v: 1, ops: [] };
-try { const s = JSON.parse(localStorage.getItem(store(mapId)) || 'null'); if (s && validEdits(s) && s.map === mapId) saved = s; } catch { /* a broken save: start clean */ }
+try { const s = JSON.parse(localStorage.getItem(store(mapId)) || 'null'); if (s && validEdits(s) && s.map === mapId) saved = s; else if (s) { localStorage.setItem(store(mapId) + ':broken', JSON.stringify(s)); localStorage.removeItem(store(mapId)); console.warn('editor: a save that fails the checks was put aside (' + store(mapId) + ':broken)'); } } catch { /* a broken save: start clean */ }
 let rep;
 try { rep = applyEdits(def, saved); } catch (e) { // a save that breaks the replay: keep it aside, start clean (the page reloads the map)
   console.error('editor: saved edits broke the replay', e);
@@ -76,12 +76,16 @@ function rebuild() {
   drawSel();
 }
 // run a change now and keep it: h = { op, do(), undo() }
-function commit(h) { h.do(); hist.push(h); undoN++; redo.length = 0; persist(); rebuild(); }
+function commit(h) {
+  if (h.op.sel && h.op.sel.some((x) => typeof x !== 'string')) { toast('that thing is gone: nothing changed'); return; } // (an op naming nothing would break the whole save)
+  h.do(); hist.push(h); undoN++; redo.length = 0; persist(); rebuild(); }
 function undo() {
+  if (busy()) return toast('put it down first');
   if (!undoN) { toast(hist.length ? 'older changes: use RESET MAP or the change list' : 'nothing to undo'); return; }
   const h = hist.pop(); undoN--; h.undo(); redo.push(h); persist(); rebuild(); callout('UNDO\'D');
 }
-function redoIt() { const h = redo.pop(); if (!h) return toast('nothing to redo'); h.do(); hist.push(h); undoN++; persist(); rebuild(); callout('REDO\'D'); }
+function redoIt() { if (busy()) return toast('put it down first');
+  const h = redo.pop(); if (!h) return toast('nothing to redo'); h.do(); hist.push(h); undoN++; persist(); rebuild(); callout('REDO\'D'); }
 
 // ops on things (by reference here; by sig in the file)
 const sigList = (ts) => ts.map((t) => sigs().sig.get(t));
@@ -394,6 +398,7 @@ function place(kind, mid) {
 // build of the maps, made the first time you ask). red = cut off by your edits, grey = already unreachable before
 let baseMaps = null, botMarks = null;
 async function botCheck() {
+  if (busy()) return toast('put it down first');
   toast('asking the bots...');
   await new Promise((r) => setTimeout(r, 30)); // (let the toast show: the check takes a moment)
   if (!baseMaps) {
@@ -515,7 +520,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 addEventListener('mouseup', (e) => { toolUp(e.button); });
 canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) lockPointer(canvas); });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas && !busy()) lockPointer(canvas); });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas && !busy() && !justFroze()) lockPointer(canvas); });
 const mlook = lookFilter(); // (the game's mouse look: raw mouse, no snapping on Chrome's fake jumps)
 function clickPick(add) {
   const [o, d] = aimRay(), h = pick(o, d);
@@ -579,7 +584,7 @@ function toggleFloors() { floorsLocked = !floorsLocked; $('edFloors').textConten
 const sel0 = $('edMap');
 for (const id of mapIds) { const o = document.createElement('option'); o.value = id; o.textContent = (MAPS[id].name || id) + (MAPS[id].sd ? ' (S&D)' : ''); sel0.append(o); }
 sel0.value = mapId;
-sel0.onchange = () => { location.search = '?map=' + sel0.value; };
+sel0.onchange = () => { if (busy()) { sel0.value = mapId; return toast('put it down first'); } location.search = '?map=' + sel0.value; };
 $('edUndo').onclick = undo; $('edRedo').onclick = redoIt;
 $('edSnap').onclick = () => setSnap(snap ? 0 : 1); $('edFloors').onclick = toggleFloors;
 for (const b of document.querySelectorAll('#edSel [data-a]')) b.onclick = () => act(b.dataset.a);
@@ -591,7 +596,7 @@ $('edPalBtn').onclick = () => menu();
 $('edBotBtn').onclick = () => botCheck();
 $('edBotClose').onclick = () => { $('edBots').classList.add('hidden'); clearBotMarks(); showSel(); };
 // the creative menu (E): click = into the plop cannon; the hotbar (1-9): 1-4 tools, 5-9 favourites
-function menu(on) { const open = togglePalette(on); hideVM(open); if (open && document.pointerLockElement) document.exitPointerLock(); return open; }
+function menu(on) { const open = togglePalette(on); if (open && document.pointerLockElement) document.exitPointerLock(); return open; }
 function slot(i, it) {
   if (i < 4) { if (i === 1 && it) { loadItem(it); addRecent(it); setActiveSlot(1, it); return; } pickTool(slotTool(i)); setActiveSlot(i); return; }
   const x = it || slotItem(i);
@@ -599,8 +604,8 @@ function slot(i, it) {
   loadItem(x); setActiveSlot(i, x);
 }
 function onTool(t) { document.body.dataset.tool = t; if (t !== 'wand') { if (carry) cancelCarry(); if (sel.size) { sel.clear(); drawSel(); } } } // (selecting is the wand's thing)
-initPalette({ pick: (k, id) => { const it = { kind: k, id }; loadItem(it); addRecent(it); setActiveSlot(1, it); menu(false); toast('plop cannon: ' + id.replace(/^p_/, '').replace(/_/g, ' ') + ' (click to plop)'); }, slot: (i, it) => slot(i, it), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
-initTools({ G, MAP, sel, aimRay, pick, terrainHit, pivotFor, edgesFor, select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, hide: hideThings, unhide: unhideThings, relBounds, edgeSnap, rebuild, opXf, opAdd, opDel, itemData, thingFrom, thingData, xfThing, boundsOf, snap: () => snap, grid: showGrid, toast, callout, recent: addRecent, onTool });
+initPalette({ pick: (k, id) => { const it = { kind: k, id }; loadItem(it); addRecent(it); setActiveSlot(1, it); menu(false); toast('plop cannon: ' + id.replace(/^p_/, '').replace(/_/g, ' ') + ' (click to plop)'); }, slot: (i, it) => slot(i, it), show: (open) => hideVM(open), solid: () => resetPreview(), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
+initTools({ G, MAP, sel, aimRay, pick, terrainHit, pivotFor, edgesFor, select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, hide: hideThings, unhide: unhideThings, alive: (ts) => ts.every((t) => idx.things.includes(t)), relBounds, edgeSnap, rebuild, opXf, opAdd, opDel, itemData, thingFrom, thingData, xfThing, boundsOf, snap: () => snap, grid: showGrid, toast, callout, recent: addRecent, onTool });
 onTool('grab'); setActiveSlot(0);
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
@@ -609,7 +614,22 @@ $('edExport').onclick = () => {
   if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
   toast('saved jankfire-edits-' + mapId + '.json (send it to us!)');
 };
-$('edImport').onclick = () => $('edFile').click();
+// PLAY WITH BOTS (owner only): the server checks the login is the owner's (JF_OWNER), takes the edits once and hands back
+// a ticket; the game then starts a private bots match on a copy of this map with them (server/editplay.js)
+$('edPlay').onclick = async () => {
+  if (busy()) return toast('put it down first');
+  let token = null; try { token = localStorage.getItem('jankfire_token'); } catch { /* private mode */ }
+  if (!token) return toast('log in to your account in the game first (owner only)');
+  const ops = hist.map((h) => h.op);
+  toast('asking the server...');
+  let r = null;
+  try { r = await fetch('/api/edit-ticket', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify({ map: mapId, ops }) }); } catch { return toast('could not reach the server'); }
+  let j = {}; try { j = await r.json(); } catch { /* nothing */ }
+  if (!r.ok || !j.ticket) return toast(j.error || 'the server said no');
+  try { sessionStorage.setItem('jfPlayEdit', JSON.stringify({ ticket: j.ticket, map: mapId })); } catch { return toast('could not save in this browser'); }
+  callout('LETS GO'); setTimeout(() => { location.href = '/?playedit=1'; }, 400);
+};
+$('edImport').onclick = () => { if (busy()) return toast('put it down first'); $('edFile').click(); };
 $('edFile').onchange = async () => {
   const f = $('edFile').files[0]; if (!f) return;
   let e; try { e = JSON.parse(await f.text()); } catch { return toast('that is not a changes file'); }

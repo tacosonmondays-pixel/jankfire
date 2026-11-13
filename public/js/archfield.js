@@ -9,12 +9,14 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // the models that exist (so nothing 404s asking for one that doesn't)
-export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw']);
+export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw', 'jbh_capsule3', 'jbh_capsule4', 'jbh_noodle', 'jbh_bodega', 'jbh_walkup', 'jbh_model', 'jbh_container', 'jbh_squat', 'jbh_dorm', 'jbh_arcade', 'jbh_pastel', 'jbh_biolab', 'jbh_pawn']); // (jbh_: Jankburg's city houses, tools/blender/jankburg/make_jb_houses.py)
 // map material keys -> the paint a Blender building takes on (its '@siding' / '@roof' / '@trim' parts)
 const PAINT = {
   hutadobe: '#ffdcae', hutsideorange: '#ffb866', hutsidemint: '#a8ffd8', hutsidelemon: '#fff27a', // (sunlit mud plaster: the Desert's adobe huts)
   sidepink: '#ff7ec0', sidelemon: '#f2e25a', sidelilac: '#b08cff', sidemint: '#74e8b8', sideorange: '#ff9a3c', blue: '#7aa8e0', white: '#ece8dc', yellow: '#ecd27a', mint: '#98d8b4',
   roofteal: '#1aa8a4', roofpink: '#ee4a98', roof: '#a8483c', roofg: '#5a5c62', roofblue: '#3a6ab8', trim: '#f0eadb',
+  tenement: '#b86a5a', brick: '#c0604a', magenta: '#e83ab8', plaster: '#e8dcc8', pink: '#ff8ac8', toyteal: '#30c8c0', toyyellow: '#ffd23a', chrome: '#c8d0dc', // (Jankburg's city houses)
+  containerr: '#c04030', containerg: '#3a8a4a', containerb: '#3060b0',
 };
 const off = (() => { try { return /[?&]arch=0\b/.test(location.search) || localStorage.getItem('jf_arch') === '0'; } catch { return false; } })();
 const models = {}; // id -> [{ geo, mat, node }]

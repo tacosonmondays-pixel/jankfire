@@ -63,7 +63,7 @@ function pick(not = -1) {
 function load(i) {
   if (cache.has(i)) return Promise.resolve(cache.get(i));
   const tr = TRACKS[i];
-  return fetch(new URL('../music/' + tr.file, import.meta.url))
+  return fetch('/music/' + tr.file) // (not next to this script: its address changes every deploy, and the tracks would come down again)
     .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
     .then((b) => new Promise((ok, no) => { const p = ac.decodeAudioData(b, ok, no); if (p && p.catch) p.catch(no); }))
     .then((buf) => {
