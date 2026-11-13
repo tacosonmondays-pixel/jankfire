@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.15', date: '2026-11-13', title: 'SAY CHEESE', items: [
+    "PATH-TRACED PHOTO: real ray tracing for screenshots. settings > video > shaders, or type /photo in chat. it's slow, it's real, save it and frame it.",
+  ] },
   { v: '11.14', date: '2026-11-13', title: 'LINE UP', items: [
     "LINE UP: jank royale's lobby is the blimp's launch deck, gate 7, no refunds. quick play and plant & defuse line you up in a staging hangar with your guns on the rack.",
   ] },
