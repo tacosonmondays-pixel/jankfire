@@ -10,7 +10,7 @@ import * as THREE from 'three';
 import { lightSources } from './lighting.js';
 import { G } from './ctx.js';
 
-export const NEON = { cell: 2, reach: 10, k: 1.8, nightK: 2.6, max: 520, fall: 4.5 };
+export const NEON = { cell: 2, reach: 12, k: 3.2, nightK: 4.6, sat: 1.9, sheen: 0.22, max: 520, fall: 4.5 };
 const U = { uNK: { value: 0 }, uNC: { value: null }, uND: { value: null }, uNR: { value: new THREE.Vector4(0, 0, 1, 1) } };
 let bake = null, on = false, ready = false, kNow = NEON.k, tick = 0;
 const patched = new WeakSet();
@@ -21,11 +21,13 @@ if ( uNK > 0.0 ) { // the neon and lamps round here (neon.js)
   if ( nuv.x > 0.0 && nuv.y > 0.0 && nuv.x < 1.0 && nuv.y < 1.0 ) {
     vec4 nc = texture2D( uNC, nuv ); vec4 nd = texture2D( uND, nuv );
     vec3 col = nc.rgb * 2.0; // (stored halved: room to add up)
+    // pink + cyan added up goes white: keep the colour loud instead (more saturation, brightness capped)
+    float cl = dot( col, vec3( 0.3, 0.5, 0.2 ) ); col = max( mix( vec3( cl ), col, ${NEON.sat.toFixed(2)} ), 0.0 ); col *= min( 1.0, 1.6 / max( max( col.r, max( col.g, col.b ) ), 1e-3 ) );
     float sy = nc.a * 40.0 - 8.0, hd = max( nd.b * 12.0, 0.5 ); // where the light sits: its height, how far off sideways
     vec3 L = normalize( vec3( nd.r * 2.0 - 1.0, ( sy - vNW.y ) / hd, nd.g * 2.0 - 1.0 ) );
     vec3 nW = normalize( vNN );
     float face = max( dot( nW, L ), 0.0 ) * 0.8 + 0.2, hfall = exp( -abs( vNW.y - sy ) / ${NEON.fall.toFixed(1)} );
-    reflectedLight.indirectDiffuse += ( material.diffuseColor + 0.08 ) * col * face * hfall * uNK; // (+0.08: dark asphalt still shows a coloured sheen, like it would wet)
+    reflectedLight.indirectDiffuse += ( material.diffuseColor + ${NEON.sheen.toFixed(2)} ) * col * face * hfall * uNK; // (+sheen: dark asphalt still shows a coloured sheen, like it would wet)
   }
 }
 `;
@@ -62,7 +64,7 @@ export function neonMap(def, MAT, night) {
     const half = NEON.max / 2, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
     x0 = Math.max(x0, cx - half); x1 = Math.min(x1, cx + half); z0 = Math.max(z0, cz - half); z1 = Math.min(z1, cz + half);
     const C = NEON.cell, nx = Math.ceil((x1 - x0) / C), nz = Math.ceil((z1 - z0) / C), R = NEON.reach, rc = Math.ceil(R / C);
-    const col = new Float32Array(nx * nz * 3), wy = new Float32Array(nx * nz), w = new Float32Array(nx * nz), dx = new Float32Array(nx * nz), dz = new Float32Array(nx * nz), dh = new Float32Array(nx * nz);
+    const best = new Float32Array(nx * nz), col = new Float32Array(nx * nz * 3), wy = new Float32Array(nx * nz), w = new Float32Array(nx * nz), dx = new Float32Array(nx * nz), dz = new Float32Array(nx * nz), dh = new Float32Array(nx * nz);
     // only the lights round where people play: the street lamps of a city 170 m below a rooftop map would sit in the same
     // patches and drag the light's height down to the street (so the roof got none)
     const sp = (def.spawns || []).map((p) => p[1]), lo = sp.length ? Math.min(...sp) - 14 : -1e9, hi = sp.length ? Math.max(...sp) + 45 : 1e9;
@@ -74,14 +76,16 @@ export function neonMap(def, MAT, night) {
         const px = x0 + (i + 0.5) * C, pz = z0 + (j + 0.5) * C, ex = sx - px, ez = sz - pz, d = Math.hypot(ex, ez);
         if (d > R) continue;
         const f = (1 - d / R) ** 1.5 * k, q = j * nx + i;
-        col[q * 3] += src[o + 3] * f; col[q * 3 + 1] += src[o + 4] * f; col[q * 3 + 2] += src[o + 5] * f;
+        // the colour is the strongest light's own (pink next to the pink tube, cyan by the cyan one), not the sum of
+        // them all: pink + cyan added up is just grey-white. the brightness is the sum
+        if (f > best[q]) { best[q] = f; col[q * 3] = src[o + 3]; col[q * 3 + 1] = src[o + 4]; col[q * 3 + 2] = src[o + 5]; }
         w[q] += f; wy[q] += sy * f; dh[q] += d * f;
         if (d > 0.01) { dx[q] += (ex / d) * f; dz[q] += (ez / d) * f; }
       }
     }
     const c8 = new Uint8Array(nx * nz * 4), d8 = new Uint8Array(nx * nz * 4);
     for (let q = 0; q < nx * nz; q++) {
-      for (let c = 0; c < 3; c++) c8[q * 4 + c] = Math.min(255, col[q * 3 + c] * 0.5 * 255);
+      for (let c = 0; c < 3; c++) c8[q * 4 + c] = Math.min(255, col[q * 3 + c] * Math.min(w[q], 2) * 0.5 * 255);
       const y = w[q] > 0 ? wy[q] / w[q] : 0, l = Math.hypot(dx[q], dz[q]) || 1;
       c8[q * 4 + 3] = Math.max(0, Math.min(255, ((y + 8) / 40) * 255));
       d8[q * 4] = (dx[q] / l * 0.5 + 0.5) * 255; d8[q * 4 + 1] = (dz[q] / l * 0.5 + 0.5) * 255; d8[q * 4 + 2] = Math.min(255, (w[q] > 0 ? dh[q] / w[q] : 0) / 12 * 255); d8[q * 4 + 3] = 255;

@@ -381,5 +381,11 @@
   "alpha": false,
   "note": "tint",
   "glow": "fac_paint_glow"
+ },
+ "ph_glass": {
+  "tile": 4.0,
+  "px": 128,
+  "alpha": false,
+  "note": ""
  }
 }

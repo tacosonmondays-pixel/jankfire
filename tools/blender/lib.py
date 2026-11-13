@@ -650,6 +650,26 @@ def sweep(points, radii, m=None, seg=8, name='sweep', cap=True, squash=(1.0, 1.0
     return o
 
 
+def stream_uv(o, points, seg):
+    """UVs for a sweep() that is flowing water (a *_water part, public/js/flowwater.js): u round the tube, v = metres along
+    it from the first point, so the game's foam streaks scroll down it at a steady speed. (sweep makes ring i's vertex k
+    as i * seg + k; the end caps get a little disc so no UV face has zero area.) marks it keep_uv for kits that box-map."""
+    L = [0.0]
+    for a, b in zip(points, points[1:]): L.append(L[-1] + math.dist(a, b))
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    uvl = bm.loops.layers.uv.get('UVMap') or bm.loops.layers.uv.new('UVMap')  # (the name the other parts' UVs have: join keeps one map)
+    for f in bm.faces:
+        ks = {v.index % seg for v in f.verts}
+        cap = len(f.verts) > 4
+        for lp in f.loops:
+            i, k = divmod(lp.vert.index, seg)
+            if cap: a = 2 * math.pi * k / seg; lp[uvl].uv = (0.5 + 0.45 * math.cos(a), L[i] + 0.045 * math.sin(a))
+            else: lp[uvl].uv = (1.0 if (k == 0 and seg - 1 in ks) else k / seg, L[i])
+    bm.to_mesh(o.data); bm.free()
+    o['keep_uv'] = 1
+    return o
+
+
 def rod(p0, p1, r, m=None, seg=8, name='rod', r1=None, bev=0.0):
     """a cylinder (or cone, with r1) from game point p0 to p1: struts, pins, levers, stock frames."""
     a, b = gv(*p0), gv(*p1)
