@@ -38,12 +38,12 @@ const OUT = process.env.OUT, MODE = process.env.MODE || 'isle';
       await pg.evaluate(() => window.JANK.quitToMenu()); await sleep(2500);
       await isle(pg);
       res.push('back in the lobby: sceneOn=' + (await on(pg)));
-      // quick play offline (no scene) still starts
-      await pg.evaluate(() => document.querySelector('[data-mode2="qp"]').click()); await sleep(800);
-      res.push('qp: sceneOn=' + (await on(pg)));
+      // a mode with no scene (training) still starts
+      await pg.evaluate(() => document.querySelector('[data-mode2="training"]').click()); await sleep(800);
+      res.push('training: sceneOn=' + (await on(pg)));
       await pg.evaluate(() => document.getElementById('hubGo').click());
       for (let i = 0; i < 40 && !(await pg.evaluate(() => window.JANK.G.joined)); i++) await sleep(500);
-      res.push('qp start: joined=' + (await pg.evaluate(() => window.JANK.G.joined)));
+      res.push('training start: joined=' + (await pg.evaluate(() => window.JANK.G.joined)));
     }
     await pg.context().close();
   }

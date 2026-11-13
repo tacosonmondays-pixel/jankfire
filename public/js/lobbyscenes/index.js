@@ -16,7 +16,7 @@ import * as party from '../party.js'; // the party (P, onParty) and the walkable
 import * as hub from '../hubmenu.js'; // (lobbySceneFlag: the hub's lineup steps aside while a scene is up)
 import { makeWalk, walker, poseWalker, wander, follow } from './walk.js';
 
-const FILES = { isle: 'garage', zm: 'warehouse' }; // mode -> scene file (more land with their PRs: zm warehouse, br royale, qp/bomb hangar)
+const FILES = { isle: 'garage', zm: 'warehouse', br: 'royale' }; // mode -> scene file (qp / bomb: the hangar line-up, next)
 const mods = {};
 const load = (f) => mods[f] || (mods[f] = import(`./${f}.js`).catch((e) => { delete mods[f]; throw e; }));
 export const lobbySceneFor = (mode) => FILES[mode] || null;
@@ -159,7 +159,14 @@ function stageRect() {
   const st = $('hubStage'), W = innerWidth, H = innerHeight, rc = st && st.getBoundingClientRect();
   if (!rc || rc.width < 60 || rc.height < 60) return { x: W * 0.28, y: H * 0.25, w: W * 0.44, h: H * 0.6 };
   const go = $('hubGo'), gr = go && go.getBoundingClientRect(), bot = gr && gr.height ? Math.max(rc.bottom, gr.top + gr.height * 0.35) : rc.bottom;
-  return { x: rc.left, y: rc.top, w: rc.width, h: bot - rc.top };
+  // small windows: the hub puts its two panels side by side over the stage. then aim at the open floor under the shorter one
+  const pm = $('hubMatch'), ps = $('hubSide'), a = pm && pm.offsetParent && pm.getBoundingClientRect(), b = ps && ps.offsetParent && ps.getBoundingClientRect();
+  if (a && b && b.left - a.right < 200 && a.bottom < rc.bottom && !(cur && cur.walkOn)) {
+    const lo = a.bottom <= b.bottom ? a : b, hi = lo === a ? b : a, x0 = lo === a ? rc.left : hi.right, x1 = lo === a ? hi.left : rc.right;
+    if (x1 - x0 > 160 && H - lo.bottom > 120) return { x: x0, y: lo.bottom + 10, w: x1 - x0, h: Math.min(H - lo.bottom - 20, H * 0.62) };
+  }
+  const y = Math.max(0, rc.top), h = Math.min(bot - rc.top, H * 0.62, H - y); // (a small window scrolls the lobby: never frame for more than what's on screen)
+  return { x: rc.left, y, w: Math.min(rc.width, W), h: Math.max(60, h) };
 }
 // how far back the camera sits: F.top lands on the stage's top edge and F.bot on its bottom (bisection: the gap
 // between them on screen shrinks as the camera backs off), and F.w metres across must fit the stage's width
@@ -210,7 +217,7 @@ function lineup(c) {
   if (!list.some((p) => p.me)) list.unshift(me);
   list.sort((x, y) => (y.me ? 1 : 0) - (x.me ? 1 : 0));
   const out = list.slice(0, c.spots.length);
-  for (let i = out.length; i < c.spots.length; i++) {
+  for (let i = out.length; i < Math.min(c.spots.length, Math.max(out.length, c.api.fill ?? c.spots.length)); i++) { // (api.fill: how many places to fill with bots / + INVITE when the party is smaller)
     if (a.side === 'offline' && c.api.bots !== false) { const r = rnd(i * 31 + 7); out.push({ id: 'bot' + i, bot: true, name: BOT_NAMES[(i * 5 + 3) % BOT_NAMES.length], color: LOOK_COLORS[(i * 3) % LOOK_COLORS.length], look: botLook(i), gun: GUNS[Math.floor(r() * GUNS.length)] }); }
     else out.push({ id: 'inv' + i, invite: true });
   }
@@ -221,7 +228,8 @@ function syncParty() {
   const c = cur;
   if (!c) return;
   const list = lineup(c);
-  for (let i = 0; i < c.spots.length; i++) {
+  for (let i = c.people.length - 1; i >= list.length; i--) { freePerson(c.people[i]); c.people.length = i; } // (fewer places filled than before: the extras go)
+  for (let i = 0; i < list.length; i++) {
     const p = list[i], k = keyOf(p), old = c.people[i];
     if (old && old.key === k) { old.info = p; plateText(old); continue; }
     if (old) freePerson(old);
