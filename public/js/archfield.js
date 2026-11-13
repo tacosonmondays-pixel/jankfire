@@ -9,12 +9,19 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // the models that exist (so nothing 404s asking for one that doesn't)
-export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms']);
+export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw', 'jbh_capsule3', 'jbh_capsule4', 'jbh_noodle', 'jbh_bodega', 'jbh_walkup', 'jbh_model', 'jbh_container', 'jbh_squat', 'jbh_dorm', 'jbh_arcade', 'jbh_pastel', 'jbh_biolab', 'jbh_pawn', 'penthouse', 'penthouse_sd', 'tiki', 'tiki_sd', 'pier', 'liftroom', 'liftroom_sd', 'rt_mast']); // (jbh_: Jankburg's city houses, tools/blender/jankburg/make_jb_houses.py)
 // map material keys -> the paint a Blender building takes on (its '@siding' / '@roof' / '@trim' parts)
 const PAINT = {
   hutadobe: '#ffdcae', hutsideorange: '#ffb866', hutsidemint: '#a8ffd8', hutsidelemon: '#fff27a', // (sunlit mud plaster: the Desert's adobe huts)
   sidepink: '#ff7ec0', sidelemon: '#f2e25a', sidelilac: '#b08cff', sidemint: '#74e8b8', sideorange: '#ff9a3c', blue: '#7aa8e0', white: '#ece8dc', yellow: '#ecd27a', mint: '#98d8b4',
   roofteal: '#1aa8a4', roofpink: '#ee4a98', roof: '#a8483c', roofg: '#5a5c62', roofblue: '#3a6ab8', trim: '#f0eadb',
+  tenement: '#b86a5a', brick: '#c0604a', magenta: '#e83ab8', plaster: '#e8dcc8', pink: '#ff8ac8', toyteal: '#30c8c0', toyyellow: '#ffd23a', chrome: '#c8d0dc', // (Jankburg's city houses)
+  containerr: '#c04030', containerg: '#3a8a4a', containerb: '#3060b0',
+  // Jankburg's city houses: candy paint, pushed bright (the kit's siding / stucco / fac_paint are light greys, x this)
+  jb_sidepink: '#ff4fb8', jb_sidelemon: '#ffe600', jb_sidelilac: '#a060ff', jb_sidemint: '#2ef0a8', jb_sideorange: '#ff7a1a', jb_white: '#f6fbff',
+  jb_tenement: '#ff6a4a', jb_brick: '#ff4a3a', jb_magenta: '#ff2ad0', jb_plaster: '#ffc890', jb_roofteal: '#20e8f0', jb_pink: '#ff6ac8',
+  jb_toyteal: '#18e8d8', jb_toyyellow: '#ffd800', jb_chrome: '#d8e8ff', jb_office: '#7fd8ff', jb_roofpink: '#ff3aa8', jb_roofblue: '#3a8aff',
+  jb_containerr: '#ff3a2a', jb_containerg: '#2ad860', jb_containerb: '#2a7aff', jb_graffiti: '#ffffff', jb_glass: '#ffffff',
 };
 const off = (() => { try { return /[?&]arch=0\b/.test(location.search) || localStorage.getItem('jf_arch') === '0'; } catch { return false; } })();
 const models = {}; // id -> [{ geo, mat, node }]
@@ -39,14 +46,31 @@ function tex(name, decal) {
   return t;
 }
 
+// the reflection for glossy parts: a night sky over a neon city, painted once on a canvas (equirect, three PMREMs it)
+let skyEnvTex = null;
+function skyEnv() {
+  if (skyEnvTex) return skyEnvTex;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+  for (const [t, col] of [[0, '#0a0828'], [0.35, '#3a2470'], [0.48, '#c060d8'], [0.52, '#ff8ad8'], [0.56, '#40204a'], [1, '#08040c']]) gr.addColorStop(t, col);
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+  let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647); // (seeded: the same city every time)
+  for (let x = 0; x < 256; x += 3 + ((rnd() * 6) | 0)) { const h = 4 + rnd() * 14; g.fillStyle = '#1a0c2a'; g.fillRect(x, 66 - h, 3 + rnd() * 6, h); }
+  for (let i = 0; i < 160; i++) { g.fillStyle = ['#ffe14d', '#4fd8ff', '#ff4fd8', '#ffffff'][i % 4]; g.fillRect((rnd() * 256) | 0, (52 + rnd() * 26) | 0, 1, 1); }
+  skyEnvTex = new THREE.CanvasTexture(c); skyEnvTex.mapping = THREE.EquirectangularReflectionMapping; skyEnvTex.colorSpace = THREE.SRGBColorSpace;
+  return skyEnvTex;
+}
+
 function material(name, x) { // one shared material per Blender material name
   if (matCache.has(name)) return matCache.get(name);
   const decal = x.tex === 'decals';
-  const m = new THREE.MeshLambertMaterial({ map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') });
+  const opt = { map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') };
+  // x.gloss (0..1, x.metal): glass, chrome and candy paint shine, reflecting a small night sky (the penthouse's)
+  const m = x.gloss ? new THREE.MeshStandardMaterial({ ...opt, roughness: 1 - x.gloss * 0.8, metalness: x.metal ? 0.85 : 0, envMap: skyEnv(), envMapIntensity: x.metal ? 1.1 : 0.7 }) : new THREE.MeshLambertMaterial(opt);
   if (x.alpha) { m.alphaTest = 0.5; m.side = THREE.DoubleSide; }
   if (decal || x.decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
   if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(x.glowcol || 0xffffff); } // (glowcol: a lava orange, say; white = the texture's own light)
-  if (x.glowmap) { m.emissiveMap = tex(x.glowmap); m.emissive = new THREE.Color(0xffd890); } // lit windows (facades)
+  if (x.glowmap) { m.emissiveMap = tex(x.glowmap); m.emissive = new THREE.Color(x.glowcol || 0xffd890); } // lit windows (facades; glowcol: warmer ones)
   if (x.fade > 0 && x.fade < 1) { m.transparent = true; m.opacity = x.fade; m.depthWrite = false; } // see-through (a volcano's smoke): never hides anything behind it
   m.name = 'arch_' + name;
   m.userData.arch = true;
@@ -98,11 +122,13 @@ export function buildArch(scene, list) {
     const vk = nth.get(a.id) || 0; nth.set(a.id, vk + 1); // which set of extras this copy wears (nodes v0 / v1 / v2: one per placement)
     for (const p of parts) {
       if (p.node === 'fence' && a.fence === false) continue;
+      if (a.hide && a.hide.includes(p.node)) continue; // (a placement without one of the model's parts: a machine room with no door)
       if (p.node.length === 2 && p.node[0] === 'v' && p.node !== 'v' + (vk % 3)) continue;
       const g = p.geo.clone().applyMatrix4(_m);
       if (p.x.paint) { // this house's paint, into its vertex colours
         const key = a.paint && a.paint[p.x.paint];
         _c.set(PAINT[key] || PAINT[p.x.paint] || '#ffffff');
+        if (key && key.startsWith('jb_')) _c.multiplyScalar(key === 'jb_white' ? 1.22 : 1.12); // (Jankburg's candy: past 1, so the light-grey kit comes out bright and white reads white)
         const col = g.getAttribute('color');
         for (let i = 0; i < col.count; i++) col.setXYZ(i, col.getX(i) * _c.r, col.getY(i) * _c.g, col.getZ(i) * _c.b);
       }

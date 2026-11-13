@@ -4,16 +4,24 @@
 // Every number here is a default: tune it in this one table.
 import { FLAGS, WEAPONS } from './weapons.js';
 import { BODY } from './bodyhp.js';
+import { raycast, query } from './physics.js';
 
 export const MECH = {
   kills: 9, // (STREAKS.mechdrop in shared/weapons.js mirrors this)
   // calling it in: how far the marker can go, how long it falls, the landing shockwave (damage at the middle -> 35% at
   // the edge, radius, knockback out / up), standing right on the marker = squashed, the headroom it needs
   drop: { hit: 0.36, range: 60, // (hit: drop_in's impact frame, played at touchdown)
-    delay: 2.5, dmg: 60, r: 6, kb: 14, up: 13, squash: 1.9, sky: 7 },
+    delay: 2.5, dmg: 60, r: 6, kb: 14, up: 13, squash: 1.9, sky: 7, open: 40 }, // (open: m of nothing straight over the marker: it falls from the sky, not through a roof)
+  // your own mech (or your side's) on you: BEEP BEEP, a fixed shove off the circle toward clear floor d m away + a hop
+  // (never a squash), so you land right next to it to climb in
+  bonk: { r: 2.3, d: 3, kb: 6.5, up: 7 },
   wait: 30, // s it stands waiting for you after landing (then it flies off)
   idle: 10, // s an empty mech waits after you hop out early
   reach: 4.5, // how close you have to be to climb in (F)
+  out: 2.2, // how far off its side you climb down when you hop out
+  // its walking body (collision): the legs' footprint (x the frame's hw), the most it steps up without a hop, the slack
+  // a floor adds to the hop's rise budget
+  body: { foot: 0.75, step: 1, climb: 1.5, knee: 0.3, thin: 0.6, small: 3.5, slab: 2.5 }, // (knee: x h. above it, mechPlough's clutter (thinner than thin, no longer than small, or a slab no deeper than slab) doesn't stop it)
   // energy: the meter, refill per s, how long after the last use it starts refilling
   energy: { max: 100, regen: 30, delay: 0.8 },
   head: 1.5, // a hit on the cockpit (the mech's "head" box)
@@ -61,6 +69,7 @@ export const MECH = {
     slam: { cd: 6, hop: 13, dive: 46, h0: 1.5, h1: 22, dmg: [35, 130], r: [4, 9], kb: [12, 30], up: [8, 19], win: 4 }, // E: dive down; higher = bigger
     pile: { rise: 30, up: 28, hang: 2.5, range: 55, dive: 70, min: 10, dmg: 200, edge: 0.3, r: 9, kb: 30, up2: 20, life: 9, slow: 1 }, // Q: PILE DRIVER (rise m at up m/s, hang s to aim, then dive)
     ult: { dmg: 650, time: 110 }, shrug: 3, // passive: no knockback while rolling faster than shrug m/s
+    sized: ['r', 'chain.snap', 'slam.r.0', 'slam.r.1', 'pile.r'], // (lengths that grow with MECH.scale: the ball's radius, its blasts)
   },
 };
 export const FRAMES = ['paperplane', 'nightshift', 'wrecking'];
@@ -183,6 +192,62 @@ export function addMark(o, n) {
   return true;
 }
 
+// SIZE (the owner, 2026-11-13: "can the mechs be larger"): one number every mech grows by. the tables above are the
+// size-1 mechs (PAPER PLANE 4.9 m, NIGHT SHIFT 5.7 m); mechScale(s) multiplies their lengths once (boxes, cockpit band,
+// eye, camera, reaches and radii, step, the drop's room checks) from a copy of the size-1 numbers, so calling it again
+// is safe. the server's JF_MECH_SCALE test knob sets it (0.5 - 2) and the welcome tells the client. speeds stay. a new
+// frame's own attack lengths go in its row as sized: ['lunge.r', ...]
+const SIZED = ['drop.r', 'drop.squash', 'drop.sky', 'bonk.r', 'bonk.d', 'reach', 'out', 'boom.r', 'body.step', 'body.climb',
+  'paperplane.lunge.r', 'paperplane.jet.r', 'nightshift.sword.reach', 'nightshift.shield.bashR', 'nightshift.triple.r', 'nightshift.slam.r'];
+const FRAME_SIZED = ['h', 'hw', 'c0', 'c1', 'eye', 'cam'];
+const BASE = new Map(); // path -> its size-1 number
+export const SCALE = { def: 1.35, min: 0.5, max: 2 };
+export function mechScale(s) {
+  s = Number(s);
+  if (!Number.isFinite(s)) return MECH.scale;
+  s = Math.min(SCALE.max, Math.max(SCALE.min, s));
+  const paths = SIZED.concat(...FRAMES.map((f) => FRAME_SIZED.concat(Array.isArray(MECH[f].sized) ? MECH[f].sized : []).map((k) => f + '.' + k)));
+  for (const path of paths) {
+    const ks = path.split('.'), last = ks.pop();
+    let o = MECH;
+    for (const k of ks) o = o && Object.hasOwn(o, k) ? o[k] : null;
+    if (!o || typeof o[last] !== 'number') continue;
+    if (!BASE.has(path)) BASE.set(path, o[last]);
+    o[last] = Math.round(BASE.get(path) * s * 1e4) / 1e4;
+  }
+  MECH.scale = s;
+  return s;
+}
+// the walking body (movePlayer's S): the legs' footprint, its height, its step, and what it ploughs through
+export function mechBody(frame) {
+  const F = MECH[mechFrame(frame)], knee = F.h * MECH.body.knee;
+  return { hw: Math.max(0.4, F.hw * MECH.body.foot), h: F.h, step: MECH.body.step, skip: (b, y) => b.min[1] > y + knee && mechPlough(b) };
+}
+// clutter a mech walks through once it's over its knees: foliage, and anything thin and small or a thin slab that
+// isn't roof-sized (palm fronds, lamp arms, signs, awnings, billboard grids). roofs, floors and walls (lintels
+// included: a door's wall goes on into the roof) still stop it
+const FOLIAGE = new Set(['leaves', 'leaves2', 'bush', 'thatch', 'grid']);
+export function mechPlough(b) {
+  const dx = b.max[0] - b.min[0], dy = b.max[1] - b.min[1], dz = b.max[2] - b.min[2], lo = Math.min(dx, dz), hi = Math.max(dx, dz);
+  if (FOLIAGE.has(b.mat)) return true;
+  if (Math.min(lo, dy) < MECH.body.thin && hi <= MECH.body.small) return true; // (a pole's arm, a lamp, a sign, a frond)
+  return dy < MECH.body.thin && lo <= MECH.body.slab; // (an awning, a canopy)
+}
+// room to land at g (the floor under the marker): open sky straight up (nothing for drop.open m), the legs' footprint (mechBody) clear from a
+// step over the floor up to the sky check, and its full width clear from the knees up (a crate by its feet is fine, a
+// wall, a roof or an overhang it would land in isn't). on shaped ground a slope under its feet is fine, a hill isn't
+export function mechRoom(g, frame, boxes) {
+  const F = MECH[mechFrame(frame)], B = mechBody(frame), top = g[1] + Math.max(MECH.drop.sky, F.h + 0.3);
+  if (raycast([g[0], g[1] + 0.2, g[2]], [0, 1, 0], Math.max(MECH.drop.open, top - g[1]), boxes)) return false;
+  const col = (w, lo) => { // anything solid in the column w either side of the marker, from lo up to the top
+    for (const b of query(boxes, g[0] - w, g[2] - w, g[0] + w, g[2] + w, [])) if (!b.ter && !(b.min[1] > g[1] + F.h * MECH.body.knee && mechPlough(b)) && b.max[1] > lo && b.min[1] < top && b.max[0] > g[0] - w && b.min[0] < g[0] + w && b.max[2] > g[2] - w && b.min[2] < g[2] + w) return true; // (shaped ground's steps: the heightfield below says it)
+    return false;
+  };
+  if (col(B.hw, g[1] + B.step) || col(F.hw, g[1] + F.h * 0.3)) return false;
+  const T = boxes.terrain, w = B.hw;
+  if (T) for (const [dx, dz] of [[-w, -w], [w, -w], [-w, w], [w, w], [0, -w], [0, w], [-w, 0], [w, 0]]) { const y = T.at(g[0] + dx, g[2] + dz); if (y != null && y > g[1] + MECH.body.climb) return false; }
+  return true;
+}
 // ---- WRECKING BALL
 // ramming someone at hs m/s (null below the threshold): damage climbs with speed up to the cap, knockback with it
 export function wbRam(hs) {
@@ -204,3 +269,4 @@ export function wbPile(d) {
 }
 // the rev launch's speed for a charge held c s
 export const wbRevSpeed = (c) => { const R = MECH.wrecking.rev, k = Math.max(0, Math.min(1, c / R.charge)); return R.speed[0] + (R.speed[1] - R.speed[0]) * k; };
+mechScale(SCALE.def); // (after every frame's helpers: the heroes' rows are in FRAMES by now)

@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { cbox } from './rigmodel.js';
 import { Chain } from './wreck.js';
+import { MECH } from '/shared/mech.js';
 
 const R = 2, C = [0, R, 0];
 // the skeleton: name -> [pivot (game coords, at rest), parent]
@@ -133,7 +134,7 @@ function clipOf(inst, s) {
 }
 // a hero model with clips: the roll matched to the speed, the hamster wheel layered on top, the hook to the chain
 function mix(inst, s, dt) {
-  if (inst.act && inst.clip === 'roll') { const c = inst.clips.roll; inst.act.timeScale = clamp((s.rev ? 14 : s.spd) / (2 * Math.PI * R) * (c ? c.duration : 1), 0, 6); }
+  if (inst.act && inst.clip === 'roll') { const c = inst.clips.roll; inst.act.timeScale = clamp((s.rev ? 14 : s.spd) / (2 * Math.PI * R * MECH.scale) * (c ? c.duration : 1), 0, 6); } // (world speed over the grown ball's rim)
   if (inst.clips.cage_spin) {
     if (!inst.cageAct) { inst.cageAct = inst.mixer.clipAction(inst.clips.cage_spin); inst.cageAct.play(); }
     inst.cageAct.timeScale = 0.6 + s.spd / 5 + (s.rev ? 6 : 0);
@@ -150,13 +151,13 @@ function pose(inst, s, dt, spr) {
   // the shell rolls: no slipping on the floor, keeps spinning in the air, wheel-spins on a rev
   if (s.rev) W.w.set(-16, 0, 0);
   else if (s.pile === 3) W.w.set(-14, 0, 0);
-  else if (!s.air) W.w.set(-(s.fwd || 0) / R, 0, -(s.side || 0) / R);
+  else if (!s.air) W.w.set(-(s.fwd || 0) / (R * MECH.scale), 0, -(s.side || 0) / (R * MECH.scale));
   else W.w.multiplyScalar(Math.max(0, 1 - dt * 0.4));
   const ang = W.w.length() * dt;
   if (ang > 1e-6) { _q.setFromAxisAngle(_ax.copy(W.w).normalize(), ang); W.q.premultiply(_q); }
   j.ball.quaternion.copy(W.q);
   // the hamster wheel: faster than the shell (the pilot's legging it), the pilot goes round with it
-  const spin = s.rev ? -30 : s.pile === 3 ? -20 : -(s.fwd || 0) / 1.5 * 1.3;
+  const spin = s.rev ? -30 : s.pile === 3 ? -20 : -(s.fwd || 0) / (1.5 * MECH.scale) * 1.3;
   W.cage += (s.air && !s.rev && !s.pile ? spin * 0.4 : spin) * dt;
   j.cage.rotation.x = W.cage;
   const P = j.cage.userData.pilot;

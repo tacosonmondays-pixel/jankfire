@@ -90,7 +90,7 @@ PR #71 turns 45 repeated prop kinds into instanced Blender models. What is left 
 | park, playground, corner lots, junk outside | map.js:1782 / 1840 / 1535 | Suburb (+P&D) | 531 | 3-4 |
 | pool deck, cabanas, DJ | map.js:1166 | Rooftop | 121 | 4 |
 | radio mast yard, road, property stakes | map.js:4728 / 4759 / 4786 | Scary Forest | 350 | 4 |
-| warehouse hall insides | map.js:2057 / 2244 | Warehouse (+P&D) | 215 | 4 |
+| warehouse hall insides (the shell: walls, roof, girders, lamps, doors is Blender now, `wh_hall` / `wh_hall_sd`; the office and floor kit are left) | map.js:2057 / 2244 | Warehouse (+P&D) | 215 | 4 |
 | back lots, mine, Main Street | map.js:2660 / 2727 / 2623 | Desert (+P&D) | 388 | 4 |
 | giant toy-block letters, park | jankburg.js:572 / 583 | Jankburg | 119 | 3-4 |
 | the whole CRATE map | map.js:500 | Crate | 57 | 3 |
@@ -142,7 +142,7 @@ gameplay lanes are changing bodies right now (dismemberment, body sliders), so c
 | shield bubble, black hole, medkit pickups | `main.js`:1453, `models.js`:1924, `econ3d.js`:306 | their `x_*.glb` exist but only draw the icons |
 | royale supply crates, umbrella, loot (can, plate, vest, fridge, ammo bucket) | `royale.js`:177-225, 789 | |
 | P&D bomb, Tags-mode tags | `objective.js`:48 / 63 | |
-| zombies: power-up drops, mystery crate, power switch, cola machine, lamps, perk pictures | `zmextra.js`:161, `zombies.js`:159-205, `zmloadout.js`:83 | boards and the Cheat Machine are Blender already |
+| zombies: power-up drops, lamps, perk pictures | `zmextra.js`:161, `zombies.js`, `zmloadout.js`:83 | boards, the Cheat Machine, the colas, the Voider, the mystery crate (`p_zmcrate`) and the power switch (`x_zmpower`) are Blender already |
 | jail cage, shredder pit drums, spray range wall | `secondaries.js`:112, `shredpit.js`:27, `sprayrange.js`:30 | |
 | OVERDUE props with no model yet (13) | `city/propcode.js` | vendo, punch clock, till, gun rack, dentist chair... |
 

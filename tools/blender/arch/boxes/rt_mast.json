@@ -1,0 +1,1 @@
+{"map":"rooftop","id":"rt_mast","boxes":[{"min":[-0.1,0,-0.1],"max":[0.1,6,0.1],"mat":"metal"}],"places":[{"id":"rt_mast","p":[-39,4.8,3.5],"r":0,"ai":1},{"id":"rt_mast","p":[39,4.8,3.5],"r":0,"ai":3}]}

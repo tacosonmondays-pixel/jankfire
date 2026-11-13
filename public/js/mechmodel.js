@@ -337,6 +337,7 @@ export function buildMech(frame, color, opts = {}) {
   }
   if (glb) lookMech(inst, glb, col, a.scene);
   root.userData.mech = inst;
+  root.scale.setScalar(MECH.scale); // (every mech is the size-1 model x the one shared size: shared/mech.js mechScale)
   return inst;
 }
 export function freeMech(inst) {

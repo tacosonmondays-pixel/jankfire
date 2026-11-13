@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { jankUniforms } from '../jank.js';
 import { cityUniforms, LIGHTS_GLSL, LIGHTS_HEAD } from './mats.js';
+import { waterTag, waterMaterial, streamRadii } from '../flowwater.js'; // parts named *_water / *_pool: flowing water
 
 const MODELS = new Map(); // id -> { parts: [{ geo, mat, paint }], state: 'code' | 'loading' | 'glb' }
 const listeners = new Set();
@@ -108,6 +109,8 @@ function glbParts(scene, lod1 = false) {
     if (!geo) continue;
     for (const t of ['map', 'emissiveMap']) if (m[t]) { m[t].magFilter = THREE.NearestFilter; m[t].minFilter = THREE.NearestMipmapNearestFilter; }
     if (env && 'envMap' in m) { m.envMap = env; m.envMapIntensity = m.metalness > 0.5 ? 0.9 : 0.3; }
+    const wt = waterTag(m.name);
+    if (wt) { parts.push({ geo: wt === 'stream' ? streamRadii(geo) : geo, mat: waterMaterial(wt), paint: false }); continue; } // the shared flowing-water material
     parts.push({ geo, mat: snap(m), paint: /paint/.test(m.name || '') });
   }
   return parts;

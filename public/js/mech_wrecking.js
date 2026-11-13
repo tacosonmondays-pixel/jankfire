@@ -18,7 +18,7 @@ import { mechsfx } from './mechsfx.js';
 import { synth } from './audio.js';
 import { MS, mechKitApi as A } from './mech.js';
 
-const WB = MECH.wrecking, R = WB.r;
+const WB = MECH.wrecking; // (WB.r etc. follow MECH.scale: read them live)
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const r2 = (x) => Math.round(x * 100) / 100;
 const nowMs = () => performance.now();
@@ -38,7 +38,7 @@ const sfx = {
 // ------------------------------------------------------------ you, in it
 const WS = { revT: 0, chain: null, slam: null, pile: null, launchUntil: 0, brake: false, jumpWas: false, ultWas: 0, rollT: 0, squeakT: 0, aimMk: null, minVy: 0 };
 function clearState() { Object.assign(WS, { revT: 0, chain: null, slam: null, pile: null, launchUntil: 0, brake: false, minVy: 0 }); aimMark(null); }
-const ballC = () => [ME.pos[0], ME.pos[1] + R, ME.pos[2]];
+const ballC = () => [ME.pos[0], ME.pos[1] + WB.r, ME.pos[2]];
 
 function key(e, down, now) {
   const is = (k) => K.matches(k, e) || (!down && K.up(k, e));
@@ -209,7 +209,7 @@ function step(dt, inp, now) {
     const a = WS.chain.at, cc = ballC(), d = [cc[0] - a[0], cc[1] - a[1], cc[2] - a[2]], l = Math.hypot(d[0], d[1], d[2]);
     if (l > WS.chain.len) {
       const u = d.map((x) => x / l), k = WS.chain.len / l;
-      p[0] = a[0] + d[0] * k; p[1] = a[1] + d[1] * k - R; p[2] = a[2] + d[2] * k;
+      p[0] = a[0] + d[0] * k; p[1] = a[1] + d[1] * k - WB.r; p[2] = a[2] + d[2] * k;
       const out = v[0] * u[0] + v[1] * u[1] + v[2] * u[2];
       if (out > 0) for (let i = 0; i < 3; i++) v[i] -= u[i] * out;
     }
@@ -220,7 +220,7 @@ function step(dt, inp, now) {
   ME.onGround = !!res.ground && v[1] <= 0.01;
   if (ME.onGround && !was) land(now);
   if (ME.onGround && res.ground.pad) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; ME.onGround = false; }
-  if (res.wall) { const hs = Math.hypot(v[0], v[2]); if (hs > 12 || now < WS.launchUntil) { G.shake = Math.max(G.shake, 0.5); mechsfx.ram(null); rfx.sparks([p[0], p[1] + R, p[2]], 14, 8, [0xffffff, 0xffe14d], 0.3, 0.1); } }
+  if (res.wall) { const hs = Math.hypot(v[0], v[2]); if (hs > 12 || now < WS.launchUntil) { G.shake = Math.max(G.shake, 0.5); mechsfx.ram(null); rfx.sparks([p[0], p[1] + WB.r, p[2]], 14, 8, [0xffffff, 0xffe14d], 0.3, 0.1); } }
   ME.eyeH += (WB.eye - ME.eyeH) * Math.min(1, dt * 8);
   return true;
 }
@@ -253,7 +253,7 @@ function update(dt, now) {
   } else WS.revFull = 0;
   if (WS.pile && WS.pile.ph === 1 && Math.random() < dt * 50) rfx.smoke([ME.pos[0], ME.pos[1] - 0.3, ME.pos[2]], 2, 0xdfe4ea, 1, -2, 1.4, 0.5);
   if (WS.pile && WS.pile.ph === 2) aimMark(pileTarget(A.aimDir().d), now); // where it'll land
-  if (WS.pile && WS.pile.ph === 3 && Math.random() < dt * 60) rfx.sparks([ME.pos[0], ME.pos[1] + R, ME.pos[2]], 2, 4, [0xffe14d, 0xff4fd8], 0.25, 0.1);
+  if (WS.pile && WS.pile.ph === 3 && Math.random() < dt * 60) rfx.sparks([ME.pos[0], ME.pos[1] + WB.r, ME.pos[2]], 2, 4, [0xffe14d, 0xff4fd8], 0.25, 0.1);
   const u = Math.floor(MS.ult || 0);
   if (u >= 100 && WS.ultWas < 100) { hud.msg(`PILE DRIVER READY · ${K.label('lastSlot')}`, 1.6, 'brag'); T('square', 880, 1320, 0.12, 0.1, null); T('square', 1320, 1760, 0.12, 0.1, null, 0.12); }
   WS.ultWas = u;
@@ -321,7 +321,7 @@ function event(m, getR, live, me, r, st) {
       break;
     }
     case 'wbquake': { // a slam / the pile driver hits the floor
-      const p = P(m.p), big = !!m.big, rr = Number.isFinite(m.r) ? clamp(m.r, 1, 12) : 6, k = Number.isFinite(m.sz) ? clamp(m.sz, 0, 1) : 0.5;
+      const p = P(m.p), big = !!m.big, rr = Number.isFinite(m.r) ? clamp(m.r, 1, 18) : 6, k = Number.isFinite(m.sz) ? clamp(m.sz, 0, 1) : 0.5;
       if (me) { WS.slam = null; if (WS.pile) WS.pile = null; aimMark(null); }
       if (W) W.pile = 0;
       if (!p) break;

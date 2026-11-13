@@ -19,6 +19,7 @@ import { ZoneTracker, stepZones } from '/shared/story/zones.js'; // (reach / lea
 import { npcSpot, HINTS, SITTERS } from '/shared/city/cast_slice.js';
 import { RAMP } from '/shared/city/act1set.js'; // (the Unpaid's jump ramp over the collapse: JUMP IT) // ...and where the cast stands in it (per mission step)
 import { actors, spawnActor, despawnActor, clearActors, updateActors, dropTo, play, sitActor } from './actors.js';
+import { ensureCast, prefetchCast, LOOK_IDS } from './looks.js'; // the Blender cast, on demand
 import { otFrame } from './overtime.js'; // (mr. overtime's clips, marks, damage and fx)
 import { startTalk, talkKey, talkFrame, talking } from './talk.js';
 import { questHud, card as card0, toast } from './questhud.js';
@@ -55,7 +56,7 @@ export async function init() {
   const q = new URLSearchParams(location.search);
   ST.slot = Math.max(0, Math.min(2, Number(q.get('slot')) || 0));
   if (q.get('fresh') === '1') clearSlot(ST.slot);
-  try { const { loadCast, LOOK_IDS } = await import('./looks.js'); await loadCast(LOOK_IDS, 12000); } catch (e) { console.warn('cast models', e); } // (the Blender cast; missing = code puppets)
+  prefetchCast(LOOK_IDS, 6); // the Blender cast starts coming now (while you're on the menu), but the engine no longer waits for it: it used to hold up to 12 s here. the roster waits per actor instead (ensureCast)
   const data = await loadSlot(ST.slot);
   const st = fromSave(data);
   if (data && Array.isArray(data.bagStub)) for (const i of data.bagStub.slice(0, 64)) if (typeof i === 'string') ST.bag.add(i);
@@ -196,6 +197,7 @@ function thingMesh(look) { // a big red soup pot (things get real models with th
   const soup = new THREE.Mesh(new THREE.CircleGeometry(0.29, 14), new THREE.MeshStandardMaterial({ color: 0xd02a2a, roughness: 0.2 })); soup.rotation.x = -Math.PI / 2; soup.position.y = 0.4; g.add(soup);
   for (const sx of [-1, 1]) { const h = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 6, 10), pot.material); h.position.set(sx * 0.34, 0.33, 0); h.rotation.y = Math.PI / 2; g.add(h); }
   const glow = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 24), new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.6, side: THREE.DoubleSide })); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.03; g.add(glow); g.userData.glow = glow;
+  g.userData.lsStatic = true; // (it sits still: it doesn't make the sun's shadows redraw)
   return g;
 }
 // a marker (zone id, npc id or [x, y, z]) -> world point
@@ -259,7 +261,7 @@ function roster(e) {
   }
   if (ST.city) for (const s0 of SITTERS) { // people sitting about (cast_slice.js): no lines, just there when you're near
     const d = Math.hypot(e[0] - s0.seat[0], e[2] - s0.seat[2]), a = actors.get(s0.id), ok = !s0.if || ST.S.test(s0.if);
-    if (!a && ok && d < 30) sitActor(spawnActor(s0.id, { look: s0.look || s0.id, hint: s0.hint, idle: 'idle' }, s0.seat, s0.face), s0.seat);
+    if (!a && ok && d < 30 && ensureCast(s0.look || s0.id)) sitActor(spawnActor(s0.id, { look: s0.look || s0.id, hint: s0.hint, idle: 'idle' }, s0.seat, s0.face), s0.seat);
     else if (a && (!ok || d > 40)) despawnActor(s0.id);
   }
   // (the city: someone whose home isn't a real place yet only stands in the rehearsal yard while a step wants them)
@@ -268,7 +270,7 @@ function roster(e) {
     const d = Math.hypot(e[0] - r.p[0], e[2] - r.p[2]), a = actors.get(r.id);
     if (r.yard && !want.has(r.id)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; }
     if (r.spot && r.spot.if && !ST.S.test(r.spot.if)) { if (a && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); continue; } // (spot.if: a story condition, mina's wall only after m04)
-    if (!a && d < 34) spawnActor(r.id, r.spot && r.spot.look ? { ...r.n, look: r.spot.look } : r.n, r.p, r.face); // (spot.look: a look for that spot, mina in her wall)
+    if (!a && d < 34 && ensureCast(r.spot && r.spot.look ? r.spot.look : r.n.look)) spawnActor(r.id, r.spot && r.spot.look ? { ...r.n, look: r.spot.look } : r.n, r.p, r.face); // (ensureCast: their model is in, or a moment's wait for it) // (spot.look: a look for that spot, mina in her wall)
     else if (a && d > 44 && !a.inScene && !a.boss && !a.enc && !talking()) despawnActor(r.id); // (a boss in a fight stays: the referee has him. so does anyone an encounter stood somewhere: encounters.js)
   }
 }
@@ -293,8 +295,9 @@ function spotMesh(kind) {
   const g = new THREE.Group();
   const col = kind === 'pickup' ? 0xffe14d : kind === 'thing' ? 0x4fd8ff : 0xff4fd8;
   if (kind === 'pickup') { const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.7 })); b.position.y = 0.2; g.add(b); const lid = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 0.44), new THREE.MeshStandardMaterial({ color: col })); lid.position.y = 0.43; g.add(lid); }
-  else { const o = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: col })); o.position.y = 1.1; g.add(o); g.userData.spin = o; }
+  else { const o = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: col })); o.position.y = 1.1; o.userData.noCast = true; g.add(o); g.userData.spin = o; } // (a glowing gem: no shadow to redraw as it spins)
   const glow = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 24), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, side: THREE.DoubleSide })); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.03; g.add(glow); g.userData.glow = glow;
+  g.userData.lsStatic = true; // (only the gem spins, and it casts no shadow)
   return g;
 }
 // R in the rehearsal: fake the tracked step's next goal (with the events a finished system would send)

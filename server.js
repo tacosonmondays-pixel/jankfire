@@ -2,6 +2,7 @@
 // Rooms: one shared Online room, one shared Coop room, and private Bots / Training rooms per player.
 // Human movement is client-authoritative (it's a jank game). The server owns damage, kills, projectiles,
 // peels, black holes, reverse cards, respawns, bots, coop waves and lobby settings.
+import './shared/mapedits/apply.js'; // the owner's shipped map edits, on every map before anything reads them (shared/mapedits)
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -21,7 +22,10 @@ import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, even
 import { surfaces, lavaOk, onLava, lavaBelow, nearestSafe, LAVA } from './shared/lava.js';
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from './shared/secrets.js'; // hidden NPCs + cats
 import { sendStatic } from './server/static.js';
+import { editTicketHttp, takeTicket } from './server/editplay.js'; // the map editor's PLAY HERE WITH BOTS (owner only: JF_OWNER)
+import { makeBuild } from './server/build.js'; // versioned code urls: the browser keeps this build's scripts, asks about none of them
 import { installParty, hubHello, hubMsg, hubClose } from './server/party.js'; // parties: the menu connections (docs/menu/HUB_LOBBY.md)
+import { makeFriends } from './server/friends.js'; // friends (invites and joins check them)
 import { GAMES, mapsFor } from './shared/modes.js';
 import { BOT_DIFF, HIPFIRE, WEAPONS } from './shared/weapons.js';
 import { mechFrame } from './shared/mech.js';
@@ -39,6 +43,8 @@ const accounts = new Accounts(store);
 const serverFile = browsableServer(ROOT); // /server/<file>: only server/room.js and what it imports
 const ROUTES = [
   ['/vendor/three/', path.join(ROOT, 'node_modules/three/')],
+  ['/vendor/pathtracer/', path.join(ROOT, 'node_modules/three-gpu-pathtracer/build/')], // the path-traced photo (photo.js), loaded only when you take one
+  ['/vendor/bvh/', path.join(ROOT, 'node_modules/three-mesh-bvh/build/')],
   ['/shared/', path.join(ROOT, 'shared/')],
   ['/mechs/concept/', path.join(ROOT, 'docs/mechs/concept/')], // the mechs' placeholder models (the client's fallback until public/models/x_mech_*.glb lands)
   ['/', path.join(ROOT, 'public/')],
@@ -49,6 +55,10 @@ const MIME = {
   '.svg': 'image/svg+xml', '.ico': 'image/x-icon', '.wav': 'audio/wav', '.mp3': 'audio/mpeg', '.ogg': 'audio/ogg',
   '.webmanifest': 'application/manifest+json',
 };
+
+// the file a url is served from (or null): the routes above, never outside their folders
+const fileOf = (u) => { for (const [prefix, dir] of ROUTES) { if (!u.startsWith(prefix)) continue; const f = path.normalize(path.join(dir, u.slice(prefix.length) || 'index.html')); return f.startsWith(dir) ? f : null; } return null; };
+const build = makeBuild(ROOT, fileOf);
 
 function modelList() {
   let cfg = [];
@@ -65,6 +75,7 @@ function modelList() {
 function serve(req, res) {
   let url;
   try { url = decodeURIComponent(new URL(req.url, 'http://x').pathname); } catch { res.writeHead(400).end(); return; }
+  if (url.includes('\0')) { res.writeHead(400).end(); return; } // (a null byte: fs would choke on it and the request hung)
   if (url === '/models/list') {
     res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-cache' });
     res.end(JSON.stringify(modelList()));
@@ -82,6 +93,7 @@ function serve(req, res) {
     res.end(JSON.stringify(lobbyCounts()));
     return;
   }
+  if (url === '/api/edit-ticket') { editTicketHttp(req, res, accounts); return; } // (before accounts: its own size limit and owner check)
   if (url.startsWith('/api/')) { accounts.handle(req, res, url); return; }
   if (url.startsWith('/server/')) { // the story's solo referee (a web worker) runs the real room code
     const file = serverFile(url);
@@ -89,12 +101,14 @@ function serve(req, res) {
     fs.stat(file, (err, st) => { if (err || !st.isFile()) { res.writeHead(404).end('404'); return; } sendStatic(req, res, file, st, '.js', MIME['.js']); });
     return;
   }
+  if (url.startsWith('/v/')) { build.sendVersioned(req, res, url, (ext) => MIME[ext] || 'application/octet-stream'); return; } // this build's code, kept for good (server/build.js)
   for (const [prefix, dir] of ROUTES) {
     if (!url.startsWith(prefix)) continue;
     const file = path.normalize(path.join(dir, url.slice(prefix.length) || 'index.html'));
     if (!file.startsWith(dir)) { res.writeHead(403).end(); return; }
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404).end('404'); return; }
+      if (path.extname(file) === '.html') { build.sendHtml(req, res, file, st); return; } // (pages name this build's code)
       sendStatic(req, res, file, st, path.extname(file), MIME[path.extname(file)] || 'application/octet-stream'); // (ETag + gzip: server/static.js)
     });
     return;
@@ -143,6 +157,11 @@ wss.on('connection', (ws) => {
           const want = clean(m.name, 16);
           if (want && await store.get(want.toLowerCase()).catch(() => null)) m._name = want.slice(0, 10) + ' (guest)';
         }
+        if (m.cfg && typeof m.cfg === 'object') { // the map editor's PLAY HERE: only a checked ticket for the owner's own account becomes an edited map
+          const tk = m.cfg.editTicket; delete m.cfg.editTicket; delete m.cfg._edit;
+          const ed = typeof tk === 'string' ? takeTicket(tk, m._acct && m._acct.n) : null;
+          if (ed && m.mode === 'bots') m.cfg._edit = ed;
+        }
         if (ws.readyState !== 1) return;
         const room = roomFor(m.mode, ws, m.cfg);
         me = room.addHuman(ws, m);
@@ -172,7 +191,8 @@ function hubOpen(ws, m) {
     ws.hub = hubHello(ws, { name: name.slice(0, 24), look: validLook(m.look, achs), acct: u ? u.name_lower : null, achs }, m);
   })().catch((e) => { logErr('hub hello', e); ws.close(); });
 }
-installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook });
+installParty({ roomFor, rooms, LOBBY, GAMES, MAPS, MAP_ORDER, BOT_DIFF, HIPFIRE, mapsFor, WEAPONS, mechFrame, validLook,
+  areFriends: (a, b) => (accounts.friends || (accounts.friends = makeFriends(accounts.store))).areFriends(a, b) }); // (friends: invites + joining a friend's party)
 
 // the bots' walk graphs (and the maze maps' lanes) are built when a room starts on a map (Room.tick -> warmMap), not all
 // at boot (together they were ~150 MB of the heap), and dropped once no room has been on a map for GRAPH_TTL

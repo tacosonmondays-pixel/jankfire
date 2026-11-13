@@ -126,6 +126,7 @@ function endScene(skipped) {
   $('stBoss').classList.add('hidden'); $('stPanels').classList.add('hidden'); $('stPanels').innerHTML = ''; $('stSkip').classList.add('hidden');
   $('stFade').style.transition = 'opacity 0.35s'; $('stFade').style.opacity = 0; $('stImpact').style.opacity = 0;
   document.body.classList.remove('st-cine');
+  G.coverWorld = false;
   wantShot(null);
   ST.slowmo = 1;
   if (p.def.onEnd) ST.S.run(p.def.onEnd, `scene ${p.def.id}`);
@@ -262,6 +263,7 @@ function recapPanels() {
 // ---------------------------------------------------------------- every frame
 export function sceneFrame(dt, now, cam) {
   if (!P && queue.length && !talking()) { const [d, o] = queue.shift(); playScene(d, o); }
+  G.coverWorld = !!(P && P.panels); // (a comic page is up: it covers the whole screen, so world.js doesn't draw the world behind it)
   if (!P) return;
   // skip: hold jump
   const hold = K.isDown('jump') && P.def.skip !== false && P.t > 0.3;
