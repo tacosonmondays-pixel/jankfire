@@ -50,6 +50,7 @@ export function simplify(pts, span) {
   return q;
 }
 const map = () => MAPS[G.cfg.map];
+FMX.wants = (e) => e.button === 0 && (P.tool === 'pen' || e.shiftKey); // (fullmap.js: a left drag that isn't this pans the map)
 FMX.down = (e, wx, wz) => {
   if (e.button !== 0 || !(P.tool === 'pen' || e.shiftKey) || !map()) return false;
   P.live = { pts: inPingBox(map(), wx, wz) ? [wx, wz] : [], t: performance.now() };

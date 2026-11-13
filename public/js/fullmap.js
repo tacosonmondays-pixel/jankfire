@@ -20,6 +20,7 @@ import { raycast } from '/shared/physics.js';
 import { TEAMS } from '/shared/modes.js';
 import { BR, blimpAt, zoneAt } from '/shared/royale.js';
 import { PING, inPingBox } from '/shared/pings.js';
+import { topdownFor } from './topdown.js'; // the royale maps' real top-down pictures
 
 const CSS = `
 #fmWrap { position: fixed; inset: 0; display: none; z-index: 40; pointer-events: none; font-family: var(--font); }
@@ -28,6 +29,12 @@ const CSS = `
 #fmName { position: absolute; left: 190px; right: 54px; top: 4px; font: bold 16px var(--font); color: #4fd8ff; letter-spacing: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 2px 2px 0 #000; }
 #fmX { position: absolute; right: 8px; top: 3px; width: 34px; height: 24px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #ff4fd8; font: bold 16px/16px var(--font); cursor: pointer; padding: 0; transform: rotate(2deg); }
 #fmX:active { transform: translate(2px, 2px) rotate(2deg); box-shadow: 1px 1px 0 #ff4fd8; }
+#fmCvBox { position: relative; }
+#fmZoom { position: absolute; right: 8px; bottom: 8px; display: flex; flex-direction: column; gap: 6px; }
+#fmZoom button { width: 38px; height: 30px; padding: 0; background: #fff; color: #000; border: 3px solid #000; box-shadow: 3px 3px 0 #ff4fd8; font: bold 18px/18px var(--font); cursor: pointer; }
+#fmZoom button[data-z="fit"] { font-size: 11px; background: #ffe14d; }
+#fmZoom button:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 #ff4fd8; }
+#fmZoomK { position: absolute; left: 8px; bottom: 8px; font: bold 13px var(--font); color: #ffe14d; text-shadow: 2px 2px 0 #000; pointer-events: none; }
 #fmCv { display: block; border: 3px solid #000; background: #0c0614; cursor: crosshair; touch-action: none; }
 #fmFoot { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 7px; font-size: 13px; color: #ddd; align-items: center; }
 #fmFoot kbd { background: #ffe14d; color: #000; border: 2px solid #000; padding: 0 5px; font: bold 12px var(--font); box-shadow: 2px 2px 0 #000; }
@@ -65,12 +72,18 @@ function build() {
   FM.built = true;
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   wrap = document.createElement('div'); wrap.id = 'fmWrap';
-  wrap.innerHTML = '<div id="fmPanel"><div id="fmTag">THE BIG MAP</div><div id="fmName"></div><button id="fmX" title="close">✕</button><canvas id="fmCv"></canvas><div id="fmFoot"></div></div>';
+  wrap.innerHTML = '<div id="fmPanel"><div id="fmTag">THE BIG MAP</div><div id="fmName"></div><button id="fmX" title="close">✕</button><div id="fmCvBox"><canvas id="fmCv"></canvas><div id="fmZoom"><button data-z="in" title="zoom in">+</button><button data-z="out" title="zoom out">−</button><button data-z="fit" title="the whole map">FIT</button></div><div id="fmZoomK"></div></div><div id="fmFoot"></div></div>';
   document.body.appendChild(wrap);
   pinLayer = document.createElement('div'); pinLayer.id = 'fmPins';
   ($('hud') || document.body).appendChild(pinLayer);
   cv = $('fmCv');
-  cv.addEventListener('click', (e) => { e.stopPropagation(); if (FM.took) { FM.took = false; return; } mapClick(e); });
+  cv.addEventListener('click', (e) => { e.stopPropagation(); if (FM.took || FM.panned) { FM.took = false; FM.panned = false; return; } mapClick(e); });
+  // zoom + pan: the wheel zooms at the cursor, a drag pans (right / middle button always; left when it isn't the pencil's)
+  cv.addEventListener('wheel', (e) => { e.preventDefault(); e.stopPropagation(); zoomAt(e.deltaY < 0 ? 1.3 : 1 / 1.3, e.clientX, e.clientY); }, { passive: false });
+  cv.addEventListener('pointerdown', (e) => { FM.pan = null; FM.panned = false; if (e.button === 1 || e.button === 2 || (e.button === 0 && !(FMX.wants && FMX.wants(e)))) { FM.pan = { x: e.clientX, y: e.clientY, moved: e.button !== 0 }; try { cv.setPointerCapture(e.pointerId); } catch { /* fine */ } } }, true);
+  cv.addEventListener('pointermove', (e) => { const P = FM.pan; if (!P) return; if (!P.moved && Math.hypot(e.clientX - P.x, e.clientY - P.y) < 7) return; P.moved = true; FM.panned = true; panBy(e.clientX - P.x, e.clientY - P.y); P.x = e.clientX; P.y = e.clientY; });
+  for (const t of ['pointerup', 'pointercancel']) cv.addEventListener(t, () => { FM.pan = null; });
+  $('fmZoom').addEventListener('click', (e) => { e.stopPropagation(); const b = e.target.closest('button'); if (!b) return; const r = cv.getBoundingClientRect(); if (b.dataset.z === 'fit') { FM.zoom = 1; clampView(); } else zoomAt(b.dataset.z === 'in' ? 1.5 : 1 / 1.5, r.left + r.width / 2, r.top + r.height / 2); sfx.click(); });
   cv.addEventListener('pointerdown', (e) => { if (FMX.down && FM.open && FMX.down(e, ...fmWorld(e.clientX, e.clientY))) { FM.took = true; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch { /* fine */ } } else FM.took = false; });
   cv.addEventListener('pointermove', (e) => { if (FM.took && FMX.move) FMX.move(e, ...fmWorld(e.clientX, e.clientY)); });
   for (const t of ['pointerup', 'pointercancel']) cv.addEventListener(t, (e) => { if (FM.took && FMX.up) FMX.up(e, t === 'pointercancel'); });
@@ -91,6 +104,7 @@ function bake(id) {
   paintBoxes(x, map, (wx, wz) => [(wx - FM.ext[0]) * FM.ppm, (wz - FM.ext[1]) * FM.ppm], Math.max(c.width, c.height), royale ? { style: 'royale' } : {});
   if (map.bounds && !royale) { const b = map.bounds; x.strokeStyle = '#ff4fd8'; x.lineWidth = Math.max(2, FM.ppm * 0.6); x.setLineDash([FM.ppm * 3, FM.ppm * 2]); x.strokeRect((b[0] - FM.ext[0]) * FM.ppm, (b[1] - FM.ext[1]) * FM.ppm, (b[2] - b[0]) * FM.ppm, (b[3] - b[1]) * FM.ppm); x.setLineDash([]); }
   FM.base = c; FM.baseFor = id + (royale ? ':br' : '');
+  FM.zoom = 1; FM.cx = (FM.ext[0] + FM.ext[2]) / 2; FM.cz = (FM.ext[1] + FM.ext[3]) / 2; // a new map: the whole of it
 }
 function size() {
   const e = FM.ext, w = e[2] - e[0], h = e[3] - e[1];
@@ -102,7 +116,21 @@ function size() {
   cv.style.width = FM.cssW + 'px'; cv.style.height = FM.cssH + 'px';
   FM.view = { s: (FM.cssW / w) * dpr, dpr };
 }
-const toCv = (wx, wz) => [(wx - FM.ext[0]) * FM.view.s, (wz - FM.ext[1]) * FM.view.s];
+// zoom + pan: the window shows ext / zoom metres round (cx, cz), kept inside the map
+const vw = () => (FM.ext[2] - FM.ext[0]) / (FM.zoom || 1), vh = () => (FM.ext[3] - FM.ext[1]) / (FM.zoom || 1);
+const vx0 = () => (FM.cx ?? (FM.ext[0] + FM.ext[2]) / 2) - vw() / 2, vz0 = () => (FM.cz ?? (FM.ext[1] + FM.ext[3]) / 2) - vh() / 2;
+const toCv = (wx, wz) => { const k = FM.view.s * (FM.zoom || 1); return [(wx - vx0()) * k, (wz - vz0()) * k]; };
+function clampView() {
+  FM.zoom = Math.max(1, Math.min(8, FM.zoom || 1));
+  const e = FM.ext, hw = vw() / 2, hh = vh() / 2;
+  FM.cx = Math.max(e[0] + hw, Math.min(e[2] - hw, FM.cx ?? (e[0] + e[2]) / 2)); FM.cz = Math.max(e[1] + hh, Math.min(e[3] - hh, FM.cz ?? (e[1] + e[3]) / 2));
+  if (cv && $('fmZoomK')) $('fmZoomK').textContent = FM.zoom > 1.01 ? `x${FM.zoom.toFixed(1)} · drag to move` : '';
+  FM.drawT = 0;
+}
+function zoomAt(f, cx, cy) { if (!FM.ext) return; const a = fmWorld(cx, cy); FM.zoom = (FM.zoom || 1) * f; clampView(); const b = fmWorld(cx, cy); FM.cx += a[0] - b[0]; FM.cz += a[1] - b[1]; clampView(); }
+function panBy(dx, dy) { const r = cv.getBoundingClientRect(); FM.cx -= dx * vw() / r.width; FM.cz -= dy * vh() / r.height; clampView(); }
+export const fmView = () => ({ zoom: FM.zoom || 1, cx: FM.cx, cz: FM.cz, ext: FM.ext }); // (tests)
+export function fmZoomTo(z, wx, wz) { if (!FM.ext) return; FM.zoom = z; FM.cx = wx; FM.cz = wz; clampView(); } // (spyglass.js / tests)
 
 function foot() {
   const team = G.myTeam && TEAMS[G.myTeam] ? TEAMS[G.myTeam].color : '#4fd8ff';
@@ -119,7 +147,10 @@ function drawMap(now) {
   const x = cv.getContext('2d'), S = FM.view.s, dpr = FM.view.dpr, Wd = cv.width, Ht = cv.height;
   x.setTransform(1, 0, 0, 1, 0, 0);
   x.imageSmoothingEnabled = false;
-  x.drawImage(FM.base, 0, 0, Wd, Ht);
+  x.fillStyle = '#0c0614'; x.fillRect(0, 0, Wd, Ht);
+  const td = topdownFor(G.cfg.map); // royale maps: the real picture from above (with its POI names) instead of the painted boxes
+  if (td) { const a = toCv(td.ext[0], td.ext[1]), b = toCv(td.ext[2], td.ext[3]); x.imageSmoothingEnabled = true; x.drawImage(td.img, a[0], a[1], b[0] - a[0], b[1] - a[1]); x.imageSmoothingEnabled = false; }
+  else { const a = toCv(FM.ext[0], FM.ext[1]), b = toCv(FM.ext[2], FM.ext[3]); x.drawImage(FM.base, a[0], a[1], b[0] - a[0], b[1] - a[1]); }
   // a comic grid: letters across, numbers down (so "pinged C4" means something)
   const ext = FM.ext, span = Math.max(ext[2] - ext[0], ext[3] - ext[1]), cell = [10, 16, 20, 25, 32, 40, 50, 64, 80, 100].find((c) => span / c <= 9) || 120;
   x.strokeStyle = 'rgba(255,255,255,0.10)'; x.lineWidth = 1;
@@ -148,7 +179,7 @@ function drawMap(now) {
       label([bx, bz], 'BLIMP', '#ff4fd8', -9);
     }
     const pois = map.royale && map.royale.pois;
-    if (pois) for (const d of pois) { const p = toCv((d.rect[0] + d.rect[2]) / 2, (d.rect[1] + d.rect[3]) / 2); label(p, d.name.toUpperCase(), d.color || '#fff', 6); }
+    if (pois && !(td && td.names)) for (const d of pois) { const p = toCv((d.rect[0] + d.rect[2]) / 2, (d.rect[1] + d.rect[3]) / 2); label(p, d.name.toUpperCase(), d.color || '#fff', 6); }
     for (const c of R.crates.values()) { const [px, pz] = toCv(c.x, c.z); x.fillStyle = '#ffe14d'; x.strokeStyle = '#000'; x.lineWidth = 2 * dpr; x.fillRect(px - 6 * dpr, pz - 6 * dpr, 12 * dpr, 12 * dpr); x.strokeRect(px - 6 * dpr, pz - 6 * dpr, 12 * dpr, 12 * dpr); }
   }
   // Plant & Defuse: the sites, and the bomb when your side would know where it is (the minimap's rules)
@@ -244,7 +275,7 @@ function sendPing(x, y, z) {
 export function fmWorld(cx, cy) {
   const r = cv.getBoundingClientRect(); // (the panel is tilted a hair: close enough)
   const fx = (cx - r.left) / r.width, fz = (cy - r.top) / r.height;
-  return [FM.ext[0] + fx * (FM.ext[2] - FM.ext[0]), FM.ext[1] + fz * (FM.ext[3] - FM.ext[1])];
+  return [vx0() + fx * vw(), vz0() + fz * vh()];
 }
 function mapClick(e) {
   if (!FM.open || !FM.view) return;
