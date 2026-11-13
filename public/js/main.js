@@ -11,6 +11,7 @@ import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { lockPointer, lookFilter } from './mouselook.js';
+import { buildEdited } from '/shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS: the edited map's copy
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
@@ -206,6 +207,16 @@ if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it awa
 }
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
+// the map editor's PLAY HERE WITH BOTS sent us here (?playedit=1) with a one-use ticket for the owner's edits: a private
+// bots match on them, as soon as the login is back (the server checks the ticket is this account's, JF_OWNER)
+{
+  let pe = null;
+  try { if (new URLSearchParams(location.search).get('playedit') === '1') pe = JSON.parse(sessionStorage.getItem('jfPlayEdit') || 'null'); sessionStorage.removeItem('jfPlayEdit'); } catch { pe = null; }
+  if (pe && typeof pe.ticket === 'string' && typeof pe.map === 'string') {
+    const t0 = Date.now(), go = () => { if (!account.loggedIn && Date.now() - t0 < 6000) { setTimeout(go, 250); return; } startMode('bots', { priv: true, editTicket: pe.ticket, map: pe.map, bots: 5, diff: 'normal' }); };
+    setTimeout(go, 600);
+  }
+}
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings(), look: () => homeLook(), toast: (t, ms) => toast(t, ms) }); // the hub: ONLINE / OFFLINE + the lobby
 // parties (party.js): the menu connection. the leader starting while you're mid-match: you're told, and if you quit to
@@ -1414,6 +1425,7 @@ function addRemoteInfo(p) {
 
 // ------------------------------------------------------------ net handlers
 net.on('welcome', (m) => {
+  if (m.cfg && m.cfg.edit && !MAPS[m.cfg.map]) buildEdited(m.cfg.map, m.cfg.edit); // (PLAY HERE: the same edited copy the server built)
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
@@ -1466,6 +1478,7 @@ net.on('welcome', (m) => {
   for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
+  if (m.cfg && m.cfg.edit && !MAPS[m.cfg.map]) buildEdited(m.cfg.map, m.cfg.edit);
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
   if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); G.smokes.length = 0; } // the server drops its smokes too

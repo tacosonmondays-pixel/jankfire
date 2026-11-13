@@ -24,10 +24,10 @@ import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
 import { bounceMap, updateBounce } from './bounce.js'; // light bounced off the ground and walls (the ray-traced look)
-import { reflectMap, updateReflect } from './reflect.js'; // glass and wet roads mirror the world (the ray-traced look)
+import { reflectMap, updateReflect, reflectSSRLive } from './reflect.js'; // glass and wet roads mirror the world (the ray-traced look)
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { biGroundMaterial, disposeBiGround } from './biground.js';
-import { postBegin, postEnd, setPostAA, postMid } from './post.js';
+import { postBegin, postEnd, setPostAA, postMid, postSSROn } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -676,13 +676,14 @@ export function renderFrame() {
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   updateReflect(r, G.camera); // one side of a fresh reflection snapshot, when one is due (reflect.js)
-  const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
+  const post = postBegin(r); reflectSSRLive(post && postSSROn()); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
   if (post) postMid(r, G.camera); // contact shadows from the world's depth, before your gun is drawn (post.js)
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
   if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way
+    reflectSSRLive(false); // (no floor marks in the canvas's alpha)
     r.setRenderTarget(null); r.clear(); r.render(G.scene, G.camera); r.clearDepth(); r.render(G.vmScene, G.vmCamera);
   }
 }

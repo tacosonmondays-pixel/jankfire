@@ -13,6 +13,7 @@ import { M, freeTree } from './models.js';
 import { authored, nodeIn, AUTHORED, prefetch } from './glbkit.js';
 import { BOXES, MAPS } from '/shared/map.js';
 import { raycast } from '/shared/physics.js';
+import { looseStep } from './loose.js';
 import { ZL, ZL_ARMS, ZT, ZT_IDS, zlCrawl, zlHop } from '/shared/zmlimbs.js';
 
 const ST = new Map(); // id -> [type id, limbs gone, flags] (from every snapshot)
@@ -340,16 +341,12 @@ export function zlTick(dt) {
   for (let i = fly.length - 1; i >= 0; i--) {
     const f = fly[i], p = f.m.position;
     f.life -= dt;
-    f.v[1] -= 22 * dt;
-    p.x += f.v[0] * dt; p.y += f.v[1] * dt; p.z += f.v[2] * dt;
-    const low = f.floorY + f.rest;
-    if (p.y < low) {
-      p.y = low;
-      const hard = Math.abs(f.v[1]) > 3;
-      f.v[1] = Math.abs(f.v[1]) * 0.32; f.v[0] *= 0.55; f.v[2] *= 0.55;
+    const hit = looseStep(f, p, dt, f.rest, 0.32, 0.55), low = f.floorY + f.rest; // (the floor under where it is now, walls: loose.js)
+    if (hit) {
       f.av = f.av.map((a) => a * 0.5);
-      if (hard && f.drip >= 0 && G.settings.blood !== false) fx.blood([p.x, p.y, p.z], [0, 0.2, 0], 8, f.floorY);
+      if (hit > 1 && f.drip >= 0 && G.settings.blood !== false) fx.blood([p.x, p.y, p.z], [0, 0.2, 0], 8, f.floorY);
     }
+    if (p.y < -400) f.life = 0; // (fell out of the world)
     const air = p.y > low + 0.02 || Math.abs(f.v[1]) > 0.6;
     if (air) { f.m.rotation.x += f.av[0] * dt; f.m.rotation.y += f.av[1] * dt; f.m.rotation.z += f.av[2] * dt; }
     else if (f.drip >= 0 && f.life > 2) { // on the floor: it still twitches
@@ -372,6 +369,8 @@ export function zlTick(dt) {
     if (k >= 1) { G.scene.remove(g.m); g.m.geometry.dispose(); g.m.material.dispose(); rings.splice(i, 1); }
   }
 }
+export const zlLoose = () => fly; // (tests: what's lying about)
+export function zlCut(r, bit, dir) { cut(r, bit, dir, false); } // (tests: take a limb off)
 export function zlClear() { // the mode ended / a new map
   while (fly.length) drop(0);
   for (const g of rings) { G.scene.remove(g.m); g.m.geometry.dispose(); g.m.material.dispose(); }
