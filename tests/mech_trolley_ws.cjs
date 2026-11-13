@@ -186,10 +186,31 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   const rm = dmgOn(E3, 'trram');
   ok(rm.length === 1 && rm[0].a >= 20 && rm[0].a <= 35, `drove through them at 24 m/s: one ram for ${rm[0] && rm[0].a} (6 + 15 x 1.4 = 27)`);
   await sleep(2600);
+  // a ram after a one-snapshot jump: it sat still, then "moved" 5.5 m in one go right through them. that window's measured
+  // speed (~30 m/s) is clamped to the window before + 12, so it rams like a trolley doing 12
+  await goto([-8, Y, 16]); await run(800, () => new Map([[E3, [[-8, Y, 11.5]]]]));
+  E3.got.length = 0; A.got.length = 0;
+  P = [-8, Y, 10.5]; await run(900, () => new Map([[E3, [[-8, Y, 11.5]]]]));
+  const tj = dmgOn(E3, 'trram'), tkb = E3.all('kb').pop();
+  ok(!A.all('mech', (m) => m.k === 'fix').length && tj.length === 1 && tj[0].a <= 15 && (!tkb || Math.hypot(tkb.v[0], tkb.v[2]) <= 13), `a 5.5 m jump in one snapshot into them: rammed like 12 m/s, not 30 · ${tj[0] && tj[0].a}, kb ${tkb && Math.hypot(tkb.v[0], tkb.v[2]).toFixed(1)}`);
+  // an empty parked enemy mech: a can and the push hit it like they'd hit a pilot
+  await run(300, () => new Map([[E4, [[-14, Y, 4]]]]));
+  E4.send({ t: 'deploy', r: 'mechdrop', at: [-8, Y, 2] });
+  const eland = await E4.wait('mech', (m) => m.k === 'land' && m.o === E4.id, 6000);
+  await goto([-8, Y, 16]); await run(400, () => new Map([[E4, [[-14, Y, 4]]]]));
+  ok(eland, 'an enemy drops a mech and leaves it standing empty');
+  A.got.length = 0;
+  { const ca = aim([-7.26, Y + 3.44, 16], [-8, Y + 3, 2]); await run(300, undefined, 0, { y: ca.y, x: ca.x }); A.send({ t: 'mech', k: 'can', d: ca.d }); await run(1200, undefined, 0, { y: ca.y, x: ca.x }); }
+  ok(A.all('mech', (m) => m.k === 'hurt' && m.w === 'trcan').length === 1, 'a can at the empty mech: it takes the can');
+  await sleep(1600);
+  { const Q = P.slice(); A.send({ t: 'mech', k: 'push' }); P = pushAt(Q, [Q[0], Y, Q[2] - 12], 400); await run(600, undefined, MF.C); P = [Q[0], Y, Q[2] - 12]; }
+  ok(A.all('mech', (m) => m.k === 'hurt' && m.w === 'trpush').length === 1, 'pushing through the empty mech: it takes the push');
+  await goto([0, Y, 16]);
+  await sleep(1500);
 
   // ---- 5. tin cans: rate, aim, a bonk, bounces
   { const from = P.slice(), to = [0, Y, 10]; P = (t) => lerp(from, to, t / 1200); await run(1400); P = to; }
-  const cAim = aim([0.55, Y + 2.55, 10], [0, Y + 1.2, 3.5]), tgt5 = [0, Y, 3.5];
+  const cAim = aim([0.74, Y + 3.44, 10], [0, Y + 1.2, 3.5]), tgt5 = [0, Y, 3.5];
   E4.got.length = 0; A.got.length = 0;
   await run(500, () => new Map([[E4, [tgt5]]]), 0, { y: cAim.y, x: cAim.x });
   for (let i = 0; i < 8; i++) A.send({ t: 'mech', k: 'can', d: cAim.d });
@@ -207,7 +228,7 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   ok(!A.all('ps', (m) => m.k === 'trcan').length, 'garbage can directions: nothing');
   // one into the open floor: it bounces (a few times), then stops
   A.got.length = 0;
-  { const fl = aim([0.55, Y + 2.55, 10], [10, Y, 0]); await run(400, undefined, 0, { y: fl.y, x: fl.x }); A.send({ t: 'mech', k: 'can', d: fl.d }); await run(3000, undefined, 0, { y: fl.y, x: fl.x }); }
+  { const fl = aim([0.74, Y + 3.44, 10], [-6, Y, 3]); await run(400, undefined, 0, { y: fl.y, x: fl.x }); A.send({ t: 'mech', k: 'can', d: fl.d }); await run(3000, undefined, 0, { y: fl.y, x: fl.x }); }
   const c1 = A.all('ps', (m) => m.k === 'trcan').pop(), bs = c1 ? A.all('pu', (m) => m.id === c1.id && m.b) : [];
   ok(c1 && bs.length >= 2 && bs.length <= 3 && A.all('pd', (m) => m.id === c1.id).length === 1, `a can on the floor: bounced ${bs.length} times, then done`);
 
