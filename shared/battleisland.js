@@ -145,6 +145,7 @@ export const poiAt = (x, z) => PLAN.pois.find((p) => x >= p.rect[0] && x <= p.re
 import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick, forklift, pallets } from './map.js';
 import { shapeGround } from './terrain.js';
 import { buildNav } from './nav.js';
+import { scrapMart } from './bi_scrapmart.js';
 import { propOf } from './propcap.js';
 import { outOfBounds } from './bounds.js';
 import { WIP_ON } from './modes.js';
@@ -302,6 +303,7 @@ function battleIsland() {
   wreck(B); // Return to Sender (shared/bi_wreck.js)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
   portJankton(B);
+  scrapMart(B); // Scrap Mart (shared/bi_scrapmart.js)
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
   horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
