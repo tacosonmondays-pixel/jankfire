@@ -66,6 +66,22 @@ def flat_paint(col, seed, amp=0.05, cells=(4, 2), lines=()):
     return d
 
 
+def clean_text(lines, bg, fg, border=None, scale=1, shadow=None):
+    """a crisp painted sign (the owner's clean look): flat colour, text rows centred, an optional border and a hard
+    drop shadow under the letters (no flaking, no noise)"""
+    def d(px):
+        h, w = px.shape[:2]
+        px[:] = hexrgb(bg)
+        if border is not None:
+            px[:2] = hexrgb(border); px[-2:] = hexrgb(border); px[:, :2] = hexrgb(border); px[:, -2:] = hexrgb(border)
+        lh = 8 * scale; y0 = (h - lh * len(lines)) // 2 + scale
+        for i, s in enumerate(lines):
+            tw = (len(s) * 6 - 1) * scale; x0 = max(0, (w - tw) // 2)
+            if shadow is not None: text_px(px, s, x0 + scale, y0 + i * lh + scale, scale, shadow)
+            text_px(px, s, x0, y0 + i * lh, scale, fg)
+    return d
+
+
 def run(px, x, L, col, k=0.35):  # one faint streak down from the top
     px[:L, x] = px[:L, x] * (1 - k) + hexrgb(col) * k
 
