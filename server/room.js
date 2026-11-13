@@ -198,6 +198,7 @@ if (process.env.JF_MECH_DROP) MECH.drop.delay = Number(process.env.JF_MECH_DROP)
 if (process.env.JF_MECH_WAIT) MECH.wait = MECH.idle = Number(process.env.JF_MECH_WAIT) || MECH.wait; // test knob: seconds an empty mech waits for you
 if (process.env.JF_VM_JAM != null) MECH.vending.jam.p = Number(process.env.JF_VM_JAM) || 0; // test knobs: the vending machine's jam chance (0..1)...
 if (process.env.JF_VM_STUCK != null) MECH.vending.stuck = Number(process.env.JF_VM_STUCK) || 0; // ...and its STUCK (x2) chance
+if (process.env.JF_VM_SLOW) { const k = Number(process.env.JF_VM_SLOW) || 1, V = MECH.vending; V.wall.life *= k; V.cola.life *= k; } // test knob: its walls and colas last k x longer (stills on a slow box)
 if (process.env.JF_MECH_HP) for (const f of FRAMES) BODY[f].hp = MECH[f].hp = Math.max(1, Math.round(MECH[f].hp * (Number(process.env.JF_MECH_HP) || 1))); // test knob: x the mechs' armour (0.2 = quick ejects)
 if (process.env.JF_MECH_ULT) for (const f of FRAMES) if (MECH[f].ult) { const k = Math.max(0.01, Number(process.env.JF_MECH_ULT) || 1); MECH[f].ult.time /= k; MECH[f].ult.dmg /= k; } // test knob: the heroes' ultimates charge x times faster (100 = full in about a second)
 if (process.env.JF_MECH_SLOW) MECH.wrecking.pile.slow = Math.max(1, Math.min(30, Number(process.env.JF_MECH_SLOW) || 1)); // test knob: the pile driver's server windows x this long (screenshots on slow software-GL browsers)
