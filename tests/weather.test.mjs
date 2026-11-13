@@ -165,3 +165,8 @@ test('star showers: Rooftop now and then, the Desert (going to dusk); the meteor
   }
   assert.deepEqual(wxMeteors(wxPlan('suburb', 1), 0), [], 'only in a star shower');
 });
+
+test('every map that had weather before snow/stars still has it (range kept its rain)', () => {
+  for (const m of ['suburb', 'warehouse', 'skyline', 'rooftop', 'range', 'platform', 'deadmall', 'jankburg', 'islands']) assert.ok(WX_MAPS[m], m);
+  assert.equal(WX_MAPS.range.k, 'rain');
+});

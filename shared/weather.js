@@ -21,7 +21,8 @@ export const WX_KINDS = {
 const RAIN = { k: 'rain', s: [0.6, 1], bolts: 3, dark: 1 };
 export const WX_MAPS = {
   suburb: { ...RAIN, alt: { k: 'snow', p: 0.3 } }, suburb_sd: { ...RAIN, alt: { k: 'snow', p: 0.3 } }, warehouse: RAIN, warehouse_sd: RAIN, skyline: RAIN, skyline_sd: RAIN,
-  rooftop: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, rooftop_sd: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, // (rain, or a star shower over the night city) range: { ...RAIN, s: [0.5, 0.85] },
+  rooftop: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, rooftop_sd: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, // (rain, or a star shower over the night city)
+  range: { ...RAIN, s: [0.5, 0.85] },
   platform: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, platform_sd: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, // storm at sea
   deadmall: { k: 'rain', s: [0.7, 1], bolts: 4, dark: 0.5 }, // all roof: you hear it and the windows flash
   jankburg: { ...RAIN, s: [0.5, 0.9] },
