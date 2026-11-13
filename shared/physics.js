@@ -95,8 +95,9 @@ export function playerOverlap(p, boxes) {
 }
 
 // Moves pos by vel*dt with collisions. Mutates pos & vel. Substeps so infinite speed doesn't tunnel.
-export function movePlayer(pos, vel, dt, allBoxes, canStep) {
-  const hw = PH.halfW, h = PH.height;
+// S: another body's size { hw, h, step } (a mech: shared/mech.js mechBody), else a player's
+export function movePlayer(pos, vel, dt, allBoxes, canStep, S = null) {
+  const hw = S ? S.hw : PH.halfW, h = S ? S.h : PH.height, stepUp = S ? S.step : PH.step;
   const m = hw + 0.7;
   const boxes = query(allBoxes, Math.min(pos[0], pos[0] + vel[0] * dt) - m, Math.min(pos[2], pos[2] + vel[2] * dt) - m,
     Math.max(pos[0], pos[0] + vel[0] * dt) + m, Math.max(pos[2], pos[2] + vel[2] * dt) + m, qMove);
@@ -114,16 +115,17 @@ export function movePlayer(pos, vel, dt, allBoxes, canStep) {
       for (const b of boxes) {
         if (!overlap(pos[0] - hw, pos[1], pos[2] - hw, pos[0] + hw, pos[1] + h, pos[2] + hw, b)) continue;
         if (T && soft(b, pos[1] + 0.3)) continue; // the heightfield is the ground here, not its steps
+        if (S && S.skip && S.skip(b, pos[1])) continue; // (a big body ploughs through what it says: a mech through fronds and lamps)
         if (ax === 1) {
           if (d < 0 && T && b.min[1] > pos[1] + 1.1) continue; // shaped ground walked you up under something (a tree's crown, an awning): that's over your head, not a landing. the sideways pass stops you there
           if (d < 0) { pos[1] = b.max[1]; res.ground = b; onBox = true; } else { pos[1] = b.min[1] - h - 1e-4; res.ceil = true; }
           vel[1] = 0;
         } else {
           const rise = b.max[1] - pos[1];
-          if ((canStep || res.ground) && rise > 0 && rise <= PH.step) {
+          if ((canStep || res.ground) && rise > 0 && rise <= stepUp) {
             const old = pos[1];
             pos[1] = b.max[1] + 1e-3;
-            if (!overlapAny(pos, boxes)) { res.ground = b; onBox = true; continue; }
+            if (!overlapAny(pos, boxes, S)) { res.ground = b; onBox = true; continue; }
             pos[1] = old;
           }
           pos[ax] = d > 0 ? b.min[ax] - hw - 1e-4 : b.max[ax] + hw + 1e-4;
@@ -140,9 +142,9 @@ export function movePlayer(pos, vel, dt, allBoxes, canStep) {
   return res;
 }
 
-function overlapAny(p, boxes) {
-  const hw = PH.halfW;
-  for (const b of boxes) if (!soft(b, p[1] + 0.3) && overlap(p[0] - hw, p[1], p[2] - hw, p[0] + hw, p[1] + PH.height, p[2] + hw, b)) return b;
+function overlapAny(p, boxes, S = null) {
+  const hw = S ? S.hw : PH.halfW, h = S ? S.h : PH.height;
+  for (const b of boxes) if (!soft(b, p[1] + 0.3) && !(S && S.skip && S.skip(b, p[1])) && overlap(p[0] - hw, p[1], p[2] - hw, p[0] + hw, p[1] + h, p[2] + hw, b)) return b;
   return null;
 }
 

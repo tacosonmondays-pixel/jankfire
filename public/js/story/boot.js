@@ -197,6 +197,7 @@ function thingMesh(look) { // a big red soup pot (things get real models with th
   const soup = new THREE.Mesh(new THREE.CircleGeometry(0.29, 14), new THREE.MeshStandardMaterial({ color: 0xd02a2a, roughness: 0.2 })); soup.rotation.x = -Math.PI / 2; soup.position.y = 0.4; g.add(soup);
   for (const sx of [-1, 1]) { const h = new THREE.Mesh(new THREE.TorusGeometry(0.07, 0.02, 6, 10), pot.material); h.position.set(sx * 0.34, 0.33, 0); h.rotation.y = Math.PI / 2; g.add(h); }
   const glow = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 24), new THREE.MeshBasicMaterial({ color: 0xffe14d, transparent: true, opacity: 0.6, side: THREE.DoubleSide })); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.03; g.add(glow); g.userData.glow = glow;
+  g.userData.lsStatic = true; // (it sits still: it doesn't make the sun's shadows redraw)
   return g;
 }
 // a marker (zone id, npc id or [x, y, z]) -> world point
@@ -294,8 +295,9 @@ function spotMesh(kind) {
   const g = new THREE.Group();
   const col = kind === 'pickup' ? 0xffe14d : kind === 'thing' ? 0x4fd8ff : 0xff4fd8;
   if (kind === 'pickup') { const b = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.4), new THREE.MeshStandardMaterial({ color: 0x8a6a3a, roughness: 0.7 })); b.position.y = 0.2; g.add(b); const lid = new THREE.Mesh(new THREE.BoxGeometry(0.54, 0.06, 0.44), new THREE.MeshStandardMaterial({ color: col })); lid.position.y = 0.43; g.add(lid); }
-  else { const o = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: col })); o.position.y = 1.1; g.add(o); g.userData.spin = o; }
+  else { const o = new THREE.Mesh(new THREE.OctahedronGeometry(0.22), new THREE.MeshBasicMaterial({ color: col })); o.position.y = 1.1; o.userData.noCast = true; g.add(o); g.userData.spin = o; } // (a glowing gem: no shadow to redraw as it spins)
   const glow = new THREE.Mesh(new THREE.RingGeometry(0.45, 0.6, 24), new THREE.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.6, side: THREE.DoubleSide })); glow.rotation.x = -Math.PI / 2; glow.position.y = 0.03; g.add(glow); g.userData.glow = glow;
+  g.userData.lsStatic = true; // (only the gem spins, and it casts no shadow)
   return g;
 }
 // R in the rehearsal: fake the tracked step's next goal (with the events a finished system would send)
