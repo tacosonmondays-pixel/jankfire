@@ -23,7 +23,7 @@ async function boot({ hd = false, size = [1280, 720], video = null } = {}) {
 // a mission at a step: everything before it done (act I in order)
 async function jump(ev, quest, step) {
   return ev(([quest, step]) => {
-    const ST = window.JF_STORY, S = ST.S, order = ['m01_return_to_sender', 'm02_sauce_run', 'm03_somethings_digesting', 'm04_clocking_in'];
+    const ST = window.JF_STORY, S = ST.S, order = ['m01_return_to_sender', 'm02_sauce_run', 'm03_somethings_digesting', 'm04_clocking_in', 'm05_second_stomach', 'm06_tickets_please'];
     for (const id of order) { if (id === quest) break; S.st.quests[id] = { step: '', n: [], t: 0, done: true }; }
     for (const id of Object.keys(S.st.quests)) if (!order.includes(id) || order.indexOf(id) > order.indexOf(quest)) delete S.st.quests[id];
     delete S.st.quests[quest];
