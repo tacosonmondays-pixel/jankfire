@@ -1,6 +1,6 @@
 # THE LORD OF ENTERTAINMENT (working id `jester_lord`)
 
-**Status: PROPOSAL.** Nothing here is in `shared/story/content/` yet. The owner's sketch is
+**Status: ACCEPTED (owner, 2026-11-13: "Default all").** The proposals below are canon now: THE HEADLINER, MADAME VELVET as his separate partner, a new district THE MIDWAY. He is met in Act II as a deal (like the Lady), and his boss fight comes later in the act pass. Nothing is in `shared/story/content/` yet. The owner's sketch is
 [`refs/jester_lord_owner_sketch.jpg`](refs/jester_lord_owner_sketch.jpg). It follows the rule in
 [CANON.md](../script/CANON.md) (The Lords): every lord oversees a district and an aspect of life. Everything marked
 *proposed* waits for the owner's word.
@@ -67,13 +67,12 @@ The game is cartoon jank and it's rated for playing with friends. The lust side 
 romance-comedy**, never explicit: flirting, perfume, heart eyes, a kissing booth that steals your coupons, a
 love-letter side quest, curtains that close at the right moment. Same rule as the gore, which the game keeps comic.
 
-## Open questions for the owner
+## The owner's answers (2026-11-13: "Default all")
 
-1. **Name:** THE HEADLINER, or something else?
-2. **The Lust:** a separate partner (MADAME VELVET), or should the spider body *be* the other half (two torsos, one
-   body)?
-3. **The district:** a new one (The Midway), or fold it into Pinstripe with the Don's jesters?
-4. **Which act** do we meet him in, and is he a fight or a deal, like the Lady?
+1. **Name:** THE HEADLINER.
+2. **The Lust:** a separate partner, MADAME VELVET.
+3. **The district:** new, THE MIDWAY. The Don's two jesters (Pip Grinsworth, Long Larry) are on loan from him, and Two Jesters is where you first hear of him.
+4. **Act:** met in Act II as a deal. The boss fight's act is placed when Acts III-V get their pass.
 
 ## Canon that would move if accepted
 

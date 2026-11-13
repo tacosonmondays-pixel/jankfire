@@ -1,6 +1,26 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.49', date: '2026-11-13', title: 'SCRAP MART', items: [
+    "battle island has a new spot: SCRAP MART. a candy-coloured mech hangar with the road running straight through it, a catwalk, a parts office, a yard crane, a car crusher and a test range. it's a hot drop. bring friends.",
+  ] },
+  { v: '11.48', date: '2026-11-13', title: 'SHIP HAPPENS', items: [
+    "battle island has a new spot: RETURN TO SENDER. a cargo ship ran aground on the beach and spilled its containers all over the sand. climb the crane, loot the wheelhouse, hide in the lifeboat. signed for by nobody.",
+  ] },
+  { v: '11.47', date: '2026-11-13', title: 'BOARD GAME NIGHT', items: [
+    "new party mode: BOARD GAME NIGHT. roll the foam die round the kitchen table, buy golden bread, bonk people into a minigame. most bread wins. (bots play too)",
+    "land on someone's space and it's a duel. the minigames are our own modes, shrunk: brawls, 2v2s, 3v1s, gun game and more. the corner store sells banana peels, wet floor signs and a shopping cart with no brakes.",
+    "play it from the PARTY tile with friends or bots. up to 4 at the table.",
+  ] },
+  { v: '11.46', date: '2026-11-13', title: 'COLD FRONT', items: [
+    "it snows in the scary forest now. sometimes in suburb too. it doesn't snow indoors, we checked.",
+    "the desert and the rooftop get star showers: meteors across the sky. the desert gets an early night for it. nobody asked.",
+    "mount kaboom: redder ash sky, glowing lava bombs with comet tails, no more black puddle in the shallows, and looking straight up into the rain no longer goes to warp speed.",
+  ] },
+  { v: '11.45', date: '2026-11-13', title: 'DEAD AIR', items: [
+    "deb's boombox works now. two stations, both terrible, both great: WZMB 66.6 SMOOTH APOCALYPSE and BRAAAINS FM. walk up to the desk in the zombies lobby to hear it. the dial drifts between them through static.",
+    "the school and hospital zombies maps finally have their pictures in the menu. the hospital is still serving number 003.",
+  ] },
   { v: '11.44', date: '2026-11-13', title: 'STAFF MEETING', items: [
     "deb, gus and marge in the zombies lobby are proper characters now. deb stamps your passive, gus spins the revolver, marge blows a gum bubble and ticks you off her clipboard. they look at you when you walk up. they are not happy about it.",
   ] },

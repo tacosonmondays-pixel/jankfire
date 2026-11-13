@@ -130,9 +130,12 @@ const OWNED = { 'm02_sauce_run.ambush': 'C', 'm04_clocking_in.fight': 'B', 'm06_
     else if (g.type === 'flag' && g.flag === 'flag.sim_won') {
       // the Machine's terminal (F) opens the sims; a headless test doesn't play a whole match: it comes back the way
       // story/main.js does after one (onMain), which is what wins the step
-      const T = await where('sims:suburb'); await standOff(T, 2.2); await walkTo(T, 1.6, 4000); await key('KeyF'); await sleep(2500);
+      const T = await where('sims:suburb'); await standOff(T, 2.2); await walkTo(T, 1.6, 4000); await key('KeyF'); await sleep(1500);
+      // F asks first now (ENTER THE SIM? GO / PICK A SIM / nah): PICK A SIM is the menu, the way this test always came back
+      const asked = await ev(() => !!document.querySelector('#stSimAsk:not(.hidden)'));
+      if (asked) { await pg.click('#stSimAsk [data-sim="pick"]'); await sleep(2500); }
       const menu = await ev(() => !document.getElementById('menu').classList.contains('hidden'));
-      note = menu ? 'F at the Machine opened the sims menu; came back via onMain (no match played headless)' : 'F at the Machine did NOT open the menu';
+      note = menu ? `F at the Machine${asked ? ' asked, PICK A SIM' : ''} opened the sims menu; came back via onMain (no match played headless)` : `F at the Machine did NOT open the menu${asked ? ' (it asked, PICK A SIM did nothing)' : ' (no ENTER THE SIM? panel either)'}`;
       await ev(async () => { const { G } = await import('/js/ctx.js'); sessionStorage.setItem('jfStoryBack', JSON.stringify({ slot: G.story.cur.slot, state: 'sim' })); G.story.onMain(); });
       await sleep(9000); await pg.mouse.click(320, 180);
       if (!menu) how = 'BLOCKED';

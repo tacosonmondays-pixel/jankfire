@@ -178,12 +178,12 @@ def _place_part(P, name, pivot):
 
 def radio(M):
     """a battered boombox: two speakers, a tape deck, a carry handle, the antenna (it plays the warehouse radio)"""
-    ox = LAYOUT['desk'] - 1.0; z = -0.3; y = TOP + 0.01; P = []
+    ox = LAYOUT['desk'] - 1.0; z = -0.3; y = TOP + 0.01; P = []  # (its speakers face +z: the customer's side, which the game turns to the room)
     P.append(box((0.5, 0.28, 0.16), (ox, y + 0.14, z), M['red'], bev=0.03, name='boombox'))
     for dx in (-0.15, 0.15):
-        P.append(cyl(0.085, 0.03, (ox + dx, y + 0.13, z - 0.075), M['black'], axis='z', seg=14, name='speaker'))
-        P.append(cyl(0.035, 0.03, (ox + dx, y + 0.13, z - 0.085), M['chrome'], axis='z', seg=10, name='cone'))
-    P.append(box((0.14, 0.09, 0.03), (ox, y + 0.15, z - 0.07), M['black'], name='tapedeck'))
+        P.append(cyl(0.085, 0.03, (ox + dx, y + 0.13, z + 0.075), M['black'], axis='z', seg=14, name='speaker'))
+        P.append(cyl(0.035, 0.03, (ox + dx, y + 0.13, z + 0.085), M['chrome'], axis='z', seg=10, name='cone'))
+    P.append(box((0.14, 0.09, 0.03), (ox, y + 0.15, z + 0.07), M['black'], name='tapedeck'))
     P.append(box((0.3, 0.03, 0.03), (ox, y + 0.33, z), M['chrome'], name='handle'))
     for dx in (-0.14, 0.14): P.append(box((0.03, 0.06, 0.036), (ox + dx, y + 0.3, z), M['chrome'], name='handle_post'))
     P.append(rod((ox + 0.22, y + 0.26, z + 0.04), (ox + 0.34, y + 0.62, z + 0.08), 0.006, M['chrome'], seg=4, name='antenna'))
@@ -309,10 +309,10 @@ def build():
     if '--qa-parts' in ARGV: qa(QP); sys.exit(0)
     if '--qa' in ARGV: qa(nodes + [st, rd])
     dk = nodes[0]
-    for c in (st, rd):  # the stamp and the radio ride on the desk (the game moves the desk)
-        mw = c.matrix_world.copy(); c.parent = dk; c.matrix_world = mw
     root = finish('x_lobby_whprops', nodes, {'kind': 'lobby', 'id': 'whprops', 'nodes': [n.name for n in nodes], 'stamp': 'stamp', 'radio': 'radio'})
-    for c in (st, rd): c.parent = dk; c.matrix_parent_inverse = dk.matrix_world.inverted()
+    bpy.context.view_layer.update()  # (fresh world matrices first: the parts' pivots were just moved)
+    for c in (st, rd):  # the stamp and the radio ride on the desk (the game moves the desk): a plain desk-local offset
+        mw = c.matrix_world.copy(); c.parent = dk; c.matrix_parent_inverse.identity(); c.location = (dk.matrix_world.inverted() @ mw).to_translation()
     return root
 
 
