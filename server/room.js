@@ -68,6 +68,7 @@ import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
+import { installPregame } from './pregame.js'; // the pre-game deck off the map's edge, while a mode lobby counts down
 import { inPit, pitUnder, sink, swim, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
@@ -4061,6 +4062,7 @@ installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installWeather(Room, { now, send, force: WX_FORCE }); // the weather timeline (server/weather.js: wraps tick + addHuman)
 installPings(Room, { now, send }); // the big map's pings (server/pings.js)
+installPregame(Room, { send }); // the pre-game deck (after installReset: it wraps handle, the damage paths and the lobby)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats

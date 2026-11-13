@@ -1,0 +1,69 @@
+// node --test tests/pregame.test.mjs : the pre-game deck (shared/pregame.js) on every map a mode lobby can pick:
+// past the play area's edge, nothing of the map in its way, every spawn lands on the deck (real physics), off the deck
+// is caught, the board ranks the best of whoever's there, and the weekly look rotation stays in range
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import '../shared/royale.js';
+import '../shared/zombies.js';
+import { MAPS, MAP_ORDER } from '../shared/map.js';
+import { mapsFor } from '../shared/modes.js';
+import { padFor, offPad, boardRows, lookFor, LOOKS, PREGAME } from '../shared/pregame.js';
+import { movePlayer } from '../shared/physics.js';
+
+const ids = [...new Set(['bomb', 'br', 'zm'].flatMap((g) => mapsFor(g, MAPS, MAP_ORDER)))];
+test('the deck sits clear of every lobby map and holds its spawns', () => {
+  assert.ok(ids.length >= 8, 'lobby maps: ' + ids.join(','));
+  for (const id of ids) {
+    const m = MAPS[id], pad = padFor(m);
+    assert.equal(padFor(m), pad, id + ': cached');
+    const edge = m.bounds ? m.bounds[3] : Math.max(...m.boxes.filter((b) => b.max[2] - b.min[2] < 400 && b.max[0] - b.min[0] < 400).map((b) => b.max[2]));
+    assert.ok(pad.lo[2] >= edge + PREGAME.gap - 0.5, `${id}: past the edge (${pad.lo[2]} vs ${edge})`);
+    assert.ok(pad.c[1] > m.killY + 20, id + ': well above killY');
+    const all = m.boxes.concat(pad.boxes); all.terrain = m.boxes.terrain;
+    for (const s of pad.spawns) {
+      assert.ok(!offPad(pad, s), id + ': spawn on the deck');
+      const p = [s[0], s[1] + 0.5, s[2]], v = [0, 0, 0];
+      for (let i = 0; i < 120; i++) { v[1] -= 20 / 60; movePlayer(p, v, 1 / 60, all, true); }
+      assert.ok(Math.abs(p[1] - s[1]) < 0.05, `${id}: spawn ${s.map(Math.round)} settles on the floor (${p[1].toFixed(2)})`);
+    }
+    assert.ok(offPad(pad, [pad.c[0], pad.c[1] - 10, pad.c[2]]) && offPad(pad, [pad.c[0] + 40, pad.c[1], pad.c[2]]) && offPad(pad, [pad.c[0], m.killY - 5, pad.c[2]]), id + ': off the deck is caught');
+  }
+});
+test('the board: ranked first, then unranked people, bots last; junk ignored', () => {
+  const ps = [
+    { id: 1, name: 'guest', level: 9 },
+    { id: 2, name: 'ace', acct: {}, inv: { ms: { bomb: { rw: 40 }, zm: { round: 12 } } }, level: 5 },
+    { id: 3, name: 'mid', acct: {}, inv: { ms: { bomb: { rw: 10 } } }, msd: { bomb: { rw: 35 } }, level: 2 },
+    { id: 4, name: 'Bot [bot]', isBot: true, level: 50, inv: { ms: { bomb: { rw: 999 } } } },
+    { id: 6, name: 'hax', acct: {}, inv: { ms: { bomb: { rw: 'lots' }, zm: { round: Infinity } } }, level: 1 },
+    { id: 7, name: 'zmguy', acct: {}, inv: { ms: { zm: { round: 8 } } }, msd: { zm: { round: 15 } }, level: 1 },
+  ];
+  assert.deepEqual(boardRows('bomb', ps).map((r) => [r.name, r.v]), [['mid', 45], ['ace', 40], ['guest', null]]);
+  assert.deepEqual(boardRows('zm', ps).map((r) => [r.name, r.v]), [['zmguy', 15], ['ace', 12], ['guest', null]]); // (highest round: the best, not a sum)
+  assert.deepEqual(boardRows('br', [ps[3], ps[0]]).map((r) => r.name), ['guest', 'Bot [bot]']);
+  assert.deepEqual(boardRows('__proto__', ps).map((r) => r.v), [null, null, null]);
+});
+test('the look of the week is always a real look', () => {
+  for (let d = 0; d < 400; d += 3) assert.ok(LOOKS.some((l) => l.id === lookFor(Date.UTC(2026, 0, 1) + d * 864e5)));
+});
+test('the board keeps what got saved mid-session (the live store hands out fresh rows; the file store shares one)', async () => {
+  const { installModeStats } = await import('../server/modestats.js');
+  const { mergeModes } = await import('../shared/modestats.js');
+  class R { kill() {} damage() {} endRound() {} remove() {} zmGive() {} broadcast() {} }
+  const saved = { inv: { ms: { bomb: { rw: 5 } } } }; // the store's own copy of the account
+  let fresh = true; // fresh rows (Supabase): the store never touches p.inv. a file store: p.inv IS the saved object
+  const { flush } = installModeStats(R, { store: { addModeStats: async (n, d) => { mergeModes(saved.inv, d); } } });
+  const mk = (inv) => ({ id: 1, name: 'ace', acct: { n: 'ace', d: {} }, inv, msd: { bomb: { rw: 3, plants: 1 }, zm: { round: 4 } } });
+  // live: the match that just ended counts on the board straight away
+  let p = mk({ ms: { bomb: { rw: 5 }, zm: { round: 9 } } });
+  flush(p);
+  assert.equal(boardRows('bomb', [p])[0].v, 8, 'rounds won: 5 saved + 3 this match');
+  assert.equal(boardRows('zm', [p])[0].v, 9, 'highest round: the best, not a sum');
+  assert.equal(p.msd, null);
+  // file store: the join-time inv is the stored object; the flush must not count the match twice
+  fresh = false; saved.inv = { ms: { bomb: { rw: 5 } } }; p = mk(saved.inv);
+  flush(p); await new Promise((r) => setTimeout(r, 5));
+  assert.equal(saved.inv.ms.bomb.rw, 8, 'saved once');
+  assert.equal(boardRows('bomb', [p])[0].v, 8, 'and the board agrees (not 11)');
+  void fresh;
+});

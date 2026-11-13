@@ -8,6 +8,7 @@ import { MAPS } from '/shared/map.js';
 import { modeThumb, modeColors } from './modeart.js';
 import { organic } from './organic.js';
 import { K } from './keys.js';
+import { pregameSync } from './pregame.js';
 import { synth } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
@@ -93,6 +94,7 @@ let L = null, gotAt = 0, myId = 0, lastSec = -1;
 export function lobbyMe(id) { myId = id; }
 // from the welcome, the 'lobby' message and every snapshot's round info (r.warm). null / end: the lobby's over
 export function lobbyInfo(info) {
+  pregameSync(info); // the pre-game deck (pregame.js)
   if (!info || info.end) { if (L) { L = null; $('lobbyBox').classList.add('hidden'); } return; }
   const fresh = !L;
   L = info; gotAt = performance.now();
@@ -100,7 +102,7 @@ export function lobbyInfo(info) {
   render();
 }
 export const lobbyOn = () => !!L;
-export function lobbyLeave() { L = null; $('lobbyBox').classList.add('hidden'); }
+export function lobbyLeave() { pregameSync(null); L = null; $('lobbyBox').classList.add('hidden'); }
 function toggleReady() { if (L) opts.send({ t: 'ready', on: !L.ready.includes(myId) }); }
 // the ready key (bindable): true = it was ours
 export function lobbyKey(e) {
@@ -120,7 +122,7 @@ function render() {
   $('lobbyBox').classList.toggle('hurry', s <= 5 && L.n >= L.min);
   const mine = L.ready.includes(myId);
   $('lbInfo').textContent = L.n < L.min ? `waiting for players (${L.n}/${L.min}). the countdown starts over till then`
-    : `${L.ready.length}/${L.n} ready${L.ready.length === L.n && L.n ? '. here we go' : '. everyone ready = 5 seconds'} · warm-up: nothing counts`;
+    : `${L.ready.length}/${L.n} ready${L.ready.length === L.n && L.n ? '. here we go' : '. everyone ready = 5 seconds'} · pre-game: nothing hurts. fire = shove`;
   const rb = $('lbReady');
   rb.classList.toggle('on', mine);
   rb.querySelector('span').textContent = mine ? 'READY!' : 'READY UP';
