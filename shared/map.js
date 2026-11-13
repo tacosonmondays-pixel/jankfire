@@ -1143,6 +1143,16 @@ function penthouse(B, D, cx, cz, y, o = {}) {
   S.B(8.8, 9.4, -6.8, 0.15, 3, 0.15, 'metal'); Sd(8.88, 10.3, -7.1, 10.2, 10.75, -6.5, 'hazard'); // the windsock (sticks out over the edge)
 }
 
+// the pool deck's set (loungers, cabanas, the DJ and the speakers, the light rig, floats, the pool's coping, planters,
+// string lights) as one Blender model for the map (archfield.js): every box from B[n0] / D[d0] on is tagged, except the
+// water (liquids.js draws it), the decking, the DJ's picture and the palms (they're props already). look only
+function poolDeckArch(B, D, n0, d0, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0 });
+  const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (let i = n0; i < B.boxes.length; i++) if (!B.boxes[i].pv) Object.assign(B.boxes[i], tag);
+  for (let i = d0; i < D.boxes.length; i++) { const b = D.boxes[i]; if (b.mat !== 'water' && !b.fit && !b.pv && !(b.mat === 'wood' && b.max[1] - b.min[1] < 0.05)) Object.assign(b, tag); }
+}
+
 // ------------------------------------------------------------ ROOFTOP: the roof party. three tops over the night city:
 // west, the Jank Bank; east, the Hotel 4 Hours (a team's roof each: a lift's machine room stands between each spawn and
 // the drop, so nobody sees the other side's spawn); between them and 4 m lower, the party block: the glass penthouse
@@ -1203,6 +1213,7 @@ function rooftop() {
   add(-20.5, L0, -11.5, -15.5, L0 + 2.6, -8.5, 'metal'); D.add(-20.5, L0 + 2.6, -11.5, -15.5, L0 + 2.65, -8.5, 'white'); // the cold store
   cratePile(B, 12, -24.5, 3, r); B.box(8, L0 + 0.6, -20, 1.2, 1.2, 1.2, 'crate');
   // ---- the pool deck (z [6, 28]): a pool to wade, loungers, four cabanas, the DJ, palms, party lights
+  const pd0 = B.boxes.length, pdd0 = D.boxes.length;
   add(-7, L0 - 0.5, 13, 7, L0 - 0.45, 21, 'tile'); D.add(-7, L0 - 0.45, 13, 7, L0 - 0.12, 21, 'water');
   for (const [x0, z0, x1, z1] of [[-21.8, 6.3, 21.8, 12.4], [-21.8, 21.6, 21.8, 27.8], [-21.8, 12.4, -7.6, 21.6], [7.6, 12.4, 21.8, 21.6]]) D.add(x0, L0, z0, x1, L0 + 0.02, z1, 'wood'); // the decking
   for (const [cx, cz, sx, sz] of [[-3, 17.3, 1.4, 0.35], [-3, 18.7, 1.4, 0.35], [-3.55, 18, 0.35, 1.05], [-2.45, 18, 0.35, 1.05]]) Dw.B(cx, L0 - 0.1, cz, sx, 0.25, sz, 'toyyellow'); // a rubber ring
@@ -1223,6 +1234,7 @@ function rooftop() {
   for (const [x, z] of [[-20, 26], [20, 26], [-20, 7.5], [20, 7.5]]) { add(x - 1, L0, z - 1, x + 1, L0 + 0.8, z + 1, 'stone'); palm(B.local(x, z, 0, L0 + 0.8), 0, 0, 5, r); }
   for (const [ax, bx, z] of [[-14, 14, 11.6], [-14, 14, 22.4]]) for (let x = ax; x <= bx; x += 1.4) D.box(x, L0 + 3.2 - 0.4 * Math.sin(((x - ax) / (bx - ax)) * Math.PI), z, 0.22, 0.28, 0.22, pick(['neonpink', 'neonyellow', 'neoncyan', 'lamp'])); // strings of party lights
   for (const x of [-14, 14]) for (const z of [11.6, 22.4]) B.box(x, L0 + 1.7, z, 0.12, 3.4, 0.12, 'metal');
+  poolDeckArch(B, D, pd0, pdd0, 'pooldeck'); // (drawn as one Blender model: tools/blender/arch/make_pooldeck.py)
   // ---- jump pads: tower -> the penthouse roof, the deck and the north end -> back up the towers
   for (const s of [-1, 1]) {
     add(s * 33.5 - 1.25, 0, 5.75, s * 33.5 + 1.25, 0.15, 8.25, 'pad', { pad: [-s * 22, 21, -6] }); // onto the helipad
@@ -1292,6 +1304,7 @@ function rooftopSD() {
   // ---- the party block: the penthouse (no door upstairs, its north wall solid: the spawns stay out of each other's
   // sight), the pool deck south of it, the cold store and AC north of it
   penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, arch: 'penthouse_sd' });
+  const pd0 = B.boxes.length, pdd0 = D.boxes.length;
   add(-7, L0 - 0.5, 0, 7, L0 - 0.45, 8, 'tile'); D.add(-7, L0 - 0.45, 0, 7, L0 - 0.12, 8, 'water');
   add(-7.6, L0, -0.6, 7.6, L0 + 0.1, 0, 'tile'); add(-7.6, L0, 8, 7.6, L0 + 0.1, 8.6, 'tile'); add(-7.6, L0, 0, -7, L0 + 0.1, 8, 'tile'); add(7, L0, 0, 7.6, L0 + 0.1, 8, 'tile');
   for (const [x0, z0, x1, z1] of [[-21.8, -5.7, 21.8, -0.6], [-21.8, 8.6, 21.8, 13.8], [-21.8, -0.6, -7.6, 8.6], [7.6, -0.6, 21.8, 8.6]]) D.add(x0, L0, z0, x1, L0 + 0.02, z1, 'wood');
@@ -1308,6 +1321,7 @@ function rooftopSD() {
   for (const x of [-4, 4]) { add(x - 0.6, L0, 12.3, x + 0.6, L0 + 2.2, 13.5, 'tire'); D.add(x - 0.4, L0 + 1.2, 12.26, x + 0.4, L0 + 2.0, 12.3, 'grid'); }
   for (const z of [-2.5, 9]) { for (let x = -12; x <= 12; x += 1.4) D.box(x, L0 + 3.2 - 0.4 * Math.sin(((x + 12) / 24) * Math.PI), z, 0.22, 0.28, 0.22, pick(['neonpink', 'neonyellow', 'neoncyan', 'lamp'])); for (const x of [-12.2, 12.2]) B.box(x, L0 + 1.7, z, 0.12, 3.4, 0.12, 'metal'); }
   for (const s of [-1, 1]) { add(s * 21, L0, 11.2, s * 19, L0 + 0.8, 13.2, 'stone'); palm(B.local(s * 20, 12.2, 0, L0 + 0.8), 0, 0, 5, r); }
+  poolDeckArch(B, D, pd0, pdd0, 'pooldeck_sd'); // (drawn as one Blender model: tools/blender/arch/make_pooldeck.py)
   add(-20.5, L0, -33.2, -15.5, L0 + 2.6, -30.2, 'metal'); D.add(-20.5, L0 + 2.6, -33.2, -15.5, L0 + 2.65, -30.2, 'white'); // the cold store
   for (const x of [15, 18]) acUnit(W, x, -33, L0); B.box(-6, L0 + 0.6, -27, 1.2, 1.2, 1.2, 'crate'); B.box(6, L0 + 0.6, -27, 1.2, 1.2, 1.2, 'crate'); cratePile(B, -4, -32.5, 3, r);
   // ---- B, the bank's roof: its machine room in the middle (cover), the JANK BANK sign, the AC farm, a water tower
