@@ -23,7 +23,7 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
     localStorage.setItem('jf_giftseen_all', '1'); localStorage.setItem('jankfire', JSON.stringify({ name: 'ctrlw', jank: 0 }));
     localStorage.removeItem('jfStorySaves'); localStorage.removeItem('jfCtrlTip');
   });
-  await pg.goto(`http://localhost:${PORT}/?story=1&storytest=1`); await sleep(2000);
+  await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(2000);
   await pg.click('#storyBtn', { force: true }); await sleep(700);
   await pg.click('#storyPick .st-btn.yellow', { force: true }); await sleep(8000);
   await skipIntro(pg);

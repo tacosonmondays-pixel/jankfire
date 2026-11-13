@@ -35,7 +35,7 @@ const SPEED = 12, SEG = 1.5, R = ARENA.boreR, CY = ARENA.cy; // m/s the tunnel g
 const fin = Number.isFinite, clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const v3 = (a) => Array.isArray(a) && a.length === 3 && a.every(fin);
 const BORE = { R, cy: CY }; // what the arms are kept inside (armgrip.js)
-const TRAINQ = /[?&]train=1\b/.test(location.search); // ?story=1&storytest=1&train=1: straight onto the train, the fight starts by itself
+const TRAINQ = ['train', 'storytest', 'storydev'].every((k) => new RegExp(`[?&]${k}=1\\b`).test(location.search)); // ?story=1&storydev=1&storytest=1&train=1 (tests): straight onto the train, the fight starts by itself. (not without storydev: story/main.js)
 const std = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: 0.85, ...o });
 
 function css() {
