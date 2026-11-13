@@ -357,14 +357,14 @@ export function installTrolley(Room, U) {
       if (T.aisle && T.held.length >= TR.aisle.max) this.trDump(b, 'full');
       if (!(M.dash && n < M.dash.until)) {
         // drift into the fight: swing out round them in an arc to build the charge, then push at them
-        if (t && !T.aisle && n >= D.nextDrift && flat > 10 && flat < 40 && hs > TR.drift.min + 1 && chargeOf(T, n) < 0.9 && Math.random() < dt * 1.2 * easy) { D.driftUntil = n + 1500 + Math.random() * 500; D.driftSide = Math.random() < 0.5 ? 1 : -1; D.nextDrift = n + 5000; }
+        if (t && !T.aisle && n >= D.nextDrift && flat > 9 && flat < 45 && hs > TR.drift.min + 1 && chargeOf(T, n) < 0.9 && Math.random() < dt * 3 * easy) { D.driftUntil = n + 1500 + Math.random() * 500; D.driftSide = Math.random() < 0.5 ? 1 : -1; D.nextDrift = n + 3500; }
         if (n < D.driftUntil) {
           drifting = true;
           const a = 0.9 * D.driftSide, c = Math.cos(a), s = Math.sin(a); // (aim the wish off to the side: it slides round)
           [wx, wz] = [wx * c - wz * s, wx * s + wz * c];
           if (hs >= TR.drift.min) { T.ch = Math.min(1, chargeOf(T, n) + dt / TR.drift.build); T.chT = n; } // (the same rule as a player's: only at speed)
         }
-        if (t && vis && n >= (M.cd.push || 0) && flat < 11 && ahead > 0.75 && (chargeOf(T, n) > 0.6 || flat < 5 || Math.random() < dt * 0.4)) {
+        if (t && vis && n >= (M.cd.push || 0) && flat < 11 && ahead > 0.75 && (chargeOf(T, n) > 0.6 || flat < 4.5 || Math.random() < dt * 0.15)) {
           const h = this.trPushGo(b, n);
           if (h) { D.driftUntil = 0; const f = fwdOf(b); v[0] = f[0] * h.v; v[2] = f[1] * h.v; }
         }
