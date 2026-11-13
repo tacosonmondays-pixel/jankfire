@@ -47,6 +47,18 @@ NOCAST.update({'pd_lane', 'pd_towel', 'pd_towel2', 'pd_brass', 'pd_curtain', 'pd
 E = 0.002
 
 
+def merge_mats(K, m):
+    """fewer draw calls (one per material in the game): small parts take a bigger part's material"""
+    for (mat, node) in list(K.geo):
+        if mat not in m: continue
+        src = K.geo.pop((mat, node)); dst = K._bucket(m[mat], node); b = len(dst['v'])
+        dst['v'] += src['v']; dst['uv'] += src['uv']; dst['f'] += [tuple(i + b for i in f) for f in src['f']]
+MERGE = {'pd_beak': 'pd_ring', 'pd_brass': 'pd_ring', 'pd_black': 'pd_case', 'pd_rubber': 'pd_case', 'pd_vinyl': 'pd_case', 'pd_cone': 'pd_case', 'pd_wire': 'pd_case',
+         'pd_soil': 'pd_case', 'pd_grille': 'pd_deck', 'pd_lane': 'pd_deck', 'pd_label': 'pd_stripe', 'pd_tilerim': 'pd_stripe', 'pd_ring2': 'pd_flamingo',
+         'pd_c_toypink': 'pd_flamingo', 'pd_towel2': 'pd_c_toyteal', 'pd_towel': 'pd_canvas', 'pd_curtain': 'pd_canvas', 'pd_c_white': 'pd_canvas',
+         'pd_platter': 'pd_alu', 'pd_planter': 'pd_coping', 'pd_badge': 'pd_neonyellow', 'pd_fader': 'pd_neongreen', 'pd_screen': 'pd_neoncyan', 'pd_c_toyyellow': 'pd_ring'}
+
+
 def bx(K, mn, mx, mat, **kw):
     K.box(tuple(mn), tuple(mx), mat if isinstance(mat, dict) else {'all': mat}, cull=False, **kw)
 
@@ -316,6 +328,7 @@ def build(kind):
     floats(K, deco)
     for b in bs:  # anything left would be drawn plain: there shouldn't be any
         if not b.get('_done') and b['mat'] not in ('tile', 'white', 'toypink', 'toyteal', 'toyyellow', 'wood', 'cloth', 'tire', 'metal', 'stone'): print('left:', b)
+    merge_mats(K, MERGE)
     K.finish(os.path.join(OUTDIR, kind + '.glb'))
 
 
