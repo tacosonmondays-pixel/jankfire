@@ -60,6 +60,7 @@ test('every look has its Blender deck, built on the same boxes, podiums and scre
     for (const n of ['screen', ...meta.fans, ...meta.balloons]) assert.ok(names.has(n), 'node ' + n);
     assert.ok(json.materials.length <= 16, 'draw calls: ' + json.materials.length + ' materials');
   }
+});
 test('the board keeps what got saved mid-session (the live store hands out fresh rows; the file store shares one)', async () => {
   const { installModeStats } = await import('../server/modestats.js');
   const { mergeModes } = await import('../shared/modestats.js');
