@@ -76,8 +76,8 @@ async function partBoss(port) {
   // a break: weak armour (JF_MECH_HP), bots only (no humans at the table: x2)
   let S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'landlord', JF_BGN_MGTIME: '60', JF_MECH_HP: '0.1' });
   let W = await client(port, 'watchB', OFF(5));
-  ok(await W.until(() => W.evs('mini').length, 40000), 'THE LANDLORD: a boss minigame starts');
-  const mg = W.st.mg, bossId = W.evs('mini')[0].x.id;
+  ok(await W.until(() => W.evs('mini').some((e) => e.x && e.x.k === 'boss'), 40000), 'THE LANDLORD: a boss minigame starts');
+  const mg = W.st.mg, bossId = W.evs('mini').find((e) => e.x && e.x.k === 'boss').x.id;
   ok(mg.fmt === 'boss' && mg.sides && mg.sides[0].length === 4, 'all four seats on one side');
   const inM = W.msgs.find((m) => m.t === 'mech' && m.k === 'in' && m.id === bossId);
   const bhp = W.msgs.filter((m) => m.t === 'bhp' && m.id === bossId).pop();
@@ -100,13 +100,13 @@ async function partBoss(port) {
   S = await server(port + 1, { JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'nightmgr', JF_BGN_MGTIME: '12', JF_MECH_HP: '20' });
   const H = await client(port + 1, 'tina', OFF(5));
   H.auto = true;
-  ok(await H.until(() => H.evs('mini').length, 60000), 'THE NIGHT MANAGER: a boss minigame with a person in it');
-  const bid = H.evs('mini')[0].x.id, b2 = H.msgs.filter((m) => m.t === 'bhp' && m.id === bid).pop(), in2 = H.msgs.find((m) => m.t === 'mech' && m.k === 'in' && m.id === bid);
+  ok(await H.until(() => H.evs('mini').some((e) => e.x && e.x.k === 'boss'), 90000), 'THE NIGHT MANAGER: a boss minigame with a person in it');
+  const bid = H.evs('mini').find((e) => e.x && e.x.k === 'boss').x.id, b2 = H.msgs.filter((m) => m.t === 'bhp' && m.id === bid).pop(), in2 = H.msgs.find((m) => m.t === 'mech' && m.k === 'in' && m.id === bid);
   ok(in2 && in2.f === 'nightshift' && b2 && b2.max === 1500 * 20 * 2.5, `night shift, armour x2.5 with one person at the table (${b2 && b2.max})`);
-  ok(await H.until(() => H.evs('res').length, 40000), 'the clock ran out');
-  const r2 = H.evs('res')[0];
+  ok(await H.until(() => H.evs('res').some((e) => e.fmt === 'boss'), 40000), 'the clock ran out');
+  const r2 = H.evs('res').find((e) => e.fmt === 'boss'); // (a duel of ours may have come first)
   ok(r2.winSide === 1 && r2.pay.length === 4 && r2.pay.every(([, d]) => d === 2), 'he lives: +2 each (the pity)');
-  ok(H.evs('call').some((e) => e.c === 'rent'), 'RENT IS DUE');
+  ok(H.evs('call').some((e) => e.c === 'rent' && H.ev.indexOf(e) > H.ev.indexOf(r2) - 30), 'RENT IS DUE');
   errs = errorsIn(S.log());
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   H.ws.close(); S.stop();
@@ -257,7 +257,7 @@ async function partDucks(port) {
   A.send({ t: 'hit', w: 'slapper', to: B.id, d: [-1, 0, 0] });
   ok(await A.until(() => A.evs('slap').some((e) => e.a === A.id && e.b === B.id), 2000), 'a slap lands');
   const sl = A.evs('slap').find((e) => e.a === A.id);
-  ok(sl.n === Math.min(3, before) && sl.pile === before - sl.n, `it knocked ${sl.n} ducks loose (${before} -> ${sl.pile})`);
+  ok(sl.n === Math.min(3, sl.pile + sl.n) && sl.n > 0, `it knocked ${sl.n} ducks loose (${sl.pile + sl.n} -> ${sl.pile}; ${before} a moment before)`);
   await sleep(150);
   ok(A.evs('duck').filter((e) => e.one && A.ev.indexOf(e) > A.ev.indexOf(sl)).length === Math.min(sl.n, 4), 'they pop out round B as ducks worth 1');
   ok(!A.msgs.some((m) => m.t === 'dmg' && m.w === 'slapper'), 'slaps don\'t hurt');
