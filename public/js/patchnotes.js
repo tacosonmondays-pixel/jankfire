@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.16', date: '2026-11-13', title: 'FOUNTAINS WORK NOW', items: [
+    "fountains finally work. the smiling fountain's spit actually splashes now, its basin ripples, and the bazaar's fountains remembered they're fountains. the school's drinking fountain still never turns off.",
+    "PATH-TRACED PHOTO: shiny props keep their colour now. the news heli is pink again, not a black hole.",
+  ] },
   { v: '11.15', date: '2026-11-13', title: 'SAY CHEESE', items: [
     "PATH-TRACED PHOTO: real ray tracing for screenshots. settings > video > shaders, or type /photo in chat. it's slow, it's real, save it and frame it.",
   ] },
