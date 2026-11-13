@@ -13,7 +13,7 @@
 import os, sys, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import flair as FL
-from archkit import Kit, OUTDIR, MATS, NOCAST, KIT
+from archkit import Kit, OUTDIR, MATS, NOCAST
 from mathutils import Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
@@ -29,7 +29,6 @@ MATS.update({
     'ph_neon': ('trim', '#ff7ae0', {'glow': True, 'glowcol': '#ff4fd8'}), 'ph_lamp': ('stucco', '#fff6e8', {'glow': True, 'glowcol': '#fff0d8'}),
     'ph_padlamp': ('trim', '#7dff4f', {'glow': True, 'glowcol': '#39ff14'}), 'ph_sockr': ('trim', '#ff5a1a', {}), 'ph_sockw': ('trim', '#ffffff', {}),
 })
-KIT['ph_glass'] = {'tile': 4.0, 'px': 128}  # its own texture (ph_tex.py), next to the kit's
 NOCAST.update({'ph_chrome', 'ph_frost', 'ph_neon', 'ph_lamp', 'ph_padlamp', 'ph_padline', 'ph_padh', 'ph_sockr', 'ph_sockw', 'ph_tread'})
 X1, Z1, T = 10.15, 8.15, 0.3  # outer faces, wall thickness
 FLOORS = ((0.0, 3.75), (4.0, 7.6))  # the two storeys' walls

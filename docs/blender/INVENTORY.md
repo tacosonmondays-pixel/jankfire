@@ -142,7 +142,7 @@ gameplay lanes are changing bodies right now (dismemberment, body sliders), so c
 | shield bubble, black hole, medkit pickups | `main.js`:1453, `models.js`:1924, `econ3d.js`:306 | their `x_*.glb` exist but only draw the icons |
 | royale supply crates, umbrella, loot (can, plate, vest, fridge, ammo bucket) | `royale.js`:177-225, 789 | |
 | P&D bomb, Tags-mode tags | `objective.js`:48 / 63 | |
-| zombies: power-up drops, mystery crate, power switch, cola machine, lamps, perk pictures | `zmextra.js`:161, `zombies.js`:159-205, `zmloadout.js`:83 | boards and the Cheat Machine are Blender already |
+| zombies: power-up drops, lamps, perk pictures | `zmextra.js`:161, `zombies.js`, `zmloadout.js`:83 | boards, the Cheat Machine, the colas, the Voider, the mystery crate (`p_zmcrate`) and the power switch (`x_zmpower`) are Blender already |
 | jail cage, shredder pit drums, spray range wall | `secondaries.js`:112, `shredpit.js`:27, `sprayrange.js`:30 | |
 | OVERDUE props with no model yet (13) | `city/propcode.js` | vendo, punch clock, till, gun rack, dentist chair... |
 

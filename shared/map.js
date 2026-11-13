@@ -535,13 +535,16 @@ function crate() {
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
   D.add(-420, 300, -420, 420, 304, 420, 'plaster'); D.add(-50, 290, -50, 50, 300, 50, 'lamp'); D.add(-2, 296, -2, 2, 300, 2, 'chrome');
   D.add(-160, 40, -419.9, 160, 230, -419.5, 'skypane', { fit: 1 }); D.add(-170, 30, -419.5, 170, 40, -415, 'white'); // the window
-  D.add(-380, F, 120, -120, F + 70, 380, 'cloth'); D.add(-380, F + 70, 120, -120, F + 90, 380, 'white'); D.add(-380, F + 90, 300, -120, F + 120, 380, 'toyteal'); // the bed
-  D.add(180, F, 140, 300, F + 120, 260, 'toyred'); // a giant ball (well, a giant cube)
-  for (const [x, z, m] of [[140, -160, 'toyblue'], [170, -140, 'toygreen'], [200, -170, 'toyyellow']]) D.add(x, F, z, x + 18, F + 18, z + 160, m); // crayons
-  D.add(-260, F, -220, -200, F + 60, -160, 'toyface2', { fit: 1 }); D.add(-250, F + 60, -210, -210, F + 100, -170, 'toyface', { fit: 1 });
-  D.add(60, F, -330, 260, F + 8, -320, 'toypink'); D.add(60, F, -250, 260, F + 8, -240, 'toypink'); // a toy train track
-  for (let x = 66; x < 260; x += 14) D.add(x, F, -320, x + 4, F + 4, -250, 'wood');
-  D.add(100, F + 8, -305, 150, F + 40, -265, 'toyred'); D.add(150, F + 8, -305, 180, F + 30, -265, 'toyyellow'); // the engine
+  // (the playroom's furniture: Blender props in tools/blender/make_playroom.py, drawn over these boxes)
+  propOf('kidbed', [-250, F, 250], 0, () => { D.add(-380, F, 120, -120, F + 70, 380, 'cloth'); D.add(-380, F + 70, 120, -120, F + 90, 380, 'white'); D.add(-380, F + 90, 300, -120, F + 120, 380, 'toyteal'); }); // the bed
+  propOf('bigball', [240, F, 200], 0, () => D.add(180, F, 140, 300, F + 120, 260, 'toyred')); // a giant ball (it used to be a giant cube)
+  for (const [x, z, m] of [[140, -160, 'toyblue'], [170, -140, 'toygreen'], [200, -170, 'toyyellow']]) propOf('crayon', [x + 9, F, z + 80], Math.PI / 2, () => D.add(x, F, z, x + 18, F + 18, z + 160, m), { t: m }); // crayons
+  propOf('blockpile', [-230, F, -190], 0, () => { D.add(-260, F, -220, -200, F + 60, -160, 'toyface2', { fit: 1 }); D.add(-250, F + 60, -210, -210, F + 100, -170, 'toyface', { fit: 1 }); });
+  propOf('toytrain', [160, F, -285], 0, () => {
+    D.add(60, F, -330, 260, F + 8, -320, 'toypink'); D.add(60, F, -250, 260, F + 8, -240, 'toypink'); // a toy train track
+    for (let x = 66; x < 260; x += 14) D.add(x, F, -320, x + 4, F + 4, -250, 'wood');
+    D.add(100, F + 8, -305, 150, F + 40, -265, 'toyred'); D.add(150, F + 8, -305, 180, F + 30, -265, 'toyyellow'); // the engine
+  });
   return { name: 'Crate', size: 'tiny', boxes: B.boxes, deco: D.boxes, killY: -50, sky: { top: 0xffd6ec, mid: 0xffd6ec, bot: 0xffd6ec, fog: 0xffd6ec }, fogNear: 90, fogFar: 700,
     sealed: true, light: { hemi: [0xfff0f6, 0xc09ab0, 1.4], sun: [0xfff6e8, 1.0] },
     spawns: [[-11, 0.1, -11], [11, 0.1, 11], [-11, 0.1, 11], [11, 0.1, -11]] };
@@ -2344,8 +2347,11 @@ function warehouseSD() {
   for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
   add(24.3, 0, 21.7, 30.25, 2.4, 27.75, 'wood'); // the bin store in the corner (no way through to the trailer park)
   // the staff block: the defenders spawn behind it, it hides them from the courtyard
+  const sb0 = B.boxes.length, sd0 = D.boxes.length; // (the block and its windows are a Blender building: wh_staff)
   add(58, 0, -18, 63, 7.2, 18, 'magenta'); add(57.6, 7.2, -18.4, 63.4, 7.6, 18.4, 'roofg'); // (its roof is over the ceiling: no perch over the spawn)
   for (let z = -14; z <= 14; z += 4) for (const y of [1.2, 4.4]) { D.add(57.96, y, z - 1, 57.98, y + 1.8, z + 1, 'glass'); D.add(63.02, y, z - 1, 63.04, y + 1.8, z + 1, 'glass'); }
+  B.archSince(sb0, 'wh_staff', 60.5, 0);
+  for (let i = sd0; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: 'wh_staff', ai: B.boxes.arch.length - 1 });
   D.add(57.9, 3.3, -6, 57.95, 4.2, 6, 'neonwork', { fit: 1 });
 
   // ---- DEFENDERS' SPAWN: the staff car park
@@ -3803,10 +3809,11 @@ function skyPutt(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
     for (const [a0, b0, a1, b1] of [[-10, -12, -2, -11.6], [-10, -6, -2, -5.6], [2, 5.6, 10, 6], [2, 11.6, 10, 12], [-2.4, -11.6, -2, -6], [2, 6, 2.4, 11.6]]) add(x + a0, y, z + b0, x + a1, y + 0.4, z + b1, 'wood');
+    propOf('windmill', [x + 5.5, y, z - 9.5], 0, () => { // (the Blender windmill, p_windmill: tools/blender/make_puttputt.py)
     add(x + 4, y, z - 11, x + 7, y + 4.5, z - 8, 'white'); D.add(x + 3.6, y + 4.5, z - 11.4, x + 7.4, y + 5.1, z - 7.6, 'roofpink'); D.add(x + 4.5, y + 5.1, z - 10.5, x + 6.5, y + 5.6, z - 8.5, 'roofpink');
-    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); // the windmill's sails
+    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); }); // the windmill's sails
     D.add(x - 10, y + 0.02, z + 6, x - 4, y + 0.06, z + 10, 'sand'); D.add(x + 1, y + 0.02, z - 4, x + 4, y + 0.06, z - 1, 'sand');
-    add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 }); // the clown (putt into its mouth. you can't)
+    propOf('clownhead', [x - 2.5, y, z], 0, () => add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 })); // the clown (putt into its mouth. you can't. the Blender head: p_clownhead)
     for (const [hx, hz] of [[-6, -9], [6, 9], [-7, 2], [8, -3]]) { D.add(x + hx - 0.25, y + 0.02, z + hz - 0.25, x + hx + 0.25, y + 0.04, z + hz + 0.25, 'tire'); D.add(x + hx - 0.03, y, z + hz - 0.03, x + hx + 0.03, y + 1.4, z + hz + 0.03, 'white'); D.add(x + hx + 0.03, y + 1.0, z + hz - 0.02, x + hx + 0.6, y + 1.35, z + hz + 0.02, 'toyred'); } // holes, flags
     D.add(x - 5, y + 2.4, z - 14.42, x + 5, y + 5.4, z - 14.38, 'adputt', { fit: 1 }); for (const px of [-4, 4]) add(x + px - 0.2, y, z - 14.6, x + px + 0.2, y + 5.7, z - 14.2, 'metal'); }
 }
@@ -3867,6 +3874,8 @@ function skyline() {
   const base = -120, S = 72, R = 40, pick = (a) => a[(r() * a.length) | 0];
   const hi = 52, lo = 30;
   let spireC = null;
+  // the towers drawn as Blender models over their boxes: [model, quarter turns] (the east tower: the south one's look, its own boxes)
+  const TOWER_ARCH = { E: ['tenement_e', 0], N: ['office_n', 0], W: ['office_w', 0], SE: ['office_se', 0], SW: ['office_sw', 0], NW: ['concrete_nw', 0], NE: ['tenement_ne', 0] };
   // ---- the nine tops (half sizes): the Spire 13 x 13, the ring 15 x 13 (north/south) / 13 x 15 (east/west), the corners 14 x 14
   const tops = { C: [0, 0, 13, 13, R], N: [0, -S, 15, 13, R], S: [0, S, 15, 13, R], W: [-S, 0, 13, 15, R], E: [S, 0, 13, 15, R],
     NW: [-S, -S, 14, 14, lo], SE: [S, S, 14, 14, lo], NE: [S, -S, 14, 14, hi], SW: [-S, S, 14, 14, hi] };
@@ -3878,16 +3887,29 @@ function skyline() {
     const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
     if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
+    if (k in TOWER_ARCH) B.archSince(n0, TOWER_ARCH[k][0], x, z, TOWER_ARCH[k][1], y); // the rest of the ring and the corners (tools/blender/arch/make_tower.py)
     if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
-  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); tubeBridge(B, D, false, 13.4, S - 13.4, 0, R);
-  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']);
+  // (each drawn as a Blender bridge over its boxes, tools/blender/arch/make_bridges.py: tube = the glass tubes, girder =
+  // the open bridges; one model each, the south / east one at rot 0, the north / west one turned round)
+  const bm = (S - 13.4 + 13.4) / 2; let nb = B.boxes.length;
+  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); B.archSince(nb, 'tube', 0, -bm, 2); nb = B.boxes.length;
+  tubeBridge(B, D, false, 13.4, S - 13.4, 0, R); B.archSince(nb, 'tube', 0, bm, 0); nb = B.boxes.length;
+  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); B.archSince(nb, 'girder', -bm, 0, 2); nb = B.boxes.length;
+  skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']); B.archSince(nb, 'girder', bm, 0, 0);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const cy = sx === sz ? lo : hi; // NW and SE are the low corners
+    // (each drawn as a Blender stair bridge over its boxes: stairhi / stairlo, tools/blender/arch/make_stairbridge.py.
+    // one model per rise, turned to each placement: the bridge's middle, along +x from the low end at rot 0)
+    const sid = cy > R ? 'stairhi' : 'stairlo', mid = (15.4 + S - 14.4) / 2;
+    let n0 = B.boxes.length;
     stairBridge(B, true, sx * 15.4, sx * (S - 14.4), sz * S, R, cy, 4, true); // from the north / south tower along x
+    B.archSince(n0, sid, sx * mid, sz * S, sx > 0 ? 0 : 2);
+    n0 = B.boxes.length;
     stairBridge(B, false, sz * 15.4, sz * (S - 14.4), sx * S, R, cy, 4, true); // from the west / east tower along z
+    B.archSince(n0, sid, sx * S, sz * mid, sz > 0 ? 1 : 3);
   }
 
   // ---- C, the Spire: the hub deck round its glass shaft (five floors of windows, stairs inside, a sniper's nest on top)
@@ -5192,7 +5214,7 @@ function deadmall() {
   for (const x of [-7, 7]) for (const z of [-19, 5]) B.box(x, 0.35, z, 2, 0.7, 2, 'hedge');
   for (const z of [-15, 1]) B.add(-1.5, 0, z - 0.3, 1.5, 0.45, z + 0.3, 'wood');
   const crate = { at: [0, 0, -28.55], price: 950 };
-  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate');
+  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate', W.P('zmcrate', 0, -28.55, 0, { v: 'body' })); // (the Blender crate's body is drawn over it, its lid swings in public/js/zombies.js)
   const cola = { at: [-10.4, 0, -24], n: [1, 0, 0] };
   B.add(-10.75, 0, -24.55, -10.05, 2.03, -23.45, 'metal'); // (Jank Cola's machine is drawn over it too)
   // ---- ARCADE: three rows of back-to-back cabinets (gaps halfway down), screens glowing on both sides
@@ -5245,6 +5267,10 @@ export const MAPS = {
   desert: desert(), desert_sd: desertSD(), islands: islands(), islands_sd: islandsSD(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
+// each map's builder on its own (the map editor's PLAY HERE WITH BOTS: one fresh copy of one map, with the owner's edits
+// on it, for one private room, without building every map again). same keys as MAPS
+export const MAP_BUILDERS = { crate, platform, platform_sd: platformSD, rooftop, rooftop_sd: rooftopSD, suburb, suburb_sd: suburbSD, warehouse, warehouse_sd: warehouseSD,
+  desert, desert_sd: desertSD, islands, islands_sd: islandsSD, skyline, skyline_sd: skylineSD, bazaar, bazaar_sd: bazaarSD, range, backrooms, forest, deadmall };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
 // the one every other mode plays. switching mode swaps between them (modes.js mapForGame, the server's setGame)
 for (const [id, m] of Object.entries(MAPS)) if (id.endsWith('_sd') && MAPS[id.slice(0, -3)]) { m.sd = true; m.base = id.slice(0, -3); MAPS[m.base].sdMap = id; }

@@ -112,3 +112,31 @@
 #scr-hubby.hub-ro .hub-panel button, #scr-hubby.hub-ro .hub-panel input, #scr-hubby.hub-ro .hub-panel select, #scr-hubby.hub-ro .hub-modes { pointer-events: none; }
 #scr-hubby.hub-ro .hub-panel .hub-set, #scr-hubby.hub-ro .hub-maps { opacity: 0.6; }
 #scr-hubby.hub-ro .hub-go { background: #7dff4f; }
+
+/* ---- friends (friends.js): the panel the party strip's FRIENDS opens, a friend's invite */
+.hp-fr b { color: #ff00dc; }
+.fr-panel { position: fixed; right: clamp(16px, 3vw, 40px); top: clamp(16px, 4vh, 40px); bottom: clamp(16px, 4vh, 40px); width: min(440px, calc(100vw - 32px)); z-index: 60;
+  display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: var(--zpanel); box-shadow: var(--zshadow); padding: 14px 16px; overflow-y: auto; font-family: var(--font); color: #fff; }
+.fr-panel.hidden { display: none; }
+.fr-head { display: flex; justify-content: space-between; align-items: center; }
+.fr-head .hub-tag { margin: 0; }
+.fr-tabs { display: flex; gap: 6px; }
+.fr-tabs button { font: 900 14px var(--font); padding: 3px 12px; border: 3px solid #000; border-radius: 0; background: #2a1430; color: #aaa; cursor: pointer; }
+.fr-tabs button.on { background: var(--cyan); color: var(--ink); }
+.fr-tabs button.new:not(.on) { color: #ff00dc; }
+.fr-add { display: flex; gap: 6px; }
+.fr-add input { flex: 1; font: 700 15px var(--font); border: 3px solid #000; border-radius: 0; padding: 4px 8px; }
+.fr-list { display: flex; flex-direction: column; }
+.fr-row { display: flex; align-items: center; gap: 8px; padding: 7px 4px; border-bottom: 2px dashed rgba(79, 216, 255, 0.3); }
+.fr-row.off { opacity: 0.55; }
+.fr-dot { width: 12px; height: 12px; border: 2px solid #000; flex: none; }
+.fr-who b { display: block; font-size: 16px; } .fr-who small { display: block; font-size: 12px; color: #c8bcd8; }
+.fr-sp { flex: 1; }
+.fr-row .mid { font-size: 12px; padding: 3px 9px; }
+.fr-row .fr-yes { background: #7dff4f; }
+.fr-rm { font: 900 12px var(--font); background: none; color: #ff9ad5; border: 0; cursor: pointer; padding: 2px 4px; }
+.fr-note { margin: 4px 0; font-size: 13px; color: #c8bcd8; }
+.hub-invite { position: fixed; left: 50%; top: 18px; transform: translateX(-50%) rotate(-1deg); z-index: 61; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--panel); border: var(--zpanel); box-shadow: var(--zshadow); padding: 10px 14px; font-family: var(--font); color: #fff; max-width: calc(100vw - 32px); }
+.hub-invite .hub-tag { margin: 0; }
+.hub-invite .hi-yes { font-size: 18px; padding: 4px 14px; }

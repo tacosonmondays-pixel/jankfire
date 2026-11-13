@@ -80,6 +80,9 @@ function draw(b, k, f) {
   for (let x = 3 + (W - 6) / 4; x < W - 4; x += (W - 6) / 4) { g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(Math.round(x), 3, 2, H - 6); } // chunks
   b.tex.needsUpdate = true;
 }
+// the same bar standing in the world (an empty mech's: mechempty.js)
+export const sceneBar = () => bar({ ch: { root: G.scene } });
+export { draw as drawBar };
 // remote.js, every frame: shows the bar while they're a ball or a rig and the server has told us its HP
 export function bodyBar(r) {
   const e = BH.get(r.id), on = r.alive && e && ((e.k === 'wreckingball' && (r.f & FLAGS.BALL)) || (e.k === 'overdrive' && (r.f & FLAGS.RIG)) || (MECHB[e.k] && (r.f & FLAGS.MECH)));

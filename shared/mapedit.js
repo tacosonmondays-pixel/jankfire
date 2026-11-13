@@ -15,10 +15,10 @@ const TURN = [[1, 0], [0, 1], [-1, 0], [0, -1]]; // cos, sin of q * 90deg
 
 // every editable thing on a map. def = MAPS[id]. terrain steps (b.ter) aren't things: the heightfield owns them
 export function indexMap(def) {
-  const things = [], of = new Map();
+  const things = [], of = new Map(), archT = [];
   for (const [lk, list] of [['b', def.boxes], ['d', def.deco]]) {
     if (!list) continue;
-    if (lk === 'b' && list.arch) list.arch.forEach((a, ai) => { const t = { kind: 'arch', list: lk, arch: a, boxes: [] }; things.push(t); a._t = t; });
+    if (lk === 'b' && list.arch) list.arch.forEach((a, ai) => { const t = { kind: 'arch', list: lk, arch: a, boxes: [], dboxes: [] }; things.push(t); a._t = t; archT[ai] = t; });
     // each tagged box goes to the prop of its kind that holds it with the nearest anchor (pines in a clump overlap)
     const C = 6, cells = new Map(), key = (i, j) => i * 100003 + j;
     for (const p of list.props || []) {
@@ -42,6 +42,7 @@ export function indexMap(def) {
     for (const b of list) {
       if (b.ter || of.has(b)) continue;
       if (lk === 'b' && b.ai !== undefined && list.arch && list.arch[b.ai]) { const t = list.arch[b.ai]._t; t.boxes.push(b); of.set(b, t); continue; }
+      if (lk === 'd' && b.ai !== undefined && archT[b.ai] && b.av === archT[b.ai].arch.id) { archT[b.ai].dboxes.push(b); of.set(b, archT[b.ai]); continue; } // (a building's look-only extras: they go where it goes)
       const t = { kind: 'box', list: lk, boxes: [b] }; things.push(t); of.set(b, t);
     }
     if (lk === 'b' && list.arch) for (const a of list.arch) delete a._t;
@@ -64,8 +65,8 @@ function insideProp(b, p) {
   const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
   if (!p.a) { const q = p.p; return Math.hypot(cx - q[0], cz - q[2]) < 8 * (p.s || 1) && cy > q[1] - 1 && cy < q[1] + 12 * (p.s || 1); } // (round 1 records: near enough)
   const fr = p.f !== undefined ? p.f : p.y, c = Math.cos(fr), s = Math.sin(fr), px = cx - p.a[0], pz = cz - p.a[2];
-  const lx = px * c - pz * s, lz = px * s + pz * c, ly = cy - p.a[1], e = 0.06;
-  return lx > p.lo[0] - e && lx < p.hi[0] + e && ly > p.lo[1] - e && ly < p.hi[1] + e && lz > p.lo[2] - e && lz < p.hi[2] + e;
+  const lx = px * c - pz * s, lz = px * s + pz * c, ly = cy - p.a[1], e = 0.06, ey = 1.5; // (ey: shaped ground drapes a box up or down a bit)
+  return lx > p.lo[0] - e && lx < p.hi[0] + e && ly > p.lo[1] - ey && ly < p.hi[1] + ey && lz > p.lo[2] - e && lz < p.hi[2] + e;
 }
 
 export function sigOf(t) {
@@ -111,7 +112,7 @@ function xfPoint(v, o, k, q, d) {
 export function xfThing(t, o, k, q, d) {
   q &= 3; const th = q * Math.PI / 2;
   if (t.kind === 'arch') k = 1;
-  for (const b of t.boxes) {
+  for (const b of t.dboxes ? [...t.boxes, ...t.dboxes] : t.boxes) {
     if (b.rot) { // a turned deco box: its centre moves, its size scales, its turn adds up
       const c = [(b.min[0] + b.max[0]) / 2, (b.min[1] + b.max[1]) / 2, (b.min[2] + b.max[2]) / 2], h = [0, 1, 2].map((i) => (b.max[i] - b.min[i]) / 2 * k), n = xfPoint(c, o, k, q, d);
       b.min = [R(n[0] - h[0]), R(n[1] - h[1]), R(n[2] - h[2])]; b.max = [R(n[0] + h[0]), R(n[1] + h[1]), R(n[2] + h[2])]; b.rot += th;
@@ -133,31 +134,45 @@ export function xfUndo(o, k, q, d) { const o2 = [o[0] + d[0], o[1] + d[1], o[2] 
 
 // ---- take things out of / put things into the map
 const listOf = (def, lk) => (lk === 'd' ? (def.deco || (def.deco = Object.assign([], { props: [] }))) : def.boxes);
+const deco = (def) => def.deco || (def.deco = Object.assign([], { props: [] }));
+function renumber(def, from, by, skip) { for (const l of [def.boxes, def.deco || []]) for (const b of l) if (b.ai !== undefined && b.ai >= from && !skip.has(b)) b.ai += by; }
 export function removeThing(def, idx, t) {
   const list = listOf(def, t.list), gone = new Set(t.boxes);
   for (let i = list.length - 1; i >= 0; i--) if (gone.has(list[i])) list.splice(i, 1);
+  if (t.dboxes && t.dboxes.length) { const dg = new Set(t.dboxes), dl = deco(def); for (let i = dl.length - 1; i >= 0; i--) if (dg.has(dl[i])) dl.splice(i, 1); }
   if (t.prop) { const pl = list.props || [], i = pl.indexOf(t.prop); if (i >= 0) pl.splice(i, 1); }
   if (t.arch) {
     const al = list.arch, ai = al.indexOf(t.arch);
-    if (ai >= 0) { al.splice(ai, 1); for (const b of list) if (b.ai !== undefined && b.ai > ai) b.ai--; } // (the boxes after it point one placement earlier now)
+    if (ai >= 0) { al.splice(ai, 1); t._ai = ai; renumber(def, ai + 1, -1, new Set()); } // (the boxes after it point one placement earlier now; _ai: where it goes back on undo)
   }
-  for (const b of t.boxes) idx.of.delete(b);
+  for (const b of [...t.boxes, ...(t.dboxes || [])]) idx.of.delete(b);
   const i = idx.things.indexOf(t); if (i >= 0) idx.things.splice(i, 1);
 }
 export function insertThing(def, idx, t) {
   const list = listOf(def, t.list);
-  if (t.arch) { if (!list.arch) list.arch = []; list.arch.push(t.arch); const ai = list.arch.length - 1; for (const b of t.boxes) b.ai = ai; }
+  if (t.arch) {
+    if (!list.arch) list.arch = [];
+    const at = Number.isInteger(t._ai) && t._ai <= list.arch.length ? t._ai : list.arch.length; // (an undone delete: back in its own place)
+    const mine = new Set([...t.boxes, ...(t.dboxes || [])]);
+    renumber(def, at, 1, mine); list.arch.splice(at, 0, t.arch);
+    for (const b of mine) b.ai = at;
+  }
   if (t.prop) { if (!list.props) list.props = []; list.props.push(t.prop); }
   for (const b of t.boxes) { list.push(b); idx.of.set(b, t); }
+  if (t.dboxes && t.dboxes.length) { const dl = deco(def); for (const b of t.dboxes) { dl.push(b); idx.of.set(b, t); } }
   idx.things.push(t);
 }
 // a thing as plain data (an 'add' op item), and back
 const clean = (o) => JSON.parse(JSON.stringify(o, (k, v) => (k.startsWith('_') ? undefined : v)));
-export function thingData(t) { const o = { list: t.list, boxes: t.boxes.map(clean) }; if (t.prop) o.prop = clean(t.prop); if (t.arch) o.arch = clean(t.arch); return o; }
+export function thingData(t) { const o = { list: t.list, boxes: t.boxes.map(clean) }; if (t.dboxes && t.dboxes.length) o.dboxes = t.dboxes.map(clean); if (t.prop) o.prop = clean(t.prop); if (t.arch) o.arch = clean(t.arch); return o; }
+// only the keys a map's boxes and placements really have (a file can't slip in a terrain step, a nested object...)
+const BOX_KEYS = ['mat', 'pv', 'fit', 'pad', 'rot', 'av', 'ai', 'rug', 'still', 'sw'], PROP_KEYS = ['id', 'a', 'y', 'f', 'lo', 'hi', 't', 'v', 'p', 'r', 's', 'color'], ARCH_KEYS = ['id', 'p', 'r', 'paint', 'fence', 'drape'];
+const pickKeys = (o, keys) => { const r = {}; for (const k of keys) if (o[k] !== undefined && (typeof o[k] !== 'object' || Array.isArray(o[k]) || k === 'paint')) r[k] = Array.isArray(o[k]) ? o[k].filter((x) => typeof x === 'number').slice(0, 3) : o[k]; return r; };
+const boxFrom = (b) => ({ ...pickKeys(b, BOX_KEYS), min: [...b.min], max: [...b.max] });
 export function thingFrom(o) {
-  const boxes = (o.boxes || []).map((b) => ({ ...b, min: [...b.min], max: [...b.max] }));
+  const boxes = (o.boxes || []).map(boxFrom);
   const t = { kind: o.arch ? 'arch' : o.prop ? 'prop' : 'box', list: o.list === 'd' ? 'd' : 'b', boxes };
-  if (o.prop) t.prop = clean(o.prop); if (o.arch) t.arch = clean(o.arch);
+  if (o.prop) t.prop = clean(pickKeys(o.prop, PROP_KEYS)); if (o.arch) { t.arch = clean(pickKeys(o.arch, ARCH_KEYS)); t.dboxes = (o.dboxes || []).map(boxFrom); }
   return t;
 }
 
@@ -171,36 +186,77 @@ export function applyOp(def, idx, op, look = bySig(idx)) {
   if (op.t === 'add') for (const it of op.items || []) { const t = thingFrom(it); insertThing(def, idx, t); made.push(t); }
   return { ok: !missing.length, missing, made, hit };
 }
-// replay a whole edit file on a freshly built map: { ops } -> what didn't apply (stale ops after a remodel)
+// replay a whole edit file on a freshly built map: { ops } -> what didn't apply (stale ops after a remodel).
+// the sig lookup is kept up to date thing by thing (a full rebuild per op made 500 ops on the Forest take 8 s); anything
+// where a doubled-up sig ('#2') is involved rebuilds it whole, so the names always come out as bySig would give them
 export function applyEdits(def, edits) {
   const idx = indexMap(def), stale = [];
-  for (const op of (edits && edits.ops) || []) { const r = applyOp(def, idx, op); if (!r.ok) stale.push({ op, missing: r.missing }); }
+  let look = bySig(idx);
+  for (const op of (edits && edits.ops) || []) {
+    const before = [];
+    for (const s of op.sel || []) { const t = look.get(s); if (t) before.push([t, s]); }
+    const r = applyOp(def, idx, op, look);
+    if (!r.ok) stale.push({ op, missing: r.missing });
+    let whole = false;
+    for (const [t, s] of before) { if (s.includes('#') || look.has(s + '#2')) whole = true; look.delete(s); look.sig.delete(t); }
+    if (!whole) for (const t of [...(op.t === 'del' ? [] : r.hit), ...r.made]) {
+      const s = sigOf(t);
+      if (look.has(s)) { whole = true; break; }
+      look.set(s, t); look.sig.set(t, s);
+    }
+    if (whole) look = bySig(idx);
+  }
   return { idx, stale };
 }
 
 // ---- checking an edit file that came from outside (import, and later the server): shapes, numbers, sizes
-const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) < 1e5;
+// limits: every map sits well inside +-1000 m; nothing real is bigger than 500 m a side. a bigger box would make the
+// bots' walk graph walk millions of cells (one oversized box ran a 256 MB server out of memory)
+const LIM = 1000, SIDE = 500;
+const num = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= LIM;
 const vec = (v) => Array.isArray(v) && v.length === 3 && v.every(num);
+const side = (lo, hi) => [0, 1, 2].every((i) => hi[i] >= lo[i] && hi[i] - lo[i] <= SIDE);
 const str = (v, n = 200) => typeof v === 'string' && v.length <= n;
 const opt = (v, f) => v === undefined || f(v);
-function okBox(b) { return b && typeof b === 'object' && vec(b.min) && vec(b.max) && str(b.mat, 40) && opt(b.rot, num) && opt(b.pad, vec) && opt(b.pv, str) && opt(b.av, str) && opt(b.ai, Number.isInteger); }
+function okBox(b) { return b && typeof b === 'object' && vec(b.min) && vec(b.max) && side(b.min, b.max) && str(b.mat, 40) && opt(b.rot, num) && opt(b.pad, vec) && opt(b.pv, str) && opt(b.av, str) && opt(b.ai, Number.isInteger); }
 function okItem(it) {
   if (!it || typeof it !== 'object' || !Array.isArray(it.boxes) || it.boxes.length > 400 || !it.boxes.every(okBox)) return false;
   if (!it.boxes.length && !it.prop && !it.arch) return false; // (nothing to be)
+  if (it.dboxes !== undefined && !(it.arch && Array.isArray(it.dboxes) && it.dboxes.length <= 600 && it.dboxes.every(okBox))) return false;
   const p = it.prop, a = it.arch;
-  if (p && !(typeof p === 'object' && str(p.id, 60) && (p.a !== undefined ? vec(p.a) && vec(p.lo) && vec(p.hi) && opt(p.y, num) && opt(p.f, num) : vec(p.p) && opt(p.r, Number.isInteger) && opt(p.s, num)))) return false;
-  if (a && !(typeof a === 'object' && str(a.id, 60) && vec(a.p) && opt(a.r, Number.isInteger) && it.boxes.length)) return false;
+  if (p && !(typeof p === 'object' && str(p.id, 60) && (p.a !== undefined ? vec(p.a) && vec(p.lo) && vec(p.hi) && side(p.lo, p.hi) && opt(p.y, num) && opt(p.f, num) : vec(p.p) && opt(p.r, Number.isInteger) && opt(p.s, num)))) return false;
+  const okPaint = (pt) => pt && typeof pt === 'object' && !Array.isArray(pt) && Object.keys(pt).length <= 8 && Object.entries(pt).every(([k, v]) => k.length <= 20 && str(v, 40));
+  if (a && !(typeof a === 'object' && str(a.id, 60) && vec(a.p) && opt(a.r, Number.isInteger) && opt(a.paint, okPaint) && opt(a.fence, (v) => typeof v === 'boolean') && opt(a.drape, (v) => typeof v === 'boolean') && it.boxes.length)) return false;
   return true;
 }
 export function validEdits(e) {
   if (!e || typeof e !== 'object' || !str(e.map, 40) || !Array.isArray(e.ops) || e.ops.length > 5000) return false;
+  let sels = 0, boxes = 0, grow = 1, shrink = 1;
   for (const op of e.ops) {
     if (!op || typeof op !== 'object') return false;
     if (op.sel !== undefined && !(Array.isArray(op.sel) && op.sel.length <= 2000 && op.sel.every((s) => str(s)))) return false;
-    if (op.t === 'xf') { if (!vec(op.o) || !vec(op.d) || !num(op.k) || op.k <= 0.01 || op.k > 100 || !Number.isInteger(op.q)) return false; }
-    else if (op.t === 'del') { if (!op.sel) return false; }
-    else if (op.t === 'add') { if (!Array.isArray(op.items) || op.items.length > 500 || !op.items.every(okItem)) return false; }
-    else return false;
+    if (op.sel && (sels += op.sel.length) > 20000) return false; // (each one is a lookup on load)
+    if (op.t === 'xf') {
+      if (!vec(op.o) || !vec(op.d) || !num(op.k) || op.k < 0.1 || op.k > 10 || !Number.isInteger(op.q) || op.q < 0 || op.q > 3) return false;
+      if (op.k > 1) grow *= op.k; else shrink /= op.k;
+      if (grow > 64 || shrink > 64) return false; // (sizes stacked op after op: a 2 m crate can't end up a 500 m slab)
+    } else if (op.t === 'del') { if (!op.sel) return false; }
+    else if (op.t === 'add') {
+      if (!Array.isArray(op.items) || op.items.length > 500 || !op.items.every(okItem)) return false;
+      for (const it of op.items) boxes += it.boxes.length + (it.dboxes ? it.dboxes.length : 0);
+      if (boxes > 20000) return false;
+    } else return false;
+  }
+  return true;
+}
+// after a replay: every box the edits added or changed still inside the limits (moves and sizes stacked op after op
+// can't be judged one op at a time). keep: boxSigs() of the map before the edits (its own ground and horizon can be huge)
+const boxSig = (b) => b.min.join(',') + '|' + b.max.join(',');
+export function boxSigs(def) { const s = new Set(); for (const l of [def.boxes, def.deco || []]) for (const b of l) s.add(boxSig(b)); return s; }
+export function saneMap(def, keep) {
+  for (const l of [def.boxes, def.deco || []]) for (const b of l) {
+    if (b.ter || (keep && keep.has(boxSig(b)))) continue;
+    if (!vec(b.min) || !vec(b.max) || !side(b.min, b.max)) return false;
   }
   return true;
 }

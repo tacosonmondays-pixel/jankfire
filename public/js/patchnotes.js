@@ -1,6 +1,75 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.10', date: '2026-11-13', title: 'STAY CONNECTED', items: [
+    'fixed: jankburg (jank royale) could kick slower pcs back to the menu while the new houses loaded in. the city now loads them all in one go.',
+  ] },
+  { v: '11.9', date: '2026-11-13', title: 'PICK A CARD', items: [
+    'CARD DECK: your cards are real 3D cards now with glowing suit trails. they stab into walls, burst into little spades on a hit, and fans thrown at an angle actually leave your hand now (oops).',
+  ] },
+  { v: '11.8', date: '2026-11-13', title: 'THE GARAGE IS OPEN', items: [
+    'THE GARAGE IS OPEN: the battle island lobby is a hangar you walk around. swap your mech at the terminal (crane, klaxon, sparks), hop in and stomp the test pad, get a warm cola. your party walks around with you.',
+  ] },
+  { v: '11.7', date: '2026-11-13', title: 'NO LONG ARMS', items: [
+    'anti-cheat: faking your speed doesn\'t give you extra reach anymore. honest fast movers (grapple, rocket jumps, sliding) still get their hits.',
+  ] },
+  { v: '11.6', date: '2026-11-13', title: 'CANDY BACK', items: [
+    'jankburg got its candy back: the city flats are painted pink, lemon, lilac, mint and cyan again, toy roofs keep their colours, and the lights inside glow warm.',
+    'RAY-TRACED LOOK on too hd: wet roofs and shiny floors now mirror what\'s actually around them. billboards upside down in puddles. your gun never shows up in it, it\'s shy.',
+  ] },
+  { v: '11.5', date: '2026-11-13', title: 'WIFI SNEEZE', items: [
+    'your party doesn\'t fall apart when your wifi sneezes anymore. you get 30 seconds to come back. reloading counts. if the leader drops, someone else gets the crown.',
+    'fixed: party codes stopped working for a few minutes after an update. sorry, they\'re back.',
+  ] },
+  { v: '11.4', date: '2026-11-13', title: 'MECH DOWN', items: [
+    'parked mechs aren\'t safe anymore. shoot, stab or rocket an empty mech and it breaks: MECH DOWN, and the owner gets to watch.',
+  ] },
+  { v: '11.3', date: '2026-11-12', title: 'MAY CONTAIN NUMBERS', items: [
+    'jankburg: number works got its factory back. brick smokestacks with blinking red lights, rusty vats of glowing green soup (may contain numbers), and chrome pipes on steel legs.',
+  ] },
+  { v: '11.2', date: '2026-11-12', title: 'GLINT', items: [
+    'RAY-TRACED LOOK: props, buildings, mechs and your gun now reflect the world around them, with a sun glint on shiny paint and chrome. they pick up the bounced light too, so they stop looking flat. bounce light and soft shadows got stronger and now cover all of jankburg.',
+  ] },
+  { v: '11.1', date: '2026-11-12', title: 'SO DID THE CORNER', items: [
+    'jankburg: the houses got walls, windows, stairs and real roofs. the streets got rearranged a bit while we were at it. your favourite corner might have moved. so did the corner.',
+  ] },
+  { v: '11.0', date: '2026-11-12', title: 'BEEP BEEP', items: [
+    'your own mech can\'t squash you any more. stand on your own circle and it goes BEEP BEEP and bonks you out of the way, then you can climb straight in. your squad gets bonked too. enemies still get flattened.',
+    'zombies (and every death): body parts and gibs don\'t hang in mid-air any more. they fall, bounce, settle on the floor and fade.',
+    'zombies: the grappling hook has charges now, like jank royale. two ropes, one comes back every 8 seconds. the ring by your crosshair shows them.',
+  ] },
+  { v: '10.9', date: '2026-11-12', title: 'LOADS LIKE IT MEANS IT', items: [
+    'the game loads a lot faster the second time you open it: your browser keeps this version\'s code instead of asking for 300 files again. an update still gets you the new stuff straight away.',
+  ] },
+  { v: '10.8', date: '2026-11-12', title: 'PLEASE REMAIN SEATED', items: [
+    'jankburg: the cathedral of shareholder value got pews, a real bell and an organ made of servers. the sermon is a quarterly earnings call. please remain seated.',
+  ] },
+  { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
+    'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
+  ] },
+  { v: '10.6', date: '2026-11-12', title: 'PUTT INTO ITS MOUTH', items: [
+    'skyline: the skyscrapers are real buildings now. brick tenements with fire escapes, office towers with chrome fins, lit offices and neon blade signs.',
+    'skyline: the bridges off the spire got steel. portal frames on the glass tubes, big blue trusses under the open ones. the sky stairs are proper steel stairs with handrails and neon. still 160 m of air underneath.',
+    'skyline: putt putt palace got a real windmill and a giant clown head. putt into its mouth. you can\'t.',
+  ] },
+  { v: '10.5', date: '2026-11-12', title: 'SHINY', items: [
+    'RAY-TRACED LOOK now has reflections: glass towers, office windows, wet roads and chrome reflect the world around you. its own checkbox in settings > video > shaders.',
+  ] },
+  { v: '10.4', date: '2026-11-12', title: 'NOBODY TOUCH THE TRAIN', items: [
+    'crate: the playroom is full of real toys now. crayons that are actually round, a ball that is actually a ball, a bed, and a train set nobody is allowed to touch.',
+  ] },
+  { v: '10.3', date: '2026-11-12', title: 'HAVE A NICE DAY', items: [
+    'jankburg: the city gates got toll booths, boom barriers and big name plates. the toll is your dignity. have a nice day.',
+    'warehouse plant & defuse: the defenders spawn behind a real office block now. lit windows, a staff entrance, a NO LOITERING sign nobody reads.',
+    'zombies: the mystery crate is a real crate now (glowing ??? and a padlock nobody locked), and the power switch is a big copper knife switch you get to SLAM up. works in all three zombies maps.',
+    'suburb: the playground got rebuilt by professionals (the hoa). the slide is an actual slide now. read the rules.',
+  ] },
+  { v: '10.2', date: '2026-11-12', title: 'RAY-TRACED (ISH)', items: [
+    'new shader level: RAY-TRACED LOOK (settings > video > shaders). sunlight bounces off the ground and walls onto everything around it, and corners and contact spots get soft shadows. on by default on too hd, opt-in on mid. potato stays potato.',
+    'battle island\'s grass got deeper, sunnier and blotchier. in a good way.',
+    'in a mech, the wrecking ball or the overdrive rig, your normal weapon bar gets out of the way, then pops back when you hop out.',
+    'jankburg: the firewall\'s towers got windows, a STAFF ONLY door and a smiley the size of a bus. the jump pads still work. security is watching (badly).',
+  ] },
   { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
     'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
     'battle island: your party lands in the same squad. a party bigger than a squad splits into full squads. friends who join late go to your squad.',
