@@ -23,13 +23,13 @@ from mathutils import Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HERE = os.path.dirname(os.path.abspath(__file__))
-G = {'gloss': 0.6}
+G = {}  # (cushions lit like the map's boxes: bright, no gloss)
 MATS.update({
     'pd_coping': ('trim', '#f4f2ee', {'gloss': 0.5}), 'pd_mosaic': ('trim', '#38c8f0', {'gloss': 0.4}), 'pd_lane': ('trim', '#1a3a7a', {}),
-    'pd_alu': ('metalplate', '#dfe3ea', {'gloss': 0.85, 'metal': 1}), 'pd_rubber': ('tar', '#222026', {}),
+    'pd_alu': ('metalplate', '#f4f6fb', {'gloss': 0.5}), 'pd_rubber': ('tar', '#222026', {}),
     'pd_c_white': ('trim', '#f6f4f0', G), 'pd_c_toypink': ('trim', '#ff6ad5', G), 'pd_c_toyteal': ('trim', '#2ad8c8', G), 'pd_c_toyyellow': ('trim', '#ffe14d', G),
     'pd_towel': ('stucco', '#ffffff', {}), 'pd_towel2': ('stucco', '#4fd8ff', {}),
-    'pd_teak': ('planks', '#c88a58', {'gloss': 0.4}), 'pd_brass': ('metalplate', '#e8b840', {'gloss': 0.8, 'metal': 1}),
+    'pd_teak': ('planks', '#f0b070', {}), 'pd_brass': ('metalplate', '#e8b840', {'gloss': 0.8, 'metal': 1}),
     'pd_canvas': ('stucco', '#fbf6ee', {}), 'pd_stripe': ('stucco', '#ff4fd8', {}), 'pd_curtain': ('stucco', '#f6eef6', {}),
     'pd_case': ('tar', '#1d1b22', {'gloss': 0.35}), 'pd_deck': ('metalplate', '#2c2c34', {'gloss': 0.5}), 'pd_platter': ('metalplate', '#c4c8d0', {'gloss': 0.8, 'metal': 1}),
     'pd_vinyl': ('tar', '#0e0e12', {'gloss': 0.9}), 'pd_label': ('trim', '#ff4fd8', {}), 'pd_screen': ('trim', '#4fd8ff', {'glow': True, 'glowcol': '#4fd8ff'}),
@@ -42,7 +42,7 @@ MATS.update({
     'pd_flamingo': ('trim', '#ff70b8', {'gloss': 0.9}), 'pd_beak': ('trim', '#ff9a2a', {'gloss': 0.8}), 'pd_black': ('tar', '#141418', {}),
     'pd_ring': ('trim', '#ffe14d', {'gloss': 0.9}), 'pd_ring2': ('trim', '#ff4fd8', {'gloss': 0.9}),
 })
-NOCAST.update({'pd_lane', 'pd_towel', 'pd_towel2', 'pd_brass', 'pd_curtain', 'pd_platter', 'pd_vinyl', 'pd_label', 'pd_screen', 'pd_fader', 'pd_badge',
+NOCAST.update({'pd_canvas', 'pd_stripe', 'pd_lane', 'pd_towel', 'pd_towel2', 'pd_brass', 'pd_curtain', 'pd_platter', 'pd_vinyl', 'pd_label', 'pd_screen', 'pd_fader', 'pd_badge',
                'pd_neonpink', 'pd_neoncyan', 'pd_neonyellow', 'pd_neongreen', 'pd_lamp', 'pd_wire', 'pd_beak', 'pd_black', 'pd_rubber'})
 E = 0.002
 
@@ -73,6 +73,14 @@ def torus(K, c, R, r, mat, n=16, m=6, axis='y'):
     for k in range(n):
         a0, a1 = k * math.tau / n, (k + 1) * math.tau / n
         FL.tube(K, (cx + R * math.cos(a0), cy, cz + R * math.sin(a0)), (cx + R * math.cos(a1), cy, cz + R * math.sin(a1)), r, r, mat if isinstance(mat, str) else mat[k % len(mat)], n=m, caps=(False, False))
+
+
+def ring_z(K, c, R, r, mat, n=16, m=6):
+    """a doughnut standing up, facing z (a neon ring round a speaker cone)"""
+    cx, cy, cz = c
+    for k in range(n):
+        a0, a1 = k * math.tau / n, (k + 1) * math.tau / n
+        FL.tube(K, (cx + R * math.cos(a0), cy + R * math.sin(a0), cz), (cx + R * math.cos(a1), cy + R * math.sin(a1), cz), r, r, mat, n=m, caps=(False, False))
 
 
 def blob(K, c, r, mat, sy=1.0, n=8):
@@ -173,7 +181,7 @@ def cabana(K, posts, walls, sofa, roof):
 
 def dj(K, case, top, spk, grilles):
     x0, y0, z0, x1, y1, z1 = ext(case)
-    K.plain(case, {'top': 'pd_case', 'side': 'pd_case'}, sub=1.0)
+    K.plain(case, {'top': 'pd_ring', 'side': 'pd_ring'}, sub=1.0)  # (a yellow booth)
     for (a, b_) in ((x0, z0), (x1, z0), (x0, z1), (x1, z1)):  # aluminium edges and ball corners
         bx(K, (a - 0.02, y0, b_ - 0.02), (a + 0.02, y1 - 0.003, b_ + 0.02), 'pd_alu')
         blob(K, (a, y1, b_), 0.05, 'pd_platter', n=6)
@@ -199,13 +207,15 @@ def dj(K, case, top, spk, grilles):
     K.quad([(q[1][0] - 0.02, q[1][1] + 0.02, q[1][2] + 0.004), (q[0][0] + 0.02, q[0][1] + 0.02, q[0][2] + 0.004), (q[3][0] + 0.02, q[3][1] - 0.02, q[3][2] + 0.004), (q[2][0] - 0.02, q[2][1] - 0.02, q[2][2] + 0.004)], 'pd_screen')
     for s in spk:  # PA: a sub at the bottom, a top box with a horn and a cone; the map's grille is where the top's face is
         x0, y0, z0, x1, y1, z1 = ext(s)
-        K.plain(s, {'top': 'pd_case', 'side': 'pd_case'})
+        K.plain(s, {'top': 'pd_flamingo', 'side': 'pd_flamingo'})  # (candy pink cabinets, the party's)
         cx = (x0 + x1) / 2; fz = z0  # the front: -z
         bx(K, (x0 - 0.01, y0 + 1.08, z0 - 0.01), (x1 + 0.01, y0 + 1.12, z1 + 0.01), 'pd_alu')  # the seam between the boxes
         for (r, cy) in ((0.42, y0 + 0.55),):  # the sub's big cone
             FL.tube(K, (cx, cy, fz - E), (cx, cy, fz - 0.03), r, r, 'pd_grille', n=16, caps=(False, True))
+            ring_z(K, (cx, cy, fz - 0.02), r + 0.03, 0.025, 'pd_neoncyan', n=20)  # a neon ring round it
             FL.tube(K, (cx, cy, fz - 0.03), (cx, cy, fz + 0.12), r * 0.92, 0.08, 'pd_cone', n=16, caps=(False, False), inside=True)
         FL.tube(K, (cx, y0 + 1.42, fz - E), (cx, y0 + 1.42, fz - 0.03), 0.28, 0.28, 'pd_grille', n=14, caps=(False, True))  # the top's cone
+        ring_z(K, (cx, y0 + 1.42, fz - 0.02), 0.31, 0.022, 'pd_neoncyan', n=16)
         FL.tube(K, (cx, y0 + 1.42, fz - 0.03), (cx, y0 + 1.42, fz + 0.08), 0.25, 0.05, 'pd_cone', n=14, caps=(False, False), inside=True)
         bx(K, (cx - 0.36, y0 + 1.78, z0 - 0.04), (cx + 0.36, y0 + 2.06, z0 - E), {'all': 'pd_grille'})  # the horn's mouth
         bx(K, (cx - 0.3, y0 + 1.82, z0 - 0.045), (cx + 0.3, y0 + 2.02, z0 - 0.04), {'all': 'pd_cone'})
