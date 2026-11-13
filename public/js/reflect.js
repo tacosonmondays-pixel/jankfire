@@ -19,11 +19,12 @@ export const REFL = { res: 128, move: 30, box: [40, 30, 40], near: 0.5, far: 150
   mats: { glass: [0.9, 0.3, 0], greenglass: [0.6, 0.2, 0], office: [0.8, 0.22, 1], window: [0.7, 0.2, 1], glassblock: [0.55, 0.15, 1],
     wetroad: [0.6, 0.1, 0], wetroadz: [0.6, 0.1, 0], asphaltn: [0.5, 0.08, 0], asphalt: [0.3, 0.04, 0], asphalt2: [0.25, 0.03, 0],
     chrome: [0.7, 0.45, 0], metal: [0.3, 0.06, 0], floorcyan: [0.35, 0.05, 0], tile: [0.3, 0.05, 0], marble: [0.25, 0.04, 0] } };
-const U = { uRK: { value: 0 }, uRC: { value: null }, uRP: { value: new THREE.Vector3() }, uRB: { value: new THREE.Vector3(...REFL.box) } };
+const U = { uSS: { value: 0 }, uRK: { value: 0 }, uRC: { value: null }, uRP: { value: new THREE.Vector3() }, uRB: { value: new THREE.Vector3(...REFL.box) } };
 let tick = 0, envDue = false, envWorld = false, night = false; const G0 = { r: null };
 let on = false, scene = null, cams = null, rts = null, front = 0, face = -1, probe = new THREE.Vector3(1e9, 0, 0), want = new THREE.Vector3(), patched = new WeakSet(), alive = true;
 
 const FRAG = `
+float rSSR = 0.0;
 if ( uRK > 0.0 ) { // the world mirrored in this surface (reflect.js)
   vec3 rN = normalize( vRN ), rV = normalize( vRW - cameraPosition ), rR = reflect( rV, rN );
   // box projection: where the mirrored ray leaves the room round the probe, seen from the probe
@@ -36,7 +37,9 @@ if ( uRK > 0.0 ) { // the world mirrored in this surface (reflect.js)
   vec3 rc = textureCube( uRC, rD ).rgb; // (a rendered cube isn't mirrored the way an image one is)
   float ndv = clamp( dot( -rV, rN ), 0.0, 1.0 ), fr = rS.y + ( 1.0 - rS.y ) * pow( 1.0 - ndv, 5.0 );
   float msk = rS.z > 0.5 ? smoothstep( 0.5, 0.18, dot( diffuseColor.rgb, vec3( 0.3, 0.5, 0.2 ) ) ) : 1.0;
-  outgoingLight = mix( outgoingLight, rc, clamp( fr * rS.x * msk * uRK, 0.0, 1.0 ) );
+  float rW = clamp( fr * rS.x * msk * uRK, 0.0, 1.0 );
+  if ( uSS > 0.0 && rN.y > 0.7 ) { rSSR = clamp( rS.x * msk * ( 0.55 + fr * 1.2 ) * 1.25, 0.0, 0.85 ); rW *= 0.5; } // a floor: the screen-space mirror takes over (post.js), the snapshot only fills in
+  outgoingLight = mix( outgoingLight, rc, rW );
 }
 `;
 // one shiny material: its own strength, the shared snapshot
@@ -54,8 +57,8 @@ function reflMaterial(m, s) {
 	rw = instanceMatrix * rw; rn = mat3( instanceMatrix ) * rn;
 	#endif
 	vRW = ( modelMatrix * rw ).xyz; vRN = normalize( mat3( modelMatrix ) * rn ); }`);
-    sh.fragmentShader = 'uniform float uRK; uniform samplerCube uRC; uniform vec3 uRP; uniform vec3 uRB; uniform vec3 rS; varying vec3 vRW; varying vec3 vRN;\n'
-      + sh.fragmentShader.replace('#include <opaque_fragment>', FRAG + '#include <opaque_fragment>');
+    sh.fragmentShader = 'uniform float uRK; uniform float uSS; uniform samplerCube uRC; uniform vec3 uRP; uniform vec3 uRB; uniform vec3 rS; varying vec3 vRW; varying vec3 vRN;\n'
+      + sh.fragmentShader.replace('#include <opaque_fragment>', FRAG + '#include <opaque_fragment>\n if ( uSS > 0.0 ) gl_FragColor.a = 1.0 - rSSR; // (the frame\'s alpha marks shiny floors for post.js)');
   };
   m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + '|refl';
   m.needsUpdate = true;
@@ -67,6 +70,10 @@ export function reflectMap(sc, def, MAT) {
   if (!def) return;
   for (const [k, s] of Object.entries(REFL.mats)) if (MAT[k] && MAT[k].mat) reflMaterial(MAT[k].mat, s);
 }
+let ssrWant = false;
+export function setReflectSSR(v) { ssrWant = !!v; } // floors hand over to post.js's screen-space mirror (Too HD)
+// world.js, every frame once it knows the shader pass is really running: only then do floors hand over (and mark the alpha)
+export function reflectSSRLive(live) { U.uSS.value = ssrWant && live ? 1 : 0; }
 export function setReflect(v) { on = !!v && alive; if (!on) { U.uRK.value = 0; if (envWorld && G0.r) propEnv(G0.r, false); } else probe.set(1e9, 0, 0); }
 
 function setup() {
