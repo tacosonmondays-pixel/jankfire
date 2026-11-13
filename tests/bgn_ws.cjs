@@ -4,7 +4,7 @@
 // question, NaN, '__proto__', out of range, roll spam); the bakery and store prices hold; a duel starts when you land on
 // someone; the bench keeps sitting-out seats dead; a human leaving mid-turn and mid-minigame hands the seat to a bot with
 // the same coupons, bread and bag (online lobby); minigames 1-10 each start on their map and return to the board with pay.
-//   node tests/bgn_ws.cjs [basePort=3400] [part ...]   (parts: game human duel leave minis)
+//   node tests/bgn_ws.cjs [basePort=3400] [part ...]   (parts: game human duel leave pub minis)
 const { spawn } = require('child_process');
 const path = require('path');
 const WS = require('ws');
@@ -101,7 +101,7 @@ async function partGame(port) {
 
 // ---------------------------------------------------------------- a human: junk, dice, path, bakery, store, off-turn
 async function partHuman(port) {
-  const S = await server(port, { JF_BGN_FAST: '10', JF_BGN_DIE: '6,5,4,3,6,1,1,2', JF_BGN_BAKERY: '3', JF_BGN_COUPONS: '27', JF_BGN_ROUNDS: '2', JF_BGN_MGTIME: '4', JF_BGN_MG: 'brawl' });
+  const S = await server(port, { JF_BGN_FAST: '10', JF_BGN_DIE: '6,5,4,3,6,1,1,2', JF_BGN_BAKERY: '3', JF_BGN_COUPONS: '27', JF_BGN_ROUNDS: '4', JF_BGN_MGTIME: '4', JF_BGN_MG: 'brawl' });
   const H = await client(port, 'kevin', OFF(5));
   ok(await H.until(() => H.asked('roll'), 15000), 'dibs: the 6 goes first, and it is asked to roll');
   const me = H.seat();
@@ -158,7 +158,8 @@ async function partHuman(port) {
 
 // ---------------------------------------------------------------- landing on someone = a duel; the bench
 async function partDuel(port) {
-  const S = await server(port, { JF_BGN_FAST: '10', JF_BGN_DIE: '1,6,5,4,1,1,2,1', JF_BGN_BAKERY: '27', JF_BGN_ROUNDS: '1', JF_BGN_MGTIME: '5', JF_BGN_BOTDUEL: '1', JF_BGN_MG: 'brawl' });
+  // (4 rounds: round 1 isn't LAST CALL, so no house rule. NO MORE FEES would make space 2 a JANK, and a SWAP there can pull a pawn off the space we aim for)
+  const S = await server(port, { JF_BGN_FAST: '10', JF_BGN_DIE: '1,6,5,4,1,1,2,1', JF_BGN_BAKERY: '27', JF_BGN_ROUNDS: '4', JF_BGN_MGTIME: '5', JF_BGN_BOTDUEL: '1', JF_BGN_MG: 'brawl' });
   const H = await client(port, 'linda', OFF(5));
   ok(await H.until(() => H.st && H.st.order.length === 4, 10000) && H.st.order[3] === 0, 'dibs: the 1 goes last');
   // seat 2 lands on seat 1 (both bots, JF_BGN_BOTDUEL plays it out): we sit on the bench
@@ -206,6 +207,8 @@ async function partLeave(port) {
   const B = await client(port, 'bob', { mode: 'bots', cfg: { lobby: 'bgn' } });
   ok(await W.until(() => W.st && W.st.seats, 15000), 'the board game night lobby starts the game');
   const sa = () => W.st.seats.find((s) => s.name === 'alice'), sb = () => W.st.seats.find((s) => s.name === 'bob');
+  const airOk = (c) => !c.msgs.some((m) => m.t === 'air' && m.on) || c.msgs.some((m) => m.t === 'air' && m.end);
+  ok(await A.until(() => airOk(A) && airOk(B), 3000), 'no NEVER LANDED run left on from the lobby\'s start');
   ok(sa() && sb() && W.st.seats.filter((s) => s.bot).length === 2 && !W.st.seats.some((s) => s.name.startsWith('watch')), 'alice and bob sit down, 2 bots fill, the observer doesn\'t');
   // alice leaves on her own turn
   ok(await W.until(() => W.st.ask && W.st.ask.seat === sa().i, 60000), 'alice\'s turn');
@@ -224,10 +227,27 @@ async function partLeave(port) {
   const nb = W.st.seats[b0.i];
   ok(nb.c === b0.c && nb.b === b0.b, 'same coupons and bread');
   ok(await W.until(() => W.alive.get(nb.id) === 1, 4000), 'the bot joined the minigame and spawned in');
+  ok(W.msgs.filter((m) => m.t === 'streak' && m.reset).length >= 2, 'streaks reset when a minigame starts (not just at the lobby)');
   ok(await W.until(() => W.st.ph === 'mgres' || W.st.ph === 'turn', 30000), 'the minigame finished with the bot');
   const errs = errorsIn(S.log());
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   W.ws.close(); S.stop();
+}
+
+// ---------------------------------------------------------------- a public bots room can't be turned into a board
+async function partPublic(port) {
+  const S = await server(port, { JF_BGN_FAST: '10' });
+  const A = await client(port, 'pubA', { mode: 'bots', cfg: { game: 'dm', map: 'crate' } });
+  await sleep(1700);
+  A.send({ t: 'cfg', game: 'bgn' });
+  await sleep(600);
+  const B = await client(port, 'pubB', { mode: 'bots', cfg: { game: 'bgn' } });
+  await sleep(2500);
+  ok(!A.msgs.some((m) => m.t === 'bg') && !A.msgs.some((m) => m.t === 'cfgd' && /Board Game/.test(JSON.stringify(m))), 'cfg game:bgn in a public bots room is refused');
+  ok(!A.msgs.some((m) => m.t === 'bg') && !B.msgs.some((m) => m.t === 'bg'), 'a public join asking for bgn gets no board and never pulls the other room onto one');
+  const errs = errorsIn(S.log());
+  ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
+  A.ws.close(); B.ws.close(); S.stop();
 }
 
 // ---------------------------------------------------------------- minigames 1-10
@@ -235,7 +255,7 @@ const MINIS = { brawl: ['dm', 'crate'], spoons: ['spoons', 'crate'], hotfloor: [
   oneshot: ['oitc', 'crate'], ladder: ['gun', 'crate'], rvb: ['tdm', 'platform'], tagsale: ['tags', 'platform'], leader: ['inf', 'rooftop'] };
 async function oneMini(port, id) {
   const [game, map] = MINIS[id];
-  const S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '2', JF_BGN_MGTIME: id === 'leader' ? '12' : '6', JF_BGN_MG: id });
+  const S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '4', JF_BGN_MGTIME: id === 'leader' ? '12' : '6', JF_BGN_MG: id });
   const W = await client(port, 'watch_' + id, OFF(5));
   let cfgMap = null, roundGame = null;
   const seen = await W.until(() => { for (const m of W.msgs) { if (m.t === 'cfg' || m.t === 'welcome') cfgMap = m.cfg.map; if (m.t === 'round' && m.start && m.game !== 'bgn') roundGame = m.game; } return W.evs('res').length; }, 60000);
@@ -261,7 +281,7 @@ async function partMinis(port) {
 }
 
 (async () => {
-  const parts = { game: partGame, human: partHuman, duel: partDuel, leave: partLeave, minis: partMinis };
+  const parts = { game: partGame, human: partHuman, duel: partDuel, leave: partLeave, pub: partPublic, minis: partMinis };
   let p = base;
   for (const [k, fn] of Object.entries(parts)) {
     if (only.length && !only.includes(k)) continue;

@@ -502,7 +502,7 @@ class Room {
     p.item = has(ITEMS, m.item) ? m.item : 'frag'; // the client confirms it with 'itemsel' right after 'welcome'
     this.zxSetLoadout(p, m.zl); // zombies loadout: start pistol, item, passive (server/zmextra.js checks it)
     if (process.env.JF_WATCH && name.startsWith('watch')) { p.watch = true; p.alive = false; p.hp = 0; p.respawnAt = p.minRespawnAt = Infinity; } // test knob: a ws observer for bots-only matches (never a fighter)
-    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length && !this.lobby) this.setGame(m.cfg.game);
+    if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && has(GAMES, m.cfg.game) && !this.humans().length && !this.lobby && (!GAMES[m.cfg.game].board || this.priv)) this.setGame(m.cfg.game); // (a board game only in your own room: never a public one)
     if (this.mode === 'bots' && !this.humans().length && !this.lobby && !this.map.zm !== !GAMES[this.game].zombies) this.setGame(this.map.zm ? 'zm' : this.game); // the zombie map only with zombies
     if (!p.watch) this.joinTeam(p);
     if (p.team) p.pos = this.pickSpawn(false, p);
@@ -2813,7 +2813,7 @@ class Room {
       else this.resetWorld();
     }
     if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); hubBackGame(this); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
+    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && (!GAMES[m.game].board || this.priv) && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); hubBackGame(this); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
     if (has(BOT_DIFF, m.diff) && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
@@ -3060,7 +3060,7 @@ class Room {
         break;
       }
       case 'hbagain': // PLAY AGAIN on the end screen of an offline single-mode match (server/hubback.js)
-        if (this.hubBack && this.round && this.round.over && typeof m.on === 'boolean') hubBackPick(this, p, m.on);
+        if (this.hubBack && this.round && this.round.over && (!this.bgn || this.bgn.ph === 'done') && typeof m.on === 'boolean') hubBackPick(this, p, m.on);
         break;
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
         if (this.zm) break; // zombies: you wait for a revive or the next round
@@ -4229,7 +4229,7 @@ function roomFor(mode, ws, cfg) {
     return r;
   }
   // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
-  if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game) && !GAMES[cfg.game].board) { // (board games never match a public room: the hub sends priv)
     for (const r of rooms.values()) if (r.mode === 'bots' && !r.priv && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
   }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;

@@ -64,7 +64,8 @@ export function installBgn(Room, H) {
           at: LID, stuck: false, bag: [], lassoR: 0, trail: [], stats: { duels: 0, spent: 0, mgWins: 0 } });
       }
       for (const b of bots) this.remove(b); // (more bots than seats: the rest go home)
-      for (const p of this.players.values()) this.bgnBench(p, true);
+      for (const p of people.slice(BGN.seats)) B.queue.push(p.id); // (a party of 5-6: the extras wait for a seat, like a late joiner)
+      for (const p of this.players.values()) { this.bgnBench(p, true); if (p.air) { p.air = null; send(p, { t: 'air', end: 1, ok: 0 }); } } // (no Never Landed run: the online lobby's startRound may have started one)
       this.assignTeams(); // everyone back in their own colours
       if (this.round) { this.round.over = false; this.round.ends = now() + 3600e3; this.round.target = 0; }
       this.bgnState();
@@ -543,6 +544,7 @@ export function installBgn(Room, H) {
       if (def.ladder) { const L = rollLadder(this.ladder); mg.ladder = [L[0], L[1], L[10], L[11], L[15], 'knife'].slice(-def.ladder); }
       const inIt = new Set(mg.seats.map((i) => B.seats[i].pid));
       for (const p of this.players.values()) this.bgnBench(p, !inIt.has(p.id));
+      for (const p of this.players.values()) { p.streak = 0; p.pocket = []; if (!p.isBot) send(p, { t: 'streak', reset: 1 }); } // each minigame starts fresh: no streaks or pocketed killstreaks from the last one
       this.setGame(def.game);
       B.ph = 'mg';
       this.startRound(); // (teams from the board: bgnTeams. the bench stays down: resetWorld skips it)
@@ -594,8 +596,9 @@ export function installBgn(Room, H) {
     },
     // endRound's hook: no end screen, perf, rolls or vote. rank, pay, back to the board
     bgnMgEnd() {
-      const B = this.bgn, mg = B.mg, def = BGN_MINIS[mg.id];
+      const B = this.bgn, mg = B && B.mg;
       if (!mg || B.ph !== 'mg') return;
+      const def = BGN_MINIS[mg.id];
       const pl = (i) => this.bgnPlayer(B.seats[i]);
       const r = { id: mg.id, fmt: mg.fmt, seats: mg.seats.slice(), sides: mg.sides, one: mg.one, stake: mg.stake, scores: mg.seats.map((i) => [i, Math.max(0, this.bgnScore(pl(i)) % 1000), pl(i) ? pl(i).kills : 0]) };
       if (mg.fmt === 'duel' || mg.fmt === 'tie') {
