@@ -155,6 +155,9 @@ function spreadDir(d, s) {
 }
 const center = (p) => [p.pos[0], p.pos[1] + 0.9, p.pos[2]];
 const eyeOf = (p) => [p.pos[0], p.pos[1] + PH.eye, p.pos[2]];
+// mech drop by killstreak: only the frames the loadout offers (shared/weapons.js validLoadout); the island heroes come from the island
+// meter (and bots). the JF_TRAIN_STREAKS test knob still calls any frame (the hero mech tests do)
+const streakFrame = (f) => (process.env.JF_TRAIN_STREAKS && FRAMES.includes(f) ? f : f === 'nightshift' ? 'nightshift' : 'paperplane');
 const lookOf = (p) => { const cp = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw || 0) * cp, Math.sin(p.pitch || 0), -Math.cos(p.yaw || 0) * cp]; };
 function clean(s, max) { return String(s || '').replace(/[<>&"'`\u0000-\u001f]/g, '').trim().slice(0, max); }
 function cleanSkins(s) {
@@ -674,6 +677,21 @@ class Room {
       if (score < bestD) { bestD = score; best = t; }
     }
     return best;
+  }
+  // aimed killstreaks (chicken strike, giant duck): the honest client puts the marker where a 300 m ray from its eyes
+  // hit (or 60 m out on a miss), so it has to be in range and in plain sight of you. '' = fine, else why not
+  aimWhy(p, at) {
+    const hs = [PH.eye]; // your eye height: on foot, in a mech's cockpit, or over the wrecking ball's camera pivot
+    if (this.mechOn(p) && MECH[p.mech.f]) hs.push(MECH[p.mech.f].eye);
+    if (this.isBall(p) || p.ballUntil > now()) hs.push(3);
+    let far = true;
+    for (const h of hs) {
+      const e = [p.pos[0], p.pos[1] + h, p.pos[2]], d = [at[0] - e[0], at[1] - e[1], at[2] - e[2]], l = Math.hypot(d[0], d[1], d[2]);
+      if (l > 315) continue; // 300 m + slack for lag
+      far = false;
+      if (l <= 1 || !raycast(e, [d[0] / l, d[1] / l, d[2] / l], l - 1, this.boxes)) return ''; // (the ray stops 1 m short: the marker sits on a wall's face)
+    }
+    return far ? 'too far (300 m max)' : "can't see there";
   }
   // bot eyesight: walls and smoke clouds block it
   canSee(a, c) {
@@ -2985,7 +3003,11 @@ class Room {
         if (this.modeWeapon(p)) break; // no killstreaks in gun game or as a zombie (they keep for later)
         if ((m.r === 'chickenstrike' || m.r === 'giantduck') && !at) break;
         if (rigClash(m.r, this.rigOn(p), this.isBall(p) || p.ballUntil > now())) break; // overdrive rig vs other body streaks: it keeps in the tray
-        if (mechClash(m.r, this.mechOn(p), !!p.rig, this.isBall(p) || p.ballUntil > now(), !!this.mechOf(p)) || (m.r === 'mechdrop' && !this.mechCall(p, at, m.mf))) { if (m.r === 'mechdrop') send(p, { t: 'streak', earned: m.r, n: p.streak || 0 }); break; } // mech drop: the marker's checks; refused = back in your tray
+        if (at && !p.zmDeploy && (m.r === 'chickenstrike' || m.r === 'giantduck')) { // no calling it in on a spawn across the map: refused = back in your tray (zombie drops: the server picked the spot)
+          const why = this.aimWhy(p, at);
+          if (why) { send(p, { t: 'streak', earned: m.r, n: p.streak || 0 }); this.mechNo(p, why); break; }
+        }
+        if (mechClash(m.r, this.mechOn(p), !!p.rig, this.isBall(p) || p.ballUntil > now(), !!this.mechOf(p)) || (m.r === 'mechdrop' && !this.mechCall(p, at, streakFrame(m.mf !== undefined ? m.mf : p.mechFrame)))) { if (m.r === 'mechdrop') send(p, { t: 'streak', earned: m.r, n: p.streak || 0 }); break; } // mech drop: the marker's checks; refused = back in your tray
         p.pocket.splice(i, 1);
         if (m.r === 'overdrive') this.rigStart(p);
         if (this.mode === 'training') (p.trainCd ||= {})[m.r] = now() + ((STREAKS[m.r].dur || 0) + 3) * 1000;
