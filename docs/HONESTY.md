@@ -12,7 +12,7 @@ skip the hit checks (their referee judges hits on boss parts itself).
 
 | What | Rule | Numbers |
 | --- | --- | --- |
-| Hitscan line of sight | a clear line (map boxes: walls, floors, glass; not deco or smoke, like the client's bullets) from the shooter's eye to any sample point on the target's hitboxes | eyes: 3 heights (1.6 / 1.3 / 0.98 m; a mech's cockpit + chase camera, the rig's, the ball's), at the newest position, one snapshot ahead (0.05 s at the speed the server saw), and the last 220 ms of positions. target: the newest position and the last 450 ms (every 100 ms), hitboxes scaled up far away like the client draws them (x1 at 25 m to x1.8 at 85 m; x1.5 more in zombies), 9 points per box (middle, sides across the line of sight, top, bottom) |
+| Hitscan line of sight | a clear line (map boxes: walls, floors, glass; not deco or smoke, like the client's bullets) from the shooter's eye to any sample point on the target's hitboxes | eyes: 3 heights (1.6 / 1.3 / 0.98 m; a mech's cockpit + chase camera, the rig's, the ball's), at the newest position, one snapshot ahead (0.05 s at the speed the server saw), and the last 220 ms of positions. target: the newest position and the last 650 ms (every 100 ms; a shooter at ~540 ms ping still lands), hitboxes scaled up far away like the client draws them (x1 at 25 m to x1.8 at 85 m; x1.5 more in zombies), 9 points per box (middle, sides across the line of sight, top, bottom) |
 | Revolver ricochets | no straight line: trace the shot back from the target along its last direction, mirroring off each wall (2 bounces); any wall spot the shooter can see counts | (a cheater can still bend a revolver shot off a wall they can see: see "left") |
 | Weapon held | the hit's weapon is the one the snapshots say you hold, or the one you swapped away from < 400 ms ago. A hit with the gun you're swapping to (swap + click in one frame) waits up to 300 ms for the snapshot that says so, then runs the usual checks | dash hits: the scythe (or scythe rifle) in hand |
 | Weapon in your loadout | Randomizer: exactly the rolled weapon for that slot (the server now keeps the roll, `p.roll`). Plain matches: one weapon per slot per life, from 6.5 s into the life (the client only switches loadouts in the first 5 s). Gun game, infection, chaos kits, zombies, royale, Plant & Defuse, board game night, training, co-op and lobbies keep their own rules (`allowed`, `chaosHit`, `zmArm`, `brHandle`, `econHitOk`) | a new loadout handed out (every spawn, gun game rungs) clears the lock |
@@ -28,7 +28,7 @@ skip the hit checks (their referee judges hits on boss parts itself).
 - **Ammo, magazine, reload and spread on hitscan**: the client counts its own bullets (except the revolver, Plant &
   Defuse and royale). A server count needs the client's reloads and per-gun fire modes mirrored; spread needs the S&D
   style shared random seed everywhere. Bigger job.
-- **Lag rewind**: the server judges against the last ~450 ms of positions it saw, not an exact rewind to the shooter's
+- **Lag rewind**: the server judges against the last ~650 ms of positions it saw, not an exact rewind to the shooter's
   frame. Good enough to stop wall hacks; exact rewind would need timestamps on hits.
 - **Revolver ricochet direction**: a cheater can claim a bounce off any wall they can see. A tighter check would replay
   the client's bounce from its aim (like `tacHitOk` does in Plant & Defuse), which needs the aim + spread seed.

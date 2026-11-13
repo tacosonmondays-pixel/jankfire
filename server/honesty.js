@@ -22,7 +22,7 @@ export const HON = {
   grace: 400, // ms: the gun you just swapped away from still counts this long (a hit already on its way)
   wait: 300, // ms: a hit with a gun you're swapping to (same frame, before the snapshot) waits this long for it
   lockAt: 6500, // ms into a life: one weapon per slot from here (the client switches loadouts only in the first 5 s)
-  tHist: 450, // ms of the target's past positions tried (the client draws others ~110 ms back, plus ping)
+  tHist: 650, // ms of the target's past positions tried (the client draws others ~110 ms back, plus the shooter's round trip: ~540 ms ping still lands)
   sHist: 220, // ms of the shooter's own
   gap: 100, // ms between the past positions tried
   eyes: [1.6, 1.3, 0.98], // eye heights: standing, in between, crouched / sliding (the client's eye slides between them)
@@ -92,7 +92,7 @@ const M = {
     const out = [t.pos], tr = t.strail, n = now();
     if (!tr) return out;
     let last = n;
-    for (let i = tr.length - 1; i >= 0 && out.length < 7; i--) {
+    for (let i = tr.length - 1; i >= 0 && out.length < 9; i--) {
       const s = tr[i];
       if (s[0] < n - ms) break;
       if (last - s[0] < HON.gap) continue;
@@ -220,7 +220,7 @@ const M = {
   },
   // the taser and the remote skip onFire's checks (server/secondaries.js takes them first): the same rules here
   honSecFire(p, m) {
-    if (!p.alive) return true;
+    if (!p.alive || !this.honOn(p)) return true;
     const id = m.w;
     if (!this.allowed(p, id) || (this.zm && !this.zmArm(p, id))) return this.honNo(p, 'not in this mode', m);
     if (this.chaosKit && !this.chaosKit.slots.includes(id)) return this.honNo(p, 'not in the kit', m);

@@ -126,6 +126,21 @@ const facing = (a, b, w, o = {}) => ({ y: look(eyeAt(a), chest(b)).y, x: look(ey
     ok(dmgs('ar').length === 1, `lands: strafing, B ducked into cover a few snapshots ago (${dmgs('ar').length})`);
   }
   {
+    // high ping: the same strafe, but A's hit only arrives ~550 ms after B reached cover (A's client drew B in the open)
+    const at = (t) => {
+      const k = Math.max(0, t - 1400) / 1000;
+      return { a: [-3.6, 0, -9], ao: { w: 'ar', y: 0.1, x: 0 }, b: [-3.4 + Math.min(k, 0.35) * 7, 0, 6], bo: { v: [k < 0.35 ? 7 : 0, 0, 0] } };
+    };
+    await pair();
+    await park(1400, (t) => at(t));
+    clear();
+    for (let t = 1400; t < 2150; t += 33) { const s = at(t); A.place(s.a, s.ao); B.place(s.b, s.bo); await sleep(33); } // last seen past the corner at ~1600 (x -2)
+    const L = look(eyeAt(at(2150).a), chest([-2.4, 0, 6]));
+    A.send({ t: 'hit', to: B.id, w: 'ar', d: L.d, n: 1, h: 0 });
+    await sleep(400);
+    ok(dmgs('ar').length === 1, `lands: high ping, B in cover for ~550 ms when the hit arrives (${dmgs('ar').length})`);
+  }
+  {
     const a = [-6.5, 0, -3], b = [-6.5, 0, 0];
     await shoot(() => ({ a, b, ao: facing(a, b, 'shotgun') }), 'shotgun', 1, { n: 10 });
     const g = dmgs('shotgun');
