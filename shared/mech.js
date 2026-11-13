@@ -74,7 +74,7 @@ export const MECH = {
     aisle: { dur: 6, speed: 34, max: 3, reach: 2.2, dps: 8, dmg: 35, fling: 24, up: 14, min: 4 }, // Q: CLEAN UP AISLE 5. top speed, scoop up to max (moving faster than min m/s), 8/s in the basket, the dump
     ride: { reach: 3, max: 1, hop: 7 }, // jank: the pound coin lock. an ally within reach m of its sides rides in the child seat
     // where people go (local: x right, y up, +z back toward the handle): the child seat, the basket's three spots
-    seat: [0, 1.05, 0.55], scoop: [[0, 1.05, -0.95], [-0.5, 1.05, -0.4], [0.5, 1.05, -0.4]], muzzle: [0.55, 2.55, 1.25],
+    seat: [-0.2, 1.05, 0.05], scoop: [[0, 1.05, -0.95], [-0.5, 1.05, -0.4], [0.5, 1.05, -0.4]], muzzle: [0.55, 2.55, 1.25],
     ult: { dmg: 550, time: 100 },
   },
 };
