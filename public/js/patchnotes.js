@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.33', date: '2026-11-13', title: 'PRESS M', items: [
+    "PRESS M: THE BIG MAP. the whole level, your squad, the zone and the blimp's route. click it (or press K) to ping a spot for your team: a beam, a beep and a distance. spam it and it tells you to touch grass.",
+  ] },
   { v: '11.32', date: '2026-11-13', title: 'SIGN HERE', items: [
     "SIGN HERE: rooftop's big signs got real steel. pink posts, bracing, a catwalk, floodlights and neon round the hotel. the bank still won't give you a loan.",
   ] },
