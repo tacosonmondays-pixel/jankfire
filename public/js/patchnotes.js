@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.37', date: '2026-11-13', title: 'THE OVERLOOK', items: [
+    "THE DECK GOT DRESSED: it's THE OVERLOOK now. spinning fans underneath, balloons, bunting and a big marquee board. the top 3 in the lobby stand on the podiums in front of it, showing off. new looks rotate in weekly.",
+  ] },
   { v: '11.36', date: '2026-11-13', title: 'ON DECK', items: [
     "LOBBIES ARE A DECK NOW: online plant & defuse, jank royale and zombies count down on a little deck floating off the map. nothing hurts, fire = shove, jump off and you're put back. the big board shows the top 3 in the lobby by their record.",
   ] },
