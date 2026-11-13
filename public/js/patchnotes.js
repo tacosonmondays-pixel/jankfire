@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.29', date: '2026-11-13', title: 'KABOOM', items: [
+    "mount kaboom erupts now. a rumble, then BOOM: an ash cloud, lava spilling out of the crater, glowing lava bombs whistling overhead, then a tropical downpour. islands and islands plant & defuse. everyone sees it at the same moment.",
+    "the lava bombs are just for looking at. for now.",
+  ] },
   { v: '11.28', date: '2026-11-13', title: 'IT RAINS NOW', items: [
     "WEATHER: it rains now. a minute or two into a match a storm rolls in over suburb, warehouse, skyline, rooftop, platform, range and jankburg. drawn-on clouds, splashes, puddles, lightning, thunder. everyone gets the same storm.",
     "indoors the rain drums on the roof. dead mall only hears it. you can turn it off in settings (weather), coward.",
