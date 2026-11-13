@@ -3,6 +3,7 @@
 export const PATCH_NOTES = [
   { v: '11.45', date: '2026-11-13', title: 'DEAD AIR', items: [
     "deb's boombox works now. two stations, both terrible, both great: WZMB 66.6 SMOOTH APOCALYPSE and BRAAAINS FM. walk up to the desk in the zombies lobby to hear it. the dial drifts between them through static.",
+    "the school and hospital zombies maps finally have their pictures in the menu. the hospital is still serving number 003.",
   ] },
   { v: '11.44', date: '2026-11-13', title: 'STAFF MEETING', items: [
     "deb, gus and marge in the zombies lobby are proper characters now. deb stamps your passive, gus spins the revolver, marge blows a gum bubble and ticks you off her clipboard. they look at you when you walk up. they are not happy about it.",
