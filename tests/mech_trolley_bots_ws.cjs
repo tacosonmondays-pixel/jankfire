@@ -39,6 +39,7 @@ const MECHF = 1 << 22, DRIFT = 1 << 23;
     if (m.t !== 'mech') return;
     const k = m.k === 'trhold' ? `hold:${m.s || ''}:${m.on ? 'on' : 'off:' + m.why}` : m.k === 'traisle' ? `aisle:${m.on ? 'on' : 'off:' + m.why}` : m.k;
     if (m.k === 'en' || m.k === 'trtoss') { count(m.k); return; }
+    if (m.k === 'trbonk' && m.to) count('bonk:hit'); // (a can on someone: players show a 'dmg', mechs' armour doesn't)
     count(k);
     if (m.k === 'in') inMech.set(m.id, { f: m.f });
     if (m.k === 'trpush') count(m.c >= 0.6 ? 'push:charged' : 'push:flat');
@@ -55,7 +56,7 @@ const MECHF = 1 << 22, DRIFT = 1 << 23;
   ok(drifted.size >= 1, `they drift (${drifted.size} trolleys showed the drift flag)`);
   ok((seen['push:charged'] || 0) >= 1, `they push with a built-up charge (${seen['push:charged'] || 0} charged, ${seen['push:flat'] || 0} flat)`);
   ok((seen['dmg:trpush'] || 0) >= 1, `pushes land (${seen['dmg:trpush'] || 0})`);
-  ok((seen.trtoss || 0) >= 10 && (seen['dmg:trcan'] || 0) >= 2, `they toss cans (${seen.trtoss || 0} thrown, ${seen['dmg:trcan'] || 0} bonks)`);
+  ok((seen.trtoss || 0) >= 10 && (seen['bonk:hit'] || 0) >= 2, `they toss cans (${seen.trtoss || 0} thrown, ${seen['bonk:hit'] || 0} bonks, ${seen['dmg:trcan'] || 0} on people on foot)`);
   ok((seen['aisle:on'] || 0) >= 1, `they CLEAN UP AISLE 5 (${seen['aisle:on'] || 0})`);
   ok((seen['hold:scoop:on'] || 0) >= 1 && (seen['hold:scoop:off:dump'] || 0) + (seen['hold:scoop:off:dead'] || 0) >= 1, `they scoop people and dump them (${seen['hold:scoop:on'] || 0} scooped, ${seen['hold:scoop:off:dump'] || 0} dumped)`);
   console.log(`  (allies hopping in: ${seen['hold:ride:on'] || 0}; rams: ${seen['dmg:trram'] || 0})`);
