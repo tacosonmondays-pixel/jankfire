@@ -193,7 +193,8 @@ const ROOT = path.join(__dirname, '..', '..', '..');
       ['jl_hang', 3.4, 0, 'UP INTO THE WEB'], ['jl_drop', 2.7, 0, 'AND DOWN · TA-DA'], ['jl_leg_off', 4.4, 0, 'LEG DAY CANCELLED'], ['jl_leg_back', 3.1, 0, 'IT SCREWS BACK ON']];
     const FPS = 24;
     await pg.evaluate(() => { const X = window.JLX; X.r.setSize(960, 540); X.r.shadowMap.enabled = true; X.clear(); const sc = X.scene(0x2a1830, 9); const J = X.jester({ clip: 'jl_idle', t: 0, settle: 0 }); sc.add(J.c.root);
-      X.film = { sc, J, cam: X.cam([6.2, 3.0, -9.6], [0.2, 2.5, 0.3], 42) }; J.a.pos = [-1.4, 0, 0]; J.c.root.position.set(-1.4, 0, 0); });
+      X.film = { sc, J, cam: X.cam([6.2, 3.0, -9.6], [0.2, 2.5, 0.3], 42) }; J.a.pos = [-1.4, 0, 0]; J.c.root.position.set(-1.4, 0, 0);
+      X.G.scene = new X.THREE.Scene(); }); // (the game's own world streams into G.scene as it loads: keep it out of the film's stage)
     let f = 0;
     for (const [clip, len, walk, label] of PROG) {
       for (let t = 0; t < len - 1e-6; t += 1 / FPS) {

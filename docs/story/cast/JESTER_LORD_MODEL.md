@@ -16,7 +16,7 @@ Madame Velvet is not part of this; she comes later.
 | one moment from each clip | `jl_game_poses.jpg` | |
 | a contact strip per clip (12 frames, the marks called out) | | `c_jester_lord_clip_<name>.jpg` (made in the game's renderer: `jlshots.cjs clips` writes `jl_clip_<name>.jpg`) |
 | in the real game, story mode | `jl_ingame_hd_*.jpg` (Too HD: idle at 7 m, talk, bow, scuttle, web hang, leg off, from 30 m), `jl_ingame_potato_*.jpg` (the same at Potato) | |
-| the rehearsal, recorded in story mode at Too HD | `jl_rehearsal.mp4` | |
+| the whole set once, at true speed (27.6 s, 24 fps, 960 x 540): stepped frame by frame through the real clip code in the game's renderer (`jlshots.cjs film`), because software GL draws Too HD story mode at 3 to 10 s a frame | `jl_rehearsal.mp4` | |
 
 In every sheet "his right" is +x: the pink horn, the pink half of his doublet, and the leg that comes off (RB).
 
@@ -59,7 +59,7 @@ thing is his head and grin, the tiny thing is his waist.
 | `tools/blender/cast/jl_rig.py` | his skeleton in one place (sizes, legs, a leg solver, fk), plain python |
 | `tools/blender/cast/jl_clips.py` | the clips: key poses, the arm and leg solvers, the loop and foot-slide checks. Writes `jl_clipdata.js` and his `joints.json` entry |
 | `tools/blender/cast/make_cast_jester_lord.py` + `jlkit.py` | **the build**: the mesh builder (game coordinates, a colour per face corner, joint weights per vertex, lattice tubes for the diamonds, bells, frills, decals), the model, skin, AO, far model, asset gate, parts file, Blender sheets |
-| `tools/blender/cast/jlshots.cjs`, `jlgame.cjs`, `jlrec.cjs` | the actor-path check and the in-game sheets; the story-mode shots; the recording |
+| `tools/blender/cast/jlshots.cjs`, `jlgame.cjs` | the actor-path check, the in-game sheets and the film; the story-mode shots |
 | `tests/story/jester_lord.test.mjs` | the glb, the parts file, his skeleton and the clips agree |
 
 Touched in shared files: `looks.js` (one import and the `jester_lord` look line), his entry in
@@ -202,9 +202,8 @@ blender52 -b --python tools/blender/cast/make_cast_jester_lord.py -- --qa --qa-w
 #   stump and the far model, writes the glb and the parts file, renders the Blender sheets
 #   --no-export --no-ao --no-lod --quick (Workbench sheets) --only-check --islands --blend=<path>
 # then, with the game served on a port (headless browsers through pwlock.cjs):
-node tools/blender/cast/jlshots.cjs <port> <outDir>          # the actor-path check and the in-game sheets
+node tools/blender/cast/jlshots.cjs <port> <outDir>          # the actor-path check and the in-game sheets (+ film: jl_rehearsal.mp4)
 node tools/blender/cast/jlgame.cjs <port> <outDir>           # story mode at Too HD and Potato
-node tools/blender/cast/jlrec.cjs <port> <out.mp4>           # the rehearsal, recorded
 ```
 
 If his skeleton changes (`jl_rig.py`), run `jl_clips.py` first, then the build. If a marker moves, the build prints
@@ -226,15 +225,15 @@ If his skeleton changes (`jl_rig.py`), run `jl_clips.py` first, then the build. 
   swaps in and back (24,624 -> 3,178 triangles, 9 -> 4 meshes); the code puppet stands and takes a clip.
 - **Tests**: `node --test $(find tests -name "*.test.*")`: 286 pass, 0 fail (his own file: 4).
 - **Looked at**: the Blender sheets after every pass, the in-game sheets and every clip strip, the story-mode shots
-  and the recording. Passes: (1) the first build; (2) a bigger head and torso, a smaller big top; (3) the eyes (they
+  and the film. Passes: (1) the first build; (2) a bigger head and torso, a smaller big top; (3) the eyes (they
   were scaled twice), the hood, a thinner nose, the marotte off his face; (4) the clips: a shallower bow that keeps
   his grin on you, the leg-off lurch rolling about the thorax instead of the floor, the arms solved in the spine's
   frame, the flying leg's turn, the smoother leap and drop.
 
 ## Weak spots (honest list)
 
-- **Timing was judged from contact strips, a 60 fps step check and a software-GL recording** (a few frames a
-  second), not watched at full speed with sound.
+- **Timing was judged from contact strips, a 60 fps step check and the frame-stepped film**, not played live at
+  full speed with sound (software GL here draws a few frames a second at most).
 - **The leap into the web and the drop are fast** (a leg tip moves 34-40 cm in a 60 fps frame at the quickest): meant
   as cartoon snaps, but at low frame rates they can look like a cut.
 - **The web is drawn by the rehearsal**: a flat disc of silk threads 5.4 m up. A mission would put him under its own
