@@ -16,7 +16,7 @@ import * as party from '../party.js'; // the party (P, onParty) and the walkable
 import * as hub from '../hubmenu.js'; // (lobbySceneFlag: the hub's lineup steps aside while a scene is up)
 import { makeWalk, walker, poseWalker, wander, follow } from './walk.js';
 
-const FILES = { isle: 'garage' }; // mode -> scene file (more land with their PRs: zm warehouse, br royale, qp/bomb hangar)
+const FILES = { isle: 'garage', zm: 'warehouse' }; // mode -> scene file (more land with their PRs: zm warehouse, br royale, qp/bomb hangar)
 const mods = {};
 const load = (f) => mods[f] || (mods[f] = import(`./${f}.js`).catch((e) => { delete mods[f]; throw e; }));
 export const lobbySceneFor = (mode) => FILES[mode] || null;
