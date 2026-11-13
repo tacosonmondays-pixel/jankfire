@@ -1,6 +1,29 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.42', date: '2026-11-13', title: 'SIGN IT OUT', items: [
+    "the quick play / plant & defuse hangar got a jumbotron (pink bezel, LIVE light, a GG EZ ticker) and a proper armory rack for your guns, with a SIGN IT OUT clipboard nobody signs.",
+  ] },
+  { v: '11.41', date: '2026-11-13', title: 'TAKE A NUMBER', items: [
+    "the zombies warehouse lobby got real furniture: deb's tanker desk with a rotary phone and a TAKE A NUMBER dispenser, gus's glass gun counter (NO REFUNDS), marge's crates, a generator that says DO NOT KICK (with a boot print on it), and a door marked EXIT (LIES).",
+  ] },
+  { v: '11.40', date: '2026-11-13', title: 'EARS ON', items: [
+    "the garage's TEST FIRE range got real: three booths, ear muffs, spilled brass, paper targets cut like mechs on rails, and a MECH ROUNDS FIRED TODAY board stuck on 9999+. press E and the targets spin.",
+  ] },
+  { v: '11.39', date: '2026-11-13', title: 'BREAK ROOM', items: [
+    "the mech garage got a real break room: a ratty purple couch, pizza on the table, a MINE!! fridge, a coffee machine, and a cabinet door hanging off its last screw. it creaks. nobody has fixed it.",
+  ] },
+  { v: '11.38', date: '2026-11-13', title: 'CLEAN UP AISLE 5', items: [
+    "new mech: TROLLEY. a 5 m shopping trolley, the fastest thing on the island. lob bouncing tin cans, hold shift to drift and build a RAM CHARGE, then E to lunge into people.",
+    "ultimate, CLEAN UP AISLE 5: scoop up to 3 enemies into the basket and dump them somewhere unpleasant. a squadmate can ride in the child seat.",
+    "fixed: wiggling on the spot no longer counts as speed for any mech's ram.",
+  ] },
+  { v: '11.37', date: '2026-11-13', title: 'THE OVERLOOK', items: [
+    "THE DECK GOT DRESSED: it's THE OVERLOOK now. spinning fans underneath, balloons, bunting and a big marquee board. the top 3 in the lobby stand on the podiums in front of it, showing off. new looks rotate in weekly.",
+  ] },
+  { v: '11.36', date: '2026-11-13', title: 'ON DECK', items: [
+    "LOBBIES ARE A DECK NOW: online plant & defuse, jank royale and zombies count down on a little deck floating off the map. nothing hurts, fire = shove, jump off and you're put back. the big board shows the top 3 in the lobby by their record.",
+  ] },
   { v: '11.35', date: '2026-11-13', title: 'HOMEWORK', items: [
     "the game stopped freezing for a sec the first time it sees a new gun, zombie or mech. it does its homework at load now. looks exactly the same.",
   ] },

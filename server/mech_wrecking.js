@@ -77,7 +77,7 @@ export function installWrecking(Room, U) {
     },
     // passive: rolling (or swinging, or diving) it shrugs off knockback entirely
     shrug(t) {
-      const M = t.mech, W = M.wb, v = t.isBot ? [t.vel[0], t.vel[2]] : M.mv && now() - M.snapT < 300 ? M.mv : [0, 0]; // (measured, and only while it's still sending)
+      const M = t.mech, W = M.wb, v = this.mechMv(t, M, now()); // (measured, only while it's still sending, backed by its net travel)
       if ((W && (W.chain || W.pile)) || Math.hypot(v[0], v[1]) > WB.shrug) return [0, 0, 0];
       return null;
     },
@@ -88,7 +88,7 @@ export function installWrecking(Room, U) {
     wbOn(p) { return this.mechOn(p) && p.mech.f === 'wrecking' && !!p.mech.wb; },
     // ---- ram: rolling into people. the speed is what the server measured (players) / its own (bots)
     wbRamTick(p, M, n) {
-      const v = p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0], W = M.wb;
+      const v = this.mechMv(p, M, n), W = M.wb;
       if (!p.isBot && M.mv !== W.mvRef) { W.mvRef = M.mv; W.hsPrev = W.hsNow || 0; W.hsNow = M.mv ? Math.hypot(M.mv[0], M.mv[1]) : 0; } // (the last two measured windows)
       // what it hits with: the measured speed, but never more than it's allowed to go right now, nor a jump from the window
       // before (a ball that sat still and then "moved" 10 m in one snapshot rams like it was sitting still)
