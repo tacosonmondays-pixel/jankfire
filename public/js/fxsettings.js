@@ -2,6 +2,7 @@
 // punchy colours. Potato and Crusty stay off on auto: the shaders are for machines with frames to spare.
 import { setPost, setPostFail, setPostAO, setPostSSR } from './post.js';
 import { setBounce } from './bounce.js';
+import { setNeon } from './neon.js';
 import { setReflect, setReflectSSR } from './reflect.js';
 import { hud } from './hud.js';
 import { skinU } from './softskin.js';
@@ -19,7 +20,8 @@ export function applyFx(S) {
   const [bloom, skin, punch, ao, bounce, refl] = fxResolve(S);
   setReflect(refl && S.jank >= 2); // (mirrors: Mid and Too HD)
   const ssr = refl && S.jank >= 3; setPostSSR(ssr); setReflectSSR(ssr); // (floor mirrors from the screen: Too HD only)
-  setBounce(bounce && S.jank >= 2); // (light off the buildings: never on Potato or Crusty)
+  setBounce(bounce && S.jank >= 2); setNeon(bounce && S.jank >= 2); // (the neon's light rides with the bounce: both are light off things)
+  // (light off the buildings: never on Potato or Crusty)
   setPost(bloom, punch || ao || (refl && S.jank >= 3)); // (contact shadows need the shader pass even with no bloom or punch)
   setPostAO(ao && S.jank >= 2); // (never on Potato or Crusty)
   skinU.value = skin ? 1 : 0;

@@ -23,6 +23,7 @@ import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from '
 import { updateFlames } from './flames.js'; // real fire
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
+import { neonMap, updateNeon } from './neon.js'; // the neon and lamps light the walls round them (the ray-traced look)
 import { bounceMap, updateBounce } from './bounce.js'; // light bounced off the ground and walls (the ray-traced look)
 import { reflectMap, updateReflect, reflectSSRLive } from './reflect.js'; // glass and wet roads mirror the world (the ray-traced look)
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
@@ -584,6 +585,7 @@ export function loadMap(id) {
   shredMap(MAPS[MAP.id], MAT);
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
   reflectMap(G.scene, MAPS[MAP.id], MAT); // (night too: neon in the wet streets is the point)
+  neonMap(MAPS[MAP.id], MAT, night); // (after lightingMap: it finds the lights)
   bounceMap(night ? null : MAPS[MAP.id], MAT); // (needs the sun's direction: after lightingMap. night maps: no sun to bounce)
   biLookMap(MAP.id, [skyMesh, sun, ...clouds]); // Battle Island's own sky, fog and grade (bilook.js; nothing on other maps)
 }
@@ -655,7 +657,7 @@ export function resize() {
 }
 
 export function updateWorld(dt) {
-  updateBounce();
+  updateBounce(); updateNeon();
   updateBiLook(dt);
   for (const c of clouds) {
     c.position.x += c.userData.speed * dt;
