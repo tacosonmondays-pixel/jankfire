@@ -42,15 +42,17 @@ const OUT_VS = `uniform float uThick; void main() { vec4 mv = modelViewMatrix * 
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position + normal * k, 1.0); }`;
 const OUT_FS = 'uniform vec3 uColor; void main() { gl_FragColor = vec4(uColor, 1.0); }';
 const HULLS = new WeakMap(); // source glb scene -> { joint name: hull geometry } (shared by every mech built from it)
+const FAR = /_lod1$/; // (a far-LOD piece: <joint>_lod1, a sibling of <joint>_mesh)
 function hullsOf(src, glb, joints) {
   if (HULLS.has(src)) return HULLS.get(src);
   const out = {}, isJoint = new Set(joints);
   glb.updateMatrixWorld(true);
-  for (const jn of joints) {
+  const lod = joints.some((jn) => { const J = nodeIn(glb, jn); return J && J.children.some((c) => FAR.test(c.name)); });
+  for (const jn of joints) { // (one hull per joint, from its far LOD if the model has one: it outlines the near model too, bolts and hoses need no ink, and it's a quarter of the triangles)
     const J = nodeIn(glb, jn); if (!J) continue;
     const inv = _m.copy(J.matrixWorld).invert(), parts = [];
-    const walk = (o) => { for (const c of o.children) { if (isJoint.has(c.name)) continue; if (c.isMesh && c.geometry && c.material && !/decal|glass/.test(c.material.name || '') && c.material.isMeshStandardMaterial) { const g = c.geometry.clone(); for (const k of Object.keys(g.attributes)) if (k !== 'position') g.deleteAttribute(k); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); parts.push(g.index ? g : mergeVertices(g, 1e-4)); } walk(c); } };
-    walk(J);
+    const walk = (o, f) => { for (const c of o.children) { if (isJoint.has(c.name)) continue; const cf = f || FAR.test(c.name); if (cf === lod && c.isMesh && c.geometry && c.material && !/decal|glass/.test(c.material.name || '') && c.material.isMeshStandardMaterial) { const g = c.geometry.clone(); for (const k of Object.keys(g.attributes)) if (k !== 'position') g.deleteAttribute(k); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, c.matrixWorld)); parts.push(g.index ? g : mergeVertices(g, 1e-4)); } walk(c, cf); } };
+    walk(J, false);
     if (!parts.length) continue;
     const h = mergeVertices(mergeGeometries(parts, false), 2e-3);
     for (const g of parts) g.dispose();
@@ -131,6 +133,12 @@ export function lookMech(inst, glb, color, src = glb) { // (src: the loaded scen
   const H = hullsOf(src, glb, joints);
   L.outMat = new THREE.ShaderMaterial({ uniforms: { uThick: { value: 0.022 }, uColor: { value: new THREE.Color(INK) } }, vertexShader: OUT_VS, fragmentShader: OUT_FS, side: THREE.BackSide });
   for (const [jn, h] of Object.entries(H)) { const J = nodeIn(glb, jn); if (!J) continue; const o = new THREE.Mesh(h, L.outMat); o.name = jn + '_ink'; o.userData.noWrap = true; J.add(o); L.outline.push(o); }
+  // the far LOD (meta.lod: '<joint>_lod1' next to each '<joint>_mesh'): one set shows, by the camera's distance (lookTick)
+  if (meta.lod && Number.isFinite(meta.lod.dist) && meta.lod.dist > 0) {
+    L.lodD = Math.min(200, meta.lod.dist); L.near = []; L.far = [];
+    glb.traverse((o) => { if (FAR.test(o.name)) L.far.push(o); else if (/_mesh$/.test(o.name)) L.near.push(o); });
+    if (!L.far.length) L.lodD = 0; else setFar(L, false);
+  }
   // thrusters: a contrail each (in the world) and a heat shimmer behind each flame
   const hot = inst.frame === 'nightshift' ? 0xffb43a : 0x5ff0ff;
   L.shimMat = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 }, uC: { value: new THREE.Color(0xfff0d8) }, uSize: { value: 0.9 }, uOff: { value: 1.9 } }, vertexShader: SHIM_VS, fragmentShader: SHIM_FS,
@@ -144,6 +152,13 @@ export function lookMech(inst, glb, color, src = glb) { // (src: the loaded scen
   for (const c of list) if (c && typeof c.name === 'string' && Array.isArray(c.events)) L.events[c.name] = c.events.filter((e) => e && Number.isFinite(e.t) && typeof e.fx === 'string' && typeof e.at === 'string');
   L.glb = glb;
 }
+function setFar(L, far) { // (the piece nodes and their meshes: gibs and sprays only take what's visible)
+  L.isFar = far;
+  const vis = (n, v) => n.traverse((o) => { if (o === n || o.isMesh) o.visible = v; });
+  for (const n of L.near) vis(n, !far);
+  for (const n of L.far) vis(n, far);
+}
+const LOD_K = [0.6, 0.8, 1, 1.4]; // (Potato .. Too HD: how far the near model holds, times meta.lod.dist)
 export function lookColor(inst, color) {
   if (!inst.look) return;
   inst.look.U.c.value.set(0xffffff).lerp(new THREE.Color(color), 0.35);
@@ -164,6 +179,11 @@ export function lookTick(inst, s, dt) {
   if (!L) return;
   const q = Q(), T = inst.t;
   L.U.k.value = q === 0 ? 0.7 : 1.1;
+  if (L.lodD && G.camera) { // (near / far LOD, with a little slack so it doesn't flicker at the line; the ink is the same for both)
+    const d = G.camera.position.distanceTo(inst.root.getWorldPosition(_v)), D = L.lodD * LOD_K[Math.max(0, Math.min(3, q))];
+    const far = L.lodForce != null ? L.lodForce : (L.isFar ? d > D * 0.92 : d > D);
+    if (far !== L.isFar) setFar(L, far);
+  }
   for (const o of L.outline) o.visible = q > 0;
   const burn = Math.max(s.jet || 0, s.hover ? 0.7 : 0, s.dash ? 1 : 0, s.boost || 0);
   L.heat += ((s.slashing ? 1 : 0) - L.heat) * Math.min(1, dt * (s.slashing ? 18 : 3));

@@ -168,6 +168,14 @@ For any mech glb that comes through `buildMech` (no frame names in it, so new he
   facing the right way (one shared atlas, `*_decalmat`). Two spray / skin slots, picked first so stickers keep off
   them: `meta.decal_slots` `[{ name: 'spray_0', joint, at, dir, up, size }]` (rest pose, game space) plus an
   `mk_spray_<n>` marker each. `sprayOnMech(inst, slot, texture)` projects a texture there; it rides the joint.
+- **Far LOD and detail** (2026-11-12, "can the mechs be larger and more detailed?"): a hero file holds its near model
+  (`<joint>_mesh`, about 60-80k tris: bolts, rams, vents, hinges, hoses, layered skins over the chassis, a 2K normal
+  map with panel lines and rivets) and a far one (`<joint>_lod1`, 15k or less: half the segments, chamfers for bevels,
+  no `dt()` detail parts), both made in one run (`make_mechs_rig.build_lod`, `tools/blender/mechs/detailkit.py`).
+  glbkit hides the far one; `lookTick` swaps the two when the camera passes `meta.lod.dist`
+  metres: 26 m on Mid, x0.6 Potato, x0.8 Crusty, x1.4 Too HD. `inst.look.lodForce = true / false` holds one. The ink
+  hulls come from the far LOD for both (bolts and hoses need no outline; it keeps the ink cheap up close).
+  What a squad costs: `node tools/blender/mechs/bench_mech.cjs <port> <hero> [n] [preset]`.
 - **Game hooks:** `buildMech` / `poseMech` / `setMechColor` / `freeMech` call it; a falling drop (`s.falling`) plays
   `drop_fall`, a fresh landing (`s.intro`) plays `hero_intro`, the landing shot keeps the camera shake.
 - **Film it:** `node tools/blender/mechs/mech_drop.cjs <port> <outDir> [frame] [preset] [video]` plays a MECH DROP in

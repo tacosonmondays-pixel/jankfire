@@ -68,3 +68,55 @@ white, chrome, seat, accent, rubber), `wb_glow`, `wb_thrust`, `wb_decalmat`: 18 
 | `pilot_in` / `eject` / `destroy` | | | pop at mk_eject | the hatch rolls up to the top; destroy slumps it on its side |
 
 Spray slots: two on the ball's front quarters (0.62 m).
+
+## VENDING MACHINE (`vending`, prefix `vm_`)
+A 5 m vending machine waddling on stubby legs. It has:
+- a glass door full of glowing drinks on four shelves, hinged on its left edge;
+- a chrome coin panel for a face: two big glowing button eyes with cheeky brows, the coin slot as its mouth, a coin return, a keypad chin and a 99P price display;
+- a lit JANK COLA marquee for a hat, and a delivery flap;
+- short arms with mitten hands, and heel jets;
+- an OUT OF ORDER sign stowed on its back, which it slams down in front of itself.
+
+Cyan cabinet (team colour), hot-pink trims, chrome. Height 5.0 m to the top of the marquee. About 63k tris near,
+17k on the far LOD. The detail: cyan skins bolted over a gunmetal chassis (real seams), a bolted shoulder mount, a
+hydraulic ram on each upper arm and behind each knee, louvred side and compressor vents, barrel hinges on the door, a
+lock, chrome dividers and price lights on the shelves, a bill slot, speaker slots, a service hatch behind the sign, a
+coiled power cord with its plug, levelling feet under the plinth, a hazard band, treads.
+
+**Joints:**
+- root > hips (the plinth) > body (the cabinet, its chest).
+- body > marquee: the sign box on top. It bobs (keyed position).
+- body > door: hinged at its left edge. **ry +60 to +100 opens it.**
+- body > flap: hinged at its top edge. **rx +70 opens it.**
+- body > sign: OUT OF ORDER. `out_of_order` keys its position: over the head, then planted in front.
+- Arms: body > shoulder_L / R > upperarm > forearm > hand (mittens).
+- Legs: hips > thigh_L / R > shin > foot (stubby, big flat feet).
+
+**Markers:**
+
+| marker | joint | what |
+|---|---|---|
+| `mk_muzzle` | body | the coin slot (its mouth): the coin turret fires from here, dir -z |
+| `mk_drop` | body | where a Jank Cola pops out of the flap |
+| `mk_sign` | hips | the floor 2.4 m in front: where the 8 m OUT OF ORDER wall goes up |
+| `mk_marquee` | marquee | the lit sign's face (RESTOCK flares here) |
+| `mk_hand_L` / `_R` | hand | the mitten palms |
+| `mk_seat` | body | the pilot, inside behind the drinks |
+| `mk_eject` | body | in front of the door (the pilot bursts out through it) |
+| `mk_thrust_L` / `_R` | foot | the heel jets |
+| `mk_mark` | marquee | above the marquee |
+| `mk_spray_0` / `_1` | body | the spray / skin slots on the cabinet's sides (0.8 m) |
+
+**Clips:**
+
+| clip | dur | play | events | note |
+|---|---|---|---|---|
+| `idle` | 2.4 | loop | | a hum: the marquee bobs |
+| `walk` / `run` | 0.9 / 0.6 | loop | | a stubby waddle: the cabinet rocks side to side |
+| `coin_fire` | 0.24 | loop | glint at the muzzle 0.04 | one coin per loop from `mk_muzzle` |
+| `dispense` | 1.0 | once | pop at mk_drop 0.36 | the door swings, the flap opens, the cola pops out at 0.36 s |
+| `out_of_order` | 1.2 | hold | slam at mk_sign 0.56 | pulls the sign off its back, over its head, slams it down in front at 0.56 s (the wall goes up at `mk_sign`); held |
+| `restock` | 1.6 | once | flare, pop, glints, vents at 0.3 | everything flung open and lit, held to 1.1 s |
+| `stuck` | 0.5 | loop | | jammed: rattling (an ability "got stuck") |
+| `kicked` | 0.8 | once | spark 0.06, pop 0.22 | an ally's kick: jolts, the flap pops and a can shoots out (unstuck) |
+| shared | | | | `jump` (heel jets at 0.26), `land`, `hit_react` (the door swings open a crack), `drop_fall`, `drop_in`, `hero_intro` (a ta-da: door flung open, offering a can; held), `pilot_in` (the door opens to let the pilot in), `eject` (the door blows open), `destroy` (the marquee and sign come loose, it slumps forward) |
