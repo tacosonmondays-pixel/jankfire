@@ -15,6 +15,7 @@ import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { resizePreview } from './preview.js';
 import { synth } from './audio.js';
+import { mountLobbyScene, lobbyScenePrefetch } from './lobbyscenes/index.js'; // the 3D place behind each mode (LOBBY_SCENES.md)
 import { P, onParty, inParty, isLead, leadName, partyJoin, partyLeave, partyKick, partyLead, partyReady, partySet, partyGo, meReady } from './party.js';
 import { showLineup } from './lineup.js';
 import { openFriends, friendsLoad, friendsOnline, friendsShown } from './friends.js'; // friends (step 3)
@@ -128,6 +129,7 @@ function modes() {
     if (k === 'qp' && GAMES[eventGame()]) b.append(el('em', 'hm-ev', 'TODAY: ' + GAMES[eventGame()].name));
     if (off) { b.disabled = true; b.title = 'offline only for now: play it from OFFLINE (online squads come with parties)'; b.append(el('i', 'hm-off', 'OFFLINE ONLY')); }
     b.addEventListener('click', () => setMode(k));
+    b.addEventListener('pointerenter', () => lobbyScenePrefetch(k)); // (its 3D place: fetched before the click)
     box.append(b);
   }
 }
@@ -210,6 +212,7 @@ function render() {
     }
     R.append(strip);
   }
+  mountLobbyScene(k, { side, onMe: () => opts.show('character'), save }); // (the same mode again: a no-op)
   $('hubGo').textContent = H.train ? 'START TRAINING' : side === 'offline' ? 'START MATCH' : k === 'qp' && st.who === 'all' ? 'PLAY NOW' : 'FIND MATCH';
   // in a party: only the leader picks. everyone else watches the leader's choices and gets READY
   const ro = inParty() && !isLead();

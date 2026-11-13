@@ -13,9 +13,36 @@ the current map, each mode gets its own little 3D place, and you and your party 
 Mockups below are **blockouts**: the real game page, the real lobby UI, the real characters, guns and mechs, but grey
 boxes where the Blender props go. Poses are placeholders too (the real ones are below). Code: `lobbyscenes/mockup.js`.
 
+## Update: you walk around in BATTLE ISLAND and ZOMBIES (the owner, after the mockups)
+*"nooo but I want to be able to walk around in zombies, and mech lobbies research super mecha champions lobby"*
+
+- **Walkable lobbies** (garage + warehouse): the panels fold away and you play your character in third person.
+  WASD (your key bindings) walks where the camera looks, SHIFT runs, SPACE jumps (onto crates too), drag the mouse to
+  look round, the wheel zooms, **E** (or your USE key) uses what you stand next to, **Z** waves. **TAB**, the corner
+  button or **Esc** brings the full lobby back (Esc again leaves, as before); the mode strip and the big yellow button
+  stay on screen the whole time. Keys are left alone while you type in a text box.
+- **Your party walks too:** each member's spot goes over the party connection ~10 times a second (`party.js`
+  `sendLobbyPos` / `onLobbyPos`, relayed by the server only inside the party and only in these two lobbies, clamped to
+  the scene's box); `a` = 0 walking, 1 in their mech, 2 waving. Offline, the bots wander about.
+- **The garage, walkable:** a big hangar. Three bays along the back (the Blender gantry), your mech in yours, your squad's
+  in theirs. **E at the bay terminal** (or the < > plate, or CUSTOMIZE) swaps your mech with the crane. **E at its feet:
+  hop in** and stomp round (the fenced TEST PAD out front, or anywhere in front of the bays); E again and you hop down
+  while it jet-hops home. A break room with the cola machine (E: you get a warm can), a TEST FIRE range (E: three shots,
+  the targets spin), crates, barrels, a tool cart, and the hangar door open on the island and the sea.
+- **The warehouse, walkable:** a boarded-up base at night. Hands poke through the gaps in the window planks, green light
+  leaks in, the generator chugs (DO NOT KICK), the radio's on, string lights blink out now and then, and the wall of
+  tally marks says ROUNDS SURVIVED (gary counted twice). A practice zombie shuffles round its post on a chain (E: poke it,
+  it flails and says something). The Jank Cola and Cheat Machine stand by the walls. **Deb** (PASSIVES, behind her desk,
+  stamping things), **Gus** (PISTOLS, polishing a revolver in front of a pegboard of the five start pistols) and **Marge**
+  (THE ITEM, sitting on her crates with grenades, a smoke, the duck, a medkit, a shield bubble): walk up, they turn to
+  you and say hi; E and the camera goes over your shoulder while the picker opens on the right. Pick, and they have an
+  opinion ("trust fund. must be nice.", "it's a revolver. it revolves."). It's your zombies loadout (the same one
+  CUSTOMIZE > LOADOUT > ZOMBIES sets); E again or walking off closes it.
+- JANK ROYALE and QUICK PLAY keep the line-up scenes below.
+
 ## The four places
 
-### 1. BATTLE ISLAND: the garage (first to build)
+### 1. BATTLE ISLAND: the garage (first to build; now walkable, see the update above)
 ![garage](lobbyscenes/garage.jpg)
 - A dark hangar with three **mech bays** (squads of 3). Your mech stands in the middle bay in a yellow gantry: two
   lattice towers, a walkway at chest height, a crane rail overhead, a work lamp on it, bay numbers on the beams.
@@ -31,7 +58,7 @@ boxes where the Blender props go. Poses are placeholders too (the real ones are 
   empty bay shows a cyan hologram **+ INVITE** (online) or a bot with a random mech (offline, the bots that will play).
 - Background bits: crates, a tool cart, cables, hazard tape, a "DAYS WITHOUT A MECH ON FIRE: 0" sign.
 
-### 2. ZOMBIES: the warehouse
+### 2. ZOMBIES: the warehouse (walkable too: walk up to Deb, Gus and Marge and press E)
 ![warehouse](lobbyscenes/warehouse.jpg)
 - A boarded-up warehouse at night: planks over the windows with toxic-green light leaking through, pallet racks,
   string lights, a pile of spare planks, the Jank Cola and Cheat Machine standing about as decor (the real in-match

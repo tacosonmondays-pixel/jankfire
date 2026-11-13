@@ -48,6 +48,7 @@ import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } f
 import { pitKill } from './shredpit.js'; // the Warehouse's shredder pit: it chews, then spits the bits back up
 import { primFx, pinStep, tennisStep, tennisEnd, updatePrims, clearPrims, cartKey } from './primaries.js'; // nail gun, tennis balls, shopping carts
 import { updateSpeedLines } from './speedlines.js';
+import { cardMesh, cardBind, cardStep, cardEnd, cardPlayed, cardFrame, clearCards } from './cardfx.js'; // card deck: 3D cards, trails, sticking
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js';
@@ -108,6 +109,7 @@ import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'
 import { initHub, hubShown, hubLobbyShown, hubInvite } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
+import { lobbySceneFrame, lobbySceneOn, setLobbyMe } from './lobbyscenes/index.js'; // a 3D place behind each mode's lobby (docs/menu/LOBBY_SCENES.md)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -117,6 +119,7 @@ import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, 
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
 import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
+import { photoCmd } from './ptphoto.js'; // /photo: a path-traced still (the tracer itself loads only then)
 import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
@@ -228,6 +231,7 @@ initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').tri
 initFriends({ toast: (t, ms) => toast(t, ms) }); // friends (friends.js): the panel the party strip's FRIENDS opens
 $('name').addEventListener('change', () => partyRehello()); // (a new name: the party hears it)
 function partyFollow() { const p = partyPending; partyPending = null; if (p && performance.now() - p.at < 25000) setTimeout(p.yes, 300); }
+setLobbyMe(() => { const [color, shown] = homeLook(), lo = G.settings.loadout || {}, gun = WEAPONS[lo.primary] ? lo.primary : 'ar'; return { name: G.myName || ($('name') && $('name').value.trim()) || G.settings.name || 'you', color, look: shown, gun, skin: G.equipped[gun], mech: lo.mech }; }); // the lobby scenes draw you (lobbyscenes/)
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -378,6 +382,7 @@ function clearEntities() {
   clearCrosses();
   clearPatches();
   clearPrims();
+  clearCards();
 }
 function quitToMenu(silent) {
   net.close();
@@ -1179,7 +1184,7 @@ function openChat() {
 }
 function closeChat(sendIt) {
   const v = $('chatin').value.trim();
-  if (sendIt && v && !gfxCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
+  if (sendIt && v && !gfxCmd(v) && !photoCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
   chatOpen = false;
   $('chatin').classList.add('hidden');
   $('chatin').blur();
@@ -1390,11 +1395,12 @@ function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equippe
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
-  const mesh = (m.st && strikeBird(m.o)) || buildProjectile(m.k, skinOf(m.o, m.k)); // (a Chicken Strike bird: the owner's look)
+  const mesh = m.k === 'card' ? cardMesh(m) : (m.st && strikeBird(m.o)) || buildProjectile(m.k, skinOf(m.o, m.k)); // (a Chicken Strike bird: the owner's look; a card: pooled, cardfx.js)
   G.scene.add(mesh);
   const pr = { id: m.id, k: m.k, o: m.o, p: m.p.slice(), v: m.v.slice(), r: w.r, bounce: w.bounce || 0, mesh, spin: 0, tip: m.tip || 0 };
   if (m.k === 'bow' && mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
   if (m.k === 'bow' && m.o !== G.myId) sfx.bowShot(m.p);
+  if (m.k === 'card') cardBind(pr);
   mesh.position.set(...pr.p);
   G.projs.set(m.id, pr);
 }
@@ -1846,7 +1852,7 @@ net.on('spawn', (m) => {
 net.on('ps', (m) => {
   spawnProj(m);
   if (m.k === 'bloodcross') { crossShot(m, G.projs.get(m.id)); return; } // a heartbeat, not a pew
-  if (m.o !== G.myId) {
+  if (m.o !== G.myId && m.k !== 'card') { // (cards riffle in cardfx.js)
     const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop', tennis: 'tennisFire' }[m.k] || 'pew';
     sfx[s](m.p);
   }
@@ -1863,6 +1869,7 @@ net.on('pd', (m) => {
     G.projs.delete(m.id);
     if (pr.k === 'slipper' && pr.o === G.myId) onSlipperBack();
     if (pr.k === 'tennis') tennisEnd(pr, m);
+    if (pr.k === 'card') cardEnd(pr, m); // sticks in the wall, bursts on them, or flutters down
   }
   if (m.x) {
     recordEv(m);
@@ -1976,6 +1983,7 @@ net.on('fx', (m) => {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;
   } else if (m.k === 'card') {
+    cardPlayed(m); // its thrown cards come in this suit's colours
     if (r) r.swingT = performance.now();
     const who = m.id === G.myId ? 'you' : nameOf(m.id)[0];
     if (m.joker) { sfx.laugh(r ? r.pos : null); hud.chat(null, null, `${who} played a joker`); }
@@ -2144,6 +2152,7 @@ function frame(t) {
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   updatePrims(dt, now); // nails in walls, pins, shopping carts
+  cardFrame(dt, now); // stuck cards, falling cards, suit puffs
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -2166,6 +2175,7 @@ function frame(t) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
     if (pr.k === 'tennis') { tennisStep(pr, dt); pr.mesh.visible = !RP.active; continue; } // counted bounces (primaries.js)
     if (pr.k === 'loop') { loopFrame(pr, dt, now); continue; } // a lasso loop in flight (lasso.js)
+    if (pr.k === 'card') { pr.mesh.visible = !RP.active; cardStep(pr, dt, now); continue; } // a 3D card: banked, spinning, trailing (cardfx.js)
     if (pr.k === 'slipper') {
       slipperStep(pr, dt, now);
       pr.spin += dt * 20;
@@ -2176,9 +2186,6 @@ function frame(t) {
       pr.mesh.position.set(pr.p[0], pr.p[1], pr.p[2]);
       if (pr.k === 'bow') { // point first along the flight path, no tumbling
         pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
-      } else if (pr.k === 'card') { // flat and spinning like a thrown playing card
-        pr.spin += dt * 30;
-        pr.mesh.rotation.set(0, pr.spin, 0); // the model is already lying flat
       } else if (pr.k === 'chicken') {
         pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
         pr.mesh.rotateZ(now * 0.02);
@@ -2197,8 +2204,8 @@ function frame(t) {
     }
     pr.mesh.visible = !RP.active;
     // speed streaks behind fast stuff
-    if ((pr.k === 'bow' || pr.k === 'card') && !RP.active && S.speedLines !== false) {
-      if (pr.lastP && Math.hypot(pr.p[0] - pr.lastP[0], pr.p[1] - pr.lastP[1], pr.p[2] - pr.lastP[2]) > 0.25) fx.tracer(pr.lastP, pr.p.slice(), pr.k === 'bow' ? tipColor(pr.tip) : 0xffffff, 0.02, 0.1);
+    if (pr.k === 'bow' && !RP.active && S.speedLines !== false) { // (cards draw their own trail)
+      if (pr.lastP && Math.hypot(pr.p[0] - pr.lastP[0], pr.p[1] - pr.lastP[1], pr.p[2] - pr.lastP[2]) > 0.25) fx.tracer(pr.lastP, pr.p.slice(), tipColor(pr.tip), 0.02, 0.1);
       pr.lastP = pr.p.slice();
     }
     pr.mesh.updateMatrixWorld(true);
@@ -2310,9 +2317,9 @@ function frame(t) {
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
-  renderFrame();
+  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden'))) renderFrame(); // the hub lobby's 3D place, else the game (or the menu's map orbit)
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
-  if ((screen === 'character' || ((screen === 'main' || screen === 'hubby') && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
+  if ((screen === 'character' || ((screen === 'main' || (screen === 'hubby' && !lobbySceneOn())) && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
   if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
 }
