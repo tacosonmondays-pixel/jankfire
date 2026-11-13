@@ -100,7 +100,9 @@ export function installBgnMini(Room, H) {
     // first spot with room for the whole frame. mul = his armour x the frame's
     mechSpawnIn(b, f, mul) {
       const n = now(), F = MECH[f], sp = this.map.spawns || [];
-      const spots = [b.pos.slice(), ...sp.map((s) => s.slice()).sort(() => Math.random() - 0.5)];
+      const mid = sp.reduce((a, s) => [a[0] + s[0] / sp.length, 0, a[2] + s[2] / sp.length], [0, 0, 0]);
+      const spots = sp.map((s) => s.slice()).sort((a, c) => hd(a, mid) - hd(c, mid)); // the spawn nearest the middle with room for him (well away from the edges: he falls off less)
+      if (!spots.length) spots.push(b.pos.slice());
       for (const s of spots) {
         const fl = raycast([s[0], s[1] + 1, s[2]], [0, -1, 0], 4, this.boxes);
         if (!fl || fl.box.pad) continue;
@@ -405,13 +407,13 @@ export function installBgnMini(Room, H) {
         if (S.down && n - S.down > BS.down) this.endRound();
       }
     },
-    // the boss went over the side in his mech: a crane puts him back where he started. the splash costs him BS.splash of
-    // his armour (credited to whoever pushed him). false = that broke it (a normal death: BOSS DOWN)
+    // the boss went over the side in his mech: a crane puts him back where he started. if someone knocked him off (hit in
+    // the last 2.5 s by a real shove), the splash costs him BS.splash of his armour, credited to them. false = that broke it (BOSS DOWN)
     bgmBossBack(b, by) {
-      const S = this.bgm, cut = Math.round(S.max * BS.splash);
+      const S = this.bgm, pushed = by && by !== b && now() - (b.knockT || 0) < 2500, cut = pushed ? Math.round(S.max * BS.splash) : 0; // (only a push costs him: walking off on his own doesn't)
       if (!b.body || b.body.hp <= cut || !S.home) return false;
       b.body.hp -= cut;
-      const s = by && by !== b ? this.bgnSeatOf(by) : null;
+      const s = pushed ? this.bgnSeatOf(by) : null;
       if (s) S.dmg[s.i] = (S.dmg[s.i] || 0) + cut;
       b.pos = S.home.slice(); b.vel = [0, 0, 0]; b.onGround = false;
       this.bodyFlush(b, true);

@@ -75,7 +75,7 @@ const EV = {
   cursed(m) { if (playing() && ME.alive && Math.hypot(m.p[0] - ME.pos[0], m.p[2] - ME.pos[2]) < 10) hud.msg('CURSED DUCK INBOUND', 1.4, 'lava'); },
   boss(m) { if (S.x && S.x.k === 'boss') { S.x.hp = m.hp; S.x.max = m.max; } },
   bossdown(m) { if (S.x) { S.x.down = 1; S.x.hp = 0; } const b = BGN_NAMES_BOSS(); hud.msg(b ? b.down : N.call.bossDown, 2.6, 'brag'); sfx.bgmBossDown(); G.shake = Math.max(G.shake || 0, 1); },
-  bossback(m) { if (S.x) S.x.hp = Math.max(0, (S.x.hp || 0) - (m.cut || 0)); hud.msg('SPLASH. HE CLIMBED BACK UP', 1.6, 'brag'); },
+  bossback(m) { if (S.x) S.x.hp = Math.max(0, (S.x.hp || 0) - (m.cut || 0)); if (playing()) hud.msg(m.cut ? `SPLASH! -${m.cut} ARMOUR` : 'HE FELL IN. A CRANE PUT HIM BACK', 1.6, 'brag'); },
   rig(m) { if (!playing()) return; hud.msg(m.id === G.myId ? 'YOU ARE THE BIG GUY' : 'THE BIG GUY IS BACK', 1.6, 'brag'); },
 };
 const BGN_NAMES_BOSS = () => (S.B && S.B.mg ? N.boss[S.B.mg.id] : null);
@@ -87,20 +87,22 @@ net.tap((m) => { if (m.t === 'cart' && kind() === 'carts' && m.r === G.myId && M
 // ---------------------------------------------------------------- ducks
 const DISC = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2), RING = new THREE.RingGeometry(0.8, 1, 20).rotateX(-Math.PI / 2);
 const PO = { transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -6 };
+const LINE = new THREE.CylinderGeometry(0.035, 0.035, 1, 5).translate(0, 0.5, 0); // the drop line under a falling duck (so you can tell where it's going from anywhere)
 const GOLD = new THREE.MeshStandardMaterial({ color: 0xffc400, metalness: 0.85, roughness: 0.22, emissive: 0x6a4a00, emissiveIntensity: 0.6 });
 function addDuck(m) {
   if (!G.scene || !Array.isArray(m.p) || S.ducks.has(m.id)) return;
   const mesh = buildProjectile('duck');
   if (m.g) mesh.traverse((o) => { if (o.isMesh && o.material && o.material.color && o.material.color.getHex() === 0xffd23b) o.material = GOLD; });
-  mesh.scale.setScalar(m.g ? 1.35 : 1.1);
+  mesh.scale.setScalar(m.g ? 1.9 : 1.5);
+  const line = new THREE.Mesh(LINE, new THREE.MeshBasicMaterial({ color: m.g ? 0xffc400 : 0xffe14d, transparent: true, opacity: 0.35, depthWrite: false, fog: false }));
   const disc = new THREE.Mesh(DISC, new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.25, ...PO }));
   const ring = new THREE.Mesh(RING, new THREE.MeshBasicMaterial({ color: m.g ? 0xffc400 : 0xffe14d, opacity: 0.9, fog: false, ...PO }));
-  const mark = new THREE.Group(); mark.add(disc, ring); mark.position.set(m.p[0], m.p[1] + 0.05, m.p[2]);
+  const mark = new THREE.Group(); mark.add(disc, ring, line); mark.position.set(m.p[0], m.p[1] + 0.05, m.p[2]);
   G.scene.add(mesh, mark);
   const now = performance.now();
-  S.ducks.set(m.id, { id: m.id, p: m.p, h: m.h || 0, t0: now, t1: now + (m.ms || 0), g: !!m.g, mesh, mark, disc, ring, spin: Math.random() * 6, cur: new THREE.Vector3(m.p[0], m.p[1] + (m.h || 0), m.p[2]) });
+  S.ducks.set(m.id, { id: m.id, p: m.p, h: m.h || 0, t0: now, t1: now + (m.ms || 0), g: !!m.g, mesh, mark, disc, ring, line, spin: Math.random() * 6, cur: new THREE.Vector3(m.p[0], m.p[1] + (m.h || 0), m.p[2]) });
 }
-function dropDuck(d) { if (G.scene) G.scene.remove(d.mesh, d.mark); d.disc.material.dispose(); d.ring.material.dispose(); }
+function dropDuck(d) { if (G.scene) G.scene.remove(d.mesh, d.mark); d.disc.material.dispose(); d.ring.material.dispose(); d.line.material.dispose(); }
 function tickDucks(now, dt) {
   for (const d of S.ducks.values()) {
     const k = d.t1 > d.t0 ? Math.min(1, (now - d.t0) / (d.t1 - d.t0)) : 1, fall = k < 1;
@@ -113,6 +115,7 @@ function tickDucks(now, dt) {
     d.disc.scale.setScalar(s); d.ring.scale.setScalar(s * (1.1 + Math.sin(now * 0.012) * 0.1));
     d.disc.material.opacity = fall ? 0.15 + k * 0.4 : 0.3;
     d.ring.material.opacity = fall ? 0.9 : 0.45;
+    d.line.visible = fall; d.line.scale.y = Math.max(0.01, y - d.p[1]);
     d.mesh.visible = fall || now - d.t1 < BGN_MINI.ducks.floorMs - 3000 || Math.floor(now / 160) % 2 === 0; // (blinks before it goes)
   }
 }
@@ -121,7 +124,7 @@ function tickDucks(now, dt) {
 const CSS = `
 #bgmHud{position:fixed;inset:0;pointer-events:none;z-index:44;font-family:var(--font,'Comic Neue',sans-serif);color:#fff}
 #bgmHud .bm-p{background:rgba(18,8,24,0.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff}
-.bm-boss{position:absolute;left:50%;top:64px;transform:translateX(-50%) rotate(-1deg);width:min(620px,88vw);padding:6px 14px 10px;text-align:center}
+.bm-boss{position:absolute;left:50%;top:76px;transform:translateX(-50%) rotate(-1deg);width:min(620px,88vw);padding:6px 14px 10px;text-align:center}
 .bm-boss b{display:block;font-size:30px;line-height:1.05;color:#ffe14d;-webkit-text-stroke:1.5px #000;text-shadow:4px 4px 0 #ff00dc;letter-spacing:1px}
 .bm-boss small{display:block;font-size:14px;color:#ffd6f7;font-style:italic;margin-bottom:4px}
 .bm-bar{position:relative;height:22px;background:#000;border:3px solid #000;box-shadow:4px 4px 0 #000}
