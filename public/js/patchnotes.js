@@ -4,6 +4,7 @@ export const PATCH_NOTES = [
   { v: '11.51', date: '2026-11-13', title: 'REAL BRASS', items: [
     "guns spit out real brass now. shells tumble, chips bounce off the floor, rubble comes off in real chunks, and nothing pops out of existence anymore.",
     "fights make a lot less garbage behind the scenes, so long firefights should stutter less.",
+    "battle island's grass and flowers stop growing inside crates, containers and boats.",
   ] },
   { v: '11.50', date: '2026-11-13', title: 'ALL INCLUSIVE', items: [
     "battle island has a new spot: THE ALL-INCLUSIVE. a beach resort with a lobby, a stair tower up to the roof, balconies, a pool and a jetty. everything included except survival.",
