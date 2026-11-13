@@ -157,6 +157,24 @@ do
 	MeshSwap.fitParts(m2, CF.new(), V3.new(1, 1, 1), { K = V3.new(3, 3, 3), FileSize = V3.new(1, 1, 1), Variant = "v1" }, CF.new())
 	check(m2:FindFirstChild("v1_band") ~= nil and m2:FindFirstChild("v0_band") == nil and m2:FindFirstChild("v2_band") == nil and m2:FindFirstChild("lr_wall") ~= nil, "a placement keeps only its own variant's pieces")
 end
+-- ---------------------------------------------------------------- step 2: the weapons (tests/weapons.luau)
+require("./weapons")({ check = check, near = near, load = load, Config = Config, Movement = Movement })
+-- every script compiles (there's no luau-analyze here: this at least catches syntax errors everywhere)
+do
+	local bad = {}
+	local function walk(dir: string)
+		for _, n in fs.readDir(dir) do
+			local p = dir .. "/" .. n
+			if fs.isDir(p) then walk(p)
+			elseif string.sub(n, -5) == ".luau" then
+				local ok, err = pcall(luau.compile, fs.readFile(p))
+				if not ok then table.insert(bad, p .. ": " .. tostring(err)) end
+			end
+		end
+	end
+	walk("src")
+	check(#bad == 0, "every script compiles " .. table.concat(bad, "; "))
+end
 -- ---------------------------------------------------------------- the built place file
 do
 	local file = "build/JANKFIRE-Rooftop.rbxl"
@@ -187,6 +205,25 @@ do
 		check(cl and cl:FindFirstChild("Move") and cl.Move.ClassName == "LocalScript", "client movement script")
 		local rs = game:GetService("ReplicatedStorage")
 		check(rs:FindFirstChild("JankfireRemotes") and rs.JankfireRemotes:FindFirstChild("Grapple") ~= nil, "remotes")
+		-- step 2
+		local missing = {}
+		for _, n in { "Equip", "Fire", "Reload", "Swing", "MeleeHit", "Parry", "Shot", "Fx", "Ammo", "Dmg", "Kill", "Knock", "Slip", "Patch", "Round", "Spawn" } do
+			local r = rs.JankfireRemotes:FindFirstChild(n)
+			if not r or r.ClassName ~= "RemoteEvent" then table.insert(missing, n) end
+		end
+		check(#missing == 0, "step 2 remotes " .. table.concat(missing, ","))
+		check(rs:FindFirstChild("Match") ~= nil and rs:FindFirstChild("JankfireWeapons") ~= nil and rs:FindFirstChild("JankfireFX") ~= nil, "Match state + the folders for the Blender weapons and effects")
+		local snd = rs:FindFirstChild("JankfireSounds")
+		local nSounds = 0
+		if snd then for _, c in snd:GetChildren() do if c.ClassName == "Sound" and c:GetAttribute("File") then nSounds += 1 end end end
+		local list = serde.decode("json", fs.readFile("assets/sounds/list.json"))
+		check(nSounds == #list and nSounds >= 30, ("a Sound for every rendered .ogg (%d)"):format(nSounds))
+		for _, s in list do check(fs.isFile("assets/sounds/" .. s.name .. ".ogg"), "rendered: " .. s.name) end
+		check(sss.Jankfire:FindFirstChild("Combat") and sss.Jankfire.Combat.ClassName == "Script", "the weapons server script")
+		for _, n in { "Rules", "Fight", "Dummies" } do check(sss.Jankfire:FindFirstChild(n) and sss.Jankfire[n].ClassName == "ModuleScript", "server module " .. n) end
+		check(cl:FindFirstChild("Arsenal") and cl.Arsenal.ClassName == "LocalScript", "the weapons client script")
+		for _, n in { "Body", "Viewmodel", "Fx", "Sfx", "FightHud" } do check(cl:FindFirstChild(n) and cl[n].ClassName == "ModuleScript", "client module " .. n) end
+		for _, n in { "Weapons", "Hitbox", "Marbles", "WeaponModels", "Anims" } do check(rs.Jankfire:FindFirstChild(n) ~= nil, "shared module " .. n) end
 	else
 		print("(no built place yet: node tools/roblox/build.mjs)")
 	end

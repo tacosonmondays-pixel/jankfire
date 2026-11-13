@@ -11,6 +11,14 @@ const tool = (n) => { for (const d of [...(process.env.PATH || '').split(path.de
 const run = (cmd, args, cwd = ROOT) => execFileSync(cmd, args, { cwd, stdio: 'inherit' });
 
 run(process.execPath, [path.join(HERE, 'convert.mjs'), 'rooftop']);
+// step 2: a Sound per rendered .ogg in ReplicatedStorage.JankfireSounds (SoundId empty until the owner uploads it;
+// the File attribute says which file goes in it). list from tools/roblox/render_sounds.cjs
+{
+  const list = JSON.parse(fs.readFileSync(path.join(RB, 'assets', 'sounds', 'list.json'), 'utf8'));
+  const kids = list.map((s) => ({ Name: s.name, ClassName: 'Sound', Properties: { Volume: { Float32: s.vol }, Attributes: { Attributes: { File: { String: `roblox/assets/sounds/${s.name}.ogg` }, What: { String: s.what } } } } }));
+  fs.mkdirSync(path.join(RB, 'build'), { recursive: true });
+  fs.writeFileSync(path.join(RB, 'build', 'Sounds.model.json'), JSON.stringify({ ClassName: 'Folder', Children: kids }, null, 1));
+}
 const rojo = tool('rojo');
 if (!rojo) { console.log('no rojo: install it (cargo install rojo) to build the place'); process.exit(1); }
 run(rojo, ['build', 'place.project.json', '-o', 'build/JANKFIRE-Rooftop.rbxl'], RB);
