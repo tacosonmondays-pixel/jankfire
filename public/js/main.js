@@ -119,6 +119,7 @@ import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, 
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
 import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
+import { photoCmd } from './ptphoto.js'; // /photo: a path-traced still (the tracer itself loads only then)
 import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
@@ -1183,7 +1184,7 @@ function openChat() {
 }
 function closeChat(sendIt) {
   const v = $('chatin').value.trim();
-  if (sendIt && v && !gfxCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
+  if (sendIt && v && !gfxCmd(v) && !photoCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
   chatOpen = false;
   $('chatin').classList.add('hidden');
   $('chatin').blur();

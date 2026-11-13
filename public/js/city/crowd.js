@@ -11,7 +11,7 @@ const KINDS = { // crowd mark kind -> the characters it can be
   local: ['local_tiedye', 'local_cook', 'local_scooter'], shopper: ['local_tiedye', 'local_cook'], cook: ['local_cook'], scooter: ['local_scooter'],
   lost: ['local_tiedye'], choir: ['local_tiedye'], digester: ['local_cook'], unpaid: ['raider_chair', 'raider_cabinet'], dog: ['stomachdog'], queue: ['local_tiedye', 'local_cook', 'local_scooter'],
 };
-const MAX = 40, RANGE = 70;
+const MAX = 40, RANGE = 70, SPAWN = 2; // SPAWN: new people a frame at most
 const loader = new GLTFLoader();
 const tpl = new Map(); // id -> { scene, joints } | 'loading' | null
 
@@ -32,6 +32,7 @@ export class Crowd {
   constructor(scene) {
     this.root = new THREE.Group(); this.root.name = 'crowd'; scene.add(this.root);
     this.live = new Map(); // key -> npc
+    this.warm = null; this.warmed = new Map(); // stream.js sets warm(objs, done); template id -> warmed yet
     this.have = null;
     fetch('/models/story/index.json').then((r) => r.json()).then((l) => { this.have = new Set(l); }).catch(() => { this.have = new Set(); });
     this.t = 0;
@@ -57,6 +58,7 @@ export class Crowd {
     for (let i = want.length - 1; i >= 0; i--) if (want[i][2] === 'choir' && inChoirLung(want[i][1].p)) want.splice(i, 1);
     want.sort((a, b) => a[0] - b[0]);
     const keep = new Set();
+    let made = 0;
     for (const [, m, kind] of want.slice(0, MAX)) {
       const key = kind + ':' + m.p[0].toFixed(1) + ':' + m.p[2].toFixed(1);
       keep.add(key);
@@ -64,6 +66,14 @@ export class Crowd {
       const list = KINDS[kind], h = hash(m.p[0], m.p[2]), id = list[(h * list.length) | 0];
       const t = template(id, this.have);
       if (!t || t === 'loading') continue;
+      // a model that just loaded: its shaders and textures warm up first (stream.js warm(), a frame at a time), else
+      // its first person compiles them all on the frame they appear
+      if (this.warm && this.warmed.get(id) !== true) { // (per crowd: the templates outlive a stream, a warm-up left pending doesn't)
+        if (!this.warmed.has(id)) { this.warmed.set(id, false); const objs = []; t.scene.traverse((o) => { if (o.isMesh && o.visible) objs.push(o); }); this.warm(objs, () => this.warmed.set(id, true)); }
+        continue;
+      }
+      if (made >= SPAWN) continue; // (a crowd walking into view: a couple a frame, not 20 clones at once)
+      made++;
       const obj = t.scene.clone(true), J = {};
       obj.traverse((o) => { if (o.name) J[o.name.replace(/\.\d+$/, '')] = o; });
       for (const o of Object.values(J)) o.userData.rest = o.quaternion.clone();

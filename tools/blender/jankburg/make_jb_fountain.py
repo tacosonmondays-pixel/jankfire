@@ -121,7 +121,10 @@ M_BALL = mat('ball', 0xffffff, rough=0.22, clearcoat=1.0, tex=ball_tex())
 M_MARB = mat('marble', 0xffffff, rough=0.3, clearcoat=0.5, tex=marble_tex())
 M_TILE = mat('tile', 0xffffff, rough=0.25, clearcoat=0.6, tex=tile_tex())
 M_BRASS = mat('brass', 0xe0a830, rough=0.28, metal=1.0)
-M_WATER = mat('water', 0x5fe6ff, rough=0.04, alpha=0.55)
+# the water, tagged for the game (public/js/flowwater.js): *_water = a stream (foam streaks race down it, it wobbles,
+# it splashes where it lands), *_pool = still water (ripples, caustics, rings where the jets land)
+M_JET = mat('jbf_jet_water', 0x5fe6ff, rough=0.04, alpha=0.55)
+M_POOL = mat('jbf_basin_pool', 0x5fe6ff, rough=0.04, alpha=0.55)
 
 
 # ------------------------------------------------------------ helpers
@@ -273,12 +276,13 @@ def jet(name, p0, p1, lift, r0, r1, seg, n):
     for i in range(n + 1):
         t = i / n
         pts.append(tuple(p0[k] + (p1[k] - p0[k]) * t + (4 * lift * t * (1 - t) if k == 1 else 0) for k in range(3)))
-    return sweep(pts, [r0 + (r1 - r0) * (i / n) ** 1.5 for i in range(n + 1)], M_WATER, seg=seg, name=name)
+    o = sweep(pts, [r0 + (r1 - r0) * (i / n) ** 1.5 for i in range(n + 1)], M_JET, seg=seg, name=name)
+    return lib.stream_uv(o, pts, seg)  # (u round it, v = metres along it: the game scrolls its foam down that)
 
 
 def splash(name, c, r, parts):
     """where a jet lands: a crown ring of water + droplets + a foam disc on the surface"""
-    parts.append(lathe_closed(name + '_crown', [(r * 0.55, 0.53), (r, 0.53), (r * 1.05, 0.75), (r * 0.9, 0.83), (r * 0.75, 0.61)], c, M_WATER, seg=16))
+    parts.append(lathe_closed(name + '_crown', [(r * 0.55, 0.53), (r, 0.53), (r * 1.05, 0.75), (r * 0.9, 0.83), (r * 0.75, 0.61)], c, M_JET, seg=16))
     parts.append(swatch(ellipsoid(name + '_foam', (c[0], 0.575, c[2]), (0, 1, 0), r * 1.3, 0.025, M_BALL, seg=16, rings=6), 'foam'))
 
 
@@ -314,7 +318,7 @@ for k in range(90):
 # the water: a sheet between the pedestal and the basin
 def water_sheet(name, y, inner, seg_note=''):
     v = [(-IN, y, -IN), (IN, y, -IN), (IN, y, IN), (-IN, y, IN), (-inner, y, -inner), (inner, y, -inner), (inner, y, inner), (-inner, y, inner)]
-    return face_dir(mesh(name, v, [(0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)], M_WATER), (0, 1, 0))
+    return face_dir(mesh(name, v, [(0, 4, 5, 1), (1, 5, 6, 2), (2, 6, 7, 3), (3, 7, 4, 0)], M_POOL), (0, 1, 0))
 P.append(water_sheet('jbf_water', 0.55, 2.86))
 # the pedestal: base step, panelled shaft, corner pilasters, a cornice, the plaque front and back, spouts east and west
 P.append(box((5.72, 0.35, 5.72), (0, 0.175, 0), M_MARB, bev=0.04, name='jbf_ped_base'))
@@ -374,7 +378,7 @@ for s in (1, -1):
 def joined(parts, name):
     for o in parts:
         apply_mods(o)
-        if o.data.materials and o.data.materials[0] in (M_BRASS, M_WATER): uv_box(o, 1.0)  # (untextured: any UVs, none zero-area)
+        if o.data.materials and (o.data.materials[0] in (M_BRASS, M_POOL) or (o.data.materials[0] == M_JET and not o.get('keep_uv'))): uv_box(o, 1.0)  # (untextured: any UVs, none zero-area. the jets keep their own)
     return join(parts, name)
 
 
