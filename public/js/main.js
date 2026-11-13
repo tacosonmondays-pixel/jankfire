@@ -70,7 +70,7 @@ import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mech
 import { MECH, mechScale } from '/shared/mech.js'; // (the server's mech size, from the welcome)
 import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
-import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle, brWheel } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
 import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from './island.js'; // battle island: squads, down + crawl, revives
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
@@ -1300,7 +1300,7 @@ addEventListener('mouseup', released);
 function releaseHeld() { K.clear(); W.held = false; W.aimHeld = false; W.dashHeld = false; stopUse(); releaseHook(); if (scoresOpen) { scoresOpen = false; hud.scores(false); } }
 K.onChange((rebound) => { if (rebound) releaseHeld(); });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
+addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY) && !brWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // in the blimp the wheel sets the spyglass zoom // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
