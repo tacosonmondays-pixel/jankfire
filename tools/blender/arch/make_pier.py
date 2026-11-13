@@ -33,9 +33,11 @@ MATS.update({
     'pbuoyw': ('trim', '#fff8ee', {'gloss': 0.7}), 'pbuoyr': ('trim', '#ff3040', {'gloss': 0.7}), 'ptags': ('shacktags', '#ffffff', {}),
     'pgull': ('trim', '#fbfbf6', {}), 'pgullg': ('trim', '#a8b0bc', {}), 'pbeak': ('trim', '#ffc020', {}), 'pblack': ('tar', '#1a161c', {}),
     'pbulb': ('trim', '#fff0a0', {'glow': True, 'glowcol': '#ffd860'}), 'pjar': ('trim', '#ff6ab8', {'gloss': 0.8}), 'ptin2': ('metalplate', '#d84a3a', {'gloss': 0.4}),
+    'ptrimp': ('timber', '#ff4fd8', {'gloss': 0.3}), 'ptrimc': ('timber', '#4fd8ff', {'gloss': 0.3}), 'ptrimy': ('timber', '#ffe14d', {'gloss': 0.3}),
+    'prail': ('timber', '#ffd23c', {}), 'pcapp': ('trim', '#ff4fd8', {'gloss': 0.6}), 'pcapc': ('trim', '#4fd8ff', {'gloss': 0.6}), 'pdoor': ('shackwall', '#4fd8ff', {'gloss': 0.25}),
     'pfish': ('trim', '#3ad0a0', {'gloss': 0.7}), 'pfishb': ('trim', '#f6f0d8', {'gloss': 0.5}), 'pbucket': ('metalplate', '#4fd8ff', {'gloss': 0.5}),
 })
-NOCAST.update({'pgap', 'pweed', 'pbarn', 'pzinc', 'pcap', 'prope', 'pnet', 'pnetg', 'pcork', 'pbuoyp', 'pbuoyy', 'pbuoyc', 'pbuoyw', 'pbuoyr', 'ptags',
+NOCAST.update({'pcapp', 'pcapc', 'ptrimy', 'pweed', 'pbarn', 'pzinc', 'pcap', 'prope', 'pnet', 'pnetg', 'pcork', 'pbuoyp', 'pbuoyy', 'pbuoyc', 'pbuoyw', 'pbuoyr', 'ptags',
                'pgull', 'pgullg', 'pbeak', 'pblack', 'pbulb', 'pjar', 'ptin2', 'pfish', 'pfishb', 'pbucket'})
 
 
@@ -218,11 +220,11 @@ def piles():
             pole(c - Vector((0, 0.018, 0)), c + Vector((0, 0.018, 0)), 0.026, 'pbarn', n=3, r1=0.01, caps=(False, True))
 
 
-def bollard(x, z, rope_to=None):
+def bollard(x, z, cap='pcap'):
     """a cast-iron bollard over the game's 0.36 m box: a bolted base plate, a waisted barrel, a lipped candy cap"""
     tb((x - 0.2, 0.03, z - 0.2), (x + 0.2, 0.075, z + 0.2), 'piron', skip=('ny',))
     lathe((x, 0.075, z), [(0.155, 0.0), (0.128, 0.26), (0.16, 0.44)], 'piron', n=8, rot=0.39)
-    lathe((x, 0.075, z), [(0.16, 0.44), (0.205, 0.47), (0.2, 0.52), (0.0, 0.565)], 'pcap', n=8, rot=0.39)
+    lathe((x, 0.075, z), [(0.16, 0.44), (0.205, 0.47), (0.2, 0.52), (0.0, 0.565)], cap, n=8, rot=0.39)
 
 
 def fender(x, z, s, y=-0.2, rot=0.0):
@@ -271,19 +273,19 @@ def rails():
             x = x0 + 0.1
             while x < x1:
                 c = x + 0.05
-                tb((c - 0.06, 0.03, z - 0.065), (c + 0.06, 0.88, z + 0.065), 'ppost', along='y', skip=('ny', 'py'))
+                tb((c - 0.06, 0.03, z - 0.065), (c + 0.06, 0.88, z + 0.065), 'prail', along='y', skip=('ny', 'py'))
                 x += 2
-            tb((x0 - 0.02, 0.88, z - 0.075), (x1 + 0.02, 1.0, z + 0.075), 'ppost', along='x')
+            tb((x0 - 0.02, 0.88, z - 0.075), (x1 + 0.02, 1.0, z + 0.075), 'prail', along='x')
             # a chamfered cap on the rail: the top's edges taken off
             for (a, b) in ((z - 0.075, z - 0.04), (z + 0.04, z + 0.075)):
                 o = -1 if a < z else 1
-                Q([(x0 - 0.02, 1.0, z + o * 0.075), (x1 + 0.02, 1.0, z + o * 0.075), (x1 + 0.02, 1.025, z + o * 0.04), (x0 - 0.02, 1.025, z + o * 0.04)], 'ppost', out=(0, 1, o),
+                Q([(x0 - 0.02, 1.0, z + o * 0.075), (x1 + 0.02, 1.0, z + o * 0.075), (x1 + 0.02, 1.025, z + o * 0.04), (x0 - 0.02, 1.025, z + o * 0.04)], 'prail', out=(0, 1, o),
                   uv=[(0, x0), (0, x1), (0.04, x1), (0.04, x0)])
-            Q([(x0 - 0.02, 1.025, z - 0.04), (x0 - 0.02, 1.025, z + 0.04), (x1 + 0.02, 1.025, z + 0.04), (x1 + 0.02, 1.025, z - 0.04)], 'ppost', out=(0, 1, 0),
+            Q([(x0 - 0.02, 1.025, z - 0.04), (x0 - 0.02, 1.025, z + 0.04), (x1 + 0.02, 1.025, z + 0.04), (x1 + 0.02, 1.025, z - 0.04)], 'prail', out=(0, 1, 0),
               uv=[(0, x0), (0.08, x0), (0.08, x1), (0, x1)])
             for xe in (x0 - 0.02, x1 + 0.02):
                 o = -1 if xe < x0 else 1
-                Q([(xe, 1.0, z - 0.075), (xe, 1.0, z + 0.075), (xe, 1.025, z + 0.04), (xe, 1.025, z - 0.04)], 'ppost', out=(o, 0, 0))
+                Q([(xe, 1.0, z - 0.075), (xe, 1.0, z + 0.075), (xe, 1.025, z + 0.04), (xe, 1.025, z - 0.04)], 'prail', out=(o, 0, 0))
 
 
 def net_sheet(P, nu, nv, mat, tile=(1.0, 1.0)):
@@ -299,8 +301,8 @@ def net_sheet(P, nu, nv, mat, tile=(1.0, 1.0)):
 
 def pier_extras():
     rr = K.rng
-    for x in (32, 38, 54, 60):
-        for z in (4.75, 7.25): bollard(x, z)
+    for i, x in enumerate((32, 38, 54, 60)):
+        for j, z in enumerate((4.75, 7.25)): bollard(x, z, ('pcap', 'pcapp', 'pcapc')[(i + j * 2) % 3])
     gull((32, 0.635, 4.75), 2.2)  # on the first bollard, watching you walk in
     # the mooring line: still round the last bollard, over the edge and into the sea. no boat
     b = Vector((60, 0.42, 7.25))
@@ -318,7 +320,7 @@ def pier_extras():
             t = v / 0.5; return (x, 0.15 + t * 0.87 - 0.05 * math.sin(u * math.pi * 3) * (1 - t), 7.62 + 0.04 * (1 - t) + sw * (1 - t) * 0.3)
         t = (v - 0.5) / 0.5; return (x, 1.02 - t * (0.7 + 0.15 * math.sin(u * math.pi * 2.5)), 7.29 - sw * t * 0.3)
     net_sheet(nP, 5, 4, 'pnetg')
-    for k in range(4): lathe((50.8 + k * 0.62, 1.04, 7.44), [(0.0, -0.05), (0.045, -0.03), (0.045, 0.03), (0.0, 0.05)], 'pcork', n=5, axis=(0, 0, 1))
+    for k in range(4): lathe((50.8 + k * 0.62, 1.04, 7.44), [(0.0, -0.05), (0.045, -0.03), (0.045, 0.03), (0.0, 0.05)], ('pbuoyy', 'pbuoyc', 'pbuoyp')[k % 3], n=5, axis=(0, 0, 1))
 
 
 # ------------------------------------------------------------ the bait shack
@@ -341,7 +343,7 @@ def shack():
     clad('x', ZB, X0, X1, 0.0, 2.8, 1); clad('z', X0, ZF, ZB, 0.0, 2.8, -1); clad('z', X1, ZF, ZB, 0.0, 2.8, 1)
     for (x, z, sx, sz) in ((X0, ZF, -1, -1), (X1, ZF, 1, -1), (X0, ZB, -1, 1), (X1, ZB, 1, 1)):
         xa, xb = sorted((x - sx * 0.08, x + sx * 0.04)); za, zb = sorted((z - sz * 0.08, z + sz * 0.04))
-        tb((xa, 0.03, za), (xb, 2.82, zb), 'pbeam', along='y', skip=('ny',))
+        tb((xa, 0.03, za), (xb, 2.82, zb), 'ptrimc', along='y', skip=('ny',))
     for (axis, c, a0, a1, o) in (('x', ZF, X0 + 0.04, X1 - 0.04, -1), ('x', ZB, X0 + 0.04, X1 - 0.04, 1), ('z', X0, ZF + 0.04, ZB - 0.04, -1), ('z', X1, ZF + 0.04, ZB - 0.04, 1)):
         c0, c1 = sorted((c, c + o * 0.025))
         if axis == 'x': tb((a0, 0.03, c0), (a1, 0.24, c1), 'ppile', along='x', skip=('ny',))
@@ -368,22 +370,22 @@ def shack():
                    (((HX0, HY1, 8.2), (HX1, HY1, 8.2), (HX1, HY1, 8.4), (HX0, HY1, 8.4)), (0, -1, 0)), (((HX0, HY0, 8.2), (HX0, HY0, 8.4), (HX1, HY0, 8.4), (HX1, HY0, 8.2)), (0, 1, 0))):
         Q(p, 'pin', out=o)
     for x in (HX0 - 0.08, HX1):
-        tb((x, HY0 - 0.04, 8.15), (x + 0.08, HY1, 8.2), 'ppost', along='y', skip=('pz',))
-    tb((43.2, 1.0, 7.95), (48.8, 1.08, 8.2), 'ppost', along='x', skip=('pz',))  # the counter
+        tb((x, HY0 - 0.04, 8.15), (x + 0.08, HY1, 8.2), 'ptrimy', along='y', skip=('pz',))
+    tb((43.2, 1.0, 7.95), (48.8, 1.08, 8.2), 'ptrimy', along='x', skip=('pz',))  # the counter
     for x in (43.6, 48.4):  # its brackets: a knee down to the wall
         a, b, c = (x, 0.99, 8.0), (x, 0.99, 8.19), (x, 0.62, 8.19)
         for dx in (-0.025, 0.025):
-            T3([(a[0] + dx, a[1], a[2]), (b[0] + dx, b[1], b[2]), (c[0] + dx, c[1], c[2])], 'ppost', out=(dx, 0, 0))
-        Q([(x - 0.025, 0.99, 8.0), (x + 0.025, 0.99, 8.0), (x + 0.025, 0.62, 8.19), (x - 0.025, 0.62, 8.19)], 'ppost', out=(0, -1, -1))
+            T3([(a[0] + dx, a[1], a[2]), (b[0] + dx, b[1], b[2]), (c[0] + dx, c[1], c[2])], 'ptrimy', out=(dx, 0, 0))
+        Q([(x - 0.025, 0.99, 8.0), (x + 0.025, 0.99, 8.0), (x + 0.025, 0.62, 8.19), (x - 0.025, 0.62, 8.19)], 'ptrimy', out=(0, -1, -1))
     # the flap: hinged on the frame's head, propped up a touch over level on two sticks from the counter
     ang = math.radians(7); L = 1.06; hy = 2.02
     def fp(u, d, th): return Vector((u, hy + d * math.sin(ang) - th * math.cos(ang), 8.17 - d * math.cos(ang) - th * math.sin(ang)))
     a0, a1 = HX0 - 0.1, HX1 + 0.1
     top = [fp(a0, 0, 0), fp(a1, 0, 0), fp(a1, L, 0), fp(a0, L, 0)]; bot = [fp(a0, 0, -0.04), fp(a1, 0, -0.04), fp(a1, L, -0.04), fp(a0, L, -0.04)]
     Q(top, 'pwall', uv=[(a0 / 1.6, 0), (a1 / 1.6, 0), (a1 / 1.6, L / 1.6), (a0 / 1.6, L / 1.6)], out=(0, 1, 0))
-    Q(bot, 'pin', uv=[(a0, 0), (a1, 0), (a1, L), (a0, L)], out=(0, -1, 0))
+    Q(bot, 'ptrimp', uv=[(a0, 0), (a1, 0), (a1, L), (a0, L)], out=(0, -1, 0))  # (painted pink inside: when it's up, that's what you see)
     for (i, j) in ((0, 1), (1, 2), (2, 3), (3, 0)):
-        Q([top[i], top[j], bot[j], bot[i]], 'ppost', out=(top[i] + top[j]) / 2 - (top[0] + top[2]) / 2)
+        Q([top[i], top[j], bot[j], bot[i]], 'ptrimy', out=(top[i] + top[j]) / 2 - (top[0] + top[2]) / 2)
     for x in (HX0 + 0.2, HX1 - 0.2):  # iron hinge straps on the flap's top
         s0, s1 = fp(x - 0.04, 0.0, 0.004), fp(x + 0.04, 0.0, 0.004); e0, e1 = fp(x - 0.04, 0.35, 0.004), fp(x + 0.04, 0.35, 0.004)
         Q([s0, s1, e1, e0], 'piron', out=(0, 1, 0))
@@ -397,7 +399,7 @@ def shack():
     # the sign (the game's ad, on the wall over the hatch) in a frame; the frame's foot is the hinge rail
     for (mn, mx, al) in (((43.52, 2.0, 8.13), (48.48, 2.06, 8.2), 'x'), ((43.52, 2.75, 8.13), (48.48, 2.8, 8.2), 'x'),
                          ((43.52, 2.06, 8.13), (43.6, 2.75, 8.2), 'y'), ((48.4, 2.06, 8.13), (48.48, 2.75, 8.2), 'y')):
-        tb(mn, mx, 'ppost', along=al, skip=('pz',))
+        tb(mn, mx, 'ptrimp', along=al, skip=('pz',))
     # two little lamps under the roof's overhang, either side of the sign
     for x in (43.3, 48.7):
         tb((x - 0.02, 2.55, 8.12), (x + 0.02, 2.62, 8.2), 'piron', skip=('pz',))
@@ -422,18 +424,30 @@ def shack():
             j = (i + 1) % 4; ctr = Vector([sum(f[q] for f in front) / 4 for q in range(3)])
             Q([back[i], back[j], front[j], front[i]], 'pbeam', out=(Vector(front[i]) + Vector(front[j])) / 2 - ctr)
     tag(48.42, 1.5, ZF, 'x', -1, -0.06, 1)
-    tag(46.0, 1.7, ZB, 'x', 1, 0.09, 0)
+    DX0, DX1, DH = 45.45, 46.55, 2.05
+    clad('x', ZB + 0.03, DX0, DX1, 0.03, DH, 1, 'pdoor', 1.6)
+    for (mn, mx) in (((DX0, 0.03, ZB), (DX1, DH, ZB + 0.03)),):  # its edges
+        tb(mn, mx, 'pdoor', along='y', skip=('pz', 'nz', 'ny'))
+    for (mn, mx, al) in (((DX0 - 0.09, 0.03, ZB), (DX0, DH + 0.09, ZB + 0.045), 'y'), ((DX1, 0.03, ZB), (DX1 + 0.09, DH + 0.09, ZB + 0.045), 'y'),
+                         ((DX0, DH, ZB), (DX1, DH + 0.09, ZB + 0.045), 'x')):
+        tb(mn, mx, 'ptrimy', along=al, skip=('nz', 'ny'))
+    for y in (0.35, 1.7):  # z-braced ledges: two rails across it
+        tb((DX0 + 0.06, y, ZB + 0.03), (DX1 - 0.06, y + 0.12, ZB + 0.05), 'pdoor', along='x', skip=('nz',))
+    tb((DX1 - 0.16, 1.0, ZB + 0.03), (DX1 - 0.06, 1.1, ZB + 0.05), 'piron', skip=('nz',))  # hasp
+    lathe((DX1 - 0.11, 0.9, ZB + 0.07), [(0.0, -0.05), (0.05, -0.04), (0.05, 0.03), (0.0, 0.04)], 'pcap', n=5, axis=(0, 0, 1))  # a padlock (yellow)
+    pole((DX1 - 0.14, 0.94, ZB + 0.07), (DX1 - 0.08, 1.02, ZB + 0.07), 0.008, 'pzinc', n=3, caps=(False, False))
+    tag(46.0, 1.32, ZB + 0.03, 'x', 1, 0.09, 0)
     # buoys hung on the east wall from a peg on ropes: round candy floats and a striped one
     peg = Vector((X1 + 0.05, 2.25, 9.3))
     pole((X1, 2.25, 9.3), (X1 + 0.09, 2.27, 9.3), 0.02, 'pbeam', n=4, caps=(False, True))
-    for (dz, y, r, m, kind) in ((-0.42, 1.55, 0.15, 'pbuoyp', 0), (-0.05, 1.32, 0.17, 'pbuoyy', 0), (0.36, 1.62, 0.14, 'pbuoyc', 0), (0.72, 1.08, 0.13, 'stripe', 1)):
+    for (dz, y, r, m, kind) in ((-0.42, 1.55, 0.15, ('pbuoyp', 'pbuoyy'), 0), (-0.05, 1.32, 0.17, ('pbuoyy', 'pbuoyc'), 0), (0.36, 1.62, 0.14, ('pbuoyc', 'pbuoyp'), 0), (0.72, 1.08, 0.13, 'stripe', 1)):
         c = Vector((X1 + r + 0.01, y, 9.3 + dz))
         if kind == 0:
-            lathe(c - Vector((0, r, 0)), [(0.0, 0.0), (r * 0.75, r * 0.32), (r, r), (r * 0.75, r * 1.68), (0.03, r * 2.0)], m, n=7)
+            lathe(c - Vector((0, r, 0)), [(0.0, 0.0), (r * 0.75, r * 0.32), (r, r), (r * 0.75, r * 1.68), (0.03, r * 2.0)], lambda i, m=m: m[1] if i in (1, 2) else m[0], n=7)  # (a band round its belly)
             lathe(c + Vector((0, r, 0)), [(0.03, 0.0), (0.0, 0.06)], 'pblack', n=4)
         else:
             lathe(c - Vector((0, r * 1.8, 0)), [(0.0, 0.0), (r * 0.8, r * 0.3), (r, r * 0.9), (r, r * 1.8), (r, r * 2.7), (r * 0.8, r * 3.3), (0.03, r * 3.6)],
-                  lambda i: 'pbuoyw' if i in (2, 4) else 'pbuoyr', n=7)
+                  lambda i: 'pbuoyy' if i in (2, 4) else 'pbuoyp', n=7)
         rope([peg, c + Vector((0, r * (1.8 if kind else 1.0) + 0.05, 0))], r=0.01, n=3)
     # a net hung on the west wall from two nails, sagging, cork floats along its head rope
     def wP(u, v):
@@ -444,7 +458,7 @@ def shack():
     rope([Vector(wP(i / 6, 0)) + Vector((-0.005, 0.01, 0)) for i in range(7)], r=0.012, n=3)
     for k in range(5):
         p = Vector(wP((k + 0.5) / 5, 0)) + Vector((-0.02, -0.02, 0))
-        lathe(p, [(0.0, -0.06), (0.04, -0.035), (0.04, 0.035), (0.0, 0.06)], 'pcork', n=5, axis=(0, 0, 1))
+        lathe(p, [(0.0, -0.06), (0.04, -0.035), (0.04, 0.035), (0.0, 0.06)], ('pbuoyp', 'pbuoyy', 'pbuoyc')[k % 3], n=5, axis=(0, 0, 1))
     # inside (seen through the hatch): dark boards, a ceiling, a bulb on its flex, a shelf of tins, a trophy fish
     for (axis, c, a0, a1, o) in (('x', 8.4, 43.2, 48.8, 1), ('x', 10.2, 43.2, 48.8, -1), ('z', 43.2, 8.4, 10.2, 1), ('z', 48.8, 8.4, 10.2, -1)):
         if axis == 'x' and o > 0:
@@ -456,8 +470,8 @@ def shack():
     pole((46.0, 2.62, 9.3), (46.0, 2.25, 9.3), 0.008, 'pblack', n=3, caps=(False, False))
     lathe((46.0, 2.1, 9.3), [(0.0, 0.0), (0.045, 0.03), (0.05, 0.08), (0.02, 0.15), (0.0, 0.15)], 'pbulb', n=6)
     tb((43.6, 1.55, 9.95), (48.4, 1.59, 10.2), 'pbeam', along='x', skip=('pz',))
-    for k in range(6):
-        x = 44.0 + k * 0.75 + rr.random() * 0.2; m = ['ptin2', 'pjar', 'pbucket'][k % 3]
+    for k in range(5):
+        x = 44.2 + k * 0.9 + rr.random() * 0.2; m = ['ptin2', 'pjar', 'pbucket'][k % 3]
         lathe((x, 1.59, 10.08), [(0.065, 0.0), (0.065, 0.12 + rr.random() * 0.08), (0.0, 0.13)], m, n=5)
     fish = [(-0.32, 0.0), (-0.12, 0.11), (0.14, 0.09), (0.3, 0.0), (0.14, -0.08), (-0.12, -0.09)]
     tb((45.5, 1.85, 10.17), (46.5, 2.25, 10.2), 'ppost', along='x', skip=('pz',))  # its plaque
@@ -473,8 +487,8 @@ def roof():
     bare), a tyre holding it down, a gull"""
     x0, y0, z0, x1, y1, z1 = 42.6, 2.8, 7.8, 49.4, 3.05, 10.8
     t = 0.025
-    tb((x0 - t, y0, z0 - t), (x1 + t, y1, z0), 'ppile', along='x'); tb((x0 - t, y0, z1), (x1 + t, y1, z1 + t), 'ppile', along='x')
-    tb((x0 - t, y0, z0), (x0, y1, z1), 'ppile', along='z', skip=('nz', 'pz')); tb((x1, y0, z0), (x1 + t, y1, z1), 'ppile', along='z', skip=('nz', 'pz'))
+    tb((x0 - t, y0, z0 - t), (x1 + t, y1, z0), 'ptrimp', along='x'); tb((x0 - t, y0, z1), (x1 + t, y1, z1 + t), 'ptrimp', along='x')
+    tb((x0 - t, y0, z0), (x0, y1, z1), 'ptrimp', along='z', skip=('nz', 'pz')); tb((x1, y0, z0), (x1 + t, y1, z1), 'ptrimp', along='z', skip=('nz', 'pz'))
     Q([(x0, y1, z0), (x0, y1, z1), (x1, y1, z1), (x1, y1, z0)], 'pin', out=(0, 1, 0))  # (the slab's top, under the sheets: no sky through the ridges)
     # the soffit: the slab's underside, outside the walls
     for (a, b, c, d) in (((x0, z0), (x1, z0), (x1, ZF), (x0, ZF)), ((x0, ZB), (x1, ZB), (x1, z1), (x0, z1)), ((x0, ZF), (X0, ZF), (X0, ZB), (x0, ZB)), ((X1, ZF), (x1, ZF), (x1, ZB), (X1, ZB))):
