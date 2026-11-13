@@ -53,3 +53,48 @@ The server keeps it honest:
 
 Tests: `tests/mech_wrecking_ws.cjs` (46 checks incl. the exploits above), `tests/mech_wrecking_bots_ws.cjs`. Knobs:
 `JF_MECH_FRAME=wrecking` (bots' frame), `JF_MECH_ULT=<x>` (ults charge x times faster), `JF_MECH_SLOW=<x>` (the pile driver's server windows x longer, for slow screenshot browsers).
+
+## VENDING MACHINE (support, 1100 armour, 12 m/s waddling)
+A 5 m vending machine (6.75 m at the 1.35x mech size) on stubby legs. It has a glowing front of drink cans, a coin slot for a face, a JANK COLA marquee, an OUT OF ORDER sign stowed on its back, and little jump jets in its heels. Frame id `vending`. The art session's skinned `x_mech_vending.glb` drops in; the kit only moves joints.
+
+Lengths below are at size 1, with the 1.35x size in brackets (`sized`: the wall, the toss, the reaches, RESTOCK's range).
+
+| key | move | what it does |
+|---|---|---|
+| LMB (hold) | **coin turret** | 9 a coin, 10 a second, 90 m. A server hitscan from the coin slot along your aim: an aim cone (cos 0.6) and a rate check. It hits players, mechs, empty parked mechs and enemy walls, but only the first thing in the way. |
+| Shift | **DISPENSE** | A Jank Cola pops out of the flap onto the floor where you point: within 6 m (8.1), and the flap must see the spot. Otherwise it lands 2.4 m in front. 3 charges, one back every 8 s, 6 out per machine at most (the oldest goes flat), and each lasts 20 s. Allies and yourself (yours after 0.9 s) walk over it: +40 HP (or +40 armour in a mech) and a 3 s sugar rush. Someone at full health walks past it; enemies can't drink it. What it really heals charges the ult. |
+| E | **OUT OF ORDER** | A 600 HP sign wall, 8 x 4.5 m (10.8 x 6.1), slammed down 3.5 m (4.7) in front, facing you. 10 s, 12 s cooldown, one at a time. Each half stops where a building is, so it never pokes into a room. See below for what it stops. |
+| Q (ult) | **RESTOCK** | Every ally within 15 m (20.25), yourself too: up to 250 armour, as the battle island / royale vest (to its max) or, in modes with no armour, an overheal to 150. Allied mechs get armour back, full energy and every cooldown cleared (not the ult); a vending machine also gets its cans back. Ult: 800 dealt or healed, or 120 s. |
+| passive | **STUCK!** | 10% of dispenses / walls come out twice: two cans, or a double-HP wall. |
+| jank | **JAMMED** | 6% of dispenses / walls jam: nothing comes out (nothing is spent) and Shift / E / Q lock for up to 4 s. An ally on foot presses F within 4.5 m (6.1) to kick it: UNSTUCK, plus a free can. Allied bots do it too. |
+
+What the OUT OF ORDER wall stops:
+- Enemy gun shots. Judged along the shooter's own aim to where it meets the target, so the bit of you sticking out past the edge can still be hit.
+- Mech hitscans.
+- Projectiles. They stop on the sign's face:
+  - a chicken rocket goes off there;
+  - a banana slides down it into a peel;
+  - grenades bounce off it.
+- Missiles. They blow up on its face.
+- Blasts. Explosions don't come through it to whoever's behind.
+- The water pistol. A squirt it stops doesn't soak you.
+
+Your own side shoots through it, and it isn't solid to walk through.
+
+The server keeps it honest:
+- **Colas:** only the server spawns, owns and hands them out, and there's a cap per machine.
+- **The kick:** a validated, rate-limited on-foot message (`{t:'mech', k:'kick', to}`, `mechPoke` in server/mech.js). It needs a jammed allied machine, in reach. You can't kick it if you're down, and the pilot can't kick their own.
+- **STUCK and JAMMED:** the server's dice.
+- **RESTOCK:** needs a full ult, reaches allies in range only, and its own grants don't charge the ult.
+- **Sugar rush:** the only extra speed it gives, and it ends with `fastUntil`.
+
+Tests:
+- `tests/mech_vending_ws.cjs`: three servers (no dice / every use jams / every use STUCK). Each exploit and every review repro fails on naive code.
+- `tests/mech_vending.test.mjs`: the clipped wall.
+- `tests/mech_vending_bots_ws.cjs`: TDM with bots.
+
+Knobs:
+- `JF_MECH_FRAME=vending`
+- `JF_VM_JAM=<0..1>`
+- `JF_VM_STUCK=<0..1>`
+- `JF_VM_SLOW=<k>` (walls and cans last k x longer)

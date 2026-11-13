@@ -76,9 +76,13 @@ export function installVending(Room, U) {
       const M = p.mech, V = M.vm, C = VM.coin;
       if (n - V.coinT < 1000 / C.rate * 0.7 || !this.mechAimOk(p, d, C.cone)) return false;
       V.coinT = n;
-      const o = slotOf(p), r = this.mechRay(p, o, d, C.range, C.dmg);
-      this.broadcast({ t: 'mech', k: 'vmcoin', id: p.id, b: r.at.map(r2), h: r.t ? 1 : r.wall ? 2 : 0 }, p.isBot ? undefined : p.id);
+      const o = slotOf(p), r = this.mechRay(p, o, d, C.range);
+      const em = this.mechRayEmpty && this.mechRayEmpty(p, o, d, Math.min(C.range, Math.hypot(r.at[0] - o[0], r.at[1] - o[1], r.at[2] - o[2]))); // an empty parked mech in front of whatever it hit
+      if (em) { r.t = null; r.wall = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      this.broadcast({ t: 'mech', k: 'vmcoin', id: p.id, b: r.at.map(r2), h: r.t || em ? 1 : r.wall ? 2 : 0 }, p.isBot ? undefined : p.id);
       if (r.t) this.mechKitHurt(p, r.t, 'vmcoin', C.dmg * (r.head ? MECH.head : 1), [d[0] * 1.2, 0.4, d[2] * 1.2], { hs: r.head });
+      else if (em) this.mechHarm(em.m, p, 'vmcoin', C.dmg, false, r.at);
+      else if (r.wall) this.vmWallHurt(r.wall, C.dmg, r.at, p); // (only the first thing it hit takes it)
       return true;
     },
 
@@ -128,7 +132,7 @@ export function installVending(Room, U) {
       const C = VM.cola;
       let a = 0;
       if (this.mechOn(t)) { const b = t.body; if (!b) return false; a = Math.min(C.armour, b.max - b.hp); b.hp += a; this.bodyFlush(t, true); }
-      else { a = Math.min(C.hp, 100 - t.hp); this.heal(t, C.hp, 100); }
+      else { a = Math.max(0, Math.min(C.hp, 100 - t.hp)); this.heal(t, a, 100); } // (what it really healed, not always 40)
       t.fastUntil = Math.max(t.fastUntil || 0, n + C.boost * 1000); // (the speed allowance the game already gives a gold star)
       this.vmColaGone(c, true);
       this.broadcast({ t: 'mech', k: 'vmdrink', c: c.id, id: c.o, to: t.id, a: Math.round(a), ar: this.mechOn(t) ? 1 : 0, ms: C.boost * 1000 });
@@ -147,9 +151,11 @@ export function installVending(Room, U) {
       const f = fwdOf(p), h = raycast([p.pos[0], p.pos[1] + 1, p.pos[2]], [f[0], 0, f[1]], Wl.at + 0.5, this.boxes), k = h ? Math.max(MECH.vending.hw + 0.4, h.t - 0.5) : Wl.at;
       const g = this.vmFloor([p.pos[0] + f[0] * k, p.pos[1] + 1, p.pos[2] + f[1] * k]) || [p.pos[0] + f[0] * k, p.pos[1], p.pos[2] + f[1] * k];
       const x2 = rng(VM.stuck), S = W(this);
-      const w = { id: ++S.nw, o: p.id, p: g.map(r2), yaw: r2(p.yaw), hp: Wl.hp * (x2 ? 2 : 1), max: Wl.hp * (x2 ? 2 : 1), until: n + Wl.life * 1000, x2, hitT: 0, acc: 0 };
+      // each half of the sign stops where a building is (at the knees and at chest height): it never pokes through a wall
+      const rt = [Math.cos(p.yaw), 0, -Math.sin(p.yaw)], half = (sg) => { let e = Wl.w / 2; for (const y of [0.8 * MECH.scale, Wl.h * 0.6]) { const hh = raycast([g[0], g[1] + y, g[2]], [rt[0] * sg, 0, rt[2] * sg], Wl.w / 2, this.boxes); if (hh) e = Math.min(e, hh.t - 0.15); } return r2(Math.max(0.8, e)); };
+      const w = { id: ++S.nw, o: p.id, p: g.map(r2), yaw: r2(p.yaw), wl: half(-1), wr: half(1), hp: Wl.hp * (x2 ? 2 : 1), max: Wl.hp * (x2 ? 2 : 1), until: n + Wl.life * 1000, x2, hitT: 0, acc: 0 };
       S.walls.set(w.id, w);
-      this.broadcast({ t: 'mech', k: 'vmwall', id: p.id, w: w.id, p: w.p, yaw: w.yaw, hp: w.hp, max: w.max, ms: Wl.life * 1000, x2: x2 ? 1 : 0 });
+      this.broadcast({ t: 'mech', k: 'vmwall', id: p.id, w: w.id, p: w.p, yaw: w.yaw, wl: w.wl, wr: w.wr, hp: w.hp, max: w.max, ms: Wl.life * 1000, x2: x2 ? 1 : 0 });
       if (x2) this.broadcast({ t: 'mech', k: 'vmstuck', id: p.id, w: 'wall' });
       this.mechEn(p, true);
       return true;
@@ -195,12 +201,11 @@ export function installVending(Room, U) {
       return true;
     },
     // server/mech.js mechRay: a mech's hitscan stops at an enemy wall (which takes dmg)
-    vmRayWall(p, o, d, len, dmg) {
-      const x = this.vmFirst(p, o, [o[0] + d[0] * len, o[1] + d[1] * len, o[2] + d[2] * len]);
-      if (!x) return null;
-      if (dmg > 0) this.vmWallHurt(x.wall, dmg, x.at, p);
-      return x;
-    },
+    vmRayWall(p, o, d, len) { return this.vmFirst(p, o, [o[0] + d[0] * len, o[1] + d[1] * len, o[2] + d[2] * len]); }, // (the shooter hurts it: mechGun / vmCoin, once nothing nearer was hit)
+    // a blast at `a` reaching `b`: an enemy wall in between takes it instead (explodeAt, the chicken, the rig's missiles)
+    vmShield(owner, a, b) { return !!this.vmFirst(owner || null, a, b); },
+    // the point just in front of the sign on the side something came from (prev): where it goes off / splats
+    vmFace(x, prev) { const d = [prev[0] - x.at[0], prev[1] - x.at[1], prev[2] - x.at[2]], l = Math.hypot(d[0], d[1], d[2]) || 1, k = Math.min(0.3, l * 0.5); return [x.at[0] + d[0] / l * k, x.at[1] + d[1] / l * k, x.at[2] + d[2] / l * k]; },
     // room.js tickProjectiles: anything thrown or fired through an enemy wall stops there (grenades bounce off it)
     vmProj(pr, prev, owner) {
       const x = this.vmFirst(owner || null, prev, pr.p);
@@ -214,9 +219,11 @@ export function installVending(Room, U) {
         this.vmWallHurt(Wl, 5, x.at, owner);
         return true;
       }
-      pr.p = x.at.slice();
+      pr.p = this.vmFace(x, prev);
       this.vmWallHurt(Wl, Number.isFinite(w.dmg) ? w.dmg : 15, x.at, owner);
-      if (pr.k === 'chicken') { this.projectiles.delete(pr.id); this.explode(pr); return true; }
+      if (pr.k === 'chicken') { this.projectiles.delete(pr.id); this.explode(pr); return true; } // (it goes off on the sign's face: the blast stops at the sign, vmShield)
+      if (pr.k === 'banana') { const g = this.vmFloor(pr.p); this.removeProj(pr); if (g && this.makePeel) this.makePeel([pr.p[0], g[1], pr.p[2]], pr.o); return true; } // (it slides down the sign: a peel at its foot)
+      this.broadcast({ t: 'fx', k: 'thwack', p: pr.p.map(r2), n: 0 }); // SPLAT on the sign
       this.removeProj(pr, { b: 1 });
       return true;
     },
@@ -285,7 +292,7 @@ export function installVending(Room, U) {
       if ((S.colas.size || S.walls.size) && n - S.listT > 2000) { // late joiners (and anyone who missed an event) catch up
         S.listT = n;
         this.broadcast({ t: 'mech', k: 'vmlist', c: [...S.colas.values()].map((c) => [c.id, c.o, ...c.p, Math.round(c.until - n)]),
-          w: [...S.walls.values()].map((w) => [w.id, w.o, ...w.p, w.yaw, Math.round(w.hp), w.max, Math.round(w.until - n), w.x2 ? 1 : 0]) });
+          w: [...S.walls.values()].map((w) => [w.id, w.o, ...w.p, w.yaw, Math.round(w.hp), w.max, Math.round(w.until - n), w.x2 ? 1 : 0, w.wl, w.wr]) });
       }
     },
 

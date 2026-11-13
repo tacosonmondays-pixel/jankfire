@@ -302,7 +302,7 @@ export function vmWallCross(wall, a, b) {
   if ((da > 0) === (db > 0) || da === db) return null;
   const s = da / (da - db), q = [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
   const side = (q[0] - wall.p[0]) * -fz + (q[2] - wall.p[2]) * fx, up = q[1] - wall.p[1];
-  if (Math.abs(side) > w / 2 || up < -0.2 || up > h) return null;
+  if (side > (wall.wr ?? w / 2) || side < -(wall.wl ?? w / 2) || up < -0.2 || up > h) return null; // (wl / wr: each half, clipped where a building stops it)
   return { s, at: q };
 }
 mechScale(SCALE.def); // (after every frame's helpers: the heroes' rows are in FRAMES by now)

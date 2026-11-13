@@ -98,7 +98,7 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
   const PH = process.env.PHASE ? process.env.PHASE.split(',').map(Number) : [1, 2, 3];
   let srv = null;
   if (PH.includes(1)) {
-  srv = await boot(port0, { JF_MECH_HP: '0.5', JF_MECH_ULT: '5', JF_VM_JAM: '0', JF_VM_STUCK: '0' });
+  srv = await boot(port0, { JF_MECH_HP: '0.5', JF_MECH_ULT: '5', JF_VM_JAM: '0', JF_VM_STUCK: '0', JF_VM_SLOW: '1.4' }); // (SLOW: the wall stands 14 s, room for every shot at it)
   {
     const { A, all, mine, them } = await squad(port0, ['vendor', 'b', 'c', 'd', 'e']);
     ok(mine.length === 2 && them.length === 2, `teams: the vending machine has ${mine.length} allies, ${them.length} enemies`);
@@ -204,6 +204,14 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     const bd = aim(eyeP(D.at), add(mid(C.at), [0, 4, 0])).d;
     D.send({ t: 'fire', w: 'banana', d: bd, o: eyeP(D.at) }); await hold(900, []);
     ok(!C.all('dmg', (m) => m.to === C.id && m.w === 'banana').length && A.all('mech', (m) => m.k === 'vmwhit').length >= 1, 'a banana through it: stopped, the wall takes it');
+    // (review #471) the water pistol: 3 squirts at C through the wall: no damage and NO SOAK either (it used to soak through)
+    C.got.length = 0;
+    for (let i = 0; i < 3; i++) { D.send({ t: 'hit', w: 'water', to: C.id, d: aim(eyeP(D.at), mid(C.at)).d, n: 1, h: 0 }); await hold(160, []); }
+    ok(!C.all('dmg', (m) => m.to === C.id).length && !C.all('soak', (m) => m.id === C.id).length, `the water pistol through the wall: no damage, no soak (${C.all('soak', (m) => m.id === C.id).length} soaks)`);
+    // (review #471) a chicken rocket at the sign: it goes off on D's side and the blast stops at the sign (C is 3 m behind it, in its 7.5 m blast)
+    C.got.length = 0; A.got.length = 0;
+    D.send({ t: 'fire', w: 'chicken', d: aim(eyeP(D.at), add(mid(C.at), [0, 2.5, 0])).d, o: eyeP(D.at) }); await hold(1600, []); // (aimed high: it drops on the way)
+    ok(A.all('mech', (m) => m.k === 'vmwhit').length >= 1 && !C.all('dmg', (m) => m.to === C.id && m.w === 'chicken').length, `a chicken rocket at the sign: it goes off on the face, the blast doesn't come through (${C.all('dmg', (m) => m.to === C.id && m.w === 'chicken').map((m) => m.a).join(',') || 'nothing'})`);
     // a mech's cannons: B's PAPER PLANE hammers C through it until it breaks; then they land
     const bAt = B.at.slice(), be = add(bAt, [0, 4.4 * S, 0]), ba = aim(be, mid(C.at));
     B.o = { f: MF.MECH, y: ba.y, x: ba.x };
@@ -217,6 +225,20 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     ok(broke && broke.why === 'break', 'it breaks · ' + (broke && broke.why));
     for (let i = 0; i < 4; i++) { B.send({ t: 'mech', k: 'gun', d: ba.d }); await hold(130, []); }
     ok(C.all('dmg', (m) => m.to === C.id && m.w === 'mechgun').length >= 1, 'broken: the cannons hit C again');
+    // (review #471) coins hit an empty parked enemy mech, like the PAPER PLANE's cannons do (they used to pass through it)
+    { const dm = add(P, [9, 0, -14]); D.at = add(P, [9, 0, -4]); const dl = aim(eyeP(D.at), dm); D.o = { y: dl.y, x: dl.x }; await hold(400, []);
+      D.got.length = 0; D.send({ t: 'deploy', r: 'mechdrop', at: [dm[0], Y, dm[2]], mf: 'paperplane' });
+      const call = await D.wait('mech', (m) => m.k === 'call', 1500);
+      D.at = add(P, [20, 0, 10]); await hold(3400, []);
+      const hpOf = () => { const l = A.all('mech', (m) => m.k === 'list').pop(), e = l && call && l.m.find((x) => x[0] === call.id); return e ? e[9] : null; };
+      A.got.length = 0; await hold(1200, []);
+      const h0 = hpOf(), slot = [P[0], P[1] + 4.0 * S, P[2]], tgt = [dm[0], Y + 2.5 * S, dm[2]], ca = aim(slot, tgt);
+      A.o = { y: ca.y, x: ca.x }; await hold(300, []);
+      for (let i = 0; i < 10; i++) { A.send({ t: 'mech', k: 'coin', d: ca.d }); await hold(130, []); }
+      await hold(1200, []);
+      const h1 = hpOf();
+      ok(call && h0 != null && h1 != null && h0 - h1 >= 45, `coins at an empty parked enemy mech: they hit it (armour ${h0} -> ${h1})`);
+      A.o = {}; }
     B.at = add(P, [3, 0, -40]); C.at = add(P, [6, 0, 4]); D.at = add(P, [20, 0, 10]);
     await hold(400, []);
 

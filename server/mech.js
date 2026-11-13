@@ -524,7 +524,7 @@ export function installMech(Room, U) {
     // a shot's direction has to be roughly where the server has you looking (a snapshot old: some slack)
     mechAimOk(p, d, cos) { const l = lookOf(p); return l[0] * d[0] + l[1] * d[1] + l[2] * d[2] >= cos; },
     // the first body (or wall) along a ray: boxes of whoever's a mech are its frame + cockpit
-    mechRay(p, o, d, range, dmg = 0) {
+    mechRay(p, o, d, range) {
       const wall = raycast(o, d, range, this.boxes);
       let best = wall ? wall.t : range, hit = null, head = false;
       for (const t of this.players.values()) {
@@ -534,8 +534,8 @@ export function installMech(Room, U) {
           if (h && h.t < best) { best = h.t; hit = t; head = hb.head; }
         }
       }
-      const vw = this.vmRayWall && this.vmRayWall(p, o, d, best, dmg); // an enemy OUT OF ORDER wall in the way takes it (dmg)
-      if (vw) return { t: null, head: false, at: vw.at, wall: vw.wall.id };
+      const vw = this.vmRayWall && this.vmRayWall(p, o, d, best); // an enemy OUT OF ORDER wall in the way: the shot stops there (the shooter hurts it, once it knows nothing nearer was hit)
+      if (vw) return { t: null, head: false, at: vw.at, wall: vw.wall };
       return { t: hit, head, at: [o[0] + d[0] * best, o[1] + d[1] * best, o[2] + d[2] * best] };
     },
 
@@ -545,9 +545,10 @@ export function installMech(Room, U) {
       const M = p.mech, G = PP.gun;
       if (n < M.jetUntil || n - (M.gunT || 0) < 1000 / G.rate * 0.7 || !this.mechAimOk(p, d, G.cone)) return;
       M.gunT = n; M.side = -(M.side || 1);
-      const o = this.mechEyeOf(p), r = this.mechRay(p, o, d, G.range, G.dmg);
+      const o = this.mechEyeOf(p), r = this.mechRay(p, o, d, G.range);
       const em = this.mechRayEmpty(p, o, d, Math.min(G.range, Math.hypot(r.at[0] - o[0], r.at[1] - o[1], r.at[2] - o[2]))); // an empty mech in front of whatever it hit
-      if (em) { r.t = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      if (em) { r.t = null; r.wall = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      if (r.wall) this.vmWallHurt(r.wall, G.dmg, r.at, p); // (the wall only when it was the first thing hit)
       this.broadcast({ t: 'mech', k: 'gun', id: p.id, s: M.side, b: r.at.map(r2), h: r.t || em ? 1 : 0 }, p.isBot ? undefined : p.id);
       if (r.t) this.hurt(r.t, p, 'mechgun', G.dmg * (r.head ? MECH.head : 1), [d[0] * 1.5, 0.5, d[2] * 1.5], { hs: r.head });
       else if (em) { const hd = r.at[1] >= em.m.p[1] + MECH[em.m.f].c0 && r.at[1] <= em.m.p[1] + MECH[em.m.f].c1; this.mechHarm(em.m, p, 'mechgun', G.dmg * (hd ? MECH.head : 1), hd, r.at); }

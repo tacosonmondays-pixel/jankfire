@@ -1690,7 +1690,7 @@ class Room {
   }
 
   applyHitscan(p, t, wid, n, h, d, mul = 1) {
-    if (this.vmBlockShot && this.vmBlockShot(p, t, wid, n, h, d, mul)) return; // an enemy vending machine's OUT OF ORDER wall in the way takes it (server/mech_vending.js)
+    if (this.vmBlockShot && this.vmBlockShot(p, t, wid, n, h, d, mul)) return false; // an enemy vending machine's OUT OF ORDER wall in the way takes it (server/mech_vending.js)
     if (this.isBall(t) || this.rigOn(t)) h = 0; // a wrecking ball has no head, and the rig's is armoured
     if (h && this.mechOn(t)) mul *= this.mechHeadMul(WEAPONS[wid], n, h); // a mech's head is the cockpit: MECH.head
     if (this.parryShot(p, t, wid, n, h, d, mul)) return; // katana parry: blocked, or sent back
@@ -2166,6 +2166,7 @@ class Room {
       if (!t.alive) continue;
       const c = this.mechBlastPt(t, p), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to); // (a mech: the nearest point of its frame)
       if (dist > R) continue;
+      if (this.vmShield && this.vmShield(owner, p, c)) continue; // behind an enemy OUT OF ORDER wall: the blast doesn't come through (server/mech_vending.js)
       const f = 1 - dist / R, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
       const self = owner && t.id === owner.id;
       const k = kb * (0.4 + 0.6 * f);
@@ -2185,6 +2186,7 @@ class Room {
       const dx = c[0] - pr.p[0], dy = c[1] - pr.p[1], dz = c[2] - pr.p[2];
       const dist = Math.hypot(dx, dy, dz);
       if (dist > w.radius) continue;
+      if (this.vmShield && this.vmShield(owner, pr.p, c)) continue; // (an enemy OUT OF ORDER wall in between takes the blast)
       const f = 1 - dist / w.radius;
       const dir = dist > 0.1 ? [dx / dist, dy / dist, dz / dist] : [0, 1, 0];
       const self = t.id === pr.o;

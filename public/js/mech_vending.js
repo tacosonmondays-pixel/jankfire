@@ -280,7 +280,9 @@ function crackOn(w, k) { // k: 0..1 of the wall gone. a few jagged lines from wh
   void c;
 }
 function wallMesh(w) {
-  const g = new THREE.Group(), Wd = VM.wall.w, H = VM.wall.h;
+  const half = (x) => (Number.isFinite(x) && x > 0 && x <= VM.wall.w / 2 + 0.01 ? x : VM.wall.w / 2); // (the server clips each half where a building is)
+  w.wl = half(w.wl); w.wr = half(w.wr);
+  const g = new THREE.Group(), Wd = w.wl + w.wr, cx = (w.wr - w.wl) / 2, H = VM.wall.h;
   w.tex = signTex(w.x2);
   const face = new THREE.MeshLambertMaterial({ map: w.tex.t, emissive: 0x302810, side: THREE.DoubleSide });
   const dark = new THREE.MeshLambertMaterial({ color: 0x22202a, flatShading: true });
@@ -288,21 +290,21 @@ function wallMesh(w) {
   const lamp = new THREE.MeshBasicMaterial({ color: 0xff3030 });
   w.mats = [face, dark, post, lamp];
   const panel = new THREE.Mesh(new THREE.BoxGeometry(Wd, H - 0.5, 0.18), [dark, dark, dark, dark, face, face]);
-  panel.position.y = 0.5 + (H - 0.5) / 2;
+  panel.position.set(cx, 0.5 + (H - 0.5) / 2, 0);
   g.add(panel);
   for (const sx of [-1, 1]) {
-    const p = new THREE.Mesh(new THREE.BoxGeometry(0.32, H + 0.2, 0.32), post); p.position.set(sx * (Wd / 2 + 0.05), (H + 0.2) / 2, 0); g.add(p);
-    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 1.4), dark); foot.position.set(sx * (Wd / 2 + 0.05), 0.1, 0); g.add(foot);
-    const l = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lamp); l.position.set(sx * (Wd / 2 + 0.05), H + 0.35, 0); g.add(l); (w.lamps ||= []).push(l);
+    const p = new THREE.Mesh(new THREE.BoxGeometry(0.32, H + 0.2, 0.32), post); p.position.set(cx + sx * (Wd / 2 + 0.05), (H + 0.2) / 2, 0); g.add(p);
+    const foot = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.2, 1.4), dark); foot.position.set(cx + sx * (Wd / 2 + 0.05), 0.1, 0); g.add(foot);
+    const l = new THREE.Mesh(new THREE.SphereGeometry(0.2, 8, 6), lamp); l.position.set(cx + sx * (Wd / 2 + 0.05), H + 0.35, 0); g.add(l); (w.lamps ||= []).push(l);
   }
-  const bar = new THREE.Mesh(new THREE.BoxGeometry(Wd + 0.4, 0.22, 0.26), post); bar.position.y = H + 0.05; g.add(bar);
+  const bar = new THREE.Mesh(new THREE.BoxGeometry(Wd + 0.4, 0.22, 0.26), post); bar.position.set(cx, H + 0.05, 0); g.add(bar);
   g.position.set(w.p[0], w.p[1], w.p[2]); g.rotation.y = w.yaw;
   w.panel = panel;
   return g;
 }
 function wallAdd(m, live) {
   if (WALLS.has(m.w)) return WALLS.get(m.w);
-  const w = { id: m.w, o: m.id, p: m.p, yaw: Number(m.yaw) || 0, hp: m.hp, max: m.max || VM.wall.hp, x2: !!m.x2, t0: nowMs(), until: nowMs() + (m.ms || 10000), cracks: 0, flick: 0 };
+  const w = { id: m.w, o: m.id, p: m.p, yaw: Number(m.yaw) || 0, wl: m.wl, wr: m.wr, hp: m.hp, max: m.max || VM.wall.hp, x2: !!m.x2, t0: nowMs(), until: nowMs() + (m.ms || 10000), cracks: 0, flick: 0 };
   w.g = wallMesh(w);
   G.scene.add(w.g);
   WALLS.set(w.id, w);
@@ -322,9 +324,9 @@ function wallDrop(id, why) {
     w.g.updateMatrixWorld(true);
     const fx0 = -Math.sin(w.yaw), fz0 = -Math.cos(w.yaw), rx = Math.cos(w.yaw), rz = -Math.sin(w.yaw);
     for (let i = 0; i < 4; i++) for (let j = 0; j < 2; j++) { // 8 chunks of the sign, each with its share of the canvas
-      const geo = new THREE.BoxGeometry(VM.wall.w / 4, (VM.wall.h - 0.5) / 2, 0.18), uv = geo.attributes.uv;
+      const Wd = w.wl + w.wr, geo = new THREE.BoxGeometry(Wd / 4, (VM.wall.h - 0.5) / 2, 0.18), uv = geo.attributes.uv;
       for (let k = 0; k < uv.count; k++) uv.setXY(k, (i + uv.getX(k)) / 4, (j + uv.getY(k)) / 2);
-      const m = new THREE.Mesh(geo, w.mats[0].clone()), lx = (i - 1.5) * VM.wall.w / 4, ly = 0.5 + (j + 0.5) * (VM.wall.h - 0.5) / 2;
+      const m = new THREE.Mesh(geo, w.mats[0].clone()), lx = (w.wr - w.wl) / 2 + (i - 1.5) * Wd / 4, ly = 0.5 + (j + 0.5) * (VM.wall.h - 0.5) / 2;
       m.position.set(w.p[0] + rx * lx, w.p[1] + ly, w.p[2] + rz * lx); m.rotation.y = w.yaw;
       G.scene.add(m);
       const out = (Math.random() - 0.5) * 2, k2 = 4 + Math.random() * 6;
@@ -499,7 +501,7 @@ function event(m, getR, live, me, r, st) {
       if (!live) break;
       const cs = new Set(), ws = new Set();
       for (const e of Array.isArray(m.c) ? m.c : []) { if (!Array.isArray(e) || e.length < 6) continue; const p = P([e[2], e[3], e[4]]); if (!p) continue; cs.add(e[0]); if (!COLAS.has(e[0])) colaAdd(e[0], e[1], p, Number(e[5]) || 0, null); }
-      for (const e of Array.isArray(m.w) ? m.w : []) { if (!Array.isArray(e) || e.length < 10) continue; const p = P([e[2], e[3], e[4]]); if (!p) continue; ws.add(e[0]); const w = WALLS.get(e[0]); if (!w) wallAdd({ w: e[0], id: e[1], p, yaw: e[5], hp: e[6], max: e[7], ms: e[8], x2: e[9] }, false); else if (!w.dying) w.hp = Number(e[6]) || w.hp; }
+      for (const e of Array.isArray(m.w) ? m.w : []) { if (!Array.isArray(e) || e.length < 10) continue; const p = P([e[2], e[3], e[4]]); if (!p) continue; ws.add(e[0]); const w = WALLS.get(e[0]); if (!w) wallAdd({ w: e[0], id: e[1], p, yaw: e[5], hp: e[6], max: e[7], ms: e[8], x2: e[9], wl: e[10], wr: e[11] }, false); else if (!w.dying) w.hp = Number(e[6]) || w.hp; }
       for (const c of [...COLAS.values()]) if (!cs.has(c.id) && now - c.t0 > 1500) colaDrop(c.id);
       for (const w of [...WALLS.values()]) if (!ws.has(w.id) && !w.dying && now - w.t0 > 1500) wallDrop(w.id, 'gone');
       break;
