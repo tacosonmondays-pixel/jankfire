@@ -90,10 +90,11 @@ function stump(r, on) {
   r.stumpOn = on; const s = r.a.L.parts && r.a.L.parts.dmgStump;
   if (s) s.visible = on && !r.far;
 }
-function apply(r, P) {
+const STDJ = new Set(JL_DATA.std);
+function apply(r, P, ownOnly) {
   const c = r.c;
   for (const { n, p, q } of RIG) {
-    const o = c[n]; if (!o) continue;
+    const o = c[n]; if (!o || (ownOnly && STDJ.has(n))) continue;
     e3.set(P[n + '.x'] ?? 0, P[n + '.y'] ?? 0, P[n + '.z'] ?? 0);
     o.quaternion.copy(q).multiply(q3.setFromEuler(e3));
     o.position.set(p.x + (P[n + '.px'] ?? 0), p.y + (P[n + '.py'] ?? 0), p.z + (P[n + '.pz'] ?? 0));
@@ -108,7 +109,8 @@ function dangle(r, P, dt) {
     const s = (r.bells[n] ||= { p: null, v: V(), ax: 0, az: 0, wx: 0, wz: 0 });
     o.getWorldPosition(v3);
     if (s.p && dt > 0) {
-      const v = v3.clone().sub(s.p).divideScalar(dt), acc = v.clone().sub(s.v).divideScalar(dt); s.v.copy(v);
+      const v = v3.clone().sub(s.p).divideScalar(dt); if (!s.hasV) { s.v.copy(v); s.hasV = true; } // (no jolt on the first frame it moves)
+      const acc = v.clone().sub(s.v).divideScalar(dt); s.v.copy(v);
       const tx = clamp(acc.z * 0.035, -0.9, 0.9), tz = clamp(-acc.x * 0.035, -0.9, 0.9);
       const k = 60, d = 7; // (stiff enough to settle in a second, loose enough to jingle)
       s.wx += ((tx - s.ax) * k - s.wx * d) * dt; s.wz += ((tz - s.az) * k - s.wz * d) * dt;
@@ -218,6 +220,9 @@ function frame(dt, cam) {
     if (!a.L || a.L.look !== 'jester_lord') continue;
     const r = rigOf(a);
     if (!a.clip) playClip(a, 'jl_idle', { hold: true }); // (never out of a clip: the big top would stop breathing)
+    else if (!D[a.clip.name]) { // a stock gesture (wave, shrug...) has his arms: the spider and the hat keep idling under it
+      r.t2 = (r.t2 || 0) + dt; const P = evalClip('jl_idle', r.t2); apply(r, P, true); dangle(r, P, dt);
+    }
     if (cam && a.L.blender) { const d = Math.hypot(cam.position.x - a.pos[0], cam.position.y - a.pos[1], cam.position.z - a.pos[2]); r.vis(r.far ? d > 30 : d > 34); }
   }
   for (const [id, r] of rigs) if (!r.manual && (!actors.has(id) || actors.get(id) !== r.a)) rigs.delete(id);
