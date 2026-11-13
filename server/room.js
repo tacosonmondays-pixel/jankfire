@@ -2887,11 +2887,11 @@ class Room {
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (p.mheld && this.mechHeldStop(p, m)) return; // carried in a mech (the trolley's basket): scooped = hands off, riding = guns + heals only (server/mech.js). before the modes' own handlers, which act and return
     if (this.isleOn && this.isleHandle(p, m)) return; // battle island: down = crawl, no shooting
     if (this.brOn && this.brHandle(p, m)) return; // jank royale: the blimp, loot, heals; only guns you carry, with bullets left
     if (this.isEcon() && this.econHandle(p, m)) return;
     if ((m.t === 'fire' || m.t === 'hit') && this.lassoHolding(p)) return; // both hands are on the lasso
-    if (p.mheld && this.mechHeldStop(p, m)) return; // carried in a mech (the trolley's basket): scooped = hands off, riding = guns only (server/mech.js)
     switch (m.t) {
       case 's': {
         if (!p.alive || m.q !== p.seq) return;

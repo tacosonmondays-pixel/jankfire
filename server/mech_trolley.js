@@ -17,12 +17,13 @@ export function installTrolley(Room, U) {
   const { now, norm, r2, center, send, KIT, clear, segDist, hdist } = U;
   const fwdOf = (p) => [-Math.sin(p.yaw), -Math.cos(p.yaw)];
   // how fast it's really going: measured from the snapshots (players), its own (bots)
-  const speedOf = (p, M, n) => (p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0]);
+  // (mechMv: the net travel backs it, so wiggling in place reads as parked)
+  const speedOf = (room, p, M, n) => room.mechMv(p, M, n);
   // what it hits / drifts / scoops with: the measured speed, never more than it may go right now (the kit's cap) nor a jump
   // from the window before (a trolley that sat still then "moved" 10 m in one snapshot counts as sitting still). the way
   // it's going is a unit vector off the raw velocity, so nothing can scale the knockback up
   const moveOf = (room, p, M, n) => {
-    const v = speedOf(p, M, n), T = M.tr, raw = Math.hypot(v[0], v[1]);
+    const v = speedOf(room, p, M, n), T = M.tr, raw = Math.hypot(v[0], v[1]);
     if (!p.isBot && M.mv !== T.mvRef) { T.mvRef = M.mv; T.hsPrev = T.hsNow || 0; T.hsNow = M.mv ? Math.hypot(M.mv[0], M.mv[1]) : 0; }
     const hs = Math.min(raw, KIT.trolley.cap.call(room, p, M, p.f, n), p.isBot ? 1e9 : (T.hsPrev || 0) + 12);
     return { hs, fx: raw > 1e-6 ? v[0] / raw : 0, fz: raw > 1e-6 ? v[1] / raw : 0 };
@@ -190,7 +191,7 @@ export function installTrolley(Room, U) {
     },
     // ---- ram: driving into people at speed (what the server measured)
     // too big (or busy) for the basket: a mech, a rig, a ball, a bubble, anyone on a lasso
-    trBig(t) { return !!(t.mech || t.trap || (t.rig && this.rigOn(t)) || this.isBall(t) || (t.lz && (t.lz.by || t.lz.hold))); },
+    trBig(t) { return !!(t.mech || (t.br && (t.br.inBlimp || t.br.fly)) || t.trap || (t.rig && this.rigOn(t)) || this.isBall(t) || (t.lz && (t.lz.by || t.lz.hold))); },
     trRamTick(p, M, n, big) {
       const { hs, fx, fz } = moveOf(this, p, M, n), h = trRam(hs), R = TR.ram;
       if (!h) return;
@@ -201,7 +202,7 @@ export function installTrolley(Room, U) {
         if (!clear(this.mechCenter(p), this.mechCenter(t), this.boxes)) continue;
         M.ramT.set(t.id, n + R.cd * 1000);
         this.broadcast({ t: 'mech', k: 'ram', id: p.id, to: t.id, p: this.mechCenter(t).map(r2), big: h.dmg >= 28 ? 1 : 0, w: 'trram' });
-        this.mechKitHurt(p, t, 'trram', h.dmg, [fx * h.kb, h.up, fz * h.kb]);
+        this.mechKitHurt(p, t, 'trram', h.dmg, [fx * h.kb, h.up, fz * h.kb], M.tr.aisle ? { ult: 1 } : undefined); // (AISLE 5's rams don't charge the next one)
       }
       // empty parked enemy mechs it drives into (once per ram cooldown each)
       const rh = M.trRamM || (M.trRamM = new Map()), seen = new Set([...rh].filter(([, u]) => n < u).map(([k]) => k)), b0 = [p.pos[0], p.pos[1] + TR.h * 0.42, p.pos[2]];
@@ -259,7 +260,7 @@ export function installTrolley(Room, U) {
     // ---- the pound coin lock: an ally rides in the child seat (keeps their guns, can't walk off with it)
     trRideStart(c, p, n) {
       const M = c.mech, T = M.tr;
-      if (!p.alive || p.mech || p.mheld || p.trap || (p.rig && this.rigOn(p)) || this.isBall(p) || p.ballUntil > n || (p.lz && (p.lz.by || p.lz.hold)) || (this.isleOn && p.dn)) { this.mechNo(p, 'not right now'); return false; }
+      if (!p.alive || p.mech || p.mheld || p.trap || (p.br && (p.br.inBlimp || p.br.fly)) || (p.rig && this.rigOn(p)) || this.isBall(p) || p.ballUntil > n || (p.lz && (p.lz.by || p.lz.hold)) || (this.isleOn && p.dn)) { this.mechNo(p, 'not right now'); return false; }
       if (hdist(p.pos, c.pos) > TR.ride.reach + TR.hw || Math.abs(p.pos[1] - c.pos[1]) > 3) { this.mechNo(p, 'get closer'); return false; }
       if (T.rider) { this.mechNo(p, 'the seat is taken'); return false; }
       T.rider = p.id; T.riderUntil = p.isBot ? n + 7000 + Math.random() * 9000 : 0;
@@ -326,7 +327,7 @@ export function installTrolley(Room, U) {
       const T = M.tr;
       if (T.rider || n < T.offerT) return;
       T.offerT = n + 1200;
-      const v = speedOf(p, M, n);
+      const v = speedOf(this, p, M, n);
       if (Math.hypot(v[0], v[1]) > 9 || Math.random() > 0.5) return;
       for (const b of this.players.values()) {
         if (!b.isBot || b === p || !b.alive || !this.friendly(p, b) || b.mech || b.mheld || (b.ai && b.ai.dummy)) continue;

@@ -121,6 +121,10 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   await run(1200, () => new Map(), MF.A, (t) => ({ v: [0, 0, -8] })); // and creeping at 8 m/s: too slow
   { const Q = P.slice(); P = (t) => [Q[0], Y, Q[2] - 8 * t / 1000]; await run(1200, undefined, MF.A); P = [Q[0], Y, Q[2] - 9.6]; }
   ok(!(en().ch > 0), 'drifting at 8 m/s (under 12): no charge · ' + en().ch);
+  // wiggling in place with the drift held: 2.5 m back and forth every 180 ms reads ~14 m/s a window, but goes nowhere
+  const tri = (t, a, per) => { const k = (t % per) / per; return a * (k < 0.5 ? k * 2 : 2 - k * 2); };
+  { const Q = P.slice(); A.got.length = 0; P = (t) => [Q[0], Y, Q[2] - (Math.floor(t / 180) % 2 ? 2.5 : 0)]; await run(2400, undefined, MF.A); P = Q; await run(300); }
+  ok(!(en().ch > 0) && !A.all('mech', (m) => m.k === 'fix').length, 'wiggling 2.5 m back and forth with the drift held: no charge · ' + en().ch);
   // a push with no charge on an enemy right in front: the small one
   const pushAt = (from, to, ms) => (t) => lerp(from, to, t / ms);
   E1.got.length = 0; A.got.length = 0;
@@ -137,11 +141,11 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   ok(A.all('mech', (m) => m.k === 'trpush').length === 1, 'push again at once: the 4 s cooldown');
   await sleep(2500);
 
-  // a real drift: round in an arc at 20 m/s for 1.8 s
-  const arc = async () => { const c0 = [6, Y, 14], r = 7, w = 20 / r, Pa = (t) => [c0[0] - Math.cos(w * t / 1000) * r, Y, c0[2] + Math.sin(w * t / 1000) * r]; await goto(Pa(0)); await run(300); A.got.length = 0; P = Pa; await run(1900, undefined, MF.A); P = Pa(1900); };
+  // a real drift: round in an arc at 20 m/s for 2.3 s
+  const arc = async () => { const c0 = [6, Y, 14], r = 7, w = 20 / r, Pa = (t) => [c0[0] - Math.cos(w * t / 1000) * r, Y, c0[2] + Math.sin(w * t / 1000) * r]; await goto(Pa(0)); await run(300); A.got.length = 0; P = Pa; await run(2400, undefined, MF.A); P = Pa(2400); }; // (from a standstill: the speed it counts needs ~0.5 s of real travel first)
   await arc();
   const ch1 = en().ch;
-  ok(ch1 >= 0.95, 'drifting round an arc at 20 m/s for 1.8 s: a full charge · ' + ch1);
+  ok(ch1 >= 0.95, 'drifting round an arc at 20 m/s for 2.3 s from a standstill: a full charge · ' + ch1);
   ok(!A.all('mech', (m) => m.k === 'fix').length, 'and no correction (20 m/s is fine)');
   // keep it 3 s: push within that window = the big one
   E2.got.length = 0;
@@ -182,6 +186,9 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   E3.got.length = 0;
   await run(1200, () => new Map([[E3, [[0, Y, 21.5]]]]), 0, { v: [0, 0, -30] });
   ok(!dmgOn(E3, 'trram').length, 'parked next to them claiming 30 m/s: no ram');
+  // wiggling 4 m at them and back (~13 m/s a window, going nowhere): no rams
+  P = (t) => [0, Y, 24 - tri(t, 4, 600)]; await run(4000, () => new Map([[E3, [[0, Y, 19]]]])); P = L0.slice(); await run(400, () => new Map([[E3, [[0, Y, 19]]]]));
+  ok(!dmgOn(E3, 'trram').length, 'wiggling 4 m at them and back for 4 s: no ram · ' + dmgOn(E3, 'trram').map((m) => m.a));
   { const tgt = [0, Y, 6]; P = (t) => lerp(L0, L1, t / (38 / 24 * 1000)); await run(1500, () => new Map([[E3, [tgt]]])); P = lerp(L0, L1, 1500 / (38 / 24 * 1000)); }
   const rm = dmgOn(E3, 'trram');
   ok(rm.length === 1 && rm[0].a >= 20 && rm[0].a <= 35, `drove through them at 24 m/s: one ram for ${rm[0] && rm[0].a} (6 + 15 x 1.4 = 27)`);

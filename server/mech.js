@@ -39,8 +39,10 @@ function clear(a, b, boxes) {
 const KIT = {};
 const MSG_PER_S = 30; // 'mech' messages a second per player (cannons are 8): more get dropped
 // what someone carried in a mech can't send: scooped, almost anything; riding, everything but their guns and items
-const HELD_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'parry', 'spray', 'cart', 'car', 'rig', 'lasso', 'lh', 'cough', 'nv']);
-const HELD_RIDE = new Set(['push', 'slam', 'deploy', 'tbag', 'cart', 'rig', 'lasso', 'lh']);
+// (+ battle island / royale: no revives, hero swaps, loot or kicks from the basket; a rider keeps their heals)
+const HELD_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'parry', 'spray', 'cart', 'car', 'rig', 'lasso', 'lh', 'cough', 'nv', 'use', 'hero', 'brjump', 'brheal', 'brpick', 'brdrop', 'brswap', 'brkick']);
+const HELD_RIDE = new Set(['push', 'slam', 'deploy', 'tbag', 'cart', 'rig', 'lasso', 'lh', 'use', 'hero', 'brjump', 'brpick', 'brdrop', 'brswap', 'brkick']);
+const NET_MS = 500; // mechMv: speed only counts as far as the net travel over this long backs it (no wiggling in place)
 const POKES = new Set(['kick', 'ride', 'unride']); // what someone on foot may send at someone else's mech (KIT.poke)
 
 export function installMech(Room, U) {
@@ -466,6 +468,9 @@ export function installMech(Room, U) {
       // how fast it really goes (what rams count): measured from where the server has you, over ~0.15 s
       const A = M.mvA;
       if (n - A.t >= 150) { const s = (n - A.t) / 1000; M.mv = [(pos[0] - A.p[0]) / s, (pos[2] - A.p[2]) / s]; M.mvA = { t: n, p: pos.slice() }; }
+      // and where it was ~0.5 s ago (mechMv): Tr[0] is the newest spot at least NET_MS old
+      const Tr = M.trail || (M.trail = []);
+      if (!Tr.length || n - Tr[Tr.length - 1].t >= 50) { Tr.push({ t: n, p: pos.slice() }); while (Tr.length > 2 && n - Tr[1].t >= NET_MS) Tr.shift(); }
       // landing: a stomp if it really came down from high enough (the height lost since it left the floor, over at
       // least about the time that fall takes), not whatever speed the client says
       if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.9, this.boxes)) {
@@ -534,7 +539,7 @@ export function installMech(Room, U) {
       if (m.k === 'unride') { if (!p.mheld) return; const c = this.mechCarrier(p); if (!c) { this.mechUnhold(p, 'gone'); return; } m = { k: 'unride', to: c.id }; }
       else if (p.mheld) return; // (carried: no kicking or hopping into another one)
       const t = Number.isInteger(m.to) ? this.players.get(m.to) : null, K = t && t !== p && this.mechOn(t, n) ? KIT[t.mech.f] : null;
-      if (K && K.poke) K.poke.call(this, p, t, t.mech, m.k, n);
+      if (K && K.poke && (m.k === 'kick' || K.holds)) K.poke.call(this, p, t, t.mech, m.k, n);
       else if (m.k === 'ride') this.mechNo(p, 'nothing to ride');
     },
     // ---- carried by a mech (TROLLEY's basket: scooped enemies, an ally riding). t.mheld = { by: carrier id, f, k, seq }:
@@ -543,6 +548,8 @@ export function installMech(Room, U) {
       t.mheld = { by: c.id, f: c.mech.f, k, seq: t.seq, t0: now() };
       t.g = null; if (t.ai) t.ai.hook = null;
       if (this.lassoDrop) this.lassoDrop(t, 'gone'); // (off any rope, either end)
+      if (t.ride) { const k = this.carts && this.carts.get(t.ride); if (k) this.cartLetGo(k, [0, 0, 0]); else t.ride = 0; } // (out of any shopping cart)
+      if (t.irv && this.isleRvStop) this.isleRvStop(t, 'released'); // (a revive they were doing stops)
     },
     // the mech carrying t, if that still holds (carrier in its mech, t alive in the same life, the kit agrees)
     mechCarrier(t) {
@@ -911,9 +918,18 @@ export function installMech(Room, U) {
         this.broadcast({ t: 'mech', k: 'ram', id: p.id, to: t.id, p: tc.map(r2), big: 1 });
       }
     },
+    // how fast a mech really goes, for rams, charges and the like: a player's measured speed (~0.15 s windows), cut down
+    // to the net travel over the last ~0.5 s, so going back and forth in place reads as standing still. a bot's own
+    mechMv(p, M, n) {
+      if (p.isBot) return [p.vel[0], p.vel[2]];
+      if (!M.mv || n - M.snapT >= 300) return [0, 0];
+      const o = M.trail && M.trail[0], age = o ? (M.snapT - o.t) / 1000 : 0, hs = Math.hypot(M.mv[0], M.mv[1]);
+      const net = age >= 0.15 && M.last ? hdist(M.last, o.p) / age : 0, k = hs > net ? net / hs : 1;
+      return [M.mv[0] * k, M.mv[1] * k];
+    },
     // walking into people at speed shoves them (faster = harder)
     mechRam(p, M, n) {
-      const F = MECH[M.f], v = p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0]; // (a player's: measured, not what the client claims)
+      const F = MECH[M.f], v = this.mechMv(p, M, n); // (a player's: measured, not what the client claims)
       const hs = Math.hypot(v[0], v[1]), h = ramHit(hs);
       if (!h) return;
       const fx = v[0] / hs, fz = v[1] / hs;
