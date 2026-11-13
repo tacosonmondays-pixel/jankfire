@@ -8,7 +8,7 @@ import numpy as np
 from mechkit import *
 
 TILE_M = 2.0  # metres per texture tile (box UVs)
-N = 1024
+N = 2048  # (the normal map's size; colour and roughness are half: the 2K normal carries the panel lines and rivets)
 # role: (metalness, roughness, clear coat, coat roughness, anisotropy). Roughness is multiplied by the detail map (~0.85)
 LOOK = {
     'paint': (0.80, 0.42, 0.8, 0.12, 0.0), 'paint2': (0.80, 0.42, 0.8, 0.12, 0.0),  # metallic car paint (the colour lives in the reflections)
@@ -95,8 +95,8 @@ def detail_maps(seed=7, clean=False):
 
 
 def clean_maps(seed=7):
-    """the clean tile: one long cut each way and two short hatch cuts, thin and crisp, a breath of shading in them;
-    glossy and even everywhere else"""
+    """the clean tile: one long cut each way and two short hatch cuts, thin and crisp, a breath of shading in them, a
+    neat row of flush rivets beside each long cut; glossy and even everywhere else"""
     rng = np.random.default_rng(seed)
     groove = np.zeros((N, N), np.float32); px_m = N / TILE_M
     w = max(2, int(0.005 * px_m))  # (a 5 mm line)
@@ -105,8 +105,14 @@ def clean_maps(seed=7):
     for _ in range(2):
         xx, y0, L = int(rng.integers(0, N)), int(rng.integers(0, N)), int(rng.integers(N // 6, N // 3))
         groove[[(y0 + k) % N for k in range(L)], xx:xx + w] = 1
-    H = -groove * 0.8 + (_noise(rng, 5) - 0.5) * 0.04
-    col = np.clip(1.0 - 0.10 * np.clip(_blur(groove, 1) * 1.4, 0, 1), 0.85, 1.0)
+    rivet = np.zeros((N, N), np.float32); rr = max(3, int(0.006 * px_m)); step = int(0.075 * px_m)  # (6 mm heads every 7.5 cm)
+    yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]; disk = np.clip(1 - (xx ** 2 + yy ** 2) / (rr * rr), 0, 1) ** 0.5
+    def stamp_r(cx, cy):
+        ix = [(cx + k) % N for k in range(-rr, rr + 1)]; iy = [(cy + k) % N for k in range(-rr, rr + 1)]
+        rivet[np.ix_(iy, ix)] = np.maximum(rivet[np.ix_(iy, ix)], disk)
+    for k in range(0, N, step): stamp_r((x + w + 3 * rr) % N, k); stamp_r(k, (y + w + 3 * rr) % N)
+    H = -groove * 0.8 + rivet * 0.6 + (_noise(rng, 5) - 0.5) * 0.04
+    col = np.clip(1.0 - 0.10 * np.clip(_blur(groove, 1) * 1.4, 0, 1) - 0.05 * np.clip(_blur(rivet, 2) - rivet, 0, 1) * 4, 0.85, 1.0)
     rough = np.clip(0.82 + (_noise(rng, 12) - 0.5) * 0.04 + groove * 0.08, 0.5, 1.0)
     return H, col, rough
 
@@ -242,7 +248,13 @@ def apply(mk, bake=True, skip=()):
         m = bpy.data.materials[name]
         if not m.get('jf_look'): wire(m, r, imgs)
     for o in objs: box_uv(o, set(roles))
-    if bake: bake_shade(objs)
+    if bake:  # (the near model and its far LOD (<joint>_lod1) apart: they overlap, they mustn't shade each other)
+        far = [o for o in objs if o.name.endswith('_lod1')]; near = [o for o in objs if o not in far]
+        for grp, other in ((near, far), (far, near)):
+            if not grp: continue
+            for o in other: o.hide_render = True
+            bake_shade(grp)
+            for o in other: o.hide_render = False
     return sorted(set(roles.values()))
 
 

@@ -12,10 +12,10 @@ function glb(name) {
   const n = d.readUInt32LE(12), j = JSON.parse(d.toString('utf8', 20, 20 + n));
   const root = j.nodes.find((x) => x.extras && typeof x.extras.jf === 'string');
   assert.ok(root, 'a root node with the jf meta');
-  return { j, meta: JSON.parse(root.extras.jf), nodes: new Set(j.nodes.map((x) => x.name)), anims: new Set((j.animations || []).map((a) => a.name)) };
+  return { j, d, meta: JSON.parse(root.extras.jf), nodes: new Set(j.nodes.map((x) => x.name)), anims: new Set((j.animations || []).map((a) => a.name)) };
 }
 
-for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking']) {
+for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking', 'x_mech_vending']) {
   test(`${id}: the landing clips are in the file and in the meta`, () => {
     const { meta, anims } = glb(id), byName = Object.fromEntries(meta.clips.map((c) => [c.name, c]));
     for (const c of ['drop_fall', 'hero_intro', 'drop_in', 'idle']) assert.ok(anims.has(c) && byName[c], c);
@@ -41,6 +41,37 @@ for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking']) 
     assert.ok(n >= 10, 'the weight pass put events in');
     const hi = meta.clips.find((c) => c.name === 'hero_intro');
     assert.ok(hi.events.some((e) => e.t === 0 && e.fx === 'slam' && e.shake > 0), 'the landing hits the floor at t = 0');
+  });
+  test(`${id}: a far LOD, if it has one, sits beside every near mesh and is cheaper`, () => {
+    const { meta, nodes } = glb(id);
+    if (!meta.lod) return; // (the files from before the detail pass have none)
+    assert.ok(Number.isFinite(meta.lod.dist) && meta.lod.dist > 0, 'lod.dist');
+    const near = [...nodes].filter((n) => /_mesh$/.test(n)), far = [...nodes].filter((n) => /_lod1$/.test(n));
+    assert.ok(far.length > 0, 'far meshes');
+    for (const n of far) assert.ok(nodes.has(n.replace(/_lod1$/, '_mesh')) && (meta.skinned || Object.hasOwn(meta.joints, n.replace(/_lod1$/, ''))), n); // (skinned: <prefix>_lod1 beside <prefix>_mesh)
+    for (const n of near) assert.ok(nodes.has(n.replace(/_mesh$/, '_lod1')), 'no far LOD for ' + n);
+    const [tn, tf] = meta.lod.tris;
+    assert.ok(tf > 0 && tf <= 16000 && tf < tn / 2, `far ${tf} vs near ${tn}`);
+  });
+  test(`${id}: every joint is a node by its own name (a part named like one must not push it to 'name.001')`, () => {
+    const { meta, nodes } = glb(id);
+    for (const k of Object.keys(meta.joints)) assert.ok(nodes.has(k), 'no node named ' + k);
+  });
+  test(`${id}: a skinned file, if it is one, skins every joint, rigidly, and keeps the joints as nodes`, () => {
+    const { j, d, meta } = glb(id);
+    if (!meta.skinned) return;
+    assert.equal(j.skins.length, 1);
+    const names = j.skins[0].joints.map((i) => j.nodes[i].name);
+    assert.deepEqual(names, Object.keys(meta.joints), 'skin joints = meta.joints, in order');
+    const sm = j.nodes.filter((n) => Number.isInteger(n.skin)).map((n) => n.name).sort();
+    assert.deepEqual(sm, [meta.skinned.near, meta.skinned.far].filter(Boolean).sort());
+    assert.ok(!j.nodes.some((n) => Number.isInteger(n.mesh) && !Number.isInteger(n.skin)), 'no rigid meshes left');
+    const bin = d.subarray(20 + d.readUInt32LE(12) + 8), CT = { 5121: Uint8Array, 5123: Uint16Array, 5126: Float32Array };
+    for (const m of j.meshes) for (const p of m.primitives) { // (rigid: one joint per vertex, weight 1)
+      const acc = j.accessors[p.attributes.WEIGHTS_0], bv = j.bufferViews[acc.bufferView];
+      const w = new CT[acc.componentType](bin.buffer, bin.byteOffset + (bv.byteOffset || 0) + (acc.byteOffset || 0), acc.count * 4);
+      for (let i = 0; i < acc.count; i++) assert.ok(w[i * 4 + 1] === 0 && w[i * 4 + 2] === 0 && w[i * 4 + 3] === 0 && w[i * 4] > 0, m.name + ' vertex ' + i);
+    }
   });
   test(`${id}: decal / spray slots sit on a joint, with a marker each`, () => {
     const { meta, nodes } = glb(id);

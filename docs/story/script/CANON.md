@@ -102,6 +102,7 @@ readings of who already rules each district in `shared/story/content/world.js`; 
 | The Margins | Penny Plot (Vacancy Holdings) | land and endings: space, ownership, nothing | proposed |
 | The Commute | Employee of the Month (the Unpaid) | ambition: the journey, getting on | proposed |
 | The sims | nobody: the Machine | memory | proposed |
+| entertainment (new; *proposed* name The Midway) | **the Lord of Entertainment**, a jester on a spider's body (working name THE HEADLINER, `jester_lord`: [cast/JESTER_LORD.md](../cast/JESTER_LORD.md)), partnered with the Lust | **entertainment**: laughter and lust | **owner's word** (2026-11-13); name, partner and district are proposed |
 
 **Mr. Overtime's district (a thought, not settled: the owner wrote it with "??").** Today he has none. He is Head of
 Timekeeping, Employee #1, with an office in the Punctuality Museum on Corp Hill, and he is fought at the Gut Border
