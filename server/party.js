@@ -11,12 +11,12 @@ const b64url = (u8) => { let b = ''; for (const x of u8) b += String.fromCharCod
 
 export const PARTY = { grace: 30000, max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
 let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
-const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
+const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training', 'bgn'];
 const parties = new Map(); // code -> { id, code, lead, members, set }
 const online = new Map(); // account name_lower -> its menu connections (friends' presence, invites)
 const back = new Map(); // rejoin key -> a member whose connection dropped (30 s to come back: wifi blips, reloads)
 const LP_MODES = new Set(['zm', 'isle']); // the walkable lobbies
-const MODE_NAMES = { qp: 'QUICK PLAY', bomb: 'PLANT & DEFUSE', br: 'JANK ROYALE', zm: 'ZOMBIES', isle: 'BATTLE ISLAND', training: 'TRAINING' };
+const MODE_NAMES = { qp: 'QUICK PLAY', bomb: 'PLANT & DEFUSE', br: 'JANK ROYALE', zm: 'ZOMBIES', isle: 'BATTLE ISLAND', training: 'TRAINING', bgn: 'BOARD GAME NIGHT' };
 let D = null, nextId = 1;
 const now = () => Date.now();
 const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
@@ -191,6 +191,7 @@ function go(pt, m) {
     if (Number.isFinite(c.bots)) cfg.bots = Math.max(0, Math.min(12, Math.round(c.bots)));
     if (has(D.BOT_DIFF, c.diff)) cfg.diff = c.diff;
     if (has(D.HIPFIRE, c.hip)) cfg.hip = c.hip;
+    if ([5, 10, 15].includes(c.rounds)) cfg.rounds = c.rounds; // board game night's length (shared/bgn.js BGN.roundOpts)
   }
   const out = pt.members.filter((x) => !x.gone && (!x.busy || x === pt.lead));
   const cap = cfg.lobby && D.LOBBY.kinds[cfg.lobby].cap;

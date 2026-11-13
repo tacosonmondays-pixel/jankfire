@@ -3,9 +3,9 @@
 // LOBBY instead; when its timer runs out everyone who didn't pick PLAY AGAIN goes back to that mode's lobby (the
 // menu), the rest get the same mode again. offline quick play keeps its vote, online mode lobbies keep LOBBY.again.
 // (room.js imports this: browser-safe, no node: imports. the story's referee runs room.js in a worker)
-export const HUB_BACK = ['bomb', 'br', 'zm', 'isle'];
+export const HUB_BACK = ['bomb', 'br', 'zm', 'isle', 'bgn'];
 export const HB = { wait: 20000, flip: 250 }; // wait: nobody stayed and someone's still here (an old client): the same mode again after this. flip: PLAY AGAIN on / off no faster
-const GAME_HUB = { bomb: 'bomb', br: 'br', zm: 'zm', island: 'isle' }; // a game -> the hub lobby it belongs to
+const GAME_HUB = { bomb: 'bomb', br: 'br', zm: 'zm', island: 'isle', bgn: 'bgn' }; // a game -> the hub lobby it belongs to
 
 // the match is over: instead of the vote (room.startVote)
 export function hubBackOpen(room) {
