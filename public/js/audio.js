@@ -945,3 +945,32 @@ Object.assign(sfx, {
   // and the thud when it hits: a heavy dull bump with a hiss of molten rock
   bombThud(pos) { tone('sine', 120, 35, 0.35, 0.9, pos); noise(0.25, 0.7, 'lowpass', 900, 80, pos); noise(0.6, 0.25, 'highpass', 3000, 6000, pos, 0.08); },
 });
+
+// snow (weather.js): a soft cold wind, k 0..1, gusting slowly; muffled under a roof. in loops (stopLoops shuts it up)
+export function windLoop(k, cover = 0) {
+  if (!ac) return;
+  let l = loops.wind;
+  if (!l) {
+    if (!(k > 0.01)) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 520; bp.Q.value = 0.7;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 0.13; const lg = ac.createGain(); lg.gain.value = 260; lfo.connect(lg); lg.connect(bp.frequency); // (the gusts: the howl wanders)
+    const gust = ac.createGain(); gust.gain.value = 0.75; // (the gusts swell this one; the volume stays its own, so off is silent)
+    const gl = ac.createOscillator(); gl.frequency.value = 0.21; const gg = ac.createGain(); gg.gain.value = 0.3; gl.connect(gg); gg.connect(gust.gain);
+    s.connect(bp); bp.connect(gust); gust.connect(g); s.start(0, Math.random() * 1.5); lfo.start(); gl.start();
+    l = loops.wind = { g, on: false, def: { vol: 0 }, bp };
+  }
+  const t = ac.currentTime, on = k > 0.01;
+  if (on || l.on) { l.g.gain.setTargetAtTime(on ? 0.12 + 0.3 * Math.min(1, k) * (cover ? 0.5 : 1) : 0, t, 0.6); l.bp.Q.setTargetAtTime(cover ? 1.6 : 0.7, t, 0.3); }
+  l.on = on;
+}
+Object.assign(sfx, {
+  // a meteor: a bright airy whoosh (big: lower, longer, and a little bell when it burns out)
+  meteor(big = 0) {
+    whoosh(big ? 1.4 : 0.6, big ? 0.28 : 0.12, big ? 900 : 1800, big ? 3200 : 5200, 1.4);
+    if (big) for (const [i, f] of [1568, 2349, 3136].entries()) tone('sine', f, f * 0.98, 0.9, 0.06, null, 1.1 + i * 0.07);
+  },
+  // a sparkle twinkling: one tiny high chime
+  twinkle() { const f = [2637, 3136, 3520, 3951][(Math.random() * 4) | 0]; tone('sine', f, f, 0.35, 0.025); tone('triangle', f * 2, f * 2, 0.15, 0.01, null, 0.02); },
+});

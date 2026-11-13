@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WX_KINDS, WX_MAPS, WX_SPAN, WX_MAXPH, wxPlan, wxAt, wxStrikes, wxMsg, wxCheck, wxErupt, wxBombs } from '../shared/weather.js';
+import { WX_KINDS, WX_MAPS, WX_SPAN, WX_MAXPH, wxPlan, wxAt, wxStrikes, wxMsg, wxCheck, wxErupt, wxBombs, wxMeteors, wxKindsOf } from '../shared/weather.js';
 import { raycast } from '../shared/physics.js';
 import { MAPS } from '../shared/map.js';
 import { Room } from '../server/room.js';
@@ -20,18 +20,18 @@ test('the plan: same seed, same weather; different seeds differ', () => {
 });
 
 test('the plan: starts clear, showers in range, in order, inside the span', () => {
-  for (const map of Object.keys(WX_MAPS).filter((m) => WX_MAPS[m].k === 'rain')) for (let seed = 1; seed < 60; seed++) {
+  for (const map of Object.keys(WX_MAPS).filter((m) => !WX_KINDS[WX_MAPS[m].k].after)) for (let seed = 1; seed < 60; seed++) {
     const p = wxPlan(map, seed * 7919), K = WX_KINDS[WX_MAPS[map].k];
     assert.ok(p.ph.length >= 3 && p.ph.length <= WX_MAXPH, `${map}: ${p.ph.length} showers`);
-    assert.ok(p.ph[0][0] >= K.first[0] - 0.1 && p.ph[0][0] <= K.first[1] + 0.1, 'the first one rolls in after 1-2 minutes');
+    assert.ok(p.ph[0][0] >= K.first[0] - 0.1 && p.ph[0][0] <= K.first[1] + 0.1, 'the first one rolls in after a minute or two');
     assert.equal(wxAt(p, 10).s, 0, 'clear at the start');
     let last = 0;
     for (const [a, b, k, s] of p.ph) {
       assert.ok(a >= last && b > a && b <= WX_SPAN, 'in order, inside the span');
-      assert.ok(b - a <= K.len[1] + 0.2, 'not longer than a shower');
-      assert.equal(k, WX_MAPS[map].k);
+      assert.ok(b - a <= WX_KINDS[k].len[1] + 0.2, 'not longer than a shower');
+      assert.ok(wxKindsOf(map).includes(k), `${map}: ${k}`);
       assert.ok(s >= WX_MAPS[map].s[0] && s <= WX_MAPS[map].s[1]);
-      last = b + K.gap[0] - 0.2;
+      last = b + Math.min(...wxKindsOf(map).map((q) => WX_KINDS[q].gap ? WX_KINDS[q].gap[0] : 0)) - 0.2;
     }
     const [a, b, , s] = p.ph[0];
     assert.equal(wxAt(p, (a + b) / 2).s, s, 'full strength mid-shower');
@@ -41,7 +41,7 @@ test('the plan: starts clear, showers in range, in order, inside the span', () =
 });
 
 test('no weather on the maps that get theirs later, and the test knob', () => {
-  for (const map of ['crate', 'backrooms', 'desert', 'bazaar', 'forest']) assert.equal(wxPlan(map, 5).ph.length, 0, map);
+  for (const map of ['crate', 'backrooms', 'bazaar']) assert.equal(wxPlan(map, 5).ph.length, 0, map);
   assert.deepEqual(wxPlan('suburb', 5, 'rain').ph, [[0, WX_SPAN, 'rain', 1]]);
   assert.equal(wxPlan('suburb', 5, 'off').ph.length, 0);
   assert.equal(wxPlan('crate', 5, 'rain').ph.length, 0, 'the knob only rains where rain belongs');
@@ -54,7 +54,8 @@ test('every weather map exists, and its kit glb is on disk', () => {
     assert.ok(fs.existsSync(f) && fs.statSync(f).size > 1000, f);
     const b = fs.readFileSync(f), j = JSON.parse(b.slice(20, 20 + b.readUInt32LE(12)).toString());
     const names = new Set(j.nodes.map((n) => n.name)), clips = new Set((j.animations || []).map((a) => a.name));
-    const need = w.k === 'erupt' ? [['wx_plume', 'wx_ash', 'wx_bomb', 'wx_trail', 'wx_splat', map === 'islands_sd' ? 'wx_pool_sd' : 'wx_pool'], ['plume_rise', 'plume_churn', 'ash_spread', 'bomb_arc', 'splat_pop', map === 'islands_sd' ? 'pool_rise_sd' : 'pool_rise']]
+    const need = w.k === 'snow' ? [['wx_snow_curtain', 'wx_snowpatch', 'wx_snow_clouds'], ['wx_snow_curtain_fall', 'wx_snow_clouds_turn']]
+      : w.k === 'stars' ? [['wx_meteor', 'wx_meteor_big', 'wx_twinkle'], ['meteor_fly', 'meteor_big_fly', 'twinkle']] : w.k === 'erupt' ? [['wx_plume', 'wx_ash', 'wx_bomb', 'wx_trail', 'wx_splat', map === 'islands_sd' ? 'wx_pool_sd' : 'wx_pool'], ['plume_rise', 'plume_churn', 'ash_spread', 'bomb_arc', 'splat_pop', map === 'islands_sd' ? 'pool_rise_sd' : 'pool_rise']]
       : [['wx_curtain', 'wx_splash_a', 'wx_splash_b', 'wx_ripple', 'wx_puddle', 'wx_clouds', 'wx_bolt_0', 'wx_bolt_1', 'wx_bolt_2'], ['wx_curtain_fall', 'wx_splash_a_clip', 'wx_splash_b_clip', 'wx_ripple_clip', 'wx_clouds_turn', 'strike_0', 'strike_1', 'strike_2']];
     for (const n of need[0]) assert.ok(names.has(n), n);
     for (const c of need[1]) assert.ok(clips.has(c), c);
@@ -135,4 +136,32 @@ test('lava bombs: the same landings everywhere, only while it blasts, on the gro
     }
     for (let i = 1; i < L.length; i++) assert.ok(L[i].t0 > L[i - 1].t0, 'in launch order');
   }
+});
+
+test('snow: the Scary Forest snows, Suburb snows instead of raining about 3 times in 10, the same for the same seed', () => {
+  let n = 0, snow = 0;
+  for (let seed = 1; seed < 400; seed++) for (const [, , k] of wxPlan('suburb', seed * 2654435761).ph) { n++; if (k === 'snow') snow++; else assert.equal(k, 'rain'); }
+  assert.ok(snow / n > 0.24 && snow / n < 0.36, `suburb snow share ${(snow / n).toFixed(2)}`);
+  assert.deepEqual(wxPlan('suburb', 99).ph, wxPlan('suburb', 99).ph);
+  for (let seed = 1; seed < 50; seed++) for (const [a, b, k] of wxPlan('forest', seed).ph) { assert.equal(k, 'snow'); assert.ok((b - a >= WX_KINDS.snow.len[0] - 0.2 || b === WX_SPAN) && b - a <= WX_KINDS.snow.len[1] + 0.2); } // (the last one may be cut short by the hour)
+  for (const [map, knob, kind] of [['forest', 'snow', 'snow'], ['suburb', 'snow', 'snow'], ['rooftop', 'stars', 'stars'], ['desert', 'stars', 'stars']]) assert.deepEqual(wxPlan(map, 3, knob).ph, [[0, WX_SPAN, kind, 1]], `${map} ${knob}`);
+  for (const [map, knob] of [['platform', 'snow'], ['forest', 'stars'], ['desert', 'rain'], ['islands', 'snow']]) assert.equal(wxPlan(map, 3, knob).ph.length, 0, `${map} never ${knob}`);
+  assert.ok(wxCheck(wxMsg(wxPlan('forest', 3), 1)) && wxCheck(wxMsg(wxPlan('desert', 3), 1)), 'the new kinds pass the client check');
+});
+
+test('star showers: Rooftop now and then, the Desert (going to dusk); the meteors are the same everywhere and inside the shower', () => {
+  let stars = 0;
+  for (let seed = 1; seed < 100; seed++) for (const [, , k] of wxPlan('rooftop', seed).ph) if (k === 'stars') stars++;
+  assert.ok(stars > 20, 'rooftop gets star showers');
+  assert.ok(WX_MAPS.desert.dusk && !WX_MAPS.rooftop.dusk);
+  for (const map of ['desert', 'rooftop', 'desert_sd']) for (let seed = 1; seed < 30; seed++) {
+    const p = wxPlan(map, seed), i = p.ph.findIndex((q) => q[2] === 'stars');
+    if (i < 0) continue;
+    const L = wxMeteors(p, i), [a, b] = p.ph[i];
+    assert.deepEqual(L, wxMeteors(wxPlan(map, seed), i));
+    assert.ok(L.length > 30, `${map} ${L.length} meteors`);
+    for (const [t, az, el, hd, big] of L) assert.ok(t >= a && t <= b && el > 0.3 && el < 1.2 && Number.isFinite(az + hd) && (big === 0 || big === 1));
+    assert.ok(L.some((m) => m[4]) || L.length < 60, 'a big one now and then');
+  }
+  assert.deepEqual(wxMeteors(wxPlan('suburb', 1), 0), [], 'only in a star shower');
 });

@@ -11,19 +11,24 @@ export const WX_KINDS = {
   rain: { kit: 'wx_rain', fade: 14, len: [90, 210], gap: [120, 300], first: [60, 120] }, // fade: s to roll in / out
   // Mount Kaboom: a rumble and a wisp (build s), the eruption, it settles (settle s); a tropical downpour (rain) right after
   erupt: { kit: 'wx_erupt', fade: 6, build: 35, settle: 30, len: [110, 150], gap: [240, 420], first: [150, 240], after: 'rain', rainLen: [90, 150] },
+  snow: { kit: 'wx_snow', fade: 20, len: [120, 240], gap: [90, 240], first: [40, 100] }, // (slow to settle in, slow to go)
+  stars: { kit: 'wx_stars', fade: 8, len: [60, 110], gap: [150, 300], first: [60, 150] }, // a star shower: meteors across the sky
 };
 // map id -> its weather. s: strength range of a shower, bolts: lightning per minute at full strength, dark: how much the
 // sky + sun dim (0-1). vent: a volcano's throat (x, crater floor y, z). rs: the downpour's strength after an eruption.
-// maps not listed stay clear (crate, backrooms, desert, bazaar, forest: theirs come later)
+// alt: { k, p }: each time the weather comes, a p chance it's that kind instead (Suburb: snow now and then). dusk: a
+// daytime map that goes to dusk for its star shower. maps not listed stay clear (crate, backrooms, bazaar: later)
 const RAIN = { k: 'rain', s: [0.6, 1], bolts: 3, dark: 1 };
 export const WX_MAPS = {
-  suburb: RAIN, suburb_sd: RAIN, warehouse: RAIN, warehouse_sd: RAIN, skyline: RAIN, skyline_sd: RAIN,
-  rooftop: { ...RAIN, bolts: 4 }, rooftop_sd: { ...RAIN, bolts: 4 }, range: { ...RAIN, s: [0.5, 0.85] },
+  suburb: { ...RAIN, alt: { k: 'snow', p: 0.3 } }, suburb_sd: { ...RAIN, alt: { k: 'snow', p: 0.3 } }, warehouse: RAIN, warehouse_sd: RAIN, skyline: RAIN, skyline_sd: RAIN,
+  rooftop: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, rooftop_sd: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, // (rain, or a star shower over the night city) range: { ...RAIN, s: [0.5, 0.85] },
   platform: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, platform_sd: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, // storm at sea
   deadmall: { k: 'rain', s: [0.7, 1], bolts: 4, dark: 0.5 }, // all roof: you hear it and the windows flash
   jankburg: { ...RAIN, s: [0.5, 0.9] },
   islands: { k: 'erupt', s: [1, 1], rs: [0.75, 1], bolts: 2, dark: 0.7, vent: [0, 11.5, -3] }, // (shared/map.js KABOOM: the crater floor round the throat)
   islands_sd: { k: 'erupt', s: [1, 1], rs: [0.75, 1], bolts: 2, dark: 0.7, vent: [0, 9.0, -13] }, // (KABOOM_SD: the same mountain, small)
+  forest: { k: 'snow', s: [0.6, 1], dark: 0.55 }, // the scary forest at night, snowed in
+  desert: { k: 'stars', s: [0.75, 1], dark: 1, dusk: 1 }, desert_sd: { k: 'stars', s: [0.75, 1], dark: 1, dusk: 1 }, // (a day map: the shower brings dusk with it)
 };
 export const WX_EARLY = 600; // a phase may have started up to this long before its plan (the eruption knob: already going)
 export const WX_SPAN = 3600; // a plan covers an hour (the server picks a fresh one before it runs out)
@@ -46,7 +51,7 @@ export function wxPlan(map, seed, force = '') {
   const K = WX_KINDS[w.k], r = wxRand(seed);
   if (force) {
     if (force === w.k && K.build) ph.push([-K.build, WX_SPAN, w.k, w.s[1]]); // (an eruption from second 0: its build-up already over)
-    else if (force === w.k || force === K.after) ph.push([0, WX_SPAN, force, w.k === force ? w.s[1] : (w.rs || [1, 1])[1]]);
+    else if (wxKindsOf(map).includes(force)) ph.push([0, WX_SPAN, force, force === K.after ? (w.rs || [1, 1])[1] : w.s[1]]);
     return { m: map, s: seed >>> 0, ph };
   }
   if (K.after) { // a volcano: an eruption, then its downpour, then a long quiet, and again
@@ -59,11 +64,18 @@ export function wxPlan(map, seed, force = '') {
   }
   // starts clear, the first shower rolls in after a minute or two, passes, and comes back now and then
   for (let t = lerp(r, K.first); t < WX_SPAN - 60 && ph.length < WX_MAXPH; ) {
-    const len = lerp(r, K.len), end = Math.min(WX_SPAN, t + len);
-    ph.push([r1(t), r1(end), w.k, Math.round(lerp(r, w.s) * 100) / 100]);
-    t = end + lerp(r, K.gap);
+    const k = w.alt && r() < w.alt.p ? w.alt.k : w.k, KK = WX_KINDS[k]; // (Suburb: this time it snows. only maps with an alt roll for it)
+    const len = lerp(r, KK.len), end = Math.min(WX_SPAN, t + len);
+    ph.push([r1(t), r1(end), k, Math.round(lerp(r, w.s) * 100) / 100]);
+    t = end + lerp(r, KK.gap);
   }
   return { m: map, s: seed >>> 0, ph };
+}
+
+// every kind a map can get (the knob JF_WEATHER=<kind> only forces kinds the map has)
+export function wxKindsOf(map) {
+  const w = wxOf(map);
+  return w ? [w.k, ...(w.alt ? [w.alt.k] : []), ...(WX_KINDS[w.k].after ? [WX_KINDS[w.k].after] : [])] : [];
 }
 
 // how strong the weather is t seconds into a plan (0 when clear): each phase ramps in and out over its kind's fade
@@ -140,3 +152,15 @@ export function wxBombs(plan, t) {
   return out;
 }
 const r1x = (v) => Math.round(v * 100) / 100;
+
+// a star shower's meteors in phase i: [time s, azimuth rad, elevation rad, heading rad, big 0/1], from the plan's seed
+// (everyone sees the same ones). about one every 0.6 s at full strength, a big bright one now and then
+export function wxMeteors(plan, i) {
+  const p = plan && plan.ph && plan.ph[i];
+  if (!p || p[2] !== 'stars') return [];
+  const [a, b, , s] = p, r = wxRand((plan.s ^ Math.imul(i + 3, 0x27d4eb2f)) >>> 0), out = [];
+  for (let t = a + 2 + r(); t < b - 2 && out.length < 600; t += (0.25 + r() * 0.75) / Math.max(0.4, s)) {
+    out.push([r1(t), r() * Math.PI * 2, 0.35 + r() * 0.75, r() * Math.PI * 2, out.length % 14 === 7 ? 1 : 0]); // (every 14th a big one)
+  }
+  return out;
+}
