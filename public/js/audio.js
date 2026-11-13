@@ -399,6 +399,13 @@ Object.assign(sfx, {
   powerOn(pos) { tone('sawtooth', 38, 240, 1.6, 0.28, pos); tone('square', 30, 120, 1.6, 0.08, pos); noise(0.35, 0.55, 'highpass', 2000, 6000, pos, 1.3); },
 });
 
+// the big map (fullmap.js): a paper map flapping open / folding shut, and a ping (yours: higher and brighter)
+Object.assign(sfx, {
+  mapOpen() { noise(0.16, 0.32, 'bandpass', 900, 2600, null, 0, 1.2); noise(0.1, 0.22, 'bandpass', 2200, 1200, null, 0.12, 1.5); tone('triangle', 520, 780, 0.08, 0.06, null, 0.04); },
+  mapClose() { noise(0.12, 0.28, 'bandpass', 2400, 800, null, 0, 1.2); tone('triangle', 700, 420, 0.07, 0.05, null, 0.05); },
+  ping(mine) { const f = mine ? 1175 : 988; tone('square', f, f, 0.05, 0.11); tone('triangle', f * 1.5, f * 2, 0.16, 0.16, null, 0.06); tone('sine', f * 3, f * 3, 0.22, 0.05, null, 0.12); },
+});
+
 // zombies: a limb coming off (wet rip + a pop), a hard hat dinking (and ringing as it flies off), the Screamer, a Chonk popping
 Object.assign(sfx, {
   zmLimb(pos, head) { noise(0.16, 0.5, 'bandpass', 900, 220, pos, 0, 1.5); tone('sine', head ? 520 : 300, 70, 0.18, 0.3, pos, 0.02); noise(0.3, 0.22, 'lowpass', 500, 120, pos, 0.08); tone('square', head ? 880 : 150, head ? 440 : 60, 0.09, 0.08, pos, 0.01); },

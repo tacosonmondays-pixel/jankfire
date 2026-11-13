@@ -5,6 +5,7 @@
 // wander about, and the big board's top 3 (from what each account already has: no lookups, never blocks the tick).
 // it wraps a few Room methods (installed late, after installReset) and only does anything while this.warm is set.
 import { PREGAME, padFor, offPad, boardRows, lookFor, EMOTES, EMOTE } from '../shared/pregame.js';
+import { raycast } from '../shared/physics.js';
 
 const now = () => Date.now();
 // nothing that hurts, uses up or spawns something gets through on the deck (sprays, READY, votes, loadout picks do)
@@ -61,6 +62,8 @@ export function installPregame(Room, { send }) {
       if (n - (p.pgShoveT || 0) < S.cd) return;
       const dx = t.pos[0] - p.pos[0], dy = t.pos[1] - p.pos[1], dz = t.pos[2] - p.pos[2], h = Math.hypot(dx, dz);
       if (h > S.range || Math.abs(dy) > 2.5) return;
+      const e = [p.pos[0], p.pos[1] + 1.5, p.pos[2]], to3 = [dx, dy - 0.5, dz], L = Math.hypot(...to3) || 1;
+      if (L > 0.3 && raycast(e, to3.map((v) => v / L), L, this.boxes)) return; // (not through the board or a crate)
       p.pgShoveT = n;
       const ux = h > 0.05 ? dx / h : -Math.sin(p.yaw || 0), uz = h > 0.05 ? dz / h : -Math.cos(p.yaw || 0);
       this.knock(t, [ux * S.push, S.lift, uz * S.push], 'shove');

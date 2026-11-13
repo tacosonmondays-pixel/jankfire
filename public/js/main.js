@@ -82,6 +82,7 @@ import { chaosSpecId, pitErupt, underSea } from './chaos.js';
 import { sink, bottomOut, swim, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
+import { initFullmap, fullmapFrame, fmKey, fmMouse, fmOpen } from './fullmap.js'; // the big map (M) + pings
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
@@ -107,7 +108,7 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { pregameFrame, pregameKey } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
+import { pregameFrame, pregameKey, pregameOn } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
 import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
@@ -178,6 +179,7 @@ G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
 initMinimap();
+initFullmap(() => lock());
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
@@ -413,7 +415,7 @@ const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jum
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { mlook.locked(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !fmOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -1222,6 +1224,7 @@ function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
   if (story && story.key(e)) { e.preventDefault(); return; } // story mode: talk, pick up, cutscene skip, the codex
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
+  if (fmKey(e)) { e.preventDefault(); return; } // the big map (M), Esc closes it; the ping key
   if (isleKey(e, startUse)) { e.preventDefault(); return; } // battle island: down = hands off; F next to a downed squadmate picks them up
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
@@ -1286,6 +1289,7 @@ addEventListener('mousedown', (e) => {
   if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
   if (RP.mode === 'hl') return; // ...but not the play of the round
+  if (fmMouse(e)) return; // the big map is open: clicks are pings (off it: close it)
   if (brMouse(e)) return; // jank royale: no shooting from the blimp; out = click to watch someone else
   if (econMouse(e)) return;
   if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
@@ -1905,7 +1909,7 @@ net.on('pd', (m) => {
 net.on('tip', (m) => { G.tip = m.tip; });
 net.on('court', courtSync); // scales of justice: everyone's kill streak when you join
 net.on('hand', (m) => { G.hand = m.hand || []; });
-net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
+net.on('tp', (m) => { ME.pos = m.p.slice(); if (pregameOn()) ME.vel = [0, 0, 0]; /* (put back on the pre-game deck: no falling momentum) */ fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
 net.on('heal', (m) => {
   if (m.id === G.myId) { ME.hp = m.hp; hud.msg(`+${m.a} HP`, 0.8); sfx.heal(); }
   const r = G.remotes.get(m.id);
@@ -2151,6 +2155,7 @@ function frame(t) {
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
   isleFrame(dt, now); // battle island: the squad panel, markers, downed people
   minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
+  fullmapFrame(now); // the big map (when open) + pings in the world
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);

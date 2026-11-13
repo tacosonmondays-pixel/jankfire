@@ -58,6 +58,12 @@ for (const bad of [{ to: String(B.w.id) }, { to: A.w.id }, { to: 1e9 }, { to: Na
 await sleep(200); check(!B.kb, 'junk shoves ignored');
 pb = [pad.c[0] + 8, pad.c[1], pad.c[2]]; for (let i = 0; i < 3; i++) { snapB(); await sleep(50); }
 A.send({ t: 'shove', to: B.w.id }); await sleep(200); check(!B.kb, 'far shove ignored');
+// through the big board: B squeezed in behind it, A in front, 1.5 m apart: no shove
+await sleep(700);
+pa = [pad.c[0] + 4, pad.c[1], pad.c[2] + 7.0]; pb = [pad.c[0] + 4, pad.c[1], pad.c[2] + 8.55];
+for (let i = 0; i < 3; i++) { snapA(); snapB(); await sleep(50); }
+B.kb = null; A.send({ t: 'shove', to: B.w.id }); await sleep(200); check(!B.kb, 'no shoving through the board');
+pa = [pad.c[0], pad.c[1], pad.c[2]]; for (let i = 0; i < 3; i++) { snapA(); await sleep(50); }
 // emote hook: unknown ids dropped
 A.send({ t: 'emote', e: 'dab' }); A.send({ t: 'emote', e: '__proto__' }); A.send({ t: 'emote', e: 5 }); await sleep(150);
 check(!B.msgs.some((m) => m.t === 'emote'), 'unknown emotes dropped');

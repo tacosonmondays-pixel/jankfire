@@ -15,7 +15,7 @@ STAT_KEYS.push('sniper_feats'); // Sniper Royalty (bit flags, see BIT_KEYS)
 STAT_KEYS.push('quiz_right'); // Smarty Pants: pop quiz questions answered right
 STAT_KEYS.push('chicken_kills', 'melee_kills'); // Poultry in Motion (Chicken Rocket kills) + Sworn Protector (melee kills)
 const MAX_KEYS = new Set(['best_wave', 'top_speed']); // these keep the max instead of adding up
-import { MODE_STATS, MODE_MAX, cleanModeDelta } from '../shared/modestats.js'; // per-mode leaderboards (inv.ms, no new columns)
+import { MODE_STATS, mergeModes } from '../shared/modestats.js'; // per-mode leaderboards (inv.ms, no new columns)
 const BIT_KEYS = new Set(['sniper_feats']); // bit flags (Sniper Royalty feats): OR'd in, so a feat never counts twice or turns off
 
 function applyDelta(u, d) {
@@ -28,15 +28,7 @@ function applyDelta(u, d) {
   return out;
 }
 
-// per-mode stats live in inv.ms = { qp: {...}, bomb: {...}, zm: {...}, br: {...} }: d is a delta, MODE_MAX keys keep the best
-function mergeModes(inv, d) {
-  const ms = inv.ms && typeof inv.ms === 'object' ? inv.ms : (inv.ms = {});
-  for (const [m, keys] of Object.entries(cleanModeDelta(d))) {
-    const b = ms[m] && typeof ms[m] === 'object' ? ms[m] : (ms[m] = {});
-    for (const [k, v] of Object.entries(keys)) b[k] = MODE_MAX.has(k) ? Math.max(b[k] || 0, v) : Math.round(((b[k] || 0) + v) * 100) / 100;
-  }
-  return inv;
-}
+// per-mode stats live in inv.ms = { qp: {...}, bomb: {...}, zm: {...}, br: {...} }: mergeModes (shared/modestats.js) adds a delta
 
 class FileStore {
   constructor(dir) {

@@ -15,7 +15,7 @@ function client(name, join) {
 }
 (async () => {
   const A = await client('judge'), B = await client('quitter');
-  const y = 90, hold = (ms, bw = 'ar') => (async () => { for (let t = 0; t < ms; t += 100) { A.place([700, y, 0], 'scales'); if (B.alive) B.place([700, y, -15], bw); await sleep(100); } })();
+  const y = 90, hold = (ms, bw = 'ar') => (async () => { for (let t = 0; t < ms; t += 100) { A.place([100, y, 0], 'scales'); if (B.alive) B.place([100, y, -15], bw); await sleep(100); } })();
   // 1. straight after spawning: not yet
   B.send({ t: 'reset' }); await hold(300);
   const early = B.take('reset');
@@ -28,7 +28,7 @@ function client(name, join) {
   // dead: a reset does nothing
   B.send({ t: 'reset' }); await sleep(300);
   ok(!B.take('reset') && !B.take('kill', (m) => m.v === B.id), 'dead: reset ignored');
-  B.send({ t: 'respawn' }); for (let i = 0; i < 60 && !B.alive; i++) { await sleep(100); A.place([700, y, 0], 'scales'); if (i % 10 === 9) B.send({ t: 'respawn' }); }
+  B.send({ t: 'respawn' }); for (let i = 0; i < 60 && !B.alive; i++) { await sleep(100); A.place([100, y, 0], 'scales'); if (i % 10 === 9) B.send({ t: 'respawn' }); }
   ok(B.alive, 'respawned after the reset');
   // 3. the wait between resets holds after a respawn
   await hold(2700);
@@ -37,7 +37,7 @@ function client(name, join) {
   ok(cd && /RESET IN \d+s/.test(cd.no) && cd.ms > 0 && B.alive, 'second reset too soon: refused with the time left ' + JSON.stringify(cd));
   // 4. A hurts B (Scales summons), B rage resets: A gets the kill
   A.got.length = 0;
-  A.send({ t: 'gavel', o: [700, y + 1.6, 0], d: [0, 0, -1] }); await hold(1700);
+  A.send({ t: 'gavel', o: [100, y + 1.6, 0], d: [0, 0, -1] }); await hold(1700);
   ok(B.hp < 100, `the judge hurt them first (${B.hp} HP)`);
   await hold(Math.max(0, (cd ? cd.ms : 0) - 1700 + 300));
   B.send({ t: 'reset' }); await hold(400);

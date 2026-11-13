@@ -10,6 +10,7 @@ import { K } from './keys.js';
 import { net } from './net.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
+import { W, fireUp } from './weapons.js';
 import { sceneryGroup } from './scenery.js';
 import { buildCharacter, freeTree } from './models.js';
 import { idlePose } from './loco.js';
@@ -31,6 +32,7 @@ export function pregameSync(info) {
     const fresh = !S.on;
     S.info = info; S.kind = info.k || ''; S.on = true; attach();
     if (fresh && S.pad && ME.alive) { ME.yaw = S.pad.face; ME.pitch = 0; } // (arrive looking out at the map)
+    if (fresh) fireUp(); // (a trigger held down through the end of the match: let go, or it keeps firing here)
   }
   else if (S.on) off();
 }
@@ -175,6 +177,7 @@ export function pregameFrame() {
   attach();
   const pad = S.pad;
   if (!pad) return;
+  W.held = false; // (fire is a shove here: nothing stays held)
   if (ME.alive && offPad(pad, ME.pos)) { // jumped or flew off: straight back on (the server does the same if we don't)
     const s = pad.spawns[Math.floor(Math.random() * pad.spawns.length)];
     ME.pos = [s[0], s[1] + 0.1, s[2]]; ME.vel = [0, 0, 0]; ME.hook = null; ME.yaw = pad.face;
