@@ -106,7 +106,12 @@ function build(j, own) {
   part(j.hips, cbox(2.1, 0.32, 1.5, 0.06), dark, [0, 1.18, 0]);
   part(j.hips, cbox(2.14, 0.08, 1.54, 0.02), acc, [0, 1.22, 0]);
   // body: the cabinet. sides with the decal, the back, the top lip, your colour on the corners
-  part(j.body, cbox(2.2, 3.2, 1.6, 0.08), cyan, [0, 2.9, 0]);
+  // (a shell, not a solid box: the window in the front shows the cans inside)
+  part(j.body, cbox(2.2, 3.2, 0.12, 0.05), cyan, [0, 2.9, 0.74]); // back
+  for (const sx of [-1, 1]) part(j.body, cbox(0.12, 3.2, 1.6, 0.05), cyan, [sx * 1.04, 2.9, 0]); // sides
+  part(j.body, cbox(2.2, 0.12, 1.6, 0.04), cyan, [0, 4.44, 0]); part(j.body, cbox(2.2, 0.12, 1.6, 0.04), cyan, [0, 1.36, 0]);
+  part(j.body, cbox(2.2, 0.56, 0.12, 0.04), cyan, [0, 1.62, FZ + 0.06]); // the flap band
+  part(j.body, cbox(0.6, 1.72, 0.12, 0.04), cyan, [0.8, 2.72, FZ + 0.06]); // the keypad column
   for (const sx of [-1, 1]) {
     part(j.body, new THREE.PlaneGeometry(1.4, 2.8), sideTex(), [sx * 1.105, 2.9, 0.02], [0, sx * Math.PI / 2, 0]);
     for (const sz of [-1, 1]) part(j.body, cbox(0.14, 3.24, 0.14, 0.03), acc, [sx * 1.07, 2.9, sz * 0.77]); // corner trims
@@ -114,12 +119,13 @@ function build(j, own) {
   part(j.body, cbox(2.3, 0.12, 1.7, 0.04), pink, [0, 4.5, 0]);
   part(j.body, cbox(2.3, 0.1, 1.7, 0.04), pink, [0, 1.32, 0]);
   // the front: the lit back panel and shelves of cans behind the door, the keypad, the face band, the flap opening
-  part(j.body, new THREE.PlaneGeometry(1.46, 1.5), own.vmBack, [-0.33, 2.72, FZ + 0.48]);
+  part(j.body, new THREE.PlaneGeometry(1.5, 1.6), own.vmBack, [-0.25, 2.72, FZ + 0.46], [0, Math.PI, 0]);
   part(j.body, g.shelves, steel, [0, 0, 0]);
   g.cans.forEach((cg, i) => { if (cg) part(j.body, cg, glow(CAN_COLS[i]), [0, 0, 0]); });
-  part(j.body, cbox(1.56, 1.66, 0.06, 0.02), dark, [-0.33, 2.72, FZ + 0.52]); // (the inside's back wall)
+  part(j.body, cbox(1.56, 1.66, 0.06, 0.02), dark, [-0.25, 2.72, FZ + 0.52]); // (the inside's back wall)
+  for (const y of [1.88, 3.56]) part(j.body, cbox(1.6, 0.06, 0.6, 0.02), dark, [-0.25, y, FZ + 0.28]); // the window's sill and lintel
   part(j.body, cbox(0.46, 1.6, 0.08, 0.03), dark, [0.78, 2.72, FZ - 0.02]); // keypad column
-  part(j.body, new THREE.PlaneGeometry(0.34, 0.68), keypadTex(), [0.78, 2.95, FZ - 0.065]);
+  part(j.body, new THREE.PlaneGeometry(0.34, 0.68), keypadTex(), [0.78, 2.95, FZ - 0.065], [0, Math.PI, 0]);
   part(j.body, cbox(0.24, 0.1, 0.06, 0.02), black, [0.78, 2.3, FZ - 0.07]); // the change slot (it never gives change)
   // the face: a dark band, a chrome coin slot with a glowing rim in the middle, glowing eyes either side, brows
   part(j.body, cbox(2.12, 0.86, 0.08, 0.03), dark, [0, 4.0, FZ - 0.02]);
@@ -150,8 +156,8 @@ function build(j, own) {
   part(j.flap, cbox(0.5, 0.1, 0.03, 0.01), lam(0xffe14d, 0.3), [0, 1.66, FZ - 0.08]); // PUSH
   // marquee: the lit sign box on top, bulbs chasing round it
   part(j.marquee, cbox(2.3, 0.6, 1.5, 0.05), dark, [0, 4.86, 0]);
-  part(j.marquee, new THREE.PlaneGeometry(2.1, 0.46), own.vmMarq, [0, 4.86, -0.765]);
-  part(j.marquee, new THREE.PlaneGeometry(2.1, 0.46), own.vmMarq, [0, 4.86, 0.765], [0, Math.PI, 0]);
+  part(j.marquee, new THREE.PlaneGeometry(2.1, 0.46), own.vmMarq, [0, 4.86, -0.765], [0, Math.PI, 0]);
+  part(j.marquee, new THREE.PlaneGeometry(2.1, 0.46), own.vmMarq, [0, 4.86, 0.765]);
   const ba = part(j.marquee, g.bulbs, own.vmBulbA, [0, 4.6, 0]), bb = part(j.marquee, g.bulbs2, own.vmBulbB, [0, 4.6, 0]);
   j.marquee.userData.bulbs = [ba, bb];
   // the OUT OF ORDER sign strapped to its back
