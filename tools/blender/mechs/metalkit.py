@@ -8,7 +8,7 @@ import numpy as np
 from mechkit import *
 
 TILE_M = 2.0  # metres per texture tile (box UVs)
-N = 1024
+N = 2048  # (the normal map's size; colour and roughness are half: the 2K normal carries the panel lines and rivets)
 # role: (metalness, roughness, clear coat, coat roughness, anisotropy). Roughness is multiplied by the detail map (~0.85)
 LOOK = {
     'paint': (0.80, 0.42, 0.8, 0.12, 0.0), 'paint2': (0.80, 0.42, 0.8, 0.12, 0.0),  # metallic car paint (the colour lives in the reflections)
@@ -95,8 +95,8 @@ def detail_maps(seed=7, clean=False):
 
 
 def clean_maps(seed=7):
-    """the clean tile: one long cut each way and two short hatch cuts, thin and crisp, a breath of shading in them;
-    glossy and even everywhere else"""
+    """the clean tile: one long cut each way and two short hatch cuts, thin and crisp, a breath of shading in them, a
+    neat row of flush rivets beside each long cut; glossy and even everywhere else"""
     rng = np.random.default_rng(seed)
     groove = np.zeros((N, N), np.float32); px_m = N / TILE_M
     w = max(2, int(0.005 * px_m))  # (a 5 mm line)
@@ -105,8 +105,14 @@ def clean_maps(seed=7):
     for _ in range(2):
         xx, y0, L = int(rng.integers(0, N)), int(rng.integers(0, N)), int(rng.integers(N // 6, N // 3))
         groove[[(y0 + k) % N for k in range(L)], xx:xx + w] = 1
-    H = -groove * 0.8 + (_noise(rng, 5) - 0.5) * 0.04
-    col = np.clip(1.0 - 0.10 * np.clip(_blur(groove, 1) * 1.4, 0, 1), 0.85, 1.0)
+    rivet = np.zeros((N, N), np.float32); rr = max(3, int(0.006 * px_m)); step = int(0.075 * px_m)  # (6 mm heads every 7.5 cm)
+    yy, xx = np.mgrid[-rr:rr + 1, -rr:rr + 1]; disk = np.clip(1 - (xx ** 2 + yy ** 2) / (rr * rr), 0, 1) ** 0.5
+    def stamp_r(cx, cy):
+        ix = [(cx + k) % N for k in range(-rr, rr + 1)]; iy = [(cy + k) % N for k in range(-rr, rr + 1)]
+        rivet[np.ix_(iy, ix)] = np.maximum(rivet[np.ix_(iy, ix)], disk)
+    for k in range(0, N, step): stamp_r((x + w + 3 * rr) % N, k); stamp_r(k, (y + w + 3 * rr) % N)
+    H = -groove * 0.8 + rivet * 0.6 + (_noise(rng, 5) - 0.5) * 0.04
+    col = np.clip(1.0 - 0.10 * np.clip(_blur(groove, 1) * 1.4, 0, 1) - 0.05 * np.clip(_blur(rivet, 2) - rivet, 0, 1) * 4, 0.85, 1.0)
     rough = np.clip(0.82 + (_noise(rng, 12) - 0.5) * 0.04 + groove * 0.08, 0.5, 1.0)
     return H, col, rough
 
@@ -242,5 +248,87 @@ def apply(mk, bake=True, skip=()):
         m = bpy.data.materials[name]
         if not m.get('jf_look'): wire(m, r, imgs)
     for o in objs: box_uv(o, set(roles))
-    if bake: bake_shade(objs)
+    if bake:  # (the near model and its far LOD (<joint>_lod1) apart: they overlap, they mustn't shade each other)
+        far = [o for o in objs if o.name.endswith('_lod1')]; near = [o for o in objs if o not in far]
+        for grp, other in ((near, far), (far, near)):
+            if not grp: continue
+            for o in other: o.hide_render = True
+            bake_shade(grp)
+            for o in other: o.hide_render = False
     return sorted(set(roles.values()))
+
+
+# ------------------------------------------------------------ the draw-call pass (the coordinator, 2026-11-13: a hero
+# should draw in 15-30 calls; every material on a joint's mesh is one more). After apply(): every flat painted role but
+# the team paint goes into ONE <prefix>_trim material per mech: its colour into the vertex colours (times the AO bake),
+# its metal / roughness / clear coat into a tiny role atlas read through a second UV set. The team paint (the game tints
+# it), the glows (they burn) and the decals (alpha cut) stay their own. Same nodes, same clips, same look.
+TRIM_CELLS = 4  # (a 4 x 4 atlas of 16 px cells: up to 16 roles)
+
+
+def _role_props(role):
+    """(metal, roughness, clear coat) as the role looked before the merge"""
+    if role in LOOK:
+        met, rough, cc, ccr, aniso = LOOK[role]
+        return met, rough * 0.86, cc  # (wire() multiplies roughness by the detail map, ~0.86 on average)
+    rough, met, cc = ROLE_LOOK[role]
+    return met, rough, cc
+
+
+def merge_trim(mk, keep=('paint',)):
+    """returns {'trim': [roles merged], 'kept': [material names left]}"""
+    objs = [o for o in mk.root.children_recursive if o.type == 'MESH']
+    roles = []
+    for o in objs:
+        for m in o.data.materials:
+            r = m.get('jf_role') if m else None
+            if r and r not in keep and not m.get('jf_decal') and not m.get('jf_paper') and ROLE_LOOK.get(r, LOOK.get(r)) is not None and r not in roles: roles.append(r)
+    if not roles: return {'trim': [], 'kept': []}
+    assert len(roles) <= TRIM_CELLS ** 2, roles
+    # the role atlas: R = clear coat, G = roughness, B = metalness (one image: glTF's metallicRoughness reads G/B, clearcoat R)
+    N_ = TRIM_CELLS * 16; px = np.zeros((N_, N_, 4), np.float32); px[:, :, 3] = 1
+    cell = {}
+    for i, r in enumerate(roles):
+        met, rough, cc = _role_props(r); x0, y0 = (i % TRIM_CELLS) * 16, (i // TRIM_CELLS) * 16  # (blender rows go up, like v)
+        px[y0:y0 + 16, x0:x0 + 16, :3] = (cc, rough, met)
+        cell[r] = ((i % TRIM_CELLS + 0.5) / TRIM_CELLS, (i // TRIM_CELLS + 0.5) / TRIM_CELLS)
+    path = os.path.join(TEX_DIR, f'{mk.prefix}_trim.png')
+    im = bpy.data.images.new(f'{mk.prefix}_trim', N_, N_); im.pixels.foreach_set(px.ravel())
+    im.filepath_raw = path; im.file_format = 'PNG'; im.save(); bpy.data.images.remove(im)
+    atlas = bpy.data.images.load(path); atlas.colorspace_settings.name = 'Non-Color'; atlas.pack()
+    ci, oi, ni = textures()
+    tm = bpy.data.materials.new(f'{mk.prefix}_trim'); tm.use_nodes = True; nt = tm.node_tree; b = nt.nodes['Principled BSDF']
+    b.inputs['Base Color'].default_value = (1, 1, 1, 1)
+    tc = nt.nodes.new('ShaderNodeTexImage'); tc.image = ci; nt.links.new(tc.outputs['Color'], b.inputs['Base Color'])  # (the panel-line tint, UV0)
+    uv1 = nt.nodes.new('ShaderNodeUVMap'); uv1.uv_map = 'UV1'
+    ta = nt.nodes.new('ShaderNodeTexImage'); ta.image = atlas; ta.interpolation = 'Closest'; nt.links.new(uv1.outputs['UV'], ta.inputs['Vector'])
+    sep = nt.nodes.new('ShaderNodeSeparateColor'); nt.links.new(ta.outputs['Color'], sep.inputs['Color'])
+    nt.links.new(sep.outputs['Green'], b.inputs['Roughness']); nt.links.new(sep.outputs['Blue'], b.inputs['Metallic']); nt.links.new(sep.outputs['Red'], b.inputs['Coat Weight'])
+    b.inputs['Coat Roughness'].default_value = 0.12
+    tn = nt.nodes.new('ShaderNodeTexImage'); tn.image = ni
+    nm = nt.nodes.new('ShaderNodeNormalMap'); nm.inputs['Strength'].default_value = 0.8
+    nt.links.new(tn.outputs['Color'], nm.inputs['Color']); nt.links.new(nm.outputs['Normal'], b.inputs['Normal'])
+    tm['jf_role'] = 'trim'; tm['jf_look'] = 'painted metal'; tm['jf_trim'] = ','.join(roles)
+    lin = {r: lib.srgb(mk.M.pal[r]) for r in roles}
+    for o in objs:
+        me = o.data; mats = list(me.materials)
+        merge = {i for i, m in enumerate(mats) if m and m.get('jf_role') in cell and not m.get('jf_decal') and not m.get('jf_paper')}
+        if not merge: continue
+        if 'UV1' not in me.uv_layers: me.uv_layers.new(name='UV1', do_init=False)
+        uv = me.uv_layers['UV1'].data; col = me.color_attributes.get('Col')
+        if col is None: col = me.color_attributes.new('Col', 'BYTE_COLOR', 'CORNER'); [setattr(d, 'color', (1, 1, 1, 1)) for d in col.data]
+        me.color_attributes.active_color = col
+        for p in me.polygons:
+            if p.material_index not in merge: continue
+            r = mats[p.material_index]['jf_role']; c = lin[r]; u = cell[r]
+            for li in p.loop_indices:
+                ao = col.data[li].color[0]
+                col.data[li].color = (c[0] * ao, c[1] * ao, c[2] * ao, 1.0); uv[li].uv = u
+        # the new material list: the kept ones in order, then the trim; faces remapped, nothing unused left
+        new = [m for i, m in enumerate(mats) if i not in merge and any(p.material_index == i for p in me.polygons)] + [tm]
+        idx = {i: (new.index(m) if i not in merge else len(new) - 1) for i, m in enumerate(mats) if m in new or i in merge}
+        old = [p.material_index for p in me.polygons]
+        me.materials.clear()
+        for m in new: me.materials.append(m)
+        for p, k in zip(me.polygons, old): p.material_index = idx[k]
+    return {'trim': roles, 'kept': sorted({m.name for o in objs for m in o.data.materials if m and m is not tm})}

@@ -15,6 +15,7 @@ import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { resizePreview } from './preview.js';
 import { synth } from './audio.js';
+import { mountLobbyScene, lobbyScenePrefetch } from './lobbyscenes/index.js'; // the 3D place behind each mode (LOBBY_SCENES.md)
 import { P, onParty, inParty, isLead, leadName, partyJoin, partyLeave, partyKick, partyLead, partyReady, partySet, partyGo, meReady } from './party.js';
 import { showLineup } from './lineup.js';
 import { openFriends, friendsLoad, friendsOnline, friendsShown } from './friends.js'; // friends (step 3)
@@ -97,6 +98,14 @@ export function openLobby(s) {
   partySet(side, modeOf());
   opts.show('hubby');
 }
+// an offline single-mode match ended (server/hubback.js 'go', or LOBBY on the end screen): back to that mode's lobby.
+// a party member goes straight there too (the leader's lobby is the same one)
+export function hubBackTo(mode) {
+  if (!HUB[mode]) { opts.show('main'); return; }
+  side = 'offline'; S()['offline:mode'] = mode;
+  if (!inParty() || isLead()) partySet(side, mode);
+  opts.show('hubby');
+}
 // show() calls this when the lobby screen comes up
 export function hubLobbyShown() {
   frame();
@@ -128,6 +137,7 @@ function modes() {
     if (k === 'qp' && GAMES[eventGame()]) b.append(el('em', 'hm-ev', 'TODAY: ' + GAMES[eventGame()].name));
     if (off) { b.disabled = true; b.title = 'offline only for now: play it from OFFLINE (online squads come with parties)'; b.append(el('i', 'hm-off', 'OFFLINE ONLY')); }
     b.addEventListener('click', () => setMode(k));
+    b.addEventListener('pointerenter', () => lobbyScenePrefetch(k)); // (its 3D place: fetched before the click)
     box.append(b);
   }
 }
@@ -177,10 +187,10 @@ function render() {
     if (k === 'qp') L.append(row('who', seg([['all', 'EVERYONE'], ['bots', '+ BOTS'], ['coop', 'CO-OP']], st.who, (v) => { st.who = v; remember(k); })));
     else L.append(row('fill empty seats with bots', toggle(st.fill, (v) => { st.fill = v; remember(k); }), 'off: real players only, the match waits for enough people'));
     L.append(row('map', el('em', null, k === 'qp' ? 'VOTED EACH MATCH' : 'RANDOM, THEN VOTED')));
-    L.append(row('lobby', el('em', null, k === 'qp' ? 'DROP IN NOW' : 'WARM-UP ARENA, 60 s')));
+    L.append(row('lobby', el('em', null, k === 'qp' ? 'DROP IN NOW' : 'PRE-GAME DECK, 60 s')));
     R.append(el('span', 'hub-tag', 'WHAT HAPPENS'));
     const txt = k === 'qp' ? (st.who === 'coop' ? 'you and whoever is online vs waves of bots.' : st.who === 'bots' ? 'you drop into a match with bots and people. you take a bot\'s seat.' : 'you drop into the online room right now. everyone votes the next mode and map.')
-      : `you land in the ${H.name.toLowerCase()} lobby: a warm-up deathmatch on the match's map while the countdown runs. hit READY when you're ready.` + (st.fill ? ' bots take the empty seats.' : ` it needs ${LOBBY.kinds[H.lobby].min} real players.`);
+      : `you land in the ${H.name.toLowerCase()} lobby: a little deck floating off the edge of the match's map while the countdown runs. nothing hurts: shove people, spray, hit READY when you're ready.` + (st.fill ? ' bots take the empty seats.' : ` it needs ${LOBBY.kinds[H.lobby].min} real players.`);
     R.append(el('p', 'hub-p', txt));
     const lv = row('in there now', el('em', null, '·')); lv.classList.add('hub-live'); R.append(lv); liveRow();
   } else {
@@ -210,6 +220,7 @@ function render() {
     }
     R.append(strip);
   }
+  mountLobbyScene(k, { side, onMe: () => opts.show('character'), save }); // (the same mode again: a no-op)
   $('hubGo').textContent = H.train ? 'START TRAINING' : side === 'offline' ? 'START MATCH' : k === 'qp' && st.who === 'all' ? 'PLAY NOW' : 'FIND MATCH';
   // in a party: only the leader picks. everyone else watches the leader's choices and gets READY
   const ro = inParty() && !isLead();
@@ -241,7 +252,7 @@ function plan() {
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
   const team = !own && GAMES[game] && GAMES[game].teams;
-  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0 }];
+  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, hub: k === 'qp' ? undefined : k }]; // hub: a single-mode pick comes back to this lobby after (server/hubback.js)
 }
 
 // ---------------------------------------------------------------- the party

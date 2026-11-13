@@ -2,6 +2,7 @@
 // sends typed arrays back as transferables, so the main thread only uploads. Keeps a small LRU of packed chunks so a
 // chunk moving between rings (near -> mid -> far) is never generated twice.
 // in:  { op: 'chunk', id, city, cx, cz, want: { packed, mesh0, mesh1, cells } }  |  { op: 'far', key, city, ids: [[cx, cz]] }
+//      { op: 'warm', city, spots: [[x, z]] }  (warm.js, before NEW GAME: build the chunks round them into the cache, no reply)
 // out: { op: 'chunk', id, packed?, mesh0?, mesh1?, cells?, ms }                   |  { op: 'far', key, mesh, ms }
 import { buildChunk, packChunk, transferList, hashChunk, chunkBuilder } from '/shared/city/chunk.js';
 import { GENS } from '/shared/city/gens.js';
@@ -43,7 +44,9 @@ function farMesh(city, ids) {
     quad([[x1, y0, z1], [x1, y0, z0], [x1, y1, z0], [x1, y1, z1]], 1, 0, 0, R, G, B, 0.7);
     quad([[x0, y0, z0], [x0, y0, z1], [x0, y1, z1], [x0, y1, z0]], -1, 0, 0, R, G, B, 0.7);
   }
-  return { pos, col, nrm, idx, verts: v, tris: k / 3 };
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity]; // (its bounds: the main thread used to scan for them)
+  for (let i = 0; i < v * 3; i++) { const a = i % 3; if (pos[i] < min[a]) min[a] = pos[i]; if (pos[i] > max[a]) max[a] = pos[i]; }
+  return { pos, col, nrm, idx, verts: v, tris: k / 3, min, max };
 }
 
 self.onmessage = (ev) => {
@@ -63,6 +66,10 @@ self.onmessage = (ev) => {
       GENS[m.gen](B, m.city);
       const mesh = meshChunk(packChunk(B.out), 1);
       self.postMessage({ op: 'horizon', mesh, ms: performance.now() - t }, meshTransfer(mesh));
+    } else if (m.op === 'warm') { // (warm.js: build the 3 x 3 chunks round each spot into the cache, nearest first, before anyone asks. no reply: nobody's listening yet)
+      const ids = new Map();
+      for (const [x, z] of m.spots || []) { const cx = Math.floor(x / CHUNK), cz = Math.floor(z / CHUNK); for (const [dx, dz] of [[0, 0], [1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, 1], [1, -1], [-1, -1]]) ids.set((cx + dx) + ',' + (cz + dz), [cx + dx, cz + dz]); }
+      for (const [cx, cz] of ids.values()) get(m.city, cx, cz);
     } else if (m.op === 'far') {
       const t = performance.now(), mesh = farMesh(m.city, m.ids);
       self.postMessage({ op: 'far', key: m.key, mesh, ms: performance.now() - t }, [mesh.pos.buffer, mesh.col.buffer, mesh.nrm.buffer, mesh.idx.buffer]);

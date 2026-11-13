@@ -3,6 +3,7 @@
 import { WEAPONS } from '../shared/weapons.js';
 import { ZM, zmAmmo } from '../shared/zombies.js';
 import { ZM_COLAS, ZM_UP, ZM_UPFX, zmUpPrice, zmUpFx, zmShopTarget } from '../shared/zmshop.js';
+import { hookCharges, hookSpend } from '../shared/royale.js'; // the grapple's charges: Jank Royale's rule (BR.hook), here too
 
 let send = () => {};
 const now = () => Date.now();
@@ -12,7 +13,27 @@ const FORCE_FX = has(ZM_UPFX, process.env.JF_ZM_UPFX) ? process.env.JF_ZM_UPFX :
 
 const methods = {
   // ---------------------------------------------------------- state
-  zsJoin(p) { p.z.colas = []; p.z.up = {}; }, // a fresh kit (zmJoin)
+  zsJoin(p) { p.z.colas = []; p.z.up = {}; p.z.hook = null; }, // a fresh kit (zmJoin)
+  // ---------------------------------------------------------- the grapple runs on charges (as in Jank Royale: no endless
+  // swinging round the horde). the client asks, the server counts: a new rope (none before, or the point jumped somewhere
+  // else) spends one; none left = the rope is cut for everyone and the client is told. grabbing a zombie spends it first,
+  // so the rope that follows it in the next snapshot is free
+  zsHookSnap(p, m) {
+    const z = p.z, g = m.g;
+    if (!z || !p.alive || !Array.isArray(g) || g.length !== 3 || !g.every(Number.isFinite)) return;
+    if (p.g && Math.hypot(p.g[0] - g[0], p.g[1] - g[1], p.g[2] - g[2]) < 6) return; // the same rope
+    if (now() - (z.hookPush || 0) < 1500) { z.hookPush = 0; return; } // the rope of a grab we just paid for
+    if (!this.zsHookUse(p)) m.g = 0;
+  },
+  zsHookUse(p) {
+    const z = p.z, n = now();
+    if (!z || p.isBot) return true;
+    const h = hookSpend(z.hook, n);
+    if (!h) { if (n - (z.hookNoT || 0) > 350) { z.hookNoT = n; send(p, { t: 'zhook', h: z.hook, no: 1 }); } return false; }
+    z.hook = h;
+    send(p, { t: 'zhook', h });
+    return true;
+  },
   zsKit(p) { p.z.up = {}; }, // bled out, back to the start pistol: the warranty's back too
   zsHas(p, id) { return !!(p && p.z && p.z.colas && p.z.colas.includes(id)); },
   zsColaN(p) { return (p.z.colas ? p.z.colas.length : 0) + (p.z.cola ? 1 : 0); },

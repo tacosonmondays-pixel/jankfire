@@ -10,13 +10,22 @@ import { CHUNK, CITIES, RINGS, inCity, districtWeights, chunkId } from '/shared/
 import { chunkBoxes } from '/shared/city/chunk.js';
 import { ChunkWorld } from '/shared/city/world.js';
 import { cityMaterials, cityUniforms, NL } from './mats.js';
-import { buildPropGroup, freeProps, onPropModel } from './props.js';
+import { buildPropGroup, freeProps, onPropModel, propModel } from './props.js';
 import './propcode.js'; // code stand-ins for every story prop (until its Blender model loads)
 import { Crowd } from './crowd.js'; // the people standing about
 import { Weather } from './weather.js'; // paper storms
+import { takeWarm } from './warm.js'; // workers started early, on the menu (load time)
 
 const KINDS = ['solid', 'flesh', 'glow', 'glass', 'acid'];
 const HYST = 16; // metres past a ring before something is dropped from it (no flicker at the edge)
+// shader warm-up: a model that just loaded (a Blender prop, a crowd person) gets its shaders compiled and its textures
+// uploaded here, one at a time, a frame apart, BEFORE anything draws it. drawn cold, the Gut's set pieces compiled 3-9
+// programs and uploaded dozens of textures on the one frame they appeared (150-250 ms hitches walking in)
+const TEXK = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'bumpMap', 'lightMap', 'specularMap'];
+
+// which shader kind a draw into rt builds: 'canvas', or 'rt' (any plain target). post.js's target poses as an XR one so
+// materials keep the canvas's tone mapping and sRGB output: shader-wise, that IS the canvas
+export const drawKind = (r, rt) => (rt && !(rt.isXRRenderTarget && rt.texture.colorSpace === r.outputColorSpace) ? 'rt' : 'canvas');
 
 function geoOf(b) {
   const g = new THREE.BufferGeometry();
@@ -38,7 +47,7 @@ function groupOf(mesh, mats, lod) {
     const b = mesh[k];
     if (!b) continue;
     const m = new THREE.Mesh(geoOf(b), mats[k]);
-    m.matrixAutoUpdate = false; m.userData.kind = k;
+    m.matrixAutoUpdate = false; m.userData.kind = k; m.userData.castBy = 'stream';
     if (k === 'glass' || k === 'acid') m.renderOrder = 2;
     m.receiveShadow = lod === 0; m.castShadow = lod === 0 && k !== 'glass' && k !== 'glow';
     g.add(m); bytes += bytesOf(b); tris += b.tris;
@@ -50,7 +59,7 @@ function groupOf(mesh, mats, lod) {
 function freeGroup(g) { if (!g) return; g.removeFromParent(); for (const m of g.children) m.geometry.dispose(); }
 
 export class CityStream {
-  constructor({ scene, city, preset = 1, boxes = [], workers = 2, workerUrl = '/js/city/chunkworker.js' }) {
+  constructor({ scene, city, preset = 1, boxes = [], workers = 2, workerUrl = '/js/city/chunkworker.js', renderer = null }) {
     if (!CITIES[city]) throw new Error('no city ' + city);
     this.scene = scene; this.city = city; this.def = CITIES[city];
     this.world = new ChunkWorld(boxes);
@@ -58,15 +67,27 @@ export class CityStream {
     this.mats = cityMaterials();
     this.chunks = new Map(); // id -> record
     this.inbox = []; this.inflight = 0; this.maxInflight = workers * 2; this.colInflight = 0; // collision gets its own lane
-    this.workers = Array.from({ length: workers }, () => { const w = new Worker(workerUrl, { type: 'module' }); w.onmessage = (e) => this.inbox.push(e.data); w.onerror = (e) => { this.errors.push(String(e.message || e)); }; return w; });
+    this.workers = (takeWarm(workers, workerUrl) || Array.from({ length: workers }, () => new Worker(workerUrl, { type: 'module' }))).map((w) => { w.onmessage = (e) => this.inbox.push(e.data); w.onerror = (e) => { this.errors.push(String(e.message || e)); }; return w; }); // (warm.js may have started them on the menu, the spawn's chunks already built)
     this.rr = 0; this.errors = [];
     this.far = { mesh: null, key: '', wantKey: '', busy: false, t: 0, list: [] };
     this.props = { group: null, key: '', t: 0, n: 0 };
     this.st = { uploadMs: 0, maxUploadMs: 0, built: 0, buildMs: 0, maxBuildMs: 0, hitches: 0 };
     this.time = 0; this.cam = new THREE.Vector3(); this.first = true;
     this.setPreset(preset);
-    onPropModel(() => { this.props.key = ''; }); // a Blender prop landed: rebuild the instances with it
+    this.renderer = renderer; this.warmQ = []; // (no renderer, no warm-up: things compile when first drawn, as before)
+    // where the scene gets drawn: straight to the canvas, or into a target (post.js's, at the presets with post; the
+    // talk portraits, photo mode and the picture-in-picture, now and then). three builds one shader for the canvas and
+    // another for any target, so a warm-up compiles each kind the scene was drawn to lately, or it'd build a program
+    // nobody uses and the real one would still compile cold
+    this.drawnTo = { canvas: -1e9, rt: -1e9 }; this.warmRT = null; const obr = this.obr = scene.onBeforeRender;
+    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.drawnTo[drawKind(r, rt)] = this.time; obr.call(scene, r, sc, cam, rt); };
+    onPropModel((id) => { // a Blender prop landed: warm it up, then rebuild the instances with it
+      const m = propModel(id), objs = [];
+      if (this.renderer && m && m.parts) for (const part of [...m.parts, ...(m.lod1 || [])]) { const im = new THREE.InstancedMesh(part.geo, part.mat, 1); if (part.paint) im.setColorAt(0, new THREE.Color()); objs.push(im); } // (as props.js draws it: instanced, paint parts coloured)
+      this.warm(objs, () => { this.props.key = ''; for (const o of objs) o.dispose(); }, true);
+    });
     this.crowd = new Crowd(scene); // the people standing about (crowd.js)
+    this.crowd.warm = (objs, done) => this.warm(objs, done, false, true); // (people first: a missing crowd shows more than a late prop)
     this.weather = new Weather(scene); this.storm = 0; // 0-1: a paper storm round you (Late Fees can't see you in one)
     this.horizon = null;
     if (this.def.horizon) this.workers[1 % workers].postMessage({ op: 'horizon', city, gen: this.def.horizon });
@@ -149,6 +170,7 @@ export class CityStream {
       if (r.m1 && (!live || r.d > R.mid + HYST + CHUNK || ring === 1 && r.m0 && r.d < R.near - CHUNK)) { freeGroup(r.m1); r.m1 = null; r.req.mesh1 = false; }
       if (!live && !r.m0 && !r.m1 && this.time - r.used > 20 && !this.world.has(r.id) && !r.req.packed) this.chunks.delete(r.id); // LRU: forgotten 20 s after it left every ring
     }
+    this.warmStep(camera);
     this.updateFar(want);
     this.updateProps(want);
     this.applyEnv(p);
@@ -169,13 +191,42 @@ export class CityStream {
     const r = this.chunks.get(m.id);
     if (!r) return;
     const t = performance.now();
-    if (m.packed) { r.packed = m.packed; r.req.packed = false; r.boxes = null; }
+    if (m.packed) { r.packed = m.packed; r.req.packed = false; r.boxes = null; } this.litV = (this.litV || 0) + 1; // (pickLights: gather its lights again)
     if (m.mesh0) { freeGroup(r.m0); r.m0 = groupOf(m.mesh0, this.mats, 0); r.m0.visible = false; this.root.add(r.m0); }
     if (m.mesh1) { freeGroup(r.m1); r.m1 = groupOf(m.mesh1, this.mats, 1); r.m1.visible = false; this.root.add(r.m1); }
     if (m.mesh0) r.req.mesh0 = false; if (m.mesh1) r.req.mesh1 = false;
     const up = performance.now() - t;
     this.st.uploadMs = up; this.st.maxUploadMs = Math.max(this.st.maxUploadMs, up);
     this.st.built++; this.st.buildMs += m.ms; this.st.maxBuildMs = Math.max(this.st.maxBuildMs, m.buildMs || 0);
+  }
+
+  // queue meshes to warm up; done() once their shaders are compiled + checked and their textures are on the GPU
+  warm(objs, done, prop = false, first = false) {
+    if (!this.renderer || !objs.length) { if (done) done(); return; }
+    const w = { objs, i: 0, progs: [], tex: [], seen: new Set(), done, prop };
+    if (first) { let k = 0; while (k < this.warmQ.length && (this.warmQ[k].first || k === 0)) k++; w.first = true; this.warmQ.splice(k, 0, w); } else this.warmQ.push(w); // (behind the one under way and any people already waiting)
+  }
+  // once a frame: at most one new shader compile, or one compiled shader's first-use check (the blocking part: by
+  // now the GPU process has had a frame to finish it), or one texture upload
+  warmStep(camera) {
+    const w = this.warmQ[0], R = this.renderer;
+    if (!w) return;
+    if (w.progs.length) { const pr = w.progs.shift(); try { pr.getUniforms(); } catch { /* reported when drawn */ } return; }
+    const D = this.drawnTo, kinds = [];
+    if (this.time - D.canvas < 15) kinds.push(null);
+    if (this.time - D.rt < 15) kinds.push(this.warmRT || (this.warmRT = new THREE.WebGLRenderTarget(1, 1))); // (any target makes the same shader: a 1 x 1 of our own, never someone else's that might be gone)
+    if (!kinds.length) kinds.push(null);
+    while (w.i < w.objs.length) {
+      const o = w.objs[w.i], n = R.info.programs.length, was = R.getRenderTarget(), k = kinds[Math.min(w.k || 0, kinds.length - 1)];
+      if ((w.k = (w.k || 0) + 1) >= kinds.length) { w.k = 0; w.i++; } // (each kind its own frame: still one new shader a frame)
+      try { R.setRenderTarget(k); R.compile(o, camera, this.scene); } finally { R.setRenderTarget(was); } // (with the real scene: its lights, fog and shadows, so the same programs as when drawn)
+      o.traverse((q) => { for (const mt of [].concat(q.material || [])) { const pr = R.properties.get(mt).currentProgram; if (R.info.programs.length > n && pr && !w.seen.has(pr)) { w.seen.add(pr); w.progs.push(pr); }
+        for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
+      if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)
+    }
+    if (w.tex.length) { const t0 = performance.now(); do R.initTexture(w.tex.shift()); while (w.tex.length && performance.now() - t0 < 3); if (w.tex.length) return; } // (textures: ~3 ms of them a frame)
+    this.warmQ.shift();
+    if (w.done) w.done();
   }
 
   // the far ring: one impostor mesh for every chunk that's in it (rebuilt in the worker when the set changes)
@@ -196,8 +247,8 @@ export class CityStream {
     g.setAttribute('normal', new THREE.BufferAttribute(m.mesh.nrm.subarray(0, m.mesh.verts * 3), 3, true));
     g.setAttribute('color', new THREE.BufferAttribute(m.mesh.col.subarray(0, m.mesh.verts * 3), 3, true));
     g.setIndex(new THREE.BufferAttribute(m.mesh.idx.subarray(0, m.mesh.tris * 3), 1));
-    g.computeBoundingSphere();
-    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
+    if (m.mesh.min) { g.boundingBox = new THREE.Box3(new THREE.Vector3(...m.mesh.min), new THREE.Vector3(...m.mesh.max)); g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere()); } else g.computeBoundingSphere(); // (the worker's bounds: no 25 ms pass over every vertex here)
+    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { castBy: 'stream', tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
     this.root.add(this.far.mesh);
   }
 
@@ -206,6 +257,7 @@ export class CityStream {
     const hiCell = Math.floor(this.cam.x / 16) + ',' + Math.floor(this.cam.z / 16); // the detail bubbles move with you
     const key = list.map((r) => r.id).sort().join(';') + '|' + hiCell;
     if (key === this.props.key || this.time - this.props.t < 0.3) return;
+    if (this.warmQ.some((w) => w.prop) && this.time - this.props.t < 1) return; // (a prop model is still warming up: a rebuild now would draw it cold. wait a few frames, never more than a second)
     this.props.key = key; this.props.t = this.time;
     const inst = [];
     for (const r of list) {
@@ -220,18 +272,24 @@ export class CityStream {
 
   // the NL nearest lights in the chunks round the camera -> the shader's arrays (view space, so no per-pixel matrix)
   pickLights(camera) {
-    const p = camera.position, seen = new Set(), list = [];
-    for (const r of this.chunks.values()) {
-      if (!r.packed || !r.packed.lights || r.d > 70) continue;
-      for (const L of r.packed.lights) {
-        const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
-        if (seen.has(key)) continue; seen.add(key);
-        const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4];
-        if (d < 50) list.push([d, L]);
+    const p = camera.position, LT = this.lit || (this.lit = { x: 1e9, y: 0, z: 1e9, v: -1, cand: [], list: [], v3: new THREE.Vector3() });
+    // the candidates (each light in the chunks round you, once) are only gathered again when you've gone 4 m or chunks
+    // came and went: scanning every chunk's lights every frame was a quarter of the streamer's own time
+    if (LT.v !== this.litV || Math.hypot(p.x - LT.x, p.y - LT.y, p.z - LT.z) > 4) {
+      const seen = new Set(); LT.cand.length = 0; LT.x = p.x; LT.y = p.y; LT.z = p.z; LT.v = this.litV;
+      for (const r of this.chunks.values()) {
+        if (!r.packed || !r.packed.lights || r.d > 74) continue; // (70 m, as below, plus the 4 m)
+        for (const L of r.packed.lights) {
+          const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
+          if (seen.has(key)) continue; seen.add(key);
+          if (Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4] < 54) LT.cand.push(L, r); // (50 m, plus the 4 m you can go before the next gather)
+        }
       }
     }
-    list.sort((a, b) => a[0] - b[0]);
-    const v = new THREE.Vector3(), LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
+    const list = LT.list; let n = 0;
+    for (let j = 0; j < LT.cand.length; j += 2) { const L = LT.cand[j]; if (LT.cand[j + 1].d > 70) continue; const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4]; if (d < 50) { const e = list[n] || (list[n] = [0, null]); e[0] = d; e[1] = L; n++; } }
+    list.length = n; list.sort((a, b) => a[0] - b[0]);
+    const v = LT.v3, LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
     camera.updateMatrixWorld();
     for (let i = 0; i < NL; i++) {
       const L = list[i] && list[i][1];
@@ -297,6 +355,8 @@ export class CityStream {
   ready(x, z) { return this.world.readyAt(this.city, x, z); }
   progress() { let n = 0, k = 0; for (const r of this.chunks.values()) if (r.used === this.time && r.ring === 1) { n++; if (r.m0) k++; } return n ? k / n : 0; } // the near ring's share that's built (the loading card)
   dispose() {
+    if (this.onScene && this.scene.onBeforeRender === this.onScene) this.scene.onBeforeRender = this.obr; // (put back whatever was there)
+    if (this.warmRT) this.warmRT.dispose();
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }

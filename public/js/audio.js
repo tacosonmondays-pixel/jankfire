@@ -399,6 +399,14 @@ Object.assign(sfx, {
   powerOn(pos) { tone('sawtooth', 38, 240, 1.6, 0.28, pos); tone('square', 30, 120, 1.6, 0.08, pos); noise(0.35, 0.55, 'highpass', 2000, 6000, pos, 1.3); },
 });
 
+// the big map (fullmap.js): a paper map flapping open / folding shut, and a ping (yours: higher and brighter)
+Object.assign(sfx, {
+  mapOpen() { noise(0.16, 0.32, 'bandpass', 900, 2600, null, 0, 1.2); noise(0.1, 0.22, 'bandpass', 2200, 1200, null, 0.12, 1.5); tone('triangle', 520, 780, 0.08, 0.06, null, 0.04); },
+  mapClose() { noise(0.12, 0.28, 'bandpass', 2400, 800, null, 0, 1.2); tone('triangle', 700, 420, 0.07, 0.05, null, 0.05); },
+  mapScribble() { for (let i = 0; i < 3; i++) noise(0.07, 0.22, 'bandpass', 2600 + i * 500, 1800, null, i * 0.08, 3); }, // a felt-tip squeak: a teammate drew on the map
+  ping(mine) { const f = mine ? 1175 : 988; tone('square', f, f, 0.05, 0.11); tone('triangle', f * 1.5, f * 2, 0.16, 0.16, null, 0.06); tone('sine', f * 3, f * 3, 0.22, 0.05, null, 0.12); },
+});
+
 // zombies: a limb coming off (wet rip + a pop), a hard hat dinking (and ringing as it flies off), the Screamer, a Chonk popping
 Object.assign(sfx, {
   zmLimb(pos, head) { noise(0.16, 0.5, 'bandpass', 900, 220, pos, 0, 1.5); tone('sine', head ? 520 : 300, 70, 0.18, 0.3, pos, 0.02); noise(0.3, 0.22, 'lowpass', 500, 120, pos, 0.08); tone('square', head ? 880 : 150, head ? 440 : 60, 0.09, 0.08, pos, 0.01); },
@@ -532,6 +540,29 @@ export function hum(on, k = 1) {
   humG.gain.setTargetAtTime(v, ac.currentTime, v ? 0.6 : 0.08);
   humV = v;
 }
+// fountains: a soft trickle that swells as you walk up to one (k 0..1): three layers of filtered noise, each wobbling
+// on its own slow beat so it burbles instead of hissing. flowwater.js sets it every frame, fountainDrip() drops on top
+let trG = null, trV = -1;
+export function trickle(k) {
+  if (!ac) return;
+  const v = Math.round(Math.max(0, Math.min(1, k || 0)) * 40) / 40 * 0.2;
+  if (v === trV || (!trG && !v)) return;
+  if (!trG) {
+    trG = ac.createGain(); trG.gain.value = 0; trG.connect(master);
+    for (const [type, f, q, a] of [['bandpass', 900, 0.8, 0.5], ['bandpass', 2600, 1.3, 0.32], ['highpass', 5500, 0.7, 0.1]]) {
+      const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true; s.playbackRate.value = 0.8 + Math.random() * 0.4;
+      const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+      const g = ac.createGain(); g.gain.value = a;
+      const lfo = ac.createOscillator(); lfo.frequency.value = 1.7 + Math.random() * 4.5; const lg = ac.createGain(); lg.gain.value = a * 0.55; lfo.connect(lg); lg.connect(g.gain); lfo.start();
+      s.connect(fl); fl.connect(g); g.connect(trG); s.start(ac.currentTime + Math.random() * 0.5);
+    }
+  }
+  trG.gain.setTargetAtTime(v, ac.currentTime, 0.4);
+  trV = v;
+}
+Object.assign(sfx, {
+  fountainDrip(k = 1) { const f = 700 + Math.random() * 900; tone('sine', f, f * (1.6 + Math.random() * 0.8), 0.045 + Math.random() * 0.03, 0.035 * k); }, // a drop landing in the basin
+});
 // chaos modes: a duck falling out of the sky (a whistle that drops as it comes down), lava hissing, a lava rumble
 Object.assign(sfx, {
   whistle(pos, dur = 1.6) { tone('sine', 2300, 520, dur, 0.2, pos); tone('sine', 2330, 535, dur, 0.08, pos); },
@@ -829,3 +860,96 @@ export const encSfx = {
   stamp(pos = null) { tone('sine', 180, 60, 0.12, 0.4, pos); noise(0.06, 0.4, 'lowpass', 2000, 300, pos); }, // the clerk's stamp
   sung(pos = null) { for (let i = 0; i < 4; i++) tone('sine', 440, 440, 0.4, 0.05, pos, i * 0.02); tone('triangle', 880, 878, 0.6, 0.04, pos); }, // one held note, in harmony with itself
 };
+
+// card deck
+Object.assign(sfx, {
+  // a fast riffle off the thumb as cards fly, a woody "thk" as one stabs into a wall, a paper "pff" + a sparkly
+  // blip when one bursts on someone, the zip of one going past your ear, a soft flop when a stray one lands on the floor
+  cardThrow(pos = null) { for (let i = 0; i < 4; i++) noise(0.022, 0.5 - i * 0.07, 'bandpass', 3800 + i * 500, 2400, pos, i * 0.022, 3); whoosh(0.16, 0.22, 700, 2600, 1.6, pos); },
+  cardThk(pos = null) { tone('square', 1500, 260, 0.035, 0.28, pos); noise(0.04, 0.6, 'bandpass', 2600, 1200, pos, 0, 2.5); tone('triangle', 240, 150, 0.07, 0.35, pos, 0.005); noise(0.05, 0.2, 'highpass', 5000, 7000, pos, 0.03); },
+  cardBurst(pos = null) { noise(0.14, 0.7, 'highpass', 2200, 6000, pos); tone('square', 520, 1040, 0.08, 0.14, pos); for (const [i, f] of [1568, 2093, 2637].entries()) tone('sine', f, f * 1.02, 0.09, 0.12, pos, 0.03 + i * 0.035); },
+  cardWhoosh(pos = null) { whoosh(0.2, 0.45, 1100, 4200, 2.2, pos); tone('sine', 1800, 900, 0.12, 0.05, pos); },
+  cardFlop(pos = null) { noise(0.06, 0.3, 'lowpass', 1800, 500, pos); tone('sine', 420, 260, 0.06, 0.08, pos); },
+});
+
+// rain (weather.js): k 0..1 how hard, cover 1 = under a roof (the hiss turns into a dull drum on it). in loops, so
+// stopLoops() shuts it up with everything else
+export function rainLoop(k, cover = 0) {
+  if (!ac) return;
+  let l = loops.rain;
+  if (!l) {
+    if (!(k > 0.01)) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 900; // the hiss
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 7000; lp.Q.value = 0.5;
+    const pk = ac.createBiquadFilter(); pk.type = 'peaking'; pk.frequency.value = 3200; pk.gain.value = 5; pk.Q.value = 0.8;
+    s.connect(hp); hp.connect(pk); pk.connect(lp); lp.connect(g); s.start(0, Math.random() * 1.5);
+    const s2 = ac.createBufferSource(); s2.buffer = nbuf; s2.loop = true; // a low wash under it: the big drops
+    const lp2 = ac.createBiquadFilter(); lp2.type = 'lowpass'; lp2.frequency.value = 420;
+    const g2 = ac.createGain(); g2.gain.value = 0.9; s2.connect(lp2); lp2.connect(g2); g2.connect(g); s2.start(0, Math.random() * 1.5);
+    l = loops.rain = { g, on: false, def: { vol: 0 }, hp, lp };
+  }
+  const t = ac.currentTime, on = k > 0.01;
+  if (on || l.on) {
+    l.g.gain.setTargetAtTime(on ? 0.05 + 0.2 * Math.min(1, k) * (cover ? 0.75 : 1) : 0, t, 0.4);
+    l.lp.frequency.setTargetAtTime(cover ? 650 : 7000, t, 0.25); l.hp.frequency.setTargetAtTime(cover ? 120 : 900, t, 0.25);
+  }
+  l.on = on;
+}
+// a long low roll (noise() is cut at the 2 s noise buffer: this one loops it), swelling in and dying away
+function rumble(dur, v, f0, f1, delay = 0) {
+  const t = ac.currentTime + delay, s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+  const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(f0, t); f.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + 0.12); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random() * 1.5); s.stop(t + dur + 0.05);
+}
+// thunder: a crack when it's close, then a long rolling rumble (k 0..1: how close + how big). muffled under a roof
+sfx.thunder = (k = 0.6, cover = 0) => {
+  if (!ac) return;
+  const lo = cover ? 0.6 : 1;
+  if (k > 0.55 && !cover) { noise(0.25, 0.5 * k, 'highpass', 2600, 900); noise(0.4, 0.6 * k, 'bandpass', 1400, 300, null, 0.03, 0.8); }
+  rumble(3.2, 0.9 * k * lo, 900 * lo, 50, 0.05);
+  rumble(2.4, 0.6 * k * lo, 320, 35, 0.5 + Math.random() * 0.3);
+  tone('sine', 62, 28, 2.2, 0.45 * k * lo, null, 0.1);
+  if (Math.random() < 0.6) rumble(1.6, 0.4 * k * lo, 520, 40, 1.3 + Math.random() * 0.6); // (a second roll)
+};
+
+// Mount Kaboom (wxerupt.js). the rumble: a deep ground roar with a sub-bass throb, k 0..1 (in loops: stopLoops shuts it up)
+export function eruptRumble(k) {
+  if (!ac) return;
+  let l = loops.erupt;
+  if (!l) {
+    if (!(k > 0.01)) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.Q.value = 0.9;
+    s.connect(lp); lp.connect(g); s.start(0, Math.random() * 1.5);
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = 34;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 0.7; const lg = ac.createGain(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.frequency); // (the throb wanders)
+    const og = ac.createGain(); og.gain.value = 0.6; o.connect(og); og.connect(g); o.start(); lfo.start();
+    l = loops.erupt = { g, on: false, def: { vol: 0 } };
+  }
+  const on = k > 0.01;
+  if (on || l.on) l.g.gain.setTargetAtTime(on ? 0.5 * Math.min(1, k) : 0, ac.currentTime, 0.5);
+  l.on = on;
+}
+Object.assign(sfx, {
+  // the eruption: a huge low bang, a crack on top, then the roar rolling on for seconds
+  eruptBoom(pos) {
+    if (!ac) return;
+    noise(0.5, 1, 'lowpass', 2400, 60, null); tone('sine', 70, 22, 1.6, 1, null); tone('sawtooth', 110, 30, 0.9, 0.35, null);
+    noise(0.3, 0.6, 'highpass', 1800, 500, null, 0.02);
+    rumble(4.5, 0.9, 700, 40, 0.15); rumble(3.2, 0.6, 260, 30, 0.9);
+  },
+  // a lava bomb coming down near you: a falling cartoon whistle, dur s long (it lands as it ends)
+  bombWhistle(pos, dur = 1) {
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(1900, t); o.frequency.exponentialRampToValueAtTime(420, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + dur * 0.4); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(dest(pos)); o.start(t); o.stop(t + dur + 0.05);
+  },
+  // and the thud when it hits: a heavy dull bump with a hiss of molten rock
+  bombThud(pos) { tone('sine', 120, 35, 0.35, 0.9, pos); noise(0.25, 0.7, 'lowpass', 900, 80, pos); noise(0.6, 0.25, 'highpass', 3000, 6000, pos, 0.08); },
+});

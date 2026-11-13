@@ -14,7 +14,7 @@
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <script type="importmap">
-{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three/examples/jsm/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/bvh/index.module.js", "three-gpu-pathtracer": "/vendor/pathtracer/index.module.js" } }
 </script>
 </head>
 <body>
@@ -376,13 +376,17 @@
         <label><input type="checkbox" id="fxSkin"> soft skin (light glows through)</label>
         <label><input type="checkbox" id="fxPunch"> punchy colours</label>
         <label><input type="checkbox" id="fxAO"> contact shadows (soft shade where things meet; mid and hd)</label>
-        <label><input type="checkbox" id="fxBounce"> bounce light (sunlit walls and ground tint what's near them; mid and hd)</label>
+        <label><input type="checkbox" id="fxBounce"> bounce light (sunlit walls, ground and neon signs tint what's near them; mid and hd)</label>
+        <label><input type="checkbox" id="fxRefl"> reflections (glass towers and wet roads mirror the world round them; mid and hd)</label>
+        <label><input type="checkbox" id="fxSky"> sun shafts and haze (light streams between buildings, distance goes soft; mid and hd)</label>
+        <button type="button" id="fxPhoto" title="freezes what you see and traces real light through it. slow. also /photo in chat">PATH-TRACED PHOTO (real ray tracing, slow)</button>
         <label id="fxEerieRow" class="hidden"><input type="checkbox" id="fxEerie"> eerie story filter (darker, colder, grain)</label>
         <label>fov <input id="fov" type="range" min="70" max="120" step="1"><span id="fovN"></span></label>
         <label><input type="checkbox" id="fovKick"> fov stretches with speed</label>
         <label><input type="checkbox" id="shake"> screen shake</label>
         <label>display <select id="displayMode"></select></label>
         <label>hotbar <select id="hotbarPos"></select></label>
+        <label><input type="checkbox" id="fxWeather"> weather (rain rolls in, lightning, thunder)</label>
         <label><input type="checkbox" id="fxSprites"> real smoke, fire + splashes (off = the old cartoon ones)</label>
         <label>smoke style <select id="fxSmoke"><option value="soft">soft</option><option value="comic">comic puffs</option><option value="kenney">kenney puffs</option><option value="unity">unity wispy</option></select></label>
         <label><input type="checkbox" id="fxRipples"> painted water ripples</label>
