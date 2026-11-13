@@ -14,7 +14,7 @@ Madame Velvet is not part of this; she comes later.
 | close-ups: face, the long nose, the profile, his eyes open, the hat and horns, a horn bell, the dummy jaw talking, the collar and ruff, the marotte, the hand on his hip, the stockings at a knee, a foot and its bell, the big top, the thorax, the stump, the far model | `jl_game_closeups.jpg` | `c_jester_lord_close.jpg` (face, nose, hat, collar, marotte, knee, bell, big top) |
 | his silhouette beside the owner's sketch: his head from his left like the sketch, from 30 m enlarged, the far model, true size at 30 m | `jl_game_silhouette.jpg` | |
 | one moment from each clip | `jl_game_poses.jpg` | |
-| a contact strip per clip (12 frames, the marks called out) | | `c_jester_lord_clip_<name>.jpg` (made in the game's renderer by `jlshots.cjs clips`) |
+| a contact strip per clip (12 frames, the marks called out) | | `c_jester_lord_clip_<name>.jpg` (made in the game's renderer: `jlshots.cjs clips` writes `jl_clip_<name>.jpg`) |
 | in the real game, story mode | `jl_ingame_hd_*.jpg` (Too HD: idle at 7 m, talk, bow, scuttle, web hang, leg off, from 30 m), `jl_ingame_potato_*.jpg` (the same at Potato) | |
 | the rehearsal, recorded in story mode at Too HD | `jl_rehearsal.mp4` | |
 
