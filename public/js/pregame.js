@@ -81,8 +81,9 @@ function build() {
   if (a) {
     const o = a.obj; o.position.set(...S.pad.c); grp.add(o); S.glb = o;
     o.traverse((m) => { if (m.isMesh) { m.castShadow = !/screen/.test(m.name); m.receiveShadow = true; } });
-    S.board = o.getObjectByName('screen');
-    if (S.board) S.board.material = S.screenMat;
+    let sc = o.getObjectByName('screen');
+    if (sc && !sc.isMesh) sc.traverse((m) => { if (m.isMesh && !sc.isMesh) sc = m; });
+    if (sc && sc.isMesh) { S.board = sc; sc.material = S.screenMat; sc.userData.glbScreen = 1; } // (glTF UVs run top-down: see drawBoard)
     S.fans = ((a.meta && a.meta.fans) || []).map((n) => o.getObjectByName(n)).filter(Boolean);
     S.balloons = ((a.meta && a.meta.balloons) || []).map((n) => o.getObjectByName(n)).filter(Boolean).map((b) => ({ o: b, y: b.position.y, r: b.rotation.z }));
   } else {
@@ -155,6 +156,7 @@ function drawBoard() {
   }
   if (S.tex) S.tex.dispose();
   S.tex = new THREE.CanvasTexture(c); S.tex.colorSpace = THREE.SRGBColorSpace; S.tex.anisotropy = 4;
+  if (S.board.userData.glbScreen) S.tex.flipY = false; // (the model's screen has glTF UVs)
   S.board.material.map = S.tex; S.board.material.needsUpdate = true;
   podiums();
 }
