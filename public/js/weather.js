@@ -15,6 +15,7 @@ import { skyParts } from './world.js';
 import { sceneryGroup } from './scenery.js';
 import { rainLoop, sfx } from './audio.js';
 import { eruptFrame, eruptLook, eruptState } from './wxerupt.js'; // Mount Kaboom erupts (Islands)
+import { liquidAt } from './liquids.js'; // (every water surface the map draws: sea, pools, ponds, the shallows)
 
 const W = {
   plan: null, t0: 0, snap: false, k: 0, kind: '', test: null, // test: { k, s } forced from a test (wxTest)
@@ -100,9 +101,13 @@ function floorAt(x, z, cy, lo, hi) {
   _o[0] = x; _o[1] = cy + 30; _o[2] = z;
   const h = raycast(_o, DOWN, 60, roofBoxes());
   if (!h || h.axis !== 1) return null;
-  const def = MAPS[MAP.id], sea = def && Number.isFinite(def.seaY) ? def.seaY : -Infinity, y0 = _o[1] - h.t, y = Math.max(y0, sea); // (the shallows: on the water, not the sea bed)
-  return y >= cy - lo && y <= cy + hi ? { y, b: h.box, wet: y0 < sea } : null;
+  const def = MAPS[MAP.id], sea = def && Number.isFinite(def.seaY) ? def.seaY : -Infinity, y0 = _o[1] - h.t;
+  // water: the sea's level, a drawn liquid over the spot (pool, pond, the shallows) or a box that is water / lava / glass
+  const liq = liquidAt(x, y0, z, 0.4, 4), y = Math.max(y0, sea, liq ? liq.top : -Infinity);
+  const wet = y > y0 + 0.01 || !!liq || WETMAT.test((h.box && h.box.mat) || '');
+  return y >= cy - lo && y <= cy + hi ? { y, b: h.box, wet } : null;
 }
+const WETMAT = /water|sea|lava|mud|wetsand|glass|pool|lake|ice|acid|goo|slime/i; // (no puddle or snow patch on these: it would read as a hole)
 const hash = (a, b, c = 0) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); h = Math.imul(h ^ (h >>> 13), 1103515245); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
 const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _e = new THREE.Euler(), _c = new THREE.Color();
@@ -162,6 +167,7 @@ function puddles(K, cam, k, max) {
       if (!f || !f.b || !f.b.min || f.wet) continue; // (no puddles on the sea)
       const r = 0.95 * s;
       if (x - r < f.b.min[0] || x + r > f.b.max[0] || z - r < f.b.min[2] || z + r > f.b.max[2]) continue; // all of it on the one floor
+      if (liquidAt(x - r, f.y, z - r, 0.4, 4) || liquidAt(x + r, f.y, z - r, 0.4, 4) || liquidAt(x - r, f.y, z + r, 0.4, 4) || liquidAt(x + r, f.y, z + r, 0.4, 4)) continue; // (nor half in a pond)
       L.push([x, f.y + 0.015, z, hash(gx, gz, 11) * 6.28, s, (hash(gx, gz, 12) - 0.5) * 0.7 * s, (hash(gx, gz, 13) - 0.5) * 0.7 * s]);
     }
   }
