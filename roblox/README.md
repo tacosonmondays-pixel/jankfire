@@ -9,6 +9,30 @@ bhop, air strafing, the grapple, grapple jumps and the jump pads. No weapons yet
 
 ![the Roblox parts, 3/4 view](docs/rooftop-view.png)
 
+## What you need
+
+Everything here is free.
+
+**On your PC, just to play and test:**
+- **Roblox Studio**, signed in with your Roblox account. That's all you need to open the place and press Play.
+
+**On your PC, only if you want extras:**
+- **Roblox Studio MCP** (optional): lets a Claude session on your PC open the place, press Play and take
+  screenshots for you.
+- **Git, Node 22, Rojo and the Rojo plugin for Studio**: only needed if you want code changes to show up in
+  Studio live as they're made. Rojo is a small program and its plugin is a button in Studio that links the two.
+  Without these you just download the newest `.rbxl` file and open it.
+
+**In the cloud (what Claude uses to build it, nothing for you to install):**
+- **Rojo**: turns the code and the map into the `.rbxl` place file.
+- **Lune**: runs the Luau tests outside Studio.
+- **selene**: checks the Luau code for mistakes.
+- **Blender**: exports the 3D models in a form Roblox can import.
+- **Node**: runs the map converter.
+
+Rojo, Lune and selene install with `cargo install rojo lune selene`. Blender and Node are already in the jankfire
+cloud setup.
+
 ## Play it in Roblox Studio
 
 1. Download `roblox/build/JANKFIRE-Rooftop.rbxl` (on GitHub: open the file, then the download button).
