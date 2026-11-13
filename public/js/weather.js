@@ -230,6 +230,7 @@ function lightning(K, plan, i, t, p, k) {
     const h = K.P.bolts[b % 3], a = K.acts['strike_' + (b % 3)], def = MAPS[MAP.id];
     const gx = p.x + Math.cos(ang) * dist, gz = p.z + Math.sin(ang) * dist, gy = def && Number.isFinite(def.floorY) ? def.floorY : p.y - 15;
     h.position.set(gx, gy, gz); h.rotation.set(0, Math.atan2(p.x - gx, p.z - gz), 0); // (the bolt's flat side to you)
+    if (W.bolt && W.bolt.h !== h) W.bolt.h.visible = false; // (a new strike cuts the last one short)
     h.visible = true;
     if (a) { a.reset(); a.play(); }
     W.bolt = { h, a, b };
