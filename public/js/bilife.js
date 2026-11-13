@@ -110,6 +110,20 @@ function build() {
   return grp;
 }
 
+// the ground under anything solid (containers, the lifeboat, crates, walls): no grass growing up through it. one flag per
+// terrain cell (1 m), a few cm of margin; roofs, canopies and treetops high over the ground don't count
+function propCells(T) {
+  const blk = new Uint8Array(T.nx * T.nz), m = 0.2;
+  for (const b of BOXES) {
+    if (b.ter || !b.min || (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) > 4000) continue;
+    let gt = -Infinity; for (const [x, z] of [[b.min[0], b.min[2]], [b.max[0], b.min[2]], [b.min[0], b.max[2]], [b.max[0], b.max[2]]]) { const g = T.at(x, z); if (g != null) gt = Math.max(gt, g); }
+    if (b.min[1] > gt + 0.6) continue; // (up in the air)
+    const i0 = Math.max(0, Math.floor(b.min[0] - m - T.x0)), i1 = Math.min(T.nx - 1, Math.floor(b.max[0] + m - T.x0)), j0 = Math.max(0, Math.floor(b.min[2] - m - T.z0)), j1 = Math.min(T.nz - 1, Math.floor(b.max[2] + m - T.z0));
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) blk[i * T.nz + j] = 1;
+  }
+  return blk;
+}
+
 // where the gulls circle and the boats float: over the beaches, out on the sea
 function placeLife(def) {
   const T = BOXES.terrain, sea = def.seaY ?? -0.25, rnd = ((s) => () => (s = (s * 16807) % 2147483647) / 2147483647)(1234);
@@ -117,6 +131,7 @@ function placeLife(def) {
   // kept clear of grass and flowers (the map session's ask): the mechs' drop pads, and the towns' flat ground
   const R = def.royale || {};
   S.clear = [...(R.drops || []).map((d) => [d[0], d[2], (d[3] || 8) + 1.5]), ...(R.pois || []).map((p) => [p.c[0], p.c[1], (p.flat || p.r || 0) * 0.85])];
+  S.block = T ? propCells(T) : null;
   for (let tries = 0; tries < 4000 && (S.flocks.length < 3 || S.boatList.length < BI_LIFE.boats); tries++) {
     const a = rnd() * Math.PI * 2, r = 200 + rnd() * 260, x = Math.cos(a) * r * 1.2, z = Math.sin(a) * r, g = T ? T.at(x, z) : null;
     if (S.flocks.length < 3 && g != null && g > sea - 0.5 && g < sea + 2) S.flocks.push({ x, z, y: 22 + rnd() * 18, r: 18 + rnd() * 20, w: (rnd() < 0.5 ? -1 : 1) * (0.12 + rnd() * 0.1), n: 9 });
@@ -140,6 +155,7 @@ function layField(cx, cz) {
     if (clr.length && clr.some((k) => (x - k[0]) * (x - k[0]) + (z - k[1]) * (z - k[1]) < k[2] * k[2])) continue;
     const ti = Math.floor(x - T.x0), tj = Math.floor(z - T.z0);
     if (ti < 1 || tj < 1 || ti >= T.nx - 1 || tj >= T.nz - 1 || !T.ok[ti * T.nz + tj] || !gi.has(T.paint[ti * T.nz + tj])) continue;
+    if (S.block && S.block[ti * T.nz + tj]) continue; // (under a prop)
     const y = T.at(x, z); if (y == null || y < sea + 0.25) continue;
     const sl = Math.abs(T.H[(ti + 1) * vz + tj] - T.H[(ti - 1) * vz + tj]) + Math.abs(T.H[ti * vz + tj + 1] - T.H[ti * vz + tj - 1]);
     if (sl > 1.4) continue; // (steep: that's rock)

@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries, mergeVertices } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
-import { PSys, scaleU } from './fx.js';
+import { PSys, scaleU, chunks } from './fx.js';
 import { wrapMat } from './skins.js'; // a wrap on the plates (killstreak look)
 import { AUTHORED, authored, glossyPaint } from './glbkit.js'; // the Blender rig (tools/blender/make_rig.py)
 
@@ -896,8 +896,9 @@ export const rfx = {
     if (!psys()) return;
     for (let i = 0; i < n; i++) {
       const a = Math.random() * Math.PI * 2, s2 = speed * (0.4 + Math.random() * 0.8);
-      debris.spawn(p[0] + Rn(0.4), p[1] + 0.2, p[2] + Rn(0.4), Math.cos(a) * s2, 4 + Math.random() * speed, Math.sin(a) * s2, 0.9 + Math.random() * 0.8, 0.12 + Math.random() * 0.14, 0.1, cols[(Math.random() * cols.length) | 0], 0x2a2622, 1, 24, 0.3);
+      if (i % 2) debris.spawn(p[0] + Rn(0.4), p[1] + 0.2, p[2] + Rn(0.4), Math.cos(a) * s2, 4 + Math.random() * speed, Math.sin(a) * s2, 0.9 + Math.random() * 0.8, 0.12 + Math.random() * 0.14, 0.1, cols[(Math.random() * cols.length) | 0], 0x2a2622, 1, 24, 0.3);
     }
+    chunks([p[0], p[1] + 0.2, p[2]], Math.ceil(n / 2), speed, null, 2.4, cols, 1.5, 0.4, 20); // half of it real rubble that tumbles and bounces (fx.js)
   },
   glitch(p, n, r = 0.8) { // hacked: little cyan / magenta / black squares jittering round them
     if (!psys()) return;

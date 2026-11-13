@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { marbles } from './marbles.js';
 import { spritesOn, boomSprite, muzzlePuff } from './flipbook.js';
+import { spawnBit, updateBits } from './bits.js';
 
 const VS = `
 attribute float aSize; attribute float aAlpha; attribute vec3 aColor; attribute float aTile;
@@ -117,6 +118,27 @@ export function setBeam(m, a, b, th) {
 }
 
 const R = (s = 1) => (Math.random() * 2 - 1) * s;
+// rubble: real little broken pieces (bits.js) that arc, tumble, bounce and shrink away, instead of grey squares
+const CHUNK = ['chunk_a', 'chunk_b', 'chunk_c'], _cp = [0, 0, 0], _cv = [0, 0, 0];
+export function chunks(p, n, speed, up, size, cols, life = 1.4, spread = 0.3, grav = 14) {
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, s = speed * (0.4 + Math.random() * 0.8);
+    _cp[0] = p[0] + R(spread); _cp[1] = p[1]; _cp[2] = p[2] + R(spread);
+    _cv[0] = Math.cos(a) * s + (up ? up[0] * speed * 0.5 : 0); _cv[1] = (up ? up[1] * speed * 0.5 : 0) + 2 + Math.random() * speed * 0.6; _cv[2] = Math.sin(a) * s + (up ? up[2] * speed * 0.5 : 0);
+    spawnBit(CHUNK[(Math.random() * 3) | 0], 'world', _cp, _cv, { life: life * (0.8 + Math.random() * 0.5), scale: size * (0.6 + Math.random() * 0.8), color: cols[(Math.random() * cols.length) | 0], spin: 12, grav });
+  }
+}
+// the short-lived meshes (tracers, pops, rings, flashes) come from a pool: same mesh and material reused, not a new
+// material (and its shader setup) per shot. key: what kind of mesh it is
+const pool = new Map();
+function pooled(key, geo, opts) {
+  const l = pool.get(key);
+  const m = l && l.length ? l.pop() : new THREE.Mesh(geo, new THREE.MeshBasicMaterial(opts));
+  m.userData.pk = key; m.material.color.setHex(opts.color); m.material.opacity = opts.opacity ?? 1;
+  m.position.set(0, 0, 0); m.rotation.set(0, 0, 0); m.scale.set(1, 1, 1);
+  return m;
+}
+function unpool(m) { const k = m.userData.pk; if (!k) { m.material.dispose(); return; } let l = pool.get(k); if (!l) pool.set(k, (l = [])); if (l.length < 64) l.push(m); else m.material.dispose(); }
 let fire, smoke, misc, blood, scene;
 const timed = []; // {mesh, life, ml, kind, r}
 const DECAL_GEO = new THREE.PlaneGeometry(1, 1).rotateX(-Math.PI / 2);
@@ -241,7 +263,7 @@ export const fx = {
     if (this.onBoom) this.onBoom(p); // (liquids.js: a bang on the water throws up a column of it)
     const real = spritesOn(); // a real fireball + smoke (flipbook.js) instead of the squares; a few sparks still fly
     // the old yellow ball: with the real fireball it's only a quick small white pop, so it doesn't sit over the smoke
-    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: real ? 0xfff6d0 : 0xffcc33, transparent: true, opacity: 1 }));
+    const m = pooled('sph', SPHERE_GEO, { color: real ? 0xfff6d0 : 0xffcc33, transparent: true, opacity: 1 });
     m.position.set(p[0], p[1], p[2]);
     scene.add(m);
     timed.push({ mesh: m, life: real ? 0.08 : 0.28, ml: real ? 0.08 : 0.28, kind: 'flash', r: real ? radius * 0.5 : radius });
@@ -261,20 +283,21 @@ export const fx = {
   tracer(a, b, color = 0xffffff, th = 0.06, life = 0.35) {
     if (this.onTracer) this.onTracer(a, b); // (liquids.js: a shot through water plips into it)
     if (spritesOn()) muzzlePuff(a, b); // a puff of smoke off the muzzle (flipbook.js)
-    const m = makeBeam(color, 0.99);
+    const m = pooled('beam', BEAM_GEO, { color, transparent: true, opacity: 0.99 }); m.frustumCulled = false;
     setBeam(m, a, b, th);
     scene.add(m);
     timed.push({ mesh: m, life, ml: life, kind: 'beam' });
   },
   rope(a, b, life = 0.12) {
-    const m = makeBeam(0x3a2a1a, 0.99);
+    const m = pooled('beam', BEAM_GEO, { color: 0x3a2a1a, transparent: true, opacity: 0.99 }); m.frustumCulled = false;
     setBeam(m, a, b, 0.04);
     scene.add(m);
     timed.push({ mesh: m, life, ml: life, kind: 'beam' });
   },
   impact(p, n) {
     const nn = n || [0, 1, 0];
-    for (let i = 0; i < 10; i++) misc.spawn(p[0], p[1], p[2], nn[0] * 4 + R(3), nn[1] * 4 + R(3), nn[2] * 4 + R(3), 0.5, 0.15, 0.08, 0x999988, 0x444444, 1, 12, 1);
+    for (let i = 0; i < 5; i++) misc.spawn(p[0], p[1], p[2], nn[0] * 4 + R(3), nn[1] * 4 + R(3), nn[2] * 4 + R(3), 0.45, 0.1, 0.05, 0xbbbbaa, 0x666660, 0.8, 12, 1.5); // (dust)
+    chunks([p[0] + nn[0] * 0.04, p[1] + nn[1] * 0.04, p[2] + nn[2] * 0.04], 5, 3.5, nn, 1.25, [0xa8a596, 0x8a877a, 0xc4bfae], 1.3, 0.02); // (chips off the wall)
   },
   // katana parry: hot sparks off the blade and a tiny white pop. dir = the way the hit came from: sparks spray out
   // sideways and up off the edge, only a little back along it (straight back would be into a swordsman's face)
@@ -286,7 +309,7 @@ export const fx = {
       fire.spawn(p[0], p[1], p[2], a[0] / l * s, a[1] / l * s, a[2] / l * s, 0.1 + Math.random() * 0.2, hot ? 0.11 : 0.085, 0.02,
         Math.random() < 0.5 ? 0xffffff : 0xfff2b0, 0xff7a10, 1, 14, 2);
     }
-    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: hot ? 0xfff6c0 : 0xffffff, transparent: true, opacity: 1 }));
+    const m = pooled('sph', SPHERE_GEO, { color: hot ? 0xfff6c0 : 0xffffff, transparent: true, opacity: 1 });
     m.position.set(p[0], p[1], p[2]);
     m.scale.setScalar(hot ? 0.22 : 0.15);
     scene.add(m);
@@ -318,7 +341,7 @@ export const fx = {
     }
   },
   blast(p, radius, c0 = 0xd9a3ff, c1 = 0x5a00aa) {
-    const m = new THREE.Mesh(SPHERE_GEO, new THREE.MeshBasicMaterial({ color: c0, transparent: true, opacity: 1 }));
+    const m = pooled('sph', SPHERE_GEO, { color: c0, transparent: true, opacity: 1 });
     m.position.set(p[0], p[1], p[2]);
     scene.add(m);
     timed.push({ mesh: m, life: 0.3, ml: 0.3, kind: 'flash', r: radius });
@@ -357,7 +380,7 @@ export const fx = {
   },
   // a flat ring racing out along the floor (shockwaves)
   ring(p, radius, color = 0xffffff, life = 0.45) {
-    const m = new THREE.Mesh(RING_GEO, new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide }));
+    const m = pooled('ring', RING_GEO, { color, transparent: true, opacity: 1, depthWrite: false, side: THREE.DoubleSide });
     m.position.set(p[0], p[1] + 0.12, p[2]);
     scene.add(m);
     timed.push({ mesh: m, life, ml: life, kind: 'flash', r: radius });
@@ -374,15 +397,12 @@ export const fx = {
       smoke.spawn(p[0] + Math.cos(a) * 0.9, p[1] + 0.2 + Math.random() * 0.5, p[2] + Math.sin(a) * 0.9, Math.cos(a) * s, 0.6 + Math.random() * (1 + k * 2), Math.sin(a) * s,
         0.7 + Math.random() * 0.6 + k * 0.4, 0.6 + k * 0.4, 2 + k * 1.6, 0xd6c6a6, 0x9a8a6a, 0.75, 0, 2.6);
     }
-    for (let i = 0; i < 16 + k * 30; i++) {
-      const a = Math.random() * Math.PI * 2, s = 3 + Math.random() * (5 + k * 8);
-      misc.spawn(p[0] + R(0.8), p[1] + 0.2, p[2] + R(0.8), Math.cos(a) * s, 5 + Math.random() * (6 + k * 9), Math.sin(a) * s,
-        1 + Math.random() * 0.8, 0.14 + Math.random() * 0.12 + k * 0.08, 0.12, Math.random() < 0.5 ? 0x8a7e6a : 0x5e554a, 0x3a342c, 1, 26, 0.3);
-    }
+    chunks([p[0], p[1] + 0.2, p[2]], Math.round(14 + k * 26), 5 + k * 8, null, 2.2 + k * 1.4, [0x8a7e6a, 0x5e554a, 0x9a8c74], 1.8, 0.8, 22); // chunks of floor
     for (let i = 0; i < 12 + k * 20; i++) fire.spawn(p[0] + R(0.5), p[1] + 0.3, p[2] + R(0.5), R(11), 2 + Math.random() * 7, R(11), 0.25 + Math.random() * 0.2, 0.14, 0.04, 0xfff2b0, 0xff7a1a, 1, 18, 1);
   },
   update(dt) {
     fire.update(dt); smoke.update(dt); misc.update(dt); blood.update(dt);
+    updateBits(dt); // (casings, shells, rubble: bits.js)
     marbles.update(dt);
     for (let i = decals.length - 1; i >= 0; i--) {
       const m = decals[i];
@@ -396,7 +416,7 @@ export const fx = {
       const k = Math.max(0, t.life / t.ml);
       if (t.kind === 'flash') t.mesh.scale.setScalar(0.5 + (1 - k) * t.r);
       t.mesh.material.opacity = k;
-      if (t.life <= 0) { scene.remove(t.mesh); t.mesh.material.dispose(); timed.splice(i, 1); }
+      if (t.life <= 0) { scene.remove(t.mesh); unpool(t.mesh); timed.splice(i, 1); }
     }
   },
 };
