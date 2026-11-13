@@ -36,14 +36,14 @@ def main(hero):
     R.key_clips(mk, mod, clip_list)
     meta = dict(mk.meta); meta.pop('marks', None)
     tn, tf = R.tris_of(near), R.tris_of(far)
-    meta.update({'phase': 'concept rig (a Tripo mesh swaps in later)', 'fps': C.FPS, 'marks': marks, 'root_motion': False, 'decal_slots': slots,
+    meta.update({'phase': getattr(mod, 'PHASE', 'concept rig (a Tripo mesh swaps in later)'), 'fps': C.FPS, 'marks': marks, 'root_motion': False, 'decal_slots': slots,
                  'metal_look': look, 'clips': [R.clip_meta(cl) for cl in clip_list]})
     if far: meta['lod'] = {'far': '_lod1', 'dist': LOD_DIST, 'tris': [tn, tf]}  # (the game swaps <joint>_mesh for <joint>_lod1 past dist metres)
     mk.root['jf'] = json.dumps(meta)
     print('JF_CLIPS', hero, len(clip_list), ' '.join(cl['name'] for cl in clip_list))
     print('JF_TRIS', hero, 'near', tn, 'far', tf)
     if 'no-export' not in ARGS:
-        path = ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{hero}.glb'))
+        path = ARGS.get('out', os.path.join(lib.MODELS, getattr(mod, 'GLB', f'x_mech_{hero}') + '.glb'))  # (GLB: a module that replaces another hero's file)
         R.export(mk, path, **({'export_vertex_color': 'ACTIVE'} if look and 'no-bake' not in ARGS else {}))
         if getattr(mod, 'SKIN', False) and 'no-skin' not in ARGS:  # (one rigid-skinned mesh per LOD: a handful of draws, not one per joint per material)
             import skin_glb; skin_glb.main(path, path, mk.prefix)

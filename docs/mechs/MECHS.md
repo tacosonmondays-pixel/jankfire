@@ -3,7 +3,11 @@
 **Status:** the game files carry the owner's Tripo bodies as they are (their own heads, V horns and faces: the owner's
 call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/mechs/tripo_swap.py`.
 - From the concept: PAPER PLANE's pods, highlighter cannons, wings and crane; NIGHT SHIFT's hands, sword and shield.
-- PAPER PLANE's body is try A until the owner picks A or B.
+- **PAPER PLANE MK2** (the owner, 2026-11-13: "cooler different style from base game like gundam"): the anime-mecha
+  restyle, built in code by `tools/blender/mechs/paperplane_mk2.py` (the style rules: `docs/mechs/STYLE.md`) through
+  `make_hero.py` like the Battle Island heroes: far LOD, painted metal, one trim material, one skinned mesh per LOD.
+  Same joints, markers (same spots), clips and spray slots as MK1, so the game binds it unchanged. NIGHT SHIFT is
+  still the Tripo body (it gets the MK2 look next, after the owner's yes).
 - Every name below is the same as on the concept meshes.
 - Pictures: `docs/mechs/tripo/compare/` and `docs/mechs/tripo/ingame/`. Concept notes: `docs/mechs/CONCEPT.md`; research:
   `docs/mechs/RESEARCH.md`.
@@ -11,16 +15,17 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
 ## Files
 | file | what |
 |---|---|
-| `public/models/x_mech_paperplane.glb` | PAPER PLANE: joints, meshes, markers, 20 clips (~1.5 MB, 21k tris) |
+| `public/models/x_mech_paperplane.glb` | PAPER PLANE MK2: joints, one skinned mesh per LOD, markers, 22 clips (~6 MB, 61k tris near, 8k far, 5 materials) |
 | `public/models/x_mech_nightshift.glb` | NIGHT SHIFT: joints, meshes, markers, 19 clips (~1.1 MB, 18k tris) |
 
 - The `x_` prefix means they're lazy: load them only when a mech is in play.
 - Each file is ONE model per mech (after the Tripo swap too: wings, drone, sword and shield are inside it).
-- Rebuild (Tripo bodies, what ships): `blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=<name> qa`
-  (`body=paperplane_body_b` for PAPER PLANE's other body).
+- Rebuild PAPER PLANE (MK2, what ships): `blender52 -b -P tools/blender/mechs/make_hero.py -- hero=paperplane_mk2 qa`.
+- Rebuild NIGHT SHIFT (the Tripo body, what ships): `blender52 -b -P tools/blender/mechs/tripo_swap.py -- mech=nightshift qa`
+  (`mech=paperplane body=paperplane_body_b` still rebuilds the old MK1 PAPER PLANE).
 - Back to the concept meshes: `blender52 -b -P tools/blender/mechs/make_mechs_rig.py -- [mech=<name>] [qa]` (same
   names, clips and markers).
-- No far-LOD copies are in the files (MECH DROP draws every mesh); `tripo_swap.py ... lod_tris=7000` adds
+- NIGHT SHIFT has no far-LOD copies (MECH DROP draws every mesh; PAPER PLANE MK2 has its far LOD); `tripo_swap.py ... lod_tris=7000` adds
   `<joint>_lod1` siblings if the game ever wants them.
 - Check: `node tools/blender/mechs/clip_sheets.cjs [outDir] [mech] [rowsPerSheet]` plays every clip in three.js and
   writes contact sheets (`docs/mechs/clips/*.jpg`). It exits 1 if a clip is missing or the page errors.
@@ -88,7 +93,9 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
   - No extra materials or draw calls. Paint materials carry `extras.jf_look = 'painted metal'`.
 - **Tinting:** a model whose paint has `jf_look` keeps its own paint material (maps, clear coat). MECH DROP clones it
   per mech and sets the colour (`public/js/mechmodel.js`), instead of swapping in the glossy stand-in paint.
-- PAPER PLANE's wings and crane stay paper: `*_paper` copies of the role materials, without the metal look.
+- MK1 PAPER PLANE's wings and crane stayed paper (`*_paper` copies of the role materials); MK2's are painted metal like the rest.
+- MK2 adds `pp_hazard` (the yellow accent: paint, not gold) and drops `accent` (gold); `pp_glow` is the eyes, `pp_thrust`
+  the cyan edge lines and thrusters.
 - **Draw calls** (the coordinator, 2026-11-13: a hero draws in 15-30 calls; each material on a joint's mesh is one):
   the Battle Island heroes merge every flat painted role but the team paint into one `<prefix>_trim` material
   (`metalkit.merge_trim`, on by default in `make_hero.py`; `no-merge` turns it off). Its colour per part is in
