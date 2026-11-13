@@ -14,6 +14,24 @@ export const BGN_NAMES = {
     hung: 'HUNG JURY', last: 'LAST CALL', toast: 'TOASTED', moved: 'THE BREAD HAS MOVED', broke: 'come back with {n} coupons',
     settled: 'THEY SETTLED IT OUTSIDE', sponge: 'IT WAS A SPONGE', lasso: 'YOINK', cart: 'NO BRAKES', dibs: 'DIBS!',
     roll: 'ROLL', yourTurn: 'YOUR TURN', sd: 'SUDDEN DEATH', tie: 'TIEBREAKER',
+    // minigames 11-15 (server/bgnmini.js)
+    boss: 'BOSS FIGHT', bossDown: 'BOSS DOWN', mvp: 'MVP', ram: 'RAMMED', boost: 'BOOST', cartOut: 'RETURNED TO THE STORE', cartBack: 'CART RETURN',
+    lastCart: 'LAST CART STANDING', duck: '+{n} DUCK', duckAir: 'NICE CATCH', gold: 'GOLD DUCK', cursed: 'CURSED', slapped: 'SLAPPED', bigguy: 'THE BIG GUY',
+  },
+  // the bosses: a bot in his mech (4 vs BOSS)
+  boss: {
+    landlord: { name: 'THE LANDLORD', title: 'he owns the platform. he wants the rent.', loss: 'RENT IS DUE', down: 'EVICTED' },
+    nightmgr: { name: 'THE NIGHT MANAGER', title: 'the store is closed. he has a shield and a sword.', loss: 'STORE CLOSED', down: 'CLOCKED OUT' },
+  },
+  // kill feed + death lines (bumper carts, duck catch)
+  feed: { cartKo: 'price checked into the void', cartSelf: 'returned to the store', cartDead: 'you got price checked into the void', cartDeadSelf: 'you returned yourself to the store' },
+  // controls on each minigame's intro card
+  ctl: {
+    def: 'WASD move · mouse aim · click shoot · E grapple',
+    carts: 'W push · mouse steer · click BOOST · S brake. no guns',
+    ducks: 'walk under a shadow to catch it · click slap (they drop 3)',
+    bigguy: 'the leader: rig punches + missiles · three: shoot the big guy',
+    boss: 'everyone on the same side. shoot the mech. it fights back',
   },
   // the rules guy, deadpan and wrong
   lines: {
@@ -44,7 +62,18 @@ export const BGN = {
   storeStock: 3, endMs: 25000, toastMs: 7000, rate: 6, // rate: bg messages a second, per player
   fmtW: { ffa: 40, '2v2': 25, '3v1': 20, boss: 15 },
   pay: { ffa: [10, 6, 3, 1], v2: [8, 1], v2tie: 4, v31: { one: 15, three: 5 }, boss: { win: 8, mvp: 5, lose: 2 } },
-  bossOn: false, // the bosses (THE LANDLORD, THE NIGHT MANAGER) arrive in the next PR: until then no BOSS format
+  bossOn: true, // the bosses (THE LANDLORD, THE NIGHT MANAGER: server/bgnmini.js)
+};
+
+// minigames 11-15 (server/bgnmini.js): the numbers
+export const BGN_MINI = {
+  bigguy: { mul: 3, armour: 0.4, dmg: 0.65 }, // the leader's kills count x3; their rig has 40% of its usual armour and hits at 65% (a full one wiped three bots without ever breaking)
+  // the boss's armour: his frame's x (base + per human seat). he's a 5th player on team 2, gone after
+  boss: { base: 2, perHuman: 0.5, diff: 'hard', bar: 250, down: 1600, splash: 0.15 }, // bar: ms between health bar updates; down: the explosion before the results; splash: armour lost falling off the map
+  // bumper carts: rams don't hurt, they fling (kb x, up x); a boost on click (judged here); a fresh cart after a fall-out
+  carts: { kb: 2.2, up: 0.6, minSp: 4, boost: 9, boostCd: 1500, boostMs: 900, slack: 3, remount: 2000, recoil: 0.35, lives: 3, hazardKb: 1.4, rest: 5000, hazardMs: 14000, edge: 3.5 },
+  // duck catch: ducks fall from h at fall m/s. a catch in the air / off the floor / a gold one. reach is the server's
+  ducks: { every: [1.7, 0.9], n: [2, 3], h: 16, fall: 6.5, air: 2, floor: 1, gold: 5, goldP: 0.12, catchR: 1.35, pickR: 1.25, floorMs: 12000, slap: 3, slapKb: 0.35, cursedEvery: 10000, cursedR: 3, spit: 4, max: 40 },
 };
 
 // space kinds: colour, what landing does
@@ -82,7 +111,7 @@ export const BGN_JANK_ORDER = ['marbles', 'ducks', 'tax', 'misread', 'swap'];
 export const BGN_HOUSE = [
   { id: 'cheap', name: 'CHEAP BREAD', desc: 'golden bread costs 10.' },
   { id: 'nofees', name: 'NO MORE FEES', desc: 'every LATE FEE is a JANK now.' },
-  { id: 'rush', name: 'BOSS RUSH', desc: 'the next minigame is a BOSS. (no boss yet: everyone vs the leader instead)' },
+  { id: 'rush', name: 'BOSS RUSH', desc: 'the next minigame is a BOSS.' },
 ];
 
 // the minigames: existing modes on small maps with a short clock. fmts: where it can come up (duel = 1v1).
@@ -98,6 +127,12 @@ export const BGN_MINIS = {
   rvb: { n: 8, name: 'RED VS BLUE', game: 'tdm', map: 'platform', time: 75, target: 15, fmts: ['2v2'], rule: 'red vs blue. team kills win.' },
   tagsale: { n: 9, name: 'TAG SALE', game: 'tags', map: 'platform', time: 75, target: 10, fmts: ['2v2'], rule: 'kills drop tags. grab the other team\'s. most tags wins.' },
   leader: { n: 10, name: 'EVERYONE VS THE LEADER', game: 'inf', map: 'rooftop', time: 60, target: 0, fmts: ['3v1'], rule: 'the leader is patient zero. turn all three to win. three: survive.' },
+  // 11-15: server/bgnmini.js
+  bigguy: { n: 11, name: 'THE BIG GUY', game: 'tdm', map: 'platform', time: 75, target: 24, fmts: ['3v1'], ctl: 'bigguy', rule: 'the leader suits up in an overdrive rig, every life. their kills count x3.' },
+  landlord: { n: 12, name: 'BOSS: THE LANDLORD', game: 'tdm', map: 'platform', time: 90, target: 999, boss: 'wrecking', fmts: ['boss'], ctl: 'boss', rule: 'break his wrecking ball mech before the clock runs out.' },
+  nightmgr: { n: 13, name: 'BOSS: THE NIGHT MANAGER', game: 'tdm', map: 'platform', time: 90, target: 999, boss: 'nightshift', fmts: ['boss'], ctl: 'boss', rule: 'break his night shift mech. shoot round the shield.' },
+  carts: { n: 14, name: 'BUMPER CARTS', game: 'bgcarts', map: 'crate', time: 75, target: 999, fmts: ['ffa', 'duel', '2v2'], ctl: 'carts', rule: 'ram people off the box. last cart standing wins. (2v2: 3 team lives)' },
+  duckcatch: { n: 15, name: 'DUCK CATCH', game: 'bgducks', map: 'platform', time: 60, target: 999, fmts: ['ffa', 'duel', '2v2'], ctl: 'ducks', rule: 'most ducks wins. gold ones are 5. the cursed one halves your pile.' },
 };
 export const BGN_MINI_ORDER = Object.keys(BGN_MINIS);
 export const BGN_FMTS = ['ffa', '2v2', '3v1', 'boss'];

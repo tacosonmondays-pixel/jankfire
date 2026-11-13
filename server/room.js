@@ -4202,6 +4202,7 @@ function roomFor(mode, ws, cfg) {
     return r;
   }
   if (lk && lk !== 'qp' && (mode === 'bots' || mode === 'ffa')) {
+    if (lk === 'bgn' && typeof cfg._back === 'string') for (const r of rooms.values()) if (r.mode === mode && r.bgnBackFor(cfg._back)) return r; // board game night: back to the table you dropped out of
     for (const r of rooms.values()) if (r.lobbyOpen(mode, lk, need)) return r;
     const r = new Room(`${mode}:${lk}:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, mode);
     rooms.set(r.id, r);

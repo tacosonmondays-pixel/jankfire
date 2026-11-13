@@ -13,6 +13,7 @@ import { LOBBY } from '../shared/lobby.js';
 import { randomContainer } from '../shared/cosmetics.js';
 import { hubBackOpen, hubBackDue } from './hubback.js';
 import { installBgnBots } from './bgnbots.js';
+import { installBgnMini } from './bgnmini.js'; // minigames 11-15: the big guy, the bosses, bumper carts, duck catch
 
 const E = (typeof process !== 'undefined' && process.env) || {};
 const num = (v) => (v == null || v === '' ? NaN : Number(v));
@@ -74,6 +75,9 @@ export function installBgn(Room, H) {
       console.log(`[bgn] ${this.id}: board game night, ${want} rounds, ${people.length} human(s)`);
     },
     bgnName(p) { return String(p.name || '').replace(/ \[bot\]$/, '').slice(0, 20); },
+    bgnKey(p) { return p.acct ? 'a:' + p.acct.n : 'n:' + p.name; }, // who someone is, for coming back to their seat (an account, else the name)
+    // roomFor (online lobby): is a seat here kept warm for whoever this is? (they dropped out: their bot has it)
+    bgnBackFor(key) { const B = this.bgn; return !!(B && this.lobby && !this.closed && B.ph !== 'done' && B.seats.some((s) => s.bot && s.back === key)); },
     // sitting out: dead with no respawn (the JF_WATCH observer's trick, but switchable)
     bgnBench(p, on) {
       p.bench = !!on;
@@ -107,11 +111,12 @@ export function installBgn(Room, H) {
       while (B.queue.length) {
         const p = this.players.get(B.queue[0]);
         if (!p || this.bgnSeatOf(p)) { B.queue.shift(); continue; }
-        const s = B.seats.find((x) => x.bot && !(B.ask && B.ask.seat === x.i) && !(B.walk && B.walk.seat === x.i));
+        const free = (x) => x.bot && !(B.ask && B.ask.seat === x.i) && !(B.walk && B.walk.seat === x.i);
+        const own = B.seats.find((x) => x.bot && x.back === this.bgnKey(p)), s = own ? (free(own) ? own : null) : B.seats.find(free); // back from a disconnect: your own seat ("<name>'s bot" gives it back), as soon as it's between turns
         if (!s) return;
         B.queue.shift();
         const b = this.players.get(s.pid);
-        s.pid = p.id; s.bot = false; s.name = this.bgnName(p);
+        s.pid = p.id; s.bot = false; s.name = this.bgnName(p); s.back = null;
         if (b) this.remove(b);
         this.broadcast({ t: 'chat', id: 0, m: `${s.name} took a seat at the table` });
         this.bgnState();
@@ -127,7 +132,7 @@ export function installBgn(Room, H) {
       const b = this.addBot();
       b.name = `${s.name}'s bot`.slice(0, 24);
       this.broadcast({ t: 'pj', ...this.info(b) }); // (the new name)
-      s.pid = b.id; s.bot = true; s.name = b.name;
+      s.pid = b.id; s.bot = true; s.name = b.name; s.back = this.bgnKey(p); // (they can come back to it)
       const mg = B.mg;
       if (B.ph === 'mg' && mg && mg.seats.includes(s.i)) { this.bgnSide(b); this.broadcast({ t: 'teams', game: this.game, list: [[b.id, b.team || 0, b.color]] }); }
       else this.bgnBench(b, true);
@@ -177,7 +182,7 @@ export function installBgn(Room, H) {
         order: B.order.slice(), turn: B.turn, bakery: B.bakery, traps: [...B.traps].map(([at, t]) => [at, t.k, t.by]),
         ask: a ? { k: a.k, seat: a.seat, opts: a.opts, left: Math.max(0, a.until - n) } : null,
         walk: B.walk ? { seat: B.walk.seat, left: B.walk.left } : null, used: B.used ? 1 : 0, cart: B.cart ? 1 : 0,
-        mg: mg ? { id: mg.id, fmt: mg.fmt, sides: mg.sides, one: mg.one, seats: mg.seats, stake: mg.stake, sd: mg.sd ? 1 : 0, left: Math.max(0, (mg.ends || n) - n) } : null,
+        mg: mg ? { id: mg.id, fmt: mg.fmt, sides: mg.sides, one: mg.one, seats: mg.seats, stake: mg.stake, sd: mg.sd ? 1 : 0, left: Math.max(0, (mg.ends || n) - n), x: this.bgmInfo() } : null, // (x: minigames 11-15's own state)
         res: B.res, final: B.final, card: B.ph === 'mgintro' || B.ph === 'mgres' ? Math.max(0, B.at - n) : 0,
       };
     },
@@ -522,14 +527,14 @@ export function installBgn(Room, H) {
         const top = rank.filter((s) => s.bread === rank[0].bread && s.coupons === rank[0].coupons);
         one = top[Math.floor(B.rng() * top.length)].i;
         sides = [all.filter((i) => i !== one), [one]];
-      }
+      } else if (fmt === 'boss') sides = [all, []]; // all four vs him (team 2: server/bgnmini.js)
       this.bgnCall('mg');
       this.bgnMgStart(id, fmt, { seats: all, sides, one }, (r) => this.bgnMgPay(r));
     },
     // the intro card: the map loads while it's up
     bgnMgStart(id, fmt, o, cont) {
       const B = this.bgn, def = BGN_MINIS[id];
-      B.mg = { id, fmt, seats: o.seats, sides: o.sides || null, one: o.one ?? null, stake: o.stake || null, teams: fmt === '2v2' && def.game !== 'inf', sd: false, ends: 0 };
+      B.mg = { id, fmt, seats: o.seats, sides: o.sides || null, one: o.one ?? null, stake: o.stake || null, teams: (fmt === '2v2' || fmt === '3v1' || fmt === 'boss') && def.game !== 'inf', sd: false, ends: 0 }; // (infection picks its own sides)
       B.cont = cont; B.res = null;
       B.ph = 'mgintro'; B.ok = new Set();
       const map = mapForGame(def.game, MAPS, def.map);
@@ -551,6 +556,7 @@ export function installBgn(Room, H) {
       const n = now();
       this.round.ends = mg.ends = n + (K.mgTime || def.time) * 1000;
       if (def.target) this.round.target = mg.fmt === 'tie' ? 1 : def.target;
+      this.bgmGo(mg, def); // minigames 11-15 set up their own bits (server/bgnmini.js)
       this.bgnState();
     },
     // per-room knobs the modes read: one-shot wonder's lives, the speed ladder, infection's patient zero
@@ -618,16 +624,18 @@ export function installBgn(Room, H) {
         list.sort((a, b) => b[1] - a[1] || a[2] - b[2] || a[3] - b[3]);
         r.place = list.map((x) => x[0]);
       } else if (mg.fmt === '2v2') {
-        const team = (side) => (this.game === 'tdm' || this.game === 'tags' ? this.score[side === mg.sides[0] ? 1 : 2] : side.reduce((a, i) => a + Math.max(0, this.bgnScore(pl(i))), 0));
+        const team = (side) => this.bgmTeam(side, mg) ?? (this.game === 'tdm' || this.game === 'tags' ? this.score[side === mg.sides[0] ? 1 : 2] : side.reduce((a, i) => a + Math.max(0, this.bgnScore(pl(i))), 0)); // (bumper carts: team lives)
         const a = team(mg.sides[0]), b = team(mg.sides[1]);
         r.sc = [a, b];
         r.winSide = a === b ? -1 : a > b ? 0 : 1;
       } else if (mg.fmt === '3v1') {
         const res = this.round.res;
-        r.winSide = res && res.side === 'inf' ? 1 : 0; // the 1 turned everyone: they win. else the three
-      }
+        if (this.game === 'inf') r.winSide = res && res.side === 'inf' ? 1 : 0; // the 1 turned everyone: they win. else the three
+        else { r.sc = [this.score[1], this.score[2]]; r.winSide = this.score[2] > this.score[1] ? 1 : 0; } // the big guy: more (x3) kills than the three, or the three win
+      } else if (mg.fmt === 'boss') this.bgmBossRes(r, mg); // boss down: the four win (+ the MVP). else he does
       const won = mg.fmt === 'ffa' ? [r.place[0]] : r.winSide >= 0 ? mg.sides[r.winSide] : [];
       for (const i of won) B.seats[i].stats.mgWins++; // (duels count in bgnDuelPay)
+      this.bgmEnd(mg, r); // minigames 11-15 tidy up (the boss goes home, the ducks go away)
       // back to the board: everyone sits down, the field is cleared, colours back
       this.round.over = true;
       this.mechReset(); this.projectiles.clear(); this.peels.clear(); this.holes.clear(); this.clearCarts(); this.mpatches.clear();
@@ -651,6 +659,11 @@ export function installBgn(Room, H) {
       if (r.fmt === 'ffa') r.place.forEach((i, k) => give(i, BGN.pay.ffa[k] ?? 0));
       else if (r.fmt === '2v2') { const [w, l] = BGN.pay.v2; r.sides.forEach((side, k) => side.forEach((i) => give(i, r.winSide === -1 ? BGN.pay.v2tie : r.winSide === k ? w : l))); }
       else if (r.fmt === '3v1') { if (r.winSide === 1) { give(r.sides[1][0], BGN.pay.v31.one); this.bgnCall('rent'); } else for (const i of r.sides[0]) give(i, BGN.pay.v31.three); }
+      else if (r.fmt === 'boss') { // boss down: +8 each, +5 more for the MVP (most damage). he lives: +2 each (the pity)
+        const P = BGN.pay.boss;
+        for (const i of r.seats) give(i, r.winSide === 0 ? P.win + (i === r.mvp ? P.mvp : 0) : P.lose);
+        if (r.winSide !== 0) this.bgnCall('rent');
+      }
       r.pay = pay;
       B.round++;
       this.bgnLater(BGN.mgRes, () => this.bgnRoundStart());
@@ -697,7 +710,7 @@ export function installBgn(Room, H) {
       if (!r || n < r.next) return true;
       if (this.hubBack && hubBackDue(this, n)) return true;
       const rounds = this.bgn.rounds;
-      if (this.lobby) { this.bgn = null; for (const p of this.players.values()) p.bench = false; this.enterWarm(LOBBY.again); return true; }
+      if (this.lobby) { this.bgn = null; for (const p of this.players.values()) p.bench = false; this.cfg.map = 'crate'; this.smokes.clear(); this.enterWarm(LOBBY.again); return true; } // (the warm-up's back on the crate, not the last minigame's map)
       this.bgnStart(rounds); // play again
       return true;
     },
@@ -717,6 +730,7 @@ export function installBgn(Room, H) {
       p.bgnT = (p.bgnT || []).filter((t) => n - t < 1000);
       if (p.bgnT.length >= BGN.rate) return; // roll spam
       p.bgnT.push(n);
+      if (m.k === 'boost') { this.bgmBoost(p); return; } // bumper carts' boost (server/bgnmini.js judges it)
       if (typeof m.k !== 'string' || !ASKS.includes(m.k)) return;
       const s = this.bgnSeatOf(p);
       if (!s) return;
@@ -740,4 +754,5 @@ export function installBgn(Room, H) {
       }
     },
   });
+  installBgnMini(Room, H); // (after: it wraps some of these)
 }

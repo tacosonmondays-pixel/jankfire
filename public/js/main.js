@@ -77,6 +77,7 @@ import { BR } from '/shared/royale.js'; // (the grapple charges, for the help te
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
+import { miniMouse, miniCam, miniFeed } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
@@ -1297,6 +1298,7 @@ addEventListener('mousedown', (e) => {
   if (fmMouse(e)) return; // the big map is open: clicks are pings (off it: close it)
   if (brMouse(e)) return; // jank royale: no shooting from the blimp; out = click to watch someone else
   if (econMouse(e)) return;
+  if (miniMouse(e)) return; // board game night's bumper carts: a click in your cart is a BOOST
   if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
   pressed(e);
 });
@@ -1815,6 +1817,7 @@ net.on('kill', (m) => {
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? (m.hz ? '  into the volcano' : '  into the lava') : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? (m.hz ? '  took a lava bath' : '  touched the floor') : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.w === 'lava' && m.hz) pitErupt(m.pos || (victim ? victim.pos : ME.pos)); // cooked in the volcano: it coughs fire
   const brp = brFeed(m, vn, vc); if (brp) parts = brp; // jank royale: the zone
+  const bgp = miniFeed(m, kn, kc, vn, vc); if (bgp) parts = bgp; // board game night's bumper carts: price checked into the void
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
   if (carK) parts = carK.parts;
@@ -2292,7 +2295,7 @@ function frame(t) {
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
-  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
+  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam) || miniCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
   cam.updateMatrixWorld();
   lassoLate(dt, now); // lasso ropes between people + from your hand, now that everyone (and the camera) has moved
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);

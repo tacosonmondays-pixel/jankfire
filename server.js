@@ -161,6 +161,8 @@ wss.on('connection', (ws) => {
           const tk = m.cfg.editTicket; delete m.cfg.editTicket; delete m.cfg._edit;
           const ed = typeof tk === 'string' ? takeTicket(tk, m._acct && m._acct.n) : null;
           if (ed && m.mode === 'bots') m.cfg._edit = ed;
+          delete m.cfg._back; // (only the server says who's asking)
+          if (m.cfg.lobby === 'bgn') m.cfg._back = m._acct ? 'a:' + m._acct.n : 'n:' + (m._name || clean(m.name, 16)); // board game night: a seat kept warm for you? (server/bgn.js bgnBackFor)
         }
         if (ws.readyState !== 1) return;
         const room = roomFor(m.mode, ws, m.cfg);

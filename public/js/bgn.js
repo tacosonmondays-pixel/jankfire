@@ -9,6 +9,7 @@ import { net } from './net.js';
 import { synth } from './audio.js';
 import { BGN, BGN_NAMES as N, BGN_ITEMS, BGN_JANK, BGN_HOUSE, BGN_MINIS, bgnFill } from '/shared/bgn.js';
 import { BOARD, aheadSet } from '/shared/bgnboard.js';
+import { miniState, miniEv, miniFrame, miniCtl, miniIntro, miniRes } from './bgnmini.js'; // minigames 11-15: carts, ducks, the bosses
 
 let B = null, board = null, boardP = null, root = null, ui = null, opts = {}, aim = null, askT = 0, askDur = 1, lastAsk = '', wasOn = false, cardT = 0, t0 = performance.now();
 const $ = (id) => document.getElementById(id);
@@ -48,9 +49,10 @@ export function bgnHubBack(m) {
   else if (m.k === 'again' && back) { back.n = m.n | 0; back.of = m.of | 0; }
   render();
 }
-export function bgnReset() { back = null; B = null; aim = null; if (root) root.classList.add('hidden'); document.body.classList.remove('bgn-board'); wasOn = false; }
+export function bgnReset() { back = null; B = null; miniState(null); aim = null; if (root) root.classList.add('hidden'); document.body.classList.remove('bgn-board'); wasOn = false; }
 // main.js's frame: true = the board was drawn (instead of the map)
 export function bgnFrame(dt) {
+  if (B) miniFrame(dt); // (the minigames' HUD + ducks, board up or not)
   const on = bgnBoardOn();
   if (on !== wasOn) {
     wasOn = on;
@@ -73,10 +75,11 @@ function loadBoard() {
 // ---------------------------------------------------------------- messages
 net.on('bg', (m) => {
   if (!m || typeof m.k !== 'string') return;
-  if (m.k === 'st') { const was = B; B = m.s; if (!B) { bgnReset(); return; } ensureDom(); loadBoard(); if (board) board.sync(B); onState(was); render(); return; }
+  if (m.k === 'st') { const was = B; B = m.s; if (!B) { bgnReset(); return; } miniState(B); ensureDom(); loadBoard(); if (board) board.sync(B); onState(was); render(); return; }
   if (!B) return;
   const fx = EV[m.k];
   if (fx) fx(m);
+  else miniEv(m); // minigames 11-15 (bgnmini.js)
 });
 const EV = {
   roll(m) { if (board) board.roll(m); SFX.rattle(); setTimeout(() => call(`${m.n}`, B.seats[m.seat] && B.seats[m.seat].color, m.stuck ? 'STUCK: HALF' : m.v.length > 1 ? m.v.join(' + ') : 'ROLLED'), 950); },
@@ -160,6 +163,7 @@ body.bgn-board #hud{display:none!important}
 .bg-sides{display:flex;gap:8px;justify-content:center;margin:8px 0}.bg-sides div{flex:1;padding:6px;border:3px solid #000;font-weight:700}
 .bg-one{font-size:88px;font-weight:700;color:#ff3030;-webkit-text-stroke:3px #000;line-height:1}
 .bg-cd{font-size:60px;font-weight:700;color:#4fd8ff;-webkit-text-stroke:2px #000}
+.bg-ex{color:#ffd6f7;font-size:14px;font-weight:400}
 .bg-res{width:100%;border-collapse:collapse;margin:8px 0;font-size:19px}.bg-res td{padding:3px 6px;border-bottom:2px solid #3a2340}.bg-res td:last-child{text-align:right;font-weight:700}
 .bg-spec{position:absolute;left:50%;top:70px;transform:translateX(-50%);font-size:20px;font-weight:700}
 .bg-view{position:absolute;right:14px;top:50%;transform:translateY(-50%)}
@@ -345,7 +349,8 @@ function introCard() {
     c.append(sd);
   } else if (mg.fmt === '3v1' && mg.one != null) c.append(el('div', 'bg-one', '1'), el('div', 'rule', `${seatName(mg.one)} vs everyone`));
   else if ((mg.fmt === 'duel' || mg.fmt === 'tie') && mg.seats) c.append(el('div', 'rule', mg.seats.map(seatName).join(' VS ') + (mg.stake ? ` · ${N.stake[mg.stake]}` : '')));
-  c.append(el('div', 'rule', def.rule), el('div', 'ctl', 'WASD move · mouse aim · click shoot · E grapple'), el('div', 'bg-cd', ''));
+  const art = miniIntro(mg); if (art) c.append(art); // (a boss: his name in big)
+  c.append(el('div', 'rule', def.rule), el('div', 'ctl', miniCtl(def)), el('div', 'bg-cd', ''));
   const me = mine();
   if (me && mg.seats.includes(me.i)) c.append(okBtn()); else c.append(el('div', 'ctl', 'you sit this one out. watch the board'));
   return c;
@@ -357,10 +362,12 @@ function resCard() {
   let order = r.place || r.seats;
   if (r.winSide >= 0 && r.sides) order = [...r.sides[r.winSide], ...r.sides[1 - r.winSide]];
   if (r.fmt === 'duel' && r.win == null) c.append(el('div', 'rule', N.call.hung));
+  if (r.fmt === 'boss' && N.boss[r.id]) { const b = el('div', 'rule', r.winSide === 0 ? `${N.call.bossDown}: ${N.boss[r.id].down}` : N.boss[r.id].loss); b.style.cssText = 'font-size:26px;font-weight:700;color:' + (r.winSide === 0 ? '#39ff14' : '#ff3030'); c.append(b); }
   order.forEach((i, k) => {
     const tr = el('tr'), s = B.seats[i], d = pay.get(i);
     const win = r.win === i || (r.winSide >= 0 && r.sides[r.winSide].includes(i)) || (r.fmt === 'ffa' && k === 0);
     const nm = el('td', null, (win ? '★ ' : '') + s.name); nm.style.color = s.color;
+    const ex = miniRes(r, i); if (ex) nm.append(el('small', 'bg-ex', `  ${ex}`)); // (boss damage, ducks, falls)
     tr.append(el('td', null, r.fmt === 'ffa' ? `${k + 1}.` : ''), nm, el('td', null, d != null ? `${d > 0 ? '+' : ''}${d}${r.stake === 'bread' ? ' bread' : ''}` : ''));
     t.append(tr);
   });
