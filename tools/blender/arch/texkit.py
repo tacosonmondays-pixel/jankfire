@@ -27,6 +27,8 @@ PIN = {
  'glass': (1997, 13293), 'louvre': (1997, 13295, 2869370386), 'picket': (1997, 13296), 'fac_tenement': (1997, 17456),
  'fac_office': (1997, 17862), 'decals': (1997, 18621), 'stone': (1997, 18659), 'weather': (1997, 22814),
  'fac_glass': (1997, 0), 'profile': (1997, 23203, 2522618111), 'fac_paint': (2611, 0),
+ 'bamboo': (501, 0), 'bamwall': (511, 0), 'thatch': (521, 0), 'fringe': (531, 0), 'grain': (541, 0), 'frond': (551, 0),
+ 'weave': (561, 0), 'hammock': (571, 0),  # (the tiki village's: they also seed their own draws)
  'ph_glass': (3101, 0),
  'shackwall': (4601, 0), 'net': (4611, 0), 'timber': (4621, 0), 'tread': (4631, 0), 'rope': (4641, 0), 'shacktags': (4651, 0),  # (the pier and the bait shack's)
 }
@@ -651,6 +653,138 @@ def profile(n=32):
     return shade(img, 1 - np.clip((fbm(n, 2, 4) - 0.6) * 0.6, 0, 0.2))
 
 
+# ------------------------------------------------------------ the tiki village (Islands): bamboo, palm thatch, carved wood,
+# palm fronds, woven mats, a striped hammock. each draws only from its own seeds (and has its own PIN line)
+def bamboo(n=32):
+    """one bamboo culm (1 m a tile, explicit uvs: u once round it, v along it): golden-green fibres, a node ring every
+    half metre (a dark groove under a pale ridge), brown freckles. its own colour"""
+    rg = np.random.default_rng(501)
+    u = np.arange(n)[None, :] / n
+    g = 0.62 + 0.2 * np.cos((u - 0.3) * math.tau) + (vnoise(n, 16, 502) - 0.5) * 0.12  # (round: lit on one side)
+    g = g + (rg.random((1, n)) - 0.5) * 0.08  # fibres
+    g = np.repeat(g, n, 0) if g.shape[0] == 1 else g
+    for y0 in (0, n // 2):
+        g[(y0 + n - 1) % n] *= 0.55; g[y0] = np.minimum(1, g[y0] * 1.25); g[(y0 + 1) % n] *= 0.85
+    g -= blobs(n, 3, 1.5, 3, seed=503) * 0.25
+    img = ramp(np.clip(g, 0, 1), [(0, '#3a3010'), (0.4, '#8a8a2a'), (0.7, '#c8b44c'), (1, '#f0dc8a')])
+    return mix(img, hexc('#6a4a1c'), speck(n, 0.03, seed=504) * 0.6)
+
+
+def bamwall(n=64):
+    """a wall of bamboo culms side by side (1 m a tile): eight to the metre, each shaded round, dark gaps between,
+    nodes staggered culm to culm, a few culms older and greyer. its own colour"""
+    rg = np.random.default_rng(511)
+    g = np.zeros((n, n), np.float32); tone = np.zeros((n, n), np.float32)
+    for k in range(8):
+        x0 = k * 8
+        for i in range(8):
+            g[:, x0 + i] = [0.32, 0.62, 0.86, 0.95, 0.9, 0.8, 0.62, 0.3][i]
+        t = rg.random() * 0.25 - 0.1; tone[:, x0:x0 + 8] = t
+        for y in (int(rg.integers(n)), ):
+            for yy in (y, (y + n // 2) % n):
+                g[(yy - 1) % n, x0:x0 + 8] *= 0.5; g[yy, x0 + 1:x0 + 7] = np.minimum(1, g[yy, x0 + 1:x0 + 7] * 1.15)
+    g = g * (0.9 + fbm(n, 8, 3, seed=512) * 0.2) + tone
+    img = ramp(np.clip(g, 0, 1), [(0, '#2a2008'), (0.35, '#7a6e2a'), (0.7, '#c4ac54'), (1, '#ecd48a')])
+    old = (np.repeat((rg.random(8) < 0.25).astype(np.float32), 8)[None, :]).repeat(n, 0)
+    return mix(img, img.mean(-1, keepdims=True) * hexc('#d8c8a0') * 1.1, old * 0.35)
+
+
+def thatch(n=64):
+    """palm thatch (1 m a tile, explicit uvs: u along the eave, v down the slope): four courses of strands a metre,
+    each course's top in the shadow of the one over it, its foot ragged. its own colour"""
+    rg = np.random.default_rng(521)
+    g = np.zeros((n, n), np.float32)
+    for c in range(4):
+        y0 = c * 16
+        ln = rg.random(n) * 5  # how far each strand hangs past the course
+        for x in range(n):
+            b = 0.55 + rg.random() * 0.4
+            for j in range(-3, 16 + int(ln[x])):
+                y = (y0 + j) % n; t = (j + 3) / 22.0
+                v = b * (0.45 + 0.75 * t)  # dark under the course above, sunlit at the foot
+                g[y, x] = v if j >= 0 or g[y, x] == 0 else min(g[y, x], v)
+    g = g * (0.85 + fbm(n, 4, 3, seed=522) * 0.3)
+    img = ramp(np.clip(g, 0, 1), [(0, '#3a240c'), (0.35, '#7a5222'), (0.65, '#c0903e'), (0.9, '#e6c070'), (1, '#f6dc96')])
+    return mix(img, img.mean(-1, keepdims=True) * hexc('#c8c4b8') * 1.15, blobs(n, 3, 5, 10, seed=523) * 0.45)  # sun-bleached patches
+
+
+def fringe(n=64):
+    """the ragged fringe under an eave (1 m wide; v 0 at the eave, 1 at the longest strand): strands of every
+    length, a few split. 1-bit alpha"""
+    rg = np.random.default_rng(531)
+    h = n // 2
+    img = np.zeros((h, n, 3), np.float32); a = np.zeros((h, n), np.float32)
+    for x in range(n):
+        L = int(h * (0.35 + rg.random() * 0.65)) if rg.random() > 0.08 else int(h * 0.15)
+        b = 0.5 + rg.random() * 0.45
+        for y in range(L):
+            a[y, x] = 1; img[y, x] = ramp(np.array(b * (0.7 + 0.3 * y / h)), [(0, '#4a3012'), (0.5, '#a07434'), (1, '#e8c274')])
+    return img, a
+
+
+def grain(n=64):
+    """carved wood (1 m a tile, tinted): grain running up it, checks (cracks) along the grain, a knot, adze marks"""
+    rg = np.random.default_rng(541)
+    x = np.arange(n)[None, :].astype(np.float32)
+    warp = vnoise(n, 4, 542) * 6
+    g = 0.72 + 0.12 * np.sin((x + warp) * 0.9) + (vnoise(n, 16, 543) - 0.5) * 0.1
+    g = g + (fbm(n, 4, 3, seed=544) - 0.5) * 0.18
+    for _ in range(4):  # checks: thin dark splits along the grain
+        cx, cy, L = int(rg.integers(n)), int(rg.integers(n)), int(rg.integers(8, 24))
+        for j in range(L): g[(cy + j) % n, (cx + (j // 9)) % n] = 0.2
+    yy, xx = np.mgrid[0:n, 0:n]; k = np.hypot(np.minimum(abs(xx - 40), n - abs(xx - 40)), np.minimum(abs(yy - 20), n - abs(yy - 20)) * 1.6)
+    g = np.where(k < 3, 0.3, np.where(k < 5, g * 0.8, g))
+    g -= ((yy % 11) == 0) * (rg.random((n, n)) < 0.5) * 0.08  # adze marks
+    return ramp(np.clip(g, 0, 1), [(0, '#2a2420'), (0.5, '#9c9488'), (0.8, '#d8d2c6'), (1, '#f4f0e6')])
+
+
+def frond(n=64):
+    """a palm frond (u across, v along: 0 at its stem): a rib up the middle, leaflets swept out and back from it with
+    gaps between, ragged tips. its own colour, 1-bit alpha"""
+    rg = np.random.default_rng(551)
+    img = np.zeros((n, n, 3), np.float32); a = np.zeros((n, n), np.float32)
+    c = n / 2
+    for k in range(14):
+        y0 = 3 + k * (n - 6) / 14; w = (c - 2) * (0.55 + 0.45 * math.sin(math.pi * min(1, (k + 1) / 13)))
+        for s in (-1, 1):
+            L = int(w * (0.8 + rg.random() * 0.25))
+            for i in range(L):
+                x = int(c + s * (i + 1)); y = int(y0 + i * 0.55)
+                for t in range(-1, 2):
+                    if 0 <= x < n and 0 <= y + t < n:
+                        a[y + t, x] = 1; img[y + t, x] = ramp(np.array(0.35 + 0.5 * i / max(1, L) + rg.random() * 0.1), [(0, '#1e4a14'), (0.5, '#3f8a24'), (1, '#8ac44a')])
+    a[:, int(c) - 1:int(c) + 1] = 1; img[:, int(c) - 1:int(c) + 1] = hexc('#b4b05a')  # the rib
+    return img, a
+
+
+def weave(n=32):
+    """a woven mat (0.5 m a tile, tinted): flat strips over-under, each strip with its fibres, shaded where it dives"""
+    yy, xx = np.mgrid[0:n, 0:n]
+    cell = 8; over = ((xx // cell) + (yy // cell)) % 2 == 0
+    fx, fy = (xx % cell) / (cell - 1), (yy % cell) / (cell - 1)
+    hz = 0.62 + 0.3 * np.sin(fx * math.pi) - ((yy % 2) == 0) * 0.08  # a strip running across: fibre lines along it
+    vt = 0.62 + 0.3 * np.sin(fy * math.pi) - ((xx % 2) == 0) * 0.08
+    g = np.where(over, hz, vt)
+    g = np.where(over & ((yy % cell == 0) | (yy % cell == cell - 1)), 0.28, g)
+    g = np.where(~over & ((xx % cell == 0) | (xx % cell == cell - 1)), 0.28, g)
+    g = g * (0.92 + fbm(n, 4, 2, seed=561) * 0.16)
+    return ramp(np.clip(g, 0, 1), [(0, '#262016'), (0.6, '#b0a890'), (1, '#f4ecd8')])
+
+
+def hammock(n=32):
+    """a hammock's canvas (u across it, 1 = its width; v along it, 1 m a tile): stripes in the game's colours down
+    its length, a darker weave line every few rows, tassels along both edges. its own colour, 1-bit alpha"""
+    rg = np.random.default_rng(571)
+    cols = ['#ff4fd8', '#fff4e0', '#ffe14d', '#ff9a3c', '#4fd8ff', '#fff4e0', '#ff4fd8']
+    img = np.zeros((n, n, 3), np.float32); a = np.ones((n, n), np.float32)
+    for x in range(3, n - 3):
+        img[:, x] = hexc(cols[min(len(cols) - 1, (x - 3) * len(cols) // (n - 6))])
+    img[::4] *= 0.86
+    for x in list(range(3)) + list(range(n - 3, n)):  # tassels: one every other row
+        for y in range(n): a[y, x] = 1.0 if (y % 4 < 2 and rg.random() > 0.15) else 0.0
+        img[:, x] = hexc('#fff4e0')
+    return img, a
+
 def ph_glass(n=128):
     """Rooftop's penthouse glass (make_penthouse.py): violet mirror glass reflecting the night sky and the neon city.
     one tile = 4 m, about a storey: the sky at the top, far towers standing on a pink glow line with lit windows lower
@@ -809,6 +943,14 @@ def main():
     pin('profile'); out['profile'] = save('profile', profile(), 1.0, note='tint')
     pin('fac_paint'); out['fac_paint'] = save('fac_paint', facade_paint(), 7.0, colors=24, note='tint')
     Image.fromarray((FAC_GLOW['fac_paint'] * 255).astype(np.uint8), 'L').save(os.path.join(OUT, 'fac_paint_glow.png')); KIT['fac_paint']['glow'] = 'fac_paint_glow'
+    pin('bamboo'); out['bamboo'] = save('bamboo', bamboo(), 1.0)  # (the tiki village's: explicit uvs, see make_tiki.py)
+    pin('bamwall'); out['bamwall'] = save('bamwall', bamwall(), 1.0)
+    pin('thatch'); out['thatch'] = save('thatch', thatch(), 1.0)
+    pin('fringe'); fi, fa = fringe(); out['fringe'] = save('fringe', fi, 1.0, alpha=fa, colors=8, dither=0.5)
+    pin('grain'); out['grain'] = save('grain', grain(), 1.0, note='tint')
+    pin('frond'); fr, fra = frond(); out['frond'] = save('frond', fr, 1.0, alpha=fra, colors=12, dither=0.5)
+    pin('weave'); out['weave'] = save('weave', weave(), 0.5, note='tint')
+    pin('hammock'); hi, ha = hammock(); out['hammock'] = save('hammock', hi, 1.0, alpha=ha, colors=10, dither=0.0)
     pin('ph_glass'); out['ph_glass'] = save('ph_glass', ph_glass(), 4.0)
     pin('shackwall'); out['shackwall'] = save('shackwall', shackwall(), 1.6, dither=0.4)  # (the pier and the bait shack's: see make_pier.py)
     pin('net'); ni, na = net(); out['net'] = save('net', ni, 0.5, alpha=na, colors=6, dither=0.0, note='tint')
