@@ -184,8 +184,10 @@ export function updateWeather(dt) {
   if (!on) cur = { k: '', s: 0, i: -1 };
   if (cur.k) W.kind = cur.k;
   if (W.snap || W.test) { W.k = cur.s; W.snap = false; } // (just joined: straight into whatever the weather is now)
-  else W.k += Math.max(-dt / 6, Math.min(dt / 6, cur.s - W.k)); // (a fresh plan or a new map eases over)
-  if (W.k < 0.003) W.k = 0;
+  else { const e = Math.min(1, Math.max(dt, now() - (W.last || 0))); W.k += Math.max(-e / 6, Math.min(e / 6, cur.s - W.k)); } // (a fresh plan or a new map eases over ~6 s of real time, whatever the frame rate)
+  W.last = now();
+  if (W.k < 0.003 || !on) W.k = 0; // (switched off in settings, or out of the match: gone at once, not eased out)
+  if (!on && W.bolt) { W.bolt.h.visible = false; W.bolt = null; W.thunder.length = 0; }
   const kd = W.kind && WX_KINDS[W.kind] ? WX_KINDS[W.kind].kit : '';
   const K = W.k > 0 && kd ? kit(kd) : (kd && W.kits[kd] && typeof W.kits[kd] === 'object' ? W.kits[kd] : null);
   for (const [id, x] of Object.entries(W.kits)) if (typeof x === 'object' && x !== K) x.root.visible = false;
@@ -260,7 +262,7 @@ export function wxPre() {
   const dk = Math.min(1, d);
   fog.near *= 1 - 0.45 * dk; fog.far *= 1 - 0.4 * dk;
   fog.color.lerp(STORM_FOG, 0.65 * dk).lerp(FLASH, 0.35 * f);
-  if (hemi) { hemi.intensity *= (1 - 0.4 * d) * (1 + 2.2 * f); hemi.color.lerp(HEMI_T, 0.4 * dk); }
+  if (hemi) { hemi.intensity = hemi.intensity * (1 - 0.4 * d) * (1 + 1.5 * f) + 1.4 * f; hemi.color.lerp(HEMI_T, 0.4 * dk).lerp(FLASH, 0.5 * f); } // (+ a flat boost: a dark room flashes too)
   for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(STORM_SKY, 0.6 * dk)).lerp(FLASH, 0.3 * f);
   if (sun) sun.intensity = sun.intensity * (1 - 0.65 * dk) + 1.5 * f;
   if (sky.sky) sky.sky.material.color.lerp(STORM_SKY, 0.75 * dk).lerp(FLASH, 0.6 * f);
@@ -284,6 +286,12 @@ export function wxState() {
   const K = W.kind && W.kits[WX_KINDS[W.kind].kit];
   const kk = typeof K === 'object' && K ? K : null;
   return { map: MAP.id, plan: !!(W.plan && W.plan.m === MAP.id), phases: W.plan ? W.plan.ph.length : 0, t: now() - W.t0, k: W.k, kind: W.kind, kit: kk ? 'loaded' : K || 'none',
-    visible: !!(kk && kk.root.visible), tiles: kk ? kk.P.curtain.count : 0, splashes: kk ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
+    visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
+}
+// what the weather adds to a frame: one draw per visible piece (the copies are instanced), and their triangles
+function draws(root, tris) {
+  let n = 0;
+  root.traverseVisible((o) => { if (!o.isMesh || (o.isInstancedMesh && !o.count)) return; n += tris ? (o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3) * (o.isInstancedMesh ? o.count : 1) : 1; });
+  return Math.round(n);
 }
 export function wxTest(o) { W.test = o ? { k: o.k || 'rain', s: o.s ?? 1, i: o.i, strike: o.strike || null } : null; W.key = ''; }
