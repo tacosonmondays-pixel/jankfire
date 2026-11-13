@@ -29,15 +29,18 @@ const CAMS = {
   islands_sd: [60, 9, -44, 0.567, -0.226], // the A site: the wreck on its reef, its BOMB SITE A boards
   skyline: [14, 58, 110, 0.126, -0.09], // over the rooftop garden (south) to the Spire, the crane behind it
   skyline_sd: [66, 56, -40, 0.606, -0.277], // the A site: the helipad, its chopper and fuel cart, the ☺ CORP tower behind
+  school: [5, 1.9, 22.5, 0.3, -0.06], // ZOMBIES: the main entrance: the SIGN IN OR ELSE desk, the JANKFIELD HIGH banner down the hall
+  hospital: [0, 1.8, 8, 0, 0.12], // ZOMBIES: the waiting room: the NOW SERVING board, the skybridge, the glass roof
 };
 (async () => {
   fs.mkdirSync(out, { recursive: true });
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'jfthumb-'));
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const pg = await b.newPage({ viewport: { width: 960, height: 600 } });
-  await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ jank: 3, fov: 75, name: 'thumbs' })));
+  await pg.addInitScript(() => { localStorage.setItem('jankfire', JSON.stringify({ jank: 3, fov: 75, name: 'thumbs' })); localStorage.setItem('jf_giftseen_all', '1'); }); // (no gift popup over the shot)
   await pg.goto(url); await sleep(1500);
-  const ids = (await pg.evaluate(async () => (await import('/shared/map.js')).MAP_ORDER)).filter((id) => !only || only.includes(id));
+  // (the zombies maps join MAP_ORDER once shared/zombies.js loads)
+  const ids = (await pg.evaluate(async () => { await import('/shared/zombies.js'); return (await import('/shared/map.js')).MAP_ORDER; })).filter((id) => !only || only.includes(id));
   for (const id of ids) {
     await pg.evaluate(async ({ id, cam }) => {
       const { G } = await import('/js/ctx.js'); const { loadMap } = await import('/js/world.js'); const { MAPS } = await import('/shared/map.js');
