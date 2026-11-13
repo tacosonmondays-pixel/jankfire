@@ -6,6 +6,7 @@
 // whole party lands in the same room (roomFor honours the ticket) and on the same side (room.js joinTeam / partyteams.js).
 // rate limits on top of the socket's budget: a wrong code costs you (10 a minute, then a wait), joins 1 a second.
 const rnd = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n)); // (web crypto, no node: import: room.js imports this file and the story's referee runs room.js in a browser worker, where 'node:crypto' can't load)
+const b64url = (u8) => { let b = ''; for (const x of u8) b += String.fromCharCode(x); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }; // (base64url without Buffer: browser-safe too)
 
 export const PARTY = { grace: 30000, max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
 let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
@@ -69,7 +70,7 @@ export function hubHello(ws, who, m = {}) {
     if (old.party) push(old.party); else solo(old);
     return old;
   }
-  const h = { id: nextId++, ws, rk: crypto.randomBytes(12).toString('base64url'), name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, gone: 0, t: {}, fails: [] };
+  const h = { id: nextId++, ws, rk: b64url(rnd(12)), name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, gone: 0, t: {}, fails: [] };
   h.send = (x) => { if (h.ws.readyState === 1) h.ws.send(JSON.stringify(x)); };
   h.send({ t: 'hubok', id: h.id, rk: h.rk });
   if (h.acct) { if (!online.has(h.acct)) online.set(h.acct, new Set()); online.get(h.acct).add(h); }
@@ -202,7 +203,7 @@ function go(pt, m) {
   r.tickets = r.tickets || new Map(); r.partyT = now();
   if (cfg.priv) r.partyCfg = cfg; // (the leader's settings, checked above: whoever of the party walks in first, these apply)
   for (const x of out) {
-    const tk = Buffer.from(rnd(9)).toString('base64url');
+    const tk = b64url(rnd(9));
     r.tickets.set(tk, { party: pt.id, until: now() + PARTY.ticket });
     x.send({ t: 'pgo', mode: r.mode, /* (the room's own mode: a packed server hands out the online room) */ cfg: { ...cfg, room: r.id, ticket: tk } });
   }
