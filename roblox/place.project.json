@@ -1,0 +1,56 @@
+{
+  "name": "JANKFIRE-Rooftop",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Jankfire": { "$path": "src/shared" },
+      "JankfireRemotes": {
+        "$className": "Folder",
+        "Grapple": { "$className": "RemoteEvent" },
+        "Callout": { "$className": "RemoteEvent" }
+      }
+    },
+    "ServerScriptService": {
+      "Jankfire": { "$path": "src/server" }
+    },
+    "ServerStorage": {
+      "JankfireMeshes": { "$className": "Folder" }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CameraMode": "LockFirstPerson",
+        "EnableMouseLockOption": false,
+        "CharacterUseJumpPower": true,
+        "CharacterJumpPower": 27.6,
+        "CharacterWalkSpeed": 30,
+        "AutoJumpEnabled": false
+      },
+      "StarterPlayerScripts": {
+        "Jankfire": { "$path": "src/client" }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "Gravity": 78,
+        "FallenPartsDestroyHeight": -1500
+      },
+      "Map": {
+        "$className": "Folder",
+        "Rooftop": { "$path": "build/Rooftop.model.json" }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Technology": "Future",
+        "ClockTime": 20.6,
+        "Brightness": 1.2,
+        "Ambient": [0.22, 0.16, 0.36],
+        "OutdoorAmbient": [0.36, 0.26, 0.52],
+        "FogColor": [0.165, 0.125, 0.314],
+        "FogStart": 330,
+        "FogEnd": 1440,
+        "GlobalShadows": true
+      }
+    }
+  }
+}
