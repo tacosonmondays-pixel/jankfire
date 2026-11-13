@@ -110,12 +110,14 @@ function floorAt(x, z, cy, lo, hi) {
 const WETMAT = /water|sea|lava|mud|wetsand|glass|pool|lake|ice|acid|goo|slime/i; // (no puddle or snow patch on these: it would read as a hole)
 const hash = (a, b, c = 0) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); h = Math.imul(h ^ (h >>> 13), 1103515245); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
-const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _e = new THREE.Euler(), _c = new THREE.Color();
+const _dir = new THREE.Vector3(), _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _p = new THREE.Vector3(), _s = new THREE.Vector3(), _e = new THREE.Euler(), _c = new THREE.Color();
 function curtain(K, cam, k, potato) {
   const T = K.tile, H = K.per, n = potato ? 8 : 12, half = (n / 2) * T;
   const bx = Math.floor((cam.x - half) / T), bz = Math.floor((cam.z - half) / T);
   const y0 = (Math.floor(cam.y / H) - 1) * H; // (the 4-period column then covers at least 6 m under you and over you)
-  const key = `${Math.floor((cam.x + 0.7) / T)},${Math.floor((cam.x - 0.7) / T)},${Math.floor((cam.z + 0.7) / T)},${Math.floor((cam.z - 0.7) / T)},${y0},${Math.floor(cam.y / 2)},${n},${Math.round(k * 20)},${MAP.id}`;
+  _dir.set(0, 0, -1).applyQuaternion(G.camera.quaternion); // looking up into it, the streaks over you all point at one spot (warp speed):
+  const up = Math.max(0, (_dir.y - 0.45) / 0.55), clear = up > 0 ? 4 + 10 * up : 0; // so the columns right overhead go, more the steeper you look
+  const key = `${Math.round(up * 8)},${Math.floor((cam.x + 0.7) / T)},${Math.floor((cam.x - 0.7) / T)},${Math.floor((cam.z + 0.7) / T)},${Math.floor((cam.z - 0.7) / T)},${y0},${Math.floor(cam.y / 2)},${n},${Math.round(k * 20)},${MAP.id}`;
   if (key === W.key) return;
   W.key = key;
   const m = K.P.curtain;
@@ -123,7 +125,8 @@ function curtain(K, cam, k, potato) {
   for (let i = 0; i < n && k > 0; i++) for (let j = 0; j < n; j++) {
     const ix = bx + i, iz = bz + j;
     if (hash(ix, iz) > 0.25 + 0.75 * k) continue; // light rain: some columns stay dry (they fill in as it picks up)
-    if (cam.x > ix * T - 0.7 && cam.x < ix * T + T + 0.7 && cam.z > iz * T - 0.7 && cam.z < iz * T + T + 0.7) continue; // (streaks right in your face are giant bars: not in your own column)
+    if (cam.x > ix * T - 0.7 && cam.x < ix * T + T + 0.7 && cam.z > iz * T - 0.7 && cam.z < iz * T + T + 0.7) continue;
+    if (clear && Math.hypot(ix * T + T / 2 - cam.x, iz * T + T / 2 - cam.z) < clear) continue; // (streaks right in your face are giant bars: not in your own column)
     if (!colOpen(ix * T, iz * T, cam.y, T)) continue;
     _m.makeTranslation(ix * T, y0, iz * T); m.setMatrixAt(c++, _m);
   }
