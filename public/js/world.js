@@ -31,6 +31,7 @@ import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own lo
 import { biGroundMaterial, disposeBiGround } from './biground.js';
 import { postBegin, postEnd, setPostAA, postMid, postSSROn, postSkyInfo } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
+import { warmScene, warmTick } from './warmup.js'; // (shaders built ahead of time)
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -591,6 +592,7 @@ export function loadMap(id) {
   neonMap(MAPS[MAP.id], MAT, night); // (after lightingMap: it finds the lights)
   bounceMap(night ? null : MAPS[MAP.id], MAT); // (needs the sun's direction: after lightingMap. night maps: no sun to bounce)
   biLookMap(MAP.id, [skyMesh, sun, ...clouds]); // Battle Island's own sky, fog and grade (bilook.js; nothing on other maps)
+  warmScene(); // (warmup.js: this map's shaders and every model's, built over the next frames instead of mid-fight)
 }
 
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
@@ -690,6 +692,7 @@ export function renderFrame() {
   updateReflect(r, G.camera); // one side of a fresh reflection snapshot, when one is due (reflect.js)
   if (sun && G.scene.fog) postSkyInfo(sun.position, G.scene.fog.color.getHex(), skyNight, skyGround);
   const post = postBegin(r); reflectSSRLive(post && postSSROn()); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
+  warmTick(r); // (shaders for what isn't on screen yet: with this frame's target bound, so they're the same variants)
   r.clear();
   r.render(G.scene, G.camera);
   if (post) postMid(r, G.camera); // contact shadows from the world's depth, before your gun is drawn (post.js)
