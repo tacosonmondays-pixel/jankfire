@@ -435,5 +435,41 @@
   "px": 128,
   "alpha": false,
   "note": ""
+ },
+ "shackwall": {
+  "tile": 1.6,
+  "px": 64,
+  "alpha": false,
+  "note": ""
+ },
+ "net": {
+  "tile": 0.5,
+  "px": 32,
+  "alpha": true,
+  "note": "tint"
+ },
+ "timber": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": false,
+  "note": "tint"
+ },
+ "tread": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": false,
+  "note": ""
+ },
+ "rope": {
+  "tile": 0.25,
+  "px": 16,
+  "alpha": false,
+  "note": "tint"
+ },
+ "shacktags": {
+  "tile": 1.0,
+  "px": 128,
+  "alpha": false,
+  "note": ""
  }
 }

@@ -3303,6 +3303,13 @@ function surfSchool(B0, D0, dx, dz) {
   for (const [i, m] of ['toypink', 'toyyellow', 'toyteal'].entries()) D.box(24 + i * 0.8, 1.1, 14.6, 0.6, 2.2, 0.12, m); // surfboards stuck in the sand
   D.add(22.6, 0, 13.4, 22.72, 2.6, 13.52, 'wood'); D.add(21.4, 1.6, 13.52, 23.9, 2.6, 13.6, 'adsurf', { fit: 1 });
 }
+// the long pier east and the bait shack on it are one Blender model (public/models/arch/pier.glb, look only): pierArt(() => ...)
+// tags what they add. drape: the boxes ride the ground exactly as they always did (shared/terrain.js). the crates and the
+// barrel (prop models already) and the shack's sign (the game's own ad texture) stay the game's
+function pierArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'barrel', 'adbait']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
+}
 // the bait shack (round 46, 9, on the pier's wide bit): its hatch, its sign, crates and a barrel out front
 function baitShack(B0, D0, dx, dz) {
   const { B, D, add, W } = isPiece(B0, D0, dx, dz, []);
@@ -3562,12 +3569,14 @@ function islands() {
   isle(B, D, 3, -44, 9, -38, { shelf: 1.5 }); palm(W, 8, -39.5, 5.5, r); add(3.4, 0, -43.6, 4.6, 1.0, -42.4, 'basalt');
   B.boxes.arch.push({ id: 'walks_islands', p: [0, 0, 0], r: 0, drape: true }); const WK = { av: 'walks_islands', ai: B.boxes.arch.length - 1 }; // (every rope walk: one Blender model, look only)
   ropeWalk(B, D, false, -58, -44, 6, 2.6, [-53, -45.5], WK); ropeWalk(B, D, false, -38, -24, 6, 2.6, [-36.5, -29], WK);
+  const PR = pierArt(B, D, 'pier'); // (the pier and the bait shack: one Blender model, look only)
+  PR(() => {
   add(28, -0.3, 4.5, 62, 0, 7.5, 'wood'); add(42, -0.3, 2, 50, 0, 4.5, 'wood'); add(42, -0.3, 7.5, 50, 0, 10.5, 'wood'); // the pier, wider round the shack
   for (let x = 28.4; x < 62; x += 0.6) D.add(x, 0, 4.5, x + 0.5, 0.025, 7.5, 'planks');
   for (let x = 30; x < 62; x += 4) for (const z of [4.6, 7.4]) D.box(x, -1.3, z, 0.3, 2.2, 0.3, 'wood');
   for (const x of [32, 38, 54, 60]) for (const z of [4.75, 7.25]) B.box(x, 0.3, z, 0.36, 0.6, 0.36, 'tire'); // bollards
   for (const [x0, x1] of [[33, 42], [50, 57]]) for (const z of [4.56, 7.44]) { add(x0, 0.9, z - 0.06, x1, 1.0, z + 0.06, 'wood'); for (let x = x0 + 0.1; x < x1; x += 2) D.add(x, 0, z - 0.05, x + 0.1, 0.9, z + 0.05, 'wood'); } // its rails
-  baitShack(B, D, 0, 0);
+  baitShack(B, D, 0, 0); });
   isle(B, D, -48, -4, -42, 2, { shelf: 1.5 }); palm(W, -44, 1, 6, r); add(-47.4, 0, -3.8, -46.2, 1.1, -2.7, 'basalt');
   ropeWalk(B, D, true, -62, -48, -1, 2.6, [-57, -49.5], WK); ropeWalk(B, D, true, -42, -28, -1, 2.6, [-40.5, -33], WK);
   sandbar(B, -6, 26.5, -6, 55.5); add(-8.2, -0.6, 36.5, -6.6, 0.6, 38, 'basalt'); add(-5, -0.6, 45, -3.4, 0.8, 46.8, 'basalt');
