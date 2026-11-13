@@ -22,7 +22,7 @@ from mathutils import Vector
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({
-    'cwash': ('limewash', '#fffbf4', {}), 'cwashin': ('limewash', '#ffd2ea', {}), 'cplinth': ('stucco', '#22c8ec', {'gloss': 0.35}),
+    'cwash': ('limewash', '#fff3e0', {}), 'cwashin': ('limewash', '#ffd2ea', {}), 'cplinth': ('stucco', '#22c8ec', {'gloss': 0.35}),
     'cband': ('trim', '#ffe14d', {'gloss': 0.35}), 'csill': ('stone', '#f6f2ea', {}),
     'croof': ('pantile', '#ff3ea8', {'gloss': 0.35}), 'croll': ('trim', '#ff2a90', {'gloss': 0.55}), 'cfascia': ('timber', '#30d8f0', {'gloss': 0.3}),
     'csoffit': ('timber', '#fff2dc', {}), 'cbeam': ('timber', '#b0835c', {}), 'cgutter': ('trim', '#ffe14d', {'gloss': 0.6}),
@@ -30,7 +30,7 @@ MATS.update({
     'cglass': ('trim', '#1a3a5a', {'gloss': 0.9}), 'cshutg': ('louvre', '#2ee8a0', {'gloss': 0.3}), 'cshutl': ('louvre', '#b47cff', {'gloss': 0.3}),
     'cbox': ('grain', '#22c8ec', {'gloss': 0.3}), 'csoil': ('tar', '#4a3226', {}), 'cleaf': ('stucco', '#36c83a', {}),
     'cfl1': ('trim', '#ff3ac8', {'gloss': 0.4}), 'cfl2': ('trim', '#ffe14d', {'gloss': 0.4}), 'cfl3': ('trim', '#ff3030', {'gloss': 0.4}), 'cfl4': ('trim', '#fff8f0', {'gloss': 0.4}),
-    'cchim': ('limewash', '#fffbf4', {}), 'cchimb': ('trim', '#ff3ea8', {'gloss': 0.4}), 'cpot': ('stucco', '#ff7a30', {'gloss': 0.4}), 'cdark': ('tar', '#1a141c', {}),
+    'cchim': ('limewash', '#fff3e0', {}), 'cchimb': ('trim', '#ff3ea8', {'gloss': 0.4}), 'cpot': ('stucco', '#ff7a30', {'gloss': 0.4}), 'cdark': ('tar', '#1a141c', {}),
     'csmoke': ('stucco', '#f4eef8', {'fade': 0.6}),
     'cfloor': ('planks', '#ffe0c0', {}), 'crug': ('weave', '#ff6ac8', {}), 'cmat': ('doormat', '#ffffff', {}),
     'cbed': ('metalplate', '#ff4fd8', {'gloss': 0.6}), 'csheet': ('stucco', '#fbf8ff', {}), 'cquilt': ('weave', '#5ad8ff', {}),
