@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.25', date: '2026-11-13', title: 'PLEASE HOLD (PROPERLY)', items: [
+    "fixed: night shift's PLEASE HOLD shield was posing a spare copy of itself. the real one comes up across the front now.",
+  ] },
   { v: '11.24', date: '2026-11-13', title: 'WRECKING BALL', items: [
     "new mech: WRECKING BALL. a 4 m hamster ball with a guy running inside. roll into people (faster = more ouch), rev up and launch, swing on the chain, slam the ground from as high as you dare.",
     "its ultimate, PILE DRIVER: rockets 30 m up, you pick a spot, it comes down at 70 m/s. everyone sees the INCOMING ring. move.",
