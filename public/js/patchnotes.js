@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.19', date: '2026-11-13', title: 'MECHS HIT THE GYM', items: [
+    "mechs hit the gym: PAPER PLANE is 6.6 m now, NIGHT SHIFT 7.7 m. bigger swords, bigger stomps, bigger landing circle, and they plough through palm trees and lamp posts.",
+    "drops need open sky now (NO ROOM FOR IT HERE, you keep it), so no more mechs in the backrooms or inside the warehouse. low doors stop them too.",
+    "rockets that hit a mech's chest actually hurt it now. bot mechs stop face-planting into walls and hop round instead.",
+  ] },
   { v: '11.18', date: '2026-11-13', title: 'TIKI TIME', items: [
     "the islands tiki village got real: bamboo, thatch, a big carved tiki with a gold tooth, hammocks, and a surfboard a shark took a bite out of. lesson 1: do not.",
   ] },
