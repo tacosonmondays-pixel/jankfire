@@ -33,7 +33,7 @@ const MK = {
 
 export function jesterLordLook(K) {
   jlRegister();
-  const { person, g, sph, box, cyl, flat, patMat } = K;
+  const { person, g, sph, cyl, flat, patMat } = K;
   const PINK = 0xff4fc0, YEL = 0xffe14d, LAQ = 0x2a1236;
   const pink = flat(PINK), yel = flat(YEL), laq = flat(LAQ), wht = flat(0xf6f2ec), blk = flat(0x17111c), brass = flat(0xd8a840);
   const diamonds = (a, b) => (c, w, h) => { c.fillStyle = b; c.fillRect(0, 0, w, h); c.fillStyle = a; c.beginPath(); c.moveTo(w / 2, 0); c.lineTo(w, h / 2); c.lineTo(w / 2, h); c.lineTo(0, h / 2); c.fill(); };

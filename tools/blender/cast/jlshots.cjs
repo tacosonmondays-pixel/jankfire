@@ -8,6 +8,8 @@
 // close = face, eyes open, nose, hat, horns and bells, collar, marotte, stockings, foot and bell, big top, the stump -> jl_game_closeups.jpg
 // poses = one moment a clip                                                    -> jl_game_poses.jpg
 // clips = a contact strip per clip (12 frames, the marks called out)           -> jl_clip_<name>.jpg
+// film  = the whole set once, stepped frame by frame at 30 fps (the real clip code, the bells' swing, the web, the
+//         stump) and put together by ffmpeg, so it plays at true speed whatever the machine  -> jl_rehearsal.mp4
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), { execSync } = require('child_process');
 const [PORT = 3000, OUT = '.', WHAT = 'check,turn,sil,close,poses,clips', ONLY = ''] = process.argv.slice(2);
@@ -129,7 +131,7 @@ const ROOT = path.join(__dirname, '..', '..', '..');
     await pg.evaluate(() => { const X = window.JLX, { THREE } = X; X.clear(0xffffff);
       const black = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const mk = (o) => { const sc = new THREE.Scene(); sc.background = new THREE.Color(0xffffff); X.G.scene = sc; const J = X.jester(o); J.L.face.root.visible = false; sc.add(J.c.root); sc.overrideMaterial = black; return sc; };
-      X.cell(0, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-5.6, 2.95, -0.45], [0, 2.95, -0.45], 30), '', 'his head from his left, like the sketch');
+      X.cell(0, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-6.6, 3.05, -0.35], [0, 3.05, -0.35], 34), '', 'his head from his left, like the sketch');
       X.cell(1, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-30, 1.9, 0.2], [0, 1.9, 0.2], 10.5), '', 'from his left at 30 m, enlarged');
       X.cell(2, 4, 1, mk({ clip: 'jl_idle', t: 0.3, far: true }), X.cam([0, 1.9, -34], [0, 1.9, 0.2], 9.5), '', 'the far model (past 34 m), front, enlarged');
       const s3 = mk({ clip: 'jl_idle', t: 0.3 }); const M = X.other('mannequin', 1.8); M.ch.root.position.set(3.2, 0, 0); s3.add(M.ch.root); const fl = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshBasicMaterial({ color: 0xdddddd })); fl.rotation.x = -Math.PI / 2; s3.add(fl); s3.overrideMaterial = null;
@@ -184,6 +186,29 @@ const ROOT = path.join(__dirname, '..', '..', '..');
           X.cell(i, 6, 2, sc, X.orbit([0.4, y, 0], deg, dist, 0.08), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, VIEW[clip] || null]);
       await shot('jl_clip_' + clip.slice(3));
     }
+  }
+  if (what.includes('film')) {
+    const dir = path.join(OUT, '_film'); fs.mkdirSync(dir, { recursive: true });
+    const PROG = [['jl_idle', 4.0, 0, 'HOLDING COURT'], ['jl_talk', 4.8, 0, 'THE SHOWMAN'], ['jl_bow', 3.7, 0, 'THE BOW'], ['jl_walk', 1.8, 1.7, 'THE SCUTTLE'], ['jl_idle', 0.9, 0, 'THE SCUTTLE'],
+      ['jl_hang', 4.2, 0, 'UP INTO THE WEB'], ['jl_drop', 2.7, 0, 'AND DOWN · TA-DA'], ['jl_leg_off', 4.6, 0, 'LEG DAY CANCELLED'], ['jl_leg_back', 3.1, 0, 'IT SCREWS BACK ON']];
+    await pg.evaluate(() => { const X = window.JLX; X.clear(); const sc = X.scene(0x2a1830, 9); const J = X.jester({ clip: 'jl_idle', t: 0, settle: 0 }); sc.add(J.c.root);
+      X.film = { sc, J, cam: X.cam([6.2, 3.0, -9.6], [0.2, 2.5, 0.3], 42) }; J.a.pos = [-1.4, 0, 0]; J.c.root.position.set(-1.4, 0, 0); });
+    let f = 0;
+    for (const [clip, len, walk, label] of PROG) {
+      for (let t = 0; t < len - 1e-6; t += 1 / 30) {
+        await pg.evaluate(([clip, t, walk, label]) => { const X = window.JLX, F = X.film, a = F.J.a, c = F.J.c;
+          if (walk) { a.pos[0] += walk / 30 * (a.pos[0] < 1.4 ? 1 : 0); a.yaw = -Math.PI / 2; } else a.yaw += (0 - a.yaw) * 0.12;
+          c.root.position.set(a.pos[0], 0, a.pos[2]); c.root.rotation.y = a.yaw;
+          X.CLIPS[clip].f(c, t, 1); c.root.updateMatrixWorld(true);
+          X.r.setScissorTest(false); X.r.setViewport(0, 0, 1600, 900); F.cam.aspect = 16 / 9; F.cam.updateProjectionMatrix(); X.r.render(F.sc, F.cam);
+          X.lab.innerHTML = `<div style="position:absolute;left:28px;top:28px;transform:rotate(-2deg);font:900 34px sans-serif;color:#ffe14d;background:rgba(18,8,24,.92);border:4px solid #ff4fd8;box-shadow:8px 8px 0 #4fd8ff;padding:6px 18px">${label}</div>`;
+        }, [clip, t, walk, label]);
+        await pg.screenshot({ path: path.join(dir, `f${String(f++).padStart(4, '0')}.png`) });
+      }
+    }
+    const mp4 = path.join(OUT, 'jl_rehearsal.mp4');
+    execSync(`ffmpeg -loglevel error -y -framerate 30 -i "${dir}/f%04d.png" -vf scale=960:540 -c:v libx264 -pix_fmt yuv420p -crf 23 -preset slow -movflags +faststart "${mp4}"`);
+    fs.rmSync(dir, { recursive: true, force: true }); console.log('wrote', mp4, f, 'frames', fs.statSync(mp4).size >> 10, 'KB');
   }
   console.log(errs.length ? 'ERRORS:\n' + [...new Set(errs)].join('\n') : 'no errors');
   await b.close();

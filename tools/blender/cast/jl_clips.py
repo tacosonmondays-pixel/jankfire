@@ -311,7 +311,8 @@ fold = reach(P(), 'R', [0.40, 1.92, -0.52], [-0.14, 1.98, -0.52], fingers=[-1.0,
 fold = reach(fold, 'L', [-0.40, 1.90, -0.50], [0.12, 1.92, -0.50], stick_up=[0.2, 1.0, 0.0], name='hang: arms folded (left)')
 FOLD = {k: v for k, v in fold.items() if k.startswith(('arm', 'fore', 'hand'))}
 crouch = plant(P({'body.py': -0.42, 'body.x': 0.06, 'abdo.x': 0.12, 'spine.x': -0.18, 'head.x': -0.1, 'x.look': 0.6}))
-air = P(FOLD, {'body.py': 3.4, 'body.z': 2.2, 'spine.x': 0.1, 'x.look': 0.0, 'hatR.z': 0.2, 'hatL.z': -0.2})
+air = P(FOLD, {'body.py': 3.4, 'body.z': 2.2, 'body.px': R.TH_Y * math.sin(2.2),   # (it turns over about his middle, not the floor)
+              'spine.x': 0.1, 'x.look': 0.0, 'hatR.z': 0.2, 'hatL.z': -0.2})
 for s, pr in LEGS: air.update(R.leg_pose(s, pr, R.add(R.foot_home(s, pr), [0, 0.55, 0]), R.BETA + 0.3, 0.2))
 hang = P(FOLD, {'body.py': WEB_Y, 'body.z': math.pi, 'spine.x': 0.06, 'head.x': 0.12, 'x.look': 0.0, 'hatR.z': -0.1, 'hatL.z': 0.1, 'hatRb.z': -0.15, 'hatLb.z': 0.15})
 catch = P(hang, {'body.py': WEB_Y - 0.25, 'spine.x': 0.2, 'head.x': 0.3})
@@ -332,7 +333,7 @@ clip('jl_hang', hang_keys, marks=[(0.4, 'spring'), (1.6, 'catch')], face=[(0, 'h
      osc=[('body.z', 0.02, 1.6, 0.0), ('body.x', 0.012, 1.1, 1.0), ('hatRb.z', 0.06, 2.3, 0.0), ('hatLb.z', 0.06, 2.1, 1.0), ('marotte.x', 0.1, 2.0, 0.0), ('head.z', 0.03, 1.6, 0.6)],
      note='up into the web: a crouch, a spring (0.4), he rolls over and his feet catch the web %.1f m up (1.6). held: hanging belly up, the jester head down, arms folded, a slow swing' % WEB_Y)
 
-fall = P(FOLD, {'body.py': 2.55, 'body.z': 1.1, 'spine.x': -0.1, 'arm.z': 1.1, 'armL.z': -1.1, 'x.look': 0.0, 'hatR.z': 0.3, 'hatL.z': -0.3})
+fall = P(FOLD, {'body.py': 2.55, 'body.z': 1.1, 'body.px': R.TH_Y * math.sin(1.1), 'spine.x': -0.1, 'arm.z': 1.1, 'armL.z': -1.1, 'x.look': 0.0, 'hatR.z': 0.3, 'hatL.z': -0.3})
 for s, pr in LEGS: fall.update(R.leg_pose(s, pr, R.add(R.foot_home(s, pr), [0, 0.7, 0]), R.BETA + 0.4, 0.25))
 land = plant(P({'body.py': -0.48, 'body.x': -0.05, 'abdo.x': 0.1, 'spine.x': -0.3, 'head.x': -0.2, 'hatR.x': -0.3, 'hatL.x': -0.3, 'collar.x': -0.2, 'x.look': 0.3}))
 bounce = plant(P(tada, {'body.py': 0.08}))
