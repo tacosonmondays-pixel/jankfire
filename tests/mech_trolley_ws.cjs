@@ -389,17 +389,22 @@ const near = (a, b, r) => !!a && !!b && Math.hypot(a[0] - b[0], a[2] - b[2]) < r
   // (f) a map change mid-scoop: a fresh mech, a fresh scoop, then cfg
   await sleep(3500);
   A.got.length = 0; A.send({ t: 'deploy', r: 'mechdrop', at: [0, Y, 16], mf: 'trolley' });
+  E2.got.length = 0; E2.send({ t: 'deploy', r: 'mechdrop', at: [0, Y, 7], mf: 'nightshift' }); // (an enemy pilot parked in AISLE 5's path)
   const P2 = [0, Y, 21]; P = P2;
-  await run(3200, () => new Map([[A, [P2, { y: look0.y, x: look0.x }]]]));
-  A.send({ t: 'mech', k: 'in' }); P = [0, Y, 16]; await run(600);
+  const e2m = () => (E2.all('mech', (m) => m.k === 'land').pop() || {}).p || [0, Y, 7];
+  await run(3200, () => new Map([[A, [P2, { y: look0.y, x: look0.x }]], [E2, [[3, Y, 7]]]]));
+  { const q = e2m(); await run(200, () => new Map([[E2, [[q[0] + 2, Y, q[2]]]]])); E2.send({ t: 'mech', k: 'in' }); }
+  A.send({ t: 'mech', k: 'in' }); P = [0, Y, 16]; await run(600, () => new Map([[E2, [[e2m()[0], Y, e2m()[2]], { f: MF.MECH }]]]));
+  const e2in = E2.all('mech', (m) => m.k === 'in' && m.id === E2.id).length === 1;
   for (let i = 0; i < 80; i++) { if (en().u >= 100) break; await run(150); }
   await goto(L0); await run(400);
-  const lay5 = () => new Map([[E4, [[0, Y, 12]]]]);
+  const lay5 = () => new Map([[E4, [[0, Y, 12]]], ...(e2in ? [[E2, [[e2m()[0], Y, e2m()[2]], { f: MF.MECH }]]] : [])]);
   await run(800, lay5);
   for (const c of ALL) c.got.length = 0;
   A.send({ t: 'mech', k: 'aisle', on: 1 });
   P = (t) => lerp(L0, [0, Y, 4], t / (20 / 30 * 1000)); await run(800, lay5, MF.B); P = [0, Y, 4];
   ok(A.all('mech', (m) => m.k === 'trhold' && m.on === 1 && m.v === E4.id).length === 1, 'scooped one more');
+  ok(e2in && A.all('mech', (m) => m.k === 'ram' && m.id === A.id && m.to === E2.id).length === 1 && !A.all('mech', (m) => m.k === 'trhold' && m.v === E2.id).length, `AISLE 5 with room in the basket: an enemy mech in the way gets rammed, not scooped (pilot in: ${e2in})`);
   A.send({ t: 'cfg', map: 'crate' }); await run(1200);
   ok(A.all('mech', (m) => m.k === 'trhold' && m.on === 0 && m.v === E4.id).length >= 1, 'the map changes: let go');
   // garbage + a flood, then the pilot disconnects

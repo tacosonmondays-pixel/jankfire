@@ -166,6 +166,27 @@ function build(j, own) {
   const arms = [-1, 1].map((s) => { const a = new THREE.Group(); a.position.set(s * 0.21, -0.42, 0.44); body.add(a); add(a, tube([0, 0, 0], [s * 0.07, 0.42, -0.44], 0.05, 6), acc); add(a, new THREE.SphereGeometry(0.06, 6, 4), skin(), [s * 0.07, 0.42, -0.44]); return a; });
   const legs = [-1, 1].map((s) => { const l = new THREE.Group(); l.position.set(s * 0.1, -0.84, 0.48); body.add(l); add(l, cbox(0.13, 0.6, 0.14, 0.03), dark(), [0, -0.3, 0]); add(l, cbox(0.14, 0.08, 0.24, 0.03), white(), [0, -0.62, -0.05]); return l; });
   j.handle.userData.pilot = { P, body, head, arms, legs };
+  // one draw per material per moving part: the static bits under each joint (and the boosters, the forks) baked together
+  for (const k of Object.keys(PIV)) pack(j[k], k === 'chassis' ? j.chassis.children.filter((o) => o.isGroup && !Object.hasOwn(PIV, o.name)) : k.startsWith('caster_') ? [j[k].userData.fork] : []);
+  for (const o of [lock, body, head, ...arms, ...legs]) pack(o, []);
+}
+// merge a node's own meshes (+ those of the static groups in `fold`) by material, in the node's space
+const _m = new THREE.Matrix4();
+function pack(node, fold) {
+  const by = new Map();
+  const take = (m, pre) => { if (!m.isMesh) return; m.updateMatrix(); _m.copy(m.matrix); if (pre) _m.premultiply(pre); (by.get(m.material) || by.set(m.material, []).get(m.material)).push([m, _m.clone()]); };
+  for (const m of node.children) take(m, null);
+  for (const g of fold) { g.updateMatrix(); for (const m of g.children) take(m, g.matrix); }
+  for (const [mat, list] of by) {
+    if (list.length < 2) continue;
+    const geos = list.map(([m, mx]) => { let g = m.geometry.clone(); for (const k of Object.keys(g.attributes)) if (k !== 'position' && k !== 'normal') g.deleteAttribute(k); if (g.index) g = g.toNonIndexed(); return g.applyMatrix4(mx); });
+    const mg = mergeGeometries(geos, false);
+    for (const g of geos) g.dispose();
+    if (!mg) continue; // (shapes that don't merge: left as they are)
+    for (const [m] of list) { m.removeFromParent(); if (!m.geometry.userData.shared) m.geometry.dispose(); }
+    node.add(new THREE.Mesh(mg, mat));
+  }
+  for (const g of fold) if (!g.children.length) g.removeFromParent();
 }
 
 // ------------------------------------------------------------ pose

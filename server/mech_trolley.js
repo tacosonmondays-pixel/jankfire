@@ -27,6 +27,8 @@ export function installTrolley(Room, U) {
     const hs = Math.min(raw, KIT.trolley.cap.call(room, p, M, p.f, n), p.isBot ? 1e9 : (T.hsPrev || 0) + 12);
     return { hs, fx: raw > 1e-6 ? v[0] / raw : 0, fz: raw > 1e-6 ? v[1] / raw : 0 };
   };
+  // the measured velocity, clamped the same way (cans and the dump fling ride on it)
+  const velOf = (room, p, M, n) => { const m = moveOf(room, p, M, n); return [m.fx * m.hs, m.fz * m.hs]; };
   const chargeOf = (T, n) => (n - T.chT <= TR.drift.keep * 1000 ? T.ch : 0);
 
   KIT.trolley = {
@@ -67,7 +69,8 @@ export function installTrolley(Room, U) {
       if (T.aisle && n >= T.aisle.until) this.trDump(p, 'time');
       if (M.dash) this.trPushSweep(p, M, n);
       if (!M.dash && !T.aisle && !T.coast && T.boost) { T.boost = false; M.bank = Math.min(M.bank, MECH.slack + TR.speed * 1.12 * 0.35); } // (the push's / AISLE 5's extra bank goes with them)
-      else if (!(T.aisle && this.trScoop(p, M, n))) this.trRamTick(p, M, n);
+      else if (T.aisle && this.trScoop(p, M, n)) this.trRamTick(p, M, n, true); // (room in the basket: only what won't fit in it gets rammed)
+      else this.trRamTick(p, M, n);
       this.trCarry(p, M, n, dt);
       this.trRiders(p, M, n);
     },
@@ -104,7 +107,7 @@ export function installTrolley(Room, U) {
       let o = trSpot(p.pos, p.yaw, TR.muzzle);
       const e = this.mechEyeOf(p);
       if (!clear(e, o, this.boxes) || raycast(o, d, 0.4, this.boxes)) o = e; // (backed into a wall: from the cockpit)
-      const mv = speedOf(p, M, n);
+      const mv = velOf(this, p, M, n);
       const vel = [d[0] * C.speed + mv[0] * 0.5, d[1] * C.speed + C.up, d[2] * C.speed + mv[1] * 0.5];
       const pr = this.makeProj(p, 'trcan', o, vel, { b: 0, born: n, r: TR.can.r }); // (r: the can grows with the mechs)
       this.broadcast({ t: 'mech', k: 'trtoss', id: p.id }, p.isBot ? undefined : p.id);
@@ -186,11 +189,13 @@ export function installTrolley(Room, U) {
       }
     },
     // ---- ram: driving into people at speed (what the server measured)
-    trRamTick(p, M, n) {
+    // too big (or busy) for the basket: a mech, a rig, a ball, a bubble, anyone on a lasso
+    trBig(t) { return !!(t.mech || t.trap || (t.rig && this.rigOn(t)) || this.isBall(t) || (t.lz && (t.lz.by || t.lz.hold))); },
+    trRamTick(p, M, n, big) {
       const { hs, fx, fz } = moveOf(this, p, M, n), h = trRam(hs), R = TR.ram;
       if (!h) return;
       for (const t of this.players.values()) {
-        if (t === p || !t.alive || this.friendly(p, t) || this.trHolding(p, t) || n < (M.ramT.get(t.id) || 0)) continue;
+        if (t === p || !t.alive || this.friendly(p, t) || this.trHolding(p, t) || n < (M.ramT.get(t.id) || 0) || (big && !this.trBig(t))) continue;
         const dx = t.pos[0] - p.pos[0], dz = t.pos[2] - p.pos[2], l = Math.hypot(dx, dz), dy = t.pos[1] - p.pos[1];
         if (l > TR.hw + 0.5 + (this.mechOn(t) ? MECH[t.mech.f].hw : 0.45) || dy < -1.8 || dy > TR.h || (l > 0.3 && (dx * fx + dz * fz) / l < 0.2)) continue;
         if (!clear(this.mechCenter(p), this.mechCenter(t), this.boxes)) continue;
@@ -227,7 +232,8 @@ export function installTrolley(Room, U) {
       for (const h of out) { const t = this.players.get(h.id); if (t) this.trRelease(p, t, 'dump'); }
       this.mechEn(p, true);
     },
-    // anyone it runs into (in front of the basket, it moving): scooped, up to max. true = the basket's full (it rams)
+    // anyone it runs into (in front of the basket, it moving): scooped, up to max. true = room left (only the big ones get
+    // rammed), false = full (it rams everyone)
     trScoop(p, M, n) {
       const T = M.tr, A = TR.aisle;
       if (T.held.length >= A.max) return false;
@@ -235,7 +241,7 @@ export function installTrolley(Room, U) {
       const f = fwdOf(p), front = [p.pos[0] + f[0] * TR.hw, p.pos[1], p.pos[2] + f[1] * TR.hw];
       for (const t of this.players.values()) {
         if (T.held.length >= A.max) break;
-        if (t === p || !t.alive || this.friendly(p, t) || t.mheld || t.mech || t.trap || (t.rig && this.rigOn(t)) || this.isBall(t) || (t.lz && (t.lz.by || t.lz.hold))) continue; // (a mech, a rig, a ball: too big for the basket. they get rammed)
+        if (t === p || !t.alive || this.friendly(p, t) || t.mheld || this.trBig(t)) continue; // (a mech, a rig, a ball: too big for the basket. they get rammed)
         if (!t.isBot && n - (t.spawnT || 0) < 1200) continue; // (just spawned)
         const dx = t.pos[0] - front[0], dz = t.pos[2] - front[2], dy = t.pos[1] - p.pos[1];
         if (Math.hypot(dx, dz) > A.reach || dy < -1.5 || dy > TR.h) continue;
@@ -271,7 +277,7 @@ export function installTrolley(Room, U) {
       if (t.mheld && t.mheld.by === c.id) t.mheld = null;
       this.broadcast({ t: 'mech', k: 'trhold', id: c.id, v: t.id, on: 0, s: k, why: how });
       if (!t.alive || how === 'dead') return;
-      const f = fwdOf(c), cv = c.isBot ? [c.vel[0], c.vel[2]] : c.mech && c.mech.mv ? c.mech.mv : [0, 0];
+      const f = fwdOf(c), cv = c.isBot ? [c.vel[0], c.vel[2]] : c.mech && c.mech.tr ? velOf(this, c, c.mech, now()) : [0, 0];
       // somewhere it can't be inside a wall: their spot if the trolley's middle can see it, else the middle
       // (no wall between the trolley's middle and that spot, not inside anything, not off the map)
       let at = t.pos.slice();
