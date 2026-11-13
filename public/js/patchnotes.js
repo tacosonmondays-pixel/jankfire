@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.31', date: '2026-11-13', title: "POOL'S OPEN", items: [
+    "POOL'S OPEN: rooftop's pool party got real furniture. striped cabanas, sun loungers, a dj booth with actual decks, pink speakers, a light rig and a flamingo floatie. still can't swim.",
+  ] },
   { v: '11.30', date: '2026-11-13', title: 'BACK TO THE GARAGE', items: [
     "offline battle island, plant & defuse, jank royale and zombies take you back to their lobby after the match, with a PLAY AGAIN button. no more surprise quick play.",
   ] },
