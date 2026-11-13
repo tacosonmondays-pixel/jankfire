@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.46', date: '2026-11-13', title: 'COLD FRONT', items: [
+    "it snows in the scary forest now. sometimes in suburb too. it doesn't snow indoors, we checked.",
+    "the desert and the rooftop get star showers: meteors across the sky. the desert gets an early night for it. nobody asked.",
+    "mount kaboom: redder ash sky, glowing lava bombs with comet tails, no more black puddle in the shallows, and looking straight up into the rain no longer goes to warp speed.",
+  ] },
   { v: '11.45', date: '2026-11-13', title: 'DEAD AIR', items: [
     "deb's boombox works now. two stations, both terrible, both great: WZMB 66.6 SMOOTH APOCALYPSE and BRAAAINS FM. walk up to the desk in the zombies lobby to hear it. the dial drifts between them through static.",
     "the school and hospital zombies maps finally have their pictures in the menu. the hospital is still serving number 003.",
