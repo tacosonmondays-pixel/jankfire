@@ -33,8 +33,9 @@ export function build(L) {
   }
   // ---- the rack: your primary, secondary and melee on hooks (rebuilt when the loadout changes)
   const rack = new THREE.Group(); rack.position.set(5.2, -0.5, -10.4); rack.rotation.y = -0.2; root.add(rack); // (on the back wall, right of the screen)
-  L.box(rack, 4.4, 2.2, 0.15, L.mat(0x2a2430, 0.7), 0, 2.3, 0).castShadow = false;
-  L.box(rack, 4.6, 0.1, 0.35, L.mat(0xffc21a, 0.4, 0.3), 0, 1.15, 0.15);
+  const rkG = new THREE.Group(); rack.add(rkG); // (boxes until the Blender rack lands)
+  L.box(rkG, 4.4, 2.2, 0.15, L.mat(0x2a2430, 0.7), 0, 2.3, 0).castShadow = false;
+  L.box(rkG, 4.6, 0.1, 0.35, L.mat(0xffc21a, 0.4, 0.3), 0, 1.15, 0.15);
   const guns = new THREE.Group(); rack.add(guns);
   let gunKey = '';
   function rackGuns() {
@@ -45,6 +46,13 @@ export function build(L) {
     ids.forEach((id, i) => { if (!id) return; try { const w = buildWeapon(id, G.equipped && G.equipped[id]); w.scale.setScalar(2.1); w.rotation.y = Math.PI / 2; w.position.set(-1.4 + i * 1.4, 2.4, 0.25); w.traverse((o) => { if (o.isMesh) o.castShadow = true; }); guns.add(w); } catch { /* (no model) */ } });
   }
   rackGuns();
+  // the Blender screen frame and gun rack (x_lobby_hangarprops): the jumbotron's housing, bezel, speakers, LIVE light and
+  // ticker round the mode screen (the screen itself stays the plane above), the armory rack under your guns
+  L.glb('x_lobby_hangarprops', (o) => {
+    const take = (n) => { const m = o.getObjectByName(n); if (m) { m.position.set(0, 0, 0); m.traverse((x) => { if (x.isMesh) { x.castShadow = !/cable/.test(x.name); x.receiveShadow = true; } }); } return m; };
+    const sf = take('screenframe'); if (sf) { sf.position.set(0, 3.35, -10.75); root.add(sf); scrBox.visible = false; }
+    const gr = take('gunrack'); if (gr) { freeTree(rkG); rkG.clear(); rkG.add(gr); }
+  });
   // ---- props: crates, a pallet, sandbags (the map props), a cone, a briefing table for PLANT & DEFUSE
   const prop = (id, at, ry = 0, y = 0) => L.glb(id, (o) => { const l1 = o.getObjectByName('lod1'); if (l1) l1.visible = false; o.position.set(at[0], y, at[1]); o.rotation.y = ry; o.traverse((m) => { if (m.isMesh) m.castShadow = m.receiveShadow = true; }); root.add(o); });
   prop('p_crate', [6.2, -7.2], 0.2); prop('p_crate', [7.5, -6.2], -0.3); prop('p_crate', [6.6, -7.0], 0.5, 1.2);

@@ -68,6 +68,7 @@ import { ZM } from '../shared/zombies.js';
 import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
+import { installPregame } from './pregame.js'; // the pre-game deck off the map's edge, while a mode lobby counts down
 import { inPit, pitUnder, sink, swim, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
@@ -1019,6 +1020,7 @@ class Room {
 
   stepBot(b, dt) {
     if (this.lassoBot(b)) return; // on the end of a lasso: whoever holds it moves them
+    if (b.mheld && this.mechHeldBot(b, dt)) return; // carried in a mech (the trolley's basket): it moves them (server/mech.js)
     if (b.trap) { this.driftTrapped(b); return; } // in a soap bubble: no thinking, just floating
     if (this.isleOn && this.isleBotStep(b, dt)) return; // battle island: crawling when down, jumping with the squad
     if (this.brOn && this.brBotStep(b, dt)) return; // jank royale: riding the blimp, falling, gliding
@@ -2360,6 +2362,7 @@ class Room {
       const w = WEAPONS[pr.k];
       if (pr.k === 'rigmissile') { this.rigMissileStep(pr, dt); continue; } // overdrive rig missiles home in (server/rig.js)
       if (pr.k === 'mechmissile') { this.mechMissileStep(pr, dt); continue; } // mech swarm missiles: the same, corkscrewing
+      if (w.kit) { this.mechProjStep(pr, dt, n); continue; } // a hero mech's own (the trolley's tin cans): its kit steps them (server/mech.js)
       const age = (n - pr.born) / 1000;
       if (pr.k === 'bloodcross') { this.tickBloodBolt(pr, dt, n); continue; }
       if (pr.k === 'tennis') { this.tennisStep(pr, dt, n); continue; } // counted bounces (server/primaries.js)
@@ -2888,6 +2891,7 @@ class Room {
   handle(p, m) {
     if (p.quiz && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // pens down: no attacks during a pop quiz
     if (p.trap && ['fire', 'hit', 'push', 'item', 'deploy', 'tbag', 'use', 'parry', 'spray'].includes(m.t)) return; // sealed in a soap bubble: no attacks, parries, items, streaks, sprays or planting till it pops
+    if (p.mheld && this.mechHeldStop(p, m)) return; // carried in a mech (the trolley's basket): scooped = hands off, riding = guns + heals only (server/mech.js). before the modes' own handlers, which act and return
     if (this.isleOn && this.isleHandle(p, m)) return; // battle island: down = crawl, no shooting
     if (this.brOn && this.brHandle(p, m)) return; // jank royale: the blimp, loot, heals; only guns you carry, with bullets left
     if (this.isEcon() && this.econHandle(p, m)) return;
@@ -4061,6 +4065,7 @@ installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installWeather(Room, { now, send, force: WX_FORCE }); // the weather timeline (server/weather.js: wraps tick + addHuman)
 installPings(Room, { now, send }); // the big map's pings (server/pings.js)
+installPregame(Room, { send }); // the pre-game deck (after installReset: it wraps handle, the damage paths and the lobby)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats

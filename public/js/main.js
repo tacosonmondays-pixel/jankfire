@@ -70,7 +70,7 @@ import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mech
 import { MECH, mechScale } from '/shared/mech.js'; // (the server's mech size, from the welcome)
 import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
-import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle, brWheel } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
 import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from './island.js'; // battle island: squads, down + crawl, revives
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
@@ -109,6 +109,7 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
+import { pregameFrame, pregameKey, pregameOn } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
 import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
@@ -1235,6 +1236,7 @@ function pressed(e) {
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (G.story && G.story.key(e, true)) return; // OVERDUE (flagged): quick bar 1-8, the wheel, the tote bag, pick up
   if (lobbyKey(e)) return; // a mode lobby: ready up
+  if (pregameKey(e)) return; // the pre-game deck: fire shoves, no items or streaks
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
   if (adsKey(e)) return; // pop-up ads: the number on an ad closes it
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
@@ -1300,7 +1302,7 @@ addEventListener('mouseup', released);
 function releaseHeld() { K.clear(); W.held = false; W.aimHeld = false; W.dashHeld = false; stopUse(); releaseHook(); if (scoresOpen) { scoresOpen = false; hud.scores(false); } }
 K.onChange((rebound) => { if (rebound) releaseHeld(); });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
+addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY) && !brWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // in the blimp the wheel sets the spyglass zoom // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
@@ -1909,7 +1911,7 @@ net.on('pd', (m) => {
 net.on('tip', (m) => { G.tip = m.tip; });
 net.on('court', courtSync); // scales of justice: everyone's kill streak when you join
 net.on('hand', (m) => { G.hand = m.hand || []; });
-net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
+net.on('tp', (m) => { ME.pos = m.p.slice(); if (pregameOn()) ME.vel = [0, 0, 0]; /* (put back on the pre-game deck: no falling momentum) */ fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
 net.on('heal', (m) => {
   if (m.id === G.myId) { ME.hp = m.hp; hud.msg(`+${m.a} HP`, 0.8); sfx.heal(); }
   const r = G.remotes.get(m.id);
@@ -2107,6 +2109,7 @@ function frame(t) {
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
+    pregameFrame(); // the pre-game deck: under your feet, off the edge = back on
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: your camera stays yours; every shot goes to whoever is nearest your crosshair (and in sight)
     const spinning = ME.alive && now < (G.spinUntil || 0);
@@ -2954,7 +2957,7 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
-  if (r.warm) { el.textContent = 'warm-up · nothing counts'; return; } // a mode lobby: its own big countdown box
+  if (r.warm) { el.textContent = 'pre-game · nothing hurts'; return; } // a mode lobby: its own big countdown box
   const mt = zmRoundText(r) ?? ggRoundText(r) ?? infRoundText(r); // zombies: zombies left / the break. gun game / infection: just the clock, their bars show the rest
   if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
@@ -2974,7 +2977,7 @@ net.on('round', (m) => {
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
-    if (m.warm) { hud.msg('WARM-UP', 1.8, 'brag'); hud.chat(null, null, `lobby: run around, nothing counts. ${K.label('ready')} = ready`); chaosRoundStart(m.game); return; } // a mode lobby's warm-up
+    if (m.warm) { hud.msg('PRE-GAME', 1.8, 'brag'); hud.chat(null, null, `lobby: hang out on the deck, nothing hurts. fire = shove. ${K.label('ready')} = ready`); chaosRoundStart(m.game); return; } // a mode lobby's warm-up
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, K.hint(GAMES[m.game].desc));
     chaosRoundStart(m.game);

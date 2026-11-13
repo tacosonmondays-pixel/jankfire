@@ -80,3 +80,13 @@ export function cleanModeDelta(d) {
   }
   return out;
 }
+// a stats delta into an account's inv (in place, returns inv): MODE_MAX keys keep the best, the rest add up. the stores
+// save with it, and the server keeps each player's in-memory copy in step with it (the pre-game board reads that copy)
+export function mergeModes(inv, d) {
+  const ms = inv.ms && typeof inv.ms === 'object' ? inv.ms : (inv.ms = {});
+  for (const [m, keys] of Object.entries(cleanModeDelta(d))) {
+    const b = ms[m] && typeof ms[m] === 'object' ? ms[m] : (ms[m] = {});
+    for (const [k, v] of Object.entries(keys)) b[k] = MODE_MAX.has(k) ? Math.max(b[k] || 0, v) : Math.round(((b[k] || 0) + v) * 100) / 100;
+  }
+  return inv;
+}

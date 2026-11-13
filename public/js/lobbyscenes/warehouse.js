@@ -5,12 +5,15 @@
 // each opens a small picker with the same choices (and the same saved setting) as CUSTOMIZE > LOADOUT > ZOMBIES, and
 // says something about what you picked. nothing new on the server: it's your zombies loadout (shared/zombies.js).
 import * as THREE from 'three';
-import { buildCharacter, buildWeapon, buildProjectile } from '../models.js';
+import { buildCharacter, buildWeapon, buildProjectile, freeTree } from '../models.js';
 import { idlePose } from '../loco.js';
 import { WEAPONS, ITEMS, ITEM_ORDER } from '/shared/weapons.js';
 import { ZM_PISTOLS, ZM_PASSIVES, zmValidLoadout } from '/shared/zombies.js';
 import { DEFAULT_LOOK } from '/shared/looks.js';
 import { net } from '../net.js';
+import { npcRig } from './npcrig.js';
+import { makeRadio } from './radio.js';
+import { musicDuck } from '../music.js';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const NPC = {
@@ -69,17 +72,17 @@ export function build(L) {
   // the tally wall: every round anyone survived, in chalk
   const tally = new THREE.Mesh(new THREE.PlaneGeometry(6, 2.4), L.basic(0xffffff, { map: tallyTex(L) })); tally.position.set(-17.45, 4.2, 6.5); tally.rotation.y = Math.PI / 2; root.add(tally);
   // ---- stations: a desk (Deb), a counter with the start pistols on a pegboard (Gus), a pile of item crates (Marge)
-  const desk = new THREE.Group(); desk.position.set(-8.2, 0, -6.8); desk.rotation.y = NPC.deb.yaw; root.add(desk);
+  const desk = new THREE.Group(); desk.position.set(-8.2, 0, -6.8); desk.rotation.y = Math.atan2(NPC.deb.at[0], NPC.deb.at[1] - 2) + Math.PI; root.add(desk); // (its customer side to the room, Deb behind it. it used to read NPC.deb.yaw before the loop below rewrote it, so the first visit had the desk end-on)
   L.box(desk, 2.4, 0.9, 1, wood, 0, 0.45, 0); L.box(desk, 2.6, 0.08, 1.2, L.mat(0x3a2a1a, 0.6), 0, 0.92, 0);
   L.box(desk, 0.4, 0.06, 0.3, L.mat(0xffffff, 0.8), -0.6, 0.98, 0); L.box(desk, 0.4, 0.1, 0.3, L.mat(0xffffff, 0.8), -0.62, 1.02, 0.05);
-  const stamp = L.box(desk, 0.12, 0.2, 0.12, L.mat(0xd0202a, 0.4), 0.5, 1.06, 0);
+  let stamp = L.box(desk, 0.12, 0.2, 0.12, L.mat(0xd0202a, 0.4), 0.5, 1.06, 0), stampY = 1.06;
   L.box(desk, 0.3, 0.32, 0.08, L.mat(0x2a2a2a, 0.4), 0.9, 1.1, -0.3);
   solid(-9.6, -8.2, -6.8, -5.4, 0.95);
   const ctr = new THREE.Group(); ctr.position.set(0, 0, -9.2); root.add(ctr);
   L.box(ctr, 4, 1.05, 0.9, L.mat(0x4a3a2a, 0.7), 0, 0.52, 0); L.box(ctr, 4.2, 0.08, 1.05, L.mat(0x1a1612, 0.5, 0.3), 0, 1.08, 0);
   solid(-2.1, -9.7, 2.1, -8.7, 1.1);
   const peg = L.mat(0xc8a878, 0.8); peg.map = pegTex(L);
-  flat(L.box(root, 5, 2.6, 0.1, peg, 0, 2.6, -13.9));
+  const pegG = new THREE.Group(); pegG.position.set(0, 0, -13.9); root.add(pegG); flat(L.box(pegG, 5, 2.6, 0.1, peg, 0, 2.6, 0));
   Object.keys(ZM_PISTOLS).forEach((id, i) => { try { const w = buildWeapon(id); w.scale.setScalar(2.2); w.rotation.y = Math.PI / 2; w.position.set(-1.8 + i * 0.9, 2.6 + (i % 2) * 0.5, -13.75); root.add(w); } catch { /* (no model) */ } });
   const pile = new THREE.Group(); pile.position.set(9.6, 0, -7.8); root.add(pile);
   for (const [x, y, z, r] of [[0, 0, 0, 0.1], [1.25, 0, 0.2, -0.2], [0.6, 1.2, 0.1, 0.3], [-1.1, 0, 0.6, 0.4]]) { const c = L.box(pile, 1.2, 1.2, 1.2, wood, x, y + 0.6, z); c.rotation.y = r; }
@@ -105,12 +108,23 @@ export function build(L) {
   solid(12.3, 8.3, 14.7, 9.7, 1.4);
   const radio = new THREE.Group(); radio.position.set(-6.6, 1.0, -6.4); root.add(radio);
   L.box(radio, 0.5, 0.3, 0.2, L.mat(0x8a2a2a, 0.4), 0, 0, 0); L.cyl(radio, 0.08, 0.08, 0.02, L.mat(0x111111), 0.12, 0, 0.11, 10); L.cyl(radio, 0.01, 0.01, 0.4, steel, -0.18, 0.3, 0, 4);
-  for (const [x, z] of [[4, 6], [5.3, 6.2]]) { L.box(root, 1.2, 0.15, 1.2, wood, x, 0.08, z); } solid(3.4, 5.4, 5.9, 6.8, 0.16);
+  const palG = new THREE.Group(); root.add(palG); for (const [x, z] of [[4, 6], [5.3, 6.2]]) { L.box(palG, 1.2, 0.15, 1.2, wood, x, 0.08, z); } solid(3.4, 5.4, 5.9, 6.8, 0.16);
   // string lights between the trusses, warm and a bit sad
   const bulbs = [];
   for (let i = 0; i < 18; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), L.basic([0xffe14d, 0xff4fd8, 0x39ff14][i % 3])); b.position.set(-15 + i * 1.75, 7.2 + Math.sin(i * 1.3) * 0.25, -3 + Math.cos(i * 0.7) * 1.2); b.userData.lsSee = true; root.add(b); bulbs.push(b); }
   // ---- the practice zombie: chained to a post, shuffles round it, groans. E: poke it
-  const post = L.cyl(root, 0.15, 0.18, 2.2, steel, -6, 1.1, 4, 8); post.castShadow = true; solid(-6.25, 3.75, -5.75, 4.25);
+  const postG = new THREE.Group(); postG.position.set(-6, 0, 4); root.add(postG); L.cyl(postG, 0.15, 0.18, 2.2, steel, 0, 1.1, 0, 8).castShadow = true; solid(-6.25, 3.75, -5.75, 4.25);
+  // the props, Blender-made (x_lobby_whprops: a node per prop, each where its box one stood; the boxes until it lands).
+  // the stamp keeps stamping, the radio moves onto Deb's desk
+  let radioNode = null;
+  L.glb('x_lobby_whprops', (o) => {
+    const take = (n) => { const m = o.getObjectByName(n); if (!m) return null; m.position.set(0, 0, 0); m.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.receiveShadow = true; } }); return m; };
+    const into = (g, n) => { const m = take(n); if (!m) return null; freeTree(g); g.clear(); g.add(m); return m; };
+    const d = into(desk, 'desk');
+    if (d) { const st = d.getObjectByName('stamp'); if (st) { stamp = st; stampY = st.position.y; } radioNode = d.getObjectByName('radio'); freeTree(radio); radio.clear(); }
+    into(ctr, 'counter'); into(pegG, 'pegboard'); into(pile, 'crates'); into(gen, 'generator'); into(postG, 'post'); into(door, 'door');
+    const pl = take('pallet'); if (pl) { freeTree(palG); palG.clear(); for (const [x, z, r] of [[4, 6, 0.1], [5.3, 6.2, -0.2]]) { const c = pl.clone(); c.position.set(x, 0, z); c.rotation.y = r; palG.add(c); } }
+  });
   const zl = { ...DEFAULT_LOOK, skin: '#a8e6a1', hair: 'mohawk', hairColor: '#3a6a2a', top: 'tee', topColor: '#8a5a2b', bottom: 'shorts', bottomColor: '#3a3a44' };
   const zch = buildCharacter('#8a5a2b', zl); zch.root.scale.setScalar(1.2); root.add(zch.root);
   zch.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
@@ -130,8 +144,38 @@ export function build(L) {
     npcs[k] = { ch, n, bub: L.tag('bub', ''), t: Math.random() * 9, face: n.yaw, hiT: 0 };
     npcs[k].bub.style.display = 'none';
   }
+  // the Blender ones (x_lobby_<k>.glb): each takes over from its mannequin when its file lands, placed against its prop
+  // (meta.place: the prop's frame), and plays idle / talk / its gesture. a missing file keeps the mannequin
+  const PROPS = { desk, counter: ctr, crates: pile };
+  const SND = { // the gestures' cues (meta clips.gesture.marks)
+    ink: () => L.sfx.noise(0.08, 0.12, 'lowpass', 900, 300),
+    stamp: () => { L.sfx.noise(0.16, 0.5, 'lowpass', 1400, 90); L.sfx.tone('sine', 150, 55, 0.18, 0.4); },
+    spin: () => { L.sfx.noise(0.5, 0.1, 'bandpass', 900, 2600, null, 0, 4); L.sfx.tone('square', 1200, 1900, 0.04, 0.03); },
+    catch: () => { L.sfx.tone('square', 2400, 1800, 0.03, 0.06); L.sfx.noise(0.05, 0.15, 'highpass', 3000, 2000); },
+    blow: () => L.sfx.noise(0.35, 0.08, 'bandpass', 700, 400, null, 0, 2),
+    tick: () => { L.sfx.noise(0.06, 0.12, 'highpass', 2500, 4000); L.sfx.noise(0.05, 0.1, 'highpass', 3000, 4500, null, 0.07); },
+    flip: () => L.sfx.noise(0.18, 0.12, 'bandpass', 2200, 900, null, 0, 1.5),
+    pop: () => { L.sfx.tone('sine', 900, 200, 0.06, 0.2); L.sfx.noise(0.05, 0.2, 'highpass', 2000, 1000); },
+  };
+  const rigAt = new THREE.Vector3(), rigQ = new THREE.Quaternion(), rigE = new THREE.Euler();
+  for (const [k, o] of Object.entries(npcs)) {
+    L.glb('x_lobby_' + k, () => {
+      if (o.rig) return;
+      const R = npcRig('x_lobby_' + k, L.tex, () => !L.potato());
+      if (!R) return;
+      const P = R.meta.place || {}, prop = PROPS[P.prop];
+      const at = Array.isArray(P.at) && P.at.length === 3 && P.at.every(Number.isFinite) ? P.at : [0, 0, 0];
+      const hold = new THREE.Group();
+      if (prop) { prop.updateMatrixWorld(true); hold.position.copy(rigAt.set(...at).applyMatrix4(prop.matrixWorld)); prop.getWorldQuaternion(rigQ); hold.rotation.y = rigE.setFromQuaternion(rigQ, 'YXZ').y + (Number.isFinite(P.yaw) ? P.yaw : 0); }
+      else { hold.position.set(o.n.at[0], o.n.sit ? 1.2 : 0, o.n.at[1]); hold.rotation.y = o.n.yaw; }
+      hold.add(R.root); root.add(hold);
+      R.baseYaw = hold.rotation.y; R.onMark = (m) => { try { if (SND[m]) SND[m](); } catch { /* (no audio yet) */ } };
+      o.rig = R; o.hold = hold; o.gT = 6 + Math.random() * 8;
+      o.ch.root.visible = false;
+    });
+  }
   const zomBub = { bub: L.tag('bub', ''), t: 0 }; zomBub.bub.style.display = 'none';
-  function say(o, line, who) { o.bub.innerHTML = `<small>${who}</small>`; o.bub.append(document.createTextNode(line)); o.bub.style.display = ''; o.bubT = 3.2; }
+  function say(o, line, who) { o.bub.innerHTML = `<small>${who}</small>`; o.bub.append(document.createTextNode(line)); o.bub.style.display = ''; o.bubT = 3.2; if (o.rig) o.rig.talk(Math.min(3, 0.9 + line.length * 0.05)); }
   // ---- the picker: the choices next to the NPC, the same data and setting as CUSTOMIZE > LOADOUT > ZOMBIES
   const css = document.createElement('style'); css.textContent = `
 #lsTags .ls-pick { pointer-events: auto; left: auto !important; right: clamp(34px, 5vmin, 58px); top: clamp(220px, 33vh, 250px) !important; transform: rotate(0.6deg) !important; width: min(320px, 34vw); max-height: 52vh; overflow: auto; background: rgba(18,8,24,.94); border: 4px solid #39ff14; box-shadow: 8px 8px 0 #ff4fd8; padding: 8px 10px 10px; color: #fff; font-family: var(--font); transform-origin: 0 100%; }
@@ -162,7 +206,8 @@ export function build(L) {
     }
     panel.style.display = '';
     say(npcs[k], pick(n.hi), n.name);
-    const c = L.cur(); if (c.walk) c.camFocus = { at: [n.at[0], n.sit ? 3.3 : 2.3, n.at[1]], t: c.camFocus && c.camFocus.talk ? 1 : 0, dur: 1e9, back: -1.2, talk: true }; // (over your shoulder at them while you talk)
+    const hp = npcs[k].rig && npcs[k].rig.head ? npcs[k].rig.head.getWorldPosition(_v) : null;
+    const c = L.cur(); if (c.walk) c.camFocus = { at: hp ? [hp.x, hp.y - 0.15, hp.z] : [n.at[0], n.sit ? 3.3 : 2.3, n.at[1]], t: c.camFocus && c.camFocus.talk ? 1 : 0, dur: 1e9, back: -1.2, talk: true }; // (over your shoulder at them while you talk)
     try { L.sfx.tone('square', 520, 780, 0.06, 0.05); } catch { /* (no audio yet) */ }
   }
   function closePick() { open = null; panel.style.display = 'none'; const c = L.cur(), F = c.camFocus; if (F && F.talk) { F.t = Math.max(F.t, 0.35); F.dur = F.t + 0.45; } }
@@ -176,6 +221,7 @@ export function build(L) {
     try { L.sfx.tone('square', 660, 990, 0.08, 0.06); L.sfx.tone('square', 990, 1320, 0.08, 0.05, null, 0.08); } catch { /* (no audio yet) */ }
     open = null; openPick(k); // (redraw with the new pick lit)
     say(npcs[k], n.got[id] || pick([`${name}. good choice, dear.`, `${name}. sure. why not.`, `${name}. bring it back in one piece.`]), n.name); // (openPick said hi again: the reaction wins)
+    if (npcs[k].rig) npcs[k].rig.gesture(); // (Deb stamps it, Gus spins one, Marge ticks it off)
   }
   // ---- lights: a dim warm room, the windows' green, a pool of light at each station
   S.add(new THREE.HemisphereLight(0xa8c0a8, 0x2a2018, 1.5));
@@ -193,7 +239,16 @@ export function build(L) {
       { at: [-6, 1.6, 4], r: 3, label: () => 'POKE THE ZOMBIE', act: poke },
     ],
   };
-  const _v = new THREE.Vector3();
+  const _v = new THREE.Vector3(), _r = new THREE.Vector3();
+  let rad = null; // the radio's station (radio.js), made once the game's audio is running
+  // the radio: louder as you (or the camera) get near the desk, panned by where it sits in view; the menu music dips under it
+  function radioTick(dt, me) {
+    if (!rad) { const s = L.sfx; if (!s || !s.ac || s.ac.state !== 'running') return; rad = makeRadio(s, G); if (!rad) return; }
+    (radioNode || radio).getWorldPosition(_r);
+    const cam = L.cur().cam, dc = cam.position.distanceTo(_r), dm = me ? Math.hypot(me.pos[0] - _r.x, me.pos[1] + 1.5 - _r.y, me.pos[2] - _r.z) : dc;
+    _v.copy(_r).applyMatrix4(cam.matrixWorldInverse); // (camera space: x is right, -z is ahead)
+    musicDuck(rad.update(dt, Math.min(dc, dm), _v.x / Math.max(0.5, Math.hypot(_v.x, _v.z))));
+  }
   return {
     spots, walk, inviteH: 1.3,
     focus: { at: new THREE.Vector3(0, 1.6, -2), top: new THREE.Vector3(0, 4.5, -10), bot: new THREE.Vector3(0, 0, 6), w: 12, dir: new THREE.Vector3(0, 0.25, 1).normalize(), fov: 40 },
@@ -202,11 +257,21 @@ export function build(L) {
       for (const h of hands) { h.ph += dt; h.h.rotation.y = Math.sin(h.ph * 2.3) * 0.35; h.h.rotation.x = Math.sin(h.ph * 1.7) * 0.25; h.palm.rotation.x = Math.max(0, Math.sin(h.ph * 4)) * 0.8; }
       for (const b of bulbs) b.visible = Math.random() > 0.004; // (a bulb blinks out now and then)
       gen.position.x = 13.5 + (Math.random() - 0.5) * 0.012; gen.rotation.z = (Math.random() - 0.5) * 0.004; // (the generator chugs)
-      stamp.position.y = 1.06 + Math.max(0, Math.sin(t * 3.1)) * 0.18; // (Deb stamps things)
+      if (npcs.deb && npcs.deb.rig) stamp.visible = false; // (Deb has it in her hand now)
+      else stamp.position.y = stampY + Math.max(0, Math.sin(t * 3.1)) * 0.18; // (Deb stamps things)
       // the NPCs: idle, look at you when you're close, say hi once as you walk up
       for (const [k, o] of Object.entries(npcs)) {
-        o.t += dt; idlePose(o.ch, o.t);
         const n = o.n, d = me ? Math.hypot(me.pos[0] - n.at[0], me.pos[2] - n.at[1]) : 99;
+        if (o.rig) { // the Blender one: clips + a head turn your way; a gesture now and then while nobody's chatting
+          if (d < 7 && me) _v.set(me.pos[0], me.pos[1] + 2.05, me.pos[2]);
+          o.rig.update(dt, d < 7 && me ? _v : null);
+          if (!o.rig.busy() && open !== k && !(o.bubT > 0) && (o.gT -= dt) <= 0) { o.rig.gesture(); o.gT = 9 + Math.random() * 9; }
+          if (d < 4.5 && o.hiT <= 0 && !open) { say(o, pick(n.hi), n.name); o.hiT = 14; } else if (d > 6) o.hiT = Math.min(o.hiT, 2);
+          o.hiT -= dt;
+          if (o.bubT > 0) { o.bubT -= dt; if (o.bubT <= 0) o.bub.style.display = 'none'; }
+          continue;
+        }
+        o.t += dt; idlePose(o.ch, o.t);
         const want = d < 7 && me ? Math.atan2(-(me.pos[0] - n.at[0]), -(me.pos[2] - n.at[1])) : n.yaw; // (characters face -z at yaw 0)
         let dd = want - o.face; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); o.face += dd * Math.min(1, dt * 3); o.ch.root.rotation.y = o.face;
         if (k === 'deb') { o.ch.arm.rotation.set(-0.9 + Math.max(0, Math.sin(t * 3.1)) * 0.5, 0, 0); o.ch.armL.rotation.set(-1.3, 0, -0.1); }
@@ -228,13 +293,14 @@ export function build(L) {
       if (zom.flail > 0) zom.flail -= dt;
       chain.position.set((zx - 6) / 2, 0.9, (zz + 4) / 2); chain.lookAt(-6, 0.9, 4); chain.rotateX(Math.PI / 2); chain.scale.y = Math.hypot(zx + 6, zz - 4);
       if (zomBub.bubT > 0) { zomBub.bubT -= dt; if (zomBub.bubT <= 0) zomBub.bub.style.display = 'none'; }
+      radioTick(dt, me);
     },
     tags() {
-      for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.75, o.n.at[1]); L.at(o.bub, _v); }
+      for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { if (o.rig && o.rig.head) { o.rig.head.getWorldPosition(_v); _v.y += 0.62; } else _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.75, o.n.at[1]); L.at(o.bub, _v); }
       if (zomBub.bub.style.display !== 'none') { _v.copy(zch.root.position); _v.y = 2.8; L.at(zomBub.bub, _v); }
     },
-    info: () => ({ open, zload: zl0() }),
-    dispose() { css.remove(); },
+    info: () => ({ open, zload: zl0(), rigs: Object.keys(npcs).filter((k) => npcs[k].rig), clip: Object.fromEntries(Object.entries(npcs).filter(([, o]) => o.rig).map(([k, o]) => [k, o.rig.want])), ink: Object.values(npcs).filter((o) => o.rig && o.rig.ink.visible).length, radio: rad ? rad.info() : null }),
+    dispose() { css.remove(); for (const o of Object.values(npcs)) if (o.rig) o.rig.dispose(); if (rad) { rad.dispose(); rad = null; } musicDuck(1); },
   };
 }
 
