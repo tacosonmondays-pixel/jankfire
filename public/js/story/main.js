@@ -24,10 +24,13 @@ import { warmCity } from '../city/warm.js'; // (tiny, no imports of its own: the
 import { worldOf, DEFAULT_WORLD, WORLDS, travelTo, travelHome } from '/shared/story/worlds.js';
 import { TRAIN, buildTrainMap } from '/shared/story/train.js'; // the last two cars (m06's boss arena)
 import * as THREE from 'three';
-// ?storytest=1: new games start on the test lot (the e2e tests), not in the Bottom
-const testLot = () => { try { return new URLSearchParams(location.search).get('storytest') === '1'; } catch { return false; } };
-// ...and with &train=1 on top, on the train (the REVENUE PROTECTION fight starts by itself)
-const trainLot = () => { try { return new URLSearchParams(location.search).get('train') === '1'; } catch { return false; } };
+// ?storytest=1: new games start on the test lot (the e2e tests), not in the Bottom; with &train=1 on top, on the train
+// (the REVENUE PROTECTION fight starts by itself). only with &storydev=1 as well: an old train demo link put every NEW
+// GAME in the train fight (owner: "how do I play act 1 of the story when i start new it starts me at the train fight").
+// any other link starts Act I in the city, and the picker says TEST MODE whenever these are on
+const qs = (k) => { try { return new URLSearchParams(location.search).get(k) === '1'; } catch { return false; } };
+const testLot = () => qs('storydev') && qs('storytest');
+const trainLot = () => testLot() && qs('train');
 import { storyKeys, initBar, barTick, barShow, useBar, dropHeld, nearestDrop, atLocker, clearDrops } from './bar.js'; // WP3
 import { openWheel, closeWheel, wheelOpen, wheelLook, wheelScale } from './wheel.js';
 import { initBag, toggleBag, bagOpen } from './bag.js';
@@ -141,6 +144,7 @@ async function openPicker() {
   warmWorker(); // (the story engine starts loading while you pick a slot)
   const panel = el('div', 'st-panel');
   panel.append(el('h2', null, 'OVERDUE'), el('p', 'st-sub', 'pick a save slot. the machine remembers.'));
+  if (testLot()) panel.append(el('p', 'st-test', `TEST MODE: new games start ${trainLot() ? 'in the train fight' : 'on the test lot'}, not Act I (storytest in the link)`));
   const list = el('div', 'st-slots');
   panel.append(list);
   list.append(el('p', 'st-sub', 'checking the receipts...'));
@@ -526,6 +530,7 @@ function css() {
 .st-jumps{display:flex;flex-direction:column;gap:6px;border:3px solid #000;background:#2a1030;box-shadow:5px 5px 0 #4fd8ff;padding:10px 12px;transform:rotate(-.5deg)}
 .st-jumps>b{color:#ffe14d;font-size:20px;letter-spacing:1px;text-shadow:3px 3px 0 #ff00dc}.st-jumps .st-sub{margin:0;font-size:14px}
 .st-jumpbtns{display:flex;gap:10px;flex-wrap:wrap}.st-jumpbtns .st-btn:nth-child(2){transform:rotate(1deg)}
+.st-test{margin:0 0 12px;background:#ff3030;color:#ffe14d;border:3px solid #000;box-shadow:4px 4px 0 #000;padding:6px 10px;font-weight:700;transform:rotate(-1deg)}
 .st-hint{position:fixed;left:50%;top:62%;transform:translateX(-50%) rotate(-1.5deg);z-index:20;font-family:var(--font);font-weight:700;font-size:22px;color:#000;background:#ffe14d;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;padding:6px 14px;pointer-events:none}
 .st-on #hotbar{display:none}
 .st-bar{position:fixed;left:max(50%,680px);bottom:10px;transform:translateX(-50%);display:flex;gap:6px;z-index:15;pointer-events:none}
