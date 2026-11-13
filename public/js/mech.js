@@ -23,12 +23,14 @@ import './mechlooksfx.js'; // (the hero clips' beats: their sounds)
 import { prefetch, whenLate } from './glbkit.js';
 import { WBK } from './mech_wrecking.js'; // battle island heroes: each kit's controls, moves, effects in its own file
 import { TRK } from './mech_trolley.js';
+import { VMK } from './mech_vending.js';
 
 export { mechBoxes };
 const PP = MECH.paperplane, NS = MECH.nightshift;
 // the battle island heroes (public/js/mech_<id>.js): { help, abil, cds, start, end, key, step, update, flags, pose, remote, event, events, reset }
-// (+ en: the server's 'en' extras; a kit that carries people: guestKey / guest / held, for you in someone else's)
-const KITS = { wrecking: WBK, trolley: TRK };
+// (+ optional: en (the server's meter message), world (every frame, in a mech or not: things it put out in the world),
+// footKey (a key on foot: the vending machine's kick); a kit that carries people: guestKey / guest / held, for you in someone else's)
+const KITS = { wrecking: WBK, vending: VMK, trolley: TRK };
 const r2 = (x) => Math.round(x * 100) / 100;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const $ = (id) => document.getElementById(id);
@@ -112,6 +114,7 @@ export function mechKey(e, down) {
   if (!MS.on) { // F next to your own waiting mech: climb in
     for (const k of Object.values(KITS)) if (k.guestKey) { const r = k.guestKey(e, down, now); if (r !== undefined) return r; } // (someone else's: riding in it, or carried)
     if (!down || !ME.alive || e.repeat || !K.matches('use', e)) return false;
+    for (const k of Object.values(KITS)) if (k.footKey && k.footKey(e, now)) return true; // (on foot at someone's mech: a jammed vending machine's kick)
     const m = myWaiting();
     if (!m || m.st === 'fall' || Math.hypot(m.p[0] - ME.pos[0], m.p[2] - ME.pos[2]) > MECH.reach + 0.4) return false;
     net.send({ t: 'mech', k: 'in' });
@@ -346,6 +349,7 @@ function quakeFx(p, r, mine) {
 // ------------------------------------------------------------ every frame (main.js, after the camera is set)
 export function updateMech(dt, now, cam, replaying) {
   updateWorld(dt, now, replaying);
+  for (const k of Object.values(KITS)) if (k.world) k.world(dt, now, replaying); // (colas, walls: a kit's things out in the world)
   updateDrones(dt);
   updateMarks(now, cam);
   prompt(now);
@@ -431,7 +435,7 @@ export function mechCam(cam, dt) {
   cam.position.set(e[0] - d[0] * MS.camLen, e[1] - d[1] * MS.camLen, e[2] - d[2] * MS.camLen);
 }
 
-const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6], wrecking: [1.2, 1.4], trolley: [1.1, 1.0] }; // the camera's step right + up
+const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6], wrecking: [1.2, 1.4], vending: [1.9, 0.5], trolley: [1.1, 1.0] }; // the camera's step right + up
 // where the crosshair really points (the camera sits off to the side): the direction from the cockpit to whatever the
 // screen centre is on, so shots and locks go where you aim
 export function aimDir() {
@@ -841,7 +845,7 @@ net.on('mech', (m) => {
       if (Number.isFinite(m.u)) MS.ult = m.u;
       if (m.cd && typeof m.cd === 'object') for (const k of ['lunge', 'crane', 'swarm', 'jet', 'slam', 'bash', ...(KITS[MS.f] ? KITS[MS.f].cds : [])]) MS.cd[k] = Number.isFinite(m.cd[k]) ? now + m.cd[k] : Math.min(MS.cd[k] || 0, now);
       if (Number.isFinite(m.jet)) MS.jetUntil = m.jet > 0 ? now + m.jet : Math.min(MS.jetUntil, now);
-      if (KITS[MS.f] && KITS[MS.f].en) KITS[MS.f].en(m, now);
+      if (KITS[MS.f] && KITS[MS.f].en) KITS[MS.f].en(m, now); // (a hero's own meters: the vending machine's cans, its jam; the trolley's charge)
       return;
     }
     case 'no': { if (typeof m.why === 'string') { hud.msg(m.why.toUpperCase().slice(0, 40), 1.1); mechsfx.denied(); } if (m.why === 'no energy') { MS.dash = null; MS.triple = null; } if (KITS[MS.f] && MS.on) KITS[MS.f].denied(m.why); return; }

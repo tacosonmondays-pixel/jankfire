@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // the models that exist (so nothing 404s asking for one that doesn't)
-export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw', 'jbh_capsule3', 'jbh_capsule4', 'jbh_noodle', 'jbh_bodega', 'jbh_walkup', 'jbh_model', 'jbh_container', 'jbh_squat', 'jbh_dorm', 'jbh_arcade', 'jbh_pastel', 'jbh_biolab', 'jbh_pawn', 'penthouse', 'penthouse_sd', 'tiki', 'tiki_sd', 'pier', 'liftroom', 'liftroom_sd', 'rt_mast']); // (jbh_: Jankburg's city houses, tools/blender/jankburg/make_jb_houses.py)
+export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw', 'jbh_capsule3', 'jbh_capsule4', 'jbh_noodle', 'jbh_bodega', 'jbh_walkup', 'jbh_model', 'jbh_container', 'jbh_squat', 'jbh_dorm', 'jbh_arcade', 'jbh_pastel', 'jbh_biolab', 'jbh_pawn', 'penthouse', 'penthouse_sd', 'tiki', 'tiki_sd', 'cottage', 'cottage_sd', 'pier', 'liftroom', 'liftroom_sd', 'rt_mast']); // (jbh_: Jankburg's city houses, tools/blender/jankburg/make_jb_houses.py)
 // map material keys -> the paint a Blender building takes on (its '@siding' / '@roof' / '@trim' parts)
 const PAINT = {
   hutadobe: '#ffdcae', hutsideorange: '#ffb866', hutsidemint: '#a8ffd8', hutsidelemon: '#fff27a', // (sunlit mud plaster: the Desert's adobe huts)
@@ -22,6 +22,7 @@ const PAINT = {
   jb_tenement: '#ff6a4a', jb_brick: '#ff4a3a', jb_magenta: '#ff2ad0', jb_plaster: '#ffc890', jb_roofteal: '#20e8f0', jb_pink: '#ff6ac8',
   jb_toyteal: '#18e8d8', jb_toyyellow: '#ffd800', jb_chrome: '#d8e8ff', jb_office: '#7fd8ff', jb_roofpink: '#ff3aa8', jb_roofblue: '#3a8aff',
   jb_containerr: '#ff3a2a', jb_containerg: '#2ad860', jb_containerb: '#2a7aff', jb_graffiti: '#ffffff', jb_glass: '#ffffff',
+  rt_blue: '#2a86ff', rt_pink: '#ff2ec4', // (Rooftop's team colours on its lift rooms: bold, they mark whose side it is)
 };
 const off = (() => { try { return /[?&]arch=0\b/.test(location.search) || localStorage.getItem('jf_arch') === '0'; } catch { return false; } })();
 const models = {}; // id -> [{ geo, mat, node }]

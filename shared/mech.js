@@ -71,6 +71,18 @@ export const MECH = {
     ult: { dmg: 650, time: 110 }, shrug: 3, // passive: no knockback while rolling faster than shrug m/s
     sized: ['r', 'chain.snap', 'slam.r.0', 'slam.r.1', 'pile.r'], // (lengths that grow with MECH.scale: the ball's radius, its blasts)
   },
+  // VENDING MACHINE (support): a 5 m snack machine on stubby legs. the coin slot is its face (the cockpit band)
+  vending: {
+    name: 'VENDING MACHINE', hp: 1100, h: 5.0, hw: 1.15, c0: 3.5, c1: 4.4, eye: 4.6, cam: 9.5, tip: '5 m support snack machine · 1100 armour',
+    speed: 12, accel: 7, fric: 4.5, grav: 32, hop: 10, airCap: 6, // a waddling walker (night shift's kind of step)
+    coin: { dmg: 9, rate: 10, range: 90, cone: 0.6 }, // LMB hold: the coin turret (server hitscan from the coin slot)
+    cola: { charges: 3, every: 8, gap: 0.35, life: 20, max: 6, hp: 40, armour: 40, boost: 3, reach: 1.8, toss: 6, mine: 0.9 }, // Shift: dispense (toss = how far you can lob it, mine = s before you can drink your own)
+    wall: { hp: 600, w: 8, h: 4.5, at: 3.5, life: 10, cd: 12 }, // E: OUT OF ORDER, slammed down `at` m in front, facing you
+    restock: { r: 15, armour: 250, hp: 150, hold: 1 }, // Q: RESTOCK (hp: on foot outside the armour modes, overheal up to this)
+    stuck: 0.1, jam: { p: 0.06, lock: 4, reach: 4.5 }, // passive STUCK (x2), jank JAMMED (kick it within reach to unstick it)
+    ult: { dmg: 800, time: 120 }, // (healing counts like damage)
+    sized: ['wall.w', 'wall.h', 'wall.at', 'cola.reach', 'cola.toss', 'restock.r', 'jam.reach'], // (lengths that grow with MECH.scale)
+  },
   // TROLLEY (speed): a 4 m shopping trolley mech with a tiny pilot pushing it from the handle. the fastest thing on the
   // island; drifting builds a ram charge, the push spends it, CLEAN UP AISLE 5 scoops people into the basket
   trolley: {
@@ -89,7 +101,7 @@ export const MECH = {
       ...[0, 1, 2].flatMap((i) => [0, 1, 2].map((k) => `scoop.${i}.${k}`))],
   },
 };
-export const FRAMES = ['paperplane', 'nightshift', 'wrecking', 'trolley'];
+export const FRAMES = ['paperplane', 'nightshift', 'wrecking', 'vending', 'trolley'];
 export const HERO_FRAMES = FRAMES.filter((f) => MECH[f].ult); // (the ones with an ultimate meter: the island heroes)
 export const mechFrame = (f) => (isFrame(f) ? f : 'paperplane'); // anything else is the default
 export function isFrame(f) { return typeof f === 'string' && FRAMES.includes(f); }
@@ -100,6 +112,7 @@ Object.assign(FLAGS, { MECH: 1 << 22, MECH_A: 1 << 23, MECH_B: 1 << 30, MECH_C: 
 // (the per-frame names live here, not in FLAGS: room.js checks that every FLAGS entry is its own bit)
 export const MF = { HOVER: FLAGS.MECH_A, SHIELD: FLAGS.MECH_A, JET: FLAGS.MECH_B, SLAM: FLAGS.MECH_B, DASH: FLAGS.MECH_C, SLASH: FLAGS.MECH_C,
   CHAIN: FLAGS.MECH_A, PILE: FLAGS.MECH_B, REV: FLAGS.MECH_C, // (wrecking ball: on the chain, slam / pile driver, rev launch)
+  VJAM: FLAGS.MECH_A, VSTOCK: FLAGS.MECH_B, VCOIN: FLAGS.MECH_C, // (vending machine: jammed, restocking, coin turret going)
   DRIFT: FLAGS.MECH_A, AISLE: FLAGS.MECH_B, PUSH: FLAGS.MECH_C }; // (trolley: drifting, CLEAN UP AISLE 5, the push)
 export const MECH_BITS = FLAGS.MECH | FLAGS.MECH_A | FLAGS.MECH_B | FLAGS.MECH_C;
 
@@ -124,6 +137,7 @@ Object.assign(WEAPONS, {
   wbram: { slot: null, kind: 'mech', name: 'Wrecking Ball', color: '#ffd23a' },
   wbslam: { slot: null, kind: 'mech', name: 'Ball Slam', color: '#ffb000' },
   wbpile: { slot: null, kind: 'mech', name: 'Pile Driver', color: '#ff3030' },
+  vmcoin: { slot: null, kind: 'mech', name: 'Coin Turret', color: '#ffd23a' },
   trram: { slot: null, kind: 'mech', name: 'Trolley', color: '#ff3a3a' },
   trpush: { slot: null, kind: 'mech', name: 'Trolley Push', color: '#ffe14d' },
   trscoop: { slot: null, kind: 'mech', name: 'Clean Up Aisle 5', color: '#4fd8ff' },
@@ -179,6 +193,7 @@ export function speedCap(frame, f) {
     if (f & MF.REV) return F.rev.speed[1];
     return F.speed;
   }
+  if (frame === 'vending') return F.speed; // (a cola's sugar rush: server/mech_vending.js raises it while it lasts)
   if (frame === 'trolley') { // B = CLEAN UP AISLE 5, C = the push (drifting is no faster)
     if (f & MF.PUSH) return F.push.v[1];
     if (f & MF.AISLE) return F.aisle.speed;
@@ -298,6 +313,26 @@ export function wbPile(d) {
 // the rev launch's speed for a charge held c s
 export const wbRevSpeed = (c) => { const R = MECH.wrecking.rev, k = Math.max(0, Math.min(1, c / R.charge)); return R.speed[0] + (R.speed[1] - R.speed[0]) * k; };
 
+// ---- VENDING MACHINE
+// cola charges ({ n, t }): one comes back every `every` s (t = when the next started counting), up to `charges`
+export function vmCharges(c, n) {
+  const C = MECH.vending.cola, ms = C.every * 1000;
+  if (c.n >= C.charges) { c.n = C.charges; c.t = n; return c.n; }
+  while (c.n < C.charges && n - c.t >= ms) { c.n++; c.t += ms; }
+  if (c.n >= C.charges) c.t = n;
+  return c.n;
+}
+// the OUT OF ORDER wall standing at p (its foot, the middle) facing yaw: where the segment a-b goes through it, as a
+// fraction of a-b (null: it misses the panel). the panel is a flat sign w wide, h tall
+export function vmWallCross(wall, a, b) {
+  const W = MECH.vending.wall, w = wall.w || W.w, h = wall.h || W.h, fx = -Math.sin(wall.yaw), fz = -Math.cos(wall.yaw);
+  const da = (a[0] - wall.p[0]) * fx + (a[2] - wall.p[2]) * fz, db = (b[0] - wall.p[0]) * fx + (b[2] - wall.p[2]) * fz;
+  if ((da > 0) === (db > 0) || da === db) return null;
+  const s = da / (da - db), q = [a[0] + (b[0] - a[0]) * s, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s];
+  const side = (q[0] - wall.p[0]) * -fz + (q[2] - wall.p[2]) * fx, up = q[1] - wall.p[1];
+  if (side > (wall.wr ?? w / 2) || side < -(wall.wl ?? w / 2) || up < -0.2 || up > h) return null; // (wl / wr: each half, clipped where a building stops it)
+  return { s, at: q };
+}
 // ---- TROLLEY
 // a spot on the trolley (l: local, x right, +z back) in the world, for a trolley at pos facing yaw
 export const trSpot = (pos, yaw, l) => { const c = Math.cos(yaw), s = Math.sin(yaw); return [pos[0] + l[0] * c + l[2] * s, pos[1] + l[1], pos[2] - l[0] * s + l[2] * c]; };
@@ -330,7 +365,7 @@ export function trDrive(h, wx, wz, dt, top, drift, ground, pull) {
   } else {
     if (wl) { const al = h[0] * wx + h[1] * wz; if (al < Math.min(top, F.airCap)) { const a = F.accel * 0.25 * top * dt; h[0] += a * wx; h[1] += a * wz; } }
     hs = Math.hypot(h[0], h[1]);
-    if (hs > top) { const k = Math.max(top, hs - 6 * dt) / hs; h[0] *= k; h[1] *= k; }
+    if (hs > top) { const k = Math.max(top, hs - 16 * dt) / hs; h[0] *= k; h[1] *= k; } // (the same bleed as on the floor: the server's cap comes down this fast)
   }
   hs = Math.hypot(h[0], h[1]);
   if (pull && ground && hs > 1) { const a = F.pull * Math.min(1, hs / F.speed) * dt, c = Math.cos(a), s = Math.sin(a); const x = h[0]; h[0] = x * c + h[1] * s; h[1] = h[1] * c - x * s; }

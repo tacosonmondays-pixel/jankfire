@@ -1,6 +1,25 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.26', date: '2026-11-13', title: 'VENDING MACHINE', items: [
+    "new mech: VENDING MACHINE, the support hero. a 5 m drinks machine on stubby legs with a coin slot for a face. holds LMB to spit coins at people.",
+    "Shift pops out a JANK COLA for your squad: +40 hp and a sugar rush. E slams down an OUT OF ORDER sign that stops enemy bullets, rockets and blasts. your side shoots through it. rude.",
+    "ultimate, RESTOCK: armour and cooldowns for everyone nearby. sometimes it jams. a squadmate on foot can press F to kick it. that's the fix.",
+  ] },
+  { v: '11.25', date: '2026-11-13', title: 'PLEASE HOLD (PROPERLY)', items: [
+    "fixed: night shift's PLEASE HOLD shield was posing a spare copy of itself. the real one comes up across the front now.",
+  ] },
+  { v: '11.24', date: '2026-11-13', title: 'WRECKING BALL', items: [
+    "new mech: WRECKING BALL. a 4 m hamster ball with a guy running inside. roll into people (faster = more ouch), rev up and launch, swing on the chain, slam the ground from as high as you dare.",
+    "its ultimate, PILE DRIVER: rockets 30 m up, you pick a spot, it comes down at 70 m/s. everyone sees the INCOMING ring. move.",
+    "pick it in the battle island hero pick or the loadout's mech drop row. bots drive it too.",
+  ] },
+  { v: '11.23', date: '2026-11-13', title: 'LIFT OFF, BUT LOUDER', items: [
+    "LIFT OFF, BUT LOUDER: the rooftop lift rooms got bright team colours, a cyan neon glow, a lit LIFT sign and roof beacons, so you can tell whose side you're on from across the map.",
+  ] },
+  { v: '11.22', date: '2026-11-13', title: 'GO AWAY', items: [
+    "the lighthouse keeper finally decorated: pink roof, blue door, a doormat that says GO AWAY, and one enormous sock on the washing line. nobody knows where the other one went.",
+  ] },
   { v: '11.21', date: '2026-11-13', title: 'LIFT OFF', items: [
     "LIFT OFF: the roof boxes on rooftop are real lift machine rooms now (team stripes, vents, a door that goes nowhere) and the antenna grew a full lattice mast.",
   ] },

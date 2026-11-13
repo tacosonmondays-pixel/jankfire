@@ -13,6 +13,7 @@ import { inFront } from '../shared/rig.js';
 import { outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { raycast, movePlayer, playerBoxes, rayBox, playerOverlap, PH } from '../shared/physics.js';
 import { installWrecking } from './mech_wrecking.js'; // battle island heroes: each kit's judging in its own file
+import { installVending } from './mech_vending.js';
 import { installTrolley } from './mech_trolley.js';
 
 const PP = MECH.paperplane, NS = MECH.nightshift;
@@ -31,18 +32,22 @@ function clear(a, b, boxes) {
   return l < 0.35 || !raycast(a, [d[0] / l, d[1] / l, d[2] / l], l - 0.3, boxes);
 }
 // the battle island heroes' kits (server/mech_<id>.js): hooks by frame id, each called with this = the room.
-// { enter, exit, flags, budget, land, msg, tick, bot, shrug, soak, en }. a kit that carries people (TROLLEY's basket)
-// also has { guest (a non-pilot's 'ride' / 'unride'), holds (still carrying t?), heldAt (where t goes), unhold, proj }
+// { enter, exit, flags, budget, land, msg, tick, bot, shrug, soak, en } (+ poke: someone on foot's message at it; world,
+// leave, reset: things a kit puts out in the world, ticked / cleared with the room, not per pilot). a kit that carries
+// people (TROLLEY's basket) also has { holds (still carrying t?), heldAt (where t goes), unhold, proj }, and its poke
+// takes 'ride' / 'unride'
 const KIT = {};
 const MSG_PER_S = 30; // 'mech' messages a second per player (cannons are 8): more get dropped
 // what someone carried in a mech can't send: scooped, almost anything; riding, everything but their guns and items
 const HELD_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'parry', 'spray', 'cart', 'car', 'rig', 'lasso', 'lh', 'cough', 'nv']);
 const HELD_RIDE = new Set(['push', 'slam', 'deploy', 'tbag', 'cart', 'rig', 'lasso', 'lh']);
+const POKES = new Set(['kick', 'ride', 'unride']); // what someone on foot may send at someone else's mech (KIT.poke)
 
 export function installMech(Room, U) {
   const { now, num, vec3, norm, r2, center, safe, send, REC_T } = U;
   REC_T.add('mech'); // drops, swings, slams and blasts show up in killcams and the play of the round
   installWrecking(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
+  installVending(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
   installTrolley(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
 
   Object.assign(Room.prototype, {
@@ -244,12 +249,14 @@ export function installMech(Room, U) {
       if (p.mech) this.mechExit(p, 'quiet');
       for (const m of [...this.mechMap().values()]) if (m.o === p.id) this.mechGone(m, 'owner');
       this.dronesOf(p.id, true);
+      for (const K of Object.values(KIT)) if (K.leave) K.leave.call(this, p); // (a kit's things out in the world: the vending machine's colas, its wall)
     },
     mechReset() { // a new round, map or mode: no mech anywhere
       for (const p of this.players.values()) if (p.mech) this.mechExit(p, 'quiet');
       for (const p of this.players.values()) if (p.mheld) this.mechUnhold(p, 'quiet');
       for (const m of [...this.mechMap().values()]) this.mechGone(m, 'reset');
       if (this._drones) this._drones.clear();
+      for (const K of Object.values(KIT)) if (K.reset) K.reset.call(this);
     },
 
     // ------------------------------------------------------------ armour: the knight's shield first, then the pool
@@ -493,7 +500,7 @@ export function installMech(Room, U) {
     onMech(p, m) {
       const n = now();
       if (!p.alive || typeof m.k !== 'string' || m.k.length > 12) return;
-      if (!p.mech && (m.k === 'ride' || m.k === 'unride')) { if (n - (p.mechGuestT || 0) < 250) return; p.mechGuestT = n; this.mechGuest(p, m, n); return; } // someone else's mech (a few a second at most)
+      if (POKES.has(m.k)) { this.mechPoke(p, m, n); return; } // on foot, at someone else's mech (the vending machine's kick, riding in a trolley)
       if (p.mheld) return; // carried: hands off every mech
       if (m.k === 'in') { if (n - (p.mechInT || 0) < 300) return; p.mechInT = n; if (!this.mechEnter(p, n) && !this.mechOf(p)) this.mechNo(p, 'no mech of yours here'); return; } // (a few a second at most)
       const M = p.mech;
@@ -517,6 +524,18 @@ export function installMech(Room, U) {
         case 'slam': if (!pp) this.mechSlam(p, n); break;
         case 'slamland': if (!pp) this.mechSlamLand(p, vec3(m.p), n); break;
       }
+    },
+    // someone on foot pokes a pilot's mech ({ k: 'kick', to: pilot id }): rate limited, only from on foot, routed to that
+    // frame's kit (KIT.poke), which judges the rest (side, reach, whether it needs it)
+    // ('ride' / 'unride': the trolley's child seat. unride goes to whoever's carrying you, whatever 'to' says)
+    mechPoke(p, m, n) {
+      if (p.mech || n - (p.pokeT || 0) < 250) return;
+      p.pokeT = n;
+      if (m.k === 'unride') { if (!p.mheld) return; const c = this.mechCarrier(p); if (!c) { this.mechUnhold(p, 'gone'); return; } m = { k: 'unride', to: c.id }; }
+      else if (p.mheld) return; // (carried: no kicking or hopping into another one)
+      const t = Number.isInteger(m.to) ? this.players.get(m.to) : null, K = t && t !== p && this.mechOn(t, n) ? KIT[t.mech.f] : null;
+      if (K && K.poke) K.poke.call(this, p, t, t.mech, m.k, n);
+      else if (m.k === 'ride') this.mechNo(p, 'nothing to ride');
     },
     // ---- carried by a mech (TROLLEY's basket: scooped enemies, an ally riding). t.mheld = { by: carrier id, f, k, seq }:
     // their own movement doesn't count, the carrier's kit says where they are; it lets go on any cleanup path
@@ -549,25 +568,13 @@ export function installMech(Room, U) {
       if (b.mheld.k === 'ride') this.botThink(b, dt);
       b.f = 0; b.ai.hook = null;
       this.mechHeldPlace(c, b);
+      if (b.pos[1] < this.map.killY) this.kill(b, null, 'void'); // (carried off the edge: stepBot's own check is skipped)
       return true;
     },
     // room.handle hook: scooped = hands off everything; riding = guns only (no grapple, streaks, carts, t-bags)
     mechHeldStop(p, m) {
       if (!this.mechCarrier(p)) { this.mechUnhold(p, 'gone'); return false; }
       return p.mheld.k === 'ride' ? HELD_RIDE.has(m.t) : HELD_STOP.has(m.t);
-    },
-    // a non-pilot's message to someone's mech: { k: 'ride', to: pilot id } / { k: 'unride' }. the kit judges it
-    mechGuest(p, m, n) {
-      if (m.k === 'unride') {
-        if (!p.mheld) return;
-        const c = this.mechCarrier(p);
-        if (!c) { this.mechUnhold(p, 'gone'); return; }
-        KIT[c.mech.f].guest.call(this, c, c.mech, p, m, n);
-        return;
-      }
-      const c = this.players.get(num(m.to));
-      if (!c || c === p || !this.mechOn(c) || !KIT[c.mech.f] || !KIT[c.mech.f].guest) { this.mechNo(p, 'nothing to ride'); return; }
-      KIT[c.mech.f].guest.call(this, c, c.mech, p, m, n);
     },
     // tickProjectiles hook: a hero's own projectile (WEAPONS[k].kit names the kit)
     mechProjStep(pr, dt, n) {
@@ -589,6 +596,8 @@ export function installMech(Room, U) {
           if (h && h.t < best) { best = h.t; hit = t; head = hb.head; }
         }
       }
+      const vw = this.vmRayWall && this.vmRayWall(p, o, d, best); // an enemy OUT OF ORDER wall in the way: the shot stops there (the shooter hurts it, once it knows nothing nearer was hit)
+      if (vw) return { t: null, head: false, at: vw.at, wall: vw.wall };
       return { t: hit, head, at: [o[0] + d[0] * best, o[1] + d[1] * best, o[2] + d[2] * best] };
     },
 
@@ -600,7 +609,8 @@ export function installMech(Room, U) {
       M.gunT = n; M.side = -(M.side || 1);
       const o = this.mechEyeOf(p), r = this.mechRay(p, o, d, G.range);
       const em = this.mechRayEmpty(p, o, d, Math.min(G.range, Math.hypot(r.at[0] - o[0], r.at[1] - o[1], r.at[2] - o[2]))); // an empty mech in front of whatever it hit
-      if (em) { r.t = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      if (em) { r.t = null; r.wall = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      if (r.wall) this.vmWallHurt(r.wall, G.dmg, r.at, p); // (the wall only when it was the first thing hit)
       this.broadcast({ t: 'mech', k: 'gun', id: p.id, s: M.side, b: r.at.map(r2), h: r.t || em ? 1 : 0 }, p.isBot ? undefined : p.id);
       if (r.t) this.hurt(r.t, p, 'mechgun', G.dmg * (r.head ? MECH.head : 1), [d[0] * 1.5, 0.5, d[2] * 1.5], { hs: r.head });
       else if (em) { const hd = r.at[1] >= em.m.p[1] + MECH[em.m.f].c0 && r.at[1] <= em.m.p[1] + MECH[em.m.f].c1; this.mechHarm(em.m, p, 'mechgun', G.dmg * (hd ? MECH.head : 1), hd, r.at); }
@@ -838,6 +848,7 @@ export function installMech(Room, U) {
         else if (m.st === 'in') { const o = this.players.get(m.o); if (!o.mech || o.mech.id !== m.id) this.mechGone(m, 'leave'); }
       }
       this.tickDrones(n, dt);
+      for (const K of Object.values(KIT)) if (K.world) K.world.call(this, n, dt); // (a kit's things out in the world: colas, walls)
       if (n - (this.mechListT || 0) > 1000 && this.mechMap().size) { // late joiners (and anyone who missed an event) catch up
         this.mechListT = n;
         this.broadcast({ t: 'mech', k: 'list', m: [...this.mechMap().values()].map((m) => [m.id, m.o, m.f, ...m.p.map(r2), m.yaw, m.st, Math.round(m.until - n), Math.max(0, Math.round(m.hp)), MECH[m.f].hp]) }); // (+ armour: the bar over a damaged empty one)

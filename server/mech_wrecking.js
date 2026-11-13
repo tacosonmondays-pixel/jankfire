@@ -11,7 +11,8 @@ const WB = MECH.wrecking;
 const COAST = 7; // m/s per s the speed cap comes back down after a launch / swing / dive (the client's drag is harder)
 
 export function installWrecking(Room, U) {
-  const { now, num, vec3, r2, center, safe, send, KIT, clear, lookOf, hdist } = U;
+  const { now, num, vec3, r2, center, safe, send, KIT, clear, lookOf, hdist, hopUp } = U;
+  const pileOver = (room, p, M) => { M.wb.pile = null; M.bank = Math.min(M.bank, MECH.slack); M.ub = Math.min(M.ub, hopUp(WB)); room.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); }; // (its speed and its climb end with it)
   const ballC = (p) => [p.pos[0], p.pos[1] + WB.r, p.pos[2]]; // the ball's middle
   const floorUnder = (room, p, d = 0.9) => raycast([p.pos[0], p.pos[1] + 0.3, p.pos[2]], [0, -1, 0], d, room.boxes);
 
@@ -45,6 +46,7 @@ export function installWrecking(Room, U) {
     // it touched down after falling `drop` m (measured from the snapshots)
     land(p, M, drop, n) {
       const W = M.wb;
+      M.ub = Math.min(M.ub, hopUp(WB)); // (back on the floor: whatever the chain / pile driver paid for is gone; the floor gives its hop)
       if (W.pile && W.pile.ph === 'down') this.wbPileLand(p, drop, n);
       else if (W.slam) this.wbSlamLand(p, drop, n);
     },
@@ -62,9 +64,13 @@ export function installWrecking(Room, U) {
       if (W.slam && n - W.slam.t > WB.slam.win * 1000) W.slam = null;
       if (W.pile) {
         const P = WB.pile, up = ((P.rise / P.up + P.hang) * 1000 + 300) * P.slow;
-        if (n - W.pile.t > P.life * 1000 * P.slow) { W.pile = null; this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); }
+        if (n - W.pile.t > P.life * 1000 * P.slow) pileOver(this, p, M);
         else if (W.pile.ph !== 'down' && n - W.pile.t > up) this.wbPileDrop(p, [0, -1, 0], n, true); // (hung there too long: straight down)
-        else if (W.pile.ph === 'down' && (n > W.pile.dEnd || hdist(p.pos, W.pile.to) > W.pile.dl + 5)) { W.pile = null; M.bank = Math.min(M.bank, MECH.slack); this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); } // (the dive's 70 m/s is for the trip to its spot: no longer, and not away from it)
+        else if (W.pile.ph === 'down') { // the dive's 70 m/s is for the trip to its spot: no longer, and never away from it (past it, round it)
+          const to = W.pile.to, d = Math.hypot(p.pos[0] - to[0], p.pos[1] - to[1], p.pos[2] - to[2]);
+          W.pile.best = Math.min(W.pile.best ?? d, d);
+          if (n > W.pile.dEnd || d > W.pile.best + 3) pileOver(this, p, M);
+        }
       }
       if (W.coast && W.coast.v - COAST * (n - W.coast.t) / 1000 < WB.speed) W.coast = null;
       if (!W.pile) this.wbRamTick(p, M, n);
@@ -82,10 +88,13 @@ export function installWrecking(Room, U) {
     wbOn(p) { return this.mechOn(p) && p.mech.f === 'wrecking' && !!p.mech.wb; },
     // ---- ram: rolling into people. the speed is what the server measured (players) / its own (bots)
     wbRamTick(p, M, n) {
-      const v = p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0];
-      const hs = Math.hypot(v[0], v[1]), h = wbRam(hs);
+      const v = p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0], W = M.wb;
+      if (!p.isBot && M.mv !== W.mvRef) { W.mvRef = M.mv; W.hsPrev = W.hsNow || 0; W.hsNow = M.mv ? Math.hypot(M.mv[0], M.mv[1]) : 0; } // (the last two measured windows)
+      // what it hits with: the measured speed, but never more than it's allowed to go right now, nor a jump from the window
+      // before (a ball that sat still and then "moved" 10 m in one snapshot rams like it was sitting still)
+      const hs = Math.min(Math.hypot(v[0], v[1]), KIT.wrecking.cap.call(this, p, M, p.f, n), p.isBot ? 1e9 : (W.hsPrev || 0) + 12), h = wbRam(hs);
       if (!h) return;
-      const fx = v[0] / hs, fz = v[1] / hs;
+      const vl = Math.hypot(v[0], v[1]) || 1, fx = v[0] / vl, fz = v[1] / vl; // (the way it's going: a unit vector off the raw velocity, the clamped speed sizes the hit)
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t) || n < (M.ramT.get(t.id) || 0)) continue;
         const dx = t.pos[0] - p.pos[0], dz = t.pos[2] - p.pos[2], l = Math.hypot(dx, dz), dy = t.pos[1] - p.pos[1];
@@ -143,6 +152,7 @@ export function installWrecking(Room, U) {
       if (!W || !W.chain) return;
       W.chain = null;
       W.coast = { v: WB.chain.speed, t: now() }; // (the swing's speed carries on and fades)
+      M.ub = Math.min(M.ub, hopUp(WB) + 4); // (the climb it paid for ends with the chain: a fling up off it gets a hop and a bit)
       M.cd.chain = Math.max(M.cd.chain || 0, now() + WB.chain.cd * 1000);
       this.broadcast({ t: 'mech', k: 'wbchain', id: p.id, off: 1, why });
     },
@@ -162,7 +172,7 @@ export function installWrecking(Room, U) {
       if (!W.slam || n - W.slam.t < 200) return;
       W.slam = null;
       const s = wbSlam(drop);
-      this.wbBlast(p, s.r, (d) => { const f = 1 - d / s.r; return { dmg: s.dmg * (0.35 + 0.65 * f), kb: s.kb * (0.5 + 0.5 * f), up: s.up * (0.6 + 0.4 * f) }; }, 'wbslam');
+      this.wbBlast(p, s.r, (d) => { const f = 1 - d / s.r; return { dmg: s.dmg * (0.35 + 0.65 * f), kb: s.kb * (0.5 + 0.5 * f), up: s.up * (0.6 + 0.4 * f) }; }, 'wbslam', s.dmg, 0.35);
       this.broadcast({ t: 'mech', k: 'wbquake', id: p.id, p: p.pos.map(r2), r: r2(s.r), sz: r2(s.k) });
       this.mechStomp(p, n);
     },
@@ -191,22 +201,22 @@ export function installWrecking(Room, U) {
       }
       if (!to) { const h = raycast(e, [0, -1, 0], 200, this.boxes); to = h ? h.point.slice() : [p.pos[0], p.pos[1] - 40, p.pos[2]]; }
       W.pile.ph = 'down'; W.pile.to = to; W.pile.dT = n;
-      W.pile.dl = hdist(p.pos, to);
       W.pile.dEnd = n + Math.hypot(to[0] - p.pos[0], to[1] - p.pos[1], to[2] - p.pos[2]) / P.dive * 2500 * P.slow + 1500; // (room for a slow client: it can't go anywhere but toward the spot anyway)
       this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'down', to: to.map(r2) });
     },
     wbPileLand(p, drop, n) {
-      const W = p.mech.wb, P = WB.pile;
-      W.pile = null;
+      const M = p.mech, W = M.wb, P = WB.pile, to = W.pile && W.pile.to;
       W.coast = null;
-      if (drop < P.min) { this.broadcast({ t: 'mech', k: 'wbpile', id: p.id, ph: 'off' }); return; } // (it never really fell: a fizzle)
-      this.wbBlast(p, P.r, wbPile, 'wbpile');
+      if (drop < P.min || !to || hdist(p.pos, to) > WB.r + 2.5) { pileOver(this, p, M); return; } // (it never really fell, or it came down anywhere but the ring everyone saw: a fizzle)
+      W.pile = null; M.ub = Math.min(M.ub, hopUp(WB));
+      this.wbBlast(p, P.r, wbPile, 'wbpile', P.dmg, P.edge);
       this.broadcast({ t: 'mech', k: 'wbquake', id: p.id, p: p.pos.map(r2), r: P.r, sz: 1, big: 1 });
       this.mechStomp(p, n);
     },
     // a blast round the ball's foot: everyone in r it can see gets hit(d) and flung out and up
-    wbBlast(p, r, hit, w) {
+    wbBlast(p, r, hit, w, dmg, k) {
       const c = [p.pos[0], p.pos[1] + 0.8, p.pos[2]];
+      if (this.mechBoom) this.mechBoom(c, r, dmg, p, w, k); // (empty parked enemy mechs in it get it too, like the knight's slam)
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
         const tc = this.mechOn(t) ? this.mechCenter(t) : center(t), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]];
@@ -256,7 +266,7 @@ export function installWrecking(Room, U) {
         }
       } else {
         // pick a move
-        const near = [...this.players.values()].filter((o) => o !== b && o.alive && !this.friendly(b, o) && hdist(o.pos, b.pos) < 7).length;
+        let near = 0; for (const o of this.players.values()) if (o !== b && o.alive && !this.friendly(b, o) && hdist(o.pos, b.pos) < 7) near++;
         if (t && vis && (M.ult || 0) >= 100 && flat < WB.pile.range - 5 && b.onGround) this.wbPileStart(b, n);
         else if (!W.slam && n >= (M.cd.slam || 0) && ((b.onGround && (near >= 2 || (near === 1 && Math.random() < dt * 0.8 * easy))) || (!b.onGround && t && b.pos[1] - t.pos[1] > 4 && flat < 9))) {
           if (this.wbSlamStart(b, n) && b.onGround) { v[1] = WB.slam.hop; b.onGround = false; b.pos[1] += 0.05; }
@@ -306,7 +316,7 @@ export function installWrecking(Room, U) {
         else if (drop > 2) this.mechStomp(b, n);
         B.peak = b.pos[1];
       }
-      if (W.pile && W.pile.ph === 'down' && n - (W.pile.dT || n) > 3000) { W.pile = null; } // (stuck on something: give up)
+      if (W.pile && W.pile.ph === 'down' && n - (W.pile.dT || n) > 3000) pileOver(this, b, M); // (stuck on something: give up)
       b.f = FLAGS.MECH | f;
       if (b.onGround) b.ground = b.pos.slice();
     },

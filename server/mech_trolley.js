@@ -6,17 +6,27 @@
 // Its state lives on the pilot's p.mech.tr; everyone it carries has t.mheld (server/mech.js lets go on every cleanup).
 import { FLAGS, WEAPONS } from '../shared/weapons.js';
 import { MECH, MF, trSpot, trPush, trRam, trDrive } from '../shared/mech.js';
-import { raycast } from '../shared/physics.js';
+import { raycast, playerOverlap } from '../shared/physics.js';
+import { outOfBounds } from '../shared/bounds.js';
 import { stepBall } from '../shared/primaries.js';
 
 const TR = MECH.trolley;
-const COAST = 9; // m/s per s the speed cap comes back down after a push / AISLE 5 (the client's drag is harder)
+const COAST = 16; // m/s per s the speed cap comes back down after a push / AISLE 5 (the client's own drag over top speed)
 
 export function installTrolley(Room, U) {
   const { now, norm, r2, center, send, KIT, clear, segDist, hdist } = U;
   const fwdOf = (p) => [-Math.sin(p.yaw), -Math.cos(p.yaw)];
   // how fast it's really going: measured from the snapshots (players), its own (bots)
   const speedOf = (p, M, n) => (p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0]);
+  // what it hits / drifts / scoops with: the measured speed, never more than it may go right now (the kit's cap) nor a jump
+  // from the window before (a trolley that sat still then "moved" 10 m in one snapshot counts as sitting still). the way
+  // it's going is a unit vector off the raw velocity, so nothing can scale the knockback up
+  const moveOf = (room, p, M, n) => {
+    const v = speedOf(p, M, n), T = M.tr, raw = Math.hypot(v[0], v[1]);
+    if (!p.isBot && M.mv !== T.mvRef) { T.mvRef = M.mv; T.hsPrev = T.hsNow || 0; T.hsNow = M.mv ? Math.hypot(M.mv[0], M.mv[1]) : 0; }
+    const hs = Math.min(raw, KIT.trolley.cap.call(room, p, M, p.f, n), p.isBot ? 1e9 : (T.hsPrev || 0) + 12);
+    return { hs, fx: raw > 1e-6 ? v[0] / raw : 0, fz: raw > 1e-6 ? v[1] / raw : 0 };
+  };
   const chargeOf = (T, n) => (n - T.chT <= TR.drift.keep * 1000 ? T.ch : 0);
 
   KIT.trolley = {
@@ -25,9 +35,9 @@ export function installTrolley(Room, U) {
     // the flags it's allowed: A drifting (only while the server measures real speed: that's what builds the charge),
     // B in AISLE 5, C in the push
     flags(p, M, want, n, dt) {
-      const T = M.tr, v = speedOf(p, M, n);
+      const T = M.tr;
       let f = 0;
-      if ((want & MF.DRIFT) && Math.hypot(v[0], v[1]) >= TR.drift.min) {
+      if ((want & MF.DRIFT) && moveOf(this, p, M, n).hs >= TR.drift.min) {
         f |= MF.DRIFT;
         T.ch = Math.min(1, chargeOf(T, n) + (dt || 0) / TR.drift.build); T.chT = n;
       }
@@ -56,6 +66,7 @@ export function installTrolley(Room, U) {
       if (T.coast && T.coast.v - COAST * Math.max(0, n - T.coast.t) / 1000 < TR.speed) T.coast = null;
       if (T.aisle && n >= T.aisle.until) this.trDump(p, 'time');
       if (M.dash) this.trPushSweep(p, M, n);
+      if (!M.dash && !T.aisle && !T.coast && T.boost) { T.boost = false; M.bank = Math.min(M.bank, MECH.slack + TR.speed * 1.12 * 0.35); } // (the push's / AISLE 5's extra bank goes with them)
       else if (!(T.aisle && this.trScoop(p, M, n))) this.trRamTick(p, M, n);
       this.trCarry(p, M, n, dt);
       this.trRiders(p, M, n);
@@ -69,10 +80,11 @@ export function installTrolley(Room, U) {
       return trSpot(c.pos, c.yaw, h ? TR.scoop[h.i] : TR.seat);
     },
     unhold(c, M, t, why) { this.trRelease(c, t, why === 'dead' ? 'dead' : 'quiet'); },
-    // the pound coin lock: { k: 'ride', to } climbs an ally into the child seat, { k: 'unride' } hops them out
-    guest(c, M, p, m, n) {
+    // the pound coin lock (server/mech.js mechPoke): 'ride' climbs an ally into the child seat, 'unride' hops them out
+    poke(p, c, M, k, n) {
       const T = M.tr;
-      if (m.k === 'unride') { if (T.rider === p.id) this.trRelease(c, p, 'hop'); return; } // (scooped: no getting out)
+      if (k === 'unride') { if (T.rider === p.id) this.trRelease(c, p, 'hop'); return; } // (scooped: no getting out)
+      if (k !== 'ride') return;
       if (!this.friendly(c, p)) { this.mechNo(p, "that's not your trolley"); return; }
       this.trRideStart(c, p, n);
     },
@@ -103,6 +115,15 @@ export function installTrolley(Room, U) {
       if (!owner) { this.removeProj(pr); return; }
       const st = stepBall(pr, dt, this.boxes, WEAPONS.trcan.grav, C.minB, C.e);
       if (this.parryProj(pr, prev)) return; // batted back by a katana parry
+      const x = this.vmFirst ? this.vmFirst(owner, prev, pr.p) : null;
+      if (x) { // an enemy OUT OF ORDER sign: BONK off its face and back the way it came (that counts as a bounce)
+        const Wl = x.wall, fx = -Math.sin(Wl.yaw), fz = -Math.cos(Wl.yaw), vn = pr.v[0] * fx + pr.v[2] * fz, sg = vn > 0 ? 1 : -1;
+        pr.v[0] -= (1 + C.e) * vn * fx; pr.v[2] -= (1 + C.e) * vn * fz;
+        pr.p = [x.at[0] - sg * fx * (pr.r + 0.05), x.at[1], x.at[2] - sg * fz * (pr.r + 0.05)];
+        if (!pr.wallHit) { pr.wallHit = 1; this.vmWallHurt(Wl, C.dmg, x.at, owner); this.broadcast({ t: 'mech', k: 'trbonk', id: pr.o, to: 0, p: x.at.map(r2) }); }
+        st.n = (st.n || 0) + 1;
+      }
+      if (this.mechProjHit && this.mechProjHit(pr, prev, owner)) return; // an empty parked enemy mech: it takes the can
       const age = (n - pr.born) / 1000;
       const vs = this.sweep(prev, pr.p, pr.r, (t) => t.id === pr.o || (this.friendly(owner, t) && !t.trap) || (pr.o === owner.id && this.trHolding(owner, t)));
       if (vs.length) {
@@ -130,7 +151,7 @@ export function installTrolley(Room, U) {
       T.ch = 0;
       M.dash = { k: 'push', t0: n, until: n + P.len * 1000 + 150, v: h.v, h, dir: fwdOf(p), prev: p.pos.slice(), hit: new Set() };
       T.coast = { v: h.v, t: n + P.len * 1000 };
-      M.bank += 3;
+      M.bank += 3; T.boost = true;
       this.broadcast({ t: 'mech', k: 'trpush', id: p.id, c: r2(c), v: r2(h.v) });
       this.mechEn(p, true);
       return h;
@@ -150,12 +171,24 @@ export function installTrolley(Room, U) {
         this.broadcast({ t: 'mech', k: 'trhit', id: p.id, to: t.id, p: tc.map(r2), big: h.k >= 0.6 ? 1 : 0 });
         this.mechKitHurt(p, t, 'trpush', h.dmg, [f[0] * h.kb, h.up, f[1] * h.kb]);
       }
+      this.trEmpties(p, a, b, TR.push.r, D.hit, 'trpush', h.dmg); // (an empty parked enemy mech on the path gets it too)
+    },
+    // an empty parked enemy mech the trolley's path a-b comes within r of: hit once per `hit` set (push / ram)
+    trEmpties(p, a, b, r, hit, w, dmg) {
+      if (!this.mechEmpties) return;
+      for (const m of this.mechEmpties()) {
+        if (hit.has('m' + m.id) || !this.mechCanHit(m, p)) continue;
+        const q = this.mechNear(m, b);
+        if (segDist(a, b, q) > r || !this.mechSeen(m, this.mechCenter(p))) continue;
+        hit.add('m' + m.id);
+        this.mechHarm(m, p, w, dmg, false, q);
+        this.broadcast({ t: 'mech', k: 'trhit', id: p.id, to: 0, p: q.map(r2), big: dmg >= 60 ? 1 : 0 });
+      }
     },
     // ---- ram: driving into people at speed (what the server measured)
     trRamTick(p, M, n) {
-      const v = speedOf(p, M, n), hs = Math.hypot(v[0], v[1]), h = trRam(hs);
+      const { hs, fx, fz } = moveOf(this, p, M, n), h = trRam(hs), R = TR.ram;
       if (!h) return;
-      const fx = v[0] / hs, fz = v[1] / hs, R = TR.ram;
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t) || this.trHolding(p, t) || n < (M.ramT.get(t.id) || 0)) continue;
         const dx = t.pos[0] - p.pos[0], dz = t.pos[2] - p.pos[2], l = Math.hypot(dx, dz), dy = t.pos[1] - p.pos[1];
@@ -165,6 +198,10 @@ export function installTrolley(Room, U) {
         this.broadcast({ t: 'mech', k: 'ram', id: p.id, to: t.id, p: this.mechCenter(t).map(r2), big: h.dmg >= 28 ? 1 : 0, w: 'trram' });
         this.mechKitHurt(p, t, 'trram', h.dmg, [fx * h.kb, h.up, fz * h.kb]);
       }
+      // empty parked enemy mechs it drives into (once per ram cooldown each)
+      const rh = M.trRamM || (M.trRamM = new Map()), seen = new Set([...rh].filter(([, u]) => n < u).map(([k]) => k)), b0 = [p.pos[0], p.pos[1] + TR.h * 0.42, p.pos[2]];
+      this.trEmpties(p, b0, [b0[0] + fx * (TR.hw + 0.3), b0[1], b0[2] + fz * (TR.hw + 0.3)], 0.4, seen, 'trram', h.dmg);
+      for (const k of seen) if (!rh.has(k) || n >= rh.get(k)) rh.set(k, n + R.cd * 1000);
     },
 
     // ---- CLEAN UP AISLE 5 (Q, a full ult): top speed for 6 s; enemies it runs into go in the basket. Q again (or the
@@ -175,7 +212,7 @@ export function installTrolley(Room, U) {
       if ((M.ult || 0) < 100) { this.mechNo(p, 'ultimate not ready'); return false; }
       M.ult = 0;
       T.aisle = { t0: n, until: n + A.dur * 1000 };
-      M.bank += 4;
+      M.bank += 4; T.boost = true;
       this.broadcast({ t: 'mech', k: 'traisle', id: p.id, on: 1, ms: A.dur * 1000 });
       this.mechEn(p, true);
       return true;
@@ -194,8 +231,7 @@ export function installTrolley(Room, U) {
     trScoop(p, M, n) {
       const T = M.tr, A = TR.aisle;
       if (T.held.length >= A.max) return false;
-      const v = speedOf(p, M, n);
-      if (Math.hypot(v[0], v[1]) < A.min) return true;
+      if (moveOf(this, p, M, n).hs < A.min) return true;
       const f = fwdOf(p), front = [p.pos[0] + f[0] * TR.hw, p.pos[1], p.pos[2] + f[1] * TR.hw];
       for (const t of this.players.values()) {
         if (T.held.length >= A.max) break;
@@ -237,9 +273,10 @@ export function installTrolley(Room, U) {
       if (!t.alive || how === 'dead') return;
       const f = fwdOf(c), cv = c.isBot ? [c.vel[0], c.vel[2]] : c.mech && c.mech.mv ? c.mech.mv : [0, 0];
       // somewhere it can't be inside a wall: their spot if the trolley's middle can see it, else the middle
+      // (no wall between the trolley's middle and that spot, not inside anything, not off the map)
       let at = t.pos.slice();
       const mid = [c.pos[0], c.pos[1] + 0.4, c.pos[2]];
-      if (!clear(mid, [at[0], at[1] + 0.4, at[2]], this.boxes)) at = [c.pos[0], c.pos[1] + 0.3, c.pos[2]];
+      if (!clear(mid, [at[0], at[1] + 0.4, at[2]], this.boxes) || playerOverlap(at, this.boxes) || (this.map.bounds && outOfBounds(this.map, at))) at = [c.pos[0], c.pos[1] + 0.3, c.pos[2]];
       let v = [cv[0] * 0.6, 2, cv[1] * 0.6];
       if (how === 'hop') { // out over the side with no wall
         const o = this.mechOutSpot(c.pos, [[Math.cos(c.yaw), -Math.sin(c.yaw)], [-Math.cos(c.yaw), Math.sin(c.yaw)], [Math.sin(c.yaw), Math.cos(c.yaw)]], TR.hw + 0.9);

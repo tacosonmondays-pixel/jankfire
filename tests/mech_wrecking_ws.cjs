@@ -83,12 +83,21 @@ const lerp = (a, b, k) => a.map((x, i) => x + (b[i] - x) * Math.max(0, Math.min(
   // (b) really rolls through them at 20 m/s
   await hold(300, [[A, P0, { f: MF.MECH }], [B, bAt], [C, far2]]);
   B.got.length = 0;
-  await hold(1500, [[A, (t) => lerp(P0, [P0[0], Y, P0[2] - 30], t / 1500), { f: MF.MECH, v: [0, 0, -20] }], [B, bAt], [C, far2]]);
+  const roll = (t) => { const s2 = t < 600 ? 0.5 * (20 / 0.6) * (t / 1000) ** 2 : 6 + 20 * (t - 600) / 1000; return [P0[0], Y, P0[2] - Math.min(30, s2)]; }; // (it gets going like a real ball: 0 to 20 m/s in 0.6 s)
+  await hold(2100, [[A, roll, { f: MF.MECH, v: [0, 0, -20] }], [B, bAt], [C, far2]]);
   P = [P0[0], Y, P0[2] - 30];
   const rd = B.all('dmg', (m) => m.to === B.id && m.w === 'wbram');
   ok(rd.length === 1 && rd[0].a >= 35 && rd[0].a <= 55, `rolled through them at 20 m/s: one ram for ${rd[0] && rd[0].a} (8 + 14 x 2.6 = 44)`);
   ok(!A.all('mech', (m) => m.k === 'fix').length, 'top speed (22) is allowed: no correction');
   await sleep(2600); // (B respawns if it died)
+  // (review #418) a saved-up teleport: sits still a second (the move bank fills), then ONE snapshot 10 m into them
+  { const T0 = P.slice(), T1 = [P[0], Y, P[2] - 10], bT = [P[0], Y, P[2] - 10.5];
+    await hold(1200, [[A, T0, { f: MF.MECH }], [B, bT], [C, far2]]); B.got.length = 0;
+    await hold(600, [[A, T1, { f: MF.MECH }], [B, bT], [C, far2]]);
+    const td = B.all('dmg', (m) => m.to === B.id && m.w === 'wbram'), tk = B.all('kb', (m) => m.w === 'wbram').map((m) => Math.hypot(m.v[0], m.v[2]));
+    ok(!td.length || td[0].a <= 30, `sat still, then one 10 m snapshot into them: no max ram (${td.length ? td[0].a : 'none'}; was 70)`);
+    ok(tk.every((k) => k <= 25), `...and no 60 m/s fling either (knockback ${tk.map((k) => k.toFixed(1)).join(', ') || 'none'}; an honest ram at that speed: about 12)`);
+    P = settle(A, T1); await pilot(900); await sleep(2000); }
 
   // ---- 3. the rev: timed by the server
   A.got.length = 0;
@@ -154,6 +163,15 @@ const lerp = (a, b, k) => a.map((x, i) => x + (b[i] - x) * Math.max(0, Math.min(
   A.send({ t: 'mech', k: 'chain', off: 1 }); await pilot(100);
   A.send({ t: 'mech', k: 'chain', p: [-9.7, 9, 0] }); await pilot(100);
   ok(A.all('mech', (m) => m.k === 'wbchain' && !m.off).length === 1, 'chain, let go, chain again at once: the cooldown holds');
+  // (review #418) the climb the chain paid for doesn't outlive it: chain, let go, roll off, wait on the floor, then 9 m up in one snapshot
+  await pilot(1200);
+  A.send({ t: 'mech', k: 'chain', p: [-9.7, 9, 0] }); await pilot(300, null, MF.A);
+  A.send({ t: 'mech', k: 'chain', off: 1 }); await pilot(200);
+  { const R0 = P.slice(), R1 = [P[0] + 6, Y, P[2]]; await pilot(700, (t) => lerp(R0, R1, t / 600)); P = R1; await pilot(2500);
+    A.got.length = 0; await pilot(300, () => [P[0], Y + 9, P[2]]);
+    ok(A.all('mech', (m) => m.k === 'fix').length > 0, 'chain let go, rolled off, waited: a 9 m climb later is put back (no leftover chain budget)');
+    P = settle(A, P); await pilot(900); }
+  { const back = P.slice(); await pilot(900, (t) => lerp(back, W0, t / 700)); P = W0.slice(); await pilot(600); }
   await pilot(1500);
 
   // ---- 5. the slam: sized by the height it really fell
@@ -246,6 +264,26 @@ const lerp = (a, b, k) => a.map((x, i) => x + (b[i] - x) * Math.max(0, Math.min(
   await pilot(300, (t) => [P[0], Y + 3 * Math.min(1, t / 100), P[2]], MF.B, { b: tgt, c: cNear });
   await pilot(400, () => P, MF.B, { b: tgt, c: cNear });
   ok(!A.all('mech', (m) => m.k === 'wbquake' && m.big).length && !C.all('dmg', (m) => m.w === 'wbpile').length, 'a pile driver that never got up there: fizzles, nobody hurt');
+  // (review #418) the fizzle's 32 m of paid climb doesn't linger: 3 s later, 25 m up in one snapshot
+  await pilot(3000, null, 0, { b: tgt, c: cNear });
+  A.got.length = 0; await pilot(300, () => [P[0], Y + 25, P[2]], 0, { b: tgt, c: cNear });
+  ok(A.all('mech', (m) => m.k === 'fix').length > 0, 'after a fizzled pile driver, 25 m up in one snapshot: put back (no leftover budget)');
+  P = settle(A, P); await pilot(1200, (t) => [P[0], Y, P[2]]); P = [P[0], Y, P[2]];
+  // (review #418) a real rise, aimed at a spot 18 m out, then it flies on THROUGH the spot and comes down 12 m past it (inside the old 'within 5 m of how far it was' rule)
+  for (let i = 0; i < 60; i++) { const e = A.all('mech', (m) => m.k === 'en').pop(); if (e && e.u >= 100) break; await pilot(150); }
+  { const S1 = P.slice(), top3 = [S1[0], Y + 30, S1[2]], spot = [S1[0], Y, S1[2] - 18], past = [S1[0], Y, S1[2] - 30];
+    A.got.length = 0; C.got.length = 0;
+    A.send({ t: 'mech', k: 'pile' });
+    await pilot(1300, (t) => lerp(S1, top3, t / 1100), MF.B, { c: past });
+    const la3 = aim([top3[0], top3[1] + 4.6, top3[2]], spot);
+    await pilot(300, () => top3, MF.B, { y: la3.y, x: la3.x, c: past });
+    A.send({ t: 'mech', k: 'pdrop', d: la3.d }); await pilot(60, () => top3, MF.B, { y: la3.y, x: la3.x, c: past });
+    const dn3 = await A.wait('mech', (m) => m.k === 'wbpile' && m.ph === 'down', 600);
+    await pilot(900, (t) => lerp(top3, past, t / 800), MF.B, { c: past });
+    await pilot(400, null, 0, { c: past });
+    ok(dn3 && !A.all('mech', (m) => m.k === 'wbquake' && m.big).length && !C.all('dmg', (m) => m.w === 'wbpile').length, `pile driver aimed 18 m out, flown on and down 12 m past the ring: no blast where it came down (${A.all('mech', (m) => m.k === 'wbpile' && m.ph === 'off').length ? 'ended' : 'no off'})`);
+    P = settle(A, past); await pilot(1200, (t) => [P[0], Y, P[2]]); P = [P[0], Y, P[2]]; await pilot(600);
+    const b2 = P.slice(), l2 = Math.hypot(S0[0] - b2[0], S0[2] - b2[2]), ms2 = Math.max(600, l2 / 15 * 1000); await pilot(ms2 + 400, (t) => lerp(b2, S0, t / ms2)); P = S0.slice(); } // (back to the middle of the yard)
   await sleep(2600);
 
   // a cheat: a real rise and dive call, then it keeps zooming sideways at 65 m/s instead of landing

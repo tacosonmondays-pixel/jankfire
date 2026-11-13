@@ -471,5 +471,29 @@
   "px": 128,
   "alpha": false,
   "note": ""
+ },
+ "limewash": {
+  "tile": 2.0,
+  "px": 64,
+  "alpha": false,
+  "note": "tint"
+ },
+ "pantile": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": false,
+  "note": "tint"
+ },
+ "polka": {
+  "tile": 0.5,
+  "px": 32,
+  "alpha": false,
+  "note": ""
+ },
+ "doormat": {
+  "tile": 1.0,
+  "px": 64,
+  "alpha": false,
+  "note": ""
  }
 }

@@ -132,6 +132,11 @@ export function makeWalk(c, L, spec, me0) {
     const B = W.ride || me, h = W.ride ? W.ride.camH : 1.65;
     let dist = W.ride ? W.ride.camDist : W.dist;
     tgt.set(B.pos[0], B.pos[1] + h, B.pos[2]);
+    if (spec.camAdj) { // (a scene with something huge in it: on foot near it, the camera eases up and back so it fits the frame)
+      const a = W.ride ? null : spec.camAdj(B.pos), CA = W.ca || (W.ca = [0, 0, 0]), e = Math.min(1, dt * 3);
+      for (let i = 0; i < 3; i++) CA[i] += ((a ? a[i] : 0) - CA[i]) * e;
+      tgt.y += CA[0]; dist += CA[1];
+    }
     const F = c.camFocus; // a scene's big moment (the crane swap): the camera looks over at it for a beat, then comes back
     if (F) { F.t += dt; const k = Math.max(0, Math.min(1, F.t / 0.35, (F.dur - F.t) / 0.45)); const e = k * k * (3 - 2 * k); tgt.lerp(_v.set(F.at[0], F.at[1], F.at[2]), e * 0.8); dist += e * (F.back || 4); if (F.t >= F.dur) c.camFocus = null; }
     const cp = Math.cos(W.camPitch);
@@ -141,7 +146,7 @@ export function makeWalk(c, L, spec, me0) {
     cam.position.copy(camPos);
     if (L.shake > 0) { const k = L.shake * L.shake * 0.3; cam.position.x += (Math.random() - 0.5) * k; cam.position.y += (Math.random() - 0.5) * k; L.shake = Math.max(0, L.shake - dt * 1.6); }
     cam.lookAt(tgt);
-    cam.fov = 55; cam.aspect = innerWidth / innerHeight; cam.clearViewOffset(); cam.updateProjectionMatrix();
+    cam.fov = 55 + (W.ca ? W.ca[2] : 0); cam.aspect = innerWidth / innerHeight; cam.clearViewOffset(); cam.updateProjectionMatrix();
   }
   return {
     W, get me() { return me; }, set me(r) { me = r; },

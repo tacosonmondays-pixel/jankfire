@@ -12,9 +12,10 @@ import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
 import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, whenFailed, missingGlb, glbLoader, metaOf } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
-import { lookMech, lookTick, lookColor, lookFree } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
+import { lookMech, lookTick, lookColor, lookFree, lookGibs } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
 import { WBM } from './mechmodel_wrecking.js'; // battle island heroes' stand-ins + poses: one file each
 import { TRM } from './mechmodel_trolley.js';
+import { VMM } from './mechmodel_vending.js';
 
 // the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
 export const GLB_ID = { paperplane: 'x_mech_paperplane', nightshift: 'x_mech_nightshift' };
@@ -46,7 +47,7 @@ const MK = {
     mk_sword_base: ['sword', [1.58, 2.2, -0.75]], mk_sword_tip: ['sword', [1.58, 2.2, -4.6]], mk_shield_face: ['shield', [-1.54, 2.92, -0.75]], mk_beacon: ['beacon', [0, 5.8, 0]], mk_mark: ['head', [0, 6.4, 0]] },
 };
 // the battle island heroes: { PIV, MK, PRE (material prefix), build(j, own), clipOf(inst, s), pose(inst, s, dt, spr), mix(inst, s, dt) }
-const MODELS = { wrecking: WBM, trolley: TRM };
+const MODELS = { wrecking: WBM, vending: VMM, trolley: TRM };
 const PRE = { paperplane: 'pp_', nightshift: 'ns_' };
 for (const [f, M] of Object.entries(MODELS)) { PIV[f] = M.PIV; MK[f] = M.MK; PRE[f] = M.PRE; GLB_ID[f] = 'x_mech_' + f; }
 for (const s of ['L', 'R']) for (let i = 0; i < 6; i++) MK.paperplane[`mk_missile_${s}${i}`] = [`pod_${s}`, [(s === 'L' ? -1 : 1) * (0.88 + (i % 3) * 0.11), 4.3 - (i > 2 ? 0.1 : 0), -0.42]]; // 12 for the swarm (6 a pod)
@@ -533,6 +534,7 @@ export function mechBurst(inst, vel = [0, 0, 0]) {
   rmesh.ring([at[0], floor, at[2]], 9, 0xff4fd8, 0.5);
   const meshes = [];
   inst.root.traverse((o) => { if (o.isMesh && o.visible && o.material.blending !== THREE.AdditiveBlending && !o.material.isShaderMaterial && !o.isSkinnedMesh) meshes.push(o); });
+  meshes.push(...lookGibs(inst)); // (a skinned hero: one piece per joint, posed, from the hero kit; nothing for the others)
   for (const m of meshes) {
     const g = new THREE.Mesh(m.geometry, m.material);
     m.matrixWorld.decompose(g.position, g.quaternion, g.scale);
