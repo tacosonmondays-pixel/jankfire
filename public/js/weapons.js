@@ -12,6 +12,7 @@ import { vmBob } from './vmbob.js';
 import { buildWeapon, M, cardFace, tipColor, setKatana, freeTree } from './models.js';
 import { heatTeeth, spinTeeth } from './models.js';
 import { fx } from './fx.js';
+import { spawnBit } from './bits.js'; // (casings and shells: real little models)
 import { marbles } from './marbles.js';
 import { sfx, loopSfx, stopLoops } from './audio.js';
 import { shredMotor } from './audio.js';
@@ -148,10 +149,14 @@ function ejectShell(g, color = 0xd9a53a, big = false) {
   g.updateMatrixWorld(true);
   if (g.userData.port) tmpV.copy(g.userData.port); else tmpV.set(0.03, 0.035, g.userData.muzzle.z * 0.35); // a model can say where its port is
   g.localToWorld(tmpV);
-  const sz = big ? 0.03 : 0.018;
-  G.skinFxVM.norm.spawn(tmpV.x, tmpV.y, tmpV.z, 0.6 + Math.random() * 0.5, 0.75 + Math.random() * 0.5, 0.1 + Math.random() * 0.25,
-    0.55, sz, sz * 0.9, color, color, 1, 4.5, 0.4);
+  // a real casing (bits.js): out of the port to the right and up, tumbling end over end, gone before it hits anything.
+  // starts lined up with the barrel, like a real one leaving the port
+  g.getWorldQuaternion(shellQ);
+  const shell = big || color !== 0xd9a53a;
+  spawnBit(shell ? 'shell' : 'casing', 'vm', [tmpV.x, tmpV.y, tmpV.z], [0.7 + Math.random() * 0.5, 0.8 + Math.random() * 0.5, 0.15 + Math.random() * 0.25],
+    { life: 0.75, scale: shell ? 1.05 : 1.5, grav: 5.5, spin: 24, quat: shellQ, color: shell && color !== 0xc02020 ? color : 0xffffff });
 }
+const shellQ = new THREE.Quaternion();
 const SHELL_ON_FIRE = new Set(['ar', 'smg', 'redline', 'minigun', 'scythe_rifle', ...RIFLE_SHELLS, 'pistol', 'akimbo']);
 for (const id of RIFLES) FLASH_IDS.add(id);
 
