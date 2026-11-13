@@ -599,11 +599,15 @@ export function refreshMapVisuals() {
   lightingRefresh();
 }
 // the map's Blender buildings (archfield.js): drawn now if they're in, else fetched and swapped in when they land
+let archT = 0;
 function archFor(id) {
   const list = MAPS[id] && MAPS[id].boxes.arch;
   setArchHaze((m) => hazify(m, 1));
   buildArch(G.scene, list);
-  wantArch(list, () => { if (MAP.id === id) refreshMapVisuals(); });
+  // one redraw for the lot, not one per model: a map with many (Jankburg's 13 house kinds) redrew all its boxes 13 times
+  // in a row as they landed, a long enough stall on a slow machine to miss the server's heartbeat and drop to the menu
+  clearTimeout(archT);
+  wantArch(list, () => { clearTimeout(archT); archT = setTimeout(() => { if (MAP.id === id) refreshMapVisuals(); }, 300); });
 }
 
 // ---- gfxguard.js hooks (the "everything renders black" safety net)
