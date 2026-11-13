@@ -1292,12 +1292,8 @@ function rooftopSD() {
   }
   // ---- the party block: the penthouse (no door upstairs, its north wall solid: the spawns stay out of each other's
   // sight), the pool deck south of it, the cold store and AC north of it
-<<<<<<< HEAD
-  penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] } });
-  const pd0 = B.boxes.length, pdd0 = D.boxes.length;
-=======
   penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, arch: 'penthouse_sd' });
->>>>>>> origin/main
+  const pd0 = B.boxes.length, pdd0 = D.boxes.length;
   add(-7, L0 - 0.5, 0, 7, L0 - 0.45, 8, 'tile'); D.add(-7, L0 - 0.45, 0, 7, L0 - 0.12, 8, 'water');
   add(-7.6, L0, -0.6, 7.6, L0 + 0.1, 0, 'tile'); add(-7.6, L0, 8, 7.6, L0 + 0.1, 8.6, 'tile'); add(-7.6, L0, 0, -7, L0 + 0.1, 8, 'tile'); add(7, L0, 0, 7.6, L0 + 0.1, 8, 'tile');
   for (const [x0, z0, x1, z1] of [[-21.8, -5.7, 21.8, -0.6], [-21.8, 8.6, 21.8, 13.8], [-21.8, -0.6, -7.6, 8.6], [7.6, -0.6, 21.8, 8.6]]) D.add(x0, L0, z0, x1, L0 + 0.02, z1, 'wood');
