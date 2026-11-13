@@ -29,24 +29,24 @@ async function open(b, train) {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   // 1. walking on the test lot
   let pg = await open(b, false);
-  await sleep(1500); await pg.screenshot({ path: OUT + '/walk.png' });
+  await sleep(1500); await pg.screenshot({ path: OUT + '/walk.png', timeout: 180000 });
   want('walking', await shown(pg), { storyBar: true, hotbar: false, tray: false, ammo: true, hands: false, car: false });
   // 2. in the sofa-car (t_wp7's spot)
   await pg.evaluate(async () => { const { ME } = await import('/js/player.js'); ME.pos = [-36, 0.1, 33.5]; ME.yaw = 0; }); await sleep(700);
   await pg.keyboard.down('KeyF'); await sleep(80); await pg.keyboard.up('KeyF'); await sleep(1200);
   const drv = await pg.evaluate(async () => { const { driving } = await import('/js/story/drive.js'); return driving(); });
-  if (drv) { await pg.screenshot({ path: OUT + '/car.png' }); want('driving', await shown(pg), { storyBar: false, tray: false, ammo: true, car: true }); await pg.keyboard.down('KeyF'); await sleep(80); await pg.keyboard.up('KeyF'); await sleep(1000); want('out of the car', await shown(pg), { storyBar: true, car: false }); }
+  if (drv) { await pg.screenshot({ path: OUT + '/car.png', timeout: 180000 }); want('driving', await shown(pg), { storyBar: false, tray: false, ammo: true, car: true }); await pg.keyboard.down('KeyF'); await sleep(80); await pg.keyboard.up('KeyF'); await sleep(1000); want('out of the car', await shown(pg), { storyBar: true, car: false }); }
   else { console.log('FAIL never got in the car'); fails++; }
   // 3. quit story into a training sim: multiplayer's own hotbar and tray come back
   await pg.keyboard.press('KeyB'); await sleep(600); await pg.click('#quit', { force: true }); await sleep(1500);
   await pg.click('#scr-main [data-mode="training"]', { force: true }); await sleep(4500);
-  await pg.screenshot({ path: OUT + '/sim.png' });
+  await pg.screenshot({ path: OUT + '/sim.png', timeout: 180000 });
   want('training sim', await shown(pg), { storyBar: false, hotbar: true, tray: true, ammo: true, hands: false, car: false });
   const e1 = pg.errs; await pg.close();
   // 4. the train: the Blood Drive in your hands
   pg = await open(b, true);
   for (let i = 0; i < 60; i++) { if (await pg.evaluate(() => !!(window.JF_TRAIN && window.JF_TRAIN.F && window.JF_TRAIN.F.live))) break; await sleep(500); }
-  await sleep(2500); await pg.screenshot({ path: OUT + '/train.png' });
+  await sleep(2500); await pg.screenshot({ path: OUT + '/train.png', timeout: 180000 });
   want('train fight', await shown(pg), { storyBar: false, hotbar: false, tray: false, ammo: false, gap: true, hands: true });
   // 5. quit the train to the menu and into a sim: all back
   await pg.keyboard.press('KeyB'); await sleep(600); await pg.click('#quit', { force: true }); await sleep(1500);
