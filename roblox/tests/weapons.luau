@@ -306,6 +306,26 @@ return function(T: any)
 		check((st.slip :: number) <= 0 and st.vx > 0, "1.7 s later you have your feet back")
 	end
 
+	-- ------------------------------------------------------------ the code weapon models (real Roblox instances in Lune)
+	do
+		local luau = require("@lune/luau")
+		local env = setmetatable({ CFrame = roblox.CFrame, Vector3 = V3, Color3 = roblox.Color3, Instance = roblox.Instance, Enum = roblox.Enum, game = roblox.Instance.new("DataModel"), warn = print }, { __index = _G })
+		local WM = luau.load(fs.readFile("src/shared/WeaponModels.luau"), { environment = env })()
+		for _, id in { "redline", "marbles", "katana" } do
+			local m = WM.build(id, 3)
+			local root = m and m.PrimaryPart
+			check(root ~= nil and root:FindFirstChild("Muzzle") ~= nil and root:FindFirstChild("Grip") ~= nil, id .. ": code model builds with its Muzzle + Grip spots")
+		end
+		local rl = WM.build("redline", 3)
+		check(rl:FindFirstChild("needle") ~= nil and rl:FindFirstChild("vent") ~= nil and near(rl.PrimaryPart.Sight.Position.Y, 0.0737 * 3, 1e-4), "Redline: needle, vents, the sight 0.221 studs up")
+		local k = WM.build("katana", 3)
+		local tip = k.PrimaryPart.Muzzle
+		WM.setKatana(k, 4, 3)
+		check(near(tip.Position.Z, (-0.139 + (-0.8357 + 0.139) * 3.2) * 3, 1e-3), "katana: 4 kills stretch the blade x3.2 from the habaki, tip with it")
+		WM.setKatana(k, 0, 3)
+		check(near(tip.Position.Z, -0.8357 * 3, 1e-3), "katana: back to its rest length on death")
+	end
+
 	-- ------------------------------------------------------------ the animations (from public/js/anim.js + katanavm.js)
 	check(Anims.swing_katana.hit == 0.12 and Anims.swing_katana.dur == 0.5 and Anims.swing_katana.events[1][1] == 0.07, "katana swing: hit at 0.12 s, 0.5 s long, whoosh at 0.07")
 	check(Anims.parry_katana.dur == 0.56 and Anims.draw_katana.dur == 0.72 and Anims.draw_gun.dur == 0.34 and Anims.staggered.dur == 0.62, "parry 0.56 s, katana draw 0.72 s, gun draw 0.34 s, stagger 0.62 s")
