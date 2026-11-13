@@ -8,6 +8,7 @@ import { G } from './ctx.js';
 import { fx } from './fx.js';
 import { sfx } from './audio.js';
 import { ME } from './player.js';
+import { net } from './net.js';
 import { BOXES } from '/shared/map.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { stepProjectile, raycast } from '/shared/physics.js';
@@ -20,6 +21,7 @@ const last = new Map(); // owner -> { suit, t }: their last played card (see sui
 const lastThrow = new Map(); // owner -> when we last played a throw sound (a fan is 6 cards in one tick: one riffle)
 const _x = new THREE.Vector3(), _y = new THREE.Vector3(), _z = new THREE.Vector3(), _c = new THREE.Vector3(), _m = new THREE.Matrix4();
 const UP = new THREE.Vector3(0, 1, 0);
+const AOA = 0.6; // (rad) how nose-up a card flies
 
 // ------------------------------------------------------------ pools
 const ROWS = 7, LANES = 3; // the trail: 7 rows of 3 verts (soft edge, bright middle, soft edge)
@@ -27,7 +29,7 @@ function makeTrail() {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(ROWS * LANES * 3), 3));
   const col = new Float32Array(ROWS * LANES * 3);
-  for (let r = 0; r < ROWS; r++) for (let l = 0; l < LANES; l++) { const a = (1 - r / (ROWS - 1)) ** 1.6 * (l === 1 ? 1 : 0); col.set([a, a, a], (r * LANES + l) * 3); }
+  for (let r = 0; r < ROWS; r++) for (let l = 0; l < LANES; l++) { const a = (1 - r / (ROWS - 1)) ** 1.6 * (l === 1 ? 0.6 : 0); col.set([a, a, a], (r * LANES + l) * 3); }
   geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
   const idx = [];
   for (let r = 0; r < ROWS - 1; r++) for (let l = 0; l < LANES - 1; l++) { const a = r * LANES + l, b = a + LANES; idx.push(a, b, a + 1, a + 1, b, b + 1); }
@@ -38,7 +40,7 @@ function makeTrail() {
 }
 const fly = new Pool(CAPS.fly, () => {
   const root = buildCard3D('s');
-  const glow = new THREE.Sprite(cardKit().S.s.glow); glow.scale.setScalar(0.95); root.add(glow);
+  const glow = new THREE.Sprite(cardKit().S.s.glow); glow.scale.setScalar(0.85); glow.renderOrder = 3; root.add(glow);
   const trail = makeTrail(); trail.visible = false;
   return { root, glow, trail, pr: null };
 }, (s) => { if (s.pr) { s.pr.card = null; s.pr.mesh = GONE; } s.pr = null; }); // too many in the air: the oldest stops being drawn
@@ -81,16 +83,16 @@ export function cardStep(pr, dt, now) {
   }
   const d = s.dir || [0, 0, 1], p = pr.p;
   pr.mesh.position.set(p[0], p[1], p[2]);
-  aim(pr.mesh, d, s.bank);
+  aim(pr.mesh, d, s.bank, AOA);
   s.spin += dt * (s.held ? 0 : 32);
   s.root.userData.card.spin.rotation.y = s.spin;
   const pot = potato(), cam = G.camera.position;
   s.glow.visible = !pot;
-  if (!pot) s.glow.material.opacity = 0.7 + Math.sin(now * 0.03 + pr.id) * 0.15;
+  if (!pot) s.glow.material.opacity = 0.5 + Math.sin(now * 0.03) * 0.1;
   // the trail: back along the flight, as long as it has flown (so it grows out of the hand), wider when it's near you
   const traveled = Math.hypot(p[0] - s.from[0], p[1] - s.from[1], p[2] - s.from[2]);
   const camD = Math.hypot(cam.x - p[0], cam.y - p[1], cam.z - p[2]);
-  const near = pot ? 1 : 1 + Math.max(0, 1 - camD / 7) * 1.6; // the close-range streak
+  const near = pot ? 1 : 1 + Math.max(0, 1 - camD / 7) * 0.9; // the close-range streak
   const len = Math.min(pot ? TRAIL.lenPotato : TRAIL.len * (near > 1.4 ? 1.3 : 1), traveled), w = (pot ? TRAIL.wPotato : TRAIL.w) * near;
   s.trail.visible = len > 0.2 && !s.held && pr.mesh.visible;
   if (s.trail.visible) trail(s.trail, p, d, len, w, cam, pot);
@@ -98,12 +100,15 @@ export function cardStep(pr, dt, now) {
   if (!s.whoosh && camD < 3.2 && now - s.born > 60) { s.whoosh = true; sfx.cardWhoosh(p); }
 }
 
-function aim(obj, d, bank) {
+// aim a card along d, rolled by bank round it, then pitched up by aoa (an angle of attack: a card flying exactly in its
+// own plane is a line from behind, so it rides a little nose-up and you see its face as it goes)
+function aim(obj, d, bank, aoa = 0) {
   _z.set(d[0], d[1], d[2]);
   _x.crossVectors(UP, _z); if (_x.lengthSq() < 1e-6) _x.set(1, 0, 0); _x.normalize();
   _y.crossVectors(_z, _x);
   const c = Math.cos(bank), s = Math.sin(bank);
   _c.copy(_x).multiplyScalar(c).addScaledVector(_y, s); _y.multiplyScalar(c).addScaledVector(_x, -s); _x.copy(_c); // bank round the flight
+  if (aoa) { const ca = Math.cos(aoa), sa = Math.sin(aoa); _c.copy(_y).multiplyScalar(ca).addScaledVector(_z, -sa); _z.multiplyScalar(ca).addScaledVector(_y, sa); _y.copy(_c); }
   _m.makeBasis(_x, _y, _z); obj.quaternion.setFromRotationMatrix(_m);
 }
 
@@ -131,21 +136,39 @@ function freeFly(s) {
 }
 
 // ------------------------------------------------------------ where it ended up
-// the server's 'pd' for a card (main.js has already taken it out of the scene): a player, a wall, or nowhere
+// the server's 'pd' for a card (main.js has already taken it out of the scene). a card into someone is a 'pd' with that
+// hit's 'dmg' right behind it (room.js arrowHit), so the card waits a beat for it: a hit bursts, else it finds the wall
+// or floor it stopped at, else it flutters down. (a few fixed slots, reused: nothing made per card)
+const pend = Array.from({ length: 48 }, () => ({ on: false, t: 0, o: 0, p: [0, 0, 0], d: [0, 0, 1], suit: 's', hit: false }));
+let pendN = 0;
 export function cardEnd(pr, m) {
   const s = pr.mesh.userData.slot;
   const suit = s ? s.suit : 's', d = (s && s.dir) || norm(pr.v) || [0, 0, 1];
   if (s) freeFly(s);
   const p = Array.isArray(m.p) && m.p.length === 3 && m.p.every(Number.isFinite) ? m.p : pr.p;
   if (Math.hypot(p[0] - ME.pos[0], p[1] - ME.pos[1], p[2] - ME.pos[2]) > 160) { ends.far++; return; } // too far away to see
-  if (hitPlayer(p, pr.o)) { ends.hit++; burst(p, d, suit); return; }
+  let e = pend.find((x) => !x.on);
+  if (!e) { e = pend[pendN++ % pend.length]; resolve(e); } // (all busy: settle the oldest-ish one now)
+  e.on = true; e.t = performance.now(); e.o = pr.o; e.suit = suit; e.hit = false;
+  e.p[0] = p[0]; e.p[1] = p[1]; e.p[2] = p[2]; e.d[0] = d[0]; e.d[1] = d[1]; e.d[2] = d[2];
+}
+// a card hit landed: it belongs to the newest waiting card end from that thrower
+net.tap((m) => {
+  if (m.t !== 'dmg' || m.w !== 'cards') return;
+  let best = null;
+  for (const e of pend) if (e.on && !e.hit && e.o === m.from && (!best || e.t >= best.t)) best = e;
+  if (best && performance.now() - best.t < 300) best.hit = true;
+});
+function resolve(e) {
+  e.on = false;
+  const { p, d, suit } = e;
+  if (e.hit || hitPlayer(p, e.o)) { ends.hit++; burst(p, d, suit); return; }
   const h = surface(p, d);
   if (h) {
-    const { at, n } = h;
     ends.wall++;
-    stick(at, d, n, suit, false);
-    flick(at, n, suit);
-    sfx.cardThk(at);
+    stick(h.at, d, h.n, suit, false);
+    flick(h.at, h.n, suit);
+    sfx.cardThk(h.at);
     return;
   }
   ends.fall++;
@@ -197,7 +220,7 @@ function stick(at, d, n, suit, lie) {
     dz = norm(dz) || [-n[0], -n[1], -n[2]];
     const depth = 0.07;
     s.root.position.set(at[0] + dz[0] * depth, at[1] + dz[1] * depth, at[2] + dz[2] * depth); // the pivot: in the wall
-    aim(s.root, dz, (Math.random() - 0.5) * 2.4);
+    aim(s.root, dz, (Math.random() - 0.5) * 2.4, (Math.random() - 0.5) * 0.9);
     c.spin.position.set(0, 0, -CARD_H / 2); c.spin.rotation.set(0, 0, 0); // the card sticks back out of the wall
   }
   s.t = 0; s.life = pot ? STICK_S_POTATO : STICK_S; s.lie = lie; s.suit = suit; s.q.copy(s.root.quaternion); s.fall = null;
@@ -217,13 +240,13 @@ function burst(p, d, suit) {
   fx.spray(p, pot ? 8 : 14, [0xffffff, GLOW[suit], 0x111111], 6, 0.55, pot ? 0.12 : 0.09, 8, 2);
   sfx.cardBurst(p);
   if (pot) return;
-  const mat = cardKit().S[suit].sym, n = 7;
+  const mat = cardKit().S[suit].sym, n = 3;
   for (let i = 0; i < n; i++) {
     const s = puffs.take(), a = (i / n) * 6.28 + Math.random() * 0.5;
     s.spr.material = mat;
     s.spr.position.set(p[0], p[1], p[2]);
-    s.v = [Math.cos(a) * 3.2 - d[0] * 1.2, 2.2 + Math.random() * 2.4, Math.sin(a) * 3.2 - d[2] * 1.2];
-    s.t = 0; s.s = 0.26 + Math.random() * 0.14; s.spr.scale.setScalar(0.01);
+    s.v = [Math.cos(a) * 4 - d[0] * 1.5, 2.6 + Math.random() * 2.6, Math.sin(a) * 4 - d[2] * 1.5];
+    s.t = 0; s.s = 0.32 + Math.random() * 0.14; s.spr.scale.setScalar(0.01);
     G.scene.add(s.spr);
   }
 }
@@ -243,6 +266,8 @@ function fallFrom(p, d, suit) {
 
 // ------------------------------------------------------------ every frame
 export function cardFrame(dt, now) {
+  const pn = performance.now();
+  for (const e of pend) if (e.on && pn - e.t > 30) resolve(e); // (a beat for the hit's 'dmg')
   for (let i = stuck.live.length - 1; i >= 0; i--) {
     const s = stuck.live[i];
     s.t += dt;
@@ -285,6 +310,7 @@ export function clearCards() {
   fly.clear((s) => { s.trail.visible = false; s.root.visible = false; s.root.userData.slot = null; s.pr = null; });
   stuck.clear((s) => G.scene.remove(s.root));
   puffs.clear((s) => G.scene.remove(s.spr));
+  for (const e of pend) e.on = false;
   last.clear(); lastThrow.clear();
 }
 export const cardStats = () => ({ fly: fly.live.length, flyMade: fly.made, stuck: stuck.live.length, stuckMade: stuck.made, puff: puffs.live.length, puffMade: puffs.made, ...ends }); // (tests)
