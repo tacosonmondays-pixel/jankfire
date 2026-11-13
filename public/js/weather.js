@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import { G } from './ctx.js';
 import { MAP, MAPS, BOXES } from '/shared/map.js';
-import { raycast } from '/shared/physics.js';
+import { raycast, rayBox } from '/shared/physics.js';
 import { WX_KINDS, wxAt, wxStrikes, wxCheck, wxOf } from '/shared/weather.js';
 import { glbLoader } from './glbkit.js';
 import { net } from './net.js';
@@ -21,7 +21,7 @@ import { liquidAt } from './liquids.js'; // (every water surface the map draws: 
 const W = {
   plan: null, t0: 0, snap: false, k: 0, kind: '', test: null, // test: { k, s } forced from a test (wxTest)
   kits: {}, // kit id -> { root, mixer, parts, meta } | 'loading' | 'failed'
-  cols: new Map(), roof: null, roofMap: '', key: '', strikes: { i: -2, list: [], next: 0 }, bolt: null, thunder: [],
+  cols: new Map(), roof: null, roofBig: [], roofMap: '', key: '', strikes: { i: -2, list: [], next: 0 }, bolt: null, thunder: [],
   pud: { key: '', list: [] }, cover: 0, flash: 0,
 };
 const now = () => performance.now() / 1000;
@@ -89,10 +89,21 @@ function roofBoxes() {
   if (W.roofMap === MAP.id && W.roof) return W.roof;
   const def = MAPS[MAP.id], deco = def && def.deco ? def.deco.filter((b) => b.min && (b.max[0] - b.min[0]) * (b.max[2] - b.min[2]) >= 0.5) : [];
   W.roof = deco.length ? [...BOXES, ...deco] : BOXES; W.roofMap = MAP.id; W.cols.clear(); W.pud.key = '';
+  W.roofBig = [];
+  if (W.roof !== BOXES) { // (the backdrop's ground slabs, kilometres wide, filled 300k of the grid's 320k cells: built the first time it rained, a stall. they're tested one by one instead, same answers)
+    const span = (b) => (Math.floor(b.max[0] / 8) - Math.floor(b.min[0] / 8) + 1) * (Math.floor(b.max[2] / 8) - Math.floor(b.min[2] / 8) + 1);
+    W.roofBig = W.roof.filter((b) => span(b) > 64); if (W.roofBig.length) W.roof = W.roof.filter((b) => span(b) <= 64);
+  }
   return W.roof;
 }
+// the nearest hit among the roof boxes: the grid, then the few huge ones
+function roofRay(o, d, maxT) {
+  let h = raycast(o, d, maxT, roofBoxes());
+  for (const b of W.roofBig) { const k = rayBox(o, d, b, h ? h.t : maxT); if (k && (!h || k.t < h.t)) h = { t: k.t, axis: k.axis, sign: k.sign, box: b }; }
+  return h;
+}
 const UP = [0, 1, 0], DOWN = [0, -1, 0], _o = [0, 0, 0];
-function covered(x, y, z) { _o[0] = x; _o[1] = y; _o[2] = z; return !!raycast(_o, UP, 120, roofBoxes()); }
+function covered(x, y, z) { _o[0] = x; _o[1] = y; _o[2] = z; return !!roofRay(_o, UP, 120); }
 // a 3 m column of rain is drawn only if it's open to the sky at your height all across (no rain indoors, none
 // leaking in through a wall the column straddles)
 function colOpen(x0, z0, y, T) {
@@ -109,7 +120,7 @@ function colOpen(x0, z0, y, T) {
 // the floor under a spot that the sky can see (the first top face from high above), or null
 function floorAt(x, z, cy, lo, hi) {
   _o[0] = x; _o[1] = cy + 30; _o[2] = z;
-  const h = raycast(_o, DOWN, 60, roofBoxes());
+  const h = roofRay(_o, DOWN, 60);
   if (!h || h.axis !== 1) return null;
   const def = MAPS[MAP.id], sea = def && Number.isFinite(def.seaY) ? def.seaY : -Infinity, y0 = _o[1] - h.t;
   // water: the sea's level, a drawn liquid over the spot (pool, pond, the shallows) or a box that is water / lava / glass
