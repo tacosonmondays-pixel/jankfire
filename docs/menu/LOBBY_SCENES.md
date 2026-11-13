@@ -29,6 +29,15 @@ boxes where the Blender props go. Poses are placeholders too (the real ones are 
   hop in** and stomp round (the fenced TEST PAD out front, or anywhere in front of the bays); E again and you hop down
   while it jet-hops home. A break room with the cola machine (E: you get a warm can), a TEST FIRE range (E: three shots,
   the targets spin), crates, barrels, a tool cart, and the hangar door open on the island and the sea.
+- **The warehouse, walkable:** a boarded-up base at night. Hands poke through the gaps in the window planks, green light
+  leaks in, the generator chugs (DO NOT KICK), the radio's on, string lights blink out now and then, and the wall of
+  tally marks says ROUNDS SURVIVED (gary counted twice). A practice zombie shuffles round its post on a chain (E: poke it,
+  it flails and says something). The Jank Cola and Cheat Machine stand by the walls. **Deb** (PASSIVES, behind her desk,
+  stamping things), **Gus** (PISTOLS, polishing a revolver in front of a pegboard of the five start pistols) and **Marge**
+  (THE ITEM, sitting on her crates with grenades, a smoke, the duck, a medkit, a shield bubble): walk up, they turn to
+  you and say hi; E and the camera goes over your shoulder while the picker opens on the right. Pick, and they have an
+  opinion ("trust fund. must be nice.", "it's a revolver. it revolves."). It's your zombies loadout (the same one
+  CUSTOMIZE > LOADOUT > ZOMBIES sets); E again or walking off closes it.
 - JANK ROYALE and QUICK PLAY keep the line-up scenes below.
 
 ## The four places
