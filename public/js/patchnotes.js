@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.52', date: '2026-11-13', title: 'SAND IN EVERYTHING', items: [
+    "SANDSTORMS hit the bazaar (and sometimes the desert): a wall of dust rolls right over you, sand gets everywhere, tumbleweeds go boing. none indoors.",
+    "meteors got chonkier and suburb snow finally looks cold.",
+  ] },
   { v: '11.51', date: '2026-11-13', title: 'REAL BRASS', items: [
     "guns spit out real brass now. shells tumble, chips bounce off the floor, rubble comes off in real chunks, and nothing pops out of existence anymore.",
     "fights make a lot less garbage behind the scenes, so long firefights should stutter less.",
