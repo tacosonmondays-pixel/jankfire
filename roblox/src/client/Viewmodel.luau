@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Anims = require(Shared:WaitForChild("Anims")) :: any
+local Fx = require(script.Parent:WaitForChild("Fx"))
 
 local S = Weapons.S
 local VM = {}
@@ -27,7 +28,7 @@ local bobPh, breathT = 0, 0
 local sway = Vector2.zero
 local runK = 0
 local lastLook: Vector3? = nil
-local needle: Weld? = nil
+local needles: { Weld } = {}
 local needleAng = -2.3
 local hubCF = CFrame.identity
 local vents: { BasePart } = {}
@@ -66,12 +67,15 @@ function VM.sample(name: string, t: number, base: Vector3): (Vector3, CFrame)
 	return p, CFrame.fromEulerAnglesXYZ(r.X, r.Y, r.Z)
 end
 
+local prop: Model? = nil
+local function dropProp() if prop then prop:Destroy(); prop = nil end end
 function VM.play(name: string)
 	if not Anims[name] then return end
+	dropProp()
 	clip = { name = name, t = 0, fired = {} }
 end
 function VM.playing(): string? return clip and clip.name end
-function VM.stop() clip = nil end
+function VM.stop() clip = nil; dropProp() end
 
 -- a shot: the gun's recoil row on the springs + a camera view punch (public/js/weapons.js kickVM)
 local function rnd(): number return (if math.random() < 0.5 then -1 else 1) * (0.5 + math.random() * 0.5) end
@@ -112,8 +116,9 @@ end
 -- swap to a weapon: build its viewmodel, play its draw
 function VM.set(wid: string, kat: number)
 	if VM.model then VM.model:Destroy(); VM.model = nil end
+	dropProp()
 	VM.wid = wid
-	needle, vents = nil, {}
+	needles, vents = {}, {}
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
 	k = S * w.vm.s
@@ -126,9 +131,9 @@ function VM.set(wid: string, kat: number)
 	end
 	hands(m, root)
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
-	-- the needle turns round its pivot (a Weld we drive) instead of being glued
-	local n = m:FindFirstChild("needle") :: BasePart?
-	if n then
+	-- the needle turns round its pivot (Welds we drive) instead of being glued
+	for _, n in m:GetChildren() do
+		if not n:IsA("BasePart") or n.Name ~= "needle" then continue end
 		local pv = n:GetAttribute("Pivot")
 		local pivot = if typeof(pv) == "Vector3" then pv * k else Vector3.new(-0.041, 0.03, -0.05) * k
 		local wc = n:FindFirstChildOfClass("WeldConstraint")
@@ -137,9 +142,9 @@ function VM.set(wid: string, kat: number)
 		local rel = hubCF:ToObjectSpace(root.CFrame:ToObjectSpace(n.CFrame))
 		local wd = Instance.new("Weld")
 		wd.Part0 = root; wd.Part1 = n; wd.C0 = hubCF; wd.C1 = rel:Inverse(); wd.Parent = n
-		needle = wd
+		table.insert(needles, wd)
 	end
-	for _, d in m:GetChildren() do if d:IsA("BasePart") and d.Name == "vent" then table.insert(vents, d) end end
+	for _, d in m:GetChildren() do if d:IsA("BasePart") and (d.Name == "vent" or string.find(string.lower(d.Name), "vents", 1, true)) then table.insert(vents, d) end end
 	m.Parent = camera
 	VM.model = m
 	swap = 0.2
@@ -170,7 +175,7 @@ function VM.update(dt: number, c: Ctx)
 				if VM.onEvent then VM.onEvent(ev[2]) end
 			end
 		end
-		if clip.t >= a.dur then clip = nil end
+		if clip.t >= a.dur then clip = nil; dropProp() end
 	end
 	-- springs (240 Hz sub-steps)
 	local nSub = math.clamp(math.ceil(dt * 240), 1, 40)
@@ -233,6 +238,7 @@ function VM.update(dt: number, c: Ctx)
 	if ads and c.aim > 0 and not crot then baseRot = CFrame.fromEulerAnglesXYZ(rot.X, rot.Y, rot.Z):Lerp(CFrame.identity, c.aim) end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
+	VM.props(m.PrimaryPart.CFrame)
 	-- the Redline's tachometer + vents (from your HP; it bangs off the limiter when it's in the red and firing)
 	if VM.wid == "redline" then
 		local tk = Weapons.tacho(c.hp)
@@ -244,9 +250,35 @@ function VM.update(dt: number, c: Ctx)
 			tgt += (2.3 - tgt) * f + (if t > 1.46 and t < 1.56 then math.sin(t * 90) * 0.15 else 0)
 		end
 		needleAng += (tgt - needleAng) * math.min(1, dt * 12)
-		if needle then needle.C0 = hubCF * CFrame.Angles(needleAng, 0, 0) end
+		for _, nw in needles do nw.C0 = hubCF * CFrame.Angles(needleAng, 0, 0) end
 		local col = Color3.new(0.25 + 0.75 * tk, 0.04 + 0.3 * tk * tk, 0.02 + (if c.now - c.firedT < 0.2 then 0.15 * tk else 0))
 		for _, v in vents do v.Color = col end
+	end
+end
+
+-- the reload props, held by your off hand (timings from roblox/docs/WEAPONS.md, reloads.js): the Redline's red jerry
+-- can rises at 0.2 s, tips into the gun 0.36-1.0 s (three glugs), goes by 1.26 s; the marble bag comes over the jar,
+-- pours 0.66-1.18 s, then goes
+local function smooth(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+function VM.props(gun: CFrame)
+	if not clip then return end
+	local t = clip.t
+	if clip.name == "reload_redline" then
+		if t < 0.2 or t > 1.26 then if prop then prop:Destroy(); prop = nil end return end
+		if not prop then prop = Fx.prop("p_jerrycan", Vector3.new(0.035, 0.11, 0.09) * S, Color3.fromRGB(200, 20, 15)) end
+		local inn = smooth((t - 0.2) / 0.16) * (1 - smooth((t - 1.0) / 0.26))
+		local tip = if t < 0.36 then 0 elseif t < 1.0 then smooth((t - 0.36) / 0.2) else 1 - smooth((t - 1.0) / 0.2)
+		local wob = if t > 0.45 and t < 1.0 then math.sin(t * 30) * 0.05 else 0
+		local at = gun * CFrame.new(Vector3.new(-0.05, 0.03 + 0.09 * inn, -0.06) * k) * CFrame.new(0, -0.25 * S * (1 - inn), 0)
+		prop:PivotTo(at * CFrame.Angles(0, 0, -1.6 * tip + wob))
+	elseif clip.name == "reload_marbles" then
+		if t < 0.4 or t > 1.35 then if prop then prop:Destroy(); prop = nil end return end
+		if not prop then prop = Fx.prop("p_marblebag", Vector3.new(0.09, 0.12, 0.09) * S, Color3.fromRGB(230, 90, 25)) end
+		local inn = smooth((t - 0.4) / 0.2) * (1 - smooth((t - 1.2) / 0.15))
+		local pour = if t > 0.6 and t < 1.2 then 1 else 0
+		local jig = if pour > 0 then math.abs(math.sin((t - 0.66) / 0.12 * math.pi)) * 0.25 else 0
+		local at = gun * CFrame.new(Vector3.new(0, 0.2, -0.06) * k) * CFrame.new(0, -0.3 * S * (1 - inn), 0)
+		prop:PivotTo(at * CFrame.Angles(0, 0, 2.6 * smooth((t - 0.55) / 0.12) * (1 - smooth((t - 1.18) / 0.1)) + jig))
 	end
 end
 

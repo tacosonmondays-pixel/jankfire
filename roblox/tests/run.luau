@@ -207,9 +207,9 @@ do
 		check(rs:FindFirstChild("JankfireRemotes") and rs.JankfireRemotes:FindFirstChild("Grapple") ~= nil, "remotes")
 		-- step 2
 		local missing = {}
-		for _, n in { "Equip", "Fire", "Reload", "Swing", "MeleeHit", "Parry", "Shot", "Fx", "Ammo", "Dmg", "Kill", "Knock", "Slip", "Patch", "Round", "Spawn" } do
-			local r = rs.JankfireRemotes:FindFirstChild(n)
-			if not r or r.ClassName ~= "RemoteEvent" then table.insert(missing, n) end
+		for _, rn in { "Equip", "Fire", "Reload", "Swing", "MeleeHit", "Parry", "Shot", "Fx", "Ammo", "Dmg", "Kill", "Knock", "Slip", "Patch", "Round", "Spawn" } do
+			local r = rs.JankfireRemotes:FindFirstChild(rn)
+			if not r or r.ClassName ~= "RemoteEvent" then table.insert(missing, rn) end
 		end
 		check(#missing == 0, "step 2 remotes " .. table.concat(missing, ","))
 		check(rs:FindFirstChild("Match") ~= nil and rs:FindFirstChild("JankfireWeapons") ~= nil and rs:FindFirstChild("JankfireFX") ~= nil, "Match state + the folders for the Blender weapons and effects")
@@ -220,10 +220,10 @@ do
 		check(nSounds == #list and nSounds >= 30, ("a Sound for every rendered .ogg (%d)"):format(nSounds))
 		for _, s in list do check(fs.isFile("assets/sounds/" .. s.name .. ".ogg"), "rendered: " .. s.name) end
 		check(sss.Jankfire:FindFirstChild("Combat") and sss.Jankfire.Combat.ClassName == "Script", "the weapons server script")
-		for _, n in { "Rules", "Fight", "Dummies" } do check(sss.Jankfire:FindFirstChild(n) and sss.Jankfire[n].ClassName == "ModuleScript", "server module " .. n) end
+		for _, mn in { "Rules", "Fight", "Dummies" } do check(sss.Jankfire:FindFirstChild(mn) and sss.Jankfire[mn].ClassName == "ModuleScript", "server module " .. mn) end
 		check(cl:FindFirstChild("Arsenal") and cl.Arsenal.ClassName == "LocalScript", "the weapons client script")
-		for _, n in { "Body", "Viewmodel", "Fx", "Sfx", "FightHud" } do check(cl:FindFirstChild(n) and cl[n].ClassName == "ModuleScript", "client module " .. n) end
-		for _, n in { "Weapons", "Hitbox", "Marbles", "WeaponModels", "Anims" } do check(rs.Jankfire:FindFirstChild(n) ~= nil, "shared module " .. n) end
+		for _, mn in { "Body", "Viewmodel", "Fx", "Sfx", "FightHud" } do check(cl:FindFirstChild(mn) and cl[mn].ClassName == "ModuleScript", "client module " .. mn) end
+		for _, mn in { "Weapons", "Hitbox", "Marbles", "WeaponModels", "Anims" } do check(rs.Jankfire:FindFirstChild(mn) ~= nil, "shared module " .. mn) end
 	else
 		print("(no built place yet: node tools/roblox/build.mjs)")
 	end

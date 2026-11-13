@@ -14,7 +14,7 @@ return function(T: any)
 	local Rules = load("src/server/Rules.luau", { Weapons = Weapons })
 	local Movement = T.Movement
 	local Anims = load("src/shared/Anims.luau", {})
-	local W, S, P = Weapons.list, Weapons.S, Weapons.PARRY
+	local W, P = Weapons.list, Weapons.PARRY
 
 	-- ------------------------------------------------------------ the numbers, metres -> studs
 	local rl, mb, kt = W.redline, W.marbles, W.katana
@@ -271,8 +271,8 @@ return function(T: any)
 		local c, r, n = Marbles.patch(e, ends, 90, flat)
 		check(c ~= nil and near(c.Y, 0, 1e-6) and near(c.Z, -12, 2.5) and r >= Weapons.MSLIP.rMin and r <= Weapons.MSLIP.rMax and (n :: number) > 30, ("a shot at the floor leaves a patch (r %.1f studs, %d marbles)"):format(r or 0, n or 0))
 		local function roof(o: any, d: any, len: number): (number?, any?) -- a roof that ends 20 studs out: past it, the street is far below
-			local t, n = flat(o, d, len)
-			if t then local p = o + d * t; if math.abs(p.Z) < 20 then return t, n end end
+			local t, nrm = flat(o, d, len)
+			if t then local p = o + d * t; if math.abs(p.Z) < 20 then return t, nrm end end
 			return nil, nil
 		end
 		local over = {}
@@ -280,8 +280,8 @@ return function(T: any)
 		check(Marbles.patch(e, over, 90, roof) == nil, "a shot off the roof (into the smog) leaves no patch")
 		check(Marbles.patch(e, ends, 90, roof) ~= nil, "the same roof keeps a patch shot at it")
 		check(Marbles.onPatch(V3.new(0, 0, 0), 6, V3.new(3, 0.2, 2)) and not Marbles.onPatch(V3.new(0, 0, 0), 6, V3.new(3, 3, 2)) and not Marbles.onPatch(V3.new(0, 0, 0), 6, V3.new(9, 0, 0)), "on the patch: inside the radius, feet near its floor")
-		local nn, nr, gone = Marbles.thin(90, 7.5)
-		check(nn == 49 and near(nr, 6.375, 1e-9) and not gone, "a slip thins it: x0.55 marbles, x0.85 radius")
+		local tn, nr, gone = Marbles.thin(90, 7.5)
+		check(tn == 49 and near(nr, 6.375, 1e-9) and not gone, "a slip thins it: x0.55 marbles, x0.85 radius")
 		local _, _, gone2 = Marbles.thin(15, 3)
 		check(gone2, "under 10 marbles it's gone")
 		local list = {}

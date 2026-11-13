@@ -26,7 +26,7 @@ end
 Fx.castMap = castMap
 
 -- a Blender mesh from the library (its first MeshPart), or a plain part
-local function piece(name: string, shape: Enum.PartType, size: Vector3, color: Color3, mat: Enum.Material): BasePart
+local function piece(name: string, shape: Enum.PartType, size: Vector3, color: Color3, mat: Enum.Material, meshLen: number?): BasePart
 	local lib = ReplicatedStorage:FindFirstChild("JankfireFX")
 	local t = lib and lib:FindFirstChild(name)
 	local p: BasePart
@@ -36,7 +36,7 @@ local function piece(name: string, shape: Enum.PartType, size: Vector3, color: C
 			p = src:Clone()
 			-- fit the mesh to the size asked for, keeping its proportions along its longest side
 			local sz = p.Size
-			local f = math.max(size.X, size.Y, size.Z) / math.max(sz.X, sz.Y, sz.Z)
+			local f = (meshLen or math.max(size.X, size.Y, size.Z)) / math.max(sz.X, sz.Y, sz.Z)
 			p.Size = sz * f
 		else
 			p = Instance.new("Part")
@@ -109,7 +109,8 @@ end
 -- the muzzle flash: a star facing forward + side spikes, random roll and 0.8-1.4 size, 0.05 s (x1.6 'big')
 function Fx.flash(at: CFrame, big: boolean, color: Color3?)
 	local s = (0.24 * S) * (0.8 + math.random() * 0.6) * (if big then 1.6 else 1)
-	local p = piece("fx_flash_star", Enum.PartType.Cylinder, Vector3.new(0.02, s, s), color or Color3.fromRGB(255, 225, 120), Enum.Material.Neon)
+	-- (the Blender star is 0.24 m across with 0.4 m spikes running forward: its longest side is the spikes)
+	local p = piece("fx_flash_star", Enum.PartType.Cylinder, Vector3.new(0.02, s, s), color or Color3.fromRGB(255, 225, 120), Enum.Material.Neon, s * 0.42 / 0.24)
 	p.CFrame = at * CFrame.Angles(0, 0, math.random() * math.pi * 2) * (if p:IsA("MeshPart") then CFrame.identity else CFrame.Angles(0, math.pi / 2, 0))
 	add({ p = p, v = Vector3.zero, w = Vector3.zero, t = 0, life = 0.05, grav = 0, bounce = 0, fade = 0.02, spin = CFrame.identity, stick = true })
 	local light = Instance.new("PointLight")
@@ -182,13 +183,13 @@ function Fx.marbles(from: Vector3, ends: { Vector3 }, perEnd: number)
 	for _, e in ends do
 		for _ = 1, perEnd do
 			if liveMarbles > 400 then return end
-			liveMarbles += 1
-			local p = piece("fx_marble", Enum.PartType.Ball, Vector3.new(0.16, 0.16, 0.16), MARBLE[math.random(#MARBLE)], Enum.Material.Glass)
-			p.Transparency = 0.15
 			local jitter = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 0.8
 			local d = (e + jitter - from)
 			local L = d.Magnitude
 			if L < 0.1 then continue end
+			liveMarbles += 1
+			local p = piece("fx_marble", Enum.PartType.Ball, Vector3.new(0.16, 0.16, 0.16), MARBLE[math.random(#MARBLE)], Enum.Material.Glass)
+			p.Transparency = 0.15
 			local u = d / L
 			p.CFrame = CFrame.new(from)
 			local flown = 0
@@ -260,11 +261,30 @@ function Fx.patchDrop(id: number)
 	end
 end
 
--- the jerry can the Redline drinks from while reloading (a reload prop, viewmodel only)
-function Fx.prop(name: string, size: Vector3, color: Color3): BasePart
-	local p = piece(name, Enum.PartType.Block, size, color, Enum.Material.SmoothPlastic)
-	p.Parent = workspace.CurrentCamera
-	return p
+-- a reload prop held in the viewmodel (the Redline's jerry can, the marble bag): the Blender model if it's imported
+-- (all its pieces, its own colours), else a plain block. size = its longest side, studs
+function Fx.prop(name: string, size: Vector3, color: Color3): Model
+	local m = Instance.new("Model")
+	m.Name = name
+	local lib = ReplicatedStorage:FindFirstChild("JankfireFX")
+	local t = lib and lib:FindFirstChild(name)
+	if t then
+		local c = t:Clone()
+		local parts = if c:IsA("BasePart") then { c } else c:GetDescendants()
+		for _, d in parts do if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false; d.Parent = m end end
+		if m:FindFirstChildWhichIsA("BasePart") then
+			local _, ext = m:GetBoundingBox()
+			m:ScaleTo(math.max(size.X, size.Y, size.Z) / math.max(ext.X, ext.Y, ext.Z))
+		end
+	end
+	if not m:FindFirstChildWhichIsA("BasePart") then
+		local p = Instance.new("Part")
+		p.Size = size; p.Color = color; p.Material = Enum.Material.SmoothPlastic
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+		p.Parent = m
+	end
+	m.Parent = workspace.CurrentCamera
+	return m
 end
 
 return Fx

@@ -10,9 +10,9 @@ local WeaponModels = {}
 
 -- the Blender files' bounding boxes (metres, the file's frame): tools/roblox/export_weapons.py writes these
 WeaponModels.FILES = {
-	w_redline = { lo = Vector3.new(-0.0419, -0.1828, -0.505), hi = Vector3.new(0.0419, 0.0814, 0.2706) },
-	w_marbles = { lo = Vector3.new(-0.0543, -0.1386, -0.3684), hi = Vector3.new(0.0543, 0.1479, 0.11) },
-	w_katana = { lo = Vector3.new(-0.0345, -0.0617, -0.8357), hi = Vector3.new(0.0345, 0.0829, 0.1312) },
+	w_redline = { lo = Vector3.new(-0.0408, -0.2822, -0.47), hi = Vector3.new(0.0657, 0.0808, 0.5047) },
+	w_marbles = { lo = Vector3.new(-0.0419, -0.136, -0.37), hi = Vector3.new(0.0407, 0.1677, 0.112) },
+	w_katana = { lo = Vector3.new(-0.0374, -0.0394, -0.8357), hi = Vector3.new(0.0374, 0.0829, 0.1306) },
 }
 
 local function rgb(hex: number): Color3
@@ -155,7 +155,10 @@ local function fitImported(b: Builder, tmpl: Model, file: { lo: Vector3, hi: Vec
 			-- the Blender pieces keep the code model's jobs by name: the blade stretches, the needle turns, the vents glow
 			local n = string.lower(d.Name)
 			if string.find(n, "kat_blade", 1, true) then d.Name = "blade"
-			elseif string.find(n, "needle", 1, true) then d.Name = "needle"
+			elseif string.find(n, "needle", 1, true) then
+				d.Name = "needle"
+				d:SetAttribute("Pivot", Vector3.new(-0.03186, 0.0277, -0.04992)) -- the needle node's origin in the file
+			elseif string.find(n, "_jar", 1, true) then d.Transparency = 0.6; d.Material = Enum.Material.Glass
 			elseif string.find(n, "vent", 1, true) then d.Name = "vent" end
 			d.Parent = b.model
 		end
