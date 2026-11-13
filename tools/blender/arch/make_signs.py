@@ -21,7 +21,7 @@ MATS.update({
     'sg_grate': ('metalplate', '#6a6e78', {}), 'sg_lamp': ('stucco', '#fff4d8', {'glow': True, 'glowcol': '#ffe8b0'}),
     'sg_neonpink': ('trim', '#ff7ae0', {'glow': True, 'glowcol': '#ff4fd8'}), 'sg_neoncyan': ('trim', '#8aeaff', {'glow': True, 'glowcol': '#4fd8ff'}),
 })
-NOCAST.update({'sg_chrome', 'sg_grate', 'sg_lamp', 'sg_neonpink', 'sg_neoncyan'})
+NOCAST.update({'sg_steel', 'sg_chrome', 'sg_grate', 'sg_lamp', 'sg_neonpink', 'sg_neoncyan'})
 # the pictures (shared/map.js: the 'adjankbank' / 'neonhotel' / 'flagcorp' boxes): x0, x1, y0, y1, their back and front z, neon
 FACES = {
     'rt_signs': [(-52, -38, 2.2, 6.2, -17.42, -17.38, None), (38, 54, 2.2, 6.2, -17.42, -17.38, 'sg_neonpink')],
