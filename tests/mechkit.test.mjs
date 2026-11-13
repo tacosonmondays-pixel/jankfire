@@ -42,6 +42,17 @@ for (const id of ['x_mech_paperplane', 'x_mech_nightshift', 'x_mech_wrecking']) 
     const hi = meta.clips.find((c) => c.name === 'hero_intro');
     assert.ok(hi.events.some((e) => e.t === 0 && e.fx === 'slam' && e.shake > 0), 'the landing hits the floor at t = 0');
   });
+  test(`${id}: a far LOD, if it has one, sits beside every near mesh and is cheaper`, () => {
+    const { meta, nodes } = glb(id);
+    if (!meta.lod) return; // (the files from before the detail pass have none)
+    assert.ok(Number.isFinite(meta.lod.dist) && meta.lod.dist > 0, 'lod.dist');
+    const near = [...nodes].filter((n) => /_mesh$/.test(n)), far = [...nodes].filter((n) => /_lod1$/.test(n));
+    assert.ok(far.length > 0, 'far meshes');
+    for (const n of far) assert.ok(nodes.has(n.replace(/_lod1$/, '_mesh')) && Object.hasOwn(meta.joints, n.replace(/_lod1$/, '')), n);
+    for (const n of near) assert.ok(nodes.has(n.replace(/_mesh$/, '_lod1')), 'no far LOD for ' + n);
+    const [tn, tf] = meta.lod.tris;
+    assert.ok(tf > 0 && tf <= 16000 && tf < tn / 2, `far ${tf} vs near ${tn}`);
+  });
   test(`${id}: decal / spray slots sit on a joint, with a marker each`, () => {
     const { meta, nodes } = glb(id);
     assert.ok(Array.isArray(meta.decal_slots) && meta.decal_slots.length >= 1);

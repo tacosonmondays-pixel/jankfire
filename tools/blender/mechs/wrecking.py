@@ -3,10 +3,15 @@
 # on a stand). Team-colour armour plates on a riveted gunmetal shell, twin hazard-stripe treads it rolls on, an open
 # porthole with chunky bars where you can see the pilot strapped into a hamster wheel (it spins with every roll),
 # fold-out stabiliser feet on the hubs, rockets under the hubs for PILE DRIVER, and the grapple hook parked on its
-# chain down the back. Concept pass: blockout + paint + the hero kit stickers, joints ready to pose and key.
+# chain down the back. Concept pass: blockout + paint + the hero kit stickers, joints ready to pose and key. The detail
+# pass (2026-11-12): rounder plates and treads, hex bolts round every plate, a submarine wheel on the hatch, finned hubs,
+# rams on the stabiliser feet, fuel lines to the rockets, a lit dash in front of the pilot; dt() parts and the finer
+# segments drop out of the far LOD.
 # Game space: faces -z, its right is +x, the ball sits on y = 0. Rolls about x (the hubs' axle).
 from mechkit import *
+import mechkit as MK
 import herokit
+from detailkit import *
 
 FID = 'mech_wrecking'  # (frame id 'wrecking': 'wreckingball' is the killstreak ball's armour pool)
 R, C = 2.0, (0.0, 2.0, 0.0)  # the ball: radius, centre
@@ -31,10 +36,10 @@ FACES = [((0, 0, -1), (1, 0, 0), (0, 1, 0)), ((0, 0, 1), (-1, 0, 0), (0, 1, 0)),
          ((-1, 0, 0), (0, 0, -1), (0, 1, 0)), ((0, 1, 0), (1, 0, 0), (0, 0, 1)), ((0, -1, 0), (1, 0, 0), (0, 0, -1))]  # (cube faces: out, u, v)
 
 
-def patch(F, U, Vv, a, r_in, r_out, n, m, name, hole=0.0, centre=C):
+def patch(F, U, Vv, a, r_in, r_out, n, m, name, hole=0.0, centre=C, keep_lo=False):
     """a curved slab on the sphere: a cube face's (u, v) in [-a, a] pushed onto the ball (a cube-sphere patch), r_in to
     r_out from the centre; cells within `hole` radians of the face's middle are left out (a window)"""
-    bm = bmesh.new()
+    bm = bmesh.new(); n = n if keep_lo else MK._n(n)  # (the plates keep their cells on the far LOD: the stickers lie on them)
     d = lambda u, v: norm(add(F, add(mul(U, u), mul(Vv, v))))
     grid_o, grid_i = {}, {}
     for j in range(n + 1):
@@ -71,7 +76,7 @@ def band(x0, x1, rise, n, mats, name, skew=0.35, sink=0.10):
     def p(x, ang, r_off):
         r = math.sqrt(max(1e-6, R * R - x * x)) + r_off
         return add(C, (x, r * math.cos(ang), r * math.sin(ang)))
-    step = 2 * math.pi / n
+    n = MK._n(n); step = 2 * math.pi / n
     sh = lambda x: skew * (x - x0) / (x1 - x0) * step * 2  # (the slant: a hazard stripe, not a zebra)
     out = [[bm.verts.new(gv(*p(x, k * step + sh(x), rise))) for k in range(n)] for x in xs]
     inn = [[bm.verts.new(gv(*p(x, k * step + sh(x), -sink))) for k in range(n)] for x in xs]
@@ -94,8 +99,8 @@ def link(c, axis, side, m, name='link', rx=0.20, ry=0.12, r=0.055):
     for k in range(17):
         t = 2 * math.pi * k / 16
         pts.append(add(c, add(mul(a, math.cos(t) * rx), mul(s, math.sin(t) * ry))))
-    ring = tube(pts, r, m, 8, name)
-    bar = cyl(add(c, mul(s, -ry)), add(c, mul(s, ry)), r * 0.7, m, 8, name=name + '_stud')
+    ring = tube(pts, r, m, 12, name)
+    bar = cyl(add(c, mul(s, -ry)), add(c, mul(s, ry)), r * 0.7, m, 12, name=name + '_stud')
     return [ring, bar]
 
 
@@ -122,35 +127,43 @@ def shell(mk, M, T):
     B = []
     for k, (F, U, Vv) in enumerate(FACES):  # the gunmetal shell (seams show between the plates) and the plates on it
         hole = WIN if F == (0, 0, -1) else 0.0
-        B.append(patch(F, U, Vv, 1.0, R - 0.16, R - 0.03, 10, M['frame'], f'shell{k}', hole))
-        B.append(patch(F, U, Vv, 0.78, R - 0.06, R + 0.04, 8, M['paint'], f'plate{k}', hole + (0.04 if hole else 0)))
+        B.append(patch(F, U, Vv, 1.0, R - 0.16, R - 0.03, 14, M['frame'], f'shell{k}', hole))
+        B.append(patch(F, U, Vv, 0.78, R - 0.06, R + 0.04, 12, M['paint'], f'plate{k}', hole + (0.04 if hole else 0), keep_lo=True))
+        for (u, v) in ((-0.70, -0.70), (0.0, -0.72), (0.70, -0.70), (0.72, 0.0), (0.70, 0.70), (0.0, 0.72), (-0.70, 0.70), (-0.72, 0.0)):  # hex bolts round each plate
+            dd = norm(add(F, add(mul(U, u), mul(Vv, v)))); p = add(C, mul(dd, R + 0.04))
+            if 0.55 < abs(p[0]) < 1.30 or (hole and math.acos(max(-1, min(1, dot(dd, F)))) < hole + 0.25): continue  # (not under the treads or on the window rim)
+            B += bolts([p], dd, M['chrome'], 0.032, 0.018)
     for s in (1, -1):  # the twin treads it rolls on (they stand proud of everything else on the ball)
-        B += band(s * 0.68 if s > 0 else -1.16, s * 1.16 if s > 0 else -0.68, 0.11, 28, [M['hazard'], M['dark']], f'tread{"R" if s > 0 else "L"}', skew=0.35 * s)
+        B += band(s * 0.68 if s > 0 else -1.16, s * 1.16 if s > 0 else -0.68, 0.11, 40, [M['hazard'], M['dark']], f'tread{"R" if s > 0 else "L"}', skew=0.35 * s)
     # thin white trim stripes beside each tread (clean graphic accents, not rivets: the owner's references)
     for s in (1, -1):
         x0 = s * 0.56 if s > 0 else -0.62; x1 = s * 0.62 if s > 0 else -0.56
-        B += band(x0, x1, 0.06, 28, [M['white'], M['white']], f'trim{"R" if s > 0 else "L"}', skew=0.0)
+        B += band(x0, x1, 0.06, 40, [M['white'], M['white']], f'trim{"R" if s > 0 else "L"}', skew=0.0)
     # the porthole: a bolted chrome rim, a glowing ring inside it, two bars (the hamster cage shows through)
     w = cdir((0, 0, -1), R)
-    B.append(lathe_ax([(0.60, -0.16), (0.61, 0.07), (0.66, 0.12), (0.80, 0.09), (0.84, -0.06), (0.83, -0.16), (0.60, -0.16)], w, (0, 0, -1), M['chrome'], 32, 'rim', cap=False))
-    B.append(lathe_ax([(0.58, -0.10), (0.585, 0.04), (0.615, 0.04), (0.62, -0.10), (0.58, -0.10)], w, (0, 0, -1), M['glow'], 32, 'rim_glow', cap=False))
+    B.append(lathe_ax([(0.60, -0.16), (0.61, 0.07), (0.66, 0.12), (0.80, 0.09), (0.84, -0.06), (0.83, -0.16), (0.60, -0.16)], w, (0, 0, -1), M['chrome'], 48, 'rim', cap=False))
+    B.append(lathe_ax([(0.58, -0.10), (0.585, 0.04), (0.615, 0.04), (0.62, -0.10), (0.58, -0.10)], w, (0, 0, -1), M['glow'], 48, 'rim_glow', cap=False))
     for k in range(10):
         a = 2 * math.pi * k / 10 + 0.31
         p = add(w, (math.cos(a) * 0.73, math.sin(a) * 0.73, -0.11))
         B.append(cyl(p, add(p, (0, 0, -0.06)), 0.035, M['dark'], 6, name='rimbolt'))
     for y in (-0.22, 0.22):
-        B.append(cyl(add(w, (-0.63, y, 0.02)), add(w, (0.63, y, 0.02)), 0.045, M['chrome'], 10, name='winbar'))
+        B.append(cyl(add(w, (-0.63, y, 0.02)), add(w, (0.63, y, 0.02)), 0.045, M['chrome'], 16, name='winbar'))
+        B += dt([cyl(add(w, (x, y, 0.02)), add(w, (x + 0.04, y, 0.02)), 0.06, M['dark'], 16, bev=0.003, name='barcollar') for x in (-0.40, 0.36)])
     # the back hatch (the pilot climbs out here) with a grab handle, and the axle bosses under the hubs
     hc = cdir((0, 0.16, 1), R + 0.02); hn = norm((0, 0.16, 1))
-    B.append(frustum(hc, add(hc, mul(hn, 0.08)), 0.46, 0.40, M['white'], 16, bev=0.012, name='hatch'))
+    B.append(frustum(hc, add(hc, mul(hn, 0.08)), 0.46, 0.40, M['white'], 32, bev=0.012, name='hatch'))
     for k in range(6):
         a = 2 * math.pi * k / 6
         p = add(add(hc, mul(hn, 0.08)), (math.cos(a) * 0.32, math.sin(a) * 0.32 * hn[2], -math.sin(a) * 0.32 * hn[1]))
-        B.append(ball(p, 0.04, M['chrome'], 8, 5, 'hatchbolt'))
-    hh = add(hc, mul(hn, 0.09))
-    B.append(tube([add(hh, (-0.18, -0.06, 0)), add(hh, (-0.16, 0.0, 0.10)), add(hh, (0.16, 0.0, 0.10)), add(hh, (0.18, -0.06, 0))], 0.035, M['dark'], 8, 'hatch_handle'))
+        B.append(ball(p, 0.04, M['chrome'], 12, 8, 'hatchbolt'))
+    # a submarine wheel on the hatch (it is a dive tank): a rim, four spokes, a hub
+    wc = add(hc, mul(hn, 0.13)); _, wu, wv = basis(hn)
+    B += dt([tube([add(wc, add(mul(wu, math.cos(2 * math.pi * k / 24) * 0.22), mul(wv, math.sin(2 * math.pi * k / 24) * 0.22))) for k in range(25)], 0.022, M['chrome'], 10, 'valvewheel'),
+             cyl(add(hc, mul(hn, 0.07)), add(hc, mul(hn, 0.15)), 0.05, M['chrome'], 16, bev=0.004, name='valvehub')]
+            + [cyl(wc, add(wc, add(mul(wu, math.cos(a) * 0.22), mul(wv, math.sin(a) * 0.22))), 0.016, M['chrome'], 8, bev=0.0, name='valvespoke') for a in (0.4, 0.4 + math.pi / 2, 0.4 + math.pi, 0.4 + 1.5 * math.pi)])
     for s in (1, -1):
-        B.append(cyl(add(C, (s * (R - 0.25), 0, 0)), add(C, (s * (R + 0.06), 0, 0)), 0.42, M['frame'], 20, name='axleboss'))
+        B.append(cyl(add(C, (s * (R - 0.25), 0, 0)), add(C, (s * (R + 0.06), 0, 0)), 0.42, M['frame'], 32, name='axleboss'))
     mk.add('ball', B); T['ball'] = B
 
 
@@ -158,29 +171,35 @@ def yoke(mk, M, T):
     Y = []
     for s, L in ((1, 'R'), (-1, 'L')):  # the hubs: a fat drum with a hazard face, a chrome cap and bolts
         x0, x1 = s * (R + 0.04), s * (R + 0.42)
-        Y.append(cyl(add(C, (x0, 0, 0)), add(C, (x1, 0, 0)), 0.56, M['paint'], 24, bev=0.02, name='hub'))
-        Y.append(cyl(add(C, (x1 - s * 0.02, 0, 0)), add(C, (x1 + s * 0.05, 0, 0)), 0.47, M['dark'], 24, name='hubface'))
-        Y.append(cyl(add(C, (x1 + s * 0.04, 0, 0)), add(C, (x1 + s * 0.13, 0, 0)), 0.20, M['chrome'], 16, name='hubcap'))
+        Y.append(cyl(add(C, (x0, 0, 0)), add(C, (x1, 0, 0)), 0.56, M['paint'], 40, bev=0.02, name='hub'))
+        Y.append(cyl(add(C, (x1 - s * 0.02, 0, 0)), add(C, (x1 + s * 0.05, 0, 0)), 0.47, M['dark'], 40, name='hubface'))
+        Y.append(cyl(add(C, (x1 + s * 0.04, 0, 0)), add(C, (x1 + s * 0.13, 0, 0)), 0.20, M['chrome'], 28, name='hubcap'))
         for k in range(8):
             a = 2 * math.pi * k / 8
             p = add(C, (x1 + s * 0.05, math.sin(a) * 0.36, math.cos(a) * 0.36))
             Y.append(cyl(p, add(p, (s * 0.05, 0, 0)), 0.04, M['chrome'], 6, name='hubbolt'))
+        Y += ribs(add(C, (x0 + s * 0.06, 0, 0)), (s, 0, 0), 0.585, 0.585, 3, 0.26, M['dark'], 'hubfin')  # (cooling fins round the drum)
         # the rocket under the hub (PILE DRIVER), pointing down and a little back
         ax = norm((0, -0.8, 0.6))
         Y.append(hull([add(C, (s * HUB + dx, dy, dz)) for dx in (-0.16, 0.16) for (dy, dz) in ((-0.30, 0.10), (-0.52, 0.32), (-0.20, 0.40), (-0.38, 0.52))], M['frame'], 0.02, name='rocketmount'))
-        Y += nozzle(add(C, (s * HUB, -0.52, 0.44)), ax, 0.17, 0.30, M, 'rocket')
+        Y += nozzle(add(C, (s * HUB, -0.52, 0.44)), ax, 0.17, 0.30, M, 'rocket', seg=32)
+        Y += ribs(add(add(C, (s * HUB, -0.52, 0.44)), mul(ax, 0.08)), ax, 0.155, 0.18, 2, 0.16, M['dark'], 'rocketrib')
+        Y += hose([add(C, (s * (HUB - 0.10), -0.28, 0.14)), add(C, (s * (HUB - 0.24), -0.40, 0.10)), add(C, (s * (HUB - 0.22), -0.56, 0.30)), add(C, (s * (HUB - 0.10), -0.58, 0.42))], 0.03, M, 'fuelline')
     # the pail handle over the top: hazard segments on a thick bar, from hub to hub
     RH, n = R + 0.45, 15
     for k in range(n):
         a0, a1 = math.pi * k / n, math.pi * (k + 1) / n
         pts = [add(C, (math.cos(a) * RH, math.sin(a) * RH, 0)) for a in (a0, (a0 + a1) / 2, a1)]
-        Y.append(tube(pts, 0.14, M['hazard'] if k % 2 else M['dark'], 10, 'handle'))
+        Y.append(tube(pts, 0.14, M['hazard'] if k % 2 else M['dark'], 16, 'handle'))
     for s in (1, -1):  # the handle's feet bolt into the hubs
         Y.append(hull([add(C, (s * x, y, z)) for x in (RH - 0.20, RH + 0.18) for y in (-0.05, 0.40) for z in (-0.20, 0.20)], M['frame'], 0.03, name='handlefoot'))
+        Y += bolts([add(C, (s * x, 0.12, z)) for x in (RH - 0.10, RH + 0.08) for z in (-0.205,)], (0, 0, -1), M['chrome'], 0.026, 0.014)
+        Y += bolts([add(C, (s * x, 0.12, z)) for x in (RH - 0.10, RH + 0.08) for z in (0.205,)], (0, 0, 1), M['chrome'], 0.026, 0.014)
     # the crane shackle on top: a D loop and a pin
     top = add(C, (0, RH, 0))
-    Y.append(tube([add(top, (0, 0.05 + 0.26 * math.sin(math.pi * k / 8), -0.17 * math.cos(math.pi * k / 8))) for k in range(9)], 0.06, M['chrome'], 10, 'shackle'))
-    Y.append(cyl(add(top, (0, 0.0, -0.24)), add(top, (0, 0.0, 0.24)), 0.05, M['dark'], 10, name='shacklepin'))
+    Y.append(tube([add(top, (0, 0.05 + 0.26 * math.sin(math.pi * k / 12), -0.17 * math.cos(math.pi * k / 12))) for k in range(13)], 0.06, M['chrome'], 16, 'shackle'))
+    Y.append(cyl(add(top, (0, 0.0, -0.24)), add(top, (0, 0.0, 0.24)), 0.05, M['dark'], 16, name='shacklepin'))
+    Y += dt([frustum(add(top, (0, 0.0, z)), add(top, (0, 0.0, z + dz)), 0.08, 0.075, M['chrome'], 6, bev=0.0, name='shacklenut') for (z, dz) in ((-0.24, -0.05), (0.24, 0.05))])
     mk.add('yoke', Y); T['yoke'] = Y
 
 
@@ -190,10 +209,15 @@ def feet(mk, M, T):
         hub = (s * HUB, C[1], 0.0)
         F.append(hull([add(hub, (dx, dy, dz)) for dx in (-0.14, 0.14) for (dy, dz) in ((-0.10, -0.24), (-0.10, 0.24), (-0.62, -0.20), (-0.62, 0.20))], M['frame'], 0.03, name='knuckle'))
         F.append(hull([(s * x, y, z) for x in (HUB + 0.02, HUB + 0.30) for (y, z) in ((1.45, -0.16), (1.45, 0.16), (0.42, -0.20), (0.42, 0.20))], M['paint'], 0.03, name='strut'))
-        F.append(cyl((s * (HUB - 0.10), 1.40, 0.0), (s * (HUB + 0.10), 0.55, 0.0), 0.07, M['chrome'], 10, name='piston'))
+        F += [cyl((s * (HUB - 0.10), 1.40, 0.0), (s * (HUB + 0.10), 0.55, 0.0), 0.07, M['chrome'], 16, name='piston')]
+        F += ram((s * (HUB - 0.12), 1.34, -0.26), (s * (HUB + 0.04), 0.66, -0.24), 0.05, M, (1, 0, 0), name='footram')  # (a second ram in front of the piston)
+        F += dt([hull([(s * x, y, z) for x in (HUB - 0.18, HUB - 0.06) for (y, z) in ((1.30, -0.30), (1.30, -0.12), (1.40, -0.30), (1.40, -0.12))], M['frame'], 0.008, name='ramlug'),
+                 hull([(s * x, y, z) for x in (HUB - 0.02, HUB + 0.10) for (y, z) in ((0.62, -0.28), (0.62, -0.14), (0.72, -0.28), (0.72, -0.14))], M['frame'], 0.008, name='ramlug')])
         pad = (s * (HUB + 0.20), 0.13, 0.0)
-        F.append(frustum((pad[0], 0.0, 0.0), (pad[0], 0.20, 0.0), 0.50, 0.42, M['rubber'], 12, bev=0.02, name='pad'))
-        F.append(frustum((pad[0], 0.17, 0.0), (pad[0], 0.34, 0.0), 0.40, 0.26, M['hazard'], 12, bev=0.02, name='padcap'))
+        F.append(frustum((pad[0], 0.0, 0.0), (pad[0], 0.20, 0.0), 0.50, 0.42, M['rubber'], 28, bev=0.02, name='pad'))
+        F.append(frustum((pad[0], 0.17, 0.0), (pad[0], 0.34, 0.0), 0.40, 0.26, M['hazard'], 28, bev=0.02, name='padcap'))
+        F += dt([hull([(pad[0] + math.cos(a) * r, y, math.sin(a) * r) for r in (0.44, 0.535) for y in (0.03, 0.12) for a in (a0 - 0.12, a0 + 0.12)], M['rubber'], 0.006, name='padlug') for a0 in [2 * math.pi * k / 12 for k in range(12)]])
+        F += bolts([(s * (HUB + 0.297), y, z) for y in (1.30, 0.55) for z in (-0.10, 0.10)], (s, 0, 0), M['chrome'], 0.022, 0.012)
         F.append(hull([(s * x, y, z) for x in (HUB - 0.01, HUB + 0.35) for (y, z) in ((0.30, -0.22), (0.30, 0.22), (0.62, -0.16), (0.62, 0.16))], M['dark'], 0.02, name='ankle'))
         mk.add('foot_' + L, F); T['foot_' + L] = F
 
@@ -202,10 +226,10 @@ def cage(mk, M, T):
     """the hamster wheel the pilot is strapped into: two rings, bars, an axle through the ball, an orange bucket seat"""
     G = []
     for x in (-0.55, 0.55):
-        G.append(tube([add(C, (x, math.cos(2 * math.pi * k / 24) * 1.18, math.sin(2 * math.pi * k / 24) * 1.18)) for k in range(25)], 0.055, M['chrome'], 8, 'wheelring'))
+        G.append(tube([add(C, (x, math.cos(2 * math.pi * k / 36) * 1.18, math.sin(2 * math.pi * k / 36) * 1.18)) for k in range(37)], 0.055, M['chrome'], 12, 'wheelring'))
     for k in range(10):
         a = 2 * math.pi * k / 10
-        G.append(cyl(add(C, (-0.55, math.cos(a) * 1.18, math.sin(a) * 1.18)), add(C, (0.55, math.cos(a) * 1.18, math.sin(a) * 1.18)), 0.04, M['chrome'], 6, name='wheelbar'))
+        G.append(cyl(add(C, (-0.55, math.cos(a) * 1.18, math.sin(a) * 1.18)), add(C, (0.55, math.cos(a) * 1.18, math.sin(a) * 1.18)), 0.04, M['chrome'], 10, name='wheelbar'))
     for k in range(6):  # spokes to the axle
         a = 2 * math.pi * k / 6
         for x in (-0.55, 0.55):
@@ -221,7 +245,11 @@ def cage(mk, M, T):
     G.append(hull([add(seat, (sx * 0.28, y, z)) for sx in (-1, 1) for (y, z) in ((0.02, 0.16), (0.02, 0.30), (0.72, 0.30), (0.72, 0.44))], M['seat'], 0.04, name='seatback'))
     for sx in (-1, 1): G.append(tube([add(seat, (sx * 0.16, 0.70, 0.30)), add(seat, (sx * 0.16, 0.74, 0.12)), add(seat, (sx * 0.12, 0.30, -0.02))], 0.03, M['accent'], 6, 'strap'))
     G.append(cyl(add(seat, (0.30, 0.0, -0.30)), add(seat, (0.30, 0.34, -0.42)), 0.025, M['dark'], 6, name='stick'))
-    G.append(ball(add(seat, (0.30, 0.36, -0.43)), 0.055, M['accent'], 10, 6, 'stickball'))
+    G.append(ball(add(seat, (0.30, 0.36, -0.43)), 0.055, M['accent'], 14, 10, 'stickball'))
+    dc = add(seat, (0.0, 0.42, -0.52))  # a little dash in front of the pilot (you see it lit through the porthole)
+    G += dt([hull([add(dc, (x, y, z)) for x in (-0.24, 0.24) for (y, z) in ((-0.10, 0.04), (0.10, -0.02), (-0.10, -0.04), (0.10, -0.10))], M['frame'], 0.012, name='dash'),
+             hull([add(dc, (x, y, z)) for x in (-0.17, 0.17) for (y, z) in ((-0.06, -0.047), (0.07, -0.086), (-0.06, -0.058), (0.07, -0.097))], M['glow'], 0.0, name='dashscreen'),  # (5 mm in, 6 mm proud: not flush)
+             cyl(add(dc, (0, -0.10, 0.0)), add(seat, (0, 0.05, -0.30)), 0.025, M['frame'], 8, bev=0.0, name='dashpost')])
     mk.add('cage', G); T['cage'] = G
     T['seat'] = seat
 
@@ -239,10 +267,11 @@ def hook(mk, M, T):
         else: H += parts
     hb = (0, 4.10, 1.10)  # the swivel block, then the hook curling back up
     H.append(hull([add(hb, (sx * 0.20, y, z)) for sx in (-1, 1) for (y, z) in ((0.10, -0.12), (0.10, 0.12), (-0.30, -0.15), (-0.30, 0.15))], M['hazard'], 0.03, name='hookblock'))
-    H.append(tube([add(hb, (0, 0.10, 0)), add(hb, (0, 0.24, -0.08))], 0.07, M['chrome'], 8, 'hookeye'))
+    H.append(tube([add(hb, (0, 0.10, 0)), add(hb, (0, 0.24, -0.08))], 0.07, M['chrome'], 12, 'hookeye'))
+    H += bolts([add(hb, (sx * 0.205, y, 0.0)) for sx in (-1, 1) for y in (-0.02, -0.20)], (1, 0, 0), M['chrome'], 0.024, 0.012)
     curve = [add(hb, (0, -0.30 - 0.30 * math.sin(math.pi * k / 10), 0.36 - 0.36 * math.cos(math.pi * k / 10))) for k in range(11)]
     for k in range(10):
-        H.append(cyl(curve[k], curve[k + 1], 0.13 - 0.007 * k, M['frame'], 10, name='hookcurve'))
+        H.append(cyl(curve[k], curve[k + 1], 0.13 - 0.007 * k, M['frame'], 16, name='hookcurve'))
     H.append(cyl(add(hb, (0, -0.22, 0.04)), add(hb, (0, -0.48, 0.66)), 0.025, M['chrome'], 6, name='latch'))
     mk.add('hook', H); T['hook'] = H
 
