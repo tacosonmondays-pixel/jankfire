@@ -77,7 +77,7 @@ import { BR } from '/shared/royale.js'; // (the grapple charges, for the help te
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
-import { miniMouse, miniCam, miniFeed } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
+import { miniMouse, miniCam, miniFeed, miniRideCam, miniHideVM } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
@@ -2290,6 +2290,7 @@ function frame(t) {
   cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
   if (!RP.active) ballCam(cam, dt); // wrecking ball: third person, behind and above the ball
   if (!RP.active) mechCam(cam, dt); // mech: third person behind the frame (and the drop's heroic low shot)
+  if (!RP.active) miniRideCam(cam, dt); // board game night's bumper carts: a chase cam behind your cart
   const hs = hspeed();
   const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) + (ME.alive ? ME.ropeFov || 0 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
@@ -2342,6 +2343,7 @@ function frame(t) {
   if (mechOn() || mechHeroOn()) G.vmScene.visible = false; // (and inside a mech, and in the mech's landing shot)
   if (isleDown()) G.vmScene.visible = false; // battle island: down on the floor, no hands free
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
+  if (miniHideVM()) G.vmScene.visible = false; // (bumper carts: both hands on the cart)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
   if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden')) && !(G.joined && bgnFrame(dt))) { wxPre(); renderFrame(); wxPost(); } // (board game night: the board instead of the map) // the hub lobby's 3D place, else the game (or the menu's map orbit). (wxPre/wxPost: the storm's sky + light for this frame only)

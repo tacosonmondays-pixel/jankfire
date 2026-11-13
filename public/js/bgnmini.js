@@ -13,7 +13,9 @@ import { net } from './net.js';
 import { sfx } from './audio.js';
 import { fx } from './fx.js';
 import { hud } from './hud.js';
-import { buildProjectile } from './models.js';
+import { buildProjectile, buildCharacter } from './models.js';
+import { raycast } from '/shared/physics.js';
+import { BOXES } from '/shared/map.js';
 import { boardCart } from './primaries.js';
 import { BGN_NAMES as N, BGN_MINI, BGN_MINIS } from '/shared/bgn.js';
 import { CART } from '/shared/primaries.js';
@@ -80,7 +82,7 @@ const BGN_NAMES_BOSS = () => (S.B && S.B.mg ? N.boss[S.B.mg.id] : null);
 export function miniEv(m) { const f = EV[m.k]; if (f) f(m); }
 
 // bumper carts: the server put you in a cart (its id + yours): climb in (primaries.js does the riding)
-net.tap((m) => { if (m.t === 'cart' && kind() === 'carts' && m.r === G.myId && ME.alive && ME.ride !== m.id && Number.isInteger(m.id)) boardCart(m.id); });
+net.tap((m) => { if (m.t === 'cart' && kind() === 'carts' && m.r === G.myId && ME.alive && ME.ride !== m.id && Number.isInteger(m.id) && boardCart(m.id) && Number.isFinite(m.y)) { ME.yaw = m.y; ME.pitch = -0.12; } }); // (facing the way the cart does: into the middle)
 
 // ---------------------------------------------------------------- ducks
 const DISC = new THREE.CircleGeometry(1, 16).rotateX(-Math.PI / 2), RING = new THREE.RingGeometry(0.8, 1, 20).rotateX(-Math.PI / 2);
@@ -131,11 +133,11 @@ const CSS = `
 .bm-seat.me{box-shadow:6px 6px 0 #4fd8ff}
 .bm-seat .st{position:absolute;left:0;top:0;bottom:0;width:8px}
 .bm-seat b{display:block;font-size:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
-.bm-seat em{font-style:normal;font-size:22px;font-weight:700;color:#ffe14d;-webkit-text-stroke:1px #000}
+.bm-seat em{display:block;white-space:nowrap;font-style:normal;font-size:22px;font-weight:700;color:#ffe14d;-webkit-text-stroke:1px #000}
 .bm-seat.out{opacity:.55}.bm-seat.out em{color:#ff3030}
 .bm-duck{display:inline-block;width:16px;height:12px;border-radius:8px 8px 5px 5px;background:#ffd23b;border:2px solid #000;margin-right:5px;vertical-align:1px}
 .bm-team{align-self:center;padding:4px 10px;font-size:16px;font-weight:700;border:3px solid #000;box-shadow:4px 4px 0 #000;color:#000}
-.bm-boost{position:absolute;left:50%;bottom:118px;transform:translateX(-50%) rotate(-1.5deg);padding:4px 12px;font-size:18px;font-weight:700;text-align:center}
+.bm-boost{position:absolute;left:50%;bottom:150px;transform:translateX(-50%) rotate(-1.5deg);padding:4px 12px;font-size:18px;font-weight:700;text-align:center}
 .bm-boost .bm-bar{width:200px;height:14px;margin-top:3px}.bm-boost .bm-bar i{background:#4fd8ff;transition:none}
 .bm-boost.ready{color:#ffe14d}
 .bm-spec{position:absolute;left:50%;bottom:22%;transform:translateX(-50%);padding:6px 16px;font-size:20px;font-weight:700}
@@ -168,7 +170,7 @@ function render(now) {
         const stripe = el('i', 'st'); stripe.style.background = s.color; c.append(stripe);
         const nm = el('b', null, s.name); nm.style.color = s.color; c.append(nm);
         if (k === 'ducks') { const v = el('em'); v.append(el('i', 'bm-duck'), String(S.piles[i] || 0)); c.append(v); }
-        else c.append(el('em', null, out ? 'OUT' : 'IN THE CART'));
+        else c.append(el('em', null, out ? 'OUT' : 'STILL IN'));
         return c;
       };
       if (mg.teams && mg.sides) mg.sides.forEach((side, t) => {
@@ -224,6 +226,22 @@ export function miniCam(dt, cam) {
   cam.lookAt(0, 0, 0);
   return true;
 }
+// main.js's camera, in your cart: a chase cam a few metres back (you see yourself in the cart, and who's coming).
+// the mannequin standing in it is you (nobody draws your own body otherwise). true = it's on
+let rideLen = 0, selfCh = null;
+const lookV = () => { const c = Math.cos(ME.pitch); return [-Math.sin(ME.yaw) * c, Math.sin(ME.pitch), -Math.cos(ME.yaw) * c]; };
+export function miniRideCam(cam, dt) {
+  const on = kind() === 'carts' && !!ME.ride && ME.alive && G.joined;
+  if (!selfCh && on && G.scene) { try { selfCh = buildCharacter(G.myColor || '#ff4fd8', (G.settings && G.settings.look) || undefined).root; } catch { selfCh = buildCharacter(G.myColor || '#ff4fd8').root; } G.scene.add(selfCh); }
+  if (selfCh) { selfCh.visible = on; if (on) { selfCh.position.set(ME.pos[0], ME.pos[1], ME.pos[2]); selfCh.rotation.set(0, (ME.rideYaw ?? ME.yaw) + Math.sin(performance.now() * 0.009) * 0.05, 0); } }
+  if (!on) { rideLen = 0; return false; }
+  const d = lookV(), e = [ME.pos[0], ME.pos[1] + 2.2, ME.pos[2]], want = 3.6;
+  const hit = raycast(e, [-d[0], -d[1], -d[2]], want + 0.4, BOXES), free = hit ? Math.max(0.3, hit.t - 0.35) : want;
+  rideLen = Math.min(free, rideLen + (want - rideLen) * Math.min(1, dt * 4));
+  cam.position.set(e[0] - d[0] * rideLen, e[1] - d[1] * rideLen + 0.4, e[2] - d[2] * rideLen);
+  return true;
+}
+export const miniHideVM = () => kind() === 'carts' && !!ME.ride && ME.alive;
 // main.js's kill feed: bumper carts' void lines. null = the usual
 export function miniFeed(m, kn, kc, vn, vc) {
   if (kind() !== 'carts' || m.w !== 'void') return null;

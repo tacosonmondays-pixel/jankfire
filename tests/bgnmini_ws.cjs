@@ -47,7 +47,7 @@ function client(port, name, join) {
     c.msgs.push(m); if (c.msgs.length > 6000) c.msgs.splice(0, 3000);
     if (m.t === 'welcome') { c.id = m.id; c.q = m.q || 1; }
     if (m.t === 'spawn') { c.q = m.q; c.pos = m.p.slice(); }
-    if (m.t === 'bg') { if (m.k === 'st') { c.st = m.s; c.sts.push(m.s); if (c.auto) c.answer(); } else c.ev.push(m); }
+    if (m.t === 'bg') { if (m.k === 'st') { m.s.at = Date.now(); c.st = m.s; c.sts.push(m.s); if (c.auto) c.answer(); } else { m.at = Date.now(); c.ev.push(m); } }
     if (m.t === 'sn') for (const r of m.p) { c.alive.set(r[0], r[11]); c.ppos.set(r[0], [r[1], r[2], r[3]]); }
   });
   ws.on('close', () => { c.closed = true; });
@@ -183,8 +183,8 @@ async function partCartWin(port) {
   ok(r.x.out.length === 3, `three went into the void (out: ${r.x.out.join(',')})`);
   ok(!r.x.out.includes(r.place[0]) && pay.get(r.place[0]) === 10, `the last cart standing (seat ${r.place[0]}) is 1st and paid 10`);
   ok(r.place.slice(1).every((i, k, a) => k === 0 || r.x.out.indexOf(a[k - 1]) > r.x.out.indexOf(i)), 'the rest by who lasted longest');
-  const resT = W.sts.findIndex((s) => s.ph === 'mgres'), lastMg = W.sts.slice(0, resT).filter((s) => s.ph === 'mg').pop();
-  ok(mgSt && lastMg && lastMg.mg.left > 1000, `it ended before the clock (${lastMg ? Math.round(lastMg.mg.left / 1000) : '?'} s left)`);
+  const took = mgSt ? W.evs('res')[0].at - mgSt.at : 1e9;
+  ok(mgSt && took < 68000, `it ended before the clock (after ${Math.round(took / 1000)} of 70 s)`);
   const errs = errorsIn(S.log());
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   W.ws.close(); S.stop();
@@ -224,7 +224,7 @@ async function partDucks(port) {
   let hold = { A: null, B: null };
   const tick = setInterval(() => { if (hold.A) A.place(hold.A); if (hold.B) B.place(hold.B); }, 50);
   // A: 5 m from where a duck lands, the whole way down and a second after. a made-up catch message does nothing either
-  const near = (c, k) => c.ev.filter((e) => e.k === 'duck' && !e.one && e.ms > 1500 && !k.has(e.id));
+  const near = (c, k) => c.ev.filter((e) => e.k === 'duck' && !e.one && e.ms > 1500 && !k.has(e.id) && Date.now() - e.at < e.ms - 700 && !c.ev.some((x) => x.k === 'duckx' && x.id === e.id)); // (still well up in the air)
   const used = new Set();
   ok(await A.until(() => near(A, used).length, 8000), 'ducks are falling');
   const d1 = near(A, used)[0]; used.add(d1.id);
@@ -269,7 +269,7 @@ async function partDucks(port) {
   hold.B = cz.p.slice();
   ok(await B.until(() => B.evs('curse').some((e) => e.id === B.id), cz.ms + 4000), 'it got B');
   const cu = B.evs('curse').find((e) => e.id === B.id);
-  ok(cu && cu.n === Math.floor(had / 2) && cu.pile === had - cu.n, `the cursed duck halved B's pile (${had} -> ${cu && cu.pile})`);
+  ok(cu && cu.n === Math.floor((cu.pile + cu.n) / 2) && cu.pile + cu.n >= 2, `the cursed duck halved B's pile (${cu && cu.pile + cu.n} -> ${cu && cu.pile}; ${had} when it was spotted)`);
   clearInterval(tick);
   ok(await W.until(() => W.evs('res').length, 60000), 'duck catch ended');
   const r = W.evs('res')[0], sc = r.place.map((i) => r.x.pile[i] || 0);
