@@ -324,6 +324,7 @@ export function sunAt(x, y, z, maxT = 40) {
 }
 export const sunDir = () => dir;
 export const sunBoxes = () => boxesRef;
+export const lightSources = () => ({ src: L.src, n: L.nSrc }); // neon.js: [x, y, z, r, g, b, size, floorY] per light
 
 const tmpW = new THREE.Vector3();
 const rq = { near2: 0, half2: 0, dyn: false, cx: 0, cz: 0, px: 0, pz: 0 };

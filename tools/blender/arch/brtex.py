@@ -6,7 +6,7 @@
 #             a brown ring from a leak. dithered edges, so the 1-bit alpha fades instead of cutting
 #   br_fix    an atlas of the wall's stuff: a duplex outlet, a rocker switch, a thermostat, a return-air grille,
 #             a fire alarm pull station, a paper sign that says nothing useful
-# run: python3 tools/blender/arch/brtex.py [--sheet out.png]   (no Blender needed)
+# run: python3 tools/blender/arch/brtex.py [--sheet out.png] [--out dir]   (no Blender needed)
 import os, sys
 import numpy as np
 from PIL import Image
@@ -118,6 +118,7 @@ def fixtures(n=128):
 
 
 def main():
+    if '--out' in sys.argv: T.OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])  # (the repro test writes to a temp dir)
     os.makedirs(T.OUT, exist_ok=True)
     T.save('br_wall', wallpaper()[::-1], TILES['br_wall'], note='Backrooms wallpaper, 2 strips of 0.53 m')
     img, al = stains()

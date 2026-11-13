@@ -4,7 +4,7 @@
 import '/shared/mapedits/apply.js'; // the shipped edits first: yours go on top of them
 import * as THREE from 'three';
 import { MAPS, BOXES, MAP } from '/shared/map.js';
-import { resetGrid } from '/shared/physics.js';
+import { resetGrid, movePlayer, playerOverlap, query } from '/shared/physics.js';
 import { indexMap, bySig, boundsOf, pivotOf, canScale, xfThing, xfUndo, removeThing, insertThing, thingData, thingFrom, applyEdits, validEdits } from '/shared/mapedit.js';
 import { G } from '../ctx.js';
 import { K } from '../keys.js';
@@ -12,7 +12,9 @@ import { lockPointer, lookFilter } from '../mouselook.js';
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals, mapMats, relightMap } from '../world.js';
 import { whenGlb } from '../glbkit.js';
 import { wantArch } from '../archfield.js';
-import { initPalette, togglePalette, solidOn, modelBounds } from './palette.js';
+import { initPalette, togglePalette, paletteOpen, solidOn, modelBounds, addRecent, setActiveSlot, slotItem, slotTool, dropOn } from './palette.js';
+import { initTools, updateTools, toolDown, toolUp, toolWheel, toolKey, toolMouse, pickTool, loadItem, curTool, busy, justFroze, resetPreview, toolState, hideVM } from './tools.js';
+import { ghostOf, dropGhost } from './modelghost.js';
 import { navCheck } from '/shared/navcheck.js';
 import { EDITS } from '/shared/mapedits/index.js';
 import { loadTripoModels } from '../models.js';
@@ -38,7 +40,7 @@ if (!mapIds.includes(mapId)) mapId = mapIds.includes('warehouse') ? 'warehouse' 
 try { localStorage.setItem('jfEdMap', mapId); } catch { /* fine */ }
 const def = MAPS[mapId];
 let saved = { map: mapId, v: 1, ops: [] };
-try { const s = JSON.parse(localStorage.getItem(store(mapId)) || 'null'); if (s && validEdits(s) && s.map === mapId) saved = s; } catch { /* a broken save: start clean */ }
+try { const s = JSON.parse(localStorage.getItem(store(mapId)) || 'null'); if (s && validEdits(s) && s.map === mapId) saved = s; else if (s) { localStorage.setItem(store(mapId) + ':broken', JSON.stringify(s)); localStorage.removeItem(store(mapId)); console.warn('editor: a save that fails the checks was put aside (' + store(mapId) + ':broken)'); } } catch { /* a broken save: start clean */ }
 let rep;
 try { rep = applyEdits(def, saved); } catch (e) { // a save that breaks the replay: keep it aside, start clean (the page reloads the map)
   console.error('editor: saved edits broke the replay', e);
@@ -74,12 +76,16 @@ function rebuild() {
   drawSel();
 }
 // run a change now and keep it: h = { op, do(), undo() }
-function commit(h) { h.do(); hist.push(h); undoN++; redo.length = 0; persist(); rebuild(); }
+function commit(h) {
+  if (h.op.sel && h.op.sel.some((x) => typeof x !== 'string')) { toast('that thing is gone: nothing changed'); return; } // (an op naming nothing would break the whole save)
+  h.do(); hist.push(h); undoN++; redo.length = 0; persist(); rebuild(); }
 function undo() {
+  if (busy()) return toast('put it down first');
   if (!undoN) { toast(hist.length ? 'older changes: use RESET MAP or the change list' : 'nothing to undo'); return; }
   const h = hist.pop(); undoN--; h.undo(); redo.push(h); persist(); rebuild(); callout('UNDO\'D');
 }
-function redoIt() { const h = redo.pop(); if (!h) return toast('nothing to redo'); h.do(); hist.push(h); undoN++; persist(); rebuild(); callout('REDO\'D'); }
+function redoIt() { if (busy()) return toast('put it down first');
+  const h = redo.pop(); if (!h) return toast('nothing to redo'); h.do(); hist.push(h); undoN++; persist(); rebuild(); callout('REDO\'D'); }
 
 // ops on things (by reference here; by sig in the file)
 const sigList = (ts) => ts.map((t) => sigs().sig.get(t));
@@ -190,17 +196,34 @@ let carry = null; // { ts, o, k, q, dist, ghost }
 const ghostMat = new THREE.MeshBasicMaterial({ color: 0xff4fd8, transparent: true, opacity: 0.28, depthWrite: false });
 function startCarry(ts) {
   ts = ts.filter(Boolean); if (!ts.length) return;
-  const o = pivotFor(ts), ghost = new THREE.Group();
-  for (const t of ts) for (const b of boxesOf(t)) {
-    const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2], m = new THREE.Mesh(new THREE.BoxGeometry(sx, sy, sz), ghostMat);
-    m.position.set((b.min[0] + b.max[0]) / 2 - o[0], (b.min[1] + b.max[1]) / 2 - o[1], (b.min[2] + b.max[2]) / 2 - o[2]); m.rotation.y = b.rot || 0;
-    ghost.add(m);
-  }
-  const eg = edgesFor(ts); eg.translate(-o[0], -o[1], -o[2]); const el = new THREE.LineSegments(eg, lineMat(0x4fd8ff, 1)); el.renderOrder = 999; ghost.add(el);
-  G.scene.add(ghost);
+  const o = pivotFor(ts), ghost = ghostOf(ts, o, edgesFor(ts)); // (the real model where there is one)
+  ghost.position.set(...o); G.scene.add(ghost);
   cam.getWorldPosition(_o);
-  carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0] };
+  carry = { ts, o, k: 1, q: 0, dist: Math.max(4, Math.hypot(o[0] - _o.x, o[1] - _o.y, o[2] - _o.z)), ghost, d: [0, 0, 0], rel: relBounds(ts, o), skip: new Set(ts.flatMap((t) => t.boxes)) };
   callout('YOINK');
+}
+// edge snap (with snap on): what you carry sticks to the edges of the boxes near it, side to side or flush, and sits on
+// their tops, when it's within 35 cm. rel: its bounds round its pivot o before any turn; q, k: its turn and size; d: the
+// move so far. skip: its own boxes (still in the map while the wand carries it)
+const EDGE = 0.35, TURN4 = [[1, 0], [0, 1], [-1, 0], [0, -1]];
+function relBounds(ts, o) { const { lo, hi } = unionBounds(ts); return { lo: lo.map((v, i) => v - o[i]), hi: hi.map((v, i) => v - o[i]) }; }
+function edgeSnap(rel, o, q, k, d, skip) {
+  if (!snap || !rel) return d;
+  const [c, sn] = TURN4[q & 3], xs = [], zs = [];
+  for (const x of [rel.lo[0], rel.hi[0]]) for (const z of [rel.lo[2], rel.hi[2]]) { xs.push((x * c + z * sn) * k); zs.push((-x * sn + z * c) * k); }
+  const L = [o[0] + d[0] + Math.min(...xs), o[1] + d[1] + rel.lo[1] * k, o[2] + d[2] + Math.min(...zs)], H = [o[0] + d[0] + Math.max(...xs), o[1] + d[1] + rel.hi[1] * k, o[2] + d[2] + Math.max(...zs)];
+  const best = [null, null, null], put = (ax, v) => { if (Math.abs(v) < EDGE && (best[ax] == null || Math.abs(v) < Math.abs(best[ax]))) best[ax] = v; };
+  for (const b of query(BOXES, L[0] - EDGE, L[2] - EDGE, H[0] + EDGE, H[2] + EDGE, [])) {
+    if (b.ter || (skip && skip.has(b)) || isFloor(b) || liquidBox(b)) continue;
+    const yo = b.max[1] > L[1] + 0.05 && b.min[1] < H[1] - 0.05; // (beside it, at its height)
+    for (const ax of [0, 2]) {
+      const o2 = 2 - ax, across = b.max[o2] > L[o2] - EDGE && b.min[o2] < H[o2] + EDGE;
+      if (!across || !yo) continue;
+      put(ax, b.min[ax] - H[ax]); put(ax, b.max[ax] - L[ax]); put(ax, b.min[ax] - L[ax]); put(ax, b.max[ax] - H[ax]); // touching from outside, or lined up
+    }
+    if (b.max[0] > L[0] && b.min[0] < H[0] && b.max[2] > L[2] && b.min[2] < H[2]) put(1, b.max[1] - L[1]); // sitting on its top
+  }
+  return d.map((v, i) => (best[i] == null ? v : Math.round((v + best[i]) * 1e4) / 1e4));
 }
 // the snap grid under what you carry: lines every grid step, 20 m across, at its feet (none with snap off)
 let gridH = null, gridStep = 0;
@@ -237,7 +260,7 @@ function updateCarry() {
   else p = [o.x + d.x * carry.dist, o.y + d.y * carry.dist, o.z + d.z * carry.dist];
   const dd = [p[0] - carry.o[0], p[1] - carry.o[1], p[2] - carry.o[2]];
   if (snap) { dd[0] = Math.round(dd[0] / snap) * snap; dd[2] = Math.round(dd[2] / snap) * snap; if (!(h && h.top)) dd[1] = Math.round(dd[1] / snap) * snap; }
-  carry.d = dd;
+  carry.d = edgeSnap(carry.rel, carry.o, carry.q, carry.k, dd, carry.skip); const ed = carry.d; dd[0] = ed[0]; dd[1] = ed[1]; dd[2] = ed[2];
   carry.ghost.position.set(carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]);
   carry.ghost.rotation.y = carry.q * Math.PI / 2; carry.ghost.scale.setScalar(carry.k);
   showGrid([carry.o[0] + dd[0], carry.o[1] + dd[1], carry.o[2] + dd[2]]);
@@ -250,7 +273,7 @@ function dropCarry() {
 }
 // put it back: a fresh copy (or a new thing from the palette) that never got put down goes away again
 function cancelCarry() { const fresh = carry && carry.fresh; endCarry(); if (fresh && undoN) { undo(); redo.pop(); toast('never mind'); } else toast('put back'); }
-function endCarry() { if (!carry) return; G.scene.remove(carry.ghost); carry.ghost.traverse((o) => o.geometry && o.geometry.dispose()); carry = null; }
+function endCarry() { if (!carry) return; dropGhost(carry.ghost); carry = null; }
 
 // ---------------------------------------------------------------- actions
 let snap = 1;
@@ -305,6 +328,44 @@ function tpl() {
   }
   return TPL;
 }
+// things the grabby beam holds leave the map for a moment (moved far below, exactly as they were kept aside): the beam
+// shows the model instead, and the real move is one ordinary op when you let go
+const hidden = new Map();
+function hideThings(ts) {
+  for (const t of ts) {
+    if (hidden.has(t)) continue;
+    hidden.set(t, { b: t.boxes.map((b) => [b.min, b.max]), d: (t.dboxes || []).map((b) => [b.min, b.max]), a: t.prop && t.prop.a, p: t.prop && t.prop.p, ap: t.arch && t.arch.p });
+    xfThing(t, [0, 0, 0], 1, 0, [0, -10000, 0]);
+  }
+  rebuild();
+}
+function unhideThings(ts) {
+  for (const t of ts) {
+    const h = hidden.get(t); if (!h) continue; hidden.delete(t);
+    t.boxes.forEach((b, i) => { [b.min, b.max] = h.b[i]; }); (t.dboxes || []).forEach((b, i) => { [b.min, b.max] = h.d[i]; });
+    if (t.prop) { if (h.a) t.prop.a = h.a; if (h.p) t.prop.p = h.p; }
+    if (t.arch) t.arch.p = h.ap;
+  }
+}
+// the data a new thing starts from (an 'add' item): a copy of one already on some map, a model's own size, a plain box.
+// null while its model is still loading (asked for; it comes)
+const asked = new Set();
+function itemData(kind, mid) {
+  let data = null;
+  if (kind === 'props') {
+    const id = mid.replace(/^p_/, '');
+    data = tpl().props.get(id);
+    if (!data) {
+      const mb = modelBounds(mid);
+      if (!mb) { if (!asked.has(mid)) { asked.add(mid); whenGlb([mid], () => {}); } return null; }
+      data = { list: 'b', boxes: [{ min: mb.lo, max: mb.hi, mat: 'metal', pv: id }], prop: { id, a: [0, 0, 0], y: 0, lo: mb.lo, hi: mb.hi } };
+    }
+  } else if (kind === 'arch') { data = tpl().arch.get(mid); if (!data) return null; }
+  else data = { list: 'b', boxes: [{ min: [-1, 0, -1], max: [1, 2, 1], mat: mid }] };
+  data = JSON.parse(JSON.stringify(data));
+  if (kind !== 'arch' && !solidOn()) data.list = 'd'; // look-only: drawn, never bumped into (buildings are always solid)
+  return data;
+}
 let retried = new Set();
 function place(kind, mid) {
   let data = null;
@@ -337,6 +398,7 @@ function place(kind, mid) {
 // build of the maps, made the first time you ask). red = cut off by your edits, grey = already unreachable before
 let baseMaps = null, botMarks = null;
 async function botCheck() {
+  if (busy()) return toast('put it down first');
   toast('asking the bots...');
   await new Promise((r) => setTimeout(r, 30)); // (let the toast show: the check takes a moment)
   if (!baseMaps) {
@@ -407,6 +469,28 @@ let speed = 14;
   if (mc) cam.position.set(mc[0], mc[1], mc[2]); else cam.position.set(sp[0], sp[1] + 8, sp[2]);
   lookAt([0, 0, 0]);
 }
+// WALK TEST (F): drop out of the sky and walk your edits with the game's own physics (shared/physics.js movePlayer):
+// bump into what you moved, jump what you built, find the gap you left. F again to fly
+let walk = null;
+function toggleWalk() {
+  if (walk) { walk = null; callout('FLY'); toast('flying again (F to walk)'); return; }
+  const p = [cam.position.x, cam.position.y - 1.6, cam.position.z];
+  for (let k = 0; k < 40 && playerOverlap(p, BOXES); k++) p[1] += 0.5; // (noclipped into a wall: come out on top of it)
+  walk = { p, v: [0, 0, 0], ground: false };
+  callout('WALK TEST'); toast('walking: WASD, SPACE jump, SHIFT run. F to fly');
+}
+function walkStep(dt, f, r) {
+  const W = walk, y = cam.rotation.y, sp = keys.has('ShiftLeft') || keys.has('ShiftRight') ? 11 : 7;
+  let wx = -Math.sin(y) * f + Math.cos(y) * r, wz = -Math.cos(y) * f - Math.sin(y) * r; const l = Math.hypot(wx, wz); if (l > 1) { wx /= l; wz /= l; }
+  const acc = W.ground ? 14 : 3; // (a little air control)
+  W.v[0] += (wx * sp - W.v[0]) * Math.min(1, acc * dt); W.v[2] += (wz * sp - W.v[2]) * Math.min(1, acc * dt);
+  W.v[1] -= 25 * dt;
+  if (W.ground && keys.has('Space')) { W.v[1] = 8.5; W.ground = false; }
+  const res = movePlayer(W.p, W.v, dt, BOXES, W.ground);
+  W.ground = !!res.ground;
+  if (W.p[1] < (MAP.killY ?? -45)) { const s = (def.spawns && def.spawns[0]) || [0, 2, 0]; W.p = [s[0], s[1] + 0.2, s[2]]; W.v = [0, 0, 0]; callout('INTO THE VOID'); }
+  cam.position.set(W.p[0], W.p[1] + 1.6, W.p[2]);
+}
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame); // (first: one broken piece of the world can't stop the editor)
@@ -416,23 +500,27 @@ let frameErr = false;
 function step(now) {
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   const f = (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0), r = (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0), u = (keys.has('Space') ? 1 : 0) - (keys.has('KeyC') ? 1 : 0);
-  if (f || r || u) {
+  if (walk) walkStep(dt, f, r);
+  else if (f || r || u) {
     const v = speed * (keys.has('ShiftLeft') || keys.has('ShiftRight') ? 4 : 1) * dt, y = cam.rotation.y;
     cam.position.x += (-Math.sin(y) * f + Math.cos(y) * r) * v; cam.position.z += (-Math.cos(y) * f - Math.sin(y) * r) * v; cam.position.y += u * v;
   }
   updateCarry();
-  if (!carry && (moved || document.pointerLockElement === canvas)) { const [o, d] = aimRay(); const h = pick(o, d); drawHover(h && h.t); } else drawHover(null);
+  updateTools(dt, !!(f || r || u));
+  if (!carry && !busy() && curTool() !== 'plop' && (moved || document.pointerLockElement === canvas)) { const [o, d] = aimRay(); const h = pick(o, d); drawHover(h && h.t); } else drawHover(null);
   try { updateWorld(dt); } catch (e) { if (!frameErr) { frameErr = true; console.error('editor world', e); } }
   renderFrame();
 }
 
 // ---------------------------------------------------------------- input
 canvas.addEventListener('mousedown', (e) => {
+  if (!carry && toolDown(e.button)) return; // (the grabby beam, the plop cannon, the yeet ray)
   if (document.pointerLockElement !== canvas && e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); }
   if (document.pointerLockElement === canvas) { if (e.button === 0) { if (carry) dropCarry(); else clickPick(e.shiftKey); } else if (e.button === 2 && carry) cancelCarry(); }
 });
+addEventListener('mouseup', (e) => { toolUp(e.button); });
 canvas.addEventListener('dblclick', () => { if (document.pointerLockElement !== canvas) lockPointer(canvas); });
-canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas) lockPointer(canvas); });
+canvas.addEventListener('contextmenu', (e) => { e.preventDefault(); if (document.pointerLockElement !== canvas && !busy() && !justFroze()) lockPointer(canvas); });
 const mlook = lookFilter(); // (the game's mouse look: raw mouse, no snapping on Chrome's fake jumps)
 function clickPick(add) {
   const [o, d] = aimRay(), h = pick(o, d);
@@ -444,24 +532,29 @@ addEventListener('mousemove', (e) => {
   mouse.set((e.clientX / innerWidth) * 2 - 1, -(e.clientY / innerHeight) * 2 + 1); moved = true;
   if (document.pointerLockElement !== canvas) return;
   if (!mlook.take(e.movementX, e.movementY)) return;
+  if (toolMouse(e.movementX, e.movementY)) return; // (R held with something on the beam: the mouse turns it)
   const s = 0.0022 * (G.settings.sens || 1.2); // (the same feel as in a match)
   cam.rotation.order = 'YXZ'; cam.rotation.y -= e.movementX * s; cam.rotation.x = Math.max(-1.55, Math.min(1.55, cam.rotation.x - e.movementY * s)); cam.rotation.z = 0;
 });
 document.addEventListener('pointerlockchange', () => { if (document.pointerLockElement === canvas) mlook.locked(); $('edX').style.display = document.pointerLockElement === canvas ? '' : 'none'; canvas.style.cursor = document.pointerLockElement === canvas ? 'none' : 'crosshair'; });
 addEventListener('wheel', (e) => {
   if (e.target !== canvas && document.pointerLockElement !== canvas) return;
+  if (toolWheel(e.deltaY)) return;
   if (carry) carry.dist = Math.max(1.5, Math.min(200, carry.dist * (e.deltaY > 0 ? 0.9 : 1.1)));
   else { speed = Math.max(2, Math.min(90, speed * (e.deltaY > 0 ? 0.85 : 1.18))); toast('fly speed ' + speed.toFixed(0)); }
 }, { passive: true });
 addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
   const c = e.code, ctrl = e.ctrlKey || e.metaKey;
+  if (busy() && (ctrl || ['KeyX', 'Delete', 'Backspace', 'KeyG', 'Equal', 'Minus'].includes(c))) return; // (not while the beam holds something)
   if (ctrl && c === 'KeyZ') { e.preventDefault(); if (e.shiftKey) redoIt(); else undo(); return; }
   if (ctrl && c === 'KeyY') { e.preventDefault(); redoIt(); return; }
   if (ctrl && c === 'KeyD') { e.preventDefault(); act('dupe'); return; }
   if (ctrl) return;
   keys.add(c);
   if (c === 'Space' || c.startsWith('Arrow') || c === 'PageUp' || c === 'PageDown') e.preventDefault();
+  if (e.repeat && c === 'KeyR') return;
+  if (c === 'KeyR' && toolKey('KeyR', true, e.shiftKey)) return;
   if (c === 'KeyG') act('grab');
   else if (c === 'KeyR') act('turn', e.shiftKey);
   else if (c === 'Equal' || c === 'NumpadAdd') act('bigger');
@@ -472,13 +565,18 @@ addEventListener('keydown', (e) => {
   else if (c === 'BracketLeft') setSnap(SNAPS[Math.max(1, SNAPS.indexOf(snap) - 1)]);
   else if (c === 'KeyL') toggleFloors();
   else if (c === 'KeyN') botCheck();
-  else if (c === 'KeyP') { if (togglePalette() && document.pointerLockElement) document.exitPointerLock(); }
+  else if (c === 'KeyF') toggleWalk();
+  else if (c === 'KeyH') intro($('edIntro').classList.contains('hidden'));
+  else if (c === 'Escape' && !$('edIntro').classList.contains('hidden')) intro(false);
+  else if (c === 'KeyP' || c === 'KeyE' || c === 'KeyQ') menu();
+  else if (c === 'Escape' && paletteOpen()) menu(false);
   else if (c === 'Escape' && carry) cancelCarry();
   else if (c === 'ArrowUp') nudge(0, 0, -1); else if (c === 'ArrowDown') nudge(0, 0, 1); else if (c === 'ArrowLeft') nudge(-1, 0, 0); else if (c === 'ArrowRight') nudge(1, 0, 0);
   else if (c === 'PageUp') nudge(0, 1, 0); else if (c === 'PageDown') nudge(0, -1, 0);
+  else if (/^Digit[1-9]$/.test(c) && !e.shiftKey) slot(+c.slice(5) - 1);
   else if (/^Digit[1-4]$/.test(c)) { G.settings.jank = +c.slice(5) - 1; setJank(G.settings.jank); toast(['Potato', 'Crusty', 'Mid', 'Too HD'][G.settings.jank]); }
 });
-addEventListener('keyup', (e) => keys.delete(e.code));
+addEventListener('keyup', (e) => { keys.delete(e.code); if (e.code === 'KeyR') toolKey('KeyR', false); });
 addEventListener('blur', () => keys.clear());
 function toggleFloors() { floorsLocked = !floorsLocked; $('edFloors').textContent = 'FLOORS: ' + (floorsLocked ? 'LOCKED' : 'PICKABLE'); $('edFloors').classList.toggle('on', !floorsLocked); }
 
@@ -486,7 +584,7 @@ function toggleFloors() { floorsLocked = !floorsLocked; $('edFloors').textConten
 const sel0 = $('edMap');
 for (const id of mapIds) { const o = document.createElement('option'); o.value = id; o.textContent = (MAPS[id].name || id) + (MAPS[id].sd ? ' (S&D)' : ''); sel0.append(o); }
 sel0.value = mapId;
-sel0.onchange = () => { location.search = '?map=' + sel0.value; };
+sel0.onchange = () => { if (busy()) { sel0.value = mapId; return toast('put it down first'); } location.search = '?map=' + sel0.value; };
 $('edUndo').onclick = undo; $('edRedo').onclick = redoIt;
 $('edSnap').onclick = () => setSnap(snap ? 0 : 1); $('edFloors').onclick = toggleFloors;
 for (const b of document.querySelectorAll('#edSel [data-a]')) b.onclick = () => act(b.dataset.a);
@@ -494,10 +592,21 @@ $('edDiff').onclick = () => { $('edList').classList.toggle('hidden'); showList()
 $('edClose').onclick = () => { $('edList').classList.add('hidden'); showSel(); };
 $('edReset').onclick = () => { if (!confirm('Throw away every change on ' + (def.name || mapId) + '?')) return; try { localStorage.removeItem(store(mapId)); } catch { /* fine */ } location.reload(); };
 $('edQuit').onclick = () => { location.href = '/'; };
-$('edPalBtn').onclick = () => togglePalette();
+$('edPalBtn').onclick = () => menu();
 $('edBotBtn').onclick = () => botCheck();
 $('edBotClose').onclick = () => { $('edBots').classList.add('hidden'); clearBotMarks(); showSel(); };
-initPalette({ pick: (k, id) => place(k, id), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
+// the creative menu (E): click = into the plop cannon; the hotbar (1-9): 1-4 tools, 5-9 favourites
+function menu(on) { const open = togglePalette(on); if (open && document.pointerLockElement) document.exitPointerLock(); return open; }
+function slot(i, it) {
+  if (i < 4) { if (i === 1 && it) { loadItem(it); addRecent(it); setActiveSlot(1, it); return; } pickTool(slotTool(i)); setActiveSlot(i); return; }
+  const x = it || slotItem(i);
+  if (!x) { toast('empty slot: drag something here from the menu (E)'); return; }
+  loadItem(x); setActiveSlot(i, x);
+}
+function onTool(t) { document.body.dataset.tool = t; if (t !== 'wand') { if (carry) cancelCarry(); if (sel.size) { sel.clear(); drawSel(); } } } // (selecting is the wand's thing)
+initPalette({ pick: (k, id) => { const it = { kind: k, id }; loadItem(it); addRecent(it); setActiveSlot(1, it); menu(false); toast('plop cannon: ' + id.replace(/^p_/, '').replace(/_/g, ' ') + ' (click to plop)'); }, slot: (i, it) => slot(i, it), show: (open) => hideVM(open), solid: () => resetPreview(), mats: mapMats, archOk: (id) => tpl().arch.has(id) });
+initTools({ G, MAP, sel, aimRay, pick, terrainHit, pivotFor, edgesFor, select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, hide: hideThings, unhide: unhideThings, alive: (ts) => ts.every((t) => idx.things.includes(t)), relBounds, edgeSnap, rebuild, opXf, opAdd, opDel, itemData, thingFrom, thingData, xfThing, boundsOf, snap: () => snap, grid: showGrid, toast, callout, recent: addRecent, onTool });
+onTool('grab'); setActiveSlot(0);
 $('edExport').onclick = () => {
   const txt = JSON.stringify({ ...saved, ops: hist.map((h) => h.op), name: def.name, at: new Date().toISOString() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([txt], { type: 'application/json' })); a.download = 'jankfire-edits-' + mapId + '.json'; a.click();
@@ -505,7 +614,22 @@ $('edExport').onclick = () => {
   if (navigator.clipboard) navigator.clipboard.writeText(txt).catch(() => {});
   toast('saved jankfire-edits-' + mapId + '.json (send it to us!)');
 };
-$('edImport').onclick = () => $('edFile').click();
+// PLAY WITH BOTS (owner only): the server checks the login is the owner's (JF_OWNER), takes the edits once and hands back
+// a ticket; the game then starts a private bots match on a copy of this map with them (server/editplay.js)
+$('edPlay').onclick = async () => {
+  if (busy()) return toast('put it down first');
+  let token = null; try { token = localStorage.getItem('jankfire_token'); } catch { /* private mode */ }
+  if (!token) return toast('log in to your account in the game first (owner only)');
+  const ops = hist.map((h) => h.op);
+  toast('asking the server...');
+  let r = null;
+  try { r = await fetch('/api/edit-ticket', { method: 'POST', headers: { 'content-type': 'application/json', authorization: 'Bearer ' + token }, body: JSON.stringify({ map: mapId, ops }) }); } catch { return toast('could not reach the server'); }
+  let j = {}; try { j = await r.json(); } catch { /* nothing */ }
+  if (!r.ok || !j.ticket) return toast(j.error || 'the server said no');
+  try { sessionStorage.setItem('jfPlayEdit', JSON.stringify({ ticket: j.ticket, map: mapId })); } catch { return toast('could not save in this browser'); }
+  callout('LETS GO'); setTimeout(() => { location.href = '/?playedit=1'; }, 400);
+};
+$('edImport').onclick = () => { if (busy()) return toast('put it down first'); $('edFile').click(); };
 $('edFile').onchange = async () => {
   const f = $('edFile').files[0]; if (!f) return;
   let e; try { e = JSON.parse(await f.text()); } catch { return toast('that is not a changes file'); }
@@ -518,10 +642,16 @@ let callT = 0, toastT = 0;
 function callout(t) { const el = $('edCall'); el.textContent = t; el.style.opacity = 1; clearTimeout(callT); callT = setTimeout(() => { el.style.opacity = 0; }, 700); }
 function toast(t) { const el = $('edToast'); el.textContent = t; el.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => { el.style.opacity = 0; }, 1800); }
 
+// the how-to card: on the first open, and on H / the ? button
+function intro(on) { $('edIntro').classList.toggle('hidden', !on); if (on && document.pointerLockElement) document.exitPointerLock(); if (!on) { try { localStorage.setItem('jfEdIntro', '1'); } catch { /* fine */ } } }
+$('edIntroOk').onclick = () => intro(false); $('edHelpBtn').onclick = () => intro($('edIntro').classList.contains('hidden'));
+try { if (localStorage.getItem('jfEdIntro') !== '1') intro(true); } catch { intro(true); }
+const topBar = () => document.body.style.setProperty('--edtop', Math.round($('edTop').getBoundingClientRect().bottom + 10) + 'px');
+addEventListener('resize', topBar); topBar();
 setSnap(1);
 $('edN').textContent = hist.length;
 $('edX').style.display = 'none'; canvas.style.cursor = 'crosshair';
 if (stale.length) toast(stale.length + ' old change' + (stale.length > 1 ? 's' : '') + ' no longer fit this map (see CHANGES)');
 // tests + the console
-window.JFED = { G, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
+window.JFED = { G, edgeSnap, toggleWalk, walking: () => walk && { p: walk.p.slice(), ground: walk.ground }, toolState, slot, menu, dropOn, opAdd, botCheck, place, togglePalette, idx, def, sel, hist, get carry() { return carry; }, act, pick: (o, d) => pick(new THREE.Vector3(...o), new THREE.Vector3(...d).normalize()), select: (ts) => { sel.clear(); for (const t of ts) sel.add(t); drawSel(); }, startCarry, dropCarry, undo, redo: redoIt, nudge, rebuildMs: () => rebuildT, cam, lookAt, MAP, showList };
 requestAnimationFrame(frame);

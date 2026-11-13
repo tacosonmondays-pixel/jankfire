@@ -187,6 +187,9 @@ Optional size squeeze (not needed, files are 70-600 KB): `npx @gltf-transform/cl
   texture (`tex_*` take the colour). Emissive materials stay glowing under weapon skins. Textures are tiny and nearest
   filtered on purpose (ugly-on-purpose, matches Potato through Too HD).
 - **Budget**: weapons up to ~10k tris (viewmodel), props 2-16k. Keep bevels small and segment counts modest.
+- **Arch texture kit** (`public/models/arch/kit`): new textures go into `arch/texkit.py` (or `arch/brtex.py`) with
+  their own pinned seed in `PIN` and the kit is regenerated, never hand-appended. `node --test tests/texkit_repro.test.mjs`
+  fails if a rerun would change any committed png or `kit.json`.
 
 ## Kit gotchas (found the hard way)
 - Raw bmesh UVs: name the layer (`bm.loops.layers.uv.new('UVMap')`). Unnamed it's "Float2", and after a join the
