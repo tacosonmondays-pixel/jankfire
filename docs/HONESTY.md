@@ -45,3 +45,14 @@ skip the hit checks (their referee judges hits on boss parts itself).
 - **Knockback through spawn protection** and **a void kill doesn't grow the katana**: current behaviour, a design call.
 - **Snapshots themselves**: a client can still say it holds any gun in its snapshots and stand anywhere (movement is
   client-authoritative). The checks above bound what that buys: one gun per slot, only through clear lines.
+
+## Verified (2026-11-13)
+
+- `tests/honesty_ws.cjs`: 45/45 on this branch. Against origin/main (`JF_ROOT=<old checkout>`) all 20 "refused" checks
+  fail and all 21 "lands" checks pass, so the lenient side lands the same shots as before.
+- Bots never go through these checks (they fire in `botFire`). Bots-only matches, 8 bots, all on the AR
+  (`JF_BOT_GUNS=ar`), Warehouse, 120 s each, 3 runs, origin/main vs this branch side by side:
+  FFA kills 48 / 46 / 43 vs 42 / 50 / 53, TDM kills 42 / 38 / 34 vs 30 / 38 / 32 (totals 251 vs 245: noise).
+- Older ws tests whose fixtures swung at people behind them, through a Jankburg wall, or fired a sniper after a life
+  holding an AR were changed to act like a real client (`island_meter_ws`, `island_squads_ws`, `mech_trolley_ws`,
+  `mech_wrecking_ws`).

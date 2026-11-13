@@ -102,6 +102,10 @@ const facing = (a, b, w, o = {}) => ({ y: look(eyeAt(a), chest(b)).y, x: look(ey
     ok((await shoot(() => ({ a, b: b2, ao: facing(a, b2, 'ar') }), 'ar')) === 0, 'refused: the same corner, B fully behind it');
   }
   {
+    const a = [0, 0, 5], b = [0, 0, 11.5]; // behind the 2 m low wall: only B's head shows over it
+    ok((await shoot(() => ({ a, b, ao: facing(a, [0, 1.2, 11.5], 'ar') }), 'ar', 1, { h: 1, d: look(eyeAt(a), [0, 2, 11.5]).d })) === 1, 'lands: a headshot on someone behind a low wall (only the head over it)');
+  }
+  {
     const a = [0, 0, 0.5], b = [0, 0, 8]; // A's snapshots put it inside the block, poking out of nothing
     ok((await shoot(() => ({ a, b, ao: facing(a, b, 'ar') }), 'ar')) === 0, 'refused: shooting from inside the block');
   }
