@@ -42,7 +42,8 @@ PK = dict(plaza=5.0, edge=(13.0, 11.0), path=1.5, hedge=1.1, bed=0.95,
           lamps=[[-6.3, -1.5], [6.3, 1.5], [-1.5, 6.3]], lampT=0.12, lampH=3.6,
           fountain=dict(r=1.7, rim=0.3, h=0.55, floor=0.12, ped=0.25, top=1.9),
           arch=dict(x=-13.0, z0=1.75, z1=2.35, t=0.3, h=4.3, hz=2.9, h0=3.0, h1=4.8),
-          sign=dict(x=-11.68, z0=-2.55, z1=-1.5, y0=1.22, y1=1.8))
+          sign=dict(x=-11.68, z0=-2.55, z1=-1.5, y0=1.22, y1=1.8),
+          kiosk=[-12.6, 8.3, -10.0, 10.3, 3.0], cup=[-11.55, 9.3, 0.45, 0.5])  # the tea kiosk: x0 z0 x1 z1 height (it faces +x); the roof's teacup: x z half-size height
 PROPS = []
 def prop(fid):
     def reg(fn): PROPS.append((fid, fn)); return fn
@@ -350,6 +351,8 @@ def park_boxes():
     for s_ in (-1, 1): out.append(((a['x'] - a['t'], 0, min(s_ * a['z0'], s_ * a['z1'])), (a['x'] + a['t'], a['h'], max(s_ * a['z0'], s_ * a['z1']))))
     out.append(((a['x'] - a['t'] + 0.05, a['h0'], -a['hz']), (a['x'] + a['t'] - 0.05, a['h1'], a['hz'])))
     g = PK['sign']; out.append(((g['x'] - 0.05, g['y0'], g['z0']), (g['x'] + 0.05, g['y1'], g['z1'])))
+    x0, z0, x1, z1, kh = PK['kiosk']; out.append(((x0, 0, z0), (x1, kh, z1)))
+    cx, cz, cr, ch = PK['cup']; out.append(((cx - cr, kh, cz - cr), (cx + cr, kh + ch, cz + cr)))
     return out
 
 
@@ -486,7 +489,7 @@ def paint_banner(px):  # the lamp banners: hot pink, a white five-petal blossom,
 @prop('p_pj_park')
 def build_park():
     fid = 'pjk'
-    A = Atlas(fid + '_atlas', 128, 128)
+    A = Atlas(fid + '_atlas', 128, 256)
     A.cell('sign', 128, 24, paint_clean_text(['PETAL PARK'], 0xffe14d, 0xd81e9a, 0x1c1c22, scale=2))
     A.cell('pave', 32, 32, paint_pave); A.cell('terra', 32, 32, paint_terra)
     A.cell('hedge', 32, 32, lambda px: paint_canopy(px, 0, 32, 0, 32, 0x4cb83a, 0x72d04a, 0x3a9a36, 0xa8ec6a, 0x2e8034, 307, petals=0.03, darks=0.04))
@@ -497,7 +500,11 @@ def build_park():
     swatches(A, (('cream', 0xfbf6ec, 0.02, None), ('pinkpaint', 0xff5cc8, 0.02, None), ('border', 0xf2a2b8, 0.03, None), ('iron', 0x1e3a48, 0.03, None),
                  ('soil', 0x5a3e2c, 0.08, None), ('leafbed', 0x3fae3a, 0.06, None), ('petal', 0xff8ccc, 0.03, None), ('flowery', 0xffe14d, 0.03, None),
                  ('flowerw', 0xfdf6fa, 0.02, None), ('floor', 0x1aa8c0, 0.04, None), ('gold', 0xffc83a, 0.03, None), ('cherry', 0xe8304a, 0.02, None),
-                 ('water1', 0x6ad8f0, 0.02, None), ('pave1', 0xf2eadc, 0.01, None), ('terra1', 0xd8683e, 0.02, None)))
+                 ('water1', 0x6ad8f0, 0.02, None), ('pave1', 0xf2eadc, 0.01, None), ('terra1', 0xd8683e, 0.02, None), ('tea', 0xf7a8c8, 0.02, None)))
+    A.cell('ksign', 96, 20, paint_clean_text(['PETAL TEA'], 0xff4fd8, 0xfdfbf6, 0xffe14d, scale=2))
+    A.cell('menu', 64, 40, paint_clean_text(['TEA ...... 2', 'MORE TEA . 3', 'PETALS FREE', '(FLOOR)'], 0x1c1c22, 0xfdfbf6, 0xff4fd8))
+    A.cell('stripeh', 32, 16, lambda px: [px.__setitem__(slice(i * 2, i * 2 + 2), hexrgb(0xff4fd8 if i % 2 else 0xfdfbf6)) for i in range(8)])
+    A.cell('stripev', 32, 16, lambda px: [px.__setitem__((slice(None), slice(i * 4, i * 4 + 4)), hexrgb(0xff4fd8 if i % 2 else 0xfdfbf6)) for i in range(8)])
     M = mat(fid, 0xffffff, rough=0.42, tex=A.image(), clearcoat=0.35)
     GL = mat('glow', 0xfff4dc, emit=0xfff4dc, strength=2.5)
     GZ = mat(fid + '_water', 0x7fe4ff, rough=0.05, metal=0.0, alpha=0.5)
@@ -618,6 +625,30 @@ def build_park():
     for s_ in (-1, 1):  # gold knobs on the lintel's flicked-up ends
         zf = s_ * (G['hz'] - 0.25); t_ = zf / G['hz']; yt = G['h'] + 0.3 + 0.2 * (1 - t_ * t_) + 0.16 * max(0.0, abs(t_) - 0.7) / 0.3
         o = ball(0.17, (gx, yt + 0.13, zf), M, seg=10, rings=6, name=fid + '_finial'); uv_fit(o, A, 'gold'); P.append(o)
+    # ---- the tea kiosk in the south-west corner: a pink booth, its hatch and counter toward the plaza under a striped
+    # awning, a menu on the side, cups out, PETAL TEA on the roof's edge and a giant teacup up there
+    x0, z0, x1, z1, kh = PK['kiosk']; zm = (z0 + z1) / 2; fx = x1 - 0.35
+    bk((x0, -0.02, z0), (fx, kh - 0.25, z1), 'pinkpaint', fid + '_kbody', bev=0.02, bottom=False)
+    bk((fx - 0.02, -0.02, z0), (x1, 1.0, z1), 'cream', fid + '_kcounter', bev=0.015, bottom=False)
+    bk((fx - 0.05, 1.0, z0 - 0.05), (x1 + 0.1, 1.08, z1 + 0.05), 'white', fid + '_ktop', bev=0.012)
+    for za, zb in ((z0, z0 + 0.16), (z1 - 0.16, z1)): bk((fx - 0.02, 1.08, za), (x1 - 0.12, kh - 0.25, zb), 'pinkpaint', fid + '_kpost')
+    bk((fx - 0.03, 1.08, z0 + 0.16), (fx + 0.01, kh - 0.26, z1 - 0.16), 'iron', fid + '_khatch')
+    bk((x0 - 0.1, kh - 0.25, z0 - 0.1), (x1 + 0.1, kh, z1 + 0.1), 'white', fid + '_kroof', bev=0.02)
+    aw = box_between((x1 + 0.08, kh - 0.3, zm), (x1 + 0.85, kh - 0.72, zm), z1 - z0 + 0.3, 0.04, M, fid + '_awning'); uv_fit(aw, A, 'stripeh'); P.append(aw)
+    bk((x1 + 0.82, kh - 0.98, z0 - 0.15), (x1 + 0.86, kh - 0.7, z1 + 0.15), 'stripev', fid + '_valance')
+    for zz in (z0 + 0.1, z1 - 0.1): P.append(rod((x1 - 0.14, kh - 0.9, zz), (x1 + 0.6, kh - 0.62, zz), 0.02, M, seg=5, name=fid + '_kbrace')); uv_fit(P[-1], A, 'iron')
+    bk((x0 + 0.25, 1.15, z1 - 0.01), (fx - 0.25, 2.05, z1 + 0.03), 'menu', fid + '_menu', bev=0.006)
+    sg2 = bk((x1 - 0.05, kh, z0 + 0.15), (x1 + 0.03, kh + 0.5, z1 - 0.15), 'ksign', fid + '_ksign', bev=0.006)
+    uv_fit(sg2, A, 'pinkpaint', sel=lambda p, Pp: MK._gn(p.normal).x < 0.5)
+    for i, zz in enumerate((zm - 0.5, zm, zm + 0.45)):  # cups out on the counter
+        o = lathe([(0.04, 1.08), (0.055, 1.18), (0.0, 1.17)], (x1 - 0.08, 0, zz), M, seg=7, axis='y', name=fid + '_kcup'); uv_fit(o, A, 'white'); P.append(o)
+    cx, cz, cr, ch = PK['cup']  # the roof's teacup: a saucer, the cup, pink tea, a handle
+    o = lathe([(0.0, kh - 0.01), (0.56, kh + 0.01), (0.62, kh + 0.08), (0.52, kh + 0.06), (0.0, kh + 0.05)], (cx, 0, cz), M, seg=14, axis='y', name=fid + '_saucer'); uv_fit(o, A, 'white'); P.append(o)
+    o = lathe([(0.2, kh + 0.04), (0.36, kh + 0.14), (0.44, kh + 0.34), (0.47, kh + ch), (0.42, kh + ch), (0.38, kh + 0.33)], (cx, 0, cz), M, seg=14, axis='y', name=fid + '_teacup', cap=False); uv_fit(o, A, 'white'); P.append(o)
+    o = cyl(0.39, 0.02, (cx, kh + 0.38, cz), M, axis='y', seg=14, name=fid + '_tea'); uv_fit(o, A, 'tea'); P.append(o)
+    from make_portjankton import ring
+    P.append(ring((cx + 0.5, kh + 0.3, cz), 0.13, 0.035, M, A, 'white', fid + '_handle', axis='z', n=10))
+    o = lathe([(0.452, kh + 0.37), (0.468, kh + 0.4), (0.462, kh + 0.43)], (cx, 0, cz), M, seg=14, axis='y', name=fid + '_band2', cap=False); uv_fit(o, A, 'pinkpaint'); P.append(o)
     # ---- the sign on the hedge's end: two posts, the board facing the gate
     S_ = PK['sign']
     for zz in (S_['z0'] + 0.18, S_['z1'] - 0.18):
@@ -642,9 +673,9 @@ def build_park():
     uv_fit(o, A, 'cherry', sel=lambda p, Pp: abs(MK._gn(p.normal).x) < 0.5)
     for p in P + Q: tri_ngons(p)
     bx = park_boxes(); lo = tuple(min(b[0][i] for b in bx) for i in range(3)); hi = tuple(max(b[1][i] for b in bx) for i in range(3))
-    return dict(lod0=P, lod1=Q, box=(lo, hi), ao=0.7, aolo=0.5, lod=110, eps=0.001,
+    return dict(lod0=P, lod1=Q, box=(lo, hi), ao=0.7, aolo=0.5, lod=110, eps=0.001, sheet=dict(exposure=-1.2),
                 focus=[((0, 1.0, 0), (0.7, 0.45, 1.0), 6.0), ((-13, 2.5, 0), (-1.0, 0.1, 0.3), 9.0), ((-2.4, 0.5, -4.35), (0.2, 0.3, 1.0), 2.6),
-                       ((-6.3, 2.3, -1.5), (0.6, 0.1, 1.0), 4.0), ((4.0, 0.7, 4.0), (0.6, 0.6, 1.0), 3.5)])
+                       ((-6.3, 2.3, -1.5), (0.6, 0.1, 1.0), 4.0), ((4.0, 0.7, 4.0), (0.6, 0.6, 1.0), 3.5), ((-11.3, 2.0, 9.3), (1.0, 0.35, -0.45), 6.5)])
 
 
 def cellrect(A, key):

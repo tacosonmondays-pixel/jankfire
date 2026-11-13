@@ -330,7 +330,8 @@ export const PK = { c: [63, 94], hedge: 1.1, bed: 0.95,
   lamps: [[-6.3, -1.5], [6.3, 1.5], [-1.5, 6.3]], lampT: 0.12, lampH: 3.6,
   fountain: { r: 1.7, rim: 0.3, h: 0.55, floor: 0.12, ped: 0.25, top: 1.9 },
   arch: { x: -13, z0: 1.75, z1: 2.35, t: 0.3, h: 4.3, hz: 2.9, h0: 3.0, h1: 4.8 }, sign: { x: -11.68, z0: -2.55, z1: -1.5, y0: 1.22, y1: 1.8 },
-  blossoms: [[-8, -6.5], [7.5, -7], [-7.5, 7], [8, 6.5], [11, -3.2]], leafy: [[-11, -8.5], [11.5, 8.5]], // in the park's frame
+  kiosk: [-12.6, 8.3, -10, 10.3, 3], cup: [-11.55, 9.3, 0.45, 0.5], // the PETAL TEA kiosk (x0 z0 x1 z1 height, its hatch to +x) and the teacup on its roof (x z half-size height)
+  blossoms: [[-8, -6.5], [7.5, -7], [-6, 7.5], [8, 6.5], [11, -3.2]], leafy: [[-11, -8.5], [11.5, 8.5]], // in the park's frame
   hill: [[80.5, 86.5], [84, 95.5], [82, 103.5]] }; // leafy trees at the hill's foot, east of it (world x, z)
 export const BT = { blossom: { t: 0.3, th: 3.4, bl: 1.3, bw: 0.55, top: 5.3 }, leafy: { t: 0.35, th: 4.0, bl: 1.5, bw: 0.55, top: 6.3 } };
 function pjPark(B) {
@@ -351,6 +352,7 @@ function pjPark(B) {
     for (const s of [-1, 1]) A(G.x - G.t, 0, Math.min(s * G.z0, s * G.z1), G.x + G.t, G.h, Math.max(s * G.z0, s * G.z1), 'pink');
     A(G.x - G.t + 0.05, G.h0, -G.hz, G.x + G.t - 0.05, G.h1, G.hz, 'pink');
     const g = PK.sign; A(g.x - 0.05, g.y0, g.z0, g.x + 0.05, g.y1, g.z1, 'white');
+    const [k0, kz0, k1, kz1, kh] = PK.kiosk, [ux, uz, ur, uh] = PK.cup; A(k0, 0, kz0, k1, kh, kz1, 'pink'); A(ux - ur, kh, uz - ur, ux + ur, kh + uh, uz + ur, 'white');
   });
   const tree = (id, x, z, y0) => { const b = BT[id]; propOf('bi_' + id, [x, y0, z], 0, () => { // (spun per copy round its trunk: the boxes stay put)
     const L = (x0, ya, z0, x1, yb, z1, m) => B.add(x + x0, y0 + ya, z + z0, x + x1, y0 + yb, z + z1, m, S);
