@@ -23,7 +23,7 @@ export function installLobby(Room, H) {
       const K = LOBBY.kinds[kind];
       this.lobby = { kind, online: !!online, next: K.game || K.first || 'dm' };
       const maps = mapsFor(this.lobby.next, MAPS, MAP_ORDER);
-      const forced = process.env.JF_LOBBY_MAP && maps.includes(process.env.JF_LOBBY_MAP) ? process.env.JF_LOBBY_MAP : null; // test knob
+      const forced = process.env.JF_LOBBY_MAP && maps.includes(process.env.JF_LOBBY_MAP) ? process.env.JF_LOBBY_MAP : K.map && maps.includes(K.map) ? K.map : null; // test knob (or the kind's own map: board game night parks on the crate)
       this.cfg.map = forced || pick(maps) || this.cfg.map;
       this.setGame(this.lobby.next);
       this.enterWarm(LOBBY.wait, true);
@@ -123,6 +123,7 @@ export function installLobby(Room, H) {
       this.broadcast({ t: 'lobby', end: 1 });
       this.startRound();
       if (this.mode === 'bots' || this.isEcon()) this.fillBots(); // Online Plant & Defuse too: bots fill the empty seats
+      if (this.game === 'bgn') this.bgnStart(); // board game night: the board takes it from here (bots take the empty seats, online too)
       console.log(`[lobby] ${this.id}: ${GAMES[this.game].name} on ${this.map.name}, ${this.humans().length} human(s), ${this.players.size - this.humans().length} bot(s)`);
     },
   });

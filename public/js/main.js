@@ -76,6 +76,7 @@ import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from '.
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
+import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
@@ -339,6 +340,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
 }
 
 function resetWorldState() {
+  bgnReset(); // (board game night's board goes with the room)
   bodyReset(); // wrecking ball / rig HP bars
   mechReset(); // mechs
   G.joined = false;
@@ -417,10 +419,10 @@ const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jum
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { mlook.locked(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !fmOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !bgnBoardOn() && !esFull() && !econMenuOpen() && !brInvOpen() && !fmOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
-canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
+canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden') && !bgnBoardOn()) lock(); }); // (board game night's board: the mouse is a pointer)
 
 // ------------------------------------------------------------ bots setup + match settings
 function fillSelect(sel, entries, value) {
@@ -1287,6 +1289,7 @@ function released(e) {
 addEventListener('keyup', released);
 addEventListener('mousedown', (e) => {
   if (!inGame()) return;
+  if (bgnBoardOn()) return; // board game night: clicks are for the board's buttons
   if (e.target instanceof Element && e.target.closest('#endscreen')) return; // the end screen's cards and tabs take the click, not your gun (or the replay skip)
   if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
@@ -1442,6 +1445,7 @@ function addRemoteInfo(p) {
 net.on('welcome', (m) => {
   if (m.cfg && m.cfg.edit && !MAPS[m.cfg.map]) buildEdited(m.cfg.map, m.cfg.edit); // (PLAY HERE: the same edited copy the server built)
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
+  bgnReset(); // (a new room: its own board, if any, comes as 'bg')
   airReset();
   brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
   isleReset();
@@ -1701,7 +1705,8 @@ net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => esVotes(m));
 // an offline single-mode match is over (server/hubback.js): PLAY AGAIN / LOBBY on the end screen, then 'go' = back to its lobby
 function backToLobby(mode) { quitToMenu(true); hubBackTo(mode); }
-net.on('hubback', (m) => { if (!m || typeof m.mode !== 'string') return; if (m.k === 'go') backToLobby(m.mode); else esBack(m); });
+initBgn({ lobby: () => backToLobby('bgn') }); // board game night's LOBBY button
+net.on('hubback', (m) => { if (!m || typeof m.mode !== 'string') return; if (m.k === 'go') backToLobby(m.mode); else if (bgnOn()) bgnHubBack(m); else esBack(m); }); // (board game night: PLAY AGAIN / LOBBY on its own results card)
 net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
@@ -2336,7 +2341,7 @@ function frame(t) {
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
-  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden'))) { wxPre(); renderFrame(); wxPost(); } // the hub lobby's 3D place, else the game (or the menu's map orbit). (wxPre/wxPost: the storm's sky + light for this frame only)
+  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden')) && !(G.joined && bgnFrame(dt))) { wxPre(); renderFrame(); wxPost(); } // (board game night: the board instead of the map) // the hub lobby's 3D place, else the game (or the menu's map orbit). (wxPre/wxPost: the storm's sky + light for this frame only)
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
   if ((screen === 'character' || ((screen === 'main' || (screen === 'hubby' && !lobbySceneOn())) && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);

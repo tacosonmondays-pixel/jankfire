@@ -16,8 +16,9 @@ export const LOBBY = {
     bomb: { name: 'PLANT & DEFUSE', game: 'bomb', min: 2, desc: '5v5. attackers plant, defenders defuse. buy guns between rounds', art: 'bomb' },
     br: { name: 'JANK ROYALE', game: 'br', min: 2, desc: 'blimp, umbrella, loot, shrinking zone. last one standing', art: 'br' },
     zm: { name: 'ZOMBIES', game: 'zm', min: 1, cap: 4, squad: 4, desc: 'you and your friends vs endless rounds of zombies. buy doors', art: 'zm' },
+    bgn: { name: 'BOARD GAME NIGHT', game: 'bgn', min: 1, cap: 4, squad: 4, desc: 'roll the die, buy golden bread, minigames between turns', art: 'bgn', map: 'crate' }, // (shared/bgn.js BGN_NAMES has the same name)
   },
-  order: ['qp', 'bomb', 'br', 'zm'],
+  order: ['qp', 'bomb', 'br', 'zm', 'bgn'],
 };
 // the mode a lobby's match plays (quick play: whatever the vote last picked)
 export const lobbyGame = (kind, cur) => (LOBBY.kinds[kind] && LOBBY.kinds[kind].game) || cur || 'dm';
