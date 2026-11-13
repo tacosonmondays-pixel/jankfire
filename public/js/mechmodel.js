@@ -12,7 +12,7 @@ import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
 import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, whenFailed, missingGlb, glbLoader, metaOf } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
-import { lookMech, lookTick, lookColor, lookFree } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
+import { lookMech, lookTick, lookColor, lookFree, lookGibs } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
 import { WBM } from './mechmodel_wrecking.js'; // battle island heroes' stand-ins + poses: one file each
 
 // the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
@@ -532,6 +532,7 @@ export function mechBurst(inst, vel = [0, 0, 0]) {
   rmesh.ring([at[0], floor, at[2]], 9, 0xff4fd8, 0.5);
   const meshes = [];
   inst.root.traverse((o) => { if (o.isMesh && o.visible && o.material.blending !== THREE.AdditiveBlending && !o.material.isShaderMaterial && !o.isSkinnedMesh) meshes.push(o); });
+  meshes.push(...lookGibs(inst)); // (a skinned hero: one piece per joint, posed, from the hero kit; nothing for the others)
   for (const m of meshes) {
     const g = new THREE.Mesh(m.geometry, m.material);
     m.matrixWorld.decompose(g.position, g.quaternion, g.scale);
