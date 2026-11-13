@@ -1,6 +1,15 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.9', date: '2026-11-13', title: 'PICK A CARD', items: [
+    'CARD DECK: your cards are real 3D cards now with glowing suit trails. they stab into walls, burst into little spades on a hit, and fans thrown at an angle actually leave your hand now (oops).',
+  ] },
+  { v: '11.8', date: '2026-11-13', title: 'THE GARAGE IS OPEN', items: [
+    'THE GARAGE IS OPEN: the battle island lobby is a hangar you walk around. swap your mech at the terminal (crane, klaxon, sparks), hop in and stomp the test pad, get a warm cola. your party walks around with you.',
+  ] },
+  { v: '11.7', date: '2026-11-13', title: 'NO LONG ARMS', items: [
+    'anti-cheat: faking your speed doesn\'t give you extra reach anymore. honest fast movers (grapple, rocket jumps, sliding) still get their hits.',
+  ] },
   { v: '11.6', date: '2026-11-13', title: 'CANDY BACK', items: [
     'jankburg got its candy back: the city flats are painted pink, lemon, lilac, mint and cyan again, toy roofs keep their colours, and the lights inside glow warm.',
     'RAY-TRACED LOOK on too hd: wet roofs and shiny floors now mirror what\'s actually around them. billboards upside down in puddles. your gun never shows up in it, it\'s shy.',
