@@ -32,7 +32,7 @@ export async function resolve(s, c, next) {
   return next(s, c);
 }`));
 globalThis.fetch = async () => ({ json: async () => ['s_local_tiedye', 's_local_cook', 's_local_scooter'] });
-const { CityStream } = await import('../../public/js/city/stream.js');
+const { CityStream, drawKind } = await import('../../public/js/city/stream.js');
 const { Crowd } = await import('../../public/js/city/crowd.js');
 
 // a renderer that counts: compile() makes a program for each material it hasn't seen, initTexture() uploads one
@@ -91,6 +91,14 @@ test('a crowd model goes ahead of waiting props, behind the one under way', () =
   for (const n of ['p1', 'p2', 'p3']) S.warm([mesh(n)], () => {}, true);
   S.warm([mesh('person')], () => {}, false, true);
   assert.deepEqual(S.warmQ.map((w) => w.objs[0].material.name), ['p1', 'person', 'p2', 'p3']);
+});
+
+test("post.js's target counts as the canvas (it poses as XR with sRGB output: the same shaders); a plain target doesn't", () => {
+  const r = { outputColorSpace: THREE.SRGBColorSpace };
+  const post = new THREE.WebGLRenderTarget(4, 4); post.isXRRenderTarget = true; post.texture.colorSpace = THREE.SRGBColorSpace;
+  assert.equal(drawKind(r, null), 'canvas');
+  assert.equal(drawKind(r, post), 'canvas', "post.js's target");
+  assert.equal(drawKind(r, new THREE.WebGLRenderTarget(4, 4)), 'rt', 'a talk portrait, photo mode, the picture-in-picture');
 });
 
 test('already-compiled shaders cost no frames; no renderer means nothing waits', () => {

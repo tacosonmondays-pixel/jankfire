@@ -23,6 +23,10 @@ const HYST = 16; // metres past a ring before something is dropped from it (no f
 // programs and uploaded dozens of textures on the one frame they appeared (150-250 ms hitches walking in)
 const TEXK = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'bumpMap', 'lightMap', 'specularMap'];
 
+// which shader kind a draw into rt builds: 'canvas', or 'rt' (any plain target). post.js's target poses as an XR one so
+// materials keep the canvas's tone mapping and sRGB output: shader-wise, that IS the canvas
+export const drawKind = (r, rt) => (rt && !(rt.isXRRenderTarget && rt.texture.colorSpace === r.outputColorSpace) ? 'rt' : 'canvas');
+
 function geoOf(b) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(b.pos, 3));
@@ -76,7 +80,7 @@ export class CityStream {
     // another for any target, so a warm-up compiles each kind the scene was drawn to lately, or it'd build a program
     // nobody uses and the real one would still compile cold
     this.drawnTo = { canvas: -1e9, rt: -1e9 }; this.warmRT = null; const obr = this.obr = scene.onBeforeRender;
-    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.drawnTo[rt ? 'rt' : 'canvas'] = this.time; obr.call(scene, r, sc, cam, rt); };
+    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.drawnTo[drawKind(r, rt)] = this.time; obr.call(scene, r, sc, cam, rt); };
     onPropModel((id) => { // a Blender prop landed: warm it up, then rebuild the instances with it
       const m = propModel(id), objs = [];
       if (this.renderer && m && m.parts) for (const part of [...m.parts, ...(m.lod1 || [])]) { const im = new THREE.InstancedMesh(part.geo, part.mat, 1); if (part.paint) im.setColorAt(0, new THREE.Color()); objs.push(im); } // (as props.js draws it: instanced, paint parts coloured)
