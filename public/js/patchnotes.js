@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.18', date: '2026-11-13', title: 'TIKI TIME', items: [
+    "the islands tiki village got real: bamboo, thatch, a big carved tiki with a gold tooth, hammocks, and a surfboard a shark took a bite out of. lesson 1: do not.",
+  ] },
   { v: '11.17', date: '2026-11-13', title: 'PENTHOUSE', items: [
     "the rooftop penthouse got a glow-up: violet mirror glass, chrome, a pink stripe, neon round the roof, a real helipad. the furniture is still from ikea's box aisle (for now).",
   ] },
