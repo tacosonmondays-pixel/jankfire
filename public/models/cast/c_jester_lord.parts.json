@@ -1,0 +1,1882 @@
+{
+ "v": 1,
+ "model": "c_jester_lord.glb",
+ "scale": 1,
+ "kind": "lord",
+ "skinned": true,
+ "units": "metres, root space at rest, feet at y 0, front -z, +x his right (boxes: c = centre, h = half size). `local` = the joint's own frame",
+ "source": "tools/blender/cast/make_cast_jester_lord.py on jl_rig.py (built from code)",
+ "height": 3.318,
+ "heightWithHat": 3.821,
+ "legSpan": [
+  4.922,
+  4.908
+ ],
+ "kneeHeight": 2.133,
+ "body": {
+  "c": [
+   0.0,
+   1.9206,
+   0.054
+  ],
+  "h": [
+   2.4612,
+   1.9,
+   2.454
+  ]
+ },
+ "parts": {
+  "spider": {
+   "joint": "thorax",
+   "c": [
+    0.0,
+    1.4337,
+    0.054
+   ],
+   "h": [
+    2.4612,
+    1.4131,
+    2.454
+   ],
+   "tris": 11568,
+   "skinned": true,
+   "note": "the spider half: the thorax (a lacquered dome with a pink and yellow carousel band, four red eyes, the brass socket), the pedicel, the big top (abdomen: pink and yellow tent stripes, a valance of diamonds, pointed flaps, a pennant, brass spinnerets) and eight legs (hip ball, a lace stocking top, the femur in pink and yellow diamonds, knee, the tibia in black and white diamonds, ankle, a black patent shoe with a curled toe, a bell). skinned: every vertex on its own joint"
+  },
+  "jester": {
+   "joint": "spine",
+   "c": [
+    -0.0101,
+    2.5151,
+    -0.3138
+   ],
+   "h": [
+    0.699,
+    1.3055,
+    0.714
+   ],
+   "tris": 13032,
+   "skinned": true,
+   "note": "the jester half: the doublet (his right pink, his left yellow, a placket of diamonds, three pom-poms, ten hem points), eight collar petals with a bell each, the ruff, the neck, the head (white greasepaint, rosy cheeks, the dummy jaw, a grin of tombstone teeth, black diamonds over shut eyes, the long nose with a pink tip), the hat (a diamond band, a split cap, two horns that sweep back and curl up, a bell on each), the arms (pumpkin puffs, diamond sleeves, frill cuffs, white gloves) and the marotte (his own little head on a stick). skinned: rigid per joint, the horns and the collar petals blend"
+  },
+  "dmgStump": {
+   "joint": "thorax",
+   "c": [
+    0.5027,
+    1.2097,
+    -0.1978
+   ],
+   "h": [
+    0.2034,
+    0.1875,
+    0.1479
+   ],
+   "tris": 672,
+   "skinned": false,
+   "note": "where his right second leg was: a torn stocking stub and a puff of stuffing. hidden until jl_leg_off; jesterlord.js shows it while the leg is away"
+  },
+  "lod": {
+   "joint": "thorax",
+   "c": [
+    0.0,
+    1.9138,
+    0.0538
+   ],
+   "h": [
+    2.4011,
+    1.8918,
+    2.3912
+   ],
+   "tris": 4222,
+   "skinned": true,
+   "note": "the far model (past 34 m): both halves decimated together, still skinned"
+  }
+ },
+ "joints": {
+  "body": {
+   "parent": null,
+   "p": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "own": false
+  },
+  "thorax": {
+   "parent": "body",
+   "p": [
+    0.0,
+    1.25,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    1.25,
+    0.0
+   ],
+   "own": true
+  },
+  "legL": {
+   "parent": "body",
+   "p": [
+    -0.1,
+    1.15,
+    0.05
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.1,
+    1.15,
+    0.05
+   ],
+   "own": false
+  },
+  "kneeL": {
+   "parent": "legL",
+   "p": [
+    0.0,
+    -0.25,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.1,
+    0.9,
+    0.05
+   ],
+   "own": false
+  },
+  "legR": {
+   "parent": "body",
+   "p": [
+    0.1,
+    1.15,
+    0.05
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.1,
+    1.15,
+    0.05
+   ],
+   "own": false
+  },
+  "kneeR": {
+   "parent": "legR",
+   "p": [
+    0.0,
+    -0.25,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.1,
+    0.9,
+    0.05
+   ],
+   "own": false
+  },
+  "spine": {
+   "parent": "thorax",
+   "p": [
+    0.0,
+    0.272,
+    -0.22
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    1.522,
+    -0.22
+   ],
+   "own": false
+  },
+  "neck": {
+   "parent": "spine",
+   "p": [
+    0.0,
+    0.77,
+    0.02
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    2.292,
+    -0.2
+   ],
+   "own": false
+  },
+  "head": {
+   "parent": "neck",
+   "p": [
+    0.0,
+    0.07,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    2.362,
+    -0.2
+   ],
+   "own": false
+  },
+  "arm": {
+   "parent": "spine",
+   "p": [
+    0.37,
+    0.66,
+    0.02
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.3
+   ],
+   "at": [
+    0.37,
+    2.182,
+    -0.2
+   ],
+   "own": false
+  },
+  "armL": {
+   "parent": "spine",
+   "p": [
+    -0.37,
+    0.66,
+    0.02
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -0.3
+   ],
+   "at": [
+    -0.37,
+    2.182,
+    -0.2
+   ],
+   "own": false
+  },
+  "foreR": {
+   "parent": "arm",
+   "p": [
+    0.0,
+    -0.43,
+    0.0
+   ],
+   "r": [
+    0.12,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.4971,
+    1.7712,
+    -0.2
+   ],
+   "own": false
+  },
+  "foreL": {
+   "parent": "armL",
+   "p": [
+    0.0,
+    -0.43,
+    0.0
+   ],
+   "r": [
+    0.12,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.4971,
+    1.7712,
+    -0.2
+   ],
+   "own": false
+  },
+  "handR": {
+   "parent": "foreR",
+   "p": [
+    0.0,
+    -0.39,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.6115,
+    1.4013,
+    -0.2467
+   ],
+   "own": false
+  },
+  "handL": {
+   "parent": "foreL",
+   "p": [
+    0.0,
+    -0.39,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.6115,
+    1.4013,
+    -0.2467
+   ],
+   "own": false
+  },
+  "abdo": {
+   "parent": "thorax",
+   "p": [
+    0.0,
+    0.06,
+    0.5
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    1.31,
+    0.5
+   ],
+   "own": true
+  },
+  "femRA": {
+   "parent": "thorax",
+   "p": [
+    0.2524,
+    -0.13,
+    -0.3704
+   ],
+   "r": [
+    0.0,
+    1.0639,
+    0.6857
+   ],
+   "at": [
+    0.2524,
+    1.12,
+    -0.3704
+   ],
+   "own": true
+  },
+  "tibRA": {
+   "parent": "femRA",
+   "p": [
+    1.6,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.9846
+   ],
+   "at": [
+    0.8536,
+    2.1331,
+    -1.453
+   ],
+   "own": true
+  },
+  "footRA": {
+   "parent": "tibRA",
+   "p": [
+    1.45,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.2168
+   ],
+   "at": [
+    1.0427,
+    0.7364,
+    -1.7934
+   ],
+   "own": true
+  },
+  "bellRA": {
+   "parent": "footRA",
+   "p": [
+    0.7449,
+    0.3011,
+    0.0
+   ],
+   "r": [
+    1.0094,
+    -0.4229,
+    1.3182
+   ],
+   "at": [
+    1.3415,
+    0.22,
+    -2.3316
+   ],
+   "own": true
+  },
+  "femLA": {
+   "parent": "thorax",
+   "p": [
+    -0.2524,
+    -0.13,
+    -0.3704
+   ],
+   "r": [
+    0.0,
+    2.0777,
+    0.6857
+   ],
+   "at": [
+    -0.2524,
+    1.12,
+    -0.3704
+   ],
+   "own": true
+  },
+  "tibLA": {
+   "parent": "femLA",
+   "p": [
+    1.6,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.9846
+   ],
+   "at": [
+    -0.8536,
+    2.1331,
+    -1.453
+   ],
+   "own": true
+  },
+  "footLA": {
+   "parent": "tibLA",
+   "p": [
+    1.45,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.2168
+   ],
+   "at": [
+    -1.0427,
+    0.7364,
+    -1.7934
+   ],
+   "own": true
+  },
+  "bellLA": {
+   "parent": "footLA",
+   "p": [
+    0.7449,
+    0.3011,
+    0.0
+   ],
+   "r": [
+    2.1322,
+    -0.4229,
+    1.8234
+   ],
+   "at": [
+    -1.3415,
+    0.22,
+    -2.3316
+   ],
+   "own": true
+  },
+  "femRB": {
+   "parent": "thorax",
+   "p": [
+    0.3899,
+    -0.13,
+    -0.1452
+   ],
+   "r": [
+    0.0,
+    0.3898,
+    0.6287
+   ],
+   "at": [
+    0.3899,
+    1.12,
+    -0.1452
+   ],
+   "own": true
+  },
+  "tibRB": {
+   "parent": "femRB",
+   "p": [
+    1.504,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.9211
+   ],
+   "at": [
+    1.5151,
+    2.0045,
+    -0.6075
+   ],
+   "own": true
+  },
+  "footRB": {
+   "parent": "tibRB",
+   "p": [
+    1.363,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.2103
+   ],
+   "at": [
+    1.8616,
+    0.694,
+    -0.7499
+   ],
+   "own": true
+  },
+  "bellRB": {
+   "parent": "footRB",
+   "p": [
+    0.7002,
+    0.283,
+    0.0
+   ],
+   "r": [
+    0.348,
+    -0.1794,
+    1.1137
+   ],
+   "at": [
+    2.3968,
+    0.2086,
+    -0.9698
+   ],
+   "own": true
+  },
+  "femLB": {
+   "parent": "thorax",
+   "p": [
+    -0.3899,
+    -0.13,
+    -0.1452
+   ],
+   "r": [
+    0.0,
+    2.7518,
+    0.6287
+   ],
+   "at": [
+    -0.3899,
+    1.12,
+    -0.1452
+   ],
+   "own": true
+  },
+  "tibLB": {
+   "parent": "femLB",
+   "p": [
+    1.504,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.9211
+   ],
+   "at": [
+    -1.5151,
+    2.0045,
+    -0.6075
+   ],
+   "own": true
+  },
+  "footLB": {
+   "parent": "tibLB",
+   "p": [
+    1.363,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.2103
+   ],
+   "at": [
+    -1.8616,
+    0.694,
+    -0.7499
+   ],
+   "own": true
+  },
+  "bellLB": {
+   "parent": "footLB",
+   "p": [
+    0.7002,
+    0.283,
+    0.0
+   ],
+   "r": [
+    2.7936,
+    -0.1794,
+    2.0279
+   ],
+   "at": [
+    -2.3968,
+    0.2086,
+    -0.9698
+   ],
+   "own": true
+  },
+  "femRC": {
+   "parent": "thorax",
+   "p": [
+    0.3899,
+    -0.13,
+    0.1452
+   ],
+   "r": [
+    0.0,
+    -0.39,
+    0.5913
+   ],
+   "at": [
+    0.3899,
+    1.12,
+    0.1452
+   ],
+   "own": true
+  },
+  "tibRC": {
+   "parent": "femRC",
+   "p": [
+    1.44,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.8901
+   ],
+   "at": [
+    1.4956,
+    1.9227,
+    0.5998
+   ],
+   "own": true
+  },
+  "footRC": {
+   "parent": "tibRC",
+   "p": [
+    1.305,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.2167
+   ],
+   "at": [
+    1.8199,
+    0.6657,
+    0.7331
+   ],
+   "own": true
+  },
+  "bellRC": {
+   "parent": "footRC",
+   "p": [
+    0.6704,
+    0.271,
+    0.0
+   ],
+   "r": [
+    -0.3482,
+    0.1795,
+    1.1137
+   ],
+   "at": [
+    2.3323,
+    0.201,
+    0.9437
+   ],
+   "own": true
+  },
+  "femLC": {
+   "parent": "thorax",
+   "p": [
+    -0.3899,
+    -0.13,
+    0.1452
+   ],
+   "r": [
+    0.0,
+    -2.7516,
+    0.5913
+   ],
+   "at": [
+    -0.3899,
+    1.12,
+    0.1452
+   ],
+   "own": true
+  },
+  "tibLC": {
+   "parent": "femLC",
+   "p": [
+    1.44,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.8901
+   ],
+   "at": [
+    -1.4956,
+    1.9227,
+    0.5998
+   ],
+   "own": true
+  },
+  "footLC": {
+   "parent": "tibLC",
+   "p": [
+    1.305,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.2167
+   ],
+   "at": [
+    -1.8199,
+    0.6657,
+    0.7331
+   ],
+   "own": true
+  },
+  "bellLC": {
+   "parent": "footLC",
+   "p": [
+    0.6704,
+    0.271,
+    0.0
+   ],
+   "r": [
+    -2.7934,
+    0.1795,
+    2.0278
+   ],
+   "at": [
+    -2.3323,
+    0.201,
+    0.9437
+   ],
+   "own": true
+  },
+  "femRD": {
+   "parent": "thorax",
+   "p": [
+    0.2524,
+    -0.13,
+    0.3704
+   ],
+   "r": [
+    0.0,
+    -1.1057,
+    0.6717
+   ],
+   "at": [
+    0.2524,
+    1.12,
+    0.3704
+   ],
+   "own": true
+  },
+  "tibRD": {
+   "parent": "femRD",
+   "p": [
+    1.6,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.9291
+   ],
+   "at": [
+    0.8141,
+    2.1157,
+    1.4898
+   ],
+   "own": true
+  },
+  "footRD": {
+   "parent": "tibRD",
+   "p": [
+    1.45,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.1753
+   ],
+   "at": [
+    1.0146,
+    0.7364,
+    1.8893
+   ],
+   "own": true
+  },
+  "bellRD": {
+   "parent": "footRD",
+   "p": [
+    0.7449,
+    0.3011,
+    0.0
+   ],
+   "r": [
+    -1.054,
+    0.433,
+    1.3367
+   ],
+   "at": [
+    1.2907,
+    0.22,
+    2.4395
+   ],
+   "own": true
+  },
+  "femLD": {
+   "parent": "thorax",
+   "p": [
+    -0.2524,
+    -0.13,
+    0.3704
+   ],
+   "r": [
+    0.0,
+    -2.0359,
+    0.6717
+   ],
+   "at": [
+    -0.2524,
+    1.12,
+    0.3704
+   ],
+   "own": true
+  },
+  "tibLD": {
+   "parent": "femLD",
+   "p": [
+    1.6,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    -1.9291
+   ],
+   "at": [
+    -0.8141,
+    2.1157,
+    1.4898
+   ],
+   "own": true
+  },
+  "footLD": {
+   "parent": "tibLD",
+   "p": [
+    1.45,
+    0.0,
+    0.0
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.1753
+   ],
+   "at": [
+    -1.0146,
+    0.7364,
+    1.8893
+   ],
+   "own": true
+  },
+  "bellLD": {
+   "parent": "footLD",
+   "p": [
+    0.7449,
+    0.3011,
+    0.0
+   ],
+   "r": [
+    -2.0876,
+    0.433,
+    1.8049
+   ],
+   "at": [
+    -1.2907,
+    0.22,
+    2.4395
+   ],
+   "own": true
+  },
+  "hatR": {
+   "parent": "head",
+   "p": [
+    0.221,
+    0.754,
+    0.078
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.221,
+    3.116,
+    -0.122
+   ],
+   "own": true
+  },
+  "hatRb": {
+   "parent": "hatR",
+   "p": [
+    0.26,
+    0.234,
+    0.312
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.481,
+    3.35,
+    0.19
+   ],
+   "own": true
+  },
+  "bellHR": {
+   "parent": "hatRb",
+   "p": [
+    0.078,
+    0.442,
+    0.078
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.559,
+    3.792,
+    0.268
+   ],
+   "own": true
+  },
+  "hatL": {
+   "parent": "head",
+   "p": [
+    -0.221,
+    0.754,
+    0.078
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.221,
+    3.116,
+    -0.122
+   ],
+   "own": true
+  },
+  "hatLb": {
+   "parent": "hatL",
+   "p": [
+    -0.26,
+    0.234,
+    0.312
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.481,
+    3.35,
+    0.19
+   ],
+   "own": true
+  },
+  "bellHL": {
+   "parent": "hatLb",
+   "p": [
+    -0.078,
+    0.442,
+    0.078
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.559,
+    3.792,
+    0.268
+   ],
+   "own": true
+  },
+  "jaw": {
+   "parent": "head",
+   "p": [
+    0.0,
+    0.221,
+    -0.052
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    2.583,
+    -0.252
+   ],
+   "own": true
+  },
+  "lidR": {
+   "parent": "head",
+   "p": [
+    0.1274,
+    0.481,
+    -0.2665
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.1274,
+    2.843,
+    -0.4665
+   ],
+   "own": true
+  },
+  "lidL": {
+   "parent": "head",
+   "p": [
+    -0.1274,
+    0.481,
+    -0.2665
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.1274,
+    2.843,
+    -0.4665
+   ],
+   "own": true
+  },
+  "browR": {
+   "parent": "head",
+   "p": [
+    0.13,
+    0.6175,
+    -0.2795
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.13,
+    2.9795,
+    -0.4795
+   ],
+   "own": true
+  },
+  "browL": {
+   "parent": "head",
+   "p": [
+    -0.13,
+    0.6175,
+    -0.2795
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.13,
+    2.9795,
+    -0.4795
+   ],
+   "own": true
+  },
+  "collar": {
+   "parent": "spine",
+   "p": [
+    0.0,
+    0.74,
+    0.02
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.0,
+    2.262,
+    -0.2
+   ],
+   "own": true
+  },
+  "marotte": {
+   "parent": "handL",
+   "p": [
+    0.0,
+    -0.085,
+    -0.4
+   ],
+   "r": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.6223,
+    1.3664,
+    -0.654
+   ],
+   "own": true
+  }
+ },
+ "markers": {
+  "eyeAt": {
+   "joint": "head",
+   "local": [
+    0.0,
+    0.481,
+    -0.3165
+   ],
+   "at": [
+    0.0,
+    2.843,
+    -0.5165
+   ]
+  },
+  "eyeRAt": {
+   "joint": "lidR",
+   "local": [
+    0.0,
+    0.0,
+    -0.05
+   ],
+   "at": [
+    0.1274,
+    2.843,
+    -0.5165
+   ]
+  },
+  "eyeLAt": {
+   "joint": "lidL",
+   "local": [
+    0.0,
+    0.0,
+    -0.05
+   ],
+   "at": [
+    -0.1274,
+    2.843,
+    -0.5165
+   ]
+  },
+  "faceAt": {
+   "joint": "head",
+   "local": [
+    0.0,
+    0.39,
+    -0.338
+   ],
+   "at": [
+    0.0,
+    2.752,
+    -0.538
+   ]
+  },
+  "mouthAt": {
+   "joint": "jaw",
+   "local": [
+    0.0,
+    -0.026,
+    -0.299
+   ],
+   "at": [
+    0.0,
+    2.557,
+    -0.551
+   ]
+  },
+  "noseTip": {
+   "joint": "head",
+   "local": [
+    0.0,
+    0.3588,
+    -0.8255
+   ],
+   "at": [
+    0.0,
+    2.7208,
+    -1.0255
+   ]
+  },
+  "hatTipR": {
+   "joint": "bellHR",
+   "local": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    0.559,
+    3.792,
+    0.268
+   ]
+  },
+  "palmR": {
+   "joint": "handR",
+   "local": [
+    0.0,
+    -0.07,
+    -0.0
+   ],
+   "at": [
+    0.632,
+    1.3349,
+    -0.2551
+   ]
+  },
+  "hatTipL": {
+   "joint": "bellHL",
+   "local": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "at": [
+    -0.559,
+    3.792,
+    0.268
+   ]
+  },
+  "palmL": {
+   "joint": "handL",
+   "local": [
+    -0.0,
+    -0.07,
+    -0.0
+   ],
+   "at": [
+    -0.632,
+    1.3349,
+    -0.2551
+   ]
+  },
+  "marotteAt": {
+   "joint": "marotte",
+   "local": [
+    -0.0,
+    -0.0,
+    -0.06
+   ],
+   "at": [
+    -0.6202,
+    1.3733,
+    -0.7136
+   ]
+  },
+  "stumpAt": {
+   "joint": "thorax",
+   "local": [
+    0.5246,
+    -0.0241,
+    -0.2006
+   ],
+   "at": [
+    0.5246,
+    1.2259,
+    -0.2006
+   ]
+  },
+  "topAt": {
+   "joint": "abdo",
+   "local": [
+    0.0,
+    1.5128,
+    0.86
+   ],
+   "at": [
+    0.0,
+    2.8228,
+    1.36
+   ]
+  },
+  "spinneret": {
+   "joint": "abdo",
+   "local": [
+    0.0,
+    0.0964,
+    1.74
+   ],
+   "at": [
+    0.0,
+    1.4064,
+    2.24
+   ]
+  },
+  "chestAt": {
+   "joint": "spine",
+   "local": [
+    0.0,
+    0.42,
+    -0.18
+   ],
+   "at": [
+    0.0,
+    1.942,
+    -0.4
+   ]
+  }
+ },
+ "look": {
+  "at": "eyeAt",
+  "eyes": [
+   "eyeRAt",
+   "eyeLAt"
+  ],
+  "aim": [
+   "head"
+  ],
+  "note": "his eyes are shut (smug); his head turns to look. the lids open only in jl_leg_off"
+ },
+ "hit": {
+  "head": {
+   "joint": "head",
+   "c": [
+    0,
+    0.36,
+    -0.05
+   ],
+   "h": [
+    0.27,
+    0.36,
+    0.3
+   ],
+   "note": "the head and hat: generous, like every puppet"
+  },
+  "jester": {
+   "joint": "spine",
+   "c": [
+    0,
+    0.36,
+    0
+   ],
+   "h": [
+    0.3,
+    0.36,
+    0.18
+   ]
+  },
+  "thorax": {
+   "joint": "thorax",
+   "c": [
+    0,
+    0,
+    0
+   ],
+   "h": [
+    0.5,
+    0.3,
+    0.56
+   ]
+  },
+  "abdomen": {
+   "joint": "abdo",
+   "c": [
+    0.0,
+    0.34,
+    0.86
+   ],
+   "h": [
+    0.68,
+    0.58,
+    0.88
+   ]
+  },
+  "legs": {
+   "RA": {
+    "femur": {
+     "joint": "femRA",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.6,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibRA",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.45,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footRA",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.8,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellRA"
+   },
+   "LA": {
+    "femur": {
+     "joint": "femLA",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.6,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibLA",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.45,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footLA",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.8,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellLA"
+   },
+   "RB": {
+    "femur": {
+     "joint": "femRB",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.504,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibRB",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.363,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footRB",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.752,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellRB"
+   },
+   "LB": {
+    "femur": {
+     "joint": "femLB",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.504,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibLB",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.363,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footLB",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.752,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellLB"
+   },
+   "RC": {
+    "femur": {
+     "joint": "femRC",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.44,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibRC",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.305,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footRC",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.72,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellRC"
+   },
+   "LC": {
+    "femur": {
+     "joint": "femLC",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.44,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibLC",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.305,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footLC",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.72,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellLC"
+   },
+   "RD": {
+    "femur": {
+     "joint": "femRD",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.6,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibRD",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.45,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footRD",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.8,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellRD"
+   },
+   "LD": {
+    "femur": {
+     "joint": "femLD",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.6,
+      0,
+      0
+     ],
+     "r": 0.085
+    },
+    "tibia": {
+     "joint": "tibLD",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      1.45,
+      0,
+      0
+     ],
+     "r": 0.065
+    },
+    "foot": {
+     "joint": "footLD",
+     "a": [
+      0,
+      0,
+      0
+     ],
+     "b": [
+      0.8,
+      0,
+      0
+     ],
+     "r": 0.05
+    },
+    "bell": "bellLD"
+   }
+  },
+  "legOff": "RB",
+  "note": "legs are capsules along each joint's +x (a, b in its frame, r). any leg can be aimed at; the clip set takes his right second leg (RB) off"
+ }
+}
