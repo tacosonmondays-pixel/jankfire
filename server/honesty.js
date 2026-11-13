@@ -15,8 +15,8 @@
 // Mixed into Room by installHonesty (wraps handle, onHit, onPush, onFire, sendLoadout, modeLoadout, resetLife).
 import { WEAPONS, SLOTS, FLAGS, WRECK, STREAKS } from '../shared/weapons.js';
 import { raycast, playerBoxes } from '../shared/physics.js';
-import { rigBoxes } from '../shared/rig.js';
-import { mechBoxes } from '../shared/mech.js';
+import { rigBoxes, RIG } from '../shared/rig.js';
+import { mechBoxes, MECH, mechFrame } from '../shared/mech.js';
 
 export const HON = {
   grace: 400, // ms: the gun you just swapped away from still counts this long (a hit already on its way)
@@ -34,6 +34,7 @@ export const HON = {
   budget: 8, // full checks per second that come back "no" before the cheap one takes over (CPU, vs a spammer)
 };
 const now = () => Date.now();
+const LOG = !!process.env.JF_HON_LOG; // test knob: print every refusal and why
 const num = (v) => typeof v === 'number' && Number.isFinite(v);
 const v3 = (a) => (Array.isArray(a) && a.length === 3 && a.every(num) ? a : null);
 const unit = (a) => { const l = a && Math.hypot(a[0], a[1], a[2]); return l > 1e-6 && l < 1e9 ? [a[0] / l, a[1] / l, a[2] / l] : null; };
@@ -105,9 +106,16 @@ const M = {
     const at = [p.pos];
     if (v && sp > 0.5) at.push([p.pos[0] + v[0] * sp * HON.lead, p.pos[1] + v[1] * sp * HON.lead, p.pos[2] + v[2] * sp * HON.lead]);
     if (!cheap) at.push(...this.honPast(p, HON.sHist).slice(1));
-    const out = [];
-    for (const q of at) for (const h of HON.eyes) out.push([q[0], q[1] + h, q[2]]);
+    const out = [], hs = this.honHeights(p);
+    for (const q of at) for (const h of hs) out.push([q[0], q[1] + h, q[2]]);
     return out;
+  },
+  // eye heights: a body streak's eye is its own (a mech's cockpit, the rig's 2.05 m and its crouch, the ball's middle)
+  honHeights(p) {
+    if (this.mechOn(p) && p.mech) return [MECH[mechFrame(p.mech.f)].eye, ...HON.eyes];
+    if (this.rigOn(p)) return [RIG.eye, ...HON.eyes];
+    if (this.isBall(p)) return [WRECK.r * 2, ...HON.eyes];
+    return HON.eyes;
   },
   // what the shooter's client aims at for t standing at q: its hitboxes, scaled up far away like the client draws them
   honBoxes(t, q, dist) {
@@ -180,6 +188,7 @@ const M = {
   },
 
   // ------------------------------------------------------------ the message checks (false = drop it)
+  honNo(p, why, m) { if (LOG) { const t = this.players.get(m.to); console.log(`[honesty] ${p.name} ${m.t} ${m.w || m.r || ''} -> ${m.to ?? ''}: ${why} (from ${p.pos.map((x) => x.toFixed(1))}${t ? ' at ' + t.pos.map((x) => x.toFixed(1)) : ''}, map ${this.cfg.map})`); } return false; },
   honHit(p, m) {
     if (m.mk !== undefined) return true; // an empty mech: mechShot checks held gun, aim and walls itself
     const w = typeof m.w === 'string' && Object.hasOwn(WEAPONS, m.w) ? WEAPONS[m.w] : null;
@@ -187,33 +196,35 @@ const M = {
     if (!w || !t || t === p || !t.alive || !p.alive || this.rigOn(p) || this.mechOn(p)) return true; // onHit drops these itself
     if (m.w === 'popper') return true; // an item: popperHit only counts right after a real pop
     if (w.kind !== 'hitscan' && w.kind !== 'melee' && w.kind !== 'dash' && m.w !== 'cig') return true; // nothing else lands here
-    if (!this.honLoadout(p, m.w)) return false;
+    if (!this.honLoadout(p, m.w)) return this.honNo(p, 'not in the loadout', m);
     if (!this.honHeld(p, m.w)) { // swapped and fired in one frame: wait for the snapshot that says so
       const H = this.hon(p);
       if (H.pend.length < 6) H.pend.push({ m, t: now() });
-      return false;
+      return this.honNo(p, 'not held (waiting for the snapshot)', m);
     }
     if (w.kind === 'dash') return true; // the client's own check is 2.6 m around you, walls or not
     const d = unit(v3(m.d));
-    if (w.kind === 'hitscan') return this.shotSeen(p, t, w, d);
+    if (w.kind === 'hitscan') return this.shotSeen(p, t, w, d) || this.honNo(p, 'no line of sight', m);
     const hv = w.kind === 'melee' && m.heavy === 1 && w.heavy ? w.heavy : null;
-    return this.honCone(p, t, hv ? hv.cone : w.cone || 0.8) && this.shotSeen(p, t, null, null);
+    if (!this.honCone(p, t, hv ? hv.cone : w.cone || 0.8)) return this.honNo(p, 'not in front', m);
+    return this.shotSeen(p, t, null, null) || this.honNo(p, 'no line of sight', m);
   },
   honPush(p, m) {
     if (m.w !== 'blower' && m.w !== 'shredder') return true; // the grapple's tug: onPush's own range / rate checks
     const t = this.players.get(m.to);
     if (!t || t === p || !t.alive || !p.alive) return true;
-    if (!this.honLoadout(p, m.w) || !this.honHeld(p, m.w)) return false;
+    if (!this.honLoadout(p, m.w) || !this.honHeld(p, m.w)) return this.honNo(p, 'not held / not in the loadout', m);
     if (m.w === 'shredder') return true; // shredPull checks its cone and walls itself
-    return this.honCone(p, t, WEAPONS.blower.cone) && this.shotSeen(p, t, null, null);
+    if (!this.honCone(p, t, WEAPONS.blower.cone)) return this.honNo(p, 'not in front', m);
+    return this.shotSeen(p, t, null, null) || this.honNo(p, 'no line of sight', m);
   },
   // the taser and the remote skip onFire's checks (server/secondaries.js takes them first): the same rules here
   honSecFire(p, m) {
     if (!p.alive) return true;
     const id = m.w;
-    if (!this.allowed(p, id) || (this.zm && !this.zmArm(p, id))) return false;
-    if (this.chaosKit && !this.chaosKit.slots.includes(id)) return false;
-    return this.honLoadout(p, id) && this.honHeld(p, id);
+    if (!this.allowed(p, id) || (this.zm && !this.zmArm(p, id))) return this.honNo(p, 'not in this mode', m);
+    if (this.chaosKit && !this.chaosKit.slots.includes(id)) return this.honNo(p, 'not in the kit', m);
+    return (this.honLoadout(p, id) && this.honHeld(p, id)) || this.honNo(p, 'not held / not in the loadout', m);
   },
   // chicken strike / giant duck: the client aims with a 300 m ray from your eye (60 m into the air when it hits nothing)
   honAim(p, at) {
@@ -252,7 +263,7 @@ export function installHonesty(Room, deps) {
       if (m.t === 's') { const w0 = p.w, r = orig.handle.call(this, p, m); if (p.alive) this.honSnap(p, w0); return r; }
       if (m.t === 'deploy' && (m.r === 'chickenstrike' || m.r === 'giantduck') && !p.zmDeploy && this.honOn(p) && p.alive && (p.pocket || []).includes(m.r)) {
         const at = v3(m.at);
-        if (at && !this.honAim(p, at)) { deps.send(p, { t: 'streak', earned: m.r, n: p.streak || 0 }); return; } // too far / not seen: back in your tray
+        if (at && !this.honAim(p, at)) { this.honNo(p, 'aim point too far / not seen', m); deps.send(p, { t: 'streak', earned: m.r, n: p.streak || 0 }); return; } // too far / not seen: back in your tray
       }
       return orig.handle.call(this, p, m);
     },

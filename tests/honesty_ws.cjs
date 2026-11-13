@@ -1,5 +1,5 @@
 // SERVER HONESTY over plain ws (server/honesty.js), on Crate (a 5 m block in the middle, 3 m tall, under a roof slab):
-// refused: hitscan / melee through the block, melee / cigarette / leaf blower behind you, a gun you don't hold, one you
+// refused: hitscan / melee / a clubs shockwave through the block, melee / cigarette / leaf blower behind you, a gun you don't hold, one you
 // swapped away from a while ago, a second primary in one life, a taser / remote you don't hold, a chicken strike aimed
 // 400 m away, a giant duck aimed through the floor, a randomizer hit outside your roll, garbage fields.
 // still landing: open shots, peeking past the corner (one edge showing), strafing into cover (both moving), the shotgun
@@ -79,7 +79,7 @@ async function shoot(at, w, n = 2, hitExtra = {}, gap = 450) {
 const facing = (a, b, w, o = {}) => ({ y: look(eyeAt(a), chest(b)).y, x: look(eyeAt(a), chest(b)).x, w, ...o });
 
 (async () => {
-  const srv = server(port, { JF_GAME: 'dm' });
+  const srv = server(port, { JF_GAME: 'dm', JF_CARD_HAND: 'c9,c9,c9,c9,c9' }); // (every hand: five 9s of clubs, the shockwave)
   if (!(await up(port))) { console.log('server did not start\n' + srv.log); process.exit(1); }
   const host = await client('host');
   host.send({ t: 'cfg', map: 'crate', bots: 0 });
@@ -100,6 +100,10 @@ const facing = (a, b, w, o = {}) => ({ y: look(eyeAt(a), chest(b)).y, x: look(ey
     ok((await shoot(() => ({ a, b, ao: facing(a, b, 'ar') }), 'ar')) >= 2, 'lands: peeking past the corner (one shoulder edge showing)');
     const b2 = [-1.5, 0, 6]; // all of them behind it
     ok((await shoot(() => ({ a, b: b2, ao: facing(a, b2, 'ar') }), 'ar')) === 0, 'refused: the same corner, B fully behind it');
+  }
+  {
+    const a = [0, 0, 0.5], b = [0, 0, 8]; // A's snapshots put it inside the block, poking out of nothing
+    ok((await shoot(() => ({ a, b, ao: facing(a, b, 'ar') }), 'ar')) === 0, 'refused: shooting from inside the block');
   }
   {
     // strafing: A runs along x, B runs from the open into cover; when the hits arrive the server's newest B is hidden,
@@ -197,6 +201,17 @@ const facing = (a, b, w, o = {}) => ({ y: look(eyeAt(a), chest(b)).y, x: look(ey
     await pair(); await park(1400, () => ({ a: a2, b: b2, ao: { ...facing(a2, b2, 'blower') } })); clear();
     for (let i = 0; i < 3; i++) { A.send({ t: 'push', to: B.id, w: 'blower' }); await sleep(120); } await sleep(300);
     ok(B.got.filter((m) => m.t === 'kb' && m.w === 'blower').length === 0, 'refused: the leaf blower through the block');
+  }
+
+  // ------------------------------------------------------------ clubs shockwave (a 9 of clubs: 30 damage, 9 m cone)
+  {
+    const wave = async (a, b) => {
+      await pair(); await park(1400, () => ({ a, b, ao: facing(a, b, 'cards') })); clear();
+      A.send({ t: 'fire', w: 'cards', i: 0, o: eyeAt(a), d: look(eyeAt(a), chest(b)).d }); await sleep(600);
+      return dmgs('cards').filter((m) => Math.round(m.a) === 30).length;
+    };
+    ok((await wave([-6.5, 0, -4], [-6.5, 0, 2])) === 1, 'lands: a clubs shockwave on someone 6 m in front');
+    ok((await wave([0, 0, -3.4], [0, 0, 3.4])) === 0, 'refused: a clubs shockwave through the block');
   }
 
   // ------------------------------------------------------------ taser, tv remote
