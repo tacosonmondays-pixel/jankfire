@@ -47,7 +47,7 @@ export function installBgnMini(Room, H) {
       if (k === 'carts') {
         Object.assign(S, { out: new Set(), outAt: {}, outN: 0, falls: {}, kos: {}, pool: { 1: CM.lives, 2: CM.lives }, lives: Object.fromEntries(mg.seats.map((i) => [i, CM.solo])) }, this.bgmBox());
         for (const p of this.fighters()) { p.ride = 0; p.bgOffT = 0; p.bgBoostT = 0; if (p.alive) this.bgmMount(p); }
-      } else if (k === 'ducks') Object.assign(S, { ducks: new Map(), id: 0, pile: {}, next: n + 1200, curseAt: n + DK.cursedEvery, curses: [], curseT: {} });
+      } else if (k === 'ducks') Object.assign(S, { ducks: new Map(), pile: {}, next: n + 1200, curseAt: n + DK.cursedEvery, curses: [], curseT: {} });
       else if (k === 'boss') this.bgmBossIn(def);
       this.bgnEv('mini', { x: this.bgmInfo() });
     },
@@ -290,7 +290,7 @@ export function installBgnMini(Room, H) {
       const S = this.bgm, n = now(), at = o.at || this.bgmDuckSpot(near);
       if (!at) return null;
       const h = o.h ?? DK.h, ms = o.ms ?? (h / DK.fall) * 1000;
-      const d = { id: ++S.id, p: at, h, t0: n, t1: n + ms, g: gold ? 1 : 0, one: o.one ? 1 : 0, not: o.not || 0, notT: n + 800 };
+      const d = { id: this.bgmDuckN = (this.bgmDuckN || 0) + 1, p: at, h, t0: n, t1: n + ms, g: gold ? 1 : 0, one: o.one ? 1 : 0, not: o.not || 0, notT: n + 800 };
       S.ducks.set(d.id, d);
       this.bgnEv('duck', { id: d.id, p: at.map(r2), h: r2(h), ms: Math.round(ms), g: d.g, one: d.one });
       return d;
