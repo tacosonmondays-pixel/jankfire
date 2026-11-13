@@ -14,7 +14,7 @@
 <link rel="icon" href="/icons/icon-192.png">
 <link rel="apple-touch-icon" href="/icons/icon-192.png">
 <script type="importmap">
-{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/" } }
+{ "imports": { "three": "/vendor/three/build/three.module.js", "three/addons/": "/vendor/three/examples/jsm/", "three/examples/jsm/": "/vendor/three/examples/jsm/", "three-mesh-bvh": "/vendor/bvh/index.module.js", "three-gpu-pathtracer": "/vendor/pathtracer/index.module.js" } }
 </script>
 </head>
 <body>
@@ -379,6 +379,7 @@
         <label><input type="checkbox" id="fxBounce"> bounce light (sunlit walls, ground and neon signs tint what's near them; mid and hd)</label>
         <label><input type="checkbox" id="fxRefl"> reflections (glass towers and wet roads mirror the world round them; mid and hd)</label>
         <label><input type="checkbox" id="fxSky"> sun shafts and haze (light streams between buildings, distance goes soft; mid and hd)</label>
+        <button type="button" id="fxPhoto" title="freezes what you see and traces real light through it. slow. also /photo in chat">PATH-TRACED PHOTO (real ray tracing, slow)</button>
         <label id="fxEerieRow" class="hidden"><input type="checkbox" id="fxEerie"> eerie story filter (darker, colder, grain)</label>
         <label>fov <input id="fov" type="range" min="70" max="120" step="1"><span id="fovN"></span></label>
         <label><input type="checkbox" id="fovKick"> fov stretches with speed</label>

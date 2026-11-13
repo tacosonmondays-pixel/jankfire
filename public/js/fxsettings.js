@@ -6,6 +6,7 @@ import { setNeon } from './neon.js';
 import { setReflect, setReflectSSR } from './reflect.js';
 import { hud } from './hud.js';
 import { skinU } from './softskin.js';
+import { takePhoto } from './ptphoto.js';
 
 const BLOOM = ['off', 'low', 'med', 'high'];
 export const FX_LEVELS = { off: [0, false, false, false, false, false, false], low: [1, true, false, false, false, false, false], med: [2, true, true, false, false, false, false], high: [3, true, true, false, false, false, false], rt: [2, true, true, true, true, true, true] }; // bloom, soft skin, punch, contact shadows, bounce light, reflections, sun shafts + haze (rt: the RAY-TRACED LOOK: everything that fakes what ray tracing gives)
@@ -41,6 +42,7 @@ export function fxUI($, S, save) {
   });
   const custom = () => { S.fx = 'custom'; S.fxBloom = $('fxBloom').value; S.fxSkin = $('fxSkin').checked; S.fxPunch = $('fxPunch').checked; S.fxAO = $('fxAO').checked; S.fxBounce = $('fxBounce').checked; S.fxRefl = $('fxRefl').checked; S.fxSky = $('fxSky').checked; sync(); save(); };
   for (const id of ['fxBloom', 'fxSkin', 'fxPunch', 'fxAO', 'fxBounce', 'fxRefl', 'fxSky']) $(id).addEventListener('change', custom);
+  if ($('fxPhoto')) $('fxPhoto').addEventListener('click', () => takePhoto()); // (the path-traced still: photo.js)
   $('jank').addEventListener('change', sync); // auto follows the quality preset (main.js's own listener has set S.jank by now)
   sync();
   return sync;
