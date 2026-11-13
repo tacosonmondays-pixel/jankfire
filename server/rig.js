@@ -265,7 +265,7 @@ export function installRig(Room, U) {
         pr.tg = t ? t.id : 0;
         let dir = norm(v) || [0, 1, 0], sp = lerpK(M.speed, (age - M.boost) / 0.7);
         if (t) {
-          const tc = center(t), dist = Math.hypot(tc[0] - pr.p[0], tc[1] - pr.p[1], tc[2] - pr.p[2]);
+          const tc = this.mechCenter(t), dist = Math.hypot(tc[0] - pr.p[0], tc[1] - pr.p[1], tc[2] - pr.p[2]); // (a mech: home on its chest)
           if (dist < 1.4) { this.rigBoom(pr, owner, t); return; } // proximity fuse
           // close in, it slows and turns harder (or it would orbit someone standing right in front of you)
           const close = Math.max(0, Math.min(1, 1 - dist / 18)), lead = Math.min(0.5, dist / sp);
@@ -290,7 +290,7 @@ export function installRig(Room, U) {
       this.broadcast({ t: 'rig', k: 'boom', id: pr.o, p: pr.p.map(r2) });
       for (const t of this.players.values()) {
         if (!t.alive || t === owner || this.friendly(owner, t)) continue;
-        const c = center(t), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]];
+        const c = this.mechBlastPt(t, pr.p), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]]; // (a mech: the nearest point of its frame)
         let d = Math.hypot(to[0], to[1], to[2]);
         if (t === direct) d = 0;
         else if (d > M.r || (d > 0.4 && raycast(pr.p, [to[0] / d, to[1] / d, to[2] / d], d - 0.3, this.boxes))) continue;
@@ -322,7 +322,7 @@ export function installRig(Room, U) {
       this.broadcast({ t: 'rig', k: 'land', id: p.id, p: [r2(at[0]), r2(fl.point[1]), r2(at[2])], r: r2(r), c: r2(Lp.c) });
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
-        const tc = center(t), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(to[0], to[1], to[2]);
+        const tc = this.mechBlastPt(t, c), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(to[0], to[1], to[2]);
         if (d > r || !clear(c, tc, this.boxes)) continue; // a shockwave: not through walls or floors
         const f = 1 - d / r, hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0], k = L.kb * (0.4 + 0.6 * f);
         this.hurt(t, p, 'rigquake', L.dmg * (0.35 + 0.65 * f), [out[0] * k, 7 + 6 * f, out[1] * k]);

@@ -36,7 +36,7 @@ function patch(m) {
   m.customProgramCacheKey = () => (prevKey ? prevKey() : '') + '|castlight'; // (its own program, with or without a key before)
   m.needsUpdate = true;
 }
-function patchActor(a) {
+export function patchActor(a) { // (exported: choir.js patches its singers before warming their shaders, so the warm-up builds this variant)
   if (!a || !a.ch || !a.ch.root) return;
   a.ch.root.traverse((o) => { if (o.isMesh || o.isSkinnedMesh) for (const m of [].concat(o.material)) patch(m); });
 }
@@ -44,7 +44,7 @@ function patchActor(a) {
 // the place's colour: the nearest lamps the city picked (their colour, weighted by how close the list put them) over
 // the grade's haze. eased, so walking past a lamp doesn't flicker the cast
 const want = { fill: new THREE.Color(), rim: new THREE.Color() }, c = new THREE.Color(), lamp = new THREE.Color();
-let scanT = 0;
+let scanT = 0, seenN = -1;
 export function castLightFrame(dt) {
   const def = G.joined && G.cfg && MAPS[G.cfg.map], city = !!(def && def.stream && def.story);
   if (!city) { // (the train, the test lot, PvP: nothing added, and the city's lights don't follow you there)
@@ -53,7 +53,7 @@ export function castLightFrame(dt) {
     return;
   }
   uLCset = true;
-  if ((scanT -= dt) <= 0) { scanT = 0.5; for (const a of actors.values()) patchActor(a); } // (new arrivals: twice a second is plenty)
+  if ((scanT -= dt) <= 0 || actors.size !== seenN) { scanT = 0.5; seenN = actors.size; for (const a of actors.values()) patchActor(a); } // (new arrivals the frame they come: a late patch made each one compile its shaders twice, plain then lit)
   lamp.setRGB(0, 0, 0); let w = 0;
   const LC = cityUniforms.uLC.value;
   for (let i = 0; i < Math.min(CAST_LIGHT.lamps, NL); i++) { const k = 1 / (1 + i); lamp.r += LC[i].x * k; lamp.g += LC[i].y * k; lamp.b += LC[i].z * k; w += k; }
