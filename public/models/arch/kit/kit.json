@@ -381,5 +381,59 @@
   "alpha": false,
   "note": "tint",
   "glow": "fac_paint_glow"
+ },
+ "bamboo": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": false,
+  "note": ""
+ },
+ "bamwall": {
+  "tile": 1.0,
+  "px": 64,
+  "alpha": false,
+  "note": ""
+ },
+ "thatch": {
+  "tile": 1.0,
+  "px": 64,
+  "alpha": false,
+  "note": ""
+ },
+ "fringe": {
+  "tile": 1.0,
+  "px": 64,
+  "alpha": true,
+  "note": ""
+ },
+ "grain": {
+  "tile": 1.0,
+  "px": 64,
+  "alpha": false,
+  "note": "tint"
+ },
+ "frond": {
+  "tile": 1.0,
+  "px": 64,
+  "alpha": true,
+  "note": ""
+ },
+ "weave": {
+  "tile": 0.5,
+  "px": 32,
+  "alpha": false,
+  "note": "tint"
+ },
+ "hammock": {
+  "tile": 1.0,
+  "px": 32,
+  "alpha": true,
+  "note": ""
+ },
+ "ph_glass": {
+  "tile": 4.0,
+  "px": 128,
+  "alpha": false,
+  "note": ""
  }
 }
