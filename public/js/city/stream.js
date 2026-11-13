@@ -217,8 +217,9 @@ export class CityStream {
     if (this.time - D.rt < 15) kinds.push(this.warmRT || (this.warmRT = new THREE.WebGLRenderTarget(1, 1))); // (any target makes the same shader: a 1 x 1 of our own, never someone else's that might be gone)
     if (!kinds.length) kinds.push(null);
     while (w.i < w.objs.length) {
-      const o = w.objs[w.i++], n = R.info.programs.length, was = R.getRenderTarget();
-      try { for (const k of kinds) { R.setRenderTarget(k); R.compile(o, camera, this.scene); } } finally { R.setRenderTarget(was); } // (with the real scene: its lights, fog and shadows, so the same programs as when drawn)
+      const o = w.objs[w.i], n = R.info.programs.length, was = R.getRenderTarget(), k = kinds[Math.min(w.k || 0, kinds.length - 1)];
+      if ((w.k = (w.k || 0) + 1) >= kinds.length) { w.k = 0; w.i++; } // (each kind its own frame: still one new shader a frame)
+      try { R.setRenderTarget(k); R.compile(o, camera, this.scene); } finally { R.setRenderTarget(was); } // (with the real scene: its lights, fog and shadows, so the same programs as when drawn)
       o.traverse((q) => { for (const mt of [].concat(q.material || [])) { const pr = R.properties.get(mt).currentProgram; if (R.info.programs.length > n && pr && !w.seen.has(pr)) { w.seen.add(pr); w.progs.push(pr); }
         for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
       if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)

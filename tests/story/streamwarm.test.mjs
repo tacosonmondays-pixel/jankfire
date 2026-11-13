@@ -75,9 +75,12 @@ test('a warm-up compiles for each kind of place the scene was drawn to lately (c
   S.time = 100; S.drawnTo = { canvas: 99, rt: -1e9 };
   S.warm([mesh('a')], () => {}); S.warmStep(cam);
   assert.deepEqual(R.compileTargets, [null], 'drawn to the canvas only: compiled for the canvas');
+  for (let i = 0; i < 10 && S.warmQ.length; i++) S.warmStep(cam); // (finish a)
   R.compileTargets.length = 0; S.drawnTo = { canvas: 99, rt: 95 }; // (post off, but a talk portrait drew the scene into a target)
-  S.warm([mesh('b')], () => {}); for (let i = 0; i < 3; i++) S.warmStep(cam);
-  assert.equal(R.compileTargets.length, 2, 'both kinds compiled');
+  S.warm([mesh('b')], () => {}); S.warmStep(cam);
+  assert.equal(R.compileTargets.length, 1, 'one kind on the first frame');
+  for (let i = 0; i < 3; i++) S.warmStep(cam);
+  assert.equal(R.compileTargets.length, 2, 'both kinds compiled, a frame each');
   assert.ok(R.compileTargets[1] && R.compileTargets[1].isWebGLRenderTarget && R.compileTargets[1].width === 1, 'the target kind with a 1 x 1 of its own');
   assert.equal(R.getRenderTarget(), null, 'and the canvas is bound again after');
   for (let i = 0; i < 10 && S.warmQ.length; i++) S.warmStep(cam); // (finish b)
