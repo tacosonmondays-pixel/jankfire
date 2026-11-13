@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.49', date: '2026-11-13', title: 'SCRAP MART', items: [
+    "battle island has a new spot: SCRAP MART. a candy-coloured mech hangar with the road running straight through it, a catwalk, a parts office, a yard crane, a car crusher and a test range. it's a hot drop. bring friends.",
+  ] },
   { v: '11.48', date: '2026-11-13', title: 'SHIP HAPPENS', items: [
     "battle island has a new spot: RETURN TO SENDER. a cargo ship ran aground on the beach and spilled its containers all over the sand. climb the crane, loot the wheelhouse, hide in the lifeboat. signed for by nobody.",
   ] },
