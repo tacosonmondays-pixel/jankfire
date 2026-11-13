@@ -11,6 +11,8 @@ the juice (sounds in `public/js/audio.js`, callouts, kill-feed line), **Animatio
 attachment spots, and **Roblox notes**. Items and killstreaks come after, marked **phase 2**. At the end: the list of
 **Blender effects to make for Roblox**, and **where the web server trusts the client** (things to fix in the port).
 
+**Modes:** how every game mode works is in the sister doc, [MODES.md](MODES.md).
+
 **Units:** 1 m = 3 studs (a 1.8 m player = 5.4 studs, see `roblox/README.md`). Distances, sizes, speeds,
 accelerations and knockback ×3. Damage, HP, times, rates, counts, angles and multipliers stay the same.
 
