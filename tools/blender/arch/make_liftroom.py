@@ -38,6 +38,15 @@ E = 0.002
 DIG = {'1': [(2, 0, 3, 5)], '2': [(0, 4, 3, 5), (2, 3, 3, 4), (0, 2, 3, 3), (0, 1, 1, 2), (0, 0, 3, 1)], '3': [(0, 4, 3, 5), (2, 3, 3, 4), (0, 2, 3, 3), (2, 1, 3, 2), (0, 0, 3, 1)]}
 
 
+def merge_mats(K, m):
+    """fewer draw calls (one per material in the game): small parts take a bigger part's material"""
+    for (mat, node) in list(K.geo):
+        if mat not in m: continue
+        src = K.geo.pop((mat, node)); dst = K._bucket(m[mat], node); b = len(dst['v'])
+        dst['v'] += src['v']; dst['uv'] += src['uv']; dst['f'] += [tuple(i + b for i in f) for f in src['f']]
+MERGE = {'lr_conduit': 'lr_steel', 'lr_base': 'lr_gravel', 'metal': 'lr_steel', 'metaldark': 'lr_frame', 'lr_wire': 'lr_frame'}
+
+
 def decal_node(K, node, axis, c, s, off, a, y, cell, w, h):
     """Kit.decal_on, into a node (the door's signs go when the door does)"""
     from archkit import KIT
@@ -111,6 +120,7 @@ def room(kind):
                 a0, a1 = ax0 + x0 * u, ax0 + x1 * u; b0, b1 = 1.55 + y0 * u, 1.55 + y1 * u
                 if s < 0: a0, a1 = -a1, -a0  # (from -z you look along +z: mirrored round so it reads left to right)
                 K.box((a0 + 0.01, b0 + 0.01, s * Z + (E if s > 0 else -dz)), (a1 - 0.01, b1 - 0.01, s * Z + (dz if s > 0 else -E)), {'all': 'lr_band@trim'}, cull=False, node='v%d' % vi)
+    merge_mats(K, MERGE)
     K.finish(os.path.join(OUTDIR, kind + '.glb'))
 
 
@@ -142,6 +152,7 @@ def mast():
         p = Vector((ax, 0, az)); leg = min(legs, key=lambda q: (q - p).length)
         FL.bar(K, (leg.x, 4.6, leg.z), (ax, 0.06, az), 0.014, 'lr_wire')
         K.box((ax - 0.1, 0, az - 0.1), (ax + 0.1, 0.06, az + 0.1), {'side': 'lr_steel', 'top': 'lr_steel'}, cull=False)
+    merge_mats(K, MERGE)
     K.finish(os.path.join(OUTDIR, 'rt_mast.glb'))
 
 
