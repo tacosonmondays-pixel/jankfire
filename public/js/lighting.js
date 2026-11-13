@@ -175,8 +175,6 @@ function mark(o) {
   if (!o.userData.castBy) o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && (castAny || big(o)); // (castBy: its owner decides, the city stream casts only the chunks round you)
   o.receiveShadow = see && !o.userData.noShadow && !m.isMeshBasicMaterial && !m.isShaderMaterial && !m.isMeshNormalMaterial;
 }
-// set o's cast / receive flags now, as the sweep would (receive is part of the shader variant: call it before warming a shader up)
-export function lightFlags(o) { o.traverse(mark); }
 function sweep() {
   const dyn = L.dyn; dyn.length = 0;
   for (const c of G.scene.children) {
