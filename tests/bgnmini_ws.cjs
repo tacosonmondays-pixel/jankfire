@@ -88,6 +88,7 @@ async function partBoss(port) {
   ok(tm && tm[1] === 2, 'he is on team 2');
   ok(await W.until(() => W.evs('res').length, 80000), 'it ended');
   const r = W.evs('res')[0], pay = new Map(r.pay);
+  if (r.winSide !== 0 || r.mvp == null) console.log('   ' + S.log().split('\n').filter((l) => /boss down/.test(l)).join('\n   '));
   ok(W.evs('bossdown').length === 1 && r.winSide === 0, 'boss down: the four win');
   ok(r.mvp != null && pay.get(r.mvp) === 13 && r.seats.filter((i) => i !== r.mvp).every((i) => pay.get(i) === 8), `+8 each, the MVP (seat ${r.mvp}, ${JSON.stringify(r.dmg)}) +5 more`);
   ok(r.dmg.find((e) => e[0] === r.mvp)[1] === Math.max(...r.dmg.map((e) => e[1])), 'the MVP did the most damage');
@@ -97,7 +98,7 @@ async function partBoss(port) {
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   W.ws.close(); S.stop();
   // the clock: huge armour, a short clock, one person at the table (x2.5)
-  S = await server(port + 1, { JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'nightmgr', JF_BGN_MGTIME: '12', JF_MECH_HP: '20' });
+  S = await server(port + 1, { JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'nightmgr', JF_BGN_MGTIME: '12', JF_MECH_HP: '20', JF_BGN_NODUEL: '1' }); // (no duels: straight to the round's boss)
   const H = await client(port + 1, 'tina', OFF(5));
   H.auto = true;
   ok(await H.until(() => H.evs('mini').some((e) => e.x && e.x.k === 'boss'), 90000), 'THE NIGHT MANAGER: a boss minigame with a person in it');
@@ -105,6 +106,7 @@ async function partBoss(port) {
   ok(in2 && in2.f === 'nightshift' && b2 && b2.max === 1500 * 20 * 2.5, `night shift, armour x2.5 with one person at the table (${b2 && b2.max})`);
   ok(await H.until(() => H.evs('res').some((e) => e.fmt === 'boss'), 40000), 'the clock ran out');
   const r2 = H.evs('res').find((e) => e.fmt === 'boss'); // (a duel of ours may have come first)
+  if (r2.winSide !== 1) console.log('   ' + S.log().split('\n').filter((l) => /boss down|\[bgn\]/.test(l)).slice(-4).join('\n   '));
   ok(r2.winSide === 1 && r2.pay.length === 4 && r2.pay.every(([, d]) => d === 2), 'he lives: +2 each (the pity)');
   ok(H.evs('call').some((e) => e.c === 'rent' && H.ev.indexOf(e) > H.ev.indexOf(r2) - 30), 'RENT IS DUE');
   errs = errorsIn(S.log());
@@ -126,7 +128,7 @@ async function partHalf(port) {
 
 // ---------------------------------------------------------------- bumper carts: a person rams a bot off
 async function partCarts(port) {
-  const S = await server(port, { JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'carts', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '70', JF_BGN_PEACE: '1' });
+  const S = await server(port, { JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'carts', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '70', JF_BGN_PEACE: '2', JF_BGN_NODUEL: '1' });
   const H = await client(port, 'rammy', OFF(5));
   H.auto = true;
   ok(await H.until(() => H.inMg('carts'), 60000), 'bumper carts with us in it');
@@ -140,35 +142,39 @@ async function partCarts(port) {
   await sleep(500);
   ok(H.evs('boost').filter((e) => e.id === H.id).length === 1, 'boost spam: one boost per cooldown');
   await sleep(1200);
-  // ram: get on the inside of a bot (between it and the middle), then charge it outward with a boost. a ram can still
-  // land someone on the box (a crate in the way): up to 4 goes for one that goes into the void
-  let pos = H.pos ? [H.pos[0], 1, H.pos[2]] : [-11, 1, -11], ram = null, fell = null;
-  for (let go = 0; go < 4 && !fell; go++) {
-    const n0 = H.evs('ram').filter((e) => e.a === H.id).length, t0 = Date.now();
-    let boosted = false;
-    await sleep(go ? 1600 : 0); // (the boost's cooldown)
-    while (Date.now() - t0 < 12000 && H.evs('ram').filter((e) => e.a === H.id).length === n0) {
-      const live = bots.filter((id) => H.alive.get(id) && H.ppos.get(id) && H.ppos.get(id)[1] > 0.5);
-      const victim = live.sort((a, b) => Math.hypot(...H.ppos.get(b)) - Math.hypot(...H.ppos.get(a)))[0];
-      if (!victim) { H.place(pos); await sleep(50); continue; }
-      const bp = H.ppos.get(victim), l = Math.hypot(bp[0], bp[2]) || 1, u = [bp[0] / l, bp[2] / l];
-      const stage = [bp[0] - u[0] * 3.2, bp[2] - u[1] * 3.2], ds = Math.hypot(stage[0] - pos[0], stage[1] - pos[2]);
-      let dir, sp;
-      if (ds > 1.2 && !boosted) { dir = [(stage[0] - pos[0]) / ds, (stage[1] - pos[2]) / ds]; sp = Math.min(13, ds / 0.05); }
-      else { if (!boosted) { H.bg({ k: 'boost' }); boosted = true; } const dd = Math.hypot(bp[0] - pos[0], bp[2] - pos[2]) || 1; dir = [(bp[0] - pos[0]) / dd, (bp[2] - pos[2]) / dd]; sp = 20; }
-      pos = [pos[0] + dir[0] * sp * 0.05, 1, pos[2] + dir[1] * sp * 0.05];
-      H.place(pos, [dir[0] * sp, 0, dir[1] * sp]);
+  // ram: the bots sit parked in their carts where they spawned (JF_BGN_PEACE=2), so the ram is the same every time: we
+  // stop 3.5 m inside one (between it and the middle), okay a boost, and charge straight out through it
+  await sleep(1600); // (the boost's cooldown)
+  const bp0 = bots.map((id) => [id, H.ppos.get(id)]).filter(([id, p]) => p && H.alive.get(id) && p[1] > 0.5)[0];
+  let ram = null, fell = null, pos = null;
+  if (bp0) {
+    const [vid, bp] = bp0, l = Math.hypot(bp[0], bp[2]) || 1, u = [bp[0] / l, bp[2] / l];
+    const stage = [bp[0] - u[0] * 3.5, 1, bp[2] - u[1] * 3.5];
+    pos = H.pos ? [H.pos[0], 1, H.pos[2]] : stage.slice();
+    for (let k = 0; k < 200; k++) { // drive there at cart speed (a jump of more than 3.5 m and the server says we left the cart)
+      const d = Math.hypot(stage[0] - pos[0], stage[2] - pos[2]);
+      if (d < 0.05) break;
+      const st = Math.min(d, 0.6);
+      pos = [pos[0] + (stage[0] - pos[0]) / d * st, 1, pos[2] + (stage[2] - pos[2]) / d * st];
+      H.place(pos, [(stage[0] - pos[0]) / d * 12, 0, (stage[2] - pos[2]) / d * 12]);
       await sleep(50);
-      if (boosted && Date.now() - t0 > 5000 && Math.random() < 0.02) boosted = false; // (missed: line up again)
     }
-    ram = H.evs('ram').filter((e) => e.a === H.id)[n0] || ram;
-    if (!ram) continue;
-    for (let k = 0; k < 60 && !fell; k++) { H.place(pos); await sleep(50); fell = H.evs('fell').find((e) => e.id === ram.b && e.by === H.id); }
+    for (let k = 0; k < 10; k++) { H.place(pos); await sleep(50); } // (stopped)
+    H.bg({ k: 'boost' });
+    await H.until(() => H.evs('boost').filter((e) => e.id === H.id).length >= 2, 1500);
+    for (let k = 0; k < 30 && !ram; k++) {
+      pos = [pos[0] + u[0] * 20 * 0.05, 1, pos[2] + u[1] * 20 * 0.05];
+      H.place(pos, [u[0] * 20, 0, u[1] * 20]);
+      await sleep(50);
+      ram = H.evs('ram').find((e) => e.a === H.id && e.b === vid) || null;
+    }
+    for (let k = 0; k < 60 && ram && !fell; k++) { H.place(pos); await sleep(50); fell = H.evs('fell').find((e) => e.id === ram.b) || null; }
   }
   ok(!!ram, `we rammed a bot (${ram ? ram.s + ' m/s' : 'no ram'})`);
   if (ram) {
     ok(H.msgs.some((m) => m.t === 'cart' && m.k === 'u' && m.r === 0 && m.o === ram.b), 'it got thrown out of its cart (the cart rolls on empty)');
-    ok(fell && fell.out === 0 && fell.x.lives[fell.seat] === 1, 'into the void: a life gone (1 left), and it\'s our knock-off');
+    ok(fell && fell.by === H.id && fell.out === 0 && fell.x.lives[fell.seat] === 1, 'into the void: a life gone (1 left), and it\'s our knock-off');
+    ok(ram.s >= 15, `a full-speed ram (${ram.s} m/s closing, boosted)`);
     ok(await H.until(() => new Set(H.msgs.filter((m) => m.t === 'cart' && m.r === ram.b).map((m) => m.id)).size >= 2, 6000), 'it respawned straight into a fresh cart');
     const kill = H.msgs.find((m) => m.t === 'kill' && m.v === ram.b && m.k === H.id);
     ok(kill && kill.w === 'void' && kill.via === 'cart', 'the kill feed says we price-checked it into the void');
@@ -181,16 +187,16 @@ async function partCarts(port) {
 
 // ---------------------------------------------------------------- bumper carts: bots-only, last cart standing
 async function partCartWin(port) {
-  const S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'carts', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '70' });
+  const S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'carts', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '150' }); // (a long clock: it has to end by last cart standing)
   const W = await client(port, 'watchC', OFF(5));
-  ok(await W.until(() => W.evs('res').length, 120000), 'a bots-only bumper carts game ended');
+  ok(await W.until(() => W.evs('res').length, 200000), 'a bots-only bumper carts game ended');
   const r = W.evs('res')[0], mgSt = W.sts.find((s) => s.ph === 'mg' && s.mg && s.mg.id === 'carts'), pay = new Map(r.pay);
   ok(W.evs('ram').some((e) => e.a && e.b) && W.evs('boost').length > 0, `bots rammed (${W.evs('ram').length}) and boosted (${W.evs('boost').length})`);
   ok(r.x.out.length === 3 && r.x.out.every((i) => r.x.falls[i] === 2), `three went into the void twice each (out: ${r.x.out.join(',')})`);
   ok(!r.x.out.includes(r.place[0]) && pay.get(r.place[0]) === 10, `the last cart standing (seat ${r.place[0]}) is 1st and paid 10`);
   ok(r.place.slice(1).every((i, k, a) => k === 0 || r.x.out.indexOf(a[k - 1]) > r.x.out.indexOf(i)), 'the rest by who lasted longest');
   const took = mgSt ? W.evs('res')[0].at - mgSt.at : 1e9;
-  ok(mgSt && took < 68000, `it ended before the clock (after ${Math.round(took / 1000)} of 70 s)`);
+  ok(mgSt && took < 148000, `it ended before the clock (after ${Math.round(took / 1000)} of 150 s)`);
   const errs = errorsIn(S.log());
   ok(!errs.length, 'no server errors' + (errs.length ? ': ' + errs.slice(0, 3).join(' | ') : ''));
   W.ws.close(); S.stop();
@@ -219,7 +225,7 @@ async function partPeace(port) {
 
 // ---------------------------------------------------------------- duck catch: two people, the server's judging
 async function partDucks(port) {
-  const S = await server(port, { JF_WATCH: '1', JF_LOBBY_WAIT: '1500', JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'duckcatch', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '100', JF_BGN_PEACE: '1' });
+  const S = await server(port, { JF_WATCH: '1', JF_LOBBY_WAIT: '1500', JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'duckcatch', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '100', JF_BGN_PEACE: '1', JF_BGN_NODUEL: '1' }); // (no duels: the two of us land in the round's duck catch together)
   const W = await client(port, 'watchK', { mode: 'bots', cfg: { lobby: 'bgn' } });
   const A = await client(port, 'alma', { mode: 'bots', cfg: { lobby: 'bgn' } });
   const B = await client(port, 'bert', { mode: 'bots', cfg: { lobby: 'bgn' } });
@@ -246,37 +252,43 @@ async function partDucks(port) {
     ok(e && e.by === A.id && e.air === 0 && e.v === (e.g ? 5 : 1), `off the floor: +${e && e.v}`);
   }
   // B: stand right under falling ducks, catch them in the air (+2, gold +5)
-  for (let k = 0; k < 4; k++) {
+  // (stand under the next fresh one, again and again: ducks come every 1-2 s, so wait for one rather than giving up)
+  const catchOne = async () => {
+    if (!await B.until(() => near(B, used).length, 8000)) return;
     const d = near(B, used)[0];
-    if (!d) { await sleep(400); continue; }
     used.add(d.id); hold.B = d.p.slice();
     await B.until(() => B.evs('duckx').some((e) => e.id === d.id), d.ms + 1500);
-  }
-  const airs = B.evs('duckx').filter((e) => e.by === B.id && e.air);
+  };
+  const airN = () => now0().filter((e) => e.k === 'duckx' && e.by === B.id && e.air).length;
+  for (let k = 0; k < 12 && airN() < 3; k++) await catchOne();
+  if (!B.evs('duckx').some((e) => e.by === B.id && e.air)) console.log('   (B: alive', B.alive.get(B.id), 'q', B.q, 'server pos', JSON.stringify(B.ppos.get(B.id)), 'hold', JSON.stringify(hold.B), 'ph', B.st.ph, B.st.mg && B.st.mg.fmt, 'kills of B', B.msgs.filter((m) => m.t === 'kill' && m.v === B.id).length, 'spawns', B.msgs.filter((m) => m.t === 'spawn').length, ')');
+  const airs = now0().filter((e) => e.k === 'duckx' && e.by === B.id && e.air);
   ok(airs.length >= 2 && airs.every((e) => e.v === (e.g ? 5 : 2)), `caught in the air: ${airs.map((e) => '+' + e.v).join(' ')}`);
   ok(pileB() === sum(now0().filter((e) => e.k === 'duckx' && e.by === B.id).map((e) => e.v)) - sum(now0().filter((e) => (e.k === 'slap' || e.k === 'curse') && e.seat === sB).map((e) => e.n)), `B's pile is what B caught, minus what B lost (${pileB()})`);
   // A slaps B: 3 ducks fly out
   const before = pileB(), bp = B.pos.slice();
   hold.A = [bp[0] + 1, bp[1], bp[2]];
   await sleep(300);
+  const a0 = A.ev.length, slapOf = () => A.ev.slice(a0).find((e) => e.k === 'slap' && e.a === A.id && e.b === B.id); // (only this slap: not one from an earlier game)
   A.send({ t: 'hit', w: 'slapper', to: B.id, d: [-1, 0, 0] });
-  ok(await A.until(() => A.evs('slap').some((e) => e.a === A.id && e.b === B.id), 2000), 'a slap lands');
-  const sl = A.evs('slap').find((e) => e.a === A.id);
+  ok(await A.until(() => slapOf(), 2000), 'a slap lands');
+  const sl = slapOf();
   ok(sl.n === Math.min(3, sl.pile + sl.n) && sl.n > 0, `it knocked ${sl.n} ducks loose (${sl.pile + sl.n} -> ${sl.pile}; ${before} a moment before)`);
   await sleep(150);
   ok(A.evs('duck').filter((e) => e.one && A.ev.indexOf(e) > A.ev.indexOf(sl)).length === Math.min(sl.n, 4), 'they pop out round B as ducks worth 1');
   ok(!A.msgs.some((m) => m.t === 'dmg' && m.w === 'slapper'), 'slaps don\'t hurt');
   // the cursed duck: B stands where it lands, loses half
   hold.A = null;
-  for (let k = 0; k < 4 && pileB() < 4; k++) { const d = near(B, used)[0]; if (!d) { await sleep(400); continue; } used.add(d.id); hold.B = d.p.slice(); await B.until(() => B.evs('duckx').some((e) => e.id === d.id), d.ms + 1500); }
+  for (let k = 0; k < 12 && pileB() < 4; k++) await catchOne();
   let cu = null, had = 0; // (a cursed duck can stick to someone else on its way down: up to 5 of them)
   for (let k = 0; k < 5 && !cu; k++) {
     const nc = B.evs('cursed').length;
     if (!await B.until(() => B.evs('cursed').length > nc, 14000)) break;
-    const cz = B.evs('cursed').pop(); had = pileB();
+    const cz = B.evs('cursed').pop(), i0 = B.ev.length, curseOf = () => B.ev.slice(i0).find((e) => e.k === 'curse' && e.id === B.id) || null; // (this cursed duck's, not an earlier one that caught B on the way)
+    had = pileB();
     hold.B = cz.p.slice();
-    await B.until(() => B.evs('curse').some((e) => e.id === B.id), cz.ms + 4000);
-    cu = B.evs('curse').find((e) => e.id === B.id) || null;
+    await B.until(() => curseOf(), cz.ms + 4000);
+    cu = curseOf();
   }
   ok(!!cu, 'a cursed duck came down on B');
   ok(cu && cu.n === Math.floor((cu.pile + cu.n) / 2) && cu.pile + cu.n >= 2, `the cursed duck halved B's pile (${cu && cu.pile + cu.n} -> ${cu && cu.pile}; ${had} when it was spotted)`);

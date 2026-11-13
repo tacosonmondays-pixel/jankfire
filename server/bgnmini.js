@@ -10,7 +10,7 @@
 // installBgnMini(Room, H) adds the bgm* methods and wraps a few Room methods; the wraps only act while one of these is on.
 // room.bgm = this minigame's state (null otherwise). piles, falls, outs and damage are by seat, so a bot that takes a
 // seat over mid-game keeps them. (room.js imports this through server/bgn.js: browser-safe, shared/ imports only)
-import { BGN_MINI, BGN_NAMES } from '../shared/bgn.js';
+import { BGN_MINI, BGN_NAMES, BGN_MINIS } from '../shared/bgn.js';
 import { CART } from '../shared/primaries.js';
 import { MECH, mechRoom } from '../shared/mech.js';
 import { BODY } from '../shared/bodyhp.js';
@@ -19,7 +19,7 @@ import { TEAMS, DUCKRAIN } from '../shared/modes.js';
 import { raycast, movePlayer } from '../shared/physics.js';
 
 const E = (typeof process !== 'undefined' && process.env) || {};
-const K = { peace: !!E.JF_BGN_PEACE }; // test knob: passive bots (carts: they drive about and never ram, do they keep on the box? ducks: no errands, no slaps)
+const K = { peace: E.JF_BGN_PEACE ? Number(E.JF_BGN_PEACE) || 1 : 0 }; // test knob: passive bots (carts: they drive about and never ram, do they keep on the box? ducks: no errands, no slaps). 2: carts sit parked where they spawned (a ram test that doesn't depend on where they wandered)
 export const BGM_KNOBS = K;
 const CM = BGN_MINI.carts, DK = BGN_MINI.ducks, BS = BGN_MINI.boss;
 const now = () => Date.now();
@@ -219,6 +219,8 @@ export function installBgnMini(Room, H) {
       }
       const px = b.pos[0] + v[0] * 0.65, pz = b.pos[2] + v[2] * 0.65, out = Math.abs(px - S.cx) > sx || Math.abs(pz - S.cz) > sz; // where it'll be in a moment
       if (out) want = [S.cx + (b.pos[0] - S.cx) * 0.3, S.cz + (b.pos[2] - S.cz) * 0.3];
+      const park = K.peace >= 2;
+      if (park) want = [b.pos[0] - Math.sin(ai.ry), b.pos[2] - Math.cos(ai.ry)]; // (parked: no steering)
       const back = n < (ai.backT || 0);
       const wy = Math.atan2(-(want[0] - b.pos[0]), -(want[1] - b.pos[2])), off = wrapA(wy - ai.ry);
       const turn = R.turn * (ai.diff === 'easy' ? 0.8 : ai.diff === 'hard' ? 1.15 : 1) * (back ? -0.8 : 1);
@@ -229,7 +231,7 @@ export function installBgnMini(Room, H) {
       let fw = 0;
       if (ai.cg) {
         const outward = (b.pos[0] - S.cx) * v[0] + (b.pos[2] - S.cz) * v[2] > 0;
-        fw = back ? -1 : out && outward && along > 1.5 ? -1 : Math.abs(off) > 2.2 ? 0 : 1; // heading off the edge: feet down. facing the wrong way: turn first
+        fw = park ? 0 : back ? -1 : out && outward && along > 1.5 ? -1 : Math.abs(off) > 2.2 ? 0 : 1; // heading off the edge: feet down. facing the wrong way: turn first
         if (fw > 0 && along < R.top) along = Math.min(R.top, along + R.acc * dt);
         if (fw < 0) along = Math.max(-4, along - R.acc * 1.4 * dt);
         if (!fw) along -= Math.sign(along) * Math.min(Math.abs(along), R.fric * dt);
@@ -404,26 +406,36 @@ export function installBgnMini(Room, H) {
       } else if (S.k === 'boss') {
         const b = this.players.get(S.boss);
         if (n - S.barT > BS.bar) { const hp = b && b.body ? Math.max(0, Math.round(b.body.hp)) : 0; S.barT = n; if (hp !== S.lastHp) { S.lastHp = hp; this.bgnEv('boss', { id: S.boss, hp, max: S.max }); } }
-        if (!S.down && (!b || (!b.mech && n - S.t0 > 3000))) this.bgmBossDown(null); // (no mech: on foot, a kill counts as a break)
+        if (!S.down && !b) this.bgmBossDown(null, 'gone');
+        else if (!S.down && b.alive && !b.mech && n - (S.lostT ||= n) > 1000) { // out of his mech some other way: back in (what armour he had left), else it's over
+          const hp = S.lastHp; S.lostT = 0;
+          console.log(`[bgn] ${this.id}: the boss lost his mech without it breaking: back in`);
+          if (this.mechSpawnIn(b, S.mg && BGN_MINIS[S.mg.id] ? BGN_MINIS[S.mg.id].boss : 'nightshift', S.mul) && b.body) { b.body.hp = Math.max(1, hp); this.bodyFlush(b, true); } else this.bgmBossDown(null, 'no mech');
+        } else if (b.mech) S.lostT = 0; // (no mech: on foot, a kill counts as a break)
         if (S.down && n - S.down > BS.down) this.endRound();
       }
     },
-    // the boss went over the side in his mech: a crane puts him back where he started. if someone knocked him off (hit in
-    // the last 2.5 s by a real shove), the splash costs him BS.splash of his armour, credited to them. false = that broke it (BOSS DOWN)
-    bgmBossBack(b, by) {
-      const S = this.bgm, pushed = by && by !== b && now() - (b.knockT || 0) < 2500, cut = pushed ? Math.round(S.max * BS.splash) : 0; // (only a push costs him: walking off on his own doesn't)
-      const s = pushed ? this.bgnSeatOf(by) : null;
-      if (s && b.body) S.dmg[s.i] = (S.dmg[s.i] || 0) + Math.min(cut, Math.max(0, b.body.hp)); // (the push that finishes him counts for the MVP too)
-      if (!b.body || b.body.hp <= cut || !S.home) return false;
+    // something tried to kill the boss straight through his mech (the void, a failed pop quiz, a frozen shatter, a t-bag:
+    // they kill the pilot outright, armour or not). his armour decides a boss fight, so: the void = a crane puts him back
+    // where he started; anything else = he shrugs it off. it costs him BS.splash of his armour if someone did it to him
+    // (the void: only a real shove in the last 2.5 s), credited to them. false = that broke it (a normal death: BOSS DOWN)
+    bgmBossSave(b, by, w) {
+      const S = this.bgm, fall = w === 'void';
+      const blame = by && by !== b && (!fall || now() - (b.knockT || 0) < 2500) ? by : null, cut = blame ? Math.round(S.max * BS.splash) : 0;
+      const s = blame ? this.bgnSeatOf(blame) : null;
+      if (s && b.body) S.dmg[s.i] = (S.dmg[s.i] || 0) + Math.min(cut, Math.max(0, b.body.hp)); // (the one that finishes him counts for the MVP too)
+      if (!b.body || b.body.hp <= cut || (fall && !S.home)) return false;
       b.body.hp -= cut;
-      b.pos = S.home.slice(); b.vel = [0, 0, 0]; b.onGround = false;
+      if (fall) { b.pos = S.home.slice(); b.vel = [0, 0, 0]; b.onGround = false; }
       this.bodyFlush(b, true);
-      this.bgnEv('bossback', { id: b.id, p: b.pos.map(r2), cut });
+      this.bgnEv('bossback', { id: b.id, p: b.pos.map(r2), cut, w });
       return true;
     },
-    bgmBossDown(by) {
+    bgmBossDown(by, why) {
       const S = this.bgm;
       if (!S || S.down) return;
+      const b = this.players.get(S.boss);
+      console.log(`[bgn] ${this.id}: boss down (${why}) by ${by ? by.name : 'nobody'}, armour ${b && b.body ? Math.round(b.body.hp) : '-'}, at ${b ? b.pos.map(Math.round).join(',') : '-'}`);
       S.down = now(); S.lastHp = 0;
       this.bgnEv('bossdown', { id: S.boss, by: by ? by.id : 0, seat: by && this.bgnSeatOf(by) ? this.bgnSeatOf(by).i : -1 });
     },
@@ -454,18 +466,18 @@ export function installBgnMini(Room, H) {
     const S = this.bgm, was = t.alive, n = now();
     const one = S && S.k === 'bigguy' ? this.bgnOne() : null, k0 = one ? one.kills : 0;
     const by = w === 'void' || w === 'reset' ? (t.lastAttacker && n - (t.lastAttackT || 0) < 10000 ? this.players.get(t.lastAttacker) || null : null) : attacker; // (who threw them off)
-    if (S && S.k === 'boss' && t.id === S.boss && w === 'void' && t.mech && !S.down && this.bgmBossBack(t, by)) return; // he fell off: back up on the deck, minus some armour
+    if (S && S.k === 'boss' && t.id === S.boss && t.alive && t.mech && !S.down && this.bgmBossSave(t, by, w)) return; // only his armour breaking ends it (bgmBossSave)
     base.call(this, t, attacker, w);
     if (!S || !was || t.alive || !this.round || this.round.over) return;
     if (S.k === 'carts') this.bgmFell(t, by);
     else if (S.k === 'ducks' && w === 'duck') this.bgmCurse(t);
-    else if (S.k === 'boss' && t.id === S.boss) this.bgmBossDown(by);
+    else if (S.k === 'boss' && t.id === S.boss) this.bgmBossDown(by, 'killed: ' + w);
     else if (one && one.kills > k0 && t !== one && this.teamsOn() && t.team !== one.team) this.score[one.team] += BGN_MINI.bigguy.mul - 1; // the big guy's kills count x3
   });
   // the boss's mech blowing up (armour gone, or died in it) = BOSS DOWN
   wrap(P, 'mechExit', function (base, p, why, by) {
     const S = this.bgm;
-    if (S && S.k === 'boss' && p.id === S.boss && why === 'boom') this.bgmBossDown(by);
+    if (S && S.k === 'boss' && p.id === S.boss && why === 'boom') this.bgmBossDown(by, 'mech blew up');
     return base.call(this, p, why, by);
   });
   // the boss's damage, per seat (the MVP): what really came off his armour
@@ -486,8 +498,8 @@ export function installBgnMini(Room, H) {
     if (S.k === 'boss') return Math.round(S.dmg[s.i] || 0);
     return base.call(this, p);
   });
-  // the boss doesn't earn killstreaks (a rig on top of his mech was a bit much)
-  wrap(P, 'rigBotEarn', function (base, b) { if (b.bgBoss) return; return base.call(this, b); });
+  // the boss doesn't earn killstreaks (a rig on top of his mech was a bit much), and in the big guy nobody else earns the rig
+  wrap(P, 'rigBotEarn', function (base, b) { if (b.bgBoss || (this.bgm && this.bgm.k === 'bigguy' && this.bgnOne() !== b)) return; return base.call(this, b); }); // (the big guy: only the leader is in a rig)
   wrap(P, 'mechBotEarn', function (base, b) { if (b.bgBoss) return; return base.call(this, b); });
   // a boss is no seat: he's always team 2
   wrap(P, 'bgnSide', function (base, p) {

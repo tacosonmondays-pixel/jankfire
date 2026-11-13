@@ -7,6 +7,7 @@ import { TEAMS, GAMES, BOMB, siteAt, canDefuse } from '/shared/modes.js';
 import { M } from './models.js';
 import { K } from './keys.js';
 import { zmCanUse } from './zombies.js';
+import { miniTeamText } from './bgnmini.js'; // board game night's bosses + the big guy: their own team bar line
 
 const $ = (id) => document.getElementById(id);
 let sites = [], bomb = null, carrierMark = null, mapId = null;
@@ -121,7 +122,7 @@ export function updateObjectives(dt, now, r, myPos) {
     bar.children[2].textContent = `${sc[1]} ${TEAMS[2].name}`;
     bar.children[0].classList.toggle('mine', G.myTeam === 1);
     bar.children[2].classList.toggle('mine', G.myTeam === 2);
-    bar.children[1].textContent = isBomb ? `ROUND ${r.bomb.n} / ${BOMB.wins * 2 - 1} · ${G.myTeam === r.bomb.att ? 'ATTACK' : 'DEFEND'} · first to ${BOMB.wins}` : `${GAMES[game].name.toUpperCase()} · to ${r.target}${r.over ? '' : ' · ' + fmt(r.left)}`;
+    bar.children[1].textContent = miniTeamText(r, fmt) ?? (isBomb ? `ROUND ${r.bomb.n} / ${BOMB.wins * 2 - 1} · ${G.myTeam === r.bomb.att ? 'ATTACK' : 'DEFEND'} · first to ${BOMB.wins}` : `${GAMES[game].name.toUpperCase()} · to ${r.target}${r.over ? '' : ' · ' + fmt(r.left)}`);
   }
   let line = '';
   if (isBomb) {

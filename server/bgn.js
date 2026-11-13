@@ -29,6 +29,7 @@ const K = {
   price: num(E.JF_BGN_PRICE) > 0 ? Math.floor(num(E.JF_BGN_PRICE)) : 0,
   round: num(E.JF_BGN_ROUND) > 1 ? Math.floor(num(E.JF_BGN_ROUND)) : 1, // start at this round
   botDuel: !!E.JF_BGN_BOTDUEL, // bot vs bot duels get played out
+  noDuel: !!E.JF_BGN_NODUEL, // every duel is settled on the board, people's too (tests that want the round's minigame, not a duel first)
   seed: num(E.JF_BGN_SEED) > 0 ? Math.floor(num(E.JF_BGN_SEED)) : 0, // seeded dice and board picks
   bakery: Number.isInteger(num(E.JF_BGN_BAKERY)) ? num(E.JF_BGN_BAKERY) : null, // the bakery starts on this plate
 };
@@ -472,7 +473,7 @@ export function installBgn(Room, H) {
       this.bgnCall('duel', { seat: a.i, to: b.i });
       this.bgnSay('duel');
       const settle = (win, ms, r) => { this.bgnDuelPay(a, b, stake, win, r); this.bgnState(); this.bgnLater(ms, cont); };
-      if (a.bot && b.bot && !K.botDuel) { // nobody's watching it up close: settled on the board ("they settled it outside")
+      if ((a.bot && b.bot && !K.botDuel) || K.noDuel) { // nobody's watching it up close: settled on the board ("they settled it outside")
         this.bgnState();
         const pa = 0.5 + (a.coupons < b.coupons ? 0.05 : a.coupons > b.coupons ? -0.05 : 0); // a weighted coin: the poorer one gets a little luck
         this.bgnLater(BGN.botDuelMs, () => { this.bgnCall('settled'); settle(B.rng() < pa ? a : b, BGN.landMs); });

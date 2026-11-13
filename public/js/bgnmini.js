@@ -19,6 +19,7 @@ import { BOXES } from '/shared/map.js';
 import { boardCart } from './primaries.js';
 import { BGN_NAMES as N, BGN_MINI, BGN_MINIS } from '/shared/bgn.js';
 import { CART } from '/shared/primaries.js';
+import { GAMES } from '/shared/modes.js';
 
 const CM = BGN_MINI.carts;
 const S = { B: null, x: null, ducks: new Map(), out: false, outT: 0, boostT: -1e9, orbit: 0, dom: null, key: '', piles: {} };
@@ -75,7 +76,7 @@ const EV = {
   cursed(m) { if (playing() && ME.alive && Math.hypot(m.p[0] - ME.pos[0], m.p[2] - ME.pos[2]) < 10) hud.msg('CURSED DUCK INBOUND', 1.4, 'lava'); },
   boss(m) { if (S.x && S.x.k === 'boss') { S.x.hp = m.hp; S.x.max = m.max; } },
   bossdown(m) { if (S.x) { S.x.down = 1; S.x.hp = 0; } const b = BGN_NAMES_BOSS(); hud.msg(b ? b.down : N.call.bossDown, 2.6, 'brag'); sfx.bgmBossDown(); G.shake = Math.max(G.shake || 0, 1); },
-  bossback(m) { if (S.x) S.x.hp = Math.max(0, (S.x.hp || 0) - (m.cut || 0)); if (playing()) hud.msg(m.cut ? `SPLASH! -${m.cut} ARMOUR` : 'HE FELL IN. A CRANE PUT HIM BACK', 1.6, 'brag'); },
+  bossback(m) { if (S.x) S.x.hp = Math.max(0, (S.x.hp || 0) - (m.cut || 0)); if (playing()) hud.msg(m.w !== 'void' ? `HE SHRUGGED IT OFF. -${m.cut} ARMOUR` : m.cut ? `SPLASH! -${m.cut} ARMOUR` : 'HE FELL IN. A CRANE PUT HIM BACK', 1.6, 'brag'); },
   rig(m) { if (!playing()) return; hud.msg(m.id === G.myId ? 'YOU ARE THE BIG GUY' : 'THE BIG GUY IS BACK', 1.6, 'brag'); },
 };
 const BGN_NAMES_BOSS = () => (S.B && S.B.mg ? N.boss[S.B.mg.id] : null);
@@ -248,9 +249,15 @@ export const miniHideVM = () => kind() === 'carts' && !!ME.ride && ME.alive;
 // main.js's round line: the minigame's name and the clock (null = the usual)
 export function miniRoundText(r, clock) {
   const k = kind();
-  if (!k || !r || r.over || !S.B.mg) return null;
+  if (!k || !r || r.over || !S.B.mg || (GAMES[r.game] && GAMES[r.game].teams)) return null; // (team games: the team bar says it, miniTeamText)
   const nm = (BGN_MINIS[S.B.mg.id] || {}).name || '';
   return `${S.B.mg.sd ? N.call.sd + ' · ' : ''}${nm} · ${clock(r.left)}`;
+}
+// objective.js's team bar (the bosses, the big guy): the minigame, its real limit (if it has one) and the clock, not "TEAM DEATHMATCH · to 999"
+export function miniTeamText(r, clock) {
+  const k = kind(), def = S.B && S.B.mg && BGN_MINIS[S.B.mg.id];
+  if (!k || !r || !def) return null;
+  return `${def.name}${def.target && def.target < 999 ? ` · to ${r.target}` : ''}${r.over ? '' : ' · ' + clock(r.left)}`;
 }
 // main.js's kill feed: bumper carts' void lines. null = the usual
 export function miniFeed(m, kn, kc, vn, vc) {
