@@ -9,7 +9,7 @@ import '../shared/royale.js';
 import { mapsFor } from '../shared/modes.js';
 import { navSteer } from '../shared/nav.js';
 import { movePlayer, raycast } from '../shared/physics.js';
-import { islandH, PLAN, SEA, WADE, KILL_Y, grid } from '../shared/battleisland.js';
+import { islandH, PLAN, SEA, WADE, KILL_Y, grid, PK } from '../shared/battleisland.js';
 import { spawnSync } from 'node:child_process';
 
 const m = MAPS.battleisland, T = m.boxes.terrain;
@@ -106,12 +106,13 @@ test('Battle Island: Dead Air\'s Blender model is built to exactly its boxes (me
 test('Port Jankton: every model is built to its boxes, everything stands on the town (not under it)', async () => {
   const fs = await import('node:fs');
   const metaOf = (id) => { const buf = fs.readFileSync(new URL(`../public/models/p_${id}.glb`, import.meta.url)), len = buf.readUInt32LE(12); const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')); return JSON.parse(gl.nodes.find((n) => n.extras && n.extras.jf).extras.jf); };
-  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler', 'pj_bait', 'pj_cod'];
+  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler', 'pj_bait', 'pj_cod', 'pj_park', 'bi_blossom', 'bi_leafy'];
   for (const id of ids) {
     const ps = m.boxes.props.filter((q) => q.id === id), meta = metaOf(id);
     assert.ok(ps.length, id + ' is placed');
     for (const p of ps) for (let i = 0; i < 3; i++) { assert.ok(Math.abs(meta.box[0][i] - p.lo[i]) < 0.01, `${id} lo[${i}] ${meta.box[0][i]} vs ${p.lo[i]}`); assert.ok(Math.abs(meta.box[1][i] - p.hi[i]) < 0.01, `${id} hi[${i}] ${meta.box[1][i]} vs ${p.hi[i]}`); }
     for (const b of m.boxes.filter((q) => q.pv === id)) assert.ok(b.min[1] > (id === 'pj_trawler' || id === 'pj_quay' ? -1.45 : 1.25), `${id}: a box at y ${b.min[1].toFixed(2)}`);
+    for (const p of ps) if (p.f !== undefined) for (const i of [0, 2]) assert.ok(Math.abs(p.lo[i] + p.hi[i]) < 0.01, `${id}: spun round its middle (lo ${p.lo[i]}, hi ${p.hi[i]})`); // (a spun prop is fitted round its own origin)
   }
 });
 
@@ -131,4 +132,30 @@ test('Port Jankton main street: in at each shop\'s street door, out its back doo
     assert.ok(dir * (pos[0] - x1) > 0 && Math.abs(pos[2] - 120) < 0.5 && Math.abs(pos[1] - 1.6) < 0.2, 'through the shop and out the back: ' + pos.map((v) => v.toFixed(1)));
   }
   for (const x of [12, 44]) { const hit = raycast([x - 2, 20, 118], [0, -1, 0], 30, m.boxes); assert.ok(hit && Math.abs(20 - hit.t - 6.3) < 0.05, 'stand on the roof at ' + x); }
+});
+
+test('Petal Park: walk the paths from the gate to the fountain and out each side; hedges, trunks and the basin block; the trees stand on the ground', () => {
+  const [cx, cz] = PK.c, y = 1.6;
+  const walk = (from, dir, secs) => { const pos = [from[0], y + 0.05, from[1]], vel = [0, 0, 0]; let g = true; for (let t = 0; t < secs; t += 1 / 30) { vel[0] = dir[0] * 7; vel[2] = dir[1] * 7; g = sim(pos, vel, g); } return pos; };
+  // in through the gate on the west path, over the fountain's rim (a step) into the water, up to the pedestal
+  const p = walk([cx - 16, cz], [1, 0], 2.6);
+  assert.ok(p[0] > cx - 2 && p[0] < cx - PK.fountain.ped && Math.abs(p[2] - cz) < 0.3 && p[1] > y, 'gate -> the fountain, stopped by the pedestal: ' + p.map((v) => v.toFixed(1)));
+  // down each path from the plaza's edge out of the park: nothing in the way
+  for (const [sx, sz, dx, dz] of [[cx + 5.5, cz, 1, 0], [cx, cz - 5.5, 0, -1], [cx, cz + 5.5, 0, 1], [cx - 5.5, cz, -1, 0]]) {
+    const q = walk([sx, sz], [dx, dz], 1.6);
+    assert.ok(Math.hypot(q[0] - sx, q[2] - sz) > 10 && Math.abs(q[1] - y) < 0.15, `out along the path toward ${dx},${dz}: ` + q.map((v) => v.toFixed(1)));
+  }
+  // a hedge (the west path's north one), a cherry tree's trunk and the basin's rim stop you
+  const h = walk([cx - 9, cz - 5], [0, 1], 1.5); assert.ok(h[2] < cz - 2.3 && h[2] > cz - 3, 'the hedge stops you: ' + h[2].toFixed(2));
+  const [bx, bz] = PK.blossoms[0], tr = walk([cx + bx - 3, cz + bz], [1, 0], 1.5); assert.ok(tr[0] < cx + bx - 0.25, 'the cherry trunk stops you: ' + tr[0].toFixed(2));
+  // bullets stop in a crown, and nothing hangs in the air: every tree's trunk box stands on the ground
+  const c = PK.blossoms[1]; assert.ok(raycast([cx + c[0] - 6, y + 4.3, cz + c[1]], [1, 0, 0], 12, m.boxes), 'the cherry crown stops a shot');
+  for (const id of ['bi_blossom', 'bi_leafy']) for (const q of m.boxes.props.filter((o) => o.id === id)) {
+    const g = ground(q.a[0], q.a[2]); assert.ok(q.a[1] <= g + 0.01 && q.a[1] > g - 0.4, `${id} at ${q.a[0]},${q.a[2]}: foot ${q.a[1].toFixed(2)}, ground ${g.toFixed(2)}`);
+  }
+  // the mech drop pad (28, 82) stays clear, no energy cell lands in the park's boxes
+  for (const b of m.boxes.filter((q) => q.pv === 'pj_park' || q.pv === 'bi_blossom' || q.pv === 'bi_leafy')) {
+    assert.ok(b.max[0] < 28 - 8 || b.min[0] > 28 + 8 || b.max[2] < 82 - 8 || b.min[2] > 82 + 8, 'clear of the mech drop pad');
+    for (const [x, , z] of m.royale.cells) assert.ok(!(x > b.min[0] - 1 && x < b.max[0] + 1 && z > b.min[2] - 1 && z < b.max[2] + 1), `cell ${x.toFixed(1)},${z.toFixed(1)} clear of ${b.pv}`);
+  }
 });

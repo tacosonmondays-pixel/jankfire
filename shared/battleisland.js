@@ -147,7 +147,7 @@ import { resort } from './bi_resort.js';
 import { shapeGround } from './terrain.js';
 import { buildNav } from './nav.js';
 import { scrapMart } from './bi_scrapmart.js';
-import { propOf } from './propcap.js';
+import { propOf, spinAt } from './propcap.js';
 import { outOfBounds } from './bounds.js';
 import { WIP_ON } from './modes.js';
 import { wreck } from './bi_wreck.js';
@@ -316,6 +316,52 @@ function pjStreet(B) {
   }
 }
 
+// PETAL PARK: Port Jankton's cherry-blossom park, in the flat pocket between the main drag and the hill (the ring road
+// south of it). a pale paved plaza round a tiled fountain, terracotta paths out to the four edges, hedge planters and
+// flower beds, benches, lamps, the PETAL PARK gate on the west path, and a sign that says NO CLIMBING THE TREES (YOU
+// WILL). one Blender model over all these boxes (tools/blender/make_bipark.py, p_pj_park: the paving has no box, it's a
+// few cm of paint over the grass), the cherry trees and the leafy ones their own props on top. PK = the numbers the
+// models are built to, in the park's frame (x east, z south, the plaza's middle at c); BT = each tree's boxes: the trunk,
+// and two crossed bars in the crown (you can grapple it, bullets stop in it; each bar under 1.2 m across, so no loot up there)
+export const PK = { c: [63, 94], hedge: 1.1, bed: 0.95,
+  planters: [[-4.8, -4.8, -3.3, -3.3, 0], [3.3, -4.8, 4.8, -3.3, 0], [-4.8, 3.3, -3.3, 4.8, 0], [3.3, 3.3, 4.8, 4.8, 0], // x0 z0 x1 z1, 0 = flower bed, 1 = hedge
+    [-11.6, -2.35, -6.2, -1.55, 1], [-11.6, 1.55, -6.2, 2.35, 1], [-2.35, 6.2, -1.55, 10.2, 1], [1.55, 6.2, 2.35, 10.2, 1]],
+  benches: [[-2.4, -4.35, 0], [4.35, -2.4, 1], [2.4, 4.35, 2], [-4.35, 2.4, 3]], bench: [1.6, 0.55, 0.5, 0.12, 0.95], // x z facing (0 +z, 1 -x, 2 -z, 3 +x); length, depth, seat top, back thickness, back top
+  lamps: [[-6.3, -1.5], [6.3, 1.5], [-1.5, 6.3]], lampT: 0.12, lampH: 3.6,
+  fountain: { r: 1.7, rim: 0.3, h: 0.55, floor: 0.12, ped: 0.25, top: 1.9 },
+  arch: { x: -13, z0: 1.75, z1: 2.35, t: 0.3, h: 4.3, hz: 2.9, h0: 3.0, h1: 4.8 }, sign: { x: -11.68, z0: -2.55, z1: -1.5, y0: 1.22, y1: 1.8 },
+  blossoms: [[-8, -6.5], [7.5, -7], [-7.5, 7], [8, 6.5], [11, -3.2]], leafy: [[-11, -8.5], [11.5, 8.5]], // in the park's frame
+  hill: [[80.5, 86.5], [84, 95.5], [82, 103.5]] }; // leafy trees at the hill's foot, east of it (world x, z)
+export const BT = { blossom: { t: 0.3, th: 3.4, bl: 1.3, bw: 0.55, top: 5.3 }, leafy: { t: 0.35, th: 4.0, bl: 1.5, bw: 0.55, top: 6.3 } };
+function pjPark(B) {
+  const y = PJ.y, S = { still: 1 }, [cx, cz] = PK.c;
+  const A = (x0, y0, z0, x1, y1, z1, m) => B.add(cx + x0, y + y0, cz + z0, cx + x1, y + y1, cz + z1, m, S);
+  propOf('pj_park', [cx, y, cz], 0, () => {
+    for (const [x0, z0, x1, z1, k] of PK.planters) A(x0, 0, z0, x1, k ? PK.hedge : PK.bed, z1, 'hedge');
+    const [L, D, st, bt, bh] = PK.bench, turn = [(a, b) => [a, b], (a, b) => [-b, a], (a, b) => [-a, -b], (a, b) => [b, -a]]; // (a along the seat, b to its front: as three turns it)
+    for (const [x, z, f] of PK.benches) for (const [a0, b0, a1, b1, y0, y1] of [[-L / 2, -D / 2, L / 2, D / 2, 0, st], [-L / 2, -D / 2, L / 2, -D / 2 + bt, st, bh]]) {
+      const p = [turn[f](a0, b0), turn[f](a1, b1)];
+      A(x + Math.min(p[0][0], p[1][0]), y0, z + Math.min(p[0][1], p[1][1]), x + Math.max(p[0][0], p[1][0]), y1, z + Math.max(p[0][1], p[1][1]), 'wood');
+    }
+    for (const [x, z] of PK.lamps) A(x - PK.lampT, 0, z - PK.lampT, x + PK.lampT, PK.lampH, z + PK.lampT, 'metal');
+    const F = PK.fountain, r = F.r, w = F.rim; // the basin's rim all round (step up, wade in), its floor, the pedestal
+    A(-r, 0, -r, r, F.h, -r + w, 'tile'); A(-r, 0, r - w, r, F.h, r, 'tile'); A(-r, 0, -r + w, -r + w, F.h, r - w, 'tile'); A(r - w, 0, -r + w, r, F.h, r - w, 'tile');
+    A(-r + w, 0, -r + w, r - w, F.floor, r - w, 'tile'); A(-F.ped, 0, -F.ped, F.ped, F.top, F.ped, 'white');
+    const G = PK.arch; // the gate: two pillars, the board and lintel over the path (3 m clear under it)
+    for (const s of [-1, 1]) A(G.x - G.t, 0, Math.min(s * G.z0, s * G.z1), G.x + G.t, G.h, Math.max(s * G.z0, s * G.z1), 'pink');
+    A(G.x - G.t + 0.05, G.h0, -G.hz, G.x + G.t - 0.05, G.h1, G.hz, 'pink');
+    const g = PK.sign; A(g.x - 0.05, g.y0, g.z0, g.x + 0.05, g.y1, g.z1, 'white');
+  });
+  const tree = (id, x, z, y0) => { const b = BT[id]; propOf('bi_' + id, [x, y0, z], 0, () => { // (spun per copy round its trunk: the boxes stay put)
+    const L = (x0, ya, z0, x1, yb, z1, m) => B.add(x + x0, y0 + ya, z + z0, x + x1, y0 + yb, z + z1, m, S);
+    L(-b.t, 0, -b.t, b.t, b.th, b.t, 'wood');
+    L(-b.bl, b.th, -b.bw, b.bl, b.top, b.bw, id === 'leafy' ? 'leaves' : 'blossom'); L(-b.bw, b.th + 0.05, -b.bl, b.bw, b.top - 0.05, b.bl, id === 'leafy' ? 'leaves' : 'blossom');
+  }, { spin: spinAt(x, z) || 1e-6 }); };
+  for (const [x, z] of PK.blossoms) tree('blossom', cx + x, cz + z, y);
+  for (const [x, z] of PK.leafy) tree('leafy', cx + x, cz + z, y);
+  for (const [x, z] of PK.hill) { const G = grid(), t = BT.leafy.t; tree('leafy', x, z, Math.min(G.at(x - t, z - t), G.at(x + t, z - t), G.at(x - t, z + t), G.at(x + t, z + t)) - 0.05); } // (on the slope: the trunk's low corner, a little sunk)
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = grid();
@@ -340,7 +386,7 @@ function battleIsland() {
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   wreck(B); // Return to Sender (shared/bi_wreck.js)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
-  portJankton(B); pjStreet(B);
+  portJankton(B); pjStreet(B); pjPark(B);
   scrapMart(B); // Scrap Mart (shared/bi_scrapmart.js)
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
