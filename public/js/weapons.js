@@ -44,6 +44,7 @@ import { tacOn, tacShot, tacKick, tacFrame, tacZone } from './tactical.js'; // P
 import { sdRow, sdRate } from '/shared/sdgun.js'; // S&D: each gun's first-shot spread (hip / sights)
 import { inSprayRange, sprayHole } from './sprayrange.js'; // Training's spray range: S&D gunplay for S&D guns there
 import { carRay, carHit, carSwing } from './traffic.js'; // cars stop bullets (and take the damage)
+import { emptyMechRay, emptyMechSwing } from './mechempty.js'; // so does an enemy's empty mech
 
 export const W = {
   slots: [DEFAULT_LOADOUT.primary, DEFAULT_LOADOUT.secondary, DEFAULT_LOADOUT.melee],
@@ -804,7 +805,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   W.lastShotT = now;
   if (w.fanHammer && models[id]) applyTwirl(models[id].g, 0, models[id].cfg.s); // mid-twirl revolver: the shot leaves the resting muzzle (twirlVM spins it again before the next render)
   const o = eye(), base = look(), mz = hand ? akMuzzle(hand) : muzzleWorld();
-  const hits = new Map(), carHits = new Map();
+  const hits = new Map(), carHits = new Map(), mkHits = new Map();
   const segs = [];
   const pellets = w.pellets || 1;
   const shots = w.marbles ? [] : null; // Marble Shotgun: each pellet becomes a marble that bounces off what it hit
@@ -821,6 +822,17 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
         segs.push([...drawFrom, ...end]);
         if (shots) shots.push({ a: drawFrom, b: end, n: ch.n, player: false });
         carHits.set(ch.id, (carHits.get(ch.id) || 0) + 1);
+        if (!shots || i % 6 === 0) fx.sparks(end, d.map((x) => -x), 5, false);
+        break;
+      }
+      const eh = emptyMechRay(from, d, ph ? ph.t : maxT); // an enemy's empty mech in the way takes it (mechempty.js)
+      if (eh) {
+        const end = [from[0] + d[0] * eh.t, from[1] + d[1] * eh.t, from[2] + d[2] * eh.t];
+        segs.push([...drawFrom, ...end]);
+        if (shots) shots.push({ a: drawFrom, b: end, n: null, player: true });
+        const h = mkHits.get(eh.id) || { n: 0, h: 0, d };
+        h.n++; if (eh.head) h.h++; h.d = d;
+        mkHits.set(eh.id, h);
         if (!shots || i % 6 === 0) fx.sparks(end, d.map((x) => -x), 5, false);
         break;
       }
@@ -849,6 +861,7 @@ function fireHitscan(id, now, hand) { // hand: 'L' / 'R' = which of Lefty & Righ
   const ns = id === 'sniper' && !W.scoped ? 1 : undefined; // no-scope: the server only makes it look cool, damage is the same
   const qs = (id === 'sniper' && W.scoped && now - W.scopedAt <= ROYAL.quick) || quickScoped(w, W, now) ? 1 : undefined; // quick-scope: fired right as the scope came up (Sniper Royalty only, never damage)
   for (const [cid, n] of carHits) { carHit(cid, id, n, base); hud.hit(false); }
+  for (const [mk, h] of mkHits) net.send({ t: 'hit', mk, w: id, d: h.d.map(r2), n: h.n, h: h.h, fan: fanShot ? 1 : undefined, hd: hand === 'L' ? 1 : undefined }); // (the marker comes back with the server's 'hurt')
   const r4 = (x) => Math.round(x * 10000) / 10000;
   for (const [rid, h] of hits) { if (tac) tacZone(rid, h); net.send({ t: 'hit', to: rid, w: id, d: h.d.map(tac ? r4 : r2), n: h.n, h: h.h, lg: tac && h.lg ? h.lg : undefined, ns, qs, fan: fanShot ? 1 : undefined, ...(tac ? tac.msg : null), hd: hand === 'L' ? 1 : undefined }); }
   const fast = w.rate > 8;
@@ -1153,6 +1166,7 @@ function resolveSwing(id) {
     G.shake = Math.max(G.shake, hv ? 0.6 : 0.35);
     return;
   }
+  if (emptyMechSwing(o, d, hv ? hv.range : reach, id, hv)) { sfx.bonk(); W.hitStop = 0.06; G.shake = Math.max(G.shake, 0.35); return; } // clonked an empty mech
   if (carSwing(o, d, hv ? hv.range : reach, id)) { sfx.bonk(); W.hitStop = 0.05; G.shake = Math.max(G.shake, 0.3); return; } // bonked a car
   if (w.pogo) {
     const mh = raycast(o, d, w.range, BOXES);
