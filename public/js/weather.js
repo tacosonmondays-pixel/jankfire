@@ -325,9 +325,9 @@ const ASH_FOG = new THREE.Color(0x6a3426), ASH_SKY = new THREE.Color(0xc0502a), 
 // the volcano's smoke wisp: the arch meshes drawn with its see-through smoke materials (archfield.js names them arch_<name>)
 const WISP = /^arch_b(wisp|smoke)/;
 let wispList = [], wispKey = '', wispT = 0;
-function wisp() {
+function wisp() { // (archfield rebuilds its meshes when models land: never hold on to old ones)
   const n = performance.now();
-  if (wispKey !== MAP.id || (!wispList.length && n - wispT > 3000)) { wispKey = MAP.id; wispT = n; wispList = []; G.scene.traverse((o) => { if (o.isMesh && o.material && WISP.test(o.material.name || '')) wispList.push(o); }); }
+  if (wispKey !== MAP.id || ((!wispList.length || wispList.some((o) => !o.parent)) && n - wispT > 1000) || n - wispT > 8000) { wispKey = MAP.id; wispT = n; wispList = []; G.scene.traverse((o) => { if (o.isMesh && o.material && WISP.test(o.material.name || '')) wispList.push(o); }); }
   return wispList;
 }
 export function wxPost() {
