@@ -94,7 +94,7 @@ export function installTrolley(Room, U) {
       if (!clear(e, o, this.boxes) || raycast(o, d, 0.4, this.boxes)) o = e; // (backed into a wall: from the cockpit)
       const mv = speedOf(p, M, n);
       const vel = [d[0] * C.speed + mv[0] * 0.5, d[1] * C.speed + C.up, d[2] * C.speed + mv[1] * 0.5];
-      const pr = this.makeProj(p, 'trcan', o, vel, { b: 0, born: n });
+      const pr = this.makeProj(p, 'trcan', o, vel, { b: 0, born: n, r: TR.can.r }); // (r: the can grows with the mechs)
       this.broadcast({ t: 'mech', k: 'trtoss', id: p.id }, p.isBot ? undefined : p.id);
       return pr;
     },
@@ -140,7 +140,7 @@ export function installTrolley(Room, U) {
       const D = M.dash;
       if (n > D.until) { M.dash = null; return; }
       const f = D.dir, R = TR.hw + 0.3, h = D.h;
-      const a = [D.prev[0] + f[0] * R, D.prev[1] + 1.1, D.prev[2] + f[1] * R], b = [p.pos[0] + f[0] * R, p.pos[1] + 1.1, p.pos[2] + f[1] * R];
+      const y = TR.h * 0.42, a = [D.prev[0] + f[0] * R, D.prev[1] + y, D.prev[2] + f[1] * R], b = [p.pos[0] + f[0] * R, p.pos[1] + y, p.pos[2] + f[1] * R]; // (the bumper's height)
       D.prev = p.pos.slice();
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t) || D.hit.has(t.id) || this.trHolding(p, t)) continue;

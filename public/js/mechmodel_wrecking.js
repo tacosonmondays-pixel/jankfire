@@ -8,6 +8,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { G } from './ctx.js';
 import { cbox } from './rigmodel.js';
 import { Chain } from './wreck.js';
+import { MECH } from '/shared/mech.js';
 
 const R = 2, C = [0, R, 0];
 // the skeleton: name -> [pivot (game coords, at rest), parent]
@@ -125,7 +126,7 @@ const _q = new THREE.Quaternion(), _ax = new THREE.Vector3(), _v = new THREE.Vec
 function clipOf(inst, s) {
   if (s.pile === 3) return 'pile_drop';
   if (s.pile) return 'pile_driver';
-  if (s.chain) return inst.clips && inst.clips.chain_swing ? 'chain_swing' : 'jump';
+  if (s.chain) return inst.clips && inst.clips.chain_swing ? (s.chainT < 0.55 && inst.clips.chain_throw ? 'chain_throw' : 'chain_swing') : 'jump';
   if (s.slam) return 'slam';
   if (s.landT < 0.35) return 'land';
   if (s.air) return 'jump';
@@ -133,13 +134,13 @@ function clipOf(inst, s) {
 }
 // a hero model with clips: the roll matched to the speed, the hamster wheel layered on top, the hook to the chain
 function mix(inst, s, dt) {
-  if (inst.act && inst.clip === 'roll') { const c = inst.clips.roll; inst.act.timeScale = clamp((s.rev ? 14 : s.spd) / (2 * Math.PI * R) * (c ? c.duration : 1), 0, 6); }
+  if (inst.act && inst.clip === 'roll') { const c = inst.clips.roll; inst.act.timeScale = clamp((s.rev ? 14 : s.spd) / (2 * Math.PI * R * MECH.scale) * (c ? c.duration : 1), 0, 6); } // (world speed over the grown ball's rim)
   if (inst.clips.cage_spin) {
     if (!inst.cageAct) { inst.cageAct = inst.mixer.clipAction(inst.clips.cage_spin); inst.cageAct.play(); }
     inst.cageAct.timeScale = 0.6 + s.spd / 5 + (s.rev ? 6 : 0);
   }
-  hookTo(inst, s);
 }
+function post(inst, s) { hookTo(inst, s); }
 function pose(inst, s, dt, spr) {
   const j = inst.j, W = inst.wb || (inst.wb = { q: new THREE.Quaternion(), w: new THREE.Vector3(), cage: 0, run: 0 });
   // squash on landings, a little bob while rolling, stretch on the pile driver's rise
@@ -150,13 +151,13 @@ function pose(inst, s, dt, spr) {
   // the shell rolls: no slipping on the floor, keeps spinning in the air, wheel-spins on a rev
   if (s.rev) W.w.set(-16, 0, 0);
   else if (s.pile === 3) W.w.set(-14, 0, 0);
-  else if (!s.air) W.w.set(-(s.fwd || 0) / R, 0, -(s.side || 0) / R);
+  else if (!s.air) W.w.set(-(s.fwd || 0) / (R * MECH.scale), 0, -(s.side || 0) / (R * MECH.scale));
   else W.w.multiplyScalar(Math.max(0, 1 - dt * 0.4));
   const ang = W.w.length() * dt;
   if (ang > 1e-6) { _q.setFromAxisAngle(_ax.copy(W.w).normalize(), ang); W.q.premultiply(_q); }
   j.ball.quaternion.copy(W.q);
   // the hamster wheel: faster than the shell (the pilot's legging it), the pilot goes round with it
-  const spin = s.rev ? -30 : s.pile === 3 ? -20 : -(s.fwd || 0) / 1.5 * 1.3;
+  const spin = s.rev ? -30 : s.pile === 3 ? -20 : -(s.fwd || 0) / (1.5 * MECH.scale) * 1.3;
   W.cage += (s.air && !s.rev && !s.pile ? spin * 0.4 : spin) * dt;
   j.cage.rotation.x = W.cage;
   const P = j.cage.userData.pilot;
@@ -174,23 +175,33 @@ function pose(inst, s, dt, spr) {
   for (const [k, sg] of [['foot_L', 1], ['foot_R', -1]]) j[k].rotation.z = spr(inst, k, (1 - out) * -1.6 * sg, 120, dt);
   hookTo(inst, s);
 }
-// the hook: out at the chain's anchor while it's on one, parked on the shackle otherwise. and the chain between
+// the hook: out at the chain's anchor while it's on one (pointing back up the chain), else where it lives: the stand-in
+// parks it on the shackle; a hero model's clips own it (we only give its position back). and the chain between. all in
+// the hook's parent's space (the model hangs it under the yoke, the stand-in under the root)
 function hookTo(inst, s) {
-  const j = inst.j, hk = j.hook;
-  if (!hk) return;
+  const hk = inst.j.hook, P = hk && hk.parent;
+  if (!P) return;
   inst.root.updateMatrixWorld(true);
+  const H = hk.userData.home || (hk.userData.home = { p: hk.position.clone(), q: hk.quaternion.clone() });
+  const link = hk.userData.link !== undefined ? hk.userData.link : (hk.userData.link = hk.getObjectByName('chain_link') || null); // (the model's own chain down its back)
   const sh = inst.att && inst.att.mk_chain;
   if (s.chain) {
     _v.set(s.chain[0], s.chain[1], s.chain[2]);
-    hk.position.copy(inst.root.worldToLocal(_v.clone())).sub(new THREE.Vector3(0, 0.16, 0));
-    if (sh) { sh.getWorldPosition(_w); _w.sub(_v).normalize(); hk.quaternion.setFromUnitVectors(Y, _w.applyQuaternion(inst.root.getWorldQuaternion(_q).invert())); }
+    hk.position.copy(P.worldToLocal(_v.clone()));
+    if (sh) { sh.getWorldPosition(_w); _w.sub(_v).normalize(); hk.quaternion.setFromUnitVectors(Y, _w.applyQuaternion(P.getWorldQuaternion(_q).invert())); }
+    hk.userData.moved = true;
+    if (link) link.visible = false;
+  } else if (inst.mixer) {
+    if (hk.userData.moved) { hk.position.copy(H.p); hk.quaternion.copy(H.q); hk.userData.moved = false; }
+    if (link) link.visible = true;
   } else if (sh) {
-    sh.getWorldPosition(_w); hk.position.copy(inst.root.worldToLocal(_w)).add(new THREE.Vector3(0, 0.2, 0)); hk.quaternion.identity();
+    sh.getWorldPosition(_w); _w.y += 0.2; hk.position.copy(P.worldToLocal(_w)); hk.quaternion.identity();
   }
-  // the chain: shackle -> hook eye, instanced links (a slack one sags)
+  // the chain: shackle -> hook eye, instanced links
   if (!sh) return;
   if (s.chain && inst.root.visible) {
     if (!inst.wbChain) inst.wbChain = new Chain(G.scene, false);
+    inst.root.updateMatrixWorld(true);
     sh.getWorldPosition(_w);
     const eye = inst.att.mk_hook_eye ? inst.att.mk_hook_eye.getWorldPosition(new THREE.Vector3()) : _v;
     inst.wbChain.set([_w.x, _w.y, _w.z], [eye.x, eye.y, eye.z], 0.05);
@@ -198,4 +209,4 @@ function hookTo(inst, s) {
 }
 function free(inst) { if (inst.wbChain) { inst.wbChain.dispose(); inst.wbChain = null; } }
 
-export const WBM = { PIV, MK, PRE: 'wb_', build, clipOf, mix, pose, free, ATT: ['ball', 'cage', 'yoke', 'handle', 'hook'] };
+export const WBM = { PIV, MK, PRE: 'wb_', build, clipOf, mix, post, pose, free, ATT: ['ball', 'cage', 'yoke', 'handle', 'hook'] };

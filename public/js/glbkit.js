@@ -148,14 +148,16 @@ function styleFlag() {
 }
 export const MODEL_STYLE = styleFlag();
 
-let env = null;
+let env = null, envRT = null;
 function envMap() { // one small studio reflection for glossy toy plastic and metal (the world's own materials don't use it)
   if (env || !G.renderer) return env;
   const pm = new THREE.PMREMGenerator(G.renderer);
-  env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  envRT = pm.fromScene(new RoomEnvironment(), 0.04); env = envRT.texture;
   pm.dispose();
   return env;
 }
+// reflect.js: the target every glossy model reads its reflection from (the RAY-TRACED LOOK paints the real world into it)
+export const studioEnv = () => (envMap(), envRT);
 
 // the hotbar pictures, the locker / menu hero and the mode art draw with their own renderers (other WebGL contexts),
 // where the game's reflection map is just black (mirror chrome came out as a black shape): each gets its own while it draws

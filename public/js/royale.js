@@ -188,6 +188,13 @@ function stuffMesh(l) {
   } else if (l.id === 'plate') { add(new THREE.BoxGeometry(0.6, 0.08, 0.7), 0xc9a36a, 0, 0.04); add(new THREE.BoxGeometry(0.62, 0.02, 0.1), 0xb08850, 0, 0.09); }
   else if (l.id === 'vest') { for (const s of [-1, 1]) { const d = add(new THREE.CylinderGeometry(0.3, 0.3, 0.06, 12), 0x9aa4ae, 0, 0.05 + (s + 1) * 0.04, s * 0.1); d.rotation.x = 0.1 * s; } add(new THREE.BoxGeometry(0.62, 0.04, 0.1), 0xdddddd, 0, 0.16); }
   else if (l.id === 'fridge') { add(new THREE.BoxGeometry(0.62, 0.16, 0.95), 0xff9ad5, 0, 0.08); add(new THREE.BoxGeometry(0.06, 0.06, 0.5), 0xdddddd, 0.2, 0.19); }
+  else if (l.id === 'cell') { // battle island's energy cell: a fat battery standing up, toxic green core in a black cage, a + on top
+    add(new THREE.CylinderGeometry(0.2, 0.2, 0.62, 12), 0x39ff14, 0, 0.36).material = new THREE.MeshBasicMaterial({ color: 0x39ff14 }); // (glows: unlit)
+    for (const y of [0.06, 0.66]) add(new THREE.CylinderGeometry(0.24, 0.24, 0.1, 12), 0x1a1a22, 0, y);
+    for (let i = 0; i < 4; i++) { const a = i * Math.PI / 2 + Math.PI / 4; add(new THREE.BoxGeometry(0.05, 0.56, 0.05), 0x1a1a22, Math.cos(a) * 0.22, 0.36, Math.sin(a) * 0.22); }
+    add(new THREE.CylinderGeometry(0.08, 0.08, 0.09, 8), 0xd8d8e0, 0, 0.75);
+    add(new THREE.BoxGeometry(0.16, 0.035, 0.04), 0xff4fd8, 0, 0.81); add(new THREE.BoxGeometry(0.04, 0.035, 0.16), 0xff4fd8, 0, 0.81);
+  }
   return g;
 }
 function lootMesh(l) {
@@ -206,10 +213,10 @@ function addLoot(e) {
   const [i, k, id, tier, n, a, x, y, z] = e;
   if (R.loot.has(i)) removeLoot(i);
   const l = { i, k, id, tier, n, a: a < 0 ? null : a, p: [x, y, z], mesh: null, ring: null, beam: null, ph: Math.random() * 6 };
-  const t = k === 'gun' || k === 'melee' || k === 'gadget' ? tier : k === 'armor' ? (id === 'fridge' ? 3 : id === 'vest' ? 2 : 0) : 0;
+  const t = k === 'gun' || k === 'melee' || k === 'gadget' ? tier : k === 'armor' ? (id === 'fridge' ? 3 : id === 'vest' ? 2 : 0) : k === 'cell' ? 1 : 0; // (battle island's energy cells: green)
   l.vt = t;
   l.ring = new THREE.Mesh(ringGeo, ringMats[t]); l.ring.rotation.x = -Math.PI / 2; l.ring.position.set(x, y + 0.04, z); l.ring.visible = false; G.scene.add(l.ring);
-  if (t >= 2) { l.beam = new THREE.Mesh(beamGeo, beamMats[t]); l.beam.scale.set(1, 7 + t * 2, 1); l.beam.position.set(x, y + (7 + t * 2) / 2, z); l.beam.visible = false; G.scene.add(l.beam); }
+  if (t >= 2 || k === 'cell') { l.beam = new THREE.Mesh(beamGeo, beamMats[t]); l.beam.scale.set(1, 7 + t * 2, 1); l.beam.position.set(x, y + (7 + t * 2) / 2, z); l.beam.visible = false; G.scene.add(l.beam); }
   R.loot.set(i, l);
 }
 function removeLoot(i) {
@@ -348,7 +355,7 @@ function start(m) {
   R.hook = null; R.hookHad = false; R.hookN = BR.hook.charges;
   W.br = hooks; G.noOob = true; G.brStep = step; G.hookGate = hookGate;
   twistsReset(); R.leader = m.leader || 0; for (const c of m.crates || []) addCrate(c); for (const id of m.goblins || []) R.goblins.set(id, null);
-  if (!blimp) { blimp = buildBlimp(); [zoneWall, zoneNext] = buildZone(); myUmb = umbrella(); myUmb.visible = false; }
+  if (!blimp) { blimp = buildBlimp(); [zoneWall, zoneNext] = buildZone(); myUmb = umbrella(); myUmb.visible = false; blimp.name = 'br_blimp'; zoneWall.name = 'br_zone'; zoneNext.name = 'br_zonenext'; } // (named: screenshot tools hide them)
   for (const o of [blimp, zoneWall, zoneNext, myUmb]) if (!o.parent) G.scene.add(o);
   showHud(true);
   if (R.me.inBlimp) { big('JANK ROYALE', `SPACE to jump out of the blimp · F pick up · H heal · ${K.label('scores')} backpack`, 4); sfx.partyHorn(); }
@@ -742,7 +749,7 @@ export function brFrame(dt, now) {
     el.prompt.querySelector('span').style.color = lootColor(l);
   } else el.prompt.style.display = 'none';
   if (ME.alive && !R.me.inBlimp && !R.me.fly && R.inv) for (const l of R.loot.values()) {
-    if (l.k !== 'ammo' && l.k !== 'heal' && l.k !== 'armor') continue;
+    if (l.k !== 'ammo' && l.k !== 'heal' && l.k !== 'armor' && !(l.k === 'cell' && G.isleCellOk && G.isleCellOk())) continue; // (battle island: energy cells when your meter has room)
     if (Math.hypot(l.p[0] - ME.pos[0], l.p[2] - ME.pos[2]) > BR.autoR || Math.abs(l.p[1] - ME.pos[1]) > 1.6) continue;
     if (now < (R.autoT.get(l.i) || 0)) continue;
     const inv = R.inv;

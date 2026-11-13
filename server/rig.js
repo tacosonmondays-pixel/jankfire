@@ -265,7 +265,7 @@ export function installRig(Room, U) {
         pr.tg = t ? t.id : 0;
         let dir = norm(v) || [0, 1, 0], sp = lerpK(M.speed, (age - M.boost) / 0.7);
         if (t) {
-          const tc = center(t), dist = Math.hypot(tc[0] - pr.p[0], tc[1] - pr.p[1], tc[2] - pr.p[2]);
+          const tc = this.mechCenter(t), dist = Math.hypot(tc[0] - pr.p[0], tc[1] - pr.p[1], tc[2] - pr.p[2]); // (a mech: home on its chest)
           if (dist < 1.4) { this.rigBoom(pr, owner, t); return; } // proximity fuse
           // close in, it slows and turns harder (or it would orbit someone standing right in front of you)
           const close = Math.max(0, Math.min(1, 1 - dist / 18)), lead = Math.min(0.5, dist / sp);
@@ -279,6 +279,7 @@ export function installRig(Room, U) {
       const wall = stepProjectile(pr, dt, this.boxes, 0);
       const hit = this.sweep(prev, pr.p, pr.r + 0.1, (t) => t.id === pr.o || this.friendly(owner, t));
       if (hit.length) { pr.p = hit[0].at; this.rigBoom(pr, owner, hit[0].t); return; }
+      if (this.mechRayEmpty && this._mechs && this._mechs.size) { const sl = Math.hypot(pr.p[0] - prev[0], pr.p[1] - prev[1], pr.p[2] - prev[2]), sd = sl > 1e-6 ? [(pr.p[0] - prev[0]) / sl, (pr.p[1] - prev[1]) / sl, (pr.p[2] - prev[2]) / sl] : null, em = sd && this.mechRayEmpty(owner, prev, sd, sl + pr.r); if (em) { pr.p = [prev[0] + sd[0] * em.t, prev[1] + sd[1] * em.t, prev[2] + sd[2] * em.t]; this.rigBoom(pr, owner, null); return; } } // an empty mech in the way (server/mech.js)
       if (wall || age > M.life || pr.p[1] < this.map.killY) { this.rigBoom(pr, owner, null); return; }
       pr.sync -= dt;
       if (pr.sync <= 0) { pr.sync = 0.06; this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: v.map(r2) }); }
@@ -289,13 +290,14 @@ export function installRig(Room, U) {
       this.broadcast({ t: 'rig', k: 'boom', id: pr.o, p: pr.p.map(r2) });
       for (const t of this.players.values()) {
         if (!t.alive || t === owner || this.friendly(owner, t)) continue;
-        const c = center(t), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]];
+        const c = this.mechBlastPt(t, pr.p), to = [c[0] - pr.p[0], c[1] - pr.p[1], c[2] - pr.p[2]]; // (a mech: the nearest point of its frame)
         let d = Math.hypot(to[0], to[1], to[2]);
         if (t === direct) d = 0;
         else if (d > M.r || (d > 0.4 && raycast(pr.p, [to[0] / d, to[1] / d, to[2] / d], d - 0.3, this.boxes))) continue;
         const f = 1 - d / M.r, dir = d > 0.1 ? to.map((x) => x / d) : norm(pr.v) || [0, 1, 0], k = M.kb * (0.5 + 0.5 * f);
         this.hurt(t, owner, pr.k, M.dmg * (0.35 + 0.65 * f), [dir[0] * k, dir[1] * k * 0.5 + 5 * f, dir[2] * k], { from: pr.p });
       }
+      if (this.mechBoom) this.mechBoom(pr.p, M.r, M.dmg, owner, pr.k, 0.35); // empty mechs (server/mech.js)
     },
 
     // charged leap: the client jumps (movement is its own); the server notes how charged it really was, then the
@@ -320,7 +322,7 @@ export function installRig(Room, U) {
       this.broadcast({ t: 'rig', k: 'land', id: p.id, p: [r2(at[0]), r2(fl.point[1]), r2(at[2])], r: r2(r), c: r2(Lp.c) });
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t)) continue;
-        const tc = center(t), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(to[0], to[1], to[2]);
+        const tc = this.mechBlastPt(t, c), to = [tc[0] - c[0], tc[1] - c[1], tc[2] - c[2]], d = Math.hypot(to[0], to[1], to[2]);
         if (d > r || !clear(c, tc, this.boxes)) continue; // a shockwave: not through walls or floors
         const f = 1 - d / r, hl = Math.hypot(to[0], to[2]), out = hl > 0.2 ? [to[0] / hl, to[2] / hl] : [0, 0], k = L.kb * (0.4 + 0.6 * f);
         this.hurt(t, p, 'rigquake', L.dmg * (0.35 + 0.65 * f), [out[0] * k, 7 + 6 * f, out[1] * k]);

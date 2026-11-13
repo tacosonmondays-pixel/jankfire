@@ -210,7 +210,7 @@ function carryRemotes() {
     if (!r || !r.ch || !r.alive) continue;
     const l = h.s === 'ride' ? TR.seat : TR.scoop[h.i] || TR.scoop[0];
     const w = trSpot(ME.pos, ME.yaw, l);
-    if (inst.j.basket && h.s !== 'ride') { inst.att.mk_scoop.getWorldPosition(_v); w[1] = _v.y - (1.05 - l[1]); } // (it rides the tipping basket)
+    if (inst.att.mk_scoop && h.s !== 'ride') { inst.att.mk_scoop.getWorldPosition(_v); w[1] = _v.y; } // (it rides the tipping basket)
     r.ch.root.position.set(w[0], w[1], w[2]);
   }
 }

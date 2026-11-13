@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import { cbox } from './rigmodel.js';
+import { MECH } from '/shared/mech.js';
 
 // the skeleton: name -> [pivot (game coords, at rest), parent]
 const PIV = {
@@ -183,7 +184,7 @@ function clipOf(inst, s) {
 }
 // a hero model with clips: the drive loop matched to the speed (one loop = the wheels turn once), the seat held
 function mix(inst, s, dt) {
-  if (inst.act && (inst.clip === 'drive' || inst.clip === 'boost')) { const c = inst.clips[inst.clip]; inst.act.timeScale = clamp(s.spd / (2 * Math.PI * WR) * (c ? c.duration : 1), 0, 8); }
+  if (inst.act && (inst.clip === 'drive' || inst.clip === 'boost')) { const c = inst.clips[inst.clip]; inst.act.timeScale = clamp(s.spd / (2 * Math.PI * WR * (MECH.scale || 1)) * (c ? c.duration : 1), 0, 8); }
   const want = s.rider ? 'seat_down' : 'seat_up';
   if (inst.clips[want] && inst.seatClip !== want) {
     const a = inst.mixer.clipAction(inst.clips[want]); a.reset(); a.setLoop(THREE.LoopOnce, 1); a.clampWhenFinished = true; a.play();
@@ -194,12 +195,12 @@ function mix(inst, s, dt) {
 const angTo = (a, b) => { let d = b - a; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 function pose(inst, s, dt, spr) {
   const j = inst.j, T = inst.t, W = inst.tr || (inst.tr = { wheel: 0, run: 0, sw: { FL: 0, FR: 0, BL: 0, BR: 0 }, bob: 0 });
-  const spd = s.spd || 0, fwd = s.fwd || 0, side = s.side || 0, k = clamp(spd / 26, 0, 1.4);
+  const spd = s.spd || 0, fwd = s.fwd || 0, side = s.side || 0, k = clamp(spd / MECH.trolley.speed, 0, 1.4);
   const land = s.landT < 0.45 ? Math.sin(clamp(s.landT / 0.45, 0, 1) * Math.PI) * (0.35 + (s.landK || 0) * 0.65) : 0;
   const push = s.push || 0, pk = push ? Math.sin(Math.min(1, push * 1.4) * Math.PI) : 0;
   // wheels: they roll at the speed it goes (and keep spinning in the air); casters swivel into the way it's going,
   // drift out to 35 degrees, and the front-left one wobbles (the wonky wheel)
-  W.wheel -= (s.air ? spd * 0.5 : spd) / WR * dt;
+  W.wheel -= (s.air ? spd * 0.5 : spd) / (WR * (MECH.scale || 1)) * dt; // (drawn at size 1, the root scaled up)
   const dir = spd > 0.8 ? -Math.atan2(side, fwd) : null, dA = 35 * Math.PI / 180 * (side >= 0 ? -1 : 1);
   for (const c of ['FL', 'FR', 'BL', 'BR']) {
     const want = s.drift && spd > 3 ? dA * (c[0] === 'F' ? 1 : 0.6) : dir == null ? W.sw[c] : dir;

@@ -18,7 +18,7 @@ import { mechsfx } from './mechsfx.js';
 import { synth } from './audio.js';
 import { MS, mechKitApi as A } from './mech.js';
 
-const WB = MECH.wrecking, R = WB.r;
+const WB = MECH.wrecking; // (WB.r etc. follow MECH.scale: read them live)
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const r2 = (x) => Math.round(x * 100) / 100;
 const nowMs = () => performance.now();
@@ -38,7 +38,7 @@ const sfx = {
 // ------------------------------------------------------------ you, in it
 const WS = { revT: 0, chain: null, slam: null, pile: null, launchUntil: 0, brake: false, jumpWas: false, ultWas: 0, rollT: 0, squeakT: 0, aimMk: null, minVy: 0 };
 function clearState() { Object.assign(WS, { revT: 0, chain: null, slam: null, pile: null, launchUntil: 0, brake: false, minVy: 0 }); aimMark(null); }
-const ballC = () => [ME.pos[0], ME.pos[1] + R, ME.pos[2]];
+const ballC = () => [ME.pos[0], ME.pos[1] + WB.r, ME.pos[2]];
 
 function key(e, down, now) {
   const is = (k) => K.matches(k, e) || (!down && K.up(k, e));
@@ -132,11 +132,16 @@ function pileTarget(d) {
   const h = raycast(e, [0, -1, 0], 200, BOXES);
   return h ? h.point.slice() : [ME.pos[0], ME.pos[1] - 40, ME.pos[2]];
 }
+// asks the server to dive (it picks the spot the same way); the dive starts when its answer ('wbpile' down) lands, so
+// both sides head for the same spot. no answer in 1.2 s: straight down
 function pdrop(now, auto) {
-  if (!WS.pile || WS.pile.ph === 3 || (!auto && now - WS.pile.t0 < 300)) return;
-  const d = A.aimDir().d;
-  WS.pile.ph = 3; WS.pile.to = pileTarget(auto ? null : d); WS.pile.dT = now;
-  if (!auto) net.send({ t: 'mech', k: 'pdrop', d: d.map(r2) });
+  if (!WS.pile || WS.pile.ph === 3 || WS.pile.ask || (!auto && now - WS.pile.t0 < 300)) return;
+  WS.pile.ask = now;
+  if (!auto) net.send({ t: 'mech', k: 'pdrop', d: A.aimDir().d.map(r2) });
+}
+function dive(to, now) {
+  if (!WS.pile || WS.pile.ph === 3) return;
+  WS.pile.ph = 3; WS.pile.to = to; WS.pile.dT = now;
   sfx.dive(null); punchCam(-0.06); G.shake = Math.max(G.shake, 0.6);
   aimMark(null);
 }
@@ -159,7 +164,8 @@ function step(dt, inp, now) {
       if (p[1] - Wp.y0 >= P.rise || now - Wp.t0 > P.rise / P.up * 1000 + 400) { Wp.ph = 2; Wp.hT = now; v[1] = 0; }
     } else if (Wp.ph === 2) { // hanging up there, aiming
       v[0] = v[1] = v[2] = 0; fixed = true;
-      if (now - Wp.hT > P.hang * 1000) pdrop(now, true);
+      if (now - Wp.hT > P.hang * 1000) pdrop(now, true); // (the server drops it too)
+      if (Wp.ask && now - Wp.ask > 1200) dive(pileTarget(null), now);
     } else { // the dive
       const to = Wp.to, d = [to[0] - p[0], to[1] - p[1], to[2] - p[2]], l = Math.hypot(d[0], d[1], d[2]) || 1;
       for (let i = 0; i < 3; i++) v[i] = d[i] / l * P.dive;
@@ -203,7 +209,7 @@ function step(dt, inp, now) {
     const a = WS.chain.at, cc = ballC(), d = [cc[0] - a[0], cc[1] - a[1], cc[2] - a[2]], l = Math.hypot(d[0], d[1], d[2]);
     if (l > WS.chain.len) {
       const u = d.map((x) => x / l), k = WS.chain.len / l;
-      p[0] = a[0] + d[0] * k; p[1] = a[1] + d[1] * k - R; p[2] = a[2] + d[2] * k;
+      p[0] = a[0] + d[0] * k; p[1] = a[1] + d[1] * k - WB.r; p[2] = a[2] + d[2] * k;
       const out = v[0] * u[0] + v[1] * u[1] + v[2] * u[2];
       if (out > 0) for (let i = 0; i < 3; i++) v[i] -= u[i] * out;
     }
@@ -214,7 +220,7 @@ function step(dt, inp, now) {
   ME.onGround = !!res.ground && v[1] <= 0.01;
   if (ME.onGround && !was) land(now);
   if (ME.onGround && res.ground.pad) { const pd = res.ground.pad; v[0] += pd[0]; v[1] = pd[1]; v[2] += pd[2]; ME.onGround = false; }
-  if (res.wall) { const hs = Math.hypot(v[0], v[2]); if (hs > 12 || now < WS.launchUntil) { G.shake = Math.max(G.shake, 0.5); mechsfx.ram(null); rfx.sparks([p[0], p[1] + R, p[2]], 14, 8, [0xffffff, 0xffe14d], 0.3, 0.1); } }
+  if (res.wall) { const hs = Math.hypot(v[0], v[2]); if (hs > 12 || now < WS.launchUntil) { G.shake = Math.max(G.shake, 0.5); mechsfx.ram(null); rfx.sparks([p[0], p[1] + WB.r, p[2]], 14, 8, [0xffffff, 0xffe14d], 0.3, 0.1); } }
   ME.eyeH += (WB.eye - ME.eyeH) * Math.min(1, dt * 8);
   return true;
 }
@@ -247,7 +253,7 @@ function update(dt, now) {
   } else WS.revFull = 0;
   if (WS.pile && WS.pile.ph === 1 && Math.random() < dt * 50) rfx.smoke([ME.pos[0], ME.pos[1] - 0.3, ME.pos[2]], 2, 0xdfe4ea, 1, -2, 1.4, 0.5);
   if (WS.pile && WS.pile.ph === 2) aimMark(pileTarget(A.aimDir().d), now); // where it'll land
-  if (WS.pile && WS.pile.ph === 3 && Math.random() < dt * 60) rfx.sparks([ME.pos[0], ME.pos[1] + R, ME.pos[2]], 2, 4, [0xffe14d, 0xff4fd8], 0.25, 0.1);
+  if (WS.pile && WS.pile.ph === 3 && Math.random() < dt * 60) rfx.sparks([ME.pos[0], ME.pos[1] + WB.r, ME.pos[2]], 2, 4, [0xffe14d, 0xff4fd8], 0.25, 0.1);
   const u = Math.floor(MS.ult || 0);
   if (u >= 100 && WS.ultWas < 100) { hud.msg(`PILE DRIVER READY · ${K.label('lastSlot')}`, 1.6, 'brag'); T('square', 880, 1320, 0.12, 0.1, null); T('square', 1320, 1760, 0.12, 0.1, null, 0.12); }
   WS.ultWas = u;
@@ -266,7 +272,7 @@ function aimMark(p, now = 0) {
 }
 function flags(now) { return (WS.chain ? MF.CHAIN : 0) | (WS.pile || WS.slam ? MF.PILE : 0) | (now < WS.launchUntil ? MF.REV : 0); }
 function pose(now) {
-  return { rev: WS.revT ? 1 : 0, chain: WS.chain ? WS.chain.at : null, slam: WS.slam ? WS.slam.ph : 0, pile: WS.pile ? WS.pile.ph : 0,
+  return { rev: WS.revT ? 1 : 0, chain: WS.chain ? WS.chain.at : null, chainT: WS.chain ? (now - WS.chain.t) / 1000 : 9, slam: WS.slam ? WS.slam.ph : 0, pile: WS.pile ? WS.pile.ph : 0,
     boost: (WS.pile && WS.pile.ph === 1) || now < WS.launchUntil ? 1 : 0 };
 }
 
@@ -278,7 +284,7 @@ function remote(r, st, dt, now) {
   if (!(fl & MF.PILE)) W.pile = 0;
   if (hs > 4 && !W.chain && Math.abs(r.vel[1]) < 2) { W.rollT -= dt * (0.4 + hs / 8); if (W.rollT <= 0) { W.rollT = 1; if (!r.ghost) sfx.roll(r.pos, clamp(hs / WB.speed, 0.2, 1.2)); } }
   if (W.rev && Math.random() < dt * 40) rfx.sparks([r.pos[0], r.pos[1] + 0.1, r.pos[2]], 2, 7, [0xffe14d, 0xffffff], 0.3, 0.09, [0, 1, 0]);
-  return { rev: W.rev, chain: W.chain, pile: W.pile, slam: !W.pile && fl & MF.PILE ? (r.vel[1] < 0 ? 2 : 1) : 0, boost: W.pile === 1 || fl & MF.REV ? 1 : 0 };
+  return { rev: W.rev, chain: W.chain, chainT: W.chain ? (now - (W.chainT0 || 0)) / 1000 : 9, pile: W.pile, slam: !W.pile && fl & MF.PILE ? (r.vel[1] < 0 ? 2 : 1) : 0, boost: W.pile === 1 || fl & MF.REV ? 1 : 0 };
 }
 
 // ------------------------------------------------------------ the server's events
@@ -294,7 +300,7 @@ function event(m, getR, live, me, r, st) {
       break;
     case 'wbchain': {
       const p = P(m.p);
-      if (W) W.chain = m.off ? null : p;
+      if (W) { W.chain = m.off ? null : p; if (!m.off) W.chainT0 = nowMs(); }
       if (me) { if (m.off) WS.chain = null; else if (p && WS.chain) { WS.chain.at = p; if (Number.isFinite(m.len)) WS.chain.len = m.len; } }
       if (pos && !me) { if (m.off) sfx.chain(pos); else { sfx.chain(pos); if (p) setTimeout(() => sfx.bite(p), 120); } }
       if (p && !m.off) rfx.sparks(p, 10, 6, [0xffffff, 0xffe14d], 0.3, 0.08);
@@ -306,7 +312,7 @@ function event(m, getR, live, me, r, st) {
       const to = P(m.to);
       if (m.ph === 'up' && pos && !me) { sfx.pile(pos); A.shakeNear(pos, 0.6, 30); rfx.smoke([pos[0], pos[1], pos[2]], 20, 0xdfe4ea, 1.8, 1, 2, 0.8); }
       if (m.ph === 'down') {
-        if (me && WS.pile && to) { WS.pile.ph = 3; WS.pile.to = to; WS.pile.dT = WS.pile.dT || nowMs(); aimMark(null); }
+        if (me && WS.pile && to) { if (WS.pile.ph === 3) WS.pile.to = to; else dive(to, nowMs()); }
         if (to) { rmesh.ring(to, WB.pile.r, 0xff3030, 1.1); rmesh.ring(to, WB.pile.r * 0.5, 0xffe14d, 1.1); } // INCOMING: everyone sees where it's coming down
         if (live && to && !me && Math.hypot(to[0] - ME.pos[0], to[2] - ME.pos[2]) < WB.pile.r + 2) hud.msg('INCOMING BALL. MOVE', 1.2, 'slip');
         if (pos && !me) sfx.dive(pos);
@@ -315,7 +321,7 @@ function event(m, getR, live, me, r, st) {
       break;
     }
     case 'wbquake': { // a slam / the pile driver hits the floor
-      const p = P(m.p), big = !!m.big, rr = Number.isFinite(m.r) ? clamp(m.r, 1, 12) : 6, k = Number.isFinite(m.sz) ? clamp(m.sz, 0, 1) : 0.5;
+      const p = P(m.p), big = !!m.big, rr = Number.isFinite(m.r) ? clamp(m.r, 1, 18) : 6, k = Number.isFinite(m.sz) ? clamp(m.sz, 0, 1) : 0.5;
       if (me) { WS.slam = null; if (WS.pile) WS.pile = null; aimMark(null); }
       if (W) W.pile = 0;
       if (!p) break;
@@ -343,3 +349,4 @@ export const WBK = {
   denied(why) { if (/^chain|no energy/.test(why)) { WS.chain = null; WS.launchUntil = 0; } if (/ultimate/.test(why)) WS.pile = null; },
   key, step, update, flags, pose, remote, event,
 };
+export const wbDebug = () => WS; // (screenshot scripts: wait on the kit's own state)

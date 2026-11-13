@@ -1,5 +1,6 @@
 // Programmer art. If you generated Tripo models (npm run models), they replace these automatically.
 import * as THREE from 'three';
+import { buildCard3D } from './cardmesh.js'; // card deck: the 3D thrown card
 import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS, SKINS_2 } from '/shared/cosmetics.js';
@@ -1853,10 +1854,7 @@ function buildProjectileRaw(k, model) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 8), M(0x9aa0a8)); g.add(c);
     g.add(bx(0.15, 0.03, 0.15, 0x555a60, 0, 0.12, 0));
   } else if (k === 'card') {
-    const c = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.26), cardFace('back'));
-    c.material.side = THREE.DoubleSide;
-    c.rotation.x = -Math.PI / 2;
-    g.add(c);
+    g.add(buildCard3D('s')); // the 3D card (cardmesh.js; live ones are pooled in cardfx.js, this is for replays)
   } else if (k === 'bowling') {
     bowlingBall(g, 0.45);
   } else if (k === 'duck') {
