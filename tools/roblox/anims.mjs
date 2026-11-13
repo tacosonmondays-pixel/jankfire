@@ -86,4 +86,6 @@ for (const [name, a] of Object.entries(A)) {
 }
 out += `}\n`;
 fs.writeFileSync(path.join(ROOT, 'roblox/src/shared/Anims.luau'), out);
+fs.mkdirSync(path.join(ROOT, 'roblox/build'), { recursive: true });
+fs.writeFileSync(path.join(ROOT, 'roblox/build/anims.json'), JSON.stringify(A)); // (for tools/roblox/pose_sheet.py)
 console.log('wrote roblox/src/shared/Anims.luau:', Object.keys(A).length, 'clips');
