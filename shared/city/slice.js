@@ -96,7 +96,10 @@ registerCity('slice', {
   name: 'OVERDUE slice', cx0: -5, cz0: -4, cx1: 5, cz1: 4,
   spawn: [-189, 8.4, 196],
   horizon: 'horizon',
-  ringScale: { near: 0.62, props: 0.75 }, // the slice is dense: full detail a bit closer in, lod1 (one box per house) past it
+  // the slice is dense: full detail a bit closer in, lod1 (one box per house) past it. near per preset (Potato, Crusty,
+  // High, Too HD): 72 / 88 / 96 / 139 m. lodBand: the last metres of the ring dissolve lod 0 into lod 1 (city/stream.js),
+  // so there's no pop line where the detail ends. Too HD is left exactly as it was (its old ring, a plain swap)
+  ringScale: { near: [0.5625, 0.55, 0.43, 0.62], props: 0.75 }, lodBand: [24, 24, 24, 0],
   districts: [
     // order matters: the first rect that holds a point is its district (districtAt)
     { id: 'border', name: 'The Gut Border', rect: SLICE.border.rect, gen: 'border', margin: 40,

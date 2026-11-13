@@ -3,13 +3,14 @@
 // shader inflates it along the normal on a heartbeat, the fragment adds veins and a red rim), glow, glass and acid.
 // All of them carry the Potato vertex snap (jank.js) and the game's fog.
 import * as THREE from 'three';
-import { FAMS } from '/shared/city/plan.js';
+import { FAMS, CHUNK } from '/shared/city/plan.js';
 import { jankUniforms } from '../jank.js';
 import { liquidMaterial } from '../liquidmats.js';
 
 export const NL = 24; // lights at once (the nearest ones round the camera, picked by stream.js every frame)
 export const cityUniforms = {
   uTime: { value: 0 }, uBeat: { value: 0 }, uNight: { value: 0 }, uHaze: { value: new THREE.Color(0x806080) },
+  uLod: { value: new THREE.Vector4(0, 0, 1e5, 1e5 + 1) }, // the detail ring's swap: the streaming eye (x, z) and the band (metres from it to a chunk's square). stream.js
   uLP: { value: Array.from({ length: NL }, () => new THREE.Vector4(0, -1e4, 0, 1)) }, // view-space position + radius
   uLC: { value: Array.from({ length: NL }, () => new THREE.Vector4(0, 0, 0, 0)) }, // colour * strength
 };
@@ -118,7 +119,8 @@ varying vec3 vPaint; varying vec2 vWuv; varying float vFam; varying float vPulse
 const VERT_SNAP = `
 vec4 jsnap = gl_Position; jsnap.xyz /= jsnap.w; jsnap.xy = floor(jsnap.xy * uSnap + 0.5) / uSnap; jsnap.xyz *= jsnap.w; gl_Position = jsnap;`;
 const FRAG_HEAD = `
-uniform sampler2D uAtlas; uniform float uTime; uniform float uBeat; uniform float uNight; uniform vec3 uHaze;
+uniform sampler2D uAtlas; uniform float uTime; uniform float uBeat; uniform float uNight; uniform vec3 uHaze; uniform vec4 uLod;
+const float BAYER4[16] = float[16](0.0, 8.0, 2.0, 10.0, 12.0, 4.0, 14.0, 6.0, 3.0, 11.0, 1.0, 9.0, 15.0, 7.0, 13.0, 5.0);
 varying vec3 vPaint; varying vec2 vWuv; varying float vFam; varying float vPulse; varying vec3 vWpos;
 vec4 atlasTex(vec2 uv, float fam) {
   vec2 cell = vec2(mod(fam, ${COLS}.0), floor(fam / ${COLS}.0));
@@ -154,6 +156,11 @@ function patch(mat, opts = {}) {
       ${opts.glowWin ? `diffuseColor.rgb *= mix(0.55, 1.15, uNight);
       { float id = floor(vWpos.x * 0.4) + floor(vWpos.z * 0.4) * 7.0 + floor(vWpos.y * 0.5) * 13.0; // one sign in eight is on the blink
         if (fract(sin(id * 12.9898) * 43758.5453) > 0.875) diffuseColor.rgb *= 0.25 + 0.75 * step(0.35, fract(sin(floor(uTime * 9.0 + id) * 78.233) * 43758.5)); }` : ''}`);
+    if (opts.fade) fs = fs.replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+      { vec2 c0 = floor(vWpos.xz / ${CHUNK}.0) * ${CHUNK}.0; vec2 dd = max(max(c0 - uLod.xy, vec2(0.0)), uLod.xy - c0 - ${CHUNK}.0);
+        float k = smoothstep(uLod.z, uLod.w, length(dd)); // this chunk's way through the swap (0: all detail, 1: all lod 1)
+        ivec2 b = ivec2(mod(floor(gl_FragCoord.xy), 4.0)); float th = (BAYER4[b.x + b.y * 4] + 0.5) / 16.0; // (a 4 x 4 ordered dither: an even screen-door, not noise)
+        if (${opts.fade === 'out' ? 'th < k' : 'th >= k'}) discard; }`);
     if (opts.horizon) fs = fs.replace('#include <dithering_fragment>', `#include <dithering_fragment>
       { float d = length(vWpos.xz - cameraPosition.xz); float hz = 0.45 + 0.5 * smoothstep(300.0, 1700.0, d);
         gl_FragColor.rgb = mix(gl_FragColor.rgb, uHaze, hz); }`);
@@ -190,6 +197,15 @@ export function cityMaterials() {
   const hz = (m, o = {}) => { m.fog = false; return patch(m, { horizon: true, ...o }); };
   const horizon = { solid: hz(new THREE.MeshLambertMaterial({ color: 0xffffff })), glow: hz(new THREE.MeshBasicMaterial({ color: 0xffffff }), { glowWin: true }) };
   horizon.flesh = horizon.solid; horizon.glass = horizon.solid; horizon.acid = horizon.glow;
-  MATS = { solid, flesh, glow, glass, acid, far, horizon };
+  // the detail ring's seamless swap (stream.js): a chunk crossing the ring draws both its meshes, lod 0 fading out and
+  // lod 1 fading in through a matching screen-door, so the switch is a dissolve over a few metres, not a pop line
+  const fades = (fade) => ({
+    solid: patch(new THREE.MeshLambertMaterial({ color: 0xffffff }), { fade }),
+    flesh: patch(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.22, metalness: 0.0 }), { flesh: true, pulse: true, fade }),
+    glow: patch(new THREE.MeshBasicMaterial({ color: 0xffffff }), { glowWin: true, fade }),
+    glass: patch(new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.45, depthWrite: false }), { fade }),
+    acid, // (the goo is flat and the same in both: lod 1's is hidden while they swap)
+  });
+  MATS = { solid, flesh, glow, glass, acid, far, horizon, fadeOut: fades('out'), fadeIn: fades('in') };
   return MATS;
 }

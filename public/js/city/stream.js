@@ -56,6 +56,13 @@ function groupOf(mesh, mats, lod) {
   g.userData = { bytes, tris };
   return g;
 }
+// swap a chunk's meshes to a material set (plain, or one side of the ring's dissolve), only when it changes
+// (hideAcid: lod 1's goo while both draw: it's flat and the same in both, and it can't dissolve)
+function fadeGroup(g, set, hideAcid = false) {
+  if (g.userData.set === set) return;
+  g.userData.set = set;
+  for (const m of g.children) { m.material = set[m.userData.kind]; m.visible = !(hideAcid && m.userData.kind === 'acid'); }
+}
 function freeGroup(g) { if (!g) return; g.removeFromParent(); for (const m of g.children) m.geometry.dispose(); }
 
 export class CityStream {
@@ -95,7 +102,9 @@ export class CityStream {
   setPreset(i) {
     this.preset = i; this.R = { ...(RINGS[i] || RINGS[1]) };
     const k = this.def.ringScale || {};
-    for (const key of Object.keys(k)) this.R[key] = Math.round(this.R[key] * k[key]); this.props.key = ''; this.far.wantKey = ''; }
+    for (const key of Object.keys(k)) this.R[key] = Math.round(this.R[key] * (Array.isArray(k[key]) ? k[key][i] ?? k[key][1] : k[key])); // (a list: one scale per preset, Potato .. Too HD)
+    const B = this.def.lodBand ?? 0; this.R.band = Math.max(0, Math.min(Array.isArray(B) ? B[i] ?? 0 : B, this.R.near - CHUNK)); // the detail ring's dissolve, metres (0: a hard swap, as before)
+    this.props.key = ''; this.far.wantKey = ''; }
   get boxes() { return this.world.boxes; }
 
   rec(cx, cz) {
@@ -141,7 +150,7 @@ export class CityStream {
     for (const pass of [1, 2]) for (const r of want) {
       if (this.inflight >= this.maxInflight) break;
       if (pass === 1 && r.ring === 1 && !r.m0 && !r.req.mesh0) this.send(r, { mesh0: true, packed: r.d <= this.R.props && !r.packed && !r.req.packed });
-      else if (pass === 2 && r.ring === 2 && !r.m1 && !r.req.mesh1) this.send(r, { mesh1: true });
+      else if (pass === 2 && (r.ring === 2 || r.ring === 1 && r.d > this.R.near - this.R.band) && !r.m1 && !r.req.mesh1) this.send(r, { mesh1: true }); // (the ring's dissolve band wants both)
     }
     // take results, within a frame budget (the first frame takes everything: it's a loading screen)
     const budget = this.first ? 1e9 : 4;
@@ -157,15 +166,19 @@ export class CityStream {
     }
     this.world.sync();
     // show / hide / drop meshes
+    const L = cityUniforms.uLod.value; L.set(p.x, p.z, R.near - R.band, R.near + 0.01); // (the band's shader side: mats.js fade)
     for (const r of this.chunks.values()) {
       const live = r.used === this.time, ring = live ? r.ring : 9;
       const showNear = ring === 1 && r.m0, showMid = (ring === 2 && r.m1) || (ring === 1 && !r.m0 && r.m1) || (ring === 2 && !r.m1 && r.m0);
+      const both = R.band > 0 && ring === 1 && r.d > R.near - R.band && r.m0 && r.m1; // crossing the ring: lod 0 dissolves into lod 1
+      if (r.m0) fadeGroup(r.m0, both ? this.mats.fadeOut : this.mats);
+      if (r.m1) fadeGroup(r.m1, both ? this.mats.fadeIn : this.mats, both);
       if (r.m0) {
         r.m0.visible = !!showNear || (ring === 2 && !r.m1);
         const cast = r.d < 64; // only the chunks round you cast sun shadows (the shadow pass was half the triangles)
         if (r.m0.userData.cast !== cast) { r.m0.userData.cast = cast; for (const m of r.m0.children) m.castShadow = cast && m.userData.kind !== 'glass' && m.userData.kind !== 'glow'; }
       }
-      if (r.m1) r.m1.visible = !!showMid && !showNear;
+      if (r.m1) r.m1.visible = (!!showMid && !showNear) || !!both;
       if (r.m0 && (!live || r.d > R.near + HYST + CHUNK)) { freeGroup(r.m0); r.m0 = null; r.req.mesh0 = false; }
       if (r.m1 && (!live || r.d > R.mid + HYST + CHUNK || ring === 1 && r.m0 && r.d < R.near - CHUNK)) { freeGroup(r.m1); r.m1 = null; r.req.mesh1 = false; }
       if (!live && !r.m0 && !r.m1 && this.time - r.used > 20 && !this.world.has(r.id) && !r.req.packed) this.chunks.delete(r.id); // LRU: forgotten 20 s after it left every ring
