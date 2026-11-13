@@ -906,3 +906,42 @@ sfx.thunder = (k = 0.6, cover = 0) => {
   tone('sine', 62, 28, 2.2, 0.45 * k * lo, null, 0.1);
   if (Math.random() < 0.6) rumble(1.6, 0.4 * k * lo, 520, 40, 1.3 + Math.random() * 0.6); // (a second roll)
 };
+
+// Mount Kaboom (wxerupt.js). the rumble: a deep ground roar with a sub-bass throb, k 0..1 (in loops: stopLoops shuts it up)
+export function eruptRumble(k) {
+  if (!ac) return;
+  let l = loops.erupt;
+  if (!l) {
+    if (!(k > 0.01)) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true;
+    const lp = ac.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 160; lp.Q.value = 0.9;
+    s.connect(lp); lp.connect(g); s.start(0, Math.random() * 1.5);
+    const o = ac.createOscillator(); o.type = 'sine'; o.frequency.value = 34;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 0.7; const lg = ac.createGain(); lg.gain.value = 6; lfo.connect(lg); lg.connect(o.frequency); // (the throb wanders)
+    const og = ac.createGain(); og.gain.value = 0.6; o.connect(og); og.connect(g); o.start(); lfo.start();
+    l = loops.erupt = { g, on: false, def: { vol: 0 } };
+  }
+  const on = k > 0.01;
+  if (on || l.on) l.g.gain.setTargetAtTime(on ? 0.5 * Math.min(1, k) : 0, ac.currentTime, 0.5);
+  l.on = on;
+}
+Object.assign(sfx, {
+  // the eruption: a huge low bang, a crack on top, then the roar rolling on for seconds
+  eruptBoom(pos) {
+    if (!ac) return;
+    noise(0.5, 1, 'lowpass', 2400, 60, null); tone('sine', 70, 22, 1.6, 1, null); tone('sawtooth', 110, 30, 0.9, 0.35, null);
+    noise(0.3, 0.6, 'highpass', 1800, 500, null, 0.02);
+    rumble(4.5, 0.9, 700, 40, 0.15); rumble(3.2, 0.6, 260, 30, 0.9);
+  },
+  // a lava bomb coming down near you: a falling cartoon whistle, dur s long (it lands as it ends)
+  bombWhistle(pos, dur = 1) {
+    if (!ac) return;
+    const t = ac.currentTime, o = ac.createOscillator(), g = ac.createGain();
+    o.type = 'sine'; o.frequency.setValueAtTime(1900, t); o.frequency.exponentialRampToValueAtTime(420, t + dur);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.2, t + dur * 0.4); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+    o.connect(g); g.connect(dest(pos)); o.start(t); o.stop(t + dur + 0.05);
+  },
+  // and the thud when it hits: a heavy dull bump with a hiss of molten rock
+  bombThud(pos) { tone('sine', 120, 35, 0.35, 0.9, pos); noise(0.25, 0.7, 'lowpass', 900, 80, pos); noise(0.6, 0.25, 'highpass', 3000, 6000, pos, 0.08); },
+});

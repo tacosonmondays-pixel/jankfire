@@ -14,6 +14,7 @@ import { net } from './net.js';
 import { skyParts } from './world.js';
 import { sceneryGroup } from './scenery.js';
 import { rainLoop, sfx } from './audio.js';
+import { eruptFrame, eruptLook, eruptState } from './wxerupt.js'; // Mount Kaboom erupts (Islands)
 
 const W = {
   plan: null, t0: 0, snap: false, k: 0, kind: '', test: null, // test: { k, s } forced from a test (wxTest)
@@ -99,8 +100,8 @@ function floorAt(x, z, cy, lo, hi) {
   _o[0] = x; _o[1] = cy + 30; _o[2] = z;
   const h = raycast(_o, DOWN, 60, roofBoxes());
   if (!h || h.axis !== 1) return null;
-  const y = _o[1] - h.t;
-  return y >= cy - lo && y <= cy + hi ? { y, b: h.box } : null;
+  const def = MAPS[MAP.id], sea = def && Number.isFinite(def.seaY) ? def.seaY : -Infinity, y0 = _o[1] - h.t, y = Math.max(y0, sea); // (the shallows: on the water, not the sea bed)
+  return y >= cy - lo && y <= cy + hi ? { y, b: h.box, wet: y0 < sea } : null;
 }
 const hash = (a, b, c = 0) => { let h = Math.imul(a | 0, 374761393) ^ Math.imul(b | 0, 668265263) ^ Math.imul(c | 0, 1274126177); h = Math.imul(h ^ (h >>> 13), 1103515245); return ((h ^ (h >>> 16)) >>> 0) / 4294967296; };
 
@@ -158,7 +159,7 @@ function puddles(K, cam, k, max) {
       if (hash(gx, gz, 7) > 0.3) continue;
       const x = (gx + 0.15 + hash(gx, gz, 8) * 0.7) * C, z = (gz + 0.15 + hash(gx, gz, 9) * 0.7) * C, s = 0.8 + hash(gx, gz, 10) * 0.9;
       const f = floorAt(x, z, cam.y, 9, 4);
-      if (!f || !f.b || !f.b.min) continue;
+      if (!f || !f.b || !f.b.min || f.wet) continue; // (no puddles on the sea)
       const r = 0.95 * s;
       if (x - r < f.b.min[0] || x + r > f.b.max[0] || z - r < f.b.min[2] || z + r > f.b.max[2]) continue; // all of it on the one floor
       L.push([x, f.y + 0.015, z, hash(gx, gz, 11) * 6.28, s, (hash(gx, gz, 12) - 0.5) * 0.7 * s, (hash(gx, gz, 13) - 0.5) * 0.7 * s]);
@@ -182,8 +183,13 @@ export function updateWeather(dt) {
   const plan = W.plan && W.plan.m === MAP.id ? W.plan : null;
   let cur = W.test ? { k: W.test.k, s: W.test.s, i: W.test.i ?? -1 } : plan ? wxAt(plan, t) : { k: '', s: 0, i: -1 };
   if (!on) cur = { k: '', s: 0, i: -1 };
+  // an eruption plays on its own (wxerupt.js); everything below is the rain (its downpour comes as a rain phase after it)
+  const et = W.test && W.test.k === 'erupt' ? W.test : null;
+  if (et && et.t == null) et.t = t;
+  W.edark = eruptFrame(dt, W.test ? null : plan, t, on, et ? { at: et.at + (t - et.t), len: et.len } : null); // (a test of something else: no eruption)
+  if (cur.k && cur.k !== 'rain') cur = { k: '', s: 0, i: cur.i };
   if (cur.k) W.kind = cur.k;
-  if (W.snap || W.test) { W.k = cur.s; W.snap = false; } // (just joined: straight into whatever the weather is now)
+  if (W.snap || (W.test && W.test.k === 'rain')) { W.k = cur.s; W.snap = false; } // (just joined: straight into whatever the weather is now)
   else { const e = Math.min(1, Math.max(dt, now() - (W.last || 0))); W.k += Math.max(-e / 6, Math.min(e / 6, cur.s - W.k)); } // (a fresh plan or a new map eases over ~6 s of real time, whatever the frame rate)
   W.last = now();
   if (W.k < 0.003 || !on) W.k = 0; // (switched off in settings, or out of the match: gone at once, not eased out)
@@ -247,14 +253,14 @@ function lightning(K, plan, i, t, p, k) {
 const SAVE = { on: false };
 const STORM_FOG = new THREE.Color(0x3b4152), STORM_SKY = new THREE.Color(0x4e5470), FLASH = new THREE.Color(0xe4ecff), HEMI_T = new THREE.Color(0x9aa6c8);
 export function wxPre() {
-  const d = Math.min(1.2, W.dark || 0), f = W.flash || 0;
-  if (!(d > 0.002 || f > 0.002) || !G.scene || !G.scene.fog) return;
+  const d = Math.min(1.2, W.dark || 0), f = W.flash || 0, el = eruptLook(), e = Math.min(1, el.dark || 0), ef = el.flash || 0;
+  if (!(d > 0.002 || f > 0.002 || e > 0.002 || ef > 0.002) || !G.scene || !G.scene.fog) return;
   const sc = G.scene, fog = sc.fog, hemi = sc.children.find((o) => o.isHemisphereLight), sun = sc.children.find((o) => o.isDirectionalLight), sky = skyParts();
   if (![fog.near, fog.far].every(Number.isFinite)) return;
   SAVE.on = true;
   SAVE.fog = [fog.near, fog.far, fog.color.getHex()];
   SAVE.hemi = hemi ? [hemi, hemi.intensity, hemi.color.getHex()] : null;
-  SAVE.sun = sun ? [sun, sun.intensity] : null;
+  SAVE.sun = sun ? [sun, sun.intensity, sun.color.getHex()] : null;
   SAVE.sky = sky.sky ? sky.sky.material.color.getHex() : null;
   SAVE.vis = [sky.sun, ...sky.clouds].filter(Boolean).map((o) => [o, o.visible]);
   SAVE.far = [];
@@ -267,15 +273,23 @@ export function wxPre() {
   for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(STORM_SKY, 0.6 * dk)).lerp(FLASH, 0.3 * f);
   if (sun) sun.intensity = sun.intensity * (1 - 0.65 * dk) + 1.5 * f;
   if (sky.sky) sky.sky.material.color.lerp(STORM_SKY, 0.75 * dk).lerp(FLASH, 0.6 * f);
-  if (dk > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
+  if (e > 0.002 || ef > 0.002) { // the eruption: ash-brown haze closing in, an orange sky, the sun gone dull and red, the boom's flash
+    fog.near *= 1 - 0.5 * e; fog.far *= 1 - 0.45 * e; fog.color.lerp(ASH_FOG, 0.6 * e).lerp(ERUPT_FLASH, 0.4 * ef);
+    if (hemi) { hemi.intensity = hemi.intensity * (1 - 0.25 * e) + 1.2 * ef; hemi.color.lerp(ASH_HEMI, 0.55 * e).lerp(ERUPT_FLASH, 0.4 * ef); }
+    if (sun) { sun.intensity = sun.intensity * (1 - 0.5 * e) + 1.2 * ef; sun.color.lerp(ASH_SUN, 0.6 * e); }
+    if (sky.sky) sky.sky.material.color.lerp(ASH_SKY, 0.8 * e).lerp(ERUPT_FLASH, 0.5 * ef);
+    for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(ASH_SKY, 0.55 * e));
+  }
+  if (Math.max(dk, e) > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
 }
+const ASH_FOG = new THREE.Color(0x5a3a34), ASH_SKY = new THREE.Color(0x9a5a44), ASH_HEMI = new THREE.Color(0xffa070), ASH_SUN = new THREE.Color(0xff6a2a), ERUPT_FLASH = new THREE.Color(0xffb060);
 export function wxPost() {
   if (!SAVE.on) return;
   SAVE.on = false;
   const sc = G.scene, fog = sc.fog;
   [fog.near, fog.far] = SAVE.fog; fog.color.setHex(SAVE.fog[2]);
   if (SAVE.hemi) { SAVE.hemi[0].intensity = SAVE.hemi[1]; SAVE.hemi[0].color.setHex(SAVE.hemi[2]); }
-  if (SAVE.sun) SAVE.sun[0].intensity = SAVE.sun[1];
+  if (SAVE.sun) { SAVE.sun[0].intensity = SAVE.sun[1]; SAVE.sun[0].color.setHex(SAVE.sun[2]); }
   const sky = skyParts();
   if (sky.sky && SAVE.sky != null) sky.sky.material.color.setHex(SAVE.sky);
   for (const [o, v] of SAVE.vis) o.visible = v;
@@ -287,7 +301,7 @@ export function wxState() {
   const K = W.kind && W.kits[WX_KINDS[W.kind].kit];
   const kk = typeof K === 'object' && K ? K : null;
   return { map: MAP.id, plan: !!(W.plan && W.plan.m === MAP.id), phases: W.plan ? W.plan.ph.length : 0, t: now() - W.t0, k: W.k, kind: W.kind, kit: kk ? 'loaded' : K || 'none',
-    visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
+    erupt: eruptState(), visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
 }
 // what the weather adds to a frame: one draw per visible piece (the copies are instanced), and their triangles
 function draws(root, tris) {
@@ -295,4 +309,4 @@ function draws(root, tris) {
   root.traverseVisible((o) => { if (!o.isMesh || (o.isInstancedMesh && !o.count)) return; n += tris ? (o.geometry.index ? o.geometry.index.count / 3 : o.geometry.attributes.position.count / 3) * (o.isInstancedMesh ? o.count : 1) : 1; });
   return Math.round(n);
 }
-export function wxTest(o) { W.test = o ? { k: o.k || 'rain', s: o.s ?? 1, i: o.i, strike: o.strike || null } : null; W.key = ''; }
+export function wxTest(o) { W.test = o ? { k: o.k || 'rain', s: o.s ?? 1, i: o.i, strike: o.strike || null, at: o.at || 0, len: o.len || 140 } : null; W.key = ''; } // (k 'erupt': at = s since the blast began, negative = still building)

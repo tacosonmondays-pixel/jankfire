@@ -1,6 +1,16 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.31', date: '2026-11-13', title: "POOL'S OPEN", items: [
+    "POOL'S OPEN: rooftop's pool party got real furniture. striped cabanas, sun loungers, a dj booth with actual decks, pink speakers, a light rig and a flamingo floatie. still can't swim.",
+  ] },
+  { v: '11.30', date: '2026-11-13', title: 'BACK TO THE GARAGE', items: [
+    "offline battle island, plant & defuse, jank royale and zombies take you back to their lobby after the match, with a PLAY AGAIN button. no more surprise quick play.",
+  ] },
+  { v: '11.29', date: '2026-11-13', title: 'KABOOM', items: [
+    "mount kaboom erupts now. a rumble, then BOOM: an ash cloud, lava spilling out of the crater, glowing lava bombs whistling overhead, then a tropical downpour. islands and islands plant & defuse. everyone sees it at the same moment.",
+    "the lava bombs are just for looking at. for now.",
+  ] },
   { v: '11.28', date: '2026-11-13', title: 'IT RAINS NOW', items: [
     "WEATHER: it rains now. a minute or two into a match a storm rolls in over suburb, warehouse, skyline, rooftop, platform, range and jankburg. drawn-on clouds, splashes, puddles, lightning, thunder. everyone gets the same storm.",
     "indoors the rain drums on the roof. dead mall only hears it. you can turn it off in settings (weather), coward.",

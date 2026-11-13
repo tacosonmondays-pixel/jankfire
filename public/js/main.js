@@ -98,7 +98,7 @@ import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
-import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
+import { initEndscreen, esBack, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft, refreshHero, heroInto } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
@@ -108,7 +108,7 @@ import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + q
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
 import { pregameFrame, pregameKey } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
-import { initHub, hubShown, hubLobbyShown, hubInvite } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { lobbySceneFrame, lobbySceneOn, setLobbyMe } from './lobbyscenes/index.js'; // a 3D place behind each mode's lobby (docs/menu/LOBBY_SCENES.md)
@@ -182,6 +182,7 @@ initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
   unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  back: (mode) => backToLobby(mode), // an offline single-mode match: LOBBY
   level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
   gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
     const me = account.me;
@@ -1692,6 +1693,9 @@ function stopUse() { if (G.using && isleOn()) net.send({ t: 'use', up: 1 }); cle
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => esVotes(m));
+// an offline single-mode match is over (server/hubback.js): PLAY AGAIN / LOBBY on the end screen, then 'go' = back to its lobby
+function backToLobby(mode) { quitToMenu(true); hubBackTo(mode); }
+net.on('hubback', (m) => { if (!m || typeof m.mode !== 'string') return; if (m.k === 'go') backToLobby(m.mode); else esBack(m); });
 net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)

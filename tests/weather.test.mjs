@@ -5,7 +5,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WX_KINDS, WX_MAPS, WX_SPAN, WX_MAXPH, wxPlan, wxAt, wxStrikes, wxMsg, wxCheck } from '../shared/weather.js';
+import { WX_KINDS, WX_MAPS, WX_SPAN, WX_MAXPH, wxPlan, wxAt, wxStrikes, wxMsg, wxCheck, wxErupt, wxBombs } from '../shared/weather.js';
+import { raycast } from '../shared/physics.js';
 import { MAPS } from '../shared/map.js';
 import { Room } from '../server/room.js';
 
@@ -19,7 +20,7 @@ test('the plan: same seed, same weather; different seeds differ', () => {
 });
 
 test('the plan: starts clear, showers in range, in order, inside the span', () => {
-  for (const map of Object.keys(WX_MAPS)) for (let seed = 1; seed < 60; seed++) {
+  for (const map of Object.keys(WX_MAPS).filter((m) => WX_MAPS[m].k === 'rain')) for (let seed = 1; seed < 60; seed++) {
     const p = wxPlan(map, seed * 7919), K = WX_KINDS[WX_MAPS[map].k];
     assert.ok(p.ph.length >= 3 && p.ph.length <= WX_MAXPH, `${map}: ${p.ph.length} showers`);
     assert.ok(p.ph[0][0] >= K.first[0] - 0.1 && p.ph[0][0] <= K.first[1] + 0.1, 'the first one rolls in after 1-2 minutes');
@@ -40,7 +41,7 @@ test('the plan: starts clear, showers in range, in order, inside the span', () =
 });
 
 test('no weather on the maps that get theirs later, and the test knob', () => {
-  for (const map of ['crate', 'backrooms', 'desert', 'bazaar', 'islands', 'forest']) assert.equal(wxPlan(map, 5).ph.length, 0, map);
+  for (const map of ['crate', 'backrooms', 'desert', 'bazaar', 'forest']) assert.equal(wxPlan(map, 5).ph.length, 0, map);
   assert.deepEqual(wxPlan('suburb', 5, 'rain').ph, [[0, WX_SPAN, 'rain', 1]]);
   assert.equal(wxPlan('suburb', 5, 'off').ph.length, 0);
   assert.equal(wxPlan('crate', 5, 'rain').ph.length, 0, 'the knob only rains where rain belongs');
@@ -53,8 +54,11 @@ test('every weather map exists, and its kit glb is on disk', () => {
     assert.ok(fs.existsSync(f) && fs.statSync(f).size > 1000, f);
     const b = fs.readFileSync(f), j = JSON.parse(b.slice(20, 20 + b.readUInt32LE(12)).toString());
     const names = new Set(j.nodes.map((n) => n.name)), clips = new Set((j.animations || []).map((a) => a.name));
-    for (const n of ['wx_curtain', 'wx_splash_a', 'wx_splash_b', 'wx_ripple', 'wx_puddle', 'wx_clouds', 'wx_bolt_0', 'wx_bolt_1', 'wx_bolt_2']) assert.ok(names.has(n), n);
-    for (const c of ['wx_curtain_fall', 'wx_splash_a_clip', 'wx_splash_b_clip', 'wx_ripple_clip', 'wx_clouds_turn', 'strike_0', 'strike_1', 'strike_2']) assert.ok(clips.has(c), c);
+    const need = w.k === 'erupt' ? [['wx_plume', 'wx_ash', 'wx_bomb', 'wx_trail', 'wx_splat', map === 'islands_sd' ? 'wx_pool_sd' : 'wx_pool'], ['plume_rise', 'plume_churn', 'ash_spread', 'bomb_arc', 'splat_pop', map === 'islands_sd' ? 'pool_rise_sd' : 'pool_rise']]
+      : [['wx_curtain', 'wx_splash_a', 'wx_splash_b', 'wx_ripple', 'wx_puddle', 'wx_clouds', 'wx_bolt_0', 'wx_bolt_1', 'wx_bolt_2'], ['wx_curtain_fall', 'wx_splash_a_clip', 'wx_splash_b_clip', 'wx_ripple_clip', 'wx_clouds_turn', 'strike_0', 'strike_1', 'strike_2']];
+    for (const n of need[0]) assert.ok(names.has(n), n);
+    for (const c of need[1]) assert.ok(clips.has(c), c);
+    if (WX_KINDS[w.k].after) assert.ok(fs.existsSync(path.join(ROOT, 'public/models/wx', WX_KINDS[WX_KINDS[w.k].after].kit + '.glb')), 'its downpour kit too');
     for (const a of j.animations) for (const c of a.channels) assert.ok(['translation', 'rotation', 'scale'].includes(c.target.path), 'transform clips only (no material animation)');
   }
 });
@@ -91,4 +95,44 @@ test('the room: a plan on the first join, the same plan for a late joiner, a new
   R.cfg.map = 'platform'; R.wxCheck(); const s1 = got.get('b').filter((m) => m.t === 'wx').at(-1).s;
   R.round.t0 = Date.now() + 1; R.wxCheck();
   assert.notEqual(got.get('b').filter((m) => m.t === 'wx').at(-1).s, s1, 'a new match rolls new weather');
+});
+
+test('Mount Kaboom: clear first, an eruption, its downpour straight after, quiet, again', () => {
+  for (const map of ['islands', 'islands_sd']) for (let seed = 1; seed < 40; seed++) {
+    const p = wxPlan(map, seed * 104729), K = WX_KINDS.erupt;
+    assert.ok(p.ph.length >= 4 && p.ph.length <= WX_MAXPH && p.ph.length % 2 === 0);
+    assert.equal(wxAt(p, 30).s, 0, 'clear at the start');
+    assert.ok(p.ph[0][0] >= K.first[0] - 0.1 && p.ph[0][0] <= K.first[1] + 0.1);
+    for (let i = 0; i < p.ph.length; i += 2) {
+      const [a, b, k] = p.ph[i], [c, d, k2, s2] = p.ph[i + 1];
+      assert.equal(k, 'erupt'); assert.equal(k2, 'rain'); assert.equal(c, b, 'the downpour follows right on');
+      assert.ok(b - a >= K.len[0] - 0.2 && b - a <= K.len[1] + 0.2 && d > c && d <= WX_SPAN && s2 >= 0.75 && s2 <= 1);
+      if (i) assert.ok(a - p.ph[i - 1][1] >= K.gap[0] - 0.2, 'a long quiet between');
+      assert.equal(wxErupt(p.ph[i], a + 1).stage, 'build'); assert.equal(wxErupt(p.ph[i], a + K.build + 1).stage, 'blast'); assert.equal(wxErupt(p.ph[i], b - 1).stage, 'settle');
+    }
+  }
+  assert.deepEqual(wxPlan('islands', 9, 'erupt').ph, [[-WX_KINDS.erupt.build, WX_SPAN, 'erupt', 1]], 'the knob: already erupting at second 0');
+  assert.equal(wxErupt(wxPlan('islands', 9, 'erupt').ph[0], 0).stage, 'blast');
+  assert.ok(wxCheck(wxMsg(wxPlan('islands', 9, 'erupt'), 0)), 'an early start passes the client check');
+  assert.equal(wxCheck({ ...wxMsg(wxPlan('islands', 9, 'erupt'), 0), ph: [[-5000, 10, 'erupt', 1]] }), null);
+  assert.deepEqual(wxPlan('islands', 9, 'rain').ph, [[0, WX_SPAN, 'rain', 1]], 'JF_WEATHER=rain: the downpour on its own');
+});
+
+test('lava bombs: the same landings everywhere, only while it blasts, on the ground or a box top (never under the map)', () => {
+  for (const map of ['islands', 'islands_sd']) {
+    const p = wxPlan(map, 31337), ph = p.ph[0], K = WX_KINDS.erupt, w = WX_MAPS[map];
+    assert.deepEqual(wxBombs(p, ph[0] + 60), wxBombs(wxPlan(map, 31337), ph[0] + 60), 'deterministic from the plan');
+    assert.deepEqual(wxBombs(p, ph[0] - 1), [], 'none before'); assert.deepEqual(wxBombs(p, ph[1] + 1), [], 'none after');
+    const L = wxBombs(p, ph[0] + 1), M = MAPS[map];
+    assert.ok(L.length > 20, `${map}: ${L.length} bombs`);
+    for (const b of L) {
+      for (const k of ['x', 'y', 'z', 't', 't0', 'sx', 'sy', 'sz', 'h']) assert.ok(Number.isFinite(b[k]), k);
+      assert.ok(b.t0 >= ph[0] + K.build && b.t0 < ph[1] - K.settle && b.t > b.t0 && b.t < ph[1], 'launched in the blast, down before it ends');
+      assert.ok(Math.hypot(b.x - w.vent[0], b.z - w.vent[2]) < 70, 'round the volcano');
+      assert.ok(b.y >= M.seaY - 0.01 && b.y > M.killY, 'never under the sea or the map');
+      const down = raycast([b.x, b.y + 0.5, b.z], [0, -1, 0], 2, M.boxes);
+      assert.ok(down ? Math.abs(b.y + 0.5 - down.t - b.y) < 0.02 || b.y === M.seaY : b.y === M.seaY, `on a surface at ${b.x},${b.y},${b.z}`);
+    }
+    for (let i = 1; i < L.length; i++) assert.ok(L[i].t0 > L[i - 1].t0, 'in launch order');
+  }
 });
