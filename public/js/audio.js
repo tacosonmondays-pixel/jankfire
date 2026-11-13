@@ -852,3 +852,14 @@ export const encSfx = {
   stamp(pos = null) { tone('sine', 180, 60, 0.12, 0.4, pos); noise(0.06, 0.4, 'lowpass', 2000, 300, pos); }, // the clerk's stamp
   sung(pos = null) { for (let i = 0; i < 4; i++) tone('sine', 440, 440, 0.4, 0.05, pos, i * 0.02); tone('triangle', 880, 878, 0.6, 0.04, pos); }, // one held note, in harmony with itself
 };
+
+// card deck
+Object.assign(sfx, {
+  // a fast riffle off the thumb as cards fly, a woody "thk" as one stabs into a wall, a paper "pff" + a sparkly
+  // blip when one bursts on someone, the zip of one going past your ear, a soft flop when a stray one lands on the floor
+  cardThrow(pos = null) { for (let i = 0; i < 4; i++) noise(0.022, 0.5 - i * 0.07, 'bandpass', 3800 + i * 500, 2400, pos, i * 0.022, 3); whoosh(0.16, 0.22, 700, 2600, 1.6, pos); },
+  cardThk(pos = null) { tone('square', 1500, 260, 0.035, 0.28, pos); noise(0.04, 0.6, 'bandpass', 2600, 1200, pos, 0, 2.5); tone('triangle', 240, 150, 0.07, 0.35, pos, 0.005); noise(0.05, 0.2, 'highpass', 5000, 7000, pos, 0.03); },
+  cardBurst(pos = null) { noise(0.14, 0.7, 'highpass', 2200, 6000, pos); tone('square', 520, 1040, 0.08, 0.14, pos); for (const [i, f] of [1568, 2093, 2637].entries()) tone('sine', f, f * 1.02, 0.09, 0.12, pos, 0.03 + i * 0.035); },
+  cardWhoosh(pos = null) { whoosh(0.2, 0.45, 1100, 4200, 2.2, pos); tone('sine', 1800, 900, 0.12, 0.05, pos); },
+  cardFlop(pos = null) { noise(0.06, 0.3, 'lowpass', 1800, 500, pos); tone('sine', 420, 260, 0.06, 0.08, pos); },
+});

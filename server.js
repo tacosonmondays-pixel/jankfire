@@ -43,6 +43,8 @@ const accounts = new Accounts(store);
 const serverFile = browsableServer(ROOT); // /server/<file>: only server/room.js and what it imports
 const ROUTES = [
   ['/vendor/three/', path.join(ROOT, 'node_modules/three/')],
+  ['/vendor/pathtracer/', path.join(ROOT, 'node_modules/three-gpu-pathtracer/build/')], // the path-traced photo (photo.js), loaded only when you take one
+  ['/vendor/bvh/', path.join(ROOT, 'node_modules/three-mesh-bvh/build/')],
   ['/shared/', path.join(ROOT, 'shared/')],
   ['/mechs/concept/', path.join(ROOT, 'docs/mechs/concept/')], // the mechs' placeholder models (the client's fallback until public/models/x_mech_*.glb lands)
   ['/', path.join(ROOT, 'public/')],
