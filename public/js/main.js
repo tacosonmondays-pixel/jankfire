@@ -82,6 +82,8 @@ import { chaosSpecId, pitErupt, underSea } from './chaos.js';
 import { sink, bottomOut, swim, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
+import { initFullmap, fullmapFrame, fmKey, fmMouse, fmOpen } from './fullmap.js'; // the big map (M) + pings
+import { initMapPencil } from './mappencil.js'; // the big map's pencil
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
@@ -98,7 +100,7 @@ import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
-import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
+import { initEndscreen, esBack, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft, refreshHero, heroInto } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
@@ -107,7 +109,7 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { initHub, hubShown, hubLobbyShown, hubInvite } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
 import { lobbySceneFrame, lobbySceneOn, setLobbyMe } from './lobbyscenes/index.js'; // a 3D place behind each mode's lobby (docs/menu/LOBBY_SCENES.md)
@@ -177,10 +179,13 @@ G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
 initMinimap();
+initFullmap(() => lock());
+initMapPencil();
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
   unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  back: (mode) => backToLobby(mode), // an offline single-mode match: LOBBY
   level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
   gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
     const me = account.me;
@@ -411,7 +416,7 @@ const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jum
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { mlook.locked(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !fmOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -1220,6 +1225,7 @@ function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
   if (story && story.key(e)) { e.preventDefault(); return; } // story mode: talk, pick up, cutscene skip, the codex
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
+  if (fmKey(e)) { e.preventDefault(); return; } // the big map (M), Esc closes it; the ping key
   if (isleKey(e, startUse)) { e.preventDefault(); return; } // battle island: down = hands off; F next to a downed squadmate picks them up
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
@@ -1283,6 +1289,7 @@ addEventListener('mousedown', (e) => {
   if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
   if (RP.mode === 'hl') return; // ...but not the play of the round
+  if (fmMouse(e)) return; // the big map is open: clicks are pings (off it: close it)
   if (brMouse(e)) return; // jank royale: no shooting from the blimp; out = click to watch someone else
   if (econMouse(e)) return;
   if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
@@ -1690,6 +1697,9 @@ function stopUse() { if (G.using && isleOn()) net.send({ t: 'use', up: 1 }); cle
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => esVotes(m));
+// an offline single-mode match is over (server/hubback.js): PLAY AGAIN / LOBBY on the end screen, then 'go' = back to its lobby
+function backToLobby(mode) { quitToMenu(true); hubBackTo(mode); }
+net.on('hubback', (m) => { if (!m || typeof m.mode !== 'string') return; if (m.k === 'go') backToLobby(m.mode); else esBack(m); });
 net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
@@ -2144,6 +2154,7 @@ function frame(t) {
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
   isleFrame(dt, now); // battle island: the squad panel, markers, downed people
   minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
+  fullmapFrame(now); // the big map (when open) + pings in the world
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);

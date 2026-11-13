@@ -10,7 +10,7 @@ import { fx } from './fx.js';
 import { ME, C as PC } from './player.js';
 import { W, setLoadout, showSlots, refillAmmo } from './weapons.js';
 import { RP } from './replay.js';
-import { paintBoxes } from './minimap.js'; // the map-from-above painter, shared with the HUD minimap
+import { paintBoxes, mmLayers } from './minimap.js'; // the map-from-above painter, shared with the HUD minimap (+ its extra layers: map pings)
 import { buildWeapon, buildProjectile, freeTree, makeNameTag } from './models.js';
 import { BOXES, MAPS } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
@@ -278,6 +278,7 @@ function drawMap(now, zn) {
   for (const c of R.crates.values()) { const [px, pz] = toMap(c.x, c.z); x.fillStyle = '#ffe14d'; x.strokeStyle = '#000'; x.lineWidth = 2; x.strokeRect(px - 4, pz - 4, 8, 8); x.fillRect(px - 4, pz - 4, 8, 8); }
   const ld = R.leader && R.leader !== G.myId && G.remotes.get(R.leader);
   if (ld && ld.alive) { const [px, pz] = toMap(ld.pos[0], ld.pos[2]), k2 = 3 + Math.sin(now / 150) * 1.5; x.fillStyle = '#ffe14d'; x.beginPath(); x.arc(px, pz, 4 + k2, 0, 7); x.fill(); x.fillStyle = '#ff00dc'; x.beginPath(); x.arc(px, pz, 3, 0, 7); x.fill(); }
+  for (const f of mmLayers) f(x, toMap, now, S); // map pings (fullmap.js)
   // you: an arrow (or who you're watching)
   const who = ME.alive ? { pos: ME.pos, yaw: ME.yaw } : G.remotes.get(R.spec);
   if (who) {

@@ -40,6 +40,7 @@ import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { teamPlan } from './partyteams.js'; // parties stay on one side
 import { ticketRoom } from './party.js'; // party tickets (roomFor)
+import { HUB_BACK, hubBackOpen, hubBackPick, hubBackDue, hubBackJoin, hubBackGame } from './hubback.js'; // offline single-mode matches go back to their lobby
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
 import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
@@ -72,6 +73,7 @@ import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
 import { installWeather } from './weather.js'; // rain and co: the map's weather timeline, sent to everyone (look only)
+import { installPings } from './pings.js'; // the big map's pings: relayed to your side only
 import { LOBBY } from '../shared/lobby.js';
 import './env.js'; // .env: read after the modules above (as it was in server.js), before the knobs below
 
@@ -521,6 +523,7 @@ class Room {
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
+    hubBackJoin(this, p); // the end screen of an offline single-mode match is up: PLAY AGAIN / LOBBY for them too
     if (hasRandom(p.skinWant)) send(p, { t: 'sk', id: p.id, s: p.skins }); // your random slots' first roll
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
@@ -2801,7 +2804,7 @@ class Room {
       else this.resetWorld();
     }
     if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
+    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); hubBackGame(this); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
     if (has(BOT_DIFF, m.diff) && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
@@ -3045,6 +3048,9 @@ class Room {
         if (now() - (p.voteT || 0) > 250) this.castVote(p, m.i); else p.votePend = { i: m.i, stage: v.stage };
         break;
       }
+      case 'hbagain': // PLAY AGAIN on the end screen of an offline single-mode match (server/hubback.js)
+        if (this.hubBack && this.round && this.round.over && typeof m.on === 'boolean') hubBackPick(this, p, m.on);
+        break;
       case 'respawn': // killcam finished or skipped: respawn now, but never sooner than the mode allows
         if (this.zm) break; // zombies: you wait for a revive or the next round
         if (this.livesOn && p.oitc && p.oitc.out) break; // out of lives: you watch
@@ -3099,7 +3105,7 @@ class Room {
     const n = now();
     skipTick(this, n);
     if (this.warm) { this.tickWarm(n); return; } // a mode lobby: the countdown (no skip vote, no kill limit)
-    if (r.over) { this.tickVote(n); if (n >= r.next) { if (this.lobby) this.enterWarm(LOBBY.again); else this.startRound(); } return; } // a mode lobby goes back to a short lobby, so the group stays together
+    if (r.over) { this.tickVote(n); if (n >= r.next) { if (this.hubBack && hubBackDue(this, n)) return; if (this.lobby) this.enterWarm(LOBBY.again); else this.startRound(); } return; } // a mode lobby goes back to a short lobby, so the group stays together
     if (!this.humans().length) return;
     if (this.zm) { this.zmRound(n); return; } // zombies ends when everyone's down
     if (this.game === 'bomb' && this.bomb) { this.tickBomb(n); return; }
@@ -3239,6 +3245,7 @@ class Room {
   zmCrowd() { return this.humans().filter((p) => !p.watch).length > (LOBBY.kinds.zm.cap || 4); }
   startVote() {
     if (this.mode !== 'ffa' && this.mode !== 'bots') return;
+    if (this.hubBack) { hubBackOpen(this); return; } // an offline single-mode match from the hub: back to its lobby, no vote
     let options = modeCards(MAPS, MAP_ORDER, this.game, Math.random, this.skipped);
     if (this.zmCrowd() && options.some((o) => GAMES[o.game].zombies)) { // more than 4 of you: no zombies card, another mode in its place
       options = options.filter((o) => !GAMES[o.game].zombies);
@@ -4053,6 +4060,7 @@ installGavel(Room, { now, send, raycast, r2, eyeOf, lookOf, norm, vec3, center }
 installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-op / quick play
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installWeather(Room, { now, send, force: WX_FORCE }); // the weather timeline (server/weather.js: wraps tick + addHuman)
+installPings(Room, { now, send }); // the big map's pings (server/pings.js)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats
@@ -4196,6 +4204,7 @@ function roomFor(mode, ws, cfg) {
   if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
     const r = new Room(`bots:priv:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
     r.priv = true;
+    if (HUB_BACK.includes(cfg.hub)) r.hubBack = cfg.hub; // (server/hubback.js)
     rooms.set(r.id, r);
     return r;
   }

@@ -1,6 +1,24 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.35', date: '2026-11-13', title: 'HOMEWORK', items: [
+    "the game stopped freezing for a sec the first time it sees a new gun, zombie or mech. it does its homework at load now. looks exactly the same.",
+  ] },
+  { v: '11.34', date: '2026-11-13', title: 'DRAW ON THE MAP', items: [
+    "DRAW ON THE MAP. open the big map, grab the PENCIL (or hold shift) and sketch a route for your squad: a fat felt-tip arrow they see on their map for 30 s. WIPE MINE when the plan changes.",
+  ] },
+  { v: '11.33', date: '2026-11-13', title: 'PRESS M', items: [
+    "PRESS M: THE BIG MAP. the whole level, your squad, the zone and the blimp's route. click it (or press K) to ping a spot for your team: a beam, a beep and a distance. spam it and it tells you to touch grass.",
+  ] },
+  { v: '11.32', date: '2026-11-13', title: 'SIGN HERE', items: [
+    "SIGN HERE: rooftop's big signs got real steel. pink posts, bracing, a catwalk, floodlights and neon round the hotel. the bank still won't give you a loan.",
+  ] },
+  { v: '11.31', date: '2026-11-13', title: "POOL'S OPEN", items: [
+    "POOL'S OPEN: rooftop's pool party got real furniture. striped cabanas, sun loungers, a dj booth with actual decks, pink speakers, a light rig and a flamingo floatie. still can't swim.",
+  ] },
+  { v: '11.30', date: '2026-11-13', title: 'BACK TO THE GARAGE', items: [
+    "offline battle island, plant & defuse, jank royale and zombies take you back to their lobby after the match, with a PLAY AGAIN button. no more surprise quick play.",
+  ] },
   { v: '11.29', date: '2026-11-13', title: 'KABOOM', items: [
     "mount kaboom erupts now. a rumble, then BOOM: an ash cloud, lava spilling out of the crater, glowing lava bombs whistling overhead, then a tropical downpour. islands and islands plant & defuse. everyone sees it at the same moment.",
     "the lava bombs are just for looking at. for now.",
