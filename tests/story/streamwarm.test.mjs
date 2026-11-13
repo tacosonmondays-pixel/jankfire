@@ -41,12 +41,14 @@ function fakeRenderer() {
   R.compile = (o) => o.traverse((q) => { if (!q.material) return; const p = R.properties.get(q.material); if (p.currentProgram) return;
     const pr = { name: q.material.name, getUniforms: () => { R.log.push('check ' + pr.name); return {}; } }; p.currentProgram = pr; R.info.programs.push(pr); R.log.push('compile ' + pr.name); });
   R.initTexture = (t) => { R.uploaded.add(t); R.log.push('upload ' + t.name); };
+  let rt = null; R.getRenderTarget = () => rt; R.setRenderTarget = (t) => { rt = t; }; R.compileTargets = [];
+  const c0 = R.compile; R.compile = (o) => { R.compileTargets.push(rt); c0(o); };
   return R;
 }
 // a CityStream with only what warm()/warmStep()/updateProps() use (no workers, no scene)
 function stream(renderer) {
   const S = Object.create(CityStream.prototype);
-  Object.assign(S, { renderer, warmQ: [], scene: new THREE.Scene(), time: 0, cam: new THREE.Vector3(), R: { props: 100, propsHi: 30 }, props: { group: null, key: 'old', t: 0, n: 0 }, root: new THREE.Group() });
+  Object.assign(S, { renderer, warmQ: [], sceneRT: null, scene: new THREE.Scene(), time: 0, cam: new THREE.Vector3(), R: { props: 100, propsHi: 30 }, props: { group: null, key: 'old', t: 0, n: 0 }, root: new THREE.Group() });
   return S;
 }
 const mesh = (name, tex = []) => { const m = new THREE.MeshStandardMaterial({ name }); for (const [k, t] of tex) { m[k] = new THREE.Texture(); m[k].name = t; } return new THREE.Mesh(new THREE.BoxGeometry(), m); };
@@ -65,6 +67,15 @@ test('a new model warms up a frame at a time: one compile, one check or one text
   assert.ok(steps.indexOf('check skin') === steps.indexOf('compile skin') + 1, 'a shader is checked the frame after it compiled');
   assert.deepEqual(steps.filter((s) => s.startsWith('upload')).sort(), ['upload robe.png', 'upload skin.png', 'upload skin_n.png']);
   assert.equal(frames.length, 7, '2 compiles + 2 checks + 3 textures = 7 frames, done on the last');
+});
+
+test('a warm-up compiles against the target the scene is really drawn into (post effects), then puts the old one back', () => {
+  const R = fakeRenderer(), S = stream(R), post = { isRenderTarget: true };
+  S.sceneRT = post;
+  S.warm([mesh('a')], () => {});
+  S.warmStep(cam);
+  assert.deepEqual(R.compileTargets, [post], 'compiled while the post target was bound');
+  assert.equal(R.getRenderTarget(), null, 'and the canvas is bound again after');
 });
 
 test('already-compiled shaders cost no frames; no renderer means nothing waits', () => {
