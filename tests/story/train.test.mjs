@@ -340,9 +340,9 @@ await t('story-only: no slot, no loadout, no ladder; a normal room ignores it, a
   const room = new Room('plain', 'bots'), sent = [];
   const p = room.addHuman({ readyState: 1, send: (x) => sent.push(JSON.parse(x)) }, { t: 'join', name: 'p', mode: 'bots', primary: 'blooddrive' }), b = room.addBot({});
   assert.equal(b.sk, undefined); assert.notEqual(p.w, 'blooddrive'); assert.notEqual(b.w, 'blooddrive');
-  p.pos = [0, 0.1, 0]; p.spawnT = 0; b.pos = [0, 0.1, -6]; const n0 = sent.length;
-  for (const k of [undefined, 'spin', 'stop']) room.handle(p, { t: 'fire', w: 'blooddrive', k, o: [0, 1.7, 0], d: [0, 0, -1] });
-  await sleep(700); for (let i = 0; i < 5; i++) room.handle(p, { t: 'fire', w: 'blooddrive', o: [0, 1.7, 0], d: [0, 0, -1] });
+  p.pos = [70, 0.1, -9]; p.spawnT = 0; b.pos = [70, 0.1, -15]; const n0 = sent.length; // (open beach on Islands: [0, 0, 0] is 11 m inside the mountain, and the server checks line of sight)
+  for (const k of [undefined, 'spin', 'stop']) room.handle(p, { t: 'fire', w: 'blooddrive', k, o: [70, 1.7, -9], d: [0, 0, -1] });
+  await sleep(700); for (let i = 0; i < 5; i++) room.handle(p, { t: 'fire', w: 'blooddrive', o: [70, 1.7, -9], d: [0, 0, -1] });
   room.handle(p, { t: 'hit', to: b.id, w: 'blooddrive', n: 1, h: 1, d: [0, 0, -1] });
   assert.equal(b.hp, 100); assert.equal(p.hp, 100); assert.equal(p.bd, undefined); assert.equal(sent.length, n0, 'nothing went out');
   p.w = 'ar'; room.handle(p, { t: 'hit', to: b.id, w: 'ar', n: 1, h: 1, d: [0, 0, -1] });

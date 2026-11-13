@@ -65,7 +65,7 @@ const hp = (who, of) => { const e = [...log].reverse().find((x) => x[1] === who.
   const tj = ms();
   await until(() => { for (const c of all) if (!heard((m) => m.t === 'br' && m.k === 'jump' && m.id === c.id, tj)) c.send({ t: 'brjump' }); return all.every((c) => heard((m) => m.t === 'br' && m.k === 'jump' && m.id === c.id, tj)); }, 20000); // (once the blimp's moving)
   A.pos = at(0, 0); B.pos = at(1.5, 0); E.pos = at(-1.5, 0); C.pos = at(0, 2.5); D.pos = at(30, 30);
-  const snaps = setInterval(() => { for (const c of all) if (c.snap) c.send({ t: 's', q: c.q, p: c.pos, v: [0, 0, 0], y: 0, x: 0, w: 'bread', g: 0, f: 0 }); }, 100);
+  const snaps = setInterval(() => { for (const c of all) if (c.snap) c.send({ t: 's', q: c.q, p: c.pos, v: [0, 0, 0], y: c.face ? Math.atan2(c.pos[0] - c.face.pos[0], c.pos[2] - c.face.pos[2]) : 0, x: 0, w: 'bread', g: 0, f: 0 }); }, 100); // (face: who c swings at, the server checks a swing's cone)
   await settle(all); await sleep(2000); // (landed: on the floor and still)
 
   // ---------------------------------------------------------- no friendly fire
@@ -73,10 +73,11 @@ const hp = (who, of) => { const e = [...log].reverse().find((x) => x[1] === who.
   A.send({ t: 'hit', w: 'bread', to: B.id, d: [1, 0, 0] });
   await sleep(500);
   ok(!heard((m) => m.t === 'dmg' && m.to === B.id && m.from === A.id, t), 'no friendly fire: A bonks squadmate B, nothing');
+  A.face = C; await sleep(250);
   A.send({ t: 'hit', w: 'bread', to: C.id, d: [0, 0, 1] });
   ok(!!(await waitFor((m) => m.t === 'dmg' && m.to === C.id && m.from === A.id, 6000, t)), 'A bonks enemy C: it lands');
   // ---------------------------------------------------------- down, not dead
-  const downBy = async (atk, tgt) => { await settle([atk]); const t1 = ms(); for (let i = 0; i < 25; i++) { atk.send({ t: 'hit', w: 'bread', to: tgt.id, d: [1, 0, 0] }); if (await waitFor((m) => m.t === 'isle' && m.k === 'down' && m.id === tgt.id, 600, t1)) return true; } return false; };
+  const downBy = async (atk, tgt) => { atk.face = tgt; await settle([atk]); await sleep(250); const t1 = ms(); for (let i = 0; i < 25; i++) { atk.send({ t: 'hit', w: 'bread', to: tgt.id, d: [1, 0, 0] }); if (await waitFor((m) => m.t === 'isle' && m.k === 'down' && m.id === tgt.id, 600, t1)) return true; } return false; };
   C.pos = at(1.5, 2.5);
   t = ms();
   ok(await downBy(C, B), 'B at 0 HP goes DOWN, not dead (A and E are still up)');
@@ -173,11 +174,12 @@ const hp = (who, of) => { const e = [...log].reverse().find((x) => x[1] === who.
   ok(!!edead && et > 0 && et < 7000, `bonking downed E eats its bleed clock: out after ${et} ms, not 12 s`);
   // ---------------------------------------------------------- squad 2 out, squad 1 wins
   // C is squad 2's ... first down D (C up), then take C out: D gets finished, squad 2 is out at #2
-  A.pos = at(28, 28); D.pos = at(30, 30); C.pos = at(0, 20);
+  A.pos = at(22, 22); D.pos = at(24, 24); C.pos = at(0, 20); // (open ground with nothing between A and D: at(30, 30) is inside a building there)
   await settle([A, C, D]); await sleep(1500);
   ok(await downBy(A, D), 'A downs D');
   A.pos = at(0, 18);
   await settle([A]);
+  A.face = C; await sleep(250);
   t = ms();
   for (let i = 0; i < 30 && !heard((m) => m.t === 'kill' && m.v === C.id, t); i++) { A.send({ t: 'hit', w: 'bread', to: C.id, d: [0, 0, 1] }); await sleep(500); }
   ok(!heard((m) => m.t === 'isle' && m.k === 'down' && m.id === C.id, t), 'C, the last one up in squad 2, isn\'t downed: it\'s out');

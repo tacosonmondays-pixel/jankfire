@@ -86,6 +86,7 @@ const snapper = (cs) => setInterval(() => { for (const c of cs) if (c.snap && c.
   // ---------------------------------------------------------- land
   await land(all);
   A.pos = at(0, 0); B.pos = at(1.5, 0); C.pos = at(1.5, 2.5); D.pos = at(25, 25);
+  A.yaw = Math.atan2(-1.5, -2.5); // (A swings the bread at C: facing it, the server checks a swing's cone)
   const snaps = snapper(all);
   await settle(all); await sleep(2000); // (landed)
   t = ms(); A.send({ t: 'hero', h: 'nightshift' });
