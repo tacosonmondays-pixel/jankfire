@@ -1707,6 +1707,7 @@ class Room {
   onHit(p, m) {
     if (this.rigOn(p) || this.mechOn(p)) return; // no guns in the overdrive rig or a mech: their hits are judged in server/rig.js / mech.js
     if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
+    if (m.mk !== undefined) { this.mechShot(p, m); return; } // a shot / swing at an empty mech (server/mech.js)
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
@@ -2153,6 +2154,7 @@ class Room {
   explodeAt(p, owner, wid, R, dmg, kb) {
     this.broadcast({ t: 'boom', p: p.map(r2), r: R });
     this.traffic.blast(p, R, dmg, kb, owner);
+    this.mechBoom(p, R, dmg, owner, wid); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       const c = center(t), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
@@ -2169,6 +2171,7 @@ class Room {
     const owner = this.players.get(pr.o);
     this.broadcast({ t: 'pd', id: pr.id, p: pr.p.map(r2), x: 1 });
     this.traffic.blast(pr.p, w.radius, w.dmg, w.kb, owner);
+    this.mechBoom(pr.p, w.radius, w.dmg, owner, 'chicken'); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
       const c = center(t);
@@ -2378,6 +2381,7 @@ class Room {
         hit = stepProjectile(pr, dt, this.boxes, w.grav);
       }
       if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && this.traffic.projHit(pr, prev, owner)) continue; // hit a car
+      if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && pr.k !== 'calc' && this.mechProjHit(pr, prev, owner)) continue; // hit an empty mech (server/mech.js)
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (pr.k === 'duck') {
         // sky ducks (duck rain) open where they land, and their holes are a bit gentler

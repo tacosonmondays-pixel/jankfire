@@ -1,6 +1,12 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.4', date: '2026-11-13', title: 'MECH DOWN', items: [
+    'parked mechs aren\'t safe anymore. shoot, stab or rocket an empty mech and it breaks: MECH DOWN, and the owner gets to watch.',
+  ] },
+  { v: '11.3', date: '2026-11-12', title: 'MAY CONTAIN NUMBERS', items: [
+    'jankburg: number works got its factory back. brick smokestacks with blinking red lights, rusty vats of glowing green soup (may contain numbers), and chrome pipes on steel legs.',
+  ] },
   { v: '11.2', date: '2026-11-12', title: 'GLINT', items: [
     'RAY-TRACED LOOK: props, buildings, mechs and your gun now reflect the world around them, with a sun glint on shiny paint and chrome. they pick up the bounced light too, so they stop looking flat. bounce light and soft shadows got stronger and now cover all of jankburg.',
   ] },
