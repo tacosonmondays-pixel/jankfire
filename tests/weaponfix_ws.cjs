@@ -10,8 +10,8 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + ms
   const send = (m) => ws.send(JSON.stringify(m));
   await new Promise((r) => ws.on('open', r));
   send({ t: 'join', name: 'fixer', mode: 'ffa' }); await sleep(800);
-  const y = 80, o = [500, y + 1.6, 500], d = [0, 0, -1];
-  send({ t: 's', q, p: [500, y, 500], v: [0, 0, 0], y: 0, x: 0, w: 'bow' }); await sleep(200);
+  const y = 80, X = 20, Z = 20, o = [X, y + 1.6, Z], d = [0, 0, -1]; // (inside Islands' bounds, the online room's first map: outside them the out-of-bounds void kills you after ~3 s)
+  send({ t: 's', q, p: [X, y, Z], v: [0, 0, 0], y: 0, x: 0, w: 'bow' }); await sleep(200);
   const shots = (k) => got.filter((m) => m.t === 'ps' && m.k === k && m.o === me);
   // bow: a full draw flies at the new top speed
   send({ t: 'fire', w: 'bow', o, d, c: 1 }); await sleep(300);
@@ -19,7 +19,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + ms
   // cards: every play throws cards. a spade throws 6, anything else (not an ace) flicks 2
   for (let tries = 0; tries < 8 && hand; tries++) {
     const i = 0, card = hand[0], suit = card[0], rank = Number(card.slice(1)), before = shots('card').length;
-    send({ t: 's', q, p: [500, y, 500], v: [0, 0, 0], y: 0, x: 0, w: 'cards' });
+    send({ t: 's', q, p: [X, y, Z], v: [0, 0, 0], y: 0, x: 0, w: 'cards' });
     send({ t: 'fire', w: 'cards', o, d, i }); await sleep(450);
     const n = shots('card').length - before, want = suit === 'j' ? null : rank === 1 ? 0 : rank >= 11 ? (suit === 's' ? 24 : 2) : suit === 's' ? 6 : 2;
     if (want != null) ok(n === want, `cards: ${card} threw ${n} (want ${want})`);
@@ -27,8 +27,8 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + ms
   }
   const c = shots('card')[0]; ok(!c || Math.hypot(...c.v) > 80, 'cards: fly at ' + (c ? Math.hypot(...c.v).toFixed(0) : '?') + ' m/s (was 55)');
   // blood cross: 8 paid shots take 100 HP to 4, then it still fires (thin) and takes no more
-  send({ t: 's', q, p: [500, y, 500], v: [0, 0, 0], y: 0, x: 0, w: 'bloodcross' });
-  for (let i = 0; i < 9; i++) { send({ t: 'fire', w: 'bloodcross', o, d }); await sleep(620); }
+  send({ t: 's', q, p: [X, y, Z], v: [0, 0, 0], y: 0, x: 0, w: 'bloodcross' });
+  for (let i = 0; i < 9; i++) { send({ t: 's', q, p: [X, y, Z], v: [0, 0, 0], y: 0, x: 0, w: 'bloodcross' }); send({ t: 'fire', w: 'bloodcross', o, d }); await sleep(620); }
   await sleep(300);
   const paid = shots('bloodcross').length, hpLow = hp;
   ok(hpLow > 0 && hpLow < 12, `blood cross: bled down to ${hpLow} HP after ${paid} shots`);
