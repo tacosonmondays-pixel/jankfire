@@ -255,9 +255,11 @@ export function miniCtl(def) { return N.ctl[def.ctl] || N.ctl.def; }
 export function miniIntro(mg) {
   const b = N.boss[mg.id];
   if (mg.fmt !== 'boss' || !b) return null;
-  const box = el('div', 'bg-bossart');
-  const nm = el('div', 'bg-one', b.name); nm.style.fontSize = '44px'; nm.style.color = '#ff3030';
-  box.append(el('div', 'rule', '4 VS'), nm, el('div', 'rule', b.title));
+  const box = el('div', 'bg-bossart'), who = el('div', 'bg-sides');
+  for (const i of mg.seats) { const s = S.B && S.B.seats[i]; if (!s) continue; const d = el('div', null, s.name); d.style.background = s.color; d.style.color = '#000'; who.append(d); }
+  const vs = el('div', 'bg-one', 'VS'); vs.style.fontSize = '40px';
+  const nm = el('div', 'rule', b.title); nm.style.color = '#ff8a8a';
+  box.append(who, vs, nm);
   return box;
 }
 // the results card: what each seat did (boss damage + MVP, ducks, still in / out)

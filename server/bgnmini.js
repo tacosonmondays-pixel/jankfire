@@ -485,6 +485,9 @@ export function installBgnMini(Room, H) {
     if (S.k === 'boss') return Math.round(S.dmg[s.i] || 0);
     return base.call(this, p);
   });
+  // the boss doesn't earn killstreaks (a rig on top of his mech was a bit much)
+  wrap(P, 'rigBotEarn', function (base, b) { if (b.bgBoss) return; return base.call(this, b); });
+  wrap(P, 'mechBotEarn', function (base, b) { if (b.bgBoss) return; return base.call(this, b); });
   // a boss is no seat: he's always team 2
   wrap(P, 'bgnSide', function (base, p) {
     if (p.bgBoss && this.bgn && this.bgn.mg) { if (!p.ownColor) p.ownColor = p.color; p.team = 2; p.color = TEAMS[2].color; return true; }
