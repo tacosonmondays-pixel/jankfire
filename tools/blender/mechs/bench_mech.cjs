@@ -27,7 +27,9 @@ const N = Number(nArg), PR = Number(presetArg), SECS = Number(secsArg), sleep = 
     setInterval(() => { ME.pos = [0.4, 0, -3]; ME.vel = [0, 0, 0]; ME.hp = 100; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; if (r.marker) r.marker.visible = false; if (r.tag) r.tag.visible = false; }); }, 4);
     const insts = [];
     for (let i = 0; i < N; i++) {
-      const a = kit.authored(id), glb = a.obj, meta = a.meta || {}, root = new THREE.Group();
+      const a = kit.authored(id), SKU = await import('three/addons/utils/SkeletonUtils.js'); let glb = a.obj, skn = false; glb.traverse((o) => { if (o.isSkinnedMesh) skn = true; });
+      if (skn) glb = SKU.clone(kit.AUTHORED[id].scene); // (a skinned hero: its bones cloned with it, like buildMech does)
+      const meta = a.meta || {}, root = new THREE.Group();
       const row = Math.floor(i / 4), col = i % 4;
       root.add(glb); root.position.set((col - 1.5) * 9, 0, -14 - row * 22 - (col % 2) * 6); root.rotation.y = Math.PI + (col - 1.5) * 0.3; G.scene.add(root);
       const j = {}, att = {};

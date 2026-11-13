@@ -13,6 +13,7 @@ import herokit
 from detailkit import *
 
 FID = 'mech_vending'
+SKIN = True  # (make_hero exports it as one rigid-skinned mesh per LOD: tools/blender/mechs/skin_glb.py)
 W, D = 1.10, 0.78  # cabinet half width, half depth
 Y0, Y1 = 0.98, 4.56  # cabinet bottom, top
 ZF = -D  # the front face
@@ -40,26 +41,52 @@ def J(n, s=1): return mx(JT[n], s)
 
 
 # ------------------------------------------------------------ textures
-def marquee_img():
+def marquee_px():
     w, h = 256, 64; px = canvas(w, h, 0xff4fbf)
     fill(px, 6, 6, w - 6, h - 6, 0x2a0a22)
     text_c(px, 'JANK COLA', w // 2, 14, 4, 0xffe14d)
     for x in range(10, w - 10, 12): fill(px, x, 2, x + 6, 5, 0xffffff); fill(px, x, h - 5, x + 6, h - 2, 0xffffff)  # (chase lights)
-    return image_rgba('vm_marquee', px)
+    return px
 
 
-def sign_img():
+def sign_px():
     w, h = 256, 160; px = canvas(w, h, 0xf6f4ee)
     stripes(px, 0, 0, w, 16, 0xffd23a, 0x111111, 12); stripes(px, 0, h - 16, w, h, 0xffd23a, 0x111111, 12)
     text_c(px, 'OUT OF', w // 2, 34, 6, 0x111111); text_c(px, 'ORDER', w // 2, 84, 6, 0xe8202a)
     text_c(px, 'SORRY :<', w // 2, 136, 2, 0x111111)
-    return image_rgba('vm_sign', px)
+    return px
 
 
-def price_img():
+def price_px():
     w, h = 64, 24; px = canvas(w, h, 0x0a1a10)
     text_c(px, '99P', w // 2, 5, 2, 0x7dff4f)
-    return image_rgba('vm_price', px)
+    return px
+
+
+# the three picture panels share one 256 px sheet and one material (one draw call, not three): the JANK COLA marquee
+# and the 99P price lit (an emission sheet with the same layout), the OUT OF ORDER sign not
+SCR = {'marquee': (0, 0, 256, 64, 1.0), 'price': (0, 64, 64, 24, 0.64), 'sign': (0, 96, 256, 160, 0.0)}  # (x, y, w, h, glow)
+
+
+def screens_mat():
+    old = bpy.data.materials.get('vm_decal_screens')
+    if old is not None: return old  # (the far LOD's build made it already)
+    base, lit = canvas(256, 256), canvas(256, 256)
+    for k, px in (('marquee', marquee_px()), ('price', price_px()), ('sign', sign_px())):
+        x, y, w, h, g = SCR[k]; base[y:y + h, x:x + w] = px; lit[y:y + h, x:x + w, :3] = px[:, :, :3] * g; lit[y:y + h, x:x + w, 3] = 1
+    m = bpy.data.materials.new('vm_decal_screens'); m.use_nodes = True; nt = m.node_tree; b = nt.nodes['Principled BSDF']
+    tb = nt.nodes.new('ShaderNodeTexImage'); tb.image = image_rgba('vm_screens', base); tb.interpolation = 'Closest'; nt.links.new(tb.outputs['Color'], b.inputs['Base Color'])
+    tl = nt.nodes.new('ShaderNodeTexImage'); tl.image = image_rgba('vm_screens_lit', lit); tl.interpolation = 'Closest'; nt.links.new(tl.outputs['Color'], b.inputs['Emission Color'])
+    b.inputs['Emission Strength'].default_value = 2.5; b.inputs['Roughness'].default_value = 0.35; b.inputs['Coat Weight'].default_value = 0.3; b.inputs['Coat Roughness'].default_value = 0.08
+    m['jf_decal'] = 1
+    return m
+
+
+def on_sheet(o, k):
+    """a decal's 0..1 UVs moved onto its panel of the screens sheet"""
+    x, y, w, h, _ = SCR[k]
+    for l in o.data.uv_layers['UVMap'].data: l.uv = ((x + l.uv[0] * w) / 256, 1 - (y + (1 - l.uv[1]) * h) / 256)
+    return o
 
 
 # ------------------------------------------------------------ build
@@ -203,9 +230,8 @@ def marquee(mk, M, T):
         Q.append(ball((x, Y1 + 0.46, -D - 0.02), 0.045, M['glow'], 14, 8, 'bulb'))
         Q += dt([lathe_ax([(0.036, 0.0), (0.05, 0.012), (0.05, 0.03), (0.04, 0.034)], (x, Y1 + 0.405, -D - 0.02), (0, 1, 0), M['white'], 16, 'bulbsocket')])
     mk.add('marquee', Q); T['marquee'] = Q
-    sm = tex_mat('vm_marqueemat', marquee_img(), rough=0.3, emit=2.5, cc=0.4)
-    o = decal(Q[:1], (0, Y1 + 0.22, -D - 0.07), (0, 0, -1), (0, 1, 0), 1.84, 0.34, sm, name='marquee_sign', reach=0.2)
-    if o: mk.add('marquee', o)
+    o = decal(Q[:1], (0, Y1 + 0.22, -D - 0.07), (0, 0, -1), (0, 1, 0), 1.84, 0.34, screens_mat(), name='marquee_sign', reach=0.2)
+    if o: mk.add('marquee', on_sheet(o, 'marquee'))
 
 
 def sign(mk, M, T):
@@ -219,9 +245,8 @@ def sign(mk, M, T):
     S += bolts([add(c, (sx * 0.945, sy, 0.07)) for sx in (-1, 1) for sy in (-0.50, 0.0, 0.50)], (0, 0, 1), M['frame'], 0.018, 0.01)
     S.append(box(-0.30, 0.30, c[1] - 0.20, c[1] + 0.20, D - 0.01, c[2] - 0.03, M['frame'], 0.01, 'signclip'))  # (the clip holding it on)
     mk.add('sign', S); T['sign'] = S
-    tm = tex_mat('vm_signmat', sign_img(), rough=0.45, cc=0.3)
-    o = decal(S[:1], add(c, (0, 0.0, 0.05)), (0, 0, 1), (0, 1, 0), 1.74, 1.08, tm, name='sign_face', reach=0.1)
-    if o: mk.add('sign', o)
+    o = decal(S[:1], add(c, (0, 0.0, 0.05)), (0, 0, 1), (0, 1, 0), 1.74, 1.08, screens_mat(), name='sign_face', reach=0.1)
+    if o: mk.add('sign', on_sheet(o, 'sign'))
 
 
 def arm(mk, M, T, s, L):
@@ -337,9 +362,8 @@ def stickers(mk, M, T):
     if o: mk.add('body', o)
     o = herokit.stamp([T['hips'][0]], 'stripe', (0, 0.87, -D + 0.06), (0, 0, -1), (0, 1, 0), 1.40, m)
     if o: mk.add('hips', o)
-    pm = tex_mat('vm_pricemat', price_img(), rough=0.3, emit=1.6, cc=0.3)
-    o = decal([T['face'][-1]], (0.74, 3.12, ZF - 0.095), (0, 0, -1), (0, 1, 0), 0.30, 0.12, pm, name='price', reach=0.1)
-    if o: mk.add('body', o)
+    o = decal([T['face'][-1]], (0.74, 3.12, ZF - 0.095), (0, 0, -1), (0, 1, 0), 0.30, 0.12, screens_mat(), name='price', reach=0.1)
+    if o: mk.add('body', on_sheet(o, 'price'))
     mk.meta['spray'] = [{'name': 'spray_0', 'joint': 'body', 'at': [-W - 0.024, 3.18, 0.18], 'dir': [-1, 0, 0], 'up': [0, 1, 0], 'size': 0.80},  # (on the side skins)
                         {'name': 'spray_1', 'joint': 'body', 'at': [W + 0.024, 3.18, 0.18], 'dir': [1, 0, 0], 'up': [0, 1, 0], 'size': 0.80}]
 

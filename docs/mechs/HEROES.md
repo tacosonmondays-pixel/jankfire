@@ -78,7 +78,9 @@ A 5 m vending machine waddling on stubby legs. It has:
 - an OUT OF ORDER sign stowed on its back, which it slams down in front of itself.
 
 Cyan cabinet (team colour), hot-pink trims, chrome. Height 5.0 m to the top of the marquee. About 63k tris near,
-17k on the far LOD. The detail: cyan skins bolted over a gunmetal chassis (real seams), a bolted shoulder mount, a
+11k on the far LOD. **One skinned mesh per LOD** (`vm_mesh`, `vm_lod1`: see MECHS.md "Skinned heroes"): 7 materials
+(`vm_paint` team colour, `vm_trim`, `vm_glow`, `vm_glow2`, `vm_thrust`, `vm_decalmat` stickers, `vm_decal_screens`:
+the marquee, the 99P price and the OUT OF ORDER sign on one sheet) + one ink hull = 8 draws, near or far. The detail: cyan skins bolted over a gunmetal chassis (real seams), a bolted shoulder mount, a
 hydraulic ram on each upper arm and behind each knee, louvred side and compressor vents, barrel hinges on the door, a
 lock, chrome dividers and price lights on the shelves, a bill slot, speaker slots, a service hatch behind the sign, a
 coiled power cord with its plug, levelling feet under the plinth, a hazard band, treads.

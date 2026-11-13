@@ -50,7 +50,7 @@ const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
   await pg.addInitScript((pr) => { localStorage.setItem('jf_giftseen_all', '1'); localStorage.setItem('jankfire', JSON.stringify({ name: 'SHOTS', killcam: false, jank: pr })); }, PR);
   await pg.goto(`http://localhost:${port}/`); await sleep(2500);
   await pg.click('#scr-main [data-mode="training"]', { timeout: 180000 });
-  const info = await pg.evaluate(async ([H, P]) => {
+  const info = await pg.evaluate(async ([H, P, SPRAY]) => {
     const THREE = await import('three'); const { G } = await import('/js/ctx.js'); const { MAP } = await import('/shared/map.js'); const { ME } = await import('/js/player.js');
     for (let i = 0; i < 700 && !(G.joined && MAP.id === 'range'); i++) await new Promise((r) => setTimeout(r, 100));
     if (!(G.joined && MAP.id === 'range')) return { err: 'never got to the range: ' + MAP.id };
@@ -61,13 +61,21 @@ const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
     const css = document.createElement('style'); css.textContent = 'body > :not(#game) { display: none !important; }'; document.head.append(css);
     G.vmCamera.layers.disableAll();
     setInterval(() => { ME.pos = [0.4, 0, -3]; ME.vel = [0, 0, 0]; ME.hp = 100; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; if (r.marker) r.marker.visible = false; if (r.tag) r.tag.visible = false; }); }, 4);
-    const glb = a.obj, meta = a.meta || kit.metaOf(glb) || {}, root = new THREE.Group();
+    const SKU = await import('three/addons/utils/SkeletonUtils.js'); let glb = a.obj; let skn = false; glb.traverse((o) => { if (o.isSkinnedMesh) skn = true; });
+    if (skn) glb = SKU.clone(kit.AUTHORED[id].scene); // (a skinned hero: its bones cloned with it, like buildMech does)
+    const meta = a.meta || kit.metaOf(glb) || {}, root = new THREE.Group();
     root.add(glb); root.position.set(P[0], P[1], P[2]); root.rotation.y = Math.PI; G.scene.add(root);
     const j = {}, att = {};
     glb.traverse((o) => { if (meta.joints && Object.hasOwn(meta.joints, o.name)) j[o.name] = o; if (/^mk_/.test(o.name)) att[o.name] = o; });
     const inst = { frame: H, root, j, att, own: {}, flames: [], t: 0, glb: true, clip: 'idle', act: null };
     inst.mixer = new THREE.AnimationMixer(glb); inst.clips = Object.fromEntries((glb.animations || []).map((c) => [c.name, c]));
     look.lookMech(inst, glb, '#ffffff', kit.AUTHORED[id].scene);
+    if (SPRAY) { // (JF_SPRAY=1: a test spray on each decal slot, to see it lands)
+      const cv = document.createElement('canvas'); cv.width = cv.height = 256; const c = cv.getContext('2d');
+      c.fillStyle = '#39ff14'; c.beginPath(); c.arc(128, 128, 110, 0, 7); c.fill(); c.fillStyle = '#120818'; c.font = 'bold 64px sans-serif'; c.textAlign = 'center'; c.fillText('SPRAY', 128, 150);
+      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      for (let k = 0; k < (inst.look.slots || []).length; k++) look.sprayOnMech(inst, k, tex);
+    }
     let last = performance.now();
     const tick = () => { const n = performance.now(), dt = Math.min(0.1, (n - last) / 1000); last = n; inst.t += dt; inst.mixer.update(window.__run ? dt : 0); look.lookTick(inst, {}, dt); requestAnimationFrame(tick); };
     tick();
@@ -78,8 +86,8 @@ const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
       root.position.y = P[1] + (lift || 0);
     };
     G.scene.onBeforeRender = (r, sc, cam) => { const c = window.__cam; if (!c) return; cam.position.fromArray(c.e); cam.lookAt(c.t[0], c.t[1], c.t[2]); if (c.fov && cam.fov !== c.fov) { cam.fov = c.fov; cam.updateProjectionMatrix(); } cam.updateMatrixWorld(); };
-    return { clips: Object.keys(inst.clips).length, marks: Object.keys(att).length, glows: inst.look.glows.length, ink: inst.look.outline.length, mats: inst.look.mats.length, events: Object.keys(inst.look.events).length, slots: inst.look.slots.length };
-  }, [hero, P]);
+    return { clips: Object.keys(inst.clips).length, marks: Object.keys(att).length, glows: inst.look.glows.length, ink: inst.look.outline.length, mats: inst.look.mats.length, events: Object.keys(inst.look.events).length, slots: inst.look.slots.length, sprays: inst.look.sprays.length };
+  }, [hero, P, !!process.env.JF_SPRAY]);
   if (info.err) { console.log(info.err); await b.close(); process.exit(1); }
   await sleep(4000); // (shaders compile on first sight: software GL is slow)
   const shots = [];

@@ -96,6 +96,15 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
   (`tools/blender/mechs/tex/<prefix>_trim.png`: R clear coat, G roughness, B metal) read through `TEXCOORD_1`.
   `extras.jf_trim` lists the roles in it. The team paint, the glows and the decals stay their own materials.
   Measure a hero in a real game: `node tools/blender/mechs/draws_game.cjs <port> <outDir> <frame> [preset] [map]`.
+- **Skinned heroes** (VENDING MACHINE first, 2026-11-13: 101 draws -> 8): a hero module with `SKIN = True` leaves
+  `make_hero.py` as ONE skinned mesh per LOD (`<prefix>_mesh` near, `<prefix>_lod1` far, at the root), every vertex
+  weighted 100 % to the joint its piece hung on (`tools/blender/mechs/skin_glb.py`, a lossless pass on the rigid file).
+  The joint nodes, their rest transforms, every clip, marker and spray slot are exactly as in the rigid file, so code
+  that turns joints works the same; there are just no meshes under the joints any more. `meta.skinned` =
+  `{ near, far, rigid: true }`. Draws = its materials (paint, trim, the glows, the decal sheets) + one ink hull.
+  The game: `buildMech` clones it with its skeleton (SkeletonUtils, as it already did); mechlook (opt-in on
+  `meta.skinned`) draws one skinned ink hull from the far LOD, sprays onto the slot joint's own triangles (bind pose)
+  and hangs them on the joint, and turns frustum culling off for it (its parts fly about). Rigid heroes are untouched.
 
 ## Clips (all 30 fps; three.js AnimationMixer by name)
 - "hold last frame": play it LoopOnce with `clampWhenFinished = true`.

@@ -41,6 +41,31 @@ const OUT_VS = `uniform float uThick; void main() { vec4 mv = modelViewMatrix * 
   float k = uThick * clamp(-mv.z * 0.045, 1.0, 3.5); // (thicker far away: stays a line, not a hairline)
   gl_Position = projectionMatrix * modelViewMatrix * vec4(position + normal * k, 1.0); }`;
 const OUT_FS = 'uniform vec3 uColor; void main() { gl_FragColor = vec4(uColor, 1.0); }';
+// (a skinned hero: the same hull pushed out along its normals after the bones have moved it)
+const OUT_VS_SK = `#include <common>
+#include <skinning_pars_vertex>
+uniform float uThick; void main() {
+  #include <beginnormal_vertex>
+  #include <skinbase_vertex>
+  #include <skinnormal_vertex>
+  #include <begin_vertex>
+  #include <skinning_vertex>
+  vec4 mv = modelViewMatrix * vec4(transformed, 1.0);
+  float k = uThick * clamp(-mv.z * 0.045, 1.0, 3.5);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(transformed + normalize(objectNormal) * k, 1.0); }`;
+// a skinned hero (meta.skinned: one rigid-skinned mesh per LOD, docs/mechs/MECHS.md): one hull for the whole mech,
+// from the far LOD's triangles (bind pose), each vertex keeping its joint; built once per model and shared
+const SKHULL = new WeakMap();
+const isSk = (o) => o.isSkinnedMesh && o.material && o.material.isMeshStandardMaterial && !/decal|glass/.test(o.material.name || '');
+function skinHullOf(src, glb, meta) {
+  if (SKHULL.has(src)) return SKHULL.get(src);
+  const want = meta.skinned.far || meta.skinned.near, parts = [];
+  glb.traverse((o) => { if (!isSk(o)) return; for (let p = o; p; p = p.parent) if (p.name === want) { const g = new THREE.BufferGeometry(); for (const k of ['position', 'skinIndex', 'skinWeight']) g.setAttribute(k, o.geometry.attributes[k]); g.setIndex(o.geometry.index); parts.push(g); return; } });
+  let h = null;
+  if (parts.length) { h = mergeVertices(mergeGeometries(parts, false), 2e-3); h.computeVertexNormals(); h.userData.shared = true; }
+  SKHULL.set(src, h);
+  return h;
+}
 const HULLS = new WeakMap(); // source glb scene -> { joint name: hull geometry } (shared by every mech built from it)
 const FAR = /_lod1$/; // (a far-LOD piece: <joint>_lod1, a sibling of <joint>_mesh)
 function hullsOf(src, glb, joints) {
@@ -130,9 +155,17 @@ export function lookMech(inst, glb, color, src = glb) { // (src: the loaded scen
   });
   // ink outlines, one hull per joint (cached per model): Potato skips them
   const joints = meta.joints ? Object.keys(meta.joints).filter((k) => k !== 'root') : [];
-  const H = hullsOf(src, glb, joints);
-  L.outMat = new THREE.ShaderMaterial({ uniforms: { uThick: { value: 0.022 }, uColor: { value: new THREE.Color(INK) } }, vertexShader: OUT_VS, fragmentShader: OUT_FS, side: THREE.BackSide });
-  for (const [jn, h] of Object.entries(H)) { const J = nodeIn(glb, jn); if (!J) continue; const o = new THREE.Mesh(h, L.outMat); o.name = jn + '_ink'; o.userData.noWrap = true; J.add(o); L.outline.push(o); }
+  const sk = meta.skinned && typeof meta.skinned === 'object' ? (() => { let m = null; glb.traverse((o) => { if (!m && isSk(o)) m = o; }); return m; })() : null;
+  L.skinned = !!sk;
+  L.outMat = new THREE.ShaderMaterial({ uniforms: { uThick: { value: 0.022 }, uColor: { value: new THREE.Color(INK) } }, vertexShader: sk ? OUT_VS_SK : OUT_VS, fragmentShader: OUT_FS, side: THREE.BackSide });
+  if (sk) { // (one skinned hull on the same skeleton: one draw for the whole outline; skinned heroes skip frustum culling, their parts fly about)
+    glb.traverse((o) => { if (o.isSkinnedMesh) o.frustumCulled = false; });
+    const h = skinHullOf(src, glb, meta);
+    if (h) { const o = new THREE.SkinnedMesh(h, L.outMat); o.name = 'ink'; o.userData.noWrap = true; o.frustumCulled = false; o.bind(sk.skeleton, sk.bindMatrix); glb.add(o); L.outline.push(o); } // (on the model's root, not in a LOD group: the far one outlines both)
+  } else {
+    const H = hullsOf(src, glb, joints);
+    for (const [jn, h] of Object.entries(H)) { const J = nodeIn(glb, jn); if (!J) continue; const o = new THREE.Mesh(h, L.outMat); o.name = jn + '_ink'; o.userData.noWrap = true; J.add(o); L.outline.push(o); }
+  }
   // the far LOD (meta.lod: '<joint>_lod1' next to each '<joint>_mesh'): one set shows, by the camera's distance (lookTick)
   if (meta.lod && Number.isFinite(meta.lod.dist) && meta.lod.dist > 0) {
     L.lodD = Math.min(200, meta.lod.dist); L.near = []; L.far = [];
@@ -248,7 +281,22 @@ export function sprayOnMech(inst, k, map, scale = 1.5) {
   const size = (Number.isFinite(sl.size) ? sl.size : 0.6) * (Number.isFinite(scale) ? Math.max(0.3, Math.min(3, scale)) : 1.5), geos = [];
   J.updateMatrixWorld(true);
   const inv = new THREE.Matrix4().copy(J.matrixWorld).invert();
-  for (const c of J.children) {
+  if (L.skinned) { // (a skinned hero: the slot joint's own triangles from the near mesh, in the joint's rest frame)
+    const near = meta.skinned.near;
+    L.glb.traverse((o) => {
+      if (!isSk(o) || !o.skeleton) return;
+      let inNear = false; for (let p = o; p; p = p.parent) if (p.name === near) inNear = true;
+      const bi = o.skeleton.bones.indexOf(J); if (!inNear || bi < 0) return;
+      const si = o.geometry.attributes.skinIndex, ix = o.geometry.index, keep = [];
+      for (let t = 0; t < ix.count; t += 3) { const a = ix.getX(t); if (si.getX(a) === bi) keep.push(a, ix.getX(t + 1), ix.getX(t + 2)); }
+      if (!keep.length) return;
+      const g0 = new THREE.BufferGeometry(); g0.setAttribute('position', o.geometry.attributes.position); g0.setAttribute('normal', o.geometry.attributes.normal); g0.setIndex(keep);
+      const tmp = new THREE.Mesh(g0); tmp.matrixWorld.copy(o.skeleton.boneInverses[bi]); // (bind pose -> the joint's rest frame)
+      const g = new DecalGeometry(tmp, at, rot, new THREE.Vector3(size, size, 0.5));
+      if (g.attributes.position.count) geos.push(g); else g.dispose();
+    });
+  }
+  if (!L.skinned) for (const c of J.children) {
     if (meta.joints && Object.hasOwn(meta.joints, c.name)) continue; // (its own pieces, not the next joint down)
     c.traverse((o) => {
       if (!o.isMesh || o.material === L.outMat || !o.material.isMeshStandardMaterial || /decal/.test(o.material.name || '')) return;

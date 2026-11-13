@@ -461,6 +461,9 @@ class Mech:
 
     def build_tree(self, merge=True):
         """empties at every joint (parented, rest pose unrotated), the parts merged per joint into <joint>_mesh"""
+        for n in self.order + [self.fid]:  # (a part named like a joint would push the joint's empty to '<name>.001': the game finds joints by name)
+            o = bpy.data.objects.get(n)
+            if o is not None: o.name = n + '_part'
         root = _link(bpy.data.objects.new(self.fid, None))
         E = {}
         for n in self.order:

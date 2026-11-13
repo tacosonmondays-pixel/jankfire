@@ -1,7 +1,7 @@
 # A Battle Island hero (docs/mechs/ROSTER.md) as a game file: the concept model on its joint tree, its markers and
 # spray slots, the painted-metal look, the hero kit's stickers, every clip it defines (snap keys, events) keyed and
 # exported. Each hero is a module next to this one with build() (a mechkit Mech), marks(mk) and clips().
-#   blender52 -b -P tools/blender/mechs/make_hero.py -- hero=wrecking [qa] [no-bake] [no-merge] [flat] [no-export] [no-lod] [out=<glb>]
+#   blender52 -b -P tools/blender/mechs/make_hero.py -- hero=wrecking [qa] [no-bake] [no-merge] [no-skin] [flat] [no-export] [no-lod] [out=<glb>]
 #   -> public/models/x_mech_<hero>.glb (root meta jf: joints, marks, clips, decal_slots, palettes, height, lod)
 # The near model and a far LOD (<joint>_lod1, built with mechkit.LO: see make_mechs_rig.build_lod) in one file.
 import os, sys, json, importlib
@@ -43,7 +43,10 @@ def main(hero):
     print('JF_CLIPS', hero, len(clip_list), ' '.join(cl['name'] for cl in clip_list))
     print('JF_TRIS', hero, 'near', tn, 'far', tf)
     if 'no-export' not in ARGS:
-        R.export(mk, ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{hero}.glb')), **({'export_vertex_color': 'ACTIVE'} if look and 'no-bake' not in ARGS else {}))
+        path = ARGS.get('out', os.path.join(lib.MODELS, f'x_mech_{hero}.glb'))
+        R.export(mk, path, **({'export_vertex_color': 'ACTIVE'} if look and 'no-bake' not in ARGS else {}))
+        if getattr(mod, 'SKIN', False) and 'no-skin' not in ARGS:  # (one rigid-skinned mesh per LOD: a handful of draws, not one per joint per material)
+            import skin_glb; skin_glb.main(path, path, mk.prefix)
     return mk
 
 
