@@ -412,10 +412,10 @@ export function installBgnMini(Room, H) {
     // the last 2.5 s by a real shove), the splash costs him BS.splash of his armour, credited to them. false = that broke it (BOSS DOWN)
     bgmBossBack(b, by) {
       const S = this.bgm, pushed = by && by !== b && now() - (b.knockT || 0) < 2500, cut = pushed ? Math.round(S.max * BS.splash) : 0; // (only a push costs him: walking off on his own doesn't)
+      const s = pushed ? this.bgnSeatOf(by) : null;
+      if (s && b.body) S.dmg[s.i] = (S.dmg[s.i] || 0) + Math.min(cut, Math.max(0, b.body.hp)); // (the push that finishes him counts for the MVP too)
       if (!b.body || b.body.hp <= cut || !S.home) return false;
       b.body.hp -= cut;
-      const s = pushed ? this.bgnSeatOf(by) : null;
-      if (s) S.dmg[s.i] = (S.dmg[s.i] || 0) + cut;
       b.pos = S.home.slice(); b.vel = [0, 0, 0]; b.onGround = false;
       this.bodyFlush(b, true);
       this.bgnEv('bossback', { id: b.id, p: b.pos.map(r2), cut });
