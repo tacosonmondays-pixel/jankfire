@@ -2,7 +2,8 @@
 // choppy"): a model that just loaded used to compile all its shaders and upload all its textures on the one frame it
 // first showed (150-250 ms), and a crowd walking into view cloned 20 people in one frame. now (public/js/city/stream.js
 // warm()/warmStep(), crowd.js):
-//   a new model warms up a frame at a time: at most one new shader compile, one first-use check or one texture a frame
+//   a new model warms up a frame at a time: at most one new shader compile or one first-use check a frame, textures
+//   ~3 ms of them a frame; a crowd person's model goes ahead of the props waiting (a missing crowd shows more)
 //   models whose shaders are already compiled cost no frames; with no renderer nothing waits (the city testbed)
 //   a props rebuild waits for a prop model that's still warming (it would draw it cold), but never more than a second
 //   the crowd: a new crowd model warms before its first person spawns, then at most 2 new people a frame
@@ -61,12 +62,12 @@ test('a new model warms up a frame at a time: one compile, one check or one text
   const frames = [];
   for (let f = 0; f < 20 && !done; f++) { const n = R.log.length; S.warmStep(cam); frames.push(R.log.slice(n)); }
   assert.equal(done, 1, 'done fires once the queue drains');
-  for (const fr of frames) assert.ok(fr.length <= 1, `at most one expensive step a frame (got ${JSON.stringify(fr)})`);
+  for (const fr of frames) assert.ok(fr.filter((x) => !x.startsWith('upload')).length <= 1, `at most one compile or check a frame (got ${JSON.stringify(fr)})`);
   const steps = frames.flat();
   assert.deepEqual(steps.filter((s) => s.startsWith('compile')), ['compile skin', 'compile robe']);
   assert.ok(steps.indexOf('check skin') === steps.indexOf('compile skin') + 1, 'a shader is checked the frame after it compiled');
   assert.deepEqual(steps.filter((s) => s.startsWith('upload')).sort(), ['upload robe.png', 'upload skin.png', 'upload skin_n.png']);
-  assert.equal(frames.length, 7, '2 compiles + 2 checks + 3 textures = 7 frames, done on the last');
+  assert.ok(frames.length <= 5, `2 compiles + 2 checks, the textures within a frame's budget (${frames.length} frames)`);
 });
 
 test('a warm-up compiles against the target the scene is really drawn into (post effects), then puts the old one back', () => {
@@ -76,6 +77,13 @@ test('a warm-up compiles against the target the scene is really drawn into (post
   S.warmStep(cam);
   assert.deepEqual(R.compileTargets, [post], 'compiled while the post target was bound');
   assert.equal(R.getRenderTarget(), null, 'and the canvas is bound again after');
+});
+
+test('a crowd model goes ahead of waiting props, behind the one under way', () => {
+  const R = fakeRenderer(), S = stream(R);
+  for (const n of ['p1', 'p2', 'p3']) S.warm([mesh(n)], () => {}, true);
+  S.warm([mesh('person')], () => {}, false, true);
+  assert.deepEqual(S.warmQ.map((w) => w.objs[0].material.name), ['p1', 'person', 'p2', 'p3']);
 });
 
 test('already-compiled shaders cost no frames; no renderer means nothing waits', () => {

@@ -81,7 +81,7 @@ export class CityStream {
       this.warm(objs, () => { this.props.key = ''; for (const o of objs) o.dispose(); }, true);
     });
     this.crowd = new Crowd(scene); // the people standing about (crowd.js)
-    this.crowd.warm = (objs, done) => this.warm(objs, done);
+    this.crowd.warm = (objs, done) => this.warm(objs, done, false, true); // (people first: a missing crowd shows more than a late prop)
     this.weather = new Weather(scene); this.storm = 0; // 0-1: a paper storm round you (Late Fees can't see you in one)
     this.horizon = null;
     if (this.def.horizon) this.workers[1 % workers].postMessage({ op: 'horizon', city, gen: this.def.horizon });
@@ -195,9 +195,10 @@ export class CityStream {
   }
 
   // queue meshes to warm up; done() once their shaders are compiled + checked and their textures are on the GPU
-  warm(objs, done, prop = false) {
+  warm(objs, done, prop = false, first = false) {
     if (!this.renderer || !objs.length) { if (done) done(); return; }
-    this.warmQ.push({ objs, i: 0, progs: [], tex: [], seen: new Set(), done, prop });
+    const w = { objs, i: 0, progs: [], tex: [], seen: new Set(), done, prop };
+    if (first) { let k = 0; while (k < this.warmQ.length && (this.warmQ[k].first || k === 0)) k++; w.first = true; this.warmQ.splice(k, 0, w); } else this.warmQ.push(w); // (behind the one under way and any people already waiting)
   }
   // once a frame: at most one new shader compile, or one compiled shader's first-use check (the blocking part: by
   // now the GPU process has had a frame to finish it), or one texture upload
@@ -213,7 +214,7 @@ export class CityStream {
         for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
       if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)
     }
-    if (w.tex.length) { R.initTexture(w.tex.shift()); if (w.tex.length) return; }
+    if (w.tex.length) { const t0 = performance.now(); do R.initTexture(w.tex.shift()); while (w.tex.length && performance.now() - t0 < 3); if (w.tex.length) return; } // (textures: ~3 ms of them a frame)
     this.warmQ.shift();
     if (w.done) w.done();
   }
