@@ -3,3 +3,4 @@ build/*.model.json
 build/*.parts.json
 build/*.rbxlx
 sourcemap.json
+build/anims.json
