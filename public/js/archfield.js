@@ -22,6 +22,7 @@ const PAINT = {
   jb_tenement: '#ff6a4a', jb_brick: '#ff4a3a', jb_magenta: '#ff2ad0', jb_plaster: '#ffc890', jb_roofteal: '#20e8f0', jb_pink: '#ff6ac8',
   jb_toyteal: '#18e8d8', jb_toyyellow: '#ffd800', jb_chrome: '#d8e8ff', jb_office: '#7fd8ff', jb_roofpink: '#ff3aa8', jb_roofblue: '#3a8aff',
   jb_containerr: '#ff3a2a', jb_containerg: '#2ad860', jb_containerb: '#2a7aff', jb_graffiti: '#ffffff', jb_glass: '#ffffff',
+  rt_blue: '#2a86ff', rt_pink: '#ff2ec4', // (Rooftop's team colours on its lift rooms: bold, they mark whose side it is)
 };
 const off = (() => { try { return /[?&]arch=0\b/.test(location.search) || localStorage.getItem('jf_arch') === '0'; } catch { return false; } })();
 const models = {}; // id -> [{ geo, mat, node }]
