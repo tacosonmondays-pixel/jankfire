@@ -11,6 +11,7 @@ import { WEAPONS, ITEMS, ITEM_ORDER } from '/shared/weapons.js';
 import { ZM_PISTOLS, ZM_PASSIVES, zmValidLoadout } from '/shared/zombies.js';
 import { DEFAULT_LOOK } from '/shared/looks.js';
 import { net } from '../net.js';
+import { npcRig } from './npcrig.js';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const NPC = {
@@ -69,7 +70,7 @@ export function build(L) {
   // the tally wall: every round anyone survived, in chalk
   const tally = new THREE.Mesh(new THREE.PlaneGeometry(6, 2.4), L.basic(0xffffff, { map: tallyTex(L) })); tally.position.set(-17.45, 4.2, 6.5); tally.rotation.y = Math.PI / 2; root.add(tally);
   // ---- stations: a desk (Deb), a counter with the start pistols on a pegboard (Gus), a pile of item crates (Marge)
-  const desk = new THREE.Group(); desk.position.set(-8.2, 0, -6.8); desk.rotation.y = NPC.deb.yaw; root.add(desk);
+  const desk = new THREE.Group(); desk.position.set(-8.2, 0, -6.8); desk.rotation.y = Math.atan2(NPC.deb.at[0], NPC.deb.at[1] - 2) + Math.PI; root.add(desk); // (its customer side to the room, Deb behind it. it used to read NPC.deb.yaw before the loop below rewrote it, so the first visit had the desk end-on)
   L.box(desk, 2.4, 0.9, 1, wood, 0, 0.45, 0); L.box(desk, 2.6, 0.08, 1.2, L.mat(0x3a2a1a, 0.6), 0, 0.92, 0);
   L.box(desk, 0.4, 0.06, 0.3, L.mat(0xffffff, 0.8), -0.6, 0.98, 0); L.box(desk, 0.4, 0.1, 0.3, L.mat(0xffffff, 0.8), -0.62, 1.02, 0.05);
   let stamp = L.box(desk, 0.12, 0.2, 0.12, L.mat(0xd0202a, 0.4), 0.5, 1.06, 0), stampY = 1.06;
@@ -141,8 +142,38 @@ export function build(L) {
     npcs[k] = { ch, n, bub: L.tag('bub', ''), t: Math.random() * 9, face: n.yaw, hiT: 0 };
     npcs[k].bub.style.display = 'none';
   }
+  // the Blender ones (x_lobby_<k>.glb): each takes over from its mannequin when its file lands, placed against its prop
+  // (meta.place: the prop's frame), and plays idle / talk / its gesture. a missing file keeps the mannequin
+  const PROPS = { desk, counter: ctr, crates: pile };
+  const SND = { // the gestures' cues (meta clips.gesture.marks)
+    ink: () => L.sfx.noise(0.08, 0.12, 'lowpass', 900, 300),
+    stamp: () => { L.sfx.noise(0.16, 0.5, 'lowpass', 1400, 90); L.sfx.tone('sine', 150, 55, 0.18, 0.4); },
+    spin: () => { L.sfx.noise(0.5, 0.1, 'bandpass', 900, 2600, null, 0, 4); L.sfx.tone('square', 1200, 1900, 0.04, 0.03); },
+    catch: () => { L.sfx.tone('square', 2400, 1800, 0.03, 0.06); L.sfx.noise(0.05, 0.15, 'highpass', 3000, 2000); },
+    blow: () => L.sfx.noise(0.35, 0.08, 'bandpass', 700, 400, null, 0, 2),
+    tick: () => { L.sfx.noise(0.06, 0.12, 'highpass', 2500, 4000); L.sfx.noise(0.05, 0.1, 'highpass', 3000, 4500, null, 0.07); },
+    flip: () => L.sfx.noise(0.18, 0.12, 'bandpass', 2200, 900, null, 0, 1.5),
+    pop: () => { L.sfx.tone('sine', 900, 200, 0.06, 0.2); L.sfx.noise(0.05, 0.2, 'highpass', 2000, 1000); },
+  };
+  const rigAt = new THREE.Vector3(), rigQ = new THREE.Quaternion(), rigE = new THREE.Euler();
+  for (const [k, o] of Object.entries(npcs)) {
+    L.glb('x_lobby_' + k, () => {
+      if (o.rig) return;
+      const R = npcRig('x_lobby_' + k, L.tex, () => !L.potato());
+      if (!R) return;
+      const P = R.meta.place || {}, prop = PROPS[P.prop];
+      const at = Array.isArray(P.at) && P.at.length === 3 && P.at.every(Number.isFinite) ? P.at : [0, 0, 0];
+      const hold = new THREE.Group();
+      if (prop) { prop.updateMatrixWorld(true); hold.position.copy(rigAt.set(...at).applyMatrix4(prop.matrixWorld)); prop.getWorldQuaternion(rigQ); hold.rotation.y = rigE.setFromQuaternion(rigQ, 'YXZ').y + (Number.isFinite(P.yaw) ? P.yaw : 0); }
+      else { hold.position.set(o.n.at[0], o.n.sit ? 1.2 : 0, o.n.at[1]); hold.rotation.y = o.n.yaw; }
+      hold.add(R.root); root.add(hold);
+      R.baseYaw = hold.rotation.y; R.onMark = (m) => { try { if (SND[m]) SND[m](); } catch { /* (no audio yet) */ } };
+      o.rig = R; o.hold = hold; o.gT = 6 + Math.random() * 8;
+      o.ch.root.visible = false;
+    });
+  }
   const zomBub = { bub: L.tag('bub', ''), t: 0 }; zomBub.bub.style.display = 'none';
-  function say(o, line, who) { o.bub.innerHTML = `<small>${who}</small>`; o.bub.append(document.createTextNode(line)); o.bub.style.display = ''; o.bubT = 3.2; }
+  function say(o, line, who) { o.bub.innerHTML = `<small>${who}</small>`; o.bub.append(document.createTextNode(line)); o.bub.style.display = ''; o.bubT = 3.2; if (o.rig) o.rig.talk(Math.min(3, 0.9 + line.length * 0.05)); }
   // ---- the picker: the choices next to the NPC, the same data and setting as CUSTOMIZE > LOADOUT > ZOMBIES
   const css = document.createElement('style'); css.textContent = `
 #lsTags .ls-pick { pointer-events: auto; left: auto !important; right: clamp(34px, 5vmin, 58px); top: clamp(220px, 33vh, 250px) !important; transform: rotate(0.6deg) !important; width: min(320px, 34vw); max-height: 52vh; overflow: auto; background: rgba(18,8,24,.94); border: 4px solid #39ff14; box-shadow: 8px 8px 0 #ff4fd8; padding: 8px 10px 10px; color: #fff; font-family: var(--font); transform-origin: 0 100%; }
@@ -173,7 +204,8 @@ export function build(L) {
     }
     panel.style.display = '';
     say(npcs[k], pick(n.hi), n.name);
-    const c = L.cur(); if (c.walk) c.camFocus = { at: [n.at[0], n.sit ? 3.3 : 2.3, n.at[1]], t: c.camFocus && c.camFocus.talk ? 1 : 0, dur: 1e9, back: -1.2, talk: true }; // (over your shoulder at them while you talk)
+    const hp = npcs[k].rig && npcs[k].rig.head ? npcs[k].rig.head.getWorldPosition(_v) : null;
+    const c = L.cur(); if (c.walk) c.camFocus = { at: hp ? [hp.x, hp.y - 0.15, hp.z] : [n.at[0], n.sit ? 3.3 : 2.3, n.at[1]], t: c.camFocus && c.camFocus.talk ? 1 : 0, dur: 1e9, back: -1.2, talk: true }; // (over your shoulder at them while you talk)
     try { L.sfx.tone('square', 520, 780, 0.06, 0.05); } catch { /* (no audio yet) */ }
   }
   function closePick() { open = null; panel.style.display = 'none'; const c = L.cur(), F = c.camFocus; if (F && F.talk) { F.t = Math.max(F.t, 0.35); F.dur = F.t + 0.45; } }
@@ -187,6 +219,7 @@ export function build(L) {
     try { L.sfx.tone('square', 660, 990, 0.08, 0.06); L.sfx.tone('square', 990, 1320, 0.08, 0.05, null, 0.08); } catch { /* (no audio yet) */ }
     open = null; openPick(k); // (redraw with the new pick lit)
     say(npcs[k], n.got[id] || pick([`${name}. good choice, dear.`, `${name}. sure. why not.`, `${name}. bring it back in one piece.`]), n.name); // (openPick said hi again: the reaction wins)
+    if (npcs[k].rig) npcs[k].rig.gesture(); // (Deb stamps it, Gus spins one, Marge ticks it off)
   }
   // ---- lights: a dim warm room, the windows' green, a pool of light at each station
   S.add(new THREE.HemisphereLight(0xa8c0a8, 0x2a2018, 1.5));
@@ -213,11 +246,21 @@ export function build(L) {
       for (const h of hands) { h.ph += dt; h.h.rotation.y = Math.sin(h.ph * 2.3) * 0.35; h.h.rotation.x = Math.sin(h.ph * 1.7) * 0.25; h.palm.rotation.x = Math.max(0, Math.sin(h.ph * 4)) * 0.8; }
       for (const b of bulbs) b.visible = Math.random() > 0.004; // (a bulb blinks out now and then)
       gen.position.x = 13.5 + (Math.random() - 0.5) * 0.012; gen.rotation.z = (Math.random() - 0.5) * 0.004; // (the generator chugs)
-      stamp.position.y = stampY + Math.max(0, Math.sin(t * 3.1)) * 0.18; // (Deb stamps things)
+      if (npcs.deb && npcs.deb.rig) stamp.visible = false; // (Deb has it in her hand now)
+      else stamp.position.y = stampY + Math.max(0, Math.sin(t * 3.1)) * 0.18; // (Deb stamps things)
       // the NPCs: idle, look at you when you're close, say hi once as you walk up
       for (const [k, o] of Object.entries(npcs)) {
-        o.t += dt; idlePose(o.ch, o.t);
         const n = o.n, d = me ? Math.hypot(me.pos[0] - n.at[0], me.pos[2] - n.at[1]) : 99;
+        if (o.rig) { // the Blender one: clips + a head turn your way; a gesture now and then while nobody's chatting
+          if (d < 7 && me) _v.set(me.pos[0], me.pos[1] + 2.05, me.pos[2]);
+          o.rig.update(dt, d < 7 && me ? _v : null);
+          if (!o.rig.busy() && open !== k && !(o.bubT > 0) && (o.gT -= dt) <= 0) { o.rig.gesture(); o.gT = 9 + Math.random() * 9; }
+          if (d < 4.5 && o.hiT <= 0 && !open) { say(o, pick(n.hi), n.name); o.hiT = 14; } else if (d > 6) o.hiT = Math.min(o.hiT, 2);
+          o.hiT -= dt;
+          if (o.bubT > 0) { o.bubT -= dt; if (o.bubT <= 0) o.bub.style.display = 'none'; }
+          continue;
+        }
+        o.t += dt; idlePose(o.ch, o.t);
         const want = d < 7 && me ? Math.atan2(-(me.pos[0] - n.at[0]), -(me.pos[2] - n.at[1])) : n.yaw; // (characters face -z at yaw 0)
         let dd = want - o.face; dd = Math.atan2(Math.sin(dd), Math.cos(dd)); o.face += dd * Math.min(1, dt * 3); o.ch.root.rotation.y = o.face;
         if (k === 'deb') { o.ch.arm.rotation.set(-0.9 + Math.max(0, Math.sin(t * 3.1)) * 0.5, 0, 0); o.ch.armL.rotation.set(-1.3, 0, -0.1); }
@@ -241,11 +284,11 @@ export function build(L) {
       if (zomBub.bubT > 0) { zomBub.bubT -= dt; if (zomBub.bubT <= 0) zomBub.bub.style.display = 'none'; }
     },
     tags() {
-      for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.75, o.n.at[1]); L.at(o.bub, _v); }
+      for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { if (o.rig && o.rig.head) { o.rig.head.getWorldPosition(_v); _v.y += 0.62; } else _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.75, o.n.at[1]); L.at(o.bub, _v); }
       if (zomBub.bub.style.display !== 'none') { _v.copy(zch.root.position); _v.y = 2.8; L.at(zomBub.bub, _v); }
     },
-    info: () => ({ open, zload: zl0() }),
-    dispose() { css.remove(); },
+    info: () => ({ open, zload: zl0(), rigs: Object.keys(npcs).filter((k) => npcs[k].rig), clip: Object.fromEntries(Object.entries(npcs).filter(([, o]) => o.rig).map(([k, o]) => [k, o.rig.want])), ink: Object.values(npcs).filter((o) => o.rig && o.rig.ink.visible).length }),
+    dispose() { css.remove(); for (const o of Object.values(npcs)) if (o.rig) o.rig.dispose(); },
   };
 }
 

@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.44', date: '2026-11-13', title: 'STAFF MEETING', items: [
+    "deb, gus and marge in the zombies lobby are proper characters now. deb stamps your passive, gus spins the revolver, marge blows a gum bubble and ticks you off her clipboard. they look at you when you walk up. they are not happy about it.",
+  ] },
   { v: '11.43', date: '2026-11-13', title: 'SPYGLASS', items: [
     "JANK ROYALE MAP GLOW-UP: the big map is a real picture of the place with the district names on it. zoom and drag it around.",
     "names float over every location so you can call your drop from the blimp. the blimp flies slower so you get a say. hold right-click up there for a spyglass: scroll to zoom, ping where you're landing.",
