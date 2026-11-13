@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.6', date: '2026-11-13', title: 'CANDY BACK', items: [
+    'jankburg got its candy back: the city flats are painted pink, lemon, lilac, mint and cyan again, toy roofs keep their colours, and the lights inside glow warm.',
+    'RAY-TRACED LOOK on too hd: wet roofs and shiny floors now mirror what\'s actually around them. billboards upside down in puddles. your gun never shows up in it, it\'s shy.',
+  ] },
   { v: '11.5', date: '2026-11-13', title: 'WIFI SNEEZE', items: [
     'your party doesn\'t fall apart when your wifi sneezes anymore. you get 30 seconds to come back. reloading counts. if the leader drops, someone else gets the crown.',
     'fixed: party codes stopped working for a few minutes after an update. sorry, they\'re back.',
