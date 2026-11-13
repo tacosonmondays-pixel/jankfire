@@ -179,10 +179,10 @@ function render() {
     if (k === 'qp') L.append(row('who', seg([['all', 'EVERYONE'], ['bots', '+ BOTS'], ['coop', 'CO-OP']], st.who, (v) => { st.who = v; remember(k); })));
     else L.append(row('fill empty seats with bots', toggle(st.fill, (v) => { st.fill = v; remember(k); }), 'off: real players only, the match waits for enough people'));
     L.append(row('map', el('em', null, k === 'qp' ? 'VOTED EACH MATCH' : 'RANDOM, THEN VOTED')));
-    L.append(row('lobby', el('em', null, k === 'qp' ? 'DROP IN NOW' : 'WARM-UP ARENA, 60 s')));
+    L.append(row('lobby', el('em', null, k === 'qp' ? 'DROP IN NOW' : 'PRE-GAME DECK, 60 s')));
     R.append(el('span', 'hub-tag', 'WHAT HAPPENS'));
     const txt = k === 'qp' ? (st.who === 'coop' ? 'you and whoever is online vs waves of bots.' : st.who === 'bots' ? 'you drop into a match with bots and people. you take a bot\'s seat.' : 'you drop into the online room right now. everyone votes the next mode and map.')
-      : `you land in the ${H.name.toLowerCase()} lobby: a warm-up deathmatch on the match's map while the countdown runs. hit READY when you're ready.` + (st.fill ? ' bots take the empty seats.' : ` it needs ${LOBBY.kinds[H.lobby].min} real players.`);
+      : `you land in the ${H.name.toLowerCase()} lobby: a little deck floating off the edge of the match's map while the countdown runs. nothing hurts: shove people, spray, hit READY when you're ready.` + (st.fill ? ' bots take the empty seats.' : ` it needs ${LOBBY.kinds[H.lobby].min} real players.`);
     R.append(el('p', 'hub-p', txt));
     const lv = row('in there now', el('em', null, '·')); lv.classList.add('hub-live'); R.append(lv); liveRow();
   } else {
