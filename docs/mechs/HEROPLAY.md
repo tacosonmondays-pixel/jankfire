@@ -98,3 +98,35 @@ Knobs:
 - `JF_VM_JAM=<0..1>`
 - `JF_VM_STUCK=<0..1>`
 - `JF_VM_SLOW=<k>` (walls and cans last k x longer)
+
+## TROLLEY (speed, 800 armour, 26 m/s)
+A 4 m shopping trolley (5.4 m at the 1.35x mech size): a chrome wire basket made of real bars, a red push bar with your colour on the grips, a red child seat that folds down, a pound coin lock on a chain, a rubber bumper in your colour, four swivel casters (the front-left one bent, with gum on it), two little boosters behind, and a tiny pilot in a hi-vis vest pushing it from the footboard. Frame id `trolley`. Hitbox 1.3 m half-width, 2.6 m tall, cockpit band 1.7-2.6 m (the pilot at the handle).
+
+Lengths below are at size 1, with the 1.35x size in brackets (`sized`: the push and scoop reaches, the ride reach, the can, the seat and basket spots, the muzzle).
+
+It drives like a cart: quick off the mark (0 to 26 m/s in about 0.4 s), grippy (sideways speed fades at 7/s), a bit of slide, a 8 m/s hop. The fastest thing on the island.
+
+| key | move | what it does |
+|---|---|---|
+| (driving) | **ram** | Driving into people hurts by the speed the SERVER measured: 6 + 1.4 per m/s over 9, up to 35 (27 at top speed), knockback 0.8 x speed. Once per target every 0.7 s. Empty parked enemy mechs too. |
+| LMB (hold) | **TIN-CAN TOSS** | Lobbed cans from the handle, 3 a second, 26 m/s + 6 up. Each bounces off the floor and walls up to 3 times and BONKs the first enemy it touches for 22 (a small shove). An enemy OUT OF ORDER sign takes 22 and the can bounces back off it. Empty parked mechs take it. |
+| Shift (hold) | **DRIFT** | The grip drops to 1.1/s and it slides; the casters swing out to 35 degrees, sparks and a squeal. Drifting faster than 12 m/s fills the **RAM CHARGE** from 0 to 1 in 1.5 s (from a standstill it starts counting once it's really travelled for ~0.5 s); it keeps 3 s after the drift. |
+| E | **TROLLEY PUSH** | A 0.4 s lunge where it faces at 30 + 10 x charge m/s. Everyone on the bumper's path (1.7 m (2.3) either side) takes 30 + 50 x charge (up to 80) and a shove of 20 + 15 x charge, 6 up. Spends the charge. 4 s cooldown. Hit-stop and a red impact frame on a big one ("TROLLEY'D"). |
+| RMB (hold) | **brake** | Stops hard (sparks). |
+| Q (ult) | **CLEAN UP AISLE 5** | 6 s at 34 m/s, boosters on, a tannoy chime. Enemies it runs into (2.2 m (3.0) in front of the basket, it moving faster than 4 m/s) get SCOOPED into the basket, up to 3: they ride along at the basket's spots, can't move, shoot or use anything, and take 8/s. When the 6 s run out, or Q again, it DUMPS them: the basket tips and they fly forward 24 and up 14, for 35. A mech, a rig, a ball or someone on a rope is too big to scoop (rammed instead); so is the 4th. Ult: 550 damage dealt, or 100 s. |
+| passive | **ONE WONKY WHEEL** | It always pulls a little left (0.07 rad/s at top speed, in your own driving) and the front-left caster wobbles. |
+| jank | **THE POUND COIN LOCK** | An ally on foot presses F within 3 m (4.05) of its sides to ride in the child seat (one at a time). Riders keep their guns and shoot from it (a gunner), but can't grapple, use streaks or carts. F or jump hops them out over the side. If the trolley breaks they're flung out. Allied bots hop in now and then, and trolley bots drive over to pick allies up. |
+
+The server keeps it honest:
+- **Measured speed:** rams, the drift charge, the scoop, a can's carried speed and the dump's fling all use the speed the server measured (`mechMv`), cut down to the net travel over the last 0.5 s (wiggling back and forth in place reads as parked), clamped to what it may go right now (the kit's cap) and to no more than 12 m/s over the window before (a one-snapshot teleport counts as standing still). The generic PAPER PLANE / NIGHT SHIFT ram and WRECKING BALL's ram use `mechMv` too. Knockback directions are a unit vector of the raw velocity.
+- **Drift charge:** the DRIFT flag only counts while the measured speed is over 12 m/s, and the charge builds on the server's own clock. The push's speed and damage come from that charge, not the client's.
+- **Speed:** 26 m/s normally, the push's speed only inside its 0.4 s window, 34 m/s only in AISLE 5. Afterwards the cap comes down at 16 m/s per s (the client's own drag), and the extra movement bank the push / ult gave is cut back when they end.
+- **The basket:** scooped and riding players are wherever the server's trolley puts them; their own positions are ignored, scooped ones can't fire, hit, use items, streaks or `unride`, and on Battle Island / Jank Royale can't revive, swap heroes, call a mech, loot, heal or kick (stopped before those modes' own handlers). Riders keep their guns and heals only. Getting scooped or climbing in drops a shopping cart you're riding and stops a revive you're doing; anyone on the blimp or gliding can't be scooped (rammed instead) or ride. They're let go on every path: the dump, the timer, Q, the trolley breaking (flung out), the pilot hopping out, dying or leaving, a round / map change, them dying, leaving, respawning, getting sealed in a soap bubble or caught on a lasso. A let-go spot is checked (no wall from the trolley's middle, not inside anything, not off the map; else the trolley's middle), and a rider hops out on a side with no wall (mechOutSpot). Carried off the edge, they fall into the void like the trolley.
+- **Riding:** `{t:'mech', k:'ride', to}` / `{k:'unride'}` go through the on-foot poke route (`mechPoke` in server/mech.js, rate limited): allies only, from on foot, within reach, one rider.
+- **Bots:** they race at the nearest enemy, drift round in an arc to build the charge, then push when they're lined up within 11 m; they toss cans at anyone in sight under 34 m, AISLE 5 when an enemy's within 25 m ahead, dump when the basket's full, and drive over to an ally on foot when there's no fight.
+
+Tests:
+- `tests/mech_trolley_ws.cjs`: TDM with 8 clients; every rule and each exploit above fails on naive code.
+- `tests/mech_trolley_bots_ws.cjs`: TDM with bots.
+
+Knobs: `JF_MECH_FRAME=trolley`, `JF_MECH_ULT=<x>`.
