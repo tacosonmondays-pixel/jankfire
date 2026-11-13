@@ -7,7 +7,8 @@ import '../shared/royale.js';
 import '../shared/zombies.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { mapsFor } from '../shared/modes.js';
-import { padFor, offPad, boardRows, lookFor, LOOKS, PREGAME } from '../shared/pregame.js';
+import { padFor, offPad, boardRows, lookFor, LOOKS, PREGAME, LAYOUT, PODIUMS, SCREEN } from '../shared/pregame.js';
+import fs from 'node:fs';
 import { movePlayer } from '../shared/physics.js';
 
 const ids = [...new Set(['bomb', 'br', 'zm'].flatMap((g) => mapsFor(g, MAPS, MAP_ORDER)))];
@@ -45,4 +46,18 @@ test('the board: ranked first, then unranked people, bots last; junk ignored', (
 });
 test('the look of the week is always a real look', () => {
   for (let d = 0; d < 400; d += 3) assert.ok(LOOKS.some((l) => l.id === lookFor(Date.UTC(2026, 0, 1) + d * 864e5)));
+});
+test('every look has its Blender deck, built on the same boxes, podiums and screen as the game', () => {
+  for (const L of LOOKS) {
+    const f = new URL(`../public/models/x_lobby_${L.id}.glb`, import.meta.url), buf = fs.readFileSync(f);
+    assert.equal(buf.readUInt32LE(0), 0x46546c67, 'a glb');
+    const json = JSON.parse(buf.subarray(20, 20 + buf.readUInt32LE(12)).toString('utf8'));
+    const root = json.nodes.find((n) => n.extras && n.extras.jf), meta = JSON.parse(root.extras.jf);
+    assert.equal(meta.id, L.id);
+    assert.deepEqual(meta.boxes, LAYOUT, 'the model was built on shared/pregame.js LAYOUT');
+    assert.deepEqual(meta.podiums, PODIUMS); assert.deepEqual(meta.screen, SCREEN);
+    const names = new Set(json.nodes.map((n) => n.name));
+    for (const n of ['screen', ...meta.fans, ...meta.balloons]) assert.ok(names.has(n), 'node ' + n);
+    assert.ok(json.materials.length <= 16, 'draw calls: ' + json.materials.length + ' materials');
+  }
 });

@@ -24,10 +24,33 @@ export const EMOTE = { cd: 1500 };
 // the stat the big board ranks by, per lobby kind (shared/modestats.js has the stats). zombies: highest round
 export const BOARD_STAT = { bomb: 'rw', br: 'wins', zm: 'round', qp: 'kills' };
 
+// the deck's solid parts, relative to its centre on the floor (x across, y up, z toward the back; the map is off -z).
+// the Blender deck (tools/blender/lobby/make_lobby_deck.py) is built on these same boxes and carries them in its meta
+// (tests/pregame.test.mjs checks the two agree): the model is only the look, these are what you stand on
+// [x0, y0, z0, x1, y1, z1, part]
+export const LAYOUT = [
+  [-13, -1, -9, 13, 0, 9, 'floor'],
+  [-13, 0, -9, 13, 0.66, -8.7, 'rail'], // (the side facing the map: low, so you see over it)
+  [-13, 0, 8.7, 13, 1.1, 9, 'rail'],
+  [-13, 0, -9, -12.7, 1.1, 9, 'rail'],
+  [12.7, 0, -9, 13, 1.1, 9, 'rail'],
+  [-5.5, 0, 7.4, 5.5, 7.4, 8.4, 'board'], // the big board: its face is z 7.4, toward the deck and the map
+  [-0.9, 0, 5.6, 0.9, 1.0, 7.4, 'podium'], // 1st, 2nd (on its right as you face the board: +x), 3rd
+  [1.0, 0, 5.8, 2.8, 0.7, 7.4, 'podium'],
+  [-2.8, 0, 5.8, -1.0, 0.45, 7.4, 'podium'],
+  [-11, 0, 5, -9.6, 1.4, 6.4, 'crate'], // crates to hop on
+  [9.4, 0, 5.2, 10.8, 1.4, 6.6, 'crate'],
+  [9.6, 1.4, 5.4, 10.6, 2.4, 6.4, 'crate'],
+  [-12.65, 0, -8.65, -12.35, 5.2, -8.35, 'pole'], [12.35, 0, -8.65, 12.65, 5.2, -8.35, 'pole'], // the light poles
+  [-12.65, 0, 8.35, -12.35, 5.2, 8.65, 'pole'], [12.35, 0, 8.35, 12.65, 5.2, 8.65, 'pole'],
+];
+// where the top 3 stand (on their podiums, facing the deck) and the board's screen (the game draws the rows on it)
+export const PODIUMS = [[0, 1.0, 6.5], [1.9, 0.7, 6.6], [-1.9, 0.45, 6.6]];
+export const SCREEN = { c: [0, 5.0, 7.55], w: 9.6, h: 3.8 }; // (recessed in the board's frame)
+
 const cache = new WeakMap();
 const hits = (b, lo, hi) => b.min[0] < hi[0] && b.max[0] > lo[0] && b.min[1] < hi[1] && b.max[1] > lo[1] && b.min[2] < hi[2] && b.max[2] > lo[2];
-const box = (x0, y0, z0, x1, y1, z1, k) => ({ min: [x0, y0, z0], max: [x1, y1, z1], pg: k }); // pg: which part (the client's placeholder colours)
-// the deck for a map: { c: [x, floorY, z], boxes, spawns, board: {p, yaw}, look, face (yaw that looks at the map) }
+// the deck for a map: { c: [x, floorY, z], boxes, spawns, podiums, board: {p, yaw, w, h}, face (yaw that looks at the map) }
 export function padFor(map) {
   if (!map) return null;
   let pad = cache.get(map);
@@ -39,7 +62,7 @@ export function padFor(map) {
   }
   const B = map.bounds; // the play area if the map has one (the rest is scenery you can walk on)
   const x0 = B ? B[0] : lo[0], x1 = B ? B[2] : hi[0], z1 = B ? B[3] : hi[2];
-  const { w, d, lift, gap, rail } = PREGAME;
+  const { w, d, lift, gap } = PREGAME;
   const fy = Math.round(Math.max(0, ...map.spawns.map((s) => s[1])) + lift);
   const cx = Math.round((x0 + x1) / 2);
   // out past the +z edge, the nearest spot where nothing of the map is in the way (deck, rails, the board, headroom)
@@ -49,23 +72,13 @@ export function padFor(map) {
     if (!map.boxes.some((x) => hits(x, a, b))) break;
   }
   cz = Math.round(cz);
-  const X0 = cx - w / 2, X1 = cx + w / 2, Z0 = cz - d / 2, Z1 = cz + d / 2, t = 0.3;
-  const boxes = [
-    box(X0, fy - 1, Z0, X1, fy, Z1, 'floor'),
-    box(X0, fy, Z0, X1, fy + rail * 0.6, Z0 + t, 'rail'), // (the side facing the map: lower, so you can see over it)
-    box(X0, fy, Z1 - t, X1, fy + rail, Z1, 'rail'),
-    box(X0, fy, Z0, X0 + t, fy + rail, Z1, 'rail'),
-    box(X1 - t, fy, Z0, X1, fy + rail, Z1, 'rail'),
-    box(cx - 5.5, fy, Z1 - 1.6, cx + 5.5, fy + 0.5, Z1 - t, 'step'), // the board's base: a step to stand on
-    box(cx - 5, fy + 0.5, Z1 - 1.1, cx + 5, fy + 6.5, Z1 - 0.5, 'board'), // the big board (faces the deck and the map)
-    box(X0 + 2, fy, Z1 - 4, X0 + 3.4, fy + 1.4, Z1 - 2.6, 'crate'), // a couple of crates to hop on
-    box(X1 - 3.6, fy, Z1 - 3.8, X1 - 2.2, fy + 1.4, Z1 - 2.4, 'crate'),
-    box(X1 - 3.4, fy + 1.4, Z1 - 3.6, X1 - 2.4, fy + 2.4, Z1 - 2.6, 'crate'),
-  ];
+  const at = (x, y, z) => [cx + x, fy + y, cz + z];
+  const boxes = LAYOUT.map(([a0, b0, c0, a1, b1, c1, k]) => ({ min: at(a0, b0, c0), max: at(a1, b1, c1), pg: k })); // pg: which part
   const spawns = [];
-  for (let i = 0; i < 16; i++) spawns.push([cx - 9 + (i % 4) * 6 + ((i >> 2) % 2) * 1.5, fy, cz - 5.5 + (i >> 2) * 2.6]);
+  for (let i = 0; i < 16; i++) spawns.push(at(-9 + (i % 4) * 6 + ((i >> 2) % 2) * 1.5, 0, -5.5 + (i >> 2) * 2.6));
   pad = { c: [cx, fy, cz], w, d, boxes, spawns, face: 0, // (yaw 0 looks down -z: at the map)
-    board: { p: [cx, fy + 3.5, Z1 - 1.12], yaw: Math.PI }, lo: [X0, fy, Z0], hi: [X1, fy, Z1] };
+    podiums: PODIUMS.map((p) => at(...p)), board: { p: at(...SCREEN.c), yaw: Math.PI, w: SCREEN.w, h: SCREEN.h },
+    lo: [cx - w / 2, fy, cz - d / 2], hi: [cx + w / 2, fy, cz + d / 2] };
   cache.set(map, pad);
   return pad;
 }
