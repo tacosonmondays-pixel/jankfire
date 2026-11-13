@@ -28,9 +28,9 @@ S = {'aosoft': 0.35}  # (the canopy's canvas: light comes through it)
 MATS.update({
     'pd_coping': ('trim', '#f4f2ee', {'gloss': 0.5}), 'pd_mosaic': ('trim', '#38c8f0', {'gloss': 0.4}), 'pd_lane': ('trim', '#1a3a7a', {}),
     'pd_alu': ('metalplate', '#f4f6fb', {'gloss': 0.5}), 'pd_rubber': ('tar', '#222026', {}),
-    'pd_c_white': ('trim', '#f6f4f0', G), 'pd_c_toypink': ('trim', '#ff6ad5', G), 'pd_c_toyteal': ('trim', '#5ef2e4', G), 'pd_c_toyyellow': ('trim', '#ffe14d', G),
+    'pd_c_white': ('trim', '#f6f4f0', G), 'pd_c_toypink': ('trim', '#ff6ad5', G), 'pd_c_toyteal': ('trim', '#8af8ec', G), 'pd_c_toyyellow': ('trim', '#ffe14d', G),
     'pd_towel': ('stucco', '#ffffff', {}), 'pd_towel2': ('stucco', '#4fd8ff', {}),
-    'pd_teak': ('planks', '#f0b070', {}), 'pd_brass': ('metalplate', '#e8b840', {'gloss': 0.8, 'metal': 1}),
+    'pd_teak': ('planks', '#fff2e0', {'aosoft': 0.5}), 'pd_brass': ('metalplate', '#e8b840', {'gloss': 0.8, 'metal': 1}),
     'pd_canvas': ('stucco', '#fbf6ee', S), 'pd_stripe': ('stucco', '#ff4fd8', S), 'pd_curtain': ('stucco', '#f6eef6', {}),
     'pd_case': ('tar', '#1d1b22', {'gloss': 0.35}), 'pd_deck': ('metalplate', '#2c2c34', {'gloss': 0.5}), 'pd_platter': ('metalplate', '#c4c8d0', {'gloss': 0.8, 'metal': 1}),
     'pd_vinyl': ('tar', '#0e0e12', {'gloss': 0.9}), 'pd_label': ('trim', '#ff4fd8', {}), 'pd_screen': ('trim', '#4fd8ff', {'glow': True, 'glowcol': '#4fd8ff'}),
@@ -43,7 +43,8 @@ MATS.update({
     'pd_flamingo': ('trim', '#ff70b8', {'gloss': 0.9}), 'pd_beak': ('trim', '#ff9a2a', {'gloss': 0.8}), 'pd_black': ('tar', '#141418', {}),
     'pd_ring': ('trim', '#ffe14d', {'gloss': 0.9}), 'pd_ring2': ('trim', '#ff4fd8', {'gloss': 0.9}),
 })
-NOCAST.update({'pd_canvas', 'pd_stripe', 'pd_lane', 'pd_towel', 'pd_towel2', 'pd_brass', 'pd_curtain', 'pd_platter', 'pd_vinyl', 'pd_label', 'pd_screen', 'pd_fader', 'pd_badge',
+NOCAST.update({'pd_c_toyteal', 'pd_teak', 'pd_canvas', 'pd_stripe',  # (soft stuff and the cabana frame: no self-shadow streaks, they stay bright)
+                'pd_lane', 'pd_towel', 'pd_towel2', 'pd_brass', 'pd_curtain', 'pd_platter', 'pd_vinyl', 'pd_label', 'pd_screen', 'pd_fader', 'pd_badge',
                'pd_neonpink', 'pd_neoncyan', 'pd_neonyellow', 'pd_neongreen', 'pd_lamp', 'pd_wire', 'pd_beak', 'pd_black', 'pd_rubber'})
 E = 0.002
 
