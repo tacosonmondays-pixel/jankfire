@@ -180,7 +180,6 @@ def deck():
         if rr.random() < 0.08 and not wide:  # a split one: two lengths butting
             s = z0 + 0.8 + rr.random() * (z1 - z0 - 1.6)
             tb((a, 0, z0), (b, h, s - 0.01), m, along='z', skip=('ny', 'nz', 'pz')); tb((a, 0, s + 0.01), (b, h - 0.006, z1), m, along='z', skip=('ny', 'nz', 'pz'))
-            Q([(a, 0.0005, s - 0.01), (b, 0.0005, s - 0.01), (b, 0.0005, s + 0.01), (a, 0.0005, s + 0.01)], 'pgap', out=(0, 1, 0))
         else:
             tb((a, 0, z0), (b, h, z1), m, along='z', skip=('ny', 'nz', 'pz'))
         x += PITCH; k += 1
@@ -213,7 +212,8 @@ def piles():
         ro = rr.random()
         pole((x + lean, -2.5, z), (x, top, z), r, 'ppile', n=6, caps=(False, False), rot=ro)
         lathe((x, top - 0.012, z), [(r + 0.016, 0.0), (0.0, 0.075)], 'pzinc', n=6, rot=ro)  # a zinc cap against the rain
-        pole((x + lean * 0.9, WY - 0.3, z), (x + lean * 0.85, WY + 0.07, z), r + 0.022, 'pweed', n=6, caps=(False, False), rot=ro)
+        ax = lambda y: x + lean * (top - y) / (top + 2.5)  # (the pile's middle at height y: it leans)
+        pole((ax(WY - 0.3), WY - 0.3, z), (ax(WY + 0.07), WY + 0.07, z), r + 0.022, 'pweed', n=6, caps=(False, False), rot=ro)
         for kk in range(1):  # a barnacle just over the weed
             a = rr.random() * math.tau; y = WY + 0.12 + rr.random() * 0.1
             c = Vector((x + math.cos(a) * (r + 0.004), y, z + math.sin(a) * (r + 0.004)))
@@ -258,9 +258,7 @@ def gull(c, yaw, scale=1.0):
     for (o1, o2) in ((P(0.17, 0.265, 0.012), P(0.17, 0.24, 0.012)), (P(0.17, 0.24, -0.012), P(0.17, 0.265, -0.012))):
         T3([o1, tip, o2], 'pbeak', out=o1 + o2 - hb * 2)
     T3([P(0.17, 0.265, 0.012), P(0.17, 0.265, -0.012), tip], 'pbeak', out=(0, 1, 0)); T3([P(0.17, 0.24, -0.012), P(0.17, 0.24, 0.012), tip], 'pbeak', out=(0, -1, 0))
-    for s in (-1, 1):  # beady eyes
-        e = P(0.15, 0.265, s * 0.045)
-        T3([e + Vector((0, 0.012, 0)), e + (P(0.012, 0, 0) - c), e - Vector((0, 0.012, 0))], 'pblack', out=P(0, 0, s) - P(0, 0, 0))
+    pole(P(0.15, 0.268, -0.062), P(0.15, 0.268, 0.062), 0.011, 'pblack', n=3)  # beady eyes: a little rod through the head, its ends showing
     for s in (-1, 1):  # legs
         pole(P(0.0, 0.1, s * 0.03), P(0.01, 0.0, s * 0.035), 0.008, 'pbeak', n=3, caps=(False, False))
         T3([P(0.01, 0.002, s * 0.035), P(0.07, 0.002, s * 0.06), P(0.07, 0.002, s * 0.01)], 'pbeak', out=(0, 1, 0))
@@ -346,8 +344,9 @@ def shack():
         tb((xa, 0.03, za), (xb, 2.82, zb), 'ptrimc', along='y', skip=('ny',))
     for (axis, c, a0, a1, o) in (('x', ZF, X0 + 0.04, X1 - 0.04, -1), ('x', ZB, X0 + 0.04, X1 - 0.04, 1), ('z', X0, ZF + 0.04, ZB - 0.04, -1), ('z', X1, ZF + 0.04, ZB - 0.04, 1)):
         c0, c1 = sorted((c, c + o * 0.025))
-        if axis == 'x': tb((a0, 0.03, c0), (a1, 0.24, c1), 'ppile', along='x', skip=('ny',))
-        else: tb((c0, 0.03, a0), (c1, 0.24, a1), 'ppile', along='z', skip=('ny',))
+        inner = ('nz' if o > 0 else 'pz') if axis == 'x' else ('nx' if o > 0 else 'px')  # (its back is on the wall)
+        if axis == 'x': tb((a0, 0.03, c0), (a1, 0.24, c1), 'ppile', along='x', skip=('ny', inner))
+        else: tb((c0, 0.03, a0), (c1, 0.24, a1), 'ppile', along='z', skip=('ny', inner))
     # patch boards nailed on crooked (over the holes, presumably)
     for (axis, c, o, a, y, L, ang, m) in (('x', ZB, 1, 44.2, 1.3, 1.1, 0.12, 'pdeckp'), ('x', ZB, 1, 47.0, 0.6, 0.9, -0.2, 'pdeck2'), ('z', X0, -1, 8.9, 1.9, 0.8, 0.3, 'pdeck3'),
                                           ('z', X1, 1, 9.0, 0.5, 0.9, -0.1, 'pdeck'), ('x', ZF, -1, 43.25, 0.45, 0.8, 0.15, 'pdeck2'), ('x', ZF, -1, 47.9, 0.35, 1.0, -0.08, 'pdeckp')):
@@ -455,7 +454,7 @@ def shack():
         y = hang - v * (1.35 - 0.25 * math.sin(u * math.pi * 2.2) * v)
         return (X0 - 0.045 - 0.1 * v * math.sin(u * math.pi) - 0.02 * math.sin(u * 7 + v * 3), y, z + 0.08 * v * math.sin(u * 5))
     net_sheet(wP, 5, 3, 'pnet')
-    rope([Vector(wP(i / 6, 0)) + Vector((-0.005, 0.01, 0)) for i in range(7)], r=0.012, n=3)
+    rope([Vector(wP(i / 6, 0)) + Vector((-0.02, 0.012, 0)) for i in range(7)], r=0.012, n=3)
     for k in range(5):
         p = Vector(wP((k + 0.5) / 5, 0)) + Vector((-0.02, -0.02, 0))
         lathe(p, [(0.0, -0.06), (0.04, -0.035), (0.04, 0.035), (0.0, 0.06)], ('pbuoyp', 'pbuoyy', 'pbuoyc')[k % 3], n=5, axis=(0, 0, 1))
