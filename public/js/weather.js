@@ -348,7 +348,7 @@ export function wxState() {
   const K = W.kind && W.kits[WX_KINDS[W.kind].kit];
   const kk = typeof K === 'object' && K ? K : null;
   return { map: MAP.id, plan: !!(W.plan && W.plan.m === MAP.id), phases: W.plan ? W.plan.ph.length : 0, t: now() - W.t0, k: W.k, kind: W.kind, kit: kk ? 'loaded' : K || 'none',
-    erupt: eruptState(), stars: starsState(), visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
+    erupt: eruptState(), stars: starsState(), wisp: wispList.length, visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk && kk.P.splashA ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
 }
 // what the weather adds to a frame: one draw per visible piece (the copies are instanced), and their triangles
 function draws(root, tris) {
