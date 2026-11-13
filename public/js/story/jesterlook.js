@@ -3,7 +3,7 @@
 // from it). He is a puppet jester from the waist up on a big spider: the cast skeleton (person(); its human legs are
 // unused and empty) plus his own joints from jl_clipdata.js (written by tools/blender/cast/jl_clips.py from jl_rig.py):
 // the thorax and the big top, eight legs of femur > tibia > foot > bell, the hat's horns with a bell each, the dummy
-// jaw, the lids (shut: they open once), the brows, the collar's bells and the marotte (his own little head on a
+// jaw, the lids (shut: they open once), the brows, the ruff's bells (the collar joint) and the marotte (his own little head on a
 // stick). The Blender model (public/models/cast/c_jester_lord.glb) is skinned on these joints and replaces every
 // group marked codeOnly; the markers stay for both. His clips and his life are in jesterlord.js (JL).
 import { FACES } from './face.js';
@@ -24,11 +24,12 @@ const at = Object.fromEntries(RIG.map((e) => [e[0], e]));
 // prints them as JF_MK_JS; tests/story/jester_lord.test.mjs checks they agree). eyeAt = between his (shut) eyes: what a
 // camera or a look-at should treat as his eyes. stumpAt = where his right second leg comes off
 const MK = {
-  eyeAt: ['head', 0.0, 0.481, -0.3165], eyeRAt: ['lidR', 0.0, 0.0, -0.05], eyeLAt: ['lidL', 0.0, 0.0, -0.05], faceAt: ['head', 0.0, 0.39, -0.338],
-  mouthAt: ['jaw', 0.0, -0.026, -0.299], noseTip: ['head', 0.0, 0.3588, -0.8255], hatTipR: ['bellHR', 0.0, 0.0, 0.0],
-  palmR: ['handR', 0.0, -0.07, 0.0], hatTipL: ['bellHL', 0.0, 0.0, 0.0], palmL: ['handL', 0.0, -0.07, 0.0], marotteAt: ['marotte', 0.0, 0.0, -0.06],
-  stumpAt: ['thorax', 0.5246, -0.0241, -0.2006], topAt: ['abdo', 0.0, 1.5128, 0.86], spinneret: ['abdo', 0.0, 0.0964, 1.74],
-  chestAt: ['spine', 0.0, 0.42, -0.18],
+  eyeAt: ['head', 0.0, 0.5676, -0.3735], eyeRAt: ['lidR', 0.0, 0.0, -0.059], eyeLAt: ['lidL', 0.0, 0.0, -0.059],
+  faceAt: ['head', 0.0, 0.4602, -0.3988], mouthAt: ['jaw', 0.0, -0.0307, -0.3528],
+  noseTip: ['head', 0.0, 0.4234, -0.9741], hatTipR: ['bellHR', 0.0, 0.0, 0.0], palmR: ['handR', 0.0, -0.0826, 0.0],
+  hatTipL: ['bellHL', 0.0, 0.0, 0.0], palmL: ['handL', 0.0, -0.0826, 0.0], marotteAt: ['marotte', 0.0, 0.0, -0.0708],
+  stumpAt: ['thorax', 0.5246, -0.0241, -0.2006], topAt: ['abdo', 0.0, 1.5128, 0.86],
+  spinneret: ['abdo', 0.0, 0.0964, 1.74], chestAt: ['spine', 0.0, 0.4956, -0.2124],
 };
 
 export function jesterLordLook(K) {
@@ -56,6 +57,12 @@ export function jesterLordLook(K) {
     if (par && o.parent !== c[par]) c[par].add(o);
     o.position.set(...pos); o.rotation.set(...rot);
   }
+  // the jester half is drawn at the sizes above and grown by US about the waist (jl_rig.py): the rig already is, so
+  // grow what person() hung on those joints (not the joints themselves)
+  const US = JL_DATA.us ?? 1, up = new Set(['spine']);
+  for (const [n, par] of RIG) if (up.has(par)) up.add(n);
+  const joints = new Set(Object.values(c));
+  for (const n of up) for (const k of [...c[n].children]) if (!joints.has(k)) { k.position.multiplyScalar(US); k.scale.multiplyScalar(US); }
   c.jank.tilt = 0; c.jank.lean = 0; c.jank.shoulder = 0;
   p.face.set('headliner');
   // ---- the code stand-ins (the Blender model replaces these) and the markers (kept)
@@ -73,14 +80,16 @@ export function jesterLordLook(K) {
     grp('knee' + L + 'Code', tb).add(sph(0.088, laq, 0, 0, 0)); grp('bell' + L + 'Code', bl).add(sph(0.064, brass, 0, -0.075, 0));
   }
   for (const [s, mat] of [['R', pink], ['L', yel]]) {
-    rod(grp('hat' + s + 'Code', c['hat' + s]), at['hat' + s + 'b'][2], 0.15, 0.08, mat); rod(grp('hat' + s + 'bCode', c['hat' + s + 'b']), at['bellH' + s][2], 0.08, 0.02, mat);
-    grp('bellH' + s + 'Code', c['bellH' + s]).add(sph(0.06, brass, 0, -0.07, 0));
+    rod(grp('hat' + s + 'Code', c['hat' + s]), at['hat' + s + 'b'][2], 0.15 * US, 0.08 * US, mat); rod(grp('hat' + s + 'bCode', c['hat' + s + 'b']), at['bellH' + s][2], 0.08 * US, 0.02 * US, mat);
+    grp('bellH' + s + 'Code', c['bellH' + s]).add(sph(0.06 * US, brass, 0, -0.07 * US, 0));
   }
-  const nose = cyl(0.0, 0.05, 0.42, wht, 0, 0.36, -0.52, 8); nose.rotation.x = -Math.PI / 2; grp('noseCode', c.head).add(nose);
-  const stick = cyl(0.017, 0.017, 0.5, blk, 0, -0.085, -0.13, 6); stick.rotation.x = Math.PI / 2; grp('marotteCode', c.handL).add(stick);
-  grp('marotteHeadCode', c.marotte).add(sph(0.09, wht, 0, 0, -0.08));
-  const col = grp('collarCode', c.collar); for (let i = 0; i < 8; i++) { const a = ((i + 0.5) / 8) * Math.PI * 2; col.add(sph(0.034, brass, Math.sin(a) * 0.41, -0.15, -Math.cos(a) * 0.41)); }
+  const nose = cyl(0.0, 0.05 * US, 0.42 * US, flat(0xf22a5a), 0, 0.36 * US, -0.52 * US, 8); nose.rotation.x = -Math.PI / 2; grp('noseCode', c.head).add(nose); // (painted wood, candy red)
+  const stick = cyl(0.017 * US, 0.017 * US, 0.5 * US, blk, 0, -0.085 * US, -0.13 * US, 6); stick.rotation.x = Math.PI / 2; grp('marotteCode', c.handL).add(stick);
+  grp('marotteHeadCode', c.marotte).add(sph(0.09 * US, wht, 0, 0, -0.08 * US));
+  // the ruff: a cream cartwheel under his chin, a bell off each of its ten points
+  const col = grp('collarCode', c.collar); col.add(cyl(0.37 * US, 0.37 * US, 0.05 * US, flat(0xfff4dc), 0, 0.045 * US, 0, 20));
+  for (let i = 0; i < 10; i++) { const a = ((i + 0.5) / 10) * Math.PI * 2; col.add(sph(0.034 * US, brass, Math.sin(a) * 0.37 * US, 0.0, -Math.cos(a) * 0.37 * US)); } // (the bells hang just under its rim)
   for (const [name, [joint, x, y, z]] of Object.entries(MK)) grp(name, c[joint], x, y, z, false);
   parts.headJoint = c.head;
-  return { ...p, parts, partsAll: all, kind: 'lord', height: 3.3, eyeY: 2.84, extra: OWN };
+  return { ...p, parts, partsAll: all, kind: 'lord', height: 3.64, eyeY: 3.08, extra: OWN };
 }

@@ -35,12 +35,16 @@ SPINE_LEN, SHOULDER = 0.77, (0.37, 0.66, 0.02)
 UPPER, FORE = 0.43, 0.39
 HEAD_UP = 0.07
 HS = 1.3                            # the head's scale over the head frame's numbers below (a puppet: the head is the big thing)
-# the hat's horns (head frame, his right; the left mirrors x): root, bend, tip. they sweep back and curl up
-HORN = [(0.17, 0.58, 0.06), (0.37, 0.76, 0.30), (0.43, 1.10, 0.36)]
+# the hat's horns (head frame, his right; the left mirrors x): root, bend, tip. like the sketch they rake back over his
+# head (about 60 degrees off upright) and the tips curl down behind, the bells hanging off them
+HORN = [(0.17, 0.585, 0.08), (0.355, 0.86, 0.47), (0.41, 0.82, 0.98)]
 # the horn's line (head frame, his right), through the joints above, and its radius along it
-HORN_PATH = [(0.11, 0.55, 0.03), (0.17, 0.58, 0.06), (0.27, 0.655, 0.16), (0.37, 0.76, 0.30), (0.43, 0.89, 0.40), (0.455, 1.0, 0.42), (0.45, 1.07, 0.40), (0.43, 1.10, 0.36)]
+HORN_PATH = [(0.11, 0.55, 0.04), (0.17, 0.585, 0.08), (0.245, 0.67, 0.19), (0.31, 0.77, 0.33), (0.355, 0.86, 0.47), (0.39, 0.92, 0.63),
+             (0.41, 0.935, 0.78), (0.42, 0.9, 0.9), (0.41, 0.82, 0.98)]
 EYE = (0.098, 0.37, -0.205)         # his right eye's middle (head frame, before HS): the lid hinges here
-HORN_RAD = [0.13, 0.125, 0.108, 0.084, 0.06, 0.042, 0.028, 0.017]
+HORN_RAD = [0.13, 0.125, 0.112, 0.096, 0.08, 0.064, 0.048, 0.033, 0.02]
+US = 1.18                           # the whole jester half (doublet, ruff, arms, head, hat, marotte) is built at the sizes in
+                                    # this file and grown by US about the waist: he is the show, the spider is the stage
 
 SIDES = ('R', 'L')
 STD = ('body', 'legL', 'legR', 'kneeL', 'kneeR', 'spine', 'neck', 'head', 'armL', 'arm', 'foreL', 'foreR', 'handL', 'handR')
@@ -118,10 +122,13 @@ def leg_ik(s, p, F, beta=BETA, lift=0.0):
 
 
 # ------------------------------------------------------------------------------------------------ the joint list
-def build():
-    """[(name, parent, local position, rest euler)] in parent-first order"""
-    J = []
-    def j(n, par, p, r=(0.0, 0.0, 0.0)): J.append((n, par, [float(x) for x in p], [float(x) for x in r]))
+def build(us=None):
+    """[(name, parent, local position, rest euler)] in parent-first order. us: the jester half's scale (US)"""
+    us = US if us is None else us
+    J = []; up = set()
+    def j(n, par, p, r=(0.0, 0.0, 0.0)):
+        if par in up or par == 'spine': up.add(n); p = scl(p, us)      # (every joint above the waist grows with him)
+        J.append((n, par, [float(x) for x in p], [float(x) for x in r]))
     j('body', None, (0, 0, 0))
     j('thorax', 'body', (0, TH_Y, 0))
     for s, sx in (('L', -1), ('R', 1)):   # (the human legs: unused, tucked inside the thorax)
@@ -157,6 +164,7 @@ def build():
 
 
 JOINTS = build()
+LOC0 = {n: p for n, _, p, _ in build(1.0)}   # (the jester half at its drawn size: the build models him there, then grows him)
 ORDER = [n for n, *_ in JOINTS]
 PAR = {n: par for n, par, _, _ in JOINTS}
 LOC = {n: p for n, _, p, _ in JOINTS}
@@ -165,14 +173,14 @@ OWN = [n for n in ORDER if n not in STD]
 BELLS = ['bell' + s + p for s, p in LEGS] + ['bellHR', 'bellHL']
 
 
-def fk(pose=None, dangle=True):
+def fk(pose=None, dangle=True, loc=None):
     """{joint: (R, p)} world turn and place (root space) for a pose of deltas. dangle: the bells hang straight down
-    (plus their own channels, as world turns), the way jesterlord.js hangs them"""
-    g = (pose or {}).get
+    (plus their own channels, as world turns), the way jesterlord.js hangs them. loc: LOC0 for the drawn size"""
+    g = (pose or {}).get; loc = loc or LOC
     out = {}
     for n in ORDER:
         Rl = mm(rot(*REST_R[n]), rot(g(n + '.x', 0.0), g(n + '.y', 0.0), g(n + '.z', 0.0)))
-        pl = add(LOC[n], [g(n + '.px', 0.0), g(n + '.py', 0.0), g(n + '.pz', 0.0)])
+        pl = add(loc[n], [g(n + '.px', 0.0), g(n + '.py', 0.0), g(n + '.pz', 0.0)])
         par = PAR[n]
         if par is None: out[n] = (Rl, pl); continue
         Rp, pp = out[par]
@@ -205,8 +213,13 @@ def to_local(F, joint, pw):
     R, p = F[joint]; return mv(tr(R), sub(pw, p))
 
 
-def rest_world():
-    return fk({})
+def rest_world(drawn=False):
+    return fk({}, loc=LOC0 if drawn else None)
+
+
+def grow(p):
+    """a point at the jester's drawn size (rest, root space) -> where it is once he is grown (about the waist)"""
+    S = rest_world()['spine'][1]; return add(S, scl(sub(list(p), S), US))
 
 
 def leg_pose(s, p, F_thorax_local, beta=BETA, lift=0.0, foot_extra=0.0):

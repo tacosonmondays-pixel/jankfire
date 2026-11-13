@@ -88,16 +88,19 @@ def reach(pose, side, elbow, wrist, fingers=None, stick_up=None, name='', fresh=
 def reach_sp(pose, side, elbow, wrist, fingers=None, stick_up=None, name='', fresh=False):
     """reach() with the elbow and wrist given in the spine's frame (they ride with him when the spider lurches)"""
     F = R.fk(pose); Rs = F['spine'][0]
-    return reach(pose, side, R.at(F, 'spine', elbow), R.at(F, 'spine', wrist), fingers=R.mv(Rs, fingers) if fingers else None,
+    return reach(pose, side, R.at(F, 'spine', R.scl(elbow, R.US)), R.at(F, 'spine', R.scl(wrist, R.US)), fingers=R.mv(Rs, fingers) if fingers else None,
                  stick_up=R.mv(Rs, stick_up) if stick_up else None, name=name, fresh=fresh)
+
+
+U = R.grow   # (hand and elbow spots below are drawn at the jester's drawn size, about his waist at rest: U grows them with him)
 
 
 def freeze(p, pre=('arm', 'fore', 'hand')):
     return {k: round(v, 4) for k, v in p.items() if k.startswith(pre)}
 
 
-_s = reach({}, 'R', [0.62, 1.86, -0.14], [0.22, 1.70, -0.23], fingers=[-0.35, -0.85, -0.25], name='rest: right hand on the hip')
-_s = reach(_s, 'L', [-0.64, 1.70, -0.26], [-0.46, 1.66, -0.60], stick_up=[-0.08, 1, 0.1], name='rest: left hand holds the marotte up')
+_s = reach({}, 'R', U([0.62, 1.86, -0.14]), U([0.22, 1.70, -0.23]), fingers=[-0.35, -0.85, -0.25], name='rest: right hand on the hip')
+_s = reach(_s, 'L', U([-0.64, 1.70, -0.26]), U([-0.38, 1.74, -0.56]), stick_up=[-0.08, 1, 0.1], name='rest: left hand holds the marotte up')
 REST.update(freeze(_s))
 REST.update({'spine.x': 0.04, 'head.x': -0.03, 'head.z': 0.05})
 
@@ -147,7 +150,7 @@ def unwrap(keys, joints):
 
 
 def clip(name, keys, length=None, loop=None, marks=(), face=(), osc=(), note='', nolag=False):
-    keys = unwrap(keys, [n for n in R.ORDER if n.startswith('fem') and any(n + '.x' in k[1] for k in keys)])   # (every femur turns the short way)
+    keys = unwrap(keys, [n for n in R.ORDER if n.startswith(('fem', 'arm', 'fore', 'hand')) and any(n + '.x' in k[1] for k in keys)])   # (every femur and arm turns the short way)
     ks = []
     for k in keys:
         t, p = k[0], k[1]; e = k[2] if len(k) > 2 else 'ss'
@@ -223,10 +226,10 @@ clip('jl_idle', weave({}, idle_ev, loop=6.0), loop=6.0, face=FACE_IDLE, osc=HAT_
 # the side, comes back to his chest, up; the jaw goes like a ventriloquist's dummy; the marotte nods along; a front foot
 # keeps the beat
 LT = 4.8; WT = TAU / LT
-present = reach(P(), 'R', [0.62, 2.0, -0.42], [0.42, 2.12, -0.86], fingers=[0.25, 0.15, -1.0], name='talk: presents, palm out')
-sweep = reach(P(), 'R', [0.74, 2.02, -0.24], [1.08, 2.12, -0.48], fingers=[0.9, 0.2, -0.3], name='talk: sweeps out to the side')
-chest = reach(P(), 'R', [0.58, 1.86, -0.40], [0.18, 2.02, -0.50], fingers=[-0.7, 0.1, -0.6], name='talk: hand to his chest')
-upup = reach(P(), 'R', [0.62, 2.30, -0.30], [0.62, 2.70, -0.50], fingers=[0.1, 1.0, -0.2], name='talk: a finger to the sky')
+present = reach(P(), 'R', U([0.62, 2.0, -0.42]), U([0.42, 2.12, -0.86]), fingers=[0.25, 0.15, -1.0], name='talk: presents, palm out')
+sweep = reach(P(), 'R', U([0.74, 2.02, -0.24]), U([1.08, 2.12, -0.48]), fingers=[0.9, 0.2, -0.3], name='talk: sweeps out to the side')
+chest = reach(P(), 'R', U([0.58, 1.86, -0.40]), U([0.18, 2.02, -0.50]), fingers=[-0.7, 0.1, -0.6], name='talk: hand to his chest')
+upup = reach(P(), 'R', U([0.62, 2.30, -0.30]), U([0.62, 2.70, -0.50]), fingers=[0.1, 1.0, -0.2], name='talk: a finger to the sky')
 FR = ('arm', 'foreR', 'handR')
 def armR(p): return {k: v for k, v in p.items() if k.startswith(FR)}
 talk_ev = [(0.0, {**armR(present), 'jaw.x': 0.25, 'spine.x': -0.06, 'head.x': 0.04, 'head.z': 0.0, 'browR.py': 0.03, 'browL.py': 0.03}),
@@ -246,27 +249,33 @@ clip('jl_talk', weave({}, talk_ev, loop=LT), loop=LT, face=[(0, 'headliner_talk'
 # a flourish (the hand winds up, the marotte flung out), then the big one: he folds at his tiny waist, the hand sweeps
 # across his belly, the whole spider curtsies (front legs fold, the big top lifts behind), the horns swing down. up into
 # a TA-DA with both arms
-flour = reach(P(), 'R', [0.72, 2.32, -0.22], [0.92, 2.62, -0.40], fingers=[0.3, 0.9, -0.2], name='bow: the flourish')
-flour = reach(flour, 'L', [-0.70, 2.02, -0.10], [-1.02, 2.10, -0.20], stick_up=[-0.4, 1, 0], name='bow: marotte flung out')
+flour = reach(P(), 'R', U([0.72, 2.32, -0.22]), U([0.92, 2.62, -0.40]), fingers=[0.3, 0.9, -0.2], name='bow: the flourish')
+flour = reach(flour, 'L', U([-0.70, 2.02, -0.10]), U([-1.02, 2.10, -0.20]), stick_up=[-0.4, 1, 0], name='bow: marotte flung out')
 dn0 = P(armR(flour), {k: v for k, v in flour.items() if k.startswith(('armL', 'foreL', 'handL'))},
         {'body.py': -0.24, 'body.x': -0.12, 'abdo.x': -0.32, 'spine.x': -0.58, 'head.x': 0.22, 'head.z': 0.06, 'hatR.x': -0.25, 'hatL.x': -0.25, 'hatRb.x': -0.2, 'hatLb.x': -0.2, 'collar.x': -0.2, 'jaw.x': 0.12, 'x.look': 0.0})
 dn = dn0
-F_ = R.fk(dn); belly = R.at(F_, 'spine', (0.0, 0.30, -0.22)); el = R.at(F_, 'spine', (0.40, 0.32, -0.1))
+F_ = R.fk(dn); belly = R.at(F_, 'spine', R.scl((0.0, 0.30, -0.22), R.US)); el = R.at(F_, 'spine', R.scl((0.40, 0.32, -0.1), R.US))
 dn = put(dn, ARM_R, 'foreR', (0, 0, 0), el, name='bow: elbow')
 dn = put(dn, ARM_R + FORE_R + HAND_R, 'handR', (0, 0, 0), belly, name='bow: the hand across his belly')
-dn = put(dn, ARM_L, 'foreL', (0, 0, 0), R.at(F_, 'spine', (-0.60, 0.30, 0.25)), name='bow: marotte arm out back')
-dn = put(dn, ARM_L + FORE_L, 'handL', (0, 0, 0), R.at(F_, 'spine', (-0.85, 0.12, 0.55)), name='bow: marotte out back')
+dn = put(dn, ARM_L, 'foreL', (0, 0, 0), R.at(F_, 'spine', R.scl((-0.60, 0.30, 0.25), R.US)), name='bow: marotte arm out back')
+dn = put(dn, ARM_L + FORE_L, 'handL', (0, 0, 0), R.at(F_, 'spine', R.scl((-0.85, 0.12, 0.55), R.US)), name='bow: marotte out back')
 low = P(dn, {'body.py': -0.28, 'spine.x': -0.66, 'head.x': 0.28, 'browR.py': 0.04, 'browL.py': 0.04})
-tada = reach(P(), 'R', [0.66, 2.36, -0.20], [0.98, 2.80, -0.30], fingers=[0.3, 1.0, -0.3], name='bow: ta-da right')
-tada = reach(tada, 'L', [-0.66, 2.36, -0.20], [-0.92, 2.78, -0.36], stick_up=[-0.3, 1, -0.1], name='bow: ta-da left')
+tada = reach(P(), 'R', U([0.66, 2.36, -0.20]), U([0.98, 2.80, -0.30]), fingers=[0.3, 1.0, -0.3], name='bow: ta-da right')
+tada = reach(tada, 'L', U([-0.66, 2.36, -0.20]), U([-0.92, 2.78, -0.36]), stick_up=[-0.3, 1, -0.1], name='bow: ta-da left')
 tada.update({'spine.x': 0.14, 'head.x': 0.22, 'body.py': 0.06, 'abdo.x': 0.06, 'browR.py': 0.04, 'browL.py': 0.04, 'hatR.x': 0.1, 'hatL.x': 0.1})
-bow_keys = [(0.0, plant(P())), (0.55, plant(P(flour, {'spine.x': 0.1, 'head.x': 0.12, 'body.py': 0.05})), 'ss'),
-            (1.15, plant(dn, lift={('R', 'A'): 0.25, ('L', 'A'): 0.25, ('R', 'B'): 0.12, ('L', 'B'): 0.12}), 'ss'),
-            (2.0, plant(low, lift={('R', 'A'): 0.28, ('L', 'A'): 0.28, ('R', 'B'): 0.14, ('L', 'B'): 0.14})),
-            (2.45, plant(P(tada, {'body.py': 0.1, 'spine.x': 0.2, 'head.x': 0.28})), 'ss'), (2.7, plant(tada), 'ss'), (3.1, plant(tada)), (3.7, plant(P()), 'ss')]
-clip('jl_bow', bow_keys, length=3.7, marks=[(0.55, 'flourish'), (1.15, 'down'), (2.0, 'low'), (2.45, 'tada')], face=[(0, 'headliner'), (2.45, 'headliner_tada'), (3.2, 'headliner')],
+k055 = P(flour, {'spine.x': 0.1, 'head.x': 0.12, 'body.py': 0.05})
+mid = {c: k055.get(c, 0.0) + (dn.get(c, 0.0) - k055.get(c, 0.0)) * 0.5 for c in set(k055) | set(dn)}
+mid = reach_sp(mid, 'R', [0.62, 0.52, 0.02], [0.30, 0.52, -0.30], fingers=[-0.6, -0.5, -0.4], name='bow: on the way down the hand comes in close (inside his front leg)', fresh=True)
+rise = {c: low.get(c, 0.0) + (tada.get(c, 0.0) - low.get(c, 0.0)) * 0.55 for c in set(low) | set(tada)}
+rise = reach_sp(rise, 'R', [0.55, 0.6, -0.3], [0.45, 0.95, -0.55], fingers=[0.3, 0.9, -0.3], name='bow: on the way up, the hand rises up his chest', fresh=True)
+rise = reach_sp(rise, 'L', [-0.62, 0.66, 0.0], [-0.86, 0.98, 0.0], stick_up=[-0.4, 1, 0], name='bow: on the way up, the marotte sweeps out and up', fresh=True)
+bow_keys = [(0.0, plant(P())), (0.55, plant(k055), 'ss'), (0.9, plant(mid, lift={('R', 'A'): 0.03, ('L', 'A'): 0.03, ('R', 'B'): 0.06, ('L', 'B'): 0.06}), 'ss'),
+            (1.15, plant(dn, lift={('R', 'A'): 0.06, ('L', 'A'): 0.06, ('R', 'B'): 0.12, ('L', 'B'): 0.12}), 'ss'),
+            (1.85, plant(low, lift={('R', 'A'): 0.0, ('L', 'A'): 0.0, ('R', 'B'): 0.14, ('L', 'B'): 0.14})),
+            (2.3, plant(rise, lift={('R', 'A'): 0.03, ('L', 'A'): 0.03, ('R', 'B'): 0.07, ('L', 'B'): 0.07})), (2.6, plant(P(tada, {'body.py': 0.1, 'spine.x': 0.2, 'head.x': 0.28})), 'ss'), (2.85, plant(tada), 'ss'), (3.1, plant(tada)), (3.7, plant(P()), 'ss')]
+clip('jl_bow', bow_keys, length=3.7, marks=[(0.55, 'flourish'), (1.15, 'down'), (1.85, 'low'), (2.6, 'tada')], face=[(0, 'headliner'), (2.6, 'headliner_tada'), (3.2, 'headliner')],
      osc=[('collar.y', 0.03, 9.0, 0.0), ('marotte.x', 0.15, 7.0, 0.0)],
-     note='the big bow: a flourish (0.55), he folds at the waist and the spider curtsies, front legs folding, the big top up behind (1.15-2.0), his grin still on you; up into a TA-DA (2.55)')
+     note='the big bow: a flourish (0.55), he folds at the waist and the spider curtsies, front legs folding, the big top up behind (1.15-1.85), his grin still on you; up into a TA-DA (2.6)')
 
 # ------------------------------------------------------------------------------------------------ the scuttle (0.8 s loop)
 # alternating tetrapod, like a real spider: L1 R2 L3 R4 step together, then R1 L2 R3 L4. each foot is down 56% of the
@@ -292,7 +301,8 @@ for i in range(NW + 1):
     feet = {}; lifts = {}; betas = {}
     for k, g in GROUP.items():
         f, up = _foot_ph(ph + g * 0.5)
-        feet[k] = R.add(HOME[k], [0, up, -f]); lifts[k] = 0.18 * up / 0.28; betas[k] = R.BETA + 0.35 * up / 0.28
+        sx = 1 if k[0] == 'R' else -1; fr = k[1] == 'A'   # (the front pair swings wide and keeps its knee low: clear of his hands)
+        feet[k] = R.add(HOME[k], [sx * (0.16 if fr else 0.0) * (up / 0.28) ** 2, up * (1.35 if fr else 1.0), -f]); lifts[k] = (0.06 if fr else 0.18) * up / 0.28; betas[k] = R.BETA + 0.35 * up / 0.28
     c2 = math.cos(2 * TAU * ph); s1 = math.sin(TAU * ph)
     p = P({'body.py': -0.05 - 0.035 * c2, 'body.z': 0.035 * s1, 'body.x': -0.04, 'abdo.x': 0.04 * c2, 'abdo.y': 0.04 * s1,
            'spine.x': 0.06 + 0.02 * c2, 'spine.z': -0.04 * s1, 'head.z': 0.03 * s1, 'head.x': -0.02 * c2,
@@ -307,10 +317,10 @@ clip('jl_walk', walk_keys, loop=WALK_T, face=[(0, 'headliner')], marks=[(0.0, 's
 # under it belly up, the jester head down below, arms folded, grinning at you upside down; the bells hang the other
 # way. jesterlord.js draws the web over him. held: a slow swing from the web
 WEB_Y = 5.4
-fold = reach(P(), 'R', [0.40, 1.92, -0.52], [-0.14, 1.98, -0.52], fingers=[-1.0, 0.0, -0.15], name='hang: arms folded (right)')
-fold = reach(fold, 'L', [-0.40, 1.90, -0.50], [0.12, 1.92, -0.50], stick_up=[0.2, 1.0, 0.0], name='hang: arms folded (left)')
+fold = reach(P(), 'R', U([0.40, 1.92, -0.52]), U([-0.14, 1.98, -0.52]), fingers=[-1.0, 0.0, -0.15], name='hang: arms folded (right)')
+fold = reach(fold, 'L', U([-0.40, 1.90, -0.50]), U([0.12, 1.92, -0.50]), stick_up=[0.2, 1.0, 0.0], name='hang: arms folded (left)')
 FOLD = {k: v for k, v in fold.items() if k.startswith(('arm', 'fore', 'hand'))}
-crouch = plant(P({'body.py': -0.42, 'body.x': 0.06, 'abdo.x': 0.12, 'spine.x': -0.18, 'head.x': -0.1, 'x.look': 0.6}))
+crouch = plant(P(FOLD, {'body.py': -0.42, 'body.x': 0.06, 'abdo.x': 0.12, 'spine.x': -0.18, 'head.x': -0.1, 'x.look': 0.6}))
 air = P(FOLD, {'body.py': 3.4, 'body.z': 2.2, 'body.px': R.TH_Y * math.sin(2.2),   # (it turns over about his middle, not the floor)
               'spine.x': 0.1, 'x.look': 0.0, 'hatR.z': 0.2, 'hatL.z': -0.2})
 for s, pr in LEGS: air.update(R.leg_pose(s, pr, R.add(R.foot_home(s, pr), [0, 0.55, 0]), R.BETA + 0.3, 0.2))
@@ -397,9 +407,10 @@ reel = reach_sp(reel, 'R', [0.68, 0.74, 0.08], [0.92, 1.04, 0.0], fingers=[0.4, 
 reel = reach_sp(reel, 'L', [-0.68, 0.74, 0.08], [-0.9, 1.02, -0.02], stick_up=[-0.5, 1, 0], name='leg off: left arm flies up', fresh=True)
 look_down = P(reel, roll(-0.2, 0.22), {'head.y': -0.8, 'head.x': -0.3, 'spine.y': -0.25, 'jaw.x': 0.3})
 wobble = P(look_down, roll(-0.08, 0.16), {'spine.z': -0.1, 'head.y': -0.3, 'head.x': 0.0, 'jaw.x': 0.15, 'lidR.x': 1.25, 'lidL.x': 1.25})
-compose_ = reach(P(roll(-0.1, 0.12), {'abdo.z': 0.06, 'spine.z': 0.04, 'head.x': 0.05, 'head.z': 0.08, 'hatR.z': -0.05}), 'R', [0.62, 2.40, -0.12], [0.42, 2.92, -0.08], fingers=[0.2, 0.9, 0.3], name='leg off: straightens his hat')
-present7 = reach(P(roll(-0.08, 0.1), {'spine.y': -0.3, 'spine.z': 0.03, 'head.y': -0.2, 'browR.py': 0.03}), 'R', [0.74, 1.96, -0.20], [1.1, 1.84, -0.30], fingers=[0.85, -0.2, -0.3], name='leg off: presents the stump')
-present7 = reach(present7, 'L', [-0.58, 1.86, -0.30], [-0.42, 2.02, -0.62], stick_up=[0.2, 1, 0.3], name='leg off: marotte up')
+compose_ = reach(P(roll(-0.1, 0.12), {'abdo.z': 0.06, 'spine.z': 0.04, 'head.x': 0.05, 'head.z': 0.08, 'hatR.z': -0.05}), 'R', U([0.62, 2.40, -0.12]), U([0.42, 2.92, -0.08]), fingers=[0.2, 0.9, 0.3], name='leg off: straightens his hat')
+compose_ = reach(compose_, 'L', U([-0.58, 1.86, -0.30]), U([-0.42, 2.02, -0.62]), stick_up=[0.2, 1, 0.3], name='leg off: marotte kept up (clear of his legs)')
+present7 = reach(P(roll(-0.08, 0.1), {'spine.y': -0.3, 'spine.z': 0.03, 'head.y': -0.2, 'browR.py': 0.03}), 'R', U([0.74, 1.96, -0.20]), U([1.1, 1.84, -0.30]), fingers=[0.85, -0.2, -0.3], name='leg off: presents the stump')
+present7 = reach(present7, 'L', U([-0.58, 1.86, -0.30]), U([-0.42, 2.02, -0.62]), stick_up=[0.2, 1, 0.3], name='leg off: marotte up')
 # the two legs either side step in to cover the gap
 COVER = {('R', 'A'): R.add(HOME[('R', 'A')], [0.35, 0, 0.35]), ('R', 'C'): R.add(HOME[('R', 'C')], [0.3, 0, -0.32])}
 legoff_keys = []
@@ -528,6 +539,42 @@ def foot_slide(name, fps=60):
     return worst
 
 
+def clearance(fps=30):
+    """does the jester half run into his own spider, the big top or the floor in any clip? his head (a ball), the nose,
+    the horns, the ruff's rim and his hands against every leg (capsules), the big top (its ellipsoid) and the floor.
+    -> [(clip, the closest call in m (under 0 = into it), what, when)]"""
+    k = R.HS * R.US
+    def seg_d(p, a, b):
+        ab = R.sub(b, a); t = max(0.0, min(1.0, R.dot(R.sub(p, a), ab) / max(1e-9, R.dot(ab, ab)))); return R.norm(R.sub(p, R.add(a, R.scl(ab, t))))
+    def ell_d(F, p):   # (a rough distance outside the big top: the ellipsoid's radius scaled along the ray)
+        q = R.to_local(F, 'abdo', p); q = R.sub(q, list(R.AB_C)); u = [q[i] / R.AB_R[i] for i in range(3)]; n = R.norm(u)
+        return (n - 1) * R.norm(q) / max(n, 1e-9)
+    out = []
+    for name in CLIPS:
+        T = duration(name); worst = (9.0, '', 0.0)
+        for i in range(int(T * fps) + 1):
+            t = i / fps; F = R.fk(evaluate(name, t))
+            pts = [('head', R.at(F, 'head', (0, 0.30 * k, 0)), 0.36 * R.US), ('nose', R.at(F, 'head', (0, 0.276 * k, -0.635 * k)), 0.01)]
+            for s in ('R', 'L'):
+                sx = 1 if s == 'R' else -1
+                pts += [('horn' + s, R.at(F, 'head', (sx * x * k, y * k, z * k)), r * k) for (x, y, z), r in zip(R.HORN_PATH[2:], R.HORN_RAD[2:])]
+                pts += [('hatbell' + s, R.at(F, 'bellH' + s, (0, -0.07 * k, 0)), 0.06 * k)]
+            pts += [('ruff', R.at(F, 'collar', (0.37 * (1 - 0.1 * math.sin(a) ** 2) * R.US * math.sin(a), (0.05 - 0.12 * math.cos(a) ** 2 + 0.1 * math.sin(a) ** 2) * R.US, -0.37 * (1 - 0.1 * math.sin(a) ** 2) * R.US * math.cos(a))), 0.035) for a in [TAU * j / 12 for j in range(12)]]
+            pts += [('hand' + s, R.at(F, 'hand' + s, (0, -0.07 * R.US, 0)), 0.06 * R.US) for s in ('R', 'L')] + [('marotte', R.at(F, 'marotte', (0, 0, -0.08 * R.US)), 0.08 * R.US)]
+            for what, p, r in pts:
+                cands = [('floor', p[1] - r)]
+                if what.startswith(('head', 'nose', 'horn', 'hatbell', 'ruff')): cands.append(('big top', ell_d(F, p) - r))
+                for s_, pr in LEGS:
+                    if (s_, pr) == LEG and name in ('jl_leg_off', 'jl_leg_back'): continue
+                    fm, tb, ft, _ = leg_names(s_, pr)
+                    a, b, c = R.at(F, fm), R.at(F, tb), R.at(F, ft)
+                    cands.append((s_ + pr, min(seg_d(p, a, b) - 0.085, seg_d(p, b, c) - 0.065) - r))
+                for o, d in cands:
+                    if d < worst[0]: worst = (d, what + ' into ' + o, t)
+        out.append((name,) + worst)
+    return out
+
+
 # ------------------------------------------------------------------------------------------------ out
 def joints_entry():
     W = R.rest_world()
@@ -540,13 +587,13 @@ def joints_entry():
     face = {k: ([[round(x, 4) for x in e] for e in v] if k == 'eyes' else [round(x, 4) for x in v] if isinstance(v, list) else v) for k, v in face.items()}
     return {'scale': 1, 'kind': 'lord', 'joints': {n: [round(x, 4) for x in W[n][1]] for n in R.ORDER}, 'mats': {n: mat4(n) for n in R.ORDER},
             'parents': dict(R.PAR), 'local': {n: {'p': [round(x, 5) for x in R.LOC[n]], 'r': [round(x, 5) for x in R.REST_R[n]], 's': 1} for n in R.ORDER},
-            'order': list(R.ORDER), 'face': face, 'headBox': [[round(hd[0] - 0.25, 4), round(hd[1] - 0.12, 4), round(hd[2] - 0.62, 4)], [round(hd[0] + 0.25, 4), round(hd[1] + 0.7, 4), round(hd[2] + 0.28, 4)]],
+            'order': list(R.ORDER), 'face': face, 'headBox': [[round(hd[0] - 0.3, 4), round(hd[1] - 0.14, 4), round(hd[2] - 0.73, 4)], [round(hd[0] + 0.3, 4), round(hd[1] + 0.83, 4), round(hd[2] + 0.33, 4)]],
             'hunch': 0, 'legScale': 1, 'source': 'tools/blender/cast/jl_rig.py (written by jl_clips.py)'}
 
 
 def write_js():
     rig = [[n, par, [round(x, 5) for x in p], [round(x, 5) for x in r]] for n, par, p, r in R.JOINTS]
-    out = {'v': 1, 'std': list(R.STD), 'rig': rig, 'bells': R.BELLS, 'rest': REST, 'lag': LAG, 'stride': STRIDE, 'webY': WEB_Y,
+    out = {'v': 1, 'std': list(R.STD), 'us': R.US, 'rig': rig, 'bells': R.BELLS, 'rest': REST, 'lag': LAG, 'stride': STRIDE, 'webY': WEB_Y,
            'legOff': {'leg': ''.join(LEG), 'joints': [FM, TB, FT, BL]}, 'clips': CLIPS}
     path = os.path.join(ROOT, 'public', 'js', 'story', 'jl_clipdata.js')
     s = ('// THE HEADLINER\'s skeleton and clips as key poses. GENERATED by tools/blender/cast/jl_clips.py (edit that or jl_rig.py,\n'
@@ -562,6 +609,7 @@ def write_js():
         print('  loop %-10s %.1f s: jump at the seam %.5f; change of speed there %.3f/s (%s), sharpest corner elsewhere %.3f  %s' % (name, Lp, jump, dv, worst, inner, 'OK' if jump < 0.002 and dv <= max(0.05, inner * 1.2) else 'POP'))
     for name in ('jl_idle', 'jl_talk', 'jl_walk', 'jl_bow'):
         d, t, lg = foot_slide(name); print('  feet %-10s worst slide of a planted foot %.1f mm a frame (%s at %.2f s)' % (name, d * 1000, lg, t))
+    for name, d, what, t in clearance(): print('  room %-11s the closest call %+.3f m: %s at %.2f s  %s' % (name, d, what, t, 'OK' if d > 0 else 'TOUCH'))
 
 
 if __name__ == '__main__':

@@ -5,7 +5,7 @@
 //         the far LOD swaps in and back, the code puppet still stands. prints JL_CHECK ok / the failures (exit code 1)
 // turn  = turnaround beside a 1.8 m mannequin                                  -> jl_game_turn.jpg
 // sil   = his silhouette (side and 30 m) beside the owner's sketch            -> jl_game_silhouette.jpg
-// close = face, eyes open, nose, hat, horns and bells, collar, marotte, stockings, foot and bell, big top, the stump -> jl_game_closeups.jpg
+// close = face, eyes open, nose, hat, horns and bells, the ruff, marotte, stockings, foot and bell, big top, the stump -> jl_game_closeups.jpg
 // poses = one moment a clip                                                    -> jl_game_poses.jpg
 // clips = a contact strip per clip (12 frames, the marks called out)           -> jl_clip_<name>.jpg
 // code  = the code puppet (no glb: what shows if the model fails to load), idle and bowing  -> jl_game_codepuppet.jpg
@@ -125,15 +125,15 @@ const ROOT = path.join(__dirname, '..', '..', '..');
       const views = [['front', 0], ['three quarter', 36], ['his right', 90], ['back', 180], ['three quarter back', 216], ['his left', -90]];
       views.forEach(([nm, deg], i) => { const sc = X.scene(0x2a1830, 8); const J = X.jester({ clip: 'jl_idle', t: 0.3 }); sc.add(J.c.root);
         const M = X.other('mannequin', 1.8); const side = /right|left/.test(nm); M.ch.root.position.set(side ? 0 : 3.4, 0, /right/.test(nm) ? -3.0 : /left/.test(nm) ? 3.0 : -0.6); M.ch.root.rotation.y = 0; sc.add(M.ch.root);
-        X.cell(i, 3, 2, sc, X.orbit([0.2, 1.75, 0.2], deg, 13.5, 0.08), i === 0 ? 'THE HEADLINER, 3.3 m to his cap, 3.8 m to the hat bells, 4.9 m across the legs, beside a 1.8 m mannequin (you)' : nm); }); });
+        X.cell(i, 3, 2, sc, X.orbit([0.2, 1.9, 0.3], deg, 14.5, 0.08), i === 0 ? 'THE HEADLINER, 3.6 m to his cap, 4 m to the swept horns, 4.9 m across the legs, beside a 1.8 m mannequin (you)' : nm); }); });
     await shot('jl_game_turn');
   }
   if (what.includes('sil')) {
     await pg.evaluate(() => { const X = window.JLX, { THREE } = X; X.clear(0xffffff);
       const black = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const mk = (o) => { const sc = new THREE.Scene(); sc.background = new THREE.Color(0xffffff); X.G.scene = sc; const J = X.jester(o); J.L.face.root.visible = false; sc.add(J.c.root); sc.overrideMaterial = black; return sc; };
-      X.cell(0, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-6.6, 3.05, -0.35], [0, 3.05, -0.35], 34), '', 'his head from his left, like the sketch');
-      X.cell(1, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-30, 1.9, 0.2], [0, 1.9, 0.2], 10.5), '', 'from his left at 30 m, enlarged');
+      X.cell(0, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-10, 3.15, 0.1], [0, 3.15, 0.1], 34), '', 'his head from his left, like the sketch');
+      X.cell(1, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-30, 2.0, 0.3], [0, 2.0, 0.3], 11), '', 'from his left at 30 m, enlarged');
       X.cell(2, 4, 1, mk({ clip: 'jl_idle', t: 0.3, far: true }), X.cam([0, 1.9, -34], [0, 1.9, 0.2], 9.5), '', 'the far model (past 34 m), front, enlarged');
       const s3 = mk({ clip: 'jl_idle', t: 0.3 }); const M = X.other('mannequin', 1.8); M.ch.root.position.set(3.2, 0, 0); s3.add(M.ch.root); const fl = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshBasicMaterial({ color: 0xdddddd })); fl.rotation.x = -Math.PI / 2; s3.add(fl); s3.overrideMaterial = null;
       s3.children[0].traverse((o) => { if (o.isMesh) o.material = black; }); M.ch.root.traverse((o) => { if (o.isMesh) o.material = new THREE.MeshBasicMaterial({ color: 0x888888 }); });
@@ -155,10 +155,10 @@ const ROOT = path.join(__dirname, '..', '..', '..');
   const Z = [0, 0, 0];
   if (what.includes('close')) {
     await closeups([
-      ['his face: shut, smug, a grin past his ears', {}, 'faceAt', [0, 0.02, 0], 6, 2.6, 0.04], ['three quarter: the long nose', {}, 'faceAt', [0, 0.05, -0.1], 50, 2.8, 0.06],
-      ['profile, like the sketch', {}, 'faceAt', [0, 0.15, 0.1], -90, 3.6, 0.03], ['his eyes open (the leg comes off)', { clip: 'jl_leg_off', t: 0.75 }, 'eyeAt', [0, -0.1, 0], 75, 1.7, 0.05],
-      ['the hat from behind: horns, bells', {}, 'faceAt', [0, 0.45, 0.3], 160, 3.2, 0.25], ['a horn and its bell', {}, 'hatTipR', [-0.05, -0.15, 0], 60, 1.6, 0.1],
-      ['the dummy jaw open (talking)', { clip: 'jl_talk', t: 0.2 }, 'mouthAt', [0, 0.05, 0], 14, 1.9, 0.05], ['the collar of bells, the ruff', {}, 'chestAt', [0, 0.18, 0], 20, 2.2, 0.25],
+      ['his face: shut, smug, a grin past his ears', {}, 'faceAt', [0, 0.02, 0], 6, 3.0, 0.04], ['three quarter: the long wooden nose', {}, 'faceAt', [0, 0.05, -0.1], 50, 3.2, 0.06],
+      ['profile, like the sketch', {}, 'faceAt', [0, 0.3, 0.5], -90, 5.2, 0.03], ['his eyes open (the leg comes off)', { clip: 'jl_leg_off', t: 0.75 }, 'eyeAt', [0, -0.1, 0], 75, 1.7, 0.05],
+      ['the hat from behind: raked back, the tips curl down', {}, 'faceAt', [0, 0.55, 0.8], 150, 4.4, 0.2], ['a horn and its bell', {}, 'hatTipR', [-0.05, -0.15, 0], 60, 1.6, 0.1],
+      ['the dummy jaw open (talking)', { clip: 'jl_talk', t: 0.2 }, 'mouthAt', [0, 0.05, 0], 14, 1.9, 0.05], ['the ruff: bells on its points', {}, 'chestAt', [0, 0.3, 0], 20, 2.7, 0.22],
       ['the marotte: his own little head', {}, 'marotteAt', [0, 0, 0], 20, 1.2, 0.05], ['his right hand on his hip', {}, 'palmR', [0, 0.05, 0], 40, 1.4, 0.1],
       ['the stockings at a knee', {}, 'tibRB', [0, -0.15, 0], 30, 1.9, 0.1], ['a foot: the curled toe, the bell', {}, 'bellRA', [0, 0.05, 0], 30, 1.1, 0.12],
       ['the big top from behind', {}, 'topAt', [0, -0.75, 0.3], 160, 4.6, 0.32], ['the thorax: the carousel band, four red eyes', { clip: 'jl_idle', t: 0.3 }, [0, 1.2, -0.55], Z, 12, 2.4, -0.05],

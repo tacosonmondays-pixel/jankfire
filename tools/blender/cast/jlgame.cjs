@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path'), { execSync } = require('child_process');
 const [PORT = 3000, OUT = '.', PRESETS = '3,0'] = process.argv.slice(2);
 // [name, clip, clip time to wait for, how far he stands, how far to his side (m), look-up pitch, walk across (m) or 0]
-const SHOTS = [['idle_7m', 'jl_idle', 1.2, 7, 0, 0.2, 0], ['talk', 'jl_talk', 0.5, 5.2, 0.4, 0.3, 0], ['bow', 'jl_bow', 2.0, 6.5, 1.2, 0.12, 0],
+const SHOTS = [['idle_7m', 'jl_idle', 1.2, 7, 0, 0.2, 0], ['talk', 'jl_talk', 0.5, 5.2, 0.4, 0.3, 0], ['bow', 'jl_bow', 1.8, 6.5, 1.2, 0.12, 0],
   ['scuttle', 'jl_walk', 0, 8.5, 0, 0.12, 6], ['web_hang', 'jl_hang', 3.4, 7.5, 0.5, 0.5, 0], ['leg_off', 'jl_leg_off', 1.5, 7.5, 1.4, 0.16, 0],
   ['from_30m', 'jl_idle', 1.0, 30, 0, 0.05, 0]];
 (async () => {

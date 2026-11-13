@@ -45,7 +45,7 @@ test('jester_lord: every part and marker of the parts file is in the model and t
   }
   assert.equal(parts.look.at, 'eyeAt'); assert.equal(parts.hit.legOff, 'RB');
   assert.equal(Object.keys(parts.hit.legs).length, 8, 'eight legs to aim at');
-  assert.ok(parts.height > 3.0 && parts.height < 3.6, 'height ' + parts.height); assert.ok(parts.heightWithHat > 3.5 && parts.heightWithHat < 4.1, 'with the hat ' + parts.heightWithHat);
+  assert.ok(parts.height > 3.3 && parts.height < 3.9, 'height ' + parts.height); assert.ok(parts.heightWithHat > 3.7 && parts.heightWithHat < 4.3, 'with the hat ' + parts.heightWithHat);
   assert.ok(parts.legSpan[0] > 4.5, 'leg span ' + parts.legSpan);
 });
 

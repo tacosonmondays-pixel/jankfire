@@ -6,8 +6,8 @@
  "skinned": true,
  "units": "metres, root space at rest, feet at y 0, front -z, +x his right (boxes: c = centre, h = half size). `local` = the joint's own frame",
  "source": "tools/blender/cast/make_cast_jester_lord.py on jl_rig.py (built from code)",
- "height": 3.318,
- "heightWithHat": 3.821,
+ "height": 3.641,
+ "heightWithHat": 4.021,
  "legSpan": [
   4.922,
   4.908
@@ -16,12 +16,12 @@
  "body": {
   "c": [
    0.0,
-   1.9206,
+   2.0205,
    0.054
   ],
   "h": [
    2.4612,
-   1.9,
+   2.0,
    2.454
   ]
  },
@@ -45,18 +45,18 @@
   "jester": {
    "joint": "spine",
    "c": [
-    -0.0101,
-    2.5151,
-    -0.3138
+    -0.0043,
+    2.587,
+    0.1145
    ],
    "h": [
-    0.699,
-    1.3055,
-    0.714
+    0.8173,
+    1.4336,
+    1.2877
    ],
-   "tris": 13032,
+   "tris": 13628,
    "skinned": true,
-   "note": "the jester half: the doublet (his right pink, his left yellow, a placket of diamonds, three pom-poms, ten hem points), eight collar petals with a bell each, the ruff, the neck, the head (white greasepaint, rosy cheeks, the dummy jaw, a grin of tombstone teeth, black diamonds over shut eyes, the long nose with a pink tip), the hat (a diamond band, a split cap, two horns that sweep back and curl up, a bell on each), the arms (pumpkin puffs, diamond sleeves, frill cuffs, white gloves) and the marotte (his own little head on a stick). skinned: rigid per joint, the horns and the collar petals blend"
+   "note": "the jester half: the doublet (his right pink, his left yellow, a placket of diamonds, three pom-poms, ten hem points), a big fluted ruff (cream, a pink edge, a bell off each of its ten points), the neck, the head (white greasepaint, rosy cheeks, the dummy jaw, a grin of tombstone teeth, black diamonds over shut eyes, the long nose of painted wood, candy red to a dark tip), the hat (a diamond band, a split cap, two horns raked back over his head, the tips curling down behind, a bell on each), the arms (white-striped puffs, solid sleeves in the other half's colour, frill cuffs, white gloves) and the marotte (his own little head on a stick). skinned: rigid per joint, the horns and the ruff blend"
   },
   "dmgStump": {
    "joint": "thorax",
@@ -78,15 +78,15 @@
    "joint": "thorax",
    "c": [
     0.0,
-    1.9138,
+    2.0205,
     0.0546
    ],
    "h": [
     2.2114,
-    1.8918,
+    1.9986,
     2.2
    ],
-   "tris": 3178,
+   "tris": 3098,
    "skinned": true,
    "note": "the far model (past 34 m): both halves decimated together, still skinned"
   }
@@ -229,8 +229,8 @@
    "parent": "spine",
    "p": [
     0.0,
-    0.77,
-    0.02
+    0.9086,
+    0.0236
    ],
    "r": [
     0.0,
@@ -239,8 +239,8 @@
    ],
    "at": [
     0.0,
-    2.292,
-    -0.2
+    2.4306,
+    -0.1964
    ],
    "own": false
   },
@@ -248,7 +248,7 @@
    "parent": "neck",
    "p": [
     0.0,
-    0.07,
+    0.0826,
     0.0
    ],
    "r": [
@@ -258,17 +258,17 @@
    ],
    "at": [
     0.0,
-    2.362,
-    -0.2
+    2.5132,
+    -0.1964
    ],
    "own": false
   },
   "arm": {
    "parent": "spine",
    "p": [
-    0.37,
-    0.66,
-    0.02
+    0.4366,
+    0.7788,
+    0.0236
    ],
    "r": [
     0.0,
@@ -276,18 +276,18 @@
     0.3
    ],
    "at": [
-    0.37,
-    2.182,
-    -0.2
+    0.4366,
+    2.3008,
+    -0.1964
    ],
    "own": false
   },
   "armL": {
    "parent": "spine",
    "p": [
-    -0.37,
-    0.66,
-    0.02
+    -0.4366,
+    0.7788,
+    0.0236
    ],
    "r": [
     0.0,
@@ -295,9 +295,9 @@
     -0.3
    ],
    "at": [
-    -0.37,
-    2.182,
-    -0.2
+    -0.4366,
+    2.3008,
+    -0.1964
    ],
    "own": false
   },
@@ -305,7 +305,7 @@
    "parent": "arm",
    "p": [
     0.0,
-    -0.43,
+    -0.5074,
     0.0
    ],
    "r": [
@@ -314,9 +314,9 @@
     0.0
    ],
    "at": [
-    0.4971,
-    1.7712,
-    -0.2
+    0.5865,
+    1.8161,
+    -0.1964
    ],
    "own": false
   },
@@ -324,7 +324,7 @@
    "parent": "armL",
    "p": [
     0.0,
-    -0.43,
+    -0.5074,
     0.0
    ],
    "r": [
@@ -333,9 +333,9 @@
     0.0
    ],
    "at": [
-    -0.4971,
-    1.7712,
-    -0.2
+    -0.5865,
+    1.8161,
+    -0.1964
    ],
    "own": false
   },
@@ -343,7 +343,7 @@
    "parent": "foreR",
    "p": [
     0.0,
-    -0.39,
+    -0.4602,
     0.0
    ],
    "r": [
@@ -352,9 +352,9 @@
     0.0
    ],
    "at": [
-    0.6115,
-    1.4013,
-    -0.2467
+    0.7216,
+    1.3796,
+    -0.2515
    ],
    "own": false
   },
@@ -362,7 +362,7 @@
    "parent": "foreL",
    "p": [
     0.0,
-    -0.39,
+    -0.4602,
     0.0
    ],
    "r": [
@@ -371,9 +371,9 @@
     0.0
    ],
    "at": [
-    -0.6115,
-    1.4013,
-    -0.2467
+    -0.7216,
+    1.3796,
+    -0.2515
    ],
    "own": false
   },
@@ -1007,9 +1007,9 @@
   "hatR": {
    "parent": "head",
    "p": [
-    0.221,
-    0.754,
-    0.078
+    0.2608,
+    0.8974,
+    0.1227
    ],
    "r": [
     0.0,
@@ -1017,18 +1017,18 @@
     0.0
    ],
    "at": [
-    0.221,
-    3.116,
-    -0.122
+    0.2608,
+    3.4106,
+    -0.0737
    ],
    "own": true
   },
   "hatRb": {
    "parent": "hatR",
    "p": [
-    0.26,
-    0.234,
-    0.312
+    0.2838,
+    0.4219,
+    0.5983
    ],
    "r": [
     0.0,
@@ -1036,18 +1036,18 @@
     0.0
    ],
    "at": [
-    0.481,
-    3.35,
-    0.19
+    0.5446,
+    3.8324,
+    0.5246
    ],
    "own": true
   },
   "bellHR": {
    "parent": "hatRb",
    "p": [
-    0.078,
-    0.442,
-    0.078
+    0.0844,
+    -0.0614,
+    0.7823
    ],
    "r": [
     0.0,
@@ -1055,18 +1055,18 @@
     0.0
    ],
    "at": [
-    0.559,
-    3.792,
-    0.268
+    0.6289,
+    3.7711,
+    1.3069
    ],
    "own": true
   },
   "hatL": {
    "parent": "head",
    "p": [
-    -0.221,
-    0.754,
-    0.078
+    -0.2608,
+    0.8974,
+    0.1227
    ],
    "r": [
     0.0,
@@ -1074,18 +1074,18 @@
     0.0
    ],
    "at": [
-    -0.221,
-    3.116,
-    -0.122
+    -0.2608,
+    3.4106,
+    -0.0737
    ],
    "own": true
   },
   "hatLb": {
    "parent": "hatL",
    "p": [
-    -0.26,
-    0.234,
-    0.312
+    -0.2838,
+    0.4219,
+    0.5983
    ],
    "r": [
     0.0,
@@ -1093,18 +1093,18 @@
     0.0
    ],
    "at": [
-    -0.481,
-    3.35,
-    0.19
+    -0.5446,
+    3.8324,
+    0.5246
    ],
    "own": true
   },
   "bellHL": {
    "parent": "hatLb",
    "p": [
-    -0.078,
-    0.442,
-    0.078
+    -0.0844,
+    -0.0614,
+    0.7823
    ],
    "r": [
     0.0,
@@ -1112,9 +1112,9 @@
     0.0
    ],
    "at": [
-    -0.559,
-    3.792,
-    0.268
+    -0.6289,
+    3.7711,
+    1.3069
    ],
    "own": true
   },
@@ -1122,8 +1122,8 @@
    "parent": "head",
    "p": [
     0.0,
-    0.221,
-    -0.052
+    0.2608,
+    -0.0614
    ],
    "r": [
     0.0,
@@ -1132,17 +1132,17 @@
    ],
    "at": [
     0.0,
-    2.583,
-    -0.252
+    2.774,
+    -0.2578
    ],
    "own": true
   },
   "lidR": {
    "parent": "head",
    "p": [
-    0.1274,
-    0.481,
-    -0.2665
+    0.1503,
+    0.5676,
+    -0.3145
    ],
    "r": [
     0.0,
@@ -1150,18 +1150,18 @@
     0.0
    ],
    "at": [
-    0.1274,
-    2.843,
-    -0.4665
+    0.1503,
+    3.0808,
+    -0.5109
    ],
    "own": true
   },
   "lidL": {
    "parent": "head",
    "p": [
-    -0.1274,
-    0.481,
-    -0.2665
+    -0.1503,
+    0.5676,
+    -0.3145
    ],
    "r": [
     0.0,
@@ -1169,18 +1169,18 @@
     0.0
    ],
    "at": [
-    -0.1274,
-    2.843,
-    -0.4665
+    -0.1503,
+    3.0808,
+    -0.5109
    ],
    "own": true
   },
   "browR": {
    "parent": "head",
    "p": [
-    0.13,
-    0.6175,
-    -0.2795
+    0.1534,
+    0.7286,
+    -0.3298
    ],
    "r": [
     0.0,
@@ -1188,18 +1188,18 @@
     0.0
    ],
    "at": [
-    0.13,
-    2.9795,
-    -0.4795
+    0.1534,
+    3.2418,
+    -0.5262
    ],
    "own": true
   },
   "browL": {
    "parent": "head",
    "p": [
-    -0.13,
-    0.6175,
-    -0.2795
+    -0.1534,
+    0.7286,
+    -0.3298
    ],
    "r": [
     0.0,
@@ -1207,9 +1207,9 @@
     0.0
    ],
    "at": [
-    -0.13,
-    2.9795,
-    -0.4795
+    -0.1534,
+    3.2418,
+    -0.5262
    ],
    "own": true
   },
@@ -1217,8 +1217,8 @@
    "parent": "spine",
    "p": [
     0.0,
-    0.74,
-    0.02
+    0.8732,
+    0.0236
    ],
    "r": [
     0.0,
@@ -1227,8 +1227,8 @@
    ],
    "at": [
     0.0,
-    2.262,
-    -0.2
+    2.3952,
+    -0.1964
    ],
    "own": true
   },
@@ -1236,8 +1236,8 @@
    "parent": "handL",
    "p": [
     0.0,
-    -0.085,
-    -0.4
+    -0.1003,
+    -0.472
    ],
    "r": [
     0.0,
@@ -1245,9 +1245,9 @@
     0.0
    ],
    "at": [
-    -0.6223,
-    1.3664,
-    -0.654
+    -0.7343,
+    1.3384,
+    -0.7321
    ],
    "own": true
   }
@@ -1257,13 +1257,13 @@
    "joint": "head",
    "local": [
     0.0,
-    0.481,
-    -0.3165
+    0.5676,
+    -0.3735
    ],
    "at": [
     0.0,
-    2.843,
-    -0.5165
+    3.0808,
+    -0.5699
    ]
   },
   "eyeRAt": {
@@ -1271,12 +1271,12 @@
    "local": [
     0.0,
     0.0,
-    -0.05
+    -0.059
    ],
    "at": [
-    0.1274,
-    2.843,
-    -0.5165
+    0.1503,
+    3.0808,
+    -0.5699
    ]
   },
   "eyeLAt": {
@@ -1284,51 +1284,51 @@
    "local": [
     0.0,
     0.0,
-    -0.05
+    -0.059
    ],
    "at": [
-    -0.1274,
-    2.843,
-    -0.5165
+    -0.1503,
+    3.0808,
+    -0.5699
    ]
   },
   "faceAt": {
    "joint": "head",
    "local": [
     0.0,
-    0.39,
-    -0.338
+    0.4602,
+    -0.3988
    ],
    "at": [
     0.0,
-    2.752,
-    -0.538
+    2.9734,
+    -0.5952
    ]
   },
   "mouthAt": {
    "joint": "jaw",
    "local": [
     0.0,
-    -0.026,
-    -0.299
+    -0.0307,
+    -0.3528
    ],
    "at": [
     0.0,
-    2.557,
-    -0.551
+    2.7433,
+    -0.6106
    ]
   },
   "noseTip": {
    "joint": "head",
    "local": [
     0.0,
-    0.3588,
-    -0.8255
+    0.4234,
+    -0.9741
    ],
    "at": [
     0.0,
-    2.7208,
-    -1.0255
+    2.9366,
+    -1.1705
    ]
   },
   "hatTipR": {
@@ -1339,22 +1339,22 @@
     0.0
    ],
    "at": [
-    0.559,
-    3.792,
-    0.268
+    0.6289,
+    3.7711,
+    1.3069
    ]
   },
   "palmR": {
    "joint": "handR",
    "local": [
     0.0,
-    -0.07,
+    -0.0826,
     -0.0
    ],
    "at": [
-    0.632,
-    1.3349,
-    -0.2551
+    0.7458,
+    1.3012,
+    -0.2614
    ]
   },
   "hatTipL": {
@@ -1365,22 +1365,22 @@
     0.0
    ],
    "at": [
-    -0.559,
-    3.792,
-    0.268
+    -0.6289,
+    3.7711,
+    1.3069
    ]
   },
   "palmL": {
    "joint": "handL",
    "local": [
     -0.0,
-    -0.07,
+    -0.0826,
     -0.0
    ],
    "at": [
-    -0.632,
-    1.3349,
-    -0.2551
+    -0.7458,
+    1.3012,
+    -0.2614
    ]
   },
   "marotteAt": {
@@ -1388,12 +1388,12 @@
    "local": [
     -0.0,
     -0.0,
-    -0.06
+    -0.0708
    ],
    "at": [
-    -0.6202,
-    1.3733,
-    -0.7136
+    -0.7318,
+    1.3465,
+    -0.8024
    ]
   },
   "stumpAt": {
@@ -1439,13 +1439,13 @@
    "joint": "spine",
    "local": [
     0.0,
-    0.42,
-    -0.18
+    0.4956,
+    -0.2124
    ],
    "at": [
     0.0,
-    1.942,
-    -0.4
+    2.0176,
+    -0.4324
    ]
   }
  },
@@ -1464,28 +1464,28 @@
   "head": {
    "joint": "head",
    "c": [
-    0,
-    0.36,
-    -0.05
+    0.0,
+    0.4248,
+    -0.059
    ],
    "h": [
-    0.27,
-    0.36,
-    0.3
+    0.3186,
+    0.4248,
+    0.354
    ],
-   "note": "the head and hat: generous, like every puppet"
+   "note": "the head and cap: generous, like every puppet (the swept horns trail behind it, not in it)"
   },
   "jester": {
    "joint": "spine",
    "c": [
-    0,
-    0.36,
-    0
+    0.0,
+    0.4248,
+    0.0
    ],
    "h": [
-    0.3,
-    0.36,
-    0.18
+    0.354,
+    0.4248,
+    0.2124
    ]
   },
   "thorax": {

@@ -4,8 +4,9 @@
 # writes public/models/cast/c_jester_lord.glb + c_jester_lord.parts.json:
 #   part_thorax__spider   the spider half: thorax, the big top (abdomen), eight legs in harlequin stockings, a bell on
 #                         every foot. one skinned mesh (every vertex on its joint; the pedicel blends)
-#   part_spine__jester    the jester half: doublet, collar of bells, ruff, arms, gloves, the head (dummy jaw, smug shut
-#                         eyes, the long nose, the two-horned hat with bells), the marotte. skinned (waist, horns blend)
+#   part_spine__jester    the jester half: doublet, the ruff of bells, arms, gloves, the head (dummy jaw, smug shut
+#                         eyes, the long wooden nose, the swept two-horned hat with bells), the marotte. skinned (waist,
+#                         horns, ruff blend). modelled at its drawn size and grown by jl_rig.US about the waist
 #   part_thorax__dmgStump the torn stocking and stuffing where his right second leg was (hidden until it comes off)
 #   part_thorax__lod      the far model: both halves decimated together, still skinned (one draw call a material)
 # Four materials (satin, lacquer, skin, brass) with small crusty textures; the colour is a vertex tint x baked AO.
@@ -40,9 +41,11 @@ PINK, YEL, BLK, WHT = lin(0xff4fc0), lin(0xffe14d), lin(0x17111c), lin(0xf6f2ec)
 LAQ, LAQ2 = lin(0x2a1236), lin(0x1a0a22)
 SKIN, BLUSH, LIP, MOUTH, TEETH = lin(0xf7efe6), lin(0xff7aa6), lin(0xd8105c), lin(0x3c0a22), lin(0xfff2d4)
 GLOVE, RED_EYE, STUFF = lin(0xfcf9f4), lin(0x8a0a30), lin(0xfaf6ee)
+CREAM, NOSE_, NOSE_TIP = lin(0xfff4dc), lin(0xf22a5a), lin(0x7a0828)   # the ruff; the nose: painted wood, candy red, a dark tip
 ONE = (1.0, 1.0, 1.0)
 
-W = R.rest_world()
+W = WS = R.rest_world()           # (the jester half is modelled at its drawn size, W0, then grown about the waist: jester())
+W0 = R.rest_world(drawn=True)
 def JP(n): return Vector(W[n][1])
 def JM(n): return Matrix(W[n][0])
 def jl(n, local): return JP(n) + JM(n) @ Vector(local)
@@ -70,7 +73,7 @@ def spider(b):
     b.piece(b.ellip(TH, R.TH_R, 28, 14, 'lacquer', LAQ, 'thorax', face_col=th_col, deform=th_def), 'thorax')
     # the socket the jester stands in: a brass ring
     S = JP('spine')
-    b.piece(b.torus(S + Vector((0, -0.005, 0)), 0.155, 0.03, 'brass', ONE, 'thorax', seg=20, rseg=6), 'socket ring')
+    b.piece(b.torus(S + Vector((0, -0.005, 0)), 0.172, 0.032, 'brass', ONE, 'thorax', seg=20, rseg=6), 'socket ring')
     # four little eyes on its front, under the jester's hem
     for x, y, r in (((0.07, -0.06, 0.042), (-0.07, -0.06, 0.042), (0.17, -0.0, 0.03), (-0.17, -0.0, 0.03)) if not b.lod else ()):
         a_, b_, c_ = R.TH_R; z = -c_ * math.sqrt(max(0, 1 - (x / a_) ** 2 - (y / b_) ** 2 / 0.72))
@@ -206,6 +209,23 @@ def torso_pt(y, ang, push=0.0):
 
 
 def jester(b):
+    """the jester half: modelled at his drawn size (the joints at jl_rig LOC0), then grown by US about the waist so
+    his joints and his mesh agree"""
+    global W
+    n0 = len(b.bm.verts); W = W0
+    try: _jester(b)
+    finally: W = WS
+    b.bm.verts.ensure_lookup_table()
+    for v in b.bm.verts[n0:]: v.co = SP + (v.co - SP) * R.US
+
+
+def th_y_drawn(p, gap):
+    """the drawn height at p that, once he is grown about the waist, sits `gap` over the thorax"""
+    g = SP + (Vector(p) - SP) * R.US
+    return SP.y + (th_surface_y(g.x, g.z) + gap - SP.y) / R.US
+
+
+def _jester(b):
     # ---- the doublet: his right half pink, his left yellow (the seam runs down his middle)
     seg = 20 if not b.lod else 10; rings = []
     for y, hw, hd, zo in SECT:
@@ -216,7 +236,7 @@ def jester(b):
             k1 = (k + 1) % seg; c = PINK if (k + 0.5) < seg / 2 else YEL
             fs.append(b.f((rings[i][k], rings[i][k1], rings[i + 1][k1], rings[i + 1][k]), 'satin', c))
     for end, i in ((0, 0), (1, len(rings) - 1)):
-        cv = b.v(SP + Vector((0, SECT[i][0] + (0.0 if end == 0 else 0.01), SECT[i][3])), 'spine')
+        cv = b.v(SP + Vector((0, SECT[i][0] + (0.0 if end == 0 else 0.035), SECT[i][3])), 'spine')   # (the top: a low point inside the neck, not a flat lid under the ruff)
         for k in range(seg):
             k1 = (k + 1) % seg; fs.append(b.f((rings[i][k1], rings[i][k], cv) if end == 0 else (rings[i][k], rings[i][k1], cv), 'satin', PINK if k < seg / 2 else YEL))
     b.piece(fs, 'doublet')
@@ -236,8 +256,8 @@ def jester(b):
         a0, a1 = 2 * math.pi * i / 10, 2 * math.pi * (i + 1) / 10; am = (a0 + a1) / 2
         p0, n0 = torso_pt(0.075, a0, 0.006); p1, n1 = torso_pt(0.075, a1, 0.006)
         pm, _ = torso_pt(0.075, am, 0.0); out = Vector((pm.x - SP.x, 0, pm.z - SP.z)).normalized()
-        tip = SP + out * 0.31; tip.y = max(th_surface_y(tip.x, tip.z) + 0.035, SP.y - 0.06)
-        mid = (p0 + p1) / 2 * 0.45 + tip * 0.55; mid.y = max(mid.y, th_surface_y(mid.x, mid.z) + 0.05); mid += out * 0.02
+        tip = SP + out * 0.31; tip.y = max(th_y_drawn(tip, 0.035), SP.y - 0.06)
+        mid = (p0 + p1) / 2 * 0.45 + tip * 0.55; mid.y = max(mid.y, th_y_drawn(mid, 0.05)); mid += out * 0.02
         c = PINK if i % 2 == 0 else YEL; nrm_ = (p1 - p0).cross(tip - p0).normalized()
         if nrm_.dot(out) < 0: nrm_ = -nrm_
         fr = [b.v(q + nrm_ * 0.007, 'spine') for q in (p0, p1, tip, mid)]; bk = [b.v(q - nrm_ * 0.007, 'spine') for q in (p0, p1, tip, mid)]
@@ -245,21 +265,43 @@ def jester(b):
               b.f((bk[1], bk[3], bk[0]), 'satin', c), b.f((bk[1], bk[2], bk[3]), 'satin', c), b.f((bk[3], bk[2], bk[0]), 'satin', c)]
         for a_, b2 in ((0, 1), (1, 2), (2, 0)): fs.append(b.f((fr[a_], bk[a_], bk[b2], fr[b2]), 'satin', c))
         b.piece(fs, 'hem flap')
-    # ---- the collar: eight petals with a bell on each tip, and a white ruff at the neck
-    NK = SP + Vector((0, NECK_Y, 0.02))
-    for i in range(8):
-        a = 2 * math.pi * (i + 0.5) / 8; d = Vector((math.sin(a), 0, -math.cos(a)))
-        pts = [NK + d * 0.1 + Vector((0, 0.0, 0)), NK + d * 0.2 + Vector((0, -0.03, 0)), NK + d * 0.3 + Vector((0, -0.075, 0)), NK + d * 0.41 + Vector((0, -0.125, 0))]
-        b.piece(b.tube(pts, [0.06, 0.08, 0.062, 0.016], 8, 'satin', PINK if i % 2 == 0 else YEL, None, squash=(0.28, 1.0), tip=(False, True),
-                       wfn=lambda j, t: {'spine': 1 - ss(0.3, 0.9, t), 'collar': ss(0.3, 0.9, t)}), 'petal')
-        if not b.lod: b.piece(b.bell(pts[-1] + Vector((0, -0.006, 0)) + d * 0.004, 0.034, 'collar', seg=6, rings=5), 'collar bell')
-    b.piece(b.torus(SP + Vector((0, NECK_Y + 0.02, 0.02)), 0.125, 0.036, 'satin', WHT, 'neck', seg=30, rseg=5, wave=lambda a: (0.024 * math.cos(10 * a), 0.016 * math.sin(10 * a))), 'ruff')
+    ruff(b)
     H = JP('head')
     b.piece(b.tube([SP + Vector((0, NECK_Y - 0.04, 0.02)), H + Vector((0, 0.02, 0.0)), H + Vector((0, 0.12, 0.0))], [0.075, 0.072, 0.075], 10, 'skin', SKIN, None,
                    wfn=lambda i, t: {'neck': 1 - t, 'head': t}), 'neck')
     head(b, lambda p: H + Vector(p), R.HS, None)
     for side in ('R', 'L'): arm(b, side)
     marotte(b)
+
+
+def ruff(b):
+    """the ruff: a big fluted cartwheel of cream under his chin, ten points with a pink edge and a bell hanging off
+    each point. it falls away at the front and back (you look up at him: you see its top, not its shadowed underside)
+    and tips up a little and in over the shoulders (clear of the puffs when he lifts his arms): a saddle that frames
+    his face. its rim rides the collar joint (the bells shiver)"""
+    C = SP + Vector((0, NECK_Y + 0.02, 0.02))
+    NP, NF = 10, 20                               # points, flutes (a crest at every point)
+    na = NF * 4 if not b.lod else NF * 2; nr = 3 if not b.lod else 2
+    R0, RV, RP, AMP, FALL = 0.068, 0.30, 0.37, 0.036, 0.12   # the inside (under the neck), the rim between points and at them, the fluting, the fall front and back
+    def rim(a):
+        u = (a * NP / (2 * math.pi)) % 1.0; tri = 1 - abs(u - 0.5) * 2; return RV + (RP - RV) * tri ** 1.6
+    def pt(a, sj):
+        c2, s2 = math.cos(a) ** 2, math.sin(a) ** 2
+        r = R0 + (rim(a) * (1 - 0.1 * s2) - R0) * sj
+        return C + Vector((r * math.sin(a), -0.012 * sj + (0.1 * s2 - FALL * c2) * sj ** 1.5 + AMP * sj ** 1.2 * math.cos(NF * (a - math.pi / NP)), -r * math.cos(a)))
+    def nrm(a, sj):
+        e = 1e-3; da = pt(a + e, sj) - pt(a - e, sj); dr = pt(a, min(1, sj + e)) - pt(a, max(0, sj - e))
+        n = dr.cross(da).normalized(); return n if n.y > 0 else -n
+    def wr(p):
+        r = math.hypot(p.x - C.x, p.z - C.z); t = ss(0.14, 0.26, r); return {'spine': 1 - t, 'collar': t}
+    A = [2 * math.pi * i / na for i in range(na)]; Sj = [j / (nr - 1) for j in range(nr)]
+    rows = [[pt(a, sj) for a in A] for sj in Sj]; nn = [[nrm(a, sj) for a in A] for sj in Sj]
+    b.piece(b.strip(rows, 'satin', wr, thick=(0.009, -0.009), col=CREAM, normals=nn, closed=True), 'ruff')
+    if b.lod: return
+    b.piece(b.loop([pt(a, 1.0) for a in A], 0.015, 4, 'satin', PINK, 'collar'), 'ruff edge')
+    for k in range(NP):
+        a = 2 * math.pi * (k + 0.5) / NP; tip = pt(a, 1.0) + Vector((math.sin(a), 0, -math.cos(a))) * 0.004
+        b.piece(b.bell(tip + Vector((0, -0.002, 0)), 0.034, 'collar', seg=6, rings=5, loop=False), 'ruff bell')   # (hung straight off the piping: no loop)
 
 
 # ------------------------------------------------------------------------------------------------ the head
@@ -334,7 +376,7 @@ def head(b, M, k, wmap):
             ux = math.sqrt(max(0.0, 1 - uy * uy - (HOOD_Z / (EGG_R[2])) ** 2))
             cheek = 1 + 0.13 * math.exp(-((uy + 0.25) / 0.38) ** 2)
             pts.append(Vector((sx * ux * EGG_R[0] * cheek * 1.01, y, HOOD_Z * 1.0)))
-        if not b.lod: b.piece(b.tube([P(q) for q in pts], 0.011 * k, 5, 'satin', BLK, w('head'), tip=(True, True)), 'hood piping')
+        if not b.lod: b.piece(b.tube([P(q) for q in pts], 0.011 * k, 4, 'satin', BLK, w('head'), tip=(True, True)), 'hood piping')
     # ---- the chin (the dummy's jaw): a shell over the egg below the lower lip line, between the two slot lines
     if not mini and not b.lod:
         rows, nrm = [], []
@@ -413,12 +455,12 @@ def head(b, M, k, wmap):
             # the brow: a thin arch, the outer end up (smug)
             br = [egg_front(sx * x, y) for x, y in ((0.035, 0.462), (0.08, 0.49), (0.13, 0.497), (0.175, 0.478))]
             b.piece(b.tube([P(p + n * 0.007) for p, n in br], [0.009 * k, 0.012 * k, 0.011 * k, 0.005 * k], 6, 'skin', BLK, 'brow' + side, tip=(True, True)), 'brow')
-    # ---- the nose: long, pointed, a candy-pink tip
+    # ---- the nose: long and pointed, painted wood (a puppet's): candy red, darker to the tip
     NOSE = [(0, 0.335, -0.21), (0, 0.322, -0.3), (0, 0.298, -0.40), (0, 0.276, -0.50), (0, 0.266, -0.575), (0, 0.276, -0.635)]
     def ncol(pw):
-        q = unmap(M, k, pw); return mixc(SKIN, BLUSH, ss(-0.5, -0.6, q.z))
-    b.piece(b.tube([P(q) for q in NOSE], [r * k for r in (0.036, 0.032, 0.025, 0.017, 0.01, 0.003)], 10 if not mini else 6, 'skin', ncol, w('head'), tip=(False, True)), 'nose')
-    # ---- the hat: a band of diamonds, a split cap (his right pink, his left yellow), two horns sweeping back and curling up
+        q = unmap(M, k, pw); return mixc(NOSE_, NOSE_TIP, ss(-0.42, -0.63, q.z))
+    b.piece(b.tube([P(q) for q in NOSE], [r * k for r in (0.036, 0.032, 0.025, 0.017, 0.01, 0.003)], 10 if not mini else 6, 'lacquer', ncol, w('head'), tip=(False, True)), 'nose')
+    # ---- the hat: a band of diamonds, a split cap (his right pink, his left yellow), two horns raked back, the tips curling down
     def yb(ph): return 0.51 + 0.04 * math.cos(ph)
     def band_pt(ph, y, push):
         uy = (y - EGG_C[1]) / EGG_R[1]; s_ = math.sqrt(max(0.0, 1 - uy * uy))
@@ -484,13 +526,15 @@ def arm(b, side):
     S = JP(arm_); Ma = JM(arm_); d = Ma @ Vector((0, -1, 0))
     X, Y, Z = Ma @ Vector((1, 0, 0)), Ma @ Vector((0, -1, 0)), Ma @ Vector((0, 0, 1))
     # the puffed sleeve: pumpkin stripes
+    # (motley: each arm the colour of the other half, solid, so his arms never read as legs: the legs wear the diamonds)
+    SLV = YEL if side == 'R' else PINK
     def pc(u):
-        ph = math.atan2(u.x, -u.z) % (2 * math.pi); return PINK if int(ph / (2 * math.pi / 12)) % 2 == 0 else YEL
-    b.piece(b.ellip(S + d * 0.1, (0.128, 0.155, 0.128), 12, 9, 'satin', PINK, arm_, face_col=pc, axis=(X, -Y, Z)), 'puff')
-    b.piece(b.tube([S + d * (0.16 + 0.24 * i / 6) for i in range(7)], [0.062 - 0.008 * i / 6 for i in range(7)], 8, 'satin', WHT, arm_, lattice=(2, BLK, WHT), phase=math.pi / 8), 'upper sleeve')
+        ph = math.atan2(u.x, -u.z) % (2 * math.pi); return WHT if int(ph / (2 * math.pi / 12)) % 2 == 0 else SLV
+    b.piece(b.ellip(S + d * 0.1, (0.128, 0.155, 0.128), 12, 9, 'satin', WHT, arm_, face_col=pc, axis=(X, -Y, Z)), 'puff')
+    b.piece(b.tube([S + d * (0.16 + 0.24 * i / 6) for i in range(7)], [0.062 - 0.008 * i / 6 for i in range(7)], 8, 'satin', SLV, arm_), 'upper sleeve')
     E = JP(fore); Mf = JM(fore); fd = Mf @ Vector((0, -1, 0))
     b.piece(b.ball(E, 0.06, 'satin', BLK, fore, seg=10, rings=6), 'elbow')
-    b.piece(b.tube([E + fd * (0.04 + 0.27 * i / 6) for i in range(7)], [0.054 - 0.01 * i / 6 for i in range(7)], 8, 'satin', WHT, fore, lattice=(2, BLK, WHT), phase=math.pi / 8), 'forearm')
+    b.piece(b.tube([E + fd * (0.04 + 0.27 * i / 6) for i in range(7)], [0.054 - 0.01 * i / 6 for i in range(7)], 8, 'satin', SLV, fore), 'forearm')
     Hh = JP(hand); Mh = JM(hand)
     if not b.lod: b.piece(b.torus(Hh + fd * 0.0, 0.052, 0.017, 'satin', WHT, fore, seg=16, rseg=3, axis=fd, wave=lambda a: (0.012 * math.cos(7 * a), 0.01 * math.sin(7 * a))), 'cuff')
     def hp(x, y, z): return Hh + Mh @ Vector((x, y, z))
@@ -514,7 +558,7 @@ def arm(b, side):
 def marotte(b):
     Hh = JP('handL'); Mh = JM('handL')
     def hp(x, y, z): return Hh + Mh @ Vector((x, y, z))
-    top = Vector(R.LOC['marotte'])
+    top = Vector(R.LOC0['marotte'])
     b.piece(b.tube([hp(0, -0.085, 0.13 - 0.5 * i / 8) for i in range(9)], 0.017, 6, 'lacquer', BLK, 'handL', lattice=(2, PINK, YEL)), 'marotte stick')
     if not b.lod: b.piece(b.ball(hp(0, -0.085, 0.14), 0.026, 'brass', ONE, 'handL', seg=8, rings=5), 'stick knob')
     # the little head: his own, a quarter size, on the stick's top (its up = the hand's -z, its front = the hand's -y)
@@ -546,8 +590,8 @@ def textures():
     n = 0.5 * vn(S, 16) + 0.5 * rng.random((S, S))
     px = np.ones((S, S, 3), np.float32) * (0.93 + 0.07 * n)[:, :, None]
     T['jl_lacquer'] = lib._image('T_jl_lacquer', np.clip(crust(px, 0.02, 0x6a5a70), 0, 1))
-    n = 0.5 * vn(S, 8) + 0.5 * rng.random((S, S))
-    px = np.ones((S, S, 3), np.float32) * (0.94 + 0.06 * n)[:, :, None]; px[rng.random((S, S)) < 0.03] *= np.array([0.9, 0.84, 0.84], np.float32)
+    n = 0.7 * vn(S, 6) + 0.3 * vn(S, 16)       # (greasepaint: a soft cloud, a few faint flecks; grain read as noise up close)
+    px = np.ones((S, S, 3), np.float32) * (0.97 + 0.03 * n)[:, :, None]; px[rng.random((S, S)) < 0.008] *= np.array([0.96, 0.93, 0.93], np.float32)
     T['jl_skin'] = lib._image('T_jl_skin', np.clip(px, 0, 1))
     n = 0.5 * vn(S, 8) + 0.5 * rng.random((S, S))
     px = lib.hexrgb(0xe0b048)[None, None, :] * (0.82 + 0.3 * n)[:, :, None]
@@ -702,6 +746,17 @@ def islands_report(o, ftag=None):
     bm.free()
 
 
+def lift_ao(o, ftag, tags, keep=0.35):
+    """keep only part of the baked shade on these pieces (the ruff: the head above it greyed it)"""
+    me = o.data
+    if 'AO' not in me.color_attributes: return
+    n = len(me.loops); a = np.empty(n * 4, np.float32); me.color_attributes['AO'].data.foreach_get('color', a); a = a.reshape(n, 4)
+    for p_ in me.polygons:
+        if ftag.get(p_.index) in tags:
+            for li in p_.loop_indices: a[li, :3] = 1 - (1 - a[li, :3]) * keep
+    me.color_attributes['AO'].data.foreach_set('color', a.ravel())
+
+
 def trim_slots(o):
     me = o.data; used = sorted({p_.material_index for p_ in me.polygons})
     if used == list(range(len(me.materials))): return
@@ -729,21 +784,22 @@ def markers():
     """named spots (joint, a point in its frame): JL.at(a, name) in the game. jesterlook.js MK keeps a copy"""
     H = JP('head'); mk = {}
     def put(k, j, pw): mk[k] = (j, r4(JM(j).inverted() @ (Vector(pw) - JP(j))))
-    eR, eL = JP('lidR') + Vector((0, 0, -0.05)), JP('lidL') + Vector((0, 0, -0.05))
+    k = R.HS * R.US; u = R.US
+    eR, eL = JP('lidR') + Vector((0, 0, -0.05 * u)), JP('lidL') + Vector((0, 0, -0.05 * u))
     put('eyeAt', 'head', (eR + eL) / 2); put('eyeRAt', 'lidR', eR); put('eyeLAt', 'lidL', eL)
-    put('faceAt', 'head', H + Vector((0, 0.3, -0.26)) * R.HS); put('mouthAt', 'jaw', H + Vector((0, 0.15, -0.27)) * R.HS); put('noseTip', 'head', H + Vector((0, 0.276, -0.635)) * R.HS)
+    put('faceAt', 'head', H + Vector((0, 0.3, -0.26)) * k); put('mouthAt', 'jaw', H + Vector((0, 0.15, -0.27)) * k); put('noseTip', 'head', H + Vector((0, 0.276, -0.635)) * k)
     for s in ('R', 'L'):
-        put('hatTip' + s, 'bellH' + s, JP('bellH' + s)); put('palm' + s, 'hand' + s, jl('hand' + s, (0, -0.07, 0)))
-    put('marotteAt', 'marotte', jl('marotte', (0, 0, -0.06)))
+        put('hatTip' + s, 'bellH' + s, JP('bellH' + s)); put('palm' + s, 'hand' + s, jl('hand' + s, (0, -0.07 * u, 0)))
+    put('marotteAt', 'marotte', jl('marotte', (0, 0, -0.06 * u)))
     put('stumpAt', 'thorax', jl('femRB', (0.18, 0, 0)))
     put('topAt', 'abdo', JP('abdo') + Vector(R.AB_C) + Vector((0, R.AB_R[1] * 1.16 + 0.5, 0)))
     put('spinneret', 'abdo', JP('abdo') + Vector(R.AB_C) + Vector((0, -0.42 * R.AB_R[1], R.AB_R[2])) * 1.0)
-    put('chestAt', 'spine', SP + Vector((0, 0.42, -0.18)))
+    put('chestAt', 'spine', SP + Vector((0, 0.42, -0.18)) * u)
     return mk
 
 
 NOTES = {'spider': 'the spider half: the thorax (a lacquered dome with a pink and yellow carousel band, four red eyes, the brass socket), the pedicel, the big top (abdomen: pink and yellow tent stripes, a valance of diamonds, pointed flaps, a pennant, brass spinnerets) and eight legs (hip ball, a lace stocking top, the femur in pink and yellow diamonds, knee, the tibia in black and white diamonds, ankle, a black patent shoe with a curled toe, a bell). skinned: every vertex on its own joint',
-         'jester': 'the jester half: the doublet (his right pink, his left yellow, a placket of diamonds, three pom-poms, ten hem points), eight collar petals with a bell each, the ruff, the neck, the head (white greasepaint, rosy cheeks, the dummy jaw, a grin of tombstone teeth, black diamonds over shut eyes, the long nose with a pink tip), the hat (a diamond band, a split cap, two horns that sweep back and curl up, a bell on each), the arms (pumpkin puffs, diamond sleeves, frill cuffs, white gloves) and the marotte (his own little head on a stick). skinned: rigid per joint, the horns and the collar petals blend',
+         'jester': 'the jester half: the doublet (his right pink, his left yellow, a placket of diamonds, three pom-poms, ten hem points), a big fluted ruff (cream, a pink edge, a bell off each of its ten points), the neck, the head (white greasepaint, rosy cheeks, the dummy jaw, a grin of tombstone teeth, black diamonds over shut eyes, the long nose of painted wood, candy red to a dark tip), the hat (a diamond band, a split cap, two horns raked back over his head, the tips curling down behind, a bell on each), the arms (white-striped puffs, solid sleeves in the other half\'s colour, frill cuffs, white gloves) and the marotte (his own little head on a stick). skinned: rigid per joint, the horns and the ruff blend',
          'dmgStump': 'where his right second leg was: a torn stocking stub and a puff of stuffing. hidden until jl_leg_off; jesterlord.js shows it while the leg is away',
          'lod': 'the far model (past 34 m): both halves decimated together, still skinned'}
 
@@ -765,8 +821,9 @@ def parts_json(objs, lod, stump_o, mk):
         fm, tb, ft, bl = R.leg_names(s, p); l1, l2, l3 = R.lens(p)
         legs[s + p] = dict(femur=dict(joint=fm, a=[0, 0, 0], b=[round(l1, 4), 0, 0], r=0.085), tibia=dict(joint=tb, a=[0, 0, 0], b=[round(l2, 4), 0, 0], r=0.065),
                            foot=dict(joint=ft, a=[0, 0, 0], b=[round(l3, 4), 0, 0], r=0.05), bell=bl)
-    hit = dict(head=dict(joint='head', c=[0, 0.36, -0.05], h=[0.27, 0.36, 0.3], note='the head and hat: generous, like every puppet'),
-               jester=dict(joint='spine', c=[0, 0.36, 0], h=[0.3, 0.36, 0.18]), thorax=dict(joint='thorax', c=[0, 0, 0], h=r4(R.TH_R)),
+    u = R.US
+    hit = dict(head=dict(joint='head', c=r4(Vector((0, 0.36, -0.05)) * u), h=r4(Vector((0.27, 0.36, 0.3)) * u), note='the head and cap: generous, like every puppet (the swept horns trail behind it, not in it)'),
+               jester=dict(joint='spine', c=r4(Vector((0, 0.36, 0)) * u), h=r4(Vector((0.3, 0.36, 0.18)) * u)), thorax=dict(joint='thorax', c=[0, 0, 0], h=r4(R.TH_R)),
                abdomen=dict(joint='abdo', c=r4(R.AB_C), h=r4(R.AB_R)), legs=legs, legOff='RB', note='legs are capsules along each joint\'s +x (a, b in its frame, r). any leg can be aimed at; the clip set takes his right second leg (RB) off')
     look = dict(at='eyeAt', eyes=['eyeRAt', 'eyeLAt'], aim=['head'], note='his eyes are shut (smug); his head turns to look. the lids open only in jl_leg_off')
     span = (hi.x - lo.x, hi.z - lo.z)
@@ -840,18 +897,18 @@ def sheets(which, objs, arm, quick=False):
     if 'turn' in which or 'stance' in which:
         pose_arm(arm, C.evaluate('jl_idle', 0.0) if 'stance' in which else {})
         views = [(0, 6), (35, 8), (90, 6), (180, 8), (215, 10), (-90, 6)]
-        ps = [snap(os.path.join(tmp, 't%d.png' % i), (0, 1.6, 0.1), d, e, 10.5, quick=quick) for i, (d, e) in enumerate(views)]
+        ps = [snap(os.path.join(tmp, 't%d.png' % i), (0, 1.75, 0.15), d, e, 11.0, quick=quick) for i, (d, e) in enumerate(views)]
         out.append(rpkit.contact(ps, os.path.join(SHEETS, 'c_jester_lord'), 'THE HEADLINER  %d TRIS  %.2f M TO THE HAT BELLS' % (sum(tris(o) for o in objs), bounds(objs)[1].y), cols=3,
                                  labels=['front', 'three quarter', 'his right', 'back', 'back three quarter', 'his left']))
     if 'close' in which:
         pose_arm(arm, C.evaluate('jl_idle', 0.0))
         F = R.fk(C.evaluate('jl_idle', 0.0))
-        hd = R.at(F, 'head', (0, 0.32, -0.1)); hat = R.at(F, 'head', (0, 0.78, 0.15)); col_ = R.at(F, 'spine', (0, 0.62, -0.05))
+        u = R.US; hd = R.at(F, 'head', (0, 0.32 * u, -0.1 * u)); hat = R.at(F, 'head', (0, 0.78 * u, 0.5 * u)); col_ = R.at(F, 'spine', (0, 0.84 * u, -0.05))
         kn = R.at(F, 'tibRB'); ft = R.at(F, 'footRA', (R.lens('A')[2], 0.05, 0)); mar = R.at(F, 'marotte', (0, 0, -0.08)); ab = R.add(R.at(F, 'abdo'), [0, 0.5, 0.9])
-        shots = [(hd, 8, 4, 1.25, 'the face: shut, smug, the grin'), (hd, 55, 2, 1.4, 'three quarter: the nose'), (hat, 150, 18, 1.9, 'the hat from behind: horns, bells'),
-                 (col_, 20, 22, 1.5, 'the collar of bells, the ruff'), (mar, 30, 5, 0.7, 'the marotte'), (kn, 40, 8, 1.4, 'a knee: the stockings'),
+        shots = [(hd, 8, 4, 1.45, 'the face: shut, smug, the grin'), (hd, 55, 2, 1.6, 'three quarter: the wooden nose'), (hat, -100, 8, 3.9, 'the hat from his left: raked back'),
+                 (col_, 20, 30, 1.9, 'the ruff: bells on its points'), (mar, 30, 5, 0.7, 'the marotte'), (kn, 40, 8, 1.4, 'a knee: the stockings'),
                  (ft, 25, 10, 0.9, 'a foot: the curled toe, the bell'), (ab, 140, 30, 3.6, 'the big top')]
-        ps = [snap(os.path.join(tmp, 'c%d.png' % i), p, d, e, dist, lens=50, quick=quick) for i, (p, d, e, dist, _) in enumerate(shots)]
+        ps = [snap(os.path.join(tmp, 'c%d.png' % i), p, d, e, dist, lens=50, samples=32, quick=quick) for i, (p, d, e, dist, _) in enumerate(shots)]
         out.append(rpkit.contact(ps, os.path.join(SHEETS, 'c_jester_lord_close'), 'THE HEADLINER  CLOSE UP', cols=4, labels=[s[4] for s in shots]))
     pose_arm(arm, {})
     rpkit.colour_preview([m for o in objs for m in o.data.materials if m and m.use_nodes], on=False)
@@ -883,6 +940,7 @@ def main():
     if arg('only-check'): return
     if not arg('no-ao'):
         rpkit.bake_ao(objs + [st], dist=0.3, samples=int(arg('ao-samples') or 12), lo=0.5); lap('ao')
+    lift_ao(objs[1], bj.face_tag, ('ruff', 'ruff edge'))
     for o in objs + [st]:
         if 'AO' in o.data.color_attributes:
             a_ = np.empty(len(o.data.loops) * 4, np.float32); o.data.color_attributes['AO'].data.foreach_get('color', a_); a_ = a_.reshape(-1, 4)[:, 0]
@@ -895,7 +953,7 @@ def main():
         lod = bl.to_object(mats); limit4(lod); skin_to(lod, arm)
         print('JF_FAR %d tris, %d pieces' % (tris(lod), len(bl.pieces)), 'flipped', getattr(bl, 'flipped', []))
         print('   JF_WHERE', ', '.join('%s %d' % e for e in bl.tally()[:14]))
-        if not arg('no-ao'): rpkit.bake_ao([lod], dist=0.3, samples=8, lo=0.5)
+        if not arg('no-ao'): rpkit.bake_ao([lod], dist=0.3, samples=8, lo=0.5); lift_ao(lod, bl.face_tag, ('ruff',))
         rpkit.final_colour(lod); trim_slots(lod)
     if arg('qa'):
         rpkit.qa('whole', objs, eps=0.0008, tol=0.006, quiet=not arg('qa-warn'))
