@@ -5,7 +5,7 @@
 // each opens a small picker with the same choices (and the same saved setting) as CUSTOMIZE > LOADOUT > ZOMBIES, and
 // says something about what you picked. nothing new on the server: it's your zombies loadout (shared/zombies.js).
 import * as THREE from 'three';
-import { buildCharacter, buildWeapon, buildProjectile } from '../models.js';
+import { buildCharacter, buildWeapon, buildProjectile, freeTree } from '../models.js';
 import { idlePose } from '../loco.js';
 import { WEAPONS, ITEMS, ITEM_ORDER } from '/shared/weapons.js';
 import { ZM_PISTOLS, ZM_PASSIVES, zmValidLoadout } from '/shared/zombies.js';
@@ -72,14 +72,14 @@ export function build(L) {
   const desk = new THREE.Group(); desk.position.set(-8.2, 0, -6.8); desk.rotation.y = NPC.deb.yaw; root.add(desk);
   L.box(desk, 2.4, 0.9, 1, wood, 0, 0.45, 0); L.box(desk, 2.6, 0.08, 1.2, L.mat(0x3a2a1a, 0.6), 0, 0.92, 0);
   L.box(desk, 0.4, 0.06, 0.3, L.mat(0xffffff, 0.8), -0.6, 0.98, 0); L.box(desk, 0.4, 0.1, 0.3, L.mat(0xffffff, 0.8), -0.62, 1.02, 0.05);
-  const stamp = L.box(desk, 0.12, 0.2, 0.12, L.mat(0xd0202a, 0.4), 0.5, 1.06, 0);
+  let stamp = L.box(desk, 0.12, 0.2, 0.12, L.mat(0xd0202a, 0.4), 0.5, 1.06, 0), stampY = 1.06;
   L.box(desk, 0.3, 0.32, 0.08, L.mat(0x2a2a2a, 0.4), 0.9, 1.1, -0.3);
   solid(-9.6, -8.2, -6.8, -5.4, 0.95);
   const ctr = new THREE.Group(); ctr.position.set(0, 0, -9.2); root.add(ctr);
   L.box(ctr, 4, 1.05, 0.9, L.mat(0x4a3a2a, 0.7), 0, 0.52, 0); L.box(ctr, 4.2, 0.08, 1.05, L.mat(0x1a1612, 0.5, 0.3), 0, 1.08, 0);
   solid(-2.1, -9.7, 2.1, -8.7, 1.1);
   const peg = L.mat(0xc8a878, 0.8); peg.map = pegTex(L);
-  flat(L.box(root, 5, 2.6, 0.1, peg, 0, 2.6, -13.9));
+  const pegG = new THREE.Group(); pegG.position.set(0, 0, -13.9); root.add(pegG); flat(L.box(pegG, 5, 2.6, 0.1, peg, 0, 2.6, 0));
   Object.keys(ZM_PISTOLS).forEach((id, i) => { try { const w = buildWeapon(id); w.scale.setScalar(2.2); w.rotation.y = Math.PI / 2; w.position.set(-1.8 + i * 0.9, 2.6 + (i % 2) * 0.5, -13.75); root.add(w); } catch { /* (no model) */ } });
   const pile = new THREE.Group(); pile.position.set(9.6, 0, -7.8); root.add(pile);
   for (const [x, y, z, r] of [[0, 0, 0, 0.1], [1.25, 0, 0.2, -0.2], [0.6, 1.2, 0.1, 0.3], [-1.1, 0, 0.6, 0.4]]) { const c = L.box(pile, 1.2, 1.2, 1.2, wood, x, y + 0.6, z); c.rotation.y = r; }
@@ -105,12 +105,23 @@ export function build(L) {
   solid(12.3, 8.3, 14.7, 9.7, 1.4);
   const radio = new THREE.Group(); radio.position.set(-6.6, 1.0, -6.4); root.add(radio);
   L.box(radio, 0.5, 0.3, 0.2, L.mat(0x8a2a2a, 0.4), 0, 0, 0); L.cyl(radio, 0.08, 0.08, 0.02, L.mat(0x111111), 0.12, 0, 0.11, 10); L.cyl(radio, 0.01, 0.01, 0.4, steel, -0.18, 0.3, 0, 4);
-  for (const [x, z] of [[4, 6], [5.3, 6.2]]) { L.box(root, 1.2, 0.15, 1.2, wood, x, 0.08, z); } solid(3.4, 5.4, 5.9, 6.8, 0.16);
+  const palG = new THREE.Group(); root.add(palG); for (const [x, z] of [[4, 6], [5.3, 6.2]]) { L.box(palG, 1.2, 0.15, 1.2, wood, x, 0.08, z); } solid(3.4, 5.4, 5.9, 6.8, 0.16);
   // string lights between the trusses, warm and a bit sad
   const bulbs = [];
   for (let i = 0; i < 18; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.08, 6, 4), L.basic([0xffe14d, 0xff4fd8, 0x39ff14][i % 3])); b.position.set(-15 + i * 1.75, 7.2 + Math.sin(i * 1.3) * 0.25, -3 + Math.cos(i * 0.7) * 1.2); b.userData.lsSee = true; root.add(b); bulbs.push(b); }
   // ---- the practice zombie: chained to a post, shuffles round it, groans. E: poke it
-  const post = L.cyl(root, 0.15, 0.18, 2.2, steel, -6, 1.1, 4, 8); post.castShadow = true; solid(-6.25, 3.75, -5.75, 4.25);
+  const postG = new THREE.Group(); postG.position.set(-6, 0, 4); root.add(postG); L.cyl(postG, 0.15, 0.18, 2.2, steel, 0, 1.1, 0, 8).castShadow = true; solid(-6.25, 3.75, -5.75, 4.25);
+  // the props, Blender-made (x_lobby_whprops: a node per prop, each where its box one stood; the boxes until it lands).
+  // the stamp keeps stamping, the radio moves onto Deb's desk
+  let radioNode = null;
+  L.glb('x_lobby_whprops', (o) => {
+    const take = (n) => { const m = o.getObjectByName(n); if (!m) return null; m.position.set(0, 0, 0); m.traverse((x) => { if (x.isMesh) { x.castShadow = true; x.receiveShadow = true; } }); return m; };
+    const into = (g, n) => { const m = take(n); if (!m) return null; freeTree(g); g.clear(); g.add(m); return m; };
+    const d = into(desk, 'desk');
+    if (d) { const st = d.getObjectByName('stamp'); if (st) { stamp = st; stampY = st.position.y; } radioNode = d.getObjectByName('radio'); freeTree(radio); radio.clear(); }
+    into(ctr, 'counter'); into(pegG, 'pegboard'); into(pile, 'crates'); into(gen, 'generator'); into(postG, 'post'); into(door, 'door');
+    const pl = take('pallet'); if (pl) { freeTree(palG); palG.clear(); for (const [x, z, r] of [[4, 6, 0.1], [5.3, 6.2, -0.2]]) { const c = pl.clone(); c.position.set(x, 0, z); c.rotation.y = r; palG.add(c); } }
+  });
   const zl = { ...DEFAULT_LOOK, skin: '#a8e6a1', hair: 'mohawk', hairColor: '#3a6a2a', top: 'tee', topColor: '#8a5a2b', bottom: 'shorts', bottomColor: '#3a3a44' };
   const zch = buildCharacter('#8a5a2b', zl); zch.root.scale.setScalar(1.2); root.add(zch.root);
   zch.root.traverse((o) => { if (o.isMesh) o.castShadow = true; });
@@ -202,7 +213,7 @@ export function build(L) {
       for (const h of hands) { h.ph += dt; h.h.rotation.y = Math.sin(h.ph * 2.3) * 0.35; h.h.rotation.x = Math.sin(h.ph * 1.7) * 0.25; h.palm.rotation.x = Math.max(0, Math.sin(h.ph * 4)) * 0.8; }
       for (const b of bulbs) b.visible = Math.random() > 0.004; // (a bulb blinks out now and then)
       gen.position.x = 13.5 + (Math.random() - 0.5) * 0.012; gen.rotation.z = (Math.random() - 0.5) * 0.004; // (the generator chugs)
-      stamp.position.y = 1.06 + Math.max(0, Math.sin(t * 3.1)) * 0.18; // (Deb stamps things)
+      stamp.position.y = stampY + Math.max(0, Math.sin(t * 3.1)) * 0.18; // (Deb stamps things)
       // the NPCs: idle, look at you when you're close, say hi once as you walk up
       for (const [k, o] of Object.entries(npcs)) {
         o.t += dt; idlePose(o.ch, o.t);
