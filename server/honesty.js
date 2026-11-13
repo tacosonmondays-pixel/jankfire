@@ -29,7 +29,7 @@ export const HON = {
   tHist: 650, // ms of the target's past positions tried (the client draws others ~110 ms back, plus the shooter's round trip: ~540 ms ping still lands)
   step: 0.6, // m: the target's past path is tried every this far (more on a long path: at most `samples` spots), not every snapshot
   samples: 16,
-  eyes: [1.6, 1.3, 0.98], // eye heights: standing, in between, crouched / sliding (the client's eye slides between them)
+  eyes: [1.6, 1.3, 1.05, 0.95], // eye heights: standing, in between, crouched, sliding (the client's eye slides between them: shared/player C)
   lead: 0.05, // s: the shooter a snapshot ahead (they fired before the next one went out)
   leadMax: 60, // m/s: the most that lead believes
   coneSlack: 0.45, // rad on top of a cone (the snapshot's look is up to a frame or two old)
@@ -37,8 +37,8 @@ export const HON = {
   looks: 300, // ms of looks kept for the cones
   aimRange: 300, aimSlack: 8, // chicken / duck: the client's aim ray is 300 m
   bounceTol: 0.12, // rad: a ricochet's bounce has to send the shot where the client says (plus the target's size, seen from the eye)
-  rays: 7500, // line-of-sight rays per player per second (2-6 us each: ~3 refused full checks). past this, that second's hits are refused
-  perHit: 2500, // rays one hit may cost (a full no takes ~2100 + a ricochet's). an honest one takes 1 (median), p99 under 100
+  rays: 7500, // line-of-sight rays per player per second (2-14 us each: ~3 refused full checks). past this, that second's hits are refused
+  perHit: 2500, // rays one hit may cost (a full no takes about this). an honest one takes 1 (median), p99 under 50
   ms: 20, hitMs: 10, // and CPU time: per player per second, per hit (a ray costs 2 us on an open map, 14 on Jankburg). an honest hit takes ~0.02 ms
 };
 const now = () => Date.now();
