@@ -4,7 +4,8 @@
 // usage: node tools/blender/mechs/hero_game.cjs <port> <outDir> <hero> [preset=3] [set=shots|turn|lod] [tag]
 //   (start a server after the glb is in public/models: it lists the models when it boots)
 //   writes <hero>_<preset><tag>_<shot>.jpg and <hero>_<preset><tag>.jpg (all of them on one sheet)
-//   set turn: a turnaround (8 angles, idle); set lod: the near model over its far LOD at 8, 16 and 30 m
+//   set turn: a turnaround (8 angles, idle); set lod: the near model over its far LOD at 8, 16 and 30 m;
+//   set burst: the game's mechBurst on it (destroyed: the debris), at 0.15, 0.5 and 1.1 s
 const { chromium } = require('playwright');
 const fs = require('fs'), path = require('path');
 const { execFileSync } = require('child_process');
@@ -41,7 +42,8 @@ const TALL = { wrecking: 2.4, trolley: 1.2 }[hero] || 2.6; // (where to look: ab
 const turn = () => Array.from({ length: 8 }, (_, i) => { const a = i * Math.PI / 4, r = TALL * 3.6; return [`turn${i}`, `${i * 45} degrees`, 'idle', 0.0, [Math.sin(a) * r, TALL * 0.95, Math.cos(a) * r], [0, TALL * 0.92, 0], 50]; });
 const lod = () => [8, 16, 30].flatMap((d) => [false, true].map((f) => [`${f ? 'far' : 'near'}${d}`, `${f ? 'far LOD' : 'near model'} at ${d} m`, 'idle', 0.0, [-d * 0.42, TALL * 0.8, d * 0.91], [0, TALL * 0.85, 0], 40, 0, false, f]))
   .sort((a, b) => (a[9] - b[9]));
-const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
+const burst = () => [0.15, 0.5, 1.1].map((t) => [`burst${t}`, `destroyed: mechBurst, ${t} s`, 'idle', 0.0, [-7.5, TALL * 1.2, 9.5], [0, TALL * 0.7, 0], 55, 0, false, null, t]);
+const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SET === 'burst' ? burst() : SHOTS[hero];
 (async () => {
   const b = await chromium.launch({ args: ['--use-gl=swiftshader', '--enable-unsafe-swiftshader', '--mute-audio'] });
   const pg = await b.newPage({ viewport: { width: 1280, height: 720 } }), errs = [];
@@ -79,6 +81,7 @@ const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
     let last = performance.now();
     const tick = () => { const n = performance.now(), dt = Math.min(0.1, (n - last) / 1000); last = n; inst.t += dt; inst.mixer.update(window.__run ? dt : 0); look.lookTick(inst, {}, dt); requestAnimationFrame(tick); };
     tick();
+    const mm = await import('/js/mechmodel.js'); window.__burst = () => { inst.root.visible = true; mm.mechBurst(inst, [0, 0, 0]); };
     window.__show = (clip, t, lift, run, force) => {
       if (inst.look) inst.look.lodForce = force == null ? null : !!force;
       inst.mixer.stopAllAction(); const act = inst.mixer.clipAction(inst.clips[clip]); act.reset(); act.setLoop(THREE.LoopOnce, 1); act.clampWhenFinished = true; act.play();
@@ -91,9 +94,11 @@ const LIST = SET === 'turn' ? turn() : SET === 'lod' ? lod() : SHOTS[hero];
   if (info.err) { console.log(info.err); await b.close(); process.exit(1); }
   await sleep(4000); // (shaders compile on first sight: software GL is slow)
   const shots = [];
-  for (const [name, cap, clip, t, e, tg, fov, lift = 0, run = false, force = null] of LIST) {
+  let burstAt = 0;
+  for (const [name, cap, clip, t, e, tg, fov, lift = 0, run = false, force = null, bt = null] of LIST) {
     await pg.evaluate(([clip, t, lift, run, cam, force]) => { window.__show(clip, t, lift, run, force); window.__cam = cam; }, [clip, t, lift, run, { e: [P[0] + e[0], P[1] + e[1], P[2] + e[2]], t: [P[0] + tg[0], P[1] + tg[1] + lift, P[2] + tg[2]], fov }, force]);
-    await sleep(run ? 700 : 2200);
+    if (bt != null) { if (!burstAt) { await sleep(2200); await pg.evaluate(() => window.__burst()); burstAt = Date.now(); } await sleep(Math.max(0, bt * 1000 * 6 - (Date.now() - burstAt))); } // (software GL runs ~6x slow: game time)
+    else await sleep(run ? 700 : 2200);
     if (run) await pg.evaluate(() => { window.__run = false; });
     const f = path.join(outDir, `${hero}_${PR}${TAG}_${name}.jpg`); await pg.screenshot({ path: f, type: 'jpeg', quality: 88, timeout: 180000 }); shots.push([f, cap]);
   }

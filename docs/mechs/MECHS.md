@@ -104,7 +104,9 @@ call, `docs/mechs/RESEARCH.md`), cut onto the rig and painted by `tools/blender/
   `{ near, far, rigid: true }`. Draws = its materials (paint, trim, the glows, the decal sheets) + one ink hull.
   The game: `buildMech` clones it with its skeleton (SkeletonUtils, as it already did); mechlook (opt-in on
   `meta.skinned`) draws one skinned ink hull from the far LOD, sprays onto the slot joint's own triangles (bind pose)
-  and hangs them on the joint, and turns frustum culling off for it (its parts fly about). Rigid heroes are untouched.
+  and hangs them on the joint, and turns frustum culling off for it (its parts fly about). `lookGibs(inst)` gives
+  `mechBurst` one posed piece per joint (the skinned mesh cut by joint once, cached), so it still blows apart.
+  Rigid heroes are untouched.
 
 ## Clips (all 30 fps; three.js AnimationMixer by name)
 - "hold last frame": play it LoopOnce with `clampWhenFinished = true`.
