@@ -73,6 +73,7 @@ import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
 import { installLobby } from './lobby.js'; // mode lobbies: the countdown before a match
 import { installWeather } from './weather.js'; // rain and co: the map's weather timeline, sent to everyone (look only)
+import { installPings } from './pings.js'; // the big map's pings: relayed to your side only
 import { LOBBY } from '../shared/lobby.js';
 import './env.js'; // .env: read after the modules above (as it was in server.js), before the knobs below
 
@@ -4059,6 +4060,7 @@ installGavel(Room, { now, send, raycast, r2, eyeOf, lookOf, norm, vec3, center }
 installReset(Room, { now, send }); // RESET (respawn yourself) in training / co-op / quick play
 installStoryRef(Room); // story rooms (before installModeStats, which stays last)
 installWeather(Room, { now, send, force: WX_FORCE }); // the weather timeline (server/weather.js: wraps tick + addHuman)
+installPings(Room, { now, send }); // the big map's pings (server/pings.js)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats

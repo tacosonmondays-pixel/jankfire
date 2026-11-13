@@ -31,6 +31,8 @@ const BTNS = [
   ['scores', 'scores', 'TAB', 114, 26, 36, { top: 1 }],
   ['spray', 'spray', 'SPRAY', 158, 26, 36, { top: 1 }],
   ['auto', '', 'AUTO', 202, 26, 36, { top: 1 }],
+  ['map', 'map', 'MAP', 246, 26, 36, { top: 1 }],   // the big map (tap it to ping)
+  ['ping', 'ping', 'PING', 290, 26, 36, { top: 1 }], // ping where you look
 ];
 
 export function initTouch(api) {
@@ -48,7 +50,7 @@ export function initTouch(api) {
     fire: 'FIRE', aim: 'AIM', parry: 'AIM', jump: 'JUMP', crouch: 'SLIDE', grapple: 'HOOK', reload: 'RELOAD', use: 'USE', item: 'YOUR ITEM',
     streak1: 'ITS BOX', streak2: 'ITS BOX', streak3: 'ITS BOX', slot1: 'SLOT 1', slot2: 'SLOT 2', slot3: 'STAB', slot4: 'SLOT 4', lastSlot: 'SWAP',
     scores: 'TAB', brScores: 'TAB', chat: 'CHAT', menu: 'II', pause: 'II', buy: 'BUY', drop: 'DROP', ready: 'READY UP', spray: 'SPRAY', scythe: 'RIFLE', dash: 'DASH',
-    skip: 'TAP', forward: 'STICK UP',
+    skip: 'TAP', forward: 'STICK UP', map: 'MAP', ping: 'PING',
   };
   // ---------------------------------------------------------- the layer
   const ui = document.createElement('div');
