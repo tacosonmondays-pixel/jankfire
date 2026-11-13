@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.42', date: '2026-11-13', title: 'SIGN IT OUT', items: [
+    "the quick play / plant & defuse hangar got a jumbotron (pink bezel, LIVE light, a GG EZ ticker) and a proper armory rack for your guns, with a SIGN IT OUT clipboard nobody signs.",
+  ] },
   { v: '11.41', date: '2026-11-13', title: 'TAKE A NUMBER', items: [
     "the zombies warehouse lobby got real furniture: deb's tanker desk with a rotary phone and a TAKE A NUMBER dispenser, gus's glass gun counter (NO REFUNDS), marge's crates, a generator that says DO NOT KICK (with a boot print on it), and a door marked EXIT (LIES).",
   ] },
