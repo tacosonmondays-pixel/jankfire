@@ -358,7 +358,8 @@ export function trDrive(h, wx, wz, dt, top, drift, ground, pull) {
     if (wl) {
       const al = h[0] * wx + h[1] * wz, g = Math.exp(-(drift ? F.drift.grip : F.grip) * dt);
       h[0] = al * wx + (h[0] - al * wx) * g; h[1] = al * wz + (h[1] - al * wz) * g;
-      if (al < top) { const a = Math.min(top - al, F.accel * top * dt); h[0] += a * wx; h[1] += a * wz; }
+      const side = Math.hypot(h[0] - al * wx, h[1] - al * wz), room = Math.sqrt(Math.max(0, top * top - side * side)); // (the slide counts: a drift never goes faster than top)
+      if (al < room) { const a = Math.min(room - al, F.accel * top * dt); h[0] += a * wx; h[1] += a * wz; }
     } else if (hs > 0) { const k = Math.max(0, hs - Math.max(hs, 3) * F.fric * (drift ? 0.4 : 1) * dt) / hs; h[0] *= k; h[1] *= k; }
     hs = Math.hypot(h[0], h[1]);
     if (hs > top) { const k = Math.max(top, hs - 16 * dt) / hs; h[0] *= k; h[1] *= k; }
