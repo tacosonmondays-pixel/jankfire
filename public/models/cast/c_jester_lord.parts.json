@@ -79,14 +79,14 @@
    "c": [
     0.0,
     1.9138,
-    0.0538
+    0.0546
    ],
    "h": [
-    2.4011,
+    2.2114,
     1.8918,
-    2.3912
+    2.2
    ],
-   "tris": 4222,
+   "tris": 3178,
    "skinned": true,
    "note": "the far model (past 34 m): both halves decimated together, still skinned"
   }

@@ -151,10 +151,10 @@ def leg(b, s, p, stump=False):
     # the shoe: black patent down to the floor, then the curled toe (up, then out), the bell hanging off its tip
     cb, sb = math.cos(R.BETA), math.sin(R.BETA)
     def fpt(out, up): return jl(ft, ((l3 + out * k * cb - up * k * sb), (out * k * sb + up * k * cb), 0))
-    b.piece(b.tube([jl(ft, (0.03, 0, 0)), jl(ft, (l3 * 0.5, 0, 0)), jl(ft, (l3 - 0.01, 0, 0))], [0.05 * k, 0.042 * k, 0.036 * k], 8, 'lacquer', BLK, ft), 'shoe')
+    b.piece(b.tube([jl(ft, (0.03 if not b.lod else -0.08, 0, 0)), jl(ft, (l3 * 0.5, 0, 0)), jl(ft, (l3 - 0.01, 0, 0))], [0.05 * k, 0.042 * k, 0.036 * k], 8, 'lacquer', BLK, ft), 'shoe')   # (far: reaching up into the tibia, no ankle ball)
     toe = [fpt(o, u) for o, u in R.TOE_PATH]
     toe[0] = jl(ft, (l3 - 0.03, 0, 0))
-    b.piece(b.tube(toe, [0.036 * k, 0.034 * k, 0.03 * k, 0.025 * k, 0.019 * k, 0.012 * k], 8, 'satin', YEL if alt else PINK, ft), 'toe')
+    if not b.lod: b.piece(b.tube(toe, [0.036 * k, 0.034 * k, 0.03 * k, 0.025 * k, 0.019 * k, 0.012 * k], 8, 'satin', YEL if alt else PINK, ft), 'toe')
     if not b.lod: b.piece(b.ball(toe[-1], 0.017 * k, 'brass', ONE, ft, seg=5, rings=3), 'toe knob')
     if not b.lod: b.piece(b.bell(JP(bl) - Vector((0, 0.012 * k, 0)), 0.064 * k, bl), 'foot bell')
 
@@ -336,7 +336,7 @@ def head(b, M, k, wmap):
             pts.append(Vector((sx * ux * EGG_R[0] * cheek * 1.01, y, HOOD_Z * 1.0)))
         if not b.lod: b.piece(b.tube([P(q) for q in pts], 0.011 * k, 5, 'satin', BLK, w('head'), tip=(True, True)), 'hood piping')
     # ---- the chin (the dummy's jaw): a shell over the egg below the lower lip line, between the two slot lines
-    if not mini:
+    if not mini and not b.lod:
         rows, nrm = [], []
         for j in range(7):
             rr, nn = [], []
@@ -432,7 +432,7 @@ def head(b, M, k, wmap):
         for i in range(NB):
             ph = 2 * math.pi * (i + 0.5) / NB; p, n = band_pt(ph, yb(ph) + dy, 0.0); rr.append(P(p)); nn.append(n)
         rows.append(rr); nrm.append(nn)
-    b.piece(b.strip(rows, 'satin', w('head'), thick=(0.02 * k, -0.012 * k), lattice=(BLK, WHT), normals=nrm, closed=True), 'hat band')
+    if not b.lod: b.piece(b.strip(rows, 'satin', w('head'), thick=(0.02 * k, -0.012 * k), lattice=(BLK, WHT), normals=nrm, closed=True), 'hat band')
     # the cap: rings from just under the band's top edge up to its crown, leaning a little forward like the sketch
     NC, NR = (24, 9) if not (mini or b.lod) else (10, 4)
     ringsv = []
@@ -465,7 +465,7 @@ def head(b, M, k, wmap):
         b.piece(b.tube(pts, [r * k for r in R.HORN_RAD], 12 if not mini else 6, 'satin', PINK if side == 'R' else YEL, None, tip=(False, False), wfn=hw), 'horn')
         tip = pts[-1]
         if not b.lod: b.piece(b.ball(tip, 0.022 * k, 'brass', ONE, w('bellH' + side), seg=8, rings=5), 'horn knob')
-        b.piece(b.bell(tip - Vector((0, 0.014 * k, 0)), 0.058 * k, w('bellH' + side), seg=8 if not mini else 6, rings=6 if not mini else 4, slot=not mini), 'horn bell')
+        if not b.lod: b.piece(b.bell(tip - Vector((0, 0.014 * k, 0)), 0.058 * k, w('bellH' + side), seg=8 if not mini else 6, rings=6 if not mini else 4, slot=not mini), 'horn bell')
 
 
 def unmap(M, k, pw):
@@ -891,7 +891,7 @@ def main():
     for o in objs + [st]: trim_slots(o)
     lod = None
     if not arg('no-lod'):
-        bl = Build('part_thorax__lod', q=0.34); spider(bl); jester(bl)
+        bl = Build('part_thorax__lod', q=0.26); spider(bl); jester(bl)
         lod = bl.to_object(mats); limit4(lod); skin_to(lod, arm)
         print('JF_FAR %d tris, %d pieces' % (tris(lod), len(bl.pieces)), 'flipped', getattr(bl, 'flipped', []))
         print('   JF_WHERE', ', '.join('%s %d' % e for e in bl.tally()[:14]))

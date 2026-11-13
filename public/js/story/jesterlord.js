@@ -188,7 +188,7 @@ const mkF = (name) => function f(c, t) {
   const P = compose(r, name, t, dt);
   apply(r, P); dangle(r, P, dt);
   // the web shows from the spring up to the drop; the stump whenever the leg is away from its socket
-  const w = name === 'jl_hang' ? ss((t - 0.7) / 0.45) : name === 'jl_drop' ? 1 - ss((t - 0.2) / 0.3) : 0;
+  const w = name === 'jl_hang' ? ss((t - 1.25) / 0.45) : name === 'jl_drop' ? 1 - ss((t - 0.2) / 0.3) : 0;
   if (w > 0.01 || r.web) web(r, w);
   stump(r, Math.abs(P[LEG_OFF + '.px'] ?? 0) + Math.abs(P[LEG_OFF + '.py'] ?? 0) + Math.abs(P[LEG_OFF + '.pz'] ?? 0) > 0.03);
   marksAndFace(r, name, t);
@@ -243,10 +243,10 @@ const PROGRAM = [
   ['jl_bow', 4.0, null, 'THE BOW · the whole spider curtsies'],
   ['jl_walk', 3.0, 'walkIn', 'THE SCUTTLE · four legs at a time, like a real spider'],
   ['jl_idle', 2.6, 'walkOut', 'BACK TO HIS MARK'],
-  ['jl_hang', 4.6, null, 'UP INTO THE WEB · just hanging around'],
-  ['jl_drop', 2.8, null, 'AND DOWN · TA-DA'],
+  ['jl_hang', 5.0, null, 'UP INTO THE WEB · just hanging around'],
+  ['jl_drop', 3.0, null, 'AND DOWN · TA-DA'],
   ['jl_leg_off', 5.4, null, 'LEG DAY CANCELLED · his eyes open (once)'],
-  ['jl_leg_back', 3.0, null, 'IT SCREWS BACK ON · he is a puppet'],
+  ['jl_leg_back', 3.4, null, 'IT SCREWS BACK ON · he is a puppet'],
 ];
 let PV = null, pvWait = 0;
 if (PREV && typeof window !== 'undefined') kick();

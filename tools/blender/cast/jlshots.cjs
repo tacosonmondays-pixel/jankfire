@@ -129,7 +129,7 @@ const ROOT = path.join(__dirname, '..', '..', '..');
     await pg.evaluate(() => { const X = window.JLX, { THREE } = X; X.clear(0xffffff);
       const black = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const mk = (o) => { const sc = new THREE.Scene(); sc.background = new THREE.Color(0xffffff); X.G.scene = sc; const J = X.jester(o); J.L.face.root.visible = false; sc.add(J.c.root); sc.overrideMaterial = black; return sc; };
-      X.cell(0, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-3.2, 2.85, -0.4], [0, 2.85, -0.4], 30), '', 'his head from his left, like the sketch');
+      X.cell(0, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-5.6, 2.95, -0.45], [0, 2.95, -0.45], 30), '', 'his head from his left, like the sketch');
       X.cell(1, 4, 1, mk({ clip: 'jl_idle', t: 0.3 }), X.cam([-30, 1.9, 0.2], [0, 1.9, 0.2], 10.5), '', 'from his left at 30 m, enlarged');
       X.cell(2, 4, 1, mk({ clip: 'jl_idle', t: 0.3, far: true }), X.cam([0, 1.9, -34], [0, 1.9, 0.2], 9.5), '', 'the far model (past 34 m), front, enlarged');
       const s3 = mk({ clip: 'jl_idle', t: 0.3 }); const M = X.other('mannequin', 1.8); M.ch.root.position.set(3.2, 0, 0); s3.add(M.ch.root); const fl = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshBasicMaterial({ color: 0xdddddd })); fl.rotation.x = -Math.PI / 2; s3.add(fl); s3.overrideMaterial = null;

@@ -72,16 +72,24 @@ ARM_R = ['arm.x', 'arm.y', 'arm.z']; FORE_R = ['foreR.x', 'foreR.z', 'foreR.y'];
 ARM_L = ['armL.x', 'armL.y', 'armL.z']; FORE_L = ['foreL.x', 'foreL.z', 'foreL.y']; HAND_L = ['handL.x', 'handL.y', 'handL.z']
 
 
-def reach(pose, side, elbow, wrist, fingers=None, stick_up=None, name=''):
+def reach(pose, side, elbow, wrist, fingers=None, stick_up=None, name='', fresh=False):
     """an arm onto an elbow spot and a wrist spot (world), the fingers (the hand's -y) along `fingers`, or (the left)
     the marotte's stick (the hand's -z) along `stick_up`"""
     A, Fo, H = (ARM_R, FORE_R, HAND_R) if side == 'R' else (ARM_L, FORE_L, HAND_L)
     arm, fore, hand = ('arm', 'foreR', 'handR') if side == 'R' else ('armL', 'foreL', 'handL')
+    if fresh: pose = {k: v for k, v in pose.items() if not k.startswith((arm + '.', fore + '.', hand + '.'))}   # (solve from the arm hanging: the stance's bend can trap the search)
     p = put(pose, A, fore, (0, 0, 0), elbow, name=name + ' elbow')
     p = put(p, A + Fo, hand, (0, 0, 0), wrist, name=name + ' wrist', reg={c: 0.05 for c in A})
     if fingers is not None: p = put(p, H, hand, (0, -0.1, 0), R.add(wrist, R.scl(R.unit(fingers), 0.1)), ndir=(0, -1, 0), nwant=R.unit(fingers), name=name + ' hand')
     if stick_up is not None: p = put(p, H + [Fo[2]], hand, (0, 0, 0), wrist, ndir=(0, 0, -1), nwant=R.unit(stick_up), w_n=1.0, name=name + ' stick')
     return p
+
+
+def reach_sp(pose, side, elbow, wrist, fingers=None, stick_up=None, name='', fresh=False):
+    """reach() with the elbow and wrist given in the spine's frame (they ride with him when the spider lurches)"""
+    F = R.fk(pose); Rs = F['spine'][0]
+    return reach(pose, side, R.at(F, 'spine', elbow), R.at(F, 'spine', wrist), fingers=R.mv(Rs, fingers) if fingers else None,
+                 stick_up=R.mv(Rs, stick_up) if stick_up else None, name=name, fresh=fresh)
 
 
 def freeze(p, pre=('arm', 'fore', 'hand')):
@@ -118,7 +126,28 @@ def foot_up(k, h, fwd=0.0, out=0.0):
 
 
 # ------------------------------------------------------------------------------------------------ clip plumbing
+def unwrap(keys, joints):
+    """the same turn has many euler spellings: give each key the one nearest the key before it, so a tumbling leg
+    turns the short way between keys instead of whipping round (an euler that wraps past pi spun it in one frame)"""
+    out = []; prev = {}
+    for k in keys:
+        t, p = k[0], dict(k[1])
+        for j in joints:
+            e = [p.get(j + '.x', 0.0), p.get(j + '.y', 0.0), p.get(j + '.z', 0.0)]
+            if j in prev:
+                q = prev[j]; best = None
+                for base in (e, [e[0] + math.pi, math.pi - e[1], e[2] + math.pi]):
+                    c = [base[i] + TAU * round((q[i] - base[i]) / TAU) for i in range(3)]
+                    d = sum((c[i] - q[i]) ** 2 for i in range(3))
+                    if best is None or d < best[0]: best = (d, c)
+                e = best[1]
+            prev[j] = e; p[j + '.x'], p[j + '.y'], p[j + '.z'] = e
+        out.append((t, p) + tuple(k[2:]))
+    return out
+
+
 def clip(name, keys, length=None, loop=None, marks=(), face=(), osc=(), note='', nolag=False):
+    keys = unwrap(keys, [n for n in R.ORDER if n.startswith('fem') and any(n + '.x' in k[1] for k in keys)])   # (every femur turns the short way)
     ks = []
     for k in keys:
         t, p = k[0], k[1]; e = k[2] if len(k) > 2 else 'ss'
@@ -160,8 +189,13 @@ def weave(base, events, loop=None, solve=True):
 
 W6 = TAU / 6.0
 FACE_IDLE = [(0, 'headliner')]
-HAT_LIFE = [('hatR.z', 0.03, W6, 0.0), ('hatRb.z', 0.05, W6, -0.7), ('hatL.z', -0.03, W6, 0.6), ('hatLb.z', -0.05, W6, -0.1),
-            ('hatR.x', 0.02, W6 * 2, 1.0), ('hatL.x', 0.02, W6 * 2, 2.1), ('collar.y', 0.03, W6 * 2, 0.3), ('collar.x', 0.02, W6 * 3, 1.2)]
+def hat_life(W):
+    """the horns sway and the collar's bells shiver, on a loop's own beat W"""
+    return [('hatR.z', 0.03, W, 0.0), ('hatRb.z', 0.05, W, -0.7), ('hatL.z', -0.03, W, 0.6), ('hatLb.z', -0.05, W, -0.1),
+            ('hatR.x', 0.02, W * 2, 1.0), ('hatL.x', 0.02, W * 2, 2.1), ('collar.y', 0.03, W * 2, 0.3), ('collar.x', 0.02, W * 3, 1.2)]
+
+
+HAT_LIFE = hat_life(W6)
 
 # ------------------------------------------------------------------------------------------------ idle (6 s loop)
 # he holds court: the big top breathes, his head tips one way then the other (smug), the marotte nods and glances at
@@ -203,7 +237,7 @@ talk_ev = [(0.0, {**armR(present), 'jaw.x': 0.25, 'spine.x': -0.06, 'head.x': 0.
            (4.8, {**armR(present), 'jaw.x': 0.25, 'spine.x': -0.06, 'head.x': 0.04, 'browR.py': 0.03, 'browL.py': 0.03})]
 talk_ev += _tap(('L', 'A'), 0.3, n=2, dt=0.3, h=0.1) + _tap(('L', 'A'), 2.7, n=2, dt=0.3, h=0.1)
 clip('jl_talk', weave({}, talk_ev, loop=LT), loop=LT, face=[(0, 'headliner_talk')],
-     osc=HAT_LIFE[:4] + [('jaw.x', 0.12, WT * 13, 0.0), ('jaw.x', 0.06, WT * 7, 1.3), ('jaw.x', 0.06, WT, -1.2), ('marotte.x', 0.22, WT * 6, 0.0), ('head.x', 0.03, WT * 5, 0.5),
+     osc=hat_life(WT)[:4] + [('jaw.x', 0.12, WT * 13, 0.0), ('jaw.x', 0.06, WT * 7, 1.3), ('jaw.x', 0.06, WT, -1.2), ('marotte.x', 0.22, WT * 6, 0.0), ('head.x', 0.03, WT * 5, 0.5),
                          ('spine.py', 0.008, WT * 4, 0.0), ('abdo.x', -0.02, WT * 2, 0.3), ('collar.y', 0.04, WT * 4, 0.2), ('handL.z', 0.03, WT * 3, 1.0)],
      marks=[(0.0, 'ladies'), (0.9, 'gentlemen'), (1.9, 'whatever'), (2.9, 'you are')],
      note='the showman talks: the right hand presents, sweeps, comes to his chest and points up; the jaw flaps like a dummy\'s, the marotte nods along, a front foot keeps the beat')
@@ -215,24 +249,24 @@ clip('jl_talk', weave({}, talk_ev, loop=LT), loop=LT, face=[(0, 'headliner_talk'
 flour = reach(P(), 'R', [0.72, 2.32, -0.22], [0.92, 2.62, -0.40], fingers=[0.3, 0.9, -0.2], name='bow: the flourish')
 flour = reach(flour, 'L', [-0.70, 2.02, -0.10], [-1.02, 2.10, -0.20], stick_up=[-0.4, 1, 0], name='bow: marotte flung out')
 dn0 = P(armR(flour), {k: v for k, v in flour.items() if k.startswith(('armL', 'foreL', 'handL'))},
-        {'body.py': -0.30, 'body.x': -0.16, 'abdo.x': -0.32, 'spine.x': -0.86, 'head.x': -0.35, 'head.z': 0.0, 'hatR.x': -0.25, 'hatL.x': -0.25, 'hatRb.x': -0.2, 'hatLb.x': -0.2, 'collar.x': -0.2, 'x.look': 0.0})
+        {'body.py': -0.24, 'body.x': -0.12, 'abdo.x': -0.32, 'spine.x': -0.58, 'head.x': 0.22, 'head.z': 0.06, 'hatR.x': -0.25, 'hatL.x': -0.25, 'hatRb.x': -0.2, 'hatLb.x': -0.2, 'collar.x': -0.2, 'jaw.x': 0.12, 'x.look': 0.0})
 dn = dn0
 F_ = R.fk(dn); belly = R.at(F_, 'spine', (0.0, 0.30, -0.22)); el = R.at(F_, 'spine', (0.40, 0.32, -0.1))
 dn = put(dn, ARM_R, 'foreR', (0, 0, 0), el, name='bow: elbow')
 dn = put(dn, ARM_R + FORE_R + HAND_R, 'handR', (0, 0, 0), belly, name='bow: the hand across his belly')
 dn = put(dn, ARM_L, 'foreL', (0, 0, 0), R.at(F_, 'spine', (-0.60, 0.30, 0.25)), name='bow: marotte arm out back')
 dn = put(dn, ARM_L + FORE_L, 'handL', (0, 0, 0), R.at(F_, 'spine', (-0.85, 0.12, 0.55)), name='bow: marotte out back')
-low = P(dn, {'body.py': -0.34, 'spine.x': -0.92, 'head.x': -0.42})
+low = P(dn, {'body.py': -0.28, 'spine.x': -0.66, 'head.x': 0.28, 'browR.py': 0.04, 'browL.py': 0.04})
 tada = reach(P(), 'R', [0.66, 2.36, -0.20], [0.98, 2.80, -0.30], fingers=[0.3, 1.0, -0.3], name='bow: ta-da right')
 tada = reach(tada, 'L', [-0.66, 2.36, -0.20], [-0.92, 2.78, -0.36], stick_up=[-0.3, 1, -0.1], name='bow: ta-da left')
 tada.update({'spine.x': 0.14, 'head.x': 0.22, 'body.py': 0.06, 'abdo.x': 0.06, 'browR.py': 0.04, 'browL.py': 0.04, 'hatR.x': 0.1, 'hatL.x': 0.1})
-bow_keys = [(0.0, plant(P())), (0.55, plant(P(flour, {'spine.x': 0.1, 'head.x': 0.12, 'body.py': 0.05})), 'back'),
+bow_keys = [(0.0, plant(P())), (0.55, plant(P(flour, {'spine.x': 0.1, 'head.x': 0.12, 'body.py': 0.05})), 'ss'),
             (1.15, plant(dn, lift={('R', 'A'): 0.25, ('L', 'A'): 0.25, ('R', 'B'): 0.12, ('L', 'B'): 0.12}), 'ss'),
             (2.0, plant(low, lift={('R', 'A'): 0.28, ('L', 'A'): 0.28, ('R', 'B'): 0.14, ('L', 'B'): 0.14})),
-            (2.55, plant(tada), 'back'), (3.1, plant(tada)), (3.7, plant(P()), 'ss')]
-clip('jl_bow', bow_keys, length=3.7, marks=[(0.55, 'flourish'), (1.15, 'down'), (2.0, 'low'), (2.55, 'tada')], face=[(0, 'headliner'), (2.45, 'headliner_tada'), (3.2, 'headliner')],
+            (2.45, plant(P(tada, {'body.py': 0.1, 'spine.x': 0.2, 'head.x': 0.28})), 'ss'), (2.7, plant(tada), 'ss'), (3.1, plant(tada)), (3.7, plant(P()), 'ss')]
+clip('jl_bow', bow_keys, length=3.7, marks=[(0.55, 'flourish'), (1.15, 'down'), (2.0, 'low'), (2.45, 'tada')], face=[(0, 'headliner'), (2.45, 'headliner_tada'), (3.2, 'headliner')],
      osc=[('collar.y', 0.03, 9.0, 0.0), ('marotte.x', 0.15, 7.0, 0.0)],
-     note='the big bow: a flourish (0.55), he folds at the waist and the spider curtsies, front legs folding, the big top up behind (1.15-2.0), up into a TA-DA (2.55)')
+     note='the big bow: a flourish (0.55), he folds at the waist and the spider curtsies, front legs folding, the big top up behind (1.15-2.0), his grin still on you; up into a TA-DA (2.55)')
 
 # ------------------------------------------------------------------------------------------------ the scuttle (0.8 s loop)
 # alternating tetrapod, like a real spider: L1 R2 L3 R4 step together, then R1 L2 R3 L4. each foot is down 56% of the
@@ -277,7 +311,7 @@ fold = reach(P(), 'R', [0.40, 1.92, -0.52], [-0.14, 1.98, -0.52], fingers=[-1.0,
 fold = reach(fold, 'L', [-0.40, 1.90, -0.50], [0.12, 1.92, -0.50], stick_up=[0.2, 1.0, 0.0], name='hang: arms folded (left)')
 FOLD = {k: v for k, v in fold.items() if k.startswith(('arm', 'fore', 'hand'))}
 crouch = plant(P({'body.py': -0.42, 'body.x': 0.06, 'abdo.x': 0.12, 'spine.x': -0.18, 'head.x': -0.1, 'x.look': 0.6}))
-air = P(FOLD, {'body.py': 3.2, 'body.z': 1.9, 'spine.x': 0.1, 'x.look': 0.0, 'hatR.z': 0.2, 'hatL.z': -0.2})
+air = P(FOLD, {'body.py': 3.4, 'body.z': 2.2, 'spine.x': 0.1, 'x.look': 0.0, 'hatR.z': 0.2, 'hatL.z': -0.2})
 for s, pr in LEGS: air.update(R.leg_pose(s, pr, R.add(R.foot_home(s, pr), [0, 0.55, 0]), R.BETA + 0.3, 0.2))
 hang = P(FOLD, {'body.py': WEB_Y, 'body.z': math.pi, 'spine.x': 0.06, 'head.x': 0.12, 'x.look': 0.0, 'hatR.z': -0.1, 'hatL.z': 0.1, 'hatRb.z': -0.15, 'hatLb.z': 0.15})
 catch = P(hang, {'body.py': WEB_Y - 0.25, 'spine.x': 0.2, 'head.x': 0.3})
@@ -293,18 +327,18 @@ def web_feet(pose, pull=0.0):
     return p
 
 
-hang_keys = [(0.0, plant(P())), (0.4, crouch, 'ss'), (0.75, air, 'out'), (1.05, web_feet(catch, 0.1), 'in'), (1.4, web_feet(hang), 'ss'), (1.8, web_feet(hang))]
-clip('jl_hang', hang_keys, marks=[(0.4, 'spring'), (1.05, 'catch')], face=[(0, 'headliner'), (0.6, 'headliner_tada'), (1.6, 'headliner')],
+hang_keys = [(0.0, plant(P())), (0.4, crouch, 'ss'), (1.0, air, 'ss'), (1.6, web_feet(catch, 0.1), 'ss'), (1.95, web_feet(hang), 'ss'), (2.4, web_feet(hang))]
+clip('jl_hang', hang_keys, marks=[(0.4, 'spring'), (1.6, 'catch')], face=[(0, 'headliner'), (0.6, 'headliner_tada'), (1.8, 'headliner')],
      osc=[('body.z', 0.02, 1.6, 0.0), ('body.x', 0.012, 1.1, 1.0), ('hatRb.z', 0.06, 2.3, 0.0), ('hatLb.z', 0.06, 2.1, 1.0), ('marotte.x', 0.1, 2.0, 0.0), ('head.z', 0.03, 1.6, 0.6)],
-     note='up into the web: a crouch, a spring (0.4), he rolls over and his feet catch the web %.1f m up (1.05). held: hanging belly up, the jester head down, arms folded, a slow swing' % WEB_Y)
+     note='up into the web: a crouch, a spring (0.4), he rolls over and his feet catch the web %.1f m up (1.6). held: hanging belly up, the jester head down, arms folded, a slow swing' % WEB_Y)
 
-fall = P(FOLD, {'body.py': 1.6, 'body.z': 0.9, 'spine.x': -0.1, 'arm.z': 1.1, 'armL.z': -1.1, 'x.look': 0.0, 'hatR.z': 0.3, 'hatL.z': -0.3})
+fall = P(FOLD, {'body.py': 2.55, 'body.z': 1.1, 'spine.x': -0.1, 'arm.z': 1.1, 'armL.z': -1.1, 'x.look': 0.0, 'hatR.z': 0.3, 'hatL.z': -0.3})
 for s, pr in LEGS: fall.update(R.leg_pose(s, pr, R.add(R.foot_home(s, pr), [0, 0.7, 0]), R.BETA + 0.4, 0.25))
 land = plant(P({'body.py': -0.48, 'body.x': -0.05, 'abdo.x': 0.1, 'spine.x': -0.3, 'head.x': -0.2, 'hatR.x': -0.3, 'hatL.x': -0.3, 'collar.x': -0.2, 'x.look': 0.3}))
 bounce = plant(P(tada, {'body.py': 0.08}))
-clip('jl_drop', [(0.0, web_feet(hang)), (0.25, web_feet(P(hang, {'body.py': WEB_Y - 0.12}), 0.1), 'ss'), (0.75, fall, 'in'), (1.0, land, 'out'), (1.4, bounce, 'back'), (1.9, bounce), (2.4, plant(P()), 'ss')],
-     length=2.4, marks=[(0.25, 'let go'), (1.0, 'land'), (1.4, 'tada')], face=[(0, 'headliner'), (0.9, 'headliner_ow'), (1.3, 'headliner_tada'), (2.0, 'headliner')],
-     note='down from the web: lets go (0.25), rolls back over as he falls, lands in a squash (1.0), springs up into a TA-DA (1.4)')
+clip('jl_drop', [(0.0, web_feet(hang)), (0.25, web_feet(P(hang, {'body.py': WEB_Y - 0.12}), 0.1), 'ss'), (0.95, fall, 'in'), (1.25, land, 'lin'), (1.7, bounce, 'out'), (2.2, bounce), (2.7, plant(P()), 'ss')],
+     length=2.7, marks=[(0.25, 'let go'), (1.25, 'land'), (1.7, 'tada')], face=[(0, 'headliner'), (1.2, 'headliner_ow'), (1.6, 'headliner_tada'), (2.3, 'headliner')],
+     note='down from the web: lets go (0.25), rolls back over as he falls, lands in a squash (1.25), springs up into a TA-DA (1.7)')
 
 # ------------------------------------------------------------------------------------------------ the leg comes off
 # a shot takes his right second leg off at the hip: it flies up and out to his right, spinning, honks, lands 3 m off and
@@ -351,14 +385,19 @@ def rot_lerp(Ra, Rb, u, spin_axis=None, turns=0.0):
 
 
 R_LAND, C_LAND = lying((3.35, -1.15), 0.5)
-reel = P({'body.py': -0.16, 'body.z': -0.2, 'body.x': -0.04, 'abdo.x': 0.1, 'abdo.z': 0.12, 'spine.z': 0.14, 'spine.x': 0.08, 'head.y': -0.55, 'head.x': -0.05,
+
+
+def roll(th, drop=0.0):
+    """the spider rolls th onto his right about the thorax's middle (not the floor), and drops"""
+    return {'body.z': th, 'body.px': R.TH_Y * math.sin(th), 'body.py': R.TH_Y * (1 - math.cos(th)) - drop}
+reel = P(roll(-0.2, 0.16), {'body.x': -0.04, 'abdo.x': 0.1, 'abdo.z': 0.12, 'spine.z': 0.14, 'spine.x': 0.08, 'head.y': -0.55, 'head.x': -0.05,
           'lidR.x': 1.25, 'lidL.x': 1.25, 'browR.py': 0.06, 'browL.py': 0.06, 'jaw.x': 0.42, 'hatR.z': 0.3, 'hatL.z': -0.3, 'collar.x': 0.25, 'x.look': 0.0})
-reel = reach(reel, 'R', [0.80, 2.30, -0.10], [1.10, 2.62, -0.18], fingers=[0.4, 0.9, 0], name='leg off: right arm flies up')
-reel = reach(reel, 'L', [-0.80, 2.26, -0.12], [-1.08, 2.56, -0.22], stick_up=[-0.5, 1, 0], name='leg off: left arm flies up')
-look_down = P(reel, {'head.y': -0.8, 'head.x': -0.3, 'spine.y': -0.25, 'body.py': -0.22, 'jaw.x': 0.3})
-wobble = P(look_down, {'body.z': -0.08, 'spine.z': -0.1, 'head.y': -0.3, 'head.x': 0.0, 'jaw.x': 0.15, 'lidR.x': 1.25, 'lidL.x': 1.25})
-compose_ = reach(P({'body.py': -0.12, 'body.z': -0.1, 'abdo.z': 0.06, 'spine.z': 0.04, 'head.x': 0.05, 'head.z': 0.08, 'hatR.z': -0.05}), 'R', [0.62, 2.40, -0.12], [0.42, 2.92, -0.08], fingers=[0.2, 0.9, 0.3], name='leg off: straightens his hat')
-present7 = reach(P({'body.py': -0.1, 'body.z': -0.08, 'spine.y': -0.3, 'spine.z': 0.03, 'head.y': -0.2, 'browR.py': 0.03}), 'R', [0.74, 1.96, -0.20], [1.1, 1.84, -0.30], fingers=[0.85, -0.2, -0.3], name='leg off: presents the stump')
+reel = reach_sp(reel, 'R', [0.68, 0.74, 0.08], [0.92, 1.04, 0.0], fingers=[0.4, 0.9, 0], name='leg off: right arm flies up', fresh=True)
+reel = reach_sp(reel, 'L', [-0.68, 0.74, 0.08], [-0.9, 1.02, -0.02], stick_up=[-0.5, 1, 0], name='leg off: left arm flies up', fresh=True)
+look_down = P(reel, roll(-0.2, 0.22), {'head.y': -0.8, 'head.x': -0.3, 'spine.y': -0.25, 'jaw.x': 0.3})
+wobble = P(look_down, roll(-0.08, 0.16), {'spine.z': -0.1, 'head.y': -0.3, 'head.x': 0.0, 'jaw.x': 0.15, 'lidR.x': 1.25, 'lidL.x': 1.25})
+compose_ = reach(P(roll(-0.1, 0.12), {'abdo.z': 0.06, 'spine.z': 0.04, 'head.x': 0.05, 'head.z': 0.08, 'hatR.z': -0.05}), 'R', [0.62, 2.40, -0.12], [0.42, 2.92, -0.08], fingers=[0.2, 0.9, 0.3], name='leg off: straightens his hat')
+present7 = reach(P(roll(-0.08, 0.1), {'spine.y': -0.3, 'spine.z': 0.03, 'head.y': -0.2, 'browR.py': 0.03}), 'R', [0.74, 1.96, -0.20], [1.1, 1.84, -0.30], fingers=[0.85, -0.2, -0.3], name='leg off: presents the stump')
 present7 = reach(present7, 'L', [-0.58, 1.86, -0.30], [-0.42, 2.02, -0.62], stick_up=[0.2, 1, 0.3], name='leg off: marotte up')
 # the two legs either side step in to cover the gap
 COVER = {('R', 'A'): R.add(HOME[('R', 'A')], [0.35, 0, 0.35]), ('R', 'C'): R.add(HOME[('R', 'C')], [0.3, 0, -0.32])}
@@ -367,13 +406,13 @@ T_FLY = 1.0
 for i in range(0, 26):
     t = i * 0.04
     ue = t / T_FLY
-    k_ = min(1.0, t / 0.14); k_ = k_ * k_ * (3 - 2 * k_)
+    k_ = min(1.0, t / 0.22); k_ = k_ * k_ * (3 - 2 * k_)
     P0 = P(); base = {c: P0.get(c, 0.0) + (reel.get(c, 0.0) - P0.get(c, 0.0)) * k_ for c in set(reel) | set(P0)}
     if t > 0.5:
         k2 = min(1.0, (t - 0.5) / 0.5); k2 = k2 * k2 * (3 - 2 * k2)
         base = {c: reel.get(c, 0.0) + (look_down.get(c, 0.0) - reel.get(c, 0.0)) * k2 for c in set(reel) | set(look_down)}
     cpos = R.add([C0[j] + (C_LAND[j] - C0[j]) * ue for j in range(3)], [0, 2.1 * 4 * ue * (1 - ue), 0])
-    Rw = rot_lerp(R.I3, R_LAND, ue, spin_axis=[0.3, 0.2, 1.0], turns=2.0)
+    Rw = rot_lerp(R.I3, R_LAND, ue, spin_axis=[0.3, 0.2, 1.0], turns=1.0)
     p = P(base, leg_world(base, Rw, cpos))
     sc = min(1.0, max(0.0, (t - 0.3) / 0.4)); sc = sc * sc * (3 - 2 * sc)
     feet = {k: [HOME[k][j] + (v[j] - HOME[k][j]) * sc for j in range(3)] for k, v in COVER.items()}
@@ -385,8 +424,8 @@ def _after(t, pose, hop=0.0, wob=0.0, e='ss'):
     p = P(pose, leg_world(pose, Rw, R.add(C_LAND, [0, hop, 0])))
     return (t, plant(p, COVER), e)
 legoff_keys += [_after(1.2, look_down, 0.3, 0.25, 'out'), _after(1.4, look_down, 0.0, -0.1, 'in'), _after(1.55, look_down, 0.06, 0.04, 'out'), _after(1.7, look_down, 0.0, 0.0, 'in'),
-                _after(2.0, wobble), _after(2.35, P(wobble, {'body.z': -0.16, 'spine.z': 0.12})), _after(2.75, compose_), _after(3.3, compose_), _after(3.75, present7, e='back'), _after(4.4, present7)]
-clip('jl_leg_off', legoff_keys, marks=[(0.0, 'hit'), (0.02, 'honk'), (0.06, 'eyes'), (1.0, 'thud'), (2.0, 'reel'), (2.75, 'compose'), (3.75, 'show must go on')],
+                _after(2.0, wobble), _after(2.35, P(wobble, roll(-0.16, 0.18), {'spine.z': 0.12})), _after(2.75, compose_), _after(3.3, compose_), _after(3.75, present7, e='back'), _after(4.4, present7)]
+clip('jl_leg_off', unwrap(legoff_keys, [FM]), marks=[(0.0, 'hit'), (0.02, 'honk'), (0.06, 'eyes'), (1.0, 'thud'), (2.0, 'reel'), (2.75, 'compose'), (3.75, 'show must go on')],
      face=[(0, 'headliner_ow'), (2.6, 'headliner'), (3.6, 'headliner_tada')], nolag=False,
      osc=[('hatRb.z', 0.08, 9.0, 0.0), ('hatLb.z', 0.08, 8.0, 1.0), ('collar.y', 0.05, 11.0, 0.0)],
      note='his right second leg is shot off at the hip: it flies up and out (honk), spinning, and lands 3 m off (1.0); his eyes open, arms out; he reels (2.0), shuts his eyes, straightens his hat (2.75) and presents the stump (3.75). held on seven legs')
@@ -405,14 +444,14 @@ for i, (t, cxz, _, h) in enumerate(hops):
 # the last hop: up into the socket, a screw-in turn
 pre = P({k: v * 0.3 for k, v in present7.items() if k not in ('x.look',)}, {'x.look': 1.0})
 up_c = R.add(C0, [0.35, 0.45, 0.0])
-for t, u in ((1.75, 0.0), (1.9, 0.5), (2.05, 1.0)):
+for t, u in [(1.75 + 0.8 * i / 16, (lambda x: x * x * (3 - 2 * x))(i / 16)) for i in range(17)]:
     Rw = rot_lerp(lying((1.4, -0.55), 0.0)[0], R.I3, u, spin_axis=R.sub(C0, R.at(W0, 'thorax')), turns=1.0 * u)
     c = [up_c[j] + (C0[j] - up_c[j]) * u for j in range(3)]
-    back_keys.append((t, plant(P(pre, leg_world(pre, Rw, c)), COVER if u < 1 else None), 'lin'))
+    back_keys.append((t, plant(P(pre, leg_world(pre, Rw, c)), {k: [v[j] + (HOME[k][j] - v[j]) * u for j in range(3)] for k, v in COVER.items()}), 'lin' if u > 0 else 'ss'))
 fin = plant(P())
-back_keys += [(2.15, plant(P({'body.py': -0.08}))), (2.6, fin)]
-clip('jl_leg_back', back_keys, length=2.6, marks=[(0.1, 'stir'), (0.45, 'hop'), (1.15, 'hop'), (2.05, 'pop')], face=[(0, 'headliner'), (2.0, 'headliner_tada'), (2.5, 'headliner')],
-     note='the leg comes back (he is a puppet): it hops back to him across the floor and screws itself in (pop, 2.05)')
+back_keys += [(2.68, plant(P({'body.py': -0.08}))), (3.1, fin)]
+clip('jl_leg_back', unwrap(back_keys, [FM]), length=3.1, marks=[(0.1, 'stir'), (0.45, 'hop'), (1.15, 'hop'), (2.55, 'pop')], face=[(0, 'headliner'), (2.5, 'headliner_tada'), (3.0, 'headliner')],
+     note='the leg comes back (he is a puppet): it hops back to him across the floor and screws itself in (pop, 2.55)')
 
 LAG = [('hatRb.', 0.08), ('hatLb.', 0.08), ('hatR.', 0.04), ('hatL.', 0.04), ('collar.', 0.07), ('marotte.', 0.1), ('handR.', 0.05), ('handL.', 0.05), ('abdo.', 0.12), ('head.', 0.04), ('jaw.', 0.0)]
 
