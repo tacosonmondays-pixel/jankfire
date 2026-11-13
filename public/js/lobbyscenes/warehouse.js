@@ -12,6 +12,8 @@ import { ZM_PISTOLS, ZM_PASSIVES, zmValidLoadout } from '/shared/zombies.js';
 import { DEFAULT_LOOK } from '/shared/looks.js';
 import { net } from '../net.js';
 import { npcRig } from './npcrig.js';
+import { makeRadio } from './radio.js';
+import { musicDuck } from '../music.js';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const NPC = {
@@ -237,7 +239,16 @@ export function build(L) {
       { at: [-6, 1.6, 4], r: 3, label: () => 'POKE THE ZOMBIE', act: poke },
     ],
   };
-  const _v = new THREE.Vector3();
+  const _v = new THREE.Vector3(), _r = new THREE.Vector3();
+  let rad = null; // the radio's station (radio.js), made once the game's audio is running
+  // the radio: louder as you (or the camera) get near the desk, panned by where it sits in view; the menu music dips under it
+  function radioTick(dt, me) {
+    if (!rad) { const s = L.sfx; if (!s || !s.ac || s.ac.state !== 'running') return; rad = makeRadio(s, G); if (!rad) return; }
+    (radioNode || radio).getWorldPosition(_r);
+    const cam = L.cur().cam, dc = cam.position.distanceTo(_r), dm = me ? Math.hypot(me.pos[0] - _r.x, me.pos[1] + 1.5 - _r.y, me.pos[2] - _r.z) : dc;
+    _v.copy(_r).applyMatrix4(cam.matrixWorldInverse); // (camera space: x is right, -z is ahead)
+    musicDuck(rad.update(dt, Math.min(dc, dm), _v.x / Math.max(0.5, Math.hypot(_v.x, _v.z))));
+  }
   return {
     spots, walk, inviteH: 1.3,
     focus: { at: new THREE.Vector3(0, 1.6, -2), top: new THREE.Vector3(0, 4.5, -10), bot: new THREE.Vector3(0, 0, 6), w: 12, dir: new THREE.Vector3(0, 0.25, 1).normalize(), fov: 40 },
@@ -282,13 +293,14 @@ export function build(L) {
       if (zom.flail > 0) zom.flail -= dt;
       chain.position.set((zx - 6) / 2, 0.9, (zz + 4) / 2); chain.lookAt(-6, 0.9, 4); chain.rotateX(Math.PI / 2); chain.scale.y = Math.hypot(zx + 6, zz - 4);
       if (zomBub.bubT > 0) { zomBub.bubT -= dt; if (zomBub.bubT <= 0) zomBub.bub.style.display = 'none'; }
+      radioTick(dt, me);
     },
     tags() {
       for (const o of Object.values(npcs)) if (o.bub.style.display !== 'none') { if (o.rig && o.rig.head) { o.rig.head.getWorldPosition(_v); _v.y += 0.62; } else _v.set(o.n.at[0], o.n.sit ? 3.5 : 2.75, o.n.at[1]); L.at(o.bub, _v); }
       if (zomBub.bub.style.display !== 'none') { _v.copy(zch.root.position); _v.y = 2.8; L.at(zomBub.bub, _v); }
     },
-    info: () => ({ open, zload: zl0(), rigs: Object.keys(npcs).filter((k) => npcs[k].rig), clip: Object.fromEntries(Object.entries(npcs).filter(([, o]) => o.rig).map(([k, o]) => [k, o.rig.want])), ink: Object.values(npcs).filter((o) => o.rig && o.rig.ink.visible).length }),
-    dispose() { css.remove(); for (const o of Object.values(npcs)) if (o.rig) o.rig.dispose(); },
+    info: () => ({ open, zload: zl0(), rigs: Object.keys(npcs).filter((k) => npcs[k].rig), clip: Object.fromEntries(Object.entries(npcs).filter(([, o]) => o.rig).map(([k, o]) => [k, o.rig.want])), ink: Object.values(npcs).filter((o) => o.rig && o.rig.ink.visible).length, radio: rad ? rad.info() : null }),
+    dispose() { css.remove(); for (const o of Object.values(npcs)) if (o.rig) o.rig.dispose(); if (rad) { rad.dispose(); rad = null; } musicDuck(1); },
   };
 }
 

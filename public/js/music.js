@@ -42,8 +42,10 @@ function matchOn() { if (G.cityBeds || G.mode === 'story') return false; // OVER
 function num(v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d; }
 function vol() { return num(G.settings.musicVol, 0.35); }
 // how loud the music bus should be right now (0 = off)
+let lobbyDuck = 1; // (a lobby scene's own music, like the warehouse radio, can turn the menu music down while you're near it)
+export function musicDuck(f) { f = Number.isFinite(f) ? Math.round(Math.max(0, Math.min(1, f)) * 20) / 20 : 1; if (f !== lobbyDuck) { lobbyDuck = f; musicUpdate(); } }
 function level() {
-  if (where() === 'menu') return RP.mode === 'hl' ? vol() * DUCK : vol(); // the play of the round talks over it too
+  if (where() === 'menu') return (RP.mode === 'hl' ? vol() * DUCK : vol()) * lobbyDuck; // the play of the round talks over it too
   if (!matchOn()) return 0;
   const v = num(G.settings.musicMatchVol, 0.15);
   return RP.mode === 'killcam' ? v * DUCK : v; // your killcam (epic ones too) talks over it
