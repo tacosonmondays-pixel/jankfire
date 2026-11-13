@@ -16,6 +16,7 @@ import { sceneryGroup } from './scenery.js';
 import { rainLoop, windLoop, sfx } from './audio.js';
 import { starsFrame, starsLook, starsState } from './wxstars.js'; // star showers (Rooftop, Desert)
 import { eruptFrame, eruptLook, eruptState } from './wxerupt.js'; // Mount Kaboom erupts (Islands)
+import { sandFrame, sandLook, sandState } from './wxsand.js'; // sandstorms (Desert, Bazaar)
 import { liquidAt } from './liquids.js'; // (every water surface the map draws: sea, pools, ponds, the shallows)
 
 const W = {
@@ -47,7 +48,7 @@ const MAXI = { curtain: 12 * 12, splash: 40, puddle: 48 };
 // splashes, ripples or lightning; its 'puddles' are patches of settled snow)
 const SPEC = {
   wx_rain: { root: 'wx_rain', curtain: 'wx_curtain', splashA: 'wx_splash_a', splashB: 'wx_splash_b', puddle: 'wx_puddle', ripple: 'wx_ripple', clouds: 'wx_clouds', bolts: ['wx_bolt_0', 'wx_bolt_1', 'wx_bolt_2'], pud: 0.3, lift: 0.015 },
-  wx_snow: { root: 'wx_snow', curtain: 'wx_snow_curtain', puddle: 'wx_snowpatch', clouds: 'wx_snow_clouds', bolts: [], pud: 0.45, lift: 0.02 },
+  wx_snow: { root: 'wx_snow', curtain: 'wx_snow_curtain', puddle: 'wx_snowpatch', clouds: 'wx_snow_clouds', deck: 'wx_snow_deck', bolts: [], pud: 0.45, lift: 0.02 },
 };
 const CURTAIN = new Set(['rain', 'snow']); // (the kinds this file plays itself; the eruption and the stars have their own files)
 function build(g, spec) {
@@ -71,8 +72,9 @@ function build(g, spec) {
   for (const n of ['wx_splash_a', 'wx_splash_b', 'wx_ripple']) { const o = new THREE.Object3D(); o.name = n; root.add(o); P['px_' + n] = o; } // (unused by a kit without them)
   const hold = (n) => { const h = new THREE.Group(), s = node(n); s.position.set(0, 0, 0); s.castShadow = false; h.add(s); root.add(h); h.visible = false; return h; };
   P.clouds = hold(spec.clouds);
+  P.deck = spec.deck && node(spec.deck) ? hold(spec.deck) : null; // (snow's overcast deck: only under a cold map's snow)
   P.bolts = spec.bolts.map((n) => hold(n));
-  for (const o of [P.clouds, ...P.bolts]) o.traverse((c) => { if (c.material) { c.material.fog = false; c.frustumCulled = false; } }); // (sky things: past the fog)
+  for (const o of [P.clouds, P.deck, ...P.bolts].filter(Boolean)) o.traverse((c) => { if (c.material) { c.material.fog = false; c.frustumCulled = false; } }); // (sky things: past the fog)
   const mixer = new THREE.AnimationMixer(root), acts = {};
   for (const c of g.animations) {
     const a = mixer.clipAction(c);
@@ -107,7 +109,7 @@ function covered(x, y, z) { _o[0] = x; _o[1] = y; _o[2] = z; return !!roofRay(_o
 // a 3 m column of rain is drawn only if it's open to the sky at your height all across (no rain indoors, none
 // leaking in through a wall the column straddles)
 function colOpen(x0, z0, y, T) {
-  const key = `${x0},${z0},${Math.floor(y / 2)}`;
+  const key = `${x0},${z0},${Math.floor(y / 2)},${T}`; // (T: the rain's 3 m columns and the sand's 4 m tiles keep their own answers)
   let v = W.cols.get(key);
   if (v === undefined) {
     if (W.cols.size > 6000) W.cols.clear();
@@ -218,6 +220,7 @@ export function updateWeather(dt) {
   if (et && et.t == null) et.t = t;
   W.edark = eruptFrame(dt, W.test ? null : plan, t, on, et ? { at: et.at + (t - et.t), len: et.len } : null); // (a test of something else: no eruption)
   starsFrame(dt, W.test ? null : plan, t, on, W.test && W.test.k === 'stars' ? W.test : null); // star showers (wxstars.js)
+  sandFrame(dt, W.test ? null : plan, t, on, W.test && W.test.k === 'sand' ? W.test : null, SAND_H); // sandstorms (wxsand.js)
   if (cur.k && !CURTAIN.has(cur.k)) cur = { k: '', s: 0, i: cur.i };
   if (cur.k && cur.k !== W.kind && W.k > 0.05 && !W.test && !W.snap) cur = { k: '', s: 0, i: cur.i }; // (rain to snow straight after: the last one eases out first)
   if (cur.k) W.kind = cur.k;
@@ -255,9 +258,11 @@ export function updateWeather(dt) {
   const cl = K.P.clouds, def = MAPS[MAP.id];
   cl.visible = k > 0.02 && !(def && def.sealed);
   cl.position.set(p.x - (1 - Math.min(1, k * 1.6)) * 900, p.y - 25, p.z);
+  if (K.P.deck) { K.P.deck.visible = cl.visible && !!w.cold; K.P.deck.position.copy(cl.position); } // (a warm day sky under snow: the overcast slides in with the clouds)
   // lightning: the plan's strikes for this shower (same for everyone), each a baked bolt clip + the lights flashing
   if (K.P.bolts.length) lightning(K, plan, cur.i, t, p, k); else W.flash = 0;
 }
+const SAND_H = { colOpen, covered, floorAt: (x, z, cy, lo, hi) => floorAt(x, z, cy, lo, hi), ray: (o, d, maxT) => roofRay(o, d, maxT) }; // (wxsand.js: the same roof + floor tests as the rain)
 function phase(K, n) { const a = K.acts[n]; return a ? (a.time / a.getClip().duration) % 1 : 0; }
 
 function lightning(K, plan, i, t, p, k) {
@@ -292,9 +297,9 @@ const LOOK = {
   snow: { fog: new THREE.Color(0xd4dff0), fk: 0.55, near: 0.6, far: 0.5, sky: new THREE.Color(0xc4d0e8), sk: 0.7, far2: 0.45, hemi: new THREE.Color(0xdce8ff), hk: 0.55, hd: 0.1, sun: 0.55 },
 };
 export function wxPre() {
-  const d = Math.min(1.2, W.dark || 0), f = W.flash || 0, el = eruptLook(), e = Math.min(1, el.dark || 0), ef = el.flash || 0, sl = starsLook(), st = Math.min(1, sl.dark || 0);
-  if (!(d > 0.002 || f > 0.002 || e > 0.002 || ef > 0.002 || st > 0.002 || el.hide) || !G.scene || !G.scene.fog) return;
-  const Lk = LOOK[W.kind] || LOOK.rain;
+  const d = Math.min(1.2, W.dark || 0), f = W.flash || 0, el = eruptLook(), e = Math.min(1, el.dark || 0), ef = el.flash || 0, sl = starsLook(), st = Math.min(1, sl.dark || 0), sd = Math.min(1, sandLook().dark || 0);
+  if (!(d > 0.002 || f > 0.002 || e > 0.002 || ef > 0.002 || st > 0.002 || sd > 0.002 || el.hide) || !G.scene || !G.scene.fog) return;
+  const Lk = LOOK[W.kind] || LOOK.rain, cold = W.kind === 'snow' && (wxOf(MAP.id) || {}).cold;
   const sc = G.scene, fog = sc.fog, hemi = sc.children.find((o) => o.isHemisphereLight), sun = sc.children.find((o) => o.isDirectionalLight), sky = skyParts();
   if (![fog.near, fog.far].every(Number.isFinite)) return;
   SAVE.on = true;
@@ -313,6 +318,16 @@ export function wxPre() {
   for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(Lk.sky, Lk.far2 * dk)).lerp(FLASH, 0.3 * f);
   if (sun) sun.intensity = sun.intensity * (1 - Lk.sun * dk) + 1.5 * f;
   if (sky.sky) sky.sky.material.color.lerp(Lk.sky, Lk.sk * dk).lerp(FLASH, 0.6 * f);
+  if (cold && dk > 0.002) { // Suburb's snow: its pink sunset sky, fog and baked hills can't just be tinted (pink x grey is still pink): each
+    // gets the multiplier that takes its own horizon colour to cold grey, the fog goes all the way, the light goes white-blue
+    const mid = _c2.setHex(MAP.sky.mid), mul = (x, y) => Math.min(1, x / Math.max(0.02, y));
+    _c3.setRGB(mul(COLD_SKY.r, mid.r), mul(COLD_SKY.g, mid.g), mul(COLD_SKY.b, mid.b));
+    if (sky.sky) sky.sky.material.color.lerp(_c3, 0.9 * dk);
+    for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(_c3, 0.85 * dk));
+    fog.color.lerp(COLD_FOG, 0.85 * dk);
+    if (hemi) hemi.color.lerp(COLD_LIGHT, 0.6 * dk);
+    if (sun) sun.color.lerp(COLD_LIGHT, 0.7 * dk);
+  }
   if (st > 0.002) { // a star shower: the sky goes deep violet (a day map all the way to dusk), the sun sinks low and pink
     const du = sl.dusk ? st : st * 0.35;
     fog.color.lerp(DUSK_FOG, 0.75 * du); fog.near *= 1 - 0.2 * du;
@@ -320,6 +335,14 @@ export function wxPre() {
     if (sun) { sun.intensity *= 1 - 0.7 * du; sun.color.lerp(DUSK_SUN, 0.7 * du); }
     if (sky.sky) sky.sky.material.color.lerp(DUSK_SKY, 0.85 * du);
     for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(DUSK_SKY, 0.7 * du));
+  }
+  if (sd > 0.002) { // a sandstorm: dusty ochre haze closing in (not so far you can't see who's shooting you), an orange
+    // sky, the sun gone a dull orange disc behind the dust
+    fog.near *= 1 - SAND.near * sd; fog.far *= 1 - SAND.far * sd; fog.color.lerp(SAND_FOG, 0.85 * sd);
+    if (hemi) { hemi.intensity *= 1 - 0.15 * sd; hemi.color.lerp(SAND_HEMI, 0.65 * sd); }
+    if (sun) { sun.intensity *= 1 - 0.5 * sd; sun.color.lerp(SAND_SUN, 0.75 * sd); }
+    if (sky.sky) sky.sky.material.color.lerp(SAND_SKY, 0.9 * sd);
+    for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(SAND_SKY, 0.75 * sd));
   }
   if (e > 0.002 || ef > 0.002) { // the eruption: ash-brown haze closing in, an orange sky, the sun gone dull and red, the boom's flash
     fog.near *= 1 - 0.55 * e; fog.far *= 1 - 0.5 * e; fog.color.lerp(ASH_FOG, 0.8 * e).lerp(ERUPT_FLASH, 0.4 * ef);
@@ -329,8 +352,13 @@ export function wxPre() {
     for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(ASH_SKY, 0.75 * e));
   }
   if (el.hide) for (const o of wisp()) { SAVE.vis.push([o, o.visible]); o.visible = false; } // (the volcano's old wisp: the column has swallowed it)
-  if (Math.max(dk, e, sl.dusk ? st : 0) > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
+  if (Math.max(dk, e, sd, sl.dusk ? st : 0) > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
 }
+// the sandstorm's fog at its peak: near x0.2, far x0.38 (Desert 130/520 m -> 26/198 m, Bazaar 100/380 -> 20/144):
+// someone 60 m away is still mostly there (Desert 20% fogged, Bazaar 32%)
+export const SAND = { near: 0.8, far: 0.62 };
+const SAND_FOG = new THREE.Color(0xc8945a), SAND_SKY = new THREE.Color(0xd89450), SAND_HEMI = new THREE.Color(0xffc488), SAND_SUN = new THREE.Color(0xff9440);
+const COLD_SKY = new THREE.Color(0xaab4c6), COLD_FOG = new THREE.Color(0xc4ccd8), COLD_LIGHT = new THREE.Color(0xdfe8ff), _c2 = new THREE.Color(), _c3 = new THREE.Color();
 const DUSK_FOG = new THREE.Color(0x3a2a6a), DUSK_SKY = new THREE.Color(0x30205e), DUSK_HEMI = new THREE.Color(0x8a6ad0), DUSK_SUN = new THREE.Color(0xff6a9a);
 const ASH_FOG = new THREE.Color(0x6a3426), ASH_SKY = new THREE.Color(0xc0502a), ASH_HEMI = new THREE.Color(0xff8a4a), ASH_SUN = new THREE.Color(0xff5a1a), ERUPT_FLASH = new THREE.Color(0xffb060);
 // the volcano's smoke wisp: the arch meshes drawn with its see-through smoke materials (archfield.js names them arch_<name>)
@@ -359,7 +387,7 @@ export function wxState() {
   const K = W.kind && W.kits[WX_KINDS[W.kind].kit];
   const kk = typeof K === 'object' && K ? K : null;
   return { map: MAP.id, plan: !!(W.plan && W.plan.m === MAP.id), phases: W.plan ? W.plan.ph.length : 0, t: now() - W.t0, k: W.k, kind: W.kind, kit: kk ? 'loaded' : K || 'none',
-    erupt: eruptState(), stars: starsState(), wisp: wispList.length, visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk && kk.P.splashA ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
+    erupt: eruptState(), stars: starsState(), sand: sandState(), wisp: wispList.length, visible: !!(kk && kk.root.visible), draws: kk && kk.root.visible ? draws(kk.root) : 0, tris: kk && kk.root.visible ? draws(kk.root, true) : 0, tiles: kk ? kk.P.curtain.count : 0, splashes: kk && kk.P.splashA ? kk.P.splashA.count + kk.P.splashB.count : 0, puddles: kk ? kk.P.puddle.count : 0, cover: W.cover, flash: W.flash };
 }
 // what the weather adds to a frame: one draw per visible piece (the copies are instanced), and their triangles
 function draws(root, tris) {

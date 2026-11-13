@@ -982,3 +982,48 @@ Object.assign(sfx, {
   // a sparkle twinkling: one tiny high chime
   twinkle() { const f = [2637, 3136, 3520, 3951][(Math.random() * 4) | 0]; tone('sine', f, f, 0.35, 0.025); tone('triangle', f * 2, f * 2, 0.15, 0.01, null, 0.02); },
 });
+
+// sandstorm (wxsand.js): a howling wind with whistling gusts over a dry sand hiss, k 0..1; under a roof the hiss goes
+// and the howl is muffled. in loops (stopLoops shuts it up)
+export function sandLoop(k, cover = 0) {
+  if (!ac) return;
+  let l = loops.sand;
+  if (!l) {
+    if (!(k > 0.01)) return;
+    const g = ac.createGain(); g.gain.value = 0; g.connect(master);
+    const s = ac.createBufferSource(); s.buffer = nbuf; s.loop = true; // the howl: a resonant band that wanders up and down
+    const bp = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 420; bp.Q.value = 2.2;
+    const lfo = ac.createOscillator(); lfo.frequency.value = 0.17; const lg = ac.createGain(); lg.gain.value = 240; lfo.connect(lg); lg.connect(bp.frequency);
+    const gust = ac.createGain(); gust.gain.value = 0.7; // (the gusts swell the howl; its volume stays its own, so off is silent)
+    const gl = ac.createOscillator(); gl.frequency.value = 0.29; const gg = ac.createGain(); gg.gain.value = 0.45; gl.connect(gg); gg.connect(gust.gain);
+    s.connect(bp); bp.connect(gust); gust.connect(g); s.start(0, Math.random() * 1.5); lfo.start(); gl.start();
+    const s2 = ac.createBufferSource(); s2.buffer = nbuf; s2.loop = true; // the hiss: sand on everything, riding the same gusts
+    const hp = ac.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 3200;
+    const hg = ac.createGain(); hg.gain.value = 0.55; gg.connect(hg.gain);
+    s2.connect(hp); hp.connect(hg); hg.connect(g); s2.start(0, Math.random() * 1.5);
+    const w = ac.createOscillator(); w.type = 'sine'; w.frequency.value = 880; // a thin whistle in the gusts (through a gap somewhere)
+    const wl = ac.createOscillator(); wl.frequency.value = 0.23; const wlg = ac.createGain(); wlg.gain.value = 140; wl.connect(wlg); wlg.connect(w.frequency);
+    const wg = ac.createGain(); wg.gain.value = 0.012; gg.connect(wg.gain); w.connect(wg); wg.connect(g); w.start(); wl.start();
+    l = loops.sand = { g, on: false, def: { vol: 0 }, bp, hg };
+  }
+  const t = ac.currentTime, on = k > 0.01;
+  if (on || l.on) {
+    l.g.gain.setTargetAtTime(on ? 0.1 + 0.32 * Math.min(1, k) * (cover ? 0.55 : 1) : 0, t, 0.6);
+    l.bp.Q.setTargetAtTime(cover ? 4 : 2.2, t, 0.3); l.hg.gain.setTargetAtTime(cover ? 0.05 : 0.55, t, 0.3);
+  }
+  l.on = on;
+}
+Object.assign(sfx, {
+  // the storm front hitting you: a big rising whoosh with a gritty rush on top
+  sandGust() { whoosh(2.2, 0.35, 260, 1400, 1.1); noise(1.6, 0.18, 'highpass', 2500, 6000, null, 0.4); },
+  // a tumbleweed landing: a dry twiggy crunch and a cartoon spring boing (louder the closer)
+  boing(pos, v = 1) {
+    if (!ac) return;
+    noise(0.07, 0.35 * v, 'bandpass', 2400, 1400, pos, 0, 2);
+    const t = ac.currentTime, o = ac.createOscillator(), vib = ac.createOscillator(), vg = ac.createGain(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(180, t); o.frequency.exponentialRampToValueAtTime(420, t + 0.08); o.frequency.exponentialRampToValueAtTime(260, t + 0.45);
+    vib.frequency.value = 22; vg.gain.value = 45; vib.connect(vg); vg.connect(o.frequency); // (the wobble of a spring)
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.32 * v, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    o.connect(g); g.connect(dest(pos)); o.start(t); vib.start(t); o.stop(t + 0.55); vib.stop(t + 0.55);
+  },
+});

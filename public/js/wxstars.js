@@ -66,8 +66,10 @@ export function starsFrame(dt, plan, t, on, test) {
     const way = (big ? 0.6 : 0.4) * DOME;
     _p.copy(_d).multiplyScalar(DOME).addScaledVector(_t, tr[0] * way).addScaledVector(UPV, tr[1] * way).add(cam);
     _q.setFromUnitVectors(X, _t);
-    const M = big ? 3.6 : 3; // (out on the dome a kit-size streak is a hair: drawn three times the size it reads as a comic meteor)
-    m.setMatrixAt(big ? nb++ : nm++, _m.compose(_p, _q, _s.set(sc[0] * M, sc[1] * M, sc[2] * M)));
+    // (out on the dome a kit-size streak is a hair: drawn longer and much fatter, so the white-hot head and the tail read
+    // as a comic meteor. the low ones, off towards the horizon, read further away: bigger still)
+    const far = 1 + 0.45 * Math.max(0, 1 - (el - 0.35) / 0.75), ML = (big ? 4 : 3.4) * far, MW = (big ? 6.6 : 5.6) * far;
+    m.setMatrixAt(big ? nb++ : nm++, _m.compose(_p, _q, _s.set(sc[0] * ML, sc[1] * MW, sc[2] * MW)));
     if (!S.heard.has(j) && u < 0.3) { S.heard.add(j); if (big || j % 3 === 0) sfx.meteor(big); }
   }
   K.P.met.count = nm; K.P.big.count = nb;

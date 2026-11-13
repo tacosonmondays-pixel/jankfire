@@ -13,14 +13,16 @@ export const WX_KINDS = {
   erupt: { kit: 'wx_erupt', fade: 6, build: 35, settle: 30, len: [110, 150], gap: [240, 420], first: [150, 240], after: 'rain', rainLen: [90, 150] },
   snow: { kit: 'wx_snow', fade: 20, len: [120, 240], gap: [90, 240], first: [40, 100] }, // (slow to settle in, slow to go)
   stars: { kit: 'wx_stars', fade: 8, len: [60, 110], gap: [150, 300], first: [60, 150] }, // a star shower: meteors across the sky
+  sand: { kit: 'wx_sand', fade: 20, front: 26, len: [100, 190], gap: [150, 300], first: [50, 120] }, // a sandstorm. front: s for its wall of dust to roll over you (and to pass on at the end)
 };
 // map id -> its weather. s: strength range of a shower, bolts: lightning per minute at full strength, dark: how much the
 // sky + sun dim (0-1). vent: a volcano's throat (x, crater floor y, z). rs: the downpour's strength after an eruption.
 // alt: { k, p }: each time the weather comes, a p chance it's that kind instead (Suburb: snow now and then). dusk: a
-// daytime map that goes to dusk for its star shower. maps not listed stay clear (crate, backrooms, bazaar: later)
+// daytime map that goes to dusk for its star shower. cold: a warm sky the snow has to turn grey (Suburb's pink sunset:
+// an overcast deck over it, the sky, fog and far hills pulled to cold grey). maps not listed stay clear (crate, backrooms)
 const RAIN = { k: 'rain', s: [0.6, 1], bolts: 3, dark: 1 };
 export const WX_MAPS = {
-  suburb: { ...RAIN, alt: { k: 'snow', p: 0.3 } }, suburb_sd: { ...RAIN, alt: { k: 'snow', p: 0.3 } }, warehouse: RAIN, warehouse_sd: RAIN, skyline: RAIN, skyline_sd: RAIN,
+  suburb: { ...RAIN, alt: { k: 'snow', p: 0.3 }, cold: 1 }, suburb_sd: { ...RAIN, alt: { k: 'snow', p: 0.3 }, cold: 1 }, warehouse: RAIN, warehouse_sd: RAIN, skyline: RAIN, skyline_sd: RAIN,
   rooftop: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, rooftop_sd: { ...RAIN, bolts: 4, alt: { k: 'stars', p: 0.45 } }, // (rain, or a star shower over the night city)
   range: { ...RAIN, s: [0.5, 0.85] },
   platform: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, platform_sd: { k: 'rain', s: [0.85, 1], bolts: 6, dark: 1.15 }, // storm at sea
@@ -29,7 +31,9 @@ export const WX_MAPS = {
   islands: { k: 'erupt', s: [1, 1], rs: [0.75, 1], bolts: 2, dark: 0.7, vent: [0, 11.5, -3] }, // (shared/map.js KABOOM: the crater floor round the throat)
   islands_sd: { k: 'erupt', s: [1, 1], rs: [0.75, 1], bolts: 2, dark: 0.7, vent: [0, 9.0, -13] }, // (KABOOM_SD: the same mountain, small)
   forest: { k: 'snow', s: [0.6, 1], dark: 0.55 }, // the scary forest at night, snowed in
-  desert: { k: 'stars', s: [0.75, 1], dark: 1, dusk: 1 }, desert_sd: { k: 'stars', s: [0.75, 1], dark: 1, dusk: 1 }, // (a day map: the shower brings dusk with it)
+  desert: { k: 'stars', s: [0.75, 1], dark: 1, dusk: 1, alt: { k: 'sand', p: 0.5 } }, // (a day map: the shower brings dusk with it. or half the time a sandstorm)
+  desert_sd: { k: 'stars', s: [0.75, 1], dark: 1, dusk: 1, alt: { k: 'sand', p: 0.5 } },
+  bazaar: { k: 'sand', s: [0.7, 1], dark: 1 }, bazaar_sd: { k: 'sand', s: [0.7, 1], dark: 1 }, // the bazaar gets sandstorms
 };
 export const WX_EARLY = 600; // a phase may have started up to this long before its plan (the eruption knob: already going)
 export const WX_SPAN = 3600; // a plan covers an hour (the server picks a fresh one before it runs out)
