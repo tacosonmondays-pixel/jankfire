@@ -391,9 +391,9 @@ class Atlas:
         m = mat(mname, 0xffffff, rough=rough, metal=metal, tex=img)
         nt = m.node_tree; b = nt.nodes['Principled BSDF']
         if use_orm:
-            im2 = bpy.data.images.new(s.name + '_mr', s.w, s.h, alpha=False)
+            im2 = bpy.data.images.new(s.name + '_mr', s.w, s.h, alpha=False); im2.colorspace_settings.is_data = True  # before the pixels: blender 5.2 wipes a generated image when its colour space changes
             a = np.ones((s.h, s.w, 4), np.float32); a[:, :, :3] = s.orm[::-1]
-            im2.pixels.foreach_set(a.ravel()); im2.colorspace_settings.is_data = True; im2.file_format = 'PNG'; im2.pack()
+            im2.pixels.foreach_set(a.ravel()); im2.file_format = 'PNG'; im2.pack(); assert np.array(im2.pixels[:], np.float32)[1::4].max() > 0, im2.name + ': roughness map came out black (set the colour space before the pixels)'
             t = nt.nodes.new('ShaderNodeTexImage'); t.image = im2; t.interpolation = 'Closest'
             sp = nt.nodes.new('ShaderNodeSeparateColor')
             nt.links.new(t.outputs['Color'], sp.inputs['Color'])
