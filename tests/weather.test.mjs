@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { WX_KINDS, WX_MAPS, WX_SPAN, WX_MAXPH, wxPlan, wxAt, wxStrikes, wxMsg, wxCheck, wxErupt, wxBombs, wxMeteors, wxKindsOf } from '../shared/weather.js';
+import { WX_KINDS, WX_MAPS, WX_SPAN, WX_MAXPH, wxPlan, wxAt, wxStrikes, wxMsg, wxCheck, wxErupt, wxBombs, wxMeteors, wxKindsOf, wxOf } from '../shared/weather.js';
 import { raycast } from '../shared/physics.js';
 import { MAPS } from '../shared/map.js';
 import { Room } from '../server/room.js';
@@ -41,7 +41,7 @@ test('the plan: starts clear, showers in range, in order, inside the span', () =
 });
 
 test('no weather on the maps that get theirs later, and the test knob', () => {
-  for (const map of ['crate', 'backrooms', 'bazaar']) assert.equal(wxPlan(map, 5).ph.length, 0, map);
+  for (const map of ['crate', 'backrooms']) assert.equal(wxPlan(map, 5).ph.length, 0, map);
   assert.deepEqual(wxPlan('suburb', 5, 'rain').ph, [[0, WX_SPAN, 'rain', 1]]);
   assert.equal(wxPlan('suburb', 5, 'off').ph.length, 0);
   assert.equal(wxPlan('crate', 5, 'rain').ph.length, 0, 'the knob only rains where rain belongs');
@@ -54,11 +54,12 @@ test('every weather map exists, and its kit glb is on disk', () => {
     assert.ok(fs.existsSync(f) && fs.statSync(f).size > 1000, f);
     const b = fs.readFileSync(f), j = JSON.parse(b.slice(20, 20 + b.readUInt32LE(12)).toString());
     const names = new Set(j.nodes.map((n) => n.name)), clips = new Set((j.animations || []).map((a) => a.name));
-    const need = w.k === 'snow' ? [['wx_snow_curtain', 'wx_snowpatch', 'wx_snow_clouds'], ['wx_snow_curtain_fall', 'wx_snow_clouds_turn']]
+    const need = w.k === 'sand' ? [['wx_sand_wall', 'wx_sand_billow', 'wx_sand_grit', 'wx_sand_ribbon', 'wx_tumbleweed', 'wx_sand_rag'], ['sand_wall_turn', 'sand_billow_turn', 'sand_grit_blow', 'sand_ribbon_blow', 'tumble_bounce', 'rag_fly']] : w.k === 'snow' ? [['wx_snow_curtain', 'wx_snowpatch', 'wx_snow_clouds'], ['wx_snow_curtain_fall', 'wx_snow_clouds_turn']]
       : w.k === 'stars' ? [['wx_meteor', 'wx_meteor_big', 'wx_twinkle'], ['meteor_fly', 'meteor_big_fly', 'twinkle']] : w.k === 'erupt' ? [['wx_plume', 'wx_ash', 'wx_bomb', 'wx_trail', 'wx_splat', map === 'islands_sd' ? 'wx_pool_sd' : 'wx_pool'], ['plume_rise', 'plume_churn', 'ash_spread', 'bomb_arc', 'splat_pop', map === 'islands_sd' ? 'pool_rise_sd' : 'pool_rise']]
       : [['wx_curtain', 'wx_splash_a', 'wx_splash_b', 'wx_ripple', 'wx_puddle', 'wx_clouds', 'wx_bolt_0', 'wx_bolt_1', 'wx_bolt_2'], ['wx_curtain_fall', 'wx_splash_a_clip', 'wx_splash_b_clip', 'wx_ripple_clip', 'wx_clouds_turn', 'strike_0', 'strike_1', 'strike_2']];
     for (const n of need[0]) assert.ok(names.has(n), n);
     for (const c of need[1]) assert.ok(clips.has(c), c);
+    for (const k of wxKindsOf(map)) assert.ok(fs.existsSync(path.join(ROOT, 'public/models/wx', WX_KINDS[k].kit + '.glb')), `${map}: its ${k} kit too`);
     if (WX_KINDS[w.k].after) assert.ok(fs.existsSync(path.join(ROOT, 'public/models/wx', WX_KINDS[WX_KINDS[w.k].after].kit + '.glb')), 'its downpour kit too');
     for (const a of j.animations) for (const c of a.channels) assert.ok(['translation', 'rotation', 'scale'].includes(c.target.path), 'transform clips only (no material animation)');
   }
@@ -169,4 +170,40 @@ test('star showers: Rooftop now and then, the Desert (going to dusk); the meteor
 test('every map that had weather before snow/stars still has it (range kept its rain)', () => {
   for (const m of ['suburb', 'warehouse', 'skyline', 'rooftop', 'range', 'platform', 'deadmall', 'jankburg', 'islands']) assert.ok(WX_MAPS[m], m);
   assert.equal(WX_MAPS.range.k, 'rain');
+});
+
+test('sandstorms: the Bazaar gets them, the Desert gets them or a star shower about half and half; the knob; the kit', () => {
+  for (const map of ['bazaar', 'bazaar_sd']) for (let seed = 1; seed < 40; seed++) for (const [a, b, k, s] of wxPlan(map, seed * 977).ph) {
+    assert.equal(k, 'sand'); assert.ok(s >= 0.7 && s <= 1 && (b - a <= WX_KINDS.sand.len[1] + 0.2));
+  }
+  for (const map of ['desert', 'desert_sd']) {
+    let sand = 0, n = 0;
+    for (let seed = 1; seed < 400; seed++) for (const [, , k] of wxPlan(map, seed * 2654435761).ph) { n++; if (k === 'sand') sand++; else assert.equal(k, 'stars'); }
+    assert.ok(sand / n > 0.42 && sand / n < 0.58, `${map} sand share ${(sand / n).toFixed(2)}`);
+    assert.deepEqual(wxKindsOf(map).sort(), ['sand', 'stars']);
+  }
+  assert.deepEqual(wxPlan('desert', 77).ph, wxPlan('desert', 77).ph, 'the same seed, the same storms for everyone');
+  for (const map of ['desert', 'desert_sd', 'bazaar', 'bazaar_sd']) assert.deepEqual(wxPlan(map, 3, 'sand').ph, [[0, WX_SPAN, 'sand', 1]], `${map} JF_WEATHER=sand`);
+  for (const map of ['suburb', 'rooftop', 'islands', 'forest', 'crate', 'jankburg']) assert.equal(wxPlan(map, 3, 'sand').ph.length, 0, `${map} never sand`);
+  assert.equal(wxPlan('bazaar', 3, 'stars').ph.length, 0, 'the bazaar: no star shower');
+  assert.ok(wxCheck(wxMsg(wxPlan('bazaar', 3), 1)) && wxCheck(wxMsg(wxPlan('desert', 3, 'sand'), 0)), 'sand passes the client check');
+  assert.ok(WX_KINDS.sand.front > WX_KINDS.sand.fade && WX_KINDS.sand.front * 2 < WX_KINDS.sand.len[0], 'the wall rolls in and out inside the storm');
+  const b = fs.readFileSync(path.join(ROOT, 'public/models/wx/wx_sand.glb')), j = JSON.parse(b.slice(20, 20 + b.readUInt32LE(12)).toString());
+  const meta = JSON.parse(j.nodes.find((n) => n.name === 'wx_sand').extras.jf);
+  assert.equal(meta.kind, 'sand'); assert.ok(meta.tile > 0 && meta.boing.length >= 3 && meta.len.tumble_bounce > 0 && meta.len.rag_fly > 0);
+  assert.ok(j.meshes.length <= 6 && j.materials.length <= 3, 'a few draw calls: one mesh per piece, three materials');
+  for (const n of meta.sample) { // (the game samples these per copy: each needs the whole flight)
+    const an = j.animations.find((x) => x.name === n), paths = new Set(an.channels.map((c) => c.target.path));
+    for (const k of ['translation', 'rotation', 'scale']) assert.ok(paths.has(k), `${n} ${k}`);
+  }
+});
+
+test('every map with weather keeps it (one table line each: none swallowed into a comment)', () => {
+  const want = { suburb: 'rain', suburb_sd: 'rain', warehouse: 'rain', warehouse_sd: 'rain', skyline: 'rain', skyline_sd: 'rain', rooftop: 'rain', rooftop_sd: 'rain', range: 'rain',
+    platform: 'rain', platform_sd: 'rain', deadmall: 'rain', jankburg: 'rain', islands: 'erupt', islands_sd: 'erupt', forest: 'snow', desert: 'stars', desert_sd: 'stars', bazaar: 'sand', bazaar_sd: 'sand' };
+  for (const [m, k] of Object.entries(want)) { assert.ok(WX_MAPS[m], m); assert.equal(WX_MAPS[m].k, k, m); assert.ok(wxPlan(m, 11).ph.length > 0, `${m} has weather`); }
+  for (const m of ['suburb', 'suburb_sd']) assert.ok(wxKindsOf(m).includes('snow'));
+  for (const m of ['rooftop', 'rooftop_sd', 'desert', 'desert_sd']) assert.ok(wxKindsOf(m).includes('stars'));
+  for (const m of ['desert', 'desert_sd', 'bazaar', 'bazaar_sd']) assert.ok(wxKindsOf(m).includes('sand'));
+  assert.equal(wxOf('br'), null, 'Battle Island stays dry');
 });

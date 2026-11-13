@@ -5,7 +5,9 @@
 #                    the same flakes one wind-step back)
 #   wx_snowpatch     a patch of settled snow (flat, the game lifts it 2 cm off the floor and grows it as it keeps snowing)
 #   wx_snow_clouds   a ring of pale snow-cloud cards 300-350 m out, turning slowly (one lap in 8 minutes)
-# One 256 px atlas, 3 materials, so 3 draw calls in game.
+#   wx_snow_deck     an overcast deck: a low grey dome over the cloud ring, lumpy underneath, its rim tucked behind the
+#                    cards. only where the snow has to hide a warm daytime sky (WX_MAPS cold: Suburb's pink sunset)
+# One 256 px atlas, 4 materials, so 3 draw calls in game (4 under the deck).
 import bpy, math, os, sys, random
 import numpy as np
 from mathutils import Vector, Matrix
@@ -19,7 +21,7 @@ SLANT = 0.3          # wind: metres along +x per metre fallen
 FALL = 5 * FPS       # one period in 5 s: 1.2 m/s, a slow flurry
 FLAKES = 22          # per period per tile
 
-AT = Atlas(256, {'flake': (0, 0, 64, 64), 'patch': (64, 0, 128, 128), 'fx': (192, 0, 32, 32), 'cloud': (0, 128, 256, 128)})
+AT = Atlas(256, {'flake': (0, 0, 64, 64), 'patch': (64, 0, 128, 128), 'fx': (192, 0, 32, 32), 'cloud': (0, 128, 256, 128), 'deck': (192, 32, 64, 96)})
 
 
 def flake(u, v, w, h):  # a fat six-armed comic flake: white, an ice-blue middle, an ink-blue rim
@@ -67,7 +69,14 @@ def cloud(u, v, w, h):  # pale snow clouds: soft grey-blue puffs, white tops, an
     return np.concatenate([col, inside[..., None].astype(np.float32)], -1)
 
 
-for n, f in (('flake', flake), ('patch', patch), ('fx', fx), ('cloud', cloud)): AT.paint(n, f)
+def deck(u, v, w, h):  # the overcast's underside: flat cold grey, darker lumpy bellies, a few pale seams (tiles both ways)
+    a = np.sin(u * 2 * np.pi * 2 + np.sin(v * 2 * np.pi * 3) * 1.2) * np.sin(v * 2 * np.pi * 3 + np.sin(u * 2 * np.pi * 2) * 0.9)
+    col = mix(0xa9b3c4, 0x7c879c, (a + 0.2) * 1.4)
+    col = np.where((np.abs(a - 0.62) < 0.05)[..., None], solid(0xd2d9e4, u.shape), col)
+    return np.concatenate([col, np.ones(u.shape + (1,), np.float32)], -1)
+
+
+for n, f in (('flake', flake), ('patch', patch), ('fx', fx), ('cloud', cloud), ('deck', deck)): AT.paint(n, f)
 sc = reset()
 bpy.context.preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
 sc.frame_end = FALL
@@ -75,6 +84,7 @@ IMG = AT.image('wx_snow_atlas')
 M_FLAKE = material('wx_m_flake', IMG, rough=0.6, emit=0.6, clip=True)
 M_PATCH = material('wx_m_snowpatch', IMG, rough=0.8, emit=0.15, clip=True)
 M_CLOUD = material('wx_m_snowcloud', IMG, rough=1.0, emit=0.45, clip=True)
+M_DECK = material('wx_m_snowdeck', IMG, rough=1.0, emit=0.9, double=False)  # (glowing its own grey: lit from below it would take the ground's colour)
 root = bpy.data.objects.new('wx_snow', None); sc.collection.objects.link(root)
 
 # ------------------------------------------------------------ the flake curtain
@@ -119,5 +129,27 @@ for f in cl.data.polygons:  # each card a third of the seamless strip
     for k, li in enumerate(f.loop_indices): uvl.data[li].uv = AT.uv('cloud', (t0, t1, t1, t0)[k], (0, 0, 1, 1)[k])
 clip(cl, 'rotation_euler', [(q * 120 * FPS, (0, 0, -q * math.pi / 2)) for q in range(5)], 'wx_snow_clouds_turn')
 
+# ------------------------------------------------------------ the overcast deck: a low lumpy dome, wound to face down
+V, F, UV = [], [], []
+RINGS, SEG, DR = 7, 40, 370.0
+V.append(Vector((0, 215, 0))); UV.append(AT.uv('deck', 0.5, 0.5))
+for k in range(1, RINGS + 1):
+    for q in range(SEG):
+        a = 2 * math.pi * (q + 0.5 * (k % 2)) / SEG; rr = DR * k / RINGS
+        V.append(Vector((math.cos(a) * rr, 215 - 62 * (k / RINGS) ** 2 + (R.uniform(-6, 6) if k < RINGS else 0), math.sin(a) * rr)))
+        tu, tv = 0.5 + 0.5 * k / RINGS * math.cos(a), 0.5 + 0.5 * k / RINGS * math.sin(a)
+        UV.append(AT.uv('deck', min(0.98, max(0.02, tu)), min(0.98, max(0.02, tv))))
+for q in range(SEG): F.append((0, 1 + (q + 1) % SEG, 1 + q))
+for k in range(1, RINGS):
+    a0, b0 = 1 + (k - 1) * SEG, 1 + k * SEG
+    for q in range(SEG):
+        q1 = (q + 1) % SEG
+        F += [(a0 + q, b0 + q, b0 + q1), (a0 + q, b0 + q1, a0 + q1)] if k % 2 else [(a0 + q, b0 + q, a0 + q1), (a0 + q1, b0 + q, b0 + q1)]
+for i, f in enumerate(F):  # (every face down: it's only ever seen from under it)
+    a, b, d = V[f[0]], V[f[1]], V[f[2]]
+    if (b - a).cross(d - a).y > 0: F[i] = (f[0], f[2], f[1])
+dk = mesh_obj(sc, root, 'wx_snow_deck', V, F, M_DECK, uvs=UV, smooth=True)
+clip(dk, 'rotation_euler', [(q * 150 * FPS, (0, 0, q * math.pi / 2)) for q in range(5)], 'wx_snow_deck_turn')
+
 export(sc, root, OUT, {'kind': 'snow', 'tile': TILE, 'period': PER, 'periods': NPER, 'slant': SLANT,
-                       'loops': ['wx_snow_curtain_fall', 'wx_snow_clouds_turn']})
+                       'loops': ['wx_snow_curtain_fall', 'wx_snow_clouds_turn', 'wx_snow_deck_turn']})
