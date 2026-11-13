@@ -3474,14 +3474,16 @@ function lighthouse(B0, D0, dx, dz, st, o = {}) {
   for (let i = d0; i < D0.boxes.length; i++) if (D0.boxes[i].mat !== 'light') Object.assign(D0.boxes[i], tag); // (the light itself: the game's, it glows)
   D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 }); // (the sign: the game's picture)
 }
-// the keeper's cottage (round 71, 9): its door west, windows, a bed, a table
-function cottage(B0, D0, dx, dz) {
-  const { add, W } = isPiece(B0, D0, dx, dz, []);
+// the keeper's cottage (round 71, 9): its door west, windows, a bed, a table. drawn as one Blender model over these
+// boxes, look only (public/models/arch/cottage.glb, cottage_sd.glb on S&D). drape: it rides the ground exactly as it always did
+function cottage(B0, D0, dx, dz, id = 'cottage') {
+  const { add, W } = isPiece(B0, D0, dx, dz, []), n0 = B0.boxes.length;
   wall(W, 'z', 67.6, 6.375, 11.625, 0, 3, 0.25, 'plaster', [{ a: 8.3, b: 9.7, y0: 0, y1: 2.2 }]);
   wall(W, 'z', 74.4, 6.375, 11.625, 0, 3, 0.25, 'plaster', [{ a: 8.2, b: 9.8, y0: 1.1, y1: 2.1 }]);
   wall(W, 'x', 6.5, 67.725, 74.275, 0, 3, 0.25, 'plaster', [{ a: 70.2, b: 71.8, y0: 1.1, y1: 2.1 }]); wall(W, 'x', 11.5, 67.725, 74.275, 0, 3, 0.25, 'plaster');
   add(67.1, 3, 5.9, 74.9, 3.3, 12.1, 'roofpink'); add(68, 3.3, 6.8, 74, 3.8, 11.2, 'roofpink');
   add(72.6, 0, 9.6, 74.1, 0.55, 11.2, 'bedsheet'); add(69.4, 0, 7, 70.8, 0.8, 8.2, 'wood');
+  B0.archSince(n0, id, dx, dz, 0, 0, { drape: true });
 }
 // Fort Splinter (round -77, 0): walls to walk (FW), the gate east (o.westGate: a big one west too, else a back door),
 // the bastions, merlons, the armoury, the well, the flag, cannons on the east wall. o.walk false: no stairs up to the
@@ -3688,7 +3690,7 @@ function islandsSD() {
   // lobster pots, an upturned boat, rocks
   isle(B, D, -62, -82, -34, -48);
   slab(Dw, -59.5, -79.5, -36.5, -50.5, 0, 0.03, 'grass', [-47, -74, -39, -66]);
-  lighthouse(B, D, -125, -64, st, { climb: false }); cottage(B, D, -125, -64);
+  lighthouse(B, D, -125, -64, st, { climb: false }); cottage(B, D, -125, -64, 'cottage_sd');
   for (const [x, z] of [[-50.4, -75], [-49.4, -75.6], [-50, -74], [-38.5, -60], [-37.6, -59], [-55, -63]]) B.box(x, 0.4, z, 0.8, 0.8, 0.8, 'crate');
   add(-47.5, 0, -58.6, -43.5, 0.8, -57, 'boatwood'); // an upturned rowboat
   for (const [x, z, s] of [[-59.5, -79.5, 1.3], [-36.5, -79.5, 1.2], [-59.5, -62, 1.0]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);

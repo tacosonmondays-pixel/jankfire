@@ -31,6 +31,7 @@ PIN = {
  'weave': (561, 0), 'hammock': (571, 0),  # (the tiki village's: they also seed their own draws)
  'ph_glass': (3101, 0),
  'shackwall': (4601, 0), 'net': (4611, 0), 'timber': (4621, 0), 'tread': (4631, 0), 'rope': (4641, 0), 'shacktags': (4651, 0),  # (the pier and the bait shack's)
+ 'limewash': (4701, 0), 'pantile': (4711, 0), 'polka': (4721, 0), 'doormat': (4731, 0),  # (the keeper's cottage's)
 }
 
 
@@ -908,6 +909,73 @@ def shacktags(n=64):
     return np.clip(img * g, 0, 1)
 
 
+# ------------------------------------------------------------ the keeper's cottage (Islands): whitewashed rubble walls,
+# a pantile roof, laundry, the doormat. each draws only from its own seeds (and has its own PIN line)
+def limewash(n=64):
+    """rubble stone under whitewash (2 m a tile, tinted): rough stones about 25-40 cm, wider than tall, in loose courses,
+    the lime pooled thick in the joints (lighter) and thin over the stones' bumps, a few bare patches where it's flaked"""
+    rg = np.random.default_rng(4701)
+    rows = 6; pts = []
+    for r in range(rows):  # a course: stones of random widths laid end to end round the tile
+        x0 = rg.random() * n; y0 = (r + 0.5) * n / rows; ws = n / 4.5 * (0.7 + rg.random(9) * 0.6); ws = ws[:max(3, int(np.searchsorted(np.cumsum(ws), n)))]; ws *= n / ws.sum()
+        for k in range(len(ws)): pts.append(((x0 + ws[:k].sum() + ws[k] / 2) % n, y0 + (rg.random() - 0.5) * n / rows * 0.6))
+    P = np.array(pts, np.float32)
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    d = []
+    for (px, py) in P:
+        dx = np.minimum(abs(xx - px), n - abs(xx - px)) * 0.62; dy = np.minimum(abs(yy - py), n - abs(yy - py))
+        d.append(np.hypot(dx, dy))
+    d = np.sort(np.stack(d), 0); edge = d[1] - d[0]; own = np.stack([np.hypot(np.minimum(abs(xx - px), n - abs(xx - px)) * 0.62, np.minimum(abs(yy - py), n - abs(yy - py))) for px, py in P]).argmin(0)
+    tone = (np.random.default_rng(4702).random(len(P)) - 0.5)[own] * 0.08
+    bump = np.clip(1 - d[0] / 9, 0, 1) * 0.1  # the stone's face rounds out from its middle
+    g = 0.84 + tone + bump + (vnoise(n, 8, 4703) - 0.5) * 0.08
+    g = np.where(edge < 1.4, 0.98, np.where(edge < 2.8, g - 0.3, g))  # lime thick in the joints, a shadow at the stone's lip
+    bare = np.clip((fbm(n, 4, 3, seed=4704) - 0.66) * 6, 0, 1) * (edge > 2.6)  # flaked: the grey stone shows
+    img = ramp(np.clip(g, 0, 1), [(0, '#8a8a90'), (0.8, '#e8e8ea'), (1, '#ffffff')])
+    img = mix(img, ramp(np.clip(g - 0.15, 0, 1), [(0, '#5a5650'), (1, '#b0aaa0')]), bare * 0.8)
+    return np.clip(img - speck(n, 0.02, seed=4705)[..., None] * 0.18, 0, 1)
+
+
+def pantile(n=32):
+    """clay pantiles (1 m a tile, tinted; u along the eave, v up the slope): four S-curved tiles a metre across, three
+    courses up it, each course's tail lapped under the one above (a dark shadow line), crests lit, troughs dark"""
+    rg = np.random.default_rng(4711)
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    w = n / 4; c = n / 3
+    t = (xx % w) / w
+    prof = np.sin(t * math.tau - 0.6)  # the roll and the pan
+    ci = (yy // c).astype(int); col = (xx // w).astype(int)
+    var = (rg.random((3, 4)) - 0.5)[ci % 3, col % 4] * 0.12
+    fy = (yy % c) / c
+    g = 0.64 + prof * 0.3 + var + (vnoise(n, 8, 4712) - 0.5) * 0.06
+    g = np.where(fy > 0.84, 0.18 + (fy - 0.84) * 2.5, g)  # (v up: the course above laps over this one's top: its shadow)
+    g = g + (fy < 0.12) * 0.1  # the lit lip of the lap
+    return ramp(np.clip(g, 0, 1), [(0, '#7a7276'), (0.6, '#d8d4d6'), (1, '#ffffff')])
+
+
+def polka(n=32):
+    """polka dots (0.5 m a tile, its own colour): white dots on hot pink, two to a row, every other row shifted"""
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    a = np.hypot(((xx + 0.5) % 16) - 8, ((yy + 0.5) % 16) - 8) < 3.4
+    b = np.hypot(((xx + 8.5) % 16) - 8, ((yy + 8.5) % 16) - 8) < 3.4
+    g = (vnoise(n, 4, 4721) - 0.5) * 0.08
+    img = np.where((a | b)[..., None], hexc('#fffaf4'), hexc('#ff3fb4'))
+    return np.clip(img * (1 + g[..., None]), 0, 1)
+
+
+def doormat(n=64):
+    """a coir doormat (u across, v down; 64 x 32): bristly brown, a dark border, GO AWAY in black. its own colour"""
+    w, h = n, n // 2
+    g = 0.6 + (np.random.default_rng(4731).random((h, w)) - 0.5) * 0.3 + (vnoise(n, 8, 4732)[:h] - 0.5) * 0.15
+    img = ramp(np.clip(g, 0, 1), [(0, '#6a4420'), (0.6, '#c08a48'), (1, '#e8b870')])
+    img[:2] *= 0.35; img[-2:] *= 0.35; img[:, :2] *= 0.35; img[:, -2:] *= 0.35
+    t = np.asarray(text_img('GO AWAY', 2, (30, 18, 12, 255), pad=0))
+    ty, tx = (h - t.shape[0]) // 2, (w - t.shape[1]) // 2
+    m = t[..., 3] > 0
+    img[ty:ty + t.shape[0], tx:tx + t.shape[1]][m] = hexc('#24140c')
+    return np.clip(img, 0, 1)
+
+
 def main():
     global OUT
     if '--out' in sys.argv: OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])  # (the repro test writes to a temp dir)
@@ -958,6 +1026,10 @@ def main():
     pin('tread'); out['tread'] = save('tread', tread(), 1.0)
     pin('rope'); out['rope'] = save('rope', rope(), 0.25, note='tint')
     pin('shacktags'); out['shacktags'] = save('shacktags', shacktags(), 1.0, colors=12, dither=0.0)
+    pin('limewash'); out['limewash'] = save('limewash', limewash(), 2.0, note='tint')  # (the keeper's cottage's: see make_cottage.py)
+    pin('pantile'); out['pantile'] = save('pantile', pantile(), 1.0, note='tint')
+    pin('polka'); out['polka'] = save('polka', polka(), 0.5, colors=6, dither=0.0)
+    pin('doormat'); out['doormat'] = save('doormat', doormat(), 1.0, colors=10, dither=0.3)
     # new textures go here: a PIN line with a new seed, then pin('name'); out['name'] = save(...)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
