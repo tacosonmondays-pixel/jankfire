@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.23', date: '2026-11-13', title: 'LIFT OFF, BUT LOUDER', items: [
+    "LIFT OFF, BUT LOUDER: the rooftop lift rooms got bright team colours, a cyan neon glow, a lit LIFT sign and roof beacons, so you can tell whose side you're on from across the map.",
+  ] },
   { v: '11.22', date: '2026-11-13', title: 'GO AWAY', items: [
     "the lighthouse keeper finally decorated: pink roof, blue door, a doormat that says GO AWAY, and one enormous sock on the washing line. nobody knows where the other one went.",
   ] },
