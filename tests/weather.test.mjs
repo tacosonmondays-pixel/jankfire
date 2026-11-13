@@ -191,7 +191,11 @@ test('sandstorms: the Bazaar gets them, the Desert gets them or a star shower ab
   const b = fs.readFileSync(path.join(ROOT, 'public/models/wx/wx_sand.glb')), j = JSON.parse(b.slice(20, 20 + b.readUInt32LE(12)).toString());
   const meta = JSON.parse(j.nodes.find((n) => n.name === 'wx_sand').extras.jf);
   assert.equal(meta.kind, 'sand'); assert.ok(meta.tile > 0 && meta.boing.length >= 3 && meta.len.tumble_bounce > 0 && meta.len.rag_fly > 0);
-  assert.ok(j.meshes.length <= 6 && j.materials.length <= 2, 'a few draw calls: one mesh per piece, two materials');
+  assert.ok(j.meshes.length <= 6 && j.materials.length <= 3, 'a few draw calls: one mesh per piece, three materials');
+  for (const n of meta.sample) { // (the game samples these per copy: each needs the whole flight)
+    const an = j.animations.find((x) => x.name === n), paths = new Set(an.channels.map((c) => c.target.path));
+    for (const k of ['translation', 'rotation', 'scale']) assert.ok(paths.has(k), `${n} ${k}`);
+  }
 });
 
 test('every map with weather keeps it (one table line each: none swallowed into a comment)', () => {

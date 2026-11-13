@@ -7,11 +7,11 @@
 #   wx_sand_billow  the billows on top of the wall, leaning in like a breaking wave. sand_billow_turn: churns the other way
 #   wx_sand_grit    one 4 x 4 m tile of chunky grit, 6 m tall, two periods along x. sand_grit_blow slides it one tile
 #                   downwind in 0.4 s and loops (10 m/s), so a grid of these round the camera blows forever, no seams
-#   wx_sand_ribbon  the same tile of twisting sand ribbons, slower (sand_ribbon_blow: 7 m/s, bobbing)
+#   wx_sand_ribbon  the same tile of twisting sand ribbons along the ground, slower (sand_ribbon_blow: 7 m/s, bobbing)
 #   wx_tumbleweed   a tumbleweed (twig loops, 1 m across). tumble_bounce: 3.6 s bouncing 26 m downwind, rolling,
 #                   popping in and out at the ends (sampled per copy: the game starts each one on open flat ground)
 #   wx_sand_rag     a scrap of striped bazaar cloth. rag_fly: 4 s flapping 36 m downwind, swooping up and down
-# One 256 px atlas, 2 materials (vertex colour, cards), 6 draw calls in game (Potato: 4).
+# One 256 px atlas, 3 materials (the wall's toon ramp, vertex colour, cards), 6 draw calls in game (Potato: 4).
 import bpy, math, os, sys, random
 import numpy as np
 from mathutils import Vector, Matrix, Quaternion
@@ -26,7 +26,14 @@ WALL_R = 170.0
 TUMBLE_S, TUMBLE_X = 3.6, 26.0
 RAG_S, RAG_X = 4.0, 36.0
 
-AT = Atlas(256, {'ribbon': (0, 0, 256, 32), 'rag': (0, 32, 64, 64), 'fx': (64, 32, 32, 32)})
+AT = Atlas(256, {'ribbon': (0, 0, 256, 32), 'rag': (0, 32, 64, 64), 'fx': (64, 32, 32, 32), 'ramp': (0, 96, 256, 16)})
+# the dust's toon ramp: u = how lit. ink, belly, shade, front, top in hard bands (a triangle spanning two bands gets a
+# hard comic edge across it, not a smear)
+RAMP = {'ink': 0.04, 'belly': 0.22, 'shade': 0.47, 'front': 0.72, 'top': 0.93}
+
+
+def ramp_uv(C):  # each vertex inside its band, jittered a little both ways (so no triangle's uvs are a line)
+    return [AT.uv('ramp', RAMP[c] + (0.025 if c == 'ink' else 0.07) * math.sin(i * 2.399), 0.5 + 0.4 * math.sin(i * 1.618 + 0.7)) for i, c in enumerate(C)]
 
 
 def ribbon_tex(u, v, w, h):  # a twisting band of blown sand: tapered ends, light middle, darker body, an ink edge, grains
@@ -49,12 +56,19 @@ def rag_tex(u, v, w, h):  # striped bazaar cloth: pink and yellow bands, a fraye
     return np.concatenate([col, inside[..., None].astype(np.float32)], -1)
 
 
-AT.paint('ribbon', ribbon_tex); AT.paint('rag', rag_tex)
+def ramp_tex(u, v, w, h):
+    col = np.where((u < 0.1)[..., None], solid(0x3a1a0e, u.shape), solid(0x9a5a2e, u.shape))
+    for lo, c in ((0.35, 0xc8803e), (0.6, 0xeaa85c), (0.85, 0xffd68e)): col = np.where((u >= lo)[..., None], solid(c, u.shape), col)
+    return np.concatenate([col, np.ones(u.shape + (1,), np.float32)], -1)
+
+
+AT.paint('ribbon', ribbon_tex); AT.paint('rag', rag_tex); AT.paint('ramp', ramp_tex)
 AT.paint('fx', lambda u, v, w, h: np.concatenate([solid(0xffffff, u.shape), np.ones(u.shape + (1,), np.float32)], -1))
 sc = reset()
 bpy.context.preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
 IMG = AT.image('wx_sand_atlas')
-M_DUST = material('wx_m_dust', vcol=True, rough=1.0, double=False)  # (single-sided: the inked hulls are inside-out shells. no glow: glTF would make it a flat white one)
+M_DUST = material('wx_m_dust', vcol=True, rough=1.0, double=False)  # (grit + tumbleweed: lit like the map. no glow: glTF would make vertex colour glow flat white)
+M_WALL = material('wx_m_dustwall', IMG, rough=1.0, emit=0.5, double=False)  # (the wall: the ramp, glowing its own colours so the storm reads under its own gloom. single-sided: the inked hulls are inside-out shells)
 M_CARD = material('wx_m_sandcard', IMG, rough=0.9, emit=0.35, clip=True)
 root = bpy.data.objects.new('wx_sand', None); sc.collection.objects.link(root)
 
@@ -73,7 +87,7 @@ def puff_set(list_, colour, ink, V, F, C):
         P = [c + Vector((v.x * r * l, v.y * r * sq * l, v.z * r * l)) for v, l in zip(base, lump)]
         for shell in (0, 1):  # the puff, then its ink hull: pushed out, wound inside-out (only its far side draws: a line round it)
             n0 = len(V)
-            if shell: V += [c + (p - c) * ((r + ink) / r) for p in P]; C += [0x3a1a0e] * len(P)
+            if shell: V += [c + (p - c) * ((r + ink) / r) for p in P]; C += ['ink'] * len(P)
             else: V += P; C += [colour(p, Vector((v.x, v.y / max(sq, 0.3), v.z)).normalized(), c) for p, v in zip(P, base)]
             for (i, j, l) in tris:
                 a, b, d = P[i], P[j], P[l]
@@ -85,10 +99,10 @@ def puff_set(list_, colour, ink, V, F, C):
 
 def dust_colour(p, n, c):  # the camera is inside the ring: the side facing the middle is the lit front
     inward = -Vector((c.x, 0, c.z)).normalized().dot(n)
-    if n.y > 0.55: return 0xffdc98
-    if n.y < -0.5: return 0x9a5a2e
-    if inward > 0.35: return 0xf4be72 if p.y > 25 else 0xeab064
-    return 0xd08a48
+    if n.y > 0.55: return 'top'
+    if n.y < -0.5: return 'belly'
+    if inward > 0.35: return 'top' if p.y > 25 and n.y > 0.2 else 'front'
+    return 'shade'
 
 
 wall, V, F, C = [], [], [], []
@@ -102,7 +116,7 @@ puff_set(wall, dust_colour, 2.4, V, F, C)
 # the dust ceiling over it: a lumpy low dome, its underside banded in swirls (wound to face down: you only see it from below)
 RINGS, SEG = 6, 36
 n0 = len(V)
-V.append(Vector((0, 118, 0))); C.append(0xb87436)
+V.append(Vector((0, 118, 0))); C.append('shade')
 for k in range(1, RINGS + 1):
     rr = WALL_R * k / RINGS
     for s in range(SEG):
@@ -110,7 +124,7 @@ for k in range(1, RINGS + 1):
         y = 118 - 52 * (k / RINGS) ** 2 + (R.uniform(-5, 5) if k < RINGS else 0)
         V.append(Vector((math.cos(a) * rr, y, math.sin(a) * rr)))
         sw = math.sin(a * 3 + k * 1.3)  # (swirled bands: light and dark dust)
-        C.append(0xd89a52 if sw > 0.45 else 0x9a5a2c if sw < -0.45 else 0xb87436)
+        C.append('front' if sw > 0.45 else 'belly' if sw < -0.45 else 'shade')
 for s in range(SEG): F.append((n0, n0 + 1 + s, n0 + 1 + (s + 1) % SEG))  # (the cap: middle -> first ring, wound to face down)
 for k in range(1, RINGS):
     a0, b0 = n0 + 1 + (k - 1) * SEG, n0 + 1 + k * SEG
@@ -124,7 +138,7 @@ for fi in range(len(F)):
     if f[0] >= n0:
         a, b, d = V[f[0]], V[f[1]], V[f[2]]
         if (b - a).cross(d - a).y > 0: F[fi] = (f[0], f[2], f[1])
-ob_wall = mesh_obj(sc, root, 'wx_sand_wall', V, F, M_DUST, uvs=fx_uv(V), pcols=C, smooth=True)
+ob_wall = mesh_obj(sc, root, 'wx_sand_wall', V, F, M_WALL, uvs=ramp_uv(C), smooth=True)
 clip(ob_wall, 'rotation_euler', [(q * 90 * FPS, (0, 0, -q * math.pi / 2)) for q in range(5)], 'sand_wall_turn')
 
 # the billows on top: leaning in over the ring, churning the other way
@@ -133,7 +147,7 @@ for i in range(26):
     a = 2 * math.pi * (i + R.random() * 0.5) / 26; d = WALL_R - 18 + R.uniform(-6, 4)
     bil.append((Vector((math.cos(a) * d, R.uniform(56, 68), math.sin(a) * d)), R.uniform(15, 21), R.uniform(0.7, 0.85)))
 puff_set(bil, dust_colour, 2.0, V, F, C)
-ob_bil = mesh_obj(sc, root, 'wx_sand_billow', V, F, M_DUST, uvs=fx_uv(V), pcols=C, smooth=True)
+ob_bil = mesh_obj(sc, root, 'wx_sand_billow', V, F, M_WALL, uvs=ramp_uv(C), smooth=True)
 clip(ob_bil, 'rotation_euler', [(q * 75 * FPS, (0, 0, q * math.pi / 2)) for q in range(5)], 'sand_billow_turn')
 
 
@@ -165,7 +179,7 @@ clip(ob_grit, 'location', [(0, gv(0, 0, 0)), (GRIT_F // 2, gv(TILE / 2, 0.12, 0)
 V, F, UV = [], [], []
 RIBS = 5
 for i in range(RIBS):
-    L = R.uniform(1.4, 2.4); x0 = R.uniform(0.1, TILE - L - 0.1); y0 = R.uniform(0.2, 3.2); z0 = R.uniform(0.3, TILE - 0.3)
+    L = R.uniform(1.4, 2.4); x0 = R.uniform(0.1, TILE - L - 0.1); y0 = R.uniform(0.15, 1.1); z0 = R.uniform(0.3, TILE - 0.3)  # (low: sand streams along the ground, under your eyes)
     w = R.uniform(0.11, 0.17); tw0 = R.uniform(0, 3.14); tw = R.uniform(1.6, 2.6); amp = R.uniform(0.08, 0.2); ph = R.uniform(0, 6.28)
     SEGS = 8
     for k in (0, 1):
@@ -253,7 +267,7 @@ NR = int(RAG_S * FPS)
 ob_rag.rotation_mode = 'QUATERNION'
 for f in range(0, NR + 1, 2):
     t = f / FPS; u = t / RAG_S
-    ob_rag.location = gv(RAG_X * u, 1.2 * math.sin(2 * math.pi * u * 1.5) + 0.8 * u, 1.0 * math.sin(2 * math.pi * u))  # (swooping 1.2 m up and down, 1 m side to side: the game checks that much room); ob_rag.keyframe_insert('location', frame=f)
+    ob_rag.location = gv(RAG_X * u, 1.2 * math.sin(2 * math.pi * u * 1.5) + 0.8 * u, 1.0 * math.sin(2 * math.pi * u)); ob_rag.keyframe_insert('location', frame=f)  # (swooping 1.2 m up and down, 1 m side to side: the game checks that much room)
     flap = math.sin(2 * math.pi * t * 4.5)  # (flapping 4.5 times a second, tumbling over slowly)
     q = Quaternion((1, 0, 0), 1.1 * flap) @ Quaternion((0, 1, 0), 0.5 * math.sin(2 * math.pi * u * 2)) @ Quaternion((0, 0, 1), 2 * math.pi * u * 1.5)
     ob_rag.rotation_quaternion = q; ob_rag.keyframe_insert('rotation_quaternion', frame=f)

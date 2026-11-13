@@ -67,7 +67,10 @@ export function sandFrame(dt, plan, t, on, test, H) {
   if (!K) return;
   K.root.visible = true;
   const potato = (G.settings.jank | 0) === 0, def = MAPS[MAP.id];
-  for (const o of [K.P.wall, K.P.billow]) { o.position.set(cam.x + off, cam.y - 14, cam.z); o.visible = !(def && def.sealed); }
+  // as its edge reaches you the wall rears up and rolls over the top of you (a camera inside a puff would see nothing but
+  // its ink), and settles back down behind you
+  const edge = Math.abs(Math.abs(off) - (K.meta.wall || 170)), u = Math.min(1, Math.max(0, (120 - edge) / 65)), lift = 58 * u * u * (3 - 2 * u);
+  for (const o of [K.P.wall, K.P.billow]) { o.position.set(cam.x + off, cam.y - 14 + lift, cam.z); o.visible = !(def && def.sealed); }
   K.mixer.update(Math.min(dt, 0.1)); S.clock += Math.min(dt, 0.1); // (the tumbleweeds' clock: the game's frames, like the clips)
   tiles(K, cam, s, potato, H);
   tumble(K, cam, s, potato, H);
@@ -86,7 +89,7 @@ function tiles(K, cam, k, potato, H) {
   let c = 0;
   for (let i = 0; i < n && k > 0; i++) for (let j = 0; j < n; j++) {
     const ix = bx + i, iz = bz + j;
-    if (hash(ix, iz) > 0.2 + 0.8 * k) continue; // (a light storm: patchy)
+    if (hash(ix, iz) > 1.15 * k - 0.1) continue; // (a light storm: patchy. the first breath of it, none)
     if (!H.colOpen((ix - 1) * T, iz * T, cam.y, T) || !H.colOpen(ix * T, iz * T, cam.y, T) || !H.colOpen((ix + 1) * T, iz * T, cam.y, T)) continue;
     _m.makeTranslation(ix * T, y0, iz * T); G1.setMatrixAt(c, _m); R1.setMatrixAt(c, _m); c++;
   }
@@ -128,6 +131,7 @@ function tumble(K, cam, k, potato, H) {
   spawn(S.rag, nRag, K.len.rag_fly, K.meta.ragX || 36, true);
   const pose = (L, m, A, len, boing) => {
     let c = 0;
+    if (!A || !A.position || !A.quaternion || !A.scale) { m.count = 0; return; } // (a kit without the whole flight: none, rather than a broken frame)
     for (const o of L) {
       const age = now - o.t0, tr = A.position.evaluate(age), q = A.quaternion.evaluate(age), sc = A.scale.evaluate(age);
       _p.set(o.x + tr[0], o.y + tr[1], o.z + tr[2]); _q.set(q[0], q[1], q[2], q[3]); _s.set(sc[0], sc[1], sc[2]);
