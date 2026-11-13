@@ -23,6 +23,10 @@ const HYST = 16; // metres past a ring before something is dropped from it (no f
 // programs and uploaded dozens of textures on the one frame they appeared (150-250 ms hitches walking in)
 const TEXK = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'bumpMap', 'lightMap', 'specularMap'];
 
+// which shader kind a draw into rt builds: 'canvas', or 'rt' (any plain target). post.js's target poses as an XR one so
+// materials keep the canvas's tone mapping and sRGB output: shader-wise, that IS the canvas
+export const drawKind = (r, rt) => (rt && !(rt.isXRRenderTarget && rt.texture.colorSpace === r.outputColorSpace) ? 'rt' : 'canvas');
+
 function geoOf(b) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(b.pos, 3));
@@ -71,10 +75,12 @@ export class CityStream {
     this.time = 0; this.cam = new THREE.Vector3(); this.first = true;
     this.setPreset(preset);
     this.renderer = renderer; this.warmQ = []; // (no renderer, no warm-up: things compile when first drawn, as before)
-    // where the scene is really drawn (post.js draws it into its own target, which changes the shaders' output end):
-    // warm-ups compile against the same, or they'd build a program nobody uses
-    this.sceneRT = null; const obr = this.obr = scene.onBeforeRender;
-    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.sceneRT = rt || null; obr.call(scene, r, sc, cam, rt); };
+    // where the scene gets drawn: straight to the canvas, or into a target (post.js's, at the presets with post; the
+    // talk portraits, photo mode and the picture-in-picture, now and then). three builds one shader for the canvas and
+    // another for any target, so a warm-up compiles each kind the scene was drawn to lately, or it'd build a program
+    // nobody uses and the real one would still compile cold
+    this.drawnTo = { canvas: -1e9, rt: -1e9 }; this.warmRT = null; const obr = this.obr = scene.onBeforeRender;
+    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.drawnTo[drawKind(r, rt)] = this.time; obr.call(scene, r, sc, cam, rt); };
     onPropModel((id) => { // a Blender prop landed: warm it up, then rebuild the instances with it
       const m = propModel(id), objs = [];
       if (this.renderer && m && m.parts) for (const part of [...m.parts, ...(m.lod1 || [])]) { const im = new THREE.InstancedMesh(part.geo, part.mat, 1); if (part.paint) im.setColorAt(0, new THREE.Color()); objs.push(im); } // (as props.js draws it: instanced, paint parts coloured)
@@ -206,10 +212,14 @@ export class CityStream {
     const w = this.warmQ[0], R = this.renderer;
     if (!w) return;
     if (w.progs.length) { const pr = w.progs.shift(); try { pr.getUniforms(); } catch { /* reported when drawn */ } return; }
+    const D = this.drawnTo, kinds = [];
+    if (this.time - D.canvas < 15) kinds.push(null);
+    if (this.time - D.rt < 15) kinds.push(this.warmRT || (this.warmRT = new THREE.WebGLRenderTarget(1, 1))); // (any target makes the same shader: a 1 x 1 of our own, never someone else's that might be gone)
+    if (!kinds.length) kinds.push(null);
     while (w.i < w.objs.length) {
-      const o = w.objs[w.i++], n = R.info.programs.length, was = R.getRenderTarget();
-      if (was !== this.sceneRT) R.setRenderTarget(this.sceneRT);
-      try { R.compile(o, camera, this.scene); } finally { if (R.getRenderTarget() !== was) R.setRenderTarget(was); } // (with the real scene and its target: its lights, fog, shadows and output, so the same programs as when drawn)
+      const o = w.objs[w.i], n = R.info.programs.length, was = R.getRenderTarget(), k = kinds[Math.min(w.k || 0, kinds.length - 1)];
+      if ((w.k = (w.k || 0) + 1) >= kinds.length) { w.k = 0; w.i++; } // (each kind its own frame: still one new shader a frame)
+      try { R.setRenderTarget(k); R.compile(o, camera, this.scene); } finally { R.setRenderTarget(was); } // (with the real scene: its lights, fog and shadows, so the same programs as when drawn)
       o.traverse((q) => { for (const mt of [].concat(q.material || [])) { const pr = R.properties.get(mt).currentProgram; if (R.info.programs.length > n && pr && !w.seen.has(pr)) { w.seen.add(pr); w.progs.push(pr); }
         for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
       if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)
@@ -340,6 +350,7 @@ export class CityStream {
   progress() { let n = 0, k = 0; for (const r of this.chunks.values()) if (r.used === this.time && r.ring === 1) { n++; if (r.m0) k++; } return n ? k / n : 0; } // the near ring's share that's built (the loading card)
   dispose() {
     if (this.onScene && this.scene.onBeforeRender === this.onScene) this.scene.onBeforeRender = this.obr; // (put back whatever was there)
+    if (this.warmRT) this.warmRT.dispose();
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }
