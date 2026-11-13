@@ -61,16 +61,19 @@ export function jesterLordLook(K) {
   // ---- the code stand-ins (the Blender model replaces these) and the markers (kept)
   const t = grp('thoraxCode', c.thorax); t.add(sph(1, laq, 0, 0, 0, 0.5, 0.3, 0.56, 16));
   const ab = grp('abdoCode', c.abdo); ab.add(sph(1, stripes, 0, 0.34, 0.86, 0.68, 0.58, 0.88, 16));
+  // a tapered rod from a joint to a point in its frame (the horns run joint to joint, so their bells hang off the tips)
+  const V3 = p.ch.root.position.constructor;
+  const rod = (parent, to, r0, r1, mat, from = [0, 0, 0]) => { const a0 = new V3(...from), v = new V3(...to).sub(a0), m = cyl(r1, r0, v.length(), mat, 0, 0, 0, 10); m.position.copy(v).multiplyScalar(0.5).add(a0); m.quaternion.setFromUnitVectors(new V3(0, 1, 0), v.clone().normalize()); parent.add(m); };
   const along = (parent, len, r0, r1, mat) => { const m = cyl(r1, r0, len, mat, len / 2, 0, 0, 8); m.rotation.z = -Math.PI / 2; parent.add(m); };
   for (const L of LEGS) {
     const [s, q] = [L[0], L[1]];
     const fm = c['fem' + s + q], tb = c['tib' + s + q], ft = c['foot' + s + q], bl = c['bell' + s + q];
-    const l1 = at['tib' + s + q][2][0], l2 = at['foot' + s + q][2][0], l3 = at['bell' + s + q][2][0];
-    along(grp('fem' + L + 'Code', fm), l1, 0.08, 0.06, dPY); along(grp('tib' + L + 'Code', tb), l2, 0.064, 0.046, dBW); along(grp('foot' + L + 'Code', ft), l3 * 0.8, 0.05, 0.035, blk);
+    const l1 = at['tib' + s + q][2][0], l2 = at['foot' + s + q][2][0], l3 = at['bell' + s + q][2][0] + 0.055; // (the sole is a little past the bell's x: the toe curls back over it)
+    along(grp('fem' + L + 'Code', fm), l1, 0.08, 0.06, dPY); along(grp('tib' + L + 'Code', tb), l2, 0.064, 0.046, dBW); along(grp('foot' + L + 'Code', ft), l3, 0.05, 0.035, blk); rod(grp('toe' + L + 'Code', ft), at['bell' + s + q][2], 0.035, 0.015, s === 'R' ? yel : pink, [l3, 0, 0]);
     grp('knee' + L + 'Code', tb).add(sph(0.088, laq, 0, 0, 0)); grp('bell' + L + 'Code', bl).add(sph(0.064, brass, 0, -0.075, 0));
   }
   for (const [s, mat] of [['R', pink], ['L', yel]]) {
-    const h = grp('hat' + s + 'Code', c['hat' + s]); const k = cyl(0.02, 0.15, 0.6, mat, 0, 0.25, 0.1, 10); k.rotation.x = -0.5; k.rotation.z = s === 'R' ? -0.3 : 0.3; h.add(k);
+    rod(grp('hat' + s + 'Code', c['hat' + s]), at['hat' + s + 'b'][2], 0.15, 0.08, mat); rod(grp('hat' + s + 'bCode', c['hat' + s + 'b']), at['bellH' + s][2], 0.08, 0.02, mat);
     grp('bellH' + s + 'Code', c['bellH' + s]).add(sph(0.06, brass, 0, -0.07, 0));
   }
   const nose = cyl(0.0, 0.05, 0.42, wht, 0, 0.36, -0.52, 8); nose.rotation.x = -Math.PI / 2; grp('noseCode', c.head).add(nose);

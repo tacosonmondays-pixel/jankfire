@@ -8,6 +8,7 @@
 // close = face, eyes open, nose, hat, horns and bells, collar, marotte, stockings, foot and bell, big top, the stump -> jl_game_closeups.jpg
 // poses = one moment a clip                                                    -> jl_game_poses.jpg
 // clips = a contact strip per clip (12 frames, the marks called out)           -> jl_clip_<name>.jpg
+// code  = the code puppet (no glb: what shows if the model fails to load), idle and bowing  -> jl_game_codepuppet.jpg
 // film  = the whole set once, stepped frame by frame at 30 fps (the real clip code, the bells' swing, the web, the
 //         stump) at 24 fps, 960 x 540, put together by ffmpeg, so it plays at true speed whatever the machine  -> jl_rehearsal.mp4
 const { chromium } = require('playwright');
@@ -186,6 +187,14 @@ const ROOT = path.join(__dirname, '..', '..', '..');
           X.cell(i, 6, 2, sc, X.orbit([0.4, y, 0], deg, dist, 0.08), (i === 0 ? clip + '   ' : '') + t.toFixed(2) + ' s', mk ? 'mark: ' + mk : ''); }); }, [clip, VIEW[clip] || null]);
       await shot('jl_clip_' + clip.slice(3));
     }
+  }
+  if (what.includes('code')) {
+    await pg.evaluate(() => { const X = window.JLX; X.clear();
+      [['idle', 'jl_idle', 0.3, 20], ['bow', 'jl_bow', 2.0, 40], ['web hang', 'jl_hang', 3.0, 20]].forEach(([nm, clip, t, deg], i) => { const sc = X.scene(0x2a1830, 8);
+        const L = X.looks.buildLookCode('jester_lord'), a = { id: 'jlcode' + i, L, ch: L.ch, pos: [0, 0, 0], yaw: 0, clip: null, face: L.face, lookY: 0, lookX: 0 };
+        const rig = X.JL.rig(a); rig.manual = true; rig.manualDt = 1 / 30; for (let tt = Math.max(0, t - 1); tt <= t; tt += 1 / 30) X.CLIPS[clip].f(L.ch, tt, 1); sc.add(L.ch.root);
+        X.cell(i, 3, 1, sc, X.orbit([0.2, clip === 'jl_hang' ? 3.4 : 1.8, 0.2], deg, 13, 0.1), (i === 0 ? 'the code puppet (no model loaded): ' : '') + nm); }); });
+    await shot('jl_game_codepuppet');
   }
   if (what.includes('film')) {
     const dir = path.join(OUT, '_film'); fs.mkdirSync(dir, { recursive: true });
