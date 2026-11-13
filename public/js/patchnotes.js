@@ -3,6 +3,7 @@
 export const PATCH_NOTES = [
   { v: '11.49', date: '2026-11-13', title: 'SCRAP MART', items: [
     "battle island has a new spot: SCRAP MART. a candy-coloured mech hangar with the road running straight through it, a catwalk, a parts office, a yard crane, a car crusher and a test range. it's a hot drop. bring friends.",
+    "rain doesn't make the game hiccup when it starts anymore. it was measuring the whole planet for roofs.",
   ] },
   { v: '11.48', date: '2026-11-13', title: 'SHIP HAPPENS', items: [
     "battle island has a new spot: RETURN TO SENDER. a cargo ship ran aground on the beach and spilled its containers all over the sand. climb the crane, loot the wheelhouse, hide in the lifeboat. signed for by nobody.",
