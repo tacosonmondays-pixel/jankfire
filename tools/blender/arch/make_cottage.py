@@ -311,7 +311,7 @@ def door():
     pole(lc + Vector((0, 0.29, 0)), (x - 0.24, 2.2, lz), 0.008, 'ciron', n=3, caps=(False, False))
     # the doormat
     Q([(x - 0.78, 0.05, z0 + 0.12), (x - 0.78, 0.05, z1 - 0.12), (x - 0.06, 0.05, z1 - 0.12), (x - 0.06, 0.05, z0 + 0.12)], 'cmat', out=(0, 1, 0),
-      uv=[(0, 0), (1, 0), (1, 1), (0, 1)])
+      uv=[(0, 1), (1, 1), (1, 0), (0, 0)])  # (the game reads the kit with v down: the words' tops toward the door)
     for (a, b_) in (((x - 0.78, z0 + 0.12), (x - 0.78, z1 - 0.12)), ((x - 0.06, z1 - 0.12), (x - 0.06, z0 + 0.12)), ((x - 0.78, z1 - 0.12), (x - 0.06, z1 - 0.12)), ((x - 0.06, z0 + 0.12), (x - 0.78, z0 + 0.12))):
         Q([(a[0], 0.02, a[1]), (b_[0], 0.02, b_[1]), (b_[0], 0.05, b_[1]), (a[0], 0.05, a[1])], 'cmat', out=(a[0] + b_[0] - 2 * (x - 0.42), 0, a[1] + b_[1] - 2 * 9.0), uv=[(0, 0), (1, 0), (1, 0.03), (0, 0.03)])
 
@@ -330,8 +330,7 @@ def roof():
     sides = {'n': ('nw', 'ne', (0, 1, -1), 0, 2), 'e': ('ne', 'se', (1, 1, 0), 2, 0), 's': ('se', 'sw', (0, 1, 1), 0, 2), 'w': ('sw', 'nw', (-1, 1, 0), 2, 0)}
     for s, (a, b, o, ua, va) in sides.items():
         sl = math.hypot(In[a][va] - Eo[a][va], by - ey)  # the steep part's slope length
-        def uv(p, base, y0, dv): return (p[ua], dv + (p[1] - y0) / max(1e-6, abs(base)))  # (u along the eave, v up the slope)
-        def U(p, v): return (p[ua] if s in 'ne' else -p[ua], v)
+        def U(p, v): return (p[ua] if s in "ne" else -p[ua], v)  # (u along the eave, v up the slope)
         Q([Eo[a], Eo[b], In[b], In[a]], 'croof', out=o, uv=[U(Eo[a], 0), U(Eo[b], 0), U(In[b], sl), U(In[a], sl)])
         tl = math.hypot(rz - In[a][2] if s in 'ns' else rx0 - In[a][0] if s == 'w' else In[a][0] - rx1, ry - by)
         if s in 'ns':
@@ -410,14 +409,14 @@ def life_ring():
 def oars():
     """two oars crossed on the south wall (the boat's long gone), on a hook"""
     z = OZ1 + 0.035
-    for (p0, p1) in (((71.7, 0.75), (73.5, 2.45)), ((73.5, 0.75), (71.7, 2.45))):
+    for (p0, p1) in (((72.35, 0.75), (73.95, 2.45)), ((73.95, 0.75), (72.35, 2.45))):  # (east of S&D's site board, x 70.2..71.8)
         a, b = Vector((p0[0], p0[1], z)), Vector((p1[0], p1[1], z)); d = (b - a).normalized(); u = Vector((-d.y, d.x, 0))
         z = z + 0.045  # (the second one over the first)
         pole(a, a + d * 1.75, 0.03, 'cpost', n=4, caps=(True, False), rot=0.78)
         bl = [a + d * 1.6 + u * 0.05, a + d * 1.6 - u * 0.05, a + d * 2.35 - u * 0.09, a + d * 2.35 + u * 0.09]
         for (o, s) in ((0.012, 1), (-0.012, -1)): Q([q + Vector((0, 0, o)) for q in bl], 'cblade', out=(0, 0, s))
         for (i, j) in ((0, 1), (1, 2), (2, 3), (3, 0)): Q([bl[i] + Vector((0, 0, 0.012)), bl[j] + Vector((0, 0, 0.012)), bl[j] - Vector((0, 0, 0.012)), bl[i] - Vector((0, 0, 0.012))], 'cblade', out=(bl[i] + bl[j]) / 2 - (bl[0] + bl[2]) / 2)
-    cbox((72.56, 1.56, OZ1), (72.64, 1.66, OZ1 + 0.12), 'ciron')
+    cbox((73.11, 1.56, OZ1), (73.19, 1.66, OZ1 + 0.12), 'ciron')
 
 
 def washing():
