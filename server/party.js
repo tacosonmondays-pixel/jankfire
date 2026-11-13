@@ -5,12 +5,18 @@
 // When the leader starts, the server picks or makes the room once and hands every member a one-use ticket to it, so the
 // whole party lands in the same room (roomFor honours the ticket) and on the same side (room.js joinTeam / partyteams.js).
 // rate limits on top of the socket's budget: a wrong code costs you (10 a minute, then a wait), joins 1 a second.
-import crypto from 'node:crypto';
+import { HUB_BACK } from './hubback.js'; // the offline single-mode picks that go back to their lobby
+const rnd = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n)); // (web crypto, no node: import: room.js imports this file and the story's referee runs room.js in a browser worker, where 'node:crypto' can't load)
+const b64url = (u8) => { let b = ''; for (const x of u8) b += String.fromCharCode(x); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }; // (base64url without Buffer: browser-safe too)
 
-export const PARTY = { max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
+export const PARTY = { grace: 30000, max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
 let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
 const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
 const parties = new Map(); // code -> { id, code, lead, members, set }
+const online = new Map(); // account name_lower -> its menu connections (friends' presence, invites)
+const back = new Map(); // rejoin key -> a member whose connection dropped (30 s to come back: wifi blips, reloads)
+const LP_MODES = new Set(['zm', 'isle']); // the walkable lobbies
+const MODE_NAMES = { qp: 'QUICK PLAY', bomb: 'PLANT & DEFUSE', br: 'JANK ROYALE', zm: 'ZOMBIES', isle: 'BATTLE ISLAND', training: 'TRAINING' };
 let D = null, nextId = 1;
 const now = () => Date.now();
 const has = (o, k) => typeof k === 'string' && Object.hasOwn(o, k);
@@ -25,11 +31,11 @@ export const partyCount = () => parties.size;
 function newCode() {
   for (;;) {
     let s = '';
-    for (const b of crypto.randomBytes(PARTY.len)) s += PARTY.abc[b % PARTY.abc.length];
+    for (const b of rnd(PARTY.len)) s += PARTY.abc[b % PARTY.abc.length];
     if (!parties.has(s)) return s;
   }
 }
-const view = (h) => ({ id: h.id, name: h.name, look: h.look, gun: h.gun, mf: h.mf, ready: h.ready ? 1 : 0, acct: h.acct ? 1 : 0, busy: h.busy ? 1 : 0 }); // (gun / mf: the lobby scenes stand you there with them)
+const view = (h) => ({ id: h.id, name: h.name, look: h.look, gun: h.gun, mf: h.mf, ready: h.ready ? 1 : 0, acct: h.acct ? 1 : 0, busy: h.busy ? 1 : 0, gone: h.gone ? 1 : 0 }); // (gun / mf: the lobby scenes stand you there with them)
 function push(pt) {
   const base = { t: 'party', code: pt.code, lead: pt.lead.id, set: pt.set, ms: pt.members.map(view), max: PARTY.max };
   for (const h of pt.members) h.send({ ...base, me: h.id });
@@ -46,7 +52,7 @@ function leave(h) {
   if (!pt) return;
   pt.members = pt.members.filter((x) => x !== h); h.party = null;
   if (!pt.members.length) { parties.delete(pt.code); return; }
-  if (pt.lead === h) pt.lead = pt.members[0];
+  if (pt.lead === h) pt.lead = pt.members.find((x) => !x.gone) || pt.members[0];
   push(pt);
 }
 const rate = (h, k, ms) => { const t = now(); if (t - (h.t[k] || 0) < ms) return false; h.t[k] = t; return true; };
@@ -55,13 +61,44 @@ const rate = (h, k, ms) => { const t = now(); if (t - (h.t[k] || 0) < ms) return
 const gunOf = (g) => (has(D.WEAPONS, g) && D.WEAPONS[g].slot === 'primary' ? g : null);
 // a menu connection says hello. who = { name, look, acct, achs } (server.js checked the token and the look), m = the hello
 export function hubHello(ws, who, m = {}) {
-  const h = { id: nextId++, ws, name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, t: {}, fails: [] };
-  h.send = (m) => { if (ws.readyState === 1) ws.send(JSON.stringify(m)); };
-  h.send({ t: 'hubok', id: h.id });
+  // back within 30 s with the key it was given (the same account, or a guest again): your old place in the party
+  const old = typeof m.rk === 'string' && m.rk.length <= 24 ? back.get(m.rk) : null;
+  if (old && old.gone && (old.acct || null) === (who.acct || null)) {
+    back.delete(m.rk); clearTimeout(old.goneT); old.gone = 0; old.ws = ws;
+    Object.assign(old, { name: who.name, look: who.look, achs: who.achs, gun: gunOf(m.gun), mf: D.mechFrame(m.mf) });
+    old.send({ t: 'hubok', id: old.id, rk: old.rk });
+    if (old.acct) { if (!online.has(old.acct)) online.set(old.acct, new Set()); online.get(old.acct).add(old); }
+    if (old.party) push(old.party); else solo(old);
+    return old;
+  }
+  const h = { id: nextId++, ws, rk: b64url(rnd(12)), name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, gone: 0, t: {}, fails: [] };
+  h.send = (x) => { if (h.ws.readyState === 1) h.ws.send(JSON.stringify(x)); };
+  h.send({ t: 'hubok', id: h.id, rk: h.rk });
+  if (h.acct) { if (!online.has(h.acct)) online.set(h.acct, new Set()); online.get(h.acct).add(h); }
   solo(h);
   return h;
 }
-export function hubClose(h) { leave(h); }
+export function hubClose(h) {
+  const s = h.acct && online.get(h.acct);
+  if (s) { s.delete(h); if (!s.size) online.delete(h.acct); }
+  if (!h.party || h.gone) return;
+  // gone: kept in the party (RECONNECTING) for 30 s, in case it's a blip or a reload; then really gone
+  h.gone = now(); h.ready = false; back.set(h.rk, h);
+  if (h.party.lead === h) { const up = h.party.members.find((x) => !x.gone); if (up) h.party.lead = up; } // (the party doesn't wait on a dropped leader)
+  h.goneT = setTimeout(() => { if (back.get(h.rk) === h) back.delete(h.rk); if (h.gone) leave(h); }, PARTY.grace);
+  if (h.goneT.unref) h.goneT.unref();
+  push(h.party);
+}
+// a friend's presence for the friends list: null = offline, else where they are (in a match: what they told us it is)
+export function presenceOf(nameLower) {
+  const s = online.get(nameLower);
+  if (!s || !s.size) return null;
+  const h = [...s].find((x) => x.busy) || [...s][0], pt = h.party;
+  const size = pt ? pt.members.length : 1, full = size >= PARTY.max;
+  if (h.busy) return { where: 'match', what: h.what || '', size, full };
+  if (pt && pt.set && size > 1) return { where: 'lobby', what: MODE_NAMES[pt.set.mode] || '', size, full };
+  return { where: 'menu', size, full };
+}
 
 export function hubMsg(h, m) {
   if (!h.party || typeof m.t !== 'string') return;
@@ -86,8 +123,8 @@ export function hubMsg(h, m) {
       if (!lead || !Number.isInteger(m.id) || !rate(h, 'boss', 300)) return;
       const v = pt.members.find((x) => x.id === m.id && x !== h);
       if (!v) return;
-      if (m.t === 'pkick') { solo(v); v.send({ t: 'perr', m: 'you got kicked from the party' }); }
-      else { pt.lead = v; push(pt); }
+      if (m.t === 'pkick') { if (v.gone) leave(v); else { solo(v); v.send({ t: 'perr', m: 'you got kicked from the party' }); } }
+      else if (!v.gone) { pt.lead = v; push(pt); } // (not to someone who's dropped)
       return;
     }
     case 'pready': if (rate(h, 'ready', 200)) { h.ready = !!m.on; push(pt); } return;
@@ -99,7 +136,36 @@ export function hubMsg(h, m) {
       push(pt);
       return;
     }
-    case 'pbusy': if (rate(h, 'busy', 500)) { h.busy = !!m.on; push(pt); } return; // in a match right now (the lineup greys them out)
+    case 'pbusy': // in a match right now (the lineup greys them out; friends see what it is)
+      if (rate(h, 'busy', 500)) { h.busy = !!m.on; h.what = h.busy && typeof m.what === 'string' ? m.what.replace(/[^\w &'!-]/g, '').slice(0, 24) : ''; push(pt); }
+      return;
+    case 'plp': { // where you're standing in a walkable lobby (zombies, battle island: the lobby scenes). party only, never in a match
+      const t = now(); h.lpT = (h.lpT || []).filter((x) => t - x < 1000);
+      if (h.lpT.length >= 12) return; // (a flood: the extras just drop)
+      h.lpT.push(t);
+      if (h.busy || !pt.set || !LP_MODES.has(pt.set.mode) || !Array.isArray(m.p) || m.p.length !== 3 || !m.p.every(Number.isFinite) || !Number.isFinite(m.yaw)) return;
+      const c = (v, a, b) => Math.round(Math.max(a, Math.min(b, v)) * 100) / 100;
+      const out = { t: 'plp', id: h.id, p: [c(m.p[0], -60, 60), c(m.p[1], -5, 30), c(m.p[2], -60, 60)], yaw: Math.round((((m.yaw % 6.2832) + 6.2832) % 6.2832) * 1000) / 1000, a: Number.isInteger(m.a) ? Math.max(0, Math.min(15, m.a)) : 0 };
+      for (const x of pt.members) if (x !== h && !x.busy) x.send(out);
+      return;
+    }
+    case 'pinvite': case 'pjoinf': { // friends only (an account each, friends in the store): invite one to your party, or join theirs
+      const to = typeof m.name === 'string' && m.name.length <= 24 ? m.name.trim().toLowerCase() : '';
+      if (!h.acct || !to || to === h.acct || !rate(h, m.t, 1500) || !D.areFriends) return;
+      const t = m.t;
+      D.areFriends(h.acct, to).then((yes) => {
+        if (!h.party || h.ws.readyState !== 1) return;
+        const them = online.get(to);
+        if (!yes || !them || !them.size) { h.send({ t: 'perr', m: yes ? 'they are offline' : 'only friends can do that' }); return; }
+        if (t === 'pinvite') { for (const x of them) x.send({ t: 'pinvite', from: h.name, code: h.party.code, mode: h.party.set ? MODE_NAMES[h.party.set.mode] || '' : '' }); h.send({ t: 'perr', m: 'invite sent' }); return; }
+        const pt2 = [...them].map((x) => x.party).find((p) => p && p !== h.party);
+        if (!pt2) return;
+        if (pt2.members.length >= PARTY.max) { h.send({ t: 'perr', m: `their party is full (${PARTY.max})` }); return; }
+        leave(h); pt2.members.push(h); h.party = pt2; h.ready = false;
+        push(pt2);
+      }).catch(() => {});
+      return;
+    }
     case 'pset': { // the leader's lobby: online / offline and the mode (members' screens follow)
       if (!lead || !rate(h, 'set', 150) || !SIDES.includes(m.side) || !MODES.includes(m.mode)) return;
       pt.set = { side: m.side, mode: m.mode };
@@ -119,13 +185,14 @@ function go(pt, m) {
   if (has(D.LOBBY.kinds, c.lobby) && (m.mode === 'ffa' || m.mode === 'bots')) cfg.lobby = c.lobby;
   if (m.mode === 'bots' && !cfg.lobby) {
     cfg.priv = true; // a party's own bots match is always private
+    if (HUB_BACK.includes(c.hub)) cfg.hub = c.hub; // an offline single-mode pick: back to its lobby after (server/hubback.js)
     if (has(D.GAMES, c.game)) cfg.game = c.game;
     if (has(D.MAPS, c.map) && D.MAP_ORDER.includes(c.map) && (!cfg.game || D.mapsFor(cfg.game, D.MAPS, D.MAP_ORDER).includes(c.map))) cfg.map = c.map;
     if (Number.isFinite(c.bots)) cfg.bots = Math.max(0, Math.min(12, Math.round(c.bots)));
     if (has(D.BOT_DIFF, c.diff)) cfg.diff = c.diff;
     if (has(D.HIPFIRE, c.hip)) cfg.hip = c.hip;
   }
-  const out = pt.members.filter((x) => !x.busy || x === pt.lead);
+  const out = pt.members.filter((x) => !x.gone && (!x.busy || x === pt.lead));
   const cap = cfg.lobby && D.LOBBY.kinds[cfg.lobby].cap;
   if (cap && out.length > cap) { pt.lead.send({ t: 'perr', m: `${D.LOBBY.kinds[cfg.lobby].name.toLowerCase()} takes ${cap}. there are ${out.length} of you` }); return; }
   // the last room this party was handed and nobody went to (START, back, START again): gone, so they can't pile up
@@ -138,9 +205,9 @@ function go(pt, m) {
   r.tickets = r.tickets || new Map(); r.partyT = now();
   if (cfg.priv) r.partyCfg = cfg; // (the leader's settings, checked above: whoever of the party walks in first, these apply)
   for (const x of out) {
-    const tk = crypto.randomBytes(9).toString('base64url');
+    const tk = b64url(rnd(9));
     r.tickets.set(tk, { party: pt.id, until: now() + PARTY.ticket });
-    x.send({ t: 'pgo', mode: m.mode, cfg: { ...cfg, room: r.id, ticket: tk } });
+    x.send({ t: 'pgo', mode: r.mode, /* (the room's own mode: a packed server hands out the online room) */ cfg: { ...cfg, room: r.id, ticket: tk } });
   }
   for (const x of pt.members) x.ready = false;
   push(pt);

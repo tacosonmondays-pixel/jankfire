@@ -12,7 +12,10 @@ import { cbox, cyl, cylX, cylZ, rfx, rmesh } from './rigmodel.js';
 import { authored, glossyPaint, nodeIn, AUTHORED, whenLate, whenFailed, missingGlb, glbLoader, metaOf } from './glbkit.js';
 import { clone as skClone } from 'three/addons/utils/SkeletonUtils.js'; // (a skinned hero model needs its bones cloned with it)
 import { MECH } from '/shared/mech.js';
-import { lookMech, lookTick, lookColor, lookFree } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
+import { lookMech, lookTick, lookColor, lookFree, lookGibs } from './mechlook.js'; // the hero kit: rim light, ink, glows, contrails, clip events
+import { WBM } from './mechmodel_wrecking.js'; // battle island heroes' stand-ins + poses: one file each
+import { TRM } from './mechmodel_trolley.js';
+import { VMM } from './mechmodel_vending.js';
 
 // the hero models' files (public/models, lazy like x_rig): when one is there it replaces the stand-in
 export const GLB_ID = { paperplane: 'x_mech_paperplane', nightshift: 'x_mech_nightshift' };
@@ -43,6 +46,10 @@ const MK = {
     mk_thrust_calf_L0: ['shin_L', [-0.62, 1.2, 0.42]], mk_thrust_calf_L1: ['shin_L', [-0.62, 0.85, 0.42]], mk_thrust_calf_R0: ['shin_R', [0.62, 1.2, 0.42]], mk_thrust_calf_R1: ['shin_R', [0.62, 0.85, 0.42]],
     mk_sword_base: ['sword', [1.58, 2.2, -0.75]], mk_sword_tip: ['sword', [1.58, 2.2, -4.6]], mk_shield_face: ['shield', [-1.54, 2.92, -0.75]], mk_beacon: ['beacon', [0, 5.8, 0]], mk_mark: ['head', [0, 6.4, 0]] },
 };
+// the battle island heroes: { PIV, MK, PRE (material prefix), build(j, own), clipOf(inst, s), pose(inst, s, dt, spr), mix(inst, s, dt) }
+const MODELS = { wrecking: WBM, vending: VMM, trolley: TRM };
+const PRE = { paperplane: 'pp_', nightshift: 'ns_' };
+for (const [f, M] of Object.entries(MODELS)) { PIV[f] = M.PIV; MK[f] = M.MK; PRE[f] = M.PRE; GLB_ID[f] = 'x_mech_' + f; }
 for (const s of ['L', 'R']) for (let i = 0; i < 6; i++) MK.paperplane[`mk_missile_${s}${i}`] = [`pod_${s}`, [(s === 'L' ? -1 : 1) * (0.88 + (i % 3) * 0.11), 4.3 - (i > 2 ? 0.1 : 0), -0.42]]; // 12 for the swarm (6 a pod)
 export const JOINTS = [...new Set([...Object.keys(PIV.paperplane), ...Object.keys(PIV.nightshift)])];
 export const MARKERS = { paperplane: Object.keys(MK.paperplane), nightshift: Object.keys(MK.nightshift) };
@@ -225,7 +232,7 @@ function buildKnight(j, own) {
 const CONCEPT = {}, conceptT = {};
 export let modelVer = 0;
 const bump = () => { modelVer++; };
-for (const f of ['paperplane', 'nightshift']) { whenLate(GLB_ID[f], bump); whenFailed(GLB_ID[f], bump); } // (failed: the concept gets its turn)
+for (const f of Object.keys(GLB_ID)) { whenLate(GLB_ID[f], bump); whenFailed(GLB_ID[f], bump); } // (failed: the concept gets its turn)
 function sourceOf(frame) {
   const a = authored(GLB_ID[frame]); // (asks for the hero file if the server lists it)
   if (a) return { obj: a.obj, scene: AUTHORED[GLB_ID[frame]].scene };
@@ -240,7 +247,7 @@ function sourceOf(frame) {
 
 // ------------------------------------------------------------ build / free
 export function buildMech(frame, color, opts = {}) {
-  frame = frame === 'nightshift' ? 'nightshift' : 'paperplane';
+  frame = Object.hasOwn(PIV, frame) ? frame : 'paperplane';
   const col = new THREE.Color(color || '#ff4fd8');
   const own = { // per-mech materials: <p>_paint (your colour), the glows
     accent: glossyPaint(col, 0.25),
@@ -268,7 +275,7 @@ export function buildMech(frame, color, opts = {}) {
     let skinned = false; glb.traverse((o) => { if (o.isSkinnedMesh) skinned = true; });
     if (skinned) { glb = skClone(a.scene); glb.animations = a.scene.animations || []; }
     root.add(glb);
-    const pre = frame === 'paperplane' ? 'pp_' : 'ns_'; // MECHS.md material roles: <p>_paint takes your colour, the glows stay lit
+    const pre = PRE[frame]; // MECHS.md material roles: <p>_paint takes your colour, the glows stay lit
     let np = 0; const tinted = new Map(); // (a painted-metal model keeps its own paint, maps and clear coat, tinted: own.paint0.. so freeMech frees them)
     glb.traverse((o) => {
       if (!o.isMesh || Array.isArray(o.material) || !o.material.name || !o.material.name.startsWith(pre + 'paint')) return;
@@ -280,7 +287,8 @@ export function buildMech(frame, color, opts = {}) {
     for (const k of Object.keys(P)) { const n = nodeIn(glb, k); if (n) { j[k].visible = false; j[k] = n; n.userData.rest = n.position.toArray(); } }
     for (const n of root.children) if (n !== glb) n.visible = false;
     if (frame === 'paperplane' && !nodeIn(glb, 'cannon_L')) for (const s of ['L', 'R']) { const sg = s === 'L' ? -1 : 1, fa = j['forearm_' + s]; part2(fa, PIV.paperplane['forearm_' + s][0], [1.12 * sg, 2.45, -0.35], cbox(0.24, 0.24, 0.5, 0.04), lam(0x1d2747, 0.08)); for (const b of [-0.06, 0.06]) part2(fa, PIV.paperplane['forearm_' + s][0], [1.14 * sg + b, 2.4, -0.55], cylZ(0.05, 0.5, 8), chrome(0xd0d8e2)); } // (the twin cannons: ours, the model has none yet)
-  } else if (frame === 'paperplane') buildPaper(j, own);
+  } else if (MODELS[frame]) MODELS[frame].build(j, own);
+  else if (frame === 'paperplane') buildPaper(j, own);
   else buildKnight(j, own);
   // markers: the hero model's empties, else ours at the same spots
   const att = {};
@@ -289,7 +297,7 @@ export function buildMech(frame, color, opts = {}) {
     if (!n) { const pj = j[jn]; n = new THREE.Object3D(); n.name = k; const pa = PIV[frame][jn][0]; n.position.set(w[0] - pa[0], w[1] - pa[1], w[2] - pa[2]); pj.add(n); }
     att[k] = n;
   }
-  for (const k of ['hatch', 'chest', 'head', 'backpack', 'sword', 'shield', 'beacon', 'wing_L', 'wing_R', 'pod_L', 'pod_R']) if (j[k]) att[k] = j[k];
+  for (const k of ['hatch', 'chest', 'head', 'backpack', 'sword', 'shield', 'beacon', 'wing_L', 'wing_R', 'pod_L', 'pod_R', ...(MODELS[frame] ? MODELS[frame].ATT || [] : [])]) if (j[k]) att[k] = j[k];
   att.drone = (glb && nodeIn(glb, 'drone')) || null; // the crane drone: a joint under wing_L (ours stands in at mk_drone)
   if (!att.drone && att.mk_drone) { const c = buildCrane(own.accent.color); c.rotation.y = Math.PI; c.name = 'drone'; att.mk_drone.add(c); att.drone = c; }
   // thrust flames on every mk_thrust_* (additive cones, out the back / down)
@@ -331,10 +339,12 @@ export function buildMech(frame, color, opts = {}) {
   }
   if (glb) lookMech(inst, glb, col, a.scene);
   root.userData.mech = inst;
+  root.scale.setScalar(MECH.scale); // (every mech is the size-1 model x the one shared size: shared/mech.js mechScale)
   return inst;
 }
 export function freeMech(inst) {
   if (!inst) return;
+  if (MODELS[inst.frame] && MODELS[inst.frame].free) MODELS[inst.frame].free(inst);
   lookFree(inst);
   inst.root.removeFromParent();
   if (inst.trail) { inst.trail.removeFromParent(); inst.trail.geometry.dispose(); inst.trail.material.dispose(); }
@@ -370,6 +380,7 @@ const SWING = [
 function clipOf(inst, s) {
   if (s.falling && inst.clips && inst.clips.drop_fall) return 'drop_fall'; // (the MECH DROP fall)
   if (s.empty) return s.intro && inst.clips && inst.clips.hero_intro ? 'hero_intro' : 'drop_in'; // (it ends in a held hero pose: an empty mech waits like that)
+  if (MODELS[inst.frame]) return MODELS[inst.frame].clipOf(inst, s);
   if (inst.frame === 'paperplane') {
     if (s.jet) return 'jet_fly';
     if (s.dash) return 'lunge';
@@ -402,12 +413,16 @@ export function poseMech(inst, s, dt) {
         inst.act = act;
       }
     }
-    inst.clip = clip; inst.mixer.update(dt);
+    inst.clip = clip;
+    if (MODELS[inst.frame] && MODELS[inst.frame].mix) MODELS[inst.frame].mix(inst, s, dt); // (a hero's speed-matched loops, layered partial clips)
+    inst.mixer.update(dt);
+    if (MODELS[inst.frame] && MODELS[inst.frame].post) MODELS[inst.frame].post(inst, s, dt); // (what the game moves itself, after the clip: a hero's hook)
     effects(inst, s, T);
     lookTick(inst, s, dt);
     return;
   }
   inst.clip = clip;
+  if (MODELS[inst.frame]) { MODELS[inst.frame].pose(inst, s, dt, spr); effects(inst, s, T, dt); return; } // a hero's own code pose
   // ---- legs: a stomping walk, knees bend on landings and in the shield crouch
   const run = clamp(s.spd / F.speed, 0, 1.4);
   if (!s.air && s.spd > 0.6) inst.phase += dt * (1.4 + s.spd * (pp ? 0.32 : 0.26));
@@ -509,7 +524,7 @@ function updateTrail(inst, on) {
 export function mechBurst(inst, vel = [0, 0, 0]) {
   inst.root.updateMatrixWorld(true);
   const c = new THREE.Vector3();
-  inst.j.chest.getWorldPosition(c);
+  (inst.j.chest || inst.j.hips || inst.root).getWorldPosition(c);
   const at = [c.x, c.y + 0.4, c.z];
   rfx.sparks(at, 120, 18, [0xfff2b0, 0xff9a3a, 0xff4fd8, 0x4fd8ff], 1.1, 0.2);
   rfx.smoke(at, 40, 0x3a3c40, 1.8, 2.5, 2.6, 1.4);
@@ -519,6 +534,7 @@ export function mechBurst(inst, vel = [0, 0, 0]) {
   rmesh.ring([at[0], floor, at[2]], 9, 0xff4fd8, 0.5);
   const meshes = [];
   inst.root.traverse((o) => { if (o.isMesh && o.visible && o.material.blending !== THREE.AdditiveBlending && !o.material.isShaderMaterial && !o.isSkinnedMesh) meshes.push(o); });
+  meshes.push(...lookGibs(inst)); // (a skinned hero: one piece per joint, posed, from the hero kit; nothing for the others)
   for (const m of meshes) {
     const g = new THREE.Mesh(m.geometry, m.material);
     m.matrixWorld.decompose(g.position, g.quaternion, g.scale);

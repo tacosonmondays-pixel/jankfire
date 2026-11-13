@@ -148,14 +148,16 @@ function styleFlag() {
 }
 export const MODEL_STYLE = styleFlag();
 
-let env = null;
+let env = null, envRT = null;
 function envMap() { // one small studio reflection for glossy toy plastic and metal (the world's own materials don't use it)
   if (env || !G.renderer) return env;
   const pm = new THREE.PMREMGenerator(G.renderer);
-  env = pm.fromScene(new RoomEnvironment(), 0.04).texture;
+  envRT = pm.fromScene(new RoomEnvironment(), 0.04); env = envRT.texture;
   pm.dispose();
   return env;
 }
+// reflect.js: the target every glossy model reads its reflection from (the RAY-TRACED LOOK paints the real world into it)
+export const studioEnv = () => (envMap(), envRT);
 
 // the hotbar pictures, the locker / menu hero and the mode art draw with their own renderers (other WebGL contexts),
 // where the game's reflection map is just black (mirror chrome came out as a black shape): each gets its own while it draws
@@ -182,7 +184,7 @@ export function metaOf(scene) {
 function flatOf(m, paint) {
   const f = new THREE.MeshLambertMaterial({
     name: m.name, color: paint ? paint.clone() : m.color.clone(), map: paint ? null : m.map, flatShading: true,
-    transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest,
+    transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest, vertexColors: !!m.vertexColors, // (a hero's merged trim keeps its colours there)
     emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0), emissiveIntensity: m.emissiveIntensity ?? 1, emissiveMap: m.emissiveMap || null,
   });
   f.depthWrite = m.depthWrite;
@@ -198,6 +200,7 @@ export function prepAuthored(id, scene) {
   const w = meta.kind === 'weapon' && WEAPONS[meta.id];
   const paint = flat && w && w.color && meta.paint ? new THREE.Color(w.color) : null;
   const swapped = new Map();
+  scene.traverse((o) => { if (/_lod1$/.test(o.name)) o.visible = false; }); // (a hero's far LOD: hidden until mechlook swaps it in by distance)
   scene.traverse((o) => {
     if (!o.isMesh) return;
     o.geometry.userData.shared = true; // clones share it: freeTree leaves it alone

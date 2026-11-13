@@ -75,6 +75,31 @@ export function setFace(a, f) { if (!faceLocked(a.face)) a.face.set(f || 'neutra
 // world position of an actor's eyes / head (cameras aim at it)
 const hv = new THREE.Vector3();
 export function headPos(a, out = new THREE.Vector3()) { a.ch.head.getWorldPosition(out); out.y += 0.12 * a.ch.root.scale.y; return out; }
+// where the camera aims at a head. puppets pose at 12 fps (stop-motion) and a close-up aimed at the stepped head stepped
+// with it: the whole frame juddered at 12 Hz. shots and the talk cam aim here instead: the head (and the way it faces)
+// eased between its last two poses in the body's own space, so the camera glides and the puppet keeps its stop-motion
+const camV = new THREE.Vector3(), camF = new THREE.Vector3(), rootInv = new THREE.Matrix4();
+function camKey(a) {
+  const c = a.ch; if (!c.head) return;
+  c.root.updateWorldMatrix(true, true); rootInv.copy(c.root.matrixWorld).invert();
+  c.head.getWorldPosition(camV).applyMatrix4(rootInv); c.head.getWorldDirection(camF).transformDirection(rootInv);
+  const K = a.camK || (a.camK = { l0: camV.clone(), l1: camV.clone(), f0: camF.clone(), f1: camF.clone() });
+  K.l0.copy(K.l1); K.l1.copy(camV); K.f0.copy(K.f1); K.f1.copy(camF);
+}
+const camU = (a) => Math.min(1, a.stepAcc * 12);
+export function camHead(a, out = new THREE.Vector3()) {
+  const K = a.puppet && a.camK; if (!K) return headPos(a, out);
+  a.ch.root.updateWorldMatrix(true, false);
+  out.lerpVectors(K.l0, K.l1, camU(a)).applyMatrix4(a.ch.root.matrixWorld); out.y += 0.12 * a.ch.root.scale.y; return out;
+}
+// the way the face looks, flat (shotfit.js faceFwd, eased the same way for puppets). false: looking straight up / down
+export function camFace(a, out) {
+  const K = a.puppet && a.camK; if (!K) return null;
+  a.ch.root.updateWorldMatrix(true, false);
+  out.lerpVectors(K.f0, K.f1, camU(a)).transformDirection(a.ch.root.matrixWorld).negate(); out.y = 0;
+  if (out.lengthSq() < 0.04) return false;
+  out.normalize(); return true;
+}
 
 export function updateActors(dt, now, eye) {
   for (const a of actors.values()) updateActor(a, dt, now, eye);
@@ -116,14 +141,15 @@ function updateActor(a, dt, now, eye) {
   const step = a.puppet ? 1 / 12 : 0;
   a.voice.update(dt);
   a.face.flap = a.voice.level;
-  a.face.look = look ? hv.set(look[0], look[1], look[2]) : null;
+  a.face.look = look ? (a.lookV ||= new THREE.Vector3()).set(look[0], look[1], look[2]) : null; // (its own vector: pose() reuses hv for the head, and the eyes went cross-eyed at their own chin)
   if (a.stepAcc < step) { a.face.update(dt); return; }
   const pdt = a.stepAcc; a.stepAcc = 0;
   a.r.yaw = a.yaw; a.r.gy = a.pos[1];
   locoPose(a.r, pdt, now);
   pose(a, pdt, moving, look);
   if (a.sit) sitPose(a);
-  a.face.update(pdt);
+  a.face.update(dt); // (the face already ran every frame between steps: pdt here ran its clock twice, blinks and looks jumped on the step)
+  if (a.puppet) camKey(a); // (the camera's eased view of the stepped head: camHead)
 }
 
 // sitting (benches, chairs): thighs out level, shins down, hands on the knees, the hips at the seat's height

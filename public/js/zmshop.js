@@ -14,6 +14,8 @@ import { authored, whenLate, nodeIn, prefetch } from './glbkit.js';
 import { WEAPONS } from '/shared/weapons.js';
 import { ZM } from '/shared/zombies.js';
 import { ZM_COLAS, ZM_UP, ZM_UPFX, zmUpPrice, zmShopTarget } from '/shared/zmshop.js';
+import { BR, hookCharges, hookSpend } from '/shared/royale.js'; // the grapple's charges: Jank Royale's rule and its ring
+import { K } from './keys.js';
 
 const FONT = '"Comic Sans MS", "Comic Neue", cursive';
 const S = { zm: null, group: null, colas: [], up: null, mine: [], ups: {}, jank: false, beams: [], hudK: '', el: null };
@@ -183,9 +185,62 @@ function drawHud() {
   if (html !== S.hudK) { S.hudK = html; hudEl().innerHTML = html; }
 }
 
+// ------------------------------------------------------------ grapple charges (BR.hook, as in Jank Royale): the server counts, this shows + predicts
+const HK = { h: null, had: false, n: BR.hook.charges, noT: 0, el: null };
+const st = () => performance.now() + (G.offset || 0); // the server's clock
+const RING = 2 * Math.PI * 19;
+function hookEl() {
+  if (HK.el) return HK.el;
+  const css = document.createElement('style'); // (the same ring as royale.js's #brHook)
+  css.textContent = `#zmHook { position: absolute; left: calc(50% + 34px); top: calc(50% + 26px); width: 56px; height: 56px; pointer-events: none; font: bold 11px var(--font); color: #fff; text-shadow: 1px 1px 0 #000; z-index: 6; }
+#zmHook svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+#zmHook .tr { fill: none; stroke: rgba(0,0,0,0.55); stroke-width: 6; } #zmHook .fl { fill: none; stroke: #4fd8ff; stroke-width: 6; stroke-linecap: butt; }
+#zmHook.full .fl { stroke: #7dff4f; } #zmHook.none .fl { stroke: #ff3030; }
+#zmHook span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 17px; letter-spacing: -1px; }
+#zmHook small { position: absolute; left: 50%; top: 54px; transform: translateX(-50%); white-space: nowrap; font-size: 10px; letter-spacing: 1px; color: #fff; }
+#zmHook.no { animation: zmHookNo 0.35s; } @keyframes zmHookNo { 0%, 100% { transform: none; } 25% { transform: translateX(-5px) rotate(-6deg); } 75% { transform: translateX(5px) rotate(6deg); } }
+#zmHook.hidden { display: none; }`;
+  document.head.appendChild(css);
+  const e = document.createElement('div'); e.id = 'zmHook';
+  e.innerHTML = '<svg viewBox="0 0 46 46"><circle class="tr" cx="23" cy="23" r="19"/><circle class="fl" cx="23" cy="23" r="19"/></svg><span></span><small></small>';
+  (document.getElementById('hud') || document.body).appendChild(e);
+  return (HK.el = e);
+}
+function hookDenied() {
+  ME.hook = null; // (the server cut it, or it never fired)
+  const now = performance.now();
+  if (now - HK.noT < 300) return;
+  HK.noT = now;
+  const c = hookCharges(HK.h, st());
+  sfx.hookNo(); hud.msg(`GRAPPLE RECHARGING · ${Math.max(1, Math.ceil((1 - c.k) * BR.hook.cd))}s`, 0.8, 'brag');
+  const e = hookEl(); e.classList.remove('no'); void e.offsetWidth; e.classList.add('no');
+}
+function hookGate() { // player.js tryHook asks first: true = no charge, no rope
+  if (!S.zm || !ME.alive || hookCharges(HK.h, st()).n >= 1) return false;
+  hookDenied();
+  return true;
+}
+function hookFrame() {
+  if (G.hookGate !== hookGate) G.hookGate = hookGate;
+  const roped = !!ME.hook;
+  if (roped && !HK.had) HK.h = hookSpend(HK.h, st()) || HK.h; // a new rope: spend one now (the server's count follows)
+  HK.had = roped;
+  const H = BR.hook, c = hookCharges(HK.h, st());
+  if (c.n > HK.n && ME.alive) sfx.hookReady();
+  HK.n = c.n;
+  const e = hookEl(), full = c.n >= H.charges;
+  e.className = (full ? 'full' : c.n === 0 ? 'none' : '') + (ME.alive ? '' : ' hidden');
+  e.querySelector('.fl').style.strokeDasharray = `${(full ? 1 : c.k) * RING} ${RING}`;
+  e.querySelector('span').textContent = '●'.repeat(c.n) + '○'.repeat(H.charges - c.n);
+  e.querySelector('small').textContent = full ? `${K.label('grapple')} GRAPPLE` : `${K.label('grapple')} ${Math.ceil((1 - c.k) * H.cd)}s`;
+}
+function hookOff() { if (G.hookGate === hookGate) G.hookGate = null; HK.h = null; HK.had = false; HK.n = BR.hook.charges; if (HK.el) HK.el.className = 'hidden'; }
+net.on('zhook', (m) => { if (!m || typeof m !== 'object') return; const h = m.h; HK.h = h && Number.isFinite(h.n) && Number.isFinite(h.t0) ? { n: h.n, t0: h.t0 } : null; if (m.no) hookDenied(); });
+
 // ------------------------------------------------------------ every frame (zombies.js updateZombies)
 export function zsTick(info, dt, now) {
   if (!S.zm) return;
+  hookFrame();
   const pw = !!info.pw;
   for (const c of S.colas) { c.mat.color.setHex(pw ? 0xffffff : 0x555555); for (const m of c.lit) m.emissiveIntensity = pw ? m.userData.e0 : 0; }
   const u = S.up;
@@ -206,7 +261,7 @@ export function zsTick(info, dt, now) {
   drawHud();
 }
 function clearBeams() { for (const b of S.beams) { G.scene.remove(b.m); b.m.material.dispose(); } S.beams.length = 0; }
-export function zsOff() { clearBeams(); hudOff(); S.mine = []; S.ups = {}; S.jank = false; } // the mode ended
+export function zsOff() { clearBeams(); hudOff(); hookOff(); S.mine = []; S.ups = {}; S.jank = false; } // the mode ended
 
 // ------------------------------------------------------------ the server's news
 const v3 = (a) => Array.isArray(a) && a.length === 3 && a.every(Number.isFinite);

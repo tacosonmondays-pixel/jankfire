@@ -535,13 +535,16 @@ function crate() {
   D.add(-420, F, -422, 420, 300, -420, 'wallkid'); D.add(-420, F, 420, 420, 300, 422, 'wallkid'); D.add(-422, F, -420, -420, 300, 420, 'wallkid'); D.add(420, F, -420, 422, 300, 420, 'wallkid');
   D.add(-420, 300, -420, 420, 304, 420, 'plaster'); D.add(-50, 290, -50, 50, 300, 50, 'lamp'); D.add(-2, 296, -2, 2, 300, 2, 'chrome');
   D.add(-160, 40, -419.9, 160, 230, -419.5, 'skypane', { fit: 1 }); D.add(-170, 30, -419.5, 170, 40, -415, 'white'); // the window
-  D.add(-380, F, 120, -120, F + 70, 380, 'cloth'); D.add(-380, F + 70, 120, -120, F + 90, 380, 'white'); D.add(-380, F + 90, 300, -120, F + 120, 380, 'toyteal'); // the bed
-  D.add(180, F, 140, 300, F + 120, 260, 'toyred'); // a giant ball (well, a giant cube)
-  for (const [x, z, m] of [[140, -160, 'toyblue'], [170, -140, 'toygreen'], [200, -170, 'toyyellow']]) D.add(x, F, z, x + 18, F + 18, z + 160, m); // crayons
-  D.add(-260, F, -220, -200, F + 60, -160, 'toyface2', { fit: 1 }); D.add(-250, F + 60, -210, -210, F + 100, -170, 'toyface', { fit: 1 });
-  D.add(60, F, -330, 260, F + 8, -320, 'toypink'); D.add(60, F, -250, 260, F + 8, -240, 'toypink'); // a toy train track
-  for (let x = 66; x < 260; x += 14) D.add(x, F, -320, x + 4, F + 4, -250, 'wood');
-  D.add(100, F + 8, -305, 150, F + 40, -265, 'toyred'); D.add(150, F + 8, -305, 180, F + 30, -265, 'toyyellow'); // the engine
+  // (the playroom's furniture: Blender props in tools/blender/make_playroom.py, drawn over these boxes)
+  propOf('kidbed', [-250, F, 250], 0, () => { D.add(-380, F, 120, -120, F + 70, 380, 'cloth'); D.add(-380, F + 70, 120, -120, F + 90, 380, 'white'); D.add(-380, F + 90, 300, -120, F + 120, 380, 'toyteal'); }); // the bed
+  propOf('bigball', [240, F, 200], 0, () => D.add(180, F, 140, 300, F + 120, 260, 'toyred')); // a giant ball (it used to be a giant cube)
+  for (const [x, z, m] of [[140, -160, 'toyblue'], [170, -140, 'toygreen'], [200, -170, 'toyyellow']]) propOf('crayon', [x + 9, F, z + 80], Math.PI / 2, () => D.add(x, F, z, x + 18, F + 18, z + 160, m), { t: m }); // crayons
+  propOf('blockpile', [-230, F, -190], 0, () => { D.add(-260, F, -220, -200, F + 60, -160, 'toyface2', { fit: 1 }); D.add(-250, F + 60, -210, -210, F + 100, -170, 'toyface', { fit: 1 }); });
+  propOf('toytrain', [160, F, -285], 0, () => {
+    D.add(60, F, -330, 260, F + 8, -320, 'toypink'); D.add(60, F, -250, 260, F + 8, -240, 'toypink'); // a toy train track
+    for (let x = 66; x < 260; x += 14) D.add(x, F, -320, x + 4, F + 4, -250, 'wood');
+    D.add(100, F + 8, -305, 150, F + 40, -265, 'toyred'); D.add(150, F + 8, -305, 180, F + 30, -265, 'toyyellow'); // the engine
+  });
   return { name: 'Crate', size: 'tiny', boxes: B.boxes, deco: D.boxes, killY: -50, sky: { top: 0xffd6ec, mid: 0xffd6ec, bot: 0xffd6ec, fog: 0xffd6ec }, fogNear: 90, fogFar: 700,
     sealed: true, light: { hemi: [0xfff0f6, 0xc09ab0, 1.4], sun: [0xfff6e8, 1.0] },
     spawns: [[-11, 0.1, -11], [11, 0.1, 11], [-11, 0.1, 11], [11, 0.1, -11]] };
@@ -1043,6 +1046,13 @@ function platformSD() {
 }
 
 // ------------------------------------------------------------ the roof kit (Rooftop, Rooftop S&D)
+// tag what was just added (B boxes from n0, D boxes from d0) as one placement of a Blender model (archfield.js): the
+// client stops drawing them once it's in. look only (gamehash.mjs ignores the tags)
+function archTag(B, D, n0, d0, id, x, z, rot = 0, y = 0, o = {}) {
+  B.archSince(n0, id, x, z, rot, y, o);
+  const ai = B.boxes.arch.length - 1;
+  for (let i = d0; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: id, ai });
+}
 // a tower's top: the body down to the street foundations, a roof slab with a cornice, a 1 m parapet round it with gaps
 // where bridges land (gaps: { n, s, w, e }: lists of [a, b] along that side). y = the roof's top
 function roofTop(B, x0, z0, x1, z1, y, facade, gaps = {}, base = -152, holes = null) { // (holes: [[x0, z0, x1, z1]] cut out of the slab)
@@ -1084,47 +1094,63 @@ function skyBridge(B, D, alongX, a0, a1, c, y, w = 4, gaps = {}, neon = ['neoncy
 // on the roof (y + 7.9). stairs up in the east side, on up to the roof in the west side. doors per floor:
 // o.g / o.u = { n, s, w, e: [[a, b]] } (local: along x on n/s, along z on w/e)
 function penthouse(B, D, cx, cz, y, o = {}) {
-  const L = B.local(cx, cz, 0, y), Ld = D.local(cx, cz, 0, y), G = o.g || {}, U = o.u || {};
+  const L0 = B.local(cx, cz, 0, y), Ld = D.local(cx, cz, 0, y), G = o.g || {}, U = o.u || {};
+  // o.arch: the shell (glass walls, floors, stairs, roof) is a Blender model (tools/blender/arch/make_penthouse.py), its
+  // boxes tagged { av } so the client skips them once it's in; the furniture inside (L) stays boxes. visual only
+  const A = o.arch ? B.arch(o.arch, cx, cz, 0, y) : null, L = A ? A.plain : L0, S = A || L0;
+  const tag = A ? { av: o.arch, ai: B.boxes.arch.length - 1 } : null;
+  const Sd = tag ? (x0, y0, z0, x1, y1, z1, m, e) => Ld(x0, y0, z0, x1, y1, z1, m, e ? { ...e, ...tag } : tag) : Ld;
+  Sd.B = (cx, cy, cz, sx, sy, sz, m, e) => Sd(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, m, e);
   const op = (list, y0, y1) => (list || []).map(([a, b]) => ({ a, b, y0, y1 }));
   // ground floor: the bar
-  L(-9.85, 0, -7.85, 9.85, 0.1, 7.85, 'carpet');
-  wall(L, 'x', -8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', op(G.n, 0, 2.6));
-  wall(L, 'x', 8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', [...op(G.s, 0, 2.6), ...op(G.sw, 1.1, 2.6)]);
-  wall(L, 'z', -10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.w, 0, 2.6));
-  wall(L, 'z', 10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.e, 0, 2.6));
+  S(-9.85, 0, -7.85, 9.85, 0.1, 7.85, 'carpet');
+  wall(S, 'x', -8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', op(G.n, 0, 2.6));
+  wall(S, 'x', 8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', [...op(G.s, 0, 2.6), ...op(G.sw, 1.1, 2.6)]);
+  wall(S, 'z', -10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.w, 0, 2.6));
+  wall(S, 'z', 10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.e, 0, 2.6));
   L(-8.5, 0.1, -7.85, -2.5, 1.2, -5.8, 'wood'); L(-8.5, 1.2, -6.6, -2.5, 1.26, -5.8, 'chrome'); // the bar (back to the wall: no gap behind it to get wedged in)
   Ld(-8.5, 1.5, -7.85, -2.5, 2.6, -7.6, 'shelfstock'); Ld(-6.6, 2.75, -7.85, -4.4, 3.35, -7.8, 'neonbar', { fit: 1 }); // the bottles, BAR?
   for (const x of [-7.8, -6.3, -4.8, -3.3]) L.B(x, 0.55, -5.15, 0.5, 0.9, 0.5, 'metal'); // stools
   for (const [x, z] of [[-6, 2.5], [-1.5, 4.5], [3, 2]]) { L.B(x, 0.5, z, 1.2, 0.8, 1.2, 'wood'); L.B(x, 0.95, z, 1.4, 0.1, 1.4, 'chrome'); }
   L(8.6, 0.1, -7.6, 9.7, 1.9, -6.4, 'toypurple'); Ld(8.55, 0.8, -7.4, 8.6, 1.6, -6.6, 'neonpink'); // the jukebox
   for (const x0 of [-8, 4.5]) { L(x0, 0.1, 6.6, x0 + 3.5, 0.55, 7.85, 'toypink'); L(x0, 0.55, 7.4, x0 + 3.5, 1.05, 7.85, 'toypink'); } // booths under the windows
-  for (const x of [-6, 0, 5]) for (const z of [-3, 3]) Ld.B(x, 3.72, z, 1.6, 0.06, 0.4, 'lamp');
+  for (const x of [-6, 0, 5]) for (const z of [-3, 3]) Sd.B(x, 3.72, z, 1.6, 0.06, 0.4, 'lamp');
   Ld.B(0, 3.0, 0, 0.7, 0.7, 0.7, 'chrome'); Ld.B(0, 3.55, 0, 0.04, 0.4, 0.04, 'metal'); // the disco ball
   // up to the lounge (east side), its floor
-  stairs(L, 7.6, 9.7, 1.0, 1, 0.1, 4.0, 'wood', 0.5);
-  slab(L, -10.15, -8.15, 10.15, 8.15, 3.75, 4.0, 'wood', [7.5, 1.0, 9.85, 5.5]);
-  L(7.4, 4.0, 1.0, 7.5, 5.0, 5.5, 'metal'); L(7.4, 4.0, 0.9, 9.85, 5.0, 1.0, 'metal'); // rails round the stairwell
+  stairs(S, 7.6, 9.7, 1.0, 1, 0.1, 4.0, 'wood', 0.5);
+  slab(S, -10.15, -8.15, 10.15, 8.15, 3.75, 4.0, 'wood', [7.5, 1.0, 9.85, 5.5]);
+  S(7.4, 4.0, 1.0, 7.5, 5.0, 5.5, 'metal'); S(7.4, 4.0, 0.9, 9.85, 5.0, 1.0, 'metal'); // rails round the stairwell
   // the lounge: the long window onto the pool, sofas, a pool table
-  wall(L, 'x', -8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', op(U.n, 4.0, 6.6));
-  wall(L, 'x', 8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', [...op(U.s, 4.0, 6.6), { a: -6.5, b: 6.5, y0: 5.0, y1: 6.8 }]);
-  wall(L, 'z', -10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.w, 4.0, 6.6));
-  wall(L, 'z', 10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.e, 4.0, 6.6));
+  wall(S, 'x', -8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', op(U.n, 4.0, 6.6));
+  wall(S, 'x', 8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', [...op(U.s, 4.0, 6.6), { a: -6.5, b: 6.5, y0: 5.0, y1: 6.8 }]);
+  wall(S, 'z', -10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.w, 4.0, 6.6));
+  wall(S, 'z', 10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.e, 4.0, 6.6));
   for (const x0 of [-6.2, 0.6]) { L(x0, 4.0, 5.4, x0 + 5.4, 4.45, 6.6, 'toypink'); L(x0, 4.45, 6.6, x0 + 5.4, 5.0, 7.1, 'toypink'); }
   L(-2, 4.0, -4.6, 2, 4.85, -2.4, 'wood'); L(-1.85, 4.85, -4.45, 1.85, 4.9, -2.55, 'lawn');
-  for (const x of [-4, 2]) for (const z of [-4, 3]) Ld.B(x, 7.57, z, 1.6, 0.06, 0.4, 'lamp');
+  for (const x of [-4, 2]) for (const z of [-4, 3]) Sd.B(x, 7.57, z, 1.6, 0.06, 0.4, 'lamp');
   Ld(-9.85, 4.9, 3.0, -9.8, 6.3, 5.6, 'tvstatic'); Ld(-2.5, 6.75, -7.85, 2.5, 7.45, -7.8, 'neonwork', { fit: 1 }); // the telly, a motivational neon
   L.B(-9.3, 4.4, 7.3, 0.8, 0.8, 0.8, 'pottery'); Ld.B(-9.3, 5.3, 7.3, 1.2, 1.0, 1.2, 'leaves'); L.B(-9.3, 4.4, -7.3, 0.8, 0.8, 0.8, 'pottery'); Ld.B(-9.3, 5.3, -7.3, 1.2, 1.0, 1.2, 'leaves');
   // up to the roof (west side), the roof: a glass parapet, the helipad, a windsock
-  stairs(L, -9.7, -7.6, 1.5, -1, 4.0, 7.9, 'metal', 0.5);
-  slab(L, -10.15, -8.15, 10.15, 8.15, 7.6, 7.9, 'roofg', [-9.85, -3.0, -7.5, 1.5]);
-  L(-7.5, 7.9, -3.0, -7.4, 8.9, 1.5, 'metal'); L(-9.85, 7.9, 1.5, -7.4, 8.9, 1.6, 'metal');
-  wall(L, 'x', -8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock'); wall(L, 'x', 8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock');
-  wall(L, 'z', -10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock'); wall(L, 'z', 10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock');
-  L(-4.5, 7.9, -4.5, 4.5, 8.0, 4.5, 'helipad', { fit: 1 });
-  Ld(-10.21, 7.65, -8.21, 10.21, 7.85, -8.15, 'neonpink'); Ld(-10.21, 7.65, 8.15, 10.21, 7.85, 8.21, 'neonpink'); // neon round the roof's edge
-  Ld(-10.21, 7.65, -8.15, -10.15, 7.85, 8.15, 'neonpink'); Ld(10.15, 7.65, -8.15, 10.21, 7.85, 8.15, 'neonpink');
+  stairs(S, -9.7, -7.6, 1.5, -1, 4.0, 7.9, 'metal', 0.5);
+  slab(S, -10.15, -8.15, 10.15, 8.15, 7.6, 7.9, 'roofg', [-9.85, -3.0, -7.5, 1.5]);
+  S(-7.5, 7.9, -3.0, -7.4, 8.9, 1.5, 'metal'); S(-9.85, 7.9, 1.5, -7.4, 8.9, 1.6, 'metal');
+  wall(S, 'x', -8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock'); wall(S, 'x', 8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock');
+  wall(S, 'z', -10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock'); wall(S, 'z', 10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock');
+  S(-4.5, 7.9, -4.5, 4.5, 8.0, 4.5, 'helipad', { fit: 1 });
+  Sd(-10.21, 7.65, -8.21, 10.21, 7.85, -8.15, 'neonpink'); Sd(-10.21, 7.65, 8.15, 10.21, 7.85, 8.21, 'neonpink'); // neon round the roof's edge
+  Sd(-10.21, 7.65, -8.15, -10.15, 7.85, 8.15, 'neonpink'); Sd(10.15, 7.65, -8.15, 10.21, 7.85, 8.15, 'neonpink');
   Ld(-5, 6.9, 8.15, 5, 7.5, 8.2, 'adparty', { fit: 1 }); // over the long window, for the pool
-  L.B(8.8, 9.4, -6.8, 0.15, 3, 0.15, 'metal'); Ld(8.88, 10.3, -7.1, 10.2, 10.75, -6.5, 'hazard'); // the windsock (sticks out over the edge)
+  S.B(8.8, 9.4, -6.8, 0.15, 3, 0.15, 'metal'); Sd(8.88, 10.3, -7.1, 10.2, 10.75, -6.5, 'hazard'); // the windsock (sticks out over the edge)
+}
+
+// the pool deck's set (loungers, cabanas, the DJ and the speakers, the light rig, floats, the pool's coping, planters,
+// string lights) as one Blender model for the map (archfield.js): every box from B[n0] / D[d0] on is tagged, except the
+// water (liquids.js draws it), the decking, the DJ's picture and the palms (they're props already). look only
+function poolDeckArch(B, D, n0, d0, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0 });
+  const tag = { av: id, ai: B.boxes.arch.length - 1 };
+  for (let i = n0; i < B.boxes.length; i++) if (!B.boxes[i].pv) Object.assign(B.boxes[i], tag);
+  for (let i = d0; i < D.boxes.length; i++) { const b = D.boxes[i]; if (b.mat !== 'water' && !b.fit && !b.pv && !(b.mat === 'wood' && b.max[1] - b.min[1] < 0.05)) Object.assign(b, tag); }
 }
 
 // ------------------------------------------------------------ ROOFTOP: the roof party. three tops over the night city:
@@ -1141,22 +1167,27 @@ function rooftop() {
   const inner = [[-16, -12], [-6.5, -2.5], [11.5, 15.5]];
   roofTop(B, -58, -18, -30, 18, 0, 'office', { e: inner }); roofTop(B, 30, -18, 58, 18, 0, 'tenement', { w: inner });
   for (const s of [-1, 1]) { // the machine rooms: between the spawns and the gap
+    let n0 = B.boxes.length, d0 = D.boxes.length;
     add(s * 36, 0, -5, s * 42, 4.5, 5, 'concrete'); add(s * 35.8, 4.5, -5.2, s * 42.2, 4.8, 5.2, 'roofg');
     D.add(s * 42, 0, -0.8, s * 42.05, 2.2, 0.8, 'metal'); D.add(s * 36, 2.6, -3.5, s * 35.95, 3.6, 3.5, 'grid'); // a door on the spawn side, a vent on the other
+    archTag(B, D, n0, d0, 'liftroom', s * 39, 0, s < 0 ? 0 : 2, 0, { paint: { trim: s < 0 ? 'rt_blue' : 'rt_pink' } }); // (the bank's stripe blue, the hotel's pink) // (drawn as a Blender lift motor room: tools/blender/arch/make_liftroom.py)
     for (const z of [-11.5, -8.5]) acUnit(W, s * 52, z, 0); // the AC farm
     D.add(s * 30.3, 0, -17.7, s * 57.7, 0.02, 17.7, 'asphalt'); // the tar roof inside its concrete edge
     for (const [x, z] of [[33, -10], [44, 13], [56, -16]]) { B.box(s * x, 0.45, z, 0.9, 0.9, 0.9, 'metal'); D.add(s * x - 0.35, 0.9, z - 0.35, s * x + 0.35, 0.95, z + 0.35, 'grid'); } // vents
     add(s * 36.5, 0, 9, s * 39.5, 0.5, 13, 'glass'); D.add(s * 36.4, 0.5, 8.9, s * 39.6, 0.56, 13.1, 'metal'); // a skylight
+    n0 = B.boxes.length; d0 = D.boxes.length;
     B.box(s * 39, 7.8, 3.5, 0.2, 6, 0.2, 'metal'); D.box(s * 39, 10.98, 3.5, 0.35, 0.35, 0.35, 'neonred'); // the antenna, its red light
+    archTag(B, D, n0, d0, 'rt_mast', s * 39, 3.5, 0, 4.8); // (a lattice mast in Blender)
     add(s * 31, 0, 17.15, s * (s < 0 ? 57 : 52), 0.45, 17.55, 'metal'); // a pipe run along the south parapet
   }
   for (const z of [-8, -5, 4]) { B.box(54.6, 1.2, z + 0.4, 0.08, 2.4, 0.08, 'metal'); D.box(54.6, 2.46, z + 0.4, 2.2, 0.12, 2.2, pick(['toypink', 'toyteal', 'cloth'])); } // the hotel's umbrellas
   // the bank (west): its water tower, a satellite dish, the JANK BANK sign over the north parapet
   waterTower(W, -52, 12, 0); add(-35, 0, 10.5, -33, 0.6, 12.5, 'metal'); D.add(-35.3, 0.6, 10.2, -32.7, 2.4, 12.8, 'white'); D.add(-34.2, 1.6, 11.3, -33.8, 3.2, 11.7, 'metal');
-  for (const x of [-50, -40]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal');
+  const ST = signArch(B, 'rt_signs'); // (the signs' steel: one Blender model, tools/blender/arch/make_signs.py)
+  for (const x of [-50, -40]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal', ST);
   D.add(-52, 2.2, -17.42, -38, 6.2, -17.38, 'adjankbank', { fit: 1 });
   // the hotel (east): HOTEL 4 HOURS in neon on a frame, a hot tub, loungers, the towel hut
-  for (const x of [40, 52]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal');
+  for (const x of [40, 52]) add(x - 0.2, 0, -17.6, x + 0.2, 6.4, -17.2, 'metal', ST);
   D.add(38, 2.2, -17.42, 54, 6.2, -17.38, 'neonhotel', { fit: 1 });
   add(48, 0, 9, 52, 0.9, 9.3, 'tile'); add(48, 0, 12.7, 52, 0.9, 13, 'tile'); add(48, 0, 9.3, 48.3, 0.9, 12.7, 'tile'); add(51.7, 0, 9.3, 52, 0.9, 12.7, 'tile');
   D.add(48.3, 0.02, 9.3, 51.7, 0.75, 12.7, 'water'); // the hot tub
@@ -1176,13 +1207,14 @@ function rooftop() {
   for (const x of [-14, 0, 14]) B.box(x, (L0 - 0.4) / 2, -14, 0.6, -0.4 - L0, 0.6, 'metal');
   add(-2, -0.25, -12, 2, 0, -10.15, 'grid'); add(-2.1, 0, -12, -2, 1.0, -10.15, 'metal'); add(2, 0, -12, 2.1, 1.0, -10.15, 'metal');
   // the penthouse (z [-10, 6]): doors on all four sides downstairs, the gangway door upstairs
-  penthouse(B, D, 0, -2, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, u: { n: [[-2, 2]] } });
+  penthouse(B, D, 0, -2, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, u: { n: [[-2, 2]] }, arch: 'penthouse' });
   // the north end: the JANK COLA billboard, AC units, the cold store, crates
   billboard(W, 0, -26.6, L0, 'x');
   for (const x of [-18, -15]) acUnit(W, x, -24.5, L0); for (const x of [15, 18]) acUnit(W, x, -19, L0);
   add(-20.5, L0, -11.5, -15.5, L0 + 2.6, -8.5, 'metal'); D.add(-20.5, L0 + 2.6, -11.5, -15.5, L0 + 2.65, -8.5, 'white'); // the cold store
   cratePile(B, 12, -24.5, 3, r); B.box(8, L0 + 0.6, -20, 1.2, 1.2, 1.2, 'crate');
   // ---- the pool deck (z [6, 28]): a pool to wade, loungers, four cabanas, the DJ, palms, party lights
+  const pd0 = B.boxes.length, pdd0 = D.boxes.length;
   add(-7, L0 - 0.5, 13, 7, L0 - 0.45, 21, 'tile'); D.add(-7, L0 - 0.45, 13, 7, L0 - 0.12, 21, 'water');
   for (const [x0, z0, x1, z1] of [[-21.8, 6.3, 21.8, 12.4], [-21.8, 21.6, 21.8, 27.8], [-21.8, 12.4, -7.6, 21.6], [7.6, 12.4, 21.8, 21.6]]) D.add(x0, L0, z0, x1, L0 + 0.02, z1, 'wood'); // the decking
   for (const [cx, cz, sx, sz] of [[-3, 17.3, 1.4, 0.35], [-3, 18.7, 1.4, 0.35], [-3.55, 18, 0.35, 1.05], [-2.45, 18, 0.35, 1.05]]) Dw.B(cx, L0 - 0.1, cz, sx, 0.25, sz, 'toyyellow'); // a rubber ring
@@ -1203,6 +1235,7 @@ function rooftop() {
   for (const [x, z] of [[-20, 26], [20, 26], [-20, 7.5], [20, 7.5]]) { add(x - 1, L0, z - 1, x + 1, L0 + 0.8, z + 1, 'stone'); palm(B.local(x, z, 0, L0 + 0.8), 0, 0, 5, r); }
   for (const [ax, bx, z] of [[-14, 14, 11.6], [-14, 14, 22.4]]) for (let x = ax; x <= bx; x += 1.4) D.box(x, L0 + 3.2 - 0.4 * Math.sin(((x - ax) / (bx - ax)) * Math.PI), z, 0.22, 0.28, 0.22, pick(['neonpink', 'neonyellow', 'neoncyan', 'lamp'])); // strings of party lights
   for (const x of [-14, 14]) for (const z of [11.6, 22.4]) B.box(x, L0 + 1.7, z, 0.12, 3.4, 0.12, 'metal');
+  poolDeckArch(B, D, pd0, pdd0, 'pooldeck'); // (drawn as one Blender model: tools/blender/arch/make_pooldeck.py)
   // ---- jump pads: tower -> the penthouse roof, the deck and the north end -> back up the towers
   for (const s of [-1, 1]) {
     add(s * 33.5 - 1.25, 0, 5.75, s * 33.5 + 1.25, 0.15, 8.25, 'pad', { pad: [-s * 22, 21, -6] }); // onto the helipad
@@ -1240,6 +1273,10 @@ function rooftop() {
 }
 
 
+// the roof signs' steel (JANK BANK, HOTEL 4 HOURS, the ☺ CORP flag): one Blender model per map over their posts, the
+// pictures stay the game's. returns the tag for the posts' boxes. look only
+function signArch(B, id) { B.boxes.arch.push({ id, p: [0, 0, 0], r: 0 }); return { av: id, ai: B.boxes.arch.length - 1 }; }
+
 // ------------------------------------------------------------ ROOFTOP S&D: the roof party (Plant & Defuse). the crashers
 // (attackers) come up the south tower (JANK COLA on its billboard), security (defenders) hold the north tower (☺ CORP).
 // between them, 4 m down, the party block: the penthouse (its walls stand between the two spawns), the pool deck. the
@@ -1271,7 +1308,8 @@ function rooftopSD() {
   }
   // ---- the party block: the penthouse (no door upstairs, its north wall solid: the spawns stay out of each other's
   // sight), the pool deck south of it, the cold store and AC north of it
-  penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] } });
+  penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, arch: 'penthouse_sd' });
+  const pd0 = B.boxes.length, pdd0 = D.boxes.length;
   add(-7, L0 - 0.5, 0, 7, L0 - 0.45, 8, 'tile'); D.add(-7, L0 - 0.45, 0, 7, L0 - 0.12, 8, 'water');
   add(-7.6, L0, -0.6, 7.6, L0 + 0.1, 0, 'tile'); add(-7.6, L0, 8, 7.6, L0 + 0.1, 8.6, 'tile'); add(-7.6, L0, 0, -7, L0 + 0.1, 8, 'tile'); add(7, L0, 0, 7.6, L0 + 0.1, 8, 'tile');
   for (const [x0, z0, x1, z1] of [[-21.8, -5.7, 21.8, -0.6], [-21.8, 8.6, 21.8, 13.8], [-21.8, -0.6, -7.6, 8.6], [7.6, -0.6, 21.8, 8.6]]) D.add(x0, L0, z0, x1, L0 + 0.02, z1, 'wood');
@@ -1288,18 +1326,22 @@ function rooftopSD() {
   for (const x of [-4, 4]) { add(x - 0.6, L0, 12.3, x + 0.6, L0 + 2.2, 13.5, 'tire'); D.add(x - 0.4, L0 + 1.2, 12.26, x + 0.4, L0 + 2.0, 12.3, 'grid'); }
   for (const z of [-2.5, 9]) { for (let x = -12; x <= 12; x += 1.4) D.box(x, L0 + 3.2 - 0.4 * Math.sin(((x + 12) / 24) * Math.PI), z, 0.22, 0.28, 0.22, pick(['neonpink', 'neonyellow', 'neoncyan', 'lamp'])); for (const x of [-12.2, 12.2]) B.box(x, L0 + 1.7, z, 0.12, 3.4, 0.12, 'metal'); }
   for (const s of [-1, 1]) { add(s * 21, L0, 11.2, s * 19, L0 + 0.8, 13.2, 'stone'); palm(B.local(s * 20, 12.2, 0, L0 + 0.8), 0, 0, 5, r); }
+  poolDeckArch(B, D, pd0, pdd0, 'pooldeck_sd'); // (drawn as one Blender model: tools/blender/arch/make_pooldeck.py)
   add(-20.5, L0, -33.2, -15.5, L0 + 2.6, -30.2, 'metal'); D.add(-20.5, L0 + 2.6, -33.2, -15.5, L0 + 2.65, -30.2, 'white'); // the cold store
   for (const x of [15, 18]) acUnit(W, x, -33, L0); B.box(-6, L0 + 0.6, -27, 1.2, 1.2, 1.2, 'crate'); B.box(6, L0 + 0.6, -27, 1.2, 1.2, 1.2, 'crate'); cratePile(B, -4, -32.5, 3, r);
   // ---- B, the bank's roof: its machine room in the middle (cover), the JANK BANK sign, the AC farm, a water tower
+  let n0 = B.boxes.length, d0 = D.boxes.length;
   add(-47, 0, -45, -41, 4.5, -39, 'concrete'); add(-47.2, 4.5, -45.2, -40.8, 4.8, -38.8, 'roofg'); D.add(-47.05, 0, -42.8, -47, 2.2, -41.2, 'metal');
+  archTag(B, D, n0, d0, 'liftroom_sd', -44, -42, 0, 0, { paint: { trim: 'rt_blue' } }); // (a Blender lift motor room, its door west: tools/blender/arch/make_liftroom.py)
   for (const z of [-50, -47]) acUnit(W, -55, z, 0);
   waterTower(W, -53, -31, 0); add(-35, 0, -56, -33, 0.6, -54, 'metal'); D.add(-35.3, 0.6, -56.3, -32.7, 2.4, -53.7, 'white');
-  for (const x of [-52, -40]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal');
+  const ST = signArch(B, 'rt_signs_sd'); // (the signs' steel: one Blender model, tools/blender/arch/make_signs.py)
+  for (const x of [-52, -40]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal', ST);
   D.add(-54, 2.2, -57.42, -38, 6.2, -57.38, 'adjankbank', { fit: 1 });
   B.box(-36, 0.6, -36, 1.2, 1.2, 1.2, 'crate'); B.box(-36, 0.6, -34.6, 1.2, 1.2, 1.2, 'crate'); B.box(-50, 0.45, -36.5, 0.9, 0.9, 0.9, 'metal');
   D.add(-57.7, 0, -57.7, -30.3, 0.02, -26.3, 'asphalt');
   // ---- A, the hotel's roof: the towel hut in the middle, HOTEL 4 HOURS, a hot tub, loungers under umbrellas
-  for (const x of [40, 52]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal');
+  for (const x of [40, 52]) add(x - 0.2, 0, -57.6, x + 0.2, 6.4, -57.2, 'metal', ST);
   D.add(38, 2.2, -57.42, 54, 6.2, -57.38, 'neonhotel', { fit: 1 });
   add(41, 0, -45, 47, 2.6, -39, 'wood'); add(40.8, 2.6, -45.2, 47.2, 2.8, -38.8, 'roofpink');
   add(50, 0, -33, 54, 0.9, -32.7, 'tile'); add(50, 0, -29.3, 54, 0.9, -29, 'tile'); add(50, 0, -32.7, 50.3, 0.9, -29.3, 'tile'); add(53.7, 0, -32.7, 54, 0.9, -29.3, 'tile');
@@ -1312,11 +1354,14 @@ function rooftopSD() {
     acUnit(W, s * 34, 4, -2); acUnit(W, s * 54, 16, -2); add(s * 50.5, -2, 4, s * 53.5, -1.5, 8, 'glass'); acUnit(W, s * 36, -12, -2);
     B.box(s * 38, -1.55, 20, 0.9, 0.9, 0.9, 'metal'); cratePile({ add: B.local(0, 0, 0, -2) }, s < 0 ? -53.5 : 50.5, -16.5, 2, r);
     D.add(s * 30.3, -2, -17.7, s * 57.7, -1.98, 29.7, 'asphalt');
+    n0 = B.boxes.length; d0 = D.boxes.length;
     add(s * 12, 0, -68, s * 18, 4.5, -62, 'concrete'); add(s * 11.8, 4.5, -68.2, s * 18.2, 4.8, -61.8, 'roofg'); // the north tower's machine rooms
+    archTag(B, D, n0, d0, 'liftroom_sd', s * 15, -65, 0, 0, { hide: ['door'], paint: { trim: 'rt_blue' } }); // (security's tower: blue) n0 = B.boxes.length;
     add(s * 14, 0, 38, s * 20, 4.5, 44, 'concrete'); add(s * 13.8, 4.5, 37.8, s * 20.2, 4.8, 44.2, 'roofg'); // the south tower's
+    archTag(B, D, n0, D.boxes.length, 'liftroom_sd', s * 17, 41, 0, 0, { hide: ['door'], paint: { trim: 'rt_pink' } }); // (the crashers': pink. no doors on these: hide the model's)
     acUnit(W, s * 18, -46, 0); acUnit(W, s * 18, 50, 0);
   }
-  for (const x of [-6, 6]) add(x - 0.2, 0, -69.6, x + 0.2, 7, -69.2, 'metal');
+  for (const x of [-6, 6]) add(x - 0.2, 0, -69.6, x + 0.2, 7, -69.2, 'metal', ST);
   D.add(-8, 2.5, -69.42, 8, 6.8, -69.38, 'flagcorp', { fit: 1 });
   billboard(W, 0, 53, 0, 'x'); // over the crashers' backs
   // privacy walls on the two towers' edges over mid (up off their parapets, open at the stairs): neither spawn
@@ -2338,8 +2383,11 @@ function warehouseSD() {
   for (let i = 0; i < 4; i++) box(54 + (i % 2) * 0.85, 0.6, 6 + Math.floor(i / 2) * 0.85, 0.75, 1.2, 0.75, i % 2 ? 'barrel' : 'barrelr');
   add(24.3, 0, 21.7, 30.25, 2.4, 27.75, 'wood'); // the bin store in the corner (no way through to the trailer park)
   // the staff block: the defenders spawn behind it, it hides them from the courtyard
+  const sb0 = B.boxes.length, sd0 = D.boxes.length; // (the block and its windows are a Blender building: wh_staff)
   add(58, 0, -18, 63, 7.2, 18, 'magenta'); add(57.6, 7.2, -18.4, 63.4, 7.6, 18.4, 'roofg'); // (its roof is over the ceiling: no perch over the spawn)
   for (let z = -14; z <= 14; z += 4) for (const y of [1.2, 4.4]) { D.add(57.96, y, z - 1, 57.98, y + 1.8, z + 1, 'glass'); D.add(63.02, y, z - 1, 63.04, y + 1.8, z + 1, 'glass'); }
+  B.archSince(sb0, 'wh_staff', 60.5, 0);
+  for (let i = sd0; i < D.boxes.length; i++) Object.assign(D.boxes[i], { av: 'wh_staff', ai: B.boxes.arch.length - 1 });
   D.add(57.9, 3.3, -6, 57.95, 4.2, 6, 'neonwork', { fit: 1 });
 
   // ---- DEFENDERS' SPAWN: the staff car park
@@ -3146,6 +3194,13 @@ function lounger(B, D, x, z, m) {
   D.add(x + 0.9, 0, z - 0.05, x + 1.0, 2.2, z + 0.05, 'white'); D.add(x - 0.3, 2.2, z - 1.2, x + 2.2, 2.32, z + 1.2, pickUmb(x + z));
 }
 const pickUmb = (k) => ['toypink', 'toyteal', 'toyyellow', 'sidelemon'][Math.abs(Math.round(k * 7)) % 4];
+// the tiki village (tiki bar, big tiki, huts, surf school) is one Blender model per map (public/models/arch/tiki*.glb,
+// look only): tiki(() => ...) tags what the pieces add. drape: on Islands it rides the dunes exactly as it always did
+// (shared/terrain.js). the crates (a prop model already) and the two signs (the game's own ad textures) stay the game's
+function tikiArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'adtiki', 'adsurf']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
+}
 
 // ---- the set pieces. each is built where the standard Islands has it, moved (dx, dz) (Islands S&D moves them about);
 // st collects their stairs for the walk graph
@@ -3283,6 +3338,13 @@ function surfSchool(B0, D0, dx, dz) {
   const { D } = isPiece(B0, D0, dx, dz, []);
   for (const [i, m] of ['toypink', 'toyyellow', 'toyteal'].entries()) D.box(24 + i * 0.8, 1.1, 14.6, 0.6, 2.2, 0.12, m); // surfboards stuck in the sand
   D.add(22.6, 0, 13.4, 22.72, 2.6, 13.52, 'wood'); D.add(21.4, 1.6, 13.52, 23.9, 2.6, 13.6, 'adsurf', { fit: 1 });
+}
+// the long pier east and the bait shack on it are one Blender model (public/models/arch/pier.glb, look only): pierArt(() => ...)
+// tags what they add. drape: the boxes ride the ground exactly as they always did (shared/terrain.js). the crates and the
+// barrel (prop models already) and the shack's sign (the game's own ad texture) stay the game's
+function pierArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'barrel', 'adbait']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
 }
 // the bait shack (round 46, 9, on the pier's wide bit): its hatch, its sign, crates and a barrel out front
 function baitShack(B0, D0, dx, dz) {
@@ -3448,14 +3510,16 @@ function lighthouse(B0, D0, dx, dz, st, o = {}) {
   for (let i = d0; i < D0.boxes.length; i++) if (D0.boxes[i].mat !== 'light') Object.assign(D0.boxes[i], tag); // (the light itself: the game's, it glows)
   D.add(78.94, 1.6, -7.5, 79.0, 2.6, -4.5, 'adlight', { fit: 1 }); // (the sign: the game's picture)
 }
-// the keeper's cottage (round 71, 9): its door west, windows, a bed, a table
-function cottage(B0, D0, dx, dz) {
-  const { add, W } = isPiece(B0, D0, dx, dz, []);
+// the keeper's cottage (round 71, 9): its door west, windows, a bed, a table. drawn as one Blender model over these
+// boxes, look only (public/models/arch/cottage.glb, cottage_sd.glb on S&D). drape: it rides the ground exactly as it always did
+function cottage(B0, D0, dx, dz, id = 'cottage') {
+  const { add, W } = isPiece(B0, D0, dx, dz, []), n0 = B0.boxes.length;
   wall(W, 'z', 67.6, 6.375, 11.625, 0, 3, 0.25, 'plaster', [{ a: 8.3, b: 9.7, y0: 0, y1: 2.2 }]);
   wall(W, 'z', 74.4, 6.375, 11.625, 0, 3, 0.25, 'plaster', [{ a: 8.2, b: 9.8, y0: 1.1, y1: 2.1 }]);
   wall(W, 'x', 6.5, 67.725, 74.275, 0, 3, 0.25, 'plaster', [{ a: 70.2, b: 71.8, y0: 1.1, y1: 2.1 }]); wall(W, 'x', 11.5, 67.725, 74.275, 0, 3, 0.25, 'plaster');
   add(67.1, 3, 5.9, 74.9, 3.3, 12.1, 'roofpink'); add(68, 3.3, 6.8, 74, 3.8, 11.2, 'roofpink');
   add(72.6, 0, 9.6, 74.1, 0.55, 11.2, 'bedsheet'); add(69.4, 0, 7, 70.8, 0.8, 8.2, 'wood');
+  B0.archSince(n0, id, dx, dz, 0, 0, { drape: true });
 }
 // Fort Splinter (round -77, 0): walls to walk (FW), the gate east (o.westGate: a big one west too, else a back door),
 // the bastions, merlons, the armoury, the well, the flag, cannons on the east wall. o.walk false: no stairs up to the
@@ -3524,10 +3588,11 @@ function islands() {
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
   B.boxes.arch.push({ id: 'kaboom', p: [0, 0, 0], r: 0 }); // (its dressing: lava channel, cooled flows, cracks, rim rocks, scree. one Blender model laid on the cone, look only)
   const KB = kaboom(B, D, 0, 0), T = KB.throat; // (quick play: a real cone you walk and grapple anywhere. Islands S&D has the same mountain made small: KABOOM_SD)
-  tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
-  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
+  const TK = tikiArt(B, D, 'tiki'); // (the village: one Blender model, look only)
+  TK(() => { tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
+  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1); });
   [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
-  surfSchool(B, D, 0, 0);
+  TK(() => surfSchool(B, D, 0, 0));
   // the cannon on the west beach (the human cannonball: it fires you at the fort)
   cannon(B, D, -24.2, 9, 0, -1, 0); add(-27.3, 0, 7.7, -25.5, 0.3, 10.3, 'pad', { pad: [-34, 15, -7.4] }); // (lands in front of the fort's gate)
   D.add(-22.4, 0, 11.4, -22.28, 2.6, 11.52, 'wood'); D.add(-24.6, 1.6, 11.52, -20.4, 2.6, 11.6, 'adcannon', { fit: 1 });
@@ -3542,12 +3607,14 @@ function islands() {
   isle(B, D, 3, -44, 9, -38, { shelf: 1.5 }); palm(W, 8, -39.5, 5.5, r); add(3.4, 0, -43.6, 4.6, 1.0, -42.4, 'basalt');
   B.boxes.arch.push({ id: 'walks_islands', p: [0, 0, 0], r: 0, drape: true }); const WK = { av: 'walks_islands', ai: B.boxes.arch.length - 1 }; // (every rope walk: one Blender model, look only)
   ropeWalk(B, D, false, -58, -44, 6, 2.6, [-53, -45.5], WK); ropeWalk(B, D, false, -38, -24, 6, 2.6, [-36.5, -29], WK);
+  const PR = pierArt(B, D, 'pier'); // (the pier and the bait shack: one Blender model, look only)
+  PR(() => {
   add(28, -0.3, 4.5, 62, 0, 7.5, 'wood'); add(42, -0.3, 2, 50, 0, 4.5, 'wood'); add(42, -0.3, 7.5, 50, 0, 10.5, 'wood'); // the pier, wider round the shack
   for (let x = 28.4; x < 62; x += 0.6) D.add(x, 0, 4.5, x + 0.5, 0.025, 7.5, 'planks');
   for (let x = 30; x < 62; x += 4) for (const z of [4.6, 7.4]) D.box(x, -1.3, z, 0.3, 2.2, 0.3, 'wood');
   for (const x of [32, 38, 54, 60]) for (const z of [4.75, 7.25]) B.box(x, 0.3, z, 0.36, 0.6, 0.36, 'tire'); // bollards
   for (const [x0, x1] of [[33, 42], [50, 57]]) for (const z of [4.56, 7.44]) { add(x0, 0.9, z - 0.06, x1, 1.0, z + 0.06, 'wood'); for (let x = x0 + 0.1; x < x1; x += 2) D.add(x, 0, z - 0.05, x + 0.1, 0.9, z + 0.05, 'wood'); } // its rails
-  baitShack(B, D, 0, 0);
+  baitShack(B, D, 0, 0); });
   isle(B, D, -48, -4, -42, 2, { shelf: 1.5 }); palm(W, -44, 1, 6, r); add(-47.4, 0, -3.8, -46.2, 1.1, -2.7, 'basalt');
   ropeWalk(B, D, true, -62, -48, -1, 2.6, [-57, -49.5], WK); ropeWalk(B, D, true, -42, -28, -1, 2.6, [-40.5, -33], WK);
   sandbar(B, -6, 26.5, -6, 55.5); add(-8.2, -0.6, 36.5, -6.6, 0.6, 38, 'basalt'); add(-5, -0.6, 45, -3.4, 0.8, 46.8, 'basalt');
@@ -3645,20 +3712,21 @@ function islandsSD() {
 
   // ---- W, the tiki bar's islet (x -60..-36, z -36..-12); E, the beach huts' (x 36..60, z -36..-12)
   isle(B, D, -60, -36, -36, -12);
-  tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42);
+  const TK = tikiArt(B, D, 'tiki_sd'); // (the tiki islet and the huts' islet: one Blender model, look only)
+  TK(() => { tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42); });
   lounger(B, D, -50, -15, 'toyteal'); lounger(B, D, -46, -15, 'toypink');
   for (const [x, z] of [[-58.5, -14], [-37, -13.5], [-59, -33.5], [-37.5, -24.5]]) palm(W, x, z, 5.5 + r() * 3, r);
   isle(B, D, 36, -36, 60, -12);
-  hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1);
+  TK(() => { hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1); });
   lounger(B, D, 57, -30, 'toyyellow'); lounger(B, D, 57.6, -25.6, 'toyteal');
-  surfSchool(B, D, 16, -29);
+  TK(() => surfSchool(B, D, 16, -29));
   for (const [x, z] of [[58.5, -14], [37.5, -13.5], [58.8, -34], [37.5, -29]]) palm(W, x, z, 5.5 + r() * 3, r);
 
   // ---- B, Lighthouse Point (x -62..-34, z -82..-48): the tower's foot (no way up: the site's big cover), the cottage,
   // lobster pots, an upturned boat, rocks
   isle(B, D, -62, -82, -34, -48);
   slab(Dw, -59.5, -79.5, -36.5, -50.5, 0, 0.03, 'grass', [-47, -74, -39, -66]);
-  lighthouse(B, D, -125, -64, st, { climb: false }); cottage(B, D, -125, -64);
+  lighthouse(B, D, -125, -64, st, { climb: false }); cottage(B, D, -125, -64, 'cottage_sd');
   for (const [x, z] of [[-50.4, -75], [-49.4, -75.6], [-50, -74], [-38.5, -60], [-37.6, -59], [-55, -63]]) B.box(x, 0.4, z, 0.8, 0.8, 0.8, 'crate');
   add(-47.5, 0, -58.6, -43.5, 0.8, -57, 'boatwood'); // an upturned rowboat
   for (const [x, z, s] of [[-59.5, -79.5, 1.3], [-36.5, -79.5, 1.2], [-59.5, -62, 1.0]]) add(x - s, 0, z - s * 0.8, x + s, s * 1.1, z + s * 0.8, 'rockf', RK);
@@ -3797,10 +3865,11 @@ function skyPutt(B, D, x, z, y, r) {
   const add = B.add, W = B.local(0, 0, 0);
   {
     for (const [a0, b0, a1, b1] of [[-10, -12, -2, -11.6], [-10, -6, -2, -5.6], [2, 5.6, 10, 6], [2, 11.6, 10, 12], [-2.4, -11.6, -2, -6], [2, 6, 2.4, 11.6]]) add(x + a0, y, z + b0, x + a1, y + 0.4, z + b1, 'wood');
+    propOf('windmill', [x + 5.5, y, z - 9.5], 0, () => { // (the Blender windmill, p_windmill: tools/blender/make_puttputt.py)
     add(x + 4, y, z - 11, x + 7, y + 4.5, z - 8, 'white'); D.add(x + 3.6, y + 4.5, z - 11.4, x + 7.4, y + 5.1, z - 7.6, 'roofpink'); D.add(x + 4.5, y + 5.1, z - 10.5, x + 6.5, y + 5.6, z - 8.5, 'roofpink');
-    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); // the windmill's sails
+    D.box(x + 5.5, y + 3.6, z - 7.88, 6.6, 0.35, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.88, 0.35, 6.6, 0.12, 'wood'); D.box(x + 5.5, y + 3.6, z - 7.78, 0.6, 0.6, 0.12, 'toyred'); }); // the windmill's sails
     D.add(x - 10, y + 0.02, z + 6, x - 4, y + 0.06, z + 10, 'sand'); D.add(x + 1, y + 0.02, z - 4, x + 4, y + 0.06, z - 1, 'sand');
-    add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 }); // the clown (putt into its mouth. you can't)
+    propOf('clownhead', [x - 2.5, y, z], 0, () => add(x - 4, y, z - 1.5, x - 1, y + 3, z + 1.5, 'toyface', { fit: 1 })); // the clown (putt into its mouth. you can't. the Blender head: p_clownhead)
     for (const [hx, hz] of [[-6, -9], [6, 9], [-7, 2], [8, -3]]) { D.add(x + hx - 0.25, y + 0.02, z + hz - 0.25, x + hx + 0.25, y + 0.04, z + hz + 0.25, 'tire'); D.add(x + hx - 0.03, y, z + hz - 0.03, x + hx + 0.03, y + 1.4, z + hz + 0.03, 'white'); D.add(x + hx + 0.03, y + 1.0, z + hz - 0.02, x + hx + 0.6, y + 1.35, z + hz + 0.02, 'toyred'); } // holes, flags
     D.add(x - 5, y + 2.4, z - 14.42, x + 5, y + 5.4, z - 14.38, 'adputt', { fit: 1 }); for (const px of [-4, 4]) add(x + px - 0.2, y, z - 14.6, x + px + 0.2, y + 5.7, z - 14.2, 'metal'); }
 }
@@ -3861,6 +3930,8 @@ function skyline() {
   const base = -120, S = 72, R = 40, pick = (a) => a[(r() * a.length) | 0];
   const hi = 52, lo = 30;
   let spireC = null;
+  // the towers drawn as Blender models over their boxes: [model, quarter turns] (the east tower: the south one's look, its own boxes)
+  const TOWER_ARCH = { E: ['tenement_e', 0], N: ['office_n', 0], W: ['office_w', 0], SE: ['office_se', 0], SW: ['office_sw', 0], NW: ['concrete_nw', 0], NE: ['tenement_ne', 0] };
   // ---- the nine tops (half sizes): the Spire 13 x 13, the ring 15 x 13 (north/south) / 13 x 15 (east/west), the corners 14 x 14
   const tops = { C: [0, 0, 13, 13, R], N: [0, -S, 15, 13, R], S: [0, S, 15, 13, R], W: [-S, 0, 13, 15, R], E: [S, 0, 13, 15, R],
     NW: [-S, -S, 14, 14, lo], SE: [S, S, 14, 14, lo], NE: [S, -S, 14, 14, hi], SW: [-S, S, 14, 14, hi] };
@@ -3872,16 +3943,29 @@ function skyline() {
     const n0 = B.boxes.length;
     roofTop(B, x - hx, z - hz, x + hx, z + hz, y, facade[k], gaps[k], base);
     if (k === 'S') B.archSince(n0, 'tenement', x, z, 0, y); // the south tower: a Blender tenement (archfield.js)
+    if (k in TOWER_ARCH) B.archSince(n0, TOWER_ARCH[k][0], x, z, TOWER_ARCH[k][1], y); // the rest of the ring and the corners (tools/blender/arch/make_tower.py)
     if (k === 'C') spireC = [n0, B.boxes.length]; // (the Spire's tower: drawn by its model, below)
     D.add(x - hx + 0.3, y, z - hz + 0.3, x + hx - 0.3, y + 0.02, z + hz - 0.3, k === 'S' ? 'lawn' : k === 'E' ? 'lawn' : 'asphalt'); // the roof's skin
   }
   // ---- the links: the hub to the ring (glass tubes north and south, girder bridges east and west), the ring to the corners
-  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); tubeBridge(B, D, false, 13.4, S - 13.4, 0, R);
-  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']);
+  // (each drawn as a Blender bridge over its boxes, tools/blender/arch/make_bridges.py: tube = the glass tubes, girder =
+  // the open bridges; one model each, the south / east one at rot 0, the north / west one turned round)
+  const bm = (S - 13.4 + 13.4) / 2; let nb = B.boxes.length;
+  tubeBridge(B, D, false, -13.4, -S + 13.4, 0, R); B.archSince(nb, 'tube', 0, -bm, 2); nb = B.boxes.length;
+  tubeBridge(B, D, false, 13.4, S - 13.4, 0, R); B.archSince(nb, 'tube', 0, bm, 0); nb = B.boxes.length;
+  skyBridge(B, D, true, -S + 13.4, -13.4, 0, R, 4); B.archSince(nb, 'girder', -bm, 0, 2); nb = B.boxes.length;
+  skyBridge(B, D, true, 13.4, S - 13.4, 0, R, 4, {}, ['neonpink', 'neonyellow']); B.archSince(nb, 'girder', bm, 0, 0);
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
     const cy = sx === sz ? lo : hi; // NW and SE are the low corners
+    // (each drawn as a Blender stair bridge over its boxes: stairhi / stairlo, tools/blender/arch/make_stairbridge.py.
+    // one model per rise, turned to each placement: the bridge's middle, along +x from the low end at rot 0)
+    const sid = cy > R ? 'stairhi' : 'stairlo', mid = (15.4 + S - 14.4) / 2;
+    let n0 = B.boxes.length;
     stairBridge(B, true, sx * 15.4, sx * (S - 14.4), sz * S, R, cy, 4, true); // from the north / south tower along x
+    B.archSince(n0, sid, sx * mid, sz * S, sx > 0 ? 0 : 2);
+    n0 = B.boxes.length;
     stairBridge(B, false, sz * 15.4, sz * (S - 14.4), sx * S, R, cy, 4, true); // from the west / east tower along z
+    B.archSince(n0, sid, sx * S, sz * mid, sz > 0 ? 1 : 3);
   }
 
   // ---- C, the Spire: the hub deck round its glass shaft (five floors of windows, stairs inside, a sniper's nest on top)
@@ -5186,7 +5270,7 @@ function deadmall() {
   for (const x of [-7, 7]) for (const z of [-19, 5]) B.box(x, 0.35, z, 2, 0.7, 2, 'hedge');
   for (const z of [-15, 1]) B.add(-1.5, 0, z - 0.3, 1.5, 0.45, z + 0.3, 'wood');
   const crate = { at: [0, 0, -28.55], price: 950 };
-  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate');
+  B.add(-0.9, 0, -29, 0.9, 0.9, -28.1, 'crate', W.P('zmcrate', 0, -28.55, 0, { v: 'body' })); // (the Blender crate's body is drawn over it, its lid swings in public/js/zombies.js)
   const cola = { at: [-10.4, 0, -24], n: [1, 0, 0] };
   B.add(-10.75, 0, -24.55, -10.05, 2.03, -23.45, 'metal'); // (Jank Cola's machine is drawn over it too)
   // ---- ARCADE: three rows of back-to-back cabinets (gaps halfway down), screens glowing on both sides
@@ -5239,6 +5323,10 @@ export const MAPS = {
   desert: desert(), desert_sd: desertSD(), islands: islands(), islands_sd: islandsSD(), skyline: skyline(), skyline_sd: skylineSD(), bazaar: bazaar(), bazaar_sd: bazaarSD(), range: range(), backrooms: backrooms(), forest: forest(),
   deadmall: deadmall(),
 };
+// each map's builder on its own (the map editor's PLAY HERE WITH BOTS: one fresh copy of one map, with the owner's edits
+// on it, for one private room, without building every map again). same keys as MAPS
+export const MAP_BUILDERS = { crate, platform, platform_sd: platformSD, rooftop, rooftop_sd: rooftopSD, suburb, suburb_sd: suburbSD, warehouse, warehouse_sd: warehouseSD,
+  desert, desert_sd: desertSD, islands, islands_sd: islandsSD, skyline, skyline_sd: skylineSD, bazaar, bazaar_sd: bazaarSD, range, backrooms, forest, deadmall };
 // maps with an S&D version: '<id>_sd' is its own layout on the bomb-map rules, the one Plant & Defuse plays; '<id>' is
 // the one every other mode plays. switching mode swaps between them (modes.js mapForGame, the server's setGame)
 for (const [id, m] of Object.entries(MAPS)) if (id.endsWith('_sd') && MAPS[id.slice(0, -3)]) { m.sd = true; m.base = id.slice(0, -3); MAPS[m.base].sdMap = id; }

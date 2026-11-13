@@ -7,6 +7,7 @@ import { rollPick, itemInfo, CONTAINERS } from '../shared/cosmetics.js';
 import { achievementsFrom } from '../shared/looks.js';
 import { catsOf } from '../shared/secrets.js';
 import { storyApi } from './story.js'; // OVERDUE save slots (/api/story/*)
+import { friendsApi } from './friends.js'; // friends (/api/friends*)
 import { MODE_STATS, modeBoard, boardValue } from '../shared/modestats.js'; // per-mode leaderboards
 import { giftsDue, ROLL_BATCH_MAX } from '../shared/gifts.js'; // free containers from the management, once per account
 
@@ -166,6 +167,7 @@ export class Accounts {
       const auth = (req.headers.authorization || '').replace(/^Bearer /, '');
       const ip = req.socket.remoteAddress || '?';
       if (url.startsWith('/api/story/')) return await storyApi(this, url, body, auth, send);
+      if (url === '/api/friends' || url.startsWith('/api/friends/')) return await friendsApi(this, url, body, auth, send); // friends (server/friends.js; its own per-account limit)
       switch (url) {
         case '/api/register':
         case '/api/login': {

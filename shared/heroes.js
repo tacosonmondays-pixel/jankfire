@@ -6,6 +6,9 @@ import { MECH } from './mech.js';
 export const HEROES = {
   paperplane: { frame: 'paperplane', role: 'dive / air', color: '#4fd8ff', blurb: 'nimble flyer. hover, lunge, jet mode' },
   nightshift: { frame: 'nightshift', role: 'tank / melee', color: '#b07dff', blurb: 'big knight. sword, shield, ground slam' },
+  wrecking: { frame: 'wrecking', role: 'dive tank', color: '#ffd23a', blurb: 'a hamster ball. ram, chain swing, ground slam, PILE DRIVER' },
+  vending: { frame: 'vending', role: 'support', color: '#ff4fd8', blurb: 'a vending machine on legs. coins, colas for the squad, an OUT OF ORDER wall, RESTOCK' },
+  trolley: { frame: 'trolley', role: 'speed', color: '#39ff14', blurb: 'a shopping trolley with a wonky wheel. tin cans, drift, ram, CLEAN UP AISLE 5' },
 };
 export const HERO_IDS = Object.keys(HEROES); // (the order the pick shows them in)
 export const isHero = (h) => typeof h === 'string' && Object.hasOwn(HEROES, h);

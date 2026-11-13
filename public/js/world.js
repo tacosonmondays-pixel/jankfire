@@ -21,12 +21,17 @@ const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.i
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
+import { buildWaterMap, updateFlowWater, setFlowQ } from './flowwater.js'; // fountains: streams, rippling pools, splashes
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
+import { neonMap, updateNeon } from './neon.js'; // the neon and lamps light the walls round them (the ray-traced look)
+import { bounceMap, updateBounce } from './bounce.js'; // light bounced off the ground and walls (the ray-traced look)
+import { reflectMap, updateReflect, reflectSSRLive } from './reflect.js'; // glass and wet roads mirror the world (the ray-traced look)
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { biGroundMaterial, disposeBiGround } from './biground.js';
-import { postBegin, postEnd, setPostAA } from './post.js';
+import { postBegin, postEnd, setPostAA, postMid, postSSROn, postSkyInfo } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
+import { warmScene, warmTick } from './warmup.js'; // (shaders built ahead of time)
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
 export const JANK = [
@@ -37,7 +42,7 @@ export const JANK = [
 ];
 let jank = JANK[1];
 const clouds = [];
-let sun;
+let sun, skyGround = 0, skyNight = false;
 
 function canvasTex(size, draw, w) {
   const c = document.createElement('canvas');
@@ -314,6 +319,7 @@ function buildMap(scene) {
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue;
+    if (b.pg) continue; // the pre-game deck's boxes: it draws itself (pregame.js)
     if (liquidBox(b)) { liq.push(b); continue; } // water, lava, fire: liquids.js / flames.js draw those
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -408,6 +414,7 @@ function buildChunked(scene, def) {
   for (let i = 0; i < all.length; i++) {
     const b = all[i];
     if ((b.pv && drawnByModel(b.pv)) || (b.av && hasArch(b.av))) continue; // (as in buildMap)
+    if (b.pg) continue; // (the pre-game deck: as in buildMap)
     if (liquidBox(b)) { liq.push(b); continue; } // (liquids.js)
     const sx = b.max[0] - b.min[0], sy = b.max[1] - b.min[1], sz = b.max[2] - b.min[2];
     const cx = (b.min[0] + b.max[0]) / 2, cy = (b.min[1] + b.max[1]) / 2, cz = (b.min[2] + b.max[2]) / 2;
@@ -536,7 +543,7 @@ export function initWorld(canvas) {
   initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
-export function setJank(i) { jank = JANK[i] || JANK[1]; setPostAA(i >= 2); resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
+export function setJank(i) { jank = JANK[i] || JANK[1]; setPostAA(i >= 2); resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); setFlowQ(JANK[i] ? i : 1); }
 
 // OVERDUE: a streamed map (MAPS[id].stream, the story's city) runs the city streamer instead of one built mesh.
 // loaded on demand, so maps without `stream` (all of PvP) never fetch it
@@ -559,6 +566,7 @@ export function loadMap(id) {
   fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals);
   buildMap(G.scene);
   buildPropField(G.scene, MAPS[MAP.id], MAT);
+  buildWaterMap(G.scene, MAPS[MAP.id]); // (the box fountains' jets; the Blender ones come with their props)
   archFor(MAP.id);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
@@ -581,7 +589,12 @@ export function loadMap(id) {
   forestMap(MAPS[MAP.id], MAP.id);
   shredMap(MAPS[MAP.id], MAT);
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
+  reflectMap(G.scene, MAPS[MAP.id], MAT); // (night too: neon in the wet streets is the point)
+  { const sp = (MAPS[MAP.id] && MAPS[MAP.id].spawns || []).map((p) => p[1]); skyGround = sp.length ? Math.min(...sp) : 0; skyNight = night; } // (sun shafts + haze: post.js)
+  neonMap(MAPS[MAP.id], MAT, night); // (after lightingMap: it finds the lights)
+  bounceMap(night ? null : MAPS[MAP.id], MAT); // (needs the sun's direction: after lightingMap. night maps: no sun to bounce)
   biLookMap(MAP.id, [skyMesh, sun, ...clouds]); // Battle Island's own sky, fog and grade (bilook.js; nothing on other maps)
+  warmScene(); // (warmup.js: this map's shaders and every model's, built over the next frames instead of mid-fight)
 }
 
 // models finished loading after the map was built: redraw the boxes + props (no gameplay state touched)
@@ -595,11 +608,15 @@ export function refreshMapVisuals() {
   lightingRefresh();
 }
 // the map's Blender buildings (archfield.js): drawn now if they're in, else fetched and swapped in when they land
+let archT = 0;
 function archFor(id) {
   const list = MAPS[id] && MAPS[id].boxes.arch;
   setArchHaze((m) => hazify(m, 1));
   buildArch(G.scene, list);
-  wantArch(list, () => { if (MAP.id === id) refreshMapVisuals(); });
+  // one redraw for the lot, not one per model: a map with many (Jankburg's 13 house kinds) redrew all its boxes 13 times
+  // in a row as they landed, a long enough stall on a slow machine to miss the server's heartbeat and drop to the menu
+  clearTimeout(archT);
+  wantArch(list, () => { clearTimeout(archT); archT = setTimeout(() => { if (MAP.id === id) refreshMapVisuals(); }, 300); });
 }
 
 // ---- gfxguard.js hooks (the "everything renders black" safety net)
@@ -631,6 +648,7 @@ export function relightMap() {
   return true;
 }
 export const mapMats = () => MAT;
+export const skyParts = () => ({ sky: skyMesh, sun, clouds }); // weather.js darkens these for a stormy frame (and puts them back)
 
 
 const TOUCH_MAX_PX = 1280 * 720;
@@ -647,6 +665,7 @@ export function resize() {
 }
 
 export function updateWorld(dt) {
+  updateBounce(); updateNeon();
   updateBiLook(dt);
   for (const c of clouds) {
     c.position.x += c.userData.speed * dt;
@@ -660,22 +679,29 @@ export function updateWorld(dt) {
   updateForest(dt);
   updateShredPit(dt);
   updateLiquids(dt);
+  updateFlowWater(dt, G.camera, G.renderer, G.scene);
   updateFlames(dt);
 }
 
 let lastT = 0;
 export function renderFrame() {
+  if (G.coverWorld) return; // (story: a full-screen comic page is up and nothing of the world shows: the frame goes to the page)
   const r = G.renderer, now = performance.now();
   gfxGuard(now); // gfxguard.js: broken lights / fog / textures get put back before they're drawn
   depthNear(G.camera); // high up (blimp, glide), the near plane moves out: depth precision for the streets below (zfight.js)
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
-  const post = postBegin(r); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
+  updateReflect(r, G.camera); // one side of a fresh reflection snapshot, when one is due (reflect.js)
+  if (sun && G.scene.fog) postSkyInfo(sun.position, G.scene.fog.color.getHex(), skyNight, skyGround);
+  const post = postBegin(r); reflectSSRLive(post && postSSROn()); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
+  warmTick(r); // (shaders for what isn't on screen yet: with this frame's target bound, so they're the same variants)
   r.clear();
   r.render(G.scene, G.camera);
+  if (post) postMid(r, G.camera); // contact shadows from the world's depth, before your gun is drawn (post.js)
   r.clearDepth();
   r.render(G.vmScene, G.vmCamera);
   if (post && !postEnd(r)) { // the shader pass failed and switched itself off: this frame again, the plain way
+    reflectSSRLive(false); // (no floor marks in the canvas's alpha)
     r.setRenderTarget(null); r.clear(); r.render(G.scene, G.camera); r.clearDepth(); r.render(G.vmScene, G.vmCamera);
   }
 }

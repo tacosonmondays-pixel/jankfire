@@ -52,10 +52,10 @@ export function showLineup(slot, ms, lead, me, myLook) {
     holder.add(g);
     g.updateMatrixWorld(true);
     const top = new THREE.Box3().setFromObject(ch).max.y, v = new THREE.Vector3(g.position.x, top + 0.1, g.position.z).project(cam);
-    const t = el('div', 'lineup-tag' + (m.id === me ? ' me' : '') + (m.busy ? ' busy' : ''));
+    const t = el('div', 'lineup-tag' + (m.id === me ? ' me' : '') + (m.busy || m.gone ? ' busy' : ''));
     t.style.left = ((v.x + 1) / 2 * 100) + '%'; t.style.top = ((1 - v.y) / 2 * 100) + '%';
     t.append(el('b', null, (m.id === lead ? '👑 ' : '') + m.name));
-    t.append(el('i', m.busy ? 'lt-busy' : m.id === lead ? 'lt-lead' : m.ready ? 'lt-ready' : 'lt-wait', m.busy ? 'IN A MATCH' : m.id === lead ? 'LEADER' : m.ready ? 'READY' : 'not ready'));
+    t.append(el('i', m.gone ? 'lt-busy' : m.busy ? 'lt-busy' : m.id === lead ? 'lt-lead' : m.ready ? 'lt-ready' : 'lt-wait', m.gone ? 'RECONNECTING...' : m.busy ? 'IN A MATCH' : m.id === lead ? 'LEADER' : m.ready ? 'READY' : 'not ready'));
     tags.append(t);
   });
   ren.render(scene, cam);

@@ -31,6 +31,7 @@ const PAL = {
 };
 
 let group = null;
+export const sceneryGroup = () => group; // (weather.js dims the far backdrop under a storm, for the frame being drawn)
 const rnd = (seed) => () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
 const fade = (hex, fogHex, k) => new THREE.Color(hex).lerp(new THREE.Color(fogHex), k).getHex();
 const basic = (hex) => new THREE.MeshBasicMaterial({ color: hex, fog: false });

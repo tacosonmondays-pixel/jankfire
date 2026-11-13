@@ -1,6 +1,190 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.44', date: '2026-11-13', title: 'STAFF MEETING', items: [
+    "deb, gus and marge in the zombies lobby are proper characters now. deb stamps your passive, gus spins the revolver, marge blows a gum bubble and ticks you off her clipboard. they look at you when you walk up. they are not happy about it.",
+  ] },
+  { v: '11.43', date: '2026-11-13', title: 'SPYGLASS', items: [
+    "JANK ROYALE MAP GLOW-UP: the big map is a real picture of the place with the district names on it. zoom and drag it around.",
+    "names float over every location so you can call your drop from the blimp. the blimp flies slower so you get a say. hold right-click up there for a spyglass: scroll to zoom, ping where you're landing.",
+  ] },
+  { v: '11.42', date: '2026-11-13', title: 'SIGN IT OUT', items: [
+    "the quick play / plant & defuse hangar got a jumbotron (pink bezel, LIVE light, a GG EZ ticker) and a proper armory rack for your guns, with a SIGN IT OUT clipboard nobody signs.",
+  ] },
+  { v: '11.41', date: '2026-11-13', title: 'TAKE A NUMBER', items: [
+    "the zombies warehouse lobby got real furniture: deb's tanker desk with a rotary phone and a TAKE A NUMBER dispenser, gus's glass gun counter (NO REFUNDS), marge's crates, a generator that says DO NOT KICK (with a boot print on it), and a door marked EXIT (LIES).",
+  ] },
+  { v: '11.40', date: '2026-11-13', title: 'EARS ON', items: [
+    "the garage's TEST FIRE range got real: three booths, ear muffs, spilled brass, paper targets cut like mechs on rails, and a MECH ROUNDS FIRED TODAY board stuck on 9999+. press E and the targets spin.",
+  ] },
+  { v: '11.39', date: '2026-11-13', title: 'BREAK ROOM', items: [
+    "the mech garage got a real break room: a ratty purple couch, pizza on the table, a MINE!! fridge, a coffee machine, and a cabinet door hanging off its last screw. it creaks. nobody has fixed it.",
+  ] },
+  { v: '11.38', date: '2026-11-13', title: 'CLEAN UP AISLE 5', items: [
+    "new mech: TROLLEY. a 5 m shopping trolley, the fastest thing on the island. lob bouncing tin cans, hold shift to drift and build a RAM CHARGE, then E to lunge into people.",
+    "ultimate, CLEAN UP AISLE 5: scoop up to 3 enemies into the basket and dump them somewhere unpleasant. a squadmate can ride in the child seat.",
+    "fixed: wiggling on the spot no longer counts as speed for any mech's ram.",
+  ] },
+  { v: '11.37', date: '2026-11-13', title: 'THE OVERLOOK', items: [
+    "THE DECK GOT DRESSED: it's THE OVERLOOK now. spinning fans underneath, balloons, bunting and a big marquee board. the top 3 in the lobby stand on the podiums in front of it, showing off. new looks rotate in weekly.",
+  ] },
+  { v: '11.36', date: '2026-11-13', title: 'ON DECK', items: [
+    "LOBBIES ARE A DECK NOW: online plant & defuse, jank royale and zombies count down on a little deck floating off the map. nothing hurts, fire = shove, jump off and you're put back. the big board shows the top 3 in the lobby by their record.",
+  ] },
+  { v: '11.35', date: '2026-11-13', title: 'HOMEWORK', items: [
+    "the game stopped freezing for a sec the first time it sees a new gun, zombie or mech. it does its homework at load now. looks exactly the same.",
+  ] },
+  { v: '11.34', date: '2026-11-13', title: 'DRAW ON THE MAP', items: [
+    "DRAW ON THE MAP. open the big map, grab the PENCIL (or hold shift) and sketch a route for your squad: a fat felt-tip arrow they see on their map for 30 s. WIPE MINE when the plan changes.",
+  ] },
+  { v: '11.33', date: '2026-11-13', title: 'PRESS M', items: [
+    "PRESS M: THE BIG MAP. the whole level, your squad, the zone and the blimp's route. click it (or press K) to ping a spot for your team: a beam, a beep and a distance. spam it and it tells you to touch grass.",
+  ] },
+  { v: '11.32', date: '2026-11-13', title: 'SIGN HERE', items: [
+    "SIGN HERE: rooftop's big signs got real steel. pink posts, bracing, a catwalk, floodlights and neon round the hotel. the bank still won't give you a loan.",
+  ] },
+  { v: '11.31', date: '2026-11-13', title: "POOL'S OPEN", items: [
+    "POOL'S OPEN: rooftop's pool party got real furniture. striped cabanas, sun loungers, a dj booth with actual decks, pink speakers, a light rig and a flamingo floatie. still can't swim.",
+  ] },
+  { v: '11.30', date: '2026-11-13', title: 'BACK TO THE GARAGE', items: [
+    "offline battle island, plant & defuse, jank royale and zombies take you back to their lobby after the match, with a PLAY AGAIN button. no more surprise quick play.",
+  ] },
+  { v: '11.29', date: '2026-11-13', title: 'KABOOM', items: [
+    "mount kaboom erupts now. a rumble, then BOOM: an ash cloud, lava spilling out of the crater, glowing lava bombs whistling overhead, then a tropical downpour. islands and islands plant & defuse. everyone sees it at the same moment.",
+    "the lava bombs are just for looking at. for now.",
+  ] },
+  { v: '11.28', date: '2026-11-13', title: 'IT RAINS NOW', items: [
+    "WEATHER: it rains now. a minute or two into a match a storm rolls in over suburb, warehouse, skyline, rooftop, platform, range and jankburg. drawn-on clouds, splashes, puddles, lightning, thunder. everyone gets the same storm.",
+    "indoors the rain drums on the roof. dead mall only hears it. you can turn it off in settings (weather), coward.",
+  ] },
+  { v: '11.27', date: '2026-11-13', title: 'STAY PINK', items: [
+    "shiny pink mechs stopped turning purple on too hd. the sky was rubbing off on the paint.",
+  ] },
+  { v: '11.26', date: '2026-11-13', title: 'VENDING MACHINE', items: [
+    "new mech: VENDING MACHINE, the support hero. a 5 m drinks machine on stubby legs with a coin slot for a face. holds LMB to spit coins at people.",
+    "Shift pops out a JANK COLA for your squad: +40 hp and a sugar rush. E slams down an OUT OF ORDER sign that stops enemy bullets, rockets and blasts. your side shoots through it. rude.",
+    "ultimate, RESTOCK: armour and cooldowns for everyone nearby. sometimes it jams. a squadmate on foot can press F to kick it. that's the fix.",
+  ] },
+  { v: '11.25', date: '2026-11-13', title: 'PLEASE HOLD (PROPERLY)', items: [
+    "fixed: night shift's PLEASE HOLD shield was posing a spare copy of itself. the real one comes up across the front now.",
+  ] },
+  { v: '11.24', date: '2026-11-13', title: 'WRECKING BALL', items: [
+    "new mech: WRECKING BALL. a 4 m hamster ball with a guy running inside. roll into people (faster = more ouch), rev up and launch, swing on the chain, slam the ground from as high as you dare.",
+    "its ultimate, PILE DRIVER: rockets 30 m up, you pick a spot, it comes down at 70 m/s. everyone sees the INCOMING ring. move.",
+    "pick it in the battle island hero pick or the loadout's mech drop row. bots drive it too.",
+  ] },
+  { v: '11.23', date: '2026-11-13', title: 'LIFT OFF, BUT LOUDER', items: [
+    "LIFT OFF, BUT LOUDER: the rooftop lift rooms got bright team colours, a cyan neon glow, a lit LIFT sign and roof beacons, so you can tell whose side you're on from across the map.",
+  ] },
+  { v: '11.22', date: '2026-11-13', title: 'GO AWAY', items: [
+    "the lighthouse keeper finally decorated: pink roof, blue door, a doormat that says GO AWAY, and one enormous sock on the washing line. nobody knows where the other one went.",
+  ] },
+  { v: '11.21', date: '2026-11-13', title: 'LIFT OFF', items: [
+    "LIFT OFF: the roof boxes on rooftop are real lift machine rooms now (team stripes, vents, a door that goes nowhere) and the antenna grew a full lattice mast.",
+  ] },
+  { v: '11.20', date: '2026-11-13', title: 'PIER PRESSURE', items: [
+    "PIER PRESSURE: the islands' long pier is real wood now, on real piles, and the bait shack is held together by leftover paint and hope. worms: no refunds. the seagull is not for sale.",
+  ] },
+  { v: '11.19', date: '2026-11-13', title: 'MECHS HIT THE GYM', items: [
+    "mechs hit the gym: PAPER PLANE is 6.6 m now, NIGHT SHIFT 7.7 m. bigger swords, bigger stomps, bigger landing circle, and they plough through palm trees and lamp posts.",
+    "drops need open sky now (NO ROOM FOR IT HERE, you keep it), so no more mechs in the backrooms or inside the warehouse. low doors stop them too.",
+    "rockets that hit a mech's chest actually hurt it now. bot mechs stop face-planting into walls and hop round instead.",
+  ] },
+  { v: '11.18', date: '2026-11-13', title: 'TIKI TIME', items: [
+    "the islands tiki village got real: bamboo, thatch, a big carved tiki with a gold tooth, hammocks, and a surfboard a shark took a bite out of. lesson 1: do not.",
+  ] },
+  { v: '11.17', date: '2026-11-13', title: 'PENTHOUSE', items: [
+    "the rooftop penthouse got a glow-up: violet mirror glass, chrome, a pink stripe, neon round the roof, a real helipad. the furniture is still from ikea's box aisle (for now).",
+  ] },
+  { v: '11.16', date: '2026-11-13', title: 'FOUNTAINS WORK NOW', items: [
+    "fountains finally work. the smiling fountain's spit actually splashes now, its basin ripples, and the bazaar's fountains remembered they're fountains. the school's drinking fountain still never turns off.",
+    "PATH-TRACED PHOTO: shiny props keep their colour now. the news heli is pink again, not a black hole.",
+  ] },
+  { v: '11.15', date: '2026-11-13', title: 'SAY CHEESE', items: [
+    "PATH-TRACED PHOTO: real ray tracing for screenshots. settings > video > shaders, or type /photo in chat. it's slow, it's real, save it and frame it.",
+  ] },
+  { v: '11.14', date: '2026-11-13', title: 'LINE UP', items: [
+    "LINE UP: jank royale's lobby is the blimp's launch deck, gate 7, no refunds. quick play and plant & defuse line you up in a staging hangar with your guns on the rack.",
+  ] },
+  { v: '11.13', date: '2026-11-13', title: 'WAREHOUSE OPEN', items: [
+    'WAREHOUSE OPEN: the zombies lobby is a boarded-up base you walk around. deb does passives, gus does pistols, marge does items. poke the practice zombie.',
+  ] },
+  { v: '11.12', date: '2026-11-13', title: 'GOD RAYS', items: [
+    'RAY-TRACED LOOK: sunbeams stream between buildings when you look toward the sun, and the city far below goes soft and hazy. new "sun shafts and haze" checkbox.',
+    'neon got loud: pink tubes paint the floor pink, cyan ones cyan, and dark asphalt picks up a coloured sheen.',
+  ] },
+  { v: '11.11', date: '2026-11-13', title: 'NEON SPILL', items: [
+    'RAY-TRACED LOOK: neon signs and lamps now light up the walls and floor around them. the floor under HOTEL 4 HOURS glows yellow. stronger at night.',
+  ] },
+  { v: '11.10', date: '2026-11-13', title: 'STAY CONNECTED', items: [
+    'fixed: jankburg (jank royale) could kick slower pcs back to the menu while the new houses loaded in. the city now loads them all in one go.',
+  ] },
+  { v: '11.9', date: '2026-11-13', title: 'PICK A CARD', items: [
+    'CARD DECK: your cards are real 3D cards now with glowing suit trails. they stab into walls, burst into little spades on a hit, and fans thrown at an angle actually leave your hand now (oops).',
+  ] },
+  { v: '11.8', date: '2026-11-13', title: 'THE GARAGE IS OPEN', items: [
+    'THE GARAGE IS OPEN: the battle island lobby is a hangar you walk around. swap your mech at the terminal (crane, klaxon, sparks), hop in and stomp the test pad, get a warm cola. your party walks around with you.',
+  ] },
+  { v: '11.7', date: '2026-11-13', title: 'NO LONG ARMS', items: [
+    'anti-cheat: faking your speed doesn\'t give you extra reach anymore. honest fast movers (grapple, rocket jumps, sliding) still get their hits.',
+  ] },
+  { v: '11.6', date: '2026-11-13', title: 'CANDY BACK', items: [
+    'jankburg got its candy back: the city flats are painted pink, lemon, lilac, mint and cyan again, toy roofs keep their colours, and the lights inside glow warm.',
+    'RAY-TRACED LOOK on too hd: wet roofs and shiny floors now mirror what\'s actually around them. billboards upside down in puddles. your gun never shows up in it, it\'s shy.',
+  ] },
+  { v: '11.5', date: '2026-11-13', title: 'WIFI SNEEZE', items: [
+    'your party doesn\'t fall apart when your wifi sneezes anymore. you get 30 seconds to come back. reloading counts. if the leader drops, someone else gets the crown.',
+    'fixed: party codes stopped working for a few minutes after an update. sorry, they\'re back.',
+  ] },
+  { v: '11.4', date: '2026-11-13', title: 'MECH DOWN', items: [
+    'parked mechs aren\'t safe anymore. shoot, stab or rocket an empty mech and it breaks: MECH DOWN, and the owner gets to watch.',
+  ] },
+  { v: '11.3', date: '2026-11-12', title: 'MAY CONTAIN NUMBERS', items: [
+    'jankburg: number works got its factory back. brick smokestacks with blinking red lights, rusty vats of glowing green soup (may contain numbers), and chrome pipes on steel legs.',
+  ] },
+  { v: '11.2', date: '2026-11-12', title: 'GLINT', items: [
+    'RAY-TRACED LOOK: props, buildings, mechs and your gun now reflect the world around them, with a sun glint on shiny paint and chrome. they pick up the bounced light too, so they stop looking flat. bounce light and soft shadows got stronger and now cover all of jankburg.',
+  ] },
+  { v: '11.1', date: '2026-11-12', title: 'SO DID THE CORNER', items: [
+    'jankburg: the houses got walls, windows, stairs and real roofs. the streets got rearranged a bit while we were at it. your favourite corner might have moved. so did the corner.',
+  ] },
+  { v: '11.0', date: '2026-11-12', title: 'BEEP BEEP', items: [
+    'your own mech can\'t squash you any more. stand on your own circle and it goes BEEP BEEP and bonks you out of the way, then you can climb straight in. your squad gets bonked too. enemies still get flattened.',
+    'zombies (and every death): body parts and gibs don\'t hang in mid-air any more. they fall, bounce, settle on the floor and fade.',
+    'zombies: the grappling hook has charges now, like jank royale. two ropes, one comes back every 8 seconds. the ring by your crosshair shows them.',
+  ] },
+  { v: '10.9', date: '2026-11-12', title: 'LOADS LIKE IT MEANS IT', items: [
+    'the game loads a lot faster the second time you open it: your browser keeps this version\'s code instead of asking for 300 files again. an update still gets you the new stuff straight away.',
+  ] },
+  { v: '10.8', date: '2026-11-12', title: 'PLEASE REMAIN SEATED', items: [
+    'jankburg: the cathedral of shareholder value got pews, a real bell and an organ made of servers. the sermon is a quarterly earnings call. please remain seated.',
+  ] },
+  { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
+    'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
+  ] },
+  { v: '10.6', date: '2026-11-12', title: 'PUTT INTO ITS MOUTH', items: [
+    'skyline: the skyscrapers are real buildings now. brick tenements with fire escapes, office towers with chrome fins, lit offices and neon blade signs.',
+    'skyline: the bridges off the spire got steel. portal frames on the glass tubes, big blue trusses under the open ones. the sky stairs are proper steel stairs with handrails and neon. still 160 m of air underneath.',
+    'skyline: putt putt palace got a real windmill and a giant clown head. putt into its mouth. you can\'t.',
+  ] },
+  { v: '10.5', date: '2026-11-12', title: 'SHINY', items: [
+    'RAY-TRACED LOOK now has reflections: glass towers, office windows, wet roads and chrome reflect the world around you. its own checkbox in settings > video > shaders.',
+  ] },
+  { v: '10.4', date: '2026-11-12', title: 'NOBODY TOUCH THE TRAIN', items: [
+    'crate: the playroom is full of real toys now. crayons that are actually round, a ball that is actually a ball, a bed, and a train set nobody is allowed to touch.',
+  ] },
+  { v: '10.3', date: '2026-11-12', title: 'HAVE A NICE DAY', items: [
+    'jankburg: the city gates got toll booths, boom barriers and big name plates. the toll is your dignity. have a nice day.',
+    'warehouse plant & defuse: the defenders spawn behind a real office block now. lit windows, a staff entrance, a NO LOITERING sign nobody reads.',
+    'zombies: the mystery crate is a real crate now (glowing ??? and a padlock nobody locked), and the power switch is a big copper knife switch you get to SLAM up. works in all three zombies maps.',
+    'suburb: the playground got rebuilt by professionals (the hoa). the slide is an actual slide now. read the rules.',
+  ] },
+  { v: '10.2', date: '2026-11-12', title: 'RAY-TRACED (ISH)', items: [
+    'new shader level: RAY-TRACED LOOK (settings > video > shaders). sunlight bounces off the ground and walls onto everything around it, and corners and contact spots get soft shadows. on by default on too hd, opt-in on mid. potato stays potato.',
+    'battle island\'s grass got deeper, sunnier and blotchier. in a good way.',
+    'in a mech, the wrecking ball or the overdrive rig, your normal weapon bar gets out of the way, then pops back when you hop out.',
+    'jankburg: the firewall\'s towers got windows, a STAFF ONLY door and a smiley the size of a bus. the jump pads still work. security is watching (badly).',
+  ] },
   { v: '10.1', date: '2026-11-12', title: 'THE SHED GOT DRESSED', items: [
     'warehouse: the hall is a real depot now. pink trim, roller doors, numbered docks, yellow girders and lamps that look like lamps. same walls, same windows to get shot through.',
     'battle island: your party lands in the same squad. a party bigger than a squad splits into full squads. friends who join late go to your squad.',

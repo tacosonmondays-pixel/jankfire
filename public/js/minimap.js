@@ -58,6 +58,7 @@ export function paintBoxes(x, map, toMap, S, opt = {}) {
 // ------------------------------------------------------------ the HUD minimap
 let wrap = null, cv = null, base = null, baseFor = '', ext = null, ppm = 1, drawT = 0, shownSize = '';
 const pings = new Map(); // id -> [x, z, time]: enemies that just fired
+export const mmLayers = []; // more marks on top (fullmap.js: map pings). f(ctx, at(wx, wz) -> [px, py], now, size px)
 function build() {
   const st = document.createElement('style'); st.textContent = CSS; document.head.appendChild(st);
   wrap = document.createElement('div'); wrap.id = 'mmWrap';
@@ -167,6 +168,7 @@ export function minimapFrame(now, opts = {}) {
     if (sat) dot(at(r.pos[0], r.pos[2]), '#ff3030', 3.5);
     else if (!bomb && age < 1600) { x.globalAlpha = 1 - age / 1600; dot(at(pg[0], pg[1]), '#ff3030', 3.5 + (age < 200 ? 2 : 0)); x.globalAlpha = 1; }
   }
+  for (const f of mmLayers) f(x, at, now, px);
   // you: the arrow
   x.save(); x.translate(px / 2, px / 2); if (!rot) x.rotate(-yaw);
   x.fillStyle = '#ffe14d'; x.strokeStyle = '#000'; x.lineWidth = 2;

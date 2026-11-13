@@ -40,8 +40,9 @@ export function installSec(Room, helpers) {
     // water pistol: every squirt that really lands soaks them (players' hit reports and bots' shots both come here)
     applyHitscan(p, t, wid, n, h, d, mul) {
       const wet = WEAPONS[wid] && WEAPONS[wid].water && this.soakable(p, t);
-      orig.applyHitscan.call(this, p, t, wid, n, h, d, mul);
-      if (wet) this.soak(t, p);
+      const landed = orig.applyHitscan.call(this, p, t, wid, n, h, d, mul);
+      if (wet && landed !== false) this.soak(t, p); // (a squirt an OUT OF ORDER wall stopped doesn't soak them)
+      return landed;
     },
     botThink(b, dt) {
       if (this.secStopped(b)) return { wx: 0, wz: 0, jump: false };

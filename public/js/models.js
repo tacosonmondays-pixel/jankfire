@@ -1,5 +1,6 @@
 // Programmer art. If you generated Tripo models (npm run models), they replace these automatically.
 import * as THREE from 'three';
+import { buildCard3D } from './cardmesh.js'; // card deck: the 3D thrown card
 import { jankify } from './jank.js';
 import { applySkin } from './skins.js';
 import { COSMETICS, SKINS_2 } from '/shared/cosmetics.js';
@@ -22,6 +23,7 @@ import { RIFLE_WB, bindRifle } from './riflemodels.js'; // the rifle pack (burst
 import { pistolBuild, akimboBuild, sawnoffBuild } from './sidemodels.js'; // Plan B, Lefty & Righty, Half a Shotgun
 import { skinCopy } from './softskin.js';
 import { wearTop, wearBottom, topCap, topOwn, topThick, wearAcc } from './clothes.js'; // the tops and bottoms (+ the costume accessories)
+import { buildTinCan } from './tincan.js'; // the trolley mech's tin cans
 
 // ------------------------------------------------------------ playing card faces (canvas, cached)
 const cardFaces = new Map();
@@ -1814,6 +1816,7 @@ export function buildProjectile(k, skin) {
 function buildProjectileRaw(k, model) {
   const g = new THREE.Group();
   if (k === 'loop') return buildLoopProjectile(g); // a lasso loop (lasso.js animates it live; this is for replays + late joiners)
+  if (k === 'trcan') return buildTinCan(g); // the trolley's tin cans (tincan.js)
   // made in Blender (tools/blender): as built, centred, nose to -z. a skin can have its own (a thrown croc is a croc)
   const bl = (model && COSMETICS.model[model] && COSMETICS.model[model].weapon === k && authored('pj_' + model)) || authored('pj_' + k);
   if (bl) {
@@ -1851,10 +1854,7 @@ function buildProjectileRaw(k, model) {
     const c = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.22, 8), M(0x9aa0a8)); g.add(c);
     g.add(bx(0.15, 0.03, 0.15, 0x555a60, 0, 0.12, 0));
   } else if (k === 'card') {
-    const c = new THREE.Mesh(new THREE.PlaneGeometry(0.18, 0.26), cardFace('back'));
-    c.material.side = THREE.DoubleSide;
-    c.rotation.x = -Math.PI / 2;
-    g.add(c);
+    g.add(buildCard3D('s')); // the 3D card (cardmesh.js; live ones are pooled in cardfx.js, this is for replays)
   } else if (k === 'bowling') {
     bowlingBall(g, 0.45);
   } else if (k === 'duck') {

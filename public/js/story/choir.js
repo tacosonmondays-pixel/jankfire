@@ -11,6 +11,7 @@
 // in the slice city, before the actors update.
 import * as THREE from 'three';
 import { actors, spawnActor, despawnActor, play, CLIPS } from './actors.js';
+import { patchActor } from './castlight.js';
 import { CHOIR } from '/shared/city/cast_slice.js';
 import { audioOut } from '../audio.js';
 import { jankify } from '../jank.js';
@@ -54,7 +55,7 @@ export function releaseTogether(list, name) {
 }
 
 // ------------------------------------------------------------ the director at the Choir Lung
-const D = { on: false, list: [], next: 7, stareT: -1, cool: 0, wasIn: false, hum: null };
+const D = { on: false, list: [], next: 7, stareT: -1, cool: 0, wasIn: false, hum: null, reveal: null };
 export const choirState = () => D; // (tools and tests: who's out, when they sing next, whether they're staring)
 const LUNG = { x: -268, z: -218, rx: 21, rz: 19, y: 40 }; // (shared/city/gut.js choir(): the colonnade's ring)
 const v3 = new THREE.Vector3();
@@ -66,6 +67,16 @@ function spawn() {
   for (const a of D.list) { a.t = t0; a.stepAcc = 1; a.choir = true; a.ch.gazeAt = new THREE.Vector3(); a.lookAt = null; glow(a); } // one clock for all of them
   D.on = true; D.next = 5 + Math.random() * 3; D.stareT = -1; D.wasIn = false;
   humStart();
+  warmUp(D.list);
+}
+// walking up to the lung was a hitch: the singers' 9-17 new shaders all compiled on the frame they appeared. they
+// spawn hidden (38 m out: nobody sees the wait) and show once the city stream has warmed them up, a shader a frame
+// (city/stream.js warm). loaded on demand, so the story's own start doesn't pull in the city code
+const meshes = (L) => { const out = []; for (const a of L) a.ch.root.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }; // (mesh by mesh: a shader a frame, not a singer's whole outfit at once)
+function warmUp(L) {
+  for (const a of L) { a.hidden = true; a.warmHide = true; patchActor(a); } // (lit by the city first: the warm-up has to build the shaders they'll really be drawn with)
+  const show = () => { D.reveal = L.slice(); }; // (choirFrame shows them one a frame: all at once, their 254 meshes and 33 textures went up to the GPU on one 150-290 ms frame)
+  import('../city/ingame.js').then((m) => { const S = m.cityStream(); if (S && S.warm) S.warm(meshes(L), show); else show(); }, show);
 }
 function despawn() { for (const a of D.list) { if (actors.get(a.id) === a) despawnActor(a.id); for (const m of a.lifted || []) m.dispose(); } D.list = []; D.on = false; humStop(); }
 // the lung is dark (the Gut's grade, the lung's own shadow over them): the singers carry a little light of their own,
@@ -87,6 +98,7 @@ function glow(a) {
 }
 
 export function choirFrame(dt, eye) {
+  if (D.reveal && D.reveal.length) { const a = D.reveal.shift(); if (actors.get(a.id) === a && a.warmHide) { a.warmHide = false; if (!a.inScene) a.hidden = false; } } // (only undo our own hide: a cutscene may have hidden them since)
   if (!eye || !CHOIR.length) { if (D.on) despawn(); return; } // (out of the story, or not in the city)
   const cx = CHOIR.reduce((s, c) => s + c.p[0], 0) / CHOIR.length, cz = CHOIR.reduce((s, c) => s + c.p[2], 0) / CHOIR.length;
   const d = Math.hypot(eye[0] - cx, eye[2] - cz);
