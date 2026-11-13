@@ -69,7 +69,7 @@ export function hubHello(ws, who, m = {}) {
     if (old.party) push(old.party); else solo(old);
     return old;
   }
-  const h = { id: nextId++, ws, rk: crypto.randomBytes(12).toString('base64url'), name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, gone: 0, t: {}, fails: [] };
+  const h = { id: nextId++, ws, rk: Buffer.from(rnd(12)).toString('base64url'), name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, gone: 0, t: {}, fails: [] };
   h.send = (x) => { if (h.ws.readyState === 1) h.ws.send(JSON.stringify(x)); };
   h.send({ t: 'hubok', id: h.id, rk: h.rk });
   if (h.acct) { if (!online.has(h.acct)) online.set(h.acct, new Set()); online.get(h.acct).add(h); }
