@@ -28,7 +28,7 @@ import { bounceMap, updateBounce } from './bounce.js'; // light bounced off the 
 import { reflectMap, updateReflect, reflectSSRLive } from './reflect.js'; // glass and wet roads mirror the world (the ray-traced look)
 import { biLookMap, updateBiLook } from './bilook.js'; // Battle Island's own look
 import { biGroundMaterial, disposeBiGround } from './biground.js';
-import { postBegin, postEnd, setPostAA, postMid, postSSROn } from './post.js';
+import { postBegin, postEnd, setPostAA, postMid, postSSROn, postSkyInfo } from './post.js';
 import { initLighting, lightingMap, lightingRefresh, updateLighting, setLightPreset, aoBegin, aoBake, aoMaterials, setSunBoxes } from './lighting.js';
 
 // scale = render resolution multiplier, snap = vertical vertex-snap grid (0 = off)
@@ -40,7 +40,7 @@ export const JANK = [
 ];
 let jank = JANK[1];
 const clouds = [];
-let sun;
+let sun, skyGround = 0, skyNight = false;
 
 function canvasTex(size, draw, w) {
   const c = document.createElement('canvas');
@@ -585,6 +585,7 @@ export function loadMap(id) {
   shredMap(MAPS[MAP.id], MAT);
   lightingMap(MAPS[MAP.id], MAP.id, night, sun); // shadows, mood, the neon's lights (after everything above is in, the pit too)
   reflectMap(G.scene, MAPS[MAP.id], MAT); // (night too: neon in the wet streets is the point)
+  { const sp = (MAPS[MAP.id] && MAPS[MAP.id].spawns || []).map((p) => p[1]); skyGround = sp.length ? Math.min(...sp) : 0; skyNight = night; } // (sun shafts + haze: post.js)
   neonMap(MAPS[MAP.id], MAT, night); // (after lightingMap: it finds the lights)
   bounceMap(night ? null : MAPS[MAP.id], MAT); // (needs the sun's direction: after lightingMap. night maps: no sun to bounce)
   biLookMap(MAP.id, [skyMesh, sun, ...clouds]); // Battle Island's own sky, fog and grade (bilook.js; nothing on other maps)
@@ -683,6 +684,7 @@ export function renderFrame() {
   updatePropField(G.camera); // which prop copies to draw, near or far (only after a step or a turn)
   updateLighting(Math.min(0.1, (now - (lastT || now)) / 1000)); lastT = now;
   updateReflect(r, G.camera); // one side of a fresh reflection snapshot, when one is due (reflect.js)
+  if (sun && G.scene.fog) postSkyInfo(sun.position, G.scene.fog.color.getHex(), skyNight, skyGround);
   const post = postBegin(r); reflectSSRLive(post && postSSROn()); // post.js: bloom / colour punch (false when they're off: straight to the canvas as always)
   r.clear();
   r.render(G.scene, G.camera);
