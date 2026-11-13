@@ -23,6 +23,10 @@ const HYST = 16; // metres past a ring before something is dropped from it (no f
 // programs and uploaded dozens of textures on the one frame they appeared (150-250 ms hitches walking in)
 const TEXK = ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap', 'alphaMap', 'bumpMap', 'lightMap', 'specularMap'];
 
+// which shader kind a draw into rt builds: 'canvas', or 'rt' (any plain target). post.js's target poses as an XR one so
+// materials keep the canvas's tone mapping and sRGB output: shader-wise, that IS the canvas
+export const drawKind = (r, rt) => (rt && !(rt.isXRRenderTarget && rt.texture.colorSpace === r.outputColorSpace) ? 'rt' : 'canvas');
+
 function geoOf(b) {
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.BufferAttribute(b.pos, 3));
@@ -43,7 +47,7 @@ function groupOf(mesh, mats, lod) {
     const b = mesh[k];
     if (!b) continue;
     const m = new THREE.Mesh(geoOf(b), mats[k]);
-    m.matrixAutoUpdate = false; m.userData.kind = k;
+    m.matrixAutoUpdate = false; m.userData.kind = k; m.userData.castBy = 'stream';
     if (k === 'glass' || k === 'acid') m.renderOrder = 2;
     m.receiveShadow = lod === 0; m.castShadow = lod === 0 && k !== 'glass' && k !== 'glow';
     g.add(m); bytes += bytesOf(b); tris += b.tris;
@@ -71,10 +75,12 @@ export class CityStream {
     this.time = 0; this.cam = new THREE.Vector3(); this.first = true;
     this.setPreset(preset);
     this.renderer = renderer; this.warmQ = []; // (no renderer, no warm-up: things compile when first drawn, as before)
-    // where the scene is really drawn (post.js draws it into its own target, which changes the shaders' output end):
-    // warm-ups compile against the same, or they'd build a program nobody uses
-    this.sceneRT = null; const obr = this.obr = scene.onBeforeRender;
-    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.sceneRT = rt || null; obr.call(scene, r, sc, cam, rt); };
+    // where the scene gets drawn: straight to the canvas, or into a target (post.js's, at the presets with post; the
+    // talk portraits, photo mode and the picture-in-picture, now and then). three builds one shader for the canvas and
+    // another for any target, so a warm-up compiles each kind the scene was drawn to lately, or it'd build a program
+    // nobody uses and the real one would still compile cold
+    this.drawnTo = { canvas: -1e9, rt: -1e9 }; this.warmRT = null; const obr = this.obr = scene.onBeforeRender;
+    scene.onBeforeRender = this.onScene = (r, sc, cam, rt) => { this.drawnTo[drawKind(r, rt)] = this.time; obr.call(scene, r, sc, cam, rt); };
     onPropModel((id) => { // a Blender prop landed: warm it up, then rebuild the instances with it
       const m = propModel(id), objs = [];
       if (this.renderer && m && m.parts) for (const part of [...m.parts, ...(m.lod1 || [])]) { const im = new THREE.InstancedMesh(part.geo, part.mat, 1); if (part.paint) im.setColorAt(0, new THREE.Color()); objs.push(im); } // (as props.js draws it: instanced, paint parts coloured)
@@ -185,7 +191,7 @@ export class CityStream {
     const r = this.chunks.get(m.id);
     if (!r) return;
     const t = performance.now();
-    if (m.packed) { r.packed = m.packed; r.req.packed = false; r.boxes = null; }
+    if (m.packed) { r.packed = m.packed; r.req.packed = false; r.boxes = null; } this.litV = (this.litV || 0) + 1; // (pickLights: gather its lights again)
     if (m.mesh0) { freeGroup(r.m0); r.m0 = groupOf(m.mesh0, this.mats, 0); r.m0.visible = false; this.root.add(r.m0); }
     if (m.mesh1) { freeGroup(r.m1); r.m1 = groupOf(m.mesh1, this.mats, 1); r.m1.visible = false; this.root.add(r.m1); }
     if (m.mesh0) r.req.mesh0 = false; if (m.mesh1) r.req.mesh1 = false;
@@ -206,10 +212,14 @@ export class CityStream {
     const w = this.warmQ[0], R = this.renderer;
     if (!w) return;
     if (w.progs.length) { const pr = w.progs.shift(); try { pr.getUniforms(); } catch { /* reported when drawn */ } return; }
+    const D = this.drawnTo, kinds = [];
+    if (this.time - D.canvas < 15) kinds.push(null);
+    if (this.time - D.rt < 15) kinds.push(this.warmRT || (this.warmRT = new THREE.WebGLRenderTarget(1, 1))); // (any target makes the same shader: a 1 x 1 of our own, never someone else's that might be gone)
+    if (!kinds.length) kinds.push(null);
     while (w.i < w.objs.length) {
-      const o = w.objs[w.i++], n = R.info.programs.length, was = R.getRenderTarget();
-      if (was !== this.sceneRT) R.setRenderTarget(this.sceneRT);
-      try { R.compile(o, camera, this.scene); } finally { if (R.getRenderTarget() !== was) R.setRenderTarget(was); } // (with the real scene and its target: its lights, fog, shadows and output, so the same programs as when drawn)
+      const o = w.objs[w.i], n = R.info.programs.length, was = R.getRenderTarget(), k = kinds[Math.min(w.k || 0, kinds.length - 1)];
+      if ((w.k = (w.k || 0) + 1) >= kinds.length) { w.k = 0; w.i++; } // (each kind its own frame: still one new shader a frame)
+      try { R.setRenderTarget(k); R.compile(o, camera, this.scene); } finally { R.setRenderTarget(was); } // (with the real scene: its lights, fog and shadows, so the same programs as when drawn)
       o.traverse((q) => { for (const mt of [].concat(q.material || [])) { const pr = R.properties.get(mt).currentProgram; if (R.info.programs.length > n && pr && !w.seen.has(pr)) { w.seen.add(pr); w.progs.push(pr); }
         for (const k of TEXK) { const tx = mt[k]; if (tx && tx.isTexture && !w.seen.has(tx)) { w.seen.add(tx); w.tex.push(tx); } } } });
       if (R.info.programs.length > n) return; // a real compile: that's this frame's share (cached programs cost next to nothing, keep going)
@@ -238,7 +248,7 @@ export class CityStream {
     g.setAttribute('color', new THREE.BufferAttribute(m.mesh.col.subarray(0, m.mesh.verts * 3), 3, true));
     g.setIndex(new THREE.BufferAttribute(m.mesh.idx.subarray(0, m.mesh.tris * 3), 1));
     if (m.mesh.min) { g.boundingBox = new THREE.Box3(new THREE.Vector3(...m.mesh.min), new THREE.Vector3(...m.mesh.max)); g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere()); } else g.computeBoundingSphere(); // (the worker's bounds: no 25 ms pass over every vertex here)
-    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
+    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { castBy: 'stream', tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
     this.root.add(this.far.mesh);
   }
 
@@ -262,18 +272,24 @@ export class CityStream {
 
   // the NL nearest lights in the chunks round the camera -> the shader's arrays (view space, so no per-pixel matrix)
   pickLights(camera) {
-    const p = camera.position, seen = new Set(), list = [];
-    for (const r of this.chunks.values()) {
-      if (!r.packed || !r.packed.lights || r.d > 70) continue;
-      for (const L of r.packed.lights) {
-        const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
-        if (seen.has(key)) continue; seen.add(key);
-        const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4];
-        if (d < 50) list.push([d, L]);
+    const p = camera.position, LT = this.lit || (this.lit = { x: 1e9, y: 0, z: 1e9, v: -1, cand: [], list: [], v3: new THREE.Vector3() });
+    // the candidates (each light in the chunks round you, once) are only gathered again when you've gone 4 m or chunks
+    // came and went: scanning every chunk's lights every frame was a quarter of the streamer's own time
+    if (LT.v !== this.litV || Math.hypot(p.x - LT.x, p.y - LT.y, p.z - LT.z) > 4) {
+      const seen = new Set(); LT.cand.length = 0; LT.x = p.x; LT.y = p.y; LT.z = p.z; LT.v = this.litV;
+      for (const r of this.chunks.values()) {
+        if (!r.packed || !r.packed.lights || r.d > 74) continue; // (70 m, as below, plus the 4 m)
+        for (const L of r.packed.lights) {
+          const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
+          if (seen.has(key)) continue; seen.add(key);
+          if (Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4] < 54) LT.cand.push(L, r); // (50 m, plus the 4 m you can go before the next gather)
+        }
       }
     }
-    list.sort((a, b) => a[0] - b[0]);
-    const v = new THREE.Vector3(), LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
+    const list = LT.list; let n = 0;
+    for (let j = 0; j < LT.cand.length; j += 2) { const L = LT.cand[j]; if (LT.cand[j + 1].d > 70) continue; const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4]; if (d < 50) { const e = list[n] || (list[n] = [0, null]); e[0] = d; e[1] = L; n++; } }
+    list.length = n; list.sort((a, b) => a[0] - b[0]);
+    const v = LT.v3, LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
     camera.updateMatrixWorld();
     for (let i = 0; i < NL; i++) {
       const L = list[i] && list[i][1];
@@ -340,6 +356,7 @@ export class CityStream {
   progress() { let n = 0, k = 0; for (const r of this.chunks.values()) if (r.used === this.time && r.ring === 1) { n++; if (r.m0) k++; } return n ? k / n : 0; } // the near ring's share that's built (the loading card)
   dispose() {
     if (this.onScene && this.scene.onBeforeRender === this.onScene) this.scene.onBeforeRender = this.obr; // (put back whatever was there)
+    if (this.warmRT) this.warmRT.dispose();
     for (const w of this.workers) w.terminate();
     for (const r of this.chunks.values()) { freeGroup(r.m0); freeGroup(r.m1); }
     if (this.far.mesh) { this.far.mesh.geometry.dispose(); }

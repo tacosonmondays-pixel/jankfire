@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.21', date: '2026-11-13', title: 'LIFT OFF', items: [
+    "LIFT OFF: the roof boxes on rooftop are real lift machine rooms now (team stripes, vents, a door that goes nowhere) and the antenna grew a full lattice mast.",
+  ] },
   { v: '11.20', date: '2026-11-13', title: 'PIER PRESSURE', items: [
     "PIER PRESSURE: the islands' long pier is real wood now, on real piles, and the bait shack is held together by leftover paint and hope. worms: no refunds. the seagull is not for sale.",
   ] },

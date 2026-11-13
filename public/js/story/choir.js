@@ -11,6 +11,7 @@
 // in the slice city, before the actors update.
 import * as THREE from 'three';
 import { actors, spawnActor, despawnActor, play, CLIPS } from './actors.js';
+import { patchActor } from './castlight.js';
 import { CHOIR } from '/shared/city/cast_slice.js';
 import { audioOut } from '../audio.js';
 import { jankify } from '../jank.js';
@@ -66,6 +67,16 @@ function spawn() {
   for (const a of D.list) { a.t = t0; a.stepAcc = 1; a.choir = true; a.ch.gazeAt = new THREE.Vector3(); a.lookAt = null; glow(a); } // one clock for all of them
   D.on = true; D.next = 5 + Math.random() * 3; D.stareT = -1; D.wasIn = false;
   humStart();
+  warmUp(D.list);
+}
+// walking up to the lung was a hitch: the singers' 9-17 new shaders all compiled on the frame they appeared. they
+// spawn hidden (38 m out: nobody sees the wait) and show once the city stream has warmed them up, a shader a frame
+// (city/stream.js warm). loaded on demand, so the story's own start doesn't pull in the city code
+const meshes = (L) => { const out = []; for (const a of L) a.ch.root.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }; // (mesh by mesh: a shader a frame, not a singer's whole outfit at once)
+function warmUp(L) {
+  for (const a of L) { a.hidden = true; a.warmHide = true; patchActor(a); } // (lit by the city first: the warm-up has to build the shaders they'll really be drawn with)
+  const show = () => { for (const a of L) if (actors.get(a.id) === a && a.warmHide) { a.warmHide = false; if (!a.inScene) a.hidden = false; } }; // (only undo our own hide: a cutscene may have hidden them since)
+  import('../city/ingame.js').then((m) => { const S = m.cityStream(); if (S && S.warm) S.warm(meshes(L), show); else show(); }, show);
 }
 function despawn() { for (const a of D.list) { if (actors.get(a.id) === a) despawnActor(a.id); for (const m of a.lifted || []) m.dispose(); } D.list = []; D.on = false; humStop(); }
 // the lung is dark (the Gut's grade, the lung's own shadow over them): the singers carry a little light of their own,
