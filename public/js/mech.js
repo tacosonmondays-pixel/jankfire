@@ -386,9 +386,9 @@ export function mechCam(cam, dt) {
     const H = MS.hero, k = (now - H.t0) / 1000;
     if (k < 1.5 && ME.alive && G.joined) {
       const u = clamp(k / 1.5, 0, 1), a = H.a + 0.55 + u * 0.4, d = [Math.sin(a), 0.04, Math.cos(a)]; // low, off to the side, slowly orbiting
-      const k = MECH.scale, c0 = [H.p[0], H.p[1] + 0.6 * k, H.p[2]], hit = raycast(c0, d, 7 * k, BOXES), R = Math.max(2.5, Math.min((6.5 - u * 1.2) * k, hit ? hit.t - 0.6 : 99)); // (never inside a wall)
+      const sc = MECH.scale, c0 = [H.p[0], H.p[1] + 0.6 * sc, H.p[2]], hit = raycast(c0, d, 7 * sc, BOXES), R = Math.max(2.5, Math.min((6.5 - u * 1.2) * sc, hit ? hit.t - 0.6 : 99)); // (never inside a wall; it backs off as far as the mech grew)
       cam.position.set(c0[0] + d[0] * R, c0[1] + d[1] * R, c0[2] + d[2] * R);
-      cam.lookAt(H.p[0], H.p[1] + 3.9 * k, H.p[2]);
+      cam.lookAt(H.p[0], H.p[1] + 3.9 * sc, H.p[2]);
       const sh = (G.shake || 0) * (G.shake || 0) * 0.08; if (sh) cam.rotation.set(cam.rotation.x + (Math.random() - 0.5) * sh, cam.rotation.y + (Math.random() - 0.5) * sh, cam.rotation.z); // (the landing still shakes)
       return;
     }
