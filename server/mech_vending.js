@@ -61,7 +61,7 @@ export function installVending(Room, U) {
     // an on-foot ally kicks it (in reach): unjammed, and a free cola pops out ("UNSTUCK"). nothing else counts
     vmKick(p, t, n) {
       const V = t.mech && t.mech.vm;
-      if (!V || !(V.jam > n) || p.mech || p === t || !this.friendly(p, t)) return false;
+      if (!V || !(V.jam > n) || p.mech || p.dn || p === t || !this.friendly(p, t)) return false; // (p.dn: battle island, down on the floor)
       if (hdist(p.pos, t.pos) > VM.jam.reach + VM.hw || Math.abs(p.pos[1] - t.pos[1]) > 3 * S()) return false;
       V.jam = 0;
       this.broadcast({ t: 'mech', k: 'vmkick', id: t.id, by: p.id });
