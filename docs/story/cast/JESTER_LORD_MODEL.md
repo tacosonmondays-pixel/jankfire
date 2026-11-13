@@ -11,7 +11,8 @@ Madame Velvet is not part of this; she comes later.
 | what | in the game's renderer (`docs/story/cast/`) | from Blender (`tools/blender/sheets/`) |
 |---|---|---|
 | turnaround beside a 1.8 m mannequin | `jl_game_turn.jpg` | `c_jester_lord.jpg` (in his stance) |
-| close-ups: face, the long nose, the profile, his eyes open, the hat and horns, a horn bell, the dummy jaw talking, the collar and ruff, the marotte, the hand on his hip, the stockings at a knee, a foot and its bell, the big top, the thorax, the stump, the far model | `jl_game_closeups.jpg` | `c_jester_lord_close.jpg` (face, nose, hat, collar, marotte, knee, bell, big top) |
+| close-ups: face, the long wooden nose, the profile, his eyes open, the swept hat from behind, a horn bell, the dummy jaw talking, the ruff, the marotte, the hand on his hip, the stockings at a knee, a foot and its bell, the big top, the thorax, the stump, the far model | `jl_game_closeups.jpg` | `c_jester_lord_close.jpg` (face, nose, the hat from his left, the ruff, marotte, knee, bell, big top) |
+| before / after the look pass (the ruff, the nose, the swept hat, the bigger jester half, the calmer face paint) | `jl_ingame_before_after.jpg` (Too HD at 7 m and 30 m) | `jl_before_after.jpg` (face, nose, side, hat, ruff) |
 | his silhouette beside the owner's sketch: his head from his left like the sketch, from 30 m enlarged, the far model, true size at 30 m | `jl_game_silhouette.jpg` | |
 | one moment from each clip | `jl_game_poses.jpg` | |
 | the code puppet (what shows if the model fails to load): idle, bowing, in the web | `jl_game_codepuppet.jpg` | |
@@ -23,21 +24,28 @@ In every sheet "his right" is +x: the pink horn, the pink half of his doublet, a
 
 ## Who you are looking at
 
-A puppet jester from the waist up on a big spider. **3.32 m to the top of his cap, 3.82 m to the bells on his
+A puppet jester from the waist up on a big spider. **3.64 m to the top of his cap, 4.02 m to the top of his swept
 horns, 4.9 m across the legs** (knees 2.13 m up). He is one of the Off-Spec: one thing huge, one thing tiny. The huge
-thing is his head and grin, the tiny thing is his waist.
+thing is his head and grin, the tiny thing is his waist. The whole jester half (doublet, ruff, arms, head, hat,
+marotte) is drawn at the sizes in `jl_rig.py` and **grown 18% about his waist** (`jl_rig.US`; the build models it
+at the drawn size and scales it, the rig scales every joint above the waist): he is the show, the spider is the
+stage.
 
 - **The head** (from the sketch): white greasepaint on a big egg, rosy cheeks, a black diamond painted through each
   eye, the eyes shut (heavy white lids, a dark lash line, three lashes flicking out at the corners: smug), thin
-  arched brows, a long pointed nose with a candy-pink tip, and a grin from ear to ear: magenta lips, a row of
+  arched brows, a long pointed **nose of painted wood** (candy red, going dark at the tip, glossy), and a grin from ear to ear: magenta lips, a row of
   tombstone teeth on top, smaller ones on a **ventriloquist dummy's jaw** (the chin drops between two slot lines).
 - **The hat**: a jester hood (pink on his right, yellow on his left, black piping round his face), a band of black
-  and white diamonds, a split cap, and **two horns that sweep back and curl up like the sketch's**, a brass bell
-  hanging off each tip.
-- **The collar**: eight petals, pink and yellow, a brass bell on every point, a white ruff at the neck.
+  and white diamonds, a split cap, and **two horns raked back over his head like the sketch's** (rising about 60
+  degrees off upright, then trailing behind), **the tips curling down at the back**, a brass bell hanging off each.
+- **The ruff**: a big fluted cartwheel of cream under his chin (twenty flutes, ten points), **edged in pink, a
+  brass bell hanging off every point**, 0.87 m across front to back and 0.79 m side to side (his neck is 0.18 m). It falls away at the front and
+  back (you look up at him, so you see its top, not its shadowed underside) and tips up and in over the shoulders,
+  clear of the puffs when he lifts his arms. Its rim rides the `collar` joint, so the bells shiver.
 - **The doublet**: his right half pink, his left yellow, a placket of black and white diamonds with three yellow
-  pom-poms, ten pointed hem flaps over the spider's back. Pumpkin-striped puffed sleeves, diamond sleeves, frill
-  cuffs, white gloves. His right hand sits on his hip; his left holds up **the marotte**: his own head, a quarter
+  pom-poms, ten pointed hem flaps over the spider's back. **Motley sleeves**: each arm solid in the other half's
+  colour (his right arm yellow, his left pink) under white-striped puffs, frill cuffs, white gloves; the legs wear
+  the diamonds, so his arms never read as more legs. His right hand sits on his hip; his left holds up **the marotte**: his own head, a quarter
   size, on a striped stick (it nods along when he talks and glances at you when he idles).
 - **The spider**: a lacquered plum-black thorax with a pink and yellow carousel band and four red bead eyes, a brass
   ring where the jester stands in it. The abdomen is **a circus big top**: pink and yellow tent stripes up to a brass
@@ -52,7 +60,7 @@ thing is his head and grin, the tiny thing is his waist.
 
 | file | what |
 |---|---|
-| `public/models/cast/c_jester_lord.glb` | the model: `part_thorax__spider` and `part_spine__jester` (**skinned**, one skin whose 61 joints are his joints by name), `part_thorax__dmgStump` (rigid on the thorax, hidden until the leg comes off), `part_thorax__lod` (the far model, skinned). 1,293 KB |
+| `public/models/cast/c_jester_lord.glb` | the model: `part_thorax__spider` and `part_spine__jester` (**skinned**, one skin whose 61 joints are his joints by name), `part_thorax__dmgStump` (rigid on the thorax, hidden until the leg comes off), `part_thorax__lod` (the far model, skinned). 1,312 KB |
 | `public/models/cast/c_jester_lord.parts.json` | every named part (joint, box, triangles), his joints and their rest, markers, the look, hit boxes (head, jester, thorax, abdomen, and every leg as capsules along its joints) |
 | `public/js/story/jesterlook.js` | his skeleton (built from `jl_clipdata.js`), the code puppet (the fallback), the markers (`MK`), his faces |
 | `public/js/story/jesterlord.js` | `JL`: clips, marks, the scuttle by distance, the dangling bells, the web, the stump, the far LOD, the rehearsal |
@@ -83,12 +91,12 @@ rest x the clip's delta (three.js XYZ euler).
 | `jaw` | head | the dummy's chin: `.x` + drops it |
 | `lidR`, `lidL` | head | the shut lids: `.x` + lifts them (his eyes open, once) |
 | `browR`, `browL` | head | `.py` + raises them |
-| `collar` | spine | the collar's bells (the petals blend onto it toward their tips) |
+| `collar` | spine | the ruff's rim and its bells (the ruff blends onto it from the spine) |
 | `marotte` | handL | the little head on the stick: `.x` nods it |
 
 **Skinning**: almost everything is rigid on one joint (each piece of the model is built knowing its joint), so the
 puppet reads as a puppet: ball joints at the hips, knees and ankles, puffs and cuffs at the shoulders and elbows. The
-horns blend from the head over `hatR` to `hatRb`, the collar petals from the spine to `collar`, the pedicel from the
+horns blend from the head over `hatR` to `hatRb`, the ruff from the spine to `collar`, the pedicel from the
 thorax to the abdomen, the neck from the neck to the head. Weights are stored as bytes.
 
 Leg solver (`jl_rig.leg_ik`): each leg lies in the upright plane through its hip and foot; the foot segment keeps a
@@ -116,7 +124,7 @@ keys:
 |---|---|---|---|
 | `jl_idle` | loop 6.0 | holding court: the big top breathes, his head tips one way then the other, a brow goes up, the marotte nods and glances at you, the horns sway. A front foot drums tip-tap-tap, a back leg lifts and re-plants, another shifts | tap 0.68, 0.84, 1.0, step 3.65, jingle 4.0 |
 | `jl_talk` | loop 4.8 | the showman: "ladies, gentlemen, and whatever you are". His right hand presents palm out, sweeps out to the side, comes to his chest, points at the sky; the dummy jaw flaps, the brows work, the marotte nods along, a front foot keeps the beat | ladies 0, gentlemen 0.9, whatever 1.9, you are 2.9 |
-| `jl_bow` | 3.7 | a flourish (hand up, marotte flung out), then he folds at his tiny waist with a hand across his belly and **the whole spider curtsies** (front legs fold, the big top lifts behind), his grin still on you. Up into a TA-DA, both arms up | flourish 0.55, down 1.15, low 2.0, tada 2.45 |
+| `jl_bow` | 3.7 | a flourish (hand up, marotte flung out), then he folds at his tiny waist, the hand coming in close (inside his front leg) and across his belly, and **the whole spider curtsies** (front legs fold, the big top lifts behind), his grin still on you. On the way up the hand rises up his chest while the marotte sweeps out and up (both clear of the legs), into a TA-DA, both arms up | flourish 0.55, down 1.15, low 1.85, tada 2.6 |
 | `jl_walk` | loop 0.8 | **the scuttle**: alternating tetrapod like a real spider (L1 R2 L3 R4, then R1 L2 R3 L4), each foot down 56% of the loop, high quick swings, the body bobbing once per push; the jester rides it level, the horns and bells bouncing. 1.5 m a loop | stepA 0, stepB 0.4 |
 | `jl_hang` | held | a crouch, a spring, he rolls over in the air and his feet catch **the web, 5.4 m up** (`jesterlord.js` spins it over him). He hangs under it belly up, the jester head down, arms folded, grinning at you upside down, swinging a little | spring 0.4, catch 1.6 |
 | `jl_drop` | 2.7 | lets go of the web, rolls back over as he falls, lands in a squash, springs up into a TA-DA | let go 0.25, land 1.25, tada 1.7 |
@@ -128,6 +136,17 @@ change of speed there sharper than the clip's own corners, every wobble a whole 
 also measures how far a planted foot slides (the scuttle: 0.4 mm a frame; idle, talk and bow under 8 mm, all at a
 foot's tap landing).
 
+**Room** (`jl_clips.clearance`, printed as `room` lines): every clip at 30 fps, his head (a ball), the nose, the
+horns and their bells, the ruff's rim, his hands and the marotte against every leg (capsules), the big top and the
+floor. After the 18% grow-up the head, nose, horns and ruff are clear in every clip (the closest: the ruff 7 cm off a
+front leg going down into the bow, his head 16 cm, the horns 40 cm off the floor hanging in the web). To get there the bow's front
+knees fold less and its arms take a new way down and up, the front legs swing wider in the scuttle, the marotte hand
+sits in a little, and the arms fold already in the web crouch. **Hands still brush a leg** for a moment in four
+clips: the marotte hand 6 cm into the front-left femur at one point of the scuttle stride, the right hand 2 cm into a
+femur sweeping out in the talk, 4 cm tumbling in the drop, under 1 cm rising in the bow (the capsules are
+generous). A ruff and arms check against his own sleeves gives every clip clear but the hat-straightening in
+`jl_leg_off` (the right puff 4 cm into the ruff's side while the hand is up at the hat).
+
 ### Frame by frame
 
 `make_cast_jester_lord.py --check-clips` poses the skinned model at 60 fps through every clip with the game's sums
@@ -136,12 +155,12 @@ and reports the biggest one-frame jump of any vertex. Last run:
 | clip | biggest one-frame step | where |
 |---|---|---|
 | `jl_idle` | 3.3 cm | a front foot drumming |
-| `jl_talk` | 4.0 cm | his right hand |
-| `jl_bow` | 19.9 cm | his hand whipping up into the TA-DA |
-| `jl_walk` | 9.8 cm | a back foot's swing (the scuttle is quick) |
+| `jl_talk` | 6.1 cm | his right hand (the arm is 18% longer now) |
+| `jl_bow` | 18.8 cm | his hand rising up his chest into the TA-DA |
+| `jl_walk` | 10.3 cm | a front foot's swing (the scuttle is quick) |
 | `jl_hang` | 36.5 cm | a front foot as he rolls over in the leap |
 | `jl_drop` | 44.3 cm | a foot as he rolls back over, falling |
-| `jl_leg_off` | 32.4 cm | his hand presenting the stump |
+| `jl_leg_off` | 39.7 cm | his hand presenting the stump (the longer arm) |
 | `jl_leg_back` | 43.8 cm | the foot of the leg as it screws in |
 
 The big ones are fast moves on purpose (the leap, the fall, the screw-in turn). Two pops were found and fixed on the
@@ -178,21 +197,24 @@ The house look: a vertex tint times baked AO in `COLOR_0`, small crusty tiling t
 box-projected UVs, clear coat on everything. Here the tint carries the colour (the diamonds, stripes and halves are
 cut along the mesh's own edges), so **four materials** cover all of him:
 
-- `jl_satin` (the doublet, stockings, hat, collar, gloves, ruff; a satin twill speckle, clear coat 0.5),
-  `jl_lacquer` (the spider's shell, ball joints, shoes, the marotte's stick; candy clear coat 1.0), `jl_skin` (his
-  face, lids, teeth, lips; rubbery, a few pores), `jl_brass` (bells, finial, rings, spinnerets; metal, crusty).
+- `jl_satin` (the doublet, stockings, hat, ruff, gloves; a satin twill speckle, clear coat 0.5),
+  `jl_lacquer` (the spider's shell, ball joints, shoes, the marotte's stick, **the nose**: painted wood; candy clear
+  coat 1.0), `jl_skin` (his face, lids, teeth, lips; rubbery greasepaint: a soft cloud and a few faint flecks, toned
+  down in the look pass because the grain read as noise up close), `jl_brass` (bells, finial, rings, spinnerets; metal, crusty).
 - Four textures, 64 x 64 each, seeded (rebuilds come out the same).
+- The ruff keeps only a third of its baked shade (`lift_ao`): under the big head it went grey.
+- The Blender close-up sheet renders at 32 EEVEE samples (8 left soft-shadow grain on the face).
 - **Draw calls**: 9 meshes up close (the two skinned halves split by material), 4 far.
 
 ## Triangles and sizes
 
 | | triangles | |
 |---|---|---|
-| the model | **24,600** | the hat lord shipped 25,247. the spider half 11,568 (tibias 1,792, femurs 1,664, foot bells 1,312, the big top 952 ...), the jester half 13,032 (the head 1,696, the collar bells 672, teeth 576, hat band 576, horns 576 ...) |
+| the model | **25,196** | under the hat lord's 25,247. the spider half 11,568 (tibias 1,792, femurs 1,664, foot bells 1,312, the big top 952 ...), the jester half 13,628 (the head 1,696, the ruff 960 and its pink edge 640 and bells 480, horns 648, teeth 576, hat band 576 ...) |
 | the stump | 672 | hidden until the leg comes off |
-| far model (past 34 m) | **3,178** | built by the same code at a quarter of the segments, the small things (teeth, lashes, knees, ankles, bells, toes) left off; still skinned |
+| far model (past 34 m) | **3,098** | built by the same code at a quarter of the segments, the small things (teeth, lashes, knees, ankles, bells, toes) left off; still skinned |
 
-`c_jester_lord.glb` **1,293 KB** (under the 1.5 MB goal and the 2 MB cap). One skin, 61 joints, no animations.
+`c_jester_lord.glb` **1,312 KB** (under the 1.5 MB goal and the 2 MB cap). One skin, 61 joints, no animations.
 
 ## Rebuild
 
@@ -213,7 +235,8 @@ If his skeleton changes (`jl_rig.py`), run `jl_clips.py` first, then the build. 
 ## Checks
 
 - **Asset gate** (`blender-asset-qa`, profile `game`, z-fight eps 0.8 mm, contact 6 mm): **PASS, 0 errors** on the
-  model (24,600 tris), the stump and the far model. Fixed on the way: overlapping finger caps in the glove
+  model (25,196 tris), the stump and the far model. In the look pass it caught the doublet's flat top z-fighting the
+  ruff's underside (the top is now a low point inside the neck). Fixed on the way: overlapping finger caps in the glove
   (z-fight), closed pieces wound inward (the hat band, the eye diamonds: every closed island is now checked and
   turned out as it is built), a tiny bell loop on the marotte's head whose volume flipped sign, the far model's
   shoes left floating once its ankles went. Accepted warnings: UV overlap (box-projected tiling textures, on
@@ -223,14 +246,17 @@ If his skeleton changes (`jl_rig.py`), run `jl_clips.py` first, then the build. 
   joints, every part, marker and joint of the parts file present, markers within 0.1 mm; each of the 8 clips stepped
   through its own code (nothing NaN, every one of its 37 marks fires), the web shows only in the web clips, the stump
   only while the leg is away, every bell within 0.8 degrees of straight down while he hangs upside down; the far LOD
-  swaps in and back (24,624 -> 3,178 triangles, 9 -> 4 meshes); the code puppet (112 meshes) stands and takes a clip.
+  swaps in and back (25,220 -> 3,098 triangles, 9 -> 4 meshes); the code puppet (115 meshes, its jester half grown to
+  match, a cream disc for the ruff, a red nose) stands and takes a clip.
 - **Tests**: `node --test $(find tests -name "*.test.*")`: 300 pass, 0 fail on the branch merged with the latest main (his own file: 4).
 - **Gameplay hash** (`node tools/arch/gamehash.mjs`): identical to main on all 21 maps (he is look only).
 - **Looked at**: the Blender sheets after every pass, the in-game sheets and every clip strip, the story-mode shots
   and the film. Passes: (1) the first build; (2) a bigger head and torso, a smaller big top; (3) the eyes (they
   were scaled twice), the hood, a thinner nose, the marotte off his face; (4) the clips: a shallower bow that keeps
   his grin on you, the leg-off lurch rolling about the thorax instead of the floor, the arms solved in the spine's
-  frame, the flying leg's turn, the smoother leap and drop.
+  frame, the flying leg's turn, the smoother leap and drop; (5) the look notes: the jester half 18% bigger, a real
+  fluted ruff with bells on its points, the nose as painted wood, the hat raked back like the sketch with the tips
+  curling down, solid motley sleeves, calmer face paint, and the clips re-posed for the bigger jester (room check).
 
 ## Weak spots (honest list)
 
@@ -241,8 +267,9 @@ If his skeleton changes (`jl_rig.py`), run `jl_clips.py` first, then the build. 
 - **The web is drawn by the rehearsal**: a flat disc of silk threads 5.4 m up. A mission would put him under its own
   web; he needs about 5.4 m of headroom and 5 m of floor to hang.
 - **Only RB comes off** in the clip set; other legs need the flight re-solved.
-- **Nothing collides**: in the deep bow his head dips between his front legs (seen from the side a front femur
-  crosses in front of his face), and the hands and the marotte are posed clear of the legs, not kept clear.
+- **Nothing collides at run time**: the clips are posed clear (see Room under Clips): the head, horns and ruff stay
+  off the legs in every clip, but a hand still brushes a femur for a moment in the scuttle, the talk, the drop and
+  the bow, and the right puff dips into the ruff's side while he straightens his hat after the leg comes off.
 - **The flips turn over about his middle** but the legs are solved only at the keys: mid-leap and mid-fall the legs
   are tucked, not reaching for anything.
 - **The far model** is a coarser build, not a decimation: its colours are flat mixes of the diamonds.
