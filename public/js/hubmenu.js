@@ -11,6 +11,8 @@ import { GAMES, GAME_ORDER, mapsFor } from '/shared/modes.js';
 import { MAPS, MAP_ORDER } from '/shared/map.js';
 import { LOBBY } from '/shared/lobby.js';
 import { eventGame } from '/shared/vote.js';
+import { BGN, BGN_NAMES } from '/shared/bgn.js'; // board game night's names and round counts
+import { BOT_DIFF } from '/shared/weapons.js';
 import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { resizePreview } from './preview.js';
@@ -30,10 +32,11 @@ export const HUB = {
   br: { name: 'JANK ROYALE', art: 'br', desc: 'blimp, umbrella, loot, shrinking zone. last one standing', lobby: 'br', games: ['br'] },
   zm: { name: 'ZOMBIES', art: 'zm', desc: 'you and your friends vs endless rounds. buy doors', lobby: 'zm', games: ['zm'] },
   isle: { name: 'BATTLE ISLAND', art: 'isle', desc: 'squads of 3, mech heroes. go down, get picked up', lobby: null, games: ['island'], tag: 'MECHS' },
+  bgn: { name: BGN_NAMES.mode, art: 'bgn', desc: BGN_NAMES.desc, lobby: 'bgn', games: ['bgn'], tag: BGN_NAMES.tag, board: 1 }, // the party board mode (shared/bgn.js)
   training: { name: 'TRAINING', art: 'train', desc: 'dummies and infinite ammo. nobody is judging', train: 1 },
 };
-const ORDER = ['qp', 'bomb', 'br', 'zm', 'isle', 'training'];
-const COL = { qp: '#ff4f6a', bomb: '#ffb04f', br: '#4fd8ff', zm: '#39ff14', isle: '#ff4fd8', training: '#ffe14d' };
+const ORDER = ['qp', 'bomb', 'br', 'zm', 'isle', 'bgn', 'training'];
+const COL = { qp: '#ff4f6a', bomb: '#ffb04f', br: '#4fd8ff', zm: '#39ff14', isle: '#ff4fd8', bgn: '#ffb300', training: '#ffe14d' };
 const SIDES = { online: { name: 'ONLINE', desc: 'real players. find a match, bots fill in if you want' }, offline: { name: 'OFFLINE', desc: 'just you and bots. your map, your rules, nobody drops in' } };
 let opts = {}, counts = null, pollT = 0, side = 'online';
 const pick = {}; // `${side}:${mode}` -> its choices (kept between visits)
@@ -85,7 +88,8 @@ function stateOf(k) {
   const sv = S()[key] && typeof S()[key] === 'object' ? S()[key] : {}, games = gamesOf(k), ev = eventGame();
   const st = { fill: sv.fill !== false, who: ['all', 'bots', 'coop'].includes(sv.who) ? sv.who : 'all',
     game: games.includes(sv.game) ? sv.game : k === 'qp' && games.includes(ev) ? ev : games[0], map: sv.map, botsOn: sv.botsOn !== false,
-    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5 }; // (no difficulty or hipfire here, the owner's call: an offline match plays the room's defaults)
+    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5,
+    rounds: BGN.roundOpts.includes(sv.rounds) ? sv.rounds : BGN.rounds, diff: Object.hasOwn(BOT_DIFF, sv.diff) ? sv.diff : 'normal' }; // (board game night: its length and how good the bots are) // (no difficulty or hipfire here, the owner's call: an offline match plays the room's defaults)
   if (!mapsOf(st.game).includes(st.map)) st.map = mapsOf(st.game)[0];
   return (pick[key] = st);
 }
@@ -183,6 +187,11 @@ function render() {
   if (H.train) {
     L.append(row('who', el('em', null, 'JUST YOU')), row('map', el('em', null, 'THE RANGE')));
     R.append(el('span', 'hub-tag', 'WHAT HAPPENS'), el('p', 'hub-p', 'the range: dummies to shoot, infinite ammo, your three killstreaks ready to try. leave whenever.'));
+  } else if (H.board && side === 'offline') { // board game night: 4 seats, you and 3 bots
+    L.append(row('rounds', seg(BGN.roundOpts.map((n) => [n, String(n)]), st.rounds, (v) => { st.rounds = v; remember(k); }), 'about 3 minutes a round'));
+    L.append(row('bot difficulty', seg(Object.keys(BOT_DIFF).map((d) => [d, BOT_DIFF[d].name.toUpperCase()]), st.diff, (v) => { st.diff = v; remember(k); })));
+    L.append(row('seats', el('em', null, 'YOU + 3 BOTS')));
+    R.append(el('span', 'hub-tag', 'WHAT HAPPENS'), el('p', 'hub-p', `${BGN_NAMES.board.toLowerCase()}: roll ${BGN_NAMES.die.toLowerCase()}, collect ${BGN_NAMES.coupons.toLowerCase()}, buy ${BGN_NAMES.bread.toLowerCase()} at ${BGN_NAMES.bakery.toLowerCase()} (it moves). land on someone: duel. every round ends in a minigame. most bread wins.`));
   } else if (side === 'online') {
     if (k === 'qp') L.append(row('who', seg([['all', 'EVERYONE'], ['bots', '+ BOTS'], ['coop', 'CO-OP']], st.who, (v) => { st.who = v; remember(k); })));
     else L.append(row('fill empty seats with bots', toggle(st.fill, (v) => { st.fill = v; remember(k); }), 'off: real players only, the match waits for enough people'));
@@ -249,6 +258,7 @@ function plan() {
     if (k === 'qp') return st.who === 'coop' ? ['coop'] : st.who === 'bots' ? ['bots', { lobby: 'qp' }] : ['ffa'];
     return [st.fill ? 'bots' : 'ffa', { lobby: H.lobby }];
   }
+  if (H.board) return ['bots', { priv: true, game: 'bgn', map: 'crate', bots: 3, rounds: st.rounds, diff: st.diff, hub: k }]; // board game night: your own table (server/bgn.js)
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
   const team = !own && GAMES[game] && GAMES[game].teams;

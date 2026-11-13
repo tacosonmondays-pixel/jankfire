@@ -93,6 +93,8 @@ Object.assign(GAMES, {
 GAME_ORDER.push('spoons', 'duckrain', 'lava', 'oitc');
 Object.assign(TARGETS.ffa, { spoons: 20, duckrain: 20, lava: 20, oitc: 0 }); // oitc: 0 = no kill limit, last one standing
 Object.assign(TARGETS.bots, { spoons: 15, duckrain: 15, lava: 15, oitc: 0 });
+// BOARD GAME NIGHT (shared/bgn.js, server/bgn.js): the board itself. not in GAME_ORDER, so never in quick play, the vote or the hub's game list
+GAMES.bgn = { name: 'Board Game Night', desc: 'roll the die, buy golden bread, minigames between turns', teams: false, board: true };
 // duck rain: a drop every `every` seconds (start -> end of the match), `n` ducks per drop scaled by map size, from `height` up
 export const DUCKRAIN = { every: [2.4, 1.1], n: [1.5, 3.5], height: 46, vy: 6, near: 0.5, hole: { R: 12, pull: 40, time: 2.6 } };
 // the spoon is the knife now: in gun game (its last rung) and spoons & grapples every knife wears the spoon look

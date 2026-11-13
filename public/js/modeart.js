@@ -12,6 +12,7 @@ const COLORS = {
   rand: ['#ff4fd8', '#2a0624'], gun: ['#ffe14d', '#2a2006'], inf: ['#7dff4f', '#0e2406'], spoons: ['#4fd8ff', '#061e2a'],
   duckrain: ['#4fd8ff', '#0a1a3a'], lava: ['#ff5a1a', '#2a0800'], oitc: ['#e0a040', '#24160a'],
   br: ['#4fd8ff', '#2a0636'], zm: ['#39ff14', '#0a1a06'], isle: ['#ff4fd8', '#1a0a2a'], train: ['#ffe14d', '#2a2006'],
+  bgn: ['#ffb300', '#2a1406'], // board game night
 };
 export function modeColors(g) { return COLORS[g] || ['#ff4fd8', '#2a0624']; }
 
@@ -69,6 +70,16 @@ const BUILD = {
     [[0.19, 0xffffff], [0.14, 0xff3030], [0.09, 0xffffff], [0.04, 0xff3030]].forEach(([r, c], i) => { const t = new THREE.Mesh(new THREE.CylinderGeometry(r, r, 0.02, 16), M(c, true)); t.rotation.x = Math.PI / 2; t.position.z = i * 0.006; tg.add(t); });
     g.add(tg);
     const a = gun('ar', 0.95, 0, -1.2, 1.2); a.position.set(0.55, 0.05, 0.1); g.add(a);
+    return g;
+  },
+  // board game night: a pawn on a strip of board spaces, the foam die mid-tumble, the golden bread
+  bgn: () => {
+    const g = new THREE.Group();
+    ['#39ff14', '#ff3030', '#ff00dc', '#ffe14d'].forEach((c, i) => { const t = box(0.34, 0.06, 0.34, Number('0x' + c.slice(1))); t.position.set(-0.6 + i * 0.4, 0.03, 0.15); g.add(t); });
+    const d = dude('#ff4fd8', {}); d.scale.multiplyScalar(0.55); d.position.set(-0.2, 0.06, 0.15); d.rotation.y = 0.6; d.rotation.z = 0.1; g.add(d);
+    const die = box(0.34, 0.34, 0.34, 0xfff6e8, true); die.position.set(0.45, 0.62, 0.05); die.rotation.set(0.6, 0.7, 0.3); g.add(die);
+    for (const [x, y] of [[-0.08, 0.08], [0.08, -0.08], [0, 0]]) { const pip = box(0.06, 0.06, 0.02, 0x1a0a20); pip.position.set(x, y, 0.175); die.add(pip); }
+    const loaf = new THREE.Mesh(new THREE.CapsuleGeometry(0.13, 0.3, 4, 10), M(0xffb300, true)); loaf.rotation.z = Math.PI / 2; loaf.position.set(0.55, 0.16, -0.25); g.add(loaf);
     return g;
   },
   br: () => {
