@@ -9,6 +9,7 @@ const port = Number(process.argv[2]) || 3147;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 const HP = 0.3; // JF_MECH_HP: paper plane 270, night shift 450
+const EYE_PP = 4.4 * 1.35; // the paper plane's cockpit eye (shared/mech.js: x MECH.scale)
 const MF = { MECH: 1 << 22, A: 1 << 23, B: 1 << 30, C: 1 << 31 };
 let srvRef = null, srv2Ref = null;
 const Y = 0.03, X0 = 42, Z0 = 12; // warehouse: the flat open yard round [42, 0, 12]. the test works in coordinates round it
@@ -86,7 +87,7 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   ok(ein && ein.f === 'paperplane' && ein.max === Math.round(900 * HP), 'owner next to it: climbs in · armour ' + (ein && ein.hp));
   let P = mp.slice(); // the pilot's position from here
   const pb2 = [P[0], Y, P[2] - 12], pc2 = [P[0] + 30, Y, P[2] + 25];
-  const lookB = () => aim([P[0], P[1] + 4.4, P[2]], [pb2[0], Y + 1, pb2[2]]);
+  const lookB = () => aim([P[0], P[1] + EYE_PP, P[2]], [pb2[0], Y + 1, pb2[2]]);
   const fly = (ms, f = 0, path) => hold(ms, [[A, path || (() => P), { ...lookB(), f: MF.MECH | f }], [B, pb2], [C, pc2]]);
   await fly(800);
   ok(A.f & MF.MECH, 'the snapshot carries the MECH flag');

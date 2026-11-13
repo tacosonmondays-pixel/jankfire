@@ -10,7 +10,7 @@ import { installBody } from './bodyhp.js'; // the wrecking ball + rig last until
 import { BODY, bodyKinds } from '../shared/bodyhp.js';
 import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
 import { installMech } from './mech.js'; // mech drop killstreak
-import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
+import { MECH, FRAMES, mechClash, mechFrame, mechScale } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
 import { buildEdited, dropEdited } from '../shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS rooms
@@ -197,6 +197,7 @@ if (process.env.JF_MECH) STREAKS.mechdrop.kills = Number(process.env.JF_MECH) ||
 if (process.env.JF_MECH_DROP) MECH.drop.delay = Number(process.env.JF_MECH_DROP) || MECH.drop.delay; // test knob: seconds the mech falls (screenshots on slow browsers)
 if (process.env.JF_MECH_WAIT) MECH.wait = MECH.idle = Number(process.env.JF_MECH_WAIT) || MECH.wait; // test knob: seconds an empty mech waits for you
 if (process.env.JF_MECH_HP) for (const f of FRAMES) BODY[f].hp = MECH[f].hp = Math.max(1, Math.round(MECH[f].hp * (Number(process.env.JF_MECH_HP) || 1))); // test knob: x the mechs' armour (0.2 = quick ejects)
+if (process.env.JF_MECH_SCALE) mechScale(Number(process.env.JF_MECH_SCALE)); // test knob: how big the mechs are (x the size-1 mechs, 0.5 - 2; 1 = the old 4.9 m / 5.7 m). the welcome tells clients
 if (process.env.JF_BODY_DECAY) for (const k of bodyKinds) BODY[k].decay *= Number(process.env.JF_BODY_DECAY) || 1; // test knob: the ball / rig wear out faster
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
@@ -497,7 +498,7 @@ class Room {
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
     if (this.round && !this.round.over && !this.warm && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava && !GAMES[this.game].royale) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
-      t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
+      t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg, ms: MECH.scale,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
       peels: [...this.peels.values()].map((pl) => ({ id: pl.id, p: pl.p })),
       projs: [...this.projectiles.values()].map((pr) => ({ id: pr.id, k: pr.k, p: pr.p, v: pr.v, o: pr.o })),
