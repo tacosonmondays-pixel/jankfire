@@ -1,4 +1,4 @@
-# JANKFIRE on Roblox (step 2: free-for-all on Rooftop with three weapons)
+# JANKFIRE on Roblox (step 3a: Deathmatch with bots, the vote, Training)
 
 The Roblox version lives here, next to the web game, which carries on unchanged. This first step has the Rooftop map,
 converted box for box from `shared/map.js`, and JANKFIRE movement on the default Roblox character: run, sprint, slide,
@@ -81,6 +81,32 @@ floor in both, and a katana kill should make the blade longer for everyone.
 **Not in step 2 yet:** bots that play (only the two dummies), the end-of-match vote, killstreaks and items, the other
 weapons. Others see your gun held up level in your hand but not your exact aim pitch; others hear the Redline at its
 full-HP pitch (like the web game).
+
+## Step 3a: the match core (bots, the vote, Training)
+
+- **Bots fill the empty seats.** The match has 6 seats (the `Bots` knob, 5, + 1); every person takes a bot's seat.
+  Bots ("Gary [bot]", "Linda [bot]"...) hunt the nearest enemy they can see, keep the range their weapon likes,
+  switch between the three weapons by distance, strafe and hop, grapple across gaps and back up out of the smog,
+  and now and then parry with the katana. They have no client: every shot and swing goes through the same server
+  rules as yours (their own line of sight, ammo, fire rate, reach, cone, parry window), so no wallhacks.
+- **Deathmatch, properly:** first to 20 kills / 6 minutes with people only, 15 / 5 minutes once bots are in. Spawns
+  go to the spot farthest from the nearest enemy. The board: kills, then fewer deaths; the winner needs 1+ kill.
+- **The vote** after every match: an end screen, then **mode cards** (the daily event, a mix of team and FFA modes,
+  not the one just played), then **map cards**. People vote (click a card, or press 1-4); bots vote too but only
+  break ties; a stage closes on its timer or 2.5 s after everyone voted. Only Deathmatch and Rooftop exist so far,
+  so each stage shows its one card for 2 s; new modes and maps join the vote by flipping a flag in
+  `src/shared/Modes.luau`.
+- **Training (the Range):** press **T** (or the yellow button, top left) to go to the Range and back. It's the
+  web game's Range, converted like Rooftop and placed 20000 studs east in the same place, with its 8 dummies (some
+  slide), Plinker at the back for parry practice, infinite ammo, and a **weapon picker (B)**: one weapon per slot,
+  every ported weapon listed, so each new weapon has a test bench. The match and the Range never touch each other.
+- **Knobs** (like the web game's `JF_*`): `ServerStorage > JankfireConfig` attributes `Bots` (5), `Target` and
+  `RoundTime` (0 = the mode's own). Set `Target` to 3 to see the end screen and the vote quickly.
+
+![the Range, converted](docs/step3/range-view.jpg)
+
+The Range's Blender props are in `roblox/assets/range/` (import them like Rooftop's into ServerStorage >
+JankfireMeshes).
 
 ## What you need
 
