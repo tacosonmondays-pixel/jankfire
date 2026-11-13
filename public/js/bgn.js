@@ -148,7 +148,7 @@ body.bgn-board #hud{display:none!important}
 #bgCall b{display:block;font-size:76px;line-height:1;color:#ffe14d;-webkit-text-stroke:3px #000;text-shadow:6px 6px 0 #ff00dc;white-space:nowrap}
 #bgCall span{display:inline-block;margin-top:8px;font-size:20px;background:rgba(18,8,24,0.92);border:3px solid #000;padding:2px 10px}
 #bgCall.pop{animation:bgcall 1.6s forwards}
-#bgnHud.card #bgCall{top:22%}#bgnHud.card #bgCall b{font-size:44px}#bgnHud.card .bg-card{top:57%}
+#bgnHud.card #bgCall{top:max(22%,190px)}#bgnHud.card #bgCall b{font-size:44px}#bgnHud.card .bg-card{top:57%}
 @keyframes bgcall{0%{transform:translate(-50%,-50%) scale(2.2) rotate(-6deg);opacity:0}10%{transform:translate(-50%,-50%) scale(.9) rotate(2deg);opacity:1}18%{transform:translate(-50%,-50%) scale(1) rotate(-1deg)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
 @keyframes bgpop{0%{transform:scale(1.15)}100%{transform:scale(1)}}
 .bg-float{position:absolute;font-size:24px;font-weight:700;-webkit-text-stroke:1px #000;text-shadow:3px 3px 0 #000;animation:bgfloat 1.4s forwards;pointer-events:none}
