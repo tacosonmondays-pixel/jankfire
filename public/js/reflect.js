@@ -105,7 +105,7 @@ export const reflectInfo = () => ({ on, alive, k: U.uRK.value, probe: probe.toAr
 // model already reads one shared reflection (glbkit.js, a studio room). After each snapshot that target is repainted
 // from it: the world a little brighter (PROPENV.gain, so matte paint still gets a fill and the mids lift), plus the sun
 // as a small hot spot, so chrome, brass and clear-coat get a real sun glint. Turn reflections off: the studio comes back.
-export const PROPENV = { size: 256, gain: 1.5, lift: 0.05, sunK: 70, sunPow: 350, sunC: [1, 0.93, 0.8], k: 2.4, metalK: 1.4 }; // k: how much more the glossy models take of it (metal already takes plenty)
+export const PROPENV = { size: 256, gain: 1.5, lift: 0.05, sunK: 70, sunPow: 350, sunC: [1, 0.93, 0.8], k: 2.4, metalK: 1.4, sat: 0.3 }; // sat: how much of the world's colour the reflection keeps (tinted metal times a blue sky turned candy pink purple: its light, mostly not its tint). k: how much more the glossy models take of it (metal already takes plenty)
 let pm = null, envCube = null, envCam = null, envScene = null, studioCube = null, envMat = null;
 function propEnv(r, world) {
   try {
@@ -115,10 +115,10 @@ function propEnv(r, world) {
       const o = { type: THREE.HalfFloatType, generateMipmaps: false, minFilter: THREE.LinearFilter };
       envCube = new THREE.WebGLCubeRenderTarget(PROPENV.size, o); envCam = new THREE.CubeCamera(0.1, 20, envCube);
       envMat = new THREE.ShaderMaterial({ side: THREE.BackSide, depthWrite: false, depthTest: false,
-        uniforms: { uC: { value: null }, uG: { value: PROPENV.gain }, uL: { value: PROPENV.lift }, uS: { value: new THREE.Vector3(0, 1, 0) }, uSC: { value: new THREE.Vector3() }, uSP: { value: PROPENV.sunPow } },
+        uniforms: { uC: { value: null }, uG: { value: PROPENV.gain }, uL: { value: PROPENV.lift }, uS: { value: new THREE.Vector3(0, 1, 0) }, uSC: { value: new THREE.Vector3() }, uSP: { value: PROPENV.sunPow }, uSat: { value: PROPENV.sat } },
         vertexShader: 'varying vec3 vD; void main() { vD = position; gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 ); }',
-        fragmentShader: `uniform samplerCube uC; uniform float uG; uniform float uL; uniform vec3 uS; uniform vec3 uSC; uniform float uSP; varying vec3 vD;
-void main() { vec3 d = normalize( vD ); vec3 c = textureCube( uC, d ).rgb * uG + uL; c += uSC * pow( max( dot( d, uS ), 0.0 ), uSP ); gl_FragColor = vec4( c, 1.0 ); }` });
+        fragmentShader: `uniform samplerCube uC; uniform float uG; uniform float uL; uniform vec3 uS; uniform vec3 uSC; uniform float uSP; uniform float uSat; varying vec3 vD;
+void main() { vec3 d = normalize( vD ); vec3 c = textureCube( uC, d ).rgb * uG + uL; c = mix( vec3( dot( c, vec3( 0.2126, 0.7152, 0.0722 ) ) ), c, uSat ); c += uSC * pow( max( dot( d, uS ), 0.0 ), uSP ); gl_FragColor = vec4( c, 1.0 ); }` });
       envScene = new THREE.Scene(); envScene.add(new THREE.Mesh(new THREE.SphereGeometry(5, 48, 24), envMat));
       studioCube = new THREE.WebGLCubeRenderTarget(PROPENV.size, o); new THREE.CubeCamera(0.1, 100, studioCube).update(r, new RoomEnvironment());
       pm.fromCubemap(studioCube.texture).dispose(); // (once: makes the generator's own work targets at this size)

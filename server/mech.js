@@ -13,6 +13,7 @@ import { inFront } from '../shared/rig.js';
 import { outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { raycast, movePlayer, playerBoxes, rayBox, playerOverlap, PH } from '../shared/physics.js';
 import { installWrecking } from './mech_wrecking.js'; // battle island heroes: each kit's judging in its own file
+import { installVending } from './mech_vending.js';
 
 const PP = MECH.paperplane, NS = MECH.nightshift;
 const lookOf = (p) => { const c = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw) * c, Math.sin(p.pitch || 0), -Math.cos(p.yaw) * c]; };
@@ -30,7 +31,8 @@ function clear(a, b, boxes) {
   return l < 0.35 || !raycast(a, [d[0] / l, d[1] / l, d[2] / l], l - 0.3, boxes);
 }
 // the battle island heroes' kits (server/mech_<id>.js): hooks by frame id, each called with this = the room.
-// { enter, exit, flags, budget, land, msg, tick, bot, shrug, soak, en }
+// { enter, exit, flags, budget, land, msg, tick, bot, shrug, soak, en } (+ poke: someone on foot's message at it; world,
+// leave, reset: things a kit puts out in the world, ticked / cleared with the room, not per pilot)
 const KIT = {};
 const MSG_PER_S = 30; // 'mech' messages a second per player (cannons are 8): more get dropped
 
@@ -38,6 +40,7 @@ export function installMech(Room, U) {
   const { now, num, vec3, norm, r2, center, safe, send, REC_T } = U;
   REC_T.add('mech'); // drops, swings, slams and blasts show up in killcams and the play of the round
   installWrecking(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
+  installVending(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
 
   Object.assign(Room.prototype, {
     mechMap() { return this._mechs || (this._mechs = new Map()); },
@@ -235,11 +238,13 @@ export function installMech(Room, U) {
       if (p.mech) this.mechExit(p, 'quiet');
       for (const m of [...this.mechMap().values()]) if (m.o === p.id) this.mechGone(m, 'owner');
       this.dronesOf(p.id, true);
+      for (const K of Object.values(KIT)) if (K.leave) K.leave.call(this, p); // (a kit's things out in the world: the vending machine's colas, its wall)
     },
     mechReset() { // a new round, map or mode: no mech anywhere
       for (const p of this.players.values()) if (p.mech) this.mechExit(p, 'quiet');
       for (const m of [...this.mechMap().values()]) this.mechGone(m, 'reset');
       if (this._drones) this._drones.clear();
+      for (const K of Object.values(KIT)) if (K.reset) K.reset.call(this);
     },
 
     // ------------------------------------------------------------ armour: the knight's shield first, then the pool
@@ -483,6 +488,7 @@ export function installMech(Room, U) {
       const n = now();
       if (!p.alive || typeof m.k !== 'string' || m.k.length > 12) return;
       if (m.k === 'in') { if (n - (p.mechInT || 0) < 300) return; p.mechInT = n; if (!this.mechEnter(p, n) && !this.mechOf(p)) this.mechNo(p, 'no mech of yours here'); return; } // (a few a second at most)
+      if (m.k === 'kick') { this.mechPoke(p, m, n); return; } // on foot, at someone else's mech (the vending machine's kick)
       const M = p.mech;
       if (!M || !this.mechOn(p, n)) return;
       const q = M.msg; // rate limit (a busy pilot sends ~10 a second)
@@ -505,6 +511,16 @@ export function installMech(Room, U) {
         case 'slamland': if (!pp) this.mechSlamLand(p, vec3(m.p), n); break;
       }
     },
+    // someone on foot pokes a pilot's mech ({ k: 'kick', to: pilot id }): rate limited, only from on foot, routed to that
+    // frame's kit (KIT.poke), which judges the rest (side, reach, whether it needs it)
+    mechPoke(p, m, n) {
+      if (p.mech || n - (p.pokeT || 0) < 250) return;
+      p.pokeT = n;
+      const t = Number.isInteger(m.to) ? this.players.get(m.to) : null;
+      if (!t || t === p || !this.mechOn(t, n)) return;
+      const K = KIT[t.mech.f];
+      if (K && K.poke) K.poke.call(this, p, t, t.mech, m.k, n);
+    },
     // a shot's direction has to be roughly where the server has you looking (a snapshot old: some slack)
     mechAimOk(p, d, cos) { const l = lookOf(p); return l[0] * d[0] + l[1] * d[1] + l[2] * d[2] >= cos; },
     // the first body (or wall) along a ray: boxes of whoever's a mech are its frame + cockpit
@@ -518,6 +534,8 @@ export function installMech(Room, U) {
           if (h && h.t < best) { best = h.t; hit = t; head = hb.head; }
         }
       }
+      const vw = this.vmRayWall && this.vmRayWall(p, o, d, best); // an enemy OUT OF ORDER wall in the way: the shot stops there (the shooter hurts it, once it knows nothing nearer was hit)
+      if (vw) return { t: null, head: false, at: vw.at, wall: vw.wall };
       return { t: hit, head, at: [o[0] + d[0] * best, o[1] + d[1] * best, o[2] + d[2] * best] };
     },
 
@@ -529,7 +547,8 @@ export function installMech(Room, U) {
       M.gunT = n; M.side = -(M.side || 1);
       const o = this.mechEyeOf(p), r = this.mechRay(p, o, d, G.range);
       const em = this.mechRayEmpty(p, o, d, Math.min(G.range, Math.hypot(r.at[0] - o[0], r.at[1] - o[1], r.at[2] - o[2]))); // an empty mech in front of whatever it hit
-      if (em) { r.t = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      if (em) { r.t = null; r.wall = null; r.at = [o[0] + d[0] * em.t, o[1] + d[1] * em.t, o[2] + d[2] * em.t]; }
+      if (r.wall) this.vmWallHurt(r.wall, G.dmg, r.at, p); // (the wall only when it was the first thing hit)
       this.broadcast({ t: 'mech', k: 'gun', id: p.id, s: M.side, b: r.at.map(r2), h: r.t || em ? 1 : 0 }, p.isBot ? undefined : p.id);
       if (r.t) this.hurt(r.t, p, 'mechgun', G.dmg * (r.head ? MECH.head : 1), [d[0] * 1.5, 0.5, d[2] * 1.5], { hs: r.head });
       else if (em) { const hd = r.at[1] >= em.m.p[1] + MECH[em.m.f].c0 && r.at[1] <= em.m.p[1] + MECH[em.m.f].c1; this.mechHarm(em.m, p, 'mechgun', G.dmg * (hd ? MECH.head : 1), hd, r.at); }
@@ -767,6 +786,7 @@ export function installMech(Room, U) {
         else if (m.st === 'in') { const o = this.players.get(m.o); if (!o.mech || o.mech.id !== m.id) this.mechGone(m, 'leave'); }
       }
       this.tickDrones(n, dt);
+      for (const K of Object.values(KIT)) if (K.world) K.world.call(this, n, dt); // (a kit's things out in the world: colas, walls)
       if (n - (this.mechListT || 0) > 1000 && this.mechMap().size) { // late joiners (and anyone who missed an event) catch up
         this.mechListT = n;
         this.broadcast({ t: 'mech', k: 'list', m: [...this.mechMap().values()].map((m) => [m.id, m.o, m.f, ...m.p.map(r2), m.yaw, m.st, Math.round(m.until - n), Math.max(0, Math.round(m.hp)), MECH[m.f].hp]) }); // (+ armour: the bar over a damaged empty one)

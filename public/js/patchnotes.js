@@ -1,6 +1,22 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.29', date: '2026-11-13', title: 'KABOOM', items: [
+    "mount kaboom erupts now. a rumble, then BOOM: an ash cloud, lava spilling out of the crater, glowing lava bombs whistling overhead, then a tropical downpour. islands and islands plant & defuse. everyone sees it at the same moment.",
+    "the lava bombs are just for looking at. for now.",
+  ] },
+  { v: '11.28', date: '2026-11-13', title: 'IT RAINS NOW', items: [
+    "WEATHER: it rains now. a minute or two into a match a storm rolls in over suburb, warehouse, skyline, rooftop, platform, range and jankburg. drawn-on clouds, splashes, puddles, lightning, thunder. everyone gets the same storm.",
+    "indoors the rain drums on the roof. dead mall only hears it. you can turn it off in settings (weather), coward.",
+  ] },
+  { v: '11.27', date: '2026-11-13', title: 'STAY PINK', items: [
+    "shiny pink mechs stopped turning purple on too hd. the sky was rubbing off on the paint.",
+  ] },
+  { v: '11.26', date: '2026-11-13', title: 'VENDING MACHINE', items: [
+    "new mech: VENDING MACHINE, the support hero. a 5 m drinks machine on stubby legs with a coin slot for a face. holds LMB to spit coins at people.",
+    "Shift pops out a JANK COLA for your squad: +40 hp and a sugar rush. E slams down an OUT OF ORDER sign that stops enemy bullets, rockets and blasts. your side shoots through it. rude.",
+    "ultimate, RESTOCK: armour and cooldowns for everyone nearby. sometimes it jams. a squadmate on foot can press F to kick it. that's the fix.",
+  ] },
   { v: '11.25', date: '2026-11-13', title: 'PLEASE HOLD (PROPERLY)', items: [
     "fixed: night shift's PLEASE HOLD shield was posing a spare copy of itself. the real one comes up across the front now.",
   ] },
