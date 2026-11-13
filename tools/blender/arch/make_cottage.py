@@ -16,6 +16,7 @@
 #      blender52 -b --python tools/blender/arch/make_cottage.py -- [cottage|cottage_sd]   (both by default)
 import os, sys, math, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import archkit
 from archkit import Kit, OUTDIR, MATS, NOCAST
 from mathutils import Vector
 
@@ -517,6 +518,20 @@ def inside():
 
 
 # ------------------------------------------------------------ build
+_bake = archkit.bake_ao
+LIGHT_AO = {'cwash', 'cchim', 'cplinth', 'cband'}  # (whitewash in the shade went grey: half the AO on the outside paint, so it reads white)
+
+
+def bake_ao(objs, solids, **kw):
+    _bake(objs, solids, **kw)
+    for ob in objs:
+        if ob.data.materials and ob.data.materials[0].name in LIGHT_AO and ob.data.color_attributes:
+            for d in ob.data.color_attributes[0].data: a = 0.5 + 0.5 * d.color[0]; d.color = (a, a, a, 1)
+
+
+archkit.bake_ao = bake_ao
+
+
 def build(kind):
     global K
     d = json.load(open(os.path.join(HERE, 'boxes', kind + '.json')))
