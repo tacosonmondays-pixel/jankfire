@@ -1,0 +1,558 @@
+{
+ "p_acunit": {
+  "pieces": [
+   {
+    "name": "ac_paint",
+    "tris": 200,
+    "decimated_from": null
+   },
+   {
+    "name": "ac_metal",
+    "tris": 380,
+    "decimated_from": null
+   }
+  ],
+  "tris": 580,
+  "bytes": 35248
+ },
+ "p_billboard": {
+  "pieces": [
+   {
+    "name": "glow",
+    "tris": 48,
+    "decimated_from": null
+   },
+   {
+    "name": "bb_steel",
+    "tris": 536,
+    "decimated_from": null
+   }
+  ],
+  "tris": 584,
+  "bytes": 39520
+ },
+ "p_billboard_post": {
+  "pieces": [
+   {
+    "name": "bb_steel",
+    "tris": 184,
+    "decimated_from": null
+   }
+  ],
+  "tris": 184,
+  "bytes": 13384
+ },
+ "p_car_hatch": {
+  "pieces": [
+   {
+    "name": "ind",
+    "tris": 108,
+    "decimated_from": null
+   },
+   {
+    "name": "lamp",
+    "tris": 112,
+    "decimated_from": null
+   },
+   {
+    "name": "trim",
+    "tris": 1720,
+    "decimated_from": null
+   },
+   {
+    "name": "tail",
+    "tris": 120,
+    "decimated_from": null
+   },
+   {
+    "name": "tint",
+    "tris": 1054,
+    "decimated_from": null
+   },
+   {
+    "name": "glass",
+    "tris": 156,
+    "decimated_from": null
+   }
+  ],
+  "tris": 3270,
+  "bytes": 178000
+ },
+ "p_car_sedan": {
+  "pieces": [
+   {
+    "name": "ind",
+    "tris": 120,
+    "decimated_from": null
+   },
+   {
+    "name": "lamp",
+    "tris": 112,
+    "decimated_from": null
+   },
+   {
+    "name": "trim",
+    "tris": 1770,
+    "decimated_from": null
+   },
+   {
+    "name": "tail",
+    "tris": 112,
+    "decimated_from": null
+   },
+   {
+    "name": "tint",
+    "tris": 1140,
+    "decimated_from": null
+   },
+   {
+    "name": "glass",
+    "tris": 144,
+    "decimated_from": null
+   }
+  ],
+  "tris": 3398,
+  "bytes": 184792
+ },
+ "p_car_taxi": {
+  "pieces": [
+   {
+    "name": "ind",
+    "tris": 120,
+    "decimated_from": null
+   },
+   {
+    "name": "lamp",
+    "tris": 112,
+    "decimated_from": null
+   },
+   {
+    "name": "trim",
+    "tris": 1814,
+    "decimated_from": null
+   },
+   {
+    "name": "tail",
+    "tris": 112,
+    "decimated_from": null
+   },
+   {
+    "name": "livery",
+    "tris": 1184,
+    "decimated_from": null
+   },
+   {
+    "name": "glass",
+    "tris": 144,
+    "decimated_from": null
+   }
+  ],
+  "tris": 3486,
+  "bytes": 187180
+ },
+ "p_crate": {
+  "pieces": [
+   {
+    "name": "cr_steel",
+    "tris": 96,
+    "decimated_from": null
+   },
+   {
+    "name": "cr_wood",
+    "tris": 390,
+    "decimated_from": null
+   }
+  ],
+  "tris": 486,
+  "bytes": 30552
+ },
+ "p_lollipop": {
+  "pieces": [
+   {
+    "name": "tint",
+    "tris": 289,
+    "decimated_from": null
+   },
+   {
+    "name": "lp_bark",
+    "tris": 98,
+    "decimated_from": null
+   }
+  ],
+  "tris": 387,
+  "bytes": 21668
+ },
+ "p_palm": {
+  "pieces": [
+   {
+    "name": "pm_crown",
+    "tris": 306,
+    "decimated_from": null
+   },
+   {
+    "name": "pm_trunk",
+    "tris": 60,
+    "decimated_from": null
+   }
+  ],
+  "tris": 366,
+  "bytes": 22096
+ },
+ "p_streetlight": {
+  "pieces": [
+   {
+    "name": "glow",
+    "tris": 36,
+    "decimated_from": null
+   },
+   {
+    "name": "sl_steel",
+    "tris": 786,
+    "decimated_from": null
+   }
+  ],
+  "tris": 822,
+  "bytes": 39036
+ },
+ "p_watertower": {
+  "pieces": [
+   {
+    "name": "wt_wood",
+    "tris": 294,
+    "decimated_from": null
+   },
+   {
+    "name": "wt_steel",
+    "tris": 832,
+    "decimated_from": null
+   }
+  ],
+  "tris": 1126,
+  "bytes": 67472
+ },
+ "arch_liftroom": {
+  "pieces": [
+   {
+    "name": "door_decal",
+    "tris": 4,
+    "decimated_from": null
+   },
+   {
+    "name": "door_lr_door@trim",
+    "tris": 24,
+    "decimated_from": null
+   },
+   {
+    "name": "door_lr_frame",
+    "tris": 168,
+    "decimated_from": null
+   },
+   {
+    "name": "door_lr_sign",
+    "tris": 12,
+    "decimated_from": null
+   },
+   {
+    "name": "door_lr_steel",
+    "tris": 96,
+    "decimated_from": null
+   },
+   {
+    "name": "decal",
+    "tris": 18,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_band@trim",
+    "tris": 80,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_beacon",
+    "tris": 56,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_coping",
+    "tris": 56,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_frame",
+    "tris": 42,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_gravel",
+    "tris": 110,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_louvre",
+    "tris": 8,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_neon",
+    "tris": 48,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_steel",
+    "tris": 146,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_wall",
+    "tris": 132,
+    "decimated_from": null
+   },
+   {
+    "name": "v0_lr_band@trim",
+    "tris": 24,
+    "decimated_from": null
+   },
+   {
+    "name": "v1_lr_band@trim",
+    "tris": 120,
+    "decimated_from": null
+   },
+   {
+    "name": "v2_lr_band@trim",
+    "tris": 120,
+    "decimated_from": null
+   }
+  ],
+  "tris": 1264,
+  "bytes": 97284
+ },
+ "arch_penthouse": {
+  "pieces": [
+   {
+    "name": "ph_carpet",
+    "tris": 260,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_chrome",
+    "tris": 5690,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_deck",
+    "tris": 306,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_floor",
+    "tris": 388,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_frost",
+    "tris": 120,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_glass",
+    "tris": 810,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_glassin",
+    "tris": 658,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_granite",
+    "tris": 80,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_lamp",
+    "tris": 20,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_neon",
+    "tris": 48,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_pad",
+    "tris": 72,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_padlamp",
+    "tris": 240,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_padline",
+    "tris": 264,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_pink",
+    "tris": 162,
+    "decimated_from": null
+   },
+   {
+    "name": "ph_white",
+    "tris": 1444,
+    "decimated_from": null
+   }
+  ],
+  "tris": 10562,
+  "bytes": 635088
+ },
+ "arch_pooldeck": {
+  "pieces": [
+   {
+    "name": "pd_alu",
+    "tris": 5612,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_c_toyteal",
+    "tris": 180,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_canvas",
+    "tris": 1216,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_case",
+    "tris": 2404,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_coping",
+    "tris": 156,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_deck",
+    "tris": 256,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_flamingo",
+    "tris": 660,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_lamp",
+    "tris": 112,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_mosaic",
+    "tris": 232,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_neoncyan",
+    "tris": 1098,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_neongreen",
+    "tris": 96,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_neonpink",
+    "tris": 156,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_neonyellow",
+    "tris": 276,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_ring",
+    "tris": 556,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_stripe",
+    "tris": 1640,
+    "decimated_from": null
+   },
+   {
+    "name": "pd_teak",
+    "tris": 360,
+    "decimated_from": null
+   }
+  ],
+  "tris": 15010,
+  "bytes": 1140784
+ },
+ "arch_rt_mast": {
+  "pieces": [
+   {
+    "name": "lr_frame",
+    "tris": 164,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_mastr",
+    "tris": 324,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_mastw",
+    "tris": 324,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_red",
+    "tris": 36,
+    "decimated_from": null
+   },
+   {
+    "name": "lr_steel",
+    "tris": 80,
+    "decimated_from": null
+   }
+  ],
+  "tris": 928,
+  "bytes": 72920
+ },
+ "arch_rt_signs": {
+  "pieces": [
+   {
+    "name": "sg_chrome",
+    "tris": 512,
+    "decimated_from": null
+   },
+   {
+    "name": "sg_grate",
+    "tris": 8,
+    "decimated_from": null
+   },
+   {
+    "name": "sg_lamp",
+    "tris": 132,
+    "decimated_from": null
+   },
+   {
+    "name": "sg_neonpink",
+    "tris": 48,
+    "decimated_from": null
+   },
+   {
+    "name": "sg_steel",
+    "tris": 1184,
+    "decimated_from": null
+   }
+  ],
+  "tris": 1884,
+  "bytes": 143212
+ }
+}
