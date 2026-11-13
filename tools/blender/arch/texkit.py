@@ -817,11 +817,11 @@ def shackwall(n=64):
     paint (sea blue, salmon, mint, lemon, white, or none) peeling to grey wood, grain up them, a dark gap between, nail
     heads where the rails are behind, a butt joint somewhere up each one. its own colour"""
     rg = np.random.default_rng(4601)
-    paints = ['#4a9ad0', '#e8806e', '#f2eee4', '#7ed0a8', None, '#4a9ad0', None, '#f2eee4']
+    paints = ['#4fb4ff', '#ff8a7a', '#fff6ea', '#7dffb8', None, '#4fb4ff', '#ffe14d', '#fff6ea']
     order = rg.permutation(len(paints))
     img = np.zeros((n, n, 3), np.float32)
     wood = 0.62 + (vnoise(n, 4, 4602) - 0.5) * 0.2 + (rg.random((1, n)) - 0.5) * 0.18  # grain: streaks up the board
-    wood = ramp(np.clip(np.broadcast_to(wood, (n, n)) - fbm(n, 8, 3, seed=4603) * 0.15, 0, 1), [(0, '#3a3430'), (0.5, '#8a8076'), (1, '#c8beb0')])
+    wood = ramp(np.clip(np.broadcast_to(wood, (n, n)) - fbm(n, 8, 3, seed=4603) * 0.15, 0, 1), [(0, '#5a5048'), (0.5, '#b4aa9c'), (1, '#ece4d6')])
     def aniso(cy, cx, seed):  # value noise with tall cells: paint flakes off along the grain
         lat = np.random.default_rng(seed).random((cy, cx)).astype(np.float32)
         ty, tx = np.arange(n) * cy / n, np.arange(n) * cx / n; iy, ix = np.floor(ty).astype(int), np.floor(tx).astype(int)

@@ -22,8 +22,8 @@ from mathutils import Vector
 HERE = os.path.dirname(os.path.abspath(__file__))
 WY = -0.25  # the sea (shared/map.js ISL.WY)
 MATS.update({
-    'pdeck': ('timber', '#c9a47a', {}), 'pdeck2': ('timber', '#a49684', {}), 'pdeck3': ('timber', '#dcbc92', {}), 'pdeckp': ('timber', '#ff8ac8', {}),
-    'pgap': ('tar', '#2a1e18', {}), 'pbeam': ('timber', '#8a6a4e', {}), 'ppile': ('timber', '#9a8470', {}), 'ppost': ('timber', '#b08e6a', {}),
+    'pdeck': ('timber', '#ffd8a8', {}), 'pdeck2': ('timber', '#e4d6c4', {}), 'pdeck3': ('timber', '#fff0cc', {}), 'pdeckp': ('timber', '#ff8ac8', {}),
+    'pgap': ('tar', '#2a1e18', {}), 'pbeam': ('timber', '#c09470', {}), 'ppile': ('timber', '#d0b49a', {}), 'ppost': ('timber', '#e0b88a', {}),
     'pweed': ('stucco', '#4e8a2e', {}), 'pbarn': ('stucco', '#ece6d6', {}), 'pzinc': ('metalplate', '#c8ccd4', {'gloss': 0.5, 'metal': 1}),
     'piron': ('metalplate', '#2c2a34', {'gloss': 0.55}), 'pcap': ('trim', '#ffe14d', {'gloss': 0.6}), 'ptyre': ('tread', '#ffffff', {}),
     'prope': ('rope', '#e8cf9c', {}), 'pwall': ('shackwall', '#ffffff', {}), 'pin': ('timber', '#6a5444', {}), 'pinside': ('timber', '#4a3a30', {}),
