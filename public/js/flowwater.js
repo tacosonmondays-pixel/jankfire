@@ -238,7 +238,7 @@ export function buildWaterMap(scene, def) {
   if (codeJets) { codeJets.parent && codeJets.parent.remove(codeJets); codeJets.geometry.dispose(); codeJets = null; }
   for (let i = SRC.length - 1; i >= 0; i--) if (!SRC[i].prop) SRC.splice(i, 1);
   let boxes = [];
-  try { boxes = def && def.boxes ? [...def.boxes, ...(def.deco || [])] : []; } catch { boxes = []; }
+  try { boxes = def && def.boxes && !def.stream ? [...def.boxes, ...(def.deco || [])] : []; } catch { boxes = []; } // (the streamed city: its tagged props do it, not its boxes)
   const jets = boxFountains(boxes);
   dropMesh(scene);
   if (!jets.length) return;
@@ -323,13 +323,13 @@ export function updateFlowWater(dt, cam, renderer, scene) {
   stats.lands = lands.length; stats.rings = nr;
   if (!ring || !ring.cap || !drops) return;
   // splashes: a budget per frame spread over the close ones (the far ones get fewer)
-  acc += dt;
+  acc = Math.min(0.1, acc + dt); // (a long frame doesn't bank splashes)
   const steps = Math.min(4, Math.floor(acc / (1 / 60))); acc -= steps / 60;
   for (let st = 0; st < steps; st++) for (let i = 0; i < Math.min(lands.length, 10); i++) {
     const l = lands[i], near = l.d < 40 ? 1 : 0.4, w = l.w, z = l.sz, zv = Math.sqrt(z);
     const r = (0.25 + w * 0.3) * z;
     // the crown: drops thrown up and out where it lands
-    for (let k = 0; k < (Math.random() < 0.9 * w * near ? 3 : 1); k++) {
+    for (let k = (Math.random() < 0.55 * w * near ? 2 : 0) + (Math.random() < 0.4 * near ? 1 : 0); k > 0; k--) {
       const a = Math.random() * 6.283, sp = (0.6 + Math.random() * 1.4 * w) * zv;
       ring.spawn(l.x + Math.cos(a) * r * 0.6, l.y + 0.02, l.z + Math.sin(a) * r * 0.6, Math.cos(a) * sp, (1.8 + Math.random() * 3.2 * w) * zv, Math.sin(a) * sp, now, 0.5 + Math.random() * 0.4, 2, z);
     }

@@ -12,7 +12,7 @@ export function waterTag(name) {
 }
 
 // particles per preset (Potato, Crusty, Mid, Too HD): Potato gets none
-export const PARTICLE_CAP = [0, 240, 360, 600];
+export const PARTICLE_CAP = [0, 300, 450, 800];
 export const capFor = (q) => PARTICLE_CAP[Math.max(0, Math.min(3, q | 0))] ?? 240;
 
 // a jet: a parabola from p0 to p1 bowing up by lift (m), n segments. [[x, y, z]...]

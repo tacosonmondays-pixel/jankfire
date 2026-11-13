@@ -43,7 +43,7 @@ test('a jet into a pool lands where it hits the water; a lone trickle lands at i
 
 test('splash particles: Potato gets none, the pool never grows past its cap', () => {
   assert.equal(capFor(0), 0);
-  for (let q = 1; q <= 3; q++) assert.ok(capFor(q) > 0 && capFor(q) <= 600);
+  for (let q = 1; q <= 3; q++) assert.ok(capFor(q) > 0 && capFor(q) <= 800);
   assert.equal(capFor(99), PARTICLE_CAP[3]);
   const r = new DropRing(capFor(1));
   for (let i = 0; i < 1000; i++) r.spawn(i, 0, 0, 0, 1, 0, 0, 5, i % 3, 1);
