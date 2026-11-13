@@ -46,3 +46,24 @@ test('the board: ranked first, then unranked people, bots last; junk ignored', (
 test('the look of the week is always a real look', () => {
   for (let d = 0; d < 400; d += 3) assert.ok(LOOKS.some((l) => l.id === lookFor(Date.UTC(2026, 0, 1) + d * 864e5)));
 });
+test('the board keeps what got saved mid-session (the live store hands out fresh rows; the file store shares one)', async () => {
+  const { installModeStats } = await import('../server/modestats.js');
+  const { mergeModes } = await import('../shared/modestats.js');
+  class R { kill() {} damage() {} endRound() {} remove() {} zmGive() {} broadcast() {} }
+  const saved = { inv: { ms: { bomb: { rw: 5 } } } }; // the store's own copy of the account
+  let fresh = true; // fresh rows (Supabase): the store never touches p.inv. a file store: p.inv IS the saved object
+  const { flush } = installModeStats(R, { store: { addModeStats: async (n, d) => { mergeModes(saved.inv, d); } } });
+  const mk = (inv) => ({ id: 1, name: 'ace', acct: { n: 'ace', d: {} }, inv, msd: { bomb: { rw: 3, plants: 1 }, zm: { round: 4 } } });
+  // live: the match that just ended counts on the board straight away
+  let p = mk({ ms: { bomb: { rw: 5 }, zm: { round: 9 } } });
+  flush(p);
+  assert.equal(boardRows('bomb', [p])[0].v, 8, 'rounds won: 5 saved + 3 this match');
+  assert.equal(boardRows('zm', [p])[0].v, 9, 'highest round: the best, not a sum');
+  assert.equal(p.msd, null);
+  // file store: the join-time inv is the stored object; the flush must not count the match twice
+  fresh = false; saved.inv = { ms: { bomb: { rw: 5 } } }; p = mk(saved.inv);
+  flush(p); await new Promise((r) => setTimeout(r, 5));
+  assert.equal(saved.inv.ms.bomb.rw, 8, 'saved once');
+  assert.equal(boardRows('bomb', [p])[0].v, 8, 'and the board agrees (not 11)');
+  void fresh;
+});

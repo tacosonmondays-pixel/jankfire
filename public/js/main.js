@@ -107,7 +107,7 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { pregameFrame, pregameKey } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
+import { pregameFrame, pregameKey, pregameOn } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
 import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
@@ -1905,7 +1905,7 @@ net.on('pd', (m) => {
 net.on('tip', (m) => { G.tip = m.tip; });
 net.on('court', courtSync); // scales of justice: everyone's kill streak when you join
 net.on('hand', (m) => { G.hand = m.hand || []; });
-net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
+net.on('tp', (m) => { ME.pos = m.p.slice(); if (pregameOn()) ME.vel = [0, 0, 0]; /* (put back on the pre-game deck: no falling momentum) */ fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
 net.on('heal', (m) => {
   if (m.id === G.myId) { ME.hp = m.hp; hud.msg(`+${m.a} HP`, 0.8); sfx.heal(); }
   const r = G.remotes.get(m.id);
