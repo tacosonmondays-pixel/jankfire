@@ -344,6 +344,7 @@ let _ps = 0, _pn = 0;
 const qz = (v) => Math.round(v * 256);
 function poseAdd(c) {
   if (!c.isMesh || !c.castShadow) return;
+  if (c.isSkinnedMesh || c.isInstancedMesh) { _ps = NaN; return; } // (bones / instances move without its matrix: as before, always redraw)
   const e = c.matrixWorld.elements; _pn++;
   _ps += _pn * (qz(e[12]) * 1.11 + qz(e[13]) * 1.29 + qz(e[14]) * 1.41 + qz(e[0]) * 2.1 + qz(e[1]) * 2.3 + qz(e[2]) * 2.7 + qz(e[4]) * 3.1 + qz(e[5]) * 3.3 + qz(e[6]) * 3.7 + qz(e[8]) * 4.1 + qz(e[9]) * 4.3 + qz(e[10]) * 4.7);
 }
