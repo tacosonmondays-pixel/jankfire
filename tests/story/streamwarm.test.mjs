@@ -49,7 +49,7 @@ function fakeRenderer() {
 // a CityStream with only what warm()/warmStep()/updateProps() use (no workers, no scene)
 function stream(renderer) {
   const S = Object.create(CityStream.prototype);
-  Object.assign(S, { renderer, warmQ: [], sceneRT: null, scene: new THREE.Scene(), time: 0, cam: new THREE.Vector3(), R: { props: 100, propsHi: 30 }, props: { group: null, key: 'old', t: 0, n: 0 }, root: new THREE.Group() });
+  Object.assign(S, { renderer, warmQ: [], drawnTo: { canvas: 0, rt: -1e9 }, warmRT: null, scene: new THREE.Scene(), time: 0, cam: new THREE.Vector3(), R: { props: 100, propsHi: 30 }, props: { group: null, key: 'old', t: 0, n: 0 }, root: new THREE.Group() });
   return S;
 }
 const mesh = (name, tex = []) => { const m = new THREE.MeshStandardMaterial({ name }); for (const [k, t] of tex) { m[k] = new THREE.Texture(); m[k].name = t; } return new THREE.Mesh(new THREE.BoxGeometry(), m); };
@@ -70,13 +70,20 @@ test('a new model warms up a frame at a time: one compile, one check or one text
   assert.ok(frames.length <= 5, `2 compiles + 2 checks, the textures within a frame's budget (${frames.length} frames)`);
 });
 
-test('a warm-up compiles against the target the scene is really drawn into (post effects), then puts the old one back', () => {
-  const R = fakeRenderer(), S = stream(R), post = { isRenderTarget: true };
-  S.sceneRT = post;
-  S.warm([mesh('a')], () => {});
-  S.warmStep(cam);
-  assert.deepEqual(R.compileTargets, [post], 'compiled while the post target was bound');
+test('a warm-up compiles for each kind of place the scene was drawn to lately (canvas, a target), then rebinds the old one', () => {
+  const R = fakeRenderer(), S = stream(R);
+  S.time = 100; S.drawnTo = { canvas: 99, rt: -1e9 };
+  S.warm([mesh('a')], () => {}); S.warmStep(cam);
+  assert.deepEqual(R.compileTargets, [null], 'drawn to the canvas only: compiled for the canvas');
+  R.compileTargets.length = 0; S.drawnTo = { canvas: 99, rt: 95 }; // (post off, but a talk portrait drew the scene into a target)
+  S.warm([mesh('b')], () => {}); for (let i = 0; i < 3; i++) S.warmStep(cam);
+  assert.equal(R.compileTargets.length, 2, 'both kinds compiled');
+  assert.ok(R.compileTargets[1] && R.compileTargets[1].isWebGLRenderTarget && R.compileTargets[1].width === 1, 'the target kind with a 1 x 1 of its own');
   assert.equal(R.getRenderTarget(), null, 'and the canvas is bound again after');
+  for (let i = 0; i < 10 && S.warmQ.length; i++) S.warmStep(cam); // (finish b)
+  R.compileTargets.length = 0; S.time = 200; S.drawnTo = { canvas: -1e9, rt: 199 }; // (post on: only targets)
+  S.warm([mesh('c')], () => {}); S.warmStep(cam);
+  assert.ok(R.compileTargets.length === 1 && R.compileTargets[0], 'post on: the target kind only');
 });
 
 test('a crowd model goes ahead of waiting props, behind the one under way', () => {
