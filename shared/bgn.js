@@ -70,8 +70,9 @@ export const BGN_MINI = {
   bigguy: { mul: 3, armour: 0.4, dmg: 0.65 }, // the leader's kills count x3; their rig has 40% of its usual armour and hits at 65% (a full one wiped three bots without ever breaking)
   // the boss's armour: his frame's x (base + per human seat). he's a 5th player on team 2, gone after
   boss: { base: 2, perHuman: 0.5, diff: 'hard', bar: 250, down: 1600, splash: 0.15 }, // bar: ms between health bar updates; down: the explosion before the results; splash: armour lost falling off the map
-  // bumper carts: rams don't hurt, they fling (kb x, up x); a boost on click (judged here); a fresh cart after a fall-out
-  carts: { kb: 2.2, up: 0.6, minSp: 4, boost: 9, boostCd: 1500, boostMs: 900, slack: 3, remount: 2000, recoil: 0.35, lives: 3, hazardKb: 1.4, rest: 5000, hazardMs: 14000, edge: 3.5 },
+  // bumper carts: rams don't hurt, they fling (kb x, up x); a boost on click (judged here); a fresh cart after a fall-out.
+  // lives: a 2v2 team's, solo: each seat's in 1v1v1v1 and duels (bots-only games were over in 10-25 s with one)
+  carts: { kb: 2.2, up: 0.6, minSp: 4, boost: 9, boostCd: 1500, boostMs: 900, slack: 3, remount: 2000, recoil: 0.35, lives: 3, solo: 2, hazardKb: 1.4, rest: 5000, hazardMs: 14000, edge: 3.5 },
   // duck catch: ducks fall from h at fall m/s. a catch in the air / off the floor / a gold one. reach is the server's
   ducks: { every: [1.7, 0.9], n: [2, 3], h: 16, fall: 6.5, air: 2, floor: 1, gold: 5, goldP: 0.12, catchR: 1.35, pickR: 1.25, floorMs: 12000, slap: 3, slapKb: 0.35, cursedEvery: 10000, cursedR: 3, spit: 4, max: 40 },
 };
@@ -131,7 +132,7 @@ export const BGN_MINIS = {
   bigguy: { n: 11, name: 'THE BIG GUY', game: 'tdm', map: 'platform', time: 75, target: 24, fmts: ['3v1'], ctl: 'bigguy', rule: 'the leader suits up in an overdrive rig, every life. their kills count x3.' },
   landlord: { n: 12, name: 'BOSS: THE LANDLORD', game: 'tdm', map: 'platform', time: 90, target: 999, boss: 'wrecking', fmts: ['boss'], ctl: 'boss', rule: 'break his wrecking ball mech before the clock runs out.' },
   nightmgr: { n: 13, name: 'BOSS: THE NIGHT MANAGER', game: 'tdm', map: 'platform', time: 90, target: 999, boss: 'nightshift', fmts: ['boss'], ctl: 'boss', rule: 'break his night shift mech. shoot round the shield.' },
-  carts: { n: 14, name: 'BUMPER CARTS', game: 'bgcarts', map: 'crate', time: 75, target: 999, fmts: ['ffa', 'duel', '2v2'], ctl: 'carts', rule: 'ram people off the box. last cart standing wins. (2v2: 3 team lives)' },
+  carts: { n: 14, name: 'BUMPER CARTS', game: 'bgcarts', map: 'crate', time: 75, target: 999, fmts: ['ffa', 'duel', '2v2'], ctl: 'carts', rule: 'ram people off the box. 2 lives (2v2: 3 a team). last cart standing wins.' },
   duckcatch: { n: 15, name: 'DUCK CATCH', game: 'bgducks', map: 'platform', time: 60, target: 999, fmts: ['ffa', 'duel', '2v2'], ctl: 'ducks', rule: 'most ducks wins. gold ones are 5. the cursed one halves your pile.' },
 };
 export const BGN_MINI_ORDER = Object.keys(BGN_MINIS);

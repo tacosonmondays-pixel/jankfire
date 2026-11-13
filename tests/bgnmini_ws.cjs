@@ -163,7 +163,8 @@ async function partCarts(port) {
     ok(H.msgs.some((m) => m.t === 'cart' && m.k === 'u' && m.r === 0 && m.o === ram.b), 'it got thrown out of its cart (the cart rolls on empty)');
     for (let k = 0; k < 60; k++) { H.place(pos); await sleep(50); }
     const fell = H.evs('fell').find((e) => e.id === ram.b);
-    ok(fell && fell.by === H.id && fell.out === 1, 'into the void: out, and it\'s our knock-off');
+    ok(fell && fell.by === H.id && fell.out === 0 && fell.x.lives[fell.seat] === 1, 'into the void: a life gone (1 left), and it\'s our knock-off');
+    ok(await H.until(() => new Set(H.msgs.filter((m) => m.t === 'cart' && m.r === ram.b).map((m) => m.id)).size >= 2, 6000), 'it respawned straight into a fresh cart');
     const kill = H.msgs.find((m) => m.t === 'kill' && m.v === ram.b);
     ok(kill && kill.k === H.id && kill.w === 'void' && kill.via === 'cart', 'the kill feed says we price-checked it into the void');
   }
@@ -180,7 +181,7 @@ async function partCartWin(port) {
   ok(await W.until(() => W.evs('res').length, 120000), 'a bots-only bumper carts game ended');
   const r = W.evs('res')[0], mgSt = W.sts.find((s) => s.ph === 'mg' && s.mg && s.mg.id === 'carts'), pay = new Map(r.pay);
   ok(W.evs('ram').some((e) => e.a && e.b) && W.evs('boost').length > 0, `bots rammed (${W.evs('ram').length}) and boosted (${W.evs('boost').length})`);
-  ok(r.x.out.length === 3, `three went into the void (out: ${r.x.out.join(',')})`);
+  ok(r.x.out.length === 3 && r.x.out.every((i) => r.x.falls[i] === 2), `three went into the void twice each (out: ${r.x.out.join(',')})`);
   ok(!r.x.out.includes(r.place[0]) && pay.get(r.place[0]) === 10, `the last cart standing (seat ${r.place[0]}) is 1st and paid 10`);
   ok(r.place.slice(1).every((i, k, a) => k === 0 || r.x.out.indexOf(a[k - 1]) > r.x.out.indexOf(i)), 'the rest by who lasted longest');
   const took = mgSt ? W.evs('res')[0].at - mgSt.at : 1e9;

@@ -45,7 +45,7 @@ export function installBgnMini(Room, H) {
       if (!k) return;
       const n = now(), S = this.bgm = { k, t0: n, mg };
       if (k === 'carts') {
-        Object.assign(S, { out: new Set(), outAt: {}, outN: 0, falls: {}, kos: {}, pool: { 1: CM.lives, 2: CM.lives } }, this.bgmBox());
+        Object.assign(S, { out: new Set(), outAt: {}, outN: 0, falls: {}, kos: {}, pool: { 1: CM.lives, 2: CM.lives }, lives: Object.fromEntries(mg.seats.map((i) => [i, CM.solo])) }, this.bgmBox());
         for (const p of this.fighters()) { p.ride = 0; p.bgOffT = 0; p.bgBoostT = 0; if (p.alive) this.bgmMount(p); }
       } else if (k === 'ducks') Object.assign(S, { ducks: new Map(), id: 0, pile: {}, next: n + 1200, curseAt: n + DK.cursedEvery, curses: [], curseT: {} });
       else if (k === 'boss') this.bgmBossIn(def);
@@ -64,7 +64,7 @@ export function installBgnMini(Room, H) {
     bgmInfo() {
       const S = this.bgm;
       if (!S) return null;
-      if (S.k === 'carts') return { k: 'carts', out: [...S.out], pool: S.mg.teams ? S.pool : null, falls: S.falls };
+      if (S.k === 'carts') return { k: 'carts', out: [...S.out], pool: S.mg.teams ? S.pool : null, lives: S.mg.teams ? null : S.lives, falls: S.falls };
       if (S.k === 'ducks') return { k: 'ducks', pile: S.pile };
       if (S.k === 'boss') return { k: 'boss', id: S.boss, hp: S.lastHp ?? S.max ?? 0, max: S.max || 0, down: S.down ? 1 : 0 };
       return { k: S.k };
@@ -188,7 +188,7 @@ export function installBgnMini(Room, H) {
         this.bgnEv('ram', { a: by ? by.id : 0, b: t.id, s: r2(close) });
       }
     },
-    // into the void: out (2v2: off the team's lives first)
+    // into the void: a life gone (2v2: the team's), and out when there are none left
     bgmFell(t, by) {
       const S = this.bgm, mg = S.mg, s = this.bgnSeatOf(t);
       if (!s || !mg.seats.includes(s.i)) return;
@@ -197,6 +197,7 @@ export function installBgnMini(Room, H) {
       if (bs) S.kos[bs.i] = (S.kos[bs.i] || 0) + 1;
       let out = true;
       if (mg.teams && mg.sides) { const side = mg.sides[0].includes(s.i) ? 1 : 2; if (S.pool[side] > 0) { S.pool[side]--; out = false; } }
+      else { S.lives[s.i] = Math.max(0, (S.lives[s.i] ?? CM.solo) - 1); out = S.lives[s.i] <= 0; } // (1v1v1v1 / duel: your own lives)
       if (out) { S.out.add(s.i); S.outAt[s.i] = ++S.outN; t.respawnAt = t.minRespawnAt = Infinity; }
       this.bgnEv('fell', { seat: s.i, id: t.id, out: out ? 1 : 0, by: by && by !== t ? by.id : 0, x: this.bgmInfo() });
     },

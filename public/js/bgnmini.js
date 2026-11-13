@@ -55,7 +55,7 @@ const EV = {
     if (m.x) S.x = m.x;
     if (m.id !== G.myId) return;
     if (m.out) { S.out = true; S.outT = performance.now(); sfx.bgmOut(); hud.msg(N.call.cartOut, 2.6, 'lava'); setTimeout(() => hud.dead(true, [[m.by ? N.feed.cartDead : N.feed.cartDeadSelf, '#fff']]), 60); }
-    else hud.msg('-1 TEAM LIFE', 1.6, 'lava');
+    else hud.msg(m.x && m.x.pool ? '-1 TEAM LIFE' : '-1 LIFE', 1.6, 'lava');
   },
   cartback(m) { if (m.id === G.myId) hud.msg(N.call.cartBack, 1.2, 'brag'); },
   duck(m) { addDuck(m); },
@@ -157,7 +157,7 @@ function render(now) {
   if (!on) return;
   const B = S.B, mg = B.mg, me = mySeat();
   // only rebuild when something changed (the bars are styled in place)
-  const key = JSON.stringify([k, S.x.out, S.x.pool, S.piles, S.x.down, mg.seats, S.out, k === 'boss' ? Math.round((S.x.hp / Math.max(1, S.x.max)) * 200) : 0]);
+  const key = JSON.stringify([k, S.x.out, S.x.pool, S.x.lives, S.piles, S.x.down, mg.seats, S.out, k === 'boss' ? Math.round((S.x.hp / Math.max(1, S.x.max)) * 200) : 0]);
   if (key !== S.key) {
     S.key = key;
     S.dom.innerHTML = '';
@@ -173,7 +173,7 @@ function render(now) {
         const stripe = el('i', 'st'); stripe.style.background = s.color; c.append(stripe);
         const nm = el('b', null, s.name); nm.style.color = s.color; c.append(nm);
         if (k === 'ducks') { const v = el('em'); v.append(el('i', 'bm-duck'), String(S.piles[i] || 0)); c.append(v); }
-        else c.append(el('em', null, out ? 'OUT' : 'STILL IN'));
+        else c.append(el('em', null, out ? 'OUT' : S.x.lives && S.x.lives[i] != null ? '♥'.repeat(S.x.lives[i]) : 'STILL IN'));
         return c;
       };
       if (mg.teams && mg.sides) mg.sides.forEach((side, t) => {
@@ -245,6 +245,13 @@ export function miniRideCam(cam, dt) {
   return true;
 }
 export const miniHideVM = () => kind() === 'carts' && !!ME.ride && ME.alive;
+// main.js's round line: the minigame's name and the clock (null = the usual)
+export function miniRoundText(r, clock) {
+  const k = kind();
+  if (!k || !r || r.over || !S.B.mg) return null;
+  const nm = (BGN_MINIS[S.B.mg.id] || {}).name || '';
+  return `${S.B.mg.sd ? N.call.sd + ' · ' : ''}${nm} · ${clock(r.left)}`;
+}
 // main.js's kill feed: bumper carts' void lines. null = the usual
 export function miniFeed(m, kn, kc, vn, vc) {
   if (kind() !== 'carts' || m.w !== 'void') return null;
@@ -265,6 +272,7 @@ export function miniIntro(mg) {
 // the results card: what each seat did (boss damage + MVP, ducks, still in / out)
 export function miniRes(r, i) {
   const x = r.x || {};
+  if (r.id === 'bigguy' && r.sc) return i === r.one ? `${r.sc[1]} pts (kills x3)` : r.sides && r.sides[0][0] === i ? `the three: ${r.sc[0]} kills` : '';
   if (r.fmt === 'boss' && r.dmg) { const d = r.dmg.find((e) => e[0] === i); return `${d ? d[1] : 0} dmg${r.mvp === i ? ` · ${N.call.mvp}` : ''}`; }
   if (BGN_MINIS[r.id] && BGN_MINIS[r.id].game === 'bgducks' && x.pile) return `${x.pile[i] || 0} ducks`;
   if (BGN_MINIS[r.id] && BGN_MINIS[r.id].game === 'bgcarts' && x.falls) return x.out && x.out.includes(i) ? 'OUT' : x.falls[i] ? `${x.falls[i]} fall${x.falls[i] > 1 ? 's' : ''}` : 'never fell';

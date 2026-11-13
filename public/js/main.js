@@ -77,7 +77,7 @@ import { BR } from '/shared/royale.js'; // (the grapple charges, for the help te
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
 import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
-import { miniMouse, miniCam, miniFeed, miniRideCam, miniHideVM } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
+import { miniMouse, miniCam, miniFeed, miniRideCam, miniHideVM, miniRoundText } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
@@ -2974,6 +2974,7 @@ function renderRound(r) {
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
   const ct = chaosRoundText(r);
   if (ct) el.textContent = ct;
+  const bt = miniRoundText(r, fmtClock); if (bt) el.textContent = bt; // board game night's own minigames: no "first to 999"
   if (r.game === 'br' && !r.over) el.textContent = 'last one standing wins';
   if (r.game === 'island' && !r.over) el.textContent = 'last squad standing wins'; // battle island // jank royale: the zone clock is in its own panel
 }
