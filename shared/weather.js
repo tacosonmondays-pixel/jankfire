@@ -129,7 +129,7 @@ export function wxBombs(plan, t) {
   if (BOMBS.has(key)) return BOMBS.get(key);
   const p = plan.ph[i], K = WX_KINDS.erupt, r = wxRand((plan.s ^ Math.imul(i + 7, 0x85ebca6b)) >>> 0), out = [];
   const [vx, vy, vz] = w.vent, map = MAPS[plan.m], top = vy + 60, b0 = p[0] + K.build, b1 = Math.max(b0 + 10, p[1] - K.settle) - 4;
-  for (let t0 = b0 + 0.6; t0 < b1 && out.length < 600; t0 += 0.35 + r() * 0.8) {
+  for (let t0 = b0 + 0.6; t0 < b1 && out.length < 900; t0 += 0.2 + r() * 0.45) {
     const ang = r() * Math.PI * 2, d = 9 + 58 * Math.pow(r(), 1.4), x = vx + Math.cos(ang) * d, z = vz + Math.sin(ang) * d;
     const hit = map ? raycast([x, top, z], [0, -1, 0], top + 60, map.boxes) : null;
     const sea = map && Number.isFinite(map.seaY) ? map.seaY : -Infinity, y = hit ? Math.max(top - hit.t, sea) : Number.isFinite(sea) ? sea : 0; // (in the sea: on the water)

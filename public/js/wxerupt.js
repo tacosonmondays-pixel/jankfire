@@ -58,7 +58,7 @@ export function eruptFrame(dt, plan, t, on, test) {
   const w = wxOf(MAP.id);
   let ph = null, P = plan;
   if (on && w && w.vent) {
-    if (test) { ph = [t - test.at - 35, t - test.at - 35 + (test.len || 140), 'erupt', 1]; P = { m: MAP.id, s: 4242, ph: [ph] }; }
+    if (test) { ph = [0, test.len || 140, 'erupt', 1]; P = { m: MAP.id, s: 4242, ph: [ph] }; t = test.at + 35; } // (its own clock: at = s since the blast)
     else if (plan) ph = plan.ph.find((p) => p[2] === 'erupt' && t >= p[0] && t < p[1]) || null;
   }
   const K = ph ? load() : (E.kit && typeof E.kit === 'object' ? E.kit : null);

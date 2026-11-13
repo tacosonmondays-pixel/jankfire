@@ -79,7 +79,7 @@ AT.paint('bomb', bomb_tex); AT.paint('lava', lava_tex); AT.paint('fx', fx_tex); 
 sc = reset()
 bpy.context.preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
 IMG = AT.image('wx_erupt_atlas')
-M_ASH = material('wx_m_ash', vcol=True, rough=1.0, double=False)  # (no glow: a flat glow would wash the dark ash out to grey)
+M_ASH = material('wx_m_ash', vcol=True, rough=1.0, double=False)  # (no glow: a flat glow would wash the bands out to one grey)
 M_BOMB = material('wx_m_bomb', IMG, rough=0.8, emit=1.4)
 M_TRAIL = material('wx_m_trail', IMG, rough=1.0, emit=0.5, clip=True)
 M_SPLAT = material('wx_m_splat', IMG, rough=0.4, emit=1.6, clip=True)
@@ -108,11 +108,11 @@ def puffs(name, list_, colour):
 
 
 def ash_colour(y, n, c, r):  # dark ash, a lit top, the crater's orange under the low puffs
-    if n.y < -0.3 and y < 18: return 0xff7a2a if y < 9 else 0xd0582a
-    if n.y > 0.55: return 0xb8acbc if y > 30 else 0x9a8e9e
-    if n.y < -0.55: return 0x1e1626  # (a near-black belly: the comic ink)
-    if n.x > 0.45: return 0x6e6272
-    return 0x4c4254 if y > 20 else 0x3c3444
+    if n.y < -0.45 and y < 6: return 0xc0562a  # (the crater's glow, just under the lowest puffs)
+    if n.y > 0.55: return 0xd0c4d4 if y > 30 else 0xb4a8b8
+    if n.y < -0.55: return 0x2a2032  # (a near-black belly: the comic ink)
+    if n.x > 0.45: return 0x847888
+    return 0x62586c if y > 20 else 0x54485c
 
 
 # the column: from the vent, leaning a little east (the islands' wind), fattening into a mushroom top
