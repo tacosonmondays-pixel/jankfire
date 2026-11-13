@@ -283,16 +283,16 @@ export function wxPre() {
   if (sun) sun.intensity = sun.intensity * (1 - 0.65 * dk) + 1.5 * f;
   if (sky.sky) sky.sky.material.color.lerp(STORM_SKY, 0.75 * dk).lerp(FLASH, 0.6 * f);
   if (e > 0.002 || ef > 0.002) { // the eruption: ash-brown haze closing in, an orange sky, the sun gone dull and red, the boom's flash
-    fog.near *= 1 - 0.5 * e; fog.far *= 1 - 0.45 * e; fog.color.lerp(ASH_FOG, 0.6 * e).lerp(ERUPT_FLASH, 0.4 * ef);
-    if (hemi) { hemi.intensity = hemi.intensity * (1 - 0.25 * e) + 1.2 * ef; hemi.color.lerp(ASH_HEMI, 0.55 * e).lerp(ERUPT_FLASH, 0.4 * ef); }
-    if (sun) { sun.intensity = sun.intensity * (1 - 0.5 * e) + 1.2 * ef; sun.color.lerp(ASH_SUN, 0.6 * e); }
-    if (sky.sky) sky.sky.material.color.lerp(ASH_SKY, 0.8 * e).lerp(ERUPT_FLASH, 0.5 * ef);
-    for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(ASH_SKY, 0.55 * e));
+    fog.near *= 1 - 0.55 * e; fog.far *= 1 - 0.5 * e; fog.color.lerp(ASH_FOG, 0.8 * e).lerp(ERUPT_FLASH, 0.4 * ef);
+    if (hemi) { hemi.intensity = hemi.intensity * (1 - 0.3 * e) + 1.2 * ef; hemi.color.lerp(ASH_HEMI, 0.75 * e).lerp(ERUPT_FLASH, 0.4 * ef); }
+    if (sun) { sun.intensity = sun.intensity * (1 - 0.55 * e) + 1.2 * ef; sun.color.lerp(ASH_SUN, 0.85 * e); }
+    if (sky.sky) sky.sky.material.color.lerp(ASH_SKY, 0.95 * e).lerp(ERUPT_FLASH, 0.5 * ef);
+    for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(ASH_SKY, 0.75 * e));
   }
   if (el.hide) for (const o of wisp()) { SAVE.vis.push([o, o.visible]); o.visible = false; } // (the volcano's old wisp: the column has swallowed it)
   if (Math.max(dk, e) > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
 }
-const ASH_FOG = new THREE.Color(0x5a3a34), ASH_SKY = new THREE.Color(0x9a5a44), ASH_HEMI = new THREE.Color(0xffa070), ASH_SUN = new THREE.Color(0xff6a2a), ERUPT_FLASH = new THREE.Color(0xffb060);
+const ASH_FOG = new THREE.Color(0x6a3426), ASH_SKY = new THREE.Color(0xc0502a), ASH_HEMI = new THREE.Color(0xff8a4a), ASH_SUN = new THREE.Color(0xff5a1a), ERUPT_FLASH = new THREE.Color(0xffb060);
 // the volcano's smoke wisp: the arch meshes drawn with its see-through smoke materials (archfield.js names them arch_<name>)
 const WISP = /^arch_b(wisp|smoke)/;
 let wispList = [], wispKey = '', wispT = 0;
