@@ -172,7 +172,7 @@ function mark(o) {
   const m = Array.isArray(o.material) ? o.material[0] : o.material;
   if (!m) return;
   const see = !(m.transparent && m.opacity < 0.95) && m.blending === THREE.NormalBlending && m.side !== THREE.BackSide && m.depthWrite !== false && m.colorWrite !== false;
-  o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && (castAny || big(o));
+  if (!o.userData.castBy) o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && (castAny || big(o)); // (castBy: its owner decides, the city stream casts only the chunks round you)
   o.receiveShadow = see && !o.userData.noShadow && !m.isMeshBasicMaterial && !m.isShaderMaterial && !m.isMeshNormalMaterial;
 }
 function sweep() {
@@ -337,6 +337,14 @@ function remoteShadow(r) {
   const cx = root.position.x - rq.cx, cz = root.position.z - rq.cz;
   if (cast && root.visible && cx * cx + cz * cz < rq.half2) { rq.dyn = true; if (r.shadow) r.shadow.visible = false; }
 }
+// a checksum of where everything in o is: the same number means nothing in it moved, turned, scaled, came or went
+let _ps = 0, _pn = 0;
+function poseAdd(c) {
+  _pn++;
+  if (c.matrixAutoUpdate) { const p = c.position, q = c.quaternion, k = c.scale; _ps += _pn * (p.x * 1.31 + p.y * 1.77 + p.z * 1.13 + q.x * 3.07 + q.y * 2.33 + q.z * 2.91 + q.w * 1.93 + k.x * 0.71 + k.y * 0.83 + k.z * 0.97); }
+  else { const e = c.matrix.elements; _ps += _pn * (e[0] + e[1] * 2.1 + e[5] * 1.3 + e[8] * 2.3 + e[10] * 1.7 + e[12] * 1.11 + e[13] * 1.29 + e[14] * 1.41); }
+}
+function poseSig(o) { _ps = 0; _pn = 0; o.traverseVisible(poseAdd); return _ps + _pn * 1e-3; }
 export function updateLighting(dt) {
   if (!L.sun) return;
   const f = ++L.frame;
@@ -381,14 +389,17 @@ export function updateLighting(dt) {
   // remotes: real shadows close up (blob far away), and they make the map refresh
   rq.near2 = q.near * q.near; rq.half2 = q.half * q.half * 0.8; rq.dyn = false; rq.cx = ctr.x; rq.cz = ctr.z; rq.px = cam.position.x; rq.pz = cam.position.z;
   G.remotes.forEach(remoteShadow);
-  let dyn = rq.dyn;
-  for (let i = 0; i < L.dyn.length && !dyn; i++) {
+  // the rest only make it redraw when something in them moved since the last redraw (a story extra's 12 fps pose, a
+  // walker, a prop coming or going): standing still, the shadows are already right
+  let sig = 0;
+  for (let i = 0; i < L.dyn.length; i++) {
     const o = L.dyn[i];
     if (!o.visible || !o.parent) continue;
     const dx = o.position.x - ctr.x, dz = o.position.z - ctr.z;
-    if (dx * dx + dz * dz < rq.half2) dyn = true;
+    if (dx * dx + dz * dz < rq.half2) sig += (i + 1) * 0.618 + poseSig(o);
   }
-  if (need || (dyn && f % q.every === 0)) { L.sun.shadow.needsUpdate = true; L.dirty = false; lightStats.passes++; }
+  const dyn = rq.dyn || sig !== L.dynSig;
+  if (need || (dyn && f % q.every === 0)) { L.sun.shadow.needsUpdate = true; L.dirty = false; lightStats.passes++; L.dynSig = sig; }
 }
 
 // ------------------------------------------------------------ baked AO (world.js calls these while building the map)

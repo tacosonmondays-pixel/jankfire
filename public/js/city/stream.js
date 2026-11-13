@@ -43,7 +43,7 @@ function groupOf(mesh, mats, lod) {
     const b = mesh[k];
     if (!b) continue;
     const m = new THREE.Mesh(geoOf(b), mats[k]);
-    m.matrixAutoUpdate = false; m.userData.kind = k;
+    m.matrixAutoUpdate = false; m.userData.kind = k; m.userData.castBy = 'stream';
     if (k === 'glass' || k === 'acid') m.renderOrder = 2;
     m.receiveShadow = lod === 0; m.castShadow = lod === 0 && k !== 'glass' && k !== 'glow';
     g.add(m); bytes += bytesOf(b); tris += b.tris;
@@ -238,7 +238,7 @@ export class CityStream {
     g.setAttribute('color', new THREE.BufferAttribute(m.mesh.col.subarray(0, m.mesh.verts * 3), 3, true));
     g.setIndex(new THREE.BufferAttribute(m.mesh.idx.subarray(0, m.mesh.tris * 3), 1));
     if (m.mesh.min) { g.boundingBox = new THREE.Box3(new THREE.Vector3(...m.mesh.min), new THREE.Vector3(...m.mesh.max)); g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere()); } else g.computeBoundingSphere(); // (the worker's bounds: no 25 ms pass over every vertex here)
-    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
+    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { castBy: 'stream', tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
     this.root.add(this.far.mesh);
   }
 
