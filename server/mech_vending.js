@@ -16,8 +16,9 @@ const rng = (k) => Math.random() < k; // (STUCK and JAMMED: the server's dice, n
 export function installVending(Room, U) {
   const { now, vec3, r2, send, KIT, clear, hdist } = U;
   const fwdOf = (p) => [-Math.sin(p.yaw), -Math.cos(p.yaw)];
-  const slotOf = (p) => { const f = fwdOf(p); return [p.pos[0] + f[0] * 0.9, p.pos[1] + 4.0, p.pos[2] + f[1] * 0.9]; }; // the coin slot (mk_muzzle)
-  const flapOf = (p) => { const f = fwdOf(p); return [p.pos[0] + f[0] * 1.2, p.pos[1] + 1.5, p.pos[2] + f[1] * 1.2]; }; // the delivery flap (mk_drop)
+  const S = () => MECH.scale || 1; // (the size-1 machine's spots x the shared mech size)
+  const slotOf = (p) => { const f = fwdOf(p), k = S(); return [p.pos[0] + f[0] * 0.9 * k, p.pos[1] + 4.0 * k, p.pos[2] + f[1] * 0.9 * k]; }; // the coin slot (mk_muzzle)
+  const flapOf = (p) => { const f = fwdOf(p), k = S(); return [p.pos[0] + f[0] * 1.2 * k, p.pos[1] + 1.5 * k, p.pos[2] + f[1] * 1.2 * k]; }; // the delivery flap (mk_drop)
   const W = (room) => room._vm || (room._vm = { colas: new Map(), walls: new Map(), nc: 0, nw: 0, listT: 0 });
   const ally = (room, a, b) => !!a && !!b && (a === b || room.friendly(a, b));
 
@@ -61,7 +62,7 @@ export function installVending(Room, U) {
     vmKick(p, t, n) {
       const V = t.mech && t.mech.vm;
       if (!V || !(V.jam > n) || p.mech || p === t || !this.friendly(p, t)) return false;
-      if (hdist(p.pos, t.pos) > VM.jam.reach + VM.hw || Math.abs(p.pos[1] - t.pos[1]) > 3) return false;
+      if (hdist(p.pos, t.pos) > VM.jam.reach + VM.hw || Math.abs(p.pos[1] - t.pos[1]) > 3 * S()) return false;
       V.jam = 0;
       this.broadcast({ t: 'mech', k: 'vmkick', id: t.id, by: p.id });
       this.vmColaAt(t, this.vmDropSpot(t, null), 'kick');
@@ -94,7 +95,7 @@ export function installVending(Room, U) {
       const spot = this.vmDropSpot(p, at), x2 = rng(VM.stuck);
       this.vmColaAt(p, spot, x2 ? 'x2' : '');
       if (x2) {
-        const f = fwdOf(p), side = [-f[1], f[0]], s2 = this.vmFloor([spot[0] + side[0] * 0.9, spot[1], spot[2] + side[1] * 0.9]) || spot;
+        const f = fwdOf(p), side = [-f[1], f[0]], s2 = this.vmFloor([spot[0] + side[0] * 0.9 * S(), spot[1], spot[2] + side[1] * 0.9 * S()]) || spot;
         this.vmColaAt(p, s2, 'x2');
         this.broadcast({ t: 'mech', k: 'vmstuck', id: p.id, w: 'disp' });
       }
@@ -107,7 +108,7 @@ export function installVending(Room, U) {
     vmDropSpot(p, at) {
       const fl = flapOf(p), C = VM.cola;
       if (at && hdist(at, fl) <= C.toss + 0.5 && Math.abs(at[1] - p.pos[1]) < 4 && clear(fl, [at[0], at[1] + 0.4, at[2]], this.boxes)) { const g = this.vmFloor(at); if (g) return g; }
-      const f = fwdOf(p), h = raycast([p.pos[0], p.pos[1] + 0.6, p.pos[2]], [f[0], 0, f[1]], 2.9, this.boxes), k = h ? Math.max(1.3, h.t - 0.5) : 2.4;
+      const f = fwdOf(p), z = S(), h = raycast([p.pos[0], p.pos[1] + 0.6, p.pos[2]], [f[0], 0, f[1]], 2.9 * z, this.boxes), k = h ? Math.max(1.3 * z, h.t - 0.5) : 2.4 * z;
       return this.vmFloor([p.pos[0] + f[0] * k, p.pos[1] + 0.5, p.pos[2] + f[1] * k]) || [p.pos[0], p.pos[1], p.pos[2]];
     },
     vmFloor(at) { const h = raycast([at[0], at[1] + 1.2, at[2]], [0, -1, 0], 6, this.boxes); return h && !h.box.pad ? [at[0], h.point[1], at[2]] : null; },
@@ -143,7 +144,7 @@ export function installVending(Room, U) {
       if (this.vmWallOf(p.id)) { this.mechNo(p, 'one wall at a time'); return false; }
       if (this.vmJam(p, n, 'wall')) return false;
       M.cd.wall = n + Wl.cd * 1000;
-      const f = fwdOf(p), h = raycast([p.pos[0], p.pos[1] + 1, p.pos[2]], [f[0], 0, f[1]], Wl.at + 0.5, this.boxes), k = h ? Math.max(1.6, h.t - 0.5) : Wl.at;
+      const f = fwdOf(p), h = raycast([p.pos[0], p.pos[1] + 1, p.pos[2]], [f[0], 0, f[1]], Wl.at + 0.5, this.boxes), k = h ? Math.max(MECH.vending.hw + 0.4, h.t - 0.5) : Wl.at;
       const g = this.vmFloor([p.pos[0] + f[0] * k, p.pos[1] + 1, p.pos[2] + f[1] * k]) || [p.pos[0] + f[0] * k, p.pos[1], p.pos[2] + f[1] * k];
       const x2 = rng(VM.stuck), S = W(this);
       const w = { id: ++S.nw, o: p.id, p: g.map(r2), yaw: r2(p.yaw), hp: Wl.hp * (x2 ? 2 : 1), max: Wl.hp * (x2 ? 2 : 1), until: n + Wl.life * 1000, x2, hitT: 0, acc: 0 };

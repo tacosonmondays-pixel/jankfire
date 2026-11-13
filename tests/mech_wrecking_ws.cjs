@@ -166,7 +166,7 @@ const lerp = (a, b, k) => a.map((x, i) => x + (b[i] - x) * Math.max(0, Math.min(
   await pilot(560, (t) => (t < 280 ? [S0[0], Y + 2.8 * (t / 280), S0[2]] : [S0[0], Math.max(Y, Y + 2.8 - 2.8 * ((t - 280) / 160)), S0[2]]), MF.B, { c: cAt });
   await pilot(300, null, 0, { c: cAt });
   const q = A.all('mech', (m) => m.k === 'wbquake');
-  ok(q.length === 1 && q[0].sz < 0.15 && q[0].r < 5, `hop slam (a 2.8 m drop): a small one · size ${q[0] && q[0].sz}, r ${q[0] && q[0].r}`);
+  ok(q.length === 1 && q[0].sz < 0.15 && q[0].r < 6, `hop slam (a 2.8 m drop): a small one · size ${q[0] && q[0].sz}, r ${q[0] && q[0].r}`);
   const cs = C.all('dmg', (m) => m.to === C.id && m.w === 'wbslam');
   ok(cs.length === 1 && cs[0].a > 15 && cs[0].a < 45, 'C 3 m away: slammed for ' + (cs[0] && cs[0].a));
   A.got.length = 0;

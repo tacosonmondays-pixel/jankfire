@@ -10,10 +10,11 @@ import { installBody } from './bodyhp.js'; // the wrecking ball + rig last until
 import { BODY, bodyKinds } from '../shared/bodyhp.js';
 import { rigClash } from '../shared/rig.js'; // overdrive rig killstreak
 import { installMech } from './mech.js'; // mech drop killstreak
-import { MECH, FRAMES, mechClash, mechFrame } from '../shared/mech.js';
+import { MECH, FRAMES, mechClash, mechFrame, mechScale } from '../shared/mech.js';
 import { soapAt, trapBoxes, trapPreroll } from '../shared/wand.js';
 import { MAPS, MAP_ORDER } from '../shared/map.js';
-import { warmMap, startGraphSweeper } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
+import { buildEdited, dropEdited } from '../shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS rooms
+import { warmMap, startGraphSweeper, forgetMap } from './graphs.js'; // the bots' walk graphs: built at room start, dropped when no room has used the map for a while
 import { sdRate } from '../shared/sdgun.js';
 import { GAMES, GAME_ORDER, TEAMS, TARGETS, BOMB, TAG_LIFE, VOTE_MS, siteAt, mapsFor, mapForGame, canDefuse, LADDER, GUNGAME, INFECT, rollLadder } from '../shared/modes.js';
 import { VOTE, voteTotal, modeCards, mapCards, tally, winner as voteWinner, eventGame, inQuickPlay } from '../shared/vote.js';
@@ -37,7 +38,10 @@ import { OOB, outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { Traffic } from './traffic.js'; // cars on the roads (server/traffic.js)
 import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared/secrets.js'; // hidden NPCs + cats
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
+import { teamPlan } from './partyteams.js'; // parties stay on one side
+import { ticketRoom } from './party.js'; // party tickets (roomFor)
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
+import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
 import { BR } from '../shared/royale.js';
 import { tickHR, hrBot } from './hrguy.js'; // the Tall Guy From HR (Scary Forest)
@@ -196,6 +200,8 @@ if (process.env.JF_VM_JAM != null) MECH.vending.jam.p = Number(process.env.JF_VM
 if (process.env.JF_VM_STUCK != null) MECH.vending.stuck = Number(process.env.JF_VM_STUCK) || 0; // ...and its STUCK (x2) chance
 if (process.env.JF_MECH_HP) for (const f of FRAMES) BODY[f].hp = MECH[f].hp = Math.max(1, Math.round(MECH[f].hp * (Number(process.env.JF_MECH_HP) || 1))); // test knob: x the mechs' armour (0.2 = quick ejects)
 if (process.env.JF_MECH_ULT) for (const f of FRAMES) if (MECH[f].ult) { const k = Math.max(0.01, Number(process.env.JF_MECH_ULT) || 1); MECH[f].ult.time /= k; MECH[f].ult.dmg /= k; } // test knob: the heroes' ultimates charge x times faster (100 = full in about a second)
+if (process.env.JF_MECH_SLOW) MECH.wrecking.pile.slow = Math.max(1, Math.min(30, Number(process.env.JF_MECH_SLOW) || 1)); // test knob: the pile driver's server windows x this long (screenshots on slow software-GL browsers)
+if (process.env.JF_MECH_SCALE) mechScale(Number(process.env.JF_MECH_SCALE)); // test knob: how big the mechs are (x the size-1 mechs, 0.5 - 2; 1 = the old 4.9 m / 5.7 m). the welcome tells clients
 if (process.env.JF_BODY_DECAY) for (const k of bodyKinds) BODY[k].decay *= Number(process.env.JF_BODY_DECAY) || 1; // test knob: the ball / rig wear out faster
 // test knobs for gun game (everyone starts on a later rung) and infection (round length, patient zero delay, in seconds)
 const GG_START = Math.max(0, Math.min(LADDER.length - 1, Math.floor(Number(process.env.JF_GG_START) || 0)));
@@ -374,9 +380,10 @@ class Room {
   assignTeams() {
     const list = this.fighters().sort((a, b) => (a.isBot - b.isBot) || (Math.random() - 0.5));
     let i = 0;
+    const plan = list.some((p) => p.party) ? teamPlan(list) : null; // (parties stay on one side: server/partyteams.js)
     for (const p of list) {
       if (!p.ownColor) p.ownColor = p.color;
-      if (this.teamsOn()) { p.team = (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
+      if (this.teamsOn()) { p.team = plan ? plan.get(p) : (i++ % 2) + 1; p.color = TEAMS[p.team].color; }
       else { p.team = 0; p.color = (p.look && p.look.color) || p.ownColor; }
     }
     this.broadcast({ t: 'teams', game: this.game, list: list.map((p) => [p.id, p.team, p.color]) });
@@ -409,8 +416,10 @@ class Room {
   }
   joinTeam(p) {
     if (!p.ownColor) p.ownColor = p.color;
+    if (!p.party && p.ws && p.ws.partyId) p.party = p.ws.partyId; // (came in on a party ticket: roomFor)
     if (!this.teamsOn()) { p.team = 0; return; }
-    p.team = this.teamFor();
+    const mate = p.party && [...this.players.values()].find((q) => q !== p && q.party === p.party && q.team);
+    p.team = mate ? mate.team : this.teamFor(); // a party joins its mates' side
     p.color = TEAMS[p.team].color;
   }
 
@@ -458,9 +467,10 @@ class Room {
   info(p) { return { id: p.id, name: p.name, color: p.color, skins: p.skins, bot: p.isBot, level: p.level, look: p.look, card: p.card || '', team: p.team || 0, grap: p.grap || 'rope' }; }
 
   addHuman(ws, m) {
+    if (ws && ws.partyId && this.partyCfg) m = { ...m, cfg: this.partyCfg }; // a party's private match: the leader's settings (server/party.js), not whoever got here first
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
-      if (has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map;
+      if (!this.editMap && has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map; // (an edited map's room keeps it)
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
@@ -492,7 +502,7 @@ class Room {
     // in from the start (or close enough): your Never Landed run counts. the welcome below is your first spawn
     if (this.round && !this.round.over && !this.warm && now() - (this.round.t0 || 0) < AIR.join && !GAMES[this.game].lava && !GAMES[this.game].royale) p.air = { ok: !(this.airBad && this.airBad.has(name)), rest: 0 };
     send(p, {
-      t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg,
+      t: 'welcome', id: p.id, name, color: p.color, pos: p.pos, q: p.seq, mode: this.mode, cfg: this.cfg, ms: MECH.scale,
       players: [...this.players.values()].filter((o) => o !== p).map((o) => this.info(o)),
       peels: [...this.peels.values()].map((pl) => ({ id: pl.id, p: pl.p })),
       projs: [...this.projectiles.values()].map((pr) => ({ id: pr.id, k: pr.k, p: pr.p, v: pr.v, o: pr.o })),
@@ -545,7 +555,7 @@ class Room {
     if (this.livesOn) this.oitcList(); // so 'N left' drops them
     if (!p.isBot) skipPeople(this); // a skip vote's majority moved
     if (!p.isBot && (this.mode === 'ffa' || this.mode === 'coop')) this.broadcast({ t: 'chat', id: 0, m: `${p.name} left` });
-    if (!this.humans().length) rooms.delete(this.id);
+    if (!this.humans().length) { rooms.delete(this.id); if (this.editMap) { forgetMap(this.editMap); dropEdited(this.editMap); console.log('[edit] dropped ' + this.editMap); } } // (the edited map goes with its room)
     else if (!p.isBot && this.mode === 'bots') this.fillBots(); // a human left: a bot takes the place back
   }
 
@@ -1643,7 +1653,7 @@ class Room {
     return true;
   }
   rangeOk(p, t, range) {
-    const slack = 6 + Math.hypot(...p.vel) * 0.3 + Math.hypot(...t.vel) * 0.3;
+    const slack = 6 + this.speedOf(p) * 0.3 + this.speedOf(t) * 0.3; // (speedOf: the claimed speed, but no faster than the snapshots saw them move: a fake 1e5 m/s velocity used to stretch every hit's reach)
     return dist3(p.pos, t.pos) <= range + slack;
   }
   // most pellets a shot could honestly land at this distance: the spread disc vs the (client-side, distance-scaled) hitbox, with slack.
@@ -1703,6 +1713,7 @@ class Room {
   onHit(p, m) {
     if (this.rigOn(p) || this.mechOn(p)) return; // no guns in the overdrive rig or a mech: their hits are judged in server/rig.js / mech.js
     if (!this.chaosHit(p, m)) return; // chaos kits: only their weapons; one in the chamber's bullet
+    if (m.mk !== undefined) { this.mechShot(p, m); return; } // a shot / swing at an empty mech (server/mech.js)
     const w = has(WEAPONS, m.w) && WEAPONS[m.w];
     const t = this.players.get(m.to);
     const d = norm(vec3(m.d));
@@ -1805,6 +1816,7 @@ class Room {
       this.hurt(t, p, 'blower', Math.random() < 0.3 ? 1 : 0, [toT[0] * w.push, toT[1] * w.push + 1.2, toT[2] * w.push]);
     } else if (m.w === 'hook') {
       if (!this.pairOk(p, t, 'hook', 400) || !this.rangeOk(p, t, HOOK.range)) return;
+      if (this.zm && p.z) { if (!this.zsHookUse(p)) return; p.z.hookPush = now(); } // zombies: a grab spends a charge too (none: no tug)
       this.hurt(t, p, 'hook', 0, [-toT[0] * HOOK.tug, -toT[1] * HOOK.tug + 5, -toT[2] * HOOK.tug]);
     }
     if (m.w === 'shredder') this.shredPull(p, t);
@@ -2148,9 +2160,10 @@ class Room {
   explodeAt(p, owner, wid, R, dmg, kb) {
     this.broadcast({ t: 'boom', p: p.map(r2), r: R });
     this.traffic.blast(p, R, dmg, kb, owner);
+    this.mechBoom(p, R, dmg, owner, wid); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
-      const c = center(t), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
+      const c = this.mechBlastPt(t, p), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to); // (a mech: the nearest point of its frame)
       if (dist > R) continue;
       const f = 1 - dist / R, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
       const self = owner && t.id === owner.id;
@@ -2164,9 +2177,10 @@ class Room {
     const owner = this.players.get(pr.o);
     this.broadcast({ t: 'pd', id: pr.id, p: pr.p.map(r2), x: 1 });
     this.traffic.blast(pr.p, w.radius, w.dmg, w.kb, owner);
+    this.mechBoom(pr.p, w.radius, w.dmg, owner, 'chicken'); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
-      const c = center(t);
+      const c = this.mechBlastPt(t, pr.p); // (a mech: the nearest point of its frame)
       const dx = c[0] - pr.p[0], dy = c[1] - pr.p[1], dz = c[2] - pr.p[2];
       const dist = Math.hypot(dx, dy, dz);
       if (dist > w.radius) continue;
@@ -2373,6 +2387,7 @@ class Room {
         hit = stepProjectile(pr, dt, this.boxes, w.grav);
       }
       if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && this.traffic.projHit(pr, prev, owner)) continue; // hit a car
+      if (pr.k !== 'duck' && pr.k !== 'frag' && pr.k !== 'smokegren' && pr.k !== 'slipper' && pr.k !== 'calc' && this.mechProjHit(pr, prev, owner)) continue; // hit an empty mech (server/mech.js)
       if (this.parryProj(pr, prev)) continue; // batted back by a katana parry
       if (this.vmProj && this.vmProj(pr, prev, owner)) continue; // stopped by an enemy OUT OF ORDER wall (grenades bounce off it)
       if (pr.k === 'duck') {
@@ -2391,7 +2406,8 @@ class Room {
         }
       } else {
         const ownerImmune = pr.k === 'slipper' ? Infinity : pr.k === 'bowling' ? 0.5 : 0.25;
-        const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && age < ownerImmune) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
+        // (a thrown card never hurts its thrower, and leaving the hand on a diagonal it starts inside their box: it used to hit them and vanish)
+        const victims = this.sweep(prev, pr.p, pr.r, (t) => (t.id === pr.o && (age < ownerImmune || pr.k === 'card')) || (pr.hit.has(t.id) && n - pr.hit.get(t.id) < 700) || (this.friendly(owner, t) && !t.trap));
         if (victims.length) {
           if (pr.k === 'calc') { this.calcHit(pr, owner, victims[0]); continue; } // pop quiz: freeze them with a question
           if (pr.k === 'chicken') { pr.p = victims[0].at; this.projectiles.delete(pr.id); this.explode(pr); continue; }
@@ -2881,6 +2897,7 @@ class Room {
         if (has(WEAPONS, m.w) && (!this.chaosKit || this.chaosKit.slots.includes(m.w))) p.w = m.w;
         const only = this.modeWeapon(p);
         if (only) p.w = only; // everyone sees what you're really allowed to hold
+        if (this.zm && p.z) this.zsHookSnap(p, m); // zombies: the grapple runs on charges (server/zmshop.js)
         p.g = vec3(m.g);
         p.f = num(m.f) | 0;
         this.lassoSnap(p); // on the end of a lasso: the rope has you, not your client (and no grapple). spinning one: noted
@@ -3200,6 +3217,7 @@ class Room {
   // switch game type (bots setup / match settings / the vote)
   setGame(g) {
     if (!has(GAMES, g)) return false;
+    if (this.editMap) { const m = MAPS[this.editMap]; if (!m || !GAMES[g].zombies !== !m.zm || (GAMES[g].sites && !(m.sites && m.sites.length)) || (GAMES[g].mapOk && !GAMES[g].mapOk(m))) return false; } // (an edited map's room plays its edited map, or not that mode)
     if (!GAMES[g].zombies !== !(MAPS[this.cfg.map] && MAPS[this.cfg.map].zm)) { const ok = mapsFor(g, MAPS, MAP_ORDER); this.cfg.map = ok.includes('islands') ? 'islands' : ok.includes(ZM.testMap) ? ZM.testMap : ok[0]; this.smokes.clear(); } // zombies comes with its own map (JF_ZM_MAP: which)
     const id = mapForGame(g, MAPS, this.cfg.map), m = MAPS[id]; // a map with an S&D version: Plant & Defuse plays that, the rest the standard one
     if (GAMES[g].sites && !(m.sites && m.sites.length)) return false;
@@ -4001,6 +4019,7 @@ class Room {
 
 installRoyale(Room, { send, movePlayer });
 installIsland(Room, { send, movePlayer }); // battle island's squad rules (server/island.js)
+installIsleMeter(Room, { send }); // battle island's heroes + mech meter (server/islemeter.js)
 installBotFlair(Room, BOTCHAT_KNOBS); // bot outfits, chat, sprays (server/botflair.js)
 installRig(Room, { now, num, vec3, norm, r2, center, safe, REC_T, WEAPONS }); // the overdrive rig's methods (server/rig.js)
 installBody(Room, { now, send, r2 }); // HP pools for the body killstreaks (server/bodyhp.js)
@@ -4127,27 +4146,56 @@ function lobbyCounts() {
   }
   return { o, b };
 }
+// the most rooms the server keeps (bots rooms, private matches, lobbies: each one ticks). past it, a new room isn't
+// made: you go to the online room instead (it's always there). test knob JF_MAX_ROOMS
+const MAX_ROOMS = Number(process.env.JF_MAX_ROOMS) || 300;
 function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  if (rooms.size >= MAX_ROOMS && mode !== 'ffa' && mode !== 'coop' && !(cfg && typeof cfg === 'object' && typeof cfg.ticket === 'string') && !(mode === 'bots' && !(cfg && cfg.priv === true) && [...rooms.values()].some((r) => r.mode === 'bots' && !r.priv && !r.closed && r.botWant() > 0))) { // (a public bots pick can still squeeze into a running one)
+    console.log(`[rooms] packed (${rooms.size}): a ${mode} join goes to the online room`);
+    mode = 'ffa'; cfg = null; // (no new room: the online room, with whoever's there)
+  }
+  const tk = ticketRoom(cfg, rooms); // a party's leader started: the room they were all handed a ticket to (server/party.js)
+  if (tk && tk.room.mode === mode) { if (ws) ws.partyId = tk.party; return tk.room; }
+  const need = cfg && typeof cfg === 'object' && Number.isInteger(cfg.need) ? Math.max(1, Math.min(6, cfg.need)) : 1; // (seats the party needs)
   // mode lobbies (home menu ONLINE / WITH BOTS cards): an open lobby for that mode, or a new one. Online Quick Play is the 'ffa' room below
   const lk = cfg && typeof cfg === 'object' && typeof cfg.lobby === 'string' && has(LOBBY.kinds, cfg.lobby) ? cfg.lobby : null;
   if (lk === 'qp' && mode === 'bots') { // With Bots Quick Play: no lobby. drop into a running quick play bots room with a bot to replace, else a new one
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.lobby && !r.closed && r.botWant() > 0) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && r.qp && !r.priv && !r.lobby && !r.closed && r.botWant() > 0) return r;
     const r = new Room(`bots:qp:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
     r.qp = true; r.cfg.map = pick(mapsFor('dm', MAPS, MAP_ORDER)) || r.cfg.map;
     rooms.set(r.id, r);
     return r;
   }
   if (lk && lk !== 'qp' && (mode === 'bots' || mode === 'ffa')) {
-    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk)) return r;
+    for (const r of rooms.values()) if (r.lobbyOpen(mode, lk, need)) return r;
     const r = new Room(`${mode}:${lk}:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, mode);
     rooms.set(r.id, r);
     r.lobbyInit(lk, mode === 'ffa');
     return r;
   }
+  // the map editor's PLAY HERE WITH BOTS (owner only: server.js only sets cfg._edit from a checked ticket): a private bots
+  // room on a fresh copy of the map with the owner's edits (shared/editmaps.js), gone when the room closes
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg._edit && [...rooms.values()].filter((r) => r.editMap).length < 2) { // (at most two of these at once: each is a whole map)
+    const id = buildEdited('ed_' + cfg._edit.base + '_' + (nextId++), cfg._edit);
+    if (id) {
+      const r = new Room(`bots:edit:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+      r.priv = true; r.editMap = id; r.cfg.map = id; r.cfg.edit = { base: cfg._edit.base, ops: cfg._edit.ops };
+      rooms.set(r.id, r);
+      console.log(`[edit] PLAY HERE on ${id} (${cfg._edit.ops.length} edits)`);
+      return r;
+    }
+  }
+  // the hub's PRIVATE match (public/js/hubmenu.js): a bots room of your own. nobody else's pick lands in it
+  if (mode === 'bots' && cfg && typeof cfg === 'object' && cfg.priv === true) {
+    const r = new Room(`bots:priv:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, 'bots');
+    r.priv = true;
+    rooms.set(r.id, r);
+    return r;
+  }
   // Play With Bots: join a running bots room playing the same mode that still has a bot to swap out, else start one
   if (mode === 'bots' && cfg && typeof cfg === 'object' && has(GAMES, cfg.game)) {
-    for (const r of rooms.values()) if (r.mode === 'bots' && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
+    for (const r of rooms.values()) if (r.mode === 'bots' && !r.priv && r.game === cfg.game && r.botWant() > 0 && !r.closed) return r;
   }
   const id = mode === 'ffa' || mode === 'coop' ? mode : `${mode}:${nextId}:${Math.random().toString(36).slice(2, 7)}`;
   // Online is playing zombies (or just voted for it) with a full squad of 4: you get a zombies lobby of your own instead (bots fill it)

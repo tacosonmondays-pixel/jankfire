@@ -338,6 +338,7 @@ export function buildMech(frame, color, opts = {}) {
   }
   if (glb) lookMech(inst, glb, col, a.scene);
   root.userData.mech = inst;
+  root.scale.setScalar(MECH.scale); // (every mech is the size-1 model x the one shared size: shared/mech.js mechScale)
   return inst;
 }
 export function freeMech(inst) {
@@ -414,6 +415,7 @@ export function poseMech(inst, s, dt) {
     inst.clip = clip;
     if (MODELS[inst.frame] && MODELS[inst.frame].mix) MODELS[inst.frame].mix(inst, s, dt); // (a hero's speed-matched loops, layered partial clips)
     inst.mixer.update(dt);
+    if (MODELS[inst.frame] && MODELS[inst.frame].post) MODELS[inst.frame].post(inst, s, dt); // (what the game moves itself, after the clip: a hero's hook)
     effects(inst, s, T);
     lookTick(inst, s, dt);
     return;

@@ -17,7 +17,7 @@ export const shotOn = () => !!C.shot || C.k > 0.001;
 export function takeCamera(cam, dt) {
   const target = C.shot ? 1 : 0;
   const rate = dt / Math.max(0.05, C.shot ? C.blend : 0.55);
-  C.k = target > C.k ? Math.min(1, C.k + rate) : Math.max(0, C.k - rate);
+  C.k = target > C.k ? Math.min(1, C.k + rate) : target < C.k ? Math.max(0, C.k - rate) : C.k; // (at 1 it stays 1: it used to step back down every other frame, pulling the shot 0.3% toward your own eye and view: the 30 Hz cutscene shake)
   if (C.k <= 0.0001 && !C.shot) { C.has = false; return false; }
   const s = C.shot || C.last;
   if (!s) return false;

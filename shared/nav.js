@@ -64,8 +64,9 @@ export function buildNav(boxes, o) {
     edge(a, b, c);
     if (!oneWay) edge(b, a, c);
   };
-  const bucket = (ob, r) => {
-    for (let i = Math.floor((r[0] - x0) / C); i <= Math.floor((r[2] - x0) / C); i++) for (let j = Math.floor((r[1] - z0) / C); j <= Math.floor((r[3] - z0) / C); j++) {
+  const bucket = (ob, r) => { // (only the cells on the grid and the ring round it: a box far bigger than the map can't make millions)
+    const i0 = Math.max(-1, Math.floor((r[0] - x0) / C)), i1 = Math.min(n, Math.floor((r[2] - x0) / C)), j0 = Math.max(-1, Math.floor((r[1] - z0) / C)), j1 = Math.min(n, Math.floor((r[3] - z0) / C));
+    for (let i = i0; i <= i1; i++) for (let j = j0; j <= j1; j++) {
       const k = K(i, j);
       if (!ob.has(k)) ob.set(k, []);
       ob.get(k).push(r);

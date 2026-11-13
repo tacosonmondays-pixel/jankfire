@@ -48,8 +48,9 @@ const sfx = {
 const WS = { lmb: false, coinNext: 0, coinT: -1e9, dispT: -1e9, wallT: -1e9, stockT: -1e9, kickT: -1e9, jamUntil: 0, ch: { n: VM.cola.charges, t: 0 }, jumpWas: false, stepPh: 0, ultWas: 0, rattleT: 0 };
 function clearState() { Object.assign(WS, { lmb: false, coinT: -1e9, dispT: -1e9, wallT: -1e9, stockT: -1e9, kickT: -1e9, jamUntil: 0, ch: { n: VM.cola.charges, t: nowMs() } }); }
 const fwdOf = (yaw) => [-Math.sin(yaw), -Math.cos(yaw)];
-const slotAt = () => { const f = fwdOf(ME.yaw); return [ME.pos[0] + f[0] * 0.9, ME.pos[1] + 4.0, ME.pos[2] + f[1] * 0.9]; }; // (the server's coin slot)
-const flapAt = () => { const f = fwdOf(ME.yaw); return [ME.pos[0] + f[0] * 1.2, ME.pos[1] + 1.5, ME.pos[2] + f[1] * 1.2]; };
+const S = () => MECH.scale || 1; // (the size-1 machine's spots x the shared mech size: read live, the welcome can change it)
+const slotAt = () => { const f = fwdOf(ME.yaw), k = S(); return [ME.pos[0] + f[0] * 0.9 * k, ME.pos[1] + 4.0 * k, ME.pos[2] + f[1] * 0.9 * k]; }; // (the server's coin slot)
+const flapAt = () => { const f = fwdOf(ME.yaw), k = S(); return [ME.pos[0] + f[0] * 1.2 * k, ME.pos[1] + 1.5 * k, ME.pos[2] + f[1] * 1.2 * k]; };
 const no = (t) => { hud.msg(t, 0.8); mechsfx.denied(); };
 const cdLeft = (k, now) => Math.max(0, (MS.cd[k] || 0) - now);
 
@@ -409,7 +410,7 @@ function event(m, getR, live, me, r, st) {
       const b = P(m.b);
       if (!b || me) break;
       if (V) V.coinT = now;
-      coinFx(A.instOf(m.id, getR), b, A.instOf(m.id, getR) ? null : pos ? [pos[0], pos[1] + 4, pos[2]] : b, false);
+      coinFx(A.instOf(m.id, getR), b, A.instOf(m.id, getR) ? null : pos ? [pos[0], pos[1] + 4 * S(), pos[2]] : b, false);
       if (m.h === 2) sfx.whit(b, 2);
       break;
     }
@@ -457,7 +458,7 @@ function event(m, getR, live, me, r, st) {
     }
     case 'vmjam': {
       if (V) V.jamT = now;
-      if (pos) { sfx.jam(me ? null : pos); rfx.smoke([pos[0], pos[1] + 4.6, pos[2]], 10, 0x2c2c30, 0.7, 1.2, 1.4, 0.4); rfx.sparks([pos[0], pos[1] + 2, pos[2]], 14, 6, [0xffffff, 0xff3030], 0.3, 0.1); }
+      if (pos) { sfx.jam(me ? null : pos); rfx.smoke([pos[0], pos[1] + 4.6 * S(), pos[2]], 10, 0x2c2c30, 0.7, 1.2, 1.4, 0.4); rfx.sparks([pos[0], pos[1] + 2, pos[2]], 14, 6, [0xffffff, 0xff3030], 0.3, 0.1); }
       if (me) { WS.jamUntil = now + (Number(m.ms) || 4000); WS.ch.n = Math.min(VM.cola.charges, WS.ch.n + (m.w === 'disp' ? 1 : 0)); if (m.w === 'wall') MS.cd.wall = 0; hud.msg('JAMMED! GET AN ALLY TO KICK IT', 1.8, 'slip'); G.shake = Math.max(G.shake, 0.6); }
       else if (live && r && isFriend(r) && pos && Math.hypot(pos[0] - ME.pos[0], pos[2] - ME.pos[2]) < 25 && !MS.on) hud.msg(`${(A.nameOf(m.id) || {}).name || 'THE MACHINE'} IS JAMMED · ${K.label('use')} TO KICK IT`, 1.6, 'slip');
       break;
@@ -488,7 +489,7 @@ function event(m, getR, live, me, r, st) {
       if (live && Array.isArray(m.l)) for (const e of m.l) {
         if (!Array.isArray(e)) continue;
         const at = A.posOf(e[0], getR);
-        if (at && e[0] !== m.id) { fx.tracer && p && fx.tracer([p[0], p[1] + 4.6, p[2]], [at[0], at[1] + 1.2, at[2]], 0x39ff14, 0.1, 0.4); rfx.sparks([at[0], at[1] + 1.2, at[2]], 20, 5, [0x39ff14, 0xffffff], 0.5, 0.1, [0, 1, 0]); }
+        if (at && e[0] !== m.id) { fx.tracer && p && fx.tracer([p[0], p[1] + 4.6 * S(), p[2]], [at[0], at[1] + 1.2, at[2]], 0x39ff14, 0.1, 0.4); rfx.sparks([at[0], at[1] + 1.2, at[2]], 20, 5, [0x39ff14, 0xffffff], 0.5, 0.1, [0, 1, 0]); }
         if (e[0] === G.myId && !me) { hud.msg(`RESTOCKED +${e[1] | 0}`, 1.6, 'brag'); hud.flash && hud.flash(0.3, 0.2); }
       }
       if (me) { const n = Array.isArray(m.l) ? m.l.length - 1 : 0; hud.msg(n > 0 ? `RESTOCK! ${n} RESTOCKED` : 'RESTOCK!', 1.6, 'brag'); G.shake = Math.max(G.shake, 0.9); punchCam(-0.06); if (hud.impact) hud.impact(0.7); WS.ch = { n: VM.cola.charges, t: now }; }

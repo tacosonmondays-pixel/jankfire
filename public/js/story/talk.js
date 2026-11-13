@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { K } from '../keys.js';
 import { sfx } from '../audio.js';
 import { organic, organicRedraw } from '../organic.js';
-import { actors, headPos, setFace, play } from './actors.js';
+import { actors, camHead, setFace, play } from './actors.js';
 import { drawPortrait } from './portrait.js';
 import { wantShot } from './camctl.js';
 
@@ -127,7 +127,7 @@ export function talkFrame(dt, now, eye) {
   // the shot: over your shoulder, pushing in on whoever's talking
   const sp = speakerOf(l) || A;
   if (sp) {
-    headPos(sp, hp);
+    camHead(sp, hp); // (eased between a puppet's 12 fps poses: the talk cam doesn't judder with them)
     const s = sp.ch.root.scale.y;
     ev.set(eye[0], eye[1], eye[2]);
     fw.copy(hp).sub(ev); fw.y = 0; const d = Math.max(0.6, fw.length()); fw.normalize();

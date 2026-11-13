@@ -14,6 +14,7 @@ import { installZmLimbs } from './zmlimbs.js';
 import { installZmShop } from './zmshop.js';
 import { installZmBoss } from './zmboss.js';
 import { ZM, zmCount, zmHp, zmMaxAlive, zmGap, zmGait, zmAmmo, zmAmmoPrice, zmPick, zmTarget, zmAreaAt, zmOpenAreas } from '../shared/zombies.js';
+import { onForget } from './graphs.js';
 
 let send = () => {}, stat = () => {}, store = null;
 const now = () => Date.now();
@@ -43,6 +44,7 @@ function zombieLook() {
 // the 8 neighbours, at most a step up or down, no cutting corners. one flow field per player says how far each cell is
 // from them on foot, so every zombie just walks downhill toward whoever is closest.
 const NAV = new Map();
+onForget((m, id) => NAV.delete(id)); // (a map gone for good: the map editor's PLAY HERE copies. normal zombies maps never get swept)
 function navFor(id) {
   if (!NAV.has(id)) NAV.set(id, buildNav(MAPS[id]));
   return NAV.get(id);
