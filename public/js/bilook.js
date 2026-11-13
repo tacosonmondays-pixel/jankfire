@@ -125,6 +125,7 @@ export function biLookMap(id, hide) {
   U.uOct.value = (G.settings && G.settings.jank) === 0 ? 4 : 6; // (Potato: fewer layers of detail, it can't show them anyway)
 }
 const _d = new THREE.Vector3();
+export const biSkyU = () => (on ? U : null); // (weather.js greys these for a rainy frame and puts them back after)
 export function updateBiLook(dt) {
   if (!on || !dome) return;
   if (G.camera) dome.position.copy(G.camera.position);

@@ -79,7 +79,7 @@ AT.paint('bomb', bomb_tex); AT.paint('lava', lava_tex); AT.paint('fx', fx_tex); 
 sc = reset()
 bpy.context.preferences.edit.keyframe_new_interpolation_type = 'LINEAR'
 IMG = AT.image('wx_erupt_atlas')
-M_ASH = material('wx_m_ash', vcol=True, rough=1.0, emit=0.3, double=False)  # (single-sided: the inked hull shows only round the edge)
+M_ASH = material('wx_m_ash', vcol=True, rough=1.0, double=False)  # (no glow: a flat glow would wash the dark ash out to grey)
 M_BOMB = material('wx_m_bomb', IMG, rough=0.8, emit=1.4)
 M_TRAIL = material('wx_m_trail', IMG, rough=1.0, emit=0.5, clip=True)
 M_SPLAT = material('wx_m_splat', IMG, rough=0.4, emit=1.6, clip=True)
@@ -108,19 +108,19 @@ def puffs(name, list_, colour):
 
 
 def ash_colour(y, n, c, r):  # dark ash, a lit top, the crater's orange under the low puffs
-    if n.y < -0.3 and y < 16: return 0xff7a2a if y < 8 else 0xc8502a
-    if n.y > 0.55: return 0x9a8f9e if y > 30 else 0x7a7080
-    if n.y < -0.55: return 0x1a1220  # (a near-black belly: the comic ink)
-    if n.x > 0.45: return 0x5a505e
-    return 0x3a3240 if y > 20 else 0x2e2632
+    if n.y < -0.3 and y < 18: return 0xff7a2a if y < 9 else 0xd0582a
+    if n.y > 0.55: return 0xb8acbc if y > 30 else 0x9a8e9e
+    if n.y < -0.55: return 0x1e1626  # (a near-black belly: the comic ink)
+    if n.x > 0.45: return 0x6e6272
+    return 0x4c4254 if y > 20 else 0x3c3444
 
 
 # the column: from the vent, leaning a little east (the islands' wind), fattening into a mushroom top
 col = []
 for i in range(10):
     t = i / 9
-    c = Vector((5.0 * t ** 1.6, 2 + 64 * t, 1.5 * t ** 1.5)); rad = 2.6 + 8.5 * t ** 0.9
-    n = 2 if i < 3 else 3
+    c = Vector((5.0 * t ** 1.6, 1 + 65 * t, 1.5 * t ** 1.5)); rad = 4.6 + 8.5 * t ** 0.8  # (fat from the bottom: it swallows the volcano's everyday wisp)
+    n = 4
     for q in range(n):
         a = 2 * math.pi * (q / n + R.random() * 0.3); d = rad * (0.3 + 0.2 * R.random())
         col.append((c + Vector((math.cos(a) * d, (R.random() - 0.5) * rad * 0.4, math.sin(a) * d)), rad * (0.55 + 0.2 * R.random()), 0.8 + 0.15 * R.random()))
@@ -138,14 +138,14 @@ for ring, (n, d0, r0) in enumerate(((8, 22, 15), (11, 50, 17))):
     for i in range(n):
         a = 2 * math.pi * (i + 0.5 * ring) / n + R.random() * 0.15; d = d0 + R.uniform(-3, 3)
         ash.append((Vector((5 + math.cos(a) * d, 66 + (R.random() - 0.5) * 8 - 3 * ring, 1.5 + math.sin(a) * d)), r0 + 5 * R.random(), 0.45))
-ashm = puffs('wx_ash', ash, lambda y, n, c, r: 0x8a7f8e if n.y > 0.6 else (0x1a1220 if n.y < -0.5 else (0x2e2634 if n.y < -0.1 else 0x463e4c)))
+ashm = puffs('wx_ash', ash, lambda y, n, c, r: 0xa89cac if n.y > 0.6 else (0x1e1626 if n.y < -0.5 else (0x3a3242 if n.y < -0.1 else 0x564c5e)))
 SPREAD = 30 * FPS
 clip(ashm, 'scale', [(0, (0.05, 0.05, 1)), (int(10 * FPS), (0.55, 0.55, 1)), (SPREAD, (1, 1, 1))], 'ash_spread')
 
 # ------------------------------------------------------------ the bomb, its trail, its splat
-base, tris = ico(0.55, 1)
+base, tris = ico(1.1, 1)  # (chunky: it has to read flying over the island from the beach)
 P = [v * (1 + 0.35 * (R.random() - 0.5)) for v in base]
-UV = [AT.uv('bomb', 0.5 + 0.5 * math.atan2(v.z, v.x) / math.pi, 0.5 + 0.5 * v.y / 0.75) for v in P]
+UV = [AT.uv('bomb', 0.5 + 0.5 * math.atan2(v.z, v.x) / math.pi, 0.5 + 0.5 * v.y / 1.5) for v in P]
 F = []
 for (i, j, l) in tris:
     if (P[j] - P[i]).cross(P[l] - P[i]).dot(P[i] + P[j] + P[l]) < 0: j, l = l, j
@@ -166,27 +166,27 @@ cb = anim_utils.action_get_channelbag_for_slot(bomb.animation_data.action, bomb.
 for fc in cb.fcurves:
     for kp in fc.keyframe_points: kp.interpolation = 'LINEAR'
 
-# the trail: two crossed ribbons, 5 m, along -z (the game turns -z to point back along the flight), widening to the tail
+# the trail: two crossed ribbons, 9 m, along -z (the game turns -z to point back along the flight), widening to the tail
 V, F, UV = [], [], []
 for side in (Vector((1, 0, 0)), Vector((0, 1, 0))):
     n = len(V)
-    for (z, s, u, v) in ((0.3, 0.45, 0, 1), (0.3, -0.45, 1, 1), (5.0, -1.1, 1, 0), (5.0, 1.1, 0, 0)):
+    for (z, s, u, v) in ((0.6, 0.9, 0, 1), (0.6, -0.9, 1, 1), (9.0, -2.0, 1, 0), (9.0, 2.0, 0, 0)):
         V.append(Vector((0, 0, z)) + side * s); UV.append(AT.uv('trail', u, v))
     F.append((n, n + 1, n + 2, n + 3))
 trail = mesh_obj(sc, root, 'wx_trail', V, F, M_TRAIL, uvs=UV)
 
-# the splat: a flat molten blob (1.6 m) and a ring of fat drops thrown up out of it, one connected piece
+# the splat: a flat molten blob (2.4 m) and a ring of fat drops thrown up out of it, one connected piece
 V, F, UV = [], [], []
 seg = 12
 V.append(Vector((0, 0.04, 0))); UV.append(AT.uv('splat', 0.5, 0.5))
 for i in range(seg):
-    a = 2 * math.pi * i / seg; V.append(Vector((math.cos(a) * 1.6, 0.04, math.sin(a) * 1.6))); UV.append(AT.uv('splat', 0.5 + 0.5 * math.cos(a), 0.5 - 0.5 * math.sin(a)))
+    a = 2 * math.pi * i / seg; V.append(Vector((math.cos(a) * 2.4, 0.04, math.sin(a) * 2.4))); UV.append(AT.uv('splat', 0.5 + 0.5 * math.cos(a), 0.5 - 0.5 * math.sin(a)))
 for i in range(seg): F.append((0, 1 + (i + 1) % seg, 1 + i))
 for i in range(6):  # drops: little pyramids standing on the blob, leaning out
-    a = 2 * math.pi * i / 6 + 0.4; c = Vector((math.cos(a) * 0.7, 0.04, math.sin(a) * 0.7)); top = c + Vector((math.cos(a) * 0.35, 0.55 + 0.15 * (i % 2), math.sin(a) * 0.35))
+    a = 2 * math.pi * i / 6 + 0.4; c = Vector((math.cos(a) * 1.05, 0.04, math.sin(a) * 1.05)); top = c + Vector((math.cos(a) * 0.5, 0.8 + 0.25 * (i % 2), math.sin(a) * 0.5))
     n = len(V)
     for q in range(3):
-        b = a + 2 * math.pi * q / 3; V.append(c + Vector((math.cos(b) * 0.14, 0, math.sin(b) * 0.14))); UV.append(AT.uv('splat', 0.46 + 0.04 * q, 0.46))
+        b = a + 2 * math.pi * q / 3; V.append(c + Vector((math.cos(b) * 0.21, 0, math.sin(b) * 0.21))); UV.append(AT.uv('splat', 0.46 + 0.04 * q, 0.46))
     V.append(top); UV.append(AT.uv('splat', 0.5, 0.56))
     for q in range(3): F.append((n + q, n + 3, n + (q + 1) % 3))
 splat = mesh_obj(sc, root, 'wx_splat', V, F, M_SPLAT, uvs=UV)
