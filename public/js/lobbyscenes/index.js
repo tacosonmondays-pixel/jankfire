@@ -75,7 +75,8 @@ function start(m, a) {
   c.lib = lib(c);
   c.api = m.build(c.lib);
   c.spots = c.api.spots;
-  if (c.api.walk) startWalk(c);
+  c.walkOn = !!c.api.walk && !window.JF_TOUCH; // (phones and tablets have no keys to walk with: the scene stays a picture, the panels stay up)
+  if (c.walkOn) startWalk(c);
   syncParty();
   document.body.classList.add('ls-on');
   on(c, $('scr-hubby'), 'pointermove', (e) => { c.mx = e.clientX / innerWidth - 0.5; c.my = e.clientY / innerHeight - 0.5; hover(c, e); });
@@ -244,7 +245,7 @@ function makePerson(c, i, info, key) {
   const d = document.createElement('div'); d.className = 'np' + (info.invite ? ' inv' : '');
   $('lsTags').append(d); P.plate = d; plateText(P);
   P.head = new THREE.Vector3(0, info.invite ? (c.api.inviteH || 1.3) : P.r ? 2.5 : 2.05, 0);
-  if (P.r && info.me && c.api.walk) { if (c.walk) { const w = c.walk.me; w.ch = P.r.ch; w.w = P.r.w; w.lo = null; P.r = w; } else c.walk = makeWalk(c, c.lib, c.api.walk, P.r); } // (a new look: the same you, same spot, new clothes)
+  if (P.r && info.me && c.walkOn) { if (c.walk) { const w = c.walk.me; w.ch = P.r.ch; w.w = P.r.w; w.lo = null; P.r = w; } else c.walk = makeWalk(c, c.lib, c.api.walk, P.r); } // (a new look: the same you, same spot, new clothes)
   return P;
 }
 function plateText(P) {
