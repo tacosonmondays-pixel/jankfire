@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.53', date: '2026-11-13', title: 'NO WALLHACKS', items: [
+    "no more hits through walls or with guns you aren't holding. the server checks now. (glass still lets bullets through, and laggy players keep their fair hits.)",
+    "melee, the cigarette and the leaf blower have to actually point at you. chicken strikes and giant ducks can't land somewhere you can't see.",
+  ] },
   { v: '11.52', date: '2026-11-13', title: 'SAND IN EVERYTHING', items: [
     "SANDSTORMS hit the bazaar (and sometimes the desert): a wall of dust rolls right over you, sand gets everywhere, tumbleweeds go boing. none indoors.",
     "meteors got chonkier and suburb snow finally looks cold.",
