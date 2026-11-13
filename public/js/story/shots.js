@@ -2,13 +2,14 @@
 // shotPose(c, u, who, where, eyeP) -> { pos, look, roll }. c = { shot, target, from, path, look, offset, r, turn, up },
 // u = 0..1 through the shot (dollies and orbits move with it), who(k) -> actor, where(mark) -> [x, y, z]
 import * as THREE from 'three';
-import { headPos } from './actors.js';
-import { faceFwd, reachOf } from './shotfit.js'; // face shots: which way the face really looks, and standing clear of the body
+import { camHead as headPos, camFace } from './actors.js'; // (the head as the camera sees it: eased between a puppet's 12 fps poses)
+import { faceFwd as boneFwd, reachOf } from './shotfit.js'; // face shots: which way the face really looks, and standing clear of the body
 
 const v1 = new THREE.Vector3(), fw = new THREE.Vector3(), side = new THREE.Vector3(), hf = new THREE.Vector3();
 const ss = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 export const SHOTS = ['closeup', 'extreme', 'over', 'lowAngle', 'wide', 'dolly', 'orbit', 'whip', 'top', 'two'];
 
+const faceFwd = (a, out) => { const k = camFace(a, out); return k === null ? boneFwd(a, out) : k; };
 export function shotPose(c, u, who, where, eyeP) {
   const pos = new THREE.Vector3(), look = new THREE.Vector3(), e = ss(u);
   let roll = 0;
@@ -25,7 +26,7 @@ export function shotPose(c, u, who, where, eyeP) {
     fw.set(-Math.sin(a.yaw), 0, -Math.cos(a.yaw)); side.set(Math.cos(a.yaw), 0, -Math.sin(a.yaw));
     const big = Math.max(1, s * 0.85) + (a.L.look === 'gordo' ? 0.35 : 0);
     switch (c.shot || 'closeup') {
-      case 'closeup': if (faceFwd(a, hf)) { fw.copy(hf); side.set(-fw.z, 0, fw.x); } pos.copy(v1).addScaledVector(fw, Math.max((1.3 - 0.25 * e) * big, reachOf(a, v1, fw) + 0.5)).addScaledVector(side, 0.35); look.copy(v1); look.y -= 0.05; break;
+      case 'closeup': if (faceFwd(a, hf)) { fw.copy(hf); side.set(-fw.z, 0, fw.x); } c.reach = Math.max(c.reach || 0, reachOf(a, v1, fw)); pos.copy(v1).addScaledVector(fw, Math.max((1.3 - 0.25 * e) * big, c.reach + 0.5)).addScaledVector(side, 0.35); look.copy(v1); look.y -= 0.05; break; // (c.reach: within a shot it only ever backs off for an arm or a belly; a puppet's arms pose at 12 fps and it pulsed in and out with them)
       case 'extreme': if (faceFwd(a, hf)) fw.copy(hf); pos.copy(v1).addScaledVector(fw, 0.62 * big); look.copy(v1); break;
       case 'over': { const b = who(c.from); if (!b) { pos.copy(v1).addScaledVector(fw, 2); look.copy(v1); break; } headPos(b, pos); const d = v1.clone().sub(pos).setY(0).normalize(); pos.addScaledVector(d, -0.75).addScaledVector(new THREE.Vector3(-d.z, 0, d.x), -0.45); pos.y += 0.1; look.copy(v1); break; }
       case 'two': { const b = who(c.from); const m = b ? headPos(b, new THREE.Vector3()).add(v1).multiplyScalar(0.5) : v1.clone(); const d = b ? v1.clone().sub(headPos(b, new THREE.Vector3())) : fw.clone(); const L = Math.max(1.5, d.length()); d.setY(0).normalize(); pos.copy(m).add(new THREE.Vector3(-d.z, 0, d.x).multiplyScalar(L * 1.25 + 1)); pos.y += 0.2; look.copy(m); break; }
