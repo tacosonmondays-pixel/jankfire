@@ -143,6 +143,7 @@ export const poiAt = (x, z) => PLAN.pois.find((p) => x >= p.rect[0] && x <= p.re
 // floor along the river, bare rock on anything steep, the roads. vegetation is the existing Blender props (palms on the
 // beaches, ferns and bushes in the jungle). the POIs' buildings come in their own PRs, Blender from the start
 import { MAPS, MAP_ORDER, builder, rng, horizon, palm, unstick, forklift, pallets } from './map.js';
+import { resort } from './bi_resort.js';
 import { shapeGround } from './terrain.js';
 import { buildNav } from './nav.js';
 import { propOf } from './propcap.js';
@@ -303,6 +304,7 @@ function battleIsland() {
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
   horizon(D, -900, -900, 900, 900, 2600, 'bisea', SEA);
+  resort(B); // The All-Inclusive (shared/bi_resort.js)
   // ---- the spots the mode reads: the POIs' drop pads (open sky, level), energy cells, the finale circles
   const drops = [], cells = [], spawns = [];
   for (const p of PLAN.pois) {
