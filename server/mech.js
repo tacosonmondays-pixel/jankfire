@@ -14,6 +14,7 @@ import { outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { raycast, movePlayer, playerBoxes, rayBox, playerOverlap, PH } from '../shared/physics.js';
 import { installWrecking } from './mech_wrecking.js'; // battle island heroes: each kit's judging in its own file
 import { installVending } from './mech_vending.js';
+import { installTrolley } from './mech_trolley.js';
 
 const PP = MECH.paperplane, NS = MECH.nightshift;
 const lookOf = (p) => { const c = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw) * c, Math.sin(p.pitch || 0), -Math.cos(p.yaw) * c]; };
@@ -32,15 +33,24 @@ function clear(a, b, boxes) {
 }
 // the battle island heroes' kits (server/mech_<id>.js): hooks by frame id, each called with this = the room.
 // { enter, exit, flags, budget, land, msg, tick, bot, shrug, soak, en } (+ poke: someone on foot's message at it; world,
-// leave, reset: things a kit puts out in the world, ticked / cleared with the room, not per pilot)
+// leave, reset: things a kit puts out in the world, ticked / cleared with the room, not per pilot). a kit that carries
+// people (TROLLEY's basket) also has { holds (still carrying t?), heldAt (where t goes), unhold, proj }, and its poke
+// takes 'ride' / 'unride'
 const KIT = {};
 const MSG_PER_S = 30; // 'mech' messages a second per player (cannons are 8): more get dropped
+// what someone carried in a mech can't send: scooped, almost anything; riding, everything but their guns and items
+// (+ battle island / royale: no revives, hero swaps, loot or kicks from the basket; a rider keeps their heals)
+const HELD_STOP = new Set(['fire', 'hit', 'push', 'slam', 'item', 'deploy', 'tbag', 'parry', 'spray', 'cart', 'car', 'rig', 'lasso', 'lh', 'cough', 'nv', 'use', 'hero', 'brjump', 'brheal', 'brpick', 'brdrop', 'brswap', 'brkick']);
+const HELD_RIDE = new Set(['push', 'slam', 'deploy', 'tbag', 'cart', 'rig', 'lasso', 'lh', 'use', 'hero', 'brjump', 'brpick', 'brdrop', 'brswap', 'brkick']);
+const NET_MS = 500; // mechMv: speed only counts as far as the net travel over this long backs it (no wiggling in place)
+const POKES = new Set(['kick', 'ride', 'unride']); // what someone on foot may send at someone else's mech (KIT.poke)
 
 export function installMech(Room, U) {
   const { now, num, vec3, norm, r2, center, safe, send, REC_T } = U;
   REC_T.add('mech'); // drops, swings, slams and blasts show up in killcams and the play of the round
   installWrecking(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
   installVending(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
+  installTrolley(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
 
   Object.assign(Room.prototype, {
     mechMap() { return this._mechs || (this._mechs = new Map()); },
@@ -140,6 +150,7 @@ export function installMech(Room, U) {
       const m = this.mechOf(p);
       if (!p.alive || !m || (m.st !== 'wait' && m.st !== 'idle') || p.mech) return false;
       if (p.rig || this.isBall(p) || p.ballUntil > n || p.trap || p.dn) { this.mechNo(p, 'not right now'); return false; } // (p.dn: battle island, down on the floor)
+      if (p.mheld) { this.mechNo(p, 'not right now'); return false; } // (riding in someone's basket)
       if (hdist(p.pos, m.p) > MECH.reach + 0.5 || Math.abs(p.pos[1] - m.p[1]) > 3.5) { this.mechNo(p, 'get closer'); return false; }
       if (n < (m.backT || 0)) { this.mechNo(p, 'still climbing down'); return false; } // (no hop out + in to skip a cooldown)
       const F = MECH[m.f];
@@ -229,12 +240,14 @@ export function installMech(Room, U) {
     mechBroke(t, by) { this.mechExit(t, 'boom', by); },
     // kill(): died in it some other way (void, a train, lava): it blows up, the blast credited to your killer
     mechDeath(t, attacker) {
+      if (t.mheld) this.mechUnhold(t, 'dead'); // (died in someone's basket)
       if (!t.mech) return;
       const by = attacker && attacker !== t ? attacker : t.lastAttacker && now() - (t.lastAttackT || 0) < 10000 ? this.players.get(t.lastAttacker) || null : null;
       this.mechExit(t, 'boom', by);
     },
-    mechLife(p) { if (p.mech) this.mechExit(p, 'quiet'); }, // resetLife: a new round / life ends it quietly
+    mechLife(p) { if (p.mheld) this.mechUnhold(p, 'quiet'); if (p.mech) this.mechExit(p, 'quiet'); }, // resetLife: a new round / life ends it quietly
     mechLeave(p) { // disconnected: their mechs go with them
+      if (p.mheld) this.mechUnhold(p, 'gone');
       if (p.mech) this.mechExit(p, 'quiet');
       for (const m of [...this.mechMap().values()]) if (m.o === p.id) this.mechGone(m, 'owner');
       this.dronesOf(p.id, true);
@@ -242,6 +255,7 @@ export function installMech(Room, U) {
     },
     mechReset() { // a new round, map or mode: no mech anywhere
       for (const p of this.players.values()) if (p.mech) this.mechExit(p, 'quiet');
+      for (const p of this.players.values()) if (p.mheld) this.mechUnhold(p, 'quiet');
       for (const m of [...this.mechMap().values()]) this.mechGone(m, 'reset');
       if (this._drones) this._drones.clear();
       for (const K of Object.values(KIT)) if (K.reset) K.reset.call(this);
@@ -405,6 +419,7 @@ export function installMech(Room, U) {
     // each snapshot spends what you moved. overspend and you're put back where you last were fine
     mechSnap(p) {
       const M = p.mech, n = now();
+      if (p.mheld && this.mechHeldSnap(p)) { p.f &= ~MECH_BITS; return; } // carried in someone's mech: it has you, not your client
       if (!M || !this.mechOn(p, n)) { p.f &= ~MECH_BITS; return; }
       const dt = Math.min(0.25, Math.max(0, (n - M.snapT) / 1000));
       M.snapT = n;
@@ -453,6 +468,9 @@ export function installMech(Room, U) {
       // how fast it really goes (what rams count): measured from where the server has you, over ~0.15 s
       const A = M.mvA;
       if (n - A.t >= 150) { const s = (n - A.t) / 1000; M.mv = [(pos[0] - A.p[0]) / s, (pos[2] - A.p[2]) / s]; M.mvA = { t: n, p: pos.slice() }; }
+      // and where it was ~0.5 s ago (mechMv): Tr[0] is the newest spot at least NET_MS old
+      const Tr = M.trail || (M.trail = []);
+      if (!Tr.length || n - Tr[Tr.length - 1].t >= 50) { Tr.push({ t: n, p: pos.slice() }); while (Tr.length > 2 && n - Tr[1].t >= NET_MS) Tr.shift(); }
       // landing: a stomp if it really came down from high enough (the height lost since it left the floor, over at
       // least about the time that fall takes), not whatever speed the client says
       if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.9, this.boxes)) {
@@ -487,8 +505,9 @@ export function installMech(Room, U) {
     onMech(p, m) {
       const n = now();
       if (!p.alive || typeof m.k !== 'string' || m.k.length > 12) return;
+      if (POKES.has(m.k)) { this.mechPoke(p, m, n); return; } // on foot, at someone else's mech (the vending machine's kick, riding in a trolley)
+      if (p.mheld) return; // carried: hands off every mech
       if (m.k === 'in') { if (n - (p.mechInT || 0) < 300) return; p.mechInT = n; if (!this.mechEnter(p, n) && !this.mechOf(p)) this.mechNo(p, 'no mech of yours here'); return; } // (a few a second at most)
-      if (m.k === 'kick') { this.mechPoke(p, m, n); return; } // on foot, at someone else's mech (the vending machine's kick)
       const M = p.mech;
       if (!M || !this.mechOn(p, n)) return;
       const q = M.msg; // rate limit (a busy pilot sends ~10 a second)
@@ -513,14 +532,64 @@ export function installMech(Room, U) {
     },
     // someone on foot pokes a pilot's mech ({ k: 'kick', to: pilot id }): rate limited, only from on foot, routed to that
     // frame's kit (KIT.poke), which judges the rest (side, reach, whether it needs it)
+    // ('ride' / 'unride': the trolley's child seat. unride goes to whoever's carrying you, whatever 'to' says)
     mechPoke(p, m, n) {
       if (p.mech || n - (p.pokeT || 0) < 250) return;
       p.pokeT = n;
-      const t = Number.isInteger(m.to) ? this.players.get(m.to) : null;
-      if (!t || t === p || !this.mechOn(t, n)) return;
-      const K = KIT[t.mech.f];
-      if (K && K.poke) K.poke.call(this, p, t, t.mech, m.k, n);
+      if (m.k === 'unride') { if (!p.mheld) return; const c = this.mechCarrier(p); if (!c) { this.mechUnhold(p, 'gone'); return; } m = { k: 'unride', to: c.id }; }
+      else if (p.mheld) return; // (carried: no kicking or hopping into another one)
+      const t = Number.isInteger(m.to) ? this.players.get(m.to) : null, K = t && t !== p && this.mechOn(t, n) ? KIT[t.mech.f] : null;
+      if (K && K.poke && (m.k === 'kick' || K.holds)) K.poke.call(this, p, t, t.mech, m.k, n);
+      else if (m.k === 'ride') this.mechNo(p, 'nothing to ride');
     },
+    // ---- carried by a mech (TROLLEY's basket: scooped enemies, an ally riding). t.mheld = { by: carrier id, f, k, seq }:
+    // their own movement doesn't count, the carrier's kit says where they are; it lets go on any cleanup path
+    mechHold(c, t, k) {
+      t.mheld = { by: c.id, f: c.mech.f, k, seq: t.seq, t0: now() };
+      t.g = null; if (t.ai) t.ai.hook = null;
+      if (this.lassoDrop) this.lassoDrop(t, 'gone'); // (off any rope, either end)
+      if (t.ride) { const k = this.carts && this.carts.get(t.ride); if (k) this.cartLetGo(k, [0, 0, 0]); else t.ride = 0; } // (out of any shopping cart)
+      if (t.irv && this.isleRvStop) this.isleRvStop(t, 'released'); // (a revive they were doing stops)
+    },
+    // the mech carrying t, if that still holds (carrier in its mech, t alive in the same life, the kit agrees)
+    mechCarrier(t) {
+      const H = t.mheld, c = H && this.players.get(H.by), K = H && KIT[H.f];
+      if (!c || !t.alive || t.seq !== H.seq || !this.mechOn(c) || c.mech.f !== H.f || !K || !K.holds || !K.holds.call(this, c, c.mech, t)) return null;
+      return c;
+    },
+    mechUnhold(t, why) {
+      const H = t.mheld;
+      if (!H) return;
+      t.mheld = null;
+      const c = this.players.get(H.by), K = KIT[H.f];
+      if (c && c.mech && c.mech.f === H.f && K && K.unhold) K.unhold.call(this, c, c.mech, t, why);
+      else this.broadcast({ t: 'mech', k: 'mheld', id: H.by, v: t.id, on: 0, why });
+    },
+    mechHeldPlace(c, t) { const K = KIT[c.mech.f], at = K.heldAt.call(this, c, c.mech, t); t.pos = at; t.vel = c.vel.slice(); t.g = null; if (t.isBot) t.onGround = true; },
+    // snapshot hook: put them where the carrier has them
+    mechHeldSnap(p) { const c = this.mechCarrier(p); if (!c) { this.mechUnhold(p, 'gone'); return false; } this.mechHeldPlace(c, p); return true; },
+    // stepBot hook: a carried bot doesn't walk; a rider still aims and shoots (botThink), a scooped one does nothing
+    mechHeldBot(b, dt) {
+      const c = this.mechCarrier(b);
+      if (!c) { this.mechUnhold(b, 'gone'); return false; }
+      if (b.mheld.k === 'ride') this.botThink(b, dt);
+      b.f = 0; b.ai.hook = null;
+      this.mechHeldPlace(c, b);
+      if (b.pos[1] < this.map.killY) this.kill(b, null, 'void'); // (carried off the edge: stepBot's own check is skipped)
+      return true;
+    },
+    // room.handle hook: scooped = hands off everything; riding = guns only (no grapple, streaks, carts, t-bags)
+    mechHeldStop(p, m) {
+      if (!this.mechCarrier(p)) { this.mechUnhold(p, 'gone'); return false; }
+      return p.mheld.k === 'ride' ? HELD_RIDE.has(m.t) : HELD_STOP.has(m.t);
+    },
+    // tickProjectiles hook: a hero's own projectile (WEAPONS[k].kit names the kit)
+    mechProjStep(pr, dt, n) {
+      const K = KIT[WEAPONS[pr.k].kit];
+      if (!K || !K.proj) { this.removeProj(pr); return; }
+      K.proj.call(this, pr, dt, n);
+    },
+
     // a shot's direction has to be roughly where the server has you looking (a snapshot old: some slack)
     mechAimOk(p, d, cos) { const l = lookOf(p); return l[0] * d[0] + l[1] * d[1] + l[2] * d[2] >= cos; },
     // the first body (or wall) along a ray: boxes of whoever's a mech are its frame + cockpit
@@ -849,9 +918,18 @@ export function installMech(Room, U) {
         this.broadcast({ t: 'mech', k: 'ram', id: p.id, to: t.id, p: tc.map(r2), big: 1 });
       }
     },
+    // how fast a mech really goes, for rams, charges and the like: a player's measured speed (~0.15 s windows), cut down
+    // to the net travel over the last ~0.5 s, so going back and forth in place reads as standing still. a bot's own
+    mechMv(p, M, n) {
+      if (p.isBot) return [p.vel[0], p.vel[2]];
+      if (!M.mv || n - M.snapT >= 300) return [0, 0];
+      const o = M.trail && M.trail[0], age = o ? (M.snapT - o.t) / 1000 : 0, hs = Math.hypot(M.mv[0], M.mv[1]);
+      const net = age >= 0.15 && M.last ? hdist(M.last, o.p) / age : 0, k = hs > net ? net / hs : 1;
+      return [M.mv[0] * k, M.mv[1] * k];
+    },
     // walking into people at speed shoves them (faster = harder)
     mechRam(p, M, n) {
-      const F = MECH[M.f], v = p.isBot ? [p.vel[0], p.vel[2]] : M.mv && n - M.snapT < 300 ? M.mv : [0, 0]; // (a player's: measured, not what the client claims)
+      const F = MECH[M.f], v = this.mechMv(p, M, n); // (a player's: measured, not what the client claims)
       const hs = Math.hypot(v[0], v[1]), h = ramHit(hs);
       if (!h) return;
       const fx = v[0] / hs, fz = v[1] / hs;

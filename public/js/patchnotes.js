@@ -1,6 +1,14 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.39', date: '2026-11-13', title: 'BREAK ROOM', items: [
+    "the mech garage got a real break room: a ratty purple couch, pizza on the table, a MINE!! fridge, a coffee machine, and a cabinet door hanging off its last screw. it creaks. nobody has fixed it.",
+  ] },
+  { v: '11.38', date: '2026-11-13', title: 'CLEAN UP AISLE 5', items: [
+    "new mech: TROLLEY. a 5 m shopping trolley, the fastest thing on the island. lob bouncing tin cans, hold shift to drift and build a RAM CHARGE, then E to lunge into people.",
+    "ultimate, CLEAN UP AISLE 5: scoop up to 3 enemies into the basket and dump them somewhere unpleasant. a squadmate can ride in the child seat.",
+    "fixed: wiggling on the spot no longer counts as speed for any mech's ram.",
+  ] },
   { v: '11.37', date: '2026-11-13', title: 'THE OVERLOOK', items: [
     "THE DECK GOT DRESSED: it's THE OVERLOOK now. spinning fans underneath, balloons, bunting and a big marquee board. the top 3 in the lobby stand on the podiums in front of it, showing off. new looks rotate in weekly.",
   ] },
