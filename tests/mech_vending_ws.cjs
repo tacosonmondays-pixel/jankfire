@@ -8,10 +8,11 @@
 const WS = require('ws');
 const { spawn } = require('child_process');
 const path = require('path');
-const port0 = Number(process.argv[2]) || 3471;
+const port0 = Number(process.argv[2]) || 3641;
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 const MF = { MECH: 1 << 22, A: 1 << 23, B: 1 << 30, C: 1 << 31 };
+const S = Number(process.env.JF_MECH_SCALE) || 1.35; // (MECH.scale: the machine's spots, its wall, its reaches grow with it)
 const Y = 0.03, X0 = 42, Z0 = 12; // warehouse: the flat open yard round [42, 0, 12]
 const sh = (a, k) => (Array.isArray(a) && a.length === 3 && a.every(Number.isFinite) ? [a[0] + X0 * k, a[1], a[2] + Z0 * k] : a);
 const TEAM = new Map();
@@ -50,7 +51,7 @@ process.on('exit', () => { if (srvRef) srvRef.kill(); });
 async function boot(port, env) {
   srvErr = '';
   if (await up(port)) { console.log(`port ${port} is taken (someone else's server): pick another`); process.exit(2); }
-  const srv = srvRef = spawn(process.execPath, ['--max-old-space-size=256', 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: String(port), JF_GAME: 'tdm', JF_TRAIN_STREAKS: '1', JF_MECH_DROP: '0.6', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
+  const srv = srvRef = spawn(process.execPath, ['--max-old-space-size=256', 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: String(port), JF_MECH_SCALE: String(S), JF_GAME: 'tdm', JF_TRAIN_STREAKS: '1', JF_MECH_DROP: '0.6', ...env }, stdio: ['ignore', 'pipe', 'pipe'] });
   srv.stderr.on('data', (d) => { srvErr += d; }); srv.stdout.on('data', (d) => { if (process.env.VMDBG) process.stdout.write('SRV ' + d); if (/Error|uncaught/i.test(String(d))) srvErr += d; });
   for (let i = 0; i < 60; i++) { try { await new Promise((res, rej) => { const w = new WS(`ws://localhost:${port}/ws`); w.on('open', () => { w.close(); res(); }); w.on('error', rej); }); break; } catch { await sleep(500); } }
   return srv;
@@ -119,7 +120,7 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     ok((A.take('mech', (m) => m.k === 'no') || {}).why === 'ultimate not ready', 'RESTOCK with no ult: refused');
 
     // ---- 2. coin turret
-    const slot = add(P, [0, 4.0, -0.9]);
+    const slot = add(P, [0, 4.0 * S, -0.9 * S]);
     D.at = add(P, [16, 0, 0]); await hold(400, []);
     D.got.length = 0;
     A.send({ t: 'mech', k: 'coin', d: aim(slot, mid(D.at)).d }); await hold(250, []);
@@ -144,7 +145,7 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     ok(colas.length === 3, `4 dispenses on 3 charges: ${colas.length} cans`);
     ok((A.all('mech', (m) => m.k === 'no').pop() || {}).why === 'sold out', 'the 4th: SOLD OUT');
     const cp = colas[0] && colas[0].p;
-    ok(cp && Math.abs(cp[0] - P[0]) < 0.3 && Math.abs(cp[2] - (P[2] - 2.4)) < 0.3, 'no aim point: it lands 2.4 m in front · ' + (cp && cp.map((x) => x.toFixed(1))));
+    ok(cp && Math.abs(cp[0] - P[0]) < 0.3 && Math.abs(cp[2] - (P[2] - 2.4 * S)) < 0.3, `no aim point: it lands ${(2.4 * S).toFixed(1)} m in front · ` + (cp && cp.map((x) => x.toFixed(1))));
     // D (enemy, hurt) stands on them: nothing
     D.got.length = 0; A.got.length = 0;
     D.at = cp; await hold(900, []);
@@ -175,12 +176,11 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     A.got.length = 0;
     A.send({ t: 'mech', k: 'wall' }); await hold(200, []);
     const wl = A.take('mech', (m) => m.k === 'vmwall');
-    ok(wl && Math.abs(wl.p[2] - (P[2] - 3.5)) < 0.3 && Math.abs(wl.p[0] - P[0]) < 0.3 && wl.hp === 600, 'OUT OF ORDER: a 600 HP wall 3.5 m in front · ' + (wl && wl.p.map((x) => x.toFixed(1))));
+    ok(wl && Math.abs(wl.p[2] - (P[2] - 3.5 * S)) < 0.3 && Math.abs(wl.p[0] - P[0]) < 0.3 && wl.hp === 600, `OUT OF ORDER: a 600 HP wall ${(3.5 * S).toFixed(1)} m in front · ` + (wl && wl.p.map((x) => x.toFixed(1))));
     A.send({ t: 'mech', k: 'wall' }); await hold(200, []);
     ok(!A.all('mech', (m) => m.k === 'vmwall').length, 'again at once: cooldown, one wall');
-    const wz = P[2] - 3.5;
     // C (ally) behind the wall, D (enemy) out front shooting at it
-    C.at = add(P, [1.8, 0, -2]); D.at = add(P, [0, 0, -18]);
+    C.at = add(P, [1.8, 0, -2]); D.at = add(P, [0, 0, -30]);
     await hold(500, []);
     C.got.length = 0; A.got.length = 0;
     D.send({ t: 'hit', w: 'ar', to: C.id, d: aim(eyeP(D.at), mid(C.at)).d, n: 1, h: 0 }); await hold(250, []);
@@ -190,8 +190,8 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     D.got.length = 0;
     C.send({ t: 'hit', w: 'ar', to: D.id, d: aim(eyeP(C.at), mid(D.at)).d, n: 1, h: 0 }); await hold(250, []);
     ok(D.all('dmg', (m) => m.to === D.id && m.w === 'ar').length === 1, 'the ally shoots back through it: lands (allies shoot through)');
-    // the edge: C half behind it (x 4.3: the panel ends at 4). at the middle: blocked; at the bit that sticks out: lands
-    C.at = add(P, [4.3, 0, -1]); await hold(700, []);
+    // the edge: C half behind it (the panel ends at 4 x S). at the middle: blocked; at the bit that sticks out: lands
+    C.at = add(P, [4 * S + 0.4, 0, -1]); await hold(700, []);
     C.got.length = 0;
     D.send({ t: 'hit', w: 'ar', to: C.id, d: aim(eyeP(D.at), mid(C.at)).d, n: 1, h: 0 }); await hold(250, []);
     ok(!C.all('dmg', (m) => m.to === C.id).length, 'half behind the edge, shot at the middle (through the panel): blocked');
@@ -201,11 +201,11 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     // a projectile: D lobs a banana at C through it
     C.at = add(P, [1.8, 0, -2]); await hold(400, []);
     C.got.length = 0; A.got.length = 0;
-    const bd = aim(eyeP(D.at), add(mid(C.at), [0, 1.6, 0])).d;
+    const bd = aim(eyeP(D.at), add(mid(C.at), [0, 4, 0])).d;
     D.send({ t: 'fire', w: 'banana', d: bd, o: eyeP(D.at) }); await hold(900, []);
     ok(!C.all('dmg', (m) => m.to === C.id && m.w === 'banana').length && A.all('mech', (m) => m.k === 'vmwhit').length >= 1, 'a banana through it: stopped, the wall takes it');
     // a mech's cannons: B's PAPER PLANE hammers C through it until it breaks; then they land
-    const bAt = B.at.slice(), be = add(bAt, [0, 4.4, 0]), ba = aim(be, mid(C.at));
+    const bAt = B.at.slice(), be = add(bAt, [0, 4.4 * S, 0]), ba = aim(be, mid(C.at));
     B.o = { f: MF.MECH, y: ba.y, x: ba.x };
     await hold(400, []);
     C.got.length = 0; A.got.length = 0;
@@ -229,7 +229,7 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     ok(tc && Math.hypot(tc.p[0] - tossTo[0], tc.p[2] - tossTo[2]) < 0.3, 'lobbed at a spot 4.6 m off: lands there · ' + (tc && tc.p.map((x) => x.toFixed(1))));
 
     // ---- 6. RESTOCK: allies in 15 m (yourself too), nobody else
-    C.at = add(P, [5, 0, 1]); E.at = add(P, [17, 0, 0]); D.at = add(P, [0, 0, -6]);
+    C.at = add(P, [5, 0, 1]); E.at = add(P, [15 * S + 3, 0, 0]); D.at = add(P, [0, 0, -6]);
     for (let i = 0; i < 160; i++) { const e = lastEn(A); if (e && e.u >= 100) break; await hold(250, []); }
     const eU = lastEn(A);
     ok(eU && eU.u >= 100, 'the ult is charged · ' + (eU && eU.u));
@@ -239,7 +239,7 @@ const lastEn = (c) => c.all('mech', (m) => m.k === 'en').pop();
     const st = A.take('mech', (m) => m.k === 'vmstock');
     const ids = st ? st.l.map((x) => x[0]) : [];
     ok(st && ids.includes(A.id) && ids.includes(C.id), 'RESTOCK reaches the vending machine and the ally 5 m off');
-    ok(st && !ids.includes(E.id), 'not the ally 17 m away (out of range)');
+    ok(st && !ids.includes(E.id), `not the ally ${Math.round(15 * S + 3)} m away (out of range: ${15 * S} m)`);
     ok(st && !ids.includes(D.id) && !ids.includes(B.id), 'not the enemies (one 6 m away)');
     const ch = C.all('heal', (m) => m.id === C.id).pop();
     ok(ch && ch.hp === 150, 'TDM has no armour: the ally gets an overheal to ' + (ch && ch.hp));

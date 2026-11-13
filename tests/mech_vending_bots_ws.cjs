@@ -6,7 +6,7 @@
 const WS = require('ws');
 const { spawn } = require('child_process');
 const path = require('path');
-const port = Number(process.argv[2]) || 3475, secs = Number(process.argv[3]) || 90, map = process.argv[4] || 'warehouse';
+const port = Number(process.argv[2]) || 3645, secs = Number(process.argv[3]) || 90, map = process.argv[4] || 'warehouse';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 (async () => {
