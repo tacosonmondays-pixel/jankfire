@@ -12,7 +12,7 @@ const PORT = process.env.PORT || 3311, OUT = process.env.SP + '/shots';
   pg.on('pageerror', (e) => errs.push('PAGEERR ' + e.message));
   pg.on('console', (m) => { if (m.type() === 'error') errs.push(m.text()); });
   await pg.addInitScript(() => localStorage.setItem('jankfire', JSON.stringify({ name: 'storytest', jank: 3, loadout: { primary: 'ar', secondary: 'snowball', melee: 'knife', item: 'frag' } })));
-  await pg.goto(`http://localhost:${PORT}/?story=1&storytest=1`); await sleep(1500);
+  await pg.goto(`http://localhost:${PORT}/?story=1&storydev=1&storytest=1`); await sleep(1500);
   await pg.screenshot({ path: `${OUT}/s0_home.png` });
   await pg.click('#storyBtn', { force: true }); await sleep(800);
   await pg.screenshot({ path: `${OUT}/s0_picker.png` });
