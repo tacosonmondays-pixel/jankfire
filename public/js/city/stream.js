@@ -47,7 +47,7 @@ function groupOf(mesh, mats, lod) {
     const b = mesh[k];
     if (!b) continue;
     const m = new THREE.Mesh(geoOf(b), mats[k]);
-    m.matrixAutoUpdate = false; m.userData.kind = k;
+    m.matrixAutoUpdate = false; m.userData.kind = k; m.userData.castBy = 'stream';
     if (k === 'glass' || k === 'acid') m.renderOrder = 2;
     m.receiveShadow = lod === 0; m.castShadow = lod === 0 && k !== 'glass' && k !== 'glow';
     g.add(m); bytes += bytesOf(b); tris += b.tris;
@@ -191,7 +191,7 @@ export class CityStream {
     const r = this.chunks.get(m.id);
     if (!r) return;
     const t = performance.now();
-    if (m.packed) { r.packed = m.packed; r.req.packed = false; r.boxes = null; }
+    if (m.packed) { r.packed = m.packed; r.req.packed = false; r.boxes = null; } this.litV = (this.litV || 0) + 1; // (pickLights: gather its lights again)
     if (m.mesh0) { freeGroup(r.m0); r.m0 = groupOf(m.mesh0, this.mats, 0); r.m0.visible = false; this.root.add(r.m0); }
     if (m.mesh1) { freeGroup(r.m1); r.m1 = groupOf(m.mesh1, this.mats, 1); r.m1.visible = false; this.root.add(r.m1); }
     if (m.mesh0) r.req.mesh0 = false; if (m.mesh1) r.req.mesh1 = false;
@@ -248,7 +248,7 @@ export class CityStream {
     g.setAttribute('color', new THREE.BufferAttribute(m.mesh.col.subarray(0, m.mesh.verts * 3), 3, true));
     g.setIndex(new THREE.BufferAttribute(m.mesh.idx.subarray(0, m.mesh.tris * 3), 1));
     if (m.mesh.min) { g.boundingBox = new THREE.Box3(new THREE.Vector3(...m.mesh.min), new THREE.Vector3(...m.mesh.max)); g.boundingSphere = g.boundingBox.getBoundingSphere(new THREE.Sphere()); } else g.computeBoundingSphere(); // (the worker's bounds: no 25 ms pass over every vertex here)
-    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
+    this.far.mesh = new THREE.Mesh(g, this.mats.far); this.far.mesh.matrixAutoUpdate = false; this.far.mesh.userData = { castBy: 'stream', tris: m.mesh.tris, bytes: m.mesh.pos.byteLength * 2 + m.mesh.idx.byteLength };
     this.root.add(this.far.mesh);
   }
 
@@ -272,18 +272,24 @@ export class CityStream {
 
   // the NL nearest lights in the chunks round the camera -> the shader's arrays (view space, so no per-pixel matrix)
   pickLights(camera) {
-    const p = camera.position, seen = new Set(), list = [];
-    for (const r of this.chunks.values()) {
-      if (!r.packed || !r.packed.lights || r.d > 70) continue;
-      for (const L of r.packed.lights) {
-        const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
-        if (seen.has(key)) continue; seen.add(key);
-        const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4];
-        if (d < 50) list.push([d, L]);
+    const p = camera.position, LT = this.lit || (this.lit = { x: 1e9, y: 0, z: 1e9, v: -1, cand: [], list: [], v3: new THREE.Vector3() });
+    // the candidates (each light in the chunks round you, once) are only gathered again when you've gone 4 m or chunks
+    // came and went: scanning every chunk's lights every frame was a quarter of the streamer's own time
+    if (LT.v !== this.litV || Math.hypot(p.x - LT.x, p.y - LT.y, p.z - LT.z) > 4) {
+      const seen = new Set(); LT.cand.length = 0; LT.x = p.x; LT.y = p.y; LT.z = p.z; LT.v = this.litV;
+      for (const r of this.chunks.values()) {
+        if (!r.packed || !r.packed.lights || r.d > 74) continue; // (70 m, as below, plus the 4 m)
+        for (const L of r.packed.lights) {
+          const key = L[0] * 7 + L[1] * 13 + L[2] * 17;
+          if (seen.has(key)) continue; seen.add(key);
+          if (Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4] < 54) LT.cand.push(L, r); // (50 m, plus the 4 m you can go before the next gather)
+        }
       }
     }
-    list.sort((a, b) => a[0] - b[0]);
-    const v = new THREE.Vector3(), LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
+    const list = LT.list; let n = 0;
+    for (let j = 0; j < LT.cand.length; j += 2) { const L = LT.cand[j]; if (LT.cand[j + 1].d > 70) continue; const d = Math.hypot(L[0] - p.x, L[1] - p.y, L[2] - p.z) - L[4]; if (d < 50) { const e = list[n] || (list[n] = [0, null]); e[0] = d; e[1] = L; n++; } }
+    list.length = n; list.sort((a, b) => a[0] - b[0]);
+    const v = LT.v3, LP = cityUniforms.uLP.value, LC = cityUniforms.uLC.value, M = camera.matrixWorldInverse;
     camera.updateMatrixWorld();
     for (let i = 0; i < NL; i++) {
       const L = list[i] && list[i][1];

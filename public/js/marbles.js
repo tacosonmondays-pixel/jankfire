@@ -97,6 +97,7 @@ export const marbles = {
     mesh.instanceMatrix.needsUpdate = true;
   },
   update(dt, camPos) {
+    if (mesh) mesh.visible = live > 0; // (no marbles out: don't draw 1400 hidden ones, here and in the shadow pass)
     if (!mesh || !live) return;
     dt = Math.min(dt, 0.05);
     clackT -= dt;
