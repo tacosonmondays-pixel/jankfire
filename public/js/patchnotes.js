@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.36', date: '2026-11-13', title: 'ON DECK', items: [
+    "LOBBIES ARE A DECK NOW: online plant & defuse, jank royale and zombies count down on a little deck floating off the map. nothing hurts, fire = shove, jump off and you're put back. the big board shows the top 3 in the lobby by their record.",
+  ] },
   { v: '11.35', date: '2026-11-13', title: 'HOMEWORK', items: [
     "the game stopped freezing for a sec the first time it sees a new gun, zombie or mech. it does its homework at load now. looks exactly the same.",
   ] },
