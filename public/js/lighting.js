@@ -337,14 +337,17 @@ function remoteShadow(r) {
   const cx = root.position.x - rq.cx, cz = root.position.z - rq.cz;
   if (cast && root.visible && cx * cx + cz * cz < rq.half2) { rq.dyn = true; if (r.shadow) r.shadow.visible = false; }
 }
-// a checksum of where everything in o is: the same number means nothing in it moved, turned, scaled, came or went
+// a checksum of where o's shadow-casting parts are, to about 4 mm and a quarter degree (what the shadow map can show):
+// the same number means no shadow in it moved, turned, came or went. (a face's blinks and eyes cast nothing, and an
+// easing turn that never quite lands stops counting once it's under that)
 let _ps = 0, _pn = 0;
+const qz = (v) => Math.round(v * 256);
 function poseAdd(c) {
-  _pn++;
-  if (c.matrixAutoUpdate) { const p = c.position, q = c.quaternion, k = c.scale; _ps += _pn * (p.x * 1.31 + p.y * 1.77 + p.z * 1.13 + q.x * 3.07 + q.y * 2.33 + q.z * 2.91 + q.w * 1.93 + k.x * 0.71 + k.y * 0.83 + k.z * 0.97); }
-  else { const e = c.matrix.elements; _ps += _pn * (e[0] + e[1] * 2.1 + e[5] * 1.3 + e[8] * 2.3 + e[10] * 1.7 + e[12] * 1.11 + e[13] * 1.29 + e[14] * 1.41); }
+  if (!c.isMesh || !c.castShadow) return;
+  const e = c.matrixWorld.elements; _pn++;
+  _ps += _pn * (qz(e[12]) * 1.11 + qz(e[13]) * 1.29 + qz(e[14]) * 1.41 + qz(e[0]) * 2.1 + qz(e[1]) * 2.3 + qz(e[2]) * 2.7 + qz(e[4]) * 3.1 + qz(e[5]) * 3.3 + qz(e[6]) * 3.7 + qz(e[8]) * 4.1 + qz(e[9]) * 4.3 + qz(e[10]) * 4.7);
 }
-function poseSig(o) { _ps = 0; _pn = 0; o.traverseVisible(poseAdd); return _ps + _pn * 1e-3; }
+function poseSig(o) { _ps = 0; _pn = 0; o.traverseVisible(poseAdd); return _ps + _pn * 0.001; }
 export function updateLighting(dt) {
   if (!L.sun) return;
   const f = ++L.frame;
