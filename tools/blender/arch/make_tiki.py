@@ -258,8 +258,10 @@ def tiki_bar(bb, deco):
     up1, up2 = Y[0][1] + 0.12, Y[1][1] + 0.12
     skirt(T[1], up1, T[0], Y[0][1] - 0.08, {'n': 0.55, 's': 0.24, 'w': 0.55, 'e': 0.55}, {'n': Y[0][0] - 0.14, 's': Y[0][0] - 0.03, 'w': Y[0][0] - 0.14, 'e': Y[0][0] - 0.14},
           {'n': 0.32, 's': 0.3, 'w': 0.32, 'e': 0.32}, y_under=Y[0][0], fringe_skip={'s': (sign[0] - 0.15, sign[1] + 0.15, 0.05)})
-    skirt(T[2], up2, T[1], Y[1][1] - 0.08, {k: 0.44 for k in 'nswe'}, up1 - 0.05, {k: 0.2 for k in 'nswe'}, y_under=Y[1][0])
-    skirt(ridge, Y[2][1] + 0.26, T[2], Y[2][1] - 0.06, {k: 0.38 for k in 'nswe'}, up2 - 0.04, {k: 0.16 for k in 'nswe'}, y_under=Y[2][0], cap=True)
+    # (the upper tiers' eaves stand ~10 cm clear of the tier below, like the huts': at a cm or two the dark lip and
+    # underside cut through the lower thatch and Potato's vertex snap broke them into black dashes)
+    skirt(T[2], up2, T[1], Y[1][1] - 0.08, {k: 0.44 for k in 'nswe'}, up1 + 0.04, {k: 0.2 for k in 'nswe'}, y_under=Y[1][0])
+    skirt(ridge, Y[2][1] + 0.26, T[2], Y[2][1] - 0.06, {k: 0.38 for k in 'nswe'}, up2 + 0.05, {k: 0.16 for k in 'nswe'}, y_under=Y[2][0], cap=True)
     yr = Y[2][1] + 0.26; fz = (ridge[1] + ridge[3]) / 2
     pole((ridge[0] - 0.45, yr + 0.03, fz), (ridge[2] + 0.45, yr + 0.03, fz), 0.14, 'tkthatch', n=8, vt=1.0)
     for x in (ridge[0] - 0.3, ridge[2] + 0.3, cx - 0.9, cx + 0.9): lash((x, yr + 0.03, fz), (1, 0, 0), 0.14, w=0.09)
@@ -333,9 +335,13 @@ def tiki_bar(bb, deco):
         if k < 4:
             for s in (-1, 1): bx((x + (bx1 - bx0) / 8 + s * 0.12 - 0.025, by0 + 0.85, bz1), (x + (bx1 - bx0) / 8 + s * 0.12 + 0.025, by0 + 0.95, bz1 + 0.04), {'all': 'tkgold'}, skip=('nz',))
     lc = Vector(((bx0 + bx1) / 2 + 1.6, by0 + 1.0, bz0 - 0.075)); NR = 12
+    # (one mitred ring of hex sections, a point to the front: no straight-cut segments overlapping at the joins)
+    sec = lambda a: [lc + Vector((math.cos(a), math.sin(a), 0)) * (0.27 + 0.07 * math.sin(t)) + Vector((0, 0, 0.07 * math.cos(t))) for t in (j * math.tau / 6 for j in range(6))]
     for k in range(NR):
-        a0, a1 = k * math.tau / NR, (k + 1) * math.tau / NR
-        pole(lc + Vector((math.cos(a0), math.sin(a0), 0)) * 0.27, lc + Vector((math.cos(a1), math.sin(a1), 0)) * 0.27, 0.07, 'tkpink' if (k // 3) % 2 else 'tkwhite', n=6, caps=(False, False), rot=math.pi / 6)
+        A, Bq = sec(k * math.tau / NR), sec((k + 1) * math.tau / NR)
+        for j in range(6):
+            i = (j + 1) % 6; mid = (A[j] + A[i] + Bq[j] + Bq[i]) / 4; ax = lc + Vector((mid.x - lc.x, mid.y - lc.y, 0)).normalized() * 0.27
+            Q([A[j], A[i], Bq[i], Bq[j]], 'tkpink' if (k // 3) % 2 else 'tkwhite', out=mid - ax)
     pole(lc + Vector((-0.3, 0.32, 0.03)), lc + Vector((0.3, 0.32, 0.03)), 0.012, 'tkrope', n=4)
     col = {'glass': 'tkglass', 'toyteal': 'tkcyan', 'toypink': 'tkpink', 'toyyellow': 'tkyellow'}
     for k, b in enumerate(sorted(bottles, key=lambda b: b['min'][0])):
