@@ -23,14 +23,15 @@ from mathutils import Vector
 
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HERE = os.path.dirname(os.path.abspath(__file__))
-G = {}  # (cushions lit like the map's boxes: bright, no gloss)
+G = {'aosoft': 0.35}  # (cushions lit like the map's boxes: bright, no gloss, soft shadows)
+S = {'aosoft': 0.35}  # (the canopy's canvas: light comes through it)
 MATS.update({
     'pd_coping': ('trim', '#f4f2ee', {'gloss': 0.5}), 'pd_mosaic': ('trim', '#38c8f0', {'gloss': 0.4}), 'pd_lane': ('trim', '#1a3a7a', {}),
     'pd_alu': ('metalplate', '#f4f6fb', {'gloss': 0.5}), 'pd_rubber': ('tar', '#222026', {}),
-    'pd_c_white': ('trim', '#f6f4f0', G), 'pd_c_toypink': ('trim', '#ff6ad5', G), 'pd_c_toyteal': ('trim', '#2ad8c8', G), 'pd_c_toyyellow': ('trim', '#ffe14d', G),
+    'pd_c_white': ('trim', '#f6f4f0', G), 'pd_c_toypink': ('trim', '#ff6ad5', G), 'pd_c_toyteal': ('trim', '#5ef2e4', G), 'pd_c_toyyellow': ('trim', '#ffe14d', G),
     'pd_towel': ('stucco', '#ffffff', {}), 'pd_towel2': ('stucco', '#4fd8ff', {}),
     'pd_teak': ('planks', '#f0b070', {}), 'pd_brass': ('metalplate', '#e8b840', {'gloss': 0.8, 'metal': 1}),
-    'pd_canvas': ('stucco', '#fbf6ee', {}), 'pd_stripe': ('stucco', '#ff4fd8', {}), 'pd_curtain': ('stucco', '#f6eef6', {}),
+    'pd_canvas': ('stucco', '#fbf6ee', S), 'pd_stripe': ('stucco', '#ff4fd8', S), 'pd_curtain': ('stucco', '#f6eef6', {}),
     'pd_case': ('tar', '#1d1b22', {'gloss': 0.35}), 'pd_deck': ('metalplate', '#2c2c34', {'gloss': 0.5}), 'pd_platter': ('metalplate', '#c4c8d0', {'gloss': 0.8, 'metal': 1}),
     'pd_vinyl': ('tar', '#0e0e12', {'gloss': 0.9}), 'pd_label': ('trim', '#ff4fd8', {}), 'pd_screen': ('trim', '#4fd8ff', {'glow': True, 'glowcol': '#4fd8ff'}),
     'pd_fader': ('trim', '#39ff14', {'glow': True, 'glowcol': '#39ff14'}), 'pd_cone': ('tar', '#151518', {}), 'pd_grille': ('metalplate', '#2e3038', {}),
