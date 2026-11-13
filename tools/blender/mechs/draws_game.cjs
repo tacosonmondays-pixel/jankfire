@@ -38,11 +38,21 @@ fs.mkdirSync(outDir, { recursive: true });
     G.vmCamera.layers.disableAll();
     const at = ME.pos.slice(); // (where we spawned: on the ground)
     setInterval(() => { ME.pos = at.slice(); ME.vel = [0, 0, 0]; ME.hp = 100; G.remotes.forEach((r) => { if (r.ch && r.ch.root) r.ch.root.visible = false; if (r.marker) r.marker.visible = false; if (r.tag) r.tag.visible = false; }); }, 4);
-    const inst = mm.buildMech(F, '#ff7a1c');
-    if (!inst || !inst.glb) return { err: 'buildMech gave no model glb (frame ' + F + ' not known to this build?)' };
+    let inst = mm.buildMech(F, '#ff7a1c'), via = 'buildMech';
+    if (!inst || !inst.glb || inst.frame !== F) { // (a hero this build's mechmodel doesn't know yet: the glb through glbkit + the hero kit, like hero_game.cjs)
+      if (inst && mm.freeMech) mm.freeMech(inst);
+      const look = await import('/js/mechlook.js'), SKU = await import('three/addons/utils/SkeletonUtils.js');
+      const a = kit.authored(id); let glb = a.obj, skn = false; glb.traverse((o) => { if (o.isSkinnedMesh) skn = true; });
+      if (skn) glb = SKU.clone(kit.AUTHORED[id].scene);
+      const meta = a.meta || kit.metaOf(glb) || {}, root = new THREE.Group(); root.add(glb);
+      const j = {}, att = {}; glb.traverse((o) => { if (meta.joints && Object.hasOwn(meta.joints, o.name)) j[o.name] = o; if (/^mk_/.test(o.name)) att[o.name] = o; });
+      inst = { frame: F, root, j, att, own: {}, flames: [], t: 0, glb: true, clip: 'idle', act: null };
+      inst.mixer = new THREE.AnimationMixer(glb); const idle = (glb.animations || []).find((c) => c.name === 'idle'); if (idle) inst.mixer.clipAction(idle).play();
+      look.lookMech(inst, glb, '#ff7a1c', kit.AUTHORED[id].scene); inst.lookTick = look.lookTick; via = 'glbkit + mechlook';
+    }
     inst.root.position.set(at[0], at[1], at[2] - 9); inst.root.rotation.y = Math.PI * 0.85; G.scene.add(inst.root);
     let last = performance.now();
-    const tick = () => { const n = performance.now(), dt = Math.min(0.1, (n - last) / 1000); last = n; mm.poseMech(inst, {}, dt); requestAnimationFrame(tick); };
+    const tick = () => { const n = performance.now(), dt = Math.min(0.1, (n - last) / 1000); last = n; if (inst.lookTick) { inst.t += dt; inst.mixer.update(dt); inst.lookTick(inst, {}, dt); } else mm.poseMech(inst, {}, dt); requestAnimationFrame(tick); };
     tick();
     const cam = { e: [at[0] + 3.2, at[1] + 3.0, at[2] - 1.5], t: [at[0], at[1] + 2.0, at[2] - 9] };
     G.scene.onBeforeRender = (r, sc, c) => { c.position.fromArray(cam.e); c.lookAt(cam.t[0], cam.t[1], cam.t[2]); if (c.fov !== 55) { c.fov = 55; c.updateProjectionMatrix(); } c.updateMatrixWorld(); };
@@ -56,7 +66,7 @@ fs.mkdirSync(outDir, { recursive: true });
       for (const k in C) C[k] = 0; requestAnimationFrame(f);
     });
     let prims = 0, mats = new Set(); inst.root.traverse((o) => { if (o.isMesh && o.visible) { prims++; mats.add(o.material); } });
-    return { meshes: prims, materials: mats.size, ink: inst.look ? inst.look.outline.length : 0 };
+    return { meshes: prims, materials: mats.size, ink: inst.look ? inst.look.outline.length : 0, via };
   }, [frame, map]);
   if (info.err) { console.log(info.err, errs.slice(0, 3)); await b.close(); process.exit(1); }
   await sleep(5000); // (shaders compile on first sight: software GL is slow)

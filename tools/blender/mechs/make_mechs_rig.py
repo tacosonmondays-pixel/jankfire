@@ -168,6 +168,33 @@ def key_clips(mk, mod, clip_list):
     bpy.context.view_layer.update()
 
 
+def build_lod(mod, far=True):
+    """the mech built twice: first the far LOD (mechkit.LO: half the segments, chamfers, no dt() detail parts), its
+    joint meshes kept; then the near model, with each far mesh hung on its joint as <joint>_lod1 (a sibling of
+    <joint>_mesh: the game shows one or the other by distance). mk.lods = {joint: object}"""
+    import mechkit
+    keep = {}
+    if far:
+        mechkit.LO = True
+        lo = mod.build(); lo.build_tree()
+        keep = {n: o.data for n, o in lo.meshes.items()}
+        for o in list(bpy.data.objects): bpy.data.objects.remove(o, do_unlink=True)
+        mechkit.LO = False
+    mk = mod.build(); mk.build_tree(); mk.lods = {}
+    for n, me in keep.items():
+        if n not in mk.E: continue
+        o = lib._link(bpy.data.objects.new(n + '_lod1', me)); o.parent = mk.E[n]; mk.lods[n] = o
+    bpy.context.view_layer.update()
+    return mk
+
+
+def tris_of(objs):
+    dg = bpy.context.evaluated_depsgraph_get(); t = 0
+    for o in objs:
+        me = o.evaluated_get(dg).to_mesh(); me.calc_loop_triangles(); t += len(me.loop_triangles); o.evaluated_get(dg).to_mesh_clear()
+    return t
+
+
 def export(mk, path, **extra):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     bpy.ops.object.select_all(action='DESELECT')
