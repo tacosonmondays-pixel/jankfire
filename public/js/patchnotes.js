@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.35', date: '2026-11-13', title: 'HOMEWORK', items: [
+    "the game stopped freezing for a sec the first time it sees a new gun, zombie or mech. it does its homework at load now. looks exactly the same.",
+  ] },
   { v: '11.34', date: '2026-11-13', title: 'DRAW ON THE MAP', items: [
     "DRAW ON THE MAP. open the big map, grab the PENCIL (or hold shift) and sketch a route for your squad: a fat felt-tip arrow they see on their map for 30 s. WIPE MINE when the plan changes.",
   ] },
