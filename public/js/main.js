@@ -83,6 +83,7 @@ import { sink, bottomOut, swim, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
 import { initFullmap, fullmapFrame, fmKey, fmMouse, fmOpen } from './fullmap.js'; // the big map (M) + pings
+import { initMapPencil } from './mappencil.js'; // the big map's pencil
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
@@ -179,6 +180,7 @@ G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
 initMinimap();
 initFullmap(() => lock());
+initMapPencil();
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
