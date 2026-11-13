@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.12', date: '2026-11-13', title: 'GOD RAYS', items: [
+    'RAY-TRACED LOOK: sunbeams stream between buildings when you look toward the sun, and the city far below goes soft and hazy. new "sun shafts and haze" checkbox.',
+    'neon got loud: pink tubes paint the floor pink, cyan ones cyan, and dark asphalt picks up a coloured sheen.',
+  ] },
   { v: '11.11', date: '2026-11-13', title: 'NEON SPILL', items: [
     'RAY-TRACED LOOK: neon signs and lamps now light up the walls and floor around them. the floor under HOTEL 4 HOURS glows yellow. stronger at night.',
   ] },
