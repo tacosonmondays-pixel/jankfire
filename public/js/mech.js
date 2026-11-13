@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { raycast, movePlayer } from '/shared/physics.js';
 import { FLAGS } from '/shared/weapons.js';
-import { MECH, MF, mechFrame, mechBoxes, energyAt, spend, newEnergy, mechClash, mechBody, mechRoom } from '/shared/mech.js';
+import { MECH, MF, mechFrame, mechBoxes, energyAt, spend, newEnergy, mechClash, mechBody, mechRoom, FRAMES } from '/shared/mech.js';
 import { G } from './ctx.js';
 import { ME, eye, look, hspeed, releaseHook, ballOn } from './player.js';
 import { W, punchCam, isFriend } from './weapons.js';
@@ -21,9 +21,12 @@ import { buildMech, freeMech, poseMech, mechBurst, buildCrane, GLB_ID, modelVer 
 import { mechsfx } from './mechsfx.js';
 import './mechlooksfx.js'; // (the hero clips' beats: their sounds)
 import { prefetch, whenLate } from './glbkit.js';
+import { WBK } from './mech_wrecking.js'; // battle island heroes: each kit's controls, moves, effects in its own file
 
 export { mechBoxes };
 const PP = MECH.paperplane, NS = MECH.nightshift;
+// the battle island heroes (public/js/mech_<id>.js): { help, abil, cds, start, end, key, step, update, flags, pose, remote, event, events, reset }
+const KITS = { wrecking: WBK };
 const r2 = (x) => Math.round(x * 100) / 100;
 const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
 const $ = (id) => document.getElementById(id);
@@ -39,7 +42,7 @@ const FRAMEOF = new Map(); // player id -> the frame they're in (from 'in' and '
 const WM = new Map(); // mech id -> the mechs out in the world: falling, waiting, empty { id, o, f, p, yaw, st, until, inst, mk, t0, ms }
 const DRONES = new Map(); // crane drones in the air
 const MARKS = new Map(); // player id -> overtime marks over their head { n, until, el }
-for (const f of ['paperplane', 'nightshift']) whenLate(GLB_ID[f], () => { if (MS.inst && !MS.on) { freeMech(MS.inst); MS.inst = null; } }); // a hero model landed: rebuilt next time
+for (const f of FRAMES) whenLate(GLB_ID[f], () => { if (MS.inst && !MS.on) { freeMech(MS.inst); MS.inst = null; } }); // a hero model landed: rebuilt next time
 export const mechOn = () => MS.on && ME.alive;
 export const mechHeroOn = () => !!MS.hero && !MS.on && performance.now() - MS.hero.t0 < 1500; // (the landing shot: no gun in the picture)
 export const myFrame = () => mechFrame(G.settings && G.settings.loadout && G.settings.loadout.mech);
@@ -81,7 +84,8 @@ function startLocal(m) {
   mechsfx.climb(null);
   G.shake = Math.max(G.shake, 0.6);
   hud.msg(F.name + ' ONLINE', 1.6, 'brag');
-  hud.chat(null, null, f === 'paperplane'
+  if (KITS[f]) { MS.ult = 0; KITS[f].start(MS); }
+  hud.chat(null, null, KITS[f] ? `${F.name}: ${KITS[f].help()} · ${K.label('use')} hop out` : f === 'paperplane'
     ? `${F.name}: ${K.label('fire')} cannons · hold ${K.label('jump')} hover · ${K.label('sprint')} boost lunge · ${K.label('aim')} missile swarm · ${K.label('grapple')} crane drone · ${K.label('lastSlot')} jet mode · ${K.label('use')} hop out`
     : `${F.name}: ${K.label('fire')} sword combo · hold ${K.label('aim')} tower shield (let go after a block: bash) · ${K.label('sprint')} triple shift · ${K.label('lastSlot')} ground slam · ${K.label('use')} hop out`);
   panel(true);
@@ -93,6 +97,7 @@ function endLocal(why) {
   document.body.classList.remove('mechin');
   panel(false);
   if (G.myBody && G.myBody.k === MS.f) G.myBody = null; // (its armour bar goes with it)
+  if (KITS[MS.f]) KITS[MS.f].end(why);
   if (MS.inst) { if (why === 'boom') { mechBurst(MS.inst, ME.vel); const dead = MS.inst; MS.inst = null; setTimeout(() => freeMech(dead), 7000); } else MS.inst.root.removeFromParent(); }
   MS.camLen = Math.min(MS.camLen, 3);
 }
@@ -110,6 +115,16 @@ export function mechKey(e, down) {
     return true;
   }
   if (!ME.alive) return false;
+  const kit = KITS[MS.f];
+  if (kit) { // a hero's own keys; F hops out, the rest of the game's keys do nothing in here
+    const r = kit.key(e, down, now);
+    if (r !== undefined) return r;
+    if (!down) return false;
+    if (e.repeat) return K.matches(['fire', 'aim', 'sprint', 'grapple', 'lastSlot', 'use', ...BLOCKED], e);
+    if (K.matches('use', e)) { net.send({ t: 'mech', k: 'out' }); return true; }
+    if (K.matches(BLOCKED, e)) { if (K.matches('item', e)) hud.msg('no items in a mech', 0.8); return true; }
+    return false;
+  }
   const pp = MS.f === 'paperplane';
   if (!down) {
     if (K.up('fire', e)) MS.lmb = false;
@@ -220,6 +235,7 @@ function slam(now) {
 // ------------------------------------------------------------ movement (player.js stepPlayer hands the step over)
 export function mechStep(dt, inp, now) {
   if (!MS.on || !ME.alive) return false;
+  if (KITS[MS.f]) return KITS[MS.f].step(dt, inp, now); // a hero moves its own way
   const F = MECH[MS.f], v = ME.vel, p = ME.pos, pp = MS.f === 'paperplane';
   ME.hook = null; ME.sliding = false; ME.crouching = false; ME.sprinting = false; ME.dashing = false;
   const fw = (inp.f ? 1 : 0) - (inp.b ? 1 : 0), st = (inp.r ? 1 : 0) - (inp.l ? 1 : 0);
@@ -346,7 +362,8 @@ export function updateMech(dt, now, cam, replaying) {
     mechsfx.gun(null, 0.8); punchCam(-0.006, (Math.random() - 0.5) * 0.004); G.shake = Math.max(G.shake, 0.08);
   }
   // your mech, in third person
-  const inst = MS.inst;
+  const inst = MS.inst, kit = KITS[MS.f];
+  if (kit) kit.update(dt, now, inst);
   if (inst) {
     inst.root.position.set(ME.pos[0], ME.pos[1], ME.pos[2]);
     inst.root.rotation.set(0, ME.yaw, 0);
@@ -357,6 +374,7 @@ export function updateMech(dt, now, cam, replaying) {
       hover: MS.hover, jet: jet ? 1 : 0, dash: !!MS.dash || !!(MS.triple && MS.triple.dir && (now - MS.triple.t0) / 1000 - NS.triple.lead >= 0 && ((now - MS.triple.t0) / 1000 - NS.triple.lead) % NS.triple.gap < NS.triple.len), shield: MS.rmb,
       swingT: MS.swingT, swingI: MS.swingI, slam: MS.slam ? MS.slam.ph : 0, gunT: MS.gunT, gunSide: MS.gunSide, swarmT: MS.swarmT, craneOut: MS.craneOut > now,
       landT: MS.landT, landK: MS.landK, pitch: ME.pitch, boost: MS.boostT < 0.3 ? 1 - MS.boostT / 0.3 : 0, slashing: MS.swingT > 0.08 && MS.swingT < 0.32 || !!MS.triple || (MS.slam && MS.slam.ph === 2),
+      ...(kit ? kit.pose(now) : null),
     }, dt);
     if (jet && Math.random() < dt * 40) rfx.smoke([ME.pos[0], ME.pos[1] + 2.5, ME.pos[2]], 1, 0xdfe4ea, 0.8, 0.2, 0.7, 0.3);
   }
@@ -367,7 +385,7 @@ export function mechVM(dt, now, vmRoot) {
   if (!MS.on || !ME.alive) return false;
   if (vmRoot) vmRoot.visible = false;
   const pp = MS.f === 'paperplane';
-  W.flags = FLAGS.MECH | (pp ? (MS.hover ? MF.HOVER : 0) | (now < MS.jetUntil ? MF.JET : 0) | (MS.dash ? MF.DASH : 0)
+  W.flags = KITS[MS.f] ? FLAGS.MECH | KITS[MS.f].flags(now) : FLAGS.MECH | (pp ? (MS.hover ? MF.HOVER : 0) | (now < MS.jetUntil ? MF.JET : 0) | (MS.dash ? MF.DASH : 0)
     : (MS.rmb ? MF.SHIELD : 0) | (MS.slam ? MF.SLAM : 0) | (MS.triple ? MF.SLASH : 0));
   W.aim = 0; W.scoped = false; W.held = false; W.aimHeld = false;
   W.zoom = now < MS.jetUntil ? 1.35 : 1; // (the speed's fov kick would make the jet a speck)
@@ -408,7 +426,7 @@ export function mechCam(cam, dt) {
   cam.position.set(e[0] - d[0] * MS.camLen, e[1] - d[1] * MS.camLen, e[2] - d[2] * MS.camLen);
 }
 
-const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6] }; // the camera's step right + up
+const SHOULDER = { paperplane: [1.7, 0.5], nightshift: [2.1, 0.6], wrecking: [1.2, 1.4] }; // the camera's step right + up
 // where the crosshair really points (the camera sits off to the side): the direction from the cockpit to whatever the
 // screen centre is on, so shots and locks go where you aim
 export function aimDir() {
@@ -442,13 +460,14 @@ function css() {
 #mechHud .mh-ar i{background:repeating-linear-gradient(60deg,#ff4fd8 0 6px,#c0279f 6px 9px)}#mechHud .mh-en i{background:#39ff14}#mechHud.low .mh-ar i{background:#ff3030}
 #mechHud .mh-ab{display:flex;gap:6px;margin-top:6px}#mechHud .mh-ab>div{flex:1;text-align:center;padding:3px 0;border:2px solid #fff;background:#000;opacity:.55;font-size:11px;line-height:1.15}
 #mechHud .mh-ab>div.ready{opacity:1;border-color:#ffe14d;color:#ffe14d;box-shadow:3px 3px 0 #ff4fd8}#mechHud .mh-ab kbd{display:block;font-family:inherit;color:#4fd8ff}
-#mechHud .mh-ab em{display:block;font-style:normal;color:#fff}#mechPrompt{display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%) rotate(-2deg);padding:6px 14px;font-family:var(--font);font-weight:bold;font-size:20px;background:#ffe14d;color:#000;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;pointer-events:none}
+#mechHud .mh-ab em{display:block;font-style:normal;color:#fff}#mechHud .mh-ab>div.ult{background:#ff4fd8;color:#000;border-color:#000;animation:mhUlt .5s steps(2) infinite}#mechHud .mh-ab>div.ult em,#mechHud .mh-ab>div.ult kbd{color:#000}@keyframes mhUlt{50%{transform:rotate(-3deg) scale(1.06)}}#mechPrompt{display:none;position:absolute;left:50%;top:62%;transform:translateX(-50%) rotate(-2deg);padding:6px 14px;font-family:var(--font);font-weight:bold;font-size:20px;background:#ffe14d;color:#000;border:3px solid #000;box-shadow:5px 5px 0 #ff4fd8;pointer-events:none}
 .mechMark{position:absolute;transform:translate(-50%,-100%);font-family:var(--font);font-weight:bold;font-size:15px;color:#ffe14d;background:rgba(18,8,24,.85);border:2px solid #ff4fd8;padding:0 5px;pointer-events:none;white-space:nowrap}
 .mechMark.out{color:#000;background:#ffe14d;font-size:18px;border-color:#000;box-shadow:4px 4px 0 #ff4fd8}`;
   document.head.append(s);
 }
 let el = null;
 const ABIL = { paperplane: [['sprint', 'LUNGE', 'lunge'], ['aim', 'SWARM', 'swarm'], ['grapple', 'CRANE', 'crane'], ['lastSlot', 'JET', 'jet']], nightshift: [['aim', 'SHIELD', ''], ['sprint', 'TRIPLE', 'triple'], ['lastSlot', 'SLAM', 'slam'], ['use', 'HOP OUT', '']] };
+for (const [f, k] of Object.entries(KITS)) ABIL[f] = k.abil; // (a hero's: [key, NAME, cooldown key, energy cost]; 'ult' = its ultimate)
 function panel(on) {
   css();
   if (!el) { el = document.createElement('div'); el.id = 'mechHud'; $('hud').append(el); }
@@ -463,7 +482,7 @@ function panelUpdate(now) {
   const b = G.myBody && G.myBody.k === MS.f ? G.myBody : null;
   if (b) { MS.hp = b.hp; MS.max = b.max; }
   const en = energyAt(MS.E, now), jet = Math.max(0, MS.jetUntil - now);
-  const key = [Math.round(MS.hp), Math.round(en), ...ABIL[MS.f].map(([, , c]) => Math.ceil(cdLeft(c, now) / 100)), Math.ceil(jet / 100), MS.rmb ? 1 : 0].join('|');
+  const key = [Math.round(MS.hp), Math.round(en), ...ABIL[MS.f].map(([, , c]) => Math.ceil(cdLeft(c, now) / 100)), Math.ceil(jet / 100), MS.rmb ? 1 : 0, Math.floor(MS.ult || 0)].join('|');
   if (el.dataset.key === key) return;
   el.dataset.key = key;
   el.querySelector('.mh-n').textContent = `${Math.max(0, Math.round(MS.hp))} / ${MS.max}`;
@@ -475,6 +494,13 @@ function panelUpdate(now) {
   [...el.querySelectorAll('.mh-ab > div')].forEach((d) => {
     const c = d.dataset.c, left = c ? cdLeft(c, now) : 0, em = d.querySelector('em');
     const live = c === 'jet' && jet > 0;
+    const ab = KITS[MS.f] && ABIL[MS.f].find((a) => a[2] === c);
+    if (ab) { // a hero's: cooldown, energy cost, or the ultimate's charge
+      const u = Math.floor(MS.ult || 0), ready = c === 'ult' ? u >= 100 : left <= 0 && (!ab[3] || en >= ab[3]);
+      em.textContent = c === 'ult' ? (u >= 100 ? 'READY' : u + '%') : left > 0 ? (left / 1000).toFixed(1) + 's' : ab[3] ? `${ab[3]}E` : 'READY';
+      d.classList.toggle('ready', ready); d.classList.toggle('ult', c === 'ult' && u >= 100);
+      return;
+    }
     em.textContent = live ? (jet / 1000).toFixed(1) + 's' : left > 0 ? (left / 1000).toFixed(1) + 's' : c === 'lunge' ? `${PP.lunge.cost}E` : c === 'triple' ? `${NS.triple.cost}E` : d.textContent.includes('SHIELD') && MS.rmb ? 'UP' : 'READY';
     d.classList.toggle('ready', live || (left <= 0 && (c === 'lunge' ? en >= PP.lunge.cost : c === 'triple' ? en >= NS.triple.cost : true)));
   });
@@ -599,6 +625,11 @@ export function mechRemote(r, dt, now) {
   else if (st.wasAir) { if (st.minVy < -8) { st.landT = 0; st.landK = Math.min(1, -st.minVy / 30); dustRing(r.pos, 3 + st.landK * 3, st.landK); mechsfx.step(r.pos, 1.2, true); if (!r.ghost) shakeNear(r.pos, 0.5, 25); } st.minVy = 0; }
   st.wasAir = air;
   const pp = f === 'paperplane', hs = Math.hypot(vx, vz);
+  if (KITS[f]) { // a hero: its own sounds and pose
+    poseMech(st.inst, { spd: air ? 0 : hs, fwd: -(vx * s + vz * c), side: vx * c - vz * s, air, vy: r.vel[1], landT: st.landT, landK: st.landK, pitch: r.pitch, swingT: 9, gunT: 9, swarmT: 9, ...KITS[f].remote(r, st, dt, now) }, dt);
+    r.shadow.scale.setScalar(2.8 * (r.distScale || 1));
+    return;
+  }
   // footsteps you hear (and feel) as they walk past
   if (!air && hs > 1.2) { const w0 = Math.floor(st.ph || 0); st.ph = (st.ph || 0) + dt * (0.7 + hs * (pp ? 0.16 : 0.13)); if (Math.floor(st.ph) !== w0) { mechsfx.step(r.pos, 0.5, !pp); if (!r.ghost) shakeNear(r.pos, 0.15, 18); } }
   poseMech(st.inst, {
@@ -624,6 +655,7 @@ const posOf = (id, getR) => (id === G.myId ? ME.pos : getR(id) ? getR(id).pos : 
 // live (net) or in a killcam / play of the round (replay.js hands them over with its ghosts: live = false)
 function mechEvent(m, getR, live) {
   const me = live && m.id === G.myId, r = getR(m.id), st = r && r.mech;
+  for (const k of Object.values(KITS)) if (k.events.has(m.k)) { k.event(m, getR, live, me, r, st); return; } // a hero's own events
   const P = (x) => (Array.isArray(x) && x.length === 3 && x.every(Number.isFinite) ? x : null);
   switch (m.k) {
     case 'gun': {
@@ -801,17 +833,19 @@ net.on('mech', (m) => {
     case 'en': {
       if (!MS.on) return;
       if (Number.isFinite(m.v)) { MS.E.v = m.v; MS.E.at = now; }
-      if (m.cd && typeof m.cd === 'object') for (const k of ['lunge', 'crane', 'swarm', 'jet', 'slam', 'bash']) MS.cd[k] = Number.isFinite(m.cd[k]) ? now + m.cd[k] : Math.min(MS.cd[k] || 0, now);
+      if (Number.isFinite(m.u)) MS.ult = m.u;
+      if (m.cd && typeof m.cd === 'object') for (const k of ['lunge', 'crane', 'swarm', 'jet', 'slam', 'bash', ...(KITS[MS.f] ? KITS[MS.f].cds : [])]) MS.cd[k] = Number.isFinite(m.cd[k]) ? now + m.cd[k] : Math.min(MS.cd[k] || 0, now);
       if (Number.isFinite(m.jet)) MS.jetUntil = m.jet > 0 ? now + m.jet : Math.min(MS.jetUntil, now);
       return;
     }
-    case 'no': { if (typeof m.why === 'string') { hud.msg(m.why.toUpperCase().slice(0, 40), 1.1); mechsfx.denied(); } if (m.why === 'no energy') { MS.dash = null; MS.triple = null; } return; }
+    case 'no': { if (typeof m.why === 'string') { hud.msg(m.why.toUpperCase().slice(0, 40), 1.1); mechsfx.denied(); } if (m.why === 'no energy') { MS.dash = null; MS.triple = null; } if (KITS[MS.f] && MS.on) KITS[MS.f].denied(m.why); return; }
   }
   recordEv(m);
   mechEvent(m, (id) => G.remotes.get(id), true);
 });
 // replay.js: a recorded mech event, with the replay's ghosts standing in for the players
 const FX = new Set(['gun', 'cut', 'lunge', 'crane', 'cp', 'peck', 'cranex', 'swarm', 'jet', 'swing', 'bash', 'triple', 'slam', 'quake', 'blk', 'stomp', 'ram', 'mark', 'clock', 'squash', 'bonk', 'down']);
+for (const k of Object.values(KITS)) for (const e of k.events) FX.add(e);
 export function mechFx(m, ghosts) { if (m && FX.has(m.k)) mechEvent(m, (id) => ghosts.get(id), false); }
 // a new round / mode / you left: no mechs left lying around
 export function mechReset() {
@@ -820,6 +854,7 @@ export function mechReset() {
   DRONES.clear(); FRAMEOF.clear();
   for (const mk of MARKS.values()) mk.el.remove();
   MARKS.clear();
+  for (const k of Object.values(KITS)) k.reset();
   endLocal('quiet');
 }
 // the loadout's frame pick (main.js buildLoadoutUI): two buttons under the killstreaks
@@ -828,7 +863,7 @@ export function mechFrameRow(cur, onPick) {
   row.className = 'mechFrames';
   row.style.cssText = 'display:flex;gap:6px;align-items:center;width:100%;margin-top:4px;font-weight:bold';
   const t = document.createElement('span'); t.textContent = 'MECH DROP FRAME:'; row.append(t);
-  for (const [f, tip] of [['paperplane', 'nimble 5 m flyer · 900 armour'], ['nightshift', '6 m knight · 1500 armour']]) {
+  for (const [f, tip] of [['paperplane', 'nimble 5 m flyer · 900 armour'], ['nightshift', '6 m knight · 1500 armour'], ...Object.keys(KITS).map((k) => [k, MECH[k].tip])]) {
     const b = document.createElement('button');
     b.className = 'kpick' + (mechFrame(cur) === f ? ' on' : '');
     b.textContent = MECH[f].name; b.title = tip;
@@ -838,5 +873,6 @@ export function mechFrameRow(cur, onPick) {
   return row;
 }
 // (tests + screenshots: the mechs out in the world)
+export const mechKitApi = { aimDir, dustRing: (p, r, k) => dustRing(p, r, k), shakeNear: (a, k, r) => shakeNear(a, k, r), centerOf: (r) => centerOf(r), nameOf: (id) => nameOf(id), instOf: (id, getR) => instOf(id, getR), posOf: (id, getR) => posOf(id, getR) }; // (the heroes' kits: helpers they share)
 export const mechWorld = () => [...WM.values()].map((m) => ({ id: m.id, o: m.o, f: m.f, p: m.p, st: m.st, yaw: m.yaw }));
 export const mechDebug = () => ({ WM, MS, DRONES }); // (screenshot scripts: hold a fall mid-air)

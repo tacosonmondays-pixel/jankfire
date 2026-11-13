@@ -8,10 +8,11 @@
 import { ISLE } from '../shared/island.js'; // (battle island: the zone vs mechs)
 import { FLAGS, WEAPONS } from '../shared/weapons.js';
 import { BODY } from '../shared/bodyhp.js';
-import { MECH, MF, MECH_BITS, mechFrame, isFrame, mechBoxes, energyAt, spend, newEnergy, speedCap, inArc, ramHit, dropHit, addMark, mechBody, mechRoom } from '../shared/mech.js';
+import { MECH, MF, MECH_BITS, mechFrame, isFrame, mechBoxes, energyAt, spend, newEnergy, speedCap, inArc, ramHit, dropHit, addMark, mechBody, mechRoom, FRAMES } from '../shared/mech.js';
 import { inFront } from '../shared/rig.js';
 import { outOfBounds, boundsCenter } from '../shared/bounds.js';
 import { raycast, movePlayer, playerBoxes, rayBox, playerOverlap, PH } from '../shared/physics.js';
+import { installWrecking } from './mech_wrecking.js'; // battle island heroes: each kit's judging in its own file
 
 const PP = MECH.paperplane, NS = MECH.nightshift;
 const lookOf = (p) => { const c = Math.cos(p.pitch || 0); return [-Math.sin(p.yaw) * c, Math.sin(p.pitch || 0), -Math.cos(p.yaw) * c]; };
@@ -28,11 +29,15 @@ function clear(a, b, boxes) {
   const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]], l = Math.hypot(d[0], d[1], d[2]);
   return l < 0.35 || !raycast(a, [d[0] / l, d[1] / l, d[2] / l], l - 0.3, boxes);
 }
+// the battle island heroes' kits (server/mech_<id>.js): hooks by frame id, each called with this = the room.
+// { enter, exit, flags, budget, land, msg, tick, bot, shrug, soak, en }
+const KIT = {};
 const MSG_PER_S = 30; // 'mech' messages a second per player (cannons are 8): more get dropped
 
 export function installMech(Room, U) {
   const { now, num, vec3, norm, r2, center, safe, send, REC_T } = U;
   REC_T.add('mech'); // drops, swings, slams and blasts show up in killcams and the play of the round
+  installWrecking(Room, { ...U, KIT, clear, segDist, lookOf, hdist, hopUp });
 
   Object.assign(Room.prototype, {
     mechMap() { return this._mechs || (this._mechs = new Map()); },
@@ -49,6 +54,8 @@ export function installMech(Room, U) {
     },
     mechEyeOf(p) { return [p.pos[0], p.pos[1] + MECH[p.mech.f].eye, p.pos[2]]; },
     mechShrug(t, v) { // knockback on a mech: mostly ignored, and the speed check lets the rest through
+      const K = KIT[t.mech.f];
+      if (K && K.shrug) { const r = K.shrug.call(this, t, v); if (r) return r; } // (a hero's passive: the rolling ball ignores it)
       const k = v.map((x) => x * MECH.kbTake);
       t.mech.bank = Math.min(40, (t.mech.bank || 0) + Math.hypot(k[0], k[2]) * 0.8);
       if (k[1] > 0) t.mech.ub = Math.min(60, (t.mech.ub || 0) + k[1] * k[1] / (2 * MECH[t.mech.f].grav) + 0.3); // (and a pop upwards may go up)
@@ -140,6 +147,8 @@ export function installMech(Room, U) {
       p.mech = { on: true, id: m.id, f: m.f, E: m.E || newEnergy(n), cd: m.cd || {}, combo: { i: -1, t: 0 }, dash: null, jetUntil: 0, slam: null, blockT: 0, marks: null, // (energy + cooldowns live on the mech)
         last: p.pos.slice(), snapT: n, bank: MECH.slack, grace: n + 600, fixT: 0, minVy: 0, ramT: new Map(), stompT: new Map(), msg: { n: 0, t: n }, enT: 0,
         ub: hopUp(F), air: false, peak: p.pos[1], peakT: n, mv: null, mvA: { t: n, p: p.pos.slice() } };
+      p.mech.ult = m.ult || 0; // (a hero's ultimate charge lives on the mech too)
+      if (KIT[m.f] && KIT[m.f].enter) KIT[m.f].enter.call(this, p, p.mech, m, n);
       this.bodyStart(p, m.f);
       if (p.body) p.body.hp = Math.min(F.hp, m.hp);
       this.bodyFlush(p, true);
@@ -154,13 +163,14 @@ export function installMech(Room, U) {
       if (!M) return;
       const m = this.mechMap().get(M.id), F = MECH[M.f];
       const hp = p.body ? Math.max(0, p.body.hp) : 0;
+      if (KIT[M.f] && KIT[M.f].exit) KIT[M.f].exit.call(this, p, M, why); // (a kit's things out in the world go with it)
       p.mech = null; p.f &= ~MECH_BITS;
       this.bodyClear(p);
       this.dronesOf(p.id, true);
       const at = p.pos.slice();
       if (why === 'hop' && m && hp > 0) {
         m.st = 'idle'; m.p = at; m.yaw = r2(p.yaw); m.hp = hp; m.t = now(); m.until = m.t + MECH.idle * 1000;
-        m.E = M.E; m.cd = M.cd; m.backT = m.t + 1000;
+        m.E = M.E; m.cd = M.cd; m.ult = M.ult; m.backT = m.t + 1000;
         this.broadcast({ t: 'mech', k: 'out', id: p.id, m: M.id, why, p: at.map(r2), yaw: m.yaw, ms: MECH.idle * 1000 });
         const c = Math.cos(p.yaw), s = Math.sin(p.yaw);
         p.pos = this.mechOutSpot(at, [[c, -s], [-c, s], [s, c], [-s, -c]], MECH.out); // you climb down off its side (one with no wall in the way)
@@ -244,6 +254,8 @@ export function installMech(Room, U) {
       }
       M.hitT = n;
       if (w === 'zone' && this.isleOn) return this.bodySoak(t, amt * ISLE.zoneMech, attacker, 'islezone'); // battle island: the zone eats a mech's armour (its pilot's HP is safe)
+      const K = KIT[M.f];
+      if (K && K.soak) { amt = K.soak.call(this, t, M, amt, attacker, w, from, n); if (!(amt > 0)) return true; }
       return this.bodySoak(t, amt, attacker, w);
     },
 
@@ -397,7 +409,8 @@ export function installMech(Room, U) {
         if ((want & MF.HOVER) && energyAt(M.E, n) > 0 && n >= M.jetUntil) { f |= MF.HOVER; M.E.v = Math.max(0, M.E.v - PP.hover.drain * dt); M.E.t = n; if (M.E.v <= 0) this.mechEn(p, true); }
         if (n < M.jetUntil) f |= MF.JET;
         if (M.dash && n < M.dash.until) f |= MF.DASH;
-      } else {
+      } else if (KIT[M.f]) f |= KIT[M.f].flags.call(this, p, M, want, n, dt); // a hero's own (only what the server agrees with)
+      else {
         if ((want & MF.SHIELD) && !(M.dash && n < M.dash.until) && !M.slam) { f |= MF.SHIELD; if (!M.shUp && n - (M.shT || 0) > 1000) { M.shT = n; M.bank += 2.5; } M.shUp = true; } else M.shUp = false; // (raising it: a moment to slow down)
         if (M.slam && n - M.slam.t < NS.slam.win * 1000) f |= MF.SLAM;
         if (M.dash && n < M.dash.until) f |= MF.SLASH;
@@ -407,7 +420,7 @@ export function installMech(Room, U) {
       const F = MECH[M.f], pp = M.f === 'paperplane';
       const pos = p.pos, last = M.last, fl = raycast([last[0], last[1] + 0.3, last[2]], [0, -1, 0], 1.2, this.boxes);
       if (fl && fl.box.pad) { M.bank += Math.hypot(fl.box.pad[0], fl.box.pad[2]) * 1.5 + 4; M.ub = Math.max(M.ub, fl.box.pad[1] * fl.box.pad[1] / (2 * F.grav) + 2); } // a jump pad throws you
-      const cap = speedCap(M.f, f) * 1.12, maxBank = MECH.slack + cap * 0.35;
+      const cap = (KIT[M.f] && KIT[M.f].cap ? KIT[M.f].cap.call(this, p, M, f, n) : speedCap(M.f, f)) * 1.12, maxBank = MECH.slack + cap * 0.35;
       M.bank = Math.min(Math.max(maxBank, M.bank), M.bank + cap * dt);
       if (M.bank > maxBank) M.bank = Math.max(maxBank, M.bank - 6 * dt); // (knockback allowance drains back to normal)
       const moved = hdist(pos, last), rise = pos[1] - last[1];
@@ -419,6 +432,7 @@ export function installMech(Room, U) {
       if (pp && (f & MF.JET)) M.ub += PP.jet.speed * dt;
       else if (pp && (f & MF.DASH)) M.ub += PP.lunge.speed * dt;
       else if (pp && (f & MF.HOVER)) M.ub += PP.hover.up * 1.4 * dt;
+      else if (KIT[M.f] && KIT[M.f].budget) KIT[M.f].budget.call(this, p, M, f, dt, n); // (a hero's chain / launch pays for its climb)
       M.ub = Math.min(60, M.ub);
       M.bank -= moved;
       if (M.bank < -0.01 || rise > M.ub + 0.05) {
@@ -437,6 +451,7 @@ export function installMech(Room, U) {
       // landing: a stomp if it really came down from high enough (the height lost since it left the floor, over at
       // least about the time that fall takes), not whatever speed the client says
       if (raycast([pos[0], pos[1] + 0.3, pos[2]], [0, -1, 0], 0.9, this.boxes)) {
+        if (M.air && KIT[M.f] && KIT[M.f].land) KIT[M.f].land.call(this, p, M, M.peak - pos[1], n); // (a hero's slam: the height it really fell)
         if (M.air) { const drop = M.peak - pos[1]; if (drop >= MECH.stomp.vy * MECH.stomp.vy / (2 * F.grav) && n - M.peakT >= Math.sqrt(2 * drop / F.grav) * 500) this.mechStomp(p, n); }
         M.air = false; M.peak = pos[1]; M.peakT = n; M.ub = Math.max(M.ub, hopUp(F));
       } else { M.air = true; if (pos[1] >= M.peak) { M.peak = pos[1]; M.peakT = n; } } // (peak starts at the floor you left)
@@ -448,7 +463,18 @@ export function installMech(Room, U) {
       M.enT = n;
       const cd = {};
       for (const [k, t] of Object.entries(M.cd)) if (t > n) cd[k] = Math.round(t - n);
-      send(p, { t: 'mech', k: 'en', v: Math.round(energyAt(M.E, n)), cd, jet: M.jetUntil > n ? Math.round(M.jetUntil - n) : 0 });
+      const K = KIT[M.f];
+      send(p, { t: 'mech', k: 'en', v: Math.round(energyAt(M.E, n)), cd, jet: M.jetUntil > n ? Math.round(M.jetUntil - n) : 0, ...(MECH[M.f].ult ? { u: Math.floor(M.ult || 0) } : null), ...(K && K.en ? K.en.call(this, p, M, n) : null) });
+    },
+    // a hero's ultimate: charges from what its kit deals (+ a trickle in tickMech). full = 100
+    mechUlt(p, add) { const M = p.mech; if (!M || !MECH[M.f].ult || !(add > 0)) return; M.ult = Math.min(100, (M.ult || 0) + add); },
+    // a hero's hit: hurt, and what it really took off them charges the ult. returns what it dealt
+    mechKitHurt(p, t, w, dmg, kb, opts) {
+      const pool = () => (t.body ? Math.max(0, t.body.hp) : 0) + (t.alive ? Math.max(0, t.hp) : 0), hp0 = pool(); // (a mech's / rig's / ball's pool, then HP)
+      const got = this.hurt(t, p, w, dmg, kb, opts);
+      const dealt = got === t ? Math.max(0, hp0 - pool()) : 0;
+      if (p.mech && MECH[p.mech.f].ult && !(opts && opts.ult)) this.mechUlt(p, dealt * 100 / MECH[p.mech.f].ult.dmg); // (an ultimate's own hits don't charge the next one)
+      return dealt;
     },
     mechCd(M, k, s, n) { if (n < (M.cd[k] || 0) - 150) return false; M.cd[k] = n + s * 1000; return true; },
 
@@ -465,6 +491,7 @@ export function installMech(Room, U) {
       if (this.secStopped && this.secStopped(p, n) && m.k !== 'out') return; // tased / CLOCKED OUT: hands off everything
       if (m.k === 'out') { if (M.hitT && n - M.hitT < 1500) { this.mechNo(p, "can't hop out under fire"); return; } this.mechExit(p, 'hop'); return; } // (no dodging MECH DOWN)
       const pp = M.f === 'paperplane', d = norm(vec3(m.d));
+      if (KIT[M.f]) { KIT[M.f].msg.call(this, p, M, m, n, d); return; } // a hero's moves (server/mech_<id>.js)
       switch (m.k) {
         case 'gun': if (pp && d) this.mechGun(p, d, n); break;
         case 'lunge': if (pp) this.mechLunge(p, d, num(m.to), n); break;
@@ -748,6 +775,7 @@ export function installMech(Room, U) {
         const M = p.mech;
         if (!M) continue;
         if (!p.alive) { this.mechExit(p, 'quiet'); continue; } // (kill() blows it up first; this is a safety net)
+        if (KIT[M.f]) { this.mechUlt(p, MECH[M.f].ult ? 100 / MECH[M.f].ult.time * dt : 0); KIT[M.f].tick.call(this, p, M, n, dt); this.mechEn(p, false); continue; } // a hero: its own rams / sweeps
         if (M.dash) this.mechSweep(p, M, n);
         if (n < M.jetUntil) this.mechJetRam(p, M, n);
         else if (!(M.dash && n < M.dash.until)) this.mechRam(p, M, n);
@@ -824,7 +852,7 @@ export function installMech(Room, U) {
       const mk = this.cfg.map, rd = this.round;
       setTimeout(safe('botmech', () => {
         if (this.players.get(b.id) !== b || !b.alive || b.rig || b.mech || this.isBall(b) || (this.round && this.round.over) || this.cfg.map !== mk || this.round !== rd) return; // (not after a map / round change)
-        const env = process.env.JF_MECH_FRAME, f = isFrame(env) ? env : Math.random() < 0.5 ? 'paperplane' : 'nightshift';
+        const env = process.env.JF_MECH_FRAME, f = isFrame(env) ? env : FRAMES[(Math.random() * FRAMES.length) | 0];
         for (const [da, k] of [[0, 5], [0, 2.5], [0, 0], [0.8, 6], [-0.8, 6], [1.6, 6], [-1.6, 6], [2.4, 6], [-2.4, 6], [Math.PI, 6], [0, 9], [Math.PI, 3]]) { // ahead first, then round about (the drop wants room for the whole mech)
           const at = [b.pos[0] - Math.sin(b.yaw + da) * k, b.pos[1] + 0.3, b.pos[2] - Math.cos(b.yaw + da) * k];
           if (this.mechCall(b, at, f)) { this.broadcast({ t: 'chat', id: 0, m: `${b.name} used Mech Drop` }); return; }
@@ -836,6 +864,7 @@ export function installMech(Room, U) {
     mechBotStep(b, think, dt, n) {
       const M = b.mech, F = MECH[M.f], v = b.vel, ai = b.ai, pp = M.f === 'paperplane';
       b.g = null; ai.hook = null;
+      if (KIT[M.f]) { KIT[M.f].bot.call(this, b, think, dt, n); if (b.pos[1] < this.map.killY) this.kill(b, null, 'void'); return; } // a hero's own plan
       let t = this.players.get(ai.target);
       if (t && (!t.alive || this.friendly(b, t))) t = null;
       const e = this.mechEyeOf(b), tc = t ? this.mechCenter(t) : null, dv = t ? [tc[0] - e[0], tc[1] - e[1], tc[2] - e[2]] : null;
