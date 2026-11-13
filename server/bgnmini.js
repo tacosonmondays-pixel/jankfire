@@ -20,6 +20,7 @@ import { raycast, movePlayer } from '../shared/physics.js';
 
 const E = (typeof process !== 'undefined' && process.env) || {};
 const K = { peace: E.JF_BGN_PEACE ? Number(E.JF_BGN_PEACE) || 1 : 0 }; // test knob: passive bots (carts: they drive about and never ram, do they keep on the box? ducks: no errands, no slaps). 2: carts sit parked where they spawned (a ram test that doesn't depend on where they wandered)
+K.curse = typeof E.JF_BGN_CURSE === 'string' ? E.JF_BGN_CURSE : ''; // test knob: the cursed duck always comes down right on this player (by name)
 export const BGM_KNOBS = K;
 const CM = BGN_MINI.carts, DK = BGN_MINI.ducks, BS = BGN_MINI.boss;
 const now = () => Date.now();
@@ -324,7 +325,9 @@ export function installBgnMini(Room, H) {
     },
     // the cursed duck: a real sky duck (it lands as a black hole: tickHoles pulls), the usual red marker first
     bgmCursed(list) {
-      const S = this.bgm, near = list.length ? list[Math.floor(Math.random() * list.length)] : null, at = this.bgmDuckSpot(near, 1, 6);
+      const S = this.bgm, aim = K.curse ? list.find((p) => p.name === K.curse) : null, near = aim || (list.length ? list[Math.floor(Math.random() * list.length)] : null);
+      const fl = aim && raycast([aim.pos[0], aim.pos[1] + 0.5, aim.pos[2]], [0, -1, 0], 3, this.boxes);
+      const at = fl ? [aim.pos[0], fl.point[1], aim.pos[2]] : this.bgmDuckSpot(near, 1, 6);
       if (!at) return;
       const w = WEAPONS.duck, y0 = at[1] + DK.h, v = DUCKRAIN.vy;
       const pr = this.makeProj({ id: 0 }, 'duck', [at[0], y0, at[2]], [0, -v, 0], { sky: true });

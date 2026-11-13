@@ -225,7 +225,7 @@ async function partPeace(port) {
 
 // ---------------------------------------------------------------- duck catch: two people, the server's judging
 async function partDucks(port) {
-  const S = await server(port, { JF_WATCH: '1', JF_LOBBY_WAIT: '1500', JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'duckcatch', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '100', JF_BGN_PEACE: '1', JF_BGN_NODUEL: '1' }); // (no duels: the two of us land in the round's duck catch together)
+  const S = await server(port, { JF_WATCH: '1', JF_LOBBY_WAIT: '1500', JF_BGN_FAST: '10', JF_BGN_ROUNDS: '4', JF_BGN_MG: 'duckcatch', JF_BGN_FMT: 'ffa', JF_BGN_MGTIME: '100', JF_BGN_PEACE: '1', JF_BGN_NODUEL: '1', JF_BGN_CURSE: 'bert' }); // (the cursed duck always comes down on bert) // (no duels: the two of us land in the round's duck catch together)
   const W = await client(port, 'watchK', { mode: 'bots', cfg: { lobby: 'bgn' } });
   const A = await client(port, 'alma', { mode: 'bots', cfg: { lobby: 'bgn' } });
   const B = await client(port, 'bert', { mode: 'bots', cfg: { lobby: 'bgn' } });
@@ -280,16 +280,14 @@ async function partDucks(port) {
   // the cursed duck: B stands where it lands, loses half
   hold.A = null;
   for (let k = 0; k < 12 && pileB() < 4; k++) await catchOne();
-  let cu = null, had = 0; // (a cursed duck can stick to someone else on its way down: up to 5 of them)
-  for (let k = 0; k < 5 && !cu; k++) {
-    const nc = B.evs('cursed').length;
-    if (!await B.until(() => B.evs('cursed').length > nc, 14000)) break;
-    const cz = B.evs('cursed').pop(), i0 = B.ev.length, curseOf = () => B.ev.slice(i0).find((e) => e.k === 'curse' && e.id === B.id) || null; // (this cursed duck's, not an earlier one that caught B on the way)
-    had = pileB();
-    hold.B = cz.p.slice();
-    await B.until(() => curseOf(), cz.ms + 4000);
-    cu = curseOf();
-  }
+  // the cursed duck: JF_BGN_CURSE puts it right on B every 10 s, so B stands still and waits for the next one
+  let cu = null, had = 0;
+  hold.B = B.pos.slice();
+  const i0 = B.ev.length, curseOf = () => B.ev.slice(i0).find((e) => e.k === 'curse' && e.id === B.id) || null; // (this one, not one that caught B earlier)
+  had = pileB();
+  ok(await B.until(() => B.ev.slice(i0).some((e) => e.k === 'cursed'), 12000), 'a cursed duck is coming down');
+  await B.until(() => curseOf(), 8000);
+  cu = curseOf();
   ok(!!cu, 'a cursed duck came down on B');
   ok(cu && cu.n === Math.floor((cu.pile + cu.n) / 2) && cu.pile + cu.n >= 2, `the cursed duck halved B's pile (${cu && cu.pile + cu.n} -> ${cu && cu.pile}; ${had} when it was spotted)`);
   clearInterval(tick);

@@ -329,6 +329,7 @@ team 2. He spawns already inside his mech, using a new `mechSpawnIn(b, frame, hp
 | `JF_BGN_BOTDUEL=1` | bot vs bot duels get played out |
 | `JF_BGN_NODUEL=1` | every duel is settled on the board, people's too (straight to the round's minigame) |
 | `JF_BGN_PEACE=1` / `2` | passive bots in bumper carts and duck catch (1: they drive / walk about, 2: carts stay parked) |
+| `JF_BGN_CURSE=name` | duck catch's cursed duck always comes down right on that player |
 
 Existing knobs still apply: `JF_WATCH` (a ws observer that runs a bots-only game), `JF_MECH_HP`, `JF_LIVES`, `JF_DUCKS`.
 
