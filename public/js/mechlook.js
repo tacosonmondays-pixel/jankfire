@@ -266,6 +266,44 @@ function fire(inst, L, e) {
   if (mechLook.onEvent) mechLook.onEvent(inst, e, p);
 }
 
+// ------------------------------------------------------------ gibs for a skinned hero (mechBurst): it has no mesh per joint,
+// so each of its skinned meshes is cut by joint once (cached per geometry, each piece centred on itself) and every
+// piece comes back as a static mesh posed where its bone has it now (the debris flies from there)
+const SPLIT = new WeakMap(), _t = new THREE.Matrix4();
+function piecesOf(geo) {
+  if (SPLIT.has(geo)) return SPLIT.get(geo);
+  const si = geo.attributes.skinIndex, ix = geo.index, by = new Map(), out = [];
+  if (si && ix) for (let t = 0; t < ix.count; t += 3) { const j = si.getX(ix.getX(t)); if (!by.has(j)) by.set(j, []); by.get(j).push(ix.getX(t), ix.getX(t + 1), ix.getX(t + 2)); }
+  const keys = Object.keys(geo.attributes).filter((k) => k !== 'skinIndex' && k !== 'skinWeight');
+  for (const [j, idx] of by) {
+    const map = new Map(), order = [];
+    for (const v of idx) if (!map.has(v)) { map.set(v, order.length); order.push(v); }
+    const g = new THREE.BufferGeometry();
+    for (const k of keys) { const A = geo.attributes[k], s = A.itemSize, arr = new A.array.constructor(order.length * s); order.forEach((v, n) => { for (let q = 0; q < s; q++) arr[n * s + q] = A.array[v * s + q]; }); g.setAttribute(k, new THREE.BufferAttribute(arr, s, A.normalized)); }
+    g.setIndex(idx.map((v) => map.get(v)));
+    g.computeBoundingBox(); const c = g.boundingBox.getCenter(new THREE.Vector3()); g.translate(-c.x, -c.y, -c.z); // (it spins about its own middle)
+    g.userData.shared = true; out.push({ j, g, c });
+  }
+  SPLIT.set(geo, out);
+  return out;
+}
+export function lookGibs(inst) {
+  const L = inst && inst.look, out = [];
+  if (!L || !L.skinned) return out;
+  inst.root.updateMatrixWorld(true);
+  L.glb.traverse((o) => {
+    if (!o.isSkinnedMesh || !o.visible || !o.skeleton || !o.material || o.material.isShaderMaterial || o.material.blending === THREE.AdditiveBlending) return;
+    for (let p = o.parent; p && p !== L.glb; p = p.parent) if (!p.visible) return; // (the LOD that isn't showing)
+    for (const { j, g, c } of piecesOf(o.geometry)) {
+      const b = o.skeleton.bones[j]; if (!b) continue;
+      const m = new THREE.Mesh(g, o.material); m.name = 'gib_' + b.name;
+      m.matrixWorld.multiplyMatrices(b.matrixWorld, o.skeleton.boneInverses[j]).multiply(o.bindMatrix).multiply(_t.makeTranslation(c.x, c.y, c.z));
+      out.push(m);
+    }
+  });
+  return out;
+}
+
 // ------------------------------------------------------------ sprays / skins on a decal slot
 // k = the slot (0 = the chest plate, 1 = a shoulder / thigh), map = a texture (a spray canvas), scale = its size
 // against the plate (it wraps over the edges like paint). Returns the mesh.
