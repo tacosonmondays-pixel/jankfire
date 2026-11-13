@@ -6,7 +6,7 @@
 const WS = require('ws');
 const { spawn } = require('child_process');
 const path = require('path');
-const port = Number(process.argv[2]) || 3645, secs = Number(process.argv[3]) || 90, map = process.argv[4] || 'warehouse';
+const port = Number(process.argv[2]) || 3645, secs = Number(process.argv[3]) || 150, map = process.argv[4] || 'warehouse';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 (async () => {
@@ -32,7 +32,7 @@ let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + ms
     if (m.k === 'vmstock' && Array.isArray(m.l) && m.l.length >= 2) bigStock++;
     if (/^(in|down|vmwall|vmstock|vmjam|vmkick|vmdrink|vmstuck)$/.test(m.k)) log.push(`${(Date.now() / 1000 % 1000).toFixed(1)} ${names.get(m.id) || m.id} ${m.k}${m.f ? ' ' + m.f : ''}${m.to ? ' -> ' + (names.get(m.to) || m.to) : ''}${m.by ? ' by ' + (names.get(m.by) || m.by) : ''}${m.l ? ' ' + m.l.length + ' restocked' : ''}`);
   });
-  ws.on('open', () => ws.send(JSON.stringify({ t: 'join', name: 'watcher', mode: 'bots', cfg: { bots: 8, map, diff: 'hard', game: 'tdm' } })));
+  ws.on('open', () => ws.send(JSON.stringify({ t: 'join', name: 'watcher', mode: 'bots', cfg: { bots: 10, map, diff: 'hard', game: 'tdm' } })));
   await sleep(secs * 1000);
   for (const l of log.slice(0, 60)) console.log('  ' + l);
   console.log('  events:', JSON.stringify(seen));
