@@ -64,7 +64,7 @@ export function padFor(map) {
   ];
   const spawns = [];
   for (let i = 0; i < 16; i++) spawns.push([cx - 9 + (i % 4) * 6 + ((i >> 2) % 2) * 1.5, fy, cz - 5.5 + (i >> 2) * 2.6]);
-  pad = { c: [cx, fy, cz], w, d, boxes, spawns, face: Math.PI, // (yaw PI looks down -z: at the map)
+  pad = { c: [cx, fy, cz], w, d, boxes, spawns, face: 0, // (yaw 0 looks down -z: at the map)
     board: { p: [cx, fy + 3.5, Z1 - 1.12], yaw: Math.PI }, lo: [X0, fy, Z0], hi: [X1, fy, Z1] };
   cache.set(map, pad);
   return pad;

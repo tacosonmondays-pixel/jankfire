@@ -2946,7 +2946,7 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
-  if (r.warm) { el.textContent = 'warm-up · nothing counts'; return; } // a mode lobby: its own big countdown box
+  if (r.warm) { el.textContent = 'pre-game · nothing hurts'; return; } // a mode lobby: its own big countdown box
   const mt = zmRoundText(r) ?? ggRoundText(r) ?? infRoundText(r); // zombies: zombies left / the break. gun game / infection: just the clock, their bars show the rest
   if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;

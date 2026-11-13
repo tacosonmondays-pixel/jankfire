@@ -106,8 +106,8 @@ export function installPregame(Room, { send }) {
         const s = pad.spawns[Math.floor(Math.random() * pad.spawns.length)];
         ai.pg = { to: [s[0] + (Math.random() - 0.5) * 3, s[1], s[2] + (Math.random() - 0.5) * 3], until: n + 2500 + Math.random() * 5000, idle: Math.random() < 0.4 };
       }
-      if (n - (ai.pgShoveT || 0) > 4000 && Math.random() < dt * 0.4) { // a cheeky shove
-        ai.pgShoveT = n;
+      if (n - (ai.pgShoveT || 0) > 9000 && Math.random() < dt * 0.12) { // a cheeky shove, now and then (not a bonk-fest)
+        ai.pgShoveT = n + Math.random() * 6000;
         for (const t of this.players.values()) if (t !== b && t.alive && Math.hypot(t.pos[0] - b.pos[0], t.pos[2] - b.pos[2]) < PREGAME.shove.range - 0.4) { b.yaw = Math.atan2(-(t.pos[0] - b.pos[0]), -(t.pos[2] - b.pos[2])); this.pgShove(b, t.id); break; }
       }
       if (ai.pg.idle) { b.yaw += Math.sin(n * 0.001 + b.id) * dt * 0.6; return { wx: 0, wz: 0, jump: Math.random() < dt * 0.15 }; }

@@ -9,19 +9,24 @@ import { K } from './keys.js';
 import { net } from './net.js';
 import { sfx } from './audio.js';
 import { hud } from './hud.js';
+import { sceneryGroup } from './scenery.js';
 import { BOXES, MAP, MAPS } from '/shared/map.js';
 import { resetGrid } from '/shared/physics.js';
 import { PREGAME, padFor, offPad, BOARD_STAT } from '/shared/pregame.js';
 import { MODE_STATS, modeBoard } from '/shared/modestats.js';
 import { LOBBY } from '/shared/lobby.js';
 
-const S = { on: false, pad: null, info: null, grp: null, board: null, tex: null, rows: null, kind: '', drawn: '', fog: 0, shoveT: 0, bl: -1, map: '' };
+const S = { on: false, pad: null, info: null, grp: null, board: null, tex: null, rows: null, kind: '', drawn: '', fog: 0, shoveT: 0, bl: -1, map: '', sent: 0, got: 0, hid: [] };
 export const pregameOn = () => S.on;
-export const pregameInfo = () => (S.on ? { pad: S.pad && S.pad.c, rows: S.rows, boxes: S.pad ? S.pad.boxes.filter((b) => BOXES.includes(b)).length : 0, mesh: !!S.grp, kind: S.kind } : null);
+export const pregameInfo = () => (S.on ? { pad: S.pad && S.pad.c, rows: S.rows, boxes: S.pad ? S.pad.boxes.filter((b) => BOXES.includes(b)).length : 0, mesh: !!S.grp, kind: S.kind, shoves: [S.sent, S.got], hid: S.hid.length } : null);
 
 // from the lobby info (welcome, 'lobby', every snapshot's r.warm): a pg = the deck's on. null / end = off
 export function pregameSync(info) {
-  if (info && !info.end && info.pg) { S.info = info; S.kind = info.k || ''; S.on = true; attach(); }
+  if (info && !info.end && info.pg) {
+    const fresh = !S.on;
+    S.info = info; S.kind = info.k || ''; S.on = true; attach();
+    if (fresh && S.pad && ME.alive) { ME.yaw = S.pad.face; ME.pitch = 0; } // (arrive looking out at the map)
+  }
   else if (S.on) off();
 }
 function attach() {
@@ -45,6 +50,8 @@ function detach() {
     S.grp = null; S.board = null;
   }
   if (S.tex) { S.tex.dispose(); S.tex = null; }
+  for (const o of S.hid) o.visible = true; // (the backdrop back)
+  S.hid = [];
   S.drawn = ''; S.bl = -1;
 }
 function off() {
@@ -72,7 +79,17 @@ function build() {
   S.board.position.set(bd.p[0], bd.p[1], bd.p[2] - 0.01); S.board.rotation.y = bd.yaw;
   grp.add(S.board);
   G.scene.add(grp); S.grp = grp; S.drawn = '';
+  clearScenery();
   drawBoard();
+}
+// the backdrop (scenery.js: towers, hills, trees round the map) is only for looking at, so some of it can stand where
+// the deck goes: whatever pokes into the deck's space hides while it's up
+function clearScenery() {
+  const sg = sceneryGroup();
+  if (!sg || !S.pad) return;
+  const q = new THREE.Box3(new THREE.Vector3(S.pad.lo[0] - 8, S.pad.c[1] - 4, S.pad.lo[2] - 8), new THREE.Vector3(S.pad.hi[0] + 8, S.pad.c[1] + 30, S.pad.hi[2] + 8)), bb = new THREE.Box3();
+  sg.updateMatrixWorld(true);
+  sg.traverse((o) => { if (o.isMesh && o.visible && !o.isInstancedMesh && bb.setFromObject(o).intersectsBox(q)) { o.visible = false; S.hid.push(o); } });
 }
 // the big board: TOP 3 in this mode, by its stat. nobody ranked yet: the best of whoever's here
 function drawBoard() {
@@ -105,6 +122,7 @@ function drawBoard() {
 net.on('pgb', (m) => { if (m && Array.isArray(m.rows)) { S.rows = m.rows.slice(0, 3).filter((r) => r && typeof r.name === 'string'); if (typeof m.k === 'string') S.kind = m.k; drawBoard(); } });
 // someone got shoved: a slap and a bonk. you: the screen jolts
 net.on('pgs', (m) => {
+  S.got++;
   const to = m.to === G.myId ? ME : G.remotes && G.remotes.get(m.to);
   if (to && to.pos) sfx.bonk(to.pos);
   if (m.to === G.myId) { G.shake = Math.max(G.shake || 0, 0.6); hud.msg('SHOVED', 0.9, 'slip'); }
@@ -146,5 +164,5 @@ function shove() {
     if (d < bd && Math.abs(r.pos[1] - ME.pos[1]) < 2.5 && (d < 0.8 || (dx * fx + dz * fz) / d > 0.35)) { bd = d; best = r; }
   }
   sfx.swing(ME.pos);
-  if (best) net.send({ t: 'shove', to: best.id });
+  if (best) { net.send({ t: 'shove', to: best.id }); S.sent++; }
 }
