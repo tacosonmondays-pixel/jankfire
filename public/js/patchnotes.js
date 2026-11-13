@@ -1,6 +1,10 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.43', date: '2026-11-13', title: 'SPYGLASS', items: [
+    "JANK ROYALE MAP GLOW-UP: the big map is a real picture of the place with the district names on it. zoom and drag it around.",
+    "names float over every location so you can call your drop from the blimp. the blimp flies slower so you get a say. hold right-click up there for a spyglass: scroll to zoom, ping where you're landing.",
+  ] },
   { v: '11.42', date: '2026-11-13', title: 'SIGN IT OUT', items: [
     "the quick play / plant & defuse hangar got a jumbotron (pink bezel, LIVE light, a GG EZ ticker) and a proper armory rack for your guns, with a SIGN IT OUT clipboard nobody signs.",
   ] },
