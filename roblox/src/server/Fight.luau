@@ -52,11 +52,45 @@ function Fight.feet(f: Fighter): Vector3?
 	local r = Fight.root(f)
 	return r and Hitbox.feet(r.Position)
 end
+-- the server's own record of where everyone's been (the last 0.45 s, sampled 30 times a second by Combat)
+Fight.trail = {} :: { [Fighter]: { { t: number, p: Vector3 } } }
+function Fight.track(n: number)
+	for _, f in Fight.all do
+		local r = Fight.root(f)
+		if not r or not f.alive then Fight.trail[f] = nil; continue end
+		local tr = Fight.trail[f] or {}
+		Fight.trail[f] = tr
+		table.insert(tr, { t = n, p = r.Position })
+		while #tr > 0 and tr[1].t < n - 0.45 do table.remove(tr, 1) end
+	end
+	for k in Fight.trail do if not table.find(Fight.all, k) then Fight.trail[k] = nil end end
+end
+-- how fast the server SAW you move over the last 0.3 s (flat), or nil if it hasn't watched long enough
+function Fight.seenSpeed(f: Fighter): number?
+	local tr = Fight.trail[f]
+	if not tr or #tr < 2 then return nil end
+	local d, t0 = 0, nil
+	for i = 2, #tr do
+		if tr[i].t < now() - 0.3 then continue end
+		t0 = t0 or tr[i - 1].t
+		local a, b = tr[i - 1].p, tr[i].p
+		local s = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Magnitude
+		if s < 1.5 * Weapons.S then d += s end
+	end
+	local dt = if t0 then tr[#tr].t - t0 else 0
+	return if dt < 0.15 then nil else d / dt
+end
+-- the speed allowance on range / reach: what your character claims, capped at 1.25x what the server saw (0 for the
+-- first 0.25 s of a life), so a faked velocity can't stretch your reach (web room.js speedOf)
 function Fight.speed(f: Fighter): number
 	local r = Fight.root(f)
-	return if r then math.min(r.AssemblyLinearVelocity.Magnitude, 150 * Weapons.S) else 0
+	if not r or now() - f.spawnT < 0.25 then return 0 end
+	local seen = Fight.seenSpeed(f)
+	return math.min(r.AssemblyLinearVelocity.Magnitude, 1.25 * (seen or 0))
 end
+-- where a parrier faces: where they looked when they opened the guard (body facing lags in third person)
 function Fight.facing(f: Fighter): Vector3
+	if f.parryYaw then return Vector3.new(-math.sin(f.parryYaw), 0, -math.cos(f.parryYaw)) end
 	local r = Fight.root(f)
 	return if r then r.CFrame.LookVector else Vector3.zAxis
 end
@@ -240,22 +274,28 @@ function Fight.pickSpawn(f: Fighter): Vector3
 	return best :: Vector3
 end
 
+local spawning: { [Fighter]: boolean } = {}
 function Fight.spawn(f: Fighter)
 	if f.kind ~= "player" then
 		Rules.spawn(f, now())
-		if f.ref and f.ref.Parent then f.ref:Destroy() end
+		if f.ref then Fight.byModel[f.ref] = nil; if f.ref.Parent then f.ref:Destroy() end end
 		local make = Fight.makeDummy
 		if make then make(f) end
 		syncHp(f)
 		return
 	end
 	local p = f.ref :: Player
-	if not p.Parent then return end
-	Rules.spawn(f, now())
+	if not p.Parent or spawning[f] then return end
+	-- the new body first (LoadCharacter yields), THEN alive: until then hits on the old body can't land on the new life
+	spawning[f] = true
+	local old = p.Character
+	if old then Fight.byModel[old] = nil end
 	local at = Fight.pickSpawn(f)
-	p:LoadCharacter()
+	local ok = pcall(function() p:LoadCharacter() end)
+	spawning[f] = nil
 	local ch = p.Character
-	if not ch then return end
+	if not ok or not ch or not p.Parent or f.alive or not table.find(Fight.all, f) then return end
+	Rules.spawn(f, now())
 	-- no regen: HP is the server's
 	local hs = ch:FindFirstChild("Health")
 	if hs then hs:Destroy() end
@@ -327,7 +367,10 @@ function Fight.startRound()
 		end
 	end
 	setMatch("live", workspace:GetServerTimeNow() + FFA.time)
-	for _, f in Fight.all do Fight.spawn(f) end
+	for _, f in Fight.all do
+		if f.kind == "player" then f.alive = false end -- a fresh body for everyone, alive or not
+		task.spawn(Fight.spawn, f)
+	end
 	R.Round:FireAllClients({ start = true, target = FFA.kills })
 end
 

@@ -93,7 +93,11 @@ type Patch = Marbles.Patch
 local patches: { Patch } = {}
 local nextPatch = 0
 local lastPatch: { [Fighter]: number } = {}
-local function patchInfo(pt: Patch): { any }
+Players.PlayerRemoving:Connect(function(p)
+	local f = Fight.byPlayer[p]
+	if f then lastPatch[f] = nil end
+end)
+local function patchInfo(pt: Patch): { [string]: any }
 	return { id = pt.id, c = pt.c, r = pt.r, n = pt.n, left = math.max(0, pt.untilT - now()), o = uid(pt.owner :: Fighter) }
 end
 local function dropPatch(pt: Patch)
@@ -121,24 +125,13 @@ end
 
 -- how fast you're really going over the marbles: what your character says, or what the server saw it move over the
 -- last 0.3 s (x0.8 for jitter) if that's more, so a client can't cross claiming it stands still
-local trail: { [Fighter]: { { t: number, p: Vector3 } } } = {}
 local function realSpeed(f: Fighter): number
 	local r = Fight.root(f)
 	if not r then return 0 end
 	local v = r.AssemblyLinearVelocity
 	local flat = Vector3.new(v.X, 0, v.Z).Magnitude
-	local tr = trail[f]
-	if not tr or #tr < 2 then return flat end
-	local d, t0 = 0, nil
-	for i = 2, #tr do
-		if tr[i].t < now() - 0.3 then continue end
-		t0 = t0 or tr[i - 1].t
-		local a, b = tr[i - 1].p, tr[i].p
-		local s = Vector3.new(b.X - a.X, 0, b.Z - a.Z).Magnitude
-		if s < 1.5 * S then d += s end
-	end
-	local dt = if t0 then tr[#tr].t - t0 else 0
-	return if dt < 0.15 then flat else math.max(flat, d / dt * 0.8)
+	local seen = Fight.seenSpeed(f)
+	return if seen then math.max(flat, seen * 0.8) else flat
 end
 
 local function slipsOn(t: Fighter, pt: Patch, n: number): boolean
@@ -175,15 +168,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if acc < 1 / 30 then return end
 	acc = 0
 	local n = now()
-	for _, f in Fight.all do -- the position trail (for realSpeed)
-		local r = Fight.root(f)
-		if not r or not f.alive then trail[f] = nil; continue end
-		local tr = trail[f] or {}
-		trail[f] = tr
-		table.insert(tr, { t = n, p = r.Position })
-		while #tr > 0 and tr[1].t < n - 0.45 do table.remove(tr, 1) end
-	end
-	for k in trail do if not table.find(Fight.all, k) then trail[k] = nil end end
+	Fight.track(n) -- the position trail (marble speed, range / reach allowance)
 	for _, pt in table.clone(patches) do
 		if n > pt.untilT then dropPatch(pt); continue end
 		if n - pt.born < Weapons.MSLIP.land then continue end -- still flying
@@ -198,16 +183,26 @@ RunService.Heartbeat:Connect(function(dt: number)
 end)
 
 -- ------------------------------------------------------------------ the remotes
-EquipR.OnServerEvent:Connect(function(p: Player, wid: unknown)
-	if not spend(p) then return end
+-- a swap. a second swap inside 0.15 s waits its turn instead of being lost (so client and server agree what's held)
+local wantW: { [Player]: string } = {}
+local function tryEquip(p: Player, wid: string)
 	local f = Fight.byPlayer[p]
-	if not f or type(wid) ~= "string" then return end
+	if not f or wantW[p] ~= wid then return end
 	local before = f.held
-	if Rules.equip(f, wid, now()) == nil and f.held ~= before then
+	local why = Rules.equip(f, wid, now())
+	if why == "too fast" then task.delay(0.16, tryEquip, p, wid); return end
+	if why == nil and f.held ~= before then
 		Fight.showWeapon(f)
 		FxR:FireAllClients({ k = "equip", model = Fight.model(f), w = f.held })
 	end
+end
+EquipR.OnServerEvent:Connect(function(p: Player, wid: unknown)
+	if not spend(p) then return end
+	if type(wid) ~= "string" or not W[wid] then return end
+	wantW[p] = wid
+	tryEquip(p, wid)
 end)
+Players.PlayerRemoving:Connect(function(p) wantW[p] = nil end)
 
 ReloadR.OnServerEvent:Connect(function(p: Player, wid: unknown)
 	if not spend(p) then return end
@@ -229,7 +224,10 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	local seye = Fight.eye(f)
 	if not seye then return end
 	local e = eye :: Vector3
-	local why = Rules.fire(f, wid, now(), seye, e)
+	-- the claimed eye must be a clear line from your real head (no firing from the far side of a wall)
+	local off = e - seye
+	local blocked = off.Magnitude > 0.05 and Fight.castMap(seye, off.Unit, off.Magnitude) ~= nil
+	local why = Rules.fire(f, wid, now(), seye, e, blocked)
 	if why then
 		if W[wid] then ammoSync(p, f, wid, why) end
 		return
@@ -240,7 +238,9 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	end
 	local seen: { [Fighter]: boolean } = {}
 	local ff = Fight.feet(f) :: Vector3
+	local left = W[wid].pellets or 1 -- one shot's pellets in total, however many victims it claims
 	for _, h in hits :: { any } do
+		if left <= 0 then break end
 		local t = Fight.of(h.m)
 		if not t or seen[t] then continue end
 		seen[t] = true
@@ -250,6 +250,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 			dist = (tf - ff).Magnitude, speedF = Fight.speed(f), speedT = Fight.speed(t), los = Fight.sees(e, t),
 		})
 		if hwhy then continue end
+		n = math.min(n, left); hh = math.min(hh, n); left -= n
 		applyHitscan(f, t, wid, n, hh, e)
 		if not f.alive then break end -- a perfect parry can kill the shooter mid-volley
 	end
@@ -302,11 +303,11 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 	end
 end)
 
-ParryR.OnServerEvent:Connect(function(p: Player)
+ParryR.OnServerEvent:Connect(function(p: Player, yaw: unknown)
 	if not spend(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f then return end
-	if Rules.parryStart(f, now()) then return end
+	if Rules.parryStart(f, now(), yaw) then return end
 	FxR:FireAllClients({ k = "guard", model = Fight.model(f), by = p.UserId })
 end)
 

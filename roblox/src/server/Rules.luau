@@ -13,7 +13,7 @@ local P = Weapons.PARRY
 local S = Weapons.S
 
 Rules.SLACK = 3 * S -- studs of lag allowance on range and reach (the web game uses 6 m; positions here are fresher)
-Rules.EYE_SLACK = 8 -- studs a claimed eye may be from where the server has your head
+Rules.EYE_SLACK = 5 -- studs a claimed eye may be from where the server has your head (and nothing solid in between)
 Rules.JITTER = 0.1 -- s: how much early a shot may arrive (network jitter) without being refused
 Rules.SHOT_LATE = 0.6 -- s: a melee hit must come this soon after its swing
 
@@ -26,6 +26,7 @@ export type Fighter = {
 	ammo: { [string]: Ammo }, gate: { [string]: number },
 	kat: number, parryT: number, parryN: number, staggerUntil: number,
 	swing: Swing?, tag: Tag?, slipT: number, kills: number, deaths: number,
+	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw)
 }
 
 local nextId = 0
@@ -81,6 +82,9 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 	if not inLoadout(wid) then return "not your weapon" end
 	if not f.alive then return "dead" end
 	if f.held == wid then return nil end
+	if now - (f.gate.equip or -math.huge) < 0.15 then return "too fast" end
+	f.gate.equip = now
+	f.swing = nil -- a swing doesn't land after you've put the blade away
 	local a = f.ammo[f.held]
 	if a and a.reloadUntil > 0 and now < a.reloadUntil then a.reloadUntil = 0 end
 	f.held, f.equipT = wid, now
@@ -100,13 +104,13 @@ function Rules.reload(f: Fighter, wid: any, now: number): string?
 end
 
 -- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it
-function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3): string?
+function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?): string?
 	if not inLoadout(wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	local w = W[wid]
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
 	if now < f.staggerUntil then return "staggered" end
-	if (claimEye - eye).Magnitude > Rules.EYE_SLACK then return "not from your head" end
+	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head" end
 	local a = ammoOf(f, wid, now)
 	if not a then return "no ammo" end
 	if a.reloadUntil > 0 then return "reloading" end
@@ -130,7 +134,7 @@ end
 
 -- line of sight: can `from` see the target's head, chest or feet + 1 m. cast(origin, dir, len) -> something hit?
 function Rules.sees(cast: (Vector3, Vector3, number) -> boolean, from: Vector3, feet: Vector3): boolean
-	for _, up in { Weapons.BOX.bodyTop + 1, 3, S } do
+	for _, up in { Weapons.BOX.bodyTop + 1, 3, 0.5 * S } do
 		local v = feet + Vector3.new(0, up, 0) - from
 		if v.Magnitude < 0.5 then return true end
 		if not cast(from, v.Unit, v.Magnitude) then return true end
@@ -189,13 +193,14 @@ function Rules.meleeHit(f: Fighter, t: Fighter, wid: any, now: number, c: MeleeC
 end
 
 -- right click with the katana out: opens the 0.35 s guard
-function Rules.parryStart(f: Fighter, now: number): string?
+function Rules.parryStart(f: Fighter, now: number, yaw: any): string?
 	if not f.alive then return "dead" end
 	if f.held ~= "katana" then return "no katana" end
 	if now < f.staggerUntil then return "staggered" end
 	if now - f.parryT < (P.win + P.cd) * 0.9 then return "cooldown" end
 	if f.swing and now - f.swing.t < W.katana.hitT :: number then return "mid-swing" end
 	f.parryT, f.parryN = now, 0
+	f.parryYaw = if finite(yaw) then yaw else nil
 	return nil
 end
 

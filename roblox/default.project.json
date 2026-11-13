@@ -27,6 +27,9 @@
       },
       "Match": { "$className": "Folder" }
     },
+    "Players": {
+      "$properties": { "CharacterAutoLoads": false }
+    },
     "ServerScriptService": {
       "Jankfire": { "$path": "src/server" }
     },

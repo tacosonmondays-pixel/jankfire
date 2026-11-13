@@ -35,8 +35,10 @@ function Sfx.play(name: string, at: Vector3?, vol: number?, pitch: number?)
 		c:Play()
 		task.delay(6, function() if a.Parent then a:Destroy() end end)
 	else
-		SoundService:PlayLocalSound(c)
-		c:Destroy()
+		c.Parent = SoundService -- (a Sound in SoundService plays for you alone, not in the world)
+		c.Ended:Once(function() c:Destroy() end)
+		c:Play()
+		task.delay(6, function() if c.Parent then c:Destroy() end end)
 	end
 end
 

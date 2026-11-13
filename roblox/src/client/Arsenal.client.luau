@@ -288,7 +288,8 @@ local function tryParry(now: number)
 	parryT = now
 	parryReady = now + P.win + P.cd
 	VM.play("parry_katana")
-	ParryR:FireServer()
+	local lk = camera.CFrame.LookVector
+	ParryR:FireServer(math.atan2(-lk.X, -lk.Z)) -- where you look: the server's "front" for this guard
 end
 
 -- ---------------------------------------------------------------- input
@@ -368,11 +369,13 @@ local function watchPlayer(p: Player)
 end
 for _, p in Players:GetPlayers() do watchPlayer(p) end
 Players.PlayerAdded:Connect(watchPlayer)
-local dummies = workspace:WaitForChild("Dummies", 10)
-if dummies then
-	dummies.ChildAdded:Connect(function(m) if m:IsA("Model") then watchModel(m) end end)
-	for _, m in dummies:GetChildren() do if m:IsA("Model") then watchModel(m) end end
-end
+task.spawn(function()
+	local dummies = workspace:WaitForChild("Dummies", 10)
+	if dummies then
+		dummies.ChildAdded:Connect(function(m) if m:IsA("Model") then watchModel(m) end end)
+		for _, m in dummies:GetChildren() do if m:IsA("Model") then watchModel(m) end end
+	end
+end)
 
 -- ---------------------------------------------------------------- what the server says
 remote("Dmg").OnClientEvent:Connect(function(d: any)

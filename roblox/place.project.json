@@ -30,6 +30,9 @@
       "JankfireFX": { "$className": "Folder" },
       "JankfireSounds": { "$path": "build/Sounds.model.json" }
     },
+    "Players": {
+      "$properties": { "CharacterAutoLoads": false }
+    },
     "ServerScriptService": {
       "Jankfire": { "$path": "src/server" }
     },

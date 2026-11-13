@@ -103,7 +103,8 @@ end
 
 -- ---------------------------------------------------------------- hurt vignette + screen flash
 local vig = Instance.new("Frame")
-vig.Name = "Hurt"; vig.Size = UDim2.fromScale(1, 1); vig.BackgroundTransparency = 1; vig.BorderSizePixel = 0; vig.Parent = gui
+-- (a stroke draws outside its frame: the frame sits 90 px in from every edge so the 90 px stroke covers the screen's rim)
+vig.Name = "Hurt"; vig.Position = UDim2.fromOffset(90, 90); vig.Size = UDim2.new(1, -180, 1, -180); vig.BackgroundTransparency = 1; vig.BorderSizePixel = 0; vig.Parent = gui
 local vs = Instance.new("UIStroke"); vs.Thickness = 90; vs.Color = RED; vs.Transparency = 1; vs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; vs.Parent = vig
 local hurtA = 0
 function H.hurt(amount: number) hurtA = math.min(0.85, hurtA + amount / 40) end
