@@ -1087,47 +1087,53 @@ function skyBridge(B, D, alongX, a0, a1, c, y, w = 4, gaps = {}, neon = ['neoncy
 // on the roof (y + 7.9). stairs up in the east side, on up to the roof in the west side. doors per floor:
 // o.g / o.u = { n, s, w, e: [[a, b]] } (local: along x on n/s, along z on w/e)
 function penthouse(B, D, cx, cz, y, o = {}) {
-  const L = B.local(cx, cz, 0, y), Ld = D.local(cx, cz, 0, y), G = o.g || {}, U = o.u || {};
+  const L0 = B.local(cx, cz, 0, y), Ld = D.local(cx, cz, 0, y), G = o.g || {}, U = o.u || {};
+  // o.arch: the shell (glass walls, floors, stairs, roof) is a Blender model (tools/blender/arch/make_penthouse.py), its
+  // boxes tagged { av } so the client skips them once it's in; the furniture inside (L) stays boxes. visual only
+  const A = o.arch ? B.arch(o.arch, cx, cz, 0, y) : null, L = A ? A.plain : L0, S = A || L0;
+  const tag = A ? { av: o.arch, ai: B.boxes.arch.length - 1 } : null;
+  const Sd = tag ? (x0, y0, z0, x1, y1, z1, m, e) => Ld(x0, y0, z0, x1, y1, z1, m, e ? { ...e, ...tag } : tag) : Ld;
+  Sd.B = (cx, cy, cz, sx, sy, sz, m, e) => Sd(cx - sx / 2, cy - sy / 2, cz - sz / 2, cx + sx / 2, cy + sy / 2, cz + sz / 2, m, e);
   const op = (list, y0, y1) => (list || []).map(([a, b]) => ({ a, b, y0, y1 }));
   // ground floor: the bar
-  L(-9.85, 0, -7.85, 9.85, 0.1, 7.85, 'carpet');
-  wall(L, 'x', -8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', op(G.n, 0, 2.6));
-  wall(L, 'x', 8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', [...op(G.s, 0, 2.6), ...op(G.sw, 1.1, 2.6)]);
-  wall(L, 'z', -10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.w, 0, 2.6));
-  wall(L, 'z', 10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.e, 0, 2.6));
+  S(-9.85, 0, -7.85, 9.85, 0.1, 7.85, 'carpet');
+  wall(S, 'x', -8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', op(G.n, 0, 2.6));
+  wall(S, 'x', 8, -10.15, 10.15, 0, 3.75, 0.3, 'glassblock', [...op(G.s, 0, 2.6), ...op(G.sw, 1.1, 2.6)]);
+  wall(S, 'z', -10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.w, 0, 2.6));
+  wall(S, 'z', 10, -7.85, 7.85, 0, 3.75, 0.3, 'glassblock', op(G.e, 0, 2.6));
   L(-8.5, 0.1, -7.85, -2.5, 1.2, -5.8, 'wood'); L(-8.5, 1.2, -6.6, -2.5, 1.26, -5.8, 'chrome'); // the bar (back to the wall: no gap behind it to get wedged in)
   Ld(-8.5, 1.5, -7.85, -2.5, 2.6, -7.6, 'shelfstock'); Ld(-6.6, 2.75, -7.85, -4.4, 3.35, -7.8, 'neonbar', { fit: 1 }); // the bottles, BAR?
   for (const x of [-7.8, -6.3, -4.8, -3.3]) L.B(x, 0.55, -5.15, 0.5, 0.9, 0.5, 'metal'); // stools
   for (const [x, z] of [[-6, 2.5], [-1.5, 4.5], [3, 2]]) { L.B(x, 0.5, z, 1.2, 0.8, 1.2, 'wood'); L.B(x, 0.95, z, 1.4, 0.1, 1.4, 'chrome'); }
   L(8.6, 0.1, -7.6, 9.7, 1.9, -6.4, 'toypurple'); Ld(8.55, 0.8, -7.4, 8.6, 1.6, -6.6, 'neonpink'); // the jukebox
   for (const x0 of [-8, 4.5]) { L(x0, 0.1, 6.6, x0 + 3.5, 0.55, 7.85, 'toypink'); L(x0, 0.55, 7.4, x0 + 3.5, 1.05, 7.85, 'toypink'); } // booths under the windows
-  for (const x of [-6, 0, 5]) for (const z of [-3, 3]) Ld.B(x, 3.72, z, 1.6, 0.06, 0.4, 'lamp');
+  for (const x of [-6, 0, 5]) for (const z of [-3, 3]) Sd.B(x, 3.72, z, 1.6, 0.06, 0.4, 'lamp');
   Ld.B(0, 3.0, 0, 0.7, 0.7, 0.7, 'chrome'); Ld.B(0, 3.55, 0, 0.04, 0.4, 0.04, 'metal'); // the disco ball
   // up to the lounge (east side), its floor
-  stairs(L, 7.6, 9.7, 1.0, 1, 0.1, 4.0, 'wood', 0.5);
-  slab(L, -10.15, -8.15, 10.15, 8.15, 3.75, 4.0, 'wood', [7.5, 1.0, 9.85, 5.5]);
-  L(7.4, 4.0, 1.0, 7.5, 5.0, 5.5, 'metal'); L(7.4, 4.0, 0.9, 9.85, 5.0, 1.0, 'metal'); // rails round the stairwell
+  stairs(S, 7.6, 9.7, 1.0, 1, 0.1, 4.0, 'wood', 0.5);
+  slab(S, -10.15, -8.15, 10.15, 8.15, 3.75, 4.0, 'wood', [7.5, 1.0, 9.85, 5.5]);
+  S(7.4, 4.0, 1.0, 7.5, 5.0, 5.5, 'metal'); S(7.4, 4.0, 0.9, 9.85, 5.0, 1.0, 'metal'); // rails round the stairwell
   // the lounge: the long window onto the pool, sofas, a pool table
-  wall(L, 'x', -8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', op(U.n, 4.0, 6.6));
-  wall(L, 'x', 8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', [...op(U.s, 4.0, 6.6), { a: -6.5, b: 6.5, y0: 5.0, y1: 6.8 }]);
-  wall(L, 'z', -10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.w, 4.0, 6.6));
-  wall(L, 'z', 10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.e, 4.0, 6.6));
+  wall(S, 'x', -8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', op(U.n, 4.0, 6.6));
+  wall(S, 'x', 8, -10.15, 10.15, 4.0, 7.6, 0.3, 'glassblock', [...op(U.s, 4.0, 6.6), { a: -6.5, b: 6.5, y0: 5.0, y1: 6.8 }]);
+  wall(S, 'z', -10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.w, 4.0, 6.6));
+  wall(S, 'z', 10, -7.85, 7.85, 4.0, 7.6, 0.3, 'glassblock', op(U.e, 4.0, 6.6));
   for (const x0 of [-6.2, 0.6]) { L(x0, 4.0, 5.4, x0 + 5.4, 4.45, 6.6, 'toypink'); L(x0, 4.45, 6.6, x0 + 5.4, 5.0, 7.1, 'toypink'); }
   L(-2, 4.0, -4.6, 2, 4.85, -2.4, 'wood'); L(-1.85, 4.85, -4.45, 1.85, 4.9, -2.55, 'lawn');
-  for (const x of [-4, 2]) for (const z of [-4, 3]) Ld.B(x, 7.57, z, 1.6, 0.06, 0.4, 'lamp');
+  for (const x of [-4, 2]) for (const z of [-4, 3]) Sd.B(x, 7.57, z, 1.6, 0.06, 0.4, 'lamp');
   Ld(-9.85, 4.9, 3.0, -9.8, 6.3, 5.6, 'tvstatic'); Ld(-2.5, 6.75, -7.85, 2.5, 7.45, -7.8, 'neonwork', { fit: 1 }); // the telly, a motivational neon
   L.B(-9.3, 4.4, 7.3, 0.8, 0.8, 0.8, 'pottery'); Ld.B(-9.3, 5.3, 7.3, 1.2, 1.0, 1.2, 'leaves'); L.B(-9.3, 4.4, -7.3, 0.8, 0.8, 0.8, 'pottery'); Ld.B(-9.3, 5.3, -7.3, 1.2, 1.0, 1.2, 'leaves');
   // up to the roof (west side), the roof: a glass parapet, the helipad, a windsock
-  stairs(L, -9.7, -7.6, 1.5, -1, 4.0, 7.9, 'metal', 0.5);
-  slab(L, -10.15, -8.15, 10.15, 8.15, 7.6, 7.9, 'roofg', [-9.85, -3.0, -7.5, 1.5]);
-  L(-7.5, 7.9, -3.0, -7.4, 8.9, 1.5, 'metal'); L(-9.85, 7.9, 1.5, -7.4, 8.9, 1.6, 'metal');
-  wall(L, 'x', -8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock'); wall(L, 'x', 8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock');
-  wall(L, 'z', -10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock'); wall(L, 'z', 10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock');
-  L(-4.5, 7.9, -4.5, 4.5, 8.0, 4.5, 'helipad', { fit: 1 });
-  Ld(-10.21, 7.65, -8.21, 10.21, 7.85, -8.15, 'neonpink'); Ld(-10.21, 7.65, 8.15, 10.21, 7.85, 8.21, 'neonpink'); // neon round the roof's edge
-  Ld(-10.21, 7.65, -8.15, -10.15, 7.85, 8.15, 'neonpink'); Ld(10.15, 7.65, -8.15, 10.21, 7.85, 8.15, 'neonpink');
+  stairs(S, -9.7, -7.6, 1.5, -1, 4.0, 7.9, 'metal', 0.5);
+  slab(S, -10.15, -8.15, 10.15, 8.15, 7.6, 7.9, 'roofg', [-9.85, -3.0, -7.5, 1.5]);
+  S(-7.5, 7.9, -3.0, -7.4, 8.9, 1.5, 'metal'); S(-9.85, 7.9, 1.5, -7.4, 8.9, 1.6, 'metal');
+  wall(S, 'x', -8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock'); wall(S, 'x', 8, -10.15, 10.15, 7.9, 8.7, 0.3, 'glassblock');
+  wall(S, 'z', -10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock'); wall(S, 'z', 10, -7.85, 7.85, 7.9, 8.7, 0.3, 'glassblock');
+  S(-4.5, 7.9, -4.5, 4.5, 8.0, 4.5, 'helipad', { fit: 1 });
+  Sd(-10.21, 7.65, -8.21, 10.21, 7.85, -8.15, 'neonpink'); Sd(-10.21, 7.65, 8.15, 10.21, 7.85, 8.21, 'neonpink'); // neon round the roof's edge
+  Sd(-10.21, 7.65, -8.15, -10.15, 7.85, 8.15, 'neonpink'); Sd(10.15, 7.65, -8.15, 10.21, 7.85, 8.15, 'neonpink');
   Ld(-5, 6.9, 8.15, 5, 7.5, 8.2, 'adparty', { fit: 1 }); // over the long window, for the pool
-  L.B(8.8, 9.4, -6.8, 0.15, 3, 0.15, 'metal'); Ld(8.88, 10.3, -7.1, 10.2, 10.75, -6.5, 'hazard'); // the windsock (sticks out over the edge)
+  S.B(8.8, 9.4, -6.8, 0.15, 3, 0.15, 'metal'); Sd(8.88, 10.3, -7.1, 10.2, 10.75, -6.5, 'hazard'); // the windsock (sticks out over the edge)
 }
 
 // ------------------------------------------------------------ ROOFTOP: the roof party. three tops over the night city:
@@ -1179,7 +1185,7 @@ function rooftop() {
   for (const x of [-14, 0, 14]) B.box(x, (L0 - 0.4) / 2, -14, 0.6, -0.4 - L0, 0.6, 'metal');
   add(-2, -0.25, -12, 2, 0, -10.15, 'grid'); add(-2.1, 0, -12, -2, 1.0, -10.15, 'metal'); add(2, 0, -12, 2.1, 1.0, -10.15, 'metal');
   // the penthouse (z [-10, 6]): doors on all four sides downstairs, the gangway door upstairs
-  penthouse(B, D, 0, -2, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, u: { n: [[-2, 2]] } });
+  penthouse(B, D, 0, -2, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, u: { n: [[-2, 2]] }, arch: 'penthouse' });
   // the north end: the JANK COLA billboard, AC units, the cold store, crates
   billboard(W, 0, -26.6, L0, 'x');
   for (const x of [-18, -15]) acUnit(W, x, -24.5, L0); for (const x of [15, 18]) acUnit(W, x, -19, L0);
@@ -1274,7 +1280,7 @@ function rooftopSD() {
   }
   // ---- the party block: the penthouse (no door upstairs, its north wall solid: the spawns stay out of each other's
   // sight), the pool deck south of it, the cold store and AC north of it
-  penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] } });
+  penthouse(B, D, 0, -14, L0, { g: { n: [[-2, 2]], s: [[-2, 2]], sw: [[-8, -4.5], [4.5, 8]], w: [[-3.5, -1.5]], e: [[-3.5, -1.5]] }, arch: 'penthouse_sd' });
   add(-7, L0 - 0.5, 0, 7, L0 - 0.45, 8, 'tile'); D.add(-7, L0 - 0.45, 0, 7, L0 - 0.12, 8, 'water');
   add(-7.6, L0, -0.6, 7.6, L0 + 0.1, 0, 'tile'); add(-7.6, L0, 8, 7.6, L0 + 0.1, 8.6, 'tile'); add(-7.6, L0, 0, -7, L0 + 0.1, 8, 'tile'); add(7, L0, 0, 7.6, L0 + 0.1, 8, 'tile');
   for (const [x0, z0, x1, z1] of [[-21.8, -5.7, 21.8, -0.6], [-21.8, 8.6, 21.8, 13.8], [-21.8, -0.6, -7.6, 8.6], [7.6, -0.6, 21.8, 8.6]]) D.add(x0, L0, z0, x1, L0 + 0.02, z1, 'wood');
@@ -3152,6 +3158,13 @@ function lounger(B, D, x, z, m) {
   D.add(x + 0.9, 0, z - 0.05, x + 1.0, 2.2, z + 0.05, 'white'); D.add(x - 0.3, 2.2, z - 1.2, x + 2.2, 2.32, z + 1.2, pickUmb(x + z));
 }
 const pickUmb = (k) => ['toypink', 'toyteal', 'toyyellow', 'sidelemon'][Math.abs(Math.round(k * 7)) % 4];
+// the tiki village (tiki bar, big tiki, huts, surf school) is one Blender model per map (public/models/arch/tiki*.glb,
+// look only): tiki(() => ...) tags what the pieces add. drape: on Islands it rides the dunes exactly as it always did
+// (shared/terrain.js). the crates (a prop model already) and the two signs (the game's own ad textures) stay the game's
+function tikiArt(B, D, id) {
+  B.boxes.arch.push({ id, p: [0, 0, 0], r: 0, drape: true }); const tag = { av: id, ai: B.boxes.arch.length - 1 }, keep = new Set(['crate', 'adtiki', 'adsurf']);
+  return (f) => { const n0 = B.boxes.length, d0 = D.boxes.length; f(); for (const [L, k] of [[B.boxes, n0], [D.boxes, d0]]) for (let i = k; i < L.length; i++) if (!keep.has(L[i].mat)) Object.assign(L[i], tag); };
+}
 
 // ---- the set pieces. each is built where the standard Islands has it, moved (dx, dz) (Islands S&D moves them about);
 // st collects their stairs for the walk graph
@@ -3530,10 +3543,11 @@ function islands() {
   slab(Dw, -25.5, -21.5, 25.5, 14, 0, 0.03, 'grass', [-15, -16, 15, 10]);
   B.boxes.arch.push({ id: 'kaboom', p: [0, 0, 0], r: 0 }); // (its dressing: lava channel, cooled flows, cracks, rim rocks, scree. one Blender model laid on the cone, look only)
   const KB = kaboom(B, D, 0, 0), T = KB.throat; // (quick play: a real cone you walk and grapple anywhere. Islands S&D has the same mountain made small: KABOOM_SD)
-  tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
-  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1);
+  const TK = tikiArt(B, D, 'tiki'); // (the village: one Blender model, look only)
+  TK(() => { tikiBar(B, D, 0, 0, r); bigTiki(B, D, 0, 0);
+  hut(B, D, 7.5, 18, -1); hut(B, D, 18.5, 17.2, -1); });
   [[-4.5, 21.6], [-2, 21.6], [10.5, 22.2], [13, 22.2], [21.5, 22]].forEach(([x, z], i) => lounger(B, D, x, z, ['toyteal', 'toypink', 'toyyellow'][i % 3]));
-  surfSchool(B, D, 0, 0);
+  TK(() => surfSchool(B, D, 0, 0));
   // the cannon on the west beach (the human cannonball: it fires you at the fort)
   cannon(B, D, -24.2, 9, 0, -1, 0); add(-27.3, 0, 7.7, -25.5, 0.3, 10.3, 'pad', { pad: [-34, 15, -7.4] }); // (lands in front of the fort's gate)
   D.add(-22.4, 0, 11.4, -22.28, 2.6, 11.52, 'wood'); D.add(-24.6, 1.6, 11.52, -20.4, 2.6, 11.6, 'adcannon', { fit: 1 });
@@ -3651,13 +3665,14 @@ function islandsSD() {
 
   // ---- W, the tiki bar's islet (x -60..-36, z -36..-12); E, the beach huts' (x 36..60, z -36..-12)
   isle(B, D, -60, -36, -36, -12);
-  tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42);
+  const TK = tikiArt(B, D, 'tiki_sd'); // (the tiki islet and the huts' islet: one Blender model, look only)
+  TK(() => { tikiBar(B, D, -36, -42, r); bigTiki(B, D, -36, -42); });
   lounger(B, D, -50, -15, 'toyteal'); lounger(B, D, -46, -15, 'toypink');
   for (const [x, z] of [[-58.5, -14], [-37, -13.5], [-59, -33.5], [-37.5, -24.5]]) palm(W, x, z, 5.5 + r() * 3, r);
   isle(B, D, 36, -36, 60, -12);
-  hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1);
+  TK(() => { hut(B, D, 44.5, -27, 1); hut(B, D, 53, -19, -1); });
   lounger(B, D, 57, -30, 'toyyellow'); lounger(B, D, 57.6, -25.6, 'toyteal');
-  surfSchool(B, D, 16, -29);
+  TK(() => surfSchool(B, D, 16, -29));
   for (const [x, z] of [[58.5, -14], [37.5, -13.5], [58.8, -34], [37.5, -29]]) palm(W, x, z, 5.5 + r() * 3, r);
 
   // ---- B, Lighthouse Point (x -62..-34, z -82..-48): the tower's foot (no way up: the site's big cover), the cottage,

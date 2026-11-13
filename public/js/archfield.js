@@ -9,7 +9,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 
 // the models that exist (so nothing 404s asking for one that doesn't)
-export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw', 'jbh_capsule3', 'jbh_capsule4', 'jbh_noodle', 'jbh_bodega', 'jbh_walkup', 'jbh_model', 'jbh_container', 'jbh_squat', 'jbh_dorm', 'jbh_arcade', 'jbh_pastel', 'jbh_biolab', 'jbh_pawn']); // (jbh_: Jankburg's city houses, tools/blender/jankburg/make_jb_houses.py)
+export const ARCH_IDS = new Set(['home', 'store', 'tenement', 'adobe', 'kaboom', 'kaboom_sd', 'wreck', 'lighthouse', 'lighthouse_sd', 'skullrock', 'skullspine', 'rocks_desert', 'rocks_desert_sd', 'rocks_bazaar', 'rocks_bazaar_sd', 'rocks_forest', 'rocks_islands', 'rocks_islands_sd', 'fort', 'fort_sd', 'walks_islands', 'walks_islands_sd', 'spire', 'spire_sd', 'backrooms', 'stairhi', 'stairlo', 'wh_hall', 'wh_hall_sd', 'wh_staff', 'tube', 'girder', 'tenement_e', 'tenement_ne', 'office_n', 'office_w', 'office_se', 'office_sw', 'concrete_nw', 'jbh_capsule3', 'jbh_capsule4', 'jbh_noodle', 'jbh_bodega', 'jbh_walkup', 'jbh_model', 'jbh_container', 'jbh_squat', 'jbh_dorm', 'jbh_arcade', 'jbh_pastel', 'jbh_biolab', 'jbh_pawn', 'penthouse', 'penthouse_sd', 'tiki', 'tiki_sd']); // (jbh_: Jankburg's city houses, tools/blender/jankburg/make_jb_houses.py)
 // map material keys -> the paint a Blender building takes on (its '@siding' / '@roof' / '@trim' parts)
 const PAINT = {
   hutadobe: '#ffdcae', hutsideorange: '#ffb866', hutsidemint: '#a8ffd8', hutsidelemon: '#fff27a', // (sunlit mud plaster: the Desert's adobe huts)
@@ -46,10 +46,27 @@ function tex(name, decal) {
   return t;
 }
 
+// the reflection for glossy parts: a night sky over a neon city, painted once on a canvas (equirect, three PMREMs it)
+let skyEnvTex = null;
+function skyEnv() {
+  if (skyEnvTex) return skyEnvTex;
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128;
+  const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+  for (const [t, col] of [[0, '#0a0828'], [0.35, '#3a2470'], [0.48, '#c060d8'], [0.52, '#ff8ad8'], [0.56, '#40204a'], [1, '#08040c']]) gr.addColorStop(t, col);
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 128);
+  let s = 7; const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647); // (seeded: the same city every time)
+  for (let x = 0; x < 256; x += 3 + ((rnd() * 6) | 0)) { const h = 4 + rnd() * 14; g.fillStyle = '#1a0c2a'; g.fillRect(x, 66 - h, 3 + rnd() * 6, h); }
+  for (let i = 0; i < 160; i++) { g.fillStyle = ['#ffe14d', '#4fd8ff', '#ff4fd8', '#ffffff'][i % 4]; g.fillRect((rnd() * 256) | 0, (52 + rnd() * 26) | 0, 1, 1); }
+  skyEnvTex = new THREE.CanvasTexture(c); skyEnvTex.mapping = THREE.EquirectangularReflectionMapping; skyEnvTex.colorSpace = THREE.SRGBColorSpace;
+  return skyEnvTex;
+}
+
 function material(name, x) { // one shared material per Blender material name
   if (matCache.has(name)) return matCache.get(name);
   const decal = x.tex === 'decals';
-  const m = new THREE.MeshLambertMaterial({ map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') });
+  const opt = { map: tex(x.tex, decal), vertexColors: true, color: x.paint ? 0xffffff : new THREE.Color(x.col || '#ffffff') };
+  // x.gloss (0..1, x.metal): glass, chrome and candy paint shine, reflecting a small night sky (the penthouse's)
+  const m = x.gloss ? new THREE.MeshStandardMaterial({ ...opt, roughness: 1 - x.gloss * 0.8, metalness: x.metal ? 0.85 : 0, envMap: skyEnv(), envMapIntensity: x.metal ? 1.1 : 0.7 }) : new THREE.MeshLambertMaterial(opt);
   if (x.alpha) { m.alphaTest = 0.5; m.side = THREE.DoubleSide; }
   if (decal || x.decal) { m.polygonOffset = true; m.polygonOffsetFactor = -2; m.polygonOffsetUnits = -2; }
   if (x.glow) { m.emissiveMap = m.map; m.emissive = new THREE.Color(x.glowcol || 0xffffff); } // (glowcol: a lava orange, say; white = the texture's own light)

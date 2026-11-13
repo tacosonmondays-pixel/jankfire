@@ -21,6 +21,7 @@ const trafficKinds = (def) => { const t = MAP.id && Object.hasOwn(TRAFFIC, MAP.i
 import { buildArch, hasArch, wantArch, setArchHaze } from './archfield.js'; // Blender architecture over the boxes
 import { liquidBox, buildLiquids, updateLiquids, liquidsMap, setLiquidQ } from './liquids.js'; // water that moves, lava that flows, splashes
 import { updateFlames } from './flames.js'; // real fire
+import { buildWaterMap, updateFlowWater, setFlowQ } from './flowwater.js'; // fountains: streams, rippling pools, splashes
 import { gfxGuard, initGfxGuard } from './gfxguard.js';
 import { overlayTiers, applyOverlayTiers, depthNear } from './zfight.js'; // no flickering roads
 import { neonMap, updateNeon } from './neon.js'; // the neon and lamps light the walls round them (the ray-traced look)
@@ -539,7 +540,7 @@ export function initWorld(canvas) {
   initGfxGuard(canvas, { repaint: repaintMapTextures, relight: relightMap, mats: mapMats, preset: () => jank.name });
 }
 
-export function setJank(i) { jank = JANK[i] || JANK[1]; setPostAA(i >= 2); resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); }
+export function setJank(i) { jank = JANK[i] || JANK[1]; setPostAA(i >= 2); resize(); setLightPreset(JANK[i] ? i : 1); setLiquidQ(JANK[i] ? i : 1); setFlowQ(JANK[i] ? i : 1); }
 
 // OVERDUE: a streamed map (MAPS[id].stream, the story's city) runs the city streamer instead of one built mesh.
 // loaded on demand, so maps without `stream` (all of PvP) never fetch it
@@ -562,6 +563,7 @@ export function loadMap(id) {
   fetchMapProps(MAPS[MAP.id], trafficKinds(MAPS[MAP.id]), () => { buildPropField(G.scene, MAPS[MAP.id], MAT); lightingRefresh(); }, refreshMapVisuals);
   buildMap(G.scene);
   buildPropField(G.scene, MAPS[MAP.id], MAT);
+  buildWaterMap(G.scene, MAPS[MAP.id]); // (the box fountains' jets; the Blender ones come with their props)
   archFor(MAP.id);
   paintSky(MAP.sky);
   G.scene.fog.color.setHex(MAP.sky.fog);
@@ -672,6 +674,7 @@ export function updateWorld(dt) {
   updateForest(dt);
   updateShredPit(dt);
   updateLiquids(dt);
+  updateFlowWater(dt, G.camera, G.renderer, G.scene);
   updateFlames(dt);
 }
 
