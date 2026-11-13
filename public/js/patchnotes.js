@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.27', date: '2026-11-13', title: 'STAY PINK', items: [
+    "shiny pink mechs stopped turning purple on too hd. the sky was rubbing off on the paint.",
+  ] },
   { v: '11.26', date: '2026-11-13', title: 'VENDING MACHINE', items: [
     "new mech: VENDING MACHINE, the support hero. a 5 m drinks machine on stubby legs with a coin slot for a face. holds LMB to spit coins at people.",
     "Shift pops out a JANK COLA for your squad: +40 hp and a sugar rush. E slams down an OUT OF ORDER sign that stops enemy bullets, rockets and blasts. your side shoots through it. rude.",
