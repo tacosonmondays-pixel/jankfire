@@ -120,7 +120,8 @@ function bombs(K, plan, t, potato) {
   E.info.bombs = nb; E.info.splats = ns;
 }
 
-export const eruptLook = () => ({ dark: E.dark, flash: E.flash });
+// hide: the volcano's everyday smoke wisp (its Blender dressing) is inside the column while the column is up
+export const eruptLook = () => ({ dark: E.dark, flash: E.flash, hide: E.info.stage === 'blast' ? E.info.u > 0 || E.dark > 0.5 : E.info.stage === 'settle' && E.info.u < 0.7 });
 export function eruptState() {
   const K = E.kit && typeof E.kit === 'object' ? E.kit : null;
   let draws = 0, tris = 0;

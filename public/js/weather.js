@@ -286,9 +286,18 @@ export function wxPre() {
     if (sky.sky) sky.sky.material.color.lerp(ASH_SKY, 0.8 * e).lerp(ERUPT_FLASH, 0.5 * ef);
     for (const [m] of SAVE.far) m.color.multiply(_c.setHex(0xffffff).lerp(ASH_SKY, 0.55 * e));
   }
+  if (el.hide) for (const o of wisp()) { SAVE.vis.push([o, o.visible]); o.visible = false; } // (the volcano's old wisp: the column has swallowed it)
   if (Math.max(dk, e) > 0.35) for (const [o] of SAVE.vis) o.visible = false; // (the sun cube and the pink fair-weather clouds go behind the storm)
 }
 const ASH_FOG = new THREE.Color(0x5a3a34), ASH_SKY = new THREE.Color(0x9a5a44), ASH_HEMI = new THREE.Color(0xffa070), ASH_SUN = new THREE.Color(0xff6a2a), ERUPT_FLASH = new THREE.Color(0xffb060);
+// the volcano's smoke wisp: the arch meshes drawn with its see-through smoke materials (archfield.js names them arch_<name>)
+const WISP = /^arch_b(wisp|smoke)/;
+let wispList = [], wispKey = '', wispT = 0;
+function wisp() {
+  const n = performance.now();
+  if (wispKey !== MAP.id || (!wispList.length && n - wispT > 3000)) { wispKey = MAP.id; wispT = n; wispList = []; G.scene.traverse((o) => { if (o.isMesh && o.material && WISP.test(o.material.name || '')) wispList.push(o); }); }
+  return wispList;
+}
 export function wxPost() {
   if (!SAVE.on) return;
   SAVE.on = false;
