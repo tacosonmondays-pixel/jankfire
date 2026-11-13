@@ -174,3 +174,11 @@ All open DRAFT PRs; the owner merges. PR #124 (v6.9) is still waiting for the ow
 - Handover facts: `cargo install rojo lune selene` works (no luau-analyze: building luau from source was refused); selene uses `roblox/roblox_min.yml`; build + test `node tools/roblox/build.mjs`, `lune run tests/run` from roblox/ (Lune shim `load()` in tests/run.luau; Lune parts have no `.Position`, use `.CFrame.Position`). Movement is client-owned (LinearVelocity from shared/Movement.luau), so knockback = RemoteEvent to the victim's client. Remotes in ReplicatedStorage.JankfireRemotes (both project.json files). Deco Parts CanQuery=false. Kill height = Map.Rooftop's KillY attribute. Rojo model JSON: explicit types, Attributes under Properties.Attributes.Attributes, no "Name" on a model.json root.
 - The owner has Roblox Studio + Studio's MCP connected to a LOCAL Claude session on their PC; the cloud can't reach it, so the owner relays reports. Story stays out of Roblox for now (owner default).
 - Not verified in Studio yet: movement feel, the ComicNeueAngular font path, .glb import scale/axes.
+
+## Held patch notes: Battle Island launch day (the island map is wip: ?wip=1 only)
+Add these as one entry when the island goes live (coordinator, 2026-11-13):
+    "battle island's grass and flowers stop growing inside crates, containers and boats.",
+    "battle island has a new spot: THE ALL-INCLUSIVE. a beach resort with a lobby, a stair tower up to the roof, balconies, a pool and a jetty. everything included except survival.",
+    "battle island has a new spot: SCRAP MART. a candy-coloured mech hangar with the road running straight through it, a catwalk, a parts office, a yard crane, a car crusher and a test range. it's a hot drop. bring friends.",
+    "battle island has a new spot: RETURN TO SENDER. a cargo ship ran aground on the beach and spilled its containers all over the sand. climb the crane, loot the wheelhouse, hide in the lifeboat. signed for by nobody.",
+    "PORT JANKTON OPENS FOR BUSINESS: Bait & Tackle (giant marlin on the roof, worms, regrets) and Oh My Cod! (giant cone of chips, a gull who stole one) line the main street. walk in the front, out the back.",  (PR #520, once merged)
