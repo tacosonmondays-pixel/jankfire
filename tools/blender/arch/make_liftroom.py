@@ -23,18 +23,20 @@ from mathutils import Vector
 argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 HERE = os.path.dirname(os.path.abspath(__file__))
 MATS.update({
-    'lr_wall': ('concrete', '#e4dccd', {}), 'lr_base': ('tar', '#6a6470', {}), 'lr_band@trim': ('trim', '#ffffff', {'gloss': 0.5}),
+    'lr_wall': ('stucco', '#f6f4ff', {}), 'lr_base': ('tar', '#6a6470', {}), 'lr_band@trim': ('trim', '#ffffff', {'gloss': 0.5}),
     'lr_coping': ('metalplate', '#c4c8d0', {'gloss': 0.6, 'metal': 1}), 'lr_gravel': ('tar', '#9a9488', {}), 'lr_soffit': ('concrete', '#b8b0a4', {}),
-    'lr_door': ('metalplate', '#ffd23a', {'gloss': 0.7}), 'lr_frame': ('metalplate', '#3a3d46', {'gloss': 0.5}), 'lr_steel': ('metalplate', '#a2a8b2', {'gloss': 0.5, 'metal': 1}),
+    'lr_door@trim': ('trim', '#ffffff', {'gloss': 0.7}), 'lr_frame': ('metalplate', '#3a3d46', {'gloss': 0.5}), 'lr_steel': ('metalplate', '#a2a8b2', {'gloss': 0.5, 'metal': 1}),
     'lr_louvre': ('louvre', '#8e949e', {}), 'lr_conduit': ('metalplate', '#c8ccd4', {'gloss': 0.4, 'metal': 1}), 'lr_black': ('tar', '#26242a', {}),
-    'lr_lamp': ('stucco', '#fff2c8', {'glow': True, 'glowcol': '#ffe0a0'}), 'lr_red': ('trim', '#ff4040', {'glow': True, 'glowcol': '#ff2020'}),
+    'lr_sign': ('stucco', '#c8f6ff', {'glow': True, 'glowcol': '#4fd8ff'}), 'lr_neon': ('trim', '#9af0ff', {'glow': True, 'glowcol': '#4fd8ff'}),
+    'lr_beacon': ('trim', '#ffc040', {'glow': True, 'glowcol': '#ffa010'}), 'lr_red': ('trim', '#ff4040', {'glow': True, 'glowcol': '#ff2020'}),
     'lr_mastr': ('metalplate', '#e8322a', {'gloss': 0.6}), 'lr_mastw': ('metalplate', '#f4f2ee', {'gloss': 0.6}), 'lr_wire': ('tar', '#2a2a30', {}),
 })
-NOCAST.update({'lr_frame', 'lr_steel', 'lr_louvre', 'lr_conduit', 'lr_black', 'lr_lamp', 'lr_red', 'lr_wire', 'lr_door'})
+NOCAST.update({'lr_frame', 'lr_steel', 'lr_louvre', 'lr_conduit', 'lr_black', 'lr_sign', 'lr_neon', 'lr_beacon', 'lr_red', 'lr_wire', 'lr_door@trim'})
 H, TOP, CO = 4.5, 4.8, 0.2  # the walls' height, the slab's top, its overhang
 E = 0.002
 
 # stencil digits: cells (x0, y0, x1, y1) on a 3 x 5 grid, none overlapping
+LET = {'L': [(0, 0, 1, 5), (1, 0, 3, 1)], 'I': [(0, 4, 3, 5), (1, 1, 2, 4), (0, 0, 3, 1)], 'F': [(0, 0, 1, 5), (1, 4, 3, 5), (1, 2, 2, 3)], 'T': [(0, 4, 3, 5), (1, 0, 2, 4)]}  # (the lit sign's)
 DIG = {'1': [(2, 0, 3, 5)], '2': [(0, 4, 3, 5), (2, 3, 3, 4), (0, 2, 3, 3), (0, 1, 1, 2), (0, 0, 3, 1)], '3': [(0, 4, 3, 5), (2, 3, 3, 4), (0, 2, 3, 3), (2, 1, 3, 2), (0, 0, 3, 1)]}
 
 
@@ -68,7 +70,12 @@ def room(kind):
             K.box((-X - o1, y0, s * Z + (o0 if s > 0 else -o1)), (X + o1, y1, s * Z + (o1 if s > 0 else -o0)), {'all': mat}, cull=False, node=node)
             K.box((s * X + (o0 if s > 0 else -o1), y0, -Z + o0 + 0.001), (s * X + (o1 if s > 0 else -o0), y1, Z - o0 - 0.001), {'all': mat}, cull=False, node=node)
     band(0.0, 0.32, E, 0.05, 'lr_base')
-    band(3.55, 4.05, E, 0.025, 'lr_band@trim')
+    band(3.5, 4.2, E, 0.025, 'lr_band@trim')  # (bold: the team's colour, it should read from the far spawn)
+    band(4.26, 4.34, E, 0.04, 'lr_neon')  # a cyan neon strip under the coping (the roof's night glow)
+    for sx_ in (-1, 1):  # team-colour corner posts up to the band (stopping short of it and of the upstand: no shared faces)
+        for sz_ in (-1, 1):
+            cx0, cx1 = (X - 0.3, X + 0.025) if sx_ > 0 else (-X - 0.025, -X + 0.3); cz0, cz1 = (Z - 0.3, Z + 0.025) if sz_ > 0 else (-Z - 0.025, -Z + 0.3)
+            K.box((cx0, 0.33, cz0), (cx1, 3.49, cz1), {'side': 'lr_band@trim'}, cull=False)
     # ---- the slab: galvanised coping round its edge, a drip lip under it, gravel on top, the soffit
     K.box(slab['min'], slab['max'], {'top': 'lr_gravel', 'side': 'lr_coping', 'bottom': 'lr_soffit'}, sub=1.5)
     sx, sz = slab['max'][0], slab['max'][2]
@@ -85,7 +92,7 @@ def room(kind):
     fb(fx - E, fx - 0.07, 0.32, 2.55, -0.95, -0.82, 'lr_frame'); fb(fx - E, fx - 0.07, 0.32, 2.55, 0.82, 0.95, 'lr_frame'); fb(fx - E, fx - 0.07, 2.42, 2.55, -0.82, 0.82, 'lr_frame')
     for zs in (-1, 1):
         z0, z1 = (-0.81, -0.01) if zs < 0 else (0.01, 0.81)
-        fb(fx - E, fx - 0.04, 0.33, 2.41, z0, z1, 'lr_door')
+        fb(fx - E, fx - 0.04, 0.33, 2.41, z0, z1, 'lr_door@trim')  # (the team's colour)
         fb(fx - 0.04, fx - 0.045, 0.36, 0.62, z0 + 0.04, z1 - 0.04, 'lr_steel')  # the kick plate
         zz = -0.12 if zs < 0 else 0.12
         FL.bar(K, (fx - 0.05, 1.25, zz), (fx - 0.11, 1.25, zz), 0.03, 'lr_steel', node=D)
@@ -93,7 +100,17 @@ def room(kind):
         decal_node(K, 'door', 'z', fx, -1, 0.0415, (z0 + z1) / 2, 1.75, 'sign_warn', 0.42, 0.42)  # DANGER on both leaves
     fb(fx - E, fx - 0.42, 2.62, 2.7, -1.1, 1.1, 'lr_steel')  # the rain hood
     fb(fx - 0.38, fx - 0.42, 2.56, 2.62, -1.1, 1.1, 'lr_steel')  # (its drip front)
-    fb(fx - E, fx - 0.03, 2.85, 3.15, -0.12, 0.12, 'lr_frame'); fb(fx - 0.03, fx - 0.12, 2.9, 3.1, -0.09, 0.09, 'lr_lamp')  # the bulkhead lamp
+    # a lit LIFT sign over the hood: a dark back plate, a glowing face sunk into it, stencil letters on the face
+    fb(fx - E, fx - 0.06, 2.8, 3.42, -0.82, 0.82, 'lr_frame'); fb(fx - 0.05, fx - 0.1, 2.86, 3.36, -0.76, 0.76, 'lr_sign')
+    u = 0.08
+    for li, ch in enumerate('LIFT'):
+        for (x0, y0, x1, y1) in LET[ch]:  # (seen from -x, +z is the reader's right)
+            a0 = -0.6 + li * 4 * u
+            fb(fx - 0.095, fx - 0.104, 2.91 + y0 * u + 0.008, 2.91 + y1 * u - 0.008, a0 + x0 * u + 0.008, a0 + x1 * u - 0.008, 'lr_frame')
+    # amber warning beacons on the roof, middle of each short side (clear of the hatch and the mast's guy plates)
+    for bx_ in (X - 0.4, -X + 0.4):
+        K.box((bx_ - 0.12, TOP, -0.12), (bx_ + 0.12, TOP + 0.05, 0.12), {'side': 'lr_frame', 'top': 'lr_frame'}, cull=False)
+        FL.tube(K, (bx_, TOP + 0.05, 0), (bx_, TOP + 0.2, 0), 0.09, 0.06, 'lr_beacon', n=10, caps=(False, True))
     # ---- the louvres on +x: a long band of them in a steel frame (the motor's air)
     lz = min(3.5, Z - 1.0)
     K.box((X + E, 2.35, -lz - 0.08), (X + 0.06, 3.45, lz + 0.08), {'all': 'lr_steel'}, cull=False)
