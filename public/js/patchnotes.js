@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.10', date: '2026-11-13', title: 'STAY CONNECTED', items: [
+    'fixed: jankburg (jank royale) could kick slower pcs back to the menu while the new houses loaded in. the city now loads them all in one go.',
+  ] },
   { v: '11.9', date: '2026-11-13', title: 'PICK A CARD', items: [
     'CARD DECK: your cards are real 3D cards now with glowing suit trails. they stab into walls, burst into little spades on a hit, and fans thrown at an angle actually leave your hand now (oops).',
   ] },
