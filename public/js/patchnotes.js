@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.41', date: '2026-11-13', title: 'TAKE A NUMBER', items: [
+    "the zombies warehouse lobby got real furniture: deb's tanker desk with a rotary phone and a TAKE A NUMBER dispenser, gus's glass gun counter (NO REFUNDS), marge's crates, a generator that says DO NOT KICK (with a boot print on it), and a door marked EXIT (LIES).",
+  ] },
   { v: '11.40', date: '2026-11-13', title: 'EARS ON', items: [
     "the garage's TEST FIRE range got real: three booths, ear muffs, spilled brass, paper targets cut like mechs on rails, and a MECH ROUNDS FIRED TODAY board stuck on 9999+. press E and the targets spin.",
   ] },
