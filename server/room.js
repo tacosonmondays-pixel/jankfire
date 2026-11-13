@@ -1648,7 +1648,7 @@ class Room {
     return true;
   }
   rangeOk(p, t, range) {
-    const slack = 6 + Math.hypot(...p.vel) * 0.3 + Math.hypot(...t.vel) * 0.3;
+    const slack = 6 + this.speedOf(p) * 0.3 + this.speedOf(t) * 0.3; // (speedOf: the claimed speed, but no faster than the snapshots saw them move: a fake 1e5 m/s velocity used to stretch every hit's reach)
     return dist3(p.pos, t.pos) <= range + slack;
   }
   // most pellets a shot could honestly land at this distance: the spread disc vs the (client-side, distance-scaled) hitbox, with slack.
@@ -4138,8 +4138,15 @@ function lobbyCounts() {
   }
   return { o, b };
 }
+// the most rooms the server keeps (bots rooms, private matches, lobbies: each one ticks). past it, a new room isn't
+// made: you go to the online room instead (it's always there). test knob JF_MAX_ROOMS
+const MAX_ROOMS = Number(process.env.JF_MAX_ROOMS) || 300;
 function roomFor(mode, ws, cfg) {
   if (!has(MODES, mode)) mode = 'ffa';
+  if (rooms.size >= MAX_ROOMS && mode !== 'ffa' && mode !== 'coop' && !(cfg && typeof cfg === 'object' && typeof cfg.ticket === 'string') && !(mode === 'bots' && !(cfg && cfg.priv === true) && [...rooms.values()].some((r) => r.mode === 'bots' && !r.priv && !r.closed && r.botWant() > 0))) { // (a public bots pick can still squeeze into a running one)
+    console.log(`[rooms] packed (${rooms.size}): a ${mode} join goes to the online room`);
+    mode = 'ffa'; cfg = null; // (no new room: the online room, with whoever's there)
+  }
   const tk = ticketRoom(cfg, rooms); // a party's leader started: the room they were all handed a ticket to (server/party.js)
   if (tk && tk.room.mode === mode) { if (ws) ws.partyId = tk.party; return tk.room; }
   const need = cfg && typeof cfg === 'object' && Number.isInteger(cfg.need) ? Math.max(1, Math.min(6, cfg.need)) : 1; // (seats the party needs)

@@ -1,8 +1,8 @@
 // Settings > video > shaders: a fidelity level (auto follows the quality preset) or your own mix of bloom, soft skin and
 // punchy colours. Potato and Crusty stay off on auto: the shaders are for machines with frames to spare.
-import { setPost, setPostFail, setPostAO } from './post.js';
+import { setPost, setPostFail, setPostAO, setPostSSR } from './post.js';
 import { setBounce } from './bounce.js';
-import { setReflect } from './reflect.js';
+import { setReflect, setReflectSSR } from './reflect.js';
 import { hud } from './hud.js';
 import { skinU } from './softskin.js';
 
@@ -18,8 +18,9 @@ setPostFail(() => hud.msg('SHADERS BROKE. SHADERS OFF.', 2.6, 'brag')); // once:
 export function applyFx(S) {
   const [bloom, skin, punch, ao, bounce, refl] = fxResolve(S);
   setReflect(refl && S.jank >= 2); // (mirrors: Mid and Too HD)
+  const ssr = refl && S.jank >= 3; setPostSSR(ssr); setReflectSSR(ssr); // (floor mirrors from the screen: Too HD only)
   setBounce(bounce && S.jank >= 2); // (light off the buildings: never on Potato or Crusty)
-  setPost(bloom, punch || ao); // (contact shadows need the shader pass even with no bloom or punch)
+  setPost(bloom, punch || ao || (refl && S.jank >= 3)); // (contact shadows need the shader pass even with no bloom or punch)
   setPostAO(ao && S.jank >= 2); // (never on Potato or Crusty)
   skinU.value = skin ? 1 : 0;
 }

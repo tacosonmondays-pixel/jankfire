@@ -374,5 +374,12 @@
   "px": 32,
   "alpha": false,
   "note": "tint"
+ },
+ "fac_paint": {
+  "tile": 7.0,
+  "px": 128,
+  "alpha": false,
+  "note": "tint",
+  "glow": "fac_paint_glow"
  }
 }

@@ -26,7 +26,7 @@ PIN = {
  'lino': (1997, 12142, 3256048685), 'tar': (1997, 12254), 'carpet': (1997, 12265, 220837804), 'metalplate': (1997, 12268, 220837804),
  'glass': (1997, 13293), 'louvre': (1997, 13295, 2869370386), 'picket': (1997, 13296), 'fac_tenement': (1997, 17456),
  'fac_office': (1997, 17862), 'decals': (1997, 18621), 'stone': (1997, 18659), 'weather': (1997, 22814),
- 'fac_glass': (1997, 0), 'profile': (1997, 23203, 2522618111),
+ 'fac_glass': (1997, 0), 'profile': (1997, 23203, 2522618111), 'fac_paint': (2611, 0),
 }
 
 
@@ -416,6 +416,49 @@ def facade_office(n=128):
     return img
 
 
+def facade_paint(n=128):
+    """2 bays x 2 floors of painted brick (7 m x 7 m a tile, tinted per house: Jankburg's candy flats): pale brick under
+    thick paint, white surrounds and sills, dark glass that stays dark whatever the paint, warm lit windows (amber, they
+    glow), blinds, a candy curtain, a window box. light, so the paint comes out bright"""
+    img = np.zeros((n, n, 3), np.float32); glow = np.zeros((n, n), np.float32)
+    g = np.full((n, n), 0.9, np.float32)
+    for row in range(n // 6):  # brick courses under the paint: just a faint mortar line and an edge
+        y = row * 6; g[y % n, :] = 0.74
+        off = 0 if row % 2 == 0 else 7
+        for col in range(-1, n // 14 + 1): g[y:y + 6, (col * 14 + off) % n] = 0.78
+    g = g + (fbm(n, 8, 3) - 0.5) * 0.08 - streaks(n, 6, length=(0.2, 0.5)) * 0.1
+    img[:] = ramp(np.clip(g, 0, 1), [(0, '#3a3530'), (0.6, '#c8c4bc'), (0.9, '#f4f2ec'), (1, '#ffffff')])
+    rg = np.random.default_rng(26)
+    for fy in range(2):
+        for bx in range(2):
+            x0, y0 = bx * 64 + 16, fy * 64 + 14
+            w, h = 32, 36
+            kind = ['lit', 'dark', 'blind', 'lit', 'curtain', 'lit'][int(rg.integers(6))]
+            img[y0 - 4:y0, x0 - 4:x0 + w + 4] = 1.0  # head, surround and sill: bright, they take the paint as trim
+            img[y0:y0 + h, x0 - 3:x0] = 1.0; img[y0:y0 + h, x0 + w:x0 + w + 3] = 1.0
+            img[y0 + h:y0 + h + 3, x0 - 5:x0 + w + 5] = 1.0; img[y0 + h + 3, x0 - 5:x0 + w + 5] = hexc('#4a4440')
+            img[y0:y0 + h, x0:x0 + w] = hexc('#f0f0f0')  # frame
+            gl = np.array(Image.fromarray((glass(32) * 255).astype(np.uint8)).resize((w - 4, h // 2 - 3), Image.NEAREST)) / 255.0
+            for k in range(2):
+                py = y0 + 2 + k * (h // 2)
+                if kind == 'lit':
+                    img[py:py + h // 2 - 3, x0 + 2:x0 + w - 2] = hexc('#ffb347') * (0.9 + 0.1 * k); glow[py:py + h // 2 - 3, x0 + 2:x0 + w - 2] = 1
+                elif kind == 'blind': img[py:py + h // 2 - 3, x0 + 2:x0 + w - 2] = np.tile(np.array([[hexc('#f2eee0')], [hexc('#b8b2a0')]]), ((h // 2 - 3) // 2 + 1, w - 4, 1))[:h // 2 - 3]
+                else: img[py:py + h // 2 - 3, x0 + 2:x0 + w - 2] = gl * 0.8
+            if kind == 'curtain':
+                cc = hexc(['#ff3fb0', '#ffe14d', '#4fd8ff', '#39ff14'][int(rg.integers(4))])
+                img[y0 + 2:y0 + h - 2, x0 + 2:x0 + 9] = cc; img[y0 + 2:y0 + h - 2, x0 + w - 9:x0 + w - 2] = cc * 0.8
+            if kind == 'lit' and rg.random() < 0.5:  # somebody home: a silhouette
+                img[y0 + 8:y0 + h // 2 - 1, x0 + 12:x0 + 20] = hexc('#7a3a1a'); img[y0 + 5:y0 + 9, x0 + 14:x0 + 18] = hexc('#7a3a1a')
+            if rg.random() < 0.5:  # a window box of flowers
+                img[y0 + h + 4:y0 + h + 9, x0 - 2:x0 + w + 2] = hexc('#6a4a2a')
+                for fx in range(x0 - 1, x0 + w + 1, 3): img[y0 + h + 2:y0 + h + 4, fx] = hexc(['#ff3fb0', '#ffe14d', '#39ff14'][fx % 3])
+    img[0:3, :] = 1.0; img[3, :] = hexc('#8a8478')  # a string course every floor pair
+    img[64:66, :] = 1.0
+    FAC_GLOW['fac_paint'] = glow
+    return img
+
+
 def facade_glass(n=128):
     """1 floor x 2 bays of a blue glass curtain wall (4.4 m a tile: Skyline's Spire): the floor's spandrel at the top
     (navy panel, a chrome line), then the two panes: the dusk sky in them, bright at the top, a diagonal sheen, a
@@ -639,6 +682,8 @@ def main():
     pin('weather'); wi, wa = weather(); out['weather'] = save('weather', wi, 2.0, alpha=wa, colors=8, dither=0.5)
     pin('fac_glass'); out['fac_glass'] = save('fac_glass', facade_glass(), 4.4, colors=24)
     pin('profile'); out['profile'] = save('profile', profile(), 1.0, note='tint')
+    pin('fac_paint'); out['fac_paint'] = save('fac_paint', facade_paint(), 7.0, colors=24, note='tint')
+    Image.fromarray((FAC_GLOW['fac_paint'] * 255).astype(np.uint8), 'L').save(os.path.join(OUT, 'fac_paint_glow.png')); KIT['fac_paint']['glow'] = 'fac_paint_glow'
     # new textures go here: a PIN line with a new seed, then pin('name'); out['name'] = save(...)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show
