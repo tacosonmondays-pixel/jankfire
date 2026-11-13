@@ -1,6 +1,43 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.7', date: '2026-11-13', title: 'NO LONG ARMS', items: [
+    'anti-cheat: faking your speed doesn\'t give you extra reach anymore. honest fast movers (grapple, rocket jumps, sliding) still get their hits.',
+  ] },
+  { v: '11.6', date: '2026-11-13', title: 'CANDY BACK', items: [
+    'jankburg got its candy back: the city flats are painted pink, lemon, lilac, mint and cyan again, toy roofs keep their colours, and the lights inside glow warm.',
+    'RAY-TRACED LOOK on too hd: wet roofs and shiny floors now mirror what\'s actually around them. billboards upside down in puddles. your gun never shows up in it, it\'s shy.',
+  ] },
+  { v: '11.5', date: '2026-11-13', title: 'WIFI SNEEZE', items: [
+    'your party doesn\'t fall apart when your wifi sneezes anymore. you get 30 seconds to come back. reloading counts. if the leader drops, someone else gets the crown.',
+    'fixed: party codes stopped working for a few minutes after an update. sorry, they\'re back.',
+  ] },
+  { v: '11.4', date: '2026-11-13', title: 'MECH DOWN', items: [
+    'parked mechs aren\'t safe anymore. shoot, stab or rocket an empty mech and it breaks: MECH DOWN, and the owner gets to watch.',
+  ] },
+  { v: '11.3', date: '2026-11-12', title: 'MAY CONTAIN NUMBERS', items: [
+    'jankburg: number works got its factory back. brick smokestacks with blinking red lights, rusty vats of glowing green soup (may contain numbers), and chrome pipes on steel legs.',
+  ] },
+  { v: '11.2', date: '2026-11-12', title: 'GLINT', items: [
+    'RAY-TRACED LOOK: props, buildings, mechs and your gun now reflect the world around them, with a sun glint on shiny paint and chrome. they pick up the bounced light too, so they stop looking flat. bounce light and soft shadows got stronger and now cover all of jankburg.',
+  ] },
+  { v: '11.1', date: '2026-11-12', title: 'SO DID THE CORNER', items: [
+    'jankburg: the houses got walls, windows, stairs and real roofs. the streets got rearranged a bit while we were at it. your favourite corner might have moved. so did the corner.',
+  ] },
+  { v: '11.0', date: '2026-11-12', title: 'BEEP BEEP', items: [
+    'your own mech can\'t squash you any more. stand on your own circle and it goes BEEP BEEP and bonks you out of the way, then you can climb straight in. your squad gets bonked too. enemies still get flattened.',
+    'zombies (and every death): body parts and gibs don\'t hang in mid-air any more. they fall, bounce, settle on the floor and fade.',
+    'zombies: the grappling hook has charges now, like jank royale. two ropes, one comes back every 8 seconds. the ring by your crosshair shows them.',
+  ] },
+  { v: '10.9', date: '2026-11-12', title: 'LOADS LIKE IT MEANS IT', items: [
+    'the game loads a lot faster the second time you open it: your browser keeps this version\'s code instead of asking for 300 files again. an update still gets you the new stuff straight away.',
+  ] },
+  { v: '10.8', date: '2026-11-12', title: 'PLEASE REMAIN SEATED', items: [
+    'jankburg: the cathedral of shareholder value got pews, a real bell and an organ made of servers. the sermon is a quarterly earnings call. please remain seated.',
+  ] },
+  { v: '10.7', date: '2026-11-12', title: 'NOBODY HAS EVER LEFT', items: [
+    'jankburg: jankcorp hq is a real skyscraper now. glass setbacks, a revolving door, gold letters and a lit crown. the lights are on in some offices. they are always on. nobody has ever left.',
+  ] },
   { v: '10.6', date: '2026-11-12', title: 'PUTT INTO ITS MOUTH', items: [
     'skyline: the skyscrapers are real buildings now. brick tenements with fire escapes, office towers with chrome fins, lit offices and neon blade signs.',
     'skyline: the bridges off the spire got steel. portal frames on the glass tubes, big blue trusses under the open ones. the sky stairs are proper steel stairs with handrails and neon. still 160 m of air underneath.',

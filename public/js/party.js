@@ -21,9 +21,10 @@ export function send(m) { if (ws && ws.readyState === 1) { ws.send(JSON.stringif
 
 function connect() {
   try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch { return later(); }
-  ws.onopen = () => { retry = 0; const h = opts.hello(); lastMe = JSON.stringify([h.look, h.gun, h.mf]); send({ t: 'hub', name: h.name, look: h.look, token: h.token, gun: h.gun, mf: h.mf }); };
+  ws.onopen = () => { retry = 0; const h = opts.hello(); lastMe = JSON.stringify([h.look, h.gun, h.mf]); send({ t: 'hub', name: h.name, look: h.look, token: h.token, gun: h.gun, mf: h.mf, rk: rkGet() }); };
   ws.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
+    if (m.t === 'hubok') { if (typeof m.rk === 'string') rkSet(m.rk); return; }
     if (m.t === 'party') {
       const was = P.set && JSON.stringify(P.set), grew = m.ms.length > P.ms.length && P.on;
       Object.assign(P, { on: true, me: m.me, code: m.code, lead: m.lead, ms: m.ms, set: m.set, max: m.max || 6 });
@@ -35,9 +36,12 @@ function connect() {
   };
   ws.onclose = () => { P.on = false; ws = null; changed('off'); later(); };
 }
+// the rejoin key (this tab's): a dropped connection or a reload within 30 s gets your place in the party back
+const rkGet = () => { try { return sessionStorage.getItem('jf_prk') || undefined; } catch { return undefined; } };
+const rkSet = (k) => { try { sessionStorage.setItem('jf_prk', k); } catch { /* (no storage: no comeback) */ } };
 function later() { setTimeout(connect, Math.min(30000, 2000 * 2 ** retry++)); }
 // a new name, look or login: say hello again (the server takes it from a fresh connection)
-export function partyRehello() { if (ws && !inParty()) { const w = ws; ws = null; w.onclose = null; w.close(); connect(); } }
+export function partyRehello() { if (ws && !inParty()) { const w = ws; ws = null; w.onclose = null; try { sessionStorage.removeItem('jf_prk'); } catch { /* */ } w.close(); connect(); } } // (a new name / login: a fresh place, not the old one)
 
 function go(m) {
   if (typeof m.mode !== 'string' || !m.cfg || typeof m.cfg !== 'object') return;

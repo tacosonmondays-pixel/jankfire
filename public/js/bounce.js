@@ -12,8 +12,9 @@
 import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
 import { sunAt, sunDir, sunBoxes } from './lighting.js';
+import { G } from './ctx.js';
 
-export const BOUNCE = { cell: 2, k: 1.3, wallK: 0.8, reach: 4, blur: 2, max: 320, slice: 6000 };
+export const BOUNCE = { cell: 2, k: 2.0, wallK: 1.6, reach: 9, sat: 1.6, blur: 2, max: 520, slice: 6000 };
 const U = { uBK: { value: 0 }, uBG: { value: null }, uBW: { value: null }, uBR: { value: new THREE.Vector4(0, 0, 1, 1) }, uBY: { value: new THREE.Vector2(0, 1) } };
 let on = false, ready = false, job = null, patched = new WeakSet();
 
@@ -39,7 +40,8 @@ if ( uBK > 0.0 ) { // light bounced off the ground and the sunlit walls round he
     float up = max( vBW.y - ( uBY.x + gb.a * uBY.y ), 0.0 );
     vec3 nW = normalize( vBN );
     vec3 b = gb.rgb * ( 0.55 - 0.45 * nW.y ) * exp( -up / 7.0 ) + wb * ( 1.0 - 0.7 * abs( nW.y ) );
-    reflectedLight.indirectDiffuse += diffuseColor.rgb * b * uBK;
+    b = max( mix( vec3( dot( b, vec3( 0.3, 0.5, 0.2 ) ) ), b, ${BOUNCE.sat.toFixed(2)} ), 0.0 ); // (the colour bleeds more than the light: pink walls tint pink)
+    reflectedLight.indirectDiffuse += material.diffuseColor * b * uBK; // (material.diffuseColor: metal takes none, like real light)
   }
 }
 `;
@@ -147,6 +149,13 @@ function finish(J) {
   U.uBK.value = on ? BOUNCE.k : 0;
 }
 // every frame (world.js): bake a slice, and the switch
-export function updateBounce() { if (job) stepJob(); U.uBK.value = on && ready ? BOUNCE.k : 0; }
+export function updateBounce() { if (job) stepJob(); U.uBK.value = on && ready ? BOUNCE.k : 0; if (on && ready && ++tick % 90 === 0) propsTakeBounce(); }
+// the Blender models (props, buildings, mechs) take the bounce too: they load whenever they land, so every 90 frames the
+// scene is checked for new ones (already patched materials are skipped)
+let tick = 0;
+function propsTakeBounce() {
+  if (!G.scene) return;
+  G.scene.traverse((o) => { if (!o.isMesh || !o.material) return; for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m && m.isMeshStandardMaterial && !patched.has(m)) bounceMaterial(m); });
+}
 export function setBounce(v) { on = !!v; }
 export const bounceInfo = () => ({ on, ready, baking: !!job, size: U.uBR.value.toArray().slice(2).map(Math.round) });

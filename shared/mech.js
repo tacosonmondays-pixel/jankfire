@@ -11,6 +11,9 @@ export const MECH = {
   // the edge, radius, knockback out / up), standing right on the marker = squashed, the headroom it needs
   drop: { hit: 0.36, range: 60, // (hit: drop_in's impact frame, played at touchdown)
     delay: 2.5, dmg: 60, r: 6, kb: 14, up: 13, squash: 1.9, sky: 7 },
+  // your own mech (or your side's) on you: BEEP BEEP, a fixed shove off the circle toward clear floor d m away + a hop
+  // (never a squash), so you land right next to it to climb in
+  bonk: { r: 2.3, d: 3, kb: 6.5, up: 7 },
   wait: 30, // s it stands waiting for you after landing (then it flies off)
   idle: 10, // s an empty mech waits after you hop out early
   reach: 4.5, // how close you have to be to climb in (F)
