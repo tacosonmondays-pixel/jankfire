@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.40', date: '2026-11-13', title: 'EARS ON', items: [
+    "the garage's TEST FIRE range got real: three booths, ear muffs, spilled brass, paper targets cut like mechs on rails, and a MECH ROUNDS FIRED TODAY board stuck on 9999+. press E and the targets spin.",
+  ] },
   { v: '11.39', date: '2026-11-13', title: 'BREAK ROOM', items: [
     "the mech garage got a real break room: a ratty purple couch, pizza on the table, a MINE!! fridge, a coffee machine, and a cabinet door hanging off its last screw. it creaks. nobody has fixed it.",
   ] },
