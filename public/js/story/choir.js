@@ -72,10 +72,11 @@ function spawn() {
 // walking up to the lung was a hitch: the singers' 9-17 new shaders all compiled on the frame they appeared. they
 // spawn hidden (38 m out: nobody sees the wait) and show once the city stream has warmed them up, a shader a frame
 // (city/stream.js warm). loaded on demand, so the story's own start doesn't pull in the city code
+const meshes = (L) => { const out = []; for (const a of L) a.ch.root.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }; // (mesh by mesh: a shader a frame, not a singer's whole outfit at once)
 function warmUp(L) {
   for (const a of L) { a.hidden = true; a.warmHide = true; patchActor(a); } // (lit by the city first: the warm-up has to build the shaders they'll really be drawn with)
   const show = () => { for (const a of L) if (actors.get(a.id) === a && a.warmHide) { a.warmHide = false; if (!a.inScene) a.hidden = false; } }; // (only undo our own hide: a cutscene may have hidden them since)
-  import('../city/ingame.js').then((m) => { const S = m.cityStream(); if (S && S.warm) S.warm(L.map((a) => a.ch.root), show); else show(); }, show);
+  import('../city/ingame.js').then((m) => { const S = m.cityStream(); if (S && S.warm) S.warm(meshes(L), show); else show(); }, show);
 }
 function despawn() { for (const a of D.list) { if (actors.get(a.id) === a) despawnActor(a.id); for (const m of a.lifted || []) m.dispose(); } D.list = []; D.on = false; humStop(); }
 // the lung is dark (the Gut's grade, the lung's own shadow over them): the singers carry a little light of their own,

@@ -111,7 +111,7 @@ export function updateHeart(dt, S, camera) {
   const b = tickBeat(), p = camera.position, e = S.env;
   const d = Math.hypot(p.x - BIG_HEART.x, p.z - BIG_HEART.z); H.d = d;
   if (H.state === 'idle' && d < LOAD_R) load();
-  if (H.root && !H.warm && S.warm) { const me = H; me.warm = 'wait'; S.warm([me.root], () => { me.warm = 'done'; }); } // its shaders and textures warm up first (stream.js), a frame at a time
+  if (H.root && !H.warm && S.warm) { const me = H; me.warm = 'wait'; const ms = []; me.root.traverse((o) => { if (o.isMesh) ms.push(o); }); S.warm(ms, () => { me.warm = 'done'; }); } // its shaders and textures warm up first (stream.js), a frame at a time
   if (H.root) {
     const far = e ? e.far : 250, see = d < Math.min(SEE_R, far + BIG_HEART.reach) && (H.warm === 'done' || !S.warm); // (not drawn until then: it compiled 4-6 shaders on the frame it first showed)
     H.root.visible = see;
