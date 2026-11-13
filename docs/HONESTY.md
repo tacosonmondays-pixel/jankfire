@@ -48,7 +48,7 @@ skip the hit checks (their referee judges hits on boss parts itself).
 
 ## Verified (2026-11-13)
 
-- `tests/honesty_ws.cjs`: 45/45 on this branch. Against origin/main (`JF_ROOT=<old checkout>`) all 20 "refused" checks
+- `tests/honesty_ws.cjs`: 46/46 on this branch (the 46th: a ~550 ms-late hit on someone who ducked into cover still lands). Against origin/main (`JF_ROOT=<old checkout>`) all 20 "refused" checks
   fail and all 21 "lands" checks pass, so the lenient side lands the same shots as before.
 - Bots never go through these checks (they fire in `botFire`). Bots-only matches, 8 bots, all on the AR
   (`JF_BOT_GUNS=ar`), Warehouse, 120 s each, 3 runs, origin/main vs this branch side by side:
