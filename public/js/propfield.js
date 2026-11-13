@@ -11,6 +11,7 @@ import { hazeUniforms } from './world.js';
 import { shadowDirty } from './lighting.js';
 import { G } from './ctx.js';
 import { MAPS } from '/shared/map.js';
+import { waterTag, waterMaterial, streamRadii, waterSpots, setWaterProps } from './flowwater.js'; // parts named *_water / *_pool: flowing water
 
 // round 1's car paints (the parked car's colours), used for car tints
 const PAINT = { carred: 0xc8202c, carblue: 0x2050b0, carwhite: 0xe8e8e8, carblack: 0x26262a, cargreen: 0x2a8a4a, caryellow: 0xe8c020, burnt: 0x2a2624 };
@@ -140,8 +141,8 @@ function kindOf(mid, v, turn) {
       if (groups.length > 1) { g = geo.clone(); g.setDrawRange(0, Infinity); const ix = geo.index.array.slice(gr.start, gr.start + gr.count); g.setIndex(new THREE.BufferAttribute(ix, 1)); }
       const c = clean(g, m);
       if (!far) { c.computeBoundingBox(); tmp.copy(c.boundingBox); box.union(tmp); }
-      const name = stripN(mat.name), k = name + '#' + mat.uuid;
-      if (!parts[far].has(k)) parts[far].set(k, { mat, name, list: [] });
+      const name = stripN(mat.name), wt = waterTag(mat.name) || waterTag(o.userData.name ?? o.name), k = name + '#' + mat.uuid + (wt ? '#' + wt : '');
+      if (!parts[far].has(k)) parts[far].set(k, { mat, name, wt, list: [] });
       parts[far].get(k).list.push(c);
     }
   });
@@ -149,7 +150,8 @@ function kindOf(mid, v, turn) {
   // into the vertex colours), so a model made of many paints costs a few draws. textured, see-through and tint stay apart
   const build = (map, far) => {
     const merged = new Map();
-    for (let { mat, name, list } of map.values()) {
+    for (let { mat, name, wt, list } of map.values()) {
+      if (wt) { const key = 'water:' + wt; if (!merged.has(key)) merged.set(key, { mat, name, wt, own: true, list: [] }); merged.get(key).list.push(...list); continue; } // (all of a model's streams in one draw, its pools in another)
       if (far && mat.isMeshPhysicalMaterial) { const m2 = new THREE.MeshStandardMaterial().copy(mat); m2.name = mat.name; m2.onBeforeCompile = mat.onBeforeCompile; m2.userData.shared = true; mat = m2; } // (far away the clear coat can't be seen: the plain gloss, a cheaper shader)
       const glow = name === 'glow' || (mat.emissive && mat.emissive.getHex() && mat.emissiveIntensity > 0.5 && !mat.map);
       const tint = name === 'tint' || name === 'car_paint';
@@ -166,8 +168,9 @@ function kindOf(mid, v, turn) {
         e.list.push(g);
       }
     }
-    return [...merged.values()].map(({ mat, name, glow, tint, own, list }) => {
+    return [...merged.values()].map(({ mat, name, glow, tint, own, wt, list }) => {
       const geo = list.length > 1 ? mergeGeometries(list, false) : list[0];
+      if (wt) return geo ? { geo: wt === 'stream' ? streamRadii(geo) : geo, mat: waterMaterial(wt), tint: false, glow: false, name, wt } : { geo }; // the shared flowing-water material (flowwater.js)
       let m = propMat(mat, glow);
       if (!own) { m.color.setRGB(1, 1, 1); m.vertexColors = true; } // (the colours are in the vertices now)
       return { geo, mat: m, tint, glow, name };
@@ -175,6 +178,7 @@ function kindOf(mid, v, turn) {
   };
   const meta = a.meta || {};
   const k = { lod0: build(parts[0], false), lod1: build(parts[1], true), lo: box.min.clone(), hi: box.max.clone(), lod: Number.isFinite(meta.lod) ? meta.lod : 55, tint: meta.tint !== false, box: null };
+  k.water = waterSpots(k.lod0.filter((p) => p.wt).map((p) => ({ tag: p.wt, geo: p.geo }))); // where its streams land (the splashes, the rings)
   const mb = meta.box; // [[x0, y0, z0], [x1, y1, z1]] in the file's space (turned like the model)
   if (Array.isArray(mb) && mb.length === 2 && mb.every((v) => Array.isArray(v) && v.length === 3 && v.every(Number.isFinite))) {
     k.box = new THREE.Box3(new THREE.Vector3(...mb[0]), new THREE.Vector3(...mb[1])).applyMatrix4(base);
@@ -262,6 +266,7 @@ export function buildPropField(scene, def, mats) {
   envK = def && def.night ? 0.12 : def && (def.sealed || def.zm) ? 0.5 : 1;
   for (const m of lit) m.envMapIntensity = m.userData.env0 * envK;
   if (field) { scene.remove(field.group); for (const k of field.kinds) for (const m of k.meshes) m.dispose(); field = null; }
+  setWaterProps([]);
   const lists = off ? [] : [def && def.boxes && def.boxes.props, def && def.deco && def.deco.props];
   const groups = new Map();
   for (const l of lists) for (const p of l || []) {
@@ -303,6 +308,7 @@ export function buildPropField(scene, def, mats) {
         mesh.count = 0; mesh.visible = false; // (each copy is culled here; the bounding sphere of the drawn ones lets three skip the whole lot, shadow pass too)
         mesh.matrixAutoUpdate = false;
         if (li === 1) mesh.userData.noCast = true; // far copies cast no shadow
+        if (part.wt) { mesh.userData.noCast = true; mesh.renderOrder = 2; } // (see-through water: no shadow, drawn after what's under it)
         mesh.name = 'prop:' + mf.mid + (li ? ':lod1' : '');
         group.add(mesh); meshes.push(mesh); kind.meshes.push(mesh);
       }
@@ -313,6 +319,7 @@ export function buildPropField(scene, def, mats) {
     kinds.push(kind);
   }
   scene.add(group);
+  setWaterProps(kinds.filter((kd) => kd.k.water).map((kd) => ({ lands: kd.k.water.lands, spray: kd.k.water.spray, mats: kd.mats, n: kd.n, near: () => kd.lods[0] }))); // (lods[0]: idx + count = the copies drawn in full right now)
   field = { group, kinds, cam: { x: NaN, y: 0, z: 0, dx: 0, dy: 0, dz: 0, f: 0, sum: -1, lastDirty: -99 } };
   updatePropField(G.camera, true);
 }

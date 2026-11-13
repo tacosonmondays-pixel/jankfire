@@ -429,5 +429,11 @@
   "px": 32,
   "alpha": true,
   "note": ""
+ },
+ "ph_glass": {
+  "tile": 4.0,
+  "px": 128,
+  "alpha": false,
+  "note": ""
  }
 }

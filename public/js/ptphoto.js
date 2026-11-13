@@ -11,7 +11,7 @@ import * as THREE from 'three';
 import { G } from './ctx.js';
 import { MAP } from '/shared/map.js';
 
-export const PHOTO = { samples: 96, bounces: 4, skyK: 1.8, exposure: 1.8, maxInst: 3000, instR: 140, maxSamples: 1024 };
+export const PHOTO = { samples: 96, bounces: 4, skyK: 1.8, exposure: 1.8, metalMax: 0.25, roughMin: 0.35, maxInst: 3000, instR: 140, maxSamples: 1024 };
 let busy = false, ui = null;
 
 // the sky as light: the map's sky gradient wrapped round as an environment (the in-game dome is a shader the tracer can't read)
@@ -51,7 +51,17 @@ function prepScene(scene, cam) {
   for (const [, im, m] of near.slice(0, PHOTO.maxInst)) { const c = new THREE.Mesh(im.geometry, im.material); c.matrixAutoUpdate = false; c.matrix.copy(m); extra.add(c); }
   for (const o of hidden) o.visible = false;
   scene.add(extra); extra.updateMatrixWorld(true);
-  return () => { scene.remove(extra); for (const o of hidden) o.visible = true; };
+  // glossy Blender paint and chrome came out near-black: in game they lean on a studio reflection and extra fill
+  // lights the tracer doesn't have, and metal with nothing bright round it reflects black. for the trace only, they get
+  // a plain-paint stand-in (same colour and texture, little metal, no clear coat), swapped back right after
+  const swapped = [], stand = new Map();
+  const sub = (m) => {
+    if (!m || !m.isMeshStandardMaterial) return m;
+    if (!stand.has(m)) { const t = new THREE.MeshStandardMaterial({ color: m.color, map: m.map, emissive: m.emissive, emissiveMap: m.emissiveMap, emissiveIntensity: m.emissiveIntensity, transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest, metalness: Math.min(m.metalness, PHOTO.metalMax), roughness: Math.max(m.roughness, PHOTO.roughMin) }); stand.set(m, t); }
+    return stand.get(m);
+  };
+  scene.traverse((o) => { if (o.isMesh && o.visible) { const m0 = o.material, m1 = Array.isArray(m0) ? m0.map(sub) : sub(m0); if (m1 !== m0) { swapped.push([o, m0]); o.material = m1; } } });
+  return () => { for (const [o, m] of swapped) o.material = m; for (const t of stand.values()) t.dispose(); scene.remove(extra); for (const o of hidden) o.visible = true; };
 }
 
 // the overlay: comic panel, progress, then the picture with SAVE / CLOSE
