@@ -184,7 +184,7 @@ export function metaOf(scene) {
 function flatOf(m, paint) {
   const f = new THREE.MeshLambertMaterial({
     name: m.name, color: paint ? paint.clone() : m.color.clone(), map: paint ? null : m.map, flatShading: true,
-    transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest,
+    transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest, vertexColors: !!m.vertexColors, // (a hero's merged trim keeps its colours there)
     emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0), emissiveIntensity: m.emissiveIntensity ?? 1, emissiveMap: m.emissiveMap || null,
   });
   f.depthWrite = m.depthWrite;
