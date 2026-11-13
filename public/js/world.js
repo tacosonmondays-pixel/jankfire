@@ -644,6 +644,7 @@ export function relightMap() {
   return true;
 }
 export const mapMats = () => MAT;
+export const skyParts = () => ({ sky: skyMesh, sun, clouds }); // weather.js darkens these for a stormy frame (and puts them back)
 
 
 const TOUCH_MAX_PX = 1280 * 720;

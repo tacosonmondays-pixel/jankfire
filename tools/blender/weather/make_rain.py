@@ -328,12 +328,12 @@ def bolt_mesh(name, seed):
         pts.append(Vector((x if i < 10 else r.uniform(-3, 3), 160 - i * 16 + r.uniform(-3, 3) * (i < 10), 0)))
     pts[-1] = Vector((0, 0, 0))                                 # ends where it hits: the origin
     pts.reverse()                                              # bottom up: the ribbon tapers to the sky
-    ribbon(pts, 3.2, 5.0)
+    ribbon(pts, 6.5, 9.5)  # (chunky: it has to read from 300 m away)
     for b in range(2):                                         # two forks off the upper half
         j = r.randint(5, 8); p = pts[j].copy(); br = [p]; dx = r.choice((-1, 1))
         for s in range(3):
             p = p + Vector((dx * r.uniform(8, 14), -r.uniform(9, 14), 0)); br.append(p.copy())
-        ribbon(br, 2.2, 0.6, -0.6 - 0.3 * b)  # (forks sit just behind the main stroke: no z-fight where they meet)
+        ribbon(br, 4.5, 1.2, -0.6 - 0.3 * b)  # (forks sit just behind the main stroke: no z-fight where they meet)
     return mesh_obj(name, V, F, UV, M_BOLT)
 
 
