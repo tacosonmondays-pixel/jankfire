@@ -28,7 +28,7 @@ const LINES = {
 const TABS = [['board', 'LEADERBOARD'], ['perf', 'PERFORMANCE'], ['medals', 'MEDALS'], ['rewards', 'REWARDS']];
 const SMALL = { tex: false, bits: false, rim: 3, pad: 6, shadow: [4, 4], wob: 0.9, lumps: 2, lumpA: 1.6 }; // buttons, chips, stickers
 const STICK = { ...SMALL, shadow: [3, 3], lumps: 1, lumpA: 1.2, wob: 0.7 };
-const ES = { open: false, mini: false, vote: null, my: -1, myStage: '', perf: null, round: null, tab: 'board', totalEnd: 0, stageEnd: 0, stageLen: 1, roll: null, achs: [], raf: 0, lastSec: -1, opts: {} };
+const ES = { open: false, mini: false, vote: null, my: -1, myStage: '', perf: null, round: null, tab: 'board', totalEnd: 0, stageEnd: 0, stageLen: 1, roll: null, achs: [], raf: 0, lastSec: -1, opts: {}, back: null }; // back: an offline single-mode match's PLAY AGAIN / LOBBY (in place of the vote)
 export const endscreen = ES;
 
 // ---------------------------------------------------------------- dom
@@ -115,6 +115,7 @@ function open() {
 export function esClose(prompt) {
   ES.achs = []; // a new match: achievements from here on count for its end screen
   ES.open = false; ES.mini = false; ES.vote = null; ES.my = -1; ES.myStage = '';
+  ES.back = null; $('esClock') && ($('esClock').previousElementSibling.textContent = 'NEXT ROUND IN');
   ES.round = null; ES.perf = null; ES.roll = null; ES.lv = null; ES.line = ''; ES.lineFor = ''; ES.tab = 'board'; ES.tabPicked = false; // forget this match
   if (!root) return;
   root.classList.add('hidden'); root.classList.remove('mini');
@@ -174,6 +175,7 @@ export function esKey(e, vi = -1) { // vi: which vote key (keys.js vote1-4) this
   if (!ES.open) return false;
   const d = /^(Digit|Numpad)([1-9])$/.exec(e.code || '');
   const n = vi >= 0 ? vi : d && (d[1] === 'Numpad' || d[2] > 4) ? Number(d[2]) - 1 : -1; // 1-4 follow the vote bindings; numpad and 5+ always vote
+  if (n >= 0 && ES.back) { if (!e.repeat && n < 2) backPick(n); return true; }
   if (n >= 0 && ES.vote && ES.vote.stage !== 'done') { if (!e.repeat) esCast(n); return true; }
   if (!ES.mini && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
     const i = TABS.findIndex(([id]) => id === ES.tab), j = (i + (e.code === 'ArrowLeft' ? TABS.length - 1 : 1)) % TABS.length;
@@ -232,6 +234,8 @@ function renderSub(r) {
 function renderVote(stageChanged) {
   const v = ES.vote;
   const steps = $('esSteps');
+  steps.classList.toggle('hidden', !!ES.back);
+  if (ES.back) { renderBack(); return; }
   const order = ['mode', 'map', 'done'];
   const at = v ? order.indexOf(v.stage) : -1;
   for (const s of steps.querySelectorAll('span')) {
@@ -249,6 +253,7 @@ function renderVote(stageChanged) {
 function renderCards(countsOnly, stageChanged) {
   const box = $('esCards'), v = ES.vote;
   if (!box) return;
+  if (ES.back) { renderBack(); return; }
   if (!v) { box.innerHTML = ''; return; }
   if (v.stage === 'done') { if (!countsOnly) renderDone(box, v); return; }
   const n = v.options.length, h = v.counts || [], b = v.bots || [];
@@ -435,6 +440,54 @@ function tabRewards(body) {
     for (const a of ES.achs) { const d = el('div', 'es-ach'); d.append(el('b', null, a.name), el('span', null, a.desc || '')); w.append(organic(d, { ...SMALL, rim: 3 })); }
   }
   body.append(w);
+}
+
+// ---------------------------------------------------------------- back to the lobby
+// an OFFLINE single-mode match (server/hubback.js): no vote. PLAY AGAIN (the same mode, same map pick) or LOBBY (back to
+// that mode's lobby now). when the clock runs out, everyone who didn't pick PLAY AGAIN goes back to the lobby anyway
+export function esBack(m) {
+  if (m.k === 'open') {
+    ES.back = { mode: m.mode, again: false, n: 0, of: 0 };
+    delete $('esCards').dataset.stage; // (a new match's end screen: build the cards fresh, the last match's mode thumb is stale)
+    if (!ES.open) { ES.round = ES.round || { pending: 1 }; open(); }
+    $('esClock').previousElementSibling.textContent = 'BACK TO LOBBY IN';
+    renderVote(true);
+  } else if (m.k === 'again' && ES.back) { ES.back.n = m.n | 0; ES.back.of = m.of | 0; renderBack(); }
+}
+function backPick(i) {
+  const b = ES.back;
+  if (!b) return;
+  sfx.pop();
+  if (i === 1) { if (ES.opts.back) ES.opts.back(b.mode); return; }
+  b.again = !b.again;
+  net.send({ t: 'hbagain', on: b.again });
+  $('esClock').previousElementSibling.textContent = b.again ? 'NEXT ROUND IN' : 'BACK TO LOBBY IN';
+  renderBack();
+  const c = $('esCards').children[0];
+  if (c) { c.classList.remove('squish'); void c.offsetWidth; c.classList.add('squish'); }
+}
+function renderBack() {
+  const box = $('esCards'), b = ES.back;
+  if (!box || !b) return;
+  const mode = (ES.round && GAMES[ES.round.game] && ES.round.game) || (G.round && G.round.game) || 'dm', name = GAMES[mode] ? GAMES[mode].name : '';
+  const others = b.of > 1 ? ` · ${b.n}/${b.of} want more` : '';
+  $('esHint').textContent = b.again ? `you're in for another one${others}. click it again to back out` : `click a card or press ${K.label('vote1')} / ${K.label('vote2')}${others}`;
+  if (box.dataset.stage !== 'back') {
+    box.innerHTML = ''; box.dataset.stage = 'back';
+    box.classList.add('deal'); void box.offsetWidth;
+    const mk = (i, nm, sub, desc) => {
+      const c = el('button', 'es-card es-hb');
+      c.style.setProperty('--i', i);
+      const [x, y] = modeColors(mode); c.style.setProperty('--ca', i ? '#4fd8ff' : x); c.style.setProperty('--cb', i ? '#ff4fd8' : y);
+      c.append(el('span', 'key', K.label('vote' + (i + 1))), i ? el('div', 'mapthumb nothumb hb-ico', '↩') : modeThumb(mode, name));
+      const info = el('div', 'info'); info.append(el('b', 'nm', nm), el('span', 'sub', sub), el('span', 'desc', desc));
+      c.append(info, el('span', 'stamp', "YOU'RE IN"));
+      c.addEventListener('click', () => backPick(i));
+      return c;
+    };
+    box.append(mk(0, 'PLAY AGAIN', name.toUpperCase(), 'same mode, same map. run it back.'), mk(1, 'BACK TO LOBBY', 'NOW', 'back to the lobby. change your loadout, grab a friend.'));
+  }
+  if (box.children[0]) box.children[0].classList.toggle('mine', b.again);
 }
 
 // ---------------------------------------------------------------- clock

@@ -184,6 +184,7 @@ function go(pt, m) {
   if (has(D.LOBBY.kinds, c.lobby) && (m.mode === 'ffa' || m.mode === 'bots')) cfg.lobby = c.lobby;
   if (m.mode === 'bots' && !cfg.lobby) {
     cfg.priv = true; // a party's own bots match is always private
+    if (['bomb', 'br', 'zm', 'isle'].includes(c.hub)) cfg.hub = c.hub; // an offline single-mode pick: back to its lobby after (server/hubback.js)
     if (has(D.GAMES, c.game)) cfg.game = c.game;
     if (has(D.MAPS, c.map) && D.MAP_ORDER.includes(c.map) && (!cfg.game || D.mapsFor(cfg.game, D.MAPS, D.MAP_ORDER).includes(c.map))) cfg.map = c.map;
     if (Number.isFinite(c.bots)) cfg.bots = Math.max(0, Math.min(12, Math.round(c.bots)));
