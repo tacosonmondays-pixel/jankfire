@@ -496,6 +496,8 @@ def make_material(name):
     if ex.get('alpha'): m['alpha'] = 1
     if ex.get('glow'): m['glow'] = 1
     if ex.get('glowcol'): m['glowcol'] = ex['glowcol']  # (what colour it glows; white if unset)
+    if ex.get('gloss'): m['gloss'] = ex['gloss']  # (glossy: glass, chrome, candy paint; archfield.js gives it a standard material)
+    if ex.get('metal'): m['metal'] = ex['metal']
     if ex.get('fade'): m['fade'] = ex['fade']  # (see-through: smoke. how much of it is there, 0..1)
     if '@' in name: m['paint'] = name.split('@')[1]
     if name.split('@')[0] in NOCAST: m['nocast'] = 1
@@ -530,6 +532,7 @@ def bake_ao(objs, solids, rays=24, dist=1.6, floor=0.38):
         attr = me.color_attributes.new('Col', 'FLOAT_COLOR', 'POINT')
         is_decal = me.materials and me.materials[0].name.startswith('decal')
         is_fade = bool(me.materials) and MATS.get(me.materials[0].name, (0, 0, {}))[2].get('fade')
+        soft = bool(me.materials) and MATS.get(me.materials[0].name, (0, 0, {}))[2].get('aosoft')  # (cloth, cushions: light comes through, keep them bright)
         me.calc_normals_split() if hasattr(me, 'calc_normals_split') else None
         nr = [v.normal.copy() for v in me.vertices]
         for i, v in enumerate(me.vertices):
@@ -549,6 +552,7 @@ def bake_ao(objs, solids, rays=24, dist=1.6, floor=0.38):
             if gz < 0.5: a *= 0.86 + 0.28 * max(0, gz)  # ground grime
             if is_decal: a = max(a, 0.75)
             if is_fade: a = 1 - (1 - a) * 0.25  # (smoke: light, it's mostly air)
+            if soft: a = 1 - (1 - a) * soft
             attr.data[i].color = (a, a, a, 1)
         me.color_attributes.active_color = attr
 

@@ -4,7 +4,7 @@
 // reading them off the account counters (p.acct.d): kills only count on people (bot kills don't), nothing counts in
 // training, co-op or a lobby's warm-up, and guests keep nothing. Zombies is the one mode where killing bots is the point.
 // Install it after every other installer (it wraps zombies' zmGive): installModeStats(Room, { store }).
-import { MODE_MAX } from '../shared/modestats.js';
+import { MODE_MAX, mergeModes } from '../shared/modestats.js';
 
 const FLUSH_MS = 90e3;
 const dist3 = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
@@ -31,6 +31,9 @@ export function installModeStats(Room, { store }) {
     tracked.delete(p);
     if (!p.msd || !p.acct) { p.msd = null; return; }
     const d = p.msd; p.msd = null;
+    // what's saved stays on the player too (p.inv is from join: the live store hands out fresh rows, so without this the
+    // pre-game board would forget the match that just ended). a copy of ms: a file store's p.inv is its own object
+    if (p.inv && typeof p.inv === 'object') { let ms = {}; try { ms = JSON.parse(JSON.stringify(p.inv.ms || {})); } catch { /* (junk: start over) */ } p.inv = mergeModes({ ...p.inv, ms }, d); }
     store.addModeStats(p.acct.n, d).catch((e) => console.error('mode stats save failed', e.message));
   };
   setInterval(() => { for (const p of [...tracked]) flush(p); }, FLUSH_MS).unref?.();

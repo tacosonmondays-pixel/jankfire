@@ -53,7 +53,7 @@ export function skipCommand(room, p) {
   if (p.isBot) return;
   if (room.mode !== 'ffa' && room.mode !== 'bots') { tell(room, p, 'nothing to skip here'); return; }
   if (room.warm) { tell(room, p, `this is the lobby. press READY (everyone ready = 5 seconds)`); return; } // nothing to skip till the match starts
-  if (!live(room)) { tell(room, p, 'the match is already over. pick the next one on the end screen'); return; }
+  if (!live(room)) { tell(room, p, room.hubBack ? 'the match is already over. PLAY AGAIN or back to the lobby, on the end screen' : 'the match is already over. pick the next one on the end screen'); return; }
   const n = Date.now();
   if (n - (p.skipT || 0) < SKIP.again) return; // spam
   p.skipT = n;

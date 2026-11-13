@@ -134,7 +134,8 @@ function upper(L, w, d, from, floors, mat, roof) {
 // local frame like every builder: footprint x [-w/2, w/2], z [-d/2, d/2], the front door at -z (the street side)
 export const VARIANTS = ['capsule', 'noodle', 'bodega', 'walkup', 'model', 'container', 'squat', 'dorm', 'arcade', 'pastel', 'biolab', 'pawn'];
 function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
-  const L = B.local(x, z, rot), Ld = D.local(x, z, rot), hw = w / 2, hd = d / 2;
+  const L = B.local(x, z, rot), Ld = D.local(x, z, rot), hw = w / 2, hd = d / 2, n0 = B.boxes.length;
+  let nA = n0; // the end of the building's own boxes (shell + upper floors + roof): a Blender house draws those
   const sign = (y, mat) => Ld(-Math.min(2.6, hw - 0.6), y, -hd - 0.45, Math.min(2.6, hw - 0.6), y + 0.9, -hd - 0.2, mat, { fit: 1 });
   const awning = (y, mat) => L(-hw + 0.4, y, -hd - 1.8, hw - 0.4, y + 0.18, -hd, mat);
   const ac = (y) => { for (let i = 0; i < 1 + ((r() * 3) | 0); i++) L.B(-hw + 2 + i * 2.4, y + 0.6, hd - 1.6, 1.8, 1.2, 1.2, 'metal'); };
@@ -143,14 +144,14 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
     case 'capsule': { // stacked sleep pods: tiny windows everywhere, ladders up the front
       floors = 3 + ((r() * 2) | 0);
       ({ top } = shell(L, w, d, 1, F, 'white', { floor: 'tile', roof: 'roofteal', winSpacing: 3, backDoor: true, parapet: false }));
-      top = upper(L, w, d, 1, floors, 'white', 'roofteal');
+      top = upper(L, w, d, 1, floors, 'white', 'roofteal'); nA = B.boxes.length;
       for (let f = 1; f < floors; f++) L(-hw - 0.05, f * F + 0.2, -hd - 0.9, hw + 0.05, f * F + 0.35, -hd, 'grid'); // pod balconies
       L(hw - 1.2, 0, -hd - 0.95, hw - 1.0, top, -hd - 0.75, 'metal'); L(hw - 0.4, 0, -hd - 0.95, hw - 0.2, top, -hd - 0.75, 'metal');
       sign(2.7, 'neonhotel'); ac(top);
       break;
     }
     case 'noodle': { // noodle shop with a flat above: open front, counter, steaming pots
-      ({ top } = shell(L, w, d, 1, F, paint, { floor: 'tile', roof: 'roofg', backDoor: true, winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, paint, 'roofg');
+      ({ top } = shell(L, w, d, 1, F, paint, { floor: 'tile', roof: 'roofg', backDoor: true, winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, paint, 'roofg'); nA = B.boxes.length;
       awning(2.6, pickR(r, ['cloth', 'toypink', 'toyyellow'])); sign(2.9, 'neonnoodle');
       L(-hw + 1, 0.12, -hd + 1.4, hw - 1, 1.05, -hd + 2.1, 'wood'); // counter
       for (let i = 0; i < 3; i++) L.B(-hw + 2 + i * 2, 1.35, -hd + 1.75, 0.7, 0.6, 0.7, 'chrome');
@@ -158,7 +159,7 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
       break;
     }
     case 'bodega': { // corner shop, a garden on the roof
-      ({ top } = shell(L, w, d, 1, F, paint, { floor: 'tile', roof: 'roofg', backDoor: true, sideDoor: [-1.5, 0], winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, paint, 'roofg');
+      ({ top } = shell(L, w, d, 1, F, paint, { floor: 'tile', roof: 'roofg', backDoor: true, sideDoor: [-1.5, 0], winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, paint, 'roofg'); nA = B.boxes.length;
       awning(2.6, 'toyteal'); sign(2.9, 'signopen');
       for (let i = 0; i < 3; i++) L(-hw + 0.8, 0.12, -hd + 2.5 + i * 2.2, hw - 3, 1.6, -hd + 3.1 + i * 2.2, 'shelfstock');
       L(-hw + 0.5, top, -hd + 0.5, hw - 0.5, top + 0.25, 0, 'grass');
@@ -168,7 +169,7 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
     case 'walkup': { // narrow four-storey walk-up with a fire escape up the side
       floors = 4;
       ({ top } = shell(L, w, d, 1, F, paint, { floor: 'wood', roof: 'roofg', backDoor: true, parapet: false, winSpacing: 5, parapet: false }));
-      top = upper(L, w, d, 1, floors, pickR(r, ['tenement', 'brick']), 'roofg');
+      top = upper(L, w, d, 1, floors, pickR(r, ['tenement', 'brick']), 'roofg'); nA = B.boxes.length;
       for (let f = 1; f < floors; f++) {
         L(hw, f * F + 0.15, -hd + 1, hw + 1.3, f * F + 0.3, hd - 1, 'grid'); // landing
         L(hw + 1.2, f * F + 0.3, -hd + 1, hw + 1.3, f * F + 1.3, hd - 1, 'metal'); // rail
@@ -181,7 +182,7 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
     }
     case 'model': { // the glossy "model home": shiny plastic, a lawn, a picket fence, a toy on the lawn (Liberal Lane)
       ({ top } = shell(L, w, d, 2, F, pickR(r, ['pink', 'toyteal', 'toyyellow', 'chrome']), { floor: 'carpet', roof: 'roofpink', roofAccess: false, backDoor: true, winSpacing: 5.5 }));
-      L(-hw + 0.4, top, -hd + 0.4, hw - 0.4, top + 0.5, hd - 0.4, 'roofpink'); L(-hw + 1.6, top + 0.5, -hd + 1.6, hw - 1.6, top + 1, hd - 1.6, 'roofpink'); L(-hw + 3, top + 1, -hd + 3, hw - 3, top + 1.5, hd - 3, 'roofpink');
+      L(-hw + 0.4, top, -hd + 0.4, hw - 0.4, top + 0.5, hd - 0.4, 'roofpink'); L(-hw + 1.6, top + 0.5, -hd + 1.6, hw - 1.6, top + 1, hd - 1.6, 'roofpink'); L(-hw + 3, top + 1, -hd + 3, hw - 3, top + 1.5, hd - 3, 'roofpink'); nA = B.boxes.length;
       L(-hw - 1, 0, -hd - 6, hw + 1, 0.06, -hd, 'lawn');
       L(-hw - 1, 0, -hd - 6.1, -1.2, 1.1, -hd - 5.9, 'picket'); L(1.2, 0, -hd - 6.1, hw + 1, 1.1, -hd - 5.9, 'picket');
       L(-1, 0.06, -hd - 6, 1, 0.12, -hd, 'sidewalk');
@@ -192,12 +193,12 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
     case 'container': { // two rusted shipping containers stacked, a hole cut for the door
       const cm = pickR(r, ['containerr', 'containerg', 'containerb']);
       ({ top } = shell(L, w, d, 2, 2.9, cm, { floor: 'metal', roof: 'rust', roofAccess: true, backDoor: true, winSpacing: 5 }));
-      L(-hw - 0.15, 2.9, -hd - 0.15, hw + 0.15, 3.1, hd + 0.15, 'rust'); // the seam
+      L(-hw - 0.15, 2.9, -hd - 0.15, hw + 0.15, 3.1, hd + 0.15, 'rust'); nA = B.boxes.length; // the seam
       L(-hw + 1, 0.12, hd - 2.5, -hw + 4, 1.1, hd - 1, 'pallet');
       break;
     }
     case 'squat': { // a tagged squat: plywood, graffiti, somebody kicked a hole in the side wall
-      ({ top } = shell(L, w, d, 1, F, 'graffiti', { floor: 'plywood', roof: 'plywood', backDoor: true, sideDoor: [-2.5, 0.5], winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, 'graffiti', 'plywood');
+      ({ top } = shell(L, w, d, 1, F, 'graffiti', { floor: 'plywood', roof: 'plywood', backDoor: true, sideDoor: [-2.5, 0.5], winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, 'graffiti', 'plywood'); nA = B.boxes.length;
       L(-hw + 0.5, 0.12, -hd + 1, -hw + 2.5, 0.6, -hd + 3.5, 'cardboard'); L(hw - 3, 0.12, hd - 3, hw - 1, 1.2, hd - 1, 'barrelr');
       L(-hw - 0.6, 0, -hd - 1.6, -hw + 1.6, 1.0, -hd - 0.5, 'jersey');
       break;
@@ -205,14 +206,14 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
     case 'dorm': { // corporate dorm block: five storeys of identical windows, a flag with the logo
       floors = 5;
       ({ top } = shell(L, w, d, 1, F, 'office', { floor: 'officecarpet', roof: 'roofg', backDoor: true, winSpacing: 5, parapet: false }));
-      top = upper(L, w, d, 1, floors, 'office', 'roofg');
+      top = upper(L, w, d, 1, floors, 'office', 'roofg'); nA = B.boxes.length;
       Ld(-0.08, top, -hd + 1, 0.08, top + 6, -hd + 1.16, 'metal'); Ld(0.1, top + 3.6, -hd + 1, 3.1, top + 5.6, -hd + 1.12, 'flagcorp', { fit: 1 });
       L(-hw + 1, 0.12, -hd + 1, -hw + 3.5, 1.1, -hd + 2, 'marble'); // reception desk
       ac(top);
       break;
     }
     case 'arcade': { // an arcade with a flat on top: rows of cabinets, screens of static, loud neon
-      ({ top } = shell(L, w, d, 1, F, 'magenta', { floor: 'carpetb', roof: 'roofg', backDoor: true, winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, 'magenta', 'roofg');
+      ({ top } = shell(L, w, d, 1, F, 'magenta', { floor: 'carpetb', roof: 'roofg', backDoor: true, winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, 'magenta', 'roofg'); nA = B.boxes.length;
       for (let i = 0; i < Math.floor((w - 2) / 1.6); i++) for (const zz of [-hd + 2.6, 0.5]) { L.B(-hw + 1.6 + i * 1.6, 0.9, zz, 1, 1.8, 0.9, 'metal'); L.B(-hw + 1.6 + i * 1.6, 1.4, zz - 0.47, 0.8, 0.6, 0.05, 'tvstatic'); }
       sign(2.9, pickR(r, ['neonbar', 'neonhotel'])); Ld(-hw, 3.3, -hd - 0.2, hw, 3.45, -hd - 0.05, pickR(r, ['neonpink', 'neoncyan', 'neonyellow']));
       break;
@@ -220,20 +221,20 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
     case 'pastel': { // a pastel suburb house with a pitched toy roof and a porch
       ({ top } = shell(L, w, d, 2, F, paint, { floor: 'wood', roof: 'roofblue', backDoor: true, winSpacing: 5.5 }));
       const rm = pickR(r, ['roofpink', 'roofblue', 'roofteal']);
-      L(-hw + 0.3, top, -hd + 0.3, hw - 0.3, top + 0.45, hd - 0.3, rm); L(-hw + 1.6, top + 0.45, -hd + 1.3, hw - 1.6, top + 0.9, hd - 1.3, rm); L(-hw + 2.9, top + 0.9, -hd + 2.3, hw - 2.9, top + 1.35, hd - 2.3, rm);
+      L(-hw + 0.3, top, -hd + 0.3, hw - 0.3, top + 0.45, hd - 0.3, rm); L(-hw + 1.6, top + 0.45, -hd + 1.3, hw - 1.6, top + 0.9, hd - 1.3, rm); L(-hw + 2.9, top + 0.9, -hd + 2.3, hw - 2.9, top + 1.35, hd - 2.3, rm); nA = B.boxes.length;
       L(-2.6, 0, -hd - 1.6, 2.6, 0.25, -hd, 'wood'); L(-2.8, 2.9, -hd - 1.8, 2.8, 3.1, -hd - 0.1, rm);
       L(-2.5, 0.25, -hd - 1.5, -2.25, 2.9, -hd - 1.25, 'wood'); L(2.25, 0.25, -hd - 1.5, 2.5, 2.9, -hd - 1.25, 'wood');
       break;
     }
     case 'biolab': { // a bio-lab front: green glass, vats bubbling inside
-      ({ top } = shell(L, w, d, 1, F, 'glass', { floor: 'tile', roof: 'roofg', backDoor: true, winSpacing: 3, parapet: false })); top = upper(L, w, d, 1, 2, 'glass', 'roofg');
+      ({ top } = shell(L, w, d, 1, F, 'glass', { floor: 'tile', roof: 'roofg', backDoor: true, winSpacing: 3, parapet: false })); top = upper(L, w, d, 1, 2, 'glass', 'roofg'); nA = B.boxes.length;
       for (let i = 0; i < 3; i++) { const vx = -hw + 2.5 + i * 2.8; L.B(vx, 1.1, 1, 1.8, 2, 1.8, 'poolwater'); L.B(vx, 2.2, 1, 2, 0.2, 2, 'chrome'); L.B(vx, 0.2, 1, 2, 0.3, 2, 'chrome'); }
       Ld(-hw, 2.6, -hd - 0.2, hw, 2.75, -hd - 0.05, 'neongreen');
       sign(2.9, 'neonwork');
       break;
     }
     case 'pawn': { // pawn + repair shop: a roller door you can walk through, tyres, a car on bricks
-      ({ top } = shell(L, w, d, 1, F, paint, { floor: 'concrete', roof: 'roofg', backDoor: true, winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, paint, 'roofg');
+      ({ top } = shell(L, w, d, 1, F, paint, { floor: 'concrete', roof: 'roofg', backDoor: true, winSpacing: 5.5, parapet: false })); top = upper(L, w, d, 1, 2, paint, 'roofg'); nA = B.boxes.length;
       // the roller door, rolled up over the front
       L(-3, 2.6, -hd - 0.35, 3, 3.3, -hd + 0.05, 'metal');
       sign(3.5, 'signopen');
@@ -242,10 +243,20 @@ function cityHouse(B, D, x, z, rot, w, d, v, paint, r) {
       break;
     }
   }
+  if (nA > n0) { // (tools/blender/jankburg/make_jb_houses.py: one model per kind, every lot of a kind the same size)
+    const id = 'jbh_' + v + (v === 'capsule' ? floors : ''), wall = B.boxes[n0 + 1] ? B.boxes[n0 + 1].mat : paint;
+    // (candy paint, public/js/archfield.js PAINT jb_*: the walls, the upper floors' own colour, the toy roofs' own colour)
+    const up = B.boxes.slice(n0, nA).find((b) => b.min[1] > F && b.max[1] - b.min[1] > 2), roof = v === 'model' || v === 'pastel' ? B.boxes[nA - 1].mat : wall;
+    B.boxes.arch.push({ id, p: [x, 0, z], r: rot & 3, paint: { siding: 'jb_' + wall, roof: 'jb_' + roof, upper: 'jb_' + (up ? up.mat : wall) } });
+    for (let i = n0; i < nA; i++) Object.assign(B.boxes[i], { av: id, ai: B.boxes.arch.length - 1 });
+  }
   return { top: top || floors * F + 0.3 };
 }
 
 // ------------------------------------------------------------ district profiles: which houses, how big, what's behind them
+// every lot of a kind is the same size (so one Blender house fits them all): LOT. SIZE is still rolled (the rest of the
+// city's dice stay where they were) but only LOT is built
+const LOT = { capsule: [9, 9], noodle: [12, 11], bodega: [11, 11], walkup: [8, 12], model: [13, 11], container: [6, 12], squat: [10, 11], dorm: [16, 13], arcade: [13, 12], pastel: [12, 10], biolab: [12, 11], pawn: [13, 12] };
 const SIZE = { capsule: [8, 10, 8, 10], noodle: [10, 13, 10, 12], bodega: [10, 12, 10, 12], walkup: [7, 9, 11, 13], model: [12, 14, 10, 11], container: [6, 7, 12, 12], squat: [9, 11, 10, 12], dorm: [15, 18, 12, 14], arcade: [12, 15, 11, 13], pastel: [12, 13, 10, 11], biolab: [11, 13, 10, 12], pawn: [12, 14, 11, 12] };
 const PROF = {
   overdraft: { v: ['capsule', 'walkup', 'squat', 'container', 'walkup', 'capsule'], fill: { mats: ['tenement', 'graffiti', 'brick', 'tenement'], h: [14, 42], p: 0.75 } },
@@ -333,7 +344,7 @@ function jankburg() {
         const ds0 = districtAt(a.p[0] + v[0] * (s.w / 2 + 8), a.p[1] + v[1] * (s.w / 2 + 8));
         if (!ds0) { t += 6; continue; }
         const vv = pickR(r, PROF[ds0.id].v), sz = SIZE[vv];
-        const w = sz[0] + r() * (sz[1] - sz[0]), d = sz[2] + r() * (sz[3] - sz[2]);
+        r(); r(); const [w, d] = LOT[vv]; // (the two rolls a random size took)
         const f = [-v[0], -v[1]], rot = Math.abs(f[0]) > Math.abs(f[1]) ? (f[0] > 0 ? 1 : 3) : (f[1] < 0 ? 0 : 2);
         const off = s.w / 2 + 2.8 + d / 2 + (vv === 'model' ? 6 : 0);
         const cx = a.p[0] + u[0] * (w / 2) + v[0] * off, cz = a.p[1] + u[1] * (w / 2) + v[1] * off;
@@ -457,6 +468,7 @@ function cathedral(B, D, cx, cz) {
   // the Cathedral of Shareholder Value: a corporate megachurch facing the plaza. stock-ticker stained glass, pews,
   // an organ made of server racks, a bell tower you grapple up for the best sniper spot in town
   const L = B.local(cx, cz, 2), Ld = D.local(cx, cz, 2), w = 24, d = 36, hw = 12, hd = 18, h = 14, t = 0.6;
+  propOf('jb_cathedral', L.pt(0, 0, 0), L.yaw, () => { // (the Blender cathedral draws it all but the pictures: tools/blender/jankburg/make_jb_cathedral.py)
   L(-hw, 0, -hd, hw, 0.15, hd, 'marble');
   const tall = (len) => { const o = []; for (let a = -len / 2 + 4; a < len / 2 - 3; a += 6) o.push({ a: a - 1, b: a + 1, y0: 3, y1: 10.5 }); return o; };
   wall(L, 'x', -hd, -hw, hw, 0, h, t, 'stone', [{ a: -3, b: 3, y0: 0, y1: 6.5 }, { a: -2, b: 2, y0: 8.5, y1: 12 }]);
@@ -478,11 +490,12 @@ function cathedral(B, D, cx, cz) {
   for (const ox of [-3.6, 3.6]) for (const oz of [-3.6, 3.6]) L.B(tx + ox, 37, tz + oz, 0.8, 6, 0.8, 'marble');
   L(tx - 4.4, 40, tz - 4.4, tx + 4.4, 40.6, tz + 4.4, 'roofg'); L(tx - 2.6, 40.6, tz - 2.6, tx + 2.6, 42, tz + 2.6, 'gold');
   Ld(tx - 1, 35.5, tz - 1, tx + 1, 38, tz + 1, 'gold'); // the bell (a gold bar)
+  }, { keep: (b) => !!b.fit });
 }
 function hq(B, D, x, z, r) {
   const Ld = D.local(x, z, 0), L = B.local(x, z, 0);
   Ld(-26, 0, -27, 26, 0.09, 27, 'marble');
-  tower(B, x, z, 24, 24, 152, { base: 0, tiers: 4, facade: 'glass', roof: 'helipad', r });
+  propOf('jb_hq', [x, 0, z], 0, () => tower(B, x, z, 24, 24, 152, { base: 0, tiers: 4, facade: 'glass', roof: 'helipad', r }), { keep: (b) => b.mat === 'helipad' }); // (the Blender tower: tools/blender/jankburg/make_jb_hq.py)
   for (const s of [-1, 1]) Ld(s * 12.1 - 0.1, 30, -4, s * 12.1 + 0.1, 70, 4, 'flagcorp', { fit: 1 }); // the logo, 40 m tall
   Ld(-6, 6, 12.05, 6, 9, 12.25, 'neonpink');
   // a gold stock arrow that only goes up, and planters to hide behind
@@ -523,15 +536,19 @@ function numberWorks(B, D, cx, cz, rv) {
   for (let i = 0; i < 6; i++) { Lh(-18 + i * 6, 9.3, -11, -14 + i * 6, 11.5, 11, 'roofg'); D.local(-150, 106, 0)(-14.05 + i * 6, 9.3, -10.9, -13.95 + i * 6, 11.4, 10.9, 'glassblock'); }
   for (let i = 0; i < 5; i++) Lh(-15 + i * 6.5, 0.12, -2, -11 + i * 6.5, 1.1, 2, 'rubber'); // conveyor sections
   // three smokestacks you can see from anywhere
-  for (const sz of [98, 116, 134]) {
+  // (the Blender stacks, vats, pipes and posts draw them: tools/blender/jankburg/make_jb_numberworks.py)
+  for (const sz of [98, 116, 134]) propOf('jb_stack', [-107.5, 0, sz], 0, () => {
     L(-110, 0, sz - 2.5, -105, 62, sz + 2.5, 'brick');
     for (const y of [20, 40, 58]) L(-110.4, y, sz - 2.9, -104.6, y + 1.4, sz + 2.9, 'hazard');
     L(-110.5, 62, sz - 3, -104.5, 63, sz + 3, 'rust');
-  }
+  });
   // vats of something green, tubes between everything
-  for (const vx of [-160, -146, -132]) { L(vx - 3.5, 0, 136, vx + 3.5, 7, 143, 'rust'); L(vx - 3.8, 7, 135.7, vx + 3.8, 7.4, 143.3, 'chrome'); Ld(vx - 3.2, 7.05, 136.3, vx + 3.2, 7.2, 142.7, 'neongreen'); }
-  for (const z of [110, 126]) { L(-132, 7, z - 0.6, -110, 8.2, z + 0.6, 'chrome'); for (let x = -128; x < -110; x += 8) L(x - 0.3, 0, z - 0.3, x + 0.3, 7, z + 0.3, 'metal'); }
-  L(-131.6, 7, 117, -130.4, 8.2, 134, 'chrome');
+  for (const vx of [-160, -146, -132]) propOf('jb_vat', [vx, 0, 139.5], 0, () => { L(vx - 3.5, 0, 136, vx + 3.5, 7, 143, 'rust'); L(vx - 3.8, 7, 135.7, vx + 3.8, 7.4, 143.3, 'chrome'); Ld(vx - 3.2, 7.05, 136.3, vx + 3.2, 7.2, 142.7, 'neongreen'); });
+  for (const z of [110, 126]) {
+    propOf('jb_pipe', [-121, 7, z], 0, () => L(-132, 7, z - 0.6, -110, 8.2, z + 0.6, 'chrome'));
+    for (let x = -128; x < -110; x += 8) propOf('jb_pipepost', [x, 0, z], 0, () => L(x - 0.3, 0, z - 0.3, x + 0.3, 7, z + 0.3, 'metal'));
+  }
+  propOf('jb_pipe', [-131, 7, 125.5], Math.PI / 2, () => L(-131.6, 7, 117, -130.4, 8.2, 134, 'chrome'));
   // giant glossy number balls rolled out into the yard (the Blender ones, digits and all: a lucky 7, an unlucky 1 3)
   [[-120, 96, 7], [-124, 143, 1], [-118.5, 143, 3], [-170, 92, 0], [-140, 92, 9], [-172, 140, 4]].forEach(([x, z, v]) => prop(L, 'numball', x, z, (x | 0) & 3, { v, s: 4.4 }));
   prop(L, 'forklift', -132, 97, 1); prop(L, 'pallet_load', -128, 94, 0); prop(L, 'pallet_load', -126.6, 94, 0); prop(L, 'pallet', -127.3, 95.4, 1);

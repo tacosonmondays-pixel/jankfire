@@ -11,6 +11,7 @@ import { stepProjectile, raycast } from '/shared/physics.js';
 import { duckFrame, duckStuck } from './duck.js';
 import { G } from './ctx.js';
 import { lockPointer, lookFilter } from './mouselook.js';
+import { buildEdited } from '/shared/editmaps.js'; // the map editor's PLAY HERE WITH BOTS: the edited map's copy
 import { initWorld, renderFrame, setJank, updateWorld, loadMap, refreshMapVisuals } from './world.js';
 import { setShadowPref } from './lighting.js';
 import { hrFeed, hrDead } from './hrguy.js';
@@ -47,6 +48,7 @@ import { shredKill, shredHit, shredGrab, grabStep, updateShreds, clearShreds } f
 import { pitKill } from './shredpit.js'; // the Warehouse's shredder pit: it chews, then spits the bits back up
 import { primFx, pinStep, tennisStep, tennisEnd, updatePrims, clearPrims, cartKey } from './primaries.js'; // nail gun, tennis balls, shopping carts
 import { updateSpeedLines } from './speedlines.js';
+import { cardMesh, cardBind, cardStep, cardEnd, cardPlayed, cardFrame, clearCards } from './cardfx.js'; // card deck: 3D cards, trails, sticking
 import { slipperUpdate, slipperStep } from './slipper.js';
 import { setupObjectives, updateObjectives, addTag, removeTag, clearTags, canUse } from './objective.js';
 import { GAMES, GAME_ORDER, TEAMS, mapsFor, mapForGame } from '/shared/modes.js';
@@ -65,9 +67,10 @@ import { account, restore, login, register, logout, saveProfile, leaderboard as 
 import { updateRig, rigDied, rigOn } from './rig.js';
 import { rigClash } from '/shared/rig.js'; // overdrive rig killstreak
 import { updateMech, mechCam, mechKey, mechDeployBlock, mechOn, mechHeroOn, mechReset, mechPrefetch, mechFrameRow } from './mech.js'; // mech drop killstreak
+import { MECH, mechScale } from '/shared/mech.js'; // (the server's mech size, from the welcome)
 import { hudHideTick } from './hudhide.js'; // riding a gun-less killstreak: the normal hotbar slides away
 import { updateChaos, lavaStep, spectateCam, chaosRoundStart, chaosRoundText, chaosNoStreaks } from './chaos.js';
-import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle } from './royale.js'; // jank royale
+import { brKey, brMouse, brCam, brFrame, brFeed, brRoundEnd, brDead, brNames, brReset, brOn, brInvOpen, brInvToggle, brWheel } from './royale.js'; // jank royale
 import { brActive } from './royale.js';
 import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from './island.js'; // battle island: squads, down + crawl, revives
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
@@ -79,6 +82,8 @@ import { chaosSpecId, pitErupt, underSea } from './chaos.js';
 import { sink, bottomOut, swim, mire } from '/shared/pits.js';
 import { brSpecId } from './royale.js';
 import { initMinimap, minimapFrame } from './minimap.js'; // the HUD minimap (SAT-NAV)
+import { initFullmap, fullmapFrame, fmKey, fmMouse, fmOpen } from './fullmap.js'; // the big map (M) + pings
+import { initMapPencil } from './mappencil.js'; // the big map's pencil
 import { initLeaderTabs, showLeaders } from './leadmodes.js'; // per-mode leaderboard tabs
 import { COSMETICS, RARITY, TYPES, LOOT_TYPES, TYPE_NAMES_ALL as TYPE_NAMES, CONTAINERS, owns, ownedSkin, ownedKill, modelsFor } from '/shared/cosmetics.js';
 import { ecoKeyLabel } from './econ.js';
@@ -95,7 +100,7 @@ import { setOnly, coughCloud } from './weapons.js';
 import { renderPatchNotes, markPatchSeen, patchUnseen } from './patchnotes.js';
 import { updateGunGame, ggRoundText, ggScoreRows, ggRowNote, resetGunGame } from './gungame.js';
 import { updateInfection, infRoundText, infRoundTitle, infScoreRows, infRowNote, resetInfection, infClipInfo } from './infection.js';
-import { initEndscreen, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
+import { initEndscreen, esBack, esRound, esVote, esVotes, esClose, esMini, esKey, esRoll, esAch, esFull, esActive, esHideClick, esClickShown, esRekey } from './endscreen.js';
 import { initHome, homeShown, homeLeft, refreshHero, heroInto } from './home.js';
 import { skipVote, skipReset } from './skipvote.js';
 import { lassoFrame, loopFrame, lassoWheel, lassoKey, lassoLate } from './lasso.js'; // lasso (secondary)
@@ -104,9 +109,11 @@ import { initAds, updateAds, adsFx, adsKey, adsReset } from './ads.js'; // the l
 import { remoteK } from './rifles.js'; // the rifle pack (BURST!, lever ramp + quick-scope callouts register themselves)
 import { K } from './keys.js';
 import { initLobby, lobbyInfo, lobbyKey, lobbyMe, lobbyLeave } from './lobby.js'; // ONLINE / WITH BOTS mode picker + the lobby countdown
-import { initHub, hubShown, hubLobbyShown, hubInvite } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
+import { pregameFrame, pregameKey, pregameOn } from './pregame.js'; // the pre-game deck off the map's edge while a mode lobby counts down
+import { initHub, hubShown, hubLobbyShown, hubInvite, hubBackTo } from './hubmenu.js'; // the hub: ONLINE / OFFLINE on the home menu, the lobby (docs/menu/HUB_LOBBY.md)
 import { initFriends } from './friends.js'; // friends: the panel (server/friends.js)
 import { initParty, partyRehello, partyMe } from './party.js'; // parties: the menu connection (server/party.js)
+import { lobbySceneFrame, lobbySceneOn, setLobbyMe } from './lobbyscenes/index.js'; // a 3D place behind each mode's lobby (docs/menu/LOBBY_SCENES.md)
 import { controlsScreen } from './controls.js';
 import { containerPic, playContainer, stopContainer } from './crate3d.js'; // containers in 3D: the cards and the opening
 import { hubTabs } from './hub.js';
@@ -116,10 +123,12 @@ import { zmSetup, updateZombies, zmRoundText, zmScoreRows, zmKillFeed, zmReset, 
 import { zxHurt } from './zmextra.js'; // zombies: which way the claws came from
 import { zlWant } from './zmloadout.js'; // your zombies loadout
 import { gfxCmd } from './gfxguard.js'; // /gfx: the graphics readout
+import { photoCmd } from './ptphoto.js'; // /photo: a path-traced still (the tracer itself loads only then)
 import { fxUI } from './fxsettings.js';
 import { spritesOn, smokeCloud, updateFlipbooks } from './flipbook.js'; // drawn smoke + splashes
 import { setRippleMap } from './liquidmats.js';
 import { waterPhysics } from './liquids.js';
+import { updateWeather, wxPre, wxPost } from './weather.js'; // rain and co (the server's timeline, Blender kits)
 import { kbLock } from './kblock.js'; // fullscreen: Ctrl+W & co go to the game, not the browser (crouch is Left Ctrl)
 let story = null; // OVERDUE's story engine (WP8: quests, talk, cutscenes), loaded with the story flag below. null = every hook is a no-op
 
@@ -171,10 +180,13 @@ G.skinFxWorld = makeSkinSystems(G.scene, scaleU);
 G.skinFxVM = makeSkinSystems(G.vmScene, vmScaleU);
 hud.init();
 initMinimap();
+initFullmap(() => lock());
+initMapPencil();
 initEndscreen({
   note: (id, m) => ggRowNote(id, m) || infRowNote(id, m),
   title: (m) => { const t = m && !m.pending && infRoundTitle(m); return t ? t[0] : ''; },
   unlock: () => { if (document.pointerLockElement) document.exitPointerLock(); }, // the cards want a mouse
+  back: (mode) => backToLobby(mode), // an offline single-mode match: LOBBY
   level: () => (account.me ? { level: account.me.level, xp: account.me.xp || 0 } : null),
   gotXp: (x) => { // keep the account bar honest between matches (the server saved it already)
     const me = account.me;
@@ -205,6 +217,16 @@ if (window.JF_TOUCH && storyAsked()) { // ...they get a note instead. tap it awa
 }
 if (storyFlag()) import('./story/main.js').then((m) => m.initStory({ startMode, quitToMenu: () => quitToMenu(), toast: (t, ms) => toast(t, ms) })).catch((e) => console.error('story mode failed to load', e));
 if (storyFlag()) import('./story/boot.js').then((m) => { story = m; return m.init(); }).catch((e) => console.error('story engine failed to load', e));
+// the map editor's PLAY HERE WITH BOTS sent us here (?playedit=1) with a one-use ticket for the owner's edits: a private
+// bots match on them, as soon as the login is back (the server checks the ticket is this account's, JF_OWNER)
+{
+  let pe = null;
+  try { if (new URLSearchParams(location.search).get('playedit') === '1') pe = JSON.parse(sessionStorage.getItem('jfPlayEdit') || 'null'); sessionStorage.removeItem('jfPlayEdit'); } catch { pe = null; }
+  if (pe && typeof pe.ticket === 'string' && typeof pe.map === 'string') {
+    const t0 = Date.now(), go = () => { if (!account.loggedIn && Date.now() - t0 < 6000) { setTimeout(go, 250); return; } startMode('bots', { priv: true, editTicket: pe.ticket, map: pe.map, bots: 5, diff: 'normal' }); };
+    setTimeout(go, 600);
+  }
+}
 initLobby({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), send: (m) => net.send(m), map: () => G.cfg && G.cfg.map });
 initHub({ start: (mode, cfg) => startMode(mode, cfg), show: (id) => show(id), hero: (slot) => heroInto(slot), save: () => saveSettings(), look: () => homeLook(), toast: (t, ms) => toast(t, ms) }); // the hub: ONLINE / OFFLINE + the lobby
 // parties (party.js): the menu connection. the leader starting while you're mid-match: you're told, and if you quit to
@@ -217,6 +239,7 @@ initParty({ hello: () => ({ name: ($('name').value || G.settings.name || '').tri
 initFriends({ toast: (t, ms) => toast(t, ms) }); // friends (friends.js): the panel the party strip's FRIENDS opens
 $('name').addEventListener('change', () => partyRehello()); // (a new name: the party hears it)
 function partyFollow() { const p = partyPending; partyPending = null; if (p && performance.now() - p.at < 25000) setTimeout(p.yes, 300); }
+setLobbyMe(() => { const [color, shown] = homeLook(), lo = G.settings.loadout || {}, gun = WEAPONS[lo.primary] ? lo.primary : 'ar'; return { name: G.myName || ($('name') && $('name').value.trim()) || G.settings.name || 'you', color, look: shown, gun, skin: G.equipped[gun], mech: lo.mech }; }); // the lobby scenes draw you (lobbyscenes/)
 initEcon({ pause: () => { if (document.pointerLockElement) document.exitPointerLock(); pause(); }, lock }); // Plant & Defuse economy
 
 const myShadow = makeShadow();
@@ -367,6 +390,7 @@ function clearEntities() {
   clearCrosses();
   clearPatches();
   clearPrims();
+  clearCards();
 }
 function quitToMenu(silent) {
   net.close();
@@ -393,7 +417,7 @@ const mlook = lookFilter(); // mouselook.js: drops Chrome's garbage and fake-jum
 document.addEventListener('pointerlockchange', () => {
   const locked = document.pointerLockElement === canvas;
   if (locked) { mlook.locked(); esHideClick(); }
-  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
+  if (!locked && wasLocked && G.joined && !chatOpen && $('menu').classList.contains('hidden') && !esFull() && !econMenuOpen() && !brInvOpen() && !fmOpen() && !(G.story && G.story.uiOpen())) pause(); // the end screen lets go of the mouse on purpose
   wasLocked = locked;
 });
 canvas.addEventListener('click', () => { if (G.joined && document.pointerLockElement !== canvas && $('menu').classList.contains('hidden')) lock(); });
@@ -499,6 +523,7 @@ bindRange('adsSens', 'adsSens', (v) => v.toFixed(2));
 bindCheck('fovKick', 'fovKick');
 bindCheck('shake', 'shake');
 bindCheck('showFps', 'showFps');
+$('fxWeather').checked = S.weather !== false; $('fxWeather').addEventListener('change', () => { S.weather = $('fxWeather').checked; saveSettings(); }); // rain, clouds, lightning (weather.js)
 $('fxSprites').checked = S.fxSprites !== false; $('fxSprites').addEventListener('change', () => { S.fxSprites = $('fxSprites').checked; saveSettings(); }); // drawn smoke + splashes (flipbook.js)
 $('fxEerie').checked = S.fxEerie !== false; $('fxEerie').addEventListener('change', () => { S.fxEerie = $('fxEerie').checked; saveSettings(); }); // the story's world grade (story/grade.js: its row only shows in story mode)
 $('fxSmoke').value = ['comic', 'kenney', 'unity'].includes(S.fxSmoke) ? S.fxSmoke : 'soft'; $('fxSmoke').addEventListener('change', () => { S.fxSmoke = $('fxSmoke').value; saveSettings(); });
@@ -1168,7 +1193,7 @@ function openChat() {
 }
 function closeChat(sendIt) {
   const v = $('chatin').value.trim();
-  if (sendIt && v && !gfxCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
+  if (sendIt && v && !gfxCmd(v) && !photoCmd(v)) net.send({ t: 'chat', m: v }); // (/gfx: the graphics readout, gfxguard.js)
   chatOpen = false;
   $('chatin').classList.add('hidden');
   $('chatin').blur();
@@ -1201,6 +1226,7 @@ function pressed(e) {
   if ((RP.active || G.killcamPending) && K.matches('skip', e)) { e.preventDefault(); skipReplay(); return; }
   if (story && story.key(e)) { e.preventDefault(); return; } // story mode: talk, pick up, cutscene skip, the codex
   if (esKey(e, VOTES.findIndex((a) => K.matches(a, e)))) { e.preventDefault(); return; } // end screen: the vote keys win over any game action on the same key, arrows switch tabs
+  if (fmKey(e)) { e.preventDefault(); return; } // the big map (M), Esc closes it; the ping key
   if (isleKey(e, startUse)) { e.preventDefault(); return; } // battle island: down = hands off; F next to a downed squadmate picks them up
   if (brKey(e)) return; // jank royale: F pick up, H heal, space spectates the next one
   if (loreKey(e, canUse(G.round, ME.pos))) { e.preventDefault(); return; } // the use key next to a hidden NPC / cat (not where it plants, defuses or buys), 1-3 answer in a chat
@@ -1210,6 +1236,7 @@ function pressed(e) {
   if (K.matches('menu', e)) { if (document.pointerLockElement) document.exitPointerLock(); pause(); return; }
   if (G.story && G.story.key(e, true)) return; // OVERDUE (flagged): quick bar 1-8, the wheel, the tote bag, pick up
   if (lobbyKey(e)) return; // a mode lobby: ready up
+  if (pregameKey(e)) return; // the pre-game deck: fire shoves, no items or streaks
   if (gearKeyDown(e)) return; // pop quiz answers (1-4), goggles flash (nvgFlash)
   if (adsKey(e)) return; // pop-up ads: the number on an ad closes it
   if (lassoKey(e, true)) return; // holding someone on the lasso: reel keys, fire / aim lets go, no weapon switching. held: jump / move wriggles
@@ -1264,6 +1291,7 @@ addEventListener('mousedown', (e) => {
   if (esClickShown()) { esHideClick(); lock(); return; } // CLICK TO DROP IN: that click only grabs the mouse
   if (RP.mode === 'killcam' || G.killcamPending) { skipReplay(); return; } // a click skips the killcam
   if (RP.mode === 'hl') return; // ...but not the play of the round
+  if (fmMouse(e)) return; // the big map is open: clicks are pings (off it: close it)
   if (brMouse(e)) return; // jank royale: no shooting from the blimp; out = click to watch someone else
   if (econMouse(e)) return;
   if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
@@ -1274,7 +1302,7 @@ addEventListener('mouseup', released);
 function releaseHeld() { K.clear(); W.held = false; W.aimHeld = false; W.dashHeld = false; stopUse(); releaseHook(); if (scoresOpen) { scoresOpen = false; hud.scores(false); } }
 K.onChange((rebound) => { if (rebound) releaseHeld(); });
 addEventListener('contextmenu', (e) => e.preventDefault());
-addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
+addEventListener('wheel', (e) => { if (inGame() && !esActive() && !lassoWheel(e.deltaY) && !brWheel(e.deltaY)) cycleSlot(e.deltaY > 0 ? 1 : -1); }, { passive: true }); // in the blimp the wheel sets the spyglass zoom // not while the end screen is up (its tab panel scrolls); holding someone on the lasso: the wheel reels
 addEventListener('mousemove', (e) => {
   if (document.pointerLockElement !== canvas) return;
   if (G.story && G.story.look(e)) return; // the weapon wheel steers with the mouse
@@ -1379,11 +1407,12 @@ function skinOf(owner, wid) { return (owner === G.myId ? W.skinOver || G.equippe
 function spawnProj(m) {
   const w = WEAPONS[m.k];
   if (!w) return;
-  const mesh = (m.st && strikeBird(m.o)) || buildProjectile(m.k, skinOf(m.o, m.k)); // (a Chicken Strike bird: the owner's look)
+  const mesh = m.k === 'card' ? cardMesh(m) : (m.st && strikeBird(m.o)) || buildProjectile(m.k, skinOf(m.o, m.k)); // (a Chicken Strike bird: the owner's look; a card: pooled, cardfx.js)
   G.scene.add(mesh);
   const pr = { id: m.id, k: m.k, o: m.o, p: m.p.slice(), v: m.v.slice(), r: w.r, bounce: w.bounce || 0, mesh, spin: 0, tip: m.tip || 0 };
   if (m.k === 'bow' && mesh.userData.tip) mesh.userData.tip.material = M(tipColor(m.tip), true);
   if (m.k === 'bow' && m.o !== G.myId) sfx.bowShot(m.p);
+  if (m.k === 'card') cardBind(pr);
   mesh.position.set(...pr.p);
   G.projs.set(m.id, pr);
 }
@@ -1411,11 +1440,13 @@ function addRemoteInfo(p) {
 
 // ------------------------------------------------------------ net handlers
 net.on('welcome', (m) => {
+  if (m.cfg && m.cfg.edit && !MAPS[m.cfg.map]) buildEdited(m.cfg.map, m.cfg.edit); // (PLAY HERE: the same edited copy the server built)
   G.myId = m.id; G.myName = m.name; G.myColor = m.color; G.joined = true; connecting = false;
   airReset();
   brReset(); // a new room: whatever royale the last one had is over (that room's 'off' never reaches us)
   isleReset();
   G.mode = m.mode; G.cfg = m.cfg; G.lk = m.lk || null;
+  if (Number.isFinite(m.ms) && m.ms !== MECH.scale) mechScale(m.ms); // (the server's mech size: hits and drops have to agree with it)
   lobbyMe(m.id); lobbyInfo(m.lobby || null); // a mode lobby: the countdown is on
   G.game = m.game; // (music needs it before the first round info arrives)
   musicNewMatch(); // a fresh random song for this match
@@ -1463,6 +1494,7 @@ net.on('welcome', (m) => {
   for (const pt of m.mpatch || []) addPatch(pt); // marbles already on the floor
 });
 net.on('cfg', (m) => {
+  if (m.cfg && m.cfg.edit && !MAPS[m.cfg.map]) buildEdited(m.cfg.map, m.cfg.edit);
   const mapChanged = m.cfg.map !== G.cfg.map;
   G.cfg = m.cfg;
   if (mapChanged) { loadMap(m.cfg.map); clearEntities(); setupObjectives(m.cfg.map); G.smokes.length = 0; } // the server drops its smokes too
@@ -1667,6 +1699,9 @@ function stopUse() { if (G.using && isleOn()) net.send({ t: 'use', up: 1 }); cle
 function openVote(v) { G.vote = v || null; if (v) esVote(v); }
 net.on('vote', (m) => openVote(m));
 net.on('votes', (m) => esVotes(m));
+// an offline single-mode match is over (server/hubback.js): PLAY AGAIN / LOBBY on the end screen, then 'go' = back to its lobby
+function backToLobby(mode) { quitToMenu(true); hubBackTo(mode); }
+net.on('hubback', (m) => { if (!m || typeof m.mode !== 'string') return; if (m.k === 'go') backToLobby(m.mode); else esBack(m); });
 net.on('skipvote', (m) => skipVote(m)); // someone typed /skip (server/skip.js)
 
 // randomizer mode: the server hands you a loadout each life (null = use your own again)
@@ -1833,7 +1868,7 @@ net.on('spawn', (m) => {
 net.on('ps', (m) => {
   spawnProj(m);
   if (m.k === 'bloodcross') { crossShot(m, G.projs.get(m.id)); return; } // a heartbeat, not a pew
-  if (m.o !== G.myId) {
+  if (m.o !== G.myId && m.k !== 'card') { // (cards riffle in cardfx.js)
     const s = { chicken: 'squawk', duck: 'squeak', bowling: 'thunk', slipper: 'swing', soap: 'bloop', tennis: 'tennisFire' }[m.k] || 'pew';
     sfx[s](m.p);
   }
@@ -1850,6 +1885,7 @@ net.on('pd', (m) => {
     G.projs.delete(m.id);
     if (pr.k === 'slipper' && pr.o === G.myId) onSlipperBack();
     if (pr.k === 'tennis') tennisEnd(pr, m);
+    if (pr.k === 'card') cardEnd(pr, m); // sticks in the wall, bursts on them, or flutters down
   }
   if (m.x) {
     recordEv(m);
@@ -1875,7 +1911,7 @@ net.on('pd', (m) => {
 net.on('tip', (m) => { G.tip = m.tip; });
 net.on('court', courtSync); // scales of justice: everyone's kill streak when you join
 net.on('hand', (m) => { G.hand = m.hand || []; });
-net.on('tp', (m) => { ME.pos = m.p.slice(); fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
+net.on('tp', (m) => { ME.pos = m.p.slice(); if (pregameOn()) ME.vel = [0, 0, 0]; /* (put back on the pre-game deck: no falling momentum) */ fx.glitch(ME.pos, [0, 0, 0], 20); sfx.reverse(); });
 net.on('heal', (m) => {
   if (m.id === G.myId) { ME.hp = m.hp; hud.msg(`+${m.a} HP`, 0.8); sfx.heal(); }
   const r = G.remotes.get(m.id);
@@ -1963,6 +1999,7 @@ net.on('fx', (m) => {
     if (r) r.burnUntil = performance.now() + 600;
     if (m.id === G.myId) G.burnUntil = performance.now() + 600;
   } else if (m.k === 'card') {
+    cardPlayed(m); // its thrown cards come in this suit's colours
     if (r) r.swingT = performance.now();
     const who = m.id === G.myId ? 'you' : nameOf(m.id)[0];
     if (m.joker) { sfx.laugh(r ? r.pos : null); hud.chat(null, null, `${who} played a joker`); }
@@ -2072,6 +2109,7 @@ function frame(t) {
     grabStep(now); // held in a shredder's intake
     pinStep(now); // nailed to a wall
     oobTick(now); // out of the play area: RETURN TO THE MAP 3 2 1
+    pregameFrame(); // the pre-game deck: under your feet, off the edge = back on
     econFrame(dt); // Plant & Defuse: barriers, drops, armor on models, spectating
     // spinbot killstreak: your camera stays yours; every shot goes to whoever is nearest your crosshair (and in sight)
     const spinning = ME.alive && now < (G.spinUntil || 0);
@@ -2119,6 +2157,7 @@ function frame(t) {
   brFrame(dt, now); // jank royale: blimp, zone, loot, hud
   isleFrame(dt, now); // battle island: the squad panel, markers, downed people
   minimapFrame(now, { royale: brActive(), endscreen: esActive() }); // the HUD minimap (hidden in replays, dead, royale, story)
+  fullmapFrame(now); // the big map (when open) + pings in the world
   updateGibs(dt);
   updateKillFx(dt);
   updateCourt(dt, now);
@@ -2131,6 +2170,7 @@ function frame(t) {
   updateGear(dt, now); // laser beams, photo frames, pop quizzes, night vision
   updateSec(dt, now); // soaks, zaps, pauses, rewinds, the radar gun, cages
   updatePrims(dt, now); // nails in walls, pins, shopping carts
+  cardFrame(dt, now); // stuck cards, falling cards, suit puffs
   for (let i = G.smokes.length - 1; i >= 0; i--) {
     const s2 = G.smokes[i];
     if (now > s2.until) { G.smokes.splice(i, 1); continue; }
@@ -2153,6 +2193,7 @@ function frame(t) {
     if (pr.k === 'soap') { stepSoap(pr, dt, now); continue; } // bubble wand: wobbly bubbles on an exact path (wand.js)
     if (pr.k === 'tennis') { tennisStep(pr, dt); pr.mesh.visible = !RP.active; continue; } // counted bounces (primaries.js)
     if (pr.k === 'loop') { loopFrame(pr, dt, now); continue; } // a lasso loop in flight (lasso.js)
+    if (pr.k === 'card') { pr.mesh.visible = !RP.active; cardStep(pr, dt, now); continue; } // a 3D card: banked, spinning, trailing (cardfx.js)
     if (pr.k === 'slipper') {
       slipperStep(pr, dt, now);
       pr.spin += dt * 20;
@@ -2163,9 +2204,6 @@ function frame(t) {
       pr.mesh.position.set(pr.p[0], pr.p[1], pr.p[2]);
       if (pr.k === 'bow') { // point first along the flight path, no tumbling
         pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
-      } else if (pr.k === 'card') { // flat and spinning like a thrown playing card
-        pr.spin += dt * 30;
-        pr.mesh.rotation.set(0, pr.spin, 0); // the model is already lying flat
       } else if (pr.k === 'chicken') {
         pr.mesh.lookAt(pr.p[0] - pr.v[0], pr.p[1] - pr.v[1], pr.p[2] - pr.v[2]);
         pr.mesh.rotateZ(now * 0.02);
@@ -2184,8 +2222,8 @@ function frame(t) {
     }
     pr.mesh.visible = !RP.active;
     // speed streaks behind fast stuff
-    if ((pr.k === 'bow' || pr.k === 'card') && !RP.active && S.speedLines !== false) {
-      if (pr.lastP && Math.hypot(pr.p[0] - pr.lastP[0], pr.p[1] - pr.lastP[1], pr.p[2] - pr.lastP[2]) > 0.25) fx.tracer(pr.lastP, pr.p.slice(), pr.k === 'bow' ? tipColor(pr.tip) : 0xffffff, 0.02, 0.1);
+    if (pr.k === 'bow' && !RP.active && S.speedLines !== false) { // (cards draw their own trail)
+      if (pr.lastP && Math.hypot(pr.p[0] - pr.lastP[0], pr.p[1] - pr.lastP[1], pr.p[2] - pr.lastP[2]) > 0.25) fx.tracer(pr.lastP, pr.p.slice(), tipColor(pr.tip), 0.02, 0.1);
       pr.lastP = pr.p.slice();
     }
     pr.mesh.updateMatrixWorld(true);
@@ -2288,6 +2326,7 @@ function frame(t) {
   skinTick(dt, now);
   if (G.story) G.story.tick(dt, now); // OVERDUE (flagged)
   updateWorld(dt);
+  updateWeather(dt); // (after the camera's set: the rain box sits round it)
   updateCrosses(dt, RP.active ? (RP.sp || 1) * (RP.dt != null && dt > 0 ? RP.dt / dt : 1) : 1); // after the projectile loop + replay: it turns blood bolts nose-first
   const fpSpec = specCam && specFPOn(); // plant & defuse: their gun in your hands (specfp.js)
   G.vmScene.visible = G.joined && !RP.active && (!specCam || fpSpec) && !asleep && (!econHideVM() || fpSpec);
@@ -2297,9 +2336,9 @@ function frame(t) {
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
-  renderFrame();
+  if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden'))) { wxPre(); renderFrame(); wxPost(); } // the hub lobby's 3D place, else the game (or the menu's map orbit). (wxPre/wxPost: the storm's sky + light for this frame only)
   pipFrame(dt, G.joined && !RP.active && !G.killcamPending ? chaosSpecId() || brSpecId() : 0); // spectating from behind: their eyes in a corner box (pip.js)
-  if ((screen === 'character' || ((screen === 'main' || screen === 'hubby') && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
+  if ((screen === 'character' || ((screen === 'main' || (screen === 'hubby' && !lobbySceneOn())) && heroTick(dt))) && !$('menu').classList.contains('hidden')) renderPreview(heroDt || dt); // (grapple & spray has no weapon preview any more. hubby: the hub's mode lobby, you on its stage)
   if (screen === 'cosmetics' && !$('menu').classList.contains('hidden')) renderGrapplePreview(dt);
   if (screen === 'customize' && !$('menu').classList.contains('hidden')) { const d = czFrame(dt); if (d) renderPreview(d); } // on demand: only while it turns, you drag, or particles fly
 }
@@ -2918,7 +2957,7 @@ function fmtClock(ms) { const s2 = Math.ceil(ms / 1000); return `${Math.floor(s2
 function renderRound(r) {
   const el = $('round');
   if (!r) { el.textContent = ''; return; }
-  if (r.warm) { el.textContent = 'warm-up · nothing counts'; return; } // a mode lobby: its own big countdown box
+  if (r.warm) { el.textContent = 'pre-game · nothing hurts'; return; } // a mode lobby: its own big countdown box
   const mt = zmRoundText(r) ?? ggRoundText(r) ?? infRoundText(r); // zombies: zombies left / the break. gun game / infection: just the clock, their bars show the rest
   if (mt != null) { el.textContent = mt; return; }
   const teamGame = r.game && GAMES[r.game] && GAMES[r.game].teams;
@@ -2938,7 +2977,7 @@ net.on('round', (m) => {
     G.roundOver = false; if (RP.mode === 'hl') stopReplay(true); box.classList.add('hidden'); G.vote = null;
     esClose(G.joined && document.pointerLockElement !== canvas); // back in: click to grab the mouse again
     if (m.game) { G.round = { ...(G.round || {}), ...m }; updateLabel(); if (screen === 'match') syncMatchUI(); }
-    if (m.warm) { hud.msg('WARM-UP', 1.8, 'brag'); hud.chat(null, null, `lobby: run around, nothing counts. ${K.label('ready')} = ready`); chaosRoundStart(m.game); return; } // a mode lobby's warm-up
+    if (m.warm) { hud.msg('PRE-GAME', 1.8, 'brag'); hud.chat(null, null, `lobby: hang out on the deck, nothing hurts. fire = shove. ${K.label('ready')} = ready`); chaosRoundStart(m.game); return; } // a mode lobby's warm-up
     hud.msg(m.game && m.game !== 'dm' && GAMES[m.game] ? GAMES[m.game].name.toUpperCase() : 'ROUND START', 1.8, 'brag');
     if (m.game && GAMES[m.game]) hud.chat(null, null, K.hint(GAMES[m.game].desc));
     chaosRoundStart(m.game);

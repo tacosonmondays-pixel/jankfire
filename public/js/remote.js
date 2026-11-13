@@ -1,6 +1,7 @@
 // Other players (and bots): snapshot interpolation, janky mannequin animation, skins, ropes, effects.
 import * as THREE from 'three';
 import { BOXES } from '/shared/map.js';
+import { looseStep } from './loose.js';
 import { raycast, playerBoxes } from '/shared/physics.js';
 import { FLAGS, WEAPONS } from '/shared/weapons.js';
 import { sideHand } from './sidearms.js'; // Lefty & Righty: the L / R stickers
@@ -568,18 +569,15 @@ export class Remote {
 }
 
 // flying mannequin pieces
+export const GIB_MAX = 260; // pieces at once (a pile of zombies going up together): the oldest go first
 export function updateGibs(dt) {
+  while (G.gibs.length > GIB_MAX) { const g = G.gibs.shift(); G.scene.remove(g.m); if (g.own) g.m.geometry.dispose(); }
   for (let i = G.gibs.length - 1; i >= 0; i--) {
     const g = G.gibs[i];
     g.life -= dt;
-    g.v[1] -= 22 * dt;
-    g.m.position.x += g.v[0] * dt; g.m.position.y += g.v[1] * dt; g.m.position.z += g.v[2] * dt;
-    if (g.m.position.y < g.floorY + 0.05) {
-      g.m.position.y = g.floorY + 0.05;
-      g.v[1] = Math.abs(g.v[1]) * 0.35; g.v[0] *= 0.6; g.v[2] *= 0.6;
-      g.av = g.av.map((a) => a * 0.6);
-    }
-    g.m.rotation.x += g.av[0] * dt; g.m.rotation.y += g.av[1] * dt; g.m.rotation.z += g.av[2] * dt;
+    if (looseStep(g, g.m.position, dt, 0.05)) g.av = g.av.map((a) => a * 0.6); // (the floor under where it is now: loose.js)
+    if (g.v[0] || g.v[1] || g.v[2] || g.m.position.y > g.floorY + 0.1) { g.m.rotation.x += g.av[0] * dt; g.m.rotation.y += g.av[1] * dt; g.m.rotation.z += g.av[2] * dt; }
+    if (g.m.position.y < -400) g.life = 0; // (fell out of the world)
     if (g.life < 0.5) g.m.scale.multiplyScalar(Math.max(0, 1 - dt * 6));
     if (g.life <= 0) { G.scene.remove(g.m); if (g.own) g.m.geometry.dispose(); G.gibs.splice(i, 1); }
   }

@@ -26,6 +26,8 @@ const wpick = (tbl) => { // weighted pick from { id: { w } }
   return Object.keys(tbl)[0];
 };
 const LOG = !!process.env.JF_BR_LOG; // test knob: print how every royale went (drops, deaths, the winner)
+const ZW = (() => { const v = Number(process.env.JF_BR_ZONE); return Number.isFinite(v) && v >= 0.1 && v <= 30 ? v : 1; })(); // test knob: the zone's waits + shrinks run x this long (screenshots want a slow match)
+const ZONE_T = ZW === 1 ? ZONE : ZONE.map(([w, sh, share, dps]) => [w * ZW, sh * ZW, share, dps]);
 
 // ------------------------------------------------------------ loot spots (found once per map, from its boxes)
 // a grid over the play area; at each point, every floor you could stand on going down (roof, upper floors, ground).
@@ -96,11 +98,11 @@ export function installRoyale(Room, H) {
       // the blimp: a straight line over the middle (give or take), any direction
       const a = Math.random() * Math.PI * 2, d = [Math.cos(a), Math.sin(a)], off = (Math.random() - 0.5) * 70;
       const mid = [z0[0] - d[1] * off, z0[1] + d[0] * off];
-      const path = { a: [r2(mid[0] - d[0] * BR.blimp.len), r2(mid[1] - d[1] * BR.blimp.len)], d: [r2(d[0]), r2(d[1])], y: R.blimpY || 75, t0: n };
+      const path = { a: [r2(mid[0] - d[0] * BR.blimp.len), r2(mid[1] - d[1] * BR.blimp.len)], d: [r2(d[0]), r2(d[1])], y: R.blimpY || 75, t0: n, v: BR.blimp.speed }; // v: the server says how fast (clients don't guess)
       // the zone: each circle sits inside the last one, centred on ground you can stand on
       const ground = groundSpots(map), steps = [];
       let c = [z0[0], z0[1]], r = z0[2];
-      for (const [wait, shrink, share, dps] of ZONE) {
+      for (const [wait, shrink, share, dps] of ZONE_T) {
         const nr = z0[2] * share, room = Math.max(0, r - nr);
         const ok = ground.filter((s) => Math.hypot(s.p[0] - c[0], s.p[2] - c[1]) <= room * 0.9);
         const nc = ok.length ? pick(ok).p : null;

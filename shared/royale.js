@@ -24,7 +24,7 @@ TARGETS.ffa.br = 0; TARGETS.bots.br = 0; // no kill limit: last one standing
 
 export const BR = {
   bots: 15, // a Bots room fills up to this many bots for a royale (the room's own count if it's higher)
-  blimp: { speed: 24, len: 200, wait: 2.5 }, // m/s, half the path length past the middle (m), seconds before it starts moving
+  blimp: { speed: 18.5, len: 200, wait: 2.5 }, // m/s (was 24: ~23% slower so there's time to pick a spot, owner 2026-11-13), half the path length past the middle (m), seconds before it starts moving
   // the drop: free fall (steer a bit), then the umbrella opens by itself this high above the floor (or press space)
   fall: { vMax: 34, steer: 18, open: 42 },
   glide: { vy: 7, speed: 15, minOpen: 6 }, // umbrella: sink speed, steering speed, the lowest you can open it
@@ -126,7 +126,7 @@ export function lootColor(l) { return l.k === 'gun' || l.k === 'melee' || l.k ==
 // the blimp: a straight line over the middle of the map. path = { a: [x, z], d: [dx, dz] (unit), y, t0 (ms) }
 // the point at time t (ms), and how far along it is (m, from the start)
 export function blimpAt(path, t) {
-  const s = Math.max(0, (t - path.t0) / 1000 - BR.blimp.wait) * BR.blimp.speed;
+  const s = Math.max(0, (t - path.t0) / 1000 - BR.blimp.wait) * (Number.isFinite(path.v) && path.v > 0 ? path.v : BR.blimp.speed); // path.v: the server's speed for this ride
   return [path.a[0] + path.d[0] * s, path.y, path.a[1] + path.d[1] * s, s];
 }
 export const blimpDone = (path, t) => blimpAt(path, t)[3] >= BR.blimp.len * 2;

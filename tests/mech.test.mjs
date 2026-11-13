@@ -1,7 +1,7 @@
 // mech drop: the shared numbers and helpers (shared/mech.js). node --test tests/mech.test.mjs
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { MECH, MF, MECH_BITS, FRAMES, mechFrame, isFrame, mechBoxes, energyAt, spend, newEnergy, speedCap, inArc, ramHit, dropHit, addMark, mechClash } from '../shared/mech.js';
+import { MECH, MF, MECH_BITS, FRAMES, mechFrame, isFrame, mechBoxes, energyAt, spend, newEnergy, speedCap, inArc, ramHit, dropHit, addMark, mechClash, mechScale, mechBody, SCALE } from '../shared/mech.js';
 import { FLAGS, STREAKS, WEAPONS, validLoadout, validStreaks } from '../shared/weapons.js';
 import { BODY } from '../shared/bodyhp.js';
 
@@ -11,7 +11,7 @@ test('the streak: 9 kills, between the rig and the giant duck, pickable', () => 
   assert.deepEqual(validStreaks(['mechdrop', 'scythe', 'moonboots']), ['moonboots', 'scythe', 'mechdrop']);
 });
 test('frames: two of them, anything else is the paper plane, and the loadout keeps your pick', () => {
-  assert.deepEqual(FRAMES, ['paperplane', 'nightshift']);
+  assert.deepEqual(FRAMES.slice(0, 2), ['paperplane', 'nightshift']); assert.ok(FRAMES.includes('wrecking'));
   assert.equal(mechFrame('nightshift'), 'nightshift');
   for (const bad of [undefined, null, 3, '__proto__', 'NIGHTSHIFT', {}, ['nightshift']]) { assert.equal(mechFrame(bad), 'paperplane'); assert.equal(isFrame(bad), false); }
   assert.equal(validLoadout({ mech: 'nightshift' }).mech, 'nightshift');
@@ -40,9 +40,29 @@ test('hitboxes: the frame in three stacked boxes, the chest band (the cockpit) i
   assert.equal(b.length, 3); assert.deepEqual(b.map((x) => x.head), [false, true, false]);
   assert.equal(b[2].max[1], 2 + MECH.nightshift.h);
   assert.equal(b[0].max[1], b[1].min[1]); assert.equal(b[1].max[1], b[2].min[1]); // stacked, no overlap
-  assert.ok(Math.abs((b[0].max[0] - b[0].min[0]) - 2.4) < 1e-9); // MECHS.md: about 2.4 wide
+  assert.ok(Math.abs((b[0].max[0] - b[0].min[0]) - 2.4 * MECH.scale) < 1e-6); // MECHS.md: about 2.4 wide (at size 1)
   const p = mechBoxes([0, 0, 0], 'paperplane');
-  assert.ok(Math.abs(p[2].max[1] - 4.9) < 1e-9 && Math.abs((p[0].max[0] - p[0].min[0]) - 1.6) < 1e-9);
+  assert.ok(Math.abs(p[2].max[1] - 4.9 * MECH.scale) < 1e-6 && Math.abs((p[0].max[0] - p[0].min[0]) - 1.6 * MECH.scale) < 1e-6);
+});
+test('size: one number (x1.35 by default: 4.9 m -> 6.6 m), size 1 is the old mech, clamped, safe to call again', () => {
+  assert.equal(MECH.scale, SCALE.def); assert.equal(SCALE.def, 1.35);
+  const PP = MECH.paperplane, NS = MECH.nightshift;
+  assert.ok(Math.abs(PP.h - 6.615) < 1e-9 && Math.abs(NS.h - 7.695) < 1e-9 && Math.abs(NS.eye - 5.3 * 1.35) < 1e-9);
+  assert.ok(Math.abs(MECH.drop.r - 8.1) < 1e-9 && Math.abs(NS.slam.r - 10.8) < 1e-9 && Math.abs(NS.sword.reach - 8.37) < 1e-9);
+  mechScale(1);
+  try {
+    assert.deepEqual([PP.h, PP.hw, PP.c0, PP.c1, PP.eye, PP.cam], [4.9, 0.8, 3.1, 4.15, 4.4, 8.5]);
+    assert.deepEqual([NS.h, NS.hw, NS.c0, NS.c1, NS.eye, NS.cam], [5.7, 1.2, 3.3, 4.6, 5.3, 10]);
+    assert.deepEqual([MECH.drop.r, MECH.drop.squash, MECH.drop.sky, MECH.bonk.r, MECH.bonk.d, MECH.reach, MECH.out, MECH.boom.r], [6, 1.9, 7, 2.3, 3, 4.5, 2.2, 5]);
+    assert.deepEqual([NS.sword.reach, NS.shield.bashR, NS.triple.r, NS.slam.r, PP.lunge.r, PP.jet.r, MECH.body.step, MECH.body.climb], [6.2, 5, 2.6, 8, 2.2, 2.6, 1, 1.5]);
+    assert.equal(mechScale(1), 1); assert.equal(PP.h, 4.9); // (again: from the size-1 copy, not compounding)
+    assert.equal(mechScale(9), 2); assert.equal(PP.h, 9.8);
+    assert.equal(mechScale(0.1), 0.5); assert.equal(mechScale('x'), 0.5); assert.equal(mechScale(NaN), 0.5);
+  } finally { mechScale(SCALE.def); }
+  assert.ok(Math.abs(PP.h - 6.615) < 1e-9);
+  // speeds, damage, hp stay; the walking body is the legs (x0.75 of the frame's half width), as tall as the mech
+  assert.equal(PP.speed, 14); assert.equal(NS.hp, 1500); assert.equal(MECH.drop.dmg, 60);
+  const bd = mechBody('nightshift'); assert.ok(Math.abs(bd.h - NS.h) < 1e-9 && Math.abs(bd.hw - NS.hw * 0.75) < 1e-9 && Math.abs(bd.step - 1.35) < 1e-9);
 });
 test('energy: spends, refuses when short, refills after the delay', () => {
   const E = newEnergy(0);
