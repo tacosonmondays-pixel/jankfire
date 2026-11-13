@@ -10,12 +10,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 let fails = 0; const ok = (c, msg) => { console.log((c ? 'ok   ' : 'FAIL ') + msg); if (!c) fails++; };
 const HP = 0.3; // JF_MECH_HP: paper plane 270, night shift 450
 const MF = { MECH: 1 << 22, A: 1 << 23, B: 1 << 30, C: 1 << 31 };
-let srvRef = null;
+let srvRef = null, srv2Ref = null;
 const Y = 0.03, X0 = 42, Z0 = 12; // warehouse: the flat open yard round [42, 0, 12]. the test works in coordinates round it
 const sh = (a, k) => (Array.isArray(a) && a.length === 3 && a.every(Number.isFinite) ? [a[0] + X0 * k, a[1], a[2] + Z0 * k] : a);
 
-function client(name, extra = {}) {
-  const ws = new WS(`ws://localhost:${port}/ws`), c = { ws, got: [], id: 0, q: 0, hp: 100, alive: true, name };
+function client(name, extra = {}, prt = port) {
+  const ws = new WS(`ws://localhost:${prt}/ws`), c = { ws, got: [], id: 0, q: 0, hp: 100, alive: true, name };
   ws.on('message', (d) => {
     const m = JSON.parse(d);
     if ((m.t === 'mech' || m.t === 'welcome' || m.t === 'spawn') && m.p) m.p = sh(m.p, -1);
@@ -414,6 +414,145 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   const uf = A.take('mech', (m) => m.k === 'no');
   ok(uf && uf.why === "can't hop out under fire" && !A.take('mech', (m) => m.k === 'out'), 'hop out right after a hit: refused (under fire)');
 
+  // ---- 14. empty mechs take hits: one idle after a hop-out, one waiting after it lands (all of this was ignored before)
+  await sleep(1700);
+  const hurts = (c, id) => c.all('mech', (m) => m.k === 'hurt' && m.m === id);
+  const lastHurt = (c, id) => hurts(c, id).pop() || null;
+  await hold(400, [[B, BQ, { y: 0, f: MF.MECH }], ...aOff]);
+  B.got.length = 0;
+  B.send({ t: 'mech', k: 'out' });
+  const bo2 = await B.wait('mech', (m) => m.k === 'out' && m.id === B.id && m.why === 'hop', 800);
+  const nsId = bo2 ? bo2.m : -1, nsP = bo2 ? bo2.p : BQ, bOut = (await B.wait('mech', (m) => m.k === 'pos', 500) || {}).p || BQ;
+  const cS = [nsP[0] + 8, Y, nsP[2]], cE = [cS[0], Y + 1.6, cS[2]], body = [nsP[0], nsP[1] + 2, nsP[2]], pit = [nsP[0], nsP[1] + 3.9, nsP[2]];
+  const ring = (ms, cp = cS, co = {}) => hold(ms, [[A, () => P, { f: MF.MECH }], [B, bOut], [C, cp, co]]);
+  await ring(700);
+  C.got.length = 0; A.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, body).d, n: 1, h: 0 }); await ring(250);
+  const e1 = lastHurt(C, nsId);
+  ok(e1 && e1.a === 11 && e1.hp === 450 - 11 && e1.by === C.id && lastHurt(A, nsId), `shot B's idle NIGHT SHIFT (hopped out): armour 450 -> ${e1 && e1.hp}, everyone sees it`);
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, pit).d, n: 1, h: 1 }); await ring(250);
+  const e2 = lastHurt(C, nsId);
+  ok(e2 && e2.hs === 1 && Math.abs(e2.a - 16.5) <= 0.6, `the cockpit is the head here too: ${e2 && e2.a} (11 x 1.5)`);
+  // a headshot claimed while aiming at its legs: body damage
+  await ring(300); C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, [nsP[0], nsP[1] + 1, nsP[2]]).d, n: 1, h: 1 }); await ring(250);
+  ok((lastHurt(C, nsId) || {}).a === 11 && !(lastHurt(C, nsId) || {}).hs, `"headshot" aimed at its knees: ${(lastHurt(C, nsId) || {}).a} (body)`);
+  // swapping guns to dodge the fire rate: an AR hit, then a sniper hit right after
+  C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, body).d, n: 1, h: 0 }); C.place(cS, { w: 'sniper' }); await sleep(30);
+  C.send({ t: 'hit', mk: nsId, w: 'sniper', d: aim(cE, body).d, n: 1, h: 0 }); await ring(300, cS, { w: 'sniper' });
+  ok(hurts(C, nsId).length === 1, `AR hit then a sniper hit 30 ms later: ${hurts(C, nsId).length} counted (one clock per mech)`);
+  await ring(300);
+  // attacks on it: through a wall, pointing the wrong way, too fast, a knife from 8 m, its own owner, garbage ids, a pilot's hands
+  const hp0 = lastHurt(C, nsId) ? lastHurt(C, nsId).hp : 0;
+  const inside = [-14, Y, -6]; // in the warehouse, the metal wall between it and the mech
+  await ring(500, inside); C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim([inside[0], Y + 1.6, inside[2]], body).d, n: 1, h: 0 }); await ring(250, inside);
+  ok(!hurts(C, nsId).length, 'through the warehouse wall: nothing');
+  await ring(600); C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'ar', d: [0, 1, 0], n: 1, h: 0 }); await ring(200);
+  ok(!hurts(C, nsId).length, 'a "hit" pointing at the sky: nothing');
+  for (let i = 0; i < 20; i++) C.send({ t: 'hit', mk: nsId, w: 'ar', d: aim(cE, body).d, n: 1, h: 0 });
+  await ring(250);
+  ok(hurts(C, nsId).length >= 1 && hurts(C, nsId).length <= 2, `20 hits in one go: ${hurts(C, nsId).length} counted (the AR's rate, with a little lag slack)`);
+  await ring(400, cS, { w: 'knife' }); C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'knife', d: aim(cE, body).d }); await ring(250, cS, { w: 'knife' });
+  ok(!hurts(C, nsId).length, 'a knife from 8 m: nothing');
+  const cK = [nsP[0] + 2.4, Y, nsP[2]];
+  await ring(500, cK, { w: 'knife' }); C.got.length = 0;
+  C.send({ t: 'hit', mk: nsId, w: 'knife', d: aim([cK[0], Y + 1.6, cK[2]], body).d }); await ring(250, cK, { w: 'knife' });
+  ok((lastHurt(C, nsId) || {}).a === 55, 'a knife from 2.4 m: 55');
+  B.got.length = 0;
+  B.send({ t: 'hit', mk: nsId, w: 'ar', d: aim([bOut[0], Y + 1.6, bOut[2]], body).d, n: 1, h: 0 }); await ring(250, cK, { w: 'knife' });
+  ok(!hurts(B, nsId).length, 'its owner shooting it: nothing');
+  A.got.length = 0;
+  A.send({ t: 'hit', mk: nsId, w: 'ar', d: aim([P[0], Y + 4.4, P[2]], body).d, n: 1, h: 0 }); await ring(250, cK, { w: 'knife' });
+  ok(!hurts(A, nsId).length, 'a pilot (no hands, only the mech\'s guns): nothing');
+  const hpG = (lastHurt(C, nsId) || {}).hp; C.got.length = 0;
+  for (const mk of [-1, 0, 1e9, 1.5, 'x', null, { id: nsId }, [nsId], NaN]) C.send({ t: 'hit', mk, w: 'ar', d: aim(cE, body).d, n: 1, h: 0 });
+  C.send({ t: 'hit', mk: nsId, w: '__proto__', d: [1, 0, 0] }); C.send({ t: 'hit', mk: nsId, w: 'ar', d: [NaN, 0, 1e999], n: 1e9, h: -5 });
+  await ring(300, cK, { w: 'knife' });
+  ok(C.ws.readyState === 1 && !hurts(C, nsId).length, `garbage ids / numbers: nothing (armour still ${hpG}, was ${hp0} before the attack round)`);
+  // B climbs back in: the damage stays
+  const left = hpG;
+  await hold(500, [[B, [nsP[0] + 1.5, Y, nsP[2]]], ...aOff]);
+  B.got.length = 0; B.send({ t: 'mech', k: 'in' });
+  const in4 = await B.wait('mech', (m) => m.k === 'in' && m.id === B.id, 800);
+  ok(in4 && left < 450 && Math.abs(in4.hp - left) <= 1, `climbing back in keeps the damage: ${in4 && in4.hp} / 450`);
+  // a mech waiting after it lands: shot to pieces. MECH DOWN, credited to the shooter, its blast hits the owner next to it
+  const F2 = await client('waiter', { mf: 'paperplane' }); await sleep(300);
+  const fw0 = [16, Y, -12], fAt = [16, Y, -18];
+  const crowd = (ms, fp = fw0) => hold(ms, [[A, () => P, { f: MF.MECH }], [B, () => B.spos || nsP, { f: MF.MECH }], [C, [24, Y, -18]], [F2, fp]]);
+  await crowd(1800);
+  F2.send({ t: 'deploy', r: 'mechdrop', at: fAt, mf: 'paperplane' });
+  const fc = await F2.wait('mech', (m) => m.k === 'call', 1500);
+  await crowd(2900);
+  const fl = F2.take('mech', (m) => m.k === 'land');
+  ok(fc && fl, 'F calls a PAPER PLANE in, it lands and waits');
+  const fid = fc ? fc.id : -1, fp = fl ? fl.p : fAt, cE2 = [24, Y + 1.6, -18], fBody = [fp[0], fp[1] + 1.5, fp[2]], fNear = [fp[0] - 3, Y, fp[2]];
+  await crowd(500, fNear);
+  C.got.length = 0; F2.got.length = 0;
+  let fdown = null;
+  for (let i = 0; i < 50 && !fdown; i++) { C.send({ t: 'hit', mk: fid, w: 'ar', d: aim(cE2, fBody).d, n: 1, h: 0 }); await crowd(115, fNear); fdown = C.all('mech', (m) => m.k === 'down' && m.m === fid)[0]; }
+  const fh = hurts(C, fid);
+  ok(fh.length >= 20 && fh[0].hp === 270 - 11, `the waiting mech takes every bullet: ${fh.length} hits, 270 -> ${fh.length ? fh[fh.length - 1].hp : '?'}`);
+  ok(fdown && fdown.e === 1 && fdown.by === C.id && fdown.id === F2.id, 'armour at 0: MECH DOWN, credited to C (nobody inside)');
+  await crowd(300, fNear);
+  const fblast = F2.take('dmg', (m) => m.to === F2.id && m.w === 'mechboom');
+  ok(fblast && fblast.from === C.id, `its blast hits its owner standing next to it: ${fblast && fblast.a}, credited to C`);
+  const fgone = C.all('mech', (m) => m.k === 'gone' && m.m === fid).length;
+  C.got.length = 0; await crowd(1300, fNear);
+  const flist = C.all('mech', (m) => m.k === 'list').pop();
+  ok(fgone && flist && !flist.m.some((e) => e[0] === fid), 'and it is gone');
+  // review probes (#413), on G's waiting NIGHT SHIFT by the warehouse wall: an unearned streak gun, the revolver at fan
+  // rate with no reload, a fake velocity through the wall / from too far
+  const G2 = await client('probe', { mf: 'nightshift' }); await sleep(300);
+  const gAt = [-8, Y, -10], gS = [-3, Y, -10], cG = [0, Y, -10], cGE = [cG[0], Y + 1.6, cG[2]];
+  const gring = (ms, cp = cG, co = {}) => hold(ms, [[A, () => P, { f: MF.MECH }], [B, () => B.spos || nsP, { f: MF.MECH }], [C, cp, co], [G2, gS]]);
+  await gring(1800);
+  G2.send({ t: 'deploy', r: 'mechdrop', at: gAt, mf: 'nightshift' });
+  const gc = await G2.wait('mech', (m) => m.k === 'call', 1500);
+  await gring(2900);
+  const gl = G2.take('mech', (m) => m.k === 'land'), gid = gc ? gc.id : -1, gp = gl ? gl.p : gAt, gBody = [gp[0], gp[1] + 2, gp[2]], gPit = [gp[0], gp[1] + 3.9, gp[2]];
+  ok(gc && gl && gc.f === 'nightshift', 'probe mech: G calls a NIGHT SHIFT in by the wall, it waits');
+  await gring(400, cG, { w: 'scythe_rifle' }); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'scythe_rifle', d: aim(cGE, gBody).d, n: 1, h: 0 }); await gring(300, cG, { w: 'scythe_rifle' });
+  ok(!hurts(C, gid).length, `the scythe's rifle without earning the scythe: ${hurts(C, gid).length ? hurts(C, gid)[0].a + ' damage' : 'nothing'}`);
+  const gIn = [-14, Y, -12]; // in the warehouse, the metal wall between it and the mech
+  await gring(400, gIn, { v: [90000, 0, 0] }); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'ar', d: aim([gIn[0], Y + 1.6, gIn[2]], gBody).d, n: 1, h: 0 }); await gring(250, gIn, { v: [90000, 0, 0] });
+  C.send({ t: 'hit', mk: gid, w: 'ar', d: aim([gIn[0], Y + 1.6, gIn[2]], gPit).d, n: 1, h: 1 }); await gring(250, gIn, { v: [90000, 0, 0] });
+  ok(!hurts(C, gid).length, `through the wall with a fake 90 km/s velocity (body + cockpit): ${hurts(C, gid).length} hits`);
+  const gFar = [gp[0] + 12, Y, gp[2]];
+  await gring(400, gFar, { v: [90000, 0, 0], w: 'knife' }); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'knife', d: aim([gFar[0], Y + 1.6, gFar[2]], gBody).d }); await gring(250, gFar, { v: [90000, 0, 0], w: 'knife' });
+  ok(!hurts(C, gid).length, `a knife (2.6 m) from 12 m with a fake velocity: ${hurts(C, gid).length} hits`);
+  await gring(2700, cG, { w: 'revolver' }); C.got.length = 0; // (a fresh cylinder)
+  for (let i = 0; i < 8; i++) { C.send({ t: 'hit', mk: gid, w: 'revolver', d: aim(cGE, gBody).d, n: 1, h: 0 }); await gring(110, cG, { w: 'revolver' }); }
+  const rv = hurts(C, gid), rvd = rv.reduce((a, m) => a + m.a, 0);
+  ok(rv.length >= 1 && rv.length <= 6 && rvd <= 160, `8 revolver taps 110 ms apart: ${rv.length} hits, ${rvd} damage (the cylinder's rules, as for a player: early "taps" are fan damage; old: 8 hits, 320)`);
+  await gring(2700, cG, { w: 'revolver' }); C.got.length = 0;
+  for (let i = 0; i < 9; i++) { C.send({ t: 'hit', mk: gid, w: 'revolver', d: aim(cGE, gBody).d, n: 1, h: 0, fan: 1 }); await gring(110, cG, { w: 'revolver' }); }
+  const rfan = hurts(C, gid);
+  ok(rfan.length >= 1 && rfan.length <= 6 && rfan.every((m) => m.a <= 28), `9 fanned shots: ${rfan.length} hits of ${rfan.map((m) => m.a).join('/')} (6 a cylinder, then a reload; fan damage)`);
+  await gring(300); C.got.length = 0;
+  C.send({ t: 'hit', mk: gid, w: 'ar', d: aim(cGE, gBody).d, n: 1, h: 0 }); await gring(250);
+  ok((lastHurt(C, gid) || {}).a === 11, 'and a plain AR shot from 8 m still lands: 11');
+  G2.ws.close();
+  // a chicken rocket's blast hurts an empty mech too (B hops out again)
+  await sleep(1700);
+  await hold(300, [[B, () => B.spos, { f: MF.MECH }], [C, [24, Y, -18]]]);
+  B.got.length = 0; B.send({ t: 'mech', k: 'out' });
+  const bo3 = await B.wait('mech', (m) => m.k === 'out' && m.id === B.id, 800);
+  const n3 = bo3 ? bo3.p : nsP, cR = [n3[0], Y, n3[2] - 7], bOut3 = (await B.wait('mech', (m) => m.k === 'pos', 500) || {}).p || n3;
+  const bAway = [n3[0], Y, n3[2] + 9]; // (the owner out of the rocket's way)
+  await hold(800, [[B, bAway], [C, cR, { w: 'chicken' }]]);
+  C.got.length = 0;
+  C.send({ t: 'fire', w: 'chicken', o: [cR[0], Y + 1.6, cR[2]], d: aim([cR[0], Y + 1.6, cR[2]], [n3[0], n3[1] + 1.5, n3[2]]).d }); await hold(800, [[B, bAway], [C, cR, { w: 'chicken' }]]);
+  const ch = lastHurt(C, bo3 ? bo3.m : -1);
+  ok(ch && ch.w === 'chicken' && ch.a >= 50, `a chicken rocket into the idle knight: ${ch && ch.a} (a projectile + its blast)`);
+  F2.ws.close();
+
   // ---- 12. garbage
   const junk = [{ t: 'mech' }, { t: 'mech', k: 5 }, { t: 'mech', k: 'gun', d: 'x' }, { t: 'mech', k: 'gun', d: [NaN, 1e999, null] }, { t: 'mech', k: '__proto__' },
     { t: 'mech', k: 'constructor' }, { t: 'mech', k: 'slamland', p: { 0: 1 } }, { t: 'mech', k: 'lunge', to: { x: 1 }, d: [1, 2] }, { t: 'mech', k: 'crane', to: -1 },
@@ -427,6 +566,42 @@ const bhp = (c, id) => { const l = c.all('bhp', (m) => m.id === id); return l.le
   ok(E.id > 0 && E.sn, 'garbage: the server still runs (a new player joins and gets snapshots)');
   ok(!/uncaught|TypeError|ReferenceError/.test(srvErr), 'no server errors' + (srvErr ? ': ' + srvErr.slice(0, 600) : ''));
 
+  // ---- 15. teams (a second server in team deathmatch): your team can't touch your empty mech, the other team can
+  const port2 = port + 1;
+  const srv2 = srv2Ref = spawn(process.execPath, ['--max-old-space-size=256', 'server.js'], { cwd: path.join(__dirname, '..'), env: { ...process.env, PORT: String(port2), JF_TRAIN_STREAKS: '1', JF_MECH_HP: String(HP), JF_GAME: 'tdm' }, stdio: ['ignore', 'pipe', 'pipe'] });
+  let srvErr2 = ''; srv2.stderr.on('data', (d) => { srvErr2 += d; }); srv2.stdout.on('data', (d) => { if (/Error|uncaught/i.test(String(d))) srvErr2 += d; });
+  for (let i = 0; i < 60; i++) { try { await new Promise((res, rej) => { const w = new WS(`ws://localhost:${port2}/ws`); w.on('open', () => { w.close(); res(); }); w.on('error', rej); }); break; } catch { await sleep(500); } }
+  const X = await client('owner', { mf: 'paperplane' }, port2);
+  X.send({ t: 'cfg', map: 'warehouse' }); await sleep(900);
+  const Y2 = await client('two', {}, port2), Z = await client('three', {}, port2);
+  await sleep(1500);
+  const team = new Map();
+  for (const c of [X, Y2, Z]) { const w = c.all('welcome').pop(); if (w) team.set(c.id, w.team); }
+  for (const c of [X, Y2, Z]) for (const tm of c.all('teams')) for (const [id, t] of tm.list) team.set(id, t);
+  const mate = [Y2, Z].find((c) => team.get(c.id) === team.get(X.id)), foe = [Y2, Z].find((c) => team.get(c.id) !== team.get(X.id));
+  ok(mate && foe && team.get(X.id), `tdm: X is on team ${team.get(X.id)}, a mate and an enemy (${[...team.values()].join(',')})`);
+  if (mate && foe) {
+    const xs = [0, Y, 9], ms0 = [8, Y, -8], fs0 = [-8, Y, -8];
+    const tdm = (ms, o = {}) => hold(ms, [[X, xs], [mate, ms0, o.m], [foe, fs0, o.f]]);
+    await tdm(500);
+    X.send({ t: 'deploy', r: 'mechdrop', at: [0, Y, -8], mf: 'paperplane' });
+    const xc = await X.wait('mech', (m) => m.k === 'call', 1500);
+    await tdm(2900);
+    ok(xc && X.take('mech', (m) => m.k === 'land'), "X's mech lands and waits");
+    const xid = xc ? xc.id : -1, xb = [0, Y + 1.5, -8];
+    mate.got.length = 0;
+    for (let i = 0; i < 4; i++) { mate.send({ t: 'hit', mk: xid, w: 'ar', d: aim([ms0[0], Y + 1.6, ms0[2]], xb).d, n: 1, h: 0 }); await tdm(150); }
+    await tdm(400, { m: { w: 'chicken' } });
+    mate.send({ t: 'fire', w: 'chicken', o: [ms0[0], Y + 1.6, ms0[2]], d: aim([ms0[0], Y + 1.6, ms0[2]], xb).d }); await tdm(800, { m: { w: 'chicken' } });
+    ok(!mate.all('mech', (m) => m.k === 'hurt').length, "a teammate's bullets and chicken rocket: nothing");
+    foe.got.length = 0;
+    foe.send({ t: 'hit', mk: xid, w: 'ar', d: aim([fs0[0], Y + 1.6, fs0[2]], xb).d, n: 1, h: 0 }); await tdm(300);
+    const fh2 = foe.all('mech', (m) => m.k === 'hurt' && m.m === xid).pop();
+    ok(fh2 && fh2.a === 11 && fh2.hp === 270 - 11, `the other team's bullet: armour 270 -> ${fh2 && fh2.hp}`);
+  }
+  ok(!/uncaught|TypeError|ReferenceError/.test(srvErr2), 'no server errors (tdm)' + (srvErr2 ? ': ' + srvErr2.slice(0, 600) : ''));
+  srv2.kill();
+
   console.log(fails ? `${fails} FAILED` : 'ALL OK'); end(fails ? 1 : 0);
 })().catch((e) => { console.error(e); process.exit(1); });
-process.on("exit", () => { try { srvRef && srvRef.kill(); } catch {} });
+process.on("exit", () => { try { srvRef && srvRef.kill(); } catch {} try { srv2Ref && srv2Ref.kill(); } catch {} });
