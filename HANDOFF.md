@@ -166,3 +166,11 @@ All lane sessions were interrupted. Nothing is merging. The open PRs above are d
 - Graphics (black-screen bug first, then shader options): session_011tKQCu5LU3i2Y1YbQQYjoj, branch claude/graphics-lane
 - Story (OVERDUE: #122 fix, referee/bosses, then the Act I train + mask boss scene for approval): session_011tKQCrJdaf4PGM8wkY8xV7, branch claude/overdue-train
 All open DRAFT PRs; the owner merges. PR #124 (v6.9) is still waiting for the owner.
+
+## ROBLOX version (started 2026-11-13; owner: "Ues I want to try making it a roblxo game too")
+- Lives beside the web game in `roblox/` (Luau, Rojo) + `tools/roblox/` (converters). Specs on main: `roblox/docs/WEAPONS.md` (every weapon: stats in m + studs, gimmick, server checks, animations + effects, Blender effects to make, porting order) and `roblox/docs/MODES.md`.
+- Step 1 = PR #503 (claude/f-roblox): Rooftop converted box for box (1 m = 3 studs), movement + grapple, props exported to `roblox/assets/rooftop/`, `roblox/build/JANKFIRE-Rooftop.rbxl`. Waiting on the owner's Studio playtest, then merge.
+- Step 2 (weapons Redline / Marble Shotgun / Katana + FFA) starts in a FRESH session so the account's `roblox-dev` plugin loads (roblox-security skill + roblox-reviewer agent).
+- Handover facts: `cargo install rojo lune selene` works (no luau-analyze: building luau from source was refused); selene uses `roblox/roblox_min.yml`; build + test `node tools/roblox/build.mjs`, `lune run tests/run` from roblox/ (Lune shim `load()` in tests/run.luau; Lune parts have no `.Position`, use `.CFrame.Position`). Movement is client-owned (LinearVelocity from shared/Movement.luau), so knockback = RemoteEvent to the victim's client. Remotes in ReplicatedStorage.JankfireRemotes (both project.json files). Deco Parts CanQuery=false. Kill height = Map.Rooftop's KillY attribute. Rojo model JSON: explicit types, Attributes under Properties.Attributes.Attributes, no "Name" on a model.json root.
+- The owner has Roblox Studio + Studio's MCP connected to a LOCAL Claude session on their PC; the cloud can't reach it, so the owner relays reports. Story stays out of Roblox for now (owner default).
+- Not verified in Studio yet: movement feel, the ComicNeueAngular font path, .glb import scale/axes.
