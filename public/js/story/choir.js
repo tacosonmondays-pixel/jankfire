@@ -55,7 +55,7 @@ export function releaseTogether(list, name) {
 }
 
 // ------------------------------------------------------------ the director at the Choir Lung
-const D = { on: false, list: [], next: 7, stareT: -1, cool: 0, wasIn: false, hum: null };
+const D = { on: false, list: [], next: 7, stareT: -1, cool: 0, wasIn: false, hum: null, reveal: null };
 export const choirState = () => D; // (tools and tests: who's out, when they sing next, whether they're staring)
 const LUNG = { x: -268, z: -218, rx: 21, rz: 19, y: 40 }; // (shared/city/gut.js choir(): the colonnade's ring)
 const v3 = new THREE.Vector3();
@@ -75,7 +75,7 @@ function spawn() {
 const meshes = (L) => { const out = []; for (const a of L) a.ch.root.traverse((o) => { if (o.isMesh) out.push(o); }); return out; }; // (mesh by mesh: a shader a frame, not a singer's whole outfit at once)
 function warmUp(L) {
   for (const a of L) { a.hidden = true; a.warmHide = true; patchActor(a); } // (lit by the city first: the warm-up has to build the shaders they'll really be drawn with)
-  const show = () => { for (const a of L) if (actors.get(a.id) === a && a.warmHide) { a.warmHide = false; if (!a.inScene) a.hidden = false; } }; // (only undo our own hide: a cutscene may have hidden them since)
+  const show = () => { D.reveal = L.slice(); }; // (choirFrame shows them one a frame: all at once, their 254 meshes and 33 textures went up to the GPU on one 150-290 ms frame)
   import('../city/ingame.js').then((m) => { const S = m.cityStream(); if (S && S.warm) S.warm(meshes(L), show); else show(); }, show);
 }
 function despawn() { for (const a of D.list) { if (actors.get(a.id) === a) despawnActor(a.id); for (const m of a.lifted || []) m.dispose(); } D.list = []; D.on = false; humStop(); }
@@ -98,6 +98,7 @@ function glow(a) {
 }
 
 export function choirFrame(dt, eye) {
+  if (D.reveal && D.reveal.length) { const a = D.reveal.shift(); if (actors.get(a.id) === a && a.warmHide) { a.warmHide = false; if (!a.inScene) a.hidden = false; } } // (only undo our own hide: a cutscene may have hidden them since)
   if (!eye || !CHOIR.length) { if (D.on) despawn(); return; } // (out of the story, or not in the city)
   const cx = CHOIR.reduce((s, c) => s + c.p[0], 0) / CHOIR.length, cz = CHOIR.reduce((s, c) => s + c.p[2], 0) / CHOIR.length;
   const d = Math.hypot(eye[0] - cx, eye[2] - cz);
