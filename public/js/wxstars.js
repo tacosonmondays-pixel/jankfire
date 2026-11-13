@@ -63,10 +63,11 @@ export function starsFrame(dt, plan, t, on, test) {
     dome(az, el, _d); // where it starts, on the dome
     _t.crossVectors(UPV, _d).normalize(); _u.crossVectors(_d, _t).normalize(); // (the dome's sideways and upward there)
     _t.multiplyScalar(Math.cos(hd)).addScaledVector(_u, Math.sin(hd) * 0.5 - 0.6).normalize(); // its heading: across and always a bit down
-    const way = (big ? 0.5 : 0.32) * DOME;
+    const way = (big ? 0.6 : 0.4) * DOME;
     _p.copy(_d).multiplyScalar(DOME).addScaledVector(_t, tr[0] * way).addScaledVector(UPV, tr[1] * way).add(cam);
     _q.setFromUnitVectors(X, _t);
-    m.setMatrixAt(big ? nb++ : nm++, _m.compose(_p, _q, _s.set(sc[0], sc[1], sc[2])));
+    const M = big ? 3.6 : 3; // (out on the dome a kit-size streak is a hair: drawn three times the size it reads as a comic meteor)
+    m.setMatrixAt(big ? nb++ : nm++, _m.compose(_p, _q, _s.set(sc[0] * M, sc[1] * M, sc[2] * M)));
     if (!S.heard.has(j) && u < 0.3) { S.heard.add(j); if (big || j % 3 === 0) sfx.meteor(big); }
   }
   K.P.met.count = nm; K.P.big.count = nb;
@@ -74,7 +75,7 @@ export function starsFrame(dt, plan, t, on, test) {
   const r = wxRand(P.s ^ 0x51ed27), TW = K.sample.twinkle, nt = Math.round((potato ? 16 : MAX.tw) * Math.min(1, s * 1.2));
   let n = 0;
   for (let j = 0; j < nt; j++) {
-    const az = r() * Math.PI * 2, el = 0.3 + r() * 1.0, per = 3 + r() * 4, off = r() * per, ph = (t + off) % per, sz = 2.5 + r() * 3;
+    const az = r() * Math.PI * 2, el = 0.3 + r() * 1.0, per = 3 + r() * 4, off = r() * per, ph = (t + off) % per, sz = 6 + r() * 7;
     if (ph >= LEN.twinkle) continue;
     const sc = TW.scale.evaluate(ph), ro = TW.quaternion.evaluate(ph);
     dome(az, el, _d); _p.copy(_d).multiplyScalar(DOME * 0.95).add(cam);
