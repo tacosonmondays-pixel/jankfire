@@ -20,24 +20,26 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 ONLY = set(next((a.split('=', 1)[1] for a in argv if a.startswith('--only=')), '').split(',')) - {''}
 # kit materials the city needs that the Suburb didn't (painted stucco and corrugated, the glass office facade)
 archkit.MATS.update({'stucco@siding': ('stucco', '#ffffff', {}), 'corrugated@siding': ('corrugated', '#ffffff', {}),
-                     'fac_glass': ('fac_glass', '#ffffff', {}), 'planks': ('planks', '#c8b8a0', {})})
+                     'fac_glass': ('fac_glass', '#ffffff', {}), 'planks': ('planks', '#c8b8a0', {}),
+                     # the upper floors: painted brick taking each lot's own upper colour ('@upper'), warm lit windows
+                     'fac_paint@upper': ('fac_paint', '#ffffff', {'glowcol': '#ffa040'}), 'fac_brickjb': ('fac_tenement', '#ffffff', {'glowcol': '#ffa040'})})
 F = 3.4
 LOT = {'capsule': (9, 9), 'noodle': (12, 11), 'bodega': (11, 11), 'walkup': (8, 12), 'model': (13, 11), 'container': (6, 12), 'squat': (10, 11),
        'dorm': (16, 13), 'arcade': (13, 12), 'pastel': (12, 10), 'biolab': (12, 11), 'pawn': (13, 12)}
 # kind: (shell floors, storey, walls (ext), the shell boxes' material key, upper facade, inside, floor, roof)
 KINDS = {
-    'capsule': (1, F, 'stucco@siding', 'white', 'fac_office', 'wallint2', 'lino', 'tar'),
-    'noodle': (1, F, 'siding@siding', None, 'fac_tenement', 'wallint', 'lino', 'tar'),
-    'bodega': (1, F, 'siding@siding', None, 'fac_tenement', 'wallint2', 'lino', 'tar'),
-    'walkup': (1, F, 'siding@siding', None, 'fac_tenement', 'wallint', 'floorwood', 'tar'),
+    'capsule': (1, F, 'stucco@siding', 'white', 'fac_paint@upper', 'wallint2', 'lino', 'tar'),
+    'noodle': (1, F, 'siding@siding', None, 'fac_paint@upper', 'wallint', 'lino', 'tar'),
+    'bodega': (1, F, 'siding@siding', None, 'fac_paint@upper', 'wallint2', 'lino', 'tar'),
+    'walkup': (1, F, 'siding@siding', None, 'fac_paint@upper', 'wallint', 'floorwood', 'tar'),
     'model': (2, F, 'siding@siding', None, None, 'wallint', 'carpet', 'shingle@roof'),
     'container': (2, 2.9, 'corrugated@siding', None, None, 'metal', 'metal', 'metal'),
-    'squat': (1, F, 'planks', 'graffiti', 'fac_tenement', 'wallint2', 'floorwood', 'tar'),
-    'dorm': (1, F, 'concrete', 'office', 'fac_office', 'wallint2', 'carpet', 'tar'),
-    'arcade': (1, F, 'stucco@siding', None, 'fac_tenement', 'wallint', 'carpet', 'tar'),
+    'squat': (1, F, 'planks', 'graffiti', 'fac_brickjb', 'wallint2', 'floorwood', 'tar'),
+    'dorm': (1, F, 'concrete', 'office', 'fac_paint@upper', 'wallint2', 'carpet', 'tar'),
+    'arcade': (1, F, 'stucco@siding', None, 'fac_paint@upper', 'wallint', 'carpet', 'tar'),
     'pastel': (2, F, 'siding@siding', None, None, 'wallint', 'floorwood', 'shingle@roof'),
     'biolab': (1, F, 'glass', 'glass', 'fac_glass', 'wallint2', 'lino', 'tar'),
-    'pawn': (1, F, 'siding@siding', None, 'fac_tenement', 'wallint', 'concrete', 'tar'),
+    'pawn': (1, F, 'siding@siding', None, 'fac_paint@upper', 'wallint', 'concrete', 'tar'),
 }
 
 
