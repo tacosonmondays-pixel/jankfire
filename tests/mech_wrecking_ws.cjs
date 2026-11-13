@@ -94,8 +94,9 @@ const lerp = (a, b, k) => a.map((x, i) => x + (b[i] - x) * Math.max(0, Math.min(
   { const T0 = P.slice(), T1 = [P[0], Y, P[2] - 10], bT = [P[0], Y, P[2] - 10.5];
     await hold(1200, [[A, T0, { f: MF.MECH }], [B, bT], [C, far2]]); B.got.length = 0;
     await hold(600, [[A, T1, { f: MF.MECH }], [B, bT], [C, far2]]);
-    const td = B.all('dmg', (m) => m.to === B.id && m.w === 'wbram');
+    const td = B.all('dmg', (m) => m.to === B.id && m.w === 'wbram'), tk = B.all('kb', (m) => m.w === 'wbram').map((m) => Math.hypot(m.v[0], m.v[2]));
     ok(!td.length || td[0].a <= 30, `sat still, then one 10 m snapshot into them: no max ram (${td.length ? td[0].a : 'none'}; was 70)`);
+    ok(tk.every((k) => k <= 25), `...and no 60 m/s fling either (knockback ${tk.map((k) => k.toFixed(1)).join(', ') || 'none'}; an honest ram at that speed: about 12)`);
     P = settle(A, T1); await pilot(900); await sleep(2000); }
 
   // ---- 3. the rev: timed by the server

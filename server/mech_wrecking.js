@@ -94,7 +94,7 @@ export function installWrecking(Room, U) {
       // before (a ball that sat still and then "moved" 10 m in one snapshot rams like it was sitting still)
       const hs = Math.min(Math.hypot(v[0], v[1]), KIT.wrecking.cap.call(this, p, M, p.f, n), p.isBot ? 1e9 : (W.hsPrev || 0) + 12), h = wbRam(hs);
       if (!h) return;
-      const fx = v[0] / hs, fz = v[1] / hs;
+      const vl = Math.hypot(v[0], v[1]) || 1, fx = v[0] / vl, fz = v[1] / vl; // (the way it's going: a unit vector off the raw velocity, the clamped speed sizes the hit)
       for (const t of this.players.values()) {
         if (t === p || !t.alive || this.friendly(p, t) || n < (M.ramT.get(t.id) || 0)) continue;
         const dx = t.pos[0] - p.pos[0], dz = t.pos[2] - p.pos[2], l = Math.hypot(dx, dz), dy = t.pos[1] - p.pos[1];
