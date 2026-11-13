@@ -62,6 +62,8 @@ export const mechsfx = {
   // EJECT! EJECT!: a klaxon, the canopy pop, the boom
   eject(pos) { for (let i = 0; i < 3; i++) { T('square', 800, 560, 0.12, 0.12, pos, i * 0.14); } N(0.12, 0.8, 'highpass', 2000, 5000, pos, 0.42); T('sine', 300, 1200, 0.2, 0.2, pos, 0.42); },
   boom(pos) { T('sine', 70, 18, 1.6, 1, pos); N(1.6, 1, 'lowpass', 2500, 40, pos); N(0.3, 0.9, 'highpass', 1200, 6000, pos); metal(pos, 1, 0.6, 1.5); for (let i = 0; i < 6; i++) metal(pos, 0.4, rnd(0.8, 2.2), 0.4); },
+  // BEEP BEEP: a reversing truck's two square beeps and a rubbery bonk (your own mech parking on you)
+  beep(pos) { for (let i = 0; i < 2; i++) T('square', 1040, 1040, 0.13, 0.16, pos, i * 0.2); T('sine', 520, 180, 0.18, 0.35, pos, 0.02); N(0.06, 0.3, 'bandpass', 1800, 900, pos, 0.02); },
   denied() { T('square', 180, 120, 0.12, 0.12, null); },
   leave(pos) { N(1.6, 0.5, 'bandpass', 600, 2400, pos, 0, 0.8); T('sawtooth', 60, 180, 1.4, 0.1, pos); },
 };

@@ -279,6 +279,7 @@ export function installRig(Room, U) {
       const wall = stepProjectile(pr, dt, this.boxes, 0);
       const hit = this.sweep(prev, pr.p, pr.r + 0.1, (t) => t.id === pr.o || this.friendly(owner, t));
       if (hit.length) { pr.p = hit[0].at; this.rigBoom(pr, owner, hit[0].t); return; }
+      if (this.mechRayEmpty && this._mechs && this._mechs.size) { const sl = Math.hypot(pr.p[0] - prev[0], pr.p[1] - prev[1], pr.p[2] - prev[2]), sd = sl > 1e-6 ? [(pr.p[0] - prev[0]) / sl, (pr.p[1] - prev[1]) / sl, (pr.p[2] - prev[2]) / sl] : null, em = sd && this.mechRayEmpty(owner, prev, sd, sl + pr.r); if (em) { pr.p = [prev[0] + sd[0] * em.t, prev[1] + sd[1] * em.t, prev[2] + sd[2] * em.t]; this.rigBoom(pr, owner, null); return; } } // an empty mech in the way (server/mech.js)
       if (wall || age > M.life || pr.p[1] < this.map.killY) { this.rigBoom(pr, owner, null); return; }
       pr.sync -= dt;
       if (pr.sync <= 0) { pr.sync = 0.06; this.broadcast({ t: 'pu', id: pr.id, p: pr.p.map(r2), v: v.map(r2) }); }
@@ -296,6 +297,7 @@ export function installRig(Room, U) {
         const f = 1 - d / M.r, dir = d > 0.1 ? to.map((x) => x / d) : norm(pr.v) || [0, 1, 0], k = M.kb * (0.5 + 0.5 * f);
         this.hurt(t, owner, pr.k, M.dmg * (0.35 + 0.65 * f), [dir[0] * k, dir[1] * k * 0.5 + 5 * f, dir[2] * k], { from: pr.p });
       }
+      if (this.mechBoom) this.mechBoom(pr.p, M.r, M.dmg, owner, pr.k, 0.35); // empty mechs (server/mech.js)
     },
 
     // charged leap: the client jumps (movement is its own); the server notes how charged it really was, then the

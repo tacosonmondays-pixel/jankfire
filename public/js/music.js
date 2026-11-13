@@ -37,7 +37,7 @@ function where() {
   if (G.joined && G.roundOver) return 'menu'; // scoreboard, play of the round, the map vote: menu music, menu volume
   return 'match';
 }
-function matchOn() { if (G.cityBeds) return false; // OVERDUE's streamed city plays its own district beds (city/beds.js)
+function matchOn() { if (G.cityBeds || G.mode === 'story') return false; // OVERDUE's streamed city plays its own district beds (city/beds.js): no match song to fetch (3 MB) while it loads
   return competitive() ? !!G.settings.musicComp : G.settings.musicMatch !== false; }
 function num(v, d) { v = Number(v); return Number.isFinite(v) ? Math.max(0, Math.min(1, v)) : d; }
 function vol() { return num(G.settings.musicVol, 0.35); }
@@ -63,7 +63,7 @@ function pick(not = -1) {
 function load(i) {
   if (cache.has(i)) return Promise.resolve(cache.get(i));
   const tr = TRACKS[i];
-  return fetch(new URL('../music/' + tr.file, import.meta.url))
+  return fetch('/music/' + tr.file) // (not next to this script: its address changes every deploy, and the tracks would come down again)
     .then((r) => { if (!r.ok) throw new Error('http ' + r.status); return r.arrayBuffer(); })
     .then((b) => new Promise((ok, no) => { const p = ac.decodeAudioData(b, ok, no); if (p && p.catch) p.catch(no); }))
     .then((buf) => {
@@ -170,7 +170,7 @@ function tick() {
     goal = want;
   }
   if (ac.state !== 'running') return;
-  if (swap && where() === 'match') newSong();
+  if (swap && where() === 'match' && matchOn()) newSong(); // (not in story mode: it'd download a song nobody hears)
   if (goal > 0) { if (!cur && !loading) start(); else chain(); } else if (cur && t - zeroAt > FADE * 8) stop(); // fully faded (well under -60dB): let go
 }
 

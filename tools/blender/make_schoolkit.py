@@ -23,7 +23,7 @@ def mats():
         steel=mat('sk_steel', 0x9aa0aa, rough=0.3, metal=0.9), chrome=mat('sk_chrome', 0xe0e4ea, rough=0.12, metal=1.0),
         dark=mat('sk_dark', 0x26222c, rough=0.5), rubber=mat('sk_rubber', 0x18161c, rough=0.8),
         blue=mat('sk_blue', 0x3a8ae0, rough=0.28, clearcoat=0.7), pink=mat('sk_pink', 0xff4fd8, rough=0.28, clearcoat=0.7),
-        yellow=mat('sk_yellow', 0xffe14d, rough=0.3, clearcoat=0.6), cyan=mat('sk_cyan', 0x4fd8ff, rough=0.28, clearcoat=0.7),
+        yellow=mat('sk_yellow', 0xffe14d, rough=0.3, clearcoat=0.6), cyan=mat('sk_cyan', 0x4fd8ff, rough=0.28, clearcoat=0.7), water=mat('sk_drink_water', 0x4fd8ff, rough=0.05, clearcoat=0.7),
         red=mat('sk_red', 0xe0302a, rough=0.3, clearcoat=0.6), green=mat('sk_green', 0x2a8a4a, rough=0.35, clearcoat=0.5),
         white=mat('sk_white', 0xf4f2ea, rough=0.4), orange=mat('sk_orange', 0xff6a1a, rough=0.3, clearcoat=0.6),
         gold=mat('sk_gold', 0xf0c040, rough=0.18, metal=1.0), glass=mat('sk_glass', 0xbfe8ff, rough=0.08, alpha=0.25),
@@ -377,7 +377,8 @@ def bin_():  # 0.5 x 0.5, 0.8 tall
 def fountain():  # 0.5 x 0.4 on a wall behind it (-z), 1.0 tall
     P = [box((0.46, 0.5, 0.36), (0, 0.72, 0.0), M['steel'], bev=0.03), box((0.4, 0.02, 0.28), (0, 0.975, 0.02), M['dark'], bev=0.004), box((0.1, 0.7, 0.1), (0, 0.35, -0.12), M['steel'])]
     P.append(tube([(0.12, 0.97, -0.08), (0.12, 1.05, -0.08), (0.08, 1.07, -0.02)], 0.012, M['chrome'], seg=5)); P.append(box((0.3, 0.05, 0.02), (0, 0.8, 0.188), M['chrome'], bev=0.008))
-    P.append(tube([(0.08, 1.07, -0.02), (0.02, 1.12, 0.03), (-0.04, 1.04, 0.08), (-0.06, 0.985, 0.1)], 0.007, M['cyan'], seg=4))  # it never turned off
+    arc = [(0.08, 1.07, -0.02), (0.05, 1.105, 0.005), (0.02, 1.12, 0.03), (-0.01, 1.095, 0.055), (-0.04, 1.04, 0.08), (-0.06, 0.985, 0.1)]
+    P.append(stream_uv(sweep(arc, [0.008, 0.008, 0.008, 0.009, 0.01, 0.011], M['water'], seg=6, name='sk_drink_water'), arc, 6))  # it never turned off (*_water: the game makes it flow)
     return P
 
 
