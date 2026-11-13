@@ -69,6 +69,7 @@ import { installZombies } from './zombies.js';
 import { installStoryRef } from './storyref.js'; // story rooms: the OVERDUE referee's rules (enemies, sides, events)
 import { installModeStats } from './modestats.js'; // per-mode leaderboard stats
 import { installPregame } from './pregame.js'; // the pre-game deck off the map's edge, while a mode lobby counts down
+import { installHonesty } from './honesty.js'; // server honesty: what a client says it hit has to be possible
 import { inPit, pitUnder, sink, swim, mire } from '../shared/pits.js'; // pits with something in them (the volcano's lava)
 import { installPits } from './pits.js';
 import { inShredder } from '../shared/shredpit.js'; // the Warehouse's shredder pit: its teeth kill like the void
@@ -227,7 +228,7 @@ if (process.env.JF_SEC_SLOW) { const k = Number(process.env.JF_SEC_SLOW) || 1, T
 if (process.env.JF_SKIP_WINDOW) SKIP.window = Number(process.env.JF_SKIP_WINDOW) || SKIP.window;
 if (process.env.JF_SKIP_COOL) SKIP.cooldown = Number(process.env.JF_SKIP_COOL) || SKIP.cooldown;
 // test knobs for zombies: start on a later round, start rich, short breaks (ms), claw damage, bleed-out (s)
-const WX_FORCE = /^(?:off|[a-z]{1,12})$/.test(process.env.JF_WEATHER || '') ? process.env.JF_WEATHER : ''; // test knob: JF_WEATHER=rain = rain from second 0 on every map that has rain, erupt = Mount Kaboom already erupting, snow / stars likewise where a map gets them (off = never)
+const WX_FORCE = /^(?:off|[a-z]{1,12})$/.test(process.env.JF_WEATHER || '') ? process.env.JF_WEATHER : ''; // test knob: JF_WEATHER=rain = rain from second 0 on every map that has rain, erupt = Mount Kaboom already erupting, snow / stars / sand likewise where a map gets them (off = never)
 if (process.env.JF_ZM_ROUND) ZM.startRound = Number(process.env.JF_ZM_ROUND) || 1;
 if (process.env.JF_ZM_CREDITS) ZM.start = Number(process.env.JF_ZM_CREDITS) || ZM.start;
 if (process.env.JF_ZM_REST) ZM.rest = ZM.first = Number(process.env.JF_ZM_REST) || ZM.rest;
@@ -419,7 +420,7 @@ class Room {
     if (this.sendChaosKit(p)) return;
     if (p.isBot) { if (GAMES[this.game].random && !p.ai.dummy) { p.w = pick(BOT_GUNS); p.ai.ammo = WEAPONS[p.w].mag || 1; } return; }
     const rnd = (this.mode === 'ffa' || this.mode === 'bots') && GAMES[this.game].random;
-    if (rnd) { p.forced = true; send(p, { t: 'loadout', lo: this.randomLoadout() }); }
+    if (rnd) { p.forced = true; p.roll = this.randomLoadout(); send(p, { t: 'loadout', lo: p.roll }); } // (p.roll: the server keeps the roll, server/honesty.js checks hits against it)
     else if (p.forced) { p.forced = false; send(p, { t: 'loadout', lo: null }); }
   }
   joinTeam(p) {
@@ -2095,6 +2096,7 @@ class Room {
         if (dist > R || dist < 0.01) continue;
         const dir = to.map((x) => x / dist);
         if (!ult && dir[0] * d[0] + dir[1] * d[1] + dir[2] * d[2] < 0.6) continue;
+        if (!this.honWave(p, t)) continue; // a shockwave: not through walls (server/honesty.js)
         const k = ult ? 55 : 10 + rank * 4;
         this.hurt(t, p, 'cards', ult ? 30 : 12 + rank * 2, [dir[0] * k, dir[1] * k + (ult ? 14 : 6), dir[2] * k]); // (was rank * 2: a 2 of clubs did 4)
       }
@@ -4081,6 +4083,7 @@ installStoryRef(Room); // story rooms (before installModeStats, which stays last
 installWeather(Room, { now, send, force: WX_FORCE }); // the weather timeline (server/weather.js: wraps tick + addHuman)
 installPings(Room, { now, send }); // the big map's pings (server/pings.js)
 installPregame(Room, { send }); // the pre-game deck (after installReset: it wraps handle, the damage paths and the lobby)
+installHonesty(Room, { send }); // SERVER HONESTY: line of sight, held weapons, cones, aim points (server/honesty.js; wraps handle / onHit / onPush / onFire)
 installModeStats(Room, { store }); // per-mode leaderboard stats (last: it wraps zombies' zmGive)
 
 // ---------------------------------------------------------------- account stats

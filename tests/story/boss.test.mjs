@@ -198,7 +198,7 @@ await t('the live game is untouched: in a normal room a hit is a hit (headshots 
   const room = new Room('plain', 'bots'), sent = [];
   const p = room.addHuman({ readyState: 1, send: (x) => sent.push(JSON.parse(x)) }, { t: 'join', name: 'p', mode: 'bots' }), b = room.addBot({});
   assert.equal(b.sk, undefined);
-  p.pos = [0, 0.1, 0]; p.spawnT = 0; p.w = 'ar'; b.pos = [0, 0.1, -6];
+  p.pos = [70, 0.1, -9]; p.spawnT = 0; p.w = 'ar'; b.pos = [70, 0.1, -15]; // (open beach on Islands: [0, 0, 0] is 11 m inside the mountain, and the server checks line of sight)
   room.handle(p, { t: 'hit', to: b.id, w: 'ar', n: 1, h: 1, d: [0, 0, -1] });
   assert.equal(b.hp, 100 - WEAPONS.ar.dmg * WEAPONS.ar.head);
   assert.ok(sent.some((m) => m.t === 'dmg' && m.to === b.id && m.hs === true));
