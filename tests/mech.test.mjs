@@ -54,7 +54,7 @@ test('size: one number (x1.35 by default: 4.9 m -> 6.6 m), size 1 is the old mec
     assert.deepEqual([PP.h, PP.hw, PP.c0, PP.c1, PP.eye, PP.cam], [4.9, 0.8, 3.1, 4.15, 4.4, 8.5]);
     assert.deepEqual([NS.h, NS.hw, NS.c0, NS.c1, NS.eye, NS.cam], [5.7, 1.2, 3.3, 4.6, 5.3, 10]);
     assert.deepEqual([MECH.drop.r, MECH.drop.squash, MECH.drop.sky, MECH.bonk.r, MECH.bonk.d, MECH.reach, MECH.out, MECH.boom.r], [6, 1.9, 7, 2.3, 3, 4.5, 2.2, 5]);
-    assert.deepEqual([NS.sword.reach, NS.shield.bashR, NS.triple.r, NS.slam.r, PP.lunge.r, PP.jet.r, MECH.body.step, MECH.body.climb], [6.2, 5, 2.6, 8, 2.2, 2.6, 0.6, 1.5]);
+    assert.deepEqual([NS.sword.reach, NS.shield.bashR, NS.triple.r, NS.slam.r, PP.lunge.r, PP.jet.r, MECH.body.step, MECH.body.climb], [6.2, 5, 2.6, 8, 2.2, 2.6, 1, 1.5]);
     assert.equal(mechScale(1), 1); assert.equal(PP.h, 4.9); // (again: from the size-1 copy, not compounding)
     assert.equal(mechScale(9), 2); assert.equal(PP.h, 9.8);
     assert.equal(mechScale(0.1), 0.5); assert.equal(mechScale('x'), 0.5); assert.equal(mechScale(NaN), 0.5);
@@ -62,7 +62,7 @@ test('size: one number (x1.35 by default: 4.9 m -> 6.6 m), size 1 is the old mec
   assert.ok(Math.abs(PP.h - 6.615) < 1e-9);
   // speeds, damage, hp stay; the walking body is the legs (x0.75 of the frame's half width), as tall as the mech
   assert.equal(PP.speed, 14); assert.equal(NS.hp, 1500); assert.equal(MECH.drop.dmg, 60);
-  const bd = mechBody('nightshift'); assert.ok(Math.abs(bd.h - NS.h) < 1e-9 && Math.abs(bd.hw - NS.hw * 0.75) < 1e-9 && Math.abs(bd.step - 0.81) < 1e-9);
+  const bd = mechBody('nightshift'); assert.ok(Math.abs(bd.h - NS.h) < 1e-9 && Math.abs(bd.hw - NS.hw * 0.75) < 1e-9 && Math.abs(bd.step - 1.35) < 1e-9);
 });
 test('energy: spends, refuses when short, refills after the delay', () => {
   const E = newEnergy(0);

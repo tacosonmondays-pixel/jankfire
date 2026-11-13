@@ -21,7 +21,7 @@ export const MECH = {
   out: 2.2, // how far off its side you climb down when you hop out
   // its walking body (collision): the legs' footprint (x the frame's hw), the most it steps up without a hop, the slack
   // a floor adds to the hop's rise budget
-  body: { foot: 0.75, step: 0.6, climb: 1.5 },
+  body: { foot: 0.75, step: 1, climb: 1.5, knee: 0.3, thin: 0.6, small: 3.5, slab: 2.5 }, // (knee: x h. above it, mechPlough's clutter (thinner than thin, no longer than small, or a slab no deeper than slab) doesn't stop it)
   // energy: the meter, refill per s, how long after the last use it starts refilling
   energy: { max: 100, regen: 30, delay: 0.8 },
   head: 1.5, // a hit on the cockpit (the mech's "head" box)
@@ -192,10 +192,20 @@ export function mechScale(s) {
   MECH.scale = s;
   return s;
 }
-// the walking body (movePlayer's S): the legs' footprint, its height, its step
+// the walking body (movePlayer's S): the legs' footprint, its height, its step, and what it ploughs through
 export function mechBody(frame) {
-  const F = MECH[mechFrame(frame)];
-  return { hw: Math.max(0.4, F.hw * MECH.body.foot), h: F.h, step: MECH.body.step };
+  const F = MECH[mechFrame(frame)], knee = F.h * MECH.body.knee;
+  return { hw: Math.max(0.4, F.hw * MECH.body.foot), h: F.h, step: MECH.body.step, skip: (b, y) => b.min[1] > y + knee && mechPlough(b) };
+}
+// clutter a mech walks through once it's over its knees: foliage, and anything thin and small or a thin slab that
+// isn't roof-sized (palm fronds, lamp arms, signs, awnings, billboard grids). roofs, floors and walls (lintels
+// included: a door's wall goes on into the roof) still stop it
+const FOLIAGE = new Set(['leaves', 'leaves2', 'bush', 'thatch', 'grid']);
+export function mechPlough(b) {
+  const dx = b.max[0] - b.min[0], dy = b.max[1] - b.min[1], dz = b.max[2] - b.min[2], lo = Math.min(dx, dz), hi = Math.max(dx, dz);
+  if (FOLIAGE.has(b.mat)) return true;
+  if (Math.min(lo, dy) < MECH.body.thin && hi <= MECH.body.small) return true; // (a pole's arm, a lamp, a sign, a frond)
+  return dy < MECH.body.thin && lo <= MECH.body.slab; // (an awning, a canopy)
 }
 // room to land at g (the floor under the marker): open sky straight up (nothing for drop.open m), the legs' footprint (mechBody) clear from a
 // step over the floor up to the sky check, and its full width clear from the knees up (a crate by its feet is fine, a
@@ -204,7 +214,7 @@ export function mechRoom(g, frame, boxes) {
   const F = MECH[mechFrame(frame)], B = mechBody(frame), top = g[1] + Math.max(MECH.drop.sky, F.h + 0.3);
   if (raycast([g[0], g[1] + 0.2, g[2]], [0, 1, 0], Math.max(MECH.drop.open, top - g[1]), boxes)) return false;
   const col = (w, lo) => { // anything solid in the column w either side of the marker, from lo up to the top
-    for (const b of query(boxes, g[0] - w, g[2] - w, g[0] + w, g[2] + w, [])) if (!b.ter && b.max[1] > lo && b.min[1] < top && b.max[0] > g[0] - w && b.min[0] < g[0] + w && b.max[2] > g[2] - w && b.min[2] < g[2] + w) return true; // (shaped ground's steps: the heightfield below says it)
+    for (const b of query(boxes, g[0] - w, g[2] - w, g[0] + w, g[2] + w, [])) if (!b.ter && !(b.min[1] > g[1] + F.h * MECH.body.knee && mechPlough(b)) && b.max[1] > lo && b.min[1] < top && b.max[0] > g[0] - w && b.min[0] < g[0] + w && b.max[2] > g[2] - w && b.min[2] < g[2] + w) return true; // (shaped ground's steps: the heightfield below says it)
     return false;
   };
   if (col(B.hw, g[1] + B.step) || col(F.hw, g[1] + F.h * 0.3)) return false;

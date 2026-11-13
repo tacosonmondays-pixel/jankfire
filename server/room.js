@@ -2158,7 +2158,7 @@ class Room {
     this.mechBoom(p, R, dmg, owner, wid); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
-      const c = center(t), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to);
+      const c = this.mechBlastPt(t, p), to = [c[0] - p[0], c[1] - p[1], c[2] - p[2]], dist = Math.hypot(...to); // (a mech: the nearest point of its frame)
       if (dist > R) continue;
       const f = 1 - dist / R, dir = dist > 0.1 ? to.map((x) => x / dist) : [0, 1, 0];
       const self = owner && t.id === owner.id;
@@ -2175,7 +2175,7 @@ class Room {
     this.mechBoom(pr.p, w.radius, w.dmg, owner, 'chicken'); // empty mechs (server/mech.js)
     for (const t of this.players.values()) {
       if (!t.alive) continue;
-      const c = center(t);
+      const c = this.mechBlastPt(t, pr.p); // (a mech: the nearest point of its frame)
       const dx = c[0] - pr.p[0], dy = c[1] - pr.p[1], dz = c[2] - pr.p[2];
       const dist = Math.hypot(dx, dy, dz);
       if (dist > w.radius) continue;

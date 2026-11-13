@@ -20,7 +20,7 @@ function client(name, prt, extra = {}) {
     const m = JSON.parse(d);
     if (m.t === 'welcome') { c.id = m.id; c.q = m.q; c.ms = m.ms; }
     if (m.t === 'spawn') c.q = m.q;
-    if (m.t === 'sn') { const r = m.p.find((x) => x[0] === c.id); if (r) c.alive = !!r[11]; return; }
+    if (m.t === 'sn') { const r = m.p.find((x) => x[0] === c.id); if (r) { c.alive = !!r[11]; c.hp = r[10]; c.minHp = Math.min(c.minHp ?? 100, r[10]); } return; }
     c.got.push(m);
   });
   ws.on('error', () => {});
@@ -127,8 +127,50 @@ async function call(A, from, at, others, f = 'paperplane') {
   ok(h && !h.hs && h.a === 11, `shot at 6.5 m up, "headshot": lands on the shoulders, ${h && h.a} (body)`);
   h = await shoot(7.6, 0);
   ok(!h, 'shot at 7.6 m up: over it, nothing');
+  // ---- splash on a piloted mech: a chicken rocket bursting on the wall right by a NIGHT SHIFT's head. 8.3 m from its
+  // feet + 0.9 (what a blast used to measure to: a miss), 1.2 m from its frame (a hit)
+  const KB = [34.5, Y, 5], bDrop = [37.5, Y, 0];
+  await sleep(1000);
+  r = await call(B, [41, Y, 0], bDrop, [[A, po ? po.p : P], [C, [60, Y, 30]]], 'nightshift');
+  ok(r.call && r.call.f === 'nightshift', 'B calls in a NIGHT SHIFT by the warehouse wall');
+  await hold(1900, [[B, [41, Y, 0]], [A, po ? po.p : P], [C, [60, Y, 30]]]);
+  await hold(400, [[B, [bDrop[0] + 2, Y, bDrop[2]]], [A, po ? po.p : P], [C, [60, Y, 30]]]);
+  B.got.length = 0; B.send({ t: 'mech', k: 'in' });
+  const bin = await B.wait('mech', (m) => m.k === 'in' && m.id === B.id, 1000);
+  const BP = bin ? bin.p : bDrop, cR = [36, Y, 14], tgt = [32.3, 8.85, 7.2];
+  await hold(1600, [[B, (t) => { const k = Math.min(1, t / 1200); return [BP[0] + (KB[0] - BP[0]) * k, Y, BP[2] + (KB[2] - BP[2]) * k]; }, { f: MF.MECH, y: Math.PI }], [C, cR, { w: 'chicken' }], [A, po ? po.p : P]]);
+  C.got.length = 0; B.got.length = 0;
+  const ce = [cR[0], Y + 1.6, cR[2]];
+  C.send({ t: 'fire', w: 'chicken', o: ce, d: aim(ce, tgt).d });
+  await hold(900, [[B, KB, { f: MF.MECH, y: Math.PI }], [C, cR, { w: 'chicken' }], [A, po ? po.p : P]]);
+  const pd = C.take('pd', (m) => m.x === 1), bh = B.take('bhp', (m) => m.id === B.id), bd = bh && bin ? { a: bin.hp - bh.hp } : null; // (a pilot's hits land on its armour)
+  ok(bin && pd && pd.p[0] < 32.9 && pd.p[1] > 7.5, `the rocket bursts on the wall by its head (${pd && pd.p.map((x) => x.toFixed(1))})`);
+  ok(bd && bd.a > 10, `and the piloted NIGHT SHIFT takes the splash: armour -${bd && Math.round(bd.a)} (old: measured to its shins, a miss)`);
   ok(!srv.err, 'no server errors' + (srv.err ? ': ' + srv.err.slice(0, 300) : ''));
   for (const c of [A, B, C]) c.ws.close();
+  await sleep(500);
+  // ---- the owner at the landing: alone in a bots room (no bots), on the marker, then on one by the wall. nothing at
+  // landing hurts them: no shockwave, squash, bonk damage, no blast; climbing in and out neither
+  for (const [M2, what] of [[[45, Y, 14], 'on its own marker'], [[33.7, Y, 8], 'on its own marker by the wall']]) {
+    const O = await client('owner', port, { mode: 'bots', cfg: { bots: 0, map: 'warehouse' }, mf: 'paperplane' });
+    await sleep(4000);
+    O.minHp = 100;
+    const rr = await call(O, M2, M2, []);
+    ok(rr.call, `owner calls it ${what}` + (rr.no ? ': ' + rr.no.why : ''));
+    await hold(3000, [[O, M2]]);
+    const bonk = O.take('mech', (m) => m.k === 'bonk' && m.to === O.id), kb = O.take('kb', (m) => m.w === 'mechbonk');
+    const after = kb ? [M2[0] + kb.v[0] * 0.5, Y, M2[2] + kb.v[2] * 0.5] : M2; // (where the shove takes them, roughly)
+    await hold(1500, [[O, after]]);
+    O.send({ t: 'mech', k: 'in' });
+    const oin = await O.wait('mech', (m) => m.k === 'in' && m.id === O.id, 1000);
+    await hold(1600, [[O, oin ? oin.p : M2, { f: MF.MECH }]]);
+    O.send({ t: 'mech', k: 'out' });
+    const oo = await O.wait('mech', (m) => m.k === 'pos', 1000);
+    await hold(800, [[O, oo ? oo.p : M2]]);
+    const hurt = O.all('dmg', (m) => m.to === O.id);
+    ok(bonk && oin && oo && !hurt.length && O.minHp === 100 && O.hp === 100, `${what}: BEEP BEEP, in, out, and HP never left 100 (${O.minHp}; ${hurt.length} hits)`);
+    O.ws.close(); await sleep(500);
+  }
   srv.kill(); await sleep(800);
 
   // ================================================================ JF_MECH_SCALE=1: the old mech
