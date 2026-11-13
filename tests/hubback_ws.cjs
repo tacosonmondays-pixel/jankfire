@@ -33,7 +33,9 @@ function player(name, cfg) {
   await B.wait((m) => m.t === 'hubback' && m.k === 'open', 3000);
   B.send({ t: 'hbagain', on: true });
   const cnt = await B.wait((m) => m.t === 'hubback' && m.k === 'again', 2000);
-  ok(cnt && cnt.n === 1 && cnt.of === 1, 'PLAY AGAIN counted ' + JSON.stringify(cnt));
+  ok(cnt && cnt.n === 1 && cnt.of === 1 && cnt.total >= 600 && cnt.total <= 2000, 'PLAY AGAIN counted, with the new countdown ' + JSON.stringify(cnt));
+  B.send({ t: 'hbagain', on: false }); await sleep(150);
+  ok(B.got.filter((m) => m.t === 'hubback' && m.k === 'again').length === 1, 'flipping it back inside 250 ms: ignored');
   const st = await B.wait((m) => m.t === 'round' && m.start && m.at > o2.at, 3000);
   ok(st && st.game === 'dm' && st.at - o2.at < o2.next - 1000, `everyone said PLAY AGAIN: the same mode starts now (${st ? st.at - o2.at : '-'} ms in)`);
   ok(!B.got.some((m) => m.t === 'hubback' && m.k === 'go'), 'and nobody is sent back');

@@ -158,7 +158,7 @@ export function esVotes(m) {
   if (m.total) ES.totalEnd = performance.now() + m.total;
   renderCards(true);
 }
-export function esRekey() { if (ES.open && ES.vote) renderCards(true); } // a vote key got rebound: redraw the key on each card
+export function esRekey() { if (ES.open && ES.back) { delete $('esCards').dataset.stage; renderBack(); } else if (ES.open && ES.vote) renderCards(true); } // a vote key got rebound: redraw the key on each card
 export function esCast(i) {
   const v = ES.vote;
   if (!v || v.stage === 'done' || i < 0 || i >= v.options.length || i === ES.my) return false;
@@ -175,7 +175,7 @@ export function esKey(e, vi = -1) { // vi: which vote key (keys.js vote1-4) this
   if (!ES.open) return false;
   const d = /^(Digit|Numpad)([1-9])$/.exec(e.code || '');
   const n = vi >= 0 ? vi : d && (d[1] === 'Numpad' || d[2] > 4) ? Number(d[2]) - 1 : -1; // 1-4 follow the vote bindings; numpad and 5+ always vote
-  if (n >= 0 && ES.back) { if (!e.repeat && n < 2) backPick(n); return true; }
+  if (n >= 0 && ES.back) { if (!e.repeat && n < 2) backPick(n, true); return true; }
   if (n >= 0 && ES.vote && ES.vote.stage !== 'done') { if (!e.repeat) esCast(n); return true; }
   if (!ES.mini && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
     const i = TABS.findIndex(([id]) => id === ES.tab), j = (i + (e.code === 'ArrowLeft' ? TABS.length - 1 : 1)) % TABS.length;
@@ -452,12 +452,13 @@ export function esBack(m) {
     if (!ES.open) { ES.round = ES.round || { pending: 1 }; open(); }
     $('esClock').previousElementSibling.textContent = 'BACK TO LOBBY IN';
     renderVote(true);
-  } else if (m.k === 'again' && ES.back) { ES.back.n = m.n | 0; ES.back.of = m.of | 0; renderBack(); }
+  } else if (m.k === 'again' && ES.back) { ES.back.n = m.n | 0; ES.back.of = m.of | 0; if (Number.isFinite(m.total)) ES.totalEnd = performance.now() + m.total; renderBack(); }
 }
-function backPick(i) {
+function backPick(i, key) {
   const b = ES.back;
   if (!b) return;
   sfx.pop();
+  if (i === 1 && key && !b.sure) { b.sure = true; renderBack(); setTimeout(() => { if (ES.back === b) { b.sure = false; renderBack(); } }, 2000); return; } // (the key twice: someone mashing weapon 2 as the match ends shouldn't leave)
   if (i === 1) { if (ES.opts.back) ES.opts.back(b.mode); return; }
   b.again = !b.again;
   net.send({ t: 'hbagain', on: b.again });
@@ -471,7 +472,7 @@ function renderBack() {
   if (!box || !b) return;
   const mode = (ES.round && GAMES[ES.round.game] && ES.round.game) || (G.round && G.round.game) || 'dm', name = GAMES[mode] ? GAMES[mode].name : '';
   const others = b.of > 1 ? ` · ${b.n}/${b.of} want more` : '';
-  $('esHint').textContent = b.again ? `you're in for another one${others}. click it again to back out` : `click a card or press ${K.label('vote1')} / ${K.label('vote2')}${others}`;
+  $('esHint').textContent = b.sure ? `press ${K.label('vote2')} again to go back to the lobby` : b.again ? `you're in for another one${others}. click it again to back out` : `click a card or press ${K.label('vote1')} / ${K.label('vote2')}${others}`;
   if (box.dataset.stage !== 'back') {
     box.innerHTML = ''; box.dataset.stage = 'back';
     box.classList.add('deal'); void box.offsetWidth;

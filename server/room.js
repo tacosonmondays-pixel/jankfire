@@ -40,7 +40,7 @@ import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { teamPlan } from './partyteams.js'; // parties stay on one side
 import { ticketRoom } from './party.js'; // party tickets (roomFor)
-import { HUB_BACK, hubBackOpen, hubBackPick, hubBackDue } from './hubback.js'; // offline single-mode matches go back to their lobby
+import { HUB_BACK, hubBackOpen, hubBackPick, hubBackDue, hubBackJoin, hubBackGame } from './hubback.js'; // offline single-mode matches go back to their lobby
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
 import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
 import { ISLE } from '../shared/island.js';
@@ -522,6 +522,7 @@ class Room {
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     skipPeople(this); // one more human: a skip vote needs more
     send(p, { t: 'tip', tip: p.tip });
+    hubBackJoin(this, p); // the end screen of an offline single-mode match is up: PLAY AGAIN / LOBBY for them too
     if (hasRandom(p.skinWant)) send(p, { t: 'sk', id: p.id, s: p.skins }); // your random slots' first roll
     for (const t of this.players.values()) if (t.trap) send(p, { t: 'trap', ...this.trapInfo(t) }); // anyone already floating in a soap bubble
     this.gearJoin(p); // photo frames standing, quizzes going
@@ -2802,7 +2803,7 @@ class Room {
       else this.resetWorld();
     }
     if (has(HIPFIRE, m.hip) && m.hip !== this.cfg.hip) { this.cfg.hip = m.hip; changes.push(`hipfire → ${HIPFIRE[m.hip].name}`); }
-    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
+    if (has(GAMES, m.game) && m.game !== this.game && this.mode === 'bots' && this.setGame(m.game)) { changes.push(`mode → ${GAMES[m.game].name}`); hubBackGame(this); this.vote = null; if (this.round) { this.round.over = true; this.round.next = now() + 1000; } setTimeout(safe('startRound', () => this.startRound()), 50); } // over: tickRound mustn't judge the old round by the new mode's rules
     if (has(BOT_DIFF, m.diff) && m.diff !== this.cfg.diff && this.mode !== 'ffa') {
       this.cfg.diff = m.diff;
       for (const b of this.players.values()) if (b.isBot) b.ai.diff = m.diff;
