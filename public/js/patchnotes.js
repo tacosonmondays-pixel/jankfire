@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.45', date: '2026-11-13', title: 'DEAD AIR', items: [
+    "deb's boombox works now. two stations, both terrible, both great: WZMB 66.6 SMOOTH APOCALYPSE and BRAAAINS FM. walk up to the desk in the zombies lobby to hear it. the dial drifts between them through static.",
+  ] },
   { v: '11.44', date: '2026-11-13', title: 'STAFF MEETING', items: [
     "deb, gus and marge in the zombies lobby are proper characters now. deb stamps your passive, gus spins the revolver, marge blows a gum bubble and ticks you off her clipboard. they look at you when you walk up. they are not happy about it.",
   ] },
