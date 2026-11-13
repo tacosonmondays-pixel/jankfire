@@ -1648,7 +1648,7 @@ class Room {
     return true;
   }
   rangeOk(p, t, range) {
-    const slack = 6 + Math.hypot(...p.vel) * 0.3 + Math.hypot(...t.vel) * 0.3;
+    const slack = 6 + this.speedOf(p) * 0.3 + this.speedOf(t) * 0.3; // (speedOf: the claimed speed, but no faster than the snapshots saw them move: a fake 1e5 m/s velocity used to stretch every hit's reach)
     return dist3(p.pos, t.pos) <= range + slack;
   }
   // most pellets a shot could honestly land at this distance: the spread disc vs the (client-side, distance-scaled) hitbox, with slack.
