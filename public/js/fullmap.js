@@ -46,13 +46,16 @@ html.touch #fmX { width: 46px; height: 34px; font-size: 20px; }
 @media (max-width: 560px) { #fmTag { font-size: 16px; } #fmName { left: 150px; font-size: 13px; } #fmFoot { font-size: 11px; } #fmFoot .keys { display: none; } }
 `;
 
+// extras that plug into the big map (mappencil.js): layers drawn under the pings, a pointer gesture on the map (down
+// returns true to take it), and things to add once the panel exists
+export const FMX = { layers: [], down: null, move: null, up: null, built: [] };
 const FM = { open: false, base: null, baseFor: '', ext: null, ppm: 1, drawT: 0, cssW: 0, cssH: 0, view: null, lock: null, built: false };
 const pings = new Map(); // id -> { id, by, p, t, col, name, el, beam }
 let wrap = null, cv = null, pinLayer = null;
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const PAL = ['#4fd8ff', '#39ff14', '#ff4fd8', '#ff9f1a', '#b07dff'];
-const pingCol = (by) => (by === G.myId ? '#ffe14d' : PAL[Math.abs(by | 0) % PAL.length]);
+export const pingCol = (by) => (by === G.myId ? '#ffe14d' : PAL[Math.abs(by | 0) % PAL.length]);
 const nameOf = (id) => (id === G.myId ? 'YOU' : (G.names.get(id) || {}).name || '???');
 const mapOn = () => G.joined && !G.story && !!MAPS[G.cfg.map];
 const ally = (r) => isFriend(r) || ((G.mode === 'coop' || G.game === 'zombies') && !r.bot);
@@ -67,7 +70,11 @@ function build() {
   pinLayer = document.createElement('div'); pinLayer.id = 'fmPins';
   ($('hud') || document.body).appendChild(pinLayer);
   cv = $('fmCv');
-  cv.addEventListener('click', (e) => { e.stopPropagation(); mapClick(e); });
+  cv.addEventListener('click', (e) => { e.stopPropagation(); if (FM.took) { FM.took = false; return; } mapClick(e); });
+  cv.addEventListener('pointerdown', (e) => { if (FMX.down && FM.open && FMX.down(e, ...fmWorld(e.clientX, e.clientY))) { FM.took = true; e.preventDefault(); try { cv.setPointerCapture(e.pointerId); } catch { /* fine */ } } else FM.took = false; });
+  cv.addEventListener('pointermove', (e) => { if (FM.took && FMX.move) FMX.move(e, ...fmWorld(e.clientX, e.clientY)); });
+  for (const t of ['pointerup', 'pointercancel']) cv.addEventListener(t, (e) => { if (FM.took && FMX.up) FMX.up(e, t === 'pointercancel'); });
+  for (const f of FMX.built) f($('fmPanel'));
   $('fmX').addEventListener('click', (e) => { e.stopPropagation(); closeMap(true); });
   addEventListener('resize', () => { if (FM.open) size(); });
 }
@@ -164,6 +171,7 @@ function drawMap(now) {
     if (ally(r)) { const col = TEAMS[r.team] ? TEAMS[r.team].color : '#4fd8ff'; dot(p, col); label(p, (G.names.get(r.id) || {}).name || '', col); if (bomb && bomb.carrier === r.id) { x.strokeStyle = '#ffb04f'; x.lineWidth = 2.5 * dpr; x.beginPath(); x.arc(p[0], p[1], 9 * dpr, 0, 7); x.stroke(); } }
     else if (sat) dot(p, '#ff3030', 4.5);
   }
+  for (const f of FMX.layers) f(x, toCv, now, dpr); // pencil strokes (mappencil.js)
   // pings
   for (const g of pings.values()) drawPingMark(x, toCv(g.p[0], g.p[2]), g, now, dpr, true);
   // you: the arrow (in the blimp: you're the blimp)
@@ -232,11 +240,15 @@ function sendPing(x, y, z) {
   net.send({ t: 'mping', x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10, z: Math.round(z * 10) / 10 });
   return true;
 }
+// a point on the map canvas -> world x, z
+export function fmWorld(cx, cy) {
+  const r = cv.getBoundingClientRect(); // (the panel is tilted a hair: close enough)
+  const fx = (cx - r.left) / r.width, fz = (cy - r.top) / r.height;
+  return [FM.ext[0] + fx * (FM.ext[2] - FM.ext[0]), FM.ext[1] + fz * (FM.ext[3] - FM.ext[1])];
+}
 function mapClick(e) {
   if (!FM.open || !FM.view) return;
-  const r = cv.getBoundingClientRect(); // (the panel is tilted a hair: close enough)
-  const fx = (e.clientX - r.left) / r.width, fz = (e.clientY - r.top) / r.height;
-  const wx = FM.ext[0] + fx * (FM.ext[2] - FM.ext[0]), wz = FM.ext[1] + fz * (FM.ext[3] - FM.ext[1]);
+  const [wx, wz] = fmWorld(e.clientX, e.clientY);
   sendPing(wx, groundAt(wx, wz) + 0.1, wz);
 }
 // the ping key: wherever you look (the first thing the look ray hits)
