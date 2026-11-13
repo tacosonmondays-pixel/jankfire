@@ -172,7 +172,7 @@ function mark(o) {
   const m = Array.isArray(o.material) ? o.material[0] : o.material;
   if (!m) return;
   const see = !(m.transparent && m.opacity < 0.95) && m.blending === THREE.NormalBlending && m.side !== THREE.BackSide && m.depthWrite !== false && m.colorWrite !== false;
-  o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && (castAny || big(o));
+  if (!o.userData.castBy) o.castShadow = castOK && see && !o.userData.noShadow && !o.userData.noCast && (castAny || big(o)); // (castBy: its owner decides, the city stream casts only the chunks round you)
   o.receiveShadow = see && !o.userData.noShadow && !m.isMeshBasicMaterial && !m.isShaderMaterial && !m.isMeshNormalMaterial;
 }
 function sweep() {
@@ -337,6 +337,18 @@ function remoteShadow(r) {
   const cx = root.position.x - rq.cx, cz = root.position.z - rq.cz;
   if (cast && root.visible && cx * cx + cz * cz < rq.half2) { rq.dyn = true; if (r.shadow) r.shadow.visible = false; }
 }
+// a checksum of where o's shadow-casting parts are, to about 4 mm and a quarter degree (what the shadow map can show):
+// the same number means no shadow in it moved, turned, came or went. (a face's blinks and eyes cast nothing, and an
+// easing turn that never quite lands stops counting once it's under that)
+let _ps = 0, _pn = 0;
+const qz = (v) => Math.round(v * 256);
+function poseAdd(c) {
+  if (!c.isMesh || !c.castShadow) return;
+  if (c.isSkinnedMesh || c.isInstancedMesh) { _ps = NaN; return; } // (bones / instances move without its matrix: as before, always redraw)
+  const e = c.matrixWorld.elements; _pn++;
+  _ps += _pn * (qz(e[12]) * 1.11 + qz(e[13]) * 1.29 + qz(e[14]) * 1.41 + qz(e[0]) * 2.1 + qz(e[1]) * 2.3 + qz(e[2]) * 2.7 + qz(e[4]) * 3.1 + qz(e[5]) * 3.3 + qz(e[6]) * 3.7 + qz(e[8]) * 4.1 + qz(e[9]) * 4.3 + qz(e[10]) * 4.7);
+}
+function poseSig(o) { _ps = 0; _pn = 0; o.traverseVisible(poseAdd); return _ps + _pn * 0.001; }
 export function updateLighting(dt) {
   if (!L.sun) return;
   const f = ++L.frame;
@@ -381,14 +393,17 @@ export function updateLighting(dt) {
   // remotes: real shadows close up (blob far away), and they make the map refresh
   rq.near2 = q.near * q.near; rq.half2 = q.half * q.half * 0.8; rq.dyn = false; rq.cx = ctr.x; rq.cz = ctr.z; rq.px = cam.position.x; rq.pz = cam.position.z;
   G.remotes.forEach(remoteShadow);
-  let dyn = rq.dyn;
-  for (let i = 0; i < L.dyn.length && !dyn; i++) {
+  // the rest only make it redraw when something in them moved since the last redraw (a story extra's 12 fps pose, a
+  // walker, a prop coming or going): standing still, the shadows are already right
+  let sig = 0;
+  for (let i = 0; i < L.dyn.length; i++) {
     const o = L.dyn[i];
     if (!o.visible || !o.parent) continue;
     const dx = o.position.x - ctr.x, dz = o.position.z - ctr.z;
-    if (dx * dx + dz * dz < rq.half2) dyn = true;
+    if (dx * dx + dz * dz < rq.half2) sig += (i + 1) * 0.618 + poseSig(o);
   }
-  if (need || (dyn && f % q.every === 0)) { L.sun.shadow.needsUpdate = true; L.dirty = false; lightStats.passes++; }
+  const dyn = rq.dyn || sig !== L.dynSig;
+  if (need || (dyn && f % q.every === 0)) { L.sun.shadow.needsUpdate = true; L.dirty = false; lightStats.passes++; L.dynSig = sig; }
 }
 
 // ------------------------------------------------------------ baked AO (world.js calls these while building the map)
