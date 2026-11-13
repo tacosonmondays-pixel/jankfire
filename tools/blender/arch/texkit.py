@@ -30,6 +30,8 @@ PIN = {
  'bamboo': (501, 0), 'bamwall': (511, 0), 'thatch': (521, 0), 'fringe': (531, 0), 'grain': (541, 0), 'frond': (551, 0),
  'weave': (561, 0), 'hammock': (571, 0),  # (the tiki village's: they also seed their own draws)
  'ph_glass': (3101, 0),
+ 'shackwall': (4601, 0), 'net': (4611, 0), 'timber': (4621, 0), 'tread': (4631, 0), 'rope': (4641, 0), 'shacktags': (4651, 0),  # (the pier and the bait shack's)
+ 'limewash': (4701, 0), 'pantile': (4711, 0), 'polka': (4721, 0), 'doormat': (4731, 0),  # (the keeper's cottage's)
 }
 
 
@@ -808,6 +810,172 @@ def ph_glass(n=128):
     return np.clip(base + shine[..., None] * hexc('#e8d8ff'), 0, 1)
 
 
+# ------------------------------------------------------------ the pier and the bait shack (Islands): sun-bleached shack
+# boards in leftover paint, fishing net, weathered pile timber, tyre tread, rope, the shack's hand-painted boards.
+# each draws only from its own seeds (and has its own PIN line)
+def shackwall(n=64):
+    """the shack's boards (1.6 m a tile; u across, v up): eight boards standing side by side, each a different leftover
+    paint (sea blue, salmon, mint, lemon, white, or none) peeling to grey wood, grain up them, a dark gap between, nail
+    heads where the rails are behind, a butt joint somewhere up each one. its own colour"""
+    rg = np.random.default_rng(4601)
+    paints = ['#4fb4ff', '#ff8a7a', '#fff6ea', '#7dffb8', None, '#ffe14d', '#ff8ac8', '#fff6ea']
+    order = rg.permutation(len(paints))
+    img = np.zeros((n, n, 3), np.float32)
+    wood = 0.62 + (vnoise(n, 4, 4602) - 0.5) * 0.2 + (rg.random((1, n)) - 0.5) * 0.18  # grain: streaks up the board
+    wood = ramp(np.clip(np.broadcast_to(wood, (n, n)) - fbm(n, 8, 3, seed=4603) * 0.15, 0, 1), [(0, '#7a7064'), (0.5, '#d0c6b8'), (1, '#fbf4e8')])
+    def aniso(cy, cx, seed):  # value noise with tall cells: paint flakes off along the grain
+        lat = np.random.default_rng(seed).random((cy, cx)).astype(np.float32)
+        ty, tx = np.arange(n) * cy / n, np.arange(n) * cx / n; iy, ix = np.floor(ty).astype(int), np.floor(tx).astype(int)
+        fy, fx = (1 - np.cos((ty - iy) * np.pi)) / 2, (1 - np.cos((tx - ix) * np.pi)) / 2
+        a = lat[iy % cy][:, ix % cx] * (1 - fx) + lat[iy % cy][:, (ix + 1) % cx] * fx; b = lat[(iy + 1) % cy][:, ix % cx] * (1 - fx) + lat[(iy + 1) % cy][:, (ix + 1) % cx] * fx
+        return a * (1 - fy)[:, None] + b * fy[:, None]
+    peel = aniso(4, 16, 4604) * 0.6 + aniso(8, 32, 4607) * 0.4
+    for k in range(8):
+        x0, x1 = k * 8, k * 8 + 8; pc = paints[order[k]]
+        b = wood[:, x0:x1].copy()
+        if pc is not None:
+            keep = peel[:, x0:x1] < 0.44 + rg.random() * 0.12  # where the paint's still on
+            col = hexc(pc) * (0.82 + 0.18 * (np.arange(8)[None, :, None] < 6))  # (the board's right edge a touch darker)
+            b = np.where(keep[..., None], col * (0.9 + 0.1 * vnoise(n, 8, 4605 + k)[:, x0:x1, None]), b)
+        b[:, 7] *= 0.35  # the gap
+        b[:, 0] *= 1.08
+        yj = int(rg.integers(4, n - 4)); b[yj, :7] *= 0.3; b[(yj + 1) % n, :7] *= 0.8  # a butt joint
+        for yy in (int(n * 0.22), int(n * 0.72)): b[yy, 2] = hexc('#2a2420'); b[yy, 5] = hexc('#2a2420')  # nails
+        img[:, x0:x1] = b
+    img = shade(img, 1 - streaks(n, 6, seed=4606, length=(0.2, 0.6)) * 0.25)  # rust and salt runs from the nails
+    return np.clip(img, 0, 1)
+
+
+def net(n=32):
+    """fishing net (0.5 m a tile, tinted): a diamond mesh of knotted twine, the knots fatter. 1-bit alpha"""
+    yy, xx = np.mgrid[0:n, 0:n]
+    a = (((xx + yy) % 8 == 0) | ((xx - yy) % 8 == 0)).astype(np.float32)
+    g = 0.75 + (vnoise(n, 4, 4611) - 0.5) * 0.3
+    knot = (((xx + yy) % 8 == 0) & ((xx - yy) % 8 == 0))
+    g = np.where(knot, 0.4, g)
+    img = ramp(np.clip(g, 0, 1), [(0, '#3a4038'), (0.6, '#b8c0b0'), (1, '#f0f0e6')])
+    return img, a
+
+
+def timber(n=32):
+    """weathered pile and beam timber (1 m a tile, tinted; on a pile u goes once round it, v up it): silver-grey grain
+    running along v, long dark checks, a knot"""
+    x = np.arange(n)[None, :].astype(np.float32)
+    g = 0.68 + 0.1 * np.sin((x + vnoise(n, 4, 4622) * 5) * 1.3) + (vnoise(n, 16, 4623) - 0.5) * 0.12
+    g = g + (fbm(n, 4, 3, seed=4624) - 0.5) * 0.2
+    rg = np.random.default_rng(4621)
+    for _ in range(5):  # checks: splits along the grain
+        cx, cy, L = int(rg.integers(n)), int(rg.integers(n)), int(rg.integers(6, 20))
+        for j in range(L): g[(cy + j) % n, cx] = 0.18
+    yy, xx = np.mgrid[0:n, 0:n]; k = np.hypot(np.minimum(abs(xx - 20), n - abs(xx - 20)), np.minimum(abs(yy - 10), n - abs(yy - 10)) * 0.6)
+    g = np.where(k < 1.6, 0.25, np.where(k < 3, g * 0.85, g))
+    return ramp(np.clip(g, 0, 1), [(0, '#4a4440'), (0.5, '#c0bab2'), (0.8, '#e4ded4'), (1, '#fbf8f2')])  # (sun-bleached: light, so the paint over it stays loud)
+
+
+def tread(n=32):
+    """a tyre's tread (u round the tyre: one tile = a quarter of it; v across the tread): chunky blocks, grooves, the
+    shoulders worn shiny. its own colour"""
+    yy, xx = np.mgrid[0:n, 0:n]
+    g = np.full((n, n), 0.42, np.float32)
+    blk = ((xx // 4) % 2 == 0)
+    g = np.where((yy > 4) & (yy < 14) & blk, 0.62, g); g = np.where((yy > 17) & (yy < 27) & ~blk, 0.62, g)
+    g = np.where((yy == 15) | (yy == 16), 0.12, g)  # the centre groove
+    g = np.where((yy < 3) | (yy > n - 4), 0.5, g)  # the shoulders
+    g = g + (vnoise(n, 8, 4631) - 0.5) * 0.12 - speck(n, 0.04, seed=4632) * 0.15
+    return ramp(np.clip(g, 0, 1), [(0, '#0c0c10'), (0.5, '#2a2a30'), (1, '#55555e')])
+
+
+def rope(n=16):
+    """laid rope (u round it, one tile = 0.25 m along it, v along): three strands twisting round, tinted"""
+    yy, xx = np.mgrid[0:n, 0:n]
+    t = ((xx + yy * 1.0) % (n / 3)) / (n / 3)
+    g = 0.5 + 0.45 * np.sin(t * math.pi) - (t < 0.12) * 0.3 + (vnoise(n, 4, 4641) - 0.5) * 0.1
+    return ramp(np.clip(g, 0, 1), [(0, '#3a3024'), (0.6, '#c0b49a'), (1, '#f4ecd8')])
+
+
+def shacktags(n=64):
+    """the shack's own hand-painted boards (u across, v down: two boards stacked, each half the height): "GONE FISHIN"
+    in red on a white board, "WORMS / NO REFUNDS" in black on lemon. own colour"""
+    w = n * 2; A = Image.new('RGBA', (w, n), (0, 0, 0, 255)); D = ImageDraw.Draw(A)
+    rg = np.random.default_rng(4651)
+    for k, (bg, fg, lines) in enumerate([((240, 236, 222, 255), (200, 30, 50, 255), [('GONE', 2), ('FISHIN', 2)]),
+                                         ((246, 220, 116, 255), (26, 20, 30, 255), [('WORMS', 2), ('NO REFUNDS', 1)])]):
+        y0 = k * n // 2; D.rectangle([0, y0, w - 1, y0 + n // 2 - 1], fill=(60, 44, 34, 255)); D.rectangle([2, y0 + 2, w - 3, y0 + n // 2 - 3], fill=bg)
+        cy = y0 + 4
+        for s, sc in lines:
+            im = text_img(s, sc, fg); A.alpha_composite(im, ((w - im.width) // 2 + int(rg.integers(-2, 3)), cy)); cy += im.height + 1
+    img = np.asarray(A.convert('RGB'), np.float32) / 255
+    g = 0.88 + fbm(n, 4, 3, seed=4652)[:, np.arange(w) % n][..., None] * 0.18
+    return np.clip(img * g, 0, 1)
+
+
+# ------------------------------------------------------------ the keeper's cottage (Islands): whitewashed rubble walls,
+# a pantile roof, laundry, the doormat. each draws only from its own seeds (and has its own PIN line)
+def limewash(n=64):
+    """rubble stone under whitewash (2 m a tile, tinted): rough stones about 25-40 cm, wider than tall, in loose courses,
+    the lime pooled thick in the joints (lighter) and thin over the stones' bumps, a few bare patches where it's flaked"""
+    rg = np.random.default_rng(4701)
+    rows = 6; pts = []
+    for r in range(rows):  # a course: stones of random widths laid end to end round the tile
+        x0 = rg.random() * n; y0 = (r + 0.5) * n / rows; ws = n / 4.5 * (0.7 + rg.random(9) * 0.6); ws = ws[:max(3, int(np.searchsorted(np.cumsum(ws), n)))]; ws *= n / ws.sum()
+        for k in range(len(ws)): pts.append(((x0 + ws[:k].sum() + ws[k] / 2) % n, y0 + (rg.random() - 0.5) * n / rows * 0.6))
+    P = np.array(pts, np.float32)
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    d = []
+    for (px, py) in P:
+        dx = np.minimum(abs(xx - px), n - abs(xx - px)) * 0.62; dy = np.minimum(abs(yy - py), n - abs(yy - py))
+        d.append(np.hypot(dx, dy))
+    d = np.sort(np.stack(d), 0); edge = d[1] - d[0]; own = np.stack([np.hypot(np.minimum(abs(xx - px), n - abs(xx - px)) * 0.62, np.minimum(abs(yy - py), n - abs(yy - py))) for px, py in P]).argmin(0)
+    tone = (np.random.default_rng(4702).random(len(P)) - 0.5)[own] * 0.08
+    bump = np.clip(1 - d[0] / 9, 0, 1) * 0.1  # the stone's face rounds out from its middle
+    g = 0.86 + tone * 0.6 + bump * 0.7 + (vnoise(n, 8, 4703) - 0.5) * 0.05
+    g = np.where(edge < 1.4, 0.98, np.where(edge < 2.8, g - 0.18, g))  # lime thick in the joints, a shadow at the stone's lip
+    bare = np.clip((fbm(n, 4, 3, seed=4704) - 0.72) * 6, 0, 1) * (edge > 2.6)  # flaked: the grey stone shows
+    img = ramp(np.clip(g, 0, 1), [(0, '#9a9aa0'), (0.8, '#f0f0f0'), (1, '#ffffff')])
+    img = mix(img, ramp(np.clip(g - 0.15, 0, 1), [(0, '#7a7670'), (1, '#c8c2b8')]), bare * 0.6)
+    return np.clip(img - speck(n, 0.015, seed=4705)[..., None] * 0.12, 0, 1)
+
+
+def pantile(n=32):
+    """clay pantiles (1 m a tile, tinted; u along the eave, v up the slope): four S-curved tiles a metre across, three
+    courses up it, each course's tail lapped under the one above (a dark shadow line), crests lit, troughs dark"""
+    rg = np.random.default_rng(4711)
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    w = n / 4; c = n / 3
+    t = (xx % w) / w
+    prof = np.sin(t * math.tau - 0.6)  # the roll and the pan
+    ci = (yy // c).astype(int); col = (xx // w).astype(int)
+    var = (rg.random((3, 4)) - 0.5)[ci % 3, col % 4] * 0.12
+    fy = (yy % c) / c
+    g = 0.64 + prof * 0.3 + var + (vnoise(n, 8, 4712) - 0.5) * 0.06
+    g = np.where(fy > 0.84, 0.18 + (fy - 0.84) * 2.5, g)  # (v up: the course above laps over this one's top: its shadow)
+    g = g + (fy < 0.12) * 0.1  # the lit lip of the lap
+    return ramp(np.clip(g, 0, 1), [(0, '#7a7276'), (0.6, '#d8d4d6'), (1, '#ffffff')])
+
+
+def polka(n=32):
+    """polka dots (0.5 m a tile, its own colour): white dots on hot pink, two to a row, every other row shifted"""
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32)
+    a = np.hypot(((xx + 0.5) % 16) - 8, ((yy + 0.5) % 16) - 8) < 3.4
+    b = np.hypot(((xx + 8.5) % 16) - 8, ((yy + 8.5) % 16) - 8) < 3.4
+    g = (vnoise(n, 4, 4721) - 0.5) * 0.08
+    img = np.where((a | b)[..., None], hexc('#fffaf4'), hexc('#ff3fb4'))
+    return np.clip(img * (1 + g[..., None]), 0, 1)
+
+
+def doormat(n=64):
+    """a coir doormat (u across, v down; 64 x 32): bristly brown, a dark border, GO AWAY in black. its own colour"""
+    w, h = n, n // 2
+    g = 0.6 + (np.random.default_rng(4731).random((h, w)) - 0.5) * 0.3 + (vnoise(n, 8, 4732)[:h] - 0.5) * 0.15
+    img = ramp(np.clip(g, 0, 1), [(0, '#6a4420'), (0.6, '#c08a48'), (1, '#e8b870')])
+    img[:2] *= 0.35; img[-2:] *= 0.35; img[:, :2] *= 0.35; img[:, -2:] *= 0.35
+    t = np.asarray(text_img('GO AWAY', 2, (30, 18, 12, 255), pad=0))
+    ty, tx = (h - t.shape[0]) // 2, (w - t.shape[1]) // 2
+    m = t[..., 3] > 0
+    img[ty:ty + t.shape[0], tx:tx + t.shape[1]][m] = hexc('#24140c')
+    return np.clip(img, 0, 1)
+
+
 def main():
     global OUT
     if '--out' in sys.argv: OUT = os.path.abspath(sys.argv[sys.argv.index('--out') + 1])  # (the repro test writes to a temp dir)
@@ -852,6 +1020,16 @@ def main():
     pin('weave'); out['weave'] = save('weave', weave(), 0.5, note='tint')
     pin('hammock'); hi, ha = hammock(); out['hammock'] = save('hammock', hi, 1.0, alpha=ha, colors=10, dither=0.0)
     pin('ph_glass'); out['ph_glass'] = save('ph_glass', ph_glass(), 4.0)
+    pin('shackwall'); out['shackwall'] = save('shackwall', shackwall(), 1.6, dither=0.4)  # (the pier and the bait shack's: see make_pier.py)
+    pin('net'); ni, na = net(); out['net'] = save('net', ni, 0.5, alpha=na, colors=6, dither=0.0, note='tint')
+    pin('timber'); out['timber'] = save('timber', timber(), 1.0, note='tint')
+    pin('tread'); out['tread'] = save('tread', tread(), 1.0)
+    pin('rope'); out['rope'] = save('rope', rope(), 0.25, note='tint')
+    pin('shacktags'); out['shacktags'] = save('shacktags', shacktags(), 1.0, colors=12, dither=0.0)
+    pin('limewash'); out['limewash'] = save('limewash', limewash(), 2.0, note='tint')  # (the keeper's cottage's: see make_cottage.py)
+    pin('pantile'); out['pantile'] = save('pantile', pantile(), 1.0, note='tint')
+    pin('polka'); out['polka'] = save('polka', polka(), 0.5, colors=6, dither=0.0)
+    pin('doormat'); out['doormat'] = save('doormat', doormat(), 1.0, colors=10, dither=0.3)
     # new textures go here: a PIN line with a new seed, then pin('name'); out['name'] = save(...)
     json.dump(KIT, open(os.path.join(OUT, 'kit.json'), 'w'), indent=1)
     if sheet_path:  # a contact sheet: every texture blown up 4x, tiled 2x2 so the seams show

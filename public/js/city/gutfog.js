@@ -58,6 +58,13 @@ uniform float uA, uCap, uLayer, uKind, uHoles; uniform vec3 uSt; uniform vec4 uR
 varying vec3 vW;
 void main() {
   vec2 p = vW.xz;
+  // first what's cheap: where this sheet can show at all (its mask, your eyes, far past the fog). a pixel that can't
+  // reach 0.004 whatever the noise says is dropped before the four noise reads (the sheets cover the whole plateau)
+  vec3 v0 = vW - cameraPosition; float d0 = length(v0), m0;
+  if (uKind < 0.5) m0 = smoothstep(uSt.z - 2.0, uSt.z + 9.0, length(p - uSt.xy)) * (1.0 - smoothstep(uRect.z - 26.0, uRect.z, p.x));
+  else if (uKind < 1.5) m0 = (1.0 - smoothstep(-44.0, -6.0, p.y)) * 0.75 * (1.0 - smoothstep(uRect.z - 26.0, uRect.z, p.x));
+  else m0 = (1.0 - smoothstep(17.0, 31.0, length(p - uSt.xy))) * 1.5;
+  if (uA * m0 * 3.5 * smoothstep(0.4, 1.4, d0) * smoothstep(0.02, 0.3, abs(v0.y)) < 0.004 || d0 > uFog.y * 2.2) discard; // (3.5: more than dens (1.4) x the beat and ring (2.1) can lift it. past 2.2x the fog's end the ground under it is all fog colour, and so is the sheet)
   // noise fields sliding over each other; each sheet reads its own patch, so they slide past each other as you move
   float n = 0.45 * texture2D(uN, p * 0.019 + uT * vec2(0.010, 0.006) + uLayer * 0.37).r + 0.3 * texture2D(uN, p * 0.047 - uT * vec2(0.007, 0.012) + uLayer * 0.61).r
     + 0.25 * texture2D(uN, p * 0.15 + uT * vec2(-0.021, 0.027) + uLayer * 0.83).r;
@@ -94,6 +101,7 @@ void main() {
   m *= (1.0 - smoothstep(uRect.z - 26.0, uRect.z, wp.x)) * step(uRect.x + 5.0, wp.x) * step(uRect.y + 5.0, wp.y);
   m *= mix(1.0 - smoothstep(-44.0, -8.0, wp.y), 1.0, gut) * smoothstep(0.5, 3.5, abs(wp.y + 47.0)); // thins out across the border; none straddling the cliff
   m *= smoothstep(uSt.z + 1.0, uSt.z + 8.0, length(wp - uSt.xy)); // none hanging over the crater
+  if (m < 0.004) { vUv = vec2(0.0); vW = vec3(0.0); vS = aSeed; vA = 0.0; gl_Position = vec4(0.0, 0.0, 2.0, 1.0); return; } // (a wisp faded out here: off the plateau, over the crater, past the reach. folded away before it costs any pixels)
   m *= 0.45 + 0.55 * smoothstep(0.3, 0.6, texture2D(uN, wp * 0.0043 + uT * vec2(0.0021, 0.0013)).r); // the same banks as the sheets
   float w = mix(3.0, 7.5, aSeed.z), h = uTop * mix(0.5, 1.15, aSeed.w) * (1.0 + 0.18 * uK); // it rises a little on the beat
   vec3 right = normalize(vec3(viewMatrix[0][0], 0.0, viewMatrix[2][0]));
