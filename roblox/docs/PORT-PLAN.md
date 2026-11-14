@@ -1,6 +1,6 @@
 # JANKFIRE on Roblox: the port plan
 
-Written 2026-11-14, updated the same day after the foundations pass. Place: "Jankfire.." (placeId 96891323589901), saved at version 76.
+Written 2026-11-14, updated the same day after the foundations pass. Place: "Jankfire.." (placeId 96891323589901), saved at version 77.
 Counts come from the web game's own data (`shared/weapons.js`, `shared/modes.js`, `shared/map.js`) and from the open
 Studio place, read the same day.
 
@@ -19,12 +19,12 @@ Studio place, read the same day.
 | Accounts, levels, achievements | yes | only the loadout is saved | |
 | Cosmetics, crates, shop | yes | wraps only | |
 | Big modes | Zombies, Jank Royale, Battle Island, Board Game Night, OVERDUE story | none | |
-| Sounds | made live in code | **1 of 32 uploaded** (the rifle). The other 31 are empty slots, so the game is silent | the files are ready in `roblox/assets/sounds`; limit is 100 uploads per 30 days, 2,000 if the account is ID verified |
+| Sounds | made live in code | **all 32 uploaded and loading** (the game was silent until 2026-11-14: the 31 step-2 files had never been uploaded) | 32 of the 100 uploads per 30 days used (2,000 if the account is ID verified); 12 more gun shots are rendered and waiting in `roblox/assets/sounds` |
 | Code | | about 8,600 lines of Luau | exported to `roblox/src` on branch `claude/f-roblox-studio` |
 
 ## 2. Fix these first (before adding 36 more weapons)
 
-Done on 2026-11-14: 1, 2 and 3. Still to do: 4, and uploading the 31 sounds.
+Done on 2026-11-14: 1, 2 and 3, and the 31 missing sounds are uploaded. Still to do: 4.
 
 1. **DONE. Get the Studio work into GitHub.** Exported with `StudioExport` (see `roblox/README.md`), rebuilt with `rojo build roblox/studio.project.json` as a check, pushed as `claude/f-roblox-studio`. Original note: the hub, matches, loadout screen and every fix since step 2 live only in the
    Studio place. If the place breaks, they're gone. Plan: save the place to a file and run `rojo syncback` (Rojo 7.7+),
