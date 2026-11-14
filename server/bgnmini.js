@@ -312,17 +312,28 @@ export function installBgnMini(Room, H) {
 
     // ---------------------------------------------------------------- DUCK CATCH
     // somewhere a duck can land: open sky over it, a floor near whoever it's for (or near a spawn)
-    bgmDuckSpot(near, r0 = 2, r1 = 9, drop = DK.h) {
+    bgmDuckSpot(near, r0 = 2, r1 = 9, drop = DK.h, rad = 0) {
       const sp = this.map.spawns || [[0, 0, 0]];
       for (let i = 0; i < 12; i++) {
         const c = near ? near.pos : sp[Math.floor(Math.random() * sp.length)], a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0);
         const x = c[0] + Math.cos(a) * r, z = c[2] + Math.sin(a) * r;
         const h = raycast([x, c[1] + 3, z], [0, -1, 0], 9, this.boxes);
         if (!h || h.normal[1] < 0.7 || h.box.pad || h.point[1] < this.map.killY + 3) continue;
-        if (raycast([x, h.point[1] + 0.3, z], [0, 1, 0], drop, this.boxes)) continue; // a roof over it (as high as it drops from): it'd come through the roof
+        if (!this.bgmSkyClear(x, h.point[1], z, drop, rad)) continue; // a roof over it (as high as it drops from): it'd come through the roof
         return [x, h.point[1], z];
       }
       return null;
+    },
+    // nothing over this spot for h up, as wide as what's falling (a real duck projectile is 0.3 m round, and it collides as a
+    // box: a thin ray down the middle missed the corner of the block it clipped, and the cursed duck opened up on top of
+    // it, out of reach of who it was for). looked at from above too: a ray that starts inside a block doesn't see it
+    bgmSkyClear(x, y, z, h, rad = 0) {
+      const n = rad ? 1 : 0;
+      for (let i = -n; i <= n; i++) for (let j = -n; j <= n; j++) {
+        const ox = x + i * rad, oz = z + j * rad;
+        if (raycast([ox, y + 0.3, oz], [0, 1, 0], h, this.boxes) || raycast([ox, y + 0.3 + h, oz], [0, -1, 0], h, this.boxes)) return false;
+      }
+      return true;
     },
     // o: { at, h, ms, one (a dropped duck: always 1), not (the one who dropped it can't catch it straight back) }
     bgmDuckDrop(near, gold, o = {}) {
@@ -366,8 +377,16 @@ export function installBgnMini(Room, H) {
     // the cursed duck: a real sky duck (it lands as a black hole: tickHoles pulls), the usual red marker first
     bgmCursed(list) {
       const S = this.bgm, aim = K.curse ? list.find((p) => p.name === K.curse) : null, near = aim || (list.length ? list[Math.floor(Math.random() * list.length)] : null);
-      const fl = aim && raycast([aim.pos[0], aim.pos[1] + 0.5, aim.pos[2]], [0, -1, 0], 3, this.boxes);
-      const at = fl ? [aim.pos[0], fl.point[1], aim.pos[2]] : this.bgmDuckSpot(near, 1, 6);
+      const rad = WEAPONS.duck.r + 0.1;
+      let at = null; // right on them (the test knob), else the nearest open sky beside them, still in the hole's pull
+      if (aim) for (const r of [0, 0.8, 1.6, 2.4]) {
+        for (let k = 0; k < (r ? 8 : 1) && !at; k++) {
+          const x = aim.pos[0] + Math.cos(k * Math.PI / 4) * r, z = aim.pos[2] + Math.sin(k * Math.PI / 4) * r, fl = raycast([x, aim.pos[1] + 0.5, z], [0, -1, 0], 3, this.boxes);
+          if (fl && fl.normal[1] > 0.7 && this.bgmSkyClear(x, fl.point[1], z, DK.h, rad)) at = [x, fl.point[1], z];
+        }
+        if (at) break;
+      }
+      if (!at) at = this.bgmDuckSpot(near, 1, 6, DK.h, rad);
       if (!at) return;
       const w = WEAPONS.duck, y0 = at[1] + DK.h, v = DUCKRAIN.vy;
       const pr = this.makeProj({ id: 0 }, 'duck', [at[0], y0, at[2]], [0, -v, 0], { sky: true });

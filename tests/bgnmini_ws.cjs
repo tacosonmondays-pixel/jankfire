@@ -268,11 +268,15 @@ async function partDucks(port) {
   ok(pileB() === sum(now0().filter((e) => e.k === 'duckx' && e.by === B.id).map((e) => e.v)) - sum(now0().filter((e) => (e.k === 'slap' || e.k === 'curse') && e.seat === sB).map((e) => e.n)), `B's pile is what B caught, minus what B lost (${pileB()})`);
   // A slaps B: 3 ducks fly out
   const before = pileB(), bp = B.pos.slice();
-  hold.A = [bp[0] + 1, bp[1], bp[2]];
-  await sleep(300);
+  // (from whichever side A can see B: next to a pillar, the server's honesty check rightly refuses a slap through it)
   const a0 = A.ev.length, slapOf = () => A.ev.slice(a0).find((e) => e.k === 'slap' && e.a === A.id && e.b === B.id); // (only this slap: not one from an earlier game)
-  A.send({ t: 'hit', w: 'slapper', to: B.id, d: [-1, 0, 0] });
-  ok(await A.until(() => slapOf(), 2000), 'a slap lands');
+  for (const [dx, dz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+    hold.A = [bp[0] + dx, bp[1], bp[2] + dz];
+    await sleep(300);
+    A.send({ t: 'hit', w: 'slapper', to: B.id, d: [-dx, 0, -dz] });
+    if (await A.until(() => slapOf(), 1500)) break;
+  }
+  ok(slapOf(), 'a slap lands');
   const sl = slapOf();
   ok(sl.n === Math.min(3, sl.pile + sl.n) && sl.n > 0, `it knocked ${sl.n} ducks loose (${sl.pile + sl.n} -> ${sl.pile}; ${before} a moment before)`);
   await sleep(150);
@@ -295,6 +299,7 @@ async function partDucks(port) {
     cu = curseOf();
   }
   ok(seen > 0, `a cursed duck is coming down (${seen} before one got B)`);
+  if (!cu) console.log('   (B: alive', B.alive.get(B.id), 'server pos', JSON.stringify(B.ppos.get(B.id)), 'hold', JSON.stringify(hold.B), 'cursed at', JSON.stringify(B.ev.slice(i0).filter((e) => e.k === 'cursed').map((e) => e.p)), 'curses', JSON.stringify(B.ev.slice(i0).filter((e) => e.k === 'curse').map((e) => [e.id, e.n])), ')');
   ok(!!cu, 'a cursed duck came down on B');
   ok(cu && cu.n === Math.floor((cu.pile + cu.n) / 2) && cu.pile + cu.n >= 2, `the cursed duck halved B's pile (${cu && cu.pile + cu.n} -> ${cu && cu.pile}; ${had} when it was spotted)`);
   clearInterval(tick);
