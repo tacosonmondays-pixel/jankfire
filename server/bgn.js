@@ -32,6 +32,7 @@ const K = {
   noDuel: !!E.JF_BGN_NODUEL, // every duel is settled on the board, people's too (tests that want the round's minigame, not a duel first)
   seed: num(E.JF_BGN_SEED) > 0 ? Math.floor(num(E.JF_BGN_SEED)) : 0, // seeded dice and board picks
   bakery: Number.isInteger(num(E.JF_BGN_BAKERY)) ? num(E.JF_BGN_BAKERY) : null, // the bakery starts on this plate
+  endMs: num(E.JF_BGN_ENDMS) > 0 ? Math.min(600000, Math.floor(num(E.JF_BGN_ENDMS))) : 0, // how long the end card stays up (tests: time to shoot THE TOASTING)
 };
 const T = (ms) => Math.max(1, Math.round(ms / K.fast));
 const now = () => Date.now();
@@ -703,7 +704,7 @@ export function installBgn(Room, H) {
       }
       for (const s of B.seats) { const q = this.bgnPlayer(s); if (q && !q.isBot && q !== p) stat(q, 'xp', 10 + s.bread * 5); }
       if (roll) send(p, { t: 'roll+', ...roll });
-      if (this.round) { this.round.over = true; this.round.next = now() + T(BGN.endMs); }
+      if (this.round) { this.round.over = true; this.round.next = now() + (K.endMs || T(BGN.endMs)); }
       B.hbAt = now() + T(BGN.toastMs); // the end screen's PLAY AGAIN / LOBBY after the toasting
       this.bgnState();
       console.log(`[bgn] ${this.id}: ${win.name} won with ${win.bread} bread`);

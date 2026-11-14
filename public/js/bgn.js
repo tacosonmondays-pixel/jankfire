@@ -12,6 +12,7 @@ import { BOARD, aheadSet } from '/shared/bgnboard.js';
 import { miniState, miniEv, miniFrame, miniCtl, miniIntro, miniRes } from './bgnmini.js'; // minigames 11-15: carts, ducks, the bosses
 
 let B = null, board = null, boardP = null, root = null, ui = null, opts = {}, aim = null, askT = 0, askDur = 1, lastAsk = '', wasOn = false, cardT = 0, t0 = performance.now();
+let cereEnd = 0, cereMs = 7600, cereTimer = 0, finalUp = false; // THE TOASTING plays before the end card (bgnscene.js CERE_MS)
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const send = (o) => net.send({ t: 'bg', ...o });
@@ -33,6 +34,8 @@ const SFX = {
 };
 G.bgnHop = () => SFX.hop();
 G.bgnThunk = () => SFX.thunk();
+// THE TOASTING: the board says when the winner's out of the toaster (the callout waits for the pop)
+G.bgnToasted = (i) => { const s = B && B.seats[i]; call(N.call.toast, s ? s.color : '#ffe14d', s ? `${s.name} · ${N.bread}` : ''); SFX.big(); };
 
 export function initBgn(o) { opts = o || {}; } // { lobby() } from main.js
 export const bgnOn = () => !!B && !!G.joined;
@@ -49,7 +52,7 @@ export function bgnHubBack(m) {
   else if (m.k === 'again' && back) { back.n = m.n | 0; back.of = m.of | 0; }
   render();
 }
-export function bgnReset() { back = null; B = null; miniState(null); aim = null; if (root) root.classList.add('hidden'); document.body.classList.remove('bgn-board'); wasOn = false; }
+export function bgnReset() { back = null; B = null; cereEnd = 0; miniState(null); aim = null; if (root) root.classList.add('hidden'); document.body.classList.remove('bgn-board'); wasOn = false; }
 // main.js's frame: true = the board was drawn (instead of the map)
 export function bgnFrame(dt) {
   if (B) miniFrame(dt); // (the minigames' HUD + ducks, board up or not)
@@ -64,12 +67,15 @@ export function bgnFrame(dt) {
   if (!on) return false;
   if (!board) { loadBoard(); return false; }
   tickUi();
-  board.frame(dt, (performance.now() - t0) / 1000);
+  let bdt = dt;
+  if (G.bgnHold) { bdt = G.bgnAdvance || 0; G.bgnAdvance = 0; if (cereEnd) cereEnd = Math.max(cereEnd, performance.now() + 1000); } // (tests: the board's clock held, stepped a beat at a time for screenshots)
+  if (B.ph === 'done' && B.final && !finalUp && performance.now() >= cereEnd) render(); // the toast's over: the end card
+  board.frame(bdt, (performance.now() - t0) / 1000);
   return true;
 }
 function loadBoard() {
   if (boardP) return;
-  boardP = import('./bgnscene.js').then((m) => { board = m.makeBoard(); if (B) board.sync(B); }).catch((e) => { console.error('board scene', e); boardP = null; });
+  boardP = import('./bgnscene.js').then((m) => { board = m.makeBoard(); cereMs = m.CERE_MS || cereMs; if (B) board.sync(B); window.__bgnInfo = () => board.info(); }).catch((e) => { console.error('board scene', e); boardP = null; });
 }
 
 // ---------------------------------------------------------------- messages
@@ -97,12 +103,13 @@ const EV = {
     if (!t) return;
     const s = m.seat != null ? B.seats[m.seat] : null;
     if (m.c === 'yourTurn') { if (s && s.id === G.myId) { call(N.call.yourTurn, '#ffe14d'); SFX.big(); } return; }
+    if (m.c === 'toast' && board && bgnBoardOn()) return; // (THE TOASTING calls it when the toaster pops: G.bgnToasted)
     call(bgnFill(t, m), s ? s.color : '#ffe14d', s ? s.name : '');
     if (m.c === 'duel' || m.c === 'lasso') SFX.slap();
     if (m.c === 'toast') SFX.pop();
   },
-  say(m) { const h = $('bgHost'); if (h) { h.textContent = `${N.host}: "${m.line}"`; h.classList.remove('pop'); void h.offsetWidth; h.classList.add('pop'); } },
-  jank(m) { const e = BGN_JANK[m.e]; if (e) call(e.name, '#ff00dc', e.desc); SFX.big(); },
+  say(m) { const h = $('bgHost'); if (h) { h.textContent = `${N.host}: "${m.line}"`; h.classList.remove('pop'); void h.offsetWidth; h.classList.add('pop'); } if (board) board.say(); },
+  jank(m) { const e = BGN_JANK[m.e]; if (e) call(e.name, '#ff00dc', e.desc); SFX.big(); if (board) board.jank(); },
   broke(m) { call(bgnFill(N.call.broke, m).toUpperCase(), '#ff3030', seatName(m.seat)); },
   duel(m) { call(N.call.duel, '#ff3030', `${seatName(m.a)} VS ${seatName(m.b)} · ${N.stake[m.stake]}`); },
   house(m) { const h = BGN_HOUSE[m.i]; if (h) call(h.name, '#ff3030', `${seatName(m.seat)} picked it. ${h.desc}`); },
@@ -112,7 +119,12 @@ const EV = {
   ducks(m) { if (board) board.mark(m.at); setTimeout(() => board && board.mark(aim ? aim.ids : []), 1500); },
   mg() { SFX.big(); },
   res() { SFX.pop(); },
-  cere() { SFX.pop(); },
+  cere(m) { // THE TOASTING: the board plays it, the end card waits for it
+    if (!board || !bgnBoardOn() || !m.final) { SFX.pop(); return; }
+    board.cere(m.final);
+    cereEnd = performance.now() + cereMs;
+    clearTimeout(cereTimer); cereTimer = setTimeout(render, cereMs + 30);
+  },
 };
 
 // ---------------------------------------------------------------- the DOM
@@ -239,7 +251,7 @@ function render() {
   const on = bgnBoardOn();
   root.classList.toggle('hidden', !on);
   if (!on) return;
-  root.classList.toggle('card', B.ph === 'mgintro' || B.ph === 'mgres' || B.ph === 'done' || (askMine() && (B.ask.k === 'shop' || B.ask.k === 'house'))); // (big panels up: callouts move out of the way)
+  root.classList.toggle('card', B.ph === 'mgintro' || B.ph === 'mgres' || (B.ph === 'done' && performance.now() >= cereEnd) || (askMine() && (B.ask.k === 'shop' || B.ask.k === 'house'))); // (big panels up: callouts move out of the way)
   ui.innerHTML = '';
   const me = mine(), active = B.ask ? B.ask.seat : B.walk ? B.walk.seat : -1;
   for (const s of B.seats) {
@@ -266,8 +278,9 @@ function render() {
   }
   if (B.ph === 'mgintro' && B.mg) ui.append(introCard());
   else if (B.ph === 'mgres' && B.res) ui.append(resCard());
-  else if (B.ph === 'done' && B.final) ui.append(finalCard());
+  else if (B.ph === 'done' && B.final) { if (performance.now() >= cereEnd) ui.append(finalCard()); }
   else ui.append(actions(me));
+  finalUp = B.ph === 'done' && !!B.final && performance.now() >= cereEnd;
 }
 function actions(me) {
   const box = el('div', 'bg-act');
