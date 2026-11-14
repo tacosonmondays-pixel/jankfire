@@ -38,8 +38,9 @@ export const HON = {
   aimRange: 300, aimSlack: 8, // chicken / duck: the client's aim ray is 300 m
   bounceTol: 0.12, // rad: a ricochet's bounce has to send the shot where the client says (plus the target's size, seen from the eye)
   rays: 7500, // line-of-sight rays per player per second (2-14 us each: ~3 refused full checks). past this, that second's hits are refused
-  perHit: 2500, // rays one hit may cost (a full no takes about this). an honest one takes 1 (median), p99 under 50
-  ms: 20, hitMs: 10, // and CPU time: per player per second, per hit (a ray costs 2 us on an open map, 14 on Jankburg). an honest hit takes ~0.02 ms
+  perHit: 1000, // rays one hit may cost: an honest one takes 1 (median), p99 under 50, max ~100 seen. a full no stops here (~19 ms on Islands' terrain)
+  ms: 20, // and CPU time per player per second (a ray costs 2 us on an open map, 14 on Jankburg). an honest hit takes ~0.02 ms.
+  // one hit stops on rays only (perHit), never on the clock: a busy server's slow clock must not refuse a fair hit
 };
 const now = () => Date.now();
 const LOG = !!process.env.JF_HON_LOG; // test knob: print every refusal and why
@@ -221,7 +222,7 @@ const M = {
         for (let e = 0; e < ne; e++) for (let j = 0; j < n; j++) {
           if (pass === 0 ? j % 9 : pass === 1 && !(j % 9)) continue; // (pass 0: the middles; pass 1: the rest)
           if (this.honClear(H, EYES[e], PTS[j])) return true;
-          if (H.rays > stop || (!(H.rays & 31) && performance.now() - t0 > HON.hitMs)) return this.honNo(p, 'too many rays for one hit', { t: 'los', to: t.id });
+          if (H.rays > stop) return this.honNo(p, 'too many rays for one hit', { t: 'los', to: t.id });
         }
       }
     }
@@ -231,7 +232,7 @@ const M = {
       const nb = this.honBoxes(t, q, Math.hypot(dx, q[1] - p.pos[1], dz));
       let n = 0;
       for (let b = 0; b < nb; b++) n = this.honPts(BXS[b], side, n, false);
-      for (let j = 0; j < n; j += 3) { if (this.honBounce(H, ne, PTS[j], d, w, t, q)) return true; if (H.rays > stop || performance.now() - t0 > HON.hitMs) return false; }
+      for (let j = 0; j < n; j += 3) { if (this.honBounce(H, ne, PTS[j], d, w, t, q)) return true; if (H.rays > stop) return false; }
     }
     return false;
   },
