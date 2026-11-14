@@ -48,14 +48,14 @@ PJP = dict(
                      [0.92, -7.75, 1.35, -5.95, 0.45], [1.55, -7.75, 2.45, -5.95, 0.75], [2.65, -7.75, 3.08, -5.95, 0.45], [3.08, -7.75, 3.2, -5.95, 1.2],
                      [-1.0, 3.0, 2.6, 3.15, 2.0], [4.4, 7.1, 5.3, 7.75, 1.55], [3.2, -3.6, 4.0, -2.8, 0.75], [3.6, 4.4, 4.4, 5.2, 0.75]],
              stools=[-6, -4.2, -2.4, -0.6, 1.2], stool=[-2.46, -2.04, 0.21, 0.75],
-             deck=[[-4.1, -6.8, -3.2, -4.4, 1.3], [-3.2, -6.8, -2.2, -4.4, 3.2], [-2.2, -6.8, -0.9, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2],
+             deck=[[-4.1, -6.8, -3.2, -4.4, 1.3], [-3.2, -6.8, -2.2, -4.4, 3.2], [-2.1, -6.8, -0.95, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2],
                    [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [4.5, -7.6, 5.6, -6.3, 1.0]],
              out=[[7.0, -6.6, 8.6, -4.8, 0.78], [7.0, 4.8, 8.6, 6.6, 0.78], [6.6, -2.1, 7.1, -1.5, 1.0]]),
     hm=dict(c=[82, 137.5], w=8, d=6.2, h=3.4, t=0.25, roof=0.3, par=0.6, pt=0.2,
             door=[-1.6, -0.4, 2.3], win=[-3.4, -2.0], side=[-1.8, 1.8], back=[2.2, 3.2], sill=1.0, head=2.5,
             stair=dict(x0=4.6, n=11, run=0.32, z0=3.1, z1=4.3, land=0.6), gap=[0.6, 1.8],
             tower=[-4, -3.1, -0.4, 0.5], top=7.4, gal=1.0, rail=1.05, flight=dict(z0=2.8, n=11, run=0.318, land=1.1),
-            room=2.5, wt=0.15, post=0.45, rsill=1.0, rhead=2.1, rdoor=[-1.8, -0.7], cap=0.25,
+            room=2.5, wt=0.15, post=0.45, rsill=1.0, rhead=2.1, rdoor=[-1.8, -0.7], cap=0.25, peak=[[1.3, 0, 0.42, 3], [0.58, 0.42, 0.84, 1]],
             inside=[[-3.75, 0.4, 0.6, 1.0, 1.1], [-1.8, -2.1, -0.2, -0.9, 0.95], [-3.75, -2.85, -3.1, -0.6, 0.8], [3.15, 1.5, 3.75, 2.6, 1.4]]))
 PROPS = []
 def prop(fid):
@@ -120,7 +120,10 @@ def hm_boxes():
         A(tx0, T, z0, tx1, ws, z1); A(tx0, wh, z0, tx1, rtop, z1); A(tx0, ws, z0, tx0 + po, wh, z1); A(tx1 - po, ws, z0, tx1, wh, z1)
     A(tx0, T, tz0 + wt, tx0 + wt, ws, tz1 - wt); A(tx0, wh, tz0 + wt, tx0 + wt, rtop, tz1 - wt); A(tx0, ws, tz0 + wt, tx0 + wt, wh, tz0 + po); A(tx0, ws, tz1 - po, tx0 + wt, wh, tz1 - wt)
     A(tx1 - wt, T, tz0 + wt, tx1, rtop, r0); A(tx1 - wt, T, r1, tx1, rtop, tz1 - wt); A(tx1 - wt, wh, r0, tx1, rtop, r1)
-    A(tx0 - 0.3, rtop, tz0 - 0.3, tx1 + 0.3, rtop + P['cap'], tz1 + 0.3)
+    cx0 = tx0 - 0.3; cw = (tx1 - tx0 + 0.6) / 4; mx, mz = (tx0 + tx1) / 2, (tz0 + tz1) / 2; ct = rtop + P['cap']
+    for i in range(4): A(cx0 + i * cw, rtop, tz0 - 0.3, cx0 + (i + 1) * cw, ct, tz1 + 0.3)
+    for hs, y0, y1, n in P['peak']:
+        for i in range(n): A(mx - hs + i * 2 * hs / n, ct + y0, mz - hs, mx - hs + (i + 1) * 2 * hs / n, ct + y1, mz + hs)
     return out
 
 
@@ -303,6 +306,13 @@ def paint_chalk(lines, cols=None):  # a blackboard in a wooden frame, chalk lett
         for i, s in enumerate(lines): text_px(px, s, max(1, (w - (len(s) * 6 - 1)) // 2), y0 + i * lh, 1, (cols or [0xf4f2ee] * 9)[i])
         px[:2] = px[-2:] = hexrgb(0x9a6a3a); px[:, :2] = px[:, -2:] = hexrgb(0x9a6a3a)
     return d
+
+
+def paint_cola(px):  # the back wall's painted ad: JANK COLA (the island drinks it too), IT'S FINE
+    h, w = px.shape[:2]; px[:] = hexrgb(0xe0302a)
+    px[:2] = px[-2:] = hexrgb(0xfbf8f0); px[:, :2] = px[:, -2:] = hexrgb(0xfbf8f0)
+    text_px(px, 'JANK COLA', (w - 106) // 2 + 1, 4, 2, 0x8a1420); text_px(px, 'JANK COLA', (w - 106) // 2, 3, 2, 0xfbf8f0)
+    px[19:21, 12:w - 12] = hexrgb(0xffe14d); text_px(px, "IT'S FINE", (w - 53) // 2, 22, 1, 0xfbf8f0)
 
 
 def paint_facade_pub(px):  # the far LOD's front: navy ground floor, the windows, the gold sign, the white parapet
@@ -539,6 +549,7 @@ def pub_atlas(fid):
     A.cell('facade1', 64, 32, paint_facade_pub)
     A.cell('stained', 32, 8, paint_stained)
     A.cell('chalk', 32, 36, paint_chalk(['DAVE', '0', 'ME', '501'], [0xffe14d, 0xf4f2ee, 0xffe14d, 0xf4f2ee]))
+    A.cell('cola', 112, 31, paint_cola)
     A.cell('mural', 80, 28, paint_board(['COLD BEER', 'WARM WELCOME', 'DAMP FLOOR'], 0x2a8ad8, 0xfbf8f0, border=0xfbf8f0, cols=[0xffe14d, 0xfbf8f0, 0xffe14d]))
     swatches(A, (('pwhite', 0xfbf8f0, 0.02, None), ('cream', 0xfff2d8, 0.02, None), ('pnavy', 0x1f3a8a, 0.02, None), ('navyd', 0x152a6a, 0.02, None),
                  ('gold', 0xffc83a, 0.03, None), ('chrome', 0xdde3ea, 0.03, None), ('vinyl', 0xc8283a, 0.03, None), ('pwood', 0x6a3420, 0.05, None),
@@ -751,6 +762,7 @@ def build_pub():
     uv_fit(o, A, 'hang', sel=lambda p, Pp: abs(MK._gn(p.normal).z) > 0.5)
     # the mural on the north side; downpipes off the terrace at the back corners; the back door, a lamp over it
     o = K.bk((-5.5, 1.2, -hd - 0.03), (-1.7, 2.6, -hd + 0.02), 'pwhite', 'mural'); uv_fit(o, A, 'mural', sel=lambda p, Pp: MK._gn(p.normal).z < -0.5)
+    o = K.bk((-hw - 0.03, 1.0, -6.6), (-hw + 0.02, 3.2, 1.4), 'pwhite', 'cola'); uv_fit(o, A, 'cola', sel=lambda p, Pp: MK._gn(p.normal).x < -0.5)
     for z in (-hd + 0.45, hd - 0.45):
         o = cyl(0.06, ptop - 0.5, (-hw - 0.12, (ptop - 0.5) / 2 + 0.1, z), M, axis='y', seg=8, name=fid + '_pipe'); K.add(o, 'pwhite')
         K.bk((-hw - 0.2, ptop - 0.48, z - 0.08), (-hw + 0.02, ptop - 0.36, z + 0.08), 'pwhite', 'scupper')
@@ -940,7 +952,7 @@ def paint_dial(px):  # the tide dial: a white face in a navy ring, TIDE over it,
         px_line(px, c + math.sin(a) * r0, c - math.cos(a) * r0, c + math.sin(a) * r1, c - math.cos(a) * r1, 0x1f3a8a, 1.0)
     px_disc(px, c, c, c - 10, 0xe8f6fb, a0=math.pi * 0.75, a1=math.pi)  # (the YES side, a little bluer)
     px_disc(px, c, c, c - 10, 0xe8f6fb, a0=-math.pi, a1=-math.pi * 0.75)
-    for s_, x, y, col in (('TIDE', c - 11.5, 12, 0x1f3a8a), ('IN', 11, c - 3, 0x1f3a8a), ('OUT', w - 28, c - 3, 0x1f3a8a), ('YES', c - 8.5, h - 21, 0xe0302a)):
+    for s_, x, y, col in (('TIDE', c - 11.5, 12, 0x1f3a8a), ('IN', 11, c - 3, 0x1f3a8a), ('OUT', w - 28, c - 3, 0x1f3a8a), ('YES', c - 8.5, c + 15, 0xe0302a)):
         text_px(px, s_, int(x), int(y), 1, col)
 
 
@@ -1045,11 +1057,10 @@ def build_harbour():
         K.wall(lo, hi, 'tower', TB, RN, 'pwhite', ctr=tc, bot=False, cap=False)
     dx_, dy_, dz_ = (tx0 + tx1) / 2, 5.3, tz1
     o = cyl(0.95, 0.06, (dx_, dy_, dz_ + 0.025), M, axis='z', seg=20, name=fid + '_dial'); uv_fit(o, A, 'pnavy'); uv_fit(o, A, 'dial', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5); K.P.append(o)
-    o = ring((dx_, dy_, dz_ + 0.06), 0.97, 0.05, M, A, 'hred', fid + '_dialrim', axis='z', n=20); K.P.append(o)
-    o = box_between((dx_, dy_, dz_ + 0.075), (dx_, dy_ - 0.62, dz_ + 0.075), 0.07, 0.025, M, fid + '_hand'); K.add(o, 'hred')
-    o = side([(0.0, -0.58), (0.0, -0.76), (0.0, -0.58)], 0.025, (0, 0, 0), M, name=fid + '_x') if False else None
-    o = box_between((dx_ - 0.1, dy_ - 0.55, dz_ + 0.075), (dx_, dy_ - 0.74, dz_ + 0.075), 0.06, 0.025, M, fid + '_head1'); K.add(o, 'hred')
-    o = box_between((dx_ + 0.1, dy_ - 0.55, dz_ + 0.075), (dx_, dy_ - 0.74, dz_ + 0.075), 0.06, 0.025, M, fid + '_head2'); K.add(o, 'hred')
+    o = lathe([(0.9, 0.005), (1.02, 0.005), (1.02, 0.1), (0.9, 0.1), (0.9, 0.005)], (dx_, dy_, dz_), M, seg=20, axis='z', name=fid + '_dialrim', cap=False); K.add(o, 'hred')  # (a closed bezel: no seam)
+    o = box_between((dx_, dy_, dz_ + 0.075), (dx_, dy_ - 0.36, dz_ + 0.075), 0.07, 0.025, M, fid + '_hand'); K.add(o, 'hred')  # (the hand stops short of YES: it points, it doesn't hide it)
+    o = box_between((dx_ - 0.09, dy_ - 0.3, dz_ + 0.075), (dx_, dy_ - 0.42, dz_ + 0.075), 0.055, 0.025, M, fid + '_head1'); K.add(o, 'hred')
+    o = box_between((dx_ + 0.09, dy_ - 0.3, dz_ + 0.075), (dx_, dy_ - 0.42, dz_ + 0.075), 0.055, 0.025, M, fid + '_head2'); K.add(o, 'hred')
     o = cyl(0.09, 0.06, (dx_, dy_, dz_ + 0.08), M, axis='z', seg=8, name=fid + '_boss'); K.add(o, 'gold')
     for (cx_, cz_), ax_ in (((tx0, (tz0 + tz1) / 2), 'x'), ((dx_, tz0), 'z'), ((tx1, (tz0 + tz1) / 2), 'x')):  # little windows up the tower's other faces
         sx_ = -1 if (ax_ == 'x' and cx_ < dx_) or (ax_ == 'z' and cz_ < (tz0 + tz1) / 2) else 1

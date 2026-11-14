@@ -389,13 +389,13 @@ export const PJP = {
     stools: [-6, -4.2, -2.4, -0.6, 1.2], stool: [-2.46, -2.04, 0.21, 0.75], // along the bar (z); x0 x1, half size along z, height
     // on the terrace, from its floor: the boat (three steps up its hull, from where it goes in to its stern up in the air),
     // the chimney, two picnic tables, the kegs
-    deck: [[-4.1, -6.8, -3.2, -4.4, 1.3], [-3.2, -6.8, -2.2, -4.4, 3.2], [-2.2, -6.8, -0.9, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2], [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [4.5, -7.6, 5.6, -6.3, 1.0]],
+    deck: [[-4.1, -6.8, -3.2, -4.4, 1.3], [-3.2, -6.8, -2.2, -4.4, 3.2], [-2.1, -6.8, -0.95, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2], [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [4.5, -7.6, 5.6, -6.3, 1.0]],
     out: [[7.0, -6.6, 8.6, -4.8, 0.78], [7.0, 4.8, 8.6, 6.6, 0.78], [6.6, -2.1, 7.1, -1.5, 1.0]] }, // out front: two picnic tables, the quiz board
   hm: { c: [82, 137.5], w: 8, d: 6.2, h: 3.4, t: 0.25, roof: 0.3, par: 0.6, pt: 0.2,
     door: [-1.6, -0.4, 2.3], win: [-3.4, -2.0], side: [-1.8, 1.8], back: [2.2, 3.2], sill: 1.0, head: 2.5, // the front (south) door x0 x1 top, its window; the west window (z); the back door (north)
     stair: { x0: 4.6, n: 11, run: 0.32, z0: 3.1, z1: 4.3, land: 0.6 }, gap: [0.6, 1.8], // up the front onto the roof: its foot (x), steps, tread, z, the top's far end; the parapet's gap (x)
     tower: [-4, -3.1, -0.4, 0.5], top: 7.4, gal: 1.0, rail: 1.05, flight: { z0: 2.8, n: 11, run: 0.318, land: 1.1 }, // the tower (x0 z0 x1 z1), the lookout's floor, the gallery; the flight up the roof (over the gap's x) to its landing
-    room: 2.5, wt: 0.15, post: 0.45, rsill: 1.0, rhead: 2.1, rdoor: [-1.8, -0.7], cap: 0.25, // the lookout: height, walls, corner posts, windows, its door (east, z), roof
+    room: 2.5, wt: 0.15, post: 0.45, rsill: 1.0, rhead: 2.1, rdoor: [-1.8, -0.7], cap: 0.25, peak: [[1.3, 0, 0.42, 3], [0.58, 0.42, 0.84, 1]], // the lookout: height, walls, corner posts, windows, its door (east, z), roof; the steps under its pyramid (half size, y0, y1, strips)
     inside: [[-3.75, 0.4, 0.6, 1.0, 1.1], [-1.8, -2.1, -0.2, -0.9, 0.95], [-3.75, -2.85, -3.1, -0.6, 0.8], [3.15, 1.5, 3.75, 2.6, 1.4]] } }; // the counter, the chart table, the radio desk, the filing cabinet
 function pjPub(B) {
   const y = PJ.y, S = { still: 1 };
@@ -455,7 +455,10 @@ function pjPub(B) {
       for (const [z0, z1] of [[tz0, tz0 + wt], [tz1 - wt, tz1]]) { A(tx0, T, z0, tx1, ws, z1, 'white'); A(tx0, wh, z0, tx1, rtop, z1, 'white'); A(tx0, ws, z0, tx0 + po, wh, z1, 'white'); A(tx1 - po, ws, z0, tx1, wh, z1, 'white'); }
       A(tx0, T, tz0 + wt, tx0 + wt, ws, tz1 - wt, 'white'); A(tx0, wh, tz0 + wt, tx0 + wt, rtop, tz1 - wt, 'white'); A(tx0, ws, tz0 + wt, tx0 + wt, wh, tz0 + po, 'white'); A(tx0, ws, tz1 - po, tx0 + wt, wh, tz1 - wt, 'white');
       A(tx1 - wt, T, tz0 + wt, tx1, rtop, r0, 'white'); A(tx1 - wt, T, r1, tx1, rtop, tz1 - wt, 'white'); A(tx1 - wt, wh, r0, tx1, rtop, r1, 'white');
-      A(tx0 - 0.3, rtop, tz0 - 0.3, tx1 + 0.3, rtop + P.cap, tz1 + 0.3, 'roofg');
+      // its roof in strips under 1.2 m across (the royale puts no loot up there), stepped under the pyramid on it (stand on it, not in it)
+      const cx0 = tx0 - 0.3, cw = (tx1 - tx0 + 0.6) / 4, mx = (tx0 + tx1) / 2, mz = (tz0 + tz1) / 2, ct = rtop + P.cap;
+      for (let i = 0; i < 4; i++) A(cx0 + i * cw, rtop, tz0 - 0.3, cx0 + (i + 1) * cw, ct, tz1 + 0.3, 'roofg');
+      for (const [hs, y0, y1, n] of P.peak) for (let i = 0; i < n; i++) A(mx - hs + i * 2 * hs / n, ct + y0, mz - hs, mx - hs + (i + 1) * 2 * hs / n, ct + y1, mz + hs, 'roofg');
     });
   }
 }
