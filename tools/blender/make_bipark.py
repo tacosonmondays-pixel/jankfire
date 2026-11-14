@@ -9,14 +9,15 @@
 #   p_pj_park     the park set (one model): a pale paved plaza with a pink stone border, terracotta paths with white kerbs,
 #                 a tiled fountain (a bowl, a falling water curtain, a pink blossom on top), hedge planters and flower beds
 #                 in clean painted boxes, cast-iron benches with honey slats, three park lamps with pink banners, the
-#                 PETAL PARK gate, and a sign on the planter that says NO CLIMBING THE TREES (YOU WILL)
+#                 PETAL PARK gate, a sign on the planter that says NO CLIMBING THE TREES (YOU WILL), and the PETAL TEA
+#                 kiosk in the south-west corner (a striped awning, a menu, a giant teacup on the roof)
 # The trees are their own instanced props (spun per copy round the trunk): the park leaves their lawns empty.
 # run: blender52 -b --python tools/blender/make_bipark.py -- [--only=blossom,leafy,park] [--qa] [--no-sheet]
 #      [--no-export] [--preview=<dir>]
 import os, sys; sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import make_market as MK
-from make_market import Atlas, uv_trim, uv_fit, box_between
-from make_portjankton import swatches, box_at
+from make_market import Atlas, uv_fit, box_between
+from make_portjankton import swatches
 from lib import *
 from lib import _obj
 import lib
@@ -139,7 +140,7 @@ def paint_drift(px, r0, r1, c0, c1, seed):
     n = TR.vnoise(h, w, 4, 4, rng)
     reg = hexrgb(0xffb6dc)[None, None] * (0.92 + 0.12 * n[:, :, None])
     s = TR.speckle(h, w, rng)
-    reg[s > 0.86] = hexrgb(0xff8ac6); reg[s < 0.08] = hexrgb(0xfff0f8); reg[(s > 0.45) & (s < 0.5)] = hexrgb(0xf06aae)
+    reg[s > 0.88] = hexrgb(0xff9ccf); reg[s < 0.06] = hexrgb(0xffe2f0); reg[(s > 0.46) & (s < 0.5)] = hexrgb(0xf27cba)  # (soft: petals, not confetti)
     px[r0:r1, c0:c1] = np.clip(reg, 0, 1)
 
 
@@ -213,11 +214,11 @@ def drift(name, m, rect, W, H, n=28, r=(0.9, 1.9), y=0.025, seed=3):
     o = _obj(name, bm, m)
     for p in o.data.polygons:
         if p.normal.z < 0: p.flip()
-    TR.uv_region(o, rect, W, H, proj='up', ppm=10, umode='fold', vmode='fold')
+    TR.uv_region(o, rect, W, H, proj='up', ppm=26, umode='fold', vmode='fold')
     return o
 
 
-def bars(t, kind):
+def bars(kind):
     """the crown's two crossed collision bars and the trunk box: the extent (meta.box)"""
     b = BT[kind]
     return ((-b['bl'], 0.0, -b['bl']), (b['bl'], b['top'], b['bl']))
@@ -229,7 +230,7 @@ def build_blossom():
     W = H = 64
     px = np.zeros((H, W, 3), np.float32)
     paint_cherry_bark(px, 0, 32, 0, W, 101)  # (full width: tiles round the trunk)
-    paint_canopy(px, 32, 64, 0, 32, 0xff8cc8, 0xffb2da, 0xee6cb4, 0xffcce8, 0xe05aa4, 103, petals=0.035, darks=0.03, sp=1)
+    paint_canopy(px, 32, 64, 0, 32, 0xff8cc8, 0xffb0d8, 0xf070b6, 0xffc6e4, 0xe866ac, 103, petals=0.03, darks=0.025, sp=1)
     paint_drift(px, 32, 64, 32, 64, 105)
     tex = TR.img('bib_t', px)
     bark = mat('bib_bark', 0xffffff, rough=0.5, clearcoat=0.25, tex=tex)
@@ -258,7 +259,7 @@ def build_blossom():
             ((2.15, 3.35, -1.35), (1.0, 0.7, 0.95), (0.42, 0.56), [(-0.2, 4, 0), (0.55, 3, 30)]),
             ((-1.85, 3.5, -1.15), (1.0, 0.72, 0.95), (0.42, 0.56), [(-0.2, 4, 15), (0.55, 3, 50)])]
     lumps = clumps('bib_c', bloom, spec, 11)
-    for o in lumps: TR.uv_region(o, BLOOM, W, H, proj='box', ppm=16)
+    for o in lumps: TR.uv_region(o, BLOOM, W, H, proj='box', ppm=22)
     for o in [trunk] + L + T: TR.uv_region(o, BARK, W, H, proj='cyl', ppm=14, umode='tile', vmode='fold', arc_r=0.24)
     dr = drift('bib_drift', bloom, DRIFT, W, H, seed=7)
     lod0 = [join([trunk] + L + T, 'bib_wood'), join(lumps, 'bib_crown'), dr]
@@ -275,8 +276,8 @@ def build_blossom():
     lod1 = [join(far, 'bib_fcrown'), join([ft] + fl, 'bib_fwood')]
     for o in lod0 + lod1:
         for p in o.data.polygons: p.use_smooth = True
-    post = lambda l0, l1: [shade_canopy(o, {'bib_bloom'}, (0.74, 0.44, 0.68), kg=0.42) for o in (l0, l1)]
-    return dict(lod0=lod0, lod1=lod1, box=bars(0, 'blossom'), ao=0.9, aolo=0.55, lod=70, post=post, sheet=dict(exposure=-0.7),
+    post = lambda l0, l1: [shade_canopy(o, {'bib_bloom'}, (0.6, 0.32, 0.54), kg=0.42) for o in (l0, l1)]
+    return dict(lod0=lod0, lod1=lod1, box=bars('blossom'), ao=0.9, aolo=0.55, lod=70, post=post, sheet=dict(exposure=-0.7),
                 focus=[((0, 2.4, 0), (1.0, -0.15, 0.6), 7.0), ((0, 4.2, 0), (0.6, 0.9, 0.5), 10.0), ((0, 1.0, 0), (-0.4, 0.3, 1.0), 4.5)])
 
 
@@ -286,8 +287,8 @@ def build_leafy():
     W = H = 64
     px = np.zeros((H, W, 3), np.float32)
     TR.paint_bark(px, 0, 32, 0, W, 0x6e5848, 0x2e2420, 0x9a8676, 201, grooves=7, var=0.1, wob=1.2, knots=3)
-    paint_canopy(px, 32, 64, 0, 32, 0x7fd23a, 0xb0e850, 0x56b236, 0xd8fa86, 0x3f9a3a, 203, petals=0.035, darks=0.03)
-    paint_canopy(px, 32, 64, 32, 64, 0x6cc43a, 0xa0e04c, 0x48a63a, 0xccf47a, 0x388e3a, 204, petals=0.03, darks=0.035)
+    paint_canopy(px, 32, 64, 0, 32, 0x70c43a, 0x9ed84a, 0x4ea236, 0xc8ee7a, 0x3a9038, 203, petals=0.03, darks=0.03)
+    paint_canopy(px, 32, 64, 32, 64, 0x60b63a, 0x8ed246, 0x409838, 0xbce872, 0x348638, 204, petals=0.03, darks=0.035)
     tex = TR.img('bil_t', px)
     bark = mat('bil_bark', 0xffffff, rough=0.55, clearcoat=0.2, tex=tex)
     leaf = mat('bil_leaf', 0xffffff, rough=0.8, tex=tex)
@@ -312,7 +313,7 @@ def build_leafy():
             ((-1.45, 3.85, -1.45), (0.95, 0.72, 0.95), (0.44, 0.58), [(-0.2, 5, 0), (0.55, 3, 30)]),
             ((1.75, 3.75, -1.15), (0.95, 0.72, 0.9), (0.44, 0.58), [(-0.2, 5, 15), (0.55, 3, 50)])]
     lumps = clumps('bil_c', leaf, spec, 21)
-    for i, o in enumerate(lumps): TR.uv_region(o, LEAF if i % 3 else LEAF2, W, H, proj='box', ppm=16)
+    for i, o in enumerate(lumps): TR.uv_region(o, LEAF if i % 3 else LEAF2, W, H, proj='box', ppm=22)
     for o in [trunk] + L + T: TR.uv_region(o, BARK, W, H, proj='cyl', ppm=14, umode='tile', vmode='fold', arc_r=0.27)
     lod0 = [join([trunk] + L + T, 'bil_wood'), join(lumps, 'bil_crown')]
     far = []
@@ -327,8 +328,8 @@ def build_leafy():
     lod1 = [join(far, 'bil_fcrown'), join([ft] + fl, 'bil_fwood')]
     for o in lod0 + lod1:
         for p in o.data.polygons: p.use_smooth = True
-    post = lambda l0, l1: [shade_canopy(o, {'bil_leaf'}, (0.42, 0.6, 0.68), kg=0.42) for o in (l0, l1)]
-    return dict(lod0=lod0, lod1=lod1, box=bars(0, 'leafy'), ao=1.0, aolo=0.55, lod=70, post=post, sheet=dict(exposure=-0.7),
+    post = lambda l0, l1: [shade_canopy(o, {'bil_leaf'}, (0.36, 0.52, 0.62), kg=0.42) for o in (l0, l1)]
+    return dict(lod0=lod0, lod1=lod1, box=bars('leafy'), ao=1.0, aolo=0.55, lod=70, post=post, sheet=dict(exposure=-0.7),
                 focus=[((0, 3.0, 0), (1.0, -0.2, 0.6), 8.0), ((0, 5.0, 0), (0.6, 0.9, 0.5), 11.0)])
 
 
@@ -440,10 +441,10 @@ def drop_bottom(o):
 
 def paint_pave(px):  # pale cream slabs, 2 x 2 a cell, each its own tone, soft grout
     h, w = px.shape[:2]; r = np.random.default_rng(301); s = h // 2
-    for j, i, c in ((0, 0, 0xf6f0e4), (0, 1, 0xf0e6d6), (1, 0, 0xeee4d2), (1, 1, 0xf4ecde)):
+    for j, i, c in ((0, 0, 0xeee4d4), (0, 1, 0xe4d6c2), (1, 0, 0xe8dcc8), (1, 1, 0xf0e8da)):  # (pale, not white: the sun's strong)
         px[j * s:(j + 1) * s, i * s:(i + 1) * s] = hexrgb(c)
     px[:] *= 0.975 + 0.035 * r.random((h, w, 1))
-    px[::s] = hexrgb(0xd6c8b2); px[:, ::s] = hexrgb(0xd6c8b2)
+    px[::s] = hexrgb(0xbcaa90); px[:, ::s] = hexrgb(0xbcaa90)
     px[1::s] *= 1.02
 
 
@@ -501,7 +502,7 @@ def build_park():
                  ('soil', 0x5a3e2c, 0.08, None), ('leafbed', 0x3fae3a, 0.06, None), ('petal', 0xff8ccc, 0.03, None), ('flowery', 0xffe14d, 0.03, None),
                  ('flowerw', 0xfdf6fa, 0.02, None), ('floor', 0x1aa8c0, 0.04, None), ('gold', 0xffc83a, 0.03, None), ('cherry', 0xe8304a, 0.02, None),
                  ('water1', 0x6ad8f0, 0.02, None), ('pave1', 0xf2eadc, 0.01, None), ('terra1', 0xd8683e, 0.02, None), ('tea', 0xf7a8c8, 0.02, None)))
-    A.cell('ksign', 96, 20, paint_clean_text(['PETAL TEA'], 0xff4fd8, 0xfdfbf6, 0xffe14d, scale=2))
+    A.cell('ksign', 112, 32, paint_clean_text(['PETAL TEA'], 0xff4fd8, 0xfdfbf6, 0xffe14d, scale=2))  # (9 letters at 2x: 106 px)
     A.cell('menu', 64, 40, paint_clean_text(['TEA ...... 2', 'MORE TEA . 3', 'PETALS FREE', '(FLOOR)'], 0x1c1c22, 0xfdfbf6, 0xff4fd8))
     A.cell('stripeh', 32, 16, lambda px: [px.__setitem__(slice(i * 2, i * 2 + 2), hexrgb(0xff4fd8 if i % 2 else 0xfdfbf6)) for i in range(8)])
     A.cell('stripev', 32, 16, lambda px: [px.__setitem__((slice(None), slice(i * 4, i * 4 + 4)), hexrgb(0xff4fd8 if i % 2 else 0xfdfbf6)) for i in range(8)])
