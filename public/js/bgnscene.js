@@ -408,11 +408,11 @@ export function makeBoard() {
       try { sfx.toastPop(); } catch { /* (no audio) */ }
       camA.shake = 0.9;
       puff(slotTop, 14, 0xffd060);
-      for (let k = 0; k < 3; k++) rocket(_v.copy(slotTop), new THREE.Vector3(slotTop.x + (k - 1) * 9, slotTop.y + 14 + k * 3, slotTop.z - 4 + k * 2), 0.55 + k * 0.18, FWC[(k * 2) % FWC.length]);
+      for (let k = 0; k < 3; k++) rocket(_v.copy(slotTop), new THREE.Vector3(slotTop.x + (k - 1) * 8, slotTop.y + 8 + k * 1.5, slotTop.z - 6 + k * 2), 0.55 + k * 0.18, FWC[(k * 2) % FWC.length]); // (low enough to burst in shot)
     }
     if (t >= CERE.pop) for (const m of pod.glow) m.emissiveIntensity = Math.max(0, m.emissiveIntensity - dt * 1.5);
     if (!c.toasted && t >= CERE.apex) { c.toasted = true; if (G.bgnToasted) G.bgnToasted(c.win); }
-    if (t > CERE.land + 0.5) { c.fwT -= dt; if (c.fwT <= 0) { c.fwT = 1.4 + Math.random() * 1.2; const top = podPt(POD.spots[0], _w); rocket(top, new THREE.Vector3(top.x + R(12), top.y + 12 + Math.random() * 8, top.z - 6 + R(4)), 0.7, FWC[(Math.random() * FWC.length) | 0]); } }
+    if (t > CERE.land + 0.5) { c.fwT -= dt; if (c.fwT <= 0) { c.fwT = 1 + Math.random() * 0.8; const top = podPt(POD.spots[0], _w); for (const sx of [-1, 1]) rocket(top, new THREE.Vector3(top.x + sx * (3 + Math.random() * 5), top.y + 4 + Math.random() * 3, top.z - 5 + R(2)), 0.55 + Math.random() * 0.15, FWC[(Math.random() * FWC.length) | 0]); } } // (a pair behind the winner, in shot)
   }
   // the ceremony's camera: wide on the podium for the line-up, in on the toaster for the pop, then a slow push in
   function cereCam(out, look) {
