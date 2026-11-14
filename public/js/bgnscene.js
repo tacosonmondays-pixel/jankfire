@@ -21,6 +21,8 @@ export const BS = 2.4; // board units -> metres
 const TOP = 0.36; // the spaces' top
 const PS = 0.78; // pawn scale (a 1.8 m mannequin -> about 1.4 m, on 2.4 m spaces)
 const KS = 40; // the Blender kitchen is life size: x40 for the pawns (a 6 cm square = 2.4 m)
+const KP = 30; // the toaster podium a bit smaller than the kitchen (still a giant toaster), so the pawns read on it
+const CS = 1.5; // the pawns grow for THE TOASTING (their moment)
 export const spacePos = (id, out = new THREE.Vector3()) => { const p = BOARD[id].p; return out.set(p[0] * BS, TOP, p[1] * BS); };
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: o.r ?? 0.55, metalness: o.m ?? 0, emissive: o.e || 0x000000, emissiveIntensity: o.ei ?? 1 });
 const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
@@ -81,7 +83,7 @@ const DIE_UP = { 1: [0, 0, 0], 6: [Math.PI, 0, 0], 2: [-Math.PI / 2, 0, 0], 5: [
 // spots: where 1st (on top of the toaster) .. 4th (the table, in the crumbs) end up. slot: the slot the winner goes in
 const POD = { at: [0.585, 0.015, -0.12], top: 0.265, slot: [-0.024, 0.0], lever: [0.0, 0.235, 0.142], leverDrop: 0.1,
   spots: [[0.0, 0.265, 0.0], [-0.12, 0.107, 0.025], [0.12, 0.075, 0.025], [0.0, 0.0, 0.17]] };
-const HOST = [-0.47, 0.17, 1.1]; // where THE RULES GUY stands on the table (x, z, yaw; life size)
+const HOST = [-0.47, 0.17, -2.0]; // where THE RULES GUY stands on the table (x, z, yaw; life size)
 const CERE = { hop: [0.3, 0.75, 1.2, 1.65], dur: 0.75, down: 2.5, pop: 4.4, apex: 5.05, land: 5.7, card: 7.6 }; // THE TOASTING's beats (s)
 export const CERE_MS = CERE.card * 1000; // the end card waits for the toast
 
@@ -180,7 +182,7 @@ export function makeBoard() {
   const pod = { g: new THREE.Group(), lever: null, lever0: 0, glow: [], code: new THREE.Group() };
   scene.add(pod.g); pod.g.add(pod.code);
   (function codePodium() {
-    const c = pod.code, s = KS;
+    const c = pod.code, s = KP;
     const cb = box(0.33 * s, 0.075 * s, 0.23 * s, new THREE.MeshStandardMaterial({ color: 0xffe14d, roughness: 0.4 })); cb.position.y = 0.0375 * s; c.add(cb);
     const lab = new THREE.Mesh(new THREE.PlaneGeometry(0.3 * s, 0.2 * s), new THREE.MeshStandardMaterial({ map: labelTex("JANK O's", '#ff3030', '#ffe14d', 256, 160), roughness: 0.4 })); lab.rotation.x = -Math.PI / 2; lab.position.y = 0.0752 * s; c.add(lab);
     for (let i = 0; i < 2; i++) { const cube = box(0.016 * s, 0.016 * s, 0.016 * s, mat(0xffffff, { r: 0.6 })); cube.position.set(-0.12 * s, (0.075 + 0.008 + i * 0.016) * s, 0.025 * s); cube.rotation.y = i * 0.4; c.add(cube); }
@@ -195,7 +197,7 @@ export function makeBoard() {
   glb('x_bgn_toaster', (o, meta) => {
     if (!meta || meta.kind !== 'bgntoaster') return;
     for (const k of ['top', 'slot', 'lever', 'leverDrop', 'spots']) if (meta[k] != null) POD[k] = meta[k];
-    o.scale.setScalar(KS); pod.g.remove(pod.code); pod.g.add(o);
+    o.scale.setScalar(KP); pod.g.remove(pod.code); pod.g.add(o);
     pod.glow = [];
     o.traverse((m) => { if (m.isMesh) { m.castShadow = m.receiveShadow = true; if (m.material && /toast_glow/.test(m.material.name)) { m.material = m.material.clone(); pod.glow.push(m.material); } } }); // (the slots' glow: its own copy, the lever's toast)
     const lv = o.getObjectByName('lever');
@@ -211,7 +213,7 @@ export function makeBoard() {
     ch.arm.rotation.set(-0.6, 0.35, 0); ch.armL.rotation.set(-0.6, -0.35, 0);
     ch.root.scale.setScalar(1.6); host.code = ch; host.g.add(ch.root);
   })();
-  function placeHost() { host.g.position.set(HOST[0] * KS, 0, HOST[1] * KS); host.g.rotation.y = HOST[2]; }
+  function placeHost() { host.g.position.set(HOST[0] * KS, 0, HOST[1] * KS); host.g.rotation.y = HOST[2]; if (host.rig) host.rig.baseYaw = HOST[2]; } // (facing the board and the camera)
   placeHost();
   const inks = [];
   glb('x_bgn_rulesguy', () => {
@@ -220,7 +222,7 @@ export function makeBoard() {
     if (host.code) { host.g.remove(host.code.root); host.code = null; }
     r.root.scale.setScalar((r.meta && r.meta.boardScale) || 1.45);
     r.root.traverse((m) => { if (m.isMesh) m.castShadow = true; });
-    host.g.add(r.root); host.rig = r;
+    host.g.add(r.root); host.rig = r; r.baseYaw = HOST[2];
   });
 
   // ---------------------------------------------------------------- THE TOASTING: fireworks in this scene
@@ -299,7 +301,7 @@ export function makeBoard() {
   // ---------------------------------------------------------------- THE TOASTING
   let cere = null; // { t, final, win, order, from: Map(seat -> Vector3) }
   const _v = new THREE.Vector3(), _w = new THREE.Vector3();
-  const podPt = (p, out = new THREE.Vector3()) => { out.set(p[0] * KS, p[1] * KS, p[2] * KS); return pod.g.localToWorld(out); };
+  const podPt = (p, out = new THREE.Vector3()) => { out.set(p[0] * KP, p[1] * KP, p[2] * KP); return pod.g.localToWorld(out); };
   function holdBread(i, on) { // the winner holds the golden bread up over their head
     const P = pawns.get(i);
     if (!P) return;
@@ -312,7 +314,7 @@ export function makeBoard() {
     if (!final || !st) return;
     pod.g.updateMatrixWorld(true);
     cere = { t: skip ? CERE.card : 0, final, win: final.win, order: final.place.map((r) => r[0]), from: new Map(), toasted: !!skip, fwT: 0, popped: !!skip, down: !!skip, ticks: 0 };
-    for (const [i, P] of pawns) { P.q.length = 0; P.hop = 0; cere.from.set(i, P.g.position.clone()); }
+    for (const [i, P] of pawns) { P.q.length = 0; P.hop = 0; cere.from.set(i, P.g.position.clone()); P.ch.scale.setScalar(PS); }
     holdBread(cere.win, true);
     if (G.bgnCereStart) G.bgnCereStart();
   }
@@ -321,7 +323,7 @@ export function makeBoard() {
     if (!cere) return;
     for (const [i, P] of pawns) {
       holdBread(i, false);
-      P.ch.rotation.copy(P.rot0); P.ch.scale.setScalar(PS);
+      P.ch.rotation.copy(P.rot0); P.ch.scale.setScalar(PS); P.g.scale.setScalar(1);
       if (P.rig) { P.rig.arm.rotation.set(0, 0, 0); P.rig.armL.rotation.set(0, 0, 0); }
       P.pos.copy(spacePos(P.at)).add(off(i)); P.g.position.copy(P.pos); P.g.visible = true;
     }
@@ -336,6 +338,8 @@ export function makeBoard() {
     c.order.forEach((i, place) => {
       const P = pawns.get(i);
       if (!P) return;
+      const h0g = place === 0 ? CERE.hop[3] : CERE.hop[3 - Math.min(place, 3)];
+      P.g.scale.setScalar(1 + (CS - 1) * Math.min(1, Math.max(0, (t - h0g) / 0.5)));
       const spot = podPt(POD.spots[Math.min(place, 3)], _v);
       if (place === 0) { // the winner: into the slot, toasted, POP
         const slot = podPt([POD.slot[0], POD.top, POD.slot[1]], _w);
@@ -343,14 +347,14 @@ export function makeBoard() {
         if (t < h0) P.g.position.copy(c.from.get(i));
         else if (t < h0 + 0.85) { // a big jump up and into the slot
           const k = (t - h0) / 0.85, a = c.from.get(i);
-          P.g.position.lerpVectors(a, slot, k); P.g.position.y = a.y + (slot.y - a.y) * k + Math.sin(k * Math.PI) * 9 - (k > 0.8 ? (k - 0.8) * 5 * 2.2 : 0);
+          P.g.position.lerpVectors(a, slot, k); P.g.position.y = a.y + (slot.y - a.y) * k + Math.sin(k * Math.PI) * 7 - (k > 0.8 ? (k - 0.8) * 5 * 2.6 : 0);
           P.ch.rotation.x = P.rot0.x - k * Math.PI * 2;
         } else if (t < CERE.pop) { // in the toaster (just the bread pokes out), the toaster jiggles
-          P.g.position.copy(slot); P.g.position.y = slot.y - 2.4 * PS; P.ch.rotation.copy(P.rot0); P.ch.rotation.y = 0;
+          P.g.position.copy(slot); P.g.position.y = slot.y - 2.4 * PS * CS; P.ch.rotation.copy(P.rot0); P.ch.rotation.y = 0;
           if (P.bread) P.bread.visible = true;
         } else if (t < CERE.land) { // POP: straight up, spinning, then down onto the top
           const k = (t - CERE.pop) / (CERE.land - CERE.pop);
-          const y0 = slot.y - 2.4 * PS, top = spot.y, apex = top + 11;
+          const y0 = slot.y - 2.4 * PS * CS, top = spot.y, apex = top + 8;
           const yy = k < 0.5 ? y0 + (apex - y0) * (1 - (1 - k * 2) ** 2) : apex + (top - apex) * ((k - 0.5) * 2) ** 2;
           P.g.position.set(slot.x + (spot.x - slot.x) * k, yy, slot.z + (spot.z - slot.z) * k);
           P.ch.rotation.set(P.rot0.x * 0.3, k * Math.PI * 4, 0);
@@ -383,7 +387,7 @@ export function makeBoard() {
     if (!c.down && t >= CERE.down) { c.down = true; try { sfx.toastDown(); } catch { /* (no audio) */ } }
     if (t >= CERE.down && t < CERE.pop) {
       const k = Math.min(1, (t - CERE.down) / 0.18);
-      if (pod.lever) pod.lever.position.y = pod.lever0 - POD.leverDrop * (pod.lever.parent === pod.code ? KS : 1) * k;
+      if (pod.lever) pod.lever.position.y = pod.lever0 - POD.leverDrop * (pod.lever.parent === pod.code ? KP : 1) * k;
       for (const m of pod.glow) m.emissiveIntensity = Math.min(2.2, (t - CERE.down) * 1.4);
       const n = Math.floor((t - CERE.down) / 0.3); if (n > c.ticks) { c.ticks = n; try { sfx.toastTick(); } catch { /* (no audio) */ } puff(slotTop, 2); }
       pod.g.position.x = POD.at[0] * KS + Math.sin(t * 70) * 0.06; // (it rattles)
@@ -404,11 +408,11 @@ export function makeBoard() {
   function cereCam(out, look) {
     const t = cere.t, top = podPt([0, POD.top, 0], _v);
     const k = Math.min(1, t / 1.2), push = t > CERE.land ? Math.min(1, (t - CERE.land) / 4) : 0;
-    const wide = new THREE.Vector3(top.x - 4, top.y + 6, top.z + 30), close = new THREE.Vector3(top.x - 2.5, top.y + 3, top.z + 19 - push * 3);
+    const wide = new THREE.Vector3(top.x - 3, top.y + 7, top.z + 24), close = new THREE.Vector3(top.x - 2, top.y + 6.5, top.z + 15 - push * 2.5);
     const mid = t < CERE.down ? 0 : Math.min(1, (t - CERE.down) / 1.4);
     out.copy(wide).lerp(close, mid);
     if (k < 1) out.lerp(camA.pos, 1 - k); // (fly over from wherever it was)
-    look.set(top.x, top.y - 3.2 + (t > CERE.pop ? Math.min(3.5, (t - CERE.pop) * 6) * (t < CERE.land ? 1 : 0.55) : 0), top.z);
+    look.set(top.x, top.y - (mid > 0 ? 1.2 : 3.4) + (t > CERE.pop ? Math.min(4, (t - CERE.pop) * 7) * (t < CERE.land ? 1 : 0.4) : 0), top.z);
   }
 
   return {
@@ -499,6 +503,7 @@ export function makeBoard() {
       else if (cere) { p = new THREE.Vector3(); l = new THREE.Vector3(); cereCam(p, l); if (portrait) p.sub(l).multiplyScalar(1.6).add(l); }
       else if (P && st && (st.ph === 'move' || st.ph === 'roll' || st.ph === 'land' || st.ph === 'turn' || st.ph === 'duel' || st.ph === 'event')) { const g = P.g.position; p = new THREE.Vector3(g.x * 0.6, 15 * pull, g.z * 0.6 + 12.5 * pull); l = new THREE.Vector3(g.x * 0.8, 0, g.z * 0.8); }
       else { p = new THREE.Vector3(0, 30 * pull, 23 * pull); l = new THREE.Vector3(0, 0, 1.5); }
+      if (Array.isArray(G.bgnCamTest)) { const q = G.bgnCamTest; p.set(q[0], q[1], q[2]); l.set(q[3], q[4], q[5]); camA.pos.copy(p); camA.look.copy(l); } // (tests: a fixed camera for close-ups)
       const a = 1 - Math.exp(-dt * (cere ? 4 : 3));
       camA.pos.lerp(p, a); camA.look.lerp(l, a);
       cam.position.copy(camA.pos); cam.lookAt(camA.look);

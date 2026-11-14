@@ -27,7 +27,7 @@ BW, BD = 0.72, 0.60 # the board
 PRINT = BRD + 0.0003
 LAMP = (0.0, 0.60, 0.02)
 PODIUM = (0.585, 0.015, -0.12)  # where the toaster podium (x_bgn_toaster) stands on the table: x, z, yaw
-HOST = (-0.47, 0.17, 1.1)       # where THE RULES GUY stands (the action figure): x, z, yaw
+HOST = (-0.47, 0.17, -2.0)      # where THE RULES GUY stands (the action figure): x, z, yaw (facing the board and the overview camera)
 
 
 def board_graph():

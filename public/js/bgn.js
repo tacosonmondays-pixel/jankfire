@@ -69,7 +69,8 @@ export function bgnFrame(dt) {
   if (!board) { loadBoard(); return false; }
   tickUi();
   let bdt = dt;
-  if (G.bgnHold) { bdt = G.bgnAdvance || 0; G.bgnAdvance = 0; if (cereEnd) cereEnd = Math.max(cereEnd, performance.now() + 1000); } // (tests: the board's clock held, stepped a beat at a time for screenshots)
+  if (G.bgnHold) { bdt = G.bgnAdvance || 0; G.bgnAdvance = 0; if (cereEnd) { cereEnd = Math.max(cereEnd, performance.now() + 60000); G.bgnHeld = true; } } // (tests: the board's clock held, stepped a beat at a time for screenshots; the end card waits)
+  else if (G.bgnHeld) { G.bgnHeld = false; cereEnd = performance.now() + 1500; }
   if (B.ph === 'done' && B.final && !finalUp && performance.now() >= cereEnd) render(); // the toast's over: the end card
   board.frame(bdt, (performance.now() - t0) / 1000);
   return true;
