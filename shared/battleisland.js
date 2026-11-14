@@ -279,6 +279,43 @@ function portJankton(B) {
   }
 }
 
+// PORT JANKTON's main street: the shops either side of the Main Drag, between the warehouses (more down the hill later).
+// one storey you walk into: the shop door on the street, a back door on the alley, two open shop windows (no glass:
+// shoot through them), a flat roof behind a tall false front with the sign, a parapet round the roof (grapple up).
+// PJS = the numbers the models are built to (make_portjankton.py has the same table); f = which way the front faces (+x/-x)
+export const PJS = { w: 12, d: 14, h: 4.4, t: 0.25, roof: 0.3, par: 0.6, front: 6.4, door: [0.8, 2.5], back: [0.7, 2.4], wins: [[-5.5, -2], [2, 5.5]], sill: 1.0, head: 2.6,
+  shops: [{ id: 'bait', cx: 12, cz: 120, f: 1 }, { id: 'cod', cx: 44, cz: 120, f: -1 }],
+  // inside, in the shop's frame (x toward the front): x0, z0, x1, z1, height
+  inside: {
+    bait: [[-1.6, -6.75, -0.8, -2.5, 1.05], [-4, 6.25, 3, 6.75, 2.2], [-5.6, 2.5, -4.0, 3.5, 0.9], [-5.75, -3.4, -5.0, -2.2, 2.0]], // the counter, the tackle shelves, the LIVE BAIT freezer, the WORM-O-MATIC
+    cod: [[-4.5, -6.75, 1.5, -5.85, 1.0], [-4.5, -4.55, 1.5, -3.85, 1.1], // the fryers, the serving counter
+      [-3.6, 4.95, -3.0, 6.75, 0.45], [-2.8, 4.95, -1.8, 6.75, 0.75], [-1.6, 4.95, -1.0, 6.75, 0.45], // a booth: bench, table, bench
+      [0.6, 4.95, 1.2, 6.75, 0.45], [1.4, 4.95, 2.4, 6.75, 0.75], [2.6, 4.95, 3.2, 6.75, 0.45],
+      [-5.75, 2.0, -5.05, 3.4, 2.0]] } }; // the Jank Cola fridge
+function pjStreet(B) {
+  const y = PJ.y, S = { still: 1 }, P = PJS, hw = P.w / 2, hd = P.d / 2, t = P.t, H = P.h, [dw, dh] = P.door, [bw, bh] = P.back;
+  for (const sh of P.shops) {
+    // the shop's frame: lx toward its front (sh.f flips it), z along the street
+    const A = (x0, y0, z0, x1, y1, z1, m) => { const a = sh.cx + sh.f * x0, b = sh.cx + sh.f * x1; B.add(Math.min(a, b), y + y0, sh.cz + z0, Math.max(a, b), y + y1, sh.cz + z1, m, S); };
+    propOf('pj_' + sh.id, [sh.cx, y, sh.cz], 0, () => {
+      // the front: the shop door in the middle, a window either side; the false front over the roof
+      const fx0 = hw - t, [[a0, a1], [b0, b1]] = P.wins;
+      A(fx0, 0, -hd, hw, H, a0, 'white'); A(fx0, 0, a0, hw, P.sill, a1, 'white'); A(fx0, P.head, a0, hw, H, a1, 'white');
+      A(fx0, 0, a1, hw, H, -dw, 'white'); A(fx0, dh, -dw, hw, H, dw, 'white'); A(fx0, 0, dw, hw, H, b0, 'white');
+      A(fx0, 0, b0, hw, P.sill, b1, 'white'); A(fx0, P.head, b0, hw, H, b1, 'white'); A(fx0, 0, b1, hw, H, hd, 'white');
+      A(fx0, H, -hd, hw, P.front, hd, 'white');
+      // the back (the alley door), the sides
+      A(-hw, 0, -hd, -hw + t, H, -bw, 'white'); A(-hw, 0, bw, -hw + t, H, hd, 'white'); A(-hw, bh, -bw, -hw + t, H, bw, 'white');
+      A(-hw + t, 0, -hd, fx0, H, -hd + t, 'white'); A(-hw + t, 0, hd - t, fx0, H, hd, 'white');
+      // the roof and its parapet
+      const rt = H + P.roof;
+      A(-hw, H, -hd, fx0, rt, hd, 'roofg');
+      A(-hw, rt, -hd, -hw + t, rt + P.par, hd, 'white'); A(-hw + t, rt, -hd, fx0, rt + P.par, -hd + t, 'white'); A(-hw + t, rt, hd - t, fx0, rt + P.par, hd, 'white');
+      for (const [x0, z0, x1, z1, h] of P.inside[sh.id]) A(x0, 0, z0, x1, h, z1, 'wood');
+    });
+  }
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = grid();
@@ -303,7 +340,7 @@ function battleIsland() {
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   wreck(B); // Return to Sender (shared/bi_wreck.js)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
-  portJankton(B);
+  portJankton(B); pjStreet(B);
   scrapMart(B); // Scrap Mart (shared/bi_scrapmart.js)
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
