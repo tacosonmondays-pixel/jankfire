@@ -145,7 +145,7 @@ test('Petal Park: walk the paths from the gate to the fountain and out each side
     const q = walk([sx, sz], [dx, dz], 1.6);
     assert.ok(Math.hypot(q[0] - sx, q[2] - sz) > 10 && Math.abs(q[1] - y) < 0.15, `out along the path toward ${dx},${dz}: ` + q.map((v) => v.toFixed(1)));
   }
-  // a hedge (the west path's north one), a cherry tree's trunk and the basin's rim stop you
+  // a hedge (the west path's north one) and a cherry tree's trunk stop you
   const h = walk([cx - 9, cz - 5], [0, 1], 1.5); assert.ok(h[2] < cz - 2.3 && h[2] > cz - 3, 'the hedge stops you: ' + h[2].toFixed(2));
   const [bx, bz] = PK.blossoms[0], tr = walk([cx + bx - 3, cz + bz], [1, 0], 1.5); assert.ok(tr[0] < cx + bx - 0.25, 'the cherry trunk stops you: ' + tr[0].toFixed(2));
   // bullets stop in a crown, and nothing hangs in the air: every tree's trunk box stands on the ground
@@ -153,6 +153,8 @@ test('Petal Park: walk the paths from the gate to the fountain and out each side
   for (const id of ['bi_blossom', 'bi_leafy']) for (const q of m.boxes.props.filter((o) => o.id === id)) {
     const g = ground(q.a[0], q.a[2]); assert.ok(q.a[1] <= g + 0.01 && q.a[1] > g - 0.4, `${id} at ${q.a[0]},${q.a[2]}: foot ${q.a[1].toFixed(2)}, ground ${g.toFixed(2)}`);
   }
+  // the crowns' bars are each under 1.2 m across one way: the royale's loot spots skip them (no loot hidden up in a crown)
+  for (const b of m.boxes.filter((q) => (q.pv === 'bi_blossom' || q.pv === 'bi_leafy') && q.min[1] > ground((q.min[0] + q.max[0]) / 2, (q.min[2] + q.max[2]) / 2) + 1)) assert.ok(Math.min(b.max[0] - b.min[0], b.max[2] - b.min[2]) < 1.2, 'a crown bar too wide: loot could land on it');
   // the mech drop pad (28, 82) stays clear, no energy cell lands in the park's boxes
   for (const b of m.boxes.filter((q) => q.pv === 'pj_park' || q.pv === 'bi_blossom' || q.pv === 'bi_leafy')) {
     assert.ok(b.max[0] < 28 - 8 || b.min[0] > 28 + 8 || b.max[2] < 82 - 8 || b.min[2] > 82 + 8, 'clear of the mech drop pad');
