@@ -134,7 +134,7 @@ def text(txt, size, m, pos=(0, 0, 0), yaw=0.0, depth=0.0, name='txt', align='CEN
     bpy.data.objects.remove(tmp, do_unlink=True)
     bm = bmesh.new(); bm.from_mesh(me)
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=size * 1e-3)
-    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=size * 1e-4)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=size * 6e-4)
     if bm.verts:
         lo = Vector([min(v.co[i] for v in bm.verts) for i in range(3)]); hi = Vector([max(v.co[i] for v in bm.verts) for i in range(3)])
         c = (lo + hi) / 2
@@ -142,6 +142,8 @@ def text(txt, size, m, pos=(0, 0, 0), yaw=0.0, depth=0.0, name='txt', align='CEN
         bmesh.ops.translate(bm, vec=Vector((-c.x, -c.y, -lo.z if depth > 0 else 0)), verts=bm.verts)
     if stand: bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=Matrix.Rotation(math.pi / 2, 3, 'X'), verts=bm.verts)
     bmesh.ops.triangulate(bm, faces=bm.faces)
+    bad = [f for f in bm.faces if f.calc_area() < size * size * 2e-5]  # (the font's slivers)
+    if bad: bmesh.ops.delete(bm, geom=bad, context='FACES')
     if depth > 0: bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     else:  # a flat print: every face toward the viewer
         for f in bm.faces:
@@ -194,6 +196,30 @@ def uvw(o, size=0.05):
             v = mw @ me.vertices[me.loops[li].vertex_index].co
             a, b = [(v.y, v.z), (v.x, v.z), (v.x, v.y)][ax]
             uv[li].uv = (a / size, b / size)
+    return o
+
+
+def fix_uv(o, size=0.05):
+    """faces whose UVs collapsed (lathe caps under a wrap, a decal's edges, tube ends): world box UVs instead. degenerate
+    slivers go first"""
+    apply_mods(o)
+    me = o.data
+    bm = bmesh.new(); bm.from_mesh(me)
+    bmesh.ops.dissolve_degenerate(bm, edges=bm.edges, dist=1e-6)
+    bm.to_mesh(me); bm.free()
+    if not me.uv_layers: return uvw(o, size)
+    uv = me.uv_layers.active.data
+    mw = o.matrix_world
+    for poly in me.polygons:
+        q = [uv[li].uv for li in poly.loop_indices]
+        a = sum(q[i][0] * q[(i + 1) % len(q)][1] - q[(i + 1) % len(q)][0] * q[i][1] for i in range(len(q)))
+        if abs(a) > 1e-12: continue
+        n = mw.to_3x3() @ poly.normal
+        ax = max(range(3), key=lambda i: abs(n[i]))
+        for li in poly.loop_indices:
+            v = mw @ me.vertices[me.loops[li].vertex_index].co
+            c = [(v.y, v.z), (v.x, v.z), (v.x, v.y)][ax]
+            uv[li].uv = (c[0] / size, c[1] / size)
     return o
 
 

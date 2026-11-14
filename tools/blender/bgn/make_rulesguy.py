@@ -99,12 +99,12 @@ def make_rulesguy():
     def fringe(p, n):
         top = min(1.0, max(0.0, (p.y + 0.005) / 0.03)); front = min(1.0, max(0.0, (-n.z - 0.25) / 0.2))
         return -0.07 * max(top, front)
-    C.add(blob('hair', (0, 1.775, 0.012), (0.127, 0.14, 0.14), None, fn=fringe, seg=24, rings=16), 'head', 'gloss', RG['hair'], 'hair')
+    C.add(blob('hair', (0, 1.775, 0.012), (0.123, 0.14, 0.14), None, fn=fringe, seg=24, rings=16), 'head', 'gloss', RG['hair'], 'hair')
     for i, dz in enumerate((-0.045, -0.012, 0.022)):
         pts = []
         for k in range(9):
             x = -0.12 + k * 0.03; y = HEAD_C[1] + HEAD_R[1] * math.sqrt(max(0.0, 1 - (x / HEAD_R[0]) ** 2 - (dz / HEAD_R[2]) ** 2)) * 0.995
-            pts.append((x, y + 0.002, dz + 0.004 * math.sin(k)))
+            pts.append((x, y + 0.0045, dz + 0.004 * math.sin(k)))
         C.add(limb('strand', pts, [0.004] * 9, None, seg=6, squash=(0.6, 1.0)), 'head', 'gloss', RG['hair'], 'hair')
     # big round glasses (dark frames, no lenses: the deadpan eyes show), a neat moustache
     for sx in (-1, 1):

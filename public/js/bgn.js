@@ -76,7 +76,7 @@ export function bgnFrame(dt) {
 }
 function loadBoard() {
   if (boardP) return;
-  boardP = import('./bgnscene.js').then((m) => { board = m.makeBoard(); cereMs = m.CERE_MS || cereMs; if (B) board.sync(B); window.__bgnInfo = () => board.info(); }).catch((e) => { console.error('board scene', e); boardP = null; });
+  boardP = import('./bgnscene.js').then((m) => { board = m.makeBoard(); cereMs = m.CERE_MS || cereMs; if (B) board.sync(B); window.__bgnInfo = () => ({ ...board.info(), card: cereEnd ? Math.round(cereEnd - performance.now()) : null, finalUp }); }).catch((e) => { console.error('board scene', e); boardP = null; });
 }
 
 // ---------------------------------------------------------------- messages

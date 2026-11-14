@@ -231,7 +231,7 @@ def splat(cx, cz, r, seed):
 def tile_mesh(T, k, plate):
     """one space: a rounded candy tile with its printed icon (built at the origin, top at TOP)"""
     y0 = BRD + (0.0007 if plate else 0.0)
-    t = prism(rrect(TILE, TILE, 0.0075, 3), y0, TOP, T['t_' + k], 'tile', bev=0.0005, seg=1); uvw(t, 0.08)
+    t = prism(rrect(TILE, TILE, 0.0075, 3), y0, TOP, T['t_' + k], 'tile', bev=0.0003 if plate else 0.0005, seg=1); uvw(t, 0.08)
     parts = [t]
     yi = TOP + 0.00025
     if k == 'c': parts.append(text('+3', 0.026, T['ink'], (0.001, yi, 0.001), name='ic', res=2))
@@ -254,14 +254,13 @@ def box_lid(T, at):
     """THE BOX LID: the game's lid upside down on the start corner, the pawns stand inside it"""
     x, z = at
     w = 0.066
-    floor = prism(rrect(w, w, 0.004, 3), BRD, TOP, T['t_L'], 'lid_floor'); uvw(floor, 0.08)
+    floor = prism(rrect(w - 0.0016, w - 0.0016, 0.0036, 3), BRD, TOP, T['t_L'], 'lid_floor'); uvw(floor, 0.08)
     wall = ring_sweep(rrect(w, w, 0.004, 3), [(0.0, BRD), (0.0, 0.0195), (-0.0014, 0.0198), (-0.0016, TOP + 0.0002)], T['lid'], 'lid_wall', closed_profile=True); uvw(wall, 0.04)
-    rim = ring_sweep(rrect(w, w, 0.004, 3), [(0.00005, 0.0193), (0.00005, 0.0199), (-0.00165, 0.0199), (-0.00165, 0.0193)], T['chip'], 'lid_rim'); uvw(rim, 0.02)
-    parts = [floor, wall, rim]
+    parts = [floor, wall]
     parts.append(text('START', 0.0125, T['ink'], (0, TOP + 0.00025, 0.012), name='lid_start'))
     parts.append(poly_flat(star(0, -0.007, 0.012, 0.005, 5, -math.pi / 2), TOP + 0.00025, T['yellow'], 'lid_star'))
     for side, yaw in ((0.0332, 0.0), (-0.0332, math.pi), ):  # the lid's own print on its outer walls (front and back)
-        parts.append(xf([text('BGN', 0.0075, T['yellow'], (0, 0, 0), stand=True, name='lid_bgn')], yaw, (0, 0.0137, side + (0.00025 if yaw == 0 else -0.00025)))[0])
+        parts.append(xf([text('BGN', 0.0075, T['yellow'], (0, 0, 0), stand=True, name='lid_bgn', spacing=1.15)], yaw, (0, 0.0137, side + (0.00025 if yaw == 0 else -0.00025)))[0])
     return xf(parts, 0.0, (x, 0, z))
 
 
@@ -310,7 +309,7 @@ def board(T, BG):
     # the fork: a yellow arrow into THE CREASE under fork A, SHORTCUT? beside it
     ax, az = gp(sp[BG['A']][2])
     out.append(text('SHORTCUT?', 0.0105, T['yellow'], (ax - 0.058, PRINT + 0.0002, az + 0.052), name='bd_short'))
-    out.append(text('STICKY', 0.0095, T['tan'], (ax + 0.05, PRINT + 0.0002, az + 0.052), name='bd_sticky'))
+    out.append(text('STICKY', 0.0095, T['tan'], (ax + 0.05, PRINT + 0.0002, az + 0.052), name='bd_sticky', spacing=1.2))
     # the title on the left half, the golden bread on the right (the comic UI: yellow with a pink offset)
     title = []
     for i, w in enumerate(('BOARD', 'GAME', 'NIGHT')):
@@ -334,7 +333,7 @@ def board(T, BG):
     out.extend(xf(art, 0.05, (0, 0, 0)))
     # margin stars (the box art's sparkle)
     for i, (x, z) in enumerate(((-0.345, 0.0), (0.345, -0.15), (0.345, 0.16), (-0.2, 0.287), (0.1, -0.287))):
-        out.append(poly_flat(star(x, z, 0.0055, 0.0022, 4, i * 0.3), PRINT + 0.0003, [T['yellow'], T['cyan'], T['pink']][i % 3], 'bd_spark'))
+        out.append(poly_flat(star(x, z, 0.0055, 0.0022, 4, i * 0.3), PRINT + 0.0006, [T['yellow'], T['cyan'], T['pink']][i % 3], 'bd_spark'))
     return out
 
 
@@ -354,9 +353,9 @@ def pizza_box(T):
     """35 cm corrugated pizza box, lid open (it fell back past upright), a pizza with a slice gone"""
     W, H = 0.355, 0.042
     out = []
-    tray = prism(rrect(W, W, 0.004, 2), 0.0, 0.004, T['card'], 'pz_floor'); out.append(tray)
+    tray = prism(rrect(W - 0.002, W - 0.002, 0.004, 2), 0.0, 0.004, T['card'], 'pz_floor'); out.append(tray)
     for sx, sz, w, d in ((0, 1, W, 0.004), (0, -1, W, 0.004), (1, 0, 0.004, W - 0.008), (-1, 0, 0.004, W - 0.008)):
-        out.append(lib.box((w, H, d), (sx * (W / 2 - 0.002), H / 2, sz * (W / 2 - 0.002)), T['card'], bev=0.001, name='pz_wall'))
+        out.append(lib.box((w, H - 0.0006, d), (sx * (W / 2 - 0.002), H / 2 + 0.0003, sz * (W / 2 - 0.002)), T['card'], bev=0.001, name='pz_wall'))
     # the lid, built closed with its hinge (the back top edge) on the origin, then opened back past upright
     lid = [lib.box((W, 0.004, W), (0, 0.002, W / 2), T['card'], bev=0.0012, name='pz_lid')]
     lid.append(text('PIZZA', 0.06, T['pep'], (0, 0.0045, W / 2 - 0.01), name='pz_word'))
@@ -374,11 +373,11 @@ def pizza_box(T):
             pts.append((r * math.cos(a), r * math.sin(a)))
         return pts
     out.append(prism(wedge_pts(R), 0.004, 0.0105, T['crust'], 'pz_crust', bev=0.003, seg=2))
-    out.append(prism(wedge_pts(R - 0.013), 0.0105, 0.0125, T['cheese'], 'pz_cheese', bev=0.0012, seg=1))
+    out.append(prism(wedge_pts(R - 0.013), 0.0105, 0.0125, T['cheese'], 'pz_cheese'))
     rr = random.Random(5)
     for i in range(9):
         a = rr.uniform(gap[1] + 0.3, gap[0] + 2 * math.pi - 0.3); d = rr.uniform(0.03, R - 0.04)
-        out.append(disc(0.017, 0.0138, T['pep'], 12, 'pz_pep', d * math.cos(a), d * math.sin(a), y0=0.0118, bev=0.0006))
+        out.append(disc(0.017, 0.0138 + i * 0.00025, T['pep'], 12, 'pz_pep', d * math.cos(a), d * math.sin(a), y0=0.0118 + i * 0.00025, bev=0.0006))
     for o in out:
         if o.name.startswith(('pz_floor', 'pz_wall', 'pz_lid', 'pz_crust', 'pz_cheese', 'pz_pep')): uvw(o, 0.06)
     return out
@@ -388,7 +387,7 @@ def chip_bag(T):
     """a puffy 160 g chip bag lying down: a pillow loft with crimped ends, CHIPS on the front"""
     L, Wd, Hh = 0.24, 0.17, 0.055
     def ring(i, t):
-        k = math.sin(math.pi * min(1, max(0, t))) ** 0.45
+        k = math.sin(math.pi * min(0.94, max(0.06, t))) ** 0.45
         pts = []
         for j in range(16):
             a = 2 * math.pi * j / 16
@@ -435,7 +434,7 @@ def lamp(T):
     cap = lathe([(0.0, 0.27), (0.02, 0.27), (0.026, 0.24), (0.032, 0.205), (0.0, 0.205)], (x, y, z), T['chrome'], 16, 'y', 'lamp_cap')
     sock = lathe([(0.0, 0.205), (0.02, 0.205), (0.02, 0.15), (0.0, 0.15)], (x, y, z), T['cord'], 12, 'y', 'lamp_sock')
     bulb = lib.ball(0.04, (x, y + 0.12, z), T['bulb'], (1, 1.25, 1), 16, 10, 'lamp_bulb')
-    cord = lib.rod((x, y + 0.27, z), (x, CEIL, z), 0.004, T['cord'], 6, 'lamp_cord')
+    cord = lib.rod((x, y + 0.27, z), (x, CEIL - 0.008, z), 0.004, T['cord'], 6, 'lamp_cord')
     rose = lathe([(0.0, CEIL), (0.05, CEIL), (0.05, CEIL - 0.02), (0.0, CEIL - 0.02)], (x, 0, z), T['white'], 16, 'y', 'lamp_rose')
     for o in (shade, inner, rim, cap): uvw(o, 0.08)
     return [shade, inner, rim, cap, sock, bulb, cord, rose]
@@ -448,12 +447,12 @@ def room(T):
     fl = prism([(3.2, 2.6), (-3.2, 2.6), (-3.2, -1.9), (3.2, -1.9)], F - 0.02, F, T['floor'], 'rm_floor'); uvw(fl, 0.6); out.append(fl)
     bw = lib.box((6.4, CEIL - F, 0.05), (0, (CEIL + F) / 2, -1.925), T['wall'], name='rm_wall'); uvw(bw, 0.5); out.append(bw)
     lw = lib.box((0.05, CEIL - F, 4.5), (-3.225, (CEIL + F) / 2, 0.35), T['wall'], name='rm_wall2'); uvw(lw, 0.5); out.append(lw)
-    for wx, wz, ww, wd in ((0, -1.895, 6.4, 0.02), (-3.19, 0.35, 0.02, 4.5)):  # skirting boards
-        sk = lib.box((ww, 0.09, wd), (wx, F + 0.045, wz), T['frame'], name='rm_skirt'); uvw(sk, 0.2); out.append(sk)
+    for wx, wz, ww, wd in ((0, -1.895, 6.38, 0.02), (-3.1895, 0.36, 0.02, 4.48)):  # skirting boards
+        sk = lib.box((ww, 0.088, wd), (wx, F + 0.046, wz), T['frame'], name='rm_skirt'); uvw(sk, 0.2); out.append(sk)
     # the counter: base cabinets with chrome bar pulls, a yellow top, the sink under the window
     cx0, cx1, cz = -2.6, 0.55, -1.6
     cb = lib.box((cx1 - cx0, 0.86, 0.6), ((cx0 + cx1) / 2, F + 0.43 + 0.04, cz), T['cab'], bev=0.006, name='rm_base'); uvw(cb, 0.2); out.append(cb)
-    kick = lib.box((cx1 - cx0 - 0.04, 0.08, 0.56), ((cx0 + cx1) / 2, F + 0.04, cz - 0.03), T['rubber'], name='rm_kick'); out.append(kick)
+    kick = lib.box((cx1 - cx0 - 0.04, 0.074, 0.54), ((cx0 + cx1) / 2, F + 0.043, cz - 0.01), T['rubber'], name='rm_kick'); out.append(kick)
     ct = lib.box((cx1 - cx0 + 0.04, 0.04, 0.64), ((cx0 + cx1) / 2, F + 0.92, cz + 0.01), T['ctop'], bev=0.006, name='rm_ctop'); uvw(ct, 0.2); out.append(ct)
     nd = 6
     for i in range(nd):
@@ -484,7 +483,7 @@ def room(T):
         n = max(1, round((ux1 - ux0) / 0.5))
         for i in range(n):
             dx = ux0 + (ux1 - ux0) * (i + 0.5) / n
-            out.append(lib.rod((dx, F + 1.6, -1.55), (dx, F + 1.7, -1.55), 0.007, T['chrome'], 8, 'rm_pull'))
+            out.append(lib.rod((dx, F + 1.6, -1.5535), (dx, F + 1.7, -1.5535), 0.007, T['chrome'], 8, 'rm_pull'))
     # the fridge: a rounded 50s fridge in butter yellow, chrome handle and badge, magnets and a drawing
     fx = 1.25
     body = prism(rrect(0.76, 0.68, 0.06, 4, fx, -1.53), F + 0.06, F + 1.56, T['fridge'], 'rm_fridge', bev=0.01); uvw(body, 0.3)
@@ -494,7 +493,7 @@ def room(T):
     out.append(lib.box((0.2, 0.05, 0.008), (fx - 0.05, F + 1.47, -1.188), T['chrome'], bev=0.003, name='rm_fbadge'))
     out.append(text('JANKAIRE', 0.03, T['pink'], (fx - 0.05, F + 1.47, -1.183), stand=True, name='rm_fword'))
     for i, (mx, my, mc) in enumerate(((fx - 0.2, F + 1.25, 'pink'), (fx - 0.06, F + 1.33, 'cyan'), (fx + 0.12, F + 1.2, 'yellow'), (fx - 0.15, F + 0.75, 'pink'), (fx + 0.05, F + 0.6, 'cyan'))):
-        out.append(lib.cyl(0.016, 0.01, (mx, my, -1.183), T[mc], 'z', 10, name='rm_magnet'))
+        out.append(lib.cyl(0.016, 0.01, (mx, my, -1.1855), T[mc], 'z', 10, name='rm_magnet'))
     dw = lib.box((0.2, 0.26, 0.002), (fx - 0.14, F + 1.12, -1.187), T['paper'], name='rm_drawing'); uvw(dw, 0.2); out.append(dw)
     out.append(xf([text('MOM', 0.04, T['pink'], (0, 0, 0), stand=True, name='rm_mom')], 0, (fx - 0.14, F + 1.17, -1.1855), roll=0.1)[0])
     for i in range(3):
@@ -517,13 +516,13 @@ def chair(T):
     sy = 0.46  # seat height off the floor
     for sx in (-1, 1):
         x = sx * 0.19
-        out.append(lib.tube([(x, 0.0, 0.2), (x, sy - 0.04, 0.19), (x, sy - 0.04, -0.17), (x - sx * 0.0, sy - 0.04, -0.19), (x, 0.0, -0.21)], 0.011, T['chrome'], 10, 'ch_leg'))
+        out.append(lib.tube([(x, 0.006, 0.2), (x, sy - 0.04, 0.19), (x, sy - 0.04, -0.17), (x, sy - 0.04, -0.19), (x, 0.006, -0.21)], 0.011, T['chrome'], 10, 'ch_leg'))
         out.append(lib.tube([(x, sy - 0.04, -0.17), (x, sy + 0.12, -0.2), (x, sy + 0.42, -0.24)], 0.011, T['chrome'], 10, 'ch_post'))
         for z in (0.2, -0.21): out.append(lib.lathe([(0.0, 0.0), (0.012, 0.0), (0.012, 0.012), (0.0, 0.012)], (x, 0, z), T['rubber'], 8, 'y', 'ch_foot'))
-    out.append(lib.rod((-0.19, 0.12, 0.0), (0.19, 0.12, 0.0), 0.008, T['chrome'], 8, 'ch_bar'))
+    out.append(lib.rod((-0.19, 0.12, 0.1975), (0.19, 0.12, 0.1975), 0.008, T['chrome'], 8, 'ch_bar'))
     seat = prism(rrect(0.42, 0.42, 0.06, 4), sy - 0.035, sy + 0.035, T['vinyl'], 'ch_seat', bev=0.02, seg=3); uvw(seat, 0.1); out.append(seat)
     out.append(ring_sweep(rrect(0.425, 0.425, 0.062, 4), [(0.0, sy - 0.006), (0.004, sy - 0.003), (0.004, sy + 0.003), (0.0, sy + 0.006)], T['white'], 'ch_piping'))
-    back = prism(rrect(0.4, 0.06, 0.03, 3), 0.0, 0.2, T['vinyl'], 'ch_back', bev=0.018, seg=3)
+    back = prism(rrect(0.4, 0.06, 0.028, 3), 0.0, 0.2, T['vinyl'], 'ch_back', bev=0.012, seg=3)
     xf([back], 0, (0, sy + 0.22, -0.245), pitch=-0.12); uvw(back, 0.1); out.append(back)
     return out
 
@@ -543,8 +542,11 @@ def build():
     for k, objs in parts.items():
         objs = [o for o in objs if o is not None and o.name in bpy.data.objects]
         groups[k] = objs
-    if FLAG('--qa'):
-        for k, objs in groups.items(): K.qa('kitchen_' + k, objs, eps=0.0001, tol=0.0015)
+    for objs in groups.values():
+        for o in objs:
+            if o.type == 'MESH' and (not o.data.uv_layers or o.name.startswith(('ic', 'bd_', 'lid_start', 'lid_bgn', 'pz_word', 'pz_sub', 'rm_fword', 'rm_mom'))): uvw(o, 0.05)  # (solid colours and prints too: no missing / zero-area UVs)
+            if o.type == 'MESH': K.fix_uv(o)
+    if FLAG('--qa'): K.qa('kitchen', [o for objs in groups.values() for o in objs], eps=0.0001, tol=0.0015)
     rev = next((a.split('=', 1)[1] for a in ARGV if a.startswith('--review=')), None)
     if rev:
         for k, objs in groups.items(): K.review('kitchen_' + k, objs, rev, 'random')

@@ -125,7 +125,7 @@ def make_bakery():
     W, D, H = 2.0, 1.5, 1.45  # walls (front at +z)
     parts = []
     base = lib.box((W + 0.16, 0.12, D + 0.16), (0, 0.06, 0), trim, bev=0.03, name='b_base'); parts.append(base)
-    body = lib.box((W, H, D), (0, 0.12 + H / 2, 0), wall, bev=0.03, name='b_body'); parts.append(body)
+    body = lib.box((W, H + 0.02, D), (0, 0.11 + H / 2, 0), wall, bev=0.03, name='b_body'); parts.append(body)
     # the roof: a pitched cap with the ridge along x, overhanging
     rf = prism_x([(-D / 2 - 0.12, 0.0), (D / 2 + 0.12, 0.0), (D / 2 + 0.12, 0.08), (0.0, 0.62), (-D / 2 - 0.12, 0.08)], -W / 2 - 0.1, W / 2 + 0.1, roof, 'b_roof', bev=0.025)
     xf([rf], 0, (0, 0.12 + H, 0)); parts.append(rf)
@@ -133,9 +133,9 @@ def make_bakery():
     parts.append(lib.box((0.32, 0.07, 0.32), (0.55, 0.12 + H + 0.83, -0.3), wall, bev=0.02, name='b_chimcap'))
     # the window (left) with loaves on a shelf, the door (right)
     fz = D / 2
-    parts.append(lib.box((1.0, 0.75, 0.04), (-0.38, 0.75, fz + 0.005), glass, name='b_glass'))
-    for x, y, w, h in ((-0.38, 1.15, 1.12, 0.07), (-0.38, 0.35, 1.12, 0.1), (-0.92, 0.75, 0.07, 0.86), (0.16, 0.75, 0.07, 0.86), (-0.38, 0.75, 0.04, 0.78)):
-        parts.append(lib.box((w, h, 0.08), (x, y, fz + 0.03), trim, bev=0.015, name='b_wframe'))
+    parts.append(lib.box((1.0, 0.75, 0.03), (-0.38, 0.75, fz - 0.004), glass, name='b_glass'))
+    for x, y, w, h, dz, d in ((-0.38, 1.15, 1.12, 0.07, 0.03, 0.08), (-0.38, 0.35, 1.12, 0.1, 0.03, 0.08), (-0.92, 0.75, 0.07, 0.86, 0.036, 0.08), (0.16, 0.75, 0.07, 0.86, 0.036, 0.08), (-0.38, 0.75, 0.04, 0.74, 0.024, 0.06)):
+        parts.append(lib.box((w, h, d), (x, y, fz + dz), trim, bev=0.012, name='b_wframe'))  # (rails, uprights and the mullion each a few mm apart: no shared faces)
     for i, (x, y) in enumerate(((-0.62, 0.52), (-0.38, 0.52), (-0.14, 0.52), (-0.5, 0.86), (-0.25, 0.86))):
         parts.append(lib.ball(0.11, (x, y, fz + 0.06), crust, (1.0, 0.65, 0.6), 10, 6, 'b_bun'))
     door = lib.box((0.5, 0.95, 0.05), (0.62, 0.12 + 0.475, fz + 0.01), wood, bev=0.02, name='b_door'); parts.append(door)
@@ -157,6 +157,8 @@ def make_bakery():
     parts.append(xf([text('GOLDEN BREAD 20', 0.1, ink, (0, 0, 0), stand=True, depth=0.008, name='b_price')], 0, (0, 1.4, fz + 0.005))[0])
     for o in parts:
         if o.data.materials and o.data.materials[0].name in ('bs_wall', 'bs_trim', 'bs_roof', 'bs_crust', 'bs_door', 'bs_brass', 'bs_sign'): uvw(o, 0.4)
+    for o in parts: K.fix_uv(o, 0.3)
+    if FLAG('--qa-parts'): K.qa('stall_parts', parts, eps=0.002, tol=0.01)
     stall = K.node(parts, 'stall', (0, 0, 0))
     bread = golden_bread('bread')
     bread.location = gv(0, 0, 3.0)  # (beside the shop in the file; the game takes it off and floats it)
@@ -221,9 +223,10 @@ def make_toaster():
     rr = random.Random(9)
     for i in range(16):  # cereal O's spilled round the 4th place spot
         a = rr.random() * 6.28; d = 0.03 + rr.random() * 0.07
-        o = lib.lathe([(0.0035, 0.0), (0.0062, -0.0012), (0.0072, 0.0015), (0.0062, 0.0038), (0.0035, 0.0028), (0.0035, 0.0)], (math.cos(a) * d, 0.0016, 0.17 + math.sin(a) * d * 0.6), oat, 10, 'y', 'tp_o')
+        o = lib.lathe([(0.0049 + 0.0015 * math.cos(-2 * math.pi * k / 8), 0.0015 * math.sin(-2 * math.pi * k / 8)) for k in range(9)], (math.cos(a) * d, 0.0016, 0.17 + math.sin(a) * d * 0.6), oat, 10, 'y', 'tp_o', cap=False)
         o.rotation_euler = Euler((rr.uniform(-0.4, 0.4), rr.uniform(-0.4, 0.4), 0)); parts.append(o)
     for p in parts[1:]: uvw(p, 0.03)
+    for o in parts: K.fix_uv(o, 0.03)
     podium = K.node(parts, 'podium', (0, 0, 0))
     # ---- the toaster: chrome loaf-shaped body, bakelite base and ends, two slots, the element, knob, lever track
     chrome = M('tp_chrome', 0xeef0f6, 0.1, 1.0, var=0.03, speck=0xa0a8b8, sp=0.01, seed=24)
@@ -248,19 +251,23 @@ def make_toaster():
     plate = lib.box((0.05, 0.13, 0.006), (0.0, y0 + 0.12, front), bake, bev=0.002, name='tp_track')
     tslot = lib.box((0.008, 0.11, 0.004), (0.0, y0 + 0.125, front + 0.003), dark, name='tp_trackslot')
     knob = lib.lathe([(0.0, 0.0), (0.016, 0.0), (0.016, 0.009), (0.012, 0.014), (0.0, 0.014)], (0.045, y0 + 0.055, front - 0.004), bake, 16, 'z', 'tp_knob')
-    dial = [lib.box((0.0015, 0.006, 0.001), (0.045 + 0.022 * math.sin(a), y0 + 0.055 + 0.022 * math.cos(a), front + 0.0005), chrome, rot=(0, 0, -a), name='tp_dialtick') for a in [(-1.1 + 2.2 * i / 5) for i in range(6)]]
-    badge = lib.box((0.07, 0.016, 0.002), (-0.03, y0 + 0.165, front + 0.0), pink, bev=0.001, name='tp_badge')
-    word = xf([text('JANKTOAST', 0.0085, M('tp_word', 0xfff8f0, 0.4, tex=False), (0, 0, 0), stand=True, depth=0.0006, name='tp_word')], 0, (-0.03, y0 + 0.165, front + 0.0012))[0]
+    dial = [lib.cyl(0.03, 0.006, (0.045, y0 + 0.055, front - 0.002), bake, 'z', 20, name='tp_dialplate')]
+    dial += [lib.box((0.0015, 0.006, 0.0012), (0.045 + 0.022 * math.sin(a), y0 + 0.055 + 0.022 * math.cos(a), front + 0.0009), chrome, rot=(0, 0, -a), name='tp_dialtick') for a in [(-1.1 + 2.2 * i / 5) for i in range(6)]]
+    badge = lib.box((0.05, 0.014, 0.002), (-0.046, y0 + 0.168, front + 0.0), pink, bev=0.001, name='tp_badge')
+    word = xf([text('JANKTOAST', 0.0065, M('tp_word', 0xfff8f0, 0.4, tex=False), (0, 0, 0), stand=True, depth=0.0006, name='tp_word')], 0, (-0.046, y0 + 0.168, front + 0.0012))[0]
     stripe = [lib.box((0.002, 0.012, tl * 0.82), (sx * (tw / 2 + 0.0006), y0 + 0.1, 0.0), pink, name='tp_stripe') for sx in (-1, 1)]
     cord = lib.tube([(0.03, y0 + 0.03, -tl / 2), (0.03, y0 + 0.02, -tl / 2 - 0.03), (0.05, 0.004, -tl / 2 - 0.07), (0.12, 0.004, -tl / 2 - 0.1), (0.2, 0.004, -0.2)], 0.0035, bake, 8, 'tp_cord')
     tparts = [body, base, plate, tslot, knob, badge, word, cord] + feet + elem + dial + stripe
     for p in (base, plate, knob, badge) + tuple(feet): uvw(p, 0.03)
-    toaster = K.node(tparts, 'toaster', (0, 0, 0))
     # ---- the lever: a bakelite knob on a chrome stem, origin = the knob at the top of the track
     lx, ly, lz = LEVER
-    stem = lib.box((0.006, 0.006, 0.02), (lx, ly, lz - 0.01), chrome, name='tp_stem')
+    stem = lib.box((0.006, 0.006, 0.02), (lx, ly, lz - 0.0085), chrome, name='tp_stem')
     kn = prism(rrect(0.034, 0.024, 0.008, 3, lx, lz + 0.006), ly - 0.006, ly + 0.008, bake, 'tp_lever', bev=0.003)
     uvw(stem, 0.03); uvw(kn, 0.03)
+    for o in (stem, kn): K.fix_uv(o, 0.03)
+    if FLAG('--qa-parts'): K.qa('toaster_parts', tparts + [stem, kn], eps=0.0001, tol=0.002)
+    for o in tparts: K.fix_uv(o, 0.03)
+    toaster = K.node(tparts, 'toaster', (0, 0, 0))
     lever = K.node([stem, kn], 'lever', (lx, ly, lz))
     meta = {'kind': 'bgntoaster', 'id': 'x_bgn_toaster', 'top': TOP, 'slot': list(SLOT), 'lever': list(LEVER), 'leverDrop': DROP, 'spots': SPOTS,
             'box': [bw, bh, bd], 'toaster': [tw, th, tl]}
@@ -284,7 +291,8 @@ if __name__ == '__main__':
         root, nodes = fn()
         built[k] = (root, nodes)
         print('JF_TRIS', k, {n.name: K.tris([n]) for n in nodes})
-        if FLAG('--qa'): K.qa(k, nodes, eps=0.0001 if k == 'toaster' else 0.002, tol=0.002 if k == 'toaster' else 0.01)
+        if FLAG('--qa'):
+            for n in nodes if k == 'bakery' else [nodes]: K.qa(k, n if isinstance(n, list) else [n], eps=0.0001 if k == 'toaster' else 0.002, tol=0.002 if k == 'toaster' else 0.01)
         if not FLAG('--no-export'): lib.export(root, root.name)
     # sheets: everything moved apart so the shots don't see each other
     for i, (k, (root, nodes)) in enumerate(built.items()):
