@@ -45,10 +45,20 @@ local staggerUntil = -math.huge
 local shake = 0
 local view = { pitch = 0, yaw = 0 } -- the visual offsets applied to the camera last frame (removed again next frame)
 local equipT = 0
-local smear: Trail? = nil
+
+-- your loadout (the server sets it on every arm, Loadout.luau): the weapons on keys 1 2 3
+local function lo(): { string }
+	local s = me:GetAttribute("Loadout")
+	if type(s) ~= "string" then return Weapons.loadout end
+	local out = {}
+	for id in string.gmatch(s, "[^,]+") do if W[id] then table.insert(out, id) end end
+	return if #out == 3 then out else Weapons.loadout
+end
+-- the loadout screen is up (LoadoutUI): hands off the weapons
+local function menuOpen(): boolean return me:GetAttribute("LoadoutOpen") == true end
 
 local function resetAmmo()
-	for _, id in Weapons.loadout do
+	for _, id in lo() do
 		local w = W[id]
 		if w.mag then ammo[id] = { mag = w.mag, reloadUntil = 0 } end
 		nextShot[id] = 0
@@ -62,6 +72,23 @@ local function myChar(): (Model?, Humanoid?, BasePart?)
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not ch or not hum or not root or hum.Health <= 0 then return nil, nil, nil end
 	return ch, hum, root
+end
+-- the Shredder (a Tool, key 4) takes over while it's out: these weapons hide and hold fire
+local function toolOut(): boolean
+	local ch = me.Character
+	return ch ~= nil and ch:FindFirstChildOfClass("Tool") ~= nil
+end
+-- the hub is weapons-free (owner, 2026-11-14): no viewmodel, no firing; the training room and matches arm you
+-- (the server agrees: Fight.holstered, Combat, HubHolster)
+local function inHub(): boolean
+	return me:GetAttribute("Zone") == "hub"
+end
+-- the muzzle of the gun a character holds (third person: yours, or someone else's)
+local function heldMuzzle(m: Instance?): Vector3?
+	local wpn = m and m:FindFirstChild("HeldWeapon")
+	local root = wpn and wpn:IsA("Model") and wpn.PrimaryPart
+	local a = root and root:FindFirstChild("Muzzle")
+	return if a and a:IsA("Attachment") then a.WorldPosition else nil
 end
 local function hp(): number
 	local v = me:GetAttribute("Hp")
@@ -117,31 +144,111 @@ RunService:BindToRenderStep("JankfireCamera", Enum.RenderPriority.Camera.Value +
 end)
 
 -- ---------------------------------------------------------------- swapping, reloading
-local function setSmear()
-	smear = nil
-	local m = VM.model
-	local root = m and m.PrimaryPart
-	local a0 = root and root:FindFirstChild("Muzzle") :: Attachment?
-	local a1 = root and root:FindFirstChild("Mid") :: Attachment?
-	if not a0 or not a1 then return end
-	local t = Instance.new("Trail")
-	t.Attachment0 = a0; t.Attachment1 = a1; t.Lifetime = 0.18; t.Enabled = false; t.FaceCamera = false
-	t.Color = ColorSequence.new(Color3.new(1, 1, 1)); t.LightEmission = 0.7
-	t.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
-	t.Parent = root
-	smear = t
+-- the katana's smear: the blade's middle and tip, sampled in CAMERA space during the clip's trail window and drawn as
+-- a fading ribbon of triangles every frame. (a Trail leaves its points in the world, so moving or turning mid-swing
+-- left the streak hanging in the air behind the blade)
+local SMEAR_LIFE = 0.12
+local smearPts: { { t: number, a: Vector3, b: Vector3 } } = {}
+local smearPool: { WedgePart } = {}
+local smearFolder: Folder? = nil
+local function wedge(i: number): WedgePart
+	local w = smearPool[i]
+	if not w or not w.Parent then
+		if not smearFolder or not smearFolder.Parent then
+			local f = Instance.new("Folder"); f.Name = "KatanaSmear"; f.Parent = camera
+			smearFolder = f
+		end
+		w = Instance.new("WedgePart")
+		w.Anchored = true; w.CanCollide = false; w.CanQuery = false; w.CanTouch = false; w.CastShadow = false
+		w.Material = Enum.Material.Neon; w.Color = Color3.fromRGB(225, 240, 255); w.Transparency = 1
+		w.Parent = smearFolder
+		smearPool[i] = w
+	end
+	return w :: WedgePart
+end
+-- one triangle out of two wedges (the classic way to draw a triangle with parts)
+local function tri(n: number, a: Vector3, b: Vector3, c: Vector3, tr: number): number
+	local ab, ac, bc = b - a, c - a, c - b
+	if ac:Cross(ab).Magnitude < 1e-5 then return n end
+	local abd, acd, bcd = ab:Dot(ab), ac:Dot(ac), bc:Dot(bc)
+	if abd > acd and abd > bcd then c, a = a, c
+	elseif acd > bcd and acd > abd then a, b = b, a end
+	ab, ac, bc = b - a, c - a, c - b
+	local right = ac:Cross(ab).Unit
+	local up = bc:Cross(right).Unit
+	local back = bc.Unit
+	local height = math.abs(ab:Dot(up))
+	local w1, w2 = wedge(n + 1), wedge(n + 2)
+	w1.Size = Vector3.new(0.002, height, math.abs(ab:Dot(back)))
+	w1.CFrame = CFrame.fromMatrix((a + b) / 2, right, up, back)
+	w2.Size = Vector3.new(0.002, height, math.abs(ac:Dot(back)))
+	w2.CFrame = CFrame.fromMatrix((a + c) / 2, -right, up, -back)
+	w1.Transparency, w2.Transparency = tr, tr
+	return n + 2
+end
+local function smearStep(now: number, hidden: boolean)
+	local c = VM.playing()
+	local an = c and Anims[c]
+	local ct = VM.clipT()
+	local root = VM.model and VM.model.PrimaryPart
+	if not hidden and an and an.trail and ct and root and ct >= an.trail[1] and ct <= an.trail[2] then
+		local mid = root:FindFirstChild("Mid") :: Attachment?
+		local tip = root:FindFirstChild("Muzzle") :: Attachment?
+		if mid and tip then
+			local cf = camera.CFrame
+			table.insert(smearPts, { t = now, a = cf:PointToObjectSpace(mid.WorldPosition), b = cf:PointToObjectSpace(tip.WorldPosition) })
+		end
+	end
+	while #smearPts > 0 and (now - smearPts[1].t > SMEAR_LIFE or #smearPts > 24) do table.remove(smearPts, 1) end
+	local used = 0
+	if not hidden and #smearPts > 1 then
+		local cf = camera.CFrame
+		for i = 1, #smearPts - 1 do
+			local p, q = smearPts[i], smearPts[i + 1]
+			local tr = 0.3 + 0.7 * math.clamp((now - p.t) / SMEAR_LIFE, 0, 1) -- the oldest edge fades out
+			local a1, b1 = cf:PointToWorldSpace(p.a), cf:PointToWorldSpace(p.b)
+			local a2, b2 = cf:PointToWorldSpace(q.a), cf:PointToWorldSpace(q.b)
+			used = tri(used, a1, b1, b2, tr)
+			used = tri(used, a1, b2, a2, tr)
+		end
+	end
+	for i = used + 1, #smearPool do
+		local w = smearPool[i]
+		if w.Transparency ~= 1 then w.Transparency = 1 end
+	end
+end
+
+-- the Shredder in your primary slot: it's a Tool (ShredderServer runs it), so its key just pulls the Tool out
+local function equipShredder()
+	local ch, hum = myChar()
+	if not ch or not hum then return end
+	if ch:FindFirstChild("Shredder") then held = "shredder"; return end
+	local bag = me:FindFirstChildOfClass("Backpack")
+	local tool = bag and (bag:FindFirstChild("Shredder") or bag:WaitForChild("Shredder", 3))
+	if not tool or not tool:IsA("Tool") or not hum.Parent then return end
+	local a = ammo[held]
+	if a and a.reloadUntil > 0 then a.reloadUntil = 0 end
+	held = "shredder"
+	equipT = os.clock()
+	aim = 0
+	VM.set("shredder", 0) -- (no viewmodel: the Tool is the model)
+	hum:EquipTool(tool)
+	EquipR:FireServer("shredder")
+	Sfx.play("click")
 end
 
 local function equip(wid: string)
+	if wid == "shredder" then equipShredder(); return end
 	if wid == held and VM.model then return end
 	if not W[wid] then return end
+	if toolOut() then local _, hum = myChar(); if hum then hum:UnequipTools() end end
 	local a = ammo[held]
 	if a and a.reloadUntil > 0 then a.reloadUntil = 0 end -- swapping cancels a reload
 	held = wid
 	equipT = os.clock()
 	aim = 0
 	VM.set(wid, kat())
-	setSmear()
+	table.clear(smearPts)
 	EquipR:FireServer(wid)
 	Sfx.play("click")
 end
@@ -190,7 +297,8 @@ local function fireGun(now: number)
 	local hits: { [Model]: { n: number, h: number } } = {}
 	local ends: { Vector3 } = {}
 	local allEnds: { Vector3 } = {}
-	local impacts: { { Vector3 } } = {}
+	local impacts: { RaycastResult } = {}
+	local splashes: { Vector3 } = {}
 	for _ = 1, w.pellets or 1 do
 		local d = Hitbox.spreadDir(look, spread, math.random(), math.random())
 		local mh = workspace:Raycast(eye, d * w.range, mapParams)
@@ -204,11 +312,13 @@ local function fireGun(now: number)
 		local e = eye + d * best
 		table.insert(allEnds, e)
 		if #ends < 12 then table.insert(ends, e) end
+		local wx = Fx.waterCross(eye, e) -- into the pool: a splash on the surface, not dust on the bottom
+		if wx and #splashes < 4 then table.insert(splashes, wx) end
 		if who then
 			local g = hits[who] or { n = 0, h = 0 }
 			g.n += 1; if head then g.h += 1 end
 			hits[who] = g
-		elseif mh and #impacts < 6 then table.insert(impacts, { mh.Position, mh.Normal }) end
+		elseif mh and not wx and #impacts < 6 then table.insert(impacts, mh) end
 	end
 	local list = {}
 	for m, g in hits do table.insert(list, { m = m, n = g.n, h = g.h }) end
@@ -218,9 +328,10 @@ local function fireGun(now: number)
 	kickCam((w.kick or 0) * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * 0.5)
 	bloom = math.min(w.maxBloom or 0, bloom + (w.bloom or 0))
 	VM.kick(w.recoilVM, if aim > 0.5 then 0.6 else 1, (w.rate or 0) > 8)
-	local mz = VM.attachment("Muzzle") or (eye + look * 2)
 	local fpv = not thirdPerson()
-	if fpv then Fx.flash(CFrame.lookAt(mz, mz + look), held == "marbles") end
+	-- the muzzle: the viewmodel's in first person, the gun in your character's hand in third person
+	local mz = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eye + look * 2)
+	Fx.muzzle(CFrame.lookAt(mz, mz + look), held == "marbles", fpv)
 	if held == "redline" then
 		local port = VM.attachment("Port")
 		if port and fpv then Fx.brass(CFrame.lookAt(port, port + look) * CFrame.Angles(0, 0, 0), false) end
@@ -230,7 +341,10 @@ local function fireGun(now: number)
 		Fx.marbles(mz, allEnds, 1) -- no tracers: the marbles are the tracers
 		Sfx.play("gun_marbles")
 	end
-	for _, im in impacts do Fx.impact(im[1], im[2]) end
+	-- what the shots hit: holes, dust, sparks by material (marbles chip and puff, they don't punch holes)
+	local o = if held == "marbles" then { hole = false, scale = 0.7 } else nil
+	for _, im in impacts do Fx.impact(im.Position, im.Normal, im.Instance, im.Material, o) end
+	if held ~= "marbles" then for _, s in splashes do Fx.splash(s, 0.3) end end -- (marbles plop in on their own)
 	shake = math.max(shake, if held == "marbles" then 0.35 else 0.06)
 	if a.mag <= 0 then task.delay(0.15, reload) end
 end
@@ -268,7 +382,14 @@ local function resolveSwing()
 			end
 		end
 	end
-	if #hitList == 0 then return end
+	if #hitList == 0 then
+		-- nobody in reach: the blade still bites what's in front of you (sparks off a wall, a splash in the pool)
+		local h = workspace:Raycast(eye, look * reach, mapParams)
+		local wx = Fx.waterCross(eye, if h then h.Position else eye + look * reach)
+		if wx then Fx.splash(wx, 0.45)
+		elseif h then Fx.slash(h.Position, h.Normal, h.Instance, h.Material, look); Sfx.play("tink", h.Position, 0.7) end
+		return
+	end
 	MeleeR:FireServer("katana", look, hitList)
 	-- the hit, felt right away: hit-stop, the flash, a bonk, a punch
 	VM.hitStop = 0.06
@@ -293,9 +414,21 @@ local function tryParry(now: number)
 end
 
 -- ---------------------------------------------------------------- input
-local KEYS = { [Enum.KeyCode.One] = "redline", [Enum.KeyCode.Two] = "marbles", [Enum.KeyCode.Three] = "katana" }
+local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3 } -- the loadout's slots
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
-	if gp then return end
+	if gp or menuOpen() or inHub() then return end
+	local slot = KEYS[io.KeyCode]
+	local want = if slot then lo()[slot] else nil
+	if toolOut() then -- 1/2/3 put the Shredder away and take that weapon; the rest is the Shredder's
+		if want and want ~= "shredder" then
+			local _, hum = myChar()
+			if hum then hum:UnequipTools() end
+			equip(want)
+		end
+		return
+	end
+	if want then equip(want); return end
+	if held == "shredder" then return end -- (the Shredder put away with 4: nothing to fire till you pick a slot)
 	local now = os.clock()
 	if io.UserInputType == Enum.UserInputType.MouseButton1 then
 		trigger = true
@@ -307,7 +440,6 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 		aimHeld = true
 		tryParry(now)
 	elseif io.KeyCode == Enum.KeyCode.R then reload()
-	elseif KEYS[io.KeyCode] then equip(KEYS[io.KeyCode])
 	end
 end)
 UserInputService.InputEnded:Connect(function(io: InputObject)
@@ -315,15 +447,26 @@ UserInputService.InputEnded:Connect(function(io: InputObject)
 	elseif io.UserInputType == Enum.UserInputType.MouseButton2 then aimHeld = false end
 end)
 UserInputService.InputChanged:Connect(function(io: InputObject, gp: boolean)
-	if gp or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
-	local i = table.find(Weapons.loadout, held) or 1
-	i = (i - 1 + (if io.Position.Z > 0 then -1 else 1)) % #Weapons.loadout + 1
-	equip(Weapons.loadout[i])
+	if gp or io.UserInputType ~= Enum.UserInputType.MouseWheel or toolOut() or menuOpen() or inHub() then return end
+	local l = lo()
+	local i = table.find(l, held) or 1
+	i = (i - 1 + (if io.Position.Z > 0 then -1 else 1)) % #l + 1
+	equip(l[i])
 end)
 
 -- ---------------------------------------------------------------- the third-person pose for everyone holding something
 -- (the R15 arm raised to hold the weapon level; a melee swing whips it across; a guard lifts the blade overhead)
 local poses: { [Motor6D]: { c0: CFrame, swingT: number, guardT: number } } = {}
+-- the new avatar joints (AnimationConstraint) keep C0 read-only: their rest pose is the torso's shoulder attachment
+local function getC0(sh: any): CFrame
+	if sh:IsA("Motor6D") then return sh.C0 end
+	local a = sh.Attachment0
+	return if a then a.CFrame else CFrame.identity
+end
+local function setC0(sh: any, cf: CFrame)
+	if sh:IsA("Motor6D") then sh.C0 = cf
+	elseif sh.Attachment0 then sh.Attachment0.CFrame = cf end
+end
 local function shoulder(m: Model): Motor6D?
 	local ua = m:FindFirstChild("RightUpperArm")
 	return ua and ua:FindFirstChild("RightShoulder") :: Motor6D?
@@ -333,7 +476,7 @@ local function poseOf(m: Model?): { c0: CFrame, swingT: number, guardT: number }
 	local sh = shoulder(m)
 	if not sh then return nil end
 	local p = poses[sh]
-	if not p then p = { c0 = sh.C0, swingT = -math.huge, guardT = -math.huge }; poses[sh] = p end
+	if not p then p = { c0 = getC0(sh), swingT = -math.huge, guardT = -math.huge }; poses[sh] = p end
 	return p
 end
 local function poseStep(now: number)
@@ -341,7 +484,7 @@ local function poseStep(now: number)
 		if not sh.Parent then poses[sh] = nil; continue end
 		local m = sh:FindFirstAncestorOfClass("Model")
 		local wpn = m and m:FindFirstChild("HeldWeapon")
-		if not wpn then sh.C0 = p.c0; continue end
+		if not wpn then setC0(sh, p.c0); continue end
 		local isKat = wpn:GetAttribute("Weapon") == "katana"
 		local rot = CFrame.Angles(if isKat then 0.95 else math.pi / 2, 0, 0)
 		local st = now - p.swingT
@@ -355,7 +498,7 @@ local function poseStep(now: number)
 			local k = if gt < 0.05 then gt / 0.05 elseif gt < 0.35 then 1 else 1 - (gt - 0.35) / 0.21
 			rot = rot:Lerp(CFrame.Angles(math.pi * 0.95, 0.75, 0), k)
 		end
-		sh.C0 = p.c0 * rot
+		setC0(sh, p.c0 * rot)
 	end
 end
 local function watchModel(m: Model)
@@ -428,6 +571,8 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 	if not from then return end
 	local ends = {}
 	for i, e in s.ends do if typeof(e) == "Vector3" and i <= 12 then table.insert(ends, e) end end
+	local first = ends[1]
+	if first and (first - from).Magnitude > 0.1 then Fx.muzzle(CFrame.lookAt(from, first), s.w == "marbles", false) end
 	if s.w == "marbles" then
 		Fx.marbles(from, ends, 8)
 		Sfx.play("gun_marbles", from)
@@ -435,6 +580,7 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 		for _, e in ends do Fx.tracer(from, e, W.redline.tracer :: Color3, 0.045 * S, 0.2) end
 		Sfx.redline(0, from)
 	end
+	Fx.shotEnds(from, ends, s.w == "marbles") -- their holes, dust and splashes, seen here too
 end)
 
 remote("Fx").OnClientEvent:Connect(function(f: any)
@@ -506,7 +652,10 @@ remote("Round").OnClientEvent:Connect(function(r: any)
 		Sfx.play("round_start")
 	elseif r.over then
 		Sfx.play("round_end")
-		H.endScreen(if type(r.winner) == "string" then r.winner else nil, r.winnerId == me.UserId, if type(r.board) == "table" then r.board else {}, if type(r.next) == "number" then r.next else 12)
+		H.endScreen(if type(r.winner) == "string" then r.winner else nil, r.winnerId == me.UserId or r.youWon == true, if type(r.board) == "table" then r.board else {},
+			if type(r.next) == "number" then r.next else 12, if type(r.nextLabel) == "string" then r.nextLabel else nil)
+	elseif r.hub then -- back in the hub after a match
+		H.hideEnd()
 	end
 end)
 
@@ -524,9 +673,21 @@ me.CharacterAdded:Connect(function()
 	bloom, aim, shake = 0, 0, 0
 	H.dead(nil)
 	held = ""
-	equip("redline")
+	equip(lo()[1])
 end)
-if me.Character then task.defer(equip, "redline") end
+if me.Character then task.defer(function() equip(lo()[1]) end) end
+-- the server armed you (a spawn, or the loadout screen closing in the hub): fresh mags, slot 1 out
+me:GetAttributeChangedSignal("ArmT"):Connect(function()
+	resetAmmo()
+	local _, hum = myChar()
+	if hum and toolOut() then hum:UnequipTools() end
+	held = ""
+	equip(lo()[1])
+end)
+-- a new wrap (the loadout screen): rebuild what's in your hands with it
+me:GetAttributeChangedSignal("Wraps"):Connect(function()
+	if VM.model and held ~= "" and held ~= "shredder" then VM.set(held, kat()) end
+end)
 
 -- ---------------------------------------------------------------- every frame
 RunService.RenderStepped:Connect(function(dt: number)
@@ -542,21 +703,20 @@ RunService.RenderStepped:Connect(function(dt: number)
 	-- aim down sights (can't while reloading): in ~0.14 s, out in ~0.125 s
 	local canAim = w and w.ads ~= nil and not reloading and hum ~= nil
 	aim = math.clamp(aim + (if aimHeld and canAim then 7 else -8) * dt, 0, 1)
-	if w and w.ads then camera.FieldOfView = 70 / (1 + (w.ads.zoom - 1) * aim) else camera.FieldOfView = 70 end
+	-- the base FOV is the P-menu slider's (JankSettings sets the BaseFov attribute); ADS zooms from it
+	local fovAttr = me:GetAttribute("BaseFov")
+	local baseFov = if type(fovAttr) == "number" then fovAttr else 70
+	if w and w.ads then camera.FieldOfView = baseFov / (1 + (w.ads.zoom - 1) * aim) else camera.FieldOfView = baseFov end
 	-- full auto
-	if hum and trigger and w and w.auto and now >= (nextShot[held] or 0) then
+	local holstered = inHub()
+	if holstered then trigger, aimHeld = false, false; if hum and toolOut() then hum:UnequipTools() end end
+	if hum and trigger and w and w.auto and not toolOut() and not menuOpen() and now >= (nextShot[held] or 0) then
 		local n = 0
 		while trigger and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end
 		if (ammo[held] :: any).mag <= 0 and (ammo[held] :: any).reloadUntil == 0 then reload() end
 	end
 	if pending and now >= pending.t then resolveSwing() end
 	if hum and parryBuf > -math.huge and now - parryBuf < 0.25 and now >= parryReady and not pending and now >= staggerUntil then tryParry(now) end
-	-- the katana's smear during the clip's trail window
-	if smear then
-		local c = VM.playing()
-		local an = c and Anims[c]
-		smear.Enabled = an ~= nil and an.trail ~= nil and true or false
-	end
 	-- the parry ring
 	if held == "katana" then
 		if now - parryT < P.win then H.parryRing("open", 1)
@@ -568,7 +728,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local st = Body.st
 	local spd = if root then Vector3.new(root.AssemblyLinearVelocity.X, 0, root.AssemblyLinearVelocity.Z).Magnitude else 0
 	if VM.model then
-		local tp = thirdPerson() or hum == nil
+		local tp = thirdPerson() or hum == nil or toolOut() or menuOpen() or holstered
 		for _, d in VM.model:GetDescendants() do
 			if d:IsA("BasePart") and d.Name ~= "Root" then d.LocalTransparencyModifier = if tp then 1 else 0 end
 		end
@@ -577,15 +737,37 @@ RunService.RenderStepped:Connect(function(dt: number)
 			grounded = st ~= nil and st.onGround, hp = hp(), firedT = firedT, slipping = Body.slipping(), now = now,
 			sight = VM.adsPos(held),
 		})
+		-- the katana's smear, after the blade has moved this frame
+		smearStep(now, tp)
+	else
+		smearStep(now, true)
 	end
 	H.step(dt, aim, false)
 	H.hp(hp())
-	H.weapon(held, a and a.mag, reloading, kat())
-	local ends = MatchState:GetAttribute("EndsAt")
-	local target = MatchState:GetAttribute("Target")
-	local kills = me:GetAttribute("Kills")
-	if type(ends) == "number" and type(target) == "number" then
-		H.round(target, if MatchState:GetAttribute("Phase") == "live" then ends - workspace:GetServerTimeNow() else 0, if type(kills) == "number" then kills else 0)
+	-- the Shredder (key 4) out: its name and heat in the panel instead of the gun it put away
+	local tool = toolOut() and me.Character and me.Character:FindFirstChildOfClass("Tool")
+	if tool and tool.Name == "Shredder" then
+		local heat = tool:GetAttribute("Heat")
+		H.weapon("shredder", nil, false, 0, if tool:GetAttribute("Hot") then "OVERHEATED" else ("heat %d%%"):format(math.floor((if type(heat) == "number" then heat else 0) * 100 + 0.5)))
+	elseif holstered then
+		H.weapon(held, a and a.mag, reloading, kat(), "HOLSTERED")
+	else
+		H.weapon(held, a and a.mag, reloading, kat())
+	end
+	-- the top line: in a match its mode, round, score and clock (Matches.luau); else where you are
+	local mh = me:GetAttribute("MatchHud")
+	if type(mh) == "string" then
+		local ends = me:GetAttribute("RoundEnds")
+		local clock = ""
+		if type(ends) == "number" then
+			local left = math.max(0, ends - workspace:GetServerTimeNow())
+			clock = (" · %d:%02d"):format(math.floor(left / 60), math.floor(left) % 60)
+		end
+		H.top(mh .. clock)
+	elseif me:GetAttribute("Zone") == "training" then
+		H.top("TRAINING · the dummies hit back in here")
+	else
+		H.top("HUB · weapons away · step on a pad to play · training behind you")
 	end
 	poseStep(now)
 end)

@@ -1,8 +1,9 @@
 --!strict
--- two test dummies so one person can try everything: "Dummy" strafes back and forth (shoot it, slice it, marble it),
--- "Plinker" stands still and fires short Redline bursts at the nearest player it can see (so you can feel getting
--- shot, and practise the katana parry on real bullets). they never count for score or the kill feed (like the web
--- game's training dummies), but they do grow your katana. bots proper (MODES.md bot brain) come with the match core
+-- the training room's dummies (behind the hub's spawn), so one person can try everything: "Dummy" strafes back and
+-- forth (shoot it, slice it, marble it), "Plinker" stands on its block and fires short Redline bursts at whoever's in
+-- the training room (feel getting shot, practise the katana parry on real bullets), and the yellow "Stand"s just
+-- stand there. they never count for score or the kill feed (like the web game's training dummies), but they do grow
+-- your katana. where they stand: the hub's DummySpots
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -56,9 +57,10 @@ end
 
 local function make(f: Fighter)
 	local plinker = f.name == "Plinker"
-	local m = body(f.name, if plinker then Color3.fromRGB(255, 59, 59) else Color3.fromRGB(255, 225, 77))
+	local m = body(f.name, if plinker then Color3.fromRGB(255, 59, 59) elseif f.name == "Dummy" then Color3.fromRGB(255, 150, 60) else Color3.fromRGB(255, 225, 77))
 	local b = brain[f]
-	m:PivotTo(CFrame.new(b.home + Vector3.new(0, Hitbox.ROOT_UP + 0.5, 0)))
+	local at = b.home + Vector3.new(0, Hitbox.ROOT_UP + 0.5, 0)
+	m:PivotTo(CFrame.lookAt(at, at + Vector3.zAxis)) -- facing the training room's door
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	if hum then
 		hum.MaxHealth, hum.Health = Weapons.HP, Weapons.HP
@@ -99,7 +101,7 @@ local function plink(f: Fighter)
 	if not eye then return end
 	local best, bestD = nil, 60 * S
 	for _, t in Fight.all do
-		if t.kind == "player" and t.alive then
+		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" then
 			local c = Fight.root(t)
 			if c and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) then best, bestD = t, (c.Position - eye).Magnitude end
 		end
@@ -159,10 +161,13 @@ end
 function Dummies.init(fight: any, apply: any)
 	Fight, applyHitscan = fight, apply
 	Fight.makeDummy = make
+	local spots = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") and workspace.Map.Hub:FindFirstChild("DummySpots")
 	local sp = Fight.spawnPoints()
-	for i, name in { "Dummy", "Plinker" } do
-		local f = Rules.newFighter("dummy", name, nil)
-		local home = sp[math.min(#sp, i * 2)] or Vector3.new(i * 10, 0, 0)
+	for i, name in { "Dummy", "Plinker", "Stand1", "Stand2" } do
+		local f = Rules.newFighter("dummy", if string.sub(name, 1, 5) == "Stand" then "Stand" else name, nil)
+		local spot = spots and spots:FindFirstChild(name) :: BasePart?
+		if not spot and not spots and i > 2 then continue end
+		local home = if spot then spot.Position else (sp[math.min(#sp, i * 2)] or Vector3.new(i * 10, 0, 0))
 		brain[f] = { home = home, side = 1, flip = 0, shoot = os.clock() + 4, slipUntil = 0 }
 		table.insert(list, f)
 		table.insert(Fight.all, f)

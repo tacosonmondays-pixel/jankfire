@@ -75,6 +75,7 @@ function VM.play(name: string)
 	clip = { name = name, t = 0, fired = {} }
 end
 function VM.playing(): string? return clip and clip.name end
+function VM.clipT(): number? return clip and clip.t end
 function VM.stop() clip = nil; dropProp() end
 
 -- a shot: the gun's recoil row on the springs + a camera view punch (public/js/weapons.js kickVM)
@@ -92,7 +93,17 @@ function VM.jolt(up: number) rec.rv += Vector3.new(up, 0, 0); rec.pv += Vector3.
 -- the camera's view punch (visual only): applied after the camera module each frame
 function VM.punch(): CFrame return CFrame.fromEulerAnglesXYZ(punch.x.X, punch.x.Y, punch.x.Z) end
 
+local AvatarArms = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("AvatarArms"))
 local function hands(m: Model, root: BasePart)
+	-- your own avatar's hands and forearms (skin tone, shirt sleeves); the code boxes below if your body isn't there
+	local spots = {}
+	for _, spot in { "Grip", "Fore" } do
+		local a = root:FindFirstChild(spot) :: Attachment?
+		if not a then continue end
+		local fistCF = CFrame.new(a.Position) * CFrame.new(if spot == "Fore" then -0.01 * k else 0.01 * k, -0.02 * k, 0) -- (relative to root)
+		table.insert(spots, { side = if spot == "Grip" then "Right" else "Left", fist = fistCF, arm = fistCF * CFrame.Angles(0.5, if spot == "Fore" then -0.35 else 0.25, 0) })
+	end
+	if AvatarArms.build(m, root, spots, k) then return end
 	local skin, sleeve = Color3.fromRGB(255, 206, 160), Color3.fromRGB(255, 79, 216)
 	for _, spot in { "Grip", "Fore" } do
 		local a = root:FindFirstChild(spot) :: Attachment?
@@ -111,6 +122,20 @@ local function hands(m: Model, root: BasePart)
 			p.Parent = m
 		end
 	end
+	-- your body may not be built yet (a spawn): keep trying for a few seconds, then swap the boxes for your arms
+	task.spawn(function()
+		for _ = 1, 24 do
+			task.wait(0.25)
+			if VM.model ~= m or not m.Parent then return end
+			if AvatarArms.build(m, root, spots, k) then
+				for _, n in { "HandGrip", "SleeveGrip", "HandFore", "SleeveFore" } do
+					local p = m:FindFirstChild(n)
+					if p then p:Destroy() end
+				end
+				return
+			end
+		end
+	end)
 end
 
 -- swap to a weapon: build its viewmodel, play its draw
@@ -129,6 +154,9 @@ function VM.set(wid: string, kat: number)
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then d.CastShadow = false; d.CanQuery = false; d.CanTouch = false end
 	end
+	-- your wrap from the loadout screen (before the hands go on, so it never paints your arms)
+	local wrId, wrMode = WeaponModels.wrapFor(game:GetService("Players").LocalPlayer, wid)
+	if wrId then WeaponModels.wrap(m, wrId, wrMode) end
 	hands(m, root)
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued

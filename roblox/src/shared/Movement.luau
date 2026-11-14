@@ -13,6 +13,7 @@ export type State = {
 	hook: Hook?, lift: number, -- lift: the rope's share of your weight, fading out after you let go
 	sliding: boolean, crouching: boolean, sprinting: boolean,
 	slip: number?, -- seconds of slipping left (marbles): no grip, no jumping, no steering (public/js/player.js)
+	slideT: number, slideCd: number, slideArmed: boolean, slideAir: number, -- the slide's time left, its cooldown, crouch let go since, time off the ground
 }
 export type Input = {
 	wx: number, wz: number, -- unit wish direction (world, flat), 0,0 = no keys
@@ -24,7 +25,8 @@ export type Input = {
 }
 
 function Movement.newState(): State
-	return { vx = 0, vy = 0, vz = 0, onGround = false, groundTicks = 0, combo = 0, hook = nil, lift = 0, sliding = false, crouching = false, sprinting = false }
+	return { vx = 0, vy = 0, vz = 0, onGround = false, groundTicks = 0, combo = 0, hook = nil, lift = 0, sliding = false, crouching = false, sprinting = false,
+		slideT = 0, slideCd = 0, slideArmed = true, slideAir = 0 }
 end
 
 -- quake accelerate: add speed along the wish direction up to wishSpeed
@@ -83,8 +85,33 @@ function Movement.ropeJump(vx: number, vy: number, vz: number): (number, number,
 	return vx * H.jumpMul, math.max(vy, 0) * H.jumpMul + H.jumpUp, vz * H.jumpMul
 end
 
+-- the slide: crouch while fast on the ground. it lasts Config.slideTime at most (or till you let go of crouch, slow
+-- right down or leave the ground), starts with a little shove and barely slows you, so your momentum carries. then a
+-- short cooldown, and crouch has to be let go before the next. returns "slide" when one starts
+function Movement.slideStep(st: State, inp: Input, dt: number, hs: number, slipping: boolean): (string?, number)
+	st.slideCd = math.max(0, st.slideCd - dt)
+	if not inp.crouch then st.slideArmed = true end
+	local event: string? = nil
+	if st.slideT > 0 then
+		st.slideT -= dt
+		st.slideAir = if st.onGround then 0 else st.slideAir + dt
+		if st.slideT <= 0 or not inp.crouch or slipping or hs < Config.slideEnd or st.slideAir > 0.15 then
+			st.slideT = 0
+			st.slideCd = Config.slideCd
+		end
+	elseif inp.crouch and st.onGround and st.slideArmed and st.slideCd <= 0 and hs > Config.slideMin and not slipping and not inp.jump then
+		st.slideT, st.slideArmed, st.slideAir = Config.slideTime, false, 0
+		local ns = math.max(hs, math.min(hs + Config.slideBoost, Config.slideCap))
+		st.vx, st.vz = st.vx / hs * ns, st.vz / hs * ns
+		hs = ns
+		event = "slide"
+	end
+	st.sliding = st.slideT > 0
+	return event, hs
+end
+
 -- one tick of horizontal movement + the rope. gravity itself is the engine's (Workspace.Gravity): this only adds the
--- rope's lift. returns what happened this tick: "grappleJump" | "bhop" | nil
+-- rope's lift. returns what happened this tick: "grappleJump" | "slideJump" | "slide" | "bhop" | nil
 function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: number, chestY: number, chestZ: number): string?
 	local event: string? = nil
 	if inp.jumpPressed and st.hook then -- grapple jump
@@ -97,7 +124,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 	local slipping = (st.slip or 0) > 0
 	if slipping then st.slip = math.max(0, (st.slip :: number) - dt) end
 	local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)
-	st.sliding = inp.crouch and st.onGround and hs > Config.slideMin and not slipping
+	event, hs = Movement.slideStep(st, inp, dt, hs, slipping)
 	st.crouching = inp.crouch and not st.sliding
 	st.sprinting = inp.sprint and not inp.crouch and inp.forward and st.onGround
 	local moveMul = if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1
@@ -109,6 +136,12 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 			-- jumping on the first ticks of landing skips friction entirely = momentum is forever
 			st.combo = if st.groundTicks <= Config.bhopTicks then st.combo + 1 else 1
 			if st.combo >= 2 then event = "bhop" end
+			if st.sliding then -- a slide jump: jump before the slide ends = more speed (and more height: Move.client)
+				local ns = math.max(hs, math.min(hs + Config.slideJumpAdd, Config.slideJumpCap))
+				if hs > 1e-3 then st.vx, st.vz = st.vx / hs * ns, st.vz / hs * ns end
+				st.slideT, st.sliding, st.slideCd = 0, false, Config.slideCd
+				event = "slideJump"
+			end
 		else
 			st.vx, st.vz = Movement.friction(st.vx, st.vz, if st.sliding then Config.slideFric else Config.fric, dt)
 			if not st.sliding and wl > 0 then

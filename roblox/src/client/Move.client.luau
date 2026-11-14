@@ -95,7 +95,7 @@ GrappleRemote.OnClientEvent:Connect(function(what: string)
 end)
 
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
-	if gp then return end
+	if gp or game:GetService("Players").LocalPlayer:GetAttribute("LoadoutOpen") then return end -- (the loadout screen is up)
 	local k = io.KeyCode
 	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift then keys.sprint = true
 	elseif k == Enum.KeyCode.C or k == Enum.KeyCode.LeftControl then keys.crouch = true
@@ -144,6 +144,7 @@ player.CharacterAdded:Connect(setup)
 if player.Character then task.spawn(setup, player.Character) end
 
 local lastPad = 0
+local jumpBoostUntil: number? = nil
 local eye = Config.standEye
 RunService.PreSimulation:Connect(function(dt: number)
 	local ch, hum, root = character()
@@ -151,7 +152,8 @@ RunService.PreSimulation:Connect(function(dt: number)
 	dt = math.min(dt, 1 / 20)
 	local v = root.AssemblyLinearVelocity
 	st.vx, st.vy, st.vz = v.X, v.Y, v.Z
-	local grounded = hum.FloorMaterial ~= Enum.Material.Air and v.Y < 1
+	local swimming = hum:GetState() == Enum.HumanoidStateType.Swimming
+	local grounded = not swimming and hum.FloorMaterial ~= Enum.Material.Air and v.Y < 1
 	st.onGround = grounded
 	st.groundTicks = if grounded then st.groundTicks + 1 else 0
 	-- the wish direction: the control module's move vector is already camera-relative (MoveDirection)
@@ -165,12 +167,37 @@ RunService.PreSimulation:Connect(function(dt: number)
 	}
 	keys.jumpPressed = false
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
-	local event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
+	local event: any = nil
+	if swimming then
+		-- swimming (the Rooftop pool is Terrain water): paddle where you look, with water drag. Space swims up (and pops
+		-- you out at the edge), C dives; with nothing pressed the Humanoid's own buoyancy holds you at the surface
+		st.sliding = false
+		local spd = Config.gSpeed * (if keys.sprint then 0.75 else 0.55)
+		local k = math.min(1, dt * 3.5)
+		st.vx += (md.X * spd - st.vx) * k
+		st.vz += (md.Z * spd - st.vz) * k
+		local up: number? = nil
+		if keys.jump then up = Config.jump * 0.75
+		elseif keys.crouch then up = -spd * 0.7
+		elseif fwd and math.abs(look.Y) > 0.3 then up = look.Y * spd end
+		if up then st.vy += (up - st.vy) * math.min(1, dt * 5) end
+	else
+		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
+	end
 	if event == "grappleJump" then
 		dropRope(); GrappleRemote:FireServer("release")
 		Hud.callout("GRAPPLE JUMP", 0.6)
+	elseif event == "slideJump" then
+		-- the extra height: this jump's JumpPower (the Humanoid does the jump itself, after this, in the same step)
+		hum.JumpPower = Config.jump * Config.slideJumpUp
+		jumpBoostUntil = os.clock() + 0.25
+		Hud.callout("SLIDE JUMP", 0.5)
 	elseif event == "bhop" and st.combo >= 3 then
 		Hud.callout("BHOP x" .. st.combo, 0.5)
+	end
+	if jumpBoostUntil and os.clock() > jumpBoostUntil then
+		hum.JumpPower = Config.jump
+		jumpBoostUntil = nil
 	end
 	-- jump pads: stand on one, get thrown (its Pad attribute is the launch velocity)
 	local now = os.clock()

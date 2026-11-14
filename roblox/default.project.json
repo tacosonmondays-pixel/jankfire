@@ -3,39 +3,127 @@
   "tree": {
     "$className": "DataModel",
     "ReplicatedStorage": {
-      "Jankfire": { "$path": "src/shared" },
+      "Jankfire": {
+        "$path": "src/shared"
+      },
       "JankfireRemotes": {
         "$className": "Folder",
-        "Grapple": { "$className": "RemoteEvent" },
-        "Callout": { "$className": "RemoteEvent" },
-        "Equip": { "$className": "RemoteEvent" },
-        "Fire": { "$className": "RemoteEvent" },
-        "Reload": { "$className": "RemoteEvent" },
-        "Swing": { "$className": "RemoteEvent" },
-        "MeleeHit": { "$className": "RemoteEvent" },
-        "Parry": { "$className": "RemoteEvent" },
-        "Shot": { "$className": "RemoteEvent" },
-        "Fx": { "$className": "RemoteEvent" },
-        "Ammo": { "$className": "RemoteEvent" },
-        "Dmg": { "$className": "RemoteEvent" },
-        "Kill": { "$className": "RemoteEvent" },
-        "Knock": { "$className": "RemoteEvent" },
-        "Slip": { "$className": "RemoteEvent" },
-        "Patch": { "$className": "RemoteEvent" },
-        "Round": { "$className": "RemoteEvent" },
-        "Spawn": { "$className": "RemoteEvent" }
+        "Grapple": {
+          "$className": "RemoteEvent"
+        },
+        "Callout": {
+          "$className": "RemoteEvent"
+        },
+        "Equip": {
+          "$className": "RemoteEvent"
+        },
+        "Fire": {
+          "$className": "RemoteEvent"
+        },
+        "Reload": {
+          "$className": "RemoteEvent"
+        },
+        "Swing": {
+          "$className": "RemoteEvent"
+        },
+        "MeleeHit": {
+          "$className": "RemoteEvent"
+        },
+        "Parry": {
+          "$className": "RemoteEvent"
+        },
+        "Shot": {
+          "$className": "RemoteEvent"
+        },
+        "Fx": {
+          "$className": "RemoteEvent"
+        },
+        "Ammo": {
+          "$className": "RemoteEvent"
+        },
+        "Dmg": {
+          "$className": "RemoteEvent"
+        },
+        "Kill": {
+          "$className": "RemoteEvent"
+        },
+        "Knock": {
+          "$className": "RemoteEvent"
+        },
+        "Slip": {
+          "$className": "RemoteEvent"
+        },
+        "Patch": {
+          "$className": "RemoteEvent"
+        },
+        "Round": {
+          "$className": "RemoteEvent"
+        },
+        "Spawn": {
+          "$className": "RemoteEvent"
+        },
+        "Loadout": {
+          "$className": "RemoteFunction"
+        }
       },
-      "Match": { "$className": "Folder" }
+      "Match": {
+        "$className": "Folder"
+      },
+      "ShredderRemote": {
+        "$className": "RemoteEvent"
+      },
+      "ImpactRemote": {
+        "$className": "RemoteEvent"
+      },
+      "PoseRemote": {
+        "$className": "RemoteEvent"
+      }
     },
     "Players": {
-      "$properties": { "CharacterAutoLoads": false }
+      "$properties": {
+        "CharacterAutoLoads": false
+      }
     },
     "ServerScriptService": {
-      "Jankfire": { "$path": "src/server" }
+      "Jankfire": {
+        "$path": "src/server"
+      },
+      "ShredderServer": {
+        "$path": "src/server_root/ShredderServer.server.luau"
+      },
+      "JankImpacts": {
+        "$path": "src/server_root/JankImpacts.server.luau"
+      },
+      "PoseRelay": {
+        "$path": "src/server_root/PoseRelay.server.luau"
+      },
+      "JankWater": {
+        "$path": "src/server_root/JankWater.server.luau"
+      }
     },
     "StarterPlayer": {
       "StarterPlayerScripts": {
-        "Jankfire": { "$path": "src/client" }
+        "Jankfire": {
+          "$path": "src/client"
+        },
+        "ShredderVictim": {
+          "$path": "src/client_root/ShredderVictim.client.luau"
+        },
+        "JankSettings": {
+          "$path": "src/client_root/JankSettings.client.luau"
+        },
+        "GrappleImpacts": {
+          "$path": "src/client_root/GrappleImpacts.client.luau"
+        },
+        "CrouchPoses": {
+          "$path": "src/client_root/CrouchPoses.client.luau"
+        },
+        "ShredderSlot": {
+          "$path": "src/client_root/ShredderSlot.client.luau"
+        },
+        "HubLife": {
+          "$path": "src/client_root/HubLife.client.luau"
+        }
       }
     }
   }

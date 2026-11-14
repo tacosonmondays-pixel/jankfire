@@ -213,8 +213,10 @@ ReloadR.OnServerEvent:Connect(function(p: Player, wid: unknown)
 end)
 
 -- one trigger pull: (weapon, eye, pellet end points (<= 12, the tracers + where the marbles go), hits per victim)
+-- the hub is weapons-free: no shots, swings or guards there (Fight.holstered); training and matches only
+local function holstered(p: Player): boolean return p:GetAttribute("Zone") == "hub" end
 FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends: unknown, hits: unknown)
-	if not spend(p) then return end
+	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" or not finiteV(eye) then return end
 	if not array(ends, 12, finiteV) then return end
@@ -258,7 +260,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 end)
 
 SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown)
-	if not spend(p) then return end
+	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" then return end
 	if Rules.swing(f, wid, now()) then return end
@@ -267,7 +269,7 @@ end)
 
 -- the swing's hit time: (weapon, look direction, the victims the client found in the cone)
 MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, targets: unknown)
-	if not spend(p) then return end
+	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" or not finiteV(look) then return end
 	local lk = look :: Vector3
@@ -304,7 +306,7 @@ MeleeR.OnServerEvent:Connect(function(p: Player, wid: unknown, look: unknown, ta
 end)
 
 ParryR.OnServerEvent:Connect(function(p: Player, yaw: unknown)
-	if not spend(p) then return end
+	if not spend(p) or holstered(p) then return end
 	local f = Fight.byPlayer[p]
 	if not f then return end
 	if Rules.parryStart(f, now(), yaw) then return end
@@ -322,10 +324,12 @@ Fight.onKill(function(info)
 		local v = info.v.ref :: Player
 		-- your mags fill on respawn (Rules.spawn); tell your client so its count matches
 		task.delay(Weapons.FFA.respawn + 0.2, function()
-			if v.Parent then for _, id in Weapons.loadout do if W[id].mag then ammoSync(v, info.v, id, nil) end end end
+			if v.Parent then for _, id in Rules.loadoutOf(info.v) do if W[id] and W[id].mag then ammoSync(v, info.v, id, nil) end end end
 		end)
 	end
 end)
 
+require(script.Parent:WaitForChild("Matches")).init(Fight) -- the hub, its pads and the matches (before anyone spawns)
 Dummies.init(Fight, applyHitscan)
+require(script.Parent:WaitForChild("Loadout")).init(Fight) -- keys 1 2 3 + wraps, saved (before anyone spawns)
 Fight.init()

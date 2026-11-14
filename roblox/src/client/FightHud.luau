@@ -131,22 +131,28 @@ function H.hp(hp: number)
 	hpBar.Size = UDim2.new(math.clamp(hp / 100, 0, 1), -16, 0, 12)
 	hpBar.BackgroundColor3 = if hp > 50 then Color3.fromRGB(57, 255, 20) elseif hp > 25 then YELLOW else RED
 end
-function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number)
+function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?)
 	local w = Weapons.list[wid]
 	if not w then return end
 	wName.Text = w.name; wName.TextColor3 = w.color
-	if w.kind == "melee" then
+	if note then ammoText.Text = note -- (the Shredder: its heat instead of ammo)
+	elseif w.kind == "melee" then
 		ammoText.Text = if kat > 0 then ("%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S) else "RMB parry"
 	elseif reloading then ammoText.Text = "RELOADING"
 	else ammoText.Text = ("%d / %d"):format(mag or 0, w.mag or 0) end
 end
 
 -- ---------------------------------------------------------------- clock + kill target
-local top = panel("Round", UDim2.new(0.5, -150, 0, 14), UDim2.fromOffset(300, 46), -1)
+local top = panel("Round", UDim2.new(0.5, -210, 0, 14), UDim2.fromOffset(420, 46), -1)
 local topText = label(top, "Text", UDim2.fromOffset(8, 4), UDim2.new(1, -16, 1, -8), "", YELLOW)
+topText.RichText = true
 function H.round(target: number, left: number, myKills: number)
 	local m, s = math.floor(math.max(0, left) / 60), math.floor(math.max(0, left)) % 60
 	topText.Text = ("first to %d · %d:%02d · you %d"):format(target, m, s, myKills)
+end
+-- the top line in the hub (where you are) and in a match (mode, round, score, clock): RichText
+function H.top(text: string)
+	if topText.Text ~= text then topText.Text = text end
 end
 
 -- ---------------------------------------------------------------- kill feed (top right, 6 lines, 7 s)
@@ -194,7 +200,7 @@ endList.Name = "Board"; endList.BackgroundTransparency = 1; endList.Position = U
 local el = Instance.new("UIListLayout"); el.Padding = UDim.new(0, 4); el.SortOrder = Enum.SortOrder.LayoutOrder; el.Parent = endList
 local endNext = label(endPanel, "Next", UDim2.new(0, 16, 1, -48), UDim2.new(1, -32, 0, 34), "", CYAN)
 local endTok = 0
-function H.endScreen(winner: string?, iWon: boolean, board: { { any } }, nextIn: number)
+function H.endScreen(winner: string?, iWon: boolean, board: { { any } }, nextIn: number, nextLabel: string?)
 	endTok += 1
 	local my = endTok
 	for _, c in endList:GetChildren() do if c:IsA("TextLabel") then c:Destroy() end end
@@ -209,7 +215,7 @@ function H.endScreen(winner: string?, iWon: boolean, board: { { any } }, nextIn:
 	task.spawn(function()
 		local t0 = os.clock()
 		while my == endTok and os.clock() - t0 < nextIn do
-			endNext.Text = ("next round in %d"):format(math.ceil(nextIn - (os.clock() - t0)))
+			endNext.Text = (nextLabel or "next round in %d"):format(math.ceil(nextIn - (os.clock() - t0)))
 			task.wait(0.25)
 		end
 		if my == endTok then endPanel.Visible = false; endShadow.Visible = false end
@@ -231,8 +237,19 @@ end
 local keysHint = gui.Parent and (gui.Parent :: Instance):FindFirstChild("JankfireHud")
 local hint = keysHint and keysHint:FindFirstChild("Keys") :: TextLabel?
 if hint then
-	hint.Size = UDim2.fromOffset(760, 22)
-	hint.Text = "1 Redline · 2 Marble Shotgun · 3 Katana · LMB fire · RMB aim / parry · R reload · shift run · C slide · hold E grapple · V camera"
+	hint.Size = UDim2.fromOffset(800, 22)
+	-- keys 1 2 3 follow your loadout (Loadout.luau sets it on every arm; L opens the loadout screen)
+	local lp = game:GetService("Players").LocalPlayer
+	local WL = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("Weapons")).list
+	local function keysLine()
+		local s = lp:GetAttribute("Loadout")
+		local ids = if type(s) == "string" then string.split(s, ",") else { "redline", "marbles", "katana" }
+		local parts = {}
+		for i, id in ids do table.insert(parts, i .. " " .. (if WL[id] then WL[id].name else id)) end
+		(hint :: TextLabel).Text = table.concat(parts, " · ") .. " · L loadout · LMB fire · RMB aim / parry · R reload · shift run · C slide · hold E grapple · V camera"
+	end
+	keysLine()
+	lp:GetAttributeChangedSignal("Loadout"):Connect(keysLine)
 end
 
 return H

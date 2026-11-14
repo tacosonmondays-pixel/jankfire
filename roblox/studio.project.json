@@ -1,0 +1,89 @@
+{
+  "name": "JANKFIRE-studio",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Jankfire": { "$path": "src/shared" },
+      "JankfireRemotes": { "$path": "place/ReplicatedStorage/JankfireRemotes.rbxm" },
+      "Match": { "$path": "place/ReplicatedStorage/Match.rbxm" },
+      "JankfireSounds": { "$path": "place/ReplicatedStorage/JankfireSounds.rbxm" },
+      "JankfireWeapons": { "$path": "place/ReplicatedStorage/JankfireWeapons.rbxm" },
+      "JankfireFX": { "$path": "place/ReplicatedStorage/JankfireFX.rbxm" },
+      "JankfireTools": { "$path": "place/ReplicatedStorage/JankfireTools.rbxm" },
+      "ShredderRemote": { "$path": "place/ReplicatedStorage/ShredderRemote.rbxm" },
+      "ImpactRemote": { "$path": "place/ReplicatedStorage/ImpactRemote.rbxm" },
+      "PoseRemote": { "$path": "place/ReplicatedStorage/PoseRemote.rbxm" }
+    },
+    "Players": {
+      "$properties": { "CharacterAutoLoads": false, "RespawnTime": 5 }
+    },
+    "ServerScriptService": {
+      "Jankfire": { "$path": "src/server" },
+      "ShredderServer": { "$path": "src/server_root/ShredderServer.server.luau" },
+      "JankImpacts": { "$path": "src/server_root/JankImpacts.server.luau" },
+      "PoseRelay": { "$path": "src/server_root/PoseRelay.server.luau" },
+      "JankWater": { "$path": "src/server_root/JankWater.server.luau" }
+    },
+    "ServerStorage": {
+      "JankfireMeshes": { "$path": "place/ServerStorage/JankfireMeshes.rbxm" },
+      "PolishBackup": {
+        "$className": "Folder",
+        "PropPlacer": { "$path": "studio-tools/PropPlacer.luau" },
+        "OverlapCheck": { "$path": "studio-tools/OverlapCheck.luau" },
+        "CozyKit": { "$path": "studio-tools/CozyKit.luau" },
+        "Hub2Colors": { "$path": "studio-tools/Hub2Colors.luau" },
+        "StudioExport": { "$path": "studio-tools/StudioExport.luau" }
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CameraMode": "LockFirstPerson",
+        "EnableMouseLockOption": false,
+        "CharacterUseJumpPower": true,
+        "CharacterJumpPower": 27.6,
+        "CharacterWalkSpeed": 30,
+        "AutoJumpEnabled": false
+      },
+      "StarterPlayerScripts": {
+        "Jankfire": { "$path": "src/client" },
+        "ShredderVictim": { "$path": "src/client_root/ShredderVictim.client.luau" },
+        "JankSettings": { "$path": "src/client_root/JankSettings.client.luau" },
+        "GrappleImpacts": { "$path": "src/client_root/GrappleImpacts.client.luau" },
+        "CrouchPoses": { "$path": "src/client_root/CrouchPoses.client.luau" },
+        "ShredderSlot": { "$path": "src/client_root/ShredderSlot.client.luau" },
+        "HubLife": { "$path": "src/client_root/HubLife.client.luau" }
+      }
+    },
+    "Workspace": {
+      "$properties": { "Gravity": 78, "FallenPartsDestroyHeight": -1500 },
+      "Map": {
+        "$className": "Folder",
+        "Hub": { "$path": "place/Workspace/Map.Hub.rbxm" },
+        "Rooftop": { "$path": "place/Workspace/Map.Rooftop.rbxm" }
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Ambient": [0.3216, 0.298, 0.4157],
+        "OutdoorAmbient": [0.502, 0.4314, 0.5882],
+        "Brightness": 3.2,
+        "ClockTime": 17.45,
+        "GeographicLatitude": 28,
+        "ExposureCompensation": 0.05,
+        "EnvironmentDiffuseScale": 1,
+        "EnvironmentSpecularScale": 1,
+        "GlobalShadows": true,
+        "ShadowSoftness": 0.15,
+        "FogStart": 330,
+        "FogEnd": 1440,
+        "FogColor": [0.1647, 0.1255, 0.3137]
+      },
+      "Atmosphere": { "$path": "place/Lighting/Atmosphere.rbxm" },
+      "Bloom": { "$path": "place/Lighting/Bloom.rbxm" },
+      "ColorCorrection": { "$path": "place/Lighting/ColorCorrection.rbxm" },
+      "SunRays": { "$path": "place/Lighting/SunRays.rbxm" },
+      "Sky": { "$path": "place/Lighting/Sky.rbxm" },
+      "DepthOfField": { "$path": "place/Lighting/DepthOfField.rbxm" }
+    }
+  }
+}

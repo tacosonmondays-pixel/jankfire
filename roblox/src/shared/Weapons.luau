@@ -45,6 +45,8 @@ local W: { [string]: Weapon } = {
 	},
 	-- kill credit only: bullets parried back, parry shoves into the smog
 	parry = { id = "parry", name = "Katana Parry", slot = "none", kind = "parry", color = rgb(0x9fe8ff), desc = "", dmg = 0, range = 0 },
+	-- the Shredder is a Tool of its own (key 4, StarterPack); this entry only names it in the kill feed
+	shredder = { id = "shredder", name = "Shredder", slot = "none", kind = "shredder", color = rgb(0xffb31a), desc = "", dmg = 0, range = 0 },
 }
 
 local Weapons = {

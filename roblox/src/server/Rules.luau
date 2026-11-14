@@ -27,6 +27,8 @@ export type Fighter = {
 	kat: number, parryT: number, parryN: number, staggerUntil: number,
 	swing: Swing?, tag: Tag?, slipT: number, kills: number, deaths: number,
 	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw)
+	-- keys 1 2 3 (Loadout.luau): the weapons you carry this life, and the picks waiting for your next (re)arm
+	loadout: { string }?, nextLoadout: { string }?,
 }
 
 local nextId = 0
@@ -40,24 +42,40 @@ function Rules.newFighter(kind: string, name: string, ref: any): Fighter
 	}
 end
 
+-- the weapons on your keys 1 2 3 (no loadout yet, or a dummy: the default three)
+function Rules.loadoutOf(f: Fighter): { string }
+	return f.loadout or Weapons.loadout
+end
+
+-- arm: take the picks waiting in nextLoadout (they never change mid-life on their own), full mags, slot 1 out.
+-- every spawn does this; the hub also does it when the loadout screen closes
+function Rules.arm(f: Fighter, now: number)
+	if f.nextLoadout then f.loadout = f.nextLoadout end
+	local lo = Rules.loadoutOf(f)
+	f.held, f.equipT = lo[1], now
+	f.swing = nil
+	table.clear(f.ammo) -- (nothing left over from weapons you no longer carry)
+	for _, id in lo do
+		local w = W[id]
+		if w and w.mag then f.ammo[id] = { mag = w.mag, reloadUntil = 0 } end
+		f.gate[id] = -math.huge
+	end
+end
+
 -- (re)spawn: full HP, full mags, nothing left over from the last life
 function Rules.spawn(f: Fighter, now: number)
 	f.hp, f.alive, f.spawnT = Weapons.HP, true, now
 	f.kat, f.parryT, f.staggerUntil, f.swing, f.tag = 0, -math.huge, -math.huge, nil, nil
-	f.held, f.equipT = "redline", now
-	for _, id in Weapons.loadout do
-		local w = W[id]
-		if w.mag then f.ammo[id] = { mag = w.mag, reloadUntil = 0 } end
-		f.gate[id] = -math.huge
-	end
+	Rules.arm(f, now)
 end
 
 local function finite(x: any): boolean return type(x) == "number" and x == x and x > -math.huge and x < math.huge end
 Rules.finite = finite
 
-local function inLoadout(w: any): boolean
+-- is this one of YOUR weapons this life (anything else is refused, whatever the client sends)
+local function inLoadout(f: Fighter, w: any): boolean
 	if type(w) ~= "string" then return false end
-	return table.find(Weapons.loadout, w) ~= nil
+	return table.find(Rules.loadoutOf(f), w) ~= nil
 end
 
 -- the ammo, finishing a reload whose time has come
@@ -79,7 +97,7 @@ end
 
 -- weapon swap (keys 1 2 3): cancels a reload, like the web game
 function Rules.equip(f: Fighter, wid: any, now: number): string?
-	if not inLoadout(wid) then return "not your weapon" end
+	if not inLoadout(f, wid) then return "not your weapon" end
 	if not f.alive then return "dead" end
 	if f.held == wid then return nil end
 	if now - (f.gate.equip or -math.huge) < 0.15 then return "too fast" end
@@ -92,7 +110,7 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 end
 
 function Rules.reload(f: Fighter, wid: any, now: number): string?
-	if not inLoadout(wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
+	if not inLoadout(f, wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
 	local a = ammoOf(f, wid, now)
@@ -105,7 +123,8 @@ end
 
 -- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it
 function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?): string?
-	if not inLoadout(wid) or W[wid].kind ~= "hitscan" then return "not a gun" end
+	if not inLoadout(f, wid) then return "not your weapon" end
+	if W[wid].kind ~= "hitscan" then return "not a gun" end
 	local w = W[wid]
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end
@@ -159,7 +178,7 @@ end
 
 -- a melee swing (the click). the hits come at the animation's hit time, each checked against this swing
 function Rules.swing(f: Fighter, wid: any, now: number): string?
-	if not inLoadout(wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
+	if not inLoadout(f, wid) or W[wid].kind ~= "melee" then return "not a melee weapon" end
 	local w = W[wid]
 	if not f.alive then return "dead" end
 	if f.held ~= wid then return "not held" end

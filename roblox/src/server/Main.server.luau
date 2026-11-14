@@ -20,7 +20,7 @@ if swapped > 0 then print(("[jankfire] %d Blender models swapped in"):format(swa
 
 Players.RespawnTime = 2
 
-type Info = { hookTimes: { number }, rope: Beam?, anchor: Attachment?, last: Vector3?, lastT: number }
+type Info = { hookTimes: { number }, rope: Beam?, anchor: Attachment?, last: Vector3?, lastT: number, tp: number? }
 local info: { [Player]: Info } = {}
 
 local function dropRope(i: Info)
@@ -32,7 +32,8 @@ Players.PlayerAdded:Connect(function(p: Player)
 	info[p] = { hookTimes = {}, lastT = 0 }
 	p.CharacterAdded:Connect(function()
 		local i = info[p]
-		if i then dropRope(i); i.last = nil end
+		-- a new body gets moved to its spawn (the hub, the arena) right after it loads: give the teleport check a moment
+		if i then dropRope(i); i.last = nil; i.lastT = os.clock() + 0.5 end
 	end)
 end)
 Players.PlayerRemoving:Connect(function(p: Player)
@@ -99,6 +100,10 @@ RunService.Heartbeat:Connect(function()
 		local hum, root = alive(p)
 		if not hum or not root then continue end
 		local pos = root.Position
+		-- a server teleport (the hub's laser doors: Jankfire.LaserDoors) stamps the player's TeleportT attribute: the
+		-- teleport check starts afresh from the new spot instead of putting them back
+		local tp = p:GetAttribute("TeleportT")
+		if type(tp) == "number" and tp ~= i.tp then i.tp = tp; i.last = nil; i.lastT = now + 0.5 end
 		if pos.Y < killY then
 			hum.Health = 0
 			dropRope(i)

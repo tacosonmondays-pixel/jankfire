@@ -154,6 +154,8 @@ local function fitImported(b: Builder, tmpl: Model, file: { lo: Vector3, hi: Vec
 			local w = Instance.new("WeldConstraint"); w.Part0 = b.root; w.Part1 = d; w.Parent = d
 			-- the Blender pieces keep the code model's jobs by name: the blade stretches, the needle turns, the vents glow
 			local n = string.lower(d.Name)
+			local wz = string.match(n, "_wz(%a+)")
+			if wz then d:SetAttribute("WrapZone", wz) end -- (the wrap zone survives the renames below)
 			if string.find(n, "kat_blade", 1, true) then d.Name = "blade"
 			elseif string.find(n, "needle", 1, true) then
 				d.Name = "needle"
@@ -234,6 +236,145 @@ function WeaponModels.setKatana(m: Model, n: number, k: number)
 	if tip and typeof(rest) == "Vector3" then tip.Position = Vector3.new(rest.X, rest.Y, z0 + (rest.Z - z0) * s) end
 	local mid = root:FindFirstChild("Mid") :: Attachment?
 	if mid and tip then mid.Position = tip.Position * 0.55 + Vector3.new(0, 0, z0 * 0.45) end
+end
+
+
+-- ------------------------------------------------------------------ wraps (the loadout screen's paint jobs)
+-- which part of a weapon a wrap paints (public/js/wrapzones.js): the Blender pieces say so in their names (_wzA = the
+-- handle side, _wzB = the business end, _wzN = trims that keep their look unless the wrap is on FULL, _wzAB = both);
+-- anything untagged goes by its colour (greys and near-blacks read as the metal: B). the wrap itself (Roster.wraps) is a
+-- palette laid over the painted pieces in order along the weapon: solid, alt(ernating), speck (every third), cycle,
+-- fade / bands (by where the piece sits along the weapon's length). a wrap can always be taken off again: every
+-- painted piece remembers its own look
+local Roster = require(script.Parent:WaitForChild("Roster"))
+WeaponModels.MODES = { "normal", "reverse", "full" }
+
+local function zoneOf(p: BasePart, root: Instance?): string
+	local tagged = p:GetAttribute("WrapZone") -- (fitImported keeps the tag of a piece it renames: blade, needle, vent)
+	if type(tagged) == "string" then return tagged end
+	-- its own name, or a parent's (the Shredder's pieces sit in models named sd_trim_wzN etc.)
+	local x: Instance? = p
+	while x and x ~= root do
+		local m = string.match(string.lower(x.Name), "_wz(%a+)")
+		if m == "a" or m == "b" or m == "n" or m == "ab" then return m end
+		x = x.Parent
+	end
+	local oc = p:GetAttribute("WrapColor")
+	local c: Color3 = if typeof(oc) == "Color3" then oc else p.Color
+	local _, s, v = c:ToHSV()
+	return if s < 0.2 or v < 0.15 then "b" else "a"
+end
+WeaponModels.zoneOf = zoneOf
+
+local function paints(mode: string, zone: string): boolean
+	if mode == "full" or zone == "ab" then return true end
+	return if mode == "reverse" then zone == "b" else zone == "a"
+end
+
+local stash: { [BasePart]: SurfaceAppearance } = setmetatable({}, { __mode = "k" }) :: any
+
+local function restore(p: BasePart)
+	if not p:GetAttribute("Wrapped") then return end
+	local c, mat, r, t = p:GetAttribute("WrapColor"), p:GetAttribute("WrapMat"), p:GetAttribute("WrapRefl"), p:GetAttribute("WrapTr")
+	if typeof(c) == "Color3" then p.Color = c end
+	if type(mat) == "string" then pcall(function() p.Material = (Enum.Material :: any)[mat] end) end
+	if type(r) == "number" then p.Reflectance = r end
+	if type(t) == "number" then p.Transparency = t end
+	local tex = p:GetAttribute("WrapTex")
+	if p:IsA("MeshPart") and type(tex) == "string" then p.TextureID = tex end
+	local sa = stash[p]
+	if sa then sa.Parent = p; stash[p] = nil end
+	p:SetAttribute("Wrapped", nil)
+end
+
+local function remember(p: BasePart)
+	if p:GetAttribute("Wrapped") then return end
+	p:SetAttribute("WrapColor", p.Color); p:SetAttribute("WrapMat", p.Material.Name)
+	p:SetAttribute("WrapRefl", p.Reflectance); p:SetAttribute("WrapTr", p.Transparency)
+	if p:IsA("MeshPart") then p:SetAttribute("WrapTex", p.TextureID) end
+	p:SetAttribute("Wrapped", true)
+end
+
+-- the pieces a wrap can touch: visible ones, not the invisible root / handle / suction field
+local function pieces(m: Instance): { BasePart }
+	local out = {}
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") and d.Name ~= "Root" and d.Name ~= "SuckField" then
+			local t = d:GetAttribute("WrapTr")
+			local tr = if type(t) == "number" then t else d.Transparency
+			if tr < 0.99 then table.insert(out, d) end
+		end
+	end
+	return out
+end
+
+-- paint a weapon model (or a Tool) with a wrap. nil / "default" takes the wrap off
+function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
+	local list = pieces(m)
+	for _, p in list do restore(p) end
+	local wr = wrapId and Roster.wrapById[wrapId]
+	if not wr or #wr.pal == 0 then return end
+	local md = if mode and table.find(WeaponModels.MODES, mode) then mode else "normal"
+	-- along the weapon's longest side, in its own frame
+	local ref: CFrame
+	if m:IsA("Model") then ref = m:GetPivot()
+	else
+		local h = m:FindFirstChild("Handle")
+		ref = if h and h:IsA("BasePart") then h.CFrame else CFrame.identity
+	end
+	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+	local at: { [BasePart]: Vector3 } = {}
+	for _, p in list do
+		local v = ref:PointToObjectSpace(p.Position)
+		at[p] = v; lo = lo:Min(v); hi = hi:Max(v)
+	end
+	local span = hi - lo
+	local axis = if span.X >= span.Y and span.X >= span.Z then "X" elseif span.Y >= span.Z then "Y" else "Z"
+	local len = math.max((span :: any)[axis], 1e-3)
+	local painted = {}
+	for _, p in list do if paints(md, zoneOf(p, m)) then table.insert(painted, p) end end
+	-- the same order everywhere (server, client, preview): along the weapon, then by name
+	table.sort(painted, function(a, b)
+		local za, zb = (at[a] :: any)[axis], (at[b] :: any)[axis]
+		if math.abs(za - zb) > 1e-3 then return za < zb end
+		return a.Name < b.Name
+	end)
+	local n = #wr.pal
+	local mat = if wr.mat then (Enum.Material :: any)[wr.mat] else Enum.Material.SmoothPlastic
+	for i, p in painted do
+		remember(p)
+		local u = ((at[p] :: any)[axis] - (lo :: any)[axis]) / len
+		local k = 1
+		if wr.pat == "alt" then k = (i - 1) % 2 + 1
+		elseif wr.pat == "cycle" then k = (i - 1) % n + 1
+		elseif wr.pat == "speck" then k = if i % 3 == 0 and n > 1 then 2 + (math.floor(i / 3) - 1) % (n - 1) else 1
+		elseif wr.pat == "bands" then k = math.clamp(math.floor(u * n) + 1, 1, n) end
+		local c = wr.pal[k]
+		if wr.pat == "fade" and n > 1 then
+			local x = u * (n - 1)
+			local j = math.clamp(math.floor(x) + 1, 1, n - 1)
+			c = wr.pal[j]:Lerp(wr.pal[j + 1], x - (j - 1))
+			k = if x - (j - 1) < 0.5 then j else j + 1
+		end
+		p.Color = c
+		p.Material = if wr.neon and table.find(wr.neon, k) then Enum.Material.Neon else mat
+		p.Reflectance = wr.refl or 0
+		local t0 = p:GetAttribute("WrapTr")
+		p.Transparency = math.max(if type(t0) == "number" then t0 else 0, wr.tr or 0)
+		if p:IsA("MeshPart") then p.TextureID = "" end
+		local sa = p:FindFirstChildOfClass("SurfaceAppearance")
+		if sa then stash[p] = sa; sa.Parent = nil end
+	end
+end
+
+-- a player's wrap on one weapon, from the "Wraps" attribute the server keeps ("redline=cherry/normal;katana=gold/full")
+function WeaponModels.wrapFor(p: Player, wid: string): (string?, string?)
+	local s = p:GetAttribute("Wraps")
+	if type(s) ~= "string" then return nil, nil end
+	for w, id, md in string.gmatch(s, "([%w_]+)=([%w_]+)/(%a+)") do
+		if w == wid then return id, md end
+	end
+	return nil, nil
 end
 
 return WeaponModels

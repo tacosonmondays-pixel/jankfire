@@ -1,7 +1,8 @@
 --!strict
 -- the server's fighters: every player and every test dummy, their HP (the server's number is the truth; the Humanoid
--- just shows it), deaths, kill credit, respawns, spawn picking, knockback and the FFA match (first to 20 or 6 minutes).
--- the rules themselves are in Rules.luau (pure, tested); this wires them to Roblox
+-- just shows it), deaths, kill credit, respawns, spawn picking and knockback. the rules themselves are in Rules.luau
+-- (pure, tested); this wires them to Roblox. who may hurt whom, where you spawn and whether you respawn are the hub's
+-- call (Matches.luau sets Fight.allow / Fight.spawnAt / Fight.holdRespawn): matches are played from the hub's pads
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -26,7 +27,11 @@ local Fight = {}
 Fight.byPlayer = {} :: { [Player]: Fighter }
 Fight.byModel = {} :: { [Model]: Fighter }
 Fight.all = {} :: { Fighter }
-Fight.live = true -- the round is on (false while the end screen shows)
+Fight.live = true
+-- the hub's hooks (Matches.luau replaces these)
+Fight.allow = function(_by: Fighter?, _t: Fighter): boolean return true end
+Fight.holdRespawn = function(_f: Fighter): boolean return false end
+Fight.spawnAt = nil :: ((Fighter) -> (Vector3, Vector3?))?
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -119,17 +124,27 @@ end
 
 -- ------------------------------------------------------------------ the weapon others see in your hand
 local HAND_K = 3 * 1.5
+-- the hub is weapons-free (owner, 2026-11-14): a player standing in the hub (Zone "hub") holds nothing; the training
+-- room and matches arm you as usual. HubHolster re-runs this whenever your Zone changes
+function Fight.holstered(f: Fighter): boolean
+	return f.kind == "player" and (f.ref :: Player):GetAttribute("Zone") == "hub"
+end
 function Fight.showWeapon(f: Fighter)
 	local m = Fight.model(f)
 	if not m then return end
 	local old = m:FindFirstChild("HeldWeapon")
 	if old then old:Destroy() end
+	if Fight.holstered(f) then return end
 	local hand = m:FindFirstChild("RightHand") :: BasePart? or m:FindFirstChild("Right Arm") :: BasePart?
 	if not hand then return end
 	local w = WeaponModels.build(f.held, HAND_K)
 	if not w or not w.PrimaryPart then return end
 	w.Name = "HeldWeapon"
 	if f.held == "katana" then WeaponModels.setKatana(w, f.kat, HAND_K) end
+	if f.kind == "player" then -- its wrap (the loadout screen), so everyone sees your paint job
+		local wid, md = WeaponModels.wrapFor(f.ref :: Player, f.held)
+		if wid then WeaponModels.wrap(w, wid, md) end
+	end
 	local grip = w.PrimaryPart:FindFirstChild("Grip") :: Attachment?
 	local off = if grip then grip.Position else Vector3.zero
 	-- in the fist, pointing where the forearm points (the arm is raised to the aim by the client's animation)
@@ -168,12 +183,15 @@ end
 
 local onKillHooks: { (Rules.KillInfo) -> () } = {}
 function Fight.onKill(fn: (Rules.KillInfo) -> ()) table.insert(onKillHooks, fn) end
+-- every bit of HP that really comes off someone: (victim, hp taken, by, weapon). matches count damage dealt with it
+local onHurtHooks: { (Fighter, number, Fighter?, string) -> () } = {}
+function Fight.onHurt(fn: (Fighter, number, Fighter?, string) -> ()) table.insert(onHurtHooks, fn) end
 
 local function scheduleRespawn(f: Fighter)
 	local delay = if f.kind == "dummy" then 3 else FFA.respawn
 	task.delay(delay, function()
 		if f.alive or not table.find(Fight.all, f) then return end
-		if not Fight.live and f.kind == "player" then return end -- the end screen: everyone spawns with the next round
+		if f.kind == "player" and Fight.holdRespawn(f) then return end -- in a match: you're back with the next round
 		Fight.spawn(f)
 	end)
 end
@@ -214,17 +232,17 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 		v = v.name, vid = if v.kind == "player" then (v.ref :: Player).UserId else nil, dummy = v.kind == "dummy",
 		w = info.w, via = info.via, kat = if k then k.kat else nil,
 	})
-	for _, fn in onKillHooks do fn(info) end
 	scheduleRespawn(v)
-	Fight.checkWin()
+	for _, fn in onKillHooks do fn(info) end
 end
 
 -- the one way damage lands: knockback first (it lands even through spawn protection, like the web game), then HP
 function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: boolean, kb: Vector3?, at: Vector3?): number
-	if not Fight.live or not t.alive then return 0 end
+	if not t.alive or not Fight.allow(by, t) then return 0 end
 	if kb then Fight.knock(t, kb, wid) end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
+	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid) end end
 	syncHp(t)
 	R.Dmg:FireAllClients({
 		to = if t.kind == "player" then (t.ref :: Player).UserId else nil, model = Fight.model(t),
@@ -274,6 +292,10 @@ function Fight.pickSpawn(f: Fighter): Vector3
 	return best :: Vector3
 end
 
+-- after a player's spawn (Loadout.luau: tell the client its keys, hand out the Shredder)
+local spawnHooks: { (Fighter) -> () } = {}
+function Fight.onSpawn(fn: (Fighter) -> ()) table.insert(spawnHooks, fn) end
+
 local spawning: { [Fighter]: boolean } = {}
 function Fight.spawn(f: Fighter)
 	if f.kind ~= "player" then
@@ -290,7 +312,8 @@ function Fight.spawn(f: Fighter)
 	spawning[f] = true
 	local old = p.Character
 	if old then Fight.byModel[old] = nil end
-	local at = Fight.pickSpawn(f)
+	local at, face = Fight.pickSpawn(f), nil
+	if Fight.spawnAt then at, face = Fight.spawnAt(f) end
 	local ok = pcall(function() p:LoadCharacter() end)
 	spawning[f] = nil
 	local ch = p.Character
@@ -299,7 +322,9 @@ function Fight.spawn(f: Fighter)
 	-- no regen: HP is the server's
 	local hs = ch:FindFirstChild("Health")
 	if hs then hs:Destroy() end
-	ch:PivotTo(CFrame.new(at + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)))
+	local pos = at + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
+	local look = if face and Vector3.new(face.X, 0, face.Z).Magnitude > 1e-3 then Vector3.new(face.X, 0, face.Z).Unit else nil
+	ch:PivotTo(if look then CFrame.lookAt(pos, pos + look) else CFrame.new(pos))
 	R.Spawn:FireClient(p, at)
 	syncHp(f)
 	p:SetAttribute("Kat", 0)
@@ -312,6 +337,7 @@ function Fight.spawn(f: Fighter)
 			if f.alive and Fight.model(f) == ch then Fight.void(f) end
 		end)
 	end
+	for _, fn in spawnHooks do task.spawn(fn, f) end
 end
 
 -- ------------------------------------------------------------------ players
@@ -337,17 +363,11 @@ function Fight.removePlayer(p: Player)
 	if i then table.remove(Fight.all, i) end
 end
 
--- ------------------------------------------------------------------ the FFA match
-local function setMatch(phase: string, endsAt: number)
-	MatchState:SetAttribute("Phase", phase)
-	MatchState:SetAttribute("EndsAt", endsAt)
-	MatchState:SetAttribute("Target", FFA.kills)
-end
-
--- the board: kills high to low, then deaths low to high (MODES.md endRound). dummies aren't on it
-function Fight.board(): { { any } }
+-- ------------------------------------------------------------------ the end-of-match board
+-- kills high to low, then deaths low to high (MODES.md endRound). dummies aren't on it. only = just these fighters
+function Fight.board(only: { Fighter }?): { { any } }
 	local rows = {}
-	for _, f in Fight.all do if f.kind == "player" then table.insert(rows, f) end end
+	for _, f in only or Fight.all do if f.kind == "player" then table.insert(rows, f) end end
 	table.sort(rows, function(a, b)
 		if a.kills ~= b.kills then return a.kills > b.kills end
 		return a.deaths < b.deaths
@@ -357,45 +377,11 @@ function Fight.board(): { { any } }
 	return out
 end
 
-function Fight.startRound()
-	Fight.live = true
-	for _, f in Fight.all do
-		f.kills, f.deaths, f.kat = 0, 0, 0
-		if f.kind == "player" then
-			local p = f.ref :: Player
-			p:SetAttribute("Kills", 0); p:SetAttribute("Deaths", 0); p:SetAttribute("Kat", 0)
-		end
-	end
-	setMatch("live", workspace:GetServerTimeNow() + FFA.time)
-	for _, f in Fight.all do
-		if f.kind == "player" then f.alive = false end -- a fresh body for everyone, alive or not
-		task.spawn(Fight.spawn, f)
-	end
-	R.Round:FireAllClients({ start = true, target = FFA.kills })
-end
-
-function Fight.endRound()
-	if not Fight.live then return end
-	Fight.live = false
-	local board = Fight.board()
-	local top = board[1]
-	local winner = if top and top[2] >= 1 then top[1] else nil -- needs at least one kill
-	setMatch("over", workspace:GetServerTimeNow() + FFA.over)
-	R.Round:FireAllClients({ over = true, winner = winner, winnerId = if top and winner then top[4] else nil, board = board, next = FFA.over })
-	task.delay(FFA.over, Fight.startRound)
-end
-
-function Fight.checkWin()
-	if not Fight.live then return end
-	for _, f in Fight.all do
-		if f.kind == "player" and f.kills >= FFA.kills then Fight.endRound(); return end
-	end
-	local ends = MatchState:GetAttribute("EndsAt")
-	if typeof(ends) == "number" and workspace:GetServerTimeNow() >= ends then Fight.endRound() end
-end
-
 function Fight.init()
-	setMatch("live", workspace:GetServerTimeNow() + FFA.time)
+	-- (the old free-for-all clock is gone: matches are played from the hub's pads)
+	MatchState:SetAttribute("Phase", "hub")
+	MatchState:SetAttribute("EndsAt", nil)
+	MatchState:SetAttribute("Target", nil)
 	Players.CharacterAutoLoads = false
 	-- spawns are picked by the server; no ForceField (spawn protection is a server check)
 	for _, s in workspace:GetDescendants() do
@@ -404,12 +390,6 @@ function Fight.init()
 	for _, p in Players:GetPlayers() do Fight.addPlayer(p) end
 	Players.PlayerAdded:Connect(Fight.addPlayer)
 	Players.PlayerRemoving:Connect(Fight.removePlayer)
-	task.spawn(function()
-		while true do
-			task.wait(0.5)
-			Fight.checkWin()
-		end
-	end)
 end
 
 return Fight

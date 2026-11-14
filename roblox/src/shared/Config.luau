@@ -16,8 +16,16 @@ local Config = {
 	airCap = 1.4 * S, -- air strafing: a small cap, a huge accel = quake-style strafe turns
 	airAccel = 90,
 	airCtl = 2.6, -- rad/s: holding W turns your momentum toward where you look and keeps all of it
-	slideFric = 0.25,
+	slideFric = 0.25, -- a slide barely slows you: it carries your momentum
 	slideMin = 7 * S, -- crouch while faster than this = slide
+	slideTime = 0.8, -- s: a slide lasts this long at most (or till you let go of crouch / slow right down)
+	slideBoost = 3 * S, -- a slide starts with this shove...
+	slideCap = 17 * S, -- ...up to this speed (already faster: you keep what you have)
+	slideEnd = 4 * S, -- slower than this, the slide's over
+	slideCd = 0.45, -- s before the next slide (and crouch has to be let go first)
+	slideJumpAdd = 3 * S, -- jump before the slide ends: this much more speed...
+	slideJumpCap = 20 * S, -- ...up to this
+	slideJumpUp = 1.2, -- and 20% more jump
 	sprintMul = 1.45,
 	crouchMul = 0.45,
 	standEye = 1.6 * S,

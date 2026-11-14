@@ -1,4 +1,35 @@
-# JANKFIRE on Roblox (step 2: free-for-all on Rooftop with three weapons)
+# JANKFIRE on Roblox
+
+> **The Studio place is ahead of these files.** The live work happens in the Roblox place "Jankfire.." through the
+> Roblox Studio MCP: the hub, the pad matches (1v1 to 4v4, first to 5), the training hall, the loadout screen, the
+> Shredder and every fix since step 2 were built there. This folder is the export of that place
+> (version 71, 2026-11-14), so the code is reviewable and nothing is lost if the place breaks.
+>
+> | what | where |
+> | --- | --- |
+> | The place's code, one file per script | `src/shared`, `src/server`, `src/client` (the three `Jankfire` folders), `src/server_root` and `src/client_root` (loose scripts next to them), `src/in_models` (scripts that live inside a model) |
+> | The maps and asset folders, as Roblox model files | `place/**.rbxm` (hub, Rooftop, mesh templates, weapons, effects, sounds, remotes, lighting effects) |
+> | Service settings (gravity, lighting numbers, player settings) | `place/settings.json` |
+> | Edit-time helpers (prop placer, overlap check, the exporter itself) | `studio-tools/` |
+>
+> **Export again after a batch of Studio work** (a Claude session with the Studio MCP does this):
+> 1. In Studio (execute_luau, Edit): `local m = game.ServerStorage.PolishBackup.StudioExport:Clone(); local E = require(m); m:Destroy(); return E.run("bundle")`.
+>    Use `E.run("bundle", "src/")` for code only. It prints how many slices there are.
+> 2. Fetch every slice: `... return E.run("slice", n)` for n = 1..N. The MCP saves each result as a text file.
+> 3. `node tools/roblox/studio_export_unpack.mjs <the folder with those result files>` from the repo root, then commit.
+>
+> **Rebuild a place from the export:** `rojo build roblox/studio.project.json -o JANKFIRE-studio.rbxl` (Rojo 7.7+).
+> It restores the code, maps, templates and lighting. Not in the export: Terrain (the pool water is refilled by
+> `JankWater` when the game runs), the old backups in ServerStorage, and DataStore data.
+>
+> `default.project.json` is the code-only project for `rojo serve`. `place.project.json` and `tools/roblox/build.mjs`
+> are the older "build Rooftop from the web map" path from steps 1 and 2; they don't know about the hub.
+>
+> **Not merged yet:** `claude/f-roblox-core` (bots, Deathmatch with the map vote) branched from step 2 like this did.
+> The plan and the order of work: `docs/PORT-PLAN.md`. The specs: `docs/WEAPONS.md`, `docs/MODES.md` (on `main`).
+
+## Steps 1 and 2 (how it started)
+
 
 The Roblox version lives here, next to the web game, which carries on unchanged. This first step has the Rooftop map,
 converted box for box from `shared/map.js`, and JANKFIRE movement on the default Roblox character: run, sprint, slide,
