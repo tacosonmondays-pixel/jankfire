@@ -422,7 +422,11 @@ export function makeBoard() {
     const mid = t < CERE.down ? 0 : Math.min(1, (t - CERE.down) / 1.4);
     out.copy(wide).lerp(close, mid);
     if (k < 1) out.lerp(camA.pos, 1 - k); // (fly over from wherever it was)
-    look.set(top.x, top.y - (mid > 0 ? 1.2 : 3.4) + (t > CERE.pop ? Math.min(4, (t - CERE.pop) * 7) * (t < CERE.land ? 1 : 0.4) : 0), top.z);
+    // the pop: look up with the winner (a beat ahead, the camera eases) and step back, so the golden bread stays in shot at the top
+    const f = (t + 0.2 - CERE.pop) / (CERE.land - CERE.pop), pk = f > 0 && f < 1 ? f : -1;
+    const h = pk < 0 ? 0 : pk < 0.5 ? -2 + 10 * (1 - (1 - pk * 2) ** 2) : 8 * (1 - ((pk - 0.5) * 2) ** 2);
+    if (pk >= 0) { const s = Math.sin(pk * Math.PI); out.y += 1.5 * s; out.z += 4 * s; }
+    look.set(top.x, top.y - (mid > 0 ? 1.2 : 3.4) + (t > CERE.pop ? Math.max(Math.min(1.6, (t - CERE.pop) * 3), h * 0.8) : 0), top.z);
   }
 
   return {
