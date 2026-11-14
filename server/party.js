@@ -9,6 +9,7 @@ import { HUB_BACK } from './hubback.js'; // the offline single-mode picks that g
 const rnd = (n) => globalThis.crypto.getRandomValues(new Uint8Array(n)); // (web crypto, no node: import: room.js imports this file and the story's referee runs room.js in a browser worker, where 'node:crypto' can't load)
 const b64url = (u8) => { let b = ''; for (const x of u8) b += String.fromCharCode(x); return btoa(b).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }; // (base64url without Buffer: browser-safe too)
 
+const BGN_TK = /^[A-Za-z0-9_-]{24}$/; // a board game night guest's rejoin ticket (server.js hands it out in welcome)
 export const PARTY = { grace: 30000, max: 6, len: 5, abc: 'ABCDEFGHJKMNPQRSTUVWXYZ23456789', ticket: 30000, sweep: 10000, fails: 10, allFails: 600 };
 let wrong = []; // every wrong code in the last minute, server-wide (many sockets guessing: they all wait)
 const SIDES = ['online', 'offline'], MODES = ['qp', 'bomb', 'br', 'zm', 'isle', 'training', 'bgn'];
@@ -66,12 +67,14 @@ export function hubHello(ws, who, m = {}) {
   if (old && old.gone && (old.acct || null) === (who.acct || null)) {
     back.delete(m.rk); clearTimeout(old.goneT); old.gone = 0; old.ws = ws;
     Object.assign(old, { name: who.name, look: who.look, achs: who.achs, gun: gunOf(m.gun), mf: D.mechFrame(m.mf) });
+    if (!old.acct && typeof m.bt === 'string' && BGN_TK.test(m.bt)) old.bt = m.bt;
     old.send({ t: 'hubok', id: old.id, rk: old.rk });
     if (old.acct) { if (!online.has(old.acct)) online.set(old.acct, new Set()); online.get(old.acct).add(old); }
     if (old.party) push(old.party); else solo(old);
     return old;
   }
   const h = { id: nextId++, ws, rk: b64url(rnd(12)), name: who.name, look: who.look, achs: who.achs, acct: who.acct || null, gun: gunOf(m.gun), mf: D.mechFrame(m.mf), party: null, ready: false, busy: false, gone: 0, t: {}, fails: [] };
+  if (!h.acct && typeof m.bt === 'string' && BGN_TK.test(m.bt)) h.bt = m.bt; // (a guest's board game night rejoin ticket, from this tab)
   h.send = (x) => { if (h.ws.readyState === 1) h.ws.send(JSON.stringify(x)); };
   h.send({ t: 'hubok', id: h.id, rk: h.rk });
   if (h.acct) { if (!online.has(h.acct)) online.set(h.acct, new Set()); online.get(h.acct).add(h); }
@@ -174,6 +177,9 @@ export function hubMsg(h, m) {
       return;
     }
     case 'pgo': if (lead && rate(h, 'go', 3000)) go(pt, m); return;
+    case 'pbt': // a guest's board game night rejoin ticket (welcome's bt): a party start can take them back to the table that kept their seat
+      if (!h.acct && typeof m.bt === 'string' && BGN_TK.test(m.bt) && rate(h, 'bt', 1000)) h.bt = m.bt;
+      return;
   }
 }
 
@@ -200,7 +206,15 @@ function go(pt, m) {
   const old = pt.room;
   if (old && !old.closed && !old.humans().length && old.id !== 'ffa' && old.id !== 'coop') { old.closed = true; D.rooms.delete(old.id); }
   // every room gets tickets, the fixed ones (online quick play, coop) too: that's how the room knows who's a party
-  const r = D.roomFor(m.mode, null, { ...cfg, need: out.length });
+  // board game night: someone here dropped out of a table that's still keeping their seat. the party goes back to it
+  // (each joins with their own account / rejoin ticket, so only they get that seat back: room.js bgnBackFor, server.js join)
+  let r = null;
+  if (cfg.lobby === 'bgn') for (const x of out) {
+    const key = x.acct ? 'a:' + x.acct : x.bt ? 'g:' + x.bt : null;
+    if (key) for (const q of D.rooms.values()) if (q.mode === m.mode && q.bgnBackFor && q.bgnBackFor(key)) { r = q; break; }
+    if (r) break;
+  }
+  r = r || D.roomFor(m.mode, null, { ...cfg, need: out.length });
   if (!r) return;
   pt.room = r;
   r.tickets = r.tickets || new Map(); r.partyT = now();

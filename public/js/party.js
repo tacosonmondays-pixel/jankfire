@@ -17,11 +17,14 @@ const changed = (why) => { for (const f of subs) try { f(why); } catch (e) { con
 export const inParty = () => P.on && P.ms.length > 1;
 export const isLead = () => !P.on || P.lead === P.me;
 export const leadName = () => { const l = P.ms.find((m) => m.id === P.lead); return l ? l.name : ''; };
+// a guest's board game night rejoin ticket (bgn.js keeps it in this tab): a party start can take you back to your seat
+const bgnTk = () => { try { const t = sessionStorage.getItem('jf_bgn_tk'); return t && /^[A-Za-z0-9_-]{24}$/.test(t) ? t : undefined; } catch { return undefined; } };
+export const partyTicket = (bt) => send({ t: 'pbt', bt });
 export function send(m) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(m)); return true; } return false; }
 
 function connect() {
   try { ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws'); } catch { return later(); }
-  ws.onopen = () => { retry = 0; const h = opts.hello(); lastMe = JSON.stringify([h.look, h.gun, h.mf]); send({ t: 'hub', name: h.name, look: h.look, token: h.token, gun: h.gun, mf: h.mf, rk: rkGet() }); };
+  ws.onopen = () => { retry = 0; const h = opts.hello(); lastMe = JSON.stringify([h.look, h.gun, h.mf]); send({ t: 'hub', name: h.name, look: h.look, token: h.token, gun: h.gun, mf: h.mf, rk: rkGet(), bt: bgnTk() }); };
   ws.onmessage = (e) => {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     if (m.t === 'hubok') { if (typeof m.rk === 'string') rkSet(m.rk); return; }

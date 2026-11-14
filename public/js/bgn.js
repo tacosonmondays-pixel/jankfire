@@ -9,7 +9,8 @@ import { net } from './net.js';
 import { synth } from './audio.js';
 import { BGN, BGN_NAMES as N, BGN_ITEMS, BGN_JANK, BGN_HOUSE, BGN_MINIS, bgnFill } from '/shared/bgn.js';
 import { BOARD, aheadSet } from '/shared/bgnboard.js';
-import { miniState, miniEv, miniFrame, miniCtl, miniIntro, miniRes } from './bgnmini.js'; // minigames 11-15: carts, ducks, the bosses
+import { miniState, miniEv, miniFrame, miniCtl, miniIntro, miniRes } from './bgnmini.js';
+import { partyTicket } from './party.js'; // minigames 11-15: carts, ducks, the bosses
 
 let B = null, board = null, boardP = null, root = null, ui = null, opts = {}, aim = null, askT = 0, askDur = 1, lastAsk = '', wasOn = false, cardT = 0, t0 = performance.now();
 let cereEnd = 0, cereMs = 7600, cereTimer = 0, finalUp = false; // THE TOASTING plays before the end card (bgnscene.js CERE_MS)
@@ -83,7 +84,7 @@ function loadBoard() {
 // drop (a name alone isn't: anyone can type it). this tab only
 const TK = 'jf_bgn_tk';
 export function bgnTicket() { try { const t = sessionStorage.getItem(TK); return t && /^[A-Za-z0-9_-]{24}$/.test(t) ? t : undefined; } catch { return undefined; } }
-net.tap((m) => { if (m.t === 'welcome' && typeof m.bt === 'string') try { sessionStorage.setItem(TK, m.bt); } catch { /* storage off: no seat back */ } });
+net.tap((m) => { if (m.t === 'welcome' && typeof m.bt === 'string') { try { sessionStorage.setItem(TK, m.bt); } catch { /* storage off: no seat back */ } partyTicket(m.bt); } }); // (the party hears it too: a party start can take you back to the table)
 net.on('bg', (m) => {
   if (!m || typeof m.k !== 'string') return;
   if (m.k === 'st') { const was = B; B = m.s; if (!B) { bgnReset(); return; } miniState(B); ensureDom(); loadBoard(); if (board) board.sync(B); onState(was); render(); return; }

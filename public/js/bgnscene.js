@@ -24,10 +24,11 @@ const KS = 40; // the Blender kitchen is life size: x40 for the pawns (a 6 cm sq
 export const spacePos = (id, out = new THREE.Vector3()) => { const p = BOARD[id].p; return out.set(p[0] * BS, TOP, p[1] * BS); };
 const mat = (c, o = {}) => new THREE.MeshStandardMaterial({ color: c, roughness: o.r ?? 0.55, metalness: o.m ?? 0, emissive: o.e || 0x000000, emissiveIntensity: o.ei ?? 1 });
 const box = (w, h, d, m) => new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
-// a Blender model: now, or later when it lands (a missing file = the code model stays)
+// a Blender model: right after makeBoard (already loaded, e.g. by the kitchen lobby), or later when it lands (a missing
+// file = the code model stays). never inside makeBoard: the callbacks use the whole scene
 function glb(id, cb) {
   const a = authored(id);
-  if (a) { cb(a.obj, a.meta); return; }
+  if (a) { queueMicrotask(() => cb(a.obj, a.meta)); return; }
   if (!missingGlb(id)) return;
   want(id, 3);
   whenGlb([id], () => { const b = authored(id); if (b) cb(b.obj, b.meta); });
