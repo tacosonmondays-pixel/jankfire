@@ -130,7 +130,7 @@ export function makeBoard() {
     for (let i = -1; i <= 1; i++) { const cut = box(0.08, 0.1, 0.6, mat(0x8a5a00)); cut.position.set(i * 0.32, 0.84, 0); cut.rotation.y = 0.5; g.add(cut); }
     return g;
   };
-  let breadSrc = null; // x_bgn_bakery's golden loaf (origin under its middle), once it lands
+  let breadSrc = null, stallSrc = null; // x_bgn_bakery's golden loaf (origin under its middle) and its little shop, once they land
   const loaf = (fake) => {
     if (!breadSrc) return codeLoaf(fake);
     const g = breadSrc.clone(true);
@@ -174,8 +174,10 @@ export function makeBoard() {
   glb('x_bgn_bakery', (o, meta) => {
     if (!meta || meta.kind !== 'bgnbakery') return;
     const b = o.getObjectByName('bread'), sh = o.getObjectByName('stall');
-    if (b) { b.parent.remove(b); b.position.set(0, 0, 0); breadSrc = b; bakery.remove(bakeLoaf); bakeLoaf = loaf(false); bakery.add(bakeLoaf); for (const [at, m] of [...traps]) if (m.userData.k === 'fake') { scene.remove(m); traps.delete(at); } if (st) syncTraps(st); }
-    if (sh) { sh.parent.remove(sh); sh.position.set(0, 0, 0); sh.traverse((m) => { if (m.isMesh) m.castShadow = true; }); stall.add(sh); }
+    if (b) { b.parent.remove(b); b.position.set(0, 0, 0); breadSrc = b; bakery.remove(bakeLoaf); bakeLoaf = loaf(false); bakery.add(bakeLoaf); }
+    if (sh) { sh.parent.remove(sh); sh.position.set(0, 0, 0); sh.traverse((m) => { if (m.isMesh) m.castShadow = true; }); stallSrc = sh; stall.add(sh); }
+    for (const [at, m] of [...traps]) if (m.userData.k === 'fake') { scene.remove(m); traps.delete(at); } // (fakes get the shop too: from far off they look the same)
+    if (st) syncTraps(st);
     if (cere && cere.win) holdBread(cere.win, true);
   });
   // THE TOASTING's podium: a toaster on a cereal box at the side of the board (code boxes until x_bgn_toaster lands)
@@ -279,8 +281,12 @@ export function makeBoard() {
     return P;
   }
   const off = (i) => new THREE.Vector3((i % 2 ? 0.5 : -0.5), 0, (i < 2 ? -0.5 : 0.5)); // four pawns share a space
-  const trapMesh = (k) => {
-    if (k === 'fake') return loaf(true);
+  const trapMesh = (k, at) => {
+    if (k === 'fake') { // a fake bakery: the too-shiny loaf floating over the space, and (once it's in) the same little shop beside it
+      const g = new THREE.Group(), l = loaf(true); g.add(l); g.userData.loaf = l;
+      if (stallSrc) { const sh = stallSrc.clone(true), o = stallOff(at); sh.position.set(o.dx * BS, -0.06, o.dz * BS); sh.rotation.y = o.ry; g.add(sh); }
+      return g;
+    }
     const g = new THREE.Group();
     if (k === 'peel') { const p = new THREE.Mesh(new THREE.TorusGeometry(0.35, 0.12, 6, 10, Math.PI * 1.2), mat(0xffe14d, { r: 0.4 })); p.rotation.x = -Math.PI / 2; p.position.y = 0.12; g.add(p); }
     if (k === 'sign') { for (const s of [-1, 1]) { const b = box(0.7, 1.1, 0.06, mat(0xffe14d, { r: 0.3 })); b.position.set(0, 0.55, s * 0.2); b.rotation.x = s * 0.35; g.add(b); } }
@@ -289,13 +295,17 @@ export function makeBoard() {
   function syncTraps(s) {
     const want = new Map(s.traps.map(([at, k]) => [at, k]));
     for (const [at, m] of traps) if (want.get(at) !== m.userData.k) { scene.remove(m); traps.delete(at); }
-    for (const [at, k] of want) if (!traps.has(at)) { const m = trapMesh(k); m.userData.k = k; spacePos(at, m.position); scene.add(m); traps.set(at, m); }
+    for (const [at, k] of want) if (!traps.has(at)) { const m = trapMesh(k, at); m.userData.k = k; spacePos(at, m.position); scene.add(m); traps.set(at, m); }
   }
   // the bakery's little shop sits one square in from its space, facing it
+  function stallOff(id) { // one square in from a loop space (the crease's: beside it), its front (+z) toward the space
+    const p = BOARD[id].p, side = Math.abs(p[0]) === 5, dx = side ? -Math.sign(p[0]) : p[0] === 0 ? 1 : 0, dz = side || p[0] === 0 ? 0 : -Math.sign(p[1]);
+    return { dx, dz, ry: Math.atan2(-dx, -dz) };
+  }
   function placeStall(id) {
-    const p = BOARD[id].p, inX = Math.abs(p[0]) === 5 ? -Math.sign(p[0]) : 0, inZ = inX ? 0 : -Math.sign(p[1]);
-    stall.position.set((p[0] + inX) * BS, TOP - 0.06, (p[1] + inZ) * BS);
-    stall.rotation.y = Math.atan2(-inX, -inZ); // (its front, +z, toward the space)
+    const p = BOARD[id].p, o = stallOff(id);
+    stall.position.set((p[0] + o.dx) * BS, TOP - 0.06, (p[1] + o.dz) * BS);
+    stall.rotation.y = o.ry;
   }
 
   // ---------------------------------------------------------------- THE TOASTING
@@ -482,7 +492,7 @@ export function makeBoard() {
       if (cere) cereFrame(dt);
       fwFrame(dt);
       bakeLoaf.rotation.y += dt * 0.8; bakery.position.y = TOP + 0.25 + Math.sin(t * 2) * 0.12;
-      for (const [, m] of traps) if (m.userData.k === 'fake') { m.rotation.y -= dt * 0.8; m.position.y = TOP + 0.25 + Math.sin(t * 2 + 1) * 0.12; }
+      for (const [, m] of traps) if (m.userData.k === 'fake') { const l = m.userData.loaf; l.rotation.y -= dt * 0.8; l.position.y = 0.25 + Math.sin(t * 2 + 1) * 0.12; }
       for (const r of marks.children) r.scale.setScalar(1 + Math.sin(t * 6) * 0.06);
       if (dieA.on) {
         dieA.t += dt;
