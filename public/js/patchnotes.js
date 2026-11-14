@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.54', date: '2026-11-14', title: 'RENT IS DUE', items: [
+    "BOARD GAME NIGHT got weirder: BUMPER CARTS (ram people off the toy box in shopping carts, 2 lives each) and DUCK CATCH (catch the rubber ducks, slap people to make them drop theirs, avoid the cursed one).",
+    "boss rounds: THE BIG GUY (the leader in an overdrive rig, kills x3), THE LANDLORD and THE NIGHT MANAGER. they only go down when their armour breaks. rent is due.",
+    "drop out of a board game and you get your own seat back when you return. nobody else can take it by borrowing your name.",
+  ] },
   { v: '11.53', date: '2026-11-13', title: 'NO WALLHACKS', items: [
     "no more hits through walls or with guns you aren't holding. the server checks now. (glass still lets bullets through, and laggy players keep their fair hits.)",
     "melee, the cigarette and the leaf blower have to actually point at you. chicken strikes and giant ducks can't land somewhere you can't see.",
