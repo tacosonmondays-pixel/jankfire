@@ -389,7 +389,7 @@ export const PJP = {
     stools: [-6, -4.2, -2.4, -0.6, 1.2], stool: [-2.46, -2.04, 0.21, 0.75], // along the bar (z); x0 x1, half size along z, height
     // on the terrace, from its floor: the boat (three steps up its hull, from where it goes in to its stern up in the air),
     // the chimney, two picnic tables, the kegs
-    deck: [[-4.1, -6.8, -3.2, -4.4, 1.3], [-3.2, -6.8, -2.2, -4.4, 3.2], [-2.1, -6.8, -0.95, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2], [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [4.5, -7.6, 5.6, -6.3, 1.0]],
+    deck: [[-0.2, -6.8, 0.7, -4.4, 1.3], [0.7, -6.8, 1.7, -4.4, 3.2], [1.8, -6.8, 2.95, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2], [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [-5.6, -7.6, -4.5, -6.3, 1.0]],
     out: [[7.0, -6.6, 8.6, -4.8, 0.78], [7.0, 4.8, 8.6, 6.6, 0.78], [6.6, -2.1, 7.1, -1.5, 1.0]] }, // out front: two picnic tables, the quiz board
   hm: { c: [82, 137.5], w: 8, d: 6.2, h: 3.4, t: 0.25, roof: 0.3, par: 0.6, pt: 0.2,
     door: [-1.6, -0.4, 2.3], win: [-3.4, -2.0], side: [-1.8, 1.8], back: [2.2, 3.2], sill: 1.0, head: 2.5, // the front (south) door x0 x1 top, its window; the west window (z); the back door (north)

@@ -48,8 +48,8 @@ PJP = dict(
                      [0.92, -7.75, 1.35, -5.95, 0.45], [1.55, -7.75, 2.45, -5.95, 0.75], [2.65, -7.75, 3.08, -5.95, 0.45], [3.08, -7.75, 3.2, -5.95, 1.2],
                      [-1.0, 3.0, 2.6, 3.15, 2.0], [4.4, 7.1, 5.3, 7.75, 1.55], [3.2, -3.6, 4.0, -2.8, 0.75], [3.6, 4.4, 4.4, 5.2, 0.75]],
              stools=[-6, -4.2, -2.4, -0.6, 1.2], stool=[-2.46, -2.04, 0.21, 0.75],
-             deck=[[-4.1, -6.8, -3.2, -4.4, 1.3], [-3.2, -6.8, -2.2, -4.4, 3.2], [-2.1, -6.8, -0.95, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2],
-                   [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [4.5, -7.6, 5.6, -6.3, 1.0]],
+             deck=[[-0.2, -6.8, 0.7, -4.4, 1.3], [0.7, -6.8, 1.7, -4.4, 3.2], [1.8, -6.8, 2.95, -4.4, 2.3], [-5.8, 6.2, -4.8, 7.6, 2.2],
+                   [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [-5.6, -7.6, -4.5, -6.3, 1.0]],
              out=[[7.0, -6.6, 8.6, -4.8, 0.78], [7.0, 4.8, 8.6, 6.6, 0.78], [6.6, -2.1, 7.1, -1.5, 1.0]]),
     hm=dict(c=[82, 137.5], w=8, d=6.2, h=3.4, t=0.25, roof=0.3, par=0.6, pt=0.2,
             door=[-1.6, -0.4, 2.3], win=[-3.4, -2.0], side=[-1.8, 1.8], back=[2.2, 3.2], sill=1.0, head=2.5,
@@ -569,7 +569,7 @@ def boat(K, rt, H):
     across), then tipped bow-down by th and set so its transom's foot is at (KU, KY): the part above the terrace and
     the bow that comes down through the ceiling (the slab in between hides the rest)"""
     th = math.radians(58); ct, st_ = math.cos(th), math.sin(th)
-    KU, KY, ZC, L = -1.5, 6.3, -5.6, 4.8
+    KU, KY, ZC, L = 2.4, 6.3, -5.6, 4.8  # (near the front: her name and outboard face the street)
     def place(g): return V3((KU + g.x * ct - g.y * st_, KY + g.x * st_ + g.y * ct, ZC + g.z))
     def beam(s): return 1.15 * (0.82 + 0.18 * min(1, s / 1.4) * (2 - min(1, s / 1.4)) if s <= 1.4 else max(0.0, 1.0 - ((s - 1.4) / (L - 1.4)) ** 2))
     def depth(s): return 1.15 + 0.3 * (s / L) ** 2
@@ -643,20 +643,20 @@ def boat(K, rt, H):
     # splinters: broken deck boards round the hole it made, and broken ceiling round it underneath
     r = random.Random(17)
     for i in range(9):
-        a = TAU * i / 9 + r.uniform(-0.2, 0.2); cx_, cz_ = -3.35 + math.cos(a) * 0.8, ZC + math.sin(a) * 1.3
+        a = TAU * i / 9 + r.uniform(-0.2, 0.2); cx_, cz_ = KU - 1.85 + math.cos(a) * 0.8, ZC + math.sin(a) * 1.3
         o = box_between((cx_, rt + 0.02, cz_), (cx_ + math.cos(a) * 0.45, rt + 0.12 + r.uniform(0.0, 0.18), cz_ + math.sin(a) * 0.45), 0.11, 0.03, K.M, K.fid + '_splinter')
         uv_fit(o, K.A, 'splinter'); keep.append(o)
         o = box_between((cx_ + 0.2, H - 0.01, cz_), (cx_ + 0.2 + math.cos(a) * 0.35, H - 0.12 - r.uniform(0.0, 0.12), cz_ + math.sin(a) * 0.35), 0.13, 0.03, K.M, K.fid + '_plaster')
         uv_fit(o, K.A, 'ceiling'); keep.append(o)
     K.P += keep
     if os.environ.get('JF_DEBUG'):  # the boat above the deck, per metre along x: how high it gets (its boxes follow)
-        for u0 in [x * 0.5 for x in range(-12, 0)]:
+        for u0 in [x * 0.5 for x in range(-12, 8)]:
             ys = [(v.co).z for o in keep if o is not bow for v in o.data.vertices if u0 <= (v.co).x < u0 + 0.5]
             zs = [-(v.co).y for o in keep if o is not bow for v in o.data.vertices if u0 <= (v.co).x < u0 + 0.5]
             if ys: print('JF_BOAT', u0, round(max(ys) - rt, 2), round(min(zs), 2), round(max(zs), 2))
         print('JF_BOW', [round(f(((v.co).x for v in bow.data.vertices)), 2) for f in (min, max)], [round(f(((v.co).z for v in bow.data.vertices)), 2) for f in (min, max)])
     # far LOD: the hull as a wedge, its stern up
-    q = box_between((-3.5, rt - 0.1, ZC), (-1.9, 7.1, ZC), 2.2, 1.0, K.M, K.fid + '1_boat'); uv_fit(q, K.A, 'hullred'); K.Q.append(q)
+    q = box_between((KU - 2.0, rt - 0.1, ZC), (KU - 0.4, 7.1, ZC), 2.2, 1.0, K.M, K.fid + '1_boat'); uv_fit(q, K.A, 'hullred'); K.Q.append(q)
 
 
 def boxk(size, pos, M, A, key, name, bev=0.0, rot=None):
