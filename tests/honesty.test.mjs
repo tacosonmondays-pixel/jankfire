@@ -13,10 +13,9 @@ const A = human('A'), B = human('B');
 // flake-proofing (these checks went 29/30 on a busy CPU):
 // - a frozen clock: the trails are built from it and honHit reads it again, so a slow moment between the two can't slide
 //   the time window. nothing here needs time to pass: it all happens "in the same moment"
-// - the CPU-time caps (HON.hitMs / HON.ms, wall-clock) are lifted for the geometry checks: a busy machine stretches a hit
-//   that needs many rays past 10 ms. the ray caps stay on, and the flood check below puts the time caps back and tests them
+// - (the other cause: one hit used to stop at 10 ms of wall-clock time, which a busy machine stretched. a hit now stops on
+//   rays only, server/honesty.js; the per-player-per-second time budget stays, and every check here starts a fresh one)
 const CLOCK = Date.now(); Date.now = () => CLOCK;
-const CAPS = { hitMs: HON.hitMs, ms: HON.ms }; HON.hitMs = HON.ms = 1e9;
 const T = Date.now;
 // someone standing (or moving) along a 30 Hz trail that ends now
 const put = (p, pos, trail) => { p.pos = pos.slice(); p.vel = [0, 0, 0]; p.alive = true; p.trap = null; p.strail = trail || [[T() - 900, ...pos], [T() - 10, ...pos]]; p.trail = p.strail.map((x) => x.slice()); };
@@ -79,7 +78,6 @@ await t('revolver ricochets: a real bounce around the block lands, a bounce that
 });
 
 await t('a flood of impossible hits costs at most the per-player budget; an honest full-rate sprayer never comes near it', () => {
-  Object.assign(HON, CAPS); // (the real time caps: this is the check for them)
   // the flood: 9 targets running behind the block (a fresh rate slot each), 400 hits in one go
   put(A, [0, 0, -8]);
   const others = [];
@@ -90,7 +88,7 @@ await t('a flood of impossible hits costs at most the per-player budget; an hone
   for (let i = 0; i < 400; i++) room.handle(A, { t: 'hit', to: others[i % 9].id, w: 'ar', d: [0, 0, 1], n: 1, h: 0 });
   const ms = performance.now() - t0, H = A.hon;
   assert.ok(others.every((o) => o.hp === 100), 'nothing landed');
-  assert.ok(H.rays <= HON.rays + HON.perHit && H.ms <= HON.ms + HON.hitMs + 2, `budget: ${H.rays} rays, ${H.ms.toFixed(1)} ms`);
+  assert.ok(H.rays <= HON.rays + HON.perHit, `budget: ${H.rays} rays, ${H.ms.toFixed(1)} ms`);
   console.log(`   flood: 400 impossible hits on 9 moving targets cost ${ms.toFixed(1)} ms, ${H.rays} rays`);
   for (const o of others) room.remove ? room.remove(o) : room.players.delete(o.id);
   // honest sprayers: minigun 25/s, akimbo 2 x 9/s, marbles (1 hit per shot): 2 s at a target strafing 7 m/s in the open
