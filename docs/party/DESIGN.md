@@ -212,7 +212,7 @@ Crate, which floats in the sky. Ramming someone hard knocks them out of their ca
 Rubber ducks rain onto the Platform deck. Duck Rain's drop schedule and the client's falling-shadow markers already exist
 (`DUCKRAIN`, `tickDuckRain`). Here the ducks land as pickups, not black holes. Catch one in the air (+2) or pick it up
 off the floor (+1). A **gold duck** is +5. Every 10 s one **cursed duck** lands as a real black hole, and anyone it pulls in
-drops half their ducks.
+drops half their ducks (they spray out round them, up for grabs).
 - The only weapon is the Hand Slapper: a slap makes the target drop 3 ducks. No guns.
 - **Bots:** the server knows where every duck will land, so a bot walks to the closest shadow it can reach in time (gold
   first), slaps any rival holding 5+ ducks within 3 m, and steers away from a cursed duck's shadow.
@@ -312,8 +312,12 @@ team 2. He spawns already inside his mech, using a new `mechSpawnIn(b, frame, hp
 - **A human leaves:** the seat keeps everything. A bot takes it at once (`addBot`, then `seat.pid = bot.id`,
   `seat.bot = true`) and is named after them ("kevin's bot"). Mid-minigame, the bot joins the same side and spawns in.
   Mid-choice, the ask timer is cut to 1 s and the bot brain answers.
-- **A human joins** (online lobby, party ticket): between turns, they take the first bot seat. The bot retires
-  (`retireBot`) and the seat's coupons, bread and bag are theirs. No rejoin-your-own-seat in v1 (queued).
+- **A human joins** (online lobby, party ticket): between turns, they take a bot seat (one nobody's coming back to
+  first). The bot retires (`retireBot`) and the seat's coupons, bread and bag are theirs.
+- **Coming back after a drop:** the seat remembers who it's kept for (`seat.back`): an account, or a guest's rejoin
+  ticket. The server hands each guest at the table a random ticket in `welcome` (`bt`); the client keeps it in
+  sessionStorage and sends it back as `back` on join. A name alone never gets a seat back (anyone can type it), and the
+  tickets go when the game ends. A returner whose seat is mid-turn waits without holding up the rest of the queue.
 - **Everyone leaves:** the room closes, as it does today (`remove()`, `rooms.delete`).
 
 ### 4.6 Test knobs (`JF_*`, read at the top of `server/bgn.js`)
@@ -327,6 +331,9 @@ team 2. He spawns already inside his mech, using a new `mechSpawnIn(b, frame, hp
 | `JF_BGN_COUPONS=99` / `JF_BGN_PRICE=5` | starting coupons / bread price |
 | `JF_BGN_ROUND=9` | start at round 9 (LAST CALL, the end) |
 | `JF_BGN_BOTDUEL=1` | bot vs bot duels get played out |
+| `JF_BGN_NODUEL=1` | every duel is settled on the board, people's too (straight to the round's minigame) |
+| `JF_BGN_PEACE=1` / `2` | passive bots in bumper carts and duck catch (1: they drive / walk about, 2: carts stay parked) |
+| `JF_BGN_CURSE=name` | duck catch's cursed duck always comes down right on that player |
 
 Existing knobs still apply: `JF_WATCH` (a ws observer that runs a bots-only game), `JF_MECH_HP`, `JF_LIVES`, `JF_DUCKS`.
 

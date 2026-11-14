@@ -76,7 +76,8 @@ import { isleKey, isleFrame, isleRoundEnd, isleReset, isleDown, isleOn } from '.
 import { BR } from '/shared/royale.js'; // (the grapple charges, for the help text)
 import { tacZoneOf } from './tactical.js'; // plant & defuse hit markers by zone
 import { specFPOn } from './specfp.js'; // plant & defuse: first-person spectating
-import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
+import { initBgn, bgnOn, bgnBoardOn, bgnFrame, bgnReset, bgnHubBack, bgnTicket } from './bgn.js'; // BOARD GAME NIGHT: the board, its HUD and choices (docs/party/DESIGN.md)
+import { miniMouse, miniCam, miniFeed, miniRideCam, miniHideVM, miniRoundText } from './bgnmini.js'; // board game night's bumper carts (click = boost, watching once you're out) + duck catch
 import { pipFrame } from './pip.js'; // the first-person corner box while spectating
 import { sprayRangeFrame } from './sprayrange.js'; // Training's spray range
 import { chaosSpecId, pitErupt, underSea } from './chaos.js';
@@ -329,7 +330,7 @@ function startMode(mode, cfg, mkSocket) { // mkSocket: story mode's local transp
   if (G.joined) quitToMenu(true);
   connecting = true;
   $('status').textContent = 'connecting...';
-  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), mf: S.loadout.mech, item: S.loadout.item, zl: zlWant(), cfg, token: account.loggedIn ? account.token : undefined }, () => {
+  net.connect({ name: G.settings.name, mode, skins: wantSkins(), favs: myFavs(), look: G.settings.look, card: G.settings.card || '', kfx: myKfx(), grap: myGrapple(), kc: G.settings.killcam !== false, streaks: validStreaks(S.loadout.streaks), mf: S.loadout.mech, item: S.loadout.item, zl: zlWant(), cfg, back: cfg && cfg.lobby === 'bgn' && !account.loggedIn ? bgnTicket() : undefined, token: account.loggedIn ? account.token : undefined }, () => {
     connecting = false;
     resetWorldState();
     show('main');
@@ -1297,6 +1298,7 @@ addEventListener('mousedown', (e) => {
   if (fmMouse(e)) return; // the big map is open: clicks are pings (off it: close it)
   if (brMouse(e)) return; // jank royale: no shooting from the blimp; out = click to watch someone else
   if (econMouse(e)) return;
+  if (miniMouse(e)) return; // board game night's bumper carts: a click in your cart is a BOOST
   if (e.button === 1 && K.bound(e)) e.preventDefault(); // a bound middle button never starts autoscroll
   pressed(e);
 });
@@ -1815,6 +1817,7 @@ net.on('kill', (m) => {
   if (hazard) parts = m.k ? [[kn, kc], [`  [${wname(m.via)}]  `, wcolor(m.via)], [vn, vc], [m.w === 'lava' ? (m.hz ? '  into the volcano' : '  into the lava') : '  under a sky duck', '#aaa']] : [[vn, vc], [m.w === 'lava' ? (m.hz ? '  took a lava bath' : '  touched the floor') : '  got flattened by a sky duck', '#ff8a3a']];
   if (m.w === 'lava' && m.hz) pitErupt(m.pos || (victim ? victim.pos : ME.pos)); // cooked in the volcano: it coughs fire
   const brp = brFeed(m, vn, vc); if (brp) parts = brp; // jank royale: the zone
+  const bgp = miniFeed(m, kn, kc, vn, vc); if (bgp) parts = bgp; // board game night's bumper carts: price checked into the void
   if (m.ep && m.k) parts.push([`  EPIC ${Math.round(m.ep.d)}m`, '#ffe14d']);
   const carK = (m.w === 'car' || m.w === 'carboom') && carKill(m, kn, kc, vn, vc, wname, wcolor); // traffic: its own lines and icon
   if (carK) parts = carK.parts;
@@ -2287,12 +2290,13 @@ function frame(t) {
   cam.rotation.set(Math.max(-1.57, Math.min(1.57, ME.pitch + pOff + pu.x)) + (Math.random() - 0.5) * sh, ME.yaw + pu.y + (Math.random() - 0.5) * sh, roll + pu.z);
   if (!RP.active) ballCam(cam, dt); // wrecking ball: third person, behind and above the ball
   if (!RP.active) mechCam(cam, dt); // mech: third person behind the frame (and the drop's heroic low shot)
+  if (!RP.active) miniRideCam(cam, dt); // board game night's bumper carts: a chase cam behind your cart
   const hs = hspeed();
   const fovTarget = (S.fov + (S.fovKick ? Math.min(35, hs * 0.3) + (ME.sprinting ? 6 : 0) + (ME.alive ? ME.ropeFov || 0 : 0) : 0)) / (W.zoom || 1);
   fovNow += (fovTarget - fovNow) * Math.min(1, dt * (W.aim > 0 ? 14 : 6));
   if (Math.abs(cam.fov - fovNow) > 0.05) { cam.fov = fovNow; cam.updateProjectionMatrix(); }
   if (RP.active) updateReplay(dt, now, cam); // killcam / play of the round owns the camera
-  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
+  const specCam = !RP.active && (spectateCam(dt, cam) || econCam(cam, dt) || brCam(dt, cam) || miniCam(dt, cam)); // one in the chamber: out of lives, watching someone; Plant & Defuse: a teammate; jank royale: the blimp ride + spectating
   cam.updateMatrixWorld();
   lassoLate(dt, now); // lasso ropes between people + from your hand, now that everyone (and the camera) has moved
   updateSpeedLines(dt, G.joined && ME.alive && !RP.active ? Math.hypot(ME.vel[0], ME.vel[1], ME.vel[2]) : 0, ME.vel, cam, ME.dashing ? 0.9 : 0, S.speedLines !== false);
@@ -2339,6 +2343,7 @@ function frame(t) {
   if (mechOn() || mechHeroOn()) G.vmScene.visible = false; // (and inside a mech, and in the mech's landing shot)
   if (isleDown()) G.vmScene.visible = false; // battle island: down on the floor, no hands free
   if (G.story && G.story.hideVM()) G.vmScene.visible = false; // (OVERDUE: driving, third person)
+  if (miniHideVM()) G.vmScene.visible = false; // (bumper carts: both hands on the cart)
   if (story) story.frame(dt, now, cam); // story mode: actors, quests, the talk cam, cutscenes
   if (G.joined) sprayRangeFrame(); // Training's spray range: its sign, the last spray's holes
   if (!lobbySceneFrame(dt, screen === 'hubby' && !G.joined && !$('menu').classList.contains('hidden')) && !(G.joined && bgnFrame(dt))) { wxPre(); renderFrame(); wxPost(); } // (board game night: the board instead of the map) // the hub lobby's 3D place, else the game (or the menu's map orbit). (wxPre/wxPost: the storm's sky + light for this frame only)
@@ -2969,6 +2974,7 @@ function renderRound(r) {
   el.textContent = r.over ? `next round in ${Math.ceil(r.left / 1000)}` : teamGame ? '' : `first to ${r.target} · ${fmtClock(r.left)}`;
   const ct = chaosRoundText(r);
   if (ct) el.textContent = ct;
+  const bt = miniRoundText(r, fmtClock); if (bt) el.textContent = bt; // board game night's own minigames: no "first to 999"
   if (r.game === 'br' && !r.over) el.textContent = 'last one standing wins';
   if (r.game === 'island' && !r.over) el.textContent = 'last squad standing wins'; // battle island // jank royale: the zone clock is in its own panel
 }

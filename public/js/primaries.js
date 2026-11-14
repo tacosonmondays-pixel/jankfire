@@ -242,6 +242,8 @@ function startRide(c) {
   hud.msg('CART SURFING', 1, 'brag');
 }
 function endRide() { ME.ride = 0; ME.rideAsk = 0; }
+// board game night's bumper carts: the server put you in this cart (it's yours from the start of the round)
+export function boardCart(id) { const c = carts.get(id); if (!c || !ME.alive || ME.ride === id || ME.pin) return false; startRide(c); return true; }
 function hopOff(jump) {
   const c = carts.get(ME.ride);
   const v = ME.vel.slice();

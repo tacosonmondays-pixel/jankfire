@@ -59,7 +59,7 @@ const rankOf = (seats) => seats.slice().sort((a, b) => b.b - a.b || b.c - a.c ||
 async function partGame(port) {
   const S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '4', JF_BGN_MGTIME: '6', JF_BGN_COUPONS: '30' });
   const W = await client(port, 'watchA', OFF(5));
-  const done = await W.until(() => W.evs('cere').length, 200000);
+  const done = await W.until(() => W.evs('cere').length && W.sts.some((s) => s.ph === 'done'), 200000); // (the ceremony event goes out just before the 'done' state: wait for both)
   ok(done, 'a bots-only game (4 rounds) runs to the end');
   const phs = new Set(W.sts.map((s) => s.ph));
   ok(['intro', 'dibs', 'turn', 'roll', 'move', 'land', 'mgintro', 'mg', 'mgres', 'done'].every((p) => phs.has(p)), 'it went through every phase: ' + [...phs].join(' '));
@@ -83,6 +83,7 @@ async function partGame(port) {
     if (r.fmt === 'ffa') ok([10, 6, 3, 1].every((v, k) => pay.get(r.place[k]) === v), `ffa ${r.id}: 10/6/3/1 by place`);
     else if (r.fmt === '2v2') ok(r.sides.every((side, k) => side.every((i) => pay.get(i) === (r.winSide === -1 ? 4 : r.winSide === k ? 8 : 1))), `2v2 ${r.id}: winners +8, losers +1 (tie: +4)`);
     else if (r.fmt === '3v1') ok(r.winSide === 1 ? pay.get(r.one) === 15 && pay.size === 1 : r.sides[0].every((i) => pay.get(i) === 5) && !pay.has(r.one), `3v1 ${r.id}: the leader +15 or the three +5`);
+    else if (r.fmt === 'boss') ok(r.seats.every((i) => pay.get(i) === (r.winSide === 0 ? 8 + (i === r.mvp ? 5 : 0) : 2)), `boss ${r.id}: +8 each and the MVP +5, or the pity +2`); // (bosses are on since PR 3: halftime is one)
     else continue;
     checked++;
   }

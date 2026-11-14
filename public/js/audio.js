@@ -982,6 +982,19 @@ Object.assign(sfx, {
   // a sparkle twinkling: one tiny high chime
   twinkle() { const f = [2637, 3136, 3520, 3951][(Math.random() * 4) | 0]; tone('sine', f, f, 0.35, 0.025); tone('triangle', f * 2, f * 2, 0.15, 0.01, null, 0.02); },
 });
+// BOARD GAME NIGHT minigames 11-15 (public/js/bgnmini.js): bumper carts, duck catch, the bosses
+Object.assign(sfx, {
+  bgmBoost(pos) { whoosh(0.35, 0.4, 300, 2200, 1.2, pos); tone('sawtooth', 120, 420, 0.3, 0.18, pos); noise(0.25, 0.3, 'lowpass', 900, 200, pos); }, // a shopping cart going way too fast
+  bgmHonk(pos) { tone('square', 392, 380, 0.16, 0.22, pos); tone('square', 494, 480, 0.16, 0.16, pos); tone('square', 392, 370, 0.22, 0.22, pos, 0.2); tone('square', 494, 470, 0.22, 0.16, pos, 0.2); }, // HONK HONK (a ram)
+  bgmClank(pos, k = 1) { noise(0.22, 0.7 * k, 'bandpass', 2600, 900, pos, 0, 4); tone('square', 210, 60, 0.25, 0.4 * k, pos); tone('triangle', 1700, 1500, 0.3, 0.12 * k, pos, 0.03); }, // metal on metal
+  bgmOut() { tone('sawtooth', 523, 515, 0.18, 0.18); tone('sawtooth', 415, 405, 0.18, 0.18, null, 0.2); tone('sawtooth', 330, 200, 0.6, 0.2, null, 0.4); }, // returned to the store: a sad store jingle
+  bgmCatch(air) { tone('sine', 900, 1700, 0.08, 0.28); tone('sine', 1700, 1100, 0.1, 0.24, null, 0.08); if (air) tone('triangle', 1760, 2350, 0.16, 0.14, null, 0.15); }, // a squeak into your hands
+  bgmGold() { for (const [i, f] of [1319, 1568, 2093, 2637].entries()) tone('triangle', f, f, 0.18, 0.16, null, i * 0.07); }, // ding ding ding DING
+  bgmLost() { tone('square', 700, 300, 0.25, 0.14); tone('sine', 1300, 500, 0.3, 0.1, null, 0.05); }, // ducks flying out of your arms
+  bgmCurse() { tone('sawtooth', 160, 90, 0.9, 0.3); tone('sawtooth', 167, 85, 0.9, 0.2); noise(0.8, 0.4, 'lowpass', 600, 80, null, 0, 2); }, // the cursed one got you
+  bgmBoss() { tone('sawtooth', 82, 78, 1.1, 0.35); tone('square', 123, 110, 1.1, 0.18); noise(1.2, 0.35, 'lowpass', 400, 60); for (let i = 0; i < 3; i++) tone('square', 330 - i * 40, 320 - i * 40, 0.14, 0.14, null, 0.5 + i * 0.16); }, // the boss music sting
+  bgmBossDown() { noise(1.4, 1, 'lowpass', 2400, 40); tone('sine', 90, 20, 1.2, 0.8); for (const [i, f] of [523, 659, 784, 1047].entries()) tone('square', f, f, 0.2, 0.14, null, 0.5 + i * 0.12); }, // boom + a little victory fanfare
+});
 
 // sandstorm (wxsand.js): a howling wind with whistling gusts over a dry sand hiss, k 0..1; under a roof the hiss goes
 // and the howl is muffled. in loops (stopLoops shuts it up)

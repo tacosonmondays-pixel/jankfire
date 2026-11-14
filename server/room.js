@@ -491,6 +491,7 @@ class Room {
     const skinWant = cleanSkins(m.skins), favs = cleanFavs(m.favs); // (random slots are rolled from what you own)
     const p = this.newPlayer(name, { ws, skins: rollSkins(skinWant, inv, m._achs, favs, enforceSkins), acct: m._acct, level: m._level });
     p.inv = inv; p.skinWant = skinWant; p.favs = favs; p.kfxWant = typeof m.kfx === 'string' ? m.kfx : 'none';
+    if (typeof m._tk === 'string' && !p.acct) p.tk = m._tk; // board game night: a guest's rejoin ticket (server.js)
     p.tip = pick(TIP_IDS);
     p.look = validLook(m.look, m._achs || new Set());
     if (p.look.color) p.color = p.look.color;
@@ -523,7 +524,7 @@ class Room {
       kat: [...this.players.values()].filter((o) => o.kat).map((o) => [o.id, o.kat]),
       game: this.game, team: p.team || 0, tags: [...this.tags.values()].map((g) => ({ id: g.id, p: g.p, team: g.team })), vote: this.voteInfo(),
       sprays: this.sprayList(), skip: skipInfo(this), lobby: this.warmInfo ? this.warmInfo() || undefined : undefined, lk: this.lobby ? this.lobby.kind : undefined,
-      mpatch: this.patchList(),
+      mpatch: this.patchList(), bt: p.tk || undefined,
     });
     this.broadcast({ t: 'pj', ...this.info(p) }, p.id);
     skipPeople(this); // one more human: a skip vote needs more
@@ -4205,6 +4206,7 @@ function roomFor(mode, ws, cfg) {
     return r;
   }
   if (lk && lk !== 'qp' && (mode === 'bots' || mode === 'ffa')) {
+    if (lk === 'bgn' && typeof cfg._back === 'string') for (const r of rooms.values()) if (r.mode === mode && r.bgnBackFor(cfg._back)) return r; // board game night: back to the table you dropped out of
     for (const r of rooms.values()) if (r.lobbyOpen(mode, lk, need)) return r;
     const r = new Room(`${mode}:${lk}:${nextId++}:${Math.random().toString(36).slice(2, 7)}`, mode);
     rooms.set(r.id, r);
