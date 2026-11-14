@@ -395,7 +395,7 @@ class Kit:
             bmesh.ops.delete(bm, geom=cut, context='FACES'); bm.to_mesh(o.data); bm.free(); o.data.update()
             wall_uv2(o, self.A, c, k, outer, inner, edge, upm, ctr); self.P.append(o)
 
-    def floor(self, x0, x1, z0, z1, key, per, upm, y=0.0, top=0.02, edge='pwood'):
+    def floor(self, x0, x1, z0, z1, key, per, upm, y=0.0, top=0.02, edge='pwhite'):
         """a floor in strips along z (v across each strip, u along x): its top at y + top"""
         for k in range(int(math.floor(z0 / per)), int(math.ceil(z1 / per))):
             a, b = max(z0, k * per), min(z1, (k + 1) * per)
@@ -507,8 +507,8 @@ def lifering(K, c, axis, name, r=0.3, tube=0.08):
     for poly in me.polygons:
         ls = []
         for li in poly.loop_indices:
-            p = P[me.loops[li].vertex_index]; a_ = (p.z - c[2]) if axis == 'x' else (p.x - c[0]); b_ = p.y - c[1]
-            ls.append([li, math.atan2(b_, a_) / TAU, v0 + (v1 - v0) * min(1, max(0, (math.hypot(a_, b_) - r + tube) / (2 * tube)))])
+            vi = me.loops[li].vertex_index; p = P[vi]; a_ = (p.z - c[2]) if axis == 'x' else (p.x - c[0]); b_ = p.y - c[1]
+            ls.append([li, math.atan2(b_, a_) / TAU, v0 + (v1 - v0) * (0.1 + 0.8 * (vi % 6) / 5)])  # (v round the tube: sweep makes ring after ring of 6)
         ref = ls[0][1]
         for e in ls:
             while e[1] - ref > 0.5: e[1] -= 1
@@ -929,6 +929,315 @@ def build_pub():
     return dict(lod0=K.P, lod1=K.Q, box=(lo, hi), ao=0.8, aolo=0.5, lod=130, eps=0.001, sheet=dict(exposure=-1.0),
                 focus=[((hw, 2.8, 0), (1.0, 0.3, 0.35), 14.0), ((-1.0, 1.6, -2.0), (1.0, 0.25, 0.45), 7.0), ((-3.0, rt + 1.5, -4.0), (1.0, 0.45, 0.6), 7.0),
                        ((1.5, 1.6, 6.5), (0.1, 0.1, -1.0), 3.0), ((-4.5, 3.5, -5.5), (1.0, -0.4, 0.3), 3.5), ((3.5, 2.2, 8.6), (0.5, 0.2, 1.0), 9.0)])
+
+
+# ============================================================ p_pj_harbour: THE HARBOUR MASTER
+def paint_dial(px):  # the tide dial: a white face in a navy ring, TIDE over it, IN / OUT / YES round it, ticks
+    h, w = px.shape[:2]; c = w / 2
+    px[:] = hexrgb(0x1f3a8a); px_disc(px, c, c, c - 0.5, 0x1f3a8a); px_disc(px, c, c, c - 4, 0xfbf8f0)
+    for k in range(24):
+        a = k * TAU / 24; r0, r1 = c - 6, c - (9 if k % 6 == 0 else 7.5)
+        px_line(px, c + math.sin(a) * r0, c - math.cos(a) * r0, c + math.sin(a) * r1, c - math.cos(a) * r1, 0x1f3a8a, 1.0)
+    px_disc(px, c, c, c - 10, 0xe8f6fb, a0=math.pi * 0.75, a1=math.pi)  # (the YES side, a little bluer)
+    px_disc(px, c, c, c - 10, 0xe8f6fb, a0=-math.pi, a1=-math.pi * 0.75)
+    for s_, x, y, col in (('TIDE', c - 11.5, 12, 0x1f3a8a), ('IN', 11, c - 3, 0x1f3a8a), ('OUT', w - 28, c - 3, 0x1f3a8a), ('YES', c - 8.5, h - 21, 0xe0302a)):
+        text_px(px, s_, int(x), int(y), 1, col)
+
+
+def paint_cabinet(px):  # a grey steel filing cabinet's front: three drawers, handles, label slots
+    h, w = px.shape[:2]; grain(px, 0x9aa8b4, 0.02, 91)
+    for k in range(3):
+        y0 = k * h // 3; px[y0] = hexrgb(0x5a6670); px[y0 + 2:y0 + 4, w // 2 - 4:w // 2 + 4] = hexrgb(0xf4f2ee); px[y0 + 6:y0 + 7, w // 2 - 5:w // 2 + 5] = hexrgb(0x3a3a44)
+
+
+def paint_radio(px):  # the VHF set: dark face, a green display, dials, a red knob
+    h, w = px.shape[:2]; px[:] = hexrgb(0x2a2e36)
+    px[2:7, 2:16] = hexrgb(0x39ff14) * 0.85; text_px(px, '16', 4, 1, 1, 0x1a3a1a) if False else None
+    for x in (20, 26): px_disc(px, x, 5, 2.5, 0xb8c0c8)
+    px_disc(px, 28, 12, 2, 0xe0302a); px[10:14, 2:18] = hexrgb(0x5a606a)
+
+
+def paint_chart(px):  # a sea chart: blue water, a yellow island, depth lines, a red course
+    h, w = px.shape[:2]; r = np.random.default_rng(93)
+    px[:] = hexrgb(0xb8e4f4); yy, xx = np.mgrid[0:h, 0:w]
+    d = np.hypot((xx - w * 0.45) / 1.3, yy - h * 0.55)
+    px[d < 9] = hexrgb(0xf2d88a); px[(d >= 12) & (d < 12.6)] = hexrgb(0x6ab0d8); px[(d >= 17) & (d < 17.6)] = hexrgb(0x6ab0d8)
+    px[d < 4] = hexrgb(0x7ac860)
+    for x in range(4, w - 4): px[int(5 + x * 0.35) % h, x] = hexrgb(0xe0302a)
+    px[:1] = px[-1:] = hexrgb(0xfbf8f0); px[:, :1] = px[:, -1:] = hexrgb(0xfbf8f0)
+
+
+def paint_facade_hm(px):  # the far LOD's front: white, the blue plinth, the window, the door, the sign
+    h, w = px.shape[:2]; Hm, Wm = 4.3, 8.0
+    def Y(y): return int(round((1 - y / Hm) * h))
+    def X(x): return int(round((x / Wm + 0.5) * w))
+    px[:] = hexrgb(0xfbf8f0); px[Y(0.45):] = hexrgb(0x2a8ad8)
+    px[Y(2.5):Y(1.0), X(-3.4):X(-2.0)] = hexrgb(0x2a2026); px[Y(2.3):, X(-1.6):X(-0.4)] = hexrgb(0xe0302a)
+    px[Y(3.13):Y(2.68), X(-3.9):X(0.4)] = hexrgb(0x1f3a8a); px[:Y(3.7)] = hexrgb(0xe0302a)
+
+
+def hm_atlas(fid):
+    A = Atlas(fid + '_atlas', 256, 512)
+    A.band('render', 16, flat_c(0xfbf8f0, 0.02, 31)); A.band('plinth', 16, paint_plinth(0xfbf8f0, 0x2a8ad8, 0xfbf8f0, frac=0.5))
+    A.band('redb', 16, paint_boards(0xe0302a, 0xa8202a, 33, rows=6, vert=True))
+    A.band('redband', 16, lambda px: (px.__setitem__(slice(None), hexrgb(0xe0302a)), px.__setitem__(slice(0, 2), hexrgb(0xfbf8f0)), px.__setitem__(slice(-2, None), hexrgb(0xfbf8f0))))
+    A.band('inwall', 16, flat_c(0xdaf2ee, 0.02, 35)); A.band('inplinth', 16, paint_plinth(0xdaf2ee, 0x4a6a7a, 0xfbf8f0, frac=0.72))
+    A.band('inwhite', 16, flat_c(0xf6f4ee, 0.02, 37))
+    A.band('vinyl', 16, lambda px: px.__setitem__(slice(None), np.where((((np.mgrid[0:px.shape[0], 0:px.shape[1]][1] // 8) + (np.mgrid[0:px.shape[0], 0:px.shape[1]][0] // 8)) % 2 == 0)[:, :, None], hexrgb(0xa8bccc)[None, None], hexrgb(0xdae4ec)[None, None])))
+    A.band('roofdeck', 16, flat_c(0x8aa4b4, 0.03, 39)); A.band('deck', 16, paint_boards(0xd8a868, 0x6a4a2a, 41))
+    A.band('ringband', 8, paint_stripes_v(0xe0302a, 0xfbf8f0, 8))
+    A.band('counterf', 16, lambda px: (grain(px, 0xfbf8f0, 0.02, 43), [px.__setitem__((slice(2, -2), slice(x, x + 1)), hexrgb(0x2a8ad8)) for x in range(0, px.shape[1], 12)], px.__setitem__(slice(2, 3), hexrgb(0x2a8ad8)), px.__setitem__(slice(-3, -2), hexrgb(0x2a8ad8))))
+    A.cell('fascia', 176, 18, paint_board(['HARBOUR MASTER'], 0xfbf8f0, 0x1f3a8a, border=0xe0302a, scale=2, bw=2))
+    A.cell('dial', 64, 64, paint_dial)
+    A.cell('honk', 56, 20, paint_board(['HONK FOR', 'SERVICE'], 0xffd21a, 0x1c1c22, border=0x1c1c22))
+    A.cell('chalk', 88, 40, paint_chalk(['FORECAST', 'WIND: YES', 'FISH: PROBABLY', 'BOATS: SOME'], [0xffe14d, 0xf4f2ee, 0xf4f2ee, 0x4fd8ff]))
+    A.cell('notice', 64, 36, paint_board(['LOST:', 'ONE BOAT', 'LAST SEEN:', 'THE PUB'], 0xfff2d8, 0x1c1c22, border=0xe0302a, cols=[0xe0302a, 0x1c1c22, 0xe0302a, 0x1c1c22]))
+    A.cell('chart', 48, 32, paint_chart); A.cell('radio', 32, 16, paint_radio); A.cell('cabinet', 24, 36, paint_cabinet)
+    A.cell('facade1', 64, 32, paint_facade_hm)
+    A.cell('bulwark', 16, 16, lambda px: (px.__setitem__(slice(None), hexrgb(0xfbf8f0)), px.__setitem__(slice(3, 5), hexrgb(0x2a8ad8))))
+    swatches(A, (('pwhite', 0xfbf8f0, 0.02, None), ('hred', 0xe0302a, 0.02, None), ('hblue', 0x2a8ad8, 0.02, None), ('pnavy', 0x1f3a8a, 0.02, None),
+                 ('gold', 0xffc83a, 0.03, None), ('horn', 0xffd21a, 0.03, None), ('steel', 0x9aa8b4, 0.03, None), ('ceiling', 0xf8f4ea, 0.015, None),
+                 ('tread', 0x2a8ad8, 0.04, 0x8ad0ff), ('oak', 0xc89058, 0.05, None), ('leaf', 0x3fae3a, 0.06, None), ('flowerr', 0xe0302a, 0.03, None),
+                 ('soil', 0x5a3e2c, 0.08, None), ('iron', 0x24242c, 0.04, None), ('bulbw', 0xfff0b0, 0.0, None), ('deckb', 0x9ab0c0, 0.03, None),
+                 ('side1', 0xfbf8f0, 0.02, None), ('flagy', 0xffe14d, 0.0, None), ('flagb', 0x1f6ad8, 0.0, None), ('flagp', 0xff4fd8, 0.0, None),
+                 ('flagg', 0x39ff14, 0.0, None), ('glass', 0x8ad0ff, 0.02, None), ('chalkb', 0x1e2a26, 0.05, None)))
+    return A
+
+
+@prop('p_pj_harbour')
+def build_harbour():
+    fid = 'pjh'; P = PJP['hm']
+    hw, hd, t, H = P['w'] / 2, P['d'] / 2, P['t'], P['h']; rt = H + P['roof']; pt = P['pt']; pp = rt + P['par']
+    d0, d1, dh = P['door']; w0, w1 = P['win']; s0, s1 = P['side']; k0, k1 = P['back']; sl, hh = P['sill'], P['head']
+    g0, g1 = P['gap']; tx0, tz0, tx1, tz1 = P['tower']; T = P['top']; St = P['stair']; F = P['flight']
+    fr = (T - rt) / F['n']; fz = F['z0'] - F['n'] * F['run']; lz = fz - F['land']
+    gl = P['gal']; gx0, gx1, gz0, gz1 = tx0 - gl, tx1 + gl, tz0 - gl, tz1 + gl; R = 0.06; rh = T + P['rail']
+    wt, po = P['wt'], P['post']; ws, wh, rtop = T + P['rsill'], T + P['rhead'], T + P['room']; r0, r1 = P['rdoor']
+    A = hm_atlas(fid); img = A.image()
+    M = mat(fid, 0xffffff, rough=0.38, tex=img, clearcoat=0.45)
+    GL = mat('glow', 0xffffff, emit=0xffffff, strength=2.2, tex=img, emit_tex=True)
+    K = Kit(fid, A, M, GL)
+    tc = ((tx0 + tx1) / 2, 0, (tz0 + tz1) / 2)
+    # ---- the office's walls (the boxes' pieces exactly), its roof and parapet with red caps
+    OUT = lambda k: 'plinth' if k == 0 else 'render'
+    IN = lambda k: 'inplinth' if k == 0 else 'inwall'
+    for lo, hi in (((-hw, 0, hd - t), (w0, H, hd)), ((w0, 0, hd - t), (w1, sl, hd)), ((w0, hh, hd - t), (w1, H, hd)), ((w1, 0, hd - t), (d0, H, hd)),
+                   ((d0, dh, hd - t), (d1, H, hd)), ((d1, 0, hd - t), (hw, H, hd)),
+                   ((-hw, 0, -hd), (k0, H, -hd + t)), ((k0, dh, -hd), (k1, H, -hd + t)), ((k1, 0, -hd), (hw, H, -hd + t)),
+                   ((-hw, 0, -hd + t), (-hw + t, H, s0)), ((-hw, 0, s0), (-hw + t, sl, s1)), ((-hw, hh, s0), (-hw + t, H, s1)), ((-hw, 0, s1), (-hw + t, H, hd - t)),
+                   ((hw - t, 0, -hd + t), (hw, H, hd - t))):
+        K.wall(lo, hi, 'wall', OUT, IN, 'pwhite', cap=False)
+    RN = lambda k: 'render'
+    for lo, hi in (((-hw, rt, hd - pt), (g0, pp, hd)), ((g1, rt, hd - pt), (hw, pp, hd)), ((tx1, rt, -hd), (hw, pp, -hd + pt)),
+                   ((-hw, rt, tz1), (-hw + pt, pp, hd - pt)), ((hw - pt, rt, -hd + pt), (hw, pp, hd - pt))):
+        K.wall(lo, hi, 'parapet', RN, RN, 'pwhite', cap=False, bot=False)
+    for lo, hi in (((-hw - 0.03, pp, hd - pt - 0.03), (g0, pp + 0.07, hd + 0.03)), ((g1, pp, hd - pt - 0.03), (hw + 0.03, pp + 0.07, hd + 0.03)),
+                   ((tx1, pp, -hd - 0.03), (hw - pt - 0.03, pp + 0.07, -hd + pt + 0.03)), ((-hw - 0.03, pp, tz1), (-hw + pt + 0.03, pp + 0.07, hd - pt - 0.03)),
+                   ((hw - pt - 0.03, pp, -hd - 0.03), (hw + 0.03, pp + 0.07, hd - pt - 0.03))):
+        K.bk(lo, hi, 'hred', 'pcap')
+    ro = K.bk((-hw, H, -hd), (hw, rt, hd), 'pwhite', 'roof'); uv_fit(ro, A, 'ceiling', sel=lambda p, Pp: MK._gn(p.normal).y < -0.5)
+    TR.kill_faces(TR.bake_tf(ro), lambda g, n: n.y > 0.5)
+    K.floor(-hw + 0.1, hw - 0.1, -hd + 0.1, hd - 0.1, 'roofdeck', 0.8, UPM, y=rt)
+    K.floor(-hw + 0.1, hw - 0.1, -hd + 0.1, hd - 0.1, 'vinyl', 0.8, UPM)
+    # ---- the tower on the roof: white render, a red band under the gallery; the tide dial on its south face
+    TB = lambda k: 'redband' if k == 8 else 'render'
+    for lo, hi in (((tx0, rt, tz0), (tx0 + t, T - 0.15, tz1)), ((tx1 - t, rt, tz0), (tx1, T - 0.15, tz1)), ((tx0 + t, rt, tz0), (tx1 - t, T - 0.15, tz0 + t)), ((tx0 + t, rt, tz1 - t), (tx1 - t, T - 0.15, tz1))):
+        K.wall(lo, hi, 'tower', TB, RN, 'pwhite', ctr=tc, bot=False, cap=False)
+    dx_, dy_, dz_ = (tx0 + tx1) / 2, 5.3, tz1
+    o = cyl(0.95, 0.06, (dx_, dy_, dz_ + 0.025), M, axis='z', seg=20, name=fid + '_dial'); uv_fit(o, A, 'pnavy'); uv_fit(o, A, 'dial', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5); K.P.append(o)
+    o = ring((dx_, dy_, dz_ + 0.06), 0.97, 0.05, M, A, 'hred', fid + '_dialrim', axis='z', n=20); K.P.append(o)
+    o = box_between((dx_, dy_, dz_ + 0.075), (dx_, dy_ - 0.62, dz_ + 0.075), 0.07, 0.025, M, fid + '_hand'); K.add(o, 'hred')
+    o = side([(0.0, -0.58), (0.0, -0.76), (0.0, -0.58)], 0.025, (0, 0, 0), M, name=fid + '_x') if False else None
+    o = box_between((dx_ - 0.1, dy_ - 0.55, dz_ + 0.075), (dx_, dy_ - 0.74, dz_ + 0.075), 0.06, 0.025, M, fid + '_head1'); K.add(o, 'hred')
+    o = box_between((dx_ + 0.1, dy_ - 0.55, dz_ + 0.075), (dx_, dy_ - 0.74, dz_ + 0.075), 0.06, 0.025, M, fid + '_head2'); K.add(o, 'hred')
+    o = cyl(0.09, 0.06, (dx_, dy_, dz_ + 0.08), M, axis='z', seg=8, name=fid + '_boss'); K.add(o, 'gold')
+    for (cx_, cz_), ax_ in (((tx0, (tz0 + tz1) / 2), 'x'), ((dx_, tz0), 'z'), ((tx1, (tz0 + tz1) / 2), 'x')):  # little windows up the tower's other faces
+        sx_ = -1 if (ax_ == 'x' and cx_ < dx_) or (ax_ == 'z' and cz_ < (tz0 + tz1) / 2) else 1
+        if ax_ == 'x':
+            K.bk((min(cx_ - sx_ * 0.01, cx_ + sx_ * 0.05), 4.9, cz_ - 0.42), (max(cx_ - sx_ * 0.01, cx_ + sx_ * 0.05), 6.0, cz_ + 0.42), 'hred', 'twin')
+            K.bk((min(cx_, cx_ + sx_ * 0.07), 5.02, cz_ - 0.3), (max(cx_, cx_ + sx_ * 0.07), 5.88, cz_ + 0.3), 'glass', 'tglass')
+        else:
+            K.bk((cx_ - 0.42, 4.9, min(cz_ - sx_ * 0.01, cz_ + sx_ * 0.05)), (cx_ + 0.42, 6.0, max(cz_ - sx_ * 0.01, cz_ + sx_ * 0.05)), 'hred', 'twin')
+            K.bk((cx_ - 0.3, 5.02, min(cz_, cz_ + sx_ * 0.07)), (cx_ + 0.3, 5.88, max(cz_, cz_ + sx_ * 0.07)), 'glass', 'tglass')
+    # ---- the gallery: a steel deck on brackets round the tower, a solid white bulwark with a red rail, the landing
+    for lo, hi in (((gx0, T - 0.15, gz0), (gx1, T, tz0)), ((gx0, T - 0.15, tz1), (gx1, T, gz1)), ((gx0, T - 0.15, tz0), (tx0, T, tz1)), ((tx1, T - 0.15, tz0), (gx1, T, tz1))):
+        o = K.bk(lo, hi, 'steel', 'gallery'); uv_fit(o, A, 'deckb', sel=lambda p, Pp: MK._gn(p.normal).y > 0.5)
+    o = K.bk((g0 + 0.002, T - 0.15, lz), (g1, T, fz - 0.002), 'steel', 'landing'); uv_fit(o, A, 'deckb', sel=lambda p, Pp: MK._gn(p.normal).y > 0.5)
+    for (x, z), (dx, dz) in (((tx0, tz0), (-1, -1)), ((tx1, tz0), (1, -1)), ((tx0, tz1), (-1, 1)), ((tx1, tz1), (1, 1)), ((dx_, tz0), (0, -1)), ((dx_, tz1), (0, 1)), ((tx0, (tz0 + tz1) / 2), (-1, 0))):
+        o = box_between((x - dx * 0.0, T - 1.05, z), (x + dx * (gl - 0.1) * 0.7, T - 0.16, z + dz * (gl - 0.1) * 0.7), 0.08, 0.08, M, fid + '_bracket'); K.add(o, 'pwhite')
+    rails = (((gx0, T, gz0), (gx1, rh, gz0 + R)), ((gx0, T, gz1 - R), (gx1, rh, gz1)), ((gx0, T, gz0 + R), (gx0 + R, rh, gz1 - R)),
+             ((gx1 - R, T, gz0 + R), (gx1, rh, lz)), ((gx1 - R, T, fz), (gx1, rh, gz1 - R)), ((g0, T, lz), (g1, rh, lz + R)), ((g1 - R, T, lz + R), (g1, rh, fz)))
+    for lo, hi in rails:
+        o = K.bk(lo, (hi[0], hi[1] - 0.04, hi[2]), 'pwhite', 'bulwark'); uv_fit(o, A, 'bulwark', sel=lambda p, Pp: abs(MK._gn(p.normal).y) < 0.5)
+        along = 0 if hi[0] - lo[0] > hi[2] - lo[2] else 2; m_ = [(lo[i] + hi[i]) / 2 for i in range(3)]
+        a_ = list(m_); b_ = list(m_); a_[along] = lo[along] - 0.03; b_[along] = hi[along] + 0.03; a_[1] = b_[1] = hi[1] - 0.03
+        K.rod(tuple(a_), tuple(b_), 0.045, 'hred', 'railcap', seg=6)
+    # ---- the lookout: red boarded walls (white inside), white corner posts, open windows all round, the door east
+    LO = lambda k: 'redb'
+    LI = lambda k: 'inwhite'
+    for z0_, z1_ in ((tz0, tz0 + wt), (tz1 - wt, tz1)):
+        K.wall((tx0, T, z0_), (tx1, ws, z1_), 'look', LO, LI, 'pwhite', ctr=tc, bot=False); K.wall((tx0, wh, z0_), (tx1, rtop, z1_), 'look', LO, LI, 'pwhite', ctr=tc, cap=False)
+        K.wall((tx0, ws, z0_), (tx0 + po, wh, z1_), 'post', RN, LI, 'pwhite', ctr=tc, bot=False, cap=False); K.wall((tx1 - po, ws, z0_), (tx1, wh, z1_), 'post', RN, LI, 'pwhite', ctr=tc, bot=False, cap=False)
+    K.wall((tx0, T, tz0 + wt), (tx0 + wt, ws, tz1 - wt), 'look', LO, LI, 'pwhite', ctr=tc, bot=False); K.wall((tx0, wh, tz0 + wt), (tx0 + wt, rtop, tz1 - wt), 'look', LO, LI, 'pwhite', ctr=tc, cap=False)
+    K.wall((tx0, ws, tz0 + wt), (tx0 + wt, wh, tz0 + po), 'post', RN, LI, 'pwhite', ctr=tc, bot=False, cap=False); K.wall((tx0, ws, tz1 - po), (tx0 + wt, wh, tz1 - wt), 'post', RN, LI, 'pwhite', ctr=tc, bot=False, cap=False)
+    K.wall((tx1 - wt, T, tz0 + wt), (tx1, rtop, r0), 'look', LO, LI, 'pwhite', ctr=tc, bot=False, cap=False); K.wall((tx1 - wt, T, r1), (tx1, rtop, tz1 - wt), 'look', LO, LI, 'pwhite', ctr=tc, bot=False, cap=False)
+    K.wall((tx1 - wt, wh, r0), (tx1, rtop, r1), 'look', LO, LI, 'pwhite', ctr=tc, cap=False)
+    for (a_, b_), axis in ((((tx0, tz0 - 0.06), (tx1, tz0 + wt + 0.04)), 'z'), (((tx0, tz1 - wt - 0.04), (tx1, tz1 + 0.06)), 'z'), (((tx0 - 0.06, tz0 + wt), (tx0 + wt + 0.04, tz1 - wt)), 'x')):
+        K.bk((a_[0] + (po - 0.04 if axis == 'z' else 0), ws - 0.04, a_[1] + (0 if axis == 'z' else po - 0.04)), (b_[0] - (po - 0.04 if axis == 'z' else 0), ws + 0.03, b_[1] - (0 if axis == 'z' else po - 0.04)), 'pwhite', 'lsill')
+    K.floor(tx0 + wt - 0.05, tx1 - wt + 0.05, tz0 + wt - 0.05, tz1 - wt + 0.05, 'deck', 0.8, UPM, y=T - 0.02)
+    # its roof: a slab, a red pyramid, the gold weathervane (a cod on an arrow), the foghorn, a lamp inside
+    K.bk((tx0 - 0.3, rtop, tz0 - 0.3), (tx1 + 0.3, rtop + P['cap'], tz1 + 0.3), 'pwhite', 'lroof')
+    pc = ((tx0 + tx1) / 2, rtop + P['cap'], (tz0 + tz1) / 2); ph = 1.2; ry_ = (tx1 - tx0) / 2 + 0.25
+    o = lathe([(ry_ * math.sqrt(2), 0.0), (0.0, ph)], pc, M, seg=4, axis='y', name=fid + '_pyramid', cap=False)
+    TR.bake_tf(o); o.data.transform(Matrix.Translation(-gv(*pc))); o.data.transform(Matrix.Rotation(math.pi / 4, 4, 'Z')); o.data.transform(Matrix.Translation(gv(*pc))); o.data.update()
+    K.add(o, 'hred')
+    vx, vy, vz = pc[0], pc[1] + ph, pc[2]
+    K.rod((vx, vy - 0.1, vz), (vx, vy + 1.4, vz), 0.025, 'gold', 'vrod', seg=6)
+    o = ball(0.08, (vx, vy + 0.05, vz), M, seg=6, rings=4, name=fid + '_vball'); K.add(o, 'gold')
+    for a in (0, math.pi / 2):
+        K.rod((vx - math.cos(a) * 0.45, vy + 0.5, vz - math.sin(a) * 0.45), (vx + math.cos(a) * 0.45, vy + 0.5, vz + math.sin(a) * 0.45), 0.015, 'gold', 'varm', seg=4)
+    for a in range(4):
+        o = ball(0.04, (vx + math.cos(a * math.pi / 2) * 0.47, vy + 0.5, vz + math.sin(a * math.pi / 2) * 0.47), M, seg=5, rings=3, name=fid + '_vtip'); K.add(o, 'gold')
+    o = lathe([(0.0, -0.45), (0.1, -0.32), (0.16, -0.05), (0.13, 0.2), (0.05, 0.38), (0.0, 0.42)], (vx, vy + 1.05, vz), M, seg=8, axis='z', name=fid + '_vfish')
+    TR.bake_tf(o); o.data.transform(Matrix.Translation(-gv(vx, vy + 1.05, vz))); o.data.transform(Matrix.Diagonal((0.35, 1.0, 1.0, 1.0))); o.data.transform(Matrix.Translation(gv(vx, vy + 1.05, vz))); o.data.update()
+    K.add(o, 'gold')
+    o = side([(0.38, 1.05), (0.62, 1.22), (0.58, 1.05), (0.62, 0.88)], 0.02, (vx, vy, vz), M, name=fid + '_vtail'); K.add(o, 'gold')
+    o = side([(-0.38, 1.05), (-0.75, 1.13), (-0.75, 0.97)], 0.02, (vx, vy, vz), M, name=fid + '_vnose'); K.add(o, 'gold')
+    hx, hy, hz = tx0 - 0.15, rtop + 0.35, tz1 + 0.15  # the foghorn: twin trumpets on a bracket off the roof's south-west corner, aimed at the sea
+    K.bk((hx - 0.15, rtop + P['cap'], hz - 0.15), (hx + 0.35, rtop + P['cap'] + 0.22, hz + 0.15), 'steel', 'hornbox')
+    for k, (ang, ln) in enumerate(((0.45, 1.1), (0.15, 0.85))):
+        dirv = V3((-math.sin(ang), -0.12, math.cos(ang))).normalized(); base = V3((hx + 0.1, hy + 0.06 + k * 0.12, hz))
+        o = lathe([(0.06, 0.0), (0.07, ln * 0.55), (0.14, ln * 0.85), (0.3 - k * 0.06, ln)], (0, 0, 0), M, seg=10, axis='z', name=fid + '_horn', cap=False)
+        TR.bake_tf(o); q = V3((0, 0, 1)).rotation_difference(dirv)
+        for v in o.data.vertices:
+            g = V3((v.co.x, v.co.z, -v.co.y)); g = q @ g + base; v.co = gv(*g)
+        o.data.update(); K.add(o, 'horn')
+    o = ball(0.13, (-1.6, rtop - 0.42, -1.3), GL, seg=6, rings=4, name=fid + '_llamp'); K.add(o, 'bulbw')
+    K.rod((-1.6, rtop, -1.3), (-1.6, rtop - 0.3, -1.3), 0.01, 'iron', 'lwire', seg=4)
+    # a searchlight on the gallery's north-west corner; a life ring on the south bulwark
+    sx_, sz_ = gx0 + 0.3, gz0 + 0.3
+    K.rod((sx_, T, sz_), (sx_, rh + 0.25, sz_), 0.05, 'steel', 'slpost', seg=6)
+    K.bk((sx_ - 0.24, rh + 0.25, sz_ - 0.03), (sx_ + 0.24, rh + 0.33, sz_ + 0.03), 'steel', 'slyoke')
+    for s_ in (-1, 1): K.bk((sx_ + s_ * 0.24 - 0.03, rh + 0.33, sz_ - 0.03), (sx_ + s_ * 0.24 + 0.03, rh + 0.62, sz_ + 0.03), 'steel', 'slyoke')
+    o = cyl(0.2, 0.42, (sx_, rh + 0.55, sz_), M, axis='z', seg=10, name=fid + '_sldrum'); TR.bake_tf(o)
+    o.data.transform(Matrix.Translation(-gv(sx_, rh + 0.55, sz_))); o.data.transform(Matrix.Rotation(0.6, 4, 'Z')); o.data.transform(Matrix.Rotation(0.2, 4, 'X')); o.data.transform(Matrix.Translation(gv(sx_, rh + 0.55, sz_))); o.data.update(); K.add(o, 'hred')
+    o = cyl(0.17, 0.44, (sx_, rh + 0.55, sz_), GL, axis='z', seg=10, name=fid + '_sllens'); TR.bake_tf(o)
+    o.data.transform(Matrix.Translation(-gv(sx_, rh + 0.55, sz_))); o.data.transform(Matrix.Rotation(0.6, 4, 'Z')); o.data.transform(Matrix.Rotation(0.2, 4, 'X')); o.data.transform(Matrix.Translation(gv(sx_, rh + 0.55, sz_))); o.data.update(); K.add(o, 'bulbw')
+    lifering(K, (tx0 + 0.9, T + 0.55, gz1 + 0.06), 'z', 'gring')
+    # the signal mast at the gallery's south-east corner, a yard, a string of flags down to the bulwark
+    mx, mz = gx1 - 0.25, gz1 - 0.25
+    K.rod((mx, T, mz), (mx, T + 4.1, mz), 0.05, 'pwhite', 'mast', seg=6)
+    K.rod((mx - 1.1, T + 3.4, mz), (mx + 1.1, T + 3.4, mz), 0.03, 'pwhite', 'yard', seg=5)
+    o = ball(0.07, (mx, T + 4.15, mz), M, seg=6, rings=4, name=fid + '_truck'); K.add(o, 'gold')
+    a_, b_ = V3((mx + 1.08, T + 3.38, mz)), V3((gx1 - 0.03, rh, gz0 + 0.6))
+    K.rod(tuple(a_), tuple(b_), 0.006, 'iron', 'halyard', seg=3)
+    for i, key in enumerate(('flagy', 'hred', 'flagb', 'flagp', 'flagg', 'flagy', 'hblue')):
+        u = (i + 0.6) / 7.6; p0 = a_.lerp(b_, u); p1 = a_.lerp(b_, u + 0.1)
+        o = box_between(tuple(p0), tuple(V3((p1.x, p1.y, p1.z))), 0.025, 0.02, M, fid + '_fl') if False else None
+        dv = (b_ - a_).normalized(); dn = V3((0, -1, 0)) - dv * dv.y; dn.normalize()
+        pts = [p0, p1, (p0 + p1) / 2 + dn * 0.32] if i % 2 else [p0, p1, p1 + dn * 0.28, p0 + dn * 0.28]
+        bm = bmesh.new(); vs = [bm.verts.new(gv(*p)) for p in pts]; f = bm.faces.new(vs)
+        o = _obj(fid + '_flag', bm, M); o.data.materials.clear(); o.data.materials.append(M)
+        bm2 = bmesh.new(); bm2.from_mesh(o.data); bmesh.ops.solidify(bm2, geom=bm2.faces[:], thickness=0.015); bm2.to_mesh(o.data); bm2.free(); o.data.update()
+        K.add(o, key)
+    # ---- the front stair (solid, blue treads) and its rail; the flight up the roof to the gallery, its rail
+    prof = stair_prof(St['x0'], St['n'], St['run'], rt / St['n'], -1, land=St['land'])
+    o = stepped(fid + '_stair', M, A, prof, St['z0'], St['z1'], 'tread', 'pwhite', 'pwhite', kill=lambda g, n: (n.y < -0.5 and g.y < 0.01) or n.z < -0.5, fan=len(prof) - 1); K.P.append(o)
+    zr = St['z1'] - 0.06; sr = rt / St['n']
+    for i in range(0, St['n'] - 1, 3):
+        x = St['x0'] - (i + 0.5) * St['run']; K.rod((x, (i + 1) * sr, zr), (x, (i + 1) * sr + 0.95, zr), 0.022, 'hred', 'spost', seg=6)
+    K.rod((St['x0'] - 0.5 * St['run'], sr + 0.95, zr), (St['land'] + 0.8, rt + 0.95, zr), 0.03, 'hred', 'srail', seg=6)
+    K.rod((St['land'] + 0.8, rt, zr), (St['land'] + 0.8, rt + 0.95, zr), 0.022, 'hred', 'spost', seg=6)
+    fprof = stair_prof(-F['z0'], F['n'], F['run'], fr, 1, y0=rt)
+    o = stepped(fid + '_flight', M, A, fprof, g0, g1, 'tread', 'pwhite', 'pwhite', kill=lambda g, n: n.y < -0.5 and g.y < rt + 0.01, fan=len(fprof) - 1)
+    TR.bake_tf(o)
+    for v in o.data.vertices: g = V3((v.co.x, v.co.z, -v.co.y)); v.co = gv(g.z, g.y, -g.x)  # (built along x: turned to climb north, over the gap)
+    o.data.update(); uv_fit(o, A, 'tread', sel=lambda p, Pp: MK._gn(p.normal).y > 0.5); uv_fit(o, A, 'pwhite', sel=lambda p, Pp: abs(MK._gn(p.normal).y) <= 0.5)
+    K.P.append(o)
+    for i in range(1, F['n'], 3):
+        z = F['z0'] - (i + 0.5) * F['run']; K.rod((g1 - 0.06, rt + (i + 1) * fr, z), (g1 - 0.06, rt + (i + 1) * fr + 0.95, z), 0.022, 'hred', 'fpost', seg=6)
+    K.rod((g1 - 0.06, rt + fr + 0.95, F['z0'] - 0.5 * F['run']), (g1 - 0.06, T + 0.95, fz + 0.02), 0.03, 'hred', 'frail', seg=6)
+    # ---- the front: the sign, the door (red, swung in, a porthole), HONK FOR SERVICE and its pull, the window's frame, a lamp
+    o = K.bk((-hw + 0.1, 2.68, hd - 0.02), (g0 - 0.2, 3.13, hd + 0.06), 'pwhite', 'fascia'); uv_fit(o, A, 'fascia', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5)
+    K.bk((d0 + 0.01, 0.04, hd - t - 0.06), (d0 + 0.06, dh - 0.06, hd - t - 0.06 - 0.95), 'hred', 'door') if False else None
+    K.bk((d0 - 0.06, 0.04, hd - t - 1.0), (d0 - 0.01, dh - 0.06, hd - t - 0.002), 'hred', 'door')
+    o = cyl(0.14, 0.07, (d0 - 0.035, 1.6, hd - t - 0.5), M, axis='x', seg=8, name=fid + '_porthole'); K.add(o, 'gold')
+    o = cyl(0.1, 0.08, (d0 - 0.035, 1.6, hd - t - 0.5), M, axis='x', seg=8, name=fid + '_portglass'); K.add(o, 'glass')
+    for x, s_ in ((d0, 1), (d1, -1)): K.bk((min(x, x + s_ * 0.08), 0.02, hd - 0.04), (max(x, x + s_ * 0.08), dh, hd + 0.05), 'hred', 'djamb')
+    K.bk((d0 - 0.08, dh - 0.01, hd - 0.04), (d1 + 0.08, dh + 0.1, hd + 0.05), 'hred', 'dhead')
+    K.bk((d0 + 0.02, 0.0, hd - t - 0.02), (d1 - 0.02, 0.03, hd + 0.04), 'gold', 'thresh')
+    o = K.bk((g0 - 0.03, 1.35, St['z0'] + 0.2), (g0 + 0.002, 1.8, St['z1'] - 0.2), 'horn', 'honksign'); uv_fit(o, A, 'honk', sel=lambda p, Pp: MK._gn(p.normal).x < -0.5)
+    K.rod((d1 + 0.25, 1.35, hd + 0.04), (d1 + 0.25, rt + 0.3, hd + 0.04), 0.008, 'iron', 'cord', seg=4)
+    o = ball(0.06, (d1 + 0.25, 1.32, hd + 0.04), M, scale=(1, 1.6, 1), seg=6, rings=4, name=fid + '_pull'); K.add(o, 'hred')
+    for z_, s_ in ((w0, 1), (w1, -1)): K.bk((min(z_, z_ + s_ * 0.08), sl, hd - 0.04), (max(z_, z_ + s_ * 0.08), hh, hd + 0.05), 'hred', 'wjamb')
+    K.bk((w0 - 0.1, sl - 0.05, hd - 0.04), (w1 + 0.1, sl + 0.03, hd + 0.14), 'pwhite', 'wsill'); K.bk((w0 - 0.08, hh - 0.01, hd - 0.04), (w1 + 0.08, hh + 0.08, hd + 0.05), 'hred', 'whead')
+    o = box((0.3, 0.14, 0.12), ((d0 + d1) / 2, dh + 0.3, hd + 0.06), GL, name=fid + '_doorlamp'); K.add(o, 'bulbw')
+    # the west side (to the piers): the big window's frame, a window box of red flowers, a life ring, the forecast board
+    for z_, s_ in ((s0, 1), (s1, -1)): K.bk((-hw - 0.05, sl, min(z_, z_ + s_ * 0.08)), (-hw + 0.04, hh, max(z_, z_ + s_ * 0.08)), 'hred', 'wjamb')
+    K.bk((-hw - 0.14, sl - 0.05, s0 - 0.1), (-hw + 0.04, sl + 0.03, s1 + 0.1), 'pwhite', 'wsill'); K.bk((-hw - 0.05, hh - 0.01, s0 - 0.08), (-hw + 0.04, hh + 0.08, s1 + 0.08), 'hred', 'whead')
+    flowerbox(K, -hw - 0.33, -hw - 0.03, s0 + 0.15, s1 - 0.15, sl - 0.36, ['flowerr', 'pwhite', 'flowerr'], 9)
+    lifering(K, (-hw - 0.06, 1.55, -2.35), 'x', 'ring')
+    o = K.bk((1.5, 0.5, St['z1'] - 0.002), (3.0, 1.18, St['z1'] + 0.04), 'chalkb', 'forecast'); uv_fit(o, A, 'chalk', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5)
+    for z in (-hd + 0.4,):
+        o = cyl(0.06, pp - 0.5, (hw + 0.1, (pp - 0.5) / 2 + 0.1, z), M, axis='y', seg=8, name=fid + '_pipe'); K.add(o, 'pwhite')
+        K.bk((hw - 0.02, pp - 0.48, z - 0.08), (hw + 0.18, pp - 0.36, z + 0.08), 'pwhite', 'scupper'); K.bk((hw + 0.04, 0.02, z - 0.08), (hw + 0.2, 0.14, z + 0.08), 'pwhite', 'shoe')
+    # the back door, swung in
+    K.bk((k1 + 0.002, 0.04, -hd + t), (k1 + 0.05, dh - 0.06, -hd + t + 0.95), 'hblue', 'bdoor')
+    for x, s_ in ((k0, 1), (k1, -1)): K.bk((min(x, x + s_ * 0.08), 0.02, -hd - 0.05), (max(x, x + s_ * 0.08), dh, -hd + 0.04), 'pwhite', 'bjamb')
+    # ---- inside: the counter (a bicycle horn on it: honk), the chart table, the radio desk, the filing cabinet,
+    # LOST: ONE BOAT on the notice board, a ship's wheel on the wall, a lamp
+    c0, cz0, c1, cz1, ch = P['inside'][0]
+    o = K.bk((c0 + 0.002, 0.0, cz0), (c1, ch - 0.05, cz1), 'pwhite', 'counter')
+    uv_trim(o, A, 'counterf', upm=UPM, grain='x', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5); TR.kill_faces(o, lambda g, n: n.y < -0.5)
+    K.bk((c0 + 0.002, ch - 0.05, cz0 - 0.04), (c1 + 0.05, ch, cz1 + 0.06), 'hred', 'ctop')
+    o = ball(0.07, (-1.0, ch + 0.06, 0.7), M, seg=6, rings=4, name=fid + '_bulb'); K.add(o, 'hred')
+    o = lathe([(0.02, 0.0), (0.02, 0.18), (0.06, 0.24), (0.07, 0.25)], (-0.93, ch + 0.06, 0.7), M, seg=8, axis='x', name=fid + '_trumpet', cap=False); K.add(o, 'gold')
+    K.bk((-2.6, ch, 0.5), (-2.2, ch + 0.04, 0.8), 'pnavy', 'book')
+    x0, z0, x1, z1, h = P['inside'][1]
+    for xx in (x0 + 0.08, x1 - 0.08):
+        for zz in (z0 + 0.08, z1 - 0.08): K.rod((xx, 0.0, zz), (xx, h - 0.04, zz), 0.035, 'oak', 'cleg', seg=6)
+    o = K.bk((x0, h - 0.04, z0), (x1, h, z1), 'oak', 'ctable'); uv_fit(o, A, 'chart', sel=lambda p, Pp: MK._gn(p.normal).y > 0.5)
+    x0, z0, x1, z1, h = P['inside'][2]
+    K.bk((x0 + 0.002, h - 0.05, z0 + 0.002), (x1, h, z1), 'oak', 'rdesk')
+    K.bk((x0 + 0.002, 0.0, z0 + 0.002), (x1, h - 0.05, z0 + 0.5), 'steel', 'rped'); K.bk((x0 + 0.002, 0.0, z1 - 0.5), (x1, h - 0.05, z1), 'steel', 'rped')
+    o = K.bk((x0 + 0.05, h, z0 + 0.4), (x1 - 0.1, h + 0.28, z0 + 1.2), 'iron', 'radio'); uv_fit(o, A, 'radio', sel=lambda p, Pp: MK._gn(p.normal).x > 0.5)
+    K.rod((x1 - 0.2, h, z0 + 1.5), (x1 - 0.2, h + 0.2, z0 + 1.5), 0.012, 'iron', 'mic', seg=5)
+    o = ball(0.035, (x1 - 0.2, h + 0.23, z0 + 1.5), M, seg=6, rings=4, name=fid + '_micball'); K.add(o, 'iron')
+    x0, z0, x1, z1, h = P['inside'][3]
+    o = K.bk((x0, 0.0, z0), (x1 - 0.002, h, z1), 'steel', 'cabinet'); uv_fit(o, A, 'cabinet', sel=lambda p, Pp: MK._gn(p.normal).x < -0.5)
+    o = K.bk((0.2, 1.3, -hd + t + 0.002), (1.6, 2.1, -hd + t + 0.03), 'oak', 'notice'); uv_fit(o, A, 'notice', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5)
+    wx, wy, wz = hw - t - 0.06, 1.9, -1.4
+    o = ring((wx, wy, wz), 0.42, 0.03, M, A, 'oak', fid + '_wheel', axis='x', n=12); K.P.append(o)
+    for k in range(8):
+        a = TAU * k / 8; K.rod((wx, wy, wz), (wx, wy + math.sin(a) * 0.56, wz + math.cos(a) * 0.56), 0.02, 'oak', 'spoke', seg=5)
+    o = cyl(0.07, 0.12, (wx, wy, wz), M, axis='x', seg=8, name=fid + '_hub'); K.add(o, 'gold')
+    K.bk((wx + 0.02, wy - 0.08, wz - 0.08), (hw - t + 0.002, wy + 0.08, wz + 0.08), 'oak', 'wmount')
+    K.rod((0.0, H + 0.01, 0.0), (0.0, H - 0.6, 0.0), 0.01, 'iron', 'owire', seg=4)
+    o = lathe([(0.03, 0.0), (0.3, -0.2), (0.32, -0.24), (0.0, -0.1)], (0.0, H - 0.6, 0.0), M, seg=10, axis='y', name=fid + '_shade'); K.add(o, 'hred')
+    o = ball(0.08, (0.0, H - 0.74, 0.0), GL, seg=6, rings=4, name=fid + '_obulb'); K.add(o, 'bulbw')
+    # in the lookout: a brass telescope on a tripod, aimed out the south window at the piers
+    tx_, tz_ = -2.0, -0.4
+    for a in (0.3, 2.4, 4.5): K.rod((tx_, T + 1.05, tz_), (tx_ + math.cos(a) * 0.35, T + 0.01, tz_ + math.sin(a) * 0.35), 0.015, 'iron', 'tripod', seg=4)
+    o = cyl(0.06, 0.9, (tx_, T + 1.15, tz_ + 0.05), M, axis='z', seg=8, r2=0.045, name=fid + '_scope'); TR.bake_tf(o)
+    o.data.transform(Matrix.Translation(-gv(tx_, T + 1.15, tz_))); o.data.transform(Matrix.Rotation(0.12, 4, 'X')); o.data.transform(Matrix.Translation(gv(tx_, T + 1.1, tz_ + 0.05))); o.data.update(); K.add(o, 'gold')
+    for p in K.P: crisp(p)
+    # ---- far LOD: the office with its front painted on, the stair, the tower, the lookout, the pyramid
+    o = K.bk((-hw, 0, -hd), (hw, pp, hd), 'side1', '1_office', far=True); uv_fit(o, A, 'facade1', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5)
+    TR.kill_faces(TR.bake_tf(o), lambda g, n: n.y < -0.5)
+    o = stepped(fid + '1_stair', M, A, [(St['x0'], 0.0), (St['land'], rt), (St['land'], 0.0)], St['z0'], St['z1'], 'tread', 'pwhite', 'pwhite', kill=lambda g, n: (n.y < -0.5 and g.y < 0.01) or n.z < -0.5)
+    K.Q.append(o)
+    K.bk((tx0, pp, tz0), (tx1, T, tz1), 'pwhite', '1_tower', far=True)
+    K.bk((gx0, T - 0.15, gz0), (gx1, rh, gz1), 'pwhite', '1_gallery', far=True)
+    o = K.bk((tx0, rh, tz0), (tx1, rtop, tz1), 'hred', '1_look', far=True)
+    K.bk((tx0 - 0.3, rtop, tz0 - 0.3), (tx1 + 0.3, rtop + P['cap'], tz1 + 0.3), 'pwhite', '1_lroof', far=True)
+    o = lathe([(ry_ * math.sqrt(2), 0.0), (0.0, ph)], pc, M, seg=4, axis='y', name=fid + '1_pyramid', cap=False)
+    TR.bake_tf(o); o.data.transform(Matrix.Translation(-gv(*pc))); o.data.transform(Matrix.Rotation(math.pi / 4, 4, 'Z')); o.data.transform(Matrix.Translation(gv(*pc))); o.data.update(); K.add(o, 'hred', far=True)
+    for p in K.Q: crisp(p)
+    for p in K.P + K.Q: tri_ngons(p)
+    lo, hi = extent(hm_boxes())
+    return dict(lod0=K.P, lod1=K.Q, box=(lo, hi), ao=0.8, aolo=0.5, lod=130, eps=0.001, sheet=dict(exposure=-1.0),
+                focus=[((-1.5, 2.0, hd), (-0.4, 0.15, 1.0), 9.0), ((-2.2, 5.3, tz1), (0.0, 0.05, 1.0), 4.5), ((-2.2, T + 1.2, -1.3), (0.6, 0.5, 1.0), 6.5),
+                       ((-1.0, 1.4, 0.0), (0.3, 0.6, 1.0), 4.5), ((-2.2, rtop + 1.5, -1.3), (-0.7, 0.3, 1.0), 4.5), ((1.2, 5.5, 1.0), (1.0, 0.3, 0.5), 8.0)])
 
 
 # ------------------------------------------------------------ main

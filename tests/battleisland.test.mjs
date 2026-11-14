@@ -9,7 +9,8 @@ import '../shared/royale.js';
 import { mapsFor } from '../shared/modes.js';
 import { navSteer } from '../shared/nav.js';
 import { movePlayer, raycast } from '../shared/physics.js';
-import { islandH, PLAN, SEA, WADE, KILL_Y, grid, PK } from '../shared/battleisland.js';
+import { islandH, PLAN, SEA, WADE, KILL_Y, grid, PK, PJP, segDist } from '../shared/battleisland.js';
+import { mechBody } from '../shared/mech.js';
 import { spawnSync } from 'node:child_process';
 
 const m = MAPS.battleisland, T = m.boxes.terrain;
@@ -106,7 +107,7 @@ test('Battle Island: Dead Air\'s Blender model is built to exactly its boxes (me
 test('Port Jankton: every model is built to its boxes, everything stands on the town (not under it)', async () => {
   const fs = await import('node:fs');
   const metaOf = (id) => { const buf = fs.readFileSync(new URL(`../public/models/p_${id}.glb`, import.meta.url)), len = buf.readUInt32LE(12); const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')); return JSON.parse(gl.nodes.find((n) => n.extras && n.extras.jf).extras.jf); };
-  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler', 'pj_bait', 'pj_cod', 'pj_park', 'bi_blossom', 'bi_leafy'];
+  const ids = ['pj_quay', 'pj_bollard', 'pj_pier', 'pj_crane', 'pj_shed_cold', 'pj_shed_fish', 'pj_trawler', 'pj_bait', 'pj_cod', 'pj_park', 'bi_blossom', 'bi_leafy', 'pj_pub', 'pj_harbour'];
   for (const id of ids) {
     const ps = m.boxes.props.filter((q) => q.id === id), meta = metaOf(id);
     assert.ok(ps.length, id + ' is placed');
@@ -159,5 +160,53 @@ test('Petal Park: walk the paths from the gate to the fountain and out each side
   for (const b of m.boxes.filter((q) => q.pv === 'pj_park' || q.pv === 'bi_blossom' || q.pv === 'bi_leafy')) {
     assert.ok(b.max[0] < 28 - 8 || b.min[0] > 28 + 8 || b.max[2] < 82 - 8 || b.min[2] > 82 + 8, 'clear of the mech drop pad');
     for (const [x, , z] of m.royale.cells) assert.ok(!(x > b.min[0] - 1 && x < b.max[0] + 1 && z > b.min[2] - 1 && z < b.max[2] + 1), `cell ${x.toFixed(1)},${z.toFixed(1)} clear of ${b.pv}`);
+  }
+});
+
+test('Port Jankton pub and harbour master: in the front and out the back, up to the terrace and the lookout, windows you shoot through, mechs keep the street and the pier, the pads and cells stay clear', () => {
+  const y = 1.6, mine = m.boxes.filter((q) => q.pv === 'pj_pub' || q.pv === 'pj_harbour');
+  // steer a player through waypoints at a run (stairs are steps: each under the 0.6 m step-up)
+  const go = (from, pts, secs = 6, body = null) => {
+    const pos = [from[0], (from[2] ?? y) + 0.05, from[1]], vel = [0, 0, 0]; let g = true, k = 0;
+    for (let t = 0; t < secs && k < pts.length; t += 1 / 30) {
+      const [tx, tz] = pts[k], dx = tx - pos[0], dz = tz - pos[2], d = Math.hypot(dx, dz);
+      if (d < 0.25) { k++; continue; }
+      vel[0] = dx / d * 7; vel[2] = dz / d * 7; vel[1] -= 26 / 30; g = !!movePlayer(pos, vel, 1 / 30, m.boxes, g, body).ground;
+    }
+    return { pos, k };
+  };
+  const [px, pz] = PJP.pub.c, [hx, hz] = PJP.hm.c;
+  // the pub: in at the front doors (east, on the drag), past the snug and the end of the bar, out the back door (west)
+  const a = go([px + 9, pz], [[px + 2, pz], [px - 4, pz + 5.3], [px - 9, pz + 5.3]]);
+  assert.ok(a.k === 3 && Math.abs(a.pos[1] - y) < 0.2, 'through the pub, front door to back door: ' + a.pos.map((v) => v.toFixed(1)));
+  // up the stair on its south side, onto the landing, through the parapet's gap onto the terrace (4.5 m up)
+  const b = go([px + 7, pz + 8.65], [[px + 0.9, pz + 8.65], [px + 0.9, pz + 5]], 6);
+  assert.ok(b.k === 2 && Math.abs(b.pos[1] - (y + 4.5)) < 0.1, 'up the stair onto the roof terrace: ' + b.pos.map((v) => v.toFixed(2)));
+  // the harbour master: in its quay door, round the counter, out the back door into the alley
+  const c = go([hx - 1, hz + 6], [[hx - 1, hz + 1.7], [hx + 2.7, hz + 1.7], [hx + 2.7, hz - 4.5]]);
+  assert.ok(c.k === 3 && Math.abs(c.pos[1] - y) < 0.2, 'through the harbour master, quay door to back door: ' + c.pos.map((v) => v.toFixed(1)));
+  // up the stair on its front, onto the roof, up the flight to the gallery, in at the lookout's door (7.4 m up)
+  const d = go([hx + 5.5, hz + 3.7], [[hx + 1.2, hz + 3.7], [hx + 1.2, hz - 1.25], [hx - 2.2, hz - 1.25]], 8);
+  assert.ok(d.k === 3 && Math.abs(d.pos[1] - (y + PJP.hm.top)) < 0.1, 'up to the lookout: ' + d.pos.map((v) => v.toFixed(2)));
+  // the open windows: a shot goes in one and on across the room
+  const hit = (o, dir) => raycast(o, dir, 40, m.boxes);
+  const w1 = hit([px + 10, y + 1.5, pz - 4], [-1, 0, 0]); assert.ok(w1 && w1.t > 10 - (PJP.pub.w / 2 - PJP.pub.t), 'in the pub\'s front window: ' + (w1 && w1.t.toFixed(2)));
+  const w2 = hit([px + 0.8, y + 1.5, pz - 14], [0, 0, 1]); assert.ok(w2 && w2.t > 14 - PJP.pub.d / 2 + 0.3, 'in its north window: ' + (w2 && w2.t.toFixed(2)));
+  const w3 = hit([hx - 9, y + 1.5, hz], [1, 0, 0]); assert.ok(w3 && w3.t > 9 - PJP.hm.w / 2 + 0.3, 'in the harbour master\'s west window: ' + (w3 && w3.t.toFixed(2)));
+  const w4 = hit([hx - 9, y + PJP.hm.top + 1.5, hz - 1.3], [1, 0, 0]); assert.ok(!w4 || w4.t > 9 + PJP.hm.tower[0] + 0.3, 'in the lookout\'s west window (and out its door): ' + (w4 && w4.t.toFixed(2)));
+  const w5 = hit([hx - 2.2, y + PJP.hm.top + 1.5, hz + 9], [0, 0, -1]); assert.ok(!w5 || w5.t > 9 - PJP.hm.tower[3] + 0.3, 'and its south one (the view over the piers): ' + (w5 && w5.t.toFixed(2)));
+  // mechs: nothing on the main drag or the ring road; the widest mech walks from the fish warehouse's quay door out
+  // past the harbour master to the east pier's root, the tallest walks the drag past the pub
+  const drag = PLAN.roads.find((r) => r.name === 'Main Drag'), ring = PLAN.roads.find((r) => r.name === 'Ring Road');
+  for (const q of mine) for (const x of [q.min[0], q.max[0]]) for (const z of [q.min[2], q.max[2]]) {
+    assert.ok(segDist(x, z, drag.pts) > drag.w / 2 + 1, `${q.pv} box corner ${x.toFixed(1)},${z.toFixed(1)} clear of the main drag`);
+    assert.ok(segDist(x, z, ring.pts) > ring.w / 2 + 1, `${q.pv} box corner ${x.toFixed(1)},${z.toFixed(1)} clear of the ring road`);
+  }
+  const mw = go([71, 128], [[71, 144.5]], 6, mechBody('wrecking')); assert.ok(mw.k === 1, 'the wrecking ball rolls out the fish warehouse\'s quay door to the pier: ' + mw.pos.map((v) => v.toFixed(1)));
+  const mt = go([26, 112], [[24.5, 84]], 8, mechBody('paperplane')); assert.ok(mt.k === 1, 'the paper plane walks the drag past the pub: ' + mt.pos.map((v) => v.toFixed(1)));
+  // both drop pads stay clear, no energy cell lands in (or against) these boxes
+  for (const q of mine) {
+    for (const [x, , z, r] of m.royale.drops) assert.ok(q.max[0] < x - r || q.min[0] > x + r || q.max[2] < z - r || q.min[2] > z + r, `${q.pv} clear of the drop pad at ${x},${z}`);
+    for (const [x, , z] of m.royale.cells) assert.ok(!(x > q.min[0] - 1 && x < q.max[0] + 1 && z > q.min[2] - 1 && z < q.max[2] + 1), `cell ${x.toFixed(1)},${z.toFixed(1)} clear of ${q.pv}`);
   }
 });
