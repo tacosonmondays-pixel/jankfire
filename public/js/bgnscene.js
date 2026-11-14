@@ -32,7 +32,7 @@ function glb(id, cb) {
   const a = authored(id);
   if (a) { queueMicrotask(() => cb(a.obj, a.meta)); return; }
   if (!missingGlb(id)) return;
-  want(id, 3);
+  want(id, 4); // (all on screen at once, the board's whole set: jump the queue together, not the die 30 s after the kitchen)
   whenGlb([id], () => { const b = authored(id); if (b) cb(b.obj, b.meta); });
 }
 // the kitchen's spaces have to be the board's spaces (shared/bgnboard.js), or the pawns would stand off the print

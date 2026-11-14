@@ -35,6 +35,7 @@ export function build(L) {
   let bread = null;
   // ---- the Blender kitchen, the toaster podium, the bakery and the die on the board
   let kit = null;
+  for (const id of ['x_bgn_kitchen', 'x_bgn_toaster', 'x_bgn_die', 'x_bgn_bakery']) L.glb(id, () => {}); // (all asked for now, the kitchen first: the rest go on it when it lands)
   L.glb('x_bgn_kitchen', (o, meta) => {
     kit = o; o.scale.setScalar(K); top = -(meta.floor || -0.76) * K; o.position.y = top;
     o.traverse((m) => { if (m.isMesh) { m.receiveShadow = true; m.castShadow = !/room/.test(m.name) && !(m.parent && /room/.test(m.parent.name)); } });

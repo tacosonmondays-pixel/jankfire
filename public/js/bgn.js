@@ -9,11 +9,15 @@ import { net } from './net.js';
 import { synth } from './audio.js';
 import { BGN, BGN_NAMES as N, BGN_ITEMS, BGN_JANK, BGN_HOUSE, BGN_MINIS, bgnFill } from '/shared/bgn.js';
 import { BOARD, aheadSet } from '/shared/bgnboard.js';
-import { miniState, miniEv, miniFrame, miniCtl, miniIntro, miniRes } from './bgnmini.js';
-import { partyTicket } from './party.js'; // minigames 11-15: carts, ducks, the bosses
+import { miniState, miniEv, miniFrame, miniCtl, miniIntro, miniRes } from './bgnmini.js'; // minigames 11-15: carts, ducks, the bosses
+import { partyTicket } from './party.js';
 
 let B = null, board = null, boardP = null, root = null, ui = null, opts = {}, aim = null, askT = 0, askDur = 1, lastAsk = '', wasOn = false, cardT = 0, t0 = performance.now();
 let cereEnd = 0, cereMs = 7600, cereTimer = 0, finalUp = false; // THE TOASTING plays before the end card (bgnscene.js CERE_MS)
+const CARD_LATE = 12000; // (ms past the toast's own length: the end card comes by then whatever)
+// THE TOASTING got to the end card: on the board's own toast clock (frame time: on a slow machine the toast plays out,
+// not covered halfway), the wall clock only as a backstop (a hidden tab, a board that never drew)
+const cardDue = () => !cereEnd || (board ? !board.cereOn() : false) || performance.now() >= cereEnd + (board ? CARD_LATE : 0);
 const $ = (id) => document.getElementById(id);
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 const send = (o) => net.send({ t: 'bg', ...o });
@@ -71,7 +75,7 @@ export function bgnFrame(dt) {
   let bdt = dt;
   if (G.bgnHold) { bdt = G.bgnAdvance || 0; G.bgnAdvance = 0; if (cereEnd) { cereEnd = Math.max(cereEnd, performance.now() + 60000); G.bgnHeld = true; } } // (tests: the board's clock held, stepped a beat at a time for screenshots; the end card waits)
   else if (G.bgnHeld) { G.bgnHeld = false; cereEnd = performance.now() + 1500; }
-  if (B.ph === 'done' && B.final && !finalUp && performance.now() >= cereEnd) render(); // the toast's over: the end card
+  if (B.ph === 'done' && B.final && !finalUp && cardDue()) render(); // the toast's over: the end card
   board.frame(bdt, (performance.now() - t0) / 1000);
   return true;
 }
@@ -125,7 +129,7 @@ const EV = {
     if (!board || !bgnBoardOn() || !m.final) { SFX.pop(); return; }
     board.cere(m.final);
     cereEnd = performance.now() + cereMs;
-    clearTimeout(cereTimer); cereTimer = setTimeout(render, cereMs + 30);
+    clearTimeout(cereTimer); cereTimer = setTimeout(render, cereMs + CARD_LATE + 30); // (the backstop: bgnFrame shows the card when the toast gets there)
   },
 };
 
@@ -253,7 +257,7 @@ function render() {
   const on = bgnBoardOn();
   root.classList.toggle('hidden', !on);
   if (!on) return;
-  root.classList.toggle('card', B.ph === 'mgintro' || B.ph === 'mgres' || (B.ph === 'done' && performance.now() >= cereEnd) || (askMine() && (B.ask.k === 'shop' || B.ask.k === 'house'))); // (big panels up: callouts move out of the way)
+  root.classList.toggle('card', B.ph === 'mgintro' || B.ph === 'mgres' || (B.ph === 'done' && cardDue()) || (askMine() && (B.ask.k === 'shop' || B.ask.k === 'house'))); // (big panels up: callouts move out of the way)
   ui.innerHTML = '';
   const me = mine(), active = B.ask ? B.ask.seat : B.walk ? B.walk.seat : -1;
   for (const s of B.seats) {
@@ -280,9 +284,9 @@ function render() {
   }
   if (B.ph === 'mgintro' && B.mg) ui.append(introCard());
   else if (B.ph === 'mgres' && B.res) ui.append(resCard());
-  else if (B.ph === 'done' && B.final) { if (performance.now() >= cereEnd) ui.append(finalCard()); }
+  else if (B.ph === 'done' && B.final) { if (cardDue()) ui.append(finalCard()); }
   else ui.append(actions(me));
-  finalUp = B.ph === 'done' && !!B.final && performance.now() >= cereEnd;
+  finalUp = B.ph === 'done' && !!B.final && cardDue();
 }
 function actions(me) {
   const box = el('div', 'bg-act');
