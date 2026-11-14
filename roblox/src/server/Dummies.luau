@@ -101,7 +101,8 @@ local function plink(f: Fighter)
 	if not eye then return end
 	local best, bestD = nil, 60 * S
 	for _, t in Fight.all do
-		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" then
+		-- (not someone mid-run at Cardboard Carl's: the sign there says nobody shoots back)
+		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" and not (t.ref :: Player):GetAttribute("RangeRun") then
 			local c = Fight.root(t)
 			if c and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) then best, bestD = t, (c.Position - eye).Magnitude end
 		end

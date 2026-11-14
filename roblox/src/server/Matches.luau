@@ -60,6 +60,9 @@ function Matches.zoneOf(p: Player): string
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local tz = hub:FindFirstChild("TrainingZone") :: BasePart?
 	if root and tz and inside(tz, root.Position, 4) then return "training" end
+	-- the playground (a secret, off through the training hall): its own zone, so its own look, and weapons work there
+	local pz = hub:FindFirstChild("PlaygroundZone") :: BasePart?
+	if root and pz and inside(pz, root.Position, 4) then return "playground" end
 	return "hub"
 end
 

@@ -334,5 +334,6 @@ end)
 
 require(script.Parent:WaitForChild("Matches")).init(Fight) -- the hub, its pads and the matches (before anyone spawns)
 Dummies.init(Fight, applyHitscan)
+require(script.Parent:WaitForChild("RangeTest")).init(Fight) -- Cardboard Carl's: the pop-up target lane in the training hall
 require(script.Parent:WaitForChild("Loadout")).init(Fight) -- keys 1 2 3 + wraps, saved (before anyone spawns)
 Fight.init()

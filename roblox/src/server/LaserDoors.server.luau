@@ -3,7 +3,10 @@
 -- away from the hub: Hub.TrainingGround, its zone Hub.TrainingZone, spawns Hub.TrainSpawns, dummies Hub.DummySpots);
 -- its own grid takes you back to the hub (Hub.Doors.HubArrive). the move is the server's: it stamps the player's
 -- TeleportT attribute first so Main's teleport check starts afresh instead of putting them back, then moves the body.
--- 1.5 s between hops per player so nobody bounces; not while in a match
+-- 1.5 s between hops per player so nobody bounces; not while in a match.
+-- there is also a secret: the bullseye of the hall's middle wall target (Doors.ToPlayground, a small box 14 studs up:
+-- grapple it) drops you in the PLAYGROUND, a block course in the open air far away. its own grid brings you back, and
+-- anyone who falls off its blocks is put back on its start (no death, no smog)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -13,6 +16,14 @@ local hub = workspace:WaitForChild("Map"):WaitForChild("Hub")
 local doors = hub:WaitForChild("Doors")
 
 local last: { [Player]: number } = {}
+
+-- a trigger box in Hub.Doors -> the markers you land on, and what your screen says
+local ROUTES: { { trigger: string, land: () -> Instance?, text: string } } = {
+	{ trigger = "ToTraining", land = function() return hub:FindFirstChild("TrainSpawns") end, text = "TRAINING GROUND" },
+	{ trigger = "ToHub", land = function() return doors:FindFirstChild("HubArrive") end, text = "BACK TO THE HUB" },
+	{ trigger = "ToPlayground", land = function() return doors:FindFirstChild("PlaygroundArrive") end, text = "YOU FOUND THE PLAYGROUND" },
+	{ trigger = "FromPlayground", land = function() return doors:FindFirstChild("TrainingArrive") end, text = "BACK TO TRAINING" },
+}
 
 local function inside(part: BasePart, pos: Vector3): boolean
 	local rel = part.CFrame:PointToObjectSpace(pos)
@@ -42,21 +53,32 @@ RunService.Heartbeat:Connect(function(dt: number)
 	acc += dt
 	if acc < 0.1 then return end
 	acc = 0
-	local toTraining = doors:FindFirstChild("ToTraining") :: BasePart?
-	local toHub = doors:FindFirstChild("ToHub") :: BasePart?
 	local now = os.clock()
+	local pz = hub:FindFirstChild("PlaygroundZone") :: BasePart?
+	local fallY = pz and pz:GetAttribute("FallY")
 	for _, p in Players:GetPlayers() do
-		if p:GetAttribute("Team") ~= nil or now - (last[p] or 0) < 1.5 then continue end
+		if p:GetAttribute("Team") ~= nil then continue end
 		local ch = p.Character
 		local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if not ch or not hum or not root or hum.Health <= 0 then continue end
-		if toTraining and inside(toTraining, root.Position) then
-			local s = pick(hub:FindFirstChild("TrainSpawns"))
-			if s then hop(p, ch, root, s, "TRAINING GROUND") end
-		elseif toHub and inside(toHub, root.Position) then
-			local s = pick(doors:FindFirstChild("HubArrive"))
-			if s then hop(p, ch, root, s, "BACK TO THE HUB") end
+		-- fell off the playground's blocks: back on its start (this doesn't wait for the hop cooldown)
+		if pz and type(fallY) == "number" and root.Position.Y < fallY and now - (last[p] or 0) > 0.3 then
+			local rel = pz.CFrame:PointToObjectSpace(root.Position)
+			if math.abs(rel.X) <= pz.Size.X / 2 and math.abs(rel.Z) <= pz.Size.Z / 2 and rel.Y > -pz.Size.Y / 2 - 60 then
+				local s = pick(doors:FindFirstChild("PlaygroundArrive"))
+				if s then hop(p, ch, root, s, "WHOOPS. AGAIN.") end
+				continue
+			end
+		end
+		if now - (last[p] or 0) < 1.5 then continue end
+		for _, r in ROUTES do
+			local t = doors:FindFirstChild(r.trigger)
+			if t and t:IsA("BasePart") and inside(t, root.Position) then
+				local s = pick(r.land())
+				if s then hop(p, ch, root, s, r.text) end
+				break
+			end
 		end
 	end
 end)

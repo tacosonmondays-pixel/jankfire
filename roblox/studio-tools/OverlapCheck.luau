@@ -6,7 +6,8 @@ local OC = {}
 local V = Vector3.new
 local SHRINK = 0.12
 local FLOOR = { Arrow = 1, EdgeLine = 1, Accent = 1, FloorRing = 1, FloorDash = 1, FloorDisc = 1, Carpet = 1, Hazard = 1, BrickSkin = 1, DustMotes = 1, HoloBeam = 1, Bunting = 1, Light = 1, FloorGrate = 1 }
-local FRAME = { Arch = 1, BlastDoor = 1, Portal = 1, HallRib = 1, Dome = 1, RingBalcony = 1, Pilaster = 1 }
+-- (Column and Girder: the training hall's steel. a girder sits on its columns and runs into both side walls on purpose)
+local FRAME = { Arch = 1, BlastDoor = 1, Portal = 1, HallRib = 1, Dome = 1, RingBalcony = 1, Pilaster = 1, Column = 1, Girder = 1 }
 local ROUND = { Stage = { r = 14.8, top = 249 }, LightRing = { r = 15, top = 1e9 } } -- round things: radius tests
 
 local function kindOf(inst)
@@ -93,6 +94,8 @@ function OC.run(): string
 			if a.kind == "floor" or b.kind == "floor" or (a.kind == "frame" and b.kind == "frame") then continue end
 			if a.kind == "deco" and b.kind == "deco" then continue end
 			if a.name:find("Dome") or a.name:find("RingBalcony") or b.name:find("Dome") or b.name:find("RingBalcony") then continue end
+			-- the training hall's mezzanine: things stand under it and on it by design (checked by hand when it was built)
+			if a.name:find("Mezzanine") or b.name:find("Mezzanine") then continue end
 			if a.name:find("Railing$") and b.name:find("Railing$") then continue end
 			if a.kind == "round" or b.kind == "round" then
 				local r, o = if a.kind == "round" then a else b, if a.kind == "round" then b else a

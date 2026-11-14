@@ -13,7 +13,7 @@ local me = Players.LocalPlayer
 local looking = "?"
 local function relook(snap: boolean)
 	local zone = me:GetAttribute("Zone")
-	local want = if zone == "match" then "match" elseif zone == "training" then "training" else "hub" -- no zone yet = just joined = the hub
+	local want = if zone == "match" then "match" elseif zone == "training" then "training" elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
 	if want == looking then return end
 	looking = want
 	HubLook.set(if want == "match" then nil else want, if snap then 0 else 0.6)

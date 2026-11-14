@@ -777,6 +777,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 		H.top(mh .. clock)
 	elseif me:GetAttribute("Zone") == "training" then
 		H.top("TRAINING · the dummies hit back in here")
+	elseif me:GetAttribute("Zone") == "playground" then
+		H.top("THE PLAYGROUND · you weren't meant to find this")
 	else
 		H.top("HUB · weapons away · step on a pad to play · training behind you")
 	end
