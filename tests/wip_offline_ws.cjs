@@ -21,6 +21,7 @@ const ISLE = { priv: true, game: 'island', map: 'battleisland', bots: 5 };
 (async () => {
   const A = await client('tester', { mode: 'bots', cfg: { ...ISLE, wip: true } });
   const B = await client('noflag', { mode: 'bots', cfg: { ...ISLE } });
+  const H = await client('hub', { mode: 'bots', cfg: { priv: true, game: 'island', map: 'battleisland', hub: 'isle', wip: true } }); // exactly what the hub sends now: no bot count (the server picks it, shared/autobots.js)
   const junk = [];
   for (const w of ['true', 1, {}, [true], null]) junk.push(await client('junk', { mode: 'bots', cfg: { ...ISLE, wip: w } }));
   const P = await client('public', { mode: 'bots', cfg: { game: 'island', map: 'battleisland', bots: 5, wip: true } }); // not priv
@@ -32,6 +33,7 @@ const ISLE = { priv: true, game: 'island', map: 'battleisland', bots: 5 };
   const map = (c) => c.cfg && c.cfg.map;
   ok(A.id && map(A) === 'battleisland', 'a private bots room with wip: true plays Battle Island (' + map(A) + ', ' + A.game + ')');
   ok(A.game === 'island', 'and it plays the island mode (' + A.game + ')');
+  ok(H.id && map(H) === 'battleisland' && H.cfg.bots > 0, 'the hub\'s own pick (no bot count) plays Battle Island with bots picked for it (' + map(H) + ', ' + (H.cfg && H.cfg.bots) + ' bots)');
   ok(B.id && map(B) && map(B) !== 'battleisland', 'without the flag: the fallback map (' + map(B) + ')');
   junk.forEach((c, i) => ok(c.id && map(c) !== 'battleisland', `junk wip value #${i} is ignored (${map(c)})`));
   ok(P.id && map(P) !== 'battleisland', 'a public bots room ignores the flag (' + map(P) + ')');
@@ -39,7 +41,7 @@ const ISLE = { priv: true, game: 'island', map: 'battleisland', bots: 5 };
   ok(O.id && map(O) !== 'battleisland', 'the online room ignores the flag (' + map(O) + ')');
   ok(D.id && map(D) !== 'battleisland', 'a mode that cannot play the map (deathmatch) does not get it (' + map(D) + ')');
   ok(N.id && map(N) !== 'nope', 'an unknown map is ignored (' + map(N) + ')');
-  for (const c of [A, B, ...junk, P, L, O, D, N]) c.ws.close();
+  for (const c of [A, B, H, ...junk, P, L, O, D, N]) c.ws.close();
   console.log(fails ? `${fails} FAILED` : 'all ok');
   process.exit(fails ? 1 : 0);
 })();
