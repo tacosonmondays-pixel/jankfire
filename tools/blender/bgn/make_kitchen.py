@@ -529,7 +529,7 @@ def chair(T):
 
 def chairs(T):
     a = xf(chair(T), -math.pi / 2 + 0.25, (-0.98, FLOOR, 0.12))
-    b = xf(chair(T), math.pi / 2 - 0.1, (1.02, FLOOR, -0.08), roll=0.0)
+    b = xf(chair(T), math.pi / 2 + 0.55, (1.0, FLOOR, 0.46))  # (pulled out at the front corner: clear of the toaster podium's shots)
     return a + b
 
 

@@ -39,7 +39,9 @@ export function build(L) {
     kit = o; o.scale.setScalar(K); top = -(meta.floor || -0.76) * K; o.position.y = top;
     o.traverse((m) => { if (m.isMesh) { m.receiveShadow = true; m.castShadow = !/room/.test(m.name) && !(m.parent && /room/.test(m.parent.name)); } });
     root.add(o); code.visible = false;
-    if (Array.isArray(meta.lamp)) { bulb.position.set(meta.lamp[0] * K, top + meta.lamp[1] * K - 0.02, meta.lamp[2] * K); pool.position.copy(bulb.position); }
+    const lampN = o.getObjectByName('lamp'), lift = 0.85; // (the pendant hangs higher here: over the party's heads, not in front of their faces)
+    if (lampN) lampN.position.y += lift / K;
+    if (Array.isArray(meta.lamp)) { bulb.position.set(meta.lamp[0] * K, top + meta.lamp[1] * K + lift - 0.02, meta.lamp[2] * K); pool.position.copy(bulb.position); pool.distance = 9; }
     const pd = meta.podium || [0.585, 0.015, -0.12];
     L.glb('x_bgn_toaster', (t) => { t.scale.setScalar(K); t.position.set(pd[0] * K, top, pd[1] * K); t.rotation.y = pd[2] || 0; t.traverse((m) => { if (m.isMesh) m.castShadow = m.receiveShadow = true; }); root.add(t); });
     const sp = meta.spaces || [];
@@ -51,7 +53,7 @@ export function build(L) {
     });
   });
   // ---- THE RULES GUY at the head of the table (life size), reading the rules upside down
-  const host = new THREE.Group(); host.position.set(-1.18 * K, 0, 0.05); host.rotation.y = -Math.PI / 2 + 0.25; root.add(host);
+  const host = new THREE.Group(); host.position.set(-1.08 * K, 0, -0.42); host.rotation.y = -Math.PI / 2 - 0.55; root.add(host); // (the head of the table, turned to the room)
   host.userData.lsPick = 'host';
   let rig = null, stand = null;
   try { // (the code stand-in: a mannequin in a cardigan with a pink book)
