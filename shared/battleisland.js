@@ -463,6 +463,181 @@ function pjPub(B) {
   }
 }
 
+// THE ROCKS: a kit of stylised coastline rock (tools/blender/make_birocks.py, p_bi_<id>.glb: chunky faceted slabs in
+// stacked strata, warm grey-tan, moss on the tops, a dark wet band at the waterline), placed by rockPlan() along the sea
+// cliffs (the north-west's, the north-east point's), at their feet (boulder fields, flat shelves you climb out of the sea
+// onto), out at sea (stacks), round the islets, on the rocky points of the beaches and up on the ridge. RK = each piece
+// in its own frame (y 0 = its foot, +z = its front: the sea side): `col` the boxes it collides with (the model is built
+// round them, a little bigger, so you never stand on air or walk into an invisible wall), `ext` what the model is fitted
+// onto. The cliff faces have no `col`: they line a face the ground already makes sheer (a skin, never more than about a
+// metre proud of it, a wave-cut notch at the bottom you can stand in), so they're map.deco and turn any way; the rest
+// collide and turn by quarter turns (their boxes stay square to the world). Every copy is scaled per axis (`s`)
+const tier = (a, b, z, x, y0, y1) => [[-a, y0, -z, a, y1, z], [-x, y0, -b, x, y1, b]]; // a strata layer: two crossed boxes (a plus: the corners stay chamfered)
+export const RK = {
+  bi_boulder_s: { col: [[-0.55, 0, -0.45, 0.55, 0.8, 0.45]] },
+  bi_boulder_m: { col: [...tier(1.2, 1.05, 0.7, 0.8, 0, 1.15), [-0.85, 1.15, -0.55, 0.75, 1.7, 0.6]] },
+  bi_boulder_l: { col: [...tier(2.2, 1.85, 1.25, 1.45, 0, 1.7), [-1.7, 1.7, -0.95, 1.55, 2.9, 1.0], [-1.05, 1.7, -1.4, 1.0, 2.9, 1.35]] },
+  bi_ledge: { col: tier(3.9, 2.5, 1.7, 2.7, 0, 1.0) }, // a flat shelf: its top is the box's (walk out of the sea onto it)
+  bi_stack_a: { col: [...tier(2.4, 2.2, 1.5, 1.5, 0, 1.6), ...tier(3.0, 2.8, 1.9, 1.9, 1.6, 6), ...tier(2.4, 2.2, 1.5, 1.5, 6, 10.5), [-1.9, 10.5, -1.2, 1.7, 14.5, 1.3], [-1.2, 10.5, -1.7, 1.1, 14.5, 1.7]] }, // (a notch at the waterline, a mossy top)
+  bi_stack_b: { col: [...tier(4.4, 3.6, 2.7, 3.1, 0, 3.2), [-3.6, 3.2, -2.3, 3.4, 7, 2.3], [-2.5, 3.2, -3.0, 2.3, 7, 3.0], [-3.3, 7, -1.9, 1.3, 10, 1.9], [-2.5, 7, -2.5, 0.6, 10, 2.5]] }, // (squat, its top stepped off to one side)
+  bi_cliff_a: { ext: [[-6, 0, -2.5], [6, 16, 2.5]] }, // a cliff face: wide
+  bi_cliff_b: { ext: [[-4.5, 0, -2.5], [4.5, 13, 2.5]] }, // narrower, its strata thinner
+  bi_cliff_c: { ext: [[-3, 0, -2.5], [3, 18, 2.5]] }, // a buttress between them (ribbed, stands out a little more)
+};
+for (const k of Object.values(RK)) if (k.col) k.ext = [[0, 1, 2].map((i) => Math.min(...k.col.map((b) => b[i]))), [0, 1, 2].map((i) => Math.max(...k.col.map((b) => b[i + 3])))];
+// where rocks never go (anything that collides): the roads (and a mech's width beside them), the POIs, the drop pads and
+// energy cells, the harbour bay and its mouth, the river and its mouth, the lagoon and the reef gap (the boats' ways in),
+// the lighthouse's rect and its cliff-top flat (Wrong Way Point builds there)
+export const ROCK_KEEP = { road: 7, poi: 4, pad: 6, cell: 5, bay: 1.4, river: 10, lagoon: 1.35, gap: [300, 52, 34], lighthouse: [-300, -224, -230, -150], flat: [-268, -186, 40] };
+export function rockClear(x, z, rad, spots = []) {
+  const K = ROCK_KEEP;
+  if (PLAN.roads.some((r) => segDist(x, z, r.pts) < r.w / 2 + K.road + rad)) return false;
+  if (PLAN.pois.some((p) => x > p.rect[0] - K.poi - rad && x < p.rect[2] + K.poi + rad && z > p.rect[1] - K.poi - rad && z < p.rect[3] + K.poi + rad)) return false;
+  if (nearPad(x, z, K.pad + rad) || spots.some((s) => Math.hypot(x - s[0], z - s[2]) < K.cell + rad)) return false;
+  if (Math.hypot((x - 30) / 84, (z - 196) / 66) < K.bay) return false; // (the harbour bay)
+  const R = PLAN.river; if (segDist(x, z, R.pts) < R.w / 2 + R.bank + K.river + rad) return false;
+  const L = PLAN.lagoon; if (Math.hypot((x - L.c[0]) / L.r[0], (z - L.c[1]) / L.r[1]) < K.lagoon) return false;
+  if (Math.hypot(x - K.gap[0], z - K.gap[1]) < K.gap[2] + rad) return false;
+  if (Math.hypot(x - K.flat[0], z - K.flat[1]) < K.flat[2] + rad) return false;
+  return true;
+}
+const inRect = (x, z, q, m = 0) => x > q[0] - m && x < q[2] + m && z > q[1] - m && z < q[3] + m;
+const isletAt = (x, z, k = 1.6) => PLAN.islets.some(([cx, cz, rx, rz]) => Math.hypot((x - cx) / rx, (z - cz) / rz) < k);
+// the waterline all round the island (not the islets), walked in from the sea: [x, z, nx, nz] (n: out to sea), in order
+function waterline(G, n = 2880) {
+  const out = [];
+  for (let k = 0; k < n; k++) {
+    const a = k / n * Math.PI * 2, ux = Math.cos(a), uz = Math.sin(a);
+    let r = 450; while (r > 30 && (G.at(ux * r, uz * r) <= SEA || isletAt(ux * r, uz * r))) r -= 0.25; // (in from the open sea, on past an islet)
+    if (r <= 30) continue;
+    const x = ux * r, z = uz * r, gx = G.at(x + 2, z) - G.at(x - 2, z), gz = G.at(x, z + 2) - G.at(x, z - 2), gl = Math.hypot(gx, gz) || 1;
+    out.push([x, z, -gx / gl, -gz / gl]);
+  }
+  for (let k = 0; k < out.length; k++) { // (the normal smoothed over its neighbours: the 1 m grid is jaggy)
+    let sx = 0, sz = 0; for (let j = -4; j <= 4; j++) { const q = out[(k + j + out.length) % out.length]; sx += q[2]; sz += q[3]; }
+    const l = Math.hypot(sx, sz) || 1; out[k].push(sx / l, sz / l);
+  }
+  return out.map(([x, z, , , nx, nz]) => [x, z, nx, nz]);
+}
+// the cliff at a waterline point: how far in its top is (lip) and how high (top). null where it isn't a cliff
+function cliffAt(G, x, z, nx, nz) {
+  const h = (d) => G.at(x - nx * d, z - nz * d);
+  for (let d = 0.5; d < 7; d += 0.5) if (h(d) > SEA + 3 && h(d + 1) - h(d) < 0.8) return h(0.5) < SEA + 3 ? { lip: d, top: h(d) } : null;
+  return null;
+}
+// every rock on the island: { id, a: [x, y, z] (its foot), s: [sx, sy, sz], r: its turn (three's rotation.y), deco, why }
+let PLAN_R = null;
+export function rockPlan(spots = []) {
+  if (PLAN_R) return PLAN_R;
+  const G = grid(), r = rng(7171), out = [], placed = []; // placed: [x, z, radius] of everything that collides
+  const ext = (id) => RK[id].ext;
+  const free = (x, z, rad) => !placed.some(([a, b, e]) => Math.hypot(x - a, z - b) < rad + e);
+  // a colliding piece: its foot on the lowest ground under it (sunk a little), turned q quarter turns
+  const solid = (id, x, z, s, q, why, o = {}) => {
+    const [lo, hi] = ext(id), w = Math.max(hi[0] - lo[0], hi[2] - lo[2]) / 2 * Math.max(s[0], s[2]), rad = w * 1.05;
+    if (!o.force && (!rockClear(x, z, rad, spots) || !free(x, z, rad) || inRect(x, z, ROCK_KEEP.lighthouse, rad))) return null;
+    let g = 1e9; for (const [dx, dz] of [[0, 0], [-w, -w], [w, -w], [-w, w], [w, w], [-w, 0], [w, 0], [0, -w], [0, w]]) g = Math.min(g, G.at(x + dx * 0.8, z + dz * 0.8));
+    const y = o.top !== undefined ? o.top - s[1] * hi[1] : g - (o.sink ?? 0.25);
+    if (o.top !== undefined && y > g - 0.2) return null; // (a shelf whose top is where we want it but whose foot wouldn't reach the bed)
+    const p = { id, a: [x, y, z], s, r: (q & 3) * Math.PI / 2, deco: false, why };
+    out.push(p); placed.push([x, z, rad]); return p;
+  };
+  const S = (k, v) => k * (1 - v + 2 * v * r()); // (a scale round k, give or take v)
+  const pick = (t) => { const u = r(); let a = 0; for (const [id, w] of t) if (u < (a += w)) return id; return t[t.length - 1][0]; };
+  const qOf = (tx, tz) => ((Math.round(Math.atan2(-tz, tx) / (Math.PI / 2)) % 4) + 4) % 4; // (the quarter turn that runs a piece's x along (tx, tz))
+  const WL = waterline(G);
+  // ---- the sea cliffs: a face piece every few metres along every run of cliff, each lining the face from below the
+  // waterline to just under its top, turned to face the sea; a boulder field and the odd flat shelf at its foot
+  let run = 0, next = 0, prev = null;
+  for (let k = 0; k < WL.length; k++) {
+    const [x, z, nx, nz] = WL[k], c = cliffAt(G, x, z, nx, nz);
+    if (prev) run += Math.hypot(x - prev[0], z - prev[1]);
+    prev = [x, z];
+    if (!c || run < next) continue;
+    const R = PLAN.river, L = PLAN.lagoon; // (the river's banks and the lagoon's are steep too: not cliffs)
+    if (segDist(x, z, R.pts) < R.w / 2 + R.bank + 12 || Math.hypot((x - L.c[0]) / L.r[0], (z - L.c[1]) / L.r[1]) < 1.4 || PLAN.pois.some((p) => p.id !== 'lighthouse' && inRect(x, z, p.rect, 4))) continue;
+    if (Math.hypot(x - ROCK_KEEP.flat[0], z - ROCK_KEEP.flat[1]) < 18) { next = run + 2; continue; } // (well inside the flat: never; its cliff edge beyond 18 m is face only, below the top)
+    const id = pick([['bi_cliff_a', 0.42], ['bi_cliff_b', 0.36], ['bi_cliff_c', 0.22]]), [lo, hi] = ext(id);
+    const W = (hi[0] - lo[0]) * S(1, 0.15), tx = -nz, tz = nx;
+    let top = c.top; // (no higher than the top at either end: nothing sticks up out of the ground)
+    for (const e of [-0.5, 0.5]) { const q = WL.reduce((b, w) => Math.hypot(w[0] - x - tx * W * e, w[1] - z - tz * W * e) < Math.hypot(b[0] - x - tx * W * e, b[1] - z - tz * W * e) ? w : b, WL[k]); const cc = cliffAt(G, ...q); top = Math.min(top, cc ? cc.top : top); }
+    const bed = Math.min(G.at(x + nx * 1.5, z + nz * 1.5), SEA - 0.3) - 0.8, D = c.lip + 3.0, y1 = top - 0.3; // (its front 1.2 m out to sea, its back 1.8 m into the top)
+    if (y1 - bed < 4) { next = run + 2; continue; }
+    const fwd = 1.2 - D / 2;
+    out.push({ id, a: [x + nx * fwd, bed, z + nz * fwd], s: [W / (hi[0] - lo[0]), (y1 - bed) / (hi[1] - lo[1]), D / (hi[2] - lo[2])], r: Math.atan2(nx, nz), deco: true, why: inRect(x, z, ROCK_KEEP.lighthouse) ? 'headland' : 'cliff' });
+    next = run + W * (id === 'bi_cliff_c' ? 0.5 : 0.62); // (they overlap: the ends round back into the next one)
+    // its foot: a boulder or two out in the shallows, sometimes a flat shelf to climb out onto
+    for (let j = 0, n = 1 + (r() < 0.55) + (r() < 0.25); j < n; j++) {
+      const d = 2.2 + r() * 7.5, l = (r() - 0.5) * W, bx = x + nx * d + tx * l, bz = z + nz * d + tz * l;
+      const kind = pick([['bi_boulder_s', 0.35], ['bi_boulder_m', 0.4], ['bi_boulder_l', 0.25]]), sc = S(1, 0.22);
+      solid(kind, bx, bz, [sc * S(1, 0.12), sc * S(1, 0.25), sc * S(1, 0.12)], (r() * 4) | 0, 'foot', { sink: 0.35 });
+    }
+    if (r() < 0.22) { const d = 3.4, bx = x + nx * d, bz = z + nz * d, sc = S(0.85, 0.15); solid('bi_ledge', bx, bz, [sc, 1, sc * S(1, 0.15)], qOf(tx, tz), 'shelf', { top: SEA + 0.45 }); }
+  }
+  // ---- sea stacks: tall layered stacks off the cliffs and the points, a squat one by an islet. [id, x, z, top above the sea, turns]
+  for (const [id, x, z, h, q] of [['bi_stack_a', -323, -112, 17, 0], ['bi_stack_b', -318, -86, 10.5, 1], ['bi_stack_a', -246, -246, 15, 2], ['bi_stack_b', -196, -247, 9, 3],
+    ['bi_stack_a', 157, -176, 13, 1], ['bi_stack_b', 128, -186, 8, 0], ['bi_stack_a', -360, 15, 12, 3], ['bi_stack_b', 330, 4, 8.5, 2], ['bi_stack_a', -86, -312, 11, 0]]) {
+    const [, hi] = ext(id), g = G.at(x, z), sy = (SEA + h - g + 0.3) / hi[1], sh = S(1, 0.12);
+    solid(id, x, z, [sh, sy, sh * S(1, 0.1)], q, 'stack', { sink: 0.3 });
+  }
+  // ---- the islets: a crag on the top, boulders round the shore, a shelf at the water
+  for (const [cx, cz, rx, rz] of PLAN.islets) {
+    for (let t = 0, n = 0; t < 30 && n < 1; t++) { const a = r() * Math.PI * 2, x = cx + Math.cos(a) * rx * 0.2, z = cz + Math.sin(a) * rz * 0.2; if (solid('bi_boulder_l', x, z, [S(1.5, 0.15), S(1.6, 0.2), S(1.4, 0.15)], (r() * 4) | 0, 'islet', { sink: 0.5 })) n++; }
+    for (let t = 0, n = 0; t < 60 && n < 6; t++) {
+      const a = r() * Math.PI * 2, f = 0.75 + r() * 0.5, x = cx + Math.cos(a) * rx * f, z = cz + Math.sin(a) * rz * f;
+      const kind = pick([['bi_boulder_s', 0.3], ['bi_boulder_m', 0.45], ['bi_boulder_l', 0.25]]), sc = S(1, 0.25);
+      if (solid(kind, x, z, [sc, sc * S(1, 0.25), sc * S(1, 0.12)], (r() * 4) | 0, 'islet', { sink: 0.3 })) n++;
+    }
+  }
+  // ---- the rocky points of the beaches: where the coast juts out, a cluster (a big one or a shelf, two to four round it),
+  // spaced along the coast by a slow wobble so they come and go like real ones
+  const point = (k) => { const [x, z] = WL[k], [x0, z0] = WL[(k - 24 + WL.length) % WL.length], [x1, z1] = WL[(k + 24) % WL.length]; return Math.hypot(x, z) - (Math.hypot(x0, z0) + Math.hypot(x1, z1)) / 2; }; // (> 0: a point sticking out)
+  let lastC = -1e9;
+  for (let k = 0; k < WL.length; k += 6) {
+    const [x, z, nx, nz] = WL[k];
+    if (cliffAt(G, x, z, nx, nz) || k - lastC < 60 || point(k) < 0.15 || N3(k / 40, 3.3) < -0.25) continue;
+    const tx = -nz, tz = nx, big = r() < 0.6 ? 'bi_boulder_l' : 'bi_ledge';
+    const c = big === 'bi_ledge' ? solid('bi_ledge', x + nx * 3, z + nz * 3, [S(0.9, 0.15), 1, S(0.9, 0.15)], qOf(tx, tz), 'point', { top: SEA + 0.45 }) : solid('bi_boulder_l', x + nx * 1.5, z + nz * 1.5, [S(1.15, 0.15), S(1.2, 0.2), S(1.1, 0.15)], (r() * 4) | 0, 'point', { sink: 0.35 });
+    if (!c) continue;
+    lastC = k;
+    for (let j = 0, n = 2 + ((r() * 3) | 0), t = 0; j < n && t < 20; t++) {
+      const d = -3 + r() * 9, l = (r() - 0.5) * 16, kind = pick([['bi_boulder_s', 0.45], ['bi_boulder_m', 0.4], ['bi_boulder_l', 0.15]]), sc = S(1, 0.25);
+      if (solid(kind, x + nx * d + tx * l, z + nz * d + tz * l, [sc, sc * S(1, 0.25), sc * S(1, 0.12)], (r() * 4) | 0, 'point', { sink: 0.3 })) j++;
+    }
+  }
+  // ---- crags on the ridge: outcrops on the flanks of its peaks (not the summit: Dead Air's), a boulder or two below each
+  for (const [px, pz, , pr] of PLAN.ridge) for (let t = 0, n = 0; t < 40 && n < 2; t++) {
+    const a = r() * Math.PI * 2, f = 0.35 + r() * 0.4, x = px + Math.cos(a) * pr * f, z = pz + Math.sin(a) * pr * f;
+    if (G.slope(x, z) < 0.2) continue;
+    const c = solid('bi_boulder_l', x, z, [S(1.3, 0.15), S(1.7, 0.2), S(1.2, 0.15)], (r() * 4) | 0, 'ridge', { sink: 0.6 });
+    if (!c) continue;
+    n++;
+    for (let j = 0; j < 2; j++) { const b = r() * Math.PI * 2, d = 5 + r() * 4; solid(r() < 0.5 ? 'bi_boulder_m' : 'bi_boulder_s', x + Math.cos(b) * d, z + Math.sin(b) * d, [S(1, 0.2), S(1, 0.2), S(1, 0.2)], (r() * 4) | 0, 'ridge', { sink: 0.3 }); }
+  }
+  for (const p of out) { p.a = p.a.map((v) => Math.round(v * 1000) / 1000); p.s = p.s.map((v) => Math.round(v * 1000) / 1000); p.r = Math.round(p.r * 10000) / 10000; }
+  return (PLAN_R = out);
+}
+// the rocks into the map: the colliding ones' boxes (`still`: placed at their own height) under their model, the faces a
+// turned look-only box in map.deco under theirs
+function biRocks(B, D, spots) {
+  const S = { still: 1 };
+  for (const p of rockPlan(spots)) {
+    const K = RK[p.id], [lo, hi] = K.ext, [sx, sy, sz] = p.s, [ax, ay, az] = p.a, c = Math.cos(p.r), s = Math.sin(p.r);
+    if (p.deco) { // (a turned box round the extent's middle)
+      const mx = (lo[0] + hi[0]) / 2 * sx, mz = (lo[2] + hi[2]) / 2 * sz;
+      propOf(p.id, p.a, p.r, () => D.obb(ax + mx * c + mz * s, ay + (lo[1] + hi[1]) / 2 * sy, az - mx * s + mz * c, (hi[0] - lo[0]) * sx, (hi[1] - lo[1]) * sy, (hi[2] - lo[2]) * sz, p.r, 'rock', S));
+      continue;
+    }
+    propOf(p.id, p.a, p.r, () => {
+      for (const b of K.col) {
+        const xs = [b[0] * sx, b[3] * sx], zs = [b[2] * sz, b[5] * sz], wx = [], wz = [];
+        for (const lx of xs) for (const lz of zs) { wx.push(ax + lx * c + lz * s); wz.push(az - lx * s + lz * c); }
+        B.add(Math.min(...wx), ay + b[1] * sy, Math.min(...wz), Math.max(...wx), ay + b[4] * sy, Math.max(...wz), 'rock', S);
+      }
+    });
+  }
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = grid();
@@ -518,6 +693,7 @@ function battleIsland() {
       { f: G.f, mat: 'dirtroad', paint: (x, z) => dry(x, z) && (onRoad(x, z) || onApron(x, z)) && !steep(x, z) }, // (the port's yard behind the quay too: a working dock, not a lawn)
     ], points: [...spawns, ...drops, ...cells] });
   for (const q of [...drops, ...cells]) q[1] = Math.round(q[1] * 100) / 100; // (lifted onto the ground by shapeGround)
+  biRocks(B, D, [...drops, ...cells]); // the rocks: after the ground has its shape (each at its own height, on the ground it'll have)
   let graph = null;
   const map = {
     name: 'Battle Island', size: 'huge', royaleOnly: true, wip: true, // wip: out of the map votes until the mode lands (shared/modes.js)
