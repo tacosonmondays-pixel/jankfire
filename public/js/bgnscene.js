@@ -178,7 +178,7 @@ export function makeBoard() {
     if (sh) { sh.parent.remove(sh); sh.position.set(0, 0, 0); sh.traverse((m) => { if (m.isMesh) m.castShadow = true; }); stallSrc = sh; stall.add(sh); }
     for (const [at, m] of [...traps]) if (m.userData.k === 'fake') { scene.remove(m); traps.delete(at); } // (fakes get the shop too: from far off they look the same)
     if (st) syncTraps(st);
-    if (cere && cere.win) holdBread(cere.win, true);
+    if (cere && cere.win != null) holdBread(cere.win, true); // (seat 0 wins too)
   });
   // THE TOASTING's podium: a toaster on a cereal box at the side of the board (code boxes until x_bgn_toaster lands)
   const pod = { g: new THREE.Group(), lever: null, lever0: 0, glow: [], code: new THREE.Group() };
@@ -364,7 +364,7 @@ export function makeBoard() {
           if (P.bread) P.bread.visible = true;
         } else if (t < CERE.land) { // POP: straight up, spinning, then down onto the top
           const k = (t - CERE.pop) / (CERE.land - CERE.pop);
-          const y0 = slot.y - 2.4 * PS * CS, top = spot.y, apex = top + 8;
+          const y0 = slot.y - 2.4 * PS * CS, top = spot.y, apex = top + 7;
           const yy = k < 0.5 ? y0 + (apex - y0) * (1 - (1 - k * 2) ** 2) : apex + (top - apex) * ((k - 0.5) * 2) ** 2;
           P.g.position.set(slot.x + (spot.x - slot.x) * k, yy, slot.z + (spot.z - slot.z) * k);
           P.ch.rotation.set(P.rot0.x * 0.3, k * Math.PI * 4, 0);
@@ -423,10 +423,10 @@ export function makeBoard() {
     out.copy(wide).lerp(close, mid);
     if (k < 1) out.lerp(camA.pos, 1 - k); // (fly over from wherever it was)
     // the pop: look up with the winner (a beat ahead, the camera eases) and step back, so the golden bread stays in shot at the top
-    const f = (t + 0.2 - CERE.pop) / (CERE.land - CERE.pop), pk = f > 0 && f < 1 ? f : -1;
-    const h = pk < 0 ? 0 : pk < 0.5 ? -2 + 10 * (1 - (1 - pk * 2) ** 2) : 8 * (1 - ((pk - 0.5) * 2) ** 2);
-    if (pk >= 0) { const s = Math.sin(pk * Math.PI); out.y += 1.5 * s; out.z += 4 * s; }
-    look.set(top.x, top.y - (mid > 0 ? 1.2 : 3.4) + (t > CERE.pop ? Math.max(Math.min(1.6, (t - CERE.pop) * 3), h * 0.8) : 0), top.z);
+    const f = (t + 0.2 - CERE.pop) / (CERE.land - CERE.pop), pk = f > 0 && f < 1 ? f : -1, W = pawns.get(cere.win);
+    if (pk >= 0) { const s = Math.sin(pk * Math.PI); out.y += 2 * s; out.z += 8 * s; }
+    const lift = t > CERE.pop ? Math.min(1.6, (t - CERE.pop) * 3) : 0, fly = W && t > CERE.pop && t < CERE.land ? W.g.position.y - 1.5 - (top.y - 1.2) : 0;
+    look.set(top.x, top.y - (mid > 0 ? 1.2 : 3.4) + Math.max(lift, fly), top.z);
   }
 
   return {
@@ -518,7 +518,7 @@ export function makeBoard() {
       else if (P && st && (st.ph === 'move' || st.ph === 'roll' || st.ph === 'land' || st.ph === 'turn' || st.ph === 'duel' || st.ph === 'event')) { const g = P.g.position; p = new THREE.Vector3(g.x * 0.6, 15 * pull, g.z * 0.6 + 12.5 * pull); l = new THREE.Vector3(g.x * 0.8, 0, g.z * 0.8); }
       else { p = new THREE.Vector3(0, 30 * pull, 23 * pull); l = new THREE.Vector3(0, 0, 1.5); }
       if (Array.isArray(G.bgnCamTest)) { const q = G.bgnCamTest; p.set(q[0], q[1], q[2]); l.set(q[3], q[4], q[5]); camA.pos.copy(p); camA.look.copy(l); } // (tests: a fixed camera for close-ups)
-      const a = 1 - Math.exp(-dt * (cere ? 4 : 3));
+      const a = 1 - Math.exp(-dt * (cere ? (cere.t > CERE.pop - 0.3 && cere.t < CERE.land + 0.3 ? 12 : 4) : 3)); // (the pop is quick: keep up with it)
       camA.pos.lerp(p, a); camA.look.lerp(l, a);
       cam.position.copy(camA.pos); cam.lookAt(camA.look);
       if (camA.shake > 0) { const k = camA.shake * camA.shake * 0.6; cam.position.x += R(k); cam.position.y += R(k); camA.shake = Math.max(0, camA.shake - dt * 2); }

@@ -36,7 +36,7 @@ const SFX = {
 G.bgnHop = () => SFX.hop();
 G.bgnThunk = () => SFX.thunk();
 // THE TOASTING: the board says when the winner's out of the toaster (the callout waits for the pop)
-G.bgnToasted = (i) => { const s = B && B.seats[i]; call(N.call.toast, s ? s.color : '#ffe14d', s ? `${s.name} · ${N.bread}` : ''); SFX.big(); };
+G.bgnToasted = (i) => { const s = B && B.seats[i]; call(N.call.toast, s ? s.color : '#ffe14d', s ? `${s.name} · ${N.bread}` : ''); const c = $('bgCall'); if (c) c.classList.add('low'); SFX.big(); }; // (low: the winner's up top, on the toaster)
 
 export function initBgn(o) { opts = o || {}; } // { lobby() } from main.js
 export const bgnOn = () => !!B && !!G.joined;
@@ -169,7 +169,7 @@ body.bgn-board #hud{display:none!important}
 #bgCall{position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);text-align:center;pointer-events:none}
 #bgCall b{display:block;font-size:76px;line-height:1;color:#ffe14d;-webkit-text-stroke:3px #000;text-shadow:6px 6px 0 #ff00dc;white-space:nowrap}
 #bgCall span{display:inline-block;margin-top:8px;font-size:20px;background:rgba(18,8,24,0.92);border:3px solid #000;padding:2px 10px}
-#bgCall.pop{animation:bgcall 1.6s forwards}
+#bgCall.pop{animation:bgcall 1.6s forwards}#bgCall.low{top:74%}
 #bgnHud.card #bgCall{top:max(22%,190px)}#bgnHud.card #bgCall b{font-size:44px}#bgnHud.card .bg-card{top:57%}
 @keyframes bgcall{0%{transform:translate(-50%,-50%) scale(2.2) rotate(-6deg);opacity:0}10%{transform:translate(-50%,-50%) scale(.9) rotate(2deg);opacity:1}18%{transform:translate(-50%,-50%) scale(1) rotate(-1deg)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-60%) scale(1)}}
 @keyframes bgpop{0%{transform:scale(1.15)}100%{transform:scale(1)}}
@@ -231,7 +231,7 @@ function call(big, color, small) {
   const b = el('b', null, big); if (color) b.style.color = color;
   c.append(b);
   if (small) c.append(el('br'), el('span', null, small));
-  c.classList.remove('pop'); void c.offsetWidth; c.classList.add('pop');
+  c.classList.remove('pop', 'low'); void c.offsetWidth; c.classList.add('pop');
 }
 function float(seat, text, color) {
   const card = root && root.querySelector(`.bg-s${seat}`);
