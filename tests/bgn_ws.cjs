@@ -59,7 +59,7 @@ const rankOf = (seats) => seats.slice().sort((a, b) => b.b - a.b || b.c - a.c ||
 async function partGame(port) {
   const S = await server(port, { JF_WATCH: '1', JF_BGN_FAST: '20', JF_BGN_ROUNDS: '4', JF_BGN_MGTIME: '6', JF_BGN_COUPONS: '30' });
   const W = await client(port, 'watchA', OFF(5));
-  const done = await W.until(() => W.evs('cere').length, 200000);
+  const done = await W.until(() => W.evs('cere').length && W.sts.some((s) => s.ph === 'done'), 200000); // (the ceremony event goes out just before the 'done' state: wait for both)
   ok(done, 'a bots-only game (4 rounds) runs to the end');
   const phs = new Set(W.sts.map((s) => s.ph));
   ok(['intro', 'dibs', 'turn', 'roll', 'move', 'land', 'mgintro', 'mg', 'mgres', 'done'].every((p) => phs.has(p)), 'it went through every phase: ' + [...phs].join(' '));
