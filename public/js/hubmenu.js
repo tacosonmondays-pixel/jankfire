@@ -7,7 +7,7 @@
 // buttons (its code, JOIN a code, LEAVE, who's in it), the party stood on the stage (lineup.js); the leader picks and
 // starts (everyone's lobby follows), everyone else hits READY.
 import { G } from './ctx.js';
-import { GAMES, GAME_ORDER, mapsFor } from '/shared/modes.js';
+import { GAMES, GAME_ORDER, mapsFor, WIP_ON } from '/shared/modes.js';
 import { MAPS, MAP_ORDER } from '/shared/map.js';
 import { LOBBY } from '/shared/lobby.js';
 import { eventGame } from '/shared/vote.js';
@@ -255,7 +255,7 @@ function plan() {
   }
   if (H.board) return ['bots', { priv: true, game: 'bgn', map: 'crate', bots: 3, rounds: st.rounds, diff: st.diff, hub: k }]; // board game night: your own table (server/bgn.js)
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
-  return ['bots', { priv: true, game, map, hub: k === 'qp' ? undefined : k }]; // no bots: the server picks them for the mode + map (shared/autobots.js). hub: a single-mode pick comes back to this lobby after (server/hubback.js)
+  return ['bots', { priv: true, game, map, hub: k === 'qp' ? undefined : k, wip: WIP_ON || undefined }]; // no bots: the server picks them for the mode + map (shared/autobots.js). hub: a single-mode pick comes back to this lobby after (server/hubback.js). wip: ?wip=1 only (a map still being built, server/room.js addHuman)
 }
 
 // ---------------------------------------------------------------- the party

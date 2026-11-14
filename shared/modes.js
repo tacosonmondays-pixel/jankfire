@@ -70,8 +70,8 @@ export function canDefuse(pos, bp, slack = 0) {
 // maps still being built (map.wip): out of every list and vote unless the tester asks (?wip=1 in the address, or the
 // server's JF_WIP_MAPS=1). Battle Island stays here until its mode lands
 export const WIP_ON = (() => { try { if (typeof location !== 'undefined') return /[?&]wip=1\b/.test(location.search); return typeof process !== 'undefined' && !!process.env && process.env.JF_WIP_MAPS === '1'; } catch { return false; } })();
-export function mapsFor(game, maps, order) {
-  if (!WIP_ON) order = order.filter((id) => !(maps[id] && maps[id].wip));
+export function mapsFor(game, maps, order, wip = WIP_ON) { // wip: let wip maps through (an OFFLINE private room asked with ?wip=1: server/room.js addHuman)
+  if (!wip) order = order.filter((id) => !(maps[id] && maps[id].wip));
   order = order.filter((id) => !GAMES[game].zombies === !(maps[id] && maps[id].zm)); // zombie maps go with zombies and nothing else
   return order.filter((id) => id !== 'range' && maps[id] && !(maps[id].royaleOnly && !GAMES[game].royale) && (GAMES[game].sites ? maps[id].sites && maps[id].sites.length : !maps[id].sd) && (!GAMES[game].mapOk || GAMES[game].mapOk(maps[id])));
 }
