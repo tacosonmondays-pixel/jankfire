@@ -7,7 +7,7 @@
 // buttons (its code, JOIN a code, LEAVE, who's in it), the party stood on the stage (lineup.js); the leader picks and
 // starts (everyone's lobby follows), everyone else hits READY.
 import { G } from './ctx.js';
-import { GAMES, GAME_ORDER, mapsFor } from '/shared/modes.js';
+import { GAMES, GAME_ORDER, mapsFor, WIP_ON } from '/shared/modes.js';
 import { MAPS, MAP_ORDER } from '/shared/map.js';
 import { LOBBY } from '/shared/lobby.js';
 import { eventGame } from '/shared/vote.js';
@@ -262,7 +262,7 @@ function plan() {
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
   const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
   const team = !own && GAMES[game] && GAMES[game].teams;
-  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, hub: k === 'qp' ? undefined : k }]; // hub: a single-mode pick comes back to this lobby after (server/hubback.js)
+  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, hub: k === 'qp' ? undefined : k, wip: WIP_ON || undefined }]; // hub: a single-mode pick comes back to this lobby after (server/hubback.js)
 }
 
 // ---------------------------------------------------------------- the party

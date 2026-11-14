@@ -481,6 +481,7 @@ class Room {
     if (this.mode === 'bots' && m.cfg && typeof m.cfg === 'object' && !this.humans().length && !this.lobby) {
       const c = m.cfg;
       if (!this.editMap && has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map; // (an edited map's room keeps it)
+      else if (!this.editMap && this.priv && c.wip === true && has(MAPS, c.map) && MAPS[c.map].wip && mapsFor(has(GAMES, c.game) ? c.game : this.game, MAPS, [c.map], true).length) this.cfg.map = c.map; // a map still being built: only in your own OFFLINE room, asked with ?wip=1 (never the rotation, votes or lobbies)
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
       if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
