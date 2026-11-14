@@ -1040,3 +1040,23 @@ Object.assign(sfx, {
     o.connect(g); g.connect(dest(pos)); o.start(t); vib.start(t); o.stop(t + 0.55); vib.stop(t + 0.55);
   },
 });
+// board game night, THE TOASTING (bgnscene.js): the lever going down, the timer ticking, and the POP that throws the winner out
+Object.assign(sfx, {
+  // a chunky lever clunk with the spring catching, then the elements humming
+  toastDown() { noise(0.09, 0.6, 'lowpass', 1400, 300); tone('square', 190, 85, 0.12, 0.22); noise(0.18, 0.25, 'bandpass', 2600, 1800, null, 0.05, 6); tone('sawtooth', 58, 60, 1.7, 0.05, null, 0.15); },
+  // the timer: a dry tick, a little higher every time it doesn't pop yet
+  toastTick() { noise(0.018, 0.4, 'highpass', 4200, 6000); tone('square', 2400, 2300, 0.02, 0.05); },
+  // POP: the spring lets go (a wobbly boing up), a tinny clang off the chrome, the whoosh of a pawn leaving at speed, a ding
+  toastPop() {
+    if (!ac) return;
+    noise(0.05, 0.9, 'highpass', 2500, 7000); tone('square', 120, 60, 0.08, 0.3);
+    const t = ac.currentTime, o = ac.createOscillator(), vib = ac.createOscillator(), vg = ac.createGain(), g = ac.createGain();
+    o.type = 'triangle'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(820, t + 0.16); o.frequency.exponentialRampToValueAtTime(380, t + 0.7);
+    vib.frequency.value = 18; vg.gain.value = 70; vib.connect(vg); vg.connect(o.frequency);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.4, t + 0.02); g.gain.exponentialRampToValueAtTime(0.001, t + 0.75);
+    o.connect(g); g.connect(dest(null)); o.start(t); vib.start(t); o.stop(t + 0.8); vib.stop(t + 0.8);
+    for (const [f, d] of [[1870, 0], [2810, 0.002], [3950, 0.004]]) tone('triangle', f, f * 0.99, 0.5, 0.07, null, d); // (the clang)
+    whoosh(0.6, 0.3, 400, 2600, 1.2);
+    for (const [f, d] of [[2093, 0.25], [4186, 0.25], [2637, 0.27]]) tone('sine', f, f, 1.3, 0.11, null, d); // (the ding)
+  },
+});

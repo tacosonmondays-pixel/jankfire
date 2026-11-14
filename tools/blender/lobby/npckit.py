@@ -201,12 +201,12 @@ def uv_front(o, rect, face='-z'):
     """a sticker seen from its face direction: the image's right on the viewer's right"""
     me = o.data; uvl = me.uv_layers.get('UVMap') or me.uv_layers.new(name='UVMap')
     pts = [_game(v.co) for v in me.vertices]
-    if face in ('-z', '+z', '+y'): us = [p[0] for p in pts]; flip = face == '-z'
+    if face in ('-z', '+z', '+y', '-y'): us = [p[0] for p in pts]; flip = face in ('-z', '-y')
     else: us = [p[2] for p in pts]; flip = face == '+x'
-    vs = [-p[2] for p in pts] if face == '+y' else [p[1] for p in pts]  # (+y: a sheet lying face up, its top toward -z)
+    vs = [-p[2] for p in pts] if face == '+y' else [p[2] for p in pts] if face == '-y' else [p[1] for p in pts]  # (+y: a sheet lying face up, its top toward -z; -y: face down, its top toward +z)
     ul, uh, vl, vh = min(us), max(us), min(vs), max(vs)
     u0, v0, u1, v1 = rect
-    fd = {'-z': (0, 0, -1), '+z': (0, 0, 1), '+x': (1, 0, 0), '-x': (-1, 0, 0), '+y': (0, 1, 0)}[face]
+    fd = {'-z': (0, 0, -1), '+z': (0, 0, 1), '+x': (1, 0, 0), '-x': (-1, 0, 0), '+y': (0, 1, 0), '-y': (0, -1, 0)}[face]
     for poly in me.polygons:
         g = _game(poly.normal)
         if abs(g[0] * fd[0] + g[1] * fd[1] + g[2] * fd[2]) < 0.5:  # (an edge of the sticker: a sliver of the cell's border, not a line)
@@ -215,7 +215,7 @@ def uv_front(o, rect, face='-z'):
             continue
         for li in poly.loop_indices:
             p = pts[me.loops[li].vertex_index]
-            uu = ((p[0] if face in ('-z', '+z', '+y') else p[2]) - ul) / max(uh - ul, 1e-6); vv = ((-p[2] if face == '+y' else p[1]) - vl) / max(vh - vl, 1e-6)
+            uu = ((p[0] if face in ('-z', '+z', '+y', '-y') else p[2]) - ul) / max(uh - ul, 1e-6); vv = ((-p[2] if face == '+y' else p[2] if face == '-y' else p[1]) - vl) / max(vh - vl, 1e-6)
             if flip: uu = 1 - uu
             uvl.data[li].uv = (u0 + uu * (u1 - u0), v0 + vv * (v1 - v0))
 

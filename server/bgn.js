@@ -32,6 +32,7 @@ const K = {
   noDuel: !!E.JF_BGN_NODUEL, // every duel is settled on the board, people's too (tests that want the round's minigame, not a duel first)
   seed: num(E.JF_BGN_SEED) > 0 ? Math.floor(num(E.JF_BGN_SEED)) : 0, // seeded dice and board picks
   bakery: Number.isInteger(num(E.JF_BGN_BAKERY)) ? num(E.JF_BGN_BAKERY) : null, // the bakery starts on this plate
+  endMs: num(E.JF_BGN_ENDMS) > 0 ? Math.min(3600000, Math.floor(num(E.JF_BGN_ENDMS))) : 0, // how long the end card stays up (tests: time to shoot THE TOASTING)
 };
 const T = (ms) => Math.max(1, Math.round(ms / K.fast));
 const now = () => Date.now();
@@ -115,8 +116,9 @@ export function installBgn(Room, H) {
         if (!p || this.bgnSeatOf(p)) { B.queue = B.queue.filter((q) => q !== id); continue; }
         const key = this.bgnKey(p), own = key && B.seats.find((x) => x.bot && x.back === key);
         // back from a disconnect: your own seat ("<name>'s bot" gives it back), as soon as it's between turns (busy: you wait,
-        // the rest of the queue doesn't). anyone else: a seat nobody's coming back to first
-        const s = own ? (free(own) ? own : null) : B.seats.find((x) => free(x) && !x.back) || B.seats.find(free);
+        // the rest of the queue doesn't). anyone else: only a seat nobody's coming back to. a kept seat (its bot, coupons,
+        // bread and bag) is its owner's for the rest of the game: no seat free, you watch
+        const s = own ? (free(own) ? own : null) : B.seats.find((x) => free(x) && !x.back);
         if (!s) continue;
         B.queue = B.queue.filter((q) => q !== id);
         const b = this.players.get(s.pid);
@@ -703,7 +705,7 @@ export function installBgn(Room, H) {
       }
       for (const s of B.seats) { const q = this.bgnPlayer(s); if (q && !q.isBot && q !== p) stat(q, 'xp', 10 + s.bread * 5); }
       if (roll) send(p, { t: 'roll+', ...roll });
-      if (this.round) { this.round.over = true; this.round.next = now() + T(BGN.endMs); }
+      if (this.round) { this.round.over = true; this.round.next = now() + (K.endMs || T(BGN.endMs)); }
       B.hbAt = now() + T(BGN.toastMs); // the end screen's PLAY AGAIN / LOBBY after the toasting
       this.bgnState();
       console.log(`[bgn] ${this.id}: ${win.name} won with ${win.bread} bread`);
