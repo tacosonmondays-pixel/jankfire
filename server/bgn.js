@@ -116,8 +116,9 @@ export function installBgn(Room, H) {
         if (!p || this.bgnSeatOf(p)) { B.queue = B.queue.filter((q) => q !== id); continue; }
         const key = this.bgnKey(p), own = key && B.seats.find((x) => x.bot && x.back === key);
         // back from a disconnect: your own seat ("<name>'s bot" gives it back), as soon as it's between turns (busy: you wait,
-        // the rest of the queue doesn't). anyone else: a seat nobody's coming back to first
-        const s = own ? (free(own) ? own : null) : B.seats.find((x) => free(x) && !x.back) || B.seats.find(free);
+        // the rest of the queue doesn't). anyone else: only a seat nobody's coming back to. a kept seat (its bot, coupons,
+        // bread and bag) is its owner's for the rest of the game: no seat free, you watch
+        const s = own ? (free(own) ? own : null) : B.seats.find((x) => free(x) && !x.back);
         if (!s) continue;
         B.queue = B.queue.filter((q) => q !== id);
         const b = this.players.get(s.pid);

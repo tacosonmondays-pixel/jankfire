@@ -206,13 +206,15 @@ function go(pt, m) {
   const old = pt.room;
   if (old && !old.closed && !old.humans().length && old.id !== 'ffa' && old.id !== 'coop') { old.closed = true; D.rooms.delete(old.id); }
   // every room gets tickets, the fixed ones (online quick play, coop) too: that's how the room knows who's a party
-  // board game night: someone here dropped out of a table that's still keeping their seat. the party goes back to it
-  // (each joins with their own account / rejoin ticket, so only they get that seat back: room.js bgnBackFor, server.js join)
+  // board game night: the whole party dropped out of one table that's still keeping each of their seats. the party goes
+  // back to it (each joins with their own account / rejoin ticket, so only they get that seat back: room.js bgnBackFor,
+  // server.js join). anyone along who never sat there: a normal lobby (a party start never puts a stranger in a running table)
   let r = null;
-  if (cfg.lobby === 'bgn') for (const x of out) {
-    const key = x.acct ? 'a:' + x.acct : x.bt ? 'g:' + x.bt : null;
-    if (key) for (const q of D.rooms.values()) if (q.mode === m.mode && q.bgnBackFor && q.bgnBackFor(key)) { r = q; break; }
-    if (r) break;
+  if (cfg.lobby === 'bgn') {
+    const keys = out.map((x) => (x.acct ? 'a:' + x.acct : x.bt ? 'g:' + x.bt : null));
+    if (keys.length && keys.every(Boolean) && new Set(keys).size === keys.length) {
+      for (const q of D.rooms.values()) if (q.mode === m.mode && q.bgnBackFor && keys.every((k) => q.bgnBackFor(k))) { r = q; break; }
+    }
   }
   r = r || D.roomFor(m.mode, null, { ...cfg, need: out.length });
   if (!r) return;
