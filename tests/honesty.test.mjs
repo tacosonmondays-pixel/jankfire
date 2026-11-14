@@ -10,6 +10,13 @@ const room = new Room('honesty_test', 'ffa');
 const human = (name) => room.addHuman({ readyState: 1, send: () => {}, bufferedAmount: 0 }, { t: 'join', name, mode: 'ffa' });
 room.cfg.map = 'crate';
 const A = human('A'), B = human('B');
+// flake-proofing (these checks went 29/30 on a busy CPU):
+// - a frozen clock: the trails are built from it and honHit reads it again, so a slow moment between the two can't slide
+//   the time window. nothing here needs time to pass: it all happens "in the same moment"
+// - the CPU-time caps (HON.hitMs / HON.ms, wall-clock) are lifted for the geometry checks: a busy machine stretches a hit
+//   that needs many rays past 10 ms. the ray caps stay on, and the flood check below puts the time caps back and tests them
+const CLOCK = Date.now(); Date.now = () => CLOCK;
+const CAPS = { hitMs: HON.hitMs, ms: HON.ms }; HON.hitMs = HON.ms = 1e9;
 const T = Date.now;
 // someone standing (or moving) along a 30 Hz trail that ends now
 const put = (p, pos, trail) => { p.pos = pos.slice(); p.vel = [0, 0, 0]; p.alive = true; p.trap = null; p.strail = trail || [[T() - 900, ...pos], [T() - 10, ...pos]]; p.trail = p.strail.map((x) => x.slice()); };
@@ -72,6 +79,7 @@ await t('revolver ricochets: a real bounce around the block lands, a bounce that
 });
 
 await t('a flood of impossible hits costs at most the per-player budget; an honest full-rate sprayer never comes near it', () => {
+  Object.assign(HON, CAPS); // (the real time caps: this is the check for them)
   // the flood: 9 targets running behind the block (a fresh rate slot each), 400 hits in one go
   put(A, [0, 0, -8]);
   const others = [];
