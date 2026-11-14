@@ -83,7 +83,7 @@ const DIE_UP = { 1: [0, 0, 0], 6: [Math.PI, 0, 0], 2: [-Math.PI / 2, 0, 0], 5: [
 // spots: where 1st (on top of the toaster) .. 4th (the table, in the crumbs) end up. slot: the slot the winner goes in
 const POD = { at: [0.585, 0.015, -0.12], top: 0.265, slot: [-0.024, 0.0], lever: [0.0, 0.235, 0.142], leverDrop: 0.1,
   spots: [[0.0, 0.265, 0.0], [-0.12, 0.107, 0.025], [0.12, 0.075, 0.025], [0.0, 0.0, 0.17]] };
-const HOST = [-0.47, 0.17, -2.0]; // where THE RULES GUY stands on the table (x, z, yaw; life size)
+const HOST = [-0.55, 0.38, -1.9]; // where THE RULES GUY stands on the table (x, z, yaw; life size)
 const CERE = { hop: [0.3, 0.75, 1.2, 1.65], dur: 0.75, down: 2.5, pop: 4.4, apex: 5.05, land: 5.7, card: 7.6 }; // THE TOASTING's beats (s)
 export const CERE_MS = CERE.card * 1000; // the end card waits for the toast
 
@@ -298,9 +298,9 @@ export function makeBoard() {
     for (const [at, k] of want) if (!traps.has(at)) { const m = trapMesh(k, at); m.userData.k = k; spacePos(at, m.position); scene.add(m); traps.set(at, m); }
   }
   // the bakery's little shop sits one square in from its space, facing it
-  function stallOff(id) { // one square in from a loop space (the crease's: beside it), its front (+z) toward the space
+  function stallOff(id) { // one square in from a loop space (the crease's: beside it), its shopfront to the table's near side (the camera)
     const p = BOARD[id].p, side = Math.abs(p[0]) === 5, dx = side ? -Math.sign(p[0]) : p[0] === 0 ? 1 : 0, dz = side || p[0] === 0 ? 0 : -Math.sign(p[1]);
-    return { dx, dz, ry: Math.atan2(-dx, -dz) };
+    return { dx, dz, ry: 0 };
   }
   function placeStall(id) {
     const p = BOARD[id].p, o = stallOff(id);
