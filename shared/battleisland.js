@@ -364,6 +364,105 @@ function pjPark(B) {
   for (const [x, z] of PK.hill) { const G = grid(), t = BT.leafy.t; tree('leafy', x, z, Math.min(G.at(x - t, z - t), G.at(x + t, z - t), G.at(x - t, z + t), G.at(x + t, z + t)) - 0.05); } // (on the slope: the trunk's low corner, a little sunk)
 }
 
+// PORT JANKTON's pub and harbour master. THE SINKING FEELING: the seaside pub across the main drag from Petal Park (the
+// open lawn by the ring road corner), its front to the drag. the door between two big open windows (no glass: shoot
+// through), a window in each side, the back door; inside, the bar and its stools, the back bar, two booths back to back
+// on the north wall, the snug screen, the dartboard, a jukebox. an outside stair up its south side to the roof terrace
+// (the TOP DECK): a parapet round it, picnic tables, the chimney, and a fishing boat (LAST ORDERS) sinking stern-up
+// through it. picnic tables and the quiz board out front. THE HARBOUR MASTER: an office on the apron at the east pier's
+// root, between the fish warehouse's quay door and the container stack (it watches all three piers and both trawlers):
+// a counter, the chart table, the radio desk; a stair up its front onto its roof, a flight up the roof onto the gallery
+// round the lookout on its tower (open windows all round), the horn, a tide dial on the tower that says YES. one
+// Blender model each over its boxes (tools/blender/make_pjpub.py: p_pj_pub, p_pj_harbour). PJP = the numbers the models
+// are built to, each building from its c in the world's turn (x east, z south: the pub's front faces east), heights from
+// the town's level
+export const PJP = {
+  pub: { c: [6, 94], w: 12, d: 16, h: 4.2, t: 0.25, roof: 0.3, par: 1.0, pt: 0.2, door: [0.9, 2.6], back: [4.6, 6.0, 2.4], // the back door: z0 z1 top
+    wins: [[-6.6, -2.0], [2.0, 6.6]], sill: 0.9, head: 2.9, nwin: [-1.2, 2.8], swin: [-4.2, -1.4], // the front's windows (z), the north and south sides' (x)
+    stair: { x0: 5.6, n: 12, run: 0.34, z0: 8, z1: 9.3, land: 0.2 }, // up the south side: its foot (x), steps, tread, z; the landing's far end (x)
+    // inside, from the floor: x0 z0 x1 z1 height. the back bar, the bar; the booths (back, seat, table, seat, a back they
+    // share, seat, table, seat, back); the snug screen, the jukebox, two tables
+    inside: [[-5.75, -7.75, -5.3, 3.2, 2.2], [-3.4, -7.75, -2.6, 2.6, 1.1],
+      [-1.6, -7.75, -1.48, -5.95, 1.2], [-1.48, -7.75, -1.05, -5.95, 0.45], [-0.85, -7.75, 0.05, -5.95, 0.75], [0.25, -7.75, 0.68, -5.95, 0.45], [0.68, -7.75, 0.92, -5.95, 1.2],
+      [0.92, -7.75, 1.35, -5.95, 0.45], [1.55, -7.75, 2.45, -5.95, 0.75], [2.65, -7.75, 3.08, -5.95, 0.45], [3.08, -7.75, 3.2, -5.95, 1.2],
+      [-1.0, 3.0, 2.6, 3.15, 2.0], [4.4, 7.1, 5.3, 7.75, 1.55], [3.2, -3.6, 4.0, -2.8, 0.75], [3.6, 4.4, 4.4, 5.2, 0.75]],
+    stools: [-6, -4.2, -2.4, -0.6, 1.2], stool: [-2.46, -2.04, 0.21, 0.75], // along the bar (z); x0 x1, half size along z, height
+    // on the terrace, from its floor: the boat (three steps up its hull, from where it goes in to its stern up in the air),
+    // the chimney, two picnic tables, the kegs
+    deck: [[0.0, -6.8, 1.1, -4.4, 1.8], [1.1, -6.8, 2.2, -4.4, 4.2], [2.2, -6.8, 3.35, -4.4, 3.3], [-5.8, 6.2, -4.8, 7.6, 2.2], [1.6, 2.4, 3.4, 4.0, 0.78], [-2.6, 2.4, -0.8, 4.0, 0.78], [-5.6, -7.6, -4.5, -6.3, 1.0]],
+    out: [[7.0, -6.6, 8.6, -4.8, 0.78], [7.0, 4.8, 8.6, 6.6, 0.78], [6.6, -2.1, 7.1, -1.5, 1.0]] }, // out front: two picnic tables, the quiz board
+  hm: { c: [82, 137.5], w: 8, d: 6.2, h: 3.4, t: 0.25, roof: 0.3, par: 0.6, pt: 0.2,
+    door: [-1.6, -0.4, 2.3], win: [-3.4, -2.0], side: [-1.8, 1.8], back: [2.2, 3.2], sill: 1.0, head: 2.5, // the front (south) door x0 x1 top, its window; the west window (z); the back door (north)
+    stair: { x0: 4.6, n: 11, run: 0.32, z0: 3.1, z1: 4.3, land: 0.6 }, gap: [0.6, 1.8], // up the front onto the roof: its foot (x), steps, tread, z, the top's far end; the parapet's gap (x)
+    tower: [-4, -3.1, -0.4, 0.5], top: 7.4, gal: 1.0, rail: 1.05, flight: { z0: 2.8, n: 11, run: 0.318, land: 1.1 }, // the tower (x0 z0 x1 z1), the lookout's floor, the gallery; the flight up the roof (over the gap's x) to its landing
+    room: 2.5, wt: 0.15, post: 0.45, rsill: 1.0, rhead: 2.1, rdoor: [-1.8, -0.7], cap: 0.25, peak: [[1.3, 0, 0.42, 3], [0.58, 0.42, 0.84, 1]], // the lookout: height, walls, corner posts, windows, its door (east, z), roof; the steps under its pyramid (half size, y0, y1, strips)
+    inside: [[-3.75, 0.4, 0.6, 1.0, 1.1], [-1.8, -2.1, -0.2, -0.9, 0.95], [-3.75, -2.85, -3.1, -0.6, 0.8], [3.15, 1.5, 3.75, 2.6, 1.4]] } }; // the counter, the chart table, the radio desk, the filing cabinet
+function pjPub(B) {
+  const y = PJ.y, S = { still: 1 };
+  { const P = PJP.pub, [cx, cz] = P.c, hw = P.w / 2, hd = P.d / 2, t = P.t, H = P.h, rt = H + P.roof, pt = P.pt;
+    const A = (x0, y0, z0, x1, y1, z1, m) => B.add(cx + x0, y + y0, cz + z0, cx + x1, y + y1, cz + z1, m, S);
+    propOf('pj_pub', [cx, y, cz], 0, () => {
+      const fx0 = hw - t, [dw, dh] = P.door, [[a0, a1], [b0, b1]] = P.wins, sl = P.sill, hh = P.head, [k0, k1, kh] = P.back;
+      A(fx0, 0, -hd, hw, H, a0, 'white'); A(fx0, 0, a0, hw, sl, a1, 'white'); A(fx0, hh, a0, hw, H, a1, 'white'); // the front: a window, the door, a window
+      A(fx0, 0, a1, hw, H, -dw, 'white'); A(fx0, dh, -dw, hw, H, dw, 'white'); A(fx0, 0, dw, hw, H, b0, 'white');
+      A(fx0, 0, b0, hw, sl, b1, 'white'); A(fx0, hh, b0, hw, H, b1, 'white'); A(fx0, 0, b1, hw, H, hd, 'white');
+      A(-hw, 0, -hd, -hw + t, H, k0, 'white'); A(-hw, 0, k1, -hw + t, H, hd, 'white'); A(-hw, kh, k0, -hw + t, H, k1, 'white'); // the back door
+      for (const [z0, [w0, w1]] of [[-hd, P.nwin], [hd - t, P.swin]]) { // the sides, a window in each
+        A(-hw + t, 0, z0, w0, H, z0 + t, 'white'); A(w0, 0, z0, w1, sl, z0 + t, 'white'); A(w0, hh, z0, w1, H, z0 + t, 'white'); A(w1, 0, z0, fx0, H, z0 + t, 'white');
+      }
+      for (const [x0, z0, x1, z1, h] of P.inside) A(x0, 0, z0, x1, h, z1, 'wood');
+      const [s0, s1, sz, sh] = P.stool; for (const z of P.stools) A(s0, 0, z - sz, s1, sh, z + sz, 'wood');
+      // the roof is the terrace's floor; its parapet, open where the stair comes up on the south side
+      const St = P.stair, top = rt + P.par, lx = St.x0 - St.n * St.run, r = rt / St.n; // (lx: the stair's top end)
+      A(-hw, H, -hd, hw, rt, hd, 'roofg');
+      A(hw - pt, rt, -hd, hw, top, hd, 'white'); A(-hw, rt, -hd, -hw + pt, top, hd, 'white'); A(-hw + pt, rt, -hd, hw - pt, top, -hd + pt, 'white');
+      A(-hw + pt, rt, hd - pt, St.land, top, hd, 'white'); A(lx, rt, hd - pt, hw - pt, top, hd, 'white');
+      for (let i = 0; i < St.n; i++) A(St.x0 - (i + 1) * St.run, 0, St.z0, St.x0 - i * St.run, (i + 1) * r, St.z1, 'white'); // the stair: solid steps
+      A(St.land, H, St.z0, lx, rt, St.z1, 'white'); // its landing, level with the terrace
+      for (const [x0, z0, x1, z1, h] of P.deck) A(x0, rt, z0, x1, rt + h, z1, 'wood');
+      for (const [x0, z0, x1, z1, h] of P.out) A(x0, 0, z0, x1, h, z1, 'wood');
+    });
+  }
+  { const P = PJP.hm, [cx, cz] = P.c, hw = P.w / 2, hd = P.d / 2, t = P.t, H = P.h, rt = H + P.roof, pt = P.pt;
+    const A = (x0, y0, z0, x1, y1, z1, m) => B.add(cx + x0, y + y0, cz + z0, cx + x1, y + y1, cz + z1, m, S);
+    propOf('pj_harbour', [cx, y, cz], 0, () => {
+      const [d0, d1, dh] = P.door, [w0, w1] = P.win, [s0, s1] = P.side, [k0, k1] = P.back, sl = P.sill, hh = P.head;
+      A(-hw, 0, hd - t, w0, H, hd, 'white'); A(w0, 0, hd - t, w1, sl, hd, 'white'); A(w0, hh, hd - t, w1, H, hd, 'white'); // the front (the quay): a window, the door
+      A(w1, 0, hd - t, d0, H, hd, 'white'); A(d0, dh, hd - t, d1, H, hd, 'white'); A(d1, 0, hd - t, hw, H, hd, 'white');
+      A(-hw, 0, -hd, k0, H, -hd + t, 'white'); A(k0, dh, -hd, k1, H, -hd + t, 'white'); A(k1, 0, -hd, hw, H, -hd + t, 'white'); // the back door (the alley)
+      A(-hw, 0, -hd + t, -hw + t, H, s0, 'white'); A(-hw, 0, s0, -hw + t, sl, s1, 'white'); A(-hw, hh, s0, -hw + t, H, s1, 'white'); A(-hw, 0, s1, -hw + t, H, hd - t, 'white'); // west: the big window
+      A(hw - t, 0, -hd + t, hw, H, hd - t, 'white');
+      for (const [x0, z0, x1, z1, h] of P.inside) A(x0, 0, z0, x1, h, z1, 'wood');
+      // the roof, its parapet (open over the front stair's top), the tower on it
+      const [g0, g1] = P.gap, [tx0, tz0, tx1, tz1] = P.tower, pp = rt + P.par;
+      A(-hw, H, -hd, hw, rt, hd, 'roofg');
+      A(-hw, rt, hd - pt, g0, pp, hd, 'white'); A(g1, rt, hd - pt, hw, pp, hd, 'white'); A(tx1, rt, -hd, hw, pp, -hd + pt, 'white');
+      A(-hw, rt, tz1, -hw + pt, pp, hd - pt, 'white'); A(hw - pt, rt, -hd + pt, hw, pp, hd - pt, 'white');
+      A(tx0, rt, tz0, tx1, P.top, tz1, 'white');
+      const St = P.stair, r = rt / St.n; // the stair up the front: solid steps, the top one a landing by the parapet's gap
+      for (let i = 0; i < St.n; i++) A(i === St.n - 1 ? St.land : St.x0 - (i + 1) * St.run, 0, St.z0, St.x0 - i * St.run, (i + 1) * r, St.z1, 'white');
+      const F = P.flight, T = P.top, fr = (T - rt) / F.n, fz = F.z0 - F.n * F.run; // the flight up the roof to the gallery (fz: its top edge)
+      for (let i = 0; i < F.n; i++) A(g0, rt, F.z0 - (i + 1) * F.run, g1, rt + (i + 1) * fr, F.z0 - i * F.run, 'white');
+      // the gallery round the lookout, the landing at the flight's top, the railing (open onto the landing)
+      const gl = P.gal, gx0 = tx0 - gl, gx1 = tx1 + gl, gz0 = tz0 - gl, gz1 = tz1 + gl, R = 0.06, rh = T + P.rail, lz = fz - F.land;
+      A(gx0, T - 0.15, gz0, gx1, T, tz0, 'metal'); A(gx0, T - 0.15, tz1, gx1, T, gz1, 'metal'); A(gx0, T - 0.15, tz0, tx0, T, tz1, 'metal'); A(tx1, T - 0.15, tz0, gx1, T, tz1, 'metal');
+      A(g0, T - 0.15, lz, g1, T, fz, 'metal');
+      A(gx0, T, gz0, gx1, rh, gz0 + R, 'metal'); A(gx0, T, gz1 - R, gx1, rh, gz1, 'metal'); A(gx0, T, gz0 + R, gx0 + R, rh, gz1 - R, 'metal');
+      A(gx1 - R, T, gz0 + R, gx1, rh, lz, 'metal'); A(gx1 - R, T, fz, gx1, rh, gz1 - R, 'metal');
+      A(g0, T, lz, g1, rh, lz + R, 'metal'); A(g1 - R, T, lz + R, g1, rh, fz, 'metal');
+      // the lookout: open windows between corner posts on three sides, the door on the east, its roof
+      const wt = P.wt, po = P.post, ws = T + P.rsill, wh = T + P.rhead, rtop = T + P.room, [r0, r1] = P.rdoor;
+      for (const [z0, z1] of [[tz0, tz0 + wt], [tz1 - wt, tz1]]) { A(tx0, T, z0, tx1, ws, z1, 'white'); A(tx0, wh, z0, tx1, rtop, z1, 'white'); A(tx0, ws, z0, tx0 + po, wh, z1, 'white'); A(tx1 - po, ws, z0, tx1, wh, z1, 'white'); }
+      A(tx0, T, tz0 + wt, tx0 + wt, ws, tz1 - wt, 'white'); A(tx0, wh, tz0 + wt, tx0 + wt, rtop, tz1 - wt, 'white'); A(tx0, ws, tz0 + wt, tx0 + wt, wh, tz0 + po, 'white'); A(tx0, ws, tz1 - po, tx0 + wt, wh, tz1 - wt, 'white');
+      A(tx1 - wt, T, tz0 + wt, tx1, rtop, r0, 'white'); A(tx1 - wt, T, r1, tx1, rtop, tz1 - wt, 'white'); A(tx1 - wt, wh, r0, tx1, rtop, r1, 'white');
+      // its roof in strips under 1.2 m across (the royale puts no loot up there), stepped under the pyramid on it (stand on it, not in it)
+      const cx0 = tx0 - 0.3, cw = (tx1 - tx0 + 0.6) / 4, mx = (tx0 + tx1) / 2, mz = (tz0 + tz1) / 2, ct = rtop + P.cap;
+      for (let i = 0; i < 4; i++) A(cx0 + i * cw, rtop, tz0 - 0.3, cx0 + (i + 1) * cw, ct, tz1 + 0.3, 'roofg');
+      for (const [hs, y0, y1, n] of P.peak) for (let i = 0; i < n; i++) A(mx - hs + i * 2 * hs / n, ct + y0, mz - hs, mx - hs + (i + 1) * 2 * hs / n, ct + y1, mz + hs, 'roofg');
+    });
+  }
+}
+
 function battleIsland() {
   const B = builder(), D = builder(), W = B.local(0, 0, 0), r = rng(4141), rv = rng(4242);
   const [X0, Z0, X1, Z1] = REGION, G = grid();
@@ -388,7 +487,7 @@ function battleIsland() {
   // ---- the POIs' landmarks (each one Blender model over its own boxes)
   wreck(B); // Return to Sender (shared/bi_wreck.js)
   deadAir(B, ...PLAN.pois.find((p) => p.id === 'radio').c);
-  portJankton(B); pjStreet(B); pjPark(B);
+  portJankton(B); pjStreet(B); pjPark(B); pjPub(B);
   scrapMart(B); // Scrap Mart (shared/bi_scrapmart.js)
   // ---- the sea all round (the island's shelf shows through it), on out to the horizon
   D.add(-900, SEA - 0.1, -900, 900, SEA, 900, 'bisea'); // ('bisea': Islands' sea, clearer, its own look: public/js/liquidmats.js)
