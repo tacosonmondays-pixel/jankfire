@@ -13,6 +13,7 @@ import { LOBBY } from '/shared/lobby.js';
 import { eventGame } from '/shared/vote.js';
 import { BGN, BGN_NAMES } from '/shared/bgn.js'; // board game night's names and round counts
 import { BOT_DIFF } from '/shared/weapons.js';
+import { autoBots } from '/shared/autobots.js'; // offline: the bot count is picked for you
 import { modeThumb } from './modeart.js';
 import { fleshFrame } from './flesh.js';
 import { resizePreview } from './preview.js';
@@ -87,8 +88,7 @@ function stateOf(k) {
   if (pick[key]) return pick[key];
   const sv = S()[key] && typeof S()[key] === 'object' ? S()[key] : {}, games = gamesOf(k), ev = eventGame();
   const st = { fill: sv.fill !== false, who: ['all', 'bots', 'coop'].includes(sv.who) ? sv.who : 'all',
-    game: games.includes(sv.game) ? sv.game : k === 'qp' && games.includes(ev) ? ev : games[0], map: sv.map, botsOn: sv.botsOn !== false,
-    bots: Number.isFinite(sv.bots) ? Math.max(1, Math.min(12, Math.round(sv.bots))) : 5,
+    game: games.includes(sv.game) ? sv.game : k === 'qp' && games.includes(ev) ? ev : games[0], map: sv.map, // (old saves' botsOn / bots: ignored, the count is automatic now)
     rounds: BGN.roundOpts.includes(sv.rounds) ? sv.rounds : BGN.rounds, diff: Object.hasOwn(BOT_DIFF, sv.diff) ? sv.diff : 'normal' }; // (board game night: its length and how good the bots are) // (no difficulty or hipfire here, the owner's call: an offline match plays the room's defaults)
   if (!mapsOf(st.game).includes(st.map)) st.map = mapsOf(st.game)[0];
   return (pick[key] = st);
@@ -204,17 +204,12 @@ function render() {
     const lv = row('in there now', el('em', null, '·')); lv.classList.add('hub-live'); R.append(lv); liveRow();
   } else {
     if (k === 'qp') L.append(row('mode', select(gamesOf(k), st.game, (v) => { st.game = v; if (!mapsOf(v).includes(st.map)) st.map = mapsOf(v)[0]; remember(k); }, (g) => GAMES[g].name)));
-    const own = GAMES[st.game] && (GAMES[st.game].royale || GAMES[st.game].zombies); // (a royale brings its crowd, zombies its horde)
-    const team = !own && GAMES[st.game] && GAMES[st.game].teams; // (a team mode with nobody on the other side is no match: bots stay on)
-    if (own) L.append(row('bots', el('em', null, GAMES[st.game].zombies ? 'THE HORDE' : 'A CROWD OF THEM')));
-    else if (!team) L.append(row('bots', toggle(st.botsOn, (v) => { st.botsOn = v; remember(k); })));
-    if ((st.botsOn || team) && !own) {
-      const r = el('input'); r.type = 'range'; r.min = 1; r.max = 12; r.step = 1; r.value = st.bots;
-      const n = el('em', null, String(st.bots));
-      r.addEventListener('input', () => { st.bots = Number(r.value); n.textContent = r.value; });
-      r.addEventListener('change', () => remember(k));
-      const w = el('span', 'hub-range'); w.append(r, n); L.append(row('bot count', w));
-    }
+    // bots: automatic (the owner: "it should be automatic unless youre doing a custom match"). picked for the mode + map
+    // (shared/autobots.js; the server picks the same number, the client sends none). CLASSIC -> CUSTOM still sets your own
+    const nb = autoBots(st.game, st.map, GAMES, MAPS), g = GAMES[st.game] || {};
+    const auto = nb != null ? (g.teams ? `${nb} · ${(nb + 1) / 2}V${(nb + 1) / 2} WITH YOU` : `${nb} · PICKED FOR THIS MAP`)
+      : g.zombies ? 'THE HORDE' : st.game === 'bomb' ? 'ENOUGH FOR 5V5' : st.game === 'island' ? 'FULL SQUADS' : g.royale ? 'A CROWD OF THEM' : 'AUTO';
+    L.append(row('bots', el('em', 'hub-auto', auto), nb != null ? `automatic: more bots on bigger maps${g.teams ? ', always even teams' : ''}. want a different number? CLASSIC, then CUSTOM` : ''));
     R.append(el('span', 'hub-tag', 'MAP'));
     const maps = mapsOf(st.game);
     if (!maps.includes(st.map)) st.map = maps[0];
@@ -260,9 +255,7 @@ function plan() {
   }
   if (H.board) return ['bots', { priv: true, game: 'bgn', map: 'crate', bots: 3, rounds: st.rounds, diff: st.diff, hub: k }]; // board game night: your own table (server/bgn.js)
   const game = k === 'qp' ? st.game : H.games[0], maps = mapsOf(game), map = maps.includes(st.map) ? st.map : maps[0];
-  const own = GAMES[game] && (GAMES[game].royale || GAMES[game].zombies);
-  const team = !own && GAMES[game] && GAMES[game].teams;
-  return ['bots', { priv: true, game, map, bots: own ? 5 : st.botsOn || team ? st.bots : 0, hub: k === 'qp' ? undefined : k }]; // hub: a single-mode pick comes back to this lobby after (server/hubback.js)
+  return ['bots', { priv: true, game, map, hub: k === 'qp' ? undefined : k }]; // no bots: the server picks them for the mode + map (shared/autobots.js). hub: a single-mode pick comes back to this lobby after (server/hubback.js)
 }
 
 // ---------------------------------------------------------------- the party

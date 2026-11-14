@@ -40,6 +40,7 @@ import { SECRETS, SECRET, canReach, secretsOff, loreOf, catsOf } from '../shared
 import { installRoyale } from './royale.js'; // Jank Royale (battle royale)
 import { teamPlan } from './partyteams.js'; // parties stay on one side
 import { ticketRoom } from './party.js'; // party tickets (roomFor)
+import { autoBots } from '../shared/autobots.js'; // offline hub matches: the bot count picked for the mode + map
 import { HUB_BACK, hubBackOpen, hubBackPick, hubBackDue, hubBackJoin, hubBackGame } from './hubback.js'; // offline single-mode matches go back to their lobby
 import { installIsland } from './island.js'; // BATTLE ISLAND: squads, down not dead, revives (on top of the royale)
 import { installIsleMeter } from './islemeter.js'; // BATTLE ISLAND: hero picks, the mech meter, energy cells, the zone schedule
@@ -483,7 +484,8 @@ class Room {
       if (!this.editMap && has(MAPS, c.map) && MAP_ORDER.includes(c.map)) this.cfg.map = c.map; // (an edited map's room keeps it)
       if (has(HIPFIRE, c.hip)) this.cfg.hip = c.hip;
       if (has(BOT_DIFF, c.diff)) this.cfg.diff = c.diff;
-      if (c.bots != null) this.cfg.bots = clampInt(c.bots, 0, 12);
+      if (Number.isFinite(c.bots)) this.cfg.bots = clampInt(c.bots, 0, 12);
+      else if (this.priv) { const a = autoBots(has(GAMES, c.game) ? c.game : this.game, this.cfg.map, GAMES, MAPS); if (a != null) this.cfg.bots = a; } // the hub's OFFLINE pick sends no count: picked for the mode + map (shared/autobots.js)
       if (has(HR.every, c.hr)) this.cfg.hr = c.hr;
     }
     const name = m._name || clean(m.name, 16) || pick(DEFAULT_NAMES) + nextId;
