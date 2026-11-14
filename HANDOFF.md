@@ -182,3 +182,4 @@ Add these as one entry when the island goes live (coordinator, 2026-11-13):
     "battle island has a new spot: SCRAP MART. a candy-coloured mech hangar with the road running straight through it, a catwalk, a parts office, a yard crane, a car crusher and a test range. it's a hot drop. bring friends.",
     "battle island has a new spot: RETURN TO SENDER. a cargo ship ran aground on the beach and spilled its containers all over the sand. climb the crane, loot the wheelhouse, hide in the lifeboat. signed for by nobody.",
     "PORT JANKTON OPENS FOR BUSINESS: Bait & Tackle (giant marlin on the roof, worms, regrets) and Oh My Cod! (giant cone of chips, a gull who stole one) line the main street. walk in the front, out the back.",  (PR #520, once merged)
+    "port jankton grew a park: PETAL PARK has cherry trees, a fountain you can wade in and a tea kiosk with a giant teacup on the roof. no climbing the trees. (you will.)",  (PR #522)
