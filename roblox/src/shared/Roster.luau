@@ -30,7 +30,7 @@ add({ id = "redline", slot = "primary", name = "Redline", color = "ff3b3b", live
 add({ id = "shredder", slot = "primary", name = "Shredder", color = "ffb31a", live = true, gimmick = "hold to suck them in. whoever reaches the teeth gets shredded. overheats after 4 s.",
 	desc = "An industrial vacuum-shredder. Hold to suck people in, harder the closer they get. Whoever reaches the intake gets shredded and spat out the chute. Overheats after 4 s.",
 	stats = { { label = "DAMAGE", text = "150/s", bar = 1 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "14 m", bar = 0.17 }, { label = "MAG", text = "4 s of heat", bar = 0.45 } } })
-add({ id = "ar", slot = "primary", name = "Assault Rifle", color = "9fd36b", live = false, gimmick = "",
+add({ id = "ar", slot = "primary", name = "Assault Rifle", color = "9fd36b", live = true, gimmick = "no gimmick. full auto, steady, a laser when you aim. the honest gun.",
 	desc = "Full auto, steady, accurate when you aim down sights.",
 	stats = { { label = "DAMAGE", text = "11", bar = 0.09 }, { label = "FIRE RATE", text = "10/s", bar = 0.45 }, { label = "RANGE", text = "300 m", bar = 0.77 }, { label = "MAG", text = "30", bar = 0.5 } } })
 add({ id = "smg", slot = "primary", name = "SMG", color = "6bd3c8", live = false, gimmick = "",

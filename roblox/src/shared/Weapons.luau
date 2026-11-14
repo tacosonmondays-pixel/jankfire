@@ -13,6 +13,16 @@ export type Weapon = {
 	cd: number?, cone: number?, kb: number?, kbUp: number?, grow: number?, growMax: number?, hitT: number?,
 	recoilVM: { back: number, up: number, roll: number, side: number, punch: number }?,
 	vm: { p: Vector3, r: Vector3, s: number }?, -- viewmodel rest pose (camera space, studs / radians)
+	-- how a gun looks and sounds when it fires (all optional). the gun code in Arsenal reads these, so a plain gun is
+	-- one row here + a model + a sound, with no code of its own. big = the big muzzle flash, brass = a casing a shot,
+	-- spray = the pellets are the tracer (the marbles), hole = false: chips, not holes. snd = the shot's Sound in
+	-- JankfireSounds; tacho = the Redline's three renders by HP instead
+	fx: { big: boolean?, brass: boolean?, spray: boolean?, hole: boolean?, scale: number?, shake: number?, splash: boolean? }?,
+	snd: string?, tacho: boolean?,
+	-- the model: its Blender file's bounds (tools/roblox/export_weapons.py prints them) and the spots the hands and
+	-- effects use, in the file's frame (metres, -Z forward). WeaponModels builds a plain stand-in from these until the
+	-- Blender model (ReplicatedStorage.JankfireWeapons.w_<id>) is there
+	mdl: { lo: Vector3, hi: Vector3, muzzle: Vector3, sight: Vector3?, port: Vector3?, grip: Vector3, fore: Vector3 }?,
 }
 
 local function rgb(hex: number): Color3
@@ -26,6 +36,7 @@ local W: { [string]: Weapon } = {
 		auto = true, rate = 6, rateMax = 22, mag = 40, reload = 1.8, pellets = 1, dmg = 10, head = 1.8, spread = 0.018,
 		bloom = 0.0025, maxBloom = 0.06, recoil = 0.3 * S, kick = 0.006, range = 250 * S,
 		ads = { zoom = 1.4, spread = 0.35 }, tracer = rgb(0xfff0a0),
+		fx = { brass = true, shake = 0.06 }, tacho = true,
 		recoilVM = { back = 0.7, up = 2.4, roll = 1.6, side = 0.2, punch = 0.008 },
 		vm = { p = Vector3.new(0.2, -0.2, -0.37) * S, r = Vector3.new(0, 0.04, 0), s = 0.72 },
 	},
@@ -34,8 +45,26 @@ local W: { [string]: Weapon } = {
 		desc = "a hundred marbles a shot. point blank it's a one-shot, and they stay on the floor to slip on.",
 		auto = false, rate = 1 / 0.9, mag = 2, reload = 1.9, pellets = 100, dmg = 1.15, head = 1.3, spread = 0.27,
 		recoil = 4 * S, kick = 0.07, range = 30 * S, marbles = true, ads = { zoom = 1.15, spread = 0.8 },
+		fx = { big = true, spray = true, hole = false, scale = 0.7, shake = 0.35, splash = false }, snd = "gun_marbles",
 		recoilVM = { back = 2.0, up = 8, roll = 2.6, side = 0.35, punch = 0.04 },
 		vm = { p = Vector3.new(0.18, -0.19, -0.34) * S, r = Vector3.new(0, 0.05, 0), s = 0.8 },
+	},
+	-- ---- batch 3, the plain guns (WEAPONS.md): data only. stats from shared/weapons.js, vm + recoilVM from
+	-- public/js/weapons.js (VM, RECOIL), mdl from the export report and the web model's spots
+	ar = {
+		id = "ar", name = "Assault Rifle", slot = "primary", kind = "hitscan", color = rgb(0x9fd36b),
+		desc = "full auto, steady, a laser when you aim. the honest gun. somebody has to be.",
+		auto = true, rate = 10, mag = 30, reload = 1.7, pellets = 1, dmg = 11, head = 2, spread = 0.01,
+		bloom = 0.004, maxBloom = 0.04, recoil = 0.4 * S, kick = 0.008, range = 300 * S,
+		ads = { zoom = 1.5, spread = 0.2 }, tracer = rgb(0xfff0a0),
+		fx = { brass = true, shake = 0.06 }, snd = "gun_ar",
+		recoilVM = { back = 0.9, up = 3, roll = 1.5, side = 0.15, punch = 0.012 },
+		vm = { p = Vector3.new(0.2, -0.2, -0.38) * S, r = Vector3.new(0, 0.04, 0), s = 0.7 },
+		mdl = {
+			lo = Vector3.new(-0.04, -0.3944, -0.7215), hi = Vector3.new(0.0437, 0.1228, 0.4689),
+			muzzle = Vector3.new(0, 0.015, -0.72), sight = Vector3.new(0, 0.114, 0.234), port = Vector3.new(0.036, 0.03, -0.05),
+			grip = Vector3.new(0, -0.1, 0.08), fore = Vector3.new(0, -0.04, -0.28),
+		},
 	},
 	katana = {
 		id = "katana", name = "Katana", slot = "melee", kind = "melee", color = rgb(0xe8e8f0),

@@ -48,5 +48,11 @@ function Sfx.redline(k: number, at: Vector3?)
 	Sfx.play(name, at, 1, 1 + (k % 0.4) * 0.1)
 end
 
+-- a gun's shot, from its row in Weapons: the Redline's renders by HP (tacho), or its own sound (snd). k = the
+-- Redline's needle (0..1), at = out in the world (someone else's gun) or nil for yours
+function Sfx.gun(w: any, k: number, at: Vector3?)
+	if w.tacho then Sfx.redline(k, at) elseif type(w.snd) == "string" then Sfx.play(w.snd, at) end
+end
+
 local _ = holder
 return Sfx

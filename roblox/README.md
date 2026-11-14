@@ -28,6 +28,29 @@
 > **Not merged yet:** `claude/f-roblox-core` (bots, Deathmatch with the map vote) branched from step 2 like this did.
 > The plan and the order of work: `docs/PORT-PLAN.md`. The specs: `docs/WEAPONS.md`, `docs/MODES.md` (on `main`).
 
+## Adding a plain gun (batch 3 onwards)
+
+A gun with no gimmick needs no code. The Assault Rifle was added exactly like this:
+
+1. **Row:** add it to `src/shared/Weapons.luau` (in Studio: ReplicatedStorage.Jankfire.Weapons). Stats from
+   `shared/weapons.js`, `vm` and `recoilVM` from `public/js/weapons.js` (VM, RECOIL), `fx` (flash, brass, tracer),
+   `snd`, and `mdl` (the model file's bounds + muzzle / sight / port / grip / fore spots, metres).
+2. **Model:** `blender -b --factory-startup -P tools/roblox/export_weapons.py -- roblox/assets/weapons public/models/w_<id>.glb`.
+   It prints the bounds for `mdl` and writes every piece's colour to `export_report.json`. Upload the .glb (Open
+   Cloud, Model), insert it, colour each piece from the report (uploads arrive grey), turn it 180 degrees about Y
+   (uploads arrive backwards), name it `w_<id>` and put it in ReplicatedStorage.JankfireWeapons.
+3. **Sound:** `node tools/roblox/render_guns.mjs` writes `roblox/assets/sounds/gun_<id>.wav` (13 guns are already
+   rendered). Upload it (Open Cloud, Audio) and add a Sound named `gun_<id>` to ReplicatedStorage.JankfireSounds.
+4. **Reload:** `node tools/roblox/reloads.mjs` regenerates `Reloads.luau` from the web game. A gun with no clip of its
+   own borrows the rifle's, stretched to its reload time.
+5. **Roster:** set `live = true` on its line in `src/shared/Roster.luau` so the loadout screen offers it.
+6. Play test in the training hall, then export and commit.
+
+The server needs nothing: `Rules.luau` and `Combat.server.luau` already check any hitscan gun from its row (held,
+ammo, fire rate, range, line of sight, and that the shot was really aimed at the target along its last 0.6 s).
+
+![the Assault Rifle in the training hall](docs/step3-ar-training.jpg)
+
 ## Steps 1 and 2 (how it started)
 
 

@@ -222,5 +222,232 @@
    0.1306
   ],
   "bytes": 338840
+ },
+ "w_ar": {
+  "pieces": [
+   {
+    "name": "ar_body_wzA__ar_rubber",
+    "tris": 132,
+    "look": {
+     "color": "1c1c1e",
+     "metal": 0.0,
+     "rough": 0.85,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzB__ar_gunmetal",
+    "tris": 736,
+    "look": {
+     "color": "2c3036",
+     "metal": 0.6,
+     "rough": 0.34,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_white",
+    "tris": 336,
+    "look": {
+     "color": "ffffff",
+     "metal": 0.0,
+     "rough": 0.2,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "charge_wzB__ar_dark",
+    "tris": 216,
+    "look": {
+     "color": "141519",
+     "metal": 0.5,
+     "rough": 0.45,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "mag_wzB__ar_copper",
+    "tris": 324,
+    "look": {
+     "color": "c8683a",
+     "metal": 1.0,
+     "rough": 0.3,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzA__ar_olive",
+    "tris": 974,
+    "look": {
+     "color": "5c723f",
+     "metal": 0.0,
+     "rough": 0.42,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzA__ar_gunmetal",
+    "tris": 1638,
+    "look": {
+     "color": "2c3036",
+     "metal": 0.6,
+     "rough": 0.34,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzA__ar_grip",
+    "tris": 364,
+    "look": {
+     "color": "506337",
+     "metal": 0.0,
+     "rough": 0.6,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzB__ar_dark",
+    "tris": 3440,
+    "look": {
+     "color": "141519",
+     "metal": 0.5,
+     "rough": 0.45,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_black",
+    "tris": 198,
+    "look": {
+     "color": "050505",
+     "metal": 0.0,
+     "rough": 0.2,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_dot",
+    "tris": 108,
+    "look": {
+     "color": "7dff4f",
+     "metal": 0.0,
+     "rough": 0.4,
+     "glow": 4.0,
+     "alpha": 1.0,
+     "glowColor": "7dff4f"
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_tape",
+    "tris": 52,
+    "look": {
+     "color": "897317",
+     "metal": 0.0,
+     "rough": 0.5,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_neon",
+    "tris": 216,
+    "look": {
+     "color": "3ff4ff",
+     "metal": 0.0,
+     "rough": 0.3,
+     "glow": 3.0,
+     "alpha": 1.0,
+     "glowColor": "3ff4ff"
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_sticker",
+    "tris": 12,
+    "look": {
+     "color": "d08c50",
+     "metal": 0.0,
+     "rough": 0.35,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_brass",
+    "tris": 32,
+    "look": {
+     "color": "e0ad3c",
+     "metal": 1.0,
+     "rough": 0.25,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "ar_body_wzN__ar_charm",
+    "tris": 396,
+    "look": {
+     "color": "ff4fd8",
+     "metal": 0.0,
+     "rough": 0.12,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "mag_wzB__ar_mag",
+    "tris": 180,
+    "look": {
+     "color": "ff3fae",
+     "metal": 0.0,
+     "rough": 0.12,
+     "glow": 0.0,
+     "alpha": 0.62
+    }
+   },
+   {
+    "name": "mag_wzB__ar_magbase",
+    "tris": 216,
+    "look": {
+     "color": "d81f8c",
+     "metal": 0.0,
+     "rough": 0.25,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   },
+   {
+    "name": "mag_wzB__ar_brass",
+    "tris": 324,
+    "look": {
+     "color": "e0ad3c",
+     "metal": 1.0,
+     "rough": 0.25,
+     "glow": 0.0,
+     "alpha": 1.0
+    }
+   }
+  ],
+  "tris": 9894,
+  "lo": [
+   -0.04,
+   -0.3944,
+   -0.7215
+  ],
+  "hi": [
+   0.0437,
+   0.1228,
+   0.4689
+  ],
+  "bytes": 432596
  }
 }

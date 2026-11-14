@@ -1,0 +1,93 @@
+[
+ {
+  "name": "gun_ar",
+  "what": "Assault Rifle shot",
+  "vol": 0.6,
+  "secs": 0.2,
+  "peak": 0.67
+ },
+ {
+  "name": "gun_smg",
+  "what": "SMG shot",
+  "vol": 0.55,
+  "secs": 0.15,
+  "peak": 0.47
+ },
+ {
+  "name": "gun_shotgun",
+  "what": "Shotgun shot (boom + the pump after)",
+  "vol": 0.8,
+  "secs": 0.55,
+  "peak": 0.98
+ },
+ {
+  "name": "gun_minigun",
+  "what": "Minigun shot",
+  "vol": 0.5,
+  "secs": 0.11,
+  "peak": 0.27
+ },
+ {
+  "name": "gun_revolver",
+  "what": "Revolver shot",
+  "vol": 0.75,
+  "secs": 0.42,
+  "peak": 0.86
+ },
+ {
+  "name": "gun_burst",
+  "what": "Hat Trick shot",
+  "vol": 0.6,
+  "secs": 0.16,
+  "peak": 0.61
+ },
+ {
+  "name": "gun_lmg",
+  "what": "Belt Sander shot (cold barrel)",
+  "vol": 0.6,
+  "secs": 0.18,
+  "peak": 0.39
+ },
+ {
+  "name": "gun_dmr",
+  "what": "Second Opinion shot",
+  "vol": 0.75,
+  "secs": 0.5,
+  "peak": 0.98
+ },
+ {
+  "name": "gun_lever",
+  "what": "Yeehaw shot",
+  "vol": 0.75,
+  "secs": 0.4,
+  "peak": 0.98
+ },
+ {
+  "name": "gun_autoshot",
+  "what": "Lawn Mower shot",
+  "vol": 0.75,
+  "secs": 0.38,
+  "peak": 0.95
+ },
+ {
+  "name": "gun_pistol",
+  "what": "Plan B shot",
+  "vol": 0.65,
+  "secs": 0.24,
+  "peak": 0.74
+ },
+ {
+  "name": "gun_akimbo",
+  "what": "Lefty & Righty shot",
+  "vol": 0.5,
+  "secs": 0.13,
+  "peak": 0.56
+ },
+ {
+  "name": "gun_sawnoff",
+  "what": "Half a Shotgun shot",
+  "vol": 0.85,
+  "secs": 0.68,
+  "peak": 0.98
+ }
+]

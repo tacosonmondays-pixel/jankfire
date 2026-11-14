@@ -10,6 +10,10 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Anims = require(Shared:WaitForChild("Anims")) :: any
 local Fx = require(script.Parent:WaitForChild("Fx"))
+-- the plain guns' reloads (Reloads.luau, generated from the web game's reloads.js) join the hand-keyed clips
+for name, a in require(Shared:WaitForChild("Reloads")) :: any do
+	if not Anims[name] then Anims[name] = a end
+end
 
 local S = Weapons.S
 local VM = {}
@@ -19,7 +23,7 @@ VM.model = nil :: Model?
 VM.hitStop = 0
 
 local camera = workspace.CurrentCamera
-local clip: { name: string, t: number, fired: { [number]: boolean } }? = nil
+local clip: { name: string, t: number, fired: { [number]: boolean }, rate: number? }? = nil
 local swap = 0
 local rec = { p = Vector3.zero, pv = Vector3.zero, r = Vector3.zero, rv = Vector3.zero }
 local punch = { x = Vector3.zero, v = Vector3.zero }
@@ -73,6 +77,15 @@ function VM.play(name: string)
 	if not Anims[name] then return end
 	dropProp()
 	clip = { name = name, t = 0, fired = {} }
+end
+-- a gun's reload: its own clip, or (a plain gun with none yet) the Assault Rifle's, played faster or slower so it
+-- ends when the reload does
+function VM.reload(wid: string, secs: number)
+	local name = if Anims["reload_" .. wid] then "reload_" .. wid else "reload_ar"
+	local a = Anims[name]
+	if not a then return end
+	dropProp()
+	clip = { name = name, t = 0, fired = {}, rate = if secs > 0 then a.dur / secs else 1 }
 end
 function VM.playing(): string? return clip and clip.name end
 function VM.clipT(): number? return clip and clip.t end
@@ -195,7 +208,7 @@ function VM.update(dt: number, c: Ctx)
 	local adt = dt
 	if VM.hitStop > 0 then VM.hitStop -= dt; adt = 0 end
 	if clip then
-		clip.t += adt
+		clip.t += adt * (clip.rate or 1)
 		local a = Anims[clip.name]
 		for i, ev in a.events do
 			if not clip.fired[i] and clip.t >= ev[1] then
@@ -321,6 +334,8 @@ function VM.adsPos(wid: string): Vector3?
 	if not w or not w.vm or not w.ads then return nil end
 	local s = w.vm.s
 	if wid == "redline" then return Vector3.new(0, -0.0737 * s, -0.17 - 0.1058 * s) * S end
+	local sight = w.mdl and w.mdl.sight -- a gun with sights: the same rule, from its row
+	if sight then return Vector3.new(0, -sight.Y * s, -0.17 - sight.Z * s) * S end
 	return Vector3.new(0.06, math.min(-0.1, -0.03 - 0.1479 * s), -0.3) * S -- no sights: under and right of the middle
 end
 

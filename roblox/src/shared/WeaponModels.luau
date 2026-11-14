@@ -5,6 +5,7 @@
 -- stretches with kills). when the Blender model has been imported into ReplicatedStorage.JankfireWeapons (w_redline,
 -- w_marbles, w_katana: see roblox/README.md), its pieces are fitted onto the same frame and the boxes hide.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Weapons = require(script.Parent:WaitForChild("Weapons"))
 
 local WeaponModels = {}
 
@@ -137,6 +138,26 @@ BUILD.katana = function(b)
 	spot(b, "Fore", Vector3.new(0, 0, 0.085))
 end
 
+-- a plain gun with no hand-written code model: a stand-in from its row in Weapons (mdl = the Blender file's bounds and
+-- the spots, metres): a receiver, a barrel to the muzzle, a grip, a stripe in the weapon's colour. it only shows
+-- until the Blender model (JankfireWeapons.w_<id>) is imported, and it carries the same Muzzle / Grip / Fore /
+-- Sight / Port spots the hands and effects use
+local function buildPlain(b: Builder, mdl: any, color: Color3)
+	local lo, hi = mdl.lo :: Vector3, mdl.hi :: Vector3
+	local muzzle, grip = mdl.muzzle :: Vector3, mdl.grip :: Vector3
+	local w = math.max(hi.X - lo.X, 0.04)
+	local back = hi.Z
+	local mid = back + (muzzle.Z - back) * 0.55 -- the receiver runs from the butt to here, the barrel from here on
+	bx(b, "receiver", w * 0.8, 0.1, back - mid, 0x24262d, 0, muzzle.Y - 0.01, (back + mid) / 2)
+	cylZ(b, "barrel", 0.018, mid - muzzle.Z, 0x111111, 0, muzzle.Y, (mid + muzzle.Z) / 2)
+	bx(b, "grip", w * 0.55, 0.13, 0.05, 0x151515, 0, grip.Y - 0.02, grip.Z, -0.3)
+	local stripe = bx(b, "stripe", w * 0.82, 0.014, (back - mid) * 0.6, 0, 0, muzzle.Y + 0.045, (back + mid) / 2)
+	stripe.Color = color
+	spot(b, "Muzzle", muzzle); spot(b, "Grip", grip); spot(b, "Fore", mdl.fore)
+	if mdl.sight then spot(b, "Sight", mdl.sight) end
+	if mdl.port then spot(b, "Port", mdl.port) end
+end
+
 -- fit an imported Blender model (the importer's own scale and spot) onto the code model's frame
 local function fitImported(b: Builder, tmpl: Model, file: { lo: Vector3, hi: Vector3 })
 	local tcf, tsize = tmpl:GetBoundingBox()
@@ -171,7 +192,9 @@ end
 -- build a weapon. k = studs per web metre (viewmodel: 3 x its VM scale, third person: 3 x 1.5)
 function WeaponModels.build(id: string, k: number): Model?
 	local fn = BUILD[id]
-	if not fn then return nil end
+	local row = (Weapons.list :: any)[id]
+	local mdl = row and row.mdl
+	if not fn and not mdl then return nil end
 	local m = Instance.new("Model")
 	m.Name = id
 	local root = Instance.new("Part")
@@ -180,11 +203,11 @@ function WeaponModels.build(id: string, k: number): Model?
 	root.Parent = m
 	m.PrimaryPart = root
 	local b: Builder = { model = m, root = root, k = k }
-	fn(b)
+	if fn then fn(b) else buildPlain(b, mdl, row.color) end
 	for _, c in m:GetChildren() do if c:IsA("BasePart") and c ~= root then c:SetAttribute("Code", true) end end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
 	local tmpl = lib and lib:FindFirstChild("w_" .. id)
-	local file = (WeaponModels.FILES :: any)["w_" .. id]
+	local file = (WeaponModels.FILES :: any)["w_" .. id] or mdl -- (a plain gun keeps its bounds in its row)
 	if tmpl and tmpl:IsA("Model") and file then
 		local ok, err = pcall(fitImported, b, tmpl, file)
 		if ok then

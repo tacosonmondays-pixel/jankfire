@@ -248,8 +248,11 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		seen[t] = true
 		local tf = Fight.feet(t)
 		if not tf then continue end
+		-- line of sight and "was it aimed at them" both look back along the target's trail (Fight.LAG): the shooter
+		-- fired at where they saw the target, which is where it was a ping ago
 		local hwhy, n, hh = Rules.hit(f, t, wid, h.n, h.h, now(), {
 			dist = (tf - ff).Magnitude, speedF = Fight.speed(f), speedT = Fight.speed(t), los = Fight.sees(e, t),
+			aimed = Rules.aimed(W[wid], e, ends :: { Vector3 }, Fight.path(t)),
 		})
 		if hwhy then continue end
 		n = math.min(n, left); hh = math.min(hh, n); left -= n

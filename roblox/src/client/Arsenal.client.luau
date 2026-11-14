@@ -27,6 +27,7 @@ local MatchState = ReplicatedStorage:WaitForChild("Match")
 local W = Weapons.list
 local S = Weapons.S
 local P = Weapons.PARRY
+local TRACER = Color3.fromRGB(255, 240, 160) -- the default tracer (a gun's row can name its own)
 local me = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
@@ -260,7 +261,7 @@ local function reload()
 	a.reloadUntil = os.clock() + (w.reload :: number)
 	aim = 0
 	ReloadR:FireServer(held)
-	VM.play("reload_" .. held)
+	VM.reload(held, w.reload :: number)
 end
 
 VM.onEvent = function(ev: string)
@@ -271,7 +272,13 @@ VM.onEvent = function(ev: string)
 	elseif ev == "revUp" then Sfx.play("rev_up")
 	elseif ev == "rattle" then Sfx.play("marble"); Sfx.play("marble", nil, 0.7, 1.2)
 	elseif ev == "boing" then Sfx.play("boing")
-	elseif ev == "thwack" then Sfx.play("thwack") end
+	elseif ev == "thwack" then Sfx.play("thwack")
+	-- the plain guns' reloads (Reloads.luau): mag out, mag in, the charging handle. anything not rendered yet clicks
+	elseif ev == "magOut" then Sfx.play("click", nil, 0.9, 0.8)
+	elseif ev == "magIn" then Sfx.play("reload")
+	elseif ev == "chargeBack" then Sfx.play("click", nil, 0.8, 1.1)
+	elseif ev == "chargeHome" then Sfx.play("click", nil, 1, 1.35)
+	else Sfx.play("click", nil, 0.6) end
 end
 
 -- ---------------------------------------------------------------- firing
@@ -331,21 +338,24 @@ local function fireGun(now: number)
 	local fpv = not thirdPerson()
 	-- the muzzle: the viewmodel's in first person, the gun in your character's hand in third person
 	local mz = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eye + look * 2)
-	Fx.muzzle(CFrame.lookAt(mz, mz + look), held == "marbles", fpv)
-	if held == "redline" then
-		local port = VM.attachment("Port")
-		if port and fpv then Fx.brass(CFrame.lookAt(port, port + look) * CFrame.Angles(0, 0, 0), false) end
-		for _, e in ends do Fx.tracer(mz, e, w.tracer :: Color3, 0.045 * S, 0.2) end
-		Sfx.redline(Weapons.tacho(hp()), nil)
-	else
+	-- every gun's look comes from its row in Weapons (fx, tracer, snd): nothing here is per weapon
+	local fx = w.fx or {}
+	Fx.muzzle(CFrame.lookAt(mz, mz + look), fx.big == true, fpv)
+	if fx.spray then
 		Fx.marbles(mz, allEnds, 1) -- no tracers: the marbles are the tracers
-		Sfx.play("gun_marbles")
+	else
+		if fx.brass then
+			local port = VM.attachment("Port")
+			if port and fpv then Fx.brass(CFrame.lookAt(port, port + look) * CFrame.Angles(0, 0, 0), false) end
+		end
+		for _, e in ends do Fx.tracer(mz, e, w.tracer or TRACER, 0.045 * S, 0.2) end
 	end
+	Sfx.gun(w, Weapons.tacho(hp()), nil)
 	-- what the shots hit: holes, dust, sparks by material (marbles chip and puff, they don't punch holes)
-	local o = if held == "marbles" then { hole = false, scale = 0.7 } else nil
+	local o = if fx.hole == false then { hole = false, scale = fx.scale or 1 } else nil
 	for _, im in impacts do Fx.impact(im.Position, im.Normal, im.Instance, im.Material, o) end
-	if held ~= "marbles" then for _, s in splashes do Fx.splash(s, 0.3) end end -- (marbles plop in on their own)
-	shake = math.max(shake, if held == "marbles" then 0.35 else 0.06)
+	if fx.splash ~= false then for _, s in splashes do Fx.splash(s, 0.3) end end -- (marbles plop in on their own)
+	shake = math.max(shake, fx.shake or 0.06)
 	if a.mag <= 0 then task.delay(0.15, reload) end
 end
 
@@ -572,15 +582,16 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 	local ends = {}
 	for i, e in s.ends do if typeof(e) == "Vector3" and i <= 12 then table.insert(ends, e) end end
 	local first = ends[1]
-	if first and (first - from).Magnitude > 0.1 then Fx.muzzle(CFrame.lookAt(from, first), s.w == "marbles", false) end
-	if s.w == "marbles" then
+	local sw = if type(s.w) == "string" then W[s.w] else nil
+	local sfx = (sw and sw.fx) or {}
+	if first and (first - from).Magnitude > 0.1 then Fx.muzzle(CFrame.lookAt(from, first), sfx.big == true, false) end
+	if sfx.spray then
 		Fx.marbles(from, ends, 8)
-		Sfx.play("gun_marbles", from)
 	else
-		for _, e in ends do Fx.tracer(from, e, W.redline.tracer :: Color3, 0.045 * S, 0.2) end
-		Sfx.redline(0, from)
+		for _, e in ends do Fx.tracer(from, e, (sw and sw.tracer) or TRACER, 0.045 * S, 0.2) end
 	end
-	Fx.shotEnds(from, ends, s.w == "marbles") -- their holes, dust and splashes, seen here too
+	if sw then Sfx.gun(sw, 0, from) end
+	Fx.shotEnds(from, ends, sfx.spray == true) -- their holes, dust and splashes, seen here too
 end)
 
 remote("Fx").OnClientEvent:Connect(function(f: any)

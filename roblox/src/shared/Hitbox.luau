@@ -38,16 +38,18 @@ function Hitbox.rayBox(o: Vector3, d: Vector3, lo: Vector3, hi: Vector3): number
 	return math.max(tmin, 0)
 end
 
--- a fighter's boxes (scaled about the feet by k)
-function Hitbox.boxes(feet: Vector3, k: number): (Vector3, Vector3, Vector3, Vector3)
-	local br, hr = B.bodyR * k, B.headR * k
-	return feet + Vector3.new(-br, 0, -br), feet + Vector3.new(br, B.bodyTop * k, br),
-		feet + Vector3.new(-hr, B.bodyTop * k, -hr), feet + Vector3.new(hr, B.headTop * k, hr)
+-- a fighter's boxes (scaled about the feet by k). pad = extra studs on every outer face: the server's lag allowance
+-- when it re-checks a shot against where the target was (the client always passes none)
+function Hitbox.boxes(feet: Vector3, k: number, pad: number?): (Vector3, Vector3, Vector3, Vector3)
+	local p = pad or 0
+	local br, hr = B.bodyR * k + p, B.headR * k + p
+	return feet + Vector3.new(-br, -p, -br), feet + Vector3.new(br, B.bodyTop * k, br),
+		feet + Vector3.new(-hr, B.bodyTop * k, -hr), feet + Vector3.new(hr, B.headTop * k + p, hr)
 end
 
 -- the nearest box this ray hits: distance and whether it was the head
-function Hitbox.ray(o: Vector3, d: Vector3, feet: Vector3, k: number): (number?, boolean)
-	local bl, bh, hl, hh = Hitbox.boxes(feet, k)
+function Hitbox.ray(o: Vector3, d: Vector3, feet: Vector3, k: number, pad: number?): (number?, boolean)
+	local bl, bh, hl, hh = Hitbox.boxes(feet, k, pad)
 	local tb, th = Hitbox.rayBox(o, d, bl, bh), Hitbox.rayBox(o, d, hl, hh)
 	if th and (not tb or th <= tb) then return th, true end
 	return tb, false

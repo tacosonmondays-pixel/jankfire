@@ -6,6 +6,7 @@
 -- of sight, range, the melee cone and "a swing came first", and the parry window
 local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
+local Hitbox = require(Shared:WaitForChild("Hitbox"))
 
 local Rules = {}
 local W = Weapons.list
@@ -16,6 +17,7 @@ Rules.SLACK = 3 * S -- studs of lag allowance on range and reach (the web game u
 Rules.EYE_SLACK = 5 -- studs a claimed eye may be from where the server has your head (and nothing solid in between)
 Rules.JITTER = 0.1 -- s: how much early a shot may arrive (network jitter) without being refused
 Rules.SHOT_LATE = 0.6 -- s: a melee hit must come this soon after its swing
+Rules.AIM_PAD = 2 -- studs added round a target's boxes when the server re-checks where a shot pointed
 
 export type Ammo = { mag: number, reloadUntil: number }
 export type Tag = { by: Fighter, w: string, t: number }
@@ -161,7 +163,44 @@ function Rules.sees(cast: (Vector3, Vector3, number) -> boolean, from: Vector3, 
 	return false
 end
 
-export type HitCtx = { dist: number, speedF: number, speedT: number, los: boolean }
+-- was this shot really pointed at the target? eye + ends = what the client sent (the pellets' end points, at most 12),
+-- feet = where the target is and has just been (Fight.path: now first, then back along its trail), so a shooter with
+-- lag is checked against the target they saw. one bullet must pass through a padded box at one of those spots; a
+-- spray (pellets > 1, where only a sample of the pellets is sent) needs the target inside its cone
+function Rules.aimed(w: Weapons.Weapon, eye: Vector3, ends: { Vector3 }, feet: { Vector3 }): boolean
+	if #ends == 0 or #feet == 0 then return false end
+	if (w.pellets or 1) <= 1 then
+		for _, e in ends do
+			local v = e - eye
+			if v.Magnitude < 1e-3 then continue end
+			local d = v.Unit
+			for _, ft in feet do
+				if Hitbox.ray(eye, d, ft, Hitbox.distScale((ft - eye).Magnitude), Rules.AIM_PAD) then return true end
+			end
+		end
+		return false
+	end
+	local sum = Vector3.zero
+	for _, e in ends do
+		local v = e - eye
+		if v.Magnitude > 1e-3 then sum += v.Unit end
+	end
+	if sum.Magnitude < 1e-3 then return false end
+	local aim = sum.Unit
+	local spread = (w.spread or 0) + (w.maxBloom or 0)
+	for _, ft in feet do
+		local to = ft + Vector3.new(0, Weapons.BOX.bodyTop * 0.6, 0) - eye
+		local dist = to.Magnitude
+		if dist < 2 * S then return true end -- point blank: they fill the cone whichever way it points
+		local size = Weapons.BOX.bodyTop * 0.6 * Hitbox.distScale(dist) + Rules.AIM_PAD
+		local allow = spread * 1.3 + math.atan(size / dist) + 0.05
+		if math.acos(math.clamp(aim:Dot(to.Unit), -1, 1)) <= allow then return true end
+	end
+	return false
+end
+
+-- aimed: nil = not checked (the dummies' shots are the server's own)
+export type HitCtx = { dist: number, speedF: number, speedT: number, los: boolean, aimed: boolean? }
 
 -- a hitscan hit on t from the shot f just fired: returns the reason it's refused, or nil + the (clamped) pellets
 function Rules.hit(f: Fighter, t: Fighter, wid: string, n: any, h: any, _now: number, c: HitCtx): (string?, number, number)
@@ -171,6 +210,7 @@ function Rules.hit(f: Fighter, t: Fighter, wid: string, n: any, h: any, _now: nu
 	if not finite(n) or not finite(h) then return "bad count", 0, 0 end
 	if c.dist > w.range + Rules.SLACK + 0.3 * (c.speedF + c.speedT) then return "out of range", 0, 0 end
 	if not c.los then return "through a wall", 0, 0 end
+	if c.aimed == false then return "not aimed at them", 0, 0 end
 	local nn = math.clamp(math.floor(n), 1, Rules.maxPellets(w, c.dist))
 	local hh = math.clamp(math.floor(h), 0, nn)
 	return nil, nn, hh
