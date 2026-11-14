@@ -1,6 +1,11 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.56', date: '2026-11-14', title: 'TOASTED', items: [
+    "BOARD GAME NIGHT moved into a real kitchen at 2:47 am. THE RULES GUY reads the rules upside down.",
+    "the winner goes in a giant toaster and comes out holding the golden bread: TOASTED.",
+    "dropped out of a table? start again with your party and your seat's still warm. kept seats stay kept: a bot warming someone's chair only gives it back to them.",
+  ] },
   { v: '11.55', date: '2026-11-14', title: 'STILL COUNTS', items: [
     "busy server? your shots still count. the hit checker stopped timing out on fair hits.",
   ] },
