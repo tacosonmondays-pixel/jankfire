@@ -1,6 +1,9 @@
 // PATCH NOTES: what changed, newest first, in the game's voice. Add an entry here with every update that players notice.
 // The menu link shows a NEW badge until you open the page after a new entry (remembered in localStorage).
 export const PATCH_NOTES = [
+  { v: '11.57', date: '2026-11-14', title: 'AUTO PILOT', items: [
+    "offline bots are automatic now: more on big maps, fewer on small ones, and team modes always come out even. want a specific number? CLASSIC → CUSTOM.",
+  ] },
   { v: '11.56', date: '2026-11-14', title: 'TOASTED', items: [
     "BOARD GAME NIGHT moved into a real kitchen at 2:47 am. THE RULES GUY reads the rules upside down.",
     "the winner goes in a giant toaster and comes out holding the golden bread: TOASTED.",
