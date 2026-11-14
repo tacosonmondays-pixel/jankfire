@@ -32,7 +32,7 @@ const K = {
   noDuel: !!E.JF_BGN_NODUEL, // every duel is settled on the board, people's too (tests that want the round's minigame, not a duel first)
   seed: num(E.JF_BGN_SEED) > 0 ? Math.floor(num(E.JF_BGN_SEED)) : 0, // seeded dice and board picks
   bakery: Number.isInteger(num(E.JF_BGN_BAKERY)) ? num(E.JF_BGN_BAKERY) : null, // the bakery starts on this plate
-  endMs: num(E.JF_BGN_ENDMS) > 0 ? Math.min(600000, Math.floor(num(E.JF_BGN_ENDMS))) : 0, // how long the end card stays up (tests: time to shoot THE TOASTING)
+  endMs: num(E.JF_BGN_ENDMS) > 0 ? Math.min(3600000, Math.floor(num(E.JF_BGN_ENDMS))) : 0, // how long the end card stays up (tests: time to shoot THE TOASTING)
 };
 const T = (ms) => Math.max(1, Math.round(ms / K.fast));
 const now = () => Date.now();
