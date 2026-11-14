@@ -5,7 +5,7 @@ services:
     name: jankfire
     runtime: node
     plan: starter
-    buildCommand: npm install
+    buildCommand: npm ci --omit=dev # (the server only needs three + ws: skipping electron + electron-builder, the desktop app's tools, makes a build ~2 s instead of minutes of pipeline time)
     startCommand: npm start
     healthCheckPath: /health
     envVars:
