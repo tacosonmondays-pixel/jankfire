@@ -41,7 +41,7 @@ def paint_strata(px, seed):
     """horizontal layers of warm grey-tan, each its own tone with soft variation, a lit lip on top and a dark seam
     under it, a faint bedding line in the thick ones, the odd vertical joint. tiles along u"""
     h, w = px.shape[:2]; r = np.random.default_rng(seed)
-    pal = [0xcbb693, 0xb5a083, 0xd8c6a2, 0xa8988a, 0xc2b398, 0xe0cfab, 0xae9878, 0xbdb3a6, 0xc9ae8a]
+    pal = [0x9e9282, 0x8c8172, 0xaa9d88, 0x7f776d, 0x968b7c, 0xb3a68f, 0x857868, 0x9a948a, 0xa69277, 0x6f6962]  # (warm grey-tan, a cooler grey or two)
     y, last = 0, -1
     while y < h:
         t = min(int(r.integers(10, 38)), h - y)
@@ -52,9 +52,9 @@ def paint_strata(px, seed):
         b = px[y:y + t]; b[:] = hexrgb(pal[c])
         b *= (0.93 + 0.14 * MK.tnoise(w, t, 3, 1 + t // 14, r))[:, :, None]
         if t > 18 and r.random() < 0.6: b[int(t * (0.4 + 0.2 * r.random()))] *= 0.93
-        b[0] = b[0] * 0.5 + hexrgb(0xf4e8cc) * 0.5  # the lit lip
-        b[1] = b[1] * 0.8 + hexrgb(0xf4e8cc) * 0.2
-        b[-1] *= 0.58; b[-2] *= 0.84  # the seam under it
+        b[0] = b[0] * 0.45 + hexrgb(0xe8dcc0) * 0.55  # the lit lip
+        b[1] = b[1] * 0.75 + hexrgb(0xe8dcc0) * 0.25
+        b[-1] *= 0.5; b[-2] *= 0.78; b[-3] *= 0.92  # the seam under it
         if r.random() < 0.45:  # a joint: a vertical crack through the layer
             x = int(r.integers(0, w)); b[2:t - 1, x] *= 0.72
         y += t
@@ -71,7 +71,7 @@ def paint_moss(px, seed):
 def paint_top(px, seed):
     """a sunlit rock top: pale warm stone, a few lichen spots"""
     h, w = px.shape[:2]; r = np.random.default_rng(seed)
-    px[:] = hexrgb(0xd8c8aa); px *= (0.94 + 0.12 * MK.tnoise(w, h, 4, 4, r))[:, :, None]
+    px[:] = hexrgb(0xc2b59c); px *= (0.94 + 0.12 * MK.tnoise(w, h, 4, 4, r))[:, :, None]
     for _ in range(14):
         cx, cy, rr = int(r.integers(0, w)), int(r.integers(0, h)), int(r.integers(1, 4))
         yy, xx = np.ogrid[:h, :w]; m = (xx - cx) ** 2 + (yy - cy) ** 2 <= rr * rr
@@ -97,7 +97,16 @@ def mk_mesh(name, verts, faces, tags, M):
     o = _link(bpy.data.objects.new(name, me)); me.materials.append(M)
     for p in me.polygons: p.use_smooth = False  # (faceted: the chunky look)
     uv_rock(o, tags)
+    if os.environ.get('JF_UVDBG'): uv_dbg(o, tags)
     return o
+
+
+def uv_dbg(o, tags):
+    me = o.data; uvl = me.uv_layers.active.data
+    for poly, tg in zip(me.polygons, tags):
+        uv = [uvl[li].uv for li in poly.loop_indices]; a = 0.0
+        for i in range(1, len(uv) - 1): a += abs((uv[i].x - uv[0].x) * (uv[i + 1].y - uv[0].y) - (uv[i + 1].x - uv[0].x) * (uv[i].y - uv[0].y))
+        if a < 1e-9: print('UVZ', o.name, tg[:2], [round(v, 2) for v in MK._gn(poly.normal)], round(poly.area, 4), len(poly.vertices))
 
 
 def uv_rock(o, tags):
@@ -109,14 +118,18 @@ def uv_rock(o, tags):
     for poly, tg in zip(me.polygons, tags):
         n = MK._gn(poly.normal)
         P = [V3((me.vertices[me.loops[li].vertex_index].co.x, me.vertices[me.loops[li].vertex_index].co.z, -me.vertices[me.loops[li].vertex_index].co.y)) for li in poly.loop_indices]
+        if tg[0] in ('moss', 'top') and abs(n.y) < 0.5: tg = ('s', min(q.y for q in P), 0.0, 0.0)  # (a ledge's end standing on edge: rock, not grass)
         if tg[0] in ('moss', 'top'):
             u0, v0, u1, v1 = A.uvrect(tg[0], inset=0.5)
             mz = min(q.z for q in P); e = max(1.0, max(q.z for q in P) - mz)  # (u wraps along the band: 2 m a repeat; v across it, 1 m or the face's depth)
             for li, p in zip(poly.loop_indices, P):
                 uvl[li].uv = (p.x / 2.0, v0 + (v1 - v0) * (1 - (p.z - mz) / e))
             continue
+        if abs(n.y) > 0.7:  # (a flat strata face: an underside, the bottom: projected from above, inside the band)
+            mz = min(q.z for q in P)
+            for li, p in zip(poly.loop_indices, P): uvl[li].uv = (p.x / UV_W, sv0 + (sv1 - sv0) * min(1.0, (p.z - mz) / UV_H + 0.1))
+            continue
         hx, hz = n.x, n.z; hl = math.hypot(hx, hz)
-        if hl < 1e-4: hx, hz, hl = 0.0, 1.0, 1.0
         tx, tz = -hz / hl, hx / hl
         y0, off = tg[1], tg[2]
         for li, p in zip(poly.loop_indices, P):
@@ -187,7 +200,7 @@ def strata_rock(name, M, col, seed, n=12, margin=0.2, jit=0.18, mids=1.4, cham=0
         w = (cols[(g + 1) % len(cols)] - cols[g]) % TAU
         cols.insert(g + 1, (cols[g] + w * (0.4 + 0.2 * r.random())) % TAU)
     cols.sort()
-    cleft = [(-(0.6 + 0.4 * r.random()) if r.random() < 0.2 else 0.0) + (r.random() - 0.5) * 0.6 for _ in range(n)]  # (a column's own lean: a cleft down the whole rock, a bulge)
+    cleft = [(-(0.7 + 0.3 * r.random()) if r.random() < 0.28 else 0.0) + (r.random() - 0.5) * 0.5 for _ in range(n)]  # (a column's own lean: a cleft down the whole rock, a bulge)
     tn = {}
     def tnz(k):  # each layer's own outline wobble (so the layers don't stack like a cake)
         if k not in tn: q = random.Random(seed * 31 + k * 7); tn[k] = [q.random() * 2 - 1 for _ in range(n)]
@@ -209,7 +222,7 @@ def strata_rock(name, M, col, seed, n=12, margin=0.2, jit=0.18, mids=1.4, cham=0
     def ring(k, boxes, y, m, j, inset=0.0, need=None, sc=1.0):
         poly = outline(boxes, m); t = tnz(k)
         base = [polar(poly, a, cen) for a in cols]  # (the boxes' hull, margin out)
-        rad = [max(0.2, min(b * sc * (1 + j * (0.55 * t[i] + 0.45 * cleft[i]) + j * 0.25 * (r.random() - 0.5)), b + cap) - inset) for i, b in enumerate(base)]  # (never more than `cap` past it)
+        rad = [max(0.2, min(b * sc * (1 + j * (0.6 * t[i] + 0.25 * (r.random() - 0.5)) + 0.16 * cleft[i]), b + cap) - inset) for i, b in enumerate(base)]  # (clefts cut in deep, on every layer)  # (never more than `cap` past it)
         P = edge_pts(need if need is not None else boxes)
         for _ in range(80):  # (pushed out wherever the boxes' outline isn't inside yet)
             pts = [(cen[0] + math.cos(a) * rr, cen[1] + math.sin(a) * rr) for a, rr in zip(cols, rad)]
@@ -348,7 +361,7 @@ def cliff_face(name, M, ext, seed, nf=14, tiers=None, lod=False, rib=0.0, notch=
     if lod: tiers = [(tiers[i][0], tiers[min(i + 1, len(tiers) - 1)][1]) for i in range(0, len(tiers), 2)]  # (far: two layers in one)
     for k, (ta, tb) in enumerate(tiers):
         out = 0.55 + 0.35 * r.random()
-        rings.append(ring(ta, out, jt, k=k)); tg.append(('s', ta))
+        rings.append(ring(ta + (0.03 if k else 0.0), out, jt, k=k)); tg.append(('s', ta))  # (a hair over the layer below's top: no zero-height back strip)
         if not lod and tb - ta > 1.6:
             rings.append(ring((ta + tb) / 2, out * 0.6, jt, k=k)); tg.append(('s', ta))
         top = k == len(tiers) - 1
@@ -359,11 +372,11 @@ def cliff_face(name, M, ext, seed, nf=14, tiers=None, lod=False, rib=0.0, notch=
     rs = random.Random(seed + 5)
     for k in range(len(rings) - 1):
         a0, b0 = k * n, (k + 1) * n
-        flat = abs(rings[k][1][1] - rings[k + 1][1][1]) < 1e-6
+        flat = abs(rings[k][1][1] - rings[k + 1][1][1]) < 0.05
         for i in range(n):
             j = (i + 1) % n
             if i == n - 1:  # the back: one strip from the right end round to the left
-                F.append((a0 + i, a0 + 0, b0 + 0, b0 + i)); tags.append(('s', 0.0, 0.0, 0.0)); continue
+                F.append((a0 + i, a0 + 0, b0 + 0, b0 + i)); tags.append(('s', rings[k][0][1], 0.0, 0.0)); continue
             F.append((a0 + i, a0 + j, b0 + j, b0 + i))
             if flat:
                 ymid = rings[k][i][1]
@@ -383,7 +396,7 @@ def cliff_face(name, M, ext, seed, nf=14, tiers=None, lod=False, rib=0.0, notch=
 
 
 # ------------------------------------------------------------ colour: lit tops, cool undersides, the wet band
-def shade_rock(o, wet_y, wet_k=(0.5, 0.54, 0.6), top_k=(1.0, 0.98, 0.94), side_k=(0.9, 0.9, 0.93), under_k=(0.58, 0.64, 0.8)):
+def shade_rock(o, wet_y, wet_k=(0.42, 0.46, 0.52), top_k=(1.0, 0.97, 0.9), side_k=(0.86, 0.87, 0.91), under_k=(0.5, 0.56, 0.72)):
     """painted into the AO colours (the game multiplies them in): faces up are lit warm, sides a touch cooler, faces down
     a cool blue-grey; everything below wet_y (with a soft 0.35 m edge) darker and cooler: the wet band"""
     me = o.data; ca = me.color_attributes.get('AO')

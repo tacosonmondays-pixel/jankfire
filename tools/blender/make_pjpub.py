@@ -1016,6 +1016,19 @@ def hm_atlas(fid):
     return A
 
 
+def bounce(o, k=0.55, warm=(1.0, 0.95, 0.86)):
+    """the sunny quay's bounce light on the south faces (the front, the tower's dial side: away from the north-east
+    sun all day), painted into the AO colours: lifted toward white and warmed"""
+    me = o.data; ca = me.color_attributes.get('AO')
+    for p in me.polygons:
+        n = MK._gn(p.normal)
+        if n.z < 0.3: continue
+        f = k * min(1.0, (n.z - 0.3) / 0.4)
+        for li in p.loop_indices:
+            c = ca.data[li].color
+            ca.data[li].color = tuple(min(1.0, (c[i] + (1 - c[i]) * f) * (1 - f * (1 - warm[i])) ) for i in range(3)) + (1.0,)
+
+
 @prop('p_pj_harbour')
 def build_harbour():
     fid = 'pjh'; P = PJP['hm']
@@ -1056,7 +1069,7 @@ def build_harbour():
     for lo, hi in (((tx0, rt, tz0), (tx0 + t, T - 0.15, tz1)), ((tx1 - t, rt, tz0), (tx1, T - 0.15, tz1)), ((tx0 + t, rt, tz0), (tx1 - t, T - 0.15, tz0 + t)), ((tx0 + t, rt, tz1 - t), (tx1 - t, T - 0.15, tz1))):
         K.wall(lo, hi, 'tower', TB, RN, 'pwhite', ctr=tc, bot=False, cap=False)
     dx_, dy_, dz_ = (tx0 + tx1) / 2, 5.3, tz1
-    o = cyl(0.95, 0.06, (dx_, dy_, dz_ + 0.025), M, axis='z', seg=20, name=fid + '_dial'); uv_fit(o, A, 'pnavy'); uv_fit(o, A, 'dial', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5); K.P.append(o)
+    o = cyl(0.95, 0.06, (dx_, dy_, dz_ + 0.025), GL, axis='z', seg=20, name=fid + '_dial'); uv_fit(o, A, 'pnavy'); uv_fit(o, A, 'dial', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5); K.P.append(o)  # (backlit: it faces away from the sun)
     o = lathe([(0.9, 0.005), (1.02, 0.005), (1.02, 0.1), (0.9, 0.1), (0.9, 0.005)], (dx_, dy_, dz_), M, seg=20, axis='z', name=fid + '_dialrim', cap=False); K.add(o, 'hred')  # (a closed bezel: no seam)
     o = box_between((dx_, dy_, dz_ + 0.075), (dx_, dy_ - 0.36, dz_ + 0.075), 0.07, 0.025, M, fid + '_hand'); K.add(o, 'hred')  # (the hand stops short of YES: it points, it doesn't hide it)
     o = box_between((dx_ - 0.09, dy_ - 0.3, dz_ + 0.075), (dx_, dy_ - 0.42, dz_ + 0.075), 0.055, 0.025, M, fid + '_head1'); K.add(o, 'hred')
@@ -1169,7 +1182,7 @@ def build_harbour():
         z = F['z0'] - (i + 0.5) * F['run']; K.rod((g1 - 0.06, rt + (i + 1) * fr, z), (g1 - 0.06, rt + (i + 1) * fr + 0.95, z), 0.022, 'hred', 'fpost', seg=6)
     K.rod((g1 - 0.06, rt + fr + 0.95, F['z0'] - 0.5 * F['run']), (g1 - 0.06, T + 0.95, fz + 0.02), 0.03, 'hred', 'frail', seg=6)
     # ---- the front: the sign, the door (red, swung in, a porthole), HONK FOR SERVICE and its pull, the window's frame, a lamp
-    o = K.bk((-hw + 0.1, 2.68, hd - 0.02), (g0 - 0.2, 3.13, hd + 0.06), 'pwhite', 'fascia'); uv_fit(o, A, 'fascia', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5)
+    o = K.bk((-hw + 0.1, 2.68, hd - 0.02), (g0 - 0.2, 3.13, hd + 0.06), 'pwhite', 'fascia', m=GL); uv_fit(o, A, 'fascia', sel=lambda p, Pp: MK._gn(p.normal).z > 0.5)  # (a lit sign box: the front's in shade all day)
     K.bk((d0 + 0.01, 0.04, hd - t - 0.06), (d0 + 0.06, dh - 0.06, hd - t - 0.06 - 0.95), 'hred', 'door') if False else None
     K.bk((d0 - 0.06, 0.04, hd - t - 1.0), (d0 - 0.01, dh - 0.06, hd - t - 0.002), 'hred', 'door')
     o = cyl(0.14, 0.07, (d0 - 0.035, 1.6, hd - t - 0.5), M, axis='x', seg=8, name=fid + '_porthole'); K.add(o, 'gold')
@@ -1183,6 +1196,7 @@ def build_harbour():
     for z_, s_ in ((w0, 1), (w1, -1)): K.bk((min(z_, z_ + s_ * 0.08), sl, hd - 0.04), (max(z_, z_ + s_ * 0.08), hh, hd + 0.05), 'hred', 'wjamb')
     K.bk((w0 - 0.1, sl - 0.05, hd - 0.04), (w1 + 0.1, sl + 0.03, hd + 0.14), 'pwhite', 'wsill'); K.bk((w0 - 0.08, hh - 0.01, hd - 0.04), (w1 + 0.08, hh + 0.08, hd + 0.05), 'hred', 'whead')
     o = box((0.3, 0.14, 0.12), ((d0 + d1) / 2, dh + 0.3, hd + 0.06), GL, name=fid + '_doorlamp'); K.add(o, 'bulbw')
+    for x in (d0 - 0.2, d1 + 0.3): lantern(K, (x, 2.45, hd + 0.02), (0, 1), GL)  # (a carriage lamp each side of the door)
     # the west side (to the piers): the big window's frame, a window box of red flowers, a life ring, the forecast board
     for z_, s_ in ((s0, 1), (s1, -1)): K.bk((-hw - 0.05, sl, min(z_, z_ + s_ * 0.08)), (-hw + 0.04, hh, max(z_, z_ + s_ * 0.08)), 'hred', 'wjamb')
     K.bk((-hw - 0.14, sl - 0.05, s0 - 0.1), (-hw + 0.04, sl + 0.03, s1 + 0.1), 'pwhite', 'wsill'); K.bk((-hw - 0.05, hh - 0.01, s0 - 0.08), (-hw + 0.04, hh + 0.08, s1 + 0.08), 'hred', 'whead')
@@ -1246,7 +1260,7 @@ def build_harbour():
     for p in K.Q: crisp(p)
     for p in K.P + K.Q: tri_ngons(p)
     lo, hi = extent(hm_boxes())
-    return dict(lod0=K.P, lod1=K.Q, box=(lo, hi), ao=0.8, aolo=0.5, lod=130, eps=0.001, sheet=dict(exposure=-1.0),
+    return dict(lod0=K.P, lod1=K.Q, box=(lo, hi), ao=0.8, aolo=0.5, lod=130, eps=0.001, sheet=dict(exposure=-1.0), post=lambda l0, l1: [bounce(o) for o in (l0, l1)],
                 focus=[((-1.5, 2.0, hd), (-0.4, 0.15, 1.0), 9.0), ((-2.2, 5.3, tz1), (0.0, 0.05, 1.0), 4.5), ((-2.2, T + 1.2, -1.3), (0.6, 0.5, 1.0), 6.5),
                        ((-1.0, 1.4, 0.0), (0.3, 0.6, 1.0), 4.5), ((-2.2, rtop + 1.5, -1.3), (-0.7, 0.3, 1.0), 4.5), ((1.2, 5.5, 1.0), (1.0, 0.3, 0.5), 8.0)])
 

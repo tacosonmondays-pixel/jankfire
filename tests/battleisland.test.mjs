@@ -9,7 +9,7 @@ import '../shared/royale.js';
 import { mapsFor } from '../shared/modes.js';
 import { navSteer } from '../shared/nav.js';
 import { movePlayer, raycast } from '../shared/physics.js';
-import { islandH, PLAN, SEA, WADE, KILL_Y, grid, PK, PJP, segDist } from '../shared/battleisland.js';
+import { islandH, PLAN, SEA, WADE, KILL_Y, grid, PK, PJP, segDist, RK, rockPlan, ROCK_KEEP } from '../shared/battleisland.js';
 import { mechBody } from '../shared/mech.js';
 import { spawnSync } from 'node:child_process';
 
@@ -208,5 +208,100 @@ test('Port Jankton pub and harbour master: in the front and out the back, up to 
   for (const q of mine) {
     for (const [x, , z, r] of m.royale.drops) assert.ok(q.max[0] < x - r || q.min[0] > x + r || q.max[2] < z - r || q.min[2] > z + r, `${q.pv} clear of the drop pad at ${x},${z}`);
     for (const [x, , z] of m.royale.cells) assert.ok(!(x > q.min[0] - 1 && x < q.max[0] + 1 && z > q.min[2] - 1 && z < q.max[2] + 1), `cell ${x.toFixed(1)},${z.toFixed(1)} clear of ${q.pv}`);
+  }
+});
+
+test('The rocks: every model is built round its boxes and fitted per copy (meta.box x the copy\'s scale = its placement)', async () => {
+  const fs = await import('node:fs');
+  const metaOf = (id) => { const buf = fs.readFileSync(new URL(`../public/models/p_${id}.glb`, import.meta.url)), len = buf.readUInt32LE(12); const gl = JSON.parse(buf.slice(20, 20 + len).toString('utf8')); return JSON.parse(gl.nodes.find((n) => n.extras && n.extras.jf).extras.jf); };
+  const plan = rockPlan();
+  for (const id of Object.keys(RK)) {
+    const meta = metaOf(id), K = RK[id], ps = [...m.boxes.props, ...m.deco.props].filter((q) => q.id === id);
+    for (let i = 0; i < 3; i++) { assert.ok(Math.abs(meta.box[0][i] - K.ext[0][i]) < 0.01 && Math.abs(meta.box[1][i] - K.ext[1][i]) < 0.01, `${id} meta.box = RK ext (${i})`); }
+    assert.ok(ps.length, id + ' is placed');
+    assert.equal(ps.length, plan.filter((p) => p.id === id).length, id + ': one placement per planned rock');
+    for (const p of ps) {
+      const r = plan.find((q) => q.id === id && Math.hypot(q.a[0] - p.a[0], q.a[2] - p.a[2]) < 0.01);
+      assert.ok(r, `${id} at ${p.a[0]},${p.a[2]} is in the plan`);
+      for (let i = 0; i < 3; i++) { assert.ok(Math.abs(meta.box[0][i] * r.s[i] - p.lo[i]) < 0.01, `${id} lo[${i}] ${meta.box[0][i] * r.s[i]} vs ${p.lo[i]}`); assert.ok(Math.abs(meta.box[1][i] * r.s[i] - p.hi[i]) < 0.01, `${id} hi[${i}] ${meta.box[1][i] * r.s[i]} vs ${p.hi[i]}`); }
+      assert.equal(p.f, undefined, 'fitted per axis (not spun)');
+    }
+  }
+  // the cliff faces are look-only (map.deco); every other piece collides
+  for (const id of ['bi_cliff_a', 'bi_cliff_b', 'bi_cliff_c']) assert.ok(!m.boxes.some((b) => b.pv === id) && m.deco.some((b) => b.pv === id), id + ' look-only');
+  for (const id of Object.keys(RK).filter((k) => RK[k].col)) assert.ok(m.boxes.some((b) => b.pv === id), id + ' collides');
+});
+
+test('The rocks: nothing in the way (roads + a mech\'s width, POIs, pads, cells, the harbour, the river, the lagoon and its gap, the lighthouse), on the ground, deterministic', () => {
+  const rocks = m.boxes.filter((b) => b.pv && RK[b.pv]), faces = m.deco.filter((b) => b.pv && RK[b.pv]);
+  assert.ok(rocks.length > 300 && faces.length > 30, `rocks placed: ${rocks.length} boxes, ${faces.length} cliff faces`);
+  const corners = (b) => [[b.min[0], b.min[2]], [b.max[0], b.min[2]], [b.min[0], b.max[2]], [b.max[0], b.max[2]], [(b.min[0] + b.max[0]) / 2, (b.min[2] + b.max[2]) / 2]];
+  for (const b of rocks) {
+    const tag = `${b.pv} box at ${b.min[0].toFixed(1)},${b.min[2].toFixed(1)}`;
+    for (const [x, z] of corners(b)) {
+      for (const r of PLAN.roads) assert.ok(segDist(x, z, r.pts) > r.w / 2 + 4, `${tag} clear of ${r.name}`);
+      assert.ok(!PLAN.pois.some((p) => x > p.rect[0] - 1 && x < p.rect[2] + 1 && z > p.rect[1] - 1 && z < p.rect[3] + 1), `${tag} outside every POI`);
+      assert.ok(Math.hypot((x - 30) / 84, (z - 196) / 66) > 1.3, `${tag} out of the harbour bay`);
+      assert.ok(segDist(x, z, PLAN.river.pts) > PLAN.river.w / 2 + PLAN.river.bank + 4, `${tag} off the river`);
+      const L = PLAN.lagoon; assert.ok(Math.hypot((x - L.c[0]) / L.r[0], (z - L.c[1]) / L.r[1]) > 1.3 && Math.hypot(x - L.gap[0], z - L.gap[1]) > 25, `${tag} out of the lagoon and its reef gap`);
+      assert.ok(Math.hypot(x - ROCK_KEEP.flat[0], z - ROCK_KEEP.flat[1]) > 36, `${tag} off the lighthouse's flat`);
+    }
+    for (const [x, , z, r] of m.royale.drops) assert.ok(b.max[0] < x - r - 2 || b.min[0] > x + r + 2 || b.max[2] < z - r - 2 || b.min[2] > z + r + 2, `${tag} clear of the drop pad at ${x},${z}`);
+    for (const [x, , z] of m.royale.cells) assert.ok(!(x > b.min[0] - 2 && x < b.max[0] + 2 && z > b.min[2] - 2 && z < b.max[2] + 2), `${tag} clear of the cell at ${x.toFixed(1)},${z.toFixed(1)}`);
+  }
+  // each rock stands on the ground: its foot box is at or under the ground at all its corners (nothing floats), and it
+  // stands out of it (its top a good bit over the highest ground under it: no boxes buried for nothing)
+  for (const p of m.boxes.props.filter((q) => RK[q.id] && RK[q.id].col)) {
+    const mine = rocks.filter((b) => Math.abs(b.min[1] - (p.a[1] + p.lo[1])) < 0.02 && b.max[0] >= p.a[0] - 30 && b.min[0] <= p.a[0] + 30 && b.max[2] >= p.a[2] - 30 && b.min[2] <= p.a[2] + 30 && b.pv === p.id);
+    assert.ok(mine.length, `${p.id} at ${p.a[0]},${p.a[2]} has its foot boxes`);
+    let hi = -1e9; for (const b of mine) for (const [x, z] of corners(b)) { const g = ground(x, z); assert.ok(b.min[1] <= g + 0.01, `${p.id} at ${p.a[0]},${p.a[2]}: its foot floats (${b.min[1].toFixed(2)} over ${g.toFixed(2)})`); hi = Math.max(hi, g); }
+    if (p.id !== 'bi_ledge') assert.ok(p.a[1] + p.hi[1] > hi + 0.3, `${p.id} at ${p.a[0]},${p.a[2]}: buried (top ${(p.a[1] + p.hi[1]).toFixed(2)}, ground up to ${hi.toFixed(2)})`);
+  }
+  // the lighthouse's cliff-top flat stays usable: nothing collides on it, and the cliff faces round it stay below its top
+  const [fx, fz] = ROCK_KEEP.flat, top = ground(fx, fz);
+  for (const b of faces) if (Math.hypot((b.min[0] + b.max[0]) / 2 - fx, (b.min[2] + b.max[2]) / 2 - fz) < 40) assert.ok(b.max[1] < top - 0.1, `a cliff face by the lighthouse flat tops out at ${b.max[1].toFixed(2)} (the flat: ${top.toFixed(2)})`);
+  // deterministic: the same plan in a fresh process (the server and every client build the same rocks)
+  const code = "const B = await import('./shared/battleisland.js'); console.log(JSON.stringify(B.rockPlan()));";
+  const out = spawnSync(process.execPath, ['--input-type=module', '-e', code], { cwd: new URL('..', import.meta.url), encoding: 'utf8', maxBuffer: 1 << 26 });
+  assert.equal(out.stdout.trim().split('\n').pop(), JSON.stringify(rockPlan()), 'the same rocks every time');
+});
+
+test('The rocks: you walk round the boulders on a beach, climb out of the sea onto a shelf, and mechs still walk the coast roads', () => {
+  const walk = (from, dir, secs, body = null) => { const pos = [from[0], ground(from[0], from[1]) + 0.05, from[1]], vel = [0, 0, 0]; let g = true; for (let t = 0; t < secs; t += 1 / 30) { vel[0] = dir[0] * 7; vel[2] = dir[1] * 7; vel[1] -= 26 / 30; g = !!movePlayer(pos, vel, 1 / 30, m.boxes, g, body).ground; } return pos; };
+  const all = m.boxes.props.filter((p) => RK[p.id] && RK[p.id].col), wOf = (p) => Math.max(p.hi[0] - p.lo[0], p.hi[2] - p.lo[2]) / 2;
+  const land = all.filter((p) => ground(p.a[0], p.a[2]) > SEA + 0.3 && p.id !== 'bi_ledge');
+  assert.ok(land.length > 20, 'boulders up on the land: ' + land.length);
+  // any two rocks leave a gap you walk through (no slots to get stuck in)
+  for (const p of all) for (const q of all) if (p !== q) assert.ok(Math.hypot(p.a[0] - q.a[0], p.a[2] - q.a[2]) > (wOf(p) + wOf(q)) + 0.9, `${p.id} at ${p.a[0]},${p.a[2]} and ${q.id} at ${q.a[0]},${q.a[2]} leave a gap`);
+  // round every boulder on dry land: from a step outside its box, a walk past it (along each side) isn't stopped by it
+  let n = 0;
+  for (const p of land) {
+    const w = wOf(p) + 1.4;
+    if (all.some((q) => q !== p && Math.hypot(p.a[0] - q.a[0], p.a[2] - q.a[2]) < w + wOf(q) + 2.5)) continue; // (one with a neighbour close by: the walk past runs into that)
+    for (const [sx, sz, dx, dz] of [[-w, -w, 1, 0], [-w, w, 1, 0], [-w, -w, 0, 1], [w, -w, 0, 1]]) {
+      const x = p.a[0] + sx, z = p.a[2] + sz;
+      if (ground(x, z) < SEA + 0.3 || ground(x + dx * 2 * w, z + dz * 2 * w) < SEA + 0.3 || m.boxes.some((b) => !b.ter && x > b.min[0] - 0.5 && x < b.max[0] + 0.5 && z > b.min[2] - 0.5 && z < b.max[2] + 0.5 && b.max[1] > ground(x, z) + 0.3)) continue;
+      const q = walk([x, z], [dx, dz], 2 * w / 7 + 0.4);
+      const blocker = m.boxes.find((b) => RK[b.pv] && q[0] > b.min[0] - 0.45 && q[0] < b.max[0] + 0.45 && q[2] > b.min[2] - 0.45 && q[2] < b.max[2] + 0.45 && q[1] < b.max[1]);
+      if (Math.hypot(q[0] - x, q[2] - z) < 2 * w - 0.6) assert.ok(!blocker || q[1] > blocker.max[1] - 0.05, `stuck against a rock walking past the ${p.id} at ${p.a[0]},${p.a[2]}: ${q.map((v) => v.toFixed(1))}`);
+      n++;
+    }
+  }
+  assert.ok(n > 40, 'walked past the boulders: ' + n);
+  // a shelf at the waterline: you step up onto it out of the water
+  const sh = m.boxes.props.filter((p) => p.id === 'bi_ledge' && p.a[1] + p.hi[1] < SEA + 0.6);
+  assert.ok(sh.length >= 3, 'shelves at the waterline: ' + sh.length);
+  for (const p of sh) assert.ok(p.a[1] + p.hi[1] - Math.max(SEA - 1.4, ground(p.a[0], p.a[2])) > 0.3 && p.a[1] + p.hi[1] - SEA < 0.6, 'a shelf top just over the water');
+  // mechs walk the coast roads past the cliffs: the Point Road out to the headland, the ring's west side and its north
+  // (the wrecking ball sticks on the Point Road's bare slope at -188, -82 on main too: not a rock)
+  const tall = mechBody('paperplane'), wide = mechBody('wrecking');
+  for (const [body, pts] of [[tall, [[-150, -40], [-210, -110], [-245, -155]]], [tall, [[-170, 40], [-150, -40], [-120, -128]]], [wide, [[-120, -128], [-30, -178]]]]) {
+    const pos = [pts[0][0], ground(pts[0][0], pts[0][1]) + 0.05, pts[0][1]], vel = [0, 0, 0]; let g = true, k = 1;
+    for (let t = 0; t < 90 && k < pts.length; t += 1 / 30) {
+      const [tx, tz] = pts[k], dx = tx - pos[0], dz = tz - pos[2], d = Math.hypot(dx, dz);
+      if (d < 1.5) { k++; continue; }
+      vel[0] = dx / d * 7; vel[2] = dz / d * 7; vel[1] -= 26 / 30; g = !!movePlayer(pos, vel, 1 / 30, m.boxes, g, body).ground;
+    }
+    assert.ok(k === pts.length, 'a mech walks the road ' + JSON.stringify(pts) + ': stopped at ' + pos.map((v) => v.toFixed(1)));
   }
 });

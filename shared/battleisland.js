@@ -531,14 +531,15 @@ export function rockPlan(spots = []) {
   if (PLAN_R) return PLAN_R;
   const G = grid(), r = rng(7171), out = [], placed = []; // placed: [x, z, radius] of everything that collides
   const ext = (id) => RK[id].ext;
-  const free = (x, z, rad) => !placed.some(([a, b, e]) => Math.hypot(x - a, z - b) < rad + e);
+  const free = (x, z, rad) => !placed.some(([a, b, e]) => Math.hypot(x - a, z - b) < rad + e + 1.5); // (a gap you walk through between any two)
   // a colliding piece: its foot on the lowest ground under it (sunk a little), turned q quarter turns
   const solid = (id, x, z, s, q, why, o = {}) => {
     const [lo, hi] = ext(id), w = Math.max(hi[0] - lo[0], hi[2] - lo[2]) / 2 * Math.max(s[0], s[2]), rad = w * 1.05;
     if (!o.force && (!rockClear(x, z, rad, spots) || !free(x, z, rad) || inRect(x, z, ROCK_KEEP.lighthouse, rad))) return null;
-    let g = 1e9; for (const [dx, dz] of [[0, 0], [-w, -w], [w, -w], [-w, w], [w, w], [-w, 0], [w, 0], [0, -w], [0, w]]) g = Math.min(g, G.at(x + dx * 0.8, z + dz * 0.8));
+    let g = 1e9, gh = -1e9; for (const [dx, dz] of [[0, 0], [-w, -w], [w, -w], [-w, w], [w, w], [-w, 0], [w, 0], [0, -w], [0, w]]) { const h = G.at(x + dx, z + dz); g = Math.min(g, h); gh = Math.max(gh, h); }
     const y = o.top !== undefined ? o.top - s[1] * hi[1] : g - (o.sink ?? 0.25);
     if (o.top !== undefined && y > g - 0.2) return null; // (a shelf whose top is where we want it but whose foot wouldn't reach the bed)
+    if (y + s[1] * hi[1] < Math.max(SEA + 0.35, o.top !== undefined ? -1e9 : gh + 0.45)) return null; // (under the water, or sunk in a slope: nobody'd see it. a shelf runs up into the beach)
     const p = { id, a: [x, y, z], s, r: (q & 3) * Math.PI / 2, deco: false, why };
     out.push(p); placed.push([x, z, rad]); return p;
   };
