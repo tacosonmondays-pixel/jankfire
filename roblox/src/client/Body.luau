@@ -17,6 +17,8 @@ Body.hum = nil :: Humanoid?
 Body.root = nil :: BasePart?
 Body.onSlip = nil :: ((string) -> ())?
 Body.onKnock = nil :: ((Vector3) -> ())?
+-- how fast you run right now, x the usual (Arsenal sets it: the gun in your hands, and slower down the sights)
+Body.speedMul = 1
 local slipToken = 0
 
 function Body.attach(st: Movement.State, hum: Humanoid, root: BasePart)

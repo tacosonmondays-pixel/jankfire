@@ -50,8 +50,13 @@ end
 
 -- a gun's shot, from its row in Weapons: the Redline's renders by HP (tacho), or its own sound (snd). k = the
 -- Redline's needle (0..1), at = out in the world (someone else's gun) or nil for yours
-function Sfx.gun(w: any, k: number, at: Vector3?)
-	if w.tacho then Sfx.redline(k, at) elseif type(w.snd) == "string" then Sfx.play(w.snd, at) end
+-- heat = the Belt Sander's barrel (0..1): louder and lower the hotter it is
+function Sfx.gun(w: any, k: number, at: Vector3?, heat: number?)
+	if w.tacho then Sfx.redline(k, at)
+	elseif type(w.snd) == "string" then
+		local h = if w.heatUp and heat then heat else 0
+		Sfx.play(w.snd, at, 1 + 0.4 * h, 1 - 0.15 * h)
+	end
 end
 
 local _ = holder

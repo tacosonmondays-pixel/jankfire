@@ -13,6 +13,7 @@ export type State = {
 	hook: Hook?, lift: number, -- lift: the rope's share of your weight, fading out after you let go
 	sliding: boolean, crouching: boolean, sprinting: boolean,
 	slip: number?, -- seconds of slipping left (marbles): no grip, no jumping, no steering (public/js/player.js)
+	speedMul: number?, -- run speed x this (the gun you hold, aiming: public/js/weapons.js ME.speedMul)
 	slideT: number, slideCd: number, slideArmed: boolean, slideAir: number, -- the slide's time left, its cooldown, crouch let go since, time off the ground
 }
 export type Input = {
@@ -127,7 +128,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 	event, hs = Movement.slideStep(st, inp, dt, hs, slipping)
 	st.crouching = inp.crouch and not st.sliding
 	st.sprinting = inp.sprint and not inp.crouch and inp.forward and st.onGround
-	local moveMul = if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1
+	local moveMul = (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * (st.speedMul or 1)
 	local wl = math.sqrt(inp.wx * inp.wx + inp.wz * inp.wz)
 	if slipping then -- feet gone: next to no friction, no control, no jumping until you're up again
 		if st.onGround then st.vx, st.vz = Movement.friction(st.vx, st.vz, 0.02, dt) end

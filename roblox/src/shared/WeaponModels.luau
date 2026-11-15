@@ -153,7 +153,8 @@ local function buildPlain(b: Builder, mdl: any, color: Color3)
 	bx(b, "grip", w * 0.55, 0.13, 0.05, 0x151515, 0, grip.Y - 0.02, grip.Z, -0.3)
 	local stripe = bx(b, "stripe", w * 0.82, 0.014, (back - mid) * 0.6, 0, 0, muzzle.Y + 0.045, (back + mid) / 2)
 	stripe.Color = color
-	spot(b, "Muzzle", muzzle); spot(b, "Grip", grip); spot(b, "Fore", mdl.fore)
+	spot(b, "Muzzle", muzzle); spot(b, "Grip", grip)
+	if mdl.fore then spot(b, "Fore", mdl.fore) end -- (a sidearm is held in one hand: no off-hand spot)
 	if mdl.sight then spot(b, "Sight", mdl.sight) end
 	if mdl.port then spot(b, "Port", mdl.port) end
 end

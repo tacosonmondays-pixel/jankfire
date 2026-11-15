@@ -1,39 +1,96 @@
-// the guns' first-person reloads as Luau data (roblox/src/shared/Reloads.luau), read straight out of
-// public/js/reloads.js: the body keys (camera-space offsets, metres / radians) and the sound events. the moving
-// pieces (mag, charging handle, off hand: the `ch` channels) are not ported yet. the Redline and the Marble Shotgun
-// keep their hand-keyed clips in Anims.luau (tools/roblox/anims.mjs). no dependencies: the RL table is cut out of the
-// source and evaluated on its own, because the file itself imports three.js and browser modules.
+// the guns' first-person clips as Luau data (roblox/src/shared/Reloads.luau), read straight out of the web game:
+//   public/js/reloads.js   RL          the reloads of ar, smg, revolver, shotgun, sniper (+ minigun, nailgun, water, scythe rifle)
+//   public/js/rifles.js    ANIMS       the rifle pack: reloads, draws and the Yeehaw's lever_cycle
+//   public/js/sidearms.js  SIDE_ANIMS  Plan B and Half a Shotgun: draws and reloads
+//   public/js/anim.js                  pump_shotgun, bolt_sniper (the clips that play after a shot)
+// each clip = the body keys (camera-space offsets, metres / radians), the sound events, and `ch`: the gun's own moving
+// parts (mag, charging handle, pump, bolt, lever, hammer, feed cover, slide, hinge, cylinder, the whole-gun twirl).
+// the off hand and the hand-held props (the `lh` and `p_*` channels) are not ported. the Redline and the Marble
+// Shotgun keep their hand-keyed clips in Anims.luau (tools/roblox/anims.mjs). no dependencies: the tables are cut out
+// of the sources and evaluated on their own, because the files themselves import three.js and browser modules.
 // run: node tools/roblox/reloads.mjs
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
-const src = fs.readFileSync(path.join(ROOT, 'public/js/reloads.js'), 'utf8').split(/\r?\n/);
-const a = src.findIndex((l) => l.startsWith('const magSwap'));
-const b = src.findIndex((l, i) => i > a && l.startsWith('const RL = {'));
-const c = src.findIndex((l, i) => i > b && l.startsWith('};'));
-if (a < 0 || b < 0 || c < 0) throw new Error('reloads.js changed shape: magSwap / RL not found');
-const K = "const PI = Math.PI, PI2 = PI * 2; const K = (t, p = [0, 0, 0], r = [0, 0, 0], e = 'smooth', s = 1) => ({ t, p, r, e, s });\n";
-const RL = new Function(K + src.slice(a, c + 1).join('\n') + '\nreturn RL;')();
+const read = (f) => fs.readFileSync(path.join(ROOT, f), 'utf8').split(/\r?\n/);
+const KDEF = "const PI = Math.PI, PI2 = PI * 2; const K = (t, p = [0, 0, 0], r = [0, 0, 0], e = 'smooth', s = 1) => ({ t, p, r, e, s });\n";
+const cut = (src, a, b, what) => { if (a < 0 || b < 0) throw new Error(what + ' changed shape'); return src.slice(a, b + 1).join('\n'); };
+
+// ---- reloads.js: magSwap + RL
+let src = read('public/js/reloads.js');
+let a = src.findIndex((l) => l.startsWith('const magSwap'));
+let b = src.findIndex((l, i) => i > a && l.startsWith('const RL = {'));
+let c = src.findIndex((l, i) => i > b && l.startsWith('};'));
+const RL = new Function(KDEF + cut(src, a, c, 'reloads.js') + '\nreturn RL;')();
+
+// ---- rifles.js: K, magSwap, rack, then Object.assign(ANIMS, { ... })
+src = read('public/js/rifles.js');
+a = src.findIndex((l) => l.startsWith('const K = '));
+b = src.findIndex((l, i) => i > a && l.startsWith('Object.assign(ANIMS, {'));
+c = src.findIndex((l, i) => i > b && l.startsWith('});'));
+const RIFLES = new Function('const ANIMS = {};\n' + cut(src, a, c, 'rifles.js') + '\nreturn ANIMS;')();
+
+// ---- sidearms.js: PI2, K, SIDE_ANIMS
+src = read('public/js/sidearms.js');
+a = src.findIndex((l) => l.startsWith('const PI2'));
+b = src.findIndex((l, i) => i > a && l.startsWith('const SIDE_ANIMS = {'));
+c = src.findIndex((l, i) => i > b && l.startsWith('};'));
+const SIDE = new Function(cut(src, a, c, 'sidearms.js') + '\nreturn SIDE_ANIMS;')();
+
+// ---- anim.js: the two follow-up clips, cut out by name
+src = read('public/js/anim.js');
+const one = (name) => {
+  const i = src.findIndex((l) => l.startsWith(`  ${name}: {`));
+  const j = src.findIndex((l, k) => k >= i && l.includes('events:'));
+  return new Function(KDEF + `return ({ ${cut(src, i, j, 'anim.js ' + name).replace(/,\s*$/, '')} }).${name};`)();
+};
+// the pump and the bolt move by the clip's clock in the web game (glbkit.js stepParts): the same timings, as channels
+const FOLLOW = {
+  pump_shotgun: { ...one('pump_shotgun'), ch: { pump: [[0, 0], [0.1, 1], [0.17, 0]] } },
+  bolt_sniper: { ...one('bolt_sniper'), ch: { bolt: [[0, 0, 0], [0.12, 1, 0], [0.22, 1, 1], [0.3, 1, 0], [0.42, 0, 0]] } },
+};
+// the Revolver's twirl round the trigger finger after a tap, and the turn it makes per fanned shot (public/js/twirl.js
+// does these with a spring; here they are clips: a whole forward turn, the arm reaching out while it goes round)
+const KK = (t, p = [0, 0, 0], r = [0, 0, 0], e = 'smooth') => ({ t, p, r, e, s: 1 });
+const TWIRL = {
+  twirl_revolver: { keys: [KK(0), KK(0.1, [-0.025, -0.02, -0.1], [0, 0.4, -0.15]), KK(0.2, [-0.02, -0.015, -0.08], [0, 0.3, -0.1]), KK(0.3)],
+    ch: { twirl: [[0, 0], [0.24, -Math.PI * 2]] }, events: [[0.02, 'whoosh']] },
+  fan_revolver: { keys: [KK(0), KK(0.05, [-0.015, -0.01, -0.06], [0, 0.25, -0.1]), KK(0.17)],
+    ch: { twirl: [[0, 0], [0.165, -Math.PI * 2]] }, events: [] },
+};
+
 const SKIP = new Set(['redline', 'marbles']);
+const PARTS = new Set(['mag', 'charge', 'pump', 'bolt', 'cyl', 'lever', 'lhammer', 'cover', 'twirl', 'belt', 'slide', 'hinge', 'shells', 'cock']);
+const WANT = /^(reload_|draw_|lever_cycle)/; // (no inspects: there is no inspect key on Roblox yet)
 const n = (x) => String(Math.round(x * 10000) / 10000);
 const v = (arr) => `{ ${arr.map(n).join(', ')} }`;
 const eases = new Set();
 let out = `--!strict
--- GENERATED by tools/roblox/reloads.mjs from public/js/reloads.js: don't edit by hand.
--- the guns' reloads in first person, same shape as Anims.luau: keys = t (s), p offset (m, camera space), r euler XYZ
--- offset (rad), e ease into the key; events = { time, name } for the sounds. Viewmodel merges these into Anims; a gun
--- with no clip of its own borrows reload_ar, stretched to its reload time.
+-- GENERATED by tools/roblox/reloads.mjs from the web game (public/js/reloads.js, rifles.js, sidearms.js, anim.js):
+-- don't edit by hand. the guns' clips in first person, same shape as Anims.luau: keys = t (s), p offset (m, camera
+-- space), r euler XYZ offset (rad), e ease into the key; events = { time, name } for the sounds; ch = the gun's own
+-- moving parts, each a list of { t, value... } (GunParts.luau moves the pieces). Viewmodel merges these into Anims; a
+-- gun with no reload of its own borrows reload_ar, stretched to its reload time.
 return {
 `;
 const ids = [];
-for (const [id, r] of Object.entries(RL)) {
-  if (SKIP.has(id) || !Array.isArray(r.keys)) continue;
-  ids.push(id);
-  out += `\treload_${id} = {\n\t\tdur = ${n(r.dur)},\n\t\tkeys = {\n`;
+function emit(name, r) {
+  if (!Array.isArray(r.keys)) return;
+  const dur = r.dur ?? r.keys[r.keys.length - 1].t;
+  ids.push(name);
+  out += `\t${name} = {\n\t\tdur = ${n(dur)},\n\t\tkeys = {\n`;
   for (const k of r.keys) { eases.add(k.e); out += `\t\t\t{ t = ${n(k.t)}, p = ${v(k.p)}, r = ${v(k.r)}, e = "${k.e}" },\n`; }
-  out += `\t\t},\n\t\tevents = { ${(r.events || []).map(([t, name]) => `{ ${n(t)}, "${name}" }`).join(', ')} },\n\t},\n`;
+  out += `\t\t},\n\t\tevents = { ${(r.events || []).map(([t, nm]) => `{ ${n(t)}, "${nm}" }`).join(', ')} },\n`;
+  const ch = Object.entries(r.ch || {}).filter(([k]) => PARTS.has(k));
+  if (ch.length) out += `\t\tch = { ${ch.map(([k, rows]) => `${k} = { ${rows.map(v).join(', ')} }`).join(', ')} },\n`;
+  out += '\t},\n';
 }
+for (const [id, r] of Object.entries(RL)) if (!SKIP.has(id)) emit('reload_' + id, r);
+for (const [name, r] of Object.entries(RIFLES)) if (WANT.test(name)) emit(name, r);
+for (const [name, r] of Object.entries(SIDE)) if (WANT.test(name) && !name.includes('akimbo')) emit(name, r);
+for (const [name, r] of Object.entries(FOLLOW)) emit(name, r);
+for (const [name, r] of Object.entries(TWIRL)) emit(name, r);
 out += '}\n';
 fs.writeFileSync(path.join(ROOT, 'roblox/src/shared/Reloads.luau'), out);
-console.log('reloads:', ids.join(', '), '| eases:', [...eases].join(', '), '|', out.length, 'chars');
+console.log('clips:', ids.join(', '), '| eases:', [...eases].join(', '), '|', out.length, 'chars');

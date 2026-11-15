@@ -9,18 +9,18 @@ Studio place, read the same day.
 | part | web game | in Roblox now | notes |
 | --- | --- | --- | --- |
 | Movement | run, sprint, slide, bhop, air strafe, grapple, jump pads | **all of it**, plus swimming | done |
-| Loadout weapons | 40 (20 primary, 14 secondary, 6 melee) | **5**: Redline, Marble Shotgun, Katana, Shredder, Assault Rifle | the Shredder is a one-off Tool, not in the normal weapon system |
+| Loadout weapons | 40 (20 primary, 14 secondary, 6 melee) | **16**: Redline, Marble Shotgun, Katana, Shredder, and the twelve plain guns (Assault Rifle, SMG, Shotgun, Sniper, Hat Trick, Belt Sander, Second Opinion, Yeehaw, Lawn Mower, Revolver, Plan B, Half a Shotgun) | the Shredder is a one-off Tool, not in the normal weapon system. Batch 3: section 12 |
 | Items (G) | 13 | 0 | |
 | Killstreaks | 9 | 0 | |
 | Game modes | 12 (Deathmatch, Team DM, Tags, Plant & Defuse, Randomizer, Gun Game, Infection, Zombies, Spoons, Duck Rain, Lava, One in the Chamber) | 0 of those | Roblox has its own thing instead: hub pads for 1v1, 2v2, 3v3, 4v4 and 1v1v1, first to 5 rounds |
 | Maps | 11 (+ Plant & Defuse twins) | **1**: Rooftop | plus the hub and training hall, which only exist on Roblox |
 | Bots | play every mode | 0 | training has two dummies |
-| Loadout screen | yes | **yes**, with all 102 wraps, saved | 36 weapons show as "coming soon" |
+| Loadout screen | yes | **yes**, with all 102 wraps, saved | 24 weapons show as "coming soon" |
 | Accounts, levels, achievements | yes | only the loadout is saved | |
 | Cosmetics, crates, shop | yes | wraps only | |
 | Big modes | Zombies, Jank Royale, Battle Island, Board Game Night, OVERDUE story | none | |
-| Sounds | made live in code | **all 32 uploaded and loading** (the game was silent until 2026-11-14: the 31 step-2 files had never been uploaded) | 32 of the 100 uploads per 30 days used (2,000 if the account is ID verified); 12 more gun shots are rendered and waiting in `roblox/assets/sounds` |
-| Code | | about 8,600 lines of Luau | exported to `roblox/src` on branch `claude/f-roblox-studio` |
+| Sounds | made live in code | **43 uploaded and loading** (the game was silent until 2026-11-14: the 31 step-2 files had never been uploaded) | 44 of the 100 uploads per 30 days used by 2026-11-15 (2,000 if the account is ID verified); two more gun shots are rendered and waiting in `roblox/assets/sounds` (Minigun, Lefty & Righty) |
+| Code | | about 10,200 lines of Luau | exported to `roblox/src` on branch `claude/f-roblox-studio` |
 
 ## 2. Fix these first (before adding 36 more weapons)
 
@@ -43,7 +43,7 @@ The repo already has the full spec for every weapon, item, killstreak and mode, 
 - [x] Step 1: movement + Rooftop
 - [x] Step 2: Redline, Marble Shotgun, Katana
 - [x] Hub, pad matches, training hall, loadout screen (Roblox only)
-- [ ] **Batch 3, plain guns (1 of 12 done: Assault Rifle):** SMG, Plan B, Revolver, Shotgun, Half a Shotgun, Sniper, Second Opinion, Hat Trick, Belt Sander, Lawn Mower, Yeehaw. Adds aiming down sights, shotgun jumps, sniper knockback.
+- [x] **Batch 3, plain guns (all 12, done 15 November: section 12):** Assault Rifle, SMG, Plan B, Revolver, Shotgun, Half a Shotgun, Sniper, Second Opinion, Hat Trick, Belt Sander, Lawn Mower, Yeehaw. Added scopes, shotgun jumps, sniper knockback, bursts, the quick-scope, the damage ramp, fanning and ricochets, and guns whose parts move.
 - [ ] **Bots + a real Deathmatch** with the end-of-match vote. Bots also let one person test everything. Already written on branch `claude/f-roblox-core` (BotBrain, Bots, Vote, MatchUi, Modes, Maps), built from step 2: it needs merging with the Studio code, not rewriting.
 - [ ] **Batch 4, things that fly (7):** Chicken Rocket, Peel Shooter, Bowling Ball Launcher, Tennis Ball Launcher, Nail Gun, Bow, Snowball. Adds server-run projectiles, explosions, bounces, peels on the floor, freezing.
 - [ ] **More maps**, one at a time. The converter (`tools/roblox/convert.mjs`) already turns a web map into Roblox parts box for box. Suggested order: Crate, Warehouse, Platform, Suburb, Desert, Bazaar, Islands, Skyline, then Backrooms, Scary Forest, Dead Mall. A second arena also lets two matches run at once (today there is one arena, so matches queue).
@@ -60,7 +60,7 @@ The repo already has the full spec for every weapon, item, killstreak and mode, 
 
 1. Read that batch's section of the spec.
 2. Code it, with the server deciding hits, damage and ammo (Roblox cheaters can send anything).
-3. Models from Blender (the web game's weapon models already exist; they need the Roblox export, then colours put back by hand, because uploads drop them). Hero models at extra-high effort, never max.
+3. Models from Blender (the web game's weapon models already exist; `tools/roblox/export_weapons.py` turns them and writes each piece's look into its name, and Studio's `WeaponImport` paints them and checks the facing: nothing is done by hand, see `roblox/README.md`). Hero models at extra-high effort, never max.
 4. Sounds rendered to files and uploaded.
 5. Play test, two players for anything that hits people. Console clean. Overlap check for anything placed.
 6. Save the place, export to GitHub, update the notes.
@@ -146,6 +146,35 @@ The owner picked **Hub 3, The Lanes** (a bowling alley). It was wired in as the 
 - **Structure pass, later the same day (place version 176):** the owner said the Lanes looked simple next to another game's lobby ("its not the color is the struicture"), and then that the first hub was cute. `HubLab` has a second switch beside the palette: `L.LANES_STRUCTURE` is `"overlook"` (the default) or `"box"` (the room as it was, 910 things). `overlook` is the same alley, paint, signs and pads in a shaped room: a raised concourse (spawn and shops, 3 studs up) with steps and two ramps down to the lanes, a fin and a canopy at every lane's pins, a beam-and-coffer ceiling with the light panels set into it, the six boards in a gantry across the hall, piers and bays down every wall, and a deep recess at each end of the cross walk (training door west, arcade east). On top of that it has what the rotunda had: a balcony over the entrance with a small lounge and the hologram duck, two jump pads up to it (parts with a `Pad` attribute, which `Move` already reads) and a marked gap to step back down, a giant turning bowling ball hung over the middle (tag `HubSpin`, which `HubLife` already turns), awnings, globe lamps and bunting. No script outside `HubLab` changed. `Hub.Lanes` is 1,512 things with 93 lamps, 11 of them casting shadows. `L.check()` now also tests 256 sight lines from the spawn points to every pad, every board and the name. A tester that did not build it passed 17 checks: spawn, sight lines, pads counting, the routes on foot, both doors, enclosure, nobody trapped, the jump pads, and the switch back to `box`. Not tested: a match from a pad, and how it runs on a phone. Still weak: it is one big room, and the first hub's charm was separate rooms seen through doorways.
 - **Left for later (minor, from the judges):** from the spawn the floor arrows out-shine the pads; the two end boards touch the HIGH SCORES and TONIGHT boards under them; the giant pin is darker than the sand wall behind it; the strip under the ball returns and the wall behind the name are the darkest surfaces; the sign faces are still near-black; the training hall's wall round its hub door is near-black.
 
+## 12. Batch 3: the eleven plain guns, 15 November 2026
+
+All twelve plain guns are in: selectable in the loadout screen, with their models, sounds, reloads and gimmicks.
+The table of every gun against its web numbers, what was measured, what differs and what was not tested is
+`roblox/docs/BATCH3-GUNS.md`.
+
+- **The exporter was fixed first.** One test upload settled it (`tools/roblox/rbxglb.py` holds the measurements):
+  uploads arrive turned half way round their up axis and lose plain colours; pictures and vertex colours survive.
+  `export_weapons.py` now turns every piece before export and writes its look into its name; `PolishBackup.WeaponImport`
+  paints from the name and refuses a model whose box does not match the exporter's. The re-exported Assault Rifle
+  matched the hand-fixed one piece for piece (position, size and inner shape to 0.00001 studs) and replaced it.
+- **New code:** `GunParts.luau` (client: the pieces of a gun that move, driven by the web game's own keyframes),
+  `TestHook.luau` (server, Studio only: `ServerStorage.JankTest`), about 120 lines in `Rules` and 100 in `Combat`
+  for the gimmicks, the scope overlay in `FightHud`, run speed per gun in `Movement` / `Move`. A plain gun is still
+  one row; the gimmicks are row fields the shared code acts on (`burst`, `ramp`, `quick`, `fan`, `ricochet`,
+  `lethalHead`, `kb`, `speedMul`, `cycle`, `mdl.parts`).
+- **Stricter than the web server:** ricochet paths are walked with the server's own rays, a headshot from a
+  one-bullet gun has to cross the head box, the quick-scope claim has to fit the server's own clock for the scope,
+  the Hat Trick is capped on shots, the Revolver's cylinder is the server's mag. Each was tried with faked messages.
+- **Tools that came out of it:** `tools/roblox/push.mjs` (script files into Studio as one uploaded model),
+  `weapon_import_call.mjs`, the wider `reloads.mjs` (rifle pack, sidearms, pump / bolt / lever clips, moving parts),
+  `--sil` and `--orient-test` on the exporter.
+- **Not ported:** the off hand and its props in reloads, the Sniper's no-scope show (overlay, fireworks, Royalty),
+  inspect animations, per-gun reload noises (they reuse the clicks: 56 audio uploads left this month).
+- **Not tested:** anything with two players (what others see, a real player launched off the map, parrying these
+  guns), phones. The offline tests added to `tests/weapons.luau` were not run (no Lune on this PC).
+- **Left alone on purpose:** the hub kits (`chunky.py` + `KitImport`) still turn and paint themselves on import; they
+  can move to `rbxglb.py` when the hub is not being rebuilt.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
@@ -153,3 +182,8 @@ The owner picked **Hub 3, The Lanes** (a bowling alley). It was wired in as the 
   `https://raw.githubusercontent.com/tacosonmondays-pixel/jankfire/main/roblox/docs/WEAPONS.md` (398 KB; read "Core systems" once, then the weapon's own section) and `.../MODES.md`. Step 2's file map is in `roblox/README.md` on branch `claude/f-roblox-weapons`.
 - Weapon stats live in `ReplicatedStorage.Jankfire.Weapons` (`list`), checks in `ServerScriptService.Jankfire.Rules` / `Combat`, the client in `StarterPlayerScripts.Jankfire.Arsenal` + `Viewmodel`.
 - The spec's last section lists every place the web server trusts the client. The Roblox server must check those.
+- Testing a weapon alone: `ServerStorage.JankTest` (Studio only) arms the test player with anything without touching the
+  saved loadout; `roblox/README.md` ("Pushing code into Studio, and testing it") has the recipe. The Studio MCP's own
+  `require` gets separate copies of the modules, and its key and mouse tool lags about 0.3 s per action.
+- Someone else may be using the same play test (on 15 November real key presses arrived mid-test and switched the
+  camera): check `UserInputService:GetKeysPressed()` and the camera mode before trusting a result.

@@ -341,4 +341,75 @@ return function(T: any)
 	local glugs = 0
 	for _, e in Anims.reload_redline.events do if e[2] == "glug" then glugs += 1 end end
 	check(glugs == 3, "the Redline's pit stop: three glugs")
+
+	-- ------------------------------------------------------------ batch 3: the eleven plain guns (docs/BATCH3-GUNS.md)
+	-- (written 2026-11-15 on a PC without Lune: every rule below was seen working in a Studio play test, but this
+	-- block itself has not been run yet)
+	do
+		local function armed(list: { string }): any
+			local f = fighter()
+			f.nextLoadout = list
+			Rules.arm(f, 0)
+			return f
+		end
+		-- the numbers (shared/weapons.js, metres -> studs)
+		check(W.smg.dmg == 7 and W.smg.rate == 16 and W.smg.mag == 45 and W.smg.speedMul == 1.2 and near(Weapons.damage(W.smg, 1, 1), 10.5, 1e-9), "SMG: 7 dmg (10.5 head), 16/s, 45 mag, x1.2 run speed")
+		check(Weapons.damage(W.shotgun, 10, 0) == 80 and W.shotgun.recoil == 51 and W.shotgun.mag == 6 and W.shotgun.range == 240, "Shotgun: 10 pellets x 8 = 80, 51 studs/s shove, 6 shells, 240 studs")
+		check(W.sniper.dmg == 55 and W.sniper.kb == 225 and W.sniper.kbUp == 42 and W.sniper.lethalHead == true and W.sniper.ads.zoom == 4 and W.sniper.ads.scope == true, "Sniper: 55, launch 225 + 42 up, lethal head, x4 scope")
+		check(W.burst.dmg == 15 and W.burst.burst == 3 and W.burst.burstGap == 0.28 and W.burst.rate == 14 and W.burst.mag == 30, "Hat Trick: 15 dmg, bursts of 3 at 14/s, 0.28 s pause, 30 mag")
+		check(W.lmg.dmg == 10 and W.lmg.mag == 100 and W.lmg.reload == 4.2 and W.lmg.speedMul == 0.86 and W.lmg.adsSpeed == 0.42, "Belt Sander: 10 dmg, 100 on the belt, 4.2 s reload, slow walk, slow sights")
+		check(W.dmr.dmg == 52 and Weapons.damage(W.dmr, 1, 1) == 104 and W.dmr.quick == 0.3 and W.dmr.qsDmg == 10 and W.dmr.qsKb == 27, "Second Opinion: 52 / 104, quick-scope 0.3 s for +10 and 27 studs/s")
+		check(W.lever.dmg == 30 and W.lever.ramp == 0.15 and W.lever.rampMax == 3 and W.lever.chain == 0.8 and W.lever.mag == 8, "Yeehaw: 30 dmg, +15% a chained hit up to 3, 0.8 s chain, 8 rounds")
+		check(Weapons.damage(W.autoshot, 8, 0) == 40 and W.autoshot.rate == 3 and W.autoshot.mag == 10, "Lawn Mower: 8 pellets x 5 = 40, 3/s, 10 shells")
+		check(W.revolver.dmg == 40 and near(Weapons.damage(W.revolver, 1, 1), 96, 1e-9) and W.revolver.fan.dmg == 28 and W.revolver.fan.rate == 6 and W.revolver.ricochet == 2, "Revolver: 40 / 96, fanned 28 at 6/s, 2 bounces")
+		check(W.pistol.dmg == 20 and near(Weapons.damage(W.pistol, 1, 1), 44, 1e-9) and W.pistol.mag == 12 and W.pistol.reload == 1.35, "Plan B: 20 / 44, 12 rounds, 1.35 s")
+		check(Weapons.damage(W.sawnoff, 12, 0) == 108 and W.sawnoff.mag == 2 and W.sawnoff.recoil == 30, "Half a Shotgun: 12 pellets x 9 = 108, 2 shells, 30 studs/s hop")
+		for _, id in { "smg", "shotgun", "sniper", "burst", "lmg", "dmr", "lever", "autoshot", "revolver", "pistol", "sawnoff" } do
+			local w = W[id]
+			check(w.kind == "hitscan" and w.mdl ~= nil and w.vm ~= nil and w.snd == "gun_" .. id and w.recoilVM ~= nil, id .. ": a row with its model spots, pose, recoil and sound")
+		end
+		-- the shove on whoever a gun hits
+		local kb = Weapons.gunKb(W.sawnoff, 12, V3.new(0, 0, -1), 0)
+		check(kb ~= nil and near(kb.Z, -122.4, 1e-6) and near(kb.Y, 27, 1e-6), "Half a Shotgun: all 12 pellets shove 122.4 studs/s along the shot and 27 up")
+		check(Weapons.gunKb(W.ar, 1, V3.new(0, 0, -1), 0) == nil, "a gun with no knockback shoves nobody")
+		-- the Hat Trick: three shots, then nothing until the pause is over
+		local b = armed({ "burst", "marbles", "katana" })
+		local iv = 1 / 14
+		check(Rules.fire(b, "burst", 10, eye, eye) == nil and Rules.fire(b, "burst", 10 + iv, eye, eye) == nil and Rules.fire(b, "burst", 10 + 2 * iv, eye, eye) == nil, "Hat Trick: a burst of three goes through")
+		check(Rules.fire(b, "burst", 10 + 3 * iv, eye, eye) == "too fast", "refused: a fourth shot straight after the burst")
+		check(Rules.fire(b, "burst", 10 + 3 * iv + 0.28, eye, eye) == nil, "the next burst starts after the pause")
+		-- the Revolver: a tap pays in full, anything quicker (or flagged) is paid as a fanned shot
+		local r = armed({ "redline", "revolver", "katana" })
+		Rules.equip(r, "revolver", 1)
+		local why, mul = Rules.fire(r, "revolver", 10, eye, eye)
+		check(why == nil and mul == 1, "Revolver: a tap pays in full")
+		why, mul = Rules.fire(r, "revolver", 10.2, eye, eye)
+		check(why == nil and near(mul, 0.7, 1e-9), "a shot 0.2 s later (faster than a tap) is paid as a fanned one: x0.7")
+		why, mul = Rules.fire(r, "revolver", 10.7, eye, eye, false, true)
+		check(why == nil and near(mul, 0.7, 1e-9), "a shot flagged as fanned is paid as one whenever it comes")
+		check(Rules.fire(r, "revolver", 10.72, eye, eye) == "too fast", "refused: faster than the fan itself")
+		-- the Yeehaw's ramp, from the server's own hit times
+		local a, t1, t2 = fighter(), fighter(), fighter()
+		check(Rules.ramp(a, t1, W.lever, 1) == 0 and Rules.ramp(a, t1, W.lever, 1.5) == 1 and Rules.ramp(a, t1, W.lever, 2.0) == 2 and Rules.ramp(a, t1, W.lever, 2.5) == 3 and Rules.ramp(a, t1, W.lever, 3.0) == 3, "Yeehaw: the chain climbs 0, 1, 2, 3 and stays at 3")
+		check(Rules.ramp(a, t2, W.lever, 3.2) == 0, "a hit on someone else starts the chain again")
+		check(Rules.ramp(a, t2, W.lever, 4.1) == 0, "0.9 s since the last hit: too slow, the chain starts again")
+		-- BURST!: all three of one burst on one person
+		local s1, s2 = fighter(), fighter()
+		check(not Rules.burstHit(s1, t1, W.burst, 5) and not Rules.burstHit(s1, t1, W.burst, 5.07) and Rules.burstHit(s1, t1, W.burst, 5.14), "BURST! on the third hit of a burst on one person")
+		check(not Rules.burstHit(s2, t1, W.burst, 5) and not Rules.burstHit(s2, t2, W.burst, 5.07) and not Rules.burstHit(s2, t1, W.burst, 5.14), "no BURST! when the burst is split between two people")
+		-- the Second Opinion's quick-scope: the claim has to fit the server's own clock for the scope
+		local q = armed({ "dmr", "marbles", "katana" })
+		check(Rules.quick(q, W.dmr, 10, true) == false, "quick-scope refused: the sights were never up")
+		Rules.aim(q, true, 10)
+		check(Rules.quick(q, W.dmr, 10.02, true) == false, "refused: 0.02 s after the press the scope can't be up yet")
+		check(Rules.quick(q, W.dmr, 10.25, true) == true, "paid: 0.25 s after the sights went up")
+		Rules.aim(q, false, 10.3); Rules.aim(q, true, 10.6)
+		check(Rules.quick(q, W.dmr, 10.85, true) == false, "refused: the bonus paid 0.6 s ago (once every 1.2 s)")
+		Rules.aim(q, false, 12); Rules.aim(q, true, 12)
+		check(Rules.quick(q, W.dmr, 12.25, false) == false, "nothing claimed, nothing paid")
+		check(Rules.quick(q, W.dmr, 13.0, true) == false, "refused: a whole second after the scope came up is not a quick-scope")
+		-- a headshot claim from a one-bullet gun: the bullet has to cross the head box
+		local feetT = V3.new(0, 0, -60)
+		check(Rules.headAimed(eye, { feetT + V3.new(0, 5.9, 0) }, { feetT }) and not Rules.headAimed(eye, { feetT + V3.new(0, 3, 0) }, { feetT }), "a headshot needs the bullet through the head: a chest-high bullet is a body shot")
+	end
 end

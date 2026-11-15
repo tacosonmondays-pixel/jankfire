@@ -89,5 +89,12 @@
   "vol": 0.85,
   "secs": 0.68,
   "peak": 0.98
+ },
+ {
+  "name": "gun_sniper",
+  "what": "Sniper shot",
+  "vol": 0.8,
+  "secs": 0.8,
+  "peak": 0.98
  }
 ]

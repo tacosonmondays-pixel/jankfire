@@ -35,7 +35,8 @@
         "StudioExport": { "$path": "studio-tools/StudioExport.luau" },
         "HubLab": { "$path": "studio-tools/HubLab.luau" },
         "KitImport": { "$path": "studio-tools/KitImport.luau" },
-        "HubReskin": { "$path": "studio-tools/HubReskin.luau" }
+        "HubReskin": { "$path": "studio-tools/HubReskin.luau" },
+        "WeaponImport": { "$path": "studio-tools/WeaponImport.luau" }
       }
     },
     "StarterPlayer": {

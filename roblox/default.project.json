@@ -32,6 +32,9 @@
         "Parry": {
           "$className": "RemoteEvent"
         },
+        "Aim": {
+          "$className": "RemoteEvent"
+        },
         "Shot": {
           "$className": "RemoteEvent"
         },

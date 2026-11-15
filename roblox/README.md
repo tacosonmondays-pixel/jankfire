@@ -10,7 +10,7 @@
 > | The place's code, one file per script | `src/shared`, `src/server`, `src/client` (the three `Jankfire` folders), `src/server_root` and `src/client_root` (loose scripts next to them), `src/in_models` (scripts that live inside a model) |
 > | The maps and asset folders, as Roblox model files | `place/**.rbxm` (the hub, Rooftop, mesh templates, weapons, effects, sounds, remotes, lighting effects, the clouds, the grid material) |
 > | Service settings (gravity, lighting numbers, player settings) | `place/settings.json` |
-> | Edit-time helpers (prop placer, overlap check, the hub builder, the kit importer, the exporter itself) | `studio-tools/` |
+> | Edit-time helpers (prop placer, overlap check, the hub builder, the kit importer, the weapon importer, the exporter itself) | `studio-tools/` |
 >
 > **Export again after a batch of Studio work** (a Claude session with the Studio MCP does this):
 > 1. In Studio (execute_luau, Edit): `local m = game.ServerStorage.PolishBackup.StudioExport:Clone(); local E = require(m); m:Destroy(); return E.run("bundle")`.
@@ -30,26 +30,71 @@
 
 ## Adding a plain gun (batch 3 onwards)
 
-A gun with no gimmick needs no code. The Assault Rifle was added exactly like this:
+A gun with no gimmick needs no code, and **nothing is turned or painted by hand any more**. The Assault Rifle and
+the eleven guns of batch 3 (`docs/BATCH3-GUNS.md`) went in exactly like this:
 
 1. **Row:** add it to `src/shared/Weapons.luau` (in Studio: ReplicatedStorage.Jankfire.Weapons). Stats from
-   `shared/weapons.js`, `vm` and `recoilVM` from `public/js/weapons.js` (VM, RECOIL), `fx` (flash, brass, tracer),
-   `snd`, and `mdl` (the model file's bounds + muzzle / sight / port / grip / fore spots, metres).
-2. **Model:** `blender -b --factory-startup -P tools/roblox/export_weapons.py -- roblox/assets/weapons public/models/w_<id>.glb`.
-   It prints the bounds for `mdl` and writes every piece's colour to `export_report.json`. Upload the .glb (Open
-   Cloud, Model), insert it, colour each piece from the report (uploads arrive grey), turn it 180 degrees about Y
-   (uploads arrive backwards), name it `w_<id>` and put it in ReplicatedStorage.JankfireWeapons.
-3. **Sound:** `node tools/roblox/render_guns.mjs` writes `roblox/assets/sounds/gun_<id>.wav` (13 guns are already
-   rendered). Upload it (Open Cloud, Audio) and add a Sound named `gun_<id>` to ReplicatedStorage.JankfireSounds.
-4. **Reload:** `node tools/roblox/reloads.mjs` regenerates `Reloads.luau` from the web game. A gun with no clip of its
-   own borrows the rifle's, stretched to its reload time.
-5. **Roster:** set `live = true` on its line in `src/shared/Roster.luau` so the loadout screen offers it.
-6. Play test in the training hall, then export and commit.
+   `shared/weapons.js`, `vm` and `recoilVM` from `public/js/weapons.js` (VM, RECOIL; the rifle pack's are in
+   `public/js/rifles.js`), `fx` (flash, brass, shake), `snd`, and `mdl`: the model file's bounds, the muzzle / sight /
+   port / grip / fore spots (metres; leave `fore` out for a one-handed sidearm) and `parts`, the pieces that move.
+2. **Model:** `blender -b --factory-startup -P tools/roblox/export_weapons.py -- roblox/assets/weapons --sil public/models/w_<id>.glb`.
+   It turns the model so the upload lands facing the right way, writes each piece's look into its name, prints the
+   bounds, muzzle and sight for `mdl`, and with `--sil` draws the gun's side view as text (to pick the grip and fore
+   spots). `export_report.json` also lists where every moving node turns (`nodes`) and the web model's own notes
+   (`meta`: pump travel, bolt lift and so on) for `mdl.parts`. Upload the .glb (Open Cloud, Model), put its asset id
+   in `roblox/assets/weapons/assets.json`, run `node tools/roblox/weapon_import_call.mjs <id>` and paste what it
+   prints into Studio (execute_luau, Edit). That is `PolishBackup.WeaponImport`: it paints every piece from its
+   name, keeps the pictures, checks the facing against the exporter's bounds and puts `w_<id>` in
+   ReplicatedStorage.JankfireWeapons.
+3. **Sound:** `node tools/roblox/render_guns.mjs` writes `roblox/assets/sounds/gun_<id>.wav` (14 guns are rendered:
+   the 12 plain guns, the Minigun and Lefty & Righty). Upload it (Open Cloud, Audio) and add a Sound named `gun_<id>`
+   to ReplicatedStorage.JankfireSounds. Uploads are capped at 100 per 30 days: **44 used on 2026-11-15**.
+4. **Clips:** `node tools/roblox/reloads.mjs` regenerates `Reloads.luau` from the web game: every reload, the draws,
+   the clips that follow a shot (pump, bolt, lever) and the moving parts' timings. A gun with no reload of its own
+   borrows the rifle's, stretched to its reload time. `GunParts.luau` moves the pieces named in `mdl.parts`.
+5. **Roster:** set `live = true` (and write its `gimmick` line) in `src/shared/Roster.luau` so the loadout screen
+   offers it.
+6. Play test in the training hall (below), then export and commit.
 
-The server needs nothing: `Rules.luau` and `Combat.server.luau` already check any hitscan gun from its row (held,
-ammo, fire rate, range, line of sight, and that the shot was really aimed at the target along its last 0.6 s).
+The server needs nothing for a plain gun: `Rules.luau` and `Combat.server.luau` already check any hitscan gun from its
+row (held, ammo, fire rate, range, line of sight, that the shot was really aimed at the target along its last 0.6 s,
+and for one-bullet guns that a claimed headshot crossed the head). Row fields the server acts on by itself: `kb` /
+`kbUp` (shove the victim), `lethalHead`, `burst` + `burstGap`, `ramp` + `chain`, `quick` + `qsDmg`, `fan`, `ricochet`.
 
-![the Assault Rifle in the training hall](docs/step3-ar-training.jpg)
+### How uploads arrive (measured 2026-11-15)
+
+`tools/roblox/rbxglb.py` holds what was measured and the helpers every exporter should use. One test object
+(`export_weapons.py -- <dir> --orient-test`: a body with a nose, a post and a cap, plus one cube per colour route)
+went through the same Open Cloud upload as everything else:
+
+| question | what arrived |
+| --- | --- |
+| facing | Blender (x, y, z) lands at Roblox (-x, z, y): the file turned half way round its up axis. Each piece is a MeshPart at its box centre, unrotated (the turn is in the vertices), 1 unit = 1 stud. **Fix: the exporter turns every piece 180 degrees before export** (`rbxglb.PRE_TURN`), so the upload lands in the file's own frame. |
+| plain material colours | lost: grey `a3a2a5`, Plastic |
+| pictures (textures) | kept as `TextureID`, colours exact. The part's own Color does not tint an opaque picture, so Color holds a fallback. A picture shows white for a moment while it downloads: `Arsenal` preloads every weapon's assets. |
+| vertex colours | kept, but shown too dark (Roblox reads the file's linear numbers as sRGB) and multiplied by the part's grey Color. `rbxglb.bake_vertex_colours` writes them so they read true; set Color white. They can't be removed in a running game. |
+
+So: weapons keep one flat Color per piece (the loadout's wraps repaint pieces through Color; a baked vertex colour
+would shine through every wrap), written into each piece's name by the exporter and applied by `WeaponImport`.
+Vertex colours are the route for models that are never repainted. The hub kits (`chunky.py`) still go through
+`KitImport`, which turns and paints them by itself; they were left alone because the hub was being rebuilt.
+
+![the re-exported Assault Rifle (top) and the hand-fixed one it replaced](docs/batch3/exporter-ar-new-above-old-below.jpg)
+
+### Pushing code into Studio, and testing it
+
+- **Big or generated code goes in as a model:** `node tools/roblox/push.mjs <out.rbxm> roblox/src/...` packs script
+  files with Rojo; upload the .rbxm as a Model and run the Luau it prints (it copies each script's Source onto the
+  script of the same name). Check the files match Studio first, or you overwrite newer work.
+- **A play test can reach the running server through `ServerStorage.JankTest`** (a BindableFunction that only exists
+  in Studio, `src/server/TestHook.luau`): `:Invoke("arm", player, { "smg", "revolver", "katana" })` arms you with
+  anything without touching the saved loadout; `"me"`, `"all"` and `"hp"` read and set the server's own numbers.
+  (The Studio MCP's Luau gets its own copies of the modules, so `require` can't see the fighters.)
+- Set the player attribute `RangeRun` so the Plinker leaves you alone, and send cheat checks straight to the remotes
+  from the client. Take the eye from the character's root + 1.8 studs, not the camera (a third-person camera makes
+  the server refuse every shot, correctly).
+
+![the eleven guns of batch 3](docs/batch3/guns-in-hand.jpg)
 
 ## Steps 1 and 2 (how it started)
 

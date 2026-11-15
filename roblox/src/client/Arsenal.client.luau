@@ -22,6 +22,7 @@ local Body = require(script.Parent:WaitForChild("Body"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
+local AimR = remote("Aim") -- the sights of a scoped gun going up / coming down (the server times quick-scopes itself)
 local MatchState = ReplicatedStorage:WaitForChild("Match")
 
 local W = Weapons.list
@@ -46,6 +47,14 @@ local staggerUntil = -math.huge
 local shake = 0
 local view = { pitch = 0, yaw = 0 } -- the visual offsets applied to the camera last frame (removed again next frame)
 local equipT = 0
+-- batch 3: when the trigger went down (the Revolver fans after a hold), the Hat Trick's shots still to come in this
+-- burst, the next fanned shot, the scope (up = the overlay is on), what the server was last told about the sights
+local pressT = -math.huge
+local burstLeft = 0
+local fanNext = 0
+local fanArmed = false -- a fan needs a fresh click after running dry, reloading or aiming
+local scoped, scopedAt = false, -math.huge
+local aimSent = false
 
 -- your loadout (the server sets it on every arm, Loadout.luau): the weapons on keys 1 2 3
 local function lo(): { string }
@@ -248,6 +257,7 @@ local function equip(wid: string)
 	held = wid
 	equipT = os.clock()
 	aim = 0
+	burstLeft = 0
 	VM.set(wid, kat())
 	table.clear(smearPts)
 	EquipR:FireServer(wid)
@@ -260,8 +270,18 @@ local function reload()
 	if not a or not w.mag or a.reloadUntil > 0 or a.mag >= w.mag then return end
 	a.reloadUntil = os.clock() + (w.reload :: number)
 	aim = 0
+	burstLeft = 0
+	fanArmed = false
 	ReloadR:FireServer(held)
-	VM.reload(held, w.reload :: number)
+	VM.reload(held, w.reload :: number, a.mag <= 0)
+end
+
+-- a spent case out of the port (the pump's red hull, the bolt's and the lever's brass: thrown by the clip, not the shot)
+local function eject(big: boolean)
+	local port = VM.attachment("Port")
+	local _, _, root = myChar()
+	if not port or not root or (camera.CFrame.Position - root.Position).Magnitude > 4.5 then return end
+	Fx.brass(CFrame.lookAt(port, port + camera.CFrame.LookVector), big)
 end
 
 VM.onEvent = function(ev: string)
@@ -278,6 +298,15 @@ VM.onEvent = function(ev: string)
 	elseif ev == "magIn" then Sfx.play("reload")
 	elseif ev == "chargeBack" then Sfx.play("click", nil, 0.8, 1.1)
 	elseif ev == "chargeHome" then Sfx.play("click", nil, 1, 1.35)
+	-- batch 3's clips: cases thrown by the pump / bolt / lever, and the clicks and clacks of their moving parts
+	elseif ev == "shellRed" then eject(true)
+	elseif ev == "shell" or ev == "shellUp" then eject(false); Sfx.play("click", nil, 0.7, 1.5)
+	elseif ev == "shellIn" or ev == "thumb" or ev == "loaderIn" then Sfx.play("click", nil, 0.8, 1.25)
+	elseif ev == "pumpBack" or ev == "boltBack" or ev == "boltUp" or ev == "coverUp" or ev == "break" or ev == "cylOut" then Sfx.play("click", nil, 0.9, 0.85)
+	elseif ev == "pumpHome" or ev == "boltHome" or ev == "boltDown" or ev == "leverClack" or ev == "close" or ev == "cylIn"
+		or ev == "slideHome" or ev == "hkSlap" or ev == "cock" then Sfx.play("click", nil, 1, 1.35)
+	elseif ev == "coverSlam" or ev == "clunk" then Sfx.play("thwack", nil, 0.5, 0.8)
+	elseif ev == "belt" or ev == "casings" or ev == "eject" or ev == "spinCyl" or ev == "loaderTwist" then Sfx.play("marble", nil, 0.5, 1.3)
 	else Sfx.play("click", nil, 0.6) end
 end
 
@@ -285,19 +314,27 @@ end
 local mapParams = RaycastParams.new()
 mapParams.FilterType = Enum.RaycastFilterType.Include
 
-local function fireGun(now: number)
+-- fan = a fanned Revolver shot (the trigger held): the fan's own rate, spread and softer kick
+local function fireGun(now: number, fan: boolean?)
 	local w = W[held]
 	local a = ammo[held]
 	local _, _, root = myChar()
 	if not root or not a then return end
 	if a.reloadUntil > 0 then return end
-	if a.mag <= 0 then Sfx.play("empty"); reload(); return end
+	if a.mag <= 0 then Sfx.play("empty"); burstLeft = 0; reload(); return end
+	local F = if fan then w.fan else nil
 	local iv = 1 / Weapons.fireRate(w, hp())
 	nextShot[held] = math.max(nextShot[held], now - math.min(0.04, iv / 2)) + iv
+	if w.fan then fanNext = now + 1 / w.fan.rate end
+	if w.burst then -- the Hat Trick: a press is a whole burst, then a breath before the next one
+		if burstLeft <= 0 then burstLeft = w.burst end
+		burstLeft -= 1
+		if burstLeft <= 0 then nextShot[held] += w.burstGap or 0 end
+	end
 	a.mag -= 1
 	firedT = now
 	local eye, look = eyeAndAim()
-	local spread = ((w.spread or 0) + bloom) * (1 + ((if w.ads then w.ads.spread else 1) - 1) * aim)
+	local spread = ((if F then F.spread else (w.spread or 0)) + bloom) * (1 + ((if w.ads then w.ads.spread else 1) - 1) * aim)
 	local map = workspace:FindFirstChild("Map")
 	mapParams.FilterDescendantsInstances = { map :: Instance }
 	local tg = targets()
@@ -306,20 +343,39 @@ local function fireGun(now: number)
 	local allEnds: { Vector3 } = {}
 	local impacts: { RaycastResult } = {}
 	local splashes: { Vector3 } = {}
+	local path: { Vector3 }? = nil -- the Revolver: where this bullet bounced (the server walks the same path)
 	for _ = 1, w.pellets or 1 do
 		local d = Hitbox.spreadDir(look, spread, math.random(), math.random())
-		local mh = workspace:Raycast(eye, d * w.range, mapParams)
-		local best = if mh then (mh.Position - eye).Magnitude else w.range
+		local from, left, bounces = eye, w.range, w.ricochet or 0
+		local mh: RaycastResult? = nil
+		local best = left
 		local who: Model?, head = nil, false
-		for _, t in tg do
-			local k = Hitbox.distScale((t.feet - eye).Magnitude)
-			local tt, hd = Hitbox.ray(eye, d, t.feet, k)
-			if tt and tt < best then best, who, head = tt, t.m, hd end
+		while true do
+			mh = workspace:Raycast(from, d * left, mapParams)
+			best = if mh then (mh.Position - from).Magnitude else left
+			who, head = nil, false
+			for _, t in tg do
+				local k = Hitbox.distScale((t.feet - from).Magnitude)
+				local tt, hd = Hitbox.ray(from, d, t.feet, k)
+				if tt and tt < best then best, who, head = tt, t.m, hd end
+			end
+			if who or not mh or bounces <= 0 or left - best <= 1 then break end
+			-- off the wall (the Revolver, twice): the same bullet carries on with what's left of its range
+			bounces -= 1
+			left -= best
+			local at = from + d * best
+			local pp: { Vector3 } = path or {}
+			path = pp
+			table.insert(pp, at)
+			Fx.impact(mh.Position, mh.Normal, mh.Instance, mh.Material, { hole = false, scale = 0.6 })
+			Sfx.play("ricochet", at, 0.6)
+			d = d - 2 * d:Dot(mh.Normal) * mh.Normal
+			from = at + mh.Normal * 0.05
 		end
-		local e = eye + d * best
+		local e = from + d * best
 		table.insert(allEnds, e)
 		if #ends < 12 then table.insert(ends, e) end
-		local wx = Fx.waterCross(eye, e) -- into the pool: a splash on the surface, not dust on the bottom
+		local wx = Fx.waterCross(from, e) -- into the pool: a splash on the surface, not dust on the bottom
 		if wx and #splashes < 4 then table.insert(splashes, wx) end
 		if who then
 			local g = hits[who] or { n = 0, h = 0 }
@@ -329,28 +385,49 @@ local function fireGun(now: number)
 	end
 	local list = {}
 	for m, g in hits do table.insert(list, { m = m, n = g.n, h = g.h }) end
-	FireR:FireServer(held, eye, ends, list)
+	-- the shot's claims (the server checks each one): a fanned shot, the bounce points, a quick-scope (fired within
+	-- `quick` s of the scope coming up), a no-scope (a scoped gun fired with the scope down)
+	local opt: { [string]: any }? = nil
+	local qs = w.quick ~= nil and scoped and now - scopedAt <= (w.quick :: number)
+	local ns = w.noscope == true and not scoped
+	if F or path or qs or ns then
+		opt = { fan = if F then true else nil, path = path, qs = if qs then true else nil, ns = if ns then true else nil }
+	end
+	FireR:FireServer(held, eye, ends, list, opt)
 	-- your own feel: shove, climb, bloom, the gun kicks, flash, brass, tracer / marbles, sound
-	Body.push(-look * (w.recoil or 0))
-	kickCam((w.kick or 0) * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * 0.5)
+	local km = if F then F.kick else 1
+	Body.push(-look * (w.recoil or 0) * km)
+	kickCam((w.kick or 0) * km * (0.6 + math.random() * 0.8) * (1 - 0.5 * aim), (math.random() - 0.5) * (w.kick or 0) * km * 0.5)
 	bloom = math.min(w.maxBloom or 0, bloom + (w.bloom or 0))
 	VM.kick(w.recoilVM, if aim > 0.5 then 0.6 else 1, (w.rate or 0) > 8)
+	VM.shot(w) -- the cylinder turns, the hammer falls, the slide kicks, the barrel warms
+	if w.cycle then VM.follow(w.cycle.clip, w.cycle.at) end -- then the pump / the bolt / the lever
+	if w.fan then -- the Revolver: a twirl round the finger after a tap (not down the sights), a whole turn per fanned shot
+		if F then VM.play("fan_revolver") elseif aim < 0.3 then VM.play("twirl_revolver") end
+	end
 	local fpv = not thirdPerson()
 	-- the muzzle: the viewmodel's in first person, the gun in your character's hand in third person
 	local mz = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eye + look * 2)
 	-- every gun's look comes from its row in Weapons (fx, tracer, snd): nothing here is per weapon
 	local fx = w.fx or {}
-	Fx.muzzle(CFrame.lookAt(mz, mz + look), fx.big == true, fpv)
+	if not (scoped and fpv) then Fx.muzzle(CFrame.lookAt(mz, mz + look), fx.big == true, fpv) end -- (the scope hides the gun, flash and all)
 	if fx.spray then
 		Fx.marbles(mz, allEnds, 1) -- no tracers: the marbles are the tracers
 	else
-		if fx.brass then
+		if fx.brass and not scoped then
 			local port = VM.attachment("Port")
 			if port and fpv then Fx.brass(CFrame.lookAt(port, port + look) * CFrame.Angles(0, 0, 0), false) end
 		end
-		for _, e in ends do Fx.tracer(mz, e, w.tracer or TRACER, 0.045 * S, 0.2) end
+		local wide = w.thick or 0.045 * S
+		if path then -- a bounced bullet: the tracer bends at each wall
+			local at = mz
+			for _, b in path do Fx.tracer(at, b, w.tracer or TRACER, wide, 0.2); at = b end
+			Fx.tracer(at, ends[1], w.tracer or TRACER, wide, 0.2)
+		else
+			for _, e in ends do Fx.tracer(mz, e, w.tracer or TRACER, wide, 0.2) end
+		end
 	end
-	Sfx.gun(w, Weapons.tacho(hp()), nil)
+	Sfx.gun(w, Weapons.tacho(hp()), nil, VM.heat())
 	-- what the shots hit: holes, dust, sparks by material (marbles chip and puff, they don't punch holes)
 	local o = if fx.hole == false then { hole = false, scale = fx.scale or 1 } else nil
 	for _, im in impacts do Fx.impact(im.Position, im.Normal, im.Instance, im.Material, o) end
@@ -442,6 +519,8 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	local now = os.clock()
 	if io.UserInputType == Enum.UserInputType.MouseButton1 then
 		trigger = true
+		pressT = now
+		fanArmed = true
 		local _, _, root = myChar()
 		if not root then return end
 		if held == "katana" then swing(now)
@@ -588,7 +667,14 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 	if sfx.spray then
 		Fx.marbles(from, ends, 8)
 	else
-		for _, e in ends do Fx.tracer(from, e, (sw and sw.tracer) or TRACER, 0.045 * S, 0.2) end
+		local wide = (sw and sw.thick) or 0.045 * S
+		local at = from
+		if type(s.path) == "table" then -- a Revolver bullet that bounced: the tracer bends at each wall
+			for i, b in s.path do
+				if typeof(b) == "Vector3" and i <= 2 then Fx.tracer(at, b, (sw and sw.tracer) or TRACER, wide, 0.2); at = b end
+			end
+		end
+		for _, e in ends do Fx.tracer(at, e, (sw and sw.tracer) or TRACER, wide, 0.2) end
 	end
 	if sw then Sfx.gun(sw, 0, from) end
 	Fx.shotEnds(from, ends, sfx.spray == true) -- their holes, dust and splashes, seen here too
@@ -670,6 +756,20 @@ remote("Round").OnClientEvent:Connect(function(r: any)
 	end
 end)
 
+-- the server's verdicts on the gimmicks arrive as callouts (Hud shows the words): a ding to go with them
+remote("Callout").OnClientEvent:Connect(function(text: unknown)
+	if type(text) ~= "string" then return end
+	if string.sub(text, 1, 6) == "BURST!" then
+		Sfx.play("ting", nil, 0.8, 1.3)
+		task.delay(0.09, function() Sfx.play("ting", nil, 0.8, 1.6) end)
+	elseif string.sub(text, 1, 6) == "YEEHAW" then
+		local mul = tonumber(string.match(text, "x([%d%.]+)")) or 1.15
+		Sfx.play("ting", nil, 0.7, 1 + 0.25 * (mul - 1) / 0.15)
+	elseif text == "QUICK SCOPE" or string.sub(text, 1, 8) == "NO SCOPE" then
+		Sfx.play("ting", nil, 0.9, 0.8)
+	end
+end)
+
 Body.onSlip = function(kind: string)
 	Sfx.play("whoops"); Sfx.play("clatter")
 	Hud.callout(if kind == "marbles" then "MARBLES!" else "WHOOPS!", 1.4)
@@ -700,6 +800,13 @@ me:GetAttributeChangedSignal("Wraps"):Connect(function()
 	if VM.model and held ~= "" and held ~= "shredder" then VM.set(held, kat()) end
 end)
 
+-- every weapon's meshes and pictures are fetched up front: a gun never comes out invisible, or blank white while its
+-- pictures are still on their way, the first time you draw it
+task.spawn(function()
+	local lib = ReplicatedStorage:WaitForChild("JankfireWeapons", 15)
+	if lib then pcall(function() game:GetService("ContentProvider"):PreloadAsync(lib:GetChildren()) end) end
+end)
+
 -- ---------------------------------------------------------------- every frame
 RunService.RenderStepped:Connect(function(dt: number)
 	local now = os.clock()
@@ -713,7 +820,15 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local reloading = a ~= nil and a.reloadUntil > 0
 	-- aim down sights (can't while reloading): in ~0.14 s, out in ~0.125 s
 	local canAim = w and w.ads ~= nil and not reloading and hum ~= nil
-	aim = math.clamp(aim + (if aimHeld and canAim then 7 else -8) * dt, 0, 1)
+	aim = math.clamp(aim + (if aimHeld and canAim then 7 * (w.adsSpeed or 1) else -8) * dt, 0, 1)
+	-- a scope (the Sniper, the Second Opinion): the overlay comes up at 92% aim and the gun itself is hidden behind it
+	local isScoped = w ~= nil and w.ads ~= nil and w.ads.scope == true and aim > 0.92
+	if isScoped and not scoped then scopedAt = now end
+	scoped = isScoped
+	local wantAim = aimHeld and canAim == true and w.ads ~= nil and w.ads.scope == true
+	if wantAim ~= aimSent then aimSent = wantAim; AimR:FireServer(wantAim) end
+	-- how fast you run with it out (the SMG is light, the Belt Sander isn't), slower down the sights (web: x0.75)
+	Body.speedMul = (if w and not inHub() then w.speedMul or 1 else 1) * (1 - 0.25 * aim)
 	-- the base FOV is the P-menu slider's (JankSettings sets the BaseFov attribute); ADS zooms from it
 	local fovAttr = me:GetAttribute("BaseFov")
 	local baseFov = if type(fovAttr) == "number" then fovAttr else 70
@@ -721,10 +836,18 @@ RunService.RenderStepped:Connect(function(dt: number)
 	-- full auto
 	local holstered = inHub()
 	if holstered then trigger, aimHeld = false, false; if hum and toolOut() then hum:UnequipTools() end end
-	if hum and trigger and w and w.auto and not toolOut() and not menuOpen() and now >= (nextShot[held] or 0) then
+	if holstered then burstLeft = 0 end
+	if hum and (trigger or burstLeft > 0) and w and w.auto and not toolOut() and not menuOpen() and now >= (nextShot[held] or 0) then
 		local n = 0
-		while trigger and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end
-		if (ammo[held] :: any).mag <= 0 and (ammo[held] :: any).reloadUntil == 0 then reload() end
+		-- (a Hat Trick burst always finishes, even on a tap)
+		while (trigger or burstLeft > 0) and now >= nextShot[held] and n < 4 and (ammo[held] :: any).mag > 0 and (ammo[held] :: any).reloadUntil == 0 do fireGun(now); n += 1 end
+		if (ammo[held] :: any).mag <= 0 and (ammo[held] :: any).reloadUntil == 0 then burstLeft = 0; reload() end
+	end
+	-- the Revolver: hold the trigger (not down the sights) and the rest of the cylinder is fanned out
+	if aim >= 0.1 or not trigger then fanArmed = false end
+	if hum and trigger and fanArmed and w and w.fan and a and not toolOut() and not menuOpen() and now - pressT > w.fan.hold
+		and now >= fanNext and a.mag > 0 and a.reloadUntil == 0 then
+		fireGun(now, true)
 	end
 	if pending and now >= pending.t then resolveSwing() end
 	if hum and parryBuf > -math.huge and now - parryBuf < 0.25 and now >= parryReady and not pending and now >= staggerUntil then tryParry(now) end
@@ -740,20 +863,23 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local spd = if root then Vector3.new(root.AssemblyLinearVelocity.X, 0, root.AssemblyLinearVelocity.Z).Magnitude else 0
 	if VM.model then
 		local tp = thirdPerson() or hum == nil or toolOut() or menuOpen() or holstered
+		local gone = tp or scoped
 		for _, d in VM.model:GetDescendants() do
-			if d:IsA("BasePart") and d.Name ~= "Root" then d.LocalTransparencyModifier = if tp then 1 else 0 end
+			-- (Hide: a piece that's out of the gun right now: a dropped mag, a belt link that's been fired)
+			if d:IsA("BasePart") and d.Name ~= "Root" then d.LocalTransparencyModifier = if gone or d:GetAttribute("Hide") then 1 else 0 end
 		end
 		VM.update(dt, {
 			aim = aim, speed = spd, sprint = st ~= nil and st.sprinting, slide = st ~= nil and st.sliding,
 			grounded = st ~= nil and st.onGround, hp = hp(), firedT = firedT, slipping = Body.slipping(), now = now,
-			sight = VM.adsPos(held),
+			sight = VM.adsPos(held), ammo = if a then a.mag else nil, reloading = reloading,
 		})
 		-- the katana's smear, after the blade has moved this frame
 		smearStep(now, tp)
 	else
 		smearStep(now, true)
 	end
-	H.step(dt, aim, false)
+	H.step(dt, aim, scoped)
+	H.scope(scoped and not thirdPerson())
 	H.hp(hp())
 	-- the Shredder (key 4) out: its name and heat in the panel instead of the gun it put away
 	local tool = toolOut() and me.Character and me.Character:FindFirstChildOfClass("Tool")

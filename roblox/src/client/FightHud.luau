@@ -224,6 +224,28 @@ end
 function H.hideEnd() endTok += 1; endPanel.Visible = false; endShadow.Visible = false end
 
 -- the per-frame bits
+-- the scope (the Sniper, the Second Opinion): black everywhere outside a circle 34% of the screen's height in radius,
+-- thin black cross-hairs through it (the web game's style.css). the black is one ring's very thick outline
+local scope = Instance.new("Frame")
+scope.Name = "Scope"; scope.BackgroundTransparency = 1; scope.Size = UDim2.fromScale(1, 1); scope.Visible = false; scope.ZIndex = 0
+scope.ClipsDescendants = true
+scope.Parent = gui
+local lens = Instance.new("Frame")
+lens.Name = "Lens"; lens.AnchorPoint = Vector2.new(0.5, 0.5); lens.Position = UDim2.fromScale(0.5, 0.5)
+lens.SizeConstraint = Enum.SizeConstraint.RelativeYY; lens.Size = UDim2.fromScale(0.68, 0.68); lens.BackgroundTransparency = 1
+lens.ZIndex = 0 -- (under the panels: HP, ammo and the top line stay readable through the black)
+local lensCorner = Instance.new("UICorner"); lensCorner.CornerRadius = UDim.new(0.5, 0); lensCorner.Parent = lens
+local lensRim = Instance.new("UIStroke"); lensRim.Thickness = 2400; lensRim.Color = Color3.new(0, 0, 0); lensRim.Parent = lens
+lens.Parent = scope
+for _, sz in { UDim2.new(1, 0, 0, 2), UDim2.new(0, 2, 1, 0) } do
+	local hair = Instance.new("Frame")
+	hair.Name = "Hair"; hair.BorderSizePixel = 0; hair.BackgroundColor3 = Color3.new(0, 0, 0); hair.AnchorPoint = Vector2.new(0.5, 0.5)
+	hair.Position = UDim2.fromScale(0.5, 0.5); hair.Size = sz; hair.ZIndex = 0; hair.Parent = lens
+end
+function H.scope(on: boolean)
+	if scope.Visible ~= on then scope.Visible = on end
+end
+
 function H.step(dt: number, aim: number, scopeHide: boolean)
 	hurtA = math.max(0, hurtA - dt * 0.9)
 	vs.Transparency = 1 - hurtA

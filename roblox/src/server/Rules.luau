@@ -31,6 +31,11 @@ export type Fighter = {
 	parryYaw: number?, -- where you looked when you opened the guard (radians, Roblox yaw)
 	-- keys 1 2 3 (Loadout.luau): the weapons you carry this life, and the picks waiting for your next (re)arm
 	loadout: { string }?, nextLoadout: { string }?,
+	-- batch 3's guns: when each gun last fired, the Hat Trick's recent shots, the Yeehaw's chain, the Hat Trick's
+	-- burst in flight, the last quick-scope paid out, when the scope went up (nil = not aiming)
+	lastShot: { [string]: number }, shotLog: { [string]: { number } },
+	lev: { to: Fighter, k: number, t: number }?, bst: { to: Fighter?, k: number, t0: number }?,
+	qsT: number?, aimT: number?,
 }
 
 local nextId = 0
@@ -41,6 +46,7 @@ function Rules.newFighter(kind: string, name: string, ref: any): Fighter
 		hp = Weapons.HP, alive = false, spawnT = -math.huge, diedT = -math.huge, held = "redline", equipT = -math.huge,
 		ammo = {}, gate = {}, kat = 0, parryT = -math.huge, parryN = 0, staggerUntil = -math.huge,
 		swing = nil, tag = nil, slipT = -math.huge, kills = 0, deaths = 0,
+		lastShot = {}, shotLog = {},
 	}
 end
 
@@ -56,6 +62,8 @@ function Rules.arm(f: Fighter, now: number)
 	local lo = Rules.loadoutOf(f)
 	f.held, f.equipT = lo[1], now
 	f.swing = nil
+	table.clear(f.lastShot); table.clear(f.shotLog)
+	f.lev, f.bst, f.qsT, f.aimT = nil, nil, nil, nil
 	table.clear(f.ammo) -- (nothing left over from weapons you no longer carry)
 	for _, id in lo do
 		local w = W[id]
@@ -108,6 +116,7 @@ function Rules.equip(f: Fighter, wid: any, now: number): string?
 	local a = f.ammo[f.held]
 	if a and a.reloadUntil > 0 and now < a.reloadUntil then a.reloadUntil = 0 end
 	f.held, f.equipT = wid, now
+	f.aimT = nil -- (the sights come down with the swap)
 	return nil
 end
 
@@ -123,23 +132,91 @@ function Rules.reload(f: Fighter, wid: any, now: number): string?
 	return nil
 end
 
--- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it
-function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?): string?
-	if not inLoadout(f, wid) then return "not your weapon" end
-	if W[wid].kind ~= "hitscan" then return "not a gun" end
+-- one shot (one trigger pull: all its pellets). claimEye = where the client fired from, eye = where the server has it.
+-- returns why it's refused (or nil) and what this shot's damage is multiplied by (the Revolver's fanned shots pay less)
+function Rules.fire(f: Fighter, wid: any, now: number, eye: Vector3, claimEye: Vector3, eyeBlocked: boolean?, claimFan: boolean?): (string?, number)
+	if not inLoadout(f, wid) then return "not your weapon", 1 end
+	if W[wid].kind ~= "hitscan" then return "not a gun", 1 end
 	local w = W[wid]
-	if not f.alive then return "dead" end
-	if f.held ~= wid then return "not held" end
-	if now < f.staggerUntil then return "staggered" end
-	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head" end
+	if not f.alive then return "dead", 1 end
+	if f.held ~= wid then return "not held", 1 end
+	if now < f.staggerUntil then return "staggered", 1 end
+	if (claimEye - eye).Magnitude > Rules.EYE_SLACK or eyeBlocked then return "not from your head", 1 end
 	local a = ammoOf(f, wid, now)
-	if not a then return "no ammo" end
-	if a.reloadUntil > 0 then return "reloading" end
-	if a.mag <= 0 then return "empty" end
+	if not a then return "no ammo", 1 end
+	if a.reloadUntil > 0 then return "reloading", 1 end
+	if a.mag <= 0 then return "empty", 1 end
 	-- the rate comes from the SERVER's HP (a client can't claim low HP to make the Redline scream)
-	if not Rules.gate(f, wid, now, 1 / Weapons.fireRate(w, f.hp)) then return "too fast" end
+	local iv = 1 / Weapons.fireRate(w, f.hp)
+	local mul = 1
+	if w.fan then
+		-- the Revolver (web revolverHit): nothing goes faster than the fan; full damage only for a shot on the tap
+		-- schedule that isn't flagged as fanned, anything quicker is paid at the fan's damage whatever the client says
+		local last = f.lastShot[wid] or -math.huge
+		if claimFan == true or now - last < iv * 0.9 - Rules.JITTER then mul = w.fan.dmg / w.dmg end
+		iv = 1 / w.fan.rate
+	end
+	local log: { number }? = nil
+	if w.burst then
+		-- the Hat Trick (web rifleShot, there on hits; here on shots, since the server counts the bullets): any stretch
+		-- as long as one burst plus most of its pause holds at most one burst
+		local span = Weapons.burstSpan(w)
+		log = f.shotLog[wid] or {}
+		f.shotLog[wid] = log :: { number }
+		while #(log :: { number }) > 0 and now - (log :: { number })[1] >= span do table.remove(log :: { number }, 1) end
+		if #(log :: { number }) >= w.burst then return "too fast", 1 end
+	end
+	if not Rules.gate(f, wid, now, iv) then return "too fast", 1 end
+	if log then table.insert(log, now) end
+	f.lastShot[wid] = now
 	a.mag -= 1
-	return nil
+	return nil, mul
+end
+
+-- the Yeehaw's ramp (web rifleShot): a hit on the same person within `chain` s of your last hit raises k (to rampMax),
+-- anyone else or too slow starts again at 0. damage x (1 + ramp k). judged from the server's own hit times
+function Rules.ramp(f: Fighter, t: Fighter, w: Weapons.Weapon, now: number): number
+	local L = f.lev
+	local k = if L and L.to == t and now - L.t <= (w.chain or 0) then math.min(w.rampMax or 0, L.k + 1) else 0
+	f.lev = { to = t, k = k, t = now }
+	return k
+end
+
+-- the Hat Trick's BURST!: every shot of one burst landed on the same person (a callout only, no extra damage).
+-- true on the hit that completes it
+function Rules.burstHit(f: Fighter, t: Fighter, w: Weapons.Weapon, now: number): boolean
+	local n = w.burst or 0
+	if n < 2 then return false end
+	local b = f.bst
+	local inBurst = b ~= nil and now - b.t0 <= (n - 1) / (w.rate or 1) + 0.22 -- (+ network jitter)
+	if not b or not inBurst then f.bst = { to = t, k = 1, t0 = now }; return false end
+	if b.to == t then
+		b.k += 1
+		return b.k == n
+	end
+	b.to = nil -- split between two people: no BURST!
+	return false
+end
+
+-- right click with a scoped gun out: the server keeps its own clock for the scope (the web game takes the shooter's
+-- word for a quick-scope; here the claim has to fit this clock)
+function Rules.aim(f: Fighter, on: boolean, now: number)
+	local w = W[f.held]
+	if on and f.alive and w and w.ads and w.ads.scope then f.aimT = now else f.aimT = nil end
+end
+
+-- the Second Opinion's quick-scope: fired within `quick` s of the scope coming up (the scope takes 0.92 / 7 s to
+-- come up once you press), at most once every 1.2 s. true = pay the bonus. the "sights up" message and the shot
+-- travel the same way, so their gap here is the gap the client had: too soon for the scope to be up, or more than
+-- the window (+ a quarter second of lag) after it, and the claim is refused
+function Rules.quick(f: Fighter, w: Weapons.Weapon, now: number, claimed: boolean): boolean
+	if not claimed or not w.quick or not f.aimT then return false end
+	local age = now - f.aimT
+	local up = 0.92 / (7 * (w.adsSpeed or 1))
+	if age < up * 0.5 or age > up + w.quick + 0.25 then return false end
+	if now - (f.qsT or -math.huge) < 1.2 then return false end
+	f.qsT = now
+	return true
 end
 
 -- how many pellets can really land at this distance (server/room.js maxPellets): stops "all 100 marbles hit" from far
@@ -195,6 +272,23 @@ function Rules.aimed(w: Weapons.Weapon, eye: Vector3, ends: { Vector3 }, feet: {
 		local size = Weapons.BOX.bodyTop * 0.6 * Hitbox.distScale(dist) + Rules.AIM_PAD
 		local allow = spread * 1.3 + math.atan(size / dist) + 0.05
 		if math.acos(math.clamp(aim:Dot(to.Unit), -1, 1)) <= allow then return true end
+	end
+	return false
+end
+
+-- a headshot claimed by a one-bullet gun: the bullet has to pass through the target's head box (a little padded for
+-- lag) somewhere along its recent trail. the web server takes the shooter's word for head or body; with the Sniper's
+-- headshot always lethal, that word is worth too much to take
+Rules.HEAD_PAD = 1
+function Rules.headAimed(eye: Vector3, ends: { Vector3 }, feet: { Vector3 }): boolean
+	for _, e in ends do
+		local v = e - eye
+		if v.Magnitude < 1e-3 then continue end
+		local d = v.Unit
+		for _, ft in feet do
+			local _, _, hl, hh = Hitbox.boxes(ft, Hitbox.distScale((ft - eye).Magnitude), Rules.HEAD_PAD)
+			if Hitbox.rayBox(eye, d, hl, hh) then return true end
+		end
 	end
 	return false
 end

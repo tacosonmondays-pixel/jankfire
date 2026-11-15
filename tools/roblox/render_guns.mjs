@@ -1,7 +1,7 @@
 // the plain guns' shot sounds as .wav files for Roblox, with no browser and no ffmpeg: public/js/audio.js builds every
 // gun shot out of two Web Audio primitives, tone() (an oscillator sliding f0 -> f1 under a decaying gain) and noise()
 // (white noise through a sweeping low/high pass under a decaying gain), so this renders the same recipes offline.
-// the recipes below are copied from sfx.gun() in audio.js: keep them in step when a gun's sound changes there.
+// the recipes below are copied from sfx.gun() (and sfx.sniper()) in audio.js: keep them in step when a gun's sound changes there.
 // (render_sounds.cjs does the same job through headless Chromium + ffmpeg for sounds that use more of Web Audio.)
 // run: node tools/roblox/render_guns.mjs [outDir = roblox/assets/sounds]
 import fs from 'node:fs';
@@ -59,6 +59,8 @@ const GUNS = [
   ['gun_pistol', 0.24, 'Plan B shot', 0.65, (b) => { noise(b, 0.16, 0.75, 'lowpass', 5200, 220); tone(b, 'square', 950, 240, 0.045, 0.2); noise(b, 0.03, 0.3, 'highpass', 4000, 7000); }],
   ['gun_akimbo', 0.13, 'Lefty & Righty shot', 0.5, (b) => { noise(b, 0.065, 0.45, 'lowpass', 5600, 500); tone(b, 'square', 370, 130, 0.04, 0.15); }],
   ['gun_sawnoff', 0.68, 'Half a Shotgun shot', 0.85, (b) => { noise(b, 0.6, 1, 'lowpass', 2200, 60); tone(b, 'sine', 75, 24, 0.45, 0.95); noise(b, 0.06, 0.6, 'highpass', 2500, 5000); tone(b, 'square', 220, 90, 0.08, 0.25, 0.02); }],
+  // (the Sniper has its own function in audio.js, sfx.sniper: a long bright crack over a falling saw)
+  ['gun_sniper', 0.8, 'Sniper shot', 0.8, (b) => { noise(b, 0.7, 1, 'lowpass', 7000, 120); tone(b, 'sawtooth', 220, 30, 0.5, 0.5); tone(b, 'square', 1800, 200, 0.1, 0.15); }],
 ];
 
 fs.mkdirSync(OUT, { recursive: true });

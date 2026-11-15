@@ -33,16 +33,16 @@ add({ id = "shredder", slot = "primary", name = "Shredder", color = "ffb31a", li
 add({ id = "ar", slot = "primary", name = "Assault Rifle", color = "9fd36b", live = true, gimmick = "no gimmick. full auto, steady, a laser when you aim. the honest gun.",
 	desc = "Full auto, steady, accurate when you aim down sights.",
 	stats = { { label = "DAMAGE", text = "11", bar = 0.09 }, { label = "FIRE RATE", text = "10/s", bar = 0.45 }, { label = "RANGE", text = "300 m", bar = 0.77 }, { label = "MAG", text = "30", bar = 0.5 } } })
-add({ id = "smg", slot = "primary", name = "SMG", color = "6bd3c8", live = false, gimmick = "",
+add({ id = "smg", slot = "primary", name = "SMG", color = "6bd3c8", live = true, gimmick = "no gimmick, just legs: you run 20% faster with it out.",
 	desc = "Sprays fast. Light, so you run faster with it out.",
 	stats = { { label = "DAMAGE", text = "7", bar = 0.06 }, { label = "FIRE RATE", text = "16/s", bar = 0.73 }, { label = "RANGE", text = "200 m", bar = 0.63 }, { label = "MAG", text = "45", bar = 0.75 } } })
-add({ id = "shotgun", slot = "primary", name = "Shotgun", color = "e0a060", live = false, gimmick = "",
+add({ id = "shotgun", slot = "primary", name = "Shotgun", color = "e0a060", live = true, gimmick = "ten pellets. shoot the floor and it throws you into the sky.",
 	desc = "10 pellets. Shoot the floor to launch yourself.",
 	stats = { { label = "DAMAGE", text = "8 x10", bar = 0.67 }, { label = "FIRE RATE", text = "1.33/s", bar = 0.06 }, { label = "RANGE", text = "80 m", bar = 0.4 }, { label = "MAG", text = "6", bar = 0.1 } } })
 add({ id = "minigun", slot = "primary", name = "Minigun", color = "c8c8c8", live = false, gimmick = "",
 	desc = "Spins up then never stops. Its bullets shove people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.",
 	stats = { { label = "DAMAGE", text = "6", bar = 0.05 }, { label = "FIRE RATE", text = "25/s", bar = 1 }, { label = "RANGE", text = "200 m", bar = 0.63 }, { label = "MAG", text = "250", bar = 1 } } })
-add({ id = "sniper", slot = "primary", name = "Sniper", color = "ff4fd8", live = false, gimmick = "",
+add({ id = "sniper", slot = "primary", name = "Sniper", color = "ff4fd8", live = true, gimmick = "a headshot always kills. a body shot sends them flying off the map.",
 	desc = "Right click to scope. A headshot always kills, a body shot sends them flying off the map. Hipfire is a gamble.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "0.91/s", bar = 0.04 }, { label = "RANGE", text = "500 m", bar = 1 }, { label = "MAG", text = "5", bar = 0.08 } } })
 add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = false, gimmick = "",
@@ -60,19 +60,19 @@ add({ id = "banana", slot = "primary", name = "Peel Shooter", color = "ffe135", 
 add({ id = "laser", slot = "primary", name = "Big Laser Pointer", color = "39ff14", live = false, gimmick = "",
 	desc = "An office laser pointer the size of a leg. Hold to charge it up (you walk slower), let go for a fat beam that goes through everyone in a line. Tap it for a little zap. Do not point at aircraft.",
 	stats = { { label = "DAMAGE", text = "21", bar = 0.18 }, { label = "FIRE RATE", text = "2.22/s", bar = 0.1 }, { label = "RANGE", text = "120 m", bar = 0.49 }, { label = "MAG", text = "n/a", bar = 1 } } })
-add({ id = "burst", slot = "primary", name = "Hat Trick", color = "4f8bff", live = false, gimmick = "",
+add({ id = "burst", slot = "primary", name = "Hat Trick", color = "4f8bff", live = true, gimmick = "three at a time. land all three on one person for a BURST!.",
 	desc = "A bullpup that fires three at a time. Land all three on one person for a BURST!. Very accurate, very French.",
 	stats = { { label = "DAMAGE", text = "15", bar = 0.13 }, { label = "FIRE RATE", text = "14/s", bar = 0.64 }, { label = "RANGE", text = "320 m", bar = 0.8 }, { label = "MAG", text = "30", bar = 0.5 } } })
-add({ id = "lmg", slot = "primary", name = "Belt Sander", color = "ff5a1f", live = false, gimmick = "",
+add({ id = "lmg", slot = "primary", name = "Belt Sander", color = "ff5a1f", live = true, gimmick = "a hundred rounds on a belt. slow to aim, slow to walk, and the barrel glows.",
 	desc = "A hundred rounds on a belt you can watch run out. Slow to aim, slow to reload, sands people down. The barrel glows hotter the longer you hold it.",
 	stats = { { label = "DAMAGE", text = "10", bar = 0.08 }, { label = "FIRE RATE", text = "12/s", bar = 0.55 }, { label = "RANGE", text = "260 m", bar = 0.72 }, { label = "MAG", text = "100", bar = 1 } } })
-add({ id = "dmr", slot = "primary", name = "Second Opinion", color = "b07dff", live = false, gimmick = "",
+add({ id = "dmr", slot = "primary", name = "Second Opinion", color = "b07dff", live = true, gimmick = "two to the body or one to the head. quick-scope it for a bit extra.",
 	desc = "A semi-auto marksman rifle with a little scope. Two to the body or one to the head. Quick-scope it for a bit extra.",
 	stats = { { label = "DAMAGE", text = "52", bar = 0.43 }, { label = "FIRE RATE", text = "1.82/s", bar = 0.08 }, { label = "RANGE", text = "400 m", bar = 0.89 }, { label = "MAG", text = "10", bar = 0.17 } } })
-add({ id = "lever", slot = "primary", name = "Yeehaw", color = "ff6b8b", live = false, gimmick = "",
+add({ id = "lever", slot = "primary", name = "Yeehaw", color = "ff6b8b", live = true, gimmick = "keep hitting the same person and every hit stings more: x1.15, x1.3, x1.45.",
 	desc = "A lever-action you crank after every shot. Keep hitting the same person and every hit stings a bit more. Spin-cocks on reload, obviously.",
 	stats = { { label = "DAMAGE", text = "30", bar = 0.25 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "RANGE", text = "280 m", bar = 0.75 }, { label = "MAG", text = "8", bar = 0.13 } } })
-add({ id = "autoshot", slot = "primary", name = "Lawn Mower", color = "4ad66b", live = false, gimmick = "",
+add({ id = "autoshot", slot = "primary", name = "Lawn Mower", color = "4ad66b", live = true, gimmick = "an automatic shotgun. less per shot than the pump, but it never stops.",
 	desc = "An automatic shotgun with a box mag. Less per shot than the pump, but it never stops. Mows lawns. And people.",
 	stats = { { label = "DAMAGE", text = "5 x8", bar = 0.33 }, { label = "FIRE RATE", text = "3/s", bar = 0.14 }, { label = "RANGE", text = "60 m", bar = 0.35 }, { label = "MAG", text = "10", bar = 0.17 } } })
 add({ id = "nailgun", slot = "primary", name = "Nail Gun", color = "ff6f3c", live = false, gimmick = "",
@@ -87,16 +87,16 @@ add({ id = "cart", slot = "primary", name = "Shopping Cart Cannon", color = "9b5
 add({ id = "marbles", slot = "secondary", name = "Marble Shotgun", color = "7fd0ff", live = true, gimmick = "a hundred marbles a shot. whatever misses stays on the floor for 9 s and trips people.",
 	desc = "A hundred glass marbles per shot. One marble barely tickles, but point blank they all land: one shot, one kill. They stay on the floor after: anyone who runs over them slips (crouch-walk to cross).",
 	stats = { { label = "DAMAGE", text = "1.15 x100", bar = 0.96 }, { label = "FIRE RATE", text = "1.11/s", bar = 0.05 }, { label = "RANGE", text = "30 m", bar = 0.24 }, { label = "MAG", text = "2", bar = 0.03 } } })
-add({ id = "revolver", slot = "secondary", name = "Revolver", color = "e0c070", live = false, gimmick = "",
+add({ id = "revolver", slot = "secondary", name = "Revolver", color = "e0c070", live = true, gimmick = "tap for a dead-accurate shot, hold to fan the hammer. bullets bounce off walls twice.",
 	desc = "6 shots, twirled round your finger after each one. Tap for a dead-accurate shot, hold to fan the hammer: the rest goes in a second, wild and a bit weaker. Ricochets off walls twice. A headshot does 96: almost a kill.",
 	stats = { { label = "DAMAGE", text = "40", bar = 0.33 }, { label = "FIRE RATE", text = "2.5/s", bar = 0.11 }, { label = "RANGE", text = "250 m", bar = 0.71 }, { label = "MAG", text = "6", bar = 0.1 } } })
-add({ id = "pistol", slot = "secondary", name = "Plan B", color = "a0b4ff", live = false, gimmick = "",
+add({ id = "pistol", slot = "secondary", name = "Plan B", color = "a0b4ff", live = true, gimmick = "a plain pistol for when plan A runs dry. out of the holster in a blink.",
 	desc = "A plain pistol for when plan A runs dry. Out of the holster in a blink, 12 shots, and the slide locks back to tell you you're empty.",
 	stats = { { label = "DAMAGE", text = "20", bar = 0.17 }, { label = "FIRE RATE", text = "5/s", bar = 0.23 }, { label = "RANGE", text = "220 m", bar = 0.66 }, { label = "MAG", text = "12", bar = 0.2 } } })
 add({ id = "akimbo", slot = "secondary", name = "Lefty & Righty", color = "00e5a0", live = false, gimmick = "",
 	desc = "Two machine pistols, one per hand. Left click fires lefty, right click fires righty, hold both to hose. They reload one at a time, so keep one busy.",
 	stats = { { label = "DAMAGE", text = "6", bar = 0.05 }, { label = "FIRE RATE", text = "9/s", bar = 0.41 }, { label = "RANGE", text = "140 m", bar = 0.53 }, { label = "MAG", text = "40", bar = 0.67 } } })
-add({ id = "sawnoff", slot = "secondary", name = "Half a Shotgun", color = "e05a3a", live = false, gimmick = "",
+add({ id = "sawnoff", slot = "secondary", name = "Half a Shotgun", color = "e05a3a", live = true, gimmick = "two shells. point blank they go flying. shoot the floor for a little hop.",
 	desc = "Somebody sawed a shotgun in half. Two shells, and point blank they go flying. Shoot the floor for a little hop.",
 	stats = { { label = "DAMAGE", text = "9 x12", bar = 0.9 }, { label = "FIRE RATE", text = "3.33/s", bar = 0.15 }, { label = "RANGE", text = "32 m", bar = 0.25 }, { label = "MAG", text = "2", bar = 0.03 } } })
 add({ id = "cig", slot = "secondary", name = "Cigarette", color = "ff7a1a", live = false, gimmick = "",

@@ -1,0 +1,220 @@
+--!strict
+-- the pieces of a gun that move in your hands (batch 3): mags that drop and come back, charging handles, the pump,
+-- the bolt, the Yeehaw's lever and hammer, the Belt Sander's feed cover, belt and glowing barrel, Plan B's slide, the
+-- Revolver's cylinder and hammer, Half a Shotgun breaking open, and the whole-gun twirls (lever spin-cock, the
+-- Revolver round your finger). the web game moves named nodes of the Blender model (public/js/rifles.js, sidearms.js,
+-- reloads.js, glbkit.js); here every piece of the viewmodel hangs off the root on a Weld this module drives, and a
+-- piece knows its node by its name ("mag_wzB__ar_mag" hangs off "mag"). where a node turns and how far it goes is in
+-- the gun's row (Weapons mdl.parts); the timings are the clips' `ch` channels (Reloads.luau, generated).
+local GunParts = {}
+
+type Piece = { part: BasePart, weld: Weld, rest: CFrame, node: string, last: CFrame?, hidden: boolean }
+export type State = {
+	root: BasePart, k: number, parts: { [string]: any }, all: { Piece }, nodes: { [string]: { Piece } },
+	cylA: number, cylTo: number, hamT: number, kickT: number, heat: number, heatPiece: BasePart?, heatShown: number,
+}
+export type Ctx = { clip: string?, t: number, anims: any, ammo: number, mag: number, reloading: boolean, now: number, firedT: number }
+
+local function nodeOf(name: string): string
+	local base = string.match(name, "^(.-)__") or name
+	return (string.gsub(base, "_wz%a+$", ""))
+end
+
+-- every piece of the gun onto a Weld (call it before the hands go on: they stay glued to the root and never twirl)
+function GunParts.attach(m: Model, root: BasePart, k: number, parts: { [string]: any }?): State?
+	if not parts then return nil end
+	local st: State = {
+		root = root, k = k, parts = parts, all = {}, nodes = {},
+		cylA = 0, cylTo = 0, hamT = 1, kickT = 1, heat = 0, heatPiece = nil, heatShown = -1,
+	}
+	for _, c in m:GetChildren() do
+		if not c:IsA("BasePart") or c == root then continue end
+		local wc = c:FindFirstChildOfClass("WeldConstraint")
+		if wc then wc:Destroy() end
+		local rest = root.CFrame:ToObjectSpace(c.CFrame)
+		local wd = Instance.new("Weld")
+		wd.Part0 = root; wd.Part1 = c; wd.C0 = rest; wd.Parent = c
+		local piece: Piece = { part = c, weld = wd, rest = rest, node = nodeOf(c.Name), last = nil, hidden = false }
+		table.insert(st.all, piece)
+		local list = st.nodes[piece.node] or {}
+		st.nodes[piece.node] = list
+		table.insert(list, piece)
+		if parts.heat and string.find(c.Name, parts.heat.piece, 1, true) then st.heatPiece = c end
+	end
+	return st
+end
+
+-- a shot: the cylinder turns a chamber, the hammer falls, the slide kicks, the barrel warms
+function GunParts.shot(st: State, w: any)
+	local cyl = st.parts.cylinder
+	if cyl then st.cylTo += cyl.step or math.pi / 3 end
+	st.hamT, st.kickT = 0, 0
+	if w.heatUp then st.heat = math.min(1, st.heat + w.heatUp / (w.rate or 1)) end
+end
+
+-- a channel of the clip that's playing, the web game's sampleCh: smooth between its keys, held outside them
+local function sample(c: Ctx, ch: string): { number }?
+	local a = c.clip and c.anims[c.clip]
+	local k = a and a.ch and a.ch[ch]
+	if not k then return nil end
+	local t = c.t
+	local n = #k
+	local function vals(row: { number }): { number }
+		local out = table.create(#row - 1)
+		for i = 2, #row do out[i - 1] = row[i] end
+		return out
+	end
+	if t <= k[1][1] then return vals(k[1]) end
+	if t >= k[n][1] then return vals(k[n]) end
+	local i = 1
+	while i < n - 1 and t >= k[i + 1][1] do i += 1 end
+	local k0, k1 = k[i], k[i + 1]
+	local u = math.clamp((t - k0[1]) / math.max(1e-6, k1[1] - k0[1]), 0, 1)
+	u = u * u * (3 - 2 * u)
+	local out = table.create(#k0 - 1)
+	for j = 2, #k0 do out[j - 1] = k0[j] + ((k1[j] or k0[j]) - k0[j]) * u end
+	return out
+end
+
+local function about(pivot: Vector3, rot: CFrame): CFrame
+	return CFrame.new(pivot) * rot * CFrame.new(-pivot)
+end
+local function rx(a: number): CFrame return CFrame.Angles(a, 0, 0) end
+local function rz(a: number): CFrame return CFrame.Angles(0, 0, a) end
+
+-- the Belt Sander's barrel: dark -> red -> orange -> white-hot (public/js/rifles.js heatColor)
+local C_DARK, C_RED, C_OR, C_HOT = Color3.fromRGB(42, 42, 44), Color3.fromRGB(154, 26, 6), Color3.fromRGB(255, 106, 16), Color3.fromRGB(255, 240, 176)
+local function heatColor(h: number): Color3
+	if h < 0.45 then return C_DARK:Lerp(C_RED, h / 0.45) end
+	if h < 0.8 then return C_RED:Lerp(C_OR, (h - 0.45) / 0.35) end
+	return C_OR:Lerp(C_HOT, (h - 0.8) / 0.2)
+end
+
+function GunParts.step(st: State, dt: number, c: Ctx, w: any)
+	local k, P = st.k, st.parts
+	local move: { [string]: CFrame } = {}
+	local hide: { [string]: boolean } = {}
+	st.hamT = math.min(1, st.hamT + dt); st.kickT = math.min(1, st.kickT + dt)
+	local empty = c.ammo <= 0 and not c.reloading
+
+	if P.mag then
+		local v = sample(c, "mag")
+		if v then
+			if P.mag.dir then -- Plan B: the mag slides out along the grip's rake
+				move.mag = CFrame.new(P.mag.dir * (v[1] * k))
+				hide.mag = v[1] >= 0.18
+			else -- [down, back, tip]
+				move.mag = CFrame.new(0, v[1] * k, (v[2] or 0) * k) * about((P.mag.at or Vector3.zero) * k, rx(v[3] or 0))
+				hide.mag = v[1] < -0.3
+			end
+		end
+	end
+	if P.charge then
+		local v = sample(c, "charge")
+		if v then move.charge = CFrame.new(0, 0, v[1] * k) end
+	end
+	if P.pump then
+		local v = sample(c, "pump")
+		if v then move.pump = CFrame.new(0, 0, v[1] * P.pump.travel * k) end
+	end
+	if P.bolt then
+		local v = sample(c, "bolt")
+		if v then move.bolt = CFrame.new(0, 0, (v[2] or 0) * P.bolt.travel * k) * about(P.bolt.at * k, rz(v[1] * P.bolt.lift)) end
+	end
+	if P.lever then
+		local v = sample(c, "lever")
+		if v then move.lever = about(P.lever.at * k, rx(v[1])) end
+	end
+	if P.lhammer then -- the model rests with the hammer down; between shots it sits cocked
+		local v = sample(c, "lhammer")
+		move.lhammer = about(P.lhammer.at * k, rx(if v then v[1] else 0.75))
+	end
+	if P.cover then
+		local v = sample(c, "cover")
+		if v then move.cover = about(P.cover.at * k, rx(v[1])) end
+	end
+	if P.slide then -- back fast and home a bit slower on every shot; locked back on an empty mag
+		local v = sample(c, "slide")
+		local t = st.kickT
+		local kick = if t < 0.022 then t / 0.022 elseif t < 0.075 then 1 - (t - 0.022) / 0.053 else 0
+		local s = if v then v[1] elseif empty or (c.reloading and c.clip == "reload_pistol_empty" and c.t < 1.04) then 1 else kick
+		if s ~= 0 then move.slide = CFrame.new(0, 0, s * P.slide.travel * k) end
+	end
+	if P.hammer then
+		local t = st.hamT
+		local a: number
+		if P.hammer.kind == "pistol" then
+			local down = if empty then 0 elseif t < 0.02 then t / 0.02 elseif t < 0.06 then 1 - (t - 0.02) / 0.04 else 0
+			a = -down * 0.75
+		else
+			a = if t < 0.05 then (t / 0.05) * 0.55 else math.max(0, 0.55 * (1 - (t - 0.05) / 0.05))
+		end
+		if a ~= 0 then move.hammer = about(P.hammer.at * k, rx(a)) end
+	end
+	if P.cylinder then -- a chamber a shot (eased), out on its crane and spun in the reload
+		st.cylA += (st.cylTo - st.cylA) * math.min(1, dt * 24)
+		local v = sample(c, "cyl")
+		local th = if v then v[1] * 1.2 else 0
+		local R = 0.034 * k
+		local swing = CFrame.new(-R * math.sin(th), R * math.cos(th) - R, if v then v[1] * 0.004 * k else 0)
+		move.cylinder = swing * about(P.cylinder.at * k, rz(-st.cylA - (if v then v[2] or 0 else 0)))
+	end
+	if P.hinge then -- Half a Shotgun: the barrels (and what rides on them) break down round the pin
+		local v = sample(c, "hinge")
+		local open = if v then v[1] else 0
+		local hingeCF = about(P.hinge.at * k, rx(-open * P.hinge.open))
+		local sh = sample(c, "shells")
+		for _, node in P.hinge.nodes do
+			local cf = hingeCF
+			local i = if P.shells then table.find(P.shells, node) else nil
+			if i and sh then
+				local d = sh[i] or 0
+				cf = hingeCF * CFrame.new(0, 0, d * k)
+				hide[node] = d >= 0.15
+			end
+			if open ~= 0 or i then move[node] = cf end
+		end
+	end
+	if P.hammers then -- one falls per barrel fired; the reload's last beat cocks them again
+		local ck = sample(c, "cock")
+		local fired = c.mag - c.ammo
+		for i, h in P.hammers do
+			local down = if i <= fired then (if ck then 1 - ck[1] else 1) else 0
+			if down ~= 0 then move[h.node] = about(h.at * k, rx(-down * 0.75)) end
+		end
+	end
+	if P.belt then -- a link per round left; the reload takes them off and lays a fresh belt
+		local v = sample(c, "belt")
+		local show = if v then (if v[1] > 0.5 then P.belt.n else 0) elseif c.reloading then 0 else math.min(P.belt.n, c.ammo)
+		for i = 0, P.belt.n - 1 do hide[("belt_%02d"):format(i)] = i >= show end
+	end
+	-- the whole gun round the hand (the lever's spin-cock, the Revolver's twirl): every piece, never the hands
+	local tw = sample(c, "twirl")
+	local twirl: CFrame? = if tw and P.twirl and tw[1] ~= 0 then about(P.twirl.at * k, rx(tw[1])) else nil
+
+	for _, p in st.all do
+		local cf = move[p.node]
+		local want = if cf then cf * p.rest else p.rest
+		if twirl then want = twirl * want end
+		if p.last ~= want then p.weld.C0 = want; p.last = want end
+		local h = hide[p.node] == true
+		if h ~= p.hidden then p.hidden = h; p.part:SetAttribute("Hide", if h then true else nil) end
+	end
+
+	-- heat: cools once you've let go for a moment; the barrel piece shows it
+	if w.heatUp then
+		if c.now - c.firedT > 0.25 then st.heat = math.max(0, st.heat - (w.heatDown or 0.4) * dt) end
+		local hp = st.heatPiece
+		if hp then
+			local flick = if c.now - c.firedT < 0.12 then math.random() * 0.05 else 0
+			local h = math.min(1, st.heat + flick)
+			if math.abs(h - st.heatShown) > 0.004 then
+				st.heatShown = h
+				hp.Color = heatColor(h)
+				hp.Material = if h > 0.2 then Enum.Material.Neon else Enum.Material.Metal
+			end
+		end
+	end
+end
+
+return GunParts

@@ -10,6 +10,7 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Anims = require(Shared:WaitForChild("Anims")) :: any
 local Fx = require(script.Parent:WaitForChild("Fx"))
+local GunParts = require(script.Parent:WaitForChild("GunParts")) -- batch 3: the pieces that move (mags, pump, bolt, lever...)
 -- the plain guns' reloads (Reloads.luau, generated from the web game's reloads.js) join the hand-keyed clips
 for name, a in require(Shared:WaitForChild("Reloads")) :: any do
 	if not Anims[name] then Anims[name] = a end
@@ -21,10 +22,13 @@ VM.onEvent = nil :: ((string) -> ())?
 VM.wid = ""
 VM.model = nil :: Model?
 VM.hitStop = 0
+VM.parts = nil :: GunParts.State?
 
 local camera = workspace.CurrentCamera
 local clip: { name: string, t: number, fired: { [number]: boolean }, rate: number? }? = nil
 local swap = 0
+local follow: { name: string, at: number }? = nil -- the clip a shot queued (the pump, the bolt, the lever)
+local offGone = false -- the off hand has let go (a plain gun's reload)
 local rec = { p = Vector3.zero, pv = Vector3.zero, r = Vector3.zero, rv = Vector3.zero }
 local punch = { x = Vector3.zero, v = Vector3.zero }
 local kick = 0
@@ -79,14 +83,26 @@ function VM.play(name: string)
 	clip = { name = name, t = 0, fired = {} }
 end
 -- a gun's reload: its own clip, or (a plain gun with none yet) the Assault Rifle's, played faster or slower so it
--- ends when the reload does
-function VM.reload(wid: string, secs: number)
+-- ends when the reload does. empty = the mag ran dry (Plan B has a reload of its own for that: the slide is dropped)
+function VM.reload(wid: string, secs: number, empty: boolean?)
 	local name = if Anims["reload_" .. wid] then "reload_" .. wid else "reload_ar"
+	if empty and Anims[name .. "_empty"] then name ..= "_empty" end
 	local a = Anims[name]
 	if not a then return end
 	dropProp()
+	follow = nil
 	clip = { name = name, t = 0, fired = {}, rate = if secs > 0 then a.dur / secs else 1 }
 end
+-- the clip that follows a shot, `delay` s after it (the Shotgun's pump, the Sniper's bolt, the Yeehaw's lever). a
+-- reload that starts first drops it, like the web game
+function VM.follow(name: string, delay: number)
+	if Anims[name] then follow = { name = name, at = os.clock() + delay } end
+end
+-- a shot went off: the cylinder turns, the hammer falls, the slide kicks, the barrel warms (GunParts)
+function VM.shot(w: any)
+	if VM.parts then GunParts.shot(VM.parts, w) end
+end
+function VM.heat(): number return if VM.parts then VM.parts.heat else 0 end
 function VM.playing(): string? return clip and clip.name end
 function VM.clipT(): number? return clip and clip.t end
 function VM.stop() clip = nil; dropProp() end
@@ -155,6 +171,8 @@ end
 function VM.set(wid: string, kat: number)
 	if VM.model then VM.model:Destroy(); VM.model = nil end
 	dropProp()
+	VM.parts = nil
+	offGone = false
 	VM.wid = wid
 	needles, vents = {}, {}
 	local w = Weapons.list[wid]
@@ -170,6 +188,8 @@ function VM.set(wid: string, kat: number)
 	-- your wrap from the loadout screen (before the hands go on, so it never paints your arms)
 	local wrId, wrMode = WeaponModels.wrapFor(game:GetService("Players").LocalPlayer, wid)
 	if wrId then WeaponModels.wrap(m, wrId, wrMode) end
+	-- the moving pieces go onto their own welds before the hands exist (the hands never ride a twirl)
+	VM.parts = GunParts.attach(m, root, k, w.mdl and w.mdl.parts)
 	hands(m, root)
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued
@@ -189,7 +209,8 @@ function VM.set(wid: string, kat: number)
 	m.Parent = camera
 	VM.model = m
 	swap = 0.2
-	VM.play(if wid == "katana" then "draw_katana" else "draw_gun")
+	follow = nil
+	VM.play(if wid == "katana" then "draw_katana" elseif w.draw and Anims[w.draw] then w.draw else "draw_gun")
 end
 
 function VM.attachment(name: string): Vector3?
@@ -198,7 +219,10 @@ function VM.attachment(name: string): Vector3?
 	return a and a.WorldPosition
 end
 
-export type Ctx = { aim: number, speed: number, sprint: boolean, slide: boolean, grounded: boolean, hp: number, firedT: number, slipping: boolean, now: number, sight: Vector3? }
+export type Ctx = {
+	aim: number, speed: number, sprint: boolean, slide: boolean, grounded: boolean, hp: number, firedT: number, slipping: boolean, now: number, sight: Vector3?,
+	ammo: number?, reloading: boolean?, -- (for the moving pieces: the belt, a locked-back slide, fallen hammers)
+}
 
 function VM.update(dt: number, c: Ctx)
 	local m = VM.model
@@ -217,6 +241,24 @@ function VM.update(dt: number, c: Ctx)
 			end
 		end
 		if clip.t >= a.dur then clip = nil; dropProp() end
+	end
+	-- the off hand lets go for a plain gun's reload. (the web game animates it fetching the mag; that hand isn't
+	-- ported, and a forearm glued to a gun that rolls onto its side sweeps right across the screen. so it leaves the
+	-- picture and comes back when the gun is loaded)
+	local off = clip ~= nil and w.mdl ~= nil and string.sub(clip.name, 1, 7) == "reload_"
+	if off ~= offGone then
+		offGone = off
+		local arms = m:FindFirstChild("AvatarArms")
+		for _, n in { "LeftHand", "LeftLowerArm", "HandFore", "SleeveFore" } do
+			local p = (arms and arms:FindFirstChild(n)) or m:FindFirstChild(n)
+			if p then p:SetAttribute("Hide", if off then true else nil) end
+		end
+	end
+	-- the pump / bolt / lever a shot queued (not over a reload)
+	if follow and c.now >= follow.at then
+		local f = follow
+		follow = nil
+		if not (clip and string.sub(clip.name, 1, 7) == "reload_") then VM.play(f.name) end
 	end
 	-- springs (240 Hz sub-steps)
 	local nSub = math.clamp(math.ceil(dt * 240), 1, 40)
@@ -280,6 +322,12 @@ function VM.update(dt: number, c: Ctx)
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
 	VM.props(m.PrimaryPart.CFrame)
+	if VM.parts then
+		GunParts.step(VM.parts, dt, {
+			clip = if clip then clip.name else nil, t = if clip then clip.t else 0, anims = Anims,
+			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = c.reloading == true, now = c.now, firedT = c.firedT,
+		}, w)
+	end
 	-- the Redline's tachometer + vents (from your HP; it bangs off the limiter when it's in the red and firing)
 	if VM.wid == "redline" then
 		local tk = Weapons.tacho(c.hp)
