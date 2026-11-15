@@ -21,9 +21,9 @@ function AvatarArms.look(): string
 end
 AvatarArms.KIT = {
 	glove = Color3.fromRGB(33, 35, 40), -- charcoal, matte
-	sleeve = Color3.fromRGB(50, 53, 60), -- graphite cloth
-	cuff = Color3.fromRGB(22, 23, 27), -- the band at the wrist
-	trim = Color3.fromRGB(176, 180, 188), -- one light line on the cuff
+	sleeve = Color3.fromRGB(46, 49, 56), -- graphite (flat: Fabric's weave read as noise this close to the eye)
+	cuff = Color3.fromRGB(24, 25, 29), -- the band at the wrist
+	trim = Color3.fromRGB(64, 68, 77), -- a lighter edge on the cuff (kept dark: you look down the arm, so a pale one shows as a plate)
 	pad = Color3.fromRGB(44, 47, 54), -- the plate on the back of the hand
 }
 
@@ -122,7 +122,7 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 		if kit then
 			local K = AvatarArms.KIT
 			dress(hand, K.glove, Enum.Material.SmoothPlastic)
-			dress(fore, K.sleeve, Enum.Material.Fabric)
+			dress(fore, K.sleeve, Enum.Material.SmoothPlastic)
 			-- the cuff and its light line are thin slices of the forearm's own shape, a little wider: they fit a
 			-- blocky arm and a round one alike
 			local function band(name: string, wide: number, long: number, at: number, color: Color3)
