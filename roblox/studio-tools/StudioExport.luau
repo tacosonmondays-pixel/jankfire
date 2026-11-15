@@ -8,7 +8,8 @@
 --   return E.run("slice", n)      -- slice n of it (1..N). each slice is just under the MCP's 100,000 character cut
 --   return E.run("done")          -- frees the memory
 -- then: node tools/roblox/studio_export_unpack.mjs <the N result files>   (order doesn't matter)
--- not exported: ServerStorage backups (PreWeaponsBackup, PolishBackup's old copies), Terrain, the Camera
+-- not exported: ServerStorage backups (PreWeaponsBackup, PolishBackup's old copies such as HubV1 to HubV6 and its
+-- Fx / Arsenal / Move script copies), Terrain's cells (the clouds are exported), the Camera
 local Http = game:GetService("HttpService")
 local Ser = game:GetService("SerializationService")
 local Enc = game:GetService("EncodingService")
@@ -40,7 +41,7 @@ local function scripts(): { { path: string, source: string } }
 		end
 	end
 	-- the edit-time helpers worth keeping
-	for _, n in { "PropPlacer", "OverlapCheck", "CozyKit", "Hub2Colors", "StudioExport" } do
+	for _, n in { "PropPlacer", "OverlapCheck", "CozyKit", "Hub2Colors", "StudioExport", "HubLab", "KitImport", "HubReskin" } do
 		local d = ST.PolishBackup:FindFirstChild(n)
 		if d and d:IsA("LuaSourceContainer") then table.insert(out, { path = "studio-tools/" .. n .. ".luau", source = (d :: any).Source }) end
 	end
@@ -85,6 +86,15 @@ local function roots(): { { path: string, list: { Instance } } }
 		{ path = "place/Workspace/Map.Rooftop.rbxm", list = { workspace.Map.Rooftop } },
 		{ path = "place/ServerStorage/JankfireMeshes.rbxm", list = { ST.JankfireMeshes } },
 	}
+	-- the show hubs built by HubLab (gone once the owner has picked one and the rest are archived)
+	local lab = workspace.Map:FindFirstChild("HubLab")
+	if lab then table.insert(r, { path = "place/Workspace/Map.HubLab.rbxm", list = { lab } }) end
+	-- material variants (JankGrid, the playground tile) and the sky's clouds
+	for _, c in game:GetService("MaterialService"):GetChildren() do
+		table.insert(r, { path = "place/MaterialService/" .. c.Name .. ".rbxm", list = { c } })
+	end
+	local clouds = workspace.Terrain:FindFirstChildOfClass("Clouds")
+	if clouds then table.insert(r, { path = "place/Workspace/Terrain.Clouds.rbxm", list = { clouds } }) end
 	for _, c in RS:GetChildren() do
 		if c.Name ~= "Jankfire" then table.insert(r, { path = "place/ReplicatedStorage/" .. c.Name .. ".rbxm", list = { c } }) end
 	end

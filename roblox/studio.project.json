@@ -59,6 +59,10 @@
     },
     "Workspace": {
       "$properties": { "Gravity": 78, "FallenPartsDestroyHeight": -1500 },
+      "Terrain": {
+        "$className": "Terrain",
+        "Clouds": { "$path": "place/Workspace/Terrain.Clouds.rbxm" }
+      },
       "Map": {
         "$className": "Folder",
         "Hub": { "$path": "place/Workspace/Map.Hub.rbxm" },
@@ -88,6 +92,9 @@
       "SunRays": { "$path": "place/Lighting/SunRays.rbxm" },
       "Sky": { "$path": "place/Lighting/Sky.rbxm" },
       "DepthOfField": { "$path": "place/Lighting/DepthOfField.rbxm" }
+    },
+    "MaterialService": {
+      "JankGrid": { "$path": "place/MaterialService/JankGrid.rbxm" }
     }
   }
 }

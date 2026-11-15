@@ -8,9 +8,9 @@
 > | what | where |
 > | --- | --- |
 > | The place's code, one file per script | `src/shared`, `src/server`, `src/client` (the three `Jankfire` folders), `src/server_root` and `src/client_root` (loose scripts next to them), `src/in_models` (scripts that live inside a model) |
-> | The maps and asset folders, as Roblox model files | `place/**.rbxm` (hub, Rooftop, mesh templates, weapons, effects, sounds, remotes, lighting effects) |
+> | The maps and asset folders, as Roblox model files | `place/**.rbxm` (hub, the four show hubs, Rooftop, mesh templates, weapons, effects, sounds, remotes, lighting effects, the clouds, the grid material) |
 > | Service settings (gravity, lighting numbers, player settings) | `place/settings.json` |
-> | Edit-time helpers (prop placer, overlap check, the exporter itself) | `studio-tools/` |
+> | Edit-time helpers (prop placer, overlap check, the hub builder, the kit importer, the exporter itself) | `studio-tools/` |
 >
 > **Export again after a batch of Studio work** (a Claude session with the Studio MCP does this):
 > 1. In Studio (execute_luau, Edit): `local m = game.ServerStorage.PolishBackup.StudioExport:Clone(); local E = require(m); m:Destroy(); return E.run("bundle")`.
@@ -19,7 +19,7 @@
 > 3. `node tools/roblox/studio_export_unpack.mjs <the folder with those result files>` from the repo root, then commit.
 >
 > **Rebuild a place from the export:** `rojo build roblox/studio.project.json -o JANKFIRE-studio.rbxl` (Rojo 7.7+).
-> It restores the code, maps, templates and lighting. Not in the export: Terrain (the pool water is refilled by
+> It restores the code, maps, templates, lighting, the clouds and the grid material. Not in the export: Terrain's cells (the pool water is refilled by
 > `JankWater` when the game runs), the old backups in ServerStorage, and DataStore data.
 >
 > `default.project.json` is the code-only project for `rojo serve`. `place.project.json` and `tools/roblox/build.mjs`
