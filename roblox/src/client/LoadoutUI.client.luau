@@ -2,8 +2,8 @@
 -- is on show (what isn't on roblox yet is a "coming soon" card); a big 3D preview on a showcase table you can drag round;
 -- the weapon's stats and gimmick; the wraps along the bottom (hover to try one on, click to wear it). the camera eases
 -- off to a showcase spot and the world behind goes soft. the server owns every pick (Loadout.luau): this only asks.
--- it only opens in the hub; closing it there re-arms you with the new picks. comic look: dark purple panels, thick pink
--- borders, hard cyan shadows, a tilted yellow main button, Comic Neue
+-- it only opens in the hub; closing it there re-arms you with the new picks. the look is Theme.luau's: dark plates and
+-- cards, white text, one amber accent (the selected card, the main button). a weapon's own colour is a small chip
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -21,11 +21,10 @@ local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("L
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
 local me = Players.LocalPlayer
-local PINK, CYAN, YELLOW = Color3.fromHex("ff4fd8"), Color3.fromHex("4fd8ff"), Color3.fromHex("ffe14d")
-local PANEL, INK, WHITE = Color3.fromRGB(18, 8, 24), Color3.new(0, 0, 0), Color3.new(1, 1, 1)
-local RED, GREEN, GREY = Color3.fromHex("ff3030"), Color3.fromHex("39ff14"), Color3.fromRGB(150, 135, 160)
-local CARD = Color3.fromRGB(40, 20, 52) -- a card sitting on a panel
-local FONT = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
+local T = require(script.Parent:WaitForChild("Theme"))
+local ACCENT, TEXT, GREY, DIM, RED = T.ACCENT, T.TEXT, T.MUTED, T.DIM, T.DANGER
+local PANEL, CARD, INK, WHITE = T.BG, T.CARD, T.INK, Color3.new(1, 1, 1)
+local FONT, FONT_BOLD, FONT_TITLE = T.FONT, T.FONT_BOLD, T.FONT_TITLE
 local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3 }
 local LINES = {
 	"three slots. choose violence.",
@@ -51,58 +50,50 @@ local function new(class: string, props: { [string]: any }, parent: Instance?): 
 	if parent then o.Parent = parent end
 	return o
 end
-local function stroke(o: Instance, th: number, c: Color3, text: boolean?): UIStroke
-	return new("UIStroke", {
-		Thickness = th, Color = c, LineJoinMode = Enum.LineJoinMode.Miter,
-		ApplyStrokeMode = if text then Enum.ApplyStrokeMode.Contextual else Enum.ApplyStrokeMode.Border,
-	}, o)
-end
 local function label(parent: Instance, text: string, size: number, pos: UDim2, sz: UDim2, color: Color3?, align: Enum.TextXAlignment?): TextLabel
 	return new("TextLabel", {
 		BackgroundTransparency = 1, FontFace = FONT, TextSize = size, Text = text, Position = pos, Size = sz,
 		TextColor3 = color or WHITE, TextXAlignment = align or Enum.TextXAlignment.Left, TextWrapped = true,
 	}, parent)
 end
--- a panel: dark purple-black, thick pink border, a hard cyan shadow (no blur). returns its body
+-- a panel: a dark plate with a hairline edge. returns its holder and its body
 local function panel(parent: Instance, pos: UDim2, size: UDim2): (Frame, Frame)
 	local holder = new("Frame", { BackgroundTransparency = 1, Position = pos, Size = size }, parent)
-	new("Frame", { Name = "Shadow", BackgroundColor3 = CYAN, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 8), Size = UDim2.fromScale(1, 1), ZIndex = 1 }, holder)
-	local body = new("Frame", { Name = "Body", BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
-	stroke(body, 4, PINK)
+	local body = new("Frame", { Name = "Body", BackgroundColor3 = PANEL, BackgroundTransparency = 0.12, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
+	T.corner(body, 8)
+	T.edge(body)
 	return holder, body
 end
 
--- a chunky button with a hard shadow. main = yellow with a pink shadow; white; chip = small white
-type Btn = { holder: Frame, face: TextButton, shadow: Frame, kind: string, enabled: boolean, set: (Btn, string, boolean?, Color3?) -> () }
-local function button(parent: Instance, text: string, kind: string, pos: UDim2, size: UDim2, rot: number?): Btn
-	local holder = new("Frame", { BackgroundTransparency = 1, Position = pos, Size = size, Rotation = rot or 0 }, parent)
-	local off = if kind == "chip" then 4 else 6
-	local shadow = new("Frame", { BackgroundColor3 = if kind == "main" then PINK else INK, BorderSizePixel = 0, Position = UDim2.fromOffset(off, off), Size = UDim2.fromScale(1, 1), ZIndex = 1 }, holder)
+-- a button: flat, rounded. main = amber with dark text; the rest (white, chip = a small one) are dark cards with white
+-- text. under the mouse it gets a shade lighter, pressed a shade darker
+type Btn = { holder: Frame, face: TextButton, mark: Frame, kind: string, enabled: boolean, base: Color3, set: (Btn, string, boolean?, Color3?) -> () }
+local function button(parent: Instance, text: string, kind: string, pos: UDim2, size: UDim2): Btn
+	local holder = new("Frame", { BackgroundTransparency = 1, Position = pos, Size = size }, parent)
+	local base = if kind == "main" then ACCENT else CARD
 	local face = new("TextButton", {
-		AutoButtonColor = false, BackgroundColor3 = if kind == "main" then YELLOW else WHITE, BorderSizePixel = 0,
-		Size = UDim2.fromScale(1, 1), FontFace = FONT, TextSize = math.floor(size.Y.Offset * (if kind == "chip" then 0.5 else 0.42)),
-		Text = text, TextColor3 = INK, ZIndex = 2,
+		AutoButtonColor = false, BackgroundColor3 = base, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), FontFace = FONT_BOLD,
+		TextSize = math.floor(size.Y.Offset * (if kind == "chip" then 0.5 else 0.32)), Text = text,
+		TextColor3 = if kind == "main" then INK else TEXT, ZIndex = 2,
 	}, holder)
-	stroke(face, if kind == "chip" then 2 else 3, INK)
-	local b: Btn = { holder = holder, face = face, shadow = shadow, kind = kind, enabled = true, set = nil :: any }
-	local function rest(hover: boolean)
-		local lift = if hover and b.enabled then -2 else 0
-		tw(face, 0.08, { Position = UDim2.fromOffset(lift, lift) })
-		tw(shadow, 0.08, { Position = UDim2.fromOffset(off - lift, off - lift) })
-	end
-	face.MouseEnter:Connect(function() rest(true) end)
-	face.MouseLeave:Connect(function() rest(false) end)
-	face.MouseButton1Down:Connect(function()
-		if not b.enabled then return end
-		tw(face, 0.05, { Position = UDim2.fromOffset(off - 1, off - 1) }) -- pushed into its shadow
-	end)
-	face.MouseButton1Up:Connect(function() rest(true) end)
+	T.corner(face)
+	if kind ~= "main" then T.edge(face) end
+	-- (b.mark: a short amber line under the words, shown on the one of a row that's picked. amber FILL is kept for the
+	-- one button that does something: equip)
+	local mark = new("Frame", { Name = "Mark", BackgroundColor3 = ACCENT, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -3), Size = UDim2.new(0.5, 0, 0, 2), Visible = false, ZIndex = 3 }, face)
+	local b: Btn = { holder = holder, face = face, mark = mark, kind = kind, enabled = true, base = base, set = nil :: any }
+	local function lit(c: Color3): Color3 return c:Lerp(WHITE, 0.14) end
+	face.MouseEnter:Connect(function() if b.enabled then face.BackgroundColor3 = lit(b.base) end end)
+	face.MouseLeave:Connect(function() face.BackgroundColor3 = b.base end)
+	face.MouseButton1Down:Connect(function() if b.enabled then face.BackgroundColor3 = b.base:Lerp(Color3.new(0, 0, 0), 0.14) end end)
+	face.MouseButton1Up:Connect(function() if b.enabled then face.BackgroundColor3 = lit(b.base) end end)
+	-- its words, whether it can be pressed, and (optional) a colour to hold: the accent marks the one that's on
 	b.set = function(self: Btn, t: string, enabled: boolean?, col: Color3?)
 		self.face.Text = t
 		self.enabled = enabled ~= false
-		self.face.BackgroundColor3 = col or (if not self.enabled then Color3.fromRGB(110, 96, 120) elseif self.kind == "main" then YELLOW else WHITE)
-		self.face.TextColor3 = if self.enabled then INK else Color3.fromRGB(40, 30, 46)
-		self.shadow.BackgroundColor3 = if self.kind == "main" and self.enabled then PINK else INK
+		self.base = col or (if self.kind == "main" and self.enabled then ACCENT else CARD)
+		self.face.BackgroundColor3 = self.base
+		self.face.TextColor3 = if self.base == ACCENT then INK elseif self.enabled or col ~= nil then TEXT else DIM
 	end
 	return b
 end
@@ -148,16 +139,15 @@ local function shredderModel(): Model?
 	m.PrimaryPart = big
 	return m
 end
--- a weapon that isn't on roblox yet: a taped-up crate in its colour
+-- a weapon that isn't on roblox yet: a plain grey crate with one strap in its colour
 local function crate(color: Color3): Model
 	local m = Instance.new("Model")
 	local function bx(size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?): Part
 		return new("Part", { Anchored = true, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, m)
 	end
-	local box = bx(Vector3.new(3.6, 2.2, 2.2), color, CFrame.identity, Enum.Material.Cardboard)
-	for _, y in { -1.08, 1.08 } do for _, z in { -1.08, 1.08 } do bx(Vector3.new(3.7, 0.16, 0.16), INK, CFrame.new(0, y, z)) end end
-	bx(Vector3.new(0.7, 2.26, 2.26), PINK, CFrame.new(0.6, 0, 0))
-	bx(Vector3.new(0.9, 0.05, 0.9), WHITE, CFrame.new(-0.9, 1.12, 0.3) * CFrame.Angles(0, 0.4, 0))
+	local box = bx(Vector3.new(3.6, 2.2, 2.2), Color3.fromRGB(84, 88, 98), CFrame.identity)
+	for _, y in { -1.08, 1.08 } do for _, z in { -1.08, 1.08 } do bx(Vector3.new(3.7, 0.16, 0.16), Color3.fromRGB(46, 49, 58), CFrame.new(0, y, z)) end end
+	bx(Vector3.new(0.5, 2.26, 2.26), color, CFrame.new(0.7, 0, 0))
 	m.PrimaryPart = box
 	return m
 end
@@ -173,13 +163,14 @@ local function previewModel(id: string): (Model?, CFrame)
 	end
 	local _, size = m:GetBoundingBox()
 	local r = size.Magnitude / 2
-	if r > 1e-3 then pcall(function() m:ScaleTo(m:GetScale() * (3 / r)) end) end
+	local want = if e and e.live then 3 else 2.3 -- (a crate is all bulk: a size down, or it swallows the podium)
+	if r > 1e-3 then pcall(function() m:ScaleTo(m:GetScale() * (want / r)) end) end
 	local cf = m:GetBoundingBox()
 	return m, m:GetPivot():ToObjectSpace(cf)
 end
 local function viewport(parent: Instance, props: { [string]: any }): (ViewportFrame, Camera)
 	local vp = new("ViewportFrame", {
-		BackgroundTransparency = 1, Ambient = Color3.fromRGB(150, 130, 170), LightColor = Color3.fromRGB(255, 244, 236),
+		BackgroundTransparency = 1, Ambient = Color3.fromRGB(150, 153, 162), LightColor = Color3.fromRGB(255, 248, 240),
 		LightDirection = Vector3.new(-0.5, -1, -0.7),
 	}, parent)
 	for k, v in props do (vp :: any)[k] = v end
@@ -192,7 +183,7 @@ end
 local pg = me:WaitForChild("PlayerGui")
 local gui = new("ScreenGui", { Name = "JankLoadout", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 30, ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false }, pg)
 -- a full-screen button under everything: Modal frees the mouse from first person while the screen is up, and it eats clicks
-local catcher = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.fromRGB(14, 4, 20), BackgroundTransparency = 0.5, Size = UDim2.fromScale(1, 1), Modal = true }, gui)
+local catcher = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.28, Size = UDim2.fromScale(1, 1), Modal = true }, gui)
 local stage = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(1920, 1080) }, gui)
 local uiScale = new("UIScale", {}, stage)
 local function fit()
@@ -201,20 +192,18 @@ local function fit()
 end
 
 -- title
-local titleBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, 26), Size = UDim2.fromOffset(560, 120), Rotation = -2 }, stage)
-label(titleBox, "LOADOUT", 80, UDim2.fromOffset(6, 6), UDim2.fromOffset(560, 84), PINK)
-local title = label(titleBox, "LOADOUT", 80, UDim2.fromOffset(0, 0), UDim2.fromOffset(560, 84), YELLOW)
-stroke(title, 3, INK, true)
-local subtitle = label(titleBox, LINES[1], 24, UDim2.fromOffset(6, 84), UDim2.fromOffset(560, 30), WHITE)
-stroke(subtitle, 1.5, INK, true)
+local titleBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, 34), Size = UDim2.fromOffset(560, 110) }, stage)
+local title = label(titleBox, "LOADOUT", 46, UDim2.fromOffset(0, 0), UDim2.fromOffset(560, 54), TEXT)
+title.FontFace = FONT_TITLE
+new("Frame", { Name = "Rule", BackgroundColor3 = ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, 62), Size = UDim2.fromOffset(44, 3) }, titleBox)
+local subtitle = label(titleBox, LINES[1], 18, UDim2.fromOffset(2, 76), UDim2.fromOffset(560, 24), GREY)
 
 -- done + the save status
-local done = button(stage, "DONE  [L]", "white", UDim2.fromOffset(1680, 36), UDim2.fromOffset(180, 58), 1.5)
-local saveLbl = label(stage, "", 18, UDim2.fromOffset(1360, 104), UDim2.fromOffset(500, 24), GREY, Enum.TextXAlignment.Right)
-stroke(saveLbl, 1.5, INK, true)
+local done = button(stage, "DONE  [L]", "white", UDim2.fromOffset(1700, 40), UDim2.fromOffset(160, 50))
+local saveLbl = label(stage, "", 16, UDim2.fromOffset(1360, 100), UDim2.fromOffset(500, 22), GREY, Enum.TextXAlignment.Right)
 
 -- ---------------------------------------------------------------- slot cards (left)
-type Card = { slot: string, holder: Frame, shadow: Frame, body: TextButton, st: UIStroke, name: TextLabel, wrap: TextLabel, bar: Frame, vp: ViewportFrame, cam: Camera, key: string? }
+type Card = { slot: string, holder: Frame, body: TextButton, st: UIStroke, name: TextLabel, wrap: TextLabel, bar: Frame, vp: ViewportFrame, cam: Camera, key: string? }
 local cards: { Card } = {}
 local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false }
 local refresh: () -> () = function() end
@@ -222,44 +211,45 @@ local refresh: () -> () = function() end
 for i, slot in Roster.SLOTS do
 	local y = 156 + (i - 1) * 146
 	local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, y), Size = UDim2.fromOffset(520, 130) }, stage)
-	local shadow = new("Frame", { BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 8), Size = UDim2.fromScale(1, 1), ZIndex = 1 }, holder)
-	local body = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PANEL, BackgroundTransparency = 0.08, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
-	local st = stroke(body, 3, INK)
-	local keyBox = new("Frame", { BackgroundColor3 = YELLOW, BorderSizePixel = 0, Position = UDim2.fromOffset(16, 16), Size = UDim2.fromOffset(52, 52), Rotation = -6 }, body)
-	stroke(keyBox, 3, INK)
-	label(keyBox, tostring(i), 36, UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), INK, Enum.TextXAlignment.Center)
-	label(body, Roster.SLOT_NAMES[slot], 20, UDim2.fromOffset(84, 12), UDim2.fromOffset(220, 22), CYAN)
-	local name = label(body, "", 34, UDim2.fromOffset(84, 34), UDim2.fromOffset(240, 44), WHITE)
-	name.TextScaled = true
-	local wrap = label(body, "", 17, UDim2.fromOffset(84, 82), UDim2.fromOffset(240, 22), GREY)
-	local bar = new("Frame", { BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 8), ZIndex = 3 }, body)
+	local body = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PANEL, BackgroundTransparency = 0.12, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
+	T.corner(body, 8)
+	local st = T.edge(body)
+	T.key(body, tostring(i), UDim2.fromOffset(22, 20)).Size = UDim2.fromOffset(28, 28)
+	label(body, Roster.SLOT_NAMES[slot], 16, UDim2.fromOffset(66, 15), UDim2.fromOffset(220, 20), GREY).FontFace = FONT_BOLD
+	local name = label(body, "", 30, UDim2.fromOffset(66, 38), UDim2.fromOffset(234, 40), TEXT)
+	name.FontFace = FONT_BOLD; name.TextScaled = true
+	new("UITextSizeConstraint", { MaxTextSize = 30 }, name)
+	local wrap = label(body, "", 16, UDim2.fromOffset(66, 86), UDim2.fromOffset(240, 22), GREY)
+	-- (the weapon's own colour: a short bar down the card's left edge)
+	local bar = new("Frame", { BorderSizePixel = 0, Position = UDim2.fromOffset(0, 18), Size = UDim2.fromOffset(3, 94), ZIndex = 3 }, body)
+	T.corner(bar, 2)
 	local vp, cam = viewport(body, { Position = UDim2.fromOffset(300, 4), Size = UDim2.fromOffset(212, 118) })
 	cam.FieldOfView = 40
-	local c: Card = { slot = slot, holder = holder, shadow = shadow, body = body, st = st, name = name, wrap = wrap, bar = bar, vp = vp, cam = cam }
+	local c: Card = { slot = slot, holder = holder, body = body, st = st, name = name, wrap = wrap, bar = bar, vp = vp, cam = cam }
 	body.MouseButton1Click:Connect(function()
 		state.slot = slot
 		state.focus = pick()[slot]
 		play("click")
 		refresh()
 	end)
-	body.MouseEnter:Connect(function() if state.slot ~= slot then tw(holder, 0.08, { Position = UDim2.fromOffset(66, y) }) end end)
-	body.MouseLeave:Connect(function() tw(holder, 0.08, { Position = UDim2.fromOffset(60, y) }) end)
+	body.MouseEnter:Connect(function() body.BackgroundColor3 = CARD end)
+	body.MouseLeave:Connect(function() body.BackgroundColor3 = PANEL end)
 	table.insert(cards, c)
 end
 
 -- ---------------------------------------------------------------- the armory: every weapon for the chosen slot (left, below)
 local _, armBody = panel(stage, UDim2.fromOffset(60, 598), UDim2.fromOffset(520, 442))
-local armTitle = label(armBody, "THE ARMORY", 28, UDim2.fromOffset(18, 8), UDim2.fromOffset(300, 36), YELLOW)
-stroke(armTitle, 2, INK, true)
-local armCount = label(armBody, "", 18, UDim2.fromOffset(200, 14), UDim2.fromOffset(300, 26), GREY, Enum.TextXAlignment.Right)
+local armTitle = label(armBody, "THE ARMORY", 18, UDim2.fromOffset(20, 14), UDim2.fromOffset(300, 26), TEXT)
+armTitle.FontFace = FONT_TITLE
+local armCount = label(armBody, "", 16, UDim2.fromOffset(200, 16), UDim2.fromOffset(300, 22), GREY, Enum.TextXAlignment.Right)
 local armList = new("ScrollingFrame", {
 	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(14, 52), Size = UDim2.fromOffset(496, 378),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
-	ScrollBarThickness = 8, ScrollBarImageColor3 = PINK, ZIndex = 3,
+	ScrollBarThickness = 6, ScrollBarImageColor3 = DIM, ZIndex = 3,
 }, armBody)
 new("UIGridLayout", { CellSize = UDim2.fromOffset(232, 82), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, armList)
 new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 12), PaddingBottom = UDim.new(0, 8) }, armList)
-type ArmCard = { id: string, btn: TextButton, st: UIStroke, tag: TextLabel }
+type ArmCard = { id: string, btn: TextButton, st: UIStroke, tag: TextLabel, chip: Frame, color: Color3 }
 local armCards: { ArmCard } = {}
 local armSlot = ""
 local function buildArmory()
@@ -272,22 +262,23 @@ local function buildArmory()
 		if e.slot ~= state.slot then continue end
 		if e.live then live += 1 else soon += 1 end
 		local btn = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, LayoutOrder = i, ZIndex = 4 }, armList)
-		local st = stroke(btn, 2, INK)
-		local chip = new("Frame", { BackgroundColor3 = e.color, BorderSizePixel = 0, Position = UDim2.fromOffset(10, 10), Size = UDim2.fromOffset(16, 62), ZIndex = 5 }, btn)
-		stroke(chip, 2, INK)
-		local nm = label(btn, e.name, 21, UDim2.fromOffset(36, 6), UDim2.fromOffset(188, 44), WHITE)
-		nm.ZIndex = 5; nm.TextScaled = true; nm.TextTransparency = if e.live then 0 else 0.35
-		new("UITextSizeConstraint", { MaxTextSize = 22 }, nm)
-		local tag = label(btn, "", 15, UDim2.fromOffset(36, 52), UDim2.fromOffset(188, 22), GREY)
-		tag.ZIndex = 5
+		T.corner(btn)
+		local st = T.edge(btn)
+		local chip = new("Frame", { BackgroundColor3 = e.color, BackgroundTransparency = if e.live then 0 else 0.6, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 14), Size = UDim2.fromOffset(3, 54), ZIndex = 5 }, btn)
+		T.corner(chip, 2)
+		local nm = label(btn, e.name, 19, UDim2.fromOffset(26, 8), UDim2.fromOffset(196, 40), TEXT)
+		nm.FontFace = FONT_BOLD; nm.ZIndex = 5; nm.TextScaled = true; nm.TextTransparency = if e.live then 0 else 0.45
+		new("UITextSizeConstraint", { MaxTextSize = 19 }, nm)
+		local tag = label(btn, "", 16, UDim2.fromOffset(26, 51), UDim2.fromOffset(196, 20), GREY)
+		tag.FontFace = FONT_BOLD; tag.ZIndex = 5
 		btn.MouseButton1Click:Connect(function()
 			state.focus = e.id
 			play("click")
 			refresh()
 		end)
-		btn.MouseEnter:Connect(function() if state.focus ~= e.id then btn.BackgroundColor3 = Color3.fromRGB(58, 30, 74) end end)
+		btn.MouseEnter:Connect(function() if state.focus ~= e.id then btn.BackgroundColor3 = T.CARD_HI end end)
 		btn.MouseLeave:Connect(function() btn.BackgroundColor3 = CARD end)
-		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag })
+		table.insert(armCards, { id = e.id, btn = btn, st = st, tag = tag, chip = chip, color = e.color })
 	end
 	armCount.Text = ("%d live · %d coming soon"):format(live, soon)
 	armList.CanvasPosition = Vector2.zero
@@ -298,50 +289,36 @@ local previewBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.f
 local vp, vcam = viewport(previewBox, { Size = UDim2.fromScale(1, 1), Active = true })
 vcam.FieldOfView = 30
 vcam.CFrame = CFrame.lookAt(Vector3.new(0, 3.4, 15.5), Vector3.new(0, -1.1, 0))
-do -- a round display podium (neon rims, its top at y -2.75) with junk on it from the last guy
-	local function p(shape: Enum.PartType, size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?)
-		new("Part", { Anchored = true, Shape = shape, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, vp)
+do -- a low round podium under the weapon: a dark base, a dark top and a thin amber rim. small, so the weapon leads
+	local function p(size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?)
+		new("Part", { Anchored = true, Shape = Enum.PartType.Cylinder, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, vp)
 	end
-	local B, Ball, Cyl = Enum.PartType.Block, Enum.PartType.Ball, Enum.PartType.Cylinder
 	local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
-	p(Cyl, Vector3.new(0.35, 7.4, 7.4), Color3.fromRGB(30, 20, 40), CFrame.new(0, -4.25, 0) * up)
-	p(Cyl, Vector3.new(1.2, 6.4, 6.4), Color3.fromRGB(62, 44, 80), CFrame.new(0, -3.35, 0) * up)
-	-- the neon rims sit just under the top / inside the body, so only their outer edge shows
-	p(Cyl, Vector3.new(0.14, 6.7, 6.7), CYAN, CFrame.new(0, -2.86, 0) * up, Enum.Material.Neon)
-	p(Cyl, Vector3.new(0.12, 6.55, 6.55), PINK, CFrame.new(0, -3.6, 0) * up, Enum.Material.Neon)
-	for _, m in { { 2.3, 1.3, "7fd0ff" }, { 2.6, 0.5, "ffe14d" }, { -2.5, 1.0, "ff4fd8" }, { 1.8, 2.0, "39ff14" } } do
-		p(Ball, Vector3.new(0.42, 0.42, 0.42), Color3.fromHex(m[3]), CFrame.new(m[1], -2.54, m[2]), Enum.Material.Glass)
-	end
-	for _, s in { { -2.0, 1.9, 0.6 }, { -1.2, 2.5, 1.9 }, { 2.0, -1.8, 0.3 } } do
-		p(Cyl, Vector3.new(0.65, 0.24, 0.24), Color3.fromHex("d8a840"), CFrame.new(s[1], -2.63, s[2]) * CFrame.Angles(0, s[3], 0), Enum.Material.Metal)
-	end
-	p(B, Vector3.new(2.2, 0.04, 0.5), PINK, CFrame.new(0.7, -2.73, 2.4) * CFrame.Angles(0, -0.3, 0))
-	p(B, Vector3.new(1.0, 0.04, 1.0), YELLOW, CFrame.new(-2.1, -2.73, -1.2) * CFrame.Angles(0, 0.4, 0))
+	p(Vector3.new(0.3, 6.0, 6.0), Color3.fromRGB(26, 28, 33), CFrame.new(0, -3.7, 0) * up)
+	p(Vector3.new(0.7, 5.2, 5.2), Color3.fromRGB(40, 43, 50), CFrame.new(0, -3.2, 0) * up)
+	-- the rim sits just under the top, so only its outer edge shows: the one amber line on the stage
+	p(Vector3.new(0.05, 5.28, 5.28), ACCENT, CFrame.new(0, -2.89, 0) * up)
 end
-local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 6), Size = UDim2.new(1, 0, 0, 90), Rotation = -2 }, previewBox)
-local bigNameShadow = label(nameBox, "", 66, UDim2.fromOffset(5, 5), UDim2.fromScale(1, 1), INK, Enum.TextXAlignment.Center)
-local bigName = label(nameBox, "", 66, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1), WHITE, Enum.TextXAlignment.Center)
-for _, l in { bigName, bigNameShadow } do l.TextScaled = true; l.TextWrapped = false; new("UITextSizeConstraint", { MaxTextSize = 66 }, l) end
-stroke(bigName, 3, INK, true)
-local soonStamp = label(previewBox, "COMING SOON", 64, UDim2.fromScale(0.5, 0.48), UDim2.fromOffset(470, 96), RED, Enum.TextXAlignment.Center)
-soonStamp.AnchorPoint = Vector2.new(0.5, 0.5); soonStamp.Rotation = -9; soonStamp.BackgroundColor3 = WHITE; soonStamp.BackgroundTransparency = 0.15
-stroke(soonStamp, 5, RED)
-local hint = label(previewBox, "drag to spin it  ·  1 2 3 pick a slot", 18, UDim2.new(0, 0, 1, -30), UDim2.new(1, 0, 0, 24), GREY, Enum.TextXAlignment.Center)
-stroke(hint, 1.5, INK, true)
-local toast = label(previewBox, "", 24, UDim2.new(0.5, 0, 1, -76), UDim2.fromOffset(700, 36), YELLOW, Enum.TextXAlignment.Center)
-toast.AnchorPoint = Vector2.new(0.5, 0); toast.TextTransparency = 1
-local toastStroke = stroke(toast, 2, INK, true)
-toastStroke.Transparency = 1
+local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 60) }, previewBox)
+local bigName = label(nameBox, "", 44, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1), TEXT, Enum.TextXAlignment.Center)
+bigName.FontFace = FONT_TITLE; bigName.TextScaled = true; bigName.TextWrapped = false
+new("UITextSizeConstraint", { MaxTextSize = 44 }, bigName)
+-- a weapon that isn't on roblox yet: a quiet badge over its crate
+local soonStamp = label(previewBox, "COMING SOON", 15, UDim2.fromScale(0.5, 0.5), UDim2.fromOffset(180, 38), GREY, Enum.TextXAlignment.Center)
+soonStamp.FontFace = FONT_BOLD; soonStamp.AnchorPoint = Vector2.new(0.5, 0.5); soonStamp.BackgroundColor3 = PANEL; soonStamp.BackgroundTransparency = 0.1
+T.corner(soonStamp); T.edge(soonStamp)
+local hint = label(previewBox, "drag to spin it  ·  1 2 3 pick a slot", 16, UDim2.new(0, 0, 1, -16), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
+local toast = label(previewBox, "", 20, UDim2.new(0.5, 0, 0, 84), UDim2.fromOffset(700, 30), ACCENT, Enum.TextXAlignment.Center)
+toast.FontFace = FONT_BOLD; toast.AnchorPoint = Vector2.new(0.5, 0); toast.TextTransparency = 1
 local toastN = 0
 local function say(text: string, color: Color3?)
 	toastN += 1
 	local n = toastN
-	toast.Text = text; toast.TextColor3 = color or YELLOW
-	toast.TextTransparency = 0; toastStroke.Transparency = 0
-	toast.Rotation = math.random(-2, 2)
+	toast.Text = text; toast.TextColor3 = color or ACCENT
+	toast.TextTransparency = 0
 	task.delay(2.4, function()
 		if toastN ~= n then return end
-		tw(toast, 0.3, { TextTransparency = 1 }); tw(toastStroke, 0.3, { Transparency = 1 })
+		tw(toast, 0.3, { TextTransparency = 1 })
 	end)
 end
 
@@ -370,41 +347,54 @@ end)
 
 -- ---------------------------------------------------------------- the info panel (right)
 local _, info = panel(stage, UDim2.fromOffset(1440, 136), UDim2.fromOffset(420, 698))
-local infoName = label(info, "", 40, UDim2.fromOffset(22, 14), UDim2.fromOffset(380, 48), WHITE)
-infoName.TextScaled = true
-new("UITextSizeConstraint", { MaxTextSize = 42 }, infoName)
-stroke(infoName, 2.5, INK, true)
-local chipRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 68), Size = UDim2.fromOffset(380, 26) }, info)
-new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, chipRow)
+-- (the weapon's own colour: a short bar beside its name)
+local infoChip = new("Frame", { BackgroundColor3 = GREY, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 24), Size = UDim2.fromOffset(3, 32) }, info)
+T.corner(infoChip, 2)
+local infoName = label(info, "", 32, UDim2.fromOffset(36, 18), UDim2.fromOffset(362, 44), TEXT)
+infoName.FontFace = FONT_BOLD; infoName.TextScaled = true
+new("UITextSizeConstraint", { MaxTextSize = 32 }, infoName)
+local chipRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 72), Size = UDim2.fromOffset(380, 24) }, info)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, chipRow)
 local function tagChip(order: number): (Frame, TextLabel)
-	local f = new("Frame", { BackgroundColor3 = INK, BorderSizePixel = 0, Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = order }, chipRow)
-	new("UIPadding", { PaddingLeft = UDim.new(0, 8), PaddingRight = UDim.new(0, 8) }, f)
-	local l = label(f, "", 16, UDim2.new(), UDim2.fromScale(0, 1), WHITE, Enum.TextXAlignment.Center)
-	l.AutomaticSize = Enum.AutomaticSize.X; l.TextWrapped = false
+	local f = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(0, 26), AutomaticSize = Enum.AutomaticSize.X, LayoutOrder = order }, chipRow)
+	T.corner(f, 4)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 9), PaddingRight = UDim.new(0, 9) }, f)
+	local l = label(f, "", 15, UDim2.new(), UDim2.fromScale(0, 1), GREY, Enum.TextXAlignment.Center)
+	l.FontFace = FONT_BOLD; l.AutomaticSize = Enum.AutomaticSize.X; l.TextWrapped = false
 	return f, l
 end
-local slotChip, slotChipL = tagChip(1)
-local liveChip, liveChipL = tagChip(2)
-local infoDesc = label(info, "", 19, UDim2.fromOffset(22, 106), UDim2.fromOffset(376, 120), WHITE)
-infoDesc.TextYAlignment = Enum.TextYAlignment.Top
-local gimBox = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Position = UDim2.fromOffset(22, 232), Size = UDim2.fromOffset(376, 104), Rotation = -1 }, info)
-stroke(gimBox, 2, YELLOW)
-label(gimBox, "THE GIMMICK", 16, UDim2.fromOffset(12, 6), UDim2.fromOffset(200, 20), YELLOW)
-local gimText = label(gimBox, "", 18, UDim2.fromOffset(12, 28), UDim2.fromOffset(352, 70), WHITE)
-gimText.TextYAlignment = Enum.TextYAlignment.Top
+local _, slotChipL = tagChip(1)
+local _, liveChipL = tagChip(2)
+liveChipL.RichText = true
+-- what it is, then its gimmick in a box, then its four numbers: each as tall as it needs, one under the other, so the
+-- spare room is all in one place (above the equip button) and not in the middle of the panel
+local words = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(22, 114), Size = UDim2.fromOffset(376, 490) }, info)
+new("UIListLayout", { Padding = UDim.new(0, 18), SortOrder = Enum.SortOrder.LayoutOrder }, words)
+local infoDesc = label(words, "", 17, UDim2.new(), UDim2.new(1, 0, 0, 0), TEXT)
+infoDesc.AutomaticSize = Enum.AutomaticSize.Y; infoDesc.TextYAlignment = Enum.TextYAlignment.Top; infoDesc.LayoutOrder = 1
+local gimBox = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2 }, words)
+T.corner(gimBox); T.edge(gimBox)
+new("UIPadding", { PaddingLeft = UDim.new(0, 14), PaddingRight = UDim.new(0, 14), PaddingTop = UDim.new(0, 11), PaddingBottom = UDim.new(0, 13) }, gimBox)
+new("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder }, gimBox)
+local gimTitle = label(gimBox, "THE GIMMICK", 14, UDim2.new(), UDim2.new(1, 0, 0, 16), ACCENT)
+gimTitle.FontFace = FONT_BOLD; gimTitle.LayoutOrder = 1
+local gimText = label(gimBox, "", 16, UDim2.new(), UDim2.new(1, 0, 0, 0), TEXT)
+gimText.AutomaticSize = Enum.AutomaticSize.Y; gimText.TextYAlignment = Enum.TextYAlignment.Top; gimText.LayoutOrder = 2
 type StatRow = { name: TextLabel, val: TextLabel, fill: Frame }
 local statRows: { StatRow } = {}
 for i = 1, 4 do
-	local y = 352 + (i - 1) * 60
-	local name = label(info, "", 17, UDim2.fromOffset(22, y), UDim2.fromOffset(200, 22), CYAN)
-	local val = label(info, "", 19, UDim2.fromOffset(170, y), UDim2.fromOffset(228, 22), WHITE, Enum.TextXAlignment.Right)
-	new("Frame", { BackgroundColor3 = INK, BorderSizePixel = 0, Position = UDim2.fromOffset(26, y + 30), Size = UDim2.fromOffset(376, 18) }, info)
-	local bg = new("Frame", { BackgroundColor3 = CARD, BorderSizePixel = 0, Position = UDim2.fromOffset(22, y + 26), Size = UDim2.fromOffset(376, 18) }, info)
-	stroke(bg, 2, INK)
-	local fill = new("Frame", { BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, bg)
+	local row = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 50), LayoutOrder = 2 + i }, words)
+	local name = label(row, "", 16, UDim2.fromOffset(0, 3), UDim2.fromOffset(200, 22), GREY)
+	name.FontFace = FONT_BOLD
+	local val = label(row, "", 20, UDim2.new(1, -228, 0, 0), UDim2.fromOffset(228, 26), TEXT, Enum.TextXAlignment.Right)
+	val.FontFace = FONT_BOLD
+	local bg = new("Frame", { BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 34), Size = UDim2.new(1, 0, 0, 10) }, row)
+	T.corner(bg, 5)
+	local fill = new("Frame", { BackgroundColor3 = TEXT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, bg)
+	T.corner(fill, 5)
 	table.insert(statRows, { name = name, val = val, fill = fill })
 end
-local equipBtn = button(info, "EQUIP IT", "main", UDim2.fromOffset(22, 604), UDim2.fromOffset(376, 70), -1.5)
+local equipBtn = button(info, "EQUIP IT", "main", UDim2.fromOffset(22, 614), UDim2.fromOffset(376, 60))
 
 -- the stats of a live weapon come from the weapon table itself (Weapons.luau); the rest from the web numbers
 local function statsFor(id: string): { Roster.Stat }
@@ -431,38 +421,39 @@ end
 
 -- ---------------------------------------------------------------- the wraps (bottom)
 local _, wbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
-local wTitle = label(wbar, "WRAPS", 28, UDim2.fromOffset(18, 6), UDim2.fromOffset(110, 36), YELLOW)
-stroke(wTitle, 2, INK, true)
-local wName = label(wbar, "", 24, UDim2.fromOffset(130, 8), UDim2.fromOffset(420, 32), WHITE)
+local wTitle = label(wbar, "WRAPS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
+wTitle.FontFace = FONT_TITLE
+local wName = label(wbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(420, 26), TEXT)
+wName.FontFace = FONT_BOLD
 wName.RichText = true; wName.TextWrapped = false
 local modeBtns: { [string]: Btn } = {}
 for i, md in Roster.MODES do
-	local b = button(wbar, MODE_NAMES[md], "chip", UDim2.fromOffset(1250 - 18 - (4 - i) * 156, 10), UDim2.fromOffset(146, 32), 0)
+	local b = button(wbar, MODE_NAMES[md], "chip", UDim2.fromOffset(1250 - 20 - (4 - i) * 154, 10), UDim2.fromOffset(146, 30))
 	modeBtns[md] = b
 end
 local filters = { "all", "common", "rare", "epic", "legendary" }
 local filterBtns: { [string]: TextButton } = {}
 for i, f in filters do
 	local t = new("TextButton", {
-		Text = string.upper(f), FontFace = FONT, TextSize = 16, AutoButtonColor = false, BackgroundTransparency = 1,
-		TextColor3 = if f == "all" then WHITE else Roster.RARITY[f].color, Position = UDim2.fromOffset(20 + (i - 1) * 104, 46), Size = UDim2.fromOffset(96, 22),
+		Text = string.upper(f), FontFace = FONT_BOLD, TextSize = 16, AutoButtonColor = false, BackgroundTransparency = 1, RichText = true,
+		TextColor3 = GREY, TextXAlignment = Enum.TextXAlignment.Left, Position = UDim2.fromOffset(22 + (i - 1) * 128, 45), Size = UDim2.fromOffset(122, 22),
 	}, wbar)
 	filterBtns[f] = t
 end
-label(wbar, "hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 46), UDim2.fromOffset(530, 22), GREY, Enum.TextXAlignment.Right)
+label(wbar, "hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 46), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
 local swatchRow = new("ScrollingFrame", {
 	BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 114),
 	CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
-	ScrollBarThickness = 7, ScrollBarImageColor3 = PINK, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
+	ScrollBarThickness = 5, ScrollBarImageColor3 = DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3,
 }, wbar)
 new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder, VerticalAlignment = Enum.VerticalAlignment.Top }, swatchRow)
 new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingTop = UDim.new(0, 14), PaddingRight = UDim.new(0, 12) }, swatchRow)
 local noPaint = new("TextLabel", {
-	BackgroundColor3 = PANEL, BackgroundTransparency = 0.15, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 108),
-	FontFace = FONT, TextSize = 26, TextColor3 = GREY, Text = "no paint on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
+	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 72), Size = UDim2.fromOffset(1226, 108),
+	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "no paint on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
 }, wbar)
 
--- a swatch: a paint chip with the wrap's palette laid on it like its pattern, a hard shadow in its rarity's colour
+-- a swatch: a paint chip with the wrap's palette laid on it like its pattern, a thin line under it in its rarity's colour
 local function bands(cols: { Color3 }): ColorSequence
 	local n = #cols
 	local kp = {}
@@ -476,9 +467,8 @@ end
 local function paintChip(chip: Frame, wr: Roster.Wrap)
 	local pal = wr.pal
 	if #pal == 0 then
-		chip.BackgroundColor3 = Color3.fromRGB(70, 60, 80)
-		local l = label(chip, "OG", 26, UDim2.new(), UDim2.fromScale(1, 1), WHITE, Enum.TextXAlignment.Center)
-		stroke(l, 2, INK, true)
+		chip.BackgroundColor3 = T.TRACK
+		label(chip, "OG", 15, UDim2.new(), UDim2.fromScale(1, 1), GREY, Enum.TextXAlignment.Center).FontFace = FONT_BOLD
 		return
 	end
 	if #pal == 1 then chip.BackgroundColor3 = pal[1]; return end
@@ -515,21 +505,25 @@ local onSwatch: (Roster.Wrap) -> () = function() end
 local onHover: (string?) -> () = function() end
 for i, wr in Roster.wraps do
 	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(86, 92), LayoutOrder = i, ZIndex = 4 }, swatchRow)
-	local shadow = new("Frame", { BackgroundColor3 = Roster.RARITY[wr.rarity].color, BorderSizePixel = 0, Position = UDim2.fromOffset(5, 5), Size = UDim2.fromOffset(78, 54), ZIndex = 4 }, holder)
-	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BorderSizePixel = 0, Size = UDim2.fromOffset(78, 54), ZIndex = 5 }, holder)
-	local st = stroke(chip, 3, INK)
+	local shadow = new("Frame", { BackgroundColor3 = Roster.RARITY[wr.rarity].color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 57), Size = UDim2.fromOffset(78, 3), ZIndex = 4 }, holder)
+	T.corner(shadow, 2)
+	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 0), Size = UDim2.fromOffset(78, 52), ZIndex = 5 }, holder)
+	T.corner(chip, 4)
+	local st = T.edge(chip, nil, 0.8)
 	paintChip(chip, wr)
 	for _, d in chip:GetChildren() do if d:IsA("TextLabel") then d.ZIndex = 6 end end
 	local fw = finishWord(wr)
 	if fw then
-		local l = label(chip, fw, 11, UDim2.new(0, 3, 1, -15), UDim2.new(1, -6, 0, 13), WHITE, Enum.TextXAlignment.Right)
-		l.ZIndex = 6; l.TextWrapped = false
-		stroke(l, 1.5, INK, true)
+		-- (the finish word, on a small dark pill in the chip's corner)
+		local l = label(chip, fw, 12, UDim2.new(1, -3, 1, -3), UDim2.fromOffset(0, 16), WHITE, Enum.TextXAlignment.Center)
+		l.AnchorPoint = Vector2.new(1, 1); l.AutomaticSize = Enum.AutomaticSize.X; l.FontFace = FONT_BOLD; l.ZIndex = 6; l.TextWrapped = false
+		l.BackgroundColor3 = PANEL; l.BackgroundTransparency = 0.2
+		T.corner(l, 3)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4) }, l)
 	end
-	local tick = label(chip, "✓", 26, UDim2.new(0, -8, 1, -20), UDim2.fromOffset(30, 30), YELLOW, Enum.TextXAlignment.Center)
-	tick.ZIndex = 7; tick.Visible = false
-	stroke(tick, 2.5, INK, true)
-	local nm = label(holder, wr.name, 13, UDim2.fromOffset(0, 62), UDim2.fromOffset(86, 32), WHITE, Enum.TextXAlignment.Center)
+	local tick = label(chip, "✓", 20, UDim2.fromOffset(2, 0), UDim2.fromOffset(22, 22), WHITE, Enum.TextXAlignment.Center)
+	tick.ZIndex = 7; tick.Visible = false; tick.TextStrokeColor3 = Color3.new(0, 0, 0); tick.TextStrokeTransparency = 0.3
+	local nm = label(holder, wr.name, 14, UDim2.fromOffset(0, 64), UDim2.fromOffset(86, 28), GREY, Enum.TextXAlignment.Center)
 	nm.TextYAlignment = Enum.TextYAlignment.Top; nm.ZIndex = 5
 	chip.MouseEnter:Connect(function() onHover(wr.id) end)
 	chip.MouseLeave:Connect(function() onHover(nil) end)
@@ -539,7 +533,10 @@ end
 local function applyFilter()
 	for _, s in swatches do s.holder.Visible = state.filter == "all" or s.wr.rarity == state.filter or s.wr.id == "default" end
 	for f, t in filterBtns do
-		t.Text = if f == state.filter then "[" .. string.upper(f) .. "]" else string.upper(f)
+		-- (a dot in the rarity's colour; the name goes white on the one that's picked)
+		local dot = if f == "all" then "" else ('<font color="#%s">●</font>  '):format(Roster.RARITY[f].color:ToHex())
+		t.Text = dot .. string.upper(f)
+		t.TextColor3 = if f == state.filter then TEXT else GREY
 	end
 	swatchRow.CanvasPosition = Vector2.zero
 end
@@ -578,7 +575,7 @@ local function showPreview(id: string)
 	shownWrap = wid .. "/" .. md
 	m.Parent = vp
 	shown = { id = id, model = m, rel = rel }
-	spin.vel = 3.2 -- a little whoosh on the swap
+	spin.yaw -= 0.7 -- a small turn-in on the swap (it eases back to its rest pose)
 end
 
 refresh = function()
@@ -592,9 +589,9 @@ refresh = function()
 		local wid, md = wrapOf(id)
 		local wr = Roster.wrapById[wid]
 		c.wrap.Text = if wid == "default" then "factory paint" else ("wrap: %s · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
-		c.st.Color = if on then PINK else INK
-		c.st.Thickness = if on then 4 else 3
-		c.shadow.BackgroundColor3 = if on then CYAN else INK
+		c.st.Color = if on then ACCENT else WHITE
+		c.st.Transparency = if on then 0 else T.EDGE_A
+		c.st.Thickness = if on then 2 else 1
 		cardModel(c, id)
 	end
 	buildArmory()
@@ -602,22 +599,24 @@ refresh = function()
 	for _, a in armCards do
 		local e = Roster.byId[a.id]
 		local equipped = p[state.slot] == a.id
-		a.st.Color = if state.focus == a.id then PINK elseif equipped then YELLOW else INK
-		a.st.Thickness = if state.focus == a.id or equipped then 3 else 2
+		local focused = state.focus == a.id
+		a.st.Color = if focused then ACCENT else WHITE
+		a.st.Transparency = if focused then 0 elseif equipped then 0.4 else T.EDGE_A
+		a.st.Thickness = if focused then 2 else 1
+		-- (a weapon's colour shows on the one you're looking at and the one you carry; the rest of the list stays grey)
+		a.chip.BackgroundColor3 = if focused or equipped then a.color else T.TRACK
 		a.tag.Text = if equipped then ("ON KEY %d"):format(slotN) elseif e.live then "LIVE · ready" else "COMING SOON"
-		a.tag.TextColor3 = if equipped then YELLOW elseif e.live then GREEN else GREY
+		a.tag.TextColor3 = if equipped then ACCENT elseif e.live then GREY else DIM
 	end
 	-- the focused weapon
 	local e = Roster.byId[state.focus] or Roster.byId[p[state.slot]]
 	local w = Weapons.list[e.id]
-	bigName.Text = string.upper(e.name); bigNameShadow.Text = bigName.Text
-	bigName.TextColor3 = e.color
+	bigName.Text = string.upper(e.name)
 	soonStamp.Visible = not e.live
-	infoName.Text = e.name; infoName.TextColor3 = e.color
-	slotChipL.Text = Roster.SLOT_NAMES[e.slot]; slotChip.BackgroundColor3 = INK; slotChipL.TextColor3 = CYAN
-	liveChipL.Text = if e.live then "LIVE ON ROBLOX" else "COMING SOON"
-	liveChip.BackgroundColor3 = if e.live then GREEN else PINK
-	liveChipL.TextColor3 = INK
+	infoName.Text = e.name; infoChip.BackgroundColor3 = e.color
+	slotChipL.Text = Roster.SLOT_NAMES[e.slot]
+	liveChipL.Text = if e.live then '<font color="#6fd08a">●</font>  LIVE ON ROBLOX' else "COMING SOON"
+	liveChipL.TextColor3 = if e.live then TEXT else DIM
 	infoDesc.Text = if e.live and w and w.desc ~= "" then w.desc else string.lower(string.sub(e.desc, 1, 1)) .. string.sub(e.desc, 2)
 	gimText.Text = if e.gimmick ~= "" then e.gimmick else SOON_GIMMICK
 	local st = statsFor(e.id)
@@ -625,12 +624,12 @@ refresh = function()
 		local s = st[i]
 		row.name.Text = s and s.label or ""
 		row.val.Text = s and s.text or ""
-		row.fill.BackgroundColor3 = e.color
-		tw(row.fill, 0.25, { Size = UDim2.fromScale(s and math.clamp(s.bar, 0.03, 1) or 0, 1) }, Enum.EasingStyle.Back)
+		local full = if s and s.text ~= "n/a" then math.clamp(s.bar, 0.03, 1) else 0 -- (nothing to measure: an empty track)
+		tw(row.fill, 0.2, { Size = UDim2.fromScale(full, 1) })
 	end
 	local slotOf = slotIndex(e.slot)
 	if not e.live then equipBtn:set("COMING SOON", false)
-	elseif p[e.slot] == e.id then equipBtn:set(("ON KEY %d  ✓"):format(slotOf), false, WHITE)
+	elseif p[e.slot] == e.id then equipBtn:set(("ON KEY %d  ✓"):format(slotOf), false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
 	else equipBtn:set(("EQUIP IT · KEY %d"):format(slotOf), true) end
 	showPreview(e.id)
 	-- wraps for the focused weapon
@@ -640,19 +639,20 @@ refresh = function()
 	if wr then
 		local rc = Roster.RARITY[wr.rarity].color
 		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(), string.upper(Roster.RARITY[wr.rarity].name),
-			if state.hover and state.hover ~= wid then '  <font color="#968aa0">(trying it on)</font>' else "")
+			if state.hover and state.hover ~= wid then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
 	noPaint.Visible = not e.live
 	for _, s in swatches do
 		local on = s.wr.id == wid
 		s.tick.Visible = on
-		s.st.Color = if on then PINK else INK
-		s.st.Thickness = if on then 4 else 3
-		s.chip.Position = if on then UDim2.fromOffset(-2, -6) else UDim2.new()
-		s.chip.Rotation = if on then -4 else 0
+		s.st.Color = if on then ACCENT else WHITE
+		s.st.Transparency = if on then 0 else 0.8
+		s.st.Thickness = if on then 2 else 1
 	end
 	for m, b in modeBtns do
-		b:set(MODE_NAMES[m], e.live, if m == md then YELLOW else WHITE)
+		local on = m == md and e.live
+		b:set(MODE_NAMES[m], e.live, if on then T.CARD_HI else nil)
+		b.mark.Visible = on
 	end
 	local save = me:GetAttribute("LoadoutSave")
 	saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
@@ -767,8 +767,8 @@ local panelsIn: { { o: GuiObject, from: UDim2, to: UDim2 } } = {}
 for _, o in stage:GetChildren() do
 	if o:IsA("GuiObject") then
 		local p = o.Position
-		local dx = if p.X.Offset < 600 then -90 elseif p.X.Offset > 1400 then 90 else 0
-		local dy = if dx == 0 then (if p.Y.Offset > 800 then 70 else -50) else 0
+		local dx = if p.X.Offset < 600 then -28 elseif p.X.Offset > 1400 then 28 else 0
+		local dy = if dx == 0 then (if p.Y.Offset > 800 then 20 else -16) else 0
 		table.insert(panelsIn, { o = o, from = p + UDim2.fromOffset(dx, dy), to = p })
 	end
 end
@@ -807,13 +807,13 @@ setOpen = function(v: boolean)
 		gui.Enabled = true
 		for i, x in panelsIn do
 			x.o.Position = x.from
-			task.delay((i - 1) * 0.025, function() if state.open then tw(x.o, 0.38, { Position = x.to }, Enum.EasingStyle.Back) end end)
+			task.delay((i - 1) * 0.02, function() if state.open then tw(x.o, 0.22, { Position = x.to }) end end)
 		end
 		catcher.BackgroundTransparency = 1
-		tw(catcher, 0.35, { BackgroundTransparency = 0.5 })
+		tw(catcher, 0.35, { BackgroundTransparency = 0.28 })
 		blur.Enabled = true; tint.Enabled = true
 		tw(blur, 0.45, { Size = 22 })
-		tw(tint, 0.45, { Brightness = -0.05, Saturation = -0.35, TintColor = Color3.fromRGB(236, 222, 255) })
+		tw(tint, 0.45, { Brightness = -0.05, Saturation = -0.75, TintColor = Color3.fromRGB(232, 236, 244) })
 		local c = workspace.CurrentCamera :: Camera
 		local h = head()
 		cam.saved, cam.savedHead = c.CFrame, if h then h.Position else c.CFrame.Position
@@ -881,20 +881,32 @@ RunService.RenderStepped:Connect(function(dt)
 	if shown then
 		local now = os.clock()
 		if not spin.drag then
-			-- a flick coasts, then it settles back into the slow turntable spin
-			if now - spin.dragT > 1.2 then spin.vel += (0.45 - spin.vel) * math.min(1, dt * 1.5)
-			else spin.vel *= math.max(0, 1 - dt * 2.5) end
-			spin.yaw += spin.vel * dt
+			-- a flick coasts; left alone, it eases back to a three-quarter side view and sways a little there, so the
+			-- weapon is never left edge-on to you
+			if now - spin.dragT > 1.2 then
+				local rest = math.pi / 2 + 0.45 + math.sin(now * 0.45) * 0.28
+				local turn = ((rest - spin.yaw + math.pi) % (2 * math.pi)) - math.pi
+				spin.vel = 0
+				spin.yaw += turn * math.min(1, dt * 2.4)
+			else
+				spin.vel *= math.max(0, 1 - dt * 2.5)
+				spin.yaw += spin.vel * dt
+			end
 			spin.pitch += (0.12 - spin.pitch) * math.min(1, dt * 0.8)
 		end
-		local bob = math.sin(now * 1.6) * 0.09
+		local bob = math.sin(now * 1.2) * 0.04
 		shown.model:PivotTo(CFrame.new(0, -0.3 + bob, 0) * CFrame.Angles(spin.pitch, spin.yaw, 0) * shown.rel:Inverse())
 	end
 end)
 
 -- ---------------------------------------------------------------- the hub button
-local hudGui = new("ScreenGui", { Name = "JankLoadoutButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6 }, pg)
-local hubBtn = button(hudGui, "LOADOUT  [L]", "main", UDim2.new(0, 22, 1, -266), UDim2.fromOffset(196, 52), -2)
+local hudGui = new("ScreenGui", { Name = "JankLoadoutButton", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 6, ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
+-- (a plate like the HUD's, just above the health plate, with the key it's on)
+local hubBtn = button(T.scaled(hudGui), "LOADOUT", "white", UDim2.new(0, 24, 1, -132), UDim2.fromOffset(136, 36))
+hubBtn.base = T.BG; hubBtn.face.BackgroundColor3 = T.BG; hubBtn.face.BackgroundTransparency = T.BG_A
+hubBtn.face.TextSize = 13; hubBtn.face.TextXAlignment = Enum.TextXAlignment.Left
+new("UIPadding", { PaddingLeft = UDim.new(0, 42) }, hubBtn.face)
+T.key(hubBtn.face, "L", UDim2.fromOffset(-34, 7))
 hubBtn.face.MouseButton1Click:Connect(function() setOpen(true) end)
 RunService.Heartbeat:Connect(function()
 	local show = not state.open and me:GetAttribute("Zone") ~= "match"

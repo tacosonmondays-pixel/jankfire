@@ -1,13 +1,11 @@
--- the crosshair, and a little settings panel on P: field of view and mouse sensitivity.
--- comic look: dark purple panel, thick pink border, hard cyan shadow, yellow fill, Comic Neue.
+-- the settings panel on P: field of view and mouse sensitivity (Jankfire.Theme has the look: a dark card, white text,
+-- amber slider fills). the crosshair is FightHud's
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
 local lp = Players.LocalPlayer
-local PINK, CYAN, YELLOW = Color3.fromRGB(255, 79, 216), Color3.fromRGB(79, 216, 255), Color3.fromRGB(255, 225, 77)
-local PANEL = Color3.fromRGB(18, 8, 24)
-local FONT = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
+local T = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Theme"))
 local S = { fov = 80, sens = 1 }
 local FOV_MIN, FOV_MAX = 50, 120
 local SENS_MIN, SENS_MAX = 0.1, 3
@@ -19,132 +17,60 @@ gui.IgnoreGuiInset = true
 gui.DisplayOrder = 20
 gui.Parent = lp:WaitForChild("PlayerGui")
 
--- crosshair: four short white bars and a dot, black outlines so it reads on the night sky and the bright signs
-local cross = Instance.new("Frame")
-cross.Name = "Crosshair"
-cross.AnchorPoint = Vector2.new(0.5, 0.5)
-cross.Position = UDim2.fromScale(0.5, 0.5)
-cross.Size = UDim2.fromOffset(30, 30)
-cross.BackgroundTransparency = 1
-cross.Parent = gui
-cross.Visible = false -- the weapons' FightHud draws the crosshair now
-local function bar(x, y, w, h)
-	local f = Instance.new("Frame")
-	f.AnchorPoint = Vector2.new(0.5, 0.5)
-	f.Position = UDim2.new(0.5, x, 0.5, y)
-	f.Size = UDim2.fromOffset(w, h)
-	f.BackgroundColor3 = Color3.new(1, 1, 1)
-	f.BorderSizePixel = 0
-	local st = Instance.new("UIStroke"); st.Thickness = 1.5; st.Color = Color3.new(0, 0, 0); st.Parent = f
-	f.Parent = cross
-	return f
+-- the reminder, top right
+local hint = T.plate(T.scaled(gui), "Hint", UDim2.new(1, -136, 0, 14), UDim2.fromOffset(112, 30))
+T.key(hint, "P", UDim2.fromOffset(5, 4))
+local hintText = T.text(hint, "Text", "settings", 13, T.MUTED, T.FONT_BOLD)
+hintText.Position = UDim2.fromOffset(36, 0)
+hintText.Size = UDim2.new(1, -40, 1, 0)
+
+-- the panel, on a dimmed screen
+local scrim = T.new("Frame", { Name = "Scrim", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
+local panel = T.new("TextButton", { -- a button so Modal can free the mouse from first person while it's open
+	Name = "Panel", AutoButtonColor = false, Text = "", Modal = true, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(380, 210), BackgroundColor3 = T.BG, BackgroundTransparency = 0, BorderSizePixel = 0, Visible = false,
+}, gui)
+T.corner(panel, 8)
+T.edge(panel)
+local panelScale = T.new("UIScale", { Scale = T.scaleNow() }, panel) -- (it grows with the screen, like the HUD)
+local title = T.text(panel, "Title", "SETTINGS", 18, T.TEXT, T.FONT_TITLE)
+title.Position = UDim2.fromOffset(24, 24)
+title.Size = UDim2.fromOffset(220, 24)
+local close = T.new("TextButton", {
+	Name = "Close", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -24, 0, 22), Size = UDim2.fromOffset(28, 28), AutoButtonColor = false,
+	BackgroundColor3 = T.CARD, BorderSizePixel = 0, Text = "",
+}, panel)
+T.corner(close, 4)
+-- (the cross is drawn: two thin bars)
+local crossBars = {}
+for _, rot in { 45, -45 } do
+	table.insert(crossBars, T.new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(14, 2), Rotation = rot, BackgroundColor3 = T.MUTED, BorderSizePixel = 0 }, close))
 end
-bar(0, -9, 3, 8); bar(0, 9, 3, 8); bar(-9, 0, 8, 3); bar(9, 0, 8, 3)
-local dot = bar(0, 0, 3, 3)
-dot.BackgroundColor3 = PINK
+close.MouseEnter:Connect(function() close.BackgroundColor3 = T.CARD_HI; for _, b in crossBars do b.BackgroundColor3 = T.TEXT end end)
+close.MouseLeave:Connect(function() close.BackgroundColor3 = T.CARD; for _, b in crossBars do b.BackgroundColor3 = T.MUTED end end)
 
-local hint = Instance.new("TextLabel")
-hint.AnchorPoint = Vector2.new(1, 0)
-hint.Position = UDim2.new(1, -14, 0, 10)
-hint.Size = UDim2.fromOffset(140, 22)
-hint.BackgroundTransparency = 1
-hint.FontFace = FONT
-hint.TextSize = 16
-hint.TextXAlignment = Enum.TextXAlignment.Right
-hint.TextColor3 = Color3.new(1, 1, 1)
-hint.TextStrokeTransparency = 0
-hint.Text = "P = settings"
-hint.Parent = gui
-
--- the panel
-local shadow = Instance.new("Frame")
-shadow.AnchorPoint = Vector2.new(0.5, 0.5)
-shadow.Position = UDim2.new(0.5, 8, 0.5, 8)
-shadow.Size = UDim2.fromOffset(360, 230)
-shadow.BackgroundColor3 = CYAN
-shadow.BorderSizePixel = 0
-shadow.Visible = false
-shadow.Parent = gui
-local panel = Instance.new("TextButton") -- a button so Modal can free the mouse from first person while it's open
-panel.AutoButtonColor = false
-panel.Text = ""
-panel.Modal = true
-panel.AnchorPoint = Vector2.new(0.5, 0.5)
-panel.Position = UDim2.fromScale(0.5, 0.5)
-panel.Size = UDim2.fromOffset(360, 230)
-panel.BackgroundColor3 = PANEL
-panel.BackgroundTransparency = 0.08
-panel.BorderSizePixel = 0
-panel.Rotation = -1
-panel.Visible = false
-panel.Parent = gui
-local ps = Instance.new("UIStroke"); ps.Thickness = 4; ps.Color = PINK; ps.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; ps.Parent = panel
-shadow.Rotation = -1
-
-local function text(parent, t, size, pos, sz, align)
-	local l = Instance.new("TextLabel")
-	l.BackgroundTransparency = 1
-	l.FontFace = FONT
-	l.TextSize = size
-	l.TextColor3 = Color3.new(1, 1, 1)
-	l.TextStrokeTransparency = 0.4
-	l.TextXAlignment = align or Enum.TextXAlignment.Left
-	l.Position = pos
-	l.Size = sz
-	l.Text = t
-	l.Parent = parent
-	return l
-end
-local title = text(panel, "SETTINGS", 30, UDim2.fromOffset(18, 10), UDim2.fromOffset(200, 36))
-title.TextColor3 = YELLOW
-local close = Instance.new("TextButton")
-close.AnchorPoint = Vector2.new(1, 0)
-close.Position = UDim2.new(1, -14, 0, 14)
-close.Size = UDim2.fromOffset(30, 30)
-close.BackgroundColor3 = Color3.fromRGB(255, 48, 48)
-close.BorderSizePixel = 0
-close.FontFace = FONT
-close.TextSize = 20
-close.TextColor3 = Color3.new(1, 1, 1)
-close.Text = "X"
-local cs = Instance.new("UIStroke"); cs.Thickness = 2; cs.Color = Color3.new(0, 0, 0); cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; cs.Parent = close
-close.Parent = panel
-
--- a slider: label + value, a bar with a yellow fill and a white knob with a hard shadow
+-- a slider: its name on the left and its value on the right, a thin track with an amber fill and a round white knob
 local dragging = nil
 local function slider(y, name, min, max, get, set, fmt)
-	local label = text(panel, "", 20, UDim2.fromOffset(18, y), UDim2.fromOffset(320, 24))
-	local bg = Instance.new("Frame")
-	bg.Position = UDim2.fromOffset(20, y + 32)
-	bg.Size = UDim2.fromOffset(318, 14)
-	bg.BackgroundColor3 = Color3.fromRGB(45, 25, 60)
-	bg.BorderSizePixel = 0
-	local bs = Instance.new("UIStroke"); bs.Thickness = 2; bs.Color = Color3.new(0, 0, 0); bs.Parent = bg
-	bg.Parent = panel
-	local fill = Instance.new("Frame")
-	fill.BackgroundColor3 = YELLOW
-	fill.BorderSizePixel = 0
-	fill.Parent = bg
-	local knobShadow = Instance.new("Frame")
-	knobShadow.AnchorPoint = Vector2.new(0.5, 0.5)
-	knobShadow.Size = UDim2.fromOffset(18, 24)
-	knobShadow.BackgroundColor3 = PINK
-	knobShadow.BorderSizePixel = 0
-	knobShadow.Parent = bg
-	local knob = Instance.new("Frame")
-	knob.AnchorPoint = Vector2.new(0.5, 0.5)
-	knob.Size = UDim2.fromOffset(18, 24)
-	knob.BackgroundColor3 = Color3.new(1, 1, 1)
-	knob.BorderSizePixel = 0
-	local ks = Instance.new("UIStroke"); ks.Thickness = 2; ks.Color = Color3.new(0, 0, 0); ks.Parent = knob
-	knob.Parent = bg
+	local label = T.text(panel, "Label", name, 12, T.MUTED, T.FONT_BOLD)
+	label.Position = UDim2.fromOffset(24, y)
+	label.Size = UDim2.fromOffset(220, 16)
+	local value = T.text(panel, "Value", "", 15, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
+	value.Position = UDim2.new(1, -124, 0, y - 2)
+	value.Size = UDim2.fromOffset(100, 18)
+	local bg = T.new("Frame", { Name = "Track", Position = UDim2.fromOffset(24, y + 32), Size = UDim2.new(1, -48, 0, 8), BackgroundColor3 = T.TRACK, BorderSizePixel = 0 }, panel)
+	T.corner(bg, 4)
+	local fill = T.new("Frame", { Name = "Fill", BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromScale(0, 1) }, bg)
+	T.corner(fill, 4)
+	local knob = T.new("Frame", { Name = "Knob", AnchorPoint = Vector2.new(0.5, 0.5), Size = UDim2.fromOffset(18, 18), BackgroundColor3 = T.TEXT, BorderSizePixel = 0, ZIndex = 2 }, bg)
+	T.corner(knob, 9)
+	T.edge(knob, T.BG, 0, 2)
 	local s = { bg = bg }
 	function s.refresh()
 		local u = (get() - min) / (max - min)
 		fill.Size = UDim2.fromScale(u, 1)
 		knob.Position = UDim2.fromScale(u, 0.5)
-		knobShadow.Position = UDim2.new(u, 4, 0.5, 4)
-		label.Text = name .. "   " .. fmt(get())
+		value.Text = fmt(get())
 	end
 	function s.setFromX(x)
 		local u = math.clamp((x - bg.AbsolutePosition.X) / bg.AbsoluteSize.X, 0, 1)
@@ -162,8 +88,8 @@ local function slider(y, name, min, max, get, set, fmt)
 	s.refresh()
 	return s
 end
-local fovS = slider(62, "FIELD OF VIEW", FOV_MIN, FOV_MAX, function() return S.fov end, function(v) S.fov = math.floor(v + 0.5) end, function(v) return tostring(v) end)
-local sensS = slider(140, "MOUSE SENSITIVITY", SENS_MIN, SENS_MAX, function() return S.sens end, function(v) S.sens = math.floor(v * 20 + 0.5) / 20 end, function(v) return string.format("%.2fx", v) end)
+local fovS = slider(74, "FIELD OF VIEW", FOV_MIN, FOV_MAX, function() return S.fov end, function(v) S.fov = math.floor(v + 0.5) end, function(v) return tostring(v) end)
+local sensS = slider(146, "MOUSE SENSITIVITY", SENS_MIN, SENS_MAX, function() return S.sens end, function(v) S.sens = math.floor(v * 20 + 0.5) / 20 end, function(v) return string.format("%.2fx", v) end)
 
 UIS.InputChanged:Connect(function(io)
 	if dragging and (io.UserInputType == Enum.UserInputType.MouseMovement or io.UserInputType == Enum.UserInputType.Touch) then dragging.setFromX(io.Position.X) end
@@ -175,9 +101,10 @@ end)
 local open = false
 local function setOpen(v)
 	open = v
+	panelScale.Scale = T.scaleNow()
 	panel.Visible = v
-	shadow.Visible = v
-	cross.Visible = false
+	scrim.Visible = v
+	lp:SetAttribute("SettingsOpen", v) -- (FightHud hides the crosshair under the panel)
 	dragging = nil
 end
 close.MouseButton1Click:Connect(function() setOpen(false) end)

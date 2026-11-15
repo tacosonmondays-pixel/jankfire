@@ -906,7 +906,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	elseif me:GetAttribute("Zone") == "playground" then
 		H.top("THE PLAYGROUND · you weren't meant to find this")
 	else
-		H.top("HUB · weapons away · step on a pad to play · training behind you")
+		H.top("HUB · weapons away · step on a pad to play · training on your left") -- (the new lobby: the training hatch is left of the spawn)
 	end
 	poseStep(now)
 end)

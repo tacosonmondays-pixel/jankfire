@@ -36,7 +36,8 @@
         "HubLab": { "$path": "studio-tools/HubLab.luau" },
         "KitImport": { "$path": "studio-tools/KitImport.luau" },
         "HubReskin": { "$path": "studio-tools/HubReskin.luau" },
-        "WeaponImport": { "$path": "studio-tools/WeaponImport.luau" }
+        "WeaponImport": { "$path": "studio-tools/WeaponImport.luau" },
+        "SeriousPass": { "$path": "studio-tools/SeriousPass.luau" }
       }
     },
     "StarterPlayer": {
@@ -72,9 +73,10 @@
     },
     "Lighting": {
       "$properties": {
-        "Ambient": [0.3216, 0.298, 0.4157],
-        "OutdoorAmbient": [0.502, 0.4314, 0.5882],
-        "Brightness": 3.2,
+        "Ambient": [0.4118, 0.451, 0.549],
+        "OutdoorAmbient": [0.5412, 0.5804, 0.6784],
+        "Brightness": 3,
+        "ColorShift_Top": [1, 0.8039, 0.6275],
         "ClockTime": 17.45,
         "GeographicLatitude": 28,
         "ExposureCompensation": 0.05,

@@ -1,7 +1,8 @@
 --!strict
--- the fighting HUD in JANKFIRE's comic look (Hud.luau has the panels, speedometer and big callouts): crosshair + the
--- parry ring, hit markers (white x, red on a headshot), floating damage numbers, the hurt vignette and screen flashes,
--- HP and ammo, the clock and kill target, the kill feed in each weapon's colour, and the end screen
+-- the fighting HUD (Theme.luau has the look; Hud.luau the speed readout, the announcer line and the controls line):
+-- crosshair + the parry ring, the hit marker (white ticks, red on a headshot), floating damage numbers, the hurt rim
+-- and screen flashes, health and ammo, the top line (mode, round, score, clock), the kill feed (a chip in each weapon's
+-- colour), the death line, the end screen and the scope
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -9,36 +10,21 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 
-local PINK, YELLOW, CYAN, PANEL, RED = Color3.fromRGB(255, 79, 216), Color3.fromRGB(255, 225, 77), Color3.fromRGB(79, 216, 255), Color3.fromRGB(18, 8, 24), Color3.fromRGB(255, 48, 48)
-local FONT = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
+local T = require(script.Parent:WaitForChild("Theme"))
+local WHITE, BLACK = Color3.new(1, 1, 1), Color3.new(0, 0, 0)
 local me = Players.LocalPlayer
 
 local H = {}
 local gui = Instance.new("ScreenGui")
 gui.Name = "JankfireFight"; gui.ResetOnSpawn = false; gui.IgnoreGuiInset = true; gui.DisplayOrder = 2
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling -- (a card's text is drawn on its card, whatever the card's own ZIndex)
 gui.Parent = me:WaitForChild("PlayerGui")
 
-local function label(parent: Instance, name: string, pos: UDim2, size: UDim2, text: string, color: Color3?, ts: number?): TextLabel
-	local t = Instance.new("TextLabel")
-	t.Name = name; t.BackgroundTransparency = 1; t.Position = pos; t.Size = size; t.FontFace = FONT
-	t.Text = text; t.TextColor3 = color or Color3.new(1, 1, 1); t.TextStrokeTransparency = 0.2
-	if ts then t.TextSize = ts else t.TextScaled = true end
-	t.Parent = parent
-	return t
-end
--- a comic panel: dark purple-black, 4 px pink border, hard cyan offset shadow (8 px, no blur), a tilt
-local function panel(name: string, pos: UDim2, size: UDim2, tilt: number?): Frame
-	local sh = Instance.new("Frame")
-	sh.Name = name .. "Shadow"; sh.BackgroundColor3 = CYAN; sh.BorderSizePixel = 0
-	sh.Position = pos + UDim2.fromOffset(8, 8); sh.Size = size; sh.Rotation = tilt or 0
-	sh.Parent = gui
-	local f = Instance.new("Frame")
-	f.Name = name; f.BackgroundColor3 = PANEL; f.BackgroundTransparency = 0.08; f.BorderSizePixel = 0
-	f.Position = pos; f.Size = size; f.Rotation = tilt or 0
-	local st = Instance.new("UIStroke"); st.Color = PINK; st.Thickness = 4; st.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; st.Parent = f
-	f.Parent = gui
-	return f
-end
+-- put a label where it goes
+local function at(o: GuiObject, pos: UDim2, size: UDim2) o.Position = pos; o.Size = size end
+-- the plates live in here and grow with the screen (Theme.scaled); the crosshair, hit marker, hurt rim, flash and
+-- scope stay straight in the gui, pixel for pixel
+local hud = T.scaled(gui)
 
 -- ---------------------------------------------------------------- crosshair, parry ring, hit marker
 local cross = Instance.new("Frame")
@@ -46,41 +32,52 @@ cross.Name = "Crosshair"; cross.BackgroundTransparency = 1; cross.AnchorPoint = 
 cross.Position = UDim2.fromScale(0.5, 0.5); cross.Size = UDim2.fromOffset(40, 40); cross.Parent = gui
 for i, d in { Vector2.new(0, -1), Vector2.new(0, 1), Vector2.new(-1, 0), Vector2.new(1, 0) } do
 	local b = Instance.new("Frame")
-	b.Name = "Bar" .. i; b.BorderSizePixel = 0; b.BackgroundColor3 = Color3.new(1, 1, 1); b.AnchorPoint = Vector2.new(0.5, 0.5)
-	b.Size = if d.X == 0 then UDim2.fromOffset(3, 9) else UDim2.fromOffset(9, 3)
-	b.Position = UDim2.new(0.5, d.X * 10, 0.5, d.Y * 10)
-	local s = Instance.new("UIStroke"); s.Thickness = 1; s.Color = Color3.new(0, 0, 0); s.Parent = b
+	b.Name = "Bar" .. i; b.BorderSizePixel = 0; b.BackgroundColor3 = WHITE; b.AnchorPoint = Vector2.new(0.5, 0.5)
+	b.Size = if d.X == 0 then UDim2.fromOffset(2, 8) else UDim2.fromOffset(8, 2)
+	b.Position = UDim2.new(0.5, d.X * 9, 0.5, d.Y * 9)
+	local s = Instance.new("UIStroke"); s.Thickness = 1; s.Color = BLACK; s.Transparency = 0; s.Parent = b -- (a full dark outline: it has to read on a pale floor)
 	b.Parent = cross
 end
 local ring = Instance.new("Frame")
 ring.Name = "ParryRing"; ring.AnchorPoint = Vector2.new(0.5, 0.5); ring.Position = UDim2.fromScale(0.5, 0.5)
 ring.Size = UDim2.fromOffset(54, 54); ring.BackgroundTransparency = 1; ring.Visible = false; ring.Parent = gui
 local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0.5, 0); rc.Parent = ring
-local rs = Instance.new("UIStroke"); rs.Thickness = 3; rs.Color = Color3.fromRGB(159, 232, 255); rs.Parent = ring
+local rs = Instance.new("UIStroke"); rs.Thickness = 2; rs.Color = T.ACCENT; rs.Parent = ring
 local rg = Instance.new("UIGradient"); rg.Parent = rs
 
-local marker = Instance.new("TextLabel")
-marker.Name = "HitMarker"; marker.BackgroundTransparency = 1; marker.AnchorPoint = Vector2.new(0.5, 0.5)
-marker.Position = UDim2.fromScale(0.5, 0.5); marker.Size = UDim2.fromOffset(34, 34); marker.FontFace = FONT; marker.TextScaled = true
-marker.Text = "x"; marker.TextColor3 = Color3.new(1, 1, 1); marker.TextStrokeTransparency = 0; marker.TextTransparency = 1; marker.Parent = gui
+-- the hit marker: four short ticks on the diagonals, pointing in at the crosshair
+local marker = T.new("Frame", {
+	Name = "HitMarker", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromOffset(26, 26), Visible = false,
+}, gui)
+local ticks: { Frame } = {}
+for _, d in { Vector2.new(-1, -1), Vector2.new(1, -1), Vector2.new(-1, 1), Vector2.new(1, 1) } do
+	local t = T.new("Frame", {
+		Name = "Tick", BorderSizePixel = 0, BackgroundColor3 = WHITE, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5 + d.X * 0.33, 0.5 + d.Y * 0.33), Size = UDim2.new(0, 2, 0.36, 0),
+		Rotation = if d.X * d.Y > 0 then -45 else 45,
+	}, marker)
+	T.new("UIStroke", { Thickness = 1, Color = BLACK, Transparency = 0.4 }, t)
+	table.insert(ticks, t)
+end
 
 local markTok = 0
 function H.hit(head: boolean)
 	markTok += 1
 	local my = markTok
-	marker.Text = if head then "✖" else "x"
-	marker.TextColor3 = if head then RED else Color3.new(1, 1, 1)
-	marker.TextTransparency = 0
-	marker.Size = UDim2.fromOffset(if head then 46 else 34, if head then 46 else 34)
-	task.delay(0.18, function() if my == markTok then marker.TextTransparency = 1 end end)
+	local s = if head then 34 else 26
+	marker.Size = UDim2.fromOffset(s, s)
+	for _, t in ticks do t.BackgroundColor3 = if head then T.DANGER else WHITE end
+	marker.Visible = true
+	task.delay(0.18, function() if my == markTok then marker.Visible = false end end)
 end
 
 -- the parry ring: full while the guard is open, draining over the cooldown, a blink when it's ready again
 function H.parryRing(state: string, k: number)
 	ring.Visible = state ~= "hidden"
-	if state == "open" then rs.Color = Color3.fromRGB(159, 232, 255); rs.Transparency = 0; rg.Transparency = NumberSequence.new(0)
+	if state == "open" then rs.Color = T.ACCENT; rs.Transparency = 0; rg.Transparency = NumberSequence.new(0)
 	elseif state == "drain" then
-		rs.Color = Color3.fromRGB(120, 140, 160); rs.Transparency = 0.3
+		rs.Color = T.MUTED; rs.Transparency = 0.3
 		local kk = math.clamp(k, 0.001, 0.999)
 		rg.Rotation = -90
 		rg.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(kk, 0), NumberSequenceKeypoint.new(math.min(0.9999, kk + 0.001), 1), NumberSequenceKeypoint.new(1, 1) })
@@ -94,18 +91,29 @@ function H.dmgNum(at: Vector3, amount: number, head: boolean)
 	a.Parent = workspace.Terrain
 	local bb = Instance.new("BillboardGui")
 	bb.Size = UDim2.fromOffset(90, 40); bb.AlwaysOnTop = true; bb.LightInfluence = 0; bb.Adornee = a; bb.Parent = a
-	local t = label(bb, "N", UDim2.fromScale(0, 0), UDim2.fromScale(1, 1), tostring(amount) .. (if head then "!!" else ""), if head then RED else YELLOW)
-	t.TextStrokeTransparency = 0
-	TweenService:Create(a, TweenInfo.new(0.9), { WorldPosition = a.WorldPosition + Vector3.new(0, 3, 0) }):Play()
+	-- (a headshot's number is red and a size up)
+	local t = T.text(bb, "N", tostring(amount), if head then 28 else 22, if head then T.DANGER else T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+	t.Size = UDim2.fromScale(1, 1); t.TextStrokeTransparency = 0.3
+	TweenService:Create(a, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { WorldPosition = a.WorldPosition + Vector3.new(0, 2.4, 0) }):Play()
 	TweenService:Create(t, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.In), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
 	task.delay(0.95, function() a:Destroy() end)
 end
 
 -- ---------------------------------------------------------------- hurt vignette + screen flash
-local vig = Instance.new("Frame")
--- (a stroke draws outside its frame: the frame sits 90 px in from every edge so the 90 px stroke covers the screen's rim)
-vig.Name = "Hurt"; vig.Position = UDim2.fromOffset(90, 90); vig.Size = UDim2.new(1, -180, 1, -180); vig.BackgroundTransparency = 1; vig.BorderSizePixel = 0; vig.Parent = gui
-local vs = Instance.new("UIStroke"); vs.Thickness = 90; vs.Color = RED; vs.Transparency = 1; vs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border; vs.Parent = vig
+-- the hurt rim: four soft red bands, one along each edge of the screen, fading to nothing towards the middle
+local vig = T.new("Frame", { Name = "Hurt", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1) }, gui)
+local rims: { Frame } = {}
+for _, r in {
+	{ UDim2.fromScale(0, 0), UDim2.fromScale(1, 0.24), 90 }, { UDim2.fromScale(0, 0.76), UDim2.fromScale(1, 0.24), -90 },
+	{ UDim2.fromScale(0, 0), UDim2.fromScale(0.17, 1), 0 }, { UDim2.fromScale(0.83, 0), UDim2.fromScale(0.17, 1), 180 },
+} :: { { any } } do
+	local f = T.new("Frame", { Name = "Rim", BorderSizePixel = 0, BackgroundColor3 = T.DANGER, BackgroundTransparency = 1, Position = r[1], Size = r[2] }, vig)
+	T.new("UIGradient", {
+		Rotation = r[3],
+		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.45, 0.75), NumberSequenceKeypoint.new(1, 1) }),
+	}, f)
+	table.insert(rims, f)
+end
 local hurtA = 0
 function H.hurt(amount: number) hurtA = math.min(0.85, hurtA + amount / 40) end
 local flash = Instance.new("Frame")
@@ -118,100 +126,263 @@ function H.flash(op: number, dur: number, color: Color3?)
 end
 
 -- ---------------------------------------------------------------- HP, ammo, weapon
-local hpPanel = panel("Hp", UDim2.new(0, 24, 1, -176), UDim2.fromOffset(190, 62), 1.5)
-local hpBar = Instance.new("Frame")
-hpBar.Name = "Bar"; hpBar.BorderSizePixel = 0; hpBar.BackgroundColor3 = Color3.fromRGB(57, 255, 20); hpBar.Position = UDim2.fromOffset(8, 40)
-hpBar.Size = UDim2.new(1, -16, 0, 12); hpBar.Parent = hpPanel
-local hpText = label(hpPanel, "Text", UDim2.fromOffset(8, 2), UDim2.new(1, -16, 0, 36), "100 HP", YELLOW)
-local ammoPanel = panel("Ammo", UDim2.new(1, -244, 1, -150), UDim2.fromOffset(220, 84), -1.5)
-local wName = label(ammoPanel, "Weapon", UDim2.fromOffset(10, 4), UDim2.new(1, -20, 0, 30), "", Color3.new(1, 1, 1))
-local ammoText = label(ammoPanel, "Count", UDim2.fromOffset(10, 34), UDim2.new(1, -20, 0, 44), "", YELLOW)
+-- health, bottom left: the number, and a thin bar that goes white > amber > red as it empties
+local hpPlate = T.plate(hud, "Hp", UDim2.new(0, 24, 1, -88), UDim2.fromOffset(212, 64))
+local hpEdge = hpPlate:FindFirstChildOfClass("UIStroke") :: UIStroke
+local hpText = T.text(hpPlate, "Value", "100", 34, T.TEXT, T.FONT_HEAVY)
+at(hpText, UDim2.fromOffset(16, 7), UDim2.new(1, -32, 0, 34))
+hpText.RichText = true -- (the number, then a small grey HP right beside it)
+local hpShown = -1
+local hpTrack = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.new(0, 16, 1, -19), Size = UDim2.new(1, -32, 0, 6) }, hpPlate)
+T.corner(hpTrack, 3)
+local hpBar = T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, Size = UDim2.fromScale(1, 1) }, hpTrack)
+T.corner(hpBar, 3)
+-- weapon and ammo, bottom right: a chip in the weapon's colour, its name, what it's doing; the count on the right
+local ammoPlate = T.plate(hud, "Ammo", UDim2.new(1, -256, 1, -88), UDim2.fromOffset(232, 64))
+local wChip = T.new("Frame", { Name = "Chip", BorderSizePixel = 0, BackgroundColor3 = T.MUTED, Position = UDim2.fromOffset(16, 14), Size = UDim2.fromOffset(3, 36) }, ammoPlate)
+T.corner(wChip, 2)
+local wName = T.text(ammoPlate, "Weapon", "", 16, T.TEXT, T.FONT_BOLD)
+at(wName, UDim2.fromOffset(28, 13), UDim2.fromOffset(110, 20))
+wName.TextTruncate = Enum.TextTruncate.AtEnd
+local wSub = T.text(ammoPlate, "State", "", 13, T.MUTED, T.FONT_BOLD)
+at(wSub, UDim2.fromOffset(28, 35), UDim2.fromOffset(190, 16))
+local ammoText = T.text(ammoPlate, "Count", "", 34, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
+at(ammoText, UDim2.new(1, -122, 0, 6), UDim2.fromOffset(106, 38))
+ammoText.RichText = true
 function H.hp(hp: number)
-	hpText.Text = tostring(math.max(0, math.ceil(hp))) .. " HP"
-	hpBar.Size = UDim2.new(math.clamp(hp / 100, 0, 1), -16, 0, 12)
-	hpBar.BackgroundColor3 = if hp > 50 then Color3.fromRGB(57, 255, 20) elseif hp > 25 then YELLOW else RED
+	local v = math.max(0, math.ceil(hp))
+	if v ~= hpShown then
+		hpShown = v
+		hpText.Text = ('%d<font size="14" color="%s">  HP</font>'):format(v, T.hex(T.MUTED))
+	end
+	local low = hp <= 25 -- (nearly dead: the whole plate turns, not just the number)
+	hpText.TextColor3 = if low then T.DANGER else T.TEXT
+	hpPlate.BackgroundColor3 = if low then Color3.fromRGB(42, 18, 21) else T.BG
+	hpEdge.Color = if low then T.DANGER else T.EDGE
+	hpEdge.Transparency = if low then 0.35 else T.EDGE_A
+	hpBar.Size = UDim2.fromScale(math.clamp(hp / 100, 0, 1), 1)
+	hpBar.BackgroundColor3 = if hp > 50 then T.TEXT elseif hp > 25 then T.ACCENT else T.DANGER
 end
 function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, note: string?)
 	local w = Weapons.list[wid]
 	if not w then return end
-	wName.Text = w.name; wName.TextColor3 = w.color
-	if note then ammoText.Text = note -- (the Shredder: its heat instead of ammo)
+	local count, sub, subColor, countColor = "", "", T.MUTED, T.TEXT
+	if note then -- (the Shredder: its heat instead of ammo; HOLSTERED in the hub)
+		sub = note
+		if note == "OVERHEATED" then subColor = T.DANGER end
 	elseif w.kind == "melee" then
-		ammoText.Text = if kat > 0 then ("%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S) else "RMB parry"
-	elseif reloading then ammoText.Text = "RELOADING"
-	else ammoText.Text = ("%d / %d"):format(mag or 0, w.mag or 0) end
+		sub = if kat > 0 then ("%d kills · %.1f m"):format(kat, Weapons.reach(w, kat) / Weapons.S) else "RMB parry"
+	else
+		count = ('%d<font size="15" color="%s">  / %d</font>'):format(mag or 0, T.hex(T.MUTED), w.mag or 0)
+		if reloading then sub = "RELOADING"; subColor = T.ACCENT; countColor = T.DIM
+		elseif (mag or 0) <= 0 then countColor = T.DANGER end
+	end
+	if wName.Text ~= w.name then wName.Text = w.name end
+	wChip.BackgroundColor3 = w.color
+	if ammoText.Text ~= count then ammoText.Text = count end
+	ammoText.TextColor3 = countColor
+	if wSub.Text ~= sub then wSub.Text = sub end
+	wSub.TextColor3 = subColor
 end
 
 -- ---------------------------------------------------------------- clock + kill target
-local top = panel("Round", UDim2.new(0.5, -210, 0, 14), UDim2.fromOffset(420, 46), -1)
-local topText = label(top, "Text", UDim2.fromOffset(8, 4), UDim2.new(1, -16, 1, -8), "", YELLOW)
-topText.RichText = true
+-- where you are (hub, training, playground): top left, under Roblox's own buttons. it used to sit top centre, over the
+-- hub's hanging sign in the first view you get; the top centre is the match scoreboard's alone now
+local top = T.new("TextLabel", {
+	Name = "Round", Position = UDim2.new(0, 24, 0, 62), Size = UDim2.fromOffset(0, 32),
+	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
+	FontFace = T.FONT_BOLD, TextSize = 15, TextColor3 = T.TEXT, RichText = true, Text = "",
+}, hud)
+T.corner(top); T.edge(top)
+T.new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }, top)
+-- a match's scoreboard, in the same spot: mode and round on the left, the score big in the middle (each team's wins in
+-- its own colour), the clock on the right. the two sides are the same width, so the score sits on the screen's centre
+local score = T.new("Frame", {
+	Name = "Score", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 12), Size = UDim2.fromOffset(0, 46),
+	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = 0.14, BorderSizePixel = 0, Visible = false,
+}, hud)
+T.corner(score); T.edge(score)
+T.new("UIListLayout", {
+	FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, SortOrder = Enum.SortOrder.LayoutOrder,
+}, score)
+-- three cells, each with its words in its middle: mode and round | the score | the clock. a hairline between them
+local function scoreCell(order: number, name: string, size: number, color: Color3, font: Font, width: number): TextLabel
+	local l = T.text(score, name, "", size, color, font, Enum.TextXAlignment.Center)
+	l.LayoutOrder = order; l.Size = UDim2.new(0, width, 1, 0)
+	if order < 5 then
+		T.new("Frame", { Name = "Rule", LayoutOrder = order + 1, BorderSizePixel = 0, BackgroundColor3 = T.EDGE, BackgroundTransparency = 0.84, Size = UDim2.fromOffset(1, 22) }, score)
+	end
+	return l
+end
+local scoreMode = scoreCell(1, "Mode", 14, T.MUTED, T.FONT_BOLD, 156)
+local scoreNum = scoreCell(3, "Wins", 28, T.TEXT, T.FONT_HEAVY, 0)
+scoreNum.RichText = true; scoreNum.AutomaticSize = Enum.AutomaticSize.X
+T.new("UIPadding", { PaddingLeft = UDim.new(0, 26), PaddingRight = UDim.new(0, 26) }, scoreNum)
+local scoreClock = scoreCell(5, "Clock", 18, T.TEXT, T.FONT_BOLD, 156)
+local lastScore = "" -- (the end screen shows it under the result)
+local topRaw = ""
+-- the top line in the hub (where you are) and in a match (mode, round, score, clock): RichText. a where-you-are line
+-- ("HUB · weapons away · ...") gets its place in white and the rest quieter; a match's line ("MODE · ROUND n ·
+-- score · clock", Matches.hudText + Arsenal's clock) is laid out as the scoreboard
+function H.top(text: string)
+	if topRaw == text then return end
+	topRaw = text
+	local parts = if string.find(text, "<font", 1, true) then string.split(text, " · ") else nil
+	if parts and #parts >= 3 then
+		scoreMode.Text = parts[1] .. "    " .. parts[2]
+		scoreNum.Text = parts[3]; lastScore = parts[3]
+		scoreClock.Text = parts[4] or ""
+		score.Visible = true; top.Visible = false
+		return
+	end
+	score.Visible = false; top.Visible = true
+	local cut = string.find(text, " · ", 1, true)
+	if cut and not parts then
+		top.Text = ('%s<font color="%s">    %s</font>'):format(string.sub(text, 1, cut - 1), T.hex(T.MUTED), string.sub(text, cut + #" · "))
+	else
+		top.Text = text
+	end
+end
 function H.round(target: number, left: number, myKills: number)
 	local m, s = math.floor(math.max(0, left) / 60), math.floor(math.max(0, left)) % 60
-	topText.Text = ("first to %d · %d:%02d · you %d"):format(target, m, s, myKills)
-end
--- the top line in the hub (where you are) and in a match (mode, round, score, clock): RichText
-function H.top(text: string)
-	if topText.Text ~= text then topText.Text = text end
+	H.top(("first to %d · %d:%02d · you %d"):format(target, m, s, myKills))
 end
 
 -- ---------------------------------------------------------------- kill feed (top right, 6 lines, 7 s)
 local feed = Instance.new("Frame")
-feed.Name = "Feed"; feed.BackgroundTransparency = 1; feed.AnchorPoint = Vector2.new(1, 0); feed.Position = UDim2.new(1, -16, 0, 80)
-feed.Size = UDim2.fromOffset(460, 6 * 30); feed.Parent = gui
+feed.Name = "Feed"; feed.BackgroundTransparency = 1; feed.AnchorPoint = Vector2.new(1, 0); feed.Position = UDim2.new(1, -24, 0, 64)
+feed.Size = UDim2.fromOffset(520, 6 * 34); feed.Parent = hud
 local fl = Instance.new("UIListLayout"); fl.HorizontalAlignment = Enum.HorizontalAlignment.Right; fl.Padding = UDim.new(0, 4)
 fl.SortOrder = Enum.SortOrder.LayoutOrder; fl.Parent = feed
 local feedN = 0
-local function hex(c: Color3): string return c:ToHex() end
+-- a line: who  | weapon  who (your own name in amber). the weapon's colour is the small chip before its name
 function H.feed(killer: string?, wid: string, victim: string, suffix: string?)
 	feedN += 1
 	local w = Weapons.list[wid]
-	local row = Instance.new("TextLabel")
-	row.Name = "Line"; row.LayoutOrder = feedN; row.BackgroundColor3 = PANEL; row.BackgroundTransparency = 0.25; row.BorderSizePixel = 0
-	row.AutomaticSize = Enum.AutomaticSize.X; row.Size = UDim2.fromOffset(0, 26); row.FontFace = FONT; row.TextSize = 20; row.RichText = true
-	row.TextColor3 = Color3.new(1, 1, 1)
-	local tag = if w then ('<font color="#%s">[%s]</font>'):format(hex(w.color), w.name) else ""
-	local function esc(s: string): string return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")) end
-	row.Text = (" %s  %s  %s%s "):format(if killer then esc(killer) else "", tag, esc(victim), if suffix then "  " .. suffix else "")
-	local pad = Instance.new("UIPadding"); pad.PaddingLeft = UDim.new(0, 6); pad.PaddingRight = UDim.new(0, 6); pad.Parent = row
+	local row = T.new("Frame", {
+		Name = "Line", LayoutOrder = feedN, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
+		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 30),
+	})
+	T.corner(row, 4)
+	T.new("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10) }, row)
+	T.new("UIListLayout", {
+		FillDirection = Enum.FillDirection.Horizontal, VerticalAlignment = Enum.VerticalAlignment.Center, Padding = UDim.new(0, 8),
+		SortOrder = Enum.SortOrder.LayoutOrder,
+	}, row)
+	local function cell(order: number, text: string, color: Color3, font: Font)
+		local l = T.text(row, "Cell", text, 15, color, font)
+		l.LayoutOrder = order; l.AutomaticSize = Enum.AutomaticSize.X; l.Size = UDim2.fromOffset(0, 30)
+	end
+	local function mine(name: string): boolean return name == me.DisplayName or name == me.Name end
+	if killer then cell(1, killer, if mine(killer) then T.ACCENT else T.TEXT, T.FONT_BOLD) end
+	if w then
+		local chip = T.new("Frame", { Name = "Chip", LayoutOrder = 2, BorderSizePixel = 0, BackgroundColor3 = w.color, Size = UDim2.fromOffset(3, 15) }, row)
+		T.corner(chip, 2)
+		cell(3, w.name, T.SOFT, T.FONT)
+	end
+	cell(4, victim, if mine(victim) then T.ACCENT else T.TEXT, T.FONT_BOLD)
+	if suffix then cell(5, suffix, T.SOFT, T.FONT) end
 	row.Parent = feed
 	local lines = {}
-	for _, c in feed:GetChildren() do if c:IsA("TextLabel") then table.insert(lines, c) end end
+	for _, c in feed:GetChildren() do if c:IsA("Frame") then table.insert(lines, c) end end
 	table.sort(lines, function(a, b) return a.LayoutOrder < b.LayoutOrder end)
-	while #lines > 6 do (table.remove(lines, 1) :: TextLabel):Destroy() end
+	while #lines > 6 do (table.remove(lines, 1) :: Frame):Destroy() end
 	task.delay(7, function() if row.Parent then row:Destroy() end end)
 end
 
 -- ---------------------------------------------------------------- death line
-local deathText = label(gui, "Death", UDim2.new(0.2, 0, 0.62, 0), UDim2.new(0.6, 0, 0.06, 0), "", Color3.new(1, 1, 1))
-deathText.Visible = false
+-- a band across the middle with a red bar at its left end: who got you in big white letters, how in small grey ones
+local deathText = T.new("TextLabel", {
+	Name = "Death", AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.58), Size = UDim2.fromOffset(0, 52),
+	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = 0.14, BorderSizePixel = 0,
+	FontFace = T.FONT_BOLD, TextSize = 22, TextColor3 = T.TEXT, RichText = true, Text = "", Visible = false,
+}, hud)
+T.corner(deathText); T.edge(deathText)
+T.new("UIPadding", { PaddingLeft = UDim.new(0, 30), PaddingRight = UDim.new(0, 26) }, deathText)
+T.corner(T.new("Frame", { Name = "Bar", BorderSizePixel = 0, BackgroundColor3 = T.DANGER, Position = UDim2.new(0, -18, 0.5, -13), Size = UDim2.fromOffset(3, 26) }, deathText), 2)
+local function esc(s: string): string return (s:gsub("&", "&amp;"):gsub("<", "&lt;"):gsub(">", "&gt;")) end
 function H.dead(text: string?)
 	deathText.Visible = text ~= nil
-	deathText.Text = text or ""
+	if not text then deathText.Text = ""; return end
+	-- the words are Arsenal's and are not changed: "killed by NAME  (WEAPON)", "NAME knocked you into the smog  (WEAPON)"
+	local function quiet(s: string): string return ('<font color="%s" size="15">%s</font>'):format(T.hex(T.MUTED), esc(s)) end
+	local who, wpn = string.match(text, "^killed by (.-)  %((.+)%)$")
+	if who then deathText.Text = quiet("killed by") .. "   " .. esc(who) .. "   " .. quiet(wpn); return end
+	local who2, how, wpn2 = string.match(text, "^(.-) (knocked you into the smog)  %((.+)%)$")
+	if who2 then deathText.Text = esc(who2) .. "   " .. quiet(how) .. "   " .. quiet(wpn2); return end
+	deathText.Text = esc(text)
 end
 
 -- ---------------------------------------------------------------- end screen
-local endPanel = panel("End", UDim2.new(0.5, -260, 0.5, -210), UDim2.fromOffset(520, 420), -1)
-local endShadow = gui:FindFirstChild("EndShadow") :: Frame
-endPanel.Visible = false; endShadow.Visible = false
-local endTitle = label(endPanel, "Title", UDim2.fromOffset(16, 10), UDim2.new(1, -32, 0, 64), "", YELLOW)
-local endList = Instance.new("Frame")
-endList.Name = "Board"; endList.BackgroundTransparency = 1; endList.Position = UDim2.fromOffset(24, 84); endList.Size = UDim2.new(1, -48, 1, -140); endList.Parent = endPanel
-local el = Instance.new("UIListLayout"); el.Padding = UDim.new(0, 4); el.SortOrder = Enum.SortOrder.LayoutOrder; el.Parent = endList
-local endNext = label(endPanel, "Next", UDim2.new(0, 16, 1, -48), UDim2.new(1, -32, 0, 34), "", CYAN)
+-- a dimmed screen and one card: who won, the board as a table (place, player, kills, deaths; your row marked), what's next
+local endShadow = T.new("Frame", { Name = "EndScrim", BackgroundColor3 = BLACK, BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 4 }, hud)
+local endPanel = T.new("Frame", {
+	Name = "End", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(500, 420),
+	BackgroundColor3 = T.BG, BackgroundTransparency = 0.05, BorderSizePixel = 0, Visible = false, ZIndex = 5,
+}, hud)
+T.corner(endPanel, 8); T.edge(endPanel)
+local endScale = T.new("UIScale", {}, endPanel)
+local MID = Enum.TextXAlignment.Center
+local endKicker = T.text(endPanel, "Kicker", "MATCH OVER", 12, T.MUTED, T.FONT_BOLD, MID)
+at(endKicker, UDim2.fromOffset(28, 24), UDim2.new(1, -56, 0, 14))
+local endTitle = T.text(endPanel, "Title", "", 40, T.TEXT, T.FONT_TITLE, MID)
+at(endTitle, UDim2.fromOffset(28, 44), UDim2.new(1, -56, 0, 48))
+endTitle.TextScaled = true
+T.new("UITextSizeConstraint", { MaxTextSize = 40, MinTextSize = 14 }, endTitle)
+-- the final score under the result, each team's wins in its colour (H.top keeps it from the match line)
+local endScore = T.text(endPanel, "Score", "", 26, T.TEXT, T.FONT_HEAVY, MID)
+at(endScore, UDim2.fromOffset(28, 96), UDim2.new(1, -56, 0, 30))
+endScore.RichText = true
+local endRule = T.new("Frame", { Name = "Rule", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.new(0.5, 0, 0, 136), Size = UDim2.fromOffset(44, 3) }, endPanel)
+-- one row of the board (the heading uses it too): place, player, kills, deaths
+local function cells(parent: Instance, texts: { string }, size: number, color: Color3, font: Font, nameColor: Color3?)
+	local L, R = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
+	for i, s in { { 14, 26, L }, { 44, 214, L }, { 262, 76, R }, { 346, 86, R } } :: { { any } } do
+		local l = T.text(parent, "Cell" .. i, texts[i], size, if i == 2 and nameColor then nameColor else color, font, s[3])
+		at(l, UDim2.fromOffset(s[1], 0), UDim2.new(0, s[2], 1, 0))
+		l.TextTruncate = Enum.TextTruncate.AtEnd
+	end
+end
+local endHead = T.new("Frame", { Name = "Head", BackgroundTransparency = 1, Position = UDim2.fromOffset(28, 156), Size = UDim2.new(1, -56, 0, 20) }, endPanel)
+cells(endHead, { "#", "PLAYER", "KILLS", "DEATHS" }, 11, T.MUTED, T.FONT_BOLD)
+local endList = T.new("Frame", { Name = "Board", BackgroundTransparency = 1, Position = UDim2.fromOffset(28, 180), Size = UDim2.new(1, -56, 0, 8 * 40) }, endPanel)
+T.new("UIListLayout", { Padding = UDim.new(0, 2), SortOrder = Enum.SortOrder.LayoutOrder }, endList)
+local endNext = T.text(endPanel, "Next", "", 14, T.MUTED, T.FONT, Enum.TextXAlignment.Center)
+at(endNext, UDim2.new(0, 28, 1, -50), UDim2.new(1, -56, 0, 18))
+-- the wait for what's next, as a thin bar that drains
+local endTrack = T.new("Frame", { Name = "Wait", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.new(0, 28, 1, -22), Size = UDim2.new(1, -56, 0, 3) }, endPanel)
+T.corner(endTrack, 2)
+local endFill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.MUTED, Size = UDim2.fromScale(1, 1) }, endTrack)
+T.corner(endFill, 2)
 local endTok = 0
 function H.endScreen(winner: string?, iWon: boolean, board: { { any } }, nextIn: number, nextLabel: string?)
 	endTok += 1
 	local my = endTok
-	for _, c in endList:GetChildren() do if c:IsA("TextLabel") then c:Destroy() end end
-	endTitle.Text = if iWon then "YOU WIN" elseif winner then winner .. " wins" else "NOBODY WINS (no kills, no glory)"
+	for _, c in endList:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
+	endTitle.Text = if iWon then "YOU WIN" elseif winner then string.upper(winner .. " wins") else "NOBODY WINS (no kills, no glory)"
+	endTitle.TextColor3 = if iWon then T.ACCENT else T.TEXT
+	endScore.Text = lastScore
+	endRule.BackgroundColor3 = if iWon then T.ACCENT else T.DIM
+	local n = 0
 	for i, r in board do
 		if i > 8 then break end
-		local row = label(endList, "Row", UDim2.new(), UDim2.new(1, 0, 0, 30), ("%d.  %s   %d kills · %d deaths"):format(i, tostring(r[1]), r[2], r[3]),
-			if r[4] == me.UserId then YELLOW else Color3.new(1, 1, 1), 22)
-		row.TextXAlignment = Enum.TextXAlignment.Left; row.LayoutOrder = i
+		n += 1
+		local mine = r[4] == me.UserId
+		local row = T.new("Frame", {
+			Name = "Row", LayoutOrder = i, BorderSizePixel = 0, BackgroundColor3 = if mine then T.CARD_HI else T.CARD,
+			BackgroundTransparency = if mine then 0 else 0.4, Size = UDim2.new(1, 0, 0, 38),
+		}, endList)
+		T.corner(row, 4)
+		if mine then
+			T.corner(T.new("Frame", { Name = "Mine", BorderSizePixel = 0, BackgroundColor3 = T.ACCENT, Position = UDim2.fromOffset(0, 9), Size = UDim2.fromOffset(3, 20) }, row), 2)
+		end
+		cells(row, { tostring(i), tostring(r[1]), tostring(r[2]), tostring(r[3]) }, 15, if mine then T.TEXT else T.MUTED, T.FONT_BOLD, if mine then T.ACCENT else T.TEXT)
 	end
+	endPanel.Size = UDim2.fromOffset(500, 180 + math.max(n, 1) * 40 + 70)
+	endFill.Size = UDim2.fromScale(1, 1); T.tween(endFill, nextIn, { Size = UDim2.fromScale(0, 1) }, Enum.EasingStyle.Linear)
 	endPanel.Visible = true; endShadow.Visible = true
+	endShadow.BackgroundTransparency = 1; T.tween(endShadow, 0.2, { BackgroundTransparency = 0.5 })
+	endScale.Scale = 0.96; T.tween(endScale, 0.16, { Scale = 1 })
 	task.spawn(function()
 		local t0 = os.clock()
 		while my == endTok and os.clock() - t0 < nextIn do
@@ -248,8 +419,9 @@ end
 
 function H.step(dt: number, aim: number, scopeHide: boolean)
 	hurtA = math.max(0, hurtA - dt * 0.9)
-	vs.Transparency = 1 - hurtA
-	cross.Visible = not scopeHide
+	for _, r in rims do r.BackgroundTransparency = 1 - hurtA end
+	-- (no crosshair through the scope, over the end screen or under the settings panel)
+	cross.Visible = not scopeHide and not endPanel.Visible and me:GetAttribute("SettingsOpen") ~= true
 	for _, c in cross:GetChildren() do
 		if c:IsA("Frame") then c.BackgroundTransparency = aim * 0.6 end
 	end
@@ -259,7 +431,6 @@ end
 local keysHint = gui.Parent and (gui.Parent :: Instance):FindFirstChild("JankfireHud")
 local hint = keysHint and keysHint:FindFirstChild("Keys") :: TextLabel?
 if hint then
-	hint.Size = UDim2.fromOffset(800, 22)
 	-- keys 1 2 3 follow your loadout (Loadout.luau sets it on every arm; L opens the loadout screen)
 	local lp = game:GetService("Players").LocalPlayer
 	local WL = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("Weapons")).list
@@ -267,8 +438,14 @@ if hint then
 		local s = lp:GetAttribute("Loadout")
 		local ids = if type(s) == "string" then string.split(s, ",") else { "redline", "marbles", "katana" }
 		local parts = {}
-		for i, id in ids do table.insert(parts, i .. " " .. (if WL[id] then WL[id].name else id)) end
-		(hint :: TextLabel).Text = table.concat(parts, " · ") .. " · L loadout · LMB fire · RMB aim / parry · R reload · shift run · C slide · hold E grapple · V camera"
+		-- (each key in white, what it does in grey)
+		local function key(k: string, what: string) table.insert(parts, ('<font color="%s"><b>%s</b></font> %s'):format(T.hex(T.TEXT), k, what)) end
+		for i, id in ids do key(tostring(i), if WL[id] then WL[id].name else id) end
+		for _, p in { { "L", "loadout" }, { "LMB", "fire" }, { "RMB", "aim / parry" }, { "R", "reload" }, { "shift", "run" }, { "C", "slide" }, { "hold E", "grapple" }, { "V", "camera" } } do
+			key(p[1], p[2])
+		end
+		local line = hint :: TextLabel
+		line.Text = table.concat(parts, "     ")
 	end
 	keysLine()
 	lp:GetAttributeChangedSignal("Loadout"):Connect(keysLine)

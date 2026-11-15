@@ -14,45 +14,21 @@ local firing = false
 tool.Activated:Connect(function() firing = true end)
 tool.Deactivated:Connect(function() firing = false; remote:FireServer("stop") end)
 
--- the heat bar: comic panel, pink border, hard cyan shadow, yellow fill (red when it's cooked)
+-- the heat bar: a small dark plate low in the middle of the screen, a thin bar that goes white > amber > red when
+-- it's cooked (the look is the HUD's: PlayerScripts.Jankfire.Theme)
+local T = require(lp:WaitForChild("PlayerScripts"):WaitForChild("Jankfire"):WaitForChild("Theme"))
 local gui = Instance.new("ScreenGui")
 gui.Name = "ShredderHeat"
 gui.ResetOnSpawn = true
 gui.Enabled = false
-local shadow = Instance.new("Frame")
-shadow.AnchorPoint = Vector2.new(0.5, 1)
-shadow.Position = UDim2.new(0.5, 6, 1, -54)
-shadow.Size = UDim2.fromOffset(220, 34)
-shadow.BackgroundColor3 = Color3.fromRGB(79, 216, 255)
-shadow.BorderSizePixel = 0
-shadow.Parent = gui
-local panel = Instance.new("Frame")
-panel.AnchorPoint = Vector2.new(0.5, 1)
-panel.Position = UDim2.new(0.5, 0, 1, -60)
-panel.Size = UDim2.fromOffset(220, 34)
-panel.BackgroundColor3 = Color3.fromRGB(18, 8, 24)
-panel.BorderSizePixel = 0
-panel.Parent = gui
-local stroke = Instance.new("UIStroke")
-stroke.Thickness = 4
-stroke.Color = Color3.fromRGB(255, 79, 216)
-stroke.Parent = panel
-local fill = Instance.new("Frame")
-fill.Position = UDim2.fromOffset(4, 4)
-fill.Size = UDim2.new(0, 0, 1, -8)
-fill.BackgroundColor3 = Color3.fromRGB(255, 225, 77)
-fill.BorderSizePixel = 0
-fill.Parent = panel
-local label = Instance.new("TextLabel")
-label.BackgroundTransparency = 1
-label.Size = UDim2.fromScale(1, 1)
-label.FontFace = Font.new("rbxasset://fonts/families/ComicNeueAngular.json", Enum.FontWeight.Bold)
-label.TextSize = 20
-label.TextColor3 = Color3.new(1, 1, 1)
-label.TextStrokeTransparency = 0
-label.Text = "SHREDDER HEAT"
-label.ZIndex = 2
-label.Parent = panel
+local panel = T.plate(T.scaled(gui), "Heat", UDim2.new(0.5, -120, 1, -150), UDim2.fromOffset(240, 40))
+local label = T.text(panel, "Label", "SHREDDER HEAT", 11, T.MUTED, T.FONT_BOLD)
+label.Position = UDim2.fromOffset(14, 7)
+label.Size = UDim2.new(1, -28, 0, 14)
+local track = T.new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.new(0, 14, 1, -14), Size = UDim2.new(1, -28, 0, 5) }, panel)
+T.corner(track, 3)
+local fill = T.new("Frame", { Name = "Fill", BorderSizePixel = 0, BackgroundColor3 = T.TEXT, Size = UDim2.fromScale(0, 1) }, track)
+T.corner(fill, 3)
 gui.Parent = lp:WaitForChild("PlayerGui")
 
 tool.Equipped:Connect(function() gui.Enabled = true end)
@@ -75,9 +51,10 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	local heat = tool:GetAttribute("Heat") or 0
 	local hot = tool:GetAttribute("Hot") == true
-	fill.Size = UDim2.new(math.clamp(heat, 0, 1) * (212 / 220), 0, 1, -8)
-	fill.BackgroundColor3 = if hot then Color3.fromRGB(255, 48, 48) elseif heat > 0.75 then Color3.fromRGB(255, 140, 26) else Color3.fromRGB(255, 225, 77)
+	fill.Size = UDim2.fromScale(math.clamp(heat, 0, 1), 1)
+	fill.BackgroundColor3 = if hot then T.DANGER elseif heat > 0.75 then T.ACCENT else T.TEXT
 	label.Text = if hot then "OVERHEATED" else "SHREDDER HEAT"
+	label.TextColor3 = if hot then T.DANGER else T.MUTED
 	-- the power lamps blink while it cools
 	local lampOn = not hot or (os.clock() * 6) % 2 < 1
 	for _, l in ipairs(lamps) do l.Color = if lampOn then Color3.fromRGB(255, 40, 30) else Color3.fromRGB(60, 8, 8) end

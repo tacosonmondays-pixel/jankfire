@@ -86,8 +86,8 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	b.Name = "Rope_" .. p.UserId
 	b.Attachment0 = a0; b.Attachment1 = a1
 	b.Width0 = 0.25; b.Width1 = 0.25; b.FaceCamera = true; b.Segments = 1
-	b.Color = ColorSequence.new(Color3.fromRGB(255, 79, 216), Color3.fromRGB(255, 225, 77))
-	b.LightEmission = 0.6
+	b.Color = ColorSequence.new(Color3.fromRGB(236, 238, 242), Color3.fromRGB(176, 182, 192)) -- (a pale steel cable, like the one its owner sees)
+	b.LightEmission = 0.3
 	b:SetAttribute("Owner", p.UserId)
 	b.Parent = workspace.Terrain
 	i.rope, i.anchor = b, a1
