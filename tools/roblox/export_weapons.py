@@ -228,3 +228,5 @@ if os.path.exists(rp):
 for gun, key in weapon_paint.repaint(report, paint): print('PAINT TABLE LINE MATCHED NOTHING:', gun, key)
 with open(rp, 'w') as fh: json.dump(report, fh, indent=1)
 print('PAINT', paint, 'written for', sum(1 for m in report.values() if m.get('paint') == paint), 'guns')
+book = weapon_paint.write_book(report, rp, paint)  # (the paint book Studio keeps: both paints + the default)
+if book: print('BOOK', book[0], book[1], 'guns')

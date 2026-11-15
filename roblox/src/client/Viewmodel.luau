@@ -133,7 +133,9 @@ local function hands(m: Model, root: BasePart)
 		table.insert(spots, { side = if spot == "Grip" then "Right" else "Left", fist = fistCF, arm = fistCF * CFrame.Angles(0.5, if spot == "Fore" then -0.35 else 0.25, 0) })
 	end
 	if AvatarArms.build(m, root, spots, k) then return end
-	local skin, sleeve = Color3.fromRGB(255, 206, 160), Color3.fromRGB(255, 79, 216)
+	local kit = AvatarArms.look() == "kit"
+	local skin = if kit then AvatarArms.KIT.glove else Color3.fromRGB(255, 206, 160)
+	local sleeve = if kit then AvatarArms.KIT.sleeve else Color3.fromRGB(255, 79, 216)
 	for _, spot in { "Grip", "Fore" } do
 		local a = root:FindFirstChild(spot) :: Attachment?
 		if not a then continue end
@@ -249,7 +251,7 @@ function VM.update(dt: number, c: Ctx)
 	if off ~= offGone then
 		offGone = off
 		local arms = m:FindFirstChild("AvatarArms")
-		for _, n in { "LeftHand", "LeftLowerArm", "HandFore", "SleeveFore" } do
+		for _, n in { "LeftHand", "LeftLowerArm", "LeftCuff", "LeftTrim", "LeftPad", "HandFore", "SleeveFore" } do
 			local p = (arms and arms:FindFirstChild(n)) or m:FindFirstChild(n)
 			if p then p:SetAttribute("Hide", if off then true else nil) end
 		end

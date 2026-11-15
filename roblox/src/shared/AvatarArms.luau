@@ -5,9 +5,27 @@
 -- layered jacket doesn't come along.) used by the weapons' Viewmodel and the Shredder's viewmodel.
 -- the wrist stays straight: the hand carries on along its forearm and only turns about it, so a hand never folds back
 -- on itself. what changes per hold is where the forearm comes from and which way the palm faces
+--
+-- THE LOOK is a switch. "kit" (the default since 2026-11-15) dresses your arm shapes in the game's own glove, sleeve
+-- and cuff, so the hands look finished whatever the avatar wears: a pale or untextured avatar arm blew out to a plain
+-- white shape under the lamps. "avatar" is the first version: your skin tone and your shirt's sleeves.
 local Players = game:GetService("Players")
 
 local AvatarArms = {}
+
+-- (the module's "Look" attribute, if it is set, wins over this: a place or a test can switch without editing code)
+AvatarArms.LOOK = "kit" -- "kit" | "avatar"
+function AvatarArms.look(): string
+	local a = script:GetAttribute("Look")
+	return if a == "kit" or a == "avatar" then a else AvatarArms.LOOK
+end
+AvatarArms.KIT = {
+	glove = Color3.fromRGB(33, 35, 40), -- charcoal, matte
+	sleeve = Color3.fromRGB(50, 53, 60), -- graphite cloth
+	cuff = Color3.fromRGB(22, 23, 27), -- the band at the wrist
+	trim = Color3.fromRGB(176, 180, 188), -- one light line on the cuff
+	pad = Color3.fromRGB(44, 47, 54), -- the plate on the back of the hand
+}
 
 -- sizes in metres x k (the viewmodel's studs per metre)
 AvatarArms.HAND = 0.12 -- the hand across
@@ -43,6 +61,13 @@ local function limb(src: BasePart): BasePart
 	return c
 end
 
+-- a piece of the kit: the limb's own shape in one flat colour (its skin picture and surface come off)
+local function dress(p: BasePart, color: Color3, material: Enum.Material)
+	for _, d in p:GetChildren() do if d:IsA("SurfaceAppearance") then d:Destroy() end end
+	if p:IsA("MeshPart") then p.TextureID = "" end
+	p.Color = color; p.Material = material; p.Reflectance = 0
+end
+
 -- builds the arms under `parent`, welded to `root`; false if your character isn't ready (use the code hands then)
 function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: number): boolean
 	local ch = Players.LocalPlayer and Players.LocalPlayer.Character
@@ -54,15 +79,19 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 	if old then old:Destroy() end
 	local arms = Instance.new("Model")
 	arms.Name = "AvatarArms"
-	local hum = Instance.new("Humanoid")
-	hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
-	hum.RigType = Enum.HumanoidRigType.R15
-	hum.RequiresNeck = false; hum.BreakJointsOnDeath = false
-	pcall(function() (hum :: any).EvaluateStateMachine = false end)
-	hum.Parent = arms
-	for _, c in ch:GetChildren() do
-		if c:IsA("Shirt") or c:IsA("BodyColors") then c:Clone().Parent = arms end
+	local kit = AvatarArms.look() == "kit"
+	if not kit then
+		-- (a Humanoid in the model makes the Shirt and BodyColors show on the limbs, as they do on your body)
+		local hum = Instance.new("Humanoid")
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+		hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
+		hum.RigType = Enum.HumanoidRigType.R15
+		hum.RequiresNeck = false; hum.BreakJointsOnDeath = false
+		pcall(function() (hum :: any).EvaluateStateMachine = false end)
+		hum.Parent = arms
+		for _, c in ch:GetChildren() do
+			if c:IsA("Shirt") or c:IsA("BodyColors") then c:Clone().Parent = arms end
+		end
 	end
 	for _, s in spots do
 		local set = AvatarArms.POSES[s.kind or (if parent.Name == "katana" then "katana" else "gun")] or AvatarArms.POSES.gun
@@ -89,7 +118,33 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 		hand.CFrame = CFrame.fromMatrix(centre, X, Y, Z)
 		local wrist = centre + Y * hand.Size.Y * 0.42
 		fore.CFrame = CFrame.fromMatrix(wrist + Y * fore.Size.Y * 0.5, X, Y, Z)
-		for _, p in { hand, fore } do
+		local set2: { BasePart } = { hand, fore }
+		if kit then
+			local K = AvatarArms.KIT
+			dress(hand, K.glove, Enum.Material.SmoothPlastic)
+			dress(fore, K.sleeve, Enum.Material.Fabric)
+			-- the cuff and its light line are thin slices of the forearm's own shape, a little wider: they fit a
+			-- blocky arm and a round one alike
+			local function band(name: string, wide: number, long: number, at: number, color: Color3)
+				local b = limb(ch:FindFirstChild(s.side .. "LowerArm") :: BasePart)
+				b.Name = s.side .. name
+				b.Size = Vector3.new(fore.Size.X * wide, long * k, fore.Size.Z * wide)
+				b.CFrame = CFrame.fromMatrix(wrist + Y * at * k, X, Y, Z)
+				dress(b, color, Enum.Material.SmoothPlastic)
+				table.insert(set2, b)
+			end
+			band("Cuff", 1.14, 0.055, 0.03, K.cuff)
+			band("Trim", 1.17, 0.009, 0.052, K.trim)
+			-- a low plate on the back of the hand (the side away from the palm)
+			local pad = Instance.new("Part")
+			pad.Name = s.side .. "Pad"
+			pad.Size = Vector3.new(thick * 0.22, hand.Size.Y * 0.4, hand.Size.Z * 0.62)
+			pad.CFrame = CFrame.fromMatrix(centre - P * thick * 0.5 + Y * hand.Size.Y * 0.05, X, Y, Z)
+			pad.Color = K.pad; pad.Material = Enum.Material.SmoothPlastic
+			pad.Anchored = false; pad.CanCollide = false; pad.CanQuery = false; pad.CanTouch = false; pad.CastShadow = false; pad.Massless = true
+			table.insert(set2, pad)
+		end
+		for _, p in set2 do
 			local w = Instance.new("WeldConstraint"); w.Part0 = root; w.Part1 = p; w.Parent = p
 			p.Parent = arms
 		end

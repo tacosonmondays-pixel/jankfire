@@ -15,8 +15,10 @@ if (!out || !files.length) { console.error('usage: node tools/roblox/push.mjs <o
 const tree = { $className: 'Folder' };
 for (const f of files) {
   const abs = path.resolve(ROOT, f);
-  const m = /roblox[\\/]src[\\/](shared|client|server)[\\/](.+?)(\.client|\.server)?\.luau$/.exec(abs);
-  if (!m) throw new Error('not a roblox/src script: ' + f);
+  // (roblox/studio-tools/X.luau goes to ServerStorage.PolishBackup: the edit-time helpers and the paint book)
+  const m = /roblox[\\/]src[\\/](shared|client|server)[\\/](.+?)(\.client|\.server)?\.luau$/.exec(abs)
+    || /roblox[\\/]studio-(tools)[\\/](.+?)\.luau$/.exec(abs);
+  if (!m) throw new Error('not a roblox/src or roblox/studio-tools script: ' + f);
   tree[m[1]] ??= { $className: 'Folder' };
   tree[m[1]][m[2]] = { $path: abs.replace(/\\/g, '/') };
 }
@@ -29,7 +31,7 @@ console.log('packed', files.length, 'scripts into', out, fs.statSync(out).size, 
 console.log(`-- in Studio (Edit), after uploading it as a Model:
 local id = 0 -- <- the uploaded model's asset id
 local c = game:GetService("InsertService"):LoadAsset(id)
-local dest = { shared = game.ReplicatedStorage.Jankfire, client = game.StarterPlayer.StarterPlayerScripts.Jankfire, server = game.ServerScriptService.Jankfire }
+local dest = { shared = game.ReplicatedStorage.Jankfire, client = game.StarterPlayer.StarterPlayerScripts.Jankfire, server = game.ServerScriptService.Jankfire, tools = game.ServerStorage.PolishBackup }
 local out = {}
 for _, folder in c:FindFirstChildOfClass("Folder"):GetChildren() do
 	for _, s in folder:GetChildren() do

@@ -37,6 +37,7 @@
         "KitImport": { "$path": "studio-tools/KitImport.luau" },
         "HubReskin": { "$path": "studio-tools/HubReskin.luau" },
         "WeaponImport": { "$path": "studio-tools/WeaponImport.luau" },
+        "WeaponPaint": { "$path": "studio-tools/WeaponPaint.luau" },
         "SeriousPass": { "$path": "studio-tools/SeriousPass.luau" }
       }
     },
