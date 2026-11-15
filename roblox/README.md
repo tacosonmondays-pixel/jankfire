@@ -1,13 +1,86 @@
-# JANKFIRE on Roblox (step 1: run around Rooftop)
+# JANKFIRE on Roblox (step 2: free-for-all on Rooftop with three weapons)
 
 The Roblox version lives here, next to the web game, which carries on unchanged. This first step has the Rooftop map,
 converted box for box from `shared/map.js`, and JANKFIRE movement on the default Roblox character: run, sprint, slide,
-bhop, air strafing, the grapple, grapple jumps and the jump pads. No weapons yet (that's step 2).
+bhop, air strafing, the grapple, grapple jumps and the jump pads. Step 2 adds the first three weapons and a
+free-for-all (below).
 
 ![top down: web map vs Roblox parts](docs/rooftop-top.png)
 *Top down: the web game's Rooftop (left) and the converted Roblox Parts (right), both drawn by the game's own Three.js.*
 
 ![the Roblox parts, 3/4 view](docs/rooftop-view.png)
+
+## Step 2: the first three weapons + free-for-all
+
+![the weapons in your hands, rendered from the Roblox poses](docs/step2/poses-katana.jpg)
+
+A free-for-all on Rooftop: first to **20 kills** or the most kills after **6 minutes**, respawn after 2.5 s (1.2 s
+of spawn protection), a kill feed in each weapon's colour, an end screen, then the next round starts by itself 12 s
+later. Two test dummies stand on the roof so you can try everything alone: **Dummy** (yellow) strafes, **Plinker**
+(red) fires Redline bursts at you so you can practise the parry. They never score and never show in the feed.
+
+| key | weapon | gimmick |
+| --- | --- | --- |
+| **1** | **Redline** | full auto. the lower your HP, the faster it fires (6/s at full HP, 22/s at 0). watch the tacho needle. |
+| **2** | **Marble Shotgun** | 100 marbles a shot, point blank it's a one-shot. the marbles stay on the floor for 9 s: run over them and you slip (crouch-walk to cross). |
+| **3** | **Katana** | grows with every kill (resets when you die). **right click = parry**: bullets from the front bounce off, a perfect parry (the first 0.15 s) sends them back into the shooter. parry a sword and the attacker staggers. |
+
+Also: **left click** fire / swing, **right click** aim (guns), **R** reload, mouse wheel swaps. Movement keys as before.
+
+**The server decides everything that matters** (exploiters can fire any RemoteEvent, so it's stricter than the web
+game): it owns HP, kills, the katana's length and the marbles on the floor, and it checks every shot (the weapon you
+really hold, ammo / mag / reload, the fire rate from the server's own HP, a line of sight from your head, range, how
+many pellets can really land at that distance), every swing (a swing first, reach incl. growth, the cone, line of
+sight) and every parry (the 0.35 s window, the 140 degree front, the cooldown). Your own movement is still yours, so
+knockback and slips are sent to the victim's game.
+
+### Import the step 2 models, effects and sounds (one time, optional but much better)
+
+Until you do, the weapons show as their chunky code versions, the effects as plain glowing parts, and the game is
+silent. Nothing breaks either way.
+
+1. **Weapons:** Studio **Import 3D**, pick `roblox/assets/weapons/w_redline.glb`, `w_marbles.glb`, `w_katana.glb`.
+   Keep their names. Drag the three imported models into **ReplicatedStorage > JankfireWeapons**.
+2. **Effects:** Import 3D the 10 files in `roblox/assets/fx/` (`fx_*` effects, `p_*` reload props), drag them into
+   **ReplicatedStorage > JankfireFX**.
+3. **Sounds:** upload the 31 `.ogg` files in `roblox/assets/sounds/` (View > Asset Manager > Bulk Import), then paste
+   each id into the Sound with the same name in **ReplicatedStorage > JankfireSounds** (`SoundId` = `rbxassetid://...`).
+   `roblox/assets/sounds/SOUNDS.md` lists what each one is.
+4. **File > Save to File.**
+
+![the Blender effect meshes and weapons as exported](docs/step2/assets.jpg)
+
+### Test with two players in Studio
+
+**Test** tab > **Clients and Servers** > pick **2 Players** > **Start**. Studio opens a server window and two player
+windows. Shoot each other: the hit marker / DINK / kill feed should show up in both, the marbles should stay on the
+floor in both, and a katana kill should make the blade longer for everyone.
+
+### Step 2 files
+
+| Piece | Where |
+| --- | --- |
+| Weapon stats (studs), fire rate, parry numbers, FFA | `src/shared/Weapons.luau` |
+| Hit boxes (the web game's two boxes), spread, melee cone | `src/shared/Hitbox.luau` |
+| Floor marbles: where a patch lands, who slips | `src/shared/Marbles.luau` |
+| The server's rules (pure, tested): fire / hit / swing / parry checks, damage, kills, credit, growth | `src/server/Rules.luau` |
+| Fighters, HP, deaths, spawns, the FFA match | `src/server/Fight.luau` |
+| The remotes (every one checked), marble patches | `src/server/Combat.server.luau` |
+| Test dummies | `src/server/Dummies.luau` |
+| Your weapons: input, firing, swings, parry, server events | `src/client/Arsenal.client.luau` |
+| First-person pose stack, springs, clips, needle, katana stretch, reload props | `src/client/Viewmodel.luau` |
+| Effects (Blender meshes, plain parts until imported) | `src/client/Fx.luau` |
+| HUD: crosshair, parry ring, hit markers, damage numbers, HP, ammo, clock, feed, end screen | `src/client/FightHud.luau` |
+| Recoil / knockback / slips into your movement | `src/client/Body.luau` (+ `Movement.slip`) |
+| Sounds | `src/client/Sfx.luau`, `assets/sounds/`, `tools/roblox/render_sounds.cjs` |
+| Code weapon models + fitting the Blender ones | `src/shared/WeaponModels.luau`, `tools/roblox/export_weapons.py` |
+| Animations (generated from the web game's keys) | `src/shared/Anims.luau` from `tools/roblox/anims.mjs` |
+| Effect meshes, contact sheet, pose renders | `tools/roblox/fx_blender.py`, `fx_sheet.py`, `pose_sheet.py` |
+| Tests | `tests/weapons.luau` (called by `tests/run.luau`) |
+
+**Not in step 2 yet:** bots that play (only the two dummies), the end-of-match vote, killstreaks and items, the other
+weapons. Others see your gun held up level in your hand but not your exact aim pitch; others hear the Redline at its
+full-HP pitch (like the web game).
 
 ## What you need
 
@@ -106,8 +179,8 @@ a `Mat` attribute; pads have `Pad` (launch velocity, studs/s); signs and ads hav
 
 - **Pictures on signs and ads** (JANK BANK, HOTEL 4 HOURS, the billboards) are flat colours: they need their images
   uploaded as Decals.
-- **Sounds:** none yet. `public/js/audio.js` synthesizes them live; Roblox needs files, so they'll be rendered to `.ogg`
-  and uploaded.
+- **Sounds:** `public/js/audio.js` synthesizes them live; Roblox needs uploaded files, so step 2's are rendered to
+  `.ogg` (`roblox/assets/sounds/`) for the owner to upload.
 - **Render presets / shaders** (Potato pixelation, outlines, the haze over the street) don't exist in Roblox; the place
   uses Future lighting and plain fog.
 - **Model looks:** the Blender models' paint and vertex colours become one colour per piece (Roblox shows a MeshPart

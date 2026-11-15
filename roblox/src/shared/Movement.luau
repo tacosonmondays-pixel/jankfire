@@ -12,6 +12,7 @@ export type State = {
 	onGround: boolean, groundTicks: number, combo: number,
 	hook: Hook?, lift: number, -- lift: the rope's share of your weight, fading out after you let go
 	sliding: boolean, crouching: boolean, sprinting: boolean,
+	slip: number?, -- seconds of slipping left (marbles): no grip, no jumping, no steering (public/js/player.js)
 }
 export type Input = {
 	wx: number, wz: number, -- unit wish direction (world, flat), 0,0 = no keys
@@ -93,13 +94,17 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 		st.lift = 1
 		return "grappleJump"
 	end
+	local slipping = (st.slip or 0) > 0
+	if slipping then st.slip = math.max(0, (st.slip :: number) - dt) end
 	local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)
-	st.sliding = inp.crouch and st.onGround and hs > Config.slideMin
+	st.sliding = inp.crouch and st.onGround and hs > Config.slideMin and not slipping
 	st.crouching = inp.crouch and not st.sliding
 	st.sprinting = inp.sprint and not inp.crouch and inp.forward and st.onGround
 	local moveMul = if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1
 	local wl = math.sqrt(inp.wx * inp.wx + inp.wz * inp.wz)
-	if st.onGround and not st.hook then
+	if slipping then -- feet gone: next to no friction, no control, no jumping until you're up again
+		if st.onGround then st.vx, st.vz = Movement.friction(st.vx, st.vz, 0.02, dt) end
+	elseif st.onGround and not st.hook then
 		if inp.jump then
 			-- jumping on the first ticks of landing skips friction entirely = momentum is forever
 			st.combo = if st.groundTicks <= Config.bhopTicks then st.combo + 1 else 1
@@ -126,6 +131,16 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 		st.vy += grav * Config.hook.lift * st.lift * dt
 	end
 	return event
+end
+
+-- slipped (marbles): 1.7 s, +6 m/s along your look, at least 6.5 m/s up, off the rope (public/js/player.js slip)
+function Movement.slip(st: State, lookX: number, lookZ: number, time: number, fwd: number, up: number)
+	st.slip = time
+	local l = math.sqrt(lookX * lookX + lookZ * lookZ)
+	if l > 0 then st.vx += lookX / l * fwd; st.vz += lookZ / l * fwd end
+	st.vy = math.max(st.vy, up)
+	st.onGround = false
+	st.hook = nil
 end
 
 -- the eye height (camera) you ease toward

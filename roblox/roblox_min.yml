@@ -21,3 +21,7 @@ globals:
   typeof: {any: true}
   warn: {any: true}
   tick: {any: true}
+  UDim: {any: true}
+  NumberSequence: {any: true}
+  NumberSequenceKeypoint: {any: true}
+  bit32: {any: true}
