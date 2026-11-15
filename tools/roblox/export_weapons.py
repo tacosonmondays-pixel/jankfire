@@ -9,19 +9,30 @@
 # exports (the upload then lands in the file's frame: nothing is turned in Studio any more) and writes each piece's
 # colour and kind into its name (nothing is painted by hand any more).
 #
-# run:  blender -b --factory-startup -P tools/roblox/export_weapons.py -- <out_dir> [--sil] <model.glb> [...]
+# THE PAINT IS A SWITCH (weapon_paint.py): `calm`, the Roblox game's own quiet finish, is the default; `web` is the web
+# game's paint as the file carries it. the piece names in the .glb always carry the WEB look, so the file (and the
+# uploaded asset) is the same under every paint; the chosen paint goes into export_report.json as each piece's
+# "paint" code, and Studio's WeaponImport paints from that (weapon_import_call.mjs writes the call).
+#
+# run:  blender -b --factory-startup -P tools/roblox/export_weapons.py -- <out_dir> [--paint calm|web] [--sil] <model.glb> [...]
 #       blender -b --factory-startup -P tools/roblox/export_weapons.py -- <out_dir> --orient-test
+#   --paint        which paint the report gets for EVERY gun in it (default: calm). no files given = only repaint
 #   --sil          also print each gun's side view as text (to pick the grip / fore / port spots for its Weapons row)
 #   --orient-test  write orient_test.glb, the object that measures how uploads arrive (rbxglb.orient_test)
 import bpy, sys, os, json, struct
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import rbxglb
+import rbxglb, weapon_paint
 from rbxglb import srgb
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 out_dir = argv[0]
-flags = {a for a in argv[1:] if a.startswith('--')}
-files = [a for a in argv[1:] if not a.startswith('--')]
+rest = argv[1:]
+paint = weapon_paint.DEFAULT
+if '--paint' in rest:
+    i = rest.index('--paint'); paint = rest[i + 1]; del rest[i:i + 2]
+if paint not in weapon_paint.PAINTS: raise SystemExit('unknown paint ' + paint)
+flags = {a for a in rest if a.startswith('--')}
+files = [a for a in rest if not a.startswith('--')]
 os.makedirs(out_dir, exist_ok=True)
 if '--orient-test' in flags:
     rbxglb.orient_test(out_dir)
@@ -199,7 +210,7 @@ for f in files:
         base = strip(o.name)
         look = look_of(o.data.materials[0] if o.data.materials else None)
         plo, phi = bounds([o])
-        o.name = base + '__' + rbxglb.look_code(look)  # the look rides in the name: WeaponImport paints from it
+        o.name = base + '__' + rbxglb.look_code(look)  # the WEB look rides in the name (the paint comes from the report)
         o.data.name = o.name
         pieces.append({'name': base, 'upload': o.name, 'tris': tris(o), 'look': look, 'lo': [round(x, 4) for x in plo], 'hi': [round(x, 4) for x in phi]})
     rbxglb.turn_for_roblox(objs)  # so the upload lands in the file's frame (rbxglb.py: measured)
@@ -214,4 +225,6 @@ rp = os.path.join(out_dir, 'export_report.json')
 if os.path.exists(rp):
     with open(rp) as fh: old = json.load(fh)
     old.update(report); report = old
+for gun, key in weapon_paint.repaint(report, paint): print('PAINT TABLE LINE MATCHED NOTHING:', gun, key)
 with open(rp, 'w') as fh: json.dump(report, fh, indent=1)
+print('PAINT', paint, 'written for', sum(1 for m in report.values() if m.get('paint') == paint), 'guns')
