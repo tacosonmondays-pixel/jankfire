@@ -91,7 +91,7 @@ One batch at a time. Usage is limited and a session can end at any moment, so ev
 4. **The Cigarette:** what does it become on Roblox?
 5. **Lobby menus like the reference screenshots** (shop, season pass, daily tasks, backpack, profile cards, weapon inspect): wanted, and before or after the weapons?
 6. **Players per server.**
-7. **Which of the five hubs becomes the real one** (section 10). The comparison pictures were sent on 14 November.
+7. ~~Which of the five hubs becomes the real one~~ Decided on 15 November: Hub 3, The Lanes (section 11).
 
 ## 8. The training hall, 14 November 2026 (place version 84)
 
@@ -122,7 +122,7 @@ Order when it gets built: save data first (ProfileStore), then skins + charms + 
 
 ## 10. Five hubs to choose from, 14 November 2026 (place version 149)
 
-The owner asked for five different-looking hubs built on the same principles, checked by a reviewer against their reference pictures, so they can pick the best. **They have the comparison pictures and have not picked yet.**
+The owner asked for five different-looking hubs built on the same principles, checked by a reviewer against their reference pictures, so they can pick the best. **They picked Hub 3, The Lanes, on 15 November: section 11 is how things stand now, and the rest of this section is history.**
 
 - **Hub 1, The Rotunda:** the live hub (`Map.Hub`), restyled with the `hb_*` kit by `PolishBackup.HubReskin`. Older meshes are in `PolishBackup.HubV5`; the pieces taken out in the fix pass are in `PolishBackup.HubV6`, each with a `From` attribute saying where it came from.
 - **Hubs 2 to 5** (The Platform, The Lanes, The Food Court, The Depot): built by `PolishBackup.HubLab` (`L.build("Hub3_Lanes")`, `L.buildAll()`) under `Map.HubLab`, at x -600 / -200 / 200 / 600, z -10000. A build wipes and remakes its hub, so change the builder, never the built parts. Kits `st_*`, `bw_*`, `fc_*`, `dp_*` (`tools/roblox/station_models.py`, `lanes_models.py`, `foodcourt_models.py`, `depot_models.py`, `giantfood_models.py`; shared helpers in `chunky.py`), brought into the place by `PolishBackup.KitImport`.
@@ -132,6 +132,18 @@ The owner asked for five different-looking hubs built on the same principles, ch
 - **After the pick:** move `QueuePads`, `HubSpawns` and the training door to the winner, update `OverlapCheck`'s zones, archive the rest. `Map.HubLab` then leaves the export by itself.
 - **Export:** `StudioExport` now also covers `Map.HubLab`, the helper scripts `HubLab`, `KitImport` and `HubReskin`, the `MaterialService` variants and the sky's clouds. Left out on purpose: the backup folders in ServerStorage and Terrain's cells.
 - **Animations:** Roblox Studio has a prompt-to-animation beta (standard R15 characters, announced 11 November 2026) that the Studio MCP can drive with `generate_animation`. It needs File > Beta Features > "Animation Generation in Assistant" ticked. Tried on four moves on 14 November (place version 149): fine as a quick draft maker for one-off gag moves (falls, flops, cheers, bot fidgets), no use for anything holding a weapon or for walking and running. Every clip comes out as a fixed 6 seconds, looped, with the real action in the first 1 to 3 seconds, so trim each one and turn looping off. Travel is baked into the LowerTorso joint, not the root. The four test clips are in `ServerStorage.RBX_ASSISTANT_ANIMGEN` and the test rig in `PolishBackup.AnimTrial`.
+
+## 11. The Lanes is the real hub, 15 November 2026 (place version 165)
+
+The owner picked **Hub 3, The Lanes** (a bowling alley). It was wired in as the real hub, repainted and tested the same day.
+
+- **Where things are:** `Map.Hub` holds `Lanes` (Shell, Scenery, Collision), `QueuePads` (five real pads: 1v1, 1v1v1, 2v2, 3v3, 4v4), `HubSpawns`, `Doors` (`HubArrive`, `TrainingArrive`, `PlaygroundArrive`, `ToPlayground`, `ToHub`, `FromPlayground`, `LanesToTraining`), the training hall and the playground as before, `Barrier` (now round the training hall only) and an empty `LookZones`. `Hub`'s `Origin` attribute is (-200, 240, -10000): the hub stayed on its show site. `Map.HubLab` is gone.
+- **The builder is the source:** `PolishBackup.HubLab` has a live mode (`L.LIVE = "Hub3_Lanes"`). `L.build("Hub3_Lanes")` wipes and remakes the room, the pads, the spawn and arrival markers and the training door trigger (everything marked `Built=HubLab`) straight into `Map.Hub`. Change the builder, never the built parts. `L.check()` tests 21 keep-clear zones (spawns, pads, walkways) and looks for leaks in the shell; `OverlapCheck.run()` hands over to it. The six modes' words are baked into the builder.
+- **The pads are real:** each pad Model has its team plates `Side1..SideN` (in the server's team order: pink, cyan, yellow), a `Slot` light per place (attribute `Off` = the transparency of an empty place, which `Matches` honours) and the lane's hanging board as `Sign`, with live `Status` and `Sub` lines on both faces. `Matches.padSign` writes every label named `Status` or `Sub` inside the pad. Lane 6 (5v5) is closed: its pad is scenery (`Lanes.Scenery.ClosedPad_5v5`).
+- **The look:** the judges' two faults were fixed. Paint comes from one palette table in the builder, `L.LANES_PALETTES`; the default is `retro` (sand walls, teal ceiling, cream frame, the carpet the only purple). `L.LANES_PALETTE = "purple"` and a rebuild bring back the look the owner first picked, with its purple light (a build writes the attribute `HubTint` on `HubLook`, which chooses between a neutral and a purple tint for `looks.hub`; with no attribute the tint is neutral). The pad plates are flat SmoothPlastic in the team colours with a dim white glowing edge, so they no longer bloom. `looks.hub` is the Lanes' look; the rotunda's is kept as `looks.rotunda`.
+- **The other hubs:** the rotunda (with its pads, spawns, doors, barrier and tour discs) and the Platform, Food Court and Depot are parked in `ServerStorage.PolishBackup.HubArchive`, each with a `From` attribute. That folder is not exported; the last export that holds them as files is commit `8e0668d` (`place/Workspace/Map.Hub.rbxm` and `Map.HubLab.rbxm`). `L.build(name, true)` rebuilds an archived show hub under `Map.HubLab`. The rotunda's edit tools `CozyKit` and `HubReskin` no longer have a rotunda to work on.
+- **Tested in a solo play test:** spawn in the Lanes with zone "hub" and weapons holstered, every pad counts players on both faces of its board and lights its places, the training door and the hall's door back, the playground route, a fall puts you back, no ray escapes the room, no script errors. **Not tested:** a match starting from a pad (it needs two players), and walking through the doors on foot (the test moved the character into the triggers).
+- **Left for later (minor, from the judges):** from the spawn the floor arrows out-shine the pads; the two end boards touch the HIGH SCORES and TONIGHT boards under them; the giant pin is darker than the sand wall behind it; the strip under the ball returns and the wall behind the name are the darkest surfaces; the sign faces are still near-black; the training hall's wall round its hub door is near-black.
 
 ## For the next Claude session
 

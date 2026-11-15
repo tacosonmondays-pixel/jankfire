@@ -2,7 +2,7 @@
 -- the hub's little bits of life, on your screen only (the server's copies stay still): models tagged "HubSpin" turn
 -- (attribute Spin, rad/s; Bob = studs up and down), the JANK NEWS 24 ticker ("HubTicker") scrolls, the boot camp
 -- tips screen ("HubTip") changes every 7 s. only while you're near the hub.
--- it also swaps the lighting: the dark cozy look in the hub, a slightly brighter one in training, the saved look in a match
+-- it also swaps the lighting: the hub's warm look (the Lanes), the training hall's, the playground's, the saved look in a match
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -11,8 +11,8 @@ local RunService = game:GetService("RunService")
 local HubLook = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HubLook")) :: any
 local me = Players.LocalPlayer
 local looking = "?"
--- a show hub (the hub comparison, far from the live hub) has its own look: a part in Hub.LookZones with the attribute
--- Look, named for whoever stands inside it. the server still calls the place "hub"
+-- a part in Hub.LookZones with the attribute Look names another look for whoever stands inside it (the show hubs of the
+-- hub comparison had one each; the folder is empty now that one of them is the hub). the server still calls the place "hub"
 local function zoneLook(): string?
 	local ch = me.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?

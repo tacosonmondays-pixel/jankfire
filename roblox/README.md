@@ -8,7 +8,7 @@
 > | what | where |
 > | --- | --- |
 > | The place's code, one file per script | `src/shared`, `src/server`, `src/client` (the three `Jankfire` folders), `src/server_root` and `src/client_root` (loose scripts next to them), `src/in_models` (scripts that live inside a model) |
-> | The maps and asset folders, as Roblox model files | `place/**.rbxm` (hub, the four show hubs, Rooftop, mesh templates, weapons, effects, sounds, remotes, lighting effects, the clouds, the grid material) |
+> | The maps and asset folders, as Roblox model files | `place/**.rbxm` (the hub, Rooftop, mesh templates, weapons, effects, sounds, remotes, lighting effects, the clouds, the grid material) |
 > | Service settings (gravity, lighting numbers, player settings) | `place/settings.json` |
 > | Edit-time helpers (prop placer, overlap check, the hub builder, the kit importer, the exporter itself) | `studio-tools/` |
 >

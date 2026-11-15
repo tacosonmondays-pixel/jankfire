@@ -1,8 +1,13 @@
 --!nocheck
--- edit-time builder (2026-11-14) for the hub comparison: four more hubs, each its own idea on the same rules, built
--- far from the live hub under workspace.Map.HubLab. every hub has what a hub needs (spawn, six pads, a training door,
--- the name, info screens, somewhere to sit) but only Hub 1's pads start matches: these are for choosing a look.
--- usage: local L = require(game.ServerStorage.PolishBackup.HubLab:Clone()); print(L.build("Hub5_Depot"))  -- or L.buildAll()
+-- edit-time builder for the hub. it began (2026-11-14) as the hub comparison: four show hubs, each its own idea on the
+-- same rules, built far from the first hub (the rotunda) under workspace.Map.HubLab. the owner picked Hub 3, THE LANES
+-- (2026-11-15): L.LIVE names it and it builds straight into workspace.Map.Hub as the real hub. the room goes in Hub.Lanes
+-- (Shell, Scenery, Collision), its five real queue pads in Hub.QueuePads, its spawn markers in Hub.HubSpawns, the markers
+-- the training hall's door lands you on in Hub.Doors.HubArrive, its training door's trigger in Hub.Doors, and Hub's
+-- Origin is its site. the rotunda and the other three show hubs are put away in ServerStorage.PolishBackup.HubArchive;
+-- their builders are still below.
+-- usage: local L = require(game.ServerStorage.PolishBackup.HubLab:Clone()); print(L.build("Hub3_Lanes")); print(L.check())
+-- a build wipes and remakes the hub, so every change to the Lanes is made in here, never to the built parts by hand.
 -- a hub's own coordinates: x east, z south, y up from its floor. you spawn in the south and look north (-z) at the pads.
 -- `face` is the way a thing's front looks, in degrees: 0 south (+z), 180 north, 90 east, -90 west.
 local L = {}
@@ -12,36 +17,107 @@ local PINK, CYAN, YEL, GREEN = "ff4fd8", "37d6ff", "ffe14d", "7dff4f"
 L.SITES = { Hub2_Platform = Vector3.new(-600, 240, -10000), Hub3_Lanes = Vector3.new(-200, 240, -10000), Hub4_FoodCourt = Vector3.new(200, 240, -10000), Hub5_Depot = Vector3.new(600, 240, -10000) }
 L.ORDER = { "Hub2_Platform", "Hub3_Lanes", "Hub4_FoodCourt", "Hub5_Depot" }
 L.TITLE = { Hub2_Platform = "THE PLATFORM", Hub3_Lanes = "THE LANES", Hub4_FoodCourt = "THE FOOD COURT", Hub5_Depot = "THE DEPOT" }
+L.LIVE = "Hub3_Lanes" -- the real hub
+L.ROOM = "Lanes" -- its folder in workspace.Map.Hub
+L.PAD_BASE = "3a2d5c" -- what the real hub's pads sit on. a Lanes build sets it to its palette's base (nothing in the hub is near-black)
+-- a real pad's plates are flat bright colour, not Neon (2026-11-15: as dark Neon under the hub's Bloom the row of plates
+-- was a wall of glare from the lane side, and the purple sockets were dark holes in it). PAD_PLATE_DIM = how far under the
+-- full team colour a plate is painted (0 = full; go to 0.1 or so if the spots over the pads ever burn it out), PAD_SOCKET_DIM = how much darker
+-- than its plate a place's socket is, PAD_EDGE = the white Neon edge, which is the pad's only glow. it is a mid grey
+-- on purpose: as Neon it still photographs white, with a thin halo. at the kit's white, f4f8ff, the edges nearest you
+-- bloomed into fat bands seen from the lane side, and d0d5de photographed exactly the same as f4f8ff (measured)
+L.PAD_PLATE_DIM, L.PAD_SOCKET_DIM, L.PAD_EDGE = 0, 0.22, "9a9fa8"
 
--- the six modes, with the words and colours the live hub's signs use
+-- THE LANES' paints. one palette is one switch: L.LANES_PALETTE names it. a build paints the whole room from it and writes
+-- its tint on ReplicatedStorage.Jankfire.HubLook (the attribute HubTint), so the hub's base light goes with the paint.
+--   wall, ceil, carpet   the shell
+--   machine              the wall behind the pins and the plate the name is on
+--   base                 every kit piece's darkest paint (17141f in the files), the pads' bases, the wall boards' faces
+--   web, flange          the pale frame: girders, sign frames, mounts and light bars / girder caps, clamps and ribs
+--   booth                the booths' shells          speaker, speakerFace, grille   the four speakers
+--   trim                 the shoe counter's kick strip (4b2a6b in the file)
+--   glow                 the eleven small lamps that light the ceiling round the panels
+--   tint                 which of HubLook's hub tints goes with it
+-- the palettes:
+--   "retro"   (2026-11-15) the one the hub is built in: sand walls under a teal lid, a slate machine wall and kit
+--             bases, a cream frame and booth shells. the carpet is the room's only purple (about a third of the first
+--             view), one step bluer than the first carpet so it still reads purple, not magenta, under the neutral light.
+--             (the lid and the machine wall are mid teals: lit by the base light alone, a deeper lid, 366a6e, and
+--             the slate first tried on the machine wall, 2e5262, photographed near-black in their far corners)
+--   "purple"  the first look, exactly as the owner picked it on 2026-11-14 (about two thirds of the first view was purple)
+--   "sand", "teal"  the two that were tried against "retro" and lost: both have a pale lid, which made the room an
+--             office by day and left the frame darker than the ceiling behind it. kept so they can be looked at again
+-- to try a palette without editing anything:
+--   local L = require(game.ServerStorage.PolishBackup.HubLab:Clone()); L.LANES_PALETTE = "teal"; L.LANES_TWEAK = { wall = "3e8a8c" }; print(L.build("Hub3_Lanes"))
+L.LANES_PALETTE = "retro"
+L.LANES_TWEAK = nil -- { key = hex, ... } painted over the palette for one build (the test hook: it stays nil in here)
+L.LANES_PALETTES = {
+	retro = { tint = "neutral", wall = "c6ae88", ceil = "418488", carpet = "3c2c7e", machine = "3c7480", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2" },
+	purple = { tint = "purple", wall = "6a5c90", ceil = "6a5fa0", carpet = "45287a", machine = "3a2d5c", base = "3a2d5c", web = "8f86c4", flange = "a59ad8", booth = "6a55b0", speaker = "6a55b0", speakerFace = "3a2d5c", grille = "4a3d6a", trim = "4b2a6b", glow = "efe6ff" },
+	sand = { tint = "neutral", wall = "c8ad80", ceil = "ddd3bf", carpet = "45287a", machine = "2c4a5e", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2" },
+	teal = { tint = "neutral", wall = "3e8a8c", ceil = "cfd6d2", carpet = "45287a", machine = "2c4a5e", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2" },
+}
+function L.lanesPalette()
+	local name = if L.LANES_PALETTES[L.LANES_PALETTE] then L.LANES_PALETTE else "retro"
+	local P = table.clone(L.LANES_PALETTES[name])
+	for k, v in L.LANES_TWEAK or {} do P[k] = v end
+	P.name = if L.LANES_TWEAK then name .. " (tweaked)" else name
+	return P
+end
+local TEAM = { PINK, CYAN, YEL } -- the teams' colours, in Matches' order
+
+-- the six modes: id, title, its line, its colour (the words and colours of the rotunda's mode signs, which this used to
+-- read off the signs themselves)
+local MODES = {
+	{ "1v1", "1V1", "DUEL · no excuses", "ff4fd8" }, { "1v1v1", "1V1V1", "TRIANGLE · trust nobody", "37d6ff" },
+	{ "2v2", "2V2", "DUO · blame your friend", "37d6ff" }, { "3v3", "3V3", "TRIO · one of you carries", "ffe14d" },
+	{ "4v4", "4V4", "SQUAD · pure chaos", "ff4fd8" }, { "5v5", "5V5", "COMING SOON™ (it isn't)", "9696a0" },
+}
 local function modes()
 	local t = {}
-	for _, id in { "1v1", "1v1v1", "2v2", "3v3", "4v4", "5v5" } do
-		local s = hub.Scenery.Corridor:FindFirstChild("ModeSign_" .. id)
-		local labels = {}
-		if s then for _, d in s:GetDescendants() do if d:IsA("TextLabel") and #labels < 2 then table.insert(labels, d) end end end
-		t[id] = {
-			id = id, title = labels[1] and labels[1].Text or string.upper(id), tag = labels[2] and labels[2].Text or "",
-			color = labels[1] and labels[1].TextColor3:ToHex() or PINK,
-			teams = if id == "1v1v1" then 3 else 2, size = tonumber(id:sub(1, 1)), soon = id == "5v5",
-		}
+	for _, m in MODES do
+		local id = m[1]
+		t[id] = { id = id, title = m[2], tag = m[3], color = m[4], teams = if id == "1v1v1" then 3 else 2, size = tonumber(id:sub(1, 1)), soon = id == "5v5" }
 	end
 	return t
 end
 
 local function newHub(name)
-	local H = { name = name, O = L.SITES[name], missing = {}, count = 0, M = modes(), discAt = {}, spawnAt = {} }
-	local lab = workspace.Map:FindFirstChild("HubLab")
-	if not lab then lab = Instance.new("Folder"); lab.Name = "HubLab"; lab.Parent = workspace.Map end
-	local old = lab:FindFirstChild(name); if old then old:Destroy() end
-	local root = Instance.new("Folder"); root.Name = name
-	for _, n in { "Shell", "Scenery", "Pads", "Spawns", "Collision" } do local f = Instance.new("Folder"); f.Name = n; f.Parent = root end
+	local live = name == L.LIVE
+	local H = { name = name, live = live, O = L.SITES[name], missing = {}, count = 0, M = modes(), discAt = {}, spawnAt = {} }
+	local function folderIn(parent, fname)
+		local f = parent:FindFirstChild(fname)
+		if not f then f = Instance.new("Folder"); f.Name = fname; f.Parent = parent end
+		return f
+	end
+	local lz = folderIn(hub, "LookZones")
+	local root = Instance.new("Folder")
+	local home -- where the finished room goes
+	if live then
+		-- the real hub. the room is Hub.Lanes; what the server finds by name is built into the hub's own folders and marked
+		-- Built = "HubLab": the queue pads (Hub.QueuePads), the spawn markers (Hub.HubSpawns), where the training hall's door
+		-- lands you (Hub.Doors.HubArrive) and the training door's trigger (Hub.Doors). a build wipes what the last build made
+		-- (the room, and everything with that mark) and nothing else in Map.Hub
+		home = hub
+		root.Name = L.ROOM
+		for _, n in { "Shell", "Scenery", "Collision" } do local f = Instance.new("Folder"); f.Name = n; f.Parent = root end
+		local old = hub:FindFirstChild(L.ROOM); if old then old:Destroy() end
+		H.padFolder, H.spawnFolder, H.arriveFolder = folderIn(hub, "QueuePads"), folderIn(hub, "HubSpawns"), folderIn(hub.Doors, "HubArrive")
+		for _, f in { H.padFolder, H.spawnFolder, H.arriveFolder, hub.Doors } do
+			for _, c in f:GetChildren() do if c:GetAttribute("Built") == "HubLab" then c:Destroy() end end
+		end
+		hub:SetAttribute("Origin", H.O) -- (Matches: the fall line is 60 under this, the last-ditch spawn point 3 over it)
+	else
+		-- a show hub: its own folder under Map.HubLab; its doors, arrival markers and look zone go with the real hub's
+		-- (the door and lighting scripts read them there)
+		home = folderIn(workspace.Map, "HubLab")
+		root.Name = name
+		for _, n in { "Shell", "Scenery", "Pads", "Spawns", "Collision" } do local f = Instance.new("Folder"); f.Name = n; f.Parent = root end
+		local old = home:FindFirstChild(name); if old then old:Destroy() end
+		for _, c in hub.Doors:GetChildren() do if c.Name:sub(1, #name + 1) == name .. "_" then c:Destroy() end end
+		local oz = lz:FindFirstChild(name); if oz then oz:Destroy() end
+	end
 	H.root = root
-	-- its doors, arrival markers and look zone live with the live hub's (the door and lighting scripts read them there)
-	for _, c in hub.Doors:GetChildren() do if c.Name:sub(1, #name + 1) == name .. "_" then c:Destroy() end end
-	local lz = hub:FindFirstChild("LookZones")
-	if not lz then lz = Instance.new("Folder"); lz.Name = "LookZones"; lz.Parent = hub end
-	local oz = lz:FindFirstChild(name); if oz then oz:Destroy() end
 
 	function H.w(x, y, z) return H.O + Vector3.new(x, y, z) end
 	local function front(face) local a = math.rad(face); return Vector3.new(math.sin(a), 0, math.cos(a)) end
@@ -199,10 +275,12 @@ local function newHub(name)
 	-- (train door, pins, counter, bay); the plates sit side by side across that.
 	function H.pad(id, x, z, face, w, d)
 		local md = H.M[id]
+		local real = live and not md.soon -- a real pad starts matches; a show hub's pads and the closed 5v5 are for show
 		local f = front(face)
 		local r = Vector3.new(f.Z, 0, -f.X)
-		local m = Instance.new("Model"); m.Name = id
-		m:SetAttribute("Mode", id); m:SetAttribute("Teams", md.teams); m:SetAttribute("Size", md.size); m:SetAttribute("ForShow", true)
+		local m = Instance.new("Model"); m.Name = if live and md.soon then "ClosedPad_" .. id else id
+		m:SetAttribute("Mode", id); m:SetAttribute("Teams", md.teams); m:SetAttribute("Size", md.size)
+		if real then m:SetAttribute("Built", "HubLab") else m:SetAttribute("ForShow", true) end
 		local rot = CFrame.Angles(0, math.rad(face), 0)
 		local function plate(pn, cx, cz, sx, sz, hex, mat, yy, th)
 			local p = Instance.new("Part")
@@ -212,17 +290,46 @@ local function newHub(name)
 			p.CanCollide = false; p.CastShadow = false; p.Parent = m
 			return p
 		end
-		plate("Base", 0, 0, w, d, "1b1c22", nil, 0.04, 0.08)
-		local cols = if md.soon then { "6a6e7c", "6a6e7c" } elseif md.teams == 3 then { PINK, YEL, CYAN } else { PINK, CYAN }
+		plate("Base", 0, 0, w, d, if live then L.PAD_BASE else "1b1c22", nil, 0.04, 0.08)
+		-- (a real pad's plates are the teams in Matches' order, pink, cyan, yellow, so the plate you stand on is the colour of
+		-- your count on the board and of your team in the match; and they run left to right as you face what you queue for,
+		-- the way the counts on the board read. the show hubs had yellow in the middle and ran right to left)
+		local cols = if md.soon then { "6a6e7c", "6a6e7c" } elseif real then table.move(TEAM, 1, md.teams, 1, {}) elseif md.teams == 3 then { PINK, YEL, CYAN } else { PINK, CYAN }
 		local n = #cols
 		local pw = (w - 1.2 - (n - 1) * 0.8) / n
 		for i, hex in cols do
 			local cx = -(w - 1.2) / 2 + pw / 2 + (i - 1) * (pw + 0.8)
+			if real then cx = -cx end
 			local s = plate("Side" .. i, cx, 0, pw, d - 1.2, hex, Enum.Material.Neon, 0.12, 0.14)
 			s:SetAttribute("Team", i)
 			s.Color = Color3.fromHex(hex):Lerp(Color3.new(0, 0, 0), 0.28)
+			-- (a real pad's plate: flat colour a little under the full team colour, see L.PAD_PLATE_DIM. the show hubs' stay Neon)
+			if real then s.Material = Enum.Material.SmoothPlastic; s.Color = Color3.fromHex(hex):Lerp(Color3.new(0, 0, 0), L.PAD_PLATE_DIM) end
 			-- a closed pad is flat mid grey, not dark neon (that rendered as a black pit in every hub)
 			if md.soon then s.Material = Enum.Material.SmoothPlastic; s.Color = Color3.fromHex("7d8291") end
+			if live and md.soon then s.Name = "ClosedPlate" end -- (nothing reads it: only a real pad has Sides)
+			-- a real pad has a place for everybody on a side, in a row from the far edge back: a socket in the plate, a darker
+			-- step of the plate's own colour (a spot to stand on, not a hole) with a white light in it. the light is the Slot Matches switches: off
+			-- (Off = 1, clear) while the place is empty, on when somebody is standing for it. (a white neon disc that only
+			-- went half clear looked just as lit empty as taken, seen in the play test)
+			if real then
+				for sl = 1, md.size do
+					local at = CFrame.new(H.w(x, 0.25, z) + r * cx + f * ((d - 1.2) * (0.5 - (sl - 0.5) / md.size))) * CFrame.Angles(0, 0, math.pi / 2)
+					for _, k in { { "Socket", 3.6, 0.12, -0.04 }, { "Slot", 2.6, 0.14, 0 } } do
+						local c = Instance.new("Part")
+						c.Name = k[1]; c.Shape = Enum.PartType.Cylinder; c.Anchored = true; c.Size = Vector3.new(k[3], k[2], k[2])
+						c.CFrame = at * CFrame.new(k[4], 0, 0)
+						c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.CastShadow = false
+						if k[1] == "Slot" then
+							c.Color = Color3.fromHex("f4f8ff"); c.Material = Enum.Material.Neon; c.Transparency = 1
+							c:SetAttribute("Team", i); c:SetAttribute("Slot", sl); c:SetAttribute("Off", 1)
+						else
+							c.Color = s.Color:Lerp(Color3.new(0, 0, 0), L.PAD_SOCKET_DIM); c.Material = Enum.Material.SmoothPlastic
+						end
+						c.Parent = m
+					end
+				end
+			end
 		end
 		if md.soon then -- and has a fat yellow tape cross over it
 			local len = math.sqrt((w - 2.4) ^ 2 + (d - 2.4) ^ 2)
@@ -232,9 +339,9 @@ local function newHub(name)
 			end
 		end
 		for _, e in { { 0, d / 2 - 0.2, w, 0.4 }, { 0, -d / 2 + 0.2, w, 0.4 }, { w / 2 - 0.2, 0, 0.4, d }, { -w / 2 + 0.2, 0, 0.4, d } } do
-			plate("Edge", e[1], e[2], e[3], e[4], "f4f8ff", Enum.Material.Neon, 0.14, 0.1)
+			plate("Edge", e[1], e[2], e[3], e[4], if live then L.PAD_EDGE else "f4f8ff", Enum.Material.Neon, 0.14, 0.1)
 		end
-		m.Parent = root.Pads
+		m.Parent = if real then H.padFolder elseif live then root.Scenery else root.Pads
 		H.count += 1
 		return m
 	end
@@ -264,34 +371,61 @@ local function newHub(name)
 		return H.text("Sign_" .. id, lines, wide, wide / 2, x + f.X * 0.12, y, z + f.Z * 0.12, face, { plate = "0a0c16", thick = 0.5, pps = 24 })
 	end
 
+	-- a pad's board: the mode, its line, who is waiting and what happens next, the same on both faces. on a real pad it goes
+	-- in the pad's model as its Sign, and the last two lines are the labels Matches writes every 0.15 s (every label named
+	-- Status and Sub in the pad): the count per team in the team's colour, and "step on a side to queue" / "STARTING IN 3" /
+	-- "ARENA BUSY" / the score of the match that pad started. on a show pad or a closed one the four lines just stand there.
+	-- o.closed = { third line, fourth line } for a closed pad; o.lines = the four lines' shares of the height
+	function H.board(pad, id, w, h, x, y, z, face, o)
+		o = o or {}
+		local hs = o.lines or { 0.36, 0.2, 0.26, 0.18 }
+		local md = H.M[id]
+		local real = pad ~= nil and pad:GetAttribute("Built") == "HubLab"
+		local counts = {}
+		for t = 1, md.teams do table.insert(counts, ('<font color="#%s">0/%d</font>'):format(TEAM[t], md.size)) end
+		local status, sub = table.concat(counts, "   vs   "), "step on a side to queue"
+		if md.soon then status, sub = (o.closed or {})[1] or "coming soon(ish)", (o.closed or {})[2] or "we checked. it isn't." end
+		local p = H.text("Sign_" .. id, { { md.title, md.color, "L", hs[1] }, { md.tag, "ffffff", "F", hs[2] }, { status, if md.soon then "c8c8dc" else "ffffff", "F", hs[3] }, { sub, "c8c8dc", "F", hs[4] } }, w, h, x, y, z, face, { both = true, thick = o.thick, plate = o.plate, pps = o.pps or 50 })
+		for _, g in p:GetChildren() do
+			if g:IsA("SurfaceGui") then g.Line3.Name = "Status"; g.Status.RichText = true; g.Line4.Name = "Sub" end
+		end
+		if real then p.Name = "Sign"; p.Parent = pad end
+		return p
+	end
+
 	function H.spawns(list)
 		for _, s in list do
 			table.insert(H.spawnAt, s)
 			local p = Instance.new("Part")
 			p.Name = "HubSpawn"; p.Size = Vector3.new(2, 0.2, 2); p.Transparency = 1; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 			p.CFrame = CFrame.lookAt(H.w(s[1], 0.1, s[2]), H.w(s[1], 0.1, s[2] - 10))
-			p.Parent = root.Spawns
+			if live then p:SetAttribute("Built", "HubLab") end
+			p.Parent = if live then H.spawnFolder else root.Spawns
 		end
-		-- where a visitor from another hub lands: the same spots, kept with the live hub's door markers
-		local f = Instance.new("Folder"); f.Name = name .. "_Arrive"
+		-- where a door lands you: the first four of the same spots. the real hub's go in Hub.Doors.HubArrive (the training
+		-- hall's door lands on those); a show hub's are kept beside them in a folder of its own
+		local f = H.arriveFolder
+		if not live then f = Instance.new("Folder"); f.Name = name .. "_Arrive" end
 		for i, s in list do
 			if i <= 4 then
 				local p = Instance.new("Part")
 				p.Name = "Arrive"; p.Size = Vector3.new(2, 0.2, 2); p.Transparency = 1; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 				p.CFrame = CFrame.lookAt(H.w(s[1], 0.1, s[2]), H.w(s[1], 0.1, s[2] - 10))
+				if live then p:SetAttribute("Built", "HubLab") end
 				p.Parent = f
 			end
 		end
-		f.Parent = hub.Doors
+		if not live then f.Parent = hub.Doors end
 	end
 
 	-- a box you walk into to be taken somewhere. land = the name of a marker folder in Hub.Doors, or "@TrainSpawns"
 	function H.trigger(suffix, x0, x1, y0, y1, z0, z1, land, say)
 		local p = Instance.new("Part")
-		p.Name = name .. "_" .. suffix; p.Anchored = true; p.Transparency = 1; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+		p.Name = if live then L.ROOM .. suffix else name .. "_" .. suffix; p.Anchored = true; p.Transparency = 1; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
 		p.Size = Vector3.new(math.abs(x1 - x0), math.abs(y1 - y0), math.abs(z1 - z0))
 		p.Position = H.w((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
 		p:SetAttribute("Land", land); p:SetAttribute("Say", say)
+		if live then p:SetAttribute("Built", "HubLab") end
 		p.Parent = hub.Doors
 		return p
 	end
@@ -311,7 +445,7 @@ local function newHub(name)
 		lz.CFrame = CFrame.new(H.w(x + f.X * 0.4, 8.3, z + f.Z * 0.4)) * CFrame.Angles(0, math.rad(face), 0)
 		lz.Parent = root.Scenery
 		local back = Instance.new("Part")
-		back.Name = "LaserVoid"; back.Anchored = true; back.Size = Vector3.new(14, 16.6, 0.4); back.Color = Color3.fromHex("2a0c16")
+		back.Name = "LaserVoid"; back.Anchored = true; back.Size = Vector3.new(14, 16.6, 0.4); back.Color = Color3.fromHex(if live then "42121f" else "2a0c16") -- (the real hub has nothing near-black: a deep red, as the Platform's was)
 		back.Material = Enum.Material.SmoothPlastic; back.CFrame = lz.CFrame * CFrame.new(0, 0, -0.5); back.Parent = root.Scenery
 		-- six fat laser bars across the doorway over a faint red haze (one flat red sheet read as a blank panel)
 		for i = 1, 6 do
@@ -367,10 +501,11 @@ local function newHub(name)
 	end
 
 	-- an info screen: a chunky bezel with words in it
+	-- (in the real hub the screen's face is the kit's navy: nothing there is near-black)
 	function H.screen(sname, lines, x, y, z, face, wide)
 		local f = front(face)
 		H.put("hb_screen", sname .. "Bezel", x, y, z, face, { scale = wide / 22, seat = "centre" })
-		return H.text(sname, lines, wide, wide / 2, x + f.X * 0.12, y, z + f.Z * 0.12, face, { plate = "0a0c16", thick = 0.5, pps = 24 })
+		return H.text(sname, lines, wide, wide / 2, x + f.X * 0.12, y, z + f.Z * 0.12, face, { plate = if live then "2e3140" else "0a0c16", thick = 0.5, pps = 24 })
 	end
 	-- an invisible ramp under a staircase: `rise` up over `run`, climbing toward `face`
 	function H.ramp(x, z, face, width, rise, run, y0)
@@ -386,7 +521,7 @@ local function newHub(name)
 	end
 
 	function H.done()
-		root.Parent = lab
+		root.Parent = home
 		local miss = {}
 		for k, v in H.missing do table.insert(miss, k .. " x" .. v) end
 		table.sort(miss)
@@ -403,16 +538,16 @@ end
 L.newHub = newHub
 L.BUILD = {}
 
-function L.build(name)
+-- L.build("Hub3_Lanes") rebuilds the real hub. the others are put away (ServerStorage.PolishBackup.HubArchive): pass
+-- true as well to build one again as a show hub under Map.HubLab (its travel discs and its look zone come back with it)
+function L.build(name, show)
 	local fn = L.BUILD[name]
 	if not fn then return "no such hub: " .. tostring(name) end
+	if name ~= L.LIVE and show ~= true then return name .. " is archived (ServerStorage.PolishBackup.HubArchive). L.build(name, true) builds it again as a show hub" end
 	return fn(newHub(name))
 end
-function L.buildAll()
-	local out = {}
-	for _, n in L.ORDER do table.insert(out, L.build(n)); task.wait() end
-	table.insert(out, L.build("Hub1_Tour"))
-	return table.concat(out, "\n")
+function L.buildAll() -- (it built all five once. there is one hub now)
+	return L.build(L.LIVE)
 end
 
 -- ------------------------------------------------------------------ Hub 5: THE DEPOT
@@ -804,17 +939,19 @@ end
 -- ------------------------------------------------------------------ Hub 3: THE LANES
 -- a bowling alley. six lanes, six modes: you queue on a lane's approach. kit bw_*
 L.BUILD.Hub3_Lanes = function(H)
-	H.room("Alley", -68, 68, -84, 56, 24, { wall = "6a5c90", floor = "45287a", floorMat = Enum.Material.Carpet, ceil = "6a5fa0" }) -- (a clean purple carpet in a mid value: paler burns white under the lamps, the old dark Fabric went brown and speckled)
+	local P = L.lanesPalette() -- (every paint in here that is not wood, a lane colour or a kit piece's own comes from the palette: see L.LANES_PALETTES)
+	L.PAD_BASE = P.base
+	H.room("Alley", -68, 68, -84, 56, 24, { wall = P.wall, floor = P.carpet, floorMat = Enum.Material.Carpet, ceil = P.ceil }) -- (a clean purple carpet in a mid value: paler burns white under the lamps, the old dark Fabric went brown and speckled)
 	-- wood to the dado, a fat pink band over it
 	for _, w in { { -68, 68, 55.7, 56 }, { -68, -67.7, -84, 33 }, { -68, -67.7, 47, 56 }, { 67.7, 68, -84, 56 } } do -- (the west wall's trim stops at the training doorway's posts)
 		H.block("Scenery", "Dado", w[1], w[2], 0, 6, w[3], w[4], "a8703a", Enum.Material.Wood, { ghost = true })
 		H.block("Scenery", "Hazard", w[1], w[2], 6, 7.4, w[3], w[4], PINK, nil, { ghost = true })
 	end
 	-- the machine wall behind the pins, with the name on it
-	H.block("Shell", "Masking", -68, 68, 7, 24, -84, -69.2, "3a2d5c")
+	H.block("Shell", "Masking", -68, 68, 7, 24, -84, -69.2, P.machine)
 	-- (painted straight on the wall, from the pinsetters' tops up: from the spawn the whole of it shows under the hanging mode signs,
 	-- and nothing hangs between those signs and the wall: each sign carries its own count)
-	H.text("Name", { { "JANKFIRE LANES", YEL, "L", 0.8 }, { "six lanes. six modes. no bumpers.", "ffffff", "F", 0.2 } }, 110, 14.4, 0, 14.7, -69.05, 0, { plate = "3a2d5c" })
+	H.text("Name", { { "JANKFIRE LANES", YEL, "L", 0.8 }, { "six lanes. six modes. no bumpers.", "ffffff", "F", 0.2 } }, 110, 14.4, 0, 14.7, -69.05, 0, { plate = P.machine })
 	local ids = { "1v1", "1v1v1", "2v2", "3v3", "4v4", "5v5" }
 	local cols = { PINK, CYAN, GREEN, YEL, PINK, "8a90a0" } -- (each lane's own colour: its pinsetter, its light, its line on the floor)
 	for i, id in ids do
@@ -822,46 +959,45 @@ L.BUILD.Hub3_Lanes = function(H)
 		H.block("Scenery", "Lane", x - 6, x + 6, 0, 0.3, -66, -4, "e2c08a", Enum.Material.WoodPlanks)
 		H.block("Scenery", "Gutter", x - 7.2, x - 6, 0, 0.12, -66, -4, "2e3140", nil, { ghost = true }); H.block("Scenery", "Gutter", x + 6, x + 7.2, 0, 0.12, -66, -4, "2e3140", nil, { ghost = true })
 		H.block("Scenery", "PinDeck", x - 7, x + 7, 0, 0.3, -76, -66, "2e3140")
-		H.block("Shell", "MachineGap", x + 7, if i == 6 then 68 else x + 13, 0, 7, -84, -69.2, "3a2d5c") -- (the last one runs to the east wall: no pocket behind the machines)
-		H.pad(id, x, 5, 180, 16, 16)
+		H.block("Shell", "MachineGap", x + 7, if i == 6 then 68 else x + 13, 0, 7, -84, -69.2, P.machine) -- (the last one runs to the east wall: no pocket behind the machines)
+		local pad = H.pad(id, x, 5, 180, 16, 16)
 		H.put("bw_pins", "Pins", x, 0.3, -71, 0, { solid = true }) -- (solid, and the housing too: a lane ends at its pins)
-		H.put("bw_pinsetter", "Pinsetter", x, 0, -71.5, 0, { solid = true, color = { [PINK] = cols[i], ["17141f"] = "3a2d5c" } })
+		H.put("bw_pinsetter", "Pinsetter", x, 0, -71.5, 0, { solid = true, color = { [PINK] = cols[i], ["17141f"] = P.base } })
 		H.text("LaneNumber", { { "LANE " .. i, "ffffff", "L", 1 } }, 10.8, 1.6, x, 5.83, -68.74, 0, { clear = true, flush = true }) -- (the housing's score plate: its face is 2.75 out from the middle, the words go over the five dots)
-		-- one board per lane: the mode, its line and who is waiting, on both faces. (a count screen further down the lane slid
-		-- under its neighbour's sign from anywhere but its own pad, so the count is the board's third line)
-		local md = H.M[id]
-		local status = if md.soon then "closed for waxing. (ish)" elseif md.teams == 3 then "0/1  vs  0/1  vs  0/1" else ("0/%d  vs  0/%d"):format(md.size, md.size)
-		H.put("hb_hangsign", "ModeSign", x, 24, 0, 0, { seat = "top", color = { ["2e3140"] = "8f86c4", ["5b6478"] = "a59ad8" } }) -- (over the pad's far edge: far enough from the spawn that all six fit in one look)
-		H.text("Sign_" .. id, { { md.title, md.color, "L", 0.44 }, { md.tag, "ffffff", "F", 0.26 }, { status, if md.soon then "c8c8dc" else md.color, "F", 0.30 } }, 13.4, 4.4, x, 16.8, 0, 0, { both = true, thick = 1.7 }) -- (1.7 thick: it caps the 1.6 deep frame instead of sinking into it)
+		-- one board per lane: the mode, its line, who is waiting and what happens next, on both faces. (a count screen further
+		-- down the lane slid under its neighbour's sign from anywhere but its own pad, so the count is on the board. the five
+		-- real lanes' boards are their pads' Signs: the server writes the last two lines)
+		H.put("hb_hangsign", "ModeSign", x, 24, 0, 0, { seat = "top", scale = 1.18, color = { ["2e3140"] = P.web, ["5b6478"] = P.flange } }) -- (over the pad's far edge: far enough from the spawn that all six fit in one look)
+		H.board(pad, id, 15.8, 5.2, x, 15.5, 0, 0, { thick = 2, lines = { 0.305, 0.17, 0.295, 0.23 }, closed = { "closed for waxing. (ish)", "the wax is also coming soon." } }) -- (2 thick: it caps the frame, 1.9 deep at this size, instead of sinking into it. the frame is 1.18 times the kit's and the board 5.2 high, so the count and the hint under it read from the spawn, 45 to 65 studs off, and the title is no smaller than it was)
 		H.lamp(x, 18.3, -35, 40, 0.9, cols[i]); H.lamp(x, 4.3, -68.3, 16, 1.5, "fff1d6") -- (under the girder's panels; at the housing's five lit dots)
 		-- the floor: a stem in the lane's colour from the cross line to its pad
 		H.paint(x - 0.8, x + 0.8, 13.6, 18.7, cols[i])
 		H.put("bc_chevron", "Arrow", x, 0.09, 16.2, 180, { color = { f4f8ff = cols[i] } })
 	end
-	H.block("Shell", "MachineGap", -68, -57, 0, 7, -84, -69.2, "3a2d5c")
+	H.block("Shell", "MachineGap", -68, -57, 0, 7, -84, -69.2, P.machine)
 	for i = 0, 6 do -- the capping between the lanes (and to the side walls)
 		local a = if i == 0 then -68 else -50 + (i - 1) * 20 + 7.2
 		local b = if i == 6 then 68 else -50 + i * 20 - 7.2
 		H.block("Scenery", "Capping", a, b, 0, 1.2, -66, -4, "a4aab8")
 	end
 	for _, x in { -40, 0, 40 } do
-		H.put("bw_ballreturn", "BallReturn", x, 0, 6, 0, { solid = true, color = { ["17141f"] = "3a2d5c" } })
+		H.put("bw_ballreturn", "BallReturn", x, 0, 6, 0, { solid = true, color = { ["17141f"] = P.base } })
 	end
 	-- four booths in a row behind the approach, open toward the lanes, a wide aisle up the middle. you can walk in and sit:
 	-- the back, the two sides, the seats and the table are solid, the middle is open
 	local BOOTH = { { 14, 4.2, 1, 0, nil, -3.5 }, { 1.4, 4.2, 7.6, -6.3, nil, -0.2 }, { 1.4, 4.2, 7.6, 6.3, nil, -0.2 }, { 2.7, 2, 6.6, -4.95, nil, 0.1 }, { 2.7, 2, 6.6, 4.95, nil, 0.1 }, { 8.4, 2, 2.7, 0, nil, -2.15 }, { 3, 3.3, 3, 0, nil, 1.5 } }
 	for i, x in { -38, -24, 24, 38 } do -- (two pairs side by side with no slot between: the aisle is 34 wide and pads 2 to 5 show up it)
-		H.put("bw_booth", "Booth", x, 0, 30, 180, { solid = BOOTH, color = { [CYAN] = ({ PINK, YEL, CYAN, GREEN })[i], ["2e3140"] = "6a55b0", ["17141f"] = "3a2d5c" } }) -- (purple shells: the dark ones were black slabs across the first view)
+		H.put("bw_booth", "Booth", x, 0, 30, 180, { solid = BOOTH, color = { [CYAN] = ({ PINK, YEL, CYAN, GREEN })[i], ["2e3140"] = P.booth, ["17141f"] = P.base } }) -- (shells in a mid paint: the kit's dark ones were black slabs across the first view)
 		H.lamp(x, 4.5, 28.5, 12, 0.6, "ffe9b8") -- the little lamp on its table is a real one
 	end
 	-- the side walls: piers, and beside the lanes a board flat on the wall, two speakers under it, a spare giant pin by the pins
 	for _, s in { -1, 1 } do
 		for _, z in { -66, -35, -4, 26 } do H.put("hb_pier", "Pier", s * 68, 0, z, -s * 90, { back = true, scale = 0.5 }) end
 		-- (hung 5.5 under the ceiling on a fat mount, so its words show below the row of mode signs from the spawn and the cross walk)
-		H.put("st_board", "WallBoard", s * 68, 18.5, -19.5, -s * 90, { back = true, seat = "top", scale = 0.85, color = { ["17141f"] = "3a2d5c", ["2e3140"] = "8f86c4", ["5b6478"] = "a59ad8" } })
-		H.block("Scenery", "BoardMount", s * 66.9, s * 68, 18.5, 24, -27.7, -11.3, "8f86c4", nil, { ghost = true })
-		for _, z in { -41.5, -59.8 } do H.put("bc_speaker", "Speaker", s * 68, 1.2, z, -s * 90, { back = true, scale = 2, solid = true, color = { ["17141f"] = "6a55b0", ["3a3f4a"] = "3a2d5c", ["2a2d38"] = "4a3d6a" } }) end -- (either side of the spare pin, out from under the lowered board)
-		H.put("bw_giantpin", "SidePin", s * 62.6, 1.2, -50.5, 0, { solid = true, color = { ["17141f"] = "3a2d5c" } })
+		H.put("st_board", "WallBoard", s * 68, 18.5, -19.5, -s * 90, { back = true, seat = "top", scale = 0.85, color = { ["17141f"] = P.base, ["2e3140"] = P.web, ["5b6478"] = P.flange } })
+		H.block("Scenery", "BoardMount", s * 66.9, s * 68, 18.5, 24, -27.7, -11.3, P.web, nil, { ghost = true })
+		for _, z in { -41.5, -59.8 } do H.put("bc_speaker", "Speaker", s * 68, 1.2, z, -s * 90, { back = true, scale = 2, solid = true, color = { ["17141f"] = P.speaker, ["3a3f4a"] = P.speakerFace, ["2a2d38"] = P.grille } }) end -- (either side of the spare pin, out from under the lowered board)
+		H.put("bw_giantpin", "SidePin", s * 62.6, 1.2, -50.5, 0, { solid = true, color = { ["17141f"] = P.base } })
 		H.text("SidePinPlate", { { if s < 0 then "SPARE PIN" else "SPARE SPARE PIN", YEL, "L", 1 } }, 4.8, 0.9, s * 62.6, 1.9, -45.99, 0, { clear = true, flush = true })
 		H.lamp(s * 60.44, 3.4, -48.34, 18, 0.8, "ffe9b8") -- (over the plinth's uplight on the lane side)
 	end
@@ -870,26 +1006,26 @@ L.BUILD.Hub3_Lanes = function(H)
 	-- girders with light panels over the booths and half way down the lanes
 	for _, z in { 17, -35 } do
 		for _, cx in { -45.3, 0, 45.3 } do
-			H.put("wh_girder", "Girder", cx, 24, z, 0, { scale = 0.81, seat = "top", color = { ["2e3140"] = "8f86c4", ["5b6478"] = "a59ad8" } }) -- (paler than the wall and the lid behind it)
-			for _, dx in { -11.3, 11.3 } do H.lamp(cx + dx, 18.7, z, 44, if z > 0 then 2.8 else 1.4, "fff1d6", { spot = true, shadows = z > 0, angle = if z > 0 then 96 else 120 }); if z > 0 then H.lamp(cx + dx, 18.5, z, 18, 0.7, "efe6ff") end end -- (the six over the cross walk and the pads cast shadows; the lane row has nothing under it to cast one)
+			H.put("wh_girder", "Girder", cx, 24, z, 0, { scale = 0.81, seat = "top", color = { ["2e3140"] = P.web, ["5b6478"] = P.flange } }) -- (paler than the wall and the lid behind it)
+			for _, dx in { -11.3, 11.3 } do H.lamp(cx + dx, 18.7, z, 44, if z > 0 then 2.8 else 1.4, "fff1d6", { spot = true, shadows = z > 0, angle = if z > 0 then 96 else 120 }); if z > 0 then H.lamp(cx + dx, 18.5, z, 18, 0.7, P.glow) end end -- (the six over the cross walk and the pads cast shadows; the lane row has nothing under it to cast one)
 		end
 	end
 	-- a fat clamp over each girder joint (the webs stop 2.5 short of it), and four ribs across the concourse ceiling from those
 	-- joints and the outer girders' middles: girders, clamps and ribs are one pale frame under a darker lid
 	for _, s in { -1, 1 } do
-		for _, z in { -35, 17 } do H.block("Scenery", "GirderClamp", s * 22.65 - 2.8, s * 22.65 + 2.8, 18.6, 24, z - 2.1, z + 2.1, "a59ad8", nil, { ghost = true }) end
-		for _, x in { 22.65, 45.3 } do H.block("Scenery", "Rib", s * x - 1.5, s * x + 1.5, 22.4, 24, 18.8, 56, "a59ad8", nil, { ghost = true }) end
+		for _, z in { -35, 17 } do H.block("Scenery", "GirderClamp", s * 22.65 - 2.8, s * 22.65 + 2.8, 18.6, 24, z - 2.1, z + 2.1, P.flange, nil, { ghost = true }) end
+		for _, x in { 22.65, 45.3 } do H.block("Scenery", "Rib", s * x - 1.5, s * x + 1.5, 22.4, 24, 18.8, 56, P.flange, nil, { ghost = true }) end
 	end
 	-- (each main panel has two lamps: a spot down that casts shadows, in a 96 degree cone so the floor is pools of light and
 	-- not one flat wash, and a small glow that lights the ceiling and the top of the walls round the panel)
-	for _, p in { { -58, 42 }, { -34, 42 }, { 0, 42 }, { 34, 42 }, { 58, 42 } } do H.put("hb_bar", "LightBar", p[1], 24, p[2], 0, { seat = "top", color = { ["2e3140"] = "8f86c4" } }); H.lamp(p[1], 21.6, p[2], 40, 2.4, "fff1d6", { spot = true, shadows = true, angle = 96 }); H.lamp(p[1], 21.2, p[2], 24, 0.7, "efe6ff") end -- (and the five over the concourse: eleven shadow lamps in all)
+	for _, p in { { -58, 42 }, { -34, 42 }, { 0, 42 }, { 34, 42 }, { 58, 42 } } do H.put("hb_bar", "LightBar", p[1], 24, p[2], 0, { seat = "top", color = { ["2e3140"] = P.web } }); H.lamp(p[1], 21.6, p[2], 40, 2.4, "fff1d6", { spot = true, shadows = true, angle = 96 }); H.lamp(p[1], 21.2, p[2], 24, 0.7, P.glow) end -- (and the five over the concourse: eleven shadow lamps in all)
 	-- the concourse: shoes, snacks, machines, the giant pin
-	H.put("bw_counter", "ShoeCounter", -42, 0, 56, 180, { back = true, solid = true, color = { ["17141f"] = "3a2d5c" } })
+	H.put("bw_counter", "ShoeCounter", -42, 0, 56, 180, { back = true, solid = true, color = { ["17141f"] = P.base, ["4b2a6b"] = P.trim } })
 	H.text("ShoeSign", { { "SHOES", CYAN, "L", 0.6 }, { "two left feet available", "ffffff", "F", 0.34 } }, 16, 3, -42, 12.6, 55.85, 180)
-	H.put("bc_lockers", "Lockers", -60, 0, 56, 180, { back = true, scale = 1.5, solid = true, color = { ["56683f"] = CYAN, ["2a2d38"] = "5b6478", ["17141f"] = "3a2d5c" } })
+	H.put("bc_lockers", "Lockers", -60, 0, 56, 180, { back = true, scale = 1.5, solid = true, color = { ["56683f"] = CYAN, ["2a2d38"] = "5b6478", ["17141f"] = P.base } })
 	-- one fat shelf with three small gold giant pins on it for trophies (the old cup rack was thin shelves and cups the size of dots)
 	H.block("Scenery", "TrophyShelf", -32, -21, 7.6, 8.8, 52.4, 56, "a8703a", Enum.Material.Wood, { ghost = true })
-	for _, x in { -30, -26.5, -23 } do H.put("bw_giantpin", "Trophy", x, 8.8, 54.2, 180, { scale = 0.36, color = { f4f2ec = YEL, ["17141f"] = "3a2d5c" } }) end
+	for _, x in { -30, -26.5, -23 } do H.put("bw_giantpin", "Trophy", x, 8.8, 54.2, 180, { scale = 0.36, color = { f4f2ec = YEL, ["17141f"] = P.base } }) end
 	H.text("TrophySign", { { "TROPHIES", YEL, "L", 0.6 }, { "all for turning up.", "ffffff", "F", 0.34 } }, 10, 2.2, -26.5, 17.2, 55.85, 180)
 	H.put("st_bench", "Bench", -26.5, 0, 56, 180, { back = true, solid = true })
 	-- the lane guide on the wall behind the spawn
@@ -901,10 +1037,10 @@ L.BUILD.Hub3_Lanes = function(H)
 	H.put("fc_stall", "SnackBar", 34.5, 0, 56, 180, { back = true, solid = true, color = { [PINK] = CYAN } })
 	H.text("SnackName", { { "NACHOS. JUST NACHOS.", YEL, "L", 1 } }, 21.4, 2.9, 34.5, L.FASCIA_Y, 56 - L.FASCIA_OUT, 180, { clear = true })
 	H.put("fc_table", "Table", 53, 0, 42, 20, { solid = Vector3.new(6, 3.3, 6), color = { [YEL] = PINK } })
-	for i, x in { 50.5, 54.7, 58.9 } do H.put("hb_vending", "Vending", x, 0, 56, 180, { back = true, solid = true, color = { [PINK] = ({ YEL, PINK, CYAN })[i], ["17141f"] = "3a2d5c" } }) end
-	for _, z in { 39, 44, 49 } do H.put("bc_arcade", "Arcade", 68, 0, z, -90, { back = true, scale = 1.3, solid = true, color = { ["17141f"] = "3a2d5c", ["120818"] = "3a2d5c" } }) end
+	for i, x in { 50.5, 54.7, 58.9 } do H.put("hb_vending", "Vending", x, 0, 56, 180, { back = true, solid = true, color = { [PINK] = ({ YEL, PINK, CYAN })[i], ["17141f"] = P.base } }) end
+	for _, z in { 39, 44, 49 } do H.put("bc_arcade", "Arcade", 68, 0, z, -90, { back = true, scale = 1.3, solid = true, color = { ["17141f"] = P.base, ["120818"] = P.base } }) end
 	H.text("ArcadeSign", { { "ARCADE", PINK, "L", 0.6 }, { "one game. it is the one you are in.", "ffffff", "F", 0.34 } }, 14, 2.8, 67.85, 12.4, 44, -90)
-	H.put("bw_giantpin", "GiantPin", 57, 0, 30.5, -45, { solid = Vector3.new(6.4, 17.4, 6.4), color = { ["17141f"] = "3a2d5c" } }) -- (at the east end of the booth row, its plate turned toward the spawn)
+	H.put("bw_giantpin", "GiantPin", 57, 0, 30.5, -45, { solid = Vector3.new(6.4, 17.4, 6.4), color = { ["17141f"] = P.base } }) -- (at the east end of the booth row, its plate turned toward the spawn)
 	H.text("PinPlate", { { "JANKFIRE", YEL, "L", 1 } }, 4.8, 0.9, 57 - 3.189, 0.7, 30.5 + 3.189, -45, { clear = true, flush = true }) -- (the plate's face is 4.5 out from the pin's middle)
 	H.lamp(57, 2.2, 33.55, 18, 0.8, "ffe9b8") -- (over the plinth's south uplight)
 	H.screen("Tips", { { "HOUSE RULES", CYAN, "L", 0.3 }, { "stand on your colour to queue. stepping off un-queues you. that's the whole skill.", "ffffff", "F", 0.6 } }, 67.35, 15, 11, -90, 16)
@@ -912,7 +1048,7 @@ L.BUILD.Hub3_Lanes = function(H)
 	for _, s in { -1, 1 } do H.put("st_bench", "Bench", s * 68, 0, 11, -s * 90, { back = true, solid = true }) end -- a bench under each screen
 	-- a totem at the west end of the booth row (the giant pin has the east end): it faces the spawn and points at the door
 	-- (at twice its size its two panels are 4.8 x 10, 1.14 out from its middle, 11.4 up)
-	H.put("st_totem", "Totem", -56, 0, 30, 90, { scale = 2, solid = true, color = { [CYAN] = GREEN, ["17141f"] = "3a2d5c" } })
+	H.put("st_totem", "Totem", -56, 0, 30, 90, { scale = 2, solid = true, color = { [CYAN] = GREEN, ["17141f"] = P.base } })
 	H.text("TotemText", { { "TRAINING", GREEN, "L", 0.16 }, { "<<<", GREEN, "L", 0.24 }, { "it is the big red door. people still miss it.", "ffffff", "F", 0.6 } }, 4.2, 9.5, -54.84, 11.4, 30, 90, { clear = true, flush = true, thick = 0.1 })
 	H.text("TotemText", { { "THE LANES", YEL, "L", 0.22 }, { "<<<", YEL, "L", 0.2 }, { "six of them. pick one. they are all the same lane.", "ffffff", "F", 0.58 } }, 4.2, 9.5, -57.16, 11.4, 30, -90, { clear = true, flush = true, thick = 0.1 })
 	-- the floor shows the way: a yellow line up the aisle to a cross line that runs past every lane; green goes to training
@@ -933,12 +1069,21 @@ L.BUILD.Hub3_Lanes = function(H)
 	H.put("bc_chevron", "Arrow", -14.9, 0.09, 29.1, -90, { color = { f4f8ff = GREEN } })
 	-- the two travel discs every show hub has, behind the spawn but set wider apart than H.tourDiscs puts them: its sign
 	-- boards would stand between the camera and the room for anyone who has just spawned
-	local nxt = L.ORDER[table.find(L.ORDER, H.name) % #L.ORDER + 1]
-	H.disc("ToNext", -16, 51.5, "NEXT HUB", L.TITLE[nxt], nxt .. "_Arrive", L.TITLE[nxt], YEL)
-	H.disc("ToHub1", 16, 51.5, "HUB 1", "THE ROTUNDA", "HubArrive", "BACK TO THE ROTUNDA", PINK)
+	-- (only as a show hub: the real hub has nowhere else to send you)
+	if not H.live then
+		local nxt = L.ORDER[table.find(L.ORDER, H.name) % #L.ORDER + 1]
+		H.disc("ToNext", -16, 51.5, "NEXT HUB", L.TITLE[nxt], nxt .. "_Arrive", L.TITLE[nxt], YEL)
+		H.disc("ToHub1", 16, 51.5, "HUB 1", "THE ROTUNDA", "HubArrive", "BACK TO THE ROTUNDA", PINK)
+	end
 	-- every model in here is flat smooth plastic (a few older props came with metal parts, which render near black under these lamps)
 	for _, p in H.root.Scenery:GetDescendants() do if p:IsA("BasePart") and p.Material == Enum.Material.Metal then p.Material = Enum.Material.SmoothPlastic end end
-	H.zone(-68, 68, -84, 56, 24, "lab_lanes")
+	if not H.live then H.zone(-68, 68, -84, 56, 24, "lab_lanes") end -- (the real hub's look is HubLook.looks.hub: it needs no zone)
+	-- the room says which palette it was built in, and the hub's light takes the tint that goes with it
+	if H.live then
+		H.root:SetAttribute("Palette", P.name)
+		local look = game.ReplicatedStorage.Jankfire:FindFirstChild("HubLook")
+		if look then look:SetAttribute("HubTint", P.tint) end
+	end
 	return H.done()
 end
 
@@ -1119,6 +1264,77 @@ L.BUILD.Hub1_Tour = function(H)
 end
 
 L.FASCIA_OUT, L.FASCIA_Y = 6.26, 11.95 -- where a stall's name plate is, out from the wall and up (set from the fc_stall model)
+
+-- ------------------------------------------------------------------ the real hub's keep-clear test
+-- (R1, R7 and R9 of the hub requirements.) nothing you can see or bump into may stand within 4 studs of a spawn or
+-- arrival marker, on a pad, or in the 12-wide walks from the spawn to the lanes and to the training door; and no ray from
+-- inside the room may get out of its shell. print(L.check()): one line of totals, then one line for each problem.
+-- the walks, in the hub's own coordinates: { what, x0, x1, z0, z1 }
+L.WALKS = {
+	{ "the aisle from the spawn to the cross walk", -6, 6, 20.3, 45 },
+	{ "the cross walk, from lane 1's pad to lane 6's", -54, 54, 13.6, 25.6 }, -- (east of x 55.5 a corner of the giant pin's plinth comes in to z 24.1, beside the closed lane: 10.5 clear there)
+	{ "the walk from the aisle to the training door", -63, -6, 34, 46 },
+}
+function L.check()
+	local room = hub:FindFirstChild(L.ROOM)
+	if not room then return "no " .. L.ROOM .. " in Map.Hub: build it first" end
+	local O = hub:GetAttribute("Origin")
+	local zones = {}
+	local function zone(what, x0, x1, z0, z1) table.insert(zones, { what = what, lo = Vector3.new(x0, 0.4, z0), hi = Vector3.new(x1, 8, z1) }) end
+	for _, f in { hub.HubSpawns, hub.Doors.HubArrive } do
+		for _, s in f:GetChildren() do local p = s.Position - O; zone(("%s at (%.1f, %.1f)"):format(s.Name, p.X, p.Z), p.X - 4, p.X + 4, p.Z - 4, p.Z + 4) end
+	end
+	local pads = hub.QueuePads:GetChildren()
+	for _, c in room.Scenery:GetChildren() do if c.Name:sub(1, 10) == "ClosedPad_" then table.insert(pads, c) end end
+	for _, pad in pads do
+		local b = pad:FindFirstChild("Base")
+		if b then local p = b.Position - O; zone("pad " .. pad.Name, p.X - b.Size.X / 2, p.X + b.Size.X / 2, p.Z - b.Size.Z / 2, p.Z + b.Size.Z / 2) end
+	end
+	for _, w in L.WALKS do zone(w[1], w[2], w[3], w[4], w[5]) end
+	-- a part's own box (turned as the part is turned) against a zone, by separating axes. touching, or in by less than
+	-- 0.05, does not count: the booths' backs and the ball returns stand exactly on a zone's edge
+	local function hits(p, z)
+		local cf, half = p.CFrame, p.Size / 2
+		local A = { cf.RightVector, cf.UpVector, cf.LookVector }
+		local ha = { half.X, half.Y, half.Z }
+		local zh = (z.hi - z.lo) / 2
+		local T = (cf.Position - O) - (z.lo + z.hi) / 2
+		local tests = { A[1], A[2], A[3], Vector3.xAxis, Vector3.yAxis, Vector3.zAxis }
+		for i = 1, 3 do for _, b in { Vector3.xAxis, Vector3.yAxis, Vector3.zAxis } do local c = A[i]:Cross(b); if c.Magnitude > 1e-4 then table.insert(tests, c.Unit) end end end
+		for _, ax in tests do
+			local ra = ha[1] * math.abs(A[1]:Dot(ax)) + ha[2] * math.abs(A[2]:Dot(ax)) + ha[3] * math.abs(A[3]:Dot(ax))
+			local rb = zh.X * math.abs(ax.X) + zh.Y * math.abs(ax.Y) + zh.Z * math.abs(ax.Z)
+			if math.abs(T:Dot(ax)) > ra + rb - 0.05 then return false end
+		end
+		return true
+	end
+	local issues, seen, looked = {}, {}, 0
+	for _, p in room:GetDescendants() do
+		-- (a thing counts if you can see it or bump into it: lamp points and the plates of words painted on the floor do not)
+		if not p:IsA("BasePart") or (p.Transparency >= 1 and not p.CanCollide) then continue end
+		looked += 1
+		for _, z in zones do
+			if hits(p, z) then
+				local top = p
+				while top.Parent and top.Parent.Parent ~= room do top = top.Parent end
+				local line = ("%s/%s  in  %s"):format(top.Parent and top.Parent.Name or "?", top.Name, z.what)
+				if not seen[line] then seen[line] = true; table.insert(issues, line) end
+			end
+		end
+	end
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { room.Shell }
+	local leaks = 0
+	for _, from in { Vector3.new(0, 12, 30), Vector3.new(-40, 12, -30), Vector3.new(40, 12, -30), Vector3.new(-60, 3, 40), Vector3.new(60, 20, 50) } do
+		for x = -1, 1 do for y = -1, 1 do for z = -1, 1 do
+			if not (x == 0 and y == 0 and z == 0) and not workspace:Raycast(O + from, Vector3.new(x, y, z).Unit * 500, rp) then
+				leaks += 1; table.insert(issues, ("LEAK from (%d, %d, %d) toward (%d, %d, %d)"):format(from.X, from.Y, from.Z, x, y, z))
+			end
+		end end end
+	end
+	local msg = ("%d keep-clear zones, %d parts looked at, %d problems, leaks %d"):format(#zones, looked, #issues, leaks)
+	game.ServerStorage.PolishBackup:SetAttribute("LastOverlapCheck", L.ROOM .. ": " .. msg)
+	return msg .. (if #issues > 0 then "\n" .. table.concat(issues, "\n") else "")
+end
 
 --@HUBS@
 

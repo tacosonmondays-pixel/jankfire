@@ -1,8 +1,9 @@
 --!strict
 -- the looks: Lighting is one global thing and the saved values are tuned for the Rooftop, so each client swaps to its
 -- own look while its player is somewhere else, and back to the saved look for a match (the places are far apart and
--- can't see each other). hub = dark and cozy, lit by its own lamps and glow; training = the same mood with more base
--- light; playground = open air, midday, clean and white.
+-- can't see each other). hub = THE LANES, a bowling alley: warm and a little dim, lit by its own lamps and glow (its
+-- base light comes in two tints, HUB_TINT below, to go with the paint the room was built in);
+-- training = a darker mood with more base light; playground = open air, midday, clean and white.
 -- edit-time preview from the command bar: require(game.ReplicatedStorage.Jankfire.HubLook).preview("hub" | "training"
 -- | "playground") and .preview(false) to put the saved look back. ALWAYS preview(false) before saving the place.
 -- the Rooftop's values are parked as attributes on Lighting while a preview is on, so any copy of this module (a fresh
@@ -11,6 +12,8 @@ local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 
 type Look = { [string]: { [string]: any } }
+-- the first hub's look (the rotunda, put away in ServerStorage.PolishBackup.HubArchive on 2026-11-15): dark and cozy.
+-- kept as looks.rotunda, and every other look is still written as its differences from this one
 local HUB: Look = {
 	Lighting = {
 		Ambient = Color3.fromRGB(104, 98, 122), OutdoorAmbient = Color3.fromRGB(104, 98, 122), Brightness = 0,
@@ -30,9 +33,34 @@ local function with(base: Look, over: Look): Look
 	return out
 end
 
+-- the hub's base light comes in two tints, one for each kind of paint the Lanes can be built in (the builder,
+-- ServerStorage.PolishBackup.HubLab, has the palettes: L.LANES_PALETTE. a build writes its palette's tint on this
+-- script as the attribute HubTint, so the paint and the light change together; with no attribute it is "neutral").
+--   neutral  (2026-11-15) for the sand room, where only the carpet is purple: a warm grey that adds no colour of its own
+--   purple   the first look's own tint, for the all-purple room the owner picked on 2026-11-14. its values, should the
+--            table below ever go: Ambient and OutdoorAmbient 112, 99, 126; Atmosphere Color 40, 34, 52 and Decay
+--            18, 16, 26 (the rotunda's, above); Saturation 0.22
+local HUB_TINT: { [string]: Look } = {
+	neutral = {
+		Lighting = { Ambient = Color3.fromRGB(114, 108, 106), OutdoorAmbient = Color3.fromRGB(114, 108, 106), ExposureCompensation = 0.25 },
+		Atmosphere = { Density = 0.1, Color = Color3.fromRGB(44, 42, 42), Decay = Color3.fromRGB(20, 19, 19) },
+		ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.15, TintColor = Color3.fromRGB(255, 240, 226) },
+	},
+	purple = {
+		Lighting = { Ambient = Color3.fromRGB(112, 99, 126), OutdoorAmbient = Color3.fromRGB(112, 99, 126), ExposureCompensation = 0.25 },
+		Atmosphere = { Density = 0.1 },
+		ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.22, TintColor = Color3.fromRGB(255, 240, 226) },
+	},
+}
+local hubTint: any = script:GetAttribute("HubTint")
+if type(hubTint) ~= "string" or not HUB_TINT[hubTint] then hubTint = "neutral" end
+
 local H = {}
+H.hubTint = hubTint -- (which one is on)
 H.looks = {
-	hub = HUB,
+	-- the hub is THE LANES (workspace.Map.Hub.Lanes): warm and a little dim, the lanes and the carpet do the colour
+	hub = with(HUB, HUB_TINT[hubTint]),
+	rotunda = HUB,
 	-- the training hall is a place to shoot in: same mood, more base light, thinner haze (it's 220 studs long)
 	training = with(HUB, {
 		Lighting = { Ambient = Color3.fromRGB(140, 134, 156), OutdoorAmbient = Color3.fromRGB(140, 134, 156), ExposureCompensation = 0.25 },
@@ -50,20 +78,15 @@ H.looks = {
 		SunRays = { Intensity = 0.04 },
 	}),
 } :: { [string]: Look }
--- the four show hubs of the hub comparison (workspace.Map.HubLab; a part in Hub.LookZones with the attribute Look
--- names the look for whoever stands inside it):
+-- the three show hubs of the hub comparison that were not picked (put away in ServerStorage.PolishBackup.HubArchive,
+-- each with its look zone: a part in Hub.LookZones with the attribute Look names the look for whoever stands inside
+-- it). the fourth, the bowling alley, is the hub now: its look is looks.hub above
 -- the station: cool, white and bright, like tiles under strip lights
 H.looks.lab_platform = with(HUB, {
 	Lighting = { Ambient = Color3.fromRGB(122, 128, 146), OutdoorAmbient = Color3.fromRGB(122, 128, 146), ExposureCompensation = 0.1 },
 	Atmosphere = { Density = 0.08, Color = Color3.fromRGB(150, 160, 180), Decay = Color3.fromRGB(90, 100, 120) },
 	Bloom = { Intensity = 0.3, Size = 20, Threshold = 2.1 },
 	ColorCorrection = { Brightness = 0, Contrast = 0.1, Saturation = 0.1, TintColor = Color3.fromRGB(240, 246, 255) },
-})
--- the bowling alley: warm and a little dim, the lanes and the carpet do the colour
-H.looks.lab_lanes = with(HUB, {
-	Lighting = { Ambient = Color3.fromRGB(112, 99, 126), OutdoorAmbient = Color3.fromRGB(112, 99, 126), ExposureCompensation = 0.25 },
-	Atmosphere = { Density = 0.1 },
-	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.22, TintColor = Color3.fromRGB(255, 240, 226) },
 })
 -- the food court: daylight through a glass roof
 H.looks.lab_foodcourt = with(HUB, {
@@ -147,7 +170,7 @@ local function sky(plain: boolean)
 	end
 end
 
--- name = "hub" / "training" / "playground", or nil for the saved (match) look. t = seconds to blend (nil or 0 snaps)
+-- name = "hub" / "training" / "playground" (or any other key of H.looks), or nil for the saved (match) look. t = seconds to blend (nil or 0 snaps)
 function H.set(name: string?, t: number?)
 	if not saved then saved = capture() end
 	local to = merged(if name then H.looks[name] else nil)

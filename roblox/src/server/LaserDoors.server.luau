@@ -1,15 +1,15 @@
 --!strict
--- the hub's laser doors. walk into the red grid behind the spawn and you're in the training ground (a big hall well
--- away from the hub: Hub.TrainingGround, its zone Hub.TrainingZone, spawns Hub.TrainSpawns, dummies Hub.DummySpots);
--- its own grid takes you back to the hub (Hub.Doors.HubArrive). the move is the server's: it stamps the player's
+-- the hub's laser doors. walk into the red grid in the hub's west wall (the Lanes' fire exit) and you're in the training
+-- ground (a big hall well away from the hub: Hub.TrainingGround, its zone Hub.TrainingZone, spawns Hub.TrainSpawns,
+-- dummies Hub.DummySpots); its own grid takes you back to the hub (Hub.Doors.HubArrive). the move is the server's: it stamps the player's
 -- TeleportT attribute first so Main's teleport check starts afresh instead of putting them back, then moves the body.
 -- 1.5 s between hops per player so nobody bounces; not while in a match.
 -- there is also a secret: the bullseye of the hall's middle wall target (Doors.ToPlayground, a small box 14 studs up:
 -- grapple it) drops you in the PLAYGROUND, a block course in the open air far away. its own grid brings you back, and
 -- anyone who falls off its blocks is put back on its start (no death, no smog).
 -- any other part in Hub.Doors with the attribute Land is a door too: Land names the marker folder in Hub.Doors you
--- arrive on ("@TrainSpawns" = the training ground's spawns), Say is the callout. the show hubs of the hub comparison
--- (workspace.Map.HubLab) use these for their training doors and the discs that take you from hub to hub
+-- arrive on ("@TrainSpawns" = the training ground's spawns), Say is the callout. the hub's own training door is one of
+-- these (Doors.LanesToTraining, made by the hub's builder); the old round hub's was the fixed ToTraining route below
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")

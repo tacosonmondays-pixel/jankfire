@@ -1,6 +1,7 @@
 --!strict
--- the hub (Workspace.Map.Hub) and its queue pads, Rivals-style. you spawn in the hub; walk back through the door behind
--- the spawn for the training room (its dummies shoot back in there, nowhere else). on the pads in front: stand on a
+-- the hub (Workspace.Map.Hub: THE LANES, a bowling alley) and its queue pads, Rivals-style. you spawn in the hub; the red
+-- door in its west wall is the way to the training room (its dummies shoot back in there, nowhere else). on the pads in
+-- front, one on each lane's approach: stand on a
 -- side; when every side is full a 3 s countdown runs, then everyone on it goes to the Rooftop arena for a match:
 -- rounds of one life each, last team standing takes the round, first to Matches.WIN rounds wins, then back to the hub.
 -- a round nobody wins outright (time up, or the last ones go down together) goes to whoever dealt the most damage in
@@ -302,13 +303,22 @@ local function startMatch(pad: Model, sides: { { Player } })
 end
 
 -- ------------------------------------------------------------------ the pads
+-- a pad's two lines go on every label in it named Status and Sub (the Lanes' boards have two faces, so two of each;
+-- the old pads had one). found once per pad
+local padLabels: { [Model]: { status: { TextLabel }, sub: { TextLabel } } } = {}
 local function padSign(pad: Model, status: string, sub: string)
-	local sign = pad:FindFirstChild("Sign")
-	local gui = sign and sign:FindFirstChild("Gui")
-	if not gui then return end
-	local s, b = gui:FindFirstChild("Status") :: TextLabel?, gui:FindFirstChild("Sub") :: TextLabel?
-	if s and s.Text ~= status then s.Text = status end
-	if b and b.Text ~= sub then b.Text = sub end
+	local l = padLabels[pad]
+	if not l then
+		l = { status = {}, sub = {} }
+		for _, d in pad:GetDescendants() do
+			if d:IsA("TextLabel") then
+				if d.Name == "Status" then table.insert(l.status, d) elseif d.Name == "Sub" then table.insert(l.sub, d) end
+			end
+		end
+		padLabels[pad] = l
+	end
+	for _, s in l.status do if s.Text ~= status then s.Text = status end end
+	for _, b in l.sub do if b.Text ~= sub then b.Text = sub end end
 end
 
 local function padStep()
@@ -339,11 +349,13 @@ local function padStep()
 			if #sides[t] < size then full = false end
 			table.insert(counts, ('<font color="%s">%d/%d</font>'):format(TEAM_HEX[t], #sides[t], size))
 		end
-		-- the slot rings light up as people step on
+		-- the slot rings light up as people step on. (an empty slot is 0.55 see-through unless it says otherwise: the Lanes'
+		-- place lights have Off = 1, so an empty place is the dark socket under the light and a taken one is lit)
 		for _, r in pad:GetChildren() do
 			if r.Name == "Slot" and r:IsA("BasePart") then
 				local t, s = r:GetAttribute("Team") :: number, r:GetAttribute("Slot") :: number
-				local want = if sides[t] and #sides[t] >= s then 0 else 0.55
+				local off = r:GetAttribute("Off")
+				local want = if sides[t] and #sides[t] >= s then 0 else (if type(off) == "number" then off else 0.55)
 				if r.Transparency ~= want then r.Transparency = want end
 			end
 		end
