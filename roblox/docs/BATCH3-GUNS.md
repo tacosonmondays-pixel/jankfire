@@ -93,31 +93,17 @@ Tested by sending the server's remotes fake messages from a client, the way an e
 - `roblox/tests/weapons.luau` has a new block for these rules. It has not been run: Lune is not installed on this PC.
 - Phones and controllers (the game is keyboard and mouse only).
 
-## How they look next to the "serious, Rivals-style" bar
+## How they look: repainted on 15 November
 
 The owner's direction on 15 Nov, after these guns were built: the weapons and mechanics come from JANKFIRE, the
-finish should be serious and polished, and less colourful. Numbers and gimmicks are not touched by that. The paint
-is: every gun here still wears the web game's factory colours, carried over by the model. Judged from the in-hand
-pictures in `batch3/guns-in-hand.jpg`:
+finish should be serious and polished, and less colourful. When this batch went in, every gun still wore the web
+game's factory colours (hot pink Sniper, orange Belt Sander, an all-white Revolver and Plan B) and the first-person
+arms were bare white shapes.
 
-| Gun | Verdict | What a look pass would change |
-|---|---|---|
-| SMG | fine | black with one teal accent; nothing |
-| Second Opinion | close | black with a purple stock; tone the purple down |
-| Lawn Mower | close | black body; the green shells and red drum are loud but they are how you read the gun |
-| Shotgun | toy-like | bright orange stock and pump with red shells |
-| Sniper | toy-like | hot pink glitter body; the loudest of the eleven |
-| Hat Trick | toy-like | bright blue body with gold |
-| Belt Sander | toy-like | orange with hazard stripes |
-| Yeehaw | toy-like | patterned pink and blue stock |
-| Half a Shotgun | toy-like | blue and orange |
-| Revolver | unfinished | nearly all white and silver; reads as not painted yet under the hall lights |
-| Plan B | unfinished | nearly all white; same |
+**That is done now** (place version 215): all eleven guns, and the five older weapons, wear a calm paint, and the
+arms wear gloves and sleeves. Numbers, names, mechanics and gimmicks are untouched, and the web paint is one switch
+away. What each gun looks like, the judge's scores before and after, what paint could not fix and how to switch:
+`GUN-PAINT.md`. Pictures: `gun-paint/before-after-1.jpg` to `-4.jpg`.
 
-Shared by every gun, and older than this batch: the first-person arm is a plain glowing white shape, the off hand
-is hidden during these guns' reloads (it swept across the screen), and nobody has looked at the third-person hold
-with a second player.
-
-Where a calmer paint would go: the look of each piece is in its name (`node__material__code`) and
-`PolishBackup.WeaponImport` paints from it, so one table of calmer factory colours per gun, applied there, repaints
-a gun without re-uploading the model or touching `Weapons`. Wraps keep working because they repaint through `Color`.
+Still true from this batch: the off hand is hidden during these guns' reloads (it swept across the screen), and
+nobody has looked at the third-person hold with a second player.

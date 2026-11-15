@@ -23,13 +23,14 @@ end
 -- the sleeve a step DARKER than the glove in paint: the lamps hit the top of a forearm full on, and a sleeve painted
 -- lighter than the glove showed as a pale cone propping up the gun. (first judge round, 2026-11-15)
 AvatarArms.KIT = {
-	glove = Color3.fromRGB(58, 60, 66),
-	sleeve = Color3.fromRGB(30, 32, 37),
-	-- tried in the hall, this close to the eye: Rubber speckles, Fabric crumples. the glove is SmoothPlastic (clean,
-	-- as long as it is mid grey: near black, its shine read as moulded plastic); the sleeve is Plastic, whose
-	-- soft mottle reads as cloth and, unlike SmoothPlastic, does not flash pale when a lamp is straight above
-	material = Enum.Material.SmoothPlastic,
-	sleeveMaterial = Enum.Material.Plastic,
+	glove = Color3.fromRGB(46, 48, 54),
+	sleeve = Color3.fromRGB(34, 36, 41),
+	-- tried in the hall, this close to the eye (two judge rounds, 2026-11-15): Rubber speckles, Fabric crumples,
+	-- Leather turns a blocky hand into a rock, SmoothPlastic shines like moulded plastic. the glove is Plastic in a
+	-- dark slate: matte, with soft shading. the sleeve is drawn UNLIT (Neon in a near-black colour does not glow, it
+	-- just ignores the lamps): every lit material flashed pale or pebbled when a lamp was straight above the forearm
+	material = Enum.Material.Plastic,
+	sleeveMaterial = Enum.Material.Neon,
 }
 
 -- sizes in metres x k (the viewmodel's studs per metre)

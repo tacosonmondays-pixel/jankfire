@@ -38,6 +38,9 @@ DEFAULT = 'calm'
 # 2026-11-15: 4c5639 olive came out lime, 4a3222 walnut orange). these values are what looked right IN the hall.
 # after the first judge round: every gun needs TWO values (one flat grey reads as clay), pairs that looked alike are
 # split by value (Plan B dark, Revolver steel), and big wood is 'r' not 'w' (Wood's grain is coarse up close).
+# after the second: a body painted near black (141519) hides its second value, so the big dark pieces are lifted to
+# charcoal; an accent goes on ONE clear part (the SMG's magazine, the Lawn Mower's drum), not on a slab of the body;
+# 'r' (Plastic) on a big light surface reads as cork, so the Sniper's stock is smooth.
 STEEL = 's767b85'      # mid steel (was bright chrome)
 STEEL_D = 'm3a3d45'    # dark steel
 POLY = 'p1e2024'       # black polymer
@@ -53,10 +56,12 @@ CALM = {
  'w_ar': {
   'ar_olive': 'p3e4630', 'ar_grip': 'r343b29', 'ar_tape': 'p2b3122', 'ar_neon': 'p1b1c20', 'ar_sticker': 'm2c3036',
   'ar_charm': STEEL_D, 'ar_mag': 'g2b2e34b8', 'ar_magbase': POLY, 'ar_white': 'pc8c8c8', 'ar_brass': CART, 'ar_copper': TIP,
+  'ar_dark': 'p24262b',
  },
- # SMG: black, the magazine is its teal accent (the body's teal slab goes dark)
+ # SMG: black and charcoal, the whole magazine is its teal accent (the handguard's teal slab goes charcoal)
  'w_smg': {
-  'smg_body_wzA__smg_teal': 'p1b4f4b', 'mag_wzA__smg_teal': 'p22968c', 'smg_freshener': 'p1c1d21', 'smg_string': 'p1c1d21',
+  'smg_body_wzA__smg_teal': 'p2b2e33', 'mag_wzA__smg_teal': 'p1f857c', 'mag_wzB__smg_dark': 'p1f857c',
+  'smg_freshener': 'p1c1d21', 'smg_string': 'p1c1d21',
  },
  # Plan B: the dark handgun. black frame, gunmetal slide, a blue rib along the top and blue controls
  'w_pistol': {
@@ -66,7 +71,7 @@ CALM = {
  },
  # Revolver: the steel handgun. steel frame, a dark cylinder, black grip, brass trim, the orange front sight
  'w_revolver': {
-  'rv_pearl': RUBBER, 'rv_chrome': 's6a6f79', 'rv_satin': 'm2b2e36', 'rv_gold': BRASS, 'hammer_wzN__rv_gold': STEEL_D,
+  'rv_pearl': RUBBER, 'rv_chrome': 's56585c', 'rv_satin': 'm27292e', 'rv_gold': BRASS, 'hammer_wzN__rv_gold': STEEL_D,
   'rv_copper': TIP,
  },
  # Shotgun: blued steel and dark walnut, red shells
@@ -81,17 +86,17 @@ CALM = {
  },
  # Sniper: a dark tan stock on black steel, the violet lens, one small magenta mark (its web colour)
  'w_sniper': {
-  'sn_pink': 'r5e5545', 'sn_sticker': 'r5e5545', 'sn_gold': 'pa2457c', 'sn_bolt': STEEL, 'sn_white': 'pc8c8c8',
+  'sn_pink': 'p57534a', 'sn_sticker': 'p57534a', 'sn_gold': 'pa2457c', 'sn_bolt': STEEL, 'sn_white': 'pc8c8c8',
  },
  # Second Opinion: dusk violet furniture (toned down), the medic cross stays
  'w_dmr': {
   'dm_wood': 'p363349', 'dm_bandaid': 'p363349', 'dm_tubing': 'p3d3a55', 'dm_chrome': STEEL, 'dm_diaphragm': STEEL,
   'dm_sticker': 'm27292f', 'dm_brass': CART, 'dm_copper': TIP,
  },
- # Hat Trick: slate body with darker panels, a blue magazine and switch, its three rounds in brass
+ # Hat Trick: slate body with darker panels, a blue magazine, its three rounds in dark brass
  'w_burst': {
-  'burst_body_wzA__bu_blue': 'p2a323f', 'mag_wzA__bu_blue': 'p2f4f8f', 'bu_navy': 'r181b21', 'bu_yellow': 'p2f4f8f',
-  'bu_bread': CART, 'bu_crumb': 'p2a323f', 'bu_tape': 'p3a3d44', 'bu_chrome': STEEL, 'bu_sticker': 'p2a323f',
+  'burst_body_wzA__bu_blue': 'p2a323f', 'mag_wzA__bu_blue': 'p2f4f8f', 'bu_navy': 'r181b21', 'bu_yellow': 'p24345c',
+  'bu_bread': 's7a6230', 'bu_crumb': 'p2a323f', 'bu_tape': 'p3a3d44', 'bu_chrome': STEEL, 'bu_sticker': 'p2a323f',
   'bu_brass': CART, 'bu_copper': TIP,
  },
  # Belt Sander: graphite body and ammunition box, an orange feed cover and switches, a black cable
@@ -100,10 +105,11 @@ CALM = {
   'lmg_grit': 'r5a3b2e', 'lmg_cord': RUBBER, 'lmg_yellow': 'pb5531f', 'lmg_tag': 'p2b2e33', 'lmg_chrome': STEEL,
   'lmg_box': 'p2b2e33', 'lmg_brass': CART, 'lmg_copper': TIP,
  },
- # Lawn Mower: machine green furniture is its one colour; the drum and pull-start go gunmetal
+ # Lawn Mower: charcoal furniture, the drum is its machine green (that also tells it from the Assault Rifle's olive)
  'w_autoshot': {
-  'as_green': 'p36563e', 'as_grass': 'p2f4c36', 'as_red': 'm34373d', 'mag_wzN__as_red': 'p3f6b4a', 'as_hazard': 'm26282d',
-  'as_keep': 'p36563e', 'as_mow': 'm121316', 'as_cord': 'p3a3d44', 'as_chrome': STEEL,
+  'as_green': 'p2b2e33', 'as_grass': 'p1e2024', 'as_red': 'm34373d', 'mag_wzN__as_red': 'm34373d', 'as_hazard': 'p36563e',
+  'mag_wzB__as_dark': 'p36563e', 'as_keep': 'p2b2e33', 'as_mow': 'm121316', 'as_cord': 'p3a3d44', 'as_chrome': STEEL_D,
+  'autoshot_body_wzB__as_dark': 'p22242a', 'as_park': 'm2b2e33',
  },
  # Yeehaw: saddle walnut, a steel receiver, brass trim
  'w_lever': {
@@ -113,13 +119,14 @@ CALM = {
  # Redline: black with its red (touch-ups: the grip and the tape lose their pictures, chrome goes to steel)
  'w_redline': {
   'rl_grip': 'r2b2623', 'rl_tape': 'p9a2b27', 'rl_chrome': STEEL, 'rl_red': 'pb82a2a', 'rl_white': 'pd0d0d0',
+  'rl_dark': 'p23252a',
  },
- # Marble Shotgun: aged brass and walnut, a smoked jar, the marbles in one blue family (they are the ammunition)
+ # Marble Shotgun: aged brass and walnut, a dark smoked jar, the marbles in one blue family (they are the ammunition)
  'w_marbles': {
   'mb_brass': 's6b5c3e', 'mb_walnut': WALNUT, 'mb_plaque': 's6b5c3e', 'mb_zinc': STEEL_D, 'mb_ramrod': 'w553a29',
-  'mb_label': 'g8a929c52', 'mb_jar': 'g8a929c52',
-  'mb_marble0': 'p3d6fc4', 'mb_marble1': 'p5aa6d6', 'mb_marble2': 'pd9dde3', 'mb_marble3': 'p2c4f8f',
-  'mb_marble4': 'p8fb4dc', 'mb_marble5': 'pc8ccd2', 'mb_marble6': 'p4a90c8',
+  'mb_label': 'g23262b66', 'mb_jar': 'g23262b66',
+  'mb_marble0': 'p3d6fc4', 'mb_marble1': 'p5aa6d6', 'mb_marble2': 's6b5c3e', 'mb_marble3': 'p2c4f8f',
+  'mb_marble4': 'p8fb4dc', 'mb_marble5': 'p9db9d8', 'mb_marble6': 'p4a90c8',
  },
  # Katana: a bright polished blade, black cord over the pale ray skin, the fittings as they are
  'w_katana': {

@@ -248,6 +248,32 @@ weapon, number or rule changed.
 - **What only new modelling would fix** (second judge): bare spawn decks on the Rooftop, the empty penthouse room and
   its block sofas, the plain box city, flat cabana curtains, the playground as a designed place, weapon icons.
 
+## 15. The guns' calm paint and the first-person gloves, 15 November 2026 (place version 215)
+
+The same direction as section 14, applied to the weapons: every one of the sixteen was repainted (a quiet body, one
+muted furniture colour and one small accent per gun) and the bare first-person arms now wear a dark slate glove and
+a near-black sleeve. No number, name, mechanic, gimmick or model shape changed. Full account, per-gun table, the judge's
+scores and the pictures: `roblox/docs/GUN-PAINT.md` and `roblox/docs/gun-paint/`.
+
+- **The paint is a switch.** `tools/roblox/weapon_paint.py` holds the calm table; `export_weapons.py --paint
+  calm|web` and the paint tool write `roblox/studio-tools/WeaponPaint.luau` (both paints of every gun), which lives
+  in the place as `PolishBackup.WeaponPaint`. In Studio `WeaponImport` has `W.use()`, `W.use("web")`, `W.load()`
+  and `W.shredder()`. A colour change needs no upload. Recipe: `roblox/README.md`, "The paint is a switch".
+- **Redline, Marble Shotgun and Katana** were re-exported through the current exporter and re-imported (they had
+  been turned and painted by hand); the old templates are parked in `PolishBackup.OldWeaponTemplates`. All fifteen
+  templates now carry `FileFrame` and `Paint`.
+- **The Shredder** is a hand-imported Tool, so its paint is a table inside `WeaponImport` (`W.SHREDDER`); its old
+  look is remembered on its parts.
+- **Arms:** `AvatarArms.KIT`; `LOOK = "avatar"` or the module's `Look` attribute brings the bare arms back.
+- **Judged twice** by an independent agent from in-hand photos: about 4 out of 10 on average in the web paint, about
+  7 after the rework, nine guns at 7.5 or more, the Katana last at 4.5. The weakest (Katana, Marble Shotgun, Lawn
+  Mower, Revolver, Sniper, the arms) were reworked between the rounds, and the second round's paint fixes went in
+  afterwards without a third judging.
+- **What only new work on the hold would fix:** the katana held edge-on with gloves over the hilt, the support hand
+  beside the handguard, the blocky fingerless hands. That is the next job for the guns' look. Smaller: the HUD's
+  colour chips for the Sniper and the Yeehaw still show their web colours (`color` in `Weapons`).
+- **Not tested:** the guns in another player's hands, the Rooftop's daylight, the loadout screen's previews.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

@@ -102,8 +102,8 @@ roblox/assets/weapons/w_*.glb`.
 `4a3222` walnut orange in the first photos. Look at the gun in hand in a Play test before keeping a colour. To see
 the other paint in a running test only (Edit untouched), run `W.use("web")` in the **Server** datamodel during Play.
 
-**The first-person arms** wear the game's own matte glove and sleeve (`AvatarArms.luau`, `AvatarArms.KIT`), built
-from your avatar's own arm shapes so they fit a blocky or a round arm. A pale avatar's bare arm blew out to a white
+**The first-person arms** wear the game's own matte glove and plain dark sleeve (`AvatarArms.luau`,
+`AvatarArms.KIT`), built from your avatar's own arm shapes so they fit a blocky or a round arm. A pale avatar's bare arm blew out to a white
 shape under the lamps. The old look (your skin and shirt) is `AvatarArms.LOOK = "avatar"`, or the module's `Look`
 attribute.
 
