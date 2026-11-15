@@ -251,7 +251,7 @@ function VM.update(dt: number, c: Ctx)
 	if off ~= offGone then
 		offGone = off
 		local arms = m:FindFirstChild("AvatarArms")
-		for _, n in { "LeftHand", "LeftLowerArm", "LeftCuff", "LeftTrim", "LeftPad", "HandFore", "SleeveFore" } do
+		for _, n in { "LeftHand", "LeftLowerArm", "LeftCuff", "LeftTrim", "HandFore", "SleeveFore" } do
 			local p = (arms and arms:FindFirstChild(n)) or m:FindFirstChild(n)
 			if p then p:SetAttribute("Hide", if off then true else nil) end
 		end

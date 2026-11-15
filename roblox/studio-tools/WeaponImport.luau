@@ -189,4 +189,40 @@ function W.load(only, name, opts)
 	return "paint: " .. name .. "\n" .. W.run(list, opts)
 end
 
+-- THE SHREDDER is a Tool (ReplicatedStorage.JankfireTools.Shredder) that was imported by hand before the exporter
+-- existed, so it is not in the paint book. its calm paint is this table, by part name: a dark steel hopper and
+-- housing, steel teeth with their red tips, and the hazard band as the one accent. the look it had before is
+-- remembered on every part the first time (WebColor, WebMat, WebRefl, WebTex), so W.shredder("web") puts it back.
+W.SHREDDER = {
+	sh_bell3 = "m33363d", -- the hopper (was bright yellow)
+	sh_bell4 = "p151515", -- its rim
+	sh_trigger6 = "m26282d", sh_trigger7 = "m26282d", -- the cage
+	sh_trigger5 = "m3a3d45", sh_bell2 = "m3a3d45", sh_grip3 = "m2e3138", -- housing, chute, motor block (were speckled grey)
+	sh_hub = "m3a3d45", sh_hub2 = "s767b85", sh_hub3 = "p8a1f1f", -- the teeth: steel, red tips
+	sh_trigger3 = "s767b85",
+	sh_bell = "p1e2126", sh_grip = "r1a1a1a", sh_grip2 = "p1e2126",
+	sh_trigger2 = "pb28119+", -- the hazard band keeps its picture
+}
+function W.shredder(name)
+	name = name or "calm"
+	local tool = game.ReplicatedStorage.JankfireTools:FindFirstChild("Shredder")
+	if not tool then return "shredder: NOT IN THE PLACE" end
+	local done, kept = 0, 0
+	for _, d in tool:GetDescendants() do
+		if not d:IsA("MeshPart") then continue end
+		if d:GetAttribute("WebColor") == nil then
+			d:SetAttribute("WebColor", d.Color); d:SetAttribute("WebMat", d.Material.Name)
+			d:SetAttribute("WebRefl", d.Reflectance); d:SetAttribute("WebTex", d.TextureID)
+		end
+		local code = W.SHREDDER[d.Name]
+		if name == "web" or not code then
+			d.Color = d:GetAttribute("WebColor"); d.Reflectance = d:GetAttribute("WebRefl")
+			d.Material = Enum.Material[d:GetAttribute("WebMat")]; d.TextureID = d:GetAttribute("WebTex")
+			kept += 1
+		elseif paint(d, code) then done += 1 end
+	end
+	tool:SetAttribute("Paint", name)
+	return ("shredder: paint %s, %d pieces painted, %d as the web has them"):format(name, done, kept)
+end
+
 return W

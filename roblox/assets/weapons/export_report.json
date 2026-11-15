@@ -241,7 +241,7 @@
      0.0364,
      -0.1455
     ],
-    "paint": "pc22a2a"
+    "paint": "pb82a2a"
    },
    {
     "name": "redline_body_wzN__rl_black",
@@ -314,7 +314,7 @@
      0.0631,
      0.1117
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "redline_body_wzN__rl_white",
@@ -362,7 +362,7 @@
      -0.016,
      0.0044
     ],
-    "paint": "pc22a2a"
+    "paint": "pb82a2a"
    },
    {
     "name": "redline_body_wzN__rl_tape",
@@ -386,7 +386,7 @@
      0.0276,
      0.3796
     ],
-    "paint": "pa8322c"
+    "paint": "p9a2b27"
    }
   ],
   "tris": 9316,
@@ -488,7 +488,7 @@
      -0.0162,
      -0.1214
     ],
-    "paint": "w6e4a33"
+    "paint": "w553a29"
    },
    {
     "name": "marbles_body_wzB__mb_zinc",
@@ -512,7 +512,7 @@
      0.0725,
      -0.111
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "marbles_body_wzN__mb_marble6",
@@ -560,7 +560,7 @@
      0.0285,
      0.1089
     ],
-    "paint": "w4a3222"
+    "paint": "w3b281c"
    },
    {
     "name": "marbles_body_wzB__mb_brass",
@@ -584,7 +584,7 @@
      0.0604,
      0.112
     ],
-    "paint": "s9a7a3e"
+    "paint": "s86693a"
    },
    {
     "name": "marbles_body_wzB__mb_black",
@@ -656,7 +656,7 @@
      -0.0771,
      0.086
     ],
-    "paint": "s9a7a3e"
+    "paint": "s86693a"
    },
    {
     "name": "marbles_body_wzN__mb_leather",
@@ -1392,7 +1392,7 @@
      -0.1202,
      -0.1052
     ],
-    "paint": "sc8683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "ar_body_wzA__ar_olive",
@@ -1416,7 +1416,7 @@
      0.052,
      0.4535
     ],
-    "paint": "p4c5639"
+    "paint": "p3e4630"
    },
    {
     "name": "ar_body_wzA__ar_gunmetal",
@@ -1464,7 +1464,7 @@
      -0.0558,
      0.1748
     ],
-    "paint": "r3e472f"
+    "paint": "r343b29"
    },
    {
     "name": "ar_body_wzB__ar_dark",
@@ -1561,7 +1561,7 @@
      0.0468,
      -0.2303
     ],
-    "paint": "p343c28"
+    "paint": "p2b3122"
    },
    {
     "name": "ar_body_wzN__ar_neon",
@@ -1634,7 +1634,7 @@
      -0.182,
      0.4167
     ],
-    "paint": "se0ad3c"
+    "paint": "sa58640"
    },
    {
     "name": "ar_body_wzN__ar_charm",
@@ -1730,7 +1730,7 @@
      -0.1167,
      -0.0374
     ],
-    "paint": "se0ad3c"
+    "paint": "sa58640"
    }
   ],
   "tris": 9894,
@@ -1982,7 +1982,7 @@
      -0.046,
      0.141
     ],
-    "paint": "p37b4aa+"
+    "paint": "p2a8f86"
    },
    {
     "name": "smg_body_wzA__smg_steel",
@@ -2362,7 +2362,7 @@
      -0.1188,
      0.0386
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "pb_body_wzA__pb_pearl",
@@ -2434,7 +2434,7 @@
      -0.05,
      -0.0057
     ],
-    "paint": "sb08d45+"
+    "paint": "s947839+"
    },
    {
     "name": "slide_wzB__pb_roll_r",
@@ -2458,7 +2458,7 @@
      0.0275,
      -0.1253
     ],
-    "paint": "s7d838d"
+    "paint": "s6f757f"
    },
    {
     "name": "mag_wzB__pb_dark",
@@ -2506,7 +2506,7 @@
      0.029,
      0.0223
     ],
-    "paint": "se0b04a"
+    "paint": "sa58640"
    },
    {
     "name": "mag_wzB__pb_copper",
@@ -2530,7 +2530,7 @@
      0.0286,
      -0.0437
     ],
-    "paint": "sd0703a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "pb_body_wzA__pb_frame",
@@ -2602,7 +2602,7 @@
      -0.0037,
      -0.0808
     ],
-    "paint": "s5676cf"
+    "paint": "s4a67b8"
    },
    {
     "name": "pb_body_wzN__pb_brass",
@@ -2626,7 +2626,7 @@
      -0.0264,
      0.0101
     ],
-    "paint": "se0b04a"
+    "paint": "sa58640"
    },
    {
     "name": "pb_body_wzN__pb_dark",
@@ -2674,7 +2674,7 @@
      0.0437,
      0.0609
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "slide_wzB__pb_satin",
@@ -2698,7 +2698,7 @@
      0.0495,
      0.0598
     ],
-    "paint": "s7d838d"
+    "paint": "s6f757f"
    },
    {
     "name": "slide_wzB__pb_rib",
@@ -2795,7 +2795,7 @@
      0.0292,
      -0.0375
     ],
-    "paint": "s7d838d"
+    "paint": "s6f757f"
    }
   ],
   "tris": 7690,
@@ -2998,7 +2998,7 @@
      0.0503,
      0.028
     ],
-    "paint": "s6c717b"
+    "paint": "s50555f"
    },
    {
     "name": "rv_body_wzN__rv_gold",
@@ -3022,7 +3022,7 @@
      0.0742,
      0.1112
     ],
-    "paint": "sb08d45"
+    "paint": "s947839"
    },
    {
     "name": "cylinder_wzB__rv_satin",
@@ -3046,7 +3046,7 @@
      0.039,
      0.0018
     ],
-    "paint": "s6c717b"
+    "paint": "s50555f"
    },
    {
     "name": "cylinder_wzB__rv_copper",
@@ -3070,7 +3070,7 @@
      0.0369,
      -0.041
     ],
-    "paint": "sd0703a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "hammer_wzN__rv_gold",
@@ -3094,7 +3094,7 @@
      0.0733,
      0.0982
     ],
-    "paint": "sb08d45"
+    "paint": "s947839"
    },
    {
     "name": "rv_body_wzA__rv_chrome",
@@ -3118,7 +3118,7 @@
      0.063,
      0.085
     ],
-    "paint": "s838892"
+    "paint": "s5f646e"
    },
    {
     "name": "rv_body_wzB__rv_chrome",
@@ -3142,7 +3142,7 @@
      0.0795,
      -0.065
     ],
-    "paint": "s838892"
+    "paint": "s5f646e"
    },
    {
     "name": "rv_body_wzB__rv_dark",
@@ -3402,7 +3402,7 @@
      -0.0086,
      -0.0925
     ],
-    "paint": "se8b445"
+    "paint": "sa58640"
    },
    {
     "name": "pump_wzA__sg_forend",
@@ -3426,7 +3426,7 @@
      0.0268,
      -0.299
     ],
-    "paint": "w4a3222"
+    "paint": "w3b281c"
    },
    {
     "name": "sg_body_wzA__sg_walnut",
@@ -3450,7 +3450,7 @@
      0.034,
      0.3751
     ],
-    "paint": "w4a3222"
+    "paint": "w3b281c"
    },
    {
     "name": "sg_body_wzB__sg_blued",
@@ -3596,7 +3596,7 @@
      0.0366,
      -0.0933
     ],
-    "paint": "pb3312c"
+    "paint": "p9a2b27"
    }
   ],
   "tris": 7660,
@@ -3701,7 +3701,7 @@
      0.0109,
      -0.0782
     ],
-    "paint": "w5c3324"
+    "paint": "w452a1e"
    },
    {
     "name": "forend_iron_wzB__so_screw",
@@ -3725,7 +3725,7 @@
      0.0035,
      -0.0649
     ],
-    "paint": "s868b95"
+    "paint": "s6f747e"
    },
    {
     "name": "hammerL_wzN__so_checker",
@@ -3797,7 +3797,7 @@
      0.0172,
      -0.012
     ],
-    "paint": "s868b95"
+    "paint": "s6f747e"
    },
    {
     "name": "hinge_trim_wzN__so_dash",
@@ -3821,7 +3821,7 @@
      0.0338,
      -0.2939
     ],
-    "paint": "m232c40"
+    "paint": "m20242c"
    },
    {
     "name": "shell1_wzN__so_hull",
@@ -3845,7 +3845,7 @@
      0.0301,
      -0.024
     ],
-    "paint": "pb3312c"
+    "paint": "p9a2b27"
    },
    {
     "name": "shell2_wzN__so_hull",
@@ -3869,7 +3869,7 @@
      0.0301,
      -0.024
     ],
-    "paint": "pb3312c"
+    "paint": "p9a2b27"
    },
    {
     "name": "so_body_wzA__so_candy",
@@ -3893,7 +3893,7 @@
      0.0317,
      0.145
     ],
-    "paint": "w5c3324"
+    "paint": "w452a1e"
    },
    {
     "name": "so_body_wzB__so_blued",
@@ -3917,7 +3917,7 @@
      0.0358,
      0.0829
     ],
-    "paint": "m232c40+"
+    "paint": "m20242c"
    },
    {
     "name": "so_body_wzN__so_sticker",
@@ -3941,7 +3941,7 @@
      0.0171,
      0.0308
     ],
-    "paint": "s4d525d"
+    "paint": "s474b55"
    },
    {
     "name": "forend_iron_wzB__so_case",
@@ -3965,7 +3965,7 @@
      0.0122,
      -0.0509
     ],
-    "paint": "s4d525d"
+    "paint": "s474b55"
    },
    {
     "name": "hammerL_wzN__so_hammer",
@@ -3989,7 +3989,7 @@
      0.0569,
      0.0802
     ],
-    "paint": "m283044+"
+    "paint": "m262a33"
    },
    {
     "name": "hammerR_wzN__so_hammer",
@@ -4013,7 +4013,7 @@
      0.0569,
      0.0802
     ],
-    "paint": "m283044+"
+    "paint": "m262a33"
    },
    {
     "name": "hinge_wzB__so_blued",
@@ -4037,7 +4037,7 @@
      0.0335,
      -0.0123
     ],
-    "paint": "m232c40+"
+    "paint": "m20242c"
    },
    {
     "name": "hinge_wzB__so_chamber",
@@ -4109,7 +4109,7 @@
      0.0335,
      -0.0123
     ],
-    "paint": "m1e232f+"
+    "paint": "m20242c"
    },
    {
     "name": "hinge_trim_wzN__so_cut",
@@ -4133,7 +4133,7 @@
      0.0335,
      -0.3055
     ],
-    "paint": "s9aa0aa"
+    "paint": "s7d828c"
    },
    {
     "name": "hinge_trim_wzN__so_bore",
@@ -4181,7 +4181,7 @@
      0.037,
      -0.3
     ],
-    "paint": "se8b445"
+    "paint": "sa58640"
    },
    {
     "name": "shell1_wzN__so_brass",
@@ -4205,7 +4205,7 @@
      0.0309,
      -0.0123
     ],
-    "paint": "se8b445"
+    "paint": "sa58640"
    },
    {
     "name": "shell1_wzN__so_headstamp",
@@ -4253,7 +4253,7 @@
      0.0309,
      -0.0123
     ],
-    "paint": "se8b445"
+    "paint": "sa58640"
    },
    {
     "name": "shell2_wzN__so_headstamp",
@@ -4301,7 +4301,7 @@
      0.0336,
      0.087
     ],
-    "paint": "s4d525d"
+    "paint": "s474b55"
    },
    {
     "name": "so_body_wzN__so_screw",
@@ -4325,7 +4325,7 @@
      0.0358,
      0.0877
     ],
-    "paint": "s868b95"
+    "paint": "s6f747e"
    },
    {
     "name": "so_body_wzN__so_brass",
@@ -4349,7 +4349,7 @@
      -0.0101,
      0.0474
     ],
-    "paint": "se8b445"
+    "paint": "sa58640"
    },
    {
     "name": "so_body_wzN__so_endgrain",
@@ -4373,7 +4373,7 @@
      -0.0776,
      0.1469
     ],
-    "paint": "w6e4a33"
+    "paint": "w553a29"
    },
    {
     "name": "so_body_wzN__so_tape",
@@ -4690,7 +4690,7 @@
      0.0384,
      0.0263
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "bolt_wzB__sn_steel",
@@ -4762,7 +4762,7 @@
      0.0868,
      0.5571
     ],
-    "paint": "p8f8268"
+    "paint": "p7c7059"
    },
    {
     "name": "sniper_body_wzB__sn_steel",
@@ -4931,7 +4931,7 @@
      0.1394,
      -0.2709
     ],
-    "paint": "p8f8268"
+    "paint": "p7c7059"
    }
   ],
   "tris": 12266,
@@ -5108,7 +5108,7 @@
      0.048,
      -0.17
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "mag_wzB__dm_steel",
@@ -5156,7 +5156,7 @@
      -0.0201,
      -0.0332
     ],
-    "paint": "sc8683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "dmr_body_wzA__dm_wood",
@@ -5180,7 +5180,7 @@
      0.0703,
      0.569
     ],
-    "paint": "p474262"
+    "paint": "p363349"
    },
    {
     "name": "dmr_body_wzA__dm_steel",
@@ -5325,7 +5325,7 @@
      0.1188,
      0.2068
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "dmr_body_wzN__dm_bandaid",
@@ -5349,7 +5349,7 @@
      0.0324,
      0.535
     ],
-    "paint": "p474262"
+    "paint": "p363349"
    },
    {
     "name": "dmr_body_wzN__dm_lens",
@@ -5446,7 +5446,7 @@
      0.1447,
      -0.1717
     ],
-    "paint": "p7d6fc4"
+    "paint": "p6557a8"
    },
    {
     "name": "mag_wzB__dm_dark",
@@ -5494,7 +5494,7 @@
      -0.0198,
      0.022
     ],
-    "paint": "se0ad3c"
+    "paint": "sa58640"
    }
   ],
   "tris": 8690,
@@ -5680,7 +5680,7 @@
      0.016,
      0.1316
     ],
-    "paint": "pd1a644+"
+    "paint": "p252d3b"
    },
    {
     "name": "charge_wzB__bu_steel",
@@ -5728,7 +5728,7 @@
      0.08,
      -0.0892
     ],
-    "paint": "p3f6fc9"
+    "paint": "p3560b0"
    },
    {
     "name": "mag_wzA__bu_blue",
@@ -5752,7 +5752,7 @@
      -0.2536,
      0.1396
     ],
-    "paint": "p2f3a4d"
+    "paint": "p252d3b"
    },
    {
     "name": "mag_wzB__bu_dark",
@@ -5800,7 +5800,7 @@
      -0.0464,
      0.0532
     ],
-    "paint": "sc8683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "burst_body_wzA__bu_polymer",
@@ -5848,7 +5848,7 @@
      0.0792,
      0.5236
     ],
-    "paint": "p2f3a4d"
+    "paint": "p252d3b"
    },
    {
     "name": "burst_body_wzA__bu_navy",
@@ -5872,7 +5872,7 @@
      0.0872,
      0.5204
     ],
-    "paint": "p252b3a"
+    "paint": "p1e2430"
    },
    {
     "name": "burst_body_wzB__bu_steel",
@@ -5920,7 +5920,7 @@
      0.0348,
      -0.5644
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "burst_body_wzN__bu_black",
@@ -6017,7 +6017,7 @@
      -0.0456,
      -0.1612
     ],
-    "paint": "p3f6fc9"
+    "paint": "p3560b0"
    },
    {
     "name": "burst_body_wzN__bu_bread",
@@ -6137,7 +6137,7 @@
      -0.0459,
      0.1108
     ],
-    "paint": "se0ad3c"
+    "paint": "sa58640"
    }
   ],
   "tris": 7628,
@@ -6627,7 +6627,7 @@
      -0.0652,
      0.1805
     ],
-    "paint": "r6b4636"
+    "paint": "r5a3b2e"
    },
    {
     "name": "lmg_body_wzB__lmg_orange",
@@ -6747,7 +6747,7 @@
      0.0689,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_00__lmg_copper",
@@ -6771,7 +6771,7 @@
      0.0664,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_01__lmg_brass",
@@ -6795,7 +6795,7 @@
      0.0681,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_01__lmg_copper",
@@ -6819,7 +6819,7 @@
      0.0656,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_02__lmg_brass",
@@ -6843,7 +6843,7 @@
      0.061,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_02__lmg_copper",
@@ -6867,7 +6867,7 @@
      0.0585,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_03__lmg_brass",
@@ -6891,7 +6891,7 @@
      0.046,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_03__lmg_copper",
@@ -6915,7 +6915,7 @@
      0.0435,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_04__lmg_brass",
@@ -6939,7 +6939,7 @@
      0.028,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_04__lmg_copper",
@@ -6963,7 +6963,7 @@
      0.0255,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_05__lmg_brass",
@@ -6987,7 +6987,7 @@
      0.0091,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_05__lmg_copper",
@@ -7011,7 +7011,7 @@
      0.0066,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_06__lmg_brass",
@@ -7035,7 +7035,7 @@
      -0.01,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_06__lmg_copper",
@@ -7059,7 +7059,7 @@
      -0.0126,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_07__lmg_brass",
@@ -7083,7 +7083,7 @@
      -0.0291,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_07__lmg_copper",
@@ -7107,7 +7107,7 @@
      -0.0317,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_08__lmg_brass",
@@ -7131,7 +7131,7 @@
      -0.0481,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_08__lmg_copper",
@@ -7155,7 +7155,7 @@
      -0.0506,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_09__lmg_brass",
@@ -7179,7 +7179,7 @@
      -0.0665,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_09__lmg_copper",
@@ -7203,7 +7203,7 @@
      -0.0691,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_10__lmg_brass",
@@ -7227,7 +7227,7 @@
      -0.0853,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_10__lmg_copper",
@@ -7251,7 +7251,7 @@
      -0.0878,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "belt_11__lmg_brass",
@@ -7275,7 +7275,7 @@
      -0.1043,
      -0.0374
     ],
-    "paint": "se2ae3e"
+    "paint": "sa58640"
    },
    {
     "name": "belt_11__lmg_copper",
@@ -7299,7 +7299,7 @@
      -0.1068,
      -0.0973
     ],
-    "paint": "sc4683a"
+    "paint": "s9c5c3a"
    },
    {
     "name": "cover_wzA__lmg_orange",
@@ -7323,7 +7323,7 @@
      0.0732,
      0.0853
     ],
-    "paint": "pd2622a"
+    "paint": "pb5531f"
    },
    {
     "name": "lmg_body_wzA__lmg_orange",
@@ -7541,7 +7541,7 @@
      0.0559,
      0.4969
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "lmg_body_wzN__lmg_dial",
@@ -7589,7 +7589,7 @@
      -0.0361,
      0.1036
     ],
-    "paint": "pd2622a"
+    "paint": "pb5531f"
    },
    {
     "name": "lmg_body_wzN__lmg_label",
@@ -7685,7 +7685,7 @@
      -0.1732,
      0.0045
     ],
-    "paint": "r6b4636"
+    "paint": "r5a3b2e"
    }
   ],
   "tris": 8006,
@@ -8070,7 +8070,7 @@
      -0.0317,
      -0.0645
     ],
-    "paint": "pb3312c"
+    "paint": "p9a2b27"
    },
    {
     "name": "autoshot_body_wzA__as_green",
@@ -8094,7 +8094,7 @@
      0.0729,
      0.495
     ],
-    "paint": "p41674a"
+    "paint": "p36563e"
    },
    {
     "name": "autoshot_body_wzA__as_steel",
@@ -8214,7 +8214,7 @@
      0.0413,
      -0.6738
     ],
-    "paint": "p365a3e"
+    "paint": "p2f4c36"
    },
    {
     "name": "autoshot_body_wzN__as_dot",
@@ -8263,7 +8263,7 @@
      0.0118,
      -0.2585
     ],
-    "paint": "p41674a"
+    "paint": "p36563e"
    },
    {
     "name": "autoshot_body_wzN__as_chrome",
@@ -8287,7 +8287,7 @@
      0.0342,
      0.1989
     ],
-    "paint": "s868b95"
+    "paint": "s767b85"
    },
    {
     "name": "autoshot_body_wzN__as_red",
@@ -8311,7 +8311,7 @@
      0.0373,
      0.1472
     ],
-    "paint": "pb3312c"
+    "paint": "p9a2b27"
    },
    {
     "name": "mag_wzB__as_dark",
@@ -8521,7 +8521,7 @@
      -0.0935,
      0.1876
     ],
-    "paint": "r3a2a22"
+    "paint": "r30231d"
    },
    {
     "name": "lever_wzB__lv_case",
@@ -8545,7 +8545,7 @@
      -0.0253,
      0.2126
     ],
-    "paint": "s666b76"
+    "paint": "s565b66"
    },
    {
     "name": "lever_wzN__lv_gold",
@@ -8569,7 +8569,7 @@
      -0.0347,
      -0.0144
     ],
-    "paint": "sb08d45"
+    "paint": "s947839"
    },
    {
     "name": "lever_body_wzA__lv_pink",
@@ -8593,7 +8593,7 @@
      0.0398,
      0.4862
     ],
-    "paint": "r3a2a22"
+    "paint": "r30231d"
    },
    {
     "name": "lever_body_wzB__lv_dark",
@@ -8641,7 +8641,7 @@
      -0.0289,
      0.0682
     ],
-    "paint": "sb08d45"
+    "paint": "s947839"
    },
    {
     "name": "lhammer_wzB__lv_dark",
@@ -8689,7 +8689,7 @@
      0.0398,
      -0.0017
     ],
-    "paint": "w573823"
+    "paint": "w432b1c"
    },
    {
     "name": "lever_body_wzA__lv_case",
@@ -8713,7 +8713,7 @@
      0.0398,
      0.2094
     ],
-    "paint": "s666b76"
+    "paint": "s565b66"
    },
    {
     "name": "lever_body_wzA__lv_walnut",
@@ -8737,7 +8737,7 @@
      0.025,
      0.4712
     ],
-    "paint": "w573823"
+    "paint": "w432b1c"
    },
    {
     "name": "lever_body_wzB__lv_blued",
@@ -8810,7 +8810,7 @@
      -0.0033,
      0.0917
     ],
-    "paint": "se0ad3c"
+    "paint": "sa58640"
    },
    {
     "name": "lever_body_wzN__lv_gold",
@@ -8834,7 +8834,7 @@
      0.0158,
      0.473
     ],
-    "paint": "sb08d45"
+    "paint": "s947839"
    },
    {
     "name": "lever_body_wzN__lv_rope",
@@ -8858,7 +8858,7 @@
      -0.0388,
      0.0951
     ],
-    "paint": "r85765a"
+    "paint": "r6f6249"
    },
    {
     "name": "lever_body_wzN__lv_gem",
@@ -8883,7 +8883,7 @@
      -0.0289,
      0.3492
     ],
-    "paint": "sb08d45"
+    "paint": "s947839"
    },
    {
     "name": "lhammer_wzB__lv_case",
@@ -8907,7 +8907,7 @@
      0.068,
      0.1365
     ],
-    "paint": "s666b76"
+    "paint": "s565b66"
    }
   ],
   "tris": 6754,

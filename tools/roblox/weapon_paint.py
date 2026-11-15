@@ -34,80 +34,92 @@ DEFAULT = 'calm'
 # neutral per gun (olive, tan, walnut, slate, graphite ...) and each gun keeps ONE small accent in its web hue.
 # bright chrome goes to mid steel (it washed out to white under the hall lamps), joke stickers take the colour of
 # the surface under them, and nothing glows except sights, lenses and heat.
-STEEL = 's868b95'      # mid steel (was bright chrome)
+# CHOOSE DARK: the training hall's lamps show a colour far brighter than a Blender preview does (first photo round,
+# 2026-11-15: 4c5639 olive came out lime, 4a3222 walnut orange). these values are what looked right IN the hall.
+STEEL = 's767b85'      # mid steel (was bright chrome)
 STEEL_D = 'm3a3d45'    # dark steel
 POLY = 'p1e2024'       # black polymer
 RUBBER = 'r1d1e21'     # black rubber / grip
-BRASS = 'sb08d45'      # muted brass (was shiny gold)
-SHELL = 'pb3312c'      # shotgun hulls: the one red left
-WALNUT = 'w4a3222'
+BRASS = 's947839'      # muted brass trim (was shiny gold)
+CART = 'sa58640'       # cartridge brass (the web's was a loud yellow)
+TIP = 's9c5c3a'        # copper bullet tips
+SHELL = 'p9a2b27'      # shotgun hulls: the one red left
+WALNUT = 'w3b281c'
 
 CALM = {
  # Assault Rifle: olive furniture on gunmetal, a smoked magazine
  'w_ar': {
-  'ar_olive': 'p4c5639', 'ar_grip': 'r3e472f', 'ar_tape': 'p343c28', 'ar_neon': 'p1b1c20', 'ar_sticker': 'm2c3036',
-  'ar_charm': STEEL_D, 'ar_mag': 'g2b2e34b8', 'ar_magbase': POLY, 'ar_white': 'pc8c8c8',
+  'ar_olive': 'p3e4630', 'ar_grip': 'r343b29', 'ar_tape': 'p2b3122', 'ar_neon': 'p1b1c20', 'ar_sticker': 'm2c3036',
+  'ar_charm': STEEL_D, 'ar_mag': 'g2b2e34b8', 'ar_magbase': POLY, 'ar_white': 'pc8c8c8', 'ar_brass': CART, 'ar_copper': TIP,
+ },
+ # SMG: as the web has it (black, one teal accent); only the cartridge-free details are touched
+ 'w_smg': {
+  'smg_freshener': 'p2a8f86',
  },
  # Plan B: black frame, steel slide, anodised blue controls
  'w_pistol': {
-  'pb_frame': POLY, 'pb_pearl': 'r2a2c31', 'pb_satin': 's7d838d', 'pb_polish': STEEL, 'pb_rib': 'm4a4e57',
-  'pb_roll_r': 's7d838d', 'pb_roll_l': 's7d838d', 'pb_tin': STEEL_D, 'pb_gold': 's5676cf', 'pb_medal': 'sb08d45+',
+  'pb_frame': POLY, 'pb_pearl': 'r2a2c31', 'pb_satin': 's6f757f', 'pb_polish': STEEL, 'pb_rib': 'm4a4e57',
+  'pb_roll_r': 's6f757f', 'pb_roll_l': 's6f757f', 'pb_tin': STEEL_D, 'pb_gold': 's4a67b8', 'pb_medal': 's947839+',
+  'pb_brass': CART, 'pb_copper': TIP,
  },
- # Revolver: stainless, a black grip, brass controls, the orange front sight
+ # Revolver: gunmetal stainless, a black grip, brass controls, the orange front sight
  'w_revolver': {
-  'rv_pearl': RUBBER, 'rv_satin': 's6c717b', 'rv_chrome': 's838892', 'rv_gold': BRASS,
+  'rv_pearl': RUBBER, 'rv_satin': 's50555f', 'rv_chrome': 's5f646e', 'rv_gold': BRASS, 'rv_copper': TIP,
  },
  # Shotgun: blued steel and dark walnut, red shells
  'w_shotgun': {
-  'sg_forend': WALNUT, 'sg_walnut': WALNUT, 'sg_hull': SHELL,
+  'sg_forend': WALNUT, 'sg_walnut': WALNUT, 'sg_hull': SHELL, 'sg_brass': CART,
  },
- # Half a Shotgun: cherry wood, a steel receiver, red shells
+ # Half a Shotgun: dark cherry wood, steel barrels and receiver, red shells
  'w_sawnoff': {
-  'so_candy': 'w5c3324', 'so_case': 's4d525d', 'so_screw': STEEL, 'so_dash': 'm232c40', 'so_sticker': 's4d525d',
-  'so_hull': SHELL, 'so_cut': 's9aa0aa', 'so_endgrain': 'w6e4a33', 'so_tape': 'p1d1d21',
+  'so_candy': 'w452a1e', 'so_case': 's474b55', 'so_screw': 's6f747e', 'so_dash': 'm20242c', 'so_sticker': 's474b55',
+  'so_hull': SHELL, 'so_cut': 's7d828c', 'so_endgrain': 'w553a29', 'so_tape': 'p1d1d21', 'so_blued': 'm20242c',
+  'so_hammer': 'm262a33', 'so_ribtop': 'm20242c', 'so_brass': CART,
  },
  # Sniper: a tan stock on black steel, the violet lens
  'w_sniper': {
-  'sn_pink': 'p8f8268', 'sn_sticker': 'p8f8268', 'sn_gold': STEEL_D, 'sn_bolt': STEEL, 'sn_white': 'pc8c8c8',
+  'sn_pink': 'p7c7059', 'sn_sticker': 'p7c7059', 'sn_gold': STEEL_D, 'sn_bolt': STEEL, 'sn_white': 'pc8c8c8',
  },
  # Second Opinion: dusk violet furniture (toned down), the medic cross stays
  'w_dmr': {
-  'dm_wood': 'p474262', 'dm_bandaid': 'p474262', 'dm_tubing': 'p7d6fc4', 'dm_chrome': STEEL, 'dm_diaphragm': STEEL,
+  'dm_wood': 'p363349', 'dm_bandaid': 'p363349', 'dm_tubing': 'p6557a8', 'dm_chrome': STEEL, 'dm_diaphragm': STEEL,
+  'dm_brass': CART, 'dm_copper': TIP,
  },
  # Hat Trick: slate blue body, blue controls
  'w_burst': {
-  'burst_body_wzA__bu_blue': 'p2f3a4d', 'mag_wzA__bu_blue': 'p2f3a4d', 'bu_navy': 'p252b3a', 'bu_yellow': 'p3f6fc9',
-  'bu_bread': RUBBER, 'bu_crumb': RUBBER, 'bu_tape': 'p3a3d44', 'bu_chrome': STEEL,
+  'burst_body_wzA__bu_blue': 'p252d3b', 'mag_wzA__bu_blue': 'p252d3b', 'bu_navy': 'p1e2430', 'bu_yellow': 'p3560b0',
+  'bu_bread': RUBBER, 'bu_crumb': RUBBER, 'bu_tape': 'p3a3d44', 'bu_chrome': STEEL, 'bu_sticker': 'p252d3b',
+  'bu_brass': CART, 'bu_copper': TIP,
  },
  # Belt Sander: graphite body, an orange feed cover and switches, a black cable
  'w_lmg': {
-  'lmg_body_wzA__lmg_orange': 'p34373d', 'lmg_body_wzB__lmg_orange': 'p34373d', 'cover_wzA__lmg_orange': 'pd2622a',
-  'lmg_grit': 'r6b4636', 'lmg_cord': RUBBER, 'lmg_yellow': 'pd2622a', 'lmg_tag': 'p333e29', 'lmg_chrome': STEEL,
+  'lmg_body_wzA__lmg_orange': 'p34373d', 'lmg_body_wzB__lmg_orange': 'p34373d', 'cover_wzA__lmg_orange': 'pb5531f',
+  'lmg_grit': 'r5a3b2e', 'lmg_cord': RUBBER, 'lmg_yellow': 'pb5531f', 'lmg_tag': 'p333e29', 'lmg_chrome': STEEL,
+  'lmg_brass': CART, 'lmg_copper': TIP,
  },
  # Lawn Mower: machine green furniture (toned down), the red pull-start
  'w_autoshot': {
-  'as_green': 'p41674a', 'as_grass': 'p365a3e', 'as_red': SHELL, 'as_hazard': 'm26282d', 'as_keep': 'p41674a',
+  'as_green': 'p36563e', 'as_grass': 'p2f4c36', 'as_red': SHELL, 'as_hazard': 'm26282d', 'as_keep': 'p36563e',
   'as_mow': 'm121316', 'as_cord': 'p8e8e8e', 'as_chrome': STEEL,
  },
  # Yeehaw: saddle walnut, a steel receiver, brass trim
  'w_lever': {
-  'lv_leather': 'r3a2a22', 'lv_case': 's666b76', 'lv_pink': 'r3a2a22', 'lv_gem_w': BRASS, 'lv_gem': BRASS,
-  'lv_gold': BRASS, 'lv_forend': 'w573823', 'lv_walnut': 'w573823', 'lv_rope': 'r85765a',
+  'lv_leather': 'r30231d', 'lv_case': 's565b66', 'lv_pink': 'r30231d', 'lv_gem_w': BRASS, 'lv_gem': BRASS,
+  'lv_gold': BRASS, 'lv_forend': 'w432b1c', 'lv_walnut': 'w432b1c', 'lv_rope': 'r6f6249', 'lv_brass': CART,
  },
  # Redline: black with its red (touch-ups: the grip and the tape lose their pictures, chrome goes to steel)
  'w_redline': {
-  'rl_grip': 'r2b2623', 'rl_tape': 'pa8322c', 'rl_chrome': STEEL, 'rl_red': 'pc22a2a', 'rl_white': 'pd0d0d0',
+  'rl_grip': 'r2b2623', 'rl_tape': 'p9a2b27', 'rl_chrome': STEEL, 'rl_red': 'pb82a2a', 'rl_white': 'pd0d0d0',
  },
  # Marble Shotgun: antique brass and walnut; the marbles stay bright (they are the ammunition)
  'w_marbles': {
-  'mb_brass': 's9a7a3e', 'mb_walnut': WALNUT, 'mb_plaque': 's9a7a3e', 'mb_zinc': STEEL, 'mb_ramrod': 'w6e4a33',
+  'mb_brass': 's86693a', 'mb_walnut': WALNUT, 'mb_plaque': 's86693a', 'mb_zinc': STEEL, 'mb_ramrod': 'w553a29',
   'mb_label': 'pb9b3a6',
  },
- # Katana: as it is, the gold a little older
+ # Katana: as it is
  'w_katana': {
  },
 }
-
 
 
 def hex_rgb(h): return [int(h[j:j + 2], 16) / 255 for j in (0, 2, 4)]

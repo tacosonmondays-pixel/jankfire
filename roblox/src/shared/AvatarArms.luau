@@ -24,7 +24,6 @@ AvatarArms.KIT = {
 	sleeve = Color3.fromRGB(46, 49, 56), -- graphite (flat: Fabric's weave read as noise this close to the eye)
 	cuff = Color3.fromRGB(24, 25, 29), -- the band at the wrist
 	trim = Color3.fromRGB(64, 68, 77), -- a lighter edge on the cuff (kept dark: you look down the arm, so a pale one shows as a plate)
-	pad = Color3.fromRGB(44, 47, 54), -- the plate on the back of the hand
 }
 
 -- sizes in metres x k (the viewmodel's studs per metre)
@@ -135,14 +134,7 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 			end
 			band("Cuff", 1.14, 0.055, 0.03, K.cuff)
 			band("Trim", 1.17, 0.009, 0.052, K.trim)
-			-- a low plate on the back of the hand (the side away from the palm)
-			local pad = Instance.new("Part")
-			pad.Name = s.side .. "Pad"
-			pad.Size = Vector3.new(thick * 0.22, hand.Size.Y * 0.4, hand.Size.Z * 0.62)
-			pad.CFrame = CFrame.fromMatrix(centre - P * thick * 0.5 + Y * hand.Size.Y * 0.05, X, Y, Z)
-			pad.Color = K.pad; pad.Material = Enum.Material.SmoothPlastic
-			pad.Anchored = false; pad.CanCollide = false; pad.CanQuery = false; pad.CanTouch = false; pad.CastShadow = false; pad.Massless = true
-			table.insert(set2, pad)
+			-- (a plate on the back of the hand was tried: on a blocky hand it read as a grey square stuck on a box)
 		end
 		for _, p in set2 do
 			local w = Instance.new("WeldConstraint"); w.Part0 = root; w.Part1 = p; w.Parent = p
