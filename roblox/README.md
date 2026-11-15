@@ -42,9 +42,10 @@ the eleven guns of batch 3 (`docs/BATCH3-GUNS.md`) went in exactly like this:
    bounds, muzzle and sight for `mdl`, and with `--sil` draws the gun's side view as text (to pick the grip and fore
    spots). `export_report.json` also lists where every moving node turns (`nodes`) and the web model's own notes
    (`meta`: pump travel, bolt lift and so on) for `mdl.parts`. Upload the .glb (Open Cloud, Model), put its asset id
-   in `roblox/assets/weapons/assets.json`, run `node tools/roblox/weapon_import_call.mjs <id>` and paste what it
-   prints into Studio (execute_luau, Edit). That is `PolishBackup.WeaponImport`: it paints every piece from its
-   name, keeps the pictures, checks the facing against the exporter's bounds and puts `w_<id>` in
+   in `roblox/assets/weapons/assets.json`, give the gun its calm paint (next section), push the paint book
+   (`node tools/roblox/push.mjs <out.rbxm> roblox/studio-tools/WeaponPaint.luau`) and run in Studio (execute_luau,
+   Edit) `require(game.ServerStorage.PolishBackup.WeaponImport:Clone()).load({ "<id>" })`. That loads the asset,
+   paints every piece, checks the facing against the exporter's bounds and puts `w_<id>` in
    ReplicatedStorage.JankfireWeapons.
 3. **Sound:** `node tools/roblox/render_guns.mjs` writes `roblox/assets/sounds/gun_<id>.wav` (14 guns are rendered:
    the 12 plain guns, the Minigun and Lefty & Righty). Upload it (Open Cloud, Audio) and add a Sound named `gun_<id>`
@@ -60,6 +61,54 @@ The server needs nothing for a plain gun: `Rules.luau` and `Combat.server.luau` 
 row (held, ammo, fire rate, range, line of sight, that the shot was really aimed at the target along its last 0.6 s,
 and for one-bullet guns that a claimed headshot crossed the head). Row fields the server acts on by itself: `kb` /
 `kbUp` (shove the victim), `lethalHead`, `burst` + `burstGap`, `ramp` + `chain`, `quick` + `qsDmg`, `fan`, `ricochet`.
+
+### The paint is a switch: `calm` (the default) or `web`
+
+The owner's direction (15 November 2026): the weapons and mechanics come from the web game, the finish is the Roblox
+game's own, serious and less colourful. So a weapon's **shape, pieces and numbers** come from the web model, and its
+**paint** comes from `tools/roblox/weapon_paint.py`:
+
+- `calm`: a quiet body (black polymer, dark and mid steel, one muted furniture colour per gun: olive, tan, walnut,
+  slate, graphite) and one small accent per gun in its web hue. Bright only where it tells the player something: a
+  sight dot, a heat glow, live shells, the marbles. Joke stickers take the colour of the surface under them.
+- `web`: the web game's paint exactly as the model file carries it, pictures and all. Nothing is lost: the piece
+  names in every .glb, and so every uploaded asset, always carry the web look.
+
+How it fits together:
+
+| what | where |
+| --- | --- |
+| the table (per gun: material or `node__material` -> a paint code) | `CALM` in `tools/roblox/weapon_paint.py` |
+| a paint code | `<kind><rrggbb>[aa][+]`: `p` plastic, `m` dark metal, `s` shiny metal, `n` neon, `g` glass (+ alpha), `w` wood, `r` rubber; `+` keeps the piece's picture (a picture ignores the part's Color, so a repainted piece drops it) |
+| both paints of every gun, for Studio | `roblox/studio-tools/WeaponPaint.luau` = `ServerStorage.PolishBackup.WeaponPaint` (generated: never edit it) |
+| which paint the place wears | `paint = "calm"` at the top of that file; each template's `Paint` attribute says what it has on |
+
+To change a colour: edit `CALM`, run `py tools/roblox/weapon_paint.py roblox/assets/weapons/export_report.json`
+(add `--paint web` to make the web paint the default; `export_weapons.py` takes the same flag), push
+`roblox/studio-tools/WeaponPaint.luau` with `push.mjs`, then in Studio:
+
+```lua
+local W = require(game.ServerStorage.PolishBackup.WeaponImport:Clone())
+return W.use()          -- every template gets the book's default paint.  W.use("web") / W.use("calm", { "smg" })
+-- W.shredder("calm") / W.shredder("web")   the Shredder is a hand-imported Tool: its paint is W.SHREDDER
+-- W.load({ "smg" })                        loads a model from its asset again, painted
+```
+
+No model is uploaded again for a colour change. A
+preview without Studio is `blender -b --factory-startup -P tools/roblox/paint_preview.py -- <out_dir> --paint calm
+roblox/assets/weapons/w_*.glb`.
+
+**Choose dark.** The halls' lamps show a colour far brighter than Blender does: `4c5639` olive came out lime and
+`4a3222` walnut orange in the first photos. Look at the gun in hand in a Play test before keeping a colour. To see
+the other paint in a running test only (Edit untouched), run `W.use("web")` in the **Server** datamodel during Play.
+
+**The first-person arms** wear the game's own glove, sleeve and cuff (`AvatarArms.luau`, `AvatarArms.KIT`), built
+from your avatar's own arm shapes so they fit a blocky or a round arm. A pale avatar's bare arm blew out to a white
+shape under the lamps. The old look (your skin and shirt) is `AvatarArms.LOOK = "avatar"`, or the module's `Look`
+attribute.
+
+Wraps are untouched by any of this: a wrap repaints pieces through `Color` and takes pictures off, then restores
+whatever the template had.
 
 ### How uploads arrive (measured 2026-11-15)
 
