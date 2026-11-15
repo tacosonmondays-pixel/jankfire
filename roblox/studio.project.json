@@ -32,7 +32,10 @@
         "OverlapCheck": { "$path": "studio-tools/OverlapCheck.luau" },
         "CozyKit": { "$path": "studio-tools/CozyKit.luau" },
         "Hub2Colors": { "$path": "studio-tools/Hub2Colors.luau" },
-        "StudioExport": { "$path": "studio-tools/StudioExport.luau" }
+        "StudioExport": { "$path": "studio-tools/StudioExport.luau" },
+        "HubLab": { "$path": "studio-tools/HubLab.luau" },
+        "KitImport": { "$path": "studio-tools/KitImport.luau" },
+        "HubReskin": { "$path": "studio-tools/HubReskin.luau" }
       }
     },
     "StarterPlayer": {
@@ -59,6 +62,7 @@
       "Map": {
         "$className": "Folder",
         "Hub": { "$path": "place/Workspace/Map.Hub.rbxm" },
+        "HubLab": { "$path": "place/Workspace/Map.HubLab.rbxm" },
         "Rooftop": { "$path": "place/Workspace/Map.Rooftop.rbxm" }
       }
     },

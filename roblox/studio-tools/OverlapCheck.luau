@@ -96,6 +96,8 @@ function OC.run(): string
 			if a.name:find("Dome") or a.name:find("RingBalcony") or b.name:find("Dome") or b.name:find("RingBalcony") then continue end
 			-- the training hall's mezzanine: things stand under it and on it by design (checked by hand when it was built)
 			if a.name:find("Mezzanine") or b.name:find("Mezzanine") then continue end
+			-- the rotunda's four big screens hang across pairs of piers: they touch them on purpose
+			if (a.name:find("Frame$") and b.name:find("Pilaster")) or (b.name:find("Frame$") and a.name:find("Pilaster")) then continue end
 			if a.name:find("Railing$") and b.name:find("Railing$") then continue end
 			if a.kind == "round" or b.kind == "round" then
 				local r, o = if a.kind == "round" then a else b, if a.kind == "round" then b else a

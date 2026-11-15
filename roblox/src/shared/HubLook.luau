@@ -4,7 +4,9 @@
 -- can't see each other). hub = dark and cozy, lit by its own lamps and glow; training = the same mood with more base
 -- light; playground = open air, midday, clean and white.
 -- edit-time preview from the command bar: require(game.ReplicatedStorage.Jankfire.HubLook).preview("hub" | "training"
--- | "playground") and .preview(false) to put the saved look back. ALWAYS preview(false) before saving the place
+-- | "playground") and .preview(false) to put the saved look back. ALWAYS preview(false) before saving the place.
+-- the Rooftop's values are parked as attributes on Lighting while a preview is on, so any copy of this module (a fresh
+-- clone after an edit, since require caches) can turn it on, change it and turn it off again
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
 
@@ -48,8 +50,43 @@ H.looks = {
 		SunRays = { Intensity = 0.04 },
 	}),
 } :: { [string]: Look }
+-- the four show hubs of the hub comparison (workspace.Map.HubLab; a part in Hub.LookZones with the attribute Look
+-- names the look for whoever stands inside it):
+-- the station: cool, white and bright, like tiles under strip lights
+H.looks.lab_platform = with(HUB, {
+	Lighting = { Ambient = Color3.fromRGB(122, 128, 146), OutdoorAmbient = Color3.fromRGB(122, 128, 146), ExposureCompensation = 0.1 },
+	Atmosphere = { Density = 0.08, Color = Color3.fromRGB(150, 160, 180), Decay = Color3.fromRGB(90, 100, 120) },
+	Bloom = { Intensity = 0.3, Size = 20, Threshold = 2.1 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.1, Saturation = 0.1, TintColor = Color3.fromRGB(240, 246, 255) },
+})
+-- the bowling alley: warm and a little dim, the lanes and the carpet do the colour
+H.looks.lab_lanes = with(HUB, {
+	Lighting = { Ambient = Color3.fromRGB(112, 99, 126), OutdoorAmbient = Color3.fromRGB(112, 99, 126), ExposureCompensation = 0.25 },
+	Atmosphere = { Density = 0.1 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.22, TintColor = Color3.fromRGB(255, 240, 226) },
+})
+-- the food court: daylight through a glass roof
+H.looks.lab_foodcourt = with(HUB, {
+	Lighting = {
+		Ambient = Color3.fromRGB(112, 116, 126), OutdoorAmbient = Color3.fromRGB(128, 136, 154), Brightness = 2.6,
+		ExposureCompensation = 0.05, EnvironmentDiffuseScale = 0.35, EnvironmentSpecularScale = 0.5,
+		-- (an early-afternoon sun from the south-west, behind the spawn's left shoulder, low enough that the trees, tables
+		-- and the duck throw their shadows across the floor; straight overhead every shadow fell on its own planter)
+		ClockTime = 13.0, GeographicLatitude = 41,
+	},
+	Atmosphere = { Density = 0.2, Offset = 0.1, Haze = 0.8, Glare = 0.05, Color = Color3.fromRGB(214, 228, 246), Decay = Color3.fromRGB(176, 198, 230) },
+	Bloom = { Intensity = 0.25, Size = 20, Threshold = 2.2 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.08, Saturation = 0.12, TintColor = Color3.fromRGB(255, 252, 246) },
+	SunRays = { Intensity = 0.03 },
+})
+-- the depot: the training hall's look with a little more base light
+H.looks.lab_depot = with(HUB, {
+	Lighting = { Ambient = Color3.fromRGB(150, 144, 150), OutdoorAmbient = Color3.fromRGB(150, 144, 150), ExposureCompensation = 0.3 },
+	Atmosphere = { Density = 0.1 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.16, TintColor = Color3.fromRGB(255, 246, 234) },
+})
 -- looks that want the engine's own blue sky: the saved Sky (a sunset box) is put away while one is on
-H.plainSky = { playground = true } :: { [string]: boolean }
+H.plainSky = { playground = true, lab_foodcourt = true } :: { [string]: boolean }
 
 local function target(name: string): Instance?
 	return if name == "Lighting" then Lighting else Lighting:FindFirstChild(name)
@@ -76,7 +113,7 @@ local function capture(): Look
 		if not inst then continue end
 		s[name] = {}
 		for p in props do
-			local parked = script:GetAttribute(key(name, p))
+			local parked = Lighting:GetAttribute(key(name, p))
 			s[name][p] = if parked ~= nil then parked else (inst :: any)[p]
 		end
 	end
@@ -92,9 +129,22 @@ local function merged(look: Look?): Look
 	end
 	return out
 end
+-- the saved Sky is put away in a folder under Lighting (a Sky only counts as Lighting's own child), never in this
+-- script: an edit-time preview may run from a throwaway copy of the module, and the Sky must outlive it
 local function sky(plain: boolean)
-	local s = Lighting:FindFirstChildOfClass("Sky") or script:FindFirstChildOfClass("Sky")
-	if s then s.Parent = if plain then script else Lighting end
+	local park: Instance? = Lighting:FindFirstChild("SkyParked")
+	local s = Lighting:FindFirstChildOfClass("Sky") or (park and park:FindFirstChildOfClass("Sky")) or script:FindFirstChildOfClass("Sky")
+	if not s then return end
+	if plain then
+		if not park then
+			local f = Instance.new("Folder")
+			f.Name = "SkyParked"; f.Parent = Lighting
+			park = f
+		end
+		s.Parent = park
+	else
+		s.Parent = Lighting
+	end
 end
 
 -- name = "hub" / "training" / "playground", or nil for the saved (match) look. t = seconds to blend (nil or 0 snaps)
@@ -113,17 +163,17 @@ function H.set(name: string?, t: number?)
 	end
 end
 
--- Studio only: show a look while editing. the Rooftop's values are parked as attributes on this module
+-- Studio only: show a look while editing. the Rooftop's values are parked as attributes on Lighting
 function H.preview(name: any): string
-	local parked = script:GetAttribute("Previewing") == true
+	local parked = Lighting:GetAttribute("Previewing") == true
 	local look = if type(name) == "string" then H.looks[name] else nil
 	if look then
 		if not parked then
 			for objName, props in allProps() do
 				local inst = target(objName)
-				if inst then for p in props do script:SetAttribute(key(objName, p), (inst :: any)[p]) end end
+				if inst then for p in props do Lighting:SetAttribute(key(objName, p), (inst :: any)[p]) end end
 			end
-			script:SetAttribute("Previewing", true)
+			Lighting:SetAttribute("Previewing", true)
 		end
 		saved = capture()
 		for objName, props in merged(look) do
@@ -138,12 +188,12 @@ function H.preview(name: any): string
 		local inst = target(objName)
 		if not inst then continue end
 		for p in props do
-			local v = script:GetAttribute(key(objName, p))
-			if v ~= nil then (inst :: any)[p] = v; script:SetAttribute(key(objName, p), nil) end
+			local v = Lighting:GetAttribute(key(objName, p))
+			if v ~= nil then (inst :: any)[p] = v; Lighting:SetAttribute(key(objName, p), nil) end
 		end
 	end
 	sky(false)
-	script:SetAttribute("Previewing", nil)
+	Lighting:SetAttribute("Previewing", nil)
 	return "saved look restored"
 end
 

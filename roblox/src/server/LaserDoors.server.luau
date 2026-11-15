@@ -6,7 +6,10 @@
 -- 1.5 s between hops per player so nobody bounces; not while in a match.
 -- there is also a secret: the bullseye of the hall's middle wall target (Doors.ToPlayground, a small box 14 studs up:
 -- grapple it) drops you in the PLAYGROUND, a block course in the open air far away. its own grid brings you back, and
--- anyone who falls off its blocks is put back on its start (no death, no smog)
+-- anyone who falls off its blocks is put back on its start (no death, no smog).
+-- any other part in Hub.Doors with the attribute Land is a door too: Land names the marker folder in Hub.Doors you
+-- arrive on ("@TrainSpawns" = the training ground's spawns), Say is the callout. the show hubs of the hub comparison
+-- (workspace.Map.HubLab) use these for their training doors and the discs that take you from hub to hub
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -72,11 +75,24 @@ RunService.Heartbeat:Connect(function(dt: number)
 			end
 		end
 		if now - (last[p] or 0) < 1.5 then continue end
+		local went = false
 		for _, r in ROUTES do
 			local t = doors:FindFirstChild(r.trigger)
 			if t and t:IsA("BasePart") and inside(t, root.Position) then
 				local s = pick(r.land())
 				if s then hop(p, ch, root, s, r.text) end
+				went = true
+				break
+			end
+		end
+		if went then continue end
+		for _, t in doors:GetChildren() do
+			local land = t:GetAttribute("Land")
+			if type(land) == "string" and t:IsA("BasePart") and inside(t, root.Position) then
+				local folder = if land == "@TrainSpawns" then hub:FindFirstChild("TrainSpawns") else doors:FindFirstChild(land)
+				local s = pick(folder)
+				local say = t:GetAttribute("Say")
+				if s then hop(p, ch, root, s, if type(say) == "string" then say else "") end
 				break
 			end
 		end

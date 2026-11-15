@@ -11,15 +11,38 @@ local RunService = game:GetService("RunService")
 local HubLook = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HubLook")) :: any
 local me = Players.LocalPlayer
 local looking = "?"
+-- a show hub (the hub comparison, far from the live hub) has its own look: a part in Hub.LookZones with the attribute
+-- Look, named for whoever stands inside it. the server still calls the place "hub"
+local function zoneLook(): string?
+	local ch = me.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	local map = workspace:FindFirstChild("Map")
+	local zones = map and map:FindFirstChild("Hub") and map.Hub:FindFirstChild("LookZones")
+	if not root or not zones then return nil end
+	for _, z in zones:GetChildren() do
+		if z:IsA("BasePart") then
+			local rel = z.CFrame:PointToObjectSpace(root.Position)
+			if math.abs(rel.X) <= z.Size.X / 2 and math.abs(rel.Y) <= z.Size.Y / 2 and math.abs(rel.Z) <= z.Size.Z / 2 then
+				local l = z:GetAttribute("Look")
+				return if type(l) == "string" and HubLook.looks[l] then l else nil
+			end
+		end
+	end
+	return nil
+end
 local function relook(snap: boolean)
 	local zone = me:GetAttribute("Zone")
 	local want = if zone == "match" then "match" elseif zone == "training" then "training" elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
+	if want == "hub" then want = zoneLook() or "hub" end
 	if want == looking then return end
 	looking = want
 	HubLook.set(if want == "match" then nil else want, if snap then 0 else 0.6)
 end
 relook(true)
 me:GetAttributeChangedSignal("Zone"):Connect(function() relook(false) end)
+task.spawn(function() -- (walking or hopping between hubs doesn't change the zone, so look again now and then)
+	while true do task.wait(0.4); relook(false) end
+end)
 
 local TIPS = {
 	"the jump pads go up. the balcony goes nowhere. enjoy.",
