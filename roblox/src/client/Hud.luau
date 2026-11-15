@@ -49,8 +49,8 @@ local callRule = T.new("Frame", {
 -- the ammo plate on the right (256 px in). FightHud writes the full line, your three weapons first. on a narrow
 -- screen it shrinks to fit the gap. (FightHud finds it by name, so it sits straight in the gui with its own scale)
 local hint = T.new("TextLabel", {
-	Name = "Keys", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 36, 1, -24), Size = UDim2.fromOffset(0, 28),
-	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = 0.3, BorderSizePixel = 0,
+	Name = "Keys", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24), Size = UDim2.fromOffset(0, 28),
+	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = 0.4, BorderSizePixel = 0,
 	FontFace = T.FONT, TextSize = 13, TextColor3 = T.SOFT, RichText = true,
 	Text = "shift run     C slide     hold E grapple     space on rope = fling     V camera",
 }, gui)
@@ -62,8 +62,10 @@ local function fitHint()
 	if not cam then return end
 	local s = T.scaleNow()
 	local natural = hint.AbsoluteSize.X / hintScale.Scale
-	hintScale.Scale = math.clamp((cam.ViewportSize.X - 616 * s) / math.max(natural, 1), 0.55, s)
-	hint.Position = UDim2.new(0.5, 36 * s, 1, -24 * s)
+	-- (it is centred on the screen, under the crosshair: so it can be as wide as twice the room on its tighter side,
+	-- the left, where the plates end 328 px in)
+	hintScale.Scale = math.clamp((cam.ViewportSize.X - 680 * s) / math.max(natural, 1), 0.55, s)
+	hint.Position = UDim2.new(0.5, 0, 1, -24 * s)
 end
 hint:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitHint)
 if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitHint) end

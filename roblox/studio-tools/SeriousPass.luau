@@ -12,7 +12,7 @@ local Lighting = game:GetService("Lighting")
 
 local S = {}
 local hex = Color3.fromHex
-local SP, CONC, NEON, ASPH = Enum.Material.SmoothPlastic, Enum.Material.Concrete, Enum.Material.Neon, Enum.Material.Asphalt
+local SP, CONC, NEON, PAVE = Enum.Material.SmoothPlastic, Enum.Material.Concrete, Enum.Material.Neon, Enum.Material.Pavement
 -- the three lights: warm white, cool white, amber. none is pure white: a Neon part at 255 reads as an unlit white bar
 local WARM, COOL, AMBERGLOW = hex("f2dcc0"), hex("dfe8ee"), hex("f0c468")
 local AMBER, OFFWHITE, STEEL, DARK, BOARD = hex("d6a738"), hex("e6e3dc"), hex("4a5a70"), hex("3b3f49"), hex("16181d")
@@ -52,8 +52,10 @@ function S.training(): string
 			if string.find(d.Name, "_wz%a__") then continue end -- a weapon on display: its colours are the weapon's
 			if d:FindFirstAncestor("ToHubDoor") or d:FindFirstAncestor("ReturnDoor") then continue end -- the door kit, shared with the hub
 			if d:FindFirstAncestor("Pads") or string.sub(d.Name, 1, 7) == "jumppad" then continue end -- a jump pad keeps its cyan: it says jump
-			if d.MaterialVariant == "JankGrid" then -- the playground's blocks: pure white glared; a pale grey shows their grid
-				if d.Color ~= hex("c6ccd4") then set(d, hex("c6ccd4"), nil, "playground block") end
+			-- the playground's blocks: white, then pale grey, both read as a test level on a bright sky (judged twice). a
+			-- dark slate makes the grid a pattern and leaves the jump pads as the only colour
+			if d.MaterialVariant == "JankGrid" then
+				if d.Color ~= hex("5a6170") then set(d, hex("5a6170"), nil, "playground block") end
 				continue
 			end
 			local key = string.match(d.Name, "^([%a_]+%d*)__")
@@ -145,10 +147,11 @@ end
 -- a neon name is two things: the glowing strip (Neon) and, for the three street signs, a dark board (not Neon)
 local ROOF: { [string]: { any } } = {
 	asphaltn = { "2f3138" }, pavecity = { "3b3d45" }, wetroad = { "34363d" }, wetroadz = { "37393f" },
-	-- the two side roofs' floor: a mid asphalt, a clear step darker than the parapets and the hut. tried and dropped:
-	-- pale concrete 8b8d93 (floor, parapet, hut and towers became one grey: a baseplate) and dark 4d5058 (black in the
-	-- evening shadow, which covers half of each roof)
-	asphalt = { "7c7f88", ASPH },
+	-- the two side roofs' floor: mid-grey pavers. the paver pattern gives the bare deck a scale and a surface. tried and
+	-- dropped: pale concrete 8b8d93 (floor, parapet, hut and towers became one grey: a baseplate), dark asphalt 4d5058
+	-- (black in the evening shadow, which covers half of each roof), mid asphalt 7c7f88 (a featureless slab)
+	asphalt = { "868990", PAVE },
+	office = { "70747c" }, -- the concrete towers round the arena: darker and cooler than the roofs you play on
 	tvstatic = { "1c2028", SP }, -- the penthouse's telly: a white Neon slab blew out; a dark screen
 	brick = { "8a6c5e" }, tenement = { "715a50" }, stone = { nil, CONC }, grid = { "70737a", SP }, chrome = { nil, SP },
 	sidemint = { "8a979c" }, sideorange = { "a38c78" }, sidepink = { "9c9498" }, sidelemon = { "b0a98c" },
@@ -169,17 +172,17 @@ local TEMPLATES: { [string]: { [string]: { any } } } = {
 	arch_penthouse = {
 		-- (ph_white is the frame AND the ceiling: white Plaster read as unlit outside and noisy inside, so graphite)
 		ph_white = { "3a3c43", SP }, ph_pink = { "c9c7c2", SP }, ph_chrome = { "4d515a", SP }, ph_granite = { "3a3d45", SP },
-		ph_floor = { "6f6d68", SP }, ph_carpet = { "4b4e57" }, ph_deck = { "8d8a86" }, ph_frost = { "a7a8ac" }, ph_pad = { nil, CONC },
+		ph_floor = { "4a4b50", SP }, ph_carpet = { "4b4e57" }, ph_deck = { "8d8a86" }, ph_frost = { "5a606a" }, ph_pad = { nil, CONC },
 		ph_glass = { "465a69" }, ph_glassin = { "4c5560" }, ph_padline = { "e3b54a" },
 		ph_padlamp = { "f2dcc0" }, ph_neon = { "f2dcc0" }, ph_lamp = { "f2dcc0" },
 	},
 	arch_pooldeck = {
 		pd_case = { "2b2e35", SP }, pd_deck = { "2f3138" }, pd_stripe = { "7d828c", SP }, pd_ring = { "c9a646", SP }, pd_alu = { nil, SP },
-		pd_flamingo = { "c8a45c" }, pd_canvas = { "cfccc4", SP }, pd_c_toyteal = { "bdbab2" },
+		pd_flamingo = { "c8a45c" }, pd_canvas = { "b9b5ab", Enum.Material.Fabric }, pd_c_toyteal = { "bdbab2" },
 		pd_neonyellow = { "f0e2c0" }, pd_neongreen = { "f0e2c0" }, pd_neoncyan = { "f0e2c0" }, pd_lamp = { "f0e2c0" }, pd_neonpink = { "f2dcc0" },
 	},
 	arch_liftroom = {
-		lr_wall = { "c9c6bf" }, lr_coping = { "b9b6af" }, lr_gravel = { nil, CONC }, lr_neon = { "f2dcc0" }, door_lr_sign = { "f2dcc0" },
+		lr_wall = { "a3a19c" }, lr_coping = { "8b8984" }, lr_gravel = { nil, CONC }, lr_neon = { "f2dcc0" }, door_lr_sign = { "f2dcc0" },
 		["lr_band@trim"] = { "c9c7c1", SP }, ["v0_lr_band@trim"] = { "c9c7c1", SP }, ["v1_lr_band@trim"] = { "c9c7c1", SP },
 		["v2_lr_band@trim"] = { "c9c7c1", SP }, ["door_lr_door@trim"] = { "a9abb0", SP },
 	},

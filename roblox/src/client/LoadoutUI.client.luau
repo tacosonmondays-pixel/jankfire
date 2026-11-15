@@ -223,7 +223,12 @@ for i, slot in Roster.SLOTS do
 	-- (the weapon's own colour: a short bar down the card's left edge)
 	local bar = new("Frame", { BorderSizePixel = 0, Position = UDim2.fromOffset(0, 18), Size = UDim2.fromOffset(3, 94), ZIndex = 3 }, body)
 	T.corner(bar, 2)
-	local vp, cam = viewport(body, { Position = UDim2.fromOffset(300, 4), Size = UDim2.fromOffset(212, 118) })
+	-- (its picture: on a lighter backing and close up, so a dark gun reads on the dark card)
+	local vp, cam = viewport(body, {
+		Position = UDim2.fromOffset(300, 13), Size = UDim2.fromOffset(206, 104), BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.35,
+		Ambient = Color3.fromRGB(205, 208, 216),
+	})
+	T.corner(vp)
 	cam.FieldOfView = 40
 	local c: Card = { slot = slot, holder = holder, body = body, st = st, name = name, wrap = wrap, bar = bar, vp = vp, cam = cam }
 	body.MouseButton1Click:Connect(function()
@@ -294,10 +299,10 @@ do -- a low round podium under the weapon: a dark base, a dark top and a thin am
 		new("Part", { Anchored = true, Shape = Enum.PartType.Cylinder, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, vp)
 	end
 	local up = CFrame.Angles(0, 0, math.pi / 2) -- (a cylinder standing up)
-	p(Vector3.new(0.3, 6.0, 6.0), Color3.fromRGB(26, 28, 33), CFrame.new(0, -3.7, 0) * up)
-	p(Vector3.new(0.7, 5.2, 5.2), Color3.fromRGB(40, 43, 50), CFrame.new(0, -3.2, 0) * up)
+	p(Vector3.new(0.25, 5.0, 5.0), Color3.fromRGB(34, 37, 44), CFrame.new(0, -3.78, 0) * up)
+	p(Vector3.new(0.5, 4.4, 4.4), Color3.fromRGB(52, 56, 66), CFrame.new(0, -3.4, 0) * up)
 	-- the rim sits just under the top, so only its outer edge shows: the one amber line on the stage
-	p(Vector3.new(0.05, 5.28, 5.28), ACCENT, CFrame.new(0, -2.89, 0) * up)
+	p(Vector3.new(0.05, 4.48, 4.48), ACCENT, CFrame.new(0, -3.19, 0) * up)
 end
 local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 18), Size = UDim2.new(1, 0, 0, 60) }, previewBox)
 local bigName = label(nameBox, "", 44, UDim2.fromOffset(0, 0), UDim2.fromScale(1, 1), TEXT, Enum.TextXAlignment.Center)
@@ -557,7 +562,7 @@ local function cardModel(c: Card, id: string)
 	WeaponModels.wrap(m, wid, md)
 	m:PivotTo(CFrame.Angles(0.18, math.pi / 2, 0) * rel:Inverse())
 	m.Parent = c.vp
-	c.cam.CFrame = CFrame.lookAt(Vector3.new(0, 1.1, 7.6), Vector3.new(0, 0, 0))
+	c.cam.CFrame = CFrame.lookAt(Vector3.new(0, 0.8, 5.6), Vector3.new(0, 0, 0))
 end
 
 local function showPreview(id: string)

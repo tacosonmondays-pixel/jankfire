@@ -115,6 +115,7 @@ for _, r in {
 	table.insert(rims, f)
 end
 local hurtA = 0
+local lowA = 0 -- (a faint steady rim while you are at 25 health or under: H.hp sets it)
 function H.hurt(amount: number) hurtA = math.min(0.85, hurtA + amount / 40) end
 local flash = Instance.new("Frame")
 flash.Name = "Flash"; flash.Size = UDim2.fromScale(1, 1); flash.BackgroundColor3 = Color3.new(1, 1, 1); flash.BackgroundTransparency = 1
@@ -155,7 +156,8 @@ function H.hp(hp: number)
 		hpShown = v
 		hpText.Text = ('%d<font size="14" color="%s">  HP</font>'):format(v, T.hex(T.MUTED))
 	end
-	local low = hp <= 25 -- (nearly dead: the whole plate turns, not just the number)
+	local low = hp <= 25 -- (nearly dead: the whole plate turns, not just the number, and the screen's rim glows faintly)
+	lowA = if low and hp > 0 then 0.3 else 0
 	hpText.TextColor3 = if low then T.DANGER else T.TEXT
 	hpPlate.BackgroundColor3 = if low then Color3.fromRGB(42, 18, 21) else T.BG
 	hpEdge.Color = if low then T.DANGER else T.EDGE
@@ -186,11 +188,11 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 end
 
 -- ---------------------------------------------------------------- clock + kill target
--- where you are (hub, training, playground): low in the middle, just above the controls line (Hud's "Keys", which is
--- 36 px right of centre too). it used to sit top centre, then top left: both covered one of the hub's hanging signs in
--- the first view you get. down here it is over the floor, and the top centre is the match scoreboard's alone
+-- where you are (hub, training, playground): low in the middle, just above the controls line (Hud's "Keys"). it used
+-- to sit top centre, then top left: both covered one of the hub's hanging signs in the first view you get. down here
+-- it is over the floor, and the top centre is the match scoreboard's alone
 local top = T.new("TextLabel", {
-	Name = "Round", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 36, 1, -62), Size = UDim2.fromOffset(0, 30),
+	Name = "Round", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -62), Size = UDim2.fromOffset(0, 30),
 	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
 	FontFace = T.FONT_BOLD, TextSize = 15, TextColor3 = T.TEXT, RichText = true, Text = "",
 }, hud)
@@ -420,7 +422,8 @@ end
 
 function H.step(dt: number, aim: number, scopeHide: boolean)
 	hurtA = math.max(0, hurtA - dt * 0.9)
-	for _, r in rims do r.BackgroundTransparency = 1 - hurtA end
+	local rim = math.max(hurtA, lowA)
+	for _, r in rims do r.BackgroundTransparency = 1 - rim end
 	-- (no crosshair through the scope, over the end screen or under the settings panel)
 	cross.Visible = not scopeHide and not endPanel.Visible and me:GetAttribute("SettingsOpen") ~= true
 	for _, c in cross:GetChildren() do

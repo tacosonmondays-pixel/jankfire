@@ -196,11 +196,11 @@ The overlook (section 11) was still one room. The research in the vault (`Resear
 - **Not tested:** a match from a pad (two players), mouse turning, phones and slow machines. One fling at a rail end happened once and did not repeat.
 - **Still weak:** the lanes hall is the least reworked part (pale and bright next to the sober lobby); the snack bar is still narrow; the mode names on the boards are readable from the spawn but small. For another session: the on-screen hint says "training behind you" (`Arsenal`); training is on the left now.
 
-## 14. The serious pass: HUD, menus, Rooftop, training hall, playground, 15 November 2026 (place version 207)
+## 14. The serious pass: HUD, menus, Rooftop, training hall, playground, 15 November 2026 (place version 208)
 
 On 15 November the owner set the direction for the Roblox game: JANKFIRE's weapons and mechanics, a serious polished
 finish in the class of Rivals, fewer colours ("This is serious compared to jankfire!"). Everything outside the hub and
-the gun models had been built to the web game's comic look. This pass redraws it. Audit, before and after photos, two
+the gun models had been built to the web game's comic look. This pass redraws it. Audit, before and after photos, three
 independent judgings and the list of lines that read as jokes: `Reviews\Serious pass audit.md` in the vault. No
 weapon, number or rule changed.
 
@@ -215,8 +215,9 @@ weapon, number or rule changed.
   match, kill feed, hit marker as four ticks, hit numbers, a soft hurt rim, the death band, the end screen as a table
   with the final score and a draining bar), `LoadoutUI` (flat cards, the weapon at rest in a three-quarter view, no
   junk on the podium), `JankSettings`, the Shredder's heat bar. Same functions, same arguments.
-- **Where-you-are line:** low in the middle, just above the controls line (top centre and top left each covered one
-  of the hub's hanging signs); the top centre is the match scoreboard's alone.
+- **Where-you-are line:** low in the middle, just above the controls line, both centred under the crosshair (top
+  centre and top left each covered one of the hub's hanging signs); the top centre is the match scoreboard's alone.
+- **Low health:** at 25 and under the health plate turns red and the screen's rim glows faintly.
 - **Words:** `Hud.callout` draws lower-case words in capitals ("dummy down" shows as DUMMY DOWN); the strings are
   unchanged. One line was corrected for the new lobby: the hub hint says "training on your left", not "behind you".
 - **The grapple rope** is a pale steel cable (it was a pink-to-yellow beam), in `Move` and `Main`.
@@ -226,19 +227,24 @@ weapon, number or rule changed.
   saved light only; no part moves. Safe to run again.
   - Training hall and playground: pink, purple, cyan and blue paint go neutral, coloured glow goes warm white, crates
     and ammo boxes are muted, the floor is darker, one amber safety colour is left; targets and the Plinker stay red.
+    The playground's blocks are a dark slate (white and pale grey both read as a test level); its pads keep their cyan.
   - Rooftop: the box city loses its toy colours, neon strips become cool white / warm white / amber (a third dimmer
     out in the city), the penthouse is graphite and dark glass, the pool deck loses its magenta. The mesh templates in
     `JankfireMeshes` are repainted by piece name, so `MeshSwap` builds them calm.
   - Light (`S.LIGHT`): the same evening with a warm sun and cool shadows, a neutral haze, less bloom and saturation.
 - **Lessons:** Roblox lights paint to about twice its value under lamps, so floors and wood are painted dark; a Neon
-  part at pure white reads as an unlit bar; a dark roof goes black in evening shadow and a pale one turns the whole
-  roof into one grey (the floor is `7c7f88` asphalt); a `ScreenGui` made in code needs `ZIndexBehavior = Sibling`;
+  part at pure white reads as an unlit bar; a dark roof goes black in evening shadow, a pale one turns the whole
+  roof into one grey and plain asphalt reads as a bare slab (the floor is `868990` Pavement: the pavers give it scale); a `ScreenGui` made in code needs `ZIndexBehavior = Sibling`;
   `screen_capture` does not show BillboardGuis.
 - **Left alone on purpose:** the hub (`Hub.Lanes`, `QueuePads`, `HubLab`, `HubLook`), weapon models and their paint,
   `Fx.luau` (tracers, sparks, blood), the dummies' colours (the yard's sign describes them by colour), UI sounds (they
   cannot be judged by ear from an agent session), and every other line of text.
+- **Judged three times by independent agents.** Last round: death line, scoreboard, end screen and settings PASS; fight
+  HUD, hub HUD and loadout CLOSE; training hall PASS; Rooftop CLOSE (it had failed); playground FAIL. A fourth round
+  of fixes followed that judging and was not judged again.
 - **Not tested:** a real match with two players (the scoreboard, end screen and death band were driven with test
-  messages), phones and gamepads, the HUD over the bright Rooftop in play, the Shredder's heat bar in use.
+  messages), phones and gamepads, the HUD over the bright Rooftop in play, the Shredder's heat bar in use, and clicking equip,
+  wraps, wrap modes and rarity filters in the loadout after the restyle (their code is unchanged apart from looks).
 - **What only new modelling would fix** (second judge): bare spawn decks on the Rooftop, the empty penthouse room and
   its block sofas, the plain box city, flat cabana curtains, the playground as a designed place, weapon icons.
 
