@@ -63,7 +63,7 @@ L.LANES_PALETTES = {
 	retro = { tint = "neutral", wall = "c6ae88", ceil = "418488", carpet = "3c2c7e", machine = "3c7480", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2", panel = "9a9fa8" },
 	purple = { tint = "purple", wall = "6a5c90", ceil = "6a5fa0", carpet = "45287a", machine = "3a2d5c", base = "3a2d5c", web = "8f86c4", flange = "a59ad8", booth = "6a55b0", speaker = "6a55b0", speakerFace = "3a2d5c", grille = "4a3d6a", trim = "4b2a6b", glow = "efe6ff", panel = "9a9fa8" },
 	sand = { tint = "neutral", wall = "c8ad80", ceil = "ddd3bf", carpet = "45287a", machine = "2c4a5e", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2", panel = "9a9fa8" },
-	calm = { tint = "neutral", wall = "8a8f96", ceil = "a9aaa6", carpet = "56535f", machine = "62808a", base = "4f5863", web = "ddd8cd", flange = "ece8df", booth = "e4ddcf", speaker = "6b7480", speakerFace = "4f5863", grille = "5c6470", trim = "4f5863", glow = "fff4e2", panel = "9a9fa8",
+	calm = { tint = "neutral", wall = "70767e", ceil = "a9aaa6", carpet = "56535f", machine = "62808a", base = "4f5863", web = "ddd8cd", flange = "ece8df", booth = "e4ddcf", speaker = "6b7480", speakerFace = "4f5863", grille = "5c6470", trim = "4f5863", glow = "fff4e2", panel = "9a9fa8",
 		sober = true, shell = "5e6672", pier = "3f4753", dome = "767d86", cool = "f1f1ee", wood = "bfae92", band = "62808a", brick = "a98b7c", lamp = "fff1d6", remap = { ["37d6ff"] = "86a9b3", ffe14d = "dccf9a", ["7dff4f"] = "9dbb93", ff9a1f = "cfa57c" } },
 	teal = { tint = "neutral", wall = "3e8a8c", ceil = "cfd6d2", carpet = "45287a", machine = "2c4a5e", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2", panel = "9a9fa8" },
 }
@@ -1431,7 +1431,7 @@ L.LANES_BUILD.overlook = function(H, C) -- (C: the "centre" structure is buildin
 		H.text("LaneNumber", { { "LANE " .. i, "ffffff", "L", 1 } }, 10.8, 1.6, x, 5.83, -68.74, 0, { clear = true, flush = true })
 		-- the lane's board, the pad's own Sign: it is the infill of its bay of the gantry at z 0. 1.1 higher than the box's:
 		-- the spawn camera is 3 higher, and the whole name has to show under the boards
-		H.board(pad, id, 15.8, if C then 5.6 else 5.2, x, if C then 19.6 else 16.6, 0, 0, { thick = if C then 3.4 else 2, lines = if C then { 0.46, 0.12, 0.26, 0.16 } else { 0.305, 0.17, 0.295, 0.23 }, closed = { "closed for waxing. (ish)", "the wax is also coming soon." } })
+		H.board(pad, id, 15.8, if C then 5.6 else 5.2, x, if C then 19.6 else 16.6, 0, 0, { thick = if C then 3.4 else 2, lines = if C then { 0.42, 0.16, 0.26, 0.16 } else { 0.305, 0.17, 0.295, 0.23 }, closed = { "closed for waxing. (ish)", "the wax is also coming soon." } })
 		-- (in the "centre" the board is read from the lobby, 85 away: taller, and the mode's name is its big line)
 		-- its coffers, north to south: two over the lane, one over the pad (that lamp casts shadows), one over the cross walk
 		-- and the booths (the two either side of the steps cast shadows)
@@ -1563,13 +1563,13 @@ L.LANES_BUILD.overlook = function(H, C) -- (C: the "centre" structure is buildin
 		if look then look:SetAttribute("HubTint", P.tint) end
 	end
 	-- (a palette with a remap also quietens the dressing: every part painted one of the colours it lists is repainted, but
-	-- for the steps' nosings, the jump pads and the training door's frame; and every lamp in one of the
+	-- for the jump pads and the training door's frame; and every lamp in one of the
 	-- loud colours goes to the palette's plain lamp colour. the pads and their boards are not in this folder at all)
 	if P.remap then
 		for _, p in H.root:GetDescendants() do
 			if p:IsA("BasePart") then
 				local to = P.remap[p.Color:ToHex()]
-				if to and p.Name ~= "Nosing" and not p:FindFirstAncestor("TrainingPortal") and not p:FindFirstAncestor("JumpPad") then p.Color = Color3.fromHex(to) end
+				if to and not p:FindFirstAncestor("TrainingPortal") and not p:FindFirstAncestor("JumpPad") then p.Color = Color3.fromHex(to) end
 			elseif p:IsA("Light") and (P.remap[p.Color:ToHex()] or p.Color:ToHex() == PINK) then p.Color = Color3.fromHex(P.lamp or "fff1d6") end
 		end
 	end
@@ -1579,6 +1579,8 @@ L.LANES_BUILD.overlook = function(H, C) -- (C: the "centre" structure is buildin
 		for _, c in H.root.Scenery:GetChildren() do
 			if c.Name == "Bunting" then c:Destroy() elseif c.Name == "Awning" then c.Color = Color3.fromHex(P.machine)
 			elseif c.Name == "Globe" or c.Name == "GlobeStem" or c.Name == "Planter" then c:Destroy()
+			elseif c.Name == "Arrow" then for _, q in c:GetDescendants() do if q:IsA("BasePart") then q.Material = Enum.Material.SmoothPlastic; if q.Color:ToHex() == PINK then q.Color = Color3.fromHex("cf8fc0") end end end -- (floor arrows do not glow, and the pink ones and the pink floor lines are a dusty pink)
+			elseif c.Name == "Hazard" and c:IsA("BasePart") and c.Size.Y < 0.1 and c.Color:ToHex() == PINK then c.Color = Color3.fromHex("cf8fc0")
 			elseif c.Name == "BallRing" then for _, q in c:GetDescendants() do if q:IsA("BasePart") and q.Material ~= Enum.Material.Neon then q.Color = Color3.fromHex(P.web) end end
 			elseif c.Name == "HouseBall" then for _, q in c:GetChildren() do q.Color = Color3.fromHex(if q.Name == "Ball" then P.machine else P.flange) end end
 		end
@@ -1670,7 +1672,7 @@ L.LANES_BUILD.centre = function(H)
 		side(S, "Rib", a + 15, 20.7, 28, 0.8, 1.4, 10, P.flange, nil, G, nil, 31.1); side(S, "Rib", a + 15, 11.65, 32, 0.8, 1.4, 10.6, P.flange, nil, G, nil, 17)
 	end
 	H.block(SH, "DomeCap", -8, 8, 34.3, 35.3, CZ - 8, CZ + 8, DOME)
-	drum("Oculus", 0, 33.7, 34.3, CZ, 15, P.flange, nil, G); drum("Panel", 0, 33.5, 33.7, CZ, if P.sober then 9 else 12, if P.sober then "a9adb2" else P.panel, Neon, G)
+	drum("Oculus", 0, 33.7, 34.3, CZ, 15, P.flange, nil, G); drum("Panel", 0, 33.5, 33.7, CZ, if P.sober then 9 else 12, if P.sober then "8e9298" else P.panel, Neon, G)
 	H.lamp(0, 33, CZ, 60, 1.1, COOL, { spot = true, shadows = true, angle = 110 })
 	-- the ring balcony, 13 up, on all twelve sides, a rail on its inner edge; the three northern sides stand out into
 	-- the hall as a bay, with a rail on their outer edge too
@@ -1848,7 +1850,7 @@ L.LANES_BUILD.centre = function(H)
 	
 	-- (the south wall: two bench bays on a raised wooden strip between dark fins, a warm wall lamp in each)
 	H.block(S, "Border", 28.5, 51, 0, 1, 90, 97, WOOD, Wood); H.block(S, "Nosing", 28.5, 51, 1, 1.06, 90, 90.5, DARK, nil, G); H.ramp(39.75, 89.2, 0, 22.5, 1, 1.6, 0)
-	for _, x in { 28.5, 39, 49.5 } do H.block(S, "Fin", x, x + 1.5, 1, 6, 93.6, 97, DARK) end
+	for _, x in { 28.5, 39, 49.5 } do H.block(S, "Fin", x + 0.35, x + 1.15, 1, 6.4, 93.6, 97, WOOD, Wood) end
 	for _, x in { 34.5, 45 } do
 		H.put("st_bench", "Bench", x, 1, 97, 180, { back = true, solid = true, scale = 0.8 })
 		H.put("hb_walllight", "WallLight", x, 6.6, 97, 180, { back = true, seat = "centre" }); H.lamp(x, 6.2, 95, 10, 0.8, WARM)
