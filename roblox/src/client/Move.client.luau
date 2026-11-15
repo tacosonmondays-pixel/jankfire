@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Config = require(Shared:WaitForChild("Config"))
 local Movement = require(Shared:WaitForChild("Movement"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
+local Body = require(script.Parent:WaitForChild("Body")) -- step 2: lets the weapons push you (recoil, knockback, slips)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
 
@@ -124,6 +125,7 @@ local function setup(ch: Model)
 	hum.JumpPower = Config.jump
 	hum.WalkSpeed = Config.gSpeed
 	hipBase = hum.HipHeight
+	Body.attach(st, hum, root)
 	local att = root:FindFirstChild("RootAttachment") :: Attachment? or Instance.new("Attachment", root)
 	local v = Instance.new("LinearVelocity")
 	v.Name = "JankMove"

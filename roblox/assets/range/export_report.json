@@ -1,0 +1,94 @@
+{
+ "p_rangebench": {
+  "pieces": [
+   {
+    "name": "rb_brass",
+    "tris": 1120,
+    "decimated_from": null
+   },
+   {
+    "name": "rb_paint",
+    "tris": 5706,
+    "decimated_from": null
+   }
+  ],
+  "tris": 6826,
+  "bytes": 438348
+ },
+ "p_rangemark": {
+  "pieces": [
+   {
+    "name": "rm_paint",
+    "tris": 9712,
+    "decimated_from": null
+   }
+  ],
+  "tris": 9712,
+  "bytes": 524740
+ },
+ "p_sandbags": {
+  "pieces": [
+   {
+    "name": "sb_hessian",
+    "tris": 6400,
+    "decimated_from": null
+   }
+  ],
+  "tris": 6400,
+  "bytes": 284556
+ },
+ "p_conifer": {
+  "pieces": [
+   {
+    "name": "cf_tree",
+    "tris": 276,
+    "decimated_from": null
+   }
+  ],
+  "tris": 276,
+  "bytes": 14356
+ },
+ "p_lollipop": {
+  "pieces": [
+   {
+    "name": "tint",
+    "tris": 289,
+    "decimated_from": null
+   },
+   {
+    "name": "lp_bark",
+    "tris": 98,
+    "decimated_from": null
+   }
+  ],
+  "tris": 387,
+  "bytes": 21668
+ },
+ "p_billboard_post": {
+  "pieces": [
+   {
+    "name": "bb_steel",
+    "tris": 184,
+    "decimated_from": null
+   }
+  ],
+  "tris": 184,
+  "bytes": 13384
+ },
+ "p_billboard": {
+  "pieces": [
+   {
+    "name": "glow",
+    "tris": 48,
+    "decimated_from": null
+   },
+   {
+    "name": "bb_steel",
+    "tris": 536,
+    "decimated_from": null
+   }
+  ],
+  "tris": 584,
+  "bytes": 39520
+ }
+}

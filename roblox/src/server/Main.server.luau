@@ -14,7 +14,7 @@ local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
 local CalloutRemote = Remotes:WaitForChild("Callout") :: RemoteEvent
 
 local map = workspace:WaitForChild("Map")
-local killY = (map:FindFirstChildWhichIsA("Model") and map:FindFirstChildWhichIsA("Model"):GetAttribute("KillY")) or -485
+local Maps = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Maps")) -- (step 3: two maps, each its own kill height)
 local swapped = MeshSwap.run(map)
 if swapped > 0 then print(("[jankfire] %d Blender models swapped in"):format(swapped)) end
 
@@ -99,7 +99,7 @@ RunService.Heartbeat:Connect(function()
 		local hum, root = alive(p)
 		if not hum or not root then continue end
 		local pos = root.Position
-		if pos.Y < killY then
+		if pos.Y < Maps.killY(pos) then
 			hum.Health = 0
 			dropRope(i)
 			CalloutRemote:FireClient(p, "INTO THE SMOG", 1.5)

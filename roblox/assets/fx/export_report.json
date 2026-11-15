@@ -1,0 +1,42 @@
+{
+ "fx_flash_star": {
+  "tris": 132,
+  "bytes": 11464
+ },
+ "fx_tracer": {
+  "tris": 36,
+  "bytes": 2012
+ },
+ "fx_casing": {
+  "tris": 144,
+  "bytes": 7512
+ },
+ "fx_marble": {
+  "tris": 80,
+  "bytes": 3764
+ },
+ "fx_spark": {
+  "tris": 8,
+  "bytes": 1844
+ },
+ "fx_impact": {
+  "tris": 80,
+  "bytes": 9524
+ },
+ "fx_parry_star": {
+  "tris": 16,
+  "bytes": 2508
+ },
+ "fx_dust": {
+  "tris": 20,
+  "bytes": 3280
+ },
+ "p_jerrycan": {
+  "tris": 148,
+  "bytes": 12276
+ },
+ "p_marblebag": {
+  "tris": 912,
+  "bytes": 24620
+ }
+}

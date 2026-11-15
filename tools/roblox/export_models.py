@@ -83,7 +83,9 @@ for f in files:
                     for l in list(inp.links): m2.node_tree.links.remove(l)  # (the vertex-colour node feeding it)
                     bc = list(inp.default_value)
                     inp.default_value = (bc[0] * avg[0], bc[1] * avg[1], bc[2] * avg[2], 1.0)
-            for a in list(o.data.color_attributes): o.data.color_attributes.remove(a)
+            for a in list(o.data.color_attributes):
+                try: o.data.color_attributes.remove(a)
+                except RuntimeError: pass  # (a nameless colour attribute can't be removed; the colour is already folded in)
         n = tris(o)
         if n > CAP:
             mod = o.modifiers.new('cap', 'DECIMATE'); mod.ratio = (CAP * 0.95) / n

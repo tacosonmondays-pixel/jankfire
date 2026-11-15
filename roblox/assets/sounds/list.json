@@ -1,0 +1,250 @@
+[
+ {
+  "name": "gun_redline_k0",
+  "call": "sfx.gun('redline', null, 0)",
+  "what": "Redline shot at full HP",
+  "vol": 0.6,
+  "secs": 0.18,
+  "peak": 0.41
+ },
+ {
+  "name": "gun_redline_k5",
+  "call": "sfx.gun('redline', null, 0.5)",
+  "what": "Redline shot at half HP",
+  "vol": 0.6,
+  "secs": 0.13,
+  "peak": 0.57
+ },
+ {
+  "name": "gun_redline_k10",
+  "call": "sfx.gun('redline', null, 1)",
+  "what": "Redline shot near death (screaming)",
+  "vol": 0.6,
+  "secs": 0.11,
+  "peak": 0.74
+ },
+ {
+  "name": "gun_marbles",
+  "call": "sfx.gun('marbles')",
+  "what": "Marble Shotgun shot (boom + glassy clinks)",
+  "vol": 0.8,
+  "secs": 0.33,
+  "peak": 0.95
+ },
+ {
+  "name": "swing",
+  "call": "sfx.swing()",
+  "what": "melee whoosh (katana swing / draw / parry)",
+  "vol": 0.7,
+  "secs": 0.24,
+  "peak": 0.08
+ },
+ {
+  "name": "bonk",
+  "call": "sfx.bonk()",
+  "what": "melee hit",
+  "vol": 0.8,
+  "secs": 0.26,
+  "peak": 0.59
+ },
+ {
+  "name": "hit",
+  "call": "sfx.hit()",
+  "what": "hit marker tick (you hit someone)",
+  "vol": 0.5,
+  "secs": 0.13,
+  "peak": 0.15
+ },
+ {
+  "name": "headshot",
+  "call": "sfx.headshot(false)",
+  "what": "DINK: you landed a headshot",
+  "vol": 0.8,
+  "secs": 0.4,
+  "peak": 1
+ },
+ {
+  "name": "headshot_ko",
+  "call": "sfx.headshot(true)",
+  "what": "DINK, killing headshot",
+  "vol": 0.8,
+  "secs": 0.63,
+  "peak": 1
+ },
+ {
+  "name": "headshot_taken",
+  "call": "sfx.headshotTaken(false)",
+  "what": "TONK: you took a headshot",
+  "vol": 0.8,
+  "secs": 0.34,
+  "peak": 0.66
+ },
+ {
+  "name": "headshot_taken_ko",
+  "call": "sfx.headshotTaken(true)",
+  "what": "TONK, it killed you",
+  "vol": 0.8,
+  "secs": 1.64,
+  "peak": 0.85
+ },
+ {
+  "name": "hurt",
+  "call": "sfx.hurt()",
+  "what": "you got hurt",
+  "vol": 0.6,
+  "secs": 0.3,
+  "peak": 0.25
+ },
+ {
+  "name": "kill",
+  "call": "sfx.kill()",
+  "what": "you got a kill (brass fanfare)",
+  "vol": 0.6,
+  "secs": 0.98,
+  "peak": 0.25
+ },
+ {
+  "name": "death",
+  "call": "sfx.death()",
+  "what": "you died (sad horn)",
+  "vol": 0.6,
+  "secs": 1.62,
+  "peak": 0.22
+ },
+ {
+  "name": "parry",
+  "call": "sfx.parry(null, false)",
+  "what": "katana parry (struck blade)",
+  "vol": 0.8,
+  "secs": 1.18,
+  "peak": 1
+ },
+ {
+  "name": "parry_perfect",
+  "call": "sfx.parry(null, true)",
+  "what": "katana PERFECT parry",
+  "vol": 0.8,
+  "secs": 1.62,
+  "peak": 1
+ },
+ {
+  "name": "tink",
+  "call": "sfx.tink()",
+  "what": "small parry tink (more parries in one window)",
+  "vol": 0.7,
+  "secs": 0.2,
+  "peak": 0.46
+ },
+ {
+  "name": "ricochet",
+  "call": "sfx.ricochet()",
+  "what": "perfect parry sends the bullets home",
+  "vol": 0.7,
+  "secs": 0.26,
+  "peak": 0.13
+ },
+ {
+  "name": "ting",
+  "call": "sfx.ting()",
+  "what": "katana draw shing",
+  "vol": 0.6,
+  "secs": 0.58,
+  "peak": 0.42
+ },
+ {
+  "name": "clatter",
+  "call": "sfx.clatter()",
+  "what": "MARBLES! a pile of marbles going everywhere (you slipped)",
+  "vol": 0.8,
+  "secs": 0.39,
+  "peak": 0.26
+ },
+ {
+  "name": "whoops",
+  "call": "sfx.whoops()",
+  "what": "WHOOPS slide whistle (you slipped)",
+  "vol": 0.7,
+  "secs": 0.78,
+  "peak": 0.54
+ },
+ {
+  "name": "marble",
+  "call": "sfx.marble()",
+  "what": "one marble clack",
+  "vol": 0.5,
+  "secs": 0.11,
+  "peak": 0.06
+ },
+ {
+  "name": "click",
+  "call": "sfx.click()",
+  "what": "weapon swap click / reload click",
+  "vol": 0.5,
+  "secs": 0.11,
+  "peak": 0.07
+ },
+ {
+  "name": "empty",
+  "call": "sfx.empty()",
+  "what": "dry fire",
+  "vol": 0.5,
+  "secs": 0.1,
+  "peak": 0.09
+ },
+ {
+  "name": "reload",
+  "call": "sfx.reload()",
+  "what": "generic reload",
+  "vol": 0.5,
+  "secs": 0.31,
+  "peak": 0.1
+ },
+ {
+  "name": "glug",
+  "call": "sfx.reloadFx('glug')",
+  "what": "Redline reload: jerry can glug",
+  "vol": 0.6,
+  "secs": 0.25,
+  "peak": 0.25
+ },
+ {
+  "name": "rev_up",
+  "call": "sfx.reloadFx('revUp')",
+  "what": "Redline reload: VRRRAAP",
+  "vol": 0.6,
+  "secs": 0.5,
+  "peak": 0.13
+ },
+ {
+  "name": "boing",
+  "call": "sfx.reloadFx('boing')",
+  "what": "Marble Shotgun reload: a marble bounces out",
+  "vol": 0.6,
+  "secs": 0.35,
+  "peak": 0.13
+ },
+ {
+  "name": "thwack",
+  "call": "sfx.thwack()",
+  "what": "Marble Shotgun reload: lid thwack",
+  "vol": 0.6,
+  "secs": 0.14,
+  "peak": 0.32
+ },
+ {
+  "name": "round_start",
+  "call": "sfx.roundStart()",
+  "what": "ROUND START",
+  "vol": 0.6,
+  "secs": 2.36,
+  "peak": 0.32
+ },
+ {
+  "name": "round_end",
+  "call": "sfx.roundEnd()",
+  "what": "match over",
+  "vol": 0.6,
+  "secs": 1.16,
+  "peak": 0.16
+ }
+]
