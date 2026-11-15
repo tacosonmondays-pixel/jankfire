@@ -146,11 +146,15 @@ The owner picked **Hub 3, The Lanes** (a bowling alley). It was wired in as the 
 - **Structure pass, later the same day (place version 176):** the owner said the Lanes looked simple next to another game's lobby ("its not the color is the struicture"), and then that the first hub was cute. `HubLab` has a second switch beside the palette: `L.LANES_STRUCTURE` is `"overlook"` (the default) or `"box"` (the room as it was, 910 things). `overlook` is the same alley, paint, signs and pads in a shaped room: a raised concourse (spawn and shops, 3 studs up) with steps and two ramps down to the lanes, a fin and a canopy at every lane's pins, a beam-and-coffer ceiling with the light panels set into it, the six boards in a gantry across the hall, piers and bays down every wall, and a deep recess at each end of the cross walk (training door west, arcade east). On top of that it has what the rotunda had: a balcony over the entrance with a small lounge and the hologram duck, two jump pads up to it (parts with a `Pad` attribute, which `Move` already reads) and a marked gap to step back down, a giant turning bowling ball hung over the middle (tag `HubSpin`, which `HubLife` already turns), awnings, globe lamps and bunting. No script outside `HubLab` changed. `Hub.Lanes` is 1,512 things with 93 lamps, 11 of them casting shadows. `L.check()` now also tests 256 sight lines from the spawn points to every pad, every board and the name. A tester that did not build it passed 17 checks: spawn, sight lines, pads counting, the routes on foot, both doors, enclosure, nobody trapped, the jump pads, and the switch back to `box`. Not tested: a match from a pad, and how it runs on a phone. Still weak: it is one big room, and the first hub's charm was separate rooms seen through doorways.
 - **Left for later (minor, from the judges):** from the spawn the floor arrows out-shine the pads; the two end boards touch the HIGH SCORES and TONIGHT boards under them; the giant pin is darker than the sand wall behind it; the strip under the ball returns and the wall behind the name are the darkest surfaces; the sign faces are still near-black; the training hall's wall round its hub door is near-black.
 
-## 12. Batch 3: the eleven plain guns, 15 November 2026
+## 12. Batch 3: the eleven plain guns, 15 November 2026 (place version 190)
 
 All twelve plain guns are in: selectable in the loadout screen, with their models, sounds, reloads and gimmicks.
 The table of every gun against its web numbers, what was measured, what differs and what was not tested is
 `roblox/docs/BATCH3-GUNS.md`.
+
+Saved in place version 190 (the hub session's save of 15 November, 15:56 UTC; not published). The same document
+ends with a verdict on each gun's look against the owner's "serious, Rivals-style, less colourful" bar: only the
+SMG passes as it is; the rest need a calmer factory paint, which is a table in `WeaponImport`, not new models.
 
 - **The exporter was fixed first.** One test upload settled it (`tools/roblox/rbxglb.py` holds the measurements):
   uploads arrive turned half way round their up axis and lose plain colours; pictures and vertex colours survive.
