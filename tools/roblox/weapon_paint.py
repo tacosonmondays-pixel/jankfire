@@ -36,6 +36,8 @@ DEFAULT = 'calm'
 # the surface under them, and nothing glows except sights, lenses and heat.
 # CHOOSE DARK: the training hall's lamps show a colour far brighter than a Blender preview does (first photo round,
 # 2026-11-15: 4c5639 olive came out lime, 4a3222 walnut orange). these values are what looked right IN the hall.
+# after the first judge round: every gun needs TWO values (one flat grey reads as clay), pairs that looked alike are
+# split by value (Plan B dark, Revolver steel), and big wood is 'r' not 'w' (Wood's grain is coarse up close).
 STEEL = 's767b85'      # mid steel (was bright chrome)
 STEEL_D = 'm3a3d45'    # dark steel
 POLY = 'p1e2024'       # black polymer
@@ -52,23 +54,24 @@ CALM = {
   'ar_olive': 'p3e4630', 'ar_grip': 'r343b29', 'ar_tape': 'p2b3122', 'ar_neon': 'p1b1c20', 'ar_sticker': 'm2c3036',
   'ar_charm': STEEL_D, 'ar_mag': 'g2b2e34b8', 'ar_magbase': POLY, 'ar_white': 'pc8c8c8', 'ar_brass': CART, 'ar_copper': TIP,
  },
- # SMG: as the web has it (black, one teal accent); only the cartridge-free details are touched
+ # SMG: black, the magazine is its teal accent (the body's teal slab goes dark)
  'w_smg': {
-  'smg_freshener': 'p2a8f86',
+  'smg_body_wzA__smg_teal': 'p1b4f4b', 'mag_wzA__smg_teal': 'p22968c', 'smg_freshener': 'p1c1d21', 'smg_string': 'p1c1d21',
  },
- # Plan B: black frame, steel slide, anodised blue controls
+ # Plan B: the dark handgun. black frame, gunmetal slide, a blue rib along the top and blue controls
  'w_pistol': {
-  'pb_frame': POLY, 'pb_pearl': 'r2a2c31', 'pb_satin': 's6f757f', 'pb_polish': STEEL, 'pb_rib': 'm4a4e57',
-  'pb_roll_r': 's6f757f', 'pb_roll_l': 's6f757f', 'pb_tin': STEEL_D, 'pb_gold': 's4a67b8', 'pb_medal': 's947839+',
+  'pb_frame': POLY, 'pb_pearl': 'r2a2c31', 'pb_satin': 'm3f434c', 'pb_polish': 's5f646e', 'pb_rib': 's4a67b8',
+  'pb_roll_r': 'm3f434c', 'pb_roll_l': 'm3f434c', 'pb_tin': STEEL_D, 'pb_gold': 's4a67b8', 'pb_medal': 's947839+',
   'pb_brass': CART, 'pb_copper': TIP,
  },
- # Revolver: gunmetal stainless, a black grip, brass controls, the orange front sight
+ # Revolver: the steel handgun. steel frame, a dark cylinder, black grip, brass trim, the orange front sight
  'w_revolver': {
-  'rv_pearl': RUBBER, 'rv_satin': 's50555f', 'rv_chrome': 's5f646e', 'rv_gold': BRASS, 'rv_copper': TIP,
+  'rv_pearl': RUBBER, 'rv_chrome': 's6a6f79', 'rv_satin': 'm2b2e36', 'rv_gold': BRASS, 'hammer_wzN__rv_gold': STEEL_D,
+  'rv_copper': TIP,
  },
  # Shotgun: blued steel and dark walnut, red shells
  'w_shotgun': {
-  'sg_forend': WALNUT, 'sg_walnut': WALNUT, 'sg_hull': SHELL, 'sg_brass': CART,
+  'sg_forend': 'r3b281c', 'sg_walnut': 'r3b281c', 'sg_hull': SHELL, 'sg_brass': CART,
  },
  # Half a Shotgun: dark cherry wood, steel barrels and receiver, red shells
  'w_sawnoff': {
@@ -76,31 +79,31 @@ CALM = {
   'so_hull': SHELL, 'so_cut': 's7d828c', 'so_endgrain': 'w553a29', 'so_tape': 'p1d1d21', 'so_blued': 'm20242c',
   'so_hammer': 'm262a33', 'so_ribtop': 'm20242c', 'so_brass': CART,
  },
- # Sniper: a tan stock on black steel, the violet lens
+ # Sniper: a dark tan stock on black steel, the violet lens, one small magenta mark (its web colour)
  'w_sniper': {
-  'sn_pink': 'p7c7059', 'sn_sticker': 'p7c7059', 'sn_gold': STEEL_D, 'sn_bolt': STEEL, 'sn_white': 'pc8c8c8',
+  'sn_pink': 'r5e5545', 'sn_sticker': 'r5e5545', 'sn_gold': 'pa2457c', 'sn_bolt': STEEL, 'sn_white': 'pc8c8c8',
  },
  # Second Opinion: dusk violet furniture (toned down), the medic cross stays
  'w_dmr': {
-  'dm_wood': 'p363349', 'dm_bandaid': 'p363349', 'dm_tubing': 'p6557a8', 'dm_chrome': STEEL, 'dm_diaphragm': STEEL,
-  'dm_brass': CART, 'dm_copper': TIP,
+  'dm_wood': 'p363349', 'dm_bandaid': 'p363349', 'dm_tubing': 'p3d3a55', 'dm_chrome': STEEL, 'dm_diaphragm': STEEL,
+  'dm_sticker': 'm27292f', 'dm_brass': CART, 'dm_copper': TIP,
  },
- # Hat Trick: slate blue body, blue controls
+ # Hat Trick: slate body with darker panels, a blue magazine and switch, its three rounds in brass
  'w_burst': {
-  'burst_body_wzA__bu_blue': 'p252d3b', 'mag_wzA__bu_blue': 'p252d3b', 'bu_navy': 'p1e2430', 'bu_yellow': 'p3560b0',
-  'bu_bread': RUBBER, 'bu_crumb': RUBBER, 'bu_tape': 'p3a3d44', 'bu_chrome': STEEL, 'bu_sticker': 'p252d3b',
+  'burst_body_wzA__bu_blue': 'p2a323f', 'mag_wzA__bu_blue': 'p2f4f8f', 'bu_navy': 'r181b21', 'bu_yellow': 'p2f4f8f',
+  'bu_bread': CART, 'bu_crumb': 'p2a323f', 'bu_tape': 'p3a3d44', 'bu_chrome': STEEL, 'bu_sticker': 'p2a323f',
   'bu_brass': CART, 'bu_copper': TIP,
  },
- # Belt Sander: graphite body, an orange feed cover and switches, a black cable
+ # Belt Sander: graphite body and ammunition box, an orange feed cover and switches, a black cable
  'w_lmg': {
   'lmg_body_wzA__lmg_orange': 'p34373d', 'lmg_body_wzB__lmg_orange': 'p34373d', 'cover_wzA__lmg_orange': 'pb5531f',
-  'lmg_grit': 'r5a3b2e', 'lmg_cord': RUBBER, 'lmg_yellow': 'pb5531f', 'lmg_tag': 'p333e29', 'lmg_chrome': STEEL,
-  'lmg_brass': CART, 'lmg_copper': TIP,
+  'lmg_grit': 'r5a3b2e', 'lmg_cord': RUBBER, 'lmg_yellow': 'pb5531f', 'lmg_tag': 'p2b2e33', 'lmg_chrome': STEEL,
+  'lmg_box': 'p2b2e33', 'lmg_brass': CART, 'lmg_copper': TIP,
  },
- # Lawn Mower: machine green furniture (toned down), the red pull-start
+ # Lawn Mower: machine green furniture is its one colour; the drum and pull-start go gunmetal
  'w_autoshot': {
-  'as_green': 'p36563e', 'as_grass': 'p2f4c36', 'as_red': SHELL, 'as_hazard': 'm26282d', 'as_keep': 'p36563e',
-  'as_mow': 'm121316', 'as_cord': 'p8e8e8e', 'as_chrome': STEEL,
+  'as_green': 'p36563e', 'as_grass': 'p2f4c36', 'as_red': 'm34373d', 'mag_wzN__as_red': 'p3f6b4a', 'as_hazard': 'm26282d',
+  'as_keep': 'p36563e', 'as_mow': 'm121316', 'as_cord': 'p3a3d44', 'as_chrome': STEEL,
  },
  # Yeehaw: saddle walnut, a steel receiver, brass trim
  'w_lever': {
@@ -111,13 +114,16 @@ CALM = {
  'w_redline': {
   'rl_grip': 'r2b2623', 'rl_tape': 'p9a2b27', 'rl_chrome': STEEL, 'rl_red': 'pb82a2a', 'rl_white': 'pd0d0d0',
  },
- # Marble Shotgun: antique brass and walnut; the marbles stay bright (they are the ammunition)
+ # Marble Shotgun: aged brass and walnut, a smoked jar, the marbles in one blue family (they are the ammunition)
  'w_marbles': {
-  'mb_brass': 's86693a', 'mb_walnut': WALNUT, 'mb_plaque': 's86693a', 'mb_zinc': STEEL, 'mb_ramrod': 'w553a29',
-  'mb_label': 'pb9b3a6',
+  'mb_brass': 's6b5c3e', 'mb_walnut': WALNUT, 'mb_plaque': 's6b5c3e', 'mb_zinc': STEEL_D, 'mb_ramrod': 'w553a29',
+  'mb_label': 'g8a929c52', 'mb_jar': 'g8a929c52',
+  'mb_marble0': 'p3d6fc4', 'mb_marble1': 'p5aa6d6', 'mb_marble2': 'pd9dde3', 'mb_marble3': 'p2c4f8f',
+  'mb_marble4': 'p8fb4dc', 'mb_marble5': 'pc8ccd2', 'mb_marble6': 'p4a90c8',
  },
- # Katana: as it is
+ # Katana: a bright polished blade, black cord over the pale ray skin, the fittings as they are
  'w_katana': {
+  'kt_blade': 'sd2d8e0', 'kt_ito': 'r1c1d21',
  },
 }
 

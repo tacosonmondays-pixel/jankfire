@@ -6,8 +6,8 @@
 -- the wrist stays straight: the hand carries on along its forearm and only turns about it, so a hand never folds back
 -- on itself. what changes per hold is where the forearm comes from and which way the palm faces
 --
--- THE LOOK is a switch. "kit" (the default since 2026-11-15) dresses your arm shapes in the game's own glove, sleeve
--- and cuff, so the hands look finished whatever the avatar wears: a pale or untextured avatar arm blew out to a plain
+-- THE LOOK is a switch. "kit" (the default since 2026-11-15) dresses your arm shapes in the game's own glove and
+-- sleeve, so the hands look finished whatever the avatar wears: a pale or untextured avatar arm blew out to a plain
 -- white shape under the lamps. "avatar" is the first version: your skin tone and your shirt's sleeves.
 local Players = game:GetService("Players")
 
@@ -19,11 +19,15 @@ function AvatarArms.look(): string
 	local a = script:GetAttribute("Look")
 	return if a == "kit" or a == "avatar" then a else AvatarArms.LOOK
 end
+-- one matte charcoal family. the glove is a step LIGHTER than the guns (a black glove vanished into a black gun) and
+-- the sleeve a step DARKER than the glove in paint: the lamps hit the top of a forearm full on, and a sleeve painted
+-- lighter than the glove showed as a pale cone propping up the gun. (first judge round, 2026-11-15)
 AvatarArms.KIT = {
-	glove = Color3.fromRGB(33, 35, 40), -- charcoal, matte
-	sleeve = Color3.fromRGB(46, 49, 56), -- graphite (flat: Fabric's weave read as noise this close to the eye)
-	cuff = Color3.fromRGB(24, 25, 29), -- the band at the wrist
-	trim = Color3.fromRGB(64, 68, 77), -- a lighter edge on the cuff (kept dark: you look down the arm, so a pale one shows as a plate)
+	glove = Color3.fromRGB(58, 60, 66),
+	sleeve = Color3.fromRGB(30, 32, 37),
+	-- tried in the hall, this close to the eye: Rubber speckles, Fabric crumples, Plastic mottles. SmoothPlastic is the
+	-- clean one, as long as the glove is mid grey: near black, its shine read as moulded plastic
+	material = Enum.Material.SmoothPlastic,
 }
 
 -- sizes in metres x k (the viewmodel's studs per metre)
@@ -120,21 +124,12 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 		local set2: { BasePart } = { hand, fore }
 		if kit then
 			local K = AvatarArms.KIT
-			dress(hand, K.glove, Enum.Material.SmoothPlastic)
-			dress(fore, K.sleeve, Enum.Material.SmoothPlastic)
-			-- the cuff and its light line are thin slices of the forearm's own shape, a little wider: they fit a
-			-- blocky arm and a round one alike
-			local function band(name: string, wide: number, long: number, at: number, color: Color3)
-				local b = limb(ch:FindFirstChild(s.side .. "LowerArm") :: BasePart)
-				b.Name = s.side .. name
-				b.Size = Vector3.new(fore.Size.X * wide, long * k, fore.Size.Z * wide)
-				b.CFrame = CFrame.fromMatrix(wrist + Y * at * k, X, Y, Z)
-				dress(b, color, Enum.Material.SmoothPlastic)
-				table.insert(set2, b)
-			end
-			band("Cuff", 1.14, 0.055, 0.03, K.cuff)
-			band("Trim", 1.17, 0.009, 0.052, K.trim)
-			-- (a plate on the back of the hand was tried: on a blocky hand it read as a grey square stuck on a box)
+			dress(hand, K.glove, K.material)
+			dress(fore, K.sleeve, K.material)
+			-- nothing is added at the wrist: the glove and the sleeve are the whole kit. three cuffs were tried and
+			-- each read as a fault from the player's eye: a thin slice of the forearm's own mesh (squashed, its
+			-- joint end became a disc with flaps and shards), a block (a brick on the wrist), and a plate on the
+			-- back of the hand (a grey square stuck on a box).
 		end
 		for _, p in set2 do
 			local w = Instance.new("WeldConstraint"); w.Part0 = root; w.Part1 = p; w.Parent = p

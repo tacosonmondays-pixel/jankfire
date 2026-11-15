@@ -191,17 +191,17 @@ end
 
 -- THE SHREDDER is a Tool (ReplicatedStorage.JankfireTools.Shredder) that was imported by hand before the exporter
 -- existed, so it is not in the paint book. its calm paint is this table, by part name: a dark steel hopper and
--- housing, steel teeth with their red tips, and the hazard band as the one accent. the look it had before is
+-- housing, steel teeth with their red tips, and the amber band as the one accent. the look it had before is
 -- remembered on every part the first time (WebColor, WebMat, WebRefl, WebTex), so W.shredder("web") puts it back.
 W.SHREDDER = {
 	sh_bell3 = "m33363d", -- the hopper (was bright yellow)
 	sh_bell4 = "p151515", -- its rim
 	sh_trigger6 = "m26282d", sh_trigger7 = "m26282d", -- the cage
 	sh_trigger5 = "m3a3d45", sh_bell2 = "m3a3d45", sh_grip3 = "m2e3138", -- housing, chute, motor block (were speckled grey)
-	sh_hub = "m3a3d45", sh_hub2 = "s767b85", sh_hub3 = "p8a1f1f", -- the teeth: steel, red tips
+	sh_hub = "m3a3d45", sh_hub2 = "s767b85", sh_hub3 = "m6a1c1c", -- the teeth: steel, dark red tips
 	sh_trigger3 = "s767b85",
 	sh_bell = "p1e2126", sh_grip = "r1a1a1a", sh_grip2 = "p1e2126",
-	sh_trigger2 = "pb28119+", -- the hazard band keeps its picture
+	sh_trigger2 = "pb07a1c", -- the hazard band: flat amber (its striped picture was wavy and low-res up close)
 }
 function W.shredder(name)
 	name = name or "calm"
