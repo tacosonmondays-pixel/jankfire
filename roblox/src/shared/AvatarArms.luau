@@ -25,9 +25,11 @@ end
 AvatarArms.KIT = {
 	glove = Color3.fromRGB(58, 60, 66),
 	sleeve = Color3.fromRGB(30, 32, 37),
-	-- tried in the hall, this close to the eye: Rubber speckles, Fabric crumples, Plastic mottles. SmoothPlastic is the
-	-- clean one, as long as the glove is mid grey: near black, its shine read as moulded plastic
+	-- tried in the hall, this close to the eye: Rubber speckles, Fabric crumples. the glove is SmoothPlastic (clean,
+	-- as long as it is mid grey: near black, its shine read as moulded plastic); the sleeve is Plastic, whose
+	-- soft mottle reads as cloth and, unlike SmoothPlastic, does not flash pale when a lamp is straight above
 	material = Enum.Material.SmoothPlastic,
+	sleeveMaterial = Enum.Material.Plastic,
 }
 
 -- sizes in metres x k (the viewmodel's studs per metre)
@@ -125,7 +127,7 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 		if kit then
 			local K = AvatarArms.KIT
 			dress(hand, K.glove, K.material)
-			dress(fore, K.sleeve, K.material)
+			dress(fore, K.sleeve, K.sleeveMaterial)
 			-- nothing is added at the wrist: the glove and the sleeve are the whole kit. three cuffs were tried and
 			-- each read as a fault from the player's eye: a thin slice of the forearm's own mesh (squashed, its
 			-- joint end became a disc with flaps and shards), a block (a brick on the wrist), and a plate on the
