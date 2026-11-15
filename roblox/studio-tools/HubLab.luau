@@ -41,7 +41,13 @@ L.PAD_PLATE_DIM, L.PAD_SOCKET_DIM, L.PAD_EDGE = 0, 0.22, "9a9fa8"
 --                        dim Neon: it still photographs white, and a full white one that size burns out)
 --   tint                 which of HubLook's hub tints goes with it
 -- the palettes:
---   "retro"   (2026-11-15) the one the hub is built in: sand walls under a teal lid, a slate machine wall and kit
+--   "calm"    (2026-11-15, later. the owner: "can oyu make things less colorful too!") the one the hub is built in:
+--             off-white walls and frame, a grey lid and carpet, pale wood, one dusty teal (the name wall, the mats, the
+--             band over the dado), and pink the only loud colour left in the room. its extra keys: wood, band, brick,
+--             and remap + lamp, which repaint the dressing too (see finish, at the end of the overlook's builder).
+--             signs, boards and pads keep their colours: that is where colour says something. it is also sober:
+--             no bunting, plain canopies, a dark house ball, and plain words for the joke ones (L.LANES_WORDS)
+--   "retro"   (2026-11-15) the one the hub was built in before that: sand walls under a teal lid, a slate machine wall and kit
 --             bases, a cream frame and booth shells. the carpet is the room's only purple (about a third of the first
 --             view), one step bluer than the first carpet so it still reads purple, not magenta, under the neutral light.
 --             (the lid and the machine wall are mid teals: lit by the base light alone, a deeper lid, 366a6e, and
@@ -51,13 +57,32 @@ L.PAD_PLATE_DIM, L.PAD_SOCKET_DIM, L.PAD_EDGE = 0, 0.22, "9a9fa8"
 --             office by day and left the frame darker than the ceiling behind it. kept so they can be looked at again
 -- to try a palette without editing anything:
 --   local L = require(game.ServerStorage.PolishBackup.HubLab:Clone()); L.LANES_PALETTE = "teal"; L.LANES_TWEAK = { wall = "3e8a8c" }; print(L.build("Hub3_Lanes"))
-L.LANES_PALETTE = "retro"
+L.LANES_PALETTE = "calm"
 L.LANES_TWEAK = nil -- { key = hex, ... } painted over the palette for one build (the test hook: it stays nil in here)
 L.LANES_PALETTES = {
 	retro = { tint = "neutral", wall = "c6ae88", ceil = "418488", carpet = "3c2c7e", machine = "3c7480", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2", panel = "9a9fa8" },
 	purple = { tint = "purple", wall = "6a5c90", ceil = "6a5fa0", carpet = "45287a", machine = "3a2d5c", base = "3a2d5c", web = "8f86c4", flange = "a59ad8", booth = "6a55b0", speaker = "6a55b0", speakerFace = "3a2d5c", grille = "4a3d6a", trim = "4b2a6b", glow = "efe6ff", panel = "9a9fa8" },
 	sand = { tint = "neutral", wall = "c8ad80", ceil = "ddd3bf", carpet = "45287a", machine = "2c4a5e", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2", panel = "9a9fa8" },
+	calm = { tint = "neutral", wall = "8a8f96", ceil = "a9aaa6", carpet = "56535f", machine = "62808a", base = "4f5863", web = "ddd8cd", flange = "ece8df", booth = "e4ddcf", speaker = "6b7480", speakerFace = "4f5863", grille = "5c6470", trim = "4f5863", glow = "fff4e2", panel = "9a9fa8",
+		sober = true, shell = "5e6672", pier = "3f4753", dome = "767d86", cool = "f1f1ee", wood = "bfae92", band = "62808a", brick = "a98b7c", lamp = "fff1d6", remap = { ["37d6ff"] = "86a9b3", ffe14d = "dccf9a", ["7dff4f"] = "9dbb93", ff9a1f = "cfa57c" } },
 	teal = { tint = "neutral", wall = "3e8a8c", ceil = "cfd6d2", carpet = "45287a", machine = "2c4a5e", base = "36465a", web = "bcb8ae", flange = "d6d2c8", booth = "d8ccb4", speaker = "4a5a70", speakerFace = "36465a", grille = "3e4b60", trim = "36465a", glow = "fff4e2", panel = "9a9fa8" },
+}
+-- the plain words a sober palette puts in place of the joke ones (2026-11-15. the owner: "This is serious compared to
+-- jankfire!" and "we're taking the wepaons and mechanics from jankfir ebut adding a serious roblox rivals touch to it").
+-- old = new, wherever the old words stand in a label of the room or of the pads' boards (see finish, at the end of the
+-- overlook's builder). the "centre" structure's own signs are written plain in the first place
+L.LANES_WORDS = {
+	["DUEL · no excuses"] = "DUEL", ["TRIANGLE · trust nobody"] = "THREE-WAY", ["DUO · blame your friend"] = "DUOS", ["TRIO · one of you carries"] = "TRIOS", ["SQUAD · pure chaos"] = "SQUADS",
+	["COMING SOON™ (it isn't)"] = "COMING SOON", ["closed for waxing. (ish)"] = "CLOSED", ["the wax is also coming soon."] = "opens in a later update",
+	["six lanes. six modes. no bumpers."] = "pick a lane. step on a pad.",
+	["HIGH SCORES"] = "HOW TO PLAY", ["1  ·  DAVE  ·  300  ·  nobody saw it"] = "1  ·  STEP ON A PAD IN YOUR TEAM'S COLOUR", ["2  ·  DAVE'S MUM  ·  212  ·  everybody saw it"] = "2  ·  THE MATCH STARTS WHEN THE PAD IS FULL",
+	["3  ·  THE GUTTER  ·  undefeated"] = "3  ·  FIRST TO FIVE ROUNDS WINS", ["4  ·  YOU  ·  pending"] = "4  ·  STEP OFF TO LEAVE THE QUEUE",
+	["TONIGHT"] = "THE HOUSE", ["LEAGUE NIGHT  ·  cancelled. nobody is in a league."] = "THE LANES  ·  queue for a match", ["DISCO BOWLING  ·  the lights are just like this."] = "TRAINING  ·  the range, off the lobby",
+	["SHOE HIRE  ·  free. the shoes do nothing."] = "THE LOUNGE  ·  off the lobby", ["BUMPERS  ·  no."] = "SNACK BAR  ·  off the lobby",
+	["stand on your colour to queue. stepping off un-queues you. that's the whole skill."] = "stand on your team's colour to queue. step off to leave the queue.",
+	["JANK NEWS 24"] = "NOTICE BOARD", ["LOCAL MAN BOWLS 300. NOBODY SAW IT. HE SAYS IT COUNTS."] = "THE LOUNGE AND THE SNACK BAR ARE OPEN, OFF THE LOBBY.",
+	["two left feet available"] = "shoe hire", ["all for turning up."] = "hall of fame", ["now with 0% water. may contain cola."] = "cold drinks",
+	["six of them. pick one. they are all the same lane."] = "pick a lane. step on a pad to queue.", ["SPARE SPARE PIN"] = "SPARE PIN",
 }
 function L.lanesPalette()
 	local name = if L.LANES_PALETTES[L.LANES_PALETTE] then L.LANES_PALETTE else "retro"
@@ -67,17 +92,22 @@ function L.lanesPalette()
 	return P
 end
 -- THE LANES' structure. one switch, like the palette: L.LANES_STRUCTURE names the room the alley is built as.
---   "overlook"  (2026-11-15, the default) a real building: a raised concourse (spawn, shops, screens) under a low marquee,
+--   "overlook"  (2026-11-15) one real building: a raised concourse (spawn, shops, screens) under a low marquee,
 --               fat steps and two ramps down into a sunken hall, six lane bays (buttress fins and a canopy at the pins, a
 --               beam and coffer grid overhead, the boards in a sign gantry), piers and deep bays down every wall, a recess
 --               at each end of the cross walk (the training door west, the arcade east). L.LANES_BUILD.overlook
+--   "centre"    (2026-11-15, later: the default) the overlook's hall as the big room of a small bowling centre. you
+--               spawn in a round lobby south of it and see the lanes through one big opening; a lounge, a snack bar
+--               with the arcade and a passage to the training door open off the lobby. L.LANES_BUILD.centre
+--               (the hub as it was before the lobby and the calm paint: L.LANES_STRUCTURE = "overlook" and
+--               L.LANES_PALETTE = "retro", both)
 --   "box"       the room as the owner first saw it: one flat floor, four flat walls, a flat lid, props stood in it.
 --               L.LANES_BUILD.box (910 things in Hub.Lanes, 152 in Hub.QueuePads)
 -- to go back to the box, or to look at it again:
 --   local L = require(game.ServerStorage.PolishBackup.HubLab:Clone()); L.LANES_STRUCTURE = "box"; print(L.build("Hub3_Lanes")); print(L.check())
 -- (to make it stay, change the line below.) a build writes the name on Hub.Lanes as the attribute Structure, and L.check
 -- reads it there to know which walks to keep clear
-L.LANES_STRUCTURE = "overlook"
+L.LANES_STRUCTURE = "centre"
 local TEAM = { PINK, CYAN, YEL } -- the teams' colours, in Matches' order
 
 -- the six modes: id, title, its line, its colour (the words and colours of the rotunda's mode signs, which this used to
@@ -1134,13 +1164,14 @@ end
 -- the plan and its reasons: the vault, Hubs/The Lanes structure plan.md
 -- levels: lanes, pads, cross walk, booths y 0 (z -84..34); concourse y 3 (z 34..64); lid 28; soffit over the shops 18;
 -- marquee over the spawn 13.5; the two recesses at the cross walk's ends (x 68..75, z 10..29.2) lid 23.5
-L.LANES_BUILD.overlook = function(H)
+L.LANES_BUILD.overlook = function(H, C) -- (C: the "centre" structure is building this hall and takes over at its south end. see L.LANES_BUILD.centre)
 	local P = L.lanesPalette()
 	L.PAD_BASE = P.base
 	local S, SH, G = "Scenery", "Shell", { ghost = true }
 	local CY, LID = 3, 28 -- the concourse's floor and the hall's lid, over the lane floor
 	local Carpet, Wood, Neon = Enum.Material.Carpet, Enum.Material.Wood, Enum.Material.Neon
-	local WOOD, WARM, LAMP = "a8703a", "ffe9b8", "fff1d6"
+	local WOOD, WARM, LAMP = P.wood or "a8703a", "ffe9b8", "fff1d6"
+	local BAND = P.band or PINK -- (the band over the dado on every wall)
 	local function side(s) return if s > 0 then "E" else "W" end
 	-- a white light panel in a chunky housing, set up against a lid at y
 	local function panel(x, y, z, w, d)
@@ -1149,13 +1180,13 @@ L.LANES_BUILD.overlook = function(H)
 	end
 
 	-- ---- the shell and the levels
-	H.room("Alley", -68, 68, -84, 64, LID, { wall = P.wall, floor = P.carpet, floorMat = Carpet, ceil = P.ceil, open = { W = { { 10, 29.2, 23.5 } }, E = { { 10, 29.2, 23.5 } } } })
+	H.room("Alley", -68, 68, -84, 64, LID, { wall = P.wall, floor = P.carpet, floorMat = Carpet, ceil = P.ceil, open = { W = { { 10, 29.2, 23.5 } }, E = { { 10, 29.2, 23.5 } }, S = if C then { { -18.7, 18.7, 26 } } else nil } })
 	H.block(SH, "Concourse", -68, 68, 0, CY - 0.1, 34, 64, P.base) -- (its north face is the retaining wall the booths back on to)
 	H.block(SH, "ConcourseCarpet", -68, 68, CY - 0.1, CY, 34, 64, P.carpet, Carpet)
 	H.block(SH, "Masking", -68, 68, 10, LID, -84, -74, P.machine) -- the name wall: it rises behind the pin canopy, 4.8 further back than the box's
 	-- the lid drops to 18 over the shop bays, behind a fascia. over the entrance bay it is cut away up to 26: the snug behind the balcony
-	for _, s in { -1, 1 } do H.block(SH, "Bulkhead", s * 11.6, s * 68, 18, LID, 53, 64, P.web) end
-	H.block(SH, "Bulkhead", -11.6, 11.6, 26, LID, 53, 64, P.web)
+	for _, s in { -1, 1 } do H.block(SH, "Bulkhead", s * (if C then 25 else 11.6), s * 68, 18, LID, 53, 64, P.web) end
+	if not C then H.block(SH, "Bulkhead", -11.6, 11.6, 26, LID, 53, 64, P.web) end
 	for _, s in { -1, 1 } do
 		H.block(SH, "RecessFloor", s * 70, s * 77, -2, 0, 8, 31.2, P.carpet, Carpet)
 		H.block(SH, "RecessBack", s * 75, s * 77, 0, 25.5, 8, 31.2, P.wall)
@@ -1201,7 +1232,7 @@ L.LANES_BUILD.overlook = function(H)
 	for _, z in { -33, 17, 34 } do H.block(S, "CrossBeam", -65, 65, 25.2, LID, z - 1.5, z + 1.5, P.web, nil, G) end
 	-- (the coves are the lid's paint: the lid folds down to the walls, and the pale frame stands out against it)
 	H.wedge(S, "Cove", -68, 68, 24.5, LID, -74, -70.5, P.ceil, { high = "N", flip = true, ghost = true })
-	for _, s in { -1, 1 } do H.wedge(S, "Cove", s * 15.6, s * 68, 22, LID, 47, 53, P.ceil, { high = "S", flip = true, ghost = true }) end -- (not over the balcony)
+	for _, s in { -1, 1 } do H.wedge(S, "Cove", s * (if C then 25 else 15.6), s * 68, 22, LID, 47, 53, P.ceil, { high = "S", flip = true, ghost = true }) end -- (not over the balcony)
 	-- the sign gantry over the foul line: a box girder from wall pier to wall pier, hung from the five beams it passes
 	-- under by a fat post each, the posts carrying on down between the boards. each lane's board is the infill of its bay.
 	-- nothing of it stands on the floor between the pads
@@ -1230,6 +1261,7 @@ L.LANES_BUILD.overlook = function(H)
 	-- ---- the south wall: six fin walls, 4 wide and 11 deep, carry the bulkhead and make five shop bays 23.2 wide, with a
 	-- haunch each side of every fin under the soffit
 	for _, f in { { -68, -66 }, { -42.8, -38.8 }, { -15.6, -11.6 }, { 11.6, 15.6 }, { 38.8, 42.8 }, { 66, 68 } } do
+		if C and math.abs(f[1]) < 16 then continue end -- (the middle bay is the lobby's big opening)
 		H.block(S, "BayFin", f[1], f[2], CY, 18, 53, 64, P.flange)
 		H.block(S, "PierBase", f[1] - 0.3, f[2] + 0.3, CY, CY + 1.4, 52.6, 64, P.base)
 		if f[1] > -68 then H.wedge(S, "Haunch", f[1] - 2.5, f[1], 15.5, 18, 55, 64, P.web, { high = "E", flip = true, ghost = true }) end
@@ -1241,6 +1273,7 @@ L.LANES_BUILD.overlook = function(H)
 	-- hall's coffers (a whole roof out to the steps was tried first: from the spawn it was one dull flat soffit across the
 	-- top third of the view). it stands on the middle bay's two fins and on two columns BEHIND the spawn rows, so no pier
 	-- stands between a spawn point and a pad
+	if not C then -- (the entrance, and further down its balcony and small lounge, are the overlook's own: the "centre" has its lobby there)
 	H.block(S, "Marquee", -12.4, 12.4, 13.5, 14.3, 47, 64, P.web)
 	H.block(S, "MarqueeBeam", -14.8, 14.8, 13.5, 16.5, 45, 47, P.flange) -- (solid: it is the balcony's front parapet)
 	for _, s in { -1, 1 } do
@@ -1253,6 +1286,7 @@ L.LANES_BUILD.overlook = function(H)
 		H.wedge(S, "Haunch", s * 12.4, s * 14.8, 9.5, 13.5, 39, 45, P.web, { high = "S", flip = true, ghost = true })
 	end
 	panel(0, 13.5, 53, 12, 4); H.lamp(0, 12.2, 53, 30, 1.6, LAMP, { spot = true, shadows = true, angle = 120 }) -- (the one lamp under the roof, and it casts shadows)
+	end
 	-- ---- every wall bay's top corners are cut, as the shop bays' are: a haunch under the cove beside each pier. and every
 	-- pier carries a white light on its face, a real lamp behind it
 	local function pierLight(s, xf, z)
@@ -1281,6 +1315,7 @@ L.LANES_BUILD.overlook = function(H)
 	local function plastic(m) if m then for _, p in m:GetDescendants() do if p:IsA("BasePart") then p.Material = Enum.Material.SmoothPlastic end end end end
 	-- the balcony over the entrance. the marquee's roof is its floor, the marquee's front beam and the ends of its two
 	-- side beams are its parapet (2.2 high, under a fat pink cap); behind it the bulkhead is cut away for a snug
+	if not C then
 	H.block(S, "BalconyCarpet", -12.4, 12.4, 14.3, 14.4, 47, 64, P.carpet, Carpet)
 	H.block(S, "BalconyCap", -15, 15, 16.5, 17, 44.8, 47.2, PINK)
 	for _, s in { -1, 1 } do
@@ -1301,7 +1336,7 @@ L.LANES_BUILD.overlook = function(H)
 		H.put("bc_plantbig", "Plant", s * 9.9, 14.4, 62.6, 0, { scale = 0.5, color = { ["2a2c3e"] = P.base } })
 		plastic(H.put("bc_sofa", "Sofa", s * 11.6, 14.4, 57.5, -s * 90, { back = true, solid = true, color = { ["3b2a52"] = P.booth, [PINK] = if s < 0 then PINK else CYAN } }))
 	end
-	H.block(S, "Dado", -11.6, 11.6, 14.4, 18, 63.7, 64, WOOD, Wood, G); H.block(S, "Hazard", -11.6, 11.6, 18, 19, 63.7, 64, PINK, nil, G)
+	H.block(S, "Dado", -11.6, 11.6, 14.4, 18, 63.7, 64, WOOD, Wood, G); H.block(S, "Hazard", -11.6, 11.6, 18, 19, 63.7, 64, BAND, nil, G)
 	panel(0, 26, 57, 10, 3); H.lamp(0, 23.6, 56, 20, 0.9, WARM)
 	H.put("bc_holoprojector", "HoloProjector", 0, 14.4, 58.5, 0, { color = { ["2a2d38"] = P.base } })
 	-- a round rug under it, and a beanbag each side to watch it from
@@ -1318,10 +1353,12 @@ L.LANES_BUILD.overlook = function(H)
 	H.text("DuckSign", { { "THE DUCK", YEL, "L", 0.55 }, { "it is a hologram. please stop tipping it.", "ffffff", "F", 0.36 } }, 13, 2.4, 0, 24.3, 63.85, 180)
 	H.put("bc_bunting", "Bunting", 0, 22.8, 63.4, 0, { seat = "top", scale = 1.1, color = { ["17141f"] = P.base } })
 	H.text("BalconySign", { { "VIP LOUNGE", PINK, "L", 0.6 }, { "everyone is VIP. nobody is.", "ffffff", "F", 0.34 } }, 15, 2.5, 0, 15, 44.85, 180)
+	end
 	-- the house ball: a giant bowling ball in a ring, hung from the beam over the crossing of the aisle and the cross
 	-- walk, turning; and its picture on the floor under it, where the yellow lines meet
+	local function houseBall(BX, BY, BZ, BR) -- (a function, so that the "centre" structure can hang it in its dome)
 	local hb = Instance.new("Model"); hb.Name = "HouseBall"
-	local BX, BY, BZ, BR = 0, 19.9, 19.6, 4
+	-- (the overlook's hangs over the crossing: 0, 19.9, 19.6, and 4 in radius)
 	local shell = H.block(S, "Ball", BX - BR, BX + BR, BY - BR, BY + BR, BZ - BR, BZ + BR, PINK, nil, G)
 	shell.Shape = Enum.PartType.Ball; shell.Parent = hb
 	for _, a in { { 80, -16 }, { 80, 16 }, { 110, 0 } } do -- two finger holes and the thumb's, on its side so they come round
@@ -1334,18 +1371,24 @@ L.LANES_BUILD.overlook = function(H)
 	hb.Parent = H.root.Scenery
 	-- (the ring is wide and sits over the ball like a hat brim: it is the one round thing in the ceiling, over the plan's centre)
 	H.put("bc_halo", "BallRing", BX, BY + 1.6, BZ, 0, { seat = "centre", scale = 1.15 })
-	drum("BallCollar", BX, 23.9, 24.5, BZ, 3.6, P.web, nil, G)
-	H.lamp(BX, 14.8, BZ, 16, 0.3, PINK)
-	local up = H.lamp(BX, 12.6, BZ, 14, 3.5, "fff0f8", { spot = true, angle = 60 }); up:FindFirstChildOfClass("SpotLight").Face = Enum.NormalId.Top -- (lights its underside, which is what the spawn sees)
-	drum("Roundel", 0, 0.08, 0.1, BZ, 12, P.flange, nil, G); drum("Roundel", 0, 0.08, 0.115, BZ, 10.8, P.base, nil, G)
-	for _, d in { { -1.3, -1.9 }, { 1.3, -1.9 }, { 0, 1.2 } } do drum("Roundel", d[1], 0.08, 0.13, BZ + d[2], 1.7, P.flange, nil, G) end
+	-- (what it hangs by is the caller's: that depends on the ceiling)
+	H.lamp(BX, BY - 5.1, BZ, 16, 0.3, PINK)
+	local up = H.lamp(BX, BY - 7.3, BZ, 14, 3.5, "fff0f8", { spot = true, angle = 60 }); up:FindFirstChildOfClass("SpotLight").Face = Enum.NormalId.Top -- (lights its underside, which is what the spawn sees)
+	end
+	local function roundel(x, y, z, k) -- the ball's picture on a floor (k = its size: 1 is 12 across)
+		k = k or 1
+		drum("Roundel", x, y + 0.08, y + 0.1, z, 12 * k, P.flange, nil, G); drum("Roundel", x, y + 0.08, y + 0.115, z, 10.8 * k, P.base, nil, G)
+		for _, d in { { -1.3, -1.9 }, { 1.3, -1.9 }, { 0, 1.2 } } do drum("Roundel", x + d[1] * k, y + 0.08, y + 0.13, z + d[2] * k, 1.7 * k, P.flange, nil, G) end
+	end
+	if not C then houseBall(0, 19.9, 19.6, 4); drum("BallCollar", 0, 23.9, 24.5, 19.6, 3.6, P.web, nil, G); roundel(0, 0, 19.6) end
 	-- an awning over the front of each shop bay, striped in the shop's colour; and the one bay that had no name gets one
-	for _, b in { { -66, -42.8, PINK }, { -38.8, -15.6, CYAN }, { 15.6, 38.8, YEL }, { 42.8, 66, PINK } } do
+	local BAYS = if C then { { -66, -42.8, PINK }, { -38.8, -27.3, CYAN }, { 27.3, 38.8, YEL }, { 42.8, 66, PINK } } else { { -66, -42.8, PINK }, { -38.8, -15.6, CYAN }, { 15.6, 38.8, YEL }, { 42.8, 66, PINK } } -- (the shop bays either side of the middle one)
+	for _, b in BAYS do
 		local w = (b[2] - b[1]) / 6
 		for k = 0, 5 do H.wedge(S, "Awning", b[1] + k * w, b[1] + (k + 1) * w, 15.6, 18, 48.4, 53, if k % 2 == 0 then b[3] else P.flange, { high = "S", ghost = true }) end
 		H.block(S, "AwningLip", b[1], b[2], 14.9, 15.6, 48.1, 48.5, P.flange, nil, G)
 	end
-	H.text("ColaSign", { { "JANK COLA", "ff3b3b", "L", 0.6 }, { "now with 0% water. may contain cola.", "ffffff", "F", 0.34 } }, 14, 2.6, 54.4, 20, 52.85, 180)
+	H.text("ColaSign", { { "JANK COLA", "ff3b3b", "L", 0.6 }, { "now with 0% water. may contain cola.", "ffffff", "F", 0.34 } }, if C then 11 else 14, 2.6, if C then 33 else 54.4, 20, 52.85, 180)
 	-- a globe lamp on the parapet every bay (none inside x -17.3..17.3: nothing stands between a spawn point and a pad)
 	for _, s in { -1, 1 } do for _, x in { 24, 43, 62 } do
 		H.block(S, "GlobeStem", s * x - 0.5, s * x + 0.5, CY + 2.2, CY + 3.2, 34.1, 35.1, P.base, nil, G)
@@ -1353,7 +1396,7 @@ L.LANES_BUILD.overlook = function(H)
 		H.lamp(s * x, CY + 4.3, 34.6, 11, 0.7, WARM)
 	end end
 	-- a doormat where you arrive: a teal mat in a pale border from the spawn rows to the head of the steps
-	H.block(S, "Hazard", -10, 10, CY + 0.01, CY + 0.04, 35.6, 46.4, P.flange, nil, G); H.block(S, "Hazard", -9.4, 9.4, CY + 0.01, CY + 0.06, 36.2, 45.8, P.machine, Carpet, G)
+	if not C then H.block(S, "Hazard", -10, 10, CY + 0.01, CY + 0.04, 35.6, 46.4, P.flange, nil, G); H.block(S, "Hazard", -9.4, 9.4, CY + 0.01, CY + 0.06, 36.2, 45.8, P.machine, Carpet, G) end
 	-- one small secret: a duck that is not a hologram, on top of the last fin by the closed lane
 	H.put("pj_duck", "SecretDuck", 60, 10, -66.5, 200, { scale = 2.2 })
 	-- the concourse is zoned: a pale kerb line along the foot of the parapet, a teal mat under each shop's awning, and a
@@ -1367,7 +1410,7 @@ L.LANES_BUILD.overlook = function(H)
 			b.Position = H.w(s * 33.5 - 5 + (i - 0.5) * (10 / 6), CY + 1.95, 36.6)
 		end
 	end
-	for _, b in { { -66, -42.8 }, { -38.8, -15.6 }, { 15.6, 38.8 }, { 42.8, 66 } } do H.paint(b[1], b[2], 48.5, 53, P.machine, { y = CY, mat = Carpet }) end
+	for _, b in BAYS do H.paint(b[1], b[2], 48.5, 53, P.machine, { y = CY, mat = Carpet }) end
 	-- bunting under the cross beam over the cross walk, one string a lane; a flower tub at the jambs of the two recesses
 	for i = 1, 6 do H.put("bc_bunting", "Bunting", -50 + (i - 1) * 20, 25.2, 16.6, 0, { seat = "top", scale = 0.85, color = { ["17141f"] = P.base } }) end
 	for _, t in { { -62.2, 7.5, 90 }, { -62.2, 29.4, 90 }, { 62.2, 7.5, -90 } } do H.put("bc_planter", "Planter", t[1], 0, t[2], t[3], { solid = true }) end
@@ -1388,7 +1431,8 @@ L.LANES_BUILD.overlook = function(H)
 		H.text("LaneNumber", { { "LANE " .. i, "ffffff", "L", 1 } }, 10.8, 1.6, x, 5.83, -68.74, 0, { clear = true, flush = true })
 		-- the lane's board, the pad's own Sign: it is the infill of its bay of the gantry at z 0. 1.1 higher than the box's:
 		-- the spawn camera is 3 higher, and the whole name has to show under the boards
-		H.board(pad, id, 15.8, 5.2, x, 16.6, 0, 0, { thick = 2, lines = { 0.305, 0.17, 0.295, 0.23 }, closed = { "closed for waxing. (ish)", "the wax is also coming soon." } })
+		H.board(pad, id, 15.8, if C then 5.6 else 5.2, x, if C then 19.6 else 16.6, 0, 0, { thick = if C then 3.4 else 2, lines = if C then { 0.46, 0.12, 0.26, 0.16 } else { 0.305, 0.17, 0.295, 0.23 }, closed = { "closed for waxing. (ish)", "the wax is also coming soon." } })
+		-- (in the "centre" the board is read from the lobby, 85 away: taller, and the mode's name is its big line)
 		-- its coffers, north to south: two over the lane, one over the pad (that lamp casts shadows), one over the cross walk
 		-- and the booths (the two either side of the steps cast shadows)
 		for _, z in { -53.5, -16.5 } do panel(x, LID, z, 9, 4.4); H.lamp(x, LID - 1.3, z, 54, 0.55, LAMP, { spot = true, angle = 110 }) end
@@ -1429,7 +1473,7 @@ L.LANES_BUILD.overlook = function(H)
 		-- wood to the dado and a fat pink band over it, on every wall (the piers and jambs stand in front of it)
 		for _, w in { { -69.2, 10, 0 }, { 29.2, 34, 0 }, { 34, 53, CY } } do
 			H.block(S, "Dado", s * 67.7, s * 68, w[3], w[3] + 6, w[1], w[2], WOOD, Wood, G)
-			H.block(S, "Hazard", s * 67.7, s * 68, w[3] + 6, w[3] + 7.4, w[1], w[2], PINK, nil, G)
+			H.block(S, "Hazard", s * 67.7, s * 68, w[3] + 6, w[3] + 7.4, w[1], w[2], BAND, nil, G)
 		end
 		-- bay 1 (z -64..-35): a spare giant pin, a speaker each side. bay 2 (z -31..-3): the big board on its mount
 		for _, z in { -41.5, -59.8 } do H.put("bc_speaker", "Speaker", s * 68, 1.2, z, -s * 90, { back = true, scale = 2, solid = true, color = { ["17141f"] = P.speaker, ["3a3f4a"] = P.speakerFace, ["2a2d38"] = P.grille } }) end
@@ -1448,19 +1492,20 @@ L.LANES_BUILD.overlook = function(H)
 	H.screen("News", { { "JANK NEWS 24", "ff3b3b", "L", 0.3 }, { "LOCAL MAN BOWLS 300. NOBODY SAW IT. HE SAYS IT COUNTS.", YEL, "F", 0.6 } }, -67.39, CY + 13, 43.6, 90, 15)
 	-- the two recesses at the ends of the cross walk. west: the way to training (the door stands at the back of it, so you
 	-- walk in through the surround). east: the arcade
-	H.trainingDoor(-75, 19.6, 90, { "TRAINING", "the fire exit. the fire is optional." })
+	if not C then H.trainingDoor(-75, 19.6, 90, { "TRAINING", "the fire exit. the fire is optional." }) end
 	H.lamp(-71, 17, 19.6, 16, 0.7, LAMP)
-	for _, z in { 14.6, 19.6, 24.6 } do H.put("bc_arcade", "Arcade", 75, 0, z, -90, { back = true, scale = 1.3, solid = true, color = { ["17141f"] = P.base, ["120818"] = P.base } }) end
+	if not C then for _, z in { 14.6, 19.6, 24.6 } do H.put("bc_arcade", "Arcade", 75, 0, z, -90, { back = true, scale = 1.3, solid = true, color = { ["17141f"] = P.base, ["120818"] = P.base } }) end end
 	-- (a striped canopy over the machines and the name big above it: the recess is 23 high, and three cabinets under a
 	-- small plate left most of its back wall bare)
-	H.text("ArcadeSign", { { "ARCADE", PINK, "L", 0.6 }, { "one game. it is the one you are in.", "ffffff", "F", 0.34 } }, 17, 3.8, 74.85, 16.4, 19.6, -90)
+	if C then H.text("BallsSign", { { "HOUSE BALLS", PINK, "L", 0.6 }, { "take your pick", "ffffff", "F", 0.34 } }, 17, 3.8, 74.85, 16.4, 19.6, -90)
+	else H.text("ArcadeSign", { { "ARCADE", PINK, "L", 0.6 }, { "one game. it is the one you are in.", "ffffff", "F", 0.34 } }, 17, 3.8, 74.85, 16.4, 19.6, -90) end
 	for k = 0, 3 do H.wedge(S, "Awning", 69.4, 75, 10.4, 12.6, 11.6 + k * 4, 15.6 + k * 4, if k % 2 == 0 then PINK else P.flange, { high = "E", ghost = true }) end
 	H.block(S, "AwningLip", 69.1, 69.5, 9.7, 10.4, 11.6, 27.6, P.flange, nil, G)
-	H.block(S, "Dado", 74.7, 75, 0, 6, 10, 29.2, WOOD, Wood, G); H.block(S, "Hazard", 74.7, 75, 6, 7.4, 10, 29.2, PINK, nil, G)
+	H.block(S, "Dado", 74.7, 75, 0, 6, 10, 29.2, WOOD, Wood, G); H.block(S, "Hazard", 74.7, 75, 6, 7.4, 10, 29.2, BAND, nil, G)
 	H.lamp(71, 16, 19.6, 20, 1.0, LAMP); H.lamp(71.5, 4, 19.6, 14, 0.8, PINK)
 
 	-- ---- the concourse (y 3): five shop bays along the south wall, 23.2 wide between fin walls
-	H.block(S, "Dado", -68, 68, CY, CY + 6, 63.7, 64, WOOD, Wood, G); H.block(S, "Hazard", -68, 68, CY + 6, CY + 7.4, 63.7, 64, PINK, nil, G)
+	for _, d in if C then { { -68, -21 }, { 21, 68 } } else { { -68, 68 } } do H.block(S, "Dado", d[1], d[2], CY, CY + 6, 63.7, 64, WOOD, Wood, G); H.block(S, "Hazard", d[1], d[2], CY + 6, CY + 7.4, 63.7, 64, BAND, nil, G) end
 	-- bay 1: lockers, and one fat shelf with three small gold giant pins on it for trophies over a bench
 	H.put("bc_lockers", "Lockers", -60.5, CY, 64, 180, { back = true, scale = 1.5, solid = true, color = { ["56683f"] = CYAN, ["2a2d38"] = "5b6478", ["17141f"] = P.base } })
 	H.block(S, "TrophyShelf", -54.2, -43.3, CY + 5.6, CY + 6.8, 60.4, 64, WOOD, Wood, G)
@@ -1468,32 +1513,34 @@ L.LANES_BUILD.overlook = function(H)
 	H.text("TrophySign", { { "TROPHIES", YEL, "L", 0.6 }, { "all for turning up.", "ffffff", "F", 0.34 } }, 10, 2.2, -54.4, 20, 52.85, 180)
 	H.put("st_bench", "Bench", -48.75, CY, 64, 180, { back = true, solid = true })
 	-- bay 2: shoes
-	H.put("bw_counter", "ShoeCounter", -27.2, CY, 64, 180, { back = true, solid = true, color = { ["17141f"] = P.base, ["4b2a6b"] = P.trim } })
-	H.text("ShoeSign", { { "SHOES", CYAN, "L", 0.6 }, { "two left feet available", "ffffff", "F", 0.34 } }, 16, 3, -27.2, 20, 52.85, 180)
+	H.put("bw_counter", "ShoeCounter", if C then -31.6 else -27.2, CY, 64, 180, { back = true, solid = true, scale = if C then 0.68 else nil, color = { ["17141f"] = P.base, ["4b2a6b"] = P.trim } })
+	H.text("ShoeSign", { { "SHOES", CYAN, "L", 0.6 }, { "two left feet available", "ffffff", "F", 0.34 } }, if C then 11 else 16, if C then 2.2 else 3, if C then -33 else -27.2, 20, 52.85, 180)
 	-- bay 3, the entrance, under the marquee: the lane guide on its back wall (22 wide here, to fit the bay)
 	local guide = { { "LANE GUIDE", YEL, "L", 0.22 } }
 	for i, id in ids do local md = H.M[id]; table.insert(guide, { ("LANE %d  ·  %s  ·  %s"):format(i, md.title, if md.soon then "closed for waxing. (ish)" else md.tag), md.color, "F", 0.115 }) end
 	table.insert(guide, { "TRAINING  ·  the red door in the west wall  ·  also the fire exit", GREEN, "F", 0.115 })
-	H.text("LaneGuide", guide, 22, 6.6, 0, CY + 6.6, 63.85, 180)
-	H.lamp(0, 11.5, 58, 18, 0.8, LAMP)
+	if C then guide[#guide][1] = "TRAINING  ·  off the lobby, on the left"; H.text("LaneGuide", guide, 18, 5.4, -74.85, 9.6, 19.6, 90) -- (in the west recess, where the overlook has its training door)
+	else H.text("LaneGuide", guide, 22, 6.6, 0, CY + 6.6, 63.85, 180) end
+	if not C then H.lamp(0, 11.5, 58, 18, 0.8, LAMP) end
 	-- bay 4: the snack bar (0.87 of its size, to fit the bay), a table to eat at out on the concourse
-	H.put("fc_stall", "SnackBar", 27.2, CY, 64, 180, { back = true, solid = true, scale = 0.87, color = { [PINK] = CYAN } })
-	H.text("SnackName", { { "NACHOS. JUST NACHOS.", YEL, "L", 1 } }, 21.4 * 0.87, 2.9 * 0.87, 27.2, CY + L.FASCIA_Y * 0.87, 64 - L.FASCIA_OUT * 0.87, 180, { clear = true })
+	if not C then H.put("fc_stall", "SnackBar", 27.2, CY, 64, 180, { back = true, solid = true, scale = 0.87, color = { [PINK] = CYAN } }) end
+	if not C then H.text("SnackName", { { "NACHOS. JUST NACHOS.", YEL, "L", 1 } }, 21.4 * 0.87, 2.9 * 0.87, 27.2, CY + L.FASCIA_Y * 0.87, 64 - L.FASCIA_OUT * 0.87, 180, { clear = true }) end
 	H.put("fc_table", "Table", 46, CY, 44, 20, { solid = Vector3.new(6, 3.3, 6), color = { [YEL] = PINK } })
 	-- bay 5: vending
-	for i, x in { 48.2, 52.4, 56.6 } do H.put("hb_vending", "Vending", x, CY, 64, 180, { back = true, solid = true, color = { [PINK] = ({ YEL, PINK, CYAN })[i], ["17141f"] = P.base } }) end
+	for i, x in if C then { 26.6, 30.8, 35 } else { 48.2, 52.4, 56.6 } do H.put("hb_vending", "Vending", x, CY, 64, 180, { back = true, solid = true, color = { [PINK] = ({ YEL, PINK, CYAN })[i], ["17141f"] = P.base } }) end
 	-- a light in the soffit of each shop bay (the entrance bay has the marquee's), and the six coffers over the concourse
-	for _, x in { -54.4, -27.2, 27.2, 54.4 } do panel(x, 18, 58, 9, 3); H.lamp(x, 16.6, 58, 24, 1.1, LAMP) end
+	for _, x in if C then { -54.4, -32.5, 32.5, 54.4 } else { -54.4, -27.2, 27.2, 54.4 } do panel(x, 18, 58, 9, 3); H.lamp(x, 16.6, 58, 24, 1.1, LAMP) end
 	for _, x in { -50, -30, -10, 10, 30, 50 } do -- (the two over the spawn cast shadows)
-		panel(x, LID, 41.5, 9, 4.4); H.lamp(x, LID - 1.3, 41.5, 54, 1.5, LAMP, { spot = true, shadows = math.abs(x) == 10, angle = 100 })
+		panel(x, LID, 41.5, 9, 4.4); H.lamp(x, LID - 1.3, 41.5, 54, 1.5, LAMP, { spot = true, shadows = not C and math.abs(x) == 10, angle = 100 })
 		if math.abs(x) == 30 then H.lamp(x, 23.5, 41.5, 20, 0.6, P.glow) end
 	end
 
 	-- ---- the floor shows the way. from the spawn a yellow line to the head of the steps; from their foot on to a cross
 	-- line that runs past every lane; green goes west along the cross walk into the training door's recess
-	H.paint(-0.8, 0.8, 34.2, 45.5, YEL, { y = CY }); H.paint(-50.8, 50.8, 18.7, 20.3, YEL) -- (the roundel under the house ball is where the aisle meets the cross line)
+	H.paint(-0.8, 0.8, 34.2, if C then 64 else 45.5, YEL, { y = CY }); H.paint(-50.8, 50.8, 18.7, 20.3, YEL) -- (the roundel under the house ball is where the aisle meets the cross line)
 	H.put("bc_chevron", "Arrow", 0, CY + 0.09, 37, 180, { color = { f4f8ff = PINK } })
 	for _, s in { -1, 1 } do for _, x in { 20, 40 } do H.put("bc_chevron", "Arrow", s * x, 0.09, 19.5, s * 90, { color = { f4f8ff = PINK } }) end end
+	if not C then -- (the "centre" has its training door off the lobby)
 	H.paint(-66, -21, 22.4, 24, GREEN)
 	for _, x in { -30, -45, -60 } do H.put("bc_chevron", "Arrow", x, 0.09, 23.2, -90, { color = { f4f8ff = GREEN } }) end
 	-- the word on the lane floor at the foot of the steps, where a first look from the concourse lands: green, pointing
@@ -1502,9 +1549,11 @@ L.LANES_BUILD.overlook = function(H)
 	tf.CFrame = CFrame.new(H.w(-11.2, 0, 23.2)) * CFrame.Angles(-math.pi / 2, 0, 0) * CFrame.Angles(0, math.pi, 0)
 	tf.Gui.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize; tf.Gui.CanvasSize = Vector2.new(470, 100)
 	H.put("bc_chevron", "Arrow", -18.2, 0.09, 23.2, -90, { color = { f4f8ff = GREEN } })
+	end
 	local sp = {}
 	for _, z in { 39, 43 } do for _, x in { -5.4, -1.8, 1.8, 5.4 } do table.insert(sp, { x, z }) end end
-	H.spawns(sp, CY)
+	if not C then H.spawns(sp, CY) end
+	local function finish()
 
 	-- every model in here is flat smooth plastic (a few older props came with metal parts, which render near black under these lamps)
 	for _, p in H.root.Scenery:GetDescendants() do if p:IsA("BasePart") and p.Material == Enum.Material.Metal then p.Material = Enum.Material.SmoothPlastic end end
@@ -1513,7 +1562,324 @@ L.LANES_BUILD.overlook = function(H)
 		local look = game.ReplicatedStorage.Jankfire:FindFirstChild("HubLook")
 		if look then look:SetAttribute("HubTint", P.tint) end
 	end
+	-- (a palette with a remap also quietens the dressing: every part painted one of the colours it lists is repainted, but
+	-- for the steps' nosings, the jump pads and the training door's frame; and every lamp in one of the
+	-- loud colours goes to the palette's plain lamp colour. the pads and their boards are not in this folder at all)
+	if P.remap then
+		for _, p in H.root:GetDescendants() do
+			if p:IsA("BasePart") then
+				local to = P.remap[p.Color:ToHex()]
+				if to and p.Name ~= "Nosing" and not p:FindFirstAncestor("TrainingPortal") and not p:FindFirstAncestor("JumpPad") then p.Color = Color3.fromHex(to) end
+			elseif p:IsA("Light") and (P.remap[p.Color:ToHex()] or p.Color:ToHex() == PINK) then p.Color = Color3.fromHex(P.lamp or "fff1d6") end
+		end
+	end
+	-- (and a sober palette takes the party out: no bunting, plain canopies for the striped awnings, a teal house ball,
+	-- and the plain words of L.LANES_WORDS for the joke ones on every label here and on the pads' boards)
+	if P.sober then
+		for _, c in H.root.Scenery:GetChildren() do
+			if c.Name == "Bunting" then c:Destroy() elseif c.Name == "Awning" then c.Color = Color3.fromHex(P.machine)
+			elseif c.Name == "Globe" or c.Name == "GlobeStem" or c.Name == "Planter" then c:Destroy()
+			elseif c.Name == "BallRing" then for _, q in c:GetDescendants() do if q:IsA("BasePart") and q.Material ~= Enum.Material.Neon then q.Color = Color3.fromHex(P.web) end end
+			elseif c.Name == "HouseBall" then for _, q in c:GetChildren() do q.Color = Color3.fromHex(if q.Name == "Ball" then P.machine else P.flange) end end
+		end
+		for _, f in { H.root, H.padFolder } do for _, t in f:GetDescendants() do
+			if t:IsA("TextLabel") then
+				for o, n in L.LANES_WORDS do local a, b = t.Text:find(o, 1, true); if a then t.Text = t.Text:sub(1, a - 1) .. n .. t.Text:sub(b + 1) end end
+				-- (and the lettering: one clean heavy face for names and a lighter cut of it for lines, no comic outline)
+				t.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", if t.FontFace.Family:find("Luckiest") then Enum.FontWeight.Heavy else Enum.FontWeight.SemiBold)
+				local st = t:FindFirstChildOfClass("UIStroke"); if st then st:Destroy() end
+			end
+		end end
+	end
 	return H.done()
+	end
+	if C then C.P, C.panel, C.drum, C.plastic, C.houseBall, C.roundel, C.BOOTH, C.finish = P, panel, drum, plastic, houseBall, roundel, BOOTH, finish; return end
+	return finish()
+end
+
+-- THE LANES as a bowling centre with rooms: "centre" (2026-11-15, the third structure. the owner, of the overlook's
+-- pictures: "its not the color is the struicture", and "the first hub we had I though was cute": that one was a round
+-- room with rooms off it, and the overlook is still one room). the overlook's hall is built as it is, with its south end
+-- left open (the C it is handed); south of it, on the concourse's level:
+--   the lobby   round (twelve sides, 48 across), its middle at (0, 84). you spawn on a stepped round platform under a
+--               dome, the house ball hung from the skylight over you; a ring balcony 13 up, whose three northern sides
+--               stand out into the hall as a bay you can look down the lanes from
+--   north       the big opening into the hall, 35 wide: all six boards show from every spawn point (L.check)
+--   south       the lounge, through an arch        east   snacks and the arcade, through a wide front
+--   west        a low hatch and a passage to the training door
+-- below the first few lines y is measured from the lobby's floor (H.O is lifted by 3 while the lobby is built)
+L.LANES_BUILD.centre = function(H)
+	local C = {}
+	L.LANES_BUILD.overlook(H, C)
+	local P, panel, drum, plastic = C.P, C.panel, C.drum, C.plastic
+	local S, SH, G = "Scenery", "Shell", { ghost = true }
+	local Carpet, Wood, Neon, Brick = Enum.Material.Carpet, Enum.Material.Wood, Enum.Material.Neon, Enum.Material.Brick
+	local WOOD, WARM, LAMP, BRICK, BAND = P.wood or "a8703a", "ffe9b8", "fff1d6", P.brick or "9a5c48", P.band or PINK
+	-- (a judge, of the first pictures: "closer to a tidy toy set", every surface one pale cream. so in a palette that has
+	-- them the lobby's shell, piers and dome are darker and heavier than the rooms it looks into: each doorway frames a lit room)
+	local SHELL, DARK, DOME, COOL = P.shell or P.wall, P.pier or P.flange, P.dome or P.ceil, P.cool or WARM -- (COOL: the lobby's lamps. a warm lamp turned its grey walls tan)
+	-- the hall's side of the big opening: a jamb each side, splayed at 30 degrees from the wall's edge out to the first
+	-- shop bay (a square jamb that deep would hide the end boards from the spawn)
+	for _, s in { -1, 1 } do
+		local rot = { rot = CFrame.Angles(0, math.rad(-30 * s), 0) }
+		H.block(S, "MouthJamb", s * 22.1 - 1, s * 22.1 + 1, 3, 28, 52.4, 67.6, P.flange, nil, rot)
+		H.block(S, "PierBase", s * 22.1 - 1.3, s * 22.1 + 1.3, 3, 4.4, 52.3, 67.7, P.base, nil, rot)
+		H.block(S, "PierLight", s * 21.08 - 0.2, s * 21.08 + 0.2, 6, 20, 58.3, 60.5, P.base, nil, { rot = rot.rot, ghost = true }); H.block(S, "Panel", s * 20.86 - 0.1, s * 20.86 + 0.1, 6.6, 19.4, 58.58, 59.98, P.panel, Enum.Material.Neon, { rot = rot.rot, ghost = true })
+	end
+	-- what the hall's two recesses and its last shop bay hold now: a bench under the lane guide (west, where the overlook
+	-- has its training door), a wall of house balls (east, where it has its arcade), a booth. and the totem's words
+	H.block(S, "Dado", -75, -74.7, 0, 6, 10, 29.2, WOOD, Wood, G); H.block(S, "Hazard", -75, -74.7, 6, 7.4, 10, 29.2, BAND, nil, G)
+	H.put("st_bench", "Bench", -75, 0, 19.6, 90, { back = true, solid = true })
+	for i = 0, 2 do
+		H.block(S, "BallShelf", 73, 75, 1.8 + i * 2.6, 2.2 + i * 2.6, 11.2, 28, P.flange)
+		for k = 0, 5 do H.block(S, "RackBall", 73, 75, 2.2 + i * 2.6, 4.2 + i * 2.6, 11.8 + k * 2.8, 13.8 + k * 2.8, ({ PINK, CYAN, YEL, GREEN, "ff9a1f" })[(i * 2 + k) % 5 + 1], nil, G).Shape = Enum.PartType.Ball end
+	end
+	H.put("bw_booth", "Booth", 54.4, 3, 60, 180, { solid = C.BOOTH, color = { [CYAN] = YEL, ["2e3140"] = P.booth, ["17141f"] = P.base } }); H.lamp(54.4, 7.5, 58.5, 12, 0.6, WARM)
+	for _, t in H.root.Scenery:GetChildren() do if t.Name == "TotemText" and t.Gui.Line1.Text == "TRAINING" then t.Gui.Line2.Text = ">>>"; t.Gui.Line3.Text = "off the lobby, on the left." end end
+	local O0 = H.O
+	H.O = O0 + Vector3.new(0, 3, 0)
+	local CZ = 84
+	-- the lobby's own measures: a bearing (0 north, 90 east) and how far from the middle
+	local function at(a, r) local q = math.rad(a); return r * math.sin(q), CZ - r * math.cos(q) end
+	-- a block square to the bearing a: its middle rm out and ym up, hw = half its width, th thick, len long (outwards);
+	-- t = slid sideways along its side; pitch = tipped, its outer end down (a dome's panel)
+	local function side(folder, name, a, rm, ym, hw, th, len, hex, mat, o, t, pitch)
+		local x, z = at(a, rm)
+		if t then local q = math.rad(a); x += t * math.cos(q); z += t * math.sin(q) end
+		local oo = table.clone(o or {})
+		oo.rot = CFrame.Angles(0, math.rad(180 - a), 0) * CFrame.Angles(math.rad(pitch or 0), 0, 0)
+		return H.block(folder, name, x - hw, x + hw, ym - th / 2, ym + th / 2, z - len / 2, z + len / 2, hex, mat, oo)
+	end
+	local function seg(folder, name, a, r0, r1, y0, y1, hw, hex, mat, o, t) return side(folder, name, a, (r0 + r1) / 2, (y0 + y1) / 2, hw, y1 - y0, r1 - r0, hex, mat, o, t) end
+
+	-- ---- the lobby's shell: floor, nine wall sides (the three northern ones are the opening), the dome
+	H.block(SH, "LobbyFloor", -28, 28, -2, 0, 64, 112, P.carpet, Carpet)
+	local DOOR = { [90] = { 5, 9.5 }, [-90] = { 5, 10 }, [180] = { 5, 10.5 } } -- the three doorways: half the width, the height
+	for _, a in { 60, 90, 120, 150, 180, -150, -120, -90, -60 } do
+		local d = DOOR[a]
+		if d then
+			local w = (7.1 - d[1]) / 2
+			for _, s in { -1, 1 } do seg(SH, "LobbyWall", a, 24, 26.5, 0, 26, w, SHELL, nil, nil, s * (d[1] + w)) end
+			seg(SH, "LobbyWall", a, 24, 26.5, d[2], 26, d[1], SHELL)
+		else seg(SH, "LobbyWall", a, 24, 26.5, 0, 26, 7.1, SHELL) end
+	end
+	-- the dome: two tiers of twelve panels, a rib down every ridge, a round skylight. (its three northern sides stand on
+	-- the hall's roof: the wall under them is the hall's own, over the opening)
+	for a = 0, 330, 30 do
+		side(SH, "Dome", a, 20, 28.5, 6.9, 1, 10, DOME, nil, nil, nil, 32); side(SH, "Dome", a, 11.25, 32.5, 4.7, 1, 10.6, DOME, nil, nil, nil, 17.5)
+		side(S, "Rib", a + 15, 20.7, 28, 0.8, 1.4, 10, P.flange, nil, G, nil, 31.1); side(S, "Rib", a + 15, 11.65, 32, 0.8, 1.4, 10.6, P.flange, nil, G, nil, 17)
+	end
+	H.block(SH, "DomeCap", -8, 8, 34.3, 35.3, CZ - 8, CZ + 8, DOME)
+	drum("Oculus", 0, 33.7, 34.3, CZ, 15, P.flange, nil, G); drum("Panel", 0, 33.5, 33.7, CZ, if P.sober then 9 else 12, if P.sober then "a9adb2" else P.panel, Neon, G)
+	H.lamp(0, 33, CZ, 60, 1.1, COOL, { spot = true, shadows = true, angle = 110 })
+	-- the ring balcony, 13 up, on all twelve sides, a rail on its inner edge; the three northern sides stand out into
+	-- the hall as a bay, with a rail on their outer edge too
+	local CAP = if P.sober then P.flange else PINK -- (a sober palette: a pale cap with a thin pink line on its face, not a pink slab)
+	local function line(a, r, hw, t) if P.sober then seg(S, "RailLine", a, r, r + 0.1, 15.25, 15.65, hw, PINK, nil, G, t) end end
+	for a = 0, 330, 30 do
+		seg(S, "Ring", a, 18.5, 24, 11.5, 13, 6.5, P.flange)
+		seg(S, "RingLip", a, 18.5, 19.4, 10.8, 11.5, 5.2, P.web, nil, G)
+		if a == 150 or a == 210 then -- (a gap in the rail either side of the lounge's arch, marked yellow: the way down)
+			for _, t in { -3.7, 3.7 } do seg(S, "Rail", a, 18.5, 19.7, 13, 15.2, 1.6, P.booth, nil, nil, t); seg(S, "RailCap", a, 18.3, 19.9, 15.2, 15.7, 1.66, CAP, nil, nil, t); line(a, 18.2, 1.66, t) end
+			seg(S, "Hazard", a, 18.5, 19.7, 13, 13.06, 2.1, YEL, nil, G)
+		else seg(S, "Rail", a, 18.5, 19.7, 13, 15.2, 5.3, P.booth); seg(S, "RailCap", a, 18.3, 19.9, 15.2, 15.7, 5.36, CAP); line(a, 18.2, 5.3) end
+		if a <= 30 or a == 330 then seg(S, "Rail", a, 22.8, 24, 13, 15.2, 6.45, P.booth); seg(S, "RailCap", a, 22.6, 24.2, 15.2, 15.7, 6.5, CAP); line(a, 24.2, 6.52) end
+	end
+	-- the platform you spawn on: two round steps, the house ball's picture on top, an unseen ramp all round it; the house
+	-- ball hangs over it from the skylight
+	drum("Step", 0, 0, 0.6, CZ, 23, DARK); drum("Step", 0, 0.6, 1.2, CZ, 19.6, P.web); drum("Step", 0, 1.2, 1.8, CZ, 16.4, P.flange) -- (three steps on a dark foot: a plinth, not a rug)
+	for a = 0, 330, 30 do local x, z = at(a, 10.4); H.ramp(x, z, -a, 6.8, 1.8, 4.6, 0) end
+	C.roundel(0, 1.8, CZ, 1.15)
+	C.houseBall(0, 14.5, CZ, 4); drum("BallRod", 0, 18.3, 33.6, CZ, 1, P.web, nil, G)
+	local sp = {}
+	for _, z in { CZ - 3, CZ + 0.6 } do for _, x in { -5.4, -1.8, 1.8, 5.4 } do table.insert(sp, { x, z }) end end
+	H.spawns(sp, 1.8)
+
+	-- ---- south, on the axis: the lounge. small, low and flat
+	H.room("Lounge", -14, 14, 112.5, 134.5, 10.5, { wall = BRICK, wallMat = Brick, floor = P.carpet, floorMat = Carpet, ceil = SHELL, open = { N = { { -5, 5, 10.5 } } } })
+	H.lamp(0, 8.5, 123.5, 30, 0.3, "ffd9a0")
+	-- ---- east: snacks and the arcade
+	-- (the snack bar's shell is built with its inside, further down: it stands a step up)
+	
+	-- ---- west: a low passage, and the tall bay the training door stands in
+	H.room("Passage", -38, -28.5, 79, 89, 10, { wall = P.base, floor = P.carpet, floorMat = Carpet, ceil = P.base, skip = { E = true, W = true } })
+	H.room("DoorBay", -56, -40, 73, 95, 23.5, { wall = SHELL, floor = P.carpet, floorMat = Carpet, ceil = DOME, open = { E = { { 79, 89, 10 } } } })
+	H.trainingDoor(-56, 84, 90, { "TRAINING", "walk through the gate" }, { frame = { a4aab8 = DARK }, head = DARK })
+	for _, c in H.root.Scenery:GetChildren() do local l = c.Name == "LampSpot" and c:FindFirstChildOfClass("PointLight"); if l and l.Color:ToHex() == "ff5a5a" then l.Brightness = 0.4; l.Range = 11 end end -- (the gate's red lamp blotched the passage's walls)
+	if P.sober then for _, c in H.root.Collision:GetChildren() do if c.Name == "PlanterBox" then c:Destroy() end end end -- (the hall's flower tubs go in a sober palette: their boxes too)
+	H.lamp(-48, 16, 84, 26, 0.8, LAMP)
+	-- ---- the lobby's structure: ten of the kit's chunky piers (cut corners, white light strips set in the face) from the
+	-- floor to the cornice, dark against the wall: one each side of the big opening and of every doorway, one in each of
+	-- the two corners left. then the cornice; and in every bay wood to the dado under a ledge and the band, and a slope
+	-- where the wall meets the ring
+	local function pier(x, z, face) H.put("hb_pier", "Pier", x, 0, z, face, { back = true, scale = 0.54, solid = true, color = { a4aab8 = DARK, ["5b6478"] = DARK } }); local f = H.front(face); H.lamp(x + f.X * 2.6, 5.2, z + f.Z * 2.6, 10, 0.4, COOL)
+		-- (under the ring each pier carries it on a sloped bracket: without, the piers read as lamp posts)
+		if face ~= 0 then H.block(S, "Bracket", x + f.X * 2.3 - 1.1, x + f.X * 2.3 + 1.1, 9.9, 10.5, z + f.Z * 2.3 - 1.6, z + f.Z * 2.3 + 1.6, DARK, nil, { ghost = true, rot = CFrame.Angles(0, math.rad(face), 0) * CFrame.Angles(math.rad(-45), 0, 0) }) end
+	end
+	for _, v in { 135, 225 } do local x, z = at(v, 24.5); pier(x, z, -v) end
+	for _, a in { 90, 180, 270 } do for _, s in { -1, 1 } do local x, z = at(a, 24); local q = math.rad(a); pier(x + s * 6.75 * math.cos(q), z + s * 6.75 * math.sin(q), -a) end end
+	for _, s in { -1, 1 } do pier(s * 19.25, 66, 0); for _, y in { 7.8, 21.4 } do H.wedge(S, "Haunch", s * 15.7, s * 18.1, y, y + 2.4, 66, if y < 9 then 68 else 67.3, DARK, { high = if s > 0 then "E" else "W", flip = true, ghost = true }) end end
+	H.block(S, "Lintel", -18.7, 18.7, 10.2, 10.8, 64.1, 65.4, DARK, nil, G); H.block(S, "Lintel", -18.1, 18.1, 23.8, 24.6, 66, 67.3, DARK, nil, G) -- (a dark beam and cut corners on the opening and on the opening over the rail. bigger corners would hide the end boards)
+	H.block(S, "Hazard", -17.5, 17.5, 0.01, 0.05, 64.4, 66.4, P.flange, nil, G); H.block(S, "Hazard", -17.5, 17.5, 0.01, 0.05, 66.4, 66.8, DARK, nil, G) -- (a pale sill across the opening)
+	-- (no wall lamps: every pier carries its own light)
+	for _, a in { 60, 90, 120, 150, 180, 210, 240, 270, 300 } do seg(S, "Cornice", a, 22.7, 24, 24.6, 26, 6.45, P.flange, nil, G) end
+	H.block(S, "Cornice", -17.6, 17.6, 24.6, 26, 66, 67.3, P.flange, nil, G)
+	for _, a in { 60, 120, 150, 210, 240, 300 } do
+		seg(S, "Dado", a, 23.7, 24, 0, 6, 6.4, WOOD, Wood, G); seg(S, "Ledge", a, 23.2, 24, 6, 6.5, 6.4, P.flange, nil, G); seg(S, "Hazard", a, 23.7, 24, 6.5, 7.4, 6.4, BAND, nil, G)
+		side(S, "Cove", a, 23, 10.5, 6.4, 0.5, 2.9, SHELL, nil, G, nil, 45)
+	end
+	-- ---- one word over every way out, hung under the ring's edge facing the platform (a fresh spawn looks a little
+	-- down: names on the ring's own front were off the top of the screen). the lanes ahead, with training and the snack
+	-- bar named either side of it; the lobby's own name on the back of the lanes', for the way back
+	local function ringSign(name, b, word, hex, back, w, h, y) local x, z = at(b, 18.32); H.text(name, { { word, hex, "L", 1 } }, w or 9.6, h or 2, x, y or 10.7, z, -b, { backLines = back and { { back, CYAN, "L", 1 } } }) end
+	-- (over the big opening: its one word, kept above the sight lines to the boards' tops, and a small tab either side for the two ways a fresh spawn does not face)
+	H.text("LobbySign", { { "THE LOBBY", CYAN, "L", 1 } }, 9.6, 1.6, 0, 14.1, 59.9, 180) -- (the lobby's own name, for the way back: on the front of the bay's rail, facing the hall)
+	ringSign("LanesSign", 0, "THE LANES", YEL, nil, 7.2, 1.6, 10.4); ringSign("WayTraining", 327, "< TRAINING", GREEN, nil, 5.6, 1.1, 10.2); ringSign("WaySnacks", 33, "SNACK BAR >", PINK, nil, 5.6, 1.1, 10.2)
+	ringSign("SnackSign", 90, "SNACK BAR", PINK); ringSign("LoungeSign", 180, "LOUNGE", CYAN); ringSign("TrainingSign", 270, "TRAINING", GREEN)
+	
+	
+	
+	
+	-- ---- three doorways, three shapes, each framed dark between its two piers. east: a flat front under a canopy slab
+	seg(S, "Canopy", 90, 21, 24, 9.6, 10.4, 6.9, DARK, nil, G)
+	seg(S, "Frame", 90, 22.4, 27.4, 9.5, 11.2, 5.1, DARK)
+	
+	-- west: a low hatch with cut corners under a hazard-striped head
+	
+	for k = -2, 2 do seg(S, "Frame", 270, 22.4, 27.4, 10, 11.5, 1.02, if k % 2 == 0 then YEL else P.base, nil, nil, k * 2.04) end
+	H.wedge(S, "Haunch", -27.4, -22.4, 8, 10, 79, 81, DARK, { high = "N", flip = true }); H.wedge(S, "Haunch", -27.4, -22.4, 8, 10, 87, 89, DARK, { high = "S", flip = true })
+	-- south: a round arch (three cuts a side)
+	for _, s in { -1, 1 } do
+		
+		for _, w in { { 4.33, 5, 5.5, 8 }, { 2.5, 4.33, 8, 9.83 }, { 0, 2.5, 9.83, 10.5 } } do H.wedge(S, "Arch", s * w[1], s * w[2], w[3], w[4], 106.4, 112.5, DARK, { high = if s > 0 then "E" else "W", flip = true }) end
+		H.block(S, "Arch", s * 4.33, s * 5, 8, 10.5, 106.4, 112.5, DARK); H.block(S, "Arch", s * 2.5, s * 4.33, 9.83, 10.5, 106.4, 112.5, DARK)
+	end
+	H.block(S, "Frame", -5.1, 5.1, 10.5, 11.5, 106.4, 108, DARK)
+	-- ---- the floor shows the way: a teal mat round the platform, and from it a line in its own colour to every way out
+	drum("Mat", 0, 0.02, 0.04, CZ, 35.4, P.flange, nil, G); drum("Mat", 0, 0.02, 0.05, CZ, 34, P.machine, Carpet, G)
+	H.paint(-0.8, 0.8, 64, 66.4, YEL); H.paint(-0.8, 0.8, 101.6, 112.5, CYAN); H.paint(17.6, 26.5, 83.2, 84.8, PINK); H.paint(-52, -17.6, 83.2, 84.8, GREEN)
+	for _, c in { { 20.5, 84, 90, PINK }, { -20.5, 84, -90, GREEN }, { -33, 84, -90, GREEN }, { 0, 104, 0, CYAN } } do H.put("bc_chevron", "Arrow", c[1], 0.09, c[2], c[3], { color = { f4f8ff = c[4] } }) end
+	-- ---- the way up: a jump pad either side, behind the platform, throwing you out and up over the rail
+	for _, s in { -1, 1 } do
+		local x, z = at(s * 126, 13.5)
+		local jp = H.put("bc_jumppad", "JumpPad", x, 0, z, -s * 126, { scale = 0.8, color = { ["17141f"] = P.base, ["2a2d38"] = P.base, ["37d6ff"] = if P.sober then "3d6e7c" else nil } })
+		if P.sober and jp then for _, q in jp:GetDescendants() do if q:IsA("BasePart") and (q.Name:find("37d6ff") or q.Name:find("ff4fd8")) then q.Material = Enum.Material.SmoothPlastic end end end -- (only its arrows glow)
+		H.block(S, "JumpPadTop", x - 2.7, x + 2.7, 0, 0.4, z - 2.7, z + 2.7, P.base, nil, { tr = 1 }):SetAttribute("Pad", Vector3.new(s * 6.07, 56, 4.41)) -- (tried in Play: from further in and a little harder, you clear the rail and land on the ring's floor, not on its rail)
+	end
+	-- ---- bunting from the ball's rod out to the cornice (a sober palette takes it down again), and a white light panel
+	-- set under the ring over the big opening and in four bays
+	for b = 15, 315, 60 do local x, z = at(b, 12.4); H.put("bc_bunting", "Bunting", x, 25.4, z, 90 - b, { seat = "top", color = { ["17141f"] = P.base } }) end
+	
+	for _, b in { 0, 30, 120, 150, 210, 240, 330 } do
+		seg(S, "PanelHousing", b, 19.3, 21.9, 10.9, 11.5, 2.4, P.flange, nil, G); seg(S, "Panel", b, 19.7, 21.5, 10.75, 10.9, 2, P.panel, Neon, G)
+		local x, z = at(b, 20.6); H.lamp(x, 9.6, z, 16, 0.6, COOL, { spot = true, angle = 130 })
+	end
+	
+	-- ---- what the bays hold: a screen over a bench either side of the big opening, a bench behind each jump pad; and a
+	-- lamp under the ball (it shades the platform from the skylight's lamp) and one for the dome
+	for i, b in { 60, 300 } do
+		
+		
+		local bx, bz = at(b, 24); H.put("st_bench", "Bench", bx, 0, bz, -b, { back = true, solid = true, scale = 0.8 })
+		local lx, lz = at(b, 20); H.lamp(lx, 9, lz, 12, 0.4, COOL)
+	end
+	do
+		local x, z = at(120, 24); H.put("st_bench", "Bench", x, 0, z, -120, { back = true, solid = true, scale = 0.8 })
+		x, z = at(240, 24); H.put("st_bench", "Bench", x, 0, z, -240, { back = true, solid = true, scale = 0.8 })
+	end
+	
+	
+	H.lamp(0, 10.5, CZ, 20, 0.5, COOL); H.lamp(0, 30, CZ, 34, 0.4, COOL)
+
+	-- ---- the lounge's inside: its four corners cut, three timber beams under the low lid on pale piers, the seats on a
+	-- raised wooden border with a dark nosing round a sunk middle, where a hologram turns on the axis over a rug (the
+	-- hall sees it through two doorways)
+	for i, z in { 118, 123.5, 129 } do
+		H.block(S, "Beam", -14, 14, 9.4, 10.5, z - 0.7, z + 0.7, WOOD, Wood, G)
+		if i ~= 2 then for _, s in { -1, 1 } do H.block(S, "Pier", s * 13, s * 14, 1, 9.4, z - 1, z + 1, DARK) end end
+	end
+	for _, s in { -1, 1 } do
+		for _, z in { 114.5, 132.5 } do H.block(SH, "CornerCut", s * 12 - 0.5, s * 12 + 0.5, 0, 10.5, z - 3.2, z + 3.2, BRICK, Brick, { rot = CFrame.Angles(0, math.rad(if (z < 120) == (s > 0) then 45 else -45), 0) }) end
+		H.block(S, "Border", s * 9, s * 14, 0, 1, 112.5, 134.5, WOOD, Wood); H.block(S, "Nosing", s * 9, s * 9.5, 1, 1.06, 112.5, 130, DARK, nil, G); H.ramp(s * 8.2, 121.25, s * 90, 17.5, 1, 1.6, 0)
+		H.block(S, "Dado", s * 13.7, s * 14, 1, 4.5, 119, 128, WOOD, Wood, G); H.block(S, "Ledge", s * 13.4, s * 14, 4.5, 4.9, 119, 128, P.flange, nil, G)
+	end
+	H.block(S, "Border", -9, 9, 0, 1, 130, 134.5, WOOD, Wood); H.block(S, "Nosing", -9, 9, 1, 1.06, 130, 130.5, DARK, nil, G); H.ramp(0, 129.2, 0, 18, 1, 1.6, 0)
+	drum("Rug", 0, 0.02, 0.06, 123.5, 13, P.flange, nil, G); drum("Rug", 0, 0.02, 0.09, 123.5, 12, P.machine, Carpet, G)
+	H.put("bc_holoprojector", "HoloProjector", 0, 0, 123.5, 0, { color = { ["2a2d38"] = P.base } })
+	drum("HoloBeam", 0, 1.2, 3.4, 123.5, 2.4, "bfe9f2", Neon, { ghost = true, tr = 0.88 })
+	-- (the hologram is a plain globe with a band round it, turning. the overlook's is a duck: the owner wants the Roblox game serious)
+	local duck, orb = Instance.new("Model"), H.block(S, "Orb", -2, 2, 3.5, 7.5, 121.5, 125.5, "5fb4c8", Neon, { ghost = true, tr = 0.45 })
+	orb.Shape = Enum.PartType.Ball; orb.Parent = duck; for _, d in { { -0.71, 6.29, 121.96 }, { 0.71, 6.29, 121.96 }, { 0, 5.31, 121.63 } } do local h = H.block(S, "Hole", d[1] - 0.3, d[1] + 0.3, d[2] - 0.3, d[2] + 0.3, d[3] - 0.3, d[3] + 0.3, P.base, nil, G); h.Shape = Enum.PartType.Ball; h.Parent = duck end -- (three finger holes: a bowling ball)
+	duck.Name = "Holo"; duck.PrimaryPart = orb; duck.Parent = H.root.Scenery
+	if duck then
+		
+		duck:SetAttribute("Spin", 0.5); duck:SetAttribute("Bob", 0.2); game:GetService("CollectionService"):AddTag(duck, "HubSpin")
+	end
+	H.lamp(0, 2.4, 123.5, 12, 0.5, "bfe9f2"); H.lamp(0, 7, 123.5, 14, 0.3, "bfe9f2")
+	for _, s in { -1, 1 } do
+		for i, z in { 123.5 } do
+			plastic(H.put("bc_sofa", "Sofa", s * 14, 1, z, -s * 90, { back = true, solid = true, color = { ["3b2a52"] = P.booth, [PINK] = P.machine } }))
+			
+			H.put("hb_droplight", "DropLight", s * 10.5, 9.4, z, 0, { seat = "top", scale = 0.6, color = { ["17141f"] = P.base, ["2e3140"] = P.base, ["3a3d4a"] = P.web } }); H.lamp(s * 10.5, 5.4, z, 13, 0.6, "ffd9a0", { shadows = s == 1 })
+		end
+		
+		
+		
+	end
+	for _, x in { -4.5, 4.5 } do plastic(H.put("bc_armchair", "Armchair", x, 1, 134.5, 180, { back = true, solid = true, color = { ["3b2a52"] = P.booth, [PINK] = P.machine } })) end
+	
+	H.put("pj_duck", "SecretDuck", 13.35, 1, 116.75, 150, { scale = 1 }) -- (the secret: a very small duck tucked behind a pier in the corner)
+
+	-- ---- snacks and the arcade, a step up from the lobby: a tent of a ceiling (a slope down both long walls, a lit ridge
+	-- beam, ribs across), the snack bar across the dark far wall facing the doorway, the machines in a dark alcove down the
+	-- north wall, a booth on the south
+	H.ramp(25.4, 84, 90, 10, 1, 2.2, 0); H.block(S, "Nosing", 26.5, 27.1, 1, 1.06, 79, 89, YEL, nil, G)
+	H.O += Vector3.yAxis
+	H.room("Snack", 28.5, 58.5, 71, 97, 13, { wall = P.machine, floor = P.carpet, floorMat = Carpet, ceil = P.ceil, open = { W = { { 79, 89, 8.5 } } } })
+	H.wedge(S, "Cove", 28.5, 58.5, 8, 13, 71, 76, P.ceil, { high = "N", flip = true, ghost = true }); H.wedge(S, "Cove", 28.5, 58.5, 8, 13, 92, 97, P.ceil, { high = "S", flip = true, ghost = true })
+	H.block(S, "Beam", 28.5, 58.5, 12, 13, 83.2, 84.8, P.flange, nil, G); for _, x in { 36, 43.5, 51 } do H.block(S, "Rib", x - 0.5, x + 0.5, 12.2, 13, 76, 92, P.flange, nil, G) end
+	for i, x in { 32.3, 39.75, 47.25 } do panel(x, 12, 84, 4.4, 2.4); H.lamp(x, 10.6, 84, 26, 1, LAMP, { spot = true, angle = 120, shadows = i == 2 }) end
+	H.block(S, "BackWall", 58.1, 58.5, 0, 13, 71, 97, DARK, nil, G); H.put("fc_stall", "SnackBar", 58.1, 0, 84, -90, { back = true, solid = true, scale = 0.8, color = { [PINK] = CYAN, a4aab8 = DARK } })
+	for _, z in { 71, 94.4 } do H.block(S, "Pier", 54.5, 58.1, 0, 13, z, z + 2.6, DARK) end; H.block(S, "Lintel", 55.5, 58.1, 11.2, 13, 73.6, 94.4, DARK, nil, G) -- (the bar stands in a dark frame)
+	H.text("SnackName", { { "NACHOS · HOT DOGS · COLA", YEL, "L", 1 } }, 21.4 * 0.8, 2.9 * 0.8, 58.1 - L.FASCIA_OUT * 0.8, L.FASCIA_Y * 0.8, 84, -90, { clear = true })
+	H.block(S, "Soffit", 30.6, 51.4, 8.2, 9.6, 71, 75.6, DARK); for _, x in { 30.6, 50.4 } do H.block(S, "Pier", x, x + 1, 0, 8.2, 71, 75.6, DARK) end -- (the machines stand in a dark alcove; in a sober palette they are dark too)
+	for _, x in { 33.7, 38.6, 43.4, 48.3 } do H.put("bc_arcade", "Arcade", x, 0, 71, 0, { back = true, scale = 1.2, solid = true, color = { ["17141f"] = P.base, ["120818"] = P.base, [PINK] = if P.sober then P.base else PINK, ["37d6ff"] = if P.sober then "1e4450" else nil } }) end
+	H.text("ArcadeSign", { { "ARCADE", PINK, "L", 1 } }, 8, 1.2, 41, 8.9, 75.75, 0); H.lamp(41, 6, 76.5, 14, 0.6, LAMP)
+	
+	-- (the south wall: two bench bays on a raised wooden strip between dark fins, a warm wall lamp in each)
+	H.block(S, "Border", 28.5, 51, 0, 1, 90, 97, WOOD, Wood); H.block(S, "Nosing", 28.5, 51, 1, 1.06, 90, 90.5, DARK, nil, G); H.ramp(39.75, 89.2, 0, 22.5, 1, 1.6, 0)
+	for _, x in { 28.5, 39, 49.5 } do H.block(S, "Fin", x, x + 1.5, 1, 6, 93.6, 97, DARK) end
+	for _, x in { 34.5, 45 } do
+		H.put("st_bench", "Bench", x, 1, 97, 180, { back = true, solid = true, scale = 0.8 })
+		H.put("hb_walllight", "WallLight", x, 6.6, 97, 180, { back = true, seat = "centre" }); H.lamp(x, 6.2, 95, 10, 0.8, WARM)
+	end
+	
+	H.block(S, "Hazard", 28.5, 58.5, 6, 7.4, 96.7, 97, BAND, nil, G)
+	H.paint(26.5, 49, 83.5, 84.5, PINK)
+	for k = 0, 9 do H.paint(49, 51, 74 + k * 2, 76 + k * 2, if k % 2 == 0 then P.flange else P.base) end
+	H.O -= Vector3.yAxis
+
+	-- ---- the passage (cut corners all the way: a slope where each wall meets the lid) and the door's own tall bay
+	H.wedge(S, "Cove", -38, -26.5, 8, 10, 79, 81, P.base, { high = "N", flip = true, ghost = true }); H.wedge(S, "Cove", -38, -26.5, 8, 10, 87, 89, P.base, { high = "S", flip = true, ghost = true })
+	for _, z in { 79, 88.85 } do H.block(S, "Hazard", -38, -26.5, 3, 3.7, z, z + 0.15, YEL, nil, G) end
+	for _, x in { -36, -32, -28 } do -- (three pale rib frames following the cut section, a light strip between each two, a dark base strip)
+		for _, z in { 79, 88.5 } do H.block(S, "Rib", x - 0.5, x + 0.5, 0, 8, z, z + 0.5, P.web) end
+		H.wedge(S, "Rib", x - 0.5, x + 0.5, 8, 10, 79, 81.3, P.web, { high = "N", flip = true, ghost = true }); H.wedge(S, "Rib", x - 0.5, x + 0.5, 8, 10, 86.7, 89, P.web, { high = "S", flip = true, ghost = true })
+		H.block(S, "Rib", x - 0.5, x + 0.5, 9.5, 10, 81.3, 86.7, P.web, nil, G)
+	end
+	for _, x in { -34, -30 } do panel(x, 10, 84, 1, 4); H.lamp(x, 8.6, 84, 12, 0.5, LAMP) end
+	for _, z in { 79, 88.7 } do H.block(S, "Base", -38, -26.5, 0, 1, z, z + 0.3, DARK, nil, G) end
+	for _, z in { 73, 94.7 } do H.block(S, "Dado", -56, -40, 0, 6, z, z + 0.3, WOOD, Wood, G); H.block(S, "Hazard", -56, -40, 6, 7.4, z, z + 0.3, BAND, nil, G) end
+	H.wedge(S, "Cove", -56, -40, 20, 23.5, 73, 76.5, P.ceil, { high = "N", flip = true, ghost = true }); H.wedge(S, "Cove", -56, -40, 20, 23.5, 91.5, 95, P.ceil, { high = "S", flip = true, ghost = true })
+	panel(-47, 23.5, 84, 6, 3); H.lamp(-47, 21.5, 84, 30, 1.0, LAMP, { spot = true, angle = 110 })
+	H.text("LaserSign", { { "TRAINING GROUND", GREEN, "L", 0.6 }, { "walk through the red gate", "ffffff", "F", 0.34 } }, 12, 2.8, -48, 11, 73.45, 0)
+	
+	-- (the lobby's name for the way back is on the back of THE LANES' sign.) nothing in a hub may fall over: a few of
+	-- the older props are not anchored
+	for _, p in H.root:GetDescendants() do if p:IsA("BasePart") then p.Anchored = true; if p:FindFirstAncestor("BallRing") then p.CastShadow = false end end end -- (the ring's clips threw dark blobs on the floor)
+	--@CENTRE-MORE@
+	H.O = O0
+	return C.finish()
 end
 
 L.BUILD.Hub3_Lanes = function(H)
@@ -1714,9 +2080,26 @@ L.LANES_WALKS = {
 		{ "the cross walk, from lane 1's pad to lane 6's", -54, 54, 13.6, 25.6 },
 		{ "the walk from the cross walk into the training door's recess", -70, -54, 13.6, 25.6 },
 	},
+	centre = {
+		{ "the lobby, from the platform to the big opening", -6, 6, 66, 71.2, 3 },
+		{ "through the big opening and across the concourse to the head of the steps", -6, 6, 34, 66, 3 },
+		{ "the steps (nothing over them lower than a doorway)", -6, 6, 25.6, 34, 3 },
+		{ "the cross walk, from lane 1's pad to lane 6's", -54, 54, 13.6, 25.6 },
+		{ "the lobby's way to the lounge", -4.3, 4.3, 96.8, 113, 3 },
+		{ "the lobby's way to the snack bar's step", 12.8, 24.2, 79.5, 88.5, 3 },
+		{ "the lobby's way to the training hatch, and the passage", -40, -12.8, 79.5, 88.5, 3 },
+	},
 }
 L.LANES_LEAKS = {
 	overlook = { Vector3.new(0, 12, 30), Vector3.new(-40, 12, -30), Vector3.new(40, 12, -30), Vector3.new(-60, 8, 44), Vector3.new(60, 14, 50), Vector3.new(-72, 5, 19.6), Vector3.new(72, 5, 19.6), Vector3.new(0, 8, 60), Vector3.new(0, 18, 58), Vector3.new(0, 19, 50) },
+	centre = { Vector3.new(0, 12, 30), Vector3.new(-40, 12, -30), Vector3.new(40, 12, -30), Vector3.new(-60, 8, 44), Vector3.new(60, 14, 50), Vector3.new(-72, 5, 19.6), Vector3.new(72, 5, 19.6), Vector3.new(0, 8, 60), Vector3.new(0, 20, 62),
+		Vector3.new(0, 9, 84), Vector3.new(0, 25, 84), Vector3.new(15, 21, 95), Vector3.new(0, 8, 124), Vector3.new(44, 8, 84), Vector3.new(-33, 7, 84), Vector3.new(-48, 12, 84) },
+}
+-- (the "centre": what must show from every spawn point besides the six boards and the name. the name over each way out,
+-- and one lit thing inside each of the three rooms: { what it is, what it is called in Scenery })
+L.LANES_SIGHTS = {
+	centre = { { "the lanes' name over the big opening", "LanesSign" }, { "the lounge's name", "LoungeSign" }, { "the snack bar's name over its door", "SnackSign" }, { "the training hatch's name", "TrainingSign" },
+		{ "the hologram in the lounge", "Holo" }, { "the snack bar itself, across its room", "SnackBar" }, { "the laser door at the end of the passage", "TrainingPortal" } },
 }
 L.WALKS = {
 	{ "the aisle from the spawn to the cross walk", -6, 6, 20.3, 45 },
@@ -1786,11 +2169,11 @@ function L.check()
 			end
 		end
 	end
-	local function hidden(a, b, target)
+	local function hidden(a, b, target, top)
 		local d = b - a
 		local len = d.Magnitude
 		local lo, hi = a:Min(b), a:Max(b)
-		local fam = if target.Parent:IsA("Model") then target.Parent else nil
+		local fam = top or (if target.Parent:IsA("Model") then target.Parent else nil)
 		for _, k in blockers do
 			if k.p ~= target and not (fam and k.p:IsDescendantOf(fam)) and not (k.hi.X < lo.X or k.lo.X > hi.X or k.hi.Y < lo.Y or k.lo.Y > hi.Y or k.hi.Z < lo.Z or k.lo.Z > hi.Z) then
 				local cf, h = k.p.CFrame, k.p.Size / 2
@@ -1811,13 +2194,22 @@ function L.check()
 		if sign then for _, k in { -0.4, 0, 0.4 } do table.insert(targets, { "the board of " .. pad.Name, sign, sign.Position + sign.CFrame.RightVector * (sign.Size.X * k) }) end end
 	end
 	local nm = room.Scenery:FindFirstChild("Name")
-	if nm then table.insert(targets, { "the name", nm, nm.Position }) end
-	local sights, lines, shut = {}, 0, 0
+	if nm then table.insert(targets, { "the name", nm, nm.Position + (if structure == "centre" then nm.CFrame.RightVector * (nm.Size.X * 0.25) else Vector3.zero) }) end -- (from the lobby the gantry's middle post stands before the name's own middle)
+	-- the "centre": you spawn in the lobby, so besides the boards and the name (through the big opening) the name over
+	-- every way out must show, and one lit thing inside each of the three rooms. the pads are behind the concourse's
+	-- parapet from there (it hides the booths' backs), so their plates are counted, not asked for
+	for _, w in L.LANES_SIGHTS[structure] or {} do
+		local q, fam = room.Scenery:FindFirstChild(w[2]), nil
+		if q and q:IsA("Model") then fam = q; q = q.PrimaryPart or q:FindFirstChildWhichIsA("BasePart", true) end
+		if q then table.insert(targets, { w[1], q, if fam then fam:GetBoundingBox().Position else q.Position, fam }) else table.insert(issues, "SIGHT: nothing called " .. w[2] .. " to look for") end
+	end
+	local sights, lines, shut, padsIn, padsOut = {}, 0, 0, 0, 0
 	for _, s in hub.HubSpawns:GetChildren() do
 		local eye = s.Position + Vector3.new(0, 4.7, 0)
 		for _, t in targets do
 			lines += 1
-			local by = hidden(eye, t[3], t[2])
+			local by = hidden(eye, t[3], t[2], t[4])
+			if structure == "centre" and t[1]:sub(1, 4) == "pad " then lines -= 1; if by then padsOut += 1 else padsIn += 1 end; continue end
 			if by then
 				shut += 1
 				local line = ("SIGHT: %s hides %s from the spawn point at (%.1f, %.1f)"):format(by.Name, t[1], (s.Position - O).X, (s.Position - O).Z)
@@ -1835,6 +2227,7 @@ function L.check()
 		end end end
 	end
 	local msg = ("%d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d"):format(#zones, looked, #issues, leaks, lines, shut)
+	if structure == "centre" then msg ..= (", pad plates in view from the lobby %d of %d"):format(padsIn, padsIn + padsOut) end
 	for _, line in sights do table.insert(issues, line) end
 	game.ServerStorage.PolishBackup:SetAttribute("LastOverlapCheck", L.ROOM .. ": " .. msg)
 	return msg .. (if #issues > 0 then "\n" .. table.concat(issues, "\n") else "")
