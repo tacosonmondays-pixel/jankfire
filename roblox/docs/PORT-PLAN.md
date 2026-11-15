@@ -196,7 +196,7 @@ The overlook (section 11) was still one room. The research in the vault (`Resear
 - **Not tested:** a match from a pad (two players), mouse turning, phones and slow machines. One fling at a rail end happened once and did not repeat.
 - **Still weak:** the lanes hall is the least reworked part (pale and bright next to the sober lobby); the snack bar is still narrow; the mode names on the boards are readable from the spawn but small. For another session: the on-screen hint says "training behind you" (`Arsenal`); training is on the left now.
 
-## 14. The serious pass: HUD, menus, Rooftop, training hall, playground, 15 November 2026 (place version 206)
+## 14. The serious pass: HUD, menus, Rooftop, training hall, playground, 15 November 2026 (place version 207)
 
 On 15 November the owner set the direction for the Roblox game: JANKFIRE's weapons and mechanics, a serious polished
 finish in the class of Rivals, fewer colours ("This is serious compared to jankfire!"). Everything outside the hub and
@@ -215,7 +215,8 @@ weapon, number or rule changed.
   match, kill feed, hit marker as four ticks, hit numbers, a soft hurt rim, the death band, the end screen as a table
   with the final score and a draining bar), `LoadoutUI` (flat cards, the weapon at rest in a three-quarter view, no
   junk on the podium), `JankSettings`, the Shredder's heat bar. Same functions, same arguments.
-- **Where-you-are line:** top left now (it covered the hub's hanging sign); the top centre is the match scoreboard's.
+- **Where-you-are line:** low in the middle, just above the controls line (top centre and top left each covered one
+  of the hub's hanging signs); the top centre is the match scoreboard's alone.
 - **Words:** `Hud.callout` draws lower-case words in capitals ("dummy down" shows as DUMMY DOWN); the strings are
   unchanged. One line was corrected for the new lobby: the hub hint says "training on your left", not "behind you".
 - **The grapple rope** is a pale steel cable (it was a pink-to-yellow beam), in `Move` and `Main`.

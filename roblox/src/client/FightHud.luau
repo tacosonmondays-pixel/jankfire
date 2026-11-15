@@ -186,10 +186,11 @@ function H.weapon(wid: string, mag: number?, reloading: boolean, kat: number, no
 end
 
 -- ---------------------------------------------------------------- clock + kill target
--- where you are (hub, training, playground): top left, under Roblox's own buttons. it used to sit top centre, over the
--- hub's hanging sign in the first view you get; the top centre is the match scoreboard's alone now
+-- where you are (hub, training, playground): low in the middle, just above the controls line (Hud's "Keys", which is
+-- 36 px right of centre too). it used to sit top centre, then top left: both covered one of the hub's hanging signs in
+-- the first view you get. down here it is over the floor, and the top centre is the match scoreboard's alone
 local top = T.new("TextLabel", {
-	Name = "Round", Position = UDim2.new(0, 24, 0, 62), Size = UDim2.fromOffset(0, 32),
+	Name = "Round", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 36, 1, -62), Size = UDim2.fromOffset(0, 30),
 	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
 	FontFace = T.FONT_BOLD, TextSize = 15, TextColor3 = T.TEXT, RichText = true, Text = "",
 }, hud)
