@@ -188,24 +188,31 @@ def hat(fn):
 
 
 # ROUND 4 (the first judging, 5/10: "loud primaries, no shared look, uneven sizes, the eyes and halo read as toy-jank"):
-# one calm palette for the whole set (mid values, saturation cut a third: under the hall's lamps warm colours go
-# orange and light ones go white), one shared trim on every hat (brushed gold, GOLD), the crown, the duck and the eyes
-# up to the others' visual weight (SIZE), the eyes and the halo rebuilt, the crown's fiddly balls and pin gems merged
-# into chunky points and three big flush stones.
-GOLD = 'b49b5c'    # the set's shared trim: brushed gold
-WINE = '7e2d38'    # the deep accent (the top hat's band, the crown's velvet)
-CREAM = 'e3dccb'   # warm off-white (never pure white: it was the brightest thing on screen)
-# each hat's size against how it is built (applied to every piece round the foot), and a turn round its up axis
-SIZE = {'crown': 1.35, 'duck': 1.3, 'halo': 1.1, 'cone': 1.05, 'chef': 1.05}
+# one calm palette, one shared trim, the crown / duck / eyes up to the others' weight, the eyes and the halo rebuilt.
+# ROUND 5 (the second judging, 6/10 in game: "the gold reads as bright yellow plastic, a different value on every hat;
+# no common mount; halo a flat yellow sticker; crown points like cat ears; eyes' tray and rims are noise"): every colour
+# a step darker and greyer than it should look (the hall's lamps lift warm colours and saturate them), ONE brass
+# (darker), every hat on the same small slate foot with a brass rim (the set's mount: nothing sits bare, floats or
+# sinks), the halo a solid pale-gold ring with a soft glow shell, the crown's points twice as tall with ball tips and
+# one stone front and back, the eyes plain white with slate pupils on a slate plate, sizes evened.
+GOLD = '8f7849'    # the set's one brass (in the hall it reads as a warm brass, not yellow)
+WINE = '5a2430'    # the deep accent
+CREAM = 'c9c1b0'   # warm off-white
+SLATE = '3c4048'   # the foot every hat stands on
+FOOT_H = 0.0045    # the foot's height: every hat stands this much higher than it is built
+# each hat's size against how it is built (applied round the foot), a turn round its up axis, its foot
+SIZE = {'crown': 1.55, 'duck': 1.12, 'halo': 1.1, 'cone': 1.05, 'chef': 0.95}
 TURN = {'duck': 35}  # degrees, the face toward the gun's left: the side the player sees in first person
+FOOT = {'party': 0.031, 'cowboy': 0.0255, 'chef': 0.0275, 'propeller': 0.0325, 'tophat': 0.025, 'halo': 0.016,
+        'crown': 0.0315, 'duck': 0.026, 'eyes': 'pill'}  # (the cone keeps its own square foot)
 
 
 @hat
 def party():
-    """PARTY HAT: a tall cone in a soft teal, a gold roll at its foot, a cream ring round its middle and a cream
+    """PARTY HAT: a tall cone in a dusty teal, a brass roll at its foot, a cream ring round its middle and a cream
        pom-pom on the tip"""
     g = Gun('hat_party')
-    g.slot('cone', '3f7d84'); g.slot('trim', CREAM); g.slot('gold', GOLD)
+    g.slot('cone', '527e81'); g.slot('trim', CREAM); g.slot('gold', GOLD)
     H, R = 0.084, 0.0285
     lathe(g, 'cone__cone', rounded([(0, 0), (R, 0), (0.0034, H), (0, H)], [0, 0.003, 0.002]), 28)
     torus(g, 'band__gold', R - 0.0006, 0.0046, T(0, 0.0042, 0))
@@ -217,10 +224,10 @@ def party():
 
 @hat
 def cone():
-    """TRAFFIC CONE: a burnt-orange cone on a square charcoal foot, two cream collars, a gold ring where it meets the
+    """TRAFFIC CONE: a burnt-orange cone on a square slate foot, two cream collars, a brass ring where it meets the
        foot"""
     g = Gun('hat_cone')
-    g.slot('cone', 'a85d38'); g.slot('band', CREAM); g.slot('base', '3c4048'); g.slot('gold', GOLD)
+    g.slot('cone', '9a5a3c'); g.slot('band', 'c2baa9'); g.slot('base', SLATE); g.slot('gold', GOLD)
     g.box('base__base', (-0.033, 0.033), (0.0, 0.008), (-0.033, 0.033), bev=0.008)
     y0, y1, r0, r1 = 0.007, 0.088, 0.0262, 0.0078
     def rc(y): return r0 + (r1 - r0) * (y - y0) / (y1 - y0)
@@ -233,7 +240,7 @@ def cone():
 
 @hat
 def cowboy():
-    """COWBOY HAT: a felt hat, the brim rolled up at the sides, a creased crown, a dark band with a gold buckle on the
+    """COWBOY HAT: a felt hat, the brim rolled up at the sides, a creased crown, a dark band with a brass buckle on the
        side the player sees"""
     g = Gun('hat_cowboy')
     g.slot('felt', '6a4d38'); g.slot('band', '35302b'); g.slot('gold', GOLD)
@@ -258,13 +265,13 @@ def cowboy():
 
 @hat
 def chef():
-    """CHEF HAT: a band and a big soft pleated puff over it, warm off-white, a thin gold line round the band"""
+    """CHEF HAT: a band and a soft pleated puff over it, warm off-white, a thin brass line round the band"""
     g = Gun('hat_chef')
-    g.slot('puff', 'dcd6ca'); g.slot('band', 'cbc4b5'); g.slot('gold', GOLD)
+    g.slot('puff', 'c8c0b1'); g.slot('band', 'b4ac9c'); g.slot('gold', GOLD)
     lathe(g, 'band__band', rounded([(0, 0), (0.0245, 0), (0.0255, 0.022), (0, 0.022)], [0, 0.0025, 0]), 32)
     prof = [(0, 0.017), (0.024, 0.019)] + arc(0.012, 0.04, 0.024, 0.022, -60, 90, 10)[1:]
     prof[-1] = (0, prof[-1][1])
-    pleat = lambda th: 1 + 0.075 * math.cos(6 * th)
+    pleat = lambda th: 1 + 0.055 * math.cos(6 * th)  # (round 5: shallower pleats: it read as a cauliflower)
     lathe(g, 'puff__puff', [p for p in prof if p[0] >= 0], 48, rfun=pleat)
     torus(g, 'line__gold', 0.0252, 0.0016, T(0, 0.0045, 0))
     return g
@@ -272,53 +279,50 @@ def chef():
 
 @hat
 def propeller():
-    """PROPELLER CAP: a slate-blue cap with a short visor, a gold post and hub, two chunky cream blades (they spin)"""
+    """PROPELLER CAP: a slate-blue cap with a darker band round its foot and a short visor, a brass post and hub, two
+       wide cream blades (they spin)"""
     g = Gun('hat_propeller')
-    g.slot('cap', '4a5a78'); g.slot('visor', '3d4a63'); g.slot('gold', GOLD); g.slot('blade', CREAM)
+    g.slot('cap', '4a5a78'); g.slot('visor', '3a465e'); g.slot('gold', GOLD); g.slot('blade', CREAM)
     R, Hc = 0.031, 0.027
     lathe(g, 'cap__cap', [(0, 0), (R, 0)] + arc(0, 0, R, Hc, 0, 90, 10)[1:], 32)
+    lathe(g, 'cap__visor', [(R + 0.0006, 0.0), (R + 0.0006, 0.0065), (R - 0.0012, 0.0075)], 32)  # (round 5: a band)
     inner = [(0.0292 * math.sin(math.radians(a)), -0.0292 * math.cos(math.radians(a))) for a in range(-72, 73, 12)]
     outer = [(0.0305 * math.sin(math.radians(a)), -0.053 * math.cos(math.radians(a))) for a in range(72, -73, -12)]
     g.yprism('visor__visor', inner + outer, 0.0, 0.0042, bev=0.0028)
     g.cyl('post__gold', 0.0036, (0, Hc - 0.002, 0), (0, Hc + 0.0125, 0), sides=12, bev=0.0012)
     yp = Hc + 0.0135
     g.cyl('prop__gold', 0.0078, (0, yp - 0.0036, 0), (0, yp + 0.0036, 0), sides=16, bev=0.0018)
-    # (round 4: twice as thick, a quarter shorter: a chunky toy blade, not a stick)
     for s in (1, -1):
-        slab(g, 'prop__blade', stadium2d(0.0055, 0.036, 0.0098), 0.0074, T(0, yp, 0) @ RY(0 if s > 0 else math.pi) @ RX(math.radians(90 + 7)), bev=0.0022)
+        slab(g, 'prop__blade', stadium2d(0.0055, 0.037, 0.0125), 0.0074, T(0, yp, 0) @ RY(0 if s > 0 else math.pi) @ RX(math.radians(90 + 7)), bev=0.0024)
     return g
 
 
-EYE_TILT = math.radians(45)  # the eyes face up and back: the player behind the gun and anyone beside it see them
+EYE_TILT = math.radians(45)  # the eyes face up and back: the player behind the gun and anyone beside them see them
 EYE_R = 0.019
 EYE_X = 0.0215
 
 
 @hat
 def eyes():
-    """GOOGLY EYES: two big googly eyes set in a rounded grey brow that sits on the gun, each in a gold bezel, looking
-       up and back; the pupils rattle"""
+    """GOOGLY EYES: two big plain googly eyes standing on the hat's slate plate, looking up and back; the pupils
+       rattle"""
     g = Gun('hat_eyes')
-    g.slot('shell', '6b707a'); g.slot('eye', 'e6e4de'); g.slot('pupil', '1e1f24'); g.slot('gold', GOLD)
-    # the brow: a pill seen from above, a little lower at the front
-    outline = [(x, -z) for x, z in stadium2d(-EYE_X, EYE_X, 0.019, 8)]
-    g.yprism('shell__shell', outline, 0.0, 0.012, bev=0.0045)
+    g.slot('eye', 'd6d3cb'); g.slot('pupil', '2a2c33')
     R = EYE_R
-    yc = 0.012 + R * math.sin(EYE_TILT) * 0.62
+    yc = R * math.sin(EYE_TILT) * 0.62 + 0.001
     for s, node in ((-1, 'pupil_l'), (1, 'pupil_r')):
         M = T(s * EYE_X, yc, 0.002) @ RX(EYE_TILT)
         lathe(g, 'eye__eye', [(0, 0), (R, 0), (R, 0.003)] + arc(0, 0.003, R, 0.0088, 0, 90, 8)[1:], 32, M=M)
-        torus(g, 'bezel__gold', R + 0.0004, 0.0022, M @ T(0, 0.0018, 0), sides=40, minor=10)
         lathe(g, node + '__pupil', rounded([(0, 0.0114), (0.0086, 0.0114), (0.0086, 0.0143), (0, 0.0143)], [0, 0.0012, 0.0012]), 24, M=M)
     return g
 
 
 @hat
 def tophat():
-    """TOP HAT: a tall slate-charcoal crown on a brim that lifts a little at the sides, a wine band with a gold
-       buckle on the side the player sees"""
+    """TOP HAT: a tall slate crown (lighter than the guns' charcoal) on a brim that lifts a little at the sides, a wine
+       band with a brass buckle on the side the player sees"""
     g = Gun('hat_tophat')
-    g.slot('felt', '3c4048'); g.slot('band', WINE); g.slot('gold', GOLD)
+    g.slot('felt', '4a5160'); g.slot('band', WINE); g.slot('gold', GOLD)
     ri, ro, t = 0.015, 0.041, 0.0042
     sec = [(ri, 0.0), (ro - t / 2, 0.0)] + arc(ro - t / 2, t / 2, t / 2, t / 2, -90, 90, 6)[1:-1] + [(ro - t / 2, t), (ri, t)]
     def curl(th, r, y):
@@ -338,43 +342,48 @@ HALO_TILT = 15  # degrees: the ring's face turned a little toward the player beh
 
 @hat
 def halo():
-    """HALO: a flat band of soft gold light floating over the gun, tipped a little toward you (it glows, it bobs)"""
+    """HALO: a solid pale-gold ring over the gun inside a faint glowing shell, on a thin brass stem from the hat's
+       foot (it bobs; the stem stays)"""
     g = Gun('hat_halo')
-    # (round 2: a pale neon blew out to white; round 3: a darker gold glowed lemon-yellow and, round in section, read as
-    # a pickup ring. round 4: a flat oval band (wider than tall), a muted gold, a fifth see-through: a soft glow)
-    g.slot('halo', 'a39058', 'n', 0.8)
-    a, b = 0.0074, 0.0036
-    sec = [(0.0248 + a * math.cos(2 * math.pi * k / 16), b * math.sin(2 * math.pi * k / 16)) for k in range(16)]
-    sweep(g, 'halo__halo', sec, 48, M=T(0, HALO_Y, 0) @ RX(math.radians(HALO_TILT)))
+    # (round 2: pale Neon blew out to white; round 3: darker Neon read lemon; round 4: a flat Neon band read as a flat
+    # yellow sticker. round 5: the ring itself is solid SmoothPlastic, round in section and thick, so it shades like the
+    # other hats; the glow is a thin see-through Neon shell round it)
+    g.slot('halo', 'b8a46c'); g.slot('glow', 'cdb983', 'n', 0.3); g.slot('gold', GOLD)
+    M = T(0, HALO_Y, 0) @ RX(math.radians(HALO_TILT))
+    torus(g, 'halo__halo', 0.0245, 0.0068, M, sides=48, minor=16)
+    torus(g, 'halo__glow', 0.0245, 0.0086, M, sides=48, minor=16)
+    g.cyl('stem__gold', 0.0019, (0, 0.0, 0.0), (0, HALO_Y - 0.0245 * math.sin(math.radians(HALO_TILT)) - 0.009, 0.0), sides=10, bev=0.0006)
     return g
 
 
 @hat
 def crown():
-    """CROWN: a brushed-gold band with five chunky rounded points, a wine velvet cap inside, three big flush stones on
-       the side the player sees"""
+    """CROWN: a brass band with five tall points, a ball on each tip, a wine velvet dome inside, one stone front and
+       back"""
     g = Gun('hat_crown')
-    g.slot('gold', GOLD); g.slot('velvet', WINE); g.slot('gem', '5a1f2a')
-    ri, ro, h = 0.0248, 0.0296, 0.016
+    g.slot('gold', GOLD); g.slot('velvet', WINE); g.slot('gem', '6e2a37')
+    ri, ro, h = 0.0248, 0.0296, 0.0125
     sec = rounded([(ri, h), (ri, 0), (ro, 0), (ro, h)], [0, 0.0016, 0.0016, 0]) + [(ro - 0.0008, h + 0.0014), (ri + 0.0008, h + 0.0014)]
     sweep(g, 'band__gold', sec, 40)
-    lathe(g, 'cap__velvet', [(0, 0.003), (0.0252, 0.003)] + arc(0, 0.003, 0.0252, 0.025, 0, 90, 10)[1:], 32)
-    pt = rounded([(0.0105, 0.0), (0.0, 0.0165), (-0.0105, 0.0)], [0, 0.0042, 0], 5)
+    lathe(g, 'cap__velvet', [(0, 0.003), (0.0252, 0.003)] + arc(0, 0.003, 0.0252, 0.022, 0, 90, 10)[1:], 32)
+    tall = 0.021
+    pt = rounded([(0.0085, 0.0), (0.0016, tall), (-0.0016, tall), (-0.0085, 0.0)], [0, 0.0012, 0.0012, 0], 4)
     for i in range(5):
-        a = math.radians(72 * i)
-        M = RY(-a) @ T(0, h - 0.0025, -(ri + ro) / 2)
-        slab(g, 'points__gold', pt, 0.0048, M, bev=0.0017)
-    for a_deg in (108, 180, 252):  # (the back of the crown faces the player holding the gun)
+        a = math.radians(36 + 72 * i)  # (no point straight at the player: two frame the back stone)
+        M = RY(-a) @ T(0, h - 0.002, -(ri + ro) / 2)
+        slab(g, 'points__gold', pt, 0.0044, M, bev=0.0015)
+        blob(g, 'points__gold', tuple(M @ Vector((0, tall + 0.0028, 0))), (0.0038, 0.0038, 0.0038))
+    for a_deg in (0, 180):
         a = math.radians(a_deg)
-        blob(g, 'gems__gem', tuple(RY(-a) @ Vector((0, 0.008, -ro - 0.0002))), (0.0056, 0.0056, 0.0021), RY(-a))
+        blob(g, 'gems__gem', tuple(RY(-a) @ Vector((0, 0.0064, -ro - 0.0002))), (0.0058, 0.0052, 0.0022), RY(-a))
     return g
 
 
 @hat
 def duck():
-    """TINY DUCK: a butter-yellow rubber duck riding the gun, turned so the player sees its face"""
+    """TINY DUCK: a soft yellow rubber duck riding the gun, turned so the player sees its face"""
     g = Gun('hat_duck')
-    g.slot('duck', 'cfae4c'); g.slot('beak', 'b8693a'); g.slot('eye', '23242a')
+    g.slot('duck', 'bea55a'); g.slot('beak', 'a3623d'); g.slot('eye', '23242a')
     blob(g, 'body__duck', (0, 0.0165, 0.003), (0.0225, 0.0175, 0.029))
     blob(g, 'body__duck', (0, 0.0185, -0.014), (0.0185, 0.0165, 0.0165))
     blob(g, 'body__duck', (0, 0.0285, 0.0245), (0.0105, 0.0105, 0.0125), RX(math.radians(-40)))
@@ -387,9 +396,29 @@ def duck():
     return g
 
 
+def foot(g, kind):
+    """the set's mount: a thin slate plate with a brass rim under the hat (a disc of radius `kind`, or a pill)"""
+    g.slots.setdefault('foot', {'color': SLATE, 'kind': 'p', 'alpha': 1.0})
+    g.slots.setdefault('gold', {'color': GOLD, 'kind': 'p', 'alpha': 1.0})
+    if kind == 'pill':
+        outline = [(x, -z) for x, z in stadium2d(-EYE_X, EYE_X, 0.0165, 8)]
+        g.yprism('foot__foot', outline, 0.0, FOOT_H, bev=0.0016)
+        rim = [(x, -z) for x, z in stadium2d(-EYE_X, EYE_X, 0.0178, 8)]
+        g.yprism('foot__gold', rim, 0.0, 0.0018, bev=0.0006)
+    else:
+        r = kind
+        lathe(g, 'foot__foot', rounded([(0, 0), (r, 0), (r, FOOT_H), (0, FOOT_H)], [0, 0.0012, 0.0014]), 36)
+        torus(g, 'foot__gold', r + 0.0002, 0.0012, T(0, 0.0012, 0), sides=40, minor=8)
+
+
 def make(hid):
-    """a hat as the game gets it: built, then sized (SIZE) and turned (TURN) round its foot"""
+    """a hat as the game gets it: built, lifted onto its foot, sized (SIZE) and turned (TURN) round the foot"""
     g = BUILD[hid]()
+    f = FOOT.get(hid)
+    if f is not None:
+        for bm in g.pieces.values():
+            bmesh.ops.translate(bm, vec=(0, 0, FOOT_H - 0.0005), verts=bm.verts)  # (Blender z is up)
+        foot(g, f)
     s = SIZE.get(hid, 1.0)
     turn = math.radians(TURN.get(hid, 0))
     for bm in g.pieces.values():

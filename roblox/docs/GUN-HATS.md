@@ -10,7 +10,8 @@ on top" rule; `tools/blender/make_gunhats.py`). The shapes and colours are our o
 rounded masses, two or three flat colours, SmoothPlastic, no pictures; Neon only for the halo, whose glow is the
 point. The aim was a polished charm in the class of Roblox RIVALS, not a joke prop.
 
-Pictures (`gun-hats/`): `round1-first-person.jpg` and `round1-third-person.jpg` (all ten round-1 hats on the Assault
+Pictures (`gun-hats/`): `round4-first-person.jpg` (the ten round-4 hats on the Assault Rifle in the training hall,
+from the eye, place version 300), `round4-scopes.jpg` (Second Opinion and the Sniper from the eye), `round1-first-person.jpg` and `round1-third-person.jpg` (all ten round-1 hats on the Assault
 Rifle in the training hall, from the eye and on a dummy's rifle), `round1-on-guns.jpg` (round-1 hats on the other guns
 from the eye, the aim-down-sights shot, the hub rack), `loadout-hats-tab.jpg` (the HATS tab, a hat being tried on, the
 Shredder's preview), `round4-blender.png` (the round-4 hats on their own) and `round4-seats-side.png` (round-4 seats on
@@ -44,7 +45,7 @@ colour and material as it was.
 | the hats in the game (build, attach, Tool, displays, aim hide, moving bits) | `roblox/src/shared/GunHats.luau` |
 | the upload, its bounds, the asset ids per round | `roblox/assets/hats/` (`hats_upload.glb`, `hats.json`, `assets.json`) |
 | Studio's import (`H.load(id)`, `H.check()`) | `roblox/studio-tools/HatImport.luau` = `ServerStorage.PolishBackup.HatImport` |
-| the templates | `ReplicatedStorage.JankfireHats.hat_<id>` (pivot = the hat's foot; one stud = 0.1 m) |
+| the templates | `ReplicatedStorage.JankfireHats.hat_<id>` (pivot = the hat's foot; one stud = 0.1 m), exported as `roblox/place/ReplicatedStorage/JankfireHats.rbxm` |
 | preview cards without Studio (the ten on their own; one hat on every gun from the eye or the side) | `tools/roblox/hat_preview.py` |
 | photo sheets | `tools/roblox/photo_grid.py` |
 
@@ -113,6 +114,7 @@ principles (vault `Principles/Design principles.md`) and the Rivals-class bar.
 | round | score | what it said | what changed |
 |---|---|---|---|
 | 1 (models r3) | 5 / 10 | readable and clean, but loud primaries (safety orange, lemon, pure Neon yellow), no shared look, uneven sizes (crown, duck, eyes half the others' weight), the googly eyes and the halo toy-jank; jammed or floating on six guns (Yeehaw, Second Opinion, Shotgun, Half a Shotgun, Lawn Mower, Marble Shotgun) and beside the Katana's blade. Nothing over the crosshair; the sight picture clean | round 4 |
+| 2 (models r4, place v300) | 6 / 10 | the cowboy, top hat and chef hat premium; the set still no shared palette, the "gold" a bright yellow plastic at a different value on every hat, no common mount; the halo a flat yellow Neon sticker; the crown's points like cat ears; the eyes' tray and rims noise; the scoped guns' hats a speck or sunk into the optic. Nothing over the crosshair | round 5 |
 
 **Round 4** (`hat_models.py` top of the hats): one calm palette for the whole set (mid values, saturation a third
 lower), one shared trim on every hat in brushed gold (`GOLD`: the party hat's roll, the cone's collar, the cowboy and
@@ -125,18 +127,20 @@ three big flush stones on the side the player sees (the ball tips and pin gems s
 the duck butter yellow and turned 35 degrees so the player sees its face; sizes evened (`SIZE`: the crown and duck up
 about a third); the seats above.
 
+**Round 5:** every colour a step darker and greyer than it should look (the hall's lamps lift warm colours and
+saturate them: the round-4 brass read as yellow plastic); ONE brass (`GOLD` 8f7849) for every trim; **every hat on the
+same small slate foot with a brass rim** (`FOOT`: the set's mount; the cone keeps its own square slate foot); the
+halo a solid pale-gold ring, round and thick so it shades, inside a thin see-through Neon glow shell, on a brass stem
+from its foot; the crown's points twice as tall with a ball on each tip, one stone front and back; the eyes plain white
+with slate pupils on a slate pill-shaped foot (no tray, no rims); the chef's pleats shallower, the propeller cap a
+darker band and wider blades, the top hat a lighter slate; sizes evened again (the duck and the chef a little smaller,
+the crown larger). Seats: the scoped guns' hats on the rear of the optic or scope on a **saddle** (a slate puck,
+`spot.saddle`, so a flat foot sits on a round tube), the Marble Shotgun's off the jar onto the barrel.
+
 ## Not done / open
 
-- **Round 4 is built but not live yet** (16 Nov ~09:40 UTC): Studio's place was closed and then all Roblox uploads were
-  stopped while the owner's account is checked (it was moderated; none of the hat uploads were rejected: every one
-  answered "Approved"). To put it in: upload `roblox/assets/hats/hats_upload.glb`, set the id in `assets.json`, run
-  `hat_spots.py`, push `GunHatData.luau`, `GunHats.luau` and `HatImport.luau`, `H.load(id)`, then the two small lines in
-  `Viewmodel.luau` (the clip name to `GunHats.aim`) and `LoadoutUI` (`CARD_TURN.halo`). Then photograph and judge again.
-- **The seats are measured on the picked guns (gun_set.py), which are not live yet either.** Put the round-4 hats in
-  after the picked guns go in (the guns session says when); against the round-8 guns still in the place a few hats
-  would sit a few millimetres off (the Redline's on its old deck). If the guns go in later than the hats, run
-  `hat_spots.py --set kit` for the time between.
-
+- Round 4 went live in place version 300 (16 Nov 2026, ~10:06 UTC) on the owner's picked guns (place version 298);
+  round 5 (asset 103202603989161) follows. Older hat uploads and the push models are no longer used.
 - The hats are all free to pick (the Roblox port has no inventory or crates yet, the same as wraps).
 - The Googly Eyes face the player who holds the gun (they look back at you); from in front, other players see their
   white backs.

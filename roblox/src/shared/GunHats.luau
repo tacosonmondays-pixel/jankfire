@@ -24,7 +24,10 @@ GunHats.AIM_HIDE = 0.3
 GunHats.THIRD = 1.5
 -- reload clips during which the first-person hat steps away too: the Marble Shotgun's bag pours into the jar the hat
 -- sits on
-GunHats.HIDE_CLIPS = { reload_marbles = true }
+GunHats.HIDE_CLIPS = {} :: { [string]: boolean } -- (round 5: none: the Marble Shotgun's hat left the jar for the barrel)
+-- a saddle (spot.saddle, metres): a slate puck under the hat's foot, so a flat foot sits on a round scope or barrel
+GunHats.SADDLE_R = 0.022 -- its radius (metres, at the hat's size 1)
+GunHats.SADDLE_COLOR = Color3.fromHex("3c4048")
 
 -- the Shredder is a Tool: its kit pieces sit on the Handle in the gun frame WeaponImport.kitShredder builds from the
 -- web Tool's Muzzle / sh_hub / sh_bell2 (measured 16 Nov 2026 from PolishBackup.WeaponSets.web.Shredder: this frame and
@@ -59,11 +62,14 @@ local function quiet(p: BasePart, anchored: boolean)
 end
 
 -- a hat as a Model "GunHat" with its foot at `foot`, f studs for every template stud. carrier = the part it rides
--- (welded to it), or nil: anchored (the previews, the racks: whoever moves the model moves the hat)
-function GunHats.make(id: string, foot: CFrame, f: number, carrier: BasePart?): Model?
+-- (welded to it), or nil: anchored (the previews, the racks: whoever moves the model moves the hat). saddle = studs:
+-- the hat stands that much higher on a slate puck
+function GunHats.make(id: string, foot: CFrame, f: number, carrier: BasePart?, saddle: number?): Model?
 	local t = GunHats.template(id)
 	if not t then return nil end
 	local anchored = carrier == nil
+	local seat = foot
+	if saddle and saddle > 0 then foot = foot * CFrame.new(0, saddle, 0) end
 	local m = Instance.new("Model")
 	m.Name = "GunHat"
 	m:SetAttribute("Hat", id)
@@ -79,6 +85,20 @@ function GunHats.make(id: string, foot: CFrame, f: number, carrier: BasePart?): 
 		w.Parent = base
 	end
 	local spm = f / (D.UNIT :: number) -- (studs per metre, for the moving bits' reach)
+	if saddle and saddle > 0 then
+		local r = GunHats.SADDLE_R * spm
+		local sp = Instance.new("Part")
+		sp.Name = "HatSaddle"; sp.Shape = Enum.PartType.Cylinder
+		sp.Size = Vector3.new(saddle + 0.002 * spm, r * 2, r * 2)
+		sp.Color = GunHats.SADDLE_COLOR; sp.Material = Enum.Material.SmoothPlastic
+		sp.TopSurface = Enum.SurfaceType.Smooth; sp.BottomSurface = Enum.SurfaceType.Smooth
+		sp.CFrame = seat * CFrame.new(0, saddle / 2 - 0.001 * spm, 0) * CFrame.Angles(0, 0, math.pi / 2)
+		quiet(sp, anchored)
+		if not anchored then
+			local w = Instance.new("WeldConstraint"); w.Part0 = base; w.Part1 = sp; w.Parent = sp
+		end
+		sp.Parent = m
+	end
 	local moves = D.MOVES[id] or {}
 	local piv = t:GetPivot()
 	for _, src in t:GetChildren() do
@@ -146,7 +166,7 @@ function GunHats.attach(m: Model, wid: string, id: string?, k: number, anchored:
 	if not id or not GunHats.valid(id) or id == "none" or not sp or not root then return nil end
 	local foot = root.CFrame * CFrame.new(sp.at * k) * turnOf(sp)
 	local carrier = if anchored then nil else carrierOf(m, root, foot.Position, foot.UpVector * 0.004 * k)
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * sp.s * (boost or 1), carrier)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * k * sp.s * (boost or 1), carrier, if sp.saddle then sp.saddle * k * (boost or 1) else nil)
 	if hat then hat.Parent = m end
 	return hat
 end
@@ -214,7 +234,7 @@ function GunHats.attachDisplay(g: Model, wid: string, id: string?): Model?
 	local at = tcf:PointToWorldSpace((sp.at - (flo + fhi) / 2) * U)
 	local foot = CFrame.new(map(at)) * (R * tcf.Rotation) * turnOf(sp)
 	local spm = (U.X + U.Y + U.Z) / 3 * s
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * spm * sp.s, nil)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * spm * sp.s, nil, if sp.saddle then sp.saddle * spm else nil)
 	if hat then hat.Parent = g end
 	return hat
 end

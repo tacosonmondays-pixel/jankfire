@@ -102,7 +102,8 @@ def main():
     w('')
     w('-- where the hat sits on each weapon: at = the foot of the hat (metres, the weapon frame: x right, y up, z back,')
     w('-- the same frame as Weapons.luau mdl), s = its size (1 = as built, ~7 cm across), yaw = degrees round its up axis,')
-    w('-- pitch = degrees about x after that (90: the hat stands on the back end, the katana\'s pommel).')
+    w('-- pitch = degrees about x after that (90: the hat stands on the back end, the katana\'s pommel), saddle = metres:')
+    w('-- the hat stands that much higher on a slate puck (a round scope or barrel under a flat foot).')
     w('-- y was measured on the kit model (the top of the gun under the spot)')
     w('D.SPOTS = {')
     for wid, sp in spots.items():
@@ -116,7 +117,8 @@ def main():
             if y is None: raise SystemExit('%s: nothing under the spot (%g, %g)' % (wid, x, z))
             y -= sp.get('sink', 0.002)
         note = sp.get('note', '')
-        w('\t%s = { at = %s, s = %g, yaw = %g, pitch = %g },%s' % (wid, lua_vec((x, y, z)), sp.get('s', 1.0), sp.get('yaw', 0), sp.get('pitch', 0),
+        sad = (', saddle = %g' % sp['saddle']) if sp.get('saddle') else ''
+        w('\t%s = { at = %s, s = %g, yaw = %g, pitch = %g%s },%s' % (wid, lua_vec((x, y, z)), sp.get('s', 1.0), sp.get('yaw', 0), sp.get('pitch', 0), sad,
           ('  -- ' + note) if note else ''))
         print('SPOT', wid, round(x, 4), round(y, 4), round(z, 4), 's', sp.get('s', 1.0))
     w('}')

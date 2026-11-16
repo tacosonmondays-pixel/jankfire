@@ -2,20 +2,22 @@
  "party": {
   "lo": [
    -0.0325,
-   -0.0003,
+   -0.0,
    -0.0325
   ],
   "hi": [
    0.0325,
-   0.1002,
+   0.1042,
    0.0325
   ],
-  "tris": 3240,
+  "tris": 4600,
   "pieces": [
    "cone__cone",
    "band__gold",
    "ring__trim",
-   "pom__trim"
+   "pom__trim",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "cone": {
@@ -40,151 +42,168 @@
  "cowboy": {
   "lo": [
    -0.052,
-   -0.0033,
+   -0.0,
    -0.0588
   ],
   "hi": [
    0.052,
-   0.0441,
+   0.0481,
    0.0588
   ],
-  "tris": 1736,
+  "tris": 3096,
   "pieces": [
    "brim__felt",
    "crown__felt",
    "band__band",
-   "buckle__gold"
+   "buckle__gold",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "chef": {
   "lo": [
-   -0.0368,
-   0.0,
-   -0.0406
+   -0.033,
+   -0.0,
+   -0.0361
   ],
   "hi": [
-   0.0368,
-   0.0651,
-   0.0406
+   0.033,
+   0.0627,
+   0.0361
   ],
-  "tris": 2464,
+  "tris": 3824,
   "pieces": [
    "band__band",
    "puff__puff",
-   "line__gold"
+   "line__gold",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "propeller": {
   "lo": [
-   -0.0455,
-   0.0,
+   -0.0491,
+   -0.0,
    -0.0528
   ],
   "hi": [
-   0.0455,
-   0.0451,
-   0.031
+   0.0491,
+   0.0494,
+   0.0339
   ],
-  "tris": 2356,
+  "tris": 3904,
   "pieces": [
    "cap__cap",
+   "cap__visor",
    "visor__visor",
    "post__gold",
    "prop__gold",
-   "prop__blade"
+   "prop__blade",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "eyes": {
   "lo": [
-   -0.0431,
-   0.0,
-   -0.019
+   -0.0405,
+   -0.0001,
+   -0.0178
   ],
   "hi": [
-   0.0431,
-   0.0375,
-   0.0192
+   0.0405,
+   0.0302,
+   0.0189
   ],
-  "tris": 4212,
+  "tris": 2536,
   "pieces": [
-   "shell__shell",
    "eye__eye",
-   "bezel__gold",
    "pupil_l__pupil",
-   "pupil_r__pupil"
+   "pupil_r__pupil",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "tophat": {
   "lo": [
    -0.041,
-   0.0,
+   -0.0,
    -0.0451
   ],
   "hi": [
    0.041,
-   0.058,
+   0.062,
    0.0451
   ],
-  "tris": 1416,
+  "tris": 2776,
   "pieces": [
    "brim__felt",
    "crown__felt",
    "band__band",
-   "buckle__gold"
+   "buckle__gold",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "halo": {
   "lo": [
-   -0.0354,
-   0.0326,
-   -0.0342
+   -0.0364,
+   -0.0,
+   -0.0354
   ],
   "hi": [
-   0.0354,
-   0.0554,
-   0.0342
+   0.0364,
+   0.0648,
+   0.0354
   ],
-  "tris": 1536,
+  "tris": 4508,
   "pieces": [
-   "halo__halo"
+   "halo__halo",
+   "halo__glow",
+   "stem__gold",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "crown": {
   "lo": [
-   -0.0417,
-   0.0,
-   -0.04
+   -0.051,
+   -0.0,
+   -0.051
   ],
   "hi": [
-   0.0417,
-   0.0378,
-   0.043
+   0.051,
+   0.0653,
+   0.051
   ],
-  "tris": 3192,
+  "tris": 5628,
   "pieces": [
    "band__gold",
    "cap__velvet",
    "points__gold",
-   "gems__gem"
+   "gems__gem",
+   "foot__foot",
+   "foot__gold"
   ]
  },
  "duck": {
   "lo": [
-   -0.036,
-   -0.0013,
-   -0.046
+   -0.031,
+   -0.0,
+   -0.0396
   ],
   "hi": [
-   0.0389,
-   0.0776,
-   0.0408
+   0.0335,
+   0.0713,
+   0.0352
   ],
-  "tris": 3368,
+  "tris": 4728,
   "pieces": [
    "body__duck",
    "head__duck",
    "beak__beak",
-   "eyes__eye"
+   "eyes__eye",
+   "foot__foot",
+   "foot__gold"
   ]
  }
 }
