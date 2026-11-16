@@ -1,10 +1,11 @@
 --!strict
--- the hub's VIP door (HubRotundaRooms builds it, behind the lounge). on your own screen:
---   VIP (the player attribute VIP, which the server's Vip.luau sets): the door's leaves (Models tagged VipDoor, each with
---   Slide = how far it moves to open) slide open as you come near and let you through, and the "Get VIP" prompt is off
---   anyone else: the door stays shut and solid, and its prompt (on the part tagged VipPrompt, ShopOpen = "vip") opens the
---   shop on the VIP tile (ShopClient acts on that)
--- the server's own check (HubVip.server) keeps anyone who isn't VIP out of the room whatever this does
+-- the hub's VIP door (HubRotundaRooms builds it, behind the lounge): its looks on your own screen. who may pass is the
+-- server's decision (HubVip.server: Vip.isVip, a collision group that lets a VIP's character through the leaves, and a
+-- check that puts anyone else back out of the room); the player attribute VIP it sets is only for looks:
+--   a VIP: the door's leaves (Models tagged VipDoor, each with Slide = how far it moves to open) slide open as you come
+--   near, and the "Get VIP" prompt is off
+--   anyone else: the door stays shut, and its prompt (on the part tagged VipPrompt, ShopOpen = "vip") opens the shop on
+--   the VIP tile (ShopClient acts on that)
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
@@ -55,8 +56,5 @@ RunService.RenderStepped:Connect(function(dt: number)
 			local e = lf.t * lf.t * (3 - 2 * lf.t)
 			for _, q in lf.parts do q.p.CFrame = q.home + lf.slide * e end
 		end
-		-- (a VIP walks through even before it is fully open; for anyone else it stays solid)
-		local solid = not vip
-		for _, q in lf.parts do if q.p.Name == "Leaf" and q.p.CanCollide ~= solid then q.p.CanCollide = solid end end
 	end
 end)
