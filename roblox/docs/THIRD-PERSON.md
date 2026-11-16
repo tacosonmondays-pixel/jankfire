@@ -130,6 +130,35 @@ nothing faded.
 
 ![hats fade while aiming](third-person/aim-hat-fade.jpg)
 
+## The slide
+
+Reported 16 Nov 2026: "when you slide, its not an actual slide ... your feet still move like they kick like theyre
+trying to run". The slide pose (`client_root/CrouchPoses.client.luau`) used to be layered on top of whatever animation
+was playing, so Roblox's run cycle kept kicking the legs underneath. Now (place version 466):
+
+- **The slide takes the body outright:** the Root, both hips, knees and ankles, the waist, the neck and both arms are
+  set to the slide pose (lerped from the animation by the slide's weight), whatever the run is doing. Leaning back 24
+  degrees, the right leg out in front nearly straight, the left folded under, the left arm out for balance. The
+  third-person weapon pose still runs after it, so a held gun stays held (the arms only take the slide pose when
+  they're free).
+- **Hips at the right height for any body:** the hips' height is worked out from the body's own leg and foot lengths
+  so the folded shin lies on the floor and the front heel just clears it, after Move.client's 0.9-stud slide sink
+  (`T.lift` = 0.3 measured in Play: without it the shin sat 0.35 into the floor).
+- **Ease:** in and out at rate 18 a second (about 90 % in 0.12 s), so a slide into a run or a jump doesn't pop.
+  A crouch is unchanged.
+- Footsteps were already silent in a slide (`Steps.client` skips them).
+- Tune live through the script's `Tune` attribute (JSON, angles in degrees: `lean`, `frontHip`, `backKnee`, `lift`
+  and so on), then write the numbers back. Test bodies tagged `TPRig` are posed too: attribute `Pose` = `"slide"` and
+  `PoseW` = a number holds the slide at that weight.
+
+Tested in Play: a real slide on the owner's character (sprint, then C): while running the feet moved 1.6 and 1.9
+studs relative to the body; during the 0.78 s slide (after the ease) 0.11 and 0.05 studs. Six test bodies (the
+owner's avatar holding the rifle, a plain body) at the start, middle and end of a slide, with the run animation playing
+underneath every one: the feet don't move (0.000), the folded shin rests on the floor (0.01 studs up), the front heel
+0.22 up.
+
+![a slide, start middle and end](third-person/slide.jpg)
+
 ## The network
 
 Your client sends `TPState(pitch, yaw, flags)`: where you look (degrees; yaw is the offset from your body's facing)
@@ -205,7 +234,10 @@ Marble Shotgun shows your real marble count.
 Known limits and ideas for later:
 
 - The Redline's jerry can and the marble bag (first-person reload props) are not shown in third person; the off hand
-  stays on the gun for those two reloads.
+  stays on the gun for those two reloads. (Until place version 466 they showed in the wrong place instead: they're
+  models of their own, placed at the first-person gun, which is hidden at the camera in third person, so they hung
+  behind your character during the reload. Viewmodel now drops them while the first-person gun is hidden; checked in
+  Play: none in third person, the jerry can there as before in first person.)
 - The sprint lowering and the throw's item model in the hand are in the code but were not photographed.
 - The shoulder camera needs a mouse: on a device without one, V's third person stays Roblox's Classic camera. There
   is no key to swap shoulders, and the shoulder offset doesn't grow with a very wide body.

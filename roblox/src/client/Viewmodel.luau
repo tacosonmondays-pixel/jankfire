@@ -576,7 +576,9 @@ function VM.update(dt: number, c: Ctx)
 	end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
-	VM.props(m.PrimaryPart.CFrame)
+	-- the reload props are models of their own, not part of this gun: with the gun hidden (third person, a menu, the
+	-- scope) they go too, or the jerry can / marble bag hung where the hidden gun is, at the camera, behind you
+	if c.hidden then dropProp() else VM.props(m.PrimaryPart.CFrame) end
 	GunHats.aim(m, c.aim, clip and clip.name) -- (the hat steps out of the sight picture while you aim, like the web game)
 	-- the fill light: up and left of the gun's middle in camera space, aimed at it, stopping short of the world
 	if fill then
