@@ -73,6 +73,9 @@
         },
         "ItemFx": {
           "$className": "RemoteEvent"
+        },
+        "ShopBuy": {
+          "$className": "RemoteEvent"
         }
       },
       "Match": {
