@@ -20,7 +20,7 @@ local BOOK = {
 	carbon = { color = 96722569349000, normal = 112532475241697, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
 	cheese = { color = 93714727871518, normal = 129017312834983, rough = 77905344163558, emissive = 1, tint = "ffffff", finish = "" },
 	china = { color = 97656265067278, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
-	circuit = { color = 138964628169649, normal = 79209172603020, rough = 124627698100169, metal = 132899096981689, emit = 127478414693202, emissive = 1.1, tint = "7dff6a", finish = "SHINY" },
+	circuit = { color = 111858537097436, normal = 79209172603020, rough = 95202203172134, metal = 123551872724000, emit = 127478414693202, emissive = 1.1, tint = "7dff6a", finish = "SHINY" },
 	copper = { color = 100153126662262, normal = 73516055467163, rough = 115030226543865, metal = 118901368522665, emissive = 1, tint = "ffffff", finish = "SHINY" },
 	corp = { color = 140632410216958, rough = 86227588438345, emit = 118554031163030, emissive = 0.9, tint = "ffffff", finish = "GLOWS" },
 	crackle = { color = 82946007309875, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
@@ -82,7 +82,7 @@ local BOOK = {
 	washi = { color = 76195074153031, rough = 128687831759397, emissive = 1, tint = "ffffff", finish = "" },
 	watermelon = { color = 138855854662547, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
 	wood = { color = 97668667743723, normal = 86685380407014, rough = 102053691254954, emissive = 1, tint = "ffffff", finish = "" },
-	zebra = { color = 87382711710679, rough = 77905344163558, emissive = 1, tint = "ffffff", finish = "" },
+	zebra = { color = 86424414964672, rough = 77905344163558, emissive = 1, tint = "ffffff", finish = "" },
 }
 
 local RS = game:GetService("ReplicatedStorage")

@@ -1306,5 +1306,17 @@
  "26d3729bf3024a6090b38593049f20f563c06a14": {
   "file": "circuit_rough.png",
   "id": 95202203172134
+ },
+ "0ee2d2f955be2fc06a813ff80f988f6663b11ad5": {
+  "file": "zebra_color.png",
+  "id": 86424414964672
+ },
+ "53fd7e22b0c9d78a771b80d3a3ce4cead37d4582": {
+  "file": "circuit_color.png",
+  "id": 111858537097436
+ },
+ "065dc08554e22d9fa7a7acd2d56b582c1285c46e": {
+  "file": "circuit_metal.png",
+  "id": 123551872724000
  }
 }

@@ -12,7 +12,7 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 **Where it stands:** 79 of the 102 wraps are textures; the other 23 stay colour wraps (21 plain colours, plus QR Code
 and Barcode, which may never be images). Every kit gun the owner picked carries the flat-projection UVs (`gun_uvs.py`,
 live since place version 313, 242 `WrapUV` pieces) and `WrapUV` on every piece but the glow and glass ones. Photos:
-`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 336), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
+`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 341), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
 `wrap-textures/round2/` (in the hall on the flat-UV guns, plus Blender renders),
 `wrap-textures/galaxy-dots-before-after.jpg` (the owner's Galaxy note),
 `wrap-textures/batch1-sheet.jpg` and `wrap-textures/judge1/` (the first round).
@@ -128,9 +128,8 @@ codes or logos. What changed after it:
 anything a person or a scanner could take for a QR code or barcode. Checkered Flag is now 6.25 cm checks, so a grip or
 magazine shows one to three whole checks instead of irregular cut-up bits (live, place version 336). Zebra (stripes that
 now bend, fork and end in points, no straight parallel bars) and Circuit Board (a few gold legs on its chips instead of
-rows of white pins) are redrawn in `wrap_textures.py` but **not uploaded yet**: the permission check blocked those
-uploads, so the live Zebra and Circuit are still the earlier images. Draw them and run `wrap_upload.py list` to upload
-them. The rest are clear: Plaid, Sweater, Arcade, Digital Camo, Glitch and CRT are coloured or organic, and Hazard
+rows of white pins) are redrawn too; their first uploads were blocked by the permission check, and went up once the owner allowed them
+(live, place version 341). The rest are clear: Plaid, Sweater, Arcade, Digital Camo, Glitch and CRT are coloured or organic, and Hazard
 (even bands), Receipt, Sheet, Memo and Stonks (grey bars for writing) have no varying black-and-white bars.
 
 ## What holds the score near 6
