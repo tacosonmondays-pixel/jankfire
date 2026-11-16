@@ -544,68 +544,10 @@ local function floorBelow(at: Vector3, depth: number): Vector3?
 	return r and r.Position
 end
 local function boom(at: Vector3, R: number)
-	local h = host(at, 4)
-	-- a hot white core that swells to half the radius and is gone in a blink (web: a flash sphere at half the radius)
-	local core = part(Enum.PartType.Ball, Vector3.one * R * 0.35, Color3.fromRGB(255, 236, 196), Enum.Material.Neon)
-	core.CFrame = CFrame.new(at); core.Parent = folder
-	local light = Instance.new("PointLight")
-	light.Color = Color3.fromRGB(255, 190, 120); light.Range = R * 1.6; light.Brightness = 8; light.Shadows = false; light.Parent = core
-	task.spawn(function()
-		local t0 = os.clock()
-		while core.Parent do
-			local t = os.clock() - t0
-			if t > 0.32 then break end
-			local u = t / 0.32
-			core.Size = Vector3.one * R * (0.35 + 0.7 * smooth(u * 2.5))
-			core.Transparency = math.clamp((t - 0.05) / 0.12, 0, 1)
-			light.Brightness = 8 * (1 - u)
-			RunService.RenderStepped:Wait()
-		end
-		core:Destroy()
-	end)
-	-- the fireball: orange, quick, thrown out and dragged back
-	emitter(h, { Texture = TEX.fire, LightEmission = 1, LightInfluence = 0, Brightness = 3, ZOffset = 1,
-		Color = cs(Color3.fromRGB(255, 246, 214), Color3.fromRGB(255, 168, 64), Color3.fromRGB(196, 66, 24)),
-		Size = ns(0, R * 0.22, 0.35, R * 0.38, 1, R * 0.12), Transparency = ns(0, 0, 0.6, 0.25, 1, 1),
-		Lifetime = NR(0.22, 0.45), Speed = NR(R * 0.9, R * 2.2), SpreadAngle = Vector2.new(180, 180), Drag = 6,
-		Rotation = NR(0, 360), RotSpeed = NR(-120, 120) }):Emit(34)
-	-- the smoke it leaves: dark grey, rolling up and out
-	emitter(h, { Texture = TEX.smoke, LightInfluence = 1, Color = cs(Color3.fromRGB(96, 94, 92), Color3.fromRGB(150, 150, 150)),
-		Size = ns(0, R * 0.25, 1, R * 0.7), Transparency = ns(0, 0.15, 0.5, 0.35, 1, 1),
-		Lifetime = NR(1.4, 2.4), Speed = NR(R * 0.3, R * 0.9), SpreadAngle = Vector2.new(180, 180), Drag = 2.5,
-		Acceleration = Vector3.new(0, 1.2 * S, 0), Rotation = NR(0, 360), RotSpeed = NR(-30, 30) }):Emit(22)
-	-- hot sparks (web: 22)
-	emitter(h, { Texture = TEX.blob, LightEmission = 1, LightInfluence = 0, Brightness = 5,
-		Orientation = Enum.ParticleOrientation.VelocityParallel,
-		Color = cs(Color3.fromRGB(255, 252, 225), Color3.fromRGB(255, 196, 90), Color3.fromRGB(255, 110, 30)),
-		Size = ns(0, 0.09 * S, 1, 0), Squash = ns(0, 2.5, 1, 2.5),
-		Lifetime = NR(0.3, 0.75), Speed = NR(R * 1.2, R * 2.6), SpreadAngle = Vector2.new(180, 180),
-		Acceleration = Vector3.new(0, -22 * S, 0), Drag = 1.2 }):Emit(22)
-	-- a ring across the floor when it goes off near one
-	local fl = floorBelow(at, R * 0.5)
-	if fl then
-		local ring = part(Enum.PartType.Block, Vector3.new(1, 0.05, 1), Color3.new(), nil)
-		ring.Transparency = 1; ring.CFrame = CFrame.new(fl + Vector3.new(0, 0.12, 0)); ring.Parent = folder
-		local dc = Instance.new("Decal")
-		dc.Texture = TEX.ring; dc.Face = Enum.NormalId.Top; dc.Color3 = Color3.fromRGB(255, 226, 190); dc.Transparency = 0.35; dc.Parent = ring
-		task.spawn(function()
-			local t0 = os.clock()
-			while ring.Parent do
-				local u = (os.clock() - t0) / 0.42
-				if u >= 1 then break end
-				local s = R * 2 * (1 - (1 - u) ^ 3)
-				ring.Size = Vector3.new(math.max(1, s), 0.05, math.max(1, s))
-				dc.Transparency = 0.35 + 0.65 * u
-				RunService.RenderStepped:Wait()
-			end
-			ring:Destroy()
-		end)
-		-- dust kicked off the floor
-		emitter(host(fl + Vector3.new(0, 0.6, 0), 3), { Texture = TEX.smoke, LightInfluence = 1, Color = cs(Color3.fromRGB(170, 164, 156)),
-			Size = ns(0, 0.8 * S, 1, 2.6 * S), Transparency = ns(0, 0.3, 1, 1), Lifetime = NR(0.6, 1.2),
-			Speed = NR(R * 0.6, R * 1.1), SpreadAngle = Vector2.new(90, 8), Drag = 4, Rotation = NR(0, 360),
-			EmissionDirection = Enum.NormalId.Top }):Emit(16)
-	end
+	-- the look is Fx.explosion (the VFX pipeline, roblox/docs/VFX-PIPELINE.md: the web's fireball flipbook, white pop,
+	-- soot, sparks and feathers, plus a ring across the floor, its dust and a light). the sound and the shake stay here
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+	FxM.explosion(at, R)
 	Sfx.play("boom", at)
 	shakeFrom(at, 1)
 end
@@ -681,44 +623,17 @@ local function flyStep(dt: number)
 end
 
 -- ---------------------------------------------------------------- smoke clouds
-type Cloud = { id: number, h: BasePart, ems: { ParticleEmitter }, untilT: number }
+type Cloud = { id: number, h: BasePart?, ems: { ParticleEmitter }, untilT: number }
 local cloudsLive: { [number]: Cloud } = {}
 local SMOKE_COL = Color3.fromRGB(176, 180, 186)
 local function addCloud(id: number, at: Vector3, r: number, left: number)
 	if cloudsLive[id] then return end
-	local h = host(at, left + 5)
-	local ems = {}
-	-- a dense core and a ring of puffs round it, low and wide like the web game's 6.5 m x 3.5 m column: opaque soft
-	-- blobs inside, wispy smoke on the edges, so a player standing in it really is hidden
-	local spots = { Vector3.new(0, r * 0.12, 0) }
-	for i = 0, 7 do
-		local a = i / 8 * math.pi * 2
-		table.insert(spots, Vector3.new(math.cos(a) * r * 0.55, r * (0.05 + 0.1 * (i % 2)), math.sin(a) * r * 0.55))
-	end
-	for i = 0, 3 do
-		local a = (i + 0.5) / 4 * math.pi * 2
-		table.insert(spots, Vector3.new(math.cos(a) * r * 0.28, r * 0.32, math.sin(a) * r * 0.28))
-	end
-	for i, o in spots do
-		local att = Instance.new("Attachment")
-		att.Position = o; att.Parent = h
-		-- (thick: the first photo in the hall showed the far door through it, so twice the puffs, bigger, fully solid)
-		local core = emitter(att, { Texture = TEX.blob, LightInfluence = 1, LightEmission = 0, Color = cs(SMOKE_COL),
-			Size = ns(0, r * 0.5, 1, r * 0.75), Transparency = ns(0, 1, 0.1, 0, 0.8, 0.05, 1, 1),
-			Lifetime = NR(2.6, 3.4), Rate = 7, Speed = NR(0.3 * S, 1.2 * S), SpreadAngle = Vector2.new(180, 180), Drag = 1,
-			Rotation = NR(0, 360), RotSpeed = NR(-12, 12), Acceleration = Vector3.new(0, 0.15 * S, 0) })
-		core.Enabled = true
-		core:Emit(6)
-		table.insert(ems, core)
-		if i % 2 == 1 then
-			local wisp = emitter(att, { Texture = TEX.smoke, LightInfluence = 1, Color = cs(SMOKE_COL),
-				Size = ns(0, r * 0.5, 1, r * 0.8), Transparency = ns(0, 1, 0.15, 0.2, 1, 1),
-				Lifetime = NR(2.2, 3), Rate = 2, Speed = NR(0.5 * S, 1.6 * S), SpreadAngle = Vector2.new(180, 180), Drag = 0.8,
-				Rotation = NR(0, 360), RotSpeed = NR(-20, 20) })
-			wisp.Enabled = true
-			table.insert(ems, wisp)
-		end
-	end
+	-- the look is Fx.smokeCloud (the VFX pipeline: the web's own soft smoke sheet, puffing low and wide for the cloud's
+	-- life, thinning out over its last 3 s). this file keeps the bookkeeping and the sound
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+	FxM.smokeCloud(id, at, r, left)
+	local h: BasePart? = nil
+	local ems: { ParticleEmitter } = {}
 	cloudsLive[id] = { id = id, h = h, ems = ems, untilT = os.clock() + left }
 	Sfx.play("blow", at)
 end
@@ -754,12 +669,17 @@ local function addDome(id: number, at: Vector3, r: number, left: number, fresh: 
 		ring = rr
 	end
 	domes[id] = { id = id, ball = ball, ring = ring, t0 = if fresh then os.clock() else -math.huge, untilT = os.clock() + left, r = r }
+	-- the layers round it (Fx.domeOpen, the VFX pipeline: an opening flash and floor ring, two orbiting bands, ripples)
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+	FxM.domeOpen(id, at, r, fl, fresh)
 	if fresh then Sfx.play("reverse", at, 0.9) end
 end
 local function dropDome(id: any)
 	local d = if type(id) == "number" then domes[id] else nil
 	if not d then return end
 	domes[id] = nil
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+	FxM.domeClose(id, true) -- (its skin bursts into droplets)
 	Sfx.play("pop", d.ball.Position)
 	local ball, ring = d.ball, d.ring
 	task.spawn(function()
@@ -797,15 +717,9 @@ end
 local function healFx(model: Instance?, mine: boolean)
 	local root = model and model:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if root then
-		local att = Instance.new("Attachment")
-		att.Position = Vector3.new(0, 0.6, 0); att.Parent = root
-		local e = emitter(att, { Texture = TEX.blob, LightEmission = 0.6, LightInfluence = 0.4, Brightness = 2,
-			Color = cs(Color3.fromRGB(236, 255, 240), Color3.fromRGB(120, 230, 150)), Size = ns(0, 0.22 * S, 1, 0),
-			Transparency = ns(0, 0.1, 1, 1), Lifetime = NR(0.6, 1.0), Rate = 16, Speed = NR(1.2 * S, 2.4 * S),
-			SpreadAngle = Vector2.new(50, 50), Acceleration = Vector3.new(0, 2 * S, 0), Drag = 1.5 })
-		e.Enabled = true
-		task.delay(1, function() e.Enabled = false end)
-		Debris:AddItem(att, 2.2)
+		-- the look is Fx.heal (the VFX pipeline: two green ribbons spiralling up, a ring of light at the feet, sparkles)
+		local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+		FxM.heal(root)
 		if not mine then Sfx.play("heal", root.Position, 0.8) end
 	end
 	if mine then H.flash(0.1, 0.5, Color3.fromRGB(120, 230, 150)) end
@@ -954,6 +868,8 @@ local function addHole(m: any)
 		hv.stuck = dm
 	end
 	holesV[id] = hv
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+	FxM.holeOpen(id, m.p, R, age) -- (Fx: a bright rim and dust spiralling in; age: already open for late joiners)
 	if age < 0.5 then Sfx.play("hole", m.p, 0.9) end
 end
 local function updHole(m: any)
@@ -970,6 +886,10 @@ local function popHole(m: any)
 		for _, x in { hv.core, hv.shell, hv.ring, hv.pull } do x:Destroy() end
 		hv.orbit:Destroy()
 		if hv.stuck then hv.stuck:Destroy() end
+	end
+	do
+		local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+		FxM.holePop(m.id, if m.quiet or typeof(m.p) ~= "Vector3" then nil else m.p, if type(m.r) == "number" then m.r else nil)
 	end
 	if m.quiet or typeof(m.p) ~= "Vector3" then return end
 	-- the pop (web fx.blast: a purple flash + 60 purple fire bits) + boom and a squeak, shake
@@ -998,11 +918,13 @@ local function popHole(m: any)
 end
 local function holeStep(dt: number)
 	local t = os.clock()
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
 	for _, hv in holesV do
 		if hv.on then
 			local c = middleOf(hv.on)
 			if c then hv.p = c end
 		end
+		FxM.holeMove(hv.id, hv.p)
 		hv.ang += dt
 		local age = t - hv.born
 		-- grows in over 0.3 s once open, pulses 8 % at 20 rad/s; the ring turns at 3 rad/s, the little duck orbits at 6

@@ -1,0 +1,132 @@
+{
+ "vfx_flash_star": {
+  "id": 111717218327603,
+  "sha1": "b51a88fbd043d38cce7faca92460e28c729677ff",
+  "what": "muzzle flash face: the web 16-point star, 4 variants (2x2)",
+  "uploaded": "2026-11-16 19:36 UTC (round 2: paler star / solid flakes)",
+  "prev_id": 71370538827515,
+  "bled": true
+ },
+ "vfx_spike": {
+  "id": 100853288026710,
+  "sha1": "917c56baa0c5061adf5fd25b51e04d43bda57142",
+  "what": "muzzle flash side flame tongue",
+  "uploaded": "2026-11-16 18:08-18:11 UTC"
+ },
+ "vfx_spark": {
+  "id": 73042129135061,
+  "sha1": "b4812832ff98aec17a8b84f51c1fa09c9b9e990e",
+  "what": "spark streak",
+  "uploaded": "2026-11-16 18:08-18:11 UTC"
+ },
+ "vfx_glow": {
+  "id": 107753175681578,
+  "sha1": "3496a3c9089964780b41adf3c12d08d4def73d35",
+  "what": "soft round glow",
+  "uploaded": "2026-11-16 18:08-18:11 UTC"
+ },
+ "vfx_tracer": {
+  "id": 72229869149513,
+  "sha1": "4806be7f360ec9b7478594c7ea00fc181c404e6a",
+  "what": "tracer Beam core (v across)",
+  "uploaded": "2026-11-16 18:08-18:11 UTC"
+ },
+ "vfx_ring": {
+  "id": 136567724057402,
+  "sha1": "94211480fb8d2f9a162c26dae78c71419393f5b6",
+  "what": "shock ring",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 105116580579662,
+  "bled": true
+ },
+ "vfx_chips": {
+  "id": 81145557543325,
+  "sha1": "a1034d7e41a7ab80ab47f141b2027812ccdc3bdd",
+  "what": "surface chips, 4 flakes (2x2)",
+  "uploaded": "2026-11-16 19:36 UTC (round 2: paler star / solid flakes)",
+  "first_id": 115702073960580,
+  "bled": true,
+  "prev_id": 115652459612514
+ },
+ "vfx_dust_4x4": {
+  "id": 123624708348895,
+  "sha1": "eb266e3fc81f383cea509bcfa9bf8cb04aef3d20",
+  "what": "impact dust puff flipbook, 16 frames (Blender volume)",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 94908103888636,
+  "bled": true
+ },
+ "vfx_boom_8x8": {
+  "id": 92069836286961,
+  "sha1": "1c9ce935c1ebc1e1701352628b57390a43a63bce",
+  "what": "explosion flipbook, 64 frames (tools/sprites/blender/explosion_flipbook.py at 128 px)",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 131355167981206,
+  "bled": true
+ },
+ "vfx_smoke_8x8": {
+  "id": 101944596932707,
+  "sha1": "1b4e41a93b1d8ab0955ccc574da0d886533fbd67",
+  "what": "soft smoke flipbook, 64 frames (from puffsoft.png, tools/roblox/vfx/smoke_sheet.py)",
+  "uploaded": "2026-11-16 18:08-18:11 UTC"
+ },
+ "vfx_spike_h": {
+  "id": 129915677528999,
+  "sha1": "3ea07078ab34142156383bb530bdd7a89628a2a8",
+  "what": "muzzle flash flame lying along u, for a Beam",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 89893379181733,
+  "bled": true
+ },
+ "vfx_lines": {
+  "id": 97911174874745,
+  "sha1": "e108f9aa994854ed6695394bfb17e7a1b8a6cede",
+  "what": "hologram scanline (one soft line per tile)",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 78786940035821,
+  "bled": true
+ },
+ "vfx_feather": {
+  "id": 92745845385867,
+  "sha1": "1196649d95acc2318cc61834c581f771939f96a0",
+  "what": "soft white feather (angel skins)",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 72603141578174,
+  "bled": true
+ },
+ "vfx_petal": {
+  "id": 72396403976507,
+  "sha1": "cef0fdce4fade014ec8f17b14c7b5cdcdf6e95fc",
+  "what": "cherry blossom petal (Japanese set)",
+  "uploaded": "2026-11-16 19:11 UTC (alpha-bled re-upload)",
+  "first_id": 114525474925018,
+  "bled": true
+ },
+ "vfx_sparkle": {
+  "id": 118739981349944,
+  "sha1": "080e7967368f7883d9e56c0083c416efba11e71c",
+  "what": "four-point sparkle",
+  "uploaded": "2026-11-16 18:52-18:56 UTC"
+ },
+ "vfx_bubble": {
+  "id": 127426547666953,
+  "sha1": "681a67d0e011a91ed272240258102402cb4d92d0",
+  "what": "soap bubble (ducky skin)",
+  "bled": true,
+  "uploaded": "2026-11-16 19:17 UTC"
+ },
+ "vfx_boom_4x4": {
+  "id": 101632032329716,
+  "sha1": "dece05c60dd05e25e0dd6eaf4864ce2ef58a33a7",
+  "what": "fireball, 16 frames (4x4, 256 px; every 4th frame of the 8x8 bake)",
+  "bled": true,
+  "uploaded": "2026-11-16 19:36 UTC"
+ },
+ "vfx_smoke_4x4": {
+  "id": 97407536340250,
+  "sha1": "b73acc7d4291e4915faa1f87816607285a9a1a61",
+  "what": "soft smoke, 16 frames (4x4, 256 px)",
+  "bled": true,
+  "uploaded": "2026-11-16 19:36 UTC"
+ }
+}

@@ -1,0 +1,425 @@
+[
+ {
+  "id": "eye_ar",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "fast": true,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_smg",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "fast": true,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_burst",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "fast": true,
+   "color": 5213183,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_lmg",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "fast": true,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_redline",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_pistol",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "color": 12110079,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_revolver",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "color": 16765024,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_lever",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "color": 16761036,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_sawnoff",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "color": 16752736,
+   "pellets": 12,
+   "spread": 0.11,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_shotgun",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "big": true,
+   "pellets": 10,
+   "spread": 0.075,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_autoshot",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "big": true,
+   "pellets": 8,
+   "spread": 0.07,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_dmr",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "big": true,
+   "color": 11566591,
+   "thick": 0.06,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_sniper",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "big": true,
+   "color": 16732120,
+   "thick": 0.09,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "eye_marbles",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.01
+  ],
+  "opts": {
+   "noTracer": true,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "strip_ar_eye",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.008,
+   0.02,
+   0.03,
+   0.05,
+   0.07,
+   0.1
+  ],
+  "opts": {
+   "fast": true,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "strip_shotgun_eye",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.008,
+   0.03,
+   0.05,
+   0.1,
+   0.2
+  ],
+  "opts": {
+   "big": true,
+   "pellets": 10,
+   "spread": 0.075,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "strip_sniper_eye",
+  "effect": "shot",
+  "view": "eye",
+  "times": [
+   0.008,
+   0.03,
+   0.05,
+   0.1,
+   0.2
+  ],
+  "opts": {
+   "big": true,
+   "color": 16732120,
+   "thick": 0.09,
+   "muzzle": [
+    0.166,
+    -0.133,
+    -1.01
+   ],
+   "fov": 80
+  }
+ },
+ {
+  "id": "strip_ar_side",
+  "effect": "shot",
+  "view": "side",
+  "times": [
+   0.008,
+   0.03,
+   0.06,
+   0.2,
+   0.5
+  ],
+  "opts": {
+   "fast": true,
+   "muzzle": [
+    0.22,
+    -0.2,
+    -0.85
+   ]
+  }
+ },
+ {
+  "id": "strip_impact",
+  "effect": "impact",
+  "view": "far",
+  "times": [
+   0.016,
+   0.05,
+   0.1,
+   0.2,
+   0.35,
+   0.5
+  ],
+  "opts": {
+   "at": [
+    0,
+    1.5,
+    -15
+   ],
+   "dist": 3.5
+  }
+ },
+ {
+  "id": "strip_sparks",
+  "effect": "sparks",
+  "view": "far",
+  "times": [
+   0.016,
+   0.05,
+   0.1,
+   0.2
+  ],
+  "opts": {
+   "at": [
+    0,
+    1.5,
+    -15
+   ],
+   "dist": 3.5,
+   "n": 26
+  }
+ },
+ {
+  "id": "strip_frag",
+  "effect": "explosion",
+  "view": "far",
+  "times": [
+   0.03,
+   0.08,
+   0.2,
+   0.4,
+   0.7,
+   1.0,
+   1.5,
+   2.5
+  ],
+  "opts": {
+   "at": [
+    0,
+    2,
+    -6
+   ],
+   "dist": 22
+  }
+ },
+ {
+  "id": "strip_smoke",
+  "effect": "smoke",
+  "view": "far",
+  "times": [
+   0.2,
+   1,
+   2,
+   4,
+   7,
+   10,
+   13
+  ],
+  "opts": {
+   "at": [
+    0,
+    2,
+    -8
+   ],
+   "dist": 26,
+   "dur": 10
+  }
+ }
+]

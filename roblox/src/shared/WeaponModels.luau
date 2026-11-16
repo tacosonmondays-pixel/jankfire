@@ -258,6 +258,9 @@ function WeaponModels.build(id: string, k: number, skin: string?): Model?
 	end
 	local tip = root:FindFirstChild("Muzzle") :: Attachment?
 	if tip then tip:SetAttribute("Rest", tip.Position) end
+	-- (the VFX pipeline's hook: on a client, Fx sets this to hang a high-tier skin's effects on the gun, Fx.skinIdle)
+	local onBuilt = (WeaponModels :: any).onBuilt
+	if onBuilt then onBuilt(m, k) end
 	return m
 end
 
