@@ -256,7 +256,8 @@ def cowboy():
     sec = [(ri, 0.0), (ro - t / 2, 0.0)] + arc(ro - t / 2, t / 2, t / 2, t / 2, -90, 90, 6)[1:-1] + [(ro - t / 2, t), (ri, t)]
     def curl(th, r, y):
         u = max(0.0, (r - 0.03) / (ro - 0.03))
-        return 0.016 * u * u * abs(math.sin(th)) ** 1.6 - 0.004 * u * u * math.cos(th) ** 2
+        # (the front and back droop a little: round 9 halved it again, the brim's ends dipped into the gun's top)
+        return 0.016 * u * u * abs(math.sin(th)) ** 1.6 - 0.0012 * u * u * math.cos(th) ** 2
     oval = lambda th: 1 + 0.13 * math.cos(th) ** 2
     sweep(g, 'brim__felt', sec, 48, rfun=oval, yfun=curl)
     crown_oval = lambda th: 1 + 0.16 * math.cos(th) ** 2

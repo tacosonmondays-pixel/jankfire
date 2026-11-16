@@ -27,7 +27,8 @@ GunHats.THIRD = 1.5
 -- weapons whose hat never shows in first person: the Katana's sits on its pommel, which only peeks in at the bottom
 -- edge of the screen (a sliver under the HUD); it shows in third person, on the racks and in the loadout
 GunHats.HIDE_FIRST_PERSON = { katana = true } :: { [string]: boolean }
-GunHats.HIDE_CLIPS = {} :: { [string]: boolean } -- (round 5: none: the Marble Shotgun's hat left the jar for the barrel)
+-- (the Marble Shotgun's hat sits on its jar's lid, where the reload's bag pours the marbles in: it steps away meanwhile)
+GunHats.HIDE_CLIPS = { reload_marbles = true } :: { [string]: boolean }
 -- a saddle (spot.saddle, metres): a slate puck under the hat's foot, so a flat foot sits on a round scope or barrel
 GunHats.SADDLE_R = 0.022 -- its radius (metres, at the hat's size 1)
 GunHats.SADDLE_COLOR = Color3.fromHex("3c4048")
@@ -164,7 +165,9 @@ end
 function GunHats.attach(m: Model, wid: string, id: string?, k: number, anchored: boolean?, boost: number?): Model?
 	local old = m:FindFirstChild("GunHat")
 	if old then old:Destroy() end
-	local sp = D.SPOTS[wid]
+	-- (a gun wearing a weapon skin carries Skin = "<skin id>": the skin's own seat, measured on its model)
+	local skin = m:GetAttribute("Skin")
+	local sp = (type(skin) == "string" and D.SPOTS[wid .. "@" .. skin]) or D.SPOTS[wid]
 	local root = m.PrimaryPart
 	if not id or not GunHats.valid(id) or id == "none" or not sp or not root then return nil end
 	local foot = root.CFrame * CFrame.new(sp.at * k) * turnOf(sp)
@@ -179,13 +182,14 @@ function GunHats.attachTool(tool: Instance, id: string?): Model?
 	local old = tool:FindFirstChild("GunHat")
 	if old then old:Destroy() end
 	local h = tool:FindFirstChild("Handle")
-	local sp = D.SPOTS.shredder
+	local skin = tool:GetAttribute("Skin")
+	local sp = (type(skin) == "string" and D.SPOTS["shredder@" .. skin]) or D.SPOTS.shredder
 	if not id or not GunHats.valid(id) or id == "none" or not sp or not (h and h:IsA("BasePart")) then return nil end
 	local fr, kk = tool:GetAttribute("HatFrame"), tool:GetAttribute("HatK")
 	local frame: CFrame = if typeof(fr) == "CFrame" then fr else SHRED_FRAME
 	local K: number = if type(kk) == "number" then kk else SHRED_K
 	local foot = h.CFrame * frame * CFrame.new(sp.at * K) * turnOf(sp)
-	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, if h.Anchored then nil else h)
+	local hat = GunHats.make(id, foot, (D.UNIT :: number) * K * sp.s, if h.Anchored then nil else h, if sp.saddle then sp.saddle * K else nil)
 	if hat then hat.Parent = tool end
 	return hat
 end

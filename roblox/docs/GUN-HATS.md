@@ -50,6 +50,7 @@ colour and material as it was.
 | Studio's import (`H.load(id)`, `H.check()`) | `roblox/studio-tools/HatImport.luau` = `ServerStorage.PolishBackup.HatImport` |
 | the templates | `ReplicatedStorage.JankfireHats.hat_<id>` (pivot = the hat's foot; one stud = 0.1 m), exported as `roblox/place/ReplicatedStorage/JankfireHats.rbxm` |
 | preview cards without Studio (the ten on their own; one hat on every gun from the eye or the side) | `tools/roblox/hat_preview.py` |
+| how deep each hat cuts into each gun and skin; a seat finder for the ones that fail | `tools/roblox/hat_clip.py`, `tools/roblox/hat_solve.py` |
 | photo sheets | `tools/roblox/photo_grid.py` |
 
 The hat frame is the weapon frame (metres, x right, y up, z back), the hat's foot on y = 0, its front toward the
@@ -89,6 +90,38 @@ with them), Plan B's slide back from the front sight, the Revolver's top strap, 
 away while the reload's bag pours marbles in: `GunHats.HIDE_CLIPS`), the Katana's **pommel**, standing off the end
 of the handle (`pitch = 90`: on the blade it floated beside the edge), and the Shredder's body behind its bell.
 `gun-hats/seats-live-set.png` shows all sixteen from the side.
+
+## Clipping (checked on the models, every hat on every gun and skin)
+
+`tools/roblox/hat_clip.py` puts every hat on every gun (and every gun skin in `gun_set.SKINS`) exactly as the game does
+(the foot on the gun's top, its sink, the saddle, the turn, the size; and the third-person size, 1.5x), sweeps the
+moving bits (the propeller's whole turn, the halo's bob), and measures how deep the hat goes into the gun and the gun
+into the hat (each piece split into its closed solids; inside = an odd number of crossings along two of three rays).
+`tools/roblox/hat_solve.py` finds a seat where nothing clips for a gun or skin that fails (along its top round the
+spot, then a saddle, then a smaller hat, the nearest first) and can write it into `hat_spots.json`.
+
+What it found and what changed (16 Nov 2026, round 9, live in place version 380, hats asset 70496262106000):
+- the Cowboy Hat's brim dipped at its front and back into most guns' tops (1-1.6 mm): its droop is a third of what it
+  was;
+- the Redline: behind the gauge the bigger hats (third person) cut 4-15 mm into the raised block and the rear sight:
+  back on the block, on a 4 mm saddle, a size smaller (its gauge still shows from the eye);
+- the Marble Shotgun: behind the jar the seat sat on the lock beside its hammer (3-8 mm): on the jar's lid again, and
+  the hat steps away while the reload pours the marbles in (`GunHats.HIDE_CLIPS`);
+- the Sniper: the foot cut 4 mm into the eyepiece's rise: a 13 mm saddle;
+- the gun skins (27): each now has its own seat (`hat_solve.py`), the Neon katana's on top of its handle (its pommel
+  has a cord); `GunHats` uses `SPOTS["<gun>@<skin>"]` when the built gun or the Shredder Tool carries `Skin`.
+After: 700 hat-on-gun pairs (16 guns and 27 skins x 10 hats, first and third person, both counted in each pair's
+worst): no hat body more than 1.4 mm into a gun, no gun more than 1.4 mm into a hat, feet 2 mm in by design (up to 4 mm
+on one curved skin, the drill revolver). Moving parts: every part that moves under a hat carries it (Plan B's slide, the
+Belt Sander's feed cover, Half a Shotgun's barrels); the bolts, charging handles and the Revolver's cylinder stay at
+least a centimetre below their hat. The Marble Shotgun's lid (rebuilt with a hinge, 16 Nov) carries its hat: in
+third person the lid flips open in the reload with the hat on it, and swept through the whole flip no hat touches the
+gun (in first person the hat steps away for the pour).
+Checked in Play (place version 380): the Marble Shotgun's cowboy hat on the lid under the crosshair and gone during
+the reload; the Redline's top hat on the block with the gauge in view; the Sniper's crown on its saddle on the scope;
+skinned builds (`WeaponModels.build(id, k, skin)`) seat their hat at the skin's own spot. `attachToolCopy` (the
+loadout's Shredder preview) still uses the plain Shredder seat; the one Shredder skin (the Wood Chipper) has the same
+seat. After any gun or skin remodel: `hat_spots.py`, then `hat_clip.py` (anything over 1.5 mm: `hat_solve.py`).
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -167,8 +200,8 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 8** (asset 115737966966098), place version 319 (16 Nov 2026, ~10:46 UTC), on the owner's picked guns
-  (place version 298). Older hat uploads and the push models are no longer used.
+- **Live: round 9** (asset 70496262106000: round 8's models with the cowboy's brim droop cut, and the clip-fix seats),
+  place version 380 (16 Nov 2026, ~16:42 UTC). Older hat uploads and the push models are no longer used.
 - **After the guns' squash fix** (59fb8b4, place version 325: held guns were up to 41% squashed): the seats are measured
   on the gun files, so they were right; checked every gun's held model in Play (place version 326): each hat's foot
   sits 0 to 4 mm into the surface under it (its sink), none floats more than 2 mm. The hub racks' copies used the

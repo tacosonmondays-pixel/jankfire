@@ -52,6 +52,7 @@ VM = vm_poses()
 
 
 def hold_matrix(wid):
+    wid = wid.split('@')[0]
     p, r, s = VM.get(wid, ([0.2, -0.2, -0.38], [0, 0.04, 0], 0.7))
     row = HOLDS.get(wid, {}) if isinstance(HOLDS.get(wid), dict) else {}
     size = HOLDS.get('_size', 1.0) * row.get('scale', 1.0)
@@ -133,6 +134,7 @@ def spot_matrix(wid, g):
         hit = gun_tree(g).ray_cast(Vector((x, -z, 1.0)), Vector((0, 0, -1)))
         y = hit[0].z if hit[0] is not None else 0.0
     y -= sp.get('sink', 0.002)
+    y += sp.get('saddle', 0.0)  # (the slate puck itself is not drawn here)
     return (Matrix.Translation(Vector((x, y, z))) @ Matrix.Rotation(math.radians(sp.get('yaw', 0)), 4, 'Y')
             @ Matrix.Rotation(math.radians(sp.get('pitch', 0)), 4, 'X') @ Matrix.Scale(sp.get('s', 1.0), 4))
 
@@ -152,7 +154,7 @@ elif mode in ('eye', 'side'):
     imgs = []
     for wid in guns:
         sc = reset()
-        g = GUNS.BUILD[wid]()
+        g = GUNS.SKINS[wid]() if '@' in wid else GUNS.BUILD[wid]()
         hm = spot_matrix(wid, g)
         h = hat_models.make(hid) if hid != 'none' else None
         if mode == 'eye':
