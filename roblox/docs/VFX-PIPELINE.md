@@ -315,3 +315,8 @@ Trail on the viewmodel), guns' trails stay off in first person.
   gold flames along the top; a Galaxy wrap turned them violet (mid colour 176,125,255) but they barely showed on a
   light wall, so the defaults went up (0.12 m tall, 60 a metre, Brightness 2.4: not re-photographed). The six angel
   guns and their flame rows come from the gun models session after the slim-sights remodel.
+- Katana flame arc (place version 471): a flaming skin's blade throws flame tongues off itself, mid to tip, every frame
+  of the swing (your own: fed from Arsenal's first-person smear window, `Fx.bladeFlames`; someone else's: their swing
+  event flares their blade for 0.25 s, `Fx.swingFlames`), left in the world so the blade's path draws the arc. Two
+  one-line hooks in Arsenal. Tested on a stand-in katana at 3x scale (`round8/raw-katana-flame-arc.jpg`): a fan of
+  gold tongues where the blade passed.

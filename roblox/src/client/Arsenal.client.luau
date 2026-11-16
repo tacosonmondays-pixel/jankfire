@@ -229,6 +229,7 @@ local function smearStep(now: number, hidden: boolean)
 		if mid and tip then
 			local cf = camera.CFrame
 			table.insert(smearPts, { t = now, a = cf:PointToObjectSpace(mid.WorldPosition), b = cf:PointToObjectSpace(tip.WorldPosition) })
+			Fx.bladeFlames(VM.model, mid.WorldPosition, tip.WorldPosition) -- (an angel katana: flame tongues off the blade)
 		end
 	end
 	while #smearPts > 0 and (now - smearPts[1].t > SMEAR_LIFE or #smearPts > 24) do table.remove(smearPts, 1) end
@@ -644,6 +645,7 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 		if f.by ~= me.UserId then
 			local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if r then Sfx.play("swing", r.Position) end
+			Fx.swingFlames(m) -- (their angel katana's flame arc)
 		end
 	elseif f.k == "parry" then
 		local from = if typeof(f.from) == "Vector3" then f.from else nil

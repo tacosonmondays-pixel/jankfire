@@ -1785,6 +1785,43 @@ end
 -- (round 4: first-person bubbles drifted by the sight while aiming, and hung in the view while the gun was hidden. the
 -- game's aim narrows the view (Arsenal: baseFov / zoom), so a view under 0.95 of the widest seen lately is aiming)
 local wideFov = 70
+-- the angel katana's flame arc (the owner's recording: flame arcs along each swing): flame tongues thrown off the blade,
+-- mid to tip, every frame of the swing, in the wrap's glow colour; left in the world, so the blade's path draws the arc
+local FLAMEARC = emitters(6, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+	FlipbookStartRandom = true, FlipbookFramerate = NR(24, 30), LightEmission = 1, LightInfluence = 0, Brightness = 2.2,
+	Lifetime = NR(0.18, 0.3), Speed = NR(0.2 * S, 0.6 * S), SpreadAngle = Vector2.new(180, 180), Drag = 4,
+	Rotation = NR(-25, 25), Transparency = ns(0, 0, 0.6, 0.25, 1, 1) })
+function Fx.bladeFlames(model: Model?, a: Vector3, b: Vector3)
+	local S_ = if model then skinned[model] else nil
+	if not S_ or #S_.flames == 0 or not S_.glow then return end
+	local kk = S_.k
+	local c = flameCS(S_.glow)
+	for i = 1, 3 do
+		local e = emAt(FLAMEARC, a:Lerp(b, (i - 0.5) / 3 + (math.random() - 0.5) * 0.2), Vector3.yAxis)
+		e.Color = c; e.Size = ns(0, 0.1 * kk, 0.3, 0.2 * kk, 1, 0.08 * kk)
+		emit(e, 1)
+	end
+end
+-- someone else's swing: their flame skin's blade flares for 0.25 s (Arsenal's swing event; your own blade is fed frame by
+-- frame from the first-person smear)
+type SwingF = { m: Model, t: number }
+local swingsLive: { SwingF } = {}
+function Fx.swingFlames(char: Model?)
+	if not char then return end
+	for m, S_ in skinned do
+		if #S_.flames > 0 and m:IsDescendantOf(char) then table.insert(swingsLive, { m = m, t = 0 }) end
+	end
+end
+local function swingFlameStep(dt: number)
+	for i = #swingsLive, 1, -1 do
+		local sw = swingsLive[i]
+		sw.t += dt
+		local root = sw.m.PrimaryPart
+		if sw.t > 0.25 or not root or not sw.m.Parent then table.remove(swingsLive, i); continue end
+		local mid, tip = root:FindFirstChild("Mid") :: Attachment?, root:FindFirstChild("Muzzle") :: Attachment?
+		if mid and tip then Fx.bladeFlames(sw.m, mid.WorldPosition, tip.WorldPosition) end
+	end
+end
 local function skinStep()
 	local cam = workspace.CurrentCamera
 	local fov = if cam then cam.FieldOfView else 70
@@ -1855,7 +1892,7 @@ RunService.RenderStepped:Connect(function(rdt: number)
 		if clockT >= tm.at then table.remove(timers, i); tm.fn() end
 	end
 	cloudStep()
-	domeFxStep(dt); spiralStep(dt); holeFxStep(dt); skinStep()
+	domeFxStep(dt); spiralStep(dt); holeFxStep(dt); skinStep(); swingFlameStep(dt)
 	for _, rg in rigs do -- the scorch marks fade over 8 s
 		if rg.markT >= 0 then
 			local u = (clockT - rg.markT) / 8
