@@ -12,7 +12,7 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 **Where it stands:** 79 of the 102 wraps are textures; the other 23 stay colour wraps (21 plain colours, plus QR Code
 and Barcode, which may never be images). Every kit gun the owner picked carries the flat-projection UVs (`gun_uvs.py`,
 live since place version 313, 242 `WrapUV` pieces) and `WrapUV` on every piece but the glow and glass ones. Photos:
-`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 335), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
+`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 336), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
 `wrap-textures/round2/` (in the hall on the flat-UV guns, plus Blender renders),
 `wrap-textures/galaxy-dots-before-after.jpg` (the owner's Galaxy note),
 `wrap-textures/batch1-sheet.jpg` and `wrap-textures/judge1/` (the first round).
@@ -122,6 +122,42 @@ codes or logos. What changed after it:
   between); **Seigaiha** twice the scale and softer contrast (it read as busy noise); **Wood** dark walnut with a
   finer grain (it read as cartoon pine); **Ugly Sweater** a red jumper with staggered snowflakes and one thin green
   border (the stacked bands of zigzags, snowflakes and trees read as stripes in hand). Place version 335.
+- A fresh judge on the same 24 then: **6.0** (5.9 before). Judging stopped there: the score has plateaued.
+
+**Code-look audit (16 Nov, after the judge flagged three).** Every wrap with bars, grids or blocks was looked at for
+anything a person or a scanner could take for a QR code or barcode. Checkered Flag is now 6.25 cm checks, so a grip or
+magazine shows one to three whole checks instead of irregular cut-up bits (live, place version 336). Zebra (stripes that
+now bend, fork and end in points, no straight parallel bars) and Circuit Board (a few gold legs on its chips instead of
+rows of white pins) are redrawn in `wrap_textures.py` but **not uploaded yet**: the permission check blocked those
+uploads, so the live Zebra and Circuit are still the earlier images. Draw them and run `wrap_upload.py list` to upload
+them. The rest are clear: Plaid, Sweater, Arcade, Digital Camo, Glitch and CRT are coloured or organic, and Hazard
+(even bands), Receipt, Sheet, Memo and Stonks (grey bars for writing) have no varying black-and-white bars.
+
+## What holds the score near 6
+
+Five rounds of judging moved the hardest ten from 5.2 to 5.8 and a broad 24 from 5.9 to 6.0, and judges reversed
+each other on the same wrap (Leopard's rosettes too big, then too small; Hazard's stripes at 45 degrees, then across).
+What I think caps it, most important first:
+
+1. **One tiling picture over every piece.** On a full wrap the pattern runs over the receiver, barrel, grip, sights
+   and trims alike, so the gun reads as wallpapered. Premium skins treat a gun as parts: the pattern on the big panels,
+   coordinated solid colours on the barrel, grip and small parts, metal trims kept. The wrap zones already exist
+   (`_wzA` / `_wzB` / `_wzN`), and normal mode leaves the trims alone, but the judging was all on full mode, the
+   busiest case. The likeliest step up: give each wrap a trim colour (a dark tone from its own palette) for the `_wzN`
+   pieces and barrels even on full, and judge on normal mode.
+2. **The guns are low-poly and flat-shaded.** Every bevel and chamfer is its own lit facet, so a pattern is cut into
+   many small differently lit patches; the "triangles" and "pale slabs" judges kept seeing are mostly this. Smooth
+   normals on the bevels (a gun model change, `gun_models.py`) would help every wrap at once.
+3. **Perspective reads as scale jumps.** In first person the muzzle is about a metre away and the stock a hand's
+   width from the eye, so the same texel density looks tiny on the barrel and huge on the scope cap. Judges called it
+   inconsistent scale on Hex, Koi, Lava and Plaid. The UVs are one scale; the fix is designs that read at both
+   distances (large forms with finer detail inside), not smaller patterns.
+4. **One test room, warm light.** Every photo is in the training hall, whose lamps take blue out and crush darks
+   ("In-hand colour" below). The colour pass corrects for it, but the hall is the harshest light in the game; a
+   neutral-lit zone (the hub or a match) would judge the same wraps higher and more fairly.
+5. **The judging itself.** Crops at 640 x 400 turn fine detail (knit, carbon weave, star dust) into speckle, and
+   judges disagree by about a point. A score of 6 is the noise floor of this method, not a measure of the last
+   change.
 
 ## In-hand colour
 

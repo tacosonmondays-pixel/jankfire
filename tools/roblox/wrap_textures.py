@@ -340,12 +340,13 @@ def hazard(t: Tex):
 
 @design('racing')
 def racing(t: Tex):
-    """checkered flag: crisp 3.1 cm charcoal and off-white checks, one even grid over the whole gun"""
+    """checkered flag: big 6.25 cm charcoal and cream checks, one even grid over the whole gun"""
     def wave(x, cell):
         f = x % (2 * cell)
         e = np.where(f < cell, np.minimum(f, cell - f), -np.minimum(f - cell, 2 * cell - f))
         return np.clip(0.5 + e, 0, 1) * 2 - 1
-    q = wave(t.X, 128.0) * wave(t.Y, 128.0)   # 3.1 cm (round 2: 1.6 cm blurred to a grey grid at range)
+    q = wave(t.X, 256.0) * wave(t.Y, 256.0)   # 6.25 cm (image rules: smaller checks cut into irregular bits on the
+                                               # grip and magazine, close to a QR look; at this size a part shows 1-3)
     white = (1 + q) / 2                        # one regular check everywhere (round 3: the faded band read as a
     t.rgb[:] = hexrgb('2e2b27')                # second texture); warm charcoal and cream, a perfectly even grid,
     t.fill(white, 'd8cfbb')                    # lower contrast than black and white (round 4)
@@ -515,12 +516,16 @@ def leopard(t: Tex):
 def zebra(t: Tex):
     """zebra: bold black stripes round the gun, wavy, forking and tapering to points, on off-white"""
     U, V = t.U, t.V
-    warp = FBM([(2, 3), (4, 6)], 201, 0.5)(U, V)
-    ph = 7.0 * U + 0.65 * warp + 0.05 * np.sin(V * TAU * 2)
+    # (16 Nov, image rules: the old near-parallel bars of mixed widths came close to a barcode on short faces; now every
+    # stripe bends, forks and ends in a point, so no stretch of the gun shows straight parallel bars)
+    warp = FBM([(2, 3), (4, 6), (8, 12)], 201, 0.55)(U, V)
+    bend = FBM([(1, 2), (2, 4)], 203, 0.5)(U, V)
+    ph = 5.5 * U + 1.25 * warp + 0.22 * np.sin(V * TAU * 2 + 3.0 * bend)
     s = np.cos(ph * TAU)
-    thin = FBM([(4, 3), (8, 6)], 202, 0.5)(U, V)
+    thin = FBM([(4, 3), (8, 6), (16, 12)], 202, 0.55)(U, V)
+    wob = FBM([(6, 4), (12, 8)], 204, 0.5)(U, V)
     t.rgb[:] = hexrgb('e9e7df')
-    t.fill(field_cover(s - (0.05 + 0.9 * thin), 0.0), '151515')
+    t.fill(field_cover(s - (0.1 + 1.35 * thin) + 0.3 * wob, 0.0), '151515')
     t.rough[:] = 0.5
     return {}
 
@@ -690,10 +695,10 @@ def circuit(t: Tex):
             t.paint(idx, cover(pd - 9), 'c9a246', metal=1.0, rough=0.3)
             t.paint(idx, cover(pd - 3.5), '0a2416', metal=0.0)
     for cx, cy, cw, ch in ((300, 520, 150, 96), (760, 200, 110, 110)):
-        for k in range(int(cw // 20)):
-            px = cx - cw / 2 + 14 + k * 20
+        for k in range(int(cw // 30)):         # a few gold legs (16 Nov: rows of white pins read as a code block)
+            px = cx - cw / 2 + 20 + k * 30
             for sy in (-1, 1):
-                t.shape((px - 5, cy - ch / 2 - 20, px + 5, cy + ch / 2 + 20), sd_round_rect(px, cy + sy * (ch / 2 + 8), 4, 9, 1.5), color='c8ccd4', metal=1.0, rough=0.25)
+                t.shape((px - 6, cy - ch / 2 - 20, px + 6, cy + ch / 2 + 20), sd_round_rect(px, cy + sy * (ch / 2 + 8), 5, 9, 2.0), color='c9a246', metal=1.0, rough=0.3)
         t.shape((cx - cw / 2 - 2, cy - ch / 2 - 2, cx + cw / 2 + 2, cy + ch / 2 + 2), sd_round_rect(cx, cy, cw / 2, ch / 2, 6), color='17181c', rough=0.35, height=1.5)
         t.shape((cx - cw / 2, cy - ch / 2, cx - cw / 2 + 20, cy - ch / 2 + 20), sd_circle(cx - cw / 2 + 12, cy - ch / 2 + 12, 4), color='2c2d33')
     return {'emissive': 1.1, 'tint': '7dff6a'}

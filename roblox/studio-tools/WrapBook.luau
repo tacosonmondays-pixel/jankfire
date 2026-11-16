@@ -60,7 +60,7 @@ local BOOK = {
 	organ = { color = 125778483045806, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
 	pizza = { color = 90813939394906, normal = 117839246486710, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
 	plaid = { color = 115312092313863, normal = 96298210684604, rough = 129833091360678, emissive = 1, tint = "ffffff", finish = "" },
-	racing = { color = 136397840730517, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
+	racing = { color = 86649459327427, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
 	rainbow = { color = 135414874794078, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
 	receipt = { color = 92073604599431, rough = 122441279549464, emissive = 1, tint = "ffffff", finish = "" },
 	sakura = { color = 123428538363283, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "" },
