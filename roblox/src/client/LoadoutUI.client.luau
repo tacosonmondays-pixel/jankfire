@@ -496,7 +496,18 @@ local function bands(cols: { Color3 }): ColorSequence
 	end
 	return ColorSequence.new(kp)
 end
+-- a wrap with a picture (ReplicatedStorage.JankfireWraps, docs/WRAP-TEXTURES.md) shows a piece of it, about 9 x 6 cm of
+-- gun, so its stars, petals and stripes read at chip size
+local WRAPS = ReplicatedStorage:WaitForChild("JankfireWraps", 10)
 local function paintChip(chip: Frame, wr: Roster.Wrap)
+	local sa = WRAPS and WRAPS:FindFirstChild(wr.id)
+	local img = sa and sa:GetAttribute("Swatch")
+	if type(img) == "string" then
+		chip.BackgroundColor3 = WHITE
+		local im = new("ImageLabel", { Image = img, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ImageRectSize = Vector2.new(384, 256), ZIndex = 5 }, chip)
+		T.corner(im, 4)
+		return
+	end
 	local pal = wr.pal
 	if #pal == 0 then
 		chip.BackgroundColor3 = T.TRACK
@@ -523,6 +534,8 @@ local function paintChip(chip: Frame, wr: Roster.Wrap)
 	end
 end
 local function finishWord(wr: Roster.Wrap): string?
+	local sa = WRAPS and WRAPS:FindFirstChild(wr.id)
+	if sa then local f = sa:GetAttribute("Finish"); return if type(f) == "string" then f else nil end
 	if wr.neon then return "GLOWS" end
 	local m = wr.mat
 	if m == "Metal" or m == "Foil" then return "SHINY" end

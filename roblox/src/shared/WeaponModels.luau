@@ -301,6 +301,38 @@ end
 
 local stash: { [BasePart]: SurfaceAppearance } = setmetatable({}, { __mode = "k" }) :: any
 
+-- a wrap with a picture: ReplicatedStorage.JankfireWraps holds one SurfaceAppearance per textured wrap (drawn by
+-- tools/roblox/wrap_textures.py, built by studio-tools/WrapBook.luau; docs/WRAP-TEXTURES.md). It goes on every piece the
+-- kit export unfolded (attribute WrapUV, tools/roblox/gun_uvs.py), so stars are stars and stripes taper; a piece with
+-- no UVs (a code model's boxes, a gun from before the unfold) still gets the wrap's palette laid over it, below
+local function picture(wrapId: string): SurfaceAppearance?
+	local lib = ReplicatedStorage:FindFirstChild("JankfireWraps")
+	local sa = lib and lib:FindFirstChild(wrapId)
+	return if sa and sa:IsA("SurfaceAppearance") then sa else nil
+end
+WeaponModels.picture = picture
+-- a picture shows blank while it downloads: the client fetches the ones its player wears before they are needed
+if game:GetService("RunService"):IsClient() then
+	task.defer(function()
+		local me = game:GetService("Players").LocalPlayer
+		local CP = game:GetService("ContentProvider")
+		local asked: { [string]: boolean } = {}
+		local function fetch()
+			local s = me:GetAttribute("Wraps")
+			local want = {}
+			if type(s) == "string" then
+				for id in string.gmatch(s, "[%w_]+=([%w_]+)/") do
+					local sa = picture(id)
+					if sa and not asked[id] then asked[id] = true; table.insert(want, sa) end
+				end
+			end
+			if #want > 0 then pcall(CP.PreloadAsync, CP, want) end
+		end
+		me:GetAttributeChangedSignal("Wraps"):Connect(fetch)
+		fetch()
+	end)
+end
+
 local function restore(p: BasePart)
 	if not p:GetAttribute("Wrapped") then return end
 	local c, mat, r, t = p:GetAttribute("WrapColor"), p:GetAttribute("WrapMat"), p:GetAttribute("WrapRefl"), p:GetAttribute("WrapTr")
@@ -310,6 +342,8 @@ local function restore(p: BasePart)
 	if type(t) == "number" then p.Transparency = t end
 	local tex = p:GetAttribute("WrapTex")
 	if p:IsA("MeshPart") and type(tex) == "string" then p.TextureID = tex end
+	local worn = p:FindFirstChild("WrapSA")
+	if worn then worn:Destroy() end
 	local sa = stash[p]
 	if sa then sa.Parent = p; stash[p] = nil end
 	p:SetAttribute("Wrapped", nil)
@@ -323,11 +357,12 @@ local function remember(p: BasePart)
 	p:SetAttribute("Wrapped", true)
 end
 
--- the pieces a wrap can touch: visible ones, not the invisible root / handle / suction field
+-- the pieces a wrap can touch: visible ones, not the invisible root / handle / suction field, never a hat on the gun
+-- (GunHats marks every hat part NoWrap)
 local function pieces(m: Instance): { BasePart }
 	local out = {}
 	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") and d.Name ~= "Root" and d.Name ~= "SuckField" then
+		if d:IsA("BasePart") and d.Name ~= "Root" and d.Name ~= "SuckField" and not d:GetAttribute("NoWrap") then
 			local t = d:GetAttribute("WrapTr")
 			local tr = if type(t) == "number" then t else d.Transparency
 			if tr < 0.99 then table.insert(out, d) end
@@ -369,8 +404,20 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 	end)
 	local n = #wr.pal
 	local mat = if wr.mat then (Enum.Material :: any)[wr.mat] else Enum.Material.SmoothPlastic
+	local pic = picture(wr.id)
 	for i, p in painted do
 		remember(p)
+		if pic and p:IsA("MeshPart") and p:GetAttribute("WrapUV") then
+			local old = p:FindFirstChildOfClass("SurfaceAppearance")
+			if old then stash[p] = old; old.Parent = nil end
+			p.TextureID = ""; p.Material = Enum.Material.SmoothPlastic; p.Reflectance = 0
+			local t0 = p:GetAttribute("WrapTr")
+			p.Transparency = if type(t0) == "number" then t0 else 0
+			local s = pic:Clone()
+			s.Name = "WrapSA"
+			s.Parent = p
+			continue
+		end
 		local u = ((at[p] :: any)[axis] - (lo :: any)[axis]) / len
 		local k = 1
 		if wr.pat == "alt" then k = (i - 1) % 2 + 1

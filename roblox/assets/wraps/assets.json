@@ -538,5 +538,129 @@
  "9a1b4edd6345c255181885a4db6ae1ac6bc57ca2": {
   "file": "opal_emit.png",
   "id": 104909263064283
+ },
+ "fa5aa3ec3a628f3f292e9b244ffcf1877f93a3d9": {
+  "file": "pizza_color.png",
+  "id": 97672119488672
+ },
+ "1a0924232793b13c22bbfe7ce04ec140cf92ff14": {
+  "file": "pizza_normal.png",
+  "id": 117839246486710
+ },
+ "e170a453e744bc22264bc152550cd4f4fb497196": {
+  "file": "rainbow_color.png",
+  "id": 136324724413062
+ },
+ "35300888fbfd35ffdc46163d3af784b4fa25e4e0": {
+  "file": "corp_color.png",
+  "id": 87936101680810
+ },
+ "3cfbe73f9fc7193c62d9cae92ff1fc9965a102a0": {
+  "file": "corp_emit.png",
+  "id": 118554031163030
+ },
+ "995657cc7ce0794eb0da590d2f76f5cc8379bc7d": {
+  "file": "jersey_color.png",
+  "id": 107097253691943
+ },
+ "13ffcdd30f2be908b3e802f2aaf04acceec6d9ff": {
+  "file": "meat_color.png",
+  "id": 82134659005009
+ },
+ "5361b846d8266c6347ab9bb568bce2916a26c91a": {
+  "file": "memo_color.png",
+  "id": 131005158059572
+ },
+ "9cf798a1f981894fa05a6f8036c9b68d177cee55": {
+  "file": "numsoup_color.png",
+  "id": 134118433390484
+ },
+ "433b49b07eb8e984b2cb081ba03d3e78761a243b": {
+  "file": "numsoup_normal.png",
+  "id": 122603287112629
+ },
+ "f0a048abf3e8393af4256cc4ca6013c2b9fc2299": {
+  "file": "organ_color.png",
+  "id": 118596280179843
+ },
+ "0c78f01b6a5f6acbc6d8b403e995ac7ba2054f52": {
+  "file": "receipt_color.png",
+  "id": 111926571416470
+ },
+ "19ba804e1941606323b3b53cd3db8ba982b4dc59": {
+  "file": "sheet_color.png",
+  "id": 89895098442613
+ },
+ "7c9050458d8ddd12a1934fef768856836fc49957": {
+  "file": "shibori_color.png",
+  "id": 78595468635020
+ },
+ "361e9859c556c87ac3f31dc7df1826a11a132ff6": {
+  "file": "sprinkles_color.png",
+  "id": 124983935735696
+ },
+ "911591201cad27769a77ee0138ef7f08f3215247": {
+  "file": "sprinkles_normal.png",
+  "id": 129423577053105
+ },
+ "4db143d014ef596559e65d144d7f143353ef2943": {
+  "file": "stonks_color.png",
+  "id": 130209475000517
+ },
+ "3bb9dabeabacbf60dad72a78cba6c4f6045134ad": {
+  "file": "stonks_emit.png",
+  "id": 135380554181145
+ },
+ "373922758a0352d58e110b1caa35ea680d5b9ba6": {
+  "file": "sushi_color.png",
+  "id": 83296380671176
+ },
+ "d4e661c17a29e7807a00db7c13c0bfdb657ded48": {
+  "file": "tape_color.png",
+  "id": 104038503515760
+ },
+ "4038bdc74f8940bc4309f6ab23628358e31ba9ae": {
+  "file": "tape_normal.png",
+  "id": 99330384673888
+ },
+ "f4194883ed0dee9048e97d6c3a34c9c46c2d78ba": {
+  "file": "const_metal_035.png",
+  "id": 87328295950475
+ },
+ "30c803a9c188d643ca89ccd192e5f38fcd12aba7": {
+  "file": "tokyo_color.png",
+  "id": 140018898664608
+ },
+ "6dd219e9cd7914cb9076504e277154fb509de04b": {
+  "file": "tokyo_emit.png",
+  "id": 96670001338208
+ },
+ "41a396aff181713974dd77f9843264c72474727e": {
+  "file": "urushi_color.png",
+  "id": 82872421383754
+ },
+ "8d28c108c41521a2848517820082bb3789164ec1": {
+  "file": "urushi_rough.png",
+  "id": 111368848079666
+ },
+ "0ceb2fe844206a7502be961945bf3f77a1a52440": {
+  "file": "urushi_metal.png",
+  "id": 138620902417082
+ },
+ "d654bb6a7f7e3f540aa8d5b9c5532c274e774046": {
+  "file": "vapor_color.png",
+  "id": 72240351621741
+ },
+ "81f1aa91dc1d8c5cfc4594a5fc8123d4df0a55fd": {
+  "file": "vapor_emit.png",
+  "id": 111791090444284
+ },
+ "0dad3b9e3cf976e36108c99dc436303df8d61328": {
+  "file": "washi_color.png",
+  "id": 126859653645725
+ },
+ "cb0e275782e505e1ce46c7c4e51514a0ff7ce5bd": {
+  "file": "watermelon_color.png",
+  "id": 90841171347514
  }
 }

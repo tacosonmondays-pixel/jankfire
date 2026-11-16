@@ -1967,8 +1967,10 @@ def stonks(t: Tex):
         c = '3aff5a' if up else 'ff3a3a'
         t.shape((x - 14, yy - 70, x + 14, yy + 70), sd_round_rect(x, yy, 8, 34, 2), color=c, emit=0.8)
         t.shape((x - 4, yy - 70, x + 4, yy + 70), sd_segment(x, yy - 56, x, yy + 56, 1.5), color=c, emit=0.8)
-    X, Y, idx = t.box(-40, 150, n + 40, 960)
-    t.paint(idx, cover(sd_polyline(pts, 5)(X, Y)), 'ff3a3a', emit=1.0)
+    half = len(pts) // 2   # (two halves, each its own box: one box can't be wider than the tile)
+    for seg in (pts[:half + 1], pts[half:]):
+        X, Y, idx = t.box(*bbox_of(seg, 12))
+        t.paint(idx, cover(sd_polyline(seg, 5)(X, Y)), 'ff3a3a', emit=1.0)
     for x0, y0, L, c in ((40, 70, 220, 'ffd84a'), (600, 70, 180, '3aff5a'), (40, 940, 300, 'ff3a3a')):
         t.shape((x0 - 4, y0 - 20, x0 + L + 4, y0 + 20), sd_round_rect(x0 + L / 2, y0, L / 2, 12, 4), color=c, emit=1.0)
     t.rough[:] = 0.2
