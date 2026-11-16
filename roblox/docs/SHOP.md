@@ -138,8 +138,15 @@ Tested in solo Play (place version 437, the owner's account; photo sheet `roblox
 - **Locking and unlocking:** the owner's Studio "lock" moved the character out of the room again, and "unlock" made
   them VIP again at once.
 
-Not tested yet: the Royal Duck hat (not in the place yet; the pack grows by itself when it lands) and the hub's
-server-only door (its push 44; the test used the first version, which also checks `Vip.isVip`).
+Later checks:
+- **The Royal Duck (place version 447):** joined the pack by itself, which now holds 7 things. The VIP tile shows the
+  Ducky LMG wearing it. It is not in the daily pool or sold on its own (checked by reading the shop in a running server).
+- **The hub's server-only door (version 448), walked with the W key in Play (place version 453):**
+  - Locked out of VIP, the character's collision group was Default and it stopped at the door, 0.5 studs short of
+    the doors' line.
+  - Unlocked, its group was VipGuest and it walked 18.6 studs through into the room.
+- **Concept skins:** the guns session's concepts (`SkinSets.CONCEPTS`) are never on sale (`Shop.skinLive` refuses
+  them).
 
 ## Robux, later
 

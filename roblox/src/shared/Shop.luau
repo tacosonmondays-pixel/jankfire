@@ -146,6 +146,9 @@ end
 function Shop.skinLive(id: string): boolean
 	local row = LootTable and type(LootTable.SKINS) == "table" and LootTable.SKINS[id]
 	if type(row) ~= "table" then return false end
+	-- (the guns session's concepts for the owner to choose from are in the place but never on sale)
+	local K = Shop.SkinSets :: any
+	if K and type(K.CONCEPTS) == "table" and table.find(K.CONCEPTS, id) then return false end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 	local m = lib and lib:FindFirstChild(id)
 	return m ~= nil and m:IsA("Model") and m:GetAttribute("Weapon") == row[3]
