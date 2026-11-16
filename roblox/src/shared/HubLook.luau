@@ -155,7 +155,7 @@ H.looks.rooftop_v2 = {
 H.plainSky.rooftop_v2 = true
 -- Rooftop v3 (ServerStorage.PolishBackup.RooftopV3, 16 Nov 2026: v1's layout redressed to the principles): its own light,
 -- picked by HubLife in a match when workspace.Map's attribute Arena is "RooftopV3". v2's afternoon a little warmer: a
--- high sun from the south-west (neither team starts looking into it), a pale haze and a pale fog so the far city fades
+-- lower sun from the south, across the lanes (neither team starts looking into it), a pale haze and a pale fog so the far city fades
 -- (v1's saved dusk fog is navy: it drew a black band on the horizon)
 H.looks.rooftop_v3 = {
 	Lighting = {
@@ -171,10 +171,14 @@ H.looks.rooftop_v3 = {
 	Bloom = { Intensity = 0.2, Size = 20, Threshold = 2.4 },
 	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.1, TintColor = Color3.fromRGB(255, 248, 240) }, -- (rounds 3 and 4: a calmer sky)
 	SunRays = { Intensity = 0.02 },
+	-- the pool's water, pinned (the owner, 16 Nov 2026: "keep the amazing water look"): Terrain's water exactly as it was
+	-- when v3 was judged, so a later change to the place's global water for another arena can't change v3's pool
+	Terrain = { WaterColor = Color3.fromRGB(28, 150, 178), WaterTransparency = 0.55, WaterReflectance = 0.75, WaterWaveSize = 0.08, WaterWaveSpeed = 8 },
 } :: Look
 H.plainSky.rooftop_v3 = true
 
 local function target(name: string): Instance?
+	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)
 	return if name == "Lighting" then Lighting else Lighting:FindFirstChild(name)
 end
 local function key(name: string, prop: string): string return "Saved_" .. name .. "_" .. prop end

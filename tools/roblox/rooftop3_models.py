@@ -400,6 +400,9 @@ def floors():
         return PAVE
     tiles('r3_deckM', -67.2, 67.2, -85.2, 85.2, -12.0, mid, grid=8.0, holes=((-30.0, 30.0, -30.0, 18.0),), cut=(-22.8, 22.8, 37.2, 64.8))
     # the pool's coping (v1's four tile strips) and its lining, its water
+    # KEEP AS IS (the owner, 16 Nov 2026: "keep the amazing water look"): the TRIM coping, the pale POOL lining, the six
+    # lamp strips under the water and the point light below are part of how the water reads. The water itself is the
+    # game's terrain water, its settings pinned in HubLook.looks.rooftop_v3.Terrain
     for i in (170, 171, 175, 387):
         x0, y0, z0, x1, y1, z1 = bb(i)
         B('r3_pool', TRIM, x0, -12.4, z0, x1, y1, z1, bev=0.18)
