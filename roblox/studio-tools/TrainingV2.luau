@@ -40,7 +40,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 88505948716411 -- the kit's Model asset (tv_kit_4: training_models.py; rework 3 added the flat grapple hoop)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 12
+T.PUSH = 13
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -541,8 +541,8 @@ local function yard(B)
 		B.blk("Shell", "Dado", sx * YX, sx * (YX - 0.2), Y0, Y0 + 1.2, YZ0, YZ1, P.floor2, { ghost = true })
 		B.blk("Shell", "Band", sx * YX, sx * (YX - 0.3), Y0 + 8, Y0 + 8.6, YZ0, YZ1, P.trim, { ghost = true })
 	end
-	B.blk("Shell", "Dado", -YX, -15.2, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
-	B.blk("Shell", "Dado", 15.2, YX, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
+	B.blk("Shell", "Dado", -YX, -24, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true }) -- (clear of the lot's panels)
+	B.blk("Shell", "Dado", 24, YX, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
 	-- piers with a capital under every rib, a lamp on each
 	for _, z in PIERS do
 		for _, sx in { -1, 1 } do

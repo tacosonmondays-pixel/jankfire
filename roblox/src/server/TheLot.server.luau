@@ -37,7 +37,7 @@ local BACK_UP = 2.6   -- seconds a lot Carl lies down before he stands up again
 local GOLD_BACK = 4   -- seconds after the door is down before the gold Carls are back in their places
 local HP = 30         -- like Cardboard Carl's: three rifle rounds, two to the head
 local GOLD = Color3.fromRGB(242, 184, 75)
-local PIP_OFF = Color3.fromRGB(201, 198, 191) -- (pale: readable on the panel's inset from the yard's steps)
+local PIP_OFF = Color3.fromRGB(198, 192, 181) -- (pale: readable on the panel's inset from the yard's steps)
 
 type Entry = { spot: BasePart, gold: number? }
 local lot: Instance? = nil
@@ -207,6 +207,7 @@ end
 
 local shownText = ""
 local function setTimer(text: string)
+	if text == "" then text = "1:30" end -- (idle: the plate always reads LOCKED, three men, the clock's rule and a hint)
 	if text == shownText then return end
 	shownText = text
 	local panel = lot and lot:FindFirstChild("Panel")

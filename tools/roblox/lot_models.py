@@ -170,6 +170,17 @@ _uvsphere(_bm)
 _emit('plastic_' + CONT, _bm, I4)
 keep('tl_ball')
 
+# ------------------------------------------------------------------ tl_cylinder: a smooth 64-sided unit cylinder (diameter 2, height 1, centred),
+# sized per use as the hill's tiers (Roblox's own cylinder shows straight facets at 100 studs across, judge round 3)
+cy('plastic', CONT, 1.0, 1.0, 0, 0, 0, segs=64, bevel=0.0)
+keep('tl_cylinder')
+
+# ------------------------------------------------------------------ tl_bank: the hill's grass bank, a truncated cone 140 across at
+# the foot and 104 at the top, 8 high, its top edge rounded (judge round 3: three drums on flat grass read as a cake stand)
+_prof = [(0.0, 0.0), (70.0, 0.0), (62.0, 3.3), (55.2, 6.1), (54.0, 6.9), (53.0, 7.5), (52.2, 7.9), (51.5, 8.0), (0.0, 8.0)]
+lathe('plastic', 'a0a8b2', _prof, segs=96, cap=False)
+keep('tl_bank')
+
 export_all('training_lot.glb')
 if len(sys.argv) > sys.argv.index('--') + 2:
     preview(sys.argv[sys.argv.index('--') + 2], cols=5)

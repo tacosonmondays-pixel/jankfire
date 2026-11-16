@@ -28,8 +28,8 @@ local SP, NEON = Enum.Material.SmoothPlastic, Enum.Material.Neon
 local V3, CF = Vector3.new, CFrame.new
 local RAD = math.rad
 
-L.KIT = 80962685889163 -- the kit's Model asset (tl_kit_3: lot_models.py; kit 3 added tl_ball)
-L.PUSH = 11
+L.KIT = 75809148325346 -- the kit's Model asset (tl_kit_4: lot_models.py; kit 4 added tl_cylinder and tl_bank)
+L.PUSH = 13
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
@@ -50,7 +50,7 @@ local C = { -- the lot's own colours (the hall's family, plus muted grass)
 	rust = "a2806a", blue = "748596", sand = "b9ab8f", grey = "8f959d", drum = "9a8a74",
 	-- (push 7, judge round 1: two muted container tones and one amber; the ridge; the door's mid-slate panels)
 	slateC = "6c727b", warmC = "9a948a", amberC = "c9973f", tyre = "6a6f78", ridge = "8b9580", ridgeHi = "a3ab9c",
-	housing = "8f9299", inset = "6c717a", pipOff = "c9c6bf", rock = "a39f98", glass = "aeb2b8",
+	housing = "9a9ea5", inset = "7d8088", pipOff = "c6c0b5", rock = "a39f98", glass = "aeb2b8",
 }
 
 local function folderIn(parent, name)
@@ -191,7 +191,7 @@ local function sign(name, lines, w, h, x, y, z, faceTo, o)
 	return t
 end
 local function post(x, z, y0, y1)
-	blk("SignPost", x - 0.45, x + 0.45, y0, y1, z - 0.45, z + 0.45, P.slate)
+	blk("SignPost", x - 1.2, x + 1.2, y0, y1, z - 1.2, z + 1.2, P.slate) -- (2.4 square, like the lane's posts: judge round 3)
 end
 -- a Carl's spot on the lot (TheLot stands a cardboard man here: he faces `look`)
 local function target(x, y, z, look)
@@ -284,7 +284,7 @@ local function garage()
 	end
 	housing(15.6, 23.4); housing(-23.4, -15.6)
 	-- (judge round 3: the panels read near-black; a warm spot on each from the vault)
-	for _, x in { -19.5, 19.5 } do B.lamp(x, 257.5, yardFace + 8, "spot", 16, 0.9, P.warm, { look = V3(x, 249.5, yardFace), angle = 45 }) end
+	for _, x in { -19.5, 19.5 } do B.lamp(x, 257.5, yardFace + 5, "spot", 16, 2.5, "ffdeb0", { look = V3(x, 249.5, yardFace + 1.6), angle = 60 }) end
 	local front = yardFace + 1.66
 	local panel = LOT.Panel
 	sign("PanelHead", { { "LOCKED", P.amber, "B", 1 } }, 5.4, 1.3, 19.5, 254.6, front, V3(19.5, 0, -8000), { clear = true }).Parent = panel
@@ -299,7 +299,7 @@ local function garage()
 	local g = Instance.new("SurfaceGui")
 	g.Name = "Gui"; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 40; g.LightInfluence = 0
 	local tl = Instance.new("TextLabel")
-	tl.Name = "Text"; tl.BackgroundTransparency = 1; tl.Size = UDim2.fromScale(1, 1); tl.TextScaled = true; tl.Text = ""
+	tl.Name = "Text"; tl.BackgroundTransparency = 1; tl.Size = UDim2.fromScale(1, 1); tl.TextScaled = true; tl.Text = "1:30"
 	tl.TextColor3 = Color3.fromHex(P.pale); tl.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
 	tl.Parent = g; g.Parent = tm; tm.Parent = panel
 	-- (the door's own sounds play from here: TheLot plays Ding, Open, Close and Buzz)
@@ -363,9 +363,10 @@ local function bay(beacon)
 	end
 	for _, sx in { -1, 1 } do B.line(sx * 7, Z0 - 1, sx * 7, Z1 - 4, Y + 0.01, 0.6, P.line, "BayWalkLine") end
 	-- what a loading bay keeps, against its walls (nothing in the portal's mouth)
-	prop("tl_crate", -17.5, Y, -8266.5, 4, V3(4, 4, 4))
-	prop("tl_crate", -17.5, Y + 4, -8266.5, -8)
-	prop("tl_crate", -17, Y, -8271, 12, V3(4, 4, 4))
+	local greyCrate = { color = { b49a7a = "a8a29a", ["9c8466"] = "8f8a82" } } -- (round 4: the only brown on the lot)
+	prop("tl_crate", -17.5, Y, -8266.5, 4, V3(4, 4, 4), greyCrate)
+	prop("tl_crate", -17.5, Y + 4, -8266.5, -8, nil, greyCrate)
+	prop("tl_crate", -17, Y, -8271, 12, V3(4, 4, 4), greyCrate)
 	prop("tl_drum", 18.2, Y, -8268, 0, V3(2.8, 4.3, 2.8), { color = { a88a6a = C.drum } })
 	prop("tl_drum", 17.6, Y, -8271.4, 40, V3(2.8, 4.3, 2.8), { color = { a88a6a = C.slateC } })
 	prop("tl_drum", 14.9, Y, -8268.6, 70, V3(2.8, 4.3, 2.8), { color = { a88a6a = C.drum } })
@@ -376,9 +377,9 @@ local function bay(beacon)
 	-- the façade: a tall wall the width of the hall with an attic over it (it hides the hall's roofs behind),
 	-- piers, two gate towers either side of the portal, a window set 2 deep in every bay
 	local F = L.FACE
-	local exitX0, exitX1 = 54, 62
+	local exitX0, exitX1 = 52, 64 -- (full scale since judge round 3: it read bolted on)
 	local WIN = { { -92, -72 }, { -68, -40 }, { 40, 70 }, { 74, 86 } }
-	local holes = { { -18, 18, Y, TOP }, { exitX0, exitX1, G, G + 10 } }
+	local holes = { { -18, 18, Y, TOP }, { exitX0, exitX1, G, G + 12 } }
 	for _, b in WIN do table.insert(holes, { b[1] + 2.5, b[2] - 2.5, 268, 279 }) end
 	wallX("Facade", F.x0, F.x1, 236, F.top, F.z0, F.z1, P.wall, holes)
 	for i, b in ipairs(WIN) do -- (pale glazing set back 2 in a slate frame; two of them lit from inside)
@@ -387,8 +388,14 @@ local function bay(beacon)
 			local l = Instance.new("SurfaceLight"); l.Face = Enum.NormalId.Front; l.Color = Color3.fromRGB(255, 222, 180); l.Range = 14; l.Brightness = 1.2; l.Angle = 90
 			l.Parent = gl
 		end
-		blk("FacadeWindowFrame", b[1] + 2, b[2] - 2, 279, 279.6, F.z0 - 2, F.z1 - 0.4, P.slate)
-		blk("FacadeSill", b[1] + 2, b[2] - 2, 266.8, 268, F.z0 - 2, F.z1 - 1, C.housing)
+		blk("FacadeWindowFrame", b[1] + 2, b[2] - 2, 279.05, 279.65, F.z0 - 2, F.z1 - 0.4, P.slate)
+		blk("FacadeSill", b[1] + 2.5, b[2] - 2.5, 266.8, 268, F.z0 - 2, F.z1 - 1, C.housing)
+		local w = (b[2] - 2.5) - (b[1] + 2.5)
+		local n = math.clamp(math.floor(w / 9), 0, 2) -- (none in the narrow one: two read as bars)
+		for k = 1, n do
+			local x = b[1] + 2.5 + w * k / (n + 1)
+			blk("FacadeMullion", x - 0.6, x + 0.6, 268, 279, F.z0 - 2, F.z0 - 2.6, P.slate)
+		end
 	end
 	blk("FacadeAttic", F.x0, F.x1, F.top, 296, F.z0, F.z0 - 3, P.wall2)
 	blk("FacadeAtticCap", F.x0 - 0.6, F.x1 + 0.6, 296, 297.4, F.z0 + 0.4, F.z0 - 3.8, P.trim)
@@ -442,12 +449,12 @@ local function bay(beacon)
 		B.ramp("LotShell", "TerraceRamp", "z", -8352, G, -8336, TT, sp[1], sp[2], C.conc, { thick = 2 })
 	end
 	-- the exit: a door in a recess beside the portal, EXIT over it; walk in and you are back on the muster's spawns
-	blk("ExitBack", exitX0, exitX1, G, G + 10, F.z0, F.z0 - 0.6, P.slate)
+	blk("ExitBack", exitX0, exitX1, G, G + 12, F.z0, F.z0 - 0.6, P.slate)
 	blk("ExitFloor", exitX0, exitX1, G - 1, G, F.z0, F.z1, P.floor2)
-	B.put("tv_frameMid", CF((exitX0 + exitX1) / 2, G, F.z1 - 0.6) * CFrame.Angles(0, math.pi, 0), { name = "ExitFrame", scale = 0.72 }).Parent = B.root.LotScenery
-	sign("WordEXIT", { { "EXIT", P.amber, "B", 1 } }, 6, 1.4, (exitX0 + exitX1) / 2, G + 12.6, F.z1 - 1.2, V3((exitX0 + exitX1) / 2, 0, -9000), { plate = P.board, thick = 0.2 })
-	B.lamp((exitX0 + exitX1) / 2, G + 9, F.z1 - 3, "point", 12, 0.6, P.warm)
-	B.trigger("LotExit", exitX0 + 0.5, exitX1 - 0.5, G, G + 9, F.z0 - 0.6, F.z1 + 0.3, { Land = "@TrainSpawns", Say = "BACK INSIDE" })
+	B.put("tv_frameMid", CF((exitX0 + exitX1) / 2, G, F.z1 - 0.6) * CFrame.Angles(0, math.pi, 0), { name = "ExitFrame" }).Parent = B.root.LotScenery
+	sign("WordEXIT", { { "EXIT", P.amber, "B", 1 } }, 7, 1.7, (exitX0 + exitX1) / 2, G + 16.4, F.z1 - 1.2, V3((exitX0 + exitX1) / 2, 0, -9000), { plate = P.board, thick = 0.2 })
+	B.lamp((exitX0 + exitX1) / 2, G + 11, F.z1 - 3, "point", 14, 0.6, P.warm)
+	B.trigger("LotExit", exitX0 + 0.5, exitX1 - 0.5, G, G + 11, F.z0 - 0.6, F.z1 + 0.3, { Land = "@TrainSpawns", Say = "BACK INSIDE" })
 	-- the board: where everything is, on two posts on the terrace, facing the portal (judge round 3: on the façade it
 	-- faced the lot, so whoever read it had its left and right the wrong way round)
 	sign("LotBoard", {
@@ -467,6 +474,7 @@ end
 -- hills are gone)
 L.RIDGE = { -- x, z, length (x), height x 2, depth, yaw, colour key: long flattened ellipsoids, their middles at ground level
 	{ 0, -8885, 600, 470, 240, 0, "ridgeHi" }, { -250, -8875, 440, 400, 230, 6, "ridgeHi" }, { 250, -8875, 440, 400, 230, -6, "ridgeHi" },
+	{ -125, -8880, 360, 300, 220, 0, "ridgeHi" }, { 125, -8880, 360, 300, 220, 0, "ridgeHi" }, -- (saddles, judge round 3)
 	{ -140, -8822, 330, 240, 136, 0, "ridge" }, { 70, -8826, 380, 270, 140, 0, "ridge" }, { 250, -8822, 300, 220, 136, 0, "ridge" },
 	{ -400, -8700, 240, 300, 300, 55, "ridge" }, { 400, -8700, 240, 300, 300, -55, "ridge" },
 	{ -350, -8500, 200, 220, 280, 15, "ridgeHi" }, { 350, -8500, 200, 220, 280, -15, "ridgeHi" },
@@ -607,7 +615,7 @@ local function longLane()
 			end
 		end
 		post(X0 + 3, z + 4, G, 251)
-		sign("RowSign", { { tostring(m), P.amber, "B", 1 }, { "METRES", P.pale, "S", 0.34 } }, 4.4, 4.4, X0 + 3, 252, z + 4.6, V3(X0 + 3, 0, -8000), { plate = P.board, thick = 0.25 })
+		sign("RowSign", { { tostring(m), P.amber, "B", 1 }, { "METRES", P.pale, "S", 0.34 } }, 4.4, 4.4, X0 + 3, 252, z + 5.4, V3(X0 + 3, 0, -8000), { plate = P.board, thick = 0.25 })
 	end
 	-- three baffle frames across the lane between the rows: legs at its edges, a lintel 22 up (every line from a shooter
 	-- to a Carl stays under about G+12)
@@ -619,10 +627,29 @@ local function longLane()
 	end
 	-- the backstop: a slate face 30 high, a pale coping, a lit amber strip at its foot, the cardboard man on it
 	blk("Backstop", X0 - 10, X1 + 10, 234, G + 30, -8708, -8712, P.pier)
-	nose("BackstopCoping", "x", X0 - 10, X1 + 10, G + 30, -8708, 1.4)
-	deco("BackstopStrip", X0 - 9, X1 + 9, G, G + 0.5, -8707.6, -8707.9, P.amberGlow, { mat = NEON })
+	-- (judge round 3: the backstop's top sat just under the last baffle, so the lane ended on a panel in a frame. its
+	-- middle 40 rises to G+42 as a crown with the cardboard man on it, 24 high)
+	nose("BackstopCoping", "x", X0 - 10, 116, G + 30, -8708, 1.4)
+	nose("BackstopCoping", "x", 156, X1 + 10, G + 30, -8708, 1.4)
+	blk("BackstopCrown", 116, 156, G + 30, G + 42, -8708, -8712, P.pier)
+	blk("BackstopCrownFill", 116, 156, G + 30, G + 42, -8712, -8742, P.pier2)
+	nose("BackstopCrownCoping", "x", 116, 156, G + 42, -8708, 1.4)
+	deco("BackstopStrip", X0, X1, G, G + 0.5, -8707.6, -8707.9, P.amberGlow, { mat = NEON })
 	blk("BackstopFill", X0 - 10, X1 + 10, 234, G + 30, -8712, -8742, P.pier2)
-	cardMan("BackstopMan", (X0 + X1) / 2, G + 8, -8708, 16, P.trim, 0.6, nil)
+	-- (judge round 4: the panel's man at 24 high read as a trophy on a pedestal. this one stands on legs)
+	do
+		local mx, y0, zc = (X0 + X1) / 2, G + 14, -8707.7
+		local function piece(x, ya, yb, w) part("BackstopMan", CF(x, (ya + yb) / 2, zc), V3(w, yb - ya, 0.6), P.trim) end
+		for _, sx in { -1, 1 } do
+			piece(mx + sx * 3.35, y0, y0 + 8, 4)          -- legs
+			piece(mx + sx * 6.7, y0 + 9.5, y0 + 16.7, 2.7) -- arms
+		end
+		piece(mx, y0 + 8, y0 + 16.7, 10.7)                -- body
+		piece(mx, y0 + 16.7, y0 + 19.3, 16)               -- shoulders
+		part("BackstopMan", CF(mx, y0 + 22.7, zc) * CFrame.Angles(0, math.pi / 2, 0), V3(0.6, 8.7, 8.7), P.trim, { cyl = true }) -- head
+		part("BackstopRing", CF(mx, y0 + 12.5, -8707.2) * CFrame.Angles(0, math.pi / 2, 0), V3(0.4, 6, 6), P.slate, { cyl = true })
+		part("BackstopRing", CF(mx, y0 + 12.5, -8706.8) * CFrame.Angles(0, math.pi / 2, 0), V3(0.4, 3, 3), P.pale, { cyl = true })
+	end
 end
 
 -- ---------------------------------------------------------------- the blocks (middle): a container yard with a second level
@@ -646,7 +673,7 @@ local function theBlocks()
 	-- the kerb wall: the gateway on the axis (between the two gate stacks), a gap in the south for the hill's ramp
 	local KH = G + 3.5
 	for _, s in { { -59, -46 }, { 46, 59 }, { 62, 81 } } do blk("YardKerb", s[1], s[2], G, KH, Z0, Z0 - 1.6, P.slate) end
-	for _, s in { { -59, -32 }, { -29, 2 }, { 22, 52 }, { 55, 81 } } do blk("YardKerb", s[1], s[2], G, KH, Z1 + 1.6, Z1, P.slate) end
+	for _, s in { { -59, -32 }, { 55, 81 } } do blk("YardKerb", s[1], s[2], G, KH, Z1 + 1.6, Z1, P.slate) end -- (the middle is the hill's bank)
 	for z = Z0, Z1 + 1, -30 do
 		local a, b = z - 3, math.max(z - 27, Z1)
 		if a > b then
@@ -655,8 +682,8 @@ local function theBlocks()
 		end
 	end
 	-- the gateway: a 2-high container stack either side, the yard's name on the west one
-	stack(-34, -8392, 0, 2, { C.slateC, C.warmC })
-	stack(34, -8392, 0, 2, { C.warmC, C.slateC })
+	stack(-34, -8392, 0, 3, { C.slateC, C.warmC, C.slateC })
+	stack(34, -8392, 0, 3, { C.warmC, C.slateC, C.warmC })
 	sign("WordBlocks", { { "THE BLOCKS", P.amber, "B", 1 } }, 12, 2.2, -34, 249.6, -8387.6, V3(-34, 0, -8000), { plate = P.board, thick = 0.25 })
 	-- the raised pad under the house group: 4 up, rounded edges, a ramp at each end
 	local H = L.HOUSE
@@ -670,8 +697,16 @@ local function theBlocks()
 	stack(-30, -8420, 90, 3, { C.slateC, C.warmC, C.slateC })
 	stack(50, -8440, 90, 2, { C.warmC, C.slateC })
 	stack(50, -8510, 90, 2, { C.slateC, C.warmC })
-	stack(70, -8550, 90, 2, { C.warmC, C.slateC })
-	stack(78, -8470, 90, 2, { C.slateC, C.warmC }) -- (judge round 3: the east half was bare paving)
+	-- (judge round 3: the east half was bare paving. a 2-high container wall down the east edge in two runs, the gap
+	-- between them the way through, a container bridge from the wall to the stack at (50, -8510))
+	for _, z in { -8428, -8449, -8510, -8531, -8575 } do stack(76, z, 90, 2, if z % 2 == 0 then { C.warmC, C.slateC } else { C.slateC, C.warmC }) end
+	container(63, -8510, 0, C.warmC, G + 17.2)
+	for _, z in { -8506.4, -8513.6 } do -- (on the container's long edges; the pad lands over the north one)
+		blk("BridgeParapet", 54, 72, G + 25.8, G + 29.3, z - 0.5, z + 0.5, P.slate)
+		blk("BridgeCoping", 54, 72, G + 29.3, G + 29.7, z - 0.7, z + 0.7, P.trim)
+	end
+	B.pad(63, G, -8496, V3(0, 76, -10))
+	B.chevron(63, G + 0.1, -8488.5, 0, -1, 5, P.cyan)
 	stack(-50, -8566, 90, 2, { C.slateC, C.warmC })
 	container(8, -8566, 0, C.amberC)
 	container(-26, -8584, 0, C.warmC)
@@ -718,20 +753,13 @@ local function theBlocks()
 		B.ramp("LotShell", "CatwalkCoping", "z", HZ0, F2 + 3.9, -8430, towerTop + 3.9, x - 0.2, x + 1.2, P.trim, { thick = 0.4 })
 	end
 	blk("CatwalkPier", -32, -28, RT, (F2 + towerTop) / 2 - 1.4, -8450, -8446, P.slate)
-	-- barriers, crates and drums round the stacks
-	barrier(16, -8425, 30); barrier(30, -8470, 90); barrier(22, -8535, 0); barrier(36, -8582, 0); barrier(-8, -8545, 90); barrier(60, -8478, 0)
-	for _, c in { { -52, -8398, 0 }, { -52, -8402.4, 15 }, { 58, -8430, 8 }, { 40, -8400, -10 }, { 78, -8500, 0 }, { 26, -8560, 20 } } do
-		prop("tl_crate", c[1], G, c[2], c[3], V3(4, 4, 4))
-	end
-	prop("tl_crate", -52, G + 4, -8400.2, -12)
-	for _, d in { { 30, -8545, 0, C.drum }, { 32.8, -8546.5, 30, C.slateC }, { 62, -8590, 0, C.slateC }, { 64.6, -8588.6, 0, C.drum } } do
-		prop("tl_drum", d[1], G, d[2], d[3], V3(2.8, 4.3, 2.8), { color = { a88a6a = d[4] } })
-	end
-	prop("tl_tyres", 76, G, -8580, 0, V3(5.3, 4.5, 5.3), { color = { ["50545b"] = C.tyre } })
+	-- barriers in two clusters of three, at chest height against container walls (the small props are gone: noise)
+	for _, z in { -8424, -8434.4, -8444.8 } do barrier(70, z, 90) end
+	for _, z in { -8503, -8513.4, -8523.8 } do barrier(43.5, z, 90) end
 	-- the Carls in the blocks: in the alleys, upstairs, on the catwalk and the tower
 	local IN = V3(8, G, -8350)
 	for _, k in { { 20, G, -8452 }, { -23, F1, -8471 }, { -36, F2, -8490 }, { -30, (F2 + towerTop) / 2, -8448 }, { -30, towerTop, -8418 },
-		{ 60, G, -8470 }, { -32, G, -8574 }, { -8, RT, -8510 } } do
+		{ 60, G, -8470 }, { -32, G, -8574 }, { -8, RT, -8510 }, { 63, G + 25.8, -8510 } } do
 		target(k[1], k[2], k[3], IN)
 	end
 end
@@ -740,11 +768,12 @@ end
 -- (judge round 2: one long dark wall. now the slide is an off-white ramp between low parapets, every stage has its
 -- number on the plinth's face, and the finish tower is 64 high with a pale top over its lit band)
 local CX, CW = -120, 12 -- the course's middle line and half its width
-local function slab(name, x0, x1, z0, z1, y0, top, wall)
-	blk(name, x0, x1, y0, top - 1, z0, z1, wall or P.pier)
+local function slab(name, x0, x1, z0, z1, y0, top, wall, noPiers)
+	blk(name, x0, x1, y0, top - 1, z0, z1, wall or P.pier2)
 	blk(name .. "Top", x0, x1, top - 1, top, z0, z1, P.mass)
 	nose(name .. "Nose", "x", x0, x1, top - 0.5, z0, 1.1); nose(name .. "Nose", "x", x0, x1, top - 0.5, z1, 1.1)
 	nose(name .. "Nose", "z", z0, z1, top - 0.5, x0, 1.1); nose(name .. "Nose", "z", z0, z1, top - 0.5, x1, 1.1)
+	if noPiers then return end -- (judge round 4: on the pale deck and summit they read as window slits)
 	local lo, hi = math.min(x0, x1), math.max(x0, x1)
 	local zn, zs = math.max(z0, z1), math.min(z0, z1)
 	for z = zs + 6, zn - 4, 8 do
@@ -755,20 +784,22 @@ end
 local function theClimb()
 	local X0, X1 = CX - CW, CX + CW
 	local PL = G + 8
-	blk("ClimbPad", CX - 20, CX + 20, G - 0.6, G + 0.04, -8380, -8392, C.rubber)
-	post(CX, -8384, G, 251)
-	sign("WordClimb", { { "THE CLIMB", P.amber, "B", 1 } }, 10, 2, CX, 252.2, -8383.5, V3(CX, 0, -8000), { plate = P.board, thick = 0.25 })
+	-- the start (judge round 3: a stick and a disc on a thin mat, 12 short of the course): a rubber mat 1 up, from the
+	-- spine to the plinth, a rounded nose on its front, the pad set into it, the course's name on the plinth's face
+	blk("ClimbPad", CX - 14, CX + 14, G - 0.6, G + 1, -8380, -8404, C.rubber)
+	part("ClimbPadLip", CF(CX, G + 0.5, -8379) * CFrame.Angles(0, math.pi, 0), V3(28, 1, 2), C.rubber, { wedge = true }) -- (round 4: the rolled nose read as a towel)
+	sign("WordClimb", { { "THE CLIMB", P.amber, "B", 1 } }, 12, 2.4, CX, G + 4.6, -8403.75, V3(CX, 0, -8000), { plate = P.board, thick = 0.3 })
 	slab("ClimbPlinth", X0, X1, -8404, -8500, 234, PL)
 	slab("ClimbPlinth", X0, X1, -8512, -8616, 234, PL)
 	-- 1: a pad throws you onto the deck
-	B.pad(CX, G, -8396, V3(0, 66, -20))
-	B.chevron(CX, G + 0.05, -8389, 0, -1, 5, P.cyan)
-	slab("Deck", X0, X1, -8410, -8440, PL, 262, P.slate)
+	B.pad(CX, G + 1, -8394, V3(0, 64, -21))
+	B.chevron(CX, G + 1.05, -8386.5, 0, -1, 5, P.cyan)
+	slab("Deck", X0, X1, -8410, -8440, PL, 262, C.house2, true)
 	-- 2: the slide: an off-white ramp (its sides too) with low slate parapets riding its edges, slate piers on its sides
 	part("SlideRamp", CF(CX, (PL + 262) / 2, -8470), V3(16, 262 - PL, 60), P.mass, { wedge = true })
 	for _, sx in { -1, 1 } do
 		local a, b = CX + sx * 6.5, CX + sx * 8
-		B.ramp("LotShell", "SlideParapet", "z", -8500, PL + 3, -8440, 262 + 3, math.min(a, b), math.max(a, b), P.slate, { thick = 3 })
+		B.ramp("LotShell", "SlideParapet", "z", -8500, PL + 1.5, -8440, 262 + 1.5, math.min(a, b), math.max(a, b), P.mass, { thick = 1.5 })
 		for _, z in { -8456, -8472, -8488 } do
 			local h = PL + (262 - PL) * (z + 8500) / 60
 			blk("SlidePier", CX + sx * 8, CX + sx * 8.5, PL, h - 0.6, z - 0.8, z + 0.8, P.slate)
@@ -785,17 +816,20 @@ local function theClimb()
 		B.drum("LotShell", "StepDrum", d[1], d[2], PL, d[3] - 0.8, 8, P.pier2)
 		B.drum("LotShell", "StepDrumTop", d[1], d[2], d[3] - 0.8, d[3], 8.4, P.mass)
 	end
-	slab("Summit", X0, X1, -8592, -8616, PL, PL + 20, P.slate)
+	slab("Summit", X0, X1, -8592, -8616, PL, PL + 20, C.house2, true)
 	-- 5: the canyon: two slate walls 18 high, a way out through the east one; two masts with lit heads
-	blk("CanyonWall", X0 - 2, X0, 234, G + 18, -8616, -8676, P.pier)
-	wallZ("CanyonWall", -8676, -8616, 234, G + 18, X1, X1 + 2, P.pier, { { -8648, -8640, G, G + 8 } })
+	blk("CanyonWall", X0 - 2, X0, 234, G + 18, -8616, -8676, P.pier2)
+	wallZ("CanyonWall", -8676, -8616, 234, G + 18, X1, X1 + 2, P.pier2, { { -8648, -8640, G, G + 8 } })
 	for _, x in { X0 - 1, X1 + 1 } do nose("CanyonWallNose", "z", -8616, -8676, G + 18, x, 1.2) end
-	for _, z in { -8634, -8660 } do
-		blk("Mast", CX - 1.25, CX + 1.25, G, 282, z - 1.25, z + 1.25, P.slate)
-		local hd = part("MastHead", CF(CX, 284, z) * CFrame.Angles(0, math.pi / 2, 0), V3(4, 4.4, 4.4), P.slate, { cyl = true })
+	-- (judge round 3: on the tower's line their amber faces read as eyes on the finish tower. off the line, faces east
+	-- and west)
+	for _, m in { { CX - 5, -8634 }, { CX + 5, -8660 } } do
+		local mx, z = m[1], m[2]
+		blk("Mast", mx - 1.25, mx + 1.25, G, 282, z - 1.25, z + 1.25, P.slate)
+		local hd = part("MastHead", CF(mx, 284, z), V3(4, 4.4, 4.4), P.slate, { cyl = true })
 		hd.CanQuery = true; hd.CanCollide = true
-		for _, sz in { -1, 1 } do
-			part("MastFace", CF(CX, 284, z + sz * 2.05) * CFrame.Angles(0, math.pi / 2, 0), V3(0.2, 3.2, 3.2), P.amber, { cyl = true, ghost = true, mat = NEON })
+		for _, sx in { -1, 1 } do
+			part("MastFace", CF(mx + sx * 2.05, 284, z), V3(0.2, 3.2, 3.2), P.amber, { cyl = true, ghost = true, mat = SP })
 		end
 	end
 	-- 6: the finish tower: 64 high, rounded corners, a lit band with the pale top over it, a flag; a strong pad at its foot
@@ -816,7 +850,7 @@ local function theClimb()
 	-- the stages' numbers on the course's east face
 	for i, z in { -8425, -8470, -8516, -8566, -8604, -8630 } do
 		local x = if i == 6 then X1 + 2.2 else X1 + 0.2
-		sign("StagePlate", { { tostring(i), P.amber, "B", 1 } }, 4, 4, x, G + 5, z, V3(0, 0, z), { plate = P.board, thick = 0.3 })
+		sign("StagePlate", { { tostring(i), P.amber, "B", 1 } }, 6, 6, x, G + 4, z, V3(0, 0, z), { plate = P.board, thick = 0.3 })
 	end
 end
 
@@ -836,25 +870,57 @@ local function wedgeRamp(name, dir, x0, x1, z0, z1, y0, rise, hex)
 	part(name, at(0, y0 + rise / 2), V3(across, rise, along), hex, { wedge = true })
 	for _, sx in { -1, 1 } do
 		local dx = sx * (across / 2 + 0.75)
-		part(name .. "Wall", at(dx, y0 + 1.5), V3(1.5, 3, along), P.slate)
-		part(name .. "Wall", at(dx, y0 + 3 + rise / 2), V3(1.5, rise, along), P.slate, { wedge = true })
+		part(name .. "Wall", at(dx, y0 + 1.5), V3(1.5, 3, along), P.pier)
+		part(name .. "Wall", at(dx, y0 + 3 + rise / 2), V3(1.5, rise, along), P.pier, { wedge = true })
+		local a, b = (base * CF(dx, y0 + 3, -along / 2)).Position, (base * CF(dx, y0 + 3 + rise, along / 2)).Position
+		part(name .. "Nose", CFrame.lookAt((a + b) / 2, b) * CFrame.Angles(0, math.pi / 2, 0), V3((b - a).Magnitude, 1.1, 1.1), P.trim, { cyl = true })
 	end
 end
 local function theHill()
 	local HX, HZ = 12, -8656
-	local TIERS = { { 104, G + 8 }, { 72, G + 16 }, { 40, G + 24 } }
-	for _, t in TIERS do
+	-- (judge round 3: three drums on flat grass read as a cake stand, and Roblox's own cylinders showed facets. tier 1 is
+	-- now a grass bank, 140 across at the foot, with the slate tiers standing on it; every round thing is a kit mesh,
+	-- with plain invisible solids to walk on)
+	local cylMesh = lib():FindFirstChild("tl_cylinder")
+	cylMesh = cylMesh and cylMesh:FindFirstChildWhichIsA("MeshPart")
+	local bankMesh = lib():FindFirstChild("tl_bank")
+	bankMesh = bankMesh and bankMesh:FindFirstChildWhichIsA("MeshPart")
+	local function smooth(name, y0, y1, d, hex)
+		if not cylMesh then return B.drum("LotShell", name, HX, HZ, y0, y1, d, hex) end
+		local p = cylMesh:Clone()
+		p.Name = name; p.Size = V3(d, y1 - y0, d); p.CFrame = B.at(CF(HX, (y0 + y1) / 2, HZ)); p.Color = Color3.fromHex(hex); p.Material = SP
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false
+		p.Parent = B.root.LotScenery
+		B.count += 1
+		B.drum("Collision", name .. "Solid", HX, HZ, y0, y1, d, hex, { tr = 1, noShadow = true })
+		return p
+	end
+	if bankMesh then
+		local bk = bankMesh:Clone()
+		bk.Name = "HillBank"; bk.Size = V3(140, 8, 140); bk.CFrame = B.at(CF(HX, G + 4, HZ)); bk.Color = Color3.fromHex(C.grass); bk.Material = SP
+		bk.Anchored = true; bk.CanCollide = false; bk.CanQuery = false; bk.CanTouch = false
+		bk.Parent = B.root.LotScenery
+		B.count += 1
+		for k = 1, 16 do -- (the bank to walk on: sixteen half-stud steps under the mesh)
+			B.drum("Collision", "HillBankStep", HX, HZ, 234, G + 0.5 * k, 2 * (70 - 18 * (k - 0.5) / 16), C.grass2, { tr = 1, noShadow = true })
+		end
+	else
+		smooth("HillWall", 234, G + 6.8, 104, P.pier)
+		smooth("HillCoping", G + 6.7, G + 7.9, 105.4, P.trim)
+		smooth("HillGrass", G + 7.7, G + 8, 102.4, C.grass2)
+	end
+	for _, t in { { 72, G + 16 }, { 40, G + 24 } } do
 		local d, top = t[1], t[2]
-		B.drum("LotShell", "HillWall", HX, HZ, 234, top - 1.2, d, P.pier)
-		B.drum("LotShell", "HillCoping", HX, HZ, top - 1.3, top - 0.1, d + 1.4, P.trim)
-		B.drum("LotShell", "HillGrass", HX, HZ, top - 0.3, top, d - 1.6, C.grass2)
+		smooth("HillWall", 234, top - 1.2, d, P.pier)
+		smooth("HillCoping", top - 1.3, top - 0.1, d + 1.4, P.trim)
+		smooth("HillGrass", top - 0.3, top, d - 1.6, C.grass2)
 	end
 	-- the ramps, spiralling: up from the yard (north, through the gap in its kerb), round to the east, round to the west
-	wedgeRamp("HillRamp", "-z", HX - 4, HX + 4, HZ + 52 + 20, HZ + 51, G, 8, C.conc)
+	-- (judge round 4: the bank buried the ramp from the yard; the bank is walkable all round, so it is the way up)
 	wedgeRamp("HillRamp", "-x", HX + 51, HX + 35, HZ - 4, HZ + 4, G + 8, 8, C.conc)
 	wedgeRamp("HillRamp", "+x", HX - 35, HX - 19, HZ - 4, HZ + 4, G + 16, 8, C.conc)
 	post(HX - 10, -8582, G, 251)
-	sign("WordHill", { { "THE HILL", P.amber, "B", 1 } }, 9, 2, HX - 10, 252.2, -8581.5, V3(HX - 10, 0, -8000), { plate = P.board, thick = 0.25 })
+	sign("WordHill", { { "THE HILL", P.amber, "B", 1 } }, 9, 2, HX - 10, 252.2, -8580.6, V3(HX - 10, 0, -8000), { plate = P.board, thick = 0.25 })
 	-- the tower: a hollow slate core (a door north), a pad inside throws you up through a hatch onto the deck; two solid
 	-- side walls east and west carry the roof, low parapets north and south
 	local TY, DY, RY = G + 24, G + 54, G + 68
@@ -972,14 +1038,20 @@ function L.check(tg, mk): { string }
 	local op = OverlapParams.new(); op.FilterType = Enum.RaycastFilterType.Include; op.FilterDescendantsInstances = { tg }; op.RespectCanCollide = true
 	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { tg }
 	local stuck, floating = 0, 0
+	-- (the probe is a part, so round solids count by their shape: the hill bank's steps are 140 across and their boxes
+	-- reached Carl spots 15 studs clear of them)
+	local probe = Instance.new("Part"); probe.Anchored = true; probe.CanCollide = false; probe.CanQuery = false; probe.Size = V3(2.4, 6.4, 1.2)
+	probe.Transparency = 1; probe.Parent = workspace
 	for _, f in { lot.Targets, gs } do
 		for _, s in f:GetChildren() do
-			local hits = workspace:GetPartBoundsInBox(s.CFrame * CF(0, 3.6, 0), V3(2.4, 6.4, 1.2), op)
+			probe.CFrame = s.CFrame * CF(0, 3.6, 0)
+			local hits = workspace:GetPartsInPart(probe, op)
 			if #hits > 0 then stuck += 1; table.insert(out, "solid in " .. s.Name .. " at " .. tostring(s.Position) .. ": " .. hits[1].Name) end
 			local down = workspace:Raycast(s.Position + V3(0, 0.5, 0), V3(0, -2, 0), rp)
 			if not down then floating += 1; table.insert(out, "nothing under " .. s.Name .. " at " .. tostring(s.Position)) end
 		end
 	end
+	probe:Destroy()
 	table.insert(out, ("lot: %d targets, %d slats, Carl spots with something solid in them %d, standing on nothing %d"):format(
 		#lot.Targets:GetChildren(), #lot.Door:GetChildren(), stuck, floating))
 	table.insert(out, L.horizon(tg))

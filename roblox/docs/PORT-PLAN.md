@@ -535,7 +535,7 @@ version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_mod
 - **The switch by hand:** `local R = require(game.ServerStorage.PolishBackup.RooftopV3:Clone())`, then `R.use("both")` (v2 and v3 take turns: the current setting), `R.use("all")` (adds v1), or `R.use("v1" | "v2" | "v3")` to pin one (the pool becomes just that one). `PolishBackup.RooftopV2`'s `R.use("v2")` also pins now. Or type `ArenaPool` on `workspace.Map` directly; then save and publish.
 - **Tested (solo Play test, 16 Nov; a queue pad set to one side inside the test only, so one player could start a match):** four matches back to back went v2, v3, v2, v3. In each: the team-1 spawn of that arena (v2 at (-130, 3.7, 17993), v3 at (-162, 2.7, -29991)), the fall line read from that arena (-484.8 for both), the match light switched while the game ran (v2: clock 13.2, fog 450 to 2600; v3: clock 13.5, fog 400 to 2300), and the banner said "ROOFTOP: SKYLINE" on v2 and "ROOFTOP" on v3. Photo of v3's banner: `roblox/docs/rooftop-v2/rotation_v3_banner.jpg`. **Not tested:** a real two-player match, 1v1v1 (the third team uses `Spawns` named Spawn11, 18, 14, 12, 13: all three arenas have them), phones.
 
-## 24. The back lot: a garage door off the dummy yard, an easter egg, and an open-air training ground behind it, 16 November 2026 (place version 316)
+## 24. The back lot: a garage door off the dummy yard, an easter egg, and an open-air training ground behind it, 16 November 2026 (place version 340)
 
 The owner, 16 Nov: "can you add a large garage door that leads outside to the big rivals style training grounds, you have to do like a little easter egg to get it or something".
 
@@ -571,11 +571,11 @@ A ridge of hills, made of smooth ellipsoids from the kit's `tl_ball`, hides the 
 - `HubLook.looks.lot` plus `HubLife`: the lot's own light while `OnLot`.
 
 **Builders.**
-- `PolishBackup.TrainingLot` (`roblox/studio-tools/TrainingLot.luau`, new) is called by `TrainingV2.build`, now push 12.
+- `PolishBackup.TrainingLot` (`roblox/studio-tools/TrainingLot.luau`, new) is called by `TrainingV2.build`, now push 13.
 - The zone box takes the lot in. The hall's barrier stops at the façade, with a wall over it, and the lot has its own sides, back and lid.
 - `LotExit` is one of the doors the build owns.
 - `StudioExport` now lists `TrainingLot`.
-- Kit: `tools/roblox/lot_models.py`, 16 models, asset 80962685889163 (uploads are meshes in plain colours, no images).
+- Kit: `tools/roblox/lot_models.py`, 18 models, asset 75809148325346 (kit 4 added `tl_cylinder`, a smooth 64-sided drum, and `tl_bank`, the hill's grass bank). Uploads are meshes in plain colours, no images.
 - `T.check()` now also reports: the lot's markers, the ridge's ray check, rays from three eye points to the watchtower (12/12 each), and the long lane's counter-to-Carl lines (0 of 36 blocked).
 
 **Tested in Play** (several tests across pushes):
@@ -584,21 +584,32 @@ A ridge of hills, made of smooth ellipsoids from the kit's `tl_ball`, hides the 
 - Every lot pad lands: the climb deck, the finish tower at 104 up, and the watchtower lift.
 - Lot Carls come back; the EXIT lands on a muster spawn.
 
-**Judged.** Three rounds, vault `Reviews/Back lot - judge round 1.md` to `round 3.md`:
+**Judged.** Four rounds, vault `Reviews/Back lot - judge round 1.md` to `round 4.md`:
 - round 1: no PASS
 - round 2: 1 PASS, 8 CLOSE, 2 FAIL
 - round 3: 5 PASS, 6 CLOSE, 1 FAIL (the climb from the ground). No blocker in play.
+- round 4: 9 PASS, 4 CLOSE, 0 FAIL. No blocker; "fine to show the owner now".
 
 Pushes 7, 10 and 11 are the reworks. Push 11 did round 3's fix and quick wins: the direction board moved onto the terrace facing the portal (on the façade its left and right read mirrored), the door panels a step lighter with pale men and a warm spot on each, the ridge's lumps sunk and widened into hill caps, and a container wall on the yard's bare east side. The photo sheet is `roblox/docs/back-lot/back_lot.jpg`.
 
-**Left from round 3 (not done):**
-- the climb still reads as a long slate wall from the ground, and the masts' amber faces sit on the finish tower like eyes
-- the hill's big tier shows facets, and its ramp walls read as dark fins
-- the yard's east half could take a container bridge and a 3-high gateway
+**Round 4** (lot pushes 12 and 13, TrainingV2 push 13, place version 340) fixed round 3's fail and close items:
+- **The climb from the ground:** a pale course on its slate plinth, without the side piers that read as window slits on the deck and summit. The start is a raised rubber mat that meets the plinth, with a wedge lip, the pad set into it and THE CLIMB on the plinth's face (the sign on a post is gone). The stage plates are 6 studs. The two masts stand off the finish tower's line, with unlit amber faces east and west. The drums have slate bodies.
+- **The hill:** the bottom tier is a walkable grass bank (`tl_bank`, 140 across, in the ground's green, over sixteen half-stud invisible steps), and it is the way up from the yard (the old first ramp is gone). The upper tiers are smooth kit cylinders over invisible solids. The ramp walls are the tiers' grey, with a rounded edge along their slope. The yard's kerb that the bank would have buried is gone.
+- **The Blocks' east half:** a two-high container wall down the east edge in two runs, and a container bridge from it to the stack at (50, -8510), with parapets, a Carl on it, and a pad (63, -8496) with a chevron that throws you onto it. Barriers stand in two groups of three against container walls; the small crates, drums and tyres are gone. The gateway stacks are three high.
+- **The door panels:** lighter (housing 9a9ea5), a warm spot on each from in front, the idle timer reads "1:30" (the rule), and the yard's end-wall base strip stops clear of them.
+- **The façade:** window frames clear of the opening, sills the opening's width, mullions on the wide windows only; the EXIT is full size, with its sign higher.
+- **The lane:** the backstop's middle rises to a crown, with a target man on it (legs, arms, a head and a ring on his chest). Its amber strip runs only between the lane's walls.
+- **The ridge:** two saddle lumps between the three back hills; the playground's tops are still hidden (76 of 76 from all six eye points).
+- The bay's crates are warm grey; the sign posts are 2.4 square.
+- The Carl-spot check now uses a part probe (shape-exact), since the bank's round steps have square bounding boxes.
 
-**Lost and redone.** Roblox's account warning (16 Nov 09:39, over another session's QR-like wrap image) closed the place and lost the work after 09:13. Version 297 still held push 9. Push 10 went in again on 297 and was saved as 309; push 11 was saved as 316.
+Tested in Play: the bridge pad lands on the bridge, the climb pad on the deck, the finish and watchtower pads as before; the bank steps up 0.5 at most and you stand anywhere on it. The Play photo sheet is `roblox/docs/back-lot/back_lot_play.jpg`.
 
-**Not done yet.** `place/ServerStorage/JankfireMeshes.rbxm` has not been re-exported (6.4 MB for the whole bundle, so it was skipped this time), so the repo's copy lacks the `tl_` kit until the next export of that file.
+**Left from round 4 (not done):**
+- the climb still reads as closed pale boxes from the ground: open the deck and summit into platforms on slate legs, and make the slide a chute on trestles (the judge's "one change that would lift it most")
+- the ridge is still a row of matched, mirrored domes: a bell-shaped hill mesh, different heights east and west, and an `L.ridgeCheck`
+- the door panel's BENCH / RANGE / COURSE labels are too small at play distance (rows instead of columns), and the Plinker's stand still covers KEEP CLEAR
+- the HUD's zone line on the lot still says "the dummies hit back in here"
 
 ## For the next Claude session
 
