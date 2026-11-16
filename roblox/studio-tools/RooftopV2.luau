@@ -19,7 +19,7 @@ local CollectionService = game:GetService("CollectionService")
 local R = {}
 R.NAME = "RooftopV2"
 R.KIT = "rooftop2"
-R.ASSET = 92666701963187 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_5"); set after each upload
+R.ASSET = 115545999173943 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_6"); set after each upload
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
 local SP = Enum.Material.SmoothPlastic
@@ -103,7 +103,7 @@ end
 local CITY = {
 	body = { hex("9da0a6"), hex("8c9096"), hex("a6a29a"), hex("7d8189"), hex("b0aca4"), hex("949089") },
 	glass = { hex("5e6873"), hex("6a7179"), hex("545d68") },
-	band = hex("bdb8ae"), lit = hex("f2dcc0"), street = hex("4a4d53"), block = hex("6f7076"), smog = hex("c3c7cd"),
+	band = hex("bdb8ae"), lit = hex("f2dcc0"), street = hex("4a4d53"), block = hex("6f7076"), smog = hex("c3c7cd"), horizon = hex("d3d7df"),
 }
 local TOWERS = { "r2_twa", "r2_twb", "r2_twc", "r2_twd", "r2_twe", "r2_twf", "r2_twe", "r2_twf" }
 -- three landmarks (r2_twg, a broad tower stepping in at the top), placed by hand far out, tall: { x, z, top }
@@ -144,6 +144,13 @@ local function city(root: Instance, O: Vector3)
 			n += 1
 			if n % 20 == 0 then task.wait() end
 		end
+	end
+	-- a pale ring far out at the horizon (round 4: things far beyond the map stood black on the horizon at eye height):
+	-- eight plates 2,400 out, the haze's own colour, from under the smog to a little above the roofs
+	for i = 0, 7 do
+		local ang = i * math.pi / 4
+		local cf = CF(O + V3(math.sin(ang) * 2400, -60, math.cos(ang) * 2400)) * CFrame.Angles(0, ang, 0)
+		look(f, "Horizon", cf, V3(2048, 420, 4), CITY.horizon)
 	end
 	for _, l in LANDMARKS do
 		local t = lib():FindFirstChild("r2_twg")

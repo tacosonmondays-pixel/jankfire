@@ -122,6 +122,8 @@ H.looks.rooftop_v2 = {
 		Ambient = Color3.fromRGB(120, 119, 120), OutdoorAmbient = Color3.fromRGB(134, 135, 140), Brightness = 2.6,
 		ExposureCompensation = -0.1, EnvironmentDiffuseScale = 0.55, EnvironmentSpecularScale = 0.5,
 		ClockTime = 13.2, GeographicLatitude = 41,
+		-- (the saved fog is the Rooftop's dusk navy: it turned v2's far horizon into a dark band)
+		FogColor = Color3.fromRGB(208, 213, 222), FogStart = 450, FogEnd = 2600,
 	},
 	-- (a denser pale haze: the far city fades instead of standing black on the horizon)
 	Atmosphere = { Density = 0.31, Offset = 0.15, Haze = 1.3, Glare = 0.05, Color = Color3.fromRGB(212, 216, 224), Decay = Color3.fromRGB(162, 170, 184) },

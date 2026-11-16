@@ -157,7 +157,7 @@ def lathe(model, col, prof, x, y, z, segs=32, kind='plastic'):
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     put(model, kind, col, bm, Tr(x, y, z))
 
-def blob(model, col, x, y, z, r, sy=0.72, sub=2):
+def blob(model, col, x, y, z, r, sy=0.72, sub=3):
     bm = bmesh.new()
     bmesh.ops.create_icosphere(bm, subdivisions=sub, radius=r)
     bmesh.ops.scale(bm, vec=(1, sy, 1), verts=bm.verts)
@@ -443,13 +443,13 @@ def court():
     cyl(c, STONE, 0, LEDGE, CZ, 6.5, 12.6 - LEDGE, segs=40, bev=0.3, solid=False)  # the drum, up to 12.6
     COL.append(('c', (0, LEDGE, CZ), 6.5, 12.6 - LEDGE))
     for y in (-1.2, 2.4, 6.0): cyl(c, STONE2, 0, y, CZ, 6.85, 1.0, segs=40, bev=0.25, solid=False)
-    cyl(c, SLATE, 0, 8.0, CZ, 6.62, 2.4, segs=40, bev=0.1, solid=False)
+    cyl(c, '6f747b', 0, 8.0, CZ, 6.62, 2.4, segs=40, bev=0.1, solid=False)
     for i in range(20):
         a = 2 * math.pi * i / 20
         box(c, MID, (6.75 * math.cos(a), 9.2, CZ + 6.75 * math.sin(a)), (0.55, 2.3, 0.9), (0, -a, 0), bev=0.15, solid=False)
     cyl(c, LAMP, 0, 10.75, CZ, 6.72, 0.8, segs=40, bev=0.05, kind='neon', solid=False)
     cyl(c, TRIM, 0, 11.55, CZ, 7.5, 1.1, segs=40, bev=0.35, solid=False)       # cornice
-    lathe(c, SLATE, [(6.4, 12.6)] + [(6.4 * math.cos(t), 12.6 + 4.0 * math.sin(t)) for t in [math.pi / 2 * i / 8 for i in range(1, 8)]] + [(0.0, 16.6)], 0, 0, CZ, segs=40)
+    lathe(c, '737a83', [(6.4, 12.6)] + [(6.4 * math.cos(t), 12.6 + 4.0 * math.sin(t)) for t in [math.pi / 2 * i / 8 for i in range(1, 8)]] + [(0.0, 16.6)], 0, 0, CZ, segs=40)
     cyl(c, TRIM, 0, 16.3, CZ, 0.9, 1.3, segs=16, bev=0.3, solid=False)
     COL.append(('c', (0, 12.6, CZ), 5.0, 3.6))
     for i in range(4):   # light thrown up on the dome and down the drum
@@ -552,7 +552,7 @@ def gallery():
     # the slab on piers, paved on top, a deep fascia on the court side
     B(m, STONE, -CBX, GY - 1.5, GZ0, CBX, GY - 0.5, GZ1, bev=0.3, solid=False)
     solB(-CBX, GY - 1.5, GZ0, CBX, GY, GZ1)
-    tiles(m, -CBX, CBX, GZ0, GZ1, GY, lambda cx, cz: PAVE if abs(cx) > 12 else PAVE2, grid=12.0, off=6.0, thick=0.5)
+    tiles(m, -CBX, CBX, GZ0, GZ1, GY, lambda cx, cz: PAVE2, grid=8.0, off=0.0, thick=0.5)
     B(m, SLATE, -CBX, GY - 2.6, GZ0 - 0.4, CBX, GY - 0.4, GZ0 + 0.8, bev=0.3, solid=False)
     for x in (-56, -40, -24, -8.5, 8.5, 24, 40, 56):
         pier(m, x - 1.25, GZ0, x + 1.25, GZ0 + 2.5, 0.0, GY - 2.6)
@@ -570,6 +570,9 @@ def gallery():
     lk = 11.0
     wall_x(m, STONE, -lk, -lk + 1.5, GZ0, GZ1, GY, 19.0, door=(53.5, 60.0), dtop=GY + 8.0)
     wall_x(m, STONE, lk - 1.5, lk, GZ0, GZ1, GY, 19.0, door=(53.5, 60.0), dtop=GY + 8.0)
+    for sx in (-1, 1):                      # a frame round each of the Lookout's doors, outside
+        f0, f1 = sorted((sx * 11.0, sx * 11.5))
+        slab_x(m, TRIM, door_outline(52.3, 61.2, GY, GY + 9.2, 53.5, 60.0, GY + 8.0, 2.2), f0, f1, bev=0.15)
     cyl(m, STONE, 0.0, GY, 56.75, 3.6, 9.0, segs=36, bev=0.3)                 # the room's column: no line door to door
     cyl(m, TRIM, 0.0, GY, 56.75, 3.9, 0.7, segs=36, bev=0.2, solid=False)
     cyl(m, TRIM, 0.0, GY + 8.3, 56.75, 4.1, 0.7, segs=36, bev=0.2, solid=False)
@@ -603,7 +606,7 @@ def gallery():
     # pilasters along the gallery side of the outer wall (its long face gets bays, not blank panels)
     for x in range(-64, 65, 8):
         if abs(x) < 13: continue
-        B(m, STONE, x - 1.0, GY, GZ1 - 0.8, x + 1.0, GY + PAR_TOP - 1.0, GZ1 + 0.05, bev=0.2, solid=False)
+        chamfer_box(m, STONE2, x - 1.0, GY, GZ1 - 1.0, x + 1.0, GY + PAR_TOP - 1.0, GZ1 + 0.05, ch=0.2, solid=False)
     # the bridges at +10 to the spawn roofs
     for s in (-1, 1):
         x0, x1 = min(s * CBX, s * 92), max(s * CBX, s * 92)
@@ -808,8 +811,10 @@ def spawn_roof(s):
         lamp(m, X(106.6), 6.0, sz * 6.2, (-s, 0), warm=True, brightness=0.8, rng=12)
     pc0, pc1 = xr(106.6, 111.2)
     B(m, SLATE, pc0, 12.0, -7.4, pc1, 13.0, 7.4, bev=0.3, solid=False)
-    sg0, sg1 = xr(106.7, 107.0)
-    B(m, TEAMCOL[s], sg0, 9.7, -5.0, sg1, 11.3, 5.0, bev=0.1, solid=False)    # the team's sign (matte)
+    sf0, sf1 = xr(106.5, 107.0)
+    B(m, SLATE, sf0, 9.2, -5.7, sf1, 11.8, 5.7, bev=0.15, solid=False)        # the sign's surround
+    sg0, sg1 = xr(106.3, 106.6)
+    B(m, TEAMCOL[s], sg0, 9.6, -5.0, sg1, 11.4, 5.0, bev=0.08, solid=False)    # the team's sign (matte)
     a0, a1 = xr(107.3, 113.7)
     B(m, AMBER, a0, 0.0, -5.0, a1, 0.06, 5.0, bev=0.03, solid=False)
     # piers on the outside faces (3 wide, 2 deep): the front between the portal and the corners, the sides by the doors
@@ -818,7 +823,7 @@ def spawn_roof(s):
         pier(m, q0, zc - 1.5, q1, zc + 1.5, 0.0, 12.6)
     for sz in (-1, 1):
         z0, z1 = sorted((sz * 28.0, sz * 30.0))
-        for xc in (117.0, 138.0, 145.5):
+        for xc in (115.5, 121.0, 135.5, 141.0, 146.5):
             q0, q1 = xr(xc - 1.5, xc + 1.5)
             pier(m, q0, z0, q1, z1, 0.0, 12.6)
     # side walls (2 thick) with a door each, 8 wide, beside the podium; pilasters inside, in line with the piers outside
@@ -831,12 +836,26 @@ def spawn_roof(s):
         slab_z(m, TRIM, door_outline(d0 - 1.2, d1 + 1.2, 0.0, 10.2, d0, d1, 9.0, 2.4), zf0, zf1, bev=0.15)
         B(m, AMBER, d0, 0.0, z0 + 0.4, d1, 0.06, z1 - 0.4, bev=0.03, solid=False)
         zi0, zi1 = sorted((sz * 25.0, sz * 26.0))
-        for xc in (117.0, 138.0, 145.5):
+        for xc in (111 + 39.0 / 4, 111 + 3 * 39.0 / 4):     # in line with the ceiling's cross beams, up into them
             q0, q1 = xr(xc - 1.0, xc + 1.0)
-            B(m, STONE2, q0, 0.0, zi0, q1, 10.9, zi1, bev=0.2, solid=False)
+            chamfer_box(m, STONE2, q0, 0.0, zi0, q1, 12.0, zi1, ch=0.25, solid=False)
+        zk0, zk1 = sorted((sz * 25.6, sz * 26.0))
+        for (xa, xb) in ((114.0, 124.0), (132.0, 150.0)):    # slate skirting
+            q0, q1 = xr(xa, xb)
+            B(m, SLATE, q0, 0.0, zk0, q1, 1.5, zk1, bev=0.1, solid=False)
+    for zc in (-20.0, -12.0, 12.0, 20.0):                # pilasters on the front wall's inside, under the beams along
+        q0, q1 = xr(114.0, 115.0)
+        chamfer_box(m, STONE2, q0, 0.0, zc - 1.0, q1, 12.0, zc + 1.0, ch=0.25, solid=False)
+    for (za, zb) in ((-26.0, -5.0), (5.0, 26.0)):
+        q0, q1 = xr(114.0, 114.4)
+        B(m, SLATE, q0, 0.0, za, q1, 1.5, zb, bev=0.1, solid=False)
+    LIGHTS.append(('point', (X(124.0), 9.0, 0.0), (0, -1, 0), 1.3, 28, 0, WARM))
+    LIGHTS.append(('point', (X(140.0), 9.0, 0.0), (0, -1, 0), 1.3, 28, 0, WARM))
     # the team's colour inside: one matte band over the front door
-    ib0, ib1 = xr(114.0, 114.3)
-    B(m, TEAMCOL[s], ib0, 9.6, -8.0, ib1, 11.2, 8.0, bev=0.1, solid=False)
+    if0, if1 = xr(114.0, 114.45)
+    B(m, SLATE, if0, 9.2, -8.5, if1, 11.6, 8.5, bev=0.15, solid=False)      # its slate surround
+    ib0, ib1 = xr(114.45, 114.7)
+    B(m, TEAMCOL[s], ib0, 9.6, -7.8, ib1, 11.2, 7.8, bev=0.08, solid=False)
     # team spawns on the podium (the arena's centre line is x 0: they face it, and the front door)
     for (x, z) in ((130, -7), (130, 7), (136, -14), (136, 0), (136, 14), (142, -7), (142, 7)):
         TEAM.append(('att' if s < 0 else 'def', (X(x), 1.1, z)))
@@ -845,24 +864,33 @@ def spawn_roof(s):
     B(m, SLATE, i0 - 0.3, 1.0, -5.3, i1 + 0.3, 1.9, 5.3, bev=0.2, solid=False)
     chamfer_box(m, STONE, i0, 1.0, -5.0, i1, 4.5, 5.0, ch=0.9)
     B(m, SLATE, i0 - 0.2, 4.4, -5.2, i1 + 0.2, 5.0, 5.2, bev=0.2, solid=False)
-    # the baffle outside the front door: 12 wide, 10 high, 3 thick, with wing walls cut back at 45 degrees toward the
-    # house (round it left or right), and a chest-high bench on its arena side
-    v0, v1 = xr(97, 100)
-    outline = [(-6.0, 0.0), (6.0, 0.0), (6.0, 8.8), (4.8, 10.0), (-4.8, 10.0), (-6.0, 8.8)]
-    slab_x(m, STONE, outline, v0, v1, bev=0.35)
-    solB(v0, 0.0, -6.0, v1, 10.0, 6.0)
-    B(m, SLATE, v0 - 0.35, 0.0, -6.35, v1 + 0.35, 0.9, 6.35, bev=0.2, solid=False)
-    B(m, SLATE, v0 - 0.2, 9.4, -5.2, v1 + 0.2, 10.2, 5.2, bev=0.2, solid=False)
-    for sz in (-1, 1):
-        c = (X(98.5 + 1.414 * 1.4), 5.0, sz * (6.0 + 1.414 * 1.4))
+    # the screen outside the front door (round 4, third judging: "three blank slabs of one height with a slot between
+    # them"): one curved screen, 16 across and 10 high on a slate plinth, its back 9 studs clear of the portal (a small
+    # forecourt), two chest-high arms off its ends. round it left or right. it bows toward the arena.
+    R0, R1, HALF = 14.0, 11.5, math.radians(35)
+    cxs = 94.5 + R0                          # the arc's centre (on the house side)
+    def arc(r, f0, f1, n=16):
+        return [(X(cxs - r * math.cos(t)), r * math.sin(t)) for t in [-HALF + 2 * HALF * (f0 + (f1 - f0) * i / n) for i in range(n + 1)]]
+    band = arc(R0, 0, 1) + arc(R1, 0, 1)[::-1]
+    prism(m, SLATE, arc(R0 + 0.35, 0, 1) + arc(R1 - 0.35, 0, 1)[::-1], 0.0, 1.5, bev=0.25)
+    prism(m, STONE, band, 1.5, 9.4, bev=0.4)
+    prism(m, SLATE, arc(R0 + 0.15, 0, 1) + arc(R1 - 0.15, 0, 1)[::-1], 9.4, 10.2, bev=0.25)
+    for i in range(5):                       # its hit boxes: five straight pieces along the curve
+        t = -HALF + 2 * HALF * (i + 0.5) / 5
+        rm = (R0 + R1) / 2
+        cxp, czp = X(cxs - rm * math.cos(t)), rm * math.sin(t)
+        seg = 2 * rm * math.sin(HALF / 5) + 0.6
+        yaw = math.atan2(-(math.cos(t)), s * math.sin(t)) if False else -math.atan2(math.cos(t) * s * -1, math.sin(t)) * 0
+        # local X along the curve: direction d(arc)/dt = (s * r sin t, r cos t) in (x, z)
+        dx, dz = s * math.sin(t), math.cos(t)
+        yaw = math.atan2(-dz, dx)
+        sol((cxp, 5.1, czp), (seg, 10.2, R0 - R1), (0, yaw, 0))
+    for sz in (-1, 1):                       # two chest-high arms off its ends, back toward the house at 45 degrees
+        ex, ez = cxs - (R0 + R1) / 2 * math.cos(HALF), sz * (R0 + R1) / 2 * math.sin(HALF)
+        c = (X(ex + 1.6), 1.75, ez + sz * 1.6)
         yaw = math.atan2(-sz * 0.7071, s * 0.7071)
-        box(m, STONE, c, (4.0, 10.0, 3.0), (0, yaw, 0), bev=0.6, segs=1)
-        box(m, SLATE, (c[0], 0.45, c[2]), (4.6, 0.9, 3.6), (0, yaw, 0), bev=0.2, solid=False)
-    bn0, bn1 = xr(93.8, 96.2)
-    B(m, SLATE, bn0 - 0.3, 0.0, -3.3, bn1 + 0.3, 0.9, 3.3, bev=0.2, solid=False)
-    B(m, STONE, bn0, 0.0, -3.0, bn1, 3.0, 3.0, bev=0.45, solid=False)
-    B(m, SLATE, bn0 - 0.3, 2.9, -3.3, bn1 + 0.3, 3.6, 3.3, bev=0.22, solid=False)
-    solB(bn0 - 0.3, 0.0, -3.3, bn1 + 0.3, 3.6, 3.3)
+        box(m, STONE, c, (4.6, 3.5, 2.4), (0, yaw, 0), bev=0.5, segs=1)
+        box(m, SLATE, (c[0], 3.55, c[2]), (4.9, 0.7, 2.7), (0, yaw, 0), bev=0.2, solid=False)
     # the stair house: a stair along the north edge up to +10, the landing the high bridge leaves from
     st0, st1 = xr(104, 128)
     n = 16
@@ -1225,6 +1253,22 @@ def render_preview(path):
     sc.render.filepath = path
     bpy.ops.render.render(write_still=True)
     print('RENDERED', path)
+    if VIEWS:                                  # eye-level views (Roblox coords, local to the arena) next to the preview
+        cam_data.lens = 18
+        sc.render.resolution_x, sc.render.resolution_y = 1280, 600
+        sc.cycles.samples = 24
+        for name, (eye, look) in VIEWS.items():
+            e, l = Vector((eye[0], -eye[2], eye[1])), Vector((look[0], -look[2], look[1]))
+            cam.location = e
+            cam.rotation_euler = (l - e).to_track_quat('-Z', 'Y').to_euler()
+            sc.render.filepath = path.replace('.jpg', '_' + name + '.jpg')
+            bpy.ops.render.render(write_still=True)
+            print('RENDERED', sc.render.filepath)
+
+VIEWS = {
+    'A': ((-136, 6.6, 0), (0, 5, 0)), 'X': ((-84, 6.0, 18), (-112, 5, -2)), 'M': ((30, 4.4, 26), (0, 3, -4)),
+    'L1': ((-66, 15.4, 54), (30, 13, 52)), 'L2': ((-66, 5.4, -53.75), (30, 5, -53.75)),
+} if '--views' in sys.argv else None
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
 build_all()
