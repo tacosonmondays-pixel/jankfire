@@ -57,7 +57,7 @@ local TITLES = {
 	{ "void", "WASTE DISPOSAL", "rare" },
 	{ "multi3", "BULK DISCOUNT", "epic" }, { "streak", "ON A TEAR", "epic" }, { "fast", "OVER THE LIMIT", "epic" },
 	{ "untouch", "UNTOUCHABLE", "legendary" }, { "mvp", "EMPLOYEE OF THE MONTH", "legendary" },
-	{ "vip", "VIP", "vip" }, -- (the VIP pack's title; its words are the shop session's to pick)
+	{ "vip", "VIP", "vip", "VIP" }, -- (the VIP pack's title, words "VIP"; 4th: its name when it isn't sentence case)
 }
 
 C.ORDER = { border = {}, banner = {}, title = {} } :: { [string]: { string } }
@@ -71,7 +71,7 @@ for _, r in BANNERS do
 	table.insert(C.ORDER.banner, r[1])
 end
 for _, r in TITLES do
-	local name = if r[2] == "" then "No Title" else string.upper(string.sub(r[2], 1, 1)) .. string.lower(string.sub(r[2], 2))
+	local name = if r[4] then r[4] elseif r[2] == "" then "No Title" else string.upper(string.sub(r[2], 1, 1)) .. string.lower(string.sub(r[2], 2))
 	C.ITEMS.title[r[1]] = { type = "title", id = r[1], name = name, rarity = r[3], text = r[2], vip = if r[3] == "vip" then true else nil }
 	table.insert(C.ORDER.title, r[1])
 end
@@ -189,13 +189,37 @@ local function drawBanner(g: GuiObject, id: string, W: number, H: number)
 			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(34, 20, 42), Position = UDim2.new(0, 0, 1, -5 - i * 7), Size = UDim2.new(1, 0, 0, 2 + (5 - i) * 0.4) }, g)
 		end
 	elseif id == "stars" then
-		g.BackgroundColor3 = Color3.new(1, 1, 1)
-		new("UIGradient", { Color = seq(rgb(6, 7, 14), rgb(20, 22, 38)), Rotation = 90 }, g)
-		for _ = 1, math.min(150, math.floor(W * H / 900)) do
-			local s = if r:NextNumber() < 0.1 then 3 else (if r:NextNumber() < 0.5 then 2 else 1)
-			local c = if r:NextNumber() < 0.15 then rgb(170, 190, 236) else rgb(240, 240, 246)
-			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = c, BackgroundTransparency = r:NextNumber() * 0.6,
+		-- (the sky's gradient on its own frame: a UIGradient on the CanvasGroup itself would tint the stars dark too)
+		g.BackgroundColor3 = rgb(6, 7, 14)
+		local sky = new("Frame", { Name = "Sky", BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1), ZIndex = 0 }, g)
+		new("UIGradient", { Color = seq(rgb(6, 7, 14), rgb(20, 22, 38)), Rotation = 90 }, sky)
+		-- (the owner, on wraps: stars "should be actual stars and not little squares": round dots, and a few real
+		-- four-point sparkles)
+		for _ = 1, math.min(90, math.floor(W * H / 1400)) do
+			local s = if r:NextNumber() < 0.12 then 4 else (if r:NextNumber() < 0.5 then 3 else 2)
+			local c = if r:NextNumber() < 0.15 then rgb(176, 196, 240) else rgb(244, 244, 250)
+			local d = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = c, BackgroundTransparency = 0.1 + r:NextNumber() * 0.55, AnchorPoint = Vector2.new(0.5, 0.5),
 				Position = UDim2.fromOffset(r:NextNumber() * W, r:NextNumber() * H), Size = UDim2.fromOffset(s, s) }, g)
+			new("UICorner", { CornerRadius = UDim.new(1, 0) }, d)
+		end
+		-- the sparkles: two thin rays crossed, bright in the middle and fading to their tips, round a soft core
+		local fade = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) })
+		for i = 1, math.clamp(math.floor(W / 90), 2, 6) do
+			local x, y = (i - 0.5 + (r:NextNumber() - 0.5) * 0.6) * W / math.clamp(math.floor(W / 90), 2, 6), H * (0.15 + r:NextNumber() * 0.7)
+			local len = math.max(9, math.min(H * 0.32, 22)) * (0.7 + r:NextNumber() * 0.5)
+			local th = math.max(2, len * 0.14)
+			for rot = 0, 90, 90 do
+				local ray = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(250, 248, 236), AnchorPoint = Vector2.new(0.5, 0.5),
+					Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(len, th), Rotation = rot }, g)
+				new("UICorner", { CornerRadius = UDim.new(1, 0) }, ray)
+				new("UIGradient", { Transparency = fade }, ray)
+			end
+			local glow = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(200, 214, 255), BackgroundTransparency = 0.7, AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(th * 3, th * 3) }, g)
+			new("UICorner", { CornerRadius = UDim.new(1, 0) }, glow)
+			local core = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0.5),
+				Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(th * 1.4, th * 1.4) }, g)
+			new("UICorner", { CornerRadius = UDim.new(1, 0) }, core)
 		end
 	elseif id == "camo" then
 		g.BackgroundColor3 = rgb(70, 78, 56)
@@ -274,7 +298,7 @@ end
 
 -- backgrounds with turned pieces need a CanvasGroup to clip them to the box (a clipping frame doesn't clip turned
 -- children); the rest use a plain clipping frame (every CanvasGroup costs a texture)
-local TURNED = { stripes = true, grid = true, flames = true, carbon = true, aurora = true, molten = true, camo = true }
+local TURNED = { stripes = true, grid = true, flames = true, carbon = true, aurora = true, molten = true, camo = true, stars = true }
 
 -- fill `frame` with background `id` (replaces the one there), clipped to its rounded box; it is redrawn if the frame
 -- changes size

@@ -48,7 +48,7 @@ local store = Profiles.new("JankfireStats_v1", template)
 type Fighter = any
 -- the match you are in, as far as stats go
 type Cur = { id: number, mode: string, arena: string, team: number, k: number, d: number, dmg: number,
-	wt: { [string]: number }, streak: number, t0: number, test: boolean? }
+	wt: { [string]: number }, streak: number, t0: number, test: boolean?, m: any? } -- (m: the match itself)
 type State = { p: Player, prof: Profiles.Profile?, ready: boolean, cur: Cur?, att: { [string]: boolean }, xpAcc: number,
 	budget: number, budgetT: number, devAll: boolean? }
 local st: { [Player]: State } = {}
@@ -56,6 +56,16 @@ local lastHit: { [Fighter]: { by: Fighter, hs: boolean, t: number } } = setmetat
 local Fight: any
 local Matches: any
 local ghost: Fighter? = nil -- (Studio tests: a dummy that counts as a player on the other team)
+-- (Studio tests: count ghost matches and the stand-in dummy. off unless a stats test turns it on, so nobody's Play test
+-- of matches or dummies ever lands in the owner's real numbers)
+local testCount = false
+
+-- only real weapons count: a live weapon or item of the roster. a test hook's "test" damage, a dummy's own gun or
+-- anything else made up never reaches the numbers
+local function real(wid: any): boolean
+	local e = if type(wid) == "string" then Roster.byId[wid] else nil
+	return e ~= nil and e.live == true
+end
 
 -- ------------------------------------------------------------------ the numbers
 local function dataOf(s: State?): any
@@ -95,6 +105,7 @@ local function liveFor(s: State?): boolean
 	if not s or not s.cur then return false end
 	local c = s.cur :: Cur
 	if c.test then return true end
+	if c.m and c.m.ghost and not testCount then return false end -- (a Studio ghost match: not real)
 	local mi = Matches.matchOf(s.p)
 	return mi ~= nil and mi.id == c.id and mi.phase == "live"
 end
@@ -110,7 +121,7 @@ local function enemies(a: Fighter?, b: Fighter?): boolean
 		local ca, cb = sa.cur, sb.cur
 		return ca ~= nil and cb ~= nil and ca.id == cb.id and ca.team ~= cb.team
 	end
-	if ghost and (a == ghost or b == ghost) then -- (only ever set by a Studio test)
+	if ghost and testCount and (a == ghost or b == ghost) then -- (only ever set by a Studio test)
 		local s = sa or sb
 		return s ~= nil and s.cur ~= nil
 	end
@@ -119,6 +130,7 @@ end
 
 -- an attack (a shot or a swing) that counts: one more for accuracy, and it waits to land
 local function onShot(f: Fighter, wid: string)
+	if not real(wid) then return end
 	local s = stateOf(f)
 	if not liveFor(s) then return end
 	local d = dataOf(s)
@@ -131,7 +143,7 @@ local function onShot(f: Fighter, wid: string)
 end
 
 local function onHurt(t: Fighter, done: number, by: Fighter?, wid: string, hs: boolean?)
-	if not by or not enemies(by, t) then return end
+	if not by or not real(wid) or not enemies(by, t) then return end
 	lastHit[t] = { by = by, hs = hs == true, t = os.clock() }
 	local s = stateOf(by)
 	local d = dataOf(s)
@@ -167,6 +179,7 @@ local function onKill(info: any)
 	if not sk or not dk or not sk.cur then lastHit[v] = nil; return end
 	local c = sk.cur :: Cur
 	local wid = if info.w == "void" and type(info.via) == "string" then info.via else info.w
+	if not real(wid) then lastHit[v] = nil; return end
 	dk.k += 1
 	c.k += 1
 	wpn(dk, wid).k += 1
@@ -180,10 +193,10 @@ local function onKill(info: any)
 end
 
 -- ------------------------------------------------------------------ matches
-local function begin(p: Player, id: number, mode: string, arena: string, team: number, test: boolean?)
+local function begin(p: Player, id: number, mode: string, arena: string, team: number, test: boolean?, m: any?)
 	local s = st[p]
 	if not s then return end
-	s.cur = { id = id, mode = mode, arena = arena, team = team, k = 0, d = 0, dmg = 0, wt = {}, streak = 0, t0 = os.time(), test = test }
+	s.cur = { id = id, mode = mode, arena = arena, team = team, k = 0, d = 0, dmg = 0, wt = {}, streak = 0, t0 = os.time(), test = test, m = m }
 	s.att = {}
 end
 
@@ -196,6 +209,7 @@ local function finish(p: Player, res: string, score: string?)
 	s.att = {}
 	local d = dataOf(s)
 	if not d then return end
+	if c.m and c.m.ghost and not testCount then return end -- (a Studio ghost match is never recorded)
 	d.m += 1
 	if res == "W" then d.w += 1 end
 	local top, best = nil, -1
@@ -216,10 +230,11 @@ end
 local function hookMatches()
 	Matches.onStart(function(m: any)
 		for t, list in m.teams do
-			for _, p in list do begin(p, m.id, tostring(m.mode or ""), tostring(m.arena or ""), t) end
+			for _, p in list do begin(p, m.id, tostring(m.mode or ""), tostring(m.arena or ""), t, nil, m) end
 		end
 	end)
 	Matches.onRound(function(m: any, winner: number)
+		if m.ghost and not testCount then return end
 		for t, list in m.teams do
 			for _, p in list do
 				local s = st[p]
@@ -264,7 +279,7 @@ local function cardOf(target: Player, viewer: Player?): any
 	local list = {}
 	local total = 0
 	for wid, w in d.wpn do
-		if type(w) == "table" and Roster.byId[wid] then -- (weapons and items only: not a test hook's "test")
+		if type(w) == "table" and real(wid) then -- (live weapons and items only: never a test hook's "test")
 			table.insert(list, { id = wid, k = w.k or 0, s = w.s or 0, h = w.h or 0, hs = w.hs or 0, t = math.floor((w.t or 0) + 0.5), dmg = math.floor((w.dmg or 0) + 0.5) })
 			total += w.t or 0
 		end
@@ -433,8 +448,10 @@ function Stats.init(fight: any, matches: any)
 					local c = s.cur :: Cur
 					d.time += step
 					local held = tostring(f.held)
-					c.wt[held] = (c.wt[held] or 0) + step
-					wpn(d, held).t += step
+					if real(held) then
+						c.wt[held] = (c.wt[held] or 0) + step
+						wpn(d, held).t += step
+					end
 					s.xpAcc += step * Ranks.XP.perMinute / 60
 					if s.xpAcc >= 1 then
 						local n = math.floor(s.xpAcc)
@@ -461,7 +478,8 @@ end
 -- the other team for stats only, while the test player is in a match: a real one, JankMatchTest "ghost" with the
 -- player in it, or a test one opened here):
 --   ("begin", player, mode?, arena?)  open a test match for the player (team 1)
---   ("ghost", dummyName)              that dummy now counts as the enemy ("" = none)
+--   ("ghost", dummyName)              that dummy now counts as the enemy, and ghost matches count ("" = neither:
+--                                     the default, so other sessions' Play tests never reach the owner's numbers)
 --   ("finish", player, "W"|"L", score?) close it like a real match end
 --   ("data", player)                  the player's saved data as it stands; ("card", target, viewer) the card viewer gets
 --   ("save", player)                  write it now; ("reset", player) all numbers to zero (the look and the switch stay)
@@ -474,6 +492,7 @@ function Stats.test(op: string, a: any, b: any, c: any): any
 		if type(a) == "string" and a ~= "" then
 			for _, f in Fight.all do if f.kind ~= "player" and f.name == a then ghost = f end end
 		end
+		testCount = ghost ~= nil -- (ghost matches and the stand-in count only while this is on; "" turns it off)
 		return ghost ~= nil
 	end
 	local p = a :: Player
