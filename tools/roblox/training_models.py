@@ -157,7 +157,7 @@ oct8('plastic', TRIM, [(20.0, 16.0), (16.0, 20.0), (16.0, 21.2), (24.5, 21.2), (
 oct8('plastic', 'aeaba5', [(16.0, 20.0), (12.05, 20.0), (12.05, 21.2), (16.0, 21.2)])  # (its inside face inside the drum)
 oct8('plastic', WALL2, [(12.0, 20.05), (12.0, 32.05), (13.6, 32.05), (13.6, 20.05)])  # (its foot inside the ring: flicker list)
 oct8('plastic', TRIM, [(12.0, 20.0), (11.4, 20.0), (11.4, 20.9), (12.0, 20.9)])
-lathe('plastic', 'aeaba5', [(13.6 * K8, 32.0), (0.0, 32.0), (0.0, 33.6), (13.6 * K8, 33.6), (13.6 * K8, 32.0)], M=RZ(math.pi / 8), segs=8, cap=False)
+lathe('plastic', 'aeaba5', [(13.65 * K8, 32.0), (0.0, 32.0), (0.0, 33.6), (13.65 * K8, 33.6), (13.65 * K8, 32.0)], M=RZ(math.pi / 8), segs=8, cap=False)  # (0.05 wider than the drum: flicker list)
 keep('tv_crown')
 
 # ------------------------------------------------------------------ tv_vault: one 16-long bay of the yard's barrel vault

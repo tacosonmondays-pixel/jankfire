@@ -38,7 +38,7 @@ local hub = workspace.Map.Hub
 local SP, NEON = Enum.Material.SmoothPlastic, Enum.Material.Neon
 local V3, CF = Vector3.new, CFrame.new
 
-T.KIT = 122116496172350 -- the kit's Model asset (tv_kit_7: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
+T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
 T.PUSH = 15
 T.VERSION = "v2"
