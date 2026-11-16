@@ -80,6 +80,10 @@ body in the middle of the screen, the mouse free, and the right mouse button bot
   than 2.6 studs to your head (a wall right behind you), your body fades out of the way, fully gone at 1 stud, as
   Roblox's own camera does; the gun keeps its own look. Looking up, the camera stops going down behind you at 25
   degrees, so it never swings under you into the floor.
+- **Your hats never cover the aim:** while you aim (the camera in close), each of your own hats and hair pieces whose
+  box on screen reaches into the middle of the screen (`C.mid`: the band from 38 to 62 % across and 22 to 78 % down,
+  round the crosshair) fades to 0.8 (`C.aimFade`), smoothly in and out (rate 10 a second), scaled by how far you're
+  aimed in. Your body, your head and the gun stay; at the hip nothing fades.
 - **In and out:** turning third person on, the camera starts 0.6 of the way out and eases back; turning it off, it
   glides into your head in 0.14 s and hands over to first person.
 - **Menus:** while `LoadoutOpen` is set (loadout, shop, profile, loot opening) the menu has the camera and the mouse;
@@ -116,6 +120,15 @@ Tested in Play on 16 Nov 2026 (in place version 430), real V, mouse and P keys:
 - P: the mouse is free under the settings panel and locks again when it closes. No errors in the output.
 - With the owner's big hat, aiming at 1.7 right put the hat next to the crosshair; 2.3 keeps it clear. On a body
   scaled up 1.6 wide the scaled-up hat fills the left half while aiming (the crosshair stays clear).
+
+**Hats fade while aiming (place version 442).** The owner's hat and leaves still covered about half the screen
+while aiming, so your own hats and hair over the middle of the screen now fade (above). Tested on the owner's
+avatar (9 accessories): aiming, the 6 that reach the middle (the strawberry hat, the hair, the glasses) went to
+0.80 and the bow tie and the 2 others lower down stayed at 0; the body, the head and the gun stayed solid. After
+letting go of RMB they were back to 0 within 0.4 s, smoothly. On a plain avatar (accessories and clothes removed)
+nothing faded.
+
+![hats fade while aiming](third-person/aim-hat-fade.jpg)
 
 ## The network
 

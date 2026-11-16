@@ -42,6 +42,8 @@ local C = {
 	startBack = 0.6, -- coming out of first person: starts this far along the line and eases out
 	inTime = 0.14, -- going back to first person: the glide in to your head (seconds)
 	fadeNear = 1.0, fadeFar = 2.6, -- a wall right behind you pulls the camera this close to your head: your body fades
+	aimFade = 0.8, aimFadeRate = 10, -- aiming: your hats and hair over the middle of the screen fade this far, this fast
+	mid = { x0 = 0.38, x1 = 0.62, y0 = 0.22, y1 = 0.78 }, -- "the middle": round the crosshair, as parts of the screen
 }
 local function merge(dst: any, src: any)
 	for k, v in src do
@@ -112,17 +114,60 @@ local function lookOf(cf: CFrame): (number, number)
 end
 
 -- the camera pulled in close to your head (a wall right behind you): your body fades out of the way, as Roblox's own
--- camera does (the guns and items keep their own looks)
+-- camera does (the guns and items keep their own looks; hats and hair: hats() below)
 local fadeNow = 0
 local function fade(ch: Model?, k: number)
 	if not ch or math.abs(k - fadeNow) < 0.03 and not (k == 0 and fadeNow > 0) then return end
 	fadeNow = k
 	for _, d in ch:GetDescendants() do
-		if d:IsA("BasePart") and not d:FindFirstAncestor("HeldWeapon") and not d:FindFirstAncestor("TPGun")
-			and not d:FindFirstAncestor("TPItem") and not d:FindFirstAncestorOfClass("Tool") then
+		if d:IsA("BasePart") and not d:FindFirstAncestorOfClass("Accessory") and not d:FindFirstAncestor("HeldWeapon")
+			and not d:FindFirstAncestor("TPGun") and not d:FindFirstAncestor("TPItem") and not d:FindFirstAncestorOfClass("Tool") then
 			d.LocalTransparencyModifier = k
 		end
 	end
+end
+
+-- your hats and hair: aiming in close, the ones over the middle of the screen (C.mid, round the crosshair) fade to
+-- C.aimFade, smoothly in and out, so a big hat never covers what you aim at; your body and the rest stay. They take
+-- the wall fade too
+local hatFade: { [BasePart]: number } = {}
+local CORNERS: { Vector3 } = {}
+for _, x in { -1, 1 } do for _, y in { -1, 1 } do for _, z in { -1, 1 } do table.insert(CORNERS, Vector3.new(x, y, z)) end end end
+local function overMiddle(cam: Camera, p: BasePart): boolean
+	local vs = cam.ViewportSize
+	local cf, half = p.CFrame, p.Size / 2
+	local x0, y0, x1, y1 = math.huge, math.huge, -math.huge, -math.huge
+	for _, c in CORNERS do
+		local v = cam:WorldToViewportPoint(cf * (half * c))
+		if v.Z <= 0 then return true end -- (round the camera itself)
+		x0, y0 = math.min(x0, v.X), math.min(y0, v.Y)
+		x1, y1 = math.max(x1, v.X), math.max(y1, v.Y)
+	end
+	local m = C.mid
+	return x1 > vs.X * m.x0 and x0 < vs.X * m.x1 and y1 > vs.Y * m.y0 and y0 < vs.Y * m.y1
+end
+-- (cam nil, dt 0: everything straight back to shown)
+local function hats(ch: Model, cam: Camera?, wall: number, aim: number, dt: number)
+	local rate = 1 - math.exp(-dt * C.aimFadeRate)
+	for _, acc in ch:GetChildren() do
+		if acc:IsA("Accessory") then
+			for _, p in acc:GetDescendants() do
+				if p:IsA("BasePart") then
+					local want = wall
+					if cam and aim > 0.02 and overMiddle(cam, p) then want = math.max(want, C.aimFade * aim) end
+					local cur = hatFade[p] or p.LocalTransparencyModifier
+					cur = if dt <= 0 then want elseif wall > cur then wall else cur + (want - cur) * rate
+					if math.abs(cur - want) < 0.01 then cur = want end
+					hatFade[p] = cur
+					if math.abs(p.LocalTransparencyModifier - cur) > 0.004 then p.LocalTransparencyModifier = cur end
+				end
+			end
+		end
+	end
+end
+local function showHats(ch: Model?)
+	if ch and next(hatFade) then hats(ch, nil, 0, 0, 0) end
+	table.clear(hatFade)
 end
 
 local function release()
@@ -130,6 +175,7 @@ local function release()
 	S.on = false
 	S.leaving = nil
 	fade(me.Character, 0)
+	showHats(me.Character)
 	local cam = workspace.CurrentCamera
 	if cam.CameraType == Enum.CameraType.Scriptable and me:GetAttribute("LoadoutOpen") ~= true then
 		cam.CameraType = Enum.CameraType.Custom
@@ -147,6 +193,7 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 	end
 	if me:GetAttribute("LoadoutOpen") == true then -- (a menu has the camera and the mouse)
 		if fadeNow > 0 then fade(ch, 0) end
+		showHats(ch)
 		return
 	end
 	if me:GetAttribute("ThirdPerson") ~= true then
@@ -199,11 +246,14 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 		S.frac = math.min(S.frac, S.leaveFrac * (1 - u * u * (3 - 2 * u)))
 	end
 	cam.CFrame = CFrame.new(focus + dir * want * S.frac) * rot
-	fade(ch, 1 - math.clamp((want * S.frac - C.fadeNear) / (C.fadeFar - C.fadeNear), 0, 1))
+	local wall = 1 - math.clamp((want * S.frac - C.fadeNear) / (C.fadeFar - C.fadeNear), 0, 1)
+	fade(ch, wall)
+	hats(ch, cam, wall, a, dt)
 end)
 
 -- a new body: back over the shoulder from the start (and shown)
 me.CharacterAdded:Connect(function(ch)
+	table.clear(hatFade)
 	if S.on then
 		S.frac = C.startBack
 		task.defer(function() fadeNow = -1; fade(ch, 0) end)
