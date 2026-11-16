@@ -724,6 +724,82 @@ off it. Heights are measured on the root, so they read below the maths' 4.9 / 7.
   - Photo: `roblox/docs/rooftop-v2/side_by_side_pads.jpg` (three pads showing "match on" at once).
 - **Not tested:** real players in two matches at once (a play test has one player), and phones. With no streaming, every copy is about 4,600 more parts on every screen; the cap of 6 is what bounds that.
 
+## 26. Training: the owner's play-test notes, a sealed hall, live fire, three range lanes, the mirror, 16 November 2026 (place version 373)
+
+The owner play-tested training and sent two lists. The first said:
+- "the red dummy doesnt be able to shoot you from the center of the training hub"
+- "when you go up to garage doors can they slide up"
+- "when you get close you hear a click and the laser gate turns off?"
+- "in course ... arrows leading to like a rectangular hole in the ground is that going to be something?"
+- "some of the props dont look super like rivals ones!"
+- "there is a roof in the dummy part of the training hub that lets you clip through it and get outside"
+
+The second came with photos: a redundant arrow, two wall openings each with a lone gold dummy, the empty back of the range, the dummy hall's props and dummies, and "what is the slope to the cylinder thingy?".
+
+**The hole.** The dummy yard's vault and the muster's crown are kit meshes that nothing touches. The yard's side walls also stopped at the vault's springing (y 258.6) while the roof sat at 270.5. So a grapple went through the vault, and you could walk out over the wall tops.
+- The walls now go up to the roof.
+- Thick unseen solids line the inside of the vault (16 arc segments, 4 thick) and of the crown (cove, ring, lantern drum and cap).
+- Unseen lids now close the range lane (4 over its walls' tops) and the course's skylight drum, which were open to the sky too.
+- `T.check` proves the hall is sealed, the same way the hub's leak test does. From 54 points inside every room, a ray each way (26) must meet something solid (CanCollide) within 300 studs. Where a ray ends on a skin under 2 studs thick with nothing behind it, that skin is listed. Result: 1404 rays, 0 leaks.
+- In Play, launches at 300 studs/s from the game's own pads stopped at the yard's vault (y 265.8 against its 268 crown), in the yard's corner and inside the muster's lantern cap.
+
+**Live fire, not the whole hall** (the owner: "an area where you can activate dummies that shoot back, that way they don't shoot into the main hub area"):
+- The red dummies are off by default.
+- The yard's stage end is the live-fire end, behind an amber-and-slate band, with LIVE FIRE on the floor. Two shooters ("Plinker", "Plinker2") stand at its far corners.
+- Hold E at the console on the line and, for 90 s (or until the end has stood empty for 8 s), they fire at whoever is inside the end. The posts' lamps turn red.
+- Their shots are cut off at the line, so nothing reaches the rest of the hall.
+- `Hub.TrainingGround.LiveFire` holds the data (Zone, LiveButton with its Prompt, lamps, the attribute Line). Dummies.luau runs it; in Studio, `ServerStorage.LiveTest` answers "on", "off" and "state".
+- Tested in Play: off, nothing. On, inside: HP 100 to 16 in 3.5 s. On, outside the line: nothing.
+
+**The dummy yard:**
+- Lines across the floor at 10, 20 and 30 m from the yard's mouth, with big numbers on the floor.
+- The two standing dummies are on the 10 m line, the moving one strafes along the 20 m line, and the shooters are past 30 m.
+- Dummies are cardboard-coloured with a ring on the chest; the shooters are slate with a red ring. No name tags.
+- The cover pillars and low cover walls are remodelled.
+
+**The range** (the owner: "keep in mind there will be multiple people in these hubs"):
+- Three lanes, one per plate (CHILL, NORMAL, SWEATY), each with its own run at the same time. A Carl pops only on his lane's nine spots.
+- The board has a row per lane and the last thing that happened.
+- Low dividers run down the lane between the booths.
+- The empty back of the deck now has a kit counter with a case and an ammo crate behind each lane, a slate rack with the lanes' names, a "best today" board and two benches.
+- `RangeTest` runs them; the spots carry the attribute Lane.
+
+**Doors:**
+- The back lot's garage door and the muster's shutter (the gate home) roll up when you walk up, smoothly on each screen, with a motor's whirr, and roll down after you.
+- The garage door keeps its egg. Locked, it jumps a hand's width, clatters and drops while LOCKED flashes. Once you have opened it (the gold Carls), it rolls up for you like the shutter. From the lot it always lets you back in.
+- The server (TheLot) decides when it moves and whether the slats block. An unseen 4-thick DoorBlock stops anyone pushing through the thin slats. The new client script `TrainingDoors.client` moves the slats.
+
+**The laser gates** aren't training's. The red gate into training is the hub's (HubRotundaRooms: LaserVoid, LaserField, LaserBar), and the playground's ReturnDoor.LaserVoid is the playground's. `TrainingDoors.client` already handles any model tagged `LaserGate`: its LaserBar and LaserField parts switch off with a click while someone is within Near (default 9) and come back on with a click after. The gate's owner only has to tag it.
+
+**The two openings:**
+- The arched bench bay is the mirror now. You stand there as a hologram in the hub's style: see-through, a soft fill and outline, turning slowly over a lens, holding what you hold.
+- The course bay is just the lit end of the view again.
+- The gold Carls now stand where targets belong: on the yard's 30 m line, on the range's first beam and on top of the course's tower. The panel's labels read YARD, RANGE, COURSE.
+
+**The course:**
+- The "hole" is a long-jump pit now: 1.5 deep, a line and number every 4 studs, JUMP before the amber line, a LONG JUMP sign. Land in it and the distance shows (FOUL if you crossed the line).
+- The arrows to the first pad and down the slide lane are gone.
+- The "slope to the cylinder" was the chute from the tower's top back to the start. From below it read as a ramp up, and the pad already does that, so it's gone.
+
+**Tested in Play** (two tests):
+- the seal (above) and live fire (above)
+- the garage door rattling and then rolling up, and its DoorBlock letting go
+- the shutter rolling up as you walk up (all 9 slats into the head)
+- the mirror's hologram holding the Shredder
+- a range run on one lane with its Carl in that lane, and the board's rows
+- the long-jump readout ("LONG JUMP · 30.4")
+
+The photo sheet is `roblox/docs/training/training_notes_play.jpg`.
+
+**Props and flicker:**
+- Kit 6 (131746416943530) remodels the cover, block, booth and bench (plinths, inset panels, slate guards, rounded caps). It also fixes the target's rings, the crown's drum, the frames' band and the tower's base.
+- About 40 face pairs from the flicker list were lifted, inset or trimmed in the builders. The training hall went from 537 visible pairs to 342 by ZFight; most of what is left is underground bottoms. The flicker session is adding `T.dezfight` (run at the end of every build) to TrainingV2 for the rest.
+
+**Left:**
+- kit-internal flicker (tl_portal, the tower's trim cap), and the rest after T.dezfight
+- the laser gates' tag (hub and playground)
+- a judge pass on the new range back and the yard's props
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
