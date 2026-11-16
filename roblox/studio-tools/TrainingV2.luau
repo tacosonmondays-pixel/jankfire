@@ -40,7 +40,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 16
+T.PUSH = 17
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -477,26 +477,24 @@ local function muster(B)
 	-- it, maybe it can be another room, or it can be a hologram version of your avatar". it is the mirror now: you, as
 	-- a hologram in the hub's style, holding your loadout and turning slowly over a lens. TrainingDoors.client draws it
 	-- on your screen only; MirrorSpot is where it stands)
-	B.fbox(S, "Shell", "MirrorPlinth", -3.4, 3.4, MY - 1, MY + 0.6, A + WALL + 1.6, A + WALL + 6, P.pier2)
-	-- (its front slopes down to the floor with a plate on it: your name and @handle. the bay's side walls carry two
-	-- boards: your rank, level and XP on the left, your numbers on the right. the owner, 16 Nov: "maybe at a plate with
-	-- your username and a display of stats??". TrainingDoors.client fills them on your screen only, from your own card)
-	B.fbox(S, "Shell", "MirrorPlinthToe", -3.38, 3.38, MY - 1, MY - 0.5, A + WALL + 0.45, A + WALL + 1.65, P.pier2)
-	B.part("Shell", "MirrorPlinthSlope", S * CF(0, MY + 0.04, -(A + WALL + 1.05)) * CFrame.Angles(0, math.pi, 0), V3(6.7, 1.12, 1.2), P.pier2, { wedge = true })
-	do
-		local plaque = B.part("Scenery", "MirrorPlaque", S * CF(0, MY + 0.04, -(A + WALL + 1.05)) * CFrame.Angles(math.atan2(1.12, 1.2), 0, 0) * CF(0, 0.07, 0), V3(5.8, 0.1, 1.3), P.board, { ghost = true })
+	-- (16 Nov, the owner: "I was thinking more of like a podium thing", for the name and the numbers that were on the
+	-- bay's walls. the hologram stands on a two-step podium: the lower step's front is a strip of tiles with your
+	-- numbers (rank, kills, K/D, wins, best streak), the upper step's front your name, @handle and level.
+	-- TrainingDoors.client fills both on your screen only, from your own card)
+	B.fbox(S, "Shell", "MirrorPodium", -5, 5, MY - 1, MY + 0.6, A + WALL + 0.5, A + WALL + 6.05, P.pier2)
+	B.fbox(S, "Shell", "MirrorPodiumCap", -5.1, 5.1, MY + 0.55, MY + 0.72, A + WALL + 0.4, A + WALL + 6.05, P.trim)
+	B.fbox(S, "Shell", "MirrorPodiumTop", -3.6, 3.6, MY + 0.68, MY + 1.42, A + WALL + 1.6, A + WALL + 6.03, P.pier2)
+	B.fbox(S, "Shell", "MirrorPodiumTopCap", -3.7, 3.7, MY + 1.38, MY + 1.55, A + WALL + 1.5, A + WALL + 6.04, P.trim)
+	local function podiumFace(name, x0, x1, y0, y1, d, pps)
+		local f = B.fbox(S, "Scenery", name, x0, x1, y0, y1, d - 0.06, d + 0.02, P.board, { ghost = true })
 		local g = Instance.new("SurfaceGui")
-		g.Name = "Gui"; g.Face = Enum.NormalId.Top; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 60; g.LightInfluence = 0
-		g.Parent = plaque
-		for _, sd in { { -1, "MirrorBoardRank", Enum.NormalId.Right }, { 1, "MirrorBoardStats", Enum.NormalId.Left } } do
-			local x0 = sd[1] * 6.25
-			local bd = B.fbox(S, "Scenery", sd[2], math.min(x0, x0 - sd[1] * 0.35), math.max(x0, x0 - sd[1] * 0.35), MY + 2.4, MY + 9.4, A + WALL + 0.7, A + WALL + 4.5, P.board, { ghost = true })
-			local bg = Instance.new("SurfaceGui")
-			bg.Name = "Gui"; bg.Face = sd[3]; bg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; bg.PixelsPerStud = 50; bg.LightInfluence = 0
-			bg.Parent = bd
-		end
+		g.Name = "Gui"; g.Face = Enum.NormalId.Back; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = pps; g.LightInfluence = 0
+		g.Parent = f
+		return f
 	end
-	local lensAt = S * CF(0, MY + 0.6, -(A + WALL + 3.8))
+	podiumFace("MirrorPodiumStats", -4.75, 4.75, MY - 0.85, MY + 0.42, A + WALL + 0.5, 70)
+	podiumFace("MirrorPodiumName", -3.4, 3.4, MY + 0.76, MY + 1.32, A + WALL + 1.6, 90)
+	local lensAt = S * CF(0, MY + 1.55, -(A + WALL + 3.8)) -- (on the podium's top)
 	B.part("Scenery", "MirrorLens", lensAt * CFrame.Angles(0, 0, math.pi / 2), V3(0.12, 4.2, 4.2), P.dark, { cyl = true, ghost = true })
 	B.part("Scenery", "MirrorLensGlow", lensAt * CF(0, 0.07, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.05, 3.2, 3.2), "8fd8ff", { cyl = true, ghost = true, mat = NEON })
 	local ms = B.marker(B.root.Scenery, "MirrorSpot", lensAt.X, lensAt.Y + 0.06, lensAt.Z, S:PointToWorldSpace(V3(0, MY, 0)))
@@ -857,7 +855,7 @@ local function range(B)
 	local WZ = RZ0 - 0.5 -- the slatwall's face
 	local GLASS = "d3e0e6"
 	local function glass(name, x0, x1, y0, y1, z0, z1)
-		return B.blk("Scenery", name, x0, x1, y0, y1, z0, z1, GLASS, { mat = Enum.Material.Glass, tr = 0.72, noShadow = true })
+		return B.blk("Scenery", name, x0, x1, y0, y1, z0, z1, GLASS, { mat = Enum.Material.Glass, tr = 0.6, noShadow = true })
 	end
 	local function peg(gun, x, y, z, rot, len, high, out, hook)
 		local p = B.marker(SH, "Peg", x, y, z)
@@ -966,6 +964,83 @@ local function range(B)
 	peg("item:medkit", 74.0, DECK + 1.2, cz, CFrame.identity, 1.8, 2.4, UP)
 	peg("shredder", (TX0 + TX1) / 2, DECK + 4.05, cz, HANG, 6.4, 2.4, UP)
 	peg("katana", (TX0 + TX1) / 2, DECK + 6.75, cz, HANG, 6.6, 2.2, UP)
+	-- (16 Nov, the owner: "gun shop part looks really cute ... can you add more props like cases and bags and cans maybe
+	-- some spilt ones" and "can the cases have more stuff too?": stacked hard cases, duffel bags and ammo cans on the
+	-- floor either side, a box tipped over with its rounds across the floor and one on the counter's glass, and
+	-- magazines, ammo boxes, a scope and loose rounds in the counter and the tall case between the guns)
+	local prng = Random.new(1611)
+	local BRASS, CASE, LATCH = "c9a24a", "3a3e46", "8f9299"
+	local function bit(name, cf, size, hex, cyl) return B.part("Scenery", name, cf, size, hex, { ghost = true, cyl = cyl }) end
+	local function hardCase(x, y, z, yaw, len)
+		local F = CF(x, y, z) * CFrame.Angles(0, yaw, 0)
+		bit("HardCase", F * CF(0, 0.29, 0), V3(len, 0.6, 1.5), CASE)
+		bit("HardCaseRim", F * CF(0, 0.32, 0), V3(len + 0.06, 0.1, 1.56), P.slate)
+		bit("HardCaseHandle", F * CF(0, 0.32, -0.81), V3(0.9, 0.16, 0.14), P.slate)
+		for _, sx in { -0.32, 0.32 } do bit("HardCaseLatch", F * CF(sx * len, 0.32, -0.79), V3(0.3, 0.22, 0.1), LATCH) end
+	end
+	local function duffel(x, y, z, yaw, len, hex)
+		local F = CF(x, y, z) * CFrame.Angles(0, yaw, 0)
+		bit("Duffel", F * CF(0, 0.66, 0), V3(len, 1.36, 1.36), hex, true)
+		for _, sx in { -1, 1 } do bit("DuffelEnd", F * CF(sx * (len / 2 - 0.05), 0.66, 0), V3(0.16, 1.2, 1.2), P.slate, true) end
+		for _, sx in { -0.22, 0.22 } do bit("DuffelStrap", F * CF(sx * len, 0.66, 0), V3(0.2, 1.42, 1.42), P.slate, true) end
+		bit("DuffelHandle", F * CF(0, 1.38, 0), V3(len * 0.5, 0.12, 0.28), P.slate)
+	end
+	local function canAt(x, y, z, yaw)
+		local F = CF(x, y, z) * CFrame.Angles(0, yaw, 0)
+		bit("AmmoCan", F * CF(0, 0.49, 0), V3(1.7, 1.02, 0.94), "6c7466")
+		bit("AmmoCanLid", F * CF(0, 1.06, 0), V3(1.8, 0.16, 1.04), "5c6358")
+		bit("AmmoCanHandle", F * CF(0, 1.19, 0), V3(0.9, 0.14, 0.2), P.slate)
+	end
+	local function round(cf) bit("Round", cf, V3(0.42, 0.13, 0.13), BRASS, true) end -- (lying: its middle 0.06 up)
+	-- a small box tipped on its side, its rounds out across the surface in a fan
+	local function spill(x, y, z, yaw, n, reach)
+		local F = CF(x, y, z) * CFrame.Angles(0, yaw, 0)
+		reach = reach or 1.6
+		bit("AmmoBoxTipped", F * CF(0, 0.28, 0) * CFrame.Angles(0, 0, math.rad(84)), V3(0.6, 0.95, 0.7), "b49a7a")
+		for i = 1, n do
+			local d = 0.5 + prng:NextNumber() * reach
+			local a = prng:NextNumber(-0.7, 0.7) * math.min(1, reach / 1.6)
+			round(F * CF(d * math.cos(a) + 0.3, 0.06, d * math.sin(a)) * CFrame.Angles(0, prng:NextNumber() * 6.28, 0))
+		end
+	end
+	local function ammoBox(cf, hex) bit("AmmoBox", cf * CF(0, 0.17, 0), V3(0.62, 0.36, 0.9), hex or "b49a7a") end
+	local function mag(cf) bit("Magazine", cf * CF(0, 0.12, 0), V3(0.95, 0.26, 0.5), "2e3238") end
+	-- the floor, west: two hard cases stacked, a duffel, a can, a spill
+	hardCase(35.2, DECK, RZ0 - 5.2, 0.05, 4.2)
+	hardCase(35.4, DECK + 0.58, RZ0 - 5.3, -0.08, 3.6)
+	duffel(39.4, DECK, RZ0 - 4.6, 1.45, 3.0, "4f5868")
+	canAt(33.0, DECK, RZ0 - 7.6, 0.4)
+	spill(36.8, DECK, RZ0 - 8.6, 2.6, 9)
+	B.solid("ShopPropBox", CF(36.4, DECK + 0.8, RZ0 - 5.8), V3(8.8, 1.6, 4.4))
+	-- the floor, east: cans stacked in front of the tall case, a duffel, a long case on its side
+	canAt(69.6, DECK, RZ0 - 6.6, 0.1)
+	canAt(71.6, DECK, RZ0 - 6.7, -0.15)
+	canAt(70.6, DECK + 1.12, RZ0 - 6.6, 0.3)
+	duffel(74.6, DECK, RZ0 - 7.1, 0.2, 3.2, "5c6358")
+	spill(72.8, DECK, RZ0 - 9.4, -2.2, 8)
+	B.solid("ShopPropBox", CF(72.2, DECK + 1.1, RZ0 - 6.9), V3(8.4, 2.2, 2.6))
+	-- the counter: a box spilt on its glass by the till end
+	spill(62.2, DECK + 3.4, (CZ0 + CZ1) / 2, math.pi - 0.3, 6, 0.9)
+	-- in the counter, between the guns and items: rounds, magazines, ammo boxes, a scope
+	local bz = (CZ0 + CZ1) / 2
+	local bed = DECK + 1.6
+	ammoBox(CF(44.7, bed, bz + 0.3) * CFrame.Angles(0, 0.2, 0))
+	for k = 0, 4 do round(CF(44.4 + k * 0.22, bed + 0.06, bz - 0.6) * CFrame.Angles(0, math.pi / 2, 0)) end
+	mag(CF(48.3, bed, bz + 0.35) * CFrame.Angles(0, 0.3, 0)); mag(CF(48.5, bed, bz - 0.4) * CFrame.Angles(0, -0.2, 0))
+	bit("Scope", CF(52.3, bed + 0.2, bz) * CFrame.Angles(0, 0.15, 0), V3(1.7, 0.36, 0.36), "2e3238", true)
+	for _, dx in { -0.62, 0.62 } do bit("ScopeRing", CF(52.3 + dx, bed + 0.2, bz + dx * 0.15), V3(0.12, 0.46, 0.46), P.slate, true) end
+	ammoBox(CF(56.2, bed, bz) * CFrame.Angles(0, -0.25, 0), "c8bdae")
+	mag(CF(59.8, bed, bz + 0.3) * CFrame.Angles(0, 0.1, 0)); mag(CF(59.9, bed, bz - 0.45) * CFrame.Angles(0, 0.35, 0))
+	ammoBox(CF(63.2, bed, bz + 0.35) * CFrame.Angles(0, 0.1, 0), "8f9299")
+	for k = 0, 3 do round(CF(62.9 + k * 0.24, bed + 0.06, bz - 0.55) * CFrame.Angles(0, math.pi / 2, 0)) end
+	-- in the tall case: a box between the duck and the medkit, magazines and boxes along each shelf's front
+	local fz = TZ1 + 0.75
+	ammoBox(CF(72.55, DECK + 1.2, cz) * CFrame.Angles(0, 0.1, 0), "c8bdae")
+	for _, y in { DECK + 4.05, DECK + 6.75 } do
+		mag(CF(70.0, y, fz) * CFrame.Angles(0, 0.2, 0))
+		ammoBox(CF(72.4, y, fz) * CFrame.Angles(0, math.pi / 2, 0))
+		for k = 0, 3 do round(CF(74.2 + k * 0.24, y + 0.06, fz) * CFrame.Angles(0, math.pi / 2, 0)) end
+	end
 	-- a white light on the gun wall, a warm one on the shelf
 	B.lamp(54, CY - 1.0, RZ0 - 9, "spot", 22, 0.8, P.lampWhite, { look = V3(54, DECK + 8, RZ0), angle = 100 })
 	B.lamp(36.4, CY - 1.0, RZ0 - 7, "spot", 16, 0.5, P.warm, { look = V3(36.4, DECK + 6, RZ0), angle = 90 })

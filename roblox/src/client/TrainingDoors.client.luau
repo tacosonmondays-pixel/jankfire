@@ -16,7 +16,7 @@
 --     lane, jump at the line, and how far you got shows when you land
 --   * the mirror (the muster's bay; a part MirrorSpot): while you are in training you stand there as a hologram in the
 --     hub's style (see-through, a soft fill and outline, turning slowly over its lens), holding what you hold. the owner,
---     16 Nov: "it can be a hologram version of your avatar"; its plate and two boards show your name, rank and numbers
+--     16 Nov: "it can be a hologram version of your avatar"; its podium shows your name, rank and numbers
 --   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
 -- the slats' shut places are their attribute Shut (a CFrame); a Model's Lift is how far up they go and Top the height
 -- over which a slat is inside the wall (hidden)
@@ -259,11 +259,12 @@ local function mirrorStep(dt: number)
 	hr.CFrame = spot.CFrame * CFrame.new(0, up + 0.1, 0) * CFrame.Angles(0, spin, 0)
 end
 
--- ---------------------------------------------------------------- the mirror's plate and boards
--- the plate on the plinth's sloped front: your name and @handle; the board on the bay's left wall: your rank (its
--- badge, name, level and XP to the next); the one on the right: your numbers, from your own card (Stats' Profile
--- remote, "card"). on your screen only: everyone sees their own (the owner, 16 Nov: "maybe at a plate with your
--- username and a display of stats??"). filled while you are in training, again every 30 s and when your XP moves
+-- ---------------------------------------------------------------- the mirror's podium
+-- the hologram stands on a two-step podium: the upper step's front shows your rank's badge, your name, @handle and
+-- level; the lower step's front a strip of tiles with your numbers, from your own card (Stats' Profile remote, "card").
+-- on your screen only: everyone sees their own (the owner, 16 Nov: "maybe at a plate with your username and a display
+-- of stats??", then "I was thinking more of like a podium thing"). filled while you are in training, again every 30 s
+-- and when your XP moves
 local RS = game:GetService("ReplicatedStorage")
 local SharedM = RS:WaitForChild("Jankfire")
 local Ranks = require(SharedM:WaitForChild("Ranks"))
@@ -309,63 +310,48 @@ local function pct(a: number?, b: number?): string
 	local x, y = tonumber(a) or 0, tonumber(b) or 0
 	return if y > 0 then ("%d%%"):format(math.floor(x / y * 100 + 0.5)) else "—"
 end
-local function fillPlaque()
-	local f = layer("MirrorPlaque")
-	if not f then return end
-	label(f, "Name", string.upper(me.DisplayName), 0.04, 0.08, 0.92, 0.52, PALE, Enum.FontWeight.Heavy)
-	label(f, "Handle", "@" .. me.Name, 0.04, 0.62, 0.92, 0.28, GREY, Enum.FontWeight.SemiBold)
-end
-local function fillRank()
-	local f, px = layer("MirrorBoardRank")
+-- the upper step: your rank's badge, your name, @handle, level
+local function fillName()
+	local f, px = layer("MirrorPodiumName")
 	if not f then return end
 	local r = Ranks.of(me:GetAttribute("Xp") :: any)
-	label(f, "Head", "RANK", 0.08, 0.04, 0.84, 0.06, GREY, Enum.FontWeight.Bold)
-	local bs = math.floor(math.min(px.X * 0.66, px.Y * 0.34))
+	local bs = math.floor(px.Y * 0.84)
 	local ok, b = pcall(Ranks.badge, f, bs, r)
-	if ok and b then b.AnchorPoint = Vector2.new(0.5, 0); b.Position = UDim2.fromScale(0.5, 0.12) end
-	label(f, "RankName", string.upper(r.name), 0.06, 0.5, 0.88, 0.09, PALE, Enum.FontWeight.Heavy)
-	label(f, "Level", ("LEVEL %d"):format(r.level), 0.06, 0.61, 0.88, 0.065, AMBER, Enum.FontWeight.Bold)
-	local bar = Instance.new("Frame")
-	bar.Name = "XpBar"; bar.BackgroundColor3 = DEEP; bar.BorderSizePixel = 0
-	bar.Position = UDim2.fromScale(0.1, 0.73); bar.Size = UDim2.fromScale(0.8, 0.04); bar.Parent = f
-	Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"; fill.BackgroundColor3 = AMBER; fill.BorderSizePixel = 0
-	fill.Size = UDim2.fromScale(math.clamp(r.progress, 0.03, 1), 1); fill.Parent = bar
-	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
-	label(f, "Xp", ("%s / %s XP"):format(comma(r.into), comma(r.need)), 0.06, 0.79, 0.88, 0.05, GREY, Enum.FontWeight.SemiBold)
-	label(f, "Total", ("%s XP IN ALL"):format(comma(r.xp)), 0.06, 0.86, 0.88, 0.04, GREY, Enum.FontWeight.Medium)
+	if ok and b then b.AnchorPoint = Vector2.new(0, 0.5); b.Position = UDim2.new(0, math.floor(px.Y * 0.12), 0.5, 0) end
+	local x0 = (px.Y * 1.1) / math.max(px.X, 1)
+	label(f, "Name", string.upper(me.DisplayName), x0, 0.06, 0.66 - x0, 0.58, PALE, Enum.FontWeight.Heavy, Enum.TextXAlignment.Left)
+	label(f, "Handle", "@" .. me.Name, x0, 0.66, 0.66 - x0, 0.28, GREY, Enum.FontWeight.SemiBold, Enum.TextXAlignment.Left)
+	label(f, "Rank", string.upper(r.name), 0.66, 0.1, 0.31, 0.42, AMBER, Enum.FontWeight.Heavy, Enum.TextXAlignment.Right)
+	label(f, "Level", ("LEVEL %d"):format(r.level), 0.66, 0.56, 0.31, 0.32, GREY, Enum.FontWeight.Bold, Enum.TextXAlignment.Right)
 end
+-- the lower step: five tiles of your numbers
 local function fillStats()
-	local f = layer("MirrorBoardStats")
+	local f = layer("MirrorPodiumStats")
 	if not f then return end
-	label(f, "Head", "YOUR NUMBERS", 0.06, 0.04, 0.88, 0.06, GREY, Enum.FontWeight.Bold)
 	local s = myCard and myCard.stats
-	if type(s) ~= "table" then
-		label(f, "Wait", "counting…", 0.1, 0.42, 0.8, 0.07, GREY, Enum.FontWeight.SemiBold)
-		return
-	end
-	local k, d = tonumber(s.k) or 0, tonumber(s.d) or 0
-	local rows = {
-		{ "KILLS", comma(k) },
-		{ "K/D", if d > 0 then ("%.2f"):format(k / d) elseif k > 0 then ("%.2f"):format(k) else "—" },
-		{ "WINS", comma(s.w) },
-		{ "WIN RATE", pct(s.w, s.m) },
-		{ "HEADSHOT %", pct(s.hs, s.hc) },
-		{ "ACCURACY", pct(s.hi, s.sh) },
-		{ "BEST STREAK", tostring(tonumber(s.best) or 0) },
+	local ok = type(s) == "table"
+	local k, d = if ok then tonumber(s.k) or 0 else 0, if ok then tonumber(s.d) or 0 else 0
+	local w = myCard and type(myCard.weapons) == "table" and myCard.weapons[1]
+	local e = type(w) == "table" and type(w.id) == "string" and Roster.byId[w.id]
+	local tiles = {
+		{ "KILLS", if ok then comma(k) else "—" },
+		{ "K/D", if not ok then "—" elseif d > 0 then ("%.2f"):format(k / d) elseif k > 0 then ("%.2f"):format(k) else "—" },
+		{ "WINS", if ok then comma(s.w) else "—" },
+		{ "HEADSHOT %", if ok then pct(s.hs, s.hc) else "—" },
+		{ "BEST STREAK", if ok then tostring(tonumber(s.best) or 0) else "—" },
+		{ "MOST HELD", if e then string.upper(e.name) elseif type(w) == "table" then string.upper(tostring(w.id)) else "—" },
 	}
-	local y = 0.14
-	for i, row in rows do
-		label(f, "K" .. i, row[1], 0.08, y, 0.5, 0.055, GREY, Enum.FontWeight.SemiBold, Enum.TextXAlignment.Left)
-		label(f, "V" .. i, row[2], 0.5, y, 0.42, 0.055, PALE, Enum.FontWeight.Heavy, Enum.TextXAlignment.Right)
-		y += 0.085
-	end
-	local w = type(myCard.weapons) == "table" and myCard.weapons[1]
-	if type(w) == "table" and type(w.id) == "string" then
-		local e = Roster.byId[w.id]
-		label(f, "FavHead", "MOST HELD", 0.08, y + 0.03, 0.84, 0.045, GREY, Enum.FontWeight.Bold, Enum.TextXAlignment.Left)
-		label(f, "Fav", string.upper(if e then e.name else w.id), 0.08, y + 0.085, 0.84, 0.07, AMBER, Enum.FontWeight.Heavy, Enum.TextXAlignment.Left)
+	local n = #tiles
+	for i, t in tiles do
+		local x = (i - 1) / n
+		label(f, "K" .. i, t[1], x + 0.012, 0.1, 1 / n - 0.024, 0.24, GREY, Enum.FontWeight.Bold)
+		label(f, "V" .. i, t[2], x + 0.012, 0.38, 1 / n - 0.024, 0.5, if i == n then AMBER else PALE, Enum.FontWeight.Heavy)
+		if i > 1 then
+			local line = Instance.new("Frame")
+			line.Name = "Rule"; line.BackgroundColor3 = DEEP; line.BorderSizePixel = 0
+			line.Position = UDim2.fromScale(x, 0.14); line.Size = UDim2.new(0, 2, 0.72, 0)
+			line.Parent = f
+		end
 	end
 end
 local function askCard()
@@ -392,7 +378,7 @@ local function boardsStep()
 	local xp = me:GetAttribute("Xp")
 	if now - filledAt > 30 or xp ~= filledXp then
 		filledAt, filledXp = now, xp
-		fillPlaque(); fillRank(); fillStats(); askCard()
+		fillName(); fillStats(); askCard()
 	end
 end
 
@@ -458,7 +444,7 @@ local function scan()
 					pit = m
 				elseif m.Name == "MirrorSpot" and m:IsA("BasePart") then
 					mirrorSpot = m
-				elseif (m.Name == "MirrorPlaque" or m.Name == "MirrorBoardRank" or m.Name == "MirrorBoardStats") and m:IsA("BasePart") then
+				elseif (m.Name == "MirrorPodiumName" or m.Name == "MirrorPodiumStats") and m:IsA("BasePart") then
 					boards[m.Name] = m
 				end
 			end

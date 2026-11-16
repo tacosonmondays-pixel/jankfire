@@ -865,6 +865,61 @@ Now (push 33): `R.check()` 37 keep-clear zones, 0 problems, 0 leaks, 286 sight l
 - The holograms on phones and slow machines.
 - The punch bags, tyres and dumbbells of the new kit are not used since the gym became the hall; they stay in the kit.
 
+## 28. Training: a gun shop with the owner behind the counter, your own range targets, the mirror's podium, the owner's notes, 16 November 2026 (place versions 420 and up)
+
+The owner asked for a gun shop behind the range ("with an npc me"), for every player on the range to get their own targets, and for the mirror hologram to show your name and stats. Notes on the hall and the back lot followed.
+
+**The gun shop** (TrainingV2, at the back of the range deck):
+- A slatwall let into the back wall with 12 of our guns on hooks, a glass counter with the sidearms and items under its glass, a low shelf of ammo boxes with headsets on hooks over it, and a tall lit glass case (Shredder, katana, duck).
+- Props since the owner's "add more props": stacked hard cases, duffel bags, ammo cans, a box spilt across the floor and one on the counter's glass, and magazines, ammo boxes, a scope and loose rounds between the guns.
+- No words, names or marks anywhere.
+- The guns are made when the server starts (`ShopKeeper.server.luau`, from `WeaponModels` at hand size), at the Pegs in `Range.Shop`. Each Peg carries Gun, Len, High, Out and Hook attributes. They are always today's models.
+- The place behind the counter is shut off (`ShopBox`, up to the canopy).
+
+**The shopkeeper** is the owner's avatar, the same for every player (the owner: "I'll be the shop owner").
+- `ShopKeeper.server` builds it with `CreateHumanoidModelFromUserId(2833796200)` each time a server starts. If Roblox won't give it, it uses the saved copy `ServerStorage.ShopKeeperCopy`.
+- It is anchored and idles, takes no shots, and has a "Shop" prompt (`ShopOpen = "tab:featured"`). It waves when someone opens the shop.
+
+**Range targets per player:**
+- Each runner gets his own Carls. Any number of people can stand on one plate.
+- A Carl carries the attribute `Owner` (his runner's UserId), and its fighter carries `onlyFor`. `Fight.hurt` drops any hit from anyone else.
+- Every other client moves him out of its world (`TrainingDoors.client`), so he is not drawn, aimed at or outlined, and `Arsenal` throws no blood off him.
+- A kill counts only from the runner, and not within 0.12 s of the Carl popping up.
+- In Studio, `ServerStorage.RangeHook` runs a ghost runner: "ghost", "hold", "hit", "cross", "ghosthit", "state". The client attribute `ViewAs` shows another runner's view.
+- Tested in Play with the ghost on NORMAL: each screen sees only its own Carl. Your shot at the ghost's Carl does 0; your own Carl and the ghost's both count (board: "Pompompoo 01 · Ghost 01").
+
+**The mirror:**
+- The hologram is always on while you are in training (the owner: "can your big hologram just be active always?").
+- It stands on a two-step podium (the owner: "I was thinking more of like a podium thing"). The upper step's front shows your rank badge, name, @handle and level. The lower step's front is a strip of tiles: kills, K/D, wins, headshot %, best streak, most held.
+- Each client fills these from its own card (Stats' Profile remote), so every player sees their own.
+
+**The owner's notes:**
+- The live-fire console is at the yard's door now: you switch it on as you come in.
+- The long-jump pit is gone, with its lane, words, lines and numbers.
+- The pad by the course tower is gone. The pads' arrows point the way they throw you: `bc_jumppad`'s arrows run along its -Z.
+- Flavour text is cut:
+  - the board's joke line and the MIRROR word
+  - the Carl verdicts and "25 cardboard men incoming"
+  - the back lot board's last line
+  - the garage callouts (TheLot)
+- The big figure on the long lane's backstop is gone. The "Back" bubble stays, as the owner asked.
+- Trees: each stands upright where rays down at four sides of its trunk meet the berms or the ridge. The ridge is a faceted mesh that sits up to about 1.5 studs under its ellipsoid, which is why trees floated. Steep spots move a tree to flatter ground, and a ground-coloured foot hides the seam. `L.check` now counts trees with a gap or a buried side.
+- The treeline is groves, not a scatter (the owner: "the trees were sort of just spammed"):
+  - one kind of tree per grove
+  - round trees along the berms round the lot, pines on the outer berms and on the near ridge's tops
+  - a line of plain dark crowns along the tall ridge's crest
+  - nothing on the steep faces
+
+**Checks:**
+- Place version 420: hall sealed (1404 rays, 0 leaks), 27 of 27 plate-to-Carl lines clear, ZFight 1 visible pair (a kit target).
+- Place version 426 (podium, props, groves): the same results, and 79 trees with 0 gaps and 0 buried. The ridge still hides the playground (76/76 from every eye point).
+- The near ridge's tops proved too steep for the pine groves (all left out), so the hill faces stay grass.
+- Photo sheets: `roblox/docs/training/gun_shop_sheet.jpg` and `gun_shop_sheet2.jpg`.
+
+**Traps:**
+- `screen_capture` calls in parallel time out: take them one at a time.
+- A commit swept in another session's unfinished Arsenal change (1fb2d29); a2d6e3c took it back. Before committing a shared file, check `git diff --cached` for other sessions' hunks, not just `--stat`.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

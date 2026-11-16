@@ -583,8 +583,8 @@ local function land()
 		return lo, hi
 	end
 	local moved, dropped, feet = 0, 0, 0
-	local function tree(x, z, _y, s)
-		local round = rng:NextNumber() < 0.55
+	local function tree(x, z, _y, s, kind)
+		local round = if kind then kind == "round" else rng:NextNumber() < 0.55
 		local yaw = rng:NextNumber() * 6.28
 		local scale = s or (1.1 + rng:NextNumber() * 0.9)
 		local r = L.TREE.r * scale
@@ -611,25 +611,52 @@ local function land()
 			feet += 1
 		end
 	end
-	for z = -8300, -8780, -17 do tree(-200 + rng:NextNumber() * 6, z + rng:NextNumber() * 6, 251.5); tree(200 - rng:NextNumber() * 6, z + rng:NextNumber() * 6, 251.5) end
-	for x = -190, 190, 17 do tree(x + rng:NextNumber() * 6, -8750 - rng:NextNumber() * 6, 251.5) end
-	for x = -190, -112, 17 do tree(x + rng:NextNumber() * 4, -8284 + rng:NextNumber() * 4, 251.5) end
-	for x = 104, 190, 17 do tree(x + rng:NextNumber() * 4, -8284 + rng:NextNumber() * 4, 251.5) end
-	for z = -8270, -8610, -22 do tree(-236 - rng:NextNumber() * 6, z, 258); tree(236 + rng:NextNumber() * 6, z, 258) end
-	-- clumps of big trees on the ridge's lower slopes
-	-- (the berm and its trees stand in front of the ridge's steep foot)
-	for _, c in { { -230, -8764 }, { -120, -8762 }, { -20, -8768 }, { 90, -8764 }, { 200, -8762 }, { 290, -8760 }, { -290, -8760 } } do
-		for _ = 1, 5 do
-			local x, z = c[1] + rng:NextNumber(-16, 16), c[2] + rng:NextNumber(-4, 4)
-			local y = ridgeY(x, z)
-			if y then tree(x, z, y - 1.5, 2 + rng:NextNumber() * 0.6) end
+	-- the treeline (16 Nov, the owner: "the trees were sort of just spammed"): groves, not a scatter. one kind of tree to
+	-- a grove, 3 to 7 of them, open grass between. round trees low, on the berms round the lot (the fullest line);
+	-- pines higher, on the outer berms and in small groves on the near ridge's tops, where it is flat enough to stand;
+	-- far off, a soft line of plain dark crowns along the tall ridge's crest. nothing on the steep faces: those stay grass
+	local function grove(cx, cz, n, kind, rx, rz, s0, s1)
+		local turn = rng:NextNumber() * 6.283
+		for i = 1, n do
+			local a = turn + (i / n) * 6.283 + rng:NextNumber(-0.35, 0.35)
+			local d = if i == n and n % 2 == 1 then 0 else 0.5 + rng:NextNumber() * 0.5
+			tree(cx + math.cos(a) * rx * d, cz + math.sin(a) * rz * d, nil, s0 + rng:NextNumber() * (s1 - s0), kind)
 		end
 	end
-	-- rock shelves set into the ridge's lower slopes, behind the tree clumps (one feature for the biggest thing in view)
-	-- (rock shelves were tried in push 10: against the ridge they read as grey discs floating in the sky; dropped)
-	-- a few inside, on the grass between the zones (none in front of the exit, none tall near the climb)
-	for _, t in { { -70, -8556 }, { 88, -8396 }, { 90, -8470 }, { 88, -8560 }, { -60, -8640 }, { 86, -8700 }, { -60, -8330 }, { -104, -8338 } } do
-		tree(t[1], t[2], G)
+	-- the edge: round trees along the berms' crests (west and east along z, the south and north ones along x)
+	for _, g in { { -204, -8330, 5 }, { -204, -8475, 4 }, { -204, -8640, 6 } } do grove(g[1], g[2], g[3], "round", 7, 15, 1.3, 1.9) end
+	for _, g in { { 204, -8370, 4 }, { 204, -8520, 6 }, { 204, -8690, 4 } } do grove(g[1], g[2], g[3], "round", 7, 15, 1.3, 1.9) end
+	for _, g in { { -140, -8754, 5 }, { -20, -8754, 3 }, { 100, -8754, 5 } } do grove(g[1], g[2], g[3], "round", 15, 7, 1.3, 1.9) end
+	grove(-165, -8282, 4, "round", 12, 6, 1.2, 1.6)
+	grove(160, -8282, 3, "round", 10, 6, 1.2, 1.6)
+	-- higher: pines on the outer berms
+	for _, g in { { -234, -8400, 5 }, { -234, -8570, 4 }, { 234, -8440, 4 }, { 234, -8600, 5 } } do grove(g[1], g[2], g[3], "cone", 8, 14, 1.6, 2.3) end
+	-- higher still: small groves of tall pines on the near ridge's tops (its crest line, where tree() finds it flat)
+	for _, r in L.RIDGE do
+		if r[7] == "ridge" and math.abs(r[2] + 8824) < 10 then
+			local c = CF(r[1], 0, r[2]) * CFrame.Angles(0, RAD(r[6]), 0)
+			for _, f in { -0.3, 0.25 } do
+				local q = c:PointToWorldSpace(V3(f * r[3] * 0.7, 0, 0))
+				grove(q.X, q.Z, 3, "cone", 7, 4, 2.4, 3.0)
+			end
+		end
+	end
+	-- far off: plain dark crowns along the tall ridge's crest (low detail: one ball each, half sunk)
+	do
+		local far = L.RIDGE[1]
+		local c, size = CF(far[1], G + far[4] / 2 - 2.5 * far[4] / 2, far[2]) * CFrame.Angles(0, RAD(far[6]), 0), V3(far[3] * 1.4, 5 * far[4] / 2, far[5] * 1.4)
+		for k = -6, 6 do
+			local qx = k * size.X / 2 / 8.5 + rng:NextNumber(-8, 8)
+			local u = (qx / (size.X / 2)) ^ 2
+			if u >= 0.9 then continue end
+			local y = c.Position.Y + size.Y / 2 * math.sqrt(1 - u)
+			local w = 30 + rng:NextNumber() * 16
+			lump("FarTrees", c * CF(qx, y - c.Position.Y - 4, 6), V3(w, 18 + rng:NextNumber() * 6, w * 0.8), if k % 2 == 0 then "6f7d68" else "748270")
+		end
+	end
+	-- a few inside, on the grass between the zones (none in front of the exit, none tall near the climb), in twos
+	for _, t in { { -70, -8556 }, { 88, -8396 }, { 90, -8470 }, { 88, -8560 }, { -60, -8640 }, { 86, -8700 } } do
+		grove(t[1], t[2], 2, "round", 6, 6, 1.1, 1.5)
 	end
 	for _, sh in shapes do sh.p.Parent = sh.parent; sh.p.CanQuery = sh.q end
 	probeHome:Destroy()
