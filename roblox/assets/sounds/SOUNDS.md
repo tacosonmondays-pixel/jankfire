@@ -1,3 +1,6 @@
+> Superseded on 16 Nov 2026: the live sounds are the layered renders in `v2/` (`tools/roblox/render_sfx.mjs`), see
+> `roblox/docs/SOUNDS.md`. The files below are the first renders, kept as the "before".
+
 # JANKFIRE sounds for Roblox (step 2)
 
 Rendered from the web game's synth (`public/js/audio.js`) by `tools/roblox/render_sounds.cjs`. Roblox only plays
