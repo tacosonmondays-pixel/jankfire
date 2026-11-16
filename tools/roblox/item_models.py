@@ -40,6 +40,10 @@ def egg(g, piece, r, ry, at, sub=4, rz=None):
     for v in bm.verts:
         x, y, z = v.co.x * r, v.co.z * ry, v.co.y * (rz if rz is not None else r)  # (icosphere z = up; weapon frame y = up)
         v.co = P(at[0] + x, at[1] + y, at[2] + z)
+    # (swapping the sphere's y and z mirrors it: its faces would point inward, and Roblox draws only a face's front, so
+    # the ball showed its inside and whatever was behind it. turn them all out again)
+    bm.normal_update()  # (recalc_face_normals goes by the stored normals: bring them up to date with the moved verts first)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
     g._add(piece, bm, smooth=lambda f: True)
 
 

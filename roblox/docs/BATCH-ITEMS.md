@@ -216,3 +216,21 @@ hit) stand in for one.
   as before: the animation doesn't hold them up.
 
 ![the calculator and the laptop](items/calc-laptop-sheet.jpg)
+
+### Solid models, livelier hands (owner's asks, place version 371)
+
+- **The see-through frag.** Every round piece the item builder makes (`egg()` in `tools/roblox/item_models.py`) came out
+  inside-out: making the ball swaps two axes, which mirrors it, and Roblox draws only the front of a face, so you saw its
+  inside and the hand behind it. That was the frag's body, the shield puck's lens, the duck's body, eyes and beak and the
+  popper's cap. `egg()` now turns the faces out (normals brought up to date first: `recalc_face_normals` goes by the stored
+  ones). A check over every piece of all 15 models, one connected part at a time, finds none inside-out and no open
+  edges. The four were re-exported and re-imported (asset 126223521855944).
+- **Livelier hands.** The hand's path now runs smoothly through its keys (cubic, by time) instead of easing to a stop at
+  every key. Every item comes up on a quick arc past its hold and settles. Throws (frag, smoke, duck, calculator) wind up
+  by your shoulder, snap forward and follow through forward and down, with a small lean of your view; the item still
+  leaves your hand 0.1 s after the press, as before (a real throw traced in Play: up by 0.05 s, back at 0.07, out of the
+  hand at 0.1, down by 0.3). The medkit twists open and is pulled in to your chest; the reverse card flicks up spinning
+  and is thrust out; the shield puck is lifted and slammed down; the popper kicks your view; the camera's shutter kicks;
+  the wand wiggles while it blows; the goggles get a hand that pulls them down over your eyes (and pushes them back up).
+
+![a frag throw, frame by frame](items/throw-sheet.jpg)

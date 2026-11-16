@@ -136,7 +136,8 @@ local function standIn(name: string): Model
 end
 local MODEL = { frag = "x_frag", smokegren = "x_smoke", smoke = "x_smoke", medkit = "x_medkit", bubble = "x_bubble", popper = "x_popper", reverse = "x_reverse", duck = "x_duck",
 	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg", radar = "x_radar", radarDown = "x_radar", cage = "x_cage",
-	camera = "x_camera", snap = "x_camera", print = "x_camera", photoframe = "x_photoframe", wand = "x_wand" }
+	camera = "x_camera", snap = "x_camera", print = "x_camera", photoframe = "x_photoframe", wand = "x_wand",
+	goggles = "x_nvg", gogglesOff = "x_nvg" }
 local function itemModel(id: string): Model
 	local name = MODEL[id] or ("x_" .. id)
 	local t = templates and templates:FindFirstChild(name)
@@ -218,56 +219,114 @@ end
 -- release / use = when it leaves the hand (the server throws on the press, so the hand is already on its way)
 -- (the one-handed holds sit where Rivals' do at our 80 degree FOV: about 15% left of the crosshair, 25% under it;
 -- the up-in-front ones, the laptop, the print and the wand, stay in front)
+local PI2 = math.pi * 2
+-- every clip comes up on a quick arc that overshoots its hold and settles, does its one motion with some snap, and drops
+-- away; the path runs smoothly through its keys (see sampleClip). cam = a small nod of your view along the way (pitch,
+-- yaw in radians), so a throw leans into it
 local CLIPS = {
-	throw = { dur = 0.52, out = 0.3, release = 0.1, inT = 0.04, keys = {
-		K(0, -0.75, -1.25, -0.95, 0.7, 0.2, 0.35), K(0.06, -0.66, -0.56, -1.3, 0.15, 0.25, 0.25),
-		K(0.18, -0.4, -0.5, -1.8, -0.55, 0.1, 0.05), K(0.52, -0.7, -1.5, -1.1, 0.4, 0.2, 0.3) } },
-	medkit = { dur = 0.82, out = 0.52, release = 0.62, keys = {
-		K(0, -0.7, -1.3, -1.0, 0.6, 0.2, 0.2), K(0.13, -0.52, -0.62, -1.18, 0.2, 0.45, 0.12),
-		K(0.34, -0.5, -0.58, -1.12, 0.32, 0.55, 0.16), K(0.56, -0.62, -0.95, -1.0, 0.5, 0.35, 0.2), K(0.82, -0.75, -1.55, -0.9, 0.7, 0.2, 0.3) } },
-	-- (web pop_popper: snaps up by 0.07 s, the yank at 0.10, eased back by 0.34, gone by 0.5; it pops at 0.08)
-	popper = { dur = 0.5, out = 0.3, release = 9, inT = 0.05, keys = {
-		K(0, -0.7, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.07, -0.56, -0.52, -1.3, -1.05, 0.15, 0.1),
-		K(0.1, -0.54, -0.47, -1.12, -1.35, 0.2, 0.12), K(0.34, -0.58, -0.62, -1.22, -1.0, 0.15, 0.1), K(0.5, -0.75, -1.5, -1.0, 0.3, 0.1, 0.25) } },
-	-- (web pop_reverse: up from below by 0.16 s, spun round on the way, held, settles 0.62, drops at 0.8)
-	reverse = { dur = 0.8, out = 0.6, release = 9, inT = 0.05, keys = {
-		K(0, -0.65, -1.3, -1.0, 0.3, 0, 0.2), K(0.16, -0.5, -0.42, -1.25, 0, math.pi * 2, 0.05),
-		K(0.5, -0.5, -0.44, -1.25, 0, math.pi * 2 + 0.25, 0.05), K(0.62, -0.52, -0.5, -1.22, 0.1, math.pi * 2 + 0.2, 0.08), K(0.8, -0.7, -1.5, -1.0, 0.4, math.pi * 2, 0.25) } },
-	-- (web pop_laptop: up from below by 0.10 s, shoved forward screen first at 0.18 with an overshoot, held while it
-	-- "loads" to 0.7, dropped by 0.9)
+	-- (the web game's throw: the item leaves your hand 0.1 s after the press, the same frame as before. a wind-up up and
+	-- back by your shoulder, the snap forward, a follow-through that finishes forward and down)
+	throw = { dur = 0.52, out = 0.34, release = 0.1, inT = 0.03, keys = {
+		K(0, -0.85, -1.35, -0.9, 0.6, 0.3, 0.4), K(0.035, -0.72, -0.62, -1.05, 0.25, 0.3, 0.35),
+		K(0.07, -1.05, -0.18, -0.9, 0.95, 0.4, 0.6), K(0.1, -0.45, -0.36, -1.75, -0.5, 0.15, 0.1),
+		K(0.17, -0.22, -0.78, -2.0, -1.05, 0.05, -0.1), K(0.3, -0.28, -1.5, -1.5, -0.9, 0.0, -0.2), K(0.52, -0.8, -1.6, -1.0, 0.4, 0.2, 0.3) },
+		cam = { { 0, 0, 0 }, { 0.07, 0.022, 0.018 }, { 0.12, -0.03, -0.015 }, { 0.3, 0, 0 } } },
+	-- the medkit: up on an arc, the latch twisted open, pulled in to your chest while it heals, a squeeze, gone at 0.62
+	medkit = { dur = 0.82, out = 0.62, release = 0.62, keys = {
+		K(0, -0.85, -1.4, -0.95, 0.6, 0.2, 0.3), K(0.08, -0.62, -0.7, -1.1, 0.15, 0.6, 0.1), K(0.14, -0.5, -0.5, -1.2, -0.02, 0.45, 0.05),
+		K(0.2, -0.52, -0.6, -1.15, 0.2, 0.5, 0.12), K(0.3, -0.48, -0.56, -1.12, 0.45, 0.2, -0.28), K(0.42, -0.38, -0.74, -0.88, 0.62, 0.15, -0.2),
+		K(0.5, -0.4, -0.68, -0.92, 0.55, 0.15, -0.14), K(0.62, -0.45, -0.86, -0.95, 0.6, 0.2, -0.1), K(0.82, -0.8, -1.55, -0.9, 0.7, 0.2, 0.3) },
+		cam = { { 0, 0, 0 }, { 0.42, -0.018, 0 }, { 0.62, 0, 0 } } },
+	-- (web pop_popper: snaps up by 0.07 s, pops at 0.08, the yank at 0.10, eased back by 0.34, gone by 0.5)
+	popper = { dur = 0.5, out = 0.3, release = 9, inT = 0.04, keys = {
+		K(0, -0.85, -1.35, -1.0, 0.4, 0.1, 0.2), K(0.05, -0.6, -0.55, -1.25, -0.7, 0.15, 0.1), K(0.08, -0.56, -0.48, -1.35, -1.15, 0.15, 0.1),
+		K(0.1, -0.52, -0.38, -1.02, -1.65, 0.25, 0.2), K(0.18, -0.55, -0.5, -1.15, -1.25, 0.2, 0.12), K(0.34, -0.58, -0.62, -1.22, -1.0, 0.15, 0.1),
+		K(0.5, -0.8, -1.5, -1.0, 0.3, 0.1, 0.25) },
+		cam = { { 0, 0, 0 }, { 0.08, 0, 0 }, { 0.1, 0.03, 0.01 }, { 0.26, 0, 0 } } },
+	-- the reverse card: flicked up spinning, past its hold and back, then thrust out at them ("no u"), back, dropped at 0.8
+	reverse = { dur = 0.8, out = 0.6, release = 9, inT = 0.04, keys = {
+		K(0, -0.7, -1.35, -1.0, 0.3, 0, 0.2), K(0.1, -0.55, -0.5, -1.15, -0.2, PI2 * 0.8, 0.15), K(0.16, -0.48, -0.34, -1.35, 0.05, PI2 + 0.3, 0),
+		K(0.24, -0.5, -0.42, -1.2, 0, PI2, 0.05), K(0.31, -0.4, -0.36, -1.55, -0.12, PI2, -0.06), K(0.42, -0.5, -0.43, -1.25, 0, PI2 + 0.15, 0.05),
+		K(0.62, -0.52, -0.5, -1.22, 0.1, PI2 + 0.2, 0.08), K(0.8, -0.7, -1.5, -1.0, 0.4, PI2, 0.25) },
+		cam = { { 0, 0, 0 }, { 0.31, -0.012, 0 }, { 0.45, 0, 0 } } },
 	laptop = { dur = 1.05, out = 0.85, release = 9, inT = 0.06, keys = { -- (held by its left edge, facing you: it opens, lights, goes out to them)
-		K(0, -0.85, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.12, -0.75, -0.62, -1.2, 0.28, 0.25, 0.05),
+		K(0, -0.85, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.07, -0.82, -0.78, -1.1, 0.5, 0.32, 0.12), K(0.12, -0.75, -0.6, -1.2, 0.26, 0.25, 0.05),
 		K(0.4, -0.75, -0.6, -1.22, 0.22, 0.24, 0.04), K(0.5, -0.69, -0.55, -1.55, -0.1, 0.2, 0.0),
 		K(0.85, -0.71, -0.58, -1.45, -0.05, 0.22, 0.02), K(1.05, -0.9, -1.5, -1.0, 0.5, 0.2, 0.2) } },
-	radar = { dur = 1e6, out = 1e6 - 1, release = 1e9, inT = 0.06, keys = {
-		K(0, -0.7, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.17, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04), K(1e6, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04) } },
+	radar = { dur = 1e6, out = 1e6 - 1, release = 1e9, inT = 0.05, keys = {
+		K(0, -0.8, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.1, -0.62, -0.5, -1.25, -0.12, 0.36, 0), K(0.17, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04),
+		K(1e6, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04) } },
 	radarDown = { dur = 0.16, out = 0.0, release = 9, inT = 0.001, keys = {
-		K(0, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04), K(0.16, -0.7, -1.4, -1.0, 0.4, 0.2, 0.1) } },
-	snap = { dur = 0.85, out = 0.55, release = 9, inT = 0.06, keys = {
-		K(0, -0.55, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.16, -0.22, -0.34, -0.78, 0.04, -0.08, -0.04),
-		K(0.3, -0.21, -0.32, -0.75, 0, -0.06, -0.02), K(0.38, -0.21, -0.3, -0.7, 0.14, -0.06, 0.03),
-		K(0.52, -0.21, -0.32, -0.75, 0.02, -0.06, -0.02), K(0.85, -0.55, -1.4, -1.0, 0.4, 0.1, 0.2) } },
-	print = { dur = 1.3, out = 1.05, release = 1.14, inT = 0.06, keys = {
-		K(0, -0.3, -1.35, -1.0, 0.3, math.pi, 0.4), K(0.2, -0.04, -0.32, -1.25, 0.5, math.pi, 0.05),
-		K(0.82, -0.02, -0.3, -1.25, 0.45, math.pi, -0.04), K(1.0, 0.0, -0.28, -1.2, 0.25, math.pi, 0),
-		K(1.3, 0.1, 0.1, -2.6, -0.6, math.pi, 0.3) } },
-	wand = { dur = 0.85, out = 0.62, release = 9, inT = 0.06, keys = {
-		K(0, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25), K(0.13, -0.17, -0.83, -0.66, 0, 0.35, -0.25),
+		K(0, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04), K(0.16, -0.75, -1.4, -1.0, 0.4, 0.2, 0.1) } },
+	-- the camera: up to your eye on an arc, CLACK at 0.3 (the shutter kicks it), back down
+	snap = { dur = 0.85, out = 0.55, release = 9, inT = 0.05, keys = {
+		K(0, -0.6, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.1, -0.32, -0.55, -0.85, 0.15, -0.1, 0), K(0.17, -0.2, -0.29, -0.72, -0.04, -0.06, -0.04),
+		K(0.3, -0.21, -0.32, -0.75, 0, -0.06, -0.02), K(0.36, -0.21, -0.28, -0.68, 0.16, -0.06, 0.04),
+		K(0.52, -0.21, -0.32, -0.75, 0.02, -0.06, -0.02), K(0.85, -0.6, -1.4, -1.0, 0.4, 0.1, 0.2) },
+		cam = { { 0, 0, 0 }, { 0.3, 0, 0 }, { 0.34, 0.012, 0 }, { 0.5, 0, 0 } } },
+	print = { dur = 1.3, out = 1.05, release = 1.14, inT = 0.05, keys = {
+		K(0, -0.3, -1.35, -1.0, 0.3, math.pi, 0.4), K(0.12, -0.1, -0.45, -1.2, 0.6, math.pi, 0.15), K(0.2, -0.04, -0.3, -1.25, 0.48, math.pi, 0.05),
+		K(0.82, -0.02, -0.3, -1.25, 0.45, math.pi, -0.04), K(1.0, 0.0, -0.26, -1.18, 0.3, math.pi, 0), K(1.14, 0.05, -0.05, -2.0, -0.4, math.pi, 0.2),
+		K(1.3, 0.1, 0.1, -2.6, -0.6, math.pi, 0.3) },
+		cam = { { 0, 0, 0 }, { 1.0, 0, 0 }, { 1.12, -0.02, 0 }, { 1.3, 0, 0 } } },
+	-- the wand: up to your mouth on an arc, a little wiggle while the four bubbles go, down
+	wand = { dur = 0.85, out = 0.62, release = 9, inT = 0.05, keys = {
+		K(0, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25), K(0.08, -0.25, -0.95, -0.72, 0.1, 0.4, -0.1), K(0.13, -0.17, -0.8, -0.64, -0.04, 0.35, -0.3),
+		K(0.22, -0.17, -0.83, -0.66, 0, 0.35, -0.17), K(0.32, -0.16, -0.82, -0.66, 0, 0.35, -0.33), K(0.42, -0.17, -0.83, -0.66, 0, 0.35, -0.18),
 		K(0.62, -0.17, -0.83, -0.66, 0, 0.35, -0.25), K(0.85, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25) } },
-	bubble = { dur = 0.66, out = 0.4, release = 0.5, keys = {
-		K(0, -0.65, -1.3, -1.0, 0.5, 0.1, 0.2), K(0.12, -0.5, -0.5, -1.35, -0.1, 0.2, 0.05),
-		K(0.3, -0.5, -0.52, -1.3, -0.15, 0.25, 0.05), K(0.66, -0.7, -1.5, -1.0, 0.5, 0.1, 0.3) } },
+	-- the shield puck: up on an arc, lifted, then slammed down to set it off (it goes at 0.5)
+	bubble = { dur = 0.66, out = 0.46, release = 0.5, inT = 0.04, keys = {
+		K(0, -0.8, -1.35, -1.0, 0.5, 0.1, 0.2), K(0.08, -0.6, -0.55, -1.3, -0.05, 0.2, 0.05), K(0.13, -0.52, -0.44, -1.35, -0.2, 0.25, 0),
+		K(0.2, -0.5, -0.52, -1.3, -0.1, 0.25, 0.05), K(0.3, -0.5, -0.38, -1.28, 0.32, 0.25, 0.05), K(0.38, -0.5, -0.64, -1.25, -0.28, 0.25, 0.05),
+		K(0.5, -0.52, -0.66, -1.25, -0.2, 0.25, 0.05), K(0.66, -0.8, -1.5, -1.0, 0.5, 0.1, 0.3) },
+		cam = { { 0, 0, 0 }, { 0.3, 0, 0 }, { 0.38, -0.02, 0 }, { 0.55, 0, 0 } } },
+	-- the night vision goggles: your hand brings them up over your head and pulls them down over your eyes (the green
+	-- comes on as they reach them), or pushes them back up off your eyes
+	goggles = { dur = 0.5, out = 0.24, release = 0.2, inT = 0.04, keys = {
+		K(0, -0.5, -1.25, -0.8, 0.4, 0, 0.2), K(0.08, -0.2, 0.2, -0.75, -0.5, 0, 0.05), K(0.12, -0.08, 0.32, -0.65, -0.7, 0, 0),
+		K(0.2, 0, 0.0, -0.42, 0, 0, 0), K(0.32, -0.35, -0.75, -0.7, 0.3, 0, 0.1), K(0.5, -0.55, -1.4, -0.8, 0.5, 0, 0.2) },
+		cam = { { 0, 0, 0 }, { 0.18, -0.015, 0 }, { 0.32, 0, 0 } } },
+	gogglesOff = { dur = 0.46, out = 0.2, release = 9, inT = 0.001, keys = {
+		K(0, 0, 0.0, -0.42, 0, 0, 0), K(0.1, -0.06, 0.34, -0.66, -0.7, 0, 0), K(0.18, -0.25, 0.1, -0.8, -0.3, 0, 0.1),
+		K(0.46, -0.55, -1.4, -0.8, 0.5, 0, 0.2) },
+		cam = { { 0, 0, 0 }, { 0.1, 0.012, 0 }, { 0.25, 0, 0 } } },
 }
+local function hermite(p0: any, p1: any, p2: any, p3: any, t0: number, t1: number, t2: number, t3: number, u: number): any
+	local span = t2 - t1
+	local m1 = if t2 > t0 then (p2 - p0) * (span / (t2 - t0)) else p2 - p1
+	local m2 = if t3 > t1 then (p3 - p1) * (span / (t3 - t1)) else p2 - p1
+	local u2, u3 = u * u, u * u * u
+	return p1 * (2 * u3 - 3 * u2 + 1) + m1 * (u3 - 2 * u2 + u) + p2 * (3 * u2 - 2 * u3) + m2 * (u3 - u2)
+end
 local function sampleClip(c: any, t: number): CFrame
 	local keys = c.keys
-	local a, b = keys[1], keys[#keys]
-	for i = 1, #keys - 1 do
-		if t >= keys[i].t and t <= keys[i + 1].t then a, b = keys[i], keys[i + 1]; break end
-	end
-	local u = if b.t > a.t then smooth((t - a.t) / (b.t - a.t)) else 1
-	local p = a.p:Lerp(b.p, u)
-	local r = a.r:Lerp(b.r, u)
+	local n = #keys
+	if t <= keys[1].t then local k = keys[1]; return CFrame.new(k.p) * CFrame.fromEulerAnglesXYZ(k.r.X, k.r.Y, k.r.Z) end
+	if t >= keys[n].t then local k = keys[n]; return CFrame.new(k.p) * CFrame.fromEulerAnglesXYZ(k.r.X, k.r.Y, k.r.Z) end
+	local i = 1
+	while i < n - 1 and t > keys[i + 1].t do i += 1 end
+	local k0, k1, k2, k3 = keys[math.max(1, i - 1)], keys[i], keys[i + 1], keys[math.min(n, i + 2)]
+	-- (the first and last keys are rests: their tangents come from their one neighbour, halved, so it leaves and
+	-- arrives softly)
+	local t0 = if i == 1 then k1.t - (k2.t - k1.t) else k0.t
+	local t3 = if i + 1 == n then k2.t + (k2.t - k1.t) else k3.t
+	local u = (t - k1.t) / (k2.t - k1.t)
+	local p = hermite(if i == 1 then k1.p else k0.p, k1.p, k2.p, if i + 1 == n then k2.p else k3.p, t0, k1.t, k2.t, t3, u)
+	local r = hermite(if i == 1 then k1.r else k0.r, k1.r, k2.r, if i + 1 == n then k2.r else k3.r, t0, k1.t, k2.t, t3, u)
 	return CFrame.new(p) * CFrame.fromEulerAnglesXYZ(r.X, r.Y, r.Z)
+end
+-- the clip's nod of your view right now (pitch, yaw), eased between its keys
+local function sampleCam(c: any, t: number): Vector2
+	local ks = c.cam
+	if not ks then return Vector2.zero end
+	for i = 1, #ks - 1 do
+		local a, b = ks[i], ks[i + 1]
+		if t >= a[1] and t <= b[1] then
+			local u = smooth((t - a[1]) / math.max(1e-4, b[1] - a[1]))
+			return Vector2.new(a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u)
+		end
+	end
+	return Vector2.zero
 end
 -- the left hand's own arm, when the gun has no left hand of its own: a hold row for a thing held in the fist
 Holds.holds.item_hand = { Left = { pose = "grip", at = Vector3.zero, rot = Vector3.zero, size = 0.9 } }
@@ -293,7 +352,7 @@ local function startHand(id: string)
 	dropHand()
 	if thirdPerson() or not VM.model then return end
 	local clip = CLIPS[id] or CLIPS.throw
-	if id == "nvg" then return end -- (the goggles go on your head, not in your hand: see the goggles below)
+	if id == "nvg" then return end -- (the goggles go on your head, not in your hand: the hand that puts them on is "goggles")
 	local m = itemModel(id)
 	m:ScaleTo(FP_K * (FP_SIZE[id] or 1))
 	m.Parent = camera
@@ -463,6 +522,8 @@ local applied = Vector2.zero
 RunService:BindToRenderStep("JankfireItemShake", Enum.RenderPriority.Camera.Value + 2, function(dt: number)
 	shake = math.max(0, shake - dt * 2.4)
 	local want = if shake > 0 then Vector2.new((math.random() - 0.5), (math.random() - 0.5)) * shake * 0.035 else Vector2.zero
+	local h = hand
+	if h and h.clip.cam and not thirdPerson() then want += sampleCam(h.clip, os.clock() - h.t0) end
 	local d = want - applied
 	if d.Magnitude > 0 then camera.CFrame = camera.CFrame * CFrame.Angles(d.X, d.Y, 0) end
 	applied = want
@@ -1156,6 +1217,7 @@ toggleGoggles = function()
 	nvLastT = t
 	local on = not (me:GetAttribute("NV") == true)
 	ItemR:FireServer("nv", on)
+	startHand(if on then "goggles" else "gogglesOff")
 	Sfx.play("click", nil, if on then 1 else 0.8, if on then 1.2 else 0.9)
 end
 local function glowsClear()
