@@ -93,7 +93,7 @@ codes or logos (see `roblox-upload-content-rules`).
 | type | free (everyone owns) | in the loot pool |
 |---|---|---|
 | border (9 + Ducky, VIP) | Hairline, Steel | Brass, Twin Line (common) · Brackets, Ember (rare) · Gilded, Prism (epic) · Halo (legendary) |
-| background (12) | Slate, Stripes, Grid | Sunset, Night Sky, Camo (common) · Furnace, Carbon, Static (rare) · Aurora, Molten (epic) · Eclipse (legendary) |
+| background (12) | Slate, Concrete, Metal | Sunset, Night Sky, Camo (common) · Furnace, Carbon, Static (rare) · Aurora, Molten (epic) · Eclipse (legendary) |
 | title (16 + VIP) | none, ROOKIE, NEW HIRE | the web game's end-of-match medals: FIRST BLOOD, TWO FOR ONE, FILED A COMPLAINT, CONSCIENTIOUS OBJECTOR (common) · HEAD OF HR, LONG DISTANCE CALL, HANDS-ON MANAGER, WASTE DISPOSAL (rare) · BULK DISCOUNT, ON A TEAR, OVER THE LIMIT (epic) · UNTOUCHABLE, EMPLOYEE OF THE MONTH (legendary) |
 
 - **VIP only** (rarity `vip`, added 16 Nov for the shop session's VIP pack):
@@ -102,7 +102,25 @@ codes or logos (see `roblox-upload-content-rules`).
 
   They are granted only through `Loot.grant` of the VIP offer. LootTable's card hook skips rarities it doesn't know, so they never roll from a container. `CardStyles.forSale` leaves them out of the shop's rotation. In the picker, a VIP item you don't own shows locked: "VIP pack only".
 - **Night Sky:** round stars and four-point sparkles (the owner: stars "should be actual stars and not little squares"). Static keeps its square pixels on purpose.
-- **Backgrounds** start from the web game's name-card backgrounds (`public/js/cards.js`: stripes, grid, sunset, stars, camo, flames, static), made quieter.
+
+**Backgrounds are real pictures (since 16 Nov, place version 461).** The owner said: "The banners look very ai ish, can we take some free to use ones from internet?". So every background except Slate (a plain gradient) and Static (drawn TV noise) is now a photo or texture that is free to use with no conditions: public-domain NASA photos and CC0 Poly Haven / ambientCG skies and textures. Each was checked at full size (no text, logos, faces or watermarks), cropped to 1024x320, graded quieter, and uploaded as an Image (all Approved). Two candidates were turned down: both NASA sun photos carry printed timestamps, a web address and a logo.
+
+| id | name | source | licence | image |
+|---|---|---|---|---|
+| concrete | Concrete (free) | Poly Haven `concrete_wall_008` | CC0 | rbxassetid://80093131602053 |
+| metal | Metal (free) | Poly Haven `metal_plate_02` | CC0 | rbxassetid://119268820513573 |
+| sunset | Sunset | Poly Haven HDRI `the_sky_is_on_fire` (the sky, cropped above the buildings) | CC0 | rbxassetid://131169722023201 |
+| stars | Night Sky | Poly Haven HDRI `satara_night_no_lamps` (the Milky Way over trees) | CC0 | rbxassetid://109006184975619 |
+| camo | Camo | Poly Haven `japanese_sycamore` (plane-tree bark, nature's camo) | CC0 | rbxassetid://131795114784336 |
+| flames | Furnace | ambientCG `Lava004` | CC0 | rbxassetid://76170896329040 |
+| carbon | Carbon | ambientCG `Fabric004` (carbon fibre) | CC0 | rbxassetid://126045915944582 |
+| aurora | Aurora | NASA `iss058e005282` (an aurora over the Earth's limb, seen from the ISS) | public domain | rbxassetid://88607740740565 |
+| molten | Molten | ambientCG `Lava001` | CC0 | rbxassetid://77558571123420 |
+| eclipse | Eclipse | NASA / Carla Thomas `AFRC2017-0233-005` (2017 total eclipse; ring placed right on black) | public domain | rbxassetid://76928894691984 |
+
+The free Stripes and Grid are gone. Nobody could own them (free), and a card still wearing one falls back to Slate on load. The crops and grading are `CardStyles.CREDITS` / `C.IMAGES`. The working files (crop boxes, grades) were `cardbg_work/crop.py` in the session scratchpad.
+
+- **Backgrounds** first started from the web game's name-card backgrounds (`public/js/cards.js`: stripes, grid, sunset, stars, camo, flames, static), made quieter.
 - **Left out:** the web game's magenta "missing texture" checker (too loud), and ORGAN DONOR (gore).
 - **Animated pieces:** Ember, Prism and Halo turn slowly, and so do Aurora, Molten and Eclipse. One loop drives every gradient on screen.
 

@@ -1,9 +1,10 @@
 --!strict
 -- the player card's looks: borders, backgrounds ("banner") and titles. what exists, how rare it is, and how to draw
--- it. everything is drawn from frames and gradients in the GUI, never an uploaded picture (nothing for moderation to
--- read, no text in an image). backgrounds start from the web game's name-card backgrounds (public/js/cards.js:
--- stripes, grid, sunset, stars, camo, flames, static), quieter; titles are the web game's end-of-match medals
--- (shared/medals.js). free ones everybody owns; the rest come from Duffel Bags and the shop and are kept by the loot
+-- it. borders and titles are drawn in the GUI. backgrounds are real photos and textures since 16 Nov (the owner: the
+-- drawn ones looked "very ai ish"): public-domain NASA photos and CC0 Poly Haven / ambientCG skies and textures, each
+-- checked at full size (no text, logos, faces or watermarks), cropped to 1024x320 and graded quieter; C.CREDITS has
+-- where each came from. Slate (a plain gradient) and Static (TV noise) stay drawn. titles are the web game's
+-- end-of-match medals (shared/medals.js). free ones everybody owns; the rest come from Duffel Bags and the shop and are kept by the loot
 -- save (Loot.owns(p, "border", id): gun-less types, key = the id, like a weapon skin).
 -- the card wears { border, banner, title } (Stats.luau keeps the pick); drawing is for clients only.
 local RunService = game:GetService("RunService")
@@ -42,12 +43,27 @@ local BORDERS = {
 	{ "ducky", "Ducky", "vip" },
 }
 local BANNERS = {
-	{ "slate", "Slate", "free" }, { "stripes", "Stripes", "free" }, { "grid", "Grid", "free" },
+	{ "slate", "Slate", "free" }, { "concrete", "Concrete", "free" }, { "metal", "Metal", "free" },
 	{ "sunset", "Sunset", "common" }, { "stars", "Night Sky", "common" }, { "camo", "Camo", "common" },
 	{ "flames", "Furnace", "rare" }, { "carbon", "Carbon", "rare" }, { "static", "Static", "rare" },
 	{ "aurora", "Aurora", "epic" }, { "molten", "Molten", "epic" },
 	{ "eclipse", "Eclipse", "legendary" },
 }
+-- the backgrounds that are pictures (uploaded 16 Nov 2026, all Approved), and where each came from
+C.IMAGES = {
+	concrete = "rbxassetid://80093131602053", metal = "rbxassetid://119268820513573",
+	sunset = "rbxassetid://131169722023201", stars = "rbxassetid://109006184975619", camo = "rbxassetid://131795114784336",
+	flames = "rbxassetid://76170896329040", carbon = "rbxassetid://126045915944582",
+	aurora = "rbxassetid://88607740740565", molten = "rbxassetid://77558571123420",
+	eclipse = "rbxassetid://76928894691984",
+} :: { [string]: string }
+C.CREDITS = {
+	concrete = "Poly Haven, concrete_wall_008 (CC0)", metal = "Poly Haven, metal_plate_02 (CC0)",
+	sunset = "Poly Haven, the_sky_is_on_fire (CC0)", stars = "Poly Haven, satara_night_no_lamps (CC0)",
+	camo = "Poly Haven, japanese_sycamore bark (CC0)", flames = "ambientCG, Lava004 (CC0)", carbon = "ambientCG, Fabric004 (CC0)",
+	aurora = "NASA, iss058e005282 (public domain)", molten = "ambientCG, Lava001 (CC0)",
+	eclipse = "NASA / Carla Thomas, AFRC2017-0233-005 (public domain)",
+} :: { [string]: string }
 -- titles: id, the words, rarity (the web medals keep their own words)
 local TITLES = {
 	{ "none", "", "free" }, { "rookie", "ROOKIE", "free" }, { "new_hire", "NEW HIRE", "free" },
@@ -163,121 +179,17 @@ local function blob(parent: Instance, x: number, y: number, w: number, h: number
 	return b
 end
 
--- the background's pieces for a box W x H (px)
+-- the drawn backgrounds' pieces for a box W x H (px): Static, and Slate (the default, and what a picture shows while it
+-- loads)
 local function drawBanner(g: GuiObject, id: string, W: number, H: number)
 	local r = Random.new(#id * 97 + 13)
-	if id == "stripes" then
-		g.BackgroundColor3 = rgb(22, 24, 29)
-		local step = 26
-		for x = -H, W + H, step do line(g, x, H + 4, x + H * 0.9, -4, 9, rgb(44, 47, 56), 0) end
-		new("UIGradient", { Color = seq(rgb(255, 255, 255), rgb(150, 150, 150)), Rotation = 90 }, g)
-	elseif id == "grid" then
-		g.BackgroundColor3 = rgb(14, 16, 22)
-		local hy = H * 0.34
-		local c = rgb(92, 110, 140)
-		for i = -10, 10 do line(g, W / 2, hy, W / 2 + i * W * 0.14, H + 4, 1, c, 0.55) end
-		for j = 0, 7 do
-			local y = hy + math.pow(j / 7, 1.8) * (H - hy)
-			line(g, 0, y, W, y, 1, c, 0.45 + (1 - j / 7) * 0.4)
-		end
-		new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(14, 16, 22), Size = UDim2.new(1, 0, 0, hy) }, g)
-	elseif id == "sunset" then
-		g.BackgroundColor3 = Color3.new(1, 1, 1)
-		new("UIGradient", { Color = seq(rgb(36, 22, 50), rgb(122, 62, 92), rgb(196, 132, 78)), Rotation = 90 }, g)
-		blob(g, W * 0.76, H * 0.86, H * 0.62, H * 0.62, rgb(232, 196, 120), 0.05)
-		for i = 0, 5 do
-			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(34, 20, 42), Position = UDim2.new(0, 0, 1, -5 - i * 7), Size = UDim2.new(1, 0, 0, 2 + (5 - i) * 0.4) }, g)
-		end
-	elseif id == "stars" then
-		-- (the sky's gradient on its own frame: a UIGradient on the CanvasGroup itself would tint the stars dark too)
-		g.BackgroundColor3 = rgb(6, 7, 14)
-		local sky = new("Frame", { Name = "Sky", BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), Size = UDim2.fromScale(1, 1), ZIndex = 0 }, g)
-		new("UIGradient", { Color = seq(rgb(6, 7, 14), rgb(20, 22, 38)), Rotation = 90 }, sky)
-		-- (the owner, on wraps: stars "should be actual stars and not little squares": round dots, and a few real
-		-- four-point sparkles)
-		for _ = 1, math.min(90, math.floor(W * H / 1400)) do
-			local s = if r:NextNumber() < 0.12 then 4 else (if r:NextNumber() < 0.5 then 3 else 2)
-			local c = if r:NextNumber() < 0.15 then rgb(176, 196, 240) else rgb(244, 244, 250)
-			local d = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = c, BackgroundTransparency = 0.1 + r:NextNumber() * 0.55, AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromOffset(r:NextNumber() * W, r:NextNumber() * H), Size = UDim2.fromOffset(s, s) }, g)
-			new("UICorner", { CornerRadius = UDim.new(1, 0) }, d)
-		end
-		-- the sparkles: two thin rays crossed, bright in the middle and fading to their tips, round a soft core
-		local fade = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0), NumberSequenceKeypoint.new(1, 1) })
-		for i = 1, math.clamp(math.floor(W / 90), 2, 6) do
-			local x, y = (i - 0.5 + (r:NextNumber() - 0.5) * 0.6) * W / math.clamp(math.floor(W / 90), 2, 6), H * (0.15 + r:NextNumber() * 0.7)
-			local len = math.max(9, math.min(H * 0.32, 22)) * (0.7 + r:NextNumber() * 0.5)
-			local th = math.max(2, len * 0.14)
-			for rot = 0, 90, 90 do
-				local ray = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(250, 248, 236), AnchorPoint = Vector2.new(0.5, 0.5),
-					Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(len, th), Rotation = rot }, g)
-				new("UICorner", { CornerRadius = UDim.new(1, 0) }, ray)
-				new("UIGradient", { Transparency = fade }, ray)
-			end
-			local glow = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(200, 214, 255), BackgroundTransparency = 0.7, AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(th * 3, th * 3) }, g)
-			new("UICorner", { CornerRadius = UDim.new(1, 0) }, glow)
-			local core = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(th * 1.4, th * 1.4) }, g)
-			new("UICorner", { CornerRadius = UDim.new(1, 0) }, core)
-		end
-	elseif id == "camo" then
-		g.BackgroundColor3 = rgb(70, 78, 56)
-		local cols = { rgb(48, 56, 38), rgb(94, 102, 70), rgb(62, 52, 40) }
-		for i = 1, math.min(90, math.floor(W * H / 1400)) do
-			blob(g, r:NextNumber() * W, r:NextNumber() * H, 18 + r:NextNumber() * 48, 12 + r:NextNumber() * 22, cols[i % 3 + 1], 0, r:NextNumber() * 180)
-		end
-	elseif id == "flames" then
-		g.BackgroundColor3 = Color3.new(1, 1, 1)
-		new("UIGradient", { Color = seq(rgb(40, 12, 10), rgb(170, 70, 34), rgb(226, 166, 76)), Rotation = 90 }, g)
-		for x = 0, W, 16 do
-			local d = 12 + ((x * 7) % 22)
-			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(26, 8, 6), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = 45,
-				Position = UDim2.fromOffset(x, 0), Size = UDim2.fromOffset(d, d) }, g)
-		end
-	elseif id == "carbon" then
-		g.BackgroundColor3 = rgb(20, 21, 24)
-		for x = -H, W + H, 8 do line(g, x, H + 2, x + H, -2, 3, rgb(34, 36, 41), 0) end
-		for x = -H, W + H, 16 do line(g, x, -2, x + H, H + 2, 2, rgb(12, 13, 15), 0.3) end
-		new("UIGradient", { Color = seq(rgb(255, 255, 255), rgb(170, 170, 170)), Rotation = 60 }, g)
-	elseif id == "static" then
+	if id == "static" then
 		g.BackgroundColor3 = rgb(34, 35, 38)
 		for _ = 1, math.min(180, math.floor(W * H / 320)) do
 			local v = math.floor(30 + r:NextNumber() * 90)
 			new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(v, v, v + 4), Position = UDim2.fromOffset(math.floor(r:NextNumber() * W / 3) * 3, math.floor(r:NextNumber() * H / 3) * 3),
 				Size = UDim2.fromOffset(3 + math.floor(r:NextNumber() * 3) * 3, 3) }, g)
 		end
-	elseif id == "aurora" then
-		g.BackgroundColor3 = rgb(8, 12, 20)
-		for i, c in { { rgb(70, 196, 164), rgb(120, 92, 214) }, { rgb(96, 150, 230), rgb(70, 200, 150) } } do
-			local band = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 0.5),
-				Position = UDim2.fromScale(0.5, 0.36 + i * 0.12), Size = UDim2.new(1.6, 0, 0, H * 0.34), Rotation = if i == 1 then -8 else 6 }, g)
-			new("UICorner", { CornerRadius = UDim.new(1, 0) }, band)
-			local gr = new("UIGradient", { Color = seq(c[1], c[2], c[1]),
-				Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.55), NumberSequenceKeypoint.new(0.7, 0.6), NumberSequenceKeypoint.new(1, 1) }) }, band)
-			animate(gr, "drift", 0.18 + i * 0.07)
-		end
-	elseif id == "molten" then
-		g.BackgroundColor3 = Color3.new(1, 1, 1)
-		local gr = new("UIGradient", { Color = seq(rgb(14, 9, 8), rgb(70, 26, 12), rgb(214, 104, 38)), Rotation = 90 }, g)
-		animate(gr, "breathe", 0.9)
-		-- cooled crust: dark plates with the glow showing in the cracks between them
-		for _ = 1, 7 do
-			local w = (0.18 + r:NextNumber() * 0.22) * W
-			local p = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = rgb(22, 14, 12), AnchorPoint = Vector2.new(0.5, 0.5), Rotation = r:NextNumber() * 24 - 12,
-				Position = UDim2.fromOffset(r:NextNumber() * W, H * (0.78 + r:NextNumber() * 0.3)), Size = UDim2.fromOffset(w, H * 0.22) }, g)
-			new("UICorner", { CornerRadius = UDim.new(0, 6) }, p)
-		end
-	elseif id == "eclipse" then
-		g.BackgroundColor3 = Color3.new(1, 1, 1)
-		new("UIGradient", { Color = seq(rgb(4, 4, 7), rgb(14, 13, 20)), Rotation = 90 }, g)
-		local d = H * 0.86
-		local glow = blob(g, W * 0.74, H * 0.5, d * 1.5, d * 1.5, rgb(236, 210, 150), 0)
-		new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.5, 0.86), NumberSequenceKeypoint.new(1, 1) }), Rotation = 90 }, glow)
-		local ring = blob(g, W * 0.74, H * 0.5, d, d, rgb(4, 4, 7), 0)
-		local st = new("UIStroke", { Color = Color3.new(1, 1, 1), Thickness = math.max(2, math.floor(H * 0.025)) }, ring)
-		local sg = new("UIGradient", { Color = seq(rgb(255, 244, 220), rgb(214, 160, 70), rgb(40, 30, 20), rgb(255, 244, 220)) }, st)
-		animate(sg, "spin", 40)
 	else -- slate (and anything unknown)
 		g.BackgroundColor3 = Color3.new(1, 1, 1)
 		new("UIGradient", { Color = seq(rgb(38, 42, 50), rgb(20, 22, 27)), Rotation = 90 }, g)
@@ -296,17 +208,20 @@ local function designSize(f: GuiObject): Vector2
 	return f.AbsoluteSize / math.max(0.01, k)
 end
 
--- backgrounds with turned pieces need a CanvasGroup to clip them to the box (a clipping frame doesn't clip turned
--- children); the rest use a plain clipping frame (every CanvasGroup costs a texture)
-local TURNED = { stripes = true, grid = true, flames = true, carbon = true, aurora = true, molten = true, camo = true, stars = true }
-
--- fill `frame` with background `id` (replaces the one there), clipped to its rounded box; it is redrawn if the frame
--- changes size
+-- fill `frame` with background `id` (replaces the one there), clipped to its rounded box. a picture fills the box and
+-- crops what doesn't fit (centred); a drawn one is redrawn if the frame changes size
 function C.paintBanner(frame: GuiObject, id: string?, corner: number?): GuiObject
 	local old = frame:FindFirstChild("Banner")
 	if old then old:Destroy() end
 	local want = if C.info("banner", id) then id :: string else C.DEFAULT.banner
-	local g = new(if TURNED[want] then "CanvasGroup" else "Frame", { Name = "Banner", BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 0, ClipsDescendants = true }, frame)
+	local img = C.IMAGES[want]
+	if img then
+		local p = new("ImageLabel", { Name = "Banner", BorderSizePixel = 0, BackgroundColor3 = rgb(20, 22, 27), Size = UDim2.fromScale(1, 1), ZIndex = 0,
+			Image = img, ScaleType = Enum.ScaleType.Crop }, frame)
+		if corner and corner > 0 then new("UICorner", { CornerRadius = UDim.new(0, corner) }, p) end
+		return p
+	end
+	local g = new("Frame", { Name = "Banner", BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 0, ClipsDescendants = true }, frame)
 	if corner and corner > 0 then new("UICorner", { CornerRadius = UDim.new(0, corner) }, g) end
 	local drawn = Vector2.zero
 	local function draw()
