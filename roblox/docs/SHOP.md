@@ -35,10 +35,17 @@ Three kinds of offer, each with an id:
   and prices are the shop's; the pools and odds are the loot module's, read through `Shop.odds(id, owned)`
   (`LootTable.odds`, the function the server rolls by), so the screen never shows numbers the server doesn't use.
   The odds depend on what you own; when you own everything in one it reads YOU HAVE IT ALL.
-- **bundles** `bundle_<name>`: a fixed themed set of wraps and a hat, plus a `hero` (the weapon, wrap and hat the
-  big preview and the hub's hologram show). Six to start: Night Shift, Field Issue, Tea House, Deep Space, Machine
-  Shop, Quarry. A bundle's price is about 60% of its items one by one (`Shop.worth`).
-- **singles** `wrap:<id>`, `hat:<id>`: one item, on sale only while it is in today's rotation (`Shop.onSale`).
+- **bundles** `bundle_<name>`: a fixed themed set of wraps and a hat that dresses several guns, plus a `hero` (the
+  weapon, wrap and hat the big preview and the hub's hologram show). Six to start: Night Shift, Field Issue, Tea House,
+  Deep Space, Machine Shop, Quarry. A bundle's price is about 60% of its items one by one (`Shop.worth`).
+- **singles** `wrap:<id>@<weapon>`, `hat:<id>@<weapon>`: one item for one weapon, on sale only while it is in
+  today's rotation (`Shop.onSale`).
+
+**Wraps and hats are owned per weapon** (the owner, 16 Nov: a spray can gives a wrap "for only one gun at a time").
+Every item is `{ kind, id, weapon }`; where one string is needed it is `"<id>@<weapon>"` (`Shop.key` / `Shop.unkey`,
+e.g. `"sakura@smg"`), and it reads "Sakura Storm · SMG" (`Shop.itemLabel`). The weapons are the live primaries,
+secondaries and the katana (`Shop.WEAPONS`); a hat only for a weapon with a hat spot. An owned plain `"sakura"` (an
+older save) counts for every weapon.
 
 Wraps whose picture versions broke Roblox's image rules (QR Code, Barcode, Meat Suit, Organ Donor, CORP, Corporate
 Memo, Jersey) never appear in a bundle or the rotation (`Shop.HELD_BACK`).
@@ -51,7 +58,8 @@ anything. It turns over at 00:00 UTC; a single from yesterday stays buyable for 
 rarity; containers 120 / 90 / 60; bundles from their worth.
 
 Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rotation()`, `Shop.secondsLeft()`,
-`Shop.onSale(id)`, `Shop.odds(containerId)`, `Shop.productFor(offer)`, `Shop.itemInfo(kind, id)`.
+`Shop.onSale(id)`, `Shop.odds(containerId, owned)`, `Shop.productFor(offer)`, `Shop.itemInfo(kind, id)`,
+`Shop.itemLabel(item)`, `Shop.key(kind, id, weapon)`, `Shop.unkey(s)`, `Shop.weaponName(wid)`, `Shop.WEAPONS`.
 
 ## The screen
 
@@ -60,17 +68,21 @@ Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rot
   attribute `ShopOpen = "bundle_nightshift"` (or `"tab:containers"`) opens it on that offer when triggered.
   Not in a match, not over the loadout.
 - **Tabs:** FEATURED (today's bundle big, with what's in it, and the six daily singles with a countdown),
-  BUNDLES, CONTAINERS (each with ODDS, OPEN and CLAIM), INVENTORY (containers to open, wraps, hats; filters).
-- **Inspect:** any card opens a big turnable 3D preview (drag to turn). A bundle lists its items; tapping one shows
-  it on the hero weapon. Wraps are shown on your own primary weapon, hats on their own.
+  BUNDLES, CONTAINERS (each with ODDS, OPEN and CLAIM), INVENTORY (containers to open, then wraps and hats grouped
+  by weapon; filters).
+- **Inspect:** any card opens a big turnable 3D preview (drag to turn). A bundle lists its items ("Sakura Storm ·
+  SMG"); tapping one shows it on its own weapon. Every wrap and hat is shown on the weapon it's for (a hat drawn
+  half again its size on a small card, true size in the inspect panel).
 - **Buying:** CLAIM / BUY opens a confirm panel first. A container's confirm panel shows its odds, and a paid
   container can't be bought when the odds can't be read. Then the till (`Loot` "buy") is asked; a container is opened
   at once and the loot module's opening plays while the shop steps aside; the inventory tab shows what you got.
 - **Look:** `Theme.luau`: dark plates and cards, white and grey text, one amber accent (the active tab's mark, the
   main button, the featured label), rarity colour only as a thin line or dot. Builder Sans, Builder Extended titles.
-- **Screens:** laid out 720 design pixels tall on a computer (wider screens get more width) and 470 tall on a short
-  screen (a phone on its side), so words and buttons stay big enough. The title row keeps under Roblox's own top
-  buttons and inside the phone's safe area.
+- **Screens:** laid out 720 design pixels tall on a computer (wider screens get more width) and 400 tall on a short
+  screen (a phone on its side, 375-430 points tall), so on a phone one design pixel is about one point: the shop
+  fills the screen and every button is at least 44 points tall. The title row sits in Roblox's top bar, right of
+  Roblox's own buttons, inside the phone's safe area; on a narrow phone the FREE pill, then the title, give way to
+  the tabs and CLOSE. Checked at 844 x 390 (a phone) and 1334 x 750.
 - **While it's up:** it raises the player attribute `LoadoutOpen` too (the flag every script reads as "a menu is
   up": no jumping, shooting or items, mouse arrow on) and its own `ShopOpen`.
 

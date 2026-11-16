@@ -2,8 +2,11 @@
 -- the shop's catalog: everything the SHOP screen sells (ShopUI.luau), what the hub's bundle holograms show, and what
 -- the loot server checks before it grants (JankfireRemotes.Loot "buy"). three kinds of offer, each with an id:
 --   containers  "crate" / "bag" / "spray": a random item; the odds and pools are the loot module's (Shop.odds reads them)
---   bundles     "bundle_<name>": a fixed themed set of wraps and hats (only things that exist on roblox today)
---   singles     "wrap:<id>" / "hat:<id>": one item, sold only while it is in today's featured rotation
+--   bundles     "bundle_<name>": a fixed themed set of wraps and hats, each for a named weapon (only things that exist
+--               on roblox today)
+--   singles     "wrap:<id>@<weapon>" / "hat:<id>@<weapon>": one item for one weapon, sold only while it is in today's
+--               featured rotation
+-- wraps and hats are owned per weapon: an item is { kind, id, weapon } (Shop.key: "sakura@smg")
 -- every offer has a Robux price (`robux`) and a slot for its developer product (`productId`), but nothing costs
 -- anything while the loot switch is on (Config.LOOT_FREE; Shop.free()) and no purchase prompt is ever shown while
 -- Shop.ROBUX is false (ShopReceipts.server.luau routes receipts once it's on). docs: roblox/docs/SHOP.md
@@ -57,15 +60,40 @@ Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat" }
 -- plain colour wraps now (roblox-upload-content-rules), or they are the free ones everyone has
 Shop.HELD_BACK = { qr = true, barcode = true, meat = true, organ = true, corp = true, memo = true, jersey = true, default = true }
 
-export type Item = { kind: string, id: string }
+-- wraps and hats are owned PER WEAPON (the owner, 16 Nov: "spray cans should give you a wrap for only one gun at a
+-- time"): an item is (kind, id, weapon), written "<id>@<weapon>" where one string is needed (Shop.key)
+export type Item = { kind: string, id: string, weapon: string? }
 export type Hero = { weapon: string, wrap: string?, hat: string? }
 export type Offer = {
 	id: string, type: string, name: string, blurb: string, rarity: string,
 	robux: number, productId: number?,
 	items: { Item }?, hero: Hero?, -- a bundle
-	kind: string?, item: string?, -- a single
+	kind: string?, item: string?, weapon: string?, -- a single
 	pool: string?, -- a container: what it holds, in words
 }
+
+-- ---------------------------------------------------------------- weapons (what a wrap or a hat can be for)
+-- every weapon that's on roblox and takes paint and hats: the live primaries, secondaries and the melee, in the
+-- loadout's order (the utility items don't)
+Shop.WEAPONS = {} :: { string }
+Shop.WEAPON_SET = {} :: { [string]: boolean }
+for _, e in Roster.list do
+	if e.live and e.slot ~= "utility" then table.insert(Shop.WEAPONS, e.id); Shop.WEAPON_SET[e.id] = true end
+end
+function Shop.weaponName(wid: string?): string
+	local e = wid and Roster.byId[wid]
+	return if e then e.name else "any weapon"
+end
+-- the string an owned item is kept under: "<id>@<weapon>" ("sakura@smg"); just "<id>" when it has no weapon
+function Shop.key(kind: string, id: string, weapon: string?): string
+	return if weapon then id .. "@" .. weapon else id
+end
+-- and back: "sakura@smg" -> "sakura", "smg"
+function Shop.unkey(s: string): (string, string?)
+	local id, w = string.match(s, "^([%w_]+)@([%w_]+)$")
+	if id then return id, w end
+	return s, nil
+end
 
 -- ---------------------------------------------------------------- items
 function Shop.itemInfo(kind: string, id: string): (string, string)
@@ -78,10 +106,18 @@ function Shop.itemInfo(kind: string, id: string): (string, string)
 	end
 	return id, "common"
 end
-function Shop.exists(kind: string, id: string): boolean
+function Shop.exists(kind: string, id: string, weapon: string?): boolean
+	if weapon ~= nil and not Shop.WEAPON_SET[weapon] then return false end
 	if kind == "wrap" then return Roster.wrapById[id] ~= nil end
-	if kind == "hat" then return GunHatData.HATS[id] ~= nil and id ~= "none" end
+	if kind == "hat" then
+		return GunHatData.HATS[id] ~= nil and id ~= "none" and (weapon == nil or GunHatData.SPOTS[weapon] ~= nil)
+	end
 	return false
+end
+-- "Sakura Storm · SMG"
+function Shop.itemLabel(it: Item): string
+	local name = Shop.itemInfo(it.kind, it.id)
+	return if it.weapon then name .. " · " .. Shop.weaponName(it.weapon) else name
 end
 function Shop.singlePrice(kind: string, id: string): number
 	local _, r = Shop.itemInfo(kind, id)
@@ -102,34 +138,35 @@ Shop.containers = {
 } :: { Offer }
 
 -- ---------------------------------------------------------------- bundles
--- themed sets. hero = what the big preview and the hub's hologram show: one weapon wearing the set's headline wrap
--- and hat. robux is about 60% of the singles' worth (Shop.worth)
-local function W(id: string): Item return { kind = "wrap", id = id } end
-local function H(id: string): Item return { kind = "hat", id = id } end
+-- themed sets that dress several guns: every wrap and hat in a set is for one named weapon. hero = what the big
+-- preview and the hub's hologram show: one weapon wearing its wrap and hat from the set. robux is about 60% of the
+-- singles' worth (Shop.worth)
+local function W(id: string, weapon: string): Item return { kind = "wrap", id = id, weapon = weapon } end
+local function H(id: string, weapon: string): Item return { kind = "hat", id = id, weapon = weapon } end
 Shop.bundles = {
 	{ id = "bundle_nightshift", type = "bundle", name = "Night Shift", rarity = "legendary",
 		blurb = "dark metal, one cold glow. for people who play after midnight.",
-		items = { W("matte"), W("carbon"), W("lchrome"), W("hex"), H("tophat") },
+		items = { W("hex", "ar"), H("tophat", "ar"), W("carbon", "smg"), W("lchrome", "revolver"), W("matte", "pistol") },
 		hero = { weapon = "ar", wrap = "hex", hat = "tophat" } },
 	{ id = "bundle_fieldissue", type = "bundle", name = "Field Issue", rarity = "rare",
 		blurb = "four camos and a hat that has seen things. standard kit.",
-		items = { W("urban"), W("desert"), W("arctic"), W("digital"), H("cowboy") },
+		items = { W("digital", "sniper"), H("cowboy", "sniper"), W("urban", "ar"), W("desert", "shotgun"), W("arctic", "dmr") },
 		hero = { weapon = "sniper", wrap = "digital", hat = "cowboy" } },
 	{ id = "bundle_teahouse", type = "bundle", name = "Tea House", rarity = "legendary",
 		blurb = "waves, leaves and gold in the cracks. very calm. still a gun.",
-		items = { W("seigaiha"), W("asanoha"), W("shibori"), W("sakura"), W("kintsugi"), H("chef") },
+		items = { W("kintsugi", "katana"), H("chef", "katana"), W("seigaiha", "smg"), W("asanoha", "revolver"), W("shibori", "lever"), W("sakura", "burst") },
 		hero = { weapon = "katana", wrap = "kintsugi", hat = "chef" } },
 	{ id = "bundle_deepspace", type = "bundle", name = "Deep Space", rarity = "legendary",
 		blurb = "dust, dots and a hole that eats light. halo included.",
-		items = { W("galaxy"), W("nebula"), W("aurora"), W("blackhole"), H("halo") },
+		items = { W("nebula", "smg"), H("halo", "smg"), W("galaxy", "lmg"), W("aurora", "sniper"), W("blackhole", "redline") },
 		hero = { weapon = "smg", wrap = "nebula", hat = "halo" } },
 	{ id = "bundle_machineshop", type = "bundle", name = "Machine Shop", rarity = "epic",
 		blurb = "brushed, folded, oxidised, anodised. it all still works.",
-		items = { W("brushed"), W("damascus"), W("copper"), W("titanium"), H("propeller") },
+		items = { W("damascus", "shotgun"), H("propeller", "shotgun"), W("brushed", "lmg"), W("copper", "sawnoff"), W("titanium", "autoshot") },
 		hero = { weapon = "shotgun", wrap = "damascus", hat = "propeller" } },
 	{ id = "bundle_quarry", type = "bundle", name = "Quarry", rarity = "legendary",
 		blurb = "cut stone and one opal. heavier than it looks.",
-		items = { W("marble"), W("jade"), W("granite"), W("geode"), W("opal"), H("crown") },
+		items = { W("marble", "redline"), H("crown", "redline"), W("jade", "marbles"), W("granite", "sawnoff"), W("geode", "pistol"), W("opal", "revolver") },
 		hero = { weapon = "redline", wrap = "marble", hat = "crown" } },
 } :: { Offer }
 
@@ -154,27 +191,28 @@ for _, id in GunHatData.ORDER do
 	if id ~= "none" and h and h.rarity ~= "free" then table.insert(Shop.singlesPool, H(id)) end
 end
 
-local function single(kind: string, id: string): Offer?
-	if not Shop.exists(kind, id) then return nil end
+-- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"
+local function single(kind: string, id: string, weapon: string): Offer?
+	if not Shop.exists(kind, id, weapon) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
-	return { id = kind .. ":" .. id, type = "single", name = name, rarity = rarity, blurb = "",
-		robux = Shop.singlePrice(kind, id), productId = nil, kind = kind, item = id }
+	return { id = kind .. ":" .. id .. "@" .. weapon, type = "single", name = name, rarity = rarity, blurb = "",
+		robux = Shop.singlePrice(kind, id), productId = nil, kind = kind, item = id, weapon = weapon }
 end
 
--- any offer by id: a container, a bundle, or a single ("wrap:galaxy", "hat:crown")
+-- any offer by id: a container, a bundle, or a single ("wrap:galaxy@smg", "hat:crown@katana")
 function Shop.offer(id: any): Offer?
 	if type(id) ~= "string" then return nil end
 	local o = Shop.byId[id]
 	if o then return o end
-	local kind, item = string.match(id, "^(%a+):([%w_]+)$")
-	if kind and item then return single(kind, item) end
+	local kind, item, weapon = string.match(id, "^(%a+):([%w_]+)@([%w_]+)$")
+	if kind and item and weapon then return single(kind, item, weapon) end
 	return nil
 end
 
--- what an offer gives (a container gives itself: the loot server adds one to your stock)
+-- what an offer gives, each { kind, id, weapon } (a container gives itself: the loot server adds one to your stock)
 function Shop.contents(o: Offer): { Item }
 	if o.type == "bundle" then return o.items :: { Item } end
-	if o.type == "single" then return { { kind = o.kind :: string, id = o.item :: string } } end
+	if o.type == "single" then return { { kind = o.kind :: string, id = o.item :: string, weapon = o.weapon } } end
 	return {}
 end
 -- what a bundle's items would cost one by one
@@ -199,14 +237,19 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 	if hit then return hit end
 	local rng = Random.new(d * 7919 + 17)
 	local hero = Shop.bundles[(d % #Shop.bundles) + 1].id
-	-- four wraps and two hats, at least one epic-or-better, no repeats
+	-- four wraps and two hats, each for one weapon, at least one epic-or-better, no cosmetic and no weapon twice
 	local wraps, hats = {}, {}
 	for _, it in Shop.singlesPool do table.insert(if it.kind == "wrap" then wraps else hats, it) end
+	local weapons = table.clone(Shop.WEAPONS)
+	local function gun(): string
+		if #weapons == 0 then weapons = table.clone(Shop.WEAPONS) end
+		return table.remove(weapons, rng:NextInteger(1, #weapons)) :: string
+	end
 	local function draw(from: { Item }, n: number, out: { string })
 		local bag = table.clone(from)
 		for _ = 1, math.min(n, #bag) do
 			local i = rng:NextInteger(1, #bag)
-			table.insert(out, bag[i].kind .. ":" .. bag[i].id)
+			table.insert(out, bag[i].kind .. ":" .. bag[i].id .. "@" .. gun())
 			table.remove(bag, i)
 		end
 	end
@@ -220,13 +263,16 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 	end
 	if best < 3 then
 		local big = {}
+		local have = {}
+		for _, id in daily do have[(string.match(id, "^%a+:([%w_]+)@") or "")] = true end
 		for _, it in wraps do
 			local _, r = Shop.itemInfo(it.kind, it.id)
-			if Shop.rank(r) >= 3 and not table.find(daily, "wrap:" .. it.id) then table.insert(big, it) end
+			if Shop.rank(r) >= 3 and not have[it.id] then table.insert(big, it) end
 		end
 		if #big > 0 then
 			local it = big[rng:NextInteger(1, #big)]
-			daily[1] = "wrap:" .. it.id
+			local w = string.match(daily[1], "@([%w_]+)$") :: string
+			daily[1] = "wrap:" .. it.id .. "@" .. w
 		end
 	end
 	-- dearest first, so the row reads from the big one down

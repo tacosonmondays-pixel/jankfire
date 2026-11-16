@@ -108,11 +108,14 @@ function Till.refresh(): boolean
 	if res.ok then Till.adopt(res) end
 	return S.invOk
 end
-function Till.owns(kind: string, id: string): boolean
+-- wraps and hats are owned per weapon ("sakura@smg"); a plain "sakura" from an older save counts for every weapon
+function Till.owns(kind: string, id: string, weapon: string?): boolean
 	local _, r = Shop.itemInfo(kind, id)
 	if r == "free" then return true end
 	local set = S.inv[kind]
-	return set ~= nil and set[id] == true
+	if not set then return false end
+	if set[id] == true then return true end
+	return weapon ~= nil and set[Shop.key(kind, id, weapon)] == true
 end
 function Till.count(cid: string): number return S.inv.containers[cid] or 0 end
 -- what you own as the loot module's odds want it ({ wrap = { [id] = true }, hat = ..., skin = ... })
@@ -127,7 +130,7 @@ end
 -- how many of an offer's items you don't have yet
 function Till.missing(o: any): number
 	local n = 0
-	for _, it in Shop.contents(o) do if not Till.owns(it.kind, it.id) then n += 1 end end
+	for _, it in Shop.contents(o) do if not Till.owns(it.kind, it.id, it.weapon) then n += 1 end end
 	return n
 end
 
@@ -246,13 +249,43 @@ local function settle(m: Model)
 		if d:IsA("BasePart") then d.Anchored = true; d.CastShadow = false end
 	end
 end
--- a weapon wearing a wrap and a hat (all of it painted: "full")
-function V.gun(wid: string, wrap: string?, hat: string?): Model?
-	local m = WeaponModels.build(wid, 3)
+-- the Shredder is a Tool (JankfireTools.Shredder), not a built weapon: a copy of its visible parts (as the loadout does)
+function V.shredder(): Model?
+	local tools = ReplicatedStorage:FindFirstChild("JankfireTools")
+	local src = tools and tools:FindFirstChild("Shredder")
+	if not src then return nil end
+	local m = Instance.new("Model")
+	local big: BasePart? = nil
+	for _, d in src:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 0.99 and d.Name ~= "SuckField" then
+			local c = d:Clone()
+			for _, x in c:GetChildren() do
+				if not (x:IsA("SurfaceAppearance") or x:IsA("SpecialMesh") or x:IsA("Decal") or x:IsA("Texture")) then x:Destroy() end
+			end
+			c.Anchored = true
+			c.Parent = m
+			if not big or c.Size.Magnitude > big.Size.Magnitude then big = c end
+		end
+	end
+	m.PrimaryPart = big
+	return m
+end
+-- a weapon wearing a wrap and a hat (all of it painted: "full"). boost = the hat drawn this much bigger (a small
+-- card, where a true-size hat is a few pixels)
+function V.gun(wid: string, wrap: string?, hat: string?, boost: number?): Model?
+	local m = if wid == "shredder" then V.shredder() else WeaponModels.build(wid, 3)
 	if not m then return nil end
 	settle(m)
 	if wrap and wrap ~= "default" then pcall(WeaponModels.wrap, m, wrap, "full") end
-	if hat and hat ~= "none" then pcall(GunHats.attach, m, wid, hat, 3, true) end
+	if hat and hat ~= "none" then
+		if wid == "shredder" then
+			local tools = ReplicatedStorage:FindFirstChild("JankfireTools")
+			local tool = tools and tools:FindFirstChild("Shredder")
+			if tool then pcall(GunHats.attachToolCopy, m, tool, hat) end
+		else
+			pcall(GunHats.attach, m, wid, hat, 3, true, boost)
+		end
+	end
 	settle(m)
 	return m
 end
@@ -310,20 +343,22 @@ function V.container(id: string): Model
 	m:SetAttribute("ShopRest", math.pi - 0.55)
 	return m
 end
--- the model for any offer (a bundle shows its hero; a single its item on your gun, or the hat alone)
-function V.offerModel(o: any, item: any?): Model?
+-- an item on the weapon it's for: a wrap paints it, a hat sits on it (boost: the hat drawn bigger, for small cards).
+-- an item with no weapon (an older save) goes on your primary
+function V.item(it: any, boost: number?): Model?
+	local w = it.weapon or V.yourGun()
+	if it.kind == "hat" then return V.gun(w, nil, it.id, boost) end
+	return V.gun(w, it.id, nil)
+end
+-- the model for any offer (a bundle shows its hero, or one of its items; a single its item on its weapon)
+function V.offerModel(o: any, item: any?, boost: number?): Model?
 	if o.type == "container" then return V.container(o.id) end
-	if item then
-		if item.kind == "hat" then return V.hat(item.id) end
-		local h = if o.type == "bundle" and o.hero then o.hero.weapon else V.yourGun()
-		return V.gun(h, item.id, nil)
-	end
+	if item then return V.item(item, boost) end
 	if o.type == "bundle" then
 		local h = o.hero or {}
-		return V.gun(h.weapon or "ar", h.wrap, h.hat)
+		return V.gun(h.weapon or "ar", h.wrap, h.hat, boost)
 	end
-	if o.kind == "hat" then return V.hat(o.item) end
-	return V.gun(V.yourGun(), o.item, nil)
+	return V.item({ kind = o.kind, id = o.item, weapon = o.weapon }, boost)
 end
 -- the camera backed off just enough for the model to fill its frame. a long thing (a gun) is fitted to the frame's
 -- width, so a wide frame shows it big; anything else to its round bounds. zoom > 1 = a little more room round it
@@ -478,17 +513,21 @@ end
 local function singleCard(parent: Instance, o: any, order: number): TextButton
 	local c = card(parent, o.rarity)
 	c.LayoutOrder = order
-	local view = new("Frame", { Name = "View", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 1, -66) }, c)
-	V.show(view, V.offerModel(o), "hover", if o.kind == "hat" then 1.1 else 1.1)
+	-- (a hat is drawn half again its size on a card, or it's a few pixels on the gun; the inspect panel shows it true)
+	local view = new("Frame", { Name = "View", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 4), Size = UDim2.new(1, 0, 1, -78) }, c)
+	V.show(view, V.offerModel(o, nil, if o.kind == "hat" then 1.6 else nil), "hover", 1.08)
 	local name = txt(c, o.name, 16, T.TEXT, T.FONT_BOLD)
-	name.Position = UDim2.new(0, 12, 1, -60); name.Size = UDim2.new(1, -24, 0, 20)
+	name.Position = UDim2.new(0, 12, 1, -74); name.Size = UDim2.new(1, -24, 0, 20)
+	-- the weapon it's for: a wrap or a hat is owned for one weapon
+	local wl = txt(c, "FOR " .. string.upper(Shop.weaponName(o.weapon)), 12, T.SOFT, T.FONT_BOLD)
+	wl.Position = UDim2.new(0, 12, 1, -53); wl.Size = UDim2.new(1, -24, 0, 15)
 	-- (on a phone the kind word goes: the rarity alone fits beside the price)
 	local rl = rarityLine(c, o.rarity, if S.compact then "" else (Shop.KIND_NAMES[o.kind] or o.kind), if S.compact then 12 else 11)
-	rl.Position = UDim2.new(0, 12, 1, -36); rl.Size = UDim2.new(1, -96, 0, 15)
-	local owned = Till.owns(o.kind, o.item)
+	rl.Position = UDim2.new(0, 12, 1, -32); rl.Size = UDim2.new(1, -96, 0, 15)
+	local owned = Till.owns(o.kind, o.item, o.weapon)
 	local pr = txt(c, if owned then "OWNED" else (if Shop.free() then "FREE" else priceText(o.robux)), 14, if owned then T.MUTED else T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 	pr.RichText = true
-	pr.Position = UDim2.new(1, -92, 1, -37); pr.Size = UDim2.new(0, 80, 0, 16)
+	pr.Position = UDim2.new(1, -92, 1, -33); pr.Size = UDim2.new(0, 80, 0, 16)
 	if owned then
 		local tag = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.15, BorderSizePixel = 0, Position = UDim2.fromOffset(8, 8), Size = UDim2.fromOffset(64, 22), ZIndex = 5 }, c)
 		T.corner(tag, 4)
@@ -616,22 +655,22 @@ function ShopUI.fillContainers()
 		local c = card(UI.boxRow, nil)
 		c.LayoutOrder = i
 		-- (on a phone the words squeeze up so the preview keeps some room)
-		local textH = if k then 160 else 230
+		local textH = if k then 162 else 236
 		local view = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(0, if k then 26 else 40), Size = UDim2.new(1, 0, 1, -(textH + (if k then 26 else 40))) }, c)
 		V.show(view, V.offerModel(o), "slow", 0.95)
 		local eb = txt(c, "CONTAINER  ·  ONE RANDOM ITEM", 11, T.MUTED, T.FONT_BOLD)
 		eb.Position = UDim2.fromOffset(if k then 12 else 18, if k then 10 else 16); eb.Size = UDim2.new(1, -36, 0, 14)
 		local pad = if k then 12 else 18
 		local name = txt(c, string.upper(o.name), if k then 20 else 26, T.TEXT, T.FONT_TITLE)
-		name.Position = UDim2.new(0, pad, 1, if k then -156 else -182); name.Size = UDim2.new(1, -2 * pad, 0, if k then 24 else 30)
+		name.Position = UDim2.new(0, pad, 1, if k then -158 else -188); name.Size = UDim2.new(1, -2 * pad, 0, if k then 24 else 30)
 		local holds = txt(c, o.blurb, if k then 12 else 13, T.MUTED)
-		holds.Position = UDim2.new(0, pad, 1, if k then -130 else -148); holds.Size = UDim2.new(1, -2 * pad, 0, if k then 30 else 34); holds.TextWrapped = true
+		holds.Position = UDim2.new(0, pad, 1, if k then -132 else -154); holds.Size = UDim2.new(1, -2 * pad, 0, if k then 28 else 34); holds.TextWrapped = true
 		holds.TextTruncate = Enum.TextTruncate.None; holds.TextYAlignment = Enum.TextYAlignment.Top
 		local have = Till.count(o.id)
 		local hv = txt(c, if have > 0 then "YOU HAVE " .. have else "", 12, T.SOFT, T.FONT_BOLD)
-		hv.Position = UDim2.new(0, pad, 1, if k then -100 else -108); hv.Size = UDim2.new(0.5, 0, 0, 16)
+		hv.Position = UDim2.new(0, pad, 1, if k then -100 else -116); hv.Size = UDim2.new(0.5, 0, 0, 16)
 		hv.Visible = not k
-		local bh = if k then 36 else 40
+		local bh = 44 -- (a touch target)
 		local odds = button(c, "ODDS", "dark", UDim2.new(0.5, -(pad + 6), 0, bh), UDim2.new(0, pad, 1, -(2 * bh + (if k then 12 else 6))))
 		odds.face.MouseButton1Click:Connect(function() ShopUI.odds(o.id) end)
 		local open = button(c, "OPEN", "dark", UDim2.new(0.5, -(pad + 6), 0, bh), UDim2.new(0.5, 6, 1, -(2 * bh + (if k then 12 else 6))))
@@ -666,13 +705,25 @@ do
 		BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(0, 48), Size = UDim2.new(1, 0, 1, -48), CanvasSize = UDim2.new(),
 		AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollBarThickness = 4, ScrollBarImageColor3 = T.MUTED, ScrollingDirection = Enum.ScrollingDirection.Y,
 	}, pg_)
-	UI.invLayout = new("UIGridLayout", { CellPadding = UDim2.fromOffset(10, 10), CellSize = UDim2.fromOffset(170, 190), SortOrder = Enum.SortOrder.LayoutOrder }, UI.invScroll)
+	-- (one section per weapon, each a heading and a grid of cards: wraps and hats are owned per weapon)
+	new("UIListLayout", { Padding = UDim.new(0, 14), SortOrder = Enum.SortOrder.LayoutOrder }, UI.invScroll)
 	new("UIPadding", { PaddingRight = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8) }, UI.invScroll)
 	UI.invEmpty = txt(pg_, "", 16, T.MUTED, T.FONT, Enum.TextXAlignment.Center)
 	UI.invEmpty.Position = UDim2.fromOffset(0, 120); UI.invEmpty.Size = UDim2.new(1, 0, 0, 24)
 end
+S.invCell = UDim2.fromOffset(170, 190)
+-- a section of the inventory: a heading ("SMG  ·  3") over a grid of cards. returns the grid
+local function invSection(title: string, count: number, order: number): Frame
+	local sec = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, -8, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = order }, UI.invScroll)
+	new("UIListLayout", { Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, sec)
+	local h = txt(sec, string.upper(title) .. "  ·  " .. count, 14, T.MUTED, T.FONT_BOLD)
+	h.Size = UDim2.new(1, 0, 0, 22); h.LayoutOrder = 1
+	local grid = new("Frame", { Name = "Grid", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 0), AutomaticSize = Enum.AutomaticSize.Y, LayoutOrder = 2 }, sec)
+	new("UIGridLayout", { CellPadding = UDim2.fromOffset(10, 10), CellSize = S.invCell, SortOrder = Enum.SortOrder.LayoutOrder }, grid)
+	return grid
+end
 function ShopUI.fillInventory()
-	for _, c in UI.invScroll:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
+	for _, c in UI.invScroll:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	for f, b in UI.invBtns do
 		b.base = if f == S.invFilter then T.CARD_HI else T.CARD
 		b.face.BackgroundColor3 = b.base
@@ -680,12 +731,17 @@ function ShopUI.fillInventory()
 	end
 	local f, n, order = S.invFilter, 0, 0
 	-- containers you haven't opened: a card each with an OPEN button
+	local boxes = {}
 	if f == "all" or f == "containers" then
-		for _, o in Shop.containers do
+		for _, o in Shop.containers do if Till.count(o.id) > 0 then table.insert(boxes, o) end end
+	end
+	if #boxes > 0 then
+		local grid = invSection("containers", #boxes, 0)
+		for _, o in boxes do
 			local have = Till.count(o.id)
-			if have > 0 then
+			do
 				n += 1; order += 1
-				local c = card(UI.invScroll, nil)
+				local c = card(grid, nil)
 				c.LayoutOrder = order
 				local view = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -78) }, c)
 				V.show(view, V.container(o.id), "hover", 1.0)
@@ -693,40 +749,52 @@ function ShopUI.fillInventory()
 				name.Position = UDim2.new(0, 10, 1, -76); name.Size = UDim2.new(1, -20, 0, 18)
 				local cnt = txt(c, "x" .. have, 13, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Right)
 				cnt.Position = UDim2.new(0, 10, 1, -76); cnt.Size = UDim2.new(1, -20, 0, 18)
-				local ob = button(c, "OPEN", "main", UDim2.new(1, -20, 0, 34), UDim2.new(0, 10, 1, -44))
+				local ob = button(c, "OPEN", "main", UDim2.new(1, -20, 0, 40), UDim2.new(0, 10, 1, -48))
 				ob.face.TextSize = 14
 				ob.face.MouseButton1Click:Connect(function() ShopUI.openBox(o.id) end)
 			end
 		end
 	end
-	-- wraps and hats: rarest first
-	local items = {}
+	-- wraps and hats, grouped by the weapon they're for (the loadout's order), rarest first in each
+	local byWeapon: { [string]: { any } } = {}
 	for _, kind in { "wrap", "hat" } do
 		if f == "all" or f == kind then
-			for id in S.inv[kind] do
-				if Shop.exists(kind, id) then
+			for key in S.inv[kind] do
+				local id, w = Shop.unkey(key)
+				if Shop.exists(kind, id, w) then
 					local name, r = Shop.itemInfo(kind, id)
-					table.insert(items, { kind = kind, id = id, name = name, rarity = r })
+					local g = w or "_any"
+					byWeapon[g] = byWeapon[g] or {}
+					table.insert(byWeapon[g], { kind = kind, id = id, weapon = w, name = name, rarity = r })
 				end
 			end
 		end
 	end
-	table.sort(items, function(a, b)
-		if Shop.rank(a.rarity) ~= Shop.rank(b.rarity) then return Shop.rank(a.rarity) > Shop.rank(b.rarity) end
-		return a.name < b.name
-	end)
-	for _, it in items do
-		n += 1; order += 1
-		local c = card(UI.invScroll, it.rarity)
-		c.LayoutOrder = order
-		local view = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -50) }, c)
-		local so = Shop.offer(it.kind .. ":" .. it.id)
-		V.show(view, if so then V.offerModel(so) else nil, "hover", if it.kind == "hat" then 1.1 else 1.1)
-		local name = txt(c, it.name, 15, T.TEXT, T.FONT_BOLD)
-		name.Position = UDim2.new(0, 10, 1, -46); name.Size = UDim2.new(1, -20, 0, 18)
-		local rl = rarityLine(c, it.rarity, Shop.KIND_NAMES[it.kind], 10)
-		rl.Position = UDim2.new(0, 10, 1, -24); rl.Size = UDim2.new(1, -20, 0, 14)
-		c.MouseButton1Click:Connect(function() ShopUI.inspect(it.kind .. ":" .. it.id) end)
+	local groups = table.clone(Shop.WEAPONS)
+	table.insert(groups, "_any") -- (things kept without a weapon, from an older save)
+	for gi, g in groups do
+		local items = byWeapon[g]
+		if items and #items > 0 then
+			table.sort(items, function(a, b)
+				if a.kind ~= b.kind then return a.kind == "wrap" end
+				if Shop.rank(a.rarity) ~= Shop.rank(b.rarity) then return Shop.rank(a.rarity) > Shop.rank(b.rarity) end
+				return a.name < b.name
+			end)
+			local grid = invSection(if g == "_any" then "any weapon" else Shop.weaponName(g), #items, gi)
+			for _, it in items do
+				n += 1; order += 1
+				local c = card(grid, it.rarity)
+				c.LayoutOrder = order
+				local view = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 1, -50) }, c)
+				V.show(view, V.item(it, if it.kind == "hat" then 1.6 else nil), "hover", 1.08)
+				local name = txt(c, it.name, 15, T.TEXT, T.FONT_BOLD)
+				name.Position = UDim2.new(0, 10, 1, -46); name.Size = UDim2.new(1, -20, 0, 18)
+				local rl = rarityLine(c, it.rarity, Shop.KIND_NAMES[it.kind], 10)
+				rl.Position = UDim2.new(0, 10, 1, -24); rl.Size = UDim2.new(1, -20, 0, 14)
+				local oid = it.kind .. ":" .. it.id .. "@" .. (it.weapon or V.yourGun())
+				c.MouseButton1Click:Connect(function() ShopUI.inspect(oid) end)
+			end
+		end
 	end
 	UI.invCount.Text = if S.invOk then n .. " THINGS" else ""
 	UI.invEmpty.Text = if not S.invOk then "can't see your inventory right now. the till isn't answering."
@@ -787,12 +855,14 @@ local function listRow(it: any, order: number, o: any)
 		chip.BackgroundColor3 = T.BG
 		V.show(chip, V.hat(it.id), "none", 1.1)
 	end
-	local nm = txt(row, name, 15, T.TEXT, T.FONT_BOLD); nm.ZIndex = 25
+	-- "Sakura Storm · SMG": the item and the weapon it's for
+	local nm = txt(row, Shop.itemLabel(it), 15, T.TEXT, T.FONT_BOLD); nm.ZIndex = 25
 	nm.Position = UDim2.fromOffset(68, 5); nm.Size = UDim2.new(1, -150, 0, 20)
+	local _ = name
 	local rl = rarityLine(row, r, Shop.KIND_NAMES[it.kind] or it.kind, 10)
 	rl.Position = UDim2.fromOffset(68, 26); rl.Size = UDim2.new(1, -150, 0, 14)
 	for _, d in rl:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 25 end end
-	local own = Till.owns(it.kind, it.id)
+	local own = Till.owns(it.kind, it.id, it.weapon)
 	local tag = txt(row, if own then "OWNED" else "", 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Right); tag.ZIndex = 25
 	tag.Position = UDim2.new(1, -86, 0, 0); tag.Size = UDim2.new(0, 76, 1, 0)
 	row.MouseEnter:Connect(function() row.BackgroundColor3 = T.CARD_HI end)
@@ -825,7 +895,7 @@ function ShopUI.fillInspect()
 	UI.inspHint.Parent = UI.inspView
 	for _, c in UI.inspList:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	UI.inspEyebrow:Destroy()
-	local kindWord = if o.type == "bundle" then "BUNDLE  ·  " .. #o.items .. " ITEMS" elseif o.type == "container" then "CONTAINER" else (Shop.KIND_NAMES[o.kind] or "")
+	local kindWord = if o.type == "bundle" then "BUNDLE  ·  " .. #o.items .. " ITEMS" elseif o.type == "container" then "CONTAINER" else (Shop.KIND_NAMES[o.kind] or "") .. "  ·  FOR " .. string.upper(Shop.weaponName(o.weapon))
 	UI.inspEyebrow = rarityLine(UI.inspSide, o.rarity, kindWord, 12)
 	UI.inspEyebrow.Position = UDim2.fromOffset(0, 50)
 	for _, d in UI.inspEyebrow:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 23 end end
@@ -864,10 +934,11 @@ function ShopUI.fillInspect()
 		else UI.inspBuy.set(if Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. priceText(o.robux), true) end
 		ShopUI.oddsRows(UI.inspList, o.id, 24)
 	else
-		local own = Till.owns(o.kind, o.item)
+		local own = Till.owns(o.kind, o.item, o.weapon)
 		local onSale = Shop.onSale(o.id)
-		UI.inspBlurb.Text = if o.kind == "hat" then "a hat for one of your weapons. pick which in the loadout [L]."
-			else "a wrap: paint for any weapon. shown here on your " .. ((Roster.byId[V.yourGun()] or {}).name or "rifle") .. ". pick where in the loadout [L]."
+		local wn = Shop.weaponName(o.weapon)
+		UI.inspBlurb.Text = if o.kind == "hat" then "a hat for your " .. wn .. ". it goes on that gun only. wear it from the loadout [L]."
+			else "a wrap for your " .. wn .. ". it paints that gun only. pick how much it covers in the loadout [L]."
 		UI.inspNote.Text = if own then "it's yours. wear it from the loadout [L]." elseif onSale then "in today's daily rotation" else "not in today's rotation"
 		UI.inspBuy.set(if own then "OWNED" elseif not onSale then "NOT ON SALE TODAY" elseif Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. priceText(o.robux), not own and onSale)
 	end
@@ -916,7 +987,7 @@ do
 end
 -- the odds rows into any list (the odds panel, the inspect panel, the confirm panel): a bar in the rarity's colour,
 -- its name, the chance. nil from the loot module = say so rather than show numbers the server might not use
-function ShopUI.oddsRows(list: Instance, cid: string, z: number): boolean
+function ShopUI.oddsRows(list: Instance, cid: string, z: number, rowH: number?): boolean
 	local rows, info = Shop.odds(cid, Till.ownedSets())
 	if not rows or #rows == 0 or (info and (info.soon or info.empty)) then
 		local why = if info and info.soon then "coming soon: nothing in it is on roblox yet."
@@ -933,7 +1004,7 @@ function ShopUI.oddsRows(list: Instance, cid: string, z: number): boolean
 	for _, r in sorted do total += r.pct or 0 end
 	table.insert(sorted, { rarity = "", pct = total, isTotal = true })
 	for i, r in sorted do
-		local row = new("Frame", { BackgroundColor3 = T.CARD, BackgroundTransparency = if r.isTotal then 1 else 0, BorderSizePixel = 0, Size = UDim2.new(1, -6, 0, 30), LayoutOrder = i, ZIndex = z + 1 }, list)
+		local row = new("Frame", { BackgroundColor3 = T.CARD, BackgroundTransparency = if r.isTotal then 1 else 0, BorderSizePixel = 0, Size = UDim2.new(1, -6, 0, rowH or 30), LayoutOrder = i, ZIndex = z + 1 }, list)
 		T.corner(row, 4)
 		if not r.isTotal then new("Frame", { BackgroundColor3 = rarityColor(r.rarity), BorderSizePixel = 0, Position = UDim2.fromOffset(0, 0), Size = UDim2.new(0, 4, 1, 0), ZIndex = z + 2 }, row) end
 		local n = txt(row, if r.isTotal then "TOTAL" else rarityName(r.rarity), 13, if r.isTotal then T.MUTED else T.TEXT, T.FONT_BOLD); n.ZIndex = z + 2
@@ -953,7 +1024,7 @@ function ShopUI.odds(cid: string)
 	for _, c in UI.oddsList:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	UI.oddsTitle.Text = string.upper(o.name) .. "  ODDS"
 	ShopUI.oddsRows(UI.oddsList, cid, 31)
-	UI.oddsFoot.Text = "one item per " .. string.lower(o.name) .. ", picked by these chances. it never gives you something you already own, so the odds change as you collect."
+	UI.oddsFoot.Text = "a rarity by these chances, then the gun is picked evenly, then an item for it. never one you already own, so the odds change as you collect."
 	UI.odds.Visible = true
 	ShopUI.layer()
 end
@@ -1002,15 +1073,16 @@ function ShopUI.ask(id: string)
 	for _, c in UI.cOdds:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	local free = Shop.free()
 	UI.cTitle.Text = (if free then "CLAIM " else "BUY ") .. string.upper(o.name) .. "?"
-	local h = 230
+	local h = if S.compact then 210 else 230
+	local rh = if S.compact then 24 else 30
 	local canGo = true
 	if o.type == "container" then
-		UI.cBody.Text = "one " .. string.lower(o.name) .. ", opened right away. one random item from these odds:"
-		canGo = ShopUI.oddsRows(UI.cOdds, o.id, 41) or free -- (never charge for a random item without its odds)
+		UI.cBody.Text = "one " .. string.lower(o.name) .. ", opened right away: one item for one gun (picked evenly), at these odds:"
+		canGo = ShopUI.oddsRows(UI.cOdds, o.id, 41, rh) or free -- (never charge for a random item without its odds)
 		local n = 0
 		for _, c in UI.cOdds:GetChildren() do if c:IsA("GuiObject") then n += 1 end end
-		UI.cOdds.Size = UDim2.new(1, -44, 0, n * 34)
-		h += n * 34 + 8
+		UI.cOdds.Size = UDim2.new(1, -44, 0, n * (rh + 4))
+		h += n * (rh + 4) + 8
 	elseif o.type == "bundle" then
 		local miss = Till.missing(o)
 		UI.cBody.Text = string.format("%d item%s go%s into your inventory.", miss, if miss == 1 then "" else "s", if miss == 1 then "es" else "")
@@ -1045,7 +1117,7 @@ function ShopUI.commit()
 		return
 	end
 	Till.refresh()
-	ShopUI.toast(if o.type == "bundle" then string.upper(o.name) .. " ADDED. WEAR IT FROM THE LOADOUT [L]" else string.upper(o.name) .. " ADDED. WEAR IT FROM THE LOADOUT [L]")
+	ShopUI.toast(string.upper(if o.type == "single" then Shop.itemLabel({ kind = o.kind, id = o.item, weapon = o.weapon }) else o.name) .. " ADDED. WEAR IT FROM THE LOADOUT [L]")
 	ShopUI.refill()
 end
 
@@ -1091,6 +1163,7 @@ function ShopUI.openBox(cid: string)
 		local it = last and (last.item or last.prize)
 		if type(it) == "table" and it.id then
 			local name = it.name or Shop.itemInfo(it.kind or it.type, it.id)
+			if it.weapon then name ..= " · " .. Shop.weaponName(it.weapon) end
 			ShopUI.toast(string.upper(name) .. " IS YOURS. WEAR IT FROM THE LOADOUT [L]")
 		end
 		S.invFilter = "all"
@@ -1153,12 +1226,13 @@ end
 
 -- ======================================================================== layout: the canvas fits any screen
 -- a tall-enough screen is laid out 720 design pixels tall (wider screens just get more width); a short one (a phone
--- on its side) 470 tall, so the same words come out bigger on it
+-- on its side, 375-430 points tall) 400 tall, so one design pixel is about one point there: the shop fills the whole
+-- phone screen, words read at their design size and every button is at least 44 points (Apple's touch target)
 function ShopUI.layout()
 	local abs = if S.fake then S.fake else gui.AbsoluteSize
 	if abs.X < 10 or abs.Y < 10 then return end
 	local compact = abs.Y < 560
-	local sc = if compact then math.min(abs.Y / 470, abs.X / 860) else math.min(abs.Y / 720, abs.X / 1180)
+	local sc = if compact then math.min(abs.Y / 400, abs.X / 760) else math.min(abs.Y / 720, abs.X / 1180)
 	sc = math.max(sc, 0.4)
 	S.compact, S.scale = compact, sc
 	local W, H = abs.X / sc, abs.Y / sc
@@ -1171,65 +1245,107 @@ function ShopUI.layout()
 	local guiTop = gui.AbsolutePosition.Y + GuiService:GetGuiInset().Y
 	local barL = if ins and ins.Height > 0 and guiTop < ins.Max.Y - 4 then ins.Min.X else 0
 	if S.fake then barL = 120 end -- (a phone's Roblox buttons, roughly)
-	local topY = if compact then 4 else 10
-	local side = if compact then 16 else 32
-	local topH = if compact then 54 else 78
-	local topL = math.max(side, barL / sc + (if compact then 10 else 16))
+	local topY = if compact then 2 else 10
+	local side = if compact then 12 else 32
+	local topH = if compact then 48 else 78
+	local topL = math.max(side, barL / sc + (if compact then 8 else 16))
+	local topW = W - topL - side
 	UI.top.Position = UDim2.fromOffset(topL, topY)
 	UI.top.Size = UDim2.new(1, -(topL + side), 0, topH)
-	UI.title.TextSize = if compact then 24 else 34
+	-- the top row on a phone: title, tabs, the FREE pill, CLOSE, all 44 tall; where it's too narrow the pill goes, then
+	-- the title (the tabs and CLOSE always stay)
+	local tabW = if compact then 98 else 116
+	local closeW = if compact then 84 else 112
+	local walletW = if compact then 70 else 170
+	local titleW = if compact then 78 else 190
+	local tabsW = tabW * 4 + 18
+	local showWallet = topW >= titleW + tabsW + walletW + closeW + 16
+	local showTitle = topW >= titleW + tabsW + closeW + 8
+	UI.title.Visible = showTitle; UI.rule.Visible = showTitle
+	UI.title.TextSize = if compact then 22 else 34
 	UI.title.Position = UDim2.fromOffset(0, 0); UI.title.Size = UDim2.fromOffset(160, if compact then 28 else 40)
 	UI.rule.Position = UDim2.fromOffset(2, if compact then 31 else 44)
 	UI.sub.Visible = not compact
 	UI.sub.Position = UDim2.fromOffset(2, 54); UI.sub.Size = UDim2.fromOffset(420, 18)
-	local tabW = if compact then 96 else 116
-	UI.tabRow.Position = UDim2.fromOffset(if compact then 110 else 190, 0)
-	UI.tabRow.Size = UDim2.fromOffset(tabW * 4 + 18, if compact then 40 else 44)
-	for _, b in UI.tabs do b.face.Size = UDim2.fromOffset(tabW, if compact then 40 else 44); b.face.TextSize = if compact then 13 else 15 end
+	UI.tabRow.Position = UDim2.fromOffset(if showTitle then titleW else 0, 0)
+	UI.tabRow.Size = UDim2.fromOffset(tabsW, 44)
+	for _, b in UI.tabs do b.face.Size = UDim2.fromOffset(tabW, 44); b.face.TextSize = if compact then 14 else 15 end
 	UI.close.face.AnchorPoint = Vector2.new(1, 0)
 	UI.close.face.Position = UDim2.new(1, 0, 0, 0)
-	UI.close.face.Size = UDim2.fromOffset(if compact then 96 else 112, 40)
-	UI.closeKey.Visible = not UIS.TouchEnabled or UIS.KeyboardEnabled
+	UI.close.face.Size = UDim2.fromOffset(closeW, 44)
+	UI.closeKey.Visible = (not UIS.TouchEnabled or UIS.KeyboardEnabled) and not compact
+	UI.close.face.TextXAlignment = if UI.closeKey.Visible then Enum.TextXAlignment.Left else Enum.TextXAlignment.Center
+	local cp = UI.close.face:FindFirstChildOfClass("UIPadding")
+	if cp then cp.PaddingLeft = UDim.new(0, if UI.closeKey.Visible then 14 else 0) end
+	UI.wallet.Visible = showWallet
 	UI.wallet.AnchorPoint = Vector2.new(1, 0)
-	UI.wallet.Position = UDim2.new(1, -(if compact then 104 else 124), 0, 0)
-	UI.wallet.Size = UDim2.fromOffset(if compact then 120 else 170, 40)
+	UI.wallet.Position = UDim2.new(1, -(closeW + 8), 0, 0)
+	UI.wallet.Size = UDim2.fromOffset(walletW, 44)
 	-- the body
-	local by = topY + topH + (if compact then 2 else 6)
+	local by = topY + topH + (if compact then 4 else 6)
+	local bottom = if compact then 8 else 24
 	UI.body.Position = UDim2.fromOffset(side, by)
-	UI.body.Size = UDim2.new(1, -2 * side, 1, -(by + (if compact then 10 else 24)))
-	local bw, bh = W - 2 * side, H - by - (if compact then 10 else 24)
+	UI.body.Size = UDim2.new(1, -2 * side, 1, -(by + bottom))
+	local bw, bh = W - 2 * side, H - by - bottom
 	-- featured: hero on the left, the daily grid on the right
-	local heroW = math.floor(bw * (if compact then 0.5 else 0.48))
+	local heroW = math.floor(bw * (if compact then 0.46 else 0.48))
+	local gap = if compact then 10 else 14
 	UI.hero.Size = UDim2.new(0, heroW, 1, 0)
-	UI.daily.Position = UDim2.fromOffset(heroW + 14, 0)
-	UI.daily.Size = UDim2.new(1, -(heroW + 14), 1, 0)
-	UI.heroName.TextSize = if compact then 24 else 34
+	UI.daily.Position = UDim2.fromOffset(heroW + gap, 0)
+	UI.daily.Size = UDim2.new(1, -(heroW + gap), 1, 0)
+	UI.dailyLayout.CellPadding = UDim2.fromOffset(gap, gap)
+	UI.dailyLayout.CellSize = UDim2.new(1 / 3, -math.ceil(gap * 2 / 3), 0.5, -math.ceil(gap / 2))
+	UI.dailyGrid.Position = UDim2.fromOffset(0, if compact then 26 else 30)
+	UI.dailyGrid.Size = UDim2.new(1, 0, 1, -(if compact then 26 else 30))
+	UI.heroEyebrow.Position = UDim2.fromOffset(if compact then 14 else 20, if compact then 12 else 18)
+	UI.heroTimer.Position = UDim2.new(0, if compact then 14 else 20, 0, if compact then 12 else 18)
+	UI.heroName.Position = UDim2.fromOffset(if compact then 14 else 20, if compact then 28 else 36)
+	UI.heroName.TextSize = if compact then 22 else 34
 	UI.heroBlurb.Visible = not compact
-	UI.heroStrip.Size = UDim2.new(1, 0, 0, if compact then 62 else 74)
+	local strip = if compact then 60 else 74
+	UI.heroStrip.Size = UDim2.new(1, 0, 0, strip)
 	-- the preview between the words on top and the strip at the bottom
-	local hy = if compact then 70 else 100
+	local hy = if compact then 58 else 100
 	UI.heroView.Position = UDim2.fromOffset(0, hy)
-	UI.heroView.Size = UDim2.new(1, 0, 1, -(hy + (if compact then 62 else 74)))
-	UI.heroBtn.face.Size = UDim2.fromOffset(if compact then 140 else 180, if compact then 42 else 46)
-	UI.heroBtn.face.Position = UDim2.new(1, -(if compact then 150 else 196), 0.5, -(if compact then 21 else 23))
-	UI.heroChips.Size = UDim2.new(1, -(if compact then 166 else 220), 1, 0)
-	-- bundles: as many columns as fit cards ~340 wide
-	local cols = math.max(2, math.floor((bw + 14) / (if compact then 300 else 360)))
+	UI.heroView.Size = UDim2.new(1, 0, 1, -(hy + strip))
+	UI.heroBtn.face.Size = UDim2.fromOffset(if compact then 128 else 180, if compact then 44 else 46)
+	UI.heroBtn.face.Position = UDim2.new(1, -(if compact then 138 else 196), 0.5, -(if compact then 22 else 23))
+	UI.heroBtn.face.TextSize = if compact then 14 else 15
+	UI.heroChips.Position = UDim2.fromOffset(if compact then 10 else 16, 0)
+	UI.heroChips.Size = UDim2.new(1, -(if compact then 150 else 220), 1, 0)
+	-- bundles: as many columns as fit cards ~340 wide (~270 on a phone)
+	local cols = math.max(2, math.floor((bw + 14) / (if compact then 270 else 360)))
 	local cw = math.floor((bw - 8 - (cols - 1) * 14) / cols)
 	UI.bundleLayout.CellSize = UDim2.fromOffset(cw, math.floor(math.min(cw * 0.82, if compact then bh - 4 else 340)))
-	-- inventory: small cards
+	-- inventory: small cards in each weapon's grid
 	local icols = math.max(3, math.floor((bw + 10) / (if compact then 150 else 180)))
-	local iw = math.floor((bw - 8 - (icols - 1) * 10) / icols)
-	UI.invLayout.CellSize = UDim2.fromOffset(iw, math.floor(iw * 1.12))
-	UI.invCount.Position = UDim2.fromOffset(0, 0)
-	-- the overlays
+	local iw = math.floor((bw - 16 - (icols - 1) * 10) / icols)
+	S.invCell = UDim2.fromOffset(iw, math.floor(iw * 1.12))
+	for _, g in UI.invScroll:GetDescendants() do if g:IsA("UIGridLayout") then g.CellSize = S.invCell end end
+	for _, b in UI.invBtns do b.face.Size = UDim2.fromOffset(if compact then 104 else 120, if compact then 44 else 40); b.face.TextSize = if compact then 14 else 13 end
+	UI.invFilters.Size = UDim2.new(1, 0, 0, if compact then 44 else 40)
+	UI.invCount.Size = UDim2.new(1, 0, 0, if compact then 44 else 40)
+	UI.invScroll.Position = UDim2.fromOffset(0, if compact then 52 else 52)
+	UI.invScroll.Size = UDim2.new(1, 0, 1, -52)
+	-- the overlays: inspect fills the body on a phone
 	local iw2, ih2 = math.min(bw, 1100), math.min(bh, 600)
 	UI.dim.Size = UDim2.fromScale(1, 1)
 	UI.insp.AnchorPoint = Vector2.new(0.5, 0)
 	UI.insp.Position = UDim2.new(0.5, 0, 0, by)
 	UI.insp.Size = UDim2.fromOffset(iw2, ih2)
+	local ipad = if compact then 10 else 14
+	local split = if compact then 0.5 else 0.58
+	UI.inspView.Position = UDim2.fromOffset(ipad, ipad)
+	UI.inspView.Size = UDim2.new(split, -ipad, 1, -2 * ipad)
+	UI.inspSide.Position = UDim2.new(split, ipad, 0, ipad)
+	UI.inspSide.Size = UDim2.new(1 - split, -2 * ipad, 1, -2 * ipad)
+	UI.inspBack.face.Size = UDim2.fromOffset(if compact then 96 else 90, if compact then 44 else 38)
+	UI.inspOdds.face.Size = UDim2.new(0.5, -5, 0, 44); UI.inspOdds.face.Position = UDim2.new(0, 0, 1, -100)
+	UI.inspOpen.face.Size = UDim2.new(0.5, -5, 0, 44); UI.inspOpen.face.Position = UDim2.new(0.5, 5, 1, -100)
 	UI.inspName.TextSize = if compact then 22 else 30
-	UI.odds.Size = UDim2.fromOffset(440, math.min(H - 20, 380))
+	UI.odds.Size = UDim2.fromOffset(if compact then 420 else 440, math.min(H - 16, 380))
+	UI.oddsOk.face.Size = UDim2.new(1, -44, 0, 44); UI.oddsOk.face.Position = UDim2.new(0, 22, 1, -56)
+	UI.oddsFoot.Position = UDim2.new(0, 22, 1, -90)
 end
 function ShopUI.wallet()
 	UI.walletTxt.Text = if Shop.free() then string.format('%s  <font color="%s">FREE FOR NOW</font>', ROBUX, T.hex(T.ACCENT))
