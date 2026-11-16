@@ -13,7 +13,9 @@
 --                             free while Config.LOOT_FREE. paid (Config.LOOT_ROBUX, off for now) goes through the
 --                             shop's prompt and receipt instead (ShopReceipts.server.luau -> Loot.grant)
 --   ("claim", offerId)     -> the same as buy (the shop's word for it while everything is free)
---   ("open", kind)         -> { prize, item, strip, stop, stock }: uses one from stock, or opens free (Config.LOOT_FREE)
+--   ("open", kind, n?)     -> n = 1 / 5 / 10 at once: { prize, item, strip, stop (the first), prizes, items, strips, stops,
+--                             n, stock }: uses stock first, or opens free (Config.LOOT_FREE). others nearby see it
+--                             (the LootShow event) unless you turned that off: ("setting", "showOpenings", false)
 --   ("dev", what)          -> Studio + the place's owner only: "unlock" (wear anything, this session only, nothing
 --                             saved), "lock" (back to what you own), "reset" (own nothing, no stock: saved), "stock" (+5 each),
 --                             "set", { wrap = {ids}, hat = {ids} } (an inventory back as it was before a test: saved)
@@ -29,11 +31,21 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Config = require(Shared:WaitForChild("Config"))
 local LootTable = require(Shared:WaitForChild("LootTable"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
-local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loot") :: RemoteFunction
+local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
+local Remote = Remotes:WaitForChild("Loot") :: RemoteFunction
+-- the openings others see (LootShow.client.luau draws them): made here if the place doesn't have it yet
+local Show = Remotes:FindFirstChild("LootShow") :: RemoteEvent?
+if not Show then
+	local e = Instance.new("RemoteEvent")
+	e.Name = "LootShow"
+	e.Parent = Remotes
+	Show = e
+end
+local SHOW_RANGE = 160 -- studs: players further away than this don't get the event
 
 local Loot = {}
 local CATALOG = "Shop" -- the shop's catalog in ReplicatedStorage.Jankfire (Shop.luau: offers, prices, product ids, rotation)
-local TYPES = { "wrap", "hat", "skin" } -- what can be owned on Roblox today
+local function TYPES(): { string } return LootTable.ownTypes() end -- what can be owned on Roblox today
 local BUY_MAX = 10
 
 local changed = Instance.new("BindableEvent")
@@ -42,7 +54,8 @@ Loot.changed = changed.Event -- (player): what they own changed (the loadout rep
 local store = Profiles.new("JankfireLoot_v1", function()
 	-- (v 2: wraps and hats are "<id>@<weapon>" pairs; v 1 had bare ids, owned on every gun: migrate() below)
 	return { v = 2, inv = { wrap = {}, hat = {}, skin = {} }, stock = { crate = 0, bag = 0, spray = 0 },
-		opened = { crate = 0, bag = 0, spray = 0 }, receipts = {}, since = os.time() }
+		opened = { crate = 0, bag = 0, spray = 0 }, receipts = {}, since = os.time(),
+		settings = { showOpenings = true } } -- (others see your openings: Settings [P])
 end)
 
 type State = { prof: Profiles.Profile?, owned: { [string]: { [string]: boolean } }, ready: boolean, rev: number,
@@ -54,7 +67,7 @@ local rng = Random.new()
 -- (wraps and hats are owned one gun at a time: their keys are "<id>@<weapon>"; a skin's key is its id)
 local function sets(data: any): { [string]: { [string]: boolean } }
 	local out = {}
-	for _, t in TYPES do
+	for _, t in TYPES() do
 		out[t] = {}
 		local list = data.inv[t]
 		if type(list) == "table" then
@@ -121,6 +134,8 @@ local function publish(p: Player)
 	p:SetAttribute("LootStock", ("bag=%d;crate=%d;spray=%d"):format(stock.bag, stock.crate, stock.spray))
 	p:SetAttribute("LootOwned", s.rev)
 	p:SetAttribute("LootSave", if not s.ready then "loading" elseif s.prof then s.prof.state else "off")
+	local set = s.prof and s.prof.data.settings
+	p:SetAttribute("LootShowOpenings", not (type(set) == "table" and set.showOpenings == false))
 end
 
 local function touch(p: Player, s: State, saveIn: number?)
@@ -194,6 +209,54 @@ local function grantOffer(s: State, o: any, n: number?): { LootTable.Item }
 	return got
 end
 
+-- ------------------------------------------------------------------ others see your openings
+-- the owner, 16 Nov: "when they're on the ground, other people can see it and what you get! you can disable that
+-- option in the settings like hide it from other people". after an open, everyone else within SHOW_RANGE studs gets
+-- one small event: where the container lands (in front of you, as the server sees you), what it was and what came out.
+-- their client draws the container, the pop and the prize over it (no reel). off in Settings = nothing is sent.
+local function spotOf(p: Player, ahead: number?, side: number?): CFrame?
+	local ch = p.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not root then return nil end
+	local look = root.CFrame.LookVector
+	local flat = Vector3.new(look.X, 0, look.Z)
+	flat = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.new(0, 0, -1)
+	local right = flat:Cross(Vector3.yAxis)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { ch :: Instance }
+	local from = root.Position + Vector3.new(0, 0.5, 0)
+	local dist = ahead or 7.5
+	local hit = workspace:Raycast(from, flat * (dist + 2.5), params)
+	if hit then dist = math.max(3.2, hit.Distance - 2.5) end
+	local spot = from + flat * dist + right * (side or 0)
+	local down = workspace:Raycast(spot + Vector3.new(0, 5, 0), Vector3.new(0, -24, 0), params)
+	local y = if down then down.Position.Y else root.Position.Y - 3
+	local g = Vector3.new(spot.X, y, spot.Z)
+	return CFrame.lookAt(g, g - flat) * CFrame.Angles(0, math.rad(-20), 0)
+end
+local function showData(p: Player, kind: string, prizes: { any }, cf: CFrame): any
+	local list = {}
+	for i, q in prizes do
+		if i > 10 then break end
+		list[i] = { type = q.type, id = q.id, weapon = q.weapon, name = q.name, rarity = q.rarity }
+	end
+	return { uid = p.UserId, who = p.DisplayName, kind = kind, cf = cf, prizes = list, n = #prizes }
+end
+local function broadcast(p: Player, s: State, kind: string, prizes: { any })
+	local set = s.prof and s.prof.data.settings
+	if type(set) == "table" and set.showOpenings == false then return end
+	local cf = spotOf(p)
+	if not cf or not Show then return end
+	local data = showData(p, kind, prizes, cf)
+	for _, q in Players:GetPlayers() do
+		if q ~= p then
+			local qr = q.Character and q.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if qr and (qr.Position - cf.Position).Magnitude <= SHOW_RANGE then (Show :: RemoteEvent):FireClient(q, data) end
+		end
+	end
+end
+
 -- ------------------------------------------------------------------ the remote
 local function spend(s: State): boolean
 	local t = os.clock()
@@ -205,7 +268,7 @@ end
 
 local function inventory(p: Player, s: State): any
 	local owned = {}
-	for _, t in TYPES do
+	for _, t in TYPES() do
 		local ids = {}
 		for id in s.owned[t] or {} do table.insert(ids, id) end
 		table.sort(ids)
@@ -219,7 +282,8 @@ local function inventory(p: Player, s: State): any
 	return { ok = true, free = Config.LOOT_FREE == true, robux = Config.LOOT_ROBUX == true, restricted = s.restricted,
 		stock = stockOf(s), owned = owned, left = left, soon = soon,
 		inv = { wrap = owned.wrap, hat = owned.hat, skin = owned.skin, stock = stockOf(s) },
-		save = if not s.ready then "loading" elseif s.prof then s.prof.state else "off", dev = isDev(p), devAll = s.devAll }
+		save = if not s.ready then "loading" elseif s.prof then s.prof.state else "off", dev = isDev(p), devAll = s.devAll,
+		showOpenings = not (s.prof ~= nil and type(s.prof.data.settings) == "table" and s.prof.data.settings.showOpenings == false) }
 end
 
 local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
@@ -260,26 +324,60 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		return { ok = true, stock = stockOf(s), items = items }
 
 	elseif op == "open" then
+		-- ("open", kind, n): n = 1, 5 or 10 at once, rolled one after another in this one request (the same odds, and
+		-- never a pair twice: each prize is yours before the next roll). fewer left than n: as many as there are
 		if type(a) ~= "string" or not LootTable.CONTAINERS[a] then return { ok = false, why = "no such container" } end
+		local n = if b == 5 then 5 elseif b == 10 then 10 else 1
 		local now = os.clock()
-		if now - s.lastOpen < 0.6 then return { ok = false, why = "slow down" } end
+		if now - s.lastOpen < (if n > 1 then 1.2 else 0.6) then return { ok = false, why = "slow down" } end
 		local have = math.floor(tonumber(d.stock[a]) or 0)
-		if have <= 0 and not Config.LOOT_FREE then return { ok = false, why = ("no %s left"):format(string.lower(LootTable.CONTAINERS[a].plural)) } end
-		local prize, why = LootTable.roll(a, s.owned, rng)
-		if not prize then
-			return { ok = false, why = if why == "soon" then "coming soon: nothing in it is on roblox yet" else "you own everything in it already" }
+		if have < n and not Config.LOOT_FREE then
+			return { ok = false, why = if have <= 0 then ("no %s left"):format(string.lower(LootTable.CONTAINERS[a].plural)) else ("you only have %d"):format(have) }
+		end
+		local prizes = {}
+		for i = 1, n do
+			local prize, why = LootTable.roll(a, s.owned, rng)
+			if not prize then
+				if i == 1 then
+					return { ok = false, why = if why == "soon" then "coming soon: nothing in it is on roblox yet" else "you own everything in it already" }
+				end
+				break
+			end
+			give(s, prize)
+			table.insert(prizes, prize)
 		end
 		s.lastOpen = now
-		if have > 0 then d.stock[a] = have - 1 end
-		d.opened[a] = (tonumber(d.opened[a]) or 0) + 1
-		give(s, prize)
+		local used = math.min(have, #prizes)
+		d.stock[a] = have - used
+		d.opened[a] = (tonumber(d.opened[a]) or 0) + #prizes
 		touch(p, s, 3)
-		local cards, stop = LootTable.strip(a, prize, rng)
-		local strip = table.create(#cards)
-		for i, c in cards do strip[i] = { type = c.type, id = c.id, weapon = c.weapon, key = c.key, name = c.name, rarity = c.rarity } end
-		return { ok = true, prize = { type = prize.type, id = prize.id, weapon = prize.weapon, key = prize.key, name = prize.name, rarity = prize.rarity, kind = a },
-			item = { kind = prize.type, id = prize.id, weapon = prize.weapon, key = prize.key, name = prize.name, rarity = prize.rarity },
-			strip = strip, stop = stop, stock = stockOf(s), usedStock = have > 0 }
+		local function slim(c: any): any
+			return { type = c.type, id = c.id, weapon = c.weapon, key = c.key, name = c.name, rarity = c.rarity }
+		end
+		local strips, stops, list, items = {}, {}, {}, {}
+		for i, q in prizes do
+			local cards, stop = LootTable.strip(a, q, rng, if #prizes > 1 then LootTable.STRIP_QUICK else nil)
+			local strip = table.create(#cards)
+			for j, c in cards do strip[j] = slim(c) end
+			strips[i], stops[i] = strip, stop
+			list[i] = slim(q)
+			items[i] = { kind = q.type, id = q.id, weapon = q.weapon, key = q.key, name = q.name, rarity = q.rarity }
+		end
+		broadcast(p, s, a, prizes)
+		local first = prizes[1]
+		return { ok = true, n = #prizes, short = #prizes < n,
+			prize = { type = first.type, id = first.id, weapon = first.weapon, key = first.key, name = first.name, rarity = first.rarity, kind = a },
+			item = items[1], strip = strips[1], stop = stops[1],
+			prizes = list, items = items, strips = strips, stops = stops,
+			stock = stockOf(s), usedStock = used > 0, used = used }
+
+	elseif op == "setting" then
+		-- ("setting", "showOpenings", on): others see your openings or not (Settings [P]); saved with your things
+		if a ~= "showOpenings" or type(b) ~= "boolean" then return { ok = false, why = "nope" } end
+		d.settings = if type(d.settings) == "table" then d.settings else {}
+		d.settings.showOpenings = b
+		touch(p, s, 5)
+		return { ok = true, showOpenings = b }
 
 	elseif op == "dev" then
 		if not isDev(p) then return { ok = false, why = "nope" } end
@@ -294,10 +392,30 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			s.owned = sets(d)
 		elseif a == "stock" then
 			addStock(s, { crate = 5, bag = 5, spray = 5 })
+		elseif a == "show" then
+			-- (what others see when you open, sent to you yourself, a few studs to the side: nothing is given.
+			-- ("dev", "show", { kind = "spray", n = 1, ahead = 9, side = 6 }))
+			local o = if type(b) == "table" then b :: any else {}
+			local kind = if type(o.kind) == "string" and LootTable.CONTAINERS[o.kind] then o.kind else "spray"
+			local pool = LootTable.pool(kind)
+			if #pool == 0 or not Show then return { ok = false, why = "nothing to show" } end
+			local cf = spotOf(p, tonumber(o.ahead) or 9, tonumber(o.side) or 6)
+			if not cf then return { ok = false, why = "no character" } end
+			local prizes = {}
+			local count = math.clamp(math.floor(tonumber(o.n) or 1), 1, 10)
+			for i = 1, count do
+				local q = pool[rng:NextInteger(1, #pool)]
+				if type(o.rarity) == "string" and i == 1 then
+					for _, x in pool do if x.rarity == o.rarity then q = x; break end end
+				end
+				prizes[i] = q
+			end
+			(Show :: RemoteEvent):FireClient(p, showData(p, kind, prizes, cf))
+			return { ok = true }
 		elseif a == "set" and type(b) == "table" then
 			-- (put an inventory back as it was before a test: { wrap = {keys}, hat = {keys}, skin = {ids} })
 			local inv = { wrap = {}, hat = {}, skin = {} }
-			for _, t in TYPES do
+			for _, t in TYPES() do
 				local list = (b :: any)[t]
 				if type(list) == "table" then
 					for _, k in list do
@@ -309,7 +427,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			d.inv = inv
 			s.owned = sets(d)
 		else
-			return { ok = false, why = "unlock, lock, reset, stock or set" }
+			return { ok = false, why = "unlock, lock, reset, stock, set or show" }
 		end
 		touch(p, s, 2)
 		return inventory(p, s)

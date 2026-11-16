@@ -75,7 +75,8 @@ Always answers a table `{ ok, why?, ... }`.
 | `("buy", offerId, n?)` | a shop offer (`Shared.Shop`): `"crate"`/`"bag"`/`"spray"` = n (1 to 10) into your stock; `"bundle_<name>"` = its pairs (`{kind, id, weapon}`; an item with no weapon = every gun); `"wrap:<id>@<gun>"`/`"hat:<id>@<gun>"` = one pair from today's rotation. Free while `Config.LOOT_FREE`. |
 | `("claim", offerId)` | the same as buy |
 | `("open", kind)` | `prize`, `item` (the shop's field names; both carry `weapon` and `key`), `strip` (52 cards, each on a gun), `stop` (the prize's card), `stock`. Uses one from stock if you have any; with `LOOT_FREE` it opens even at none |
-| `("dev", "unlock" / "lock" / "reset" / "stock")` | Studio and the place's owner only. `unlock`: wear anything, for this session only (nothing is saved, and containers still roll on what you really own). `lock`: back to what you own. `reset`: own nothing, no stock (saved). `stock`: +5 of each container. `set`, `{wrap = {keys}, hat = {keys}}`: an inventory back as it was (saved) |
+| `("setting", "showOpenings", on)` | others see your openings or not; saved |
+| `("dev", "unlock" / "lock" / "reset" / "stock" / "show")` | Studio and the place's owner only. `unlock`: wear anything, for this session only (nothing is saved, and containers still roll on what you really own). `lock`: back to what you own. `reset`: own nothing, no stock (saved). `stock`: +5 of each container. `set`, `{wrap = {keys}, hat = {keys}}`: an inventory back as it was (saved) |
 
 Player attributes for the clients: `LootStock` (`"bag=0;crate=1;spray=2"`), `LootOwned` (goes up when what you own
 changes), `LootSave` (`loading` / `cloud` / `off` / `lost`).
@@ -199,6 +200,46 @@ readable over any room, and the camera stands a couple of studs in front of you 
 
 All seven sounds were approved by Roblox on 16 Nov (asset ids in the shared notes, `loot-progress.md`).
 
+## Several at once, and others seeing it
+
+The owner, after the per-gun change: "make sure you can open multiple and when they're on the ground, other people can
+see it and what you get! you can disable that option in the settings like hide it from other people".
+
+**x1 / x5 / x10.** `("open", kind, n)` rolls n pairs in one request, one after another (each prize is yours before the
+next roll, so a batch never repeats a pair), with the same odds. It uses your stock first, then (while `LOOT_FREE`)
+opens the rest free. If fewer than n pairs are left you get what there is (`res.short`). A batch can't come sooner than
+1.2 s after the last open. The reply keeps the single fields for the first prize and adds `prizes`, `items`, `strips`
+(26 cards each), `stops` and `n`. The shop puts x1 / x5 / x10 on its container card.
+
+`LootOpening.play` with several prizes:
+1. the containers drop one after another (0.07 s apart) in a row in front of you, smaller (two rows of five for ten), with
+   one thud at the first landing and one at the last;
+2. they pop together in a ripple, one sound;
+3. a quick reel per prize (0.95 s) runs one after another, `3 / 10` in the title; each container's light turns its
+   prize's rarity colour; only epic and legendary get a sting and a flash (ten chimes would be noise);
+4. a grid of everything you got, rarest first, each card with **EQUIP** (on its own gun: a wrap, a hat or a skin);
+   **OPEN 10 MORE** and **DONE**.
+
+SKIP [SPACE] during the drop cuts to the reels; during the reels it lands every one at once and goes to the grid.
+
+**What others see.** After an open, the server sends one small `LootShow` event (`JankfireRemotes.LootShow`) to every
+other player within 160 studs: who, which container, where it lands (in front of you, as the server sees you), and the
+prizes. `LootShow.client.luau` hands it to `LootOpening.show`, which draws, for about six seconds:
+- the container (a little smaller) dropping onto the ground, a hop and a dust puff, one quiet positional thud;
+- the pop, in the best prize's rarity colour;
+- the best prize rising over it and turning (on its gun), with a sign: "<name> opened a Spray Can" (or "10 spray cans"),
+  the prize's name in its rarity colour, then "<GUN> · <RARITY>" and "+9 MORE" for a batch;
+- then it all sinks away.
+No reel, at most four drawn at once, nothing further than 170 studs, no sound from the extra ones in a crowd.
+
+**The setting.** Settings (P) has **SHOW MY OPENINGS** (on by default). It's a row added by its own script
+(`LootSettings.client.luau`, so the settings script stays the player-profiles session's) and saved with your things
+(`settings.showOpenings`, op `("setting", "showOpenings", on)`, attribute `LootShowOpenings`). Off: the server sends
+nothing at all.
+
+**Testing the bystander view alone:** `("dev", "show", { kind, n, rarity?, ahead?, side? })` (Studio + the owner)
+sends you the event for a made-up opening a few studs away; nothing is given.
+
 ## Testing (16 Nov 2026, solo, place version 372)
 
 ![the containers and an opening](loot/loot-sheet.jpg)
@@ -242,6 +283,20 @@ strip (52 cards) had the prize at its `stop`.
 - A Spray Can gave Jersey for the Marble Shotgun. The loadout put it on the Marble Shotgun, and refused it on the AR
   ("you don't own that one for this gun yet. it's in spray cans"). A migrated Camo went on the Katana.
 - The owner's inventory was put back to its migrated state afterwards.
+
+**Several at once and others seeing it (place version 392):**
+
+![open 10, and what a bystander sees](loot/loot-multi-sheet.jpg)
+
+- x10 Spray Cans: ten pairs, no duplicates, 4 from stock and 6 free; ten strips of 26 cards; the row, the reels
+  (`5 / 10`, the gun on every card) and the grid (rarest first, EQUIP on each) all played, and closing gave the camera
+  and HUD back. (The first photo shows the row before it was sized by footprint: cans now stand at full size.)
+- The setting: `("setting", "showOpenings", false)` -> `LootShowOpenings` false; true -> true; saved with the rest.
+- The bystander view, through `dev show` (a solo test has nobody else in it): a Duffel Bag dropped 11 studs away,
+  opened, a Crown on the Redline rose over it with "<name> opened a duffel bag / CROWN / REDLINE · LEGENDARY"; a x10
+  showed the best of the ten ("LAVA LAMP · REVOLVER · LEGENDARY · +9 MORE").
+- The owner's inventory was put back afterwards.
+- Not tested with two real players (only the event path through `dev show`), nor the setting's row in the panel by eye.
 
 **Not tested:** two real servers fighting over a lock (the steal path is code-read only); real Robux; a phone; a death
 or a match interrupting an opening; the shop's screen calling the opening (the shop session tested that path).

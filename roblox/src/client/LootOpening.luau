@@ -7,6 +7,9 @@
 --   local res = Loot:InvokeServer("open", kind)        -- kind = "crate" | "bag" | "spray"
 --   if res.ok then local how = LootOpening.play(kind, res, { quick = false, again = true }) end
 -- play() YIELDS until the player closes the reveal and returns "done" or "again" (OPEN ANOTHER). LootOpening.busy().
+-- several at once (Loot "open", kind, 5 or 10: res.prizes): a row of containers, a quick reel each, then a grid of
+-- everything, rarest first, each with EQUIP. Opening.show(data) draws someone ELSE's opening for a bystander (the
+-- LootShow event: the container, the pop, the best prize over it with a sign; no reel).
 -- it takes the camera and hides every other ScreenGui while it runs, and gives both back as they were.
 -- the containers are ReplicatedStorage.JankfireLoot.<kind> (Blender, tools/roblox/loot_models.py, PolishBackup.LootImport);
 -- a plain stand-in is built here if they aren't there. look: Theme.luau (dark cards, one amber accent), rarity colours
@@ -242,6 +245,10 @@ local function cardPicture(parent: GuiObject, item: any)
 		local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 		local t = lib and lib:FindFirstChild(item.id)
 		modelPicture(parent, if t and t:IsA("Model") then t:Clone() else nil)
+	else
+		-- (a player card's look: its own module draws it, if it can)
+		local cm = LootTable.cardStyles()
+		if cm and type(cm.picture) == "function" then pcall(cm.picture, item.type, item.id, parent) end
 	end
 end
 
@@ -264,7 +271,9 @@ local function card(parent: Instance, item: any, x: number): Frame
 	nm.Name = "Name"
 	new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, CARD_H - 36), Size = UDim2.fromOffset(CARD_W - 20, 18),
 		FontFace = T.FONT, TextSize = 13, TextTruncate = Enum.TextTruncate.AtEnd,
-		Text = (if item.weapon and Roster.byId[item.weapon] then string.upper(Roster.byId[item.weapon].name) else string.upper(LootTable.TYPE_NAMES[item.type] or item.type)) .. "  ·  " .. rname(item.rarity),
+		Text = (if item.weapon and Roster.byId[item.weapon] then string.upper(Roster.byId[item.weapon].name)
+			elseif item.type ~= "skin" and LootTable.gunless(item.type) then "PLAYER CARD"
+			else string.upper(LootTable.TYPE_NAMES[item.type] or item.type)) .. "  ·  " .. rname(item.rarity),
 		TextColor3 = T.MUTED, TextXAlignment = Enum.TextXAlignment.Left }, c)
 	local bar = new("Frame", { Name = "Bar", BackgroundColor3 = col, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 5), ZIndex = 2 }, c)
@@ -374,7 +383,7 @@ type Run = { ui: Ui, kind: string, res: any, opts: any, skip: boolean, skipAt: n
 	cam: { from: CFrame, to: CFrame, t0: number, dur: number, shake: number, shakeT: number, fov: number },
 	blur: BlurEffect, tint: ColorCorrectionEffect, dof: DepthOfFieldEffect, hidden: { [ScreenGui]: boolean },
 	saved: { cf: CFrame, type: Enum.CameraType, fov: number, loadoutOpen: any }, conns: { RBXScriptConnection },
-	spin: number, prizeY: number, wid: string? }
+	spin: number, prizeY: number, wid: string?, boxes: { any }? }
 
 local function camTo(R: Run, to: CFrame, dur: number)
 	local c = workspace.CurrentCamera :: Camera
@@ -412,29 +421,30 @@ local function particles(at: Vector3, color: Color3, kind: string): Part
 	return p
 end
 
--- the lid / zip / cap, at u = 0 (shut) .. 1 (open)
-local function openPose(R: Run, u: number)
-	local box = R.box
+-- the lid / zip / cap of a container, at u = 0 (shut) .. 1 (open). works on a scaled copy too (a batch, a bystander's)
+local function openBox(box: Model?, u: number)
 	if not box then return end
 	local how = box:GetAttribute("Open") or "hinge"
 	local bp = box:GetPivot()
+	local k = box:GetScale()
 	for _, m in box:GetChildren() do
 		if m:IsA("Model") and (m.Name == "Lid" or m.Name == "Cap" or m.Name == "Flap" or m.Name == "FlapL" or m.Name == "FlapR" or m.Name == "Zip") then
 			local rest = m:GetAttribute("Rest") :: CFrame?
 			if not rest then rest = bp:ToObjectSpace(m:GetPivot()); m:SetAttribute("Rest", rest) end
 			local hinge = m:GetAttribute("Hinge")
-			local h: CFrame = if typeof(hinge) == "CFrame" then hinge else (rest :: CFrame)
+			-- (the hinge is written in the container's own frame at full size: scale it with the container)
+			local h: CFrame = if typeof(hinge) == "CFrame" then CFrame.new(hinge.Position * k) * hinge.Rotation else (rest :: CFrame)
 			local cf: CFrame
 			if m.Name == "Zip" then
 				-- the zip pull runs along the top from one end to the other
-				local run = (m:GetAttribute("Run") :: number?) or 2.4
+				local run = ((m:GetAttribute("Run") :: number?) or 2.4) * k
 				cf = bp * CFrame.new(run * u, 0, 0) * (rest :: CFrame)
 			elseif how == "pop" then
 				-- the cap: up off the can, over, and down onto the floor beside it, landing on its side
 				local v = math.clamp(u, 0, 1)
-				local drop = math.max(0, h.Position.Y - 0.72) -- (its middle ends one radius off the floor)
-				local up = 2.0 * math.sin(math.pi * v) - drop * v * v
-				cf = bp * CFrame.new(1.9 * v, up, 0.6 * v) * h * CFrame.Angles(0, v * 3.2, -v * math.pi / 2) * h:Inverse() * (rest :: CFrame)
+				local drop = math.max(0, h.Position.Y - 0.72 * k) -- (its middle ends one radius off the floor)
+				local up = 2.0 * k * math.sin(math.pi * v) - drop * v * v
+				cf = bp * CFrame.new(1.9 * k * v, up, 0.6 * k * v) * h * CFrame.Angles(0, v * 3.2, -v * math.pi / 2) * h:Inverse() * (rest :: CFrame)
 			else
 				-- (Angle is signed: + lifts a lid hinged at its back edge (+z), - one hinged at its front edge)
 				local ang = (m:GetAttribute("Angle") :: number?) or (if how == "flap" then 75 else 108)
@@ -444,6 +454,7 @@ local function openPose(R: Run, u: number)
 		end
 	end
 end
+local function openPose(R: Run, u: number) openBox(R.box, u) end
 
 -- the reel: build the cards, spin, land. returns the winning card
 local function spinReel(R: Run, items: { any }, stop: number, dur: number): Frame
@@ -500,6 +511,7 @@ local function restore(R: Run)
 	c.FieldOfView = R.saved.fov
 	R.blur:Destroy(); R.tint:Destroy(); R.dof:Destroy()
 	if R.box then R.box:Destroy() end
+	for _, b in R.boxes or {} do if b.m then b.m:Destroy() end end
 	if R.prize then R.prize:Destroy() end
 	R.ui.gui:Destroy()
 	for g in R.hidden do if g.Parent then g.Enabled = true end end
@@ -508,6 +520,386 @@ local function restore(R: Run)
 	pcall(function()
 		local controls = require(me:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any):GetControls()
 		controls:Enable()
+	end)
+end
+
+-- ---------------------------------------------------------------- equipping a prize (the loadout's own ops)
+local RANK = { common = 1, rare = 2, epic = 3, legendary = 4 }
+-- the gun a prize goes on: its own (a wrap or hat is won for one gun; a skin is one gun's)
+local function gunOf(item: any): string?
+	local w = item.weapon or (item.type == "skin" and (LootTable.SKINS[item.id] or {})[3]) or nil
+	local e = w and Roster.byId[w]
+	return if e and e.live and e.slot ~= "utility" then w else nil
+end
+local function canEquip(item: any): boolean
+	return (item.type == "wrap" or item.type == "hat" or item.type == "skin") and gunOf(item) ~= nil
+end
+local function equipItem(item: any): (boolean, string?)
+	local lo = Remotes:FindFirstChild("Loadout") :: RemoteFunction?
+	local wid = gunOf(item)
+	if not lo or not wid then return false, "can't go on anything yet" end
+	local ok, r = pcall(function()
+		if item.type == "wrap" then
+			local _, mode = WeaponModels.wrapFor(me, wid :: string)
+			return (lo :: RemoteFunction):InvokeServer("wrap", wid, item.id, if mode and mode ~= "" then mode else "full")
+		elseif item.type == "hat" then
+			return (lo :: RemoteFunction):InvokeServer("hat", wid, item.id)
+		end
+		return (lo :: RemoteFunction):InvokeServer("skin", wid, item.id)
+	end)
+	if ok and type(r) == "table" and r.ok then return true, nil end
+	return false, if ok and type(r) == "table" and type(r.why) == "string" then r.why else "couldn't equip"
+end
+
+-- the odds line this open was rolled with (what you owned before it: the prizes are taken back out)
+local function oddsText(kind: string, prizes: { any }): string
+	local owned = {}
+	local okInv, inv = pcall(function() return (Remotes:FindFirstChild("Loot") :: RemoteFunction):InvokeServer("inventory") end)
+	if okInv and type(inv) == "table" and type(inv.owned) == "table" then
+		for t, ids in inv.owned do owned[t] = {}; for _, id in ids do owned[t][id] = true end end
+		for _, q in prizes do if owned[q.type] then owned[q.type][q.key or q.id] = nil end end
+	end
+	return "ODDS  " .. LootTable.oddsLine(LootTable.odds(kind, owned))
+end
+
+-- ---------------------------------------------------------------- several at once (x5, x10)
+-- the owner: "make sure you can open multiple". they drop in a row (two rows of five for ten), smaller, one after
+-- another; they pop together; a quick reel per prize runs one after another (SKIP: straight to the end); then a grid
+-- of everything you got, rarest first, each with EQUIP; OPEN ANOTHER opens the same number again
+local function runMany(R: Run): string
+	local ui, kind, res = R.ui, R.kind, R.res
+	local info = LootTable.CONTAINERS[kind] or LootTable.CONTAINERS.crate
+	local prizes = res.prizes :: { any }
+	local n = #prizes
+	local cam = workspace.CurrentCamera :: Camera
+	ui.title.Text = ("%s  x%d"):format(string.upper(info.name), n)
+	ui.odds.Text = oddsText(kind, prizes)
+	tw(ui.title, 0.4, { TextTransparency = 0 }); tw(ui.odds, 0.4, { TextTransparency = 0.1 })
+
+	-- 1. the row
+	local flat = R.flat
+	local right = flat:Cross(Vector3.yAxis)
+	local g = R.base.Position + flat * 2.5
+	local face = CFrame.lookAt(g, g - flat)
+	local probe = container(kind)
+	local _, sz = probe:GetBoundingBox()
+	local fullH = (probe:GetAttribute("Height") :: number?) or 2.4
+	probe:Destroy()
+	-- (sized by the container's footprint, so a row of five is about 12 studs wide whatever it is: the cans stay big)
+	local foot = math.max(sz.X, sz.Z)
+	local k = math.min(1, 12.5 / (5 * foot + 4 * 0.8))
+	local stepX = foot * k + 0.8
+	local stepZ = foot * k + 1.2
+	local boxes = {}
+	R.boxes = boxes
+	for i = 1, n do
+		local back = n > 5 and i <= 5
+		local inRow = if n > 5 then (if back then 5 else n - 5) else n
+		local col = if n > 5 and not back then i - 6 else i - 1
+		local x = (col - (inRow - 1) / 2) * stepX
+		local at = face * CFrame.new(x, 0, if back then stepZ else 0) * CFrame.Angles(0, math.rad(-14 + col * 7), 0)
+		local b = container(kind)
+		b:ScaleTo(k)
+		local lp = new("Part", { Name = "Light", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
+			Size = Vector3.new(0.2, 0.2, 0.2) }, b)
+		lp.CFrame = b:GetPivot() * CFrame.new(0, fullH * k + 0.5, 0)
+		local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 8, Shadows = false }, lp)
+		b:PivotTo(at * CFrame.new(0, 11, 0))
+		b.Parent = workspace
+		openBox(b, 0)
+		boxes[i] = { m = b, at = at, t0 = os.clock() + (i - 1) * 0.07, light = light }
+	end
+	R.height = fullH * k
+	local eye = g - flat * 8.6 + Vector3.new(0, 5.4, 0)
+	camTo(R, CFrame.lookAt(eye, g + flat * (if n > 5 then 1.2 else 0) + Vector3.new(0, 0.9, 0)), 0.7)
+	R.cam.fov = 62
+	-- they fall one after another, land with a thud (one at the first and one at the last: no rattle of ten) and hop
+	local firstLand, lastLand = false, false
+	while true do
+		local now = os.clock()
+		local done = true
+		for i, b in boxes do
+			local u = (now - b.t0) / 0.36
+			if R.skip then u = 3 end
+			if u < 1 then
+				done = false
+				local y = 11 * (1 - math.max(0, u) ^ 2)
+				b.m:PivotTo(b.at * CFrame.new(0, y, 0) * CFrame.Angles(0.1 * (1 - math.max(0, u)), 0, 0))
+			else
+				local v = (u - 1) * 0.36 / 0.4
+				if v < 1 then
+					done = false
+					b.m:PivotTo(b.at * CFrame.new(0, 0.45 * math.sin(v * math.pi) * (1 - v), 0))
+				else
+					b.m:PivotTo(b.at)
+				end
+				if i == 1 and not firstLand then firstLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 1, 0.7); shake(R, 0.2) end
+				if i == n and not lastLand and n > 1 then lastLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 0.8, 0.8) end
+			end
+			openBox(b.m, 0)
+		end
+		if done then break end
+		RunService.RenderStepped:Wait()
+	end
+	if not R.skip then hold(R, 0.25) end
+	-- 2. they pop together (a ripple, one sound)
+	snd({ "loot_pop", "bigpop", "pop" }, g, 1, 1)
+	particles(g + Vector3.new(0, R.height, 0), Color3.fromRGB(255, 236, 200), "pop")
+	for _, b in boxes do
+		for _, d in b.m:GetDescendants() do
+			if d:IsA("BasePart") and d.Name == "glow" then d.Transparency = 0; d.Material = Enum.Material.Neon end
+		end
+		b.light.Brightness = 2
+	end
+	local arc = boxes[1].m:GetAttribute("Open") == "pop"
+	local pt = if R.skip then 0.25 elseif arc then 0.8 else 0.5
+	local t0 = os.clock()
+	while true do
+		local all = true
+		for i, b in boxes do
+			local u = math.clamp((os.clock() - t0 - (i - 1) * 0.05) / pt, 0, 1)
+			if u < 1 then all = false end
+			local s = 1.70158
+			openBox(b.m, if arc then u else 1 + (s + 1) * (u - 1) ^ 3 + s * (u - 1) ^ 2)
+		end
+		if all then break end
+		RunService.RenderStepped:Wait()
+	end
+
+	-- 3. a quick reel per prize, one after another
+	tw(R.blur, 0.4, { Size = 16 })
+	tw(R.tint, 0.4, { Brightness = -0.06, Saturation = -0.5, Contrast = 0.05 })
+	if not R.result then R.skip = false end
+	for i, prize in prizes do
+		if R.skip then break end
+		ui.title.Text = ("%s  %d / %d"):format(string.upper(info.name), i, n)
+		local items = (res.strips or {})[i]
+		local stop = (res.stops or {})[i]
+		if type(items) ~= "table" or type(stop) ~= "number" or not items[stop] then
+			items, stop = {}, 20
+			for j = 1, 24 do items[j] = prize end
+		end
+		local win = spinReel(R, items, stop, 0.95)
+		local col = rcol(prize.rarity)
+		local stroke = win:FindFirstChildOfClass("UIStroke")
+		if stroke then stroke.Color = col; stroke.Transparency = 0; stroke.Thickness = 3 end
+		tw(new("UIScale", { Scale = 1 }, win), 0.2, { Scale = 1.08 }, Enum.EasingStyle.Back)
+		boxes[i].light.Color = col
+		boxes[i].light.Brightness = 2 + (RANK[prize.rarity] or 1)
+		local rank = RANK[prize.rarity] or 1
+		-- (a sting only for the big ones: ten chimes in a row would be noise)
+		if rank >= 3 then
+			snd(if rank == 4 then { "loot_win_legendary", "round_end" } else { "loot_win_epic", "round_start" }, nil, 0.9, 1)
+			ui.flash.BackgroundColor3 = col; ui.flash.BackgroundTransparency = 0.78
+			tw(ui.flash, 0.6, { BackgroundTransparency = 1 })
+		end
+		hold(R, if rank >= 3 then 0.55 else 0.22)
+	end
+	-- (SKIP: everything lands at once)
+	for i, prize in prizes do
+		boxes[i].light.Color = rcol(prize.rarity)
+		boxes[i].light.Brightness = 2 + (RANK[prize.rarity] or 1)
+	end
+	ui.reel.Visible = false
+	ui.skip.Visible = false
+	tw(R.blur, 0.4, { Size = 10 })
+	tw(R.tint, 0.4, { Brightness = -0.12, Saturation = -0.35, Contrast = 0.04 })
+	snd({ "loot_win_rare", "ting" }, nil, 0.8, 1)
+
+	-- 4. everything you got, rarest first, each with EQUIP
+	local order = table.clone(prizes)
+	table.sort(order, function(a, b)
+		local ra, rb = RANK[a.rarity] or 0, RANK[b.rarity] or 0
+		if ra ~= rb then return ra > rb end
+		return (a.name or "") < (b.name or "")
+	end)
+	ui.title.Text = ("YOU GOT %d"):format(n)
+	local grid = new("Frame", { Name = "Summary", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(1920, 1080), ZIndex = 5 }, ui.stage)
+	local cols = math.min(5, n)
+	local rows = math.ceil(n / 5)
+	local CW, CH, BH, GX, GY = CARD_W, CARD_H, 38, 22, 26
+	local x0 = 960 - (cols * CW + (cols - 1) * GX) / 2
+	local y0 = 540 - (rows * (CH + BH + 8) + (rows - 1) * GY) / 2 + 10
+	for i, item in order do
+		local r, c = math.floor((i - 1) / 5), (i - 1) % 5
+		local inRow = math.min(5, n - r * 5)
+		local xr = 960 - (inRow * CW + (inRow - 1) * GX) / 2 -- (a short last row sits in the middle)
+		local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(xr + c * (CW + GX), y0 + r * (CH + BH + 8 + GY) + 30),
+			Size = UDim2.fromOffset(CW, CH + BH + 8) }, grid)
+		local cd = card(holder, item, 0)
+		local stroke = cd:FindFirstChildOfClass("UIStroke")
+		if stroke and (RANK[item.rarity] or 0) >= 3 then stroke.Color = rcol(item.rarity); stroke.Transparency = 0.1; stroke.Thickness = 2 end
+		local eq = canEquip(item)
+		local b = button(holder, if eq then "EQUIP" else "IN YOUR INVENTORY", false, UDim2.fromOffset(0, CH + 8), UDim2.fromOffset(CW, BH))
+		b.TextSize = 14
+		if eq then
+			b.MouseButton1Click:Connect(function()
+				if b.Text == "EQUIPPED" or b.Text == "..." then return end
+				b.Text = "..."
+				local ok, why = equipItem(item)
+				b.Text = if ok then "EQUIPPED" else string.upper(why or "couldn't")
+				if ok then pcall(Sfx.play, "click") end
+			end)
+		else
+			b.TextColor3 = T.MUTED
+		end
+		holder.Position += UDim2.fromOffset(0, 24)
+		cd.BackgroundTransparency = 1
+		tw(holder, 0.3 + i * 0.03, { Position = holder.Position - UDim2.fromOffset(0, 24) })
+		tw(cd, 0.3 + i * 0.03, { BackgroundTransparency = 0 })
+	end
+	if res.short then
+		local note = new("TextLabel", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(960, 150),
+			Size = UDim2.fromOffset(1000, 24), FontFace = T.FONT, TextSize = 17, TextColor3 = T.SOFT, ZIndex = 6,
+			Text = "that was everything left in them for you" }, grid)
+		local _ = note
+	end
+	local again = R.opts.again ~= false
+	local bAgain = button(grid, ("OPEN %d MORE"):format(n), true, UDim2.fromOffset(960 - 230, 960), UDim2.fromOffset(250, 56))
+	local bDone = button(grid, "DONE", false, UDim2.fromOffset(960 + 40, 960), UDim2.fromOffset(190, 56))
+	bAgain.Visible = again
+	if not again then bDone.Position = UDim2.fromOffset(960 - 95, 960) end
+	local answer: string? = nil
+	bDone.MouseButton1Click:Connect(function() answer = "done" end)
+	bAgain.MouseButton1Click:Connect(function() answer = "again" end)
+	while not answer do
+		if R.result then answer = R.result end
+		RunService.RenderStepped:Wait()
+	end
+
+	-- 5. away
+	grid:Destroy()
+	tw(R.tint, 0.3, { Brightness = 0, Saturation = 0, Contrast = 0 })
+	tw(R.blur, 0.3, { Size = 0 })
+	local st = os.clock()
+	local sv = R.saved.cf
+	R.cam.from, R.cam.t0, R.cam.dur = cam.CFrame, os.clock(), 0.45
+	local ch = me.Character
+	local h = ch and ch:FindFirstChild("Head") :: BasePart?
+	R.cam.to = if h then CFrame.new(h.Position + Vector3.new(0, 0.1, 0)) * sv.Rotation else sv
+	R.cam.fov = R.saved.fov
+	while os.clock() - st < 0.45 do
+		local u = (os.clock() - st) / 0.45
+		for _, b in boxes do b.m:PivotTo(b.at * CFrame.new(0, -R.height * smooth(u) * 1.05, 0)) end
+		RunService.RenderStepped:Wait()
+	end
+	return answer :: string
+end
+
+-- ---------------------------------------------------------------- what others see (LootShow.client.luau)
+-- someone near you opened something: their container drops on the ground in front of them, pops, and the best prize
+-- rises over it and turns, with a sign: who, what, which gun, its rarity. no reel, one quiet sound, about six seconds.
+-- several at once are fine (at most four drawn at a time); far away (more than 170 studs) is not drawn
+local showing = 0
+local function showOne(d: any)
+	local kind = if LootTable.CONTAINERS[d.kind] then d.kind else "crate"
+	local best = d.prizes[1]
+	for _, q in d.prizes do if (RANK[q.rarity] or 0) > (RANK[best.rarity] or 0) then best = q end end
+	local col = rcol(best.rarity)
+	local box = container(kind)
+	local k = 0.8
+	box:ScaleTo(k)
+	local hgt = ((box:GetAttribute("Height") :: number?) or 2.4) * k
+	local base: CFrame = d.cf
+	box:PivotTo(base * CFrame.new(0, 9, 0))
+	box.Parent = workspace
+	openBox(box, 0)
+	local lp = new("Part", { Name = "ShowLight", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
+		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = base * CFrame.new(0, hgt + 0.6, 0) }, box)
+	local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 10, Shadows = false }, lp)
+	local quiet = showing > 2 -- (a crowd of openings: no sound from the extra ones)
+	-- the drop and the hop
+	local t0 = os.clock()
+	while true do
+		local u = (os.clock() - t0) / 0.38
+		if u >= 1 then break end
+		box:PivotTo(base * CFrame.new(0, 9 * (1 - u * u), 0))
+		openBox(box, 0)
+		RunService.RenderStepped:Wait()
+	end
+	if not quiet then snd({ "loot_land", "bonk" }, base.Position, 0.45, 0.75) end
+	particles(base.Position + Vector3.new(0, 0.2, 0), WHITE, "dust")
+	t0 = os.clock()
+	while os.clock() - t0 < 0.35 do
+		local v = (os.clock() - t0) / 0.35
+		box:PivotTo(base * CFrame.new(0, 0.5 * math.sin(v * math.pi) * (1 - v), 0))
+		openBox(box, 0)
+		RunService.RenderStepped:Wait()
+	end
+	box:PivotTo(base)
+	task.wait(0.35)
+	-- the pop
+	for _, x in box:GetDescendants() do
+		if x:IsA("BasePart") and x.Name == "glow" then x.Transparency = 0; x.Material = Enum.Material.Neon end
+	end
+	particles(base.Position + Vector3.new(0, hgt, 0), col, if (RANK[best.rarity] or 0) >= 4 then "big" else "pop")
+	local arc = box:GetAttribute("Open") == "pop"
+	local pt = if arc then 0.8 else 0.45
+	t0 = os.clock()
+	while true do
+		local u = math.min(1, (os.clock() - t0) / pt)
+		local s = 1.70158
+		openBox(box, if arc then u else 1 + (s + 1) * (u - 1) ^ 3 + s * (u - 1) ^ 2)
+		light.Color = col
+		light.Brightness = 5 * (1 - u) + 2.5 * u
+		if u >= 1 then break end
+		RunService.RenderStepped:Wait()
+	end
+	-- the prize over it, and the sign
+	local m = prizeModel(best)
+	local top = hgt + 2.0
+	if m then
+		pcall(function() m:ScaleTo(m:GetScale() * 0.7) end)
+		m.Parent = workspace
+	end
+	local anchor = new("Part", { Name = "ShowSign", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
+		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = base * CFrame.new(0, top + 1.5, 0) }, box)
+	local bb = new("BillboardGui", { Size = UDim2.new(7.5, 0, 2.3, 0), StudsOffset = Vector3.new(0, 0.4, 0), MaxDistance = 150,
+		LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false }, anchor)
+	local plate = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, bb)
+	T.corner(plate, 6)
+	new("UIStroke", { Color = col, Thickness = 1.5, Transparency = 0.2 }, plate)
+	local function line(y: number, h: number, text: string, color: Color3, font: Font)
+		new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromScale(0.04, y), Size = UDim2.fromScale(0.92, h), Text = text,
+			TextColor3 = color, FontFace = font, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center }, plate)
+	end
+	local info = LootTable.CONTAINERS[kind]
+	local gun = best.weapon and Roster.byId[best.weapon]
+	line(0.06, 0.24, ("%s opened %s"):format(tostring(d.who or "someone"), if (d.n or 1) > 1 then ("%d %s"):format(d.n, string.lower(info.plural)) else "a " .. string.lower(info.name)), T.SOFT, T.FONT)
+	line(0.32, 0.38, string.upper(best.name or best.id or ""), col, T.FONT_BOLD)
+	line(0.72, 0.22, (if gun then string.upper(gun.name) .. "  ·  " else "") .. rname(best.rarity) .. (if (d.n or 1) > 1 then ("  ·  +%d MORE"):format(d.n - 1) else ""), T.MUTED, T.FONT)
+	-- turn it for a while, then everything sinks away
+	local rise0 = os.clock()
+	local face = base.Rotation
+	while os.clock() - rise0 < 4.2 do
+		local u = easeOut((os.clock() - rise0) / 0.6, 3)
+		if m and m.Parent then
+			local y = hgt * 0.5 + (top - hgt * 0.5) * u + math.sin(os.clock() * 1.3) * 0.06
+			m:PivotTo(CFrame.new(base.Position + Vector3.new(0, y, 0)) * face * CFrame.Angles(0, math.pi / 2 + (os.clock() - rise0) * 0.8, 0))
+		end
+		RunService.RenderStepped:Wait()
+	end
+	t0 = os.clock()
+	while os.clock() - t0 < 0.5 do
+		local u = (os.clock() - t0) / 0.5
+		box:PivotTo(base * CFrame.new(0, -hgt * 1.1 * smooth(u), 0))
+		if m and m.Parent then pcall(function() m:PivotTo(m:GetPivot() * CFrame.new(0, -0.2, 0)) end) end
+		plate.BackgroundTransparency = 0.2 + 0.8 * u
+		RunService.RenderStepped:Wait()
+	end
+	if m then m:Destroy() end
+	box:Destroy()
+end
+function Opening.show(d: any)
+	if type(d) ~= "table" or typeof(d.cf) ~= "CFrame" or type(d.prizes) ~= "table" or #d.prizes == 0 then return end
+	if showing >= 4 then return end
+	local c = workspace.CurrentCamera
+	if c and (c.CFrame.Position - (d.cf :: CFrame).Position).Magnitude > 170 then return end
+	showing += 1
+	task.spawn(function()
+		local ok, err = pcall(showOne, d)
+		showing -= 1
+		if not ok then warn("[jankfire] someone's opening didn't draw: " .. tostring(err)) end
 	end)
 end
 
@@ -708,9 +1100,10 @@ local function run(R: Run): string
 	local we = wid and Roster.byId[wid]
 	ui.rOn.Text = if prize.type == "skin" then "a new look for your " .. (if we then we.name else "weapon")
 		elseif we and prize.weapon then "for your " .. we.name .. " only" elseif we then "shown on your " .. we.name else ""
-	local canEquip = (prize.type == "wrap" or prize.type == "hat") and we ~= nil and we.live
-	ui.equip.Visible = canEquip
-	ui.equip.Text = if canEquip then "EQUIP ON " .. string.upper((we :: any).name) else "EQUIP"
+	local can = canEquip(prize)
+	local eqGun = gunOf(prize)
+	ui.equip.Visible = can
+	ui.equip.Text = if can and eqGun then "EQUIP ON " .. string.upper(Roster.byId[eqGun].name) else "EQUIP"
 	ui.equip.Size = UDim2.fromOffset(math.max(250, #ui.equip.Text * 13 + 40), 56)
 	local again = R.opts.again ~= false
 	ui.again.Visible = again
@@ -730,23 +1123,16 @@ local function run(R: Run): string
 	ui.done.MouseButton1Click:Connect(function() answer = "done" end)
 	ui.again.MouseButton1Click:Connect(function() answer = "again" end)
 	ui.equip.MouseButton1Click:Connect(function()
-		if not canEquip or ui.equip.Text == "EQUIPPED" then return end
+		if not can or ui.equip.Text == "EQUIPPED" or ui.equip.Text == "..." then return end
 		ui.equip.Text = "..."
-		local ok, r = pcall(function()
-			local lo = Remotes:FindFirstChild("Loadout") :: RemoteFunction
-			if prize.type == "wrap" then
-				local _, mode = WeaponModels.wrapFor(me, wid :: string)
-				return lo:InvokeServer("wrap", wid, prize.id, if mode and mode ~= "" then mode else "full")
-			end
-			return lo:InvokeServer("hat", wid, prize.id)
-		end)
-		if ok and type(r) == "table" and r.ok then
+		local ok, why = equipItem(prize)
+		if ok then
 			ui.equip.Text = "EQUIPPED"
 			ui.equip.BackgroundColor3 = T.CARD
 			ui.equip.TextColor3 = T.TEXT
 			pcall(Sfx.play, "click")
 		else
-			ui.equip.Text = string.upper(if ok and type(r) == "table" and r.why then r.why else "couldn't equip")
+			ui.equip.Text = string.upper(why or "couldn't equip")
 		end
 	end)
 	while not answer do
@@ -792,7 +1178,7 @@ function Opening.play(kind: string, res: any, opts: any?): string
 		tint = new("ColorCorrectionEffect", { Name = "JankLootTint" }, cam),
 		dof = new("DepthOfFieldEffect", { Name = "JankLootDof", Enabled = false, FarIntensity = 0.75, NearIntensity = 0, InFocusRadius = 4, FocusDistance = 8 }, cam),
 		hidden = {}, saved = { cf = cam.CFrame, type = cam.CameraType, fov = cam.FieldOfView, loadoutOpen = me:GetAttribute("LoadoutOpen") },
-		conns = {}, spin = 0, prizeY = 4, wid = nil,
+		conns = {}, spin = 0, prizeY = 4, wid = nil, boxes = nil,
 	}
 	-- everything else steps aside: the HUD and menus, your hands (LoadoutOpen = a menu is up: Arsenal, Utility and
 	-- Move hold still), the keys that would open other screens
@@ -836,7 +1222,8 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	if hum then table.insert(R.conns, hum.Died:Connect(bail)) end
 
 	current = R
-	local ok, out = pcall(run, R)
+	local many = type(res.prizes) == "table" and #res.prizes > 1
+	local ok, out = pcall(if many then runMany else run, R)
 	current = nil
 	restore(R)
 	running = false
@@ -846,5 +1233,10 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	end
 	return out
 end
+
+-- (for others: the shop's previews, LootShow.client.luau)
+Opening.container = container
+Opening.openBox = openBox
+Opening.prizeModel = prizeModel
 
 return Opening

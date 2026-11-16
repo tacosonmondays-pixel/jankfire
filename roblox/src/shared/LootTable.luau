@@ -33,7 +33,41 @@ L.RARITY = {
 
 export type Item = { type: string, id: string, key: string, name: string, rarity: string, weapon: string? }
 
-L.TYPE_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", effect = "Effect", kill = "Kill Effect", grapple = "Grapple", spray = "Spray" }
+L.TYPE_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", effect = "Effect", kill = "Kill Effect", grapple = "Grapple", spray = "Spray",
+	border = "Card Border", banner = "Card Banner", title = "Card Title" }
+
+-- ------------------------------------------------------------------ other sessions' gun-less cosmetics (a hook)
+-- the player cards' looks (ReplicatedStorage.Jankfire.CardStyles, the player-profiles session's): if that module is in
+-- the place, its TYPES (e.g. border / banner / title) are owned like skins (key = the bare id, not on a gun) and roll
+-- from its CONTAINER as one more "gun" (the reel shows PLAYER CARD). its shape: TYPES = { t }, info(t, id) ->
+-- { name, rarity }?, ORDER[t] = { ids }, CONTAINER = "bag", optional picture(t, id, frame) for the reel's card
+local cardMod: any = false
+function L.cardStyles(): any
+	if cardMod == false then
+		cardMod = nil
+		local m = Shared:FindFirstChild("CardStyles")
+		if m and m:IsA("ModuleScript") then
+			local ok, c = pcall(require, m)
+			if ok and type(c) == "table" and type(c.TYPES) == "table" and type(c.info) == "function" then cardMod = c end
+		end
+	end
+	return cardMod
+end
+local function isCardType(t: any): boolean
+	local c = L.cardStyles()
+	return c ~= nil and type(t) == "string" and table.find(c.TYPES, t) ~= nil
+end
+-- a type you own without a gun: skins (already one gun's) and the card looks
+function L.gunless(t: string): boolean
+	return t == "skin" or isCardType(t)
+end
+-- every type that can be owned (Loot.luau keeps a list per type)
+function L.ownTypes(): { string }
+	local out = { "wrap", "hat", "skin" }
+	local c = L.cardStyles()
+	if c then for _, t in c.TYPES do if not table.find(out, t) then table.insert(out, t) end end end
+	return out
+end
 
 L.CONTAINERS = {
 	crate = { name = "Crate", plural = "Crates", desc = "weapon skins", types = { "skin" } },
@@ -108,6 +142,11 @@ function L.info(t: any, id: any): Item?
 	elseif t == "skin" then
 		local s = L.SKINS[id]
 		return if s then { type = t, id = id, key = id, name = s[1], rarity = s[2], weapon = s[3] } else nil
+	elseif isCardType(t) then
+		local ok, c = pcall(L.cardStyles().info, t, id)
+		if ok and type(c) == "table" and type(c.name) == "string" and type(c.rarity) == "string" then
+			return { type = t, id = id, key = id, name = c.name, rarity = c.rarity }
+		end
 	end
 	return nil
 end
@@ -124,7 +163,7 @@ end
 -- already belongs to one weapon: its key is its own id. the weapons are the live ones that take paint (Roster: live, not
 -- an item on G); a hat only goes on a weapon with a seat for it (GunHatData.SPOTS)
 function L.key(t: string, id: string, weapon: string?): string
-	if t == "skin" or not weapon then return id end
+	if L.gunless(t) or not weapon then return id end
 	return id .. "@" .. weapon
 end
 -- "<id>@<weapon>" -> id, weapon (a bare id -> id, nil)
@@ -148,7 +187,7 @@ function L.takes(t: string, weapon: any): boolean
 end
 -- a pair from the network or a save: its row with the weapon, or nil if there is no such pair
 function L.pairInfo(t: any, key: any): Item?
-	if t == "skin" then return L.info(t, key) end
+	if type(t) == "string" and L.gunless(t) then return L.info(t, key) end
 	local id, w = L.split(key)
 	local i = L.info(t, id)
 	if not i or not w or not L.takes(t, w) then return nil end
@@ -182,14 +221,29 @@ function L.cosmetics(kind: string): { Item }
 			end
 		end
 	end
+	-- (the card looks, in the container their module names)
+	local cm = L.cardStyles()
+	if cm and cm.CONTAINER == kind and type(cm.ORDER) == "table" then
+		for _, t in cm.TYPES do
+			for _, id in (cm.ORDER[t] or {}) do
+				local i = L.info(t, id)
+				if i and i.rarity ~= "free" and L.RARITY[i.rarity] then table.insert(out, i) end
+			end
+		end
+	end
 	return out
 end
 -- the guns a cosmetic can be won for
+-- (a card look is gun-less: it rolls as one more "gun", CARD, so a bag lands on it about as often as on one gun)
+local CARD = "card"
 local function gunsOf(i: Item): { string }
-	return if i.type == "skin" then { i.weapon :: string } else L.weapons(i.type)
+	if i.type == "skin" then return { i.weapon :: string } end
+	if isCardType(i.type) then return { CARD } end
+	return L.weapons(i.type)
 end
 local function pairOf(i: Item, w: string): Item
-	return { type = i.type, id = i.id, name = i.name, rarity = i.rarity, weapon = w, key = L.key(i.type, i.id, w) }
+	local gun = if w == CARD then nil else w
+	return { type = i.type, id = i.id, name = i.name, rarity = i.rarity, weapon = gun, key = L.key(i.type, i.id, gun) }
 end
 
 -- every (cosmetic, gun) pair that can come out of this container today
@@ -294,14 +348,16 @@ end
 -- the reel the opening spins: n cards drawn from the whole container by the same rarity weights (owned pairs too: it
 -- shows what is inside), each on a gun, with the prize at `stop`. returns the cards and stop
 L.STRIP = 52
-function L.strip(kind: string, prize: Item, rng: Random): ({ Item }, number)
+L.STRIP_QUICK = 26 -- (a batch's reels are short: ten of them run one after another)
+function L.strip(kind: string, prize: Item, rng: Random, len: number?): ({ Item }, number)
+	local N = len or L.STRIP
 	local by: { [string]: { Item } } = {}
 	for _, i in L.cosmetics(kind) do by[i.rarity] = by[i.rarity] or {}; table.insert(by[i.rarity], i) end
 	local total = 0
 	for _, r in L.RARITY_ORDER do if by[r] then total += L.RARITY[r].weight end end
-	local stop = rng:NextInteger(L.STRIP - 8, L.STRIP - 5)
+	local stop = rng:NextInteger(N - 8, N - 5)
 	local out = {}
-	for n = 1, L.STRIP do
+	for n = 1, N do
 		if n == stop or total <= 0 then
 			table.insert(out, prize)
 		else
