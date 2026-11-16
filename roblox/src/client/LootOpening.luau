@@ -23,6 +23,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local LootTable = require(Shared:WaitForChild("LootTable"))
+local LootFloor = require(Shared:WaitForChild("LootFloor"))
 local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
@@ -118,11 +119,26 @@ local function container(kind: string): Model
 	local lib = ReplicatedStorage:FindFirstChild("JankfireLoot")
 	local t = lib and lib:FindFirstChild(kind)
 	local m = if t and t:IsA("Model") then t:Clone() else standIn(kind)
+	local low = math.huge
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then
 			d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
 			if d.Name == "glow" then d.Transparency = 1 end -- (the light inside: on at the pop)
+			local cf, sz = d.CFrame, d.Size
+			low = math.min(low, cf.Position.Y - (math.abs(cf.RightVector.Y) * sz.X + math.abs(cf.UpVector.Y) * sz.Y + math.abs(cf.LookVector.Y) * sz.Z) / 2)
 		end
+	end
+	-- the pivot is the middle of the bottom face (where it stands on the floor), set here on every copy: a Model's
+	-- WorldPivot doesn't stick once it has a PrimaryPart, and the templates' pivots were their body's centre (the crate's
+	-- ~1 stud up), so every container used to stand that far INTO the floor. (the template sits at its file's origin:
+	-- x and z of the pivot are 0 there; the hinges in openBox are written in that frame)
+	if low < math.huge then
+		local cf = m:GetBoundingBox()
+		local x = if math.abs(cf.Position.X) < 0.5 then 0 else cf.Position.X
+		local z = if math.abs(cf.Position.Z) < 0.5 then 0 else cf.Position.Z
+		local bottom = CFrame.new(x, low, z)
+		local pp = m.PrimaryPart
+		if pp then pp.PivotOffset = pp.CFrame:ToObjectSpace(bottom) else m.WorldPivot = bottom end
 	end
 	return m
 end
@@ -353,6 +369,13 @@ local function buildUi(): Ui
 end
 
 -- ---------------------------------------------------------------- the world: where it lands, the camera
+-- ---------------------------------------------------------------- the floor (nothing goes through it)
+-- (the owner, 16 Nov: "make sure the stuff doesnt clip through the ground".) the rules: Shared.LootFloor (your feet
+-- from the foot parts, a ray trusted only near them, the highest visible piece rays can't see on top of it)
+-- (the floor rules live in Shared.LootFloor: the server's spot for others uses the same ones)
+local function feetOf(ch: Model?): number? return LootFloor.feet(ch) end
+local function floorY(at: Vector3, feetY: number, ignore: { Instance }): number return LootFloor.at(at, feetY, ignore) end
+
 local function ground(): (CFrame?, Vector3)
 	local ch = me.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -368,10 +391,8 @@ local function ground(): (CFrame?, Vector3)
 	local hit = workspace:Raycast(from, flat * (dist + 2.5), params)
 	if hit then dist = math.max(3.2, hit.Distance - 2.5) end -- (never through a wall)
 	local spot = from + flat * dist
-	local down = workspace:Raycast(spot + Vector3.new(0, 5, 0), Vector3.new(0, -24, 0), params)
-	local feetY = root.Position.Y - (root.Size.Y / 2) - (if ch and ch:FindFirstChildOfClass("Humanoid") then (ch:FindFirstChildOfClass("Humanoid") :: Humanoid).HipHeight else 2)
-	local y = if down then down.Position.Y else feetY
-	local g = Vector3.new(spot.X, y, spot.Z)
+	local feetY = feetOf(ch) :: number
+	local g = Vector3.new(spot.X, floorY(spot, feetY, { ch :: Instance }), spot.Z)
 	-- the container faces you, turned a little so it reads as a solid thing (a three-quarter view)
 	local cf = CFrame.lookAt(g, g - flat) * CFrame.Angles(0, math.rad(-20), 0)
 	return cf, flat
@@ -383,7 +404,7 @@ type Run = { ui: Ui, kind: string, res: any, opts: any, skip: boolean, skipAt: n
 	cam: { from: CFrame, to: CFrame, t0: number, dur: number, shake: number, shakeT: number, fov: number },
 	blur: BlurEffect, tint: ColorCorrectionEffect, dof: DepthOfFieldEffect, hidden: { [ScreenGui]: boolean },
 	saved: { cf: CFrame, type: Enum.CameraType, fov: number, loadoutOpen: any }, conns: { RBXScriptConnection },
-	spin: number, prizeY: number, wid: string?, boxes: { any }? }
+	spin: number, prizeY: number, prizeFrom: number?, wid: string?, boxes: { any }? }
 
 local function camTo(R: Run, to: CFrame, dur: number)
 	local c = workspace.CurrentCamera :: Camera
@@ -455,6 +476,63 @@ local function openBox(box: Model?, u: number)
 	end
 end
 local function openPose(R: Run, u: number) openBox(R.box, u) end
+
+-- ---------------------------------------------------------------- nothing goes through the floor
+-- (the owner, 16 Nov: "make sure the stuff doesnt clip through the ground".) a container's pivot is the middle of its
+-- bottom face. tipped by ax about its own x and az about its z, its edges would dip under the floor by half its depth
+-- (width) times the sine, so every pose is lifted by exactly that; nothing is ever put below its floor spot; the exits
+-- shrink and fade into the container's own footprint instead of sinking
+local LIFT = 0.04 -- (a hair over the floor, so the bottom face never flickers against it)
+local function halves(box: Model): (number, number)
+	local hx, hz = box:GetAttribute("HalfX"), box:GetAttribute("HalfZ")
+	if type(hx) ~= "number" or type(hz) ~= "number" then
+		local cf, size = box:GetBoundingBox()
+		local c = box:GetPivot():PointToObjectSpace(cf.Position)
+		hx, hz = math.abs(c.X) + size.X / 2, math.abs(c.Z) + size.Z / 2
+		box:SetAttribute("HalfX", hx); box:SetAttribute("HalfZ", hz)
+	end
+	return hx :: number, hz :: number
+end
+-- the box on its floor spot `at`, y studs up, tipped (ax, ay, az), shifted (dx, dz): never under the floor
+local function place(box: Model, at: CFrame, y: number, ax: number?, ay: number?, az: number?, dx: number?, dz: number?)
+	local hx, hz = halves(box)
+	local a, c = ax or 0, az or 0
+	local dip = hz * math.abs(math.sin(a)) + hx * math.abs(math.sin(c))
+	box:PivotTo(at * CFrame.new(dx or 0, math.max(0, y) + dip + LIFT, dz or 0) * CFrame.Angles(a, ay or 0, c))
+end
+-- a prize (a gun model) as it rises out of a container: its lowest point, measured once, so it starts above the top
+local function halfHeight(m: Model): number
+	local _, size = m:GetBoundingBox()
+	return size.Y / 2 + math.max(size.X, size.Z) * 0.06 -- (+ what its little tilt adds)
+end
+-- leaving: everything shrinks into its own footprint and fades; lights go out with it
+local function fadeOut(models: { Model? }, dur: number)
+	local list = {}
+	for _, m in models do
+		if m and m.Parent then
+			local parts, lights = {}, {}
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") then parts[d] = d.Transparency
+				elseif d:IsA("Light") then lights[d] = d.Brightness end
+			end
+			table.insert(list, { m = m, k = m:GetScale(), parts = parts, lights = lights })
+		end
+	end
+	local t0 = os.clock()
+	while true do
+		local u = math.min(1, (os.clock() - t0) / dur)
+		local e = smooth(u)
+		for _, o in list do
+			if o.m.Parent then
+				pcall(function() o.m:ScaleTo(o.k * (1 - 0.75 * e)) end) -- (about its pivot: a container's sits on the floor)
+				for p, tr in o.parts do p.Transparency = tr + (1 - tr) * e end
+				for l, b in o.lights do l.Brightness = b * (1 - e) end
+			end
+		end
+		if u >= 1 then break end
+		RunService.RenderStepped:Wait()
+	end
+end
 
 -- the reel: build the cards, spin, land. returns the winning card
 local function spinReel(R: Run, items: { any }, stop: number, dur: number): Frame
@@ -598,13 +676,15 @@ local function runMany(R: Run): string
 		local col = if n > 5 and not back then i - 6 else i - 1
 		local x = (col - (inRow - 1) / 2) * stepX
 		local at = face * CFrame.new(x, 0, if back then stepZ else 0) * CFrame.Angles(0, math.rad(-14 + col * 7), 0)
+		-- (each on its own bit of floor: a pad or a step under one of them lifts that one)
+		at = CFrame.new(at.X, floorY(at.Position, g.Y, { me.Character :: Instance }), at.Z) * at.Rotation
 		local b = container(kind)
 		b:ScaleTo(k)
 		local lp = new("Part", { Name = "Light", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
 			Size = Vector3.new(0.2, 0.2, 0.2) }, b)
 		lp.CFrame = b:GetPivot() * CFrame.new(0, fullH * k + 0.5, 0)
 		local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 8, Shadows = false }, lp)
-		b:PivotTo(at * CFrame.new(0, 11, 0))
+		place(b, at, 11)
 		b.Parent = workspace
 		openBox(b, 0)
 		boxes[i] = { m = b, at = at, t0 = os.clock() + (i - 1) * 0.07, light = light }
@@ -624,14 +704,14 @@ local function runMany(R: Run): string
 			if u < 1 then
 				done = false
 				local y = 11 * (1 - math.max(0, u) ^ 2)
-				b.m:PivotTo(b.at * CFrame.new(0, y, 0) * CFrame.Angles(0.1 * (1 - math.max(0, u)), 0, 0))
+				place(b.m, b.at, y, 0.1 * (1 - math.max(0, u)))
 			else
 				local v = (u - 1) * 0.36 / 0.4
 				if v < 1 then
 					done = false
-					b.m:PivotTo(b.at * CFrame.new(0, 0.45 * math.sin(v * math.pi) * (1 - v), 0))
+					place(b.m, b.at, 0.45 * math.sin(v * math.pi) * (1 - v))
 				else
-					b.m:PivotTo(b.at)
+					place(b.m, b.at, 0)
 				end
 				if i == 1 and not firstLand then firstLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 1, 0.7); shake(R, 0.2) end
 				if i == n and not lastLand and n > 1 then lastLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 0.8, 0.8) end
@@ -778,11 +858,10 @@ local function runMany(R: Run): string
 	local h = ch and ch:FindFirstChild("Head") :: BasePart?
 	R.cam.to = if h then CFrame.new(h.Position + Vector3.new(0, 0.1, 0)) * sv.Rotation else sv
 	R.cam.fov = R.saved.fov
-	while os.clock() - st < 0.45 do
-		local u = (os.clock() - st) / 0.45
-		for _, b in boxes do b.m:PivotTo(b.at * CFrame.new(0, -R.height * smooth(u) * 1.05, 0)) end
-		RunService.RenderStepped:Wait()
-	end
+	local all = {}
+	for _, b in boxes do table.insert(all, b.m) end
+	fadeOut(all, 0.45)
+	while os.clock() - st < 0.45 do RunService.RenderStepped:Wait() end
 	return answer :: string
 end
 
@@ -801,7 +880,7 @@ local function showOne(d: any)
 	box:ScaleTo(k)
 	local hgt = ((box:GetAttribute("Height") :: number?) or 2.4) * k
 	local base: CFrame = d.cf
-	box:PivotTo(base * CFrame.new(0, 9, 0))
+	place(box, base, 9)
 	box.Parent = workspace
 	openBox(box, 0)
 	local lp = new("Part", { Name = "ShowLight", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
@@ -813,7 +892,7 @@ local function showOne(d: any)
 	while true do
 		local u = (os.clock() - t0) / 0.38
 		if u >= 1 then break end
-		box:PivotTo(base * CFrame.new(0, 9 * (1 - u * u), 0))
+		place(box, base, 9 * (1 - u * u))
 		openBox(box, 0)
 		RunService.RenderStepped:Wait()
 	end
@@ -822,11 +901,11 @@ local function showOne(d: any)
 	t0 = os.clock()
 	while os.clock() - t0 < 0.35 do
 		local v = (os.clock() - t0) / 0.35
-		box:PivotTo(base * CFrame.new(0, 0.5 * math.sin(v * math.pi) * (1 - v), 0))
+		place(box, base, 0.5 * math.sin(v * math.pi) * (1 - v))
 		openBox(box, 0)
 		RunService.RenderStepped:Wait()
 	end
-	box:PivotTo(base)
+	place(box, base, 0)
 	task.wait(0.35)
 	-- the pop
 	for _, x in box:GetDescendants() do
@@ -848,8 +927,11 @@ local function showOne(d: any)
 	-- the prize over it, and the sign
 	local m = prizeModel(best)
 	local top = hgt + 2.0
+	local from = hgt
 	if m then
 		pcall(function() m:ScaleTo(m:GetScale() * 0.7) end)
+		from = hgt + LIFT + halfHeight(m) + 0.1 -- (up from just over the open top)
+		top = math.max(top, from + 0.5)
 		m.Parent = workspace
 	end
 	local anchor = new("Part", { Name = "ShowSign", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
@@ -874,19 +956,13 @@ local function showOne(d: any)
 	while os.clock() - rise0 < 4.2 do
 		local u = easeOut((os.clock() - rise0) / 0.6, 3)
 		if m and m.Parent then
-			local y = hgt * 0.5 + (top - hgt * 0.5) * u + math.sin(os.clock() * 1.3) * 0.06
+			local y = from + (top - from) * u + math.sin(os.clock() * 1.3) * 0.06
 			m:PivotTo(CFrame.new(base.Position + Vector3.new(0, y, 0)) * face * CFrame.Angles(0, math.pi / 2 + (os.clock() - rise0) * 0.8, 0))
 		end
 		RunService.RenderStepped:Wait()
 	end
-	t0 = os.clock()
-	while os.clock() - t0 < 0.5 do
-		local u = (os.clock() - t0) / 0.5
-		box:PivotTo(base * CFrame.new(0, -hgt * 1.1 * smooth(u), 0))
-		if m and m.Parent then pcall(function() m:PivotTo(m:GetPivot() * CFrame.new(0, -0.2, 0)) end) end
-		plate.BackgroundTransparency = 0.2 + 0.8 * u
-		RunService.RenderStepped:Wait()
-	end
+	bb.Enabled = false
+	fadeOut({ box, m }, 0.5)
 	if m then m:Destroy() end
 	box:Destroy()
 end
@@ -935,7 +1011,7 @@ local function run(R: Run): string
 	glow.Parent = lightPart
 	R.light = glow
 	local drop = if quick then 6 else 15
-	box:PivotTo(base * CFrame.new(0, drop, 0) * CFrame.Angles(0.12, 0.5, -0.08))
+	place(box, base, drop, 0.12, 0.5, -0.08)
 	box.Parent = workspace
 	openPose(R, 0)
 	local flat = R.flat
@@ -951,7 +1027,7 @@ local function run(R: Run): string
 		local u = math.min(1, (os.clock() - t0) / fall)
 		local y = drop * (1 - u * u)
 		local a = 1 - u
-		box:PivotTo(base * CFrame.new(0, y, 0) * CFrame.Angles(0.12 * a, 0.5 * a * a, -0.08 * a))
+		place(box, base, y, 0.12 * a, 0.5 * a * a, -0.08 * a)
 		openPose(R, 0)
 		if u >= 1 then break end
 		RunService.RenderStepped:Wait()
@@ -966,12 +1042,12 @@ local function run(R: Run): string
 		local u = math.min(1, (os.clock() - t0) / bt)
 		local hop = if u < 0.62 then 0.9 * math.sin(u / 0.62 * math.pi) else 0.22 * math.sin((u - 0.62) / 0.38 * math.pi)
 		local rock = math.sin(u * math.pi * 3) * (1 - u) * 0.09
-		box:PivotTo(base * CFrame.new(0, hop * (if quick then 0.5 else 1), 0) * CFrame.Angles(rock, 0, rock * 0.4))
+		place(box, base, hop * (if quick then 0.5 else 1), rock, 0, rock * 0.4)
 		openPose(R, 0)
 		if u >= 1 then break end
 		RunService.RenderStepped:Wait()
 	end
-	box:PivotTo(base)
+	place(box, base, 0)
 	if not quick then hold(R, 0.15) end
 
 	-- 2. the rattle, then the pop: light leaks out of the seam, the lid / zip / cap goes
@@ -980,13 +1056,13 @@ local function run(R: Run): string
 		while os.clock() - t0 < TIME.rattle and not R.skip do
 			local u = (os.clock() - t0) / TIME.rattle
 			local amp = 0.02 + 0.07 * u * u
-			box:PivotTo(base * CFrame.new(math.sin(os.clock() * 61) * amp * 0.4, 0, math.cos(os.clock() * 53) * amp * 0.3)
-				* CFrame.Angles(math.sin(os.clock() * 47) * amp, 0, math.sin(os.clock() * 59) * amp))
+			place(box, base, 0, math.sin(os.clock() * 47) * amp, 0, math.sin(os.clock() * 59) * amp,
+				math.sin(os.clock() * 61) * amp * 0.4, math.cos(os.clock() * 53) * amp * 0.3)
 			openPose(R, 0)
 			glow.Brightness = 2.2 * u
 			RunService.RenderStepped:Wait()
 		end
-		box:PivotTo(base)
+		place(box, base, 0)
 	end
 	snd({ "loot_pop", "bigpop", "pop" }, base.Position, 1, 1)
 	shake(R, 0.18)
@@ -1060,7 +1136,9 @@ local function run(R: Run): string
 	R.prizeY = math.min(R.height, 2.6) + 3.0
 	if m then
 		R.prize = m
-		m:PivotTo(base * CFrame.new(0, R.height * 0.6, 0))
+		R.prizeFrom = R.height + LIFT + halfHeight(m) + 0.1 -- (it comes up from just over the open top: never through it)
+		R.prizeY = math.max(R.prizeY, R.prizeFrom + 0.6)
+		m:PivotTo(base * CFrame.new(0, R.prizeFrom, 0))
 		m.Parent = workspace
 		local rim = Instance.new("PointLight")
 		rim.Color = col; rim.Brightness = 1.6; rim.Range = 9; rim.Shadows = false
@@ -1087,7 +1165,8 @@ local function run(R: Run): string
 		if not pm or not pm.Parent then return end
 		R.spin += dt * 0.7
 		local u = easeOut((os.clock() - riseT0) / TIME.rise, 3)
-		local y = R.height * 0.6 + (R.prizeY - R.height * 0.6) * u + math.sin(os.clock() * 1.3) * 0.08 * u
+		local y0 = R.prizeFrom or R.height
+		local y = y0 + (R.prizeY - y0) * u + math.sin(os.clock() * 1.3) * 0.08 * u
 		local face = CFrame.lookAt(Vector3.zero, -flat)
 		pm:PivotTo(CFrame.new(base.Position + Vector3.new(0, y, 0)) * face * CFrame.Angles(0, math.pi / 2 + 0.5 + math.sin(R.spin) * 0.55, 0) * CFrame.Angles(0.1, 0, 0))
 	end))
@@ -1152,11 +1231,8 @@ local function run(R: Run): string
 	local h = ch and ch:FindFirstChild("Head") :: BasePart?
 	R.cam.to = if h then CFrame.new(h.Position + Vector3.new(0, 0.1, 0)) * sv.Rotation else sv
 	R.cam.fov = R.saved.fov
-	while os.clock() - st < 0.45 do
-		local u = (os.clock() - st) / 0.45
-		if R.box then R.box:PivotTo(base * CFrame.new(0, -R.height * smooth(u) * 1.05, 0)) end
-		RunService.RenderStepped:Wait()
-	end
+	fadeOut({ R.box }, 0.45)
+	while os.clock() - st < 0.45 do RunService.RenderStepped:Wait() end
 	return answer :: string
 end
 

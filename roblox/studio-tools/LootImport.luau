@@ -104,7 +104,9 @@ function L.load(assetId: number?)
 			if grp == "Zip" and info.run then g:SetAttribute("Run", info.run) end
 		end
 		m.PrimaryPart = body
-		m.WorldPivot = CFrame.identity
+		-- (the pivot = the file's origin, the middle of the bottom face. WorldPivot alone doesn't stick once there is a
+		-- PrimaryPart: the pivot is the PrimaryPart's CFrame times its PivotOffset)
+		if body then (body :: BasePart).PivotOffset = (body :: BasePart).CFrame:Inverse() else m.WorldPivot = CFrame.identity end
 		m:SetAttribute("Height", info.height)
 		m:SetAttribute("Open", info.open)
 		m:SetAttribute("Asset", id)

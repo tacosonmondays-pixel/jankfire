@@ -240,6 +240,32 @@ nothing at all.
 **Testing the bystander view alone:** `("dev", "show", { kind, n, rarity?, ahead?, side? })` (Studio + the owner)
 sends you the event for a made-up opening a few studs away; nothing is given.
 
+## Nothing goes through the floor
+
+The owner, 16 Nov: "make sure the stuff doesnt clip through the ground". What was wrong, and what keeps it right
+(`LootOpening.luau`, `Shared/LootFloor.luau`, the spot in `Loot.luau`):
+
+- **The pivot.** A container stands on its pivot, which must be the middle of its bottom face. The imported models'
+  pivots were their body's centre (0.61 to 1.38 studs up): `LootImport` set `WorldPivot`, which Roblox overrides once a
+  model has a `PrimaryPart`. So every container stood that far *into* the floor. Now `LootImport` sets the
+  `PrimaryPart`'s `PivotOffset`, the three templates were fixed in place, and `LootOpening` sets the bottom-centre pivot
+  on every copy it makes anyway.
+- **The floor.** `LootFloor.at`: your feet are measured from the foot parts (HipHeight was 1.2 studs off with this
+  game's movement); a downward ray is trusted only near your feet; then the container stands on the highest visible
+  piece over that spot that rays can't see (the hub's dais has round decorative tops in another folder, up to 0.12 studs
+  over the floor the ray hits; round parts are tested as discs). The server uses the same rules for what others see,
+  and each container in a batch's row finds its own floor (a step or a pad lifts that one).
+- **Tipping.** The drop, the hops, the rock and the rattle tip the container about its bottom centre; every pose is
+  lifted by exactly what the tip would push an edge under (half the depth or width times the sine), plus 0.04 studs.
+- **The prize** rises from just over the open top, never through the container.
+- **Leaving.** Containers and prizes shrink into their own footprint and fade, instead of sinking into the floor.
+
+Measured (place v414; a Play test that records, every frame, the lowest visible corner of every container, then
+compares it with the true visible floor found by checking every map piece, rays or not, round ones as discs): single
+crate, single can, a x5 batch and both bystander views, nine containers on the hub's dais: the lowest point was exactly
+0.04 studs over the visible floor every time (the dais' decorative tops at 241.28 to 241.32). Before the fix the same
+test had them up to 1.2 studs under it.
+
 ## Testing (16 Nov 2026, solo, place version 372)
 
 ![the containers and an opening](loot/loot-sheet.jpg)
@@ -305,7 +331,8 @@ or a match interrupting an opening; the shop's screen calling the opening (the s
 
 ## Open
 
-- The reveal has no EQUIP for a skin yet (the loadout's `skin` op is the guns session's; wire it in when it's settled).
+- A few skin cards on the Crate's reel come out with an empty picture (seen: Keytar, Leaf Shredder): their models
+  probably need framing in `modelPicture` (a Shredder-style marker model, or a very long/thin one).
 - Effects, kill effects, grapples and sprays are not on Roblox yet; when one lands, add its type to `LootTable.info`
   / `LootTable.pool` and to `TYPES` in `Loot.luau`.
 - Developer products, then `LOOT_ROBUX = true`, then the questionnaire.

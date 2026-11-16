@@ -30,6 +30,7 @@ local PolicyService = game:GetService("PolicyService")
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Config = require(Shared:WaitForChild("Config"))
 local LootTable = require(Shared:WaitForChild("LootTable"))
+local LootFloor = require(Shared:WaitForChild("LootFloor"))
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local Remote = Remotes:WaitForChild("Loot") :: RemoteFunction
@@ -230,8 +231,9 @@ local function spotOf(p: Player, ahead: number?, side: number?): CFrame?
 	local hit = workspace:Raycast(from, flat * (dist + 2.5), params)
 	if hit then dist = math.max(3.2, hit.Distance - 2.5) end
 	local spot = from + flat * dist + right * (side or 0)
-	local down = workspace:Raycast(spot + Vector3.new(0, 5, 0), Vector3.new(0, -24, 0), params)
-	local y = if down then down.Position.Y else root.Position.Y - 3
+	-- (the floor: Shared.LootFloor, the same rules as the opener's own client uses)
+	local feetY = LootFloor.feet(ch) or (root.Position.Y - 3)
+	local y = LootFloor.at(spot, feetY, { ch :: Instance })
 	local g = Vector3.new(spot.X, y, spot.Z)
 	return CFrame.lookAt(g, g - flat) * CFrame.Angles(0, math.rad(-20), 0)
 end
