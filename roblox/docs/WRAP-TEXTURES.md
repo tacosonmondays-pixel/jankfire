@@ -110,6 +110,8 @@ smoothly and off one shared clock (the server's time), so a wrap pulses in step 
 | Nebula | glow drifts pink to blue (10 s) and breathes (7 s) | the clouds drift |
 | Opal | the fire's hue cycles (12 s) | the fire shifts as it turns |
 | Holo | an iridescent tint cycles over the foil (8 s) | the hue sweeps with the angle |
+| Missing Texture | glow hums (1.8 s) | (not animated on the web; added after the Rivals study, below) |
+| Rainbow | a slow shimmer of tint across the stripes (10 s) | (not animated on the web; added after the Rivals study) |
 
 Not animated on Roblox: Sakura and Koi (on the web their petals and fish drift by scrolling, which a
 SurfaceAppearance cannot do), and Meat (its heartbeat; it is salami now). Stained Glass has a static glow on the web
@@ -120,6 +122,44 @@ server (other players' guns, the racks) and on the client (the held gun, the loa
 finds them by the tag, works out each wrap's value once per step at 20 Hz, and writes it to that wrap's pieces. It
 skips pieces more than 160 studs from the camera, checking twice a second. Cost in Play: the slowest step was
 38 microseconds (the attribute `StepUs` on the script shows it live).
+
+## A wrap is a palette (after the Rivals study, 16 Nov 2026)
+
+The owner asked to study how Rivals does wraps ("look up skin wraps in rivals btw!"). Notes and pictures are in the
+vault: `Research\Rivals wraps.md` and `Research\rivals-wraps-pictures\`. The strongest finding:
+
+- **A Rivals wrap is a pattern plus a paired flat colour plus an accent.** The pattern goes on one zone of the gun
+  (by default the furniture: stock and handguard). The other zone (the metal: receiver, barrel, magazine, grip) takes
+  a dark tone of the same wrap, often the pattern itself tinted nearly black. An "Inverted" box swaps the zones. A
+  skin's glowing parts take the wrap's accent colour, and lenses keep their own.
+- Rarity climbs through material and motion, not more colours: Common is flat, Rare a pattern, Legendary a special
+  surface or glow, and every top-tier wrap is animated. In 19 of 22 animated showcases the gun's overall brightness
+  hardly moves; what moves is the glow or the pattern.
+- Players judge wraps in first person by how well they can see: very bright wraps get "flashbang" complaints.
+
+What changed here, the four that matter most for ours:
+
+1. **The other half takes the wrap's own dark tone, not the factory paint.** Our HANDLE and BUSINESS END modes are
+   Rivals' two zones (HANDLE = the pattern on the body panels and stock, BUSINESS END = the inverted look). Before,
+   the unpainted half kept the gun's factory colours, so a Sakura SMG came out pink on teal. Now
+   `WeaponModels.wrap` gives the other half (zone `b` on HANDLE, `a` on BUSINESS END) a clone of the same picture
+   with its `Color` set to the wrap's `Second` tone: a grey multiplier that takes the pattern down to about 0.2
+   luminance, never lighter than 0.45 of the picture. Its glow drops to 30%. A plain colour wrap gives that half
+   its first colour at 35%. Trims (`_wzN`), glow and glass pieces keep their look. FULL SEND still covers
+   everything.
+2. **Glow pieces take the wrap's accent.** A gun's Neon pieces (sight dots, lamps, vents) take the wrap's `Accent`:
+   its brightest saturated colour, lifted to full brightness (cyan for Neon Hex, violet for Galaxy, pink for
+   Sakura).
+3. **The chip shows the palette.** Each picture chip in the loadout has a band of the wrap's `Dark` tone along its
+   bottom quarter, so the chip says "this pattern with this dark".
+4. **Every Legendary picture moves.** Missing Texture and Rainbow, the two still ones, joined the animator. Meat
+   (no glow map) and Liquid Chrome (a plain colour wrap) stay still. Circuit and CRT are Epic and animate; that is
+   fine.
+
+`Second`, `Dark` and `Accent` are worked out from each wrap's colour map by `wrap_upload.py book` (`tones()`) and
+set as attributes on the wrap's SurfaceAppearance by `WrapBook.luau`, so no new images were needed. Rarities were
+not changed: the loot session prices and drops by them. Our Commons include patterned wraps where Rivals keeps
+Commons flat, which is a call for the owner.
 
 ## Redrawing or adding a wrap
 

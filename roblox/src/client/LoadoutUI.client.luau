@@ -532,6 +532,12 @@ local function paintChip(chip: Frame, wr: Roster.Wrap)
 		chip.BackgroundColor3 = WHITE
 		local im = new("ImageLabel", { Image = img, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ImageRectSize = Vector2.new(384, 256), ZIndex = 5 }, chip)
 		T.corner(im, 4)
+		-- a band of the wrap's second colour along the bottom: the dark tone the other half of the gun takes
+		local dark = sa:GetAttribute("Dark")
+		if typeof(dark) == "Color3" then
+			local band = new("Frame", { BackgroundColor3 = dark, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0.24, 0), ZIndex = 5 }, chip)
+			T.corner(band, 4)
+		end
 		return
 	end
 	local pal = wr.pal

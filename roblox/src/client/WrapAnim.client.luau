@@ -42,6 +42,9 @@ local SPEC: { [string]: Spec } = {
 	nebula = { k = "drift", p = 10.0, p2 = 7.0, lo = 0.85, hi = 1.1, a = Color3.fromHex("ffd2f0"), b = Color3.fromHex("cadaff") },
 	opal = { k = "hue", p = 12.0, sat = 0.5 },                     -- web: the fire shifting as it turns
 	holo = { k = "iris", p = 8.0, sat = 0.12 },                    -- web: the hue sweeping with the angle
+	-- (after the Rivals study: there every top-tier wrap moves, so the two still Legendary pictures move too)
+	missing = { k = "breathe", p = 1.8, lo = 0.8, hi = 1.15 },     -- the missing-texture glow hums
+	rainbow = { k = "iris", p = 10.0, sat = 0.08 },                -- a slow shimmer across the stripes
 }
 script:SetAttribute("Animated", (function() local n = 0; for _ in SPEC do n += 1 end; return n end)())
 
@@ -103,7 +106,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if not l then l = look(e.spec, t); cache[e.spec] = l end
 		if l.f then sa.EmissiveStrength = e.es * l.f end
 		if l.tint then sa.EmissiveTint = l.tint end
-		if l.col then sa.Color = l.col end
+		if l.col then sa.Color = Color3.new(e.col.R * l.col.R, e.col.G * l.col.G, e.col.B * l.col.B) end -- (on the base tint: a second half stays dark)
 	end
 	local us = (os.clock() - t0) * 1e6
 	if us > worst then worst = us end

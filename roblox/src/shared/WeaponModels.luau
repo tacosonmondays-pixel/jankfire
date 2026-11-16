@@ -477,6 +477,46 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 		local sa = p:FindFirstChildOfClass("SurfaceAppearance")
 		if sa then stash[p] = sa; sa.Parent = nil end
 	end
+	-- a wrap is a palette (docs/WRAP-TEXTURES.md, after the Rivals study): on HANDLE or BUSINESS END the other half of
+	-- the gun takes a dark tone of the same wrap (the picture tinted down by its Second colour, or the palette's first
+	-- colour darkened), not the gun's factory paint, so the gun reads as one design in two tones. trims (_wzN), glow and
+	-- glass keep their look; the gun's glow pieces take the wrap's Accent
+	if md ~= "full" then
+		local other = if md == "reverse" then "a" else "b"
+		local sec = if pic then pic:GetAttribute("Second") else nil
+		for _, p in list do
+			if zoneOf(p, m) ~= other then continue end
+			if p.Material == Enum.Material.Neon or p.Material == Enum.Material.Glass then continue end
+			local uv = p:IsA("MeshPart") and p:GetAttribute("WrapUV")
+			if pic and unfolded and not uv then continue end
+			remember(p)
+			local old = p:FindFirstChildOfClass("SurfaceAppearance")
+			if old then stash[p] = old; old.Parent = nil end
+			if p:IsA("MeshPart") then p.TextureID = "" end
+			p.Material = Enum.Material.SmoothPlastic; p.Reflectance = 0
+			if pic and uv then
+				local s = pic:Clone()
+				s.Name = "WrapSA"
+				s.Color = if typeof(sec) == "Color3" then sec else Color3.new(0.35, 0.35, 0.35)
+				s.EmissiveStrength = pic.EmissiveStrength * 0.3
+				s:SetAttribute("Wrap", wr.id)
+				s:AddTag("WrapSA")
+				s.Parent = p
+			else
+				local c = wr.pal[1]
+				p.Color = Color3.new(c.R * 0.35, c.G * 0.35, c.B * 0.35)
+			end
+		end
+	end
+	local acc = if pic then pic:GetAttribute("Accent") else nil
+	if typeof(acc) == "Color3" then
+		for _, p in list do
+			if p.Material == Enum.Material.Neon and not (p:IsA("MeshPart") and p:GetAttribute("WrapUV")) then
+				remember(p)
+				p.Color = acc
+			end
+		end
+	end
 end
 
 -- a player's wrap on one weapon, from the "Wraps" attribute the server keeps ("redline=cherry/normal;katana=gold/full")
