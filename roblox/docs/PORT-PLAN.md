@@ -1041,8 +1041,20 @@ Now (push 45, place version 448): `R.check()` 46 keep-clear zones, 0 problems, 0
 - The VIP pack's plinth showed a gold skin turning.
 - Photos: `roblox/docs/hub/hub_round3_sheet.jpg` (both floors from the spawn, the hologram at a standing eye, the second floor, the VIP door and room, the gym, the armory and its bench, Looticus).
 
+**Round 3, second pass (push 46, place version 455):**
+- **The second floor got the rotunda's structure** (the main session, 16 Nov: the upper hall "reads plain next to the rotunda below it"). No new lamps and no floor marks.
+  - Each pad stands in a bay: dark fins between the pads with a light strip on each nose, the bay's own pale back wall, cream guide rails either side of the board as in the lift bays, and a cream lintel across the bay's mouth.
+  - The top of each bay's wall is cut at 45 degrees, with a hidden lit strip under the lip.
+  - A cream rib runs from each fin across the ceiling to the round room's wall, with two cream beams across: coffers.
+  - Along the round room's wall inside the hall: a dark foot and a cream hand rail, broken at each doorway, which has a pale frame on this side too.
+- **An upper pad starts a match and brings you home.** Tested with Matches' Studio hook (`ServerStorage.JankMatchTest`, "ghost" with the player on team 1): 3v3_u1 started a match in RooftopV3. The player was in it 5 s later (zone "match") and back in the hub at time-up (zone "hub"), with no live matches left.
+- **The VIP door passed both ways**, tested by the shop session in place v453 by walking into it. With VIP locked the character (collision group Default) stopped at the leaves; with VIP unlocked (VipGuest) it walked 18.6 studs into the room.
+- **Lights:** the performance session measured them in Play. Lights and shadows cost next to nothing; the 12 fps in training was the old mirror. No light budget, but no more than the current 9 shadow casters. Its ZoneCull (far maps off the client) is in the place, switched off by the workspace attribute `ZoneCull = false` until it has tested teleports.
+- `R.check()`: 0 problems, 0 leaks, 288 sight lines with none hidden, 0 overlaps, 105 lamps (9 with shadows), 12 pads, walked to 12. ZFight: the same 6 tiny hits. The fins and rails first shared a bottom face with the dark foot along the wall (14 more hits); their feet now go 0.04 into the floor.
+- Photo: `roblox/docs/hub/hub_upper_bays.jpg`.
+
 **Not done / open:**
-- No real match has been played from an upper pad: two players are needed.
+- A match from an upper pad with two real players has not been played (the Studio hook stands one player in).
 - Shadows: the performance session will send a budget (likely 4 shadowed lamps, now 9). Its ZoneCull takes the whole Rotunda out of the client while you are far from it, so the Rotunda must stay `Map.Hub.Rotunda`.
 - Map.Hub was not exported to the repo this round: the hub is rebuilt from the builders (`R.build("live")`), which are in git.
 

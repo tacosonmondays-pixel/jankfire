@@ -94,7 +94,7 @@ return function(B, R)
 		md.name, md.bank = u.name, "upper"
 		md.w, md.dp = R.UP_SIZE[md.id][1], R.UP_SIZE[md.id][2]
 		local w = (OUT + 2) * math.tan(math.rad(R.UP_PITCH / 2)) + 0.4
-		B.box(F, S, "UpperWall", -w, w, FT, ROOF + 0.96, OUT, OUT + 2, P.shell) -- (from the slab's top: no face shared with its underside)
+		B.box(F, S, "UpperWall", -w, w, FT, ROOF + 0.96, OUT, OUT + 2, P.bay) -- (from the slab's top: no face shared with its underside. the bay's own pale wall, as in the lifts)
 		B.box(F, C, "UpperBase", -w, w, UY, UY + 0.8, OUT - 0.25, OUT, P.pier, nil, G)
 		B.box(F, C, "UpperBand", -w, w, UY + 9.4, UY + 9.9, OUT - 0.25, OUT, P.cream, nil, G)
 		local dP = OUT - 1.2 - md.dp / 2
@@ -102,14 +102,48 @@ return function(B, R)
 		local bw = md.w - 1.4
 		B.board(pad, F, md, bw, bw / 2, 0, UY + 5.4, OUT - 0.45, 0, { thick = 0.4 })
 		B.box(F, C, "BoardFrame", -bw / 2 - 0.35, bw / 2 + 0.35, UY + 5.4 - bw / 4 - 0.35, UY + 5.4 + bw / 4 + 0.35, OUT - 0.25, OUT - 0.02, P.pier2, nil, G)
+		-- the bay round it (the owner's main session, 16 Nov: the hall "reads plain next to the rotunda below it"): guide rails
+		-- either side of the board as in the lift bays, a cream lintel across the bay's mouth between the fins, the top of
+		-- the wall cut at 45 degrees with a hidden lit strip under its lip washing the wall (no lamps: a strip glows)
+		for _, s in { -1, 1 } do B.box(F, C, "UpperRail", s * (bw / 2 + 0.9) - 0.45, s * (bw / 2 + 0.9) + 0.45, UY - 0.04, ROOF - 1.6, OUT - 0.9, OUT - 0.02, P.cream, nil, G) end
+		local wb = OUT * math.tan(math.rad(R.UP_PITCH / 2)) - 0.75 -- (the bay's half width at its wall, between the fins)
+		local wh = (OUT - 4.9) * math.tan(math.rad(R.UP_PITCH / 2))
+		B.box(F, C, "UpperBayHead", -wh, wh, ROOF - 2.2, ROOF - 1.6, OUT - 5.3, OUT - 4.5, P.cream, nil, G)
+		B.bar(F, C, "UpperCove", 0, 2 * wb, 0.6, OUT - 1.4, ROOF + 0.3, OUT, ROOF - 1.1, P.cream, nil, G)
+		B.box(F, C, "UpperCoveStrip", -wb + 0.6, wb - 0.6, ROOF - 1.4, ROOF - 1.2, OUT - 0.32, OUT - 0.1, P.bayWash or P.strip, Neon, G)
+		-- the ceiling over the walk in coffers: a cream beam across at d 39.5 and at d 52 (the radial ribs are below)
+		for _, d in { 39.5, 52 } do
+			local wd = d * math.tan(math.rad(R.UP_PITCH / 2))
+			B.box(F, C, "UpperBeam", -wd, wd, ROOF - 0.8, ROOF - 0.04, d - 0.5, d + 0.5, P.cream, nil, G)
+		end
 		B.panel(F, 0, ROOF, dP, 3, 3)
 		B.lamp(F, 0, ROOF - 1.2, dP, 22, 0.9, P.light, { spot = true, angle = 90 })
 		B.panel(F, 0, ROOF, 44, 2.4, 6)
 		B.lamp(F, 0, ROOF - 1.2, 44, 22, 0.6)
 	end
-	for i = 1, nU - 1 do -- piers between the pads
-		local F = B.lf((i - nU / 2) * R.UP_PITCH)
-		B.box(F, S, "UpperPier", -0.7, 0.7, UY, ROOF - 2.2, OUT - 1.4, OUT - 0.02, P.pier)
+	-- the fins that make the bays (between the pads and at each end), a light strip on each one's nose, a cream rib from
+	-- each across the ceiling to the round room's wall
+	for i = 0, nU do
+		local b = (i - nU / 2) * R.UP_PITCH
+		local F = B.lf(b)
+		B.box(F, S, "UpperFin", -0.7, 0.7, UY - 0.04, ROOF, OUT - 5.2, OUT - 0.02, P.shell) -- (feet just into the floor: no face shared with the dark foot along the wall)
+		B.box(F, C, "UpperFinLight", -0.22, 0.22, UY + 2.4, UY + 10.4, OUT - 5.32, OUT - 5.2, P.strip, Neon, G)
+		B.box(F, C, "UpperRib", -0.5, 0.5, ROOF - 0.8, ROOF, R.reach(b, A + T) + 0.3, OUT - 5.2, P.cream, nil, G)
+	end
+	-- along the round room's wall inside the hall: a dark foot and a cream rail at hand height, broken at each doorway,
+	-- which gets a pale frame on this side too
+	for _, side in { 12, 13, 0, 1, 2 } do
+		local F = B.side(side)
+		local wo = B.wid(A + T) / 2 + 0.05
+		local spans = if R.UP_DOORS[side] then { { -wo, -5.2 }, { 5.2, wo } } else { { -wo, wo } }
+		for _, sp in spans do
+			B.box(F, C, "UpperInBase", sp[1], sp[2], UY, UY + 0.7, A + T, A + T + 0.3, P.pier2, nil, G)
+			B.box(F, C, "UpperInRail", sp[1], sp[2], UY + 3.3, UY + 3.62, A + T + 0.08, A + T + 0.42, P.cream, nil, G)
+		end
+		if R.UP_DOORS[side] then
+			for _, s in { -1, 1 } do B.box(F, C, "UpperJambIn", s * 4.6, s * 5.2, UY + 0.04, UY + 9.4, A + T, A + T + 0.35, P.creamHi, nil, G) end
+			B.box(F, C, "UpperHeadIn", -5.2, 5.2, UY + 8.8, UY + 9.4, A + T, A + T + 0.35, P.creamHi, nil, G)
+		end
 	end
 
 	-- ---- the two end walls, which run in to the round room's corner piers and close the second floor's ends too
