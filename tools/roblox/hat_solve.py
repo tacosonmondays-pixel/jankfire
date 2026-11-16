@@ -19,16 +19,17 @@ ids = [a for a in argv if not a.startswith('--')]
 OK_MM = 1.0       # a seat passes when every hat's clip score is at most this (mm)
 FOOT_MM = 3.0     # a foot may sit this far in (its design sink is 2 mm)
 DZ = [d / 100 for d in (0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6, -8, 8, -10, 10, -12, 12)]
-SADDLES = (0.0, 0.003, 0.006, 0.01, 0.015)
+SADDLES = (0.0, 0.003, 0.006, 0.01, 0.015, 0.02, 0.025)
 SIZES = (1.0, 0.9, 0.8)
 
 
 def score(gisl, gverts, x, y, z, sp, s, saddle, boost, hats):
     worst = 0.0
     for hid, h in hats:
-        mw = (Matrix.Translation(Vector((x, y + saddle * boost, z)))
+        mw = (Matrix.Translation(Vector((x, y, z)))  # (the saddle along the hat's own up, as GunHats.make does)
               @ Matrix.Rotation(math.radians(sp.get('yaw', 0)), 4, 'Y')
               @ Matrix.Rotation(math.radians(sp.get('pitch', 0)), 4, 'X')
+              @ Matrix.Translation(Vector((0, saddle * boost, 0)))
               @ Matrix.Scale(s * boost, 4))
         M = HC.to_blender(mw)
         foot, body, bpieces = HC.hat_points(h, M, hat_models.MOVES.get(hid, {}))
@@ -113,7 +114,8 @@ def main():
         d = json.load(open(p, encoding='utf8'))
         for wid, r in out.items():
             base = d.get(wid) or d.get(wid.split('@')[0])
-            e = {k: v for k, v in base.items() if k not in ('z', 's', 'saddle', 'note', 'y')}
+            # (a seat on the back end keeps its height, the handle's axis; any other is measured again)
+            e = {k: v for k, v in base.items() if k not in ('z', 's', 'saddle', 'note') and (k != 'y' or base.get('pitch') == 90)}
             e['z'] = r['z']; e['s'] = r['s']
             if r['saddle']: e['saddle'] = r['saddle']
             e['note'] = 'solved by hat_solve.py: worst clip %.1f mm (third person), %.1f mm (first)' % (r['score_tp'], r['score_fp'])

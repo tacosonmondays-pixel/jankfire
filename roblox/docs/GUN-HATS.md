@@ -3,7 +3,8 @@
 The owner asked: "can you start workin on the wepaon hats modeling them?". JANKFIRE's web game has a **hat** cosmetic:
 a small hat that sits on your gun, one per weapon (`shared/cosmetics.js`, `COSMETICS.hat`: Party Hat, Traffic Cone,
 Cowboy Hat, Chef Hat, Propeller Cap, Googly Eyes, Top Hat, Halo, Crown, Tiny Duck, plus None). The Roblox port now has
-all ten, as new models built for Roblox, a Hat slot in the loadout, and the hat on every view of the gun.
+all ten, as new models built for Roblox, a Hat slot in the loadout, and the hat on every view of the gun; and one of its
+own, the VIP-only **Royal Duck** (below).
 
 What each hat is and roughly where it sits come from the web game (`public/js/skins.js` `HAT_BUILD` and its "sit it
 on top" rule; `tools/blender/make_gunhats.py`). The shapes and colours are our own, in the gun kit's style: a few big
@@ -24,7 +25,7 @@ the nine guns that moved, from the side).
 
 | where | what happens | code |
 |---|---|---|
-| the loadout screen (L) | a **HATS** tab beside **WRAPS** over the bottom bar: eleven cards (None and the ten hats, each turning slowly with its moving bits going, a line in its rarity's colour); hover to try one on, click to put it on. The big preview and the slot cards show the hat | `LoadoutUI.client.luau` (the "hats" block, `previewModel(id, hat)`) |
+| the loadout screen (L) | a **HATS** tab beside **WRAPS** over the bottom bar: twelve cards (None and the eleven hats, each turning slowly with its moving bits going, a line in its rarity's colour); hover to try one on, click to put it on. The big preview and the slot cards show the hat | `LoadoutUI.client.luau` (the "hats" block, `previewModel(id, hat)`) |
 | the server | one hat per weapon, checked against the hat list, saved with the loadout (`hats` in the DataStore payload beside `wraps`), published as the player attribute `Hats` = `"ar=crown;katana=duck"`; a change goes on at once (your third-person gun, the Shredder) | `Loadout.luau` (op `"hat"`) |
 | first person | the hat rides the gun piece under it (so it moves with a slide, a feed cover or the Half a Shotgun's barrels), **hides while you aim** (aim 0.3 or more, as in the web game) so it is never in the sight picture, and rebuilds when you change it | `Viewmodel.luau` (`VM.set`, `VM.update`) |
 | third person | on every player's held gun, drawn 1.5 times the first-person size (`GunHats.THIRD`: at 1x it was a few pixels on someone else's gun) | `Fight.showWeapon` |
@@ -41,7 +42,7 @@ colour and material as it was.
 
 | what | where |
 |---|---|
-| the ten hats (one function each, on `gunkit.Gun`) and what moves | `tools/roblox/hat_models.py` |
+| the eleven hats (one function each, on `gunkit.Gun`), the VIP list and what moves | `tools/roblox/hat_models.py` |
 | where each hat sits on each gun (z along the gun, size, turn, notes) | `tools/roblox/hat_spots.json` |
 | the height under each spot, measured on the kit model with a ray; writes the book | `tools/roblox/hat_spots.py` |
 | the book the game reads (generated: hats, rarities, file bounds, asset id, spots, moving bits) | `roblox/src/shared/GunHatData.luau` |
@@ -131,6 +132,36 @@ Redline 2 cm back, the Uzi on a 6 mm saddle. After: every hat on every gun and s
 0.4 mm into a hat. Live in place version 404. (A Studio raycast check of the seats reads the parts' collision shapes, not
 their meshes: on the calculator pistol and the leaf LMG it shows the foot 5 mm "in" where the mesh check gives the
 designed 2 mm; trust `hat_clip.py`.)
+
+## The Royal Duck (VIP only, 16 Nov 2026, round 10)
+
+The main session asked for a VIP-exclusive duck hat, "clearly a step above the common Tiny Duck"; the shop session
+leads VIP. **`royalduck`, "Royal Duck"**: a polished gold duck (the Tiny Duck's masses a size smaller, so the two read
+as one family) in a tiny crown (five points with ball tips, a wine velvet dome, tipped a little to one side), sitting on
+a wine velvet cushion with gold piping and a gold ball at each corner, on the set's slate foot. The duck turns on the
+cushion toward the side the player sees; the cushion stays square to the gun. Its gold is the only **Metal** in the set
+(look code `m`: `HatImport` paints it `Enum.Material.Metal`); everything else is SmoothPlastic like the other hats.
+`gun-hats/royal-duck.png` has the Blender close-ups.
+
+- VIP only: `hat_models.VIP` -> its GunHatData row says `vip = true` (rarity `legendary`). `LootTable.vipOnly` reads
+  that, so it is in no container; `Loot.owns` counts a VIP hat on every gun once owned. The shop's single rotation must
+  skip it too (`Shop.singlesPool`, the shop session's). An unowned VIP hat in the HATS tab says it comes with VIP.
+- Upload: round 10, asset 134178407944653 (all eleven hats; the ten old ones unchanged).
+- Clipping: every hat on every gun and skin, now 16 guns and **52 skins** (the skin sets added 25: Seraph, Infernal,
+  Ducky, Hex, Sakura, Nighttide, Cauldron, Candle ... in `gun_sets*.py`), first and third person: 1,496 pairs. The
+  Royal Duck itself: at most 0.5 mm in, a gun at most 0.7 mm into it, feet at their 2 mm (3.6 mm on the Ducky LMG's
+  round back). All hats: at most 1.1 mm in, 1.0 mm out; feet up to 4 mm on the drill revolver, 3.5 on the sniper scope
+  (as before).
+- The new skins first took their gun's seat; eight failed for every hat and were re-seated: the Seraph AR on the
+  receiver rib ahead of its halo sight (the solver put the hat on top of the halo, 6 cm over the gun), the Infernal AR
+  2 cm forward, the Ducky LMG 2 cm back, the Cauldron marble gun 2 cm back on its lid, the Candle revolver 3 cm forward, and the
+  katana skins on their own pommel ends (the Infernal on a 1 cm saddle off its flared end).
+- Two tool fixes found on the way. (1) `hat_clip.py` / `hat_solve.py` / `hat_preview.py` lifted a saddle straight up;
+  the game lifts it along the hat's own up, which on a pommel seat (`pitch = 90`) is off the end. No live seat had both,
+  so nothing in the game changed. (2) `hat_solve.py --write` dropped a pommel seat's fixed height (`y = 0`, the handle's
+  axis), so `hat_spots.py` measured the handle's top instead: the Baguette, Bokken and Shirasaya hats stood about
+  1.8 cm off-centre on their pommels since round 9. Both fixed; those three are back on the axis.
+- `hat_clip.py --hat <id>` checks one hat (no report written).
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 

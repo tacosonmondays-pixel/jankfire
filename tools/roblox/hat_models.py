@@ -24,12 +24,15 @@ from gunkit import Gun, P, lin, hex_rgb
 HERE = os.path.dirname(os.path.abspath(__file__))
 UNIT = 10.0  # the upload is 10 x the hat's size: one stud in the template = 0.1 m (no tiny MeshParts)
 
-HATS = ['party', 'cone', 'cowboy', 'chef', 'propeller', 'eyes', 'tophat', 'halo', 'crown', 'duck']
+HATS = ['party', 'cone', 'cowboy', 'chef', 'propeller', 'eyes', 'tophat', 'halo', 'crown', 'duck', 'royalduck']
 NAMES = {'party': 'Party Hat', 'cone': 'Traffic Cone', 'cowboy': 'Cowboy Hat', 'chef': 'Chef Hat',
          'propeller': 'Propeller Cap', 'eyes': 'Googly Eyes', 'tophat': 'Top Hat', 'halo': 'Halo', 'crown': 'Crown',
-         'duck': 'Tiny Duck'}
+         'duck': 'Tiny Duck', 'royalduck': 'Royal Duck'}
 RARITY = {'party': 'free', 'cone': 'free', 'cowboy': 'common', 'chef': 'common', 'propeller': 'rare', 'eyes': 'rare',
-          'tophat': 'epic', 'halo': 'epic', 'crown': 'legendary', 'duck': 'legendary'}
+          'tophat': 'epic', 'halo': 'epic', 'crown': 'legendary', 'duck': 'legendary', 'royalduck': 'legendary'}
+# VIP only (the shop session's VIP pack, 16 Nov 2026): in no container and no shop rotation, worn on every gun once
+# owned. GunHatData marks the hat vip = true; LootTable.vipOnly reads it
+VIP = {'royalduck'}
 
 
 # ------------------------------------------------------------------ solids of our own (round things the kit lacks)
@@ -212,10 +215,10 @@ CREAM = 'c9c1b0'   # warm off-white
 SLATE = '3c4048'   # the foot every hat stands on
 FOOT_H = 0.0045    # the foot's height: every hat stands this much higher than it is built
 # each hat's size against how it is built (applied round the foot), a turn round its up axis, its foot
-SIZE = {'crown': 1.3, 'duck': 1.12, 'halo': 1.0, 'cone': 1.05, 'chef': 0.95}
+SIZE = {'crown': 1.3, 'duck': 1.12, 'halo': 1.0, 'cone': 1.05, 'chef': 0.95, 'royalduck': 1.05}
 TURN = {'duck': 35}  # degrees, the face toward the gun's left: the side the player sees in first person
 FOOT = {'party': 0.031, 'cowboy': 0.0255, 'chef': 0.0275, 'propeller': 0.0325, 'tophat': 0.025, 'halo': 0.016,
-        'crown': 0.0315, 'duck': 0.026, 'eyes': 0.0315, 'cone': 0.029}
+        'crown': 0.0315, 'duck': 0.026, 'eyes': 0.0315, 'cone': 0.029, 'royalduck': 0.0235}
 
 
 @hat
@@ -411,6 +414,62 @@ def duck():
     return g
 
 
+ROYAL_GOLD = 'a8894c'  # the Royal Duck's gold: brighter than the set's brass (a polished metal finish in the game)
+ROYAL_TURN = 35       # degrees, like the Tiny Duck's TURN
+
+
+@hat
+def royalduck():
+    """ROYAL DUCK (VIP): a polished gold duck in a tiny crown, sitting on a wine velvet cushion with gold piping and a
+       gold ball at each corner; the Tiny Duck's shape a size smaller, so the two read as one family, this one dressed"""
+    g = Gun('hat_royalduck')
+    g.slot('gold', ROYAL_GOLD, 'm'); g.slot('velvet', WINE); g.slot('beak', '6e4a30'); g.slot('eye', '23242a')
+    # the cushion: a puffy rounded square, its sides along the gun and across it, its corners on the diagonals
+    CR, CH = 0.0255, 0.0095
+    sq = lambda th: (abs(math.cos(th)) ** 4 + abs(math.sin(th)) ** 4) ** -0.25
+    lathe(g, 'cushion__velvet', rounded([(0, 0), (CR, 0), (CR, CH), (0, CH)], [0, 0.0035, 0.0045]), 64, rfun=sq)
+    sweep(g, 'piping__gold', [(CR + 0.0002 + 0.0012 * math.cos(2 * math.pi * k / 8), CH * 0.5 + 0.0012 * math.sin(2 * math.pi * k / 8)) for k in range(8)], 64, rfun=sq)
+    for i in range(4):
+        a = math.radians(45 + 90 * i)
+        r = CR * 1.189 - 0.001
+        blob(g, 'piping__gold', (r * math.sin(a), CH * 0.5, -r * math.cos(a)), (0.0032, 0.0032, 0.0032))
+    # the duck (the Tiny Duck's masses at 0.86), sunk 2 mm into the cushion
+    k, y0 = 0.86, CH - 0.002
+    def D(c): return (c[0] * k, y0 + c[1] * k, c[2] * k)
+    def R(r): return tuple(v * k for v in r)
+    blob(g, 'duck__gold', D((0, 0.0165, 0.003)), R((0.0225, 0.0175, 0.029)))
+    blob(g, 'duck__gold', D((0, 0.0185, -0.014)), R((0.0185, 0.0165, 0.0165)))
+    blob(g, 'duck__gold', D((0, 0.0285, 0.0245)), R((0.0105, 0.0105, 0.0125)), RX(math.radians(-40)))
+    for s in (-1, 1):
+        blob(g, 'duck__gold', D((s * 0.0195, 0.0205, 0.006)), R((0.0055, 0.0105, 0.0165)), RZ(s * math.radians(-12)))
+    hc = D((0, 0.0445, -0.0155))
+    hr = 0.0155 * k
+    blob(g, 'duck__gold', hc, (hr, 0.0152 * k, hr))
+    blob(g, 'beak__beak', D((0, 0.0418, -0.0322)), R((0.0094, 0.0042, 0.0088)))
+    for s in (-1, 1):
+        blob(g, 'eyes__eye', D((s * 0.0094, 0.0498, -0.0255)), R((0.0038, 0.0040, 0.0030)))
+    # the tiny crown on its head (narrower than the head): a gold band round its top, five points with ball tips, a
+    # velvet dome; tipped a little to one side
+    M = T(*hc) @ RZ(math.radians(-8)) @ RX(math.radians(5)) @ T(0, hr * 0.66, 0)
+    ri, ro, h = hr * 0.70, hr * 0.70 + 0.0018, 0.0036
+    sec = rounded([(ri, h), (ri, 0), (ro, 0), (ro, h)], [0, 0.0006, 0.0006, 0]) + [(ro - 0.0003, h + 0.0006), (ri + 0.0003, h + 0.0006)]
+    sweep(g, 'crown__gold', sec, 32, M=M)
+    lathe(g, 'dome__velvet', [(0, 0.0008), (ri + 0.0002, 0.0008)] + arc(0, 0.0008, ri + 0.0002, 0.0066, 0, 90, 8)[1:], 24, M=M)
+    tall = 0.0056
+    pt = rounded([(0.0031, 0.0), (0.0007, tall), (-0.0007, tall), (-0.0031, 0.0)], [0, 0.0005, 0.0005, 0], 3)
+    for i in range(5):
+        a = math.radians(72 * i)  # (one point straight ahead, over the beak)
+        Mp = M @ RY(-a) @ T(0, h - 0.001, -(ri + ro) / 2)
+        slab(g, 'crown__gold', pt, 0.0017, Mp, bev=0.0005)
+        blob(g, 'crown__gold', tuple(Mp @ Vector((0, tall + 0.001, 0))), (0.0015, 0.0015, 0.0015))
+    # the duck and its crown turn on the cushion (the cushion stays square to the gun): its face toward the gun's left,
+    # the side the player sees (the Tiny Duck turns whole: TURN)
+    for (node, slot), bm in g.pieces.items():
+        if node not in ('cushion', 'piping'):
+            bmesh.ops.rotate(bm, cent=(0, 0, 0), matrix=Matrix.Rotation(math.radians(ROYAL_TURN), 3, 'Z'), verts=bm.verts)
+    return g
+
+
 def foot(g, kind):
     """the set's mount: a thin slate plate with a brass rim under the hat (a disc of radius `kind`, or a pill)"""
     g.slots.setdefault('foot', {'color': SLATE, 'kind': 'p', 'alpha': 1.0})
@@ -457,8 +516,9 @@ MOVES = {
 
 # ------------------------------------------------------------------ out
 def look(slot):
-    """p = SmoothPlastic, n = Neon, + two hex digits of opacity when it is see-through (HatImport reads it)"""
-    code = ('n' if slot['kind'] == 'n' else 'p') + slot['color']
+    """p = SmoothPlastic, n = Neon, m = Metal (the Royal Duck's gold), + two hex digits of opacity when it is
+       see-through (HatImport reads it)"""
+    code = (slot['kind'] if slot['kind'] in ('n', 'm') else 'p') + slot['color']
     a = slot.get('alpha', 1.0)
     return code + ('%02x' % round(a * 255) if a < 0.99 else '')
 

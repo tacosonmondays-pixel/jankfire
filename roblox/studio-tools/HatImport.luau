@@ -8,7 +8,7 @@
 -- An upload's pieces arrive as MeshParts named "<hat>_<node>__<look>" at their box centres, unrotated, 1 stud = one
 -- template stud (UNIT metres: the file is 10 x the hat's size). Each hat becomes a Model "hat_<id>" whose pivot is the
 -- hat's foot (the file's origin), each piece a MeshPart named by its node, painted from its look code (p = SmoothPlastic,
--- n = Neon) like WeaponImport paints the guns. GunHats.luau builds the hats in the game from these templates.
+-- n = Neon, m = Metal: the Royal Duck's gold) like WeaponImport paints the guns. GunHats.luau builds the hats in the game from these templates.
 local H = {}
 
 local function data()
@@ -17,11 +17,11 @@ local function data()
 	return require(m:Clone())
 end
 
--- p / n + rrggbb [+ aa: opacity, two hex digits] (tools/roblox/hat_models.py look)
+-- p / n / m + rrggbb [+ aa: opacity, two hex digits] (tools/roblox/hat_models.py look)
 local function look(p: BasePart, code: string)
 	local kind, hex, alpha = string.sub(code, 1, 1), string.sub(code, 2, 7), string.sub(code, 8, 9)
 	p.Color = Color3.fromHex(hex)
-	p.Material = if kind == "n" then Enum.Material.Neon else Enum.Material.SmoothPlastic
+	p.Material = if kind == "n" then Enum.Material.Neon elseif kind == "m" then Enum.Material.Metal else Enum.Material.SmoothPlastic
 	p.Reflectance = 0
 	p.Transparency = if #alpha == 2 then 1 - (tonumber(alpha, 16) or 255) / 255 else 0
 	if p:IsA("MeshPart") then p.TextureID = "" end
@@ -102,7 +102,8 @@ function H.check()
 		local m = lib:FindFirstChild("hat_" .. hid)
 		if not m then table.insert(bad, hid .. " missing"); continue end
 		for _, p in m:GetChildren() do
-			if p:IsA("MeshPart") and not (p.TextureID == "" and (p.Material == Enum.Material.SmoothPlastic or p.Material == Enum.Material.Neon)) then
+			local mat = p.Material
+			if p:IsA("MeshPart") and not (p.TextureID == "" and (mat == Enum.Material.SmoothPlastic or mat == Enum.Material.Neon or mat == Enum.Material.Metal)) then
 				table.insert(bad, hid .. "." .. p.Name .. " off-finish")
 			end
 		end

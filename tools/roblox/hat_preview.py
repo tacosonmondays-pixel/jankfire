@@ -134,14 +134,15 @@ def spot_matrix(wid, g):
         hit = gun_tree(g).ray_cast(Vector((x, -z, 1.0)), Vector((0, 0, -1)))
         y = hit[0].z if hit[0] is not None else 0.0
     y -= sp.get('sink', 0.002)
-    y += sp.get('saddle', 0.0)  # (the slate puck itself is not drawn here)
+    # (the saddle lifts the hat along its own up, as GunHats.make does; the slate puck itself is not drawn here)
     return (Matrix.Translation(Vector((x, y, z))) @ Matrix.Rotation(math.radians(sp.get('yaw', 0)), 4, 'Y')
-            @ Matrix.Rotation(math.radians(sp.get('pitch', 0)), 4, 'X') @ Matrix.Scale(sp.get('s', 1.0), 4))
+            @ Matrix.Rotation(math.radians(sp.get('pitch', 0)), 4, 'X') @ Matrix.Translation(Vector((0, sp.get('saddle', 0.0), 0)))
+            @ Matrix.Scale(sp.get('s', 1.0), 4))
 
 
-if mode == 'sheet':
+if mode == 'sheet':  # (sheet [hat ...]: those hats only)
     imgs = []
-    for hid in hat_models.HATS:
+    for hid in (rest or hat_models.HATS):
         sc = reset()
         hat_models.make(hid).to_scene()
         mid = gunkit.P(0, 0.03, 0)

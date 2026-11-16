@@ -205,5 +205,29 @@
    "foot__foot",
    "foot__gold"
   ]
+ },
+ "royalduck": {
+  "lo": [
+   -0.0282,
+   -0.0,
+   -0.0319
+  ],
+  "hi": [
+   0.0282,
+   0.0742,
+   0.0283
+  ],
+  "tris": 10868,
+  "pieces": [
+   "cushion__velvet",
+   "piping__gold",
+   "duck__gold",
+   "beak__beak",
+   "eyes__eye",
+   "crown__gold",
+   "dome__velvet",
+   "foot__foot",
+   "foot__gold"
+  ]
  }
 }

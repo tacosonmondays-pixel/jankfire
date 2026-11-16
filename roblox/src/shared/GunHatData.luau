@@ -3,8 +3,9 @@
 -- tools/roblox/hat_models.py. Do not edit: change those and run it again (README in roblox/docs/GUN-HATS.md).
 local D = {}
 
--- the hats, in the loadout's order (shared/cosmetics.js COSMETICS.hat). "none" = no hat
-D.ORDER = { "none", "party", "cone", "cowboy", "chef", "propeller", "eyes", "tophat", "halo", "crown", "duck" }
+-- the hats, in the loadout's order (shared/cosmetics.js COSMETICS.hat). "none" = no hat. vip = VIP only: in no
+-- container and no shop rotation, worn on every gun once owned (LootTable.vipOnly)
+D.ORDER = { "none", "party", "cone", "cowboy", "chef", "propeller", "eyes", "tophat", "halo", "crown", "duck", "royalduck" }
 D.HATS = {
 	none = { name = "None", rarity = "free" },
 	party = { name = "Party Hat", rarity = "free", lo = Vector3.new(-0.0324, -0, -0.0324), hi = Vector3.new(0.0324, 0.1042, 0.0324) },
@@ -17,9 +18,10 @@ D.HATS = {
 	halo = { name = "Halo", rarity = "epic", lo = Vector3.new(-0.0345, -0, -0.0325), hi = Vector3.new(0.0345, 0.0364, 0.0325) },
 	crown = { name = "Crown", rarity = "legendary", lo = Vector3.new(-0.0428, -0, -0.0428), hi = Vector3.new(0.0428, 0.0547, 0.0428) },
 	duck = { name = "Tiny Duck", rarity = "legendary", lo = Vector3.new(-0.031, -0, -0.0396), hi = Vector3.new(0.0335, 0.0713, 0.0352) },
+	royalduck = { name = "Royal Duck", rarity = "legendary", vip = true, lo = Vector3.new(-0.0282, -0, -0.0319), hi = Vector3.new(0.0282, 0.0742, 0.0283) },
 }
 -- the upload (every hat in one model, 10 x size: one template stud = UNIT metres)
-D.ASSET = 70496262106000
+D.ASSET = 134178407944653
 D.UNIT = 0.1
 
 -- the moving bits (client only): spin = round the hat's up axis (rad/s), bob = up and down (metres, Hz),
@@ -61,9 +63,9 @@ D.SPOTS = {
 	["autoshot@autoshot_trimmer"] = { at = Vector3.new(0, 0.06, -0.08), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["burst@burst_ticket"] = { at = Vector3.new(0, 0.13, -0.1), s = 0.9, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["dmr@dmr_pen"] = { at = Vector3.new(0, 0.15796, 0.08), s = 0.95, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
-	["katana@katana_baguette"] = { at = Vector3.new(0, 0.01192, 0.129), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
-	["katana@katana_bokken"] = { at = Vector3.new(0, 0.01661, 0.129), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
-	["katana@katana_shirasaya"] = { at = Vector3.new(0, 0.02225, 0.131), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["katana@katana_baguette"] = { at = Vector3.new(0, 0, 0.129), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["katana@katana_bokken"] = { at = Vector3.new(0, 0, 0.129), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["katana@katana_shirasaya"] = { at = Vector3.new(0, 0, 0.131), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["lever@lever_capgun"] = { at = Vector3.new(0, 0.045, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["lmg@lmg_leaf"] = { at = Vector3.new(0, 0.095, -0.04), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["marbles@marbles_gumball"] = { at = Vector3.new(0, 0.1815, -0.06), s = 0.65, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
@@ -81,6 +83,31 @@ D.SPOTS = {
 	["sniper@sniper_golden"] = { at = Vector3.new(0, 0.17111, 0.069), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["sniper@sniper_musket"] = { at = Vector3.new(0, 0.14371, 0.049), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["katana@katana_neon"] = { at = Vector3.new(0, 0.02786, 0.08), s = 0.6, yaw = 0, pitch = 0 },  -- upright on top of the handle near its end (the pommel has a cord hanging off it); 1 cm in after the guns z-fight fix, solved by hat_solve.py: worst clip 0.0 mm
+	["ar@ar_seraph"] = { at = Vector3.new(0, 0.086, -0.14), s = 1, yaw = 0, pitch = 0 },  -- on the receiver rib ahead of the halo sight (solved onto the halo itself, 6 cm over the gun; moved by hand): worst clip 0.0 mm
+	["ar@ar_infernal"] = { at = Vector3.new(0, 0.07, -0.09), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["lmg@lmg_ducky"] = { at = Vector3.new(0, 0.07206, -0.01), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.7 mm (third person), 0.7 mm (first)
+	["marbles@marbles_cauldron"] = { at = Vector3.new(0, 0.19262, -0.04), s = 0.65, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["revolver@revolver_candle"] = { at = Vector3.new(0, 0.07135, -0.08), s = 0.7, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.6 mm (third person), 0.6 mm (first)
+	["katana@katana_ducky"] = { at = Vector3.new(0, 0, 0.129), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["katana@katana_hex"] = { at = Vector3.new(0, 0, 0.1423), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.4 mm (third person), 0.4 mm (first)
+	["katana@katana_infernal"] = { at = Vector3.new(0, 0, 0.1388), s = 0.6, yaw = 0, pitch = 90, saddle = 0.01 },  -- solved by hat_solve.py: worst clip 0.9 mm (third person), 0.9 mm (first)
+	["katana@katana_sakura"] = { at = Vector3.new(0, 0, 0.1358), s = 0.6, yaw = 0, pitch = 90, saddle = 0.003 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["katana@katana_seraph"] = { at = Vector3.new(0, 0, 0.129), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["ar@ar_lacquer"] = { at = Vector3.new(0, 0.086, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["autoshot@autoshot_ducky"] = { at = Vector3.new(0, 0.066, 0), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["burst@burst_infernal"] = { at = Vector3.new(0, 0.1348, -0.1), s = 0.9, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["burst@burst_seraph"] = { at = Vector3.new(0, 0.1348, -0.1), s = 0.9, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["dmr@dmr_nighttide"] = { at = Vector3.new(0, 0.14568, 0.11), s = 0.95, yaw = 0, pitch = 0, saddle = 0.004 },  -- skin: its gun's spot, height measured on the skin
+	["lever@lever_cloudlock"] = { at = Vector3.new(0, 0.042, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["pistol@pistol_ducky"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["pistol@pistol_infernal"] = { at = Vector3.new(0, 0.054, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["pistol@pistol_seraph"] = { at = Vector3.new(0, 0.054, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["revolver@revolver_ducky"] = { at = Vector3.new(0, 0.06892, -0.05), s = 0.7, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["sawnoff@sawnoff_twintide"] = { at = Vector3.new(0, 0.0425, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["shotgun@shotgun_bone"] = { at = Vector3.new(0, 0.07, -0.36), s = 0.9, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["smg@smg_pumpkin"] = { at = Vector3.new(0, 0.046, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["sniper@sniper_infernal"] = { at = Vector3.new(0, 0.15665, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
+	["sniper@sniper_seraph"] = { at = Vector3.new(0, 0.15665, 0.039), s = 1, yaw = 0, pitch = 0, saddle = 0.013 },  -- skin: its gun's spot, height measured on the skin
 }
 
 return D

@@ -78,13 +78,15 @@ def main():
     w('-- tools/roblox/hat_models.py. Do not edit: change those and run it again (README in roblox/docs/GUN-HATS.md).')
     w('local D = {}')
     w('')
-    w('-- the hats, in the loadout\'s order (shared/cosmetics.js COSMETICS.hat). "none" = no hat')
+    w('-- the hats, in the loadout\'s order (shared/cosmetics.js COSMETICS.hat). "none" = no hat. vip = VIP only: in no')
+    w('-- container and no shop rotation, worn on every gun once owned (LootTable.vipOnly)')
     w('D.ORDER = { "none", %s }' % ', '.join('"%s"' % h for h in hat_models.HATS))
     w('D.HATS = {')
     w('\tnone = { name = "None", rarity = "free" },')
     for h in hat_models.HATS:
         b = hats.get(h)
-        w('\t%s = { name = "%s", rarity = "%s", lo = %s, hi = %s },' % (h, hat_models.NAMES[h], hat_models.RARITY[h],
+        vip = ', vip = true' if h in getattr(hat_models, 'VIP', ()) else ''
+        w('\t%s = { name = "%s", rarity = "%s"%s, lo = %s, hi = %s },' % (h, hat_models.NAMES[h], hat_models.RARITY[h], vip,
           lua_vec(b['lo']) if b else 'nil', lua_vec(b['hi']) if b else 'nil'))
     w('}')
     w('-- the upload (every hat in one model, 10 x size: one template stud = UNIT metres)')
@@ -118,7 +120,8 @@ def main():
     for key in sorted(getattr(GUNS, 'SKINS', {})):
         base = key.split('@')[0]
         if key not in spots and base in spots:
-            sp = dict(spots[base]); sp.pop('y', None); sp['note'] = "skin: its gun's spot, height measured on the skin"
+            sp = dict(spots[base]); sp['note'] = "skin: its gun's spot, height measured on the skin"
+            if sp.get('pitch') != 90: sp.pop('y', None)  # (a hat on the back end keeps its height: the handle's axis)
             spots[key] = sp
     for wid, sp in spots.items():
         if wid.startswith('_'): continue

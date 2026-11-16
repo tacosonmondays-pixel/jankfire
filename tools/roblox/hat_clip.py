@@ -1,7 +1,7 @@
 # How far each weapon hat cuts into each gun (and the gun into the hat), measured on the models themselves, every hat
 # on every gun, at the first-person size and at the third-person size (GunHats.THIRD). Headless Blender:
 #
-#   blender -b --factory-startup -P tools/roblox/hat_clip.py -- [--set kit] [--third 1.5] [gun ...]
+#   blender -b --factory-startup -P tools/roblox/hat_clip.py -- [--set kit] [--third 1.5] [--hat <id> ...] [gun ...]
 #
 # Placement is the game's own (GunHats.attach): the foot on the gun's top under the spot, `sink` into it, lifted by the
 # spot's saddle, turned by yaw / pitch, sized by s (x THIRD in third person). The moving bits are swept: the propeller
@@ -23,7 +23,8 @@ else:
     import gun_set as GUNS
 THIRD = 1.5
 if '--third' in argv: THIRD = float(argv[argv.index('--third') + 1])
-argv = [a for i, a in enumerate(argv) if a not in ('--set', '--third', '--spots') and (i == 0 or argv[i - 1] not in ('--set', '--third', '--spots'))]
+ONLY = [argv[i + 1] for i, a in enumerate(argv) if a == '--hat']  # (--hat <id>: that hat only; the report is then not written)
+argv = [a for i, a in enumerate(argv) if a not in ('--set', '--third', '--spots', '--hat') and (i == 0 or argv[i - 1] not in ('--set', '--third', '--spots', '--hat'))]
 HERE = os.path.dirname(os.path.abspath(__file__))
 SPOT_FILE = os.path.join(HERE, 'hat_spots.json')
 if '--spots' in sys.argv: SPOT_FILE = sys.argv[sys.argv.index('--spots') + 1]  # (try other seats)
@@ -136,11 +137,14 @@ def main():
         if 'y' in sp: y = sp['y'] - sp.get('sink', 0.0)
         else: y = gun_top(gisl, x, z) - sp.get('sink', 0.002)
         for scale_name, boost in (('fp', 1.0), ('tp', THIRD)):
-            for hid in hat_models.HATS:
+            for hid in (ONLY or hat_models.HATS):
                 h = hat_models.make(hid)
-                mw = (Matrix.Translation(Vector((x, y + sp.get('saddle', 0.0) * boost, z)))
+                # (the saddle lifts the hat along its own up, after the turn, as GunHats.make does: off the end of a
+                # pitch-90 seat, not straight up)
+                mw = (Matrix.Translation(Vector((x, y, z)))
                       @ Matrix.Rotation(math.radians(sp.get('yaw', 0)), 4, 'Y')
                       @ Matrix.Rotation(math.radians(sp.get('pitch', 0)), 4, 'X')
+                      @ Matrix.Translation(Vector((0, sp.get('saddle', 0.0) * boost, 0)))
                       @ Matrix.Scale(sp.get('s', 1.0) * boost, 4))
                 M = to_blender(mw)
                 foot, body, bpieces = hat_points(h, M, hat_models.MOVES.get(hid, {}))
@@ -155,6 +159,7 @@ def main():
                 rows.append((wid, scale_name, hid, fd * 1000, bd * 1000, gd * 1000, fw, bw, gw))
                 print('CLIP %-14s %s %-9s foot %5.1f body %5.1f gun %5.1f   %s | %s | %s' % (wid, scale_name, hid, fd * 1000, bd * 1000, gd * 1000, fw, bw, gw))
         for bm in g.pieces.values(): bm.free()
+    if ONLY: return
     out = os.path.join(HERE, '..', '..', 'roblox', 'assets', 'hats', 'clip_report.json')
     json.dump([dict(zip(('gun', 'view', 'hat', 'foot_mm', 'body_mm', 'gun_mm', 'foot_on', 'body_on', 'gun_piece'), r)) for r in rows],
               open(out, 'w'), indent=0)

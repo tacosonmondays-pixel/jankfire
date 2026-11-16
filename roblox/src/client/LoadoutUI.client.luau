@@ -1038,7 +1038,14 @@ end
 onHat = function(hid: string)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
-	if not owns("hat", hid) then play("empty"); say(("a %s for the %s comes in duffel bags. open one in the shop [B]."):format(string.lower(GunHats.HATS[hid].name), string.lower(e.name)), RED); return end
+	if not owns("hat", hid) then
+		play("empty")
+		local h = GunHats.HATS[hid] :: any
+		-- (a VIP hat, GunHatData vip = true, comes with the VIP pack on every gun, never from a container)
+		say(if h.vip then ("the %s comes with VIP. see the shop [B]."):format(string.lower(h.name))
+			else ("a %s for the %s comes in duffel bags. open one in the shop [B]."):format(string.lower(h.name), string.lower(e.name)), RED)
+		return
+	end
 	local ok, why = ask("hat", e.id, hid)
 	if ok then
 		play("click")
