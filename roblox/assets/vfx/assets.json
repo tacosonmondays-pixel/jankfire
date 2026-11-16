@@ -128,5 +128,23 @@
   "what": "soft smoke, 16 frames (4x4, 256 px)",
   "bled": true,
   "uploaded": "2026-11-16 19:36 UTC"
+ },
+ "vfx_bhdisk": {
+  "id": 131718682104772,
+  "sha1": "3173064e73d0439a78aa008b9231b580b3fedb40",
+  "what": "the duck black hole's accretion disk from above (additive; tools/roblox/vfx/bh_sheets.py)",
+  "uploaded": "2026-11-16 21:40 UTC"
+ },
+ "vfx_bhhalo": {
+  "id": 125683262291715,
+  "sha1": "7940cde3036aef320dad2a5abcdf6a07a1090a06",
+  "what": "its lensing halo: photon ring, the disk's far side bent over and under, a faint warped glow (additive)",
+  "uploaded": "2026-11-16 21:40 UTC"
+ },
+ "vfx_cotton_8x8": {
+  "id": 106873645818694,
+  "sha1": "a5f8dc11096167f3b48e1896c1636f49f21a3dc9",
+  "what": "thick lumpy smoke puff, 64 frames (8x8, 128 px), top-lit, thinning away (tools/roblox/vfx/cotton_sheet.py)",
+  "uploaded": "2026-11-16 21:47 UTC"
  }
 }

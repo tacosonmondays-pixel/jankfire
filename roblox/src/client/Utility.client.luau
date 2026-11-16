@@ -833,8 +833,11 @@ end
 -- a void you can see from across a room without it shouting: a black core, a dim violet shell, a thin ring turning
 -- round it, a small duck orbiting, sparks drawn into the middle; it grows in over 0.3 s and pulses. the duck stuck to
 -- someone rides their chest at 1.5x, wobbling (web duck.js). your own speed gets eaten inside it (Body.onStep below)
-type HoleV = { id: number, p: Vector3, on: Instance?, born: number, R: number, mine: boolean, core: BasePart, shell: BasePart,
-	ring: BasePart, pull: BasePart, orbit: Model, stuck: Model?, ang: number }
+-- (16 Nov evening, the owner: "actual blackhole effect for duck pls": Fx draws the whole hole now, a black horizon, a
+-- spinning accretion disk, the lensing halo, bits spiralling in; Fx.holeOpen returns true and the core, shell, ring and
+-- spark shell below are not made. they stay as the look if Fx can't draw it)
+type HoleV = { id: number, p: Vector3, on: Instance?, born: number, R: number, mine: boolean, core: BasePart?, shell: BasePart?,
+	ring: BasePart?, pull: BasePart?, orbit: Model, stuck: Model?, ang: number }
 local holesV: { [number]: HoleV } = {}
 local VOID = Color3.fromRGB(10, 8, 14)
 local VIOLET = Color3.fromRGB(122, 84, 190)
@@ -842,26 +845,32 @@ local function addHole(m: any)
 	local id = m.id
 	if type(id) ~= "number" or holesV[id] or typeof(m.p) ~= "Vector3" then return end
 	local on = if typeof(m.on) == "Instance" then m.on else nil
-	local core = part(Enum.PartType.Ball, Vector3.one * 2 * S, VOID, Enum.Material.SmoothPlastic)
-	local shell = part(Enum.PartType.Ball, Vector3.one * 3 * S, VIOLET, Enum.Material.Neon); shell.Transparency = 0.78
-	local ring = part(Enum.PartType.Block, Vector3.new(4.4 * S, 0.05, 4.4 * S), VIOLET, nil); ring.Transparency = 1
-	for _, face in { Enum.NormalId.Top, Enum.NormalId.Bottom } do
-		local dc = Instance.new("Decal")
-		dc.Texture = TEX.ring; dc.Face = face; dc.Color3 = Color3.fromRGB(170, 130, 235); dc.Transparency = 0.25; dc.Parent = ring
-	end
-	-- sparks drawn in from a shell at 0.6 of its reach (an inward sphere emitter: they fly to the middle)
 	local R = if type(m.R) == "number" then m.R else Items.DUCK.holeR
-	local pull = part(Enum.PartType.Ball, Vector3.one * R * 1.2, VIOLET, nil); pull.Transparency = 1
-	local e = emitter(pull, { Texture = TEX.blob, LightEmission = 1, LightInfluence = 0, Brightness = 2,
-		Color = cs(Color3.fromRGB(200, 170, 255), VIOLET), Size = ns(0, 0.12 * S, 1, 0.04 * S), Transparency = ns(0, 0.2, 1, 0.9),
-		Lifetime = NR(0.5, 0.7), Speed = NR(R * 0.6 / 0.6, R * 0.6 / 0.5), Rate = 40,
-		Shape = Enum.ParticleEmitterShape.Sphere, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface,
-		ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Orientation = Enum.ParticleOrientation.VelocityParallel, Squash = ns(0, 2, 1, 2) })
-	e.Enabled = true
-	local orbit = itemModel("duck"); orbit:ScaleTo(0.35)
-	for _, x in { core, shell, ring, pull } do x.Parent = folder end
-	orbit.Parent = folder
 	local age = if type(m.age) == "number" then m.age else 0
+	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
+	-- (age: already open for late joiners)
+	local drawn = FxM.holeOpen(id, m.p, R, age) == true
+	local core: BasePart?, shell: BasePart?, ring: BasePart?, pull: BasePart? = nil, nil, nil, nil
+	if not drawn then
+		core = part(Enum.PartType.Ball, Vector3.one * 2 * S, VOID, Enum.Material.SmoothPlastic)
+		local sh = part(Enum.PartType.Ball, Vector3.one * 3 * S, VIOLET, Enum.Material.Neon); sh.Transparency = 0.78; shell = sh
+		local rg = part(Enum.PartType.Block, Vector3.new(4.4 * S, 0.05, 4.4 * S), VIOLET, nil); rg.Transparency = 1; ring = rg
+		for _, face in { Enum.NormalId.Top, Enum.NormalId.Bottom } do
+			local dc = Instance.new("Decal")
+			dc.Texture = TEX.ring; dc.Face = face; dc.Color3 = Color3.fromRGB(170, 130, 235); dc.Transparency = 0.25; dc.Parent = rg
+		end
+		-- sparks drawn in from a shell at 0.6 of its reach (an inward sphere emitter: they fly to the middle)
+		local pl = part(Enum.PartType.Ball, Vector3.one * R * 1.2, VIOLET, nil); pl.Transparency = 1; pull = pl
+		local e = emitter(pl, { Texture = TEX.blob, LightEmission = 1, LightInfluence = 0, Brightness = 2,
+			Color = cs(Color3.fromRGB(200, 170, 255), VIOLET), Size = ns(0, 0.12 * S, 1, 0.04 * S), Transparency = ns(0, 0.2, 1, 0.9),
+			Lifetime = NR(0.5, 0.7), Speed = NR(R * 0.6 / 0.6, R * 0.6 / 0.5), Rate = 40,
+			Shape = Enum.ParticleEmitterShape.Sphere, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface,
+			ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Orientation = Enum.ParticleOrientation.VelocityParallel, Squash = ns(0, 2, 1, 2) })
+		e.Enabled = true
+		for _, x in { core, shell, ring, pull } do (x :: BasePart).Parent = folder end
+	end
+	local orbit = itemModel("duck"); orbit:ScaleTo(0.35)
+	orbit.Parent = folder
 	local hv: HoleV = { id = id, p = m.p, on = on, born = os.clock() - age, R = R, mine = m.o == me.UserId, core = core, shell = shell,
 		ring = ring, pull = pull, orbit = orbit, stuck = nil, ang = 0 }
 	if on then
@@ -869,8 +878,6 @@ local function addHole(m: any)
 		hv.stuck = dm
 	end
 	holesV[id] = hv
-	local FxM = require(script.Parent:WaitForChild("Fx")) :: any
-	FxM.holeOpen(id, m.p, R, age) -- (Fx: a bright rim and dust spiralling in; age: already open for late joiners)
 	if age < 0.5 then Sfx.play("hole", m.p, 0.9) end
 end
 local function updHole(m: any)
@@ -884,7 +891,7 @@ local function popHole(m: any)
 	local hv = if type(m.id) == "number" then holesV[m.id] else nil
 	if hv then
 		holesV[m.id] = nil
-		for _, x in { hv.core, hv.shell, hv.ring, hv.pull } do x:Destroy() end
+		for _, x in { hv.core, hv.shell, hv.ring, hv.pull } do if x then x:Destroy() end end
 		hv.orbit:Destroy()
 		if hv.stuck then hv.stuck:Destroy() end
 	end
@@ -932,15 +939,18 @@ local function holeStep(dt: number)
 		local g = if age < 0 then 0 else math.min(1, age / 0.3)
 		local pulse = 1 + 0.08 * math.sin(t * 20)
 		local k = g * pulse
-		hv.core.Size = Vector3.one * 2 * S * math.max(k, 0.01)
-		hv.shell.Size = Vector3.one * 3 * S * math.max(k, 0.01)
-		hv.core.CFrame = CFrame.new(hv.p); hv.shell.CFrame = CFrame.new(hv.p); hv.pull.CFrame = CFrame.new(hv.p)
-		hv.ring.Size = Vector3.new(4.4 * S * math.max(g, 0.01), 0.05, 4.4 * S * math.max(g, 0.01))
-		hv.ring.CFrame = CFrame.new(hv.p) * CFrame.Angles(0.35, hv.ang * 3, 0)
+		local core, shell, ring, pull = hv.core, hv.shell, hv.ring, hv.pull
+		if core and shell and ring and pull then
+			core.Size = Vector3.one * 2 * S * math.max(k, 0.01)
+			shell.Size = Vector3.one * 3 * S * math.max(k, 0.01)
+			core.CFrame = CFrame.new(hv.p); shell.CFrame = CFrame.new(hv.p); pull.CFrame = CFrame.new(hv.p)
+			ring.Size = Vector3.new(4.4 * S * math.max(g, 0.01), 0.05, 4.4 * S * math.max(g, 0.01))
+			ring.CFrame = CFrame.new(hv.p) * CFrame.Angles(0.35, hv.ang * 3, 0)
+			local em = pull:FindFirstChildOfClass("ParticleEmitter")
+			if em then em.Enabled = age >= 0 end
+		end
 		local oa = hv.ang * 6
 		hv.orbit:PivotTo(CFrame.new(hv.p + Vector3.new(math.cos(oa), 0.15, math.sin(oa)) * 2.6 * S * g) * CFrame.Angles(0, -oa, 0))
-		local em = hv.pull:FindFirstChildOfClass("ParticleEmitter")
-		if em then em.Enabled = age >= 0 end
 		if hv.stuck then
 			local r = hv.on and hv.on:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if r then

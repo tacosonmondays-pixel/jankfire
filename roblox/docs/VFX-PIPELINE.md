@@ -63,7 +63,8 @@ Studio MCP's `open_cloud_invoke`); poll the operation for the id; record it in `
 go into `TEX` at the top of `Fx.luau`.
 
 Roblox limits that shaped the effects: flipbooks are 2x2 / 4x4 / 8x8 (plus a beta Custom grid), at most 1024 px; a
-one-shot flipbook plays at most 30 frames a second (so short-lived effects use 16-frame sheets); `FlipbookBlendFrames`
+one-shot flipbook plays at its `FlipbookFramerate` (default 1 a second, at most 30), NOT over the particle's life, so
+every one-shot emitter sets it to frames / lifetime (`oneshot()` in Fx.luau) and short-lived ones use 16-frame sheets; `FlipbookBlendFrames`
 cross-fades frames (on for smoke and fire, off for flashes); a particle's `Size` is half its width; a particle's Size
 and Color belong to its emitter (pools cycle through several emitters so a new shot does not recolour the last one).
 
@@ -110,7 +111,7 @@ compared against the idle window of the same test.
 | smoke bomb cloud | `Fx.smokeCloud(id, at, r, left)` / `Fx.smokeStop(id)` | Utility `addCloud()` |
 | shield dome layers | `Fx.domeOpen(id, at, r, floor, fresh)` / `Fx.domeClose(id, popped)` | Utility `addDome` / `dropDome` |
 | medkit heal | `Fx.heal(root)` | Utility `healFx` |
-| duck hole layers | `Fx.holeOpen(id, at, R, age)` / `Fx.holeMove` / `Fx.holePop(id, at?, r?)` | Utility hole functions |
+| duck black hole (the whole look; returns true) | `Fx.holeOpen(id, at, R, age)` / `Fx.holeMove` / `Fx.holePop(id, at?, r?)` | Utility hole functions |
 | high-tier skin effects | `Fx.skinIdle(model, k, spec?)` / `Fx.skinOff(model)`; shots take the skin's colours | `WeaponModels.onBuilt` (one line in build) |
 | capture controls | `Fx.setTimeScale(k)`, `Fx.clear()`, `Fx.stats`, `Fx.clock()` | FxLab |
 
@@ -127,16 +128,21 @@ here: seen end-on from first person it becomes a big smear across the view.
 The owner asked for "a cool hologram effect" for the hub's loadout and bundle holograms and training's mirror. One
 client module, `Hologram.apply(model, opts)` -> handle, `H:remove(fade)`, `Hologram.of(model)`:
 
-- the model's own shape in a calm tint (Neon, see-through), its drawn skin set aside and put back on remove;
-- a rim (Highlight fill + outline, depth-occluded);
-- scanlines (a Blender-drawn soft line, `vfx_lines`, as Textures on each part, drifting up);
-- a bright band sweeping up through it every few seconds, a faint flicker, the odd glitch slice flaring;
+- the model's own shape in a calm tint, see-through, its drawn skin set aside and put back on remove; with `lines`
+  (default) the body is Roblox's ForceField material, whose moving pattern the graphics card draws; `lines = false`
+  plain Neon;
+- a rim (Highlight fill + outline, depth-occluded), flickering faintly;
+- a thin bright disc sweeping up through it every few seconds (the same disc flares as the odd glitch slice);
 - optional projector (`projector = lensCFrame`): a soft cone of light up to the model, motes rising in it, a glowing lens;
 - a scan-in build (a bright line rising, the pieces lighting up as it passes) and the reverse on remove;
 - optional bob and turn round `pivot`.
 
-One RenderStepped for all; nothing updates past 260 studs; in Studio it obeys `FxTimeScale` so the capture loop can
-freeze its build. Highlights are capped at 31 on a client: a hologram uses one.
+**Cost** (16 Nov evening: the owner's lag report in training; the perf session found the mirror's 1.8x avatar with 288
+scanline Textures, every part rewritten every frame): no Texture objects at all now; every part is set once when it is
+dressed and written per frame only during the 1.5 s build-in and the 0.45 s scan-out, and then only when a value
+changes by a visible step. A standing hologram's frame is the one Highlight (two writes, only on a visible step) and
+the one sweep disc (skipped with `band = false, glitch = false`). One RenderStepped for all; nothing past 260 studs;
+in Studio it obeys `FxTimeScale`. Highlights are capped at 31 on a client: a hologram uses one.
 
 ## High-tier skins (`SkinSets.FX`, the gun models session's spec)
 
@@ -154,8 +160,17 @@ with our quiet colours:
 - **Shield Bubble:** an opening flash and floor ring, two faint bands orbiting the dome, a ripple from its foot every
   1.4 s, droplets when it pops.
 - **Medkit:** two green ribbons spiralling up the body (a Trail climbing a helix), a ring of light at the feet, sparkles.
-- **Rubber Duck hole:** a bright rim facing you (light bent round the edge), dust spiralling in, a flash and floor ring
-  when it pops.
+- **Rubber Duck hole: a real black hole** (the owner, 16 Nov evening: "actual blackhole effect for duck pls"; Fx draws
+  the whole hole, Utility keeps the gameplay, 3 s, the pull, the pop, and the little ducks): a pure black horizon (a
+  black Neon ball: unlit, no shine) 2 m across like the web's core, growing in over 0.3 s; the accretion disk (a flat
+  sprite in the disk's plane, tilted 14 degrees, turning, copies crossfading so the streaks keep moving; the horizon
+  hides its far half); the lensing halo (a camera-facing sprite: the photon ring hugging the horizon, the disk's far
+  side bent over the top and under the bottom, a faint warped glow); streaks falling in on a spiral and stretching
+  (inward particles locked to a turning part, speeding up with negative drag); loose dark flakes pulled in from 6 m;
+  grey floor dust drawn in; a faint violet light pulse. The pop: the horizon collapses in 0.12 s with the flash, a ring
+  out across the floor. Sprites drawn from maths (`tools/roblox/vfx/bh_sheets.py`: `vfx_bhdisk`, `vfx_bhhalo`). The
+  owner's reference clip for this was a glowing floor field; only its layering (a ground disc, streaks falling in) was
+  taken.
 
 ## Results
 
@@ -179,9 +194,11 @@ own Fx folder), no script errors.
 | hologram | 4 | faint, no outline, a solid white disc, cone not meeting the gun |
 
 **Found by that round** (now fixed, in 430):
-- A one-shot flipbook plays **at most 30 frames a second**: 64 frames over a 1.5 s fireball (or a 0.7 s puff) played
-  too slowly, so the fireball was a dot at first and the muzzle puff never showed. Short-lived effects now use 16-frame
-  sheets (`vfx_boom_4x4`, `vfx_smoke_4x4`) with `FlipbookBlendFrames` on.
+- A one-shot flipbook plays at its **`FlipbookFramerate`, default 1 frame a second** (at most 30), not over the
+  particle's life: the fireball sat on its first frame (a dot), the impact dust on its first frame (the critic's "hard
+  blob"), the muzzle puff never opened. Found in round 2 (setting the rate live brought the fireball in at 0.22 s); fixed
+  by `oneshot()` (frames / mean lifetime) on every one-shot emitter, 16-frame sheets for short lives (`vfx_boom_4x4`,
+  `vfx_smoke_4x4`), `FlipbookBlendFrames` on.
 - The flash: one star held per flash (no playing flipbook), orange only on the outer fifth of the spikes, no glow ball;
   third person uses a camera-facing star; lights dimmer and shorter.
 - Tracers: less glow (LightEmission 0.5, Brightness 1.3) so each gun's colour survives; your own starts 3 studs out.
@@ -196,3 +213,27 @@ own Fx folder), no script errors.
 
 Next: round 2 captures at the web's own times (flash 8/20/40 ms, tracer 30/70 ms, impact 50/100/300/500 ms, frag
 200/700/1000 ms, smoke 1/2 s) and a second critic pass; then the hit feedback batch, the smoke shell, the mesh kit.
+
+### Rounds 2 and 3: critic fixes, the black hole, a cheap hologram (16 Nov 2026, place version 447)
+
+**Critic round 2** (strips `roblox/docs/vfx/round2/`, the r14 tuning): first-person shot 7, others' shot 6, lineup 6,
+smoke 5, impact 4, frag 4. Its fixes, all in 447:
+- Flash: Brightness 2.5 -> 1.35 (it was a white blob, the star's #fff2a0 body and #ff9a1a tips lost); first person a
+  quarter bigger and 0.1 m ahead of the muzzle (the handguard hid a quarter of it); others' 1.4x so the star reads at
+  range.
+- Tracers: LightEmission 0.3, Brightness 0.85 (they bloomed into a white smear where they overlap).
+- Impact chips: the web's #999988 turning #444444 by a quarter second, sprayed wider (4-21 studs/s over 65 degrees), no
+  drag; the dust puff a third smaller and half again more see-through, in neutral grey.
+- Smoke bomb: our own thick lumpy puff (`tools/roblox/vfx/cotton_sheet.py`, `vfx_cotton_8x8`; the web's wispy
+  puffsoft frames read as steam), drawn 1.3x, a few more of them: at 2 s it is now a solid white mass.
+- Frag: fireball 25 % bigger, Brightness 1.0. The round-2 "dark square" at 0.7 s: the sheet's alpha is intact in
+  Roblox (read back with an EditableImage), and the square did not show in round 3; the smoke stage still reads as a
+  soft blur next to the web's crisp lumps (next round).
+
+**Round 3 captures** (`roblox/docs/vfx/round3/`): the first-person flash is a pale star ahead of the muzzle; the smoke
+bomb hides what is behind it; the black hole from the side and above (disk spiral, photon ring, floor dust, flakes);
+the Seraph AR's effects in first person idle and aiming (7 emitters + 2 trails on the viewmodel, nothing over the
+sights). Seen and fixed in the same turn: the hole's light washed the room violet (now 0.45 +- 0.2 over 8 m).
+
+**Cost guard** (Seraph AR, full auto 5 s, Studio at 60 fps): idle 16.67 ms avg / 17.62 p95, firing 16.67 / 17.85.
+
