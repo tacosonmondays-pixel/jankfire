@@ -2,8 +2,9 @@
 #
 # WHY: the web game's weapon models were made for another renderer (many small pieces, printed pictures); in Roblox
 # they read as noisy, and repainting did not fix it (owner, 15 Nov 2026). These are new models built FOR Roblox in
-# the class of finish the owner pointed at: a few big chamfered masses, eight-sided barrels, two or three flat
-# colours, SmoothPlastic, no pictures. Style notes: vault "Research/Rivals weapons and skins - style notes.md".
+# the class of finish the owner pointed at: a few big blocky masses with small crisp chamfers, eight-sided barrels
+# with flat facets, two or three flat colours, SmoothPlastic, no pictures. Style notes: vault "Research/Rivals
+# weapons and skins - style notes.md".
 #
 # THE FRAME. Everything here is written in the game's own weapon frame, the one Weapons.luau's `mdl` spots use:
 # metres, x = right, y = up, z = BACK (the muzzle is at -z), the grip near the origin. P() turns that into Blender's
@@ -20,6 +21,14 @@
 # name. Every solid added to the same (node, slot) is joined into one mesh.
 import bpy, bmesh, math, os, json
 from mathutils import Vector, Matrix
+
+
+# ROUND 6 (owner, 16 Nov 2026: "I think rivals weapons are a little blockier"): every chamfer is half as wide as
+# a builder asks (crisp corners), a wedge section keeps only a third of its taper (straighter sides), and barrels
+# show their eight flat faces instead of shading round.
+BEV_K = 0.5
+WTOP_K = 0.35
+SMOOTH_CYL = False
 
 
 def P(x, y, z):
@@ -81,6 +90,8 @@ class Gun:
         """a side-view outline [(z, y)] pushed out to a width. w = full width (at the outline's lowest point when
            wtop is given: the width then runs straight to wtop at its highest point, a wedge section). every edge is
            chamfered once by bev. shear moves the top sideways (rarely wanted)"""
+        bev *= BEV_K
+        if wtop is not None: wtop = w + (wtop - w) * WTOP_K
         bm = bmesh.new()
         ys = [p[1] for p in prof]
         y0, y1 = min(ys), max(ys)
@@ -106,6 +117,7 @@ class Gun:
 
     def xprism(self, piece, prof, z0, z1, bev=0.004):
         """an outline seen from the FRONT [(x, y)] pushed along the barrel from z0 to z1 (rails, tubes with flats)"""
+        bev *= BEV_K
         bm = bmesh.new()
         A = [bm.verts.new(P(px, py, z0)) for px, py in prof]
         B = [bm.verts.new(P(px, py, z1)) for px, py in prof]
@@ -121,6 +133,7 @@ class Gun:
 
     def yprism(self, piece, prof, y0, y1, bev=0.004):
         """an outline seen from ABOVE [(x, z)] pushed up from y0 to y1"""
+        bev *= BEV_K
         bm = bmesh.new()
         A = [bm.verts.new(P(px, y0, pz)) for px, pz in prof]
         B = [bm.verts.new(P(px, y1, pz)) for px, pz in prof]
@@ -150,6 +163,8 @@ class Gun:
            corner). its sides shade smooth, its ends and chamfers stay crisp. hole = (radius, depth): a blind hole
            sunk into the END AT a (a muzzle)"""
         a, b, u, v = self._frame(a, b)
+        bev *= BEV_K
+        smooth = smooth and SMOOTH_CYL
         r2 = r if r2 is None else r2
         off = math.pi / sides if flat else 0.0
         bm = bmesh.new()
@@ -188,6 +203,7 @@ class Gun:
     def ring(self, piece, ro, ri, a, b, sides=8, bev=0.002, flat=True, smooth=False):
         """a ring (a tube with a hole right through) between two points: sight frames, barrel bands, drum rims"""
         a, b, u, v = self._frame(a, b)
+        bev *= BEV_K
         off = math.pi / sides if flat else 0.0
         bm = bmesh.new()
         def loop(c, rad):

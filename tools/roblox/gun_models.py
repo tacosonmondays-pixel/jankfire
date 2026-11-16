@@ -9,24 +9,25 @@
 #     grip's middle and rake and on the handguard's underside;
 #   - the nodes the game moves keep their names and pivots (mdl.parts: mag, charge, pump, bolt, lever, lhammer,
 #     cover, belt_NN, slide, hammer, cylinder, hinge ..., the Redline's needle and vents, the katana's kat_blade);
-#   - a gun is a few big chamfered masses, two or three flat colours, nothing thin (style notes in the vault).
-# THE KIT'S OWN LOOK: square "window" sights, vents cut as forward-leaning slashes, a two-tone split along the
-# receiver, barrels with a stepped fat end. Slots: body = the gun's one colour block, frame = charcoal,
+#   - a gun is a few big blocky masses, two or three flat colours, nothing thin (style notes in the vault).
+#   - no loose rounds on show (owner, round 6: "why do some guns have like bullets attached on top?").
+# THE KIT'S OWN LOOK: square "window" sights, square front blocks, vents cut as upright slots, boxy stocks, a two-tone
+# split along the receiver, barrels with a stepped fat end. Slots: body = the gun's one colour block, frame = charcoal,
 # dark = near-black (barrel, magazine, grip), plus small ones (steel, wood, brass, glow, glass, shell).
 import bpy, sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunkit import Gun, rect, raked
 
-FRAME = '31343c'   # charcoal
-DARK = '24262c'    # near-black: barrels, magazines, grips (never darker: it reads as a hole)
-BLACK = '0e0f11'   # bores, deep insets
-DECK = '474b54'    # a lighter charcoal for top decks and covers (two values on the all-charcoal guns)
-STEEL = '6d727c'
+FRAME = '3b3f48'   # charcoal (round 6: a step lighter; in hand it reads darker)
+DARK = '2d3037'    # near-black: barrels, magazines, grips (never darker: it reads as a hole)
+BLACK = '16171b'   # bores, deep insets
+DECK = '5b606a'    # a lighter charcoal for top decks and covers (two values on the all-charcoal guns)
+STEEL = '757a84'
 
 
-def slash(z0, z1, y0, y1, lean):
-    """a bar leaning forward at the top (a vent post): profile [(z, y)]"""
-    return [(z0, y0), (z1, y0), (z1 - lean, y1), (z0 - lean, y1)]
+def slash(z0, z1, y0, y1, lean=0.0):
+    """a vent post or slot: profile [(z, y)]. round 6: upright (the lean is no longer used: Rivals' guns are blockier)"""
+    return [(z0, y0), (z1, y0), (z1, y1), (z0, y1)]
 
 
 def rear_window(g, piece, z, yc, hw=0.03, inner=0.022, t=0.011, zt=0.026, base=None):
@@ -42,7 +43,7 @@ def front_fork(g, piece, z, y0, ytop, hw=0.027, ear=0.013, zt=0.034, post=None, 
     """the kit's front sight (round 2: one solid tapered post, nothing thin): its top is the aim line (ytop). dot_piece
        = a small bright cap on the top"""
     w = max(0.022, hw * 0.9)
-    g.prism(piece, [(z - zt / 2, y0 - 0.004), (z + zt / 2, y0 - 0.004), (z + zt * 0.2, ytop), (z - zt * 0.2, ytop)], w, bev=0.004)
+    g.box(piece, (-w / 2, w / 2), (y0 - 0.004, ytop), (z - zt * 0.36, z + zt * 0.36), bev=0.004)  # round 6: a square block
     if dot_piece:
         g.box(dot_piece, (-0.006, 0.006), (ytop - 0.003, ytop + 0.006), (z - 0.006, z + 0.006), bev=0.002)
 
@@ -68,7 +69,7 @@ def deck(g, piece, hw, y, z0, z1, t=0.007):
 
 
 def kit_mark(g, piece, z, y0, y1, w, gap=0.035, t=0.018, lean=0.02):
-    """the kit's mark: two forward-leaning slashes, let into both sides (w = the width they poke through)"""
+    """the kit's mark: two upright slots (round 6), let into both sides (w = the width they poke through)"""
     for z0 in (z, z + gap):
         g.prism(piece, slash(z0, z0 + t, y0, y1, lean), w, bev=0.0015)
 
@@ -77,7 +78,7 @@ def panel(g, piece, xface, z0, z1, y0, y1, t=0.003, lean=0.0, bev=0.0015):
     """a flat inset panel on both sides of a face at |x| = xface (from z0 to z1, y0 to y1; lean > 0 slants its ends
        forward like the kit's slashes): what keeps a big colour block from reading as one slab (Rivals' rifles sink
        dark panels into their colour block)"""
-    prof = [(z0, y0), (z1, y0), (z1 - lean, y1), (z0 - lean, y1)]
+    prof = [(z0, y0), (z1, y0), (z1, y1), (z0, y1)]  # round 6: square ends (lean unused)
     g.prism(piece, prof, 2 * xface + 2 * t, bev=bev)
 
 
@@ -127,7 +128,7 @@ def stadium(z0, z1, yc, r):
 # ------------------------------------------------------------------------------------------------ Assault Rifle
 def ar():
     g = Gun('w_ar')
-    g.slot('body', '414834'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
+    g.slot('body', '4d5640'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
     g.slot('glow', '7dff4f', 'n'); g.slot('steel', STEEL)
     g.spots = {'muzzle': (0, 0.015, -0.72), 'sight': (0, 0.114, 0.234), 'port': (0.036, 0.03, -0.05),
                'grip': (0, -0.1, 0.08), 'fore': (0, -0.04, -0.28)}
@@ -178,8 +179,9 @@ def ar():
     g.prism('grip_wzB__dark', raked(0.115, -0.135, 0.19, 0.07, -0.314, taper=0.006), 0.054, bev=0.01)
     g.box('grip_wzB__dark', (-0.013, 0.013), (-0.128, -0.112), (-0.04, 0.095), bev=0.004)
     g.prism('grip_wzB__dark', [(0.028, -0.06), (0.05, -0.06), (0.044, -0.1), (0.033, -0.1)], 0.014, bev=0.003)
-    # stock: one solid wedge with two slashes let into each side, the pad in near-black
-    g.prism('stock_wzA__body', [(0.2, -0.05), (0.262, 0.02), (0.262, 0.078), (0.446, 0.078), (0.446, -0.152), (0.385, -0.152)], 0.056, bev=0.009)
+    # stock (round 6: blocky): a straight top bar off the receiver and a square butt, two slots let into each side,
+    # the pad in near-black
+    g.prism('stock_wzA__body', [(0.2, -0.042), (0.2, 0.078), (0.446, 0.078), (0.446, -0.152), (0.312, -0.152), (0.312, -0.042)], 0.058, bev=0.009)
     for z0 in (0.33, 0.378):
         g.prism('stock_wzN__dark', slash(z0, z0 + 0.026, -0.085, 0.04, 0.03), 0.06, bev=0.002)
     g.box('stock_wzB__dark', (-0.034, 0.034), (-0.158, 0.084), (0.44, 0.469), bev=0.008)
@@ -221,7 +223,7 @@ def smg():
     guard(g, 'grip_wzB__dark', -0.05, 0.05, -0.092, t=0.013, hw=0.011)
     trigger(g, 'grip_wzB__dark', 0.0, -0.034, -0.07)
     # a stub stock: one bar and a butt
-    g.prism('stock_wzA__frame', [(0.125, -0.036), (0.235, -0.058), (0.25, -0.085), (0.25, 0.034), (0.125, 0.03)], 0.048, bev=0.009)
+    g.prism('stock_wzA__frame', [(0.125, -0.046), (0.25, -0.046), (0.25, 0.034), (0.125, 0.034)], 0.048, bev=0.009)
     g.box('stock_wzA__body', (-0.027, 0.027), (-0.092, 0.042), (0.244, 0.272), bev=0.008)
     panel(g, 'stock_wzN__dark', 0.024, 0.15, 0.22, -0.025, 0.012, lean=0.012)
     # sights on the cover
@@ -236,8 +238,7 @@ def smg():
 # ---------------------------------------------------------------------------------------------------- Hat Trick
 def burst():
     g = Gun('w_burst')
-    g.slot('deck', DECK); g.slot('body', '384868'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('steel', STEEL)
-    g.slot('brass', '7e7254'); g.slot('copper', '7a5a46')
+    g.slot('deck', DECK); g.slot('body', '44577c'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('steel', STEEL)
     g.spots = {'muzzle': (0, 0.012, -0.67), 'sight': (0, 0.1448, 0.1204), 'port': (0.03, 0.06, 0.09),
                'grip': (0, -0.12, -0.06), 'fore': (0, -0.12, -0.235)}
     BY = 0.012
@@ -274,10 +275,7 @@ def burst():
     for y in (-0.12, -0.165, -0.21):
         g.box('mag_wzB__dark', (-0.029, 0.029), (y - 0.0065, y + 0.0065), (0.026, 0.134), bev=0.0025)
     g.box('mag_wzN__body', (-0.03, 0.03), (-0.276, -0.248), (0.014, 0.146), bev=0.006)
-    # three rounds in a loop holder on the left of the stock, and the port on the right
-    for y in (0.072, 0.092, 0.112):  # the three rounds, lying on the carry block's left face
-        g.cylz('rounds_wzN__brass', 0.0088, -0.115, -0.05, y=y, x=-0.0215, sides=8, bev=0.0015)
-        g.cyl('rounds_wzN__copper', 0.0082, (-0.0215, y, -0.115), (-0.0215, y, -0.14), sides=8, bev=0.0015, r2=0.003)
+    # the port on the right (round 6: the three rounds that lay on the carry block are gone: no loose rounds)
     g.box('trim_wzN__black', (0.034, 0.0405), (0.0, 0.04), (0.04, 0.14), bev=0.001)
     return g
 
@@ -319,8 +317,8 @@ def pistol():
 # ----------------------------------------------------------------------------------------------------- Revolver
 def revolver():
     g = Gun('w_revolver')
-    g.slot('frame', '3d414b'); g.slot('body', '6a604a'); g.slot('dark', DARK); g.slot('black', BLACK)
-    g.slot('wood', '43352b'); g.slot('glow', 'b8bcc4')
+    g.slot('frame', '434751'); g.slot('body', '6c685e'); g.slot('dark', DARK); g.slot('black', BLACK)
+    g.slot('wood', '43352b'); g.slot('glow', 'b8bcc4'); g.slot('steel', '626772')
     g.spots = {'muzzle': (0, 0.03, -0.29), 'sight': (0, 0.08325, 0.168), 'grip': (0, -0.1, 0.085)}
     BY = 0.03
     # the heavy barrel: a slab with big chamfers, an underlug and a rib on top
@@ -332,7 +330,7 @@ def revolver():
     g.box('body_wzA__frame', (-0.02, 0.02), (-0.05, -0.034), (-0.125, 0.03), bev=0.006)
     g.prism('body_wzA__frame', [(0.008, -0.04), (0.06, -0.04), (0.072, 0.0), (0.06, 0.062), (0.008, 0.062)], 0.042, bev=0.008)
     # the cylinder (node "cylinder": a chamber a shot): six flat sides in brass, the gun's colour
-    g.cyl('cylinder_wzB__dark', 0.043, (0, 0.009, -0.1), (0, 0.009, 0.001), sides=8, bev=0.006, flat=False, smooth=False)
+    g.cyl('cylinder_wzB__steel', 0.043, (0, 0.009, -0.1), (0, 0.009, 0.001), sides=8, bev=0.006, flat=False, smooth=False)
     for k in range(6):
         a = math.pi / 6 + k * math.pi / 3
         cx_, cy_ = 0.037 * math.cos(a), 0.009 + 0.037 * math.sin(a)
@@ -359,7 +357,7 @@ def revolver():
 # ----------------------------------------------------------------------------------------------- Half a Shotgun
 def sawnoff():
     g = Gun('w_sawnoff')
-    g.slot('frame', '33363e'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('wood', '4a382c')
+    g.slot('frame', '454953'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('wood', '463a31')
     g.slot('steel', '8a8f98'); g.slot('shell', '9a2b27'); g.slot('brass', '7e7254')
     g.spots = {'muzzle': (0, 0.02, -0.31), 'sight': (0, 0.037, 0.075), 'grip': (0, -0.05, 0.095)}
     BX, BY = 0.0275, 0.017
@@ -369,7 +367,7 @@ def sawnoff():
         # the sawn ends: a raw bright ring each (node "hinge_trim" rides with the barrels)
         g.cylz('hinge_trim_wzN__steel', 0.0285, -0.311, -0.292, y=BY, x=sx * BX, sides=8, bev=0.002, hole=(0.019, 0.014))
         g.cylz('hinge_trim_wzN__black', 0.0192, -0.299, -0.296, y=BY, x=sx * BX, sides=8, bev=0)
-    g.box('hinge_wzB__frame', (-0.008, 0.008), (0.028, 0.043), (-0.294, -0.014), bev=0.003)
+    g.box('hinge_wzB__steel', (-0.008, 0.008), (0.028, 0.043), (-0.294, -0.014), bev=0.003)
     g.box('hinge_trim_wzN__brass', (-0.005, 0.005), (0.041, 0.05), (-0.29, -0.279), bev=0.002)
     # forend under the barrels (wood) and the iron it hangs on
     g.prism('forend_wzA__wood', [(-0.235, 0.004), (-0.082, 0.004), (-0.082, -0.036), (-0.222, -0.036), (-0.235, -0.024)], 0.088, bev=0.009)
@@ -396,7 +394,7 @@ def sawnoff():
 def shotgun():
     g = Gun('w_shotgun')
     g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('wood', '463429')
-    g.slot('shell', '9a2b27'); g.slot('brass', '7e7254')
+    g.slot('brass', '74705f')
     g.spots = {'muzzle': (0, 0.025, -0.74), 'sight': (0, 0.0712, -0.0386), 'port': (0.03, 0.02, -0.1),
                'grip': (0, -0.06, 0.13), 'fore': (0, -0.03, -0.4)}
     BY, TY = 0.025, -0.024
@@ -412,11 +410,8 @@ def shotgun():
     g.box('pump_wzA__wood', (-0.038, 0.038), (-0.066, 0.006), (-0.505, -0.3), bev=0.01)
     for z0 in (-0.5, -0.459, -0.418, -0.377, -0.336):
         g.box('pump_wzA__wood', (-0.043, 0.043), (-0.062, 0.002), (z0, z0 + 0.03), bev=0.008)
-    # four shells in a saddle on the left of the receiver
-    g.box('saddle_wzN__dark', (-0.041, -0.03), (-0.022, 0.022), (-0.178, -0.038), bev=0.003)
-    for z in (-0.158, -0.125, -0.092, -0.059):
-        g.cyl('saddle_wzN__shell', 0.0125, (-0.044, -0.03, z), (-0.044, 0.03, z), sides=8, bev=0.002)
-        g.cyl('saddle_wzN__brass', 0.0135, (-0.044, -0.04, z), (-0.044, -0.028, z), sides=8, bev=0.002)
+    # round 6: the shell saddle is gone (no loose rounds); a dark panel let into each side of the receiver
+    panel(g, 'body_wzN__dark', 0.032, -0.18, -0.04, -0.03, 0.034)
     # the stock: wrist and butt in one piece of wood, a dark pad
     g.prism('stock_wzA__wood', [(-0.01, 0.03), (0.07, 0.04), (0.38, 0.004), (0.38, -0.136), (0.3, -0.125), (0.13, -0.09), (0.085, -0.1),
                                 (-0.005, -0.03)], 0.054, bev=0.011)
@@ -437,7 +432,7 @@ def shotgun():
 # --------------------------------------------------------------------------------------------------- Lawn Mower
 def autoshot():
     g = Gun('w_autoshot')
-    g.slot('body', '364a36'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('red', '7a302c')
+    g.slot('body', '364a36'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('red', '623a35')
     g.spots = {'muzzle': (0, 0.02, -0.76), 'sight': (0, 0.07796, 0.11018), 'port': (0.035, 0.04, -0.08),
                'grip': (0, -0.11, 0.13), 'fore': (0, -0.03, -0.38)}
     BY = 0.02
@@ -476,7 +471,7 @@ def autoshot():
     guard(g, 'grip_wzB__dark', -0.022, 0.1, -0.118, t=0.014, hw=0.012)
     trigger(g, 'grip_wzB__dark', 0.04, -0.052, -0.09)
     # the stock: two bars like a mower's handle, joined at the butt
-    g.prism('stock_wzA__body', [(0.195, -0.052), (0.24, -0.06), (0.48, -0.142), (0.48, 0.044), (0.195, 0.044)], 0.05, bev=0.01)
+    g.prism('stock_wzA__body', [(0.195, -0.052), (0.35, -0.052), (0.35, -0.142), (0.48, -0.142), (0.48, 0.044), (0.195, 0.044)], 0.05, bev=0.01)
     panel(g, 'stock_wzN__dark', 0.025, 0.26, 0.42, -0.07, 0.016, lean=0.03)
     g.box('stock_wzB__dark', (-0.03, 0.03), (-0.145, 0.046), (0.468, 0.508), bev=0.009)
     # sights, charging knob on the right (node "charge"), port
@@ -490,7 +485,7 @@ def autoshot():
 # ------------------------------------------------------------------------------------------------------- Yeehaw
 def lever():
     g = Gun('w_lever')
-    g.slot('body', '585244'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('wood', '43352b'); g.slot('frame', FRAME)
+    g.slot('body', '5a5750'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('wood', '43352b'); g.slot('frame', FRAME)
     g.spots = {'muzzle': (0, 0.02, -0.71), 'sight': (0, 0.06, -0.2), 'port': (0, 0.06, 0.02),
                'grip': (0, -0.105, 0.1), 'fore': (0, -0.03, -0.3)}
     BY, TY = 0.02, -0.014
@@ -531,12 +526,12 @@ def octagon(cx, cy, r):
 
 
 def dmr():
-    """SECOND OPINION, the marksman rifle with the medic's cross. Round 3: one solid sporter stock with the grip grown
-       into it, a thick shrouded barrel with a box brake, the short BOX optic with one big calm-red plus on a pale plate
-       on its side (the only cross), a big ribbed magazine"""
+    """SECOND OPINION, the marksman rifle. Round 3: one solid sporter stock with the grip grown into it, a thick
+       shrouded barrel with a box brake, the short BOX optic, a big ribbed magazine. Round 6: the medic's cross on the
+       optic is gone (owner: "an ugly cross thingy")"""
     g = Gun('w_dmr')
-    g.slot('body', '434052'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
-    g.slot('glow', '9fb6c8'); g.slot('white', 'cfcfc8'); g.slot('steel', STEEL); g.slot('red', '9e3a36'); g.slot('deck', DECK)
+    g.slot('body', '4f4b62'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
+    g.slot('glow', '9fb6c8'); g.slot('steel', STEEL); g.slot('deck', DECK)
     g.spots = {'muzzle': (0, 0.02, -0.89), 'sight': (0, 0.11996, 0.1204), 'port': (0.03, 0.04, -0.03),
                'grip': (0, -0.08, 0.17), 'fore': (0, -0.02, -0.33)}
     BY, SY = 0.02, 0.11996
@@ -556,8 +551,7 @@ def dmr():
     g.cylz('trim_wzN__black', 0.016, -0.8915, -0.888, y=BY, sides=8, bev=0)
     for z0 in (-0.872, -0.836):
         g.box('trim_wzN__black', (-0.0415, 0.0415), (BY - 0.017, BY + 0.017), (z0, z0 + 0.02), bev=0.001)
-    # the box optic: a square body, a hood at the front with pale glass inside, a short eyepiece; the medic's plus on
-    # both sides of the body (the left one is what the player sees)
+    # the box optic: a square body, a hood at the front with pale glass inside, a short eyepiece
     g.box('scope_wzN__frame', (-0.034, 0.034), (SY - 0.034, SY + 0.034), (-0.12, 0.09), bev=0.011)
     g.window('scope_wzN__frame', (-0.042, 0.042), (SY - 0.042, SY + 0.042), (-0.2, -0.115), 0.012)
     g.box('lens_wzN__glow', (-0.031, 0.031), (SY - 0.031, SY + 0.031), (-0.14, -0.13), bev=0.002)
@@ -566,9 +560,6 @@ def dmr():
     deck(g, 'scope_wzN__deck', 0.03, SY + 0.033, -0.11, 0.08)
     for z0 in (-0.075, 0.02):
         g.box('scope_wzN__frame', (-0.022, 0.022), (0.06, SY - 0.03), (z0, z0 + 0.042), bev=0.006)
-    g.box('cross_wzN__white', (-0.0365, 0.0365), (SY - 0.027, SY + 0.027), (-0.06, 0.0), bev=0.003)
-    g.box('cross_wzN__red', (-0.0385, 0.0385), (SY - 0.021, SY + 0.021), (-0.037, -0.023), bev=0.0015)
-    g.box('cross_wzN__red', (-0.0385, 0.0385), (SY - 0.007, SY + 0.007), (-0.051, -0.009), bev=0.0015)
     # magazine (node "mag"): big, ribbed, a plate in the gun's colour
     g.prism('mag_wzB__dark', [(-0.085, -0.03), (0.032, -0.03), (0.022, -0.165), (-0.095, -0.165)], 0.052, bev=0.008)
     g.prism('mag_wzN__body', [(-0.104, -0.16), (0.031, -0.16), (0.029, -0.188), (-0.106, -0.188)], 0.062, bev=0.006)
@@ -594,26 +585,23 @@ def dmr():
 def sniper():
     """SNIPER. Round 3 (owner: "im mostly discontent with the snipers"). After Rivals' Sniper for the proportions, our
        own in its details and colour: a plum stock (the web game's sniper hue, calmed), charcoal action, a heavy
-       eight-sided shroud and barrel about half the fore-end's height, a big two-port box brake, a solid thumbhole stock
-       with a stepped cheek rest, a big scope with fat bells, pale glass and a plum band"""
+       eight-sided shroud and barrel about half the fore-end's height, a big two-port box brake, a big scope with fat
+       bells, pale glass and a plum band. Round 6 (owner: the stock "isnt one piece"): the stock is one solid block,
+       a straight top with the cheek rest in it and a square butt, no thumbhole, no separate pad or panel"""
     g = Gun('w_sniper')
-    g.slot('body', '432e3b'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
-    g.slot('glow', '9fb6c8'); g.slot('steel', STEEL); g.slot('accent', '4e3343'); g.slot('deck', DECK)
+    g.slot('body', '523847'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
+    g.slot('glow', '9fb6c8'); g.slot('steel', STEEL); g.slot('accent', '5c4152'); g.slot('deck', DECK)
     g.spots = {'muzzle': (0, 0.02, -1.48), 'sight': (0, 0.12354, 0.10316), 'port': (0.04, 0.04, -0.12),
                'grip': (0, -0.11, 0.085), 'fore': (0, -0.06, -0.5)}
     BY, SY = 0.02, 0.12354
-    # the stock: fore-end, grip, cheek bar, bottom bar and butt round a thumbhole, all thick
+    # the fore-end under the action, the grip, and the stock: ONE solid block from the action to the butt (a straight
+    # top with the cheek rest in it, a square butt), the same colour all through, a near-black pad flush on its end
     g.prism('stock_wzA__body', [(-0.68, -0.03), (-0.66, -0.088), (-0.08, -0.088), (-0.04, -0.064), (0.07, -0.064),
                                 (0.07, 0.008), (-0.68, 0.008)], 0.09, bev=0.013, wtop=0.078)
     g.prism('stock_wzA__body', raked(0.135, -0.15, 0.215, 0.072, -0.14, taper=0.007), 0.06, bev=0.012)
-    g.prism('stock_wzA__body', [(0.05, -0.068), (0.57, -0.068), (0.57, 0.07), (0.13, 0.07), (0.05, 0.03)], 0.068, bev=0.012)
-    g.prism('stock_wzA__body', [(0.15, -0.27), (0.57, -0.27), (0.57, -0.152), (0.215, -0.152)], 0.064, bev=0.012)
-    g.box('stock_wzA__body', (-0.0365, 0.0365), (-0.27, 0.07), (0.33, 0.57), bev=0.012)
-    # the stepped cheek rest: a raised block in the stock's colour, a charcoal pad on it
-    g.box('stock_wzA__body', (-0.03, 0.03), (0.062, 0.092), (0.25, 0.47), bev=0.01)
-    g.box('stock_wzB__deck', (-0.024, 0.024), (0.088, 0.104), (0.27, 0.45), bev=0.007)
-    g.box('stock_wzB__dark', (-0.039, 0.039), (-0.278, 0.078), (0.562, 0.597), bev=0.01)
-    panel(g, 'stock_wzN__dark', 0.0365, 0.37, 0.53, -0.215, -0.11)
+    g.prism('stock_wzA__body', [(0.05, -0.068), (0.33, -0.068), (0.33, -0.27), (0.57, -0.27), (0.57, 0.092), (0.2, 0.092),
+                                (0.15, 0.07), (0.05, 0.07)], 0.07, bev=0.012)
+    g.box('stock_wzB__dark', (-0.035, 0.035), (-0.27, 0.092), (0.566, 0.594), bev=0.008)
     # three slashes in the plum accent and a long dark slot on the fore-end
     kit_mark(g, 'mark_wzN__dark', -0.62, -0.074, -0.012, 0.094, gap=0.036, t=0.02, lean=0.02)
     panel(g, 'stock_wzN__dark', 0.042, -0.52, -0.15, -0.062, -0.03, lean=0.012)
@@ -664,7 +652,7 @@ def sniper():
 def lmg():
     g = Gun('w_lmg')
     g.slot('deck', DECK); g.slot('paper', '7d7262'); g.slot('body', '6a4632'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
-    g.slot('grit', '3a3632'); g.slot('brass', '7e7254')
+    g.slot('grit', '3a3632'); g.slot('link', '50545d')
     g.spots = {'muzzle': (0, 0.02, -0.87), 'sight': (0, 0.10379, 0.08), 'port': (0.04, 0.04, -0.06),
                'grip': (0, -0.11, 0.14), 'fore': (0, -0.06, -0.42)}
     BY = 0.02
@@ -691,18 +679,17 @@ def lmg():
     # the ammunition box on the left (node "mag"), with the kit's mark in orange
     g.box('mag_wzB__dark', (-0.078, 0.036), (-0.238, -0.07), (-0.168, 0.002), bev=0.01)
     g.box('mag_wzN__body', (-0.081, 0.039), (-0.106, -0.084), (-0.171, 0.005), bev=0.003)
-    # the belt: twelve rounds from the box up into the feed, one piece each (they go as the belt runs out)
+    # the belt: twelve chunky links from the box up the left side into the feed, one piece each (the game hides
+    # them from the top down as the belt runs out). round 6: links, not brass rounds, and below the top line
     for i in range(12):
-        t = i / 11
-        x = -0.062 + 0.036 * t
-        y = -0.052 + 0.118 * (1 - (1 - t) ** 1.6)
-        g.cylz('belt_%02d_wzN__brass' % i, 0.0085, -0.118, -0.04, y=y, x=x - 0.012 * math.sin(t * math.pi), sides=6, bev=0.0015)
+        y = -0.066 + 0.0082 * i
+        g.box('belt_%02d_wzN__link' % i, (-0.06, -0.039), (y, y + 0.0062), (-0.112, -0.05), bev=0.0015)
     # grip, guard, trigger
     g.prism('grip_wzB__dark', raked(0.142, -0.132, 0.18, 0.066, -0.297, taper=0.005), 0.052, bev=0.01)
     guard(g, 'grip_wzB__dark', -0.0, 0.11, -0.122, t=0.014, hw=0.012)
     trigger(g, 'grip_wzB__dark', 0.055, -0.066, -0.098)
     # the stock: an orange wedge, a dark pad, and the tool's cable boot under it
-    g.prism('stock_wzA__body', [(0.19, -0.05), (0.26, 0.012), (0.26, 0.06), (0.52, 0.06), (0.52, -0.16), (0.44, -0.16)], 0.058, bev=0.01)
+    g.prism('stock_wzA__body', [(0.19, -0.05), (0.19, 0.06), (0.52, 0.06), (0.52, -0.16), (0.37, -0.16), (0.37, -0.05)], 0.058, bev=0.01)
     g.box('stock_wzB__dark', (-0.035, 0.035), (-0.166, 0.066), (0.514, 0.545), bev=0.009)
     g.cyl('cord_wzN__dark', 0.024, (0, -0.15, 0.47), (0, -0.19, 0.47), sides=8, bev=0.004, r2=0.016)
     # sights
@@ -755,9 +742,9 @@ def redline():
     guard(g, 'grip_wzB__dark', -0.06, 0.05, -0.096, t=0.013, hw=0.011)
     trigger(g, 'grip_wzB__dark', -0.0, -0.045, -0.076)
     # the triangle stock: two bars and a butt, with a band of red tape
-    g.prism('stock_wzA__frame', [(0.115, -0.04), (0.18, -0.058), (0.37, -0.11), (0.37, 0.042), (0.115, 0.042)], 0.052, bev=0.01)
+    g.prism('stock_wzA__frame', [(0.115, -0.044), (0.27, -0.044), (0.27, -0.11), (0.37, -0.11), (0.37, 0.042), (0.115, 0.042)], 0.052, bev=0.01)
     g.box('stock_wzB__dark', (-0.029, 0.029), (-0.118, 0.048), (0.362, 0.395), bev=0.009)
-    panel(g, 'stock_wzN__body', 0.026, 0.2, 0.32, -0.035, -0.012, lean=0.02)
+    panel(g, 'stock_wzN__dark', 0.026, 0.15, 0.25, -0.03, 0.02)
     # sights and port
     rear_window(g, 'sight_wzN__frame', 0.1058, 0.0737, hw=0.027, inner=0.02, t=0.009, zt=0.024, base=0.052)
     front_fork(g, 'sight_wzN__frame', -0.415, 0.054, 0.0737, hw=0.025, ear=0.011, zt=0.03)
@@ -768,7 +755,7 @@ def redline():
 # ----------------------------------------------------------------------------------------------- Marble Shotgun
 def marbles():
     g = Gun('w_marbles')
-    g.slot('body', '6a604a'); g.slot('wood', '43352b'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('frame', FRAME)
+    g.slot('body', '6b675d'); g.slot('wood', '43352b'); g.slot('dark', DARK); g.slot('black', BLACK); g.slot('frame', FRAME)
     g.slot('jar', 'd6eef6', 'g', 0.25); g.slot('m1', '3d6fc4'); g.slot('m2', 'b8c8d8')
     g.spots = {'muzzle': (0, 0.012, -0.37), 'grip': (0, -0.06, 0.07), 'fore': (0, -0.03, -0.15)}
     BY = 0.012
@@ -803,7 +790,7 @@ def marbles():
 # ------------------------------------------------------------------------------------------------------- Katana
 def katana():
     g = Gun('w_katana')
-    g.slot('steel', '858c96'); g.slot('edge', 'cdd2d8'); g.slot('spine', '5f666f'); g.slot('body', '283459'); g.slot('dark', DARK); g.slot('brass', '6e6346')
+    g.slot('steel', '858c96'); g.slot('edge', 'cdd2d8'); g.slot('spine', '5f666f'); g.slot('body', '283459'); g.slot('dark', DARK); g.slot('brass', '6a675e')
     g.spots = {'muzzle': (0, 0.0829, -0.8357), 'grip': (0, 0, -0.083), 'fore': (0, 0, 0.085)}
     Z0, L, RISE = -0.139, 0.6967, 0.066
     # the blade (the game stretches the pieces named kat_blade with every kill): a flat upper face and a bright
@@ -880,7 +867,7 @@ def shredder():
     """the Shredder is a Tool, not a template: its frame is its own (metres, the rotor's hub at the origin, the
        mouth at -z). PolishBackup.WeaponImport's W.kitShredder puts the pieces on the Tool's Handle"""
     g = Gun('w_shredder')
-    g.slot('deck', DECK); g.slot('body', '6a5d40'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
+    g.slot('deck', DECK); g.slot('body', '686353'); g.slot('frame', FRAME); g.slot('dark', DARK); g.slot('black', BLACK)
     g.slot('steel', '8a8f98'); g.slot('red', '7e302c'); g.slot('lamp', 'ff281e', 'n'); g.slot('white', 'd6d6cf')
     g.spots = {'muzzle': (0, 0, -0.333), 'hub': (0, 0, 0), 'grip': (-0.015, -0.153, 0.103)}
     # the hopper: an eight-sided funnel in machine amber, dark inside, a dark rim
@@ -919,8 +906,8 @@ def shredder():
     g.box('grip_wzB__dark', (-0.04, 0.01), (-0.108, -0.09), (0.07, 0.16), bev=0.006)
     g.prism('trigger_wzN__dark', [(0.052, -0.106), (0.072, -0.106), (0.068, -0.146), (0.058, -0.146)], 0.016, bev=0.003, x=-0.015)
     # two power lamps and the heat gauge on top of the motor
-    g.box('sh_lamp_a_wzN__lamp', (-0.075, -0.045), (0.097, 0.116), (0.272, 0.302), bev=0.004)
-    g.box('sh_lamp_b_wzN__lamp', (0.045, 0.075), (0.097, 0.116), (0.272, 0.302), bev=0.004)
+    g.box('sh_lamp_a_wzN__lamp', (-0.068, -0.05), (0.097, 0.108), (0.278, 0.296), bev=0.003)
+    g.box('sh_lamp_b_wzN__lamp', (0.05, 0.068), (0.097, 0.108), (0.278, 0.296), bev=0.003)
     g.cyl('gauge_wzN__dark', 0.036, (-0.04, 0.096, 0.2), (-0.04, 0.114, 0.2), sides=8, bev=0.004)
     g.cyl('gauge_wzN__white', 0.027, (-0.04, 0.1135, 0.2), (-0.04, 0.1165, 0.2), sides=8, bev=0)
     g.box('needle_wzN__dark', (-0.0435, -0.0365), (0.1165, 0.12), (0.176, 0.202), bev=0.001)
@@ -967,7 +954,7 @@ def ar_cardboard():
     g.xprism('sight_wzN__body', [(-0.024, 0.093), (0.024, 0.093), (0.0, 0.118)], -0.49, -0.456, bev=0.002)
     # parcel tape over the joins: round the body, across the stock, round the magazine
     g.box('tape_wzN__tape', (-0.0445, 0.0445), (-0.066, 0.101), (-0.03, 0.03), bev=0.003)
-    g.box('tape_wzN__tape', (-0.0305, 0.0305), (-0.156, 0.081), (0.29, 0.318), bev=0.003)
+    g.box('tape_wzN__tape', (-0.0315, 0.0315), (-0.156, 0.081), (0.33, 0.358), bev=0.003)
     g.prism('mag_wzN__tape', [(-0.203, -0.176), (-0.052, -0.176), (-0.055, -0.204), (-0.207, -0.204)], 0.06, bev=0.003)
     # the corrugated cut ends: ridges on the butt and the magazine's base
     for y in (-0.135, -0.09, -0.045, 0.0, 0.045):
