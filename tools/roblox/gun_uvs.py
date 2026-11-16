@@ -8,12 +8,15 @@
 #   - The LEFT side of every piece (the side the player looks at in first person) maps to (u, v) = (z, y): one flat
 #     projection shared by every piece, so a pattern runs straight across the body, grip, mag and stock, upright when
 #     seen from the left.
-#   - Long pieces (along z: body, barrel, stock, rails) are unfolded round the gun from there: over the top, down the
-#     right side, under the bottom. Upright pieces (along y: grip, mag) are unfolded round their front and back
-#     instead. The unfold is a Manhattan one: exact on flat faces, a bevel is drawn about a third tighter, and nothing is
-#     ever mirrored. Round pieces (barrels, rings) are unfolded by angle.
-#   - The one seam each piece needs sits at its bottom-right edge (long pieces) or front-right edge (upright pieces),
-#     where first person never looks. End caps get their own flat map, continuing from the left side.
+#   - Every other face is a FLAT projection chosen by the way it faces (its family): a long piece's sides on (z, y),
+#     its top and bottom on (z, x); an upright piece's sides on (z, y), its front and back on (x, y), its ends on
+#     (z, x). The offsets are fixed per piece and chosen so the families meet without a jump at the left side's edges
+#     (round the top-left edge, the front-left edge). A face never mixes two directions, so nothing shears: checks
+#     stay square and stripes stay straight on sloped faces and bevels (16 Nov, after the first judging: the first
+#     version unfolded by each point's own height, and checks skewed into diamonds, stripes zig-zagged at chamfers).
+#     A sloped face stretches a little (up to 1.4 times at 45 degrees); nothing is ever mirrored.
+#   - Round pieces (barrels, rings) are unfolded by angle. The seams sit at the bottom-right / front-right edges and
+#     where a bevel turns from one family to the next.
 import bpy, bmesh, math
 
 TILE_M = 0.25      # metres of gun per texture tile (must match wrap_textures.TILE_M)
@@ -69,9 +72,10 @@ def unwrap_island(faces, uv, D):
         pts = [P[l.vert.index] for l in f.loops]
         out = []
         if not upright:
-            if abs(nz) > CAP:                                    # end cap of a long piece: continues the left side
+            if abs(nz) > CAP:                                    # end cap of a long piece: flat on (x, y)
+                zc = zb if nz > 0 else zf
                 s = 1 if nz > 0 else -1
-                out = [(z + s * (x - xl), y) for x, y, z in pts]
+                out = [(zc + s * (x - xl), y) for x, y, z in pts]
             elif rnd:                                            # round: by angle, the seam at the bottom right
                 for x, y, z in pts:
                     phi = math.pi - math.atan2(y - yc, x - xc)   # 0 at the left, growing over the top
@@ -81,27 +85,22 @@ def unwrap_island(faces, uv, D):
                 for o in out[1:]:                                # a face across the seam: keep it in one piece
                     while o[1] - ref > math.pi * R: o[1] -= math.tau * R
                     while o[1] - ref < -math.pi * R: o[1] += math.tau * R
-            else:                                                # Manhattan unfold round the section, by quadrant
-                th = math.degrees(math.atan2(ny, nx)) % 360
-                for x, y, z in pts:
-                    d = x - xl
-                    if 90 <= th <= 180: v = y + d                   # top + left (+ the bevel between)
-                    elif 180 < th <= 270: v = y - d                 # left + bottom
-                    elif th < 90: v = 2 * yt - y + d                # top-right bevel + right
-                    else: v = 2 * yt + 2 * W - y - d                # right + bottom-right bevel (the seam)
-                    out.append((z, v))
+            else:                                                # flat by family: side faces on (z, y), top and
+                if abs(nx) >= abs(ny):                           # bottom on (z, x); the offsets meet at the edges
+                    out = [(z, y if nx < 0 else W + 2 * yt - y) for x, y, z in pts]
+                elif ny > 0:
+                    out = [(z, yt + (x - xl)) for x, y, z in pts]
+                else:
+                    out = [(z, yb - (x - xl)) for x, y, z in pts]
         else:
-            if abs(ny) > CAP:                                    # top / bottom of an upright piece
-                s = 1 if ny > 0 else -1
-                out = [(z, y + s * (x - xl)) for x, y, z in pts]
+            if abs(ny) > CAP:                                    # top / bottom of an upright piece: flat on (z, x)
+                out = [(z, (yt + (x - xl)) if ny > 0 else (yb - (x - xl))) for x, y, z in pts]
+            elif abs(nx) >= abs(nz):                             # its sides: flat on (z, y), the left as every piece's
+                out = [(z if nx < 0 else 2 * zb + W - z, y) for x, y, z in pts]
+            elif nz < 0:                                         # front and back: flat on (x, y)
+                out = [(zf - (x - xl), y) for x, y, z in pts]
             else:
-                for x, y, z in pts:
-                    d = x - xl
-                    if nx <= 0 and nz <= 0: u = z - d                 # front + left
-                    elif nx <= 0: u = z + d                           # back + left
-                    elif nz > 0: u = 2 * zb - z + d                   # back + right
-                    else: u = 2 * zb + 2 * W - z - d                  # right + front (the seam)
-                    out.append((u, y))
+                out = [(zb + (x - xl), y) for x, y, z in pts]
         for l, (u, v) in zip(f.loops, out):
             l[uv].uv = (u * D, v * D)
 
