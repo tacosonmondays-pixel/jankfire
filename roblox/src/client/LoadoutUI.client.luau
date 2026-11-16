@@ -1,4 +1,5 @@
--- the loadout screen (L, or the LOADOUT button in the hub). keys 1 2 3 = primary / secondary / melee; the whole web roster
+-- the loadout screen (L, or the LOADOUT button in the hub). keys 1 2 3 = primary / secondary / melee, 4 or G = the utility
+-- slot (the item on G: Shared.Items, Utility.client.luau); the whole web roster
 -- is on show (what isn't on roblox yet is a "coming soon" card); a big 3D preview on a showcase table you can drag round;
 -- the weapon's stats and gimmick; the wraps along the bottom (hover to try one on, click to wear it). the camera eases
 -- off to a showcase spot and the world behind goes soft. the server owns every pick (Loadout.luau): this only asks.
@@ -15,6 +16,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Roster = require(Shared:WaitForChild("Roster"))
+local Items = require(Shared:WaitForChild("Items")) -- (the utility slot's charges, for its card)
 local GunHats = require(Shared:WaitForChild("GunHats")) -- the hat on each weapon (the HATS tab)
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
@@ -26,9 +28,9 @@ local T = require(script.Parent:WaitForChild("Theme"))
 local ACCENT, TEXT, GREY, DIM, RED = T.ACCENT, T.TEXT, T.MUTED, T.DIM, T.DANGER
 local PANEL, CARD, INK, WHITE = T.BG, T.CARD, T.INK, Color3.new(1, 1, 1)
 local FONT, FONT_BOLD, FONT_TITLE = T.FONT, T.FONT_BOLD, T.FONT_TITLE
-local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3 }
+local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.G] = 4 }
 local LINES = {
-	"three slots. choose violence.",
+	"four slots. choose violence.",
 	"no refunds. some take-backs.",
 	"dress your gun for the job you want.",
 	"pick your poison. it's all poison.",
@@ -102,7 +104,7 @@ end
 -- ---------------------------------------------------------------- state from the server (player attributes)
 local function pick(): { [string]: string }
 	local s = me:GetAttribute("LoadoutNext")
-	local out = { primary = "redline", secondary = "marbles", melee = "katana" }
+	local out = { primary = "redline", secondary = "marbles", melee = "katana", utility = "frag" }
 	if type(s) == "string" then
 		local i = 0
 		for id in string.gmatch(s, "[^,]+") do
@@ -118,6 +120,9 @@ local function wrapOf(wid: string): (string, string)
 	return id or "default", md or "normal"
 end
 local function slotIndex(slot: string): number return table.find(Roster.SLOTS, slot) or 1 end
+-- the key a slot is used with in a fight: 1 2 3 for the weapons, G for the item
+local function keyOf(slot: string): string return if slot == "utility" then "G" else tostring(slotIndex(slot)) end
+local function onKey(slot: string): string return if slot == "utility" then "ON G" else "ON KEY " .. keyOf(slot) end
 local function hatOf(wid: string): string return GunHats.hatFor(me, wid) or "none" end
 
 -- ---------------------------------------------------------------- models for the previews
@@ -141,8 +146,18 @@ local function shredderModel(): Model?
 	m.PrimaryPart = big
 	return m
 end
+-- an item (the utility slot): its own model (ReplicatedStorage.JankfireItems), or a crate until that's there
+local itemNames = { smoke = "x_smoke", frag = "x_frag", medkit = "x_medkit", bubble = "x_bubble" }
+local crate: (Color3) -> Model
+local function itemModel(id: string): Model?
+	local lib = ReplicatedStorage:FindFirstChild("JankfireItems")
+	local t = lib and lib:FindFirstChild(itemNames[id] or ("x_" .. id))
+	if t and t:IsA("Model") then return t:Clone() end
+	local e = Roster.byId[id]
+	return crate(if e then e.color else GREY)
+end
 -- a weapon that isn't on roblox yet: a plain grey crate with one strap in its colour
-local function crate(color: Color3): Model
+crate = function(color: Color3): Model
 	local m = Instance.new("Model")
 	local function bx(size: Vector3, c: Color3, cf: CFrame, mat: Enum.Material?): Part
 		return new("Part", { Anchored = true, Size = size, Color = c, CFrame = cf, Material = mat or Enum.Material.SmoothPlastic, TopSurface = Enum.SurfaceType.Smooth, BottomSurface = Enum.SurfaceType.Smooth }, m)
@@ -157,6 +172,7 @@ local function previewModel(id: string, hat: string?): (Model?, CFrame)
 	local e = Roster.byId[id]
 	local m: Model?
 	if not e or not e.live then m = crate(if e then e.color else GREY)
+	elseif e.slot == "utility" then m = itemModel(id)
 	elseif id == "shredder" then m = shredderModel()
 	else m = WeaponModels.build(id, 3) end
 	if not m then return nil, CFrame.identity end
@@ -218,24 +234,25 @@ local state = { slot = "primary", focus = "redline", hover = nil :: string?, fil
 local refresh: () -> () = function() end
 local hatsRefresh: (any) -> () = function() end -- (the HATS tab: set below)
 
+-- (four cards since the utility slot: 102 tall on a 110 step, so the armory below keeps its place)
 for i, slot in Roster.SLOTS do
-	local y = 156 + (i - 1) * 146
-	local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, y), Size = UDim2.fromOffset(520, 130) }, stage)
+	local y = 156 + (i - 1) * 110
+	local holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(60, y), Size = UDim2.fromOffset(520, 102) }, stage)
 	local body = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = PANEL, BackgroundTransparency = 0.12, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, holder)
 	T.corner(body, 8)
 	local st = T.edge(body)
-	T.key(body, tostring(i), UDim2.fromOffset(22, 20)).Size = UDim2.fromOffset(28, 28)
-	label(body, Roster.SLOT_NAMES[slot], 16, UDim2.fromOffset(66, 15), UDim2.fromOffset(220, 20), GREY).FontFace = FONT_BOLD
-	local name = label(body, "", 30, UDim2.fromOffset(66, 38), UDim2.fromOffset(234, 40), TEXT)
+	T.key(body, keyOf(slot), UDim2.fromOffset(22, 14)).Size = UDim2.fromOffset(28, 28)
+	label(body, Roster.SLOT_NAMES[slot], 16, UDim2.fromOffset(66, 11), UDim2.fromOffset(220, 20), GREY).FontFace = FONT_BOLD
+	local name = label(body, "", 28, UDim2.fromOffset(66, 32), UDim2.fromOffset(234, 36), TEXT)
 	name.FontFace = FONT_BOLD; name.TextScaled = true
-	new("UITextSizeConstraint", { MaxTextSize = 30 }, name)
-	local wrap = label(body, "", 16, UDim2.fromOffset(66, 86), UDim2.fromOffset(240, 22), GREY)
+	new("UITextSizeConstraint", { MaxTextSize = 28 }, name)
+	local wrap = label(body, "", 16, UDim2.fromOffset(66, 70), UDim2.fromOffset(240, 22), GREY)
 	-- (the weapon's own colour: a short bar down the card's left edge)
-	local bar = new("Frame", { BorderSizePixel = 0, Position = UDim2.fromOffset(0, 18), Size = UDim2.fromOffset(3, 94), ZIndex = 3 }, body)
+	local bar = new("Frame", { BorderSizePixel = 0, Position = UDim2.fromOffset(0, 14), Size = UDim2.fromOffset(3, 74), ZIndex = 3 }, body)
 	T.corner(bar, 2)
 	-- (its picture: on a lighter backing and close up, so a dark gun reads on the dark card)
 	local vp, cam = viewport(body, {
-		Position = UDim2.fromOffset(300, 13), Size = UDim2.fromOffset(206, 104), BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.35,
+		Position = UDim2.fromOffset(300, 10), Size = UDim2.fromOffset(206, 82), BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.35,
 		Ambient = Color3.fromRGB(205, 208, 216),
 	})
 	T.corner(vp)
@@ -322,7 +339,7 @@ new("UITextSizeConstraint", { MaxTextSize = 44 }, bigName)
 local soonStamp = label(previewBox, "COMING SOON", 15, UDim2.fromScale(0.5, 0.5), UDim2.fromOffset(180, 38), GREY, Enum.TextXAlignment.Center)
 soonStamp.FontFace = FONT_BOLD; soonStamp.AnchorPoint = Vector2.new(0.5, 0.5); soonStamp.BackgroundColor3 = PANEL; soonStamp.BackgroundTransparency = 0.1
 T.corner(soonStamp); T.edge(soonStamp)
-local hint = label(previewBox, "drag to spin it  ·  1 2 3 pick a slot", 16, UDim2.new(0, 0, 1, -16), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
+local hint = label(previewBox, "drag to spin it  ·  1 2 3 G pick a slot", 16, UDim2.new(0, 0, 1, -16), UDim2.new(1, 0, 0, 22), GREY, Enum.TextXAlignment.Center)
 local toast = label(previewBox, "", 20, UDim2.new(0.5, 0, 0, 84), UDim2.fromOffset(700, 30), ACCENT, Enum.TextXAlignment.Center)
 toast.FontFace = FONT_BOLD; toast.AnchorPoint = Vector2.new(0.5, 0); toast.TextTransparency = 1
 local toastN = 0
@@ -605,14 +622,15 @@ refresh = function()
 		c.bar.BackgroundColor3 = e.color
 		local wid, md = wrapOf(id)
 		local wr = Roster.wrapById[wid]
-		c.wrap.Text = if wid == "default" then "factory paint" else ("wrap: %s · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
+		local item = if c.slot == "utility" then Items.list[id] else nil
+		c.wrap.Text = if item then ("%d %s · %g s each"):format(item.charges, if item.charges == 1 then "charge" else "charges", item.recharge)
+			elseif wid == "default" then "factory paint" else ("wrap: %s · %s"):format(wr and wr.name or wid, string.lower(MODE_NAMES[md] or md))
 		c.st.Color = if on then ACCENT else WHITE
 		c.st.Transparency = if on then 0 else T.EDGE_A
 		c.st.Thickness = if on then 2 else 1
 		cardModel(c, id)
 	end
 	buildArmory()
-	local slotN = slotIndex(state.slot)
 	for _, a in armCards do
 		local e = Roster.byId[a.id]
 		local equipped = p[state.slot] == a.id
@@ -622,7 +640,7 @@ refresh = function()
 		a.st.Thickness = if focused then 2 else 1
 		-- (a weapon's colour shows on the one you're looking at and the one you carry; the rest of the list stays grey)
 		a.chip.BackgroundColor3 = if focused or equipped then a.color else T.TRACK
-		a.tag.Text = if equipped then ("ON KEY %d"):format(slotN) elseif e.live then "LIVE · ready" else "COMING SOON"
+		a.tag.Text = if equipped then onKey(state.slot) elseif e.live then "LIVE · ready" else "COMING SOON"
 		a.tag.TextColor3 = if equipped then ACCENT elseif e.live then GREY else DIM
 	end
 	-- the focused weapon
@@ -644,10 +662,9 @@ refresh = function()
 		local full = if s and s.text ~= "n/a" then math.clamp(s.bar, 0.03, 1) else 0 -- (nothing to measure: an empty track)
 		tw(row.fill, 0.2, { Size = UDim2.fromScale(full, 1) })
 	end
-	local slotOf = slotIndex(e.slot)
 	if not e.live then equipBtn:set("COMING SOON", false)
-	elseif p[e.slot] == e.id then equipBtn:set(("ON KEY %d  ✓"):format(slotOf), false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
-	else equipBtn:set(("EQUIP IT · KEY %d"):format(slotOf), true) end
+	elseif p[e.slot] == e.id then equipBtn:set(onKey(e.slot) .. "  ✓", false, T.CARD_HI); equipBtn.face.TextColor3 = ACCENT
+	else equipBtn:set(if e.slot == "utility" then "EQUIP IT · G" else "EQUIP IT · KEY " .. keyOf(e.slot), true) end
 	showPreview(e.id)
 	-- wraps for the focused weapon
 	local wid, md = wrapOf(e.id)
@@ -658,7 +675,8 @@ refresh = function()
 		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(), string.upper(Roster.RARITY[wr.rarity].name),
 			if state.hover and state.hover ~= wid then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
-	noPaint.Visible = not e.live
+	noPaint.Visible = not e.live or e.slot == "utility"
+	noPaint.Text = if e.slot == "utility" then "items don't take paint." else "no paint on vapourware. pick something that's live."
 	for _, s in swatches do
 		local on = s.wr.id == wid
 		s.tick.Visible = on
@@ -666,9 +684,10 @@ refresh = function()
 		s.st.Transparency = if on then 0 else 0.8
 		s.st.Thickness = if on then 2 else 1
 	end
+	local paints = e.live and e.slot ~= "utility" -- (an item takes no paint)
 	for m, b in modeBtns do
-		local on = m == md and e.live
-		b:set(MODE_NAMES[m], e.live, if on then T.CARD_HI else nil)
+		local on = m == md and paints
+		b:set(MODE_NAMES[m], paints, if on then T.CARD_HI else nil)
 		b.mark.Visible = on
 	end
 	hatsRefresh(e)
@@ -692,7 +711,8 @@ equipBtn.face.MouseButton1Click:Connect(function()
 	if ok then
 		state.slot = e.slot
 		play("ting")
-		say(("%s on key %d. close this to grab it."):format(string.lower(e.name), slotIndex(e.slot)))
+		say(if e.slot == "utility" then ("%s on G. close this to grab it."):format(string.lower(e.name))
+			else ("%s on key %d. close this to grab it."):format(string.lower(e.name), slotIndex(e.slot)))
 	else
 		play("empty")
 		say(why or "nope.", RED)
@@ -702,7 +722,7 @@ end)
 
 onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
-	if not e or not e.live then return end
+	if not e or not e.live or e.slot == "utility" then return end
 	local _, md = wrapOf(e.id)
 	local ok, why = ask("wrap", e.id, wr.id, md)
 	if ok then
@@ -812,7 +832,8 @@ hatsRefresh = function(e: any)
 		hName.Text = ('%s  <font color="#%s">%s</font>%s'):format(h.name, rc:ToHex(), string.upper(Roster.RARITY[h.rarity].name),
 			if state.hatHover and state.hatHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
-	noHats.Visible = not e.live
+	noHats.Visible = not e.live or e.slot == "utility"
+	noHats.Text = if e.slot == "utility" then "items don't wear hats." else "no hats on vapourware. pick something that's live."
 	for _, c in hatCards do
 		local on = c.id == cur
 		c.tick.Visible = on
@@ -823,7 +844,7 @@ hatsRefresh = function(e: any)
 end
 onHat = function(hid: string)
 	local e = Roster.byId[state.focus]
-	if not e or not e.live then return end
+	if not e or not e.live or e.slot == "utility" then return end
 	local ok, why = ask("hat", e.id, hid)
 	if ok then
 		play("click")

@@ -34,6 +34,12 @@ Fight.live = true
 Fight.allow = function(_by: Fighter?, _t: Fighter): boolean return true end
 Fight.holdRespawn = function(_f: Fighter): boolean return false end
 Fight.spawnAt = nil :: ((Fighter) -> (Vector3, Vector3?))?
+-- the items' hooks (Utility.luau replaces these): a shield bubble dropping a hit (by = the attacker; from = where
+-- damage with nobody behind it came from), a smoke cloud in a sight line (bots' eyes)
+Fight.blocks = function(_by: Fighter?, _t: Fighter, _from: Vector3?): boolean return false end
+Fight.smokeBlocks = function(_a: Vector3, _c: Vector3): boolean return false end
+-- a reverse card: does t send this hit back to by (Utility.luau)
+Fight.reflects = function(_by: Fighter, _t: Fighter): boolean return false end
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -264,10 +270,23 @@ function Fight.died(info: Rules.KillInfo, vel: Vector3?)
 	for _, fn in onKillHooks do fn(info) end
 end
 
--- the one way damage lands: knockback first (it lands even through spawn protection, like the web game), then HP
-function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: boolean, kb: Vector3?, at: Vector3?): number
+-- the one way damage lands: knockback first (it lands even through spawn protection, like the web game), then HP.
+-- a shield bubble drops the whole hit, shove and all (web hurt: bubbleBlocks before knock). from = where damage with
+-- nobody behind it came from (a frag whose thrower has left). plain = straight to HP, no dome or card asked (web
+-- room.js damage(): the duck's crush and its near-the-middle damage)
+function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: boolean, kb: Vector3?, at: Vector3?, from: Vector3?, plain: boolean?): number
 	if not t.alive or not Fight.allow(by, t) then return 0 end
+	if not plain and Fight.blocks(by, t, from) then return 0 end
+	-- a reverse card up: the whole hit goes back to whoever sent it, its shove mirrored (web hurt)
+	if not plain and by and by ~= t and by.alive and Fight.reflects(by, t) then
+		t, by = by, t
+		if kb then kb = Vector3.new(-kb.X, kb.Y, -kb.Z) end
+		local r = Fight.root(t)
+		at = if r then r.Position else nil
+	end
 	if kb then Fight.knock(t, kb, wid) end
+	-- (a shove with no damage still marks who did it, so a fall now is theirs: web hurt tags every hit)
+	if by and amt <= 0 and kb then Rules.tagged(t, by, wid, now()) end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
 	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid) end end

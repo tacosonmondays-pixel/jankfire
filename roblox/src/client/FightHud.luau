@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
+local Items = require(Shared:WaitForChild("Items")) -- (the utility slot: a frag kill in the feed, G on the controls line)
 
 local T = require(script.Parent:WaitForChild("Theme"))
 local WHITE, BLACK = Color3.new(1, 1, 1), Color3.new(0, 0, 0)
@@ -261,7 +262,8 @@ local feedN = 0
 -- a line: who  | weapon  who (your own name in amber). the weapon's colour is the small chip before its name
 function H.feed(killer: string?, wid: string, victim: string, suffix: string?)
 	feedN += 1
-	local w = Weapons.list[wid]
+	local it = Items.list[wid]
+	local w: any = Weapons.list[wid] or (if it then { name = it.name, color = it.feed or it.color } else nil)
 	local row = T.new("Frame", {
 		Name = "Line", LayoutOrder = feedN, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
 		AutomaticSize = Enum.AutomaticSize.X, Size = UDim2.fromOffset(0, 30),
@@ -445,6 +447,8 @@ if hint then
 		-- (each key in white, what it does in grey)
 		local function key(k: string, what: string) table.insert(parts, ('<font color="%s"><b>%s</b></font> %s'):format(T.hex(T.TEXT), k, what)) end
 		for i, id in ids do key(tostring(i), if WL[id] then WL[id].name else id) end
+		local item = Items.list[lp:GetAttribute("Item") :: any]
+		if item and item.live then key("G", string.lower(item.name)) end
 		for _, p in { { "L", "loadout" }, { "LMB", "fire" }, { "RMB", "aim / parry" }, { "R", "reload" }, { "shift", "run" }, { "C", "slide" }, { "hold E", "grapple" }, { "V", "camera" } } do
 			key(p[1], p[2])
 		end
@@ -453,6 +457,7 @@ if hint then
 	end
 	keysLine()
 	lp:GetAttributeChangedSignal("Loadout"):Connect(keysLine)
+	lp:GetAttributeChangedSignal("Item"):Connect(keysLine)
 end
 
 return H

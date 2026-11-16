@@ -185,6 +185,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 		st.speedMul = Body.speedMul -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
 	end
+	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)
 	if event == "grappleJump" then
 		dropRope(); GrappleRemote:FireServer("release")
 		Hud.callout("GRAPPLE JUMP", 0.6)

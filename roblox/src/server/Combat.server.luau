@@ -410,6 +410,7 @@ end)
 require(script.Parent:WaitForChild("Matches")).init(Fight) -- the hub, its pads and the matches (before anyone spawns)
 Dummies.init(Fight, applyHitscan)
 require(script.Parent:WaitForChild("RangeTest")).init(Fight) -- Cardboard Carl's: the pop-up target lane in the training hall
-require(script.Parent:WaitForChild("Loadout")).init(Fight) -- keys 1 2 3 + wraps, saved (before anyone spawns)
+require(script.Parent:WaitForChild("Utility")).init(Fight) -- the item on G: charges, throws, blasts, domes, clouds, the medkit
+require(script.Parent:WaitForChild("Loadout")).init(Fight) -- keys 1 2 3 + G + wraps, saved (before anyone spawns)
 require(script.Parent:WaitForChild("TestHook")).init(Fight, Rules, Weapons) -- Studio play tests only: ServerStorage.JankTest
 Fight.init()

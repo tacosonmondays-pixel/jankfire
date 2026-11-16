@@ -17,6 +17,9 @@ Body.hum = nil :: Humanoid?
 Body.root = nil :: BasePart?
 Body.onSlip = nil :: ((string) -> ())?
 Body.onKnock = nil :: ((Vector3) -> ())?
+-- every physics step, after the movement maths, before the velocity is applied: (your movement state, your chest,
+-- dt). the rubber duck's black hole eats your momentum here (Utility.client.luau)
+Body.onStep = nil :: ((any, Vector3, number) -> ())?
 -- how fast you run right now, x the usual (Arsenal sets it: the gun in your hands, and slower down the sights)
 Body.speedMul = 1
 local slipToken = 0

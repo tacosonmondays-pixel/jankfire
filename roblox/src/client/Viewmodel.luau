@@ -24,6 +24,9 @@ VM.wid = ""
 VM.model = nil :: Model?
 VM.hitStop = 0
 VM.parts = nil :: GunParts.State?
+-- the utility slot (Utility.client.luau) borrows the off hand while an item is used: a frame in the world for the
+-- fist (Y up through it), how far the hand has gone there (0 to 1), and whether it's held from under. nil = no item
+VM.offHook = nil :: (() -> (CFrame?, number, boolean))?
 
 local camera = workspace.CurrentCamera
 local clip: { name: string, t: number, fired: { [number]: boolean }, rate: number? }? = nil
@@ -540,6 +543,14 @@ function VM.update(dt: number, c: Ctx)
 	-- your arms, last: they read where the magazine, the pump and the props are this frame
 	if armsOn then
 		local to, mix, under = offHand(m, m.PrimaryPart)
+		local hook = VM.offHook
+		if hook then
+			local f2, m2, u2 = hook()
+			if f2 and m2 > 0 then
+				if to and mix > 0 then to, mix = to:Lerp(f2, m2), 1 else to, mix = f2, m2 end
+				if m2 > 0.5 then under = u2 end
+			end
+		end
 		AvatarArms.override(m, "Left", to, mix, under)
 		AvatarArms.aim(m, camera.CFrame)
 	end

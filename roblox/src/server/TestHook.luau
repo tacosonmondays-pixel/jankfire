@@ -9,6 +9,8 @@
 --   T:Invoke("me", player)    -> { hp, alive, held, ammo = { smg = 45 }, chain, aiming, kills }
 --   T:Invoke("all")           -> { { name, kind, hp, alive, pos } ... }
 --   T:Invoke("hp", "Dummy", 100)  -> sets a fighter's HP by name (a dummy that must survive a volley)
+--   T:Invoke("item", player, "frag") -> gives this life that item with full charges (nil: just read) and returns the
+--     server's numbers: { item, n, next, heal, hp, projs, bubbles, clouds }
 local RunService = game:GetService("RunService")
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -44,6 +46,12 @@ function TestHook.init(Fight: any, Rules: any, Weapons: any)
 				table.insert(out, { name = f.name, kind = f.kind, hp = f.hp, alive = f.alive, pos = if r then r.Position else nil })
 			end
 			return out
+		elseif op == "item" then
+			local f = Fight.byPlayer[a]
+			if not f then return nil end
+			return require(script.Parent:WaitForChild("Utility")).test(f, if type(b) == "string" then b else nil)
+		elseif op == "smoke" then -- (a, b: two points) does a smoke cloud stand between them
+			return Fight.smokeBlocks(a, b)
 		elseif op == "hp" then
 			for _, f in Fight.all do
 				if f.name == a and f.alive and type(b) == "number" then f.hp = b; Fight.syncHp(f); return true end

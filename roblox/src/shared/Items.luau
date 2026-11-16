@@ -1,0 +1,227 @@
+--!strict
+-- the utility slot (key G): every item in the web game (WEAPONS.md "Phase 2: ITEMS", "Items basics"), with the web
+-- game's charges and recharge times exactly (the final values, after shared/weapons.js:570 gave the six gadgets
+-- longer clocks and `carry`), and the numbers each one runs on. distances, speeds and accelerations in studs (x3 from
+-- metres); times, damage, rates, counts and angles as they are. the server (Utility.luau) and your client
+-- (Utility.client.luau) both read this. live = playable on roblox today (the rest are on the loadout screen as
+-- "coming soon"); the batch they arrived in is in roblox/docs/BATCH-ITEMS.md
+local S = 3
+local Items = {}
+Items.S = S
+
+-- the loadout screen's order (web ITEM_ORDER, shared/weapons.js:368, plus radar and laptop pushed after it)
+Items.ORDER = { "frag", "medkit", "bubble", "duck", "smoke", "popper", "reverse", "wand", "camera", "quiz", "nvg", "radar", "laptop" }
+Items.DEFAULT = "frag" -- (web DEFAULT_LOADOUT.item)
+
+Items.SPAM = 0.4 -- s between two uses the server accepts (web room.js useItem: 400 ms; the client waits 420)
+Items.SPAM_CLIENT = 0.42
+Items.EYE = 4 * S -- a claimed throw point must be this close to the server's eye (and in clear sight of it), else the eye is used
+Items.SWAP = 5.25 -- s into a life a new pick still lands at once (web selectItem: 5 s + a round trip, max 1 s)
+Items.THROW = 0.7 * S -- thrown items leave this far along your look from the throw point (web makeProj call)
+
+local function hex(h: string): Color3 return Color3.fromHex(h) end
+
+export type Item = {
+	id: string, name: string, color: Color3, desc: string, charges: number, recharge: number, carry: boolean?,
+	keep: boolean?, live: boolean, proj: string?, feed: Color3?,
+	heal: number?, healRate: number?, healMax: number?, -- the medkit
+	dur: number?, r: number?, up: number?, -- the shield bubble (dome) and the smoke (cloud)
+}
+-- charges = the most you hold, recharge = seconds per charge (one comes back each time, until full). carry = a gadget:
+-- its count and clock survive dying and swapping items. everything else is full again when you respawn
+Items.list = {
+	frag = { id = "frag", name = "Frag Grenade", color = hex("9ab04a"), feed = hex("7a8a3a"), charges = 2, recharge = 18, live = true, proj = "frag",
+		desc = "Bounces, goes off 2.2 s after it leaves your hand. Knocks everyone near it flying, you too (you take no damage)." },
+	medkit = { id = "medkit", name = "Medkit", color = hex("ff4f4f"), charges = 2, recharge = 20, live = true,
+		heal = 45, healRate = 26, healMax = 100,
+		desc = "Heals 45 over under two seconds, never past full. Keeps going while you're shot. Carry two." },
+	bubble = { id = "bubble", name = "Shield Bubble", color = hex("4fd8ff"), charges = 1, recharge = 28, live = true,
+		dur = 7, r = 4.4 * S, up = 1 * S,
+		desc = "A dome for 7 s where you stand. Nothing from outside it can hurt anyone inside, enemies included." },
+	duck = { id = "duck", name = "Rubber Duck", color = hex("ffd23b"), charges = 1, recharge = 20, live = false, proj = "duck",
+		desc = "Homes in and sticks to an enemy. The black hole opens on them and follows them: their friends get dragged in, speed gets eaten, ropes snap. Then it pops." },
+	smoke = { id = "smoke", name = "Smoke Bomb", color = hex("9aa0a8"), charges = 3, recharge = 14, live = true, proj = "smokegren",
+		dur = 10, r = 6.5 * S,
+		desc = "A thick cloud nobody can see through for 10 s." },
+	popper = { id = "popper", name = "Party Popper", color = hex("ff6bd0"), charges = 2, recharge = 9, live = false,
+		desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes." },
+	reverse = { id = "reverse", name = "Reverse Card", color = hex("ff3b3b"), charges = 1, recharge = 22, live = false,
+		desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it." },
+	wand = { id = "wand", name = "Bubble Wand", color = hex("9fe8ff"), charges = 2, recharge = 32, carry = true, live = false,
+		desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s, then pops and drops them. Over the void, that's your kill." },
+	camera = { id = "camera", name = "Instant Camera", color = hex("c9a7ff"), charges = 1, recharge = 42, carry = true, live = false,
+		desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it." },
+	quiz = { id = "quiz", name = "Pop Quiz", color = hex("7fffd4"), charges = 2, recharge = 40, carry = true, live = false,
+		desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield." },
+	nvg = { id = "nvg", name = "Night Vision Goggles", color = hex("3dff8a"), charges = 2, recharge = 28, carry = true, keep = true, live = false,
+		desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see." },
+	radar = { id = "radar", name = "Speed Trap", color = hex("2e7bff"), charges = 2, recharge = 32, carry = true, live = false,
+		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot." },
+	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = false,
+		desc = "Open it at someone. Their screen fills with pop-up ads for 7 s. They can close them. There are a lot." },
+} :: { [string]: Item }
+
+-- the thrown ones (web shared/weapons.js WEAPONS.frag :262, smokegren :264): speed along your look, + up, + this
+-- share of your own velocity; gravity, radius, how much of the speed into a surface comes back (no friction: what
+-- runs along a surface keeps going, like the web game), the fuse from the throw, the most it lives
+export type Proj = {
+	speed: number, up: number, inherit: number, grav: number, r: number, bounce: number, fuse: number, life: number,
+	radius: number?, dmg: number?, kb: number?, kbUp: number?,
+}
+Items.PROJ = {
+	-- the frag's blast (room.js explodeAt): everyone within radius of the blast, through walls (web rule), takes
+	-- dmg x (0.3 + 0.7 f) and a shove of kb x (0.4 + 0.6 f) away from it + kbUp x f up, f = 1 - dist / radius.
+	-- the thrower: no damage, the whole shove (frag jumps)
+	frag = { speed = 24 * S, up = 3 * S, inherit = 0.35, grav = 22 * S, r = 0.15 * S, bounce = 0.42, fuse = 2.2, life = 6,
+		radius = 7.5 * S, dmg = 105, kb = 34 * S, kbUp = 6 * S },
+	smokegren = { speed = 22 * S, up = 3 * S, inherit = 0.35, grav = 22 * S, r = 0.15 * S, bounce = 0.35, fuse = 1.3, life = 5 },
+	-- the rubber duck (WEAPONS.duck :247): the fuse is when the hole opens where it is if it hasn't stuck to anyone
+	duck = { speed = 22 * S, up = 3 * S, inherit = 0.35, grav = 22 * S, r = 0.3 * S, bounce = 0.45, fuse = 1.0, life = 6 },
+} :: { [string]: Proj }
+-- the duck's homing, sticking and black hole (WEAPONS.duck, room.js duckFly / makeHole / tickHoles, player.js holeEat):
+-- homes on the nearest enemy within homeR inside a cone (cos homeCos) of its flight, in sight, turning at most turn
+-- rad/s, while faster than minSpeed. touching one (its radius + pad against their boxes) sticks: the hole opens ON them
+-- stick s later and rides their middle. the hole lives holeTime s; every 0.1 s everyone within holeR is pulled toward
+-- its middle by (pull (1 - d/R) + push0) x 0.1 x min(1, d/ramp) + lift x min(1, d/ramp) up, the one it's stuck to
+-- takes stuckDmg, anyone within near takes nearDmg; then it pops (blastR, blastKb x (0.4 + 0.6 f) + blastUp x f,
+-- blastDmg x f; the thrower: the shove, no damage). inside its radius your momentum is eaten (drag /s, x onDrag if
+-- it's stuck to you) and a rope within snapR snaps
+Items.DUCK = {
+	homeR = 25 * S, homeCos = 0.5, turn = 3, minSpeed = 4 * S, pad = 0.1 * S, stick = 0.3,
+	holeTime = 3, holeR = 15 * S, pull = 70 * S, push0 = 8 * S, lift = 1 * S, ramp = 1.5 * S, pulse = 0.1,
+	stuckDmg = 1, near = 2 * S, nearDmg = 3,
+	blastR = 9 * S, blastKb = 30 * S, blastUp = 8 * S, blastDmg = 45,
+	drag = 6, onDrag = 0.5, snapR = 6 * S,
+}
+Items.CENTRE = 0.9 * S -- a person's centre over their feet (web room.js center): what a blast measures to
+-- the party popper (web WEAPONS.popper :237): everyone within range of your eye and inside the cone of your look (any
+-- angle that close: 1.5 m), in sight, gets kb along you -> them (feet to feet) + kbUp; you fly back recoil along
+-- your look + lift up. no damage. the cone is judged against where each target is and was a moment ago (lag)
+Items.POPPER = { range = 9 * S, cone = 0.6, close = 1.5 * S, kb = 50 * S, kbUp = 12 * S, recoil = 17 * S, lift = 5 * S }
+-- the reverse card (web WEAPONS.reverse :242): for dur s every hit aimed at you goes back to whoever sent it
+Items.REVERSE = { dur = 3 }
+Items.SHAKE = 25 * S -- the screen shakes 1 - dist / this on a blast (web main.js:1932)
+
+-- ------------------------------------------------------------------ charges (web room.js itemCharges)
+export type Ic = { i: string, n: number, next: number } -- next: when the next charge comes back (0 = the clock is stopped)
+function Items.fresh(id: string): Ic
+	return { i = id, n = Items.list[id].charges, next = 0 }
+end
+-- bring back every charge whose time has come
+function Items.tick(c: Ic, now: number)
+	local it = Items.list[c.i]
+	while c.n < it.charges and c.next > 0 and now >= c.next do
+		c.n += 1
+		c.next = if c.n < it.charges then c.next + it.recharge else 0
+	end
+end
+-- use one: the clock starts if it wasn't running
+function Items.spend(c: Ic, now: number)
+	c.n -= 1
+	if c.next == 0 then c.next = now + Items.list[c.i].recharge end
+end
+-- swapping item mid-life (web selectItem): what you already used this life stays used
+function Items.swapped(old: Ic, id: string, now: number): Ic
+	local used = Items.list[old.i].charges - old.n
+	local it = Items.list[id]
+	return { i = id, n = math.max(0, it.charges - used), next = if used > 0 then now + it.recharge else 0 }
+end
+
+-- ------------------------------------------------------------------ the shield bubble (room.js inBubble / bubbleBlocks)
+export type Bubble = { id: number, p: Vector3, r: number, untilT: number }
+function Items.inBubble(b: Bubble, feet: Vector3): boolean
+	return (feet + Vector3.new(0, Items.list.bubble.up :: number, 0) - b.p).Magnitude < b.r
+end
+-- is a hit on someone whose feet are at `tFeet` dropped? the attacker's feet (nil = damage with nobody behind it: then
+-- `from`, where it came from). anyone inside a dome is safe from anyone outside it; inside the same one, fair game
+function Items.blocks(bubbles: { Bubble }, tFeet: Vector3, aFeet: Vector3?, from: Vector3?): boolean
+	if not aFeet and not from then return false end
+	for _, b in bubbles do
+		if not Items.inBubble(b, tFeet) then continue end
+		if aFeet then
+			if not Items.inBubble(b, aFeet) then return true end
+		elseif ((from :: Vector3) - b.p).Magnitude >= b.r then
+			return true
+		end
+	end
+	return false
+end
+
+-- ------------------------------------------------------------------ smoke (room.js smokeBlocks)
+-- does a cloud stand in the sight line a -> c (the line's closest point to a cloud's centre is inside it)
+export type Cloud = { id: number, p: Vector3, r: number, untilT: number }
+function Items.smokeBlocks(clouds: { Cloud }, a: Vector3, c: Vector3): boolean
+	local d = c - a
+	local l2 = d:Dot(d)
+	if l2 < 1e-9 then l2 = 1 end
+	for _, s in clouds do
+		local k = math.clamp((s.p - a):Dot(d) / l2, 0, 1)
+		if (a + d * k - s.p).Magnitude < s.r then return true end
+	end
+	return false
+end
+
+-- ------------------------------------------------------------------ flight (web shared/physics.js stepProjectile)
+-- one step of a thrown item. cast(origin, radius, move) -> the distance the ball travels before it touches the map and
+-- the surface normal there, or nil. a touch keeps the speed along the surface and sends back `bounce` of the speed into
+-- it (the web game does this per axis against boxes; against Roblox's map it is done along the surface's normal).
+-- returns how hard it hit something this step (the speed it had into the surface; 0 = it touched nothing, a few
+-- studs/s = it is rolling along a floor)
+export type Flying = { p: Vector3, v: Vector3, r: number, bounce: number, grav: number }
+function Items.step(pr: Flying, dt: number, cast: (Vector3, number, Vector3) -> (number?, Vector3?)): number
+	pr.v -= Vector3.new(0, pr.grav * dt, 0)
+	local left = dt
+	local hit = 0
+	for _ = 1, 4 do
+		local move = pr.v * left
+		local len = move.Magnitude
+		if len < 1e-5 then break end
+		local d, n = cast(pr.p, pr.r, move)
+		if not d or not n then pr.p += move; break end
+		-- to the touch, a hair back off the surface (a sphere cast can't see a surface it starts inside)
+		pr.p += move.Unit * math.max(0, d - 0.02) + n * 0.02
+		local vn = pr.v:Dot(n)
+		if vn < 0 then
+			hit = math.max(hit, -vn)
+			pr.v -= n * (vn * (1 + pr.bounce))
+		end
+		left *= math.max(0, 1 - d / len)
+		if left < 1e-4 then break end
+	end
+	return hit
+end
+
+-- turn a velocity toward `to` by at most maxA radians, keeping its speed (web shared/physics.js steer)
+function Items.steer(v: Vector3, to: Vector3, maxA: number): Vector3
+	local sp, tl = v.Magnitude, to.Magnitude
+	if sp < 1e-6 or tl < 1e-6 then return v end
+	local a0, b = v / sp, to / tl
+	local ang = math.acos(math.clamp(a0:Dot(b), -1, 1))
+	if ang < 1e-4 then return v end
+	local a, s = math.min(ang, maxA), math.sin(ang)
+	if s < 1e-4 then return v end -- (flying straight away: no defined way to turn)
+	local k0, k1 = math.sin(ang - a) / s, math.sin(a) / s
+	return (a0 * k0 + b * k1) * sp
+end
+
+-- a black hole eats momentum (web shared/physics.js holeDrag): within R of c, the part of your velocity NOT falling
+-- straight in decays by exp(-k f (2 - f) dt), f = 1 - d/R. `at` = your middle. returns the new velocity and the
+-- distance to c (or nil outside)
+function Items.holeDrag(at: Vector3, vel: Vector3, c: Vector3, R: number, k: number, dt: number): (Vector3, number?)
+	local to = c - at
+	local d = to.Magnitude
+	if not (d < R) then return vel, nil end
+	local f = 1 - d / R
+	local keep = math.exp(-k * f * (2 - f) * dt)
+	local u = if d > 0.5 * S then math.max(0, vel:Dot(to)) / (d * d) else 0
+	local into = to * u
+	return into + (vel - into) * keep, d
+end
+
+-- where a thrown item starts and how fast it leaves (web useItem -> makeProj): from the throw point o along the look d
+function Items.launch(k: string, o: Vector3, d: Vector3, vel: Vector3): (Vector3, Vector3)
+	local w = Items.PROJ[k]
+	return o + d * Items.THROW, d * w.speed + Vector3.new(0, w.up, 0) + vel * w.inherit
+end
+
+return Items

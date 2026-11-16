@@ -10,8 +10,10 @@ export type Wrap = { id: string, name: string, rarity: string, pal: { Color3 }, 
 
 local function hex(h: string): Color3 return Color3.fromHex(h) end
 
-Roster.SLOTS = { "primary", "secondary", "melee" }
-Roster.SLOT_NAMES = { primary = "PRIMARY", secondary = "SECONDARY", melee = "MELEE" }
+-- the fourth slot, utility, is the web game's item (key G): Shared.Items has the numbers, the rows at the end of the
+-- list below the loadout screen's words. (the item rows are kept by hand, not by gen_roster.mjs)
+Roster.SLOTS = { "primary", "secondary", "melee", "utility" }
+Roster.SLOT_NAMES = { primary = "PRIMARY", secondary = "SECONDARY", melee = "MELEE", utility = "UTILITY" }
 Roster.RARITY = {
 	free = { name = "Free", color = hex("bbbbbb") },
 	common = { name = "Common", color = hex("7dff4f") },
@@ -144,6 +146,51 @@ add({ id = "remote", slot = "secondary", name = "TV Remote", color = "ff5a8a", l
 add({ id = "lasso", slot = "secondary", name = "Lasso", color = "e0b070", live = false, gimmick = "",
 	desc = "Hold to spin the loop, let go to throw. Catch someone and they swing on your rope: wheel (or R / F) reels it in and out. Long rope, shake them side to side, walk backwards and flick round: click to let go and they fly. Walls and floors hurt.",
 	stats = { { label = "DAMAGE", text = "??", bar = 0.15 }, { label = "FIRE RATE", text = "hold", bar = 1 }, { label = "RANGE", text = "lobbed", bar = 0.3 }, { label = "MAG", text = "n/a", bar = 1 } } })
+
+-- ---- the utility slot (key G): the web game's 13 items (shared/weapons.js ITEMS, charges after the gadget override at
+-- :570). live = playable on roblox today (roblox/docs/BATCH-ITEMS.md); the stats are the web numbers
+local function st(a: string, at: string, ab: number, b: string, bt: string, bb: number, c: string, ct: string, cb: number, d: string, dt: string, db: number): { Stat }
+	return { { label = a, text = at, bar = ab }, { label = b, text = bt, bar = bb }, { label = c, text = ct, bar = cb }, { label = d, text = dt, bar = db } }
+end
+add({ id = "frag", slot = "utility", name = "Frag Grenade", color = "9ab04a", live = true, gimmick = "bounces off walls, goes off 2.2 s after it leaves your hand. the blast throws everyone near it, you too: frag jumps.",
+	desc = "Bounces, goes off after 2.2 s. Up to 105 damage close in, and the blast knocks everyone near it flying. You take no damage from your own, just the shove.",
+	stats = st("CHARGES", "2", 1, "RECHARGE", "18 s each", 0.43, "DAMAGE", "105 max", 0.88, "BLAST", "7.5 m", 0.5) })
+add({ id = "medkit", slot = "utility", name = "Medkit", color = "ff4f4f", live = true, gimmick = "45 HP back in under two seconds, never past 100. it keeps going while you're shot.",
+	desc = "Heals 45 over under two seconds. Never past full health. Carry two.",
+	stats = st("CHARGES", "2", 1, "RECHARGE", "20 s each", 0.48, "HEALS", "45 HP", 0.45, "TIME", "1.7 s", 0.3) })
+add({ id = "bubble", slot = "utility", name = "Shield Bubble", color = "4fd8ff", live = true, gimmick = "a dome where you stand for 7 s. nothing from outside it hurts anyone inside, enemies too. inside the same dome it's fair game.",
+	desc = "A dome for 7 s. Nothing from outside can hurt anyone inside.",
+	stats = st("CHARGES", "1", 0.5, "RECHARGE", "28 s", 0.67, "LASTS", "7 s", 0.47, "SIZE", "4.4 m across the middle", 0.3) })
+add({ id = "duck", slot = "utility", name = "Rubber Duck", color = "ffd23b", live = false, gimmick = "",
+	desc = "Homes in and sticks to an enemy. The black hole opens on them and follows them: their friends get dragged in, speed gets eaten, ropes snap. Then it pops.",
+	stats = st("CHARGES", "1", 0.5, "RECHARGE", "20 s", 0.48, "PULL", "15 m for 3 s", 0.6, "POP", "45 damage", 0.38) })
+add({ id = "smoke", slot = "utility", name = "Smoke Bomb", color = "9aa0a8", live = true, gimmick = "pops 1.3 s after the throw into a thick cloud for 10 s. nobody sees through it, bots included.",
+	desc = "A thick cloud nobody can see through for 10 s.",
+	stats = st("CHARGES", "3", 1, "RECHARGE", "14 s each", 0.33, "LASTS", "10 s", 0.67, "CLOUD", "6.5 m", 0.45) })
+add({ id = "popper", slot = "utility", name = "Party Popper", color = "ff6bd0", live = false, gimmick = "",
+	desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes.",
+	stats = st("CHARGES", "2", 1, "RECHARGE", "9 s each", 0.21, "DAMAGE", "0", 0.02, "SHOVE", "9 m cone", 0.6) })
+add({ id = "reverse", slot = "utility", name = "Reverse Card", color = "ff3b3b", live = false, gimmick = "",
+	desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it.",
+	stats = st("CHARGES", "1", 0.5, "RECHARGE", "22 s", 0.52, "LASTS", "3 s", 0.2, "SENDS BACK", "everything", 1) })
+add({ id = "wand", slot = "utility", name = "Bubble Wand", color = "9fe8ff", live = false, gimmick = "",
+	desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s (no moving, no shooting), then pops and drops them. Over the void, that's your kill.",
+	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "32 s each", 0.76, "SEALS", "5 s", 0.33, "BUBBLES", "4 a blow", 0.4) })
+add({ id = "camera", slot = "utility", name = "Instant Camera", color = "c9a7ff", live = false, gimmick = "",
+	desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it.",
+	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "42 s", 1, "FRAME", "20 s", 0.6, "TELEFRAG", "yes", 1) })
+add({ id = "quiz", slot = "utility", name = "Pop Quiz", color = "7fffd4", live = false, gimmick = "",
+	desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield.",
+	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "40 s each", 0.95, "ANSWER", "6 s", 0.4, "WRONG", "dead", 1) })
+add({ id = "nvg", slot = "utility", name = "Night Vision Goggles", color = "3dff8a", live = false, gimmick = "",
+	desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see.",
+	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "28 s each", 0.67, "FLASH", "34 m", 0.7, "BLIND", "up to 3.2 s", 0.5) })
+add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", live = false, gimmick = "",
+	desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot.",
+	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "32 s each", 0.76, "LIMIT", "100 km/h", 0.5, "JAIL", "3.5 s", 0.35) })
+add({ id = "laptop", slot = "utility", name = "Laptop", color = "4fd8ff", live = false, gimmick = "",
+	desc = "Open it at someone. Their screen fills with pop-up ads for 7 s. They can close them. There are a lot.",
+	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "42 s", 1, "ADS", "5 for 7 s", 0.5, "RANGE", "45 m", 0.6) })
 
 Roster.wraps = {} :: { Wrap }
 Roster.wrapById = {} :: { [string]: Wrap }

@@ -1,0 +1,134 @@
+{
+ "unit": 10.0,
+ "items": {
+  "frag": {
+   "lo": [
+    -0.1035,
+    -0.108,
+    -0.1035
+   ],
+   "hi": [
+    0.1035,
+    0.176,
+    0.1035
+   ],
+   "tris": 6600,
+   "pieces": [
+    "body__body",
+    "band__band",
+    "collar__band",
+    "neck__dark",
+    "fuse__dark",
+    "spoon__steel",
+    "ring__steel",
+    "pin__steel",
+    "lamp__lamp"
+   ],
+   "grip": [
+    0,
+    0,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  },
+  "smoke": {
+   "lo": [
+    -0.0717,
+    -0.118,
+    -0.0717
+   ],
+   "hi": [
+    0.0896,
+    0.184,
+    0.0717
+   ],
+   "tris": 7712,
+   "pieces": [
+    "body__body",
+    "rim__dark",
+    "band__label",
+    "cap__dark",
+    "neck__dark",
+    "fuse__dark",
+    "spoon__steel",
+    "ring__steel",
+    "pin__steel",
+    "lamp__lamp"
+   ],
+   "grip": [
+    0,
+    -0.01,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  },
+  "medkit": {
+   "lo": [
+    -0.143,
+    -0.092,
+    -0.064
+   ],
+   "hi": [
+    0.143,
+    0.138,
+    0.064
+   ],
+   "tris": 1196,
+   "pieces": [
+    "body__body",
+    "band__band",
+    "latch__dark",
+    "post__steel",
+    "grip__dark"
+   ],
+   "grip": [
+    -0.142,
+    0,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  },
+  "bubble": {
+   "lo": [
+    -0.0846,
+    -0.055,
+    -0.0846
+   ],
+   "hi": [
+    0.09,
+    0.064,
+    0.0846
+   ],
+   "tris": 11432,
+   "pieces": [
+    "body__body",
+    "grip__grip",
+    "rim__steel",
+    "lens__lens",
+    "button__steel"
+   ],
+   "grip": [
+    0,
+    -0.01,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  }
+ }
+}

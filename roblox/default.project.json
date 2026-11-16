@@ -67,6 +67,12 @@
         },
         "Loadout": {
           "$className": "RemoteFunction"
+        },
+        "Item": {
+          "$className": "RemoteEvent"
+        },
+        "ItemFx": {
+          "$className": "RemoteEvent"
         }
       },
       "Match": {

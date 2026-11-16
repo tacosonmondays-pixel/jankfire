@@ -1,5 +1,6 @@
 --!strict
--- the loadout (the screen on L / the hub button): which weapon sits on keys 1 2 3 and each weapon's wrap. the server
+-- the loadout (the screen on L / the hub button): which weapon sits on keys 1 2 3, the item on G (the utility slot,
+-- Utility.luau) and each weapon's wrap. the server
 -- owns it. it takes only weapons that are on roblox today (Roster live), each in its own slot, and wraps from the list;
 -- it keeps them in a DataStore (pcall + retries; nothing is written for a player whose load failed, so a hiccup can't
 -- wipe a save); new picks wait for your next spawn (Rules.arm takes nextLoadout) and never land mid-round. in the hub
@@ -17,12 +18,13 @@ local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
+local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
 local Loadout = {}
 local STORE, VERSION = "JankfireLoadout_v1", 1
-local DEFAULT = { primary = "redline", secondary = "marbles", melee = "katana" }
+local DEFAULT = { primary = "redline", secondary = "marbles", melee = "katana", utility = "frag" }
 local SAVE_DELAY = 6 -- s after the last change (one write per burst of clicking)
 
 type Data = {
@@ -39,12 +41,18 @@ end
 local function list(d: Data): { string }
 	return { d.pick.primary, d.pick.secondary, d.pick.melee }
 end
+-- every slot in Roster.SLOTS order (what the loadout screen reads): the three weapons, then the item
+local function slots(d: Data): { string }
+	local out = {}
+	for _, slot in Roster.SLOTS do table.insert(out, d.pick[slot] or DEFAULT[slot]) end
+	return out
+end
 
 -- ------------------------------------------------------------------ what the clients see (player attributes)
 local function publish(p: Player)
 	local d = data[p]
 	if not d then return end
-	p:SetAttribute("LoadoutNext", table.concat(list(d), ","))
+	p:SetAttribute("LoadoutNext", table.concat(slots(d), ","))
 	local parts = {}
 	for wid, w in d.wraps do table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end
 	table.sort(parts)
@@ -99,6 +107,8 @@ local function rearmInHub(p: Player): boolean
 	local f = Fight and Fight.byPlayer[p]
 	if not f or not f.alive or p:GetAttribute("Zone") == "match" then return false end
 	Rules.arm(f, os.clock())
+	local d = data[p]
+	if d then Utility.pick(f, d.pick.utility, true) end -- (the item too, charges used this life stay used)
 	Fight.showWeapon(f)
 	armed(f)
 	return true
@@ -108,7 +118,10 @@ end
 local function pushNext(p: Player)
 	local d = data[p]
 	local f = Fight and Fight.byPlayer[p]
-	if d and f then f.nextLoadout = list(d) end
+	if d and f then
+		f.nextLoadout = list(d)
+		Utility.pick(f, d.pick.utility) -- (in at once while you're dead or in the first 5 s of a life, like the web game)
+	end
 end
 
 -- ------------------------------------------------------------------ the DataStore
@@ -222,6 +235,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if type(a) ~= "string" or type(b) ~= "string" or type(c) ~= "string" then return false, "nope" end
 		local e = Roster.byId[a]
 		if not e or not e.live then return false, "no paint on vapourware" end
+		if e.slot == "utility" then return false, "items don't take paint" end
 		if not Roster.wrapById[b] or not table.find(Roster.MODES, c) then return false, "that wrap doesn't exist" end
 		if b == "default" and c == "normal" then d.wraps[a] = nil else d.wraps[a] = { id = b, mode = c } end
 		changed(p)
@@ -234,6 +248,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if type(a) ~= "string" or type(b) ~= "string" then return false, "nope" end
 		local e = Roster.byId[a]
 		if not e or not e.live then return false, "no hats on vapourware" end
+		if e.slot == "utility" then return false, "items don't wear hats" end
 		if not GunHats.valid(b) then return false, "that hat doesn't exist" end
 		local was = d.hats[a]
 		d.hats[a] = if b == "none" then nil else b
@@ -249,7 +264,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not f then return false, "nope" end
 		local nxt = list(d)
 		local cur = Rules.loadoutOf(f)
-		if cur[1] == nxt[1] and cur[2] == nxt[2] and cur[3] == nxt[3] then return true, "same" end
+		if cur[1] == nxt[1] and cur[2] == nxt[2] and cur[3] == nxt[3] and Utility.itemOf(f) == d.pick.utility then return true, "same" end
 		if rearmInHub(p) then return true, "armed" end
 		return true, "next spawn"
 	end

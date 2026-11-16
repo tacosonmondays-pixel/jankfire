@@ -11,6 +11,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
+local Items = require(Shared:WaitForChild("Items")) -- (a death by frag names the frag)
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Anims = require(Shared:WaitForChild("Anims")) :: any
 local Hud = require(script.Parent:WaitForChild("Hud"))
@@ -642,7 +643,8 @@ remote("Kill").OnClientEvent:Connect(function(k: any)
 	end
 	if k.vid == me.UserId then
 		Sfx.play("death")
-		local wn = if W[wid] then W[wid].name else wid
+		local item = Items.list[wid]
+		local wn = if W[wid] then W[wid].name elseif item then item.name else wid
 		local killer = if type(k.k) == "string" then k.k else nil
 		H.dead(if k.w == "void" then (if killer then ("%s knocked you into the smog  (%s)"):format(killer, wn) else "you fell into the smog")
 			elseif killer then ("killed by %s  (%s)"):format(killer, wn) else "you died")
