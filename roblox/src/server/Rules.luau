@@ -36,6 +36,8 @@ export type Fighter = {
 	lastShot: { [string]: number }, shotLog: { [string]: { number } },
 	lev: { to: Fighter, k: number, t: number }?, bst: { to: Fighter?, k: number, t0: number }?,
 	qsT: number?, aimT: number?,
+	-- a range Carl (RangeTest): the one runner who may hurt him (anything else that is not nil: nobody may)
+	onlyFor: any?,
 }
 
 local nextId = 0

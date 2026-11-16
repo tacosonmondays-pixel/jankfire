@@ -472,7 +472,6 @@ local function bay(beacon)
 		{ "THE BLOCKS  ·  AHEAD", P.pale, "B", 0.62 },
 		{ "THE CLIMB  ·  LEFT", P.pale, "B", 0.62 },
 		{ "THE HILL  ·  AT THE BACK", P.pale, "B", 0.62 },
-		{ "the way out is the door marked exit.", P.grey, "S", 0.42 },
 	}, 12, 9, -26, 249.6, -8331, V3(-26, 0, -8000), { plate = P.board, thick = 0.3 })
 	for _, x in { -30.5, -21.5 } do post(x, -8331.3, G + 4, 245.2) end
 end
@@ -488,6 +487,14 @@ L.RIDGE = { -- x, z, length (x), height x 2, depth, yaw, colour key: long flatte
 	{ -400, -8700, 240, 300, 300, 55, "ridge" }, { 400, -8700, 240, 300, 300, -55, "ridge" },
 	{ -350, -8500, 200, 220, 280, 15, "ridgeHi" }, { 350, -8500, 200, 220, 280, -15, "ridgeHi" },
 }
+-- the trees (16 Nov, the owner: "the trees look funny outside because they're like glued to the hill, their base isn't
+-- on the ground"): each stands upright where rays down at four sides of its trunk (r x its scale out) meet the ground.
+-- its base goes `sink` under the lowest of the four, so the downhill side never shows a gap; where the ground rises more
+-- than `steep` across the trunk it moves to a flatter spot near by (or is left out), and where it rises more than half a
+-- stud a ground-coloured foot hides the seam. L.check holds every tree to it: no side over the ground, none deeper than
+-- `deep` under it
+L.TREE = { r = 0.8, sink = 0.3, steep = 1.6, deep = 2.3 }
+local function treeSides(r) return { V3(r, 0, 0), V3(-r, 0, 0), V3(0, 0, r), V3(0, 0, -r) } end
 local function land()
 	local F = L.FACE
 	ground("Ground", -200, 200, F.z1, -8760, G, C.grass, {})
@@ -507,6 +514,7 @@ local function land()
 	roll(93, -8282, 240, -8282, 52, 228)
 	roll(-232, -8250, -232, -8620, 80, 222)
 	roll(232, -8250, 232, -8620, 80, 222)
+	-- (the lumps' and berms' surfaces for the trees: they go into a folder in the place for the rays, then back)
 	-- the near ridge
 	-- (a lump is the kit's smooth sphere sized as an ellipsoid; Roblox's own sphere mesh showed straight facets against
 	-- the sky at this size, judge round 2. without the kit, the old way)
@@ -550,11 +558,58 @@ local function land()
 		return best
 	end
 	local rng = Random.new(1116)
-	local function tree(x, z, y, s)
+	local shapes = {}
+	for _, d in B.root:GetDescendants() do
+		if d:IsA("BasePart") and (d.Name == "NearRidge" or d.Name == "Berm") then table.insert(shapes, { p = d, parent = d.Parent, q = d.CanQuery }) end
+	end
+	local probeHome = Instance.new("Folder")
+	probeHome.Name = "TreeGround"; probeHome.Parent = workspace
+	for _, sh in shapes do sh.p.CanQuery = true; sh.p.Parent = probeHome end
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { probeHome }
+	local function groundAt(x, z): (number, string)
+		local w = B.at(CF(x, 0, z)).Position
+		local h = workspace:Raycast(V3(w.X, 700, w.Z), V3(0, -900, 0), rp)
+		local y, hex = -math.huge, C.grass
+		if h then y, hex = h.Position.Y, h.Instance.Color:ToHex() end
+		if math.abs(x) <= 200 and z <= F.z1 and z >= -8760 and G > y then y, hex = G, C.grass end -- (the lot's grass)
+		return y, hex
+	end
+	local function spread(x, z, r): (number, number)
+		local lo, hi = math.huge, -math.huge
+		for _, o in treeSides(r) do
+			local y = groundAt(x + o.X, z + o.Z)
+			lo, hi = math.min(lo, y), math.max(hi, y)
+		end
+		return lo, hi
+	end
+	local moved, dropped, feet = 0, 0, 0
+	local function tree(x, z, _y, s)
 		local round = rng:NextNumber() < 0.55
-		local m = B.put(if round then "tl_treeRound" else "tl_treeCone", CF(x, y, z) * CFrame.Angles(0, rng:NextNumber() * 6.28, 0),
-			{ name = "Tree", scale = s or (1.1 + rng:NextNumber() * 0.9) })
+		local yaw = rng:NextNumber() * 6.28
+		local scale = s or (1.1 + rng:NextNumber() * 0.9)
+		local r = L.TREE.r * scale
+		local lo, hi = spread(x, z, r)
+		if hi - lo > L.TREE.steep or lo == -math.huge then -- too steep here: the nearest flatter spot within 12
+			local found = false
+			for _, d in { 3, 6, 9, 12 } do
+				for k = 0, 7 do
+					local a = k * math.pi / 4
+					local nx, nz = x + d * math.cos(a), z + d * math.sin(a)
+					local l2, h2 = spread(nx, nz, r)
+					if l2 > -math.huge and h2 - l2 <= L.TREE.steep then x, z, lo, hi, found = nx, nz, l2, h2, true; break end
+				end
+				if found then break end
+			end
+			if not found then dropped += 1; return end
+			moved += 1
+		end
+		local m = B.put(if round then "tl_treeRound" else "tl_treeCone", CF(x, lo - L.TREE.sink, z) * CFrame.Angles(0, yaw, 0), { name = "Tree", scale = scale })
 		if m then m.Parent = B.root.LotScenery end
+		if hi - lo > 0.5 then
+			local _, hex = groundAt(x, z)
+			lump("TreeFoot", CF(x, lo + (hi - lo) * 0.3, z), V3(r * 4.6, (hi - lo) + 1, r * 4.6), hex)
+			feet += 1
+		end
 	end
 	for z = -8300, -8780, -17 do tree(-200 + rng:NextNumber() * 6, z + rng:NextNumber() * 6, 251.5); tree(200 - rng:NextNumber() * 6, z + rng:NextNumber() * 6, 251.5) end
 	for x = -190, 190, 17 do tree(x + rng:NextNumber() * 6, -8750 - rng:NextNumber() * 6, 251.5) end
@@ -576,11 +631,14 @@ local function land()
 	for _, t in { { -70, -8556 }, { 88, -8396 }, { 90, -8470 }, { 88, -8560 }, { -60, -8640 }, { 86, -8700 }, { -60, -8330 }, { -104, -8338 } } do
 		tree(t[1], t[2], G)
 	end
+	for _, sh in shapes do sh.p.Parent = sh.parent; sh.p.CanQuery = sh.q end
+	probeHome:Destroy()
+	B.treeNote = ("trees: %d moved to flatter ground, %d left out, %d feet"):format(moved, dropped, feet)
 end
 
 -- ---------------------------------------------------------------- the long lane (east): a roofed firing line, four rows
 -- (judge round 2: an 80-wide road lined with bollards. now walls 6 high both sides, three slate baffle frames across
--- it, stations as gates, a 30-high slate backstop with the cardboard man on it)
+-- it, stations as gates, a 30-high slate backstop)
 local LANE = { x0 = 96, x1 = 176, z = -8402 }
 local ROWS = { { 25, -8477, 241.2, { 104, 128, 152 } }, { 50, -8552, 242.6, { 114, 138, 162 } },
 	{ 75, -8627, 244.2, { 108, 132, 156 } }, { 100, -8702, 246.2, { 118, 142, 166 } } }
@@ -634,7 +692,7 @@ local function longLane()
 		blk("BaffleLintel", X0 - 6, X1 + 6, G + 22, G + 26, z - 3, z + 3, P.pier)
 		nose("BaffleNose", "x", X0 - 6, X1 + 6, G + 22, z + 3, 1)
 	end
-	-- the backstop: a slate face 30 high, a pale coping, a lit amber strip at its foot, the cardboard man on it
+	-- the backstop: a slate face 30 high, a pale coping, a lit amber strip at its foot
 	blk("Backstop", X0 - 10, X1 + 10, 234, G + 30, -8708, -8712, P.pier)
 	-- (judge round 3: the backstop's top sat just under the last baffle, so the lane ended on a panel in a frame. its
 	-- middle 40 rises to G+42 as a crown with the cardboard man on it, 24 high)
@@ -645,20 +703,8 @@ local function longLane()
 	nose("BackstopCrownCoping", "x", 116, 156, G + 42, -8708, 1.4)
 	deco("BackstopStrip", X0, X1, G, G + 0.5, -8707.6, -8707.9, P.amberGlow, { mat = NEON })
 	blk("BackstopFill", X0 - 10, X1 + 10, 234, G + 30, -8712, -8742, P.pier2)
-	-- (judge round 4: the panel's man at 24 high read as a trophy on a pedestal. this one stands on legs)
-	do
-		local mx, y0, zc = (X0 + X1) / 2, G + 14, -8707.7
-		local function piece(x, ya, yb, w) part("BackstopMan", CF(x, (ya + yb) / 2, zc), V3(w, yb - ya, 0.6), P.trim) end
-		for _, sx in { -1, 1 } do
-			piece(mx + sx * 3.35, y0, y0 + 8, 4)          -- legs
-			piece(mx + sx * 6.7, y0 + 9.5, y0 + 16.7, 2.7) -- arms
-		end
-		piece(mx, y0 + 8, y0 + 16.7, 10.7)                -- body
-		piece(mx, y0 + 16.7, y0 + 19.3, 16)               -- shoulders
-		part("BackstopMan", CF(mx, y0 + 22.7, zc) * CFrame.Angles(0, math.pi / 2, 0), V3(0.6, 8.7, 8.7), P.trim, { cyl = true }) -- head
-		part("BackstopRing", CF(mx, y0 + 12.5, -8707.2) * CFrame.Angles(0, math.pi / 2, 0), V3(0.4, 6, 6), P.slate, { cyl = true })
-		part("BackstopRing", CF(mx, y0 + 12.5, -8706.8) * CFrame.Angles(0, math.pi / 2, 0), V3(0.4, 3, 3), P.pale, { cyl = true })
-	end
+	-- (the big cardboard man painted on it went on 16 Nov, the owner: "I dont like this". the rows of Carls are the
+	-- lane's targets; the backstop is a plain wall under its crown)
 end
 
 -- ---------------------------------------------------------------- the blocks (middle): a container yard with a second level
@@ -985,7 +1031,7 @@ function L.build(b, T): string
 	local z0, z1, x0, x1, y0, y1 = L.DOOR.z - 1, T.LOT[4], T.LOT[1], T.LOT[2], 228, T.LOT[3]
 	a.Size = V3(x1 - x0, y1 - y0, math.abs(z1 - z0)); a.CFrame = B.cf((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
 	a.Parent = LOT
-	return ("the back lot: %d things, %d targets, %d slats"):format(B.count - before, #LOT.Targets:GetChildren(), #LOT.Door:GetChildren())
+	return ("the back lot: %d things, %d targets, %d slats; %s"):format(B.count - before, #LOT.Targets:GetChildren(), #LOT.Door:GetChildren(), tostring(B.treeNote))
 end
 
 -- rays from eye points on the lot to the tops of the playground's tall parts: how many the near ridge hides
@@ -1073,6 +1119,35 @@ function L.check(tg, mk): { string }
 		end
 	end
 	table.insert(out, ("long lane: counter-to-Carl lines blocked %d of %d"):format(blocked, lanes))
+	-- the trees stand on the ground: at four sides of each trunk the ground is no lower than its base (no gap under it)
+	-- and no more than L.TREE.deep over it
+	local shapes, was = {}, {}
+	for _, d in tg:GetDescendants() do
+		if d:IsA("BasePart") and (d.Name == "NearRidge" or d.Name == "Berm" or d.Name == "Ground") then table.insert(shapes, d); was[d] = d.CanQuery; d.CanQuery = true end
+	end
+	local trp = RaycastParams.new(); trp.FilterType = Enum.RaycastFilterType.Include; trp.FilterDescendantsInstances = shapes
+	local trees, gaps, deep = 0, 0, 0
+	for _, m in tg:GetDescendants() do
+		if m:IsA("Model") and m.Name == "Tree" then
+			trees += 1
+			local b = m:GetPivot().Position
+			for _, o in treeSides(L.TREE.r * m:GetScale()) do
+				local h = workspace:Raycast(V3(b.X + o.X, 700, b.Z + o.Z), V3(0, -900, 0), trp)
+				local gy = if h then h.Position.Y else -math.huge
+				if gy < b.Y - 0.05 then
+					gaps += 1
+					if gaps <= 6 then table.insert(out, ("tree over a gap at (%.0f, %.1f, %.0f): ground %.1f under a side"):format(b.X, b.Y, b.Z, gy)) end
+					break
+				elseif gy - b.Y > L.TREE.deep then
+					deep += 1
+					if deep <= 6 then table.insert(out, ("tree buried %.1f at a side at (%.0f, %.1f, %.0f)"):format(gy - b.Y, b.X, b.Y, b.Z)) end
+					break
+				end
+			end
+		end
+	end
+	for d, q in was do d.CanQuery = q end
+	table.insert(out, ("trees: %d, a gap under a side %d, deeper than %.1f at a side %d"):format(trees, gaps, L.TREE.deep, deep))
 	return out
 end
 

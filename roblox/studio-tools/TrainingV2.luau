@@ -40,7 +40,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 15
+T.PUSH = 16
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -326,8 +326,10 @@ local function new(live)
 		return p
 	end
 	-- a jump pad (Move throws you off any part with a Pad attribute: its launch velocity, world studs/s)
+	-- (the pad's arrows point along its own -Z, as HubLab found: it is turned so they point the way it throws you)
 	function B.pad(x, y, z, vel)
-		B.put("bc_jumppad", CF(x, y, z), { name = "JumpPad", scale = 0.8, color = { ff4fd8 = P.pier2, ffe14d = P.cyan, d6dbe3 = P.pier } })
+		local yaw = math.atan2(-vel.X, -vel.Z)
+		B.put("bc_jumppad", CF(x, y, z) * CFrame.Angles(0, yaw, 0), { name = "JumpPad", scale = 0.8, color = { ff4fd8 = P.pier2, ffe14d = P.cyan, d6dbe3 = P.pier } })
 		local top = B.part("Collision", "JumpPadTop", CF(x, y + 0.25, z), V3(5.4, 0.5, 5.4), P.pier, { tr = 1, noShadow = true })
 		top:SetAttribute("Pad", vel)
 		return top
@@ -476,7 +478,24 @@ local function muster(B)
 	-- a hologram in the hub's style, holding your loadout and turning slowly over a lens. TrainingDoors.client draws it
 	-- on your screen only; MirrorSpot is where it stands)
 	B.fbox(S, "Shell", "MirrorPlinth", -3.4, 3.4, MY - 1, MY + 0.6, A + WALL + 1.6, A + WALL + 6, P.pier2)
-	B.part("Shell", "MirrorPlinthNose", S * CF(0, MY + 0.3, -(A + WALL + 1.6)), V3(6.8, 0.9, 0.9), P.trim, { cyl = true })
+	-- (its front slopes down to the floor with a plate on it: your name and @handle. the bay's side walls carry two
+	-- boards: your rank, level and XP on the left, your numbers on the right. the owner, 16 Nov: "maybe at a plate with
+	-- your username and a display of stats??". TrainingDoors.client fills them on your screen only, from your own card)
+	B.fbox(S, "Shell", "MirrorPlinthToe", -3.38, 3.38, MY - 1, MY - 0.5, A + WALL + 0.45, A + WALL + 1.65, P.pier2)
+	B.part("Shell", "MirrorPlinthSlope", S * CF(0, MY + 0.04, -(A + WALL + 1.05)) * CFrame.Angles(0, math.pi, 0), V3(6.7, 1.12, 1.2), P.pier2, { wedge = true })
+	do
+		local plaque = B.part("Scenery", "MirrorPlaque", S * CF(0, MY + 0.04, -(A + WALL + 1.05)) * CFrame.Angles(math.atan2(1.12, 1.2), 0, 0) * CF(0, 0.07, 0), V3(5.8, 0.1, 1.3), P.board, { ghost = true })
+		local g = Instance.new("SurfaceGui")
+		g.Name = "Gui"; g.Face = Enum.NormalId.Top; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 60; g.LightInfluence = 0
+		g.Parent = plaque
+		for _, sd in { { -1, "MirrorBoardRank", Enum.NormalId.Right }, { 1, "MirrorBoardStats", Enum.NormalId.Left } } do
+			local x0 = sd[1] * 6.25
+			local bd = B.fbox(S, "Scenery", sd[2], math.min(x0, x0 - sd[1] * 0.35), math.max(x0, x0 - sd[1] * 0.35), MY + 2.4, MY + 9.4, A + WALL + 0.7, A + WALL + 4.5, P.board, { ghost = true })
+			local bg = Instance.new("SurfaceGui")
+			bg.Name = "Gui"; bg.Face = sd[3]; bg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; bg.PixelsPerStud = 50; bg.LightInfluence = 0
+			bg.Parent = bd
+		end
+	end
 	local lensAt = S * CF(0, MY + 0.6, -(A + WALL + 3.8))
 	B.part("Scenery", "MirrorLens", lensAt * CFrame.Angles(0, 0, math.pi / 2), V3(0.12, 4.2, 4.2), P.dark, { cyl = true, ghost = true })
 	B.part("Scenery", "MirrorLensGlow", lensAt * CF(0, 0.07, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.05, 3.2, 3.2), "8fd8ff", { cyl = true, ghost = true, mat = NEON })
@@ -489,7 +508,7 @@ local function muster(B)
 	for _, sx in { -5, 5 } do
 		B.put("bc_sconce", S * CF(sx, MY + 5.6, -(A + WALL + 5.5)), { name = "Sconce" })
 	end
-	B.text("WordMIRROR", { { "MIRROR", P.amber, "B", 1 } }, 9.2, 1.7, S * CF(0, MY + 13.2, -(A - 0.42)) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
+	-- (no MIRROR word over it since 16 Nov: the owner wants no labels for things you can already see)
 	B.fbox(S, "Shell", "BayCeilingSolid", -8, 8, MY + 13.5, MY + 16.5, A + 0.5, A + WALL + 7.5, P.ceil, { tr = 1, noShadow = true })
 	-- the board in the south-east recess: where everything is
 	local E = sideFrame(B, 3)
@@ -498,7 +517,6 @@ local function muster(B)
 		{ "DUMMIES  ·  AHEAD", P.pale, "B", 0.62 },
 		{ "RANGE  ·  RIGHT", P.pale, "B", 0.62 },
 		{ "COURSE  ·  LEFT", P.pale, "B", 0.62 },
-		{ "the dummies hit back in here.", P.grey, "S", 0.42 },
 	}, 11.6, 8, E * CF(0, MY + 6.1, -(A + 1.8)) * CFrame.Angles(0, math.pi, 0), { plate = P.board, thick = 0.25 })
 	B.put("tv_lightbar", E * CF(0, MY + 11.45, -(A + 1)), { name = "BoardLight" })
 	-- the two diagonal sides by the yard: a bay set back 2 with a warm lamp in it, tall lit panels on the piers either side
@@ -650,9 +668,11 @@ local function yard(B)
 		end
 		B.text("DistWord", { { ("%d M"):format(k * 10), P.pale, "B", 1 } }, 7, 2.6, CF(0, fy + 0.05, z + 2.2) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
 	end
-	-- the live-fire end: a hazard band across the floor at its line, LIVE FIRE on the stage, a console at the line
-	-- (hold E: the two at the back shoot at whoever is past the line for 90 s, and never past it: Dummies), a beacon
-	-- post at each end of the line that turns red while they are live
+	-- the live-fire end: a hazard band across the floor at its line, LIVE FIRE on the stage, a console where you come
+	-- into the yard (hold E: the two at the back shoot at whoever is past the line for 90 s, and never past it:
+	-- Dummies), a beacon post at each end of the line that turns red while they are live. (16 Nov, the owner: "the
+	-- button to activate the bots that fire back being all the way back is redundant": you switch it on as you come
+	-- in, then walk down to the line. it stood at the line on the west wall until then)
 	local lf = folderIn(B.root, "LiveFire")
 	lf:SetAttribute("Line", B.at(CF(0, 0, T.LIVE.line)).Position.Z)
 	local zp = Instance.new("Part")
@@ -672,11 +692,12 @@ local function yard(B)
 		lamp.Parent = lf
 		local pl = Instance.new("PointLight"); pl.Color = Color3.fromRGB(255, 70, 50); pl.Range = 16; pl.Brightness = 1.2; pl.Enabled = false; pl.Parent = lamp
 	end
-	-- the console: a slate pedestal with a sloped face and a big round button (hold E)
-	local cx, cz = -YX + 4.5, T.LIVE.line + 2.4
+	-- the console: a slate pedestal with a sloped face and a big round button (hold E), just inside the yard's door on
+	-- the east walk, its face to you as you come in
+	local cx, cz = 16.5, YZ0 - 5
 	B.blk("Shell", "ConsoleBase", cx - 1.6, cx + 1.6, Y0, Y0 + 3.2, cz + 1.2, cz - 1.2, P.slate)
-	B.part("Shell", "ConsoleTop", CF(cx, Y0 + 3.75, cz) * CFrame.Angles(math.rad(-28), 0, 0), V3(3.6, 0.8, 2.9), P.pier2)
-	local btn = B.part("Scenery", "LiveButton", CF(cx, Y0 + 4.2, cz) * CFrame.Angles(math.rad(-28), 0, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.5, 1.7, 1.7), "8a3a33", { cyl = true, ghost = true })
+	B.part("Shell", "ConsoleTop", CF(cx, Y0 + 3.75, cz) * CFrame.Angles(math.rad(28), 0, 0), V3(3.6, 0.8, 2.9), P.pier2)
+	local btn = B.part("Scenery", "LiveButton", CF(cx, Y0 + 3.75, cz) * CFrame.Angles(math.rad(28), 0, 0) * CF(0, 0.45, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.5, 1.7, 1.7), "8a3a33", { cyl = true, ghost = true })
 	btn:SetAttribute("Lamp", true)
 	btn.Parent = lf
 	local pr = Instance.new("ProximityPrompt")
@@ -823,24 +844,135 @@ local function range(B)
 		B.lamp(x, CY - 0.7, -8137, "spot", 26, 1.0, P.lampWhite, { angle = 120, shadows = x == 54 })
 		B.lamp(x, CY - 0.7, -8110, "spot", 24, 0.7, P.warm, { angle = 120 })
 	end
-	-- the back of the deck (owner, 16 Nov: "the back part of the shooting range that's super empty"): a kit counter
-	-- along the back wall with a case and an ammo crate behind each lane, a slate rack panel over it with each lane's
-	-- name, the best runs on a board over the middle, and two benches facing the lanes
-	B.blk("Shell", "KitCounter", RX0 + 3, RX1 - 3, DECK, DECK + 3.2, RZ0 - 0.1, RZ0 - 3.4, P.pier)
-	B.blk("Shell", "KitCounterTop", RX0 + 2.8, RX1 - 2.8, DECK + 3.2, DECK + 3.7, RZ0 - 0.05, RZ0 - 3.7, P.trim)
-	B.blk("Shell", "KitCounterKick", RX0 + 3.2, RX1 - 3.2, DECK + 0.03, DECK + 0.6, RZ0 - 3.3, RZ0 - 3.5, P.deep)
-	B.blk("Shell", "KitRack", RX0 + 4, RX1 - 4, DECK + 5, DECK + 10, RZ0 - 0.1, RZ0 - 0.5, P.slate)
-	for _, pl in T.PLATES do
-		local x = pl[2]
-		B.put("bc_hardcase", CF(x - 3, DECK + 3.7, RZ0 - 1.9), { name = "HardCase", color = { ["2f3b2a"] = P.pier2 } })
-		B.put("bc_ammocrate", CF(x + 3, DECK + 3.7, RZ0 - 1.9), { name = "AmmoCrate", color = { ["4a5a2c"] = "6c7466", ["3a4622"] = "5c6358" } })
-		for _, dx in { -4, 0, 4 } do B.blk("Scenery", "RackPeg", x + dx - 0.25, x + dx + 0.25, DECK + 5.8, DECK + 9.4, RZ0 - 0.5, RZ0 - 1.3, P.pier2) end
-		B.text("RackName", { { pl[3], P[pl[4]], "B", 1 } }, 6, 1.2, CF(x, DECK + 10.7, RZ0 - 0.75), { plate = P.board, thick = 0.2 })
+	-- the gun shop at the back of the deck (owner, 16 Nov: "behind the shooting range is still really bland, maybe you
+	-- can have a gun shop look behind it like this with an npc me?"): a pale slatwall let into the back wall with our
+	-- guns hung on it in rows, a glass counter with the sidearms and items under its glass, the shopkeeper behind it (the
+	-- owner's own avatar, with the shop on his prompt: ShopKeeper.server), a low dark shelf of ammo boxes with headsets
+	-- on hooks over it at the west end, a tall lit glass case at the east end, the canopy's light panels over it all.
+	-- no words, names or marks anywhere. the guns are made when the server starts (ShopKeeper.server, from
+	-- WeaponModels: always today's models) at the Pegs in Range.Shop: Gun = a weapon id or "item:<id>", Len = the
+	-- longest it may be, High = the tallest, Out = which way is out of the surface it hangs or rests on, Hook = it
+	-- hangs on two hooks. the place behind the counter is shut off (the counter, its two returns, ShopBox over them)
+	local SH = folderIn(B.root.Range, "Shop")
+	local WZ = RZ0 - 0.5 -- the slatwall's face
+	local GLASS = "d3e0e6"
+	local function glass(name, x0, x1, y0, y1, z0, z1)
+		return B.blk("Scenery", name, x0, x1, y0, y1, z0, z1, GLASS, { mat = Enum.Material.Glass, tr = 0.72, noShadow = true })
 	end
+	local function peg(gun, x, y, z, rot, len, high, out, hook)
+		local p = B.marker(SH, "Peg", x, y, z)
+		p.CFrame = B.at(CF(x, y, z) * rot)
+		p:SetAttribute("Gun", gun); p:SetAttribute("Len", len); p:SetAttribute("High", high); p:SetAttribute("Out", out)
+		if hook then p:SetAttribute("Hook", true) end
+		return p
+	end
+	local HANG = CFrame.Angles(0, math.pi / 2, 0)      -- barrel to -x, its right side to the deck
+	local LIE = CFrame.Angles(math.pi / 2, 0, 0) * HANG -- the same gun on its left side, its right side up
+	local OUT_WALL, UP = V3(0, 0, -1), V3(0, 1, 0)
+	-- the slatwall: a pale panel let into the back wall, dark slats across it, a trim along its head
+	B.blk("Shell", "Slatwall", RX0 + 1.6, 67.6, DECK + 4.4, DECK + 12.2, RZ0 + 0.1, WZ, "e4e1da")
+	for k = 0, 7 do
+		local y = DECK + 4.95 + k * 1.0
+		B.blk("Scenery", "Slat", RX0 + 1.75, 67.45, y - 0.08, y + 0.08, WZ + 0.05, WZ - 0.06, P.slate, { ghost = true })
+	end
+	B.blk("Scenery", "SlatwallTrim", RX0 + 1.4, 67.8, DECK + 12.15, DECK + 12.45, RZ0 + 0.1, WZ - 0.15, P.trim, { ghost = true })
+	-- the guns on it, three rows, the long ones up top
+	for _, row in {
+		{ DECK + 11.0, { { "sniper", 45.6, 6.0 }, { "lmg", 52.0, 5.8 }, { "dmr", 58.2, 5.6 }, { "ar", 64.2, 5.0 } } },
+		{ DECK + 8.7, { { "shotgun", 45.4, 5.4 }, { "lever", 51.6, 5.4 }, { "burst", 57.8, 5.2 }, { "autoshot", 63.9, 5.2 } } },
+		{ DECK + 6.4, { { "smg", 45.0, 4.4 }, { "redline", 50.6, 5.0 }, { "marbles", 57.2, 4.6 }, { "sawnoff", 63.2, 4.2 } } },
+	} do
+		for _, g in row[2] do peg(g[1], g[2], row[1], WZ, HANG, g[3], 1.9, OUT_WALL, true) end
+	end
+	-- the west end: a low dark shelf full of ammo boxes, two ammo cans on it, headsets on hooks over it
+	local SX0, SX1 = RX0 + 1.6, 41.2
+	B.blk("Scenery", "ShelfBack", SX0 + 0.05, SX1 - 0.05, DECK, DECK + 4.18, RZ0 + 0.05, RZ0 - 0.3, P.board)
+	for _, x in { SX0, SX1 - 0.3 } do B.blk("Scenery", "ShelfSide", x, x + 0.3, DECK, DECK + 4.2, RZ0 + 0.03, RZ0 - 2.8, P.board) end
+	B.blk("Scenery", "ShelfTop", SX0 - 0.1, SX1 + 0.1, DECK + 4.15, DECK + 4.4, RZ0 + 0.02, RZ0 - 2.95, P.board)
+	local BOX = { "b49a7a", "8f9299", "6c7466", "c8bdae", "7d8088", "a0835f" }
+	local WIDE = { 1.3, 1.0, 1.3, 0.9, 1.2, 1.0, 1.25 }
+	local TALL = { 0.9, 0.7, 0.85, 0.95, 0.75, 0.8 }
+	for si, yb in { DECK + 0.1, DECK + 1.5, DECK + 2.9 } do
+		B.blk("Scenery", "Shelf", SX0 + 0.25, SX1 - 0.25, yb, yb + 0.2, RZ0 - 0.25, RZ0 - 2.7, P.board)
+		local x, i = SX0 + 0.55, si * 2
+		while true do
+			local w = WIDE[i % #WIDE + 1]
+			if x + w > SX1 - 0.55 then break end
+			local h = TALL[i % #TALL + 1]
+			B.blk("Scenery", "AmmoBox", x, x + w, yb + 0.18, yb + 0.2 + h, RZ0 - 0.5, RZ0 - 2.3, BOX[i % #BOX + 1], { ghost = true })
+			x += w + 0.16; i += 1
+		end
+	end
+	local function can(x, y, z)
+		B.blk("Scenery", "AmmoCan", x - 0.85, x + 0.85, y - 0.02, y + 1.0, z - 0.47, z + 0.47, "6c7466", { ghost = true })
+		B.blk("Scenery", "AmmoCanLid", x - 0.9, x + 0.9, y + 0.98, y + 1.14, z - 0.52, z + 0.52, "5c6358", { ghost = true })
+		B.blk("Scenery", "AmmoCanHandle", x - 0.45, x + 0.45, y + 1.12, y + 1.26, z - 0.1, z + 0.1, P.slate, { ghost = true })
+	end
+	can(34.4, DECK + 4.4, RZ0 - 1.5)
+	can(38.4, DECK + 4.4, RZ0 - 1.5)
+	local function headset(x, y, accent)
+		local band = if accent then P.amber else "3a3e46"
+		B.blk("Scenery", "Hook", x - 0.11, x + 0.11, y - 0.33, y - 0.07, WZ + 0.05, WZ - 0.95, P.slate, { ghost = true })
+		B.blk("Scenery", "HeadsetBand", x - 0.8, x + 0.8, y - 0.1, y + 0.12, WZ - 0.3, WZ - 0.72, band, { ghost = true })
+		for _, sx in { -1, 1 } do
+			B.blk("Scenery", "HeadsetArm", x + sx * 0.8 - 0.11, x + sx * 0.8 + 0.11, y - 1.0, y + 0.02, WZ - 0.32, WZ - 0.7, band, { ghost = true })
+			B.part("Scenery", "HeadsetCup", CF(x + sx * 0.72, y - 1.3, WZ - 0.51), V3(0.5, 1.1, 1.1), "4a4f58", { cyl = true, ghost = true })
+			B.part("Scenery", "HeadsetPad", CF(x + sx * 0.42, y - 1.3, WZ - 0.51), V3(0.16, 0.86, 0.86), "2e3238", { cyl = true, ghost = true })
+		end
+	end
+	for _, y in { DECK + 10.8, DECK + 7.8 } do
+		for _, x in { 33.6, 36.4, 39.2 } do headset(x, y, x == 36.4 and y > DECK + 9) end
+	end
+	-- the glass counter: a dark base, one glass box with a dark bed in it for the sidearms and items, slim posts and a
+	-- rim; a closed return at each end back to the wall
+	local CX0, CX1, CZ0, CZ1 = 43.6, 64.4, RZ0 - 5.8, RZ0 - 8.4
+	B.blk("Shell", "CounterBase", CX0, CX1, DECK, DECK + 0.9, CZ0, CZ1, P.board)
+	glass("CounterGlass", CX0 + 0.1, CX1 - 0.1, DECK + 0.85, DECK + 3.4, CZ0 - 0.1, CZ1 + 0.1)
+	B.blk("Scenery", "CounterBed", CX0 + 0.3, CX1 - 0.3, DECK + 1.45, DECK + 1.6, CZ0 - 0.3, CZ1 + 0.3, "3a3e46", { ghost = true })
+	B.blk("Scenery", "CounterLight", CX0 + 0.5, CX1 - 0.5, DECK + 3.2, DECK + 3.3, CZ0 - 0.3, CZ0 - 0.5, P.lampWhite, { ghost = true, mat = NEON })
+	for _, x in { CX0 + 0.05, 53.85, CX1 - 0.35 } do
+		for _, z in { CZ1 + 0.05, CZ0 - 0.35 } do
+			B.blk("Scenery", "CounterPost", x, x + 0.3, DECK + 0.85, DECK + 3.45, z, z + 0.3, P.slate, { ghost = true })
+		end
+	end
+	for _, z in { CZ1, CZ0 - 0.3 } do B.blk("Scenery", "CounterRim", CX0, CX1, DECK + 3.35, DECK + 3.55, z, z + 0.3, P.slate, { ghost = true }) end
+	for _, x in { CX0 + 0.02, CX1 - 0.3 } do B.blk("Scenery", "CounterRim", x, x + 0.28, DECK + 3.36, DECK + 3.53, CZ1 + 0.02, CZ0 - 0.02, P.slate, { ghost = true }) end
+	for _, r in { { 41.6, 43.5, 41.5, 43.55 }, { 64.5, 66.4, 64.45, 66.5 } } do -- (their tops stop 0.05 short of the rim)
+		B.blk("Shell", "CounterReturn", r[1], r[2], DECK, DECK + 3.3, RZ0 + 0.1, CZ1, P.board)
+		B.blk("Scenery", "CounterReturnTop", r[3], r[4], DECK + 3.25, DECK + 3.5, RZ0 + 0.1, CZ1 - 0.1, P.slate, { ghost = true })
+	end
+	for _, it in { { "pistol", 46.4, 2.4 }, { "revolver", 50.4, 2.6 }, { "item:frag", 54.4, 1.2 }, { "item:medkit", 58.0, 1.7 }, { "item:bubble", 61.6, 1.5 } } do
+		local rot = if string.find(it[1], "^item:") then CFrame.identity else LIE
+		peg(it[1], it[2], DECK + 1.6, (CZ0 + CZ1) / 2, rot, it[3], 1.4, UP)
+	end
+	B.solid("ShopBox", CF((41.5 + 66.5) / 2, (DECK + 3.45 + CY) / 2, (RZ0 + CZ1) / 2), V3(25, CY - DECK - 3.45, math.abs(CZ1 - RZ0))) -- (up to the canopy)
+	B.marker(SH, "ShopKeeperSpot", 54, DECK, RZ0 - 3.4, V3(54, DECK, RZ0 - 20))
+	-- the east end: a tall glass case, lit from its head, a gun on each shelf
+	local TX0, TX1, TZ0, TZ1 = 68.6, 76.2, RZ0 - 0.15, RZ0 - 3.6
+	B.blk("Shell", "CaseBase", TX0, TX1, DECK, DECK + 1.2, RZ0 + 0.1, TZ1, P.board)
+	glass("CaseGlass", TX0 + 0.1, TX1 - 0.1, DECK + 1.15, DECK + 9.3, TZ0, TZ1 + 0.1)
+	B.blk("Scenery", "CaseCap", TX0 - 0.1, TX1 + 0.1, DECK + 9.25, DECK + 9.9, RZ0 + 0.1, TZ1 - 0.1, P.board)
+	B.blk("Scenery", "CaseLight", TX0 + 0.5, TX1 - 0.5, DECK + 9.1, DECK + 9.27, TZ1 + 0.4, TZ1 + 0.75, P.lampWhite, { ghost = true, mat = NEON })
+	for _, x in { TX0 + 0.05, TX1 - 0.35 } do
+		for _, z in { TZ1 + 0.05, TZ0 - 0.25 } do
+			B.blk("Scenery", "CasePost", x, x + 0.3, DECK + 1.15, DECK + 9.3, z, z + 0.3, P.slate, { ghost = true })
+		end
+	end
+	for _, y in { DECK + 3.95, DECK + 6.65 } do
+		B.blk("Scenery", "CaseShelf", TX0 + 0.3, TX1 - 0.3, y, y + 0.1, TZ0 - 0.2, TZ1 + 0.3, P.slate, { ghost = true })
+	end
+	local cz = (TZ0 + TZ1) / 2
+	peg("item:duck", 70.9, DECK + 1.2, cz, CFrame.identity, 2.2, 2.4, UP)
+	peg("item:medkit", 74.0, DECK + 1.2, cz, CFrame.identity, 1.8, 2.4, UP)
+	peg("shredder", (TX0 + TX1) / 2, DECK + 4.05, cz, HANG, 6.4, 2.4, UP)
+	peg("katana", (TX0 + TX1) / 2, DECK + 6.75, cz, HANG, 6.6, 2.2, UP)
+	-- a white light on the gun wall, a warm one on the shelf
+	B.lamp(54, CY - 1.0, RZ0 - 9, "spot", 22, 0.8, P.lampWhite, { look = V3(54, DECK + 8, RZ0), angle = 100 })
+	B.lamp(36.4, CY - 1.0, RZ0 - 7, "spot", 16, 0.5, P.warm, { look = V3(36.4, DECK + 6, RZ0), angle = 90 })
 	local best = Instance.new("Part")
 	best.Name = "BestBoard"; best.Anchored = true; best.CanCollide = false; best.CanQuery = false; best.CanTouch = false
 	best.Size = V3(13.6, 3.6, 0.4); best.Color = Color3.fromHex(P.board); best.Material = SP; best.CastShadow = false
-	best.CFrame = B.cf((RX0 + RX1) / 2, DECK + 13.3, RZ0 - 0.4) -- (its front, -z, faces the lanes)
+	best.CFrame = B.cf((RX0 + RX1) / 2, DECK + 14.4, RZ0 - 0.4) -- (its front, -z, faces the lanes; over the slatwall)
 	best.Parent = B.root.Range
 	do
 		local g = Instance.new("SurfaceGui")
@@ -852,10 +984,6 @@ local function range(B)
 		t.Size = UDim2.new(0.92, 0, 0.84, 0); t.Position = UDim2.new(0.04, 0, 0.08, 0)
 		t.Parent = g
 		g.Parent = best
-	end
-	for _, x in { 44, 64 } do
-		B.put("tv_bench", CF(x, DECK, -8110) * CFrame.Angles(0, math.pi, 0), { name = "DeckBench" })
-		B.solid("DeckBenchBox", CF(x, DECK + 0.95, -8110), V3(8, 1.9, 2.2))
 	end
 	-- the firing line: a counter (its box is the hub builders' RangeCounterBox), booths, three plates
 	B.blk("Scenery", "Counter", 36, 72, DECK, 244.8, DECK_Z + 2.4, DECK_Z + 0.2, P.pier, { nc = true })
@@ -946,7 +1074,6 @@ end
 -- a skylight drum with an open chute back down to the start, a pit to slide-jump on the slide lane, grapple rings
 -- hanging from the ceiling beams, the playground's secret bullseye high on the north wall
 local CX0, CX1, CZ0, CZ1, CTOP = -86, -30, -8102, -8230, 288
-local PIT = { x0 = -40, x1 = -30, z0 = -8186, z1 = -8208 }
 local LEDGES = { -- { name, x0, x1, z0, z1, top }
 	{ "Ledge1", -86, -74, -8102, -8150, 250 },
 	{ "Ledge2", -86, -74, -8154, -8198, 260 },
@@ -956,36 +1083,9 @@ local LEDGES = { -- { name, x0, x1, z0, z1, top }
 local TOWER = { x = -58, z = -8170, top = 268 }
 local SKY = { x0 = -72, x1 = -44, z0 = -8150, z1 = -8182, top = 306 } -- the skylight drum, on the beam lines round the tower
 local function course(B)
-	-- floor round the pit, and the pit: a long-jump pit (owner, 16 Nov: "on the right there are arrows leading to like a
-	-- rectangular hole in the ground is that going to be something?"). 1.5 down, sand-grey, a line every 4 studs with
-	-- its number; slide down the lane, jump at the amber line, and TrainingDoors.client says how far you got
-	B.blk("Shell", "CourseFloor", CX0 - 3.95, PIT.x0, 234, Y0, CZ0 + 3.95, CZ1 - 3.95, P.courseFloor)
-	B.blk("Shell", "CourseFloor", PIT.x0, CX1, 234, Y0, CZ0 + 3.95, PIT.z0, P.courseFloor)
-	B.blk("Shell", "CourseFloor", PIT.x0, CX1, 234, Y0, PIT.z1, CZ1 - 3.95, P.courseFloor)
-	local PY = Y0 - 1.5
-	B.blk("Shell", "PitFloor", PIT.x0, CX1, 232, PY, PIT.z0, PIT.z1, "a99d86")
-	B.blk("Shell", "PitFace", PIT.x0, CX1, PY, Y0, PIT.z0 - 0.02, PIT.z0 - 0.12, P.slate, { ghost = true })
-	B.blk("Shell", "PitFace", PIT.x0, CX1, PY, Y0, PIT.z1 + 0.02, PIT.z1 + 0.12, P.slate, { ghost = true })
-	B.blk("Shell", "PitFace", PIT.x0 + 0.02, PIT.x0 + 0.12, PY, Y0, PIT.z0, PIT.z1, P.slate, { ghost = true })
-	for k = 1, 5 do
-		local z = PIT.z0 - 4 * k
-		B.blk("Scenery", "PitMark", PIT.x0, CX1 - 2.4, PY, PY + 0.03, z + 0.15, z - 0.15, P.line, { ghost = true })
-		B.text("PitNumber", { { tostring(4 * k), P.amber, "B", 1 } }, 1.8, 1.3, CF(-33.8, PY + 0.04, z - 0.9) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
-	end
-	B.text("WordLongJump", { { "LONG JUMP", P.amber, "B", 1 }, { "slide, then jump at the line", P.pale, "S", 0.42 } }, 9.5, 3, CFrame.lookAt(V3(CX1 - 0.17, Y0 + 7.5, -8174), V3(CX1 - 10, Y0 + 7.5, -8174)), { plate = P.board, thick = 0.25 })
-	local lj = Instance.new("Part")
-	lj.Name = "LongJumpPit"; lj.Anchored = true; lj.Transparency = 1; lj.CanCollide = false; lj.CanQuery = false; lj.CanTouch = false
-	lj.Size = V3(PIT.x1 - PIT.x0, 4, PIT.z0 - PIT.z1)
-	lj.CFrame = B.at(CF((PIT.x0 + PIT.x1) / 2, Y0, (PIT.z0 + PIT.z1) / 2))
-	lj:SetAttribute("Edge", B.at(CF(0, 0, PIT.z0)).Position.Z)
-	lj.Parent = B.root.Scenery
-	-- the slide lane down the east side to the pit: a darker strip, an amber edge to jump from (the arrows went on 16
-	-- Nov, the owner: "an arrow that looks ugly and is redundant")
-	B.blk("Scenery", "SlideLane", PIT.x0, CX1, Y0, Y0 + 0.03, -8106, PIT.z0, P.floor2, { ghost = true })
-	B.text("JumpWord", { { "JUMP", P.amber, "B", 1 } }, 6, 2.2, CF(-35, Y0 + 0.05, PIT.z0 + 4.3) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
-	B.blk("Scenery", "JumpEdge", PIT.x0, CX1, Y0 + 0.03, Y0 + 0.07, PIT.z0, PIT.z0 + 0.9, P.amber, { ghost = true })
-	B.blk("Scenery", "LandEdge", PIT.x0, CX1, Y0, Y0 + 0.05, PIT.z1, PIT.z1 - 0.9, P.line, { ghost = true })
-	B.text("SlideWord", { { "SLIDE", P.line, "B", 1 } }, 8, 2.6, CF(-35, Y0 + 0.05, -8108) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	-- the floor, whole. (the long-jump pit, its slide lane, words, lines and numbers went on 16 Nov, the owner: "this
+	-- jumping thing is redundant")
+	B.blk("Shell", "CourseFloor", CX0 - 3.95, CX1, 234, Y0, CZ0 + 3.95, CZ1 - 3.95, P.courseFloor)
 	-- walls (the east one with the passage from the muster)
 	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, 234, CTOP + 4, CZ0 + 4, MZ + PASS, P.courseWall)
 	B.blk("Shell", "CourseWallE", CX1, CX1 + 4, 234, CTOP + 4, MZ - PASS, CZ1 - 4, P.courseWall)
@@ -1018,7 +1118,7 @@ local function course(B)
 	end
 	-- piers on the beam grid down the east wall (the ceiling's beams land on them), bands at the ledges' heights
 	for _, z in { -8134, -8150, -8166, -8182, -8198, -8214 } do
-		local y0 = if z < PIT.z0 + 2 and z > PIT.z1 - 2 then Y0 - 1.5 else Y0
+		local y0 = Y0 -- (the pit's are gone: every pier stands on the floor)
 		B.blk("Shell", "Pier", CX1, CX1 - 2.4, y0, CTOP, z - 1.6, z + 1.6, P.pier)
 		B.blk("Shell", "PierBase", CX1, CX1 - 2.65, y0, y0 + 1.3, z - 1.85, z + 1.85, P.deep)
 	end
@@ -1086,11 +1186,12 @@ local function course(B)
 			B.text("LedgeNo", { { n, P.amber, "B", 1 } }, 3.4, 3.8, CF(x1 + 0.5, top - 3.6, mid) * CFrame.Angles(0, -math.pi / 2, 0), { plate = P.board, thick = 0.2 })
 		end
 	end
-	-- jump pads: floor to ledge 1, ledge 1 to 2, 2 to 3, floor to the tower's top
+	-- jump pads: floor to ledge 1 (its arrows to the ledge's wall), ledge 1 to 2, 2 to 3. (the one by the tower that
+	-- threw you onto its top went on 16 Nov, the owner: "the one near the cylinder, is redundant. the one that lifts
+	-- you should face toward the wall": the ring over the tower takes your grapple up there)
 	B.pad(-66, Y0, -8136, V3(-14, 52, 0))
 	B.pad(-80, 250, -8143, V3(0, 52, -14))
 	B.pad(-80, 260, -8191, V3(0, 52, -14))
-	B.pad(-44, Y0, TOWER.z, V3(-12, 80, 0))
 	-- the tower (eight-sided, under the skylight), and the open chute from its top back down to the start
 	B.put("tv_towerOct", CF(TOWER.x, Y0, TOWER.z), { name = "Tower" })
 	B.drum("Collision", "TowerSolid", TOWER.x, TOWER.z, Y0, TOWER.top, 16.6, P.pier, { tr = 1, noShadow = true })

@@ -287,6 +287,7 @@ end
 -- room.js damage(): the duck's crush and its near-the-middle damage)
 function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: boolean, kb: Vector3?, at: Vector3?, from: Vector3?, plain: boolean?): number
 	if not t.alive then return 0 end
+	if t.onlyFor ~= nil and not (by and by.ref == t.onlyFor) then return 0 end -- (somebody else's range Carl: RangeTest)
 	if Fight.soaked(t, by, wid, from) then return 0 end -- (sealed in a soap bubble: the first hit, a friend's too, only pops it)
 	if not Fight.allow(by, t) then return 0 end
 	if not plain and Fight.blocks(by, t, from) then return 0 end

@@ -3,12 +3,21 @@
 -- up one at a time down the lane; put each one down before he folds himself away. the board keeps count.
 -- a Carl is a real fighter of kind "dummy" (so every weapon, hit check, hit marker and DINK works on him exactly as
 -- on the dummies) with a cardboard body from ServerStorage.JankfireMeshes.bc_cutout. he never fights back.
--- since 16 Nov (the owner: "keep in mind there will be multiple people in these hubs") the lane is three lanes, one per
--- plate, and each has its own run at once: a Carl pops only on his lane's spots. a run stops early if the runner leaves
--- the hall or dies. while you run, the dummy yard's shooters leave you alone (the attribute RangeRun on the player).
+-- since 16 Nov (the owner: "can we make it so every player that starts the session sees their own targets that way
+-- multiple people can use the shooting range?") every runner has his own Carls: any number of people can stand on one
+-- plate and each gets his own 25. a Carl carries the attribute Owner (the runner's UserId) and f.onlyFor (the runner):
+-- only his runner can hurt him (Fight.hurt), and every other client takes him out of its world (TrainingDoors.client),
+-- so you never see, aim at, outline or bleed on somebody else's cardboard. the server counts each run on its own, and a
+-- kill only counts from the runner, at least 0.12 s after his Carl started up (nobody reacts faster: the board stays
+-- honest). a run stops early if the runner leaves the hall or dies. while you run, the dummy yard's shooters leave you
+-- alone (the attribute RangeRun on the player).
 -- the lanes are data in the map: Hub.TrainingGround.Range.Plates (parts Easy / Medium / Hard), .Spots (where a Carl
 -- stands, facing his plate; attribute Lane = the plate's name), .Board (a part whose Gui has RowEasy, RowMedium,
 -- RowHard and Line) and .BestBoard (Gui.Best: the best run per lane today)
+-- in Studio only, ServerStorage.RangeHook (a BindableFunction) runs a ghost runner beside you for two-player tests:
+-- ("ghost", lane | "off") starts or ends one, ("ghosthit") puts his Carl down, ("hit", userId) puts yours down as if
+-- you shot him, ("cross", userId) has you shoot the ghost's Carl (it must do nothing), ("hold", on) keeps every Carl
+-- up, ("state") lists the runs and the board's rows
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -23,21 +32,32 @@ type Fighter = Rules.Fighter
 local RangeTest = {}
 local TOTAL = 25
 local HP = 30 -- three rifle rounds, two to the head, one katana swing
-local IDLE = "stand on a plate. 25 cardboard men. he won't shoot back."
+local QUICKEST = 0.12 -- a kill sooner than this after a Carl starts up doesn't count
+local IDLE = "stand on a plate to start · 25 targets each"
 -- up = seconds a Carl stays up, gap = seconds until the next one
 local LEVELS: { [string]: { up: number, gap: number, name: string } } = {
 	Easy = { up = 3.2, gap = 0.55, name = "CHILL" },
 	Medium = { up = 1.9, gap = 0.4, name = "NORMAL" },
 	Hard = { up = 1.1, gap = 0.25, name = "SWEATY" },
 }
-type Run = { p: Player, level: string, score: number, left: number, cur: Fighter?, curUntil: number, nextAt: number, lastSpot: BasePart? }
-local runs: { [string]: Run } = {}          -- by plate (lane)
+local LANES = { "Easy", "Medium", "Hard" }
+-- p = the runner (nil for Studio's ghost), uid = his UserId (-1 for the ghost), who = his name on the board
+type Run = {
+	p: Player?, uid: number, who: string, level: string, score: number, left: number,
+	cur: Fighter?, curAt: number, curUntil: number, nextAt: number, lastSpot: BasePart?,
+}
+local runs: { Run } = {}
 local best: { [string]: number } = {}       -- the best run per level since the server started
 local mustStepOff: { [Player]: boolean } = {} -- after a run you step off the plates before the next one
 local Fight: any
 local range: Instance? = nil
 local idleAt = 0
-local NAMES = { Easy = "CHILL", Medium = "NORMAL", Hard = "SWEATY" }
+local holdUp = false -- (Studio's hook: every Carl stays up)
+
+local function runOf(p: Player): Run?
+	for _, r in runs do if r.p == p then return r end end
+	return nil
+end
 
 local function setText(name: string, text: string)
 	local b = range and range:FindFirstChild("Board")
@@ -45,10 +65,24 @@ local function setText(name: string, text: string)
 	local l = g and g:FindFirstChild(name)
 	if l and l:IsA("TextLabel") and l.Text ~= text then l.Text = text end
 end
+local function short(s: string): string return if #s > 14 then s:sub(1, 13) .. "…" else s end
 local function show(line: string?)
-	for lane in LEVELS do
-		local r = runs[lane]
-		setText("Row" .. lane, if r then ("%s · %02d down · %02d left"):format(r.p.DisplayName, r.score, r.left) else "free")
+	for _, lane in LANES do
+		local on = {}
+		for _, r in runs do if r.level == lane then table.insert(on, r) end end
+		local t = "free"
+		if #on == 1 then
+			local r = on[1]
+			t = ("%s · %02d down · %02d left"):format(short(r.who), r.score, r.left)
+		elseif #on > 1 then
+			local bits = {}
+			for i, r in on do
+				if i > 4 then table.insert(bits, ("+%d"):format(#on - 4)); break end
+				table.insert(bits, ("%s %02d"):format(short(r.who), r.score))
+			end
+			t = table.concat(bits, "  ·  ")
+		end
+		setText("Row" .. lane, t)
 	end
 	if line then setText("Line", line) end
 	local bb = range and range:FindFirstChild("BestBoard")
@@ -94,7 +128,9 @@ local function remove(f: Fighter, shot: boolean)
 	end)
 end
 
--- the next Carl: a random spot (never the same one twice running), up from flat on his back
+-- the next Carl: a random spot on the runner's lane (never the same one twice running), up from flat on his back.
+-- he is the runner's alone: Owner on the model (every other client takes him out of its world), onlyFor on the fighter
+-- (nobody else can hurt him)
 local function pop(r: Run)
 	local spots = range and range:FindFirstChild("Spots")
 	if not spots then return end
@@ -139,14 +175,15 @@ local function pop(r: Run)
 	hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	hum.MaxHealth = 100; hum.Health = 100
 	hum.Parent = m
-	m:SetAttribute("Dummy", true); m:SetAttribute("Base", base)
+	m:SetAttribute("Dummy", true); m:SetAttribute("Base", base); m:SetAttribute("Owner", r.uid)
 	m.Parent = workspace:FindFirstChild("Dummies") or workspace
 	local f = Rules.newFighter("dummy", "Cardboard Carl", m)
+	f.onlyFor = if r.p then r.p else "ghost"
 	Rules.spawn(f, os.clock())
 	f.hp = HP
 	Fight.byModel[m] = f
 	table.insert(Fight.all, f)
-	r.cur, r.curUntil = f, os.clock() + LEVELS[r.level].up
+	r.cur, r.curAt, r.curUntil = f, os.clock(), os.clock() + LEVELS[r.level].up
 	if body then
 		local b = body
 		task.spawn(function()
@@ -163,31 +200,37 @@ end
 
 local function finish(r: Run, abandoned: boolean)
 	if r.cur then remove(r.cur, false); r.cur = nil end
-	runs[r.level] = nil
+	local i = table.find(runs, r)
+	if i then table.remove(runs, i) end
 	idleAt = os.clock() + 8
-	mustStepOff[r.p] = true
-	if r.p.Parent then r.p:SetAttribute("RangeRun", nil) end
+	local p = r.p
+	if p then
+		mustStepOff[p] = true
+		if p.Parent then p:SetAttribute("RangeRun", nil) end
+	end
 	if abandoned then
-		show(("%s left %s. he saw that."):format(r.p.DisplayName, NAMES[r.level]))
+		show(("%s left %s"):format(r.who, LEVELS[r.level].name))
 		return
 	end
 	local lv = LEVELS[r.level]
 	if not best[r.level] or r.score > best[r.level] then best[r.level] = r.score end
-	local verdict = if r.score >= TOTAL then "FLAWLESS. THE CARDBOARD FEARS YOU"
-		elseif r.score >= 20 then "CARL IS IMPRESSED"
-		elseif r.score >= 12 then "CARL HAS SEEN BETTER"
-		else "CARL IS LAUGHING. HE'S CARDBOARD"
-	show(("%s · %d / %d on %s · best %d"):format(r.p.DisplayName, r.score, TOTAL, lv.name, best[r.level]))
-	if r.p.Parent then CalloutR:FireClient(r.p, ("%d / %d · %s"):format(r.score, TOTAL, verdict), 3) end
+	show(("%s · %d / %d on %s · best %d"):format(r.who, r.score, TOTAL, lv.name, best[r.level]))
+	if p and p.Parent then CalloutR:FireClient(p, ("%d / %d"):format(r.score, TOTAL), 3) end
 	sound("End")
 end
 
+-- a Carl down. it counts only if his own runner did it (the ghost's die with nobody behind them) and not
+-- impossibly soon after he started up; otherwise he just folds away, one fewer to go
 local function onKill(info: any)
 	local r: Run? = nil
 	for _, x in runs do if x.cur == info.v then r = x end end
 	if not r or not r.cur then return end
 	local f = r.cur :: Fighter
-	r.score += 1; r.left -= 1
+	local k = info.k
+	local fair = if r.p then (k ~= nil and k.ref == r.p) else k == nil
+	if os.clock() - r.curAt < QUICKEST then fair = false end
+	if fair then r.score += 1 end
+	r.left -= 1
 	r.cur = nil; r.nextAt = os.clock() + LEVELS[r.level].gap
 	remove(f, true)
 	show(nil)
@@ -206,16 +249,32 @@ local function onPlate(pos: Vector3): string?
 	return nil
 end
 
+local function start(p: Player?, uid: number, who: string, plate: string)
+	local now = os.clock()
+	table.insert(runs, { p = p, uid = uid, who = who, level = plate, score = 0, left = TOTAL, cur = nil, curAt = 0, curUntil = 0, nextAt = now + 1.2, lastSpot = nil })
+	idleAt = 0
+	if p then
+		p:SetAttribute("RangeRun", true) -- the dummy yard's shooters leave a runner alone (Dummies.luau)
+		CalloutR:FireClient(p, "CARDBOARD CARL'S · " .. LEVELS[plate].name, 1.4)
+	end
+	show(("%s · %s"):format(who, LEVELS[plate].name))
+	sound("Start")
+end
+
 local acc = 0
 local function tick(dt: number)
 	acc += dt
 	if acc < 0.05 then return end
 	acc = 0
 	local now = os.clock()
-	for _, r in runs do
-		local f = Fight.byPlayer[r.p]
-		if not r.p.Parent or not f or not f.alive or r.p:GetAttribute("Zone") ~= "training" then finish(r, true); continue end
+	for _, r in table.clone(runs) do
+		local p = r.p
+		if p then
+			local f = Fight.byPlayer[p]
+			if not p.Parent or not f or not f.alive or p:GetAttribute("Zone") ~= "training" then finish(r, true); continue end
+		end
 		if r.cur then
+			if holdUp then r.curUntil = now + LEVELS[r.level].up end
 			if now >= r.curUntil then -- too slow: he folds himself away, one fewer to go
 				local c = r.cur :: Fighter
 				r.cur = nil; r.left -= 1; r.nextAt = now + LEVELS[r.level].gap
@@ -225,26 +284,74 @@ local function tick(dt: number)
 		elseif r.left <= 0 then finish(r, false)
 		elseif now >= r.nextAt then pop(r) end
 	end
-	if idleAt > 0 and now >= idleAt and next(runs) == nil then idleAt = 0; show(IDLE) end
+	if idleAt > 0 and now >= idleAt and #runs == 0 then idleAt = 0; show(IDLE) end
 	for _, p in Players:GetPlayers() do
 		local f = Fight.byPlayer[p]
 		local root = if f and f.alive then Fight.root(f) else nil
 		if not root or p:GetAttribute("Zone") ~= "training" then mustStepOff[p] = nil; continue end
-		local running = false
-		for _, r in runs do if r.p == p then running = true end end
-		if running then continue end
+		if runOf(p) then continue end
 		local plate = onPlate(root.Position)
 		if not plate then
 			mustStepOff[p] = nil
-		elseif not mustStepOff[p] and LEVELS[plate] and not runs[plate] then
-			runs[plate] = { p = p, level = plate, score = 0, left = TOTAL, cur = nil, curUntil = 0, nextAt = now + 1.2, lastSpot = nil }
-			idleAt = 0
-			p:SetAttribute("RangeRun", true) -- the dummy yard's shooters leave a runner alone (Dummies.luau)
-			show(("%s · %s · 25 cardboard men incoming"):format(p.DisplayName, LEVELS[plate].name))
-			CalloutR:FireClient(p, "CARDBOARD CARL'S · " .. LEVELS[plate].name, 1.4)
-			sound("Start")
+		elseif not mustStepOff[p] and LEVELS[plate] then
+			start(p, p.UserId, p.DisplayName, plate)
 		end
 	end
+end
+
+-- Studio only: a ghost runner beside you, for testing two people on one lane with one Play test
+local function hook()
+	if not RunService:IsStudio() or ServerStorage:FindFirstChild("RangeHook") then return end
+	local h = Instance.new("BindableFunction")
+	h.Name = "RangeHook"
+	local function ghost(): Run?
+		for _, r in runs do if r.p == nil then return r end end
+		return nil
+	end
+	h.OnInvoke = function(op: string, a: any): any
+		if op == "ghost" then
+			local g = ghost()
+			if g then finish(g, true) end
+			if a ~= "off" then start(nil, -1, "Ghost", if LEVELS[a] then a else "Medium") end
+			return "ghost " .. tostring(a)
+		elseif op == "hold" then
+			holdUp = a == true
+			return "hold " .. tostring(holdUp)
+		elseif op == "ghosthit" then
+			local g = ghost()
+			if not g or not g.cur then return "no ghost Carl up" end
+			local c = g.cur :: Fighter
+			if os.clock() - g.curAt < QUICKEST then task.wait(QUICKEST) end
+			c.hp = 0
+			Fight.died(Rules.kill(c, nil, "redline", os.clock()), Vector3.new(0, 20, 0))
+			return ("ghost %d down, %d left"):format(g.score, g.left)
+		elseif op == "hit" or op == "cross" then
+			local p = Players:GetPlayerByUserId(tonumber(a) or 0)
+			local f = if p then Fight.byPlayer[p] else nil
+			if not p or not f then return "no fighter for " .. tostring(a) end
+			local r, g = runOf(p), ghost()
+			local target = if op == "hit" then (if r then r.cur else nil) else (if g then g.cur else nil)
+			if not target then return "no Carl up" end
+			local at = if op == "hit" and r then r.curAt elseif g then g.curAt else 0
+			if os.clock() - at < QUICKEST then task.wait(QUICKEST) end
+			local done = Fight.hurt(target, 999, f, "redline", false)
+			return ("%s: %s dealt, yours %s, ghost %s"):format(op, tostring(done), if r then tostring(r.score) else "-", if g then tostring(g.score) else "-")
+		elseif op == "state" then
+			local out = {}
+			for _, r in runs do
+				table.insert(out, ("%s on %s: %d down, %d left, Carl %s (owner %d)"):format(r.who, r.level, r.score, r.left, if r.cur then "up" else "-", r.uid))
+			end
+			local b = range and range:FindFirstChild("Board")
+			local g = b and b:FindFirstChild("Gui")
+			for _, lane in LANES do
+				local l = g and g:FindFirstChild("Row" .. lane)
+				if l and l:IsA("TextLabel") then table.insert(out, lane .. " row: " .. l.Text) end
+			end
+			return table.concat(out, "\n")
+		end
+		return "ops: ghost <lane|off>, hold <bool>, ghosthit, hit <userId>, cross <userId>, state"
+	end
+	h.Parent = ServerStorage
 end
 
 function RangeTest.init(fight: any)
@@ -270,6 +377,7 @@ function RangeTest.init(fight: any)
 	Fight.onKill(onKill)
 	RunService.Heartbeat:Connect(tick)
 	Players.PlayerRemoving:Connect(function(p: Player) mustStepOff[p] = nil end)
+	hook()
 end
 
 return RangeTest

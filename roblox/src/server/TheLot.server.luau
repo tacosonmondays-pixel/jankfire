@@ -333,7 +333,7 @@ local function open(by: Player?)
 	eggOpen = true
 	setPips(); setBeacons(true); setTimer("OPEN")
 	sayTraining("THE GARAGE IS OPEN", 2.2)
-	if by then say(by, "YOU OPENED THE GARAGE", 2.4); known[by] = true; greeted[by] = true end
+	if by then known[by] = true; greeted[by] = true end
 	for p in finders do known[p] = true; greeted[p] = true end
 	if state == "shut" or state == "closing" then goUp(MOVE_T); sound("Open")
 	elseif state == "open" then openUntil = os.clock() + OPEN_FOR end
@@ -467,7 +467,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if #back > 0 or let then
 		holdUntil = now + HOLD
 		if state == "shut" or state == "closing" then
-			if let and not greeted[let] then greeted[let] = true; say(let, "THE GARAGE REMEMBERS YOU", 1.8) end
+			if let and not greeted[let] then greeted[let] = true end
 			goUp(MOVE_FAST)
 			sound("Open")
 			setBeacons(true); setPips()

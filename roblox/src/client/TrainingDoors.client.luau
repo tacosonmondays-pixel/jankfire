@@ -14,9 +14,10 @@
 --     a gate's own builder only has to tag it
 --   * the course's long-jump pit (a part LongJumpPit with the attribute Edge, the take-off line's z): slide down the
 --     lane, jump at the line, and how far you got shows when you land
---   * the mirror (the muster's bay; a part MirrorSpot, attribute Near): walk up and you stand there as a hologram in the
+--   * the mirror (the muster's bay; a part MirrorSpot): while you are in training you stand there as a hologram in the
 --     hub's style (see-through, a soft fill and outline, turning slowly over its lens), holding what you hold. the owner,
---     16 Nov: "it can be a hologram version of your avatar"
+--     16 Nov: "it can be a hologram version of your avatar"; its plate and two boards show your name, rank and numbers
+--   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
 -- the slats' shut places are their attribute Shut (a CFrame); a Model's Lift is how far up they go and Top the height
 -- over which a slat is inside the wall (hidden)
 local Players = game:GetService("Players")
@@ -247,8 +248,8 @@ local function mirrorStep(dt: number)
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if not spot or not spot.Parent or not ch or not root or not hum or hum.Health <= 0 then dropHolo(); return end
-	local n = spot:GetAttribute("Near")
-	if (root.Position - spot.Position).Magnitude > (if type(n) == "number" then n else 18) then dropHolo(); return end
+	-- (always there while you are in training: the owner, 16 Nov: "can your big hologram just be active always?")
+	if me:GetAttribute("Zone") ~= "training" then dropHolo(); return end
 	if not holo or not holo.Parent or holding(ch) ~= holoSig then buildHolo(ch) end
 	local h = holo
 	local hr = h and h:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -257,6 +258,178 @@ local function mirrorStep(dt: number)
 	local up = (hum.HipHeight + root.Size.Y / 2) * HOLO_SCALE
 	hr.CFrame = spot.CFrame * CFrame.new(0, up + 0.1, 0) * CFrame.Angles(0, spin, 0)
 end
+
+-- ---------------------------------------------------------------- the mirror's plate and boards
+-- the plate on the plinth's sloped front: your name and @handle; the board on the bay's left wall: your rank (its
+-- badge, name, level and XP to the next); the one on the right: your numbers, from your own card (Stats' Profile
+-- remote, "card"). on your screen only: everyone sees their own (the owner, 16 Nov: "maybe at a plate with your
+-- username and a display of stats??"). filled while you are in training, again every 30 s and when your XP moves
+local RS = game:GetService("ReplicatedStorage")
+local SharedM = RS:WaitForChild("Jankfire")
+local Ranks = require(SharedM:WaitForChild("Ranks"))
+local Roster = require(SharedM:WaitForChild("Roster"))
+local MFONT = "rbxasset://fonts/families/Montserrat.json"
+local PALE, GREY, AMBER, DEEP = Color3.fromHex("eceae4"), Color3.fromHex("9aa0a8"), Color3.fromHex("f0a53a"), Color3.fromHex("2e3238")
+local boards: { [string]: BasePart } = {}
+local filledAt, filledXp: any = -math.huge, false
+local myCard: any = nil
+local asking = false
+local function label(parent: Instance, name: string, text: string, x: number, y: number, w: number, h: number, color: Color3, weight: Enum.FontWeight, align: Enum.TextXAlignment?): TextLabel
+	local t = Instance.new("TextLabel")
+	t.Name = name; t.BackgroundTransparency = 1; t.TextScaled = true; t.Text = text; t.TextColor3 = color
+	t.FontFace = Font.new(MFONT, weight); t.TextXAlignment = align or Enum.TextXAlignment.Center
+	t.Position = UDim2.fromScale(x, y); t.Size = UDim2.fromScale(w, h)
+	t.Parent = parent
+	return t
+end
+-- this screen's own layer on a board's Gui (made again each time)
+local function layer(name: string): (Frame?, Vector2)
+	local part = boards[name]
+	local g = part and part.Parent and part:FindFirstChild("Gui")
+	if not part or not g or not g:IsA("SurfaceGui") then return nil, Vector2.zero end
+	local old = g:FindFirstChild("Mine")
+	if old then old:Destroy() end
+	local f = Instance.new("Frame")
+	f.Name = "Mine"; f.BackgroundTransparency = 1; f.Size = UDim2.fromScale(1, 1)
+	f.Parent = g
+	-- (its size in pixels: the face's size in studs times the Gui's pixels per stud)
+	local face = g.Face
+	local sz = part.Size
+	local w, h = sz.X, sz.Y
+	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then w, h = sz.Z, sz.Y
+	elseif face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then w, h = sz.X, sz.Z end
+	return f, Vector2.new(w, h) * g.PixelsPerStud
+end
+local function comma(n: number?): string
+	local s = tostring(math.floor(tonumber(n) or 0))
+	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+	return (out:gsub("^,", ""))
+end
+local function pct(a: number?, b: number?): string
+	local x, y = tonumber(a) or 0, tonumber(b) or 0
+	return if y > 0 then ("%d%%"):format(math.floor(x / y * 100 + 0.5)) else "—"
+end
+local function fillPlaque()
+	local f = layer("MirrorPlaque")
+	if not f then return end
+	label(f, "Name", string.upper(me.DisplayName), 0.04, 0.08, 0.92, 0.52, PALE, Enum.FontWeight.Heavy)
+	label(f, "Handle", "@" .. me.Name, 0.04, 0.62, 0.92, 0.28, GREY, Enum.FontWeight.SemiBold)
+end
+local function fillRank()
+	local f, px = layer("MirrorBoardRank")
+	if not f then return end
+	local r = Ranks.of(me:GetAttribute("Xp") :: any)
+	label(f, "Head", "RANK", 0.08, 0.04, 0.84, 0.06, GREY, Enum.FontWeight.Bold)
+	local bs = math.floor(math.min(px.X * 0.66, px.Y * 0.34))
+	local ok, b = pcall(Ranks.badge, f, bs, r)
+	if ok and b then b.AnchorPoint = Vector2.new(0.5, 0); b.Position = UDim2.fromScale(0.5, 0.12) end
+	label(f, "RankName", string.upper(r.name), 0.06, 0.5, 0.88, 0.09, PALE, Enum.FontWeight.Heavy)
+	label(f, "Level", ("LEVEL %d"):format(r.level), 0.06, 0.61, 0.88, 0.065, AMBER, Enum.FontWeight.Bold)
+	local bar = Instance.new("Frame")
+	bar.Name = "XpBar"; bar.BackgroundColor3 = DEEP; bar.BorderSizePixel = 0
+	bar.Position = UDim2.fromScale(0.1, 0.73); bar.Size = UDim2.fromScale(0.8, 0.04); bar.Parent = f
+	Instance.new("UICorner", bar).CornerRadius = UDim.new(1, 0)
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"; fill.BackgroundColor3 = AMBER; fill.BorderSizePixel = 0
+	fill.Size = UDim2.fromScale(math.clamp(r.progress, 0.03, 1), 1); fill.Parent = bar
+	Instance.new("UICorner", fill).CornerRadius = UDim.new(1, 0)
+	label(f, "Xp", ("%s / %s XP"):format(comma(r.into), comma(r.need)), 0.06, 0.79, 0.88, 0.05, GREY, Enum.FontWeight.SemiBold)
+	label(f, "Total", ("%s XP IN ALL"):format(comma(r.xp)), 0.06, 0.86, 0.88, 0.04, GREY, Enum.FontWeight.Medium)
+end
+local function fillStats()
+	local f = layer("MirrorBoardStats")
+	if not f then return end
+	label(f, "Head", "YOUR NUMBERS", 0.06, 0.04, 0.88, 0.06, GREY, Enum.FontWeight.Bold)
+	local s = myCard and myCard.stats
+	if type(s) ~= "table" then
+		label(f, "Wait", "counting…", 0.1, 0.42, 0.8, 0.07, GREY, Enum.FontWeight.SemiBold)
+		return
+	end
+	local k, d = tonumber(s.k) or 0, tonumber(s.d) or 0
+	local rows = {
+		{ "KILLS", comma(k) },
+		{ "K/D", if d > 0 then ("%.2f"):format(k / d) elseif k > 0 then ("%.2f"):format(k) else "—" },
+		{ "WINS", comma(s.w) },
+		{ "WIN RATE", pct(s.w, s.m) },
+		{ "HEADSHOT %", pct(s.hs, s.hc) },
+		{ "ACCURACY", pct(s.hi, s.sh) },
+		{ "BEST STREAK", tostring(tonumber(s.best) or 0) },
+	}
+	local y = 0.14
+	for i, row in rows do
+		label(f, "K" .. i, row[1], 0.08, y, 0.5, 0.055, GREY, Enum.FontWeight.SemiBold, Enum.TextXAlignment.Left)
+		label(f, "V" .. i, row[2], 0.5, y, 0.42, 0.055, PALE, Enum.FontWeight.Heavy, Enum.TextXAlignment.Right)
+		y += 0.085
+	end
+	local w = type(myCard.weapons) == "table" and myCard.weapons[1]
+	if type(w) == "table" and type(w.id) == "string" then
+		local e = Roster.byId[w.id]
+		label(f, "FavHead", "MOST HELD", 0.08, y + 0.03, 0.84, 0.045, GREY, Enum.FontWeight.Bold, Enum.TextXAlignment.Left)
+		label(f, "Fav", string.upper(if e then e.name else w.id), 0.08, y + 0.085, 0.84, 0.07, AMBER, Enum.FontWeight.Heavy, Enum.TextXAlignment.Left)
+	end
+end
+local function askCard()
+	if asking then return end
+	asking = true
+	task.spawn(function()
+		local rem = RS:FindFirstChild("JankfireRemotes")
+		local pr = rem and rem:FindFirstChild("Profile")
+		if pr and pr:IsA("RemoteFunction") then
+			local ok, res = pcall(function() return pr:InvokeServer("card", me.UserId) end)
+			if ok and type(res) == "table" and res.ok and type(res.card) == "table" then myCard = res.card end
+		end
+		asking = false
+		fillStats()
+	end)
+end
+local function boardsStep()
+	local spot = mirrorSpot
+	local ch = me.Character
+	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not spot or not root or not next(boards) then return end
+	if me:GetAttribute("Zone") ~= "training" then return end
+	local now = os.clock()
+	local xp = me:GetAttribute("Xp")
+	if now - filledAt > 30 or xp ~= filledXp then
+		filledAt, filledXp = now, xp
+		fillPlaque(); fillRank(); fillStats(); askCard()
+	end
+end
+
+-- ---------------------------------------------------------------- somebody else's range Carls
+-- (RangeTest: every runner has his own Carls, each with the attribute Owner = his UserId.) this screen keeps only its
+-- own in its world; the rest go into a folder outside it, so they are not drawn, aimed at or outlined, and no blood
+-- flies off them (Arsenal). the local player's attribute ViewAs (a UserId: Studio's photo of what another runner
+-- sees) shows that runner's instead
+local away = Instance.new("Folder")
+away.Name = "OthersCarls"
+local function viewer(): number
+	local v = me:GetAttribute("ViewAs")
+	return if type(v) == "number" then v else me.UserId
+end
+local function sortCarl(m: Instance)
+	if not m:IsA("Model") then return end
+	local o = m:GetAttribute("Owner")
+	if type(o) ~= "number" then return end
+	if o ~= viewer() then
+		if m.Parent and m.Parent ~= away then m.Parent = away end
+	elseif m.Parent == away then
+		local dm = workspace:FindFirstChild("Dummies")
+		if dm then m.Parent = dm end
+	end
+end
+local function resort()
+	local dm = workspace:FindFirstChild("Dummies")
+	if dm then for _, m in dm:GetChildren() do sortCarl(m) end end
+	for _, m in away:GetChildren() do sortCarl(m) end
+end
+task.spawn(function()
+	local dm = workspace:WaitForChild("Dummies", 120)
+	if not dm then return end
+	dm.ChildAdded:Connect(function(m: Instance) task.defer(sortCarl, m) end)
+	resort()
+end)
+me:GetAttributeChangedSignal("ViewAs"):Connect(resort)
 
 -- ---------------------------------------------------------------- find the training area's pieces (it can be rebuilt)
 local seen: Instance? = nil
@@ -272,6 +445,7 @@ local function scan()
 		table.clear(shutters)
 		pit = nil
 		mirrorSpot = nil
+		table.clear(boards); filledAt = -math.huge
 		if tg then
 			for _, m in tg:GetDescendants() do
 				if m:GetAttribute("Shutter") == true then
@@ -284,6 +458,8 @@ local function scan()
 					pit = m
 				elseif m.Name == "MirrorSpot" and m:IsA("BasePart") then
 					mirrorSpot = m
+				elseif (m.Name == "MirrorPlaque" or m.Name == "MirrorBoardRank" or m.Name == "MirrorBoardStats") and m:IsA("BasePart") then
+					boards[m.Name] = m
 				end
 			end
 		end
@@ -333,5 +509,6 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if root and hum then jumpWatch(root, hum) end
 	mirrorStep(dt)
+	boardsStep()
 end)
 scan()

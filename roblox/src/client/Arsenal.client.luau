@@ -425,22 +425,14 @@ local function fireGun(now: number, fan: boolean?)
 	local mz = (if fpv then nil else heldMuzzle(me.Character)) or VM.attachment("Muzzle") or (eye + look * 2)
 	-- every gun's look comes from its row in Weapons (fx, tracer, snd): nothing here is per weapon
 	local fx = w.fx or {}
-	if not (scoped and fpv) then Fx.muzzle(CFrame.lookAt(mz, mz + look), fx.big == true, fpv) end -- (the scope hides the gun, flash and all)
+	-- the flash (not through the scope: it hides the gun, flash and all) and the tracers, bent at a bounce, by the web's
+	-- rules for this gun (Fx.gunShot: size, flash time, tracer width and life)
+	Fx.gunShot(w, CFrame.lookAt(mz, mz + look), ends, path, fpv, scoped and fpv)
 	if fx.spray then
 		Fx.marbles(mz, allEnds, 1) -- no tracers: the marbles are the tracers
-	else
-		if fx.brass and not scoped then
-			local port = VM.attachment("Port")
-			if port and fpv then Fx.brass(CFrame.lookAt(port, port + look) * CFrame.Angles(0, 0, 0), false) end
-		end
-		local wide = w.thick or 0.045 * S
-		if path then -- a bounced bullet: the tracer bends at each wall
-			local at = mz
-			for _, b in path do Fx.tracer(at, b, w.tracer or TRACER, wide, 0.2); at = b end
-			Fx.tracer(at, ends[1], w.tracer or TRACER, wide, 0.2)
-		else
-			for _, e in ends do Fx.tracer(mz, e, w.tracer or TRACER, wide, 0.2) end
-		end
+	elseif fx.brass and not scoped then
+		local port = VM.attachment("Port")
+		if port and fpv then Fx.brass(CFrame.lookAt(port, port + look) * CFrame.Angles(0, 0, 0), false) end
 	end
 	Sfx.gun(w, Weapons.tacho(hp()), nil, VM.heat())
 	-- what the shots hit: holes, dust, sparks by material (marbles chip and puff, they don't punch holes)
@@ -581,7 +573,9 @@ remote("Dmg").OnClientEvent:Connect(function(d: any)
 		if d.hs then Sfx.play(if d.ko then "headshot_taken_ko" else "headshot_taken") else Sfx.play("hurt") end
 		H.hurt(amt)
 	end
-	if at then Fx.blood(at, Vector3.new(math.random() - 0.5, 0.3, math.random() - 0.5).Unit, amt) end
+	-- (no blood off a model this client has taken out of its world: somebody else's range Carl, TrainingDoors.client)
+	local gone = typeof(d.model) == "Instance" and not d.model:IsDescendantOf(workspace)
+	if at and not gone then Fx.blood(at, Vector3.new(math.random() - 0.5, 0.3, math.random() - 0.5).Unit, amt) end
 end)
 
 remote("Kill").OnClientEvent:Connect(function(k: any)
@@ -622,19 +616,13 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 	local first = ends[1]
 	local sw = if type(s.w) == "string" then W[s.w] else nil
 	local sfx = (sw and sw.fx) or {}
-	if first and (first - from).Magnitude > 0.1 then Fx.muzzle(CFrame.lookAt(from, first), sfx.big == true, false) end
-	if sfx.spray then
-		Fx.marbles(from, ends, 8)
-	else
-		local wide = (sw and sw.thick) or 0.045 * S
-		local at = from
-		if type(s.path) == "table" then -- a Revolver bullet that bounced: the tracer bends at each wall
-			for i, b in s.path do
-				if typeof(b) == "Vector3" and i <= 2 then Fx.tracer(at, b, (sw and sw.tracer) or TRACER, wide, 0.2); at = b end
-			end
-		end
-		for _, e in ends do Fx.tracer(at, e, (sw and sw.tracer) or TRACER, wide, 0.2) end
+	if first and (first - from).Magnitude > 0.1 then
+		-- their flash and tracers (a Revolver bullet bends at each bounce) by the web's rules; an unknown gun gets the
+		-- plain look (Fx.gunShot)
+		Fx.gunShot(sw or { fx = sfx, tracer = TRACER }, CFrame.lookAt(from, first), if sfx.spray then {} else ends,
+			if type(s.path) == "table" then s.path else nil, false)
 	end
+	if sfx.spray then Fx.marbles(from, ends, 8) end
 	if sw then Sfx.gun(sw, 0, from) end
 	Fx.shotEnds(from, ends, sfx.spray == true) -- their holes, dust and splashes, seen here too
 end)
