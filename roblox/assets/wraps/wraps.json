@@ -337,9 +337,11 @@
    "color": "holo_color.png",
    "normal": null,
    "rough": "holo_rough.png",
-   "metal": 0.85,
-   "emit": 0.0
-  }
+   "metal": "holo_metal.png",
+   "emit": "holo_emit.png"
+  },
+  "emissive": 0.6,
+  "tint": "ffffff"
  },
  "jade": {
   "maps": {

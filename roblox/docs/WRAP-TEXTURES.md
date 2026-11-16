@@ -12,10 +12,14 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 **Where it stands:** 79 of the 102 wraps are textures; the other 23 stay colour wraps (21 plain colours, plus QR Code
 and Barcode, which may never be images). Every kit gun the owner picked carries the flat-projection UVs (`gun_uvs.py`,
 live since place version 313, 242 `WrapUV` pieces) and `WrapUV` on every piece but the glow and glass ones. Photos:
-`wrap-textures/round3/` (the ten after the second judging, in hand in the hall, place version 324),
+`wrap-textures/round3/` (the ten after the second judging, in hand in the hall, place version 327),
 `wrap-textures/round2/` (in the hall on the flat-UV guns, plus Blender renders),
 `wrap-textures/galaxy-dots-before-after.jpg` (the owner's Galaxy note),
 `wrap-textures/batch1-sheet.jpg` and `wrap-textures/judge1/` (the first round).
+
+**Galaxy is all round dots on purpose; do not put star shapes back on it.** The owner asked for it on 16 Nov 2026:
+"get rid of the stars and just keep them like dots, I want it to look like an actual galaxy". Every other wrap's
+noticeable stars are real star shapes (see Lessons, "Stars").
 
 ## Rules for every wrap image (read first)
 
@@ -83,7 +87,13 @@ hall, first and third person.
 | round | average | what it found | what changed |
 | --- | --- | --- | --- |
 | 1 | 5.2 | checks skewed into diamonds, hazard stripes zig-zagged at chamfers, tiger stripes stretched into drips (all the first UV unfold, which used each point's own height); pale shards (glow and glass pieces took the old palette); hex glowed two lines a groove; carbon weave too big; damascus a barcode | UVs became flat projections per face family (no shear); `WeaponModels.wrap` leaves pieces without UVs alone on an unfolded gun; one hex filament on the cell boundary; carbon tows 4 mm; damascus in mid greys |
-| 2 | 5.75 | the mapping problems gone (stretch measured: no face over 1.8 times, and only small corner facets); warm and saturated bases ran hot under the hall's lamps (Tiger, Hazard, Sakura, Camo); carbon read as chrome basketweave; holo a pastel toy; damascus a contour map; small checks blurred to grey at range; hex panels mirrored the tan walls | Tiger amber-brown with dark brown stripes, Hazard ochre, Sakura plum-charcoal with blossoms of four sizes, Camo olive drab, Galaxy near-black with the dots gathered in its clouds; Carbon near black, weave relief a third; Holo dark chrome with narrow prismatic bands (no stickers); Damascus dense half-and-half layers; Racing checks 3.1 cm; Hex panels satin |
+| 2 | 5.75 | the mapping problems gone (stretch measured: no face over 1.8 times, and only small corner facets); warm and saturated bases ran hot under the hall's lamps (Tiger, Hazard, Sakura, Camo); carbon read as chrome basketweave; holo a pastel toy; damascus a contour map; small checks blurred to grey at range; hex panels mirrored the tan walls | Tiger amber-brown with dark brown stripes, Hazard ochre, Sakura plum-charcoal with blossoms of four sizes, Camo olive drab, Galaxy near-black with the dots gathered in its clouds; Carbon near black, weave relief a third; Holo dark chrome with narrow prismatic bands; Damascus dense half-and-half layers; Racing checks 3.1 cm; Hex panels satin |
+| 3 | 5.8 | Sakura 7.5 and Damascus 7 best; Holo 4 (thin lines read as crayon); Hazard's stripes change direction from face to face (each face family has its own projection); Racing's faded band reads as a second texture; stray light triangles on some corner bevels; Carbon now too dark in the hall | Tiger and Hazard corrected for the in-hand colour shift (below); Damascus contrast halved; Holo cool silver foil with a broad soft sheen and real sparkles and stars; Nebula's bright stars four-point twinkles again. Judging stopped here: three judges in a row moved by less than a point and reversed each other on Carbon and Damascus, so the open items are listed under "Next" |
+
+**Next** (not done): stripes that keep one direction across face families (Hazard; a world-space 45-degree band
+instead of per-face projections); the corner-bevel triangles (give bevels their own small UV space); Racing as one
+check size with no faded band; Carbon a touch lighter in the hall; a pass of the other 69 wraps for the in-hand
+colour shift (only the judged ten were corrected).
 
 ## In-hand colour
 
@@ -106,12 +116,15 @@ traffic-cone orange, ochre goes school-bus yellow, plum goes near black. So:
   rounds of Tiger went from traffic-cone orange to amber only once the coat's blue channel was raised.
 - **High contrast stripes read as zebra on a thin blade**: Damascus' first layers went from near black to near white;
   the katana's blade turned into a barcode. Steel layers sit between 0.42 and 0.68 grey now.
-- **Space is drawn as space** (owner, 16 Nov 2026, of the first Galaxy with its five-pointed stars: "get rid of the
-  stars and just keep them like dots, I want it to look like an actual galaxy"). Galaxy is now a deep-sky picture:
-  violet and blue star clouds packed with thousands of round dots (white, blue-white and warm, 0.5 to 2 mm), a few
-  bright ones with a soft round glow, dark dust lanes, and two small spiral galaxies far off. Nebula's twinkles became
-  round dots too. Stars as emblems (Holo's stickers, Arcade) keep their points. The dots are light added over the
-  picture (`StarLight` in `wrap_textures.py`), each a Gaussian disc, so they stay round at any size.
+- **Stars**: any star you notice at first-person distance is a real star shape, five points or a four-point
+  sparkle, 1 to 1.5 cm across (the owner's first ask: "actual stars and not little squares"); faint background stars
+  are round dots. **Galaxy alone is all dots**, the owner's own later call for that wrap (16 Nov 2026, of the first
+  Galaxy with its five-pointed stars: "get rid of the stars and just keep them like dots, I want it to look like an
+  actual galaxy"). Galaxy is a deep-sky picture: violet and blue star clouds packed with round dots (white,
+  blue-white and warm, 0.5 to 2 mm), a few bright ones with a soft round glow, soft dust, and two small spiral
+  galaxies far off. Nebula keeps its bright four-point twinkles over dots; Holo has sparkles and five-pointed stars
+  on its foil; Arcade keeps its stars. The dots are light added over the picture (`StarLight` in
+  `wrap_textures.py`), each a Gaussian disc, so they stay round at any size.
 - Petals and spots need to be about 1 to 1.5 cm on the gun to read in first person (40 to 60 px on a tile).
 - A field's zero crossings (`|f| / |grad f|`) give single veins; `sin(k f)` gives nested contour lines that read as a
   map, not marble.

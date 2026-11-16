@@ -26,9 +26,10 @@
 # THE LOOK (owner, 16 Nov 2026; vault Principles/Design principles.md): serious and polished, in the class of RIVALS,
 # never noisy. Wraps are cosmetics, so colour is allowed, but each must be deliberate: clean shapes, a few flat colours
 # with smooth tonal shifts, real shapes for details (notched petals, tapered stripes), no pixel specks, no grain.
-# Space is drawn as space: stars in the sky are round dots of many sizes with a soft glow, never five-pointed star
-# shapes or twinkles (owner, 16 Nov 2026, of Galaxy: "get rid of the stars and just keep them like dots, I want it to
-# look like an actual galaxy"; StarLight below). A star as an emblem or sticker (Holo, Arcade) keeps its points.
+# Stars: any star you notice at first-person distance is a real star shape (five points, or a four-point sparkle),
+# never a square (owner, 16 Nov 2026); faint background stars are round dots (StarLight below). Galaxy alone is all
+# dots, the owner's own call for it: "get rid of the stars and just keep them like dots, I want it to look like an
+# actual galaxy".
 # Warm colours and purples come out brighter under the halls' lamps: they are picked a step darker.
 import sys, os, json, math, zlib
 import numpy as np
@@ -421,19 +422,30 @@ def damascus(t: Tex):
 
 @design('holo')
 def holo(t: Tex):
-    """holo foil: dark chrome with narrow prismatic bands sweeping across it, the hue drifting along each band
-       (round 2: the pale foil with star stickers read as a pastel toy and blew out white on top)"""
-    U, V = t.U, t.V
+    """holo foil: cool silver foil with a broad, soft prismatic sheen, and crisp stickers on it: four-point sparkles
+       and a few five-pointed stars, each in its own hue (round 2: pale foil read as a pastel toy; round 3: thin
+       spectral lines read as crayon; the owner: details that are stars are real star shapes)"""
+    n, U, V = t.n, t.U, t.V
     w = FBM([2, 4], 71)(U, V)
-    ph = (U * 0.8 + V) * 3.0 + 0.3 * w
-    hue = (ph * 0.5 + 0.2 * w) % 1.0
-    band = smoothstep(0.8, 0.99, 0.5 + 0.5 * np.cos(ph * TAU * 2))
-    base = hsv(hue, np.float32(0.07), np.float32(0.5))
-    lit = hsv(hue, np.float32(0.28), np.float32(0.78))
-    t.rgb[:] = base + (lit - base) * band[..., None]
+    ph = (U * 0.8 + V) * 1.5 + 0.35 * w
+    hue = (ph * 0.6) % 1.0
+    sheen = 0.5 + 0.5 * np.cos(ph * TAU)
+    t.rgb[:] = hsv(hue, np.float32(0.07) + 0.10 * sheen, np.float32(0.6) + 0.12 * sheen)
     t.metal[:] = 0.85
-    t.rough[:] = 0.26 - 0.06 * band
-    return {}
+    t.rough[:] = 0.3 - 0.06 * sheen
+    r = t.rng
+    stars = scatter(r, n, 14, 190)
+    for i, (x, y) in enumerate(stars):
+        five = i % 4 == 0
+        ro = r.uniform(28, 38) if five else r.uniform(22, 34)    # 1 to 1.5 cm across: they read in first person
+        X, Y, idx = t.box(x - ro * 1.6, y - ro * 1.6, x + ro * 1.6, y + ro * 1.6)
+        sd = (sd_star(x, y, ro, ro * 0.42, 5, r.uniform(0, TAU), round_=1.2) if five
+              else sd_sparkle(x, y, ro, 0.17, r.uniform(-0.25, 0.25)))(X, Y)
+        hh = (float(hue[int(y) % n, int(x) % n]) + 0.5) % 1.0
+        col = hsv(np.float32(hh), np.float32(0.35), np.float32(0.95))
+        t.paint(idx, cover(sd), col, emit=0.6, rough=0.12, metal=0.5)
+        t.paint(idx, cover(sd + ro * 0.22), '#f4f4f6')
+    return {'emissive': 0.6, 'tint': 'ffffff'}
 
 
 # ====================================================================== batch 2
@@ -823,8 +835,8 @@ def bubblewrap(t: Tex):
 
 @design('nebula')
 def nebula(t: Tex):
-    """nebula: deep violet space full of glowing pink and blue gas, fine round stars and a few bright ones with a soft
-       round glow (dots only, like Galaxy)"""
+    """nebula: deep violet space full of glowing pink and blue gas, fine round stars, and a few bright four-point
+       twinkles"""
     n, U, V = t.n, t.U, t.V
     wu, wv = U + 0.1 * FBM([2, 4], 301)(U, V), V + 0.1 * FBM([2, 4], 302)(U, V)
     a = smoothstep(-0.1, 0.6, FBM([2, 4, 8, 16], 303, 0.55)(wu, wv))
@@ -840,9 +852,16 @@ def nebula(t: Tex):
         x, y = r.uniform(0, n), r.uniform(0, n)
         k = r.uniform() ** 3
         S.dot(x, y, 1.3 + 1.5 * k, 0.3 + 0.6 * k, star_colour(r))
-    for x, y in scatter(r, n, 9, 200):
-        S.dot(x, y, r.uniform(3.6, 5.0), 1.0, 'fff4ff', glow=0.3, glow_r=r.uniform(10, 15))
     S.done()
+    # the few bright stars you notice in hand are real four-point twinkles (main session, 16 Nov: stars that read at
+    # first-person distance are star shapes; Galaxy alone is dots, the owner's own call for that wrap)
+    for x, y in scatter(r, n, 9, 200):
+        ro = r.uniform(20, 30)
+        X, Y, idx = t.box(x - ro * 1.5, y - ro * 1.5, x + ro * 1.5, y + ro * 1.5)
+        sd = sd_sparkle(x, y, ro, 0.14, 0)(X, Y)
+        halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.3)) * 0.5
+        t.paint(idx, halo, 'f0d0ff', emit=halo)
+        t.paint(idx, cover(sd), '#ffffff', emit=1.0)
     return {'emissive': 1.3, 'tint': 'ffffff'}
 
 

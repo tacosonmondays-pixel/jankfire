@@ -846,5 +846,33 @@
  "53903f7d6777b2f895a5e843d412a9167924cda6": {
   "file": "damascus_color.png",
   "id": 75538114965592
+ },
+ "18985194eb2461ff14aa84fd66d830b88ec010e2": {
+  "file": "holo_color.png",
+  "id": 131640143259425
+ },
+ "88fff8aa591e842af9a0894648140e5fc507d33d": {
+  "file": "holo_rough.png",
+  "id": 95914849539639
+ },
+ "c955151e410559b77cb407cdf5195fc18e00f512": {
+  "file": "holo_metal.png",
+  "id": 72266600996395
+ },
+ "81e117500cb183aef29841cf48b2aa0983fa03f7": {
+  "file": "holo_emit.png",
+  "id": 126140136934007
+ },
+ "63006bb30a4c8c2e374fa4f7e6cae86482b1c860": {
+  "file": "nebula_color.png",
+  "id": 90435972552643
+ },
+ "90adeaa52efa48c1609fe88bea07cf4ac52c5b2a": {
+  "file": "nebula_rough.png",
+  "id": 105640653701629
+ },
+ "6a707e5142d2877685a845f9b112c80950b63d07": {
+  "file": "nebula_emit.png",
+  "id": 108434930786354
  }
 }
