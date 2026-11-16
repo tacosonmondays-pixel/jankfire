@@ -281,6 +281,57 @@ GPU can't tell which is in front. `tools/roblox/gun_zfix.py` now runs on every g
 - **The look:** a few millimetres at most. The Hat Trick, Shotgun and Lawn Mower lost speckled seams and now show
   their side panels and top ribs cleanly; the rest look the same (`JF_NOZFIX=1` builds them as before, to compare).
 
+## Skin sets and tiers (16 November 2026, place version 433)
+
+The owner: "can the weapon skins, not all of them but a couple, be like sets? Halloween style. maybe demon vs angels,
+maybe japanese like. look how rivals does their skins and then apply that logic to our game", then "can you create a
+cute ducky themed skin set?". The logic (vault note `Research/Rivals skin sets.md`, Rivals' designs left alone): a set
+is about five skins over primaries, a secondary and the melee. They share one name family, one palette and one motif
+placed the same way on every piece. The top piece gets the biggest reshape and the glow.
+
+| Set (id) | Skins (top first) | Palette and motif |
+|---|---|---|
+| Seraph (`set_seraph`) | Rifle, Sniper, Hat Trick, Katana, Plan B | ivory and gold; halo, feathered wings, a sunburst core |
+| Infernal (`set_infernal`) | the same five | black and crimson with ember glow; horns, blade wings, lava cracks, a slit eye |
+| Witching Hour (`set_halloween`) | Pumpkin Patch (SMG), Cauldron (Marble Shotgun), Hex Blade (Katana), Candlelight (Revolver), Bone Yard (Shotgun) | purple-black, bone, pumpkin; a hex band with bone rims |
+| Tidecrest (`set_tidecrest`) | Sakura (Katana), Red Lacquer (Rifle), Cloudlock (Yeehaw), Night Tide (Second Opinion), Twin Tide (Half a Shotgun) | red and black lacquer, gold wave crests, cloud scrolls, sakura |
+| Ducky (`set_ducky`, VIP) | Bubble Bath (Belt Sander), Bath Toy (Revolver), Duck Guard (Katana): all high tier | rubber-duck yellow, an orange bill at every front, a plump wing over the trigger |
+
+Seraph and Infernal are a pair: the same weapons, the same layout, the motifs swapped one for one. Ducky is the VIP
+game pass's set (the owner: "the ducky set is a high tier set you get by purchasing vip"): `vip = true`, never in crates or
+the shop, all three high tier. The rifles' high-tier glow follows the research brief (vault `Research/Skin concepts`):
+Heaven's light shown inside a frame (a gold arcade of pointed arches over a glowing pane), Hell's light escaping between
+black plates (glowing fractures), lit muzzles, and the glow along every feather's ridge.
+
+- **Tiers** (the owner: "basic tier can be simple modifications, mid tiers can be like new models, high tiers will be
+  remodeled with vfx"):
+  - basic = the base gun with small changes, rarity rare;
+  - mid = a new model, epic;
+  - high = a full remodel plus effects on the gun, legendary.
+  Every set's top piece is high. The 26 older skins keep their web rarities and only get a tier: three are basic,
+  the rest mid.
+- **The files:**
+  - `roblox/src/shared/SkinSets.luau`: `SETS`, `SKINS` (name, rarity, weapon, set, tier), `TIER` for every skin, and
+    `FX`, the high tiers' effects. The VFX session's `Fx.skinIdle` plays the effects: feathers and a halo sparkle,
+    embers and heat haze, sakura petals, smoke and embers off the pumpkin, soap bubbles.
+  - The loot session merges `SKINS` into `LootTable.SKINS`. The shop bundles each set by its id, once all five
+    models are in `JankfireSkins`.
+  - The models: `tools/roblox/gun_sets.py` (the pair), `gun_sets_halloween.py`, `gun_sets_japan.py`,
+    `gun_sets_ducky.py`. `gun_set.py` collects them.
+- **The wings took six rounds.** The owner sent pictures of winged guns. An art-judge agent laid our renders over
+  those pictures and measured shape match, reach, angles and tone.
+  - What lasted: a swept wing, about a third of the gun long. Its top feather is nearly level and the tips step back
+    down a diagonal from a row of roots, with a shoulder of short coverts over the roots.
+  - The feathers are real 3D shapes (`feather3d`): a ridge down the middle, thin edges and a slight curl.
+    - Angel: long round-tipped quills, gold by turns, under an ivory arm.
+    - Demon: blades that widen to a sharp point on the leading edge, crimson and black by turns, with the glow
+      running along each ridge.
+  - A small wing stands up off the front of the handguard (or the slide on Plan B), so the wings show in first person.
+  - Flat cut-out feathers read as "a fan of leaves", "a saw" or "spiky hair", whatever their outline.
+- Pictures: `gun-models/sets-heaven-hell.jpg`, `sets-witching-hour.jpg`, `sets-tidecrest.jpg` (side view and in hand),
+  `sets-wings-vs-refs.jpg` (the owner's pictures, the round before and round 6). Not checked yet: the wings against the
+  shooter's own shoulder in third person on a real player, and the VFX session's frame-cost check on the high tiers.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
