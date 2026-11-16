@@ -12,7 +12,8 @@ hold, the aim line, the flash, the brass and every reload clip work unchanged.
 
 Pictures: `gun-models/ar-sample.jpg` (the first sample, round 1), `gun-models/snipers-round2.jpg`,
 `gun-models/before-after-1.jpg` to `-4.jpg` (all sixteen in hand in the training hall: the old models left, the new
-right), `gun-models/skin-cardboard.jpg`. Style notes from studying Rivals: the vault, `Research/Rivals weapons and skins - style notes.md`.
+right), `gun-models/skin-cardboard.jpg`, `gun-models/round5-side.jpg` (the final round from the side; its in-hall photos were not taken:
+Studio's window was minimised). Style notes from studying Rivals: the vault, `Research/Rivals weapons and skins - style notes.md`.
 
 ## What changed
 
