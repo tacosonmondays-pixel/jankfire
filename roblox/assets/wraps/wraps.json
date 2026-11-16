@@ -32,11 +32,11 @@
   "maps": {
    "color": "aurora_color.png",
    "normal": null,
-   "rough": 0.3,
+   "rough": 0.4,
    "metal": 0.0,
    "emit": "aurora_emit.png"
   },
-  "emissive": 1.4,
+  "emissive": 1.2,
   "tint": "ffffff"
  },
  "bigwave": {
@@ -52,7 +52,7 @@
   "maps": {
    "color": "blackhole_color.png",
    "normal": null,
-   "rough": 0.25,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "blackhole_emit.png"
   },
@@ -63,7 +63,7 @@
   "maps": {
    "color": "bowling_color.png",
    "normal": null,
-   "rough": 0.12,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -81,7 +81,7 @@
   "maps": {
    "color": "bubblegum_color.png",
    "normal": "bubblegum_normal.png",
-   "rough": 0.25,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -90,7 +90,7 @@
   "maps": {
    "color": "bubblewrap_color.png",
    "normal": "bubblewrap_normal.png",
-   "rough": 0.12,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -99,7 +99,7 @@
   "maps": {
    "color": "burl_color.png",
    "normal": "burl_normal.png",
-   "rough": 0.3,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -126,7 +126,7 @@
   "maps": {
    "color": "carbon_color.png",
    "normal": "carbon_normal.png",
-   "rough": 0.12,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -144,7 +144,7 @@
   "maps": {
    "color": "china_color.png",
    "normal": null,
-   "rough": 0.1,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -173,7 +173,7 @@
   "maps": {
    "color": "corp_color.png",
    "normal": null,
-   "rough": 0.3,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "corp_emit.png"
   },
@@ -184,7 +184,7 @@
   "maps": {
    "color": "crackle_color.png",
    "normal": null,
-   "rough": 0.08,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -193,7 +193,7 @@
   "maps": {
    "color": "creamsicle_color.png",
    "normal": null,
-   "rough": 0.3,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -202,7 +202,7 @@
   "maps": {
    "color": "crt_color.png",
    "normal": null,
-   "rough": 0.08,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "crt_emit.png"
   },
@@ -258,7 +258,7 @@
   "maps": {
    "color": "fade_color.png",
    "normal": null,
-   "rough": 0.22,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -267,7 +267,7 @@
   "maps": {
    "color": "galaxy_color.png",
    "normal": null,
-   "rough": "galaxy_rough.png",
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "galaxy_emit.png"
   },
@@ -278,7 +278,7 @@
   "maps": {
    "color": "geode_color.png",
    "normal": "geode_normal.png",
-   "rough": 0.12,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -287,7 +287,7 @@
   "maps": {
    "color": "glitch_color.png",
    "normal": null,
-   "rough": 0.3,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "glitch_emit.png"
   },
@@ -298,7 +298,7 @@
   "maps": {
    "color": "granite_color.png",
    "normal": null,
-   "rough": 0.16,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -340,14 +340,14 @@
    "metal": "holo_metal.png",
    "emit": "holo_emit.png"
   },
-  "emissive": 0.6,
+  "emissive": 0.5,
   "tint": "ffffff"
  },
  "jade": {
   "maps": {
    "color": "jade_color.png",
    "normal": null,
-   "rough": 0.1,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -365,7 +365,7 @@
   "maps": {
    "color": "ketchup_color.png",
    "normal": "ketchup_normal.png",
-   "rough": 0.2,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -405,7 +405,7 @@
   "maps": {
    "color": "lavalamp_color.png",
    "normal": null,
-   "rough": 0.1,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "lavalamp_emit.png"
   },
@@ -425,8 +425,8 @@
   "maps": {
    "color": "marble_color.png",
    "normal": null,
-   "rough": 0.14,
-   "metal": 0.0,
+   "rough": "marble_rough.png",
+   "metal": "marble_metal.png",
    "emit": 0.0
   }
  },
@@ -481,7 +481,7 @@
   "maps": {
    "color": "nebula_color.png",
    "normal": null,
-   "rough": "nebula_rough.png",
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "nebula_emit.png"
   },
@@ -492,7 +492,7 @@
   "maps": {
    "color": "numsoup_color.png",
    "normal": "numsoup_normal.png",
-   "rough": 0.15,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -501,7 +501,7 @@
   "maps": {
    "color": "opal_color.png",
    "normal": null,
-   "rough": 0.08,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "opal_emit.png"
   },
@@ -539,7 +539,7 @@
   "maps": {
    "color": "racing_color.png",
    "normal": null,
-   "rough": "racing_rough.png",
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -548,7 +548,7 @@
   "maps": {
    "color": "rainbow_color.png",
    "normal": null,
-   "rough": 0.24,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -602,7 +602,7 @@
   "maps": {
    "color": "sprinkles_color.png",
    "normal": "sprinkles_normal.png",
-   "rough": 0.35,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -615,14 +615,14 @@
    "metal": 0.0,
    "emit": "stained_emit.png"
   },
-  "emissive": 0.8,
+  "emissive": 0.6,
   "tint": "ffffff"
  },
  "stonks": {
   "maps": {
    "color": "stonks_color.png",
    "normal": null,
-   "rough": 0.2,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "stonks_emit.png"
   },
@@ -678,7 +678,7 @@
   "maps": {
    "color": "tokyo_color.png",
    "normal": null,
-   "rough": 0.25,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "tokyo_emit.png"
   },
@@ -707,7 +707,7 @@
   "maps": {
    "color": "vapor_color.png",
    "normal": null,
-   "rough": 0.25,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": "vapor_emit.png"
   },
@@ -727,7 +727,7 @@
   "maps": {
    "color": "watermelon_color.png",
    "normal": null,
-   "rough": 0.35,
+   "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
   }

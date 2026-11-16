@@ -1174,5 +1174,105 @@
  "97213c482bd3e734ad284d8e3431f41f5e60d841": {
   "file": "zebra_color.png",
   "id": 87382711710679
+ },
+ "794d6dcdfdd4463bbfcb2383ebfb82fc1a78ed73": {
+  "file": "aurora_color.png",
+  "id": 96348187330767
+ },
+ "59c8bf803255e1c36b1ec071bd8f766ac516b5dc": {
+  "file": "aurora_emit.png",
+  "id": 89092985606973
+ },
+ "51176d9e468080c3bf68037659ee7e71c985eb3f": {
+  "file": "circuit_rough.png",
+  "id": 124627698100169
+ },
+ "c250eb1139da27ded71d0d0d96d6605d271e0768": {
+  "file": "dice_rough.png",
+  "id": 74319422159760
+ },
+ "5f7bcf110f117eab2752690cb87a18cfac28fc3a": {
+  "file": "galaxy_color.png",
+  "id": 81606959511190
+ },
+ "5811ffc4a20ba880ff62e7a8ed6b6e1be5227674": {
+  "file": "galaxy_emit.png",
+  "id": 137597014105061
+ },
+ "4f551ccf37b217d23f8c0be08829bd20655d79bd": {
+  "file": "holo_color.png",
+  "id": 95411039164476
+ },
+ "2773fdd9797093b9e71d93ecbe514aca886abb3f": {
+  "file": "holo_rough.png",
+  "id": 138260150768553
+ },
+ "7d7ec772f73f2ee7e0e8761ecce9c3c82bbec966": {
+  "file": "holo_metal.png",
+  "id": 130402081855422
+ },
+ "7599663c59fd8142dd0862f214a9b0c017154a23": {
+  "file": "holo_emit.png",
+  "id": 100578961004543
+ },
+ "196668a2ace42ced4b4ba5b763b033bae32eab19": {
+  "file": "kintsugi_rough.png",
+  "id": 126939898646251
+ },
+ "e37a3cc1f246594c9c9de18a38a30bfc925637ee": {
+  "file": "koi_rough.png",
+  "id": 116961394812518
+ },
+ "1839073d2815dfe06f98452f187ec73afe5fcbb4": {
+  "file": "lava_rough.png",
+  "id": 124459796206557
+ },
+ "b7fb52d571c1f420659eaabd2c3901e5965c7b02": {
+  "file": "marble_color.png",
+  "id": 118846052918502
+ },
+ "4e418faada8e9412c6bee90a45bc53c0822cbf44": {
+  "file": "marble_rough.png",
+  "id": 103163508714477
+ },
+ "4fc1403a0306beef24aca157f9f166d70e11cb62": {
+  "file": "marble_metal.png",
+  "id": 98867620622171
+ },
+ "2d7c3b102e44cac8ef202e6d548b398fe2147b0e": {
+  "file": "nebula_color.png",
+  "id": 103760436543373
+ },
+ "f028b39d1731f18934bedad7a64b473af3397bc7": {
+  "file": "nebula_emit.png",
+  "id": 136249633805167
+ },
+ "f4a348c50400684222b9da5d6301b11cd832a183": {
+  "file": "racing_color.png",
+  "id": 136397840730517
+ },
+ "1ee4b3f2d134c6c4dc56eb24dd9fdef0f879ca4e": {
+  "file": "stained_color.png",
+  "id": 113116899355630
+ },
+ "ae1cddc4f9b5672ed19020afe891232570c4f89c": {
+  "file": "stained_normal.png",
+  "id": 108219295629673
+ },
+ "fd6831dea9f02d3af1dd5217f2acf91f08fca3b9": {
+  "file": "stained_rough.png",
+  "id": 71725653395319
+ },
+ "4a4ce50255244ca5777873a68b5021a72e3d87d2": {
+  "file": "stained_emit.png",
+  "id": 100975542456961
+ },
+ "85dc3cee5ee37ece610499ebeb5661f49e366787": {
+  "file": "urushi_rough.png",
+  "id": 133383085133211
+ },
+ "15458381d2bac3e343327b27acb789bd36a4ef70": {
+  "file": "marble_color.png",
+  "id": 131626517596675
  }
 }

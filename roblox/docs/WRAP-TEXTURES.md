@@ -12,7 +12,7 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 **Where it stands:** 79 of the 102 wraps are textures; the other 23 stay colour wraps (21 plain colours, plus QR Code
 and Barcode, which may never be images). Every kit gun the owner picked carries the flat-projection UVs (`gun_uvs.py`,
 live since place version 313, 242 `WrapUV` pieces) and `WrapUV` on every piece but the glow and glass ones. Photos:
-`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall after the in-hand colour pass, place version 331), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
+`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 334), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
 `wrap-textures/round2/` (in the hall on the flat-UV guns, plus Blender renders),
 `wrap-textures/galaxy-dots-before-after.jpg` (the owner's Galaxy note),
 `wrap-textures/batch1-sheet.jpg` and `wrap-textures/judge1/` (the first round).
@@ -102,7 +102,22 @@ After round 3, against a fixed checklist rather than more judging rounds:
 - Racing is one even 3.1 cm grid of charcoal and off-white over the whole gun, no faded band.
 - Carbon a touch lighter (it read as plain black in the hall).
 - **Every wrap's colour map goes through the in-hand colour pass** (`hall_comp` in `wrap_textures.py`, below) except
-  the eleven tuned by hand in the hall (`HALL_TUNED`).
+  the nine tuned by hand in the hall (`HALL_TUNED`).
+
+Then one fresh judge on a broad sample (24 wraps in hand, `wrap-textures/in-hand-24.jpg`, place version 331): average
+5.9; Sakura and Damascus 8, Koi 7.5; lowest Stained Glass 3.5, Aurora 4, Checkered Flag, Holo and Marble 4.5. No text,
+codes or logos. What changed after it:
+
+- **Stained Glass**: thirteen big panes in ruby, emerald and sapphire (amber only where a pane's neighbours use all
+  three), no two neighbours alike, in thick 3 mm lead.
+- **Aurora**: two broad soft curtains hanging in rays along the gun, green at the hem turning violet, no specks.
+- **Marble**: warm clouded stone, long soft veins that taper out, one thin gold vein, honed.
+- **Holo**: one prismatic sweep (cyan, pink, gold) that changes only along the gun, so every fold matches; fewer,
+  bigger sparkles and stars; half metal, so the warm room no longer muddies it.
+- **Checkered Flag**: warm charcoal and cream instead of black and white (also further from anything code-like).
+- **Pale blank slabs** on up-facing faces (Kintsugi, Galaxy, Nebula) were the hall's ceiling lights mirrored by glossy
+  wraps: no non-metal wrap is glossier than roughness 0.36 now (`ROUGH_MIN`).
+- Galaxy's and Nebula's dots start at 1.6 px (under 1 px they read as specks), fewer of them.
 
 ## In-hand colour
 

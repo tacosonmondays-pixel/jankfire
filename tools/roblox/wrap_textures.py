@@ -185,11 +185,11 @@ def galaxy(t: Tex):
         return True
     dens = np.clip(0.03 + 0.97 * (m ** 2 * (1 - lane) + 0.08 * m2), 0, 1)   # the dots gather in the clouds
     # the field: thousands of faint dots, packed into the clouds (each dot 0.5 to 2 mm)
-    for _ in range(18000):
+    for _ in range(11000):                     # (round 4: dots under 1 px read as specks; from 1.6 px up)
         x, y = r.uniform(0, n), r.uniform(0, n)
         if r.uniform() > dens[int(y) % n, int(x) % n]: continue
-        k = r.uniform() ** 4
-        S.dot(x, y, 1.1 + 1.5 * k, 0.16 + 0.6 * k, star_colour(r))
+        k = r.uniform() ** 3
+        S.dot(x, y, 1.6 + 1.4 * k, 0.22 + 0.6 * k, star_colour(r))
     # the stars between the clouds, a little brighter, a soft glow round each (three to five millimetres)
     for _ in range(80):
         x, y = r.uniform(0, n), r.uniform(0, n)
@@ -347,8 +347,8 @@ def racing(t: Tex):
         return np.clip(0.5 + e, 0, 1) * 2 - 1
     q = wave(t.X, 128.0) * wave(t.Y, 128.0)   # 3.1 cm (round 2: 1.6 cm blurred to a grey grid at range)
     white = (1 + q) / 2                        # one regular check everywhere (round 3: the faded band read as a
-    t.rgb[:] = hexrgb('1c1c1f')                # second texture); charcoal and off-white, a perfectly even grid
-    t.fill(white, 'e2dfd8')
+    t.rgb[:] = hexrgb('2e2b27')                # second texture); warm charcoal and cream, a perfectly even grid,
+    t.fill(white, 'd8cfbb')                    # lower contrast than black and white (round 4)
     t.rough[:] = 0.26 + 0.06 * white
     return {}
 
@@ -424,33 +424,28 @@ def damascus(t: Tex):
 
 @design('holo')
 def holo(t: Tex):
-    """holo foil: cool silver foil with a broad, soft prismatic sheen, and crisp stickers on it: four-point sparkles
-       and a few five-pointed stars, each in its own hue (round 2: pale foil read as a pastel toy; round 3: thin
-       spectral lines read as crayon; the owner: details that are stars are real star shapes)"""
+    """holo foil: satin silver foil with one clean prismatic sweep (cyan, pink, gold) running along the gun, and a
+       few crisp sparkles and five-pointed stars on it (round 4: hue that changed from face to face read as muddy
+       blocks; the sweep depends on the position along the gun only, so every fold matches)"""
     n, U, V = t.n, t.U, t.V
-    w = FBM([2, 4], 71)(U, V)
-    ph = (U * 0.8 + V) * 1.5 + 0.35 * w
-    hue = (ph * 0.6) % 1.0
-    sheen = 0.5 + 0.5 * np.cos(ph * TAU)
-    t.rgb[:] = hsv(hue, np.float32(0.07) + 0.10 * sheen, np.float32(0.6) + 0.12 * sheen)
-    t.metal[:] = 0.85
-    t.rough[:] = 0.3 - 0.06 * sheen
+    w = FBM([2], 72)(U, U * 0 + 0.5)                     # a wobble that depends on U alone
+    ph = (U + 0.06 * w) % 1.0
+    stops = np.stack([hexrgb('9fdde4'), hexrgb('e2b4d2'), hexrgb('e4d49e'), hexrgb('9fdde4')])
+    k = ph * 3; i0 = np.clip(np.floor(k).astype(int), 0, 2); fr = smoothstep(0, 1, k - i0)
+    sweep = stops[i0] * (1 - fr[..., None]) + stops[i0 + 1] * fr[..., None]
+    t.rgb[:] = hexrgb('b8bcc4') * 0.55 + sweep * 0.45
+    t.metal[:] = 0.55
+    t.rough[:] = 0.3
     r = t.rng
-    stars = scatter(r, n, 14, 190)
-    for i, (x, y) in enumerate(stars):
-        five = i % 4 == 0
-        ro = r.uniform(28, 38) if five else r.uniform(22, 34)    # 1 to 1.5 cm across: they read in first person
+    for i, (x, y) in enumerate(scatter(r, n, 9, 260)):
+        five = i % 3 == 0
+        ro = r.uniform(34, 44) if five else r.uniform(30, 42)
         X, Y, idx = t.box(x - ro * 1.6, y - ro * 1.6, x + ro * 1.6, y + ro * 1.6)
-        sd = (sd_star(x, y, ro, ro * 0.42, 5, r.uniform(0, TAU), round_=1.2) if five
+        sd = (sd_star(x, y, ro, ro * 0.42, 5, r.uniform(0, TAU), round_=1.4) if five
               else sd_sparkle(x, y, ro, 0.17, r.uniform(-0.25, 0.25)))(X, Y)
-        hh = (float(hue[int(y) % n, int(x) % n]) + 0.5) % 1.0
-        col = hsv(np.float32(hh), np.float32(0.35), np.float32(0.95))
-        t.paint(idx, cover(sd), col, emit=0.6, rough=0.12, metal=0.5)
-        t.paint(idx, cover(sd + ro * 0.22), '#f4f4f6')
-    return {'emissive': 0.6, 'tint': 'ffffff'}
+        t.paint(idx, cover(sd), '#f6f4f0', emit=0.5, rough=0.2, metal=0.4)
+    return {'emissive': 0.5, 'tint': 'ffffff'}
 
-
-# ====================================================================== batch 2
 @design('urban')
 def urban(t: Tex):
     """urban camo: concrete greys, one cool light and two charcoals"""
@@ -706,48 +701,64 @@ def circuit(t: Tex):
 
 @design('stained')
 def stained(t: Tex):
-    """stained glass: jewel-coloured panes, each a little lighter in its middle, held in raised dark lead; lit from
-       behind"""
+    """stained glass: big panes in three jewel tones (ruby, emerald, sapphire, a rare amber), each lighter in its
+       middle, held in thick raised dark lead; softly lit from behind (round 4: eight colours of small panes read as
+       candy)"""
     n = t.n; r = t.rng
-    pts = [(r.uniform(0, n), r.uniform(0, n)) for _ in range(22)]
+    pts = scatter(r, n, 13, 200)
     d1, d2, ids = voronoi(n, pts)
-    pal = [hexrgb(h) for h in ('b8338f', '2f8fb0', 'c9a22e', '3a9a3c', 'b42a2a', '6a3fb8', '2a50b0', 'c8721c')]
-    order = r.permutation(len(pts))
-    cols = np.stack([pal[order[i] % len(pal)] for i in range(len(pts))])
-    base = cols[ids]
-    lift = (0.9 + 0.14 * smoothstep(90, 0, d1))[..., None]
-    t.rgb[:] = np.clip(base * lift, 0, 1)
+    # neighbouring panes never share a colour: colour the pane graph greedily
+    nb = {i: set() for i in range(len(pts))}
+    for a, b in ((ids, np.roll(ids, 1, 0)), (ids, np.roll(ids, 1, 1))):
+        m = a != b
+        for x, y in set(zip(a[m].tolist(), b[m].tolist())): nb[x].add(y); nb[y].add(x)
+    pal = ['8e2a38', '2a6e4e', '2c4a86', 'a8782c']          # ruby, emerald, sapphire, amber (the fourth only if needed)
+    col = {}
+    for i in sorted(nb, key=lambda k: -len(nb[k])):
+        used = {col[j] for j in nb[i] if j in col}
+        free = [c for c in range(3) if c not in used] or [c for c in range(4) if c not in used]
+        col[i] = free[0] if free else min(range(3), key=lambda c: sum(1 for j in nb[i] if col.get(j) == c))
+    cols = np.stack([hexrgb(pal[col[i]]) for i in range(len(pts))])
+    lift = (0.82 + 0.3 * smoothstep(150, 0, d1))[..., None]
+    t.rgb[:] = np.clip(cols[ids] * lift, 0, 1)
     edge = (d2 - d1) * 0.5
-    lead = np.clip(3.2 - edge + 0.5, 0, 1)
-    t.fill(lead, '1c1a20', rough=0.55)
-    t.emit[:] = (1 - lead) * 0.45
-    t.height[:] = np.clip(1 - edge / 4.5, 0, 1) * 1.2
-    t.rough[:] = np.where(lead > 0.5, 0.55, 0.12)
-    return {'emissive': 0.8, 'tint': 'ffffff'}
-
+    lead = np.clip(6.5 - edge + 0.5, 0, 1)                 # lead 13 px (3 mm) wide
+    t.fill(lead, '24222a')
+    t.emit[:] = (1 - lead) * smoothstep(150, 0, d1) * 0.35
+    t.height[:] = np.clip(1 - edge / 8.0, 0, 1) * 1.6
+    t.rough[:] = np.where(lead > 0.5, 0.6, 0.36)
+    return {'emissive': 0.6, 'tint': 'ffffff'}
 
 @design('marble')
 def marble(t: Tex):
-    """white marble: soft grey clouds and a few branching veins of varying width with a faint haze, polished"""
+    """marble: warm grey-white stone with soft cloudy shading, branching grey veins that taper to nothing, and one
+       thin gold vein through it; honed, not mirror-polished (round 4: flat white with thin dark lines read as primer
+       and pen)"""
     U, V = t.U, t.V
     f = FBM([2, 4, 8], 251, 0.55)
     wu, wv = U + 0.08 * f(U, V), V + 0.08 * f(V + 0.3, U)
-    t.rgb[:] = mix('dedfdb', 'f1f0ec', smoothstep(-0.5, 0.5, FBM([2, 4], 252)(U, V)))
-    t.fill(smoothstep(0.2, 0.6, FBM([3, 6], 257)(wu, wv)) * 0.25, 'c3c4c6')
-    g = FBM([(2, 3), (4, 6), (8, 12)], 253, 0.6)(wu, wv)
-    gx = (np.roll(g, -1, 1) - np.roll(g, 1, 1)) * 0.5; gy = (np.roll(g, -1, 0) - np.roll(g, 1, 0)) * 0.5
-    dist = np.abs(g) / (np.sqrt(gx * gx + gy * gy) + 1e-6)          # pixels to the vein's centre line
-    wid = 1.2 + 2.6 * smoothstep(-0.3, 0.6, FBM([4, 8], 254)(U, V))
-    keep = smoothstep(-0.45, -0.1, FBM([3, 6], 255)(U, V))           # some veins fade out
-    t.fill(np.exp(-dist / (wid * 4)) * 0.22 * keep, 'a7a8ae')
-    t.fill(np.clip(wid - dist + 0.5, 0, 1) * keep * 0.85, '62636d')
-    g2 = FBM([(4, 4), (8, 8), (16, 16)], 256, 0.6)(wu, wv)
-    gx = (np.roll(g2, -1, 1) - np.roll(g2, 1, 1)) * 0.5; gy = (np.roll(g2, -1, 0) - np.roll(g2, 1, 0)) * 0.5
-    d2 = np.abs(g2) / (np.sqrt(gx * gx + gy * gy) + 1e-6)
-    t.fill(np.clip(0.9 - d2 + 0.5, 0, 1) * smoothstep(0.1, 0.45, FBM([3, 6], 258)(U, V)) * 0.5, '8e8f99')
-    t.rough[:] = 0.14
-    return {}
+    # (round 4 in hand: pale clouds and hairline veins vanished; the hall's light flattens near-whites, so the clouds
+    # and veins are drawn in clear mid greys, Carrara-like)
+    t.rgb[:] = mix('dcd7ce', 'ece8e0', smoothstep(-0.5, 0.5, FBM([2, 4], 252)(U, V)))
+    t.fill(smoothstep(-0.25, 0.3, FBM([3, 6, 12], 257, 0.55)(wu, wv)) * 0.55, 'a49d92')   # soft clouds
+    t.fill(smoothstep(0.0, 0.4, FBM([2, 4], 259)(wu, wv)) * 0.45, '8c857a')
 
+    def veins(seed, per):
+        g = FBM(per, seed, 0.6)(wu, wv)
+        gx = (np.roll(g, -1, 1) - np.roll(g, 1, 1)) * 0.5; gy = (np.roll(g, -1, 0) - np.roll(g, 1, 0)) * 0.5
+        return np.abs(g) / (np.sqrt(gx * gx + gy * gy) + 1e-6)
+    dist = veins(253, [(2, 3), (4, 6), (8, 12)])                # long, bending veins
+    taper = smoothstep(-0.3, 0.15, FBM([3, 6], 255)(U, V))              # 0 where a vein dies out
+    wid = 1.0 + 5.0 * taper * smoothstep(-0.25, 0.25, FBM([4, 8], 254)(U, V))
+    t.fill(np.exp(-dist / (wid * 3 + 5)) * 0.6 * taper, '7a7369')         # a soft haze either side
+    t.fill(np.clip(wid - dist + 0.5, 0, 1) * taper * 0.85, '544e47')
+    d2 = veins(256, [(2, 3), (4, 6), (8, 12)])                            # fine branches
+    t.fill(np.clip(1.6 * taper - d2 + 0.5, 0, 1) * smoothstep(0.1, 0.45, FBM([3, 6], 258)(U, V)) * 0.65, '6c665e')
+    d3 = veins(260, [(1, 2), (2, 4)])                                     # the gold vein
+    gold = np.clip(1.3 - d3 + 0.5, 0, 1) * smoothstep(-0.2, 0.3, FBM([2, 3], 261)(U, V))
+    t.rough[:] = 0.38
+    t.fill(gold, 'c49a48', metal=1.0, rough=0.3)
+    return {}
 
 @design('wood')
 def wood(t: Tex):
@@ -854,10 +865,10 @@ def nebula(t: Tex):
     t.rough[:] = 0.3
     r = t.rng
     S = StarLight(t)
-    for _ in range(2200):
+    for _ in range(1400):
         x, y = r.uniform(0, n), r.uniform(0, n)
         k = r.uniform() ** 3
-        S.dot(x, y, 1.3 + 1.5 * k, 0.3 + 0.6 * k, star_colour(r))
+        S.dot(x, y, 1.6 + 1.4 * k, 0.32 + 0.6 * k, star_colour(r))
     S.done()
     # the few bright stars you notice in hand are real four-point twinkles (main session, 16 Nov: stars that read at
     # first-person distance are star shapes; Galaxy alone is dots, the owner's own call for that wrap)
@@ -2012,25 +2023,24 @@ def vapor(t: Tex):
 
 @design('aurora')
 def aurora(t: Tex):
-    """aurora: green and violet light hanging in soft curtains over a dark night sky with a few stars"""
-    n = t.n; r = t.rng
-    t.rgb[:] = mix('03101a', '06182a', t.V)
-    for _ in range(160):
-        x, y = r.uniform(0, n), r.uniform(0, n)
-        t.shape((x - 4, y - 4, x + 4, y + 4), sd_circle(x, y, r.uniform(0.9, 1.8)), color='cfe8f4', emit=0.6)
-    w = FBM([(2, 1), (4, 2)], 561)(t.U, t.V)
-    base = 0.55 + 0.18 * np.sin((t.U + 0.4 * w) * TAU * 2)
-    above = np.clip((base - t.V) / 0.45, 0, 1)
-    below = smoothstep(0.03, 0.0, t.V - base)
-    rays = 0.6 + 0.4 * np.sin((t.U * 24 + 3 * w) * TAU) ** 2
-    a = above * below * rays
-    a = np.where(t.V < base, np.exp(-(base - t.V) / 0.18) * rays, 0) * 0.95
-    col = mix('2aff8a', 'b04aff', smoothstep(0.0, 0.35, base - t.V))
-    t.fill(np.clip(a, 0, 1), col, emit=1.0)
-    t.emit[:] = np.maximum(t.emit, np.clip(a, 0, 1))
-    t.rough[:] = 0.3
-    return {'emissive': 1.4, 'tint': 'ffffff'}
-
+    """aurora: two broad soft curtains of light, green at their hems turning violet above, hanging in rays along the
+       gun over a deep navy night (round 4: specks and small mint patches read as noise, not an aurora)"""
+    U, V = t.U, t.V
+    t.rgb[:] = mix('071526', '0c1d36', smoothstep(-0.6, 0.6, FBM([2, 3], 562)(U, V)))
+    w = FBM([(2, 1), (4, 2)], 561)(U, V)
+    light = np.zeros_like(U); hue = np.zeros_like(U)
+    for k, (v0, amp, ph) in enumerate(((0.62, 0.10, 0.0), (0.12, 0.08, 0.37))):
+        hem = v0 + amp * np.sin((U + ph + 0.25 * w) * TAU * 2)       # the curtain's lower edge, waving along the gun
+        up = (hem - V) % 1.0                                          # how far above the hem (periodic)
+        rays = 0.55 + 0.45 * np.sin((U * 12 + 2.5 * w + k * 0.3) * TAU) ** 2
+        c = smoothstep(0.0, 0.025, up) * np.exp(-up / 0.2) * rays
+        hue = np.where(c >= light, smoothstep(0.02, 0.32, up), hue)
+        light = np.maximum(light, c)
+    col = mix('46c98c', '8a5ad0', hue)
+    t.fill(np.clip(light * 0.85, 0, 1), col)
+    t.emit[:] = np.clip(light * 0.75, 0, 1)
+    t.rough[:] = 0.4
+    return {'emissive': 1.2, 'tint': 'ffffff'}
 
 @design('blackhole')
 def blackhole(t: Tex):
@@ -2113,7 +2123,10 @@ def bowling(t: Tex):
 HALL_A = np.array([1.2, 1.2, 1.05], np.float32)
 HALL_B = np.array([-33, -33, -35], np.float32) / 255.0
 HALL_K = 0.7          # how far towards the full inverse (not all the way: other zones light the guns more neutrally)
-HALL_TUNED = {'galaxy', 'nebula', 'camo', 'hex', 'tiger', 'sakura', 'racing', 'carbon', 'hazard', 'holo', 'damascus'}
+HALL_TUNED = {'galaxy', 'nebula', 'camo', 'hex', 'tiger', 'sakura', 'carbon', 'hazard', 'damascus'}
+# SATIN: a non-metal wrap is never glossier than this: up-facing faces of glossy wraps mirrored the hall's ceiling
+# lights as pale blank slabs (round 4: Kintsugi, Galaxy, Nebula)
+ROUGH_MIN = 0.36
 
 
 def hall_comp(rgb):
@@ -2125,6 +2138,7 @@ def build(wid, out_dir):
     t = Tex(seed=seed_of(wid))
     extra = DESIGNS[wid](t) or {}
     if wid not in HALL_TUNED: t.rgb[:] = hall_comp(t.rgb)
+    t.rough[:] = np.where(t.metal < 0.5, np.maximum(t.rough, ROUGH_MIN), t.rough)
     maps = t.save(os.path.join(out_dir, wid))
     rel = {k: (os.path.basename(v) if isinstance(v, str) else v) for k, v in maps.items()}
     return {'maps': rel, **extra}
