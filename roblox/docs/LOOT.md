@@ -296,6 +296,8 @@ strip (52 cards) had the prize at its `stop`.
   opened, a Crown on the Redline rose over it with "<name> opened a duffel bag / CROWN / REDLINE · LEGENDARY"; a x10
   showed the best of the ten ("LAVA LAMP · REVOLVER · LEGENDARY · +9 MORE").
 - The owner's inventory was put back afterwards.
+- The shop session's end-to-end check (place v398): CLAIM x5 -> buy 5 -> open 5 -> five reels -> the "YOU GOT 5"
+  grid -> DONE -> the shop's inventory, stock back to 0; a bundle of card looks went through the CardStyles hook.
 - Not tested with two real players (only the event path through `dev show`), nor the setting's row in the panel by eye.
 
 **Not tested:** two real servers fighting over a lock (the steal path is code-read only); real Robux; a phone; a death
