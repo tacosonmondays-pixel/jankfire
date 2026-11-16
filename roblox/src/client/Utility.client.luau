@@ -216,30 +216,32 @@ local function K(t: number, x: number, y: number, z: number, rx: number, ry: num
 	return { t = t, p = Vector3.new(x, y, z), r = Vector3.new(rx, ry, rz) }
 end
 -- release / use = when it leaves the hand (the server throws on the press, so the hand is already on its way)
+-- (the one-handed holds sit where Rivals' do at our 80 degree FOV: about 15% left of the crosshair, 25% under it;
+-- the up-in-front ones, the laptop, the print and the wand, stay in front)
 local CLIPS = {
 	throw = { dur = 0.52, out = 0.3, release = 0.1, inT = 0.04, keys = {
-		K(0, -0.55, -1.25, -0.95, 0.7, 0.2, 0.35), K(0.06, -0.46, -0.58, -1.05, 0.15, 0.25, 0.25),
-		K(0.18, -0.2, -0.5, -1.8, -0.55, 0.1, 0.05), K(0.52, -0.5, -1.5, -1.1, 0.4, 0.2, 0.3) } },
+		K(0, -0.75, -1.25, -0.95, 0.7, 0.2, 0.35), K(0.06, -0.66, -0.56, -1.3, 0.15, 0.25, 0.25),
+		K(0.18, -0.4, -0.5, -1.8, -0.55, 0.1, 0.05), K(0.52, -0.7, -1.5, -1.1, 0.4, 0.2, 0.3) } },
 	medkit = { dur = 0.82, out = 0.52, release = 0.62, keys = {
-		K(0, -0.5, -1.3, -1.0, 0.6, 0.2, 0.2), K(0.13, -0.32, -0.62, -1.18, 0.2, 0.45, 0.12),
-		K(0.34, -0.3, -0.58, -1.12, 0.32, 0.55, 0.16), K(0.56, -0.42, -0.95, -1.0, 0.5, 0.35, 0.2), K(0.82, -0.55, -1.55, -0.9, 0.7, 0.2, 0.3) } },
+		K(0, -0.7, -1.3, -1.0, 0.6, 0.2, 0.2), K(0.13, -0.52, -0.62, -1.18, 0.2, 0.45, 0.12),
+		K(0.34, -0.5, -0.58, -1.12, 0.32, 0.55, 0.16), K(0.56, -0.62, -0.95, -1.0, 0.5, 0.35, 0.2), K(0.82, -0.75, -1.55, -0.9, 0.7, 0.2, 0.3) } },
 	-- (web pop_popper: snaps up by 0.07 s, the yank at 0.10, eased back by 0.34, gone by 0.5; it pops at 0.08)
 	popper = { dur = 0.5, out = 0.3, release = 9, inT = 0.05, keys = {
-		K(0, -0.5, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.07, -0.36, -0.52, -1.3, -1.05, 0.15, 0.1),
-		K(0.1, -0.34, -0.47, -1.12, -1.35, 0.2, 0.12), K(0.34, -0.38, -0.62, -1.22, -1.0, 0.15, 0.1), K(0.5, -0.55, -1.5, -1.0, 0.3, 0.1, 0.25) } },
+		K(0, -0.7, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.07, -0.56, -0.52, -1.3, -1.05, 0.15, 0.1),
+		K(0.1, -0.54, -0.47, -1.12, -1.35, 0.2, 0.12), K(0.34, -0.58, -0.62, -1.22, -1.0, 0.15, 0.1), K(0.5, -0.75, -1.5, -1.0, 0.3, 0.1, 0.25) } },
 	-- (web pop_reverse: up from below by 0.16 s, spun round on the way, held, settles 0.62, drops at 0.8)
 	reverse = { dur = 0.8, out = 0.6, release = 9, inT = 0.05, keys = {
-		K(0, -0.45, -1.3, -1.0, 0.3, 0, 0.2), K(0.16, -0.3, -0.42, -1.25, 0, math.pi * 2, 0.05),
-		K(0.5, -0.3, -0.44, -1.25, 0, math.pi * 2 + 0.25, 0.05), K(0.62, -0.32, -0.5, -1.22, 0.1, math.pi * 2 + 0.2, 0.08), K(0.8, -0.5, -1.5, -1.0, 0.4, math.pi * 2, 0.25) } },
+		K(0, -0.65, -1.3, -1.0, 0.3, 0, 0.2), K(0.16, -0.5, -0.42, -1.25, 0, math.pi * 2, 0.05),
+		K(0.5, -0.5, -0.44, -1.25, 0, math.pi * 2 + 0.25, 0.05), K(0.62, -0.52, -0.5, -1.22, 0.1, math.pi * 2 + 0.2, 0.08), K(0.8, -0.7, -1.5, -1.0, 0.4, math.pi * 2, 0.25) } },
 	-- (web pop_laptop: up from below by 0.10 s, shoved forward screen first at 0.18 with an overshoot, held while it
 	-- "loads" to 0.7, dropped by 0.9)
 	laptop = { dur = 0.9, out = 0.7, release = 9, inT = 0.06, keys = {
 		K(0, -0.4, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.1, -0.3, -0.62, -1.2, 0.05, 0.25, 0.05),
 		K(0.18, -0.24, -0.55, -1.55, -0.1, 0.2, 0.0), K(0.7, -0.26, -0.58, -1.45, -0.05, 0.22, 0.02), K(0.9, -0.45, -1.5, -1.0, 0.5, 0.2, 0.2) } },
 	radar = { dur = 1e6, out = 1e6 - 1, release = 1e9, inT = 0.06, keys = {
-		K(0, -0.5, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.17, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04), K(1e6, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04) } },
+		K(0, -0.7, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.17, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04), K(1e6, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04) } },
 	radarDown = { dur = 0.16, out = 0.0, release = 9, inT = 0.001, keys = {
-		K(0, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04), K(0.16, -0.5, -1.4, -1.0, 0.4, 0.2, 0.1) } },
+		K(0, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04), K(0.16, -0.7, -1.4, -1.0, 0.4, 0.2, 0.1) } },
 	snap = { dur = 0.85, out = 0.55, release = 9, inT = 0.06, keys = {
 		K(0, -0.55, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.16, -0.22, -0.34, -0.78, 0.04, -0.08, -0.04),
 		K(0.3, -0.21, -0.32, -0.75, 0, -0.06, -0.02), K(0.38, -0.21, -0.3, -0.7, 0.14, -0.06, 0.03),
@@ -252,8 +254,8 @@ local CLIPS = {
 		K(0, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25), K(0.13, -0.17, -0.83, -0.66, 0, 0.35, -0.25),
 		K(0.62, -0.17, -0.83, -0.66, 0, 0.35, -0.25), K(0.85, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25) } },
 	bubble = { dur = 0.66, out = 0.4, release = 0.5, keys = {
-		K(0, -0.45, -1.3, -1.0, 0.5, 0.1, 0.2), K(0.12, -0.3, -0.5, -1.35, -0.1, 0.2, 0.05),
-		K(0.3, -0.3, -0.52, -1.3, -0.15, 0.25, 0.05), K(0.66, -0.5, -1.5, -1.0, 0.5, 0.1, 0.3) } },
+		K(0, -0.65, -1.3, -1.0, 0.5, 0.1, 0.2), K(0.12, -0.5, -0.5, -1.35, -0.1, 0.2, 0.05),
+		K(0.3, -0.5, -0.52, -1.3, -0.15, 0.25, 0.05), K(0.66, -0.7, -1.5, -1.0, 0.5, 0.1, 0.3) } },
 }
 local function sampleClip(c: any, t: number): CFrame
 	local keys = c.keys
@@ -269,7 +271,8 @@ end
 -- the left hand's own arm, when the gun has no left hand of its own: a hold row for a thing held in the fist
 Holds.holds.item_hand = { Left = { pose = "grip", at = Vector3.zero, rot = Vector3.zero, size = 0.9 } }
 local FP_K = 0.95 -- the item in first person, against its world size (the guns are drawn a little under world size)
-local FP_SIZE = { duck = 0.45 } -- (the thrown duck is 0.6 m long, web pj_duck: in your hand it's a toy)
+local FP_SIZE = { duck = 0.35, frag = 0.75 } -- (the thrown duck is 0.6 m long, web pj_duck: in your hand it's a toy; a throwable in
+-- hand is about 11% of the screen wide, as in Rivals)
 type Hand = { id: string, clip: any, t0: number, model: Model, grip: CFrame, own: Model?, root: BasePart?, gone: boolean, lastF: CFrame?, extra: any? }
 local hand: Hand? = nil
 local extraStep: ((Hand, number) -> ())? = nil -- (the camera's print sliding out: the camera below)
