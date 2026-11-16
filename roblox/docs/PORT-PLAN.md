@@ -953,6 +953,7 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - the shared hologram look with lines, glitch and flicker off, and see 0.84 (without scanlines the neon bloomed white)
   - made only when your character is (a spawn, CharacterAppearanceLoaded)
   - checked in Play: 51 parts, 0 textures, 0 Humanoids
+  - the perf session's measurement after it (with the VFX session's Hologram at v447): training at 60 fps (Studio's cap), render CPU 6.2 ms, down from 40 ms and 12 fps. With every light off it was 6.0 ms, and shadows off changed nothing, so no lamp cuts are needed; keep shadow-casting lamps at 5 or fewer.
 - **The podium weapon** is built fresh from `WeaponModels`; a copy of the hand's model was invisible.
 
 **Traps:**
