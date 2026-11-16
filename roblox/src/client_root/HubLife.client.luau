@@ -52,15 +52,13 @@ task.spawn(function() -- (walking or hopping between hubs doesn't change the zon
 	while true do task.wait(0.4); relook(false) end
 end)
 
+-- (16 Nov, owner: no flavour text. a tip is a rule or a key, nothing else; the old jokes, and the lines about the old
+-- hub's balcony, laser door and 5v5 pad that are no longer true, are gone)
 local TIPS = {
-	"the jump pads go up. the balcony goes nowhere. enjoy.",
-	"step on a pad's colour to queue. stepping off un-queues you. that's the whole skill.",
-	"the red grid behind the spawn is a door. walking into lasers is encouraged here only.",
-	"the dummies in training shoot back. they're bad at it. so are you. it's fair.",
-	"the 5v5 pad is coming soon. we checked. it isn't.",
-	"the duck upstairs is a hologram. please stop tipping it.",
-	"first to 5 rounds wins. no draws. the coin decides if nobody does.",
-	"marbles on the floor are a choice. your choice. a bad one.",
+	"step on a pad in your team's colour to queue. step off to leave the queue.",
+	"first to 5 rounds wins.",
+	"press L anywhere to change your loadout.",
+	"hold H to see the keys. P opens the settings.",
 }
 
 type Spinner = { m: Model, base: CFrame, t: number }
