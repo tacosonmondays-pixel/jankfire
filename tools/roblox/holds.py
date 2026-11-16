@@ -26,7 +26,8 @@ out = ['--!strict',
        '--     on top of 0.17; the zoom\'s own push comes on top of that), sight = where the aim line runs on the gun (file',
        '--     metres; else the gun\'s own Sight spot), kind = iron / dot / none / scope (the HUD: the crosshair goes for',
        '--     sights, a red dot shows in a dot sight), skins[id] = a skin\'s own aimZ / sight, hide = its pieces (names',
-       '--     start with these) faded out while aiming: wings, horns, crowns',
+       '--     start with these) faded out while aiming: wings, horns, crowns; near = its big pieces by the stock drawn',
+       '--     smaller in your own first-person view only (pieces, scale, pivot in file metres)',
        '--   elbow: where each forearm comes from, in camera space (metres). size: every weapon in first person is drawn',
        '--     this much larger than the web game\'s scale (Viewmodel: k = S x vm.s x size), the hands with it',
        '--   katana: its rest and parry poses as a turn and a shift laid over the web game\'s clips, and when each is on',
@@ -73,6 +74,9 @@ for wid, h in H.items():
             if 'aimZ' in row: sb.append('aimZ = %s' % f(row['aimZ']))
             if row.get('sight'): sb.append('sight = %s' % V(row['sight']))
             if row.get('hide'): sb.append('hide = { %s }' % ', '.join('"%s"' % n.lower() for n in row['hide']))
+            nr = row.get('near')
+            if nr: sb.append('near = { pieces = { %s }, scale = %s, pivot = %s }' % (
+                ', '.join('"%s"' % n.lower() for n in nr['pieces']), f(nr['scale']), V(nr['pivot'])))
             sk.append('%s = { %s }' % (sid, ', '.join(sb)))
         if sk: bits.append('skins = { %s }' % ', '.join(sk))
         sides.append('ads = { %s }' % ', '.join(bits))

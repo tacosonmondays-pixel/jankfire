@@ -9,6 +9,8 @@
 #   --ads: the aimed view, measured on the guns' real triangles (an id may be id@skin): how much of the screen it
 #   covers, the top of its body, where it leaves the bottom edge, the sight's box (Rivals' rifles: about 8 % covered,
 #   the body's top at 52, leaving the bottom at 40 to 60)
+#   --hip id@skin ...: the same at rest, a skin's `near` shrink applied, with the skin's own pieces that cover most (a
+#   piece by the stock, right at the lens, that fills a corner wants a `near` row)
 import json, math, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -201,6 +203,33 @@ def measure_ads(key, vm, holds, fov):
     return out
 
 
+def measure_hip(key, vm, holds, fov):
+    """a gun (or id@skin) at rest on its real triangles, as Viewmodel draws it in your own view (a skin's `near` pieces
+       shrunk about their pivot). Returns % of the screen covered, and per piece of the skin that the plain gun lacks"""
+    import numpy as np
+    wid, skin = (key.split('@') + [None])[:2]
+    p, r, s = vm[wid]
+    row = row_of(holds, wid)
+    size = holds.get('_size', 1) * row.get('scale', 1)
+    k = S * s * size
+    pos = np.array([p[i] * S + (row.get('shift') or [0, 0, 0])[i] * S for i in range(3)])
+    tilt = row.get('tilt') or [0, 0, 0]
+    R = np.array(angles([r[i] + math.radians(tilt[i]) for i in range(3)]))
+    nr = (holds.get(wid, {}).get('ads', {}).get('skins', {}).get(skin, {}) if skin else {}).get('near')
+    shrink = [n.lower() for n in nr['pieces']] if nr else []
+    T = {}
+    for n, v in tris(key).items():
+        if n.lower() in shrink:
+            piv = np.array(nr['pivot']); v = piv + (v - piv) * nr['scale']
+        T[n] = (v * k) @ R.T + pos
+    base = set(tris(wid)) if skin else set(T)
+    out = {'cover': 100 * raster(list(T.values()), [0, 0, 0], 1, fov).mean(), 'pieces': []}
+    for n, v in T.items():
+        if n not in base: out['pieces'].append((100 * raster([v], [0, 0, 0], 1, fov).mean(), n))
+    out['pieces'].sort(reverse=True)
+    return out
+
+
 def main():
     args = sys.argv[1:]
     fov = 80  # the game's default (JankSettings: S.fov = 80; the P menu changes it)
@@ -214,6 +243,13 @@ def main():
         i = args.index('--holds'); hp = args[i + 1]; del args[i:i + 2]
     holds = json.load(open(hp, encoding='utf-8'))
     vm = read_vm()
+    if '--hip' in args:
+        args.remove('--hip')
+        print('weapon                    covers   (at rest, % of a 16:9 screen; then the pieces of the skin that cover most)')
+        for key in args:
+            m = measure_hip(key, vm, holds, fov)
+            print('%-24s  %5.1f    %s' % (key, m['cover'], ', '.join('%s %.1f' % (n, c) for c, n in m['pieces'][:5])))
+        return
     if '--ads' in args:
         args.remove('--ads')
         print('weapon                  zoom  covers  body top  bottom edge   sight box (x, y)   (aimed, % of a 16:9 screen)')

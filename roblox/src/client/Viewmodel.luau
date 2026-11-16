@@ -448,6 +448,28 @@ function VM.set(wid: string, kat: number)
 	end
 	local root = m.PrimaryPart
 	root.Anchored = true
+	-- a skin's big pieces by the stock (an angel's wings, right at the lens) drawn smaller in your own view only,
+	-- about the spot where they meet the gun (Holds ads.skins[id].near: pieces, scale, pivot in file metres);
+	-- everyone else sees them full size
+	local near = adsSkin and adsSkin.near
+	if near then
+		local piv = root.CFrame * CFrame.new(near.pivot * k)
+		for _, d in m:GetDescendants() do
+			if not d:IsA("BasePart") or d == root then continue end
+			local n = string.lower(d.Name)
+			for _, pre in near.pieces do
+				if string.sub(n, 1, #pre) == pre and (#n == #pre or string.sub(n, #pre + 1, #pre + 1) == "_") then
+					local wc = d:FindFirstChildOfClass("WeldConstraint")
+					if wc then wc.Enabled = false end -- (moved alone, then welded where it now is)
+					local rel = piv:ToObjectSpace(d.CFrame)
+					d.Size *= near.scale
+					d.CFrame = piv * CFrame.new(rel.Position * near.scale) * rel.Rotation
+					if wc then wc.Enabled = true end
+					break
+				end
+			end
+		end
+	end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then d.CastShadow = false; d.CanQuery = false; d.CanTouch = false end
 	end

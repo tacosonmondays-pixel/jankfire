@@ -285,6 +285,14 @@ The Half a Shotgun's line ran inside its hinge.
   would otherwise cover 84 % of the screen. Bulkier bodies sit further back: the Ticket Hat Trick at 0.14, the Dust
   Yeehaw at 0.29 and the Star Yeehaw at 0.18. Every other skin was measured and passes as is.
 
+- At the hip (place version 475; the main session, after the sheets: the Seraph rifle's wing "fills the whole right
+  third of the screen" because it sits by the stock, at the camera): a skin's `near` row draws its big pieces by the
+  stock smaller in your own first-person view only, about where they meet the gun; other players see them full size.
+  The Seraph rifle's wings are drawn at 45 % about (0, 0.1, 0.3): 13 % of the screen at full size, now about 3 %, a
+  corner at the bottom right. Every other skin was measured at the hip (`hold_screen.py --hip`) and covers within two
+  points of its gun; the Seraph sniper's wing is already a small corner. Sheet: `gun-hold/ads-4.jpg`. The wing is
+  being redrawn; its new pieces need the same check and maybe a new scale.
+
 Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
 JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
 Not checked in pictures: the cute concepts, the duck guns and the Keytar (they measure within 1.25x of their gun in
