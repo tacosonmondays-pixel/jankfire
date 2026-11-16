@@ -281,10 +281,78 @@ local function hands(m: Model, root: BasePart)
 	end)
 end
 
+-- ---- a soft fill light that rides with the gun (16 Nov 2026). three judges in a row found every gun near-black in
+-- first person: the side you see (its top and its left) faces away from the hall's lamps, and painting the guns
+-- lighter moved those pixels 0 to 6 levels. so a dim SpotLight sits up and to the left of the gun's middle, a little
+-- toward you (in camera space, so it stays put while the gun sways, kicks and turns in a reload), aimed at that
+-- middle. nothing of it shows; its reach ends just past the gun's far side, so it does not get to the floor; up
+-- against a wall, cover or another player its reach is cut to the first thing in its cone (five rays a frame), so
+-- nothing but the gun gets it; it goes out whenever the viewmodel is hidden (third person, the scope, a menu). it
+-- lights your hands too
+local FILL = {
+	dir = Vector3.new(-0.62, 0.62, 0.48).Unit, -- from the gun's middle toward the light, camera space
+	away = 1.4, -- how far the light sits from the middle, in the gun's half-lengths (+ 0.5 studs)
+	reach = 1.2, -- where its light ends: this many half-lengths past the middle
+	brightness = 1.2, -- (tried 1 and 1.6 in the hall: 1.6 turns the Revolver's steel cylinder near-white)
+	color = Color3.fromRGB(255, 247, 238), -- plain white, a touch warm like the hall's lamps
+	angle = 80,
+}
+local fill: { at: Attachment, light: SpotLight, mid: Vector3, away: number, full: number, reach: number }? = nil
+-- the rays that look for something in the light's way (light space, -Z = where it points): its middle and four at 30°
+local FILL_RAYS = { Vector3.new(0, 0, -1) }
+for _, d in { Vector3.new(1, 0, 0), Vector3.new(-1, 0, 0), Vector3.new(0, 1, 0), Vector3.new(0, -1, 0) } do
+	table.insert(FILL_RAYS, (d * math.sin(math.rad(30)) + Vector3.new(0, 0, -math.cos(math.rad(30)))).Unit)
+end
+local fillRay = RaycastParams.new()
+fillRay.FilterType = Enum.RaycastFilterType.Exclude
+local fillSkip: { Instance } = {}
+local localPlayer = game:GetService("Players").LocalPlayer
+-- how far the light can reach from `from` before it would land on something you can see (not your own body or gun)
+local function fillReach(from: Vector3, aim: CFrame, full: number): number
+	local me = localPlayer.Character
+	if fillSkip[1] ~= camera or fillSkip[2] ~= me then
+		fillSkip = if me then { camera, me } else { camera }
+		fillRay.FilterDescendantsInstances = fillSkip
+	end
+	local best = full
+	for _, d in FILL_RAYS do
+		local dir = aim:VectorToWorldSpace(d)
+		local o, left = from, best
+		for _ = 1, 4 do -- (through invisible blockers: they catch no light)
+			local hit = workspace:Raycast(o, dir * left, fillRay)
+			if not hit then break end
+			local part = hit.Instance
+			if not (part:IsA("BasePart") and part.Transparency >= 0.95) then
+				best = math.min(best, (hit.Position - from).Magnitude)
+				break
+			end
+			left -= hit.Distance + 0.02
+			if left <= 0 then break end
+			o = hit.Position + dir * 0.02
+		end
+	end
+	return best
+end
+
+local function fillOn(m: Model, root: BasePart)
+	local box, size = m:GetBoundingBox() -- (the gun alone: the hands are not on yet)
+	local half = math.max(size.X, size.Y, size.Z) / 2
+	local away = FILL.away * half + 0.5
+	local at = Instance.new("Attachment")
+	at.Name = "FillLight"
+	local light = Instance.new("SpotLight")
+	light.Name = "Fill"; light.Face = Enum.NormalId.Front; light.Angle = FILL.angle; light.Shadows = false
+	light.Brightness = FILL.brightness; light.Color = FILL.color; light.Range = away + FILL.reach * half
+	light.Parent = at
+	at.Parent = root
+	fill = { at = at, light = light, mid = root.CFrame:PointToObjectSpace(box.Position), away = away, full = light.Range, reach = light.Range }
+end
+
 -- swap to a weapon: build its viewmodel, play its draw
 function VM.set(wid: string, kat: number)
 	if VM.model then VM.model:Destroy(); VM.model = nil end
 	dropProp()
+	fill = nil
 	VM.parts = nil
 	offGone = false
 	VM.wid = wid
@@ -304,6 +372,7 @@ function VM.set(wid: string, kat: number)
 	if wrId then WeaponModels.wrap(m, wrId, wrMode) end
 	-- the moving pieces go onto their own welds before the hands exist (the hands never ride a twirl)
 	VM.parts = GunParts.attach(m, root, k, w.mdl and w.mdl.parts)
+	fillOn(m, root)
 	hands(m, root)
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued
@@ -336,6 +405,7 @@ end
 export type Ctx = {
 	aim: number, speed: number, sprint: boolean, slide: boolean, grounded: boolean, hp: number, firedT: number, slipping: boolean, now: number, sight: Vector3?,
 	ammo: number?, reloading: boolean?, -- (for the moving pieces: the belt, a locked-back slide, fallen hammers)
+	hidden: boolean?, -- (the viewmodel is hidden this frame: the fill light goes out)
 }
 
 function VM.update(dt: number, c: Ctx)
@@ -444,6 +514,19 @@ function VM.update(dt: number, c: Ctx)
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
 	VM.props(m.PrimaryPart.CFrame)
+	-- the fill light: up and left of the gun's middle in camera space, aimed at it, stopping short of the world
+	if fill then
+		fill.light.Enabled = not c.hidden
+		if not c.hidden then
+			local mid = m.PrimaryPart.CFrame:PointToWorldSpace(fill.mid)
+			local aim = CFrame.lookAt(mid + camera.CFrame:VectorToWorldSpace(FILL.dir * fill.away), mid)
+			fill.at.WorldCFrame = aim
+			local want = fillReach(aim.Position, aim, fill.full)
+			-- (pulled in at once, let out over a moment: no flicker along a wall's edge)
+			fill.reach = if want < fill.reach then want else fill.reach + (want - fill.reach) * math.min(1, dt * 10)
+			fill.light.Range = math.max(fill.reach, 0.05)
+		end
+	end
 	if VM.parts then
 		GunParts.step(VM.parts, dt, {
 			clip = if clip then clip.name else nil, t = if clip then clip.t else 0, anims = Anims,

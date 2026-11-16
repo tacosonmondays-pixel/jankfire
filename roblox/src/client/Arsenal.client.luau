@@ -871,7 +871,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 		VM.update(dt, {
 			aim = aim, speed = spd, sprint = st ~= nil and st.sprinting, slide = st ~= nil and st.sliding,
 			grounded = st ~= nil and st.onGround, hp = hp(), firedT = firedT, slipping = Body.slipping(), now = now,
-			sight = VM.adsPos(held), ammo = if a then a.mag else nil, reloading = reloading,
+			sight = VM.adsPos(held), ammo = if a then a.mag else nil, reloading = reloading, hidden = gone,
 		})
 		-- the katana's smear, after the blade has moved this frame
 		smearStep(now, tp)
