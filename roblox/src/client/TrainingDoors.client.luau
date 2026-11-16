@@ -180,6 +180,7 @@ local mirrorSpot: BasePart? = nil
 local holo: Model? = nil
 local holoSig, spin = "", 0
 local HOLO = Color3.fromRGB(143, 216, 255)
+local HOLO_SCALE = 1.8 -- (the owner, 16 Nov: "can hologram you be larger?": nearly twice you, still under the bay's ceiling)
 local function dropHolo()
 	if holo then holo:Destroy(); holo = nil end
 	holoSig = ""
@@ -223,6 +224,7 @@ local function buildHolo(ch: Model)
 	hl.DepthMode = Enum.HighlightDepthMode.Occluded
 	hl.Parent = m
 	m.Parent = workspace
+	pcall(function() m:ScaleTo(HOLO_SCALE) end)
 	-- the pose: whatever you are playing now (so it holds your gun the way you do)
 	local an = hum and hum:FindFirstChildOfClass("Animator")
 	local real = ch:FindFirstChildOfClass("Humanoid")
@@ -252,7 +254,7 @@ local function mirrorStep(dt: number)
 	local hr = h and h:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not h or not hr then return end
 	spin += dt * 0.32
-	local up = hum.HipHeight + root.Size.Y / 2
+	local up = (hum.HipHeight + root.Size.Y / 2) * HOLO_SCALE
 	hr.CFrame = spot.CFrame * CFrame.new(0, up + 0.1, 0) * CFrame.Angles(0, spin, 0)
 end
 
