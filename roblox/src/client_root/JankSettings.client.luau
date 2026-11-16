@@ -1,4 +1,4 @@
--- the settings panel on P: field of view, mouse sensitivity and HIDE MY STATS (Jankfire.Theme has the look: a dark
+-- the settings panel on P: field of view, mouse sensitivity, HIDE MY STATS and SHOW KEY HINTS (Jankfire.Theme has the look: a dark
 -- card, white text, amber slider fills). the crosshair is FightHud's; the stats switch is kept by the server (Stats.luau)
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
@@ -28,7 +28,7 @@ hintText.Size = UDim2.new(1, -40, 1, 0)
 local scrim = T.new("Frame", { Name = "Scrim", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
 local panel = T.new("TextButton", { -- a button so Modal can free the mouse from first person while it's open
 	Name = "Panel", AutoButtonColor = false, Text = "", Modal = true, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(380, 272), BackgroundColor3 = T.BG, BackgroundTransparency = 0, BorderSizePixel = 0, Visible = false,
+	Size = UDim2.fromOffset(380, 316), BackgroundColor3 = T.BG, BackgroundTransparency = 0, BorderSizePixel = 0, Visible = false,
 }, gui)
 T.corner(panel, 8)
 T.edge(panel)
@@ -110,6 +110,28 @@ local function showPrivacy()
 end
 showPrivacy()
 lp:GetAttributeChangedSignal("StatsPrivate"):Connect(showPrivacy)
+-- show key hints: the controls line along the bottom, all the time (off, the default: only in a new player's first
+-- minute and while H is held). Hud.luau reads the player's ShowKeys attribute
+local keysRow = T.new("TextButton", { Name = "KeyHints", AutoButtonColor = false, Text = "", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 256), Size = UDim2.new(1, 0, 0, 48) }, panel) -- (LootSettings adds its row 8 px above the panel's foot: rows 52 apart)
+local keysLabel = T.text(keysRow, "Label", "SHOW KEY HINTS", 12, T.MUTED, T.FONT_BOLD)
+keysLabel.Position = UDim2.fromOffset(24, 8)
+keysLabel.Size = UDim2.fromOffset(220, 16)
+local keysSub = T.text(keysRow, "Sub", "off: hold H to see them", 12, T.DIM)
+keysSub.Position = UDim2.fromOffset(24, 26)
+keysSub.Size = UDim2.fromOffset(260, 16)
+local keysSw = T.new("Frame", { Name = "Switch", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.5, 0), Size = UDim2.fromOffset(52, 28), BackgroundColor3 = T.TRACK, BorderSizePixel = 0 }, keysRow)
+T.corner(keysSw, 14)
+local keysKnob = T.new("Frame", { Size = UDim2.fromOffset(22, 22), Position = UDim2.fromOffset(3, 3), BackgroundColor3 = T.TEXT, BorderSizePixel = 0 }, keysSw)
+T.corner(keysKnob, 11)
+local function showKeys()
+	local on = lp:GetAttribute("ShowKeys") == true
+	keysSw.BackgroundColor3 = if on then T.ACCENT else T.TRACK
+	keysKnob.Position = if on then UDim2.fromOffset(27, 3) else UDim2.fromOffset(3, 3)
+end
+showKeys()
+lp:GetAttributeChangedSignal("ShowKeys"):Connect(showKeys)
+keysRow.MouseButton1Click:Connect(function() lp:SetAttribute("ShowKeys", lp:GetAttribute("ShowKeys") ~= true) end)
+
 privRow.MouseButton1Click:Connect(function()
 	local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireRemotes")
 	local fn = remotes and remotes:FindFirstChild("Profile")

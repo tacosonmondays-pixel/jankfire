@@ -70,6 +70,42 @@ end
 hint:GetPropertyChangedSignal("AbsoluteSize"):Connect(fitHint)
 if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fitHint) end
 
+-- (16 Nov, owner: "can we hide this?") the controls line is hidden. it shows in a new player's first minute (no XP yet:
+-- Stats.luau), while H is held, or all the time with the settings switch SHOW KEY HINTS (JankSettings sets the
+-- player's ShowKeys attribute). never on a phone: it lists keys, and a phone has its touch buttons
+local UIS = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+local KEYS_NEW = 60
+local joined = os.clock()
+local keysUntil = 0
+local holdH = false
+local keysOn = false
+hint.Visible = false; hint.TextTransparency = 1; hint.BackgroundTransparency = 1
+local function keysShow(on: boolean)
+	if on == keysOn then return end
+	keysOn = on
+	if on then hint.Visible = true end
+	local x = T.tween(hint, if on then 0.2 else 0.5, { TextTransparency = if on then 0 else 1, BackgroundTransparency = if on then 0.4 else 1 })
+	if not on then
+		x.Completed:Connect(function(st) if st == Enum.PlaybackState.Completed and not keysOn then hint.Visible = false end end)
+	end
+end
+task.spawn(function()
+	local lp = Players.LocalPlayer
+	while lp:GetAttribute("StatsSave") == nil or lp:GetAttribute("StatsSave") == "loading" do -- (up to 15 s for the stats)
+		if os.clock() - joined > 15 then break end
+		task.wait(0.5)
+	end
+	local xp = lp:GetAttribute("Xp")
+	if xp == nil or xp == 0 then keysUntil = joined + KEYS_NEW end
+end)
+UIS.InputBegan:Connect(function(io, gp) if not gp and io.KeyCode == Enum.KeyCode.H then holdH = true end end)
+UIS.InputEnded:Connect(function(io) if io.KeyCode == Enum.KeyCode.H then holdH = false end end)
+RunService.RenderStepped:Connect(function()
+	local touchOnly = UIS.TouchEnabled and not UIS.KeyboardEnabled
+	keysShow(not touchOnly and (holdH or Players.LocalPlayer:GetAttribute("ShowKeys") == true or os.clock() < keysUntil))
+end)
+
 -- the words arrive in mixed case ("dummy down", "killed Name", "ROUND 2 · you're PINK"): lower-case words go to
 -- capitals so the line is one voice. names, numbers and single letters (x3, 42m) are left as they came
 local function caps(s: string): string

@@ -195,9 +195,28 @@ end
 local top = T.new("TextLabel", {
 	Name = "Round", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -62), Size = UDim2.fromOffset(0, 30),
 	AutomaticSize = Enum.AutomaticSize.X, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-	FontFace = T.FONT_BOLD, TextSize = 15, TextColor3 = T.TEXT, RichText = true, Text = "",
+	FontFace = T.FONT_BOLD, TextSize = 15, TextColor3 = T.TEXT, RichText = true, Text = "", Visible = false,
 }, hud)
-T.corner(top); T.edge(top)
+T.corner(top)
+local topEdge = T.edge(top)
+-- (16 Nov, owner: "can we hide this?") the where-you-are line is hidden. it shows for a few seconds when you come
+-- into a place (the hub, training, the playground) and fades out. a match's scoreboard stays up all match
+local TOP_HOLD = 3
+local topTok = 0
+local function flashTop()
+	topTok += 1
+	local my = topTok
+	if not top.Visible then top.TextTransparency = 1; top.BackgroundTransparency = 1; topEdge.Transparency = 1 end
+	top.Visible = true
+	T.tween(top, 0.2, { TextTransparency = 0, BackgroundTransparency = T.BG_A })
+	T.tween(topEdge, 0.2, { Transparency = T.EDGE_A })
+	task.delay(TOP_HOLD, function()
+		if my ~= topTok then return end
+		T.tween(top, 0.6, { TextTransparency = 1, BackgroundTransparency = 1 })
+		T.tween(topEdge, 0.6, { Transparency = 1 })
+		task.delay(0.65, function() if my == topTok then top.Visible = false end end)
+	end)
+end
 T.new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }, top)
 -- a match's scoreboard, in the same spot: mode and round on the left, the score big in the middle (each team's wins in
 -- its own colour), the clock on the right. the two sides are the same width, so the score sits on the screen's centre
@@ -236,16 +255,17 @@ function H.top(text: string)
 		scoreMode.Text = parts[1] .. "    " .. parts[2]
 		scoreNum.Text = parts[3]; lastScore = parts[3]
 		scoreClock.Text = parts[4] or ""
-		score.Visible = true; top.Visible = false
+		score.Visible = true; top.Visible = false; topTok += 1
 		return
 	end
-	score.Visible = false; top.Visible = true
+	score.Visible = false
 	local cut = string.find(text, " · ", 1, true)
 	if cut and not parts then
 		top.Text = ('%s<font color="%s">    %s</font>'):format(string.sub(text, 1, cut - 1), T.hex(T.MUTED), string.sub(text, cut + #" · "))
 	else
 		top.Text = text
 	end
+	flashTop()
 end
 function H.round(target: number, left: number, myKills: number)
 	local m, s = math.floor(math.max(0, left) / 60), math.floor(math.max(0, left)) % 60
@@ -493,7 +513,7 @@ if hint then
 		for i, id in ids do key(tostring(i), if WL[id] then WL[id].name else id) end
 		local item = Items.list[lp:GetAttribute("Item") :: any]
 		if item and item.live then key("G", string.lower(item.name)) end
-		for _, p in { { "L", "loadout" }, { "LMB", "fire" }, { "RMB", "aim / parry" }, { "R", "reload" }, { "shift", "run" }, { "C", "slide" }, { "hold E", "grapple" }, { "V", "camera" } } do
+		for _, p in { { "L", "loadout" }, { "LMB", "fire" }, { "RMB", "aim / parry" }, { "R", "reload" }, { "shift", "run" }, { "C", "slide" }, { "hold E", "grapple" }, { "V", "camera" }, { "hold H", "show keys" } } do
 			key(p[1], p[2])
 		end
 		local line = hint :: TextLabel
