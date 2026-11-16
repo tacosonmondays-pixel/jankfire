@@ -162,6 +162,12 @@ cushion toward the side the player sees; the cushion stays square to the gun. It
   axis), so `hat_spots.py` measured the handle's top instead: the Baguette, Bokken and Shirasaya hats stood about
   1.8 cm off-centre on their pommels since round 9. Both fixed; those three are back on the axis.
 - `hat_clip.py --hat <id>` checks one hat (no report written).
+- Live in place version 447. Checked there: the template's gold, crown, cushion and piping parts are Metal, the rest
+  SmoothPlastic (`H.check()`: hats ok). In Edit, the Royal Duck on the Assault Rifle and the SMG (built like the held gun)
+  reads as polished gold. In Play: `LootTable.vipOnly("hat", "royalduck")` is true and no container lists it; with the
+  dev unlock the "hat" op put it on the AR and the SMG, and the hub racks showed it; on the held Redline it was on the
+  first-person gun, the third-person gun and the held model, under the crosshair on the Redline's block. The owner's
+  saved hats were put back after the test.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -240,8 +246,10 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 9** (asset 70496262106000: round 8's models with the cowboy's brim droop cut, and the clip-fix seats),
-  place version 380 (16 Nov 2026, ~16:42 UTC); seats re-measured after the guns' z-fight fix in place version 404. Older hat uploads and the push models are no longer used.
+- **Live: round 10** (asset 134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck), place version 447
+  (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins. Round 9 (asset 70496262106000) went live in place
+  version 380; its seats were re-measured after the guns' z-fight fix in version 404. Older hat uploads and the push
+  models are no longer used.
 - **After the guns' squash fix** (59fb8b4, place version 325: held guns were up to 41% squashed): the seats are measured
   on the gun files, so they were right; checked every gun's held model in Play (place version 326): each hat's foot
   sits 0 to 4 mm into the surface under it (its sink), none floats more than 2 mm. The hub racks' copies used the
