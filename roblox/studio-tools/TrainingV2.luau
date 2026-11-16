@@ -1194,6 +1194,95 @@ local function setLook(which)
 	if look then look:SetAttribute("TrainingLook", which) end
 end
 
+-- ---------------------------------------------------------------- the flicker pass (16 Nov)
+-- two visible faces of different looks in one plane, facing the same way, flicker as the camera moves (z-fighting:
+-- the owner saw it all over the maps). after a build, PolishBackup.ZFight finds every such pair in the training
+-- ground and the lot, and one BLOCK of the pair grows ZF_EPS past the other: on tops and sides the block with the
+-- smaller face (the ring, the trim, the edge: the detail meant to be seen), on undersides the one with the bigger face
+-- (the slab). a block only grows, so no wall, floor or unseen solid gets thinner and the seal stays shut; the one
+-- exception is a block meeting a kit mesh's underside, which steps back behind it. pairs of two kit meshes are the
+-- kit's (training_models.py, lot_models.py). passes repeat (a grown face can meet a third one) until none is left.
+local ZF_EPS = 0.04
+local function zfAxis(p: BasePart, n: Vector3)
+	local c = p.CFrame
+	for _, k in { "X", "Y", "Z" } do
+		local ax = if k == "X" then c.RightVector elseif k == "Y" then c.UpVector else -c.LookVector
+		local d = ax:Dot(n)
+		if math.abs(d) > 0.999 then return k end
+	end
+	return nil
+end
+local function zfBlock(p: Instance, n: Vector3): boolean
+	return p:IsA("Part") and p.Shape == Enum.PartType.Block and zfAxis(p, n) ~= nil
+end
+local function zfPlane(p: BasePart, n: Vector3): number -- where p's face that faces n lies, along n
+	return n:Dot(p.Position) + p.Size[zfAxis(p, n)] / 2
+end
+local function zfArea(p: BasePart, n: Vector3): number
+	local k, s = zfAxis(p, n), p.Size
+	return if k == "X" then s.Y * s.Z elseif k == "Y" then s.X * s.Z else s.X * s.Y
+end
+function T.dezfight(root: Instance): string
+	local src = SS.PolishBackup:FindFirstChild("ZFight")
+	if not src then return "flicker pass: no PolishBackup.ZFight" end
+	local m = src:Clone(); m.Parent = SS
+	local Z = require(m); m:Destroy()
+	local first, moved, last, seen = nil, 0, 0, 0
+	for pass = 1, 6 do
+		Z.start({ root }, {})
+		while Z.step(30) ~= "done" do end
+		local res = Z.results()
+		local vis = 0
+		for _, r in res do if not r.covered then vis += 1 end end
+		first = first or vis
+		last, seen = vis, #res
+		local todo = {} -- part -> { [face key] = { n, delta } }
+		local function want(p: BasePart, n: Vector3, delta: number)
+			if math.abs(delta) > 0.12 then return end -- (a safety: a hit is never more than 0.02 + EPS away)
+			local k = zfAxis(p, n)
+			local ax = if k == "X" then p.CFrame.RightVector elseif k == "Y" then p.CFrame.UpVector else -p.CFrame.LookVector
+			local key = k .. (if ax:Dot(n) > 0 then "+" else "-")
+			todo[p] = todo[p] or {}
+			local had = todo[p][key]
+			if not had or (delta > 0 and delta > had[2]) or (delta < 0 and had[2] < 0 and delta < had[2]) then todo[p][key] = { n, delta } end
+		end
+		for _, r in res do
+			local A, Bp, n = r.A, r.B, r.n
+			local under = n.Y < -0.7
+			local a, b = zfBlock(A, n), zfBlock(Bp, n)
+			if a and b then
+				local small, big = A, Bp
+				if zfArea(A, n) > zfArea(Bp, n) then small, big = Bp, A end
+				local win, other = small, big
+				if under then win, other = big, small end
+				want(win, n, zfPlane(other, n) - zfPlane(win, n) + ZF_EPS)
+			elseif a or b then
+				local blk = if a then A else Bp
+				local dm = n:Dot(r.pt or r.c)
+				want(blk, n, dm - zfPlane(blk, n) + (if under then -ZF_EPS else ZF_EPS))
+			end
+		end
+		local n = 0
+		for p, faces in todo do
+			for _, f in faces do
+				local nn, delta = f[1], f[2]
+				local k = zfAxis(p, nn)
+				local sz = p.Size[k] + delta
+				if sz >= 0.05 then
+					local cf = p.CFrame
+					p.Size = V3(if k == "X" then sz else p.Size.X, if k == "Y" then sz else p.Size.Y, if k == "Z" then sz else p.Size.Z)
+					p.CFrame = cf + nn * (delta / 2)
+					n += 1
+				end
+			end
+		end
+		moved += n
+		if n == 0 then break end
+	end
+	Z.clear()
+	return ("flicker pass (ZFight): %d visible pairs of faces in one plane before, %d after (%d block faces moved; %d pairs left in all, hidden ones and kit meshes)"):format(first or 0, last, moved, seen)
+end
+
 function T.build(mode): string
 	local live = mode == "live"
 	if live then
@@ -1225,12 +1314,13 @@ function T.build(mode): string
 	for _, f in kids do f.Parent = nil end
 	root.Parent = home
 	for _, f in kids do f.Parent = root; task.wait() end
+	local zfNote = "\n" .. T.dezfight(root)
 	local parts = 0
 	for _, p in root:GetDescendants() do if p:IsA("BasePart") then parts += 1 end end
 	local miss = {}
 	for k, n in B.missing do table.insert(miss, k .. " x" .. n) end
 	return ("training v2 built %s: %d things, %d parts, %d lamps, %d with shadows%s%s"):format(if live then "LIVE" else "as a staging copy at x +" .. T.STAGE.X,
-		#root:GetDescendants(), parts, B.lamps, B.shadows, if #miss > 0 then "  MISSING: " .. table.concat(miss, ", ") else "", lotNote)
+		#root:GetDescendants(), parts, B.lamps, B.shadows, if #miss > 0 then "  MISSING: " .. table.concat(miss, ", ") else "", lotNote .. zfNote)
 end
 
 function T.unstage(): string
