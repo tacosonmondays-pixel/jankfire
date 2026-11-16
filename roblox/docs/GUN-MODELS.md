@@ -15,8 +15,26 @@ version, **C**, each gun drawn from a real gun and built the way Rivals builds. 
 `gun-models/pick-1.jpg` to `-4.jpg` (below, "The picked set", `gun-models/final-set.jpg`). Then: "make sure the
 magazine, stocks mount etc works for all of them and are connected pieces that look good" (`gun_check.py`, below). The
 picked set is live (place version 298, then 313 with the wrap session's fixed UVs: flat projections, no shear),
-every piece but the Neon and Glass ones marked `WrapUV`. In hand in the hall: `gun-models/picked-hall.jpg`; the
-Assault Rifle's reload was watched in game (the curved magazine comes out and goes back), the other reloads were not.
+every piece but the Neon and Glass ones marked `WrapUV`. In hand in the hall: `gun-models/picked-hall.jpg`.
+
+**The reload check (16 Nov, after the owner's "make sure the magazine, stocks mount etc works for all of them").**
+Every gun was reloaded (or fired, for the pump, bolt, lever, cylinder) in a Play test while a probe measured each
+moving piece against the gun's body, every frame: how far it travelled and where it ended. Magazines (AR, SMG, Hat
+Trick, Belt Sander, Second Opinion, Lawn Mower, Plan B), charging handles, the Belt Sander's feed cover, the Sniper's
+bolt, the Yeehaw's lever and hammer, the Shotgun's pump, Plan B's slide and hammer, Half a Shotgun's break-open (barrels,
+forend, both shells, hammers) all moved and came back to within 0.001 stud. The Redline's reload is its rev (the needle
+swings into the red), the Marble Shotgun's is the hand pouring marbles into the jar; neither moves a gun piece, by
+design. The Katana and the Shredder have no reload.
+
+Two faults, fixed (place version 325):
+- **Every held gun was fitted from the wrong box.** `WeaponModels.fitImported` read the template's size from
+  `Model:GetBoundingBox()`, which on the kit models comes out larger than the parts (Plan B 41% too wide, the Yeehaw
+  34%, the Redline 23%, the Hat Trick 14%, the Revolver 3.7% too tall ...). So every held gun was squashed across and
+  shifted against its row's pivots. It now measures the parts themselves (`partsBox`): every template matches its
+  file to within 0.08%.
+- **The Revolver's cylinder** sat 8 mm off its axis after a shot (that same shift) and, being eight-sided, looked
+  different after each 60-degree turn. Now six-sided with a dark groove on each face and twelve-sided rings: after two
+  shots it had turned exactly 120 degrees and sat 0.0005 stud from where it belongs.
 
 **No weapon number, name, mechanic or gimmick changed.** Every new model keeps its gun's muzzle, sight, port, grip
 and fore spots, the names and pivots of the pieces that move, and the grip and handguard where the hands go, so the

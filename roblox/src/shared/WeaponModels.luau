@@ -160,8 +160,29 @@ local function buildPlain(b: Builder, mdl: any, color: Color3)
 end
 
 -- fit an imported Blender model (the importer's own scale and spot) onto the code model's frame
+-- the template's box: the AABB of its parts in its pivot's frame. (not tmpl:GetBoundingBox(): on the kit models that
+-- box comes out up to 40% wider than the parts themselves, which squashed every held gun across and moved its pieces
+-- off the row's pivots; the Revolver's cylinder sat 8 mm off its axis after a shot. found 16 Nov 2026)
+local function partsBox(tmpl: Model): (CFrame, Vector3)
+	local pcf = tmpl:GetPivot()
+	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, d in tmpl:GetDescendants() do
+		if d:IsA("BasePart") then
+			local rel = pcf:ToObjectSpace(d.CFrame)
+			local s = d.Size / 2
+			local e = Vector3.new(
+				math.abs(rel.XVector.X) * s.X + math.abs(rel.YVector.X) * s.Y + math.abs(rel.ZVector.X) * s.Z,
+				math.abs(rel.XVector.Y) * s.X + math.abs(rel.YVector.Y) * s.Y + math.abs(rel.ZVector.Y) * s.Z,
+				math.abs(rel.XVector.Z) * s.X + math.abs(rel.YVector.Z) * s.Y + math.abs(rel.ZVector.Z) * s.Z)
+			lo = lo:Min(rel.Position - e); hi = hi:Max(rel.Position + e)
+		end
+	end
+	if lo.X > hi.X then return tmpl:GetBoundingBox() end
+	return pcf * CFrame.new((lo + hi) / 2), hi - lo
+end
+
 local function fitImported(b: Builder, tmpl: Model, file: { lo: Vector3, hi: Vector3 })
-	local tcf, tsize = tmpl:GetBoundingBox()
+	local tcf, tsize = partsBox(tmpl)
 	local fsz = file.hi - file.lo
 	local centre = (file.lo + file.hi) / 2
 	local U = Vector3.new(tsize.X / math.max(fsz.X, 1e-4), tsize.Y / math.max(fsz.Y, 1e-4), tsize.Z / math.max(fsz.Z, 1e-4))

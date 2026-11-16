@@ -107,13 +107,15 @@ def revolver():
     g.box('body_wzA__frame', (-0.02, 0.02), (0.05, 0.07), (-0.125, 0.045), bev=0.006)
     g.box('body_wzA__frame', (-0.02, 0.02), (-0.05, -0.034), (-0.125, 0.03), bev=0.006)
     # (A) the cylinder (node "cylinder"), its chambers and rings
-    g.cyl('cylinder_wzB__steel', 0.043, (0, 0.009, -0.1), (0, 0.009, 0.001), sides=8, bev=0.006, flat=False, smooth=False)
+    # (the reload check: the game turns the cylinder 60 degrees a shot, so it is six-sided with a chamber on each face
+    # and twelve-sided rings: every chamber step looks the same; it was eight-sided and changed look every shot)
+    g.cyl('cylinder_wzB__steel', 0.044, (0, 0.009, -0.1), (0, 0.009, 0.001), sides=6, bev=0.006, flat=False, smooth=False)
     for k in range(6):
-        a = math.pi / 6 + k * math.pi / 3
-        cx_, cy_ = 0.037 * math.cos(a), 0.009 + 0.037 * math.sin(a)
+        a = k * math.pi / 3  # (on the middle of each face, so it shows as a dark groove, as before)
+        cx_, cy_ = 0.034 * math.cos(a), 0.009 + 0.034 * math.sin(a)
         g.cylz('cylinder_wzN__black', 0.0075, -0.096, -0.003, y=cy_, x=cx_, sides=6, bev=0.0015)
     for z0, z1 in ((-0.104, -0.096), (-0.004, 0.004)):
-        g.ring('cylinder_wzN__body', 0.044, 0.03, (0, 0.009, z0), (0, 0.009, z1), sides=8, bev=0.002)
+        g.ring('cylinder_wzN__body', 0.044, 0.03, (0, 0.009, z0), (0, 0.009, z1), sides=12, bev=0.002)
     # (A) hammer (node "hammer"), sights
     g.prism('hammer_wzN__dark', [(0.045, 0.036), (0.062, 0.036), (0.098, 0.062), (0.092, 0.074), (0.05, 0.062)], 0.014, bev=0.003)
     g.box('sight_wzN__frame', (-0.019, -0.007), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
