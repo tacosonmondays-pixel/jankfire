@@ -209,6 +209,10 @@ function WeaponModels.build(id: string, k: number): Model?
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
 	local tmpl = lib and lib:FindFirstChild("w_" .. id)
 	local file = (WeaponModels.FILES :: any)["w_" .. id] or mdl -- (a plain gun keeps its bounds in its row)
+	-- the models are a switch (PolishBackup.WeaponImport, W.models): a kit model's box is not the web model's, so a
+	-- template carries its own file bounds and they win over the row's
+	local flo, fhi = tmpl and tmpl:GetAttribute("FileLo"), tmpl and tmpl:GetAttribute("FileHi")
+	if typeof(flo) == "Vector3" and typeof(fhi) == "Vector3" then file = { lo = flo, hi = fhi } end
 	if tmpl and tmpl:IsA("Model") and file then
 		local ok, err = pcall(fitImported, b, tmpl, file)
 		if ok then

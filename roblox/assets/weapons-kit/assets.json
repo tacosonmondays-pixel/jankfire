@@ -1,0 +1,20 @@
+{
+ "note": "Roblox Model asset ids of the uploaded KIT weapon .glb files (the Roblox game's own models, tools/roblox/gun_models.py). export_weapons.py --kit turns this + export_report.json into roblox/studio-tools/WeaponKit.luau.",
+ "ar": 112905697555547,
+ "smg": 134126546275935,
+ "burst": 123774880215768,
+ "lmg": 96337457626665,
+ "dmr": 129290861788387,
+ "sniper": 102076304373965,
+ "lever": 103562159099911,
+ "shotgun": 106214577176739,
+ "autoshot": 76020827591565,
+ "sawnoff": 119535832084556,
+ "pistol": 131404400450956,
+ "revolver": 115483654771489,
+ "redline": 133731962735760,
+ "marbles": 133076962509416,
+ "katana": 130698697207045,
+ "shredder": 134292423894345,
+ "ar@cardboard": 81084996624066
+}

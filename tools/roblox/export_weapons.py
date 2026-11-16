@@ -17,6 +17,9 @@
 # run:  blender -b --factory-startup -P tools/roblox/export_weapons.py -- <out_dir> [--paint calm|web] [--sil] <model.glb> [...]
 #       blender -b --factory-startup -P tools/roblox/export_weapons.py -- <out_dir> --orient-test
 #   --paint        which paint the report gets for EVERY gun in it (default: calm). no files given = only repaint
+#   --kit          the files are the Roblox game's OWN models (tools/roblox/gun_models.py), built in their finished
+#                  colours: no paint table is applied, and the book written is roblox/studio-tools/WeaponKit.luau
+#                  (use an out_dir of its own: roblox/assets/weapons-kit)
 #   --sil          also print each gun's side view as text (to pick the grip / fore / port spots for its Weapons row)
 #   --orient-test  write orient_test.glb, the object that measures how uploads arrive (rbxglb.orient_test)
 import bpy, sys, os, json, struct
@@ -225,8 +228,16 @@ rp = os.path.join(out_dir, 'export_report.json')
 if os.path.exists(rp):
     with open(rp) as fh: old = json.load(fh)
     old.update(report); report = old
-for gun, key in weapon_paint.repaint(report, paint): print('PAINT TABLE LINE MATCHED NOTHING:', gun, key)
-with open(rp, 'w') as fh: json.dump(report, fh, indent=1)
-print('PAINT', paint, 'written for', sum(1 for m in report.values() if m.get('paint') == paint), 'guns')
-book = weapon_paint.write_book(report, rp, paint)  # (the paint book Studio keeps: both paints + the default)
-if book: print('BOOK', book[0], book[1], 'guns')
+if '--kit' in flags:
+    for m in report.values():
+        for p in m['pieces']: p['paint'] = weapon_paint.web_code(p['look'])
+        m['paint'] = 'kit'
+    with open(rp, 'w') as fh: json.dump(report, fh, indent=1)
+    book = weapon_paint.write_kit(report, rp)
+    print('KIT BOOK', book[0] if book else '(no assets.json yet: upload, write the ids, run again)', book[1] if book else 0, 'guns')
+else:
+    for gun, key in weapon_paint.repaint(report, paint): print('PAINT TABLE LINE MATCHED NOTHING:', gun, key)
+    with open(rp, 'w') as fh: json.dump(report, fh, indent=1)
+    print('PAINT', paint, 'written for', sum(1 for m in report.values() if m.get('paint') == paint), 'guns')
+    book = weapon_paint.write_book(report, rp, paint)  # (the paint book Studio keeps: both paints + the default)
+    if book: print('BOOK', book[0], book[1], 'guns')
