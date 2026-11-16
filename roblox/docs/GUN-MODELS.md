@@ -14,8 +14,9 @@ rivals heavily look at how they build their weapons, then put them side by side 
 version, **C**, each gun drawn from a real gun and built the way Rivals builds. The owner then picked per gun from
 `gun-models/pick-1.jpg` to `-4.jpg` (below, "The picked set", `gun-models/final-set.jpg`). Then: "make sure the
 magazine, stocks mount etc works for all of them and are connected pieces that look good" (`gun_check.py`, below). The
-picked set is live in place version 298 (16 Nov, 10:00 UTC, after the account warning was cleared), with UVs for the
-image wraps (`gun_uvs.py` at the export step) and every piece but the Neon and Glass ones marked `WrapUV`.
+picked set is live (place version 298, then 313 with the wrap session's fixed UVs: flat projections, no shear),
+every piece but the Neon and Glass ones marked `WrapUV`. In hand in the hall: `gun-models/picked-hall.jpg`; the
+Assault Rifle's reload was watched in game (the curved magazine comes out and goes back), the other reloads were not.
 
 **No weapon number, name, mechanic or gimmick changed.** Every new model keeps its gun's muzzle, sight, port, grip
 and fore spots, the names and pivots of the pieces that move, and the grip and handguard where the hands go, so the

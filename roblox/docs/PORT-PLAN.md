@@ -450,7 +450,7 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   thing that can lie on a floor is the Marble Shotgun's patch of marbles (a weapon's hazard, not paint, left as is).
   Photo: `roblox/docs/rooftop-v2/v2_floor_marks_before_after.jpg`.
 
-## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 298)
+## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 313)
 
 After the calm paint the owner wrote "the gun textures look a little messed up?" and "would it be easier to recreate
 them in roblox? you can look up other rivals weapons and skins!", then "can you reference the rivals weapons when
@@ -487,8 +487,8 @@ version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_mod
   timid where the player looks, so round 8b rounded the tops, scopes and big masses. Then the owner's pick: 10 C, 3 A
   (Sniper and Redline with fixes, Shotgun), 1 B (Hat Trick), 2 mixed (Revolver A+C, Katana C+B), built by
   `tools/roblox/gun_set.py` and checked whole by `tools/roblox/gun_check.py` (every solid touches the gun, every moving
-  node there). Live in place version 298 (with the wrap session's UVs; the hub armory rebuilt, 0 problems). Next: a
-  reload test per gun in game (the moving parts in motion) and the in-hand photos.
+  node there). Live in place version 313 (with the wrap session's fixed UVs; the hub armory rebuilt, 0 problems);
+  in hand: `gun-models/picked-hall.jpg`. Not yet watched in motion: every reload but the Assault Rifle's.
 - **The hub copies the templates:** after a gun change rebuild it (`R.build("live")` in `PolishBackup.HubRotunda`)
   so the armory racks and the showpiece show the new models (done for round 8b).
 - **Not checked:** every gun firing (the Assault Rifle was), reload animations in motion on each new model, another
