@@ -3,7 +3,7 @@
 -- own look while its player is somewhere else, and back to the saved look for a match (the places are far apart and
 -- can't see each other). hub = THE LANES, a bowling alley: warm and a little dim, lit by its own lamps and glow (its
 -- base light comes in two tints, HUB_TINT below, to go with the paint the room was built in);
--- training = a darker mood with more base light; playground = open air, midday, clean and white.
+-- training = a darker mood with more base light; playground = open air at dusk, the Rooftop's evening with more haze.
 -- edit-time preview from the command bar: require(game.ReplicatedStorage.Jankfire.HubLook).preview("hub" | "training"
 -- | "playground") and .preview(false) to put the saved look back. ALWAYS preview(false) before saving the place.
 -- the Rooftop's values are parked as attributes on Lighting while a preview is on, so any copy of this module (a fresh
@@ -66,16 +66,19 @@ H.looks = {
 		Lighting = { Ambient = Color3.fromRGB(140, 134, 156), OutdoorAmbient = Color3.fromRGB(140, 134, 156), ExposureCompensation = 0.25 },
 		Atmosphere = { Density = 0.12 },
 	}),
-	-- the playground is outdoors: a midday sun, soft blue haze that swallows the far blocks, nothing moody
+	-- the playground is a floodlit yard at dusk (PolishBackup.StructurePass, 2026-11-15; it was a midday test level): the
+	-- Rooftop's own evening (its sky, its low warm sun, so no ClockTime here), a thicker haze that swallows the pylons'
+	-- feet and the floor far below, a little more bloom for the decks' amber edges
 	playground = with(HUB, {
 		Lighting = {
-			Ambient = Color3.fromRGB(150, 156, 172), OutdoorAmbient = Color3.fromRGB(170, 178, 198), Brightness = 2.4,
-			ExposureCompensation = 0.1, EnvironmentDiffuseScale = 0.6, EnvironmentSpecularScale = 0.5, ClockTime = 13.4,
+			Ambient = Color3.fromRGB(105, 115, 140), OutdoorAmbient = Color3.fromRGB(138, 148, 173), Brightness = 3,
+			ExposureCompensation = 0.05, EnvironmentDiffuseScale = 1, EnvironmentSpecularScale = 1,
 		},
-		Atmosphere = { Density = 0.3, Offset = 0.15, Haze = 1.4, Glare = 0.1, Color = Color3.fromRGB(214, 228, 246), Decay = Color3.fromRGB(176, 198, 230) },
-		Bloom = { Intensity = 0.25, Size = 20, Threshold = 2.2 },
-		ColorCorrection = { Brightness = 0.02, Contrast = 0.06, Saturation = 0.05, TintColor = Color3.fromRGB(255, 255, 255) },
-		SunRays = { Intensity = 0.04 },
+		-- (a mid-slate haze with little glare: a pale one whited out the far decks when you looked toward the sun)
+		Atmosphere = { Density = 0.27, Offset = 0.1, Haze = 0.7, Glare = 0.05, Color = Color3.fromRGB(150, 156, 166), Decay = Color3.fromRGB(104, 110, 122) },
+		Bloom = { Intensity = 0.3, Size = 24, Threshold = 2.3 },
+		ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.06, TintColor = Color3.fromRGB(255, 255, 255) },
+		SunRays = { Intensity = 0.06 },
 	}),
 } :: { [string]: Look }
 -- the three show hubs of the hub comparison that were not picked (put away in ServerStorage.PolishBackup.HubArchive,
@@ -109,7 +112,7 @@ H.looks.lab_depot = with(HUB, {
 	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.16, TintColor = Color3.fromRGB(255, 246, 234) },
 })
 -- looks that want the engine's own blue sky: the saved Sky (a sunset box) is put away while one is on
-H.plainSky = { playground = true, lab_foodcourt = true } :: { [string]: boolean }
+H.plainSky = { lab_foodcourt = true } :: { [string]: boolean }
 
 local function target(name: string): Instance?
 	return if name == "Lighting" then Lighting else Lighting:FindFirstChild(name)

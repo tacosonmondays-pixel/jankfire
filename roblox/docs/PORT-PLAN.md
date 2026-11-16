@@ -304,7 +304,7 @@ and `roblox/docs/gun-hold/`.
   the reload props are plain boxes, and the Shredder's first-person copy stays in the camera if its Tool is destroyed
   while held (an older fault, seen when a test deleted the tool).
 
-## 17. The structure pass: what paint could not fix, 15 and 16 November 2026 (place version 231)
+## 17. The structure pass: what paint could not fix, 15 and 16 November 2026 (place version 238)
 
 Section 14's judges said the rest of the Rooftop and the playground "cannot be fixed with paint". This pass builds
 it: models, structure and light. Review note, before and after photos, both judgings and the sheets:
@@ -357,7 +357,7 @@ changed; the hub, the guns and the HUD were not touched.
   nothing but a slate haze. Pads, hooks, the finish board, the fall reset and the return door are what they
   were. Its light is the `playground` look in `HubLook` (the Rooftop's dusk with a slate haze; it was midday).
 - **Training hall:** the two tents with the baked red rug are hidden behind a plain grey tent with a table under it.
-- **Promises checked by `S.check()`** (all true at version 231): every new solid box on the west roof has its mirror
+- **Promises checked by `S.check()`** (all true at version 238): every new solid box on the west roof has its mirror
   image on the east roof (19 and 19); no new box within 3 studs of a spawn (38 spawns, each also mirrored); none in a
   jump pad's flight (10 flights).
 - **Tested in Play (solo):** all 35 Rooftop spawn points stand clear; all six Rooftop pads and the four playground pads
@@ -368,8 +368,12 @@ changed; the hub, the guns and the HUD were not touched.
   playground PASS 7.5, LIFT sign PASS 8, tent PASS 7, penthouse CLOSE 7 for its black ceilings ("Outdoors, mostly yes
   now: the spawn roofs, skyline, cabanas and playground read as a deliberate, built place"). A fourth round answered
   that (a cove strip of lights round both penthouse ceilings, no cloud floor, the far specks hidden, warm-white
-  windows, the city's brick and the plant a step greyer, the corner ducts moved off the east hot tub); **it was not
-  photographed or judged**: Studio's view came back blank white for the rest of the session.
+  windows, the city's brick and the plant a step greyer, the corner ducts moved off the east hot tub), saved as version
+  238 and photographed but **not judged**.
+- **This Rooftop is v1 from here on.** On 16 November the owner asked for a separate Rooftop v2 built to the new design
+  principles, with this one kept to compare ("Keep the current one rooftop v1 vs v2 and we'll compare"). Left in v1 by
+  the last judging: bare paving in the lower half of each spawn view, all-white plant, the hut the only tall thing on a
+  deck, a faint lattice floating in the haze north-east of the arena, a palm through a cabana roof.
 
 ## For the next Claude session
 

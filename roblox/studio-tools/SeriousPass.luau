@@ -7,6 +7,8 @@
 --   S.light()      the Rooftop's saved Lighting                 S.restore()   the paint as it was before the pass
 -- every one is safe to run again: rules go by name where they can, and a colour that is already calm is left alone.
 -- the paint from before is kept in PolishBackup.PreSeriousPass (S.restore reads it; S.backup makes it, once)
+-- PolishBackup.StructurePass (the models and structure added after this pass) keeps its things in folders called Dress:
+-- every rule here skips them, and S.restore leaves them out of its count
 local ServerStorage = game:GetService("ServerStorage")
 local Lighting = game:GetService("Lighting")
 
@@ -49,6 +51,7 @@ function S.training(): string
 	for _, root in { hub():WaitForChild("TrainingGround"), hub():WaitForChild("Playground") } do
 		for _, d in root:GetDescendants() do
 			if not d:IsA("BasePart") then continue end
+			if d:FindFirstAncestor("Dress") then continue end -- (the structure pass's own things: PolishBackup.StructurePass paints them)
 			if string.find(d.Name, "_wz%a__") then continue end -- a weapon on display: its colours are the weapon's
 			if d:FindFirstAncestor("ToHubDoor") or d:FindFirstAncestor("ReturnDoor") then continue end -- the door kit, shared with the hub
 			if d:FindFirstAncestor("Pads") or string.sub(d.Name, 1, 7) == "jumppad" then continue end -- a jump pad keeps its cyan: it says jump
@@ -86,6 +89,9 @@ function S.training(): string
 				if d.Size.Y < 0.1 then if d.Color ~= hex("8f7b40") then set(d, hex("8f7b40"), SP, "floor line") end
 				elseif d.Material ~= NEON then continue
 				elseif hue > 35 and hue < 70 then set(d, hex("cdb45c"), SP, "wall line") elseif s > 0.3 then set(d, WARM, nil, "wall strip") end
+			elseif d.Name == "Rim" and d.Material == NEON then
+				-- the glowing frame round the playground's two boards: one was a loud yellow slab; both are warm white
+				if d.Color ~= WARM then set(d, WARM, nil, "sign rim") end
 			elseif d.Name == "Hazard" then set(d, AMBER, nil, "hazard")
 			elseif d.Name == "Easy" then set(d, hex("6fd08a"), nil, "plate")
 			elseif d.Name == "Medium" then set(d, hex("ffc43d"), nil, "plate")
@@ -106,7 +112,7 @@ function S.training(): string
 		end
 		-- the signs: one type family, white titles, grey second lines, a hairline frame, a neutral dark board
 		for _, g in root:GetDescendants() do
-			if not g:IsA("SurfaceGui") then continue end
+			if not g:IsA("SurfaceGui") or g:FindFirstAncestor("Dress") then continue end
 			local part = g.Adornee or g.Parent
 			local plate = part ~= nil and (part.Name == "Easy" or part.Name == "Medium" or part.Name == "Hard")
 			if part and part:IsA("BasePart") and not plate then part.Color = BOARD end
@@ -154,9 +160,11 @@ local ROOF: { [string]: { any } } = {
 	office = { "70747c" }, -- the concrete towers round the arena: darker and cooler than the roofs you play on
 	tvstatic = { "1c2028", SP }, -- the penthouse's telly: a white Neon slab blew out; a dark screen
 	brick = { "8a6c5e" }, tenement = { "715a50" }, stone = { nil, CONC }, grid = { "70737a", SP }, chrome = { nil, SP },
-	sidemint = { "8a979c" }, sideorange = { "a38c78" }, sidepink = { "9c9498" }, sidelemon = { "b0a98c" },
-	toypink = { "9c9196" }, toypurple = { "7e7c8c" }, toyteal = { "82959a" }, toyyellow = { "b5a36c" }, toyorange = { "a98a6c" },
-	pink = { "a79aa0" }, roofpink = { "8a7f86" },
+	-- (the city's plaster and toy boxes were muted pinks, tans and mints: still a second palette under the grey towers,
+	-- said the structure pass's judge. they are greys now, a step apart so the blocks still read as separate buildings)
+	sidemint = { "808890" }, sideorange = { "8e8f93" }, sidepink = { "87898f" }, sidelemon = { "9b9c9f" },
+	toypink = { "8b8d93" }, toypurple = { "7b7e87" }, toyteal = { "80868c" }, toyyellow = { "9a9a94" }, toyorange = { "908f8c" },
+	pink = { "97999e" }, roofpink = { "85868b" },
 	adcity1 = { "2f3642" }, adcity2 = { "5b4541" }, adcity3 = { "3f4a44" }, adcity4 = { "85765f" }, adcity5 = { "403c4c" }, adcity6 = { "37505a" },
 	lawn = { "5f7a4c" }, leaves = { "4f7044" }, leaves2 = { "7d9a52" }, blossom = { "c4b6ba" },
 	glassblock = { "4c5b6e" }, cloth = { "a89b8e", SP }, wood = { "7b6a58" }, poolfloor = { "4696a5" }, poolwall = { "4696a5" },
@@ -174,7 +182,7 @@ local TEMPLATES: { [string]: { [string]: { any } } } = {
 		ph_white = { "3a3c43", SP }, ph_pink = { "c9c7c2", SP }, ph_chrome = { "4d515a", SP }, ph_granite = { "3a3d45", SP },
 		ph_floor = { "4a4b50", SP }, ph_carpet = { "4b4e57" }, ph_deck = { "8d8a86" }, ph_frost = { "5a606a" }, ph_pad = { nil, CONC },
 		ph_glass = { "465a69" }, ph_glassin = { "4c5560" }, ph_padline = { "e3b54a" },
-		ph_padlamp = { "f2dcc0" }, ph_neon = { "f2dcc0" }, ph_lamp = { "f2dcc0" },
+		ph_padlamp = { "f2dcc0" }, ph_neon = { "f2dcc0" }, ph_lamp = { "e6cfa8" }, -- (the ceiling panels: warmer, to match the hanging lamps)
 	},
 	arch_pooldeck = {
 		pd_case = { "2b2e35", SP }, pd_deck = { "2f3138" }, pd_stripe = { "7d828c", SP }, pd_ring = { "c9a646", SP }, pd_alu = { nil, SP },
@@ -205,10 +213,13 @@ function S.rooftop(): string
 	for i, d in r:GetDescendants() do
 		if i % 1500 == 0 then task.wait() end
 		if not d:IsA("BasePart") then continue end
+		if d:FindFirstAncestor("Dress") then continue end -- (the structure pass's own things)
 		local glow = GLOW[d.Name]
 		local rule = ROOF[d.Name]
 		local arena = d.Parent ~= nil and d.Parent.Name ~= "City" -- (the roofs you play on, not the city round them)
 		if arena and FURNITURE[d.Name] then rule = FURNITURE[d.Name] end
+		-- the city's brick blocks: a greyer brown, so the city below is not a second, warm palette (structure pass judge)
+		if not arena and (d.Name == "tenement" or d.Name == "brick") then rule = { if d.Name == "brick" then "7a726d" else "6c6561" } end
 		if glow then
 			-- (out in the city the strips are a third dimmer: lit windows in the distance, not white lines on every tower)
 			if d.Material == NEON then d.Color = if arena then glow else glow:Lerp(Color3.new(0, 0, 0), 0.32); count("glow")
@@ -237,7 +248,7 @@ function S.rooftop(): string
 	end
 	-- the billboards and street signs: the same type as every other sign; a street sign's letters glow amber
 	for _, g in r:GetDescendants() do
-		if not g:IsA("SurfaceGui") then continue end
+		if not g:IsA("SurfaceGui") or g:FindFirstAncestor("Dress") then continue end
 		local part = g.Adornee or g.Parent
 		local street = part ~= nil and GLOW[part.Name] ~= nil
 		local board = if part and part.Name == "adjankbank" then hex("1a2230") elseif street then hex("101216") else hex("1c2028")
@@ -305,7 +316,8 @@ end
 -- the same order as the backup, so it refuses a place whose parts no longer line up (something was added or removed)
 local function repaint(cur: Instance, old: Instance): (number, string?)
 	local a, b = {}, {}
-	for _, d in cur:GetDescendants() do if d:IsA("BasePart") then table.insert(a, d) end end
+	-- (what PolishBackup.StructurePass added later lives in folders called Dress and is not part of the old paint)
+	for _, d in cur:GetDescendants() do if d:IsA("BasePart") and not d:FindFirstAncestor("Dress") then table.insert(a, d) end end
 	for _, d in old:GetDescendants() do if d:IsA("BasePart") then table.insert(b, d) end end
 	if #a ~= #b then return 0, ("%s has %d parts, its backup %d"):format(cur.Name, #a, #b) end
 	for i, d in a do
