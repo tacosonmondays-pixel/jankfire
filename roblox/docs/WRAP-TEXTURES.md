@@ -82,7 +82,7 @@ Normal and reverse leave the other pieces in the gun's factory paint, so the gun
 the three mode chips (HANDLE, BUSINESS END, FULL SEND) sit at the top right of the wraps bar. Each now shows a small
 two-block gun (stock end left, muzzle right) with the painted half lit. Hovering a chip tries that mode on the big
 3D preview ("(trying it on)"), the way hovering a wrap chip does, and clicking wears it. Sheet:
-`wrap-textures/modes-in-hand.jpg`.
+`wrap-textures/modes-in-hand.jpg` (6 wraps x the 3 modes in hand, place version 355).
 
 ## Animated wraps
 
