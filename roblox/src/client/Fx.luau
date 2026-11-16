@@ -994,7 +994,7 @@ end
 type Rig = { part: BasePart, up: Attachment, mid: Attachment, fl: Attachment, core: ParticleEmitter,
 	soot: ParticleEmitter, sparks: ParticleEmitter, feathers: ParticleEmitter, ring: ParticleEmitter,
 	kick: ParticleEmitter, shards: ParticleEmitter, cinders: ParticleEmitter, scorch: BasePart, mark: Decal, markT: number, blended: boolean?,
-	bodyBox: BasePart, body: ParticleEmitter, fire: ParticleEmitter }
+	bodyBox: BasePart, body: ParticleEmitter, fire: ParticleEmitter, inner: ParticleEmitter }
 local rigs: { Rig } = {}
 local rigI = 0
 local function rigEmitter(parent: Instance, props: { [string]: any }): ParticleEmitter
@@ -1034,17 +1034,24 @@ local function newRig(): Rig
 			SpreadAngle = Vector2.new(180, 180), Drag = 1.5, Acceleration = Vector3.new(0, 1 * S, 0), Rotation = NR(0, 360),
 			RotSpeed = NR(-15, 15), Transparency = ns(0, 1, 0.08, 0.04, 0.7, 0.08, 1, 1) }),
 		fire = rigEmitter(bb, { Texture = TEX.lumps, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0.35, LightInfluence = 0, Brightness = 1.2,
-			-- (round 6 in Play: near white at 0.2 s, bright orange still at 0.73 s: darker sooner, the web's dark smoke with
-			-- orange inside by 0.7 s)
-			Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 252, 236)),
-				ColorSequenceKeypoint.new(0.04, Color3.fromRGB(255, 234, 176)), ColorSequenceKeypoint.new(0.12, Color3.fromRGB(255, 186, 60)),
-				ColorSequenceKeypoint.new(0.28, Color3.fromRGB(250, 134, 26)), ColorSequenceKeypoint.new(0.45, Color3.fromRGB(184, 78, 22)),
-				ColorSequenceKeypoint.new(0.6, Color3.fromRGB(88, 44, 22)), ColorSequenceKeypoint.new(0.8, Color3.fromRGB(54, 44, 38)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(44, 38, 34)) }),
+			-- (round 6, four variants side by side in Play: one burning colour on every lump read as a flat yellow, then rust,
+			-- blob. the one that read like the web's: these lumps unlit and dark (their own top-lit shading shows: a crisp
+			-- dark lumpy mass) with a warm additive glow inside them, below)
+			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0, LightInfluence = 0.2, Brightness = 1,
+			Color = cs(Color3.fromRGB(120, 110, 100), Color3.fromRGB(82, 76, 72), Color3.fromRGB(58, 55, 53)),
 			Lifetime = NR(1, 1.15), Speed = NR(1.5 * S, 4 * S), SpreadAngle = Vector2.new(180, 180), Drag = 3,
 			Acceleration = Vector3.new(0, 1 * S, 0), ZOffset = 0.3, Rotation = NR(0, 360), RotSpeed = NR(-20, 20),
 			Transparency = ns(0, 0, 0.75, 0.05, 1, 1) }),
+		-- the fire inside the mass: smaller warm additive lumps, cream at first, orange by 0.5 s, glowing dim orange at 0.7 s
+		inner = rigEmitter(bb, { Texture = TEX.lumps, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 1, LightInfluence = 0, Brightness = 1.6,
+			Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 250, 236)),
+				ColorSequenceKeypoint.new(0.15, Color3.fromRGB(255, 236, 190)), ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 196, 110)),
+				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(236, 128, 50)), ColorSequenceKeypoint.new(0.7, Color3.fromRGB(150, 70, 30)),
+				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 40, 30)) }),
+			Lifetime = NR(0.9, 1.1), Speed = NR(1.5 * S, 4 * S), SpreadAngle = Vector2.new(180, 180), Drag = 3,
+			Acceleration = Vector3.new(0, 1 * S, 0), ZOffset = 1, Rotation = NR(0, 360), RotSpeed = NR(-20, 20),
+			Transparency = ns(0, 0, 0.6, 0.2, 1, 1) }),
 		shards = rigEmitter(mid, { Texture = TEX.chips, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(10, 16),
 			LightInfluence = 0.8, Color = cs(Color3.fromRGB(70, 66, 62), Color3.fromRGB(44, 42, 40)),
 			Size = ns(0, 0.3 * S * H, 1, 0.22 * S * H), Transparency = ns(0, 0, 0.8, 0, 1, 1), Lifetime = NR(0.9, 1.5),
@@ -1107,6 +1114,8 @@ function Fx.explosion(at: Vector3, R: number)
 	local ks = s / (20 * S)
 	rig.fire.Size = grow(4.7 * ks * S * H, 8 * ks * S * H, 0.8 * ks * S * H)
 	emit(rig.fire, 12)
+	rig.inner.Size = grow(2.4 * ks * S * H, 4 * ks * S * H, 0.5 * ks * S * H)
+	emit(rig.inner, 7)
 	emit(rig.sparks, 22)
 	emit(rig.feathers, 25)
 	emit(rig.shards, 14)
@@ -1117,7 +1126,7 @@ function Fx.explosion(at: Vector3, R: number)
 	local body, soot = rig.body, rig.soot
 	after(0.35, function()
 		body.Size = grow(5.4 * ks * S * H, 9.2 * ks * S * H, 0.8 * ks * S * H)
-		emit(body, 10)
+		emit(body, 7)
 	end)
 	after(0.65, function()
 		soot.Size = grow(1.5 * 1.3 * S * H, 3.2 * 1.3 * S * H)
@@ -1645,7 +1654,11 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	-- spans each seg, so a seg along a wing's top feather or a blade gives a streak that width; width1 / width0 taper it
 	-- along its length). short and glowing; in first person capped short so turning never smears it across the view
 	local tr = sp.trail
-	if tr and tr.segs and not model:IsDescendantOf(workspace.CurrentCamera) then -- (first person: none; they drew as stray lines)
+	-- (first person: the guns' trails drew as stray straight lines after the draw, so none on a gun there; the katana's
+	-- swing trail stays, main's note: it never covers the sights. third person and other players: always)
+	local wrow = (Weapons.list :: any)[model.Name]
+	local melee = wrow ~= nil and wrow.kind == "melee"
+	if tr and tr.segs and (melee or not model:IsDescendantOf(workspace.CurrentCamera)) then
 		local fp = model:IsDescendantOf(workspace.CurrentCamera)
 		for _, seg in tr.segs do
 			local pairs_ = { { seg[1], seg[2] } }

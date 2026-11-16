@@ -283,3 +283,15 @@ katana 6. **Round 6** (place version 459):
 - Flash: tinted warm by default (255, 226, 150), so the star's body reads yellow and its tips orange.
 - Skins: no trails in first person (they drew as stray straight lines after the draw).
 - Smoke bomb: tried on the lumps (taller, see-through); back on the cotton puffs with less room light.
+
+### Round 7: the frag that reads like the web's (16 Nov 2026, place version 464)
+
+The round-6 frag (one burning colour on every lump) photographed as a flat lemon ball at 0.2 s and a flat rust blob at
+0.7 s. Instead of one change per Studio turn, four variants side by side in one Play (`roblox/docs/vfx/round7/
+lineup-*.jpg`; the two left ones partly behind a cabinet): A the round-6 glow, B a low glow, C the lumps unlit and dark
+with a warm additive glow inside, D all additive. C read like the web's: a crisp dark lumpy mass with fire inside.
+Live in 464: the fireball's 12 lumps unlit (LightInfluence 0.2, greys 120 -> 58), 7 smaller warm additive lumps inside
+(cream -> orange by 0.5 s -> dim orange at 0.7 s, 0.9-1.1 s), the charcoal shell (7) from 0.35 s. Photos
+`round7/frag.jpg`: at 0.72 s a dark charcoal cauliflower with orange glowing inside; at 0.2 s the inner glow still
+blows out white (next: about a third less, cream not white). The katana keeps its trail in first person (checked: one
+Trail on the viewmodel), guns' trails stay off in first person.
