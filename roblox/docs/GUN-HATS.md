@@ -10,7 +10,9 @@ on top" rule; `tools/blender/make_gunhats.py`). The shapes and colours are our o
 rounded masses, two or three flat colours, SmoothPlastic, no pictures; Neon only for the halo, whose glow is the
 point. The aim was a polished charm in the class of Roblox RIVALS, not a joke prop.
 
-Pictures (`gun-hats/`): `round4-first-person.jpg` (the ten round-4 hats on the Assault Rifle in the training hall,
+Pictures (`gun-hats/`): `round6-first-person.jpg` (the live round-6 hats on the Assault Rifle from the eye, place
+version 312), `round6-seats.jpg` (the Marble Shotgun and the Katana), `round5-third-person.jpg` (third person on a
+dummy's rifle, round 5), `round6-blender.png`, `round4-first-person.jpg` (the ten round-4 hats on the Assault Rifle in the training hall,
 from the eye, place version 300), `round4-scopes.jpg` (Second Opinion and the Sniper from the eye), `round1-first-person.jpg` and `round1-third-person.jpg` (all ten round-1 hats on the Assault
 Rifle in the training hall, from the eye and on a dummy's rifle), `round1-on-guns.jpg` (round-1 hats on the other guns
 from the eye, the aim-down-sights shot, the hub rack), `loadout-hats-tab.jpg` (the HATS tab, a hat being tried on, the
@@ -115,6 +117,7 @@ principles (vault `Principles/Design principles.md`) and the Rivals-class bar.
 |---|---|---|---|
 | 1 (models r3) | 5 / 10 | readable and clean, but loud primaries (safety orange, lemon, pure Neon yellow), no shared look, uneven sizes (crown, duck, eyes half the others' weight), the googly eyes and the halo toy-jank; jammed or floating on six guns (Yeehaw, Second Opinion, Shotgun, Half a Shotgun, Lawn Mower, Marble Shotgun) and beside the Katana's blade. Nothing over the crosshair; the sight picture clean | round 4 |
 | 2 (models r4, place v300) | 6 / 10 | the cowboy, top hat and chef hat premium; the set still no shared palette, the "gold" a bright yellow plastic at a different value on every hat, no common mount; the halo a flat yellow Neon sticker; the crown's points like cat ears; the eyes' tray and rims noise; the scoped guns' hats a speck or sunk into the optic. Nothing over the crosshair | round 5 |
+| 3 (models r5, place v307) | 6.5 / 10 | top hat 8, cowboy and crown 7.5; the halo a donut on a cake pick (the stem), the eyes a gag sticker, the palette louder in game than in Blender; the Marble Shotgun's hat hidden by the jar. One more round should reach about 7.5 | round 6 |
 
 **Round 4** (`hat_models.py` top of the hats): one calm palette for the whole set (mid values, saturation a third
 lower), one shared trim on every hat in brushed gold (`GOLD`: the party hat's roll, the cone's collar, the cowboy and
@@ -137,10 +140,19 @@ darker band and wider blades, the top hat a lighter slate; sizes evened again (t
 the crown larger). Seats: the scoped guns' hats on the rear of the optic or scope on a **saddle** (a slate puck,
 `spot.saddle`, so a flat foot sits on a round tube), the Marble Shotgun's off the jar onto the barrel.
 
+**Round 6** (live in place version 312): the halo floats again over its foot (no stem), half as thick, its glow
+shell denser; the googly eyes set into a low grey felt cap (a hat, not a sticker); the party hat sage, the cone
+terracotta on the set's round foot (no square base of its own), the duck ochre with real eyes, the crown's velvet a
+step deeper; the Marble Shotgun's hat behind the jar on the barrel nearest the eye (ahead of the jar, the jar hid it).
+Under the hall's lamps the duck still reads as a bright yellow and the crown's gold as a warm gold: a darker hex moves
+them less than it should.
+
 ## Not done / open
 
-- Round 4 went live in place version 300 (16 Nov 2026, ~10:06 UTC) on the owner's picked guns (place version 298);
-  round 5 (asset 103202603989161) follows. Older hat uploads and the push models are no longer used.
+- **Live: round 6** (asset 95843162180568), place version 312 (16 Nov 2026, ~10:28 UTC), on the owner's picked guns
+  (place version 298). Older hat uploads and the push models are no longer used.
+- The Katana's hat stands on its pommel, which is below the frame in first person: it shows in third person, on the
+  racks and in the loadout.
 - The hats are all free to pick (the Roblox port has no inventory or crates yet, the same as wraps).
 - The Googly Eyes face the player who holds the gun (they look back at you); from in front, other players see their
   white backs.

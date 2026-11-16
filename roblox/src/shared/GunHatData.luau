@@ -8,18 +8,18 @@ D.ORDER = { "none", "party", "cone", "cowboy", "chef", "propeller", "eyes", "top
 D.HATS = {
 	none = { name = "None", rarity = "free" },
 	party = { name = "Party Hat", rarity = "free", lo = Vector3.new(-0.0325, -0, -0.0325), hi = Vector3.new(0.0325, 0.1042, 0.0325) },
-	cone = { name = "Traffic Cone", rarity = "free", lo = Vector3.new(-0.0346, 0, -0.0346), hi = Vector3.new(0.0346, 0.0924, 0.0346) },
+	cone = { name = "Traffic Cone", rarity = "free", lo = Vector3.new(-0.0319, -0, -0.0319), hi = Vector3.new(0.0319, 0.0903, 0.0319) },
 	cowboy = { name = "Cowboy Hat", rarity = "common", lo = Vector3.new(-0.052, -0, -0.0588), hi = Vector3.new(0.052, 0.0481, 0.0588) },
 	chef = { name = "Chef Hat", rarity = "common", lo = Vector3.new(-0.033, -0, -0.0361), hi = Vector3.new(0.033, 0.0627, 0.0361) },
 	propeller = { name = "Propeller Cap", rarity = "rare", lo = Vector3.new(-0.0491, -0, -0.0528), hi = Vector3.new(0.0491, 0.0494, 0.0339) },
-	eyes = { name = "Googly Eyes", rarity = "rare", lo = Vector3.new(-0.0405, -0.0001, -0.0178), hi = Vector3.new(0.0405, 0.0302, 0.0189) },
+	eyes = { name = "Googly Eyes", rarity = "rare", lo = Vector3.new(-0.0329, -0, -0.0329), hi = Vector3.new(0.0329, 0.0316, 0.0329) },
 	tophat = { name = "Top Hat", rarity = "epic", lo = Vector3.new(-0.041, -0, -0.0451), hi = Vector3.new(0.041, 0.062, 0.0451) },
-	halo = { name = "Halo", rarity = "epic", lo = Vector3.new(-0.0364, -0, -0.0354), hi = Vector3.new(0.0364, 0.0648, 0.0354) },
+	halo = { name = "Halo", rarity = "epic", lo = Vector3.new(-0.0333, -0, -0.0323), hi = Vector3.new(0.0333, 0.0618, 0.0323) },
 	crown = { name = "Crown", rarity = "legendary", lo = Vector3.new(-0.051, -0, -0.051), hi = Vector3.new(0.051, 0.0653, 0.051) },
 	duck = { name = "Tiny Duck", rarity = "legendary", lo = Vector3.new(-0.031, -0, -0.0396), hi = Vector3.new(0.0335, 0.0713, 0.0352) },
 }
 -- the upload (every hat in one model, 10 x size: one template stud = UNIT metres)
-D.ASSET = 103202603989161
+D.ASSET = 95843162180568
 D.UNIT = 0.1
 
 -- the moving bits (client only): spin = round the hat's up axis (rad/s), bob = up and down (metres, Hz),
@@ -27,7 +27,7 @@ D.UNIT = 0.1
 D.MOVES = {
 	propeller = { prop = { kind = "spin", speed = 22 } },
 	halo = { halo = { kind = "bob", speed = 2.4, amp = 0.0035 } },
-	eyes = { pupil_l = { kind = "rattle", amp = 0.0026, u = Vector3.new(1, 0, 0), v = Vector3.new(0, -0.7071, 0.7071) }, pupil_r = { kind = "rattle", amp = 0.0026, u = Vector3.new(1, 0, 0), v = Vector3.new(0, -0.7071, 0.7071) } },
+	eyes = { pupil_l = { kind = "rattle", amp = 0.002, u = Vector3.new(1, 0, 0), v = Vector3.new(0, -0.7071, 0.7071) }, pupil_r = { kind = "rattle", amp = 0.002, u = Vector3.new(1, 0, 0), v = Vector3.new(0, -0.7071, 0.7071) } },
 }
 
 -- where the hat sits on each weapon: at = the foot of the hat (metres, the weapon frame: x right, y up, z back,
@@ -49,7 +49,7 @@ D.SPOTS = {
 	pistol = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- on the slide, back from the front sight (it rides the slide)
 	revolver = { at = Vector3.new(0, 0.068, -0.05), s = 0.7, yaw = 0, pitch = 0 },  -- on the top strap over the cylinder
 	redline = { at = Vector3.new(0, 0.056, 0.05), s = 0.75, yaw = 0, pitch = 0 },  -- on the deck behind the gauge, ahead of the rear sight (A model: the bigger gauge stands where the hat was)
-	marbles = { at = Vector3.new(0, 0.03102, -0.142), s = 0.65, yaw = 0, pitch = 0, saddle = 0.003 },  -- on the barrel between its band and the marble jar (round 5: off the jar, the highest point of the gun)
+	marbles = { at = Vector3.new(0, 0.03033, 0), s = 0.65, yaw = 0, pitch = 0, saddle = 0.003 },  -- on the barrel behind the marble jar, nearest the eye (round 6: ahead of the jar, the jar hid it)
 	katana = { at = Vector3.new(0, 0, 0.128), s = 0.6, yaw = 0, pitch = 90 },  -- on the pommel, standing off the end of the handle (round 4: on the blade it floated beside the edge)
 	shredder = { at = Vector3.new(0, 0.179, -0.04), s = 1.3, yaw = 0, pitch = 0 },  -- on top of the body behind the bell
 }
