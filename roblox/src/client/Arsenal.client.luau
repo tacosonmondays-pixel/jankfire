@@ -866,11 +866,11 @@ RunService.RenderStepped:Connect(function(dt: number)
 		end
 		H.top(mh .. clock)
 	elseif me:GetAttribute("Zone") == "training" then
-		H.top("TRAINING · the dummies hit back in here")
+		H.top("TRAINING")
 	elseif me:GetAttribute("Zone") == "playground" then
-		H.top("THE PLAYGROUND · you weren't meant to find this")
+		H.top("THE PLAYGROUND")
 	else
-		H.top("HUB · weapons away · step on a pad to play · training on your left") -- (the new lobby: the training hatch is left of the spawn)
+		H.top("HUB") -- (16 Nov, owner: no flavour text. the place's name only: FightHud flashes it for 3 s as you come in)
 	end
 	TP.mine(aim, st ~= nil and st.sprinting, if a then a.mag else nil) -- (your aim and mag for the third-person pose)
 end)

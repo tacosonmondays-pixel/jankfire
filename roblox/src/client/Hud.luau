@@ -1,5 +1,6 @@
 --!strict
--- the HUD's quiet half: the speed readout, the announcer line and the controls line (Theme.luau has the look: dark
+-- the HUD's quiet half: the speed readout, the announcer line (and which callouts it shows: KINDS), the small line under
+-- the crosshair and the controls line (Theme.luau has the look: dark
 -- plates, white text, one amber accent). FightHud.luau draws everything about the fight
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -129,8 +130,68 @@ local function dress(s: string): string
 	return s
 end
 
+-- the small line: under the crosshair, white on no band, gone in a moment (what you just did)
+local note = T.text(hud, "Note", "", 16, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Center)
+note.AnchorPoint = Vector2.new(0.5, 0); note.Position = UDim2.new(0.5, 0, 0.5, 34); note.Size = UDim2.fromOffset(420, 20)
+note.TextTransparency = 1
+local noteTok = 0
+function Hud.note(text: string, dur: number)
+	noteTok += 1
+	local my = noteTok
+	note.Text = caps(text)
+	note.TextTransparency = 0; note.TextStrokeTransparency = 0.6
+	task.delay(math.max(dur, 0.6), function()
+		if my ~= noteTok then return end
+		T.tween(note, 0.25, { TextTransparency = 1, TextStrokeTransparency = 1 })
+	end)
+end
+
+-- (16 Nov, owner: "can we get rid of unnecessary text like when slide jumping or grappling? maybe in like the tutorial
+-- or training grounds that could make sense. I dont want unnecessary flavor text everywhere") every callout comes
+-- through here (the scripts' own Hud.callout and the server's Callout remote), and this table says how each is shown:
+--   big    the announcer line: match news, real warnings, what an item did to you. ANY LINE NOT LISTED IS BIG
+--   small  the quiet line under the crosshair: what you just did (a kill, a parry, a recharge)
+--   train  a move's name: only in the training ground (as a small line, to learn the moves), nowhere else
+--   cut    never: jokes, and what you can already see (the weapon plate, the death line and the zone line say it)
+-- a line matches by how it starts (the scripts add names and numbers after); "*words" matches words anywhere. the
+-- first match wins, so a big line is listed before a small one that starts the same way
+local KINDS: { { string } } = {
+	{ "SLIDE JUMP", "train" }, { "GRAPPLE JUMP", "train" }, { "BHOP x", "train" }, { "LEDGE LAUNCH", "train" },
+	{ "BUBBLED BY", "big" },
+	{ "TOO FAR", "small" }, { "killed ", "small" }, { "PERFECT PARRY", "small" }, { "PARRY!", "small" }, { "PARRIED", "small" },
+	{ "BLOCKED", "small" }, { "YEEHAW x", "small" }, { "QUICK SCOPE", "small" }, { "you are in a bubble", "small" },
+	{ "*: recharging", "small" }, { "REVERSED", "small" }, { "ROPE SNAPPED", "small" }, { "POP QUIZ FOR ", "small" },
+	{ "TICKET", "small" }, { "BUSTED!", "small" }, { "PHOTO TAKEN", "small" }, { "* WENT IN YOUR PHOTO", "small" },
+	{ "BUBBLED ", "small" }, { "POPPED ", "small" }, { "QUACK! STUCK", "small" }, { "NO SIGNAL", "small" },
+	{ "ADS SERVED", "small" }, { "NO PHOTO", "small" },
+	{ "BOING", "cut" }, { "BONK", "cut" }, { "MARBLES!", "cut" }, { "WHOOPS!", "cut" }, { "dummy down", "cut" },
+	{ "KATANA GROWS", "cut" }, { "BURST!", "cut" }, { "NO SCOPE", "cut" }, { "IN THE TEETH", "cut" }, { "SHREDDED", "cut" },
+	{ "OVERHEATED", "cut" }, { "POP!", "cut" }, { "WISH YOU WERE HERE", "cut" },
+	-- (the doors: the zone line already flashes the place's name as you come in)
+	{ "TRAINING GROUND", "cut" }, { "BACK TO THE HUB", "cut" }, { "YOU FOUND THE PLAYGROUND", "cut" }, { "BACK TO TRAINING", "cut" },
+	{ "BACK INSIDE", "cut" }, { "YOU OPENED THE GARAGE", "cut" }, { "THE GARAGE REMEMBERS YOU", "cut" },
+}
+local function kindOf(text: string): string
+	for _, k in KINDS do
+		local pat = k[1]
+		if string.sub(pat, 1, 1) == "*" then
+			if string.find(text, string.sub(pat, 2), 1, true) then return k[2] end
+		elseif string.sub(text, 1, #pat) == pat then
+			return k[2]
+		end
+	end
+	return "big"
+end
+
 local token = 0
 function Hud.callout(text: string, dur: number)
+	local kind = kindOf(text)
+	if kind == "cut" then return end
+	if kind == "train" then
+		if Players.LocalPlayer:GetAttribute("Zone") ~= "training" then return end
+		kind = "small"
+	end
+	if kind == "small" then Hud.note(text, dur); return end
 	token += 1
 	local my = token
 	call.Text = dress(text)

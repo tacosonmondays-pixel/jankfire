@@ -498,8 +498,11 @@ function H.step(dt: number, aim: number, scopeHide: boolean)
 end
 
 -- the controls line (bottom right) for step 2
-local keysHint = gui.Parent and (gui.Parent :: Instance):FindFirstChild("JankfireHud")
-local hint = keysHint and keysHint:FindFirstChild("Keys") :: TextLabel?
+-- (waited for: Hud.luau may make its gui after this module loads. on 16 Nov a test found the line still in Hud's
+-- default words because it wasn't there yet)
+task.spawn(function()
+local keysHint = gui.Parent and (gui.Parent :: Instance):WaitForChild("JankfireHud", 30)
+local hint = keysHint and keysHint:WaitForChild("Keys", 10) :: TextLabel?
 if hint then
 	-- keys 1 2 3 follow your loadout (Loadout.luau sets it on every arm; L opens the loadout screen)
 	local lp = game:GetService("Players").LocalPlayer
@@ -523,5 +526,6 @@ if hint then
 	lp:GetAttributeChangedSignal("Loadout"):Connect(keysLine)
 	lp:GetAttributeChangedSignal("Item"):Connect(keysLine)
 end
+end)
 
 return H
