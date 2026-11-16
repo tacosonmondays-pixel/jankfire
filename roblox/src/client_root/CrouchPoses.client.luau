@@ -9,6 +9,17 @@ local UIS = game:GetService("UserInputService")
 local remote = game:GetService("ReplicatedStorage"):WaitForChild("PoseRemote")
 
 local lp = Players.LocalPlayer
+-- the third-person weapon pose (Jankfire.ThirdPerson) has the last word on the upper body: it runs right after these
+-- bends every frame, so the gun, the chest and the hands are placed on top of the crouch and the slide
+local TPose: any = nil
+task.spawn(function()
+	local f = script.Parent:WaitForChild("Jankfire", 30)
+	local m = f and f:WaitForChild("ThirdPerson", 30)
+	if m then
+		local ok, t = pcall(require, m)
+		if ok then TPose = t end
+	end
+end)
 local rad = math.rad
 local A = CFrame.Angles
 local ID = CFrame.identity
@@ -145,4 +156,5 @@ RunService.Stepped:Connect(function(_, dt)
 			end
 		end
 	end
+	if TPose then TPose.step(dt) end
 end)

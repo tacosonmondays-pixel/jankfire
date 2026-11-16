@@ -20,6 +20,16 @@ local VM = require(script.Parent:WaitForChild("Viewmodel"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Body = require(script.Parent:WaitForChild("Body"))
+-- every body handling its weapon in third person (ThirdPerson.luau). if it ever fails to load, the weapons still work
+local TP: any = nil
+do
+	local ok, m = pcall(require, script.Parent:WaitForChild("ThirdPerson"))
+	if ok then TP = m else
+		warn("[Arsenal] ThirdPerson didn't load: " .. tostring(m))
+		local nop = function(...) end
+		TP = { muzzle = function(_: any): Vector3? return nil end, fired = nop, reload = nop, cancelReload = nop, swing = nop, parry = nop, mine = nop }
+	end
+end
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local function remote(n: string): RemoteEvent return Remotes:WaitForChild(n) :: RemoteEvent end
 local EquipR, FireR, ReloadR, SwingR, MeleeR, ParryR = remote("Equip"), remote("Fire"), remote("Reload"), remote("Swing"), remote("MeleeHit"), remote("Parry")
@@ -96,6 +106,8 @@ local function inHub(): boolean
 end
 -- the muzzle of the gun a character holds (third person: yours, or someone else's)
 local function heldMuzzle(m: Instance?): Vector3?
+	local tp = TP.muzzle(m) -- (the gun as everyone sees it held: ThirdPerson)
+	if tp then return tp end
 	local wpn = m and m:FindFirstChild("HeldWeapon")
 	local root = wpn and wpn:IsA("Model") and wpn.PrimaryPart
 	local a = root and root:FindFirstChild("Muzzle")
@@ -238,7 +250,7 @@ local function equipShredder()
 	local tool = bag and (bag:FindFirstChild("Shredder") or bag:WaitForChild("Shredder", 3))
 	if not tool or not tool:IsA("Tool") or not hum.Parent then return end
 	local a = ammo[held]
-	if a and a.reloadUntil > 0 then a.reloadUntil = 0 end
+	if a and a.reloadUntil > 0 then a.reloadUntil = 0; TP.cancelReload() end
 	held = "shredder"
 	equipT = os.clock()
 	aim = 0
@@ -254,7 +266,7 @@ local function equip(wid: string)
 	if not W[wid] then return end
 	if toolOut() then local _, hum = myChar(); if hum then hum:UnequipTools() end end
 	local a = ammo[held]
-	if a and a.reloadUntil > 0 then a.reloadUntil = 0 end -- swapping cancels a reload
+	if a and a.reloadUntil > 0 then a.reloadUntil = 0; TP.cancelReload() end -- swapping cancels a reload
 	held = wid
 	equipT = os.clock()
 	aim = 0
@@ -275,6 +287,7 @@ local function reload()
 	fanArmed = false
 	ReloadR:FireServer(held)
 	VM.reload(held, w.reload :: number, a.mag <= 0)
+	TP.reload(held, w.reload :: number, a.mag <= 0)
 end
 
 -- a spent case out of the port (the pump's red hull, the bolt's and the lever's brass: thrown by the clip, not the shot)
@@ -402,6 +415,7 @@ local function fireGun(now: number, fan: boolean?)
 	bloom = math.min(w.maxBloom or 0, bloom + (w.bloom or 0))
 	VM.kick(w.recoilVM, if aim > 0.5 then 0.6 else 1, (w.rate or 0) > 8)
 	VM.shot(w) -- the cylinder turns, the hammer falls, the slide kicks, the barrel warms
+	TP.fired(held, F ~= nil) -- (and the gun in your character's hands kicks, for you in third person and for everyone)
 	if w.cycle then VM.follow(w.cycle.clip, w.cycle.at) end -- then the pump / the bolt / the lever
 	if w.fan then -- the Revolver: a twirl round the finger after a tap (not down the sights), a whole turn per fanned shot
 		if F then VM.play("fan_revolver") elseif aim < 0.3 then VM.play("twirl_revolver") end
@@ -444,6 +458,7 @@ local function swing(now: number)
 	swingAlt = (now - lastSwing < 0.75) and not swingAlt
 	lastSwing = now
 	VM.play(if swingAlt then "swing_katana2" else "swing_katana")
+	TP.swing(swingAlt)
 	SwingR:FireServer("katana")
 	pending = { t = now + (W.katana.hitT :: number) }
 end
@@ -497,6 +512,7 @@ local function tryParry(now: number)
 	parryT = now
 	parryReady = now + P.win + P.cd
 	VM.play("parry_katana")
+	TP.parry()
 	local lk = camera.CFrame.LookVector
 	ParryR:FireServer(math.atan2(-lk.X, -lk.Z)) -- where you look: the server's "front" for this guard
 end
@@ -548,70 +564,8 @@ UserInputService.InputChanged:Connect(function(io: InputObject, gp: boolean)
 end)
 
 -- ---------------------------------------------------------------- the third-person pose for everyone holding something
--- (the R15 arm raised to hold the weapon level; a melee swing whips it across; a guard lifts the blade overhead)
-local poses: { [Motor6D]: { c0: CFrame, swingT: number, guardT: number } } = {}
--- the new avatar joints (AnimationConstraint) keep C0 read-only: their rest pose is the torso's shoulder attachment
-local function getC0(sh: any): CFrame
-	if sh:IsA("Motor6D") then return sh.C0 end
-	local a = sh.Attachment0
-	return if a then a.CFrame else CFrame.identity
-end
-local function setC0(sh: any, cf: CFrame)
-	if sh:IsA("Motor6D") then sh.C0 = cf
-	elseif sh.Attachment0 then sh.Attachment0.CFrame = cf end
-end
-local function shoulder(m: Model): Motor6D?
-	local ua = m:FindFirstChild("RightUpperArm")
-	return ua and ua:FindFirstChild("RightShoulder") :: Motor6D?
-end
-local function poseOf(m: Model?): { c0: CFrame, swingT: number, guardT: number }?
-	if not m then return nil end
-	local sh = shoulder(m)
-	if not sh then return nil end
-	local p = poses[sh]
-	if not p then p = { c0 = getC0(sh), swingT = -math.huge, guardT = -math.huge }; poses[sh] = p end
-	return p
-end
-local function poseStep(now: number)
-	for sh, p in poses do
-		if not sh.Parent then poses[sh] = nil; continue end
-		local m = sh:FindFirstAncestorOfClass("Model")
-		local wpn = m and m:FindFirstChild("HeldWeapon")
-		if not wpn then setC0(sh, p.c0); continue end
-		local isKat = wpn:GetAttribute("Weapon") == "katana"
-		local rot = CFrame.Angles(if isKat then 0.95 else math.pi / 2, 0, 0)
-		local st = now - p.swingT
-		if st < 0.38 then -- the shared melee arm swing: yaw one way then back, pitch up
-			local u = st / 0.38
-			local yaw = 1.3 * math.sin(math.pi * u) * (if u < 0.35 then 1 else -1)
-			rot = rot * CFrame.Angles(0.5 * math.sin(math.pi * u), yaw, 0)
-		end
-		local gt = now - p.guardT
-		if gt < 0.56 then -- katana guard: up flat over the head, held, out
-			local k = if gt < 0.05 then gt / 0.05 elseif gt < 0.35 then 1 else 1 - (gt - 0.35) / 0.21
-			rot = rot:Lerp(CFrame.Angles(math.pi * 0.95, 0.75, 0), k)
-		end
-		setC0(sh, p.c0 * rot)
-	end
-end
-local function watchModel(m: Model)
-	local function check() if m:FindFirstChild("HeldWeapon") then poseOf(m) end end
-	m.ChildAdded:Connect(check)
-	check()
-end
-local function watchPlayer(p: Player)
-	p.CharacterAdded:Connect(watchModel)
-	if p.Character then watchModel(p.Character) end
-end
-for _, p in Players:GetPlayers() do watchPlayer(p) end
-Players.PlayerAdded:Connect(watchPlayer)
-task.spawn(function()
-	local dummies = workspace:WaitForChild("Dummies", 10)
-	if dummies then
-		dummies.ChildAdded:Connect(function(m) if m:IsA("Model") then watchModel(m) end end)
-		for _, m in dummies:GetChildren() do if m:IsA("Model") then watchModel(m) end end
-	end
-end)
+-- (ThirdPerson.luau: the gun at the hip or up at the eye, both of the avatar's own hands on it, the look pitch, the
+-- kick, the reload, the katana's moves, for every body in the game)
 
 -- ---------------------------------------------------------------- what the server says
 remote("Dmg").OnClientEvent:Connect(function(d: any)
@@ -661,7 +615,7 @@ remote("Shot").OnClientEvent:Connect(function(s: any)
 	local root = wpn and (wpn :: Model).PrimaryPart
 	local mz = root and root:FindFirstChild("Muzzle") :: Attachment?
 	local head = m and m:FindFirstChild("Head") :: BasePart?
-	local from = if mz then mz.WorldPosition elseif head then head.Position else nil
+	local from = TP.muzzle(m) or (if mz then mz.WorldPosition elseif head then head.Position else nil)
 	if not from then return end
 	local ends = {}
 	for i, e in s.ends do if typeof(e) == "Vector3" and i <= 12 then table.insert(ends, e) end end
@@ -691,12 +645,9 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 	local now = os.clock()
 	if f.k == "swing" then
 		if f.by ~= me.UserId then
-			local p = poseOf(m); if p then p.swingT = now end
 			local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if r then Sfx.play("swing", r.Position) end
 		end
-	elseif f.k == "guard" then
-		local p = poseOf(m); if p then p.guardT = now end
 	elseif f.k == "parry" then
 		local from = if typeof(f.from) == "Vector3" then f.from else nil
 		local mine = f.by == me.UserId
@@ -921,5 +872,5 @@ RunService.RenderStepped:Connect(function(dt: number)
 	else
 		H.top("HUB · weapons away · step on a pad to play · training on your left") -- (the new lobby: the training hatch is left of the spawn)
 	end
-	poseStep(now)
+	TP.mine(aim, st ~= nil and st.sprinting) -- (your aim for the third-person pose; ThirdPerson does the rest)
 end)
