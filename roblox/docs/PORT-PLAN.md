@@ -390,7 +390,7 @@ changed; the hub, the guns and the HUD were not touched.
 - **Not tested:** a match started from a pad (two players), phones and slow machines.
 - **Still weak (the judges' list):** the light is even and shadowless (the hub look in `HubLook` and the place's Lighting are outside this builder); the walk past the lifts is plain; the gym's boxing theme; props stand singly rather than in groups; the five bays could be one band with one sign line. The displayed weapon models carry the kit's own dark details.
 
-## 19. Rooftop v2: a second arena to the new principles, 16 November 2026 (place version 270)
+## 19. Rooftop v2: a second arena to the new principles, 16 November 2026 (place version 272)
 
 The owner: "can we rebuild a new training area too with our new design principles as well as a version of rooftop that
 follows our design principles? Keep the current one rooftop v1 vs v2 and we'll compare". **v1 (`Map.Rooftop`) is not
@@ -427,7 +427,11 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   version 270) the middle PASS 7.5 (the bronze dome a landmark at last), covered lane PASS 7, inside a spawn CLOSE 7,
   the spawn exit, the gallery and the view from above CLOSE 6 to 6.5: "beats v1 on every principle; the middle and
   the covered lane hold up next to a RIVALS arena; the spawn exit, the gallery and the backdrop still read as a
-  careful greybox". Write-ups: vault `Reviews/Rooftop v2 - judge round 1.md` to `5`.
+  careful greybox"; round 6 (place version 272: the spawn exit's screen redrawn with the team's mark on it, calmer
+  team colours, lockers in the spawn room, a darker gallery deck, a city floor of streets and blocks) the spawn room
+  and the middle PASS 7.5, the spawn exit and the view from above CLOSE 7, the lanes CLOSE 6.5: "clearly better
+  than v1 ... not yet beside a polished RIVALS arena: the backdrop gives it away". Write-ups: vault
+  `Reviews/Rooftop v2 - judge round 1.md` to `6`.
 
 ## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 263)
 
