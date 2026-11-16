@@ -4,6 +4,8 @@ The owner, 16 Nov 2026: "So a lodout will consist of a primary, a secondary, a m
 calls these items (key G, `ITEMS` in `shared/weapons.js`); the spec is `WEAPONS.md`, "Phase 2: ITEMS" and "Items
 basics", plus one section per item. Every number below is the web game's, unchanged (distances x3 for studs).
 
+![all 13 items, held and in use (place version 332)](items/all-items-sheet.jpg)
+
 ## What's in
 
 | | |
@@ -121,7 +123,7 @@ drift. Blast hits, heals and blocks are never reported by a client.
 
 | laptop target | the enemy nearest your aim within 45 m and 0.3 rad, in sight | the Stand (a card held, so the ads came home: "reflect", then "ads" on me) | ok |
 | the ads | 5 pop-ups for 7 s, 2 "ARE YOU SURE?" can come back; keys 1-5 close them | 5 windows, each with its key, the tip line counting them; keys 1-5 held off the weapons while they're up; all gone after 7 s | ok |
-| closing one with its key | | not measured (the 7 s ran out between my tool calls) | to do |
+| closing one with its key | the number on an ad closes it; sometimes an "ARE YOU SURE?" comes back in its place | key 3 closed ad 3 in **0.18 s** and an "ARE YOU SURE?" opened on 3 at 0.28 s; key 5 closed ad 5 in 0.17 s; key 1 pressed before ad 1 opened did nothing (keys sent while the ads were up, read off the screen every 0.03 s) | ok |
 | laptop charges | 1, 42 s, kept across deaths | 1 -> 0 | ok |
 | goggles on | free, G | the green view, an outline on everyone in sight (30 here: Roblox draws at most 31, the nearest), the HUD "Goggles · on" | ok |
 | goggles flash | lerp(0.6, 3.2 s, k) x 2 in goggles x (1 - 0.3 d / 34 m), k = how straight they look at you | sent back by the Stand's card onto me, looking straight at it, in goggles, 18 studs: 3.2 x 2 x 0.947 = **6.06 s**; measured **6.06 s**, the screen fully white | ok |
@@ -146,7 +148,7 @@ from the client. In the test the Stand was driven back and forth along the hall 
 | the reading | path length over the last 0.5 s, km/h of metres (studs/s x 1.2) | the Stand at 120 studs/s (144 km/h): **125-144** (the lower ones span a turnaround) | ok |
 | over 100 | a ticket (one charge): 3 s to get back under | a ticket at 135 km/h, charges 2 -> 1 | ok |
 | still over at the end | jailed | 3.00 s later: "out of time", jailed for **3.52 s** (3.5) | ok |
-| over 200 at once / while ticketed | jailed on the spot | not measured (my speed-up came after the jail) | to do |
+| over 200 at once | jailed on the spot, no ticket first | the Stand driven at 190 studs/s (228 km/h): first full reading **215 km/h**, jailed in the same message, no ticket; charges 2 -> 1; the cage drawn | ok |
 
 ![the speed trap held up](items/radar-held.jpg)
 
@@ -165,7 +167,7 @@ further along, then walked into.
 | walking in | out where the photo was taken, facing its way, each person once every 1.6 s | **0.35 s** after stepping in: on the photo spot (x 2, z -8159 against -8158), facing the photo's way (yaw 0) | ok |
 | telefrag | whoever stands within 0.9 m (flat) and 1.6 m (up) of the spot: 999 | the Stand moved onto the spot: dead, thrown up | ok |
 | the frame's life | 20 s | gone 20 s after printing ("framex: time") | ok |
-| crossing at speed | a fast mover is caught crossing the opening between two ticks | not measured | to do |
+| crossing at speed | a fast mover is caught crossing the opening between two ticks | stood 4 studs in front of the frame, then moved 8 studs straight through it in one step (never inside the opening on any tick): sent through **0.016 s** later (the next tick), onto the photo spot facing its way | ok |
 
 ### Bubble Wand
 
@@ -180,7 +182,7 @@ and on every client, which draws them: nothing about their path is synced.
 | how long | 5 s, then it pops and drops them | popped ("time") **5.00 s** after sealing; back on the floor | ok |
 | inside | no moving, no shooting, no items, the world through the film | the film over the view with its rim, "IN A BUBBLE · pops in 1.4s"; the float is the client's own (held within lag slack of the path by the server) | ok |
 | charges | 2, 32 s each, kept | 2 -> 1 | ok |
-| a hit pops it | the first hit (a friend's too) only pops it, no damage | not measured | to do |
+| a hit pops it | the first hit (a friend's too) only pops it, no damage | the Stand sealed in, then two 10-damage hits through `Fight.hurt` (test hook `"hurt"`): after the first **100 HP** and "trapx: hit" popped by me; after the second **90 HP** | ok |
 
 Choices of mine: a bubble isn't put on anyone sitting a pop quiz or in a speed-trap cage (both already hold them in
 place); dummies don't use frames (the web game's training dummies don't either).
@@ -192,3 +194,12 @@ place); dummies don't use frames (the web game's training dummies don't either).
 ![the frame, developed](items/camera-frame.jpg)
 
 ![inside a soap bubble](items/wand-inside.jpg)
+
+### Sounds
+
+Every item sound is approved on Roblox (Open Cloud: moderation "Approved", state "Active"), and in a Play test all 20
+load (`ContentProvider:PreloadAsync`, each with its length) and the batch 2 ones (popper, squeak, quack, hole,
+ropesnap) play.
+
+Nothing here needs a second player to check: the dummies and the test hook (`"rev"` for a reverse card, `"hurt"` for a
+hit) stand in for one.

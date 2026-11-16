@@ -22,7 +22,7 @@ function TestHook.init(Fight: any, Rules: any, Weapons: any)
 	if old then old:Destroy() end
 	local fn = Instance.new("BindableFunction")
 	fn.Name = "JankTest"
-	fn.OnInvoke = function(op: any, a: any, b: any): any
+	fn.OnInvoke = function(op: any, a: any, b: any, c: any): any
 		if op == "arm" then
 			local f = Fight.byPlayer[a]
 			if not f or type(b) ~= "table" or #b ~= 3 then return false end
@@ -52,11 +52,19 @@ function TestHook.init(Fight: any, Rules: any, Weapons: any)
 			return require(script.Parent:WaitForChild("Utility")).test(f, if type(b) == "string" then b else nil)
 		elseif op == "smoke" then -- (a, b: two points) does a smoke cloud stand between them
 			return Fight.smokeBlocks(a, b)
-		elseif op == "rev" then -- (a fighter's name, secs) a reverse card on them: Utility.testReverse
+		elseif op == "rev" then -- (a fighter's name or model, secs) a reverse card on them: Utility.testReverse
 			for _, f in Fight.all do
-				if f.name == a and f.alive then require(script.Parent:WaitForChild("Utility")).testReverse(f, if type(b) == "number" then b else 3); return true end
+				if (f.name == a or Fight.model(f) == a) and f.alive then require(script.Parent:WaitForChild("Utility")).testReverse(f, if type(b) == "number" then b else 3); return true end
 			end
 			return false
+		elseif op == "hurt" then -- (a fighter's name or model, amount, by: a player) one hit through Fight.hurt; their HP after
+			for _, f in Fight.all do
+				if (f.name == a or Fight.model(f) == a) and f.alive and type(b) == "number" then
+					Fight.hurt(f, b, if typeof(c) == "Instance" then Fight.byPlayer[c] else nil, "test", false)
+					return f.hp
+				end
+			end
+			return nil
 		elseif op == "hp" then
 			for _, f in Fight.all do
 				if f.name == a and f.alive and type(b) == "number" then f.hp = b; Fight.syncHp(f); return true end
