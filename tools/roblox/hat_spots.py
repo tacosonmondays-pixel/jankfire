@@ -25,8 +25,14 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..', '..')
 
 
+def build(wid):
+    """a gun, or a skin of one ("ar@cardboard": gun_set.SKINS)"""
+    if '@' in wid: return GUNS.SKINS[wid]()
+    return GUNS.BUILD[wid]()
+
+
 def tree(wid):
-    g = GUNS.BUILD[wid]()
+    g = build(wid)
     bm = bmesh.new()
     for b in g.pieces.values():
         me = bpy.data.meshes.new('t'); b.to_mesh(me); bm.from_mesh(me); bpy.data.meshes.remove(me)
@@ -105,7 +111,15 @@ def main():
     w('-- pitch = degrees about x after that (90: the hat stands on the back end, the katana\'s pommel), saddle = metres:')
     w('-- the hat stands that much higher on a slate puck (a round scope or barrel under a flat foot).')
     w('-- y was measured on the kit model (the top of the gun under the spot)')
+    w('-- a skin ("<gun>@<skin>", gun_set.py SKINS) has its own line: its gun spot (or its own in hat_spots.json) with the')
+    w('-- height measured on the skin model. GunHats uses it when the built gun carries the attribute Skin = "<skin>"')
     w('D.SPOTS = {')
+    # every skin in the gun set gets a seat: its own line in hat_spots.json, or its gun's
+    for key in sorted(getattr(GUNS, 'SKINS', {})):
+        base = key.split('@')[0]
+        if key not in spots and base in spots:
+            sp = dict(spots[base]); sp.pop('y', None); sp['note'] = "skin: its gun's spot, height measured on the skin"
+            spots[key] = sp
     for wid, sp in spots.items():
         if wid.startswith('_'): continue
         x, z = sp.get('x', 0.0), sp['z']
@@ -118,7 +132,7 @@ def main():
             y -= sp.get('sink', 0.002)
         note = sp.get('note', '')
         sad = (', saddle = %g' % sp['saddle']) if sp.get('saddle') else ''
-        w('\t%s = { at = %s, s = %g, yaw = %g, pitch = %g%s },%s' % (wid, lua_vec((x, y, z)), sp.get('s', 1.0), sp.get('yaw', 0), sp.get('pitch', 0), sad,
+        w('\t%s = { at = %s, s = %g, yaw = %g, pitch = %g%s },%s' % (wid if '@' not in wid else '["%s"]' % wid, lua_vec((x, y, z)), sp.get('s', 1.0), sp.get('yaw', 0), sp.get('pitch', 0), sad,
           ('  -- ' + note) if note else ''))
         print('SPOT', wid, round(x, 4), round(y, 4), round(z, 4), 's', sp.get('s', 1.0))
     w('}')
