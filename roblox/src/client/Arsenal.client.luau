@@ -245,6 +245,9 @@ local function smearStep(now: number, hidden: boolean)
 			used = tri(used, a1, b2, a2, tr)
 		end
 	end
+	-- (an angel katana: the smear takes its spray's glow colour, Fx.bladeGlow)
+	local smearCol = Fx.bladeGlow(VM.model) or Color3.fromRGB(225, 240, 255)
+	for i = 1, used do local w = smearPool[i]; if w.Color ~= smearCol then w.Color = smearCol end end
 	for i = used + 1, #smearPool do
 		local w = smearPool[i]
 		if w.Transparency ~= 1 then w.Transparency = 1 end

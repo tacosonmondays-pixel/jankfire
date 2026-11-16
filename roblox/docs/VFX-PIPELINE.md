@@ -320,3 +320,9 @@ Trail on the viewmodel), guns' trails stay off in first person.
   event flares their blade for 0.25 s, `Fx.swingFlames`), left in the world so the blade's path draws the arc. Two
   one-line hooks in Arsenal. Tested on a stand-in katana at 3x scale (`round8/raw-katana-flame-arc.jpg`): a fan of
   gold tongues where the blade passed.
+- Katana flame trail, reworked (place version 472; main: the round-9 tongues stood up across the crosshair, a fire wall
+  not a swing; the owner asked for "a bit of a trail"): thin flame licks laid along the blade's path and stretched with
+  its motion (VelocityParallel), from the blade's outer half, gone in ~0.2 s; your own in first person narrower and
+  dimmer and never in the middle fifth of the screen; Arsenal's slash smear takes the glow colour (`Fx.bladeGlow`).
+  Photos `round8/katana-trail.jpg`: first person right (thin gold licks along the arc, the crosshair clear); third
+  person was too thin and faint, so it is now wider (0.09 m), brighter (3) and three licks a frame: not re-photographed.

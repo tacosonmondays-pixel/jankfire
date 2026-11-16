@@ -1785,20 +1785,45 @@ end
 -- (round 4: first-person bubbles drifted by the sight while aiming, and hung in the view while the gun was hidden. the
 -- game's aim narrows the view (Arsenal: baseFov / zoom), so a view under 0.95 of the widest seen lately is aiming)
 local wideFov = 70
--- the angel katana's flame arc (the owner's recording: flame arcs along each swing): flame tongues thrown off the blade,
--- mid to tip, every frame of the swing, in the wrap's glow colour; left in the world, so the blade's path draws the arc
-local FLAMEARC = emitters(6, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-	FlipbookStartRandom = true, FlipbookFramerate = NR(24, 30), LightEmission = 1, LightInfluence = 0, Brightness = 2.2,
-	Lifetime = NR(0.18, 0.3), Speed = NR(0.2 * S, 0.6 * S), SpreadAngle = Vector2.new(180, 180), Drag = 4,
-	Rotation = NR(-25, 25), Transparency = ns(0, 0, 0.6, 0.25, 1, 1) })
+-- the angel katana's flame trail (the owner: "a bit of a trail as you move"; main, round 9: tall tongues standing up
+-- over the crosshair read as a fire wall, not a swing): thin flame licks laid along the blade's path, stretched with
+-- its motion (VelocityParallel), from the blade's outer half, gone in ~0.2 s, in the wrap's glow colour. your own in
+-- first person smaller and dimmer and never in the middle fifth of the screen; Arsenal's smear takes the glow colour too
+local FLAMEARC = emitters(8, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+	FlipbookStartRandom = true, FlipbookFramerate = NR(24, 30), LightEmission = 1, LightInfluence = 0,
+	Orientation = Enum.ParticleOrientation.VelocityParallel, Lifetime = NR(0.15, 0.22), SpreadAngle = Vector2.new(6, 6), Drag = 6,
+	Squash = ns(0, 1.2, 1, 2.4), Transparency = ns(0, 0.1, 0.5, 0.35, 1, 1) })
+type BladeLast = { a: Vector3, b: Vector3, t: number }
+local bladeLast: { [Model]: BladeLast } = {}
+function Fx.bladeGlow(model: Model?): Color3?
+	local S_ = if model then skinned[model] else nil
+	return if S_ and #S_.flames > 0 then S_.glow else nil
+end
 function Fx.bladeFlames(model: Model?, a: Vector3, b: Vector3)
 	local S_ = if model then skinned[model] else nil
-	if not S_ or #S_.flames == 0 or not S_.glow then return end
+	if not model or not S_ or #S_.flames == 0 or not S_.glow then return end
+	local last = bladeLast[model]
+	bladeLast[model] = { a = a, b = b, t = clockT }
+	local dt = if last then clockT - last.t else 0
+	if not last or dt <= 0 or dt > 0.1 then return end
 	local kk = S_.k
+	local cam = workspace.CurrentCamera
+	local vp = if cam then cam.ViewportSize else Vector2.new(1, 1)
 	local c = flameCS(S_.glow)
-	for i = 1, 3 do
-		local e = emAt(FLAMEARC, a:Lerp(b, (i - 0.5) / 3 + (math.random() - 0.5) * 0.2), Vector3.yAxis)
-		e.Color = c; e.Size = ns(0, 0.1 * kk, 0.3, 0.2 * kk, 1, 0.08 * kk)
+	-- (round 10 in Play: right in first person; in third person too thin and faint to read: wider, brighter, one more)
+	for _, u in (if S_.fp then { 0.7, 0.95 } else { 0.55, 0.75, 0.95 }) do
+		local pNow, pWas = a:Lerp(b, u), last.a:Lerp(last.b, u)
+		local v = (pNow - pWas) / dt
+		if v.Magnitude < 0.5 then continue end
+		if S_.fp and cam then -- (first person: never across the middle fifth of the screen, where you aim)
+			local sp = cam:WorldToViewportPoint(pNow)
+			if math.abs(sp.X - vp.X / 2) < vp.X * 0.1 and math.abs(sp.Y - vp.Y / 2) < vp.Y * 0.1 then continue end
+		end
+		local e = emAt(FLAMEARC, pWas:Lerp(pNow, math.random()), v)
+		local w = (if S_.fp then 0.025 else 0.09) * kk
+		e.Color = c; e.Size = ns(0, w * 0.7, 0.3, w, 1, w * 0.4)
+		e.Speed = NR(v.Magnitude * 0.06, v.Magnitude * 0.1)
+		e.Brightness = if S_.fp then 1.2 else 3
 		emit(e, 1)
 	end
 end
@@ -1817,7 +1842,7 @@ local function swingFlameStep(dt: number)
 		local sw = swingsLive[i]
 		sw.t += dt
 		local root = sw.m.PrimaryPart
-		if sw.t > 0.25 or not root or not sw.m.Parent then table.remove(swingsLive, i); continue end
+		if sw.t > 0.25 or not root or not sw.m.Parent then bladeLast[sw.m] = nil; table.remove(swingsLive, i); continue end
 		local mid, tip = root:FindFirstChild("Mid") :: Attachment?, root:FindFirstChild("Muzzle") :: Attachment?
 		if mid and tip then Fx.bladeFlames(sw.m, mid.WorldPosition, tip.WorldPosition) end
 	end
