@@ -157,7 +157,7 @@ return function(B, R)
 	do
 		local F = B.side(4)
 		for _, s in { -1, 1 } do
-			B.box(F, C, "PortalJamb", s * 4.5, s * 5.4, 0, 9.4, A - 0.5, A + T + 0.2, P.creamHi, nil, G)
+			B.box(F, C, "PortalJamb", s * 4.5, s * 5.4, -0.04, 9.4, A - 0.5, A + T + 0.2, P.creamHi, nil, G)
 			B.spar(F, C, "PortalCut", A - 0.5, A + T + 0.2, 1.1, s * 5.4, 8.8, s * 3.2, 11.1, P.creamHi, nil, G)
 		end
 		B.box(F, C, "PortalHead", -3.4, 3.4, 10.5, 11.1, A - 0.5, A + T + 0.2, P.creamHi, nil, G)
@@ -185,7 +185,7 @@ return function(B, R)
 	-- the room, the pads' half facing it), where four odd props read as clutter
 	local function showFrame(F, plate, l1, l2)
 		B.box(F, C, "ShowBoard", -4.2, 4.2, 0.7, 9.6, A - 0.8, A - 0.24, P.plate, nil, G)
-		for _, s in { -1, 1 } do B.box(F, C, "ShowJamb", s * 4.2, s * 4.75, 0, 10.06, A - 1.05, A - 0.2, P.cream, nil, G) end
+		for _, s in { -1, 1 } do B.box(F, C, "ShowJamb", s * 4.2, s * 4.75, -0.04, 10.06, A - 1.05, A - 0.2, P.cream, nil, G) end
 		B.box(F, C, "ShowHead", -4.75, 4.75, 9.6, 10.1, A - 1.35, A - 0.2, P.cream, nil, G)
 		B.box(F, C, "ShowCove", -4, 4, 9.46, 9.6, A - 1.25, A - 1, P.strip, Neon, G)
 		B.box(F, C, "ShowSill", -4.2, 4.2, 0.35, 0.7, A - 1, A - 0.26, P.pier, nil, G)

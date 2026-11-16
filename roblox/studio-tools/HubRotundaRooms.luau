@@ -64,7 +64,7 @@ return function(B, R)
 			B.box(F, C, "LoungeLedge", s * 13.5, s * 14, 3.6, 3.95, 43.7, 54.3, P.creamHi, nil, G)
 		end
 		-- the duck: a projector on a round rug in the sunk middle, a faint beam, the duck turning in it
-		B.cyl(F, C, "Rug", 0, -0.02, 0.03, 46.5, 12.4, P.creamHi, nil, G)
+		B.cyl(F, C, "Rug", 0, -0.04, 0.03, 46.5, 12.4, P.creamHi, nil, G)
 		B.cyl(F, C, "Rug", 0, -0.06, 0.07, 46.5, 11.4, P.band, nil, G)
 		B.put(F, "bc_holoprojector", "HoloProjector", 0, 0, 46.5, 0, { solid = true, color = { ["37d6ff"] = "ffe9a8", ["8fe6ff"] = "ffe9a8" } })
 		local duck = B.put(F, "pj_duck", "HoloDuck", 0, 4.2, 46.5, 0, { scale = 6, raw = true })
@@ -247,11 +247,20 @@ return function(B, R)
 		-- the gate: a chunky frame on the far wall, red bars across it; walk in and you are in the training ground
 		B.put(F, "hb_portal", "TrainingPortal", 0, 0, 64, 0, { back = true, scale = 0.6, color = { ff4fd8 = P.train, ["2e3140"] = P.pier, a4aab8 = P.pier2 } })
 		B.box(F, C, "LaserVoid", -4.2, 4.2, 0, 9.96, 63.3, 63.6, "42121f", nil, G)
-		B.box(F, C, "LaserField", -4.2, 4.2, 0, 9.96, 62.9, 63.05, "ff2a3a", Neon, { ghost = true, tr = 0.88 })
+		-- (the lasers are one model tagged LaserGate: TrainingDoors.client switches its LaserField and LaserBars off with a
+		-- click while anyone is within Near of it, and back on after. owner, 16 Nov: "when you go to the laser gate, when
+		-- you get close you hear a click and the laser gate turns off")
+		local gate = Instance.new("Model"); gate.Name = "TrainingLaserGate"
+		local field = B.box(F, C, "LaserField", -4.2, 4.2, 0, 9.96, 62.9, 63.05, "ff2a3a", Neon, { ghost = true, tr = 0.88 })
+		field.Parent = gate
 		for i = 1, 5 do
 			local b = B.box(F, C, "LaserBar", -4.2, 4.2, i * 1.66 - 0.22, i * 1.66 + 0.22, 62.78, 63.22, "ff2a3a", Neon, G)
 			b.Shape = Enum.PartType.Cylinder
+			b.Parent = gate
 		end
+		gate:SetAttribute("Center", (F * CFrame.new(0, 5, -63)).Position); gate:SetAttribute("Near", 9)
+		gate.Parent = B.root.Scenery
+		game:GetService("CollectionService"):AddTag(gate, "LaserGate")
 		B.lamp(F, 0, 5, 61.4, 9, 0.5, "ff6a6a") -- (round 1's judge: the red "floods the walls pink")
 		B.text(F, "GateSign", { { "TRAINING GROUND", P.train, "B", 1 } }, 7.6, 1.1, 0, 10.9, 61.6, 0, { thick = 0.3 })
 		B.trigger(F, R.ROOM .. "ToTraining", -3.9, 3.9, 0, 10, 60.6, 63.2, "@TrainSpawns", "TRAINING GROUND")

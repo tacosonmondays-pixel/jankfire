@@ -800,6 +800,68 @@ The photo sheet is `roblox/docs/training/training_notes_play.jpg`.
 - the laser gates' tag (hub and playground)
 - a judge pass on the new range back and the yard's props
 
+## 27. The hub, round 2: holograms, the duel hall, duck trophies, new props, no floor lines, 16 November 2026 (place version 390)
+
+**The owner's words (16 November 2026), relayed by the main session:**
+- "in the hub can the center gun thingy cycle your loadout but hologram style? we also need holograms like in rivals with bundle sets that float and people can look at and interact with"
+- After a play-test: "in the match pads theres random pots on the ground? some of the props dont look super like rivals ones!"
+- "can you get rid of the lines leading to the pads, we also need more pads somewhere?"
+- Of the gym: "the boxing ring and the backwall decor are off center from the entrance, is that intended what should we do? maybe make it a bit bigger"; of the lockers: "too close together and looks awkward"; of the armory shelf: "some props overlay each other make sure they dont"
+- "can the trophy case, can they be ducky trophies?"
+
+**What changed:**
+- **Your loadout as a hologram.** The Redline showpiece in the ring over the platform is gone. In its place, each player sees their own loadout: primary, secondary, melee and utility in turn, each in its wrap with its hat.
+  - It turns slowly; each piece stays 5 s, fades, and a scan line builds the next from the bottom.
+  - The look: the real model 30% see-through, a Highlight in the palette's accent (glow: soft aqua), a faint beam from the lens, a small light. The slot, the name and the wrap and hat show under it.
+  - It is drawn by `StarterPlayerScripts.Jankfire.HubHolo` (a LocalScript, `src/client/HubHolo.client.luau`), on each player's own screen.
+- **Bundle holograms.** Three plinths in the showroom (the south wall: sides 6, 8 and 9).
+  - Each shows a bundle from the shop's catalogue (`ReplicatedStorage.Jankfire.Shop`): today's featured bundle first, then the rest. Each piece is turned and built like the loadout's: the hero weapon in its wrap and hat, then each item on it.
+  - Walk up and a card says what is in it: each item with a thin rarity mark, and the price ("FREE" while `Shop.free()`).
+  - E (or a click on the prompt) opens the shop on that bundle: the prompt carries `ShopOpen = <bundle id>`, which the shop's own client acts on.
+  - Until the catalogue is there, four stand-in sets show and say "coming to the shop".
+- **The duck trophy case** (side 5, in the same frame as the plinths): a glass-fronted case on a podium, with the gold duck big in the middle and silver and bronze either side. Each duck is the new `rk_duckTrophy` (a slate base with a blank little plate, a stem, a dish, the duck), lit warm from inside. The plate on the board reads "THE DUCK CUP".
+- **The duel hall** (side 4, where the gym was): 50 x 52, symmetric on the door's axis.
+  - The gym's boxing ring is the centrepiece, bigger (20 across), under a light frame with the hall's one shadowed lamp over its middle.
+  - The round target is in a lit recess on the far wall, on the axis.
+  - Seven more pads stand round the walls facing the ring: 3v3 straight ahead with a 1v1 either side of it, a 2v2 on each side wall, a 1v1 either side of the door. Each pad has its board on the wall behind it and a light panel over it, with piers between.
+  - That makes 12 pads in all. Pads carry `PadId` (unique, = the model's name) and `Bank` ("lifts" or "hall"); Matches runs them side by side (section 26), keyed by the pad's instance. At most 6 arenas run at once (`Matches.MAX_LIVE`), so a 7th full pad shows "ALL ARENAS BUSY · you're next".
+  - The rotunda's door word is DUELS; the notice board says "MORE PADS · THE DUEL HALL, EAST".
+- **No floor lines** to the lifts or the rooms. **No pots** by the outer lifts.
+- **New props** (`tools/roblox/rotunda_props.py`, one upload, asset 94371006780646, imported by `R.importProps()`): a planter, punch bag, tyre stack, coffee table, locker bank, dumbbell rack, gym bench and the duck trophy. They are chunky: few big rounded shapes, flat matte colours.
+  - The lounge's plants and coffee table and the armory's lockers use them.
+  - The armory's lockers stand against the near wall with the bench in front of them and 3 studs to walk between.
+  - The cases and ammo boxes that sat on the armory's counters (an SMG went through one, the katana through another) are gone.
+- **Flicker:** every face the z-fight finder listed in the Rotunda has its own plane now. Dais and floor discs have their own sunk bottoms; the ring apron sits under the base; shaft walls sit under the lids; hall lids meet the rooms' walls; hall floors sit under the round floor.
+
+**`R.check()` gained:**
+- **OVERLAP:** every pair of kit models and display guns, part against part, shrunk 0.06 so touching passes; the structural kit set into walls (`R.STRUCTURE`) is left out.
+- The hologram drums count as solid for the sight lines and keep-clear zones.
+- The bundle holograms are looked for from the middle of the platform, and the target over the duel hall's 3v3 through its door.
+- Pad count: 12.
+
+Now (push 33): `R.check()` 37 keep-clear zones, 0 problems, 0 leaks, 286 sight lines, 0 hidden, 40 props, 0 overlaps, 89 lamps (9 with shadows), 12 pads.
+
+**Flicker** (`ZFight`, minY 239.5): 431 visible pairs in the old hub, 162 after the first fixes, 16 now, none of them in these builders.
+- 15 are inside the armory's display guns (the weapon kit) and 1 is inside the old `bc_fridge` kit model.
+- The prop kit checks 0 offline (`zfight_glb.py ... alone=rk_`).
+- Run the finder after every hub rebuild.
+
+**The training gate** (the armory's red lasers) is a Model `TrainingLaserGate` tagged `LaserGate` (Center, Near = 9). `TrainingDoors.client` switches its LaserField and LaserBars off with a click as you come within 9 studs, and back on after (owner: "when you go to the laser gate, when you get close you hear a click and the laser gate turns off").
+
+**Tested in Play** (place versions 383 to 390, by the builder):
+- The loadout hologram cycles. Shown: the Frag Grenade with "UTILITY / FRAG GRENADE / 2 charges" under it.
+- The three plinths read the live catalogue: Field Issue (today's featured), Night Shift, Tea House. Each prompt carries its ShopOpen, and E opened the shop on Field Issue. The card shows when you stand near and lists the items with rarity marks and "FREE".
+- The bundles' guns lie flat. A first try stood them on end: their build orientation was kept instead of their own box's, which is what the loadout screen uses.
+- The gate's lasers go off as you approach.
+- No errors from the holograms in the console.
+- Photos: vault `Hubs\shots\rotunda\hub2\`.
+- Traps: `execute_luau` puts the camera back to Custom after every call, so Play photos need `screen_capture`'s own camera position; a billboard's StudsOffset follows the player's real camera, not that one.
+
+**Not done / open:**
+- The duel hall's pads have not been played in a real match from the hall: two players are needed.
+- The holograms on phones and slow machines.
+- The punch bags, tyres and dumbbells of the new kit are not used since the gym became the hall; they stay in the kit.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
