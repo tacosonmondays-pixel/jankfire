@@ -58,7 +58,7 @@ AMBER, LAMP, WARM = 'b8913f', 'f4efe6', 'f2dcc0'         # the one accent / ligh
 PINK, CYAN = 'e05cc4', '37d6ff'                          # attackers' band (west) / defenders' band (east) and pads
 TEAM = {-1: 'd65bbd', 1: '2a93ad'}   # (round 3: matte, never glowing: the bright cyan glow means "pad" only)   # (round 2: the defenders' marks a deeper matte cyan; the pads keep the bright glow)
 GROUT, BORDER = '55565a', '505257'
-STRIPE = {-1: 'b463a0', 1: '45879a'}                     # the floor stripes: the team colours a third of the way to the floor                       # the joints under the tiles / the band round each deck
+STRIPE = {-1: 'b463a0', 1: '45879a'}                     # (unused since 16 Nov: no colour on floors) the old floor stripes                      # the joints under the tiles / the band round each deck
 
 PIECES = {}      # (model, 'kind_hex') -> [(bmesh, matrix in Roblox space)]
 LIGHTS = []      # ('spot' | 'point', (x, y, z), (dx, dy, dz), brightness, range, angle, colour)
@@ -378,17 +378,15 @@ def floors():
         a0, a1 = (-166.0, -135.0) if s < 0 else (135.0, 166.0)
         for (p0, q0, p1, q1) in ((a0, -18.6, a1, -17.0), (a0, 17.0, a1, 18.6), (a0, -17.0, a0 + 1.6, 17.0), (a1 - 1.6, -17.0, a1, 17.0)):
             B(m, SLATE, p0, -0.1, q0, p1, 0.03, q1, bev=0.04, flat=True)
-        # (round 3) a landing in front of the spawn house's door, framed in slate, the team stripe through it all
+        # (round 3) a landing in front of the spawn house's door, framed in slate
         l0, l1 = (-135.0, -126.7) if s < 0 else (126.7, 135.0)
         for (p0, q0, p1, q1) in ((l0, -7.0, l1, -5.8), (l0, 5.8, l1, 7.0)):
             B(m, SLATE, p0, -0.1, q0, p1, 0.03, q1, bev=0.04, flat=True)
         B(m, '6c6a65', l0, -0.1, -5.8, l1, 0.02, 5.8, bev=0.0, flat=True)            # (round 4) a darker landing, two big tiles
         B(m, GROUT, l0, -0.1, -0.06, l1, 0.025, 0.06, bev=0.0, flat=True)
-        e0, e1 = (-161.0, -126.7) if s < 0 else (126.7, 161.0)
-        B(m, STRIPE[s], e0, -0.1, -0.8, e1, 0.045, 0.8, bev=0.03, flat=True)   # (the team colour mixed into the floor's grey)
-        tip = e0 if s < 0 else e1                         # the stripe ends in a flush chevron pointing at the door
-        d_ = -s                                           # (toward the door)
-        put(m, 'plastic', STRIPE[s], _slab_y([(tip, -2.6), (tip + d_ * 2.2, 0.0), (tip, 2.6), (tip - d_ * 1.2, 2.6), (tip + d_ * 1.0, 0.0), (tip - d_ * 1.2, -2.6)], -0.1, 0.045))
+        # (16 Nov, the owner: "remove he colored marks on the floor for rooftop, inhub its okay but not on matches") no
+        # team stripe or chevron on the floor any more: no colour on any walkable floor, only the floor's own greys.
+        # The team colour stays on the spawn house (the lintel panel, the beacon), not underfoot
         for zz in (-17.8, 17.8):                         # light strips set flush into the apron's long border
             B(m, LAMP, a0 + 2.0, -0.05, zz - 0.15, a1 - 2.0, 0.04, zz + 0.15, bev=0.0, kind='neon', flat=True)
     # the middle roof (the pool deck, the penthouse's sides, the service roof to the north)
