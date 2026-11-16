@@ -297,6 +297,13 @@ and `roblox/docs/gun-hold/`.
   in the Rivals class by the gun-models session (owner: "recreate the weapons in the rivals style"); holds are in
   each weapon's file frame, so new models that keep the old spots need no hold work.
 - **HUD chips:** Sniper `a2457c`, Yeehaw `a58640` (`Weapons` and `Roster`).
+- **Matched to Rivals' layout** (16 Nov, place version 347; owner: "look at how all the weapons and stuff are held
+  in rivals ... reference look and sizes"): every gun's muzzle just below and right of the crosshair, a quarter of
+  the screen wide, pistols turned to show their side, the katana upright on the right, thicker forearms. Per-gun
+  `shift`, `scale`, `tilt` in `holds.json`; `tools/roblox/hold_screen.py` prints where a gun lands (default FOV 80).
+  Judge: before 2 to 5, after 4 to 9 (Katana 9, Assault Rifle 8); its three weakest fixed after, not judged again.
+  Measurements in the vault (`Research/Rivals first-person holds.md`), sheets `gun-hold/rivals-1..4.jpg`, account
+  in `GUN-PAINT.md`. Not tested: other bodies, the Shredder's thicker forearm, aim on every gun, third person.
 - **Judged three times** from before and after pictures: the weapons' hold went from about 3.5 of 10 to about 5.5
   to 6; the Katana from 2 to 7 at best. Verdict each time: close, not at the bar. Weakest: the sidearms (reworked
   after round 3, not judged again), the Yeehaw, the reload props.

@@ -48,7 +48,7 @@ AvatarArms.KIT = {
 AvatarArms.STUDS = 3 -- studs per metre (the game's scale: Weapons.S)
 AvatarArms.HAND = 0.115 -- the hand across, metres, at a hold's size 1 (the hold table sizes it to each weapon)
 AvatarArms.FORE_L = 0.62 -- forearm length, metres: long enough to leave the screen, so no elbow end ever shows
-AvatarArms.SLEEVE = 1.35 -- the forearm's thickness against the hand's own scale (0.9 and 1.1 read as a pole under a ball)
+AvatarArms.SLEEVE = 1.6 -- the forearm's thickness against the hand's own scale (0.9 and 1.1 read as a pole under a ball; 1.35 still a thin pole once the guns sat further off in the Rivals layout)
 AvatarArms.SINK = 0.12 -- held from under: the thing sinks this far (of the hand's thickness) into the palm
 AvatarArms.PAST = 0.18 -- ... and the fingers reach this far (of the hand's length) past it
 

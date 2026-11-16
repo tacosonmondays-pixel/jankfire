@@ -463,7 +463,8 @@ function VM.update(dt: number, c: Ctx)
 	swap = math.max(0, swap - 5 * dt)
 	local base, rot = w.vm.p, w.vm.r
 	local row = Holds.holds[VM.wid]
-	if row and row.shift then base += row.shift * S end -- (a gun whose hands sat under the HUD at the larger size)
+	if row and row.shift then base += row.shift * S end -- (where it sits: the Rivals-class layout, holds.json)
+	if row and row.tilt then rot += row.tilt end -- (the one-handed guns turned to show their side)
 	local px, py, pz = base.X, base.Y - 0.3 * swap * S, base.Z
 	local rx, ry, rz = 0, 0, 0
 	-- footstep bob: one dip per foot strike

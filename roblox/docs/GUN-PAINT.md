@@ -166,6 +166,62 @@ one point higher. Round 3 was the first one at the larger size.)
 The judges' shared verdict: **close, not at the bar.** The Katana went from the worst hold to one of the best; the
 long guns are coherent; the sidearms, the Yeehaw and the reload props are the weakest.
 
+## Matched to the Rivals layout (16 November 2026, place version 347)
+
+The owner: "can you look at how all the weapons and stuff are held in rivals so you can reference look and sizes of
+stuff?" Rivals' first-person views were measured from videos (an all-weapons showcase against a plain sky, two plain
+gameplay videos) on a 5 % grid; the numbers and what they mean are in the vault note `Research/Rivals first-person
+holds.md` (no Rivals picture is kept in git or anywhere outside the vault). What they show:
+
+- Every gun points at the crosshair: the muzzle sits just below and right of it (about 55.5 / 58 % of a 16:9 screen).
+- A rifle covers about a quarter of the screen's width and leaves the bottom edge at 60 to 80 % across; the lower right
+  quarter stays empty. Pistols are small and show their side. The support forearm comes up from the bottom edge,
+  left of centre; the trigger hand hides under the gun. A katana stands nearly upright in the right half.
+
+Ours were about 44 % wide, their back ends ran into the right edge and their muzzles sat 3 to 9 % lower and further
+right. The game's default FOV is 80 (`JankSettings`), not Roblox's 70, which `tools/roblox/hold_screen.py` (new) takes
+into account: it prints where each gun lands on a 16:9 screen from the kit's part boxes, checked against Play photos.
+
+What changed (`holds.json`, nothing in the gun models, the paint, the hands' look or any mechanic):
+
+- Every gun's rest pose moved (`shift`, camera space): most sit about 0.35 m further from the camera and a little
+  left, so the muzzle lands on the Rivals spot and the gun covers 54 to 80 % across. Every gun is drawn at the same
+  scale (1 against `_size` 1.25; the Marble Shotgun 0.9), so the hands are the same size from gun to gun.
+- New `tilt` (degrees added to the rest turn, `Viewmodel.luau`): Plan B 18 and the Revolver 24 about y, so their side
+  shows instead of their back end; Half a Shotgun turned straight ahead so its barrels run to the crosshair.
+- Plan B's and the Revolver's fists moved down their grips (the butt and the magazine base poked out below the fist).
+- The Marble Shotgun drawn a little smaller and lower, its jar below the crosshair.
+- The Katana's rest stands nearly upright on the right, the flat of the blade toward you (guard at about 65 / 72 %).
+- The forearms are thicker (`AvatarArms.SLEEVE` 1.6, was 1.35): further off, they had thinned to poles.
+- The utility items (the items session, place version 343): their held spot moved 0.2 studs left so they sit about
+  16 % left of and 24 % below the crosshair, the mirror of Rivals' held grenade; the frag and the duck drawn smaller.
+
+Judged by an independent judge from before and after photos against the measurement boxes (sheets
+`gun-hold/rivals-1.jpg` to `rivals-4.jpg`: ours before, ours after, the Rivals-class box; no Rivals picture):
+
+| Weapon | Before | After |
+|---|---|---|
+| Assault Rifle | 4 | 8 |
+| Hat Trick | 4 | 7 |
+| SMG | 4 | 7 |
+| Sniper | 3 | 7 |
+| Shotgun | 5 | 7 |
+| Plan B | 5 | 7 |
+| Revolver | 4 | 5 |
+| Katana | 2 | 9 |
+| Belt Sander, Second Opinion, Yeehaw, Lawn Mower | | 6, 7, 7, 7 |
+| Redline, Marble Shotgun, Half a Shotgun | | 6, 4, 5 |
+
+Its verdict: "yes, a lot"; every gun now points at the crosshair and the rifles sit inside the box. Its three weakest
+(the Marble Shotgun's jar at crosshair height, the Revolver's grip poking out below the fist, Half a Shotgun pointing
+below the crosshair) were fixed after it, with the thicker forearms, and checked in a Play photo, not judged again.
+
+Checked in Play (place version 347): all fifteen guns photographed in hand at the new spots (the Shredder's hold did
+not change); hats sit right (party, cowboy, chef, cone on four guns); wraps read (camo, galaxy, hex, hazard);
+Half a Shotgun fires twice and reloads in about 2 s; the Revolver's sights come to the crosshair (aim unchanged).
+Not checked: other avatar bodies, the Shredder with the thicker forearm, aim on every gun, third person, the Rooftop's
+daylight, reloads on every gun at the new spot.
+
 ## What is still not at the bar
 
 - The hands are Roblox's own, so on a blocky avatar they are mittens with no fingers: a trigger finger or fingers
@@ -176,8 +232,10 @@ long guns are coherent; the sidearms, the Yeehaw and the reload props are the we
   spare magazine, shells, a speedloader) are not modelled, so its hand goes with what is there.
 - The off hand props a long gun from below (one palm-up hold for every handguard) rather than wrapping it, and the
   trigger hand is mostly hidden behind the gun at this camera angle.
-- The 25% size is one number (`_size`), chosen from the owner's words and the judges' read; the owner has not yet
-  said whether it is right.
+- The 25% size is one number (`_size`), chosen from the owner's words and the judges' read; since the Rivals pass the
+  guns sit further off at that size, so they look like Rivals' on screen; the owner has not yet seen it.
+- The trigger arm still shows as a second forearm beside the stock on the Shotgun, the Sniper, the Second Opinion and
+  the Yeehaw (Rivals hides it), and long guns show the flat end of their stock in the lower right.
 
 ## Switching paints
 

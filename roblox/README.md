@@ -131,6 +131,14 @@ forearm cannot sweep across the screen when the gun rolls; the off hand goes wit
 reload props (`Viewmodel.luau`, "the off hand"). A new gun needs a row there (take the spots from its side view, as
 for `grip` and `fore`), or its hands are not drawn. Full account: `docs/GUN-PAINT.md`, "The hold".
 
+**Where a weapon sits on the screen** follows the Rivals-class layout measured on 16 November 2026 (vault note
+`Research/Rivals first-person holds.md`): every gun's muzzle just below and right of the crosshair, a two-handed gun
+about a quarter of the screen wide with its back end leaving the bottom edge at about 80 % across, a one-handed gun
+turned so its side shows, the katana upright on the right. Per weapon, `holds.json` has `shift` (a move of the rest
+pose, camera space, metres), `scale` and `tilt` (degrees added to the rest turn). `py tools/roblox/hold_screen.py`
+prints where each gun lands on a 16:9 screen at the game's default FOV of 80, from the kit's part boxes, so a new gun
+can be placed before any Play test.
+
 Wraps are untouched by any of this: a wrap repaints pieces through `Color` and takes pictures off, then restores
 whatever the template had.
 

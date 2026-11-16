@@ -20,7 +20,8 @@ out = ['--!strict',
        '--     palm: held from under), at = where the fist is on the weapon (file metres), rot = radians (x, y, z as',
        '--     CFrame.Angles): +Y runs along the thing held, toward the thumb (palm: up into it); size = the hand against',
        '--     AvatarArms.HAND; elbow = this arm\'s own elbow spot; turn = an extra turn about the handle (radians)',
-       '--   holds[weapon].shift: a move of the weapon\'s rest pose, camera space (metres); scale: its size against size',
+       '--   holds[weapon].shift: a move of the weapon\'s rest pose, camera space (metres); scale: its size against size;',
+       '--     tilt: a turn added to its rest pose (radians, x y z like vm.r)',
        '--   elbow: where each forearm comes from, in camera space (metres). size: every weapon in first person is drawn',
        '--     this much larger than the web game\'s scale (Viewmodel: k = S x vm.s x size), the hands with it',
        '--   katana: its rest and parry poses as a turn and a shift laid over the web game\'s clips, and when each is on',
@@ -43,6 +44,7 @@ for wid, h in H.items():
             long, s['pose'], V(s['at']), V([math.radians(a) for a in s.get('rot', (0, 0, 0))]), f(s.get('size', 1)), extra))
     if h.get('shift'): sides.append('shift = %s' % V(h['shift']))
     if h.get('scale'): sides.append('scale = %s' % f(h['scale']))
+    if h.get('tilt'): sides.append('tilt = %s' % V([math.radians(a) for a in h['tilt']]))
     out.append('\t\t%s = { %s },' % (wid, ', '.join(sides)))
 out.append('\t},')
 fx = L.katana_fixes(H)
