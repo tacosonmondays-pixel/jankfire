@@ -659,6 +659,34 @@ to 4.5 at 2e4 force, and reached only 52 sideways at 1e7. The marble slip (1.7 s
 (58 up) and the grapple (hook, on the rope, grapple jump, let go) all still work. Swinging into the rotunda's wall gave
 no BONK. Not tried: other players bumping you (a solo test), a real BONK or LEDGE LAUNCH at the new speeds.
 
+**The feel check, old drive against new (place version 353).** Both drives were run back to back in one Play test on a
+flat test floor, with a temporary switch for the old drive (taken out again). Expected numbers are from `Config`
+(the web game's `player.js` × 3 studs):
+
+| | expected | old drive (1e7) | new drive |
+|---|---|---|---|
+| run top speed | 30 | 30.0 | 30.4 |
+| sprint top speed | 43.5 | 44.2 | 44.2 |
+| slide from a sprint: start → end | 51 → 41.8 | 50.4 → 38.4 | 51.0 → 40.2 (50.9 → 38.6 on a rerun) |
+| slide length | 0.8 s, about 37 studs | 0.80 s, 35.1 | 0.82 s, 36.8 (0.80 s, 36.0) |
+| slide jump: leaves at / height | 59.9 / about 7 | 57 / +5.8 | 59 / +5.0 (+5.7) |
+| bhop chain (W + Shift, Space held) | keeps speed | 43 every hop | 44 every hop |
+| air strafe (A + turning, 2.5 s) | gains | 44 → 61.6 | 44 → 59.6 |
+| grapple pull to the pillar | | 132 | 132.7 |
+
+The old drive's grapple peaked at 184.9, but that was the fling itself: it hit the pillar at 132 and bounced back
+off it. Heights are measured on the root, so they read below the maths' 4.9 / 7.0 on both drives alike.
+
+**Two things moved, both brought back:**
+- **Kerbs.** The web game steps straight up anything 0.6 m (1.8 studs) or lower (`shared/physics.js` `PH.step`).
+  The Humanoid alone manages about 1 stud at a sprint: the old 1e7 drive bulldozed over higher lips, and the
+  gentler drive caught on a 1.5-stud kerb (44 → 14). Move now lifts you onto any lip from 0.9 to 1.8 studs just
+  ahead of your feet when you're on the floor (not onto other bodies). At a sprint: the 1.5 and 1.75 kerbs at 44
+  without slowing, a 2.1 kerb (over 0.6 m) stops you as in the web game, stairs (0.8 risers) and an 18° ramp at 44.
+- **Throttled drawing.** The keys are read when the control module runs, once per drawn frame. When drawing runs
+  slower than physics (an unfocused or minimised window), some steps got no fresh keys and counted as none: run
+  dropped to about 12 and sprint to about 28, jittering. The last real keys now carry over for 0.15 s.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

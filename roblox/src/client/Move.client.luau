@@ -156,15 +156,20 @@ local lastPad = 0
 -- Humanoid's own jump (a slide jump is the biggest) and stepping up a kerb have to fit
 local FLING_SIDE = 6 * Config.S
 local FLING_UP = Config.jump * Config.slideJumpUp + 4 * Config.S
+local STEP_UP = 0.6 * Config.S -- the web game's step-up (shared/physics.js PH.step = 0.6 m)
+local stepParams = RaycastParams.new()
+stepParams.FilterType = Enum.RaycastFilterType.Exclude
+stepParams.RespectCanCollide = true
 local jumpBoostUntil: number? = nil
 local eye = Config.standEye
 -- steering the Humanoid. its own ground controller is very strong: left to walk where the keys point at WalkSpeed it
 -- fights the LinearVelocity on every slide, bhop landing and knockback, which is why the LinearVelocity needed 1e7 (and
 -- 1e7 pressed into a kerb or a dummy is what flung people). so after reading the keys, each step tells the Humanoid to
 -- walk exactly where the maths is taking you, at that speed: it agrees, and the LinearVelocity can stay gentle.
--- the keys come from the control module calling its moveFunction each frame; a frame without that call (controls off:
--- the loadout screen) is no input, never our own steer read back
+-- the keys come from the control module calling its moveFunction each drawn frame; a step without that call keeps
+-- the last keys for 0.15 s, then counts as no input (controls off: the loadout screen), never our own steer read back
 local steering, inputFresh = false, false
+local lastInput, lastInputT = Vector3.zero, -10
 task.spawn(function()
 	local ok, controls = pcall(function()
 		return (require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any) :: any):GetControls()
@@ -212,7 +217,17 @@ RunService.PreSimulation:Connect(function(dt: number)
 	st.onGround = grounded
 	st.groundTicks = if grounded then st.groundTicks + 1 else 0
 	-- the wish direction: the control module's move vector is already camera-relative (MoveDirection)
-	local md = if steering and not inputFresh then Vector3.zero else hum.MoveDirection
+	-- (the control module runs once per drawn frame, this once per physics frame: when drawing is throttled, an
+	-- unfocused or minimised window, some steps get no fresh call. keep the last real keys for a moment then)
+	local md: Vector3
+	if not steering then
+		md = hum.MoveDirection
+	elseif inputFresh then
+		md = hum.MoveDirection
+		lastInput, lastInputT = md, os.clock()
+	else
+		md = if os.clock() - lastInputT < 0.15 then lastInput else Vector3.zero
+	end
 	inputFresh = false
 	local look = camera.CFrame.LookVector
 	local fw = Vector3.new(look.X, 0, look.Z)
@@ -270,6 +285,29 @@ RunService.PreSimulation:Connect(function(dt: number)
 			st.vx, st.vy, st.vz = pad.X, pad.Y, pad.Z
 			hum:ChangeState(Enum.HumanoidStateType.Freefall)
 			Hud.callout("BOING", 0.5)
+		end
+	end
+	-- stepping up: JANKFIRE walks onto anything 0.6 m (1.8 studs) high or lower without slowing (shared/physics.js
+	-- PH.step). the Humanoid alone only manages about 1 stud at a sprint (the old 1e7 drive bulldozed over the rest),
+	-- so a lip just ahead of your feet that you could stand on lifts you onto it
+	local hsNow = math.sqrt(st.vx * st.vx + st.vz * st.vz)
+	if grounded and st.vy < 1 and hsNow > 2 then
+		stepParams.FilterDescendantsInstances = { ch }
+		local dir = Vector3.new(st.vx, 0, st.vz) / hsNow
+		local feetY = root.Position.Y - root.Size.Y / 2 - hum.HipHeight
+		local reach = 1.4 + hsNow * dt
+		local at = Vector3.new(root.Position.X, feetY + 0.15, root.Position.Z)
+		local low = workspace:Raycast(at, dir * reach, stepParams)
+		local body = low and low.Instance:FindFirstAncestorOfClass("Model")
+		if low and math.abs(low.Normal.Y) < 0.35 and not (body and body:FindFirstChildOfClass("Humanoid")) then
+			local over = Vector3.new(0, STEP_UP + 0.25 - 0.15, 0) -- (just over the highest step: is the way clear?)
+			if not workspace:Raycast(at + over, dir * (reach + 0.6), stepParams) then
+				local top = workspace:Raycast(low.Position + dir * 0.4 + Vector3.new(0, STEP_UP + 0.25 - (low.Position.Y - feetY), 0), Vector3.new(0, -(STEP_UP + 0.25), 0), stepParams)
+				local rise = top and top.Position.Y - feetY
+				if top and rise and top.Normal.Y > 0.7 and rise > 0.9 and rise <= STEP_UP then
+					root.CFrame += Vector3.new(0, rise + 0.05, 0)
+				end
+			end
 		end
 	end
 	lv.PlaneVelocity = Vector2.new(st.vx, st.vz)
