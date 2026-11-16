@@ -161,5 +161,11 @@
   "sha1": "209e7d44bc28fb6d81a5f1440b7369d4e44d4f28",
   "what": "a soft white streak (64x256): the black hole infall",
   "uploaded": "2026-11-16 22:38 UTC"
+ },
+ "vfx_flame_4x4": {
+  "id": 77597527828324,
+  "sha1": "5b02e9828358bb29a484c33ddf256729b174791e",
+  "what": "a flame tongue licking up, pale core, 16 frames (4x4, 256 px; tools/roblox/vfx/flame_sheet.py): the angel weapons, coloured by the wrap",
+  "uploaded": "2026-11-16 22:52 UTC"
  }
 }

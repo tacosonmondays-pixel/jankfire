@@ -173,6 +173,7 @@ local TEX = {
 	cotton2 = "rbxassetid://96781809339333", -- a thick lumpy smoke puff, 64 frames (8x8; tools/roblox/vfx/cotton_sheet.py)
 	lumps = "rbxassetid://82728391412819", -- 16 dense crisp lumpy puffs (4x4; tools/roblox/vfx/lumps_sheet.py): fireball, smoke
 	streak = "rbxassetid://127914373549121", -- a soft white streak (the spark drawing is warm)
+	flame = "rbxassetid://77597527828324", -- a flame tongue licking up, 16 frames (4x4; tools/roblox/vfx/flame_sheet.py)
 }
 local function ns(...: number): NumberSequence
 	local a = { ... }
@@ -277,6 +278,16 @@ local FLASH_TP = emitters(6, { Texture = TEX.flash, FlipbookLayout = FLIP2, Flip
 	FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0.45, LightInfluence = 0, Brightness = 1.15, ZOffset = 0.3,
 	Lifetime = NR(0.05), Speed = NR(0), Rotation = NR(0, 360), Transparency = ns(0, 0, 0.7, 0, 1, 0.3) })
 for _, e in FLASH_TP.list do pcall(function() (e.pe :: any).FlipbookBlendFrames = false end) end
+local FWHITE = Color3.new(1, 1, 1)
+local function flameCS(c: Color3): ColorSequence -- white core -> the glow colour -> a dim tail
+	return ColorSequence.new({ ColorSequenceKeypoint.new(0, FWHITE), ColorSequenceKeypoint.new(0.25, c:Lerp(FWHITE, 0.3)),
+		ColorSequenceKeypoint.new(0.6, c), ColorSequenceKeypoint.new(1, c:Lerp(Color3.new(0, 0, 0), 0.6)) })
+end
+-- a flaming skin's shot: flame tongues thrown off the muzzle, coloured by the wrap's glow (FacingCamera, upright)
+local FLAMEBURST = emitters(4, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+	FlipbookStartRandom = true, FlipbookFramerate = NR(24, 30), LightEmission = 1, LightInfluence = 0, Brightness = 2,
+	Lifetime = NR(0.14, 0.24), SpreadAngle = Vector2.new(28, 28), Drag = 6, Rotation = NR(-20, 20),
+	Transparency = ns(0, 0, 0.6, 0.2, 1, 1) })
 -- the shot's smoke off the muzzle (flipbook.js muzzlePuff: 0.22 -> 0.85 m, 0.55-0.8 s, half see-through, 1.6 m/s along
 -- the shot and a little up, drag 3.5). only for a muzzle over 1.3 m from the camera (never your own gun in first
 -- person), at most one every 60 ms from about the same spot
@@ -727,10 +738,20 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	-- a high-tier skin's own flash and tracer colours (SkinSets.FX), and its after-firing effects switch on
 	local sk = skinAt(at.Position)
 	if sk then sk.afterT = clockT end
-	if not noFlash then Fx.muzzle(at, big, fpv, if sk then sk.spec.flash else nil, fast) end
+	if not noFlash then
+		Fx.muzzle(at, big, fpv, if sk then sk.spec.flash else nil, fast)
+		if sk and sk.glow and #sk.flames > 0 then
+			local fb = emAt(FLAMEBURST, at.Position + at.LookVector * 0.1 * (if fpv then FPK else S), at.LookVector)
+			local kk = if fpv then FPK * 0.6 else S
+			fb.Color = flameCS(sk.glow); fb.Size = ns(0, 0.12 * kk, 0.4, 0.22 * kk, 1, 0.1 * kk)
+			fb.Speed = NR(2 * kk, 5 * kk)
+			emit(fb, 6)
+		end
+	end
 	if fx.spray or #ends == 0 then return end -- (the marbles are their own tracers)
-	local col = (if sk then sk.spec.tracer else nil) or w.tracer or Color3.fromRGB(255, 240, 160)
-	local wide = w.thick or (if fast then 0.03 else 0.045) * S
+	local col = (if sk and sk.glow and #sk.flames > 0 then sk.glow else nil) or (if sk then sk.spec.tracer else nil) or w.tracer
+		or Color3.fromRGB(255, 240, 160)
+	local wide = (w.thick or (if fast then 0.03 else 0.045) * S) * (if sk and sk.glow and #sk.flames > 0 then 1.6 else 1)
 	local life = if fast then 0.07 else 0.2
 	local a = at.Position
 	-- your own tracer starts 3 studs out, so it never reads as a line out of your eye (first person only)
@@ -994,7 +1015,7 @@ end
 type Rig = { part: BasePart, up: Attachment, mid: Attachment, fl: Attachment, core: ParticleEmitter,
 	soot: ParticleEmitter, sparks: ParticleEmitter, feathers: ParticleEmitter, ring: ParticleEmitter,
 	kick: ParticleEmitter, shards: ParticleEmitter, cinders: ParticleEmitter, scorch: BasePart, mark: Decal, markT: number, blended: boolean?,
-	bodyBox: BasePart, body: ParticleEmitter, fire: ParticleEmitter, inner: ParticleEmitter }
+	bodyBox: BasePart, boom: ParticleEmitter }
 local rigs: { Rig } = {}
 local rigI = 0
 local function rigEmitter(parent: Instance, props: { [string]: any }): ParticleEmitter
@@ -1024,34 +1045,14 @@ local function newRig(): Rig
 	bb.Name = "FxBlastBody"; bb.Anchored = true; bb.CanCollide = false; bb.CanQuery = false; bb.CanTouch = false; bb.CastShadow = false
 	bb.Transparency = 1; bb.Size = Vector3.one; bb.CFrame = PARK; bb.Parent = folder
 	return { part = p, up = up, mid = mid, fl = fl, scorch = sc, mark = mark, markT = -1, bodyBox = bb,
-		-- (round 6: the web's boom sheet drawn 30 m across was a blur and its dark late frames a fog: the whole fireball is
-		-- now built from crisp lumpy puffs, each holding one of 16 drawn lumps. the fire: ~12 puffs that burn white -> gold
-		-- -> orange -> dark brown over 1.1 s, in front; the smoke: a charcoal shell 15 % bigger from 0.35 s, so the orange
-		-- shows through its middle at 0.7 s)
-		body = rigEmitter(bb, { Texture = TEX.lumps, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0, LightInfluence = 0.3,
-			Color = cs(Color3.fromRGB(78, 74, 71), Color3.fromRGB(60, 57, 55)), Lifetime = NR(2, 2.8), Speed = NR(0.5 * S, 1.5 * S),
-			SpreadAngle = Vector2.new(180, 180), Drag = 1.5, Acceleration = Vector3.new(0, 1 * S, 0), Rotation = NR(0, 360),
-			RotSpeed = NR(-15, 15), Transparency = ns(0, 1, 0.08, 0.04, 0.7, 0.08, 1, 1) }),
-		fire = rigEmitter(bb, { Texture = TEX.lumps, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-			-- (round 6, four variants side by side in Play: one burning colour on every lump read as a flat yellow, then rust,
-			-- blob. the one that read like the web's: these lumps unlit and dark (their own top-lit shading shows: a crisp
-			-- dark lumpy mass) with a warm additive glow inside them, below)
-			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0, LightInfluence = 0.2, Brightness = 1,
-			Color = cs(Color3.fromRGB(120, 110, 100), Color3.fromRGB(82, 76, 72), Color3.fromRGB(58, 55, 53)),
-			Lifetime = NR(1, 1.15), Speed = NR(1.5 * S, 4 * S), SpreadAngle = Vector2.new(180, 180), Drag = 3,
-			Acceleration = Vector3.new(0, 1 * S, 0), ZOffset = 0.3, Rotation = NR(0, 360), RotSpeed = NR(-20, 20),
-			Transparency = ns(0, 0, 0.75, 0.05, 1, 1) }),
-		-- the fire inside the mass: smaller warm additive lumps, cream at first, orange by 0.5 s, glowing dim orange at 0.7 s
-		inner = rigEmitter(bb, { Texture = TEX.lumps, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
-			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 1, LightInfluence = 0, Brightness = 1.6,
-			Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 250, 236)),
-				ColorSequenceKeypoint.new(0.15, Color3.fromRGB(255, 236, 190)), ColorSequenceKeypoint.new(0.3, Color3.fromRGB(255, 196, 110)),
-				ColorSequenceKeypoint.new(0.5, Color3.fromRGB(236, 128, 50)), ColorSequenceKeypoint.new(0.7, Color3.fromRGB(150, 70, 30)),
-				ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 40, 30)) }),
-			Lifetime = NR(0.9, 1.1), Speed = NR(1.5 * S, 4 * S), SpreadAngle = Vector2.new(180, 180), Drag = 3,
-			Acceleration = Vector3.new(0, 1 * S, 0), ZOffset = 1, Rotation = NR(0, 360), RotSpeed = NR(-20, 20),
-			Transparency = ns(0, 0, 0.6, 0.2, 1, 1) }),
+		-- (main, after 7 rounds of layered round particles landing at "soft discs": take the shape from the reference. the
+		-- web's own boom bake (`vfx_boom_4x4`: cream fireball -> dark smoke with orange inside -> shrinking smoke) played as
+		-- 7 smaller copies clustered, each turned at random, in two waves: one 256 px cell then covers ~5 m, not 30 (the
+		-- round-1 blur), and the cluster makes the cauliflower. its colours and timing are the web's own)
+		boom = rigEmitter(bb, { Texture = TEX.boom4, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightEmission = 0, LightInfluence = 0,
+			Brightness = 1, Lifetime = NR(1.4, 1.7), Speed = NR(0.5 * S, 2 * S), SpreadAngle = Vector2.new(180, 180), Drag = 3,
+			Acceleration = Vector3.new(0, 0.6 * S, 0), Rotation = NR(0, 360), RotSpeed = NR(-15, 15),
+			Transparency = ns(0, 0, 0.85, 0, 1, 1) }),
 		shards = rigEmitter(mid, { Texture = TEX.chips, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(10, 16),
 			LightInfluence = 0.8, Color = cs(Color3.fromRGB(70, 66, 62), Color3.fromRGB(44, 42, 40)),
 			Size = ns(0, 0.3 * S * H, 1, 0.22 * S * H), Transparency = ns(0, 0, 0.8, 0, 1, 1), Lifetime = NR(0.9, 1.5),
@@ -1094,7 +1095,7 @@ function Fx.explosion(at: Vector3, R: number)
 	local rig = rigs[rigI] or newRig()
 	if not rig.blended then
 		rig.blended = true
-		oneshot(rig.soot, 64); oneshot(rig.kick, 16)
+		oneshot(rig.soot, 64); oneshot(rig.kick, 16); oneshot(rig.boom, 16)
 	end
 	rigs[rigI] = rig
 	local r = R / S
@@ -1106,28 +1107,24 @@ function Fx.explosion(at: Vector3, R: number)
 	rig.up.WorldPosition = at + Vector3.new(0, s * 0.12, 0)
 	rig.core.Size = ns(0, 1 * S * 1.6 * H, 1, (1 + r) * S * 1.6 * H)
 	emit(rig.core, 1)
-	-- the fireball: ~12 lumps from a box low over the blast (the lumps fill 0.63 of their square: drawn / 0.75), about
-	-- 12 m across as they spread; the size follows the blast (s = the web's max(3.6, 2.7 r) m: 20 m for the frag)
+	-- the fireball: 7 copies of the web's boom from a box low over the blast (0.45 r wide, centred 0.25 r up), 4 at once
+	-- and 3 a moment later so their frames differ; each drawn ~8 m (its fire fills 0.6 of the cell); the size follows the
+	-- blast (s = the web's max(3.6, 2.7 r) m: 20 m for the frag)
 	local bb = rig.bodyBox
-	bb.Size = Vector3.new(0.35 * R, 0.2 * R, 0.35 * R)
-	bb.CFrame = CFrame.new(at + Vector3.new(0, 0.2 * R, 0))
+	bb.Size = Vector3.new(0.45 * R, 0.2 * R, 0.45 * R)
+	bb.CFrame = CFrame.new(at + Vector3.new(0, 0.25 * R, 0))
 	local ks = s / (20 * S)
-	rig.fire.Size = grow(4.7 * ks * S * H, 8 * ks * S * H, 0.8 * ks * S * H)
-	emit(rig.fire, 12)
-	rig.inner.Size = grow(2.4 * ks * S * H, 4 * ks * S * H, 0.5 * ks * S * H)
-	emit(rig.inner, 7)
+	local boom = rig.boom
+	boom.Size = grow(7 * ks * S * H, 9.5 * ks * S * H, 0.8 * ks * S * H)
+	emit(boom, 4)
+	after(0.06, function() emit(boom, 3) end)
 	emit(rig.sparks, 22)
 	emit(rig.feathers, 25)
 	emit(rig.shards, 14)
 	emit(rig.cinders, 30)
 	lightFlash(at, Color3.fromRGB(255, 200, 140), math.min(60, R * 1.6), 5, 0.25)
-	-- the smoke shell from 0.35 s, 15 % bigger than the fire, the same box: a dark outer mass, the orange through its middle;
 	-- small dark soot puffs from 0.65 s
-	local body, soot = rig.body, rig.soot
-	after(0.35, function()
-		body.Size = grow(5.4 * ks * S * H, 9.2 * ks * S * H, 0.8 * ks * S * H)
-		emit(body, 7)
-	end)
+	local soot = rig.soot
 	after(0.65, function()
 		soot.Size = grow(1.5 * 1.3 * S * H, 3.2 * 1.3 * S * H)
 		emit(soot, 5)
@@ -1579,8 +1576,9 @@ end
 -- studs per metre; the viewmodel's and every third-person copy), and a shot from a registered gun takes its colours.
 -- cheap: a few slow particles each, nothing in front of the sights (the points are behind and beside the optic)
 type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
-	quiet: boolean }
+	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number }
 local skinned: { [Model]: SkinFx } = {}
+local skinGlow: (any, boolean?) -> ()
 local function skinSpec(model: Model): any
 	local id = model:GetAttribute("Skin")
 	if type(id) ~= "string" then return nil end
@@ -1626,13 +1624,53 @@ local function skinProps(e: any, sz: number, k: number): { [string]: any }
 			Speed = NR(0.1 * k, 0.3 * k), SpreadAngle = Vector2.new(20, 20), Acceleration = Vector3.new(0, (if fall then -0.2 else 0.4) * k, 0), Drag = 1 }
 	end
 end
+-- a wrap's glow colour: its own `glow` (hex or Color3), else its neon palette slot, else its brightest saturated colour,
+-- else gold (no wrap, or a grey one)
+local GOLD = Color3.fromHex("ffc94a")
+local Roster = require(Shared:WaitForChild("Roster")) :: any
+local function wrapGlow(id: string?): Color3
+	local wr = if id then Roster.wrapById[id] else nil
+	if not wr then return GOLD end
+	if typeof(wr.glow) == "Color3" then return wr.glow end
+	if type(wr.glow) == "string" then return Color3.fromHex(wr.glow) end
+	if wr.neon and wr.pal[wr.neon[1]] then return wr.pal[wr.neon[1]] end
+	local best, score = nil, 0.3
+	for _, c in wr.pal do
+		local _, sat, val = c:ToHSV()
+		if sat * val > score then best, score = c, sat * val end
+	end
+	return best or GOLD
+end
+-- the wrap on a built gun: WeaponModels.wrap marks its painted pieces' pictures with "Wrap"; a model may also say WrapId
+local function modelWrap(m: Model): string?
+	local w = m:GetAttribute("WrapId")
+	if type(w) == "string" then return if w == "" then nil else w end
+	for _, d in m:GetDescendants() do
+		local a = d:GetAttribute("Wrap")
+		if type(a) == "string" then return a end
+	end
+	return nil
+end
+-- (re)colour a skin's flames and lit parts from its gun's wrap; cheap to call: only acts when the wrap changed
+skinGlow = function(S_: any, force: boolean?)
+	if #S_.flames == 0 and #S_.lit == 0 then return end
+	local id = modelWrap(S_.model)
+	if not force and S_.glow and id == S_.glowId then return end
+	S_.glowId = id
+	local c = wrapGlow(id)
+	S_.glow = c
+	local cs_ = flameCS(c)
+	for _, e in S_.flames do e.Color = cs_ end
+	for _, p in S_.lit do if p.Parent then p.Color = c end end
+end
 function Fx.skinIdle(model: Model, k: number, spec: any?)
 	if skinned[model] then return end
 	local sp = spec or skinSpec(model)
 	local root = model.PrimaryPart
 	if not sp or not root then return end
 	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99,
-		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false }
+		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false, flames = {}, lit = {}, glowId = nil, glow = nil,
+		glowT = 0, k = k }
 	for _, e in sp.idle or {} do
 		local pts = {}
 		for _, p in e.at or {} do
@@ -1683,12 +1721,50 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 			end
 		end
 	end
+	-- the angel weapons' flames (the owner, 17 Nov: "glowing parts with cool vfx ... when you add a spray to it, it changes
+	-- the color of the glow like flameish effect"): flame tongues licking up off the lit edges (spec.flame.segs: polylines
+	-- in the gun frame, metres, `both` mirrors), one small emitter every 7 cm; their colour and the lit parts' (names
+	-- ending "__lit") follow the equipped wrap's glow colour (skinGlow)
+	local fl = sp.flame
+	if fl and fl.segs then
+		-- (round 8 in Play on a stand-in rifle: at 0.08 m and 30 a metre they read as small candle flames, and a violet
+		-- wrap's barely showed on a light wall: taller, about twice as many, brighter)
+		local fh = (fl.size or 0.12) * k
+		local step = 0.07
+		local perPoint = (fl.rate or 60) * step
+		local function seg(a: Vector3, b: Vector3)
+			local n = math.max(1, math.floor((b - a).Magnitude / step + 0.5))
+			for i = 0, n do
+				local att = Instance.new("Attachment")
+				att.Name = "SkinFx"; att.Position = a:Lerp(b, i / n) * k; att.Parent = root
+				local em = rigEmitter(att, { Texture = TEX.flame, FlipbookLayout = FLIP4, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+					FlipbookStartRandom = true, FlipbookFramerate = NR(18, 26), LightEmission = 1, LightInfluence = 0, Brightness = 2.4,
+					Size = ns(0, fh / 0.86 * H * 0.6, 0.3, fh / 0.86 * H, 1, fh / 0.86 * H * 0.7), Transparency = ns(0, 1, 0.15, 0.1, 0.7, 0.3, 1, 1),
+					Lifetime = NR(0.35, 0.55), Speed = NR(0.1 * k, 0.3 * k), SpreadAngle = Vector2.new(10, 10),
+					Acceleration = Vector3.new(0, 0.6 * k, 0), Rotation = NR(-8, 8), LockedToPart = S_.fp })
+				em.Rate = perPoint
+				em.Enabled = true
+				table.insert(S_.flames, em); table.insert(S_.idle, em)
+			end
+		end
+		for _, sg in fl.segs do
+			for i = 1, #sg - 1 do
+				local a, b = Vector3.new(sg[i][1], sg[i][2], sg[i][3]), Vector3.new(sg[i + 1][1], sg[i + 1][2], sg[i + 1][3])
+				seg(a, b)
+				if fl.both and math.abs(a.X) + math.abs(b.X) > 1e-3 then seg(a * Vector3.new(-1, 1, 1), b * Vector3.new(-1, 1, 1)) end
+			end
+		end
+	end
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and string.sub(d.Name, -5) == "__lit" then table.insert(S_.lit, d) end
+	end
 	if sp.glow and sp.glow.colour then
 		local att = Instance.new("Attachment"); att.Name = "SkinFx"; att.Parent = root
 		local l = Instance.new("PointLight")
 		l.Color = sp.glow.colour; l.Brightness = 0.5; l.Range = 1.4 * k; l.Shadows = false; l.Parent = att
 	end
 	skinned[model] = S_
+	skinGlow(S_, true)
 end
 function Fx.skinOff(model: Model)
 	local S_ = skinned[model]
@@ -1725,6 +1801,7 @@ local function skinStep()
 				for _, e in S_.idle do e.Enabled = not quiet; if hidden then e:Clear() end end
 			end
 		end
+		if (#S_.flames > 0 or #S_.lit > 0) and clockT - S_.glowT > 1 then S_.glowT = clockT; skinGlow(S_) end
 		if #S_.after > 0 then
 			local on = clockT - S_.afterT < 1.5 and not S_.quiet
 			for _, e in S_.after do if e.Enabled ~= on then e.Enabled = on end end

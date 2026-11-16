@@ -295,3 +295,23 @@ Live in 464: the fireball's 12 lumps unlit (LightInfluence 0.2, greys 120 -> 58)
 `round7/frag.jpg`: at 0.72 s a dark charcoal cauliflower with orange glowing inside; at 0.2 s the inner glow still
 blows out white (next: about a third less, cream not white). The katana keeps its trail in first person (checked: one
 Trail on the viewmodel), guns' trails stay off in first person.
+
+### Round 8: the frag from the reference itself; the angel flames (16 Nov 2026, place version 469)
+
+- Frag (main, after seven rounds of layered round particles landing at "soft discs": take the shape from the
+  reference): the web's own boom bake (`vfx_boom_4x4`) played as 7 smaller copies clustered, turned at random, in two
+  waves 0.06 s apart. Round 1's blur was one 256 px cell stretched over 30 m; each copy now covers ~5 m, so the cells
+  stay crisp and the cluster makes the cauliflower, with the web's own colours and timing. Photos `round8/frag.jpg`:
+  at 0.72 s dark billowing smoke with orange inside, like the web's; at 0.2 s textured gold fire, a little softer
+  and smaller than the web's crisp cream ball. The lump fireball (`vfx_lumps_4x4`) is no longer used by the frag.
+- Angel weapons (the owner, 17 Nov: "glowing parts with cool vfx ... when you add a spray to it, it changes the color
+  of the glow like flameish effect"): `tools/roblox/vfx/flame_sheet.py` (`vfx_flame_4x4`, a flame tongue licking up, 16
+  frames). A skin's `SkinSets.FX[skin].flame = { segs = { polylines }, both, size, rate }` puts a small flame emitter
+  every 7 cm along each lit edge (first person: locked to the gun, quiet while aiming); the gun's parts named
+  `*__lit` and the flames take the equipped wrap's glow colour (`glow` on the wrap in Roster, else its neon slot,
+  else its brightest saturated colour, else gold FFC94A), re-checked once a second from the "Wrap" attribute the
+  wrap leaves on the painted pieces. A shot from a flaming skin throws flame tongues off the muzzle and draws a
+  wider tracer in the glow colour. Tested in Play on a stand-in rifle with made-up edges (`round8/raw-flame-*.jpg`):
+  gold flames along the top; a Galaxy wrap turned them violet (mid colour 176,125,255) but they barely showed on a
+  light wall, so the defaults went up (0.12 m tall, 60 a metre, Brightness 2.4: not re-photographed). The six angel
+  guns and their flame rows come from the gun models session after the slim-sights remodel.
