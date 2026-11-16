@@ -1,6 +1,6 @@
 {
   "_": "Where the weapon hat sits on each gun (tools/roblox/hat_spots.py measures its height and writes roblox/src/shared/GunHatData.luau). z = along the gun (metres, the weapon frame, -z toward the muzzle), x = sideways, s = the hat's size (1 = as built, about 7 cm across), yaw = degrees, pitch = degrees about x after the yaw (90 stands the hat on the back end), sink = how far its foot goes into the surface (default 0.002), y = a fixed height instead of the measured one, saddle = metres the hat stands higher on a slate puck (a round scope or barrel).",
-  "ar": {"z": -0.06, "s": 1.0, "note": "on the rib over the receiver, between the sights"},
+  "ar": {"z": -0.07, "s": 1.0, "note": "on the rib over the receiver, between the sights (16 Nov, after the guns z-fight fix: 1 cm forward, solved by hat_solve.py: worst clip 0.0 mm)"},
   "smg": {"z": -0.1, "s": 0.85, "note": "on the receiver ahead of the rear sight"},
   "burst": {"z": -0.1, "s": 0.9, "note": "on the carry handle, ahead of its three squares"},
   "lmg": {"z": -0.03, "s": 1.0, "note": "on the feed cover (it rides the cover when it opens)"},
@@ -18,7 +18,7 @@
   "shredder": {"z": -0.04, "s": 1.3, "note": "on top of the body behind the bell"},
   "ar@ar_bullpup": {"z": -0.06, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "ar@ar_keytar": {"z": -0.06, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "ar@ar_toy": {"z": -0.06, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "ar@ar_toy": {"z": -0.08, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "ar@cardboard": {"z": 0.06, "s": 0.8, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "autoshot@autoshot_trimmer": {"z": -0.08, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "burst@burst_ticket": {"z": -0.1, "s": 0.9, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
@@ -30,7 +30,7 @@
   "lmg@lmg_leaf": {"z": -0.04, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "marbles@marbles_gumball": {"z": -0.06, "s": 0.65, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "pistol@pistol_calc": {"z": -0.08, "s": 0.62, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "redline@redline_hotrod": {"z": -0.13, "s": 0.7, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.3 mm (third person), 0.3 mm (first)"},
+  "redline@redline_hotrod": {"z": -0.11, "s": 0.7, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "revolver@revolver_drill": {"z": 0.01, "s": 0.7, "note": "solved by hat_solve.py: worst clip 1.0 mm (third person), 0.9 mm (first)"},
   "revolver@revolver_flint": {"z": -0.09, "s": 0.7, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "sawnoff@sawnoff_pepper": {"z": -0.13, "s": 0.85, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
@@ -38,9 +38,9 @@
   "shotgun@shotgun_umbrella": {"z": -0.44, "s": 0.9, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "shredder@shredder_chipper": {"z": -0.04, "s": 1.3, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "smg@smg_label": {"z": -0.1, "s": 0.85, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "smg@smg_uzi": {"z": -0.1, "s": 0.85, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "smg@smg_uzi": {"z": -0.1, "s": 0.85, "saddle": 0.006, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "sniper@sniper_cue": {"z": 0.009, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "sniper@sniper_golden": {"z": 0.069, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "sniper@sniper_musket": {"z": 0.049, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "katana@katana_neon": {"z": 0.09, "s": 0.6, "note": "upright on top of the handle near its end: the pommel has a cord hanging off it, so the base katana's seat (standing on the pommel's end) cuts into it"}
+  "katana@katana_neon": {"z": 0.08, "s": 0.6, "note": "upright on top of the handle near its end (the pommel has a cord hanging off it); 1 cm in after the guns z-fight fix, solved by hat_solve.py: worst clip 0.0 mm"}
 }

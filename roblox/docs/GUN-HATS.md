@@ -123,6 +123,15 @@ skinned builds (`WeaponModels.build(id, k, skin)`) seat their hat at the skin's 
 loadout's Shredder preview) still uses the plain Shredder seat; the one Shredder skin (the Wood Chipper) has the same
 seat. After any gun or skin remodel: `hat_spots.py`, then `hat_clip.py` (anything over 1.5 mm: `hat_solve.py`).
 
+**After the guns' z-fight fix** (e83ff58, place version 401: faces of different looks pulled apart by up to 8 mm): six
+seats measured 3-7 mm higher (the Burst, the cardboard AR, the Uzi and label SMGs, the cue and golden Snipers), and
+five cut in by up to 6.6 mm where a trim or rail had moved up beside the foot. Re-seated with `hat_solve.py`: the
+Assault Rifle's hat 1 cm forward on its rib, the toy AR 2 cm forward, the Neon katana 1 cm along its handle, the hot-rod
+Redline 2 cm back, the Uzi on a 6 mm saddle. After: every hat on every gun and skin at most 1.1 mm in, the gun at most
+0.4 mm into a hat. Live in place version 404. (A Studio raycast check of the seats reads the parts' collision shapes, not
+their meshes: on the calculator pistol and the leaf LMG it shows the foot 5 mm "in" where the mesh check gives the
+designed 2 mm; trust `hat_clip.py`.)
+
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
 - every hat on the Assault Rifle from the eye; one hat on each of the other guns from the eye: nothing over the
@@ -201,7 +210,7 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 9** (asset 70496262106000: round 8's models with the cowboy's brim droop cut, and the clip-fix seats),
-  place version 380 (16 Nov 2026, ~16:42 UTC). Older hat uploads and the push models are no longer used.
+  place version 380 (16 Nov 2026, ~16:42 UTC); seats re-measured after the guns' z-fight fix in place version 404. Older hat uploads and the push models are no longer used.
 - **After the guns' squash fix** (59fb8b4, place version 325: held guns were up to 41% squashed): the seats are measured
   on the gun files, so they were right; checked every gun's held model in Play (place version 326): each hat's foot
   sits 0 to 4 mm into the surface under it (its sink), none floats more than 2 mm. The hub racks' copies used the
