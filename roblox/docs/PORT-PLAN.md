@@ -304,6 +304,11 @@ and `roblox/docs/gun-hold/`.
   Judge: before 2 to 5, after 4 to 9 (Katana 9, Assault Rifle 8); its three weakest fixed after, not judged again.
   Measurements in the vault (`Research/Rivals first-person holds.md`), sheets `gun-hold/rivals-1..4.jpg`, account
   in `GUN-PAINT.md`. Not tested: other bodies, the Shredder's thicker forearm, aim on every gun, third person.
+- **Three looks, combined live** (16 Nov, place version 358; owner: "combine the new angles with the closer look"):
+  `holds.json` keeps before / after / combined per weapon and `use` picks one; combined = the closer, bigger before
+  with the barrel pointed at the crosshair like after. Scopes like Rivals' (the Sniper's lens near the screen's
+  height with a soft edge; the Second Opinion's a short scope with the world round it). Sheets `gun-hold/looks-1..3.jpg`.
+  Open: third person on the owner's avatar holds the gun backward (older code).
 - **Judged three times** from before and after pictures: the weapons' hold went from about 3.5 of 10 to about 5.5
   to 6; the Katana from 2 to 7 at best. Verdict each time: close, not at the bar. Weakest: the sidearms (reworked
   after round 3, not judged again), the Yeehaw, the reload props.

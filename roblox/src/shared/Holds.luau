@@ -6,36 +6,40 @@
 --     CFrame.Angles): +Y runs along the thing held, toward the thumb (palm: up into it); size = the hand against
 --     AvatarArms.HAND; elbow = this arm's own elbow spot; turn = an extra turn about the handle (radians)
 --   holds[weapon].shift: a move of the weapon's rest pose, camera space (metres); scale: its size against size;
---     tilt: a turn added to its rest pose (radians, x y z like vm.r)
+--     tilt: a turn added to its rest pose (radians, x y z like vm.r); aimZ: the sight this much further off
+--     while aiming (metres)
 --   elbow: where each forearm comes from, in camera space (metres). size: every weapon in first person is drawn
 --     this much larger than the web game's scale (Viewmodel: k = S x vm.s x size), the hands with it
 --   katana: its rest and parry poses as a turn and a shift laid over the web game's clips, and when each is on
+--   looks: each weapon's before / after / combined pose, use = the one in play (the flat shift / scale / tilt /
+--     aimZ are that one); a player's HoldLook attribute shows another on every weapon (Viewmodel.look).
+--     shredderVM: the Shredder's first-person grip spot and aim point per look (camera space, studs)
 local V = Vector3.new
 return {
 	elbow = { Right = V(0.3, -0.47, 0.07), Left = V(-0.22, -0.66, -0.26) },
 	size = 1.25,
 	holds = {
-		ar = { Right = { pose = "grip", at = V(0, -0.135, 0.115), rot = V(-0.31416, 0, 0), size = 0.84 }, Left = { pose = "cradle", at = V(0, -0.034, -0.22), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(0.047, 0.005, -0.35), scale = 1 },
-		smg = { Right = { pose = "grip", at = V(0, -0.1, 0.07), rot = V(-0.24435, 0, 0), size = 0.88 }, Left = { pose = "cradle", at = V(0, -0.056, -0.19), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.038, 0.063, -0.147), scale = 1 },
-		burst = { Right = { pose = "grip", at = V(0, -0.135, -0.105), rot = V(-0.06981, 0, 0), size = 0.86 }, Left = { pose = "cradle", at = V(0, -0.05, -0.3), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.058, 0.003, -0.462), scale = 1 },
-		lmg = { Right = { pose = "grip", at = V(0, -0.132, 0.142), rot = V(-0.29671, 0, 0), size = 0.8 }, Left = { pose = "cradle", at = V(0, -0.075, -0.3), rot = V(-1.5708, 0, 0), size = 0.86 }, shift = V(0.045, 0.026, -0.347), scale = 1 },
-		dmr = { Right = { pose = "grip", at = V(0, -0.1, 0.237), rot = V(-0.64577, 0, 0), size = 0.78 }, Left = { pose = "wrap", at = V(0, -0.033, -0.22), rot = V(-1.5708, 0, 0), size = 0.84 }, shift = V(0.059, -0.008, -0.396), scale = 1 },
-		sniper = { Right = { pose = "grip", at = V(0, -0.165, 0.137), rot = V(-0.13963, 0, 0), size = 0.74 }, Left = { pose = "cradle", at = V(0, -0.105, -0.36), rot = V(-1.5708, 0, 0), size = 0.8 }, shift = V(0.097, -0.033, -0.35), scale = 1 },
-		lever = { Right = { pose = "grip", at = V(0, -0.06, 0.19), rot = V(-0.7854, 0, 0), size = 0.86 }, Left = { pose = "wrap", at = V(0, -0.033, -0.17), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(0.069, -0.017, -0.414), scale = 1 },
-		shotgun = { Right = { pose = "grip", at = V(0, -0.045, 0.045), rot = V(-0.7854, 0, 0), size = 0.84 }, Left = { pose = "wrap", at = V(0, -0.045, -0.4), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(0.039, 0.003, -0.304), scale = 1 },
-		autoshot = { Right = { pose = "grip", at = V(0, -0.13, 0.133), rot = V(-0.36652, 0, 0), size = 0.84 }, Left = { pose = "cradle", at = V(0, -0.061, -0.34), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(0.06, -0.009, -0.399), scale = 1 },
-		redline = { Right = { pose = "grip", at = V(0, -0.09, 0.081), rot = V(-0.38397, 0, 0), size = 0.86 }, Left = { pose = "wrap", at = V(0, -0.028, -0.2), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.016, 0.054, -0.231), scale = 1 },
-		marbles = { Right = { pose = "grip", at = V(0, -0.075, 0.07), rot = V(-0.5236, 0, 0), size = 0.9 }, Left = { pose = "wrap", at = V(0, -0.044, -0.17), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.025, -0.006, -0.172), scale = 0.9 },
-		revolver = { Right = { pose = "grip", at = V(0.002, -0.09, 0.08), rot = V(-0.22689, 0, 0), size = 1.05, elbow = V(0.3, -0.42, 0.15) }, shift = V(0.137, -0.035, -0.4), scale = 1, tilt = V(0, 0.41888, 0) },
-		pistol = { Right = { pose = "grip", at = V(0.002, -0.075, 0.03), rot = V(-0.29671, 0, 0), size = 1, elbow = V(0.3, -0.42, 0.15) }, shift = V(0.07, -0.019, -0.3), scale = 1, tilt = V(0, 0.31416, 0) },
-		sawnoff = { Right = { pose = "grip", at = V(0, -0.055, 0.1), rot = V(-0.59341, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, shift = V(-0.071, 0.006, -0.22), scale = 1, tilt = V(0.03491, -0.05061, 0) },
-		katana = { Right = { pose = "fist", at = V(0, 0, -0.045), rot = V(-1.5708, 0, 0), size = 0.8 }, Left = { pose = "fist", at = V(0, 0, 0.088), rot = V(-1.5708, 0, 0), size = 0.8 } },
+		ar = { Right = { pose = "grip", at = V(0, -0.135, 0.115), rot = V(-0.31416, 0, 0), size = 0.84 }, Left = { pose = "cradle", at = V(0, -0.034, -0.22), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.0101, 0.0518, 0), scale = 1, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.047, 0.005, -0.35), scale = 1 }, combined = { shift = V(-0.0101, 0.0518, 0), scale = 1 } } },
+		smg = { Right = { pose = "grip", at = V(0, -0.1, 0.07), rot = V(-0.24435, 0, 0), size = 0.88 }, Left = { pose = "cradle", at = V(0, -0.056, -0.19), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.0621, 0.0826, 0), scale = 1, aimZ = 0.1, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(-0.038, 0.063, -0.147), scale = 1, aimZ = 0.1 }, combined = { shift = V(-0.0621, 0.0826, 0), scale = 1, aimZ = 0.1 } } },
+		burst = { Right = { pose = "grip", at = V(0, -0.135, -0.105), rot = V(-0.06981, 0, 0), size = 0.86 }, Left = { pose = "cradle", at = V(0, -0.05, -0.3), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.0173, 0.0526, 0), scale = 1, aimZ = 0.05, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.058, 0.003, -0.462), scale = 1, aimZ = 0.05 }, combined = { shift = V(-0.0173, 0.0526, 0), scale = 1, aimZ = 0.05 } } },
+		lmg = { Right = { pose = "grip", at = V(0, -0.132, 0.142), rot = V(-0.29671, 0, 0), size = 0.8 }, Left = { pose = "cradle", at = V(0, -0.075, -0.3), rot = V(-1.5708, 0, 0), size = 0.86 }, shift = V(-0.0117, 0.0724, 0), scale = 1, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.045, 0.026, -0.347), scale = 1 }, combined = { shift = V(-0.0117, 0.0724, 0), scale = 1 } } },
+		dmr = { Right = { pose = "grip", at = V(0, -0.1, 0.237), rot = V(-0.64577, 0, 0), size = 0.78 }, Left = { pose = "wrap", at = V(0, -0.033, -0.22), rot = V(-1.5708, 0, 0), size = 0.84 }, shift = V(-0.0057, 0.045, 0), scale = 1, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.059, -0.008, -0.396), scale = 1 }, combined = { shift = V(-0.0057, 0.045, 0), scale = 1 } } },
+		sniper = { Right = { pose = "grip", at = V(0, -0.165, 0.137), rot = V(-0.13963, 0, 0), size = 0.74 }, Left = { pose = "cradle", at = V(0, -0.105, -0.36), rot = V(-1.5708, 0, 0), size = 0.8 }, shift = V(0.04, 0.0136, 0), scale = 1, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.097, -0.033, -0.35), scale = 1 }, combined = { shift = V(0.04, 0.0136, 0), scale = 1 } } },
+		lever = { Right = { pose = "grip", at = V(0, -0.06, 0.19), rot = V(-0.7854, 0, 0), size = 0.86 }, Left = { pose = "wrap", at = V(0, -0.033, -0.17), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(0.0015, 0.0384, 0), scale = 1, aimZ = 0.03, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.069, -0.017, -0.414), scale = 1, aimZ = 0.03 }, combined = { shift = V(0.0015, 0.0384, 0), scale = 1, aimZ = 0.03 } } },
+		shotgun = { Right = { pose = "grip", at = V(0, -0.045, 0.045), rot = V(-0.7854, 0, 0), size = 0.84 }, Left = { pose = "wrap", at = V(0, -0.045, -0.4), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.0104, 0.0436, 0), scale = 1, aimZ = 0.03, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.039, 0.003, -0.304), scale = 1, aimZ = 0.03 }, combined = { shift = V(-0.0104, 0.0436, 0), scale = 1, aimZ = 0.03 } } },
+		autoshot = { Right = { pose = "grip", at = V(0, -0.13, 0.133), rot = V(-0.36652, 0, 0), size = 0.84 }, Left = { pose = "cradle", at = V(0, -0.061, -0.34), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.005, 0.0443, 0), scale = 1, aimZ = 0.05, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(0.06, -0.009, -0.399), scale = 1, aimZ = 0.05 }, combined = { shift = V(-0.005, 0.0443, 0), scale = 1, aimZ = 0.05 } } },
+		redline = { Right = { pose = "grip", at = V(0, -0.09, 0.081), rot = V(-0.38397, 0, 0), size = 0.86 }, Left = { pose = "wrap", at = V(0, -0.028, -0.2), rot = V(-1.5708, 0, 0), size = 0.88 }, shift = V(-0.0537, 0.0849, 0), scale = 1, aimZ = 0.03, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(-0.016, 0.054, -0.231), scale = 1, aimZ = 0.03 }, combined = { shift = V(-0.0537, 0.0849, 0), scale = 1, aimZ = 0.03 } } },
+		marbles = { Right = { pose = "grip", at = V(0, -0.075, 0.07), rot = V(-0.5236, 0, 0), size = 0.9 }, Left = { pose = "wrap", at = V(0, -0.044, -0.17), rot = V(-1.5708, 0, 0), size = 0.9 }, shift = V(-0.0452, 0.0023, 0), scale = 1, aimZ = 0.06, use = "combined", looks = { before = { shift = V(0, 0, 0), scale = 1 }, after = { shift = V(-0.025, -0.006, -0.172), scale = 0.9, aimZ = 0.05 }, combined = { shift = V(-0.0452, 0.0023, 0), scale = 1, aimZ = 0.06 } } },
+		revolver = { Right = { pose = "grip", at = V(0.002, -0.09, 0.08), rot = V(-0.22689, 0, 0), size = 1.05, elbow = V(0.3, -0.42, 0.15) }, shift = V(0.0412, 0.0427, 0), scale = 0.8, tilt = V(0, 0.41888, 0), aimZ = 0.03, use = "combined", looks = { before = { shift = V(0.01, 0.015, 0), scale = 0.8 }, after = { shift = V(0.137, -0.035, -0.4), scale = 1, tilt = V(0, 0.41888, 0), aimZ = 0.08 }, combined = { shift = V(0.0412, 0.0427, 0), scale = 0.8, tilt = V(0, 0.41888, 0), aimZ = 0.03 } } },
+		pistol = { Right = { pose = "grip", at = V(0.002, -0.075, 0.03), rot = V(-0.29671, 0, 0), size = 1, elbow = V(0.3, -0.42, 0.15) }, shift = V(-0.0009, 0.0428, 0), scale = 0.8, tilt = V(0, 0.31416, 0), aimZ = 0.03, use = "combined", looks = { before = { shift = V(0, 0.015, 0), scale = 0.8 }, after = { shift = V(0.07, -0.019, -0.3), scale = 1, tilt = V(0, 0.31416, 0), aimZ = 0.1 }, combined = { shift = V(-0.0009, 0.0428, 0), scale = 0.8, tilt = V(0, 0.31416, 0), aimZ = 0.03 } } },
+		sawnoff = { Right = { pose = "grip", at = V(0, -0.055, 0.1), rot = V(-0.59341, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, shift = V(-0.1092, 0.067, 0), scale = 0.8, tilt = V(0, -0.05061, 0), aimZ = 0.02, use = "combined", looks = { before = { shift = V(0, 0.02, 0), scale = 0.8 }, after = { shift = V(-0.071, 0.006, -0.22), scale = 1, tilt = V(0.03491, -0.05061, 0), aimZ = 0.06 }, combined = { shift = V(-0.1092, 0.067, 0), scale = 0.8, tilt = V(0, -0.05061, 0), aimZ = 0.02 } } },
+		katana = { Right = { pose = "fist", at = V(0, 0, -0.045), rot = V(-1.5708, 0, 0), size = 0.8 }, Left = { pose = "fist", at = V(0, 0, 0.088), rot = V(-1.5708, 0, 0), size = 0.8 }, use = "combined", looks = { before = {  }, after = {  }, combined = {  } } },
 		shredder = { Right = { pose = "grip", at = V(0.002, -0.033, 0.003), rot = V(-0.20944, 0, 0), size = 1.3 }, Left = { pose = "palm", at = V(-0.075, 0.045, -0.115), rot = V(0, 0, -0.95993), size = 1.45, elbow = V(-0.1, -0.75, -0.2) } },
 	},
 	katana = {
 		fixes = {
 			none = { rot = CFrame.new(0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1), pos = V(0, 0, 0) },
-			rest = { rot = CFrame.new(0, 0, 0, 0.64211, 0.74727, 0.17115, -0.62116, 0.63798, -0.45512, -0.44929, 0.18593, 0.87383), pos = V(0.07017, -0.13313, -0.02298) },
+			rest = { rot = CFrame.new(0, 0, 0, 0.64211, 0.74727, 0.17115, -0.62116, 0.63798, -0.45512, -0.44929, 0.18593, 0.87383), pos = V(-0.04983, -0.05813, -0.02298) },
 			parry = { rot = CFrame.new(0, 0, 0, -0.10709, 0.99092, -0.08128, -0.98526, -0.11674, -0.12507, -0.13343, 0.06669, 0.98881), pos = V(0.16179, -0.05694, -0.0073) },
 		},
 		clips = {
@@ -44,5 +48,12 @@ return {
 			parry_katana = { { t = 0, fix = "rest" }, { t = 0.07, fix = "parry" }, { t = 0.36, fix = "parry" }, { t = 0.56, fix = "rest" } },
 			draw_katana = { { t = 0, fix = "none" }, { t = 0.4, fix = "none" }, { t = 0.66, fix = "rest" }, { t = 0.72, fix = "rest" } },
 		},
+		use = "combined",
+		looks = {
+			before = { rest = { rot = CFrame.new(0, 0, 0, 0.95666, -0.27697, -0.08993, 0.25622, 0.94735, -0.19206, 0.13839, 0.16069, 0.97725), pos = V(-0.09395, -0.0268, -0.01445) } },
+			after = { rest = { rot = CFrame.new(0, 0, 0, 0.64211, 0.74727, 0.17115, -0.62116, 0.63798, -0.45512, -0.44929, 0.18593, 0.87383), pos = V(0.07017, -0.13313, -0.02298) } },
+			combined = { rest = { rot = CFrame.new(0, 0, 0, 0.64211, 0.74727, 0.17115, -0.62116, 0.63798, -0.45512, -0.44929, 0.18593, 0.87383), pos = V(-0.04983, -0.05813, -0.02298) } },
+		},
 	},
+	shredderVM = { use = "combined", looks = { before = { pos = V(1.5, -0.95, -1.5), aim = V(0, 0, -30) }, after = { pos = V(1.15, -1, -2.1), aim = V(0, 0, -30) }, combined = { pos = V(1.3, -0.95, -1.6), aim = V(0, 0, -30) } } },
 }

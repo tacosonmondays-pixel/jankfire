@@ -884,7 +884,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 		smearStep(now, true)
 	end
 	H.step(dt, aim, scoped)
-	H.scope(scoped and not thirdPerson())
+	H.scope(scoped and not thirdPerson(), if held == "sniper" then "full" else "short") -- (only the Sniper blacks the screen)
 	H.hp(hp())
 	-- the Shredder (key 4) out: its name and heat in the panel instead of the gun it put away
 	local tool = toolOut() and me.Character and me.Character:FindFirstChildOfClass("Tool")

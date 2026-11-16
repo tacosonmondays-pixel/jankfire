@@ -222,6 +222,30 @@ Half a Shotgun fires twice and reloads in about 2 s; the Revolver's sights come 
 Not checked: other avatar bodies, the Shredder with the thicker forearm, aim on every gun, third person, the Rooftop's
 daylight, reloads on every gun at the new spot.
 
+## Three looks per weapon: before, after, combined (16 November 2026, place version 358)
+
+The owner, after the Rivals sheets: "I think the closer up befores look better for some of them, can you do back to
+back again like we had athem before just havingt the barrel faced in the new version like combine the new angles with
+the closer look?" So every weapon now keeps three looks in `holds.json` (`looks`), and `use` says which one is in play:
+
+- **before** (place version 340): near and big, the muzzle low and right of the crosshair.
+- **after** (place version 347): the Rivals layout above, further off, a quarter of the screen.
+- **combined** (live on every weapon): before's size and nearness, the muzzle moved onto after's spot just below and
+  right of the crosshair so the barrel points at it; Plan B and the Revolver keep after's turn so their side shows.
+  The Katana keeps before's guard spot (nearer the middle) with after's upright blade; the Shredder sits between the
+  two (`shredder.vm_looks`, read by `ShredderClient`). Aiming keeps after's work (the sight on the crosshair, both
+  scopes); the one-handed guns aim a little nearer than in after, to match their closer rest.
+
+Flip one weapon back by changing its `use` to `before` or `after` and running `py tools/roblox/holds.py`. In a Play
+test, the player's `HoldLook` attribute shows one look on every weapon at once (`Viewmodel.look`, `ShredderClient`).
+`py tools/roblox/hold_screen.py --look before|after|combined` prints where each look puts each gun.
+
+Sheets for the owner (each row: before | after | combined): `gun-hold/looks-1.jpg` to `looks-3.jpg`.
+Checked in Play: every weapon in all three looks photographed; aiming on the SMG, Plan B and the Sniper lines up in
+combined; the Shredder's first-person copy no longer stays in the camera when its tool is removed (an older fault: a
+render binding outlives its script). Not checked: other avatar bodies in the combined look (checked in after), third
+person (on the owner's avatar the held gun points backward; older code, not touched, needs its own fix).
+
 ## What is still not at the bar
 
 - The hands are Roblox's own, so on a blocky avatar they are mittens with no fingers: a trigger finger or fingers

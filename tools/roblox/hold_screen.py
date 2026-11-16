@@ -5,7 +5,7 @@
 # gun covers (left, right, top, bottom; bottom is cut at the screen's edge) and how wide and tall that is, in % of the
 # screen from the top left (the crosshair is 50, 50). Used to put our guns where the Rivals-class measurements say
 # (the vault's Research note "Rivals first-person holds").
-#   py tools/roblox/hold_screen.py [--fov 70] [--holds other.json] [id ...]
+#   py tools/roblox/hold_screen.py [--fov 70] [--holds other.json] [--look before|after|combined] [--ads] [id ...]   (--ads: the aimed view)
 import json, math, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -42,10 +42,20 @@ def project(c, fov, aspect=16 / 9):
     return (50 + 50 * x, 50 - 50 * y)
 
 
+LOOK = None  # (--look before|after|combined: that look on every weapon; else each weapon's "use")
+
+
+def row_of(holds, wid):
+    """a weapon's row with its look's shift / scale / tilt / aimZ laid on top"""
+    row = dict(holds.get(wid, {}))
+    if row.get('looks'): row.update(row['looks'][LOOK or row['use']])
+    return row
+
+
 def place(wid, vm, holds, q):
     """a file point (metres) of this weapon -> camera space (studs) at rest"""
     p, r, s = vm[wid]
-    row = holds.get(wid, {})
+    row = row_of(holds, wid)
     size = holds.get('_size', 1) * row.get('scale', 1)
     k = S * s * size
     pos = [p[i] * S + (row.get('shift') or [0, 0, 0])[i] * S for i in range(3)]
@@ -85,16 +95,72 @@ def measure(wid, vm, holds, fov):
     return out
 
 
+def read_ads():
+    """{ id: (sight file point or None, zoom) } from Weapons.luau"""
+    src = open(os.path.join(ROOT, 'roblox/src/shared/Weapons.luau'), encoding='utf-8').read()
+    out = {}
+    ids = [(m.start(), m.group(1)) for m in re.finditer(r'\bid = "(\w+)"', src)]
+    for i, (at, wid) in enumerate(ids):
+        end = ids[i + 1][0] if i + 1 < len(ids) else len(src)
+        body = src[at:end]
+        z = re.search(r'ads = \{ zoom = ([\d.]+)', body)
+        sg = re.search(r'sight = Vector3\.new\(([^)]*)\)', body)
+        if z: out[wid] = ([float(x) for x in sg.group(1).split(',')] if sg else None, float(z.group(1)), 'scope = true' in body)
+    return out
+
+
+def measure_ads(wid, vm, holds, fov):
+    """the gun's screen box while aiming (Viewmodel.adsPos: the sight on the screen's centre line, no turn), at the
+       aimed FOV (fov / zoom)"""
+    ads = read_ads().get(wid)
+    if not ads: return None
+    sight, zoom, scoped = ads
+    p, r, s = vm[wid]
+    row = row_of(holds, wid)
+    size = holds.get('_size', 1) * row.get('scale', 1)
+    k = S * s * size
+    back = row.get('aimZ', 0)
+    if wid == 'redline': sight = [0, 0.0737, 0.1058]
+    if sight: pos = [0, -sight[1] * s * size * S, (-0.17 - back - sight[2] * s * size) * S]
+    else: pos = [0.06 * S, min(-0.1, -0.03 - 0.1479 * s * size) * S, (-0.3 - back) * S]
+    f = fov / zoom
+    pts = []
+    for lo, hi in boxes(wid):
+        for cx in (lo[0], hi[0]):
+            for cy in (lo[1], hi[1]):
+                for cz in (lo[2], hi[2]):
+                    pts.append([pos[0] + cx * k, pos[1] + cy * k, pos[2] + cz * k])
+    scr = [project(c, f) for c in pts]
+    vis = [q for q in scr if q]
+    out = {'zoom': zoom, 'scoped': scoped, 'near': min(-c[2] for c in pts)}
+    if vis:
+        out.update(L=max(0, min(q[0] for q in vis)), R=min(100, max(q[0] for q in vis)), T=max(0, min(q[1] for q in vis)),
+                   B=100 if len(vis) < len(scr) else min(100, max(q[1] for q in vis)))
+        out['W'] = out['R'] - out['L']
+    return out
+
+
 def main():
     args = sys.argv[1:]
     fov = 80  # the game's default (JankSettings: S.fov = 80; the P menu changes it)
     hp = os.path.join(HERE, 'holds.json')
     if '--fov' in args:
         i = args.index('--fov'); fov = float(args[i + 1]); del args[i:i + 2]
+    global LOOK
+    if '--look' in args:
+        i = args.index('--look'); LOOK = args[i + 1]; del args[i:i + 2]
     if '--holds' in args:
         i = args.index('--holds'); hp = args[i + 1]; del args[i:i + 2]
     holds = json.load(open(hp, encoding='utf-8'))
     vm = read_vm()
+    if '--ads' in args:
+        args.remove('--ads')
+        print('weapon     zoom  left  right   top  bottom  wide  nearest   (aiming: the gun on the screen at fov / zoom)')
+        for wid in (args or list(read_ads())):
+            m = measure_ads(wid, vm, holds, fov)
+            if m and 'L' in m:
+                print('%-9s %5.2f %5.1f %5.1f %5.1f %5.1f %5.1f   %.2f%s' % (wid, m['zoom'], m['L'], m['R'], m['T'], m['B'], m['W'], m['near'], '  (scope overlay)' if m['scoped'] else ''))
+        return
     ids = args or [w for w in vm if os.path.exists(os.path.join(ROOT, 'roblox/assets/weapons-kit/w_%s.glb' % w))]
     f = lambda v: '%5.1f' % v
     print('weapon     muzzle x,y     left  right   top  bottom | wide  tall | hand R x,y   hand L x,y   nearest(studs)')

@@ -21,10 +21,14 @@ out = ['--!strict',
        '--     CFrame.Angles): +Y runs along the thing held, toward the thumb (palm: up into it); size = the hand against',
        '--     AvatarArms.HAND; elbow = this arm\'s own elbow spot; turn = an extra turn about the handle (radians)',
        '--   holds[weapon].shift: a move of the weapon\'s rest pose, camera space (metres); scale: its size against size;',
-       '--     tilt: a turn added to its rest pose (radians, x y z like vm.r)',
+       '--     tilt: a turn added to its rest pose (radians, x y z like vm.r); aimZ: the sight this much further off\n'
+       '--     while aiming (metres)',
        '--   elbow: where each forearm comes from, in camera space (metres). size: every weapon in first person is drawn',
        '--     this much larger than the web game\'s scale (Viewmodel: k = S x vm.s x size), the hands with it',
        '--   katana: its rest and parry poses as a turn and a shift laid over the web game\'s clips, and when each is on',
+       '--   looks: each weapon\'s before / after / combined pose, use = the one in play (the flat shift / scale / tilt /',
+       '--     aimZ are that one); a player\'s HoldLook attribute shows another on every weapon (Viewmodel.look).',
+       '--     shredderVM: the Shredder\'s first-person grip spot and aim point per look (camera space, studs)',
        'local V = Vector3.new',
        'return {',
        '\telbow = { Right = %s, Left = %s },' % (V(H['_elbow']['R']), V(H['_elbow']['L'])),
@@ -42,9 +46,19 @@ for wid, h in H.items():
         if s.get('turn'): extra += ', turn = %s' % f(math.radians(s['turn']))
         sides.append('%s = { pose = "%s", at = %s, rot = %s, size = %s%s }' % (
             long, s['pose'], V(s['at']), V([math.radians(a) for a in s.get('rot', (0, 0, 0))]), f(s.get('size', 1)), extra))
-    if h.get('shift'): sides.append('shift = %s' % V(h['shift']))
-    if h.get('scale'): sides.append('scale = %s' % f(h['scale']))
-    if h.get('tilt'): sides.append('tilt = %s' % V([math.radians(a) for a in h['tilt']]))
+    def pose(p):
+        bits = []
+        if p.get('shift'): bits.append('shift = %s' % V(p['shift']))
+        if p.get('scale'): bits.append('scale = %s' % f(p['scale']))
+        if p.get('tilt'): bits.append('tilt = %s' % V([math.radians(a) for a in p['tilt']]))
+        if p.get('aimZ'): bits.append('aimZ = %s' % f(p['aimZ']))
+        return bits
+    if h.get('looks'):
+        sides += pose(h['looks'][h['use']])  # (the used look, flat, for any reader that doesn't know looks)
+        sides.append('use = "%s"' % h['use'])
+        sides.append('looks = { %s }' % ', '.join('%s = { %s }' % (n, ', '.join(pose(p))) for n, p in h['looks'].items()))
+    else:
+        sides += pose(h)
     out.append('\t\t%s = { %s },' % (wid, ', '.join(sides)))
 out.append('\t},')
 fx = L.katana_fixes(H)
@@ -57,7 +71,17 @@ out.append('\t\tclips = {')
 for clip, keys in L.KATANA_CLIPS.items():
     out.append('\t\t\t%s = { %s },' % (clip, ', '.join('{ t = %s, fix = "%s" }' % (f(t), n) for t, n in keys)))
 out.append('\t\t},')
+kl = H['katana']
+out.append('\t\tuse = "%s",' % kl['use'])
+out.append('\t\tlooks = {')
+for name in kl['looks']:
+    Rm, Pp = L.katana_fixes(H, look=name)['rest']
+    out.append('\t\t\t%s = { rest = { rot = %s, pos = %s } },' % (name, CF(Rm), V(Pp)))
+out.append('\t\t},')
 out.append('\t},')
+sv = H['shredder']
+out.append('\tshredderVM = { use = "%s", looks = { %s } },' % (sv['vm_use'], ', '.join(
+    '%s = { pos = %s, aim = %s }' % (n, V(p['pos']), V(p['aim'])) for n, p in sv['vm_looks'].items())))
 out.append('}')
 path = os.path.join(L.ROOT, 'roblox/src/shared/Holds.luau')
 open(path, 'w', encoding='utf-8', newline='\n').write('\n'.join(out) + '\n')

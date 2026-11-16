@@ -129,13 +129,16 @@ def aimed(spec, s):
     return Rm, origin
 
 
-def katana_fixes(holds, vm=None, anims=None):
+def katana_fixes(holds, vm=None, anims=None, look=None):
     """{ name: (rotation laid after the clip's own, offset in camera space) } for 'rest' and 'parry': what turns the
        web game's pose into the one asked for in holds.json. 'none' is no change (the swing itself)."""
     vm = vm or read_vm(); anims = anims or read_anims()
     p0, r0, s = vm['katana']
     s = s * holds.get('_size', 1)  # (the katana is drawn at the viewmodel's size too)
-    k = holds.get('katana', {}).get('vm') or {}
+    k = dict(holds.get('katana', {}).get('vm') or {})
+    kl = holds.get('katana', {})
+    if kl.get('looks') and 'rest' not in k:
+        k['rest'] = kl['looks'][look or kl.get('use', 'combined')]['rest']
     out = {'none': (I3, (0.0, 0.0, 0.0))}
     old = {'rest': (p0, angles(r0))}
     pp, pr = sample(anims['parry_katana'], 0.2, r0)

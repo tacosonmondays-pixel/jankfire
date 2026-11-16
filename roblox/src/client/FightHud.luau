@@ -400,15 +400,19 @@ end
 function H.hideEnd() endTok += 1; endPanel.Visible = false; endShadow.Visible = false end
 
 -- the per-frame bits
--- the scope (the Sniper, the Second Opinion): black everywhere outside a circle 34% of the screen's height in radius,
--- thin black cross-hairs through it (the web game's style.css). the black is one ring's very thick outline
+-- the scopes. the Sniper's ("full"): black everywhere outside a lens 96% of the screen's height, its edge soft like
+-- looking down a tube, thin black cross-hairs. the Second Opinion's ("short", not a sniper): a smaller lens in a dark
+-- ring, the world still seen dimmed round it. (16 Nov 2026, owner: "aim down sights should look like the rivals ones",
+-- "scopes look bad for the non snipers": Rivals' sniper lens is nearly the screen's height with a soft dark edge, and
+-- only the sniper blacks the screen; ours was a 68% lens with a hard edge on both guns.) the black is one ring's very
+-- thick outline; the soft edge is a few fainter rings inside it
 local scope = Instance.new("Frame")
 scope.Name = "Scope"; scope.BackgroundTransparency = 1; scope.Size = UDim2.fromScale(1, 1); scope.Visible = false; scope.ZIndex = 0
 scope.ClipsDescendants = true
 scope.Parent = gui
 local lens = Instance.new("Frame")
 lens.Name = "Lens"; lens.AnchorPoint = Vector2.new(0.5, 0.5); lens.Position = UDim2.fromScale(0.5, 0.5)
-lens.SizeConstraint = Enum.SizeConstraint.RelativeYY; lens.Size = UDim2.fromScale(0.68, 0.68); lens.BackgroundTransparency = 1
+lens.SizeConstraint = Enum.SizeConstraint.RelativeYY; lens.Size = UDim2.fromScale(0.96, 0.96); lens.BackgroundTransparency = 1
 lens.ZIndex = 0 -- (under the panels: HP, ammo and the top line stay readable through the black)
 local lensCorner = Instance.new("UICorner"); lensCorner.CornerRadius = UDim.new(0.5, 0); lensCorner.Parent = lens
 local lensRim = Instance.new("UIStroke"); lensRim.Thickness = 2400; lensRim.Color = Color3.new(0, 0, 0); lensRim.Parent = lens
@@ -418,8 +422,48 @@ for _, sz in { UDim2.new(1, 0, 0, 2), UDim2.new(0, 2, 1, 0) } do
 	hair.Name = "Hair"; hair.BorderSizePixel = 0; hair.BackgroundColor3 = Color3.new(0, 0, 0); hair.AnchorPoint = Vector2.new(0.5, 0.5)
 	hair.Position = UDim2.fromScale(0.5, 0.5); hair.Size = sz; hair.ZIndex = 0; hair.Parent = lens
 end
-function H.scope(on: boolean)
+-- the short scope's tube: a solid dark band round the lens
+local tube = Instance.new("Frame")
+tube.Name = "Tube"; tube.BackgroundTransparency = 1; tube.AnchorPoint = Vector2.new(0.5, 0.5); tube.Position = UDim2.fromScale(0.5, 0.5)
+tube.Size = UDim2.fromScale(1, 1); tube.ZIndex = 0; tube.Visible = false
+local tubeCorner = Instance.new("UICorner"); tubeCorner.CornerRadius = UDim.new(0.5, 0); tubeCorner.Parent = tube
+local tubeRim = Instance.new("UIStroke"); tubeRim.Color = Color3.fromRGB(12, 13, 15); tubeRim.Parent = tube
+tube.Parent = lens
+-- the soft edge: rings just inside the lens's rim, darkest at the rim (their width follows the lens's size on screen)
+local SOFT = { 0.25, 0.45, 0.62, 0.76, 0.87, 0.94 } -- transparency, rim inward
+local softRings = {}
+for i, tr in SOFT do
+	local r = Instance.new("Frame")
+	r.Name = "Soft" .. i; r.BackgroundTransparency = 1; r.AnchorPoint = Vector2.new(0.5, 0.5); r.Position = UDim2.fromScale(0.5, 0.5)
+	r.ZIndex = 0
+	local c = Instance.new("UICorner"); c.CornerRadius = UDim.new(0.5, 0); c.Parent = r
+	local st = Instance.new("UIStroke"); st.Color = Color3.new(0, 0, 0); st.Transparency = tr; st.Parent = r
+	r.Parent = lens
+	table.insert(softRings, { frame = r, stroke = st, i = i })
+end
+local function softFit()
+	local d = lens.AbsoluteSize.Y
+	local w = math.max(1, d * 0.012) -- each ring about 1.2% of the lens across
+	for _, r in softRings do
+		local inset = (r.i - 0.5) * w * 2
+		r.frame.Size = UDim2.new(1, -inset, 1, -inset)
+		r.stroke.Thickness = w
+	end
+	tubeRim.Thickness = math.max(2, d * 0.09)
+end
+lens:GetPropertyChangedSignal("AbsoluteSize"):Connect(softFit)
+softFit()
+local scopeKind = ""
+function H.scope(on: boolean, kind: string?)
 	if scope.Visible ~= on then scope.Visible = on end
+	kind = kind or "full"
+	if on and kind ~= scopeKind then
+		scopeKind = kind
+		local short = kind == "short"
+		lens.Size = if short then UDim2.fromScale(0.62, 0.62) else UDim2.fromScale(0.96, 0.96)
+		lensRim.Transparency = if short then 0.4 else 0
+		tube.Visible = short
+	end
 end
 
 function H.step(dt: number, aim: number, scopeHide: boolean)

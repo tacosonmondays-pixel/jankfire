@@ -148,8 +148,19 @@ end)
 -- first person: on your screen the gun is a copy locked to the camera (a viewmodel), so jump, fall, crouch and slide
 -- animations can't knock it around. it aims at the crosshair and swivels toward whoever it's eating, like the real
 -- one. the real gun stays in your hand for everyone else, and for you in third person (V).
-local VM_POS = Vector3.new(1.15, -1.0, -2.1) -- where the grip sits, camera space (further off since 16 Nov: the Rivals heavy-gun class, about 52 to 85 % across, not the whole lower right)
+local VM_POS = Vector3.new(1.3, -0.95, -1.6) -- where the grip sits, camera space (if Holds has no shredderVM)
 local AIM = Vector3.new(0, 0, -30) -- the crosshair point, camera space
+-- (the grip spot and aim point per look, from holds.json's shredder.vm_looks: before / after / combined, like the other
+-- weapons; the player's HoldLook attribute shows another in a test)
+local HoldsOk, Holds = pcall(function() return require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Holds")) end)
+local function vmLook(): (Vector3, Vector3)
+	local SV = HoldsOk and Holds and (Holds :: any).shredderVM
+	if not SV then return VM_POS, AIM end
+	local want = lp:GetAttribute("HoldLook")
+	local l = (type(want) == "string" and SV.looks[want]) or SV.looks[SV.use]
+	if not l then return VM_POS, AIM end
+	return l.pos, l.aim
+end
 local chuteP = piece("sh_bell2")
 local axisW = (h.Muzzle.WorldPosition - hub.Position).Unit
 local upW = chuteP.Position - hub.Position
@@ -214,6 +225,12 @@ end
 
 local bindName = "ShredderVM_" .. tostring(math.random(1, 1e9))
 RunService:BindToRenderStep(bindName, Enum.RenderPriority.Camera.Value + 2, function(dt)
+	-- (the tool is gone: a binding outlives its script, so the copy would stay in your camera; seen 16 Nov 2026)
+	if not tool:IsDescendantOf(game) then
+		RunService:UnbindFromRenderStep(bindName)
+		if vm then vm:Destroy(); vm = nil end
+		return
+	end
 	local ch = lp.Character
 	local head = ch and ch:FindFirstChild("Head")
 	local cam = workspace.CurrentCamera
@@ -228,16 +245,17 @@ RunService:BindToRenderStep(bindName, Enum.RenderPriority.Camera.Value + 2, func
 	vm.Parent = cam
 	showReal(false)
 	-- aim: the crosshair, or toward whoever it's eating (up to 35°)
-	local want = (AIM - VM_POS).Unit
+	local VP, AP = vmLook()
+	local want = (AP - VP).Unit
 	if firing and not tool:GetAttribute("Hot") then
 		local target = nearestTarget()
-		if target then want = slerpDir(want, (cam.CFrame:PointToObjectSpace(target) - VM_POS).Unit, MAXANG) end
+		if target then want = slerpDir(want, (cam.CFrame:PointToObjectSpace(target) - VP).Unit, MAXANG) end
 	end
 	vmDir = vmDir:Lerp(want, 1 - math.exp(-14 * dt)).Unit
 	local sucking = tool:GetAttribute("Sucking") == true
 	if vmFx then vmFx.Enabled = sucking end
 	local shake = if sucking then Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 0.05 else Vector3.zero
-	local F = CFrame.lookAt(VM_POS + shake, VM_POS + shake + vmDir, Vector3.yAxis)
+	local F = CFrame.lookAt(VP + shake, VP + shake + vmDir, Vector3.yAxis)
 	vm:PivotTo(cam.CFrame * F * gunFrameH:Inverse())
 	AvatarArms.aim(vm, cam.CFrame) -- (your arms: each from its hold toward your elbow)
 end)

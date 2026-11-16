@@ -133,8 +133,18 @@ local Holds = require(Shared:WaitForChild("Holds")) :: any
 -- tools/roblox/holds.json (_size); the third-person guns and the loadout previews are not touched
 local SIZE: number = Holds.size or 1
 -- (a weapon's own scale on top: the one-handed guns are drawn smaller, their hand came too close to the camera)
-local function sizeOf(wid: string): number
+-- which look a weapon is held in: holds.json keeps three per weapon (before / after / combined) and "use" picks one;
+-- a Play test can show one look on every weapon at once through the player's HoldLook attribute
+local LookPlayer = game:GetService("Players").LocalPlayer
+local function look(wid: string): any
 	local row = Holds.holds[wid]
+	if not row then return nil end
+	local want = LookPlayer:GetAttribute("HoldLook")
+	return (row.looks and ((type(want) == "string" and row.looks[want]) or row.looks[row.use])) or row
+end
+VM.look = look
+local function sizeOf(wid: string): number
+	local row = look(wid)
 	return SIZE * (if row and row.scale then row.scale else 1)
 end
 
@@ -143,8 +153,11 @@ end
 -- the fix eases out as a swing winds up and back in as it recovers
 local function katanaFix(name: string?, t: number): (CFrame, Vector3)
 	local K = Holds.katana
+	local want = LookPlayer:GetAttribute("HoldLook")
+	local kl = K.looks and ((type(want) == "string" and K.looks[want]) or K.looks[K.use])
+	local rest = if kl then kl.rest else K.fixes.rest
 	local keys = if name then K.clips[name] else nil
-	if not keys then return K.fixes.rest.rot, K.fixes.rest.pos end
+	if not keys then return rest.rot, rest.pos end
 	local a, b = keys[1], keys[#keys]
 	if t <= keys[1].t then b = keys[1] end
 	for i = 1, #keys - 1 do
@@ -153,7 +166,8 @@ local function katanaFix(name: string?, t: number): (CFrame, Vector3)
 	local span = b.t - a.t
 	local u = if span > 0 then math.clamp((t - a.t) / span, 0, 1) else 1
 	u = u * u * (3 - 2 * u)
-	local fa, fb = K.fixes[a.fix], K.fixes[b.fix]
+	local fa = if a.fix == "rest" then rest else K.fixes[a.fix]
+	local fb = if b.fix == "rest" then rest else K.fixes[b.fix]
 	return fa.rot:Lerp(fb.rot, u), fa.pos:Lerp(fb.pos, u)
 end
 
@@ -462,7 +476,7 @@ function VM.update(dt: number, c: Ctx)
 	kick = math.max(0, kick - 6 * dt)
 	swap = math.max(0, swap - 5 * dt)
 	local base, rot = w.vm.p, w.vm.r
-	local row = Holds.holds[VM.wid]
+	local row = look(VM.wid)
 	if row and row.shift then base += row.shift * S end -- (where it sits: the Rivals-class layout, holds.json)
 	if row and row.tilt then rot += row.tilt end -- (the one-handed guns turned to show their side)
 	local px, py, pz = base.X, base.Y - 0.3 * swap * S, base.Z
@@ -616,10 +630,12 @@ function VM.adsPos(wid: string): Vector3?
 	local w = Weapons.list[wid]
 	if not w or not w.vm or not w.ads then return nil end
 	local s = w.vm.s * sizeOf(wid)
-	if wid == "redline" then return Vector3.new(0, -0.0737 * s, -0.17 - 0.1058 * s) * S end
+	local row = look(wid)
+	local back = 0.17 + (if row and row.aimZ then row.aimZ else 0) -- (the sight's distance from your eye, metres)
+	if wid == "redline" then return Vector3.new(0, -0.0737 * s, -back - 0.1058 * s) * S end
 	local sight = w.mdl and w.mdl.sight -- a gun with sights: the same rule, from its row
-	if sight then return Vector3.new(0, -sight.Y * s, -0.17 - sight.Z * s) * S end
-	return Vector3.new(0.06, math.min(-0.1, -0.03 - 0.1479 * s), -0.3) * S -- no sights: under and right of the middle
+	if sight then return Vector3.new(0, -sight.Y * s, -back - sight.Z * s) * S end
+	return Vector3.new(0.06, math.min(-0.1, -0.03 - 0.1479 * s), -back - 0.13) * S -- no sights: under and right of the middle
 end
 
 return VM
