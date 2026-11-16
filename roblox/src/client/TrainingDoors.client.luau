@@ -16,7 +16,7 @@
 --     lane, jump at the line, and how far you got shows when you land
 --   * the mirror (the muster's bay; a part MirrorSpot): while you are in training you stand there as a hologram in the
 --     hub's style (see-through, a soft fill and outline, turning slowly over its lens), holding what you hold. the owner,
---     16 Nov: "it can be a hologram version of your avatar"; its podium shows your name, rank and numbers
+--     16 Nov: "it can be a hologram version of your avatar"; it stands on a plain round projector
 --   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
 -- the slats' shut places are their attribute Shut (a CFrame); a Model's Lift is how far up they go and Top the height
 -- over which a slat is inside the wall (hidden)
@@ -281,191 +281,6 @@ end
 -- a new look (the avatar editor, a respawn's appearance arriving late): the statue is made again
 me.CharacterAppearanceLoaded:Connect(function() holoFor = nil end)
 
--- ---------------------------------------------------------------- the mirror's podium
--- the hologram stands on a two-step podium: the upper step's front shows your rank's badge, your name, @handle and
--- level; the lower step's front a strip of tiles with your numbers, from your own card (Stats' Profile remote, "card").
--- on your screen only: everyone sees their own (the owner, 16 Nov: "maybe at a plate with your username and a display
--- of stats??", then "I was thinking more of like a podium thing"). filled while you are in training, again every 30 s
--- and when your XP moves
-local RS = game:GetService("ReplicatedStorage")
-local SharedM = RS:WaitForChild("Jankfire")
-local Ranks = require(SharedM:WaitForChild("Ranks"))
-local Roster = require(SharedM:WaitForChild("Roster"))
-local WeaponModels = require(SharedM:WaitForChild("WeaponModels"))
-local GunSkins = require(SharedM:WaitForChild("GunSkins"))
-local GunHats = require(SharedM:WaitForChild("GunHats"))
-local MFONT = "rbxasset://fonts/families/Montserrat.json"
-local PALE, GREY, AMBER, DEEP = Color3.fromHex("eceae4"), Color3.fromHex("9aa0a8"), Color3.fromHex("f0a53a"), Color3.fromHex("2e3238")
-local boards: { [string]: BasePart } = {}
-local filledAt, filledXp: any = -math.huge, false
-local myCard: any = nil
-local asking = false
-local function label(parent: Instance, name: string, text: string, x: number, y: number, w: number, h: number, color: Color3, weight: Enum.FontWeight, align: Enum.TextXAlignment?): TextLabel
-	local t = Instance.new("TextLabel")
-	t.Name = name; t.BackgroundTransparency = 1; t.TextScaled = true; t.Text = text; t.TextColor3 = color
-	t.FontFace = Font.new(MFONT, weight); t.TextXAlignment = align or Enum.TextXAlignment.Center
-	t.Position = UDim2.fromScale(x, y); t.Size = UDim2.fromScale(w, h)
-	t.Parent = parent
-	return t
-end
--- this screen's own layer on a board's Gui (made again each time)
-local function layer(name: string): (Frame?, Vector2)
-	local part = boards[name]
-	local g = part and part.Parent and part:FindFirstChild("Gui")
-	if not part or not g or not g:IsA("SurfaceGui") then return nil, Vector2.zero end
-	local old = g:FindFirstChild("Mine")
-	if old then old:Destroy() end
-	local f = Instance.new("Frame")
-	f.Name = "Mine"; f.BackgroundTransparency = 1; f.Size = UDim2.fromScale(1, 1)
-	f.Parent = g
-	-- (its size in pixels: the face's size in studs times the Gui's pixels per stud)
-	local face = g.Face
-	local sz = part.Size
-	local w, h = sz.X, sz.Y
-	if face == Enum.NormalId.Left or face == Enum.NormalId.Right then w, h = sz.Z, sz.Y
-	elseif face == Enum.NormalId.Top or face == Enum.NormalId.Bottom then w, h = sz.X, sz.Z end
-	return f, Vector2.new(w, h) * g.PixelsPerStud
-end
-local function comma(n: number?): string
-	local s = tostring(math.floor(tonumber(n) or 0))
-	local out = s:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-	return (out:gsub("^,", ""))
-end
-local function pct(a: number?, b: number?): string
-	local x, y = tonumber(a) or 0, tonumber(b) or 0
-	return if y > 0 then ("%d%%"):format(math.floor(x / y * 100 + 0.5)) else "—"
-end
--- the upper step: your rank's badge, your name, @handle, level
-local function fillName()
-	local f, px = layer("MirrorPodiumName")
-	if not f then return end
-	local r = Ranks.of(me:GetAttribute("Xp") :: any)
-	local bs = math.floor(px.Y * 0.84)
-	local ok, b = pcall(Ranks.badge, f, bs, r)
-	if ok and b then b.AnchorPoint = Vector2.new(0, 0.5); b.Position = UDim2.new(0, math.floor(px.Y * 0.12), 0.5, 0) end
-	local x0 = (px.Y * 1.1) / math.max(px.X, 1)
-	label(f, "Name", string.upper(me.DisplayName), x0, 0.06, 0.66 - x0, 0.58, PALE, Enum.FontWeight.Heavy, Enum.TextXAlignment.Left)
-	label(f, "Handle", "@" .. me.Name, x0, 0.66, 0.66 - x0, 0.28, GREY, Enum.FontWeight.SemiBold, Enum.TextXAlignment.Left)
-	label(f, "Rank", string.upper(r.name), 0.66, 0.1, 0.31, 0.42, AMBER, Enum.FontWeight.Heavy, Enum.TextXAlignment.Right)
-	label(f, "Level", ("LEVEL %d"):format(r.level), 0.66, 0.56, 0.31, 0.32, GREY, Enum.FontWeight.Bold, Enum.TextXAlignment.Right)
-end
--- the lower step: five tiles of your numbers
-local function fillStats()
-	local f = layer("MirrorPodiumStats")
-	if not f then return end
-	local s = myCard and myCard.stats
-	local ok = type(s) == "table"
-	local k, d = if ok then tonumber(s.k) or 0 else 0, if ok then tonumber(s.d) or 0 else 0
-	local w = myCard and type(myCard.weapons) == "table" and myCard.weapons[1]
-	local e = type(w) == "table" and type(w.id) == "string" and Roster.byId[w.id]
-	local tiles = {
-		{ "KILLS", if ok then comma(k) else "—" },
-		{ "K/D", if not ok then "—" elseif d > 0 then ("%.2f"):format(k / d) elseif k > 0 then ("%.2f"):format(k) else "—" },
-		{ "WINS", if ok then comma(s.w) else "—" },
-		{ "HEADSHOT %", if ok then pct(s.hs, s.hc) else "—" },
-		{ "BEST STREAK", if ok then tostring(tonumber(s.best) or 0) else "—" },
-		{ "MOST HELD", if e then string.upper(e.name) elseif type(w) == "table" then string.upper(tostring(w.id)) else "—" },
-	}
-	local n = #tiles
-	for i, t in tiles do
-		local x = (i - 1) / n
-		label(f, "K" .. i, t[1], x + 0.012, 0.1, 1 / n - 0.024, 0.24, GREY, Enum.FontWeight.Bold)
-		label(f, "V" .. i, t[2], x + 0.012, 0.38, 1 / n - 0.024, 0.5, if i == n then AMBER else PALE, Enum.FontWeight.Heavy)
-		if i > 1 then
-			local line = Instance.new("Frame")
-			line.Name = "Rule"; line.BackgroundColor3 = DEEP; line.BorderSizePixel = 0
-			line.Position = UDim2.fromScale(x, 0.14); line.Size = UDim2.new(0, 2, 0.72, 0)
-			line.Parent = f
-		end
-	end
-end
-local function askCard()
-	if asking then return end
-	asking = true
-	task.spawn(function()
-		local rem = RS:FindFirstChild("JankfireRemotes")
-		local pr = rem and rem:FindFirstChild("Profile")
-		if pr and pr:IsA("RemoteFunction") then
-			local ok, res = pcall(function() return pr:InvokeServer("card", me.UserId) end)
-			if ok and type(res) == "table" and res.ok and type(res.card) == "table" then myCard = res.card end
-		end
-		asking = false
-		fillStats()
-	end)
-end
--- the weapon you have out, leaning against the podium's front corner: the same gun as the one in your hand (its skin,
--- wrap and hat), made again whenever that one is (you switch, or change its look). (built fresh from WeaponModels: a
--- copy of the hand's model came out invisible, as first person hides it on this screen) the owner, 16 Nov: "could you have
--- whatever weapon you have equiped laying against it, and maybe it updates as you switch it". holstered: the last stays
-local leaning: Model? = nil
-local leaningFrom: Instance? = nil
-local function dropLeaning()
-	if leaning then leaning:Destroy(); leaning = nil end
-	leaningFrom = nil
-end
-local function along(bcf: CFrame, bsz: Vector3, d: Vector3): number
-	return math.abs(d:Dot(bcf.RightVector)) * bsz.X / 2 + math.abs(d:Dot(bcf.UpVector)) * bsz.Y / 2 + math.abs(d:Dot(bcf.LookVector)) * bsz.Z / 2
-end
-local function leanStep()
-	local pod = boards.MirrorPodium
-	if not pod or not pod.Parent or me:GetAttribute("Zone") ~= "training" then dropLeaning(); return end
-	local ch = me.Character
-	local held = ch and ch:FindFirstChild("HeldWeapon")
-	if not held or held == leaningFrom or not held:IsA("Model") then return end
-	local wid = held:GetAttribute("Weapon")
-	if type(wid) ~= "string" then return end
-	local ok, c = pcall(WeaponModels.build, wid, 4.5, GunSkins.skinFor(me, wid))
-	if not ok or not c then leaningFrom = held; return end
-	pcall(function()
-		local wr, md = WeaponModels.wrapFor(me, wid)
-		if wr then WeaponModels.wrap(c, wr, md) end
-	end)
-	pcall(function() GunHats.attach(c, wid, GunHats.hatFor(me, wid), 4.5, nil, GunHats.THIRD) end)
-	dropLeaning()
-	leaningFrom = held
-	local m = c :: Model
-	m.Name = "PodiumWeapon"
-	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") then
-			d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 0
-		elseif d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("Light")
-			or d:IsA("Beam") or d:IsA("Trail") or d:IsA("BaseScript") then
-			d:Destroy()
-		end
-	end
-	if not m.PrimaryPart then m:Destroy(); return end
-	m.Parent = workspace
-	-- barrel up, leaning back 14 degrees onto the podium's front edge; its top toward the bay's wall, its side to you
-	local cf, half = pod.CFrame, pod.Size / 2
-	local b = (cf.UpVector * math.cos(math.rad(14)) + cf.LookVector * math.sin(math.rad(14))).Unit
-	local vY = cf.RightVector
-	local vZ = -b
-	m:PivotTo(CFrame.fromMatrix(Vector3.zero, vY:Cross(vZ), vY, vZ))
-	local bcf, bsz = m:GetBoundingBox()
-	-- no wider than the gap between the stat strip's end and the wall (1.25), no taller than 5
-	local f = math.min(1, 1.25 / math.max(along(bcf, bsz, vY) * 2, 0.01), 5 / math.max(bsz.Z, 0.01))
-	if f < 0.999 then pcall(function() m:ScaleTo(m:GetScale() * f) end); bcf, bsz = m:GetBoundingBox() end
-	local wide = along(bcf, bsz, vY)
-	local long = along(bcf, bsz, b)
-	local foot = cf.Position + cf.RightVector * (half.X - 0.15 + wide) + cf.UpVector * (-half.Y - 0.03) - cf.LookVector * (half.Z + 0.7)
-	local centre = foot + b * long
-	m:PivotTo(m:GetPivot() + (centre - bcf.Position))
-	leaning = m
-end
-local function boardsStep()
-	local spot = mirrorSpot
-	local ch = me.Character
-	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not spot or not root or not next(boards) then return end
-	if me:GetAttribute("Zone") ~= "training" then return end
-	local now = os.clock()
-	local xp = me:GetAttribute("Xp")
-	if now - filledAt > 30 or xp ~= filledXp then
-		filledAt, filledXp = now, xp
-		fillName(); fillStats(); askCard()
-	end
-end
-
 -- ---------------------------------------------------------------- somebody else's range Carls
 -- (RangeTest: every runner has his own Carls, each with the attribute Owner = his UserId.) this screen keeps only its
 -- own in its world; the rest go into a folder outside it, so they are not drawn, aimed at or outlined, and no blood
@@ -515,7 +330,6 @@ local function scan()
 		table.clear(shutters)
 		pit = nil
 		mirrorSpot = nil
-		table.clear(boards); filledAt = -math.huge; dropLeaning()
 		if tg then
 			for _, m in tg:GetDescendants() do
 				if m:GetAttribute("Shutter") == true then
@@ -528,8 +342,6 @@ local function scan()
 					pit = m
 				elseif m.Name == "MirrorSpot" and m:IsA("BasePart") then
 					mirrorSpot = m
-				elseif (m.Name == "MirrorPodiumName" or m.Name == "MirrorPodiumStats" or m.Name == "MirrorPodium") and m:IsA("BasePart") then
-					boards[m.Name] = m
 				end
 			end
 		end
@@ -579,7 +391,5 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if root and hum then jumpWatch(root, hum) end
 	mirrorStep(dt)
-	boardsStep()
-	leanStep()
 end)
 scan()

@@ -955,6 +955,15 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - checked in Play: 51 parts, 0 textures, 0 Humanoids
   - the perf session's measurement after it (with the VFX session's Hologram at v447): training at 60 fps (Studio's cap), render CPU 6.2 ms, down from 40 ms and 12 fps. With every light off it was 6.0 ms, and shadows off changed nothing, so no lamp cuts are needed; keep shadow-casting lamps at 5 or fewer.
 - **The podium weapon** is built fresh from `WeaponModels`; a copy of the hand's model was invisible.
+- **Round 3 (place version 460):**
+  - The podium is gone (the owner: "I dont like that podium ... maybe we dont need the stats or guns laying down"). The hologram stands on a plain round projector: a wide low drum, a slimmer slate drum with one soft cyan glow band, a pale trim ring, the lens. No words, no gun.
+  - The back lot's trees are all outside the fence (the owner: "can you unclump the trees outside also dont let them be within the gate line!"):
+    - They stand in bands on the berms beyond the fence (west, east, north; the south's ridge foot is too steep).
+    - Each tree goes its crown plus the last one's plus a varied gap along its band, so crowns never meet. A spot too steep is passed by, not shifted.
+    - They are big (scale 1.7 to 2.3 west and east) so they show over the 16-high fence from the lot's floor.
+    - The steepness and depth allowances scale with a tree's size.
+  - `L.check` now also checks the trees against the fence: each tree's whole box must clear `L.FENCE` by 2.5. Result: 27 trees, 0 over the line, nearest trunks 22.4 apart, 0 crowns touching, 0 gaps or buried.
+  - Photos: `roblox/docs/training/trees_outside_sheet.jpg`.
 
 **Traps:**
 - `screen_capture` calls in parallel time out: take them one at a time.

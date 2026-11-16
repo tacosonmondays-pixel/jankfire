@@ -494,6 +494,9 @@ L.RIDGE = { -- x, z, length (x), height x 2, depth, yaw, colour key: long flatte
 -- stud a ground-coloured foot hides the seam. L.check holds every tree to it: no side over the ground, none deeper than
 -- `deep` under it
 L.TREE = { r = 0.8, sink = 0.3, steep = 1.6, deep = 2.3 }
+-- the fence's line round the lot (plan x from -x to x, z from z0 to z1; its north side runs by the façade), and how far
+-- every tree's box stays clear of it
+L.FENCE = { x = 226, z0 = -8746, z1 = -8302, clear = 2.5 }
 local function treeSides(r) return { V3(r, 0, 0), V3(-r, 0, 0), V3(0, 0, r), V3(0, 0, -r) } end
 local function land()
 	local F = L.FACE
@@ -611,36 +614,76 @@ local function land()
 			feet += 1
 		end
 	end
-	-- the treeline (16 Nov, the owner: "the trees were sort of just spammed"): groves, not a scatter. one kind of tree to
-	-- a grove, 3 to 7 of them, open grass between. round trees low, on the berms round the lot (the fullest line);
-	-- pines higher, on the outer berms and in small groves on the near ridge's tops, where it is flat enough to stand;
-	-- far off, a soft line of plain dark crowns along the tall ridge's crest. nothing on the steep faces: those stay grass
-	local function grove(cx, cz, n, kind, rx, rz, s0, s1)
-		local turn = rng:NextNumber() * 6.283
-		for i = 1, n do
-			local a = turn + (i / n) * 6.283 + rng:NextNumber(-0.35, 0.35)
-			local d = if i == n and n % 2 == 1 then 0 else 0.5 + rng:NextNumber() * 0.5
-			tree(cx + math.cos(a) * rx * d, cz + math.sin(a) * rz * d, nil, s0 + rng:NextNumber() * (s1 - s0), kind)
+	-- the treeline (16 Nov, the owner: "the trees were sort of just spammed", then "can you unclump the trees outside also
+	-- dont let them be within the gate line!"): every tree stands outside the fence, its whole box (crown and all) at
+	-- least L.FENCE.clear clear of it, in bands on the berms beyond it: west, east, north, and the south where the
+	-- ridge's foot lets a tree stand. along a band each tree goes its own crown plus the last one's plus a varied gap on,
+	-- set off the line a little, so no two crowns meet and no trunks stack; short runs of one kind (round trees and
+	-- pines). a spot too steep to stand on is passed by, not shifted, so the gaps and the fence's clearance always
+	-- hold. L.check holds every tree to all of it
+	local placed = {}
+	local function crown(kind, sc) return (if kind == "round" then 6 else 5) * sc end
+	local function outside(x, z, hx, hz)
+		local F = L.FENCE
+		return x + hx < -F.x or x - hx > F.x or z + hz < F.z0 or z - hz > F.z1
+	end
+	local function plant(x, z, kind, sc): boolean
+		local r = crown(kind, sc)
+		local yaw = rng:NextNumber() * 6.28
+		local est = r * (math.abs(math.cos(yaw)) + math.abs(math.sin(yaw))) + L.FENCE.clear
+		if not outside(x, z, est, est) then return false end
+		for _, t in placed do
+			if math.sqrt((t.x - x) ^ 2 + (t.z - z) ^ 2) < t.r + r + 1.5 then return false end
+		end
+		local lo, hi = spread(x, z, L.TREE.r * sc)
+		if lo == -math.huge or hi - lo > math.max(L.TREE.steep, 1.12 * sc) then dropped += 1; return false end -- (a big trunk stands on more slope)
+		local m = B.put(if kind == "round" then "tl_treeRound" else "tl_treeCone", CF(x, lo - L.TREE.sink, z) * CFrame.Angles(0, yaw, 0), { name = "Tree", scale = sc })
+		if not m then return false end
+		-- (the real box: if it reaches the fence after all, no tree)
+		local bcf, bsz = m:GetBoundingBox()
+		local hx = math.abs(bcf.RightVector.X) * bsz.X / 2 + math.abs(bcf.UpVector.X) * bsz.Y / 2 + math.abs(bcf.LookVector.X) * bsz.Z / 2
+		local hz = math.abs(bcf.RightVector.Z) * bsz.X / 2 + math.abs(bcf.UpVector.Z) * bsz.Y / 2 + math.abs(bcf.LookVector.Z) * bsz.Z / 2
+		local at = bcf.Position - B.at(CFrame.identity).Position
+		if not outside(at.X, at.Z, hx + L.FENCE.clear, hz + L.FENCE.clear) then m:Destroy(); return false end
+		m.Parent = B.root.LotScenery
+		if hi - lo > 0.5 then
+			local _, hex = groundAt(x, z)
+			lump("TreeFoot", CF(x, lo + (hi - lo) * 0.3, z), V3(L.TREE.r * sc * 4.6, (hi - lo) + 1, L.TREE.r * sc * 4.6), hex)
+			feet += 1
+		end
+		table.insert(placed, { x = x, z = z, r = r })
+		return true
+	end
+	-- a band from (ax, az) to (bx, bz): trees one after another along it, each set off the line by up to `side` (to its
+	-- left as you walk it: negative for the other side), runs of 2 to 5 of one kind
+	local function band(ax, az, bx, bz, side0, side1, kinds, s0, s1)
+		local p0, p1 = Vector2.new(ax, az), Vector2.new(bx, bz)
+		local len = (p1 - p0).Magnitude
+		local dir = (p1 - p0).Unit
+		local nrm = Vector2.new(-dir.Y, dir.X)
+		local dist, lastR = 0, 0
+		local kind, left = kinds[1], 0
+		while true do
+			if left <= 0 then kind = kinds[rng:NextInteger(1, #kinds)]; left = rng:NextInteger(2, 5) end
+			local sc = s0 + rng:NextNumber() * (s1 - s0)
+			local r = crown(kind, sc)
+			dist += lastR + r + 2 + rng:NextNumber() * 5
+			if dist >= len then break end
+			local q = p0 + dir * dist + nrm * (side0 + rng:NextNumber() * (side1 - side0))
+			if plant(q.X, q.Y, kind, sc) then lastR = r; left -= 1 else lastR = r * 0.4 end
 		end
 	end
-	-- the edge: round trees along the berms' crests (west and east along z, the south and north ones along x)
-	for _, g in { { -204, -8330, 5 }, { -204, -8475, 4 }, { -204, -8640, 6 } } do grove(g[1], g[2], g[3], "round", 7, 15, 1.3, 1.9) end
-	for _, g in { { 204, -8370, 4 }, { 204, -8520, 6 }, { 204, -8690, 4 } } do grove(g[1], g[2], g[3], "round", 7, 15, 1.3, 1.9) end
-	for _, g in { { -140, -8764, 5 }, { -20, -8764, 3 }, { 100, -8764, 5 } } do grove(g[1], g[2], g[3], "round", 15, 4, 1.3, 1.9) end -- (behind the fence)
-	grove(-165, -8282, 4, "round", 12, 6, 1.2, 1.6)
-	grove(160, -8282, 3, "round", 10, 6, 1.2, 1.6)
-	-- higher: pines on the outer berms
-	for _, g in { { -241, -8400, 5 }, { -241, -8570, 4 }, { 241, -8440, 4 }, { 241, -8600, 5 } } do grove(g[1], g[2], g[3], "cone", 7, 14, 1.6, 2.3) end -- (outside the fence)
-	-- higher still: small groves of tall pines on the near ridge's tops (its crest line, where tree() finds it flat)
-	for _, r in L.RIDGE do
-		if r[7] == "ridge" and math.abs(r[2] + 8824) < 10 then
-			local c = CF(r[1], 0, r[2]) * CFrame.Angles(0, RAD(r[6]), 0)
-			for _, f in { -0.3, 0.25 } do
-				local q = c:PointToWorldSpace(V3(f * r[3] * 0.7, 0, 0))
-				grove(q.X, q.Z, 3, "cone", 7, 4, 2.4, 3.0)
-			end
-		end
-	end
+	-- west and east: on the outer berms' near slope, round trees and pines in runs
+	-- (big: from the lot's floor they must show over the 16-high fence in front of them)
+	band(-250, -8292, -250, -8616, -1.5, 1.5, { "round", "cone" }, 1.7, 2.3)
+	band(250, -8292, 250, -8616, -1.5, 1.5, { "cone", "round" }, 1.7, 2.3)
+	-- the corners and the south: pines on the south berm's back, where the ridge's foot is not too steep
+	band(-252, -8640, -252, -8790, -2, 2, { "cone" }, 1.6, 2.2)
+	band(252, -8640, 252, -8790, -2, 2, { "cone" }, 1.6, 2.2)
+	band(-236, -8772, 236, -8772, -3, 3, { "cone", "round" }, 1.6, 2.2)
+	-- north, either side of the hall: round trees on the north berms' crest
+	band(-240, -8283, L.FACE.x0 - 4, -8283, -2, 2, { "round" }, 1.4, 1.9)
+	band(L.FACE.x1 + 4, -8283, 240, -8283, -2, 2, { "round" }, 1.4, 1.9)
 	-- far off: plain dark crowns along the tall ridge's crest (low detail: one ball each, half sunk)
 	do
 		local far = L.RIDGE[1]
@@ -653,10 +696,6 @@ local function land()
 			local w = 30 + rng:NextNumber() * 16
 			lump("FarTrees", c * CF(qx, y - c.Position.Y - 4, 6), V3(w, 18 + rng:NextNumber() * 6, w * 0.8), if k % 2 == 0 then "6f7d68" else "748270")
 		end
-	end
-	-- a few inside, on the grass between the zones (none in front of the exit, none tall near the climb), in twos
-	for _, t in { { -70, -8556 }, { 88, -8396 }, { 90, -8470 }, { 88, -8560 }, { -60, -8640 }, { 86, -8700 } } do
-		grove(t[1], t[2], 2, "round", 6, 6, 1.1, 1.5)
 	end
 	-- the fence round the lot (16 Nov, the owner: "can you add a fence line in the outside section of the training, like
 	-- where the trees are, so you can't see the ugly parts of it?"): on the berms' outer slopes just behind the round
@@ -699,13 +738,14 @@ local function land()
 	end
 	-- (the south side runs in front of the near ridge's foot and just behind the long lane's backstop: further out, the
 	-- ridge's face rises straight from the berm)
-	fenceRun(-226, -8302, -226, -8746)
-	fenceRun(-226, -8746, 226, -8746)
-	fenceRun(226, -8746, 226, -8302)
-	fenceRun(-226, -8302, L.FACE.x0, -8302)
-	fenceRun(L.FACE.x1, -8302, 226, -8302)
+	local FX, FZ0, FZ1 = L.FENCE.x, L.FENCE.z0, L.FENCE.z1
+	fenceRun(-FX, FZ1, -FX, FZ0)
+	fenceRun(-FX, FZ0, FX, FZ0)
+	fenceRun(FX, FZ0, FX, FZ1)
+	fenceRun(-FX, FZ1, L.FACE.x0, FZ1)
+	fenceRun(L.FACE.x1, FZ1, FX, FZ1)
 	-- (and over the façade: the lot is closed in on every side)
-	B.solid("LotFaceWall", CF((L.FACE.x0 + L.FACE.x1) / 2, (L.FACE.top + 760) / 2, -8302), V3(L.FACE.x1 - L.FACE.x0 + 4, 760 - L.FACE.top, 4))
+	B.solid("LotFaceWall", CF((L.FACE.x0 + L.FACE.x1) / 2, (L.FACE.top + 760) / 2, FZ1), V3(L.FACE.x1 - L.FACE.x0 + 4, 760 - L.FACE.top, 4))
 	for _, sh in shapes do sh.p.Parent = sh.parent; sh.p.CanQuery = sh.q end
 	probeHome:Destroy()
 	B.treeNote = ("trees: %d moved to flatter ground, %d left out, %d feet; fence %d parts"):format(moved, dropped, feet, fenceParts)
@@ -1213,7 +1253,7 @@ function L.check(tg, mk): { string }
 					gaps += 1
 					if gaps <= 6 then table.insert(out, ("tree over a gap at (%.0f, %.1f, %.0f): ground %.1f under a side"):format(b.X, b.Y, b.Z, gy)) end
 					break
-				elseif gy - b.Y > L.TREE.deep then
+				elseif gy - b.Y > math.max(L.TREE.deep, 1.12 * m:GetScale() + L.TREE.sink + 0.05) then
 					deep += 1
 					if deep <= 6 then table.insert(out, ("tree buried %.1f at a side at (%.0f, %.1f, %.0f)"):format(gy - b.Y, b.X, b.Y, b.Z)) end
 					break
@@ -1223,6 +1263,34 @@ function L.check(tg, mk): { string }
 	end
 	for d, q in was do d.CanQuery = q end
 	table.insert(out, ("trees: %d, a gap under a side %d, deeper than %.1f at a side %d"):format(trees, gaps, L.TREE.deep, deep))
+	-- every tree outside the fence, its whole box at least L.FENCE.clear off its line; trunks apart; crowns apart
+	local FN = L.FENCE
+	local over, list = 0, {}
+	for _, m in tg:GetDescendants() do
+		if m:IsA("Model") and m.Name == "Tree" then
+			local bcf, bsz = m:GetBoundingBox()
+			local hx = math.abs(bcf.RightVector.X) * bsz.X / 2 + math.abs(bcf.UpVector.X) * bsz.Y / 2 + math.abs(bcf.LookVector.X) * bsz.Z / 2
+			local hz = math.abs(bcf.RightVector.Z) * bsz.X / 2 + math.abs(bcf.UpVector.Z) * bsz.Y / 2 + math.abs(bcf.LookVector.Z) * bsz.Z / 2
+			local q = bcf.Position
+			local clear = q.X + hx < -FN.x - FN.clear + 0.01 or q.X - hx > FN.x + FN.clear - 0.01 or q.Z + hz < FN.z0 - FN.clear + 0.01 or q.Z - hz > FN.z1 + FN.clear - 0.01
+			if not clear then
+				over += 1
+				if over <= 6 then table.insert(out, ("TREE AT THE FENCE (%.0f, %.0f): box %.1f x %.1f"):format(q.X, q.Z, 2 * hx, 2 * hz)) end
+			end
+			local b = m:GetPivot().Position
+			table.insert(list, { x = b.X, z = b.Z, r = math.min(bsz.X, bsz.Z) / 2 })
+		end
+	end
+	local nearest, touching = math.huge, 0
+	for i = 1, #list do
+		for j = i + 1, #list do
+			local dd = math.sqrt((list[i].x - list[j].x) ^ 2 + (list[i].z - list[j].z) ^ 2)
+			nearest = math.min(nearest, dd)
+			if dd < list[i].r + list[j].r then touching += 1 end
+		end
+	end
+	table.insert(out, ("trees outside the fence: %d with a box over or inside it (clear %.1f); nearest two trunks %.1f apart; crowns running into each other %d"):format(
+		over, FN.clear, nearest, touching))
 	-- the fence keeps everyone in: from points on the lot (its floor, the long lane, the climb's top) rays every way but
 	-- north (the hall is that side), flat and up 20 and 35 degrees, must meet something solid within 900
 	local cp = RaycastParams.new(); cp.FilterType = Enum.RaycastFilterType.Include; cp.FilterDescendantsInstances = { tg }; cp.RespectCanCollide = true

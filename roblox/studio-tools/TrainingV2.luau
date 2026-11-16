@@ -477,24 +477,15 @@ local function muster(B)
 	-- it, maybe it can be another room, or it can be a hologram version of your avatar". it is the mirror now: you, as
 	-- a hologram in the hub's style, holding your loadout and turning slowly over a lens. TrainingDoors.client draws it
 	-- on your screen only; MirrorSpot is where it stands)
-	-- (16 Nov, the owner: "I was thinking more of like a podium thing", for the name and the numbers that were on the
-	-- bay's walls. the hologram stands on a two-step podium: the lower step's front is a strip of tiles with your
-	-- numbers (rank, kills, K/D, wins, best streak), the upper step's front your name, @handle and level.
-	-- TrainingDoors.client fills both on your screen only, from your own card)
-	B.fbox(S, "Shell", "MirrorPodium", -5, 5, MY - 1, MY + 0.6, A + WALL + 0.5, A + WALL + 6.05, P.pier2)
-	B.fbox(S, "Shell", "MirrorPodiumCap", -5.1, 5.1, MY + 0.55, MY + 0.72, A + WALL + 0.4, A + WALL + 6.05, P.trim)
-	B.fbox(S, "Shell", "MirrorPodiumTop", -3.6, 3.6, MY + 0.68, MY + 1.42, A + WALL + 1.6, A + WALL + 6.03, P.pier2)
-	B.fbox(S, "Shell", "MirrorPodiumTopCap", -3.7, 3.7, MY + 1.38, MY + 1.55, A + WALL + 1.5, A + WALL + 6.04, P.trim)
-	local function podiumFace(name, x0, x1, y0, y1, d, pps)
-		local f = B.fbox(S, "Scenery", name, x0, x1, y0, y1, d - 0.06, d + 0.02, P.board, { ghost = true })
-		local g = Instance.new("SurfaceGui")
-		g.Name = "Gui"; g.Face = Enum.NormalId.Back; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = pps; g.LightInfluence = 0
-		g.Parent = f
-		return f
-	end
-	podiumFace("MirrorPodiumStats", -4.75, 4.75, MY - 0.85, MY + 0.42, A + WALL + 0.5, 70)
-	podiumFace("MirrorPodiumName", -3.4, 3.4, MY + 0.76, MY + 1.32, A + WALL + 1.6, 90)
-	local lensAt = S * CF(0, MY + 1.55, -(A + WALL + 3.8)) -- (on the podium's top)
+	-- (16 Nov, the owner: the podium with your name and numbers, then "I dont like that podium can you do a differnt
+	-- design? maybe we dont need the stats or guns laying down". it stands on a plain round projector now: a wide low
+	-- drum, a slimmer one on it with one soft glow band, a pale trim ring, the lens on top. no words, no gun)
+	local pc = S * CF(0, 0, -(A + WALL + 3.0))
+	B.drum("Shell", "MirrorBase", pc.X, pc.Z, MY - 1, MY - 0.25, 5.8, P.pier2)
+	B.drum("Shell", "MirrorDrum", pc.X, pc.Z, MY - 0.3, MY + 1.0, 4.8, P.slate)
+	B.drum("Scenery", "MirrorGlowBand", pc.X, pc.Z, MY + 0.3, MY + 0.42, 4.86, "8fd8ff", { ghost = true, mat = NEON })
+	B.drum("Shell", "MirrorTrim", pc.X, pc.Z, MY + 0.95, MY + 1.12, 5.0, P.trim)
+	local lensAt = S * CF(0, MY + 1.12, -(A + WALL + 3.0)) -- (on the projector's top)
 	B.part("Scenery", "MirrorLens", lensAt * CFrame.Angles(0, 0, math.pi / 2), V3(0.12, 4.2, 4.2), P.dark, { cyl = true, ghost = true })
 	B.part("Scenery", "MirrorLensGlow", lensAt * CF(0, 0.07, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.05, 3.2, 3.2), "8fd8ff", { cyl = true, ghost = true, mat = NEON })
 	local ms = B.marker(B.root.Scenery, "MirrorSpot", lensAt.X, lensAt.Y + 0.06, lensAt.Z, S:PointToWorldSpace(V3(0, MY, 0)))
