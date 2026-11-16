@@ -22,6 +22,13 @@ local player = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 local keys = { sprint = false, crouch = false, jump = false, hook = false, jumpPressed = false }
+-- the last fresh jump press, any device (Space, a gamepad's A, the phone's jump button): a bhop needs one. it counts
+-- for one jump, and only if that jump comes at most JUMP_BUF after it (the web game's 0.22 s jump buffer: tap just
+-- before you land, or within Config.bhopTicks after)
+local pressT = -10
+local JUMP_BUF = 0.22
+local controlsRef: any = nil -- (the control module: the phone's jump button is read from it)
+local touchWas = false
 local st = Movement.newState()
 local rope: Beam? = nil
 local ropeAnchor: Attachment? = nil
@@ -100,7 +107,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	local k = io.KeyCode
 	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift then keys.sprint = true
 	elseif k == Enum.KeyCode.C or k == Enum.KeyCode.LeftControl then keys.crouch = true
-	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = true; keys.jumpPressed = true
+	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = true; keys.jumpPressed = true; pressT = os.clock()
 	elseif k == Enum.KeyCode.E or k == Enum.KeyCode.ButtonL2 then keys.hook = true; tryHook()
 	elseif k == Enum.KeyCode.V then thirdPerson = not thirdPerson; setCamera()
 	end
@@ -175,6 +182,7 @@ task.spawn(function()
 	local ok, controls = pcall(function()
 		return (require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any) :: any):GetControls()
 	end)
+	if ok and type(controls) == "table" then controlsRef = controls end
 	if not ok or type(controls) ~= "table" or type(controls.moveFunction) ~= "function" then
 		warn("[jankfire] Move: no control module hook, the Humanoid walks on its own")
 		return
@@ -233,11 +241,29 @@ RunService.PreSimulation:Connect(function(dt: number)
 	local look = camera.CFrame.LookVector
 	local fw = Vector3.new(look.X, 0, look.Z)
 	local fwd = fw.Magnitude > 0 and md.Magnitude > 0 and md:Dot(fw.Unit) > 0.3
+	-- jumping. the phone's jump button isn't a key: read it from the control module, a new touch = a fresh press
+	local touchHeld = false
+	local tj = controlsRef and controlsRef.touchJumpController
+	if tj then
+		local okJ, j = pcall(function() return tj:GetIsJumping() end)
+		touchHeld = okJ and j == true
+	end
+	if touchHeld and not touchWas then pressT = os.clock(); keys.jumpPressed = true end
+	touchWas = touchHeld
+	-- a bhop needs a fresh press (Movement.step): holding Space still hops, the Humanoid re-jumps, but each landing
+	-- is a plain ground step. a tap made just before landing (the buffer) jumps you as you touch down
+	local fresh = os.clock() - pressT <= JUMP_BUF
+	local held = keys.jump or touchHeld
+	-- (a fresh press jumps you now, below: a released key has already told the Humanoid "no jump" this frame, and a
+	-- held one only gets it to jump again about 0.13 s after landing, past the bhop window)
+	local jumpNow = grounded and fresh and not st.hook and not Body.slipping()
 	local inp: Movement.Input = {
 		wx = md.X, wz = md.Z, forward = fwd, sprint = keys.sprint, crouch = keys.crouch,
-		jump = keys.jump, jumpPressed = keys.jumpPressed, lookX = look.X, lookZ = look.Z,
+		jump = held or (grounded and fresh and not Body.slipping()), jumpPressed = keys.jumpPressed, fresh = fresh,
+		lookX = look.X, lookZ = look.Z,
 	}
 	keys.jumpPressed = false
+	if grounded and inp.jump and not st.hook then pressT = -10 end -- (one press, one jump)
 	local chest = root.Position -- (the root's centre sits about 1 m over the feet: the web game's chest)
 	local event: any = nil
 	if swimming then
@@ -272,6 +298,13 @@ RunService.PreSimulation:Connect(function(dt: number)
 	if jumpBoostUntil and os.clock() > jumpBoostUntil then
 		hum.JumpPower = Config.jump
 		jumpBoostUntil = nil
+	end
+	if jumpNow and not swimming then
+		-- (the jump itself, this step: the Humanoid's own jump lags several steps out of its Landed state, and those
+		-- steps' friction would eat the bhop)
+		st.vy = math.max(st.vy, hum.JumpPower)
+		root.CFrame += Vector3.new(0, 0.05, 0)
+		hum:ChangeState(Enum.HumanoidStateType.Jumping)
 	end
 	-- jump pads: stand on one, get thrown (its Pad attribute is the launch velocity)
 	local now = os.clock()

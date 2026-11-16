@@ -22,6 +22,7 @@ export type Input = {
 	sprint: boolean, crouch: boolean,
 	jump: boolean, -- jump held or buffered this tick
 	jumpPressed: boolean, -- jump went down this tick (grapple jump)
+	fresh: boolean?, -- this jump comes from a new press (Roblox only): false = a key held through the landing, no bhop
 	lookX: number, lookZ: number, -- flat look direction
 }
 
@@ -133,7 +134,11 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 	if slipping then -- feet gone: next to no friction, no control, no jumping until you're up again
 		if st.onGround then st.vx, st.vz = Movement.friction(st.vx, st.vz, 0.02, dt) end
 	elseif st.onGround and not st.hook then
-		if inp.jump then
+		-- a bhop (and a slide jump) needs a fresh press. a key just held through the landing still hops (the Humanoid
+		-- re-jumps) but as a plain ground step: friction and the run's acceleration, and the combo back to 0. (the owner,
+		-- 16 Nov 2026: "an actual b hop, not just holding down space"; the web game lets a held key bhop)
+		local heldHop = inp.jump and inp.fresh == false
+		if inp.jump and not heldHop then
 			-- jumping on the first ticks of landing skips friction entirely = momentum is forever
 			st.combo = if st.groundTicks <= Config.bhopTicks then st.combo + 1 else 1
 			if st.combo >= 2 then event = "bhop" end
@@ -148,7 +153,7 @@ function Movement.step(st: State, inp: Input, dt: number, grav: number, chestX: 
 			if not st.sliding and wl > 0 then
 				st.vx, st.vz = Movement.accelerate(st.vx, st.vz, inp.wx, inp.wz, Config.gSpeed * moveMul, Config.gAccel * math.max(1, moveMul), dt)
 			end
-			if st.groundTicks > Config.bhopTicks and not st.sliding then st.combo = 0 end
+			if (st.groundTicks > Config.bhopTicks and not st.sliding) or heldHop then st.combo = 0 end
 		end
 	elseif wl > 0 then
 		st.vx, st.vz = Movement.accelerate(st.vx, st.vz, inp.wx, inp.wz, Config.airCap, Config.airAccel, dt)

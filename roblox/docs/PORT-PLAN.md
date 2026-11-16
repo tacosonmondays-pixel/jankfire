@@ -703,6 +703,26 @@ off it. Heights are measured on the root, so they read below the maths' 4.9 / 7.
   slower than physics (an unfocused or minimised window), some steps got no fresh keys and counted as none: run
   dropped to about 12 and sprint to about 28, jittering. The last real keys now carry over for 0.15 s.
 
+**A bhop needs a timed press, not a held key** (the owner, 16 Nov 2026: "make sure it counts an actual b hop though
+and not just holding down space"). The web game's air movement is already Source-style and Roblox's `Movement`
+matches it: in the air you accelerate toward the keys with the wish speed capped at 1.4 m/s (accel 90), so only
+A/D plus turning the mouse the same way builds speed; W adds none. One JANKFIRE extra: W alone in the air turns your
+momentum toward where you look (2.6 rad/s) and keeps all of it. **The one difference from the web game:** there a
+held jump key bhops too; on Roblox it no longer does.
+- A bhop (no ground friction on the landing tick, the combo goes up, "BHOP xN" from 3) needs a **fresh press**: a new
+  key-down of Space, a gamepad's A or the phone's jump button (read from the control module's `touchJumpController`),
+  at most 0.22 s before the jump (the web game's jump buffer) or within `Config.bhopTicks` (3) after landing. One
+  press, one jump. A tap just before landing is buffered and jumps you in the very step you land (Move sets the
+  upward speed itself; the Humanoid's own jump lags about 0.13 s out of its Landed state).
+- A key held through the landing still hops (the Humanoid re-jumps), but each landing is a plain ground step:
+  friction and the run's acceleration, and the combo goes back to 0 (`Movement.step`, `inp.fresh == false`).
+- **Tested in Play** on a flat test floor, takeoff speeds in studs/s:
+  - Timed taps, A held and turning 2.2 rad/s: 43.6 → 48.5 → 53.8. After a tap that the test tool's timing put
+    0.25 s early, a new chain: 35.3 → 40.9 → 42.2.
+  - W-only timed taps (Shift held): chained, 43.5 → 43.5 → 43.5 → 43.5, no gain.
+  - Space held, A held and turning: 44.0 → 37.9 → 33.3 → 30.6 → 29.6 → 29.0, no BHOP callouts.
+  - Not tried on a real gamepad or phone: Studio's input tool only sends keyboard keys.
+
 ## 26. Matches run side by side, each in its own arena, 16 November 2026 (place version 365)
 
 **Why:** the owner, play-testing: "we also need more pads somewhere?". The hub session is adding a bank of pads (several 1v1, some 2v2, a 3v3). With one match at a time those pads would only have queued ("ARENA BUSY"), so matches now run at the same time, the way big Roblox duel games do it.
