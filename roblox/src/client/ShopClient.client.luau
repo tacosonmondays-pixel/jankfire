@@ -1,6 +1,7 @@
 -- the ways into the shop (ShopUI.luau has the screen): the B key, the SHOP button over the LOADOUT button (hub only,
 -- like it), and any ProximityPrompt carrying the attribute ShopOpen: "<offer id>" opens it on that offer (the hub's
--- bundle holograms: "bundle_nightshift"), "tab:<tab>" on a tab ("tab:containers")
+-- bundle holograms: "bundle_nightshift"; BACK then closes the shop and you're back in the game), "tab:<tab>" on a
+-- tab ("tab:containers")
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -49,7 +50,7 @@ me:GetAttributeChangedSignal("ShopTest"):Connect(function()
 		local cid, nn = string.match(rest or "", "^([%w_]+):(%d+)$")
 		if cid then ShopUI.S.count[cid] = tonumber(nn); if ShopUI.isOpen() then ShopUI.refill() end end
 	elseif cmd == "commit" then ShopUI.commit()
-	elseif cmd == "back" then ShopUI.uninspect()
+	elseif cmd == "back" then ShopUI.back() -- (the inspect panel's BACK: closes a shop opened straight onto it)
 	end
 end)
 

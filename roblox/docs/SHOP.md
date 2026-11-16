@@ -31,15 +31,16 @@ The loadout only wears wraps and hats you own (`Loot.owns`, the loot session's c
 Three kinds of offer, each with an id:
 
 - **containers** `crate`, `bag`, `spray` (Crate, Duffel Bag, Spray Can): one random item you don't own yet. Crates
-  hold weapon skins (none on Roblox yet, so the Crate reads COMING SOON), Duffel Bags hats, Spray Cans wraps. Names
+  hold weapon skins (the ones whose models are in the place), Duffel Bags hats and card looks, Spray Cans wraps. Names
   and prices are the shop's; the pools and odds are the loot module's, read through `Shop.odds(id, owned)`
   (`LootTable.odds`, the function the server rolls by), so the screen never shows numbers the server doesn't use.
   The odds depend on what you own; when you own everything in one it reads YOU HAVE IT ALL.
 - **bundles** `bundle_<name>`: a fixed themed set of wraps and a hat that dresses several guns, plus a `hero` (the
   weapon, wrap and hat the big preview and the hub's hologram show). Six to start: Night Shift, Field Issue, Tea House,
   Deep Space, Machine Shop, Quarry. A bundle's price is about 60% of its items one by one (`Shop.worth`).
-- **singles** `wrap:<id>@<weapon>`, `hat:<id>@<weapon>`: one item for one weapon, on sale only while it is in
-  today's rotation (`Shop.onSale`).
+- **singles** `wrap:<id>@<weapon>`, `hat:<id>@<weapon>`: one item for one weapon; `skin:<id>`: one weapon skin
+  (see "Weapon skins and skin sets" below). On sale only while it is in today's rotation (`Shop.onSale`).
+- **skin sets** `<set id>` (`set_seraph`): every skin of one set, with a banner.
 
 **Wraps and hats are owned per weapon** (the owner, 16 Nov: a spray can gives a wrap "for only one gun at a time").
 Every item is `{ kind, id, weapon }`; where one string is needed it is `"<id>@<weapon>"` (`Shop.key` / `Shop.unkey`,
@@ -67,6 +68,10 @@ Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rot
   any client script: `require(PlayerScripts.Jankfire.ShopUI).open(tab, offerId)`. A ProximityPrompt with the
   attribute `ShopOpen = "bundle_nightshift"` (or `"tab:containers"`) opens it on that offer when triggered.
   Not in a match, not over the loadout.
+- **Opened straight onto one offer** (a hologram, `open(tab, offerId)` from another screen, while the shop was shut):
+  BACK closes the whole shop and you're back in the game, and an opening started there ends back in the game too (the
+  owner, 16 Nov). Opened with B or the button and then into an offer, BACK goes back to the list as before
+  (`S.deep`, `ShopUI.back`).
 - **Tabs:** FEATURED (today's bundle big, with what's in it, and the six daily singles with a countdown),
   BUNDLES, CONTAINERS (each with ODDS, OPEN and CLAIM), INVENTORY (containers to open, then wraps and hats grouped
   by weapon; filters).
@@ -145,3 +150,60 @@ loot inventory's bare ids (`inv.border` / `inv.banner` / `inv.title`).
 
 Tested in solo Play (v398): Head Office claimed (all three owned), x5 Spray Cans with the live batch open (five reels,
 "YOU GOT 5" grid, back to the shop: "5 THINGS ARE YOURS"), the CARD inventory section.
+
+## Weapon skins and skin sets (16 Nov)
+
+**Weapon skins** (a whole other body for one gun: `GunSkins.luau`, models in `ReplicatedStorage.JankfireSkins`, names
+and rarities in `LootTable.SKINS`) are sold too. A skin is already one gun's, so it is owned under its bare id like a
+card look (`Shop.gunless`). A skin is on sale once the loot module knows it and its model is in the place
+(`Shop.skinLive`, the same check the loot module rolls the Crate by). One of the six daily singles is a skin
+(`"skin:<id>"`, priced 150 / 300 / 600 / 1200 by rarity). The inventory shows skins first in each gun's section, with
+a SKINS filter. Every preview builds the skin's body with `WeaponModels.build(weapon, 3, skinId)`.
+
+**Skin sets** are the guns session's `Shared.SkinSets` (`SETS[setId] = { name, pair?, colour, accent, order,
+members }`). Each set is a bundle whose offer id is the set id (`"set_seraph"`, `type = "bundle"`, `set = setId`):
+- Its contents are its skins, and its hero is its top piece (the rarest skin), so a set can be the day's featured
+  bundle or a hub hologram (`hero.skin`).
+- It is on sale only when every skin in it is (`Shop.ready`). Bundle lists should use `Shop.shown(true)`.
+- Its price is 60% of its skins one by one. Completing a set you have some of costs that share of the set's price
+  (`Shop.setPrice(o, missing)`). The loot server's `("buy", "set_seraph")` gives only the skins you lack.
+- With Robux on there is one product for the whole set and one per count left (`"set_seraph:3"`).
+  `Shop.productFor(o, missing)` picks the product, and `ShopReceipts` counts what the buyer lacks.
+
+On screen:
+- **The banners** sit at the top of BUNDLES, under SKIN SETS. A pair (`pair`, e.g. Seraph | Infernal) shares one row,
+  joined; lone sets go two to a row. Each banner has:
+  - the set's colour washed in from the right and a little glow in its accent colour, with a 3 px accent line along the
+    bottom;
+  - its top piece turning slowly in 3D;
+  - the name, "2 / 5 OWNED" and a bar in the accent colour;
+  - the price, or SET COMPLETE;
+  - its five skins along the bottom: the ones you own lit with an accent line, the rest dimmed.
+- **Complete the set** is the set's inspect panel:
+  - the five skins, each OWNED or not (tap one to see it big);
+  - "N / 5 OWNED" with the bar;
+  - one button: CLAIM THE SET, COMPLETE THE SET · 3 LEFT, or SET COMPLETE.
+
+No uploaded banner art: every picture is the live models in 3D.
+
+The words on screen were also cut to what a player needs (the owner's no-flavour-text rule). Bundles say what's in
+them (`Shop.describe`: "4 wraps and a hat for the Assault Rifle, SMG, Revolver and Plan B."), containers say what
+they give, and the top line is just "Free while we test. The prices are for later."
+
+Tested in solo Play (place version 423). The guns session's set models weren't in the place yet, so the test used a
+temporary `SkinSets` of four sets made from live skins, deleted before saving. Photo sheet:
+`roblox/docs/shop/shop-sets.jpg`.
+- Banners: the pair joined on one row and the two lone sets on the next, each with its top piece, progress and five
+  chips.
+- Completing a set: owning 2 of 5 (set with the loot `dev set` op) showed "3 LEFT · 1,399" and COMPLETE THE SET ·
+  3 LEFT. CLAIM gave exactly the 3 missing skins, then the panel read SET COMPLETE and the banner 5 / 5 with every
+  chip lit.
+- The phone-sized box (844 x 390) showed the banners.
+- Opened straight onto a bundle (`open::bundle_nightshift`), BACK closed the shop. Opened normally and then into the
+  same bundle, BACK went back to the list.
+- Opened straight onto the Spray Can, a claim played the opening, and DONE (clicked) ended back in the game with the
+  shop shut.
+- The owner's inventory was put back to its 138 items afterwards.
+
+Not tested: the real sets (Seraph, Infernal, Witching Hour, Tidecrest, Ducky), which show up by themselves once their
+models and `SkinSets` are in the place.

@@ -34,7 +34,17 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 	lastAsk[p] = now
 	local o = Shop.offer(offerId)
 	if not o or not Shop.onSale(o.id) then return end
-	local pid = Shop.productFor(o)
+	-- (a skin set you already have some of: the "complete the set" product for the count you're missing)
+	local missing: number? = nil
+	if o.set then
+		local L = loot()
+		if not L or type(L.owns) ~= "function" then return end
+		local n = 0
+		for _, it in Shop.contents(o) do if not L.owns(p, it.kind, it.id) then n += 1 end end
+		if n == 0 then return end
+		missing = n
+	end
+	local pid = Shop.productFor(o, missing)
 	if not pid then return end
 	asked[p.UserId] = { offer = o.id, product = pid, t = now }
 	MarketplaceService:PromptProductPurchase(p, pid)

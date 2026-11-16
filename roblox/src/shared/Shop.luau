@@ -5,7 +5,9 @@
 --   bundles     "bundle_<name>": a fixed themed set of wraps and hats, each for a named weapon (only things that exist
 --               on roblox today)
 --   singles     "wrap:<id>@<weapon>" / "hat:<id>@<weapon>": one item for one weapon, sold only while it is in today's
---               featured rotation
+--               featured rotation; "skin:<id>" one weapon skin (a skin is already one gun's)
+--   skin sets   "<set id>" ("set_seraph"): every skin of one of SkinSets' sets, a bundle with a banner (the guns
+--               session's SkinSets.luau); on sale once all its skins are in the place
 -- wraps and hats are owned per weapon: an item is { kind, id, weapon } (Shop.key: "sakura@smg")
 -- every offer has a Robux price (`robux`) and a slot for its developer product (`productId`), but nothing costs
 -- anything while the loot switch is on (Config.LOOT_FREE; Shop.free()) and no purchase prompt is ever shown while
@@ -38,6 +40,16 @@ do
 end
 Shop.CARD_KINDS = { border = true, banner = true, title = true }
 function Shop.isCard(kind: string?): boolean return kind ~= nil and Shop.CARD_KINDS[kind] == true end
+-- the weapon skin sets (the guns session's SkinSets: which skins make a set, its banner colours), if it's in the place
+do
+	local m = script.Parent:FindFirstChild("SkinSets")
+	if m and m:IsA("ModuleScript") then
+		local ok, K = pcall(require, m)
+		if ok and type(K) == "table" and type((K :: any).SETS) == "table" then Shop.SkinSets = K end
+	end
+end
+-- kept under the bare id, not "<id>@<weapon>": card looks (no gun) and weapon skins (already one gun's)
+function Shop.gunless(kind: string?): boolean return kind == "skin" or Shop.isCard(kind) end
 
 -- ---------------------------------------------------------------- switches
 -- real-money purchases: Config.LOOT_ROBUX (the loot module's switch, off). false = no prompt is ever shown and
@@ -65,11 +77,12 @@ function Shop.rank(r: string): number return RANK[r] or 0 end
 Shop.PRICE = {
 	wrap = { free = 0, common = 75, rare = 150, epic = 300, legendary = 600 },
 	hat = { free = 0, common = 100, rare = 200, epic = 400, legendary = 750 },
+	skin = { free = 0, common = 150, rare = 300, epic = 600, legendary = 1200 },
 	border = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
 	banner = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
 	title = { free = 0, common = 40, rare = 80, epic = 160, legendary = 320 },
 }
-Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", border = "Border", banner = "Background", title = "Title" }
+Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", border = "Border", banner = "Background", title = "Title" }
 
 -- wraps that never go in a bundle or the rotation: their picture versions broke Roblox's image rules and they are
 -- plain colour wraps now (roblox-upload-content-rules), or they are the free ones everyone has
@@ -78,11 +91,12 @@ Shop.HELD_BACK = { qr = true, barcode = true, meat = true, organ = true, corp = 
 -- wraps and hats are owned PER WEAPON (the owner, 16 Nov: "spray cans should give you a wrap for only one gun at a
 -- time"): an item is (kind, id, weapon), written "<id>@<weapon>" where one string is needed (Shop.key)
 export type Item = { kind: string, id: string, weapon: string? }
-export type Hero = { weapon: string, wrap: string?, hat: string? }
+export type Hero = { weapon: string, wrap: string?, hat: string?, skin: string? }
 export type Offer = {
 	id: string, type: string, name: string, blurb: string, rarity: string,
 	robux: number, productId: number?,
 	items: { Item }?, hero: Hero?, -- a bundle
+	set: string?, pair: string?, colour: Color3?, accent: Color3?, -- a skin set (a bundle with a banner)
 	kind: string?, item: string?, weapon: string?, -- a single
 	pool: string?, -- a container: what it holds, in words
 }
@@ -110,6 +124,38 @@ function Shop.unkey(s: string): (string, string?)
 	return s, nil
 end
 
+-- ---------------------------------------------------------------- weapon skins
+-- a skin's row { name, rarity, weapon }: the loot module's LootTable.SKINS (what it rolls and grants), else a set
+-- piece's row from SkinSets (until the loot module has merged them in: shown, but not sold)
+local function skinRow(id: string): { any }?
+	local row = LootTable and type(LootTable.SKINS) == "table" and LootTable.SKINS[id]
+	if not row and Shop.SkinSets then row = (Shop.SkinSets :: any).SKINS and (Shop.SkinSets :: any).SKINS[id] end
+	return if type(row) == "table" then row else nil
+end
+-- the weapon a skin dresses (nil: no such skin)
+function Shop.skinWeapon(id: string): string?
+	local row = skinRow(id)
+	return if row then row[3] else nil
+end
+-- a skin can be sold: the loot module knows it (it can grant it) and its model is in the place
+-- (ReplicatedStorage.JankfireSkins.<id>, the same check the loot module rolls by)
+function Shop.skinLive(id: string): boolean
+	local row = LootTable and type(LootTable.SKINS) == "table" and LootTable.SKINS[id]
+	if type(row) ~= "table" then return false end
+	local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
+	local m = lib and lib:FindFirstChild(id)
+	return m ~= nil and m:IsA("Model") and m:GetAttribute("Weapon") == row[3]
+end
+-- every skin on sale, sorted by id
+function Shop.liveSkins(): { string }
+	local out = {}
+	if LootTable and type(LootTable.SKINS) == "table" then
+		for id in LootTable.SKINS do if Shop.skinLive(id) then table.insert(out, id) end end
+	end
+	table.sort(out)
+	return out
+end
+
 -- ---------------------------------------------------------------- items
 function Shop.itemInfo(kind: string, id: string): (string, string)
 	if kind == "wrap" then
@@ -118,6 +164,9 @@ function Shop.itemInfo(kind: string, id: string): (string, string)
 	elseif kind == "hat" then
 		local h = GunHatData.HATS[id]
 		if h then return h.name, h.rarity end
+	elseif kind == "skin" then
+		local row = skinRow(id)
+		if row then return row[1], row[2] end
 	elseif Shop.isCard(kind) and Shop.CardStyles then
 		local c = (Shop.CardStyles :: any).info(kind, id)
 		if c then return c.name, c.rarity end
@@ -127,6 +176,9 @@ end
 function Shop.exists(kind: string, id: string, weapon: string?): boolean
 	if Shop.isCard(kind) then -- (a card look is never for a gun)
 		return weapon == nil and Shop.CardStyles ~= nil and (Shop.CardStyles :: any).info(kind, id) ~= nil
+	end
+	if kind == "skin" then -- (a skin is its own gun's: a weapon given must be that one)
+		return Shop.skinLive(id) and (weapon == nil or weapon == Shop.skinWeapon(id))
 	end
 	if weapon ~= nil and not Shop.WEAPON_SET[weapon] then return false end
 	if kind == "wrap" then return Roster.wrapById[id] ~= nil end
@@ -138,7 +190,13 @@ end
 -- "Sakura Storm · SMG" ("Brackets" for a card look: it has no gun)
 function Shop.itemLabel(it: Item): string
 	local name = Shop.itemInfo(it.kind, it.id)
-	return if it.weapon then name .. " · " .. Shop.weaponName(it.weapon) else name
+	local w = it.weapon or (if it.kind == "skin" then Shop.skinWeapon(it.id) else nil)
+	return if w then name .. " · " .. Shop.weaponName(w) else name
+end
+-- the single offer id for an item: "skin:<id>" / "border:<id>" (bare), "wrap:<id>@<weapon>"
+function Shop.singleId(it: Item): string
+	if Shop.gunless(it.kind) or not it.weapon then return it.kind .. ":" .. it.id end
+	return it.kind .. ":" .. it.id .. "@" .. it.weapon
 end
 function Shop.singlePrice(kind: string, id: string): number
 	local _, r = Shop.itemInfo(kind, id)
@@ -148,56 +206,101 @@ end
 
 -- ---------------------------------------------------------------- containers
 -- the names and prices are the shop's; what's inside and the odds are the loot module's (Jankfire.LootTable, the web
--- game's CONTAINERS): crates hold weapon skins (none on Roblox yet: "coming soon"), duffel bags hats, spray cans wraps
+-- game's CONTAINERS): crates hold weapon skins, duffel bags hats, spray cans wraps
+-- (the words on screen say what it is and nothing else: the owner's no-flavour-text rule)
 Shop.containers = {
 	{ id = "crate", type = "container", name = "Crate", rarity = "epic", robux = 120, productId = nil,
-		blurb = "a sealed case. one weapon skin inside.", pool = "weapon skins" },
+		blurb = "One weapon skin you don't have yet.", pool = "weapon skins" },
 	{ id = "bag", type = "container", name = "Duffel Bag", rarity = "rare", robux = 90, productId = nil,
-		blurb = "zipped shut. a hat you don't have yet.", pool = "hats" },
+		blurb = "One hat you don't have yet, for one gun.", pool = "hats" },
 	{ id = "spray", type = "container", name = "Spray Can", rarity = "common", robux = 60, productId = nil,
-		blurb = "shake it. a wrap you don't have yet.", pool = "wraps" },
+		blurb = "One wrap you don't have yet, for one gun.", pool = "wraps" },
 } :: { Offer }
+if Shop.CardStyles and (Shop.CardStyles :: any).CONTAINER == "bag" then
+	Shop.containers[2].blurb = "One hat for one gun, or a player card look, you don't have yet."
+end
 
 -- ---------------------------------------------------------------- bundles
 -- themed sets that dress several guns: every wrap and hat in a set is for one named weapon. hero = what the big
 -- preview and the hub's hologram show: one weapon wearing its wrap and hat from the set. robux is about 60% of the
--- singles' worth (Shop.worth)
+-- singles' worth (Shop.worth). the line under a bundle's name only says what's in it (Shop.describe)
 local function W(id: string, weapon: string): Item return { kind = "wrap", id = id, weapon = weapon } end
 local function H(id: string, weapon: string): Item return { kind = "hat", id = id, weapon = weapon } end
 Shop.bundles = {
 	{ id = "bundle_nightshift", type = "bundle", name = "Night Shift", rarity = "legendary",
-		blurb = "dark metal, one cold glow. for people who play after midnight.",
 		items = { W("hex", "ar"), H("tophat", "ar"), W("carbon", "smg"), W("lchrome", "revolver"), W("matte", "pistol") },
 		hero = { weapon = "ar", wrap = "hex", hat = "tophat" } },
 	{ id = "bundle_fieldissue", type = "bundle", name = "Field Issue", rarity = "rare",
-		blurb = "four camos and a hat that has seen things. standard kit.",
 		items = { W("digital", "sniper"), H("cowboy", "sniper"), W("urban", "ar"), W("desert", "shotgun"), W("arctic", "dmr") },
 		hero = { weapon = "sniper", wrap = "digital", hat = "cowboy" } },
 	{ id = "bundle_teahouse", type = "bundle", name = "Tea House", rarity = "legendary",
-		blurb = "waves, leaves and gold in the cracks. very calm. still a gun.",
 		items = { W("kintsugi", "katana"), H("chef", "katana"), W("seigaiha", "smg"), W("asanoha", "revolver"), W("shibori", "lever"), W("sakura", "burst") },
 		hero = { weapon = "katana", wrap = "kintsugi", hat = "chef" } },
 	{ id = "bundle_deepspace", type = "bundle", name = "Deep Space", rarity = "legendary",
-		blurb = "dust, dots and a hole that eats light. halo included.",
 		items = { W("nebula", "smg"), H("halo", "smg"), W("galaxy", "lmg"), W("aurora", "sniper"), W("blackhole", "redline") },
 		hero = { weapon = "smg", wrap = "nebula", hat = "halo" } },
 	{ id = "bundle_machineshop", type = "bundle", name = "Machine Shop", rarity = "epic",
-		blurb = "brushed, folded, oxidised, anodised. it all still works.",
 		items = { W("damascus", "shotgun"), H("propeller", "shotgun"), W("brushed", "lmg"), W("copper", "sawnoff"), W("titanium", "autoshot") },
 		hero = { weapon = "shotgun", wrap = "damascus", hat = "propeller" } },
 	{ id = "bundle_quarry", type = "bundle", name = "Quarry", rarity = "legendary",
-		blurb = "cut stone and one opal. heavier than it looks.",
 		items = { W("marble", "redline"), H("crown", "redline"), W("jade", "marbles"), W("granite", "sawnoff"), W("geode", "pistol"), W("opal", "revolver") },
 		hero = { weapon = "redline", wrap = "marble", hat = "crown" } },
-} :: { Offer }
+} :: any
 
 -- the player card's set (the player-cards session's pick: a quiet, serious one). no hero: it dresses your card, not a
 -- gun, so it's never the day's featured bundle or a hub hologram's (those take bundles with a hero). last in the list
 if Shop.CardStyles then
 	table.insert(Shop.bundles, { id = "bundle_cards", type = "bundle", name = "Head Office", rarity = "rare",
-		blurb = "corner brackets, carbon weave and a title nobody asked for. for your player card.",
 		items = { { kind = "border", id = "brackets" }, { kind = "banner", id = "carbon" }, { kind = "title", id = "hs" } },
 		hero = nil } :: any)
+end
+
+-- the weapon skin sets (SkinSets.SETS, in their order): every skin of the set, as one bundle with the set's id. its
+-- hero is the set's top piece (the rarest, the first in the set's list on a tie). a set is on sale only once every
+-- one of its skins is (Shop.ready); bought again later it gives only the ones you're missing, at that share of the
+-- set's price (Shop.setPrice)
+Shop.sets = {} :: { Offer }
+if Shop.SkinSets then
+	local K = Shop.SkinSets :: any
+	local ids = if type(K.ordered) == "function" then K.ordered() else {}
+	for _, sid in ids do
+		local s = K.SETS[sid]
+		local items, top, topR = {}, nil, -1
+		for _, kid in s.members do
+			local w = Shop.skinWeapon(kid)
+			table.insert(items, { kind = "skin", id = kid, weapon = w })
+			local _, r = Shop.itemInfo("skin", kid)
+			if w and Shop.rank(r) > topR then top, topR = kid, Shop.rank(r) end
+		end
+		local hero = if top then { weapon = Shop.skinWeapon(top) :: string, skin = top } else nil
+		local o = { id = sid, type = "bundle", set = sid, name = s.name, rarity = Shop.RARITY_ORDER[topR + 1] or "rare",
+			items = items, hero = hero, pair = s.pair, colour = s.colour, accent = s.accent }
+		table.insert(Shop.bundles, o)
+		table.insert(Shop.sets, o)
+	end
+end
+
+-- what's in a bundle, in plain words: "4 wraps and a hat for the Assault Rifle, SMG, Revolver and Plan B."
+local function joinWords(list: { string }): string
+	if #list <= 1 then return list[1] or "" end
+	return table.concat(list, ", ", 1, #list - 1) .. " and " .. list[#list]
+end
+function Shop.describe(items: { Item }): string
+	local n = { skin = 0, wrap = 0, hat = 0, card = 0 }
+	local guns, seen = {}, {}
+	for _, it in items do
+		if Shop.isCard(it.kind) then n.card += 1 else n[it.kind] = (n[it.kind] or 0) + 1 end
+		if it.weapon and not seen[it.weapon] then seen[it.weapon] = true; table.insert(guns, Shop.weaponName(it.weapon)) end
+	end
+	local parts = {}
+	local function add(c: number, one: string, many: string)
+		if c == 1 then table.insert(parts, one) elseif c > 1 then table.insert(parts, c .. " " .. many) end
+	end
+	add(n.skin, "a weapon skin", "weapon skins"); add(n.wrap, "a wrap", "wraps"); add(n.hat, "a hat", "hats")
+	if n.card > 0 then return "A border, a background and a title for your player card." end
+	local what = joinWords(parts)
+	what = string.upper(string.sub(what, 1, 1)) .. string.sub(what, 2)
+	return if #guns > 0 then what .. " for the " .. joinWords(guns) .. "." else what .. "."
 end
 
 -- ---------------------------------------------------------------- lookups
@@ -208,7 +311,32 @@ for _, b in Shop.bundles do
 	for _, it in b.items :: { Item } do worth += Shop.singlePrice(it.kind, it.id) end
 	b.robux = math.floor(worth * 0.6 / 10 + 0.5) * 10 - 1
 	b.productId = nil
+	b.blurb = Shop.describe(b.items)
 	Shop.byId[b.id] = b
+end
+-- a bundle that can be sold right now: a skin set once every skin in it is in the place (and known to the loot
+-- module); the rest always
+function Shop.ready(o: Offer): boolean
+	if o.set then
+		for _, it in o.items :: { Item } do if not Shop.exists(it.kind, it.id) then return false end end
+	end
+	return true
+end
+-- the bundles on show (the BUNDLES grid, the featured pick, the hub): ready ones, skin sets not among them unless asked
+function Shop.shown(withSets: boolean?): { Offer }
+	local out = {}
+	for _, b in Shop.bundles do
+		if Shop.ready(b) and (withSets or not b.set) then table.insert(out, b) end
+	end
+	return out
+end
+-- what completing a skin set costs when `missing` of its skins are left: that share of the set's price
+-- (the whole set: its own price). a developer product per set and count, "set_seraph" / "set_seraph:3" (Shop.PRODUCTS)
+function Shop.setPrice(o: Offer, missing: number?): number
+	local total = #(o.items :: { Item })
+	local m = missing or total
+	if m >= total or total == 0 then return o.robux end
+	return math.max(0, math.floor(o.robux * m / total / 10 + 0.5) * 10 - 1)
 end
 
 -- the singles the rotation can show (wraps and hats that are not free and not held back)
@@ -221,25 +349,29 @@ for _, id in GunHatData.ORDER do
 	if id ~= "none" and h and h.rarity ~= "free" then table.insert(Shop.singlesPool, H(id)) end
 end
 
--- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"; or one card look,
--- "border:<id>" / "banner:<id>" / "title:<id>" (no weapon)
+-- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"; one weapon skin,
+-- "skin:<id>" (its weapon is its own: the offer carries it, the id doesn't); or one card look, "border:<id>" /
+-- "banner:<id>" / "title:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
 	if not Shop.exists(kind, id, weapon) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
 	if rarity == "free" then return nil end
-	return { id = kind .. ":" .. id .. (if weapon then "@" .. weapon else ""), type = "single", name = name, rarity = rarity,
-		blurb = "", robux = Shop.singlePrice(kind, id), productId = nil, kind = kind, item = id, weapon = weapon }
+	local oid = if Shop.gunless(kind) then kind .. ":" .. id else kind .. ":" .. id .. "@" .. (weapon :: string)
+	return { id = oid, type = "single", name = name, rarity = rarity,
+		blurb = "", robux = Shop.singlePrice(kind, id), productId = nil, kind = kind, item = id,
+		weapon = if kind == "skin" then Shop.skinWeapon(id) else weapon }
 end
 
--- any offer by id: a container, a bundle, or a single ("wrap:galaxy@smg", "hat:crown@katana", "border:brackets")
+-- any offer by id: a container, a bundle or skin set, or a single ("wrap:galaxy@smg", "hat:crown@katana",
+-- "skin:ar_keytar", "border:brackets")
 function Shop.offer(id: any): Offer?
 	if type(id) ~= "string" then return nil end
 	local o = Shop.byId[id]
-	if o then return o end
+	if o then return if Shop.ready(o) then o else nil end
 	local kind, item, weapon = string.match(id, "^(%a+):([%w_]+)@([%w_]+)$")
-	if kind and item and weapon then return single(kind, item, weapon) end
+	if kind and item and weapon and not Shop.gunless(kind) then return single(kind, item, weapon) end
 	local ck, cid = string.match(id, "^(%a+):([%w_]+)$")
-	if ck and cid and Shop.isCard(ck) then return single(ck, cid, nil) end
+	if ck and cid and Shop.gunless(ck) then return single(ck, cid, nil) end
 	return nil
 end
 
@@ -270,11 +402,12 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 	local hit = rotCache[d]
 	if hit then return hit end
 	local rng = Random.new(d * 7919 + 17)
-	-- (the hero is a bundle with a hero piece: the gun sets, in a fixed cycle)
+	-- (the hero is a bundle with a hero piece: the gun bundles and the skin sets on sale, in a fixed cycle)
 	local heroes = {}
-	for _, b in Shop.bundles do if b.hero then table.insert(heroes, b.id) end end
+	for _, b in Shop.shown(true) do if b.hero then table.insert(heroes, b.id) end end
 	local hero = heroes[(d % #heroes) + 1]
-	-- four wraps and two hats, each for one weapon, at least one epic-or-better, no cosmetic and no weapon twice
+	-- wraps and two hats, each for one weapon, at least one epic-or-better, no cosmetic and no weapon twice; with
+	-- weapon skins in the place one of the six is a skin, and with the player card's looks one is a card look
 	local wraps, hats = {}, {}
 	for _, it in Shop.singlesPool do table.insert(if it.kind == "wrap" then wraps else hats, it) end
 	local weapons = table.clone(Shop.WEAPONS)
@@ -301,9 +434,15 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 			end
 		end
 	end
-	draw(wraps, Shop.DAILY - 2 - (if #cards > 0 then 1 else 0), daily)
+	local skins = {}
+	for _, sid in Shop.liveSkins() do
+		local _, r = Shop.itemInfo("skin", sid)
+		if r ~= "free" then table.insert(skins, "skin:" .. sid) end
+	end
+	draw(wraps, Shop.DAILY - 2 - (if #cards > 0 then 1 else 0) - (if #skins > 0 then 1 else 0), daily)
 	draw(hats, 2, daily)
 	if #cards > 0 then table.insert(daily, cards[rng:NextInteger(1, #cards)]) end
+	if #skins > 0 then table.insert(daily, skins[rng:NextInteger(1, #skins)]) end
 	local best = 0
 	for _, id in daily do
 		local o = Shop.offer(id)
@@ -331,7 +470,8 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 		return a < b
 	end)
 	local r = { hero = hero, daily = daily }
-	rotCache[d] = r
+	-- (the skins on sale are read from the place: a client asking before it has all of it isn't remembered)
+	if game:IsLoaded() then rotCache[d] = r end
 	return r
 end
 
@@ -363,7 +503,7 @@ function Shop.odds(containerId: string, owned: any?): ({ { rarity: string, pct: 
 	end
 	return rows, o
 end
--- nothing in this container is on roblox yet (the crate, until weapon skins land)
+-- nothing in this container is on roblox yet
 function Shop.soon(containerId: string): boolean
 	return LootTable ~= nil and type(LootTable.soon) == "function" and LootTable.soon(containerId) == true
 end
@@ -371,12 +511,16 @@ end
 -- ---------------------------------------------------------------- developer products (off while Shop.ROBUX is false)
 -- when real prices go on: make one developer product per container and bundle on the Creator Hub (Monetization >
 -- Developer Products, priced as `robux` above) and paste its id here. singles share one product per kind and rarity
--- ("wrap:epic", "hat:legendary"): the server remembers which single you asked for (ShopReceipts.server.luau)
+-- ("wrap:epic", "hat:legendary", "skin:epic"): the server remembers which single you asked for
+-- (ShopReceipts.server.luau). a skin set has one product for the whole set ("set_seraph") and one per count of skins
+-- left to complete it ("set_seraph:1" .. ":4", priced as Shop.setPrice)
 Shop.PRODUCTS = {
 	-- crate = 0, bag = 0, spray = 0,
 	-- bundle_nightshift = 0, ...
+	-- set_seraph = 0, ["set_seraph:1"] = 0, ["set_seraph:2"] = 0, ["set_seraph:3"] = 0, ["set_seraph:4"] = 0,
 	-- ["wrap:common"] = 0, ["wrap:rare"] = 0, ["wrap:epic"] = 0, ["wrap:legendary"] = 0,
 	-- ["hat:common"] = 0, ["hat:rare"] = 0, ["hat:epic"] = 0, ["hat:legendary"] = 0,
+	-- ["skin:common"] = 0, ["skin:rare"] = 0, ["skin:epic"] = 0, ["skin:legendary"] = 0,
 } :: { [string]: number }
 Shop.byProduct = {} :: { [number]: string } -- product id -> offer id, or a tier ("wrap:epic")
 for key, pid in Shop.PRODUCTS do
@@ -386,13 +530,16 @@ for key, pid in Shop.PRODUCTS do
 		if o then o.productId = pid end
 	end
 end
--- the developer product an offer is bought with (nil: not for sale for Robux yet)
-function Shop.productFor(o: Offer): number?
+-- the developer product an offer is bought with (nil: not for sale for Robux yet). missing = for a skin set, how
+-- many of its skins the buyer still lacks (fewer than all: the "complete the set" product for that count)
+function Shop.productFor(o: Offer, missing: number?): number?
 	if o.type == "single" then
 		local pid = Shop.PRODUCTS[(o.kind :: string) .. ":" .. o.rarity]
 		return if type(pid) == "number" and pid > 0 then pid else nil
 	end
-	local pid = Shop.PRODUCTS[o.id]
+	local key = o.id
+	if o.set and missing and missing > 0 and missing < #(o.items :: { Item }) then key = o.id .. ":" .. missing end
+	local pid = Shop.PRODUCTS[key]
 	return if type(pid) == "number" and pid > 0 then pid else nil
 end
 
