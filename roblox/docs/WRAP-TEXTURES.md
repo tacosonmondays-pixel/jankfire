@@ -178,7 +178,7 @@ Rooftop v2 and v3 (`HubLook.luau`). The rule for the glow wraps:
 | Neon Hex | the filament in each groove | 3.5 (2.0) |
 | Circuit Board | the traces' centres (mask raised from 0.7 to 1.0) | 3.0 (1.1) |
 | Kintsugi | the gold seams (mask raised from 0.35 to 1.0) | 3.0 (0.6) |
-| Black Hole | the photon ring and the disk's bright arms | 3.0 (1.6) |
+| Black Hole | the photon ring of its one hole (an unlit SurfaceGui at Brightness 3; "One black hole" below); the tile is 1.5 and doesn't bloom | 1.5 (1.6) |
 | Nebula | the four-point twinkles; the gas (at most 0.6) glows under the threshold | 2.8 (1.3) |
 | Tokyo Night | the neon signs' lines | 3.0 (1.6) |
 | Market Crash | the falling line and the candles | 3.0 (1.3) |
@@ -200,6 +200,52 @@ camera, so it is the one to turn down first if anyone finds it loud.
 - Seen once: in the first glow test the SMG showed its bare teal, not Circuit Board, minutes after `circuit_emit`
   was uploaded (it was "Reviewing" then, Approved by the time I checked). The likely cause is a map still in review;
   check `moderationResult` is Approved before judging a freshly uploaded map.
+
+## One black hole (16 Nov 2026)
+
+The owner: "the black hole wrap should have one black hole and like an effect of the wrap being pulled towards it?"
+A wrap's tile repeats every 25 cm of gun (`TILE_M`), so the old Black Hole tile, with two holes drawn in it, showed
+six or more on a rifle. Now:
+
+- **The tile** (`blackhole_color/emit.png`) has no hole: dark violet and ember dust drawn out along the gun, and star
+  streaks stretched into arcs that all bend the same way, as if part of one great swirl. Its glow stays low
+  (`EmissiveStrength` 1.5, nothing over 0.55 in the mask), so only the hole blooms.
+- **The hole** is ONE picture per gun, laid by `WeaponModels.hole` as two SurfaceGuis on one face: of every piece
+  that wears the picture (either half, so the hole sits in the same place on NORMAL, HANDLE, BUSINESS END and FULL),
+  the face that looks to the gun's left (the side first person sees), the biggest, marked down when its piece is
+  behind the `Grip` spot (the stock, out of first person's view) or well below it (the mag, at the screen's bottom
+  edge). The hole is as big as that face is tall and slides to the face's back end, nearest the eye. On the rifle
+  that is the receiver (0.34 studs tall), just above the hand. (First try, 16 Nov: painted pieces only and centred;
+  on NORMAL the rifle's only painted piece with a big left face was the stock, so the hole sat out of view, and on
+  FULL it sat at the receiver's far front, small and edge-on.) `blackhole_decal.png` is LIT (`LightInfluence` 1): the space round the hole wound into a spiral, star
+  streaks winding in, longer and nearly round near the ring (the lensing look), the accretion disk's three hot arms,
+  a faint Einstein ring; opaque in the middle, fading to nothing at its rim so the tile shows round it.
+  `blackhole_hole.png` is UNLIT (`LightInfluence` 0, `Brightness` 3): the black core, the photon ring (brighter on the
+  left, the side whose disk comes towards you, as real ones are) and a thin second image of it, and the disk's
+  orange inner glow. Ring 1.0 x 3 crosses every Bloom threshold; the dim side and the orange glow stay under it.
+- **It moves** (`client/WrapAnim`, every frame, off the shared clock): the spiral turns backwards at 10 degrees a
+  second, which moves every arm inward (the arms are wound so the radius falls as the angle rises), the ring's
+  `Brightness` breathes between 2.6 and 3.4, and a faint orange ripple shrinks from the rim into the ring every
+  2.8 s.
+- **The chip** in the loadout and shop is its own picture (`blackhole_chip.png`: the tile, the decal and the ring
+  together), set as the wrap's `Swatch`.
+- The mechanism is generic: any wrap whose SurfaceAppearance carries `Decal` (and `DecalGlow`) gets one. `WrapBook`
+  sets them from the `decal`, `hole` and `swatch` images a design returns (`more_maps` in `wrap_textures.py`).
+- Traps: a SurfaceGui ignores its part's `LocalTransparencyModifier`, which is how the game hides your own world gun
+  in first person and the viewmodel in third person or scoped, so WrapAnim switches each hole off while its piece
+  is hidden (without it a lone hole floats where the gun is hidden). SurfaceGuis don't draw in a ViewportFrame, so
+  a preview drawn in one shows the tile without the hole (the chip shows it).
+
+## Ducky (VIP, 16 Nov 2026)
+
+For the shop's VIP pack: Roster row `ducky`, legendary, `vip = true` (never in a Spray Can, the shop's rotation or a
+bundle; `LootTable.vipOnly` and the shop read it), owned on every gun with VIP. The Ducky skin set's palette
+(`tools/roblox/gun_sets_ducky.py`): rubber-duck yellow leaning lemon so the warm lamps don't push it to orange, the
+bill orange only on bills, a soft white, a calm bath-water blue only on bubbles. A quiet staggered pattern of little
+ducks in profile, moulded in the same yellow a shade lighter and raised a little (with the set's plump wing and
+three round feather tips), and soap bubbles in the gaps whose rims and highlights glow softly (0.3 to 0.45 x 1.2,
+well under Bloom). Satin. Its accent (the gun's glow pieces) is named in the design (`e0883a`, the bills' orange),
+since the bills are too small a share of the tile to be picked automatically.
 
 ## Redrawing or adding a wrap
 

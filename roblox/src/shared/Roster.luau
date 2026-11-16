@@ -6,7 +6,7 @@ local Roster = {}
 
 export type Stat = { label: string, text: string, bar: number }
 export type Entry = { id: string, slot: string, name: string, color: Color3, desc: string, live: boolean, gimmick: string, stats: { Stat } }
-export type Wrap = { id: string, name: string, rarity: string, pal: { Color3 }, pat: string, mat: string?, refl: number?, tr: number?, neon: { number }? }
+export type Wrap = { id: string, name: string, rarity: string, pal: { Color3 }, pat: string, mat: string?, refl: number?, tr: number?, neon: { number }?, vip: boolean? }
 
 local function hex(h: string): Color3 return Color3.fromHex(h) end
 
@@ -302,5 +302,9 @@ wrap("aurora", "Aurora", "legendary", { "39ff9a", "4fd8ff", "b36bff" }, "fade", 
 wrap("blackhole", "Black Hole", "legendary", { "050508", "ff8a1a" }, "speck", nil, nil, nil, { 2 })
 wrap("stonks", "Market Crash", "legendary", { "111111", "ff3030", "39ff14" }, "speck", nil, nil, nil, { 2, 3 })
 wrap("hex", "Neon Hex", "legendary", { "0a1a2a", "4fd8ff" }, "speck", nil, nil, nil, { 2 })
+-- VIP only (16 Nov 2026, the shop's VIP pack): never in a Spray Can, the shop's rotation or a bundle (LootTable.vipOnly
+-- and the shop read vip); it comes with VIP, on every gun at once. The Ducky skin set's palette (yellow, bill orange)
+wrap("ducky", "Ducky", "legendary", { "d6bc48", "c06a2e" }, "speck", nil, 0.06)
+Roster.wrapById.ducky.vip = true
 
 return Roster

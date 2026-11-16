@@ -54,9 +54,12 @@
    "normal": null,
    "rough": 0.36,
    "metal": 0.0,
-   "emit": "blackhole_emit.png"
+   "emit": "blackhole_emit.png",
+   "decal": "blackhole_decal.png",
+   "hole": "blackhole_hole.png",
+   "swatch": "blackhole_chip.png"
   },
-  "emissive": 3.0,
+  "emissive": 1.5,
   "tint": "ffffff"
  },
  "bowling": {
@@ -253,6 +256,18 @@
    "metal": 0.0,
    "emit": 0.0
   }
+ },
+ "ducky": {
+  "maps": {
+   "color": "ducky_color.png",
+   "normal": "ducky_normal.png",
+   "rough": 0.36,
+   "metal": 0.0,
+   "emit": "ducky_emit.png"
+  },
+  "emissive": 1.2,
+  "tint": "ffffff",
+  "accent": "e0883a"
  },
  "fade": {
   "maps": {

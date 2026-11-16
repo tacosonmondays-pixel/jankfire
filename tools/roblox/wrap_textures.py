@@ -2049,28 +2049,183 @@ def aurora(t: Tex):
 
 @design('blackhole')
 def blackhole(t: Tex):
-    """black hole: a field of stars bent round a black disc, ringed by a swirling orange accretion disk"""
-    n = t.n; r = t.rng
-    t.rgb[:] = hexrgb('06040c')
-    for _ in range(260):
+    """black hole (the owner, 16 Nov: "the black hole wrap should have one black hole and like an effect of the wrap
+       being pulled towards it"). The hole itself is ONE decal per gun, not part of this tile: a tile repeats every
+       25 cm, so a hole in it was several. hole_images (below) draws it; WeaponModels lays it once on the left face of
+       the gun's biggest painted piece and client/WrapAnim turns its spiral inward and breathes its ring. This tile is
+       the space being pulled in, under the decal and over the rest of the gun: dark violet and ember dust drawn out
+       along the gun, and stars stretched into arcs that all bend the same way (part of one great swirl), bright at
+       the head, thin at the tail"""
+    n, U, V = t.n, t.U, t.V
+    t.rgb[:] = hexrgb('07050d')
+    bend = 0.16 * np.sin(TAU * U)
+    d1 = smoothstep(0.08, 0.72, FBM([2, 4, 8], 611, 0.55)(U, (V * 4 + bend) % 1.0))
+    d2 = smoothstep(0.12, 0.78, FBM([2, 4, 8], 612, 0.55)((U + 0.31) % 1.0, (V * 3 - bend) % 1.0))
+    t.fill(d1 * 0.42, '34215f'); t.fill(d2 * 0.28, '7a3414'); t.fill(d1 * d2 * 0.3, 'b8682a')
+    t.emit[:] = np.clip(d1 * d2 * 0.3, 0, 1)
+    r = t.rng
+    S = StarLight(t)
+    for _ in range(420):
+        x, y = r.uniform(0, n), r.uniform(0, n); k = r.uniform() ** 3
+        S.dot(x, y, 1.1 + 0.9 * k, 0.22 + 0.45 * k, star_colour(r))
+    S.done(emit=0.5)
+    for _ in range(120):
         x, y = r.uniform(0, n), r.uniform(0, n)
-        t.shape((x - 4, y - 4, x + 4, y + 4), sd_circle(x, y, r.uniform(0.9, 2.0)), color=['ffffff', 'ffd8a8', 'a8c8ff'][r.integers(0, 3)], emit=0.7)
-    for cx, cy in ((n * 0.3, n * 0.35), (n * 0.78, n * 0.8)):
-        dx = t.X - cx; dx = (dx + n / 2) % n - n / 2
-        dy = t.Y - cy; dy = (dy + n / 2) % n - n / 2
-        rr = np.hypot(dx, dy * 2.4) / 240
-        ang = np.arctan2(dy * 2.4, dx) - 2.2 / (rr + 0.15)
-        arms = 0.5 + 0.5 * np.sin(ang * 3 + rr * 22)
-        disk = smoothstep(1.0, 0.45, rr) * smoothstep(0.32, 0.42, rr)
-        col = mix('ff5a10', 'ffd88a', arms * smoothstep(0.9, 0.4, rr))
-        t.fill(disk * (0.35 + 0.65 * arms), col, emit=1.0)
-        hole = cover(np.hypot(dx, dy) - 70)
-        t.fill(hole, '000000', emit=0.0)
-        t.emit[:] = t.emit * (1 - hole)
-        ringd = np.abs(np.hypot(dx, dy) - 76)
-        t.fill(cover(ringd - 2.5) * 0.9, 'fff0d0', emit=1.0)
-    t.rough[:] = 0.25
-    return {'emissive': 3.0, 'tint': 'ffffff'}   # the photon ring and the disk's bright arms bloom (GLOW, see lava)
+        R = r.uniform(520, 1200); L = r.uniform(40, 150) * (1 + 1.5 * r.uniform() ** 4)
+        a0 = -math.pi / 2 + r.uniform(-0.3, 0.3)       # the head's angle round its arc's centre (the centre below it)
+        cx, cy = x - R * math.cos(a0), y - R * math.sin(a0)
+        w0 = r.uniform(1.3, 2.3); amp = r.uniform(0.45, 0.85); col = hexrgb(star_colour(r))
+        K = 8
+        pts = [(cx + R * math.cos(a0 - L / R * j / K), cy + R * math.sin(a0 - L / R * j / K)) for j in range(K + 1)]
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        X, Y, idx = t.box(min(xs) - 5, min(ys) - 5, max(xs) + 5, max(ys) + 5)
+        a = np.zeros(X.shape, np.float32)
+        for j in range(K):
+            f0, f1 = 1 - j / K, 1 - (j + 1) / K
+            sd = sd_segment(*pts[j], *pts[j + 1], 0.3 + (w0 - 0.3) * f0 ** 1.5, 0.3 + (w0 - 0.3) * f1 ** 1.5)(X, Y)
+            a = np.maximum(a, cover(sd) * (0.25 + 0.75 * f0 ** 1.3))
+        t.paint(idx, a * amp, col, emit=a * amp * 0.55)
+    t.rough[:] = 0.3
+    # (the tile's brightest is 0.55 x 1.5, under every Bloom threshold: the decal's ring is the one thing that blooms)
+    return {'emissive': 1.5, 'tint': 'ffffff', 'more_maps': hole_images(os.path.join(OUT['dir'], 'blackhole'), t)}
+
+
+def hole_images(stem, t: Tex, n=1024, seed=7):
+    """Black Hole's one hole, three images (no text, nothing code-like): <stem>_decal.png, LIT: the space round the
+       hole pulled into a spiral (star streaks that wind in, longer and rounder near the ring, the lensing look; the
+       accretion disk's hot spiral arms), opaque in the middle and fading to nothing at the rim so the tile shows round
+       it; WrapAnim turns it slowly so the spiral reads as falling in. <stem>_hole.png, UNLIT: the black core, the
+       photon ring (brighter on the left, the side whose disk comes towards you) and a thin second image of it, and
+       the disk's inner glow; the SurfaceGui's Brightness (about 3) makes the ring bloom. <stem>_chip.png: both over
+       the tile, for the loadout chip. Arms wind so the radius falls as the image angle rises: theta + k ln r is
+       constant along one, so turning the picture backwards (WrapAnim) moves every arm inwards"""
+    from PIL import Image
+    rng = np.random.default_rng(seed)
+    c = n / 2; R = n / 2; rc = 0.2 * R
+    yy, xx = np.mgrid[0:n, 0:n].astype(np.float32) + 0.5
+    dx, dy = xx - c, yy - c
+    rr = np.hypot(dx, dy); th = np.arctan2(dy, dx)
+    q = rr / R; rd = np.maximum(rr / rc, 1e-3)
+    out_core = smoothstep(1.0, 1.25, rd)
+    Lt = np.zeros((n, n, 3), np.float32)
+    # dust wound into the spiral (violet outside, ember nearer in)
+    us = ((th + 2.4 * np.log(rd)) / TAU * 5) % 1.0
+    vs = (np.log(rd) * 0.45) % 1.0
+    dv = smoothstep(0.1, 0.7, FBM([2, 4, 8], 621, 0.55)(us, vs)) * smoothstep(1.4, 2.2, rd)
+    de = smoothstep(0.15, 0.75, FBM([2, 4, 8], 622, 0.55)((us + 0.4) % 1.0, vs)) * smoothstep(1.3, 1.8, rd) * smoothstep(5.0, 2.0, rd)
+    Lt += (dv * 0.3)[..., None] * hexrgb('4a2e8a') + (de * 0.35)[..., None] * hexrgb('a8461a')
+    # the accretion disk: three hot arms from 1.15 to 2.9 core radii, hottest inside
+    ang = th + 2.6 * np.log(rd)
+    arms = (0.5 + 0.5 * np.cos(3 * ang + 0.8 * np.sin(5 * ang))) ** 1.5
+    disk = smoothstep(1.08, 1.3, rd) * smoothstep(2.9, 1.6, rd)
+    hot = smoothstep(2.6, 1.15, rd)
+    Lt += (disk * (0.2 + 0.8 * arms) * (0.3 + 0.7 * hot))[..., None] * mix('6a240a', 'ffb85a', hot)
+    # a faint Einstein ring (the lensing) a little outside the disk's inner edge
+    Lt += (np.exp(-0.5 * ((rd - 1.55) / 0.02) ** 2) * 0.22)[..., None] * hexrgb('d8c8ff')
+    # star streaks winding in: more of them near the hole, and there they are longer and nearly round
+    for _ in range(520):
+        r0 = rc * 1.3 + (R * 0.97 - rc * 1.3) * rng.uniform() ** 1.6
+        near = rc / r0
+        span = 0.1 + 1.7 * near ** 1.3
+        k = 2.0 + 10.0 * near ** 2.2
+        t0 = rng.uniform(0, TAU)
+        K = 10
+        pts = []
+        for j in range(K + 1):             # j = 0 the tail (outside), j = K the head (inside, leading the fall)
+            a = t0 + span * j / K
+            rj = r0 * math.exp(-(a - t0) / k)
+            pts.append((c + rj * math.cos(a), c + rj * math.sin(a)))
+        xs, ys = [p[0] for p in pts], [p[1] for p in pts]
+        x0, x1 = max(0, int(min(xs)) - 6), min(n, int(max(xs)) + 7)
+        y0, y1 = max(0, int(min(ys)) - 6), min(n, int(max(ys)) + 7)
+        if x1 <= x0 or y1 <= y0: continue
+        X, Y = xx[y0:y1, x0:x1], yy[y0:y1, x0:x1]
+        w0 = 1.2 + 2.0 * rng.uniform() ** 2 + 1.2 * near
+        amp = (0.35 + 0.65 * near ** 0.5) * rng.uniform(0.6, 1.0)
+        col = mix(hexrgb(star_colour(rng)), 'ffd29a', min(1.0, near * 1.6))
+        a = np.zeros(X.shape, np.float32)
+        for j in range(K):
+            sd = sd_segment(*pts[j], *pts[j + 1], 0.3 + (w0 - 0.3) * (j / K) ** 1.5, 0.3 + (w0 - 0.3) * ((j + 1) / K) ** 1.5)(X, Y)
+            a = np.maximum(a, cover(sd) * (0.2 + 0.8 * ((j + 1) / K) ** 1.3))
+        Lt[y0:y1, x0:x1] += (a * amp)[..., None] * col
+    Lt *= out_core[..., None]
+    bg = hexrgb('07050d')
+    A = smoothstep(1.0, 0.62, q)
+    rgb = np.clip(bg + Lt, 0, 1)
+    Image.fromarray(np.concatenate([(rgb * 255 + 0.5).astype(np.uint8), (A[..., None] * 255 + 0.5).astype(np.uint8)], -1), 'RGBA').save(stem + '_decal.png', optimize=True)
+    # the unlit middle
+    core = cover(rr - rc, 1.5)
+    dop = 0.82 + 0.18 * np.cos(th - math.pi)
+    ring = (np.exp(-0.5 * ((rd - 1.04) / 0.022) ** 2) + 0.35 * np.exp(-0.5 * ((rd - 1.13) / 0.014) ** 2)) * dop
+    inner = smoothstep(1.55, 1.08, rd) * smoothstep(1.0, 1.08, rd) * 0.42 + np.exp(-0.5 * ((rd - 1.04) / 0.09) ** 2) * 0.3
+    Iw, Io = np.clip(ring, 0, 1), np.clip(inner, 0, 1)
+    light = Iw[..., None] * hexrgb('fff3dc') + Io[..., None] * hexrgb('ff9a3c') * (1 - Iw[..., None])
+    la = np.clip(Iw + Io * (1 - Iw), 0, 1)
+    ha = 1 - (1 - core) * (1 - la)                       # the core is opaque black, the light sits round it
+    hrgb = light * (1 - core)[..., None] / np.maximum(ha, 1e-4)[..., None]
+    Image.fromarray(np.concatenate([(np.clip(hrgb, 0, 1) * 255 + 0.5).astype(np.uint8), (ha[..., None] * 255 + 0.5).astype(np.uint8)], -1), 'RGBA').save(stem + '_hole.png', optimize=True)
+    # the loadout chip: the tile, the decal over it, the middle over that (the ring at 1.0, as a picture can't glow)
+    chip = np.clip(t.rgb, 0, 1) * (1 - A[..., None]) + rgb * A[..., None]
+    chip = chip * (1 - ha[..., None]) + np.clip(hrgb, 0, 1) * ha[..., None]
+    Image.fromarray((np.clip(chip, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGB').resize((512, 512), Image.LANCZOS).save(stem + '_chip.png', optimize=True)
+    return {'decal': os.path.basename(stem) + '_decal.png', 'hole': os.path.basename(stem) + '_hole.png',
+            'swatch': os.path.basename(stem) + '_chip.png'}
+
+
+def duck(t: Tex, x, y, s=1.0, f=-1):
+    """one little rubber duck in profile, facing left (f = -1) or right: a round body with the set's plump wing on it
+       (three round feather tips at its back, the Ducky skins' motif), a tail tipped up, a round head, an orange
+       bill, a dark round eye. In the body's own yellow a shade lighter and raised a little, so the ducks read as a
+       moulded pattern, not stickers"""
+    body = sd_ellipse(x, y + 10 * s, 52 * s, 32 * s)
+    tail = sd_ellipse(x - f * 47 * s, y - 3 * s, 20 * s, 10 * s, rot=f * 0.6)
+    head = sd_circle(x + f * 29 * s, y - 27 * s, 23 * s)
+    bill = sd_ellipse(x + f * 55 * s, y - 21 * s, 15 * s, 7 * s, rot=-f * 0.12)
+    X, Y, idx = t.box(x - 82 * s, y - 62 * s, x + 82 * s, y + 50 * s)
+    sd = np.minimum(np.minimum(body(X, Y), tail(X, Y)), head(X, Y))
+    a = cover(sd, 1.2)
+    t.paint(idx, a, 'e6cf66', height=a * 2.4, hmode='max')
+    wing = sd_ellipse(x - f * 4 * s, y + 9 * s, 25 * s, 14 * s, rot=f * 0.12)(X, Y)
+    for k in range(3):
+        wing = np.minimum(wing, sd_circle(x - f * (24 + 3 * k) * s, y + (2 + 8 * k) * s, 6.5 * s)(X, Y))
+    t.paint(idx, cover(np.abs(wing) - 1.3 * s) * 0.55 * a, 'b89c38')
+    t.paint(idx, cover(bill(X, Y), 1.2), 'c06a2e', height=1.5, hmode='max')
+    t.paint(idx, cover(sd_circle(x + f * 34 * s, y - 33 * s, 3.6 * s)(X, Y)), '3b3e46')
+
+
+def soap_bubble(t: Tex, x, y, R):
+    """a soap bubble: mostly clear, a pale bath-water rim, one small highlight up-left (as the Ducky skins' bubbles);
+       its rim and highlight glow softly, well under any Bloom threshold"""
+    X, Y, idx = t.box(x - R - 3, y - R - 3, x + R + 3, y + R + 3)
+    d = np.hypot(X - x, Y - y)
+    t.paint(idx, cover(d - R) * 0.12, 'f4f1e0')
+    rim = cover(np.abs(d - R * 0.93) - max(1.1, R * 0.06))
+    t.paint(idx, rim * 0.6, 'd9e6ec', emit=rim * 0.3)
+    hl = cover(np.hypot(X - (x - R * 0.38), Y - (y - R * 0.4)) - max(1.5, R * 0.16))
+    t.paint(idx, hl * 0.9, 'ffffff', emit=hl * 0.45)
+
+
+@design('ducky')
+def ducky(t: Tex):
+    """Ducky (VIP, 16 Nov 2026): the Ducky skin set's palette as a calm wrap. Rubber-duck yellow (leaning lemon, as the
+       set's, so the halls' warm lamps don't push it to orange), a quiet staggered pattern of little ducks moulded in
+       the same yellow a shade lighter with orange bills, and soap bubbles in the gaps, their rims glowing softly. A
+       satin bath-toy sheen. No text, no logos"""
+    n = t.n; r = t.rng
+    t.rgb[:] = hexrgb('d6bc48')
+    t.fill(smoothstep(-0.4, 0.6, FBM([2, 4], 631, 0.5)(t.U, t.V)) * 0.18, 'e2cb5c')   # a moulded toy's soft tonal shift
+    cols, rows = 3, 4
+    centres = []
+    for j in range(rows):
+        for i in range(cols):
+            x = (i + 0.5 + 0.5 * (j % 2)) * n / cols + r.uniform(-10, 10)
+            y = (j + 0.5) * n / rows + r.uniform(-8, 8)
+            duck(t, x, y, s=0.95, f=-1)
+            centres.append((x, y, 120))
+    for x, y in scatter(r, n, 16, 70, taken=centres):
+        soap_bubble(t, x, y, r.uniform(9, 24))
+    t.rough[:] = 0.36
+    return {'emissive': 1.2, 'tint': 'ffffff', 'accent': 'e0883a'}   # (the gun's glow pieces take the bills' orange)
 
 
 @design('stonks')
@@ -2139,13 +2294,19 @@ def hall_comp(rgb):
     return np.clip(rgb + HALL_K * (inv - rgb), 0.0, 1.0)
 
 
+OUT = {'dir': '.'}   # where build() is writing (a design that draws extra images, such as Black Hole's decal, saves there)
+
+
 def build(wid, out_dir):
     t = Tex(seed=seed_of(wid))
+    OUT['dir'] = out_dir
     extra = DESIGNS[wid](t) or {}
+    more = extra.pop('more_maps', {})   # (extra images: decal, hole, swatch; WrapBook sets them as attributes)
     if wid not in HALL_TUNED: t.rgb[:] = hall_comp(t.rgb)
     t.rough[:] = np.where(t.metal < 0.5, np.maximum(t.rough, ROUGH_MIN), t.rough)
     maps = t.save(os.path.join(out_dir, wid))
     rel = {k: (os.path.basename(v) if isinstance(v, str) else v) for k, v in maps.items()}
+    rel.update(more)
     return {'maps': rel, **extra}
 
 

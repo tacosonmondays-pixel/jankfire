@@ -53,6 +53,8 @@ def maps_of(wdir, s):
     e = m.get('emit', 0)
     if isinstance(e, str): out['emit'] = e
     elif e > 0.01: out['emit'] = const_file(wdir, 'emit', round(e * 20) / 20)
+    for k in ('decal', 'hole', 'swatch'):   # (extra pictures, not SurfaceAppearance maps: Black Hole's one hole, its chip)
+        if isinstance(m.get(k), str): out[k] = m[k]
     return out
 
 
@@ -85,10 +87,11 @@ def main():
                 if not e: missing.append(f); gap = True; continue
                 ids[slot] = e['id']
             if gap: continue  # (a wrap goes in the book only once every one of its maps is uploaded)
-            fields = ', '.join('%s = %d' % (k, ids[k]) for k in ('color', 'normal', 'rough', 'metal', 'emit') if k in ids)
+            fields = ', '.join('%s = %d' % (k, ids[k]) for k in ('color', 'normal', 'rough', 'metal', 'emit', 'decal', 'hole', 'swatch') if k in ids)
             mt = s['maps'].get('metal', 0)
             finish = 'SHINY' if (isinstance(mt, str) or mt >= 0.5) else 'GLOWS' if 'emit' in ids else ''
             sec, dark, acc = tones(os.path.join(wdir, s['maps']['color']))
+            acc = s.get('accent', acc)   # (a design may name its accent: Ducky's bill orange is too small a share to be picked)
             rows.append('\t%s = { %s, emissive = %s, tint = "%s", finish = "%s", second = "%s", dark = "%s", accent = "%s" },' % (
                 wid, fields, s.get('emissive', 1), s.get('tint', 'ffffff'), finish, sec, dark, acc))
         out = ['--!nocheck',
@@ -113,7 +116,11 @@ for wid, b in BOOK do
 	sa.EmissiveMaskContent = if b.emit then Content.fromUri(id(b.emit)) else Content.none
 	sa.EmissiveStrength = if b.emit then b.emissive else 0
 	sa.EmissiveTint = Color3.fromHex(b.tint)
-	sa:SetAttribute("Swatch", id(b.color)) -- the loadout's chip shows the colour map
+	sa:SetAttribute("Swatch", id(b.swatch or b.color)) -- the loadout's chip shows the colour map (or its own chip picture)
+	-- one hero picture per gun (Black Hole): WeaponModels lays Decal (lit) and DecalGlow (unlit, it blooms) once, on the
+	-- left face of the gun's biggest painted piece (docs/WRAP-TEXTURES.md, "One black hole")
+	sa:SetAttribute("Decal", if b.decal then id(b.decal) else nil)
+	sa:SetAttribute("DecalGlow", if b.hole then id(b.hole) else nil)
 	sa:SetAttribute("Finish", if b.finish ~= "" then b.finish else nil) -- and this word (GLOWS / SHINY) in its corner
 	-- the wrap as a palette (docs/WRAP-TEXTURES.md, "A wrap is a palette"): Second tints the picture down to a dark tone
 	-- of itself for the other half of the gun, Dark is that tone as one colour (the chip's band), Accent goes on the

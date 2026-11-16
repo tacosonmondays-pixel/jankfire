@@ -1326,5 +1326,37 @@
  "9a12432723943383c5d8e032fdda3b99042f69dc": {
   "file": "circuit_emit.png",
   "id": 119227762991384
+ },
+ "e4a70bae865195e9b6ba46db15bb5521ef8cc8a8": {
+  "file": "blackhole_color.png",
+  "id": 90856116991357
+ },
+ "4ecf3e178ea844edff6303ce74201ca29b79d8c2": {
+  "file": "blackhole_emit.png",
+  "id": 78468801729691
+ },
+ "288bee0e19820946fb39a2ca9024d04050b08b63": {
+  "file": "blackhole_decal.png",
+  "id": 72913230117916
+ },
+ "f1460998ca8940323531b982511256911005da79": {
+  "file": "blackhole_hole.png",
+  "id": 106015049610528
+ },
+ "6fb4ce82a49c5853d8daacde34df03f11eb7245a": {
+  "file": "blackhole_chip.png",
+  "id": 132675876772250
+ },
+ "1f65a82881efeb5729e079c435a3a97f851dec52": {
+  "file": "ducky_color.png",
+  "id": 120690864359569
+ },
+ "0b630eb1f4ae3badc279c823338d29df73c97916": {
+  "file": "ducky_normal.png",
+  "id": 75348588764562
+ },
+ "9aa62409fec8b03758e389e3d5000a979a242938": {
+  "file": "ducky_emit.png",
+  "id": 132516774576453
  }
 }

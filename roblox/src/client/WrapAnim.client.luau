@@ -35,7 +35,7 @@ local SPEC: { [string]: Spec } = {
 	stonks = { k = "breathe", p = 2.0, lo = 0.8, hi = 1.15 },     -- web: the chart scrolling
 	vapor = { k = "breathe", p = 5.0, lo = 0.85, hi = 1.15 },     -- web: the grid scrolling
 	corp = { k = "breathe", p = 2.1, lo = 0.7, hi = 1.1 },        -- web: the smileys pulsing
-	blackhole = { k = "breathe", p = 4.0, lo = 0.8, hi = 1.2 },   -- web: the disk swirling
+	blackhole = { k = "breathe", p = 4.0, lo = 0.8, hi = 1.2 },   -- the streaks; its one hole turns and breathes below
 	lavalamp = { k = "breathe", p = 6.0, lo = 0.75, hi = 1.2 },   -- web: the blobs rising and merging
 	glitch = { k = "drift", p = 5.0, lo = 0.85, hi = 1.1, a = Color3.fromHex("ff8ae8"), b = Color3.fromHex("8ae8ff") },
 	aurora = { k = "drift", p = 9.0, p2 = 5.0, lo = 0.75, hi = 1.15, a = Color3.fromHex("b8ffd8"), b = Color3.fromHex("e2c4ff") },
@@ -81,6 +81,48 @@ local function look(s: Spec, t: number): Look
 	end
 	return {}
 end
+
+-- Black Hole's one hole (WeaponModels.hole, docs/WRAP-TEXTURES.md "One black hole"): every frame the lit spiral turns
+-- backwards, so its arms (wound with the radius falling as the angle rises) move inward and the space reads as falling
+-- in; the unlit ring's Brightness breathes (it blooms all through); and a faint ripple shrinks from the rim down into the
+-- ring every PULSE seconds, fading in and out. Off the shared clock, so every copy turns in step
+local HOLE_TURN = 10 -- degrees a second
+local PULSE = 2.8
+local holes: { [SurfaceGui]: boolean } = {}
+local function addHole(inst: Instance)
+	if inst:IsA("SurfaceGui") and not inst:IsDescendantOf(ReplicatedStorage) then holes[inst] = true end
+end
+for _, g in CS:GetTagged("WrapHole") do addHole(g) end
+CS:GetInstanceAddedSignal("WrapHole"):Connect(addHole)
+CS:GetInstanceRemovedSignal("WrapHole"):Connect(function(inst) holes[inst :: any] = nil end)
+RunService.RenderStepped:Connect(function()
+	if next(holes) == nil then return end
+	local t = workspace:GetServerTimeNow()
+	for g in holes do
+		local p = g.Parent
+		if not p then holes[g] = nil; continue end
+		-- a SurfaceGui ignores its part's LocalTransparencyModifier, the way the game hides your own world gun in first
+		-- person and the viewmodel in third person or scoped: follow it, or a lone hole floats where the gun is hidden
+		local show = p:IsA("BasePart") and p.LocalTransparencyModifier < 0.5 and p.Transparency < 0.99
+		if g.Enabled ~= show then g.Enabled = show end
+		if not show then continue end
+		if g.Name == "WrapHole" then
+			local pic = g:FindFirstChild("Pic")
+			if pic and pic:IsA("ImageLabel") then pic.Rotation = -(t * HOLE_TURN) % 360 end
+		else
+			g.Brightness = 3 + 0.4 * math.sin(TAU * t / 3.2)
+			local pu = g:FindFirstChild("Pulse")
+			local d = g:GetAttribute("D")
+			if pu and pu:IsA("Frame") and type(d) == "number" then
+				local ph = (t / PULSE) % 1
+				local k = 0.95 - 0.74 * ph ^ 1.6 -- (the ring is 0.21 of the picture across; the fall speeds up)
+				pu.Size = UDim2.fromOffset(d * k, d * k)
+				local st = pu:FindFirstChildOfClass("UIStroke")
+				if st then st.Transparency = 1 - 0.55 * math.sin(math.pi * ph) end
+			end
+		end
+	end
+end)
 
 local acc, nearAcc, worst, worstAcc = 0, 0, 0, 0
 RunService.Heartbeat:Connect(function(dt: number)

@@ -372,6 +372,10 @@ local function restore(p: BasePart)
 	if p:IsA("MeshPart") and type(tex) == "string" then p.TextureID = tex end
 	local worn = p:FindFirstChild("WrapSA")
 	if worn then worn:Destroy() end
+	for _, n in { "WrapHole", "WrapHoleGlow" } do
+		local g = p:FindFirstChild(n)
+		if g then g:Destroy() end
+	end
 	local sa = stash[p]
 	if sa then sa.Parent = p; stash[p] = nil end
 	p:SetAttribute("Wrapped", nil)
@@ -397,6 +401,94 @@ local function pieces(m: Instance): { BasePart }
 		end
 	end
 	return out
+end
+
+-- ONE hero picture per gun (Black Hole; the owner, 16 Nov 2026: "the black hole wrap should have one black hole and
+-- like an effect of the wrap being pulled towards it"). A wrap's tile repeats every 25 cm, so a hole drawn in it was
+-- several. A wrap whose picture carries the attributes Decal (lit: the space round the hole wound into a spiral) and
+-- DecalGlow (unlit: the black core and the photon ring, which blooms) gets them once, as two SurfaceGuis on one face:
+-- of every piece that wears the picture (either half, so the hole sits in the same place in every mode), the face that
+-- looks most to the gun's left (the side first person looks at), the biggest, marked down when the piece is behind the
+-- hand (the stock: out of first person's view) or low (the mag: at the screen's bottom edge). It is as big as that face
+-- is tall and slides to the face's back end, nearest the eye (on the rifle: the receiver, just above the hand).
+-- client/WrapAnim turns the spiral inward, breathes the ring and sends a faint ripple down into the hole.
+-- docs/WRAP-TEXTURES.md, "One black hole"
+local HOLE_PPS = 256 -- SurfaceGui pixels per stud
+WeaponModels.HOLE_PPS = HOLE_PPS
+local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAppearance)
+	local left, back, up = -ref.RightVector, -ref.LookVector, ref.UpVector
+	local grip = m:FindFirstChild("Grip", true)
+	local gp = if grip and grip:IsA("Attachment") then grip.WorldPosition else ref.Position
+	local best: BasePart?, bestScore, bestFace, bestN, bestW, bestH = nil, 0, Enum.NormalId.Left, Vector3.zero, 0, 0
+	for _, p in worn do
+		if not (p:IsA("MeshPart") and p:GetAttribute("WrapUV")) then continue end
+		local cf, s = p.CFrame, p.Size
+		local rel = p.Position - gp
+		local wgt = (if rel:Dot(back) > 0.1 then 0.3 else 1) * (if rel:Dot(up) < -0.25 then 0.5 else 1)
+		for _, f in {
+			{ Enum.NormalId.Left, -cf.RightVector, s.Z, s.Y }, { Enum.NormalId.Right, cf.RightVector, s.Z, s.Y },
+			{ Enum.NormalId.Top, cf.UpVector, s.X, s.Z }, { Enum.NormalId.Bottom, -cf.UpVector, s.X, s.Z },
+			{ Enum.NormalId.Front, cf.LookVector, s.X, s.Y }, { Enum.NormalId.Back, -cf.LookVector, s.X, s.Y },
+		} do
+			local n = f[2] :: Vector3
+			if n:Dot(left) > 0.7 and f[3] * f[4] * wgt > bestScore then
+				best, bestScore, bestFace, bestN, bestW, bestH = p, f[3] * f[4] * wgt, f[1], n, f[3], f[4]
+			end
+		end
+	end
+	if not best then return end
+	local d = math.min(bestW, bestH) * HOLE_PPS
+	-- along a side face the canvas's +x runs to the right of someone facing it (-normal x the part's up: on Left, the
+	-- part's +Z); slide the hole that way or back, whichever is the gun's back, as far as it fits
+	local x = 0.5
+	local side = bestFace ~= Enum.NormalId.Top and bestFace ~= Enum.NormalId.Bottom
+	if side and bestW > math.min(bestW, bestH) * 1.15 then
+		local mx = math.min(bestW, bestH) * 0.55 / bestW
+		x = if (-bestN):Cross(best.CFrame.UpVector):Dot(back) > 0 then 1 - mx else mx
+	end
+	for _, spec in { { "WrapHole", pic:GetAttribute("Decal"), false }, { "WrapHoleGlow", pic:GetAttribute("DecalGlow"), true } } do
+		if type(spec[2]) ~= "string" then continue end
+		local g = Instance.new("SurfaceGui")
+		g.Name = spec[1]
+		g.Face = bestFace
+		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
+		g.PixelsPerStud = HOLE_PPS
+		g.LightInfluence = if spec[3] then 0 else 1
+		g.Brightness = if spec[3] then 3 else 1
+		g.ZOffset = if spec[3] then 0.02 else 0.01
+		g.ClipsDescendants = true
+		g:SetAttribute("D", d)
+		local im = Instance.new("ImageLabel")
+		im.Name = "Pic"
+		im.BackgroundTransparency = 1
+		im.Image = spec[2] :: string
+		im.AnchorPoint = Vector2.new(0.5, 0.5)
+		im.Position = UDim2.fromScale(x, 0.5)
+		im.Size = UDim2.fromOffset(d, d)
+		im.ZIndex = 2
+		im.Parent = g
+		if spec[3] then
+			-- the ripple falling in (WrapAnim shrinks it from the rim to the ring and fades it in and out)
+			local pu = Instance.new("Frame")
+			pu.Name = "Pulse"
+			pu.BackgroundTransparency = 1
+			pu.AnchorPoint = Vector2.new(0.5, 0.5)
+			pu.Position = UDim2.fromScale(x, 0.5)
+			pu.Size = UDim2.fromOffset(d * 0.9, d * 0.9)
+			pu.ZIndex = 1
+			local cr = Instance.new("UICorner")
+			cr.CornerRadius = UDim.new(0.5, 0)
+			cr.Parent = pu
+			local st = Instance.new("UIStroke")
+			st.Color = Color3.fromHex("ffb066")
+			st.Thickness = math.max(1, d * 0.008)
+			st.Transparency = 1
+			st.Parent = pu
+			pu.Parent = g
+		end
+		g:AddTag("WrapHole")
+		g.Parent = best
+	end
 end
 
 -- paint a weapon model (or a Tool) with a wrap. nil / "default" takes the wrap off
@@ -510,6 +602,11 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 				p.Color = Color3.new(c.R * 0.35, c.G * 0.35, c.B * 0.35)
 			end
 		end
+	end
+	if pic and unfolded and pic:GetAttribute("Decal") then
+		local worn = {}
+		for _, p in list do if p:FindFirstChild("WrapSA") then table.insert(worn, p) end end
+		hole(m, worn, ref, pic)
 	end
 	local acc = if pic then pic:GetAttribute("Accent") else nil
 	if typeof(acc) == "Color3" then

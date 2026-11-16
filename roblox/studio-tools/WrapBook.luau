@@ -9,7 +9,7 @@ local BOOK = {
 	asanoha = { color = 98075414144150, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "52253a", accent = "d9397b" },
 	aurora = { color = 96348187330767, rough = 86227588438345, emit = 89092985606973, emissive = 1.2, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "151e2b", accent = "5fd9c0" },
 	bigwave = { color = 105129512696996, rough = 110261407730083, emissive = 1, tint = "ffffff", finish = "", second = "686868", dark = "2f333f", accent = "d991c6" },
-	blackhole = { color = 110161156975215, rough = 86227588438345, emit = 137979126721161, emissive = 3.0, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "0f0c11", accent = "d99166" },
+	blackhole = { color = 90856116991357, rough = 86227588438345, emit = 78468801729691, decal = 72913230117916, hole = 106015049610528, swatch = 132675876772250, emissive = 1.5, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "0d0c12", accent = "a29dd9" },
 	bowling = { color = 100199114385723, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "4c4c4c", dark = "3d3126", accent = "d9ae83" },
 	brushed = { color = 85440100733754, rough = 97334785930570, metal = 95597645833170, emissive = 1, tint = "ffffff", finish = "SHINY", second = "494949", dark = "32333a", accent = "c0c4e0" },
 	bubblegum = { color = 87769112375712, normal = 132187704167755, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "515151", dark = "432d3f", accent = "88c5f6" },
@@ -31,6 +31,7 @@ local BOOK = {
 	desert = { color = 117134212940150, rough = 129833091360678, emissive = 1, tint = "ffffff", finish = "", second = "555555", dark = "3a3229", accent = "d9b892" },
 	dice = { color = 105317574433164, normal = 111749295823016, rough = 74319422159760, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "4c232b", accent = "d93550" },
 	digital = { color = 139264590789652, rough = 122441279549464, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "30332a", accent = "d9c7ac" },
+	ducky = { color = 120690864359569, normal = 75348588764562, rough = 86227588438345, emit = 132516774576453, emissive = 1.2, tint = "ffffff", finish = "GLOWS", second = "464646", dark = "3a331b", accent = "e0883a" },
 	fade = { color = 88146409955012, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "5e5e5e", dark = "33314c", accent = "43a8e6" },
 	galaxy = { color = 81606959511190, rough = 86227588438345, emit = 137597014105061, emissive = 1.2, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "0e0c1d", accent = "7f6bd9" },
 	geode = { color = 83470920279332, normal = 116609429761653, rough = 86227588438345, emissive = 1, tint = "ffffff", finish = "", second = "5b5b5b", dark = "3a2e51", accent = "7f55d9" },
@@ -101,7 +102,11 @@ for wid, b in BOOK do
 	sa.EmissiveMaskContent = if b.emit then Content.fromUri(id(b.emit)) else Content.none
 	sa.EmissiveStrength = if b.emit then b.emissive else 0
 	sa.EmissiveTint = Color3.fromHex(b.tint)
-	sa:SetAttribute("Swatch", id(b.color)) -- the loadout's chip shows the colour map
+	sa:SetAttribute("Swatch", id(b.swatch or b.color)) -- the loadout's chip shows the colour map (or its own chip picture)
+	-- one hero picture per gun (Black Hole): WeaponModels lays Decal (lit) and DecalGlow (unlit, it blooms) once, on the
+	-- left face of the gun's biggest painted piece (docs/WRAP-TEXTURES.md, "One black hole")
+	sa:SetAttribute("Decal", if b.decal then id(b.decal) else nil)
+	sa:SetAttribute("DecalGlow", if b.hole then id(b.hole) else nil)
 	sa:SetAttribute("Finish", if b.finish ~= "" then b.finish else nil) -- and this word (GLOWS / SHINY) in its corner
 	-- the wrap as a palette (docs/WRAP-TEXTURES.md, "A wrap is a palette"): Second tints the picture down to a dark tone
 	-- of itself for the other half of the gun, Dark is that tone as one colour (the chip's band), Accent goes on the
