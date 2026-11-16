@@ -121,6 +121,36 @@ L.SKINS = {
 	sat_blimp = { "CCTV Blimp", "epic", "satellite" },
 }
 
+-- the skin sets' skins (Shared.SkinSets: the guns session owns their names, rarities and tiers) join the list above, so a
+-- crate rolls them like any skin once their model is in JankfireSkins (16 Nov, the owner: "can the weapon skins, not all
+-- of them but a couple, be like sets?"). a skin already listed keeps its row
+local skinSets: any = nil
+do
+	local m = script.Parent:FindFirstChild("SkinSets")
+	local ok, S = false, nil
+	if m and m:IsA("ModuleScript") then ok, S = pcall(require, m) end
+	if ok and type(S) == "table" then
+		skinSets = S
+		for id, row in (if type(S.SKINS) == "table" then S.SKINS else {}) do
+			if L.SKINS[id] == nil and type(row) == "table" and type(row[1]) == "string" and type(row[2]) == "string" and type(row[3]) == "string" then
+				L.SKINS[id] = { row[1], row[2], row[3] }
+			end
+		end
+	end
+end
+-- a weapon skin's tier (SkinSets.TIER: basic = small changes to the base gun, mid = a new model, high = a remodel with
+-- its own effects): "basic" / "mid" / "high" and its name, or nil (no tier, or no SkinSets in the place)
+function L.tier(id: string): (string?, string?)
+	local t = skinSets and type(skinSets.TIER) == "table" and skinSets.TIER[id] or nil
+	if type(t) ~= "string" then return nil, nil end
+	local e = type(skinSets.TIERS) == "table" and skinSets.TIERS[t] or nil
+	return t, if type(e) == "table" and type(e.name) == "string" then e.name else t
+end
+-- a high-tier skin's effects spec (SkinSets.FX, played by the client's Fx.skinIdle), or nil
+function L.skinFx(id: string): any
+	return skinSets and type(skinSets.FX) == "table" and skinSets.FX[id] or nil
+end
+
 -- ------------------------------------------------------------------ the catalog: every item that can exist, by type
 -- (only what is on Roblox: wraps from Roster, hats from GunHatData, skins whose model is in the place)
 local function skinsLive(): { [string]: boolean }

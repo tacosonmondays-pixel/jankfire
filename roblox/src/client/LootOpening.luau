@@ -7,9 +7,11 @@
 --   local res = Loot:InvokeServer("open", kind)        -- kind = "crate" | "bag" | "spray"
 --   if res.ok then local how = LootOpening.play(kind, res, { quick = false, again = true }) end
 -- play() YIELDS until the player closes the reveal and returns "done" or "again" (OPEN ANOTHER). LootOpening.busy().
--- several at once (Loot "open", kind, 5 or 10: res.prizes): a row of containers, a quick reel each, then a grid of
--- everything, rarest first, each with EQUIP. Opening.show(data) draws someone ELSE's opening for a bystander (the
--- LootShow event: the container, the pop, the best prize over it with a sign; no reel).
+-- several at once (Loot "open", kind, 5 or 10: res.prizes): they drop round you at full size (a half ring in front for
+-- five, a ring all round for ten: Shared.LootFloor.layout), the camera backs up and off to see them all, each pops in
+-- turn with a quick reel and its prize comes up over it; then a grid of everything, rarest first, each with EQUIP.
+-- Opening.show(data) draws someone ELSE's opening for a bystander (the LootShow event: the same ring, the pops, every
+-- prize over its container with a sign; no reel).
 -- it takes the camera and hides every other ScreenGui while it runs, and gives both back as they were.
 -- the containers are ReplicatedStorage.JankfireLoot.<kind> (Blender, tools/roblox/loot_models.py, PolishBackup.LootImport);
 -- a plain stand-in is built here if they aren't there. look: Theme.luau (dark cards, one amber accent), rarity colours
@@ -43,6 +45,10 @@ function Opening.busy(): boolean return running end
 -- end the opening from outside (the shop closing, a test): it skips to the end and play() returns `answer` ("done")
 function Opening.finish(answer: string?)
 	if current then current.result = answer or "done"; current.skip = true end
+end
+-- SKIP from outside (a test): what SPACE does
+function Opening.skip()
+	if current then current.skip = true end
 end
 
 -- ---------------------------------------------------------------- timing (seconds)
@@ -114,8 +120,9 @@ local function standIn(kind: string): Model
 	m:SetAttribute("Open", if kind == "spray" then "pop" elseif kind == "bag" then "flap" else "hinge")
 	return m
 end
--- a copy of the container, its pivot at the middle of its bottom face, every part quiet
-local function container(kind: string): Model
+-- a copy of the container, its pivot at the middle of its bottom face, every part quiet, at its shown size
+-- (Shared.LootFloor.SIZE: bigger than the model, the owner's "can the bags be larger?") times k
+local function container(kind: string, k: number?): Model
 	local lib = ReplicatedStorage:FindFirstChild("JankfireLoot")
 	local t = lib and lib:FindFirstChild(kind)
 	local m = if t and t:IsA("Model") then t:Clone() else standIn(kind)
@@ -140,7 +147,13 @@ local function container(kind: string): Model
 		local pp = m.PrimaryPart
 		if pp then pp.PivotOffset = pp.CFrame:ToObjectSpace(bottom) else m.WorldPivot = bottom end
 	end
+	local size = (LootFloor.SIZE[kind] or 1) * (k or 1)
+	if math.abs(size - 1) > 1e-3 then pcall(function() m:ScaleTo(m:GetScale() * size) end) end
 	return m
+end
+-- how tall a container stands, shut (its Height at size 1, times the size it's shown at)
+local function heightOf(m: Model): number
+	return ((m:GetAttribute("Height") :: number?) or 2.4) * m:GetScale()
 end
 
 -- ---------------------------------------------------------------- the prize models
@@ -177,6 +190,13 @@ local function prizeModel(item: any): (Model?, string?)
 	if item.type == "skin" then
 		wid = (LootTable.SKINS[item.id] or {})[3]
 		if wid then m = WeaponModels.build(wid, 3, item.id) end
+		-- (a high-tier skin wears its own effects here too: SkinSets.FX, played by Fx.skinIdle)
+		local spec = LootTable.skinFx(item.id)
+		local fxm = script.Parent:FindFirstChild("Fx")
+		if m and spec and fxm then
+			local okF, Fx = pcall(require, fxm)
+			if okF and type(Fx) == "table" and type((Fx :: any).skinIdle) == "function" then pcall((Fx :: any).skinIdle, m, 3, spec) end
+		end
 		if not m then
 			local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 			local t = lib and lib:FindFirstChild(item.id)
@@ -281,6 +301,17 @@ local function card(parent: Instance, item: any, x: number): Frame
 	local wash = new("Frame", { Name = "Wash", BackgroundColor3 = col, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 3 }, pic)
 	new("UIGradient", { Rotation = -90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.45, 1), NumberSequenceKeypoint.new(1, 1) }) }, wash)
 	cardPicture(pic, item)
+	if item.type == "skin" then
+		local tier, tname = LootTable.tier(item.id)
+		if tier then
+			local badge = new("TextLabel", { Name = "Tier", BackgroundColor3 = T.BG, BackgroundTransparency = 0.15, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(14, 14), Size = UDim2.fromOffset(0, 18), AutomaticSize = Enum.AutomaticSize.X,
+				FontFace = T.FONT_BOLD, TextSize = 11, Text = string.upper(tname :: string) .. " TIER",
+				TextColor3 = if tier == "high" then T.ACCENT else T.SOFT, ZIndex = 7 }, c)
+			new("UIPadding", { PaddingLeft = UDim.new(0, 6), PaddingRight = UDim.new(0, 6) }, badge)
+			T.corner(badge, 4)
+		end
+	end
 	local nm = new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, CARD_H - 60), Size = UDim2.fromOffset(CARD_W - 20, 24),
 		FontFace = T.FONT_BOLD, TextSize = 17, Text = item.name or item.id, TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left,
 		TextTruncate = Enum.TextTruncate.AtEnd }, c)
@@ -376,26 +407,82 @@ end
 local function feetOf(ch: Model?): number? return LootFloor.feet(ch) end
 local function floorY(at: Vector3, feetY: number, ignore: { Instance }): number return LootFloor.at(at, feetY, ignore) end
 
-local function ground(): (CFrame?, Vector3)
+-- where they stand: Shared.LootFloor.layout (one ahead of you, turned a little so it reads as a solid thing; five in a
+-- half ring in front; ten in a ring all round; every spot clear of walls and on a floor). the server uses the same for
+-- what others see
+local function ground(kind: string, n: number): (CFrame?, Vector3, any)
 	local ch = me.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then return nil, Vector3.zero end
+	if not ch or not root then return nil, Vector3.zero, nil end
 	local look = (workspace.CurrentCamera :: Camera).CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	flat = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.new(0, 0, -1)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { ch :: Instance }
-	local from = root.Position + Vector3.new(0, 0.5, 0)
-	local dist = 7.5
-	local hit = workspace:Raycast(from, flat * (dist + 2.5), params)
-	if hit then dist = math.max(3.2, hit.Distance - 2.5) end -- (never through a wall)
-	local spot = from + flat * dist
-	local feetY = feetOf(ch) :: number
-	local g = Vector3.new(spot.X, floorY(spot, feetY, { ch :: Instance }), spot.Z)
-	-- the container faces you, turned a little so it reads as a solid thing (a three-quarter view)
-	local cf = CFrame.lookAt(g, g - flat) * CFrame.Angles(0, math.rad(-20), 0)
-	return cf, flat
+	local ok, lay = pcall(LootFloor.layout, ch, flat, kind, n)
+	if not ok or type(lay) ~= "table" or #lay.cfs == 0 then
+		warn("[jankfire] loot layout: " .. tostring(lay))
+		local g = Vector3.new(root.Position.X, (feetOf(ch) :: number), root.Position.Z) + flat * 7.5
+		lay = { cfs = { CFrame.lookAt(g, g - flat) * CFrame.Angles(0, math.rad(-20), 0) }, k = 1 }
+	end
+	if n == 1 then
+		-- (one alone may have moved round from straight ahead (a wall there): the camera works from where it really is)
+		local d = lay.cfs[1].Position - root.Position
+		d = Vector3.new(d.X, 0, d.Z)
+		if d.Magnitude > 0.5 then flat = d.Unit end
+	end
+	return lay.cfs[1], flat, lay
+end
+
+-- what's over your head: the height of the lowest solid thing up to 60 studs over `from` (nil: open sky)
+local function ceilingOver(from: Vector3): number?
+	local ignore = {}
+	for _, pl in Players:GetPlayers() do if pl.Character then table.insert(ignore, pl.Character) end end
+	local hit = LootFloor.ray(from, from + Vector3.new(0, 60, 0), ignore)
+	return if hit then hit.Position.Y else nil
+end
+
+-- a camera that sees every one of these points, from behind (along -flat), looking down `pitch` degrees or more, as
+-- near as it can: under the ceiling over your head, nothing between your head and it, and nothing (a wall, a beam)
+-- between it and most of the `look` points. returns nil when there's no such view (a low ceiling over a wide ring)
+local function frameAll(points: { Vector3 }, look: { Vector3 }, flat: Vector3, pitch: number, fov: number, from: Vector3): CFrame?
+	local cam = workspace.CurrentCamera :: Camera
+	local v = cam.ViewportSize
+	local aspect = if v.Y > 1 then v.X / v.Y else 16 / 9
+	local ignore = {}
+	for _, pl in Players:GetPlayers() do if pl.Character then table.insert(ignore, pl.Character) end end
+	-- (under the ceiling over your head and over every container, and never more than 16 studs over your head: a ring
+	-- of ten needs more than that, so it gets the camera that turns instead of a far view through the hub's beams)
+	local ceil = ceilingOver(from)
+	local capY = math.min(if ceil then ceil - 1.2 else math.huge, from.Y + 16)
+	for _, q in look do
+		local c2 = ceilingOver(q)
+		if c2 then capY = math.min(capY, c2 - 1.2) end
+	end
+	local tv = math.tan(math.rad(fov) / 2) * 0.8 -- (room at the top for the title, at the bottom for the reel)
+	local th = math.tan(math.rad(fov) / 2) * aspect * 0.9
+	for p = pitch, 88, 8 do
+		local fwd = (flat * math.cos(math.rad(p)) - Vector3.yAxis * math.sin(math.rad(p))).Unit
+		local basis = CFrame.lookAt(Vector3.zero, fwd)
+		local r, u = basis.RightVector, basis.UpVector
+		local x0, x1, y0, y1, z = math.huge, -math.huge, math.huge, -math.huge, 0
+		for _, q in points do
+			x0 = math.min(x0, q:Dot(r)); x1 = math.max(x1, q:Dot(r))
+			y0 = math.min(y0, q:Dot(u)); y1 = math.max(y1, q:Dot(u))
+			z += q:Dot(fwd)
+		end
+		local c = r * (x0 + x1) / 2 + u * (y0 + y1) / 2 + fwd * (z / #points)
+		local d = 4
+		for _, q in points do
+			local o = q - c
+			d = math.max(d, math.abs(o:Dot(r)) / th - o:Dot(fwd), math.abs(o:Dot(u)) / tv - o:Dot(fwd))
+		end
+		local eye = c - fwd * (d + 0.6)
+		if eye.Y <= capY and not LootFloor.ray(from, eye, ignore) then
+			local seen = 0
+			for _, q in look do if not LootFloor.ray(eye, q, ignore) then seen += 1 end end
+			if seen >= #look * 0.85 then return CFrame.lookAt(eye, c) end
+		end
+	end
+	return nil
 end
 
 -- ---------------------------------------------------------------- one opening
@@ -404,7 +491,7 @@ type Run = { ui: Ui, kind: string, res: any, opts: any, skip: boolean, skipAt: n
 	cam: { from: CFrame, to: CFrame, t0: number, dur: number, shake: number, shakeT: number, fov: number },
 	blur: BlurEffect, tint: ColorCorrectionEffect, dof: DepthOfFieldEffect, hidden: { [ScreenGui]: boolean },
 	saved: { cf: CFrame, type: Enum.CameraType, fov: number, loadoutOpen: any }, conns: { RBXScriptConnection },
-	spin: number, prizeY: number, prizeFrom: number?, wid: string?, boxes: { any }? }
+	spin: number, prizeY: number, prizeFrom: number?, wid: string?, boxes: { any }?, layout: any }
 
 local function camTo(R: Run, to: CFrame, dur: number)
 	local c = workspace.CurrentCamera :: Camera
@@ -535,8 +622,12 @@ local function fadeOut(models: { Model? }, dur: number)
 end
 
 -- the reel: build the cards, spin, land. returns the winning card
-local function spinReel(R: Run, items: { any }, stop: number, dur: number): Frame
+local function spinReel(R: Run, items: { any }, stop: number, dur: number, low: boolean?): Frame
 	local ui = R.ui
+	local sc = ui.reel:FindFirstChild("Low") :: UIScale?
+	if not sc then sc = new("UIScale", { Name = "Low", Scale = 1 }, ui.reel) end
+	(sc :: UIScale).Scale = if low then 0.68 else 1
+	local y = if low then 905 else 540
 	for _, c in ui.strip:GetChildren() do c:Destroy() end
 	local cards = {}
 	for i, it in items do cards[i] = card(ui.strip, it, (i - 1) * STEP) end
@@ -548,9 +639,9 @@ local function spinReel(R: Run, items: { any }, stop: number, dur: number): Fram
 	local xStart = mid - (2 * STEP + CARD_W / 2) - rng:NextNumber(0, STEP)
 	ui.strip.Position = UDim2.fromOffset(xStart, 28)
 	ui.reel.Visible = true
-	ui.reel.Position = UDim2.fromOffset(960, 580)
+	ui.reel.Position = UDim2.fromOffset(960, y + 40)
 	ui.reel.BackgroundTransparency = 1
-	tw(ui.reel, 0.3, { Position = UDim2.fromOffset(960, 540), BackgroundTransparency = 0.25 })
+	tw(ui.reel, 0.3, { Position = UDim2.fromOffset(960, y), BackgroundTransparency = 0.25 })
 	local t0 = os.clock()
 	local lastIdx = math.floor((mid - xStart) / STEP)
 	local lastTick = 0
@@ -589,7 +680,10 @@ local function restore(R: Run)
 	c.FieldOfView = R.saved.fov
 	R.blur:Destroy(); R.tint:Destroy(); R.dof:Destroy()
 	if R.box then R.box:Destroy() end
-	for _, b in R.boxes or {} do if b.m then b.m:Destroy() end end
+	for _, b in R.boxes or {} do
+		if b.m then b.m:Destroy() end
+		if b.prize then b.prize:Destroy() end
+	end
 	if R.prize then R.prize:Destroy() end
 	R.ui.gui:Destroy()
 	for g in R.hidden do if g.Parent then g.Enabled = true end end
@@ -640,10 +734,51 @@ local function oddsText(kind: string, prizes: { any }): string
 	return "ODDS  " .. LootTable.oddsLine(LootTable.odds(kind, owned))
 end
 
+-- ---------------------------------------------------------------- a prize's sign (a ring's prizes, others' openings)
+-- a small dark plate over a prize: its name in its rarity's colour, then its gun and rarity; `header` (someone else's
+-- opening: who opened what) goes on top
+local function prizeSign(parent: Instance, at: Vector3, item: any, header: string?): BillboardGui
+	local anchor = new("Part", { Name = "PrizeSign", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
+		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = CFrame.new(at) }, parent)
+	local col = rcol(item.rarity)
+	local bb = new("BillboardGui", { Size = UDim2.new(6.6, 0, if header then 2.1 else 1.4, 0), MaxDistance = 160,
+		LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false }, anchor)
+	local plate = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, bb)
+	T.corner(plate, 6)
+	new("UIStroke", { Color = col, Thickness = 1.5, Transparency = 0.2 }, plate)
+	local function line(y: number, h: number, text: string, color: Color3, font: Font)
+		new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromScale(0.05, y), Size = UDim2.fromScale(0.9, h), Text = text,
+			TextColor3 = color, FontFace = font, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center }, plate)
+	end
+	local gun = item.weapon and Roster.byId[item.weapon]
+	local under = (if gun then string.upper(gun.name) .. "  ·  " else "") .. rname(item.rarity)
+	if header then
+		line(0.07, 0.24, header, T.SOFT, T.FONT)
+		line(0.34, 0.36, string.upper(item.name or item.id or ""), col, T.FONT_BOLD)
+		line(0.73, 0.2, under, T.MUTED, T.FONT)
+	else
+		line(0.1, 0.48, string.upper(item.name or item.id or ""), col, T.FONT_BOLD)
+		line(0.62, 0.28, under, T.MUTED, T.FONT)
+	end
+	return bb
+end
+
+-- the longest a prize over a ring may be: the guns mustn't touch their neighbours' as they turn
+local function prizeLength(cfs: { CFrame }): number
+	local near = math.huge
+	for i, a in cfs do
+		for j = i + 1, #cfs do near = math.min(near, (a.Position - cfs[j].Position).Magnitude) end
+	end
+	return math.clamp(near * 0.82, 2.4, 4.6)
+end
+
 -- ---------------------------------------------------------------- several at once (x5, x10)
--- the owner: "make sure you can open multiple". they drop in a row (two rows of five for ten), smaller, one after
--- another; they pop together; a quick reel per prize runs one after another (SKIP: straight to the end); then a grid
--- of everything you got, rarest first, each with EQUIP; OPEN ANOTHER opens the same number again
+-- the owner: "make sure you can open multiple", then "could they open around you": they drop round you at full size
+-- (five in a half ring in front, ten in a ring all round: Shared.LootFloor.layout keeps them off walls and off each
+-- other), one after another, while the camera backs up and off to see them all; then each pops in turn with a quick
+-- reel (low on the screen, the ring stays in view) and its prize comes up over it with a small sign; a moment to look
+-- round them all, then a grid of everything you got, rarest first, each with EQUIP; OPEN n MORE opens as many again.
+-- SKIP: everything left pops and shows at once
 local function runMany(R: Run): string
 	local ui, kind, res = R.ui, R.kind, R.res
 	local info = LootTable.CONTAINERS[kind] or LootTable.CONTAINERS.crate
@@ -654,67 +789,99 @@ local function runMany(R: Run): string
 	ui.odds.Text = oddsText(kind, prizes)
 	tw(ui.title, 0.4, { TextTransparency = 0 }); tw(ui.odds, 0.4, { TextTransparency = 0.1 })
 
-	-- 1. the row
-	local flat = R.flat
-	local right = flat:Cross(Vector3.yAxis)
-	local g = R.base.Position + flat * 2.5
-	local face = CFrame.lookAt(g, g - flat)
-	local probe = container(kind)
-	local _, sz = probe:GetBoundingBox()
-	local fullH = (probe:GetAttribute("Height") :: number?) or 2.4
-	probe:Destroy()
-	-- (sized by the container's footprint, so a row of five is about 12 studs wide whatever it is: the cans stay big)
-	local foot = math.max(sz.X, sz.Z)
-	local k = math.min(1, 12.5 / (5 * foot + 4 * 0.8))
-	local stepX = foot * k + 0.8
-	local stepZ = foot * k + 1.2
+	-- 1. the ring
+	local ch = me.Character
+	local lay = R.layout
+	if type(lay) ~= "table" or type(lay.cfs) ~= "table" or #lay.cfs < 1 then
+		local _, _, l2 = ground(kind, n)
+		lay = l2
+	end
+	local k = lay.k or 1
+	local w, front, back = LootFloor.room(kind, k)
+	local DROP = 12
 	local boxes = {}
 	R.boxes = boxes
 	for i = 1, n do
-		local back = n > 5 and i <= 5
-		local inRow = if n > 5 then (if back then 5 else n - 5) else n
-		local col = if n > 5 and not back then i - 6 else i - 1
-		local x = (col - (inRow - 1) / 2) * stepX
-		local at = face * CFrame.new(x, 0, if back then stepZ else 0) * CFrame.Angles(0, math.rad(-14 + col * 7), 0)
-		-- (each on its own bit of floor: a pad or a step under one of them lifts that one)
-		at = CFrame.new(at.X, floorY(at.Position, g.Y, { me.Character :: Instance }), at.Z) * at.Rotation
-		local b = container(kind)
-		b:ScaleTo(k)
+		local at: CFrame = lay.cfs[i] or lay.cfs[#lay.cfs]
+		local b = container(kind, k)
+		local hgt = heightOf(b)
 		local lp = new("Part", { Name = "Light", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
 			Size = Vector3.new(0.2, 0.2, 0.2) }, b)
-		lp.CFrame = b:GetPivot() * CFrame.new(0, fullH * k + 0.5, 0)
-		local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 8, Shadows = false }, lp)
-		place(b, at, 11)
+		lp.CFrame = b:GetPivot() * CFrame.new(0, hgt + 0.6, 0)
+		local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 11, Shadows = false }, lp)
+		place(b, at, DROP)
 		b.Parent = workspace
 		openBox(b, 0)
-		boxes[i] = { m = b, at = at, t0 = os.clock() + (i - 1) * 0.07, light = light }
+		boxes[i] = { m = b, at = at, h = hgt, t0 = os.clock() + 0.3 + (i - 1) * 0.08, light = light, landed = false }
 	end
-	R.height = fullH * k
-	local eye = g - flat * 8.6 + Vector3.new(0, 5.4, 0)
-	camTo(R, CFrame.lookAt(eye, g + flat * (if n > 5 then 1.2 else 0) + Vector3.new(0, 0.9, 0)), 0.7)
-	R.cam.fov = 62
-	-- they fall one after another, land with a thud (one at the first and one at the last: no rattle of ten) and hop
+	R.height = boxes[1].h
+	local cfs = {}
+	for i, b in boxes do cfs[i] = b.at end
+	local prizeLen = prizeLength(cfs)
+	-- the camera: back and up until it sees every container and what will come out of it
+	local pts = {}
+	for _, b in boxes do
+		for _, o in { Vector3.new(-w / 2, 0, -front), Vector3.new(w / 2, 0, -front), Vector3.new(-w / 2, 0, back), Vector3.new(w / 2, 0, back),
+			Vector3.new(0, b.h + 3.4, 0) } do
+			table.insert(pts, b.at:PointToWorldSpace(o))
+		end
+	end
+	local head = ch and ch:FindFirstChild("Head") :: BasePart?
+	local from = if head then head.Position else R.base.Position + Vector3.new(0, 4, 0)
+	local looks = {}
+	for _, b in boxes do table.insert(looks, b.at.Position + Vector3.new(0, b.h * 0.6, 0)) end
+	local FOV = 62
+	local camCf = frameAll(pts, looks, R.flat, if n > 5 then 56 else 34, FOV, from)
+	-- (no overview, under a ceiling: the camera stands over you, as high as the ceiling lets it, and turns to each
+	-- container as it opens, then once all the way round)
+	local mid = Vector3.zero
+	for _, b in boxes do mid += b.at.Position end
+	mid /= n
+	local rootP = (ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?)
+	local centre = if rootP then Vector3.new(rootP.Position.X, R.base.Position.Y, rootP.Position.Z) else mid
+	local ceil = ceilingOver(from)
+	local eyeH = math.clamp((if ceil then ceil - 1.4 else from.Y + 12) - centre.Y, 5.5, 10)
+	local ringR = 0
+	for _, b in boxes do ringR += (Vector3.new(b.at.X, 0, b.at.Z) - Vector3.new(centre.X, 0, centre.Z)).Magnitude end
+	ringR /= n
+	local function aimAt(dir: Vector3, hgt: number): CFrame
+		dir = Vector3.new(dir.X, 0, dir.Z)
+		dir = if dir.Magnitude > 1e-3 then dir.Unit else R.flat
+		local eye = centre - dir * 3.5 + Vector3.new(0, eyeH, 0)
+		return CFrame.lookAt(eye, centre + dir * ringR + Vector3.new(0, hgt + 0.8, 0))
+	end
+	local function aimBox(i: number): CFrame
+		local b = boxes[i]
+		return aimAt(b.at.Position - centre, b.h)
+	end
+	local orbit = camCf == nil
+	R.cam.fov = if orbit then 68 else FOV
+	camTo(R, if orbit then aimBox(1) else camCf :: CFrame, 0.9)
+	-- they fall one after another round you, land (a thud at the first and the last: no rattle of ten), hop and settle
 	local firstLand, lastLand = false, false
 	while true do
 		local now = os.clock()
 		local done = true
 		for i, b in boxes do
-			local u = (now - b.t0) / 0.36
+			local u = (now - b.t0) / 0.38
 			if R.skip then u = 3 end
 			if u < 1 then
 				done = false
-				local y = 11 * (1 - math.max(0, u) ^ 2)
-				place(b.m, b.at, y, 0.1 * (1 - math.max(0, u)))
+				place(b.m, b.at, DROP * (1 - math.max(0, u) ^ 2), 0.1 * (1 - math.max(0, u)))
 			else
-				local v = (u - 1) * 0.36 / 0.4
+				if not b.landed then
+					b.landed = true
+					if not R.skip then particles(b.at.Position + Vector3.new(0, 0.2, 0), WHITE, "dust") end
+				end
+				local v = (u - 1) * 0.38 / 0.4
 				if v < 1 then
 					done = false
 					place(b.m, b.at, 0.45 * math.sin(v * math.pi) * (1 - v))
 				else
 					place(b.m, b.at, 0)
 				end
-				if i == 1 and not firstLand then firstLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 1, 0.7); shake(R, 0.2) end
-				if i == n and not lastLand and n > 1 then lastLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 0.8, 0.8) end
+				if i == 1 and not firstLand then firstLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 1, 0.7); shake(R, 0.15) end
+				if i == n and not lastLand then lastLand = true; snd({ "loot_land", "bonk" }, b.at.Position, 0.8, 0.8) end
 			end
 			openBox(b.m, 0)
 		end
@@ -722,83 +889,135 @@ local function runMany(R: Run): string
 		RunService.RenderStepped:Wait()
 	end
 	if not R.skip then hold(R, 0.25) end
-	-- 2. they pop together (a ripple, one sound)
-	snd({ "loot_pop", "bigpop", "pop" }, g, 1, 1)
-	particles(g + Vector3.new(0, R.height, 0), Color3.fromRGB(255, 236, 200), "pop")
-	for _, b in boxes do
+
+	-- 2. each in turn: it pops, a quick reel says what's in it, the prize comes up over it with its sign
+	tw(R.blur, 0.4, { Size = 2 })
+	tw(R.tint, 0.4, { Brightness = -0.04, Saturation = -0.3, Contrast = 0.05 })
+	local spinT = 0
+	table.insert(R.conns, RunService.RenderStepped:Connect(function(dt)
+		spinT += dt
+		local now = os.clock()
+		for i, b in boxes do
+			if b.popT and not b.opened then
+				local u = math.clamp((now - b.popT) / b.pt, 0, 1)
+				local s = 1.70158
+				openBox(b.m, if b.arc then u else 1 + (s + 1) * (u - 1) ^ 3 + s * (u - 1) ^ 2)
+				b.light.Brightness = (b.glowTo or 2) + 3 * (1 - u)
+				if u >= 1 then b.opened = true end
+			end
+			local pm = b.prize
+			if pm and pm.Parent then
+				local u = easeOut((now - b.riseT) / 0.55, 3)
+				local y = b.from + (b.top - b.from) * u + math.sin(now * 1.3 + i) * 0.06 * u
+				pm:PivotTo(CFrame.new(b.at.Position + Vector3.new(0, y, 0)) * b.at.Rotation * CFrame.Angles(0, math.pi / 2 + spinT * 0.6 + i * 0.7, 0))
+			end
+		end
+	end))
+	local function pop(i: number)
+		local b = boxes[i]
+		if b.popT then return end
+		b.arc = b.m:GetAttribute("Open") == "pop"
+		b.pt = if R.skip then 0.25 elseif b.arc then 0.7 else 0.45
+		b.popT = os.clock()
 		for _, d in b.m:GetDescendants() do
 			if d:IsA("BasePart") and d.Name == "glow" then d.Transparency = 0; d.Material = Enum.Material.Neon end
 		end
-		b.light.Brightness = 2
-	end
-	local arc = boxes[1].m:GetAttribute("Open") == "pop"
-	local pt = if R.skip then 0.25 elseif arc then 0.8 else 0.5
-	local t0 = os.clock()
-	while true do
-		local all = true
-		for i, b in boxes do
-			local u = math.clamp((os.clock() - t0 - (i - 1) * 0.05) / pt, 0, 1)
-			if u < 1 then all = false end
-			local s = 1.70158
-			openBox(b.m, if arc then u else 1 + (s + 1) * (u - 1) ^ 3 + s * (u - 1) ^ 2)
+		if not R.skip then
+			snd({ "loot_pop", "bigpop", "pop" }, b.at.Position, 0.7, 1 + (i - 1) * 0.02)
+			particles(b.at.Position + Vector3.new(0, b.h, 0), Color3.fromRGB(255, 236, 200), "pop")
 		end
-		if all then break end
-		RunService.RenderStepped:Wait()
 	end
-
-	-- 3. a quick reel per prize, one after another
-	tw(R.blur, 0.4, { Size = 16 })
-	tw(R.tint, 0.4, { Brightness = -0.06, Saturation = -0.5, Contrast = 0.05 })
+	local function show(i: number, item: any)
+		local b = boxes[i]
+		if b.shown then return end
+		b.shown = true
+		local col = rcol(item.rarity)
+		local rank = RANK[item.rarity] or 1
+		b.light.Color = col
+		b.glowTo = 2 + rank
+		if b.opened then b.light.Brightness = b.glowTo end
+		local okM, m = pcall(prizeModel, item)
+		b.from, b.top = b.h, b.h + 2.4
+		if okM and m then
+			pcall(function() m:ScaleTo(m:GetScale() * (prizeLen / 4.6)) end)
+			b.from = b.h + LIFT + halfHeight(m) + 0.1 -- (up from just over the open top: never through it)
+			b.top = math.max(b.h + 2.2, b.from + 0.6)
+			b.riseT = os.clock()
+			m:PivotTo(CFrame.new(b.at.Position + Vector3.new(0, b.from, 0)) * b.at.Rotation)
+			m.Parent = workspace
+			b.prize = m
+		end
+		b.sign = prizeSign(b.m, b.at.Position + Vector3.new(0, b.top + 1.9, 0), item)
+		if rank >= 3 then particles(b.at.Position + Vector3.new(0, b.h + 0.5, 0), col, if rank == 4 then "big" else "pop") end
+	end
 	if not R.result then R.skip = false end
 	for i, prize in prizes do
 		if R.skip then break end
 		ui.title.Text = ("%s  %d / %d"):format(string.upper(info.name), i, n)
+		if orbit then camTo(R, aimBox(i), 0.45) end
+		pop(i)
 		local items = (res.strips or {})[i]
 		local stop = (res.stops or {})[i]
 		if type(items) ~= "table" or type(stop) ~= "number" or not items[stop] then
 			items, stop = {}, 20
 			for j = 1, 24 do items[j] = prize end
 		end
-		local win = spinReel(R, items, stop, 0.95)
+		local win = spinReel(R, items, stop, 0.95, true)
 		local col = rcol(prize.rarity)
 		local stroke = win:FindFirstChildOfClass("UIStroke")
 		if stroke then stroke.Color = col; stroke.Transparency = 0; stroke.Thickness = 3 end
 		tw(new("UIScale", { Scale = 1 }, win), 0.2, { Scale = 1.08 }, Enum.EasingStyle.Back)
-		boxes[i].light.Color = col
-		boxes[i].light.Brightness = 2 + (RANK[prize.rarity] or 1)
+		show(i, prize)
 		local rank = RANK[prize.rarity] or 1
 		-- (a sting only for the big ones: ten chimes in a row would be noise)
 		if rank >= 3 then
 			snd(if rank == 4 then { "loot_win_legendary", "round_end" } else { "loot_win_epic", "round_start" }, nil, 0.9, 1)
-			ui.flash.BackgroundColor3 = col; ui.flash.BackgroundTransparency = 0.78
+			ui.flash.BackgroundColor3 = col; ui.flash.BackgroundTransparency = 0.8
 			tw(ui.flash, 0.6, { BackgroundTransparency = 1 })
 		end
 		hold(R, if rank >= 3 then 0.55 else 0.22)
 	end
-	-- (SKIP: everything lands at once)
-	for i, prize in prizes do
-		boxes[i].light.Color = rcol(prize.rarity)
-		boxes[i].light.Brightness = 2 + (RANK[prize.rarity] or 1)
+	-- (SKIP: everything left pops and shows at once)
+	for i, prize in prizes do pop(i); show(i, prize) end
+	tw(ui.reel, 0.25, { Position = UDim2.fromOffset(960, 960), BackgroundTransparency = 1 })
+	task.delay(0.25, function() ui.reel.Visible = false end)
+	snd({ "loot_win_rare", "ting" }, nil, 0.8, 1)
+	tw(R.blur, 0.4, { Size = 0 })
+	ui.title.Text = ("YOU GOT %d"):format(n)
+	-- a moment to look round the ring at what came out (SKIP: straight on to the list); under a ceiling the camera
+	-- turns once all the way round, starting from the last one
+	if not R.result then R.skip = false end
+	if orbit then
+		local d0 = boxes[n].at.Position - centre
+		local a0 = math.atan2(-d0.X, -d0.Z)
+		local turn = if n > 5 then 2 * math.pi else math.pi * 0.9
+		local t0 = os.clock()
+		local dur = if n > 5 then 4.2 else 2.6
+		while os.clock() - t0 < dur and not R.skip do
+			local u = smooth((os.clock() - t0) / dur)
+			local a = a0 + turn * u
+			camTo(R, aimAt(Vector3.new(-math.sin(a), 0, -math.cos(a)), R.height), 0.01)
+			RunService.RenderStepped:Wait()
+		end
+	else
+		hold(R, 2.2)
 	end
-	ui.reel.Visible = false
 	ui.skip.Visible = false
 	tw(R.blur, 0.4, { Size = 10 })
 	tw(R.tint, 0.4, { Brightness = -0.12, Saturation = -0.35, Contrast = 0.04 })
-	snd({ "loot_win_rare", "ting" }, nil, 0.8, 1)
+	for _, b in boxes do if b.sign then b.sign.Enabled = false end end
 
-	-- 4. everything you got, rarest first, each with EQUIP
+	-- 3. everything you got, rarest first, each with EQUIP
 	local order = table.clone(prizes)
 	table.sort(order, function(a, b)
 		local ra, rb = RANK[a.rarity] or 0, RANK[b.rarity] or 0
 		if ra ~= rb then return ra > rb end
 		return (a.name or "") < (b.name or "")
 	end)
-	ui.title.Text = ("YOU GOT %d"):format(n)
 	local grid = new("Frame", { Name = "Summary", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 0), Size = UDim2.fromOffset(1920, 1080), ZIndex = 5 }, ui.stage)
-	local cols = math.min(5, n)
 	local rows = math.ceil(n / 5)
-	local CW, CH, BH, GX, GY = CARD_W, CARD_H, 38, 22, 26
-	local x0 = 960 - (cols * CW + (cols - 1) * GX) / 2
+	local CW, CH, BH, GY = CARD_W, CARD_H, 38, 26
+	local GX = 22
 	local y0 = 540 - (rows * (CH + BH + 8) + (rows - 1) * GY) / 2 + 10
 	for i, item in order do
 		local r, c = math.floor((i - 1) / 5), (i - 1) % 5
@@ -847,124 +1066,147 @@ local function runMany(R: Run): string
 		RunService.RenderStepped:Wait()
 	end
 
-	-- 5. away
+	-- 4. away: the containers and the prizes shrink into their own footprints and fade, the camera goes home
 	grid:Destroy()
 	tw(R.tint, 0.3, { Brightness = 0, Saturation = 0, Contrast = 0 })
 	tw(R.blur, 0.3, { Size = 0 })
 	local st = os.clock()
 	local sv = R.saved.cf
 	R.cam.from, R.cam.t0, R.cam.dur = cam.CFrame, os.clock(), 0.45
-	local ch = me.Character
 	local h = ch and ch:FindFirstChild("Head") :: BasePart?
 	R.cam.to = if h then CFrame.new(h.Position + Vector3.new(0, 0.1, 0)) * sv.Rotation else sv
 	R.cam.fov = R.saved.fov
 	local all = {}
-	for _, b in boxes do table.insert(all, b.m) end
+	for _, b in boxes do
+		table.insert(all, b.m)
+		if b.prize then table.insert(all, b.prize) end
+	end
 	fadeOut(all, 0.45)
 	while os.clock() - st < 0.45 do RunService.RenderStepped:Wait() end
 	return answer :: string
 end
 
 -- ---------------------------------------------------------------- what others see (LootShow.client.luau)
--- someone near you opened something: their container drops on the ground in front of them, pops, and the best prize
--- rises over it and turns, with a sign: who, what, which gun, its rarity. no reel, one quiet sound, about six seconds.
--- several at once are fine (at most four drawn at a time); far away (more than 170 studs) is not drawn
+-- someone near you opened something: their containers drop where they stand for them (the same ring as theirs: the
+-- server works it out with Shared.LootFloor.layout), pop one after another, and every prize comes up over its
+-- container and turns, with a small sign; the best one's sign says who opened what. no reel, one quiet sound, about
+-- seven seconds. at most four openings drawn at a time; far away (more than 170 studs) is not drawn
 local showing = 0
 local function showOne(d: any)
 	local kind = if LootTable.CONTAINERS[d.kind] then d.kind else "crate"
-	local best = d.prizes[1]
-	for _, q in d.prizes do if (RANK[q.rarity] or 0) > (RANK[best.rarity] or 0) then best = q end end
-	local col = rcol(best.rarity)
-	local box = container(kind)
-	local k = 0.8
-	box:ScaleTo(k)
-	local hgt = ((box:GetAttribute("Height") :: number?) or 2.4) * k
-	local base: CFrame = d.cf
-	place(box, base, 9)
-	box.Parent = workspace
-	openBox(box, 0)
-	local lp = new("Part", { Name = "ShowLight", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
-		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = base * CFrame.new(0, hgt + 0.6, 0) }, box)
-	local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 10, Shadows = false }, lp)
-	local quiet = showing > 2 -- (a crowd of openings: no sound from the extra ones)
-	-- the drop and the hop
-	local t0 = os.clock()
-	while true do
-		local u = (os.clock() - t0) / 0.38
-		if u >= 1 then break end
-		place(box, base, 9 * (1 - u * u))
-		openBox(box, 0)
-		RunService.RenderStepped:Wait()
-	end
-	if not quiet then snd({ "loot_land", "bonk" }, base.Position, 0.45, 0.75) end
-	particles(base.Position + Vector3.new(0, 0.2, 0), WHITE, "dust")
-	t0 = os.clock()
-	while os.clock() - t0 < 0.35 do
-		local v = (os.clock() - t0) / 0.35
-		place(box, base, 0.5 * math.sin(v * math.pi) * (1 - v))
-		openBox(box, 0)
-		RunService.RenderStepped:Wait()
-	end
-	place(box, base, 0)
-	task.wait(0.35)
-	-- the pop
-	for _, x in box:GetDescendants() do
-		if x:IsA("BasePart") and x.Name == "glow" then x.Transparency = 0; x.Material = Enum.Material.Neon end
-	end
-	particles(base.Position + Vector3.new(0, hgt, 0), col, if (RANK[best.rarity] or 0) >= 4 then "big" else "pop")
-	local arc = box:GetAttribute("Open") == "pop"
-	local pt = if arc then 0.8 else 0.45
-	t0 = os.clock()
-	while true do
-		local u = math.min(1, (os.clock() - t0) / pt)
-		local s = 1.70158
-		openBox(box, if arc then u else 1 + (s + 1) * (u - 1) ^ 3 + s * (u - 1) ^ 2)
-		light.Color = col
-		light.Brightness = 5 * (1 - u) + 2.5 * u
-		if u >= 1 then break end
-		RunService.RenderStepped:Wait()
-	end
-	-- the prize over it, and the sign
-	local m = prizeModel(best)
-	local top = hgt + 2.0
-	local from = hgt
-	if m then
-		pcall(function() m:ScaleTo(m:GetScale() * 0.7) end)
-		from = hgt + LIFT + halfHeight(m) + 0.1 -- (up from just over the open top)
-		top = math.max(top, from + 0.5)
-		m.Parent = workspace
-	end
-	local anchor = new("Part", { Name = "ShowSign", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
-		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = base * CFrame.new(0, top + 1.5, 0) }, box)
-	local bb = new("BillboardGui", { Size = UDim2.new(7.5, 0, 2.3, 0), StudsOffset = Vector3.new(0, 0.4, 0), MaxDistance = 150,
-		LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false }, anchor)
-	local plate = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, bb)
-	T.corner(plate, 6)
-	new("UIStroke", { Color = col, Thickness = 1.5, Transparency = 0.2 }, plate)
-	local function line(y: number, h: number, text: string, color: Color3, font: Font)
-		new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromScale(0.04, y), Size = UDim2.fromScale(0.92, h), Text = text,
-			TextColor3 = color, FontFace = font, TextScaled = true, TextXAlignment = Enum.TextXAlignment.Center }, plate)
-	end
 	local info = LootTable.CONTAINERS[kind]
-	local gun = best.weapon and Roster.byId[best.weapon]
-	line(0.06, 0.24, ("%s opened %s"):format(tostring(d.who or "someone"), if (d.n or 1) > 1 then ("%d %s"):format(d.n, string.lower(info.plural)) else "a " .. string.lower(info.name)), T.SOFT, T.FONT)
-	line(0.32, 0.38, string.upper(best.name or best.id or ""), col, T.FONT_BOLD)
-	line(0.72, 0.22, (if gun then string.upper(gun.name) .. "  ·  " else "") .. rname(best.rarity) .. (if (d.n or 1) > 1 then ("  ·  +%d MORE"):format(d.n - 1) else ""), T.MUTED, T.FONT)
-	-- turn it for a while, then everything sinks away
-	local rise0 = os.clock()
-	local face = base.Rotation
-	while os.clock() - rise0 < 4.2 do
-		local u = easeOut((os.clock() - rise0) / 0.6, 3)
-		if m and m.Parent then
-			local y = from + (top - from) * u + math.sin(os.clock() * 1.3) * 0.06
-			m:PivotTo(CFrame.new(base.Position + Vector3.new(0, y, 0)) * face * CFrame.Angles(0, math.pi / 2 + (os.clock() - rise0) * 0.8, 0))
+	local cfs: { CFrame } = {}
+	if type(d.cfs) == "table" then for _, c in d.cfs do if typeof(c) == "CFrame" then table.insert(cfs, c) end end end
+	if #cfs == 0 then cfs = { d.cf } end
+	local count = math.min(#cfs, #d.prizes, 10)
+	local k = math.clamp(tonumber(d.k) or 1, 0.4, 1)
+	local bestI = 1
+	for i = 1, count do
+		if (RANK[d.prizes[i].rarity] or 0) > (RANK[d.prizes[bestI].rarity] or 0) then bestI = i end
+	end
+	local quiet = showing > 2 -- (a crowd of openings: no sound from the extra ones)
+	local nOpened = math.max(count, tonumber(d.n) or 1)
+	local header = ("%s opened %s"):format(tostring(d.who or "someone"),
+		if nOpened > 1 then ("%d %s"):format(nOpened, string.lower(info.plural)) else "a " .. string.lower(info.name))
+	local used = {}
+	for i = 1, count do used[i] = cfs[i] end
+	local prizeLen = prizeLength(used)
+	local boxes = {}
+	for i = 1, count do
+		local box = container(kind, k)
+		local hgt = heightOf(box)
+		local lp = new("Part", { Name = "ShowLight", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
+			Size = Vector3.new(0.2, 0.2, 0.2) }, box)
+		lp.CFrame = box:GetPivot() * CFrame.new(0, hgt + 0.6, 0) -- (before the first move: it goes where the box goes)
+		local light = new("PointLight", { Color = WHITE, Brightness = 0, Range = 10, Shadows = false }, lp)
+		place(box, cfs[i], 9)
+		box.Parent = workspace
+		openBox(box, 0)
+		boxes[i] = { m = box, at = cfs[i], h = hgt, light = light, t0 = os.clock() + (i - 1) * 0.07, landed = false }
+	end
+	-- the drop and the hop
+	local thud = false
+	while true do
+		local done = true
+		for _, b in boxes do
+			local u = (os.clock() - b.t0) / 0.38
+			if u < 1 then
+				done = false
+				place(b.m, b.at, 9 * (1 - math.max(0, u) ^ 2))
+			else
+				if not b.landed then
+					b.landed = true
+					particles(b.at.Position + Vector3.new(0, 0.2, 0), WHITE, "dust")
+					if not thud and not quiet then thud = true; snd({ "loot_land", "bonk" }, b.at.Position, 0.45, 0.75) end
+				end
+				local v = (u - 1) * 0.38 / 0.35
+				if v < 1 then
+					done = false
+					place(b.m, b.at, 0.5 * math.sin(v * math.pi) * (1 - v))
+				else
+					place(b.m, b.at, 0)
+				end
+			end
+			openBox(b.m, 0)
+		end
+		if done then break end
+		RunService.RenderStepped:Wait()
+	end
+	task.wait(0.3)
+	-- the pops, one after another, and every prize over its container, turning
+	local t0 = os.clock()
+	for i, b in boxes do b.popT = t0 + (i - 1) * 0.2 end
+	local endT = t0 + (count - 1) * 0.2 + 4.6
+	while os.clock() < endT do
+		local now = os.clock()
+		for i, b in boxes do
+			if now >= b.popT then
+				local item = d.prizes[i]
+				local col = rcol(item.rarity)
+				if not b.popped then
+					b.popped = true
+					for _, x in b.m:GetDescendants() do
+						if x:IsA("BasePart") and x.Name == "glow" then x.Transparency = 0; x.Material = Enum.Material.Neon end
+					end
+					particles(b.at.Position + Vector3.new(0, b.h, 0), col, if (RANK[item.rarity] or 0) >= 4 then "big" else "pop")
+					b.arc = b.m:GetAttribute("Open") == "pop"
+					b.light.Color = col
+					local okM, m = pcall(prizeModel, item)
+					b.from, b.top = b.h, b.h + 2.4
+					if okM and m then
+						pcall(function() m:ScaleTo(m:GetScale() * (prizeLen / 4.6)) end)
+						b.from = b.h + LIFT + halfHeight(m) + 0.1
+						b.top = math.max(b.h + 2.2, b.from + 0.6)
+						m.Parent = workspace
+						b.prize = m
+					end
+					b.sign = prizeSign(b.m, b.at.Position + Vector3.new(0, b.top + (if i == bestI then 2.2 else 1.9), 0), item, if i == bestI then header else nil)
+				end
+				local u = math.min(1, (now - b.popT) / (if b.arc then 0.8 else 0.45))
+				if not b.opened then
+					local s = 1.70158
+					openBox(b.m, if b.arc then u else 1 + (s + 1) * (u - 1) ^ 3 + s * (u - 1) ^ 2)
+					if u >= 1 then b.opened = true end
+				end
+				b.light.Brightness = 5 * (1 - u) + 2.5 * u
+				local pm = b.prize
+				if pm and pm.Parent then
+					local r = easeOut((now - b.popT) / 0.6, 3)
+					local y = b.from + (b.top - b.from) * r + math.sin(now * 1.3 + i) * 0.06
+					pm:PivotTo(CFrame.new(b.at.Position + Vector3.new(0, y, 0)) * b.at.Rotation * CFrame.Angles(0, math.pi / 2 + (now - b.popT) * 0.8 + i * 0.7, 0))
+				end
+			end
 		end
 		RunService.RenderStepped:Wait()
 	end
-	bb.Enabled = false
-	fadeOut({ box, m }, 0.5)
-	if m then m:Destroy() end
-	box:Destroy()
+	local all = {}
+	for _, b in boxes do
+		if b.sign then b.sign.Enabled = false end
+		table.insert(all, b.m)
+		if b.prize then table.insert(all, b.prize) end
+	end
+	fadeOut(all, 0.5)
+	for _, m in all do m:Destroy() end
 end
 function Opening.show(d: any)
 	if type(d) ~= "table" or typeof(d.cf) ~= "CFrame" or type(d.prizes) ~= "table" or #d.prizes == 0 then return end
@@ -1003,7 +1245,7 @@ local function run(R: Run): string
 	local base = R.base
 	local box = container(kind)
 	R.box = box
-	R.height = (box:GetAttribute("Height") :: number?) or 2.4
+	R.height = heightOf(box)
 	local glow = Instance.new("PointLight")
 	glow.Color = WHITE; glow.Brightness = 0; glow.Range = 12; glow.Shadows = false
 	local lightPart = new("Part", { Name = "Light", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
@@ -1018,9 +1260,9 @@ local function run(R: Run): string
 	local right = flat:Cross(Vector3.yAxis)
 	local look = base.Position + Vector3.new(0, R.height * 0.5, 0)
 	-- (the camera stands a couple of studs in front of you, a little to the side: your own body stays behind it)
-	local eye = base.Position - flat * 5.4 + right * 1.3 + Vector3.new(0, 2.9 + R.height * 0.4, 0)
+	local eye = base.Position - flat * (3.9 + R.height * 0.62) + right * 1.3 + Vector3.new(0, 2.9 + R.height * 0.4, 0)
 	camTo(R, CFrame.lookAt(eye, look), if quick then 0.35 else 0.75)
-	R.cam.fov = 52
+	R.cam.fov = R.saved.fov -- (your own field of view: the framing was made at it)
 	local fall = if quick then 0.28 else TIME.fall
 	local t0 = os.clock()
 	while true do
@@ -1155,7 +1397,7 @@ local function run(R: Run): string
 	end
 	local riseT0 = os.clock()
 	local focus = base.Position + Vector3.new(0, R.prizeY, 0)
-	local eye2 = base.Position - flat * 5.6 + right * 0.9 + Vector3.new(0, R.prizeY + (if prize.type == "hat" then 1.4 else 0.7), 0)
+	local eye2 = base.Position - flat * (5.6 + math.max(0, R.height - 2.4) * 0.5) + right * 0.9 + Vector3.new(0, R.prizeY + (if prize.type == "hat" then 1.4 else 0.7), 0)
 	camTo(R, CFrame.lookAt(eye2, focus - Vector3.new(0, 0.25, 0)), 0.8)
 	R.dof.Enabled = true
 	R.dof.FocusDistance = (eye2 - focus).Magnitude
@@ -1173,7 +1415,12 @@ local function run(R: Run): string
 
 	-- the words and the buttons
 	local tname = LootTable.TYPE_NAMES[prize.type] or "Item"
-	ui.rKind.Text = rname(prize.rarity) .. "  ·  " .. string.upper(tname)
+	local tierName: string? = nil
+	if prize.type == "skin" then
+		local _, tn = LootTable.tier(prize.id)
+		tierName = tn
+	end
+	ui.rKind.Text = rname(prize.rarity) .. "  ·  " .. string.upper(tname) .. (if tierName then "  ·  " .. string.upper(tierName) .. " TIER" else "")
 	ui.rKind.TextColor3 = col
 	ui.rName.Text = string.upper(prize.name or prize.id or "")
 	local we = wid and Roster.byId[wid]
@@ -1241,7 +1488,8 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	if running then return "busy" end
 	if type(res) ~= "table" or not res.ok or type(res.prize or res.item) ~= "table" then return "done" end
 	if not LootTable.CONTAINERS[kind] then kind = "crate" end
-	local base, flat = ground()
+	local count = if type(res.prizes) == "table" and #res.prizes > 1 then #res.prizes else 1
+	local base, flat, lay = ground(kind, count)
 	if not base then return "done" end
 	running = true
 	local cam = workspace.CurrentCamera :: Camera
@@ -1254,7 +1502,7 @@ function Opening.play(kind: string, res: any, opts: any?): string
 		tint = new("ColorCorrectionEffect", { Name = "JankLootTint" }, cam),
 		dof = new("DepthOfFieldEffect", { Name = "JankLootDof", Enabled = false, FarIntensity = 0.75, NearIntensity = 0, InFocusRadius = 4, FocusDistance = 8 }, cam),
 		hidden = {}, saved = { cf = cam.CFrame, type = cam.CameraType, fov = cam.FieldOfView, loadoutOpen = me:GetAttribute("LoadoutOpen") },
-		conns = {}, spin = 0, prizeY = 4, wid = nil, boxes = nil,
+		conns = {}, spin = 0, prizeY = 4, wid = nil, boxes = nil, layout = lay,
 	}
 	-- everything else steps aside: the HUD and menus, your hands (LoadoutOpen = a menu is up: Arsenal, Utility and
 	-- Move hold still), the keys that would open other screens
@@ -1275,6 +1523,12 @@ function Opening.play(kind: string, res: any, opts: any?): string
 	end, false, 3000, Enum.KeyCode.Space, Enum.KeyCode.ButtonA, Enum.KeyCode.L, Enum.KeyCode.B, Enum.KeyCode.G, Enum.KeyCode.Q,
 		Enum.KeyCode.E, Enum.KeyCode.R, Enum.KeyCode.F, Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three, Enum.KeyCode.Four, Enum.KeyCode.Tab)
 	ui.skip.MouseButton1Click:Connect(function() R.skip = true end)
+	-- (the camera's field of view is the opening's while it runs: the settings' FOV and the guns' zoom set it every
+	-- frame, so any change from them is put straight back)
+	local fovNow = cam.FieldOfView
+	table.insert(R.conns, cam:GetPropertyChangedSignal("FieldOfView"):Connect(function()
+		if math.abs(cam.FieldOfView - fovNow) > 0.01 then cam.FieldOfView = fovNow end
+	end))
 	-- the camera: eased moves plus a little shake, every frame after Roblox's own camera
 	RunService:BindToRenderStep("JankLootCam", Enum.RenderPriority.Camera.Value + 6, function()
 		local c = workspace.CurrentCamera :: Camera
@@ -1287,7 +1541,8 @@ function Opening.play(kind: string, res: any, opts: any?): string
 			cf *= CFrame.new(math.sin(t * 71) * k * 0.3, math.sin(t * 83) * k * 0.3, 0) * CFrame.Angles(math.sin(t * 57) * k * 0.02, 0, math.sin(t * 61) * k * 0.02)
 		end
 		c.CFrame = cf
-		c.FieldOfView += (R.cam.fov - c.FieldOfView) * 0.12
+		fovNow += (R.cam.fov - fovNow) * 0.12
+		c.FieldOfView = fovNow
 		local v = c.ViewportSize
 		ui.scale.Scale = math.min(v.X / 1920, v.Y / 1080)
 	end)

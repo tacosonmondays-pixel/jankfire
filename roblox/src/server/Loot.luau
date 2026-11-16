@@ -213,44 +213,42 @@ end
 -- ------------------------------------------------------------------ others see your openings
 -- the owner, 16 Nov: "when they're on the ground, other people can see it and what you get! you can disable that
 -- option in the settings like hide it from other people". after an open, everyone else within SHOW_RANGE studs gets
--- one small event: where the container lands (in front of you, as the server sees you), what it was and what came out.
--- their client draws the container, the pop and the prize over it (no reel). off in Settings = nothing is sent.
-local function spotOf(p: Player, ahead: number?, side: number?): CFrame?
+-- one small event: where the containers land (round you, as the server sees you: Shared.LootFloor.layout, the same
+-- ring your own client drops them in), what they were and what came out. their client draws the containers, the pops
+-- and every prize over its container (no reel). off in Settings = nothing is sent.
+-- (`ahead` / `side` move the middle of the ring: a test from the side)
+local function spotOf(p: Player, kind: string, n: number, ahead: number?, side: number?): any
 	local ch = p.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not root then return nil end
+	if not ch or not root then return nil end
 	local look = root.CFrame.LookVector
 	local flat = Vector3.new(look.X, 0, look.Z)
 	flat = if flat.Magnitude > 1e-3 then flat.Unit else Vector3.new(0, 0, -1)
 	local right = flat:Cross(Vector3.yAxis)
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { ch :: Instance }
-	local from = root.Position + Vector3.new(0, 0.5, 0)
-	local dist = ahead or 7.5
-	local hit = workspace:Raycast(from, flat * (dist + 2.5), params)
-	if hit then dist = math.max(3.2, hit.Distance - 2.5) end
-	local spot = from + flat * dist + right * (side or 0)
-	-- (the floor: Shared.LootFloor, the same rules as the opener's own client uses)
-	local feetY = LootFloor.feet(ch) or (root.Position.Y - 3)
-	local y = LootFloor.at(spot, feetY, { ch :: Instance })
-	local g = Vector3.new(spot.X, y, spot.Z)
-	return CFrame.lookAt(g, g - flat) * CFrame.Angles(0, math.rad(-20), 0)
+	local at = if ahead or side then root.Position + flat * (ahead or 0) + right * (side or 0) else nil
+	local ok, lay = pcall(LootFloor.layout, ch, flat, kind, math.clamp(n, 1, 10), at)
+	if not ok or type(lay) ~= "table" or #lay.cfs == 0 then
+		warn("[jankfire] loot layout: " .. tostring(lay))
+		return nil
+	end
+	return lay
 end
-local function showData(p: Player, kind: string, prizes: { any }, cf: CFrame): any
+local function showData(p: Player, kind: string, prizes: { any }, lay: any): any
 	local list = {}
 	for i, q in prizes do
 		if i > 10 then break end
 		list[i] = { type = q.type, id = q.id, weapon = q.weapon, name = q.name, rarity = q.rarity }
 	end
-	return { uid = p.UserId, who = p.DisplayName, kind = kind, cf = cf, prizes = list, n = #prizes }
+	return { uid = p.UserId, who = p.DisplayName, kind = kind, cf = lay.cfs[1], cfs = lay.cfs, k = lay.k, prizes = list, n = #prizes }
 end
 local function broadcast(p: Player, s: State, kind: string, prizes: { any })
 	local set = s.prof and s.prof.data.settings
 	if type(set) == "table" and set.showOpenings == false then return end
-	local cf = spotOf(p)
-	if not cf or not Show then return end
-	local data = showData(p, kind, prizes, cf)
+	if not Show then return end
+	local lay = spotOf(p, kind, #prizes)
+	if not lay then return end
+	local cf = lay.cfs[1] :: CFrame
+	local data = showData(p, kind, prizes, lay)
 	for _, q in Players:GetPlayers() do
 		if q ~= p then
 			local qr = q.Character and q.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -402,10 +400,12 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			local kind = if type(o.kind) == "string" and LootTable.CONTAINERS[o.kind] then o.kind else "spray"
 			local pool = LootTable.pool(kind)
 			if #pool == 0 or not Show then return { ok = false, why = "nothing to show" } end
-			local cf = spotOf(p, tonumber(o.ahead) or 9, tonumber(o.side) or 6)
-			if not cf then return { ok = false, why = "no character" } end
-			local prizes = {}
 			local count = math.clamp(math.floor(tonumber(o.n) or 1), 1, 10)
+			-- (one: beside you, as before; a ring: round you, unless asked to move it)
+			local lay = if count == 1 then spotOf(p, kind, 1, tonumber(o.ahead) or 9, tonumber(o.side) or 6)
+				else spotOf(p, kind, count, tonumber(o.ahead), tonumber(o.side))
+			if not lay then return { ok = false, why = "no character" } end
+			local prizes = {}
 			for i = 1, count do
 				local q = pool[rng:NextInteger(1, #pool)]
 				if type(o.rarity) == "string" and i == 1 then
@@ -413,7 +413,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 				end
 				prizes[i] = q
 			end
-			(Show :: RemoteEvent):FireClient(p, showData(p, kind, prizes, cf))
+			(Show :: RemoteEvent):FireClient(p, showData(p, kind, prizes, lay))
 			return { ok = true }
 		elseif a == "set" and type(b) == "table" then
 			-- (put an inventory back as it was before a test: { wrap = {keys}, hat = {keys}, skin = {ids} })

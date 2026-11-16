@@ -27,6 +27,16 @@ out; nothing was invented.
 The guns are the 16 live weapons that take paint (`LootTable.weapons`: Roster live, not an item on G; the Shredder
 included). A hat only goes on a gun with a seat for it (`GunHatData.SPOTS`): all 16 today.
 
+**Skin sets and tiers** (16 Nov, the owner: "can the weapon skins, not all of them but a couple, be like sets?").
+The guns session's `Shared/SkinSets.luau` owns the sets (Seraph and Infernal, a Halloween set, a Japanese set: five
+skins each), their names, rarities and tiers. `LootTable` merges `SkinSets.SKINS` into `LootTable.SKINS` when it loads
+(only ids it doesn't have), so the crate rolls a set skin like any other once its model is in `JankfireSkins`. A set
+skin's rarity follows its tier (basic rare, mid epic, high legendary); the older skins keep their web rarities.
+`LootTable.tier(id)` gives every weapon skin's tier (basic: small changes to the base gun; mid: a new model; high: a
+remodel with its own effects). A skin's card has a small "MID TIER" plate in its picture's corner (high in the amber
+accent), the reveal says "LEGENDARY · SKIN · HIGH TIER", and a high-tier prize wears its effects as it turns
+(`SkinSets.FX` through the VFX session's `Fx.skinIdle`).
+
 Free items (the Default / Pink / Wood wraps, the Party Hat and Traffic Cone) belong to everyone and never roll.
 Achievement items (`ach`, e.g. the Golden Sniper) are never in a container.
 
@@ -163,9 +173,16 @@ so they are told apart at a glance; the house amber on the one part the eye shou
 Rivals' cases (the research note) are long, flat rifle cases that open in the 3D lobby with no reel. Ours are
 different shapes on purpose, and the reel is the owner's CS:GO idea.
 
+**Shown bigger than the models.** The owner, 16 Nov: "can the bags be larger? I think they're small or get small when
+you open multiple". Every copy the opening makes is scaled by `LootFloor.SIZE`: the crate 1.25 (3.0 studs tall, 5 wide:
+your waist), the bag 1.4 (2.8 tall, 5.6 long), the can 1.1 (3.9 tall). The templates stay at size 1 (the shop's own
+previews use them). `LootFloor.room(kind)` holds each one's open footprint at its shown size (the crate's lid swinging
+back, the bag's flaps folding out, the can's cap landing beside it) for the ring and the wall checks.
+
 ## The opening (`LootOpening.luau`)
 
-1. **The drop.** The container falls from 15 studs onto the ground 7.5 studs in front of you (never through a wall),
+1. **The drop.** The container falls from 15 studs onto the ground about 7.5 studs in front of you (`LootFloor.layout`
+   with one: if a wall, a rail or a drop is there, it comes in closer or moves round, up to 90° to a side),
    lands with a heavy thud, a dust puff and a small camera shake, then hops twice and rocks. The camera eases round
    to a three-quarter view from your side. The HUD steps aside and your hands go (the same `LoadoutOpen` flag the
    loadout screen uses).
@@ -182,6 +199,9 @@ different shapes on purpose, and the reel is the owner's CS:GO idea.
    as its weapon. Below: the rarity and type, the name, "shown on your …", and **EQUIP ON <GUN>**, **OPEN ANOTHER**,
    **DONE**.
 6. **Away.** The prize goes, the container sinks into the floor, the camera eases back to where it was.
+
+The opening keeps its own field of view while it runs (52° here, 62° to 68° for a ring): the settings' FOV and the
+guns' zoom set the camera's every frame, so any change from them is put straight back until it ends.
 
 **SKIP [SPACE]** (a button too): during the drop and pop it cuts straight to a short reel; during the reel it lands at
 once. `opts.quick = true` (repeat opens) skips the drop's height and the rattle and spins for 1.4 s. A death or a
@@ -211,25 +231,48 @@ opens the rest free. If fewer than n pairs are left you get what there is (`res.
 1.2 s after the last open. The reply keeps the single fields for the first prize and adds `prizes`, `items`, `strips`
 (26 cards each), `stops` and `n`. The shop puts x1 / x5 / x10 on its container card.
 
-`LootOpening.play` with several prizes:
-1. the containers drop one after another (0.07 s apart) in a row in front of you, smaller (two rows of five for ten), with
-   one thud at the first landing and one at the last;
-2. they pop together in a ripple, one sound;
-3. a quick reel per prize (0.95 s) runs one after another, `3 / 10` in the title; each container's light turns its
-   prize's rarity colour; only epic and legendary get a sting and a flash (ten chimes would be noise);
-4. a grid of everything you got, rarest first, each card with **EQUIP** (on its own gun: a wrap, a hat or a skin);
-   **OPEN 10 MORE** and **DONE**.
+`LootOpening.play` with several prizes. The owner, 16 Nov: "instead could they open around you to compensate that": no
+shrinking into a row any more.
+1. **The ring.** They drop one after another (0.08 s apart) round you at full size: five in a half ring in front (45°
+   apart, left to right), ten in a ring all round (36° apart, clockwise from straight ahead), each facing you, as far
+   out as they need not to touch (about 9.5 studs for five crates, 11.3 for ten; the cans come in to 6.5). One thud at
+   the first landing and one at the last, a dust puff under each.
+2. **The camera** eases back and up until it sees every container and the space over it (`frameAll`: from behind you,
+   34° down for five, 56° for ten, as near as fits, field of view 62°). It must stay under the ceiling over your head,
+   with nothing between your head and it and nothing (a wall, a beam) between it and most of the containers; if not,
+   it looks down more steeply. If no such view exists (ten round you under the hub's ring of beams), the camera stands
+   over you, as high as the ceiling lets it (5.5 to 10 studs), turns to each container as it opens, and at the end turns
+   once all the way round the ring.
+3. **In turn.** Each container pops (lid, flaps or cap, its light on) as its quick reel (0.95 s) runs low on the
+   screen, smaller, so the ring stays in view above it, `3 / 10` in the title; when the reel lands, the prize comes up
+   out of that container and turns over it, with a small sign (its name in its rarity colour, its gun and rarity).
+   Only epic and legendary get a sting and a flash (ten chimes would be noise).
+4. **A look round** (2.2 s): every prize turning over its container, "YOU GOT 10".
+5. **The grid** of everything you got, rarest first, each card with **EQUIP** (on its own gun: a wrap, a hat or a skin);
+   **OPEN 10 MORE** and **DONE**. Leaving: containers and prizes shrink into their footprints and fade.
 
-SKIP [SPACE] during the drop cuts to the reels; during the reels it lands every one at once and goes to the grid.
+SKIP [SPACE] during the drop cuts to the reels; during the reels every container left pops and shows its prize at
+once; during the look round it goes to the grid.
+
+**Where they stand: `LootFloor.layout(character, flat, kind, n)`** (shared: the server uses it for what others see).
+The planned spot (angle, radius) is tested first: nothing solid (walked into, or visible) inside the open container's
+space from 0.4 studs over its floor up; nothing solid between you and it (rays at knee and chest height, the knee ones
+to both ends); and a floor a ray can find under it near your feet's height (not a drop or a table top). A blocked spot
+comes in toward you 0.75 studs at a time (no nearer than clear of you); still blocked, the container moves round to the
+nearest free angle (6° steps both ways) where it doesn't touch the ones already placed (their footprints, 0.6 studs
+apart). If they still don't all fit (a cupboard), all of them are made smaller, 15% at a time down to 60%; past that
+they may touch. Invisible zones and prompts don't count as walls. Characters are ignored.
 
 **What others see.** After an open, the server sends one small `LootShow` event (`JankfireRemotes.LootShow`) to every
-other player within 160 studs: who, which container, where it lands (in front of you, as the server sees you), and the
-prizes. `LootShow.client.luau` hands it to `LootOpening.show`, which draws, for about six seconds:
-- the container (a little smaller) dropping onto the ground, a hop and a dust puff, one quiet positional thud;
-- the pop, in the best prize's rarity colour;
-- the best prize rising over it and turning (on its gun), with a sign: "<name> opened a Spray Can" (or "10 spray cans"),
-  the prize's name in its rarity colour, then "<GUN> · <RARITY>" and "+9 MORE" for a batch;
-- then it all sinks away.
+other player within 160 studs: who, which container, where they land (`cfs`: the same `LootFloor.layout` ring round
+you, as the server sees you, and its scale `k`), and the prizes. `LootShow.client.luau` hands it to `LootOpening.show`,
+which draws, for about seven seconds:
+- the containers, full size, dropping round the opener one after another, a hop and a dust puff each, one quiet
+  positional thud;
+- the pops, 0.2 s apart, each in its prize's rarity colour;
+- every prize rising over its container and turning (on its gun), each with a small sign (its name in its rarity colour,
+  "<GUN> · <RARITY>"); the best one's sign also says "<name> opened 10 spray cans" (or "a spray can");
+- then it all shrinks away.
 No reel, at most four drawn at once, nothing further than 170 studs, no sound from the extra ones in a crowd.
 
 **The setting.** Settings (P) has **SHOW MY OPENINGS** (on by default). It's a row added by its own script
