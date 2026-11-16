@@ -20,7 +20,7 @@ local GunHats = require(Shared:WaitForChild("GunHats"))
 local GunSkins = require(Shared:WaitForChild("GunSkins"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
-local Loot = require(script.Parent:WaitForChild("Loot")) -- (what you own: wraps and hats are won from Spray Cans and Duffel Bags)
+local Loot = require(script.Parent:WaitForChild("Loot")) -- (what you own: wraps and hats are won from Spray Cans and Duffel Bags, one gun at a time)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
@@ -44,11 +44,11 @@ end
 -- the Shredder's wrap and hat, if you own them (Loot.owns; a saved pick you don't own stays saved but isn't worn)
 local function ownedWrap(p: Player, d: Data?): { id: string, mode: string }?
 	local w = d and d.wraps.shredder
-	return if w and Loot.owns(p, "wrap", w.id) then w else nil
+	return if w and Loot.owns(p, "wrap", w.id, "shredder") then w else nil
 end
 local function ownedHat(p: Player, d: Data?): string?
 	local h = d and d.hats.shredder
-	return if h and Loot.owns(p, "hat", h) then h else nil
+	return if h and Loot.owns(p, "hat", h, "shredder") then h else nil
 end
 local function list(d: Data): { string }
 	return { d.pick.primary, d.pick.secondary, d.pick.melee }
@@ -67,11 +67,11 @@ local function publish(p: Player)
 	p:SetAttribute("LoadoutNext", table.concat(slots(d), ","))
 	local parts = {}
 	-- (only what you own is worn: a saved pick you don't own stays saved, and goes on the moment you win it)
-	for wid, w in d.wraps do if Loot.owns(p, "wrap", w.id) then table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end end
+	for wid, w in d.wraps do if Loot.owns(p, "wrap", w.id, wid) then table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end end
 	table.sort(parts)
 	p:SetAttribute("Wraps", table.concat(parts, ";"))
 	local hats = {}
-	for wid, h in d.hats do if Loot.owns(p, "hat", h) then table.insert(hats, wid .. "=" .. h) end end
+	for wid, h in d.hats do if Loot.owns(p, "hat", h, wid) then table.insert(hats, wid .. "=" .. h) end end
 	table.sort(hats)
 	p:SetAttribute("Hats", table.concat(hats, ";"))
 	local skins = {}
@@ -214,8 +214,8 @@ local function load(p: Player)
 	if ok then
 		-- (what you wore before wraps and hats had to be won stays yours: Loot.grandfather, once per player)
 		local old = {}
-		for _, w in d.wraps do table.insert(old, { type = "wrap", id = w.id }) end
-		for _, h in d.hats do table.insert(old, { type = "hat", id = h }) end
+		for wid, w in d.wraps do table.insert(old, { type = "wrap", id = w.id, weapon = wid }) end
+		for wid, h in d.hats do table.insert(old, { type = "hat", id = h, weapon = wid }) end
 		Loot.grandfather(p, old)
 	end
 	publish(p)
@@ -284,7 +284,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "no paint on vapourware" end
 		if e.slot == "utility" then return false, "items don't take paint" end
 		if not Roster.wrapById[b] or not table.find(Roster.MODES, c) then return false, "that wrap doesn't exist" end
-		if not Loot.owns(p, "wrap", b) then return false, "you don't own that one yet. it's in spray cans" end
+		if not Loot.owns(p, "wrap", b, a) then return false, "you don't own that one for this gun yet. it's in spray cans" end
 		if b == "default" and c == "normal" then d.wraps[a] = nil else d.wraps[a] = { id = b, mode = c } end
 		changed(p)
 		-- paint: right away (it's only a look), on what others see in your hand and on the Shredder
@@ -298,7 +298,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "no hats on vapourware" end
 		if e.slot == "utility" then return false, "items don't wear hats" end
 		if not GunHats.valid(b) then return false, "that hat doesn't exist" end
-		if b ~= "none" and not Loot.owns(p, "hat", b) then return false, "you don't own that one yet. it's in duffel bags" end
+		if b ~= "none" and not Loot.owns(p, "hat", b, a) then return false, "you don't own that one for this gun yet. it's in duffel bags" end
 		local was = d.hats[a]
 		d.hats[a] = if b == "none" then nil else b
 		if was == d.hats[a] then return true, nil end

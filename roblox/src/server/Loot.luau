@@ -1,10 +1,12 @@
 --!strict
 -- LOOT: what you own (wraps, hats, skins), how many Crates / Duffel Bags / Spray Cans you have, and opening them.
+-- a wrap or a hat is owned for ONE gun (the owner, 16 Nov: "spray cans should give you a wrap for only one gun at a
+-- time! some with the charms/hats"): keys "<id>@<weapon>" (LootTable.key); a weapon skin is already one gun's.
 -- the server owns all of it: rolls happen here only, with the web game's weights (Shared.LootTable.roll), and every
 -- player's things live in one session-locked save (Profiles.luau: one server writes it at a time).
 --
 -- the remote ReplicatedStorage.JankfireRemotes.Loot (RemoteFunction), always answers a table { ok, why?, ... }:
---   ("inventory")          -> { free, robux, restricted, stock, owned = { wrap = {ids}, hat = {ids}, skin = {ids} },
+--   ("inventory")          -> { free, robux, restricted, stock, owned = { wrap = {"id@gun"}, hat = {"id@gun"}, skin = {ids} },
 --                               left = { kind = n }, soon = { kind = bool }, save = "loading"|"cloud"|"off"|"lost", dev }
 --   ("buy", offerId, n?)   -> a shop offer (Shared.Shop): "crate" / "bag" / "spray" = n containers into your stock;
 --                             "bundle_<name>" = its items; "wrap:<id>" / "hat:<id>" = one item from today's rotation.
@@ -38,7 +40,8 @@ local changed = Instance.new("BindableEvent")
 Loot.changed = changed.Event -- (player): what they own changed (the loadout republishes)
 
 local store = Profiles.new("JankfireLoot_v1", function()
-	return { v = 1, inv = { wrap = {}, hat = {}, skin = {} }, stock = { crate = 0, bag = 0, spray = 0 },
+	-- (v 2: wraps and hats are "<id>@<weapon>" pairs; v 1 had bare ids, owned on every gun: migrate() below)
+	return { v = 2, inv = { wrap = {}, hat = {}, skin = {} }, stock = { crate = 0, bag = 0, spray = 0 },
 		opened = { crate = 0, bag = 0, spray = 0 }, receipts = {}, since = os.time() }
 end)
 
@@ -48,24 +51,52 @@ local st: { [Player]: State } = {}
 local rng = Random.new()
 
 -- ------------------------------------------------------------------ what you own
+-- (wraps and hats are owned one gun at a time: their keys are "<id>@<weapon>"; a skin's key is its id)
 local function sets(data: any): { [string]: { [string]: boolean } }
 	local out = {}
 	for _, t in TYPES do
 		out[t] = {}
 		local list = data.inv[t]
 		if type(list) == "table" then
-			for _, id in list do if type(id) == "string" and LootTable.info(t, id) then out[t][id] = true end end
+			for _, k in list do
+				local i = LootTable.pairInfo(t, k)
+				if i then out[t][i.key] = true end
+			end
 		end
 	end
 	return out
 end
 
-function Loot.owns(p: Player, t: string, id: string): boolean
+-- a save from before wraps and hats were won one gun at a time (v 1: bare ids, worn on every gun) becomes pairs on
+-- every gun that takes it, so nobody loses anything (16 Nov 2026: only that day's test saves had v 1)
+local function migrate(data: any)
+	if (tonumber(data.v) or 1) >= 2 then return end
+	for _, t in { "wrap", "hat" } do
+		local out, seen = {}, {}
+		for _, k in (if type(data.inv[t]) == "table" then data.inv[t] else {}) do
+			local id, w = LootTable.split(k)
+			local guns = if w then { w } else LootTable.weapons(t)
+			for _, g in guns do
+				local i = LootTable.pairInfo(t, LootTable.key(t, id :: string, g))
+				if i and not seen[i.key] then seen[i.key] = true; table.insert(out, i.key) end
+			end
+		end
+		data.inv[t] = out
+	end
+	data.v = 2
+end
+
+-- does this player own this cosmetic on this gun? free things: yes, everywhere. no gun given: on any gun
+function Loot.owns(p: Player, t: string, id: string, weapon: string?): boolean
 	if LootTable.isFree(t, id) then return true end
 	local s = st[p]
-	if s and s.devAll and LootTable.info(t, id) then return true end -- (the owner's Studio "unlock": this session only)
-	local set = s and s.owned[t]
-	return set ~= nil and set[id] == true
+	if not s then return false end
+	if s.devAll and LootTable.info(t, id) then return true end -- (the owner's Studio "unlock": every pair, this session only)
+	local set = s.owned[t]
+	if not set then return false end
+	if t == "skin" or weapon then return set[LootTable.key(t, id, weapon)] == true end
+	for k in set do if LootTable.split(k) == id then return true end end
+	return false
 end
 function Loot.ready(p: Player): boolean
 	local s = st[p]
@@ -102,10 +133,22 @@ end
 
 local function give(s: State, it: LootTable.Item)
 	local d = (s.prof :: Profiles.Profile).data
+	local key = LootTable.key(it.type, it.id, it.weapon)
 	d.inv[it.type] = d.inv[it.type] or {}
-	table.insert(d.inv[it.type], it.id)
+	table.insert(d.inv[it.type], key)
 	s.owned[it.type] = s.owned[it.type] or {}
-	s.owned[it.type][it.id] = true
+	s.owned[it.type][key] = true
+end
+-- the pairs a shop item stands for: { kind, id, weapon } is one pair; with no weapon (an old-style bundle) every gun
+local function pairsOf(it: any): { LootTable.Item }
+	local out = {}
+	if type(it) ~= "table" or type(it.kind) ~= "string" or type(it.id) ~= "string" then return out end
+	local guns = if it.kind == "skin" then { "" } elseif type(it.weapon) == "string" then { it.weapon } else LootTable.weapons(it.kind)
+	for _, g in guns do
+		local i = LootTable.pairInfo(it.kind, LootTable.key(it.kind, it.id, if g ~= "" then g else nil))
+		if i then table.insert(out, i) end
+	end
+	return out
 end
 
 -- the place's owner, in Studio only (the test tools)
@@ -141,10 +184,11 @@ local function grantOffer(s: State, o: any, n: number?): { LootTable.Item }
 	local c = catalog()
 	local items = if c and type(c.contents) == "function" then c.contents(o) else {}
 	for _, it in items do
-		local i = LootTable.info(it.kind, it.id)
-		if i and i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.id]) then
-			give(s, i)
-			table.insert(got, i)
+		for _, i in pairsOf(it) do
+			if i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then
+				give(s, i)
+				table.insert(got, i)
+			end
 		end
 	end
 	return got
@@ -204,13 +248,15 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		if not Config.LOOT_FREE and (o.robux or 0) > 0 then return { ok = false, why = "the shop is shut" } end
 		if o.type ~= "container" and c and type(c.contents) == "function" then
 			local missing = 0
-			for _, it in c.contents(o) do if not Loot.owns(p, it.kind, it.id) then missing += 1 end end
+			for _, it in c.contents(o) do
+				for _, i in pairsOf(it) do if i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then missing += 1 end end
+			end
 			if missing == 0 then return { ok = false, why = "you have all of that already" } end
 		end
 		local got = grantOffer(s, o, n)
 		touch(p, s, if o.type == "container" then 10 else 3)
 		local items = {}
-		for _, i in got do table.insert(items, { kind = i.type, type = i.type, id = i.id, name = i.name, rarity = i.rarity }) end
+		for _, i in got do table.insert(items, { kind = i.type, type = i.type, id = i.id, weapon = i.weapon, key = i.key, name = i.name, rarity = i.rarity }) end
 		return { ok = true, stock = stockOf(s), items = items }
 
 	elseif op == "open" then
@@ -230,9 +276,9 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		touch(p, s, 3)
 		local cards, stop = LootTable.strip(a, prize, rng)
 		local strip = table.create(#cards)
-		for i, c in cards do strip[i] = { type = c.type, id = c.id, name = c.name, rarity = c.rarity } end
-		return { ok = true, prize = { type = prize.type, id = prize.id, name = prize.name, rarity = prize.rarity, kind = a, weapon = prize.weapon },
-			item = { kind = prize.type, id = prize.id, name = prize.name, rarity = prize.rarity },
+		for i, c in cards do strip[i] = { type = c.type, id = c.id, weapon = c.weapon, key = c.key, name = c.name, rarity = c.rarity } end
+		return { ok = true, prize = { type = prize.type, id = prize.id, weapon = prize.weapon, key = prize.key, name = prize.name, rarity = prize.rarity, kind = a },
+			item = { kind = prize.type, id = prize.id, weapon = prize.weapon, key = prize.key, name = prize.name, rarity = prize.rarity },
 			strip = strip, stop = stop, stock = stockOf(s), usedStock = have > 0 }
 
 	elseif op == "dev" then
@@ -249,12 +295,15 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		elseif a == "stock" then
 			addStock(s, { crate = 5, bag = 5, spray = 5 })
 		elseif a == "set" and type(b) == "table" then
-			-- (put an inventory back as it was before a test: { wrap = {ids}, hat = {ids}, skin = {ids} })
+			-- (put an inventory back as it was before a test: { wrap = {keys}, hat = {keys}, skin = {ids} })
 			local inv = { wrap = {}, hat = {}, skin = {} }
 			for _, t in TYPES do
 				local list = (b :: any)[t]
 				if type(list) == "table" then
-					for _, id in list do if LootTable.info(t, id) and not table.find(inv[t], id) then table.insert(inv[t], id) end end
+					for _, k in list do
+						local i = LootTable.pairInfo(t, k)
+						if i and not table.find(inv[t], i.key) then table.insert(inv[t], i.key) end
+					end
 				end
 			end
 			d.inv = inv
@@ -323,7 +372,7 @@ end
 -- wraps and hats were free to wear before they had to be won: whatever is in your saved loadout (Loadout.luau hands it
 -- over when it loads) becomes yours, once per player (data.migrated), so turning ownership on took nothing off anyone.
 -- after that the loadout only saves what you own, so this can never give anything new
-local oldPicks: { [Player]: { { type: string, id: string } } } = {}
+local oldPicks: { [Player]: { { type: string, id: string, weapon: string? } } } = {}
 local function applyOld(p: Player, s: State)
 	local items = oldPicks[p]
 	local prof = s.prof
@@ -331,13 +380,13 @@ local function applyOld(p: Player, s: State)
 	oldPicks[p] = nil
 	if prof.data.migrated then return end
 	for _, x in items do
-		local i = LootTable.info(x.type, x.id)
-		if i and i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.id]) then give(s, i) end
+		local i = LootTable.pairInfo(x.type, LootTable.key(x.type, x.id, x.weapon))
+		if i and i.rarity ~= "free" and not (s.owned[i.type] and s.owned[i.type][i.key]) then give(s, i) end
 	end
 	prof.data.migrated = true
 	touch(p, s, 5)
 end
-function Loot.grandfather(p: Player, items: { { type: string, id: string } })
+function Loot.grandfather(p: Player, items: { { type: string, id: string, weapon: string? } })
 	oldPicks[p] = items
 	local s = st[p]
 	if s and s.ready then applyOld(p, s) end
@@ -358,6 +407,7 @@ local function added(p: Player)
 	if not prof then return end
 	if st[p] ~= s then Profiles.release(store, prof); return end
 	s.prof = prof
+	migrate(prof.data)
 	s.owned = sets(prof.data)
 	s.ready = true
 	prof.onLost.Event:Connect(function()

@@ -7,13 +7,15 @@
 --   bag:   the Duffel Bag: hats (live), effects, kill effects, grapples (not on Roblox yet).
 --   spray: the Spray Can (the web game's Box): wraps (live), sprays (not on Roblox yet).
 -- free items are owned by everyone and never roll; `ach` items (achievement rewards) are never in a container.
--- a roll never gives what you already own: pick a rarity by weight among the rarities you still have something left
--- in, then any item of that rarity you don't own (web rollPick). so the odds below depend on what you own.
+-- a wrap or a hat is won for ONE gun (the owner, 16 Nov): what you own is (cosmetic, gun) pairs, "galaxy@ar". a roll
+-- never gives a pair you already own: a rarity by weight among the rarities you still have a pair left in, a gun evenly
+-- among the guns with something of it left, then any of those (web rollPick, on pairs). so the odds depend on what you own.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Shared = script.Parent
 local Roster = require(Shared:WaitForChild("Roster"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
+local GunHatData = require(Shared:WaitForChild("GunHatData")) :: any
 
 local L = {}
 
@@ -29,7 +31,7 @@ L.RARITY = {
 	legendary = { name = "Legendary", weight = 4, color = Color3.fromRGB(240, 178, 52) },
 }
 
-export type Item = { type: string, id: string, name: string, rarity: string, weapon: string? }
+export type Item = { type: string, id: string, key: string, name: string, rarity: string, weapon: string? }
 
 L.TYPE_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", effect = "Effect", kill = "Kill Effect", grapple = "Grapple", spray = "Spray" }
 
@@ -99,37 +101,75 @@ function L.info(t: any, id: any): Item?
 	if type(t) ~= "string" or type(id) ~= "string" then return nil end
 	if t == "wrap" then
 		local w = Roster.wrapById[id]
-		return if w then { type = t, id = id, name = w.name, rarity = w.rarity } else nil
+		return if w then { type = t, id = id, key = id, name = w.name, rarity = w.rarity } else nil
 	elseif t == "hat" then
 		local h = if id ~= "none" then GunHats.HATS[id] else nil
-		return if h then { type = t, id = id, name = h.name, rarity = h.rarity } else nil
+		return if h then { type = t, id = id, key = id, name = h.name, rarity = h.rarity } else nil
 	elseif t == "skin" then
 		local s = L.SKINS[id]
-		return if s then { type = t, id = id, name = s[1], rarity = s[2], weapon = s[3] } else nil
+		return if s then { type = t, id = id, key = id, name = s[1], rarity = s[2], weapon = s[3] } else nil
 	end
 	return nil
 end
 
--- free things everyone owns (and things that don't exist: never owned)
+-- free things everyone owns, on every gun (and things that don't exist: never owned)
 function L.isFree(t: string, id: string): boolean
 	local i = L.info(t, id)
 	return i ~= nil and i.rarity == "free"
 end
 
--- everything that can come out of this container today (non-free), in a fixed order
-function L.pool(kind: string): { Item }
+-- ------------------------------------------------------------------ one gun at a time
+-- (owner, 16 Nov 2026: "spray cans should give you a wrap for only one gun at a time! some with the charms/hats"): a
+-- wrap or a hat is owned for ONE weapon, a pair written "<id>@<weapon>" ("galaxy@ar", "crown@katana"). a weapon skin
+-- already belongs to one weapon: its key is its own id. the weapons are the live ones that take paint (Roster: live, not
+-- an item on G); a hat only goes on a weapon with a seat for it (GunHatData.SPOTS)
+function L.key(t: string, id: string, weapon: string?): string
+	if t == "skin" or not weapon then return id end
+	return id .. "@" .. weapon
+end
+-- "<id>@<weapon>" -> id, weapon (a bare id -> id, nil)
+function L.split(key: any): (string?, string?)
+	if type(key) ~= "string" then return nil, nil end
+	local id, w = string.match(key, "^([%w_]+)@([%w_]+)$")
+	if id then return id, w end
+	return key, nil
+end
+function L.weapons(t: string): { string }
+	local out = {}
+	for _, e in Roster.list do
+		if e.live and e.slot ~= "utility" and (t ~= "hat" or (GunHatData.SPOTS ~= nil and GunHatData.SPOTS[e.id] ~= nil)) then
+			table.insert(out, e.id)
+		end
+	end
+	return out
+end
+function L.takes(t: string, weapon: any): boolean
+	return type(weapon) == "string" and table.find(L.weapons(t), weapon) ~= nil
+end
+-- a pair from the network or a save: its row with the weapon, or nil if there is no such pair
+function L.pairInfo(t: any, key: any): Item?
+	if t == "skin" then return L.info(t, key) end
+	local id, w = L.split(key)
+	local i = L.info(t, id)
+	if not i or not w or not L.takes(t, w) then return nil end
+	i.weapon, i.key = w, (id :: string) .. "@" .. w
+	return i
+end
+
+-- the cosmetics that can come out of this container today (non-free), one row each, in a fixed order
+function L.cosmetics(kind: string): { Item }
 	local out = {}
 	local c = L.CONTAINERS[kind]
 	if not c then return out end
 	for _, t in c.types do
 		if t == "wrap" then
 			for _, w in Roster.wraps do
-				if w.rarity ~= "free" and L.RARITY[w.rarity] then table.insert(out, { type = t, id = w.id, name = w.name, rarity = w.rarity }) end
+				if w.rarity ~= "free" and L.RARITY[w.rarity] then table.insert(out, { type = t, id = w.id, key = w.id, name = w.name, rarity = w.rarity }) end
 			end
 		elseif t == "hat" then
 			for _, id in GunHats.ORDER do
 				local h = GunHats.HATS[id]
-				if h and id ~= "none" and h.rarity ~= "free" and L.RARITY[h.rarity] then table.insert(out, { type = t, id = id, name = h.name, rarity = h.rarity }) end
+				if h and id ~= "none" and h.rarity ~= "free" and L.RARITY[h.rarity] then table.insert(out, { type = t, id = id, key = id, name = h.name, rarity = h.rarity }) end
 			end
 		elseif t == "skin" then
 			local live = skinsLive()
@@ -138,92 +178,125 @@ function L.pool(kind: string): { Item }
 			table.sort(ids)
 			for _, id in ids do
 				local s = L.SKINS[id]
-				table.insert(out, { type = t, id = id, name = s[1], rarity = s[2], weapon = s[3] })
+				table.insert(out, { type = t, id = id, key = id, name = s[1], rarity = s[2], weapon = s[3] })
 			end
 		end
+	end
+	return out
+end
+-- the guns a cosmetic can be won for
+local function gunsOf(i: Item): { string }
+	return if i.type == "skin" then { i.weapon :: string } else L.weapons(i.type)
+end
+local function pairOf(i: Item, w: string): Item
+	return { type = i.type, id = i.id, name = i.name, rarity = i.rarity, weapon = w, key = L.key(i.type, i.id, w) }
+end
+
+-- every (cosmetic, gun) pair that can come out of this container today
+function L.pool(kind: string): { Item }
+	local out = {}
+	for _, i in L.cosmetics(kind) do
+		for _, w in gunsOf(i) do table.insert(out, pairOf(i, w)) end
 	end
 	return out
 end
 
 -- "coming soon": nothing of this kind is on Roblox yet
 function L.soon(kind: string): boolean
-	return #L.pool(kind) == 0
+	return #L.cosmetics(kind) == 0
 end
 
--- owned: { [type]: { [id]: true } } (nil = owns nothing). returns the rarities you can still get with their chances
--- (0..1, adding up to 1), each item's own chance, and how many you have left. the shop shows this before every open
-export type Odds = { rarities: { { rarity: string, name: string, chance: number, left: number, total: number } },
-	items: { { type: string, id: string, name: string, rarity: string, chance: number, owned: boolean } },
-	left: number, total: number, soon: boolean, empty: boolean }
-function L.odds(kind: string, owned: { [string]: { [string]: boolean } }?): Odds
-	local pool = L.pool(kind)
-	local left, total = {}, {}
-	local function has(i: Item): boolean
+-- what is left to win, by rarity: for each rarity, the guns that still have something of it and per gun the cosmetics
+-- left for it. owned: { [type]: { [key]: true } }
+type Left = { [string]: { guns: { string }, by: { [string]: { Item } }, n: number, total: number } }
+local function leftOf(kind: string, owned: { [string]: { [string]: boolean } }?): Left
+	local out: Left = {}
+	for _, i in L.cosmetics(kind) do
+		local r = out[i.rarity]
+		if not r then r = { guns = {}, by = {}, n = 0, total = 0 }; out[i.rarity] = r end
 		local s = owned and owned[i.type]
-		return s ~= nil and s[i.id] == true
-	end
-	for _, i in pool do
-		total[i.rarity] = (total[i.rarity] or 0) + 1
-		if not has(i) then left[i.rarity] = (left[i.rarity] or 0) + 1 end
-	end
-	local sum = 0
-	for r, n in left do if n > 0 then sum += L.RARITY[r].weight end end
-	local out: Odds = { rarities = {}, items = {}, left = 0, total = #pool, soon = #pool == 0, empty = sum == 0 }
-	for _, r in L.RARITY_ORDER do
-		if total[r] then
-			local n = left[r] or 0
-			out.left += n
-			table.insert(out.rarities, { rarity = r, name = L.RARITY[r].name, chance = if n > 0 and sum > 0 then L.RARITY[r].weight / sum else 0, left = n, total = total[r] })
+		for _, w in gunsOf(i) do
+			r.total += 1
+			if not (s and s[L.key(i.type, i.id, w)]) then
+				if not r.by[w] then r.by[w] = {}; table.insert(r.guns, w) end
+				table.insert(r.by[w], i)
+				r.n += 1
+			end
 		end
 	end
-	local rc = {}
-	for _, x in out.rarities do rc[x.rarity] = x end
-	for _, i in pool do
-		local o = has(i)
-		local x = rc[i.rarity]
-		table.insert(out.items, { type = i.type, id = i.id, name = i.name, rarity = i.rarity, owned = o,
-			chance = if o or not x or x.left == 0 then 0 else x.chance / x.left })
+	return out
+end
+
+-- the odds, before every open (the shop shows them): the rarities you can still get with their chances (0..1, adding
+-- up to 1) and how many PAIRS are left of each; each cosmetic's chance (over all the guns it can still land on); how
+-- many guns are in play (the gun is picked evenly among the guns that still have something of the rolled rarity).
+-- owned: { [type]: { [key]: true } } (nil = owns nothing)
+export type Odds = { rarities: { { rarity: string, name: string, chance: number, left: number, total: number } },
+	items: { { type: string, id: string, name: string, rarity: string, chance: number, owned: boolean, ownedOn: number, guns: number } },
+	left: number, total: number, weapons: number, soon: boolean, empty: boolean }
+function L.odds(kind: string, owned: { [string]: { [string]: boolean } }?): Odds
+	local cos = L.cosmetics(kind)
+	local left = leftOf(kind, owned)
+	local sum = 0
+	for r, x in left do if x.n > 0 then sum += L.RARITY[r].weight end end
+	local guns = 0
+	for _, i in cos do guns = math.max(guns, #gunsOf(i)) end
+	local out: Odds = { rarities = {}, items = {}, left = 0, total = 0, weapons = guns, soon = #cos == 0, empty = sum == 0 }
+	local pr = {}
+	for _, r in L.RARITY_ORDER do
+		local x = left[r]
+		if x then
+			out.left += x.n; out.total += x.total
+			pr[r] = if x.n > 0 and sum > 0 then L.RARITY[r].weight / sum else 0
+			table.insert(out.rarities, { rarity = r, name = L.RARITY[r].name, chance = pr[r], left = x.n, total = x.total })
+		end
+	end
+	for _, i in cos do
+		local x = left[i.rarity]
+		local s = owned and owned[i.type]
+		local chance, on, gs = 0, 0, gunsOf(i)
+		for _, w in gs do
+			if s and s[L.key(i.type, i.id, w)] then on += 1
+			elseif x and #x.guns > 0 and x.by[w] then chance += (pr[i.rarity] or 0) / #x.guns / #x.by[w] end
+		end
+		table.insert(out.items, { type = i.type, id = i.id, name = i.name, rarity = i.rarity, chance = chance,
+			owned = on == #gs, ownedOn = on, guns = #gs })
 	end
 	return out
 end
 
 -- ------------------------------------------------------------------ the roll (the server's; pure, so a sample can be run anywhere)
--- web rollPick: a rarity by weight among the rarities you still have something left in, then any unowned item of it.
--- returns nil, "soon" (nothing of this kind on Roblox yet) or nil, "empty" (you own all of it)
+-- the web game's rollPick, on pairs: a rarity by weight among the rarities you still have a pair left in; a gun, evenly,
+-- among the guns that still have something of that rarity; then any cosmetic of that rarity you don't own for that gun.
+-- so a gun never comes up for nothing, and you never get a pair you already have. returns the pair, or nil, "soon"
+-- (nothing of this kind on Roblox yet) / nil, "empty" (you own every pair)
 function L.roll(kind: string, owned: { [string]: { [string]: boolean } }?, rng: Random): (Item?, string?)
-	local pool = L.pool(kind)
-	if #pool == 0 then return nil, "soon" end
-	local left: { [string]: { Item } } = {}
-	for _, i in pool do
-		local s = owned and owned[i.type]
-		if not (s and s[i.id]) then
-			left[i.rarity] = left[i.rarity] or {}
-			table.insert(left[i.rarity], i)
-		end
-	end
+	if L.soon(kind) then return nil, "soon" end
+	local left = leftOf(kind, owned)
 	local total = 0
-	for _, r in L.RARITY_ORDER do if left[r] then total += L.RARITY[r].weight end end
+	for _, r in L.RARITY_ORDER do if left[r] and left[r].n > 0 then total += L.RARITY[r].weight end end
 	if total <= 0 then return nil, "empty" end
 	local x = rng:NextNumber() * total
 	local pick: string? = nil
 	for _, r in L.RARITY_ORDER do
-		if left[r] then
+		if left[r] and left[r].n > 0 then
 			pick = pick or r -- (the first one with something left, as the web game falls back to)
 			x -= L.RARITY[r].weight
 			if x <= 0 then pick = r; break end
 		end
 	end
-	local list = left[pick :: string]
-	return list[rng:NextInteger(1, #list)], nil
+	local lr = left[pick :: string]
+	local w = lr.guns[rng:NextInteger(1, #lr.guns)]
+	local list = lr.by[w]
+	return pairOf(list[rng:NextInteger(1, #list)], w), nil
 end
 
--- the reel the opening spins: n cards drawn from the whole container by the same rarity weights (owned things too: it
--- shows what is inside), with the prize at `stop`. returns the cards and stop
+-- the reel the opening spins: n cards drawn from the whole container by the same rarity weights (owned pairs too: it
+-- shows what is inside), each on a gun, with the prize at `stop`. returns the cards and stop
 L.STRIP = 52
 function L.strip(kind: string, prize: Item, rng: Random): ({ Item }, number)
-	local pool = L.pool(kind)
 	local by: { [string]: { Item } } = {}
-	for _, i in pool do by[i.rarity] = by[i.rarity] or {}; table.insert(by[i.rarity], i) end
+	for _, i in L.cosmetics(kind) do by[i.rarity] = by[i.rarity] or {}; table.insert(by[i.rarity], i) end
 	local total = 0
 	for _, r in L.RARITY_ORDER do if by[r] then total += L.RARITY[r].weight end end
 	local stop = rng:NextInteger(L.STRIP - 8, L.STRIP - 5)
@@ -238,7 +311,9 @@ function L.strip(kind: string, prize: Item, rng: Random): ({ Item }, number)
 				if by[r] then pick = r; x -= L.RARITY[r].weight; if x <= 0 then break end end
 			end
 			local list = by[pick]
-			table.insert(out, list[rng:NextInteger(1, #list)])
+			local i = list[rng:NextInteger(1, #list)]
+			local gs = gunsOf(i)
+			table.insert(out, pairOf(i, gs[rng:NextInteger(1, #gs)]))
 		end
 	end
 	return out, stop

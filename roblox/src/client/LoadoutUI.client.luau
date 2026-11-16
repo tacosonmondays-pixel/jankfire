@@ -570,8 +570,9 @@ local function finishWord(wr: Roster.Wrap): string?
 	if m and m ~= "Plastic" then return string.upper(m) end
 	return nil
 end
--- what you own (Loot.luau, the Loot remote): a wrap or hat you don't own shows a lock and where it is won. you can
--- still hover it to try it on; the server won't put it on (Loadout.luau)
+-- what you own (Loot.luau, the Loot remote): a wrap or hat is won for ONE gun ("<id>@<weapon>"), so the bars show
+-- a lock on what you don't own for the gun being edited, and where it is won. you can still hover it to try it on; the
+-- server won't put it on (Loadout.luau)
 local owned: { [string]: { [string]: boolean } } = {}
 local ownedKnown = false
 local function owns(t: string, id: string): boolean
@@ -580,7 +581,7 @@ local function owns(t: string, id: string): boolean
 	local row: any = if t == "wrap" then Roster.wrapById[id] elseif t == "hat" then GunHats.HATS[id] else nil
 	if row and row.rarity == "free" then return true end
 	local set = owned[t]
-	return set ~= nil and set[id] == true
+	return set ~= nil and set[id .. "@" .. state.focus] == true
 end
 local function fetchOwned()
 	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
@@ -807,7 +808,7 @@ onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
 	local _, md = wrapOf(e.id)
-	if not owns("wrap", wr.id) then play("empty"); say(("%s comes in spray cans. open one in the shop [B]."):format(wr.name), RED); return end
+	if not owns("wrap", wr.id) then play("empty"); say(("%s for the %s comes in spray cans. open one in the shop [B]."):format(wr.name, string.lower(e.name)), RED); return end
 	local ok, why = ask("wrap", e.id, wr.id, md)
 	if ok then
 		play("click")
@@ -1031,7 +1032,7 @@ end
 onHat = function(hid: string)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
-	if not owns("hat", hid) then play("empty"); say(("the %s comes in duffel bags. open one in the shop [B]."):format(string.lower(GunHats.HATS[hid].name)), RED); return end
+	if not owns("hat", hid) then play("empty"); say(("a %s for the %s comes in duffel bags. open one in the shop [B]."):format(string.lower(GunHats.HATS[hid].name), string.lower(e.name)), RED); return end
 	local ok, why = ask("hat", e.id, hid)
 	if ok then
 		play("click")

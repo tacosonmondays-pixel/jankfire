@@ -137,6 +137,9 @@ local function loadoutIds(): { string }
 	return out
 end
 local function showWeapon(item: any): string?
+	-- (a wrap or a hat is won for one gun: that's the one it's shown on)
+	local own = item.weapon and Roster.byId[item.weapon]
+	if own and own.live and own.slot ~= "utility" then return item.weapon end
 	local held = me:GetAttribute("Held")
 	local list = loadoutIds()
 	if type(held) == "string" then table.insert(list, 1, held) end
@@ -260,7 +263,8 @@ local function card(parent: Instance, item: any, x: number): Frame
 		TextTruncate = Enum.TextTruncate.AtEnd }, c)
 	nm.Name = "Name"
 	new("TextLabel", { BackgroundTransparency = 1, Position = UDim2.fromOffset(10, CARD_H - 36), Size = UDim2.fromOffset(CARD_W - 20, 18),
-		FontFace = T.FONT, TextSize = 13, Text = string.upper(LootTable.TYPE_NAMES[item.type] or item.type) .. "  ·  " .. rname(item.rarity),
+		FontFace = T.FONT, TextSize = 13, TextTruncate = Enum.TextTruncate.AtEnd,
+		Text = (if item.weapon and Roster.byId[item.weapon] then string.upper(Roster.byId[item.weapon].name) else string.upper(LootTable.TYPE_NAMES[item.type] or item.type)) .. "  ·  " .. rname(item.rarity),
 		TextColor3 = T.MUTED, TextXAlignment = Enum.TextXAlignment.Left }, c)
 	local bar = new("Frame", { Name = "Bar", BackgroundColor3 = col, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1),
 		Position = UDim2.new(0, 0, 1, 0), Size = UDim2.new(1, 0, 0, 5), ZIndex = 2 }, c)
@@ -522,7 +526,7 @@ local function run(R: Run): string
 	if okInv and type(inv) == "table" and type(inv.owned) == "table" then
 		for t, ids in inv.owned do owned[t] = {}; for _, id in ids do owned[t][id] = true end end
 		-- (the prize is owned by now: the odds you opened with had it still in)
-		if owned[prize.type] then owned[prize.type][prize.id] = nil end
+		if owned[prize.type] then owned[prize.type][prize.key or prize.id] = nil end
 	end
 	ui.odds.Text = "ODDS  " .. LootTable.oddsLine(LootTable.odds(kind, owned))
 	tw(ui.title, 0.4, { TextTransparency = 0 }); tw(ui.odds, 0.4, { TextTransparency = 0.1 })
@@ -703,7 +707,7 @@ local function run(R: Run): string
 	ui.rName.Text = string.upper(prize.name or prize.id or "")
 	local we = wid and Roster.byId[wid]
 	ui.rOn.Text = if prize.type == "skin" then "a new look for your " .. (if we then we.name else "weapon")
-		elseif we then "shown on your " .. we.name else ""
+		elseif we and prize.weapon then "for your " .. we.name .. " only" elseif we then "shown on your " .. we.name else ""
 	local canEquip = (prize.type == "wrap" or prize.type == "hat") and we ~= nil and we.live
 	ui.equip.Visible = canEquip
 	ui.equip.Text = if canEquip then "EQUIP ON " .. string.upper((we :: any).name) else "EQUIP"
