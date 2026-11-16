@@ -4,7 +4,9 @@
 -- it keeps them in a DataStore (pcall + retries; nothing is written for a player whose load failed, so a hiccup can't
 -- wipe a save); new picks wait for your next spawn (Rules.arm takes nextLoadout) and never land mid-round. in the hub
 -- the screen closing re-arms you on the spot. Combat refuses any weapon outside your loadout (Rules.inLoadout).
--- the Shredder is a Tool (ShredderServer): you only get one when it's your primary
+-- the Shredder is a Tool (ShredderServer): you only get one when it's your primary.
+-- HATS (GunHats.luau): one per weapon, from the hat list (GunHatData), kept and saved beside the wraps (attribute
+-- "Hats" = "ar=crown;katana=duck", saved as `hats`); a hat goes on right away, like a wrap
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local DataStoreService = game:GetService("DataStoreService")
@@ -13,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
+local GunHats = require(Shared:WaitForChild("GunHats"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
@@ -23,7 +26,7 @@ local DEFAULT = { primary = "redline", secondary = "marbles", melee = "katana" }
 local SAVE_DELAY = 6 -- s after the last change (one write per burst of clicking)
 
 type Data = {
-	pick: { [string]: string }, wraps: { [string]: { id: string, mode: string } },
+	pick: { [string]: string }, wraps: { [string]: { id: string, mode: string } }, hats: { [string]: string },
 	loaded: boolean, canSave: boolean, dirty: boolean, saveAt: number, touched: boolean,
 }
 local data: { [Player]: Data } = {}
@@ -46,6 +49,10 @@ local function publish(p: Player)
 	for wid, w in d.wraps do table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end
 	table.sort(parts)
 	p:SetAttribute("Wraps", table.concat(parts, ";"))
+	local hats = {}
+	for wid, h in d.hats do table.insert(hats, wid .. "=" .. h) end
+	table.sort(hats)
+	p:SetAttribute("Hats", table.concat(hats, ";"))
 	p:SetAttribute("LoadoutSave", if not d.loaded then "loading" elseif d.canSave then "cloud" else "off")
 end
 
@@ -68,10 +75,12 @@ local function syncTools(p: Player, f: any)
 		if src then
 			local t = src:Clone()
 			if wr then WeaponModels.wrap(t, wr.id, wr.mode) end
+			GunHats.attachTool(t, d and d.hats.shredder)
 			t.Parent = bag
 		end
 	elseif have then
 		WeaponModels.wrap(have, wr and wr.id, wr and wr.mode)
+		GunHats.attachTool(have, d and d.hats.shredder)
 	end
 end
 
@@ -142,6 +151,12 @@ local function adopt(d: Data, saved: any)
 			end
 		end
 	end
+	if type(saved.hats) == "table" then
+		for wid, h in saved.hats do
+			local e = if type(wid) == "string" then Roster.byId[wid] else nil
+			if e and e.live and GunHats.valid(h) and h ~= "none" then d.hats[wid] = h end
+		end
+	end
 end
 
 local function key(p: Player): string return "u" .. p.UserId end
@@ -166,7 +181,7 @@ local function save(p: Player)
 	d.dirty = false
 	local wraps = {}
 	for wid, w in d.wraps do wraps[wid] = { w.id, w.mode } end
-	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps }
+	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats) }
 	local ok, err = retry(function() return (store :: DataStore):UpdateAsync(key(p), function() return payload end) end)
 	if not ok then
 		d.dirty = true; d.saveAt = os.clock() + 20
@@ -180,7 +195,7 @@ local function changed(p: Player)
 	publish(p)
 end
 
--- ------------------------------------------------------------------ the remote: ("pick", slot, weapon) / ("wrap", weapon, wrap, mode) / ("arm")
+-- ------------------------------------------------------------------ the remote: ("pick", slot, weapon) / ("wrap", weapon, wrap, mode) / ("hat", weapon, hat) / ("arm")
 local budget: { [Player]: { n: number, t: number } } = {}
 local function spend(p: Player): boolean
 	local b, t = budget[p], os.clock()
@@ -215,6 +230,20 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if f and f.alive and f.held == a then Fight.showWeapon(f) end
 		if a == "shredder" and f then syncTools(p, f) end
 		return true, nil
+	elseif op == "hat" then
+		if type(a) ~= "string" or type(b) ~= "string" then return false, "nope" end
+		local e = Roster.byId[a]
+		if not e or not e.live then return false, "no hats on vapourware" end
+		if not GunHats.valid(b) then return false, "that hat doesn't exist" end
+		local was = d.hats[a]
+		d.hats[a] = if b == "none" then nil else b
+		if was == d.hats[a] then return true, nil end
+		changed(p)
+		-- on right away (it's only a look): what others see in your hand, and the Shredder
+		local f = Fight and Fight.byPlayer[p]
+		if f and f.alive and f.held == a then Fight.showWeapon(f) end
+		if a == "shredder" and f then syncTools(p, f) end
+		return true, nil
 	elseif op == "arm" then
 		local f = Fight and Fight.byPlayer[p]
 		if not f then return false, "nope" end
@@ -235,7 +264,7 @@ end
 
 local function added(p: Player)
 	if data[p] then return end
-	data[p] = { pick = table.clone(DEFAULT), wraps = {}, loaded = false, canSave = false, dirty = false, saveAt = 0, touched = false }
+	data[p] = { pick = table.clone(DEFAULT), wraps = {}, hats = {}, loaded = false, canSave = false, dirty = false, saveAt = 0, touched = false }
 	publish(p)
 	task.spawn(load, p)
 end

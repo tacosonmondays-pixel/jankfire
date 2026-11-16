@@ -1,0 +1,190 @@
+{
+ "party": {
+  "lo": [
+   -0.0325,
+   -0.0003,
+   -0.0325
+  ],
+  "hi": [
+   0.0325,
+   0.1002,
+   0.0325
+  ],
+  "tris": 3240,
+  "pieces": [
+   "cone__cone",
+   "band__gold",
+   "ring__trim",
+   "pom__trim"
+  ]
+ },
+ "cone": {
+  "lo": [
+   -0.0346,
+   0.0,
+   -0.0346
+  ],
+  "hi": [
+   0.0346,
+   0.0924,
+   0.0346
+  ],
+  "tris": 1780,
+  "pieces": [
+   "base__base",
+   "cone__cone",
+   "band__band",
+   "collar__gold"
+  ]
+ },
+ "cowboy": {
+  "lo": [
+   -0.052,
+   -0.0033,
+   -0.0588
+  ],
+  "hi": [
+   0.052,
+   0.0441,
+   0.0588
+  ],
+  "tris": 1736,
+  "pieces": [
+   "brim__felt",
+   "crown__felt",
+   "band__band",
+   "buckle__gold"
+  ]
+ },
+ "chef": {
+  "lo": [
+   -0.0368,
+   0.0,
+   -0.0406
+  ],
+  "hi": [
+   0.0368,
+   0.0651,
+   0.0406
+  ],
+  "tris": 2464,
+  "pieces": [
+   "band__band",
+   "puff__puff",
+   "line__gold"
+  ]
+ },
+ "propeller": {
+  "lo": [
+   -0.0455,
+   0.0,
+   -0.0528
+  ],
+  "hi": [
+   0.0455,
+   0.0451,
+   0.031
+  ],
+  "tris": 2356,
+  "pieces": [
+   "cap__cap",
+   "visor__visor",
+   "post__gold",
+   "prop__gold",
+   "prop__blade"
+  ]
+ },
+ "eyes": {
+  "lo": [
+   -0.0431,
+   0.0,
+   -0.019
+  ],
+  "hi": [
+   0.0431,
+   0.0375,
+   0.0192
+  ],
+  "tris": 4212,
+  "pieces": [
+   "shell__shell",
+   "eye__eye",
+   "bezel__gold",
+   "pupil_l__pupil",
+   "pupil_r__pupil"
+  ]
+ },
+ "tophat": {
+  "lo": [
+   -0.041,
+   0.0,
+   -0.0451
+  ],
+  "hi": [
+   0.041,
+   0.058,
+   0.0451
+  ],
+  "tris": 1416,
+  "pieces": [
+   "brim__felt",
+   "crown__felt",
+   "band__band",
+   "buckle__gold"
+  ]
+ },
+ "halo": {
+  "lo": [
+   -0.0354,
+   0.0326,
+   -0.0342
+  ],
+  "hi": [
+   0.0354,
+   0.0554,
+   0.0342
+  ],
+  "tris": 1536,
+  "pieces": [
+   "halo__halo"
+  ]
+ },
+ "crown": {
+  "lo": [
+   -0.0417,
+   0.0,
+   -0.04
+  ],
+  "hi": [
+   0.0417,
+   0.0378,
+   0.043
+  ],
+  "tris": 3192,
+  "pieces": [
+   "band__gold",
+   "cap__velvet",
+   "points__gold",
+   "gems__gem"
+  ]
+ },
+ "duck": {
+  "lo": [
+   -0.036,
+   -0.0013,
+   -0.046
+  ],
+  "hi": [
+   0.0389,
+   0.0776,
+   0.0408
+  ],
+  "tris": 3368,
+  "pieces": [
+   "body__duck",
+   "head__duck",
+   "beak__beak",
+   "eyes__eye"
+  ]
+ }
+}

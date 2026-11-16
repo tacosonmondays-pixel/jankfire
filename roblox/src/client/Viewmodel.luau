@@ -11,6 +11,7 @@ local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Anims = require(Shared:WaitForChild("Anims")) :: any
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local GunParts = require(script.Parent:WaitForChild("GunParts")) -- batch 3: the pieces that move (mags, pump, bolt, lever...)
+local GunHats = require(Shared:WaitForChild("GunHats")) -- the hat on the gun (the loadout's Hats)
 -- the plain guns' reloads (Reloads.luau, generated from the web game's reloads.js) join the hand-keyed clips
 for name, a in require(Shared:WaitForChild("Reloads")) :: any do
 	if not Anims[name] then Anims[name] = a end
@@ -373,6 +374,8 @@ function VM.set(wid: string, kat: number)
 	-- the moving pieces go onto their own welds before the hands exist (the hands never ride a twirl)
 	VM.parts = GunParts.attach(m, root, k, w.mdl and w.mdl.parts)
 	fillOn(m, root)
+	-- your hat on it, riding the piece under it (after the moving pieces are on their welds; never painted by a wrap)
+	GunHats.attach(m, wid, GunHats.hatFor(game:GetService("Players").LocalPlayer, wid), k)
 	hands(m, root)
 	if wid == "katana" then WeaponModels.setKatana(m, kat, k) end
 	-- the needle turns round its pivot (Welds we drive) instead of being glued
@@ -514,6 +517,7 @@ function VM.update(dt: number, c: Ctx)
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
 	VM.props(m.PrimaryPart.CFrame)
+	GunHats.aim(m, c.aim, clip and clip.name) -- (the hat steps out of the sight picture while you aim, like the web game)
 	-- the fill light: up and left of the gun's middle in camera space, aimed at it, stopping short of the world
 	if fill then
 		fill.light.Enabled = not c.hidden
@@ -581,6 +585,14 @@ function VM.props(gun: CFrame)
 		prop:PivotTo(at * CFrame.Angles(0, 0, 2.6 * smooth((t - 0.55) / 0.12) * (1 - smooth((t - 1.18) / 0.1)) + jig))
 	end
 end
+
+-- a new hat (the loadout screen): rebuild what's in your hands with it, as a new wrap does (Arsenal, "Wraps")
+localPlayer:GetAttributeChangedSignal("Hats"):Connect(function()
+	if VM.model and VM.wid ~= "" and VM.wid ~= "shredder" then
+		local kat = localPlayer:GetAttribute("Kat")
+		VM.set(VM.wid, if type(kat) == "number" then kat else 0)
+	end
+end)
 
 -- the katana grew (or reset): restretch
 function VM.setKatana(n: number)

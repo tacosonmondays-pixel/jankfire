@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
+local GunHats = require(Shared:WaitForChild("GunHats")) -- (the hat on your gun, the loadout's Hats)
 local Arena = require(Shared:WaitForChild("Arena"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -170,6 +171,7 @@ function Fight.showWeapon(f: Fighter)
 	if f.kind == "player" then -- its wrap (the loadout screen), so everyone sees your paint job
 		local wid, md = WeaponModels.wrapFor(f.ref :: Player, f.held)
 		if wid then WeaponModels.wrap(w, wid, md) end
+		GunHats.attach(w, f.held, GunHats.hatFor(f.ref :: Player, f.held), HAND_K, nil, GunHats.THIRD) -- and its hat
 	end
 	local grip = w.PrimaryPart:FindFirstChild("Grip") :: Attachment?
 	local off = if grip then grip.Position else Vector3.zero

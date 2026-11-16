@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Roster = require(Shared:WaitForChild("Roster"))
+local GunHats = require(Shared:WaitForChild("GunHats")) -- the hat on each weapon (the HATS tab)
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
@@ -117,6 +118,7 @@ local function wrapOf(wid: string): (string, string)
 	return id or "default", md or "normal"
 end
 local function slotIndex(slot: string): number return table.find(Roster.SLOTS, slot) or 1 end
+local function hatOf(wid: string): string return GunHats.hatFor(me, wid) or "none" end
 
 -- ---------------------------------------------------------------- models for the previews
 -- every preview is scaled to the same size (radius 3 studs) so the table and the camera never need to change
@@ -151,7 +153,7 @@ local function crate(color: Color3): Model
 	m.PrimaryPart = box
 	return m
 end
-local function previewModel(id: string): (Model?, CFrame)
+local function previewModel(id: string, hat: string?): (Model?, CFrame)
 	local e = Roster.byId[id]
 	local m: Model?
 	if not e or not e.live then m = crate(if e then e.color else GREY)
@@ -164,8 +166,15 @@ local function previewModel(id: string): (Model?, CFrame)
 	local _, size = m:GetBoundingBox()
 	local r = size.Magnitude / 2
 	local want = if e and e.live then 3 else 2.3 -- (a crate is all bulk: a size down, or it swallows the podium)
+	-- its hat goes on after it is measured, so a hat never shrinks the weapon or moves it on the table
+	local hm = nil
+	if hat and hat ~= "none" and e and e.live then
+		hm = if id == "shredder" then GunHats.attachToolCopy(m, Tools:FindFirstChild("Shredder") :: Instance, hat) else GunHats.attach(m, id, hat, 3, true)
+	end
 	if r > 1e-3 then pcall(function() m:ScaleTo(m:GetScale() * (want / r)) end) end
+	if hm then hm.Parent = nil end
 	local cf = m:GetBoundingBox()
+	if hm then hm.Parent = m end
 	return m, m:GetPivot():ToObjectSpace(cf)
 end
 local function viewport(parent: Instance, props: { [string]: any }): (ViewportFrame, Camera)
@@ -205,8 +214,9 @@ local saveLbl = label(stage, "", 16, UDim2.fromOffset(1360, 100), UDim2.fromOffs
 -- ---------------------------------------------------------------- slot cards (left)
 type Card = { slot: string, holder: Frame, body: TextButton, st: UIStroke, name: TextLabel, wrap: TextLabel, bar: Frame, vp: ViewportFrame, cam: Camera, key: string? }
 local cards: { Card } = {}
-local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false }
+local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false, hatHover = nil :: string? }
 local refresh: () -> () = function() end
+local hatsRefresh: (any) -> () = function() end -- (the HATS tab: set below)
 
 for i, slot in Roster.SLOTS do
 	local y = 156 + (i - 1) * 146
@@ -329,7 +339,7 @@ end
 
 -- spin: slow on its own, drag to turn it (it keeps a little of your flick)
 local spin = { yaw = math.pi / 2, pitch = 0.12, vel = 0.45, drag = false, lastX = 0, lastY = 0, dragT = -math.huge }
-local shown: { id: string, model: Model, rel: CFrame }? = nil
+local shown: { id: string, model: Model, rel: CFrame, hat: string? }? = nil
 local shownWrap = ""
 vp.InputBegan:Connect(function(io)
 	if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then
@@ -553,11 +563,11 @@ end
 local cardKey: { [string]: string } = {}
 local function cardModel(c: Card, id: string)
 	local wid, md = wrapOf(id)
-	local k = id .. "|" .. wid .. "|" .. md
+	local k = id .. "|" .. wid .. "|" .. md .. "|" .. hatOf(id)
 	if cardKey[c.slot] == k then return end
 	cardKey[c.slot] = k
 	for _, d in c.vp:GetChildren() do if d:IsA("Model") then d:Destroy() end end
-	local m, rel = previewModel(id)
+	local m, rel = previewModel(id, hatOf(id))
 	if not m then return end
 	WeaponModels.wrap(m, wid, md)
 	m:PivotTo(CFrame.Angles(0.18, math.pi / 2, 0) * rel:Inverse())
@@ -568,19 +578,21 @@ end
 local function showPreview(id: string)
 	local wid, md = wrapOf(id)
 	if state.hover and Roster.byId[id] and Roster.byId[id].live then wid = state.hover end
-	if shown and shown.id == id then
+	local hat = if state.hatHover and Roster.byId[id] and Roster.byId[id].live then state.hatHover else hatOf(id)
+	if shown and shown.id == id and shown.hat == hat then
 		local k = wid .. "/" .. md
 		if shownWrap ~= k then shownWrap = k; WeaponModels.wrap(shown.model, wid, md) end
 		return
 	end
+	local turnIn = not shown or shown.id ~= id
 	if shown then shown.model:Destroy(); shown = nil end
-	local m, rel = previewModel(id)
+	local m, rel = previewModel(id, hat)
 	if not m then return end
 	WeaponModels.wrap(m, wid, md)
 	shownWrap = wid .. "/" .. md
 	m.Parent = vp
-	shown = { id = id, model = m, rel = rel }
-	spin.yaw -= 0.7 -- a small turn-in on the swap (it eases back to its rest pose)
+	shown = { id = id, model = m, rel = rel, hat = hat }
+	if turnIn then spin.yaw -= 0.7 end -- a small turn-in on the swap (it eases back to its rest pose; not for a hat)
 end
 
 refresh = function()
@@ -659,6 +671,7 @@ refresh = function()
 		b:set(MODE_NAMES[m], e.live, if on then T.CARD_HI else nil)
 		b.mark.Visible = on
 	end
+	hatsRefresh(e)
 	local save = me:GetAttribute("LoadoutSave")
 	saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
 	saveLbl.TextColor3 = if save == "off" then RED else GREY
@@ -714,6 +727,122 @@ for md, b in modeBtns do
 		refresh()
 	end)
 end
+
+-- ---------------------------------------------------------------- the hats (bottom, a tab beside the wraps)
+-- a small hat that sits on the weapon (GunHats.luau): one per weapon, hover to try it on, click to put it on. it shares
+-- the wraps' place at the bottom: two tabs over the bar switch between them. the cards show each hat turning slowly
+-- with its moving bits going (GunHatsClient)
+local tab = "wraps"
+local tabBtns: { [string]: Btn } = {}
+for i, t in { "wraps", "hats" } do
+	tabBtns[t] = button(stage, string.upper(t), "chip", UDim2.fromOffset(610 + (i - 1) * 112, 808), UDim2.fromOffset(104, 34))
+end
+local hHolder, hbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
+hHolder.Visible = false
+local hTitle = label(hbar, "HATS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
+hTitle.FontFace = FONT_TITLE
+local hName = label(hbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
+hName.FontFace = FONT_BOLD; hName.RichText = true; hName.TextWrapped = false
+label(hbar, "hover to try it on · click to put it on", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+local hatRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132), ZIndex = 3 }, hbar)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, hatRow)
+new("UIPadding", { PaddingLeft = UDim.new(0, 6) }, hatRow)
+local noHats = new("TextLabel", {
+	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
+	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "no hats on vapourware. pick something that's live.", ZIndex = 10, Visible = false, Active = true,
+}, hbar)
+-- (each hat on a card: its own little stage, seen from the front left; the googly eyes and the halo, which lean
+-- toward the player holding the gun, turned to face you)
+local CARD_TURN = { eyes = math.pi, halo = math.pi }
+type HatCard = { id: string, chip: TextButton, st: UIStroke, tick: TextLabel, spin: Model? }
+local hatCards: { HatCard } = {}
+local onHat: (string) -> () = function() end
+for i, hid in GunHats.ORDER do
+	local h = GunHats.HATS[hid]
+	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(102, 128), LayoutOrder = i, ZIndex = 4 }, hatRow)
+	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(102, 88), ZIndex = 5 }, holder)
+	T.corner(chip, 4)
+	local st = T.edge(chip, nil, 0.8)
+	local spinM: Model? = nil
+	if hid == "none" then
+		label(chip, "NONE", 15, UDim2.new(), UDim2.fromScale(1, 1), GREY, Enum.TextXAlignment.Center).FontFace = FONT_BOLD
+	else
+		local hv, hcam = viewport(chip, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 6, Ambient = Color3.fromRGB(170, 173, 182) })
+		hcam.FieldOfView = 30
+		local hm = GunHats.make(hid, CFrame.Angles(0, CARD_TURN[hid] or 0, 0), 3, nil)
+		if hm then
+			local _, sz = hm:GetBoundingBox()
+			local r = math.max(sz.Magnitude / 2, 0.5)
+			hm.Parent = hv
+			spinM = hm
+			hcam.CFrame = CFrame.lookAt(Vector3.new(-r * 1.9, r * 1.55, -r * 2.6), Vector3.new(0, r * 0.62, 0))
+		end
+	end
+	local tick = label(chip, "\u{2713}", 20, UDim2.fromOffset(2, 0), UDim2.fromOffset(22, 22), WHITE, Enum.TextXAlignment.Center)
+	tick.ZIndex = 7; tick.Visible = false; tick.TextStrokeColor3 = Color3.new(0, 0, 0); tick.TextStrokeTransparency = 0.3
+	local line = new("Frame", { BackgroundColor3 = Roster.RARITY[h.rarity].color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 93), Size = UDim2.fromOffset(94, 3), ZIndex = 4 }, holder)
+	T.corner(line, 2)
+	local nm = label(holder, h.name, 14, UDim2.fromOffset(0, 100), UDim2.fromOffset(102, 26), GREY, Enum.TextXAlignment.Center)
+	nm.TextYAlignment = Enum.TextYAlignment.Top; nm.ZIndex = 5
+	chip.MouseEnter:Connect(function() state.hatHover = hid; if state.open then refresh() end end)
+	chip.MouseLeave:Connect(function() if state.hatHover == hid then state.hatHover = nil end; if state.open then refresh() end end)
+	chip.MouseButton1Click:Connect(function() onHat(hid) end)
+	table.insert(hatCards, { id = hid, chip = chip, st = st, tick = tick, spin = spinM })
+end
+local function setTab(t: string)
+	tab = t
+	wbar.Parent.Visible = t == "wraps"
+	hHolder.Visible = t == "hats"
+	state.hover, state.hatHover = nil, nil
+	for name, b in tabBtns do
+		b:set(string.upper(name), true, if name == t then T.CARD_HI else nil)
+		b.mark.Visible = name == t
+	end
+end
+for name, b in tabBtns do
+	b.face.MouseButton1Click:Connect(function() if tab ~= name then play("click"); setTab(name); if state.open then refresh() end end end)
+end
+setTab("wraps")
+hatsRefresh = function(e: any)
+	local cur = hatOf(e.id)
+	local shownId = if state.hatHover and e.live then state.hatHover else cur
+	local h = GunHats.HATS[shownId]
+	if h then
+		local rc = Roster.RARITY[h.rarity].color
+		hName.Text = ('%s  <font color="#%s">%s</font>%s'):format(h.name, rc:ToHex(), string.upper(Roster.RARITY[h.rarity].name),
+			if state.hatHover and state.hatHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
+	end
+	noHats.Visible = not e.live
+	for _, c in hatCards do
+		local on = c.id == cur
+		c.tick.Visible = on
+		c.st.Color = if on then ACCENT else WHITE
+		c.st.Transparency = if on then 0 else 0.8
+		c.st.Thickness = if on then 2 else 1
+	end
+end
+onHat = function(hid: string)
+	local e = Roster.byId[state.focus]
+	if not e or not e.live then return end
+	local ok, why = ask("hat", e.id, hid)
+	if ok then
+		play("click")
+		say(if hid == "none" then "hat off. back to business." else ("%s, now in a %s."):format(string.lower(e.name), string.lower(GunHats.HATS[hid].name)))
+	else
+		play("empty"); say(why or "nope.", RED)
+	end
+	refresh()
+end
+me:GetAttributeChangedSignal("Hats"):Connect(function() if state.open then refresh() end end)
+-- (the cards turn slowly while the screen is up)
+RunService.RenderStepped:Connect(function()
+	if not state.open or tab ~= "hats" then return end
+	local a = os.clock() * 0.6
+	for _, c in hatCards do
+		local m = c.spin
+		if m then m:PivotTo(CFrame.Angles(0, a + (CARD_TURN[c.id] or 0), 0)) end
+	end
+end)
 
 -- ---------------------------------------------------------------- open / close: the camera move, the blur, the slide-in
 local blur = new("BlurEffect", { Name = "JankLoadoutBlur", Size = 0, Enabled = false }, Lighting)
@@ -799,7 +928,7 @@ setOpen = function(v: boolean)
 		me:SetAttribute("LoadoutOpen", true)
 		local p = pick()
 		state.focus = p[state.slot]
-		state.hover = nil
+		state.hover, state.hatHover = nil, nil
 		subtitle.Text = LINES[math.random(#LINES)]
 		-- the rest of the HUD steps aside while the screen is up (it comes back as it was)
 		table.clear(hidden)
@@ -827,7 +956,7 @@ setOpen = function(v: boolean)
 		play("click")
 	else
 		state.open = false
-		state.hover = nil
+		state.hover, state.hatHover = nil, nil
 		me:SetAttribute("LoadoutOpen", false)
 		gui.Enabled = false
 		for g in hidden do if g.Parent then g.Enabled = true end end
