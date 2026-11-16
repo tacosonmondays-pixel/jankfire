@@ -390,7 +390,7 @@ changed; the hub, the guns and the HUD were not touched.
 - **Not tested:** a match started from a pad (two players), phones and slow machines.
 - **Still weak (the judges' list):** the light is even and shadowless (the hub look in `HubLook` and the place's Lighting are outside this builder); the walk past the lifts is plain; the gym's boxing theme; props stand singly rather than in groups; the five bays could be one band with one sign line. The displayed weapon models carry the kit's own dark details.
 
-## 19. Rooftop v2: a second arena to the new principles, 16 November 2026 (place version 272)
+## 19. Rooftop v2: a second arena to the new principles, 16 November 2026 (place version 276)
 
 The owner: "can we rebuild a new training area too with our new design principles as well as a version of rooftop that
 follows our design principles? Keep the current one rooftop v1 vs v2 and we'll compare". **v1 (`Map.Rooftop`) is not
@@ -407,8 +407,8 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   planting), colour only on pads, team signs and one amber accent; its own early-afternoon light
   (`HubLook.looks.rooftop_v2`, picked by `HubLife` in a match when the arena is v2); a city of instanced towers with a
   smog layer below.
-- **The switch:** `workspace.Map` attribute `Arena` = `"Rooftop"` (v1, the default; also when missing) or
-  `"RooftopV2"`. `ReplicatedStorage.Jankfire.Arena` answers for everyone: `Matches.teamSpawns`, `Fight.spawnPoints`,
+- **The switch:** `workspace.Map` attribute `Arena` = `"Rooftop"` (v1, the default; also when missing),
+  `"RooftopV2"` or `"RooftopV3"` (section 22). `ReplicatedStorage.Jankfire.Arena` answers for everyone: `Matches.teamSpawns`, `Fight.spawnPoints`,
   `Main` and `Dummies` (the fall line `KillY`), `HubLife` (the light). From Studio:
   `require(game.ServerStorage.PolishBackup.RooftopV2:Clone()).use("v2")` (or `"v1"`).
 - **How it is built:** `tools/roblox/rooftop2_models.py` describes the arena once; one headless Blender run writes the
@@ -430,8 +430,16 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   careful greybox"; round 6 (place version 272: the spawn exit's screen redrawn with the team's mark on it, calmer
   team colours, lockers in the spawn room, a darker gallery deck, a city floor of streets and blocks) the spawn room
   and the middle PASS 7.5, the spawn exit and the view from above CLOSE 7, the lanes CLOSE 6.5: "clearly better
-  than v1 ... not yet beside a polished RIVALS arena: the backdrop gives it away". Write-ups: vault
-  `Reviews/Rooftop v2 - judge round 1.md` to `6`.
+  than v1 ... not yet beside a polished RIVALS arena: the backdrop gives it away"; round 7 (place version 276: no
+  haze veils, low buildings and a far skyline round the city, the spawn exit washed by a warm light, the beams clear
+  of the band) the spawn room PASS 8, the middle PASS 7.5, the rest CLOSE 7 to 7.5: "clean and consistent up close
+  ... ahead of v1 everywhere except the backdrop". Write-ups: vault `Reviews/Rooftop v2 - judge round 1.md` to `7`.
+- **Where it stopped (16 Nov):** after round 7 the work moved to the owner's pick (v1, v2 or v3; sheet
+  `Reviews/sheet_rooftop_v1_v2_v3_final.jpg`). Left as known: the far skyline is paler than the sky at the horizon
+  from the lanes; the lip under the spawn screen's cap pokes out at one end; the team mark outside reads rose against
+  the band's mauve inside; fine stripes on the court's step faces from about 30 studs away, which tests in Studio put
+  down to the engine (they stay with shadows, reflections, lamps, screen effects and haze off, and show on a plain
+  Part too).
 
 ## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 263)
 
