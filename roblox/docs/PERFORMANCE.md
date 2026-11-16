@@ -76,6 +76,15 @@ removed by ZoneCull (below). No lamp budget is needed. Keep shadow-casting light
   - Anything new that finds map parts by path, or keeps a list of them, must cope with the piece being away.
 - **Teleport test, 16 Nov.** Training → Rooftop v3 → hub → back lot. Each target piece was back on the arrival frame,
   with no drop in the root's height. The hide list was right at each stop.
+- **Match in a copy, 16 Nov.** Ghost matches held RooftopV2 and RooftopV3, then a real match was started with the
+  player in it (`JankMatchTest` "ghost" with the player), so it went to `ArenaCopies.RooftopV2_copy1`.
+  - Inside it, the copy was drawn (4,301 parts) and the floor below was the copy's. Photo:
+    `roblox/docs/perf/match-copy-zonecull.jpg`.
+  - Back in the hub after the match, the Rotunda was back, everything else was hidden, and the copy the server
+    destroyed was gone from `ZoneCullHidden` as well (the server's Destroy reaches a hidden piece, a few seconds
+    after you leave).
+  - A small saving is still possible: in a copy, the original arena stays drawn, because it is kept by the `Arena`
+    attribute's name. That rule could be skipped while your body is inside another piece.
 - **Network ownership.** Unanchored map parts are NPCs anchored at the root, so a hidden floor can't drop them. Dummy
   debris belongs to whoever is near it, and anyone that close has training drawn.
 
