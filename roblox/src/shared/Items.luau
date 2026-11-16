@@ -55,7 +55,7 @@ Items.list = {
 		desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield." },
 	nvg = { id = "nvg", name = "Night Vision Goggles", color = hex("3dff8a"), charges = 2, recharge = 28, carry = true, keep = true, live = true,
 		desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see." },
-	radar = { id = "radar", name = "Speed Trap", color = hex("2e7bff"), charges = 2, recharge = 32, carry = true, live = false,
+	radar = { id = "radar", name = "Speed Trap", color = hex("2e7bff"), charges = 2, recharge = 32, carry = true, live = true,
 		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot." },
 	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = true,
 		desc = "Open it at someone. Their screen fills with pop-up ads for 7 s. They can close them. There are a lot." },
@@ -114,6 +114,13 @@ Items.NVG = { range = 34 * S, cone = 0.62, close = 2 * S, dur = { 0.6, 3.2 }, nv
 -- the pop quiz (web QUIZ :485, server/gear.js): time s to answer (+ slack), right = invuln s nothing hurts you, +heal
 -- up to healMax, x fast run speed for fastT s; wrong or slow = dead. safe s before another quiz; held within hold of
 -- the spot it hit you. bots (the dummies) get it right this often, after botT s
+-- the speed trap (web SPEED :531, server/secondaries.js): hold G to point it; a reading every scan s on whoever is
+-- under your crosshair within range and the cone (lag slack added), in sight (walls, smoke); the speed is the path
+-- through the positions the server saw over the last window s. over limit km/h: a ticket (a charge): warn s to get
+-- back under it or jail; over jail km/h: jail at once. jailT s in a cage, then safe s before the next ticket (warnSafe
+-- after a warning). km/h are of metres: studs/s x 1.2. one ticket per shooter every gap s
+Items.SPEED = { range = 70 * S, cone = 0.1, scan = 0.15, window = 0.5, limit = 100, jail = 200, warn = 3, grace = 0.5, jailT = 3.5,
+	safe = 12, warnSafe = 4, gap = 0.9, kmh = 3.6 / S, drop = 40 * S }
 Items.QUIZ = { time = 6, slack = 0.15, invuln = 2.5, heal = 25, healMax = 125, fast = 1.25, fastT = 4, safe = 10, hold = 0.8 * S, bot = 0.7, botT = { 1.3, 4.2 } }
 
 -- a pop quiz question (web makeQuestion, server/gear.js): one of ten kinds, small numbers, four options (the answer +

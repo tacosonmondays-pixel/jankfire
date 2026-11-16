@@ -21,7 +21,7 @@ from mathutils import Vector, Matrix
 from gunkit import Gun, P
 
 UNIT = 10.0  # the upload is 10 x the item's size: one stud in the upload = 0.1 m (no tiny MeshParts)
-ITEMS = ['frag', 'smoke', 'medkit', 'bubble', 'popper', 'reverse', 'duck', 'calc', 'laptop', 'nvg']
+ITEMS = ['frag', 'smoke', 'medkit', 'bubble', 'popper', 'reverse', 'duck', 'calc', 'laptop', 'nvg', 'radar', 'cage']
 
 # calm palette (memory less-colourful-look): olive and charcoal, a mid grey, an off-white, one muted red, one cyan
 OLIVE, OLIVE_D = '5d6741', '4a5334'
@@ -243,7 +243,46 @@ def nvg():
     return g
 
 
-BUILD = {'calc': calc, 'laptop': laptop, 'nvg': nvg, 'duck': duck, 'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'popper': popper, 'reverse': reverse}
+BLUE = '4a6a96'
+
+
+def radar():
+    g = Gun('x_radar')
+    g.slot('body', CHAR); g.slot('grip', CHAR_L); g.slot('steel', STEEL); g.slot('screen', SCREEN)
+    # a handheld radar gun: a pistol grip under a squat body, a wide round horn forward, the readout screen on the back
+    # facing you (named "screen": the game writes the speed on it)
+    g.box('body__body', (-0.04, 0.04), (0.0, 0.075), (-0.07, 0.07), bev=0.012)
+    g.cyl('horn__steel', 0.046, (0, 0.04, -0.07), (0, 0.04, -0.13), sides=32, bev=0.004, r2=0.056)
+    g.cyl('lens__body', 0.045, (0, 0.04, -0.128), (0, 0.04, -0.134), sides=32, bev=0.002)
+    g.box('grip__grip', (-0.022, 0.022), (-0.11, 0.004), (-0.005, 0.04), bev=0.01)
+    g.box('trigger__steel', (-0.006, 0.006), (-0.035, -0.012), (-0.02, -0.006), bev=0.003)
+    g.box('screen__screen', (-0.032, 0.032), (0.022, 0.062), (0.0705, 0.0745), bev=0.002)
+    g.spots = {'grip': [0, -0.055, 0.018], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def cage():
+    g = Gun('x_cage')
+    g.slot('bar', CHAR_L); g.slot('frame', CHAR); g.slot('band', BLUE)
+    # the speed trap's cage, dropped over whoever got jailed: a square frame top and bottom, bars all round, a plate on
+    # top with one muted blue band. its origin is the floor under the middle
+    w, h = 0.8, 2.4
+    for y0, y1 in ((0.0, 0.08), (h - 0.1, h)):
+        g.box('frame__frame', (-w, w), (y0, y1), (-w, -w + 0.1), bev=0.01)
+        g.box('frame__frame', (-w, w), (y0, y1), (w - 0.1, w), bev=0.01)
+        g.box('frame__frame', (-w, -w + 0.1), (y0, y1), (-w + 0.1, w - 0.1), bev=0.01)
+        g.box('frame__frame', (w - 0.1, w), (y0, y1), (-w + 0.1, w - 0.1), bev=0.01)
+    for i in range(7):
+        a = -w + 0.05 + i * (2 * w - 0.1) / 6
+        for (x, z) in ((a, -w + 0.05), (a, w - 0.05), (-w + 0.05, a), (w - 0.05, a)):
+            g.cyl('bars__bar', 0.022, (x, 0.08, z), (x, h - 0.1, z), sides=12, bev=0.0)
+    g.box('plate__frame', (-w + 0.08, w - 0.08), (h - 0.06, h + 0.02), (-w + 0.08, w - 0.08), bev=0.015)
+    g.box('band__band', (-w + 0.081, w - 0.081), (h - 0.03, h + 0.0), (-0.12, 0.12), bev=0.004)
+    g.spots = {'grip': [0, 0, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+BUILD = {'radar': radar, 'cage': cage, 'calc': calc, 'laptop': laptop, 'nvg': nvg, 'duck': duck, 'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'popper': popper, 'reverse': reverse}
 
 
 def look(slot):

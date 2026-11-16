@@ -185,7 +185,7 @@ add({ id = "quiz", slot = "utility", name = "Pop Quiz", color = "7fffd4", live =
 add({ id = "nvg", slot = "utility", name = "Night Vision Goggles", color = "3dff8a", live = true, gimmick = "G flips them on: green view, outlines on everyone you can see. N flashes everyone looking your way blind.",
 	desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "28 s each", 0.67, "FLASH", "34 m", 0.7, "BLIND", "up to 3.2 s", 0.5) })
-add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", live = false, gimmick = "",
+add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", live = true, gimmick = "hold G to clock whoever you point at. over 100 km/h: 3 s to slow down or the cage. over 200: the cage at once.",
 	desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "32 s each", 0.76, "LIMIT", "100 km/h", 0.5, "JAIL", "3.5 s", 0.35) })
 add({ id = "laptop", slot = "utility", name = "Laptop", color = "4fd8ff", live = true, gimmick = "open it at someone: five pop-up ads cover their screen for 7 s. they close them one key at a time.",

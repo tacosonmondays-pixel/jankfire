@@ -90,6 +90,16 @@ local function standIn(name: string): Model
 		root = part(Enum.PartType.Block, Vector3.new(0.9, 0.06, 0.6), Color3.fromHex("565b65"))
 		local lid = part(Enum.PartType.Block, Vector3.new(0.9, 0.6, 0.05), Color3.fromHex("3b3f48")); lid.Name = "lid"
 		lid.CFrame = CFrame.new(0, 0.3, 0.3) * CFrame.Angles(-0.25, 0, 0); lid.Parent = m
+	elseif name == "x_radar" then
+		root = part(Enum.PartType.Block, Vector3.new(0.3, 0.36, 0.7), Color3.fromHex("3b3f48"))
+		local scr = part(Enum.PartType.Block, Vector3.new(0.24, 0.14, 0.02), Color3.fromHex("2e4250")); scr.Name = "screen"
+		scr.CFrame = CFrame.new(0, 0.05, 0.36); scr.Parent = m
+	elseif name == "x_cage" then
+		root = part(Enum.PartType.Block, Vector3.new(5, 0.3, 5), Color3.fromHex("3b3f48"))
+		root.CFrame = CFrame.new(0, 7.2, 0)
+		for _, x in { -2.3, 2.3 } do for _, z in { -2.3, 2.3 } do
+			local post = part(Enum.PartType.Block, Vector3.new(0.3, 7.2, 0.3), Color3.fromHex("8e939a")); post.CFrame = CFrame.new(x, 3.6, z); post.Parent = m
+		end end
 	elseif name == "x_nvg" then
 		root = part(Enum.PartType.Block, Vector3.new(0.6, 0.22, 0.2), Color3.fromHex("3b3f48"))
 		for _, x in { -0.14, 0.14 } do
@@ -111,7 +121,7 @@ local function standIn(name: string): Model
 	return m
 end
 local MODEL = { frag = "x_frag", smokegren = "x_smoke", smoke = "x_smoke", medkit = "x_medkit", bubble = "x_bubble", popper = "x_popper", reverse = "x_reverse", duck = "x_duck",
-	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg" }
+	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg", radar = "x_radar", radarDown = "x_radar", cage = "x_cage" }
 local function itemModel(id: string): Model
 	local name = MODEL[id] or ("x_" .. id)
 	local t = templates and templates:FindFirstChild(name)
@@ -210,6 +220,10 @@ local CLIPS = {
 	laptop = { dur = 0.9, out = 0.7, release = 9, inT = 0.06, keys = {
 		K(0, -0.4, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.1, -0.3, -0.62, -1.2, 0.05, 0.25, 0.05),
 		K(0.18, -0.24, -0.55, -1.55, -0.1, 0.2, 0.0), K(0.7, -0.26, -0.58, -1.45, -0.05, 0.22, 0.02), K(0.9, -0.45, -1.5, -1.0, 0.5, 0.2, 0.2) } },
+	radar = { dur = 1e6, out = 1e6 - 1, release = 1e9, inT = 0.06, keys = {
+		K(0, -0.5, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.17, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04), K(1e6, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04) } },
+	radarDown = { dur = 0.16, out = 0.0, release = 9, inT = 0.001, keys = {
+		K(0, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04), K(0.16, -0.5, -1.4, -1.0, 0.4, 0.2, 0.1) } },
 	bubble = { dur = 0.66, out = 0.4, release = 0.5, keys = {
 		K(0, -0.45, -1.3, -1.0, 0.5, 0.1, 0.2), K(0.12, -0.3, -0.5, -1.35, -0.1, 0.2, 0.05),
 		K(0.3, -0.3, -0.52, -1.3, -0.15, 0.25, 0.05), K(0.66, -0.5, -1.5, -1.0, 0.5, 0.1, 0.3) } },
@@ -312,6 +326,7 @@ end
 -- ---------------------------------------------------------------- pressing G
 local lastUse = -math.huge
 local toggleGoggles: () -> () -- (the goggles below)
+local radarHold: (boolean) -> () -- (the speed trap below)
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or io.KeyCode ~= Enum.KeyCode.G then return end
 	if menuOpen() or inHub() then return end
@@ -322,6 +337,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if not it or not it.live then return end
 	if me:GetAttribute("Quiz") then return end -- (sitting a pop quiz: no items)
 	if it.id == "nvg" then toggleGoggles(); return end
+	if it.id == "radar" then radarHold(true); return end
 	local t = os.clock()
 	if t - lastUse < Items.SPAM_CLIENT then return end
 	local n = charges()
@@ -1132,7 +1148,8 @@ local function headStep()
 		local head = pl.Character and pl.Character:FindFirstChild("Head") :: BasePart?
 		if on and head and not (pl == me and not thirdPerson()) then
 			if not g then g = itemModel("nvg"); g:ScaleTo(1.25); g.Parent = folder; headGoggles[pl] = g end
-			(g :: Model):PivotTo(head.CFrame * CFrame.new(0, 0.15, -0.55))
+			local gm = g :: Model
+			gm:PivotTo(head.CFrame * CFrame.new(0, 0.15, -0.55))
 		elseif g then g:Destroy(); headGoggles[pl] = nil end
 	end
 	for pl, g in headGoggles do if not pl.Parent then g:Destroy(); headGoggles[pl] = nil end end
@@ -1334,6 +1351,165 @@ local function boostStep()
 	Body.boost = if workspace:GetServerTimeNow() < fu then Items.QUIZ.fast else 1
 end
 
+-- ---------------------------------------------------------------- the speed trap (web public/js/secondaries.js)
+-- hold G: the radar gun comes up in your hand and reads whoever is under your crosshair every 0.15 s (the server
+-- measures their speed from its own record of where they've been). the numbers float over their heads; over 100
+-- km/h they get 3 s to slow down, over 200 the cage drops on them
+local radarOn = false
+local radarNext = 0
+local lastReading = ""
+local function aimedAt(): Instance?
+	-- the one nearest your crosshair, inside a small cone (the server makes up its own mind with lag slack)
+	local cf = camera.CFrame
+	local best, bd = nil, math.cos(0.1 + 0.06)
+	local function try(m: Instance)
+		local r = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not r then return end
+		local to = r.Position - cf.Position
+		local dist = to.Magnitude
+		if dist < 1 or dist > Items.SPEED.range + 12 then return end
+		local dot = to.Unit:Dot(cf.LookVector)
+		if dot > bd then best, bd = m, dot end
+	end
+	for _, pl in Players:GetPlayers() do if pl ~= me and pl.Character then try(pl.Character) end end
+	local dummies = workspace:FindFirstChild("Dummies")
+	if dummies then for _, m in dummies:GetChildren() do try(m) end end
+	return best
+end
+radarHold = function(on: boolean)
+	if on == radarOn then return end
+	radarOn = on
+	if on then
+		startHand("radar")
+		radarNext = 0
+	else
+		ItemR:FireServer("radar", "off")
+		if hand and hand.id == "radar" then startHand("radarDown") end
+	end
+end
+UserInputService.InputEnded:Connect(function(io: InputObject)
+	if io.KeyCode == Enum.KeyCode.G and radarOn then radarHold(false) end
+end)
+local function radarStep()
+	if not radarOn then return end
+	if me:GetAttribute("Item") ~= "radar" or not myChar() or menuOpen() or inHub() then radarHold(false); return end
+	local t = os.clock()
+	if t >= radarNext then
+		radarNext = t + Items.SPEED.scan
+		ItemR:FireServer("radar", camera.CFrame.LookVector, aimedAt())
+	end
+	-- the readout on the gun
+	local h = hand
+	local scr = h and h.id == "radar" and h.model:FindFirstChild("screen", true) :: BasePart?
+	if scr then
+		local sg = scr:FindFirstChildOfClass("SurfaceGui")
+		if not sg then
+			sg = Instance.new("SurfaceGui"); sg.Face = Enum.NormalId.Back; sg.LightInfluence = 0
+			sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; sg.PixelsPerStud = 200; sg.Parent = scr
+			local tl = T.text(sg, "Read", "", 40, Color3.fromRGB(150, 230, 255), T.FONT_HEAVY, Enum.TextXAlignment.Center); tl.Size = UDim2.fromScale(1, 1); tl.TextScaled = true
+		end
+		local tl = (sg :: SurfaceGui):FindFirstChild("Read") :: TextLabel?
+		if tl then tl.Text = if lastReading ~= "" then lastReading else "---" end
+	end
+end
+-- the number over someone's head (each reading: 0.7 s), the ticket's countdown over theirs
+local tags: { [Instance]: { gui: BillboardGui, label: TextLabel, untilT: number, ticket: number? } } = {}
+local function tagOn(model: Instance?): any
+	local head = model and model:FindFirstChild("Head") :: BasePart?
+	if not head or not model then return nil end
+	local t = tags[model]
+	if not t then
+		local bb = Instance.new("BillboardGui"); bb.Size = UDim2.fromOffset(200, 40); bb.StudsOffset = Vector3.new(0, 3.2, 0); bb.LightInfluence = 0; bb.AlwaysOnTop = true
+		bb.Adornee = head; bb.Parent = folder
+		local l = T.text(bb, "Read", "", 22, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center, true); l.Size = UDim2.fromScale(1, 1)
+		t = { gui = bb, label = l, untilT = 0, ticket = nil }
+		tags[model] = t
+	end
+	return t
+end
+local function tagStep()
+	local n = os.clock()
+	for m, t in tags do
+		if t.ticket and n < t.ticket then
+			local left = t.ticket - n
+			t.label.Text = ("SLOW DOWN!  %.1f"):format(left)
+			t.label.TextColor3 = if math.floor(n * 6) % 2 == 0 then Color3.fromRGB(235, 77, 75) else Color3.fromRGB(96, 150, 255)
+		elseif n < t.untilT then
+			-- (the reading)
+		else
+			t.gui:Destroy(); tags[m] = nil
+		end
+	end
+end
+local cages: { [Instance]: { model: Model, at: Vector3, t0: number, up: number? } } = {}
+local function cageStep()
+	local n = os.clock()
+	for key, c in cages do
+		local dropT = n - c.t0
+		-- drops 7 m in 0.22 s, a 0.18 m bounce until 0.36 s; on the way out it's hauled up (y += 30 u^2, 0.6 s)
+		local y = if dropT < 0.22 then 7 * S * (1 - (dropT / 0.22) ^ 2) elseif dropT < 0.36 then 0.18 * S * math.sin((dropT - 0.22) / 0.14 * math.pi) else 0
+		if c.up then
+			local u = n - c.up
+			if u > 0.6 then c.model:Destroy(); cages[key] = nil; continue end
+			y = 30 * S * u * u
+		end
+		c.model:PivotTo(CFrame.new(c.at + Vector3.new(0, y, 0)))
+	end
+end
+local function onRadarFx(m: any)
+	local model = if typeof(m.to) == "Instance" then m.to else nil
+	local v = tonumber(m.v) or 0
+	local over = v > Items.SPEED.limit
+	if m.o == me.UserId then
+		lastReading = ("%d"):format(v)
+		Sfx.play("click", nil, 0.5, if over then 1.6 else 1.2)
+	end
+	local t = tagOn(model)
+	if t and not t.ticket then
+		t.label.Text = ("%d km/h"):format(v)
+		t.label.TextColor3 = if over then T.DANGER else T.TEXT
+		t.untilT = os.clock() + 0.7
+	end
+end
+local function onTicket(m: any)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	local t = tagOn(model)
+	if t then t.ticket = os.clock() + (tonumber(m.s) or Items.SPEED.warn) end
+	if m.o == me.UserId then Hud.callout(("SLOW DOWN!  under %d km/h"):format(tonumber(m.lim) or Items.SPEED.limit), 2.0) end
+	if m.by == me.UserId then Hud.callout(("TICKET · %d km/h"):format(tonumber(m.v) or 0), 1.0) end
+end
+local function onTicketEnd(m: any)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	local t = model and tags[model]
+	if t then t.ticket = nil; t.untilT = 0 end
+	if m.o == me.UserId and m.ok then Hud.callout("WARNING · drive safe out there", 1.4) end
+end
+local function onJail(m: any)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	if not model or typeof(m.p) ~= "Vector3" then return end
+	local old = cages[model]
+	if old then old.model:Destroy() end
+	local cage = itemModel("cage"); cage.Parent = folder
+	cages[model] = { model = cage, at = m.p, t0 = os.clock() }
+	Sfx.play("thwack", m.p)
+	shakeFrom(m.p, 0.8)
+	if m.o == me.UserId then Hud.callout("PULLED OVER", 1.6)
+	elseif m.by == me.UserId then Hud.callout(("BUSTED!  %d KM/H"):format(tonumber(m.v) or 0), 1.6) end
+end
+local function onJailEnd(m: any)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	local c = model and cages[model]
+	if c then c.up = os.clock() end
+end
+-- jailed: you stay in the cage
+do
+	local prev = Body.onStep
+	Body.onStep = function(st: any, chest: Vector3, dt: number)
+		if prev then prev(st, chest, dt) end
+		if me:GetAttribute("Jail") then st.vx, st.vz = 0, 0; if st.vy > 0 then st.vy = 0 end; if st.hook then st.hook = nil; GrappleR:FireServer("release") end end
+	end
+end
+
 -- ---------------------------------------------------------------- what the server says
 local function onFx(m: any)
 	if type(m) ~= "table" then return end
@@ -1388,6 +1564,11 @@ local function onFx(m: any)
 				Size = ns(0, 0.15 * S, 1, 0), Lifetime = NR(0.3, 0.5), Speed = NR(3 * S, 6 * S), SpreadAngle = Vector2.new(180, 180) }):Emit(24)
 			Sfx.play("bonk", m.p)
 		end
+	elseif k == "radar" then onRadarFx(m)
+	elseif k == "ticket" then onTicket(m)
+	elseif k == "ticketx" then onTicketEnd(m)
+	elseif k == "jail" then onJail(m)
+	elseif k == "jailx" then onJailEnd(m)
 	elseif k == "hs" then addHole(m)
 	elseif k == "hu" then updHole(m)
 	elseif k == "he" then popHole(m)
@@ -1410,5 +1591,8 @@ RunService.RenderStepped:Connect(function(dt: number)
 	headStep()
 	examStep()
 	boostStep()
+	radarStep()
+	tagStep()
+	cageStep()
 	hudStep()
 end)

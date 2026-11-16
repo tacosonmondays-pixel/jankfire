@@ -34,13 +34,18 @@ type Quiz = { by: Fighter, ok: number, untilT: number, at: Vector3, botAt: numbe
 type St = { item: string, nextItem: string?, ic: Items.Ic?, save: { [string]: Items.Ic }, useT: number, heal: number, reverseUntil: number,
 	-- the gadgets: goggles on and when they last flipped; a pop quiz being sat, when the next one may come, the gold
 	-- star's invulnerability; the laptop's ads and when the next laptop can reach you
-	nvOn: boolean, nvT: number, quiz: Quiz?, quizSafe: number, invulnUntil: number, adsUntil: number, adsSafe: number }
+	nvOn: boolean, nvT: number, quiz: Quiz?, quizSafe: number, invulnUntil: number, adsUntil: number, adsSafe: number,
+	-- the speed trap: when the radar was last held up / read; a ticket (by, until, when it started); the cage; when the
+	-- next ticket may come; when this shooter may write the next one
+	radarOn: number, radarT: number, ticket: { by: Fighter, untilT: number, at: number }?, jail: { untilT: number, at: Vector3 }?,
+	radarSafe: number, ticketT: number }
 local st: { [Fighter]: St } = {}
 local function stateOf(f: Fighter): St
 	local s = st[f]
 	if not s then
 		s = { item = Items.DEFAULT, save = {}, useT = -math.huge, heal = 0, reverseUntil = -math.huge,
-			nvOn = false, nvT = -math.huge, quiz = nil, quizSafe = -math.huge, invulnUntil = -math.huge, adsUntil = -math.huge, adsSafe = -math.huge }
+			nvOn = false, nvT = -math.huge, quiz = nil, quizSafe = -math.huge, invulnUntil = -math.huge, adsUntil = -math.huge, adsSafe = -math.huge,
+			radarOn = -math.huge, radarT = -math.huge, ticket = nil, jail = nil, radarSafe = -math.huge, ticketT = -math.huge }
 		st[f] = s
 	end
 	return s
@@ -584,6 +589,178 @@ local function calcFly(pr: Pr, owner: Fighter?): boolean
 	return false
 end
 
+-- ------------------------------------------------------------------ the speed trap (server/secondaries.js)
+-- how fast t really goes, km/h (of metres): the path through the positions the server saw over the last window s
+-- (Fight.trail, 30 a second), over the time they took; a jump of more than 6 m faster than 120 m/s is a teleport
+local function speedKmh(t: Fighter): number
+	local SP = Items.SPEED
+	local tr = Fight.trail[t]
+	if not t.alive or not tr or #tr < 2 then return 0 end
+	local n = now()
+	local d, t0, t1 = 0, nil :: number?, 0
+	local last: { t: number, p: Vector3 }? = nil
+	for _, sm in tr do
+		if sm.t < n - SP.window then last = sm; continue end
+		if not last then last = sm; continue end
+		local step = (sm.p - last.p).Magnitude
+		if step > 6 * S and step / math.max(0.02, sm.t - last.t) > 120 * S then last = sm; continue end
+		t0 = t0 or last.t
+		t1 = sm.t
+		d += step
+		last = sm
+	end
+	local dt = if t0 then t1 - t0 else 0
+	return if dt < 0.2 then 0 else (d / dt) * SP.kmh
+end
+-- may the trap touch t (web secOk -> hitBlocked): alive, not you, one you can hurt, not spawn-protected, not in a
+-- dome from outside, not sitting a quiz or wearing a gold star
+local function secOk(f: Fighter, t: Fighter?): boolean
+	if not t or t == f or not t.alive or not Fight.allow(f, t) or Fight.invulnerable(t) then return false end
+	if t.kind == "player" and now() - t.spawnT < 1.2 then return false end
+	local tf, ff = Fight.feet(t), Fight.feet(f)
+	return not (tf and ff and #bubbles > 0 and Items.blocks(bubbles, tf, ff, nil))
+end
+-- who f is pointing at (web secTarget): the one the client named if the server agrees, else the best it finds
+local function secTarget(f: Fighter, d: Vector3, named: Fighter?): Fighter?
+	local SP = Items.SPEED
+	local e = Fight.eye(f)
+	if not e then return nil end
+	local best: Fighter? = nil
+	local bs = math.huge
+	for _, t in Fight.all do
+		if t == f or not t.alive or not Fight.allow(f, t) then continue end
+		local feet = Fight.feet(t)
+		if not feet then continue end
+		local c = feet + Vector3.new(0, 1 * S, 0)
+		local v = c - e
+		local dist = v.Magnitude
+		-- (lag slack, from the speeds the server saw, capped: web 1.2 m + 0.12 x theirs + 0.06 x yours, in m/s)
+		local slack = (1.2 + math.min(30, Fight.speed(t) / S) * 0.12 + math.min(30, Fight.speed(f) / S) * 0.06) * S
+		if dist > SP.range + slack or dist < 0.15 then continue end
+		local ang = math.acos(math.clamp(v:Dot(d) / dist, -1, 1))
+		local allow = SP.cone + math.atan2(1.0 * S + slack * 0.25, dist) + 0.04
+		if ang > allow then continue end
+		if Fight.castMap(e, v / dist, math.max(0, dist - 1.2)) or Utility.smokeBlocks(e, c) then continue end
+		local score = ang / allow + (if t == named then -10 else 0) + dist / S * 0.002
+		if score < bs then bs, best = score, t end
+	end
+	return best
+end
+local function hold(t: Fighter, at: Vector3)
+	local r = Fight.root(t)
+	if r and (r.Position - at).Magnitude > 1.5 then
+		if t.kind == "player" then (t.ref :: Player):SetAttribute("TeleportT", os.clock()) end
+		r.AssemblyLinearVelocity = Vector3.zero
+		r.CFrame = r.CFrame.Rotation + at
+	end
+end
+local function jailP(t: Fighter, by: Fighter?, v: number)
+	local SP = Items.SPEED
+	local ts = stateOf(t)
+	ts.ticket = nil
+	-- caught mid-air: the cage drops them onto the floor under them (over the void it just hangs there)
+	local r = Fight.root(t)
+	local at = if r then r.Position else Vector3.zero
+	if r then
+		local hit = Fight.castMap(r.Position, Vector3.new(0, -1, 0), SP.drop)
+		if hit and hit.Normal.Y > 0.5 then at = hit.Position + Vector3.new(0, Hitbox.ROOT_UP, 0) end
+	end
+	ts.jail = { untilT = now() + SP.jailT, at = at }
+	ts.radarSafe = now() + SP.safe
+	t.staggerUntil = math.max(t.staggerUntil, now() + SP.jailT) -- (no shooting, swinging or guarding from a cage)
+	hold(t, at)
+	if by then Rules.tagged(t, by, "radar", now()) end
+	if t.kind == "player" then (t.ref :: Player):SetAttribute("Jail", true) end
+	ItemFx:FireAllClients({ k = "jail", o = uidOf(t), model = Fight.model(t), by = uidOf(by), p = at - Vector3.new(0, Hitbox.ROOT_UP, 0), dur = SP.jailT, v = math.floor(v + 0.5) })
+end
+local function unjail(t: Fighter, why: string)
+	local ts = stateOf(t)
+	if not ts.jail then return end
+	ts.jail = nil
+	t.staggerUntil = math.min(t.staggerUntil, now())
+	if t.kind == "player" then (t.ref :: Player):SetAttribute("Jail", nil) end
+	ItemFx:FireAllClients({ k = "jailx", o = uidOf(t), model = Fight.model(t), why = why })
+end
+-- a ticket costs the shooter a charge (the reading itself is free)
+local function radarSpend(f: Fighter): boolean
+	local s = stateOf(f)
+	if s.item ~= "radar" then return false end
+	local c = charges(s)
+	if c.n <= 0 then return false end
+	Items.spend(c, now())
+	publish(f)
+	return true
+end
+-- one reading: everyone sees the number over their head. over the limit: a ticket; way over: the cage
+local function radarRead(f: Fighter, t: Fighter)
+	local SP = Items.SPEED
+	local n = now()
+	local v = speedKmh(t)
+	local ts, fs = stateOf(t), stateOf(f)
+	ItemFx:FireAllClients({ k = "radar", o = uidOf(f), to = Fight.model(t), v = math.floor(v + 0.5) })
+	if ts.ticket and v >= SP.jail and not ts.jail and secOk(f, t) then -- (floored it during the countdown)
+		ItemFx:FireAllClients({ k = "ticketx", o = uidOf(t), model = Fight.model(t), ok = false })
+		jailP(t, f, v)
+		return
+	end
+	if v <= SP.limit or ts.ticket or ts.jail or n < ts.radarSafe or not secOk(f, t) or n < fs.ticketT then return end
+	if not radarSpend(f) then return end
+	fs.ticketT = n + SP.gap
+	local by = f
+	if n < ts.reverseUntil then -- (a reverse card: you get the ticket)
+		ItemFx:FireAllClients({ k = "reflect", o = uidOf(t), by = uidOf(f), model = Fight.model(t) })
+		by, t = t, f
+		ts = stateOf(t)
+	end
+	if v >= SP.jail then jailP(t, by, v); return end
+	ts.ticket = { by = by, untilT = n + SP.warn, at = n }
+	Rules.tagged(t, by, "radar", n)
+	ItemFx:FireAllClients({ k = "ticket", o = uidOf(t), model = Fight.model(t), by = uidOf(by), v = math.floor(v + 0.5), s = SP.warn, lim = SP.limit })
+end
+-- G held with the speed trap: (look, the one under your crosshair or nil); "off" when you let go
+local function onRadar(f: Fighter, d: unknown, named: unknown)
+	local SP = Items.SPEED
+	local s = stateOf(f)
+	if d == "off" then s.radarOn = -math.huge; if f.kind == "player" then (f.ref :: Player):SetAttribute("Radar", nil) end return end
+	if not f.alive or s.item ~= "radar" or s.quiz or s.jail then return end
+	local n = now()
+	s.radarOn = n + 0.6
+	if f.kind == "player" then (f.ref :: Player):SetAttribute("Radar", true) end
+	if n - s.radarT < SP.scan * 0.8 then return end
+	s.radarT = n
+	local look = if typeof(d) == "Vector3" and d.Magnitude > 0.5 and d.Magnitude < 1.5 then d.Unit else (Fight.root(f) :: BasePart).CFrame.LookVector
+	local t = secTarget(f, look, Fight.of(named))
+	if t then radarRead(f, t) end
+end
+-- every tick: cages run out; a ticket waits its grace, then back under the limit = a warning, out of time = jailed
+local function tickRadar()
+	local SP = Items.SPEED
+	local n = now()
+	for t, s in st do
+		if s.jail then
+			if n >= s.jail.untilT or not t.alive then unjail(t, if t.alive then "time" else "dead") else hold(t, s.jail.at) end
+		end
+		local tk = s.ticket
+		if tk and t.alive and n - tk.at >= SP.grace then
+			if speedKmh(t) <= SP.limit then
+				s.ticket = nil
+				s.radarSafe = n + SP.warnSafe
+				ItemFx:FireAllClients({ k = "ticketx", o = uidOf(t), model = Fight.model(t), ok = true })
+			elseif n >= tk.untilT then
+				ItemFx:FireAllClients({ k = "ticketx", o = uidOf(t), model = Fight.model(t), ok = false })
+				jailP(t, alive(tk.by), speedKmh(t))
+			end
+		elseif tk and not t.alive then
+			s.ticket = nil
+		end
+		if s.radarOn > -math.huge and n > s.radarOn and t.kind == "player" then
+			s.radarOn = -math.huge
+			local tp = t.ref :: Player
+			tp:SetAttribute("Radar", nil)
+		end
+	end
+end
+
 -- every damage goes through Fight.hurt, and Fight.hurt asks this first (web hurt -> bubbleBlocks): a hit on someone in
 -- a dome from anyone outside it (or, with nobody behind it, from a point outside it) is dropped, shove and all
 local function blocked(by: Fighter?, t: Fighter, from: Vector3?): boolean
@@ -636,6 +813,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if not f then return end
 	if i == "nv" then onNv(f, o); return end -- (G with the goggles: on / off, free)
 	if i == "ans" then onAnswer(f, o); return end -- (a pop quiz answer, 0-3)
+	if i == "radar" then onRadar(f, o, d); return end -- (the speed trap: G held is free, only a ticket spends)
 	if type(i) ~= "string" or not table.find(Items.ORDER, i) then return end
 	local s = stateOf(f)
 	local c = charges(s)
@@ -714,6 +892,7 @@ local function tick(dt: number)
 	for i = #clouds, 1, -1 do if t >= clouds[i].untilT then table.remove(clouds, i) end end
 	tickHoles(dt)
 	tickQuizzes()
+	tickRadar()
 	-- the medkit: 26 HP a second until the 45 is spent, never past 100 (web tickItems: it doesn't eat overheal, and
 	-- the heal keeps draining while you're full)
 	for f, s in st do
@@ -763,6 +942,8 @@ function Utility.init(fight: any)
 		-- (web gearReset: goggles off, no exam, no gold star, no ads)
 		if s.quiz then endQuiz(f, -1, true) end
 		setNv(f, false)
+		s.ticket = nil
+		if s.jail then unjail(f, "gone") end
 		s.invulnUntil, s.adsUntil = -math.huge, -math.huge
 		publish(f)
 	end)

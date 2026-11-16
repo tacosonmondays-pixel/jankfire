@@ -135,3 +135,18 @@ How straight someone looks at you is judged from their body's facing (the server
 
 ![the night vision goggles on](items/goggles-view.jpg)
 
+## Batch 3b: Speed Trap (live since place version 323), Instant Camera, Bubble Wand
+
+The Speed Trap reads speed from the server's own record of where you've been (`Fight.trail`, 30 a second), never
+from the client. In the test the Stand was driven back and forth along the hall at a set speed by a server loop.
+
+| what | web game | measured | |
+| --- | --- | --- | --- |
+| holding G | free; the radar gun comes up, a reading every 0.15 s on whoever is under the crosshair | the gun up in the left hand, its readout on its back; readings 0.15-0.17 s apart | ok |
+| the reading | path length over the last 0.5 s, km/h of metres (studs/s x 1.2) | the Stand at 120 studs/s (144 km/h): **125-144** (the lower ones span a turnaround) | ok |
+| over 100 | a ticket (one charge): 3 s to get back under | a ticket at 135 km/h, charges 2 -> 1 | ok |
+| still over at the end | jailed | 3.00 s later: "out of time", jailed for **3.52 s** (3.5) | ok |
+| over 200 at once / while ticketed | jailed on the spot | not measured (my speed-up came after the jail) | to do |
+
+![the speed trap held up](items/radar-held.jpg)
+
