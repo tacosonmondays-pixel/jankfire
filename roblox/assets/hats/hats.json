@@ -187,20 +187,21 @@
  },
  "duck": {
   "lo": [
-   -0.031,
+   -0.032,
    -0.0,
-   -0.0396
+   -0.0404
   ],
   "hi": [
    0.0335,
    0.0713,
    0.0352
   ],
-  "tris": 4728,
+  "tris": 5872,
   "pieces": [
    "body__duck",
    "head__duck",
    "beak__beak",
+   "beak__seam",
    "eyes__eye",
    "foot__foot",
    "foot__gold"
@@ -210,19 +211,20 @@
   "lo": [
    -0.0282,
    -0.0,
-   -0.0319
+   -0.0326
   ],
   "hi": [
    0.0282,
    0.0742,
    0.0283
   ],
-  "tris": 10868,
+  "tris": 12012,
   "pieces": [
    "cushion__velvet",
    "piping__gold",
    "duck__gold",
    "beak__beak",
+   "beak__seam",
    "eyes__eye",
    "crown__gold",
    "dome__velvet",

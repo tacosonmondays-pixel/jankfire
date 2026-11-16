@@ -181,6 +181,47 @@ def stadium2d(u0, u1, r, n=6):
     return pts
 
 
+def duckbill(g, piece, seam, yc, zb, zt, hw, top, low, up, gap=0.0013, M=I4, n=24, p=2.6):
+    """a rubber duck's bill (16 Nov, the owner on the Ducky guns' rods: "looks nothing like a beak"): a wide flat
+       spatula from its root zb (sunk in the head) to its round tip zt (zt < zb: forward), hw half wide (a little wider
+       toward the tip), the upper half `top` thick over the mouth line yc, the lower half `low` thick under it, a bit
+       narrower and shorter, the tip turned `up` higher. Between the halves a dark seam (the `seam` piece) sunk 1.5 mm
+       in, so the mouth line reads from the side and the front. M (hat frame) is applied last"""
+    def loft(pc, us, w_k, y_off, t_up, t_dn, u_end):
+        bm = bmesh.new()
+        rings = []
+        for u in us:
+            uu = u * u_end
+            w = hw * w_k * (0.92 + 0.12 * uu) * (math.sqrt(max(0.0, 1 - ((u - 0.5) / 0.5) ** 2)) if u > 0.5 else 1.0)
+            thin = (1 - 0.2 * uu) * (1 - 0.3 * max(0.0, (u - 0.5) / 0.5) ** 2)
+            w = max(w, hw * 0.05)
+            z = zb + (zt - zb) * uu
+            y = yc + y_off + up * uu * uu
+            ring = []
+            for j in range(n):
+                a = 2 * math.pi * (j + 0.5) / n
+                c, s = math.cos(a), math.sin(a)
+                ex = math.copysign(abs(c) ** (2 / p), c)
+                ey = math.copysign(abs(s) ** (2 / p), s)
+                ring.append(V(bm, M, w * ex, y + (t_up if s > 0 else t_dn) * thin * ey, z))
+            rings.append((ring, y + (t_up - t_dn) * thin * 0.5, z))
+        for (a, _, _), (b, _, _) in zip(rings, rings[1:]):
+            for j in range(n):
+                k = (j + 1) % n
+                bm.faces.new([a[j], a[k], b[k], b[j]])
+        for idx, flip in ((0, True), (-1, False)):
+            ring, y, z = rings[idx]
+            c = V(bm, M, 0.0, y, z)
+            for j in range(n):
+                k = (j + 1) % n
+                bm.faces.new([ring[k], ring[j], c] if flip else [ring[j], ring[k], c])
+        put(g, pc, bm, 55)
+    us = (0.0, 0.15, 0.3, 0.45, 0.58, 0.7, 0.8, 0.88, 0.94, 0.98, 1.0)
+    loft(piece, us, 1.0, 0.0, top, 0.0004, 1.0)                    # the upper bill, flat underneath
+    loft(piece, us, 0.9, -gap, 0.0003, low, 0.93)                  # the lower bill: narrower, its tip behind
+    loft(seam, us, 0.84, -gap * 0.5, 0.0006, 0.0006, 0.9)         # the mouth line, sunk in between
+
+
 # ------------------------------------------------------------------ the hats
 BUILD = {}
 
@@ -402,13 +443,14 @@ def duck():
     """TINY DUCK: a soft yellow rubber duck riding the gun, turned so the player sees its face"""
     g = Gun('hat_duck')
     g.slot('duck', 'a3926a'); g.slot('beak', '8f6048'); g.slot('eye', '23242a')  # (round 6: ochre)
+    g.slot('seam', '4a3024')  # (the bill's mouth line: its own colour, darker)
     blob(g, 'body__duck', (0, 0.0165, 0.003), (0.0225, 0.0175, 0.029))
     blob(g, 'body__duck', (0, 0.0185, -0.014), (0.0185, 0.0165, 0.0165))
     blob(g, 'body__duck', (0, 0.0285, 0.0245), (0.0105, 0.0105, 0.0125), RX(math.radians(-40)))
     for s in (-1, 1):
         blob(g, 'body__duck', (s * 0.0195, 0.0205, 0.006), (0.0055, 0.0105, 0.0165), RZ(s * math.radians(-12)))
     blob(g, 'head__duck', (0, 0.0445, -0.0155), (0.0155, 0.0152, 0.0155))
-    blob(g, 'beak__beak', (0, 0.0418, -0.0322), (0.0094, 0.0042, 0.0088))
+    duckbill(g, 'beak__beak', 'beak__seam', 0.0412, -0.022, -0.0415, 0.0106, 0.0040, 0.0028, 0.0022)  # (16 Nov: a real bill)
     for s in (-1, 1):
         blob(g, 'eyes__eye', (s * 0.0094, 0.0498, -0.0255), (0.0038, 0.0040, 0.0030))  # (round 6: real eyes)
     return g
@@ -423,7 +465,7 @@ def royalduck():
     """ROYAL DUCK (VIP): a polished gold duck in a tiny crown, sitting on a wine velvet cushion with gold piping and a
        gold ball at each corner; the Tiny Duck's shape a size smaller, so the two read as one family, this one dressed"""
     g = Gun('hat_royalduck')
-    g.slot('gold', ROYAL_GOLD, 'm'); g.slot('velvet', WINE); g.slot('beak', '6e4a30'); g.slot('eye', '23242a')
+    g.slot('gold', ROYAL_GOLD, 'm'); g.slot('velvet', WINE); g.slot('beak', '6e4a30'); g.slot('eye', '23242a'); g.slot('seam', '3a2618')
     # the cushion: a puffy rounded square, its sides along the gun and across it, its corners on the diagonals
     CR, CH = 0.0255, 0.0095
     sq = lambda th: (abs(math.cos(th)) ** 4 + abs(math.sin(th)) ** 4) ** -0.25
@@ -445,7 +487,7 @@ def royalduck():
     hc = D((0, 0.0445, -0.0155))
     hr = 0.0155 * k
     blob(g, 'duck__gold', hc, (hr, 0.0152 * k, hr))
-    blob(g, 'beak__beak', D((0, 0.0418, -0.0322)), R((0.0094, 0.0042, 0.0088)))
+    duckbill(g, 'beak__beak', 'beak__seam', 0.0412, -0.022, -0.0415, 0.0106, 0.0040, 0.0028, 0.0022, M=T(0, y0, 0) @ S(k))
     for s in (-1, 1):
         blob(g, 'eyes__eye', D((s * 0.0094, 0.0498, -0.0255)), R((0.0038, 0.0040, 0.0030)))
     # the tiny crown on its head (narrower than the head): a gold band round its top, five points with ball tips, a

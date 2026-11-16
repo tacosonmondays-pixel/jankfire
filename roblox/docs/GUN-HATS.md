@@ -177,6 +177,25 @@ cushion toward the side the player sees; the cushion stays square to the gun. It
   first-person gun, the third-person gun and the held model, under the crosshair on the Redline's block. The owner's
   saved hats were put back after the test.
 
+## Round 11: the ducks get a real bill (16 Nov 2026, place version 476)
+
+The owner said the Ducky guns' beak (two thin orange rods) "looks nothing like a beak", and the guns session gave them a
+wide flat rounded bill. The two duck hats had a smooth ellipsoid lump: not rods, but no mouth line and no lift, so both
+(the Royal Duck and the Tiny Duck, one family) now share `duckbill()` in `hat_models.py`. It is a wide flat spatula, a
+little wider toward its round tip, the tip turned up 2 mm, about 10 mm out of the head. The upper bill is flat underneath
+and the lower one is narrower and stops short. A darker seam (a new `seam` slot: `3a2618` on the Royal Duck, `4a3024`
+on the Tiny Duck) is sunk between them, so the mouth line reads from the side and the front. The bill colours are unchanged.
+`gun-hats/royal-duck.png` has the new close-ups.
+
+- Upload: round 11, asset 83292486542416, with all eleven hats; the other nine are unchanged. Each duck has one more
+  piece: Tiny Duck 7, Royal Duck 10.
+- Clipping: both ducks on all 76 seats, first and third person (304 pairs). The bill touches nothing. The hats' bounds
+  grew under 1 mm. The only changes from the place version 452 report come from the guns session's slim-sights rework,
+  which was still uncommitted (sniper scopes, the Cue sniper's felt, the Redline's gauge). The live seats were not touched.
+- Studio: the seat data (only the two duck rows and the asset id) was pushed, `H.load(83292486542416)`, `H.check()`:
+  hats ok. In Edit, the Royal Duck on the AR shows the flat bill with its mouth line and lifted tip. Saved as place
+  version 476.
+
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
 - every hat on the Assault Rifle from the eye; one hat on each of the other guns from the eye: nothing over the
@@ -254,7 +273,8 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 10** (asset 134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck), place version 447
+- **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476. Round 10 (asset
+  134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
   version 380; its seats were re-measured after the guns' z-fight fix in version 404. Older hat uploads and the push

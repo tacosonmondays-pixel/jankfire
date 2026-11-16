@@ -17,11 +17,11 @@ D.HATS = {
 	tophat = { name = "Top Hat", rarity = "epic", lo = Vector3.new(-0.041, -0, -0.0451), hi = Vector3.new(0.041, 0.062, 0.0451) },
 	halo = { name = "Halo", rarity = "epic", lo = Vector3.new(-0.0345, -0, -0.0325), hi = Vector3.new(0.0345, 0.0364, 0.0325) },
 	crown = { name = "Crown", rarity = "legendary", lo = Vector3.new(-0.0428, -0, -0.0428), hi = Vector3.new(0.0428, 0.0547, 0.0428) },
-	duck = { name = "Tiny Duck", rarity = "legendary", lo = Vector3.new(-0.031, -0, -0.0396), hi = Vector3.new(0.0335, 0.0713, 0.0352) },
-	royalduck = { name = "Royal Duck", rarity = "legendary", vip = true, lo = Vector3.new(-0.0282, -0, -0.0319), hi = Vector3.new(0.0282, 0.0742, 0.0283) },
+	duck = { name = "Tiny Duck", rarity = "legendary", lo = Vector3.new(-0.032, -0, -0.0404), hi = Vector3.new(0.0335, 0.0713, 0.0352) },
+	royalduck = { name = "Royal Duck", rarity = "legendary", vip = true, lo = Vector3.new(-0.0282, -0, -0.0326), hi = Vector3.new(0.0282, 0.0742, 0.0283) },
 }
 -- the upload (every hat in one model, 10 x size: one template stud = UNIT metres)
-D.ASSET = 134178407944653
+D.ASSET = 83292486542416
 D.UNIT = 0.1
 
 -- the moving bits (client only): spin = round the hat's up axis (rad/s), bob = up and down (metres, Hz),
