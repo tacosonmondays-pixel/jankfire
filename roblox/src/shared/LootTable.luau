@@ -136,6 +136,11 @@ do
 				L.SKINS[id] = { row[1], row[2], row[3] }
 			end
 		end
+		-- (an older skin remodelled under a new name: SkinSets.RENAME[id] = its new name)
+		for id, name in (if type(S.RENAME) == "table" then S.RENAME else {}) do
+			local row = L.SKINS[id]
+			if row and type(name) == "string" then row[1] = name end
+		end
 	end
 end
 -- a weapon skin's tier (SkinSets.TIER: basic = small changes to the base gun, mid = a new model, high = a remodel with
