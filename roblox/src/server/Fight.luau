@@ -223,9 +223,14 @@ end
 
 local onKillHooks: { (Rules.KillInfo) -> () } = {}
 function Fight.onKill(fn: (Rules.KillInfo) -> ()) table.insert(onKillHooks, fn) end
--- every bit of HP that really comes off someone: (victim, hp taken, by, weapon). matches count damage dealt with it
-local onHurtHooks: { (Fighter, number, Fighter?, string) -> () } = {}
-function Fight.onHurt(fn: (Fighter, number, Fighter?, string) -> ()) table.insert(onHurtHooks, fn) end
+-- every bit of HP that really comes off someone: (victim, hp taken, by, weapon, headshot). matches count damage dealt
+-- with it, Stats.luau hits and headshots
+local onHurtHooks: { (Fighter, number, Fighter?, string, boolean?) -> () } = {}
+function Fight.onHurt(fn: (Fighter, number, Fighter?, string, boolean?) -> ()) table.insert(onHurtHooks, fn) end
+-- every attack the server took: a shot (Combat's Fire, once it passed Rules.fire) or a swing. Stats.luau's accuracy
+local onShotHooks: { (Fighter, string) -> () } = {}
+function Fight.onShot(fn: (Fighter, string) -> ()) table.insert(onShotHooks, fn) end
+function Fight.shot(f: Fighter, wid: string) for _, fn in onShotHooks do fn(f, wid) end end
 
 local function scheduleRespawn(f: Fighter)
 	local delay = if f.kind == "dummy" then 3 else FFA.respawn
@@ -298,7 +303,7 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	if by and by ~= t and Fight.invulnerable(t) then return 0 end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
-	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid) end end
+	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid, hs) end end
 	syncHp(t)
 	R.Dmg:FireAllClients({
 		to = if t.kind == "player" then (t.ref :: Player).UserId else nil, model = Fight.model(t),

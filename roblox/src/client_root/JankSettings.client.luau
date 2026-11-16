@@ -1,5 +1,5 @@
--- the settings panel on P: field of view and mouse sensitivity (Jankfire.Theme has the look: a dark card, white text,
--- amber slider fills). the crosshair is FightHud's
+-- the settings panel on P: field of view, mouse sensitivity and HIDE MY STATS (Jankfire.Theme has the look: a dark
+-- card, white text, amber slider fills). the crosshair is FightHud's; the stats switch is kept by the server (Stats.luau)
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -28,7 +28,7 @@ hintText.Size = UDim2.new(1, -40, 1, 0)
 local scrim = T.new("Frame", { Name = "Scrim", BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.5, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), Visible = false }, gui)
 local panel = T.new("TextButton", { -- a button so Modal can free the mouse from first person while it's open
 	Name = "Panel", AutoButtonColor = false, Text = "", Modal = true, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(380, 210), BackgroundColor3 = T.BG, BackgroundTransparency = 0, BorderSizePixel = 0, Visible = false,
+	Size = UDim2.fromOffset(380, 272), BackgroundColor3 = T.BG, BackgroundTransparency = 0, BorderSizePixel = 0, Visible = false,
 }, gui)
 T.corner(panel, 8)
 T.edge(panel)
@@ -90,6 +90,34 @@ local function slider(y, name, min, max, get, set, fmt)
 end
 local fovS = slider(74, "FIELD OF VIEW", FOV_MIN, FOV_MAX, function() return S.fov end, function(v) S.fov = math.floor(v + 0.5) end, function(v) return tostring(v) end)
 local sensS = slider(146, "MOUSE SENSITIVITY", SENS_MIN, SENS_MAX, function() return S.sens end, function(v) S.sens = math.floor(v * 20 + 0.5) / 20 end, function(v) return string.format("%.2fx", v) end)
+
+-- hide my stats: others then see your name, rank and card, not your numbers (the whole row is the button: 44 px tall)
+local privRow = T.new("TextButton", { Name = "Privacy", AutoButtonColor = false, Text = "", BackgroundTransparency = 1, Position = UDim2.fromOffset(0, 204), Size = UDim2.new(1, 0, 0, 48) }, panel)
+local privLabel = T.text(privRow, "Label", "HIDE MY STATS", 12, T.MUTED, T.FONT_BOLD)
+privLabel.Position = UDim2.fromOffset(24, 8)
+privLabel.Size = UDim2.fromOffset(220, 16)
+local privSub = T.text(privRow, "Sub", "others see your name, rank and card only", 12, T.DIM)
+privSub.Position = UDim2.fromOffset(24, 26)
+privSub.Size = UDim2.fromOffset(260, 16)
+local privSw = T.new("Frame", { Name = "Switch", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, -24, 0.5, 0), Size = UDim2.fromOffset(52, 28), BackgroundColor3 = T.TRACK, BorderSizePixel = 0 }, privRow)
+T.corner(privSw, 14)
+local privKnob = T.new("Frame", { Size = UDim2.fromOffset(22, 22), Position = UDim2.fromOffset(3, 3), BackgroundColor3 = T.TEXT, BorderSizePixel = 0 }, privSw)
+T.corner(privKnob, 11)
+local function showPrivacy()
+	local on = lp:GetAttribute("StatsPrivate") == true
+	privSw.BackgroundColor3 = if on then T.ACCENT else T.TRACK
+	privKnob.Position = if on then UDim2.fromOffset(27, 3) else UDim2.fromOffset(3, 3)
+end
+showPrivacy()
+lp:GetAttributeChangedSignal("StatsPrivate"):Connect(showPrivacy)
+privRow.MouseButton1Click:Connect(function()
+	local remotes = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireRemotes")
+	local fn = remotes and remotes:FindFirstChild("Profile")
+	if fn and fn:IsA("RemoteFunction") then
+		local want = lp:GetAttribute("StatsPrivate") ~= true
+		task.spawn(function() pcall(function() fn:InvokeServer("private", want) end) end)
+	end
+end)
 
 UIS.InputChanged:Connect(function(io)
 	if dragging and (io.UserInputType == Enum.UserInputType.MouseMovement or io.UserInputType == Enum.UserInputType.Touch) then dragging.setFromX(io.Position.X) end

@@ -50,6 +50,7 @@ type Match = {
 	site: Site, -- where it is played: that arena, or a copy of it
 	on: boolean, -- false once its players are back in the hub
 	ghost: number?, -- (Studio tests only: a match with nobody in it, over at this os.clock(): Matches.test)
+	ghostWin: number?, -- (and the team that wins it then; nil = nobody)
 }
 
 local Fight: any
@@ -65,6 +66,20 @@ local padLast: { [Model]: Match } = {} -- each pad's latest match (its sign show
 local busy: { [Model]: boolean } = {} -- the sites in use
 local copySlots: { [string]: { [number]: Model } } = {} -- each arena's copies by slot (Arena.copyOffset)
 local nextId = 0
+
+-- other modules follow the matches (Stats.luau): one starting (its teams of players), a round won, the end. each hook
+-- runs in its own thread, so a slip in one can't stop a match
+local hooks: { [string]: { (...any) -> () } } = { start = {}, round = {}, finish = {} }
+function Matches.onStart(fn: (Match) -> ()) table.insert(hooks.start, fn) end
+function Matches.onRound(fn: (Match, number) -> ()) table.insert(hooks.round, fn) end -- (the match, the team that took it)
+function Matches.onEnd(fn: (Match, number?) -> ()) table.insert(hooks.finish, fn) end -- (the match, the winning team)
+local function fire(list: { (...any) -> () }, ...: any) for _, fn in list do task.spawn(fn, ...) end end
+-- the match a player is in, or nil: { id, mode, arena, team, phase }
+function Matches.matchOf(p: Player): { id: number, mode: string, arena: string, team: number, phase: string }?
+	local im = inMatch[p]
+	if not im then return nil end
+	return { id = im.m.id, mode = im.m.mode, arena = im.m.arena, team = im.team, phase = im.m.phase }
+end
 
 -- ------------------------------------------------------------------ where you are
 local function rootOf(p: Player): BasePart?
@@ -258,6 +273,7 @@ end
 local function endMatch(m: Match, winner: number?)
 	if m.phase == "over" then return end
 	m.phase = "over"
+	fire(hooks.finish, m, winner)
 	setHud(m)
 	local board = Fight.board(m.fighters)
 	local name = if winner then teamLabel(m, winner) else nil
@@ -308,7 +324,7 @@ end
 local function checkRound(m: Match)
 	if not m.on or m.phase == "over" then return end
 	if m.ghost then -- (a Studio test's empty match: over when its time is up)
-		if os.clock() >= m.ghost then endMatch(m, nil) end
+		if os.clock() >= m.ghost then endMatch(m, m.ghostWin) end
 		return
 	end
 	-- everyone else left: the last team in wins outright
@@ -334,6 +350,7 @@ local function checkRound(m: Match)
 	end
 	m.phase = "between"
 	m.wins[winner] += 1
+	fire(hooks.round, m, winner)
 	setHud(m)
 	if m.wins[winner] >= Matches.WIN then
 		callAll(m, teamLabel(m, winner) .. " WINS THE MATCH", 2)
@@ -405,6 +422,7 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 			p:SetAttribute("Kills", 0); p:SetAttribute("Deaths", 0); p:SetAttribute("Kat", 0)
 		end
 	end)
+	fire(hooks.start, m)
 	startRound(m)
 	return m
 end
@@ -592,7 +610,7 @@ function Matches.init(fight: any)
 		if old then old:Destroy() end
 		local fn = Instance.new("BindableFunction")
 		fn.Name = "JankMatchTest"
-		fn.OnInvoke = function(op: string, a: any, b: any, c: any): any return Matches.test(op, a, b, c) end
+		fn.OnInvoke = function(op: string, a: any, b: any, c: any, d: any, e: any): any return Matches.test(op, a, b, c, d, e) end
 		fn.Parent = ServerStorage
 	end
 end
@@ -600,8 +618,10 @@ end
 -- ------------------------------------------------------------------ Studio tests (ServerStorage.JankMatchTest)
 -- a play test has one player, so it can't fill two pads at once. "ghost" starts a match with nobody in it (pad name,
 -- arena name or nil for the pad's next, seconds it lasts): it takes a site like any match, runs its rounds and ends
--- the normal way. "state" reads the live matches, the sites in use, the copies and the pads' countdowns
-function Matches.test(op: string, a: any, b: any, c: any): any
+-- the normal way. with a player as the 4th argument that player plays it alone on team 1 (the stats test), and the
+-- 5th is the team that wins when its time is up. "state" reads the live matches, the sites in use, the copies and
+-- the pads' countdowns
+function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 	if not RunService:IsStudio() then return nil end
 	if op == "ghost" then
 		local pads = hub:FindFirstChild("QueuePads")
@@ -612,8 +632,10 @@ function Matches.test(op: string, a: any, b: any, c: any): any
 		if not site then return { refused = arena, inUse = sitesInUse(), cap = maxLive() } end
 		local sides = {}
 		for t = 1, (pad:GetAttribute("Teams") :: number) do sides[t] = {} end
+		if typeof(d) == "Instance" and d:IsA("Player") then sides[1] = { d } end
 		local m = startMatch(pad, sides, site, arena)
 		m.ghost = os.clock() + (if type(c) == "number" then c else 30)
+		m.ghostWin = if type(e) == "number" then e else nil
 		local sp = {}
 		for t = 1, #sides do
 			sp[t] = {}

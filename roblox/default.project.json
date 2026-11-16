@@ -74,6 +74,9 @@
         "LootShow": {
           "$className": "RemoteEvent"
         },
+        "Profile": {
+          "$className": "RemoteFunction"
+        },
         "Item": {
           "$className": "RemoteEvent"
         },

@@ -289,6 +289,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 		if W[wid] then ammoSync(p, f, wid, why) end
 		return
 	end
+	Fight.shot(f, wid) -- (Stats.luau: one more attack for accuracy)
 	-- a ricochet: the hits are judged from the last wall the bullet really bounced off (a made-up path hits nobody)
 	local from: Vector3? = e
 	local path: { Vector3 }? = nil
@@ -336,6 +337,7 @@ SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown)
 	local f = Fight.byPlayer[p]
 	if not f or type(wid) ~= "string" then return end
 	if Rules.swing(f, wid, now()) then return end
+	Fight.shot(f, wid)
 	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId })
 end)
 
