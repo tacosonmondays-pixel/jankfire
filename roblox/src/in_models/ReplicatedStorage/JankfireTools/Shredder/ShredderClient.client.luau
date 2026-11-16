@@ -189,6 +189,9 @@ local function buildVM()
 		end
 	end
 	m.PrimaryPart = m:FindFirstChild("Handle")
+	-- (which tool it belongs to: the game's own client clears a copy whose tool is gone, Arsenal "the Shredder's copy")
+	local owner = Instance.new("ObjectValue")
+	owner.Name = "Owner"; owner.Value = tool; owner.Parent = m
 	-- your own avatar's hands on it, like the other weapons: the right on the grip, the left under the body behind
 	-- the cone (the hold table's "shredder" row, in the gun's own frame G)
 	local hd = m.PrimaryPart
@@ -225,7 +228,7 @@ end
 
 local bindName = "ShredderVM_" .. tostring(math.random(1, 1e9))
 RunService:BindToRenderStep(bindName, Enum.RenderPriority.Camera.Value + 2, function(dt)
-	-- (the tool is gone: a binding outlives its script, so the copy would stay in your camera; seen 16 Nov 2026)
+	-- (the tool is gone. if this script dies with it, Arsenal clears the copy instead: see Owner above)
 	if not tool:IsDescendantOf(game) then
 		RunService:UnbindFromRenderStep(bindName)
 		if vm then vm:Destroy(); vm = nil end

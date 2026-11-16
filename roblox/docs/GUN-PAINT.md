@@ -242,8 +242,9 @@ test, the player's `HoldLook` attribute shows one look on every weapon at once (
 
 Sheets for the owner (each row: before | after | combined): `gun-hold/looks-1.jpg` to `looks-3.jpg`.
 Checked in Play: every weapon in all three looks photographed; aiming on the SMG, Plan B and the Sniper lines up in
-combined; the Shredder's first-person copy no longer stays in the camera when its tool is removed (an older fault: a
-render binding outlives its script). Not checked: other avatar bodies in the combined look (checked in after), third
+combined; the Shredder's first-person copy no longer stays in the camera when its tool is removed (an older fault:
+the tool's own script dies with it, so Arsenal now clears a copy whose `Owner` tool is gone; place version 360). Its
+heat bar still stays until you respawn in that case. Not checked: other avatar bodies in the combined look (checked in after), third
 person (on the owner's avatar the held gun points backward; older code, not touched, needs its own fix).
 
 ## What is still not at the bar

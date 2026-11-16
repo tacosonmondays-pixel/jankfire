@@ -884,6 +884,14 @@ RunService.RenderStepped:Connect(function(dt: number)
 		smearStep(now, true)
 	end
 	H.step(dt, aim, scoped)
+	-- the Shredder's copy: its own script goes with its tool (a death, a test deleting it) and can't clear it, so a copy
+	-- whose tool is gone would stay in your camera (seen 16 Nov 2026)
+	for _, c in camera:GetChildren() do
+		if c.Name == "ShredderViewmodel" then
+			local o = c:FindFirstChild("Owner") :: ObjectValue?
+			if o and not (o.Value and o.Value:IsDescendantOf(game)) then c:Destroy() end
+		end
+	end
 	H.scope(scoped and not thirdPerson(), if held == "sniper" then "full" else "short") -- (only the Sniper blacks the screen)
 	H.hp(hp())
 	-- the Shredder (key 4) out: its name and heat in the panel instead of the gun it put away
