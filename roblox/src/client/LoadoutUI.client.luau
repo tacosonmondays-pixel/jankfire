@@ -558,6 +558,44 @@ local function finishWord(wr: Roster.Wrap): string?
 	if m and m ~= "Plastic" then return string.upper(m) end
 	return nil
 end
+-- what you own (Loot.luau, the Loot remote): a wrap or hat you don't own shows a lock and where it is won. you can
+-- still hover it to try it on; the server won't put it on (Loadout.luau)
+local owned: { [string]: { [string]: boolean } } = {}
+local ownedKnown = false
+local function owns(t: string, id: string): boolean
+	if not ownedKnown then return true end -- (not heard yet, or the owner's Studio unlock: lock nothing)
+	if t == "hat" and id == "none" then return true end
+	local row: any = if t == "wrap" then Roster.wrapById[id] elseif t == "hat" then GunHats.HATS[id] else nil
+	if row and row.rarity == "free" then return true end
+	local set = owned[t]
+	return set ~= nil and set[id] == true
+end
+local function fetchOwned()
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Loot")
+	if not (r and r:IsA("RemoteFunction")) then return end
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer("inventory") end)
+	if ok and type(res) == "table" and res.ok and type(res.owned) == "table" then
+		owned = {}
+		for t, ids in res.owned do
+			local set = {}
+			for _, id in ids do set[id] = true end
+			owned[t] = set
+		end
+		ownedKnown = res.devAll ~= true
+	end
+end
+-- a lock over a card you don't own: the card dims, a small padlock in its corner
+local function lockOver(parent: GuiObject, z: number): Frame
+	local f = new("Frame", { Name = "Lock", BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.5, BorderSizePixel = 0,
+		Size = UDim2.fromScale(1, 1), ZIndex = z, Visible = false }, parent)
+	T.corner(f, 4)
+	local l = label(f, "\u{1F512}", 13, UDim2.new(1, -21, 0, 2), UDim2.fromOffset(19, 17), WHITE, Enum.TextXAlignment.Center)
+	l.ZIndex = z + 1
+	return f
+end
+local swatchLocks: { [string]: Frame } = {}
+local hatLocks: { [string]: Frame } = {}
 type Swatch = { wr: Roster.Wrap, holder: Frame, chip: TextButton, shadow: Frame, st: UIStroke, tick: TextLabel }
 local swatches: { Swatch } = {}
 local onSwatch: (Roster.Wrap) -> () = function() end
@@ -588,6 +626,7 @@ for i, wr in Roster.wraps do
 	chip.MouseLeave:Connect(function() onHover(nil) end)
 	chip.MouseButton1Click:Connect(function() onSwatch(wr) end)
 	table.insert(swatches, { wr = wr, holder = holder, chip = chip, shadow = shadow, st = st, tick = tick })
+	swatchLocks[wr.id] = lockOver(chip, 8)
 end
 local function applyFilter()
 	for _, s in swatches do s.holder.Visible = state.filter == "all" or s.wr.rarity == state.filter or s.wr.id == "default" end
@@ -708,6 +747,8 @@ refresh = function()
 	for _, s in swatches do
 		local on = s.wr.id == wid
 		s.tick.Visible = on
+		local lk = swatchLocks[s.wr.id]
+		if lk then lk.Visible = not owns("wrap", s.wr.id) end
 		s.st.Color = if on then ACCENT else WHITE
 		s.st.Transparency = if on then 0 else 0.8
 		s.st.Thickness = if on then 2 else 1
@@ -752,6 +793,7 @@ onSwatch = function(wr)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
 	local _, md = wrapOf(e.id)
+	if not owns("wrap", wr.id) then play("empty"); say(("%s comes in spray cans. open one in the shop [B]."):format(wr.name), RED); return end
 	local ok, why = ask("wrap", e.id, wr.id, md)
 	if ok then
 		play("click")
@@ -836,6 +878,7 @@ for i, hid in GunHats.ORDER do
 	chip.MouseLeave:Connect(function() if state.hatHover == hid then state.hatHover = nil end; if state.open then refresh() end end)
 	chip.MouseButton1Click:Connect(function() onHat(hid) end)
 	table.insert(hatCards, { id = hid, chip = chip, st = st, tick = tick, spin = spinM })
+	hatLocks[hid] = lockOver(chip, 8)
 end
 local function setTab(t: string)
 	tab = t
@@ -865,6 +908,8 @@ hatsRefresh = function(e: any)
 	for _, c in hatCards do
 		local on = c.id == cur
 		c.tick.Visible = on
+		local lk = hatLocks[c.id]
+		if lk then lk.Visible = not owns("hat", c.id) end
 		c.st.Color = if on then ACCENT else WHITE
 		c.st.Transparency = if on then 0 else 0.8
 		c.st.Thickness = if on then 2 else 1
@@ -873,6 +918,7 @@ end
 onHat = function(hid: string)
 	local e = Roster.byId[state.focus]
 	if not e or not e.live or e.slot == "utility" then return end
+	if not owns("hat", hid) then play("empty"); say(("the %s comes in duffel bags. open one in the shop [B]."):format(string.lower(GunHats.HATS[hid].name)), RED); return end
 	local ok, why = ask("hat", e.id, hid)
 	if ok then
 		play("click")
@@ -987,6 +1033,7 @@ setOpen = function(v: boolean)
 		fit()
 		refresh()
 		applyFilter()
+		task.spawn(function() fetchOwned(); if state.open then refresh() end end)
 		gui.Enabled = true
 		for i, x in panelsIn do
 			x.o.Position = x.from
@@ -1044,6 +1091,8 @@ UIS.InputBegan:Connect(function(io, gp)
 end)
 
 -- the screen follows the server: picks / wraps / save status changing, a match grabbing you, a death
+-- (what you own: asked when the screen opens and whenever you win something)
+me:GetAttributeChangedSignal("LootOwned"):Connect(function() task.spawn(function() fetchOwned(); if state.open then refresh() end end) end)
 for _, a in { "LoadoutNext", "Wraps", "LoadoutSave" } do
 	me:GetAttributeChangedSignal(a):Connect(function() if state.open then refresh() end end)
 end

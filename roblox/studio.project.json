@@ -11,6 +11,7 @@
       "JankfireFX": { "$path": "place/ReplicatedStorage/JankfireFX.rbxm" },
       "JankfireTools": { "$path": "place/ReplicatedStorage/JankfireTools.rbxm" },
       "JankfireHats": { "$path": "place/ReplicatedStorage/JankfireHats.rbxm" },
+      "JankfireLoot": { "$path": "place/ReplicatedStorage/JankfireLoot.rbxm" },
       "ShredderRemote": { "$path": "place/ReplicatedStorage/ShredderRemote.rbxm" },
       "ImpactRemote": { "$path": "place/ReplicatedStorage/ImpactRemote.rbxm" },
       "PoseRemote": { "$path": "place/ReplicatedStorage/PoseRemote.rbxm" }
@@ -51,7 +52,8 @@
         "TrainingV2": { "$path": "studio-tools/TrainingV2.luau" },
         "RooftopV3": { "$path": "studio-tools/RooftopV3.luau" },
         "RooftopV3Layout": { "$path": "studio-tools/RooftopV3Layout.luau" },
-        "HatImport": { "$path": "studio-tools/HatImport.luau" }
+        "HatImport": { "$path": "studio-tools/HatImport.luau" },
+        "LootImport": { "$path": "studio-tools/LootImport.luau" }
       }
     },
     "StarterPlayer": {

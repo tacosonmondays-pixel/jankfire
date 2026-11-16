@@ -19,6 +19,7 @@ local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
+local Loot = require(script.Parent:WaitForChild("Loot")) -- (what you own: wraps and hats are won from Spray Cans and Duffel Bags)
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
 local Tools = ReplicatedStorage:WaitForChild("JankfireTools")
 
@@ -38,6 +39,15 @@ local function canHave(slot: string, wid: any): boolean
 	local e = if type(wid) == "string" then Roster.byId[wid] else nil
 	return e ~= nil and e.live and e.slot == slot
 end
+-- the Shredder's wrap and hat, if you own them (Loot.owns; a saved pick you don't own stays saved but isn't worn)
+local function ownedWrap(p: Player, d: Data?): { id: string, mode: string }?
+	local w = d and d.wraps.shredder
+	return if w and Loot.owns(p, "wrap", w.id) then w else nil
+end
+local function ownedHat(p: Player, d: Data?): string?
+	local h = d and d.hats.shredder
+	return if h and Loot.owns(p, "hat", h) then h else nil
+end
 local function list(d: Data): { string }
 	return { d.pick.primary, d.pick.secondary, d.pick.melee }
 end
@@ -54,11 +64,12 @@ local function publish(p: Player)
 	if not d then return end
 	p:SetAttribute("LoadoutNext", table.concat(slots(d), ","))
 	local parts = {}
-	for wid, w in d.wraps do table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end
+	-- (only what you own is worn: a saved pick you don't own stays saved, and goes on the moment you win it)
+	for wid, w in d.wraps do if Loot.owns(p, "wrap", w.id) then table.insert(parts, wid .. "=" .. w.id .. "/" .. w.mode) end end
 	table.sort(parts)
 	p:SetAttribute("Wraps", table.concat(parts, ";"))
 	local hats = {}
-	for wid, h in d.hats do table.insert(hats, wid .. "=" .. h) end
+	for wid, h in d.hats do if Loot.owns(p, "hat", h) then table.insert(hats, wid .. "=" .. h) end end
 	table.sort(hats)
 	p:SetAttribute("Hats", table.concat(hats, ";"))
 	p:SetAttribute("LoadoutSave", if not d.loaded then "loading" elseif d.canSave then "cloud" else "off")
@@ -77,18 +88,18 @@ local function syncTools(p: Player, f: any)
 		end
 	end
 	local d = data[p]
-	local wr = d and d.wraps.shredder
+	local wr = ownedWrap(p, d)
 	if want and not have and bag then
 		local src = Tools:FindFirstChild("Shredder")
 		if src then
 			local t = src:Clone()
 			if wr then WeaponModels.wrap(t, wr.id, wr.mode) end
-			GunHats.attachTool(t, d and d.hats.shredder)
+			GunHats.attachTool(t, ownedHat(p, d))
 			t.Parent = bag
 		end
 	elseif have then
 		WeaponModels.wrap(have, wr and wr.id, wr and wr.mode)
-		GunHats.attachTool(have, d and d.hats.shredder)
+		GunHats.attachTool(have, ownedHat(p, d))
 	end
 end
 
@@ -182,6 +193,13 @@ local function load(p: Player)
 	d.loaded, d.canSave = true, ok
 	if not ok then noStore(res)
 	elseif not d.touched then adopt(d, res) end -- (picks made while it loaded win)
+	if ok then
+		-- (what you wore before wraps and hats had to be won stays yours: Loot.grandfather, once per player)
+		local old = {}
+		for _, w in d.wraps do table.insert(old, { type = "wrap", id = w.id }) end
+		for _, h in d.hats do table.insert(old, { type = "hat", id = h }) end
+		Loot.grandfather(p, old)
+	end
 	publish(p)
 	pushNext(p)
 	-- the first life started on the defaults while this loaded: in the hub, swap now
@@ -237,6 +255,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "no paint on vapourware" end
 		if e.slot == "utility" then return false, "items don't take paint" end
 		if not Roster.wrapById[b] or not table.find(Roster.MODES, c) then return false, "that wrap doesn't exist" end
+		if not Loot.owns(p, "wrap", b) then return false, "you don't own that one yet. it's in spray cans" end
 		if b == "default" and c == "normal" then d.wraps[a] = nil else d.wraps[a] = { id = b, mode = c } end
 		changed(p)
 		-- paint: right away (it's only a look), on what others see in your hand and on the Shredder
@@ -250,6 +269,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if not e or not e.live then return false, "no hats on vapourware" end
 		if e.slot == "utility" then return false, "items don't wear hats" end
 		if not GunHats.valid(b) then return false, "that hat doesn't exist" end
+		if b ~= "none" and not Loot.owns(p, "hat", b) then return false, "you don't own that one yet. it's in duffel bags" end
 		local was = d.hats[a]
 		d.hats[a] = if b == "none" then nil else b
 		if was == d.hats[a] then return true, nil end
@@ -288,6 +308,16 @@ function Loadout.init(fight: any)
 	Fight = fight
 	-- every spawn arms you (Rules.spawn -> Rules.arm); then the client hears what's on its keys and gets its tools
 	fight.onSpawn(armed)
+	-- what you own changed (a container opened, your things loaded): what everyone sees follows at once
+	Loot.changed:Connect(function(p: Player)
+		if not data[p] then return end
+		publish(p)
+		local f = Fight and Fight.byPlayer[p]
+		if f and f.alive then
+			Fight.showWeapon(f)
+			syncTools(p, f)
+		end
+	end)
 	for _, p in Players:GetPlayers() do added(p) end
 	Players.PlayerAdded:Connect(added)
 	Players.PlayerRemoving:Connect(function(p)

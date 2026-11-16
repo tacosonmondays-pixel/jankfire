@@ -43,6 +43,11 @@ local Config = {
 		jumpUp = 11 * S, -- and get launched up
 		chest = 1 * S, -- the rope pulls from your chest, 1 m over your feet
 	},
+	-- loot (server/Loot.luau, shared/LootTable.luau): LOOT_FREE = containers cost nothing and open even with none in
+	-- stock (while we test); LOOT_ROBUX = sell them through developer products (Shop.luau's product ids; receipts:
+	-- ShopReceipts.server.luau -> Loot.grant). off until the owner turns it on
+	LOOT_FREE = true,
+	LOOT_ROBUX = false,
 	-- server checks (generous: movement is the client's, the server only catches teleports)
 	check = {
 		maxSpeed = 140 * S, -- studs/s, well past any bhop/grapple speed the web game sees

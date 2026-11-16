@@ -68,6 +68,9 @@
         "Loadout": {
           "$className": "RemoteFunction"
         },
+        "Loot": {
+          "$className": "RemoteFunction"
+        },
         "Item": {
           "$className": "RemoteEvent"
         },
