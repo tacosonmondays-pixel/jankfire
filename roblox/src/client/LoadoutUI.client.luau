@@ -18,6 +18,7 @@ local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local Roster = require(Shared:WaitForChild("Roster"))
 local Items = require(Shared:WaitForChild("Items")) -- (the utility slot's charges, for its card)
 local GunHats = require(Shared:WaitForChild("GunHats")) -- the hat on each weapon (the HATS tab)
+local GunSkins = require(Shared:WaitForChild("GunSkins")) -- each weapon's skin, another body from a crate (the SKINS tab)
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Loadout") :: RemoteFunction
@@ -124,11 +125,21 @@ local function slotIndex(slot: string): number return table.find(Roster.SLOTS, s
 local function keyOf(slot: string): string return if slot == "utility" then "G" else tostring(slotIndex(slot)) end
 local function onKey(slot: string): string return if slot == "utility" then "ON G" else "ON KEY " .. keyOf(slot) end
 local function hatOf(wid: string): string return GunHats.hatFor(me, wid) or "none" end
+local function skinOf(wid: string): string return GunSkins.skinFor(me, wid) or "default" end
+-- a skin's name and rarity: the loot session's LootTable (the web game's list), if it is in the place
+local function skinInfo(id: string): (string, string)
+	local mod = Shared:FindFirstChild("LootTable")
+	local ok, L = false, nil
+	if mod then ok, L = pcall(require, mod) end
+	local row = ok and type(L) == "table" and type(L.SKINS) == "table" and L.SKINS[id] or nil
+	if type(row) == "table" and type(row[1]) == "string" then return row[1], (if type(row[2]) == "string" then row[2] else "common") end
+	return (string.gsub(string.gsub(id, "^[%a]+_", ""), "_", " ")), "common"
+end
 
 -- ---------------------------------------------------------------- models for the previews
 -- every preview is scaled to the same size (radius 3 studs) so the table and the camera never need to change
-local function shredderModel(): Model?
-	local src = Tools:FindFirstChild("Shredder")
+local function shredderModel(skin: string?): Model?
+	local src = (skin and Tools:FindFirstChild("Shredder@" .. skin)) or Tools:FindFirstChild("Shredder")
 	if not src then return nil end
 	local m = Instance.new("Model")
 	local big: BasePart? = nil
@@ -168,13 +179,13 @@ crate = function(color: Color3): Model
 	m.PrimaryPart = box
 	return m
 end
-local function previewModel(id: string, hat: string?): (Model?, CFrame)
+local function previewModel(id: string, hat: string?, skin: string?): (Model?, CFrame)
 	local e = Roster.byId[id]
 	local m: Model?
 	if not e or not e.live then m = crate(if e then e.color else GREY)
 	elseif e.slot == "utility" then m = itemModel(id)
-	elseif id == "shredder" then m = shredderModel()
-	else m = WeaponModels.build(id, 3) end
+	elseif id == "shredder" then m = shredderModel(if skin ~= "default" then skin else nil)
+	else m = WeaponModels.build(id, 3, if skin ~= "default" then skin else nil) end
 	if not m then return nil, CFrame.identity end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then d.Anchored = true; d.CastShadow = false end
@@ -230,9 +241,10 @@ local saveLbl = label(stage, "", 16, UDim2.fromOffset(1360, 100), UDim2.fromOffs
 -- ---------------------------------------------------------------- slot cards (left)
 type Card = { slot: string, holder: Frame, body: TextButton, st: UIStroke, name: TextLabel, wrap: TextLabel, bar: Frame, vp: ViewportFrame, cam: Camera, key: string? }
 local cards: { Card } = {}
-local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false, hatHover = nil :: string?, modeHover = nil :: string? }
+local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false, hatHover = nil :: string?, modeHover = nil :: string?, skinHover = nil :: string? }
 local refresh: () -> () = function() end
 local hatsRefresh: (any) -> () = function() end -- (the HATS tab: set below)
+local skinsRefresh: (any) -> () = function() end -- (the SKINS tab: set below)
 
 -- (four cards since the utility slot: 102 tall on a 110 step, so the armory below keeps its place)
 for i, slot in Roster.SLOTS do
@@ -646,11 +658,11 @@ end
 local cardKey: { [string]: string } = {}
 local function cardModel(c: Card, id: string)
 	local wid, md = wrapOf(id)
-	local k = id .. "|" .. wid .. "|" .. md .. "|" .. hatOf(id)
+	local k = id .. "|" .. wid .. "|" .. md .. "|" .. hatOf(id) .. "|" .. skinOf(id)
 	if cardKey[c.slot] == k then return end
 	cardKey[c.slot] = k
 	for _, d in c.vp:GetChildren() do if d:IsA("Model") then d:Destroy() end end
-	local m, rel = previewModel(id, hatOf(id))
+	local m, rel = previewModel(id, hatOf(id), skinOf(id))
 	if not m then return end
 	WeaponModels.wrap(m, wid, md)
 	m:PivotTo(CFrame.Angles(0.18, math.pi / 2, 0) * rel:Inverse())
@@ -663,19 +675,20 @@ local function showPreview(id: string)
 	if state.hover and Roster.byId[id] and Roster.byId[id].live then wid = state.hover end
 	if state.modeHover and Roster.byId[id] and Roster.byId[id].live then md = state.modeHover end
 	local hat = if state.hatHover and Roster.byId[id] and Roster.byId[id].live then state.hatHover else hatOf(id)
-	if shown and shown.id == id and shown.hat == hat then
+	local skin = if state.skinHover and Roster.byId[id] and Roster.byId[id].live then state.skinHover else skinOf(id)
+	if shown and shown.id == id and shown.hat == hat and shown.skin == skin then
 		local k = wid .. "/" .. md
 		if shownWrap ~= k then shownWrap = k; WeaponModels.wrap(shown.model, wid, md) end
 		return
 	end
 	local turnIn = not shown or shown.id ~= id
 	if shown then shown.model:Destroy(); shown = nil end
-	local m, rel = previewModel(id, hat)
+	local m, rel = previewModel(id, hat, skin)
 	if not m then return end
 	WeaponModels.wrap(m, wid, md)
 	shownWrap = wid .. "/" .. md
 	m.Parent = vp
-	shown = { id = id, model = m, rel = rel, hat = hat }
+	shown = { id = id, model = m, rel = rel, hat = hat, skin = skin }
 	if turnIn then spin.yaw -= 0.7 end -- a small turn-in on the swap (it eases back to its rest pose; not for a hat)
 end
 
@@ -760,6 +773,7 @@ refresh = function()
 		b.mark.Visible = on
 	end
 	hatsRefresh(e)
+	skinsRefresh(e)
 	local save = me:GetAttribute("LoadoutSave")
 	saveLbl.Text = if save == "cloud" then "saves to your account" elseif save == "off" then "NOT SAVING · studio has API access off" else "fetching your stuff..."
 	saveLbl.TextColor3 = if save == "off" then RED else GREY
@@ -824,7 +838,7 @@ end
 -- with its moving bits going (GunHatsClient)
 local tab = "wraps"
 local tabBtns: { [string]: Btn } = {}
-for i, t in { "wraps", "hats" } do
+for i, t in { "wraps", "hats", "skins" } do
 	tabBtns[t] = button(stage, string.upper(t), "chip", UDim2.fromOffset(610 + (i - 1) * 112, 808), UDim2.fromOffset(104, 34))
 end
 local hHolder, hbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
@@ -880,11 +894,110 @@ for i, hid in GunHats.ORDER do
 	table.insert(hatCards, { id = hid, chip = chip, st = st, tick = tick, spin = spinM })
 	hatLocks[hid] = lockOver(chip, 8)
 end
+-- ---------------------------------------------------------------- the skins (a third tab): another body per weapon
+-- the focused weapon's skins that are in the place (GunSkins.forWeapon), one card each plus DEFAULT; hover to try it
+-- on in the big preview, click to wear it. a skin you don't own says so (the server checks: Inventory.owns)
+local sHolder, sbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
+sHolder.Visible = false
+local sTitle = label(sbar, "SKINS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)
+sTitle.FontFace = FONT_TITLE
+local sName = label(sbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(520, 26), TEXT)
+sName.FontFace = FONT_BOLD; sName.RichText = true; sName.TextWrapped = false
+label(sbar, "from crates · hover to try it on · click to wear it", 15, UDim2.fromOffset(700, 14), UDim2.fromOffset(530, 20), GREY, Enum.TextXAlignment.Right)
+local skinRow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132), ZIndex = 3 }, sbar)
+new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, skinRow)
+new("UIPadding", { PaddingLeft = UDim.new(0, 6) }, skinRow)
+local noSkins = new("TextLabel", {
+	BackgroundColor3 = PANEL, BackgroundTransparency = 0, BorderSizePixel = 0, Position = UDim2.fromOffset(12, 48), Size = UDim2.fromOffset(1226, 132),
+	FontFace = FONT, TextSize = 16, TextColor3 = GREY, Text = "", ZIndex = 10, Visible = false, Active = true,
+}, sbar)
+type SkinCard = { id: string, st: UIStroke, tick: TextLabel }
+local skinCards: { SkinCard } = {}
+local skinsFor = ""
+local onSkin: (string) -> () = function() end
+local function skinCard(sid: string, order: number, wid: string)
+	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(150, 128), LayoutOrder = order, ZIndex = 4 }, skinRow)
+	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(150, 88), ZIndex = 5 }, holder)
+	T.corner(chip, 4)
+	local st = T.edge(chip, nil, 0.8)
+	local name, rarity = "Default", "common"
+	if sid == "default" then
+		label(chip, "DEFAULT", 15, UDim2.new(), UDim2.fromScale(1, 1), GREY, Enum.TextXAlignment.Center).FontFace = FONT_BOLD
+	else
+		name, rarity = skinInfo(sid)
+		local sv, scam = viewport(chip, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1, ZIndex = 6, Ambient = Color3.fromRGB(170, 173, 182) })
+		local m, rel = previewModel(wid, nil, sid)
+		if m then
+			m:PivotTo(CFrame.Angles(0.18, math.pi / 2, 0) * rel:Inverse())
+			m.Parent = sv
+			scam.CFrame = CFrame.lookAt(Vector3.new(0, 0.6, 5.2), Vector3.new(0, 0, 0))
+		end
+	end
+	local tick = label(chip, "\u{2713}", 20, UDim2.fromOffset(2, 0), UDim2.fromOffset(22, 22), WHITE, Enum.TextXAlignment.Center)
+	tick.ZIndex = 7; tick.Visible = false; tick.TextStrokeColor3 = Color3.new(0, 0, 0); tick.TextStrokeTransparency = 0.3
+	local rr = Roster.RARITY[rarity] or Roster.RARITY.common
+	local line = new("Frame", { BackgroundColor3 = rr.color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 93), Size = UDim2.fromOffset(142, 3), ZIndex = 4 }, holder)
+	T.corner(line, 2)
+	local nm = label(holder, name, 14, UDim2.fromOffset(0, 100), UDim2.fromOffset(150, 26), GREY, Enum.TextXAlignment.Center)
+	nm.TextYAlignment = Enum.TextYAlignment.Top; nm.ZIndex = 5
+	chip.MouseEnter:Connect(function() state.skinHover = sid; if state.open then refresh() end end)
+	chip.MouseLeave:Connect(function() if state.skinHover == sid then state.skinHover = nil end; if state.open then refresh() end end)
+	chip.MouseButton1Click:Connect(function() onSkin(sid) end)
+	table.insert(skinCards, { id = sid, st = st, tick = tick })
+end
+skinsRefresh = function(e: any)
+	-- the row follows the focused weapon: rebuilt when the focus (or the skins in the place) change
+	local ids = GunSkins.forWeapon(e.id)
+	local k = e.id .. ":" .. table.concat(ids, ",")
+	if k ~= skinsFor then
+		skinsFor = k
+		for _, c in skinRow:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
+		table.clear(skinCards)
+		if e.live and e.slot ~= "utility" and #ids > 0 then
+			skinCard("default", 0, e.id)
+			for i, sid in ids do skinCard(sid, i, e.id) end
+		end
+	end
+	local cur = skinOf(e.id)
+	local shownId = if state.skinHover and e.live then state.skinHover else cur
+	if shownId == "default" then
+		sName.Text = "Default"
+	else
+		local nm, rar = skinInfo(shownId)
+		local rr = Roster.RARITY[rar] or Roster.RARITY.common
+		sName.Text = ('%s  <font color="#%s">%s</font>%s'):format(nm, rr.color:ToHex(), string.upper(rr.name),
+			if state.skinHover and state.skinHover ~= cur then '  <font color="#9ca2ac">(trying it on)</font>' else "")
+	end
+	noSkins.Visible = not e.live or e.slot == "utility" or #ids == 0
+	noSkins.Text = if e.slot == "utility" then "items don't take skins." elseif not e.live then "no skins on vapourware. pick something that's live." else "no skins for this one yet."
+	for _, c in skinCards do
+		local on = c.id == cur
+		c.tick.Visible = on
+		c.st.Color = if on then ACCENT else WHITE
+		c.st.Transparency = if on then 0 else 0.8
+		c.st.Thickness = if on then 2 else 1
+	end
+end
+onSkin = function(sid: string)
+	local e = Roster.byId[(skinsFor:match("^([%w_]+):")) or state.focus]
+	if not e or not e.live or e.slot == "utility" then return end
+	local ok, why = ask("skin", e.id, sid)
+	if ok then
+		play("click")
+		say(if sid == "default" then "back to the plain one." else ("%s, now as the %s."):format(string.lower(e.name), string.lower((skinInfo(sid)))))
+	else
+		play("empty"); say(why or "nope.", RED)
+	end
+	refresh()
+end
+me:GetAttributeChangedSignal("Skins"):Connect(function() if state.open then refresh() end end)
+
 local function setTab(t: string)
 	tab = t
 	wbar.Parent.Visible = t == "wraps"
 	hHolder.Visible = t == "hats"
-	state.hover, state.hatHover, state.modeHover = nil, nil, nil
+	sHolder.Visible = t == "skins"
+	state.hover, state.hatHover, state.modeHover, state.skinHover = nil, nil, nil, nil
 	for name, b in tabBtns do
 		b:set(string.upper(name), true, if name == t then T.CARD_HI else nil)
 		b.mark.Visible = name == t

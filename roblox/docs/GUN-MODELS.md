@@ -178,8 +178,75 @@ Five skin ideas of our own (none is a Rivals theme):
 5. **Smog Runner**: from the smog under the map. Weathered grey-green, the muzzle a respirator filter, an amber visor
    glass for the sight, hose loops in place of the sling.
 
-Not built: owning and picking skins (the loadout's picker, the save, the shop). That is the cosmetics batch
-(PORT-PLAN, "cosmetics order"): ProfileStore first.
+## The web game's skins on the live guns (16 November 2026, place version 379)
+
+The 26 skins the web game has for the sixteen live weapons (`shared/cosmetics.js`, `COSMETICS.model` and `SKINS_2`)
+are kit models now, one whole other body each, built in look C. The crate gives them (the loot session's
+`LootTable.SKINS`: names and rarities) and the loadout's SKINS tab puts them on.
+
+| Weapon | Skins |
+|---|---|
+| Assault Rifle | Toy Blaster, Bullpup, Keytar |
+| SMG | Pocket Uzi, Label Maker |
+| Burst | Take A Number |
+| LMG | Leaf Shredder |
+| DMR | Fountain Pen |
+| Auto Shotgun | Weed Whacker |
+| Sniper | Musket, Pool Cue, Golden (the web game's Sniper Royalty prize: built, not in the crate) |
+| Lever Rifle | Cap Gun |
+| Shotgun | Double Barrel, Brolly |
+| Half a Shotgun | Pepper Mills |
+| Marble Shotgun | Gumball Machine |
+| Redline | Hot Rod |
+| Pistol | Calculator |
+| Revolver | Flintlock, Cordless Drill |
+| Katana | Bokken, Shirasaya, Baguette Katana, Neon Tube |
+| Shredder | Wood Chipper |
+
+**The contract** (top of `tools/roblox/gunskin_kit.py`): a skin keeps its gun's spots (muzzle, sight, port, grip,
+fore: copied), the names and places of the nodes the game moves, about its size (within ~10%), and wrap zones in its
+piece names. `gun_check.py -- skins` proves each is one connected piece with its moving nodes. Left out on purpose,
+because the object has no such part: the Musket's bolt, the Flintlock's cylinder and the Cordless Drill's hammer
+(nothing moves there). No text, numbers, logos or code-like patterns anywhere: the Calculator's keys are plain
+blocks, the Label Maker's tape is blank.
+
+**Building**: the builders are `gun_skins_1.py` .. `gun_skins_3.py`; `gun_set.py` collects them into `SKINS`
+(`"<weapon>@<skin id>"`, file `w_<weapon>@<skin id>`). They go through the same export, upload and `WeaponKit.luau`
+as the guns.
+
+**In Studio**: `W.kit()` brings them in with the guns, then `W.skins()` copies every `w_<weapon>@<skin id>` from
+`WeaponSets.kit` to `ReplicatedStorage.JankfireSkins` as `<skin id>` with attribute `Weapon`. The Wood Chipper is a
+Tool (the Shredder is one): `JankfireTools["Shredder@shredder_chipper"]`, plus a marker model in `JankfireSkins`.
+Carl's Cardboard stays a look test (not in the crate).
+
+**In the game**:
+- `GunSkins.luau` (shared): `skinFor(player, weapon)` reads the player's `Skins` attribute ("ar=ar_toy;...").
+- `WeaponModels.build(id, k, skin)` draws the skin's template instead of the gun's and marks the model `Skin`. Hats
+  key on `weapon@skin`.
+- Viewmodel (first person) and Fight (third person, players only) pass the skin. A new skin rebuilds the held gun.
+- Loadout (server) keeps `skins` in the save, publishes `Skins`, and takes the remote op `("skin", weapon, id)` or
+  `"default"`. It only equips a skin the player owns: `Loot.owns(player, "skin", id)`. The Wood Chipper is handed over
+  as the Tool renamed "Shredder" with attribute `Skin`.
+- The loadout screen has a SKINS tab: a card per weapon, DEFAULT first, hover to try, click to put on.
+
+Ideas of our own for later (not built, none a Rivals theme): Night Shift (matte black, an amber hazard band, a work-lamp
+sight), Bowling Night (lane wood, pin-white stock), Glazed (white ceramic with cobalt bands), Smog Runner (weathered
+grey-green, a respirator muzzle).
+
+## The Marble Shotgun's jar and reload (16 November 2026)
+
+The owner: "gumball shotgun should lose less gumballs? idk how that would work, the reload is like this cage thing".
+
+- **The jar shows the ammo, fuller for longer.** The jar holds 14 balls, each its own node (`marble_00` at the
+  bottom .. `marble_13` at the top), on the gun and on the Gumball Machine. `GunParts` shows
+  `floor((ammo / mag) ^ 0.6 * 14 + 0.5)` of them, so half the ammo still shows 9 balls. An empty gun shows none. The
+  rest settle with a small bob when a shot takes some.
+- **The reload pours them back.** The lid (`lid`) flips open on its front hinge (0.42 to 0.6 s), the bag pours
+  (0.66 to 1.18 s) while the balls fill back up from the bottom, and the lid snaps shut (1.42 to 1.5 s). The Gumball
+  Machine's crank (`crank`) turns once after the off hand slaps the lid shut (1.55 to 1.75 s). It keeps the web
+  game's reload time (1.9 s). The off hand (the bag, the slap on the lid, the hand riding the crank) is the hold
+  session's, in Viewmodel.
+- The numbers are in the Marble Shotgun's row in `Weapons.luau` (`mdl.parts`: jar, lid, crank).
 
 ## How it was judged
 

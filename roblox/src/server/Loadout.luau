@@ -17,6 +17,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Roster = require(Shared:WaitForChild("Roster"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats"))
+local GunSkins = require(Shared:WaitForChild("GunSkins"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Utility = require(script.Parent:WaitForChild("Utility")) -- (the item on G: when a new pick goes in is its rule)
 local Loot = require(script.Parent:WaitForChild("Loot")) -- (what you own: wraps and hats are won from Spray Cans and Duffel Bags)
@@ -30,6 +31,7 @@ local SAVE_DELAY = 6 -- s after the last change (one write per burst of clicking
 
 type Data = {
 	pick: { [string]: string }, wraps: { [string]: { id: string, mode: string } }, hats: { [string]: string },
+	skins: { [string]: string },
 	loaded: boolean, canSave: boolean, dirty: boolean, saveAt: number, touched: boolean,
 }
 local data: { [Player]: Data } = {}
@@ -72,6 +74,10 @@ local function publish(p: Player)
 	for wid, h in d.hats do if Loot.owns(p, "hat", h) then table.insert(hats, wid .. "=" .. h) end end
 	table.sort(hats)
 	p:SetAttribute("Hats", table.concat(hats, ";"))
+	local skins = {}
+	for wid, s in d.skins do table.insert(skins, wid .. "=" .. s) end
+	table.sort(skins)
+	p:SetAttribute("Skins", table.concat(skins, ";"))
 	p:SetAttribute("LoadoutSave", if not d.loaded then "loading" elseif d.canSave then "cloud" else "off")
 end
 
@@ -80,19 +86,25 @@ local function syncTools(p: Player, f: any)
 	local want = table.find(Rules.loadoutOf(f), "shredder") ~= nil
 	local bag = p:FindFirstChildOfClass("Backpack")
 	local ch = p.Character
+	-- its skin (a Tool of its own, "Shredder@<skin id>", handed over named "Shredder"): a Shredder in the wrong skin goes
+	local sk = data[p] and data[p].skins.shredder
+	local skinSrc = sk and Tools:FindFirstChild("Shredder@" .. sk)
+	local wantSkin = if skinSrc then sk else nil
 	local have: Tool? = nil
 	for _, where in { bag, ch } :: { Instance? } do
 		local t = where and where:FindFirstChild("Shredder")
 		if t and t:IsA("Tool") then
-			if want and not have then have = t else t:Destroy() end
+			if want and not have and t:GetAttribute("Skin") == wantSkin then have = t else t:Destroy() end
 		end
 	end
 	local d = data[p]
 	local wr = ownedWrap(p, d)
 	if want and not have and bag then
-		local src = Tools:FindFirstChild("Shredder")
+		local src = skinSrc or Tools:FindFirstChild("Shredder")
 		if src then
 			local t = src:Clone()
+			t.Name = "Shredder"
+			t:SetAttribute("Skin", wantSkin)
 			if wr then WeaponModels.wrap(t, wr.id, wr.mode) end
 			GunHats.attachTool(t, ownedHat(p, d))
 			t.Parent = bag
@@ -181,6 +193,12 @@ local function adopt(d: Data, saved: any)
 			if e and e.live and GunHats.valid(h) and h ~= "none" then d.hats[wid] = h end
 		end
 	end
+	if type(saved.skins) == "table" then
+		for wid, s in saved.skins do
+			local e = if type(wid) == "string" then Roster.byId[wid] else nil
+			if e and e.live and GunSkins.valid(wid, s) then d.skins[wid] = s end
+		end
+	end
 end
 
 local function key(p: Player): string return "u" .. p.UserId end
@@ -212,7 +230,7 @@ local function save(p: Player)
 	d.dirty = false
 	local wraps = {}
 	for wid, w in d.wraps do wraps[wid] = { w.id, w.mode } end
-	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats) }
+	local payload = { v = VERSION, pick = table.clone(d.pick), wraps = wraps, hats = table.clone(d.hats), skins = table.clone(d.skins) }
 	local ok, err = retry(function() return (store :: DataStore):UpdateAsync(key(p), function() return payload end) end)
 	if not ok then
 		d.dirty = true; d.saveAt = os.clock() + 20
@@ -235,6 +253,17 @@ local function spend(p: Player): boolean
 	if b.n < 1 then return false end
 	b.n -= 1
 	return true
+end
+
+-- does the player own this skin? the loot session's Loot decides (won from Crates; in Studio its owner-only
+-- "unlock all", the Loot remote op ("dev", "unlock"), opens them up to try)
+local function ownsSkin(p: Player, id: string): boolean
+	local mod = script.Parent:FindFirstChild("Loot")
+	local ok, L = false, nil
+	if mod and mod:IsA("ModuleScript") then ok, L = pcall(require, mod) end
+	if not ok or type(L) ~= "table" then return false end
+	local ok2, yes = pcall((L :: any).owns, p, "skin", id)
+	return ok2 and yes == true
 end
 
 local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown): (boolean, string?)
@@ -279,6 +308,24 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		if f and f.alive and f.held == a then Fight.showWeapon(f) end
 		if a == "shredder" and f then syncTools(p, f) end
 		return true, nil
+	elseif op == "skin" then
+		if type(a) ~= "string" or type(b) ~= "string" then return false, "nope" end
+		local e = Roster.byId[a]
+		if not e or not e.live then return false, "no skins on vapourware" end
+		if e.slot == "utility" then return false, "items don't take skins" end
+		if b ~= "default" then
+			if not GunSkins.valid(a, b) then return false, "that skin isn't here yet" end
+			if not ownsSkin(p, b) then return false, "you don't own that skin" end
+		end
+		local was = d.skins[a]
+		d.skins[a] = if b == "default" then nil else b
+		if was == d.skins[a] then return true, nil end
+		changed(p)
+		-- on right away (it's only a look): what others see in your hand, and the Shredder
+		local f = Fight and Fight.byPlayer[p]
+		if f and f.alive and f.held == a then Fight.showWeapon(f) end
+		if a == "shredder" and f then syncTools(p, f) end
+		return true, nil
 	elseif op == "arm" then
 		local f = Fight and Fight.byPlayer[p]
 		if not f then return false, "nope" end
@@ -299,7 +346,7 @@ end
 
 local function added(p: Player)
 	if data[p] then return end
-	data[p] = { pick = table.clone(DEFAULT), wraps = {}, hats = {}, loaded = false, canSave = false, dirty = false, saveAt = 0, touched = false }
+	data[p] = { pick = table.clone(DEFAULT), wraps = {}, hats = {}, skins = {}, loaded = false, canSave = false, dirty = false, saveAt = 0, touched = false }
 	publish(p)
 	task.spawn(load, p)
 end

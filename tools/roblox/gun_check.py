@@ -81,9 +81,11 @@ def wf(v):  # Blender (x, -z, y) -> the gun's frame (x right, y up, z back)
     return (round(v.x, 3), round(v.z, 3), round(-v.y, 3))
 
 
-ids = (sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []) or list(gun_set.BUILD)
+ALL = dict(gun_set.BUILD); ALL.update(gun_set.SKINS)
+ids = (sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []) or list(ALL)
+if ids == ['skins']: ids = list(gun_set.SKINS)
 for wid in ids:
-    g = gun_set.BUILD[wid]()
+    g = ALL[wid]()
     S = solids(g)
     n = len(S)
     parent = list(range(n))
@@ -100,7 +102,7 @@ for wid in ids:
     main = max(comps.values(), key=len)
     loose = [i for c in comps.values() if c is not main for i in c]
     nodes = {k[0].split('_wz')[0] for k in g.pieces}
-    missing = [m for m in MOVING.get(wid, []) if m not in nodes]
+    missing = [m for m in MOVING.get(wid.split('@')[0], []) if m not in nodes]  # (a skin: its gun's moving nodes)
     print('CHECK %s: %d solids, %d groups, %d loose%s' % (wid, n, len(comps), len(loose),
           ('; MISSING moving nodes ' + ', '.join(missing)) if missing else ''))
     others = [S[i] for i in main]

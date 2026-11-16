@@ -60,6 +60,18 @@ local W: { [string]: Weapon } = {
 		fx = { big = true, spray = true, hole = false, scale = 0.7, shake = 0.35, splash = false }, snd = "gun_marbles",
 		recoilVM = { back = 2.0, up = 8, roll = 2.6, side = 0.35, punch = 0.04 },
 		vm = { p = Vector3.new(0.18, -0.19, -0.34) * S, r = Vector3.new(0, 0.05, 0), s = 0.8 },
+		-- (16 Nov, the owner: "gumball shotgun should lose less gumballs ... the reload is like this cage thing"): only its
+		-- moving pieces (the model, its spots and the hold come from WeaponModels.BUILD.marbles and the Blender model):
+		-- the jar's 14 balls (marble_00 bottom .. marble_13 top) show the ammo, fuller for longer (ammo / mag to the power
+		-- `curve`), and fill again while the bag pours; the lid flips open on its front hinge for the pour and snaps
+		-- shut; the Gumball Machine's crank turns once as it shuts
+		mdl = {
+			parts = {
+				jar = { n = 14, curve = 0.6, pour = { 0.66, 1.18 } },
+				lid = { at = Vector3.new(0, 0.147, -0.099), open = -1.9, times = { 0.42, 0.6, 1.42, 1.5 } },
+				crank = { at = Vector3.new(-0.043, -0.008, -0.07), times = { 1.55, 1.75 } },
+			},
+		},
 	},
 	-- ---- batch 3, the plain guns (WEAPONS.md): data only. stats from shared/weapons.js, vm + recoilVM from
 	-- public/js/weapons.js (VM, RECOIL), mdl from the export report and the web model's spots
@@ -76,6 +88,8 @@ local W: { [string]: Weapon } = {
 			lo = Vector3.new(-0.04, -0.3944, -0.7215), hi = Vector3.new(0.0437, 0.1228, 0.4689),
 			muzzle = Vector3.new(0, 0.015, -0.72), sight = Vector3.new(0, 0.114, 0.234), port = Vector3.new(0.036, 0.03, -0.05),
 			grip = Vector3.new(0, -0.1, 0.08), fore = Vector3.new(0, -0.04, -0.28),
+			-- (16 Nov reload check: the rifle had no moving pieces listed, so its magazine never left the gun in a reload)
+			parts = { mag = { at = Vector3.new(0, -0.05, -0.105) }, charge = {} },
 		},
 	},
 	smg = {

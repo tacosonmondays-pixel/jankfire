@@ -268,8 +268,14 @@ function W.kit(only)
 	end
 	local wantShredder = list.shredder ~= nil
 	list.shredder = nil -- (a Tool, not a template: W.kitShredder)
+	local shredSkins = {}
+	for key in list do
+		local sk = string.match(key, "^shredder@([%w_]+)$")
+		if sk then table.insert(shredSkins, sk); list[key] = nil end -- (its skins too: Tools of their own)
+	end
 	local out = W.run(list, { into = S.kit, name = "kit" })
 	if wantShredder then out ..= "\n" .. W.kitShredder() end
+	for _, sk in shredSkins do out ..= "\n" .. W.kitShredder(sk) end
 	local bad = {}
 	for wid, g in list do
 		local m = S.kit:FindFirstChild("w_" .. wid)
@@ -321,10 +327,11 @@ end
 -- else the Tool carries (the Handle, Muzzle, SuckField and its Suction, the script, the Grip) is the web Tool's own.
 local SHRED_MUZZLE = 0.333 -- the kit model's mouth, metres in front of the hub (tools/roblox/gun_models.py shredder)
 local SHRED_NAMES = { ["hub_wzN__dark"] = "sh_hub", ["chute_wzB__frame"] = "sh_bell2" }
-function W.kitShredder()
+function W.kitShredder(skin)
 	local S = sets()
-	local g = kitBook().guns.shredder
-	if not g then return "shredder: not in the kit book" end
+	local key = if skin then "shredder@" .. skin else "shredder" -- (a skin: its own Tool, "Shredder@<skin id>", W.skins)
+	local g = kitBook().guns[key]
+	if not g then return "shredder: no " .. key .. " in the kit book" end
 	local web = S.web:FindFirstChild("Shredder") or game.ReplicatedStorage.JankfireTools:FindFirstChild("Shredder")
 	if not web or web:GetAttribute("Set") == "kit" then return "shredder: no web Tool to build on (W.parkWeb first)" end
 	local h = web:FindFirstChild("Handle")
@@ -340,8 +347,8 @@ function W.kitShredder()
 	local G = CFrame.lookAt(Vector3.zero, axis, up) -- handle space: -Z = the mouth, +Y = up
 	-- the kit pieces, loaded and checked like a template (into a scratch folder)
 	local scratch = Instance.new("Folder")
-	local res = W.run({ shredder = { id = g.id, lo = g.lo, hi = g.hi, paint = g.paint } }, { into = scratch, name = "kit" })
-	local src = scratch:FindFirstChild("w_shredder")
+	local res = W.run({ [key] = { id = g.id, lo = g.lo, hi = g.hi, paint = g.paint } }, { into = scratch, name = "kit" })
+	local src = scratch:FindFirstChild("w_" .. key)
 	if not src then scratch:Destroy(); return "shredder: " .. res end
 	local tool = web:Clone()
 	for _, c in tool:GetChildren() do if c:IsA("Model") then c:Destroy() end end
@@ -369,10 +376,53 @@ function W.kitShredder()
 	for k in tool:GetAttributes() do tool:SetAttribute(k, nil) end
 	tool:SetAttribute("Set", "kit")
 	tool:SetAttribute("FileLo", g.lo); tool:SetAttribute("FileHi", g.hi)
-	local old = S.kit:FindFirstChild("Shredder")
+	if skin then tool:SetAttribute("Skin", skin) end
+	tool.Name = if skin then "Shredder@" .. skin else "Shredder"
+	local old = S.kit:FindFirstChild(tool.Name)
 	if old then old:Destroy() end
 	tool.Parent = S.kit
-	return ("shredder: %d kit pieces on the web Tool's Handle (%.2f studs a metre), in WeaponSets.kit"):format(n, K)
+	return ("%s: %d kit pieces on the web Tool's Handle (%.2f studs a metre), in WeaponSets.kit"):format(key, n, K)
+end
+
+-- THE WEAPON SKINS a player can wear (the web game's crate skins, tools/roblox/gun_set.py SKINS, 16 Nov 2026): every
+-- "w_<weapon>@<skin id>" in WeaponSets.kit (W.kit brings them in with the guns) is copied to
+-- ReplicatedStorage.JankfireSkins as "<skin id>" with Weapon = its weapon (GunSkins.luau reads them; the crate only
+-- rolls a skin whose model is there). Carl's Cardboard (ar@cardboard) is a look test, not a crate skin: left out.
+function W.skins()
+	local S = sets()
+	local lib = game.ReplicatedStorage:FindFirstChild("JankfireSkins")
+	if not lib then lib = Instance.new("Folder"); lib.Name = "JankfireSkins"; lib.Parent = game.ReplicatedStorage end
+	local n, names = 0, {}
+	for _, m in S.kit:GetChildren() do
+		local wid, id = string.match(m.Name, "^w_([%w_]+)@([%w_]+)$")
+		if not wid or id == "cardboard" then continue end
+		local old = lib:FindFirstChild(id)
+		if old then old:Destroy() end
+		local c = m:Clone()
+		c.Name = id
+		c:SetAttribute("Weapon", wid); c:SetAttribute("Set", "kit")
+		c.Parent = lib
+		n += 1
+		table.insert(names, wid .. "@" .. id)
+	end
+	-- the Shredder's skins are Tools: "Shredder@<skin id>" into JankfireTools (Loadout gives it, named "Shredder"),
+	-- and a marker model in JankfireSkins so the crate, the picker and GunSkins see it like any skin
+	local tools = game.ReplicatedStorage:FindFirstChild("JankfireTools")
+	for _, t in S.kit:GetChildren() do
+		local id = string.match(t.Name, "^Shredder@([%w_]+)$")
+		if not id or not tools then continue end
+		local old = tools:FindFirstChild(t.Name)
+		if old then old:Destroy() end
+		t:Clone().Parent = tools
+		local mk = lib:FindFirstChild(id)
+		if mk then mk:Destroy() end
+		mk = Instance.new("Model"); mk.Name = id
+		mk:SetAttribute("Weapon", "shredder"); mk:SetAttribute("Tool", t.Name); mk.Parent = lib
+		n += 1
+		table.insert(names, "shredder@" .. id)
+	end
+	table.sort(names)
+	return ("skins: %d in ReplicatedStorage.JankfireSkins (%s)"):format(n, table.concat(names, " "))
 end
 
 -- which models the place wears. name: "kit" (nil = kit) or "web"; only: a list of weapon ids (nil = all)

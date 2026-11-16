@@ -236,6 +236,16 @@ def ar_cardboard():
 
 SKINS = {'ar@cardboard': ar_cardboard}
 
+# THE WEB GAME'S WEAPON SKINS (16 Nov 2026: the owner's crates; ids and rarities from shared/cosmetics.js COSMETICS.model
+# and SKINS_2). Each is a whole other body for one live gun, built in look C, keyed "<weapon>@<skin id>" and exported as
+# "w_<weapon>@<skin id>". The builders are in gun_skins_1.py .. gun_skins_3.py; the contract each keeps is at the top of
+# gun_skins_1.py. A file that isn't there yet is skipped.
+for _part in ('gun_skins_1', 'gun_skins_2', 'gun_skins_3'):
+    try:
+        SKINS.update(__import__(_part).SKINS)
+    except ImportError as e:
+        if _part not in str(e): raise
+
 
 if __name__ == '__main__':
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []

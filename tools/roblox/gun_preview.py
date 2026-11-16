@@ -50,7 +50,7 @@ def to_blender(mf): return C @ mf @ C.inverted()
 
 
 def hold_matrix(wid):
-    p, r, s = VM.get(wid, ([0.2, -0.2, -0.38], [0, 0.04, 0], 0.7))
+    p, r, s = VM.get(wid.split('@')[0], ([0.2, -0.2, -0.38], [0, 0.04, 0], 0.7))
     rot = Matrix.Rotation(r[0], 4, 'X') @ Matrix.Rotation(r[1], 4, 'Y') @ Matrix.Rotation(r[2], 4, 'Z')
     return to_blender(Matrix.Translation(Vector(p)) @ rot @ Matrix.Scale(s * hold, 4))
 

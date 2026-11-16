@@ -12,6 +12,7 @@ type Piece = { part: BasePart, weld: Weld, rest: CFrame, node: string, last: CFr
 export type State = {
 	root: BasePart, k: number, parts: { [string]: any }, all: { Piece }, nodes: { [string]: { Piece } },
 	cylA: number, cylTo: number, hamT: number, kickT: number, heat: number, heatPiece: BasePart?, heatShown: number,
+	jarShow: number?, jarBob: number?,
 }
 export type Ctx = { clip: string?, t: number, anims: any, ammo: number, mag: number, reloading: boolean, now: number, firedT: number }
 
@@ -187,6 +188,37 @@ function GunParts.step(st: State, dt: number, c: Ctx, w: any)
 		local v = sample(c, "belt")
 		local show = if v then (if v[1] > 0.5 then P.belt.n else 0) elseif c.reloading then 0 else math.min(P.belt.n, c.ammo)
 		for i = 0, P.belt.n - 1 do hide[("belt_%02d"):format(i)] = i >= show end
+	end
+	if P.jar then -- the Marble Shotgun's jar: its balls show the ammo (fuller for longer), the reload pours them back
+		local n = P.jar.n
+		local full = math.clamp(c.ammo / math.max(1, c.mag), 0, 1)
+		local frac = if full <= 0 then 0 else full ^ (P.jar.curve or 1)
+		if c.reloading and c.clip == "reload_marbles" and P.jar.pour then
+			local u = math.clamp((c.t - P.jar.pour[1]) / (P.jar.pour[2] - P.jar.pour[1]), 0, 1)
+			frac += (1 - frac) * u
+		end
+		local show = math.clamp(math.floor(frac * n + 0.5), 0, n)
+		if show < (st.jarShow or n) then st.jarBob = 1 end -- a shot took some: the rest settle with a small bob
+		st.jarShow = show
+		st.jarBob = math.max(0, (st.jarBob or 0) - dt * 5)
+		local jb = st.jarBob or 0
+		local bob = if jb > 0 then CFrame.new(0, -0.004 * k * math.sin(jb * math.pi), 0) else nil
+		for i = 0, n - 1 do
+			local node = ("marble_%02d"):format(i)
+			hide[node] = i >= show
+			if bob and i < show then move[node] = bob end
+		end
+	end
+	if P.lid and c.reloading and c.clip == "reload_marbles" then -- flips open on its front hinge for the pour, snaps shut
+		local o0, o1, s0, s1 = P.lid.times[1], P.lid.times[2], P.lid.times[3], P.lid.times[4]
+		local t = c.t
+		local open = if t < o0 then 0 elseif t < o1 then (function(u) return u * u * (3 - 2 * u) end)((t - o0) / (o1 - o0))
+			elseif t < s0 then 1 elseif t < s1 then 1 - ((t - s0) / (s1 - s0)) ^ 2 else 0
+		if open ~= 0 then move.lid = about(P.lid.at * k, rx(open * P.lid.open)) end
+	end
+	if P.crank and c.reloading and c.clip == "reload_marbles" then -- one full turn as the lid shuts (no jump at the end)
+		local u = math.clamp((c.t - P.crank.times[1]) / (P.crank.times[2] - P.crank.times[1]), 0, 1)
+		if u > 0 and u < 1 then move.crank = about(P.crank.at * k, rx(-u * u * (3 - 2 * u) * 2 * math.pi)) end
 	end
 	-- the whole gun round the hand (the lever's spin-cock, the Revolver's twirl): every piece, never the hands
 	local tw = sample(c, "twirl")

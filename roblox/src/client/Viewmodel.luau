@@ -12,6 +12,7 @@ local Anims = require(Shared:WaitForChild("Anims")) :: any
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local GunParts = require(script.Parent:WaitForChild("GunParts")) -- batch 3: the pieces that move (mags, pump, bolt, lever...)
 local GunHats = require(Shared:WaitForChild("GunHats")) -- the hat on the gun (the loadout's Hats)
+local GunSkins = require(Shared:WaitForChild("GunSkins")) -- the gun's skin (the loadout's Skins: another body)
 -- the plain guns' reloads (Reloads.luau, generated from the web game's reloads.js) join the hand-keyed clips
 for name, a in require(Shared:WaitForChild("Reloads")) :: any do
 	if not Anims[name] then Anims[name] = a end
@@ -378,7 +379,7 @@ function VM.set(wid: string, kat: number)
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
 	k = S * w.vm.s * sizeOf(wid)
-	local m = WeaponModels.build(wid, k)
+	local m = WeaponModels.build(wid, k, GunSkins.skinFor(game:GetService("Players").LocalPlayer, wid))
 	if not m or not m.PrimaryPart then return end
 	local root = m.PrimaryPart
 	root.Anchored = true
@@ -613,6 +614,14 @@ function VM.props(gun: CFrame)
 end
 
 -- a new hat (the loadout screen): rebuild what's in your hands with it, as a new wrap does (Arsenal, "Wraps")
+local function rebuildHeld()
+	if VM.model and VM.wid ~= "" and VM.wid ~= "shredder" then
+		local kat = localPlayer:GetAttribute("Kat")
+		VM.set(VM.wid, if type(kat) == "number" then kat else 0)
+	end
+end
+-- a new skin: the same (another body in your hands)
+localPlayer:GetAttributeChangedSignal("Skins"):Connect(rebuildHeld)
 localPlayer:GetAttributeChangedSignal("Hats"):Connect(function()
 	if VM.model and VM.wid ~= "" and VM.wid ~= "shredder" then
 		local kat = localPlayer:GetAttribute("Kat")

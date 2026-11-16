@@ -507,6 +507,14 @@ version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_mod
   so the armory racks and the showpiece show the new models (done for round 8b).
 - **Not checked:** every gun firing (the Assault Rifle was), reload animations in motion on each new model, another
   player's view, the Rooftop's daylight.
+- **The web game's weapon skins** (place version 379): the 26 skins the web game has for the sixteen live guns
+  are kit models in look C, in `ReplicatedStorage.JankfireSkins`. The crate gives them (`LootTable.SKINS`), and the
+  loadout's SKINS tab puts one on per weapon (the `Skins` attribute and save, `GunSkins.luau`,
+  `WeaponModels.build(id, k, skin)`). Each keeps its gun's spots, moving parts and hold. The Wood Chipper is a
+  Shredder Tool of its own. Details: `GUN-MODELS.md`, "The web game's skins".
+- **The Marble Shotgun's jar** shows the ammo, fuller for longer (14 balls; one shot of two leaves 9). The reload flips
+  the lid, pours the balls back in and snaps the lid shut (with the Gumball Machine's crank). It keeps the web game's
+  1.9 s. Frame strip: `gun-models/marbles-reload.jpg`.
 
 ## 21. Training v2: the training area rebuilt to the new principles, 16 November 2026 (place version 268)
 

@@ -316,11 +316,16 @@ def marbles():
     # the gumball jar of marbles on its funnel, feeding the barrel
     g.cyl('funnel_wzN__dark', 0.016, (0, 0.028, -0.06), (0, 0.066, -0.06), sides=8, bev=0.003, r2=0.038)
     g.cyl('marbles_jar_wzN__jar', 0.038, (0, 0.066, -0.06), (0, 0.146, -0.06), sides=8, bev=0.006)
-    g.cyl('lid_wzN__dark', 0.041, (0, 0.144, -0.06), (0, 0.162, -0.06), sides=8, bev=0.005)
-    spots = [(-0.013, 0.084, -0.068, 'm1'), (0.014, 0.085, -0.052, 'm2'), (0.0, 0.086, -0.08, 'm2'), (-0.012, 0.108, -0.05, 'm2'),
-             (0.013, 0.11, -0.072, 'm1'), (0.0, 0.13, -0.06, 'm1')]
-    for x, y, z, sl in spots:
-        g.ball('marble_wzN__' + sl, 0.0158, (x, y, z), sub=2)
+    g.cyl('lid_wzN__dark', 0.04, (0, 0.146, -0.06), (0, 0.164, -0.06), sides=8, bev=0.005)  # (its front edge on the lid's hinge, (0, 0.147, -0.099))
+    # (16 Nov, the owner: "lose less gumballs"): 14 balls, one node each, bottom to top (the game hides them from the top
+    # as the ammo goes, fuller for longer, and pours them back in the reload): four layers of 4, 4, 4, 2
+    k = 0
+    for layer, (y, cnt, ring, turn) in enumerate(((0.0785, 4, 0.0175, 0.0), (0.0965, 4, 0.0175, math.pi / 4),
+                                                   (0.1145, 4, 0.0175, 0.0), (0.1325, 2, 0.012, math.pi / 4))):
+        for q in range(cnt):
+            a = turn + q * 2 * math.pi / cnt
+            g.ball('marble_%02d_wzN__%s' % (k, 'm1' if k % 3 else 'm2'), 0.0125, (ring * math.cos(a), y, -0.06 + ring * math.sin(a)), sub=2)
+            k += 1
     return g
 
 

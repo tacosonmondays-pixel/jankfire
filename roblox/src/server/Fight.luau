@@ -11,6 +11,7 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local GunHats = require(Shared:WaitForChild("GunHats")) -- (the hat on your gun, the loadout's Hats)
+local GunSkins = require(Shared:WaitForChild("GunSkins")) -- (your gun's skin, the loadout's Skins)
 local Arena = require(Shared:WaitForChild("Arena"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -175,7 +176,7 @@ function Fight.showWeapon(f: Fighter)
 	if Fight.holstered(f) then return end
 	local hand = m:FindFirstChild("RightHand") :: BasePart? or m:FindFirstChild("Right Arm") :: BasePart?
 	if not hand then return end
-	local w = WeaponModels.build(f.held, HAND_K)
+	local w = WeaponModels.build(f.held, HAND_K, if f.kind == "player" then GunSkins.skinFor(f.ref :: Player, f.held) else nil)
 	if not w or not w.PrimaryPart then return end
 	w.Name = "HeldWeapon"
 	if f.held == "katana" then WeaponModels.setKatana(w, f.kat, HAND_K) end
