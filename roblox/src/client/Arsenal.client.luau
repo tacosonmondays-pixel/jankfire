@@ -872,5 +872,5 @@ RunService.RenderStepped:Connect(function(dt: number)
 	else
 		H.top("HUB · weapons away · step on a pad to play · training on your left") -- (the new lobby: the training hatch is left of the spawn)
 	end
-	TP.mine(aim, st ~= nil and st.sprinting) -- (your aim for the third-person pose; ThirdPerson does the rest)
+	TP.mine(aim, st ~= nil and st.sprinting, if a then a.mag else nil) -- (your aim and mag for the third-person pose)
 end)

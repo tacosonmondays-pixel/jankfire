@@ -112,6 +112,19 @@ Measured in Play tests:
   hidden while you are in first person.
 - The dummies (Plinker, Stand, Dummy) hold their guns the same way, at a level look.
 
+**"The gun is held backwards in third person" (reported 16 Nov, against place v360):** that came from Arsenal's old
+arm pose (: it turned the shoulder joint, and on the owner's avatar the shoulders are AnimationConstraints,
+so the server's gun swung round behind). This work removed that code (v389). Checked again on the owner's own avatar
+in third person (place v397): the Assault Rifle points along the body (0.98 of straight ahead), muzzle 2.9 studs in
+front, both hands exactly on; Plan B 0.85 (the rest is the aim's yaw toward the camera), muzzle in front; the
+server's copy of the gun shows 0 visible parts.
+
+**Later tweaks (place v397):** the Wood Chipper Shredder skin gets both hands through a fallback frame (handle to
+muzzle) when it has no hub and chute; no goggles model in the hand (the items client already draws them on the head);
+the calculator and the laptop are held facing the holder, as in first person; a real throw starts from the top of
+the wind-up when the server's launch arrives, with no item in the hand (the thrown one is already flying); your own
+Marble Shotgun shows your real marble count.
+
 Known limits and ideas for later:
 
 - The Redline's jerry can and the marble bag (first-person reload props) are not shown in third person; the off hand

@@ -479,10 +479,14 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 		local mz = h and h:FindFirstChild("Muzzle") :: Attachment?
 		local hub = tool:FindFirstChild("sh_hub", true) :: BasePart?
 		local bell = tool:FindFirstChild("sh_bell2", true) :: BasePart?
-		if h and mz and hub and bell then
-			local axis = (mz.WorldPosition - hub.Position).Unit
-			local upW = bell.Position - hub.Position
-			upW = (upW - axis * axis:Dot(upW)).Unit
+		-- (a skin, the Wood Chipper, may not have the hub and the chute: then from the handle to the muzzle, handle's up)
+		if h and mz then
+			local from = if hub then hub.Position else h.Position
+			local axis = (mz.WorldPosition - from).Unit
+			local upW = if bell then bell.Position - from else h.CFrame.UpVector
+			upW -= axis * axis:Dot(upW)
+			if upW.Magnitude < 1e-3 then upW = Vector3.yAxis - axis * axis.Y end
+			upW = upW.Unit
 			r.toolFrame = CFrame.lookAt(Vector3.zero, h.CFrame:VectorToObjectSpace(axis), h.CFrame:VectorToObjectSpace(upW))
 			r.k = 3
 			r.holdL, r.poseL, r.turnL = holdFrame("shredder", "Left", 3, r.toolFrame.Rotation)
@@ -649,10 +653,11 @@ local function itemRig(r: Rig, id: string, kind: string)
 end
 
 -- your own weapon code (Arsenal) tells us what you do the moment you do it
-local mine = { aim = 0, sprint = false, reloadT = -10, reloadDur = 0, empty = false }
-function TP.mine(aim: number, sprint: boolean?)
+local mine = { aim = 0, sprint = false, reloadT = -10, reloadDur = 0, empty = false, ammo = nil :: number? }
+function TP.mine(aim: number, sprint: boolean?, ammo: number?)
 	mine.aim = aim
 	mine.sprint = sprint == true
+	mine.ammo = ammo
 end
 local function myRig(): Rig? return rigFor(me.Character) end
 function TP.fired(wid: string, fan: boolean?)
@@ -702,7 +707,10 @@ Remotes:WaitForChild("ItemFx").OnClientEvent:Connect(function(f: any)
 	if not r then return end
 	if f.k == "ps" then
 		local w = if type(f.w) == "string" then f.w else ""
-		if THROWN[w] then itemRig(r, THROWN[w], "throw")
+		if THROWN[w] then
+			itemRig(r, THROWN[w], "throw")
+			-- (this arrives as the item leaves the hand: the arm starts from the top of its wind-up and swings through)
+			if r.item then r.item.t = TP.T.throw[2].t end
 		elseif w == "soap" then itemRig(r, "wand", "use") end
 	elseif USED[f.k] then
 		itemRig(r, USED[f.k], "use")
@@ -713,7 +721,9 @@ end)
 -- GripPos / GripRot = where the fist goes, its Y up through the fist)
 local ITEM_MODEL = { frag = "x_frag", smoke = "x_smoke", medkit = "x_medkit", bubble = "x_bubble", popper = "x_popper", reverse = "x_reverse",
 	duck = "x_duck", quiz = "x_calc", laptop = "x_laptop", nvg = "x_nvg", radar = "x_radar", camera = "x_camera", wand = "x_wand" }
+local NO_MODEL = { nvg = true } -- (the goggles already show on the head: the items client draws them from the NV attribute)
 local function itemModel(r: Rig, id: string): Model?
+	if NO_MODEL[id] then return nil end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireItems")
 	local t = lib and lib:FindFirstChild(ITEM_MODEL[id] or ("x_" .. id))
 	local hand = r.ch:FindFirstChild("LeftHand") :: BasePart?
@@ -722,6 +732,9 @@ local function itemModel(r: Rig, id: string): Model?
 	pcall(function() m:ScaleTo(m:GetScale() * r.k / 3) end)
 	local gp, gr = m:GetAttribute("GripPos"), m:GetAttribute("GripRot")
 	local grip = CF((if typeof(gp) == "Vector3" then gp else Vector3.zero) * m:GetScale()) * eul(if typeof(gr) == "Vector3" then gr else Vector3.zero)
+	-- (held as in first person: the calculator turned round, the laptop by its other edge, both facing the holder)
+	if id == "quiz" then grip *= ANG(0, -math.pi, 0) end
+	if id == "laptop" then local q = grip.Position; grip = CF(-q.X, q.Y, q.Z) * ANG(0, -math.pi, 0) end
 	local pv = m:GetPivot()
 	local a = r.arms.Left
 	local handGrip = if a then a.grip else ID
@@ -1004,7 +1017,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 		if r.parts and w and dist < TP.T.far then
 			GunParts.step(r.parts, dt, {
 				clip = if clip then clip.name else nil, t = if clip then clip.t else 0, anims = Anims,
-				ammo = w.mag or 0, mag = w.mag or 0, reloading = reloading, now = now, firedT = r.lastFire,
+				ammo = (if r.isMe and mine.ammo then mine.ammo else w.mag) or 0, mag = w.mag or 0, reloading = reloading, now = now, firedT = r.lastFire,
 			}, w)
 		end
 		-- the pieces a reload takes out (a dropped mag) and your own gun in first person: hidden
@@ -1072,8 +1085,7 @@ local function stepRig(r: Rig, dt: number, now: number)
 				local hand = F * L.gripInv
 				itemMix = smoothstep(it.t / 0.08) * (1 - smoothstep((it.t - (last - 0.2)) / 0.2))
 				handL = if handL then handL:Lerp(hand, itemMix) else hand
-				if it.t < T.release and not it.model then it.model = itemModel(r, it.id) end
-				if it.t >= T.release and it.model then it.model:Destroy(); it.model = nil end
+				if it.model then it.model:Destroy(); it.model = nil end -- (the thrown item is drawn in flight by the items client)
 			end
 		else
 			local u = T.use[it.id] or T.use.medkit
