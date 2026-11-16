@@ -194,7 +194,7 @@ local function hudStep()
 	plate.Visible = it ~= nil and it.live and not inHub() and not menuOpen() and root ~= nil
 	if not it or not plate.Visible then return end
 	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles")
-		elseif it.id == "camera" and me:GetAttribute("Photo") then "Camera · print" else it.name
+		elseif it.id == "camera" and me:GetAttribute("Photo") then (if charges() > 0 then "Camera · print" else ("Camera · %ds"):format(math.max(1, math.ceil((tonumber(me:GetAttribute("ItemAt")) or 0) - workspace:GetServerTimeNow())))) else it.name
 	if nameL.Text ~= label then nameL.Text = label end
 	chip.BackgroundColor3 = it.color
 	setPips(it.charges)
@@ -454,11 +454,36 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 		handStep()
 		return
 	end
+	if it.id == "camera" and t - lastUse < Items.SPAM_CLIENT then
+		-- (G again straight after the snap: the print goes as soon as the server will take it, not lost)
+		local again = lastUse
+		task.delay(Items.SPAM_CLIENT - (t - lastUse) + 0.03, function()
+			if lastUse ~= again or not me:GetAttribute("Photo") or me:GetAttribute("Item") ~= "camera" then return end
+			local n0 = charges()
+			if n0 <= 0 then return end
+			local _, _, r0 = myChar()
+			if not r0 then return end
+			lastUse = os.clock()
+			pend = { n = n0 - 1, t = lastUse }
+			local eye0 = if thirdPerson() then r0.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
+			ItemR:FireServer("camera", eye0, camera.CFrame.LookVector)
+			startHand("print")
+			printIn()
+			handStep()
+		end)
+		return
+	end
 	if t - lastUse < Items.SPAM_CLIENT then return end
-	local n = charges()
+	local n, nextAt = charges()
 	if n <= 0 then
 		Sfx.play("empty")
-		Hud.callout(string.lower(it.name) .. ": recharging", 0.8)
+		if it.id == "camera" and me:GetAttribute("Photo") then
+			-- (the photo is held, the print waits for the charge: say when, not just "recharging")
+			local left = math.max(1, math.ceil(nextAt - workspace:GetServerTimeNow()))
+			Hud.callout(("PRINT READY IN %d S"):format(left), 1.2)
+		else
+			Hud.callout(string.lower(it.name) .. ": recharging", 0.8)
+		end
 		return
 	end
 	lastUse = t
@@ -1682,6 +1707,11 @@ thumbL.Position = UDim2.fromOffset(0, 100); thumbL.Size = UDim2.new(1, 0, 0, 20)
 local held: Photo? = nil
 local function thumbStep()
 	thumb.Visible = me:GetAttribute("Photo") == true and me:GetAttribute("Item") == "camera" and not inHub() and not menuOpen() and myChar() ~= nil
+	if thumb.Visible then
+		local n, at = charges()
+		local left = math.ceil(at - workspace:GetServerTimeNow())
+		thumbL.Text = if n > 0 or left <= 0 then "G · PRINT" else ("G · PRINT IN %d S"):format(left)
+	end
 end
 
 -- the snap: at 0.3 s into the clip the shutter goes, a white flash over the screen, the camera's flash window lights
@@ -1817,7 +1847,9 @@ local function onSnap(m: any)
 			held = photoOf(m.p, tonumber(m.y) or 0, tonumber(m.x) or 0)
 			show(thumbVf, held)
 		end
-		Hud.callout("PHOTO TAKEN · G TO PRINT IT", 1.6)
+		local n, at = charges()
+		local left = math.ceil(at - workspace:GetServerTimeNow())
+		Hud.callout(if n > 0 or left <= 0 then "PHOTO TAKEN · G TO PRINT IT" else ("PHOTO TAKEN · PRINT READY IN %d S"):format(left), 1.6)
 	else
 		local model = if typeof(m.model) == "Instance" then m.model else nil
 		local head = model and model:FindFirstChild("Head") :: BasePart?

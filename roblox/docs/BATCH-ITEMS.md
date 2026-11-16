@@ -246,3 +246,27 @@ hit) stand in for one.
 | pull on a dummy | everyone within 15 m dragged in | **was broken for dummies**: the server pushed their bodies, and a standing Humanoid's grip on the floor cancelled it. Now the server runs a dummy's pull itself (the same pulses into a velocity the hole's drag eats, moved step by step, stopped by walls, at most 20 m/s). The second Stand, 33 studs off: dragged right onto the hole in about 1 s, crushed and blasted (100 -> 72) | fixed |
 | on the floor | opens where it is when the 1 s fuse runs out | thrown down the hall: opened at 1.02 s, popped 3.02 s later | ok |
 | a player joining while a hole is open | the hole drawn as it is, no second opening | needs a second player: open, for the owner to try | open |
+
+### The camera's print "not working" (owner's report, place version 467)
+
+The owner: "when you take a picture with camera, it doesn't let you place it". Reproduced with real key presses
+(G, G) in Play, first and third person: both steps work and nothing else takes G. What they hit is the charge. The
+camera has one, 42 s to come back. The first print spends it; the next snap is free, so G seems to work, and then the
+HUD invited a print it couldn't do yet: the card by your item said "G · PRINT", the plate "Camera · print", while G
+only gave a small "instant camera: recharging" under the crosshair. Also, a second G within 0.42 s of the snap was
+dropped without a word.
+
+Fixed (the web's rules unchanged: the snap is free, the print spends the charge):
+- While the print waits for the charge, the card says **G · PRINT IN 25 S** (counting down), the plate **Camera · 25s**,
+  and the snap's note **PHOTO TAKEN · PRINT READY IN 25 S**.
+- G then says **PRINT READY IN 26 S** in the big line.
+- A G pressed right after the snap waits its moment and prints (0.26 s apart: printed at 0.56 s).
+
+Real-key runs: training (snap, quick second G, walked into the frame, sent back to the photo spot); the playground
+(printed a photo taken in training, walked in, landed on the photo spot in training, 1.1 s after the print). The
+printing itself is never refused for the ground: a wall pulls the frame back, no floor leaves it at your feet' height
+(as in the web game).
+
+![before: the HUD says print, the print is refused](items/camera-before-recharging.jpg)
+
+![after: the wait shown](items/camera-print-wait.jpg)
