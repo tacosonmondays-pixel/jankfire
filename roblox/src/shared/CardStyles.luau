@@ -16,13 +16,21 @@ C.DEFAULT = { border = "hairline", banner = "slate", title = "none" }
 -- the container the non-free ones roll from (LootTable's card hook reads it: the Duffel Bag, as one more "gun")
 C.CONTAINER = "bag"
 
-export type Item = { type: string, id: string, name: string, rarity: string, text: string? }
+export type Item = { type: string, id: string, name: string, rarity: string, text: string?, vip: boolean? } -- (vip: VIP-pack only)
 
 -- rarity tints (the same as LootTable.RARITY; copied so this module needs nothing else)
 C.RARITY_COLOR = {
 	free = Color3.fromRGB(150, 156, 166), common = Color3.fromRGB(122, 178, 104), rare = Color3.fromRGB(78, 150, 226),
 	epic = Color3.fromRGB(162, 108, 226), legendary = Color3.fromRGB(240, 178, 52),
+	vip = Color3.fromRGB(255, 208, 72),
 }
+-- "vip": the VIP pack's own (the shop session's): never in a container (LootTable rolls only the rarities it knows),
+-- never in the shop's rotation or bundles (forSale leaves them out), owned only through Loot.grant of the VIP offer
+C.VIP_ONLY = "vip"
+function C.isVip(t: string, id: string): boolean
+	local i = C.info(t, id)
+	return i ~= nil and i.rarity == C.VIP_ONLY
+end
 
 -- id = { name, rarity }, in the order the picker shows them
 local BORDERS = {
@@ -31,6 +39,7 @@ local BORDERS = {
 	{ "brackets", "Brackets", "rare" }, { "ember", "Ember", "rare" },
 	{ "gilded", "Gilded", "epic" }, { "prism", "Prism", "epic" },
 	{ "halo", "Halo", "legendary" },
+	{ "ducky", "Ducky", "vip" },
 }
 local BANNERS = {
 	{ "slate", "Slate", "free" }, { "stripes", "Stripes", "free" }, { "grid", "Grid", "free" },
@@ -48,21 +57,22 @@ local TITLES = {
 	{ "void", "WASTE DISPOSAL", "rare" },
 	{ "multi3", "BULK DISCOUNT", "epic" }, { "streak", "ON A TEAR", "epic" }, { "fast", "OVER THE LIMIT", "epic" },
 	{ "untouch", "UNTOUCHABLE", "legendary" }, { "mvp", "EMPLOYEE OF THE MONTH", "legendary" },
+	{ "vip", "VIP", "vip" }, -- (the VIP pack's title; its words are the shop session's to pick)
 }
 
 C.ORDER = { border = {}, banner = {}, title = {} } :: { [string]: { string } }
 C.ITEMS = { border = {}, banner = {}, title = {} } :: { [string]: { [string]: Item } }
 for _, r in BORDERS do
-	C.ITEMS.border[r[1]] = { type = "border", id = r[1], name = r[2], rarity = r[3] }
+	C.ITEMS.border[r[1]] = { type = "border", id = r[1], name = r[2], rarity = r[3], vip = if r[3] == "vip" then true else nil }
 	table.insert(C.ORDER.border, r[1])
 end
 for _, r in BANNERS do
-	C.ITEMS.banner[r[1]] = { type = "banner", id = r[1], name = r[2], rarity = r[3] }
+	C.ITEMS.banner[r[1]] = { type = "banner", id = r[1], name = r[2], rarity = r[3], vip = if r[3] == "vip" then true else nil }
 	table.insert(C.ORDER.banner, r[1])
 end
 for _, r in TITLES do
 	local name = if r[2] == "" then "No Title" else string.upper(string.sub(r[2], 1, 1)) .. string.lower(string.sub(r[2], 2))
-	C.ITEMS.title[r[1]] = { type = "title", id = r[1], name = name, rarity = r[3], text = r[2] }
+	C.ITEMS.title[r[1]] = { type = "title", id = r[1], name = name, rarity = r[3], text = r[2], vip = if r[3] == "vip" then true else nil }
 	table.insert(C.ORDER.title, r[1])
 end
 
@@ -79,12 +89,12 @@ end
 function C.isType(t: any): boolean
 	return t == "border" or t == "banner" or t == "title"
 end
--- the non-free ones of a type, for a container's pool or the shop
+-- the ones a container or the shop's rotation may hand out: not free, not VIP-only
 function C.forSale(t: string): { Item }
 	local out = {}
 	for _, id in C.ORDER[t] or {} do
 		local i = C.ITEMS[t][id]
-		if i.rarity ~= "free" then table.insert(out, i) end
+		if i.rarity ~= "free" and i.rarity ~= C.VIP_ONLY then table.insert(out, i) end
 	end
 	return out
 end
@@ -95,6 +105,7 @@ end
 function C.titleColor(id: string?): Color3
 	local i = C.info("title", id)
 	local c = C.RARITY_COLOR[if i then i.rarity else "free"]
+	if i and i.rarity == C.VIP_ONLY then return c end -- (VIP keeps its full gold)
 	return c:Lerp(Color3.fromRGB(236, 238, 242), 0.35)
 end
 
@@ -340,6 +351,29 @@ function C.paintBorder(frame: GuiObject, id: string?, corner: number?)
 		local s = stroke(f, 3, Color3.new(1, 1, 1), 0)
 		animate(new("UIGradient", { Color = seq(rgb(255, 250, 236), rgb(214, 160, 70), rgb(120, 84, 30), rgb(255, 250, 236)) }, s), "spin", 25)
 		brackets(rgb(250, 230, 180), 22, 3)
+	elseif want == "ducky" then
+		-- the VIP border: yellow and gold with a slow shimmer, a warm glow, gold corners, and a little duck sitting on
+		-- the top edge near the left corner (drawn: tail, body, wing, head, beak, eye; no picture, no text)
+		local glow = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(-4, -4), Size = UDim2.new(1, 8, 1, 8), ZIndex = 19 }, f)
+		new("UICorner", { CornerRadius = UDim.new(0, rad + 4) }, glow)
+		stroke(glow, 6, rgb(255, 214, 90), 0.8)
+		local s = stroke(f, 3, Color3.new(1, 1, 1), 0)
+		animate(new("UIGradient", { Color = seq(rgb(255, 228, 112), rgb(214, 150, 30), rgb(255, 242, 176), rgb(196, 132, 24), rgb(255, 228, 112)) }, s), "spin", 28)
+		brackets(rgb(246, 202, 84), 20, 3)
+		local YELLOW, GOLD, DEEP = rgb(255, 212, 66), rgb(188, 130, 28), rgb(232, 174, 40)
+		local duck = new("Frame", { Name = "Duck", BackgroundTransparency = 1, Position = UDim2.fromOffset(16, -14), Size = UDim2.fromOffset(34, 20), ZIndex = 22 }, f)
+		local function piece(x: number, y: number, w: number, h: number, color: Color3, rot: number?, round: boolean?, edge: boolean?): Frame
+			local p = new("Frame", { BorderSizePixel = 0, BackgroundColor3 = color, Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(w, h), Rotation = rot or 0, ZIndex = 23 }, duck)
+			new("UICorner", { CornerRadius = if round == false then UDim.new(0, 2) else UDim.new(1, 0) }, p)
+			if edge then new("UIStroke", { Color = GOLD, Thickness = 1.5 }, p) end
+			return p
+		end
+		piece(1, 6, 7, 7, YELLOW, 45, false, true) -- the tail
+		piece(3, 6, 22, 13, YELLOW, 0, true, true) -- the body
+		piece(18, 0, 12, 12, YELLOW, 0, true, true) -- the head
+		piece(9, 9, 10, 6, DEEP, -8, true, false).ZIndex = 24 -- the wing
+		piece(28, 5, 6, 4, rgb(240, 140, 40), 0, false, false).ZIndex = 24 -- the beak
+		piece(25, 3, 2, 2, rgb(34, 26, 16), 0, true, false).ZIndex = 25 -- the eye
 	else -- hairline
 		stroke(f, 1, rgb(255, 255, 255), 0.8)
 	end

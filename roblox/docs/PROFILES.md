@@ -92,10 +92,15 @@ codes or logos (see `roblox-upload-content-rules`).
 
 | type | free (everyone owns) | in the loot pool |
 |---|---|---|
-| border (9) | Hairline, Steel | Brass, Twin Line (common) · Brackets, Ember (rare) · Gilded, Prism (epic) · Halo (legendary) |
+| border (9 + Ducky, VIP) | Hairline, Steel | Brass, Twin Line (common) · Brackets, Ember (rare) · Gilded, Prism (epic) · Halo (legendary) |
 | background (12) | Slate, Stripes, Grid | Sunset, Night Sky, Camo (common) · Furnace, Carbon, Static (rare) · Aurora, Molten (epic) · Eclipse (legendary) |
-| title (16) | none, ROOKIE, NEW HIRE | the web game's end-of-match medals: FIRST BLOOD, TWO FOR ONE, FILED A COMPLAINT, CONSCIENTIOUS OBJECTOR (common) · HEAD OF HR, LONG DISTANCE CALL, HANDS-ON MANAGER, WASTE DISPOSAL (rare) · BULK DISCOUNT, ON A TEAR, OVER THE LIMIT (epic) · UNTOUCHABLE, EMPLOYEE OF THE MONTH (legendary) |
+| title (16 + VIP) | none, ROOKIE, NEW HIRE | the web game's end-of-match medals: FIRST BLOOD, TWO FOR ONE, FILED A COMPLAINT, CONSCIENTIOUS OBJECTOR (common) · HEAD OF HR, LONG DISTANCE CALL, HANDS-ON MANAGER, WASTE DISPOSAL (rare) · BULK DISCOUNT, ON A TEAR, OVER THE LIMIT (epic) · UNTOUCHABLE, EMPLOYEE OF THE MONTH (legendary) |
 
+- **VIP only** (rarity `vip`, added 16 Nov for the shop session's VIP pack):
+  - **Ducky** border: a yellow-gold shimmer, a warm glow, gold corners, and a small duck drawn from rounded shapes, sitting on the top edge;
+  - **VIP** title (the shop session picks its words).
+
+  They are granted only through `Loot.grant` of the VIP offer. LootTable's card hook skips rarities it doesn't know, so they never roll from a container. `CardStyles.forSale` leaves them out of the shop's rotation. In the picker, a VIP item you don't own shows locked: "VIP pack only".
 - **Backgrounds** start from the web game's name-card backgrounds (`public/js/cards.js`: stripes, grid, sunset, stars, camo, flames, static), made quieter.
 - **Left out:** the web game's magenta "missing texture" checker (too loud), and ORGAN DONOR (gore).
 - **Animated pieces:** Ember, Prism and Halo turn slowly, and so do Aurora, Molten and Eclipse. One loop drives every gradient on screen.
@@ -162,12 +167,15 @@ The loadout on a card is read from the player's own attributes (`LoadoutNext`, `
 | click | a real mouse click (crosshair) on a stand-in in the hub opened the card |
 | layout | PC 1289x753 and a phone-sized 844x390 box (fills it, the body scrolls, buttons ≥ 46 px) |
 
+| looks you own, through real grants (place version 435) | the shop's Head Office bundle, claimed into the owner's loot inventory, shows in the picker as owned: Brackets, Carbon, HEAD OF HR. They can be worn; Halo and Ducky (not owned) are refused and shown locked. Ducky's lock reads "VIP pack only" |
+| VIP looks (Studio unlock) | the Ducky border (the duck on the top edge) and the gold VIP title draw on the card and in the player list |
+
 After the tests the owner's stats were reset to zero and the look to the defaults (saved).
 
 Not checked end to end:
 
 - **Headshots.** My hand-made headshot claims were judged body shots by the server's own head check. The headshot flag reaches the stats through `Fight.onHurt`; the counting itself is the same code path as hits.
-- **A card look won from loot unlocking in the picker.** The loot dev `set` errored on card types: a bug in Loot.luau, reported to the loot session.
+- **A card look won from a Duffel Bag.** Ownership itself is proven by the shop's grants (the same `give` path). The loot dev `set` erred on card types; the loot session has fixed it.
 - **A real second player.** Studio's MCP only starts solo tests.
 
 ![photo sheet](profiles/profiles-sheet.jpg)

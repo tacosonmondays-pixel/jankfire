@@ -454,8 +454,16 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 			T.corner(sample, 6)
 			CardStyles.preview(t, id, sample)
 			if picked then
-				local st = new("UIStroke", { Color = T.ACCENT, Thickness = 2, ApplyStrokeMode = Enum.ApplyStrokeMode.Border }, tile)
-				st.Name = "Picked"
+				-- (an amber ring just outside the tile, over the sample's own border, and a tick in its corner)
+				local ring = new("Frame", { Name = "Picked", BackgroundTransparency = 1, Position = UDim2.fromOffset(-4, -4), Size = UDim2.new(1, 8, 1, 8), ZIndex = 40 }, tile)
+				T.corner(ring, 9)
+				new("UIStroke", { Color = T.ACCENT, Thickness = 2 }, ring)
+				local tick = new("Frame", { Name = "Tick", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(18, 18),
+					BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, ZIndex = 41 }, tile)
+				T.corner(tick, 9)
+				-- (a drawn check: two bars)
+				new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(7, 10), Size = UDim2.fromOffset(6, 2), Rotation = 45, BackgroundColor3 = T.INK, BorderSizePixel = 0, ZIndex = 42 }, tick)
+				new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(11, 8.5), Size = UDim2.fromOffset(9, 2), Rotation = -50, BackgroundColor3 = T.INK, BorderSizePixel = 0, ZIndex = 42 }, tick)
 			end
 			if not has then
 				local dim = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 29 }, tile)
@@ -469,7 +477,8 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 			at(rar, col * (tw + gap) + tw - 70, y + r * (th + gap + 18) + th + 2, 68, 14)
 			tile.MouseButton1Click:Connect(function()
 				if not has then
-					view.why = ("%s: from Duffel Bags or the shop"):format(info.name)
+					view.why = if info.rarity == CardStyles.VIP_ONLY then ("%s: VIP pack only"):format(info.name)
+						else ("%s: from Duffel Bags or the shop"):format(info.name)
 					UI.refresh()
 					return
 				end
@@ -514,11 +523,11 @@ local function playersBlock(parent: Instance, y: number, W: number, list: { any 
 		T.corner(img, 6)
 		local rank = Ranks.of(r.xp)
 		local n = txt(b, string.upper(r.display or r.name), 16, T.TEXT, T.FONT_TITLE)
-		at(n, 20 + av, 12, rw - av - 110, 20)
+		at(n, 20 + av, 12, rw - av - 170, 20)
 		n.ZIndex = 3
 		local tt = CardStyles.titleText(r.look and r.look.title)
 		local s2 = txt(b, if tt ~= "" then tt else ("@" .. r.name), 12, if tt ~= "" then CardStyles.titleColor(r.look.title) else T.MUTED, T.FONT_BOLD)
-		at(s2, 20 + av, 34, rw - av - 110, 16)
+		at(s2, 20 + av, 34, rw - av - 170, 16)
 		s2.ZIndex = 3
 		local bs = rh - 22
 		local badge = Ranks.badge(b, bs, rank)
@@ -532,7 +541,7 @@ local function playersBlock(parent: Instance, y: number, W: number, list: { any 
 			local you = txt(b, "YOU", 10, T.INK, T.FONT_HEAVY, Enum.TextXAlignment.Center)
 			you.BackgroundTransparency = 0
 			you.BackgroundColor3 = T.ACCENT
-			at(you, 20 + av, rh - 24, 34, 15)
+			at(you, rw - bs - 54 - 44, (rh - 15) // 2, 34, 15) -- (left of the badge, clear of the name and title)
 			you.ZIndex = 3
 			T.corner(you, 3)
 		end
