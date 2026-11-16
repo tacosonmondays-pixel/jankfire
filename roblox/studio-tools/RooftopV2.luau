@@ -19,7 +19,7 @@ local CollectionService = game:GetService("CollectionService")
 local R = {}
 R.NAME = "RooftopV2"
 R.KIT = "rooftop2"
-R.ASSET = 137435178385341 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_8"); set after each upload
+R.ASSET = 104385446484906 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_9"); set after each upload
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
 local SP = Enum.Material.SmoothPlastic
@@ -104,7 +104,7 @@ local CITY = {
 	body = { hex("9da0a6"), hex("8c9096"), hex("a6a29a"), hex("7d8189"), hex("b0aca4"), hex("949089") },
 	glass = { hex("5e6873"), hex("6a7179"), hex("545d68") },
 	band = hex("bdb8ae"), lit = hex("f2dcc0"), street = hex("4a4d53"), block = hex("6f7076"), smog = hex("c3c7cd"), horizon = hex("d3d7df"),
-	ground = hex("4f555e"), blocks = { hex("7c828b"), hex("858a92"), hex("737982"), hex("8e9299"), hex("6b7179"), hex("80858c") },
+	ground = hex("4f555e"), roof = hex("5d636c"), blocks = { hex("7c828b"), hex("858a92"), hex("737982"), hex("8e9299"), hex("6b7179"), hex("80858c") },
 }
 local TOWERS = { "r2_twa", "r2_twb", "r2_twc", "r2_twd", "r2_twe", "r2_twf", "r2_twe", "r2_twf" }
 -- three landmarks (r2_twg, a broad tower stepping in at the top), placed by hand far out, tall: { x, z, top }
@@ -116,8 +116,9 @@ local function city(root: Instance, O: Vector3)
 	look(f, "Street", CF(O + V3(0, -466, 0)), V3(2048, 2, 2048), CITY.street)
 	-- the city floor at the smog's height (the game's own word for the drop: "into the smog"). round 5's judge: the pale
 	-- smog read as "a blank pale plain, towers rising out of nothing". now: slate streets (nine plates: a part is at most
-	-- 2048 across) under blocks on the towers' own grid (66 near, 132 further out), then two thin veils of the horizon's
-	-- haze over it, so the towers' feet fade into it and no edge of the ground ever shows
+	-- 2048 across) under blocks on the towers' own grid (66 near, 132 further out); low buildings on the blocks no tower
+	-- stands on and a far skyline come after the towers (round 6: "pale and flat, no low buildings"; "a blank pale plain
+	-- with a hard horizon" from the lanes)
 	for ix = -1, 1 do
 		for iz = -1, 1 do
 			look(f, "Ground", CF(O + V3(ix * 2048, -262, iz * 2048)), V3(2048, 1, 2048), CITY.ground)
@@ -136,15 +137,8 @@ local function city(root: Instance, O: Vector3)
 			if nb % 200 == 0 then task.wait() end
 		end
 	end
-	for i, y in { -215, -150 } do
-		for ix = -1, 1 do
-			for iz = -1, 1 do
-				local v = look(f, "Haze", CF(O + V3(ix * 2048, y, iz * 2048)), V3(2048, 1, 2048), CITY.horizon)
-				v.Transparency = if i == 1 then 0.78 else 0.88
-			end
-		end
-	end
 	local n = 0
+	local taken = {}
 	for gx = -660, 660, 66 do
 		for gz = -520, 520, 66 do
 			local ax, az = math.abs(gx), math.abs(gz)
@@ -168,6 +162,7 @@ local function city(root: Instance, O: Vector3)
 			end
 			m:PivotTo(CF(O + V3(x, top - TWH, z)) * CFrame.Angles(0, rng:NextInteger(0, 3) * math.pi / 2, 0))
 			m.Parent = f
+			taken[gx .. "," .. gz] = true
 			n += 1
 			if n % 20 == 0 then task.wait() end
 		end
@@ -187,6 +182,60 @@ local function city(root: Instance, O: Vector3)
 			m:PivotTo(CF(O + V3(l[1], l[3] - TWH, l[2])))
 			m.Parent = f
 		end
+	end
+	-- low buildings (2 to 6 storeys) on the blocks no tower stands on: a body and a darker roof slab, so the ground
+	-- far below reads as a city seen from above
+	local lrng, nl = Random.new(1604), 0
+	local function low(cx: number, cz: number, w: number, d: number)
+		local h = lrng:NextInteger(10, 36)
+		local body = CITY.body[lrng:NextInteger(1, #CITY.body)]:Lerp(CITY.street, lrng:NextNumber() * 0.35)
+		look(f, "Low", CF(O + V3(cx, -258.5 + h / 2, cz)), V3(w, h, d), body)
+		look(f, "Low", CF(O + V3(cx, -258.5 + h + 0.5, cz)), V3(w - 3, 1, d - 3), CITY.roof)
+		nl += 1
+		if nl % 100 == 0 then task.wait() end
+	end
+	for gx = -1650, 1650, 66 do
+		for gz = -1650, 1650, 66 do
+			local inner = math.abs(gx) <= 726 and math.abs(gz) <= 594
+			if inner then
+				-- (the towers' grid runs 8 studs off the blocks' in z: -520 against -528)
+				if taken[gx .. "," .. (gz + 8)] or (math.abs(gx) < 200 and math.abs(gz) < 120) then continue end
+				local near = false
+				for _, l in LANDMARKS do if math.abs(gx - l[1]) < 70 and math.abs(gz - l[2]) < 70 then near = true end end
+				if near then continue end
+				if lrng:NextNumber() < 0.5 then
+					low(gx, gz, 44, 44)
+				else
+					low(gx - 11, gz, 20, 44); low(gx + 12, gz + lrng:NextInteger(-8, 8), 18, 26)
+				end
+			elseif (gx + 1650) % 132 == 0 and (gz + 1650) % 132 == 0 then
+				local cx, cz = gx + 33, gz + 33
+				if math.abs(cx) <= 726 + 66 and math.abs(cz) <= 594 + 66 then continue end
+				if lrng:NextNumber() < 0.3 then continue end
+				if lrng:NextNumber() < 0.5 then
+					low(cx, cz, lrng:NextInteger(70, 104), lrng:NextInteger(70, 104))
+				else
+					low(cx - 28, cz - 26, 50, 50); low(cx + 28, cz + 24, 50, 54)
+				end
+			end
+		end
+	end
+	-- a far skyline between the city floor's edge and the horizon ring: two rows of plain blocks in hazed tones, so from
+	-- the lanes the eye meets buildings, not an empty plain, all the way to the horizon
+	local srng = Random.new(1605)
+	for row = 1, 2 do
+		local r0 = if row == 1 then 1780 else 2120
+		local count = if row == 1 then 120 else 140
+		for i = 1, count do
+			local ang = (i + srng:NextNumber() * 0.6) / count * math.pi * 2
+			local r = r0 + srng:NextInteger(-90, 90)
+			local w, d = srng:NextInteger(60, 150), srng:NextInteger(60, 150)
+			local top = if srng:NextNumber() < 0.15 then srng:NextInteger(90, 190) else srng:NextInteger(-90, 80)
+			local col = CITY.body[srng:NextInteger(1, #CITY.body)]:Lerp(CITY.horizon, 0.25 + 0.2 * row + srng:NextNumber() * 0.15)
+			local cf = CF(O + V3(math.sin(ang) * r, (top - 262) / 2, math.cos(ang) * r)) * CFrame.Angles(0, ang, 0)
+			look(f, "Far", cf, V3(w, top + 262, d), col)
+		end
+		task.wait()
 	end
 	return n
 end
