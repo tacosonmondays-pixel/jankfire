@@ -11,8 +11,11 @@ chunkier and gave back a signature to the guns that had lost theirs (below). Aft
 rounded too look at rivals a bix of the two versions", so round 8 is a mix of round 5's rounder look and round 7's
 blocks (live, place version 281). Then: "Makt he shapes cohesive reference an actual gun you know and referenbce
 rivals heavily look at how they build their weapons, then put them side by side and ill pick each one": a third
-version, **C**, each gun drawn from a real gun and built the way Rivals builds (not live; the owner picks A, B or C per
-gun from `gun-models/pick-1.jpg` to `-4.jpg`).
+version, **C**, each gun drawn from a real gun and built the way Rivals builds. The owner then picked per gun from
+`gun-models/pick-1.jpg` to `-4.jpg` (below, "The picked set", `gun-models/final-set.jpg`). Then: "make sure the
+magazine, stocks mount etc works for all of them and are connected pieces that look good" (`gun_check.py`, below). The
+picked set is built and exported; it goes into the game at the next upload (Studio's place closed at 09:39 UTC on
+16 Nov before it; the game still has round 8b).
 
 **No weapon number, name, mechanic or gimmick changed.** Every new model keeps its gun's muzzle, sight, port, grip
 and fore spots, the names and pivots of the pieces that move, and the grip and handguard where the hands go, so the
@@ -48,22 +51,60 @@ back into those guns: three blue squares on the Hat Trick's carry handle (its th
 beside Second Opinion's first (its name), a boxy slotted shield over the Shotgun's barrel (so it no longer reads like
 the Yeehaw).
 
+## The picked set (the owner's choice, 16 November 2026)
+
+| Gun | Version | The owner's words |
+|---|---|---|
+| Assault Rifle | C (AK-12) | C |
+| SMG | C (MP5) | C |
+| Hat Trick | B | B |
+| Belt Sander | C (M249) | C |
+| Second Opinion | C (SVD + its second optic) | C |
+| Sniper | A, the scope raised clear of the gun on its rings, a new one-piece stock (sloped underline, comb low under the eyepiece) | "A (without scope inside gun, fix stock)" |
+| Yeehaw | C (Winchester 1873), the star bigger | "C (increase star size)" |
+| Shotgun | A | A |
+| Lawn Mower | C (AA-12: the top rail and carry handle) | "you pick prob one with top rail" |
+| Half a Shotgun | C (coach gun), one trigger | "C but remove one trigger since it has 2" |
+| Plan B | C (M1911) | C |
+| Revolver | A's barrel, frame, cylinder, hammer and sights; C's rounded frame back, round guard, trigger and wood target grips | "I like how the held looks for volvie A but I like the handle of trigger area of C" |
+| Redline | A, the trigger area closed (a post from the guard into the receiver), the tachometer 15% bigger round the same pivot | "A ... can you inclose the trigger area, and increase the guage a tinier bit bigger" |
+| Marble Shotgun | C (blunderbuss), the flintlock's cock compact and low over the wrist | C, and "fix ... the little thing that sticks out above the handle" (read as this gun's cock) |
+| Katana | C's blade (curve, temper line, bright tip) on B's handle | "blade look of C handle of B" |
+| Shredder | C | "C love the shredder" |
+
+Carl's Cardboard is rebuilt on the C rifle (a paper-tube barrel with tape bands, card window and tent sights, tape round
+the receiver, corrugated butt, flaps).
+
+**Is every gun one connected thing?** `tools/roblox/gun_check.py` builds the live set and finds, for every solid of
+every gun, whether it touches or sinks into another (a gap over 1.5 mm counts as loose), and whether the nodes the game
+moves are all there. Its first run found two: Second Opinion's whole front (handguard, barrel, brake) stood 2 mm off
+the receiver and its trigger 3 mm under it; the Hat Trick's grip 1.7 mm under the body. Both fixed; all sixteen now come
+out as one piece each with every moving node present. What it cannot judge: how a join looks, and whether a moving
+part clears the rest in motion (that is the reload test in game).
+
+**How the picks are built:** `tools/roblox/gun_set.py` is the live set (`PICK` and `BUILD`, plus the mixed builders).
+Each gun is built in its version's look with `gunkit.use_style('A' | 'B' | 'C')` (`gunkit.STYLES`: A = round 7's
+switches, B = round 8's, C = Rivals' way), so A and B guns come out exactly as they were and C guns as in version C;
+the mixed guns switch looks part by part. `gun_models.py` still holds the A/B builders, `gun_models_c*.py` the C ones.
+
 ## How it is built
 
 | what | where |
 |---|---|
 | the kit: chamfered prisms, boxes, eight-sided barrels, rings, windows, panels, rivets, ribs | `tools/roblox/gunkit.py` |
-| one builder per gun (the frame and the rules are at the top of the file) and the skins | `tools/roblox/gun_models.py` |
+| **the live set: which version each gun uses, the mixed builders, the skin** | `tools/roblox/gun_set.py` |
+| the A/B builders (the frame and the rules are at the top of the file) and the old skin | `tools/roblox/gun_models.py` |
+| version C: its look and shared pieces, its builders | `tools/roblox/gunkit_c.py`, `tools/roblox/gun_models_c.py` and `_c1` to `_c3` |
 | preview cards without Studio (three-quarter, in hand, side view with the spots marked, the old model in hand) | `tools/roblox/gun_preview.py` |
 | the models' source files (weapon frame, metres) | `roblox/assets/weapons-kit/src/w_*.glb` |
 | the upload files (turned for Roblox, look in the piece names), the asset ids, the report | `roblox/assets/weapons-kit/` |
 | the book Studio reads (asset ids, file bounds, each piece's colour) | `roblox/studio-tools/WeaponKit.luau` = `ServerStorage.PolishBackup.WeaponKit` (generated) |
 
-To change a gun: edit its builder, then
+To change a gun: edit its builder (find it through `gun_set.py`), then
 
 ```
-blender -b --factory-startup -P tools/roblox/gun_preview.py -- <dir> --old <web models dir> <id>        (look first)
-blender -b --factory-startup -P tools/roblox/gun_models.py -- roblox/assets/weapons-kit/src <id>
+blender -b --factory-startup -P tools/roblox/gun_preview.py -- <dir> --set live <id>                    (look first)
+blender -b --factory-startup -P tools/roblox/gun_set.py -- roblox/assets/weapons-kit/src <id>
 blender -b --factory-startup -P tools/roblox/export_weapons.py -- roblox/assets/weapons-kit --kit roblox/assets/weapons-kit/src/w_<id>.glb
 ```
 

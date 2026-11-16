@@ -15,6 +15,9 @@ ALLG = dict(gun_models.BUILD); ALLG.update(gun_models.SKINS)
 if '--set' in sys.argv and sys.argv[sys.argv.index('--set') + 1] == 'c':  # version C (gun_models_c.py)
     import gun_models_c
     ALLG = dict(gun_models_c.BUILD)
+if '--set' in sys.argv and sys.argv[sys.argv.index('--set') + 1] == 'live':  # the picked set (gun_set.py)
+    import gun_set
+    ALLG = dict(gun_set.BUILD); ALLG.update(gun_set.SKINS)
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 out_dir = argv[0]; rest = argv[1:]

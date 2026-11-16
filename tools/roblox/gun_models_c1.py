@@ -309,7 +309,7 @@ def dmr():
     g.box('charge_wzB__dark', (0.028, 0.046), (0.016, 0.034), (-0.014, 0.012), bev=0.003)
     g.cyl('charge_wzB__dark', 0.0115, (0.041, 0.025, -0.001), (0.058, 0.025, -0.001), sides=8, bev=0.003)
     # the slim handguard (purple), three long oval vents a side
-    HG = [(-0.18, -0.036), (-0.18, 0.056), (-0.505, 0.05), (-0.53, 0.038), (-0.53, -0.014), (-0.512, -0.026)]
+    HG = [(-0.17, -0.036), (-0.17, 0.056), (-0.505, 0.05), (-0.53, 0.038), (-0.53, -0.014), (-0.512, -0.026)]
     g.prism('guard_wzA__body', HG, 0.058, bev=0.008, wtop=0.046)
     hw = wedge_w(0.058, 0.046, -0.036, 0.056)
     for z0 in (-0.47, -0.39, -0.31):
@@ -356,7 +356,7 @@ def dmr():
     # the trigger guard and trigger
     guard(g, 'body_wzB__frame', 0.035, 0.2, -0.085, t=0.018, hw=0.013)
     g.box('body_wzB__frame', (-0.013, 0.013), (-0.085, -0.038), (0.035, 0.053), bev=0.004)
-    trigger(g, 'body_wzB__frame', 0.115, -0.04, -0.064)
+    trigger(g, 'body_wzB__frame', 0.115, -0.02, -0.064)
     # the skeleton stock (purple): the comb and butt in one (an upside-down L), the grip and the bottom bar in one
     # (an L), the thumbhole open between them; a dark butt pad
     gfb, gbb, gbt, gft = raked(0.24, -0.1, 0.172, 0.064, -0.646, taper=0.004)

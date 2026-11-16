@@ -268,7 +268,7 @@ def burst():
     # charging handle (node "charge") on top, under the carry handle
     g.box('charge_wzB__dark', (-0.052, -0.03), (-0.004, 0.024), (-0.14, -0.106), bev=0.005)
     # the grip, and the big loop in front of it that the off hand takes
-    g.prism('grip_wzB__dark', raked(-0.105, -0.135, 0.17, 0.062, -0.07, taper=0.004), 0.05, bev=0.009)
+    g.prism('grip_wzB__dark', raked(-0.105, -0.131, 0.178, 0.062, -0.07, taper=0.004), 0.05, bev=0.009)  # (into the body: no gap)
     g.prism('loop_wzB__dark', [(-0.245, -0.03), (-0.17, -0.03), (-0.176, -0.25), (-0.236, -0.25)], 0.046, bev=0.011)
     g.box('loop_wzB__dark', (-0.018, 0.018), (-0.255, -0.222), (-0.236, -0.078), bev=0.007)
     trigger(g, 'grip_wzB__dark', -0.155, -0.03, -0.068)

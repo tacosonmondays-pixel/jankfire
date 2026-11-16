@@ -73,8 +73,8 @@ def lever():
                                 (0.1, -0.062), (-0.116, -0.062), (-0.13, -0.048)], 0.056, bev=0.008)
     # the side plate (proud, same tan), a dark medallion with the star, two screws; the dust cover on top
     g.prism('body_wzN__body', cut_rect(-0.108, 0.058, -0.052, 0.03, 0.016), 0.06, bev=0.003)
-    g.cyl('star_wzN__dark', 0.022, (-0.031, -0.012, -0.026), (0.031, -0.012, -0.026), sides=8, bev=0.003)
-    g.prism('star_wzN__body', star(-0.026, -0.012, 0.017, 0.0072), 0.065, bev=0.0015)
+    g.cyl('star_wzN__dark', 0.03, (-0.031, -0.008, -0.026), (0.031, -0.008, -0.026), sides=8, bev=0.003)  # (owner: a bigger star)
+    g.prism('star_wzN__body', star(-0.026, -0.008, 0.025, 0.0106), 0.065, bev=0.0015)
     rivets(g, 'trim_wzN__dark', 0.03, [(-0.092, 0.016), (0.04, -0.04)])
     g.box('body_wzN__body', (-0.014, 0.014), (0.04, 0.051), (-0.118, 0.052), bev=0.003)
     g.box('body_wzN__dark', (0.029, 0.0318), (-0.04, -0.012), (-0.1, -0.058), bev=0.0015)  # the loading gate (right)
@@ -262,10 +262,9 @@ def sawnoff():
     # the splinter forend (wood) and its iron on the knuckle
     g.prism('forend_wzA__wood', [(-0.24, 0.0), (-0.098, 0.0), (-0.098, -0.03), (-0.112, -0.04), (-0.226, -0.04), (-0.24, -0.028)], 0.088, bev=0.009)
     g.box('forend_iron_wzN__dark', (-0.032, 0.032), (-0.038, -0.002), (-0.104, -0.085), bev=0.004)
-    # the loop guard and the two triggers
+    # the loop guard and one trigger (owner: "remove one trigger since it has 2")
     loop(g, 'body_wzN__dark', -0.024, 0.078, -0.082, -0.03, 0.013, 0.022, c=0.014)
-    trigger(g, 'body_wzN__dark', 0.006, -0.034, -0.064)
-    trigger(g, 'body_wzN__dark', 0.036, -0.034, -0.062)
+    trigger(g, 'body_wzN__dark', 0.022, -0.034, -0.064)
     # what is left of the stock: the raked pistol grip, a stub of the comb over it, a dark cap on the sawn end
     RK = -0.593
     gp = raked(0.104, -0.058, 0.134, 0.062, RK, taper=0.006)
@@ -306,12 +305,11 @@ def marbles():
     for sx in (-1, 1):  # (the lock plate on the right, its side plate on the left)
         g.prism('lock_wzN__dark', [(-0.042, -0.004), (-0.022, -0.02), (0.062, -0.02), (0.078, -0.006), (0.062, 0.012), (-0.026, 0.014)], 0.006, x=sx * 0.03, bev=0.002)
     rivets(g, 'trim_wzN__frame', 0.033, [(-0.012, -0.003), (0.05, -0.003)])
-    g.prism('lock_wzN__dark', [(0.03, -0.012), (0.066, -0.012), (0.068, 0.012), (0.056, 0.03), (0.05, 0.05), (0.04, 0.066),
-                               (0.004, 0.066), (0.004, 0.05), (0.024, 0.048), (0.03, 0.03), (0.036, 0.016), (0.03, 0.006)], 0.016, x=0.026, bev=0.003)
-    g.box('lock_wzN__black', (0.019, 0.033), (0.036, 0.05), (-0.006, 0.01), bev=0.002)
-    g.cyl('lock_wzN__dark', 0.0065, (0.026, 0.062, 0.02), (0.026, 0.078, 0.02), sides=8, bev=0.002)
-    g.box('lock_wzN__dark', (0.016, 0.034), (0.016, 0.062), (-0.026, -0.008), bev=0.004)
-    g.box('lock_wzN__dark', (0.012, 0.034), (0.006, 0.02), (-0.024, 0.006), bev=0.003)
+    # (owner: "the little thing that sticks out above the handle": the cock is now compact and lies low on the lock,
+    # its top just over the wrist's line; the frizzen a low block over the pan)
+    g.prism('lock_wzN__dark', [(0.026, -0.012), (0.066, -0.012), (0.068, 0.008), (0.056, 0.026), (0.042, 0.04),
+                               (0.02, 0.042), (0.016, 0.03), (0.03, 0.022), (0.034, 0.008)], 0.018, x=0.026, bev=0.003)
+    g.box('lock_wzN__dark', (0.016, 0.034), (0.008, 0.03), (-0.026, -0.006), bev=0.004)
     # the loop guard and trigger
     loop(g, 'guard_wzN__dark', -0.036, 0.062, -0.09, -0.044, 0.012, 0.02, c=0.014)
     trigger(g, 'lock_wzN__dark', 0.012, -0.048, -0.072)

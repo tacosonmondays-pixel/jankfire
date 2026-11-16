@@ -59,6 +59,24 @@ def round_sides(r):
 # cylinders whose piece is named barrel* or lmg_heat* (not the Marble Shotgun's bell, which is barrel_wzA)
 BARREL_K = 1.2
 
+# THE THREE LOOKS (owner's pick, 16 Nov 2026: each gun uses the version he chose): A = round 7 (blocky: half-width
+# crisp chamfers, straight sides, flat-faceted 8-sided barrels), B = round 8 (the rounded mix above, the default),
+# C = version C (Rivals' way: one wide crisp chamfer, 8-sided tubes shaded round; gunkit_c.py). use_style(name) sets
+# the switches above for whatever is built next; gun_set.py does it per gun (and per part where a gun mixes two).
+STYLES = {
+    'A': dict(BEV_K=0.5, WTOP_K=0.35, SMOOTH_CYL=False, BARREL_K=1.2, BEV_SEG=1, ROUND_NODES=set(), CORNER={},
+              BODY_NODES=set(), round_sides=lambda r: 8),
+    'B': dict(BEV_K=BEV_K, WTOP_K=WTOP_K, SMOOTH_CYL=SMOOTH_CYL, BARREL_K=BARREL_K, BEV_SEG=BEV_SEG,
+              ROUND_NODES=set(ROUND_NODES), CORNER=dict(CORNER), BODY_NODES=set(BODY_NODES), round_sides=round_sides),
+    'C': dict(BEV_K=1.0, WTOP_K=1.0, SMOOTH_CYL=True, BARREL_K=1.0, BEV_SEG=1, ROUND_NODES=set(), CORNER={},
+              BODY_NODES=set(), round_sides=lambda r: 8 if r < 0.1 else 16),
+}
+
+
+def use_style(name):
+    """build what follows in look A, B or C"""
+    globals().update(STYLES[name])
+
 
 def P(x, y, z):
     """weapon frame (x right, y up, z back) -> Blender (x, -z, y)"""

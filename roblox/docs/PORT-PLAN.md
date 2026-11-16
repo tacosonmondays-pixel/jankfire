@@ -461,8 +461,9 @@ round 5 the owner asked for no "bullets attached on top", a one-piece Sniper sto
 signature back into the guns that lost one. Then "not completly block some rounded too ... a bix of the two
 versions": round 8 (live, place version 281) mixes round 5's rounder look with round 7's blocks. Then "make the shapes
 cohesive, reference an actual gun ... reference rivals heavily ... put them side by side and ill pick each one":
-version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_models_c*.py`) waits for the owner's pick,
-A, B or C per gun (`gun-models/pick-1.jpg` to `-4.jpg`). Full account, per-gun notes, every judge round and pictures:
+version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_models_c*.py`). The owner picked per gun
+(`gun-models/pick-1.jpg` to `-4.jpg`), with fixes and two mixed guns; the live set is built by `tools/roblox/gun_set.py`
+(`gunkit.use_style` per gun). Full account, per-gun notes, every judge round and pictures:
 `roblox/docs/GUN-MODELS.md` and `roblox/docs/gun-models/`.
 
 - **Built from a kit,** in headless Blender: `tools/roblox/gunkit.py` (chamfered blocks, eight-sided barrels, panels,
@@ -483,8 +484,12 @@ A, B or C per gun (`gun-models/pick-1.jpg` to `-4.jpg`). Full account, per-gun n
   every gun reads near-black in hand. Round 7 (7.5) made them chunkier and gave back signatures; its judge said the
   main limit is now the light on the held gun, not the models: a soft fill light that travels with the first-person
   gun was the next step, and is done (place version 280). Round 8 (7.5): the rounded mix; its judge said it was
-  timid where the player looks, so round 8b rounded the tops, scopes and big masses. Next: the owner's A/B/C pick, then
-  one rebuild of the picked set (with UVs for image wraps from the wrap session).
+  timid where the player looks, so round 8b rounded the tops, scopes and big masses. Then the owner's pick: 10 C, 3 A
+  (Sniper and Redline with fixes, Shotgun), 1 B (Hat Trick), 2 mixed (Revolver A+C, Katana C+B), built by
+  `tools/roblox/gun_set.py` and checked whole by `tools/roblox/gun_check.py` (every solid touches the gun, every moving
+  node there). Not live yet: Studio's place closed at 09:39 UTC on 16 Nov before the upload; the game still has round
+  8b (place version 281). Next: upload the 17 files in `roblox/assets/weapons-kit/w_*.glb` (already exported, with the
+  wrap session's UVs), ids into `assets.json`, `W.kit()`, `W.models()`, the hub rebuilt, a reload test per gun.
 - **The hub copies the templates:** after a gun change rebuild it (`R.build("live")` in `PolishBackup.HubRotunda`)
   so the armory racks and the showpiece show the new models (done for round 8b).
 - **Not checked:** every gun firing (the Assault Rifle was), reload animations in motion on each new model, another

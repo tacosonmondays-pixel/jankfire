@@ -26,16 +26,9 @@ from gunkit import Gun, rect, raked
 import gun_models as A
 from gun_models import FRAME, DARK, BLACK, DECK, STEEL, slash, guard, trigger, panel, rivets, kit_mark, star, stadium
 
-# ---- the C style, for the whole kit while these builders run
-gunkit.BEV_K = 1.0          # the builder's chamfer as asked: fairly wide
-gunkit.WTOP_K = 1.0         # tapers as drawn
-gunkit.SMOOTH_CYL = True    # tubes shade round
-gunkit.BEV_SEG = 1          # one crisp chamfer, no round fillets
-gunkit.ROUND_NODES = set()
-gunkit.BODY_NODES = set()
-gunkit.CORNER = {}
-gunkit.BARREL_K = 1.0       # the builders draw barrels at their real (chunky) size
-gunkit.round_sides = lambda r: 8 if r < 0.1 else 16
+# ---- the C style, for the whole kit while these builders run (gunkit.STYLES['C']: the builder's chamfer as asked,
+# fairly wide and one crisp step; tapers as drawn; tubes 8-sided and shaded round; barrels at their drawn size)
+gunkit.use_style('C')
 
 
 # ------------------------------------------------------------------------------------------------- shared pieces
