@@ -398,7 +398,7 @@ def neon_hex(t: Tex):
     t.emit[:] = np.maximum(line, halo * 0.35)
     t.height[:] = hpanel * 3.0
     t.rough[:] = 0.6 - 0.14 * a     # satin panels (at 0.28 they mirrored the hall's warm walls in game)
-    return {'emissive': 2.0, 'tint': '4fd8ff'}
+    return {'emissive': 3.5, 'tint': '4fd8ff'}   # the filaments bloom (GLOW, see lava); the halo (0.35) doesn't
 
 
 @design('damascus')
@@ -574,10 +574,10 @@ def kintsugi(t: Tex):
     e1, e2, _ = voronoi(n, pts2)
     fine = np.clip(1.4 - (e2 - e1) * 0.5 + 0.5, 0, 1) * smoothstep(0.15, 0.4, FBM([3, 6], 213)(U, V))
     gold = np.maximum(main, fine * 0.9)
-    t.fill(gold, 'd29a2c', metal=1.0, rough=0.24, emit=0.35)
+    t.fill(gold, 'd29a2c', metal=1.0, rough=0.24, emit=1.0)   # the seams glow and bloom (GLOW, see lava)
     t.fill(np.clip(gold - 0.6, 0, 1) * 1.2, 'f0c868')
     t.height[:] = gold * 0.7
-    return {'emissive': 0.6, 'tint': 'ffd27a'}
+    return {'emissive': 3.0, 'tint': 'ffd27a'}
 
 
 @design('seigaiha')
@@ -689,7 +689,7 @@ def circuit(t: Tex):
         X, Y, idx = t.box(*bbox_of(sm, 16))
         sd = sd_polyline(sm, wdt)(X, Y)
         t.paint(idx, cover(sd), 'b8933a', metal=1.0, rough=0.3, emit=0.0)
-        t.paint(idx, cover(sd + wdt * 0.55), 'd8b456', emit=0.7)
+        t.paint(idx, cover(sd + wdt * 0.55), 'd8b456', emit=1.0)   # the traces' centres bloom (GLOW, see lava)
         for q in (sm[0], sm[-1]):
             pd = np.hypot(X - q[0], Y - q[1])
             t.paint(idx, cover(pd - 9), 'c9a246', metal=1.0, rough=0.3)
@@ -701,7 +701,7 @@ def circuit(t: Tex):
                 t.shape((px - 6, cy - ch / 2 - 20, px + 6, cy + ch / 2 + 20), sd_round_rect(px, cy + sy * (ch / 2 + 8), 5, 9, 2.0), color='c9a246', metal=1.0, rough=0.3)
         t.shape((cx - cw / 2 - 2, cy - ch / 2 - 2, cx + cw / 2 + 2, cy + ch / 2 + 2), sd_round_rect(cx, cy, cw / 2, ch / 2, 6), color='17181c', rough=0.35, height=1.5)
         t.shape((cx - cw / 2, cy - ch / 2, cx - cw / 2 + 20, cy - ch / 2 + 20), sd_circle(cx - cw / 2 + 12, cy - ch / 2 + 12, 4), color='2c2d33')
-    return {'emissive': 1.1, 'tint': '7dff6a'}
+    return {'emissive': 3.0, 'tint': '7dff6a'}
 
 
 @design('stained')
@@ -794,10 +794,13 @@ def lava(t: Tex):
     hot = 1 - smoothstep(0, 14, edge)
     core = 1 - smoothstep(0, 5, edge)
     t.fill(hot, 'a8240a'); t.fill(hot * hot, 'ff6a12'); t.fill(core, 'ffd24a')
-    t.emit[:] = np.clip(hot * 0.9 + core * 0.4, 0, 1)
+    # GLOW (owner, 16 Nov: "maybe the magma can glow between the cracks"): the cracks' cores are 1.0 in the mask, so at
+    # EmissiveStrength 3.6 they cross every zone's Bloom threshold (1.9 to 2.4) and bloom; the hot rim glows at 0.3
+    # (about 1.1, under it); the crust doesn't glow
+    t.emit[:] = np.clip(np.maximum(core, hot * 0.3), 0, 1)
     t.height[:] = smoothstep(2, 16, edge) * 2.0
     t.rough[:] = 0.75 - 0.4 * hot
-    return {'emissive': 2.2, 'tint': 'ffffff'}
+    return {'emissive': 3.6, 'tint': 'ffffff'}
 
 
 @design('brushed')
@@ -884,7 +887,7 @@ def nebula(t: Tex):
         halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.3)) * 0.5
         t.paint(idx, halo, 'f0d0ff', emit=halo)
         t.paint(idx, cover(sd), '#ffffff', emit=1.0)
-    return {'emissive': 1.3, 'tint': 'ffffff'}
+    return {'emissive': 2.8, 'tint': 'ffffff'}   # the twinkles bloom; the gas (<= 0.6) glows under it
 
 
 @design('sweater')
@@ -1299,7 +1302,7 @@ def tokyo(t: Tex):
                 hx, hy = bx - math.cos(ang + s_ * 0.6) * L * 0.4, by - math.sin(ang + s_ * 0.6) * L * 0.4
                 t.paint(idx, cover(sd_segment(bx, by, hx, hy, 2.4)(X, Y)), c2, emit=1.0)
     t.rough[:] = 0.25
-    return {'emissive': 1.6, 'tint': 'ffffff'}
+    return {'emissive': 3.0, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
 
 
 @design('cheese')
@@ -1711,7 +1714,7 @@ def glitch(t: Tex):
             t.fill(line, 'ff2ad8' if r.uniform() < 0.5 else '2affe0', emit=1.0)
         y += h
     t.rough[:] = 0.3
-    return {'emissive': 1.2, 'tint': 'ffffff'}
+    return {'emissive': 2.6, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
 
 
 @design('meat')
@@ -1864,7 +1867,7 @@ def arcade(t: Tex):
             poly = transform([(0, -26), (24, 16), (-24, 16)], x, y, a)
             t.shape(bbox_of(poly), sd_polygon(poly), color=c, emit=1.0)
     t.rough[:] = 0.9
-    return {'emissive': 1.1, 'tint': 'ffffff'}
+    return {'emissive': 2.8, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
 
 
 # NOT a texture wrap: on 16 Nov 2026 the owner's Roblox account was moderated over this wrap's first upload, which
@@ -2067,7 +2070,7 @@ def blackhole(t: Tex):
         ringd = np.abs(np.hypot(dx, dy) - 76)
         t.fill(cover(ringd - 2.5) * 0.9, 'fff0d0', emit=1.0)
     t.rough[:] = 0.25
-    return {'emissive': 1.6, 'tint': 'ffffff'}
+    return {'emissive': 3.0, 'tint': 'ffffff'}   # the photon ring and the disk's bright arms bloom (GLOW, see lava)
 
 
 @design('stonks')
@@ -2094,7 +2097,7 @@ def stonks(t: Tex):
     for x0, y0, L, c in ((40, 70, 220, 'ffd84a'), (600, 70, 180, '3aff5a'), (40, 940, 300, 'ff3a3a')):
         t.shape((x0 - 4, y0 - 20, x0 + L + 4, y0 + 20), sd_round_rect(x0 + L / 2, y0, L / 2, 12, 4), color=c, emit=1.0)
     t.rough[:] = 0.2
-    return {'emissive': 1.3, 'tint': 'ffffff'}
+    return {'emissive': 3.0, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
 
 
 @design('bowling')

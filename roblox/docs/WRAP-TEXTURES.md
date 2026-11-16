@@ -161,6 +161,46 @@ set as attributes on the wrap's SurfaceAppearance by `WrapBook.luau`, so no new 
 not changed: the loot session prices and drops by them. Our Commons include patterned wraps where Rivals keeps
 Commons flat, which is a call for the owner.
 
+## Glow that blooms (16 Nov 2026)
+
+The owner: "skins can have native glowing parts but skin wraps can apply the glow, like maybe the magma can glow
+between the cracks?" A wrap's glow comes from its emissive map times `EmissiveStrength`. To bloom it has to pass the
+zone's Bloom threshold: 1.9 in the hub and the training hall, 2.2 in training v2, 2.3 on the playground, 2.4 on
+Rooftop v2 and v3 (`HubLook.luau`). The rule for the glow wraps:
+
+- **Thin lines and cores are 1.0 in the mask** and `EmissiveStrength` is about 3, so they cross even 2.4 and bloom.
+- **Halos, rims and broad glows stay at 0.35 or under** (about 1.1 at strength 3), so they glow without blooming and a
+  whole gun never turns into a light ("flashbang", the Rivals players' complaint).
+
+| wrap | what blooms | strength (was) |
+| --- | --- | --- |
+| Lava | the cracks' white-hot cores; the hot rim glows at 0.3; the crust is dark | 3.6 (2.2) |
+| Neon Hex | the filament in each groove | 3.5 (2.0) |
+| Circuit Board | the traces' centres (mask raised from 0.7 to 1.0) | 3.0 (1.1) |
+| Kintsugi | the gold seams (mask raised from 0.35 to 1.0) | 3.0 (0.6) |
+| Black Hole | the photon ring and the disk's bright arms | 3.0 (1.6) |
+| Nebula | the four-point twinkles; the gas (at most 0.6) glows under the threshold | 2.8 (1.3) |
+| Tokyo Night | the neon signs' lines | 3.0 (1.6) |
+| Market Crash | the falling line and the candles | 3.0 (1.3) |
+| Glitch | the bright bands | 2.6 (1.2) |
+| Arcade | the neon shapes | 2.8 (1.1) |
+
+Broad glows stay under the threshold on purpose: CRT, Lava Lamp, Missing Texture, Vaporwave, Aurora, Opal, Stained
+Glass, Holo. The glow follows the modes: the painted half glows full, and on HANDLE or BUSINESS END the dark half's
+picture glows at 30% (about 1, no bloom). `WrapAnim` breathes the glow on top (Hex 0.7 to 1.25 of its strength, so
+it blooms all through the breath in the hall).
+
+In hand (place version 428, `wrap-textures/glow-sheet.jpg`, frames in `wrap-textures/glow/`): Lava, Neon Hex in the
+training hall (Bloom 2.2) and Kintsugi, Nebula, Black Hole on Rooftop v3 (Bloom 2.4, daylight), with before frames.
+A fresh judge: **7.1** on those five (Black Hole 8, Lava, Hex and Kintsugi 7, Nebula 6.5), against about 6 before
+the pass. Lava blooms clearly (a soft orange halo past the cracks), Hex and Kintsugi mostly read brighter with a
+faint halo near the eye, Nebula's twinkles barely bloom. Nothing blinding; Lava is the nearest to blown out near the
+camera, so it is the one to turn down first if anyone finds it loud.
+
+- Seen once: in the first glow test the SMG showed its bare teal, not Circuit Board, minutes after `circuit_emit`
+  was uploaded (it was "Reviewing" then, Approved by the time I checked). The likely cause is a map still in review;
+  check `moderationResult` is Approved before judging a freshly uploaded map.
+
 ## Redrawing or adding a wrap
 
 ```bash

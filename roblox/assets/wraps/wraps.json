@@ -7,7 +7,7 @@
    "metal": 0.0,
    "emit": "arcade_emit.png"
   },
-  "emissive": 1.1,
+  "emissive": 2.8,
   "tint": "ffffff"
  },
  "arctic": {
@@ -56,7 +56,7 @@
    "metal": 0.0,
    "emit": "blackhole_emit.png"
   },
-  "emissive": 1.6,
+  "emissive": 3.0,
   "tint": "ffffff"
  },
  "bowling": {
@@ -157,7 +157,7 @@
    "metal": "circuit_metal.png",
    "emit": "circuit_emit.png"
   },
-  "emissive": 1.1,
+  "emissive": 3.0,
   "tint": "7dff6a"
  },
  "copper": {
@@ -291,7 +291,7 @@
    "metal": 0.0,
    "emit": "glitch_emit.png"
   },
-  "emissive": 1.2,
+  "emissive": 2.6,
   "tint": "ffffff"
  },
  "granite": {
@@ -320,7 +320,7 @@
    "metal": 0.0,
    "emit": "hex_emit.png"
   },
-  "emissive": 2.0,
+  "emissive": 3.5,
   "tint": "4fd8ff"
  },
  "hivis": {
@@ -378,7 +378,7 @@
    "metal": "kintsugi_metal.png",
    "emit": "kintsugi_emit.png"
   },
-  "emissive": 0.6,
+  "emissive": 3.0,
   "tint": "ffd27a"
  },
  "koi": {
@@ -398,7 +398,7 @@
    "metal": 0.0,
    "emit": "lava_emit.png"
   },
-  "emissive": 2.2,
+  "emissive": 3.6,
   "tint": "ffffff"
  },
  "lavalamp": {
@@ -485,7 +485,7 @@
    "metal": 0.0,
    "emit": "nebula_emit.png"
   },
-  "emissive": 1.3,
+  "emissive": 2.8,
   "tint": "ffffff"
  },
  "numsoup": {
@@ -626,7 +626,7 @@
    "metal": 0.0,
    "emit": "stonks_emit.png"
   },
-  "emissive": 1.3,
+  "emissive": 3.0,
   "tint": "ffffff"
  },
  "sushi": {
@@ -682,7 +682,7 @@
    "metal": 0.0,
    "emit": "tokyo_emit.png"
   },
-  "emissive": 1.6,
+  "emissive": 3.0,
   "tint": "ffffff"
  },
  "urban": {

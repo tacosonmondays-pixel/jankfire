@@ -1318,5 +1318,13 @@
  "065dc08554e22d9fa7a7acd2d56b582c1285c46e": {
   "file": "circuit_metal.png",
   "id": 123551872724000
+ },
+ "46bb3ea2fe8ae5f9038af7b13ef7b00bcd8e24d8": {
+  "file": "lava_emit.png",
+  "id": 88453758179379
+ },
+ "9a12432723943383c5d8e032fdda3b99042f69dc": {
+  "file": "circuit_emit.png",
+  "id": 119227762991384
  }
 }
