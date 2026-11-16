@@ -26,7 +26,7 @@ local TAG = "HubHolo"
 local SEE = 0.3 -- how see-through a hologram's pieces are (on top of their own transparency)
 local FILL, EDGE = 0.8, 0.4 -- the Highlight's fill and outline transparency when fully shown
 local SHOW = { loadout = 5, bundle = 3.6 } -- seconds each piece stays
-local OUT, IN = 0.45, 1.1 -- the fade out, the scan line's build
+local OUT, IN = 0.45, 1.5 -- the fade out, the scan line's build (from the lens up through the whole piece)
 local SPIN = 0.32 -- rad/s
 local FAR = 220 -- studs: nothing moves past this
 local NEAR = 13 -- studs from a plinth: its card shows
@@ -82,7 +82,7 @@ local function build(piece, r: number, h: number): (Model?, CFrame)
 				m = if t and t:IsA("Model") then t:Clone() else nil
 			end
 		end
-	else m = WeaponModels.build(id, 3) end
+	else m = WeaponModels.build(id, 3, piece.skin) end -- (a set bundle's hero may wear a weapon skin: its own body instead of the plain gun)
 	if not m then return nil, CFrame.identity end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") then
@@ -185,7 +185,8 @@ local function fromShop(cat: any, b: any): any
 	local hero = type(b.hero) == "table" and b.hero or {}
 	local w = hero.weapon
 	if type(w) ~= "string" or not Roster.byId[w] then w = "ar" end
-	local pieces = { { w = w, wrap = hero.wrap, mode = "full", hat = hero.hat } }
+	local skin = if type(hero.skin) == "string" then hero.skin else nil -- (the shop's weapon skin sets, 16 Nov)
+	local pieces = { { w = w, wrap = hero.wrap, mode = "full", hat = hero.hat, skin = skin } }
 	local rows = {}
 	for _, it in (if type(b.items) == "table" then b.items else {}) do
 		if type(it) ~= "table" or type(it.id) ~= "string" then continue end
@@ -204,16 +205,56 @@ local function fromShop(cat: any, b: any): any
 		local heroIt = iw == w and ((it.kind == "wrap" and it.id == hero.wrap) or (it.kind == "hat" and it.id == hero.hat))
 		if heroIt then pieces[1].rows = pieces[1].rows or {}; table.insert(pieces[1].rows, row)
 		elseif it.kind == "wrap" then table.insert(pieces, { w = iw, wrap = it.id, mode = "full", rows = { row } })
-		elseif it.kind == "hat" then table.insert(pieces, { w = iw, wrap = if iw == w then hero.wrap else nil, mode = "full", hat = it.id, rows = { row } }) end
+		elseif it.kind == "hat" then table.insert(pieces, { w = iw, wrap = if iw == w then hero.wrap else nil, skin = if iw == w then skin else nil, mode = "full", hat = it.id, rows = { row } }) end
 	end
 	local free = false
 	if type(cat.free) == "function" then local ok, f = pcall(cat.free); free = ok and f == true end
 	local price = if free then "FREE" elseif type(b.robux) == "number" then ("%d ROBUX"):format(b.robux) else nil
 	return { id = b.id, name = string.upper(tostring(b.name or b.id)), blurb = b.blurb, pieces = pieces, rows = rows, price = price }
 end
+-- the VIP pack, for the VIP room's plinths (an anchor with Offer = "vip"): the pack's skins that are in the place, each
+-- on its own weapon, then its wrap and its hat on the AR. nil while the pack has nothing in the place yet
+local function vipBundle(cat: any): any
+	if not cat or type(cat.vipItems) ~= "function" then return nil end
+	local ok, items = pcall(cat.vipItems)
+	if not ok or type(items) ~= "table" then return nil end
+	local pieces, rows = {}, {}
+	for _, it in items do
+		if type(it) ~= "table" or type(it.id) ~= "string" then continue end
+		local p = nil
+		if it.kind == "skin" and type(it.weapon) == "string" and Roster.byId[it.weapon] then p = { w = it.weapon, skin = it.id, mode = "full" }
+		elseif it.kind == "wrap" then p = { w = "ar", wrap = it.id, mode = "full" }
+		elseif it.kind == "hat" then p = { w = "ar", hat = it.id, mode = "full" } end
+		if not p then continue end
+		local name, rar = nil, nil
+		if type(cat.itemInfo) == "function" then local ok2, n, r = pcall(cat.itemInfo, it.kind, it.id); if ok2 then name, rar = n, r end end
+		name = name or (if it.kind == "wrap" then wrapName(it.id) elseif it.kind == "hat" then hatName(it.id) else nil) or it.id
+		local kindWord = if it.kind == "skin" then "WEAPON SKIN  ·  " .. nameOf(p.w) elseif it.kind == "hat" then "WEAPON HAT" else "WRAP"
+		table.insert(rows, { title = string.upper(tostring(name)), sub = kindWord, color = rarityColor(cat, rar) })
+		p.rows = { #rows }
+		table.insert(pieces, p)
+	end
+	if #pieces == 0 then return nil end
+	local vip = (type(cat.byId) == "table" and cat.byId.vip) or {}
+	return { id = "vip", name = "THE DUCKY PACK", pieces = pieces, rows = rows, price = "VIP" .. (if type(vip.robux) == "number" then ("  ·  %d ROBUX"):format(vip.robux) else "") }
+end
 local function bundles(): { any }
 	local cat = shopModule({ "Shop", "ShopCatalog" })
-	local list = cat and cat.bundles
+	-- (the bundles on show, skin sets with them once every skin in a set is in the place: the shop session, 16 Nov.
+	-- an older catalogue without shown(): its whole list, less what ready() turns down)
+	local list = nil
+	if cat and type(cat.shown) == "function" then
+		local ok, l = pcall(cat.shown, true)
+		if ok and type(l) == "table" then list = l end
+	end
+	if not list and cat and type(cat.bundles) == "table" then
+		list = {}
+		for _, b in cat.bundles do
+			local ok, r = true, true
+			if type(cat.ready) == "function" then ok, r = pcall(cat.ready, b) end
+			if not ok or r ~= false then table.insert(list, b) end
+		end
+	end
 	local out = {}
 	if type(list) == "table" then
 		local first = nil
@@ -256,9 +297,9 @@ end
 
 -- ---------------------------------------------------------------- one hologram
 type Piece = { p: BasePart, t0: number, y: number }
-type Shown = { key: string, model: Model, rel: CFrame, parts: { Piece }, hl: Highlight, piece: any }
+type Shown = { key: string, model: Model, rel: CFrame, parts: { Piece }, hl: Highlight, piece: any, lo: number, hi: number }
 type Holo = {
-	anchor: BasePart, kind: string, r: number, h: number, color: Color3,
+	anchor: BasePart, kind: string, r: number, h: number, base: number, color: Color3,
 	rig: Part, disc: Part, beam: Beam, light: PointLight, label: BillboardGui?, card: BillboardGui?,
 	list: { any }, idx: number, cur: Shown?, cache: { [string]: Shown }, failed: { [string]: boolean }, phase: string, t: number, spin: number, alpha: number,
 	bundle: any, sig: string,
@@ -278,7 +319,7 @@ local function text(parent: Instance, props: { [string]: any }): TextLabel
 	return t
 end
 
-local function keyOf(p: any): string return ("%s|%s|%s|%s"):format(p.w, tostring(p.wrap), tostring(p.mode), tostring(p.hat)) end
+local function keyOf(p: any): string return ("%s|%s|%s|%s|%s"):format(p.w, tostring(p.wrap), tostring(p.mode), tostring(p.hat), tostring(p.skin)) end
 
 local function dress(h: Holo, piece: any): Shown?
 	local key = keyOf(piece)
@@ -301,7 +342,8 @@ local function dress(h: Holo, piece: any): Shown?
 	-- (heights in its own upright frame, measured once: it only ever turns about up)
 	m:PivotTo(CFrame.new() * rel:Inverse())
 	for _, q in parts do q.y = q.p.Position.Y; q.p.Transparency = 1 end
-	local s: Shown = { key = key, model = m, rel = rel, parts = parts, hl = hl, piece = piece }
+	local _, bsz = m:GetBoundingBox() -- (its bottom and top, from its middle: where the scan line starts showing it and ends)
+	local s: Shown = { key = key, model = m, rel = rel, parts = parts, hl = hl, piece = piece, lo = -bsz.Y / 2, hi = bsz.Y / 2 }
 	h.cache[key] = s
 	return s
 end
@@ -313,7 +355,7 @@ local function paint(h: Holo, s: Shown, a: number, scan: number?)
 		if scan then f *= math.clamp((scan - q.y) / 0.45 + 0.5, 0, 1) end
 		q.p.Transparency = 1 - (1 - q.t0) * (1 - SEE) * f
 	end
-	local g = if scan then math.clamp((scan + h.h / 2) / h.h, 0, 1) * a else a
+	local g = if scan then math.clamp((scan - s.lo) / math.max(s.hi - s.lo, 0.1), 0, 1) * a else a
 	s.hl.FillTransparency = 1 - (1 - FILL) * g
 	s.hl.OutlineTransparency = 1 - (1 - EDGE) * g
 end
@@ -389,9 +431,16 @@ local function forget(h: Holo)
 end
 
 local function applyBundle(h: Holo)
-	local all = bundles()
 	local slot = tonumber(h.anchor:GetAttribute("Slot")) or 1
-	local b = if #all > 0 then all[(slot - 1) % #all + 1] else nil
+	local want = h.anchor:GetAttribute("Offer")
+	local b
+	if want == "vip" then
+		local ok, v = pcall(vipBundle, shopModule({ "Shop", "ShopCatalog" }))
+		b = if ok then v else nil
+	else
+		local all = bundles()
+		b = if #all > 0 then all[(slot - 1) % #all + 1] else nil
+	end
 	local sig = if b then b.id .. "#" .. #b.pieces .. "#" .. tostring(b.price) else "none"
 	if sig == h.sig then return end
 	-- (a new bundle on this plinth: start it fresh)
@@ -399,7 +448,7 @@ local function applyBundle(h: Holo)
 	h.sig = sig
 	h.bundle = b
 	h.list = if b then b.pieces else {}
-	h.idx = 0
+	h.idx = if want == "vip" and b then (slot - 1) % #b.pieces else 0 -- (the VIP room's two plinths start on different pieces)
 	if h.card then h.card:Destroy(); h.card = nil end
 	if b then makeCard(h) end
 	-- the plate over the plinth and the prompt carry its name
@@ -436,7 +485,7 @@ local function add(anchor: Instance)
 	local disc = new("Part", { Name = "ScanLine", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, CastShadow = false,
 		Shape = Enum.PartType.Cylinder, Material = Enum.Material.Neon, Color = color, Transparency = 1,
 		Size = Vector3.new(0.04, r * 2 + 0.6, r * 2 + 0.6) }, rig)
-	local h: Holo = { anchor = anchor, kind = kind, r = r, h = hh, color = color, rig = rig, disc = disc, beam = beam, light = light,
+	local h: Holo = { anchor = anchor, kind = kind, r = r, h = hh, base = base, color = color, rig = rig, disc = disc, beam = beam, light = light,
 		label = nil, card = nil, list = {}, idx = 0, cur = nil, cache = {}, failed = {}, phase = "idle", t = 0, spin = math.random() * 6, alpha = 0, bundle = nil, sig = "" }
 	if kind == "loadout" then
 		local lb = new("BillboardGui", { Name = "HoloLabel", Size = UDim2.new(6.6, 0, 1.4, 0), StudsOffsetWorldSpace = Vector3.new(0, hh / 2 + 0.9, 0),
@@ -557,14 +606,21 @@ RunService.RenderStepped:Connect(function(dt: number)
 		if not s then h.phase = "idle"; continue end
 		if s.model.Parent ~= workspace then s.model.Parent = workspace end
 		place(h, s)
-		local y0 = -h.h / 2 - 0.3
+		-- the scan line (owner, 16 Nov: "can the sweep start lower, like at the base of the hologram cone?"): it starts at the
+		-- lens, the foot of the light cone, as narrow as the cone is there, widens with the cone up to the piece's foot, then
+		-- builds the piece from its foot to its top and fades out over it. it shows from the first moment, not halfway up
+		local y0 = if h.base > 0.5 then -h.base else s.lo - 0.3
 		if h.phase == "in" then
-			local f = smooth(h.t / IN)
-			local scan = y0 + (h.h + 0.6) * f
+			local f = math.clamp(h.t / IN, 0, 1)
+			local top = s.hi + 0.25
+			local scan = y0 + (top - y0) * (1 - (1 - f) ^ 1.6) -- (quick off the lens, slower through the piece)
 			paint(h, s, 1, scan)
+			local w0, w1 = math.min(h.r * 0.45, 1.6), h.r * 2 + 0.6
+			local w = w0 + (w1 - w0) * math.clamp((scan - y0) / math.max(s.lo - y0, 0.1), 0, 1)
+			h.disc.Size = Vector3.new(0.04, w, w)
 			h.disc.CFrame = CFrame.new(h.anchor.Position + Vector3.new(0, scan, 0)) * CFrame.Angles(0, 0, math.pi / 2)
-			h.disc.Transparency = 1 - 0.45 * math.sin(math.pi * math.clamp(h.t / IN, 0, 1))
-			setLabel(h, nil, f)
+			h.disc.Transparency = 1 - 0.5 * smooth(f / 0.05) * (1 - smooth((f - 0.82) / 0.18))
+			setLabel(h, nil, smooth(f))
 			if h.t >= IN then h.phase, h.t = "show", 0; paint(h, s, 1, nil); h.disc.Transparency = 1 end
 		elseif h.phase == "show" then
 			if h.t >= (SHOW[h.kind] or 4) and #h.list > 1 then h.phase, h.t = "out", 0 end
@@ -576,7 +632,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 				s.model.Parent = nil
 				h.cur = nextPiece(h)
 				h.phase, h.t = "in", 0
-				if h.cur then setLabel(h, h.cur.piece, 0); paint(h, h.cur, 1, y0) end
+				if h.cur then setLabel(h, h.cur.piece, 0); paint(h, h.cur, 1, h.cur.lo - 1) end
 			end
 		end
 		-- the beam breathes with the build; the light too

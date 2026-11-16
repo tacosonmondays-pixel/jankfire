@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 35 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 43 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -57,7 +57,7 @@ R.N, R.A, R.WALL, R.RING_Y, R.RING_IN = 14, 28, 3.4, 14, 22.5
 -- where you appear every lift is framed by its own two piers (from the room's own middle they would be too far round
 -- to the sides to be in a first look)
 R.FOCUS = 6
-R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift", [4] = "duels", [7] = "lounge", [10] = "armory" }
+R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift", [4] = "gym", [7] = "lounge", [10] = "armory" }
 local TEAM = { "ff4fd8", "37d6ff", "ffe14d" } -- the teams' colours, in Matches' order
 R.TEAM = TEAM
 -- the five modes, left to right as you spawn: its side of the round room, and its pad's width and depth
@@ -68,17 +68,33 @@ R.MODES = {
 	{ id = "3v3", title = "3V3", kind = "TRIOS", teams = 2, size = 3, side = 1, w = 14.4, dp = 11.2 },
 	{ id = "4v4", title = "4V4", kind = "SQUADS", teams = 2, size = 4, side = 2, w = 15.6, dp = 11.2 },
 }
--- THE DUEL HALL (side 4, where the gym was; HubRotundaRooms builds it): seven more pads round its walls (owner, 16 Nov:
--- "we also need more pads somewhere?"). R.HALL_BOX = x0, x1, the far wall's d, the height (side 4's frame: x to the
--- right looking outward, d out from the round room's middle); each pad: its name (= its PadId), its mode (R.MODES index),
--- the wall it stands against and where along it (far / near: x; left / right: d). R.HALL_SIZE = the hall pads' w, dp
-R.HALL_BOX = { -25, 25, 92, 18 }
-R.HALL_RING = 64 -- (how far out the ring's middle is, on the door's axis)
-R.HALL_SIZE = { ["1v1"] = { 10, 8 }, ["2v2"] = { 12, 9 }, ["3v3"] = { 13.6, 10 } }
-R.HALL = {
-	{ name = "1v1_h1", mode = 1, wall = "far", at = -15.5 }, { name = "3v3_h1", mode = 4, wall = "far", at = 0 }, { name = "1v1_h2", mode = 1, wall = "far", at = 15.5 },
-	{ name = "2v2_h1", mode = 3, wall = "left", at = 64 }, { name = "2v2_h2", mode = 3, wall = "right", at = 64 },
-	{ name = "1v1_h3", mode = 1, wall = "near", at = -14.5 }, { name = "1v1_h4", mode = 1, wall = "near", at = 14.5 },
+-- THE SECOND FLOOR (HubRotundaLifts). the owner, 16 Nov: "can you try to create a second floor of pads above the current
+-- one", then "we dont need stairs or escalators, we already have the jump pads". so: over the lift ring, at the
+-- balcony's height, a crescent hall with seven more pads round its outer wall, each with its board on the wall behind
+-- it. the jump pads (sides 3 and 11) throw you onto the balcony beside a doorway into it; there is one off the balcony
+-- over each of the four outer lifts. the way back down is the balcony's gap over each jump pad.
+R.UP_Y = 14.04 -- the second floor's top (the balcony's floor)
+R.UP_ROOF = 27.45 -- its ceiling (the round room's wall top)
+R.UP_OUT = 66.6 -- the face of its outer wall, from the focus
+R.UP_PITCH = 14.5 -- degrees between its pads, seen from the focus
+R.UP_SIZE = { ["1v1"] = { 10, 8 }, ["2v2"] = { 12, 9 }, ["3v3"] = { 13.6, 10 } }
+-- its pads left to right: name (= its PadId), mode (R.MODES index)
+R.UPPER = {
+	{ name = "1v1_u1", mode = 1 }, { name = "2v2_u1", mode = 3 }, { name = "1v1_u2", mode = 1 }, { name = "3v3_u1", mode = 4 },
+	{ name = "1v1_u3", mode = 1 }, { name = "2v2_u2", mode = 3 }, { name = "1v1_u4", mode = 1 },
+}
+R.UP_DOORS = { [12] = true, [13] = true, [1] = true, [2] = true } -- the round room's sides with a doorway off the balcony into it
+-- THE GYM (side 4, HubRotundaRooms), only for looks since the second floor (no pads, no hall behind it): push 37's
+-- locker room with the ring centred on the door's axis
+R.GYM_BOX = { 20, 74, 18 } -- half its width, its far wall's d, its height
+R.GYM_RING = 58.5 -- the ring's middle, on the door's axis
+-- THE REGULARS: the owner's friends about the hub in their own avatars (owner, 16 Nov: "Can you put these two as NPCs
+-- somewhere?", "This one too"). B.npc leaves their places, HubNPCs.server builds them at server start (a saved copy in
+-- ServerStorage.JankfireNPCs if the avatar call fails). who = the label over them, user = their Roblox username
+R.NPCS = {
+	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit" }, -- on the lounge's sofa
+	Dune = { user = "Doonamei", id = 56917496, pose = "stand" }, -- by the ring in the gym, watching it
+	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand" }, -- on the balcony over the lifts, looking down at the platform
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,
@@ -211,6 +227,11 @@ function R.frame(O, bearing, d, z0) return CFrame.new(O + Vector3.new(0, 0, z0 o
 function R.liftBearing(side)
 	local b, r = math.rad(side * 360 / R.N), R.A + R.WALL / 2
 	return math.deg(math.atan2(r * math.sin(b), r * math.cos(b) + R.FOCUS))
+end
+-- the lift ring's end walls: this many degrees either side of north, from the focus (half a bay past the outer lifts)
+function R.endBearing()
+	local b5 = R.liftBearing(2)
+	return b5 + (b5 - R.liftBearing(12)) / 8
 end
 function R.reach(bearing, r)
 	local b = math.rad(bearing)
@@ -346,7 +367,7 @@ function R.new(live, opts)
 	-- one of the game's own weapon models as a display piece, `len` studs long, its middle at (x, y, d) in F. yaw 0 =
 	-- its length across F (seen side-on from the middle), -90 or 90 = its length along F's d. no collision, no shadow,
 	-- nothing that runs or sounds. its pivot is its middle, so HubLife can turn it in place (tag HubSpin)
-	function B.gun(F, wname, len, x, y, d, yaw, name)
+	function B.gun(F, wname, len, x, y, d, yaw, name, k) -- (k: a scale shared by every gun on show, instead of fitting each to len)
 		local src = game.ReplicatedStorage:FindFirstChild("JankfireWeapons")
 		local t = src and src:FindFirstChild(wname)
 		if not t then B.missing[wname] = (B.missing[wname] or 0) + 1; return nil end
@@ -358,7 +379,7 @@ function R.new(live, opts)
 			elseif q:IsA("LuaSourceContainer") or q:IsA("Sound") or q:IsA("ParticleEmitter") or q:IsA("Light") or q:IsA("Beam") or q:IsA("Trail") then q:Destroy() end
 		end
 		local _, sz = g:GetBoundingBox()
-		g:ScaleTo(g:GetScale() * (len / math.max(sz.Z, 0.01)))
+		g:ScaleTo(g:GetScale() * (k or (len / math.max(sz.Z, 0.01))))
 		local bcf = g:GetBoundingBox()
 		local at = F * CFrame.new(x, y, -d) * CFrame.Angles(0, math.rad(90 + (yaw or 0)), 0)
 		g:PivotTo(at * g:GetPivot():ToObjectSpace(bcf):Inverse())
@@ -434,6 +455,7 @@ function R.new(live, opts)
 		p:SetAttribute("Radius", r); p:SetAttribute("Height", h); p:SetAttribute("Base", o.base or 0)
 		p:SetAttribute("Color", P.holo or P.glow)
 		if o.slot then p:SetAttribute("Slot", o.slot) end
+		if o.offer then p:SetAttribute("Offer", o.offer) end -- (one offer only: "vip" = the VIP pack's things)
 		if o.prompt then
 			local pr = Instance.new("ProximityPrompt")
 			pr.Name = "BundlePrompt"; pr.ActionText = o.prompt; pr.ObjectText = "Bundle"
@@ -443,6 +465,22 @@ function R.new(live, opts)
 			pr.Parent = p
 		end
 		game:GetService("CollectionService"):AddTag(p, "HubHolo")
+		return p
+	end
+	-- a regular's place (R.NPCS): at (x, y, d), turned yaw degrees from F's -Z (the way they face). "sit": a Seat at about
+	-- the cushion's height (HubNPCs.server sets it on the cushion with a ray); "stand": a marker on the floor. tagged HubNPC
+	function B.npc(F, who, x, y, d, yaw)
+		local info = R.NPCS[who]
+		if not info then return nil end
+		local p = Instance.new(if info.pose == "sit" then "Seat" else "Part")
+		p.Name = "Regular_" .. who .. "_Place"; p.Size = Vector3.new(2, 0.2, 2)
+		p.CFrame = F * CFrame.new(x, y + 0.1, -d) * CFrame.Angles(0, math.rad(yaw or 0), 0)
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.Transparency = 1; p.CastShadow = false
+		if p:IsA("Seat") then p.Disabled = true end -- (HubNPCs.server opens it for its regular only)
+		p:SetAttribute("Who", who); p:SetAttribute("User", info.user); p:SetAttribute("Pose", info.pose)
+		if info.id then p:SetAttribute("UserId", info.id) end
+		p.Parent = root.Scenery
+		game:GetService("CollectionService"):AddTag(p, "HubNPC")
 		return p
 	end
 	-- a white light panel let into a ceiling whose underside is y: w across, l deep. o.hex = its colour
@@ -708,7 +746,7 @@ R.SIGHTS = { { "the name on the gallery over the middle lift", "GalleryName" } }
 R.STRUCTURE = { Pier = true, Rail = true, DomeRing = true, Bezel = true, TrainingPortal = true, WallLight = true, DropLight = true, CrownDuck = true, HoloProjector = true, HoloDuck = true }
 R.OVERLAP_GAP = 0.06
 local STEP = 360 / R.N
-local DUELS, LOUNGE, ARM = 4 * STEP, 7 * STEP, 10 * STEP
+local GYM, LOUNGE, ARM = 4 * STEP, 7 * STEP, 10 * STEP
 R.DECK0, R.DECK1 = 49.8, 62.6 -- a lift's deck, from the focus: its front and the face of the wall behind it
 for _, md in R.MODES do
 	local b = R.liftBearing(md.side)
@@ -717,11 +755,22 @@ for _, md in R.MODES do
 	table.insert(R.LEAKS, { b, 0, 6, 43, R.FOCUS }); table.insert(R.LEAKS, { b, 0, 10, 56, R.FOCUS })
 	table.insert(R.SIGHTS, { md.title .. " over its way in", "Way_" .. md.id })
 end
-for _, w in { { "the way to the lounge", LOUNGE, -4.2, 4.2, 14, 41, 0 }, { "the way into the duel hall", DUELS, -4.5, 4.5, 14, 44.5, 0 },
+for _, w in { { "the way to the lounge", LOUNGE, -4.2, 4.2, 14, 41, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
+	{ "the gym's aisle south of the ring", GYM, 10.6, 13.2, 47.8, 70, 0 }, { "the gym's aisle north of the ring", GYM, -15.8, -10.6, 48, 68, 0 },
 	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -6, 6, 38.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
-for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 }, { DUELS, 0, 6, 35 }, { DUELS, 0, 9, 50 }, { DUELS, 0, 10, 82 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
-for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "DUELS over its door", "Way_duels" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", true },
-	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target over the duel hall's 3v3", "Target", true } } do table.insert(R.SIGHTS, w) end
+for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 }, { LOUNGE, 0, 5, 70 }, { LOUNGE, 6, 8, 76 }, { GYM, 0, 6, 35 }, { GYM, 0, 9, 50 }, { GYM, 0, 9, 70 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
+for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM over its door", "Way_gym" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", true },
+	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target at the gym's far end", "Target", true } } do table.insert(R.SIGHTS, w) end
+-- the second floor: its walk stays clear; inside it no ray gets out
+do
+	local UY = R.UP_Y
+	for i, u in R.UPPER do
+		local b = (i - (#R.UPPER + 1) / 2) * R.UP_PITCH
+		local dp = R.UP_SIZE[R.MODES[u.mode].id][2]
+		table.insert(R.WALKS, { "the second floor's walk in front of pad " .. u.name, b, -3.5, 3.5, R.reach(b, R.A + R.WALL + 1.5), R.UP_OUT - 1.2 - dp - 0.3, UY, R.FOCUS })
+		table.insert(R.LEAKS, { b, 0, UY + 6, 46, R.FOCUS }); table.insert(R.LEAKS, { b, 0, UY + 10, 62, R.FOCUS })
+	end
+end
 for k = 1, 3 do table.insert(R.SIGHTS, { "the bundle hologram on plinth " .. k, "HoloBundle" .. k, true }) end
 
 local function obb(cfA, hA, cfB, hB)
@@ -818,6 +867,99 @@ function R.check(stage)
 			end
 		end
 	end
+	-- the route (the main session, 16 Nov: "a fresh spawn reaches every pad on both floors using the jump pads"): a body
+	-- is swept from the spawn rows to the front of every pad and onto it. to a lift: past the projector and straight out
+	-- through its opening. to the second floor: to the jump pad on the pad's side; then the throw (the pad's velocity under
+	-- the place's gravity, until the body lands: it must land on the balcony); then along the balcony to the doorway over
+	-- the outer lift, through it, and along the upper walk. anything solid in the way, a throw that lands anywhere else,
+	-- or a waypoint with no floor under it, is a problem
+	local routes = 0
+	local landings = {} -- (where each jump pad lands you: the sight test below looks for the doorway from there)
+	do
+		local rp2 = RaycastParams.new(); rp2.FilterType = Enum.RaycastFilterType.Include; rp2.FilterDescendantsInstances = { room }; rp2.RespectCanCollide = true
+		local BODY, LIFT = Vector3.new(1.8, 3, 1.8), 2.8 -- (walking: its middle 2.8 over the floor, so it clears kerbs and steps)
+		local FULL = Vector3.new(1.8, 4.6, 1.8) -- (thrown: the whole body, feet to head)
+		local function lf(b, x, y, d) return R.frame(O, b, 0, R.FOCUS) * Vector3.new(x, y, -d) end
+		local function mf(b, x, y, d) return R.frame(O, b, 0) * Vector3.new(x, y, -d) end
+		local UY, ST = R.UP_Y, 360 / R.N
+		local start = mf(0, 0, 1.3, -9.7) -- (between the two spawn rows)
+		local nUp = #R.UPPER
+		local function upBearing(i) return (i - (nUp + 1) / 2) * R.UP_PITCH end
+		-- each jump pad's throw, once
+		local land, padAt = {}, {}
+		for _, jp in room.Scenery:GetChildren() do
+			if jp.Name ~= "JumpPadTop" or typeof(jp:GetAttribute("Pad")) ~= "Vector3" then continue end
+			local side = if R.frame(O, 0, 0):PointToObjectSpace(jp.Position).X >= 0 then 1 else -1 -- (1: east, side 3)
+			local name = if side > 0 then "3" else "11"
+			padAt[side] = Vector3.new(jp.Position.X, O.Y, jp.Position.Z)
+			local v = jp:GetAttribute("Pad") :: Vector3
+			local p = jp.Position + Vector3.new(0, jp.Size.Y / 2 + FULL.Y / 2 + 0.05, 0)
+			local g = Vector3.new(0, -workspace.Gravity, 0)
+			local dt, hit = 1 / 30, nil
+			for _ = 1, 150 do
+				local nv = v + g * dt
+				local step = (v + nv) / 2 * dt
+				hit = workspace:Blockcast(CFrame.new(p), FULL, step, rp2)
+				if hit and hit.Normal.Y <= 0.7 then -- (a wall: it stops you going sideways, you slide down it)
+					v = Vector3.new(0, v.Y, 0); hit = nil; continue
+				end
+				if hit then break end
+				p += step; v = nv
+			end
+			if hit and hit.Normal.Y > 0.7 then
+				local at = hit.Position
+				local r = Vector3.new(at.X - O.X, 0, at.Z - O.Z).Magnitude
+				if math.abs(at.Y - (O.Y + UY)) < 0.6 and r > R.RING_IN - 0.5 and r < R.A then
+					land[side] = at
+					table.insert(landings, at)
+				else
+					table.insert(issues, ("ROUTE: the jump pad on side %s lands you at (%.1f, %.1f, %.1f), not on the balcony"):format(name, at.X - O.X, at.Y - O.Y, at.Z - O.Z))
+				end
+			else
+				table.insert(issues, ("ROUTE: the jump pad on side %s throws you into %s"):format(name, if hit then hit.Instance.Name else "nothing"))
+			end
+		end
+		local function walk(pts, what)
+			for k = 1, #pts - 1 do
+				local A, Bp = pts[k] + Vector3.new(0, LIFT, 0), pts[k + 1] + Vector3.new(0, LIFT, 0)
+				local hit = workspace:Blockcast(CFrame.lookAt(A, Bp), BODY, Bp - A, rp2)
+				if hit then
+					table.insert(issues, ("ROUTE: the walk to pad %s is blocked at step %d by %s near (%.1f, %.1f, %.1f)"):format(what, k, hit.Instance.Name, hit.Position.X - O.X, hit.Position.Y - O.Y, hit.Position.Z - O.Z))
+					return false
+				end
+				if not workspace:Raycast(pts[k + 1] + Vector3.new(0, 3, 0), Vector3.new(0, -5, 0), rp2) then
+					table.insert(issues, ("ROUTE: no floor under the walk to pad %s at step %d"):format(what, k + 1))
+					return false
+				end
+			end
+			return true
+		end
+		for _, pad in pads do
+			local base = pad:FindFirstChild("Base")
+			if not base then continue end
+			local fy = base.Position.Y - 0.08
+			local fr = base.CFrame * Vector3.new(0, 0, base.Size.Z / 2 + 2.5)
+			local front = Vector3.new(fr.X, fy, fr.Z)
+			local onto = Vector3.new(base.Position.X, fy, base.Position.Z)
+			routes += 1
+			if pad:GetAttribute("Bank") == "upper" then
+				local idx = 0
+				for i, u in R.UPPER do if u.name == pad.Name then idx = i end end
+				local s = if idx >= (nUp + 1) / 2 then 1 else -1 -- (the middle pad and the east ones: the east jump pad)
+				local L, J = land[s], padAt[s]
+				if not L or not J then continue end -- (the throw's problem is listed already)
+				if not walk({ start, J }, pad.Name) then continue end
+				local pts = { L, mf(s * 2.5 * ST, 0, UY, 25.3), mf(s * 2 * ST, 0, UY, 25.3), mf(s * 2 * ST, 0, UY, 31), lf(s * R.liftBearing(2), 0, UY, 40) }
+				for i = if s > 0 then nUp else 1, idx, -s do table.insert(pts, lf(upBearing(i), 0, UY, 47)) end
+				table.insert(pts, front); table.insert(pts, onto)
+				walk(pts, pad.Name)
+			else
+				local rel = R.frame(O, 0, 0, R.FOCUS):PointToObjectSpace(front)
+				local b = math.deg(math.atan2(rel.X, -rel.Z))
+				walk({ start, mf(0, if b >= 0 then 7 else -7, 1.24, 0), lf(b, 0, 0, R.reach(b, R.A + R.WALL + 3)), front, onto }, pad.Name)
+			end
+		end
+	end
 	-- sight: from the eye over every spawn marker (4.7 over it) the middle of every pad's plates, three points across
 	-- every board and everything in R.SIGHTS must show. anything you can see counts as in the way, solid or not; a
 	-- part is tested as its own box, turned as it is turned
@@ -850,7 +992,7 @@ function R.check(stage)
 	end
 	local targets = {}
 	for _, pad in pads do
-		if pad:GetAttribute("Bank") == "hall" then continue end -- (the duel hall's pads are not seen from the spawn)
+		if pad:GetAttribute("Bank") ~= "lifts" then continue end -- (the second floor's pads are behind the balcony: not seen from the spawn)
 		for _, c in pad:GetChildren() do
 			if c:IsA("BasePart") and c.Name:sub(1, 4) == "Side" then table.insert(targets, { "pad " .. pad.Name .. "'s " .. c.Name, c, c.Position, pad }) end
 		end
@@ -864,6 +1006,19 @@ function R.check(stage)
 		if q then table.insert(if w[3] then inside else targets, { w[1], q, if fam then fam:GetBoundingBox().Position else q.Position, fam }) else table.insert(issues, "SIGHT: nothing called " .. w[2] .. " to look for") end
 	end
 	local sights, lines, shut, spawnN = {}, 0, 0, 0
+	-- (where each jump pad lands you: the nearest doorway into the second floor must show from there)
+	for _, L in landings do
+		local best, bd = nil, math.huge
+		for _, q in room.Scenery:GetChildren() do
+			if q.Name == "UpperHead" and (q.Position - L).Magnitude < bd then best, bd = q, (q.Position - L).Magnitude end
+		end
+		if best then
+			lines += 1
+			local inward = Vector3.new(O.X - L.X, 0, O.Z - L.Z).Unit * 1.5 -- (a step off the wall, where you stand up)
+			local by = hidden(L + inward + Vector3.new(0, 4.7, 0), best.Position, best)
+			if by then shut += 1; table.insert(sights, ("SIGHT: %s hides the doorway into the second floor from where a jump pad lands you"):format(by.Name)) end
+		else table.insert(issues, "SIGHT: no doorway into the second floor near where a jump pad lands you") end
+	end
 	for _, t in inside do
 		lines += 1
 		local by = hidden(O + Vector3.new(0, 5.9, 0), t[3], t[2], t[4])
@@ -897,11 +1052,11 @@ function R.check(stage)
 	for _, l in room:GetDescendants() do if l:IsA("Light") then lamps += 1; if l.Shadows then shadows += 1 end end end
 	if shadows > 11 then table.insert(issues, ("LAMPS: %d cast shadows (11 is the limit)"):format(shadows)) end
 	if spawnN < 8 then table.insert(issues, ("SPAWNS: %d spawn markers (8 wanted)"):format(spawnN)) end
-	if #pads ~= #R.MODES + #R.HALL then table.insert(issues, ("PADS: %d pads (%d wanted)"):format(#pads, #R.MODES + #R.HALL)) end
+	if #pads ~= #R.MODES + #R.UPPER then table.insert(issues, ("PADS: %d pads (%d wanted)"):format(#pads, #R.MODES + #R.UPPER)) end
 	local problems = #issues
 	for _, line in sights do table.insert(issues, line) end
-	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, props %d, overlaps %d, lamps %d (%d with shadows), pads %d"):format(
-		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, #props, overlaps, lamps, shadows, #pads)
+	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, props %d, overlaps %d, lamps %d (%d with shadows), pads %d, walked to %d"):format(
+		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, #props, overlaps, lamps, shadows, #pads, routes)
 	if W.live then PB:SetAttribute("LastOverlapCheck", msg) end
 	if #issues > 40 then local n = #issues; issues = table.move(issues, 1, 40, 1, {}); table.insert(issues, ("... and %d more"):format(n - 40)) end
 	return msg .. (if #issues > 0 then "\n" .. table.concat(issues, "\n") else "")
@@ -912,10 +1067,10 @@ R.VIEWS = {
 	spawn = { { 0, 0, 5.9, -6 }, { 0, 0, 7, 50 } }, centre = { { 180, 0, 8, 23 }, { 0, 0, 11, 20 } }, dome = { { 180, 0, 3.5, 15 }, { 0, 0, 30, 3 } },
 	balcony = { { 180, 0, 19.2, 25 }, { 0, 0, 9, 32 } }, lifts = { { 334.3, 0, 5.2, 34.5 }, { 22, 0, 8, 52 } }, lift = { { 0, 0, 6, 33 }, { 0, 0, 9, 56 } },
 	back = { { 0, 0, 5.5, 41 }, { 180, 0, 9, 30 } }, lounge_door = { { 0, 0, 5.9, 3 }, { 180, 0, 5, 46 } }, lounge = { { 180, 6.5, 5.6, 39.5 }, { 180, -3, 4.2, 52 } },
-	duels_door = { { DUELS + 180, 0, 5.9, 4 }, { DUELS, 0, 7, 76 } }, duels = { { DUELS, 0, 8.5, 41 }, { DUELS, 0, 5, 80 } },
-	duels_back = { { DUELS, 12, 9, 86 }, { DUELS, -6, 3.5, 50 } },
+	gym_door = { { GYM + 180, 0, 5.9, 4 }, { GYM, 0, 6.5, 70 } }, gym = { { GYM, -1, 5.9, 39.5 }, { GYM, 3, 3.5, 66 } },
+	gym_back = { { GYM, 12, 9, 70 }, { GYM, -6, 3, 46 } },
 	training_door = { { ARM + 180, 0, 5.9, 4 }, { ARM, 0, 5.5, 60 } }, armory = { { ARM, 8.5, 6, 39.5 }, { ARM, -7, 5.5, 58 } },
-	holo = { { 180, 0, 5.4, 15 }, { 0, 0, 12.6, 0 } }, showroom = { { 0, 0, 6.2, 7 }, { 180, 0, 4.6, 27 } },
+	holo = { { 180, 0, 5.94, 9 }, { 0, 0, 6, 0 } }, holo_across = { { 90, 0, 5.4, 24 }, { 0, 0, 6, 0 } }, showroom = { { 0, 0, 6.2, 7 }, { 180, 0, 4.6, 27 } },
 	plinth = { { 6 * STEP, -5, 5.6, 15.5 }, { 6 * STEP, 0, 4.8, 25 } },
 }
 -- every view as "name x y z x y z" lines, for the screen capture tool

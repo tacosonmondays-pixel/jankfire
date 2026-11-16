@@ -1,11 +1,11 @@
 --!nocheck
 -- THE ROTUNDA, part 1: the round room. a stepped platform in the middle with a glowing ring in its top (you spawn inside
 -- the ring), fourteen sides with a chunky pier at every corner, a ring balcony 14 up with a rail (two gaps over the
--- jump pads: the way up and the way down), a gallery over it (the game's name over the middle lift, banners on the
+-- jump pads: the way up and the way down; doorways off it over the four outer lifts lead into the second floor), a
+-- gallery over it (the game's name over the middle lift, banners on the
 -- closed sides), a ribbed dome with a round skylight, and under the dome a lit ring with a hologram turning in it:
 -- your own loadout, nine studs across, rising from a lens in the platform (HubHolo.client draws it). the eight ways out
--- get one word each on the balcony's edge and a floor line from the platform; the closed sides: the jump pads and their
--- boards (3 and 11) and the showroom (5, 6, 8, 9: the south wall either side of the lounge's arch), four plinths with
+-- get one word each on the balcony's edge; the closed sides: the jump pads and their boards (3 and 11) and the showroom (5, 6, 8, 9: the south wall either side of the lounge's arch), four plinths with
 -- a bundle from the shop floating over each in front of a dark board under a lit cove. called by HubRotunda.build
 -- with its helpers (B)
 return function(B, R)
@@ -20,7 +20,7 @@ return function(B, R)
 	local mode = {}
 	for _, md in R.MODES do mode[md.side] = md end
 	-- what a way out is called and the colour of its word and floor line
-	local WAY = { duels = { "duels", "DUELS", P.pale, P.cream }, lounge = { "lounge", "LOUNGE", P.pale, P.cream }, armory = { "training", "TRAINING", P.train, "9dbb93" } }
+	local WAY = { gym = { "gym", "GYM", P.pale, P.cream }, lounge = { "lounge", "LOUNGE", P.pale, P.cream }, armory = { "training", "TRAINING", P.train, "9dbb93" } }
 
 	-- ---- the floor, the platform, the lines
 	B.cyl(F0, S, "Floor", 0, -2, 0, 0, 2 * (A + 3), P.floor)
@@ -31,12 +31,22 @@ return function(B, R)
 	B.cyl(F0, C, "DaisTop", 0, 1.0, 1.24, 0, 2 * 12, P.floor2, nil, G)
 	B.cyl(F0, C, "SpawnRing", 0, 1.04, 1.28, 0, 2 * 11.6, P.glow, Neon, G)
 	B.cyl(F0, C, "DaisInner", 0, 1.08, 1.32, 0, 2 * 11, P.floor2, nil, G)
-	B.cyl(F0, C, "LensRim", 0, 1.12, 1.36, 0, 3.4, P.cream, nil, G)
-	B.cyl(F0, C, "Lens", 0, 1.16, 1.4, 0, 2.2, P.glow, Neon, G)
-	-- you appear on a small circle round the focus, looking north
-	local sp = {}
-	for k = 0, 7 do local a = math.rad(22.5 + 45 * k); table.insert(sp, { 4 * math.cos(a), -(R.FOCUS + 4 * math.sin(a)) }) end
-	B.spawns(sp, 1.2)
+	-- the hologram's projector (owner, 16 Nov: "can it be even lower? like I don't have to look up to see it?"): a low drum
+	-- with the lens in its top, in a ring rail that keeps you out of the hologram
+	B.cyl(F0, S, "Pedestal", 0, 1.28, 2.2, 0, 4.4, P.cream)
+	B.cyl(F0, C, "PedestalBand", 0, 1.3, 1.62, 0, 4.48, P.pier2, nil, G)
+	B.cyl(F0, C, "LensRim", 0, 2.16, 2.4, 0, 3.4, P.pier, nil, G)
+	B.cyl(F0, C, "Lens", 0, 2.2, 2.44, 0, 2.2, P.glow, Neon, G)
+	local HR = 4 -- (the rail's radius: outside the hologram's 3.6)
+	for k = 0, 15 do
+		local Fk = B.fr(k * 22.5)
+		local half = HR * math.tan(math.rad(11.25)) + 0.12
+		B.box(Fk, C, "HoloRail", -half, half, 2.42, 2.7, HR - 0.15, HR + 0.15, P.creamHi)
+		if k % 2 == 0 then B.cyl(Fk, C, "HoloRailPost", 0, 1.3, 2.42, HR, 0.34, P.pier2) end
+	end
+	-- you appear on the platform south of the projector, in two rows, looking north at the hologram and the lifts beyond
+	-- (it was a small circle round the focus, until the hologram came down to eye level and the projector got its rail)
+	B.spawns({ { -2.4, -8.4 }, { -0.8, -8.4 }, { 0.8, -8.4 }, { 2.4, -8.4 }, { -2.4, -9.9 }, { -0.8, -9.9 }, { 0.8, -9.9 }, { 2.4, -9.9 } }, 1.2) -- (close to the axis: from further out the side lifts' plates hide behind their piers)
 
 	-- ---- the fourteen sides
 	for i = 0, N - 1 do
@@ -46,7 +56,13 @@ return function(B, R)
 		local wi = wid(A) / 2
 		local wf = wid(RIN) / 2
 		if kind then
-			B.box(F, S, "Lintel", -wo, wo, 12, 27.45, A, A + T, P.shell) -- (tops under the piers', bottoms under the floor: no shared planes)
+			if R.UP_DOORS[i] then -- (a doorway off the balcony into the second floor: its sill just under the floor's finish)
+				B.box(F, S, "Lintel", -wo, wo, 12, R.UP_Y - 0.06, A, A + T, P.shell)
+				for _, s in { -1, 1 } do B.box(F, S, "Lintel", s * 4.6, s * wo, R.UP_Y - 0.06, 27.45, A, A + T, P.shell) end
+				B.box(F, S, "Lintel", -4.6, 4.6, R.UP_Y + 8.8, 27.45, A, A + T, P.shell)
+			else
+				B.box(F, S, "Lintel", -wo, wo, 12, 27.45, A, A + T, P.shell) -- (tops under the piers', bottoms under the floor: no shared planes)
+			end
 			B.paint(F, "Threshold", -5.4, 5.4, 0, A - 0.3, A + T + 0.3, P.pier, 0.08)
 			-- its word on the balcony's edge. (no floor lines any more: the owner, 16 Nov, "can you get rid of the lines leading
 			-- to the pads": the five lifts are framed by their own piers and read on their own; the rooms' lines went with them)
@@ -67,7 +83,8 @@ return function(B, R)
 			B.panel(F, 0, 12, 25.1, 5, 2)
 			B.lamp(F, 0, 10.8, 25, 15, 0.55)
 		end
-		-- the ring balcony: its slab, its floor, and its rail (none over a jump pad: sides 3 and 11)
+		-- the ring balcony: its slab, its floor, and its rail (none over a jump pad, sides 3 and 11: the way up, and the way
+		-- back down from the second floor)
 		B.box(F, S, "Ring", -wi - 0.05, wi + 0.05, 12, RY, RIN, A, P.cream)
 		B.box(F, C, "RingFloor", -wi, wi, RY, RY + 0.04, RIN + 0.9, A, P.floor2, nil, G)
 		if i == 3 or i == 11 then
@@ -77,10 +94,19 @@ return function(B, R)
 				color = { ["2e3140"] = P.cream, c4c8d4 = P.creamHi, ["5b6478"] = P.cream, ["17141f"] = P.accent } })
 		end
 		-- the gallery: a lit panel in a dark frame, a cornice with a slope under it
-		B.box(F, C, "GalleryBase", -wi + 0.05, wi - 0.05, RY, RY + 0.6, A - 0.3, A, P.pier, nil, G)
+		if R.UP_DOORS[i] then
+			-- the doorway into the second floor: a pale frame round it on the room's side, the dark foot either side of it
+			for _, s in { -1, 1 } do
+				B.box(F, C, "GalleryBase", s * 5.2, s * (wi - 0.05), RY, RY + 0.6, A - 0.3, A, P.pier, nil, G)
+				B.box(F, C, "UpperJamb", s * 4.6, s * 5.2, RY + 0.04, R.UP_Y + 9.4, A - 0.35, A, P.creamHi, nil, G)
+			end
+			B.box(F, C, "UpperHead", -5.2, 5.2, R.UP_Y + 8.8, R.UP_Y + 9.4, A - 0.35, A, P.creamHi, nil, G)
+		else
+			B.box(F, C, "GalleryBase", -wi + 0.05, wi - 0.05, RY, RY + 0.6, A - 0.3, A, P.pier, nil, G)
+		end
 		if i == 0 then
 			B.text(F, "GalleryName", { { "JANKFIRE", P.word, "B", 1 } }, 10.6, 3.4, 0, 21.8, A - 0.3, 0, { flush = true, thick = 0.4, pps = 40 }) -- (high enough to clear the rail, seen from the platform)
-		elseif kind then
+		elseif kind and not R.UP_DOORS[i] then
 			B.box(F, C, "WindowFrame", -2.3, 2.3, 16.8, 23.4, A - 0.4, A, P.pier, nil, G)
 			B.box(F, C, "Window", -1.7, 1.7, 17.4, 22.8, A - 0.52, A - 0.4, P.dim, Neon, G)
 		else
@@ -120,14 +146,14 @@ return function(B, R)
 	-- ---- the centrepiece: YOUR loadout as a hologram (owner, 16 Nov: "can the center gun thingy cycle your loadout but
 	-- hologram style?"), over the platform under the ring that hangs from the dome on four spokes, rising from the lens
 	-- in the platform. primary, secondary, melee, utility in turn, each in your wrap with your hat (HubHolo.client draws
-	-- it on each player's own screen; here only its place). (first 13.4, then 13.9 up inside the ring; lowered to 9.5)
+	-- it on each player's own screen; here only its place). (first 13.4, then 13.9 up inside the ring; lowered to 9.5, then 8.2; now 6: a standing player's eye)
 	B.cyl(F0, C, "Rod", 0, 22.4, 40, 0, 1.2, P.pier, nil, G)
 	for k = 0, 3 do B.box(B.fr(45 + 90 * k), C, "Spoke", -0.5, 0.5, 21.6, 22.4, 0.6, 9.4, P.cream, nil, G) end
 	-- (lowered on 16 Nov, the owner: "can the hologram in the hub be lowered down": its middle 9.5 up, just over the heads
 	-- of players on the platform, at eye level from across the room, instead of up in the ring. it is see-through and has
 	-- no collision, so R.check no longer counts it as a wall in the spawn's view or a thing in the spawn's keep-clear room)
-	B.holo(F0, "HoloLoadout", "loadout", 0, 9.5, 0, 4.2, 3.2, { base = 9.5 - 1.4 })
-	local up = B.lamp(F0, 0, 1.8, 0, 14, 1.6, P.light, { spot = true, angle = 30 }); up:FindFirstChildOfClass("SpotLight").Face = Enum.NormalId.Top
+	B.holo(F0, "HoloLoadout", "loadout", 0, 6, 0, 3.6, 3, { base = 6 - 2.44 })
+	local up = B.lamp(F0, 0, 2.8, 0, 12, 1.4, P.light, { spot = true, angle = 30 }); up:FindFirstChildOfClass("SpotLight").Face = Enum.NormalId.Top
 	B.lamp(F0, 0, 15.6, 0, 26, 1, P.light, { spot = true, angle = 110, shadows = true })
 	-- (a secret: a small duck sits on top of the ring. only the balcony sees it)
 	B.put(B.side(7), "pj_duck", "CrownDuck", 0, 22.9, 9.8, 0, { scale = 2.6, raw = true })
@@ -153,7 +179,7 @@ return function(B, R)
 		end
 		B.box(F, C, "HatchHead", -3, 3, 11.4, 12, A - 0.3, A + T + 0.1, P.pier, nil, G)
 	end
-	-- the duel hall (the gym's door, kept): a pale portal, deep, with its top corners cut, under a dark canopy with a light in it and the name on its
+	-- the gym: a pale portal, deep, with its top corners cut, under a dark canopy with a light in it and the name on its
 	-- front (round 1's judge: "a narrow plain rectangle with a thin frame")
 	do
 		local F = B.side(4)
@@ -168,15 +194,19 @@ return function(B, R)
 	end
 
 	-- ---- what stands in the closed bays
-	-- sides 3 and 11: the jump pads up to the balcony, a board on the wall behind each
+	-- sides 3 and 11: the jump pads up to the balcony (and from it, through the doorways over the outer lifts, the second
+	-- floor), a board on the wall behind each
 	for _, i in { 3, 11 } do
 		local F = B.side(i)
-		B.jump(F, 0, 0, 18.2, 0, Vector3.new(0, 58, 7.6)) -- (the pad's arrows point away from its front: at the balcony)
+		B.jump(F, 0, 0, 18.2, 0, Vector3.new(0, 58, 6.2)) -- (6.2 out: you land mid-balcony, by the doorway, not against the wall) -- (the pad's arrows point away from its front: at the balcony)
 		local lines = if i == 3
 			then { { "HOW TO PLAY", P.pale, "B", 0.28 }, { "1   STEP ON A PAD IN YOUR TEAM'S COLOUR", "d8dbe2", "S", 0.18 }, { "2   THE LIFT GOES UP WHEN THE PAD IS FULL", "d8dbe2", "S", 0.18 }, { "3   FIRST TO FIVE ROUNDS WINS", "d8dbe2", "S", 0.18 }, { "4   STEP OFF TO LEAVE THE QUEUE", "d8dbe2", "S", 0.18 } }
-			else { { "NOTICE BOARD", P.pale, "B", 0.28 }, { "MORE PADS   ·   THE DUEL HALL, EAST", "d8dbe2", "S", 0.18 }, { "TRAINING   ·   THROUGH THE ARMORY", "d8dbe2", "S", 0.18 }, { "LOADOUT   ·   PRESS L ANYWHERE", "d8dbe2", "S", 0.18 }, { "WEAPONS STAY HOLSTERED IN THE LOBBY", "d8dbe2", "S", 0.18 } }
+			else { { "MORE PADS   ·   UPSTAIRS", "d8dbe2", "S", 0.3 }, { "TRAINING   ·   THROUGH THE ARMORY", "d8dbe2", "S", 0.3 }, { "LOADOUT   ·   PRESS L ANYWHERE", "d8dbe2", "S", 0.3 } } -- (no title, no "holstered" line: the owner, 16 Nov, "I dont want unnecessary flavor text everywhere")
 		B.text(F, if i == 3 then "BoardHow" else "BoardNotice", lines, 9.2, 4.2, 0, 8.1, A - 0.62, 0, { flush = true, thick = 0.3, pps = 40 })
 	end
+	-- a regular (R.NPCS; HubNPCs builds them at start): Frisk1636 on the balcony over the lifts, by the pier between the
+	-- 2V2's and the 3V3's doorways, looking down at the platform
+	B.npc(B.fr(0.5 * step), "Frisk1636", 0, RY + 0.04, RIN + 1.7, 180)
 	-- ---- the showroom: sides 5, 6, 8 and 9, the south wall either side of the lounge's arch (owner, 16 Nov: "we also need
 	-- holograms like in rivals with bundle sets that float and people can look at and interact with"). on each a round
 	-- plinth like a small copy of the platform, a bundle from the shop floating over it (HubHolo.client: one bundle a
@@ -184,13 +214,13 @@ return function(B, R)
 	-- a dark board in a pale frame with a lit cove under its head and the bundle's name on a plate at the top. the same
 	-- frame on side 5 holds the trophy case (below): four of a kind round the arch read as one feature (the shop's half of
 	-- the room, the pads' half facing it), where four odd props read as clutter
-	local function showFrame(F, plate, l1, l2)
+	local function showFrame(F, plate, l1, l2) -- (plate nil: no name plate)
 		B.box(F, C, "ShowBoard", -4.2, 4.2, 0.7, 9.6, A - 0.8, A - 0.24, P.plate, nil, G)
 		for _, s in { -1, 1 } do B.box(F, C, "ShowJamb", s * 4.2, s * 4.75, -0.04, 10.06, A - 1.05, A - 0.2, P.cream, nil, G) end
 		B.box(F, C, "ShowHead", -4.75, 4.75, 9.6, 10.1, A - 1.35, A - 0.2, P.cream, nil, G)
 		B.box(F, C, "ShowCove", -4, 4, 9.46, 9.6, A - 1.25, A - 1, P.strip, Neon, G)
 		B.box(F, C, "ShowSill", -4.2, 4.2, 0.35, 0.7, A - 1, A - 0.26, P.pier, nil, G)
-		B.text(F, plate, { { l1, P.glow, "S", 0.32 }, { l2, P.pale, "B", 0.58 } }, 6.4, 1.4, 0, 8.45, A - 0.8, 0, { flush = true, thick = 0.08, pps = 40 })
+		if plate then B.text(F, plate, { { l1, P.glow, "S", 0.32 }, { l2, P.pale, "B", 0.58 } }, 6.4, 1.4, 0, 8.45, A - 0.8, 0, { flush = true, thick = 0.08, pps = 40 }) end
 	end
 	-- side 5, by the duel hall's door: the trophy case, with rubber-duck trophies (owner, 16 Nov: "can the trophy case, can
 	-- they be ducky trophies?"): a glass-fronted case on a plinth, a podium in it, the big gold duck on its top step in the
@@ -198,7 +228,7 @@ return function(B, R)
 	-- rk_duckTrophy), lit warm from inside. the case is one model so R.check's overlap test weighs the ducks against it
 	do
 		local F = B.side(5)
-		showFrame(F, "TrophyName", "TROPHY CASE", "THE DUCK CUP")
+		showFrame(F, nil) -- (no plate: the owner wants no labels for things you can see)
 		local case = Instance.new("Model"); case.Name = "TrophyCase"
 		local d0, d1 = A - 3.6, A - 0.8 -- (the case's front and back)
 		local parts = {
