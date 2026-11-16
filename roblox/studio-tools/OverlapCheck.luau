@@ -51,6 +51,7 @@ function OC.run(): string
 	local hub = workspace.Map.Hub
 	-- the hub is THE LANES now (2026-11-15): its keep-clear test lives with its builder. what follows was written for the
 	-- round hub, which is put away in PolishBackup.HubArchive.Rotunda, and only runs if that one is the hub again
+	if hub:FindFirstChild("Rotunda") then return (require(game.ServerStorage.PolishBackup.HubRotunda:Clone()) :: any).check() end
 	if hub:FindFirstChild("Lanes") then return (require(game.ServerStorage.PolishBackup.HubLab:Clone()) :: any).check() end
 	local tg = hub.TrainingGround
 	local O = hub:GetAttribute("Origin") :: Vector3 -- (0, 240, -8000)

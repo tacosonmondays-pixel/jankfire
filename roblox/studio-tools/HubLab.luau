@@ -145,10 +145,10 @@ local function newHub(name)
 		home = hub
 		root.Name = L.ROOM
 		for _, n in { "Shell", "Scenery", "Collision" } do local f = Instance.new("Folder"); f.Name = n; f.Parent = root end
-		local old = hub:FindFirstChild(L.ROOM); if old then old:Destroy() end
+		for _, n in { L.ROOM, "Rotunda" } do local old = hub:FindFirstChild(n); if old then old:Destroy() end end -- ("Rotunda": the other hub, built by HubRotunda. only one of the two stands at a time)
 		H.padFolder, H.spawnFolder, H.arriveFolder = folderIn(hub, "QueuePads"), folderIn(hub, "HubSpawns"), folderIn(hub.Doors, "HubArrive")
 		for _, f in { H.padFolder, H.spawnFolder, H.arriveFolder, hub.Doors } do
-			for _, c in f:GetChildren() do if c:GetAttribute("Built") == "HubLab" then c:Destroy() end end
+			for _, c in f:GetChildren() do local b = c:GetAttribute("Built"); if b == "HubLab" or b == "Rotunda" then c:Destroy() end end
 		end
 		hub:SetAttribute("Origin", H.O) -- (Matches: the fall line is 60 under this, the last-ditch spawn point 3 over it)
 	else
