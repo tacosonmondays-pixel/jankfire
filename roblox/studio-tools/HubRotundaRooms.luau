@@ -137,7 +137,7 @@ return function(B, R)
 			local DD = V1 - 4
 			B.cyl(F, S, "VipPlinth", 0, FY - 0.04, 2.4, DD, 4.2, DARK)
 			B.cyl(F, C, "VipPlinthBand", 0, 2.2, 2.44, DD, 4.32, GOLD, nil, G)
-			local duck = B.put(F, "pj_duck", "VipDuck", 0, 2.44, DD, 0, { scale = 5, raw = true })
+			local duck = B.put(F, "pj_duck", "VipDuck", 0, 2.44, DD, 180, { scale = 5, raw = true }) -- (180: the model's own front is its back. owner, 16 Nov: "can you have it face the other way?": it looks into the room, at the door)
 			if duck then
 				for _, p in duck:GetDescendants() do
 					if p:IsA("BasePart") then
@@ -159,6 +159,8 @@ return function(B, R)
 				B.lamp(F, s * 7, CH - 1.2, 71, 14, 0.55, "ffd9a0")
 			end
 			B.put(F, R.prop("rk_coffeetable", "bc_coffeetable"), "VipTable", 0, FY, 71, 0, { solid = true })
+			-- a regular (R.NPCS; HubNPCs builds them at start): Trisangle on the east sofa, at its door end, across from the door
+			B.npc(F, "Trisangle", -(VX - 0.2) + 2.2, 2.35, 69.8, -90)
 			-- the Ducky pack, turning over two plinths either side of the door
 			for k, s in { -1, 1 } do
 				local x, d = s * 7.4, 64.6

@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 44 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 45 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -95,6 +95,7 @@ R.NPCS = {
 	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit" }, -- on the lounge's sofa
 	Dune = { user = "Doonamei", id = 56917496, pose = "stand" }, -- by the ring in the gym, watching it
 	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand" }, -- on the balcony over the lifts, looking down at the platform
+	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit" }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,

@@ -960,6 +960,91 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
 - A copy of the character's `HeldWeapon` comes out invisible on its own player's screen: first person hides it there. Build a display gun fresh from `WeaponModels` (skin, wrap and hat from `GunSkins`, `WeaponModels.wrapFor` and `GunHats`).
 - A commit swept in another session's unfinished Arsenal change (1fb2d29); a2d6e3c took it back. Before committing a shared file, check `git diff --cached` for other sessions' hunks, not just `--stat`.
 
+## 29. The hub, round 3: a second floor of pads, a VIP room, the hologram at eye level, the gym for looks, true-size guns, four regulars, 16 November 2026 (place version 448)
+
+**The owner's words (16 November 2026), relayed by the main session:**
+- "I liked the old locker room with the boxing ring hmm, can the hub hologram that shows weapon still be a little lower?"
+- "can you try to create a second floor of pads above the current one and add stairs or escalators up on both sides? ... we can move the how to play and notice board elsewhere and then we can recreate the boxing gym and put just for aesthetic", then "actually wait we dont need stairs or escalators, we already have the jump pads"
+- Of the centre hologram: "can it be even lower? like I don't have to look up to see it? also can the sweep start lower, like at the base of the hologram cone?"
+- Of the armory's display guns: they "look massive, at least scale them, because a revolver is not the size of a sniper". Of its workbench: "can we fix that crafting station or replace it with something else?"
+- VIP, the game pass (the shop session's), "lets you enter the VIP room".
+- "Can you put these two as NPCs somewhere?" (Looticus, Dune), then "This one too" (Frisk1636), then "Can you put this person inside the VIP room with the sliding doors?" (Trisangle)
+- Of the VIP room's duck: "can you have it face the other way?"
+
+(For one afternoon the extra pads were in a duel hall behind the gym, then on a second floor reached by escalators. Neither went live: the second floor reached by the jump pads replaced both.)
+
+**The second floor** (`HubRotundaLifts`): a crescent hall over the five lifts, at the balcony's height (`R.UP_Y` = 14.04).
+- Seven pads round its outer wall, left to right 1v1, 2v2, 1v1, 3v3, 1v1, 2v2, 1v1 (`R.UPPER`, 14.5 degrees apart seen from the focus). Each has its board on the wall behind it and a light panel over it, with piers between.
+- Pads keep the contract: `PadId` = the model's name, `Bank` = "upper" (the lifts' are "lifts"). 12 pads in all; Matches runs at most 6 arenas at once.
+- The way up: the jump pads (sides 3 and 11) throw you onto the balcony. Their outward push is now 6.2 (was 7.6), so you land mid-balcony, not against the wall.
+- A doorway off the balcony over each of the four outer lifts (sides 12, 13, 1, 2: `R.UP_DOORS`) leads in, framed in pale cream. From where a jump pad lands you, the next doorway is right beside you.
+- The way down: the balcony's gap over each jump pad, as before.
+- HOW TO PLAY and the notice board stay behind the jump pads. The notice board's first line is "MORE PADS · UPSTAIRS".
+- The lift bays under it were tall shafts lit from the top. They are 13 high now, with the second floor as their ceiling, and their lights and the cove over the boards moved under it.
+
+**The hologram at a standing player's eye** (`HubRotundaCentre`): its middle is at 6 (was 8.2, first 13.9). It now sits on a low projector pedestal (the lens at 2.4) inside a ring rail of radius 4, so nobody walks into it.
+- The eight spawn points moved to two rows just south of the rail (x -2.4 to 2.4, d -8.4 and -9.9), still looking north. From any further out, the side lifts' plates hide behind their piers.
+- The build sweep (`HubHolo`) now starts at the lens, the foot of the light cone, and is visible from the first moment. It is as narrow as the cone there and widens with it, then builds the piece from its foot to its top in 1.5 s and fades.
+
+**The VIP room**, behind the lounge, on the spawn's axis (`HubRotundaRooms`):
+- **The door** is in the middle of the lounge's far wall, behind the duck: dark leaves in a brass frame, with "VIP" over it. Who may pass is the server's decision, by the shop's `Vip.isVip`; the player attribute `VIP` is only for looks.
+  - `ServerScriptService.Jankfire.HubVip` (`src/server/HubVip.server.luau`) puts the leaves in collision group `VipDoor` and a VIP's character in `VipGuest`, which passes through them. It sets that on spawn, on every new part and on `Vip.changed`. Until `Vip.luau` loads, nobody is VIP.
+  - `StarterPlayerScripts.Jankfire.HubVip` (`src/client/HubVip.client.luau`) only does the looks: it slides the leaves open on a VIP's own screen as they come near and hides the prompt.
+  - Anyone else finds the door shut. Its prompt ("Get VIP", `ShopOpen = "vip"`) opens the shop on the VIP tile.
+  - As a backstop, the same server script puts anyone who isn't VIP back out in front of the door, twice a second. The room is the part tagged `VipRoom`; its attributes `Out` and `OutLook` say where they go.
+- **Inside**: a cosy, darker, warmer lounge with its floor level with the lounge's raised back.
+  - Walnut panelling under a brass line, and a warm light hidden along the tops of the walls.
+  - Plum sofas facing each other over a round rug, with a low table between them.
+  - A gold duck on a dark plinth at the far end, under a ring of light, turned to look at the door (the model's own front is its back).
+  - Two plinths by the door show the VIP pack turning: `HubHolo` with `Offer = "vip"` lists `Shop.vipItems()`, the pack's live skins on their own weapons, then its wrap and hat. They stay empty until the Ducky skins are in the place.
+
+**The gym, for looks** (side 4): push 37's locker room. The ring is centred on the door's axis, 19 across, under its light frame. Lockers and benches by the door have room to walk; bags, weights, tyres and the sparring dummy stand round the walls. There are no pads in it and nothing behind it. The round target is in a lit recess at eye height.
+
+**The armory**:
+- Every display gun is at its true size, one scale for all (`GUN_K` = 3.5: the sniper 7.3 long, the AR 4.2, the revolver 1.5, the pistol 1.2). The long guns are on the top rows, the shorter ones and the sidearms under them. `B.gun` takes the shared scale as its last argument.
+- The tool bench with the pegboard is now a gun maintenance bench (`GunBench`, built from parts): a heavy bench against the near wall, a rifle lying on a cleaning mat, a vice, rounds and a cleaning rod, two ammo cans on the shelf, and a warm lamp.
+
+**Three regulars**, the owner's friends in their own avatars:
+- Looticus (`roblox_user_4547551380`, id 4547551380) sits on the lounge's east sofa.
+- Dune (`Doonamei`, id 56917496) stands in the gym off the south aisle, watching the ring.
+- Frisk1636 (`BruhFrisk1636`, id 5028123368) stands on the balcony over the lifts, looking down at the platform.
+- Trisangle (`Xxxglowingstarlightx`, id 2321239144) sits on a sofa in the VIP room, across from the door.
+- How they work:
+  - The builders leave a place for each (`B.npc`, data in `R.NPCS`): an invisible part tagged `HubNPC` with `Who`, `User`, `UserId` and `Pose` ("sit": a Seat on the cushion; "stand": a spot on the floor).
+  - `ServerScriptService.Jankfire.HubNPCs` (`src/server/HubNPCs.server.luau`) builds them at server start from the user id (`Players:CreateHumanoidModelFromUserId`). If that fails it uses the saved copy in `ServerStorage.JankfireNPCs.<Who>`.
+  - A standing regular is lifted until its lowest part is on the floor: a scaled R15 avatar's legs can be longer than its HipHeight says.
+  - They can't be pushed (anchored, or seated on an anchored seat), shot (no queries, no touches) or killed. They play Roblox's own idle or sit animation and show one label: their name.
+  - Any builder may add one: tag a part `HubNPC` with those attributes. The training session uses the same script for its owner NPC.
+
+**Bundle holograms** list `Shop.shown(true)`, so a skin set shows once all its skins are in the place, and they draw the hero's weapon skin (`WeaponModels.build(weapon, 3, skin)`).
+
+**`R.check()` gained a ROUTE test**: a body-sized box is swept from between the spawn rows to the front of every pad and onto it.
+- To a lift: past the projector and straight out through its opening.
+- To an upper pad: to the jump pad on its side, then the throw. The pad's `Pad` velocity is simulated under the place's gravity (78) with the whole body; a wall it meets stops it going sideways and it slides down. The throw must land on the balcony.
+- From the landing it walks along the balcony to the doorway, through it, and along the upper walk onto the pad.
+- Anything solid in the way, a throw that lands anywhere else, or a waypoint with no floor is a problem. The summary says "walked to N".
+- A sight test checks that the doorway shows from where each jump pad lands you.
+- New keep-clear zones: the upper walk in front of every upper pad. New leak points: in the second floor and the VIP room.
+
+Now (push 45, place version 448): `R.check()` 46 keep-clear zones, 0 problems, 0 leaks, 288 sight lines, 0 hidden, 56 props, 0 overlaps, 105 lamps (9 with shadows), 12 pads, walked to 12.
+
+**Flicker** (`ZFight`, minY 239.5): 6 visible hits, all under 0.2 sq studs:
+- the old `bc_fridge` kit (0.15)
+- two 0.06 slivers where the balcony's slab meets its floor at the doorways
+- three inside the sawn-off's own kit model, which is smaller now at its true size
+
+**Tested in Play** (place versions 431 and 448, by the builder):
+- All four regulars built from their avatars: Looticus and Trisangle seated on their sofas with the sit animation, Dune (R6) on the gym floor, Frisk1636 on the balcony. Frisk's feet sank half a stud in v431; in v448 they are 0.07 off the floor.
+- The VIP door's leaves are in `VipDoor`; the test player (VIP by the owner's Studio unlock) showed the door from the lounge and the room inside.
+- The shop session tested the door in v437 with its `Vip.luau`: a character that wasn't VIP, put inside the room, was moved out within 1.7 s; a VIP stayed; the owner's dev "lock" moved them out again, and "unlock" made them VIP at once.
+- The VIP pack's plinth showed a gold skin turning.
+- Photos: `roblox/docs/hub/hub_round3_sheet.jpg` (both floors from the spawn, the hologram at a standing eye, the second floor, the VIP door and room, the gym, the armory and its bench, Looticus).
+
+**Not done / open:**
+- No real match has been played from an upper pad: two players are needed.
+- Shadows: the performance session will send a budget (likely 4 shadowed lamps, now 9). Its ZoneCull takes the whole Rotunda out of the client while you are far from it, so the Rotunda must stay `Map.Hub.Rotunda`.
+- Map.Hub was not exported to the repo this round: the hub is rebuilt from the builders (`R.build("live")`), which are in git.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
