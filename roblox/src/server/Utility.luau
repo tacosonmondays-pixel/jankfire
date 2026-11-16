@@ -261,7 +261,39 @@ local function duckFly(pr: Pr, owner: Fighter?, dt: number): boolean
 end
 -- every tick: a stuck duck's hole rides its victim's middle (till they die); everyone hears where it is twice a second;
 -- every 0.1 s it pulls; at holeTime it pops
+-- a dummy has no client of its own to take the pull (a player's Move does that from the knock), and a standing
+-- Humanoid's grip on the floor cancels a plain push: its pull runs here, the same pulses into a velocity the hole's
+-- drag eats (web physics.js holeDrag), moved step by step, stopped by walls, at most 20 m/s
+local pulled: { [Fighter]: Vector3 } = {}
+local function movePulled(dt: number)
+	local t = now()
+	for v, bv in pulled do
+		local r = Fight.root(v)
+		local c = centre(v)
+		if not v.alive or not r or not c then pulled[v] = nil; continue end
+		local inHole = false
+		for _, h in holes do
+			if t >= h.born and h.on ~= v then
+				local nv, d = Items.holeDrag(c, bv, h.p, D.holeR, D.drag, dt)
+				if d then bv = nv; inHole = true end
+			end
+		end
+		if not inHole then bv *= math.exp(-8 * dt) end
+		bv = Vector3.new(bv.X, 0, bv.Z)
+		if bv.Magnitude > 20 * S then bv = bv.Unit * 20 * S end
+		local step = bv * dt
+		if step.Magnitude > 1e-4 then
+			if Fight.castMap(c, step.Unit, step.Magnitude + 1 * S) then
+				bv = Vector3.zero
+			else
+				r.CFrame += step
+			end
+		end
+		pulled[v] = if bv.Magnitude > 0.5 then bv else nil
+	end
+end
 local function tickHoles(dt: number)
+	movePulled(dt)
 	local t = now()
 	for _, h in table.clone(holes) do
 		if h.on then
@@ -312,7 +344,9 @@ local function tickHoles(dt: number)
 			local ramp = math.min(1, dist / D.ramp)
 			local sp = (D.pull * (1 - dist / D.holeR) + D.push0) * D.pulse * ramp
 			-- (and a little lift each pulse: off their feet, ground friction can't hold them back)
-			Fight.knock(v, to / dist * sp + Vector3.new(0, D.lift * ramp, 0), "duck")
+			local kick = to / dist * sp + Vector3.new(0, D.lift * ramp, 0)
+			if v.kind == "player" then Fight.knock(v, kick, "duck")
+			else pulled[v] = (pulled[v] or Vector3.zero) + Vector3.new(kick.X, 0, kick.Z) end
 			if v ~= owner then
 				Rules.tagged(v, owner, "duck", t)
 				if dist < D.near then Fight.hurt(v, D.nearDmg, owner, "duck", false, nil, c, nil, true) end

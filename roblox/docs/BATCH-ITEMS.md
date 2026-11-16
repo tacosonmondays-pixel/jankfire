@@ -234,3 +234,15 @@ hit) stand in for one.
   the wand wiggles while it blows; the goggles get a hand that pulls them down over your eyes (and pushes them back up).
 
 ![a frag throw, frame by frame](items/throw-sheet.jpg)
+
+### The Rubber Duck with real throws (place version 456, the VFX session's black hole v2 in)
+
+| what | web game | measured | |
+| --- | --- | --- | --- |
+| sticks | the first enemy it touches, homing on the nearest one ahead in plain view | thrown at a Stand 16 studs off: stuck **0.25 s** after the throw; thrown down the hall it homed on the walking Dummy and stuck to it | ok |
+| opens on them, follows them | 0.3 s after sticking, riding their middle | the Stand walked 12 studs sideways while it was open: every position update had the hole on it (12.9, 8.8, 4.7, 3.2); on the walking Dummy it rode back and forth across the hall | ok |
+| pops on time | 3 s after it opens | **3.31 s** and **3.28 s** after sticking (0.3 + 3) | ok |
+| damage | 1 a pulse to the one it's on (30 in 3 s), 45 at the pop | the Stand it was on: 100 -> **24 / 25** | ok |
+| pull on a dummy | everyone within 15 m dragged in | **was broken for dummies**: the server pushed their bodies, and a standing Humanoid's grip on the floor cancelled it. Now the server runs a dummy's pull itself (the same pulses into a velocity the hole's drag eats, moved step by step, stopped by walls, at most 20 m/s). The second Stand, 33 studs off: dragged right onto the hole in about 1 s, crushed and blasted (100 -> 72) | fixed |
+| on the floor | opens where it is when the 1 s fuse runs out | thrown down the hall: opened at 1.02 s, popped 3.02 s later | ok |
+| a player joining while a hole is open | the hole drawn as it is, no second opening | needs a second player: open, for the owner to try | open |
