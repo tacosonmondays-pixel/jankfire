@@ -197,9 +197,11 @@ the pass. Lava blooms clearly (a soft orange halo past the cracks), Hex and Kint
 faint halo near the eye, Nebula's twinkles barely bloom. Nothing blinding; Lava is the nearest to blown out near the
 camera, so it is the one to turn down first if anyone finds it loud.
 
-- Seen once: in the first glow test the SMG showed its bare teal, not Circuit Board, minutes after `circuit_emit`
-  was uploaded (it was "Reviewing" then, Approved by the time I checked). The likely cause is a map still in review;
-  check `moderationResult` is Approved before judging a freshly uploaded map.
+- Trap, seen twice: a freshly uploaded map can leave its SurfaceAppearance rendering as the bare part for a while,
+  even once its `moderationResult` is Approved (the SMG showed its plain teal minutes after `circuit_emit` was
+  uploaded; the sniper its factory paint 17 minutes after Ducky's maps; both fine when next looked at, Circuit
+  half an hour on, Ducky two hours on). `ContentProvider:PreloadAsync` is no help: it reports Failure for working image ids too. Judge a new map
+  in a later Play, not the one right after its upload.
 
 ## One black hole (16 Nov 2026)
 
@@ -231,6 +233,9 @@ six or more on a rifle. Now:
   together), set as the wrap's `Swatch`.
 - The mechanism is generic: any wrap whose SurfaceAppearance carries `Decal` (and `DecalGlow`) gets one. `WrapBook`
   sets them from the `decal`, `hole` and `swatch` images a design returns (`more_maps` in `wrap_textures.py`).
+- In hand (place version 443, `wrap-textures/one-hole-sheet.jpg`, frames in `wrap-textures/one-hole/`): on the
+  rifle the hole sits on the receiver just above the hand on NORMAL (the receiver is the dark half there) and FULL
+  alike, big and readable from the eye, its ring blooming, the tile's streaks round it; Ducky on FULL and NORMAL.
 - Traps: a SurfaceGui ignores its part's `LocalTransparencyModifier`, which is how the game hides your own world gun
   in first person and the viewmodel in third person or scoped, so WrapAnim switches each hole off while its piece
   is hidden (without it a lone hole floats where the gun is hidden). SurfaceGuis don't draw in a ViewportFrame, so
@@ -245,7 +250,9 @@ bill orange only on bills, a soft white, a calm bath-water blue only on bubbles.
 ducks in profile, moulded in the same yellow a shade lighter and raised a little (with the set's plump wing and
 three round feather tips), and soap bubbles in the gaps whose rims and highlights glow softly (0.3 to 0.45 x 1.2,
 well under Bloom). Satin. Its accent (the gun's glow pieces) is named in the design (`e0883a`, the bills' orange),
-since the bills are too small a share of the tile to be picked automatically.
+since the bills are too small a share of the tile to be picked automatically. In hand (v443) the halls' lamps make
+its yellow read brighter than drawn, a toy-bright lemon; if it should be calmer, take the base a step darker and less
+saturated in `ducky()` (and the ducks with it).
 
 ## Redrawing or adding a wrap
 
