@@ -161,16 +161,16 @@ add({ id = "medkit", slot = "utility", name = "Medkit", color = "ff4f4f", live =
 add({ id = "bubble", slot = "utility", name = "Shield Bubble", color = "4fd8ff", live = true, gimmick = "a dome where you stand for 7 s. nothing from outside it hurts anyone inside, enemies too. inside the same dome it's fair game.",
 	desc = "A dome for 7 s. Nothing from outside can hurt anyone inside.",
 	stats = st("CHARGES", "1", 0.5, "RECHARGE", "28 s", 0.67, "LASTS", "7 s", 0.47, "SIZE", "4.4 m across the middle", 0.3) })
-add({ id = "duck", slot = "utility", name = "Rubber Duck", color = "ffd23b", live = false, gimmick = "",
+add({ id = "duck", slot = "utility", name = "Rubber Duck", color = "ffd23b", live = true, gimmick = "homes in and sticks to someone. the black hole opens on them for 3 s: it drags everyone in, eats speed, snaps ropes, then pops.",
 	desc = "Homes in and sticks to an enemy. The black hole opens on them and follows them: their friends get dragged in, speed gets eaten, ropes snap. Then it pops.",
 	stats = st("CHARGES", "1", 0.5, "RECHARGE", "20 s", 0.48, "PULL", "15 m for 3 s", 0.6, "POP", "45 damage", 0.38) })
 add({ id = "smoke", slot = "utility", name = "Smoke Bomb", color = "9aa0a8", live = true, gimmick = "pops 1.3 s after the throw into a thick cloud for 10 s. nobody sees through it, bots included.",
 	desc = "A thick cloud nobody can see through for 10 s.",
 	stats = st("CHARGES", "3", 1, "RECHARGE", "14 s each", 0.33, "LASTS", "10 s", 0.67, "CLOUD", "6.5 m", 0.45) })
-add({ id = "popper", slot = "utility", name = "Party Popper", color = "ff6bd0", live = false, gimmick = "",
+add({ id = "popper", slot = "utility", name = "Party Popper", color = "ff6bd0", live = true, gimmick = "a confetti blast that shoves everyone in front of you away, hard, and throws you backwards. no damage: all ledges.",
 	desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes.",
 	stats = st("CHARGES", "2", 1, "RECHARGE", "9 s each", 0.21, "DAMAGE", "0", 0.02, "SHOVE", "9 m cone", 0.6) })
-add({ id = "reverse", slot = "utility", name = "Reverse Card", color = "ff3b3b", live = false, gimmick = "",
+add({ id = "reverse", slot = "utility", name = "Reverse Card", color = "ff3b3b", live = true, gimmick = "for 3 s every bullet, swing, blast and shove aimed at you goes back to whoever sent it.",
 	desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it.",
 	stats = st("CHARGES", "1", 0.5, "RECHARGE", "22 s", 0.52, "LASTS", "3 s", 0.2, "SENDS BACK", "everything", 1) })
 add({ id = "wand", slot = "utility", name = "Bubble Wand", color = "9fe8ff", live = false, gimmick = "",

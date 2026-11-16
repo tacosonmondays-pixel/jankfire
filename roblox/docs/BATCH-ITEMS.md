@@ -39,13 +39,16 @@ middle, feet + 0.9 m, at y 242.89). Distances in studs.
 | medkit | +45 at 26 HP/s, never past 100 | 40 -> 85 | **40 -> 85** after 2 s | ok |
 | medkit charges | 2, 20 s each | | 2 -> 1, the next one due 12.1 s later, 7.9 s after | ok |
 | shield dome | 4.4 m radius, 1 m over your feet, 7 s | 13.2 studs, 3 over the feet, 7 s | r **13.2**, centre at y 243.2 for feet at 240.2, gone after **7.02 s** | ok |
-| shield blocks a hit from outside | dropped (no damage, no shove) | | not measured yet: Studio closed (see below) | to do |
-| a hit from inside the same dome | lands | | not measured yet (my first try came after the dome had gone) | to do |
-| smoke | fuse 1.3 s, a 6.5 m cloud for 10 s | 19.5 studs, 10 s | not measured yet | to do |
+| shield blocks a hit from outside | dropped (no damage, no shove) | | a Redline shot at the Stand (inside) from 18 studs to the side (outside): **dropped**, the blocked flash, no damage event | ok |
+| a hit from inside the same dome | lands | | the same shot from inside the dome: **10** damage | ok |
+| smoke fuse and cloud | fuse 1.3 s, a 6.5 m cloud for 10 s | 19.5 studs, 10 s | thrown at 0.06 s, cloud at 1.36 s: **1.30 s**; cloud r **19.5**, **10 s** | ok |
+| smoke blocks sight (server) | a sight line passing within 6.5 m of the middle is blocked | 19.5 studs | a line through the middle: **blocked**; passing 19.43 off: **blocked**; 20.02 off: clear; 30.1 off: clear | ok |
+| smoke looks thick enough to hide a player | | | first photo: the far door showed through it, so the puffs were doubled, made bigger and fully solid; the new one is still to photograph | to do |
 | the loadout screen | four slots | a fourth card, G | pushed, not photographed yet | to do |
 
-The Studio place was closed at 09:39 UTC (an account moderation warning about another session's uploaded image, not
-these items); the place reopens from its 09:13 save, so this batch has to be pushed again before the rows marked "to do".
+(The Studio place was closed from 09:39 to 09:57 UTC: an account moderation warning about another session's uploaded
+image, not these items. The place reopened with Studio's recovered state, which held this batch; the rest went in at
+10:05 and was saved as place version 302.)
 
 ### Where the web server trusts the client, and what this port does instead
 
@@ -70,9 +73,18 @@ drift. Blast hits, heals and blocks are never reported by a client.
 - Third person shows no throw pose on other players (the web game doesn't either); the item just leaves their hand.
 - The other 9 items: Rubber Duck, Party Popper, Reverse Card (batch 2), then the gadgets (batch 3).
 
-## Batch 2: Rubber Duck, Party Popper, Reverse Card (built, not live yet)
+## Batch 2: Rubber Duck, Party Popper, Reverse Card (live since place version 311)
 
-The code, the models and the sounds are in; `live` stays false (`Items.luau`, `Roster.luau`) until each is play-tested.
+| what | web game | expected in Roblox | measured | |
+| --- | --- | --- | --- | --- |
+| popper shove on the Stand, 8 studs ahead | 50 m/s along you -> them + 12 up, no damage | (0, 45.2, -149.7) studs/s | **(0, 43.7, -135.1)** at its first physics step (one frame of gravity, and the floor's grip on a standing dummy) | ok |
+| popper kick on you | 17 m/s back along your look + 5 up | (0, 15, 51) | **(0, 13.7, 50.8)** (one frame of gravity and friction) | ok |
+| reverse card | for 3 s every hit on you goes back | | the Plinker's burst while the card was up: the **Plinker** took the 7, credited to you, "reflect" fx; its bursts after the 3 s hit you again (13, 7) | ok |
+| duck flight | homes on the nearest enemy ahead | | thrown at 0.05 s, homing on the Stand at once, stuck at **0.25 s** | ok |
+| duck hole | opens 0.3 s after sticking, 3 s, then pops | pops 3.55 s after the throw | opened on the Stand (age -0.30), popped at **3.55 s** | ok |
+| duck end blast | 45 x f (f = 1 in the middle) | 45 on the Stand it's stuck to | **45** | ok |
+| duck crush | 1 every 0.1 s on the one it's stuck to | 30 in 3 s | **26**: the pulse clock lost a tick in six to rounding (every 0.117 s). Fixed (the clock adds 0.1 instead of restarting); to recheck | fixed |
+| the thrower in their own hole | pulled, not hurt (web rule) | | 27 pulls toward it, no damage | ok |
 
 ![the batch 2 models](items/batch2-models.png)
 

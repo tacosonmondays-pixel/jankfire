@@ -538,16 +538,17 @@ local function addCloud(id: number, at: Vector3, r: number, left: number)
 	for i, o in spots do
 		local att = Instance.new("Attachment")
 		att.Position = o; att.Parent = h
+		-- (thick: the first photo in the hall showed the far door through it, so twice the puffs, bigger, fully solid)
 		local core = emitter(att, { Texture = TEX.blob, LightInfluence = 1, LightEmission = 0, Color = cs(SMOKE_COL),
-			Size = ns(0, r * 0.42, 1, r * 0.62), Transparency = ns(0, 1, 0.12, 0.04, 0.8, 0.12, 1, 1),
-			Lifetime = NR(2.6, 3.4), Rate = 3.5, Speed = NR(0.3 * S, 1.2 * S), SpreadAngle = Vector2.new(180, 180), Drag = 1,
+			Size = ns(0, r * 0.5, 1, r * 0.75), Transparency = ns(0, 1, 0.1, 0, 0.8, 0.05, 1, 1),
+			Lifetime = NR(2.6, 3.4), Rate = 7, Speed = NR(0.3 * S, 1.2 * S), SpreadAngle = Vector2.new(180, 180), Drag = 1,
 			Rotation = NR(0, 360), RotSpeed = NR(-12, 12), Acceleration = Vector3.new(0, 0.15 * S, 0) })
 		core.Enabled = true
-		core:Emit(3)
+		core:Emit(6)
 		table.insert(ems, core)
 		if i % 2 == 1 then
 			local wisp = emitter(att, { Texture = TEX.smoke, LightInfluence = 1, Color = cs(SMOKE_COL),
-				Size = ns(0, r * 0.5, 1, r * 0.8), Transparency = ns(0, 1, 0.15, 0.35, 1, 1),
+				Size = ns(0, r * 0.5, 1, r * 0.8), Transparency = ns(0, 1, 0.15, 0.2, 1, 1),
 				Lifetime = NR(2.2, 3), Rate = 2, Speed = NR(0.5 * S, 1.6 * S), SpreadAngle = Vector2.new(180, 180), Drag = 0.8,
 				Rotation = NR(0, 360), RotSpeed = NR(-20, 20) })
 			wisp.Enabled = true

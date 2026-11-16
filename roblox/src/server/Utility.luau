@@ -275,9 +275,11 @@ local function tickHoles(dt: number)
 			end
 			continue
 		end
+		-- (every 0.1 s on the dot: the clock adds a pulse instead of restarting it, or one tick in six is lost to rounding
+		-- and it pulses every 0.117 s: measured 26 crushes in 3 s, not 30)
 		h.tick -= dt
-		if h.tick > 0 then continue end
-		h.tick = D.pulse
+		if h.tick > 1e-6 then continue end
+		h.tick += D.pulse
 		if not owner then continue end
 		for _, v in table.clone(Fight.all) do
 			if not v.alive or not Fight.allow(owner, v) then continue end
@@ -558,7 +560,7 @@ function Utility.test(f: Fighter, id: string?): any
 	local c = charges(s)
 	return { item = s.item, n = c.n, next = if c.next > 0 then c.next - now() else 0, heal = s.heal, hp = f.hp,
 		reverse = math.max(0, s.reverseUntil - now()),
-		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes }
+		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes, cloud = if #clouds > 0 then clouds[#clouds].p else nil }
 end
 
 return Utility

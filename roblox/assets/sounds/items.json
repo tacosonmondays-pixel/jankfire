@@ -1,8 +1,53 @@
 {
  "_": "the utility items' sounds (tools/roblox/render_items.mjs), uploaded 2026-11-16 as Audio; Sounds of these names in ReplicatedStorage.JankfireSounds",
- "boom": { "id": 100581896763738, "vol": 0.9, "what": "a frag going off (sfx.boom)" },
- "heal": { "id": 130683203556907, "vol": 0.6, "what": "the medkit (sfx.heal)" },
- "reverse": { "id": 127872143067218, "vol": 0.6, "what": "a shield dome going up (sfx.reverse)" },
- "pop": { "id": 96072857676480, "vol": 0.6, "what": "a shield dome going out (sfx.pop)" },
- "blow": { "id": 126929763491027, "vol": 0.6, "what": "a smoke bomb popping into a cloud (sfx.blow)" }
+ "boom": {
+  "id": 100581896763738,
+  "vol": 0.9,
+  "what": "a frag going off (sfx.boom)"
+ },
+ "heal": {
+  "id": 130683203556907,
+  "vol": 0.6,
+  "what": "the medkit (sfx.heal)"
+ },
+ "reverse": {
+  "id": 127872143067218,
+  "vol": 0.6,
+  "what": "a shield dome going up (sfx.reverse)"
+ },
+ "pop": {
+  "id": 96072857676480,
+  "vol": 0.6,
+  "what": "a shield dome going out (sfx.pop)"
+ },
+ "blow": {
+  "id": 126929763491027,
+  "vol": 0.6,
+  "what": "a smoke bomb popping into a cloud (sfx.blow)"
+ },
+ "popper": {
+  "id": 71599052635976,
+  "vol": 0.7,
+  "what": "the party popper going off (sfx.popper + sfx.partyHorn)"
+ },
+ "squeak": {
+  "id": 105448201846936,
+  "vol": 0.6,
+  "what": "a rubber duck squeak (sfx.squeak)"
+ },
+ "quack": {
+  "id": 118561278371574,
+  "vol": 0.7,
+  "what": "the duck sticking to someone (sfx.quack)"
+ },
+ "hole": {
+  "id": 140159673320992,
+  "vol": 0.7,
+  "what": "a black hole humming (sfx.hole)"
+ },
+ "ropesnap": {
+  "id": 100021090892199,
+  "vol": 0.6,
+  "what": "your rope snapping in a black hole (sfx.ropeSnap)"
+ }
 }
