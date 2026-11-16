@@ -23,6 +23,11 @@ def sha(p):
     with open(p, 'rb') as fh: return hashlib.sha1(fh.read()).hexdigest()
 
 
+# never uploaded, whatever wraps.json says: on 16 Nov 2026 the owner's Roblox account was moderated over a wrap image
+# that looked like a QR code. Roblox does not allow QR codes (or anything that reads as one) in images.
+NEVER = {'qr'}
+
+
 def load(p, d):
     return json.load(open(p)) if os.path.exists(p) else d
 
@@ -53,7 +58,7 @@ def maps_of(wdir, s):
 
 def main():
     wdir, cmd, rest = sys.argv[1], sys.argv[2], sys.argv[3:]
-    spec = load(os.path.join(wdir, 'wraps.json'), {})
+    spec = {k: v for k, v in load(os.path.join(wdir, 'wraps.json'), {}).items() if k not in NEVER}
     man = load(MANIFEST, {})
     if cmd == 'list':
         seen = set()

@@ -1455,9 +1455,11 @@ def receipt(t: Tex):
     n = t.n; r = t.rng
     t.rgb[:] = mix('e9e6dc', 'f3f0e8', smoothstep(-0.5, 0.5, FBM([2, 4], 491)(t.U, t.V)))
     t.rough[:] = 0.7
-    rows = [('    JANK MART #0069', 1), ('------------------------', 0.6), ('1x BANANA          0.99', 1), ('1x MARBLES (BAG)   4.20', 1),
-            ('1x BREAD           2.50', 0.85), ('AMMO (BULK)       69.00', 1), ('1x DIGNITY         0.00', 0.6), ('SUBTOTAL          76.69', 1),
-            ('TAX (JANK)         6.66', 0.9), ('TOTAL             83.35', 1), ('  THANK U COME AGAIN', 0.75)]
+    # (no 69 / 420 / 666 jokes anywhere on Roblox: the owner's account was moderated on 16 Nov 2026 while wraps that
+    # carried them were uploading)
+    rows = [('    JANK MART #0042', 1), ('------------------------', 0.6), ('1x BANANA          0.99', 1), ('1x MARBLES (BAG)   4.25', 1),
+            ('1x BREAD           2.50', 0.85), ('AMMO (BULK)       12.00', 1), ('1x DIGNITY         0.00', 0.6), ('SUBTOTAL          19.74', 1),
+            ('TAX (JANK)         1.58', 0.9), ('TOTAL             21.32', 1), ('  THANK U COME AGAIN', 0.75)]
     for i, (txt, a) in enumerate(rows):
         m = text_cover(n, [(txt, 40, 40 + i * 70, 44, 'monob', 'lt', 0)])
         t.fill(m * a, '2c2c32')
@@ -1509,7 +1511,7 @@ def sheet(t: Tex):
         for i in range(0, 8):
             if (i, j) == (4, 5): continue
             if r.uniform() < 0.25: continue
-            v = '69' if r.uniform() < 0.1 else str(int(r.integers(0, 999)))
+            v = str(int(r.integers(0, 999)))
             cells.append((v, i * cw + cw - 14, j * ch + ch / 2, 30, 'reg', 'rm', 0))
     t.fill(text_cover(n, cells), '1c1c20')
     t.fill(text_cover(n, [('#REF!', 4 * cw + cw - 12, 5 * ch + ch / 2, 30, 'bold', 'rm', 0)]), 'd01818')
@@ -1570,22 +1572,16 @@ def glitch(t: Tex):
 
 @design('meat')
 def meat(t: Tex):
-    """meat suit: deep red muscle marbled with pale fat, a few purple veins; wet and glossy"""
-    U, V = t.U, t.V
-    w1, w2 = FBM([2, 4], 511)(U, V), FBM([2, 4], 512)(V, U)
-    f = FBM([3, 6, 12], 513, 0.55)(U + 0.12 * w1, V + 0.12 * w2)
-    t.rgb[:] = mix('6a0c18', 'a8182a', smoothstep(-0.5, 0.5, f))
-    g = FBM([(3, 4), (6, 8), (12, 16)], 514, 0.6)(U + 0.1 * w2, V + 0.1 * w1)
-    gx = (np.roll(g, -1, 1) - np.roll(g, 1, 1)) * 0.5; gy = (np.roll(g, -1, 0) - np.roll(g, 1, 0)) * 0.5
-    dist = np.abs(g) / (np.sqrt(gx * gx + gy * gy) + 1e-6)
-    wid = 2 + 8 * smoothstep(-0.2, 0.6, FBM([4, 8], 515)(U, V))
-    t.fill(np.clip(wid - dist + 0.5, 0, 1) * 0.9, 'f0d6cc')
-    t.fill(np.clip(wid + 4 - dist + 0.5, 0, 1) * 0.3, 'd88a8c')
-    h2 = FBM([(5, 5), (10, 10)], 516)(U, V)
-    gx = (np.roll(h2, -1, 1) - np.roll(h2, 1, 1)) * 0.5; gy = (np.roll(h2, -1, 0) - np.roll(h2, 1, 0)) * 0.5
-    d2 = np.abs(h2) / (np.sqrt(gx * gx + gy * gy) + 1e-6)
-    t.fill(np.clip(2.2 - d2 + 0.5, 0, 1) * smoothstep(0.1, 0.4, FBM([3, 6], 517)(U, V)), '5a2468')
-    t.rough[:] = 0.14
+    """meat suit, as cured salami: deep red slices flecked with round white fat and black pepper, clearly food (no
+       raw flesh)"""
+    n = t.n; r = t.rng
+    t.rgb[:] = mix('7a1c22', '92262a', smoothstep(-0.5, 0.5, FBM([3, 6], 511)(t.U, t.V)))
+    t.rough[:] = 0.4
+    for x, y in scatter(r, n, 140, 52):
+        R = r.uniform(5, 14)
+        t.shape((x - R - 3, y - R - 3, x + R + 3, y + R + 3), sd_ellipse(x, y, R, R * r.uniform(0.7, 1.0), r.uniform(0, TAU)), color=mix('ecd6cc', 'f6e8e0', r.uniform()))
+    for x, y in scatter(r, n, 60, 60, taken=[]):
+        t.shape((x - 6, y - 6, x + 6, y + 6), sd_circle(x, y, r.uniform(2.5, 4.0)), color='241414')
     return {}
 
 
@@ -1618,14 +1614,14 @@ def corp(t: Tex):
 
 @design('jersey')
 def jersey(t: Tex):
-    """jersey: team red with white and navy hoops and a big white 69, in a fine sports mesh"""
+    """jersey: team red with white and navy hoops and a big white 07, in a fine sports mesh"""
     n = t.n
     t.rgb[:] = hexrgb('b81c26')
     y0 = n * 0.12
     for a, b, col in ((y0, y0 + 60, 'efece4'), (y0 + 60, y0 + 140, '1c2a5e'), (y0 + 140, y0 + 200, 'efece4')):
         t.fill(cover(np.maximum(a - t.Y, t.Y - b)), col)
-    m = text_cover(n, [('69', n * 0.5, n * 0.64, 420, 'black', 'mm', 0)])
-    t.fill(np.clip(text_cover(n, [('69', n * 0.5 + 8, n * 0.64 + 8, 420, 'black', 'mm', 0)]) - m, 0, 1) * 0.6, '1c2a5e')
+    m = text_cover(n, [('07', n * 0.5, n * 0.64, 420, 'black', 'mm', 0)])
+    t.fill(np.clip(text_cover(n, [('07', n * 0.5 + 8, n * 0.64 + 8, 420, 'black', 'mm', 0)]) - m, 0, 1) * 0.6, '1c2a5e')
     t.fill(m, 'efece4')
     holes = (np.sin(t.X * TAU / 10) * np.sin(t.Y * TAU / 10))
     t.height[:] = -np.clip(holes, 0, 1) * 0.6
@@ -1672,7 +1668,7 @@ def barcode(t: Tex):
     n = t.n; r = t.rng
     t.rgb[:] = hexrgb('f2f2ec')
     t.rough[:] = 0.5
-    for y0, digits in ((40, '0 69420 13377 4'), (552, '6 00000 00001 9')):
+    for y0, digits in ((40, '4 01234 56789 3'), (552, '7 00000 00001 2')):
         x = 90.0
         while x < 930:
             bw = int(r.integers(1, 4)) * 8
@@ -1730,22 +1726,20 @@ def arcade(t: Tex):
     return {'emissive': 1.1, 'tint': 'ffffff'}
 
 
-@design('qr')
+# NOT a texture wrap: on 16 Nov 2026 the owner's Roblox account was moderated over this wrap's first upload, which
+# looked like a QR code (finder squares); Roblox does not allow QR codes in images. "QR Code" stays a colour wrap.
+# Kept here unregistered, as a mosaic with no finder squares, only so the history is clear. Never register it again.
 def qr(t: Tex):
-    """QR code: black modules and the three finder squares on white, a smiley where the logo goes (scans as nothing)"""
+    """QR code, as a data mosaic: black modules on white round a smiley; deliberately no finder squares (Roblox does not
+       allow QR codes in images, and this must not read as one to a scanner)"""
     n = t.n; r = t.rng
     m = 32
     t.rgb[:] = hexrgb('f4f4f0')
     cells = (r.uniform(size=(32, 32)) < 0.47)
-    for fx, fy in ((0, 0), (25, 0), (0, 25)):
-        cells[fy:fy + 7, fx:fx + 7] = False
-        for j in range(7):
-            for i in range(7):
-                ring = max(abs(i - 3), abs(j - 3))
-                cells[fy + j, fx + i] = ring != 2
     cells[12:20, 12:20] = False
     mask = cells[(t.Y // m).astype(int) % 32, (t.X // m).astype(int) % 32].astype(np.float32)
     t.fill(mask, '141416')
+    # (no finder squares at all: Roblox does not allow QR codes in images, so this is a data mosaic round a smiley)
     smiley(t, 16 * m, 16 * m, 112, 'ecc834', '141416')
     t.rough[:] = 0.45
     return {}
@@ -1753,21 +1747,19 @@ def qr(t: Tex):
 
 @design('organ')
 def organ(t: Tex):
-    """organ donor: a pink ☺ CORP donor card, a heart and a kidney, the small print, and an APPROVED stamp"""
+    """organ donor: a pink ☺ CORP donor card with a heart, the small print and an APPROVED stamp (a heart only: no
+       body parts, no blood)"""
     n = t.n
     t.rgb[:] = hexrgb('f6e6ea')
     t.fill(cover(np.maximum(-t.Y, t.Y - 170)), 'd8405e')
     t.fill(cover(t.Y - 940) * cover(n - t.Y), 'd8405e')
-    t.fill(text_cover(n, [('ORGAN DONOR', n / 2, 88, 100, 'black', 'mm', 0)]), 'fbeef0')
-    hx, hy, s = 230, 400, 140
-    heart = [(hx, hy + s * 0.9)] + bezier((hx, hy + s * 0.9), (hx - s * 1.4, hy - s * 0.1), (hx - s * 0.6, hy - s * 1.1), (hx, hy - s * 0.35)) + \
-        bezier((hx, hy - s * 0.35), (hx + s * 0.6, hy - s * 1.1), (hx + s * 1.4, hy - s * 0.1), (hx, hy + s * 0.9))
-    t.shape(bbox_of(heart), sd_polygon(heart), color='c4182e')
-    t.shape((hx - 80, hy - 90, hx, hy - 20), sd_ellipse(hx - 45, hy - 55, 30, 16, -0.6), color='f08aa0')
-    t.shape((130, 620, 330, 860), sd_ellipse(230, 740, 72, 104, 0.25), color='9a3048')
-    t.shape((200, 690, 280, 790), sd_ellipse(250, 740, 22, 40, 0.25), color='f6e6ea')
-    lines = ['NAME: ____________', 'PARTS: all of them', 'BLOOD: jank+', 'VALUE: $4.20', 'PROPERTY OF :) CORP']
-    t.fill(text_cover(n, [(s_, 420, 250 + i * 104, 44, 'bold', 'lt', 0) for i, s_ in enumerate(lines)]), '3a3a40')
+    t.fill(text_cover(n, [('DONOR CARD', n / 2, 88, 100, 'black', 'mm', 0)]), 'fbeef0')
+    hx, hy, s = 230, 520, 150
+    heart = [(hx, hy + s * 0.9)] + bezier((hx, hy + s * 0.9), (hx - s * 1.4, hy - s * 0.1), (hx - s * 0.6, hy - s * 1.1), (hx, hy - s * 0.35)) +         bezier((hx, hy - s * 0.35), (hx + s * 0.6, hy - s * 1.1), (hx + s * 1.4, hy - s * 0.1), (hx, hy + s * 0.9))
+    t.shape(bbox_of(heart), sd_polygon(heart), color='d03050')
+    t.shape((hx - 90, hy - 100, hx, hy - 20), sd_ellipse(hx - 48, hy - 60, 32, 17, -0.6), color='f08aa0')
+    lines = ['NAME: ____________', 'SIGNED: yes', 'HEART: kind', 'PROPERTY OF :) CORP']
+    t.fill(text_cover(n, [(s_, 420, 260 + i * 120, 46, 'bold', 'lt', 0) for i, s_ in enumerate(lines)]), '3a3a40')
     m = text_cover(n, [('APPROVED', 760, 810, 70, 'black', 'mm', 17)])
     rot = math.radians(-17)
     c, s_ = math.cos(rot), math.sin(rot)
@@ -1950,7 +1942,7 @@ def stonks(t: Tex):
     X, Y, idx = t.box(-40, 150, n + 40, 960)
     t.paint(idx, cover(sd_polyline(pts, 5)(X, Y)), 'ff3a3a', emit=1.0)
     t.fill(text_cover(n, [(':) CORP -99.9%', 40, 930, 60, 'monob', 'lm', 0)]), 'ff3a3a', emit=1.0)
-    t.fill(text_cover(n, [('JANK +420%', 600, 70, 60, 'monob', 'lm', 0)]), '3aff5a', emit=1.0)
+    t.fill(text_cover(n, [('JANK +300%', 600, 70, 60, 'monob', 'lm', 0)]), '3aff5a', emit=1.0)
     t.fill(text_cover(n, [('SELL SELL', 40, 70, 60, 'monob', 'lm', 0)]), 'ffd84a', emit=1.0)
     t.rough[:] = 0.2
     return {'emissive': 1.3, 'tint': 'ffffff'}

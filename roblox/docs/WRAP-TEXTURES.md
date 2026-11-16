@@ -49,6 +49,22 @@ The PNGs are not kept in git (about 1.5 MB each); the script draws them again, i
 A new wrap needs its row in `src/shared/Roster.luau` too (name, rarity, and the palette the old colour path still uses
 on pieces without UVs).
 
+## What may never be drawn (16 November 2026: the account was moderated)
+
+At 09:39 UTC on 16 November the owner's Roblox account was moderated and Studio was put out of the place, while the
+batch 3 and 4 maps were uploading. The cause traced was the **QR Code** wrap's first image: random modules with the
+three corner finder squares. It encoded nothing, but it looked like a QR code, and Roblox does not allow QR codes in
+images. Rules for every wrap from now on:
+
+- **Nothing that reads as a QR code** (or any scannable code with finder squares). "QR Code" is a plain colour wrap;
+  `wrap_upload.py` refuses it (`NEVER`), and its design is kept unregistered.
+- **No 69 / 420 / 666 jokes**, in text or numbers (they were in the web game's jersey, barcode, receipt, spreadsheet
+  and stonks). The jersey says 07 now.
+- **No body parts, blood or anything that reads as raw flesh**: the organ card has a heart only ("DONOR CARD"),
+  Meat Suit is salami.
+- No real script, no links, no names. Made-up glyphs only (Tokyo Night).
+- Before an upload batch, look at every colour map at full size, not only the contact sheet.
+
 ## Lessons
 
 - **Under the halls' lamps warm colours run hot**: Tiger's first orange (`c25c18`) read as traffic-cone orange in

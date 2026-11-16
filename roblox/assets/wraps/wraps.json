@@ -544,15 +544,6 @@
    "emit": 0.0
   }
  },
- "qr": {
-  "maps": {
-   "color": "qr_color.png",
-   "normal": null,
-   "rough": 0.45,
-   "metal": 0.0,
-   "emit": 0.0
-  }
- },
  "racing": {
   "maps": {
    "color": "racing_color.png",
