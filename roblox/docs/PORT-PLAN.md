@@ -515,6 +515,9 @@ version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_mod
 - **The Marble Shotgun's jar** shows the ammo, fuller for longer (14 balls; one shot of two leaves 9). The reload flips
   the lid, pours the balls back in and snaps the lid shut (with the Gumball Machine's crank). It keeps the web game's
   1.9 s. Frame strip: `gun-models/marbles-reload.jpg`.
+- **No z-fighting inside the guns** (place version 401): every gun and skin is built with flat-on faces of different
+  looks pulled apart (`tools/roblox/gun_zfix.py`: 0.04 studs on its smallest display, 8 mm at most). The armory's
+  12 display guns scan clean with `ZFight`. Details: `GUN-MODELS.md`, "No z-fighting inside a gun".
 
 ## 21. Training v2: the training area rebuilt to the new principles, 16 November 2026 (place version 268)
 

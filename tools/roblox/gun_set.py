@@ -246,6 +246,21 @@ for _part in ('gun_skins_1', 'gun_skins_2', 'gun_skins_3'):
     except ImportError as e:
         if _part not in str(e): raise
 
+# NO Z-FIGHTING (16 Nov 2026, the hub's flicker scan): every gun and skin comes out of its builder with coplanar faces of
+# different looks pulled apart (tools/roblox/gun_zfix.py: 0.04 studs on its smallest display, at most 8 mm).
+# JF_NOZFIX=1 builds them as written (to see what the fix moved)
+if not os.environ.get('JF_NOZFIX'):
+    import gun_zfix
+
+    def _zfixed(f):
+        def built():
+            g = f()
+            gun_zfix.zfix(g)
+            return g
+        built.__name__ = f.__name__
+        return built
+    BUILD = {k: _zfixed(f) for k, f in BUILD.items()}
+    SKINS = {k: _zfixed(f) for k, f in SKINS.items()}
 
 if __name__ == '__main__':
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []

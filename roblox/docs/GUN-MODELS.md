@@ -247,6 +247,39 @@ The owner: "gumball shotgun should lose less gumballs? idk how that would work, 
   game's reload time (1.9 s). The off hand (the bag, the slap on the lid, the hand riding the crank) is the hold
   session's, in Viewmodel.
 - The numbers are in the Marble Shotgun's row in `Weapons.luau` (`mdl.parts`: jar, lid, crank).
+- Pictures: `gun-models/marbles-reload.jpg` (posed in Studio from the game code, without the hand) and
+  `gun-models/skins-in-studio.jpg` (25 of the 26 skins side by side).
+
+## No z-fighting inside a gun (16 November 2026, place version 401)
+
+The hub's flicker scan (`ZFight`) found about a dozen pairs of faces inside the armory's display guns, gaps of 0.002 to
+0.019 studs. These are two pieces of different looks lying in one plane, facing the same way and overlapping, so the
+GPU can't tell which is in front. `tools/roblox/gun_zfix.py` now runs on every gun and skin as it is built
+(`gun_set.py` wraps each builder). It uses the flicker session's `zfightfix.py` finder.
+
+- **Where a gun is checked:** in the studs of its smallest static display, the armory racks (long guns 6.6 studs,
+  the rest 3.9). That is about 3.2 to 11.5 studs a metre.
+- **How a pair is fixed:** it is pulled apart to 0.04 studs there, or 8 mm at most on the gun. On the long guns shown
+  small (Sniper, Shotgun, Hat Trick, about 3.2 studs a metre) 0.04 studs would be 12 mm and change their look; 8 mm
+  is about 0.026 studs, still clear of the scan's 0.02.
+- **Which face moves:** the one already in front moves further out (it is the detail meant to be seen: the Hat
+  Trick's blue blocks on its handle panel). Of two level faces, a trim (`_wzN`: bands, stripes, lenses) stands out
+  over a shell; between two of a kind, the smaller face. Faces always move outward. Only a face's own corners move
+  (within 0.3 mm of its plane), so a thin stripe keeps its back on the body.
+- **Two traps found on the way:**
+  - The finder reads triangles by vertex index, and a builder's mesh can carry stale indices. The fix then saw
+    garbage and the first round looked clean here but not in Studio (place version 396 still had 8 pairs). The
+    indices are refreshed first now.
+  - `zfightfix` skips triangles under 0.01 sq studs each, which suits the map kits. A gun's top faces are cut into
+    small triangles, so here every triangle counts and a pair needs 0.004 sq studs of overlap.
+- **Checks:**
+  - `gun_zfix.py -- all`, before (`JF_NOZFIX=1`): 424 pairs on 40 of the 42 models. After: 5, all at 0.025 studs or
+    more, clear of the scan.
+  - The exported files, scanned the same way: the same.
+  - `gun_check.py`: every gun and skin is still one connected piece.
+  - In Studio, the armory's 12 display guns: 0 hits (`ZFight`, tol 0.02).
+- **The look:** a few millimetres at most. The Hat Trick, Shotgun and Lawn Mower lost speckled seams and now show
+  their side panels and top ribs cleanly; the rest look the same (`JF_NOZFIX=1` builds them as before, to compare).
 
 ## How it was judged
 
