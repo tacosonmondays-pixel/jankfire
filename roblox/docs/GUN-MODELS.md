@@ -14,8 +14,8 @@ rivals heavily look at how they build their weapons, then put them side by side 
 version, **C**, each gun drawn from a real gun and built the way Rivals builds. The owner then picked per gun from
 `gun-models/pick-1.jpg` to `-4.jpg` (below, "The picked set", `gun-models/final-set.jpg`). Then: "make sure the
 magazine, stocks mount etc works for all of them and are connected pieces that look good" (`gun_check.py`, below). The
-picked set is built and exported; it goes into the game at the next upload (Studio's place closed at 09:39 UTC on
-16 Nov before it; the game still has round 8b).
+picked set is live in place version 298 (16 Nov, 10:00 UTC, after the account warning was cleared), with UVs for the
+image wraps (`gun_uvs.py` at the export step) and every piece but the Neon and Glass ones marked `WrapUV`.
 
 **No weapon number, name, mechanic or gimmick changed.** Every new model keeps its gun's muzzle, sight, port, grip
 and fore spots, the names and pivots of the pieces that move, and the grip and handguard where the hands go, so the
@@ -291,6 +291,7 @@ the A/B Assault Rifle and would need its own C version. Preview: `gun_preview.py
   colour in hand from round 8 on. The Shredder (a Tool) has no fill light yet.
 - **Open:** the owner's pick, A, B or C per gun; then one rebuild, upload and import of the picked set (with the wrap
   session's UVs at the export step).
-- **Uploads:** each round's models are new Roblox assets (`jf_kit_*` to `jf_kit8b_*`, private to the owner); only the
+- **Uploads:** each round's models are new Roblox assets (`jf_kit_*` to `jf_kit9_*`, private to the owner; the list up to 8b, with times and states, is in the shared
+  notes, `gun-models-uploads-16nov.md`); only the
   ids in `roblox/assets/weapons-kit/assets.json` are used. The older ones are harmless and can be deleted from the
   creator dashboard.
