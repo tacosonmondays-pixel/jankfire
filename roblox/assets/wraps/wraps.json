@@ -126,7 +126,7 @@
   "maps": {
    "color": "carbon_color.png",
    "normal": "carbon_normal.png",
-   "rough": 0.2,
+   "rough": 0.12,
    "metal": 0.0,
    "emit": 0.0
   }
@@ -337,11 +337,9 @@
    "color": "holo_color.png",
    "normal": null,
    "rough": "holo_rough.png",
-   "metal": "holo_metal.png",
-   "emit": "holo_emit.png"
-  },
-  "emissive": 0.9,
-  "tint": "ffffff"
+   "metal": 0.85,
+   "emit": 0.0
+  }
  },
  "jade": {
   "maps": {
@@ -481,7 +479,7 @@
   "maps": {
    "color": "nebula_color.png",
    "normal": null,
-   "rough": 0.3,
+   "rough": "nebula_rough.png",
    "metal": 0.0,
    "emit": "nebula_emit.png"
   },

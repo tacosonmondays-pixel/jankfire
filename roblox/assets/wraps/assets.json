@@ -662,5 +662,189 @@
  "cb0e275782e505e1ce46c7c4e51514a0ff7ce5bd": {
   "file": "watermelon_color.png",
   "id": 90841171347514
+ },
+ "99a1936158fc51013170894c0850702098801c9b": {
+  "file": "galaxy_color.png",
+  "id": 95766649635869
+ },
+ "dea6c3280293c36cb337778252ee60176bc707b2": {
+  "file": "galaxy_rough.png",
+  "id": 111210311919281
+ },
+ "bba94d38b3c503ecd7f27e1bd418596493e577a7": {
+  "file": "galaxy_emit.png",
+  "id": 112752056128323
+ },
+ "15adb4664a407a7b0a9b433e5077eb4071ca9e87": {
+  "file": "nebula_color.png",
+  "id": 105694952687702
+ },
+ "6dd626d2134f31ec1523ea5b3b4a22513a532e42": {
+  "file": "nebula_rough.png",
+  "id": 129516065093790
+ },
+ "ec6feb114d1da0edb0bb69a439733d6b1a9592c1": {
+  "file": "nebula_emit.png",
+  "id": 83111959314338
+ },
+ "0174a7902ba505608f8bf77b512e36578956a8e4": {
+  "file": "hex_color.png",
+  "id": 128959129874534
+ },
+ "55529cb6935194dbeb34498126b74a34b94d4474": {
+  "file": "hex_emit.png",
+  "id": 81756205506723
+ },
+ "626e41ca02ab6a7b34158689e996d7b2361f1e16": {
+  "file": "camo_color.png",
+  "id": 104940898604659
+ },
+ "83b3becae9060cb0540999beceea83d05fb6c693": {
+  "file": "carbon_color.png",
+  "id": 78674907493527
+ },
+ "721c1b03b8d0eec3feb9d69b944f700f5a912d13": {
+  "file": "carbon_normal.png",
+  "id": 113226979752222
+ },
+ "cd80ce72714905e50af03fa28a04a210202e4f00": {
+  "file": "damascus_color.png",
+  "id": 86926357081596
+ },
+ "9e072503e05f94141879b603322ad9b151452212": {
+  "file": "damascus_normal.png",
+  "id": 90344798500045
+ },
+ "05239940c914180afba1a1f84c861816cde0dc8b": {
+  "file": "damascus_rough.png",
+  "id": 74437243778405
+ },
+ "ce951fe71c96e6d2ee503bb74a6f32914ff21337": {
+  "file": "racing_color.png",
+  "id": 90259319466164
+ },
+ "da03f2a58a2e187d77bb34bab357b765c84265bb": {
+  "file": "racing_rough.png",
+  "id": 126566076555814
+ },
+ "af1f21b58c782ad99401db700647f684bfc4eb39": {
+  "file": "sakura_color.png",
+  "id": 128579597278957
+ },
+ "4583a574de6596a9f6bb3c229ce8b726a0c74151": {
+  "file": "tiger_color.png",
+  "id": 118051934031305
+ },
+ "835a8262970817db22e8daacab3b05c2d095878a": {
+  "file": "tiger_rough.png",
+  "id": 79006320467584
+ },
+ "52ad569b52ce486fb2c869fd4dbb5488e45d4b0d": {
+  "file": "galaxy_color.png",
+  "id": 90078044926159
+ },
+ "e84f0738a86d80f3fac33179f1a09f9a34f29d1c": {
+  "file": "galaxy_rough.png",
+  "id": 130981452387711
+ },
+ "cffe5f027aea53094df7871bcfb1f7072056932a": {
+  "file": "galaxy_emit.png",
+  "id": 100419913095115
+ },
+ "97087f68d76ca33a7eb7a516fdd4e223f9c58dc8": {
+  "file": "galaxy_color.png",
+  "id": 71663236901969
+ },
+ "0a885ace1f2b1a5897e969a3a1d5f6fb2b81c2ce": {
+  "file": "galaxy_rough.png",
+  "id": 94433191804412
+ },
+ "b701c8b86638f0c43947e5e50b64754648d4bb8a": {
+  "file": "galaxy_emit.png",
+  "id": 123667683041729
+ },
+ "c92034ed5fd1b8ead63ced26944e3ca1c7b5e962": {
+  "file": "camo_color.png",
+  "id": 107386450883056
+ },
+ "cd24241fb4fa7ece50adb1e22df36f41e8a8f3bb": {
+  "file": "tiger_color.png",
+  "id": 99093980421181
+ },
+ "3f7494c6c6e1330d00bb6ab79d2a9f5959de0142": {
+  "file": "sakura_color.png",
+  "id": 123428538363283
+ },
+ "89036a8141245af52679b6152cfd79cd54e8cf97": {
+  "file": "carbon_color.png",
+  "id": 104829393513314
+ },
+ "4d46086d1564543e37c0fa04f4ed5d76e023efca": {
+  "file": "carbon_normal.png",
+  "id": 112532475241697
+ },
+ "1bb8ec3b5bab65d5a61d84962b03e09fecf4b1ad": {
+  "file": "damascus_color.png",
+  "id": 109651273322128
+ },
+ "81a30ee659e850a9cc8a9e103d6a361e10d4f5c3": {
+  "file": "damascus_normal.png",
+  "id": 95370792691593
+ },
+ "de1369c44fed99bd225919f4bcfef6f3fbbd8ae6": {
+  "file": "damascus_rough.png",
+  "id": 116078324263071
+ },
+ "6f0e7b252b3ae6277b18484e33bf713df9526a86": {
+  "file": "hazard_color.png",
+  "id": 111781830645989
+ },
+ "6a75a9ed44748a034607efe448be803b086a510c": {
+  "file": "hazard_rough.png",
+  "id": 101698535781098
+ },
+ "f6a26f7c93695a5727537b97a09b267aa7528267": {
+  "file": "hex_rough.png",
+  "id": 138979801052248
+ },
+ "00154acfdafba1a06ad73a16543712bae7f5f256": {
+  "file": "holo_color.png",
+  "id": 72803871240710
+ },
+ "ded1e3c224930624279df2d0bdd322ba6431662d": {
+  "file": "holo_rough.png",
+  "id": 127555019867679
+ },
+ "1d9988304f380fc9c6734c65d0a9afebf1e0c975": {
+  "file": "const_metal_085.png",
+  "id": 117290716005650
+ },
+ "6f66006d2ae3531b90b4169bf613bb530fadde12": {
+  "file": "racing_color.png",
+  "id": 133204188455439
+ },
+ "dfe65465496914873fe73d1cba8d5c52f193039d": {
+  "file": "racing_rough.png",
+  "id": 115207516535287
+ },
+ "24b8563f051e3e8fd7abcfbc20be6f1d14060357": {
+  "file": "tiger_color.png",
+  "id": 98350572983592
+ },
+ "e81d1684662dbb7202508c9248abef1f9c8e4f95": {
+  "file": "hazard_color.png",
+  "id": 77484146054549
+ },
+ "661cc4000d9becce9df0e7fc69797f599ec42083": {
+  "file": "tiger_color.png",
+  "id": 81637732511452
+ },
+ "bfdabd903445a76d3b04befdff3a48b9e33fb4f7": {
+  "file": "hazard_color.png",
+  "id": 103267526864180
+ },
+ "53903f7d6777b2f895a5e843d412a9167924cda6": {
+  "file": "damascus_color.png",
+  "id": 75538114965592
  }
 }

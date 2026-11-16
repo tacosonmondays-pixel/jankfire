@@ -25,8 +25,11 @@
 #
 # THE LOOK (owner, 16 Nov 2026; vault Principles/Design principles.md): serious and polished, in the class of RIVALS,
 # never noisy. Wraps are cosmetics, so colour is allowed, but each must be deliberate: clean shapes, a few flat colours
-# with smooth tonal shifts, real shapes for details (five-pointed stars, notched petals, tapered stripes), no pixel
-# specks, no grain. Warm colours and purples come out brighter under the halls' lamps: they are picked a step darker.
+# with smooth tonal shifts, real shapes for details (notched petals, tapered stripes), no pixel specks, no grain.
+# Space is drawn as space: stars in the sky are round dots of many sizes with a soft glow, never five-pointed star
+# shapes or twinkles (owner, 16 Nov 2026, of Galaxy: "get rid of the stars and just keep them like dots, I want it to
+# look like an actual galaxy"; StarLight below). A star as an emblem or sticker (Holo, Arcade) keeps its points.
+# Warm colours and purples come out brighter under the halls' lamps: they are picked a step darker.
 import sys, os, json, math, zlib
 import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -73,51 +76,128 @@ def design(wid):
 
 
 # ====================================================================== batch 1: the hardest ten
+STAR_COLOURS = (('ffffff', 0.50), ('d6e2ff', 0.27), ('fff1d8', 0.15), ('ffd2a6', 0.08))  # white, blue, warm, orange
+
+
+class StarLight:
+    """light added over a picture (screen blend): round stars as dots with a soft glow, never a pointed star shape
+       (owner, 16 Nov 2026: "get rid of the stars and just keep them like dots, I want it to look like an actual
+       galaxy")"""
+    def __init__(self, t: Tex):
+        self.t = t
+        self.L = np.zeros((t.n, t.n, 3), np.float32)
+
+    def dot(self, x, y, r, amp, col, glow=0.0, glow_r=None):
+        """a round star: a crisp disc of radius r (anti-aliased, Gaussian-soft at its rim) and an optional wide halo"""
+        gr = glow_r or r * 3.0
+        ext = max(r * 2.5, gr * 3.0 if glow else 0) + 2
+        X, Y, idx = self.t.box(x - ext, y - ext, x + ext, y + ext)
+        d = np.hypot(X - x, Y - y)
+        core = np.exp(-0.5 * (d / max(r * 0.75, 0.6)) ** 2)
+        a = amp * core
+        if glow: a = a + glow * np.exp(-0.5 * (d / gr) ** 2)
+        c = hexrgb(col) if isinstance(col, str) else np.asarray(col, np.float32)
+        self.L[idx] += a[..., None] * c
+
+    def add(self, a, col):
+        self.L += np.asarray(a, np.float32)[..., None] * hexrgb(col)
+
+    def done(self, emit=0.9, rough=0.22):
+        t = self.t
+        L = np.clip(self.L, 0, 1)
+        t.rgb[:] = 1 - (1 - t.rgb) * (1 - L)
+        lum = L.max(-1)
+        t.emit[:] = np.maximum(t.emit, np.clip(lum * emit, 0, 1))
+        t.rough[:] = t.rough * (1 - lum) + rough * lum
+
+
+def star_colour(r):
+    k = r.uniform(); s = 0.0
+    for c, p in STAR_COLOURS:
+        s += p
+        if k < s: return c
+    return 'ffffff'
+
+
+def spiral_galaxy(S: StarLight, cx, cy, R, tilt, rot, pitch=0.5, turn=1, arm_col='bccbff', core_col='fff0d6', amp=1.0,
+                  seed=1):
+    """a small spiral galaxy seen at a slant: a warm bulge, a bar of haze, and two blue-white arms winding out with
+       clumps of young stars along them (light only)"""
+    t = S.t
+    X, Y, idx = t.box(cx - R * 1.25, cy - R * 1.25, cx + R * 1.25, cy + R * 1.25)
+    dx, dy = X - cx, Y - cy
+    c, s = math.cos(rot), math.sin(rot)
+    a, b = dx * c + dy * s, (-dx * s + dy * c) / tilt
+    r = np.hypot(a, b) / R + 1e-4
+    th = np.arctan2(b, a)
+    ph = th - turn * np.log(r) / math.tan(pitch)
+    arm = (0.5 + 0.5 * np.cos(2 * ph)) ** 3
+    clump = 0.6 + 0.4 * smoothstep(0.1, 0.6, Perlin(8, seed)(ph / TAU, r * 3))
+    disc = np.exp(-r / 0.32) * smoothstep(1.05, 0.5, r)
+    bulge = np.exp(-0.5 * (r / 0.07) ** 2)
+    haze = np.exp(-r / 0.14) * 0.35
+    ca, cc = hexrgb(arm_col), hexrgb(core_col)
+    S.L[idx] += (disc * (0.12 + 0.88 * arm * clump) * 1.2 * amp)[..., None] * ca
+    S.L[idx] += ((bulge * 1.0 + haze) * amp)[..., None] * cc
+
+
 @design('galaxy')
 def galaxy(t: Tex):
-    """deep space: smooth violet nebulae over indigo, crisp five-pointed stars, twinkles and star dust that glow"""
+    """an actual galaxy, up close: violet and blue star clouds over near-black space, dark dust lanes winding through
+       them, thousands of round stars (dots of every size, white, blue-white and warm, thickest in the clouds), a few
+       bright ones with a soft round glow, and two small spiral galaxies far off. No pointed star shapes."""
     n, U, V = t.n, t.U, t.V
-    w1, w2 = FBM([2, 4], 11), FBM([2, 4], 12)
-    wu, wv = U + 0.08 * w1(U, V), V + 0.08 * w2(U, V)
-    neb = FBM([2, 4, 8], 13)(wu, wv)
-    neb2 = FBM([3, 6], 14)(wu + 0.3, wv)
-    m = smoothstep(-0.15, 0.55, neb)
-    m2 = smoothstep(0.1, 0.7, neb2)
-    base = mix('100828', '24154f', smoothstep(-0.6, 0.4, neb))[..., :]
-    t.rgb[:] = base
-    t.fill(m * 0.75, '5a36a8')
-    t.fill(m * m * 0.55, '9a6ae0')
-    t.fill(m2 * (1 - m) * 0.35, '2c3a8a')   # a little deep blue where the violet thins
-    t.emit[:] = m * 0.12
+    wu, wv = U + 0.07 * FBM([2, 4], 11)(U, V), V + 0.07 * FBM([2, 4], 12)(U, V)
+    neb = FBM([2, 4, 8, 16], 13, 0.55)(wu, wv)           # how bright the star clouds are
+    m = smoothstep(-0.25, 0.6, neb)
+    m2 = smoothstep(0.0, 0.65, FBM([3, 6, 12], 14, 0.5)(wu + 0.3, wv))
+    pink = smoothstep(0.35, 0.75, FBM([6, 12], 16)(wu, wv)) * m
+    ridge = 1 - np.abs(FBM([3, 6, 12], 15, 0.55)(wu * 1.0 + 0.11, wv))
+    # dust: soft, thin, and only through the heart of a cloud (at its rim it read as a crack round every cloud)
+    lane = blur_wrap(smoothstep(0.88, 0.985, ridge), 6) * smoothstep(0.05, 0.5, neb)
+    t.rgb[:] = mix('03030e', '0c0b28', smoothstep(-0.7, 0.3, neb))   # near-black navy (round 2)
+    t.fill(m * 0.6, '322f88')
+    t.fill(m * m * 0.6, '6a4fc2')
+    t.fill(m * m * m * 0.35, 'b8a2d8')                    # the thick of the clouds goes pale, as a real star cloud
+    t.fill(m2 * (1 - m) * 0.35, '1c3a78')                 # deep blue where the violet thins
+    t.fill(pink * 0.42, '9a3f86')                         # a few pink gas knots
+    t.rgb[:] = t.rgb * (1 - 0.55 * lane)[..., None]
+    t.emit[:] = (m * 0.10 + m ** 3 * 0.10) * (1 - lane)
     t.rough[:] = 0.3
     r = t.rng
-    # dust: small round points, more of them in the clouds
-    for _ in range(700):
+    S = StarLight(t)
+    # two far-off spiral galaxies, in the darker parts of the tile (placed first: no bright star lands on one)
+    spots = []
+    for _ in range(600):
         x, y = r.uniform(0, n), r.uniform(0, n)
-        k = float(m[int(y) % n, int(x) % n])
-        if r.uniform() > 0.35 + 0.65 * k: continue
-        rad = r.uniform(1.1, 2.4)
-        col = '#ffffff' if r.uniform() < 0.7 else '#d8c4ff'
-        t.shape((x - 4, y - 4, x + 4, y + 4), sd_circle(x, y, rad), color=col, emit=0.55 + 0.4 * r.uniform())
-    big = scatter(r, n, 4, 300)
-    mid = scatter(r, n, 9, 170, taken=[(x, y, 260) for x, y in big])
-    for i, (x, y) in enumerate(big + mid):
-        hero = i < len(big)
-        ro = r.uniform(40, 54) if hero else r.uniform(15, 30)
-        rot = r.uniform(0, TAU)
-        # a soft halo, then the star, then a brighter heart
-        X, Y, idx = t.box(x - ro * 2.4, y - ro * 2.4, x + ro * 2.4, y + ro * 2.4)
-        sd = sd_star(x, y, ro, ro * 0.42, 5, rot, round_=ro * 0.06)(X, Y)
-        halo = np.exp(-np.maximum(sd, 0) / (ro * 0.45)) * (0.35 if hero else 0.22)
-        t.paint(idx, halo, '8f66ff', emit=halo * 1.5)
-        t.paint(idx, cover(sd), 'efe4ff', emit=1.0, rough=0.2)
-        sd2 = sd_star(x, y, ro * 0.55, ro * 0.55 * 0.42, 5, rot, round_=ro * 0.04)(X, Y)
-        t.paint(idx, cover(sd2) * 0.85, '#ffffff')
-    for x, y in scatter(r, n, 12, 90, taken=[(x, y, 120) for x, y in big + mid]):
-        ro = r.uniform(9, 18)
-        X, Y, idx = t.box(x - ro, y - ro, x + ro, y + ro)
-        sd = sd_sparkle(x, y, ro, 0.16, r.uniform(-0.2, 0.2))(X, Y)
-        t.paint(idx, cover(sd), '#f6f0ff', emit=0.9)
+        if m[int(y), int(x)] < 0.2 and all(min(abs(x - a), n - abs(x - a)) ** 2 + min(abs(y - b), n - abs(y - b)) ** 2 > 400 ** 2 for a, b in spots):
+            spots.append((x, y))
+        if len(spots) == 2: break
+    gal = [(x, y, 120 if i == 0 else 64) for i, (x, y) in enumerate(spots)]
+    for i, (x, y, R) in enumerate(gal):
+        spiral_galaxy(S, x, y, R, 0.5 if i == 0 else 0.72, r.uniform(0, TAU), turn=1 if i == 0 else -1,
+                      amp=0.95 if i == 0 else 0.75, seed=17 + i)
+    def clear(x, y, k=0.55):
+        for gx, gy, R in gal:
+            ddx = abs(x - gx); ddx = min(ddx, n - ddx); ddy = abs(y - gy); ddy = min(ddy, n - ddy)
+            if ddx * ddx + ddy * ddy < (R * k) ** 2: return False
+        return True
+    dens = np.clip(0.03 + 0.97 * (m ** 2 * (1 - lane) + 0.08 * m2), 0, 1)   # the dots gather in the clouds
+    # the field: thousands of faint dots, packed into the clouds (each dot 0.5 to 2 mm)
+    for _ in range(18000):
+        x, y = r.uniform(0, n), r.uniform(0, n)
+        if r.uniform() > dens[int(y) % n, int(x) % n]: continue
+        k = r.uniform() ** 4
+        S.dot(x, y, 1.1 + 1.5 * k, 0.16 + 0.6 * k, star_colour(r))
+    # the stars between the clouds, a little brighter, a soft glow round each (three to five millimetres)
+    for _ in range(80):
+        x, y = r.uniform(0, n), r.uniform(0, n)
+        if not clear(x, y, 1.1): continue
+        S.dot(x, y, r.uniform(2.4, 3.6), r.uniform(0.7, 1.0), star_colour(r), glow=0.14, glow_r=r.uniform(6, 9))
+    # the few brightest: a round heart and a wide halo, spaced well apart
+    for x, y in scatter(r, n, 7, 260, taken=[(gx, gy, R * 1.4) for gx, gy, R in gal]):
+        S.dot(x, y, r.uniform(4.2, 5.4), 1.0, star_colour(r), glow=0.26, glow_r=r.uniform(12, 16))
+    S.done()
     return {'emissive': 1.2, 'tint': 'ffffff'}
 
 
@@ -139,7 +219,8 @@ def camo_layers(t: Tex, base, light, mid, dark, seed, cut=(0.02, 0.12, 0.2), str
 @design('camo')
 def camo(t: Tex):
     """woodland camo: olive, khaki sage, bark brown and near-black green"""
-    camo_layers(t, '4a5530', '7b7f55', '3d3122', '22261a', 20)
+    # (round 2 in the hall: the 4a5530 olive went lime under the warm lamps; olive drab now)
+    camo_layers(t, '414831', '5c5d47', '3b3023', '22261a', 20)
     t.rough[:] = 0.78
     return {}
 
@@ -150,16 +231,20 @@ def tiger(t: Tex):
        tapered points and forks (the contour bands of a warped field, cut where a second field thins them)"""
     U, V = t.U, t.V
     tone = FBM([2, 4], 31)(U, V)
-    t.rgb[:] = mix('a14a14', 'b8601e', smoothstep(-0.5, 0.6, tone))
-    t.fill(smoothstep(0.25, 0.7, FBM([(3, 2), (6, 4)], 36)(U, V)) * 0.35, 'c88a48')   # paler patches in the coat
+    # (round 2 in the hall: 8a3a10..a24e18 still read as hot red-orange under the warm lamps; a browner coat)
+    # the training hall's warm light moves a colour by about (+5, -12, -35) of 255 in hand, so a low blue channel
+    # vanishes and amber turns traffic-cone orange (a24e18 came out d23d00, 8a562c came out 863604, af7743 came out
+    # be6b1c). The coat keeps its blue up so it lands near amber (a8662e) in hand: WRAP-TEXTURES.md, 'in-hand colour'
+    t.rgb[:] = mix('9c6c4a', 'aa7a56', smoothstep(-0.5, 0.6, tone))
+    t.fill(smoothstep(0.25, 0.7, FBM([(3, 2), (6, 4)], 36)(U, V)) * 0.2, 'bc9c80')   # paler patches in the coat
     warp = FBM([(2, 3), (4, 6)], 32, 0.5)(U, V)
     wob = FBM([(4, 2), (8, 4)], 33, 0.5)(U, V)
-    ph = 6.0 * U + 0.8 * warp + 0.08 * np.sin(V * TAU * 3)
+    ph = 6.0 * U + 1.1 * warp + 0.08 * np.sin(V * TAU * 3)
     s = np.cos(ph * TAU)                                   # +1 down the middle of each band
     thin = FBM([(5, 3), (10, 6), (20, 12)], 34, 0.55)(U, V)
-    f = s - (0.66 + 1.15 * thin) + 0.25 * wob               # the band's own width and its breaks
+    f = s - (0.62 + 1.45 * thin) + 0.35 * wob               # the band's own width and its breaks
     t.rough[:] = 0.42
-    t.fill(field_cover(f, 0.0), '18110c', rough=0.5)
+    t.fill(field_cover(f, 0.0), '36261b', rough=0.5)       # dark brown, not black (it lands near black in hand)
     return {}
 
 
@@ -167,7 +252,7 @@ def tiger(t: Tex):
 def carbon(t: Tex):
     """2x2 twill carbon fibre under a clear coat: each tow a rounded ribbon of fine fibres, the weave in relief"""
     n = t.n
-    c = 32
+    c = 16                        # (judge 1: the 32 px weave read as brick; 4 mm tows now)
     X, Y = t.X, t.Y
     i, j = np.floor(X / c).astype(int), np.floor(Y / c).astype(int)
     fx, fy = (X % c) / c, (Y % c) / c
@@ -181,14 +266,14 @@ def carbon(t: Tex):
     bulge = np.sqrt(np.clip(1 - (2 * across - 1) ** 2, 0, 1))
     dive = 1 - (np.abs(2 * f2 - 1) ** 6)
     h = bulge * (0.35 + 0.65 * dive)
-    fib = 0.5 + 0.5 * np.cos(across * TAU * 6)    # fine fibres along the tow
-    lum = 0.11 + 0.17 * h * (0.75 + 0.25 * fib)
-    lum = lum * np.where(vert, 1.0, 0.82)          # the two directions catch the light differently
+    fib = 0.5 + 0.5 * np.cos(across * TAU * 4)    # fine fibres along the tow
+    lum = 0.06 + 0.11 * h * (0.85 + 0.15 * fib)   # near black (round 2: it read as chrome basketweave)
+    lum = lum * np.where(vert, 1.0, 0.86)          # the two directions catch the light differently
     base = np.array([1.0, 1.02, 1.12], np.float32)
     t.rgb[:] = np.clip(lum[..., None] * base, 0, 1)
-    t.height[:] = h * 2.2
+    t.height[:] = h * 0.5
     t.normal_k = 1.0
-    t.rough[:] = 0.2
+    t.rough[:] = 0.12             # a glossy clear coat over the weave
     return {}
 
 
@@ -203,10 +288,10 @@ def sakura(t: Tex):
     """sakura storm: pale five-petal blossoms with notched petals and stamens, loose petals drifting, on deep plum"""
     n, U, V = t.n, t.U, t.V
     tone = FBM([2, 3], 41)(U, V)
-    t.rgb[:] = mix('241024', '3b1438', smoothstep(-0.6, 0.6, tone))
+    t.rgb[:] = mix('2c2130', '3c2b3c', smoothstep(-0.6, 0.6, tone))   # plum-charcoal (round 2: 3e1838 went hot plum)
     t.rough[:] = 0.36
     r = t.rng
-    blossoms = scatter(r, n, 5, 330)
+    blossoms = scatter(r, n, 9, 230)
     loose = scatter(r, n, 13, 110, taken=[(x, y, 200) for x, y in blossoms])
     for x, y in loose:
         L = r.uniform(32, 50); rot = r.uniform(0, TAU)
@@ -216,7 +301,7 @@ def sakura(t: Tex):
         shade = r.uniform(0, 1)
         t.paint(idx, cover(sd) * 0.92, mix('e889b8', 'ffd3e6', shade))
     for x, y in blossoms:
-        R = r.uniform(72, 96); rot = r.uniform(0, TAU)
+        R = r.choice([44.0, 56.0, 68.0, 80.0]) + r.uniform(-4, 4); rot = r.uniform(0, TAU)   # several sizes
         X, Y, idx = t.box(x - R - 4, y - R - 4, x + R + 4, y + R + 4)
         d = np.hypot(X - x, Y - y)
         grad = mix('ff86b9', 'ffe6f0', smoothstep(R * 0.15, R * 0.95, d)[..., None] * np.ones(3, np.float32))
@@ -242,21 +327,23 @@ def hazard(t: Tex):
     sd = (np.abs(s - 64.0) - 64.0) / math.sqrt(2)    # < 0 inside the yellow band
     a = cover(sd)
     t.rgb[:] = hexrgb('18181b')
-    t.fill(a, 'e2b200')
-    t.rough[:] = 0.42 - 0.08 * a
+    t.fill(a, 'b09c58')                 # muted ochre in hand (e2b200 was the loudest wrap; b08a1e came out ae7a02 and
+                                        # ba9a42 c0981f: the hall's warm shift eats blue, see tiger)
+    t.rough[:] = 0.5 - 0.06 * a
     t.height[:] = a * 0.6
     return {}
 
 
 @design('racing')
 def racing(t: Tex):
-    """checkered flag: bold crisp checks, slightly warm white and deep black, gloss lacquer"""
+    """checkered flag: crisp 3.1 cm checks fading into gloss black and back, one band of them per tile height
+       (judge 1: checks over the whole gun strobed in first person)"""
     def wave(x, cell):
         f = x % (2 * cell)
         e = np.where(f < cell, np.minimum(f, cell - f), -np.minimum(f - cell, 2 * cell - f))
         return np.clip(0.5 + e, 0, 1) * 2 - 1
-    q = wave(t.X, 128.0) * wave(t.Y, 128.0)
-    white = (1 + q) / 2
+    q = wave(t.X, 128.0) * wave(t.Y, 128.0)   # 3.1 cm (round 2: 1.6 cm blurred to a grey grid at range)
+    white = (1 + q) / 2 * (0.08 + 0.92 * smoothstep(0.15, 0.75, tri(t.V)))
     t.rgb[:] = hexrgb('141416')
     t.fill(white, 'ecebe6')
     t.rough[:] = 0.26 + 0.06 * white
@@ -299,12 +386,14 @@ def neon_hex(t: Tex):
     # a lighter top bevel catches the lamps
     topb = np.clip(1 - inner / bev, 0, 1) * a
     t.rgb[:] = t.rgb + (hexrgb('1c3048') - t.rgb) * (topb * 0.35)[..., None]
-    line = np.clip(1.6 - np.abs(-d - groove * 0.5), 0, 1)       # the glowing filament in the groove
-    halo = np.exp(-np.maximum(np.abs(-d - groove * 0.5) - 1.0, 0) / 3.0) * (1 - a)
-    t.fill(line, '6fe4ff'); t.fill(halo * 0.45, '1f7fa6')
-    t.emit[:] = np.maximum(line, halo * 0.6)
+    # one glowing filament down the middle of each groove: on the cell boundary itself (d = 0), which both cells share
+    # (at -d = groove / 2 each cell drew its own, two lines a groove)
+    line = np.clip(1.8 - np.abs(d), 0, 1)
+    halo = np.exp(-np.maximum(np.abs(d) - 1.0, 0) / 2.2) * (1 - a)
+    t.fill(line, '6fe4ff'); t.fill(halo * 0.3, '1f7fa6')
+    t.emit[:] = np.maximum(line, halo * 0.35)
     t.height[:] = hpanel * 3.0
-    t.rough[:] = 0.55 - 0.27 * a
+    t.rough[:] = 0.6 - 0.14 * a     # satin panels (at 0.28 they mirrored the hall's warm walls in game)
     return {'emissive': 2.0, 'tint': '4fd8ff'}
 
 
@@ -316,45 +405,35 @@ def damascus(t: Tex):
     wu = U + 0.03 * FBM([4, 8], 63)(U, V)
     f = FBM([2, 4, 8], 61, 0.5)(wu, V)
     g = FBM([3, 6], 62)(U, V)
-    ph = 13.0 * f + 5.0 * V + 2.0 * g
+    ph = 20.0 * f + 7.0 * V + 2.0 * g
     s = np.sin(ph * TAU)
     fine = np.sin(ph * 2 * TAU)
-    bright = smoothstep(-0.35, 0.35, s)
-    lum = 0.42 + 0.26 * bright + 0.04 * fine * (1 - np.abs(s))
+    # half bright, half dark layers with soft edges, all within mid greys (judge 1: near black to white read as a
+    # barcode; judge 2: thin bright lines on black read as a contour map)
+    bright = smoothstep(-0.3, 0.3, s)
+    lum = 0.42 + 0.13 * bright + 0.03 * fine * (1 - np.abs(s))   # (round 3: full metal doubles the contrast in hand)
     t.rgb[:] = np.clip(lum[..., None] * np.array([1.0, 1.02, 1.06], np.float32), 0, 1)
     t.metal[:] = 1.0
-    t.rough[:] = 0.42 - 0.18 * bright
-    t.height[:] = bright * 0.8
+    t.rough[:] = 0.36 - 0.1 * bright
+    t.height[:] = bright * 0.4
     return {}
 
 
 @design('holo')
 def holo(t: Tex):
-    """holo foil: silver foil with a soft prismatic sheen and crisp sparkling stars, each in its own hue"""
-    n, U, V = t.n, t.U, t.V
+    """holo foil: dark chrome with narrow prismatic bands sweeping across it, the hue drifting along each band
+       (round 2: the pale foil with star stickers read as a pastel toy and blew out white on top)"""
+    U, V = t.U, t.V
     w = FBM([2, 4], 71)(U, V)
-    hue = ((U + V) * 2 + 0.35 * w) % 1.0
-    def hsv(h, s, v):
-        k = lambda m: (m + h * 6) % 6
-        f = lambda m: v - v * s * np.clip(np.minimum(k(m), 4 - k(m)), 0, 1)
-        return np.stack([f(5), f(3), f(1)], -1)
-    t.rgb[:] = hsv(hue, 0.16, 0.9)
-    t.metal[:] = 0.8
-    t.rough[:] = 0.22
-    r = t.rng
-    stars = scatter(r, n, 26, 110)
-    for i, (x, y) in enumerate(stars):
-        five = i % 3 == 0
-        ro = r.uniform(16, 30) if five else r.uniform(10, 24)
-        X, Y, idx = t.box(x - ro * 1.6, y - ro * 1.6, x + ro * 1.6, y + ro * 1.6)
-        sd = (sd_star(x, y, ro, ro * 0.42, 5, r.uniform(0, TAU), round_=1.2) if five else sd_sparkle(x, y, ro, 0.17, r.uniform(-0.25, 0.25)))(X, Y)
-        hh = (float(hue[int(y) % n, int(x) % n]) + 0.5) % 1.0
-        col = hsv(np.float32(hh), np.float32(0.45), np.float32(1.0))
-        glow = np.exp(-np.maximum(sd, 0) / 5.0) * 0.4
-        t.paint(idx, glow, col, emit=glow)
-        t.paint(idx, cover(sd), col, emit=0.9, rough=0.08, metal=0.6)
-        t.paint(idx, cover(sd + ro * 0.22), '#ffffff')
-    return {'emissive': 0.9, 'tint': 'ffffff'}
+    ph = (U * 0.8 + V) * 3.0 + 0.3 * w
+    hue = (ph * 0.5 + 0.2 * w) % 1.0
+    band = smoothstep(0.8, 0.99, 0.5 + 0.5 * np.cos(ph * TAU * 2))
+    base = hsv(hue, np.float32(0.07), np.float32(0.5))
+    lit = hsv(hue, np.float32(0.28), np.float32(0.78))
+    t.rgb[:] = base + (lit - base) * band[..., None]
+    t.metal[:] = 0.85
+    t.rough[:] = 0.26 - 0.06 * band
+    return {}
 
 
 # ====================================================================== batch 2
@@ -744,7 +823,8 @@ def bubblewrap(t: Tex):
 
 @design('nebula')
 def nebula(t: Tex):
-    """nebula: deep violet space full of glowing pink and blue gas, fine round stars and a few four-point twinkles"""
+    """nebula: deep violet space full of glowing pink and blue gas, fine round stars and a few bright ones with a soft
+       round glow (dots only, like Galaxy)"""
     n, U, V = t.n, t.U, t.V
     wu, wv = U + 0.1 * FBM([2, 4], 301)(U, V), V + 0.1 * FBM([2, 4], 302)(U, V)
     a = smoothstep(-0.1, 0.6, FBM([2, 4, 8, 16], 303, 0.55)(wu, wv))
@@ -755,17 +835,14 @@ def nebula(t: Tex):
     t.emit[:] = np.clip(a * 0.35 + b * 0.25, 0, 1)
     t.rough[:] = 0.3
     r = t.rng
-    for _ in range(500):
+    S = StarLight(t)
+    for _ in range(2200):
         x, y = r.uniform(0, n), r.uniform(0, n)
-        rad = r.uniform(1.0, 2.2)
-        t.shape((x - 4, y - 4, x + 4, y + 4), sd_circle(x, y, rad), color='ffffff', emit=0.9)
+        k = r.uniform() ** 3
+        S.dot(x, y, 1.3 + 1.5 * k, 0.3 + 0.6 * k, star_colour(r))
     for x, y in scatter(r, n, 9, 200):
-        ro = r.uniform(14, 26)
-        X, Y, idx = t.box(x - ro * 1.5, y - ro * 1.5, x + ro * 1.5, y + ro * 1.5)
-        sd = sd_sparkle(x, y, ro, 0.14, 0)(X, Y)
-        halo = np.exp(-np.maximum(np.hypot(X - x, Y - y), 0) / (ro * 0.3)) * 0.5
-        t.paint(idx, halo, 'f0d0ff', emit=halo)
-        t.paint(idx, cover(sd), '#ffffff', emit=1.0)
+        S.dot(x, y, r.uniform(3.6, 5.0), 1.0, 'fff4ff', glow=0.3, glow_r=r.uniform(10, 15))
+    S.done()
     return {'emissive': 1.3, 'tint': 'ffffff'}
 
 

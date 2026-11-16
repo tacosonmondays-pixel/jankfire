@@ -405,9 +405,19 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 	local n = #wr.pal
 	local mat = if wr.mat then (Enum.Material :: any)[wr.mat] else Enum.Material.SmoothPlastic
 	local pic = picture(wr.id)
+	-- on an unfolded gun a picture wrap leaves the pieces without UVs alone: those are its glow and glass parts
+	-- (WeaponImport gives them no WrapUV), and the old palette made them pale shards amid the picture
+	local unfolded = false
+	if pic then
+		for _, p in painted do
+			if p:IsA("MeshPart") and p:GetAttribute("WrapUV") then unfolded = true; break end
+		end
+	end
 	for i, p in painted do
+		local uv = p:IsA("MeshPart") and p:GetAttribute("WrapUV")
+		if unfolded and not uv then continue end
 		remember(p)
-		if pic and p:IsA("MeshPart") and p:GetAttribute("WrapUV") then
+		if pic and uv then
 			local old = p:FindFirstChildOfClass("SurfaceAppearance")
 			if old then stash[p] = old; old.Parent = nil end
 			p.TextureID = ""; p.Material = Enum.Material.SmoothPlastic; p.Reflectance = 0
