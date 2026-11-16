@@ -35,8 +35,8 @@ local ID = CFrame.identity
 -- the slide (degrees; sink = how far Move.client lowers HipHeight in a slide; lift = the hips up from the worked-out
 -- height, measured in Play: without it the folded shin sat 0.35 into the floor; rate = the ease, per second)
 local T = {
-	lean = 24, waist = 4, neck = -26,
-	frontHip = 38, frontKnee = -6, frontAnkle = -18,
+	lean = 28, waist = 4, neck = -30,
+	frontHip = 32, frontKnee = -6, frontAnkle = -18,
 	backHip = 14, backKnee = -108, backAnkle = 30, backOut = -8,
 	leftArm = -65, leftArmBack = 20, rightArm = 18, rightArmOut = 12,
 	sink = 0.9, lift = 0.3, rate = 18,

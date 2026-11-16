@@ -137,8 +137,8 @@ trying to run". The slide pose (`client_root/CrouchPoses.client.luau`) used to b
 was playing, so Roblox's run cycle kept kicking the legs underneath. Now (place version 466):
 
 - **The slide takes the body outright:** the Root, both hips, knees and ankles, the waist, the neck and both arms are
-  set to the slide pose (lerped from the animation by the slide's weight), whatever the run is doing. Leaning back 24
-  degrees, the right leg out in front nearly straight, the left folded under, the left arm out for balance. The
+  set to the slide pose (lerped from the animation by the slide's weight), whatever the run is doing. Leaning back 28
+  degrees (the torso ends up about 32 back), the right leg out in front nearly straight, the left folded under, the left arm out for balance. The
   third-person weapon pose still runs after it, so a held gun stays held (the arms only take the slide pose when
   they're free).
 - **Hips at the right height for any body:** the hips' height is worked out from the body's own leg and foot lengths
@@ -158,6 +158,17 @@ underneath every one: the feet don't move (0.000), the folded shin rests on the 
 0.22 up.
 
 ![a slide, start middle and end](third-person/slide.jpg)
+
+*(In this first strip the outer two bodies were frozen at 35 % and 55 % of the ease, inside its first and last
+0.12 s, so they read as a kneel. A real slide is at 88 % by 0.1 s and holds the full pose to the end: below.)*
+
+**One pose from start to end (place version 470).** Leaned back more ( 24 to 28, the neck to -30 so the head
+stays level) and the front leg a little lower ( 38 to 32): at full weight the torso leans back 32 degrees,
+the folded shin is 0.05 studs off the floor and the front heel 0.20. Frozen at the weights a real slide has 0.1 s in
+(0.88), in the middle and 0.1 s before the end (1, 1), with the run animation playing underneath, the pose is the same
+(the last two measure the same to the hundredth of a stud).
+
+![the slide holds one pose](third-person/slide-steady.jpg)
 
 ## The network
 
