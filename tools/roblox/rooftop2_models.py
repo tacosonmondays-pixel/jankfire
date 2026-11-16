@@ -45,6 +45,7 @@ BODY, BODYG = 'b3aea4', '66707a'                         # the towers' stone ban
 AMBER, LAMP, WARM = 'b8913f', 'f4efe6', 'f2dcc0'         # the one accent / light panels / warm light panels
 PINK, CYAN = 'ff4fd8', '37d6ff'                          # team colours (attackers west, defenders east); pads cyan
 TEAMCOL = {-1: PINK, 1: CYAN}
+TEAMSIGN = {-1: 'b8489a', 1: '2d9fbe'}               # the team colours as matte paint (signs, bands)
 
 PIECES = {}      # (model, 'kind_hex') -> [(bmesh, matrix in Roblox space)]
 COL = []         # ('b', (cx, cy, cz), (sx, sy, sz), (rx, ry, rz)) | ('c', (x, y0, z), r, h)
@@ -418,8 +419,8 @@ def centre_roof():
 def court():
     m = 'r2_court'
     # the pit: two steps down all round, then the floor
-    oct_ring(m, STONE, A_MID, A_RIM, PIT, -1.5, bev=0.25, splits=2, solid=True)      # the upper step (top -1.5)
-    oct_ring(m, STONE2, A_STEP, A_MID, PIT, -3.0, bev=0.25, splits=2, solid=True)    # the lower step (top -3)
+    oct_ring('r2_steps', STONE, A_MID, A_RIM, PIT, -1.5, bev=0.25, splits=2, solid=True)      # the upper step (top -1.5)
+    oct_ring('r2_steps', STONE2, A_STEP, A_MID, PIT, -3.0, bev=0.25, splits=2, solid=True)    # the lower step (top -3)
     oct_ring(m, PAVE, 20.0, A_STEP, FLOOR - 0.6, FLOOR, bev=0.12, splits=3)
     oct_ring(m, PAVE2, P_OUT, 20.0, FLOOR - 0.6, FLOOR, bev=0.12, splits=2)
     # its hit boxes: four round the pool's square, four in the cut corners
@@ -443,13 +444,13 @@ def court():
     cyl(c, STONE, 0, LEDGE, CZ, 6.5, 12.6 - LEDGE, segs=40, bev=0.3, solid=False)  # the drum, up to 12.6
     COL.append(('c', (0, LEDGE, CZ), 6.5, 12.6 - LEDGE))
     for y in (-1.2, 2.4, 6.0): cyl(c, STONE2, 0, y, CZ, 6.85, 1.0, segs=40, bev=0.25, solid=False)
-    cyl(c, '6f747b', 0, 8.0, CZ, 6.62, 2.4, segs=40, bev=0.1, solid=False)
+    cyl(c, '858990', 0, 8.0, CZ, 6.62, 2.4, segs=40, bev=0.1, solid=False)
     for i in range(20):
         a = 2 * math.pi * i / 20
         box(c, MID, (6.75 * math.cos(a), 9.2, CZ + 6.75 * math.sin(a)), (0.55, 2.3, 0.9), (0, -a, 0), bev=0.15, solid=False)
     cyl(c, LAMP, 0, 10.75, CZ, 6.72, 0.8, segs=40, bev=0.05, kind='neon', solid=False)
     cyl(c, TRIM, 0, 11.55, CZ, 7.5, 1.1, segs=40, bev=0.35, solid=False)       # cornice
-    lathe(c, '737a83', [(6.4, 12.6)] + [(6.4 * math.cos(t), 12.6 + 4.0 * math.sin(t)) for t in [math.pi / 2 * i / 8 for i in range(1, 8)]] + [(0.0, 16.6)], 0, 0, CZ, segs=40)
+    lathe(c, 'a3854f', [(6.4, 12.6)] + [(6.4 * math.cos(t), 12.6 + 4.0 * math.sin(t)) for t in [math.pi / 2 * i / 8 for i in range(1, 8)]] + [(0.0, 16.6)], 0, 0, CZ, segs=40)
     cyl(c, TRIM, 0, 16.3, CZ, 0.9, 1.3, segs=16, bev=0.3, solid=False)
     COL.append(('c', (0, 12.6, CZ), 5.0, 3.6))
     for i in range(4):   # light thrown up on the dome and down the drum
@@ -462,9 +463,9 @@ def court():
         nx, nz = nrm(k)
         c = (nx * 24.0, FLOOR + 4.75, CZ + nz * 24.0)
         yaw = math.pi / 2 - k * math.pi / 4
-        box(m, SLATE, (c[0], FLOOR + 0.45, c[2]), (10.6, 0.9, 3.6), (0, yaw, 0), bev=0.2, solid=False)
-        box(m, STONE, c, (10.0, 9.5, 3.0), (0, yaw, 0), bev=0.9, segs=1)
-        box(m, SLATE, (c[0], FLOOR + 9.6, c[2]), (10.4, 0.8, 3.4), (0, yaw, 0), bev=0.25, solid=False)
+        box(m, SLATE, (c[0], FLOOR + 0.45, c[2]), (14.6, 0.9, 3.6), (0, yaw, 0), bev=0.2, solid=False)
+        box(m, STONE, c, (14.0, 9.5, 3.0), (0, yaw, 0), bev=0.9, segs=1)
+        box(m, SLATE, (c[0], FLOOR + 9.6, c[2]), (14.4, 0.8, 3.4), (0, yaw, 0), bev=0.25, solid=False)
     for oz in (23, -23):
         B(m, SLATE, -6.3, FLOOR, CZ + oz - 1.6, 6.3, FLOOR + 0.9, CZ + oz + 1.6, bev=0.2, solid=False)
         B(m, STONE, -6, FLOOR, CZ + oz - 1.3, 6, FLOOR + 3.0, CZ + oz + 1.3, bev=0.45)
@@ -511,6 +512,11 @@ def forecourt(s):
     solB(kx0, 0, 12.0, kx1, 9.4, 26.0)
     louvres(m, kx0 + 1.2, kx1 - 1.2, 11.9, 2.0, 6.8, -1)
     louvres(m, kx0 + 1.2, kx1 - 1.2, 26.1, 2.0, 6.8, 1)
+    for (zf, sgn) in ((11.75, -1), (26.25, 1)):                # a frame round each louvre panel
+        B(m, TRIM, kx0 + 0.6, 1.4, zf - 0.25, kx1 - 0.6, 2.0, zf + 0.25, bev=0.12, solid=False)
+        B(m, TRIM, kx0 + 0.6, 6.8, zf - 0.25, kx1 - 0.6, 7.4, zf + 0.25, bev=0.12, solid=False)
+        B(m, TRIM, kx0 + 0.6, 1.4, zf - 0.25, kx0 + 1.2, 7.4, zf + 0.25, bev=0.12, solid=False)
+        B(m, TRIM, kx1 - 1.2, 1.4, zf - 0.25, kx1 - 0.6, 7.4, zf + 0.25, bev=0.12, solid=False)
     fan(m, X(48.5), 9.4, 19.0)
     # the stair up to the gallery, along the parapet: from z 20 (floor) to z 44 (+10)
     sx0, sx1 = xr(CBX - 11, CBX - 2.5)
@@ -552,7 +558,7 @@ def gallery():
     # the slab on piers, paved on top, a deep fascia on the court side
     B(m, STONE, -CBX, GY - 1.5, GZ0, CBX, GY - 0.5, GZ1, bev=0.3, solid=False)
     solB(-CBX, GY - 1.5, GZ0, CBX, GY, GZ1)
-    tiles(m, -CBX, CBX, GZ0, GZ1, GY, lambda cx, cz: PAVE2, grid=8.0, off=0.0, thick=0.5)
+    tiles(m, -CBX, CBX, GZ0, GZ1, GY, lambda cx, cz: '86878a', grid=8.0, off=0.0, thick=0.5)
     B(m, SLATE, -CBX, GY - 2.6, GZ0 - 0.4, CBX, GY - 0.4, GZ0 + 0.8, bev=0.3, solid=False)
     for x in (-56, -40, -24, -8.5, 8.5, 24, 40, 56):
         pier(m, x - 1.25, GZ0, x + 1.25, GZ0 + 2.5, 0.0, GY - 2.6)
@@ -814,7 +820,11 @@ def spawn_roof(s):
     sf0, sf1 = xr(106.5, 107.0)
     B(m, SLATE, sf0, 9.2, -5.7, sf1, 11.8, 5.7, bev=0.15, solid=False)        # the sign's surround
     sg0, sg1 = xr(106.3, 106.6)
-    B(m, TEAMCOL[s], sg0, 9.6, -5.0, sg1, 11.4, 5.0, bev=0.08, solid=False)    # the team's sign (matte)
+    B(m, TEAMSIGN[s], sg0, 9.6, -5.0, sg1, 11.4, 5.0, bev=0.08, solid=False)   # the team's sign (matte)
+    em = X(106.15)                                                              # a raised off-white emblem on it
+    box(m, TRIM, (em, 10.5, 0.0), (0.35, 1.05, 1.05), (math.pi / 4, 0, 0), bev=0.12, solid=False)
+    for zc in (-2.6, 2.6):
+        box(m, TRIM, (em, 10.5, zc), (0.3, 0.42, 2.6), (0, 0, 0), bev=0.1, solid=False)
     a0, a1 = xr(107.3, 113.7)
     B(m, AMBER, a0, 0.0, -5.0, a1, 0.06, 5.0, bev=0.03, solid=False)
     # piers on the outside faces (3 wide, 2 deep): the front between the portal and the corners, the sides by the doors
@@ -842,20 +852,22 @@ def spawn_roof(s):
         zk0, zk1 = sorted((sz * 25.6, sz * 26.0))
         for (xa, xb) in ((114.0, 124.0), (132.0, 150.0)):    # slate skirting
             q0, q1 = xr(xa, xb)
-            B(m, SLATE, q0, 0.0, zk0, q1, 1.5, zk1, bev=0.1, solid=False)
+            B(m, '6b7079', q0, 0.0, zk0, q1, 1.5, zk1, bev=0.1, solid=False)
     for zc in (-20.0, -12.0, 12.0, 20.0):                # pilasters on the front wall's inside, under the beams along
         q0, q1 = xr(114.0, 115.0)
         chamfer_box(m, STONE2, q0, 0.0, zc - 1.0, q1, 12.0, zc + 1.0, ch=0.25, solid=False)
     for (za, zb) in ((-26.0, -5.0), (5.0, 26.0)):
         q0, q1 = xr(114.0, 114.4)
-        B(m, SLATE, q0, 0.0, za, q1, 1.5, zb, bev=0.1, solid=False)
+        B(m, '6b7079', q0, 0.0, za, q1, 1.5, zb, bev=0.1, solid=False)
     LIGHTS.append(('point', (X(124.0), 9.0, 0.0), (0, -1, 0), 1.3, 28, 0, WARM))
+    for zc in (-20.0, 20.0):
+        LIGHTS.append(('point', (X(131.0), 8.0, zc), (0, -1, 0), 1.0, 22, 0, WARM))
     LIGHTS.append(('point', (X(140.0), 9.0, 0.0), (0, -1, 0), 1.3, 28, 0, WARM))
     # the team's colour inside: one matte band over the front door
     if0, if1 = xr(114.0, 114.45)
     B(m, SLATE, if0, 9.2, -8.5, if1, 11.6, 8.5, bev=0.15, solid=False)      # its slate surround
     ib0, ib1 = xr(114.45, 114.7)
-    B(m, TEAMCOL[s], ib0, 9.6, -7.8, ib1, 11.2, 7.8, bev=0.08, solid=False)
+    B(m, TEAMSIGN[s], ib0, 9.6, -7.8, ib1, 11.2, 7.8, bev=0.08, solid=False)
     # team spawns on the podium (the arena's centre line is x 0: they face it, and the front door)
     for (x, z) in ((130, -7), (130, 7), (136, -14), (136, 0), (136, 14), (142, -7), (142, 7)):
         TEAM.append(('att' if s < 0 else 'def', (X(x), 1.1, z)))
@@ -873,7 +885,8 @@ def spawn_roof(s):
         return [(X(cxs - r * math.cos(t)), r * math.sin(t)) for t in [-HALF + 2 * HALF * (f0 + (f1 - f0) * i / n) for i in range(n + 1)]]
     band = arc(R0, 0, 1) + arc(R1, 0, 1)[::-1]
     prism(m, SLATE, arc(R0 + 0.35, 0, 1) + arc(R1 - 0.35, 0, 1)[::-1], 0.0, 1.5, bev=0.25)
-    prism(m, STONE, band, 1.5, 9.4, bev=0.4)
+    prism(m, TRIM, band, 1.5, 9.4, bev=0.4)
+    prism(m, SLATE, arc(R0 + 0.08, 0, 1) + arc(R1 - 0.08, 0, 1)[::-1], 3.3, 3.8, bev=0.05)   # a reveal at chest height
     prism(m, SLATE, arc(R0 + 0.15, 0, 1) + arc(R1 - 0.15, 0, 1)[::-1], 9.4, 10.2, bev=0.25)
     for i in range(5):                       # its hit boxes: five straight pieces along the curve
         t = -HALF + 2 * HALF * (i + 0.5) / 5
@@ -942,10 +955,7 @@ def spawn_roof(s):
         q0, q1 = xr(109.5, 112)
         pier(m, q0, za, q1, zb, 0.0, 11.0)
     ceiling_panel(m, X(102), 10.6, -53.75, 2.4, 6.0, warm=True)
-    for sz in (-1, 1):
-        z0, z1 = sorted((sz * 14.0, sz * 20.0))
-        q0, q1 = xr(98, 104)
-        planter_box(m, q0, z0, q1, z1)
+
 
 # ================================================================ THE BUILDINGS UNDER IT ALL (look only)
 def tower_body(m, x0, x1, z0, z1, top, bottom=-470.0):

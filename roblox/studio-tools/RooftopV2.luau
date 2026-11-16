@@ -19,7 +19,7 @@ local CollectionService = game:GetService("CollectionService")
 local R = {}
 R.NAME = "RooftopV2"
 R.KIT = "rooftop2"
-R.ASSET = 115545999173943 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_6"); set after each upload
+R.ASSET = 130475590938795 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_7"); set after each upload
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
 local SP = Enum.Material.SmoothPlastic
@@ -133,12 +133,16 @@ local function city(root: Instance, O: Vector3)
 			local x, z = gx + rng:NextInteger(-6, 6), gz + rng:NextInteger(-6, 6)
 			local dist = math.max(ax / 1.3, az)
 			-- the arena is the tallest roof near it (so its edges are sky), the city rises further out
-			local top = if dist < 260 then rng:NextInteger(-170, -40) elseif dist < 420 then rng:NextInteger(-90, 20) else rng:NextInteger(-10, 150)
+			local top = if dist < 330 then rng:NextInteger(-170, -40) elseif dist < 450 then rng:NextInteger(-80, 10) else rng:NextInteger(-10, 150)
 			if rng:NextNumber() < 0.12 and dist > 380 then top += 90 end
 			local t = lib():FindFirstChild(TOWERS[rng:NextInteger(1, #TOWERS)])
 			if not t then continue end
 			local m = t:Clone()
 			m.Name = "Tower"
+			local tone = rng:NextNumber() * 0.32 -- (a tone of its own: the city was one value)
+			for _, d in m:GetDescendants() do
+				if d:IsA("BasePart") and d.Material ~= Enum.Material.Neon then d.Color = d.Color:Lerp(Color3.fromRGB(58, 62, 70), tone) end
+			end
 			m:PivotTo(CF(O + V3(x, top - TWH, z)) * CFrame.Angles(0, rng:NextInteger(0, 3) * math.pi / 2, 0))
 			m.Parent = f
 			n += 1
@@ -206,6 +210,9 @@ function R.build(): string
 	for _, t in lib():GetChildren() do
 		if t:GetAttribute("Kit") ~= R.KIT or string.sub(t.Name, 1, 5) == "r2_tw" then continue end -- (towers: city())
 		local m = t:Clone()
+		if m.Name == "r2_steps" then -- (the court's steps: their own shadows striped the risers)
+			for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CastShadow = false end end
+		end
 		m:PivotTo(CF(O))
 		m.Parent = shell
 		nm += 1
