@@ -12,19 +12,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 from mathutils import Matrix, Vector, Euler
 from mathutils.bvhtree import BVHTree
-import gunkit, gun_models, hat_models
+import gunkit, hat_models
+# the guns: the live set (gun_set.py, the owner's A/B/C picks) unless --set kit (gun_models.py, round 8)
+if '--set' in sys.argv and sys.argv[sys.argv.index('--set') + 1] == 'kit':
+    import gun_models as GUNS
+else:
+    import gun_set as GUNS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..', '..')
 argv = sys.argv[sys.argv.index('--') + 1:]
+if '--set' in argv: i = argv.index('--set'); del argv[i:i + 2]
+SPOT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'hat_spots.json')
+if '--spots' in argv: i = argv.index('--spots'); SPOT_FILE = argv[i + 1]; del argv[i:i + 2]  # (try other seats)
 out_dir, mode, rest = argv[0], argv[1], argv[2:]
 os.makedirs(out_dir, exist_ok=True)
 W, H = 640, 360
 BG = np.array([0.20, 0.21, 0.24], dtype=np.float32)
 C = Matrix(((1, 0, 0, 0), (0, 0, -1, 0), (0, 1, 0, 0), (0, 0, 0, 1)))  # weapon frame -> Blender
 HOLDS = json.load(open(os.path.join(HERE, 'holds.json')))
-SPOTS = json.load(open(os.path.join(HERE, 'hat_spots.json')))
-GUNS = ['ar', 'smg', 'burst', 'lmg', 'dmr', 'sniper', 'lever', 'shotgun', 'autoshot', 'sawnoff', 'pistol', 'revolver',
+SPOTS = json.load(open(SPOT_FILE))
+GUN_IDS = ['ar', 'smg', 'burst', 'lmg', 'dmr', 'sniper', 'lever', 'shotgun', 'autoshot', 'sawnoff', 'pistol', 'revolver',
         'redline', 'marbles', 'katana', 'shredder']
 
 
@@ -140,11 +148,11 @@ if mode == 'sheet':
     tile(imgs, 5, os.path.join(out_dir, 'hats.png'))
 elif mode in ('eye', 'side'):
     hid = rest[0]
-    guns = rest[1:] or GUNS
+    guns = rest[1:] or GUN_IDS
     imgs = []
     for wid in guns:
         sc = reset()
-        g = gun_models.BUILD[wid]()
+        g = GUNS.BUILD[wid]()
         hm = spot_matrix(wid, g)
         h = hat_models.make(hid) if hid != 'none' else None
         if mode == 'eye':

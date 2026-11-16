@@ -35,22 +35,22 @@ D.MOVES = {
 -- pitch = degrees about x after that (90: the hat stands on the back end, the katana's pommel).
 -- y was measured on the kit model (the top of the gun under the spot)
 D.SPOTS = {
-	ar = { at = Vector3.new(0, 0.106, -0.06), s = 1, yaw = 0, pitch = 0 },  -- on the rib over the receiver, between the sights
-	smg = { at = Vector3.new(0, 0.044, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- on the receiver ahead of the rear sight
+	ar = { at = Vector3.new(0, 0.096, -0.06), s = 1, yaw = 0, pitch = 0 },  -- on the rib over the receiver, between the sights
+	smg = { at = Vector3.new(0, 0.046, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- on the receiver ahead of the rear sight
 	burst = { at = Vector3.new(0, 0.135, -0.1), s = 0.9, yaw = 0, pitch = 0 },  -- on the carry handle, ahead of its three squares
-	lmg = { at = Vector3.new(0, 0.097, -0.03), s = 1, yaw = 0, pitch = 0 },  -- on the feed cover (it rides the cover when it opens)
-	dmr = { at = Vector3.new(0, 0.068, -0.33), s = 0.85, yaw = 0, pitch = 0 },  -- on the handguard ahead of the optic (round 4: off the scope, which is the sight)
-	sniper = { at = Vector3.new(0, 0.07214, -0.6), s = 0.9, yaw = 0, pitch = 0 },  -- on the handguard ahead of the scope (round 4: off the scope)
-	lever = { at = Vector3.new(0, 0.044, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- on the receiver between the barrel rib and the sight rib (round 4: at -0.06 the sight rib ran through the crown)
+	lmg = { at = Vector3.new(0, 0.093, -0.03), s = 1, yaw = 0, pitch = 0 },  -- on the feed cover (it rides the cover when it opens)
+	dmr = { at = Vector3.new(0, 0.14013, 0.015), s = 0.75, yaw = 0, pitch = 0 },  -- on the box optic's flat top (C model; ahead of the optic it was tiny from the eye; it hides while you aim)
+	sniper = { at = Vector3.new(0, 0.16219, -0.3), s = 0.75, yaw = 0, pitch = 0 },  -- on the scope's top between its turret and its bell (A model, scope on rings; elsewhere the scope hid it from the eye)
+	lever = { at = Vector3.new(0, 0.049, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- on the receiver between the barrel rib and the sight rib (round 4: at -0.06 the sight rib ran through the crown)
 	shotgun = { at = Vector3.new(0, 0.062, -0.36), s = 0.9, yaw = 0, pitch = 0 },  -- on the slotted barrel shield (round 4: at -0.11 the rear sight block crowded it)
-	autoshot = { at = Vector3.new(0, 0.064, 0), s = 1, yaw = 0, pitch = 0 },  -- on the receiver, its whole spin clear of the mower deck ahead and the rear sight behind
-	sawnoff = { at = Vector3.new(0, 0.041, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- on the barrels, back from the bead (it tips down with them when the gun breaks open)
+	autoshot = { at = Vector3.new(0, 0.066, 0), s = 1, yaw = 0, pitch = 0 },  -- on the receiver, its whole spin clear of the mower deck ahead and the rear sight behind
+	sawnoff = { at = Vector3.new(0, 0.0425, -0.1), s = 0.85, yaw = 0, pitch = 0 },  -- on the barrels, back from the bead (it tips down with them when the gun breaks open)
 	pistol = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- on the slide, back from the front sight (it rides the slide)
 	revolver = { at = Vector3.new(0, 0.068, -0.05), s = 0.7, yaw = 0, pitch = 0 },  -- on the top strap over the cylinder
-	redline = { at = Vector3.new(0, 0.08, -0.05), s = 0.85, yaw = 0, pitch = 0 },  -- on the raised block over the receiver
+	redline = { at = Vector3.new(0, 0.056, 0.05), s = 0.75, yaw = 0, pitch = 0 },  -- on the deck behind the gauge, ahead of the rear sight (A model: the bigger gauge stands where the hat was)
 	marbles = { at = Vector3.new(0, 0.16, -0.057), s = 0.65, yaw = 0, pitch = 0 },  -- on the marble jar's lid (it steps away while the reload pours marbles in: GunHats.HIDE_CLIPS)
 	katana = { at = Vector3.new(0, 0, 0.128), s = 0.6, yaw = 0, pitch = 90 },  -- on the pommel, standing off the end of the handle (round 4: on the blade it floated beside the edge)
-	shredder = { at = Vector3.new(0, 0.178, -0.04), s = 1.3, yaw = 0, pitch = 0 },  -- on top of the body behind the bell
+	shredder = { at = Vector3.new(0, 0.179, -0.04), s = 1.3, yaw = 0, pitch = 0 },  -- on top of the body behind the bell
 }
 
 return D

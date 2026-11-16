@@ -1,7 +1,7 @@
 # Where each weapon hat sits (tools/roblox/hat_spots.json) and how high: the top of the gun under the spot, measured on
-# the kit model itself (gun_models.py builders) with a ray straight down. Headless Blender:
+# the live gun set itself (gun_set.py builders; --set kit = gun_models.py) with a ray straight down. Headless Blender:
 #
-#   blender -b --factory-startup -P tools/roblox/hat_spots.py -- [--profile <id>]
+#   blender -b --factory-startup -P tools/roblox/hat_spots.py -- [--set kit] [--profile <id> ...]
 #
 # writes roblox/src/shared/GunHatData.luau: the hats (names, rarities, file bounds from roblox/assets/hats/hats.json),
 # the spot on every gun (metres, the weapon frame) and the moving bits. --profile prints a gun's top line (every cm
@@ -14,14 +14,19 @@ import bpy, bmesh, sys, os, json, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mathutils import Vector
 from mathutils.bvhtree import BVHTree
-import gun_models, hat_models
+import hat_models
+# the guns the hats sit on: the live set (gun_set.py, the owner's A/B/C picks) unless --set kit (gun_models.py, round 8)
+if '--set' in sys.argv and sys.argv[sys.argv.index('--set') + 1] == 'kit':
+    import gun_models as GUNS
+else:
+    import gun_set as GUNS
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.join(HERE, '..', '..')
 
 
 def tree(wid):
-    g = gun_models.BUILD[wid]()
+    g = GUNS.BUILD[wid]()
     bm = bmesh.new()
     for b in g.pieces.values():
         me = bpy.data.meshes.new('t'); b.to_mesh(me); bm.from_mesh(me); bpy.data.meshes.remove(me)

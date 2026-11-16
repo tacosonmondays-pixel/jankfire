@@ -72,16 +72,19 @@ the kit model, so a gun whose top moves leaves its hat floating or sunk. (A pend
 
 ## Where each hat sits
 
-On top of the gun, on a flat surface clear of the sights, the optics and anything that moves past it (round 4 after
-the first judging): the Assault Rifle's rib, the SMG's receiver, the Hat Trick's carry handle, the Belt Sander's feed
-cover (it rides the cover), the handguard ahead of the optic on Second Opinion and ahead of the scope on the Sniper
-(a hat on a scope sat on the sight itself), the Yeehaw's receiver between its barrel rib and sight rib (the sight rib
-ran through the crown at first), the Shotgun's slotted barrel shield (the rear sight crowded it on the receiver),
-the Lawn Mower's receiver with the propeller's whole spin clear of the mower deck, Half a Shotgun's barrels back from
-the bead (it tips down with them), Plan B's slide back from the front sight, the Revolver's top strap, the Redline's
-raised block, the Marble Shotgun's **jar lid** (the hat steps away while the reload's bag pours marbles in:
-`GunHats.HIDE_CLIPS`), the Katana's **pommel**, standing off the end of the handle (`pitch = 90`: on the blade it
-floated beside the edge), and the Shredder's body behind its bell.
+Measured on the **live gun set** (`tools/roblox/gun_set.py`, the owner's A/B/C picks of 16 Nov; `hat_spots.py --set kit`
+measures the older round-8 models instead). On top of the gun, on a flat surface clear of the sights and of anything
+that moves past it: the Assault Rifle's top rail, the SMG's receiver, the Hat Trick's carry handle, the Belt Sander's
+feed cover (it rides the cover), the flat top of Second Opinion's box optic (ahead of the optic it was tiny from the
+eye; it hides while you aim anyway), the Sniper's scope between its turret and its bell (elsewhere the scope hid it
+from the eye), the Yeehaw's receiver between its barrel rib and sight rib (the sight rib ran through the crown at
+first), the Shotgun's slotted barrel shield (the rear sight crowded it on the receiver), the Lawn Mower's receiver
+with the propeller's whole spin clear of the mower deck, Half a Shotgun's barrels back from the bead (it tips down
+with them), Plan B's slide back from the front sight, the Revolver's top strap, the Redline's deck behind its gauge
+(the bigger gauge of the picked model stands where the hat first was), the Marble Shotgun's **jar lid** (the hat steps
+away while the reload's bag pours marbles in: `GunHats.HIDE_CLIPS`), the Katana's **pommel**, standing off the end
+of the handle (`pitch = 90`: on the blade it floated beside the edge), and the Shredder's body behind its bell.
+`gun-hats/seats-live-set.png` shows all sixteen from the side.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -129,8 +132,10 @@ about a third); the seats above.
   answered "Approved"). To put it in: upload `roblox/assets/hats/hats_upload.glb`, set the id in `assets.json`, run
   `hat_spots.py`, push `GunHatData.luau`, `GunHats.luau` and `HatImport.luau`, `H.load(id)`, then the two small lines in
   `Viewmodel.luau` (the clip name to `GunHats.aim`) and `LoadoutUI` (`CARD_TURN.halo`). Then photograph and judge again.
-- **The guns may change** (the owner is picking version A, B or C per gun): run `hat_spots.py` again after the picks
-  and check each seat from the side (`hat_preview.py ... side <hat>`).
+- **The seats are measured on the picked guns (gun_set.py), which are not live yet either.** Put the round-4 hats in
+  after the picked guns go in (the guns session says when); against the round-8 guns still in the place a few hats
+  would sit a few millimetres off (the Redline's on its old deck). If the guns go in later than the hats, run
+  `hat_spots.py --set kit` for the time between.
 
 - The hats are all free to pick (the Roblox port has no inventory or crates yet, the same as wraps).
 - The Googly Eyes face the player who holds the gun (they look back at you); from in front, other players see their
