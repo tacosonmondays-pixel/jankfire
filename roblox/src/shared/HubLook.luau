@@ -111,8 +111,29 @@ H.looks.lab_depot = with(HUB, {
 	Atmosphere = { Density = 0.1 },
 	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = 0.16, TintColor = Color3.fromRGB(255, 246, 234) },
 })
+-- the training area v2 (ServerStorage.PolishBackup.TrainingV2, 16 Nov 2026): pale stone rooms under their own lamps,
+-- the range open to an early-afternoon sky. more base light than the hub, little haze, neutral colour
+H.looks.training_v2 = with(HUB, {
+	Lighting = {
+		Ambient = Color3.fromRGB(138, 135, 131), OutdoorAmbient = Color3.fromRGB(150, 150, 154), Brightness = 2.2,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.3, EnvironmentSpecularScale = 0.25,
+		ClockTime = 14.5, GeographicLatitude = 30, ColorShift_Top = Color3.fromRGB(255, 246, 232),
+	},
+	Atmosphere = { Density = 0.12, Offset = 0.05, Haze = 0.6, Glare = 0.05, Color = Color3.fromRGB(200, 208, 222), Decay = Color3.fromRGB(150, 162, 186) },
+	Bloom = { Intensity = 0.25, Size = 20, Threshold = 2.2 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.12, Saturation = 0.06, TintColor = Color3.fromRGB(255, 249, 240) },
+	SunRays = { Intensity = 0.02 },
+})
 -- looks that want the engine's own blue sky: the saved Sky (a sunset box) is put away while one is on
 H.plainSky = { lab_foodcourt = true } :: { [string]: boolean }
+-- the training area comes in two builds (TrainingV2 switches them and writes the attribute TrainingLook on this
+-- script): "v1" the old hall (looks.training above), "v2" the new rooms (looks.training_v2, under the open sky)
+H.looks.training_v1 = H.looks.training
+H.plainSky.training_v2 = true
+if script:GetAttribute("TrainingLook") == "v2" then
+	H.looks.training = H.looks.training_v2
+	H.plainSky.training = true
+end
 -- Rooftop v2 (ServerStorage.PolishBackup.RooftopV2, 16 Nov 2026): its own light, picked by HubLife in a match when
 -- workspace.Map's attribute Arena is "RooftopV2" (v1 keeps the saved evening). an early-afternoon sun from the
 -- south-west, high over the lanes, so neither team starts a round looking into a low sun (the first judging failed v2's

@@ -46,7 +46,8 @@
         "SeriousPass": { "$path": "studio-tools/SeriousPass.luau" },
         "StructurePass": { "$path": "studio-tools/StructurePass.luau" },
         "RooftopV2": { "$path": "studio-tools/RooftopV2.luau" },
-        "RooftopV2Layout": { "$path": "studio-tools/RooftopV2Layout.luau" }
+        "RooftopV2Layout": { "$path": "studio-tools/RooftopV2Layout.luau" },
+        "TrainingV2": { "$path": "studio-tools/TrainingV2.luau" }
       }
     },
     "StarterPlayer": {

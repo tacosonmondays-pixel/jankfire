@@ -49,6 +49,7 @@ function S.training(): string
 		n += 1; log[why] = (log[why] or 0) + 1
 	end
 	for _, root in { hub():WaitForChild("TrainingGround"), hub():WaitForChild("Playground") } do
+		if root:GetAttribute("Version") == "v2" then continue end -- (training v2 has its own paint: PolishBackup.TrainingV2)
 		for _, d in root:GetDescendants() do
 			if not d:IsA("BasePart") then continue end
 			if d:FindFirstAncestor("Dress") then continue end -- (the structure pass's own things: PolishBackup.StructurePass paints them)
