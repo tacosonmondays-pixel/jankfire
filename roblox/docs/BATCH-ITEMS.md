@@ -13,8 +13,8 @@ basics", plus one section per item. Every number below is the web game's, unchan
 | The server | `src/server/Utility.luau`: owns everything. The item you carry and when a new pick goes in (at once while you're dead or in the first 5 s of a life, else next life; charges used stay used), the charges and their clock, every throw, bounce, fuse and blast, the heal, the domes and every hit they stop (through `Fight.blocks`, asked first by `Fight.hurt`), the clouds (`Fight.smokeBlocks`). |
 | The loadout | `Loadout.luau` picks, saves (`pick.utility` in the same DataStore entry) and checks it like the weapons; `LoadoutUI` has a fourth card (key G), item cards show charges and recharge, items take no paint and no hat. |
 | Your client | `src/client/Utility.client.luau`: G, the HUD plate above the ammo (name, one pip per charge, the next one filling as it recharges), the item in your own avatar's left hand while it's used, and everything the server says happens in the world. |
-| Models | `tools/roblox/item_models.py` (headless Blender, on the guns' kit `gunkit.py`): frag, smoke can, medkit case, shield puck. `tools/roblox/item_import.luau` puts the upload in `ReplicatedStorage.JankfireItems`. |
-| Sounds | `tools/roblox/render_items.mjs` renders the web recipes (boom, heal, reverse, pop, blow) to .wav; ids in `roblox/assets/sounds/items.json`. |
+| Models | `tools/roblox/item_models.py` (headless Blender, on the guns' kit `gunkit.py`): every item's model (frag, smoke can, medkit case, shield puck, popper, card, duck, calculator, laptop, goggles, radar gun, cage, instant camera, the printed frame, bubble wand). `tools/roblox/item_import.luau` puts the upload in `ReplicatedStorage.JankfireItems`. |
+| Sounds | `tools/roblox/render_items.mjs` renders the web recipes (boom, heal, reverse, pop, blow, and each later batch's own) to .wav; ids in `roblox/assets/sounds/items.json`. |
 
 ## Batch 1: Frag Grenade, Medkit, Shield Bubble, Smoke Bomb
 
@@ -135,7 +135,7 @@ How straight someone looks at you is judged from their body's facing (the server
 
 ![the night vision goggles on](items/goggles-view.jpg)
 
-## Batch 3b: Speed Trap (live since place version 323), Instant Camera, Bubble Wand
+## Batch 3b: Speed Trap (live since place version 323), Instant Camera, Bubble Wand (live since place version 330)
 
 The Speed Trap reads speed from the server's own record of where you've been (`Fight.trail`, 30 a second), never
 from the client. In the test the Stand was driven back and forth along the hall at a set speed by a server loop.
@@ -150,3 +150,45 @@ from the client. In the test the Stand was driven back and forth along the hall 
 
 ![the speed trap held up](items/radar-held.jpg)
 
+### Instant Camera
+
+Nobody uploads a picture: the server says where a photo was taken (the spot under you, which way you looked) and every
+client builds that view itself, a ViewportFrame of the map's parts round the spot (the nearest 700 in front of it within
+200 studs). The photo shows on a print by your item slot while you hold it, on the print as it comes out of the
+camera, and in the frame. Tested in the training hall: the photo taken looking down the hall, the frame printed 8 m
+further along, then walked into.
+
+| what | web game | measured | |
+| --- | --- | --- | --- |
+| the snap | free; needs a floor within 3 m under you | G: the camera comes up to your eye, the shutter, a white flash; "PHOTO TAKEN · G TO PRINT IT"; the print by the item slot shows the hall (551 map parts); charges stayed **1** | ok |
+| the print | spends the charge; a frame 1.9 m in front of you on the floor, facing you, for 20 s | charges **1 -> 0**; the camera turned round, the print sliding out toward you developing from brown; the frame at **5.7 studs** (1.9 m) ahead on the floor, its picture developed in 1.6 s | ok |
+| walking in | out where the photo was taken, facing its way, each person once every 1.6 s | **0.35 s** after stepping in: on the photo spot (x 2, z -8159 against -8158), facing the photo's way (yaw 0) | ok |
+| telefrag | whoever stands within 0.9 m (flat) and 1.6 m (up) of the spot: 999 | the Stand moved onto the spot: dead, thrown up | ok |
+| the frame's life | 20 s | gone 20 s after printing ("framex: time") | ok |
+| crossing at speed | a fast mover is caught crossing the opening between two ticks | not measured | to do |
+
+### Bubble Wand
+
+The soap bubbles fly on one formula (`Items.soapAt`, the web game's shared/wand.js) on the server, which does the hits,
+and on every client, which draws them: nothing about their path is synced.
+
+| what | web game | measured | |
+| --- | --- | --- | --- |
+| a blow | 4 bubbles 0.09 s apart, 11 m/s (+-15%) slowing to a 1 m/s drift, 4 s each | bubbles at **0.06 / 0.16 / 0.25 s**; the 4th wasn't blown because the blower was already sealed in (as on the web) | ok |
+| sealed in | the first enemy one touches: 5 s, floating 2 m/s up and 1.5 m/s along | the Stand sealed and floated up into the ceiling; me (below) up **6.5 studs in 1.2 s** | ok |
+| reverse card | the blower goes in instead | the Dummy held a card (test hook `"rev"`): "reflect", and I was sealed in **0.31 s** after blowing | ok |
+| how long | 5 s, then it pops and drops them | popped ("time") **5.00 s** after sealing; back on the floor | ok |
+| inside | no moving, no shooting, no items, the world through the film | the film over the view with its rim, "IN A BUBBLE · pops in 1.4s"; the float is the client's own (held within lag slack of the path by the server) | ok |
+| charges | 2, 32 s each, kept | 2 -> 1 | ok |
+| a hit pops it | the first hit (a friend's too) only pops it, no damage | not measured | to do |
+
+Choices of mine: a bubble isn't put on anyone sitting a pop quiz or in a speed-trap cage (both already hold them in
+place); dummies don't use frames (the web game's training dummies don't either).
+
+![the photo held, by the item slot](items/camera-photo-held.jpg)
+
+![printing: the print comes out, the frame stands up](items/camera-print.jpg)
+
+![the frame, developed](items/camera-frame.jpg)
+
+![inside a soap bubble](items/wand-inside.jpg)

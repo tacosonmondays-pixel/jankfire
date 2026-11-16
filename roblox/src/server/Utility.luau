@@ -38,14 +38,19 @@ type St = { item: string, nextItem: string?, ic: Items.Ic?, save: { [string]: It
 	-- the speed trap: when the radar was last held up / read; a ticket (by, until, when it started); the cage; when the
 	-- next ticket may come; when this shooter may write the next one
 	radarOn: number, radarT: number, ticket: { by: Fighter, untilT: number, at: number }?, jail: { untilT: number, at: Vector3 }?,
-	radarSafe: number, ticketT: number }
+	radarSafe: number, ticketT: number,
+	-- the instant camera: the photo you're holding (where you stood, which way you looked)
+	photo: { n: number, pos: Vector3, yaw: number, pitch: number }?,
+	-- the bubble wand: sealed in (by whom, till when, the float, where the bubble has your feet now, the lag slack)
+	trap: { by: Fighter?, untilT: number, v: Vector3, at: Vector3, atT: number, slack: number, ack: boolean, off: boolean }?, trapSafe: number }
 local st: { [Fighter]: St } = {}
 local function stateOf(f: Fighter): St
 	local s = st[f]
 	if not s then
 		s = { item = Items.DEFAULT, save = {}, useT = -math.huge, heal = 0, reverseUntil = -math.huge,
 			nvOn = false, nvT = -math.huge, quiz = nil, quizSafe = -math.huge, invulnUntil = -math.huge, adsUntil = -math.huge, adsSafe = -math.huge,
-			radarOn = -math.huge, radarT = -math.huge, ticket = nil, jail = nil, radarSafe = -math.huge, ticketT = -math.huge }
+			radarOn = -math.huge, radarT = -math.huge, ticket = nil, jail = nil, radarSafe = -math.huge, ticketT = -math.huge, photo = nil,
+			trap = nil, trapSafe = -math.huge }
 		st[f] = s
 	end
 	return s
@@ -90,7 +95,7 @@ function Utility.itemOf(f: Fighter): string return stateOf(f).item end
 
 -- ------------------------------------------------------------------ the world: thrown items, domes, clouds
 type Pr = { id: number, k: string, owner: Fighter?, uid: number?, p: Vector3, v: Vector3, r: number, bounce: number, grav: number, born: number, fuse: number, life: number, syncT: number,
-	lp: Vector3?, hid: Fighter?, hsync: number } -- (the duck: where it was last tick, who it's homing on, when it last told everyone)
+	lp: Vector3?, hid: Fighter?, hsync: number, p0: Vector3?, v0: Vector3? } -- (a soap bubble: where and how it was blown) -- (the duck: where it was last tick, who it's homing on, when it last told everyone)
 -- a rubber duck's black hole: where it is, whose it is, when it opens (born; later than now while it's about to open
 -- on someone it stuck to), the one it rides (on), the next pulse, the next "where it is" to everyone
 type Hole = { id: number, p: Vector3, owner: Fighter?, born: number, on: Fighter?, tick: number, syncT: number }
@@ -761,6 +766,117 @@ local function tickRadar()
 	end
 end
 
+-- ------------------------------------------------------------------ the instant camera (server/gear.js)
+type Frame = { id: number, owner: Fighter, p: Vector3, nrm: Vector3, side: Vector3, yaw: number, dest: { n: number, pos: Vector3, yaw: number, pitch: number },
+	untilT: number, used: { [Fighter]: number }, last: { [Fighter]: { dn: number, lat: number } } }
+local frames: { Frame } = {}
+local photoN = 0
+local function setPhoto(f: Fighter, ph: any)
+	stateOf(f).photo = ph
+	if f.kind == "player" then (f.ref :: Player):SetAttribute("Photo", if ph then true else nil) end
+end
+-- the snap: where you really stand (dropped onto the floor under you) and which way you look. no floor = no photo
+local function snapPhoto(f: Fighter, d: Vector3)
+	local P = Items.PHOTO
+	local feet = Fight.feet(f)
+	if not feet then return end
+	local hit = Fight.castMap(feet + Vector3.new(0, 0.3 * S, 0), Vector3.new(0, -1, 0), P.drop + 0.3 * S)
+	if not hit or hit.Normal.Y < 0.5 or hit.Position.Y < workspace.FallenPartsDestroyHeight + 6 then
+		if f.kind == "player" then ItemFx:FireClient(f.ref :: Player, { k = "photo!", why = "nothing to stand on there" }) end
+		return
+	end
+	photoN += 1
+	local ph = { n = photoN, pos = Vector3.new(feet.X, hit.Position.Y + 0.06, feet.Z), yaw = math.atan2(-d.X, -d.Z), pitch = math.asin(math.clamp(d.Y, -1, 1)) }
+	setPhoto(f, ph)
+	ItemFx:FireAllClients({ k = "snap", o = uidOf(f), model = Fight.model(f), n = ph.n, p = ph.pos, y = ph.yaw, x = ph.pitch })
+end
+local function frameMsg(fr: Frame): { [string]: any }
+	return { k = "frame", id = fr.id, o = uidOf(fr.owner), p = fr.p, y = fr.yaw, nrm = fr.nrm,
+		ph = { n = fr.dest.n, p = fr.dest.pos, y = fr.dest.yaw, x = fr.dest.pitch }, left = math.max(0, fr.untilT - now()) }
+end
+local function dropFrame(fr: Frame, why: string)
+	local i = table.find(frames, fr)
+	if i then table.remove(frames, i) end
+	ItemFx:FireAllClients({ k = "framex", id = fr.id, why = why })
+end
+-- the print: the frame stands in front of you facing you (pushed back off a wall, on the floor). one each: a new one
+-- replaces your old one
+local function printPhoto(f: Fighter, d: Vector3)
+	local P = Items.PHOTO
+	local s = stateOf(f)
+	local ph = s.photo
+	if not ph then return end
+	setPhoto(f, nil)
+	local feet = Fight.feet(f)
+	if not feet then return end
+	local flat = Vector3.new(d.X, 0, d.Z)
+	local fwd = if flat.Magnitude > 1e-3 then flat.Unit else ((Fight.root(f) :: BasePart).CFrame.LookVector * Vector3.new(1, 0, 1)).Unit
+	local wall = Fight.castMap(feet + Vector3.new(0, 1 * S, 0), fwd, P.at + P.wall)
+	local dist = if wall then math.max(P.wall, (wall.Position - (feet + Vector3.new(0, 1 * S, 0))).Magnitude - P.wall) else P.at
+	local base = feet + fwd * dist
+	local fl = Fight.castMap(base + Vector3.new(0, 1.2 * S, 0), Vector3.new(0, -1, 0), 3.5 * S)
+	if fl then base = Vector3.new(base.X, fl.Position.Y, base.Z) end
+	for _, old in table.clone(frames) do if old.owner == f then dropFrame(old, "new") end end
+	nextId += 1
+	local nrm = -fwd -- (the frame faces you)
+	local fr: Frame = { id = nextId, owner = f, p = base, nrm = nrm, side = Vector3.new(-nrm.Z, 0, nrm.X), yaw = math.atan2(-nrm.X, -nrm.Z),
+		dest = ph, untilT = now() + P.life, used = {}, last = {} }
+	table.insert(frames, fr)
+	ItemFx:FireAllClients(frameMsg(fr))
+end
+-- out where the photo was taken, facing the same way. whoever stands right there is telefragged (the traveller's
+-- kill). an enemy using your frame is tagged by you: whatever happens to them over there is on you
+local function photoTeleport(t: Fighter, fr: Frame)
+	local P = Items.PHOTO
+	local to = fr.dest.pos
+	for _, u in table.clone(Fight.all) do
+		if u == t or not u.alive or not Fight.allow(t, u) then continue end
+		local uf = Fight.feet(u)
+		if uf and Vector3.new(uf.X - to.X, 0, uf.Z - to.Z).Magnitude < P.frag and math.abs(uf.Y - to.Y) < P.fragH then
+			Fight.hurt(u, 999, t, "camera", false, Vector3.new(math.random() * 30 - 15, 48, math.random() * 30 - 15), uf + Vector3.new(0, Items.CENTRE, 0))
+		end
+	end
+	local owner = alive(fr.owner)
+	if owner and owner ~= t and Fight.allow(owner, t) then Rules.tagged(t, owner, "camera", now()) end
+	local r = Fight.root(t)
+	if r then
+		if t.kind == "player" then (t.ref :: Player):SetAttribute("TeleportT", os.clock()) end
+		r.AssemblyLinearVelocity = Vector3.zero
+		r.CFrame = CFrame.new(to + Vector3.new(0, Hitbox.ROOT_UP, 0)) * CFrame.Angles(0, fr.dest.yaw, 0)
+	end
+	if t.kind == "player" then ItemFx:FireClient(t.ref :: Player, { k = "ptp", p = to, y = fr.dest.yaw, x = fr.dest.pitch, f = fr.id }) end
+	ItemFx:FireAllClients({ k = "tele", a = fr.p + Vector3.new(0, 1 * S, 0), b = to + Vector3.new(0, 1 * S, 0), f = fr.id, model = Fight.model(t) })
+end
+-- anyone walking into the opening goes through, from either side; a fast mover is caught crossing the plane too
+local function tickFrames()
+	local P = Items.PHOTO
+	local n = now()
+	for _, fr in table.clone(frames) do
+		if n >= fr.untilT then dropFrame(fr, "time"); continue end
+		for _, t in Fight.all do
+			local ts = st[t]
+			if not t.alive or t.kind ~= "player" or (ts and (ts.quiz or ts.jail or ts.trap)) then continue end -- (web: the dummies don't use frames)
+			local feet = Fight.feet(t)
+			if not feet then continue end
+			local rel = feet - fr.p
+			local dn, lat = rel:Dot(fr.nrm), rel:Dot(fr.side)
+			local was = fr.last[t]
+			fr.last[t] = { dn = dn, lat = lat }
+			if rel.Y < -P.below or rel.Y > P.h - P.top then continue end
+			local inside = math.abs(dn) < P.depth / 2 and math.abs(lat) < P.w / 2
+			local crossed = false
+			if not inside and was and math.sign(was.dn) ~= math.sign(dn) and math.abs(was.dn) < P.cross and math.abs(dn) < P.cross then
+				local k = was.dn / (was.dn - dn)
+				crossed = math.abs(was.lat + (lat - was.lat) * k) < P.w / 2
+			end
+			if not inside and not crossed then continue end
+			if n - (fr.used[t] or -math.huge) < P.cd then continue end
+			fr.used[t] = n
+			photoTeleport(t, fr)
+		end
+	end
+end
+
 -- every damage goes through Fight.hurt, and Fight.hurt asks this first (web hurt -> bubbleBlocks): a hit on someone in
 -- a dome from anyone outside it (or, with nobody behind it, from a point outside it) is dropped, shove and all
 local function blocked(by: Fighter?, t: Fighter, from: Vector3?): boolean
@@ -807,6 +923,191 @@ local function throwVel(f: Fighter): Vector3
 	return flat + Vector3.new(0, math.clamp(v.Y, -60 * S, 30 * S), 0)
 end
 
+-- ------------------------------------------------------------------ the bubble wand (room.js blowWand / stepSoap / trapPlayer / popTrap / tickTraps)
+local W = Items.WAND
+local function spreadDir(d: Vector3, a: number): Vector3
+	local v = d + Vector3.new(rnd:NextNumber() - 0.5, rnd:NextNumber() - 0.5, rnd:NextNumber() - 0.5) * 2 * a
+	return if v.Magnitude > 1e-6 then v.Unit else d
+end
+-- G blows a short stream of slow wobbly bubbles from your mouth (a bit under your eyes), along your look, carrying
+-- some of your own speed (capped: the velocity is the client's word)
+local function blowWand(f: Fighter, from: Vector3, d: Vector3)
+	local SW = Items.SOAP
+	local feet0 = Fight.feet(f)
+	if not feet0 then return end
+	local off = from - feet0 - Vector3.new(0, W.mouth, 0)
+	local life = f.spawnT
+	for i = 0, W.bubbles - 1 do
+		task.delay(i * W.gap, function()
+			local s = st[f]
+			if not f.alive or f.spawnT ~= life or not table.find(Fight.all, f) or (s and s.trap) then return end
+			local feet = Fight.feet(f)
+			if not feet then return end
+			local dir = spreadDir(d, if i > 0 then 0.09 else 0.02)
+			local sp = SW.speed * (0.85 + rnd:NextNumber() * 0.3)
+			local e = feet + off
+			local wall = Fight.castMap(e, dir, W.wall)
+			local k = if wall then math.max(0, (wall.Position - e).Magnitude - SW.r - 0.15) else W.wall
+			local pos = e + dir * k
+			local pv = throwVel(f)
+			local pl = pv.Magnitude
+			local ik = if pl > 25 * S then 0.3 * 25 * S / pl else 0.3
+			local vel = dir * sp + pv * ik + Vector3.new(0, 0.5 * S, 0)
+			nextId += 1
+			local pr: Pr = { id = nextId, k = "soap", owner = f, uid = uidOf(f), p = pos, v = vel, r = SW.r, bounce = 0, grav = 0, born = now(),
+				fuse = math.huge, life = SW.life, syncT = 0, hsync = 0, p0 = pos, v0 = vel }
+			table.insert(projs, pr)
+			while #projs > MAX_PROJ do dropProj(projs[1]) end
+			ItemFx:FireAllClients({ k = "ps", id = pr.id, w = "soap", p = pos, v = vel, o = pr.uid, fuse = 0 })
+		end)
+	end
+end
+-- sealed in: can't move or attack, floats up and along dir, pops after dur. players float on their own client (their
+-- movement), held near the bubble's path here; dummies are floated here. no new bubble for a moment after one pops
+local function trapPlayer(t: Fighter, owner: Fighter?, dir: Vector3, reflected: boolean?): boolean
+	local n = now()
+	local s = stateOf(t)
+	if not t.alive or s.trap or n < s.trapSafe then return false end
+	if s.quiz or s.jail then return false end -- (one hold at a time: an exam or a cage already has them)
+	if owner and owner ~= t and t.kind == "player" and n - t.spawnT < 1.2 then return false end -- (spawn protection)
+	local tf = Fight.feet(t)
+	if not tf then return false end
+	for _, b in bubbles do if Items.inBubble(b, tf) then return false end end -- (soap can't get into a shield dome)
+	if not reflected and owner and owner ~= t and owner.alive and n < s.reverseUntil then -- (a reverse card: the blower goes in)
+		ItemFx:FireAllClients({ k = "reflect", o = uidOf(t), by = uidOf(owner), model = Fight.model(t) })
+		return trapPlayer(owner, t, Vector3.new(-dir.X, 0, -dir.Z), true)
+	end
+	local r = Fight.root(t)
+	local speed = if r then r.AssemblyLinearVelocity.Magnitude else 0
+	local tr = { by = owner, untilT = n + W.dur, v = Vector3.new(dir.X * W.drift, W.rise, dir.Z * W.drift), at = tf, atT = n,
+		slack = 2.5 * S + math.min(30 * S, speed) * 0.25, ack = false, off = false }
+	s.trap = tr
+	t.staggerUntil = math.max(t.staggerUntil, tr.untilT) -- (no shooting, swinging or guarding in there: Rules' own clock)
+	if owner and owner ~= t then Rules.tagged(t, owner, "soap", n) end
+	if t.kind == "player" then (t.ref :: Player):SetAttribute("Trap", true) end
+	ItemFx:FireAllClients({ k = "trap", o = uidOf(t), model = Fight.model(t), by = uidOf(owner), left = W.dur, v = tr.v })
+	return true
+end
+-- pop: a hit (by, with w), time, death or a new life. whoever set up the drop is tagged, so a fall into the void is
+-- theirs: an enemy who shot it open, otherwise the blower
+local function popTrap(t: Fighter, why: string, by: Fighter?, w: string?): boolean
+	local s = st[t]
+	local tr = s and s.trap
+	if not s or not tr then return false end
+	s.trap = nil
+	local n = now()
+	s.trapSafe = n + math.max(W.safe, (n - (tr.untilT - W.dur)) * W.safeK)
+	t.staggerUntil = math.min(t.staggerUntil, n)
+	local owner = alive(tr.by)
+	if t.alive and (why == "hit" or why == "time") then
+		if by and by ~= t and by ~= owner and Fight.allow(by, t) then Rules.tagged(t, by, w or "soap", n)
+		elseif owner and owner ~= t then Rules.tagged(t, owner, "soap", n) end
+	end
+	if t.kind == "player" then (t.ref :: Player):SetAttribute("Trap", nil) end
+	-- p: their client wasn't floating where the bubble went (lag, or one that won't drift): they drop from where we have them
+	local feet = Fight.feet(t)
+	ItemFx:FireAllClients({ k = "trapx", o = uidOf(t), model = Fight.model(t), why = why, pb = uidOf(by),
+		p = if why == "time" and tr.off and t.kind == "player" then feet else nil })
+	return true
+end
+-- a soap bubble in flight: on its formula path; walls and floors pop it, so does the outside of a dome; the first enemy
+-- it touches is sealed in (one already in a bubble just pops this one on theirs)
+local function soapFly(pr: Pr, owner: Fighter?)
+	local SW = Items.SOAP
+	local age = now() - pr.born
+	if not owner or age > SW.life or not pr.p0 or not pr.v0 then dropProj(pr); return end
+	local prev = pr.p
+	pr.p = Items.soapAt(pr.p0 :: Vector3, pr.v0 :: Vector3, pr.id, age)
+	local seg = pr.p - prev
+	local len = seg.Magnitude
+	if len > 1e-6 then
+		local hit = Fight.castMap(prev, seg / len, len + SW.r)
+		if hit then
+			pr.p = prev + seg * (math.max(0, hit.Distance - SW.r) / len)
+			dropProj(pr, pr.p)
+			return
+		end
+	end
+	if pr.p.Y < -1500 then dropProj(pr); return end
+	for _, b in bubbles do
+		if (pr.p - b.p).Magnitude < b.r and (prev - b.p).Magnitude >= b.r then dropProj(pr, pr.p); return end
+	end
+	for _, t in Fight.all do
+		if t == owner or not t.alive or not Fight.allow(owner, t) then continue end
+		local ft = Fight.feet(t)
+		if not ft then continue end
+		local ts = st[t]
+		local boxes = {}
+		if ts and ts.trap then
+			local c, h = ft + Vector3.new(0, W.y, 0), Vector3.one * (W.box + SW.r)
+			boxes = { { c - h, c + h } }
+		else
+			local bl, bh, hl, hh = Hitbox.boxes(ft, 1, SW.r)
+			boxes = { { bl, bh }, { hl, hh } }
+		end
+		for _, box in boxes do
+			local lo, hi = box[1], box[2]
+			local p = pr.p
+			local inside = p.X > lo.X and p.Y > lo.Y and p.Z > lo.Z and p.X < hi.X and p.Y < hi.Y and p.Z < hi.Z
+			local swept = false
+			if not inside and len > 1e-3 then
+				local dd = Hitbox.rayBox(prev, seg / len, lo, hi)
+				swept = dd ~= nil and dd <= len
+			end
+			if inside or swept then
+				dropProj(pr, pr.p)
+				local v0 = pr.v0 :: Vector3
+				local flat = Vector3.new(v0.X, 0, v0.Z)
+				local of = Fight.feet(owner :: Fighter)
+				local away = if of then Vector3.new(ft.X - of.X, 0, ft.Z - of.Z) else Vector3.zero
+				local dir = if flat.Magnitude > 1e-3 then flat.Unit elseif away.Magnitude > 1e-3 then away.Unit else Vector3.zero
+				trapPlayer(t, owner, dir)
+				return
+			end
+		end
+	end
+end
+-- every tick: the bubble's path goes on (stopped by ceilings and walls); a player is held within slack of it, a dummy
+-- is floated along it
+local function tickTraps()
+	local n = now()
+	for t, s in st do
+		local tr = s.trap
+		if not tr then continue end
+		if not t.alive or not table.find(Fight.all, t) then popTrap(t, "gone"); continue end
+		if n >= tr.untilT then popTrap(t, "time"); continue end
+		local dt = math.min(0.1, n - tr.atT)
+		tr.atT = n
+		local up = Vector3.new(0, tr.v.Y * dt, 0)
+		if up.Y > 0 and Fight.castMap(tr.at + Vector3.new(0, 1.7 * S, 0), Vector3.yAxis, up.Y + 0.3 * S) then up = Vector3.zero end
+		local side = Vector3.new(tr.v.X, 0, tr.v.Z) * dt
+		if side.Magnitude > 1e-5 and Fight.castMap(tr.at + Vector3.new(0, 1 * S, 0), side.Unit, side.Magnitude + 0.4 * S) then side = Vector3.zero end
+		tr.at += up + side
+		local r = Fight.root(t)
+		if not r then continue end
+		if t.kind ~= "player" then
+			r.AssemblyLinearVelocity = Vector3.zero
+			r.CFrame = r.CFrame.Rotation + tr.at + Vector3.new(0, Hitbox.ROOT_UP, 0)
+			continue
+		end
+		local feet = Fight.feet(t) :: Vector3
+		local d = (feet - tr.at).Magnitude
+		-- (the first time their own float is seen going with the bubble, near the path: the path moves onto them, once)
+		if not tr.ack and d <= math.min(tr.slack, 3 * S) and (r.AssemblyLinearVelocity - tr.v).Magnitude < 0.3 * S then
+			tr.ack = true
+			tr.at = feet
+			d = 0
+		end
+		tr.off = d > tr.slack
+		if d > tr.slack then
+			local to = tr.at + (feet - tr.at) * (tr.slack / d)
+			;(t.ref :: Player):SetAttribute("TeleportT", os.clock())
+			r.CFrame = r.CFrame.Rotation + to + Vector3.new(0, Hitbox.ROOT_UP, 0)
+			r.AssemblyLinearVelocity = tr.v
+		end
+	end
+end
+
 local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if not spendMsg(p) then return end
 	local f = Fight.byPlayer[p]
@@ -814,6 +1115,15 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if i == "nv" then onNv(f, o); return end -- (G with the goggles: on / off, free)
 	if i == "ans" then onAnswer(f, o); return end -- (a pop quiz answer, 0-3)
 	if i == "radar" then onRadar(f, o, d); return end -- (the speed trap: G held is free, only a ticket spends)
+	if i == "camera" then -- (the camera's first press, the snap, is free; the print below costs the charge)
+		local s0 = stateOf(f)
+		if s0.item == "camera" and not s0.photo and f.alive and not s0.quiz and not s0.jail and not s0.trap and p:GetAttribute("Zone") ~= "hub" then
+			if now() - s0.useT < Items.SPAM then return end
+			s0.useT = now()
+			snapPhoto(f, if finiteV(d) and (d :: Vector3).Magnitude > 1e-3 then (d :: Vector3).Unit else (Fight.root(f) :: BasePart).CFrame.LookVector)
+			return
+		end
+	end
 	if type(i) ~= "string" or not table.find(Items.ORDER, i) then return end
 	local s = stateOf(f)
 	local c = charges(s)
@@ -823,7 +1133,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	-- goes back so the HUD can't drift
 	-- (sitting a quiz: no items; the goggles' flash only with them on)
 	if not f.alive or p:GetAttribute("Zone") == "hub" or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < Items.SPAM
-		or s.quiz or (i == "nvg" and not s.nvOn) then
+		or s.quiz or s.trap or (i == "nvg" and not s.nvOn) then
 		publish(f)
 		return
 	end
@@ -841,6 +1151,8 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	local dir = if finiteV(d) and (d :: Vector3).Magnitude > 1e-3 then (d :: Vector3).Unit else Vector3.new(0, 0, -1)
 	if it.proj then
 		throw(f, it.proj, from, dir, throwVel(f))
+	elseif i == "wand" then
+		blowWand(f, from, dir)
 	elseif i == "medkit" then
 		s.heal = it.heal :: number
 		ItemFx:FireAllClients({ k = "medkit", o = p.UserId, model = p.Character })
@@ -854,6 +1166,8 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 		laptopUse(f, from, dir, c)
 	elseif i == "nvg" then
 		nvFlash(f, from, dir)
+	elseif i == "camera" then
+		printPhoto(f, dir)
 	end
 end
 
@@ -868,6 +1182,7 @@ local function tick(dt: number)
 		local age = t - pr.born
 		if pr.k == "duck" and duckFly(pr, alive(pr.owner), dt) then continue end
 		if pr.k == "calc" and calcFly(pr, alive(pr.owner)) then continue end
+		if pr.k == "soap" then soapFly(pr, alive(pr.owner)); continue end
 		local hit = Items.step(pr, dt, cast)
 		if hit > 4 and t - pr.syncT > 0.05 then
 			pr.syncT = t
@@ -893,6 +1208,8 @@ local function tick(dt: number)
 	tickHoles(dt)
 	tickQuizzes()
 	tickRadar()
+	tickFrames()
+	tickTraps()
 	-- the medkit: 26 HP a second until the 45 is spent, never past 100 (web tickItems: it doesn't eat overheal, and
 	-- the heal keeps draining while you're full)
 	for f, s in st do
@@ -918,6 +1235,7 @@ local function welcome(p: Player)
 	for _, b in bubbles do table.insert(list, { k = "bub+", id = b.id, p = b.p, r = b.r, left = b.untilT - t }) end
 	for _, c in clouds do table.insert(list, { k = "smoke", id = c.id, p = c.p, r = c.r, left = c.untilT - t }) end
 	for _, h in holes do table.insert(list, holeInfo(h, "hs")) end
+	for _, fr in frames do table.insert(list, frameMsg(fr)) end
 	for _, pr in projs do table.insert(list, { k = "ps", id = pr.id, w = pr.k, p = pr.p, v = pr.v, o = pr.uid, fuse = pr.fuse - (t - pr.born) }) end
 	if #list > 0 then ItemFx:FireClient(p, { k = "list", list = list }) end
 end
@@ -927,6 +1245,11 @@ function Utility.init(fight: any)
 	Fight.blocks = blocked
 	Fight.smokeBlocks = Utility.smokeBlocks
 	Fight.reflects = reflects
+	Fight.soaked = function(t: Fighter, by: Fighter?, wid: string, from: Vector3?): boolean
+		local s = st[t]
+		if not s or not s.trap or blocked(by, t, from) then return false end
+		return popTrap(t, "hit", by, wid)
+	end
 	Fight.invulnerable = function(t: Fighter): boolean
 		local s = st[t]
 		return s ~= nil and (s.quiz ~= nil or now() < s.invulnUntil)
@@ -944,6 +1267,8 @@ function Utility.init(fight: any)
 		setNv(f, false)
 		s.ticket = nil
 		if s.jail then unjail(f, "gone") end
+		setPhoto(f, nil) -- (web gearReset: the photo goes with your life; frames stay up)
+		if s.trap then popTrap(f, "gone") end
 		s.invulnUntil, s.adsUntil = -math.huge, -math.huge
 		publish(f)
 	end)
@@ -951,6 +1276,7 @@ function Utility.init(fight: any)
 		local s = st[info.v]
 		if s then
 			s.heal = 0
+			if s.trap then popTrap(info.v, "dead") end
 			if s.quiz then endQuiz(info.v, -1, true) end
 			setNv(info.v, false)
 			if s.reverseUntil > now() then -- (the card ends on death)
@@ -990,7 +1316,9 @@ function Utility.test(f: Fighter, id: string?): any
 	return { item = s.item, n = c.n, next = if c.next > 0 then c.next - now() else 0, heal = s.heal, hp = f.hp,
 		reverse = math.max(0, s.reverseUntil - now()), nv = s.nvOn, quiz = s.quiz ~= nil, invuln = math.max(0, s.invulnUntil - now()),
 		ads = math.max(0, s.adsUntil - now()),
-		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes, cloud = if #clouds > 0 then clouds[#clouds].p else nil }
+		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes, cloud = if #clouds > 0 then clouds[#clouds].p else nil,
+		photo = s.photo ~= nil, frames = #frames, trap = if s.trap then s.trap.untilT - now() else nil, trapAt = if s.trap then s.trap.at else nil,
+		trapSafe = math.max(0, s.trapSafe - now()) }
 end
 
 return Utility

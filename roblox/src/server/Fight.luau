@@ -43,6 +43,8 @@ Fight.reflects = function(_by: Fighter, _t: Fighter): boolean return false end
 -- sitting a pop quiz, or the seconds after acing one: no damage from anyone else (Utility.luau; the shove still lands,
 -- web room.js hitBlocked is checked in damage(), after the knock)
 Fight.invulnerable = function(_t: Fighter): boolean return false end
+-- sealed in a soap bubble: asked first, a hit only pops it (Utility.luau, the bubble wand)
+Fight.soaked = function(_t: Fighter, _by: Fighter?, _wid: string, _from: Vector3?): boolean return false end
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -278,7 +280,9 @@ end
 -- nobody behind it came from (a frag whose thrower has left). plain = straight to HP, no dome or card asked (web
 -- room.js damage(): the duck's crush and its near-the-middle damage)
 function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: boolean, kb: Vector3?, at: Vector3?, from: Vector3?, plain: boolean?): number
-	if not t.alive or not Fight.allow(by, t) then return 0 end
+	if not t.alive then return 0 end
+	if Fight.soaked(t, by, wid, from) then return 0 end -- (sealed in a soap bubble: the first hit, a friend's too, only pops it)
+	if not Fight.allow(by, t) then return 0 end
 	if not plain and Fight.blocks(by, t, from) then return 0 end
 	-- a reverse card up: the whole hit goes back to whoever sent it, its shove mirrored (web hurt)
 	if not plain and by and by ~= t and by.alive and Fight.reflects(by, t) then

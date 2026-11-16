@@ -21,7 +21,7 @@ from mathutils import Vector, Matrix
 from gunkit import Gun, P
 
 UNIT = 10.0  # the upload is 10 x the item's size: one stud in the upload = 0.1 m (no tiny MeshParts)
-ITEMS = ['frag', 'smoke', 'medkit', 'bubble', 'popper', 'reverse', 'duck', 'calc', 'laptop', 'nvg', 'radar', 'cage']
+ITEMS = ['frag', 'smoke', 'medkit', 'bubble', 'popper', 'reverse', 'duck', 'calc', 'laptop', 'nvg', 'radar', 'cage', 'camera', 'photoframe', 'wand']
 
 # calm palette (memory less-colourful-look): olive and charcoal, a mid grey, an off-white, one muted red, one cyan
 OLIVE, OLIVE_D = '5d6741', '4a5334'
@@ -282,7 +282,109 @@ def cage():
     return g
 
 
-BUILD = {'radar': radar, 'cage': cage, 'calc': calc, 'laptop': laptop, 'nvg': nvg, 'duck': duck, 'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'popper': popper, 'reverse': reverse}
+DARK, GLASS, FLASHW = '26282d', '1d2330', 'cfcac0'
+
+
+def turn(g, keys, m):
+    """turn finished pieces by a Blender-space matrix (a hinge, a lean)"""
+    for key in keys:
+        for v in g.pieces[key].verts: v.co = m @ v.co
+
+
+def slab_hole(g, piece, outer, inner, z, bev):
+    """a flat card with a rectangular hole right through it: outer / inner = (x0, x1, y0, y1), z = (lo, hi)"""
+    from gunkit import soft_bevel
+    bm = bmesh.new()
+    def quad(r, zz):
+        x0, x1, y0, y1 = r
+        return [bm.verts.new(P(x, y, zz)) for x, y in ((x0, y0), (x1, y0), (x1, y1), (x0, y1))]
+    of, ob, inf, inb = quad(outer, z[0]), quad(outer, z[1]), quad(inner, z[0]), quad(inner, z[1])
+    for i in range(4):
+        j = (i + 1) % 4
+        bm.faces.new([of[i], of[j], inf[j], inf[i]])
+        bm.faces.new([ob[i], inb[i], inb[j], ob[j]])
+        bm.faces.new([of[i], ob[i], ob[j], of[j]])
+        bm.faces.new([inf[i], inf[j], inb[j], inb[i]])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    soft = soft_bevel(bm, bm.edges[:], piece, bev * 0.75)
+    g._add(piece, bm, smooth=(lambda f: f in soft) if soft else None)
+
+
+def camera():
+    g = Gun('x_camera')
+    g.slot('body', SHELL); g.slot('deck', CHAR); g.slot('dark', DARK); g.slot('steel', STEEL); g.slot('glass', GLASS)
+    g.slot('flash', FLASHW); g.slot('button', RED)
+    # an instant camera, chunky: a pale brick body, a charcoal top deck, a big lens barrel forward (-z) with a steel ring
+    # and dark glass, the flash window top left (named "flash": it lights up when you snap), the viewfinder top right
+    # (a window in front, a rubber eyepiece behind), one muted red shutter button on top (named "shutter": it kicks),
+    # the print slot under the lens where the photo comes out
+    g.box('body__body', (-0.078, 0.078), (-0.058, 0.026), (-0.046, 0.046), bev=0.016)
+    g.box('deck__deck', (-0.076, 0.076), (0.018, 0.058), (-0.042, 0.046), bev=0.012)
+    g.cyl('barrel__deck', 0.04, (0, -0.014, -0.04), (0, -0.014, -0.066), sides=32, bev=0.004)
+    g.ring('lensring__steel', 0.042, 0.03, (0, -0.014, -0.06), (0, -0.014, -0.072), sides=32, bev=0.003, smooth=True)
+    g.cyl('glass__glass', 0.031, (0, -0.014, -0.064), (0, -0.014, -0.07), sides=32, bev=0.002)
+    g.box('flash__flash', (-0.07, -0.024), (0.028, 0.05), (-0.0465, -0.04), bev=0.004)
+    g.box('finder__dark', (0.032, 0.066), (0.028, 0.05), (-0.0465, -0.04), bev=0.004)
+    g.box('eyepiece__dark', (0.03, 0.068), (0.024, 0.054), (0.044, 0.056), bev=0.006)
+    g.cyl('shutter__button', 0.012, (0.05, 0.056, -0.012), (0.05, 0.068, -0.012), sides=24, bev=0.003)
+    g.box('slot__dark', (-0.052, 0.052), (-0.052, -0.045), (-0.0475, -0.044), bev=0.001)
+    for sx in (-1, 1):
+        g.cyl('lug__steel', 0.007, (0.08 * sx, 0.03, 0.02), (0.084 * sx, 0.03, 0.02), sides=12, bev=0.001)
+    # (held in the left fist round its left end, the fist's Y up)
+    g.spots = {'grip': [-0.066, -0.02, 0.004], 'gripRot': [0, 0, 0], 'lensAt': [0, -0.014, -0.072]}
+    return g
+
+
+def photoframe():
+    g = Gun('x_photoframe')
+    g.slot('card', 'ecebe4'); g.slot('back', CHAR); g.slot('pic', '2c2824'); g.slot('tape', 'ddd6c0'); g.slot('stand', CHAR_L)
+    g.slot('feet', DARK); g.slot('lip', 'd8e8ee', 'n')
+    # the printed photo: a giant instant print standing on a kickstand, the picture (named "pic": the game puts the
+    # photo on its front) in a square opening 1.9 m across with the print's deep bottom margin under it, a charcoal
+    # backing, two strips of tape across the top corners, a thin cool glow just inside the opening (it's a way through).
+    # its origin is the floor under the middle; it faces -z, back toward whoever printed it, and leans back a touch
+    pic, side, top, chin, th = 1.9, 0.1, 0.1, 0.36, 0.06
+    W, H = pic + side * 2, chin + pic + top
+    slab_hole(g, 'card__card', (-W / 2, W / 2, 0.0, H), (-pic / 2, pic / 2, chin, chin + pic), (-th / 2, th / 2), 0.02)
+    slab_hole(g, 'lip__lip', (-pic / 2 - 0.004, pic / 2 + 0.004, chin - 0.004, chin + pic + 0.004),
+              (-pic / 2 + 0.026, pic / 2 - 0.026, chin + 0.026, chin + pic - 0.026), (-th / 2 + 0.006, th / 2 - 0.006), 0.004)
+    g.box('pic__pic', (-pic / 2 + 0.01, pic / 2 - 0.01), (chin + 0.01, chin + pic - 0.01), (-0.004, 0.004), bev=0.0)
+    g.box('back__back', (-W / 2 + 0.02, W / 2 - 0.02), (0.02, H - 0.02), (th / 2 - 0.004, th / 2 + 0.012), bev=0.006)
+    from mathutils import Matrix as _M
+    for sx, node in ((-1, 'tapeL'), (1, 'tapeR')):
+        cx, cy = sx * (W / 2 - 0.09), H - 0.06
+        g.box(node + '__tape', (cx - 0.24, cx + 0.24), (cy - 0.065, cy + 0.065), (-th / 2 - 0.012, -th / 2 + 0.002), bev=0.006)
+        c = P(cx, cy, 0)
+        turn(g, [(node, 'tape')], _M.Translation(c) @ _M.Rotation(-sx * 0.7, 4, 'Y') @ _M.Translation(-c))
+    # the kickstand: hinged high on the back, swung out behind it to the floor
+    hy, hz = H * 0.8, th / 2 + 0.02
+    g.box('stand__stand', (-0.08, 0.08), (hy - H * 0.86, hy), (hz - 0.02, hz + 0.02), bev=0.012)
+    hc = P(0, hy, hz)
+    turn(g, [('stand', 'stand')], _M.Translation(hc) @ _M.Rotation(-0.42, 4, 'X') @ _M.Translation(-hc))
+    g.box('hinge__feet', (-0.05, 0.05), (hy - 0.06, hy + 0.03), (th / 2, th / 2 + 0.05), bev=0.012)
+    for sx in (-1, 1):
+        g.box('feet__feet', (sx * (W / 2 - 0.2) - 0.08, sx * (W / 2 - 0.2) + 0.08), (0.0, 0.05), (-0.09, 0.09), bev=0.015)
+    # (the lean: the whole print tips back 0.06 rad about its foot)
+    turn(g, list(g.pieces.keys()), _M.Rotation(0.06, 4, 'X'))
+    g.spots = {'grip': [0, 0, 0], 'gripRot': [0, 0, 0], 'pic': [pic, chin]}
+    return g
+
+
+def wand():
+    g = Gun('x_wand')
+    g.slot('ring', ROSE); g.slot('handle', CHAR); g.slot('steel', STEEL)
+    # a bubble wand: a round ring you blow through (its middle at the origin, facing forward -z), a short neck, a
+    # charcoal handle with a fatter grip and a steel cap. the soap film in the ring is the game's own
+    g.ring('ring__ring', 0.052, 0.04, (0, 0, -0.007), (0, 0, 0.007), sides=40, bev=0.004, smooth=True)
+    g.cyl('neck__ring', 0.008, (0, -0.05, 0), (0, -0.09, 0), sides=16, bev=0.002)
+    g.cyl('handle__handle', 0.012, (0, -0.088, 0), (0, -0.25, 0), sides=20, bev=0.003)
+    g.cyl('grip__handle', 0.016, (0, -0.15, 0), (0, -0.245, 0), sides=20, bev=0.005)
+    g.cyl('cap__steel', 0.015, (0, -0.244, 0), (0, -0.256, 0), sides=20, bev=0.004)
+    g.spots = {'grip': [0, -0.2, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+BUILD = {'camera': camera, 'photoframe': photoframe, 'wand': wand, 'radar': radar, 'cage': cage, 'calc': calc, 'laptop': laptop, 'nvg': nvg, 'duck': duck, 'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'popper': popper, 'reverse': reverse}
 
 
 def look(slot):
@@ -298,7 +400,8 @@ def export_all(out_dir, ids):
         g = BUILD[iid]()
         lo, hi = g.bounds()
         info[iid] = {'lo': lo, 'hi': hi, 'tris': g.tris(), 'pieces': ['%s__%s' % k for k in g.pieces],
-                     'grip': g.spots.get('grip'), 'gripRot': g.spots.get('gripRot')}
+                     'grip': g.spots.get('grip'), 'gripRot': g.spots.get('gripRot'),
+                     **{k: v for k, v in g.spots.items() if k not in ('grip', 'gripRot')}}
         made = g.to_scene(at=Matrix.Diagonal(Vector((UNIT, UNIT, UNIT, 1.0))))
         for o, (node, slot) in zip(made, list(g.pieces.keys())):
             o.name = '%s_%s__%s' % (iid, node, look(g.slots[slot]))

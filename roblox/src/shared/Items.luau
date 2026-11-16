@@ -47,9 +47,9 @@ Items.list = {
 		desc = "A confetti blast: everyone in front of you gets shoved away hard and you get launched backwards. Zero damage, all void kills and escapes." },
 	reverse = { id = "reverse", name = "Reverse Card", color = hex("ff3b3b"), charges = 1, recharge = 22, live = true,
 		desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it." },
-	wand = { id = "wand", name = "Bubble Wand", color = hex("9fe8ff"), charges = 2, recharge = 32, carry = true, live = false,
+	wand = { id = "wand", name = "Bubble Wand", color = hex("9fe8ff"), charges = 2, recharge = 32, carry = true, live = true,
 		desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s, then pops and drops them. Over the void, that's your kill." },
-	camera = { id = "camera", name = "Instant Camera", color = hex("c9a7ff"), charges = 1, recharge = 42, carry = true, live = false,
+	camera = { id = "camera", name = "Instant Camera", color = hex("c9a7ff"), charges = 1, recharge = 42, carry = true, live = true,
 		desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it." },
 	quiz = { id = "quiz", name = "Pop Quiz", color = hex("7fffd4"), charges = 2, recharge = 40, carry = true, live = true, proj = "calc",
 		desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield." },
@@ -121,6 +121,35 @@ Items.NVG = { range = 34 * S, cone = 0.62, close = 2 * S, dur = { 0.6, 3.2 }, nv
 -- after a warning). km/h are of metres: studs/s x 1.2. one ticket per shooter every gap s
 Items.SPEED = { range = 70 * S, cone = 0.1, scan = 0.15, window = 0.5, limit = 100, jail = 200, warn = 3, grace = 0.5, jailT = 3.5,
 	safe = 12, warnSafe = 4, gap = 0.9, kmh = 3.6 / S, drop = 40 * S }
+-- the instant camera (web PHOTO :480, server/gear.js): the snap is free (a floor within drop under you, flat enough);
+-- printing costs the charge: a frame stands at in front of you (pulled to wall off a wall) on the floor, facing you, for
+-- life s. anyone whose feet are in its opening (w wide, depth deep, from 0.8 m under its foot to h - 0.6 m up), or who
+-- crossed it since last tick within 3 m, goes through (each person once every cd s): to where the photo was taken,
+-- facing the way it looked. whoever stands within frag (flat) and fragH (up) of that spot is telefragged
+Items.PHOTO = { at = 1.9 * S, wall = 0.6 * S, life = 20, w = 1.8 * S, h = 2.1 * S, depth = 0.55 * S, cd = 1.6, frag = 0.9 * S, fragH = 1.6 * S,
+	drop = 3 * S, cross = 3 * S, below = 0.8 * S, top = 0.6 * S }
+-- the bubble wand (web ITEMS.wand, WEAPONS.soap, shared/wand.js): G blows 4 slow soap bubbles 0.09 s apart. the first
+-- enemy one touches is sealed in a giant bubble (y over their feet, r across; a box of half box round it takes the
+-- hits) that floats them rise up and drift along the way the bubble went for dur s, then pops and drops them. any hit
+-- only pops it. after a pop: no new bubble for max(safe, safeK x how long they were in)
+Items.SOAP = { speed = 11 * S, r = 0.4 * S, drag = 1.4, drift = 1 * S, lift = 0.25 * S, bob = 0.2 * S, sway = 0.25 * S, life = 4 }
+Items.WAND = { bubbles = 4, gap = 0.09, dur = 5, rise = 2 * S, drift = 1.5 * S, safe = 1.5, safeK = 0.6, y = 1.14 * S, r = 1.38 * S, box = 1.1 * S,
+	mouth = 0.15 * S, wall = 0.8 * S }
+-- where a soap bubble is t s after it was blown: a formula, not a simulation, so the server (the hits) and every client
+-- (the drawing) agree without syncing. it slows from the blow to a lazy drift the same way, floats up a little, and
+-- bobs and sways out of step with its neighbours (seed = its id)
+function Items.soapAt(p0: Vector3, v0: Vector3, seed: number, t: number): Vector3
+	local w = Items.SOAP
+	local hl = math.sqrt(v0.X * v0.X + v0.Z * v0.Z)
+	local dx = if hl > 1e-6 then v0.X / hl else 0
+	local dz = if hl > 1e-6 then v0.Z / hl else 0
+	local D = Vector3.new(dx * w.drift, w.lift, dz * w.drift)
+	local e = (1 - math.exp(-w.drag * t)) / w.drag
+	local ph = seed * 2.39996
+	local bob = w.bob * (math.sin(t * 4.2 + ph) - math.sin(ph))
+	local sway = w.sway * (math.sin(t * 2.6 + ph * 1.7) - math.sin(ph * 1.7))
+	return p0 + D * t + (v0 - D) * e + Vector3.new(-dz * sway, bob, dx * sway)
+end
 Items.QUIZ = { time = 6, slack = 0.15, invuln = 2.5, heal = 25, healMax = 125, fast = 1.25, fastT = 4, safe = 10, hold = 0.8 * S, bot = 0.7, botT = { 1.3, 4.2 } }
 
 -- a pop quiz question (web makeQuestion, server/gear.js): one of ten kinds, small numbers, four options (the answer +

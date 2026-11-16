@@ -173,10 +173,10 @@ add({ id = "popper", slot = "utility", name = "Party Popper", color = "ff6bd0", 
 add({ id = "reverse", slot = "utility", name = "Reverse Card", color = "ff3b3b", live = true, gimmick = "for 3 s every bullet, swing, blast and shove aimed at you goes back to whoever sent it.",
 	desc = "For 3 s every bullet, blast and shove aimed at you goes back to whoever sent it. Everyone sees you flash it.",
 	stats = st("CHARGES", "1", 0.5, "RECHARGE", "22 s", 0.52, "LASTS", "3 s", 0.2, "SENDS BACK", "everything", 1) })
-add({ id = "wand", slot = "utility", name = "Bubble Wand", color = "9fe8ff", live = false, gimmick = "",
+add({ id = "wand", slot = "utility", name = "Bubble Wand", color = "9fe8ff", live = true, gimmick = "G blows 4 soap bubbles. the first enemy one touches floats off in a giant bubble for 5 s: no moving, no shooting. any hit pops it. over the void, that's your kill.",
 	desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s (no moving, no shooting), then pops and drops them. Over the void, that's your kill.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "32 s each", 0.76, "SEALS", "5 s", 0.33, "BUBBLES", "4 a blow", 0.4) })
-add({ id = "camera", slot = "utility", name = "Instant Camera", color = "c9a7ff", live = false, gimmick = "",
+add({ id = "camera", slot = "utility", name = "Instant Camera", color = "c9a7ff", live = true, gimmick = "G snaps a photo where you stand (free). G again prints it: a frame for 20 s that puts anyone who walks in back on that spot. whoever's standing there is telefragged.",
 	desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it.",
 	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "42 s", 1, "FRAME", "20 s", 0.6, "TELEFRAG", "yes", 1) })
 add({ id = "quiz", slot = "utility", name = "Pop Quiz", color = "7fffd4", live = true, gimmick = "a thrown calculator. whoever it hits gets 6 s to answer a sum: wrong or slow and they die; right and they get a gold star.",

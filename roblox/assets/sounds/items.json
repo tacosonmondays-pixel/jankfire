@@ -49,5 +49,55 @@
   "id": 100021090892199,
   "vol": 0.6,
   "what": "your rope snapping in a black hole (sfx.ropeSnap)"
+ },
+ "shutter": {
+  "id": 104135417633625,
+  "vol": 0.7,
+  "what": "the instant camera taking a photo (sfx.shutter)"
+ },
+ "whirr": {
+  "id": 122321841993831,
+  "vol": 1.0,
+  "what": "the camera spitting out a print (sfx.printWhirr)"
+ },
+ "photoin": {
+  "id": 118057752457591,
+  "vol": 0.7,
+  "what": "coming out of a photo (sfx.photoIn)"
+ },
+ "photoout": {
+  "id": 132164154611414,
+  "vol": 0.7,
+  "what": "going into a photo (sfx.photoOut)"
+ },
+ "framepop": {
+  "id": 125307296087713,
+  "vol": 0.8,
+  "what": "a printed photo popping up or away (sfx.framePop)"
+ },
+ "bloop": {
+  "id": 117963491507894,
+  "vol": 0.6,
+  "what": "blowing a soap bubble (sfx.bloop, its middle pitch)"
+ },
+ "plip": {
+  "id": 100077785201649,
+  "vol": 0.5,
+  "what": "a little soap bubble popping (sfx.plip)"
+ },
+ "glorp": {
+  "id": 81849415292287,
+  "vol": 0.7,
+  "what": "getting sealed in a giant bubble (sfx.glorp)"
+ },
+ "bigpop": {
+  "id": 125467185485282,
+  "vol": 0.8,
+  "what": "a giant bubble popping (sfx.bigPop)"
+ },
+ "blub": {
+  "id": 85709599487753,
+  "vol": 0.5,
+  "what": "blubbing inside a bubble (sfx.blub, its middle pitch)"
  }
 }

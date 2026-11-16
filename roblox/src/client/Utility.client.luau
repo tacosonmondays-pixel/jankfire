@@ -100,6 +100,20 @@ local function standIn(name: string): Model
 		for _, x in { -2.3, 2.3 } do for _, z in { -2.3, 2.3 } do
 			local post = part(Enum.PartType.Block, Vector3.new(0.3, 7.2, 0.3), Color3.fromHex("8e939a")); post.CFrame = CFrame.new(x, 3.6, z); post.Parent = m
 		end end
+	elseif name == "x_camera" then
+		root = part(Enum.PartType.Block, Vector3.new(0.47, 0.26, 0.28), Color3.fromHex("e2e2dc"))
+		local flash = part(Enum.PartType.Block, Vector3.new(0.13, 0.06, 0.02), Color3.fromHex("cfcac0")); flash.Name = "flash"
+		flash.CFrame = CFrame.new(-0.14, 0.11, -0.14); flash.Parent = m
+	elseif name == "x_photoframe" then
+		-- (origin: the floor under the middle; the picture faces -z)
+		root = part(Enum.PartType.Block, Vector3.new(6.3, 7.1, 0.18), Color3.fromHex("ecebe4"))
+		root.CFrame = CFrame.new(0, 3.55, 0.05)
+		local pic = part(Enum.PartType.Block, Vector3.new(5.6, 5.6, 0.05), Color3.fromHex("2c2824")); pic.Name = "pic"
+		pic.CFrame = CFrame.new(0, 1.08 + 2.85, -0.07); pic.Parent = m
+	elseif name == "x_wand" then
+		root = part(Enum.PartType.Cylinder, Vector3.new(0.04, 0.3, 0.3), Color3.fromHex("b56f88"))
+		root.CFrame = CFrame.Angles(0, math.pi / 2, 0)
+		local stick = part(Enum.PartType.Block, Vector3.new(0.06, 0.6, 0.06), Color3.fromHex("3b3f48")); stick.CFrame = CFrame.new(0, -0.45, 0); stick.Parent = m
 	elseif name == "x_nvg" then
 		root = part(Enum.PartType.Block, Vector3.new(0.6, 0.22, 0.2), Color3.fromHex("3b3f48"))
 		for _, x in { -0.14, 0.14 } do
@@ -121,7 +135,8 @@ local function standIn(name: string): Model
 	return m
 end
 local MODEL = { frag = "x_frag", smokegren = "x_smoke", smoke = "x_smoke", medkit = "x_medkit", bubble = "x_bubble", popper = "x_popper", reverse = "x_reverse", duck = "x_duck",
-	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg", radar = "x_radar", radarDown = "x_radar", cage = "x_cage" }
+	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg", radar = "x_radar", radarDown = "x_radar", cage = "x_cage",
+	camera = "x_camera", snap = "x_camera", print = "x_camera", photoframe = "x_photoframe", wand = "x_wand" }
 local function itemModel(id: string): Model
 	local name = MODEL[id] or ("x_" .. id)
 	local t = templates and templates:FindFirstChild(name)
@@ -176,7 +191,8 @@ local function hudStep()
 	local _, _, root = myChar()
 	plate.Visible = it ~= nil and it.live and not inHub() and not menuOpen() and root ~= nil
 	if not it or not plate.Visible then return end
-	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles") else it.name
+	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles")
+		elseif it.id == "camera" and me:GetAttribute("Photo") then "Camera · print" else it.name
 	if nameL.Text ~= label then nameL.Text = label end
 	chip.BackgroundColor3 = it.color
 	setPips(it.charges)
@@ -224,6 +240,17 @@ local CLIPS = {
 		K(0, -0.5, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.17, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04), K(1e6, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04) } },
 	radarDown = { dur = 0.16, out = 0.0, release = 9, inT = 0.001, keys = {
 		K(0, -0.4, -0.5, -1.3, 0.04, 0.3, 0.04), K(0.16, -0.5, -1.4, -1.0, 0.4, 0.2, 0.1) } },
+	snap = { dur = 0.85, out = 0.55, release = 9, inT = 0.06, keys = {
+		K(0, -0.55, -1.3, -1.0, 0.4, 0.1, 0.2), K(0.16, -0.22, -0.34, -0.78, 0.04, -0.08, -0.04),
+		K(0.3, -0.21, -0.32, -0.75, 0, -0.06, -0.02), K(0.38, -0.21, -0.3, -0.7, 0.14, -0.06, 0.03),
+		K(0.52, -0.21, -0.32, -0.75, 0.02, -0.06, -0.02), K(0.85, -0.55, -1.4, -1.0, 0.4, 0.1, 0.2) } },
+	print = { dur = 1.3, out = 1.05, release = 1.14, inT = 0.06, keys = {
+		K(0, -0.3, -1.35, -1.0, 0.3, math.pi, 0.4), K(0.2, -0.04, -0.32, -1.25, 0.5, math.pi, 0.05),
+		K(0.82, -0.02, -0.3, -1.25, 0.45, math.pi, -0.04), K(1.0, 0.0, -0.28, -1.2, 0.25, math.pi, 0),
+		K(1.3, 0.1, 0.1, -2.6, -0.6, math.pi, 0.3) } },
+	wand = { dur = 0.85, out = 0.62, release = 9, inT = 0.06, keys = {
+		K(0, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25), K(0.13, -0.17, -0.83, -0.66, 0, 0.35, -0.25),
+		K(0.62, -0.17, -0.83, -0.66, 0, 0.35, -0.25), K(0.85, -0.45, -1.6, -0.9, 0.15, 0.35, -0.25) } },
 	bubble = { dur = 0.66, out = 0.4, release = 0.5, keys = {
 		K(0, -0.45, -1.3, -1.0, 0.5, 0.1, 0.2), K(0.12, -0.3, -0.5, -1.35, -0.1, 0.2, 0.05),
 		K(0.3, -0.3, -0.52, -1.3, -0.15, 0.25, 0.05), K(0.66, -0.5, -1.5, -1.0, 0.5, 0.1, 0.3) } },
@@ -243,8 +270,9 @@ end
 Holds.holds.item_hand = { Left = { pose = "grip", at = Vector3.zero, rot = Vector3.zero, size = 0.9 } }
 local FP_K = 0.95 -- the item in first person, against its world size (the guns are drawn a little under world size)
 local FP_SIZE = { duck = 0.45 } -- (the thrown duck is 0.6 m long, web pj_duck: in your hand it's a toy)
-type Hand = { id: string, clip: any, t0: number, model: Model, grip: CFrame, own: Model?, root: BasePart?, gone: boolean, lastF: CFrame? }
+type Hand = { id: string, clip: any, t0: number, model: Model, grip: CFrame, own: Model?, root: BasePart?, gone: boolean, lastF: CFrame?, extra: any? }
 local hand: Hand? = nil
+local extraStep: ((Hand, number) -> ())? = nil -- (the camera's print sliding out: the camera below)
 -- how far the hand has gone from its hold to the item: there in 0.06 s, back over the clip's last part
 local function mixAt(h: Hand, t: number): number
 	return smooth(t / (h.clip.inT or 0.06)) * (1 - smooth((t - h.clip.out) / (h.clip.dur - h.clip.out)))
@@ -314,6 +342,7 @@ local function handStep(): boolean
 		h.model:PivotTo(h.root.CFrame * h.grip:Inverse())
 		for _, d in h.model:GetDescendants() do if d:IsA("BasePart") then d.LocalTransparencyModifier = 0 end end
 	end
+	if h.extra and extraStep then extraStep(h, t) end
 	return true
 end
 -- where the item leaves your hand (a thrown one's flight starts there and slides onto the server's line)
@@ -327,6 +356,10 @@ end
 local lastUse = -math.huge
 local toggleGoggles: () -> () -- (the goggles below)
 local radarHold: (boolean) -> () -- (the speed trap below)
+local snapAt: (number) -> () -- (the camera below)
+local whiteFlash: (number, number) -> ()
+local printIn: () -> ()
+local wandIn: () -> () -- (the bubble wand below)
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or io.KeyCode ~= Enum.KeyCode.G then return end
 	if menuOpen() or inHub() then return end
@@ -336,9 +369,20 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	local it = if type(id) == "string" then L[id] else nil
 	if not it or not it.live then return end
 	if me:GetAttribute("Quiz") then return end -- (sitting a pop quiz: no items)
+	if me:GetAttribute("Trap") then Sfx.play("blub", nil, 0.6); Hud.callout("you are in a bubble", 0.7); return end
 	if it.id == "nvg" then toggleGoggles(); return end
 	if it.id == "radar" then radarHold(true); return end
 	local t = os.clock()
+	if it.id == "camera" and not me:GetAttribute("Photo") then
+		if t - lastUse < Items.SPAM_CLIENT then return end
+		lastUse = t
+		local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
+		ItemR:FireServer("camera", eye, camera.CFrame.LookVector)
+		snapAt(t)
+		startHand("snap")
+		handStep()
+		return
+	end
 	if t - lastUse < Items.SPAM_CLIENT then return end
 	local n = charges()
 	if n <= 0 then
@@ -351,9 +395,16 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	-- from your eye (the camera itself in first person, so it leaves from under the crosshair), along your look
 	local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
 	ItemR:FireServer(it.id, eye, camera.CFrame.LookVector)
+	if it.id == "camera" then
+		startHand("print")
+		printIn()
+		handStep()
+		return
+	end
 	startHand(it.id)
+	if it.id == "wand" then wandIn() end
 	handStep()
-	if it.id ~= "popper" and it.id ~= "reverse" and it.id ~= "laptop" then -- (those make their sound when the server says it happened)
+	if it.id ~= "popper" and it.id ~= "reverse" and it.id ~= "laptop" and it.id ~= "wand" then -- (those make their sound when the server says it happened)
 		Sfx.play(if it.id == "medkit" then "heal" elseif it.id == "bubble" then "reverse" else "swing")
 	end
 end)
@@ -1169,6 +1220,10 @@ end)
 local whiteout = T.new("Frame", { Name = "Flashed", BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, BorderSizePixel = 0,
 	Size = UDim2.fromScale(1, 1), ZIndex = 1000 }, overlay)
 local after = Instance.new("BlurEffect"); after.Name = "JankFlashed"; after.Size = 0; after.Enabled = false; after.Parent = game:GetService("Lighting")
+whiteFlash = function(a: number, secs: number)
+	whiteout.BackgroundTransparency = 1 - a
+	T.tween(whiteout, secs, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+end
 local function onFlashed(m: any)
 	local secs = math.clamp(tonumber(m.s) or 1, 0.1, 8)
 	whiteout.BackgroundTransparency = 0
@@ -1510,18 +1565,540 @@ do
 	end
 end
 
+-- (what the rest of the script calls in the camera and wand blocks below: the main chunk has a 200 local limit)
+local X = {} :: any
+-- ---------------------------------------------------------------- the instant camera (web public/js/photo.js)
+do
+-- nobody uploads a picture: the server says where a photo was taken (the spot, which way it looked) and every client
+-- builds that view itself, a ViewportFrame of the map's parts round that spot. your photo shows on a card by your
+-- item while you hold it, on the print as it comes out, and on the frame it prints into
+local P = Items.PHOTO
+local BROWN = Color3.new(0.23, 0.15, 0.1)
+local WARM = Color3.new(1, 0.95, 0.87) -- (the instant-film look: a touch warm)
+local mapParts: { BasePart } = {}
+local mapT = -math.huge
+local function mapList(): { BasePart }
+	if os.clock() - mapT < 30 then return mapParts end
+	mapT = os.clock()
+	table.clear(mapParts)
+	local map = workspace:FindFirstChild("Map")
+	if map then for _, d in map:GetDescendants() do if d:IsA("BasePart") and d.Transparency < 0.95 then table.insert(mapParts, d) end end end
+	return mapParts
+end
+local KEEP = { SpecialMesh = true, SurfaceAppearance = true, Decal = true, Texture = true }
+type Photo = { folder: Folder, cam: Camera }
+-- the map round the spot, as the photo saw it: the nearest 700 parts in front of it within 200 studs
+local function photoOf(pos: Vector3, yaw: number, pitch: number): Photo
+	local eye = pos + Vector3.new(0, Hitbox.EYE_UP, 0)
+	local cf = CFrame.new(eye) * CFrame.fromOrientation(pitch, yaw, 0)
+	local look = cf.LookVector
+	local near: { { p: BasePart, d: number } } = {}
+	for _, pt in mapList() do
+		if not pt.Parent then continue end
+		local h = pt.Size / 2
+		local l = pt.CFrame:PointToObjectSpace(eye)
+		local c = Vector3.new(math.clamp(l.X, -h.X, h.X), math.clamp(l.Y, -h.Y, h.Y), math.clamp(l.Z, -h.Z, h.Z))
+		local d = (l - c).Magnitude
+		if d > 200 then continue end
+		if d > 12 then
+			local w = pt.CFrame:PointToWorldSpace(c) - eye
+			if w.Unit:Dot(look) < 0.3 then continue end
+		end
+		table.insert(near, { p = pt, d = d })
+	end
+	table.sort(near, function(a, b) return a.d < b.d end)
+	local f = Instance.new("Folder")
+	f.Name = "Photo"
+	for i = 1, math.min(#near, 700) do
+		local ok, cl = pcall(function() return near[i].p:Clone() end)
+		if ok and cl then
+			for _, d in cl:GetDescendants() do if not KEEP[d.ClassName] then d:Destroy() end end
+			cl.Anchored = true
+			cl.Parent = f
+		end
+	end
+	local cam = Instance.new("Camera")
+	cam.FieldOfView = 72
+	cam.CFrame = cf
+	return { folder = f, cam = cam }
+end
+local function viewport(parent: Instance): ViewportFrame
+	local vf = Instance.new("ViewportFrame")
+	vf.Name = "Photo"
+	vf.Size = UDim2.fromScale(1, 1)
+	vf.BorderSizePixel = 0
+	vf.BackgroundColor3 = Color3.fromRGB(176, 190, 204) -- (the sky, where the map leaves a gap)
+	vf.Ambient = Color3.fromRGB(150, 148, 144)
+	vf.LightColor = Color3.fromRGB(235, 230, 220)
+	vf.LightDirection = -game:GetService("Lighting"):GetSunDirection()
+	vf.ImageColor3 = WARM
+	vf.Parent = parent
+	return vf
+end
+local function show(vf: ViewportFrame, ph: Photo)
+	for _, c in vf:GetChildren() do if c:IsA("Folder") or c:IsA("Camera") then c:Destroy() end end
+	ph.folder.Parent = vf
+	ph.cam.Parent = vf
+	vf.CurrentCamera = ph.cam
+end
+local function onSurface(pt: BasePart, face: Enum.NormalId): ViewportFrame
+	local sg = Instance.new("SurfaceGui")
+	sg.Name = "JankPhoto"
+	sg.Face = face
+	sg.SizingMode = Enum.SurfaceGuiSizingMode.FixedSize
+	sg.CanvasSize = Vector2.new(256, 256)
+	sg.LightInfluence = 0
+	sg.ResetOnSpawn = false
+	sg.Adornee = pt
+	sg.Parent = me:WaitForChild("PlayerGui")
+	pt.Destroying:Connect(function() sg:Destroy() end)
+	return viewport(sg)
+end
+
+-- the photo you're holding: a small print by your item, tipped a little, "G · PRINT" on its margin
+local thumb = T.new("Frame", { Name = "Photo", BackgroundColor3 = Color3.fromHex("ecebe4"), BorderSizePixel = 0, Visible = false,
+	AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -200, 1, -150), Size = UDim2.fromOffset(104, 126), Rotation = -4 }, hud)
+T.corner(thumb, 3)
+T.new("UIStroke", { Color = Color3.fromHex("26282d"), Thickness = 2, Transparency = 0.3 }, thumb)
+local thumbBox = T.new("Frame", { Name = "Pic", BackgroundTransparency = 1, Position = UDim2.fromOffset(7, 7), Size = UDim2.fromOffset(90, 90), ClipsDescendants = true }, thumb)
+local thumbVf = viewport(thumbBox)
+local thumbL = T.text(thumb, "Print", "G · PRINT", 13, Color3.fromHex("26282d"), T.FONT_BOLD, Enum.TextXAlignment.Center)
+thumbL.Position = UDim2.fromOffset(0, 100); thumbL.Size = UDim2.new(1, 0, 0, 20)
+local held: Photo? = nil
+local function thumbStep()
+	thumb.Visible = me:GetAttribute("Photo") == true and me:GetAttribute("Item") == "camera" and not inHub() and not menuOpen() and myChar() ~= nil
+end
+
+-- the snap: at 0.3 s into the clip the shutter goes, a white flash over the screen, the camera's flash window lights
+local snapT = -math.huge
+snapAt = function(t: number) snapT = t end
+local function camStep()
+	local t = os.clock() - snapT
+	if t >= 0.3 and snapT > 0 then
+		snapT = -math.huge
+		Sfx.play("shutter")
+		whiteFlash(0.85, 0.22)
+		shake = math.max(shake, 0.15)
+		local h = hand
+		local fl = h and h.id == "snap" and h.model:FindFirstChild("flash", true) :: BasePart?
+		if fl then
+			local c, mt = fl.Color, fl.Material
+			fl.Color = Color3.new(1, 1, 1); fl.Material = Enum.Material.Neon
+			task.delay(0.1, function() if fl.Parent then fl.Color = c; fl.Material = mt end end)
+		end
+	end
+end
+
+-- the print: a white card slides out of the slot under the lens toward you (the camera is turned round), your photo
+-- on it developing up from brown, then the whole thing is flicked forward and becomes the frame
+printIn = function()
+	local h = hand
+	if not h or h.id ~= "print" then return end
+	local k = h.model:GetScale() * S
+	local card = part(Enum.PartType.Block, Vector3.new(0.086, 0.002, 0.104) * k, Color3.fromHex("ecebe4"))
+	card.Name = "printcard"; card.Parent = h.model
+	local pic = part(Enum.PartType.Block, Vector3.new(0.076, 0.001, 0.076) * k, Color3.fromHex("2c2824"))
+	pic.Name = "printpic"; pic.Parent = h.model
+	local vf = onSurface(pic, Enum.NormalId.Top)
+	vf.ImageColor3 = BROWN
+	if held then show(vf, held); held = nil end
+	h.extra = { card = card, pic = pic, vf = vf, k = k }
+	Sfx.play("whirr")
+end
+local function printStep(h: Hand, t: number)
+	local e = h.extra
+	local out = math.clamp((t - 0.2) / 0.55, 0, 1)
+	local base = h.model:GetPivot() * CFrame.new(Vector3.new(0, -0.056, -0.046 - out * 0.09) * e.k)
+	e.card.CFrame = base * CFrame.new(Vector3.new(0, 0, -0.052) * e.k)
+	e.pic.CFrame = base * CFrame.new(Vector3.new(0, 0.0015, -0.058) * e.k) * CFrame.Angles(0, math.pi, 0)
+	local show = t > 0.18 and not h.gone
+	for _, pt in { e.card, e.pic } do pt.Transparency = if show then 0 else 1 end
+	local dev = math.clamp((t - 0.3) / 0.8, 0, 1)
+	e.vf.ImageColor3 = BROWN:Lerp(WARM, dev)
+	if t >= 0.82 and not e.flick then e.flick = true; Sfx.play("swing") end
+end
+
+-- the frames standing in the world
+type Frame = { id: number, o: number?, model: Model, at: CFrame, born: number, untilT: number, vf: ViewportFrame?, grown: boolean,
+	parts: { { p: BasePart, rel: CFrame, size: Vector3 } } }
+local frames: { [number]: Frame } = {}
+local function sparkle(at: Vector3, n: number, speed: number)
+	emitter(host(at, 1.5), { Texture = TEX.blob, LightEmission = 0.8, LightInfluence = 0.2,
+		Color = cs(Color3.fromRGB(250, 250, 246), Color3.fromRGB(196, 222, 232)), Size = ns(0, 0.12 * S, 1, 0),
+		Lifetime = NR(0.35, 0.7), Speed = NR(speed * 0.4, speed), SpreadAngle = Vector2.new(180, 180), Drag = 3 }):Emit(n)
+end
+local function dropFrame(id: any, quiet: boolean)
+	local F = if type(id) == "number" then frames[id] else nil
+	if not F then return end
+	frames[id] = nil
+	if not quiet then
+		local at = F.at.Position + Vector3.new(0, 1.2 * S, 0)
+		sparkle(at, 40, 7 * S)
+		Sfx.play("framepop", at)
+	end
+	F.model:Destroy()
+end
+local function onFrame(m: any)
+	if type(m.id) ~= "number" or typeof(m.p) ~= "Vector3" or type(m.ph) ~= "table" or typeof(m.ph.p) ~= "Vector3" then return end
+	dropFrame(m.id, true)
+	local model = itemModel("photoframe")
+	local at = CFrame.new(m.p) * CFrame.Angles(0, tonumber(m.y) or 0, 0)
+	-- (each part's place and size against the frame's foot: it grows by setting them, never ScaleTo)
+	-- (the template's parts sit round its own origin, the floor under its middle: each one's CFrame is its place against
+	-- the frame's foot. its PrimaryPart pivot is not that point, so it is never moved by PivotTo)
+	local parts = {}
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") then table.insert(parts, { p = d, rel = d.CFrame, size = d.Size }); d.CFrame = at * d.CFrame end
+	end
+	model.Parent = folder
+	local pic = model:FindFirstChild("pic", true) :: BasePart?
+	local vf = nil
+	if pic then
+		vf = onSurface(pic, Enum.NormalId.Front)
+		show(vf, photoOf(m.ph.p, tonumber(m.ph.y) or 0, tonumber(m.ph.x) or 0))
+		vf.ImageColor3 = BROWN
+	end
+	local fresh = m.fresh ~= false
+	local F: Frame = { id = m.id, o = if type(m.o) == "number" then m.o else nil, model = model, at = at,
+		born = if fresh then os.clock() else os.clock() - 5, untilT = os.clock() + (tonumber(m.left) or P.life), vf = vf, grown = false, parts = parts }
+	frames[m.id] = F
+	if F.o == me.UserId then held = nil end
+	if fresh then
+		Sfx.play("framepop", m.p)
+		if F.o ~= me.UserId then Sfx.play("whirr", m.p) end
+		sparkle(m.p + Vector3.new(0, 1.2 * S, 0), 30, 6 * S)
+	end
+end
+local function frameStep()
+	local n = os.clock()
+	for id, F in frames do
+		if n > F.untilT + 1.5 then dropFrame(id, true); continue end
+		local age, left = n - F.born, F.untilT - n
+		-- pops up out of the floor with an overshoot and a wobble, develops from brown over 1.6 s, flickers in its last 3 s
+		if not F.grown then
+			local x = math.min(1, age / 0.45) - 1
+			local k = math.max(0.02, 1 + 2.70158 * x * x * x + 1.70158 * x * x)
+			local wob = math.sin(age * 9) * 0.06 * math.exp(-age * 2.5)
+			local base = F.at * CFrame.Angles(0, 0, wob)
+			for _, e in F.parts do
+				e.p.Size = e.size * k
+				e.p.CFrame = base * CFrame.new(e.rel.Position * k) * e.rel.Rotation
+			end
+			if age >= 1.6 then -- (the wobble has died down: put it exactly where it stands)
+				F.grown = true
+				for _, e in F.parts do e.p.Size = e.size; e.p.CFrame = F.at * e.rel end
+			end
+		end
+		local vf = F.vf
+		if vf then
+			vf.ImageColor3 = BROWN:Lerp(WARM, math.clamp(age / 1.6, 0, 1))
+			vf.ImageTransparency = if left < 3 and math.sin(n * (12 + (3 - left) * 10)) < 0 then 0.45 else 0
+		end
+	end
+end
+local function onSnap(m: any)
+	if m.o == me.UserId then
+		if typeof(m.p) == "Vector3" then
+			held = photoOf(m.p, tonumber(m.y) or 0, tonumber(m.x) or 0)
+			show(thumbVf, held)
+		end
+		Hud.callout("PHOTO TAKEN · G TO PRINT IT", 1.6)
+	else
+		local model = if typeof(m.model) == "Instance" then m.model else nil
+		local head = model and model:FindFirstChild("Head") :: BasePart?
+		if head then
+			Sfx.play("shutter", head.Position)
+			local l = Instance.new("PointLight"); l.Brightness = 6; l.Range = 18; l.Color = Color3.new(1, 1, 1); l.Parent = head
+			Debris:AddItem(l, 0.1)
+		end
+	end
+end
+-- you went through: there you are, facing the way the photo was taken
+local function onPtp(m: any)
+	local _, _, root = myChar()
+	if not root or typeof(m.p) ~= "Vector3" then return end
+	local yaw, pitch = tonumber(m.y) or 0, tonumber(m.x) or 0
+	local to = m.p + Vector3.new(0, Hitbox.ROOT_UP, 0)
+	root.AssemblyLinearVelocity = Vector3.zero
+	root.CFrame = CFrame.new(to) * CFrame.Angles(0, yaw, 0)
+	local st = Body.st :: any
+	if st then
+		st.vx, st.vy, st.vz = 0, 0, 0
+		if st.hook then st.hook = nil; GrappleR:FireServer("release") end -- (a rope can't follow you through a photo)
+	end
+	camera.CFrame = CFrame.new(to + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0)) * CFrame.fromOrientation(pitch, yaw, 0)
+	Sfx.play("photoin")
+	whiteFlash(0.65, 0.35)
+	shake = math.max(shake, 0.4)
+	Hud.callout("WISH YOU WERE HERE", 1.3)
+end
+-- the show: someone went into a frame at a and came out at b
+local function teleFx(m: any)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	local isMe = model ~= nil and model == me.Character
+	for i, at in { m.a, m.b } do
+		if typeof(at) ~= "Vector3" then continue end
+		sparkle(at, if i == 2 then 50 else 34, (if i == 2 then 9 else 6) * S)
+		if not isMe then Sfx.play(if i == 1 then "photoout" else "photoin", at) end
+	end
+	local F = if type(m.f) == "number" then frames[m.f] else nil
+	if F and F.o == me.UserId and not isMe then
+		local who = model and Players:GetPlayerFromCharacter(model)
+		Hud.callout((if who then string.upper(who.DisplayName) else "SOMEONE") .. " WENT IN YOUR PHOTO", 1.2)
+	end
+end
+me:GetAttributeChangedSignal("Photo"):Connect(function() if not me:GetAttribute("Photo") and not (hand and hand.id == "print") then held = nil end end)
+X.onSnap = onSnap
+X.onFrame = onFrame
+X.dropFrame = dropFrame
+X.onPtp = onPtp
+X.teleFx = teleFx
+X.camStep = camStep
+X.frameStep = frameStep
+X.thumbStep = thumbStep
+X.printStep = printStep
+end
+
+-- ---------------------------------------------------------------- the bubble wand (web public/js/wand.js)
+do
+-- the soap film in the ring bulges each time a bubble leaves it; bubbles fly on the shared formula (Items.soapAt); the
+-- one sealed in floats in a giant bubble everyone sees, and sees the world through its film
+local SW, WD = Items.SOAP, Items.WAND
+local FILM = Color3.fromRGB(214, 236, 248)
+local function soapBall(d: number): BasePart
+	local b = part(Enum.PartType.Block, Vector3.one * d, FILM, Enum.Material.ForceField)
+	local mesh = Instance.new("SpecialMesh"); mesh.MeshType = Enum.MeshType.Sphere; mesh.Parent = b
+	return b
+end
+local SHEEN = { Color3.fromRGB(206, 232, 246), Color3.fromRGB(232, 214, 240), Color3.fromRGB(214, 240, 222) }
+local function sheen(t: number): Color3 -- (a soap film's colours drifting round, kept pale)
+	local u = (t * 0.35) % 3
+	local i = math.floor(u)
+	return SHEEN[i + 1]:Lerp(SHEEN[(i + 1) % 3 + 1], u - i)
+end
+local function droplets(at: Vector3, n: number, speed: number)
+	emitter(host(at, 1.2), { Texture = TEX.blob, LightEmission = 0.5, LightInfluence = 0.5, Color = cs(Color3.fromRGB(230, 244, 252), Color3.fromRGB(200, 226, 240)),
+		Size = ns(0, 0.09 * S, 1, 0), Lifetime = NR(0.25, 0.5), Speed = NR(speed * 0.4, speed), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -12 * S, 0) }):Emit(n)
+end
+wandIn = function()
+	local h = hand
+	if not h or h.id ~= "wand" then return end
+	local k = h.model:GetScale()
+	local film = part(Enum.PartType.Cylinder, Vector3.new(0.012 * S, 0.084 * S, 0.084 * S) * k, FILM, Enum.Material.Glass)
+	film.Name = "film"; film.Transparency = 0.55; film.Parent = h.model
+	h.extra = { film = film, k = k }
+end
+local function wandStep(h: Hand, t: number)
+	local e = h.extra
+	local blowing = t > 0.1 and t < 0.1 + WD.bubbles * WD.gap
+	local th = if blowing then 0.012 + (((t - 0.1) % WD.gap) / WD.gap) * 0.09 else 0.012
+	e.film.Size = Vector3.new(th * S, 0.084 * S, 0.084 * S) * e.k
+	e.film.CFrame = h.model:GetPivot() * CFrame.new(0, 0, -th * S * e.k / 2) * CFrame.Angles(0, math.pi / 2, 0)
+end
+extraStep = function(h: Hand, t: number)
+	if h.id == "print" then X.printStep(h, t) elseif h.id == "wand" then wandStep(h, t) end
+end
+
+type Soap = { p0: Vector3, v0: Vector3, t0: number, ball: BasePart }
+local soaps: { [number]: Soap } = {}
+local function addSoap(m: any)
+	if type(m.id) ~= "number" or typeof(m.p) ~= "Vector3" or typeof(m.v) ~= "Vector3" or soaps[m.id] then return end
+	local b = soapBall(SW.r * 2)
+	b.CFrame = CFrame.new(m.p)
+	b.Parent = folder
+	soaps[m.id] = { p0 = m.p, v0 = m.v, t0 = os.clock(), ball = b }
+	Sfx.play("bloop", m.p, if m.o == me.UserId then 0.7 else 0.5, 0.8 + math.random() * 0.45)
+end
+local function dropSoap(id: any, at: any): boolean
+	local sp = if type(id) == "number" then soaps[id] else nil
+	if not sp then return false end
+	soaps[id] = nil
+	local p = if typeof(at) == "Vector3" then at else sp.ball.Position
+	sp.ball:Destroy()
+	droplets(p, 10, 3 * S)
+	Sfx.play("plip", p, 0.6, 0.8 + math.random() * 0.5)
+	return true
+end
+local function soapStep()
+	local n = os.clock()
+	for id, sp in soaps do
+		local t = n - sp.t0
+		if t > SW.life + 0.5 then sp.ball:Destroy(); soaps[id] = nil; continue end
+		local k = math.sin(t * 11 + id) * 0.08
+		sp.ball.Size = Vector3.new(1 + k, 1 - k, 1 + k * 0.6) * SW.r * 2
+		sp.ball.CFrame = CFrame.new(Items.soapAt(sp.p0, sp.v0, id, t))
+	end
+end
+
+-- the view from inside: the world through a film, a bright rim where the wall curves away, two glints, a wobble
+local bub = T.new("Frame", { Name = "Bubble", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Visible = false, ZIndex = 40 }, overlay)
+T.new("Frame", { Name = "Tint", BackgroundColor3 = Color3.fromRGB(196, 228, 246), BackgroundTransparency = 0.9, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 40 }, bub)
+local function pill(name: string, size: UDim2, stroke: number, color: Color3, tr: number, z: number): Frame
+	local f = T.new("Frame", { Name = name, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = size, ZIndex = z }, bub)
+	T.new("UICorner", { CornerRadius = UDim.new(0.5, 0) }, f)
+	T.new("UIStroke", { Thickness = stroke, Color = color, Transparency = tr }, f)
+	return f
+end
+local film = pill("Film", UDim2.fromScale(0.94, 0.94), 1200, Color3.fromRGB(206, 232, 246), 0.7, 41)
+local rim = pill("Rim", UDim2.fromScale(0.94, 0.94), 3, Color3.new(1, 1, 1), 0.3, 42)
+local glintA = pill("GlintA", UDim2.fromScale(0.26, 0.12), 6, Color3.new(1, 1, 1), 0.5, 42)
+glintA.Position = UDim2.fromScale(0.24, 0.17); glintA.Rotation = -20
+local glintB = pill("GlintB", UDim2.fromScale(0.14, 0.07), 4, Color3.new(1, 1, 1), 0.6, 42)
+glintB.Position = UDim2.fromScale(0.8, 0.84); glintB.Rotation = -20
+local bubL = T.text(bub, "Left", "", 18, Color3.fromRGB(226, 242, 250), T.FONT_BOLD, Enum.TextXAlignment.Center, true)
+bubL.AnchorPoint = Vector2.new(0.5, 1); bubL.Position = UDim2.new(0.5, 0, 1, -170); bubL.Size = UDim2.fromOffset(360, 26); bubL.ZIndex = 43
+
+type Trap = { o: number?, model: Instance?, untilT: number, born: number, ball: BasePart?, v: Vector3 }
+local traps: { [string]: Trap } = {}
+local myTrap: Trap? = nil
+local bursts: { { ball: BasePart, t: number } } = {}
+local function trapCentre(model: Instance?): Vector3?
+	local r = model and model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	return r and r.Position + Vector3.new(0, WD.y - Hitbox.ROOT_UP, 0)
+end
+local function nameOf(model: Instance?): string
+	local pl = model and Players:GetPlayerFromCharacter(model)
+	return string.upper(if pl then pl.DisplayName elseif model then model.Name else "SOMEONE")
+end
+local function endMine(loud: boolean)
+	myTrap = nil
+	bub.Visible = false
+	if not loud then return end
+	Sfx.play("bigpop")
+	droplets(camera.CFrame.Position + camera.CFrame.LookVector * 2, 60, 5 * S)
+	shake = math.max(shake, 0.45)
+	Hud.callout("POP!", 0.8)
+end
+local function onTrap(m: any)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	local k = keyOf(m)
+	local old = traps[k]
+	if old and old.ball then old.ball:Destroy() end
+	local tr: Trap = { o = if type(m.o) == "number" then m.o else nil, model = model, untilT = os.clock() + (tonumber(m.left) or WD.dur), born = os.clock(),
+		ball = nil, v = if typeof(m.v) == "Vector3" then m.v else Vector3.zero }
+	traps[k] = tr
+	if m.o == me.UserId then
+		-- sealed in: off your rope, floating with the bubble (Body.onStep below), the film over your view
+		local st = Body.st :: any
+		if st and st.hook then st.hook = nil; GrappleR:FireServer("release") end
+		Body.push(Vector3.new(0, tr.v.Y, 0)) -- (off the floor, so the Humanoid lets go of it)
+		myTrap = tr
+		bub.Visible = true
+		Sfx.play("glorp")
+		droplets(camera.CFrame.Position + camera.CFrame.LookVector * 2, 30, 4 * S)
+		local by = if type(m.by) == "number" and m.by ~= me.UserId then Players:GetPlayerByUserId(m.by) else nil
+		Hud.callout(if by then "BUBBLED BY " .. string.upper(by.DisplayName) else "BUBBLED", 1.6)
+		shake = math.max(shake, 0.3)
+		return
+	end
+	tr.ball = soapBall(WD.r * 2)
+	local c = trapCentre(model)
+	if c then
+		tr.ball.CFrame = CFrame.new(c)
+		Sfx.play("glorp", c)
+		droplets(c, 24, 4 * S)
+	end
+	tr.ball.Parent = folder
+	if m.by == me.UserId then Hud.callout("BUBBLED " .. nameOf(model), 1.3) end
+end
+local function onTrapEnd(m: any)
+	local k = keyOf(m)
+	local tr = traps[k]
+	traps[k] = nil
+	local loud = m.why ~= "gone"
+	if m.o == me.UserId then
+		-- (p: we weren't where the bubble went: drop from where the server has us)
+		local _, _, root = myChar()
+		if typeof(m.p) == "Vector3" and root then root.CFrame = root.CFrame.Rotation + m.p + Vector3.new(0, Hitbox.ROOT_UP, 0) end
+		if myTrap then endMine(loud) end
+	elseif tr and tr.ball then
+		if loud then
+			local p = tr.ball.Position
+			Sfx.play("bigpop", p)
+			droplets(p, 70, 7 * S)
+			shake = math.max(shake, 0.5 - (p - camera.CFrame.Position).Magnitude / (30 * S))
+			table.insert(bursts, { ball = tr.ball, t = 0 })
+		else
+			tr.ball:Destroy()
+		end
+	end
+	if m.pb == me.UserId and m.why == "hit" and m.o ~= me.UserId then
+		Hud.callout("POPPED " .. nameOf(if typeof(m.model) == "Instance" then m.model else nil), 0.9)
+	end
+end
+local function trapStep(dt: number)
+	local n = os.clock()
+	local mine = myTrap
+	if mine then
+		if n > mine.untilT + 0.4 or not myChar() then endMine(myChar() ~= nil) -- (our timer ran out a hair before the server's pop)
+		else
+			local left = math.max(0, mine.untilT - n)
+			bubL.Text = ("IN A BUBBLE · pops in %.1fs"):format(left)
+			local w = math.sin(n * 2.7) * 0.015
+			film.Size = UDim2.fromScale(0.94 + w, 0.94 - w)
+			rim.Size = film.Size
+			if math.random() < dt * 1.6 then Sfx.play("blub", nil, 0.5, 0.7 + math.random() * 0.6) end
+		end
+	end
+	for k, tr in traps do
+		if tr.o == me.UserId then continue end
+		local ball = tr.ball
+		local c = trapCentre(tr.model)
+		local hum = tr.model and tr.model:FindFirstChildOfClass("Humanoid")
+		if not ball or not c or n > tr.untilT + 1.5 or (hum and hum.Health <= 0) then
+			if ball then ball:Destroy() end
+			traps[k] = nil
+			continue
+		end
+		local age, left = n - tr.born, tr.untilT - n
+		local x = math.min(1, age / 0.3) - 1
+		local grow = math.max(0.2, 1 + 2.70158 * x * x * x + 1.70158 * x * x) -- (pops in with an overshoot)
+		local wob = (0.025 + (if left < 1 then (1 - math.max(0, left)) * 0.07 else 0)) * math.sin(n * 13) -- (shakier right before it pops)
+		ball.Size = Vector3.new(1 + wob, 1 - wob, 1 + wob) * WD.r * 2 * grow
+		ball.CFrame = CFrame.new(c)
+		ball.Color = sheen(n + #k)
+	end
+	for i = #bursts, 1, -1 do
+		local b = bursts[i]
+		b.t += dt
+		if b.t >= 0.14 then b.ball:Destroy(); table.remove(bursts, i); continue end
+		b.ball.Size *= 1 + dt * 2.4
+		b.ball.Transparency = b.t / 0.14
+	end
+end
+-- sealed in: you go where it floats, no rope
+do
+	local prev = Body.onStep
+	Body.onStep = function(st: any, chest: Vector3, dt: number)
+		if prev then prev(st, chest, dt) end
+		local tr = myTrap
+		if tr and me:GetAttribute("Trap") then
+			st.vx, st.vy, st.vz = tr.v.X, tr.v.Y, tr.v.Z
+			if st.hook then st.hook = nil; GrappleR:FireServer("release") end
+		end
+	end
+end
+X.addSoap = addSoap
+X.dropSoap = dropSoap
+X.onTrap = onTrap
+X.onTrapEnd = onTrapEnd
+X.soapStep = soapStep
+X.trapStep = trapStep
+end
+
 -- ---------------------------------------------------------------- what the server says
 local function onFx(m: any)
 	if type(m) ~= "table" then return end
 	local k = m.k
-	if k == "ps" then addFlying(m)
+	if k == "ps" and m.w == "soap" then X.addSoap(m)
+	elseif k == "ps" then addFlying(m)
 	elseif k == "pb" then
 		local v = if type(m.id) == "number" then flying[m.id] else nil
 		if v and typeof(m.p) == "Vector3" and typeof(m.v) == "Vector3" then
 			v.off += v.p - m.p -- (a small correction slides in instead of jumping)
 			v.p, v.v = m.p, m.v
 		end
-	elseif k == "pd" then dropFlying(m.id)
+	elseif k == "pd" then if not X.dropSoap(m.id, m.p) then dropFlying(m.id) end
 	elseif k == "boom" and typeof(m.p) == "Vector3" then boom(m.p, if type(m.r) == "number" then m.r else 7.5 * S)
 	elseif k == "smoke" and type(m.id) == "number" and typeof(m.p) == "Vector3" then
 		addCloud(m.id, m.p, if type(m.r) == "number" then m.r else 6.5 * S, if type(m.left) == "number" then m.left else 10)
@@ -1569,6 +2146,16 @@ local function onFx(m: any)
 	elseif k == "ticketx" then onTicketEnd(m)
 	elseif k == "jail" then onJail(m)
 	elseif k == "jailx" then onJailEnd(m)
+	elseif k == "trap" then X.onTrap(m)
+	elseif k == "trapx" then X.onTrapEnd(m)
+	elseif k == "snap" then X.onSnap(m)
+	elseif k == "photo!" then
+		pend = nil
+		Sfx.play("empty"); Hud.callout("NO PHOTO: " .. string.upper(tostring(m.why or "")), 1.4)
+	elseif k == "frame" then X.onFrame(m)
+	elseif k == "framex" then X.dropFrame(m.id, m.why == "gone" or m.why == "new")
+	elseif k == "ptp" then X.onPtp(m)
+	elseif k == "tele" then X.teleFx(m)
 	elseif k == "hs" then addHole(m)
 	elseif k == "hu" then updHole(m)
 	elseif k == "he" then popHole(m)
@@ -1594,5 +2181,10 @@ RunService.RenderStepped:Connect(function(dt: number)
 	radarStep()
 	tagStep()
 	cageStep()
+	X.camStep()
+	X.frameStep()
+	X.thumbStep()
+	X.soapStep()
+	X.trapStep(dt)
 	hudStep()
 end)

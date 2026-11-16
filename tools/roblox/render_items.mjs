@@ -57,6 +57,16 @@ const LIST = [
   ['squeak', 0.25, 'a rubber duck squeak (sfx.squeak)', 0.6, (b) => { tone(b, 'sine', 1100, 1900, 0.08, 0.3); tone(b, 'sine', 1900, 1100, 0.1, 0.3, 0.08); }],
   ['quack', 0.22, 'the duck sticking to someone (sfx.quack)', 0.7, (b) => { tone(b, 'sawtooth', 640, 390, 0.15, 0.2); tone(b, 'square', 1280, 780, 0.12, 0.05); noise(b, 0.13, 0.3, 'bandpass', 1400, 800, 0, 5); }],
   ['hole', 3.0, 'a black hole humming (sfx.hole)', 0.7, (b) => { tone(b, 'sine', 80, 40, 2.9, 0.5); noise(b, 2.9, 0.3, 'lowpass', 300, 80); }],
+  ['shutter', 0.4, 'the instant camera taking a photo (sfx.shutter)', 0.7, (b) => { noise(b, 0.03, 0.6, 'highpass', 4000, 3000); tone(b, 'square', 1200, 600, 0.03, 0.15, 0.02); noise(b, 0.05, 0.4, 'bandpass', 2000, 900, 0.07, 2); tone(b, 'sine', 3200, 3600, 0.25, 0.05, 0.08); }],
+  ['whirr', 0.6, 'the camera spitting out a print (sfx.printWhirr)', 1.0, (b) => { for (let i = 0; i < 6; i++) tone(b, 'square', 160 + i * 6, 150, 0.09, 0.08, i * 0.08); noise(b, 0.5, 0.15, 'bandpass', 1500, 1200, 0, 4); }],
+  ['photoin', 0.5, 'coming out of a photo (sfx.photoIn)', 0.7, (b) => { tone(b, 'sine', 300, 1400, 0.35, 0.22); tone(b, 'triangle', 600, 2600, 0.4, 0.12, 0.05); noise(b, 0.4, 0.3, 'bandpass', 600, 4000, 0, 1.5); }],
+  ['photoout', 0.45, 'going into a photo (sfx.photoOut)', 0.7, (b) => { tone(b, 'sine', 1400, 300, 0.35, 0.22); noise(b, 0.3, 0.3, 'bandpass', 4000, 600, 0, 1.5); tone(b, 'square', 880, 1320, 0.08, 0.1, 0.3); }],
+  ['framepop', 0.3, 'a printed photo popping up or away (sfx.framePop)', 0.8, (b) => { noise(b, 0.25, 0.35, 'bandpass', 900, 300, 0, 2); tone(b, 'triangle', 500, 900, 0.15, 0.15); }],
+  ['bloop', 0.16, 'blowing a soap bubble (sfx.bloop, its middle pitch)', 0.6, (b) => { const f = 330; tone(b, 'sine', f, f * 3.4, 0.11, 0.32); tone(b, 'sine', f * 7, f * 9, 0.035, 0.05, 0.09); }],
+  ['plip', 0.08, 'a little soap bubble popping (sfx.plip)', 0.5, (b) => { tone(b, 'sine', 2250, 3400, 0.035, 0.1); noise(b, 0.03, 0.2, 'highpass', 3000, 6000); }],
+  ['glorp', 0.45, 'getting sealed in a giant bubble (sfx.glorp)', 0.7, (b) => { tone(b, 'sine', 130, 560, 0.34, 0.45); tone(b, 'triangle', 85, 240, 0.42, 0.22, 0.05); noise(b, 0.35, 0.25, 'lowpass', 1200, 180); }],
+  ['bigpop', 0.6, 'a giant bubble popping (sfx.bigPop)', 0.8, (b) => { noise(b, 0.09, 1, 'highpass', 500, 3500); tone(b, 'sine', 1150, 150, 0.14, 0.65); tone(b, 'square', 2600, 900, 0.05, 0.12); noise(b, 0.5, 0.3, 'highpass', 5000, 9000, 0.06); }],
+  ['blub', 0.18, 'blubbing inside a bubble (sfx.blub, its middle pitch)', 0.5, (b) => { const f = 130; tone(b, 'sine', f, f * 2.7, 0.14, 0.3); }],
   ['ropesnap', 0.15, 'your rope snapping in a black hole (sfx.ropeSnap)', 0.6, (b) => { tone(b, 'square', 2200, 300, 0.09, 0.2); noise(b, 0.08, 0.6, 'highpass', 2500, 5000); }],
 ];
 
