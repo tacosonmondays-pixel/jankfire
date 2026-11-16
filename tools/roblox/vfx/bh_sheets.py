@@ -42,7 +42,7 @@ def save(name, rgb, a):
 RIN, ROUT = 0.38, 0.97
 u = np.clip((r - RIN) / (ROUT - RIN), 0, 1)                 # 0 at the inner edge .. 1 at the rim
 prof = (RIN / np.maximum(r, RIN)) ** 2.4                    # bright near the middle, falling off outward
-edge_in = smooth(RIN - 0.012, RIN + 0.018, r)               # a crisp but smooth inner edge
+edge_in = smooth(RIN - 0.006, RIN + 0.01, r)                # a crisp inner edge (round 3: it read soft)
 edge_out = 1 - smooth(ROUT - 0.32, ROUT, r)                 # a long soft fade at the rim
 # spiral streaks: bands wound along a log spiral (the gas sheared as it circles), several scales, random phases
 wind = th + 2.2 * np.log(np.maximum(r, 1e-3))
@@ -51,9 +51,10 @@ for k, amp in [(5, 0.35), (9, 0.25), (17, 0.18), (31, 0.12), (47, 0.08)]:
     st += amp * np.sin(k * wind + rng.uniform(0, 2 * np.pi)) * np.sin(max(1, k // 2) * th + rng.uniform(0, 2 * np.pi))
 streak = np.clip(0.78 + st, 0.25, 1.4)
 # a hot ring right at the inner edge (the brightest thing in the effect)
-hot = np.exp(-((r - (RIN + 0.03)) / 0.025) ** 2)
-a_disk = np.clip((prof * streak * 0.95 + hot * 0.9) * edge_in * edge_out, 0, 1)
-col_disk = ramp([(0.0, (255, 250, 255)), (0.12, (238, 222, 255)), (0.4, (190, 160, 245)), (1.0, (112, 78, 190))], u)
+hot = np.exp(-((r - (RIN + 0.022)) / 0.018) ** 2)
+a_disk = np.clip((prof * streak * 0.95 + hot * 1.2) * edge_in * edge_out, 0, 1)
+# (round 3: white-lilac read pale against a light wall: white-hot only at the inner edge, a clear violet outward)
+col_disk = ramp([(0.0, (255, 250, 255)), (0.08, (240, 224, 255)), (0.3, (192, 146, 255)), (1.0, (128, 68, 222))], u)
 save('vfx_bhdisk.png', col_disk, a_disk)
 
 # ---- the halo. the horizon's edge sits at 0.40 of the radius: the photon ring just outside it, slightly warped
@@ -63,12 +64,12 @@ rr = r / warp                                                # (the glow and arc
 rr0 = r / (1 + 0.006 * np.sin(2 * th + 0.7))
 ring = np.exp(-((rr0 - (RH + 0.022)) / 0.012) ** 2)         # the thin photon ring
 # the disk's far side, bent over the top and under the bottom: a thicker arc band whose strength follows |sin|
-arcs_w = np.abs(np.sin(th)) ** 2.5
-arcs = np.exp(-((rr - (RH + 0.1)) / 0.05) ** 2) * arcs_w
+arcs_w = np.abs(np.sin(th)) ** 3
+arcs = np.exp(-((rr - (RH + 0.075)) / 0.028) ** 2) * arcs_w   # (round 3: crisper, closer: the disk bent over the top)
 arcs *= 1 - 0.35 * (dy > 0)                                  # (the lower arc fainter: the disk is tilted)
 # the glow round it all, fading out to the sprite's edge
-glow = np.exp(-np.maximum(rr - RH, 0) / 0.16) * smooth(RH - 0.005, RH + 0.03, rr) * (1 - smooth(0.75, 0.98, r))
-a_halo = np.clip(ring * 1.0 + arcs * 1.0 + glow * 0.35, 0, 1) * (r < 0.995)
-col_halo = ramp([(0.0, (250, 244, 255)), (0.5, (214, 196, 255)), (1.0, (140, 104, 220))],
+glow = np.exp(-np.maximum(rr - RH, 0) / 0.07) * smooth(RH - 0.005, RH + 0.03, rr) * (1 - smooth(0.75, 0.98, r))  # (tight: ~1.2x)
+a_halo = np.clip(ring * 1.0 + arcs * 1.0 + glow * 0.3, 0, 1) * (r < 0.995)
+col_halo = ramp([(0.0, (252, 246, 255)), (0.12, (220, 196, 255)), (1.0, (150, 96, 232))],
                 np.clip((rr - RH) / 0.45, 0, 1))
 save('vfx_bhhalo.png', col_halo, a_halo)

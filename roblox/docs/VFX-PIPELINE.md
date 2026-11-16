@@ -237,3 +237,20 @@ sights). Seen and fixed in the same turn: the hole's light washed the room viole
 
 **Cost guard** (Seraph AR, full auto 5 s, Studio at 60 fps): idle 16.67 ms avg / 17.62 p95, firing 16.67 / 17.85.
 
+
+### Round 4: the frag's smoke stage, black hole v2 (16 Nov 2026, place version 454)
+
+**Critic round 3** (strips `roblox/docs/vfx/round3/`): first-person flash 7, frag 3, smoke bomb 6, duck black hole 6,
+Seraph skin in first person 8. Its fixes, all in 454 (photos `roblox/docs/vfx/round4/`):
+- Frag: the 0.5-1.2 s stage was a see-through maroon fog with no outline. Now the fireball (0.8 s) hands over at 0.3 s
+  to a cluster of 11 opaque lumpy grey puffs (the cotton sheet, a box 0.55 r wide centred 0.4 r up, so nothing cuts
+  into the floor) with 4 orange hot pockets glowing inside till about 1.1 s; small dark soot puffs from 0.65 s; the
+  feathers use the feather drawing (they read as white dots).
+- Black hole: the disk sprite crisper and more violet with a white-hot inner edge, twice as bright, tilted 20 degrees,
+  about half a turn a second; the halo tighter (about 1.2x) with crisp arcs over the top and bottom; the streaks from
+  5 m, 60 a second, twice as bright and stretched; the flakes stretch as they fall.
+- Smoke bomb: lower and wider (boxes at 1.5 and 2.2 m, puffs 2.9 -> 5.7 m drawn), crisper lumpier puffs, more of them.
+- Flash: LightEmission 0.45, Brightness 1.15 (the star's yellow body and orange tips show over a bright room); first
+  person 0.16 m ahead of the muzzle, its barrel flames 1.5x wider.
+- Skin particles in first person ride with the gun (LockedToPart): world-space ones were left floating when the view
+  turned.

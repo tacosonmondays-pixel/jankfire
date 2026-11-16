@@ -44,12 +44,12 @@ for i in range(N):
     for (ox, oy, s) in lumps:
         d2 = ((u - ox * R) ** 2 + (v - oy * R) ** 2) / (s * R) ** 2
         D += np.exp(-d2 * 0.75)
-    D += 0.3 * noise * np.clip(D, 0, 1)      # lumps on the surface
+    D += 0.38 * noise * np.clip(D, 0, 1)     # lumps on the surface
     thin = 0.22 + 0.75 * np.clip((t - 0.5) / 0.5, 0, 1) ** 1.4   # the threshold rises: it thins out over the last half
-    a = np.clip((D - thin) / 0.75, 0, 1)
+    a = np.clip((D - thin) / 0.45, 0, 1)        # (round 3: a defined bumpy edge, not a long fringe)
     a = a * a * (3 - 2 * a)
     a *= 1 - np.clip((t - 0.8) / 0.2, 0, 1) ** 1.5   # gone by the last frame
-    a *= np.clip((0.98 - r) / 0.2, 0, 1)       # zero at the cell's border, softly
+    a *= np.clip((0.98 - r) / 0.1, 0, 1)       # zero at the cell's border
     # light from above and a little left: the density's slope as a normal
     gy, gx = np.gradient(D)
     nz = 0.35
