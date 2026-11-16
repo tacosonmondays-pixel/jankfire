@@ -23,7 +23,11 @@ local function racks()
 	local hub = map and map:FindFirstChild("Hub")
 	if not hub then return 0 end
 	local n = 0
-	for _, d in hub:GetDescendants() do
+	-- (a piece of the hub that ZoneCull has put aside on this client waits in ReplicatedStorage.ZoneCullHidden)
+	local list = hub:GetDescendants()
+	local aside = ReplicatedStorage:FindFirstChild("ZoneCullHidden")
+	if aside then for _, d in aside:GetDescendants() do table.insert(list, d) end end
+	for _, d in list do
 		if d:IsA("Model") then
 			local wid = string.match(d.Name, "^Rack_w_([%w_]+)$")
 			if wid then
