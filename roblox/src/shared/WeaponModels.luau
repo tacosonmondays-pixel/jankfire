@@ -454,7 +454,7 @@ local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAp
 		g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud
 		g.PixelsPerStud = HOLE_PPS
 		g.LightInfluence = if spec[3] then 0 else 1
-		g.Brightness = if spec[3] then 3 else 1
+		g.Brightness = if spec[3] then 4 else 1
 		g.ZOffset = if spec[3] then 0.02 else 0.01
 		g.ClipsDescendants = true
 		g:SetAttribute("D", d)
@@ -485,7 +485,23 @@ local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAp
 			st.Transparency = 1
 			st.Parent = pu
 			pu.Parent = g
+			-- glowing motes falling in (the owner, 16 Nov evening: "cool effects"): WrapAnim winds each down the spiral
+			-- from the rim to the ring, faster as it nears, fading in and out; under the picture, so the core swallows them
+			for i = 1, 10 do
+				local mo = Instance.new("ImageLabel")
+				mo.Name = "Mote"
+				mo.BackgroundTransparency = 1
+				mo.Image = "rbxassetid://107753175681578" -- (Fx's soft glow dot)
+				mo.ImageColor3 = Color3.fromHex("ffe4bc")
+				mo.ImageTransparency = 1
+				mo.AnchorPoint = Vector2.new(0.5, 0.5)
+				mo.Size = UDim2.fromOffset(d * 0.05, d * 0.05)
+				mo.ZIndex = 1
+				mo:SetAttribute("I", i)
+				mo.Parent = g
+			end
 		end
+		g:SetAttribute("X", x)
 		g:AddTag("WrapHole")
 		g.Parent = best
 	end

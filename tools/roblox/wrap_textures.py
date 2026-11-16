@@ -398,7 +398,7 @@ def neon_hex(t: Tex):
     t.emit[:] = np.maximum(line, halo * 0.35)
     t.height[:] = hpanel * 3.0
     t.rough[:] = 0.6 - 0.14 * a     # satin panels (at 0.28 they mirrored the hall's warm walls in game)
-    return {'emissive': 3.5, 'tint': '4fd8ff'}   # the filaments bloom (GLOW, see lava); the halo (0.35) doesn't
+    return {'emissive': 5.0, 'tint': '4fd8ff'}   # RADIANT (the owner: "a brighter glow"; was 3.5)   # the filaments bloom (GLOW, see lava); the halo (0.35) doesn't
 
 
 @design('damascus')
@@ -577,7 +577,7 @@ def kintsugi(t: Tex):
     t.fill(gold, 'd29a2c', metal=1.0, rough=0.24, emit=1.0)   # the seams glow and bloom (GLOW, see lava)
     t.fill(np.clip(gold - 0.6, 0, 1) * 1.2, 'f0c868')
     t.height[:] = gold * 0.7
-    return {'emissive': 3.0, 'tint': 'ffd27a'}
+    return {'emissive': 4.2, 'tint': 'ffd27a'}   # RADIANT (the owner: "a brighter glow"; was 3.0)
 
 
 @design('seigaiha')
@@ -701,7 +701,7 @@ def circuit(t: Tex):
                 t.shape((px - 6, cy - ch / 2 - 20, px + 6, cy + ch / 2 + 20), sd_round_rect(px, cy + sy * (ch / 2 + 8), 5, 9, 2.0), color='c9a246', metal=1.0, rough=0.3)
         t.shape((cx - cw / 2 - 2, cy - ch / 2 - 2, cx + cw / 2 + 2, cy + ch / 2 + 2), sd_round_rect(cx, cy, cw / 2, ch / 2, 6), color='17181c', rough=0.35, height=1.5)
         t.shape((cx - cw / 2, cy - ch / 2, cx - cw / 2 + 20, cy - ch / 2 + 20), sd_circle(cx - cw / 2 + 12, cy - ch / 2 + 12, 4), color='2c2d33')
-    return {'emissive': 3.0, 'tint': '7dff6a'}
+    return {'emissive': 4.5, 'tint': '7dff6a'}   # RADIANT (the owner: "a brighter glow"; was 3.0)
 
 
 @design('stained')
@@ -800,7 +800,7 @@ def lava(t: Tex):
     t.emit[:] = np.clip(np.maximum(core, hot * 0.3), 0, 1)
     t.height[:] = smoothstep(2, 16, edge) * 2.0
     t.rough[:] = 0.75 - 0.4 * hot
-    return {'emissive': 3.6, 'tint': 'ffffff'}
+    return {'emissive': 5.5, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.6)
 
 
 @design('brushed')
@@ -887,7 +887,7 @@ def nebula(t: Tex):
         halo = np.exp(-np.hypot(X - x, Y - y) / (ro * 0.3)) * 0.5
         t.paint(idx, halo, 'f0d0ff', emit=halo)
         t.paint(idx, cover(sd), '#ffffff', emit=1.0)
-    return {'emissive': 2.8, 'tint': 'ffffff'}   # the twinkles bloom; the gas (<= 0.6) glows under it
+    return {'emissive': 3.6, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.8)   # the twinkles bloom; the gas (<= 0.6) glows under it
 
 
 @design('sweater')
@@ -1302,7 +1302,7 @@ def tokyo(t: Tex):
                 hx, hy = bx - math.cos(ang + s_ * 0.6) * L * 0.4, by - math.sin(ang + s_ * 0.6) * L * 0.4
                 t.paint(idx, cover(sd_segment(bx, by, hx, hy, 2.4)(X, Y)), c2, emit=1.0)
     t.rough[:] = 0.25
-    return {'emissive': 3.0, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 4.5, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)
 
 
 @design('cheese')
@@ -1714,7 +1714,7 @@ def glitch(t: Tex):
             t.fill(line, 'ff2ad8' if r.uniform() < 0.5 else '2affe0', emit=1.0)
         y += h
     t.rough[:] = 0.3
-    return {'emissive': 2.6, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 3.4, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.6)   # thin neon lines bloom (GLOW, see lava)
 
 
 @design('meat')
@@ -1867,7 +1867,7 @@ def arcade(t: Tex):
             poly = transform([(0, -26), (24, 16), (-24, 16)], x, y, a)
             t.shape(bbox_of(poly), sd_polygon(poly), color=c, emit=1.0)
     t.rough[:] = 0.9
-    return {'emissive': 2.8, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 4.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 2.8)   # thin neon lines bloom (GLOW, see lava)
 
 
 # NOT a texture wrap: on 16 Nov 2026 the owner's Roblox account was moderated over this wrap's first upload, which
@@ -2252,7 +2252,7 @@ def stonks(t: Tex):
     for x0, y0, L, c in ((40, 70, 220, 'ffd84a'), (600, 70, 180, '3aff5a'), (40, 940, 300, 'ff3a3a')):
         t.shape((x0 - 4, y0 - 20, x0 + L + 4, y0 + 20), sd_round_rect(x0 + L / 2, y0, L / 2, 12, 4), color=c, emit=1.0)
     t.rough[:] = 0.2
-    return {'emissive': 3.0, 'tint': 'ffffff'}   # thin neon lines bloom (GLOW, see lava)
+    return {'emissive': 4.0, 'tint': 'ffffff'}   # RADIANT (the owner: "a brighter glow"; was 3.0)   # thin neon lines bloom (GLOW, see lava)
 
 
 @design('bowling')
@@ -2294,6 +2294,22 @@ def hall_comp(rgb):
     return np.clip(rgb + HALL_K * (inv - rgb), 0.0, 1.0)
 
 
+# RELIEF (the owner, 16 Nov evening: "maybe even height maps on some"). A SurfaceAppearance takes no real height map,
+# only a normal map, which fakes the relief with the light. Most designs raised their shapes by a step one pixel wide:
+# that lights a one-pixel rim, lost to the mipmaps a metre from the eye. These wraps' heights are widened into bevels
+# (blur, pixels) and deepened (gain); lum raises the light parts of a design that drew no height (its lines and
+# blossoms read as carved). Heights are in pixels of relief (1 cm = 41 px)
+RELIEF = {
+    'lava': {'blur': 1, 'gain': 3.0},        # crust plates domed up from deep cracks
+    'hex': {'blur': 2, 'gain': 2.5},         # raised hex panels, bevelled, the glowing grooves sunk between
+    'circuit': {'lum': 5.0, 'blur': 1.5, 'gain': 2.0},   # the gold traces (light) and the chips stand proud of the board
+    'kintsugi': {'blur': 2, 'gain': 4.0},    # the gold seams a raised bead
+    'bubblewrap': {'blur': 1, 'gain': 1.6},  # rounder, higher domes
+    'carbon': {'blur': 1, 'gain': 1.5},      # the weave's tows
+    'wood': {'blur': 1, 'gain': 2.0},        # the grain
+    'seigaiha': {'lum': 4.0, 'blur': 2},     # the wave lines carved (light lines raised)
+    'sakura': {'lum': 3.0, 'blur': 2},       # the blossoms raised
+}
 OUT = {'dir': '.'}   # where build() is writing (a design that draws extra images, such as Black Hole's decal, saves there)
 
 
@@ -2302,6 +2318,10 @@ def build(wid, out_dir):
     OUT['dir'] = out_dir
     extra = DESIGNS[wid](t) or {}
     more = extra.pop('more_maps', {})   # (extra images: decal, hole, swatch; WrapBook sets them as attributes)
+    rl = RELIEF.get(wid)
+    if rl:
+        h = t.height + (np.dot(t.rgb, np.array([0.3, 0.59, 0.11], np.float32)) * rl['lum'] if rl.get('lum') else 0)
+        t.height[:] = blur_wrap(h, rl.get('blur', 0)) * rl.get('gain', 1.0)
     if wid not in HALL_TUNED: t.rgb[:] = hall_comp(t.rgb)
     t.rough[:] = np.where(t.metal < 0.5, np.maximum(t.rough, ROUGH_MIN), t.rough)
     maps = t.save(os.path.join(out_dir, wid))

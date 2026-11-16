@@ -88,6 +88,7 @@ end
 -- ring every PULSE seconds, fading in and out. Off the shared clock, so every copy turns in step
 local HOLE_TURN = 10 -- degrees a second
 local PULSE = 2.8
+local MOTE_T = 4.0 -- seconds for a mote to fall from the rim to the ring
 local holes: { [SurfaceGui]: boolean } = {}
 local function addHole(inst: Instance)
 	if inst:IsA("SurfaceGui") and not inst:IsDescendantOf(ReplicatedStorage) then holes[inst] = true end
@@ -110,7 +111,7 @@ RunService.RenderStepped:Connect(function()
 			local pic = g:FindFirstChild("Pic")
 			if pic and pic:IsA("ImageLabel") then pic.Rotation = -(t * HOLE_TURN) % 360 end
 		else
-			g.Brightness = 3 + 0.4 * math.sin(TAU * t / 3.2)
+			g.Brightness = 4 + 0.6 * math.sin(TAU * t / 3.2) -- (the radiant tier: the ring blooms all round at the breath's top)
 			local pu = g:FindFirstChild("Pulse")
 			local d = g:GetAttribute("D")
 			if pu and pu:IsA("Frame") and type(d) == "number" then
@@ -120,6 +121,162 @@ RunService.RenderStepped:Connect(function()
 				local st = pu:FindFirstChildOfClass("UIStroke")
 				if st then st.Transparency = 1 - 0.55 * math.sin(math.pi * ph) end
 			end
+			-- the motes: each winds down the spiral (the arms' own winding: the angle grows 2.6 x ln of the radius fallen)
+			-- from the rim to the ring in MOTE_T seconds, faster as it nears, fading in and out
+			local x = g:GetAttribute("X")
+			if type(d) == "number" and type(x) == "number" then
+				local rOut, rRing = d * 0.46, d * 0.105
+				for _, mo in g:GetChildren() do
+					local i = mo:GetAttribute("I")
+					if not (mo:IsA("ImageLabel") and type(i) == "number") then continue end
+					local ph = (t / MOTE_T + i * 0.1 + (i * 0.37) % 0.07) % 1
+					local r = rRing + (rOut - rRing) * (1 - ph) ^ 1.6
+					local a = i * 2.4 + 2.6 * math.log(rOut / r)
+					mo.Position = UDim2.new(x, r * math.cos(a), 0.5, r * math.sin(a))
+					local s = d * 0.045 * (1 - 0.45 * ph)
+					mo.Size = UDim2.fromOffset(s, s)
+					mo.ImageTransparency = 1 - 0.7 * math.sin(math.pi * ph) ^ 0.7
+				end
+			end
+		end
+	end
+end)
+
+-- WRAP EFFECTS (the owner, 16 Nov evening: "I want cool effects"): a few slow particles off a wrap's pieces, the kinds
+-- and textures of Fx's skin effects (the ids copied from client/Fx.luau's TEX, the VFX session's file). The four biggest
+-- picture pieces of the painted half emit from their surfaces (a ParticleEmitter on the part, ShapeStyle Surface), the
+-- gun's rate shared out by their size, sizes scaled by the gun's. First person: they ride with the view (LockedToPart),
+-- go quiet while aiming (the view narrows, as Fx tells it) and stop while the gun is hidden; guns further than NEAR
+-- don't emit. Galaxy's are round dots (the owner's call for Galaxy: dots, no star shapes)
+local TEXF = {
+	glow = "rbxassetid://107753175681578",
+	sparkle = "rbxassetid://118739981349944",
+	bubble = "rbxassetid://127426547666953",
+}
+type FxSpec = { kind: string, col: Color3, col2: Color3?, rate: number, size: number, life: number, rise: number }
+local FX: { [string]: FxSpec } = {
+	-- (size in metres and rise in metres a second squared, as Fx's skin specs; x the gun's studs per metre)
+	lava = { kind = "ember", col = Color3.fromHex("ffb04a"), col2 = Color3.fromHex("ff3a10"), rate = 7, size = 0.014, life = 1.2, rise = 0.6 },
+	kintsugi = { kind = "sparkle", col = Color3.fromHex("ffd98a"), rate = 2.5, size = 0.02, life = 0.7, rise = 0.1 },
+	nebula = { kind = "sparkle", col = Color3.fromHex("f4d2ff"), rate = 3, size = 0.018, life = 0.8, rise = 0.1 },
+	galaxy = { kind = "dot", col = Color3.fromHex("dfe6ff"), rate = 4, size = 0.01, life = 1.0, rise = 0 },
+	hex = { kind = "dot", col = Color3.fromHex("6fe2ff"), rate = 3, size = 0.009, life = 1.4, rise = 0.25 },
+	circuit = { kind = "dot", col = Color3.fromHex("8dff7a"), rate = 2.5, size = 0.008, life = 0.6, rise = 0.1 },
+	tokyo = { kind = "dot", col = Color3.fromHex("ff6ad8"), col2 = Color3.fromHex("5ad8ff"), rate = 3, size = 0.009, life = 1.0, rise = 0.2 },
+	ducky = { kind = "bubble", col = Color3.fromHex("f1e9ea"), rate = 1.1, size = 0.026, life = 1.8, rise = 0.25 },
+	holo = { kind = "sparkle", col = Color3.fromHex("ffffff"), rate = 2, size = 0.015, life = 0.6, rise = 0 },
+}
+local function nseq(...: number): NumberSequence
+	local a, k = { ... }, {}
+	for i = 1, #a, 2 do table.insert(k, NumberSequenceKeypoint.new(a[i], a[i + 1])) end
+	return NumberSequence.new(k)
+end
+local function fxProps(e: FxSpec, s: number): { [string]: any }
+	local col = ColorSequence.new(e.col, e.col2 or e.col)
+	local life = NumberRange.new(e.life * 0.8, e.life * 1.2)
+	local up = Vector3.new(0, e.rise * s, 0)
+	if e.kind == "ember" then
+		return { Texture = TEXF.glow, Color = col, LightInfluence = 0, LightEmission = 1, Brightness = 3, Size = nseq(0, e.size * s, 1, 0),
+			Transparency = nseq(0, 0.1, 0.7, 0.3, 1, 1), Lifetime = life, Speed = NumberRange.new(0.05 * s, 0.25 * s),
+			SpreadAngle = Vector2.new(30, 30), Acceleration = up, Drag = 1.5 }
+	elseif e.kind == "sparkle" then -- (twinkles: grows in, shrinks away)
+		return { Texture = TEXF.sparkle, Color = col, LightInfluence = 0, LightEmission = 1, Brightness = 2,
+			Size = nseq(0, 0, 0.35, e.size * s, 1, 0), Transparency = NumberSequence.new(0.1), Lifetime = life,
+			Speed = NumberRange.new(0.02 * s, 0.08 * s), SpreadAngle = Vector2.new(180, 180), Acceleration = up, Drag = 2,
+			Rotation = NumberRange.new(-15, 15), RotSpeed = NumberRange.new(-40, 40) }
+	elseif e.kind == "bubble" then -- (a soap bubble: rises with a drift, swells a touch, pops)
+		local w = e.size * s
+		return { Texture = TEXF.bubble, Color = col, LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
+			Size = nseq(0, w * 0.5, 0.15, w, 0.85, w * 1.05, 0.93, w * 1.2, 1, w * 0.2),
+			Transparency = nseq(0, 0.6, 0.12, 0, 0.88, 0.05, 0.93, 0.3, 1, 1), Lifetime = life,
+			Speed = NumberRange.new(0.1 * s, 0.3 * s), SpreadAngle = Vector2.new(35, 35), Acceleration = up + Vector3.new(0.15 * s, 0, 0), Drag = 1.2 }
+	end
+	-- dot: a round glowing mote that swells in and fades
+	return { Texture = TEXF.glow, Color = col, LightInfluence = 0, LightEmission = 1, Brightness = 2, Size = nseq(0, 0, 0.3, e.size * s, 1, 0),
+		Transparency = NumberSequence.new(0.15), Lifetime = life, Speed = NumberRange.new(0.02 * s, 0.1 * s),
+		SpreadAngle = Vector2.new(180, 180), Acceleration = up, Drag = 2 }
+end
+-- the gun a picture piece belongs to: up through Models, stopping below a character (a Model with a Humanoid)
+local function gunOf(p: Instance): Instance?
+	local m = p.Parent
+	if not (m and m:IsA("Model")) then return m end
+	while m.Parent and m.Parent:IsA("Model") and not m.Parent:FindFirstChildOfClass("Humanoid") do m = m.Parent end
+	return m
+end
+type GunFx = { ems: { ParticleEmitter }, parts: { BasePart }, fp: boolean, on: boolean }
+local gunFx: { [Instance]: GunFx } = {}
+local saGun: { [Instance]: Instance } = {}
+local dirty: { [Instance]: boolean } = {}
+local function rebuild(gun: Instance)
+	dirty[gun] = nil
+	local old = gunFx[gun]
+	if old then for _, e in old.ems do e:Destroy() end; gunFx[gun] = nil end
+	if not gun.Parent then return end
+	local spec: FxSpec?, pieces = nil, {}
+	for _, sa in gun:GetDescendants() do
+		if not (sa:IsA("SurfaceAppearance") and sa.Name == "WrapSA" and sa.Parent and sa.Parent:IsA("BasePart")) then continue end
+		local id = sa:GetAttribute("Wrap")
+		local e = if type(id) == "string" then FX[id] else nil
+		if not e or sa.Color ~= Color3.new(1, 1, 1) then continue end -- (the painted half only, not the dark second tone)
+		spec = e
+		table.insert(pieces, sa.Parent :: BasePart)
+	end
+	if not spec or #pieces == 0 then return end
+	local function area(b: BasePart): number local z = b.Size; return z.X * z.Y + z.Y * z.Z + z.X * z.Z end
+	table.sort(pieces, function(a, b) return area(a) > area(b) end)
+	while #pieces > 4 do table.remove(pieces) end
+	local total = 0
+	for _, b in pieces do total += area(b) end
+	local ext = if gun:IsA("Model") then gun:GetExtentsSize() else Vector3.new(3, 1, 1)
+	local s = math.max(ext.X, ext.Y, ext.Z) / 2.9 * 3.2 -- (studs per metre-ish: sizes in the spec are metres on the 2.9-stud rifle)
+	local fp = gun:IsDescendantOf(workspace.CurrentCamera)
+	local G: GunFx = { ems = {}, parts = pieces, fp = fp, on = true }
+	for _, b in pieces do
+		local em = Instance.new("ParticleEmitter")
+		em.Name = "WrapFx"
+		for k, v in fxProps(spec, s) do (em :: any)[k] = v end
+		em.Shape = Enum.ParticleEmitterShape.Box
+		em.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		em.Rate = spec.rate * area(b) / total
+		em.LockedToPart = fp
+		em.Parent = b
+		table.insert(G.ems, em)
+	end
+	gunFx[gun] = G
+end
+local function addFx(inst: Instance)
+	if not inst:IsA("SurfaceAppearance") or inst:IsDescendantOf(ReplicatedStorage) then return end
+	local id = inst:GetAttribute("Wrap")
+	if not (type(id) == "string" and FX[id]) then return end
+	local gun = inst.Parent and gunOf(inst.Parent)
+	if not gun then return end
+	saGun[inst] = gun
+	if not dirty[gun] then dirty[gun] = true; task.defer(rebuild, gun) end -- (one rebuild per wrap call, after all its pieces)
+end
+for _, sa in CS:GetTagged("WrapSA") do addFx(sa) end
+CS:GetInstanceAddedSignal("WrapSA"):Connect(addFx)
+CS:GetInstanceRemovedSignal("WrapSA"):Connect(function(inst)
+	local gun = saGun[inst]
+	saGun[inst] = nil
+	if gun and not dirty[gun] then dirty[gun] = true; task.defer(rebuild, gun) end
+end)
+-- on / off: hidden (first person hides your world gun, third person the viewmodel), aiming (first person), far
+local wideFov = 70
+RunService.Heartbeat:Connect(function()
+	if next(gunFx) == nil then return end
+	local cam = workspace.CurrentCamera
+	local fov = if cam then cam.FieldOfView else 70
+	wideFov = math.max(fov, wideFov - 0.02)
+	local aiming = fov < wideFov * 0.95
+	local at = if cam then cam.CFrame.Position else Vector3.zero
+	for gun, G in gunFx do
+		if not gun.Parent then for _, e in G.ems do e:Destroy() end; gunFx[gun] = nil; continue end
+		local b = G.parts[1]
+		local hidden = b == nil or b.Parent == nil or b.LocalTransparencyModifier >= 0.5 or b.Transparency >= 0.99
+		local on = not hidden and not (G.fp and aiming) and (G.fp or (b.Position - at).Magnitude < NEAR)
+		if on ~= G.on then
+			G.on = on
+			for _, e in G.ems do e.Enabled = on; if hidden then e:Clear() end end
 		end
 	end
 end)

@@ -254,6 +254,39 @@ since the bills are too small a share of the tile to be picked automatically. In
 its yellow read brighter than drawn, a toy-bright lemon; if it should be calmer, take the base a step darker and less
 saturated in `ducky()` (and the ducks with it).
 
+## Brighter, moving, raised (16 Nov 2026, evening)
+
+The owner: "Can certain wraps have a brighter glow, some are animated right? I want cool effects and maybe even
+height maps on some."
+
+- **Radiant glow** (`RADIANT` comments in `wrap_textures.py`): the glow wraps' strength went up by about half. Lava
+  5.5, Neon Hex 5.0, Circuit Board 4.5, Tokyo Night 4.5, Kintsugi 4.2, Market Crash 4.0, Arcade 4.0, Nebula 3.6,
+  Glitch 3.4 (were 2.6 to 3.6). Only lines at 1.0 in the mask bloom; halos and rims stay under every threshold
+  (Hex's halo 0.35 x 5 = 1.75). Black Hole's ring: `Brightness` 4, breathing 3.4 to 4.6, so it blooms all round at
+  the top of the breath.
+- **Effects** (`client/WrapAnim`, "WRAP EFFECTS"): a few slow particles off the painted half's four biggest picture
+  pieces, from their surfaces, in the kinds and textures of Fx's skin effects (embers, four-point sparkles, round
+  glowing dots, soap bubbles): Lava embers rising, Kintsugi gold glints, Nebula twinkles, Galaxy round dots (never
+  star shapes there), Neon Hex cyan motes drifting up, Circuit green motes, Tokyo pink and blue motes, Ducky soap
+  bubbles, Holo white glints. First person: they ride with the view, go quiet while you aim and stop while the gun is
+  hidden; guns further than 160 studs don't emit. Black Hole: ten glowing motes wind down the spiral into the ring.
+- **Animated** (already): 17 wraps breathe, glint, drift or shift hue (the table under "Animated wraps"), and Black
+  Hole's spiral turns.
+- **Relief** (`RELIEF` in `wrap_textures.py`): Roblox takes no real height map on a SurfaceAppearance, only a normal
+  map, which fakes the relief with the light. Most designs raised their shapes by a step one pixel wide, a rim the
+  mipmaps lose a metre from the eye; nine wraps' heights are now widened into bevels and deepened: Lava (crust
+  plates domed up from the cracks), Neon Hex (bevelled panels), Circuit Board (traces and chips proud of the board),
+  Kintsugi (the gold seams a raised bead), Bubble Wrap, Carbon Fiber, Wood, and two that had none, Seigaiha (the
+  wave lines carved) and Sakura (the blossoms raised), from the picture's light parts (`lum`).
+  Check a relief before uploading with `py tools/roblox/wrap_relief_preview.py <wraps dir> <out.png> <ids...>`
+  (each normal map lit from the upper left over its colour map). A new normal map can leave the wrap rendering bare
+  for a while after its upload (see the trap under "Glow that blooms").
+- In hand (place version 465, `wrap-textures/radiant-sheet.jpg`, frames and the lit relief preview in
+  `wrap-textures/radiant/`): Lava's cracks bloom wider than at 3.6, its plates read domed, and embers rise off the
+  rifle (4 emitters, WrapAnim's step 13 us). Black Hole's ring blooms; the motes are small in a still. Ducky's
+  bubbles weren't in the frame when it was taken. Near the eye an ember is a soft orange blob a few centimetres
+  across; if that reads too big, halve the sizes for first person in `rebuild` (`fp`).
+
 ## Redrawing or adding a wrap
 
 ```bash

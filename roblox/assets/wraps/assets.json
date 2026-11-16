@@ -1358,5 +1358,41 @@
  "9aa62409fec8b03758e389e3d5000a979a242938": {
   "file": "ducky_emit.png",
   "id": 132516774576453
+ },
+ "abd574eb7c677c806b6521e2bef9171e672b68bf": {
+  "file": "lava_normal.png",
+  "id": 71436757987189
+ },
+ "7795a828613e49a83addb992d9a0e5a51ffac743": {
+  "file": "hex_normal.png",
+  "id": 116389366547913
+ },
+ "a69f216cabc9acb5aacacd5a31ec04b2f000d52c": {
+  "file": "circuit_normal.png",
+  "id": 118501299450013
+ },
+ "f74d3c43fb699618893ccab13067db0f54123b21": {
+  "file": "kintsugi_normal.png",
+  "id": 114233544212048
+ },
+ "47e66d04a8dc874d2f9cc7bc48b0266c24821633": {
+  "file": "bubblewrap_normal.png",
+  "id": 135227008039983
+ },
+ "e25d3a1ced426f630884f0711cdbb2e484125f03": {
+  "file": "carbon_normal.png",
+  "id": 82911503054336
+ },
+ "364ca296f159fc96769faa1cf34228c41e2c4ed6": {
+  "file": "wood_normal.png",
+  "id": 112880914687735
+ },
+ "ce664a11c3954b97c9f23aa7daaf43ddc11d7da9": {
+  "file": "seigaiha_normal.png",
+  "id": 94398595512436
+ },
+ "e627a541458204d3dd76e0db319003832e7ca7a9": {
+  "file": "sakura_normal.png",
+  "id": 94216273200902
  }
 }

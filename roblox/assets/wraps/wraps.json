@@ -7,7 +7,7 @@
    "metal": 0.0,
    "emit": "arcade_emit.png"
   },
-  "emissive": 2.8,
+  "emissive": 4.0,
   "tint": "ffffff"
  },
  "arctic": {
@@ -160,7 +160,7 @@
    "metal": "circuit_metal.png",
    "emit": "circuit_emit.png"
   },
-  "emissive": 3.0,
+  "emissive": 4.5,
   "tint": "7dff6a"
  },
  "copper": {
@@ -306,7 +306,7 @@
    "metal": 0.0,
    "emit": "glitch_emit.png"
   },
-  "emissive": 2.6,
+  "emissive": 3.4,
   "tint": "ffffff"
  },
  "granite": {
@@ -335,7 +335,7 @@
    "metal": 0.0,
    "emit": "hex_emit.png"
   },
-  "emissive": 3.5,
+  "emissive": 5.0,
   "tint": "4fd8ff"
  },
  "hivis": {
@@ -393,7 +393,7 @@
    "metal": "kintsugi_metal.png",
    "emit": "kintsugi_emit.png"
   },
-  "emissive": 3.0,
+  "emissive": 4.2,
   "tint": "ffd27a"
  },
  "koi": {
@@ -413,7 +413,7 @@
    "metal": 0.0,
    "emit": "lava_emit.png"
   },
-  "emissive": 3.6,
+  "emissive": 5.5,
   "tint": "ffffff"
  },
  "lavalamp": {
@@ -500,7 +500,7 @@
    "metal": 0.0,
    "emit": "nebula_emit.png"
   },
-  "emissive": 2.8,
+  "emissive": 3.6,
   "tint": "ffffff"
  },
  "numsoup": {
@@ -580,7 +580,7 @@
  "sakura": {
   "maps": {
    "color": "sakura_color.png",
-   "normal": null,
+   "normal": "sakura_normal.png",
    "rough": 0.36,
    "metal": 0.0,
    "emit": 0.0
@@ -589,7 +589,7 @@
  "seigaiha": {
   "maps": {
    "color": "seigaiha_color.png",
-   "normal": null,
+   "normal": "seigaiha_normal.png",
    "rough": 0.4,
    "metal": 0.0,
    "emit": 0.0
@@ -641,7 +641,7 @@
    "metal": 0.0,
    "emit": "stonks_emit.png"
   },
-  "emissive": 3.0,
+  "emissive": 4.0,
   "tint": "ffffff"
  },
  "sushi": {
@@ -697,7 +697,7 @@
    "metal": 0.0,
    "emit": "tokyo_emit.png"
   },
-  "emissive": 3.0,
+  "emissive": 4.5,
   "tint": "ffffff"
  },
  "urban": {
