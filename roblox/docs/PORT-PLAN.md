@@ -424,6 +424,33 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   round 2 middle and covered lane PASS 7, spawns and gallery CLOSE 6, the spawn house's outside FAIL 4; round 3
   (spawn house outside, slate copings, lane cover, a deeper court, crisp floors, the border) built and saved.
 
+## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 257)
+
+After the calm paint the owner wrote "the gun textures look a little messed up?" and "would it be easier to recreate
+them in roblox? you can look up other rivals weapons and skins!", then "can you reference the rivals weapons when
+remodeling these please" and "im mostly discontent with the snipers". All sixteen weapons were remade as new
+low-poly models built for Roblox; numbers, names, mechanics, gimmicks, spots and moving parts are untouched. Full
+account, per-gun notes, both judge rounds and pictures: `roblox/docs/GUN-MODELS.md` and `roblox/docs/gun-models/`.
+
+- **Built from a kit,** in headless Blender: `tools/roblox/gunkit.py` (chamfered blocks, eight-sided barrels, panels,
+  ribs, rivets, sights) and `tools/roblox/gun_models.py` (one builder per gun, plus skins). 7 to 29 big pieces a gun
+  instead of 10 to 59 small ones; `SmoothPlastic` and flat colours, no pictures, no grainy materials. Rivals' guns were
+  studied for proportions (vault: `Research/Rivals weapons and skins - style notes.md`); every design is our own.
+- **The models are a switch:** `PolishBackup.WeaponSets.{kit,web}`, `W.models()` / `W.models("web")` in
+  `WeaponImport`. Each template carries its file bounds (`FileLo`, `FileHi`), which `WeaponModels.build` reads first.
+- **Skins:** a skin is a kit model `w_<id>@<skin>` that recolours slots and swaps named pieces; `W.skin("ar",
+  "cardboard")` shows the proof, Carl's Cardboard. Five ideas are in GUN-MODELS.md. Owning and picking skins is the
+  cosmetics batch (ProfileStore first).
+- **Wraps** go on and come off every kit model exactly (102 wraps x 3 modes x 17 models).
+- **Judged four times** by an independent agent against "would this sit next to Rivals' guns?": 6.2, 6.6, 6.8, 7.4
+  out of 10 (Rivals' own plain guns about 8 to 9). A fifth build round (greyer warm colours, the Sniper's eyepiece)
+  went in after the last judging and was not judged. Weakest at the last judging: the Belt Sander, Lawn Mower and
+  Half a Shotgun; strongest: the Shotgun, Redline, Marble Shotgun and Shredder.
+- **The hub copies the templates:** after a gun change rebuild it (`R.build("live")` in `PolishBackup.HubRotunda`)
+  so the armory racks and the showpiece show the new models (done for round 5).
+- **Not checked:** every gun firing (the Assault Rifle was), reload animations in motion on each new model, another
+  player's view, the Rooftop's daylight.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
