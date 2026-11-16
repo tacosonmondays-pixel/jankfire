@@ -42,7 +42,8 @@ SkinSets.SETS = {
 		members = { "katana_sakura", "ar_lacquer", "lever_cloudlock", "dmr_nighttide", "sawnoff_twintide" },
 	},
 	set_ducky = { -- VIP (the owner: "the ducky set is a high tier set you get by purchasing vip"): the VIP pack's skins,
-		-- never in crates or the shop. A cute bath-toy line: rubber-duck yellow, an orange bill at every front, a plump wing
+		-- never in crates or the shop. A magical-girl kawaii rubber-duck line ("can you make the duck magical kawaii girl
+		-- kinda thing"): each gun shaped AS a duck, a pink bow with a gold star clip, pearl wings, glowing heart gems
 		name = "Ducky", order = 5, vip = true,
 		colour = Color3.fromRGB(214, 189, 74), accent = Color3.fromRGB(192, 106, 46),
 		members = { "lmg_ducky", "revolver_ducky", "katana_ducky" },
@@ -64,16 +65,16 @@ SkinSets.SKINS = {
 	smg_pumpkin = { "Pumpkin Patch", "legendary", "smg", "set_halloween", "high" },
 	marbles_cauldron = { "Cauldron", "epic", "marbles", "set_halloween", "mid" },
 	katana_hex = { "Hex Blade", "epic", "katana", "set_halloween", "mid" },
-	revolver_candle = { "Candlelight", "epic", "revolver", "set_halloween", "mid" },
-	shotgun_bone = { "Bone Yard", "rare", "shotgun", "set_halloween", "basic" },
+	revolver_candle = { "Vigil", "epic", "revolver", "set_halloween", "mid" },
+	shotgun_bone = { "Gravekeeper", "rare", "shotgun", "set_halloween", "basic" },
 	katana_sakura = { "Sakura", "legendary", "katana", "set_tidecrest", "high" },
-	ar_lacquer = { "Red Lacquer", "epic", "ar", "set_tidecrest", "mid" },
+	ar_lacquer = { "Yoroi", "epic", "ar", "set_tidecrest", "mid" },
 	lever_cloudlock = { "Cloudlock", "epic", "lever", "set_tidecrest", "mid" },
-	dmr_nighttide = { "Night Tide", "rare", "dmr", "set_tidecrest", "basic" },
+	dmr_nighttide = { "Kintsugi", "rare", "dmr", "set_tidecrest", "basic" },
 	sawnoff_twintide = { "Twin Tide", "rare", "sawnoff", "set_tidecrest", "basic" },
 	lmg_ducky = { "Bubble Bath", "legendary", "lmg", "set_ducky", "high" },
-	revolver_ducky = { "Bath Toy", "legendary", "revolver", "set_ducky", "high" },
-	katana_ducky = { "Duck Guard", "legendary", "katana", "set_ducky", "high" },
+	revolver_ducky = { "Wish Duck", "legendary", "revolver", "set_ducky", "high" },
+	katana_ducky = { "Ribbon Duck", "legendary", "katana", "set_ducky", "high" },
 } :: { [string]: { any } }
 
 SkinSets.TIERS = {
@@ -88,11 +89,19 @@ SkinSets.TIER = {
 	sniper_golden = "basic", katana_bokken = "basic", katana_shirasaya = "basic",
 	ar_toy = "mid", ar_bullpup = "mid", ar_keytar = "mid", smg_uzi = "mid", smg_label = "mid", burst_ticket = "mid",
 	lmg_leaf = "mid", dmr_pen = "mid", autoshot_trimmer = "mid", sniper_musket = "mid", sniper_cue = "mid",
-	lever_capgun = "mid", shotgun_double = "mid", shotgun_umbrella = "mid", sawnoff_pepper = "mid",
+	lever_capgun = "mid", shotgun_double = "basic", shotgun_umbrella = "mid", sawnoff_pepper = "mid",
 	marbles_gumball = "mid", redline_hotrod = "mid", pistol_calc = "mid", revolver_flint = "mid", revolver_drill = "mid",
 	katana_baguette = "mid", katana_neon = "mid", shredder_chipper = "mid",
 } :: { [string]: string }
 for id, row in SkinSets.SKINS do SkinSets.TIER[id] = row[5] end
+
+-- the older skins remodelled on 16 Nov (after a review of every skin) that took a new name (the loot session's
+-- LootTable.SKINS holds their names: it applies these)
+SkinSets.RENAME = { smg_uzi = "Hairdryer", sawnoff_pepper = "Double Chili" } :: { [string]: string }
+
+-- the cute-set concepts in the game for the owner to choose from (not sold, not in crates; one becomes the set)
+SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b", "ar_cute_c", "pistol_cute_c",
+	"ar_cute_d", "pistol_cute_d", "ar_cute_e", "pistol_cute_e" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in
@@ -135,11 +144,40 @@ SkinSets.FX = {
 		glow = { colour = Color3.fromRGB(255, 156, 69) },
 		flash = Color3.fromRGB(255, 156, 69), tracer = Color3.fromRGB(255, 156, 69),
 	},
-	lmg_ducky = { -- soap bubbles drifting up off the duck's tail, behind the rear sight (the VFX session's "bubble")
+	-- the magical-girl Ducky: twinkling sparkles off the gems and the bow's star clip, soap bubbles drifting up, a pink-gold
+	-- glitter trail along a wing's gold edge (the katana: its blade), a soft pink-gold flash, a pink tracer
+	lmg_ducky = {
 		idle = {
-			{ kind = "bubble", colour = Color3.fromRGB(222, 238, 246), rate = 1, life = 2.2, size = 0.03, drift = "rise",
-				at = { { 0, 0.09, 0.258 }, { -0.042, 0.062, 0.2 }, { 0.042, 0.062, 0.2 } } },
+			{ kind = "sparkle", colour = Color3.fromRGB(246, 215, 138), rate = 3, life = 0.6, size = 0.012, drift = "rise",
+				at = { { -0.061, 0.068, -0.136 }, { -0.063, 0.038, -0.024 }, { -0.098, -0.152, -0.096 } } },
+			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 1, life = 1.6, size = 0.02, drift = "rise",
+				at = { { -0.086, -0.066, -0.13 }, { -0.066, 0.014, -0.09 }, { 0, 0.095, 0.47 } } },
 		},
+		glow = { colour = Color3.fromRGB(242, 122, 168) },
+		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.02, width1 = 0, segs = { { { -0.05, 0.051, -0.044 }, { -0.046, 0.07, 0.064 } } } },
+		flash = Color3.fromRGB(255, 225, 234), tracer = Color3.fromRGB(244, 154, 192),
+	},
+	revolver_ducky = {
+		idle = {
+			{ kind = "sparkle", colour = Color3.fromRGB(246, 215, 138), rate = 2.5, life = 0.6, size = 0.01, drift = "rise",
+				at = { { -0.037, 0.045, -0.128 }, { -0.034, 0.039, 0.017 }, { -0.05, 0.009, -0.05 } } },
+			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 0.9, life = 1.5, size = 0.018, drift = "rise",
+				at = { { 0, 0.03, 0.13 }, { -0.03, 0.03, 0.074 } } },
+		},
+		glow = { colour = Color3.fromRGB(242, 122, 168) },
+		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.015, width1 = 0, segs = { { { -0.028, 0.051, 0.003 }, { -0.028, 0.063, 0.068 } } } },
+		flash = Color3.fromRGB(255, 225, 234), tracer = Color3.fromRGB(244, 154, 192),
+	},
+	katana_ducky = {
+		idle = {
+			{ kind = "sparkle", colour = Color3.fromRGB(246, 215, 138), rate = 2.5, life = 0.6, size = 0.01, drift = "rise",
+				at = { { -0.04, 0.072, -0.12 }, { 0.04, 0.072, -0.12 }, { 0, 0.003, 0.143 } } },
+			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 0.9, life = 1.5, size = 0.018, drift = "rise",
+				at = { { 0, 0.058, -0.25 }, { 0, 0.07, -0.15 } } },
+		},
+		glow = { colour = Color3.fromRGB(242, 122, 168) },
+		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.04, width1 = 0, -- (a glitter swing trail off the blade)
+			segs = { { { 0, 0.006, -0.26 }, { 0, 0.083, -0.836 } } } },
 	},
 	katana_sakura = { -- petals drifting off the blossom guard, the sprig and the blade's back (the blade points move with its stretch)
 		idle = {

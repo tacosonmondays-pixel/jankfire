@@ -293,9 +293,9 @@ placed the same way on every piece. The top piece gets the biggest reshape and t
 |---|---|---|
 | Seraph (`set_seraph`) | Rifle, Sniper, Hat Trick, Katana, Plan B | ivory and gold; halo, feathered wings, a sunburst core |
 | Infernal (`set_infernal`) | the same five | black and crimson with ember glow; horns, blade wings, lava cracks, a slit eye |
-| Witching Hour (`set_halloween`) | Pumpkin Patch (SMG), Cauldron (Marble Shotgun), Hex Blade (Katana), Candlelight (Revolver), Bone Yard (Shotgun) | purple-black, bone, pumpkin; a hex band with bone rims |
-| Tidecrest (`set_tidecrest`) | Sakura (Katana), Red Lacquer (Rifle), Cloudlock (Yeehaw), Night Tide (Second Opinion), Twin Tide (Half a Shotgun) | red and black lacquer, gold wave crests, cloud scrolls, sakura |
-| Ducky (`set_ducky`, VIP) | Bubble Bath (Belt Sander), Bath Toy (Revolver), Duck Guard (Katana): all high tier | rubber-duck yellow, an orange bill at every front, a plump wing over the trigger |
+| Witching Hour (`set_halloween`) | Pumpkin Patch (SMG), Cauldron (Marble Shotgun), Hex Blade (Katana), Vigil (Revolver), Gravekeeper (Shotgun) | purple-black, bone, pumpkin; a hex band with bone rims |
+| Tidecrest (`set_tidecrest`) | Sakura (Katana), Yoroi (Rifle), Cloudlock (Yeehaw), Kintsugi (Second Opinion), Twin Tide (Half a Shotgun) | red and black lacquer, gold wave crests, cloud scrolls, sakura |
+| Ducky (`set_ducky`, VIP) | Bubble Bath (Belt Sander), Wish Duck (Revolver), Ribbon Duck (Katana): all high tier | magical-girl rubber duck (since v450): each gun shaped as a duck, a pink bow with a gold star clip, pearl wings, glowing heart gems |
 
 Seraph and Infernal are a pair: the same weapons, the same layout, the motifs swapped one for one. Ducky is the VIP
 game pass's set (the owner: "the ducky set is a high tier set you get by purchasing vip"): `vip = true`, never in crates or
@@ -331,6 +331,36 @@ black plates (glowing fractures), lit muzzles, and the glow along every feather'
 - Pictures: `gun-models/sets-heaven-hell.jpg`, `sets-witching-hour.jpg`, `sets-tidecrest.jpg` (side view and in hand),
   `sets-wings-vs-refs.jpg` (the owner's pictures, the round before and round 6). Not checked yet: the wings against the
   shooter's own shoulder in third person on a real player, and the VFX session's frame-cost check on the high tiers.
+
+### After the review (16 November 2026, place version 450)
+
+The owner: "some of the current skins either look bad or are too simple", "keytar is one I would say looks bad", "I want
+more interesting shapes and designs that could pass off as guns". A review agent scored all 49 skin cards out of 10
+against their tier (the table is in the shared notes, `review.md`); 25 scored under 6. All 24 that are not Ducky were
+rebuilt, each with one big new shape the hand view sees, and fewer colours.
+
+- **The angel wing, round 7** (the owner: "you keep trying to just do ovals make other shapes"; then picked B, "eagle
+  fingers is way better"). `angel_wing()` in `gun_sets.py`: every feather a gold shaft with a narrow light leading vane
+  and a wide darker trailing vane (`vane_feather`). The tips are cut by job: five notched "finger" primaries splayed up
+  behind the rear sight (the outer two glow amber along their leading edge), square-notched secondaries under a thick
+  ivory arm, pointed coverts. The small wings and the Seraph katana's guard use the same feathers. Knobs: `EAGLE`
+  (override with the `JF_EAGLE` JSON env var); `ANGEL_WING` picks 'B' (default) or 'A' (falcon fold). The Infernal side
+  keeps its blade wings, glowing cracks and red horns (the owner: "the demon variant looks cool").
+- **The rebuilt skins.** Files `gun_skins_fix.py` (Keytar: the gun is the keytar, a wedge body, a two-octave keyboard on
+  top, a magenta neon neck), `gun_skins_fix2.py`, `gun_skins_fix3.py`, `gun_skins_fix4.py` (eight each). Two took new
+  names, kept in `SkinSets.RENAME` (the loot session applies them): `smg_uzi` is now Hairdryer, `sawnoff_pepper` Double
+  Chili. `shotgun_double` moved to basic. Four set skins took new names (the table above).
+- **Ducky, magical-girl** (`gun_sets_ducky_alt.py`, the owner: "can you make the duck magical kawaii girl kinda thing";
+  "skins can change how the gun looks within reason like the shark shotgun"): the LMG's body is the duck, the revolver's
+  barrel is its neck with the bill as the muzzle, the katana's guard is a duck with ribbon tails. `SkinSets.FX` gives all
+  three sparkles off the gems, soap bubbles, a pink-gold trail, a pink flash and tracer.
+- **Cute concepts** (`gun_sets_cute.py`): five looks, A to E, each as a rifle and a pistol, in the game for the owner to
+  pick from. They are listed in `SkinSets.CONCEPTS`, so they are not sold and can't roll from crates.
+- Checked: `gun_check.py` (0 loose parts on all 48), the z-fight scan on each gun, the install in Studio (48 guns, 0
+  problems, 59 skins in `JankfireSkins`), and in hand in a Play test (Keytar, Bubble Bath, cute B). Pictures:
+  `gun-models/skins-in-hand-v450.jpg`, `review-fix2.jpg`, `review-fix3.jpg`, `review-fix4.jpg`, `keytar.jpg`,
+  `ducky-magical.jpg`, `cute-concepts.jpg`, `angel-eagle.jpg`. Not checked: the new effects' frame cost on a slow
+  device, and the cute concepts in third person.
 
 ## How it was judged
 

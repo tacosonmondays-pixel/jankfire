@@ -1,32 +1,34 @@
-# THE DUCKY SET (16 Nov 2026, the owner: "can you create a cute ducky themed skin set?"). The duck is a running theme
-# in the game already (the Tiny Duck hat, the Rubber Duck item, the Giant Duck killstreak, the duck trophy case). Five
-# skins on five live guns that read as one family at a glance (the set logic: the vault note Research/Rivals skin
-# sets.md; its logic only, nothing of Rivals' own designs, names or themes):
-#   lmg@lmg_ducky            Bubble Bath  high   legendary  the set's top piece: the Belt Sander IS a rubber duck (head
-#                                                           at the receiver's front holding the barrel in its bill,
-#                                                           round body, tail behind the rear sight) sitting in its tub (the
-#                                                           ammo box), the belt a column of soap bubbles; it drifts
-#                                                           soap bubbles (EFFECTS below, built by the effects work)
-#   katana@katana_ducky      Duck Guard   mid    epic       a new model: a rubber duck sits on the hilt as the guard
-#   autoshot@autoshot_ducky  Swim Ring    mid    epic       a new model: the drum a duck swim ring, head and bill forward
-#   revolver@revolver_ducky  Bath Toy     mid    epic       a new model: a bubble cylinder, a little duck for a front
-#                                                           sight, a tail on the grip
-#   pistol@pistol_ducky      Duckling     basic  rare       the live Plan B: a yellow slide with a bill, eyes and wings
-# THE TIERS (the owner, 16 Nov 2026): basic = the base gun with small changes; mid = a new model; high = a full remodel
-# plus effects living on the gun. Rarity follows the tier (basic = rare, mid = epic, high = legendary).
-# ONE PALETTE: rubber-duck yellow (warm but a little muted, leaning lemon so the hall's warm lamps don't push it to
-# orange), the bill's orange (only on bills), a soft white, one dark grey for every metal part; a calm pale bath-water
-# blue only on bubbles (some of the Belt Sander's, the Revolver's bubble cylinder). No glow anywhere (the Belt Sander's
-# barrel shroud warms with fire as the game does it).
-# ONE MOTIF on every member, THE WING: a plump rounded wing with three round feather tips at its back, raised from the
-# body in the body's own yellow (as a rubber duck's), one on each side of the weapon's middle over the trigger, its
-# tips pointing back (the katana: on the guard duck's sides). Every member also carries an orange duck bill at its
-# front (the colour's only use).
+# THE DUCKY SET, the VIP game pass's set (16 Nov 2026, the owner: "can you create a cute ducky themed skin set?", then
+# "the ducky set is a high tier set you get by purchasing vip"). The duck is a running theme in the game already (the
+# Tiny Duck hat, the Rubber Duck item, the Giant Duck killstreak, the duck trophy case). Three skins, all HIGH tier
+# (legendary): each a full remodel with one small Neon part and its own bubbles (EFFECTS below, built by the effects
+# work). The set logic: the vault notes Research/Rivals skin sets.md and Research/Skin concepts/Ducky.md (+ Skin
+# briefs.md, "Ducky"); their logic only, nothing of anyone's own designs, names or themes.
+#   lmg@lmg_ducky            Bubble Bath  the Belt Sander IS a rubber duck (its head at the receiver's front holding the
+#                                         barrel in its bill, its round body the receiver, its tail behind the rear
+#                                         sight) sitting in a dark cast-iron clawfoot tub (the ammo box) of lit bath
+#                                         water (the Neon), the belt a column of soap bubbles rising out of the foam
+#   revolver@revolver_ducky  Bath Toy     a white enamel bath-toy revolver: a little rubber duck rides the barrel's nose
+#                                         as the front sight, the frame's top a rolled tub rim, the cylinder six round
+#                                         bubbles with glowing pips (the Neon), a claw foot under the dark grip
+#   katana@katana_ducky      Duck Guard   a rubber duck in a swim ring sits on the hilt as the guard, facing up the
+#                                         blade, four lit bubbles on its ring (the Neon); the dark wrapped handle ends in
+#                                         a duckling's head pommel, as a duck-head cane's handle
+# (autoshot_ducky "Swim Ring" and pistol_ducky "Duckling" were cut when the set became the VIP set: their builders stay
+# below, unused.)
+# THE THREE CHECKS (Skin briefs.md, "Ducky"): the business end stays dark (barrel, bore, grip, magazine in the dark
+# grey); the duck lives in only 2-3 spots per gun; yellow only on the ducks themselves (their bodies and wings), orange
+# only on their bills.
+# ONE PALETTE: a calm warm rubber-duck yellow (a step calmer than the first cut, which came out a saturated lemon in
+# hand; checked not to go orange), the bill's orange, a soft enamel white, one dark grey for the metal; the one glow a
+# pale bath-water aqua (Neon), small, never in front of the sights; a clear pale-blue glass on a few soap bubbles.
+# ONE MOTIF on every member, THE WING: a plump rounded wing with three round feather tips at its back, raised in the
+# duck's own yellow, one on each side of the weapon's middle, its tips pointing back (the katana: on the guard duck).
 # Every member is a skin like the others (gunskin_kit.py): it keeps its gun's spots, moving nodes, size and wrap zones.
-# No text, numbers, letters, logos or code-like patterns; eyes are round dots.
+# No text, numbers, letters, logos or code-like patterns; eyes are round dark dots, never lit.
 #   blender -b --factory-startup -P tools/roblox/gun_set.py -- <out_dir> lmg@lmg_ducky
 #   blender -b --factory-startup -P tools/roblox/gun_preview.py -- <out_dir> --set live lmg@lmg_ducky
-#   blender -b --factory-startup -P tools/roblox/gun_check.py -- lmg@lmg_ducky katana@katana_ducky ...
+#   blender -b --factory-startup -P tools/roblox/gun_check.py -- lmg@lmg_ducky revolver@revolver_ducky katana@katana_ducky
 import sys, os, math
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gunskin_kit import *
@@ -43,40 +45,62 @@ from gun_sets import tsweep, scallops
 SETS = {
     'set_ducky': {
         'name': 'Ducky',
-        'members': ['lmg@lmg_ducky', 'katana@katana_ducky', 'autoshot@autoshot_ducky', 'revolver@revolver_ducky',
-                    'pistol@pistol_ducky'],
-        'rarity': {'lmg@lmg_ducky': 'legendary', 'katana@katana_ducky': 'epic', 'autoshot@autoshot_ducky': 'epic',
-                   'revolver@revolver_ducky': 'epic', 'pistol@pistol_ducky': 'rare'},
-        'tier': {'lmg@lmg_ducky': 'high', 'katana@katana_ducky': 'mid', 'autoshot@autoshot_ducky': 'mid',
-                 'revolver@revolver_ducky': 'mid', 'pistol@pistol_ducky': 'basic'},
-        'names': {'lmg@lmg_ducky': 'Bubble Bath', 'katana@katana_ducky': 'Duck Guard',
-                  'autoshot@autoshot_ducky': 'Swim Ring', 'revolver@revolver_ducky': 'Bath Toy',
-                  'pistol@pistol_ducky': 'Duckling'},
+        'vip': True,   # the VIP game pass's set
+        'members': ['lmg@lmg_ducky', 'revolver@revolver_ducky', 'katana@katana_ducky'],
+        'rarity': {'lmg@lmg_ducky': 'legendary', 'revolver@revolver_ducky': 'legendary', 'katana@katana_ducky': 'legendary'},
+        'tier': {'lmg@lmg_ducky': 'high', 'revolver@revolver_ducky': 'high', 'katana@katana_ducky': 'high'},
+        'names': {'lmg@lmg_ducky': 'Bubble Bath', 'revolver@revolver_ducky': 'Bath Toy', 'katana@katana_ducky': 'Duck Guard'},
     },
 }
 
-# THE HIGH PIECE'S EFFECT (a proposal for the session that builds effects; nothing here reads it yet). Points are in
-# the gun's frame (metres, x right, y up, z back), all behind the rear sight (z 0.112) so nothing drifts across the
-# sight picture; `node` = the piece they ride on.
+# THE EFFECTS (a proposal for the session that builds effects; nothing here reads it yet). Points are in the gun's frame
+# (metres, x right, y up, z back), behind or beside the sights, never on the aim line; `node` = the piece they ride on.
+# One look for the whole set: soap bubbles (round, mostly clear with a pale rim), a soft white-aqua flash, a pale aqua
+# tracer (paler and greener than a water-gun blue; never foam white, which vanishes against the sky).
+BUBBLES = {'kind': 'soap bubbles', 'colour': 'd9e6ec', 'look': 'round, mostly clear with a pale rim, 1-2.5 cm',
+           'rate': 'one every 0.6-1.2 s from one of the points, drifting up 10-20 cm with a slow wobble, popping after '
+                   '1-1.8 s'}
 EFFECTS = {
     'lmg@lmg_ducky': {
-        'idle': [
-            {'kind': 'soap bubbles', 'colour': 'd9e6ec', 'look': 'round, mostly clear with a pale rim, 1-2.5 cm',
-             'rate': 'one every 0.6-1.2 s from one of the points, drifting up and back 10-20 cm with a slow wobble, '
-                     'popping after 1-1.8 s',
-             'at': [(0.0, 0.09, 0.258), (-0.042, 0.062, 0.2), (0.042, 0.062, 0.2)], 'node': 'body'},
-        ],
-        'flash': 'the usual flash plus 3-5 small soap bubbles thrown forward and up, popping within 0.3 s',
+        'idle': [dict(BUBBLES, at=[(0.0, 0.09, 0.258), (-0.042, 0.062, 0.2)], node='body', note='the tail tip and '
+                      'beside the tail: behind the rear sight (z 0.112)'),
+                 dict(BUBBLES, at=[(-0.088, -0.066, -0.1)], node='mag', note='the lit bath water on the tub\'s left: '
+                      'low and beside the gun, bubbles rise up its left flank, clear of the aim line')],
+        'glow': 'mag_wzN__glow: the bath water in the tub, a still pale aqua (no pulse needed)',
+        'flash': 'soft white-aqua (cff6f8) with 3-5 small soap bubbles thrown forward and up, popping within 0.3 s',
+        'tracer': 'pale aqua (9be7ee)',
+    },
+    'revolver@revolver_ducky': {
+        'idle': [dict(BUBBLES, at=[(-0.027, 0.062, 0.075), (0.027, 0.062, 0.075)], node='body', note='either side of '
+                      'the hammer, behind the rear sight'),
+                 dict(BUBBLES, at=[(-0.048, 0.009, -0.05)], node='cylinder', note='the left lit window of the bubble '
+                      'cylinder: low beside the gun (the cylinder turns: spawn in the gun frame, not on the node)')],
+        'glow': 'cylinder_wzN__glow: six lit bath-water windows, one along each of the cylinder\'s round bubbles '
+                '(six-fold, they turn with it)',
+        'flash': 'soft white-aqua (cff6f8) with 2-3 small soap bubbles',
+        'tracer': 'pale aqua (9be7ee)',
+    },
+    'katana@katana_ducky': {
+        'idle': [dict(BUBBLES, at=[(-0.031, 0.0, -0.181), (0.031, 0.0, -0.181)], node='kat_guard', note='off the two '
+                      'front lit bubbles on the swim ring, either side of the blade'),
+                 dict(BUBBLES, at=[(0.0, 0.068, -0.125)], node='kat_guard', note='just over the guard duck\'s tail')],
+        'trail': {'from': (0.0, 0.006, -0.2), 'to': (0.0, 0.083, -0.836), 'node': 'kat_blade',
+                  'note': 'the blade\'s middle line from just ahead of the guard duck to the tip (the muzzle spot); the '
+                          'game stretches kat_blade with kills, so scale "to" with it. a soft pale-aqua trail with a '
+                          'few bubbles shed along it'},
+        'glow': 'kat_guard_wzN__glow: the four round bubbles raised on the guard duck\'s swim ring',
     },
 }
 
 # ------------------------------------------------------------------------------------------------ the palette
-# (a step calmer than a swatch: the hall's lamps push warm colours toward orange, so the yellow leans lemon)
-YELLOW = 'd6bd4a'   # rubber-duck yellow: the bodies and the wings
+# (a step calmer than a swatch: the hall's lamps push warm colours toward orange. The first cut's d6bd4a read as a
+# saturated lemon in hand in Studio, so the yellow is calmer and a little warmer-neutral now, hue ~47 deg, not orange)
+YELLOW = 'cbb357'   # rubber-duck yellow: the ducks and their wings only
 BEAK = 'c06a2e'     # the bill's orange (bills only)
-WHITE = 'dcd8cc'    # soft white
-METAL = '3b3e46'    # the one dark grey: barrels, sights, grips, triggers
-WATER = 'a6c3cf'    # pale bath-water blue: a few bubbles only
+WHITE = 'dcd8cc'    # soft enamel white
+METAL = '3b3e46'    # the one dark grey: barrels, sights, grips, magazines, triggers
+WATER = 'a6c3cf'    # pale bath-water blue: a few clear soap bubbles only
+GLOW = '93dfe4'     # the one glow: bath-water aqua (Neon; paler swatches glow plain white)
 
 
 def palette(g, **more):
@@ -137,15 +161,16 @@ def dome(g, piece, c, r, nrm, flat=0.5, sink=0.45, sub=2):
     g._add(piece, bm, smooth=lambda f: True)
 
 
-def eyes(g, dark, light, c, r, d, er, glint=True):
+def eyes(g, dark, light, c, r, d, er, glint=True, fw=(0, 0, -1)):
     """two round dot eyes on a head (ellipsoid c, r) in the direction d (x mirrored), each with a small soft-white
-       glint up and forward of its middle"""
+       glint up and forward (fw: the way the head faces) of its middle"""
+    fw0 = Vector(fw)
     for sx in (-1, 1):
         p, nrm = surf(c, r, (sx * abs(d[0]), d[1], d[2]))
         dome(g, dark, p, er, nrm, flat=0.42)
         if glint and light:
             up = Vector((0, 1, 0)); up = (up - nrm * up.dot(nrm)).normalized()
-            fw = Vector((0, 0, -1)); fw = (fw - nrm * fw.dot(nrm)).normalized()
+            fw = (fw0 - nrm * fw0.dot(nrm)).normalized()
             gp = p + nrm * er * 0.32 + up * er * 0.38 + fw * er * 0.22
             dome(g, light, gp, er * 0.34, nrm, flat=0.5, sink=0.3, sub=1)
 
@@ -210,6 +235,70 @@ def torus(g, piece, c, R, r, n=36, m=14, stripe=None, segs=6, a0=0.0):
         g._add(stripe if (stripe and s % 2) else piece, bm, smooth=lambda f: True)
 
 
+def roll(g, piece, path, y, r, n=12):
+    """a tub's rolled rim: a round tube of radius r swept round a closed plan outline [(x, z)] at height y"""
+    bm = bmesh.new()
+    m = len(path)
+    rows = []
+    for i, (x, z) in enumerate(path):
+        a, b = path[i - 1], path[(i + 1) % m]
+        tx, tz = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(tx, tz)
+        nx, nz = tz / L, -tx / L
+        cx_ = sum(p[0] for p in path) / m; cz_ = sum(p[1] for p in path) / m
+        if nx * (x - cx_) + nz * (z - cz_) < 0: nx, nz = -nx, -nz
+        rows.append([bm.verts.new(P(x + nx * r * math.cos(2 * math.pi * j / n), y + r * math.sin(2 * math.pi * j / n),
+                                    z + nz * r * math.cos(2 * math.pi * j / n))) for j in range(n)])
+    for i in range(m):
+        for j in range(n):
+            bm.faces.new([rows[i][j], rows[(i + 1) % m][j], rows[(i + 1) % m][(j + 1) % n], rows[i][(j + 1) % n]])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    g._add(piece, bm, smooth=lambda f: True)
+
+
+def rrect_plan(cx, cz, hx, hz, rc, k=6):
+    """a rounded rectangle seen from above [(x, z)] round (cx, cz), half sizes hx, hz, corner radius rc"""
+    out = []
+    for (sx, sz, a0) in ((1, 1, 0), (-1, 1, 90), (-1, -1, 180), (1, -1, 270)):
+        ccx, ccz = cx + sx * (hx - rc), cz + sz * (hz - rc)
+        for i in range(k + 1):
+            a = math.radians(a0 + 90 * i / k)
+            out.append((ccx + rc * math.cos(a), ccz + rc * math.sin(a)))
+    return out
+
+
+def ring_y(g, piece, c, Rx, Rz, r, n=40, m=14):
+    """a swim ring lying level (its axis up) round c (x, y, z): an oval Rx by Rz to the middle of its tube, r the tube"""
+    bm = bmesh.new()
+    rows = []
+    for i in range(n):
+        a = 2 * math.pi * i / n
+        ca, sa = math.cos(a), math.sin(a)
+        rows.append([bm.verts.new(P(c[0] + (Rx + r * math.cos(2 * math.pi * j / m)) * ca, c[1] + r * math.sin(2 * math.pi * j / m),
+                                    c[2] + (Rz + r * math.cos(2 * math.pi * j / m)) * sa)) for j in range(m)])
+    for i in range(n):
+        for j in range(m):
+            bm.faces.new([rows[i][j], rows[(i + 1) % n][j], rows[(i + 1) % n][(j + 1) % m], rows[i][(j + 1) % m]])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    g._add(piece, bm, smooth=lambda f: True)
+
+
+def claw(g, piece, c, r, out, toes=3, spread=34.0):
+    """a clawfoot tub's foot: a ball of radius r at c (x, y, z) gripped by `toes` round toes reaching out and down in
+       the plan direction out (x, z), spread either side; each toe at least 12 mm thick"""
+    g.ball(piece, r, c, sub=2)
+    a0 = math.atan2(out[1], out[0])
+    tr = max(0.006, r * 0.52)
+    for k in range(toes):
+        a = a0 + math.radians(spread * (k - (toes - 1) / 2))
+        d = (math.cos(a), math.sin(a))
+        pts = [(c[0] + d[0] * r * 0.45, c[1] + r * 0.25, c[2] + d[1] * r * 0.45),
+               (c[0] + d[0] * r * 1.0, c[1] - r * 0.2, c[2] + d[1] * r * 1.0),
+               (c[0] + d[0] * r * 1.18, c[1] - r * 0.72, c[2] + d[1] * r * 1.18)]
+        tsweep(g, piece, pts, [tr, tr * 0.95, tr * 0.85], n=10, side=(-d[1], 0.0, d[0]))
+        g.ball(piece, tr * 0.85, pts[-1], sub=2)
+
+
 def wing_outline(cz, cy, L, H, ang=10.0, k=3, depth=0.2):
     """THE SET'S MOTIF, the wing, seen from the side [(z, y)]: a plump teardrop, its round front's middle at (cz, cy),
        pointing back (+z) L long and H tall, tipped up ang degrees; its lower back edge cut in k round feather tips"""
@@ -266,16 +355,16 @@ def wings(g, piece, outline, x0, t, **kw):
 
 # ======================================================================= BELT SANDER: Bubble Bath (high, legendary)
 def lmg_ducky():
-    """BUBBLE BATH (high: the set's top piece): the Belt Sander is a rubber duck in its bath. Its round head at the
-       receiver's front, the barrel held in its open bill (two orange lips), dot eyes; its round body the receiver
-       (deep at the chest where it sits in the tub, rising under the trigger and grip), its back the feed cover (node
-       "cover"), a plump wing on each side, its tail flicked up behind the rear sight. Under the left its bath tub
-       (node "mag": a soft-white tub on four grey feet, a rolled rim, foam heaped over it) and the belt a column of soap
-       bubbles rising from the foam into a port in the duck's side (belt_00 .. belt_11). The barrel's round shroud
-       (piece "lmg_heat", the game warms it), a soft-white bar of soap for the handguard, a grey stock (so the duck
-       and its tub are the yellow-and-white shape) with a soft-white pad"""
+    """BUBBLE BATH (high): the Belt Sander is a rubber duck in its bath. Its round head at the receiver's front, the
+       barrel held in its open bill (two orange lips), dot eyes; its round body the receiver (deep at the chest where it
+       sits in the water, rising under the trigger and grip), its back the feed cover (node "cover"), a plump wing on
+       each side, its tail flicked up behind the rear sight. Under the left its tub (node "mag": dark cast iron on four
+       claw feet, a soft-white rolled rim, the lit bath water inside it, foam heaped over it) and the belt a column of
+       soap bubbles rising from the foam into a port in the duck's side (belt_00 .. belt_11). The barrel's round
+       shroud (piece "lmg_heat", the game warms it), a soft-white bar of soap for the handguard, a grey stock with a
+       soft-white pad. Duck spots: the one duck (yellow nowhere else); dark barrel, bore, grip, tub"""
     g, base = skin('lmg', 'lmg_ducky')
-    palette(g, bubble=(WATER, 'g', 0.55))
+    palette(g, bubble=(WATER, 'g', 0.55), glow=(GLOW, 'n'))
     BY, SY = 0.02, g.spots['sight'][1]  # 0.1038
     # the body (the receiver): round, deep at the chest, rising under the trigger, round at both ends
     blob(g, 'body_wzA__duck', [(-0.252, -0.03, 0.022, 0.014), (-0.246, -0.062, 0.04, 0.034), (-0.232, -0.084, 0.05, 0.047),
@@ -314,19 +403,22 @@ def lmg_ducky():
     aperture(g, 'sight_wzN__metal', 0.112, SY, ro=0.018, ri=0.0088, zt=0.02, base=0.07)
     # the port on the right (the brass), a dark slot
     g.box('trim_wzN__black', (0.044, 0.0525), (0.016, 0.04), (-0.105, -0.035), bev=0.0015)
-    # the bath tub (node "mag"): soft white, its ends sloped, a rolled rim, four grey ball feet, foam heaped along
-    # its top on the left and over its ends (white suds, a few clear bubbles)
+    # the bath tub (node "mag", the magazine: dark, as the business end): a cast-iron clawfoot tub, its ends sloped, a
+    # soft-white enamel rolled rim round its top, four claw feet; inside the rim the bath water, lit (THE NEON: a
+    # still pale aqua, seen along the duck's left in first person); foam heaped on the rim on the left and over its
+    # ends (white suds, a few clear bubbles)
     TX = -0.032
-    blob(g, 'mag_wzA__white', [(-0.205, -0.112, -0.088, 0.04), (-0.198, -0.15, -0.086, 0.054), (-0.185, -0.19, -0.085, 0.059),
-                               (-0.165, -0.212, -0.085, 0.061), (-0.14, -0.22, -0.085, 0.061), (-0.05, -0.22, -0.085, 0.061),
-                               (-0.025, -0.212, -0.085, 0.061), (-0.005, -0.19, -0.085, 0.059), (0.008, -0.15, -0.086, 0.054),
-                               (0.015, -0.112, -0.088, 0.04)], p=3.2, cx=TX)
-    blob(g, 'mag_wzA__white', [(-0.216, -0.092, -0.08, 0.04), (-0.212, -0.096, -0.076, 0.058), (-0.2, -0.097, -0.075, 0.067),
-                               (0.01, -0.097, -0.075, 0.067), (0.022, -0.096, -0.076, 0.058), (0.026, -0.092, -0.08, 0.04)],
+    blob(g, 'mag_wzB__metal', [(-0.205, -0.112, -0.084, 0.04), (-0.198, -0.15, -0.082, 0.054), (-0.185, -0.19, -0.081, 0.059),
+                               (-0.165, -0.212, -0.081, 0.061), (-0.14, -0.22, -0.081, 0.061), (-0.05, -0.22, -0.081, 0.061),
+                               (-0.025, -0.212, -0.081, 0.061), (-0.005, -0.19, -0.081, 0.059), (0.008, -0.15, -0.082, 0.054),
+                               (0.015, -0.112, -0.084, 0.04)], p=3.2, cx=TX)
+    roll(g, 'mag_wzN__white', rrect_plan(TX, -0.095, 0.0625, 0.114, 0.034), -0.079, 0.0085)
+    blob(g, 'mag_wzN__glow', [(-0.205, -0.086, -0.077, 0.044), (-0.2, -0.086, -0.0775, 0.056), (-0.19, -0.086, -0.078, 0.06),
+                              (0.0, -0.086, -0.078, 0.06), (0.01, -0.086, -0.0775, 0.056), (0.015, -0.086, -0.077, 0.044)],
          p=3.2, cx=TX)
-    for fx in (-0.032, 0.032):
-        for fz in (-0.158, -0.032):
-            g.ball('mag_wzB__metal', 0.0125, (TX + fx, -0.219, fz), sub=2)
+    for fx in (-1, 1):
+        for fz, dz in ((-0.165, -1), (-0.025, 1)):
+            claw(g, 'mag_wzB__metal', (TX + fx * 0.04, -0.218, fz), 0.0115, (fx * 0.75, dz * 0.66))
     FOAM = ((-0.084, -0.07, -0.196, 0.016, 0), (-0.086, -0.068, -0.166, 0.017, 0), (-0.082, -0.066, -0.136, 0.016, 1),
             (-0.086, -0.07, -0.112, 0.014, 0), (-0.084, -0.064, -0.046, 0.017, 0), (-0.087, -0.07, -0.02, 0.015, 1),
             (-0.083, -0.068, 0.004, 0.016, 0), (-0.06, -0.064, -0.2, 0.016, 0), (-0.03, -0.068, -0.212, 0.014, 0),
@@ -359,41 +451,120 @@ def lmg_ducky():
     return g
 
 
-# ============================================================================== KATANA: Duck Guard (mid, epic)
+# ============================================================================== REVOLVER: Bath Toy (high, legendary)
+def revolver_ducky():
+    """BATH TOY (high): a white enamel bath-toy revolver. A little rubber duck rides the dark barrel's nose as the front
+       sight (its head's top on the aim line), facing away down the barrel; the frame soft-white enamel, its top strap
+       a tub's rolled rim, its back a round dome with a plump yellow wing on each side; the cylinder (node "cylinder")
+       six round dark bubbles about the row's axis, two glowing pips on each (THE NEON; six-fold: every sixth of a turn
+       looks the same); the hammer (node "hammer") with a round tap knob, the rear sight, the guard, the trigger and the
+       grip dark; a claw foot under the grip, as a clawfoot tub stands. Duck spots: the rider duck and the wings"""
+    g, base = skin('revolver', 'revolver_ducky')
+    palette(g, glow=(GLOW, 'n'))
+    BY, AX = 0.03, 0.009
+    # the barrel (dark) and its bore
+    blob(g, 'barrel_wzB__metal', [(-0.29, -0.016, 0.047, 0.018), (-0.286, -0.026, 0.053, 0.024),
+                                  (-0.278, -0.031, 0.056, 0.026), (-0.11, -0.031, 0.056, 0.026)], p=2.6)
+    g.cylz('trim_wzN__black', 0.011, -0.2905, -0.287, y=BY, sides=12, bev=0)
+    # the little duck on the nose (the front sight): body, head (its top the aim line), bill, eyes, tail
+    DB, DBR = (0.0, 0.0648, -0.252), (0.015, 0.0125, 0.021)
+    egg(g, 'sight_wzN__duck', DB, *DBR)
+    DH, DHR = (0.0, 0.0755, -0.266), (0.0118, 0.0125, 0.0122)
+    egg(g, 'sight_wzN__duck', DH, *DHR)
+    bill(g, 'sight_wzN__beak', -0.274, -0.29, 0.0728, 0.0075, 0.0034, up=0.001, n=16)
+    eyes(g, 'sight_wzN__black', None, DH, DHR, (0.72, 0.4, -0.56), 0.0034, glint=False)
+    sweep_oval(g, 'sight_wzN__duck', [(-0.236, 0.067), (-0.23, 0.073), (-0.227, 0.079)], [0.0095, 0.007, 0.0055],
+               [0.0085, 0.0065, 0.0055], n=12)
+    # the frame (soft-white enamel): the top strap a rolled rim, the bottom strap, the front post, the round dome behind
+    blob(g, 'body_wzA__white', [(-0.135, 0.05, 0.066, 0.008), (-0.131, 0.0455, 0.0705, 0.0125), (-0.126, 0.0445, 0.0715, 0.0135),
+                                (0.044, 0.0445, 0.0715, 0.0135), (0.05, 0.0455, 0.0705, 0.0125), (0.054, 0.05, 0.066, 0.008)], p=2.0)
+    blob(g, 'body_wzA__white', [(-0.132, -0.052, -0.032, 0.016), (-0.128, -0.054, -0.03, 0.02), (0.03, -0.054, -0.03, 0.02)], p=3.0)
+    g.box('body_wzA__white', (-0.02, 0.02), (-0.045, 0.06), (-0.132, -0.106), bev=0.008)
+    blob(g, 'body_wzA__white', [(-0.006, -0.052, 0.066, 0.022), (0.03, -0.052, 0.068, 0.0235), (0.052, -0.05, 0.062, 0.0235),
+                                (0.07, -0.047, 0.047, 0.0225), (0.084, -0.043, 0.026, 0.02), (0.092, -0.04, 0.004, 0.016),
+                                (0.096, -0.036, -0.014, 0.01)], p=3.2)
+    wings(g, 'wing_wzA__duck', wing_outline(0.032, 0.006, 0.058, 0.046, ang=10), 0.018, 0.0135)
+    # the cylinder (node "cylinder"): six round dark bubbles about the row's axis, rounded at both ends, a lit window
+    # of bath water along the crest of each (the Neon: they turn with it, every sixth of a turn the same)
+    def lobes(z, Rmax, Rmin, n=48):
+        return [((Rmin + (Rmax - Rmin) * (0.5 + 0.5 * math.cos(6 * a))) * math.cos(a),
+                 AX + (Rmin + (Rmax - Rmin) * (0.5 + 0.5 * math.cos(6 * a))) * math.sin(a), z)
+                for a in (2 * math.pi * j / n for j in range(n))]
+    st = [(-0.1, 0.032, 0.026), (-0.097, 0.038, 0.029), (-0.091, 0.042, 0.0305), (-0.08, 0.0438, 0.0315),
+          (-0.02, 0.0438, 0.0315), (-0.009, 0.042, 0.0305), (-0.003, 0.038, 0.029), (0.0, 0.032, 0.026)]
+    loft(g, 'cylinder_wzB__metal', [lobes(z, a, b) for z, a, b in st], group=lambda i, k: 'r')
+    for k in range(6):
+        a = k * math.pi / 3
+        R = 0.0438 - 0.0042
+        egg(g, 'cylinder_wzN__glow', (R * math.cos(a), AX + R * math.sin(a), -0.05), 0.0066, 0.0066, 0.025, n=12, m=8)
+    # the hammer (dark) with a round tap knob on its spur, the rear sight
+    g.prism('hammer_wzN__metal', [(0.045, 0.036), (0.062, 0.036), (0.098, 0.062), (0.092, 0.074), (0.05, 0.062)], 0.016, bev=0.004)
+    g.ball('hammer_wzN__metal', 0.0092, (0.0, 0.0675, 0.0955), sub=2)
+    g.box('sight_wzN__metal', (-0.019, -0.007), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
+    g.box('sight_wzN__metal', (0.007, 0.019), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
+    # the round guard and the trigger (dark)
+    g.prism('body_wzB__metal', [(-0.074, -0.044), (-0.08, -0.068), (-0.072, -0.088), (-0.05, -0.1), (-0.01, -0.104),
+                                 (0.02, -0.098), (0.038, -0.084), (0.032, -0.07), (0.014, -0.084), (-0.012, -0.09),
+                                 (-0.043, -0.087), (-0.06, -0.077), (-0.065, -0.064), (-0.061, -0.044)], 0.024, bev=0.004)
+    g.prism('body_wzN__metal', [(-0.03, -0.046), (-0.012, -0.046), (-0.012, -0.06), (-0.02, -0.074), (-0.03, -0.082),
+                                 (-0.036, -0.079), (-0.031, -0.066)], 0.014, bev=0.003)
+    # the grip (dark), a claw foot under it gripping a ball
+    g.prism('grip_wzB__metal', [(0.034, -0.048), (0.088, -0.036), (0.1, -0.058), (0.112, -0.092), (0.124, -0.135),
+                                 (0.135, -0.172), (0.138, -0.194), (0.13, -0.207), (0.114, -0.211), (0.084, -0.21),
+                                 (0.071, -0.2), (0.06, -0.168), (0.05, -0.135), (0.04, -0.112), (0.037, -0.098),
+                                 (0.026, -0.086), (0.026, -0.068)], 0.054, bev=0.012)
+    claw(g, 'grip_wzB__metal', (0.0, -0.212, 0.104), 0.018, (0.0, -1.0), toes=3, spread=60)
+    return g
+
+
+# ============================================================================== KATANA: Duck Guard (high, legendary)
 def katana_ducky():
-    """DUCK GUARD (mid): a rubber duck sits on the hilt as the guard (kat_guard), facing up the blade: its round body
-       round the blade's root, its head and bill over the back of the blade, a plump wing on each side, its tail
-       flicked up behind; the blade grey with a soft-white edge whose temper line is a row of round bubbles
-       (kat_blade); the handle (kat_tsuka) in yellow wrap with soft-white diamond windows (kat_trims), a soft-white
-       collar and a grey cap"""
+    """DUCK GUARD (high): a rubber duck in a swim ring sits on the hilt as the guard (kat_guard), facing up the blade:
+       its round body round the blade's root, its head and bill over the back of the blade, a plump wing on each side,
+       its tail flicked up behind, a soft-white swim ring lying level round its middle (the ring is the tsuba: the blade
+       passes through its front) with four raised round bubbles on it that glow (THE NEON); the blade (kat_blade) dark
+       steel with a soft-white edge whose temper line is a row of round bubbles; the handle (kat_tsuka) dark wrap with
+       soft-white diamond windows (kat_trims), a soft-white collar, a dark ring and a duckling's head for the pommel
+       (as a duck-head cane's handle: compact, its bill tucked back and down, nothing sticking out). Duck spots: the
+       guard duck and the pommel's head"""
     g, base = skin('katana', 'katana_ducky')
-    palette(g)
+    palette(g, glow=(GLOW, 'n'))
     def hamon(t):  # a row of round bubbles along the edge (round arches, eighteen of them)
         u = (t * 18) % 1.0
         return 0.24 + 0.16 * math.sqrt(max(0.0, 1 - (2 * u - 1) ** 2))
     steel_blade(g, 'kat_blade_wzB__white', 'kat_blade_wzB__metal', hamon)
     # the duck: its body round the blade's root, the head over the blade's back, the bill forward, the tail behind
-    BC, BR = (0.0, 0.003, -0.146), (0.048, 0.041, 0.036)
+    BC, BR = (0.0, 0.004, -0.16), (0.042, 0.038, 0.032)
     egg(g, 'kat_guard_wzA__duck', BC, *BR)
-    HC, HR = (0.0, 0.062, -0.165), (0.027, 0.028, 0.028)
+    HC, HR = (0.0, 0.06, -0.176), (0.025, 0.026, 0.026)
     egg(g, 'kat_guard_wzA__duck', HC, *HR)
-    bill(g, 'kat_guard_wzN__beak', -0.183, -0.219, 0.054, 0.0152, 0.0068, up=0.002)
-    eyes(g, 'kat_guard_wzN__black', 'kat_guard_wzN__white', HC, HR, (0.7, 0.4, -0.6), 0.0068)
-    sweep_oval(g, 'kat_guard_wzA__duck', [(-0.13, 0.024), (-0.124, 0.04), (-0.119, 0.056)],
-               [0.021, 0.015, 0.0095], [0.019, 0.013, 0.0085])
-    wings(g, 'kat_guard_wzA__duck', wing_outline(-0.165, -0.004, 0.054, 0.04, ang=12, depth=0.17), 0.024, 0.028)
-    # the handle: yellow wrap with a row of soft-white diamond windows down each side (kat_trims), a soft-white collar
-    # behind the duck, the grey cap
-    g.box('kat_tsuka_wzA__duck', (-0.0175, 0.0175), (-0.0205, 0.0245), (-0.112, 0.107), bev=0.008)
-    g.box('kat_tsuka_wzN__white', (-0.0195, 0.0195), (-0.0225, 0.0265), (-0.126, -0.106), bev=0.006)
-    g.prism('kat_tsuka_wzN__metal', [(0.104, -0.0225), (0.123, -0.0225), (0.131, -0.014), (0.131, 0.018),
-                                      (0.123, 0.0265), (0.104, 0.0265)], 0.039, bev=0.006)
+    bill(g, 'kat_guard_wzN__beak', -0.193, -0.228, 0.052, 0.0145, 0.0066, up=0.002)
+    eyes(g, 'kat_guard_wzN__black', 'kat_guard_wzN__white', HC, HR, (0.7, 0.4, -0.6), 0.0064)
+    sweep_oval(g, 'kat_guard_wzA__duck', [(-0.139, 0.024), (-0.133, 0.04), (-0.128, 0.056)],
+               [0.02, 0.014, 0.0092], [0.018, 0.0125, 0.0085])
+    wings(g, 'kat_guard_wzA__duck', wing_outline(-0.174, 0.014, 0.046, 0.028, ang=12, depth=0.17), 0.022, 0.024)
+    # the swim ring lying level round its middle (soft white): the tsuba
+    ring_y(g, 'kat_guard_wzN__white', (0.0, -0.01, -0.16), 0.044, 0.03, 0.0105)
+    for a in (45, 135, 225, 315):  # four raised round bubbles on it, as an old swim ring's bosses, lit (the Neon)
+        ca, sa = math.cos(math.radians(a)), math.sin(math.radians(a))
+        g.ball('kat_guard_wzN__glow', 0.0072, (0.044 * ca, -0.01 + 0.0082, -0.16 + 0.03 * sa), sub=2)
+    # the handle: dark wrap, a row of soft-white diamond windows down each side (kat_trims), a soft-white collar behind
+    # the duck; the pommel a dark ring and a duckling's head looking back, its bill tucked back and down
+    g.box('kat_tsuka_wzA__metal', (-0.0175, 0.0175), (-0.0205, 0.0245), (-0.112, 0.107), bev=0.008)
+    g.box('kat_tsuka_wzN__white', (-0.0195, 0.0195), (-0.0225, 0.0265), (-0.131, -0.108), bev=0.006)
+    oval_loft(g, 'kat_tsuka_wzN__metal', [(0.102, 0, 0.002, 0.0205, 0.0255), (0.116, 0, 0.002, 0.0205, 0.0255),
+                                          (0.12, 0, 0.002, 0.017, 0.021)], n=16)
     for i in range(6):
         zc = -0.0905 + i * 0.0358
         g.prism('kat_trims_wzN__white', [(zc - 0.0148, 0.002), (zc, -0.0105), (zc + 0.0148, 0.002), (zc, 0.0145)], 0.038, bev=0.001)
+    PC, PR = (0.0, 0.006, 0.134), (0.0215, 0.0235, 0.022)
+    egg(g, 'kat_tsuka_wzA__duck', PC, *PR)
+    bill(g, 'kat_tsuka_wzN__beak', 0.142, 0.163, -0.004, 0.0125, 0.0058, up=-0.004, n=16)
+    eyes(g, 'kat_tsuka_wzN__black', 'kat_tsuka_wzN__white', PC, PR, (0.72, 0.42, 0.55), 0.0056, fw=(0, 0, 1))
     return g
 
 
+# (CUT when the set became the VIP set, 16 Nov 2026: the two builders below are not in SKINS, kept for reference)
 # ============================================================================ LAWN MOWER: Swim Ring (mid, epic)
 def autoshot_ducky():
     """SWIM RING (mid): the Lawn Mower in yellow with soft-white furniture. The drum (node "mag") a duck swim ring
@@ -453,66 +624,6 @@ def autoshot_ducky():
     return g
 
 
-# ============================================================================== REVOLVER: Bath Toy (mid, epic)
-def revolver_ducky():
-    """BATH TOY (mid): the Revolver as a bath toy. A round grey barrel; a little rubber duck rides its nose as the front
-       sight (its head's top on the aim line), facing away down the barrel; the frame yellow and round, a plump wing on
-       each side behind the cylinder; the cylinder (node "cylinder") six round soft-white bubbles about the row's axis
-       (six-fold: every sixth of a turn looks the same); the hammer (node "hammer"), the rear sight, the guard and the
-       trigger grey; the grip yellow with a duck's tail flicked back at its foot"""
-    g, base = skin('revolver', 'revolver_ducky')
-    palette(g, water=WATER)
-    BY, AX = 0.03, 0.009
-    # the barrel (soft white) with its underlug, the dark muzzle
-    blob(g, 'barrel_wzB__metal', [(-0.29, -0.016, 0.047, 0.018), (-0.286, -0.026, 0.053, 0.024),
-                                  (-0.278, -0.031, 0.056, 0.026), (-0.11, -0.031, 0.056, 0.026)], p=2.6)
-    g.cylz('trim_wzN__black', 0.011, -0.2905, -0.287, y=BY, sides=12, bev=0)
-    # the little duck on the nose (the front sight): body, head (its top the aim line), bill, eyes, tail
-    DB, DBR = (0.0, 0.0648, -0.252), (0.015, 0.0125, 0.021)
-    egg(g, 'sight_wzN__duck', DB, *DBR)
-    DH, DHR = (0.0, 0.0755, -0.266), (0.0118, 0.0125, 0.0122)
-    egg(g, 'sight_wzN__duck', DH, *DHR)
-    bill(g, 'sight_wzN__beak', -0.274, -0.29, 0.0728, 0.0075, 0.0034, up=0.001, n=16)
-    eyes(g, 'sight_wzN__black', None, DH, DHR, (0.72, 0.4, -0.56), 0.0034, glint=False)
-    sweep_oval(g, 'sight_wzN__duck', [(-0.236, 0.067), (-0.23, 0.073), (-0.227, 0.079)], [0.0095, 0.007, 0.0055],
-               [0.0085, 0.0065, 0.0055], n=12)
-    # the frame (yellow, round): the top strap, the bottom strap, the front post, the round back down into the grip
-    blob(g, 'body_wzA__duck', [(-0.132, 0.046, 0.068, 0.016), (-0.128, 0.044, 0.071, 0.02), (0.045, 0.044, 0.071, 0.02),
-                               (0.05, 0.048, 0.068, 0.016)], p=3.0)
-    blob(g, 'body_wzA__duck', [(-0.132, -0.052, -0.032, 0.016), (-0.128, -0.054, -0.03, 0.02), (0.03, -0.054, -0.03, 0.02)], p=3.0)
-    g.box('body_wzA__duck', (-0.02, 0.02), (-0.045, 0.062), (-0.13, -0.106), bev=0.006)
-    blob(g, 'body_wzA__duck', [(-0.006, -0.052, 0.068, 0.021), (0.03, -0.052, 0.068, 0.0215), (0.05, -0.05, 0.06, 0.0215),
-                               (0.068, -0.047, 0.044, 0.021), (0.082, -0.043, 0.022, 0.019), (0.09, -0.04, 0.0, 0.015),
-                               (0.093, -0.036, -0.016, 0.01)], p=4.0)
-    wings(g, 'wing_wzA__duck', wing_outline(0.03, 0.004, 0.06, 0.046, ang=10), 0.0165, 0.0135)
-    # the cylinder (node "cylinder"): six round lobes about the row's axis, rounded at both ends
-    def lobes(z, Rmax, Rmin, n=48):
-        return [((Rmin + (Rmax - Rmin) * (0.5 + 0.5 * math.cos(6 * a))) * math.cos(a),
-                 AX + (Rmin + (Rmax - Rmin) * (0.5 + 0.5 * math.cos(6 * a))) * math.sin(a), z)
-                for a in (2 * math.pi * j / n for j in range(n))]
-    st = [(-0.1, 0.034, 0.027), (-0.097, 0.04, 0.03), (-0.091, 0.0445, 0.032), (-0.08, 0.0465, 0.033),
-          (-0.02, 0.0465, 0.033), (-0.009, 0.0445, 0.032), (-0.003, 0.04, 0.03), (0.0, 0.034, 0.027)]
-    loft(g, 'cylinder_wzN__water', [lobes(z, a, b) for z, a, b in st], group=lambda i, k: 'r')
-    # the hammer (grey), the rear sight
-    g.prism('hammer_wzN__metal', [(0.045, 0.036), (0.062, 0.036), (0.098, 0.062), (0.092, 0.074), (0.05, 0.062)], 0.016, bev=0.004)
-    g.box('sight_wzN__metal', (-0.019, -0.007), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
-    g.box('sight_wzN__metal', (0.007, 0.019), (0.064, 0.0915), (0.02, 0.044), bev=0.003)
-    # the round guard and the trigger (grey)
-    g.prism('body_wzB__metal', [(-0.074, -0.044), (-0.08, -0.068), (-0.072, -0.088), (-0.05, -0.1), (-0.01, -0.104),
-                                 (0.02, -0.098), (0.038, -0.084), (0.032, -0.07), (0.014, -0.084), (-0.012, -0.09),
-                                 (-0.043, -0.087), (-0.06, -0.077), (-0.065, -0.064), (-0.061, -0.044)], 0.024, bev=0.004)
-    g.prism('body_wzN__metal', [(-0.03, -0.046), (-0.012, -0.046), (-0.012, -0.06), (-0.02, -0.074), (-0.03, -0.082),
-                                 (-0.036, -0.079), (-0.031, -0.066)], 0.014, bev=0.003)
-    # the grip (yellow) and the duck's tail flicked back at its foot
-    g.prism('grip_wzA__duck', [(0.034, -0.048), (0.088, -0.036), (0.1, -0.058), (0.112, -0.092), (0.124, -0.135),
-                                (0.135, -0.172), (0.138, -0.194), (0.13, -0.207), (0.114, -0.211), (0.084, -0.21),
-                                (0.071, -0.2), (0.06, -0.168), (0.05, -0.135), (0.04, -0.112), (0.037, -0.098),
-                                (0.026, -0.086), (0.026, -0.068)], 0.054, bev=0.012)
-    sweep_oval(g, 'grip_wzA__duck', [(0.116, -0.19), (0.138, -0.188), (0.152, -0.179)],
-               [0.021, 0.016, 0.012], [0.015, 0.013, 0.011])
-    return g
-
-
 # ============================================================================== PLAN B: Duckling (basic, rare)
 def pistol_ducky():
     """DUCKLING (basic): the live Plan B with small changes: the slide yellow, a little orange bill out of its nose
@@ -565,5 +676,5 @@ def pistol_ducky():
     return g
 
 
-SKINS = {'lmg@lmg_ducky': lmg_ducky, 'katana@katana_ducky': katana_ducky, 'autoshot@autoshot_ducky': autoshot_ducky,
-         'revolver@revolver_ducky': revolver_ducky, 'pistol@pistol_ducky': pistol_ducky}
+# the VIP set: three high-tier skins (autoshot_ducky and pistol_ducky are cut: not built, not in the game)
+SKINS = {'lmg@lmg_ducky': lmg_ducky, 'revolver@revolver_ducky': revolver_ducky, 'katana@katana_ducky': katana_ducky}

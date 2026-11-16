@@ -27,9 +27,11 @@ SETS = {
 }
 
 # the pair's palettes: the same slots, so a builder can paint either side
-SERAPH = {'shell': 'ddd8cc', 'gold': 'cfa84a', 'trim': 'c4bdad', 'glow': ('ffd46e', 'n'), 'dark': '6a6456', 'plume': 'c9c0ae',
-          'feat': 'd4af4a', 'feat2': 'b8933e', 'cov': 'e6cf8a', 'bone': 'cfa84a', 'arm': 'ece8de'}
-INFERNAL = {'shell': '232025', 'gold': '6b2420', 'trim': '18161a', 'glow': ('ff5a1e', 'n'), 'dark': '151316', 'plume': '3b1715',
+SERAPH = {'shell': 'ddd8cc', 'gold': 'cfa84a', 'trim': 'c4bdad', 'glow': ('ffe6a8', 'n'), 'dark': '6a6456', 'plume': 'c9c0ae',
+          'feat': 'd4af4a', 'feat2': 'b8933e', 'cov': 'e6cf8a', 'bone': 'cfa84a', 'arm': 'ece8de',
+          'v1': 'f3eee3', 'v2': 'ddd5c3', 'v3': 'c7bea9', 'wglow': ('ffc860', 'n')}  # (the round-7 wing's vanes: lead, trail, back feathers)
+INFERNAL = {'shell': '232025', 'gold': '6b2420', 'trim': '18161a', 'glow': ('ff8a5a', 'n'), 'dark': '151316', 'plume': '3b1715',
+            'horn': '6b2420',  # (the owner liked the red horns: same red as the trims)
             'feat': '1e1416', 'feat2': '7a1a1a', 'cov': '7a1a1a', 'bone': '2c1a1a', 'arm': '2c1a1a'}
 
 
@@ -564,11 +566,214 @@ def wing4(g, angel, node, xface, root, angs, lens, rstep, yaw=0.2, sc=1.0):
             tsweep(g, P('arm'), pts, [0.012 * sc * (1 - 0.45 * k / 8) for k in range(9)], n=8)
 
 
+# ------------------------------------------------------------------------------------------------ the angel wing, round 7
+# (16 Nov, the owner: "you keep trying to just do ovals make other shapes"). The research session's feather vocabulary
+# (vault Research/Skin concepts/Skin briefs.md, "Angel wings: six builds", sketches angel-wings-A-F.jpg, its 2D feather()
+# in sketches/src/wings.py) built in 3D: every feather a gold shaft with a NARROW light leading vane and a WIDE darker
+# trailing vane; tips by job: knife-cut primaries, square V-notched secondaries (a saw-tooth edge), notched "finger"
+# primaries, pointed coverts; a thick ivory arm with a gold top line, a wrist bend and an alula; the glow only along the
+# leading edge of the outermost primaries. Two builds to pick from: A falcon fold, B eagle fingers (JF_SERAPH_WING)
+ANGEL_WING = os.environ.get('JF_SERAPH_WING', 'B')  # (the owner picked B, eagle fingers: "way better in the right direction")
+# the eagle wing's knobs (tune here): the number of finger primaries, the top finger's angle (degrees, 0 = straight back)
+# and the splay between fingers, their length and how much shorter each next one is, the notch (from t on the leading
+# vane narrows to k: deeper = smaller k), the fingers' curl (radians, - = down), the arm's two control points (z, y)
+EAGLE = {'fingers': 5, 'top': 2, 'splay': 17, 'len': 0.30, 'len_step': 0.015, 'width': 0.07, 'notch': (0.5, 0.42),
+         'tnotch': (0.62, 0.5),
+         'bend': -0.12, 'arm': ((0.085, 0.07), (0.155, 0.095)), 'secondaries': 4, 'coverts': 4}
+if os.environ.get('JF_EAGLE'):  # (a variant to try: JSON of keys to change)
+    import json as _json
+    EAGLE.update({k: (tuple(map(tuple, v)) if k == 'arm' else tuple(v) if isinstance(v, list) else v) for k, v in _json.loads(os.environ['JF_EAGLE']).items()})
+
+
+def _bez(p0, p1, p2, n=16, p3=None):
+    out = []
+    for i in range(n + 1):
+        t = i / n
+        if p3 is None:
+            out.append(((1 - t) ** 2 * p0[0] + 2 * (1 - t) * t * p1[0] + t * t * p2[0],
+                        (1 - t) ** 2 * p0[1] + 2 * (1 - t) * t * p1[1] + t * t * p2[1]))
+        else:
+            out.append(((1 - t) ** 3 * p0[0] + 3 * (1 - t) ** 2 * t * p1[0] + 3 * (1 - t) * t * t * p2[0] + t ** 3 * p3[0],
+                        (1 - t) ** 3 * p0[1] + 3 * (1 - t) ** 2 * t * p1[1] + 3 * (1 - t) * t * t * p2[1] + t ** 3 * p3[1]))
+    return out
+
+
+def _along(path, t):
+    return path[min(len(path) - 1, int(round(t * (len(path) - 1))))]
+
+
+def vane_outline(root, ang, L, W, bend=0.0, asym=0.38, tip='point', notch=None, tnotch=None, n=20):
+    """a feather in the side plane: (leading vane outline, trailing vane outline, shaft points, leading edge) [(z, y)];
+       the research session's profiles (lead narrow, trail wide; tip 'point' / 'cut' / 'square' (V notch) / 'sickle';
+       notch = (t, k): from t on the leading vane narrows to k: an eagle's finger)"""
+    a0 = math.radians(ang)
+    pts, nrm = [], []
+    x, y = root
+    for i in range(n + 1):
+        t = i / n
+        th = a0 + bend * t * t
+        if i:
+            x += math.cos(th) * L / n
+            y += math.sin(th) * L / n
+        pts.append((x, y))
+        nrm.append((-math.sin(th), math.cos(th)))
+    wl, wt = W * asym, W * (1 - asym)
+
+    def pl(t):
+        p = min(1, t / 0.12) ** 0.6
+        if tip == 'point':
+            p *= 1 if t < 0.62 else max(0, (1 - t) / 0.38)
+        elif tip == 'cut':
+            p *= 1 if t < 0.55 else max(0, (0.92 - t) / 0.37)
+        elif tip == 'square':
+            p *= 1 if t < 0.93 else 0.85
+        elif tip == 'sickle':
+            p *= 1 if t < 0.5 else max(0, (1 - t) / 0.5) ** 0.8
+        if notch and t > notch[0]:
+            p *= notch[1]
+        return max(p, 0.02)
+
+    def pt(t):
+        p = min(1, t / 0.1) ** 0.5
+        if tip == 'point':
+            p *= 1 if t < 0.72 else max(0, (1 - t) / 0.28) ** 0.9
+        elif tip == 'cut':
+            p *= 1 if t < 0.88 else max(0, (1 - t) / 0.12)
+        elif tip == 'square':
+            p *= 1 if t < 0.95 else 0.9
+        elif tip == 'sickle':
+            p *= 1 if t < 0.65 else max(0, (1 - t) / 0.35) ** 0.7
+        if tnotch and t > tnotch[0]:  # (the trailing vane narrows too: a slotted eagle tip, both edges stepped)
+            p *= tnotch[1]
+        return max(p, 0.02)
+
+    lead = [(q[0] + v[0] * wl * pl(i / n), q[1] + v[1] * wl * pl(i / n)) for i, (q, v) in enumerate(zip(pts, nrm))]
+    trail = [(q[0] - v[0] * wt * pt(i / n), q[1] - v[1] * wt * pt(i / n)) for i, (q, v) in enumerate(zip(pts, nrm))]
+    if tip == 'square':  # a small V notch at the shaft's end
+        back = pts[-3]
+        return pts[:1] + lead[1:] + [back], pts[:1] + trail[1:] + [back], pts, lead
+    return pts + lead[::-1][:-1], pts + trail[::-1][:-1], pts, lead
+
+
+def vane_feather(g, node, root, ang, L, W, x, sx, yaw, wroot, tones=('v1', 'v2'), th=0.004, glow=False, slabs=True,
+                 gold_tip=None, **kw):
+    """one feather in 3D: two vane slabs (lead / trail tone) side by side in its plane at x (outward on side sx), a gold
+       shaft rod standing on them, a glowing rod along the leading edge (glow); swung by yaw about wroot's upright axis"""
+    lo, tr, pts, lead = vane_outline(root, ang, L, W, **kw)
+    if slabs and gold_tip and kw.get('tip', 'point') != 'square':
+        # (the last gold_tip of the feather in gold, cut square across both vanes: each outline split in two)
+        n = len(pts) - 1
+        i0 = max(1, min(n - 1, int(round((1 - gold_tip) * n))))
+        trail = tr[n + 1:][::-1]
+        lead_e = lo[n + 1:][::-1]
+        for piece, edge in ((tones[0], [pts[0]] + lead_e), (tones[1], [pts[0]] + trail)):
+            base = pts[:i0 + 1] + edge[1:i0 + 1][::-1]
+            tipp = pts[i0:] + edge[i0:][::-1]
+            _slab3(g, '%s_wzN__%s' % (node, piece), base, x, x + th, wroot, sx, yaw)
+            _slab3(g, '%s_wzN__bone' % node, tipp, x, x + th, wroot, sx, yaw)
+    elif slabs:  # (slabs=False: only the shaft and glow, for a feather's other face)
+        _slab3(g, '%s_wzN__%s' % (node, tones[0]), lo, x, x + th, wroot, sx, yaw)
+        _slab3(g, '%s_wzN__%s' % (node, tones[1]), tr, x, x + th, wroot, sx, yaw)
+    zr = wroot[0]
+    cy, sy_ = math.cos(yaw), math.sin(yaw)
+
+    def P3(xx, z, y):
+        dz = z - zr
+        return (sx * xx + sx * dz * sy_, y, zr + dz * cy)
+    sh = [P3(x + th + 0.001, z, y) for (z, y) in pts[:-1]]
+    tsweep(g, '%s_wzN__bone' % node, sh, [max(0.0016, 0.0042 * (1 - i / len(sh))) for i in range(len(sh))], n=6)
+    if glow:
+        k0, k1 = int(len(lead) * 0.12), int(len(lead) * 0.86)
+        gl = [P3(x + th - 0.0005, z, y) for (z, y) in lead[k0:k1]]
+        tsweep(g, '%s_wzN__wglow' % node, gl, [0.0036] * len(gl), n=6)
+
+
+def _arm(g, node, path, x, sx, yaw, wroot, w0, w1, th=0.012, x_in=None):
+    """the wing's arm: a thick ivory bar along path with a gold line along its top; from x_in (the gun's side: it
+       runs through every feather's root, which holds them on) out to x + th"""
+    n = len(path) - 1
+    up, dn = [], []
+    for i, (z, y) in enumerate(path):
+        a = path[max(0, i - 1)]
+        b = path[min(n, i + 1)]
+        dz, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dz, dy) or 1
+        w = (w0 + (w1 - w0) * i / n) / 2
+        up.append((z - dy / L * w, y + dz / L * w))
+        dn.append((z + dy / L * w, y - dz / L * w))
+    _slab3(g, '%s_wzN__arm' % node, up + dn[::-1], x if x_in is None else x_in, x + th, wroot, sx, yaw)
+    zr = wroot[0]
+    cy, sy_ = math.cos(yaw), math.sin(yaw)
+    pts = [(sx * (x + th * 0.5) + sx * (z - zr) * sy_, y - 0.002, zr + (z - zr) * cy) for (z, y) in up]
+    tsweep(g, '%s_wzN__bone' % node, pts, [0.0045] * len(pts), n=6)
+
+
+def angel_wing(g, node, xface, root, sc=1.0, yaw=0.2, style=None):
+    """the Seraph wing (round 7, no ovals) on both sides of a gun at |x| = xface, its shoulder at root (z, y), sized by
+       sc; style 'A' falcon fold or 'B' eagle fingers (the research session's sketches, measured on the rifle)"""
+    style = style or ANGEL_WING
+    R = lambda q: (root[0] + q[0] * sc, root[1] + q[1] * sc)
+    step = 0.0045
+    for sx in (-1, 1):
+        st = {'x': xface - 0.002}
+
+        def F(r, ang, L, W, tones=('v1', 'v2'), glow=False, **kw):
+            vane_feather(g, node, r, ang, L * sc, W * sc, st['x'], sx, yaw, root, tones=tones, glow=glow, **kw)
+            st['x'] += step
+        if style == 'B':
+            E = EAGLE
+            path = [R(q) for q in _bez((0, 0), E['arm'][0], E['arm'][1], 16)]
+            hand = path[-1]
+            for i in range(E['fingers']):  # notched finger primaries splayed behind the rear sight (the outer two glow)
+                F(hand, E['top'] - E['splay'] * i, E['len'] - E['len_step'] * i, E['width'],
+                  tones=('v1', 'v3' if i % 2 else 'v2'), glow=i < 2, bend=E['bend'], tip='point', notch=E['notch'],
+                  tnotch=E.get('tnotch'), gold_tip=E.get('gold_tip'))
+            ns = E['secondaries']
+            for i in range(ns):  # square-notched secondaries hanging under the arm
+                f = i / max(1, ns - 1)
+                F(_along(path, 0.12 + 0.75 * f), -86 + 18 * f, 0.17 + 0.075 * f, 0.075, tip='square')
+            nc = E['coverts']
+            for i in range(nc):  # pointed coverts
+                F(_along(path, 0.08 + 0.75 * i / max(1, nc - 1)), -58, 0.09, 0.06, tip='point')
+            _arm(g, node, path, st['x'], sx, yaw, root, 0.036 * sc, 0.026 * sc, x_in=xface - 0.003)
+            st['x'] += 0.012
+        else:
+            path = [R(q) for q in _bez((0, 0), (0.125, 0.05), (0.215, 0.025), 18, (0.285, -0.01))]
+            for i in range(4):  # knife-cut primaries swept back past the butt (the outermost glows)
+                t = 1 - i / 3
+                F(_along(path, 0.6 + 0.38 * t), -14 - 14 * (1 - t), 0.25 + 0.05 * t, 0.075,
+                  tones=('v1', 'v3' if i % 2 else 'v2'), glow=i == 0, bend=0.15, tip='cut')
+            for i in range(4):  # square-notched secondaries: a saw-tooth lower edge
+                F(_along(path, 0.05 + 0.16 * i), -80 + 7 * i, 0.19 + 0.012 * i, 0.08, tip='square')
+            for i in range(5):  # pointed coverts
+                F(_along(path, 0.03 + 0.15 * i), -58 + 4 * i, 0.10, 0.06, tip='point')
+            _arm(g, node, path, st['x'], sx, yaw, root, 0.034 * sc, 0.022 * sc, x_in=xface - 0.003)
+            st['x'] += 0.012
+            for k in range(3):  # the alula at the wrist
+                F(_along(path, 0.72), 20 - 16 * k, 0.075 - 0.012 * k, 0.034, tip='point')
+        # the spine: from the gun's side through every layer at the shoulder (holds the feathers on)
+        g.cyl('%s_wzN__bone' % node, 0.016 * sc, (sx * (xface - 0.004), root[1], root[0]),
+              (sx * (st['x'] + 0.004), root[1], root[0]), sides=12, bev=0.003)
+
+
 def mini_wing(g, piece_f, piece_c, xface, root, angs, lens, yaw=0.25, kind='blade', cov=None, glow=None):
     """a small wing on both sides (a handguard's, a slide's): a few feathers (kind as the big wing's) from one root, a
        short one over the root (cov = its length), a pin through them"""
     n = len(angs)
     lead = 1 if angs[0] >= angs[-1] else -1
+    if kind == 'vane':  # (round 7: knife-cut ivory feathers on gold shafts, a pointed covert, a pin; no ovals)
+        node = piece_f.split('_wz')[0]
+        for sx in (-1, 1):
+            x = xface - 0.0015
+            for i, (a, L) in enumerate(zip(angs, lens)):
+                vane_feather(g, node, root, a, L, 0.3 * L, x, sx, yaw, root, tones=('v1', 'v3' if i % 2 else 'v2'),
+                             glow=(i == 0), bend=0.1 * lead, tip='cut')
+                x += 0.0045
+            c = cov or lens[-1] * 0.7
+            vane_feather(g, node, root, angs[n // 2], c, c * 0.5, x, sx, yaw, root, tip='point')
+            g.cyl('%s_wzN__bone' % node, max(0.007, lens[-1] * 0.13), (sx * (xface - 0.002), root[1], root[0]),
+                  (sx * (x + 0.006), root[1], root[0]), sides=10, bev=0.002)
+        return
     th = 0.009
     wk = 0.22 if kind == 'quill' else 0.3
     x0 = xface + th * 0.25
@@ -711,6 +916,28 @@ def fracture_window(g, glow, plate, x_in, x_out, z0, z1, y0, y1, n=4, gap=0.006,
             g.prism(plate, poly, 0.006, bev=0.0015, x=sx * (xb + 0.003))
 
 
+def quatrefoil_gem(g, bezel, gem, xface, z, y, r=0.017):
+    """HEAVEN: a glowing gem set in a gold quatrefoil bezel (four round lobes) on both sides at |x| = xface"""
+    for sx in (-1, 1):
+        for k in range(4):
+            a = math.pi / 4 + k * math.pi / 2
+            g.cyl(bezel, r * 0.62, (sx * (xface - 0.002), y + math.sin(a) * r * 0.62, z + math.cos(a) * r * 0.62),
+                  (sx * (xface + 0.004), y + math.sin(a) * r * 0.62, z + math.cos(a) * r * 0.62), sides=12, bev=0.0012)
+        g.ball(gem, r * 0.55, (sx * (xface + 0.003), y, z), sub=2)
+
+
+def vent_slits(g, frame, glow, xface, z0, z1, y, n=3, h=0.006, gap=0.007):
+    """HELL: n glowing slits in a dark iron frame on both sides at |x| = xface (light escaping, no eyes)"""
+    H = n * h + (n + 1) * gap
+    for sx in (-1, 1):
+        g.prism(glow, [(z0, y - H / 2), (z1, y - H / 2), (z1, y + H / 2), (z0, y + H / 2)], 0.006, bev=0.001, x=sx * (xface + 0.001))
+        for k in range(n + 1):
+            yb = y - H / 2 + k * (h + gap)
+            g.box(frame, (sx * (xface + 0.002) - 0.0035, sx * (xface + 0.002) + 0.0035), (yb, yb + gap), (z0 - 0.004, z1 + 0.004), bev=0.0012)
+        g.box(frame, (sx * (xface + 0.002) - 0.0035, sx * (xface + 0.002) + 0.0035), (y - H / 2, y + H / 2), (z0 - 0.006, z0), bev=0.0012)
+        g.box(frame, (sx * (xface + 0.002) - 0.0035, sx * (xface + 0.002) + 0.0035), (y - H / 2, y + H / 2), (z1, z1 + 0.006), bev=0.0012)
+
+
 def spines(g, piece, z0, z1, y, n, h=0.045, r0=0.009, lean=0.014):
     """a row of n spines on a top edge at height y from z0 to z1, leaning back"""
     for k in range(n):
@@ -770,7 +997,7 @@ def _ar_pair(skinid, pal, angel):
                 0.012, bev=0.003)
     else:
         for sx in (-1, 1):
-            horn(g, 'crown_wzN__gold', (sx * 0.026, 0.064, 0.02), 0.11, 0.09, sx * 0.03, 0.022, curl=0.6)
+            horn(g, 'crown_wzN__horn', (sx * 0.026, 0.064, 0.02), 0.11, 0.09, sx * 0.03, 0.022, curl=0.6)
     # the magazine (node "mag"): straight, its foot in the trim colour; a seam / gilt line down its face
     g.prism('mag_wzA__shell', [(-0.165, -0.05), (-0.055, -0.05), (-0.07, -0.27), (-0.18, -0.27)], 0.05, bev=0.01)
     g.box('mag_wzN__gold', (-0.029, 0.029), (-0.3, -0.264), (-0.19, -0.062), bev=0.008)
@@ -788,10 +1015,13 @@ def _ar_pair(skinid, pal, angel):
     g.prism('stock_wzA__shell', [(0.24, 0.03), (0.44, 0.03), (0.465, 0.05), (0.465, -0.13), (0.44, -0.16), (0.4, -0.16),
                                   (0.24, -0.04)], 0.044, bev=0.012)
     g.box('stock_wzB__dark', (-0.025, 0.025), (-0.165, 0.035), (0.455, 0.469), bev=0.006)
-    wing4(g, angel, 'stock', 0.022, WING_AR[0], WING_AR[1], WING_AR[2], WING_STEP)
+    if angel:
+        angel_wing(g, 'stock', 0.022, (0.215, 0.075))
+    else:
+        wing4(g, angel, 'stock', 0.022, WING_AR[0], WING_AR[1], WING_AR[2], WING_STEP)
     # the small wing on the handguard's nose (seen in first person), ahead of the off hand
     if angel:
-        mini_wing(g, 'guard_wzN__feat', 'guard_wzN__cov', 0.025, (-0.52, 0.045), *BWING, kind='quill')
+        mini_wing(g, 'guard_wzN__feat', 'guard_wzN__cov', 0.025, (-0.52, 0.045), *BWING, kind='vane')
         # the high tier's glow: an arcade of five gold pointed arches over a glowing pane along the receiver's upper flank
         tracery_window(g, 'body_wzN__glow', 'body_wzN__gold', 0.028, 0.037, -0.2, 0.1, 0.018, 0.06)
         g.box('guard_wzN__glow', (-0.0285, 0.0285), (0.03, 0.038), (-0.37, -0.32), bev=0.0015)  # a glowing slit over them
@@ -865,7 +1095,7 @@ def _sniper_pair(skinid, pal, angel):
         g.ring('scope_wzN__glow', 0.068, 0.062, (0, SY, -0.4065), (0, SY, -0.3905), sides=20, bev=0.001)
     else:  # two big horns off the bell, sweeping back and up
         for sx in (-1, 1):
-            horn(g, 'scope_wzN__gold', (sx * 0.03, SY + 0.028, -0.32), 0.09, 0.08, sx * 0.035, 0.02, curl=0.6)
+            horn(g, 'scope_wzN__horn', (sx * 0.03, SY + 0.028, -0.32), 0.09, 0.08, sx * 0.035, 0.02, curl=0.6)
     # the bolt (node "bolt"), the magazine, the guard and trigger
     g.cylz('bolt_wzB__trim', 0.017, -0.06, 0.08, y=BY, x=0.024, sides=8, bev=0.002)
     g.cyl('bolt_wzB__trim', 0.013, (0.032, BY, 0.04), (0.09, BY - 0.032, 0.06), sides=8, bev=0.002)
@@ -875,16 +1105,18 @@ def _sniper_pair(skinid, pal, angel):
     g.prism('guard_wzB__trim', [(0.0, -0.06), (0.02, -0.06), (0.02, -0.1), (0.1, -0.1), (0.106, -0.116), (0.0, -0.116)],
             0.026, bev=0.005)
     trigger(g, 'guard_wzN__gold', 0.06, -0.062, -0.096)
-    wing4(g, angel, 'stock', 0.032, WING_SN[0], WING_SN[1], WING_SN[2], WING_SN_STEP, sc=1.15)
-    mini_wing(g, 'barrel_wzN__feat', 'barrel_wzN__cov', 0.043, (-0.7, 0.03), BWING[0], tuple(L * 1.1 for L in BWING[1]),
-              kind='quill' if angel else 'blade', glow=None if angel else 'barrel_wzN__glow')
     if angel:
-        core(g, 'body_wzN__gold', 'body_wzN__glow', 0.034, -0.15, 0.03, r=0.016)
-        sunburst(g, 'body_wzN__gold', 0.0335, -0.15, 0.03, 0.027, 0.04, ymax=0.06)
+        angel_wing(g, 'stock', 0.032, (0.2, 0.03), sc=1.2)
+    else:
+        wing4(g, angel, 'stock', 0.032, WING_SN[0], WING_SN[1], WING_SN[2], WING_SN_STEP, sc=1.15)
+    mini_wing(g, 'barrel_wzN__feat', 'barrel_wzN__cov', 0.043, (-0.7, 0.03), BWING[0], tuple(L * 1.1 for L in BWING[1]),
+              kind='vane' if angel else 'blade', glow=None if angel else 'barrel_wzN__glow')
+    if angel:
+        quatrefoil_gem(g, 'body_wzN__gold', 'body_wzN__glow', 0.034, -0.15, 0.03)
         for z0 in (-1.16, -1.0):  # two gold bands on the long barrel
             g.cylz('barrel_wzN__gold', 0.05, z0, z0 + 0.016, y=BY, sides=8, bev=0.002)
     else:
-        slit_eye(g, 'body_wzN__trim', 'body_wzN__glow', 'body_wzN__dark', 0.034, -0.15, 0.03, rz=0.028, ry=0.017)
+        vent_slits(g, 'body_wzN__trim', 'body_wzN__glow', 0.034, -0.19, -0.11, 0.03)
         spines(g, 'barrel_wzN__trim', -0.8, -0.5, BY + 0.046, 4, h=0.04)
         bold_cracks(g, 'stock_wzN__glow', 0.0352, -0.64, -0.06, -0.14, -0.065, seed=22, box=((-0.68, -0.08), (-0.074, -0.014)))
         bold_cracks(g, 'stock_wzN__glow', 0.0322, 0.08, -0.03, 0.3, -0.11, seed=23, forks=1, box=((0.07, 0.4), (-0.13, 0.03)))
@@ -923,13 +1155,13 @@ def _burst_pair(skinid, pal, angel):
     aperture(g, 'handle_wzN__gold', 0.1204, SY, ro=0.02, ri=0.0095, zt=0.02, base=0.128)
     fpost(g, 'handle_wzN__gold', -0.285, 0.128, SY, hw=0.014)
     if angel:  # the halo: a thick gold ring round the aim line over the front post, a glowing ring inside it
-        g.ring('handle_wzN__gold', 0.042, 0.025, (0, SY, -0.299), (0, SY, -0.281), sides=20, bev=0.002)
-        g.ring('handle_wzN__glow', 0.0262, 0.0215, (0, SY, -0.2995), (0, SY, -0.2805), sides=20, bev=0.0008)
-        for sx in (-1, 1):
-            g.box('handle_wzN__gold', (sx * 0.026 - 0.005, sx * 0.026 + 0.005), (0.125, SY - 0.02), (-0.294, -0.284), bev=0.0015)
+        for zc in (-0.17, -0.07, 0.03):  # three halos lying flat on the handle's top, under the sight line
+            g.ring('handle_wzN__gold', 0.026, 0.017, (0, 0.13, zc), (0, 0.137, zc), sides=16, bev=0.0012)
+            g.ring('handle_wzN__glow', 0.0185, 0.0145, (0, 0.1305, zc), (0, 0.1365, zc), sides=16, bev=0.0006)
     else:
         for sx in (-1, 1):
-            horn(g, 'handle_wzN__gold', (sx * 0.02, 0.126, -0.27), 0.08, -0.06, sx * 0.036, 0.013, curl=0.6)
+            for zc in (-0.2, -0.1, 0.0):  # three horns along the handle's sides, swept back (the burst's three rounds)
+                horn(g, 'handle_wzN__horn', (sx * 0.016, 0.1, zc), 0.035, 0.06, sx * 0.022, 0.011, curl=0.7)
     # the grip, trigger, charging handle, magazine
     g.prism('grip_wzA__shell', raked(-0.105, -0.131, 0.178, 0.062, -0.07, taper=0.004), 0.05, bev=0.01)
     trigger(g, 'grip_wzN__gold', -0.155, -0.03, -0.068)
@@ -938,18 +1170,20 @@ def _burst_pair(skinid, pal, angel):
     g.box('charge_wzB__trim', (-0.052, -0.03), (-0.004, 0.024), (-0.14, -0.106), bev=0.005)
     g.prism('mag_wzB__dark', [(0.022, -0.07), (0.138, -0.07), (0.138, -0.252), (0.022, -0.252)], 0.05, bev=0.007)
     g.box('mag_wzN__gold', (-0.03, 0.03), (-0.276, -0.248), (0.014, 0.146), bev=0.006)
-    wing4(g, angel, 'stock', 0.035, WING_BU[0], WING_BU[1], WING_BU[2], WING_STEP)
-    mini_wing(g, 'fore_wzN__feat', 'fore_wzN__cov', 0.029, (-0.325, 0.045), BWING[0], tuple(L * 0.9 for L in BWING[1]),
-              kind='quill' if angel else 'blade', glow=None if angel else 'fore_wzN__glow')
     if angel:
-        core(g, 'body_wzN__gold', 'body_wzN__glow', 0.0355, -0.06, 0.03, r=0.016)
-        sunburst(g, 'body_wzN__gold', 0.032, -0.06, 0.03, 0.027, 0.04, ymax=0.052)
+        angel_wing(g, 'stock', 0.031, (0.36, 0.035))
+    else:
+        wing4(g, angel, 'stock', 0.035, WING_BU[0], WING_BU[1], WING_BU[2], WING_STEP)
+    mini_wing(g, 'fore_wzN__feat', 'fore_wzN__cov', 0.029, (-0.325, 0.045), BWING[0], tuple(L * 0.9 for L in BWING[1]),
+              kind='vane' if angel else 'blade', glow=None if angel else 'fore_wzN__glow')
+    if angel:
+        quatrefoil_gem(g, 'body_wzN__gold', 'body_wzN__glow', 0.032, -0.06, 0.02)
         # gold feather inlays along the body's back half, pointing back (the side the player sees)
         for (z, y, a, L) in ((0.02, 0.022, -2, 0.3), (0.06, -0.014, -6, 0.24)):
             for sx in (-1, 1):
                 g.prism('body_wzN__gold', knife_feather((z, y), a, L, 0.18 * L), 0.006, bev=0.0015, x=sx * 0.031)
     else:
-        slit_eye(g, 'body_wzN__trim', 'body_wzN__glow', 'body_wzN__dark', 0.0355, -0.06, 0.03, rz=0.028, ry=0.017)
+        vent_slits(g, 'body_wzN__trim', 'body_wzN__glow', 0.032, -0.1, -0.02, 0.02)
         spines(g, 'fore_wzN__trim', -0.33, -0.19, 0.05, 3, h=0.036)
         bold_cracks(g, 'body_wzN__glow', 0.0352, -0.16, 0.044, 0.21, 0.028, seed=31, box=((-0.16, 0.3), (-0.06, 0.046)))
         bold_cracks(g, 'body_wzN__glow', 0.0352, 0.0, -0.05, 0.3, -0.04, seed=32, forks=1, w=0.006, box=((-0.0, 0.32), (-0.065, 0.046)))
@@ -992,20 +1226,22 @@ def _pistol_pair(skinid, pal, angel):
         g.ring('slide_wzN__gold', 0.034, 0.016, (0, BY, -0.262), (0, BY, -0.248), sides=20, bev=0.0018)
         g.ring('slide_wzN__glow', 0.0265, 0.021, (0, BY, -0.2625), (0, BY, -0.2475), sides=20, bev=0.0008)
         # a real little wing on each side of the slide's back (seen in first person): three knife feathers, a covert
-        mini_wing(g, 'slide_wzN__feat', 'slide_wzN__cov', 0.0205, (0.0, 0.04), (45, 28, 10), (0.12, 0.10, 0.08),
-                  yaw=0.35, kind='quill', cov=0.035)
-        for k in range(3):  # three gold quills laid along the slide's front half, pointing back
+        # a small wing on the slide's FRONT flanks, swept back low beside the front sight (the slide's rear is left
+        # plain: a wing there is the owner's star-pistol picture's signature)
+        mini_wing(g, 'slide_wzN__feat', 'slide_wzN__cov', 0.0205, (-0.205, 0.036), (30, 15, 0), (0.11, 0.09, 0.07),
+                  yaw=0.3, kind='vane', cov=0.035)
+        for k in range(3):  # three gold quills laid along the slide's rear half, pointing back
             for sx in (-1, 1):
-                feather3d(g, 'slide_wzN__gold', (-0.215 + 0.03 * k, 0.022), 0.0, 0.055, 0.017, 'quill', 1, 0.0205,
-                          0.005, sx, 0.0, (-0.215 + 0.03 * k, 0.022), curve=4.0)
+                feather3d(g, 'slide_wzN__gold', (-0.09 + 0.03 * k, 0.022), 0.0, 0.05, 0.016, 'quill', 1, 0.0205,
+                          0.005, sx, 0.0, (-0.09 + 0.03 * k, 0.022), curve=4.0)
     else:
         for k in range(6):  # six long fangs round the muzzle
             a = math.pi / 6 + 2 * math.pi * k / 6
             px, py = math.cos(a) * 0.015, BY + math.sin(a) * 0.015
             g.cyl('slide_wzN__gold', 0.007, (px, py, -0.242), (px * 1.35, BY + (py - BY) * 1.35, -0.279), r2=0.0015, sides=6, bev=0.0008)
         for sx in (-1, 1):  # ram horns curling off the slide's back
-            horn(g, 'slide_wzN__gold', (sx * 0.016, 0.05, 0.026), 0.045, 0.05, sx * 0.03, 0.01, curl=0.9)
-        slit_eye(g, 'slide_wzN__trim', 'slide_wzN__glow', 'slide_wzN__dark', 0.0205, -0.012, 0.028, rz=0.02, ry=0.014)
+            horn(g, 'slide_wzN__horn', (sx * 0.016, 0.05, 0.026), 0.045, 0.05, sx * 0.03, 0.01, curl=0.9)
+        vent_slits(g, 'slide_wzN__trim', 'slide_wzN__glow', 0.0195, -0.04, 0.0, 0.026, n=2, h=0.004, gap=0.005)
         bold_cracks(g, 'slide_wzN__glow', 0.0232, -0.21, 0.036, 0.02, 0.04, seed=41, forks=1, w=0.005, amp=0.008, box=((-0.235, 0.045), (0.01, 0.046)))
         bold_cracks(g, 'grip_wzN__glow', 0.0252, 0.04, -0.03, 0.025, -0.12, seed=42, forks=1, w=0.005, amp=0.006, box=((0.01, 0.075), (-0.25, -0.025)))
     return g
@@ -1049,18 +1285,25 @@ def kat_wing(g, angel, root, angs, lens, rstep, covs, th=0.011):
     """one wing of the katana's guard, in the blade's own plane (seen from both sides): the set's 3D feathers (angel:
        gold quills; demon: near-black blades with the glow along both faces' ridges) staggered a little in depth, a
        shoulder of short ones on both faces over the roots (pale gold / dark), a joint through the roots"""
-    if angel:  # five broader quills
+    if angel:  # five quills, a SMALL swept guard (not a big wing spread: the main session's call, 16 Nov)
         n0 = len(angs)
-        angs, lens = _spread(angs, 5), _spread(lens, 5)
-        rstep = (rstep[0] * (n0 - 1) / 4, rstep[1] * (n0 - 1) / 4)
+        angs, lens = _spread(angs, 5), [L * 0.6 for L in _spread(lens, 5)]
+        rstep = (rstep[0] * (n0 - 1) / 4 * 0.6, rstep[1] * (n0 - 1) / 4 * 0.6)
     n = len(angs)
     lead = 1 if angs[0] >= angs[-1] else -1
     kind, wk = ('quill', 0.17) if angel else ('blade', 0.26)
     for i, (a, L) in enumerate(zip(angs, lens)):
         fr = (root[0] + rstep[0] * i, root[1] + rstep[1] * i)
-        feather3d(g, 'kat_guard_wzN__arm' if angel else 'kat_guard_wzN__feat2', fr, a, L, wk * L, kind, lead,
-                  (i - (n - 1) / 2) * 0.0016, th, 1, 0.0, root, glow=None if angel else 'kat_guard_wzN__glow', both=True)
-    a, L, W = covs[0][0], 0.09, 0.045  # one covert a side over the roots (pale gold / glowing)
+        if angel:  # (round 7: knife-cut ivory feathers on gold shafts, a shaft on each face; no ovals)
+            for sgn in (1, -1):
+                xl = -0.002 + (i - (n - 1) / 2) * 0.0016
+                vane_feather(g, 'kat_guard', fr, a, L, 0.3 * L, xl if sgn > 0 else -(xl + 0.004), sgn, 0.0, root,
+                             tones=('v1', 'v3' if i % 2 else 'v2'), glow=(i == 0), bend=0.08 * lead, tip='cut',
+                             slabs=sgn > 0)
+            continue
+        feather3d(g, 'kat_guard_wzN__feat2', fr, a, L, wk * L, kind, lead,
+                  (i - (n - 1) / 2) * 0.0016, th, 1, 0.0, root, glow='kat_guard_wzN__glow', both=True)
+    a, L, W = covs[0][0], (0.07 if angel else 0.09), (0.036 if angel else 0.045)  # one covert a side over the roots (pale gold / glowing)
     for sgn in (-1, 1):
         feather3d(g, 'kat_guard_wzN__cov' if angel else 'kat_guard_wzN__glow', root, a, L, W, kind, 1 if a >= 0 else -1,
                   sgn * (th / 2 + 0.0045), 0.009, 1, 0.0, root, curve=4.0)
@@ -1086,7 +1329,7 @@ def _katana_pair(skinid, pal, angel):
         steel_blade(g, 'kat_blade_wzN__glow', 'kat_blade_wzB__steel', lambda t: 0.2)
         g.cyl('kat_guard_wzN__trim', 0.038, (0, 0.006, -0.154), (0, 0.006, -0.14), sides=8, bev=0.003)
         for sx in (-1, 1):  # horned quillons out to the sides, curving toward the blade
-            horn(g, 'kat_guard_wzN__trim', (sx * 0.012, 0.006, -0.147), 0.0, -0.035, sx * 0.05, 0.009, curl=0.5)
+            horn(g, 'kat_guard_wzN__horn', (sx * 0.012, 0.006, -0.147), 0.0, -0.035, sx * 0.05, 0.009, curl=0.5)
     for root, angs, lens, st, covs in KAT_WINGS:
         kat_wing(g, angel, root, angs, lens, st, covs)
     tsuka(g, 'kat_tsuka_wzA__shell', z0=-0.139, z1=0.11, end=0.006)
