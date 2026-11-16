@@ -25,11 +25,11 @@ return {
 		autoshot = { Right = { pose = "grip", at = V(0, -0.13, 0.133), rot = V(-0.36652, 0, 0), size = 0.84 }, Left = { pose = "cradle", at = V(0, -0.061, -0.34), rot = V(-1.5708, 0, 0), size = 0.9 } },
 		redline = { Right = { pose = "grip", at = V(0, -0.09, 0.081), rot = V(-0.38397, 0, 0), size = 0.86 }, Left = { pose = "wrap", at = V(0, -0.028, -0.2), rot = V(-1.5708, 0, 0), size = 0.88 } },
 		marbles = { Right = { pose = "grip", at = V(0, -0.075, 0.07), rot = V(-0.5236, 0, 0), size = 0.9 }, Left = { pose = "wrap", at = V(0, -0.044, -0.17), rot = V(-1.5708, 0, 0), size = 0.9 } },
-		revolver = { Right = { pose = "grip", at = V(0.003, -0.062, 0.072), rot = V(-0.22689, 0, 0), size = 1.05, elbow = V(0.3, -0.42, 0.15) }, shift = V(0.01, 0.015, 0), scale = 0.8 },
-		pistol = { Right = { pose = "grip", at = V(0.003, -0.058, 0.012), rot = V(-0.29671, 0, 0), size = 1, elbow = V(0.3, -0.42, 0.15) }, shift = V(0, 0.015, 0), scale = 0.8 },
+		revolver = { Right = { pose = "grip", at = V(0.002, -0.052, 0.07), rot = V(-0.22689, 0, 0), size = 1.05, elbow = V(0.3, -0.42, 0.15) }, shift = V(0.01, 0.015, 0), scale = 0.8 },
+		pistol = { Right = { pose = "grip", at = V(0.002, -0.05, 0.028), rot = V(-0.29671, 0, 0), size = 1, elbow = V(0.3, -0.42, 0.15) }, shift = V(0, 0.015, 0), scale = 0.8 },
 		sawnoff = { Right = { pose = "grip", at = V(0, -0.055, 0.1), rot = V(-0.59341, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, shift = V(0, 0.02, 0), scale = 0.8 },
 		katana = { Right = { pose = "fist", at = V(0, 0, -0.045), rot = V(-1.5708, 0, 0), size = 0.8 }, Left = { pose = "fist", at = V(0, 0, 0.088), rot = V(-1.5708, 0, 0), size = 0.8 } },
-		shredder = { Right = { pose = "grip", at = V(0.015, 0.02, 0.02), rot = V(-0.20944, 0, 0), size = 1.3 }, Left = { pose = "palm", at = V(-0.075, 0.058, -0.115), rot = V(0, 0, -0.95993), size = 1.45, elbow = V(-0.1, -0.75, -0.2) } },
+		shredder = { Right = { pose = "grip", at = V(0.002, -0.033, 0.003), rot = V(-0.20944, 0, 0), size = 1.3 }, Left = { pose = "palm", at = V(-0.075, 0.045, -0.115), rot = V(0, 0, -0.95993), size = 1.45, elbow = V(-0.1, -0.75, -0.2) } },
 	},
 	katana = {
 		fixes = {
