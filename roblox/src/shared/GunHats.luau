@@ -206,6 +206,25 @@ function GunHats.attachToolCopy(m: Model, tool: Instance, id: string?): Model?
 	return hat
 end
 
+-- a model's parts box in its pivot's frame (WeaponModels' partsBox, 16 Nov 2026)
+local function partsBox(m: Model): (CFrame, Vector3)
+	local pcf = m:GetPivot()
+	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			local rel = pcf:ToObjectSpace(d.CFrame)
+			local s = d.Size / 2
+			local e = Vector3.new(
+				math.abs(rel.XVector.X) * s.X + math.abs(rel.YVector.X) * s.Y + math.abs(rel.ZVector.X) * s.Z,
+				math.abs(rel.XVector.Y) * s.X + math.abs(rel.YVector.Y) * s.Y + math.abs(rel.ZVector.Y) * s.Z,
+				math.abs(rel.XVector.Z) * s.X + math.abs(rel.YVector.Z) * s.Y + math.abs(rel.ZVector.Z) * s.Z)
+			lo = lo:Min(rel.Position - e); hi = hi:Max(rel.Position + e)
+		end
+	end
+	if lo.X > hi.X then return m:GetBoundingBox() end
+	return pcf * CFrame.new((lo + hi) / 2), hi - lo
+end
+
 -- a hat on a display copy of a weapon template (JankfireWeapons.w_<id> cloned, scaled and moved: the hub's armory
 -- racks). the template's file bounds say where the gun frame is in it; the copy's biggest piece against the
 -- template's says how it was scaled and moved. anchored
@@ -218,7 +237,9 @@ function GunHats.attachDisplay(g: Model, wid: string, id: string?): Model?
 	if not id or not GunHats.valid(id) or id == "none" or not sp or not (t and t:IsA("Model")) then return nil end
 	local flo, fhi = t:GetAttribute("FileLo"), t:GetAttribute("FileHi")
 	if typeof(flo) ~= "Vector3" or typeof(fhi) ~= "Vector3" then return nil end
-	local tcf, tsize = t:GetBoundingBox()
+	-- (the template's parts box, not GetBoundingBox(): on the kit models that box is up to 40% wider than the parts, the
+	-- same slip WeaponModels.fitImported had until 16 Nov 2026)
+	local tcf, tsize = partsBox(t)
 	local fsz = fhi - flo
 	local U = Vector3.new(tsize.X / math.max(fsz.X, 1e-4), tsize.Y / math.max(fsz.Y, 1e-4), tsize.Z / math.max(fsz.Z, 1e-4))
 	-- the same piece in both: the template's biggest piece whose name is its own

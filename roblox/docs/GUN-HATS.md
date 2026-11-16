@@ -169,6 +169,11 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 8** (asset 115737966966098), place version 319 (16 Nov 2026, ~10:46 UTC), on the owner's picked guns
   (place version 298). Older hat uploads and the push models are no longer used.
+- **After the guns' squash fix** (59fb8b4, place version 325: held guns were up to 41% squashed): the seats are measured
+  on the gun files, so they were right; checked every gun's held model in Play (place version 326): each hat's foot
+  sits 0 to 4 mm into the surface under it (its sink), none floats more than 2 mm. The hub racks' copies used the
+  template's `GetBoundingBox()` like the old fit and are now measured from the parts too (`GunHats` `partsBox`):
+  every rack hat within 0.02 studs of its gun.
 - The Katana's hat stands on its pommel and is hidden in first person; it shows in third person, on the racks and in
   the loadout.
 - Under the training hall's lamps warm colours still read brighter than their hex (the duck, the crown's gold). A
