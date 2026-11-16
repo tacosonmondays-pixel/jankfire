@@ -53,11 +53,11 @@ Items.list = {
 		desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it." },
 	quiz = { id = "quiz", name = "Pop Quiz", color = hex("7fffd4"), charges = 2, recharge = 40, carry = true, live = true, proj = "calc",
 		desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield." },
-	nvg = { id = "nvg", name = "Night Vision Goggles", color = hex("3dff8a"), charges = 2, recharge = 28, carry = true, keep = true, live = false,
+	nvg = { id = "nvg", name = "Night Vision Goggles", color = hex("3dff8a"), charges = 2, recharge = 28, carry = true, keep = true, live = true,
 		desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see." },
 	radar = { id = "radar", name = "Speed Trap", color = hex("2e7bff"), charges = 2, recharge = 32, carry = true, live = false,
 		desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot." },
-	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = false,
+	laptop = { id = "laptop", name = "Laptop", color = hex("4fd8ff"), charges = 1, recharge = 42, carry = true, live = true,
 		desc = "Open it at someone. Their screen fills with pop-up ads for 7 s. They can close them. There are a lot." },
 } :: { [string]: Item }
 

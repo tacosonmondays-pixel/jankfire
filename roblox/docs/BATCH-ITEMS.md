@@ -106,7 +106,7 @@ drift. Blast hits, heals and blocks are never reported by a client.
   new `plain`, like the web `damage()`); after 3 s it pops (9 m, 45 x f, the thrower: shove only). The momentum eater
   runs in your own movement step (`Body.onStep`, called by `Move.client.luau`); a rope within 6 m of the middle snaps.
 
-## Batch 3a: Pop Quiz (live since place version 318), Laptop and Night Vision Goggles (built, testing)
+## Batch 3a: Pop Quiz, Laptop, Night Vision Goggles (all live since place version 320)
 
 ![the batch 3a models](items/batch3a-models.png)
 
@@ -119,5 +119,19 @@ drift. Blast hits, heals and blocks are never reported by a client.
 | right | a gold star: +25 HP up to 125, nothing hurts you for 2.5 s, x1.25 run speed for 4 s | answered "24 + 38" right after 0.9 s: HP **100 -> 125**, the speed boost on for 4 s | ok |
 | no weapons while sitting it | | the server's own stagger clock runs to the end of the exam (no shots, swings or guards); keys 1-4 answer and don't switch weapons | ok |
 
+| laptop target | the enemy nearest your aim within 45 m and 0.3 rad, in sight | the Stand (a card held, so the ads came home: "reflect", then "ads" on me) | ok |
+| the ads | 5 pop-ups for 7 s, 2 "ARE YOU SURE?" can come back; keys 1-5 close them | 5 windows, each with its key, the tip line counting them; keys 1-5 held off the weapons while they're up; all gone after 7 s | ok |
+| closing one with its key | | not measured (the 7 s ran out between my tool calls) | to do |
+| laptop charges | 1, 42 s, kept across deaths | 1 -> 0 | ok |
+| goggles on | free, G | the green view, an outline on everyone in sight (30 here: Roblox draws at most 31, the nearest), the HUD "Goggles · on" | ok |
+| goggles flash | lerp(0.6, 3.2 s, k) x 2 in goggles x (1 - 0.3 d / 34 m), k = how straight they look at you | sent back by the Stand's card onto me, looking straight at it, in goggles, 18 studs: 3.2 x 2 x 0.947 = **6.06 s**; measured **6.06 s**, the screen fully white | ok |
+| flash charges | 2, 28 s, kept | 2 -> 1 | ok |
+
+How straight someone looks at you is judged from their body's facing (the server doesn't get the camera's pitch).
+
 ![a pop quiz timing out](items/quiz-timeout.jpg)
+
+![the laptop's pop-ups](items/laptop-ads.jpg)
+
+![the night vision goggles on](items/goggles-view.jpg)
 
