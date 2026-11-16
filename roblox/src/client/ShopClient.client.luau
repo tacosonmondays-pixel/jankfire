@@ -32,16 +32,22 @@ me:GetAttributeChangedSignal("ShopTest"):Connect(function()
 	local v = me:GetAttribute("ShopTest")
 	if type(v) ~= "string" or v == "" then return end
 	me:SetAttribute("ShopTest", nil)
-	local cmd, a, b = string.match(v, "^(%a+):?([^:]*):?(.*)$")
-	if cmd == "open" then ShopUI.open(if a ~= "" then a else nil, if b ~= "" then b else nil)
+	-- (an offer id can hold a colon itself: "wrap:galaxy@smg", so only the command is split off)
+	local cmd, rest = string.match(v, "^(%a+):?(.*)$")
+	if cmd == "open" then
+		local tab, id = string.match(rest or "", "^([^:]*):?(.*)$")
+		ShopUI.open(if tab and tab ~= "" then tab else nil, if id and id ~= "" then id else nil)
 	elseif cmd == "close" then ShopUI.close()
 	elseif cmd == "fake" then
-		local w, h = string.match(a, "^(%d+)x(%d+)$")
+		local w, h = string.match(rest or "", "^(%d+)x(%d+)$")
 		if w then ShopUI.fakeScreen(Vector2.new(tonumber(w) :: number, tonumber(h) :: number)) end
 	elseif cmd == "real" then ShopUI.fakeScreen(nil)
-	elseif cmd == "inspect" then ShopUI.inspect(a)
-	elseif cmd == "odds" then ShopUI.odds(a)
-	elseif cmd == "ask" then ShopUI.ask(a)
+	elseif cmd == "inspect" then ShopUI.inspect(rest)
+	elseif cmd == "odds" then ShopUI.odds(rest)
+	elseif cmd == "ask" then ShopUI.ask(rest)
+	elseif cmd == "count" then -- "count:spray:5": the x1 / x5 / x10 pick for a container
+		local cid, nn = string.match(rest or "", "^([%w_]+):(%d+)$")
+		if cid then ShopUI.S.count[cid] = tonumber(nn); if ShopUI.isOpen() then ShopUI.refill() end end
 	elseif cmd == "commit" then ShopUI.commit()
 	elseif cmd == "back" then ShopUI.uninspect()
 	end

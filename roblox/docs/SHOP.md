@@ -76,6 +76,9 @@ Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rot
 - **Buying:** CLAIM / BUY opens a confirm panel first. A container's confirm panel shows its odds, and a paid
   container can't be bought when the odds can't be read. Then the till (`Loot` "buy") is asked; a container is opened
   at once and the loot module's opening plays while the shop steps aside; the inventory tab shows what you got.
+- **Several at once:** each container (card and inspect panel) has an x1 / x5 / x10 pick. CLAIM xN shows the odds
+  once, asks `("buy", kind, n)` then `("open", kind, n)` (one batch, never the same item twice), and the opening shows
+  them all; OPEN ANOTHER opens the same number again. OPEN xN opens from your stock.
 - **Look:** `Theme.luau`: dark plates and cards, white and grey text, one amber accent (the active tab's mark, the
   main button, the featured label), rarity colour only as a thin line or dot. Builder Sans, Builder Extended titles.
 - **Screens:** laid out 720 design pixels tall on a computer (wider screens get more width) and 400 tall on a short
@@ -105,7 +108,7 @@ Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rot
 
 ## Testing it in Play
 
-Set the local player's attribute `ShopTest` from the Client datamodel: `"open"`, `"open:bundles"`,
+Set the local player's attribute `ShopTest` from the Client datamodel: `"open"`, `"open:bundles"`, `"count:spray:5"` (the x1/x5/x10 pick),
 `"open::bundle_nightshift"`, `"inspect:crate"`, `"odds:crate"`, `"ask:bundle_quarry"`, `"commit"`, `"back"`,
 `"close"`, `"fake:844x390"` (lays the shop out in a phone-sized box with an amber edge), `"real"`.
 

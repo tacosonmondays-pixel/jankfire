@@ -192,12 +192,37 @@ local function card(parent: Instance, r: string?): (TextButton, Frame?)
 	return c, bar
 end
 -- the small "rarity · kind" line: a dot in the rarity's colour, the words in grey
-local function rarityLine(parent: Instance, r: string, kind: string, size: number): Frame
+local function rarityLine(parent: Instance, r: string, kind: string, size: number, kindOnly: boolean?): Frame
 	local f = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, size + 4) }, parent)
 	local dot = new("Frame", { BackgroundColor3 = rarityColor(r), BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.new(0, 0, 0.5, 0), Size = UDim2.fromOffset(size * 0.5, size * 0.5) }, f)
 	T.corner(dot, 99)
-	local l = txt(f, rarityName(r) .. (if kind ~= "" then "  ·  " .. string.upper(kind) else ""), size, T.MUTED, T.FONT_BOLD)
+	-- (kindOnly: a narrow card on a phone keeps the dot and the kind; the rarity is the colour of the dot and the bar)
+	local words = if kindOnly and kind ~= "" then string.upper(kind) else rarityName(r) .. (if kind ~= "" then "  ·  " .. string.upper(kind) else "")
+	local l = txt(f, words, size, T.MUTED, T.FONT_BOLD)
 	l.Position = UDim2.fromOffset(size * 0.5 + 6, 0); l.Size = UDim2.new(1, -(size * 0.5 + 6), 1, 0)
+	return f
+end
+-- how many of a container to claim and open at once: x1 / x5 / x10 (the loot server opens a batch with no
+-- repeats inside it). the pick is remembered per container; any change redraws the page
+S.count = {} :: { [string]: number }
+function ShopUI.countPicker(parent: Instance, cid: string, z: number): Frame
+	local f = new("Frame", { Name = "Count", BackgroundTransparency = 1, ZIndex = z }, parent)
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, f)
+	for i, n in { 1, 5, 10 } do
+		local b = button(f, "x" .. n, "dark", UDim2.new(1 / 3, -4, 1, 0))
+		b.face.LayoutOrder = i; b.face.ZIndex = z + 1; b.face.TextSize = 15
+		b.mark.ZIndex = z + 2
+		local on = (S.count[cid] or 1) == n
+		b.mark.Visible = on
+		b.base = if on then T.CARD_HI else T.CARD
+		b.face.BackgroundColor3 = b.base
+		b.face.MouseButton1Click:Connect(function()
+			if (S.count[cid] or 1) == n then return end
+			S.count[cid] = n
+			play("click")
+			ShopUI.refill()
+		end)
+	end
 	return f
 end
 -- a price: the Robux mark and the number; struck through and grey while everything's free
@@ -522,7 +547,7 @@ local function singleCard(parent: Instance, o: any, order: number): TextButton
 	local wl = txt(c, "FOR " .. string.upper(Shop.weaponName(o.weapon)), 12, T.SOFT, T.FONT_BOLD)
 	wl.Position = UDim2.new(0, 12, 1, -53); wl.Size = UDim2.new(1, -24, 0, 15)
 	-- (on a phone the kind word goes: the rarity alone fits beside the price)
-	local rl = rarityLine(c, o.rarity, if S.compact then "" else (Shop.KIND_NAMES[o.kind] or o.kind), if S.compact then 12 else 11)
+	local rl = rarityLine(c, o.rarity, Shop.KIND_NAMES[o.kind] or o.kind, if S.compact then 12 else 11, S.compact)
 	rl.Position = UDim2.new(0, 12, 1, -32); rl.Size = UDim2.new(1, -96, 0, 15)
 	local owned = Till.owns(o.kind, o.item, o.weapon)
 	local pr = txt(c, if owned then "OWNED" else (if Shop.free() then "FREE" else priceText(o.robux)), 14, if owned then T.MUTED else T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Right)
@@ -587,7 +612,7 @@ end
 -- a small chip in the hero strip: a wrap's paint or a hat's name, with its rarity under it
 local function itemChip(parent: Instance, it: any, order: number)
 	local name, r = Shop.itemInfo(it.kind, it.id)
-	local f = new("Frame", { BackgroundColor3 = T.CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(46, 46), LayoutOrder = order, ZIndex = 6 }, parent)
+	local f = new("Frame", { BackgroundColor3 = T.CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(if S.compact then 40 else 46, if S.compact then 40 else 46), LayoutOrder = order, ZIndex = 6 }, parent)
 	T.corner(f, 5)
 	if it.kind == "wrap" then
 		local chip = new("Frame", { BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -10, 1, -13), ZIndex = 7 }, f)
@@ -670,18 +695,27 @@ function ShopUI.fillContainers()
 		local hv = txt(c, if have > 0 then "YOU HAVE " .. have else "", 12, T.SOFT, T.FONT_BOLD)
 		hv.Position = UDim2.new(0, pad, 1, if k then -100 else -116); hv.Size = UDim2.new(0.5, 0, 0, 16)
 		hv.Visible = not k
+		-- two rows of 44-tall buttons: ODDS and the x1 / x5 / x10 picker; then OPEN (only with some in stock) and CLAIM
 		local bh = 44 -- (a touch target)
-		local odds = button(c, "ODDS", "dark", UDim2.new(0.5, -(pad + 6), 0, bh), UDim2.new(0, pad, 1, -(2 * bh + (if k then 12 else 6))))
+		local n = S.count[o.id] or 1
+		local row1 = -(2 * bh + (if k then 12 else 6))
+		local odds = button(c, "ODDS", "dark", UDim2.new(1 / 3, -(pad + 4), 0, bh), UDim2.new(0, pad, 1, row1))
 		odds.face.MouseButton1Click:Connect(function() ShopUI.odds(o.id) end)
-		local open = button(c, "OPEN", "dark", UDim2.new(0.5, -(pad + 6), 0, bh), UDim2.new(0.5, 6, 1, -(2 * bh + (if k then 12 else 6))))
-		open.set(if have > 0 then "OPEN (" .. have .. ")" else "OPEN", have > 0)
-		open.face.MouseButton1Click:Connect(function() if Till.count(o.id) > 0 then ShopUI.openBox(o.id) end end)
-		local buy = button(c, "", "main", UDim2.new(1, -2 * pad, 0, bh), UDim2.new(0, pad, 1, -(bh + (if k then 8 else 2))))
+		local pick = ShopUI.countPicker(c, o.id, 1)
+		pick.Position = UDim2.new(1 / 3, 4, 1, row1); pick.Size = UDim2.new(2 / 3, -(pad + 4), 0, bh)
+		local row2 = -(bh + (if k then 8 else 2))
 		local bs = Till.boxState(o.id)
-		if bs == "soon" then buy.set("COMING SOON", false); open.set("OPEN", false)
+		local open = button(c, "OPEN", "dark", UDim2.new(0.4, -(pad + 4), 0, bh), UDim2.new(0, pad, 1, row2))
+		open.face.Visible = have > 0 and bs == nil
+		open.set("OPEN  x" .. math.min(n, have), have > 0)
+		open.face.MouseButton1Click:Connect(function() local h = Till.count(o.id); if h > 0 then ShopUI.openBox(o.id, math.min(S.count[o.id] or 1, h)) end end)
+		local buy = button(c, "", "main", UDim2.new(1, -2 * pad, 0, bh), UDim2.new(0, pad, 1, row2))
+		if open.face.Visible then buy.face.Position = UDim2.new(0.4, 4, 1, row2); buy.face.Size = UDim2.new(0.6, -(pad + 4), 0, bh) end
+		local word = if n > 1 then "  x" .. n else ""
+		if bs == "soon" then buy.set("COMING SOON", false)
 		elseif bs == "empty" then buy.set("YOU HAVE IT ALL", false)
 		elseif S.restricted and not Shop.free() then buy.set("NOT AVAILABLE HERE", false)
-		else buy.set(if Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. priceText(o.robux), true) end
+		else buy.set((if Shop.free() then "CLAIM" else "BUY") .. word .. "  " .. priceText(o.robux * n), true) end
 		buy.face.MouseButton1Click:Connect(function() ShopUI.ask(o.id) end)
 		c.MouseButton1Click:Connect(function() ShopUI.inspect(o.id) end)
 	end
@@ -838,7 +872,10 @@ do
 	UI.inspOdds.face.MouseButton1Click:Connect(function() if S.inspect then ShopUI.odds(S.inspect) end end)
 	UI.inspOpen = button(Sd, "OPEN", "dark", UDim2.new(0.5, -5, 0, 40), UDim2.new(0.5, 5, 1, -94))
 	UI.inspOpen.face.ZIndex = 23
-	UI.inspOpen.face.MouseButton1Click:Connect(function() if S.inspect and Till.count(S.inspect) > 0 then ShopUI.openBox(S.inspect) end end)
+	UI.inspOpen.face.MouseButton1Click:Connect(function()
+		local h = if S.inspect then Till.count(S.inspect) else 0
+		if h > 0 then ShopUI.openBox(S.inspect, math.min(S.count[S.inspect] or 1, h)) end
+	end)
 	UI.inspBuy = button(Sd, "", "main", UDim2.new(1, 0, 0, 48), UDim2.new(0, 0, 1, -48))
 	UI.inspBuy.face.TextSize = 17; UI.inspBuy.face.ZIndex = 23
 	UI.inspBuy.face.MouseButton1Click:Connect(function() if S.inspect then ShopUI.ask(S.inspect) end end)
@@ -903,6 +940,16 @@ function ShopUI.fillInspect()
 	local isBox = o.type == "container"
 	UI.inspOdds.face.Visible = isBox
 	UI.inspOpen.face.Visible = isBox
+	-- the buttons at the foot: a container has ODDS + the x1/x5/x10 picker over (OPEN +) CLAIM; the rest just CLAIM
+	local oldPick = UI.inspSide:FindFirstChild("Count")
+	if oldPick then oldPick:Destroy() end
+	UI.inspBuy.face.Position = UDim2.new(0, 0, 1, -48); UI.inspBuy.face.Size = UDim2.new(1, 0, 0, 48)
+	if isBox then
+		UI.inspOdds.face.Position = UDim2.new(0, 0, 1, -100); UI.inspOdds.face.Size = UDim2.new(1 / 3, -4, 0, 44)
+		local pick = ShopUI.countPicker(UI.inspSide, o.id, 23)
+		pick.Position = UDim2.new(1 / 3, 4, 1, -100); pick.Size = UDim2.new(2 / 3, -4, 0, 44)
+		UI.inspOpen.face.Position = UDim2.new(0, 0, 1, -48); UI.inspOpen.face.Size = UDim2.new(0.4, -4, 0, 48)
+	end
 	-- the side column, top to bottom: back, rarity line, name, blurb (not on a phone), the list, a note, the buttons
 	local c = S.compact
 	local nameY = if c then 66 else 72
@@ -926,12 +973,16 @@ function ShopUI.fillInspect()
 		UI.inspBlurb.Text = o.blurb .. " holds " .. (o.pool or "items") .. "."
 		local have = Till.count(o.id)
 		local bs = Till.boxState(o.id)
+		local n = S.count[o.id] or 1
 		UI.inspNote.Text = if bs == "soon" then "no weapon skins on roblox yet" elseif have > 0 then "you have " .. have .. " to open" else "these are the odds for you, right now"
-		UI.inspOpen.set(if have > 0 then "OPEN (" .. have .. ")" else "OPEN", have > 0 and bs == nil)
+		UI.inspOpen.face.Visible = have > 0 and bs == nil
+		UI.inspOpen.set("OPEN  x" .. math.min(n, math.max(have, 1)), have > 0 and bs == nil)
+		if UI.inspOpen.face.Visible then UI.inspBuy.face.Position = UDim2.new(0.4, 4, 1, -48); UI.inspBuy.face.Size = UDim2.new(0.6, -4, 0, 48) end
+		local word = if n > 1 then "  x" .. n else ""
 		if bs == "soon" then UI.inspBuy.set("COMING SOON", false)
 		elseif bs == "empty" then UI.inspBuy.set("YOU HAVE IT ALL", false)
 		elseif S.restricted and not Shop.free() then UI.inspBuy.set("NOT AVAILABLE HERE", false)
-		else UI.inspBuy.set(if Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. priceText(o.robux), true) end
+		else UI.inspBuy.set((if Shop.free() then "CLAIM" else "BUY") .. word .. "  " .. priceText(o.robux * n), true) end
 		ShopUI.oddsRows(UI.inspList, o.id, 24)
 	else
 		local own = Till.owns(o.kind, o.item, o.weapon)
@@ -1070,14 +1121,18 @@ function ShopUI.ask(id: string)
 	if not Shop.free() and Shop.ROBUX and o.type ~= "container" then ShopUI.prompt(o); return end
 	play("click")
 	S.pending = id
+	-- (a container comes in x1 / x5 / x10: the card's pick)
+	local n = if o.type == "container" then (S.count[o.id] or 1) else 1
+	S.pendingN = n
 	for _, c in UI.cOdds:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	local free = Shop.free()
-	UI.cTitle.Text = (if free then "CLAIM " else "BUY ") .. string.upper(o.name) .. "?"
+	UI.cTitle.Text = (if free then "CLAIM " else "BUY ") .. (if n > 1 then n .. " " .. string.upper(o.name) .. "S" else string.upper(o.name)) .. "?"
 	local h = if S.compact then 210 else 230
 	local rh = if S.compact then 24 else 30
 	local canGo = true
 	if o.type == "container" then
-		UI.cBody.Text = "one " .. string.lower(o.name) .. ", opened right away: one item for one gun (picked evenly), at these odds:"
+		UI.cBody.Text = if n > 1 then n .. " " .. string.lower(o.name) .. "s, opened right away: each one item for one gun (picked evenly), never the same twice, at these odds:"
+			else "one " .. string.lower(o.name) .. ", opened right away: one item for one gun (picked evenly), at these odds:"
 		canGo = ShopUI.oddsRows(UI.cOdds, o.id, 41, rh) or free -- (never charge for a random item without its odds)
 		local n = 0
 		for _, c in UI.cOdds:GetChildren() do if c:IsA("GuiObject") then n += 1 end end
@@ -1089,8 +1144,8 @@ function ShopUI.ask(id: string)
 	else
 		UI.cBody.Text = "this " .. string.lower(Shop.KIND_NAMES[o.kind] or "item") .. " goes into your inventory."
 	end
-	if free then UI.cBody.Text ..= string.format('<br/><font color="%s">free while we test. later: %s %s</font>', T.hex(T.MUTED), ROBUX, commas(o.robux)) end
-	UI.cYes.set(if free then "CLAIM" else "BUY  " .. ROBUX .. " " .. commas(o.robux), canGo)
+	if free then UI.cBody.Text ..= string.format('<br/><font color="%s">free while we test. later: %s %s</font>', T.hex(T.MUTED), ROBUX, commas(o.robux * n)) end
+	UI.cYes.set(if free then (if n > 1 then "CLAIM  x" .. n else "CLAIM") else "BUY  " .. ROBUX .. " " .. commas(o.robux * n), canGo)
 	UI.confirm.Size = UDim2.fromOffset(460, h)
 	UI.confirm.Visible = true
 	ShopUI.layer()
@@ -1099,12 +1154,13 @@ end
 function ShopUI.commit()
 	local id = S.pending
 	local o = id and Shop.offer(id)
+	local n = S.pendingN or 1
 	if not UI.cYes.enabled then return end
 	ShopUI.unconfirm()
 	if not o or S.busy then return end
 	if not Shop.free() and Shop.ROBUX then ShopUI.prompt(o); return end -- (a container, after its odds were shown)
 	S.busy = true
-	local res = Till.ask("buy", id)
+	local res = if o.type == "container" and n > 1 then Till.ask("buy", id, n) else Till.ask("buy", id)
 	S.busy = false
 	if not res.ok then
 		Hud.callout(string.upper(res.why or "the till said no"), 1.6)
@@ -1113,7 +1169,7 @@ function ShopUI.commit()
 	play("click")
 	if o.type == "container" then
 		Till.refresh()
-		ShopUI.openBox(o.id)
+		ShopUI.openBox(o.id, n)
 		return
 	end
 	Till.refresh()
@@ -1123,10 +1179,13 @@ end
 
 -- open a container you have: the till rolls it, the loot module's opening plays (the shop steps aside), then the
 -- inventory shows what you got
--- (OPEN ANOTHER at the end of the opening: the next one from your stock, or a fresh free one while we test)
-function ShopUI.openBox(cid: string)
+-- (OPEN ANOTHER at the end of the opening: the next one from your stock, or a fresh free one while we test).
+-- n = how many at once (1, 5 or 10): the loot server rolls them as one batch, the opening shows them all, and
+-- OPEN ANOTHER opens the same number again
+function ShopUI.openBox(cid: string, n: number?)
 	if S.busy then return end
 	S.busy = true
+	local count = n or 1
 	local mod = script.Parent:FindFirstChild("LootOpening")
 	local Opening: any = nil
 	if mod and mod:IsA("ModuleScript") then
@@ -1135,7 +1194,7 @@ function ShopUI.openBox(cid: string)
 	end
 	local last: any = nil
 	while true do
-		local res = Till.ask("open", cid)
+		local res = if count > 1 then Till.ask("open", cid, count) else Till.ask("open", cid)
 		if not res.ok then Hud.callout(string.upper(res.why or "it won't open"), 1.6); break end
 		last = res
 		-- the shop steps aside (screen, blur and tint) while the opening plays (it takes the camera and the screen)
@@ -1143,7 +1202,7 @@ function ShopUI.openBox(cid: string)
 		UI.blur.Enabled = false; UI.tint.Enabled = false
 		local how = "done"
 		if Opening then
-			local ok, out = pcall(Opening.play, cid, res, { again = true })
+			local ok, out = pcall(Opening.play, cid, res, { again = true, n = count })
 			how = if ok and type(out) == "string" then out else "done"
 			if not ok then warn("[jankfire] shop: the opening broke: " .. tostring(out)) end
 		else
@@ -1153,7 +1212,7 @@ function ShopUI.openBox(cid: string)
 		Till.refresh()
 		if how ~= "again" or not S.open then break end
 		-- another: from your stock, or claimed fresh while it's free
-		if Till.count(cid) <= 0 and not Shop.free() then break end
+		if Till.count(cid) < count and not Shop.free() then break end
 		if Till.boxState(cid) then break end
 	end
 	S.busy = false
@@ -1161,7 +1220,10 @@ function ShopUI.openBox(cid: string)
 		gui.Enabled = true; back.Enabled = true
 		UI.blur.Enabled = true; UI.tint.Enabled = true
 		local it = last and (last.item or last.prize)
-		if type(it) == "table" and it.id then
+		local got = if last and type(last.items) == "table" then #last.items else 1
+		if got > 1 then
+			ShopUI.toast(got .. " THINGS ARE YOURS" .. (if last.short then " (ALL THAT WAS LEFT)" else "") .. ". WEAR THEM FROM THE LOADOUT [L]")
+		elseif type(it) == "table" and it.id then
 			local name = it.name or Shop.itemInfo(it.kind or it.type, it.id)
 			if it.weapon then name ..= " · " .. Shop.weaponName(it.weapon) end
 			ShopUI.toast(string.upper(name) .. " IS YOURS. WEAR IT FROM THE LOADOUT [L]")
@@ -1340,8 +1402,6 @@ function ShopUI.layout()
 	UI.inspSide.Position = UDim2.new(split, ipad, 0, ipad)
 	UI.inspSide.Size = UDim2.new(1 - split, -2 * ipad, 1, -2 * ipad)
 	UI.inspBack.face.Size = UDim2.fromOffset(if compact then 96 else 90, if compact then 44 else 38)
-	UI.inspOdds.face.Size = UDim2.new(0.5, -5, 0, 44); UI.inspOdds.face.Position = UDim2.new(0, 0, 1, -100)
-	UI.inspOpen.face.Size = UDim2.new(0.5, -5, 0, 44); UI.inspOpen.face.Position = UDim2.new(0.5, 5, 1, -100)
 	UI.inspName.TextSize = if compact then 22 else 30
 	UI.odds.Size = UDim2.fromOffset(if compact then 420 else 440, math.min(H - 16, 380))
 	UI.oddsOk.face.Size = UDim2.new(1, -44, 0, 44); UI.oddsOk.face.Position = UDim2.new(0, 22, 1, -56)
