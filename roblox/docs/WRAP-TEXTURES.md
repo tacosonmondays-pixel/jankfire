@@ -12,7 +12,7 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 **Where it stands:** 79 of the 102 wraps are textures; the other 23 stay colour wraps (21 plain colours, plus QR Code
 and Barcode, which may never be images). Every kit gun the owner picked carries the flat-projection UVs (`gun_uvs.py`,
 live since place version 313, 242 `WrapUV` pieces) and `WrapUV` on every piece but the glow and glass ones. Photos:
-`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 334), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
+`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall, place version 335), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
 `wrap-textures/round2/` (in the hall on the flat-UV guns, plus Blender renders),
 `wrap-textures/galaxy-dots-before-after.jpg` (the owner's Galaxy note),
 `wrap-textures/batch1-sheet.jpg` and `wrap-textures/judge1/` (the first round).
@@ -118,6 +118,10 @@ codes or logos. What changed after it:
 - **Pale blank slabs** on up-facing faces (Kintsugi, Galaxy, Nebula) were the hall's ceiling lights mirrored by glossy
   wraps: no non-metal wrap is glossier than roughness 0.36 now (`ROUGH_MIN`).
 - Galaxy's and Nebula's dots start at 1.6 px (under 1 px they read as specks), fewer of them.
+- Then the judge's smaller notes: **Leopard** smaller, denser rosettes (big ones smeared on sloped faces, bare faces
+  between); **Seigaiha** twice the scale and softer contrast (it read as busy noise); **Wood** dark walnut with a
+  finer grain (it read as cartoon pine); **Ugly Sweater** a red jumper with staggered snowflakes and one thin green
+  border (the stacked bands of zigzags, snowflakes and trees read as stripes in hand). Place version 335.
 
 ## In-hand colour
 

@@ -491,9 +491,9 @@ def leopard(t: Tex):
     t.rgb[:] = mix('b9853f', 'cf9c52', smoothstep(-0.5, 0.5, FBM([2, 4], 191)(U, V)))
     t.rough[:] = 0.6
     r = t.rng
-    ros = scatter(r, n, 18, 190)
+    ros = scatter(r, n, 40, 128)              # (round 4: big sparse rosettes smeared on sloped faces, bare faces between)
     for x, y in ros:
-        R = r.uniform(50, 66); rot = r.uniform(0, TAU)
+        R = r.uniform(30, 42); rot = r.uniform(0, TAU)
         X, Y, idx = t.box(x - R * 1.5, y - R * 1.5, x + R * 1.5, y + R * 1.5)
         cx, cy = x + r.uniform(-4, 4), y + r.uniform(-4, 4)
         t.paint(idx, cover(sd_ellipse(cx, cy, R * 0.82, R * 0.68, rot)(X, Y)), '9a5d25')
@@ -505,8 +505,8 @@ def leopard(t: Tex):
             w = R * r.uniform(0.16, 0.24)
             rad = [w * (0.35 + 0.65 * math.sin(math.pi * q / 8)) for q in range(9)]
             t.paint(idx, cover(sd_polyline(pts, rad)(X, Y)), '20130a')
-    for x, y in scatter(r, n, 22, 70, taken=[(x, y, 110) for x, y in ros]):
-        rr = r.uniform(8, 15)
+    for x, y in scatter(r, n, 40, 52, taken=[(x, y, 74) for x, y in ros]):
+        rr = r.uniform(6, 11)
         t.shape((x - rr * 2, y - rr * 2, x + rr * 2, y + rr * 2), sd_ellipse(x, y, rr, rr * r.uniform(0.6, 0.9), r.uniform(0, TAU)), color='20130a')
     return {}
 
@@ -578,9 +578,9 @@ def kintsugi(t: Tex):
 @design('seigaiha')
 def seigaiha(t: Tex):
     """seigaiha: overlapping blue wave scales of cream rings, a cyan heart in each"""
-    n = t.n; R = 128.0
-    t.rgb[:] = hexrgb('1b2a63')
-    rings = [(1.0, '1b2a63'), (0.9, 'efe8d6'), (0.78, '1b2a63'), (0.66, 'efe8d6'), (0.54, '1b2a63'), (0.42, 'efe8d6'), (0.3, '1b2a63'), (0.2, '3fb8d8')]
+    n = t.n; R = 256.0                        # (round 4: 3 cm scales read as busy noise in hand; 6 cm now, softer)
+    t.rgb[:] = hexrgb('22315f')
+    rings = [(1.0, '22315f'), (0.9, 'd8d0bc'), (0.78, '22315f'), (0.66, 'd8d0bc'), (0.54, '22315f'), (0.42, 'd8d0bc'), (0.3, '22315f'), (0.2, '4a9ab8')]
     rows = int(n / (R / 2))                   # 16 rows make one period
     # each row lies over the row above it; round the tile that order is a cycle, so the first row is painted again
     # at the end, but only over the row above it (its top half-band), not over the row below it (16 Nov: the old
@@ -765,12 +765,12 @@ def wood(t: Tex):
     """wood: straight walnut-brown grain along the gun, darker latewood lines and the odd soft figure"""
     U, V = t.U, t.V
     w = FBM([(1, 4), (2, 8)], 261, 0.5)(U, V)
-    ring = (V * 14 + 0.9 * w + 0.15 * FBM([(2, 2), (4, 4)], 262)(U, V)) % 1.0
-    late = smoothstep(0.55, 0.75, ring) * (1 - smoothstep(0.8, 0.98, ring))
-    t.rgb[:] = mix('8a5a32', 'a26c3e', smoothstep(-0.5, 0.5, FBM([(1, 3), (2, 6)], 263)(U, V)))
-    t.fill(late * 0.75, '5e3a1f')
-    fib = np.sin((V * 160 + 3 * w) * TAU) * 0.5 + 0.5
-    t.fill(fib * 0.06, '3a2412')
+    ring = (V * 24 + 0.9 * w + 0.15 * FBM([(2, 2), (4, 4)], 262)(U, V)) % 1.0   # (round 4: read as cartoon pine;
+    late = smoothstep(0.55, 0.75, ring) * (1 - smoothstep(0.8, 0.98, ring))     # dark walnut, finer grain)
+    t.rgb[:] = mix('5c3b24', '70492c', smoothstep(-0.5, 0.5, FBM([(1, 3), (2, 6)], 263)(U, V)))
+    t.fill(late * 0.7, '3b2416')
+    fib = np.sin((V * 256 + 3 * w) * TAU) * 0.5 + 0.5
+    t.fill(fib * 0.08, '2a190e')
     t.height[:] = -late * 0.5
     t.normal_k = 0.8
     t.rough[:] = 0.58 + 0.1 * late
@@ -884,8 +884,9 @@ def nebula(t: Tex):
 
 @design('sweater')
 def sweater(t: Tex):
-    """ugly sweater: real knit stitches (each a little V of two loops) in red, white and green: a zigzag band,
-       snowflakes, and a row of fir trees"""
+    """ugly sweater: real knit stitches (each a little V of two loops): a red jumper with white snowflakes set in a
+       staggered grid and one thin green border with white dots (round 4: stacked bands of zigzags, snowflakes and
+       trees read as busy stripes in hand)"""
     n = t.n; c = 32                                   # one stitch is 32 px across (8 mm), 32 rows to the tile
     R, W, G = 'a8202c', 'ece6d8', '1f5f34'
     art = []
@@ -893,17 +894,13 @@ def sweater(t: Tex):
         row = []
         for i in range(32):
             col = R
-            if j < 5:
+            if j in (0, 1, 2):
                 col = G
-                if 1 <= j <= 4 and j - 1 == abs((i % 6) - 3): col = W
-            elif 7 <= j <= 15:
-                cx, cy = (i % 16) - 8, j - 11
-                if (cx == 0 and abs(cy) <= 4) or (cy == 0 and abs(cx) <= 4) or (abs(cx) == abs(cy) and abs(cx) <= 3): col = W
-            elif j == 17 or j == 30: col = W if i % 2 == 0 else G
-            elif 19 <= j <= 28:
-                cx = (i % 11) - 5; h = j - 19
-                if h < 8 and abs(cx) <= h // 2 + (1 if h % 2 else 0) // 2: col = G
-                if h >= 8 and cx == 0: col = '5a3a22'
+                if j == 1 and i % 4 == 1: col = W
+            else:
+                for cx0, cy0 in ((8, 9), (24, 9), (0, 22), (16, 22), (32, 22)):
+                    cx, cy = i - cx0, j - cy0
+                    if (cx == 0 and abs(cy) <= 3) or (cy == 0 and abs(cx) <= 3) or (abs(cx) == abs(cy) and abs(cx) <= 2): col = W
             row.append(col)
         art.append(row)
     X, Y = t.X, t.Y

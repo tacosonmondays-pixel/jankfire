@@ -1274,5 +1274,29 @@
  "15458381d2bac3e343327b27acb789bd36a4ef70": {
   "file": "marble_color.png",
   "id": 131626517596675
+ },
+ "8d47a757c2568eea2576f36056eae4bc4e10e6c9": {
+  "file": "leopard_color.png",
+  "id": 114649381580887
+ },
+ "d872ce37400b9da8f104eeb36e0d74102acb0585": {
+  "file": "seigaiha_color.png",
+  "id": 122907407528952
+ },
+ "56519576a0e14af9a31a76fda0ca65a0d91a2147": {
+  "file": "sweater_color.png",
+  "id": 133743995652666
+ },
+ "3f2f69a37a0354ea3b55833f0f54ccf052e828a3": {
+  "file": "wood_color.png",
+  "id": 97668667743723
+ },
+ "1de35dd0130ad7dbd4f455c527192ba4dcddfe7f": {
+  "file": "wood_normal.png",
+  "id": 86685380407014
+ },
+ "ff61d4bd0046024972a638ec9ebf3a98e6782f8a": {
+  "file": "wood_rough.png",
+  "id": 102053691254954
  }
 }
