@@ -123,17 +123,26 @@ local function kat(): number
 end
 local function thirdPerson(): boolean
 	local _, _, root = myChar()
-	return root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5
+	-- (third person is on: the shoulder camera can come in closer than that in a tight corner)
+	return me:GetAttribute("ThirdPerson") == true or (root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5)
 end
--- the eye (feet + 1.6 m, lower when crouched: the camera itself in first person), and where you're aiming
+-- the eye (feet + 1.6 m, lower when crouched: the camera itself in first person), and where you're aiming. In third
+-- person: from the eye to what's under the crosshair (TP.crosshair: the map or a body's hit box), so the shot lands
+-- on the crosshair even up close, with the camera over your shoulder
 local function eyeAndAim(): (Vector3, Vector3)
 	local _, _, root = myChar()
 	local cam = camera.CFrame
 	if not root or not thirdPerson() then return cam.Position, cam.LookVector end
 	local eye = root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0)
-	local hit = Fx.castMap(cam.Position, cam.LookVector * 900)
-	local target = if hit then hit.Position else cam.Position + cam.LookVector * 900
-	return eye, (target - eye).Unit
+	local target: Vector3
+	if TP.crosshair then
+		target = TP.crosshair(eye)
+	else
+		local hit = Fx.castMap(cam.Position, cam.LookVector * 900)
+		target = if hit then hit.Position else cam.Position + cam.LookVector * 900
+	end
+	local to = target - eye
+	return eye, if to.Magnitude > 1 then to.Unit else cam.LookVector
 end
 
 -- everyone you could hit: other players and the test dummies (alive), with their feet

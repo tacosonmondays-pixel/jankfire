@@ -47,7 +47,8 @@ local function inHub(): boolean return me:GetAttribute("Zone") == "hub" end
 local function menuOpen(): boolean return me:GetAttribute("LoadoutOpen") == true end
 local function thirdPerson(): boolean
 	local _, _, root = myChar()
-	return root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5
+	-- (third person is on: the shoulder camera can come in closer than that in a tight corner)
+	return me:GetAttribute("ThirdPerson") == true or (root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5)
 end
 local function smooth(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 

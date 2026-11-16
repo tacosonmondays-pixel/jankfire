@@ -6,7 +6,9 @@ its own hands, aims it where you look, goes down the sights for every gun (scope
 reloads with the off hand, swings and guards the katana, and throws or uses items with the left hand.
 
 Code: `roblox/src/client/ThirdPerson.luau` (all of the pose, on every client), `roblox/src/server/ThirdPersonRelay.server.luau`
-(the network), small hooks in `client/Arsenal.client.luau` and `client_root/CrouchPoses.client.luau`.
+(the network), `roblox/src/client/ShoulderCam.client.luau` (your camera in third person, see "The shoulder camera"),
+small hooks in `client/Arsenal.client.luau`, `client/Move.client.luau`, `client/Utility.client.luau` and
+`client_root/CrouchPoses.client.luau`.
 
 ## How it works
 
@@ -44,7 +46,8 @@ Every frame, for every character holding a weapon (players, the training dummies
    release, or holds the item up for a moment (medkit at the chest, goggles to the face, camera at the eye, radar
    forward, and so on). Driven by the server's `ItemFx` events, so everyone sees it.
 10. **You in third person.** With a weapon out your body turns to face where you aim (first person already did), and
-    the gun points at what the crosshair is on (a ray from the camera), not along the camera.
+    the gun points at what the crosshair is on, not along the camera (`TP.crosshair`, below). The camera is the
+    shoulder camera (next section).
 
 The pose runs after the walk animation and after the crouch and slide bends: `CrouchPoses` calls `TP.step(dt)` at the
 end of its own pass (and the module runs its own pass if that call stops coming). Everything is written in the
@@ -52,6 +55,67 @@ chest's own space, so the hands land exactly whatever the chest does.
 
 Roblox's `IKControl` was the first idea. It solves during the animation step, before the crouch poses and this pass
 bend the spine, so its hands slid off the gun whenever the chest moved; this solve runs after, in chest space.
+
+## The shoulder camera
+
+Added 16 Nov 2026 after the pose work ("can the character aim down gun outside of scopes ... in 3rd person"), in
+`client/ShoulderCam.client.luau`. Before it, third person was Roblox's Classic camera: straight behind you with your
+body in the middle of the screen, the mouse free, and the right mouse button both turning the camera and aiming.
+
+- **V** turns third person on and off as before. `Move.client` sets the player's attribute `ThirdPerson`; the
+  shoulder camera drives the camera (Scriptable) while it is true and the device has a mouse. First person is still
+  Roblox's own camera, untouched.
+- **Over the right shoulder:** the camera turns about a point 1.5 studs over your root (Roblox's own camera's point,
+  with the crouch and slide drop) and sits 2.5 studs right, 0.6 up and 8 back. The crosshair in the middle of the
+  screen sees past you.
+- **The mouse is locked to the middle** of the screen: moving it turns the camera, no button to hold, at Roblox's own
+  camera rate (0.5 degrees a pixel, 0.77 of that up and down), so it turns as it does in first person; the P menu's
+  sensitivity scales both.
+- **Aiming (RMB with a gun)** brings the camera in to 2.3 right, 0.55 up and 5.4 back (wide enough that the owner's
+  big hat stays off the crosshair), at the speed the gun comes up to your eye (`TP.aiming`, Arsenal's ADS blend,
+  eased); the gun's ADS zoom still narrows the view.
+- **Walls:** a ball the camera's size (0.4 studs) is swept from your head out to where the camera wants to be; a wall
+  in the way pulls it straight in, and it eases back out (rate 6 a second) once the way is clear. Bodies, see-through
+  parts (glass, invisible hit boxes), trusses and anything you can walk through don't stop it. If it ends up closer
+  than 2.6 studs to your head (a wall right behind you), your body fades out of the way, fully gone at 1 stud, as
+  Roblox's own camera does; the gun keeps its own look. Looking up, the camera stops going down behind you at 25
+  degrees, so it never swings under you into the floor.
+- **In and out:** turning third person on, the camera starts 0.6 of the way out and eases back; turning it off, it
+  glides into your head in 0.14 s and hands over to first person.
+- **Menus:** while `LoadoutOpen` is set (loadout, shop, profile, loot opening) the menu has the camera and the mouse;
+  under the settings panel (`SettingsOpen`) the mouse is free and the camera holds still.
+- **Camera kicks and shakes** (Arsenal's recoil, the items) are changes from last frame's look, so the camera reads its
+  look back every frame, as Roblox's own camera does: recoil climbs the same way in both views.
+- **Hits land on the crosshair, also up close.** With the camera off to the side, a line from your eye to whatever
+  the crosshair shows on the far wall can pass beside a player standing close under the crosshair. So
+  `TP.crosshair(eye)` casts the camera's ray (from level with your head, so nothing behind you counts) against the
+  map and everyone's hit boxes (the boxes the shots use), and Arsenal fires from your eye to that point: the server
+  checks shots from the eye, the tracer is drawn from the muzzle to the hit. Your character's gun points at the same
+  point.
+- **Telling first person from third:** Arsenal, ThirdPerson and Utility used "the camera is more than 4.5 studs from
+  your root"; in a tight corner the shoulder camera can come closer than that, so they now also count the
+  `ThirdPerson` attribute.
+- Tune live in a Play test through the script's `Tune` attribute (JSON merged into `C`, e.g. `{"hip":{"back":9}}`),
+  then write the numbers back into the file.
+
+![before and after](third-person/shoulder-camera.jpg)
+
+*Before (Roblox's Classic camera) and after, on the owner's avatar in the training range; a tight corner (a wall 2
+studs behind the back and one on the right); a wide body (width x1.6, depth x1.4).*
+
+Tested in Play on 16 Nov 2026 (in place version 430), real V, mouse and P keys:
+
+- V: the camera went Scriptable, the mouse locked to the middle, 2.5 right / 0.6 up / 8 back; your body and gun
+  showing. RMB: 2.3 / 0.55 / 5.4 with the rifle's zoom (FOV 80 to 53). V again: first person as before (Roblox's
+  camera, mouse locked, the first-person gun showing, the third-person copy hidden).
+- Close range: crosshair on the left half of a dummy 6 studs away. The old aim (map only) passed 2.23 studs from
+  the box centre (half-width 1.56: a miss); the new aim hits, and a real click took the dummy from 100 to 45.
+- Tight corner: the camera stopped 1.2 studs from the head, never inside a wall; the body faded to 0.86; the gun and
+  crosshair stayed clear; no first-person gun popped in.
+- Wide body (a respawn mid-test): the camera carried on over the new body, hip and aim.
+- P: the mouse is free under the settings panel and locks again when it closes. No errors in the output.
+- With the owner's big hat, aiming at 1.7 right put the hat next to the crosshair; 2.3 keeps it clear. On a body
+  scaled up 1.6 wide the scaled-up hat fills the left half while aiming (the crosshair stays clear).
 
 ## The network
 
@@ -130,7 +194,6 @@ Known limits and ideas for later:
 - The Redline's jerry can and the marble bag (first-person reload props) are not shown in third person; the off hand
   stays on the gun for those two reloads.
 - The sprint lowering and the throw's item model in the hand are in the code but were not photographed.
-- Third person keeps Roblox's Classic camera, so holding RMB to aim also turns the camera. An over-the-shoulder aim
-  camera (offset right, mouse locked) would make aiming in third person feel like a shooter; that is a camera change,
-  not part of this pose work.
+- The shoulder camera needs a mouse: on a device without one, V's third person stays Roblox's Classic camera. There
+  is no key to swap shoulders, and the shoulder offset doesn't grow with a very wide body.
 - The `TPState` remote is made by `ThirdPersonRelay` when the server starts (it is not in `default.project.json`).

@@ -659,6 +659,7 @@ function TP.mine(aim: number, sprint: boolean?, ammo: number?)
 	mine.sprint = sprint == true
 	mine.ammo = ammo
 end
+function TP.aiming(): number return mine.aim end -- (how far you're aimed in, 0 to 1: the shoulder camera comes in with it)
 local function myRig(): Rig? return rigFor(me.Character) end
 function TP.fired(wid: string, fan: boolean?)
 	local r = myRig()
@@ -756,28 +757,55 @@ end
 local function thirdPerson(): boolean
 	local ch = me.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
-	return root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5
+	-- (third person is on: the shoulder camera can come in closer than that in a tight corner)
+	return me:GetAttribute("ThirdPerson") == true or (root ~= nil and (camera.CFrame.Position - root.Position).Magnitude > 4.5)
 end
 TP.thirdPerson = thirdPerson
 
+-- what's under the crosshair in third person: the camera's ray, started level with your head (nothing between the
+-- camera and you counts), against the map and everyone's hit boxes (the boxes the shots use). Your shots (Arsenal)
+-- and your gun go from your eye to this point, so with the camera over your shoulder they still land on the
+-- crosshair up close
+local mapRay = RaycastParams.new()
+mapRay.FilterType = Enum.RaycastFilterType.Include
+function TP.crosshair(eye: Vector3): Vector3
+	local cam = camera.CFrame
+	local look = cam.LookVector
+	local o = cam.Position + look * math.max(0, (eye - cam.Position):Dot(look))
+	local far = 900
+	local map = workspace:FindFirstChild("Map")
+	if map then
+		mapRay.FilterDescendantsInstances = { map }
+		local hit = workspace:Raycast(o, look * far, mapRay)
+		if hit then far = (hit.Position - o).Magnitude end
+	end
+	local best = far
+	local function body(m: Model)
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if not hum or not root or hum.Health <= 0 then return end
+		local feet = Hitbox.feet(root.Position)
+		local t = Hitbox.ray(o, look, feet, Hitbox.distScale((feet - eye).Magnitude))
+		if t and t < best then best = t end
+	end
+	for _, p in Players:GetPlayers() do
+		if p ~= me and p.Character then body(p.Character) end
+	end
+	local dm = workspace:FindFirstChild("Dummies")
+	if dm then for _, m in dm:GetChildren() do if m:IsA("Model") then body(m) end end end
+	if best < far then best += 0.3 end -- (a little into the box: the line from your eye surely goes in)
+	return o + look * best
+end
+
 -- where you look, for your own body: from your eye toward what the crosshair is on (so in third person the gun points
 -- at what the camera's centre sees, not along the camera)
-local aimRay = RaycastParams.new()
-aimRay.FilterType = Enum.RaycastFilterType.Include
 local myAim = { pitch = 0, yaw = 0 }
 local function myLook(r: Rig)
 	local cam = camera.CFrame
 	local eye = r.root.Position + V(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0)
 	local dir = cam.LookVector
 	if thirdPerson() then
-		local map = workspace:FindFirstChild("Map")
-		local target = cam.Position + cam.LookVector * 300
-		if map then
-			aimRay.FilterDescendantsInstances = { map }
-			local hit = workspace:Raycast(cam.Position, cam.LookVector * 300, aimRay)
-			if hit then target = hit.Position end
-		end
-		local to = target - eye
+		local to = TP.crosshair(eye) - eye
 		if to.Magnitude > 1 then dir = to.Unit end
 	end
 	local rel = r.root.CFrame:VectorToObjectSpace(dir)

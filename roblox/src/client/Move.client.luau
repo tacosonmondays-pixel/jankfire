@@ -30,6 +30,7 @@ local thirdPerson = false
 local function setCamera()
 	player.CameraMode = if thirdPerson then Enum.CameraMode.Classic else Enum.CameraMode.LockFirstPerson
 	if thirdPerson then player.CameraMinZoomDistance = 10; player.CameraMaxZoomDistance = 20 else player.CameraMinZoomDistance = 0.5 end
+	player:SetAttribute("ThirdPerson", thirdPerson) -- (ShoulderCam.client puts the camera over your shoulder)
 end
 
 local function dropRope()
