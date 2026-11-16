@@ -10,7 +10,8 @@ on top" rule; `tools/blender/make_gunhats.py`). The shapes and colours are our o
 rounded masses, two or three flat colours, SmoothPlastic, no pictures; Neon only for the halo, whose glow is the
 point. The aim was a polished charm in the class of Roblox RIVALS, not a joke prop.
 
-Pictures (`gun-hats/`): `round6-first-person.jpg` (the live round-6 hats on the Assault Rifle from the eye, place
+Pictures (`gun-hats/`): **`hats-sheet.jpg`** (the live hats on the Assault Rifle, first person above third person,
+place version 319), `hats-blender.png` (the ten models on their own), `round6-first-person.jpg` (the live round-6 hats on the Assault Rifle from the eye, place
 version 312), `round6-seats.jpg` (the Marble Shotgun and the Katana), `round5-third-person.jpg` (third person on a
 dummy's rifle, round 5), `round6-blender.png`, `round4-first-person.jpg` (the ten round-4 hats on the Assault Rifle in the training hall,
 from the eye, place version 300), `round4-scopes.jpg` (Second Opinion and the Sniper from the eye), `round1-first-person.jpg` and `round1-third-person.jpg` (all ten round-1 hats on the Assault
@@ -118,6 +119,8 @@ principles (vault `Principles/Design principles.md`) and the Rivals-class bar.
 | 1 (models r3) | 5 / 10 | readable and clean, but loud primaries (safety orange, lemon, pure Neon yellow), no shared look, uneven sizes (crown, duck, eyes half the others' weight), the googly eyes and the halo toy-jank; jammed or floating on six guns (Yeehaw, Second Opinion, Shotgun, Half a Shotgun, Lawn Mower, Marble Shotgun) and beside the Katana's blade. Nothing over the crosshair; the sight picture clean | round 4 |
 | 2 (models r4, place v300) | 6 / 10 | the cowboy, top hat and chef hat premium; the set still no shared palette, the "gold" a bright yellow plastic at a different value on every hat, no common mount; the halo a flat yellow Neon sticker; the crown's points like cat ears; the eyes' tray and rims noise; the scoped guns' hats a speck or sunk into the optic. Nothing over the crosshair | round 5 |
 | 3 (models r5, place v307) | 6.5 / 10 | top hat 8, cowboy and crown 7.5; the halo a donut on a cake pick (the stem), the eyes a gag sticker, the palette louder in game than in Blender; the Marble Shotgun's hat hidden by the jar. One more round should reach about 7.5 | round 6 |
+| 4 (models r6, place v312) | 7 / 10 | cowboy and top hat 8; the set holds together; the eyes fixed; the halo an onion ring floating far over an empty foot; the palette tuned in Blender, not in the hall (the crown, cone, cap and duck brighter in game); the cap a desk bell; the Katana's hat a sliver at the screen's edge; the spinning and rattling bits always in view. One more round: about 7.6, then stop | round 7 |
+| 5 (models r7, place v315) | 7.3 / 10 | cowboy 8.5, top hat and duck 8; nothing over the crosshair; from other players' view the halo closed into a solid pale disc and the eyes showed only their backs; the other eight at the point where model changes stop being noticed (on screen a hat is about 100 px wide): one targeted round on the halo still pays, then stop | round 8 (halo, eyes); then stopped |
 
 **Round 4** (`hat_models.py` top of the hats): one calm palette for the whole set (mid values, saturation a third
 lower), one shared trim on every hat in brushed gold (`GOLD`: the party hat's roll, the cone's collar, the cowboy and
@@ -147,12 +150,29 @@ step deeper; the Marble Shotgun's hat behind the jar on the barrel nearest the e
 Under the hall's lamps the duck still reads as a bright yellow and the crown's gold as a warm gold: a darker hex moves
 them less than it should.
 
+**Round 7** (live in place version 315): colours tuned against the in-game photos (the cone, cap and duck a fifth less
+saturated, the crown in a darker brass and a deeper wine with smaller stones, and smaller overall); the halo a wide,
+thin ring of muted-gold Neon (a fifth see-through) just over its foot; a real peak on the propeller cap; the party
+hat's foot roll thinner; calmer motion (the propeller at 9 rad/s, the halo's bob halved, the pupils' rattle every
+0.11 s); the Katana's hat hidden in first person (`GunHats.HIDE_FIRST_PERSON`: on the pommel it was a sliver under the
+HUD); the Marble Shotgun's hat a little further back, clear of the jar's foot.
+
+**Round 8** (live in place version 319, the last): the halo thinner (tube 2.5 mm on a 32 mm ring) with a bigger
+opening, tipped 20 degrees toward the player, a dimmer Neon: from the side it now reads as a thin ring, not a disc; the
+googly eyes splayed 30 degrees out to the sides and tipped less far back, each pupil rattling in its own eye's plane.
+**Where it stopped, and why:** the fifth judge put the set at 7.3 and said further rounds on these models would not
+be noticed; the rest of the gap to the Rivals bar is presentation (a shop or equip render, how a hat looks when it is
+won), not geometry. The googly eyes are the weakest idea for other players (they look back at their owner, so from in
+front others see their backs); a new concept would do more for it than another round.
+
 ## Not done / open
 
-- **Live: round 6** (asset 95843162180568), place version 312 (16 Nov 2026, ~10:28 UTC), on the owner's picked guns
+- **Live: round 8** (asset 115737966966098), place version 319 (16 Nov 2026, ~10:46 UTC), on the owner's picked guns
   (place version 298). Older hat uploads and the push models are no longer used.
-- The Katana's hat stands on its pommel, which is below the frame in first person: it shows in third person, on the
-  racks and in the loadout.
+- The Katana's hat stands on its pommel and is hidden in first person; it shows in third person, on the racks and in
+  the loadout.
+- Under the training hall's lamps warm colours still read brighter than their hex (the duck, the crown's gold). A
+  darker hex moves them less than expected; judge colours from in-game photos, never from Blender.
 - The hats are all free to pick (the Roblox port has no inventory or crates yet, the same as wraps).
 - The Googly Eyes face the player who holds the gun (they look back at you); from in front, other players see their
   white backs.

@@ -24,6 +24,9 @@ GunHats.AIM_HIDE = 0.3
 GunHats.THIRD = 1.5
 -- reload clips during which the first-person hat steps away too: the Marble Shotgun's bag pours into the jar the hat
 -- sits on
+-- weapons whose hat never shows in first person: the Katana's sits on its pommel, which only peeks in at the bottom
+-- edge of the screen (a sliver under the HUD); it shows in third person, on the racks and in the loadout
+GunHats.HIDE_FIRST_PERSON = { katana = true } :: { [string]: boolean }
 GunHats.HIDE_CLIPS = {} :: { [string]: boolean } -- (round 5: none: the Marble Shotgun's hat left the jar for the barrel)
 -- a saddle (spot.saddle, metres): a slate puck under the hat's foot, so a flat foot sits on a round scope or barrel
 GunHats.SADDLE_R = 0.022 -- its radius (metres, at the hat's size 1)
@@ -244,7 +247,7 @@ end
 function GunHats.aim(m: Model, aim: number, clip: string?)
 	local hat = m:FindFirstChild("GunHat")
 	if not hat then return end
-	local hide = aim >= GunHats.AIM_HIDE or (clip ~= nil and GunHats.HIDE_CLIPS[clip] == true)
+	local hide = aim >= GunHats.AIM_HIDE or (clip ~= nil and GunHats.HIDE_CLIPS[clip] == true) or GunHats.HIDE_FIRST_PERSON[m.Name] == true
 	if hat:GetAttribute("Hidden") == hide then return end
 	hat:SetAttribute("Hidden", hide)
 	for _, p in hat:GetChildren() do
@@ -271,7 +274,7 @@ function GunHats.step(dt: number)
 	local cam = workspace.CurrentCamera
 	if cam then camPos = cam.CFrame.Position end
 	rattleT += dt
-	local doRattle = rattleT >= 0.05
+	local doRattle = rattleT >= 0.11 -- (round 7: a calmer rattle: the pupils sit in view the whole time)
 	if doRattle then rattleT = 0 end
 	for p in live do
 		if not p.Parent then live[p] = nil; continue end

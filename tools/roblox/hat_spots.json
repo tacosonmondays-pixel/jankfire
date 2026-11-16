@@ -13,7 +13,7 @@
   "pistol": {"z": -0.08, "s": 0.62, "note": "on the slide, back from the front sight (it rides the slide)"},
   "revolver": {"z": -0.05, "s": 0.7, "note": "on the top strap over the cylinder"},
   "redline": {"z": 0.05, "s": 0.75, "note": "on the deck behind the gauge, ahead of the rear sight (A model: the bigger gauge stands where the hat was)"},
-  "marbles": {"z": 0.0, "s": 0.65, "saddle": 0.003, "note": "on the barrel behind the marble jar, nearest the eye (round 6: ahead of the jar, the jar hid it)"},
+  "marbles": {"z": 0.045, "s": 0.62, "saddle": 0.003, "note": "on the barrel behind the marble jar, nearest the eye, clear of the jar's foot (round 7: a little further back)"},
   "katana": {"z": 0.128, "y": 0.0, "pitch": 90, "s": 0.6, "note": "on the pommel, standing off the end of the handle (round 4: on the blade it floated beside the edge)"},
   "shredder": {"z": -0.04, "s": 1.3, "note": "on top of the body behind the bell"}
 }
