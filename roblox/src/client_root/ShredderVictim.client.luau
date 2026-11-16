@@ -8,6 +8,9 @@ local lp = Players.LocalPlayer
 local remote = ReplicatedStorage:WaitForChild("ShredderRemote")
 local Hud
 pcall(function() Hud = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Hud")) end)
+local Body -- (Body.throw: tells Move the pull is meant, so its fling guard and its LinearVelocity go along)
+pcall(function() Body = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Body")) end)
+local function throw(root, v) if Body and Body.throw then Body.throw(v) else root.AssemblyLinearVelocity = v end end
 
 local holdAt, holdUntil = nil, 0
 local function ok(v) return typeof(v) == "Vector3" and v.X == v.X and v.Y == v.Y and v.Z == v.Z and v.Magnitude < 1e5 end
@@ -21,7 +24,7 @@ remote.OnClientEvent:Connect(function(kind, a, b)
 	end
 	if not root then return end
 	if kind == "pull" and ok(a) and a.Magnitude < 300 then
-		root.AssemblyLinearVelocity += a
+		throw(root, root.AssemblyLinearVelocity + a)
 	elseif kind == "grab" and ok(a) then
 		holdAt, holdUntil = a, os.clock() + 0.26
 		if Hud then Hud.callout("IN THE TEETH", 0.3) end
@@ -45,7 +48,7 @@ RunService.Heartbeat:Connect(function()
 	if not root then return end
 	local v = (holdAt - root.Position) * 9
 	if v.Magnitude > 90 then v = v.Unit * 90 end
-	root.AssemblyLinearVelocity = v
+	throw(root, v)
 end)
 
 -- other people's Shredders: the gun swivels toward whoever it's eating (its owner sends it, the server checks it and

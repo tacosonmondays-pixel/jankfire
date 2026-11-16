@@ -24,6 +24,10 @@ Body.onStep = nil :: ((any, Vector3, number) -> ())?
 Body.boost = 1
 -- how fast you run right now, x the usual (Arsenal sets it: the gun in your hands, and slower down the sights)
 Body.speedMul = 1
+-- when one of our own moves last threw you (a push, a knock, a slip, a ledge launch, a shredder pull). Move's fling
+-- guard lets a sudden jump in speed through only just after one of these: anything else is a collision spike
+Body.kickT = -10
+function Body.kick() Body.kickT = os.clock() end
 local slipToken = 0
 
 function Body.attach(st: Movement.State, hum: Humanoid, root: BasePart)
@@ -37,11 +41,24 @@ local function alive(): (Humanoid?, BasePart?)
 	return h, r
 end
 
+-- set your velocity as one of our own throws: Move's fling guard lets it through, and Move's LinearVelocity takes it
+-- as its target at once (a knock can land after Move has set this frame's target, which then braked it to nothing)
+function Body.throw(v: Vector3)
+	local root = Body.root
+	if not root or not root.Parent then return end
+	Body.kick()
+	root.AssemblyLinearVelocity = v
+	local jm = root:FindFirstChild("JankMove")
+	if jm and jm:IsA("LinearVelocity") then jm.PlaneVelocity = Vector2.new(v.X, v.Z) end
+	local st = Body.st
+	if st then st.vx, st.vy, st.vz = v.X, v.Y, v.Z end
+end
+
 -- add a velocity (studs/s) to yourself. upward shoves lift you off the floor so the Humanoid doesn't eat them
 function Body.push(v: Vector3)
 	local hum, root = alive()
 	if not hum or not root then return end
-	root.AssemblyLinearVelocity += v
+	Body.throw(root.AssemblyLinearVelocity + v)
 	if v.Y > 1.5 and hum.FloorMaterial ~= Enum.Material.Air then
 		root.CFrame += Vector3.new(0, 0.06, 0)
 		hum:ChangeState(Enum.HumanoidStateType.Freefall)
@@ -59,7 +76,7 @@ function Body.slip(kind: string)
 	if st.hook then GrappleRemote:FireServer("release") end
 	local Sl = Weapons.SLIP
 	Movement.slip(st, look.X, look.Z, Sl.time, Sl.fwd, Sl.up)
-	root.AssemblyLinearVelocity = Vector3.new(st.vx, st.vy, st.vz)
+	Body.throw(Vector3.new(st.vx, st.vy, st.vz))
 	hum:SetStateEnabled(Enum.HumanoidStateType.Jumping, false)
 	hum.PlatformStand = true -- the body goes over (jank), the movement maths keeps sliding it
 	root.AssemblyAngularVelocity = Vector3.new(-look.Z, 0, look.X) * -6

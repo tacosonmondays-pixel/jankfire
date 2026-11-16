@@ -618,6 +618,47 @@ Tested in Play: the bridge pad lands on the bridge, the climb pad on the deck, t
 - the door panel's BENCH / RANGE / COURSE labels are too small at play distance (rows instead of columns), and the Plinker's stand still covers KEEP CLEAR
 - the HUD's zone line on the lot still says "the dummies hit back in here"
 
+## 25. Bumping into things flung you: fixed, 16 November 2026 (place version 348)
+
+The owner: "at the smallest touch it'll launch you and ragdoll you". Reproduced in a solo Play test by plain sprinting
+in the hub with no rope out: the body spun up to 3000°/s, dropped into the Humanoid's `FallingDown` state and was thrown
+at 540 studs/s. Grapple Impacts (BONK, LEDGE LAUNCH) never fired: it was not the cause.
+
+**The cause.** `Jankfire.Move` held your sideways speed with a `LinearVelocity` at `MaxForce` 1e7, because the
+Humanoid's own ground controller (walk where the keys point at `WalkSpeed`) is very strong and fought every slide,
+bhop landing and knockback. 1e7 pressed into a kerb, a sill, a dummy or another body made huge contact shoves and spin.
+Worse, each step's maths starts from the body's measured velocity, so a one-step collision spike was read back in and
+then held by the 1e7 force: brush something and it snowballed into a launch. Turning the force down alone was not
+enough (at 2e4 the Humanoid's walk killed a 70 studs/s knockback down to 4.5).
+
+**The fix** (all client, `Move`, `Body`, `GrappleImpacts`, `ShredderVictim`):
+- **Steering:** after reading the keys, each step Move tells the Humanoid to walk exactly where the maths is taking you
+  (`Humanoid:Move` along your velocity, `WalkSpeed` = your speed), so its controller agrees with the `LinearVelocity`
+  instead of fighting it. The keys come from the control module's `moveFunction` (hooked); a frame without that call
+  (controls off, the loadout screen) counts as no input. If the hook can't be made, Move warns and works as before.
+- `JankMove.MaxForce` = max(2e4, mass × 3500), about 3500 studs/s² (was 1e7).
+- **Fling guard:** a jump in speed none of our own moves made is put back: more than 18 studs/s sideways (6 m/s) or
+  more than the slide jump's height + 12 studs/s upward over what Move asked for last step. Our own throws go through
+  `Body.throw(v)` and pass for 0.15 s: `Body.push` (recoil, knockback), the marble slip, the ledge launch, the
+  ragdoll, the Shredder's pull. `Body.throw` also sets the `LinearVelocity`'s target at once: a knock that arrives
+  after Move has set this frame's target used to be braked by it. Pads, the rope and the items' `Body.onStep` are
+  inside the maths and always pass.
+- **No tumbling:** spin about any axis but the vertical is zeroed each step (vertical capped at 30 rad/s), except while
+  `PlatformStand` (the slip, the BONK ragdoll, the Shredder).
+- The Humanoid's `FallingDown` and `Ragdoll` states are off on your character.
+- **Grapple Impacts** (a Roblox-only gag, not in the web game) kept but rare: only while really on the rope (Move's
+  `OnRope` player attribute, instead of "any beam in Terrain fixed to you", which a lingering server rope could keep
+  true), never in the 0.6 s after letting go. LEDGE LAUNCH from 55 studs/s (was 35); BONK from 90 studs/s and only in
+  the air (was 50, or 80 on the ground); 3 s between them (was 1.2).
+
+**Tested in Play** (solo; a sprint with strafes, a slide and a slide jump in the hub, on Rooftop v2 and on Rooftop v3;
+a sprint straight into a training-yard dummy): no `FallingDown`, no launches, the body stayed upright, top speed
+44–50 studs/s (sprint 43.5, plus the slide). Before the fix the same hub run spun the body at up to 3000°/s and threw
+it at 540 studs/s. A server knockback of (70, 35) now carries 70 sideways and 34 up through the air; it had been braked
+to 4.5 at 2e4 force, and reached only 52 sideways at 1e7. The marble slip (1.7 s on your back, then up), the hub pad
+(58 up) and the grapple (hook, on the rope, grapple jump, let go) all still work. Swinging into the rotunda's wall gave
+no BONK. Not tried: other players bumping you (a solo test), a real BONK or LEDGE LAUNCH at the new speeds.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

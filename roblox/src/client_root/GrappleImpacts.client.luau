@@ -1,6 +1,9 @@
 -- grapple impacts: swinging into things at speed has consequences. clip a ledge (something about waist-to-head
 -- high) and it vaults you up into the air; slam face-first into a wall or a big object and you ragdoll for a moment.
--- only on the rope or just after letting go, so plain running into walls stays plain.
+-- only while you are really on the rope (Move's OnRope attribute), and only for big slams: plain running, sprinting,
+-- sliding and brushing things never count. (16 Nov 2026: it used to count for 0.6 s after letting go from 35 studs/s
+-- up, going by any beam fixed to you; the thresholds are now well above a normal swing. a Roblox-only gag, not in
+-- the web game.)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -10,22 +13,20 @@ local GrappleRemote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForC
 local ImpactRemote = ReplicatedStorage:WaitForChild("ImpactRemote")
 local Hud
 pcall(function() Hud = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Hud")) end)
+local Body -- (Body.throw: tells Move this throw is ours, so its fling guard and its LinearVelocity go along)
+pcall(function() Body = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Body")) end)
+local function throw(root, v) if Body and Body.throw then Body.throw(v) else root.AssemblyLinearVelocity = v end end
 
-local LAUNCH_MIN = 35 -- studs/s sideways to get vaulted off a ledge
-local RAGDOLL_MIN = 50 -- studs/s to get ragdolled by a wall
-local LOSS = 0.45 -- lose this share of your speed in one step = you hit something
-local AFTER = 0.6 -- s after letting go of the rope that still counts
-local COOLDOWN = 1.2
+local LAUNCH_MIN = 55 -- studs/s sideways, on the rope, to get vaulted off a ledge (a sprint is 43)
+local RAGDOLL_MIN = 90 -- studs/s, on the rope and in the air, to get ragdolled by a wall
+local COOLDOWN = 3
 local RAGDOLL_FOR = 1.6
 
-local lastV, ropeT, lastHit, ragdolling = nil, -10, -10, false
+local lastHit, ragdolling = -10, false
 
-local function onRope(ch)
-	for _, b in ipairs(workspace.Terrain:GetChildren()) do
-		if b:IsA("Beam") and b.Attachment0 and b.Attachment0:IsDescendantOf(ch) then return true end
-	end
-	return false
-end
+-- Move says whether you're on the rope this step. (it used to be "any beam in Terrain fixed to you": the server's copy
+-- of a rope could outlive the hook)
+local function onRope() return lp:GetAttribute("OnRope") == true end
 
 local function letGo(kind)
 	GrappleRemote:FireServer("release") -- the rope everyone else sees
@@ -34,7 +35,7 @@ end
 
 local function launch(root, dir, speed)
 	letGo("launch")
-	root.AssemblyLinearVelocity = dir * speed * 0.75 + Vector3.new(0, 45 + speed * 0.4, 0)
+	throw(root, dir * speed * 0.75 + Vector3.new(0, 45 + speed * 0.4, 0))
 	if Hud then Hud.callout("LEDGE LAUNCH", 0.7) end
 end
 
@@ -83,7 +84,7 @@ local function ragdoll(ch, hum, root, dir, speed)
 	local jm = root:FindFirstChild("JankMove") -- Move's sideways-velocity holder: off, so you actually tumble
 	if jm then jm.Enabled = false end
 	hum.PlatformStand = true
-	root.AssemblyLinearVelocity = -dir * speed * 0.3 + Vector3.new(0, 18, 0) -- BONK: bounce back off it
+	throw(root, -dir * speed * 0.3 + Vector3.new(0, 18, 0)) -- BONK: bounce back off it
 	root.AssemblyAngularVelocity = Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 14
 	if Hud then Hud.callout("BONK", 0.8) end
 	task.delay(RAGDOLL_FOR, function()
@@ -109,13 +110,12 @@ RunService.Heartbeat:Connect(function(dt)
 	local root = ch and ch:FindFirstChild("HumanoidRootPart")
 	if not hum or not root or hum.Health <= 0 or dt <= 0 then lastPos = nil return end
 	local now = os.clock()
-	if onRope(ch) then ropeT = now end
 	-- off the ground for a moment (a swing), not the little hops of running up stairs
 	if hum.FloorMaterial == Enum.Material.Air then airSince = airSince or now else airSince = nil end
 	local pos = root.Position
 	local prev = lastPos
 	lastPos = pos
-	if not prev or ragdolling or now - lastHit < COOLDOWN or now - ropeT > AFTER then return end
+	if not prev or ragdolling or now - lastHit < COOLDOWN or not onRope() or hum.PlatformStand then return end
 	local moved = Vector3.new(pos.X - prev.X, 0, pos.Z - prev.Z)
 	local s0 = moved.Magnitude / dt
 	if s0 < LAUNCH_MIN or s0 > 600 then return end -- (600+: a teleport or a respawn, not a swing)
@@ -148,7 +148,7 @@ RunService.Heartbeat:Connect(function(dt)
 			return
 		end
 	end
-	if wall and s0 >= RAGDOLL_MIN and (airborne or s0 >= 80) then
+	if wall and s0 >= RAGDOLL_MIN and airborne then
 		lastHit = now
 		ragdoll(ch, hum, root, dir, s0)
 	end

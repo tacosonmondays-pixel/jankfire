@@ -115,6 +115,7 @@ end)
 
 -- the controller pieces on a fresh character
 local lv: LinearVelocity? = nil
+local lastSet: Vector3? = nil -- the velocity we asked for last step (the fling guard compares against it)
 local hipBase = 2
 local function setup(ch: Model)
 	releaseHook(false)
@@ -124,7 +125,12 @@ local function setup(ch: Model)
 	hum.UseJumpPower = true
 	hum.JumpPower = Config.jump
 	hum.WalkSpeed = Config.gSpeed
+	-- never trip over: a bump that tilts the body must not drop it into the Humanoid's own fall-over states (the
+	-- marble slip and the grapple's BONK go over on purpose, with PlatformStand)
+	hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
 	hipBase = hum.HipHeight
+	lastSet = nil
 	Body.attach(st, hum, root)
 	local att = root:FindFirstChild("RootAttachment") :: Attachment? or Instance.new("Attachment", root)
 	local v = Instance.new("LinearVelocity")
@@ -134,7 +140,9 @@ local function setup(ch: Model)
 	v.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
 	v.PrimaryTangentAxis = Vector3.xAxis
 	v.SecondaryTangentAxis = Vector3.zAxis
-	v.MaxForce = 1e7
+	-- about 3500 studs/s² on a light avatar: plenty in the air and with the Humanoid steered along (see "steering"),
+	-- gentle enough that pressing into a wall, a kerb or another body can't build the huge contact shove 1e7 did
+	v.MaxForce = math.max(2e4, root.AssemblyMass * 3500)
 	v.Parent = root
 	lv = v
 	hum.Died:Connect(function() releaseHook(false); v.Enabled = false end)
@@ -144,20 +152,68 @@ player.CharacterAdded:Connect(setup)
 if player.Character then task.spawn(setup, player.Character) end
 
 local lastPad = 0
+-- the fling guard's room (studs/s in one step): sideways nothing of ours adds speed outside the maths; upwards the
+-- Humanoid's own jump (a slide jump is the biggest) and stepping up a kerb have to fit
+local FLING_SIDE = 6 * Config.S
+local FLING_UP = Config.jump * Config.slideJumpUp + 4 * Config.S
 local jumpBoostUntil: number? = nil
 local eye = Config.standEye
+-- steering the Humanoid. its own ground controller is very strong: left to walk where the keys point at WalkSpeed it
+-- fights the LinearVelocity on every slide, bhop landing and knockback, which is why the LinearVelocity needed 1e7 (and
+-- 1e7 pressed into a kerb or a dummy is what flung people). so after reading the keys, each step tells the Humanoid to
+-- walk exactly where the maths is taking you, at that speed: it agrees, and the LinearVelocity can stay gentle.
+-- the keys come from the control module calling its moveFunction each frame; a frame without that call (controls off:
+-- the loadout screen) is no input, never our own steer read back
+local steering, inputFresh = false, false
+task.spawn(function()
+	local ok, controls = pcall(function()
+		return (require(player:WaitForChild("PlayerScripts"):WaitForChild("PlayerModule") :: any) :: any):GetControls()
+	end)
+	if not ok or type(controls) ~= "table" or type(controls.moveFunction) ~= "function" then
+		warn("[jankfire] Move: no control module hook, the Humanoid walks on its own")
+		return
+	end
+	local orig = controls.moveFunction
+	controls.moveFunction = function(...)
+		inputFresh = true
+		return orig(...)
+	end
+	steering = true
+end)
 RunService.PreSimulation:Connect(function(dt: number)
 	local ch, hum, root = character()
 	if not ch or not hum or not root or not lv then return end
 	dt = math.min(dt, 1 / 20)
 	local v = root.AssemblyLinearVelocity
-	st.vx, st.vy, st.vz = v.X, v.Y, v.Z
 	local swimming = hum:GetState() == Enum.HumanoidStateType.Swimming
+	-- the fling guard. the maths below starts from the body's real velocity, and the LinearVelocity then holds whatever
+	-- it says: so a one-step collision spike (brushing a kerb, a sill, a dummy, another player) used to be read back
+	-- in and held, spinning you up and throwing you across the map. a jump in speed that none of our own moves made
+	-- (Body.kick: pushes, knockback, slips, launches; pads and the rope are in lastSet already) is put back
+	if lastSet and not hum.PlatformStand and os.clock() - Body.kickT > 0.15 then
+		local h, hl = Vector3.new(v.X, 0, v.Z), Vector3.new(lastSet.X, 0, lastSet.Z)
+		local vy, spiked = v.Y, false
+		if h.Magnitude > hl.Magnitude + FLING_SIDE then h = hl; spiked = true end
+		if not swimming and vy > math.max(lastSet.Y, 0) + FLING_UP then vy = math.max(lastSet.Y, 0); spiked = true end
+		if spiked then
+			v = Vector3.new(h.X, vy, h.Z)
+			root.AssemblyLinearVelocity = v
+		end
+	end
+	-- and no tumbling: the Humanoid turns you about the vertical itself; spin about any other axis is a bump
+	if not hum.PlatformStand then
+		local w = root.AssemblyAngularVelocity
+		if math.abs(w.X) + math.abs(w.Z) > 0.5 or math.abs(w.Y) > 30 then
+			root.AssemblyAngularVelocity = Vector3.new(0, math.clamp(w.Y, -30, 30), 0)
+		end
+	end
+	st.vx, st.vy, st.vz = v.X, v.Y, v.Z
 	local grounded = not swimming and hum.FloorMaterial ~= Enum.Material.Air and v.Y < 1
 	st.onGround = grounded
 	st.groundTicks = if grounded then st.groundTicks + 1 else 0
 	-- the wish direction: the control module's move vector is already camera-relative (MoveDirection)
-	local md = hum.MoveDirection
+	local md = if steering and not inputFresh then Vector3.zero else hum.MoveDirection
+	inputFresh = false
 	local look = camera.CFrame.LookVector
 	local fw = Vector3.new(look.X, 0, look.Z)
 	local fwd = fw.Magnitude > 0 and md.Magnitude > 0 and md:Dot(fw.Unit) > 0.3
@@ -218,7 +274,21 @@ RunService.PreSimulation:Connect(function(dt: number)
 	end
 	lv.PlaneVelocity = Vector2.new(st.vx, st.vz)
 	if math.abs(st.vy - v.Y) > 1e-3 then root.AssemblyLinearVelocity = Vector3.new(st.vx, st.vy, st.vz) end
-	hum.WalkSpeed = Config.gSpeed * (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * Body.speedMul * Body.boost
+	-- (the Humanoid's own jump lands after this, inside FLING_UP)
+	lastSet = Vector3.new(st.vx, st.vy, st.vz)
+	-- on the rope right now: GrappleImpacts only counts swings that are really on it
+	if player:GetAttribute("OnRope") ~= (st.hook ~= nil) then player:SetAttribute("OnRope", st.hook ~= nil) end
+	local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)
+	if steering and not swimming then
+		if hs > 0.5 then
+			hum.WalkSpeed = hs
+			hum:Move(Vector3.new(st.vx / hs, 0, st.vz / hs), false)
+		else
+			hum:Move(Vector3.zero, false)
+		end
+	else
+		hum.WalkSpeed = Config.gSpeed * (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * Body.speedMul * Body.boost
+	end
 	-- the camera drops for a crouch / slide, the body sinks a bit into a slide (jank)
 	eye += (Movement.eyeTarget(st) - eye) * math.min(1, dt * 14)
 	hum.CameraOffset = Vector3.new(0, eye - Config.standEye, 0)
