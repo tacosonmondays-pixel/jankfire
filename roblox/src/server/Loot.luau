@@ -387,7 +387,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		elseif a == "lock" then
 			s.devAll = false
 		elseif a == "reset" then
-			d.inv = { wrap = {}, hat = {}, skin = {} }
+			d.inv = {}
+			for _, t in TYPES() do d.inv[t] = {} end
 			d.stock = { crate = 0, bag = 0, spray = 0 }
 			s.owned = sets(d)
 		elseif a == "stock" then
@@ -414,7 +415,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 			return { ok = true }
 		elseif a == "set" and type(b) == "table" then
 			-- (put an inventory back as it was before a test: { wrap = {keys}, hat = {keys}, skin = {ids} })
-			local inv = { wrap = {}, hat = {}, skin = {} }
+			local inv = {}
+			for _, t in TYPES() do inv[t] = {} end -- (every owned type: the card looks too)
 			for _, t in TYPES() do
 				local list = (b :: any)[t]
 				if type(list) == "table" then
