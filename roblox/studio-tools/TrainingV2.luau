@@ -25,6 +25,10 @@
 -- (the hub builders clone it as their invisible box), Hub.Doors.ToHub (the way back), Hub.Doors.ToPlayground (the
 -- secret), Hub.Doors.TrainingArrive (where the playground's way back lands). the gun sessions test at (-16, 243.2,
 -- -8150) against Stand1 at (-16, 240, -8170): both kept.
+-- push 10 (16 Nov, the owner: "can you add a large garage door that leads outside to the big rivals style training
+-- grounds, you have to do like a little easter egg to get it or something"): the yard ends on a garage door, and
+-- behind it THE BACK LOT, built by ServerStorage.PolishBackup.TrainingLot (roblox/studio-tools/TrainingLot.luau) from
+-- here; the zone and the barrier take the lot in. the door and the egg are the server's: TheLot.server.luau.
 -- a build wipes and remakes: change the builder, never the built parts. coordinates are the world's (the old hall's
 -- site); a staging copy is the same build moved T.STAGE along x.
 local T = {}
@@ -36,7 +40,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 88505948716411 -- the kit's Model asset (tv_kit_4: training_models.py; rework 3 added the flat grapple hoop)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 9
+T.PUSH = 12
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -65,8 +69,10 @@ T.PLATES = { { "Easy", 40, "CHILL", "chill" }, { "Medium", 54, "NORMAL", "normal
 T.PLATE_Z = -8138
 -- spawn points: two arcs either side of the dais, out of the line the Plinker sees through the yard's opening
 T.SPAWNS = { { -12.5, -8111.5 }, { -15.5, -8117.5 }, { -11.5, -8132 }, { 12.5, -8111.5 }, { 15.5, -8117.5 }, { 11.5, -8132 } }
-T.DUMMIES = { Dummy = { 0, 239, -8202 }, Plinker = { 0, 245.2, -8250 }, Stand1 = { -16, 240, -8170 }, Stand2 = { 16, 240, -8178 } }
-T.ZONE = { -94, 86, 232, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the zone and the barrier)
+T.DUMMIES = { Dummy = { 0, 239, -8202 }, Plinker = { -15, 245.2, -8246 }, Stand1 = { -16, 240, -8170 }, Stand2 = { 16, 240, -8178 } }
+T.ZONE = { -94, 86, 232, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier)
+T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
+T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid, its far end (the zone takes it in)
 
 local function folderIn(parent, name)
 	local f = parent:FindFirstChild(name)
@@ -519,21 +525,10 @@ local function yard(B)
 	end
 	B.blk("Shell", "YardWallW", -YX - 4, -YX, 236, 258.6, YZ0, YZ1, P.wall)
 	B.blk("Shell", "YardWallE", YX, YX + 4, 236, 258.6, YZ0, YZ1, P.wall)
-	-- the end wall opens into a canted niche: two 45-degree cheeks, short returns, a flat back holding the bullseye
-	B.blk("Shell", "YardEnd", -YX - 4, -9.5, 236, 271, YZ1, YZ1 - 4, P.wall)
-	B.blk("Shell", "YardEnd", 9.5, YX + 4, 236, 271, YZ1, YZ1 - 4, P.wall)
-	B.blk("Shell", "YardEnd", -9.5, 9.5, 258, 271, YZ1, YZ1 - 4, P.wall)
-	for _, sx in { -1, 1 } do
-		local a, b = V3(sx * 9.5, 0, YZ1), V3(sx * 5.5, 0, YZ1 - 4)
-		local d = (b - a).Unit
-		local out = V3(sx * 0.7071, 0, -0.7071)
-		local mid = (a + b) / 2 + out
-		B.part("Shell", "NicheCheek", CFrame.lookAt(V3(mid.X, 250, mid.Z), V3(mid.X, 250, mid.Z) + d), V3(2, 16, (b - a).Magnitude + 1.2), P.wall2)
-		B.blk("Shell", "NicheReturn", sx * 5.5, sx * 7.5, 242, 258, YZ1 - 4, YZ1 - 8, P.wall2)
-	end
-	B.blk("Shell", "NicheBack", -7.5, 7.5, 236, 258, YZ1 - 8, YZ1 - 10, P.wall2)
-	B.blk("Shell", "NicheFloor", -9.5, 9.5, 236, 242, YZ1, YZ1 - 8, P.floor)
-	B.blk("Shell", "NicheRoof", -11, 11, 258, 259.5, YZ1, YZ1 - 10, P.wall)
+	-- the end wall: the garage door's opening on the axis (push 10; the door, its frame and panel: TrainingLot)
+	B.blk("Shell", "YardEnd", -YX - 4, -12, 236, 271, YZ1, YZ1 - 4, P.wall)
+	B.blk("Shell", "YardEnd", 12, YX + 4, 236, 271, YZ1, YZ1 - 4, P.wall)
+	B.blk("Shell", "YardEnd", -12, 12, 258.5, 271, YZ1, YZ1 - 4, P.wall)
 	B.blk("Shell", "YardFront", -YX - 4, -9.9, 236, 271, YZ0 + 4, YZ0, P.wall)
 	B.blk("Shell", "YardFront", 9.9, YX + 4, 236, 271, YZ0 + 4, YZ0, P.wall)
 	B.blk("Shell", "YardFront", -9.9, 9.9, MTOP, 271, YZ0 + 4, YZ0, P.wall)
@@ -546,8 +541,8 @@ local function yard(B)
 		B.blk("Shell", "Dado", sx * YX, sx * (YX - 0.2), Y0, Y0 + 1.2, YZ0, YZ1, P.floor2, { ghost = true })
 		B.blk("Shell", "Band", sx * YX, sx * (YX - 0.3), Y0 + 8, Y0 + 8.6, YZ0, YZ1, P.trim, { ghost = true })
 	end
-	B.blk("Shell", "Dado", -YX, -10.6, Y0, Y0 + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
-	B.blk("Shell", "Dado", 10.6, YX, Y0, Y0 + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
+	B.blk("Shell", "Dado", -YX, -15.2, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
+	B.blk("Shell", "Dado", 15.2, YX, STAGE.y, STAGE.y + 1.2, YZ1, YZ1 + 0.2, P.floor2, { ghost = true })
 	-- piers with a capital under every rib, a lamp on each
 	for _, z in PIERS do
 		for _, sx in { -1, 1 } do
@@ -595,15 +590,15 @@ local function yard(B)
 	B.drum("Collision", "PlinkerStandSolid", pk[1], pk[3], STAGE.y, STAGE.y + 2, 12.4, P.pier, { tr = 1, noShadow = true })
 	B.drum("Shell", "PlinkerTop", pk[1], pk[3], STAGE.y + 1.9, pk[2] - 0.3, 8, P.pier2)
 	B.drum("Shell", "PlinkerTopLip", pk[1], pk[3], pk[2] - 0.35, pk[2], 8.5, P.trim)
-	-- a round light in the vault over the stand, the bullseye in a round frame in the niche
-	B.drum("Scenery", "StageLightStem", pk[1], pk[3], 266.8, 268.2, 2, P.dark)
-	B.drum("Scenery", "StageLightRim", pk[1], pk[3], 266.3, 266.9, 10.4, P.trim)
-	B.drum("Scenery", "StageLight", pk[1], pk[3], 266.1, 266.35, 9, P.panel, { ghost = true, mat = NEON })
-	B.part("Shell", "TargetFrame", CF(0, 251, YZ1 - 8 + 0.15) * CFrame.Angles(0, math.pi / 2, 0), V3(0.3, 13.4, 13.4), P.trim, { cyl = true })
-	B.part("Shell", "TargetRecess", CF(0, 251, YZ1 - 8 + 0.3) * CFrame.Angles(0, math.pi / 2, 0), V3(0.5, 12.4, 12.4), P.recess, { cyl = true })
-	B.put("tv_target", CF(0, 251, YZ1 - 8 + 0.9), { name = "EndTarget", scale = 0.65 })
-	B.lamp(-6, 262, YZ1 + 8, "spot", 26, 0.9, P.lampWhite, { look = V3(0, 251, YZ1 - 8), angle = 55 })
-	B.lamp(6, 262, YZ1 + 8, "spot", 26, 0.9, P.lampWhite, { look = V3(0, 251, YZ1 - 8), angle = 55 })
+	-- a round light in the vault's crown over the stage (on the axis: the stand is off it since push 12); two spots on
+	-- the garage door behind it
+	B.drum("Scenery", "StageLightStem", 0, pk[3], 266.8, 268.2, 2, P.dark)
+	B.drum("Scenery", "StageLightRim", 0, pk[3], 266.3, 266.9, 10.4, P.trim)
+	B.drum("Scenery", "StageLight", 0, pk[3], 266.1, 266.35, 9, P.panel, { ghost = true, mat = NEON })
+	-- (push 12: the Plinker's stand off the axis, to the left of the door, so it stops blocking the doorway and the view; the spots dimmer and lower,
+	-- they blew the shutter's top out white)
+	B.lamp(-8, 263, YZ1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, YZ1), angle = 70 })
+	B.lamp(8, 263, YZ1 + 10, "spot", 28, 0.55, P.lampWhite, { look = V3(0, 246, YZ1), angle = 70 })
 	-- cover in the side bays, alternating: a head-high wall on one side and a chest-high wall on the other, then the
 	-- other way round; two low walls in the lane before the stage; the middle kept open
 	for _, c in { { -1, -8186, "high" }, { 1, -8186, "low" }, { -1, -8202, "low" }, { 1, -8202, "high" } } do
@@ -978,12 +973,18 @@ local function course(B)
 end
 
 -- ---------------------------------------------------------------- the zone, the barrier, the finish
-local function bounds(B)
+local function bounds(B, withLot)
 	local z = T.ZONE
+	local lz = T.LOT
 	local zp = Instance.new("Part")
 	zp.Name = "TrainingZone"; zp.Anchored = true; zp.Transparency = 1; zp.CanCollide = false; zp.CanQuery = false; zp.CanTouch = false
-	zp.Size = V3(z[2] - z[1], z[4] - z[3], math.abs(z[6] - z[5]))
-	zp.CFrame = B.cf((z[1] + z[2]) / 2, (z[3] + z[4]) / 2, (z[5] + z[6]) / 2)
+	if withLot then -- one box round the hall and the back lot
+		zp.Size = V3(lz[2] - lz[1] + 4, lz[3] + 4 - z[3], math.abs(lz[4] - 2 - z[5]))
+		zp.CFrame = B.cf((lz[1] + lz[2]) / 2, (z[3] + lz[3] + 4) / 2, (z[5] + lz[4] - 2) / 2)
+	else
+		zp.Size = V3(z[2] - z[1], z[4] - z[3], math.abs(z[6] - z[5]))
+		zp.CFrame = B.cf((z[1] + z[2]) / 2, (z[3] + z[4]) / 2, (z[5] + z[6]) / 2)
+	end
 	zp.Parent = B.mk
 	local bar = folderIn(B.mk, "Barrier")
 	local function wall(name, x0, x1, y0, y1, z0, z1)
@@ -993,16 +994,33 @@ local function bounds(B)
 		p.CFrame = B.cf((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2)
 		p.Parent = bar
 	end
-	wall("Lid", z[1] - 2, z[2] + 2, z[4], z[4] + 2, z[5] + 2, z[6] - 2)
-	wall("Side", z[1] - 2, z[1], z[3], z[4], z[5], z[6])
-	wall("Side", z[2], z[2] + 2, z[3], z[4], z[5], z[6])
-	wall("Back", z[1], z[2], z[3], z[4], z[6], z[6] - 2)
+	if not withLot then
+		wall("Lid", z[1] - 2, z[2] + 2, z[4], z[4] + 2, z[5] + 2, z[6] - 2)
+		wall("Side", z[1] - 2, z[1], z[3], z[4], z[5], z[6])
+		wall("Side", z[2], z[2] + 2, z[3], z[4], z[5], z[6])
+		wall("Back", z[1], z[2], z[3], z[4], z[6], z[6] - 2)
+		wall("Front", z[1], z[2], z[3], z[4], z[5] + 2, z[5])
+		return
+	end
+	-- the hall's back is the lot's facade (solid; the garage the one way through): its barrier stops at the facade,
+	-- and a wall over the facade's top up to the lot's lid closes the gap (nobody grapples out of the range over it)
+	local F = T.FACE
+	wall("Lid", z[1] - 2, z[2] + 2, z[4], z[4] + 2, z[5] + 2, F)
+	wall("Side", z[1] - 2, z[1], z[3], z[4], z[5], F)
+	wall("Side", z[2], z[2] + 2, z[3], z[4], z[5], F)
 	wall("Front", z[1], z[2], z[3], z[4], z[5] + 2, z[5])
+	wall("Back", z[1] - 2, z[2] + 2, 284, lz[3], F, F - 4)
+	wall("LotLid", lz[1] - 2, lz[2] + 2, lz[3], lz[3] + 2, F, lz[4] - 2)
+	wall("LotSide", lz[1] - 2, lz[1], z[3], lz[3], F, lz[4])
+	wall("LotSide", lz[2], lz[2] + 2, z[3], lz[3], F, lz[4])
+	wall("LotBack", lz[1] - 2, lz[2] + 2, z[3], lz[3], lz[4], lz[4] - 2)
+	wall("LotFront", lz[1], z[1] - 2, z[3], lz[3], F, F - 2)
+	wall("LotFront", z[2] + 2, lz[2], z[3], lz[3], F, F - 2)
 end
 
 -- what a live build owns in the hub (and v1 had): parked whole, put back whole
 local OWNED = { "TrainingGround", "TrainSpawns", "DummySpots", "TrainingZone", "Barrier" }
-local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive" }
+local OWNED_DOORS = { "ToHub", "ToPlayground", "TrainingArrive", "LotExit" }
 local function clearLive()
 	for _, n in OWNED do local c = hub:FindFirstChild(n); if c then c:Destroy() end end
 	for _, n in OWNED_DOORS do local c = hub.Doors:FindFirstChild(n); if c then c:Destroy() end end
@@ -1039,7 +1057,12 @@ function T.build(mode): string
 		local old = workspace.Map:FindFirstChild("TrainingStage"); if old then old:Destroy() end
 	end
 	local B = new(live)
-	muster(B); yard(B); range(B); course(B); bounds(B)
+	muster(B); yard(B); range(B); course(B)
+	-- the back lot (push 10): its own builder, with this build's context
+	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
+	local lotNote = ""
+	if lotSrc then lotNote = "\n" .. require(lotSrc:Clone()).build(B, T) end
+	bounds(B, lotSrc ~= nil)
 	local root = B.root
 	root:SetAttribute("Version", T.VERSION); root:SetAttribute("Push", T.PUSH)
 	for _, p in root:GetDescendants() do if p:IsA("BasePart") then p.Anchored = true end end
@@ -1059,8 +1082,8 @@ function T.build(mode): string
 	for _, p in root:GetDescendants() do if p:IsA("BasePart") then parts += 1 end end
 	local miss = {}
 	for k, n in B.missing do table.insert(miss, k .. " x" .. n) end
-	return ("training v2 built %s: %d things, %d parts, %d lamps, %d with shadows%s"):format(if live then "LIVE" else "as a staging copy at x +" .. T.STAGE.X,
-		#root:GetDescendants(), parts, B.lamps, B.shadows, if #miss > 0 then "  MISSING: " .. table.concat(miss, ", ") else "")
+	return ("training v2 built %s: %d things, %d parts, %d lamps, %d with shadows%s%s"):format(if live then "LIVE" else "as a staging copy at x +" .. T.STAGE.X,
+		#root:GetDescendants(), parts, B.lamps, B.shadows, if #miss > 0 then "  MISSING: " .. table.concat(miss, ", ") else "", lotNote)
 end
 
 function T.unstage(): string
@@ -1103,7 +1126,7 @@ function T.check(stage): string
 	for n in T.DUMMIES do need(ds and ds:FindFirstChild(n), "DummySpots." .. n) end
 	local zone = mk:FindFirstChild("TrainingZone"); need(zone, "TrainingZone")
 	need(mk:FindFirstChild("Barrier"), "Barrier")
-	for _, n in OWNED_DOORS do need(doors:FindFirstChild(n), "Doors." .. n) end
+	for _, n in OWNED_DOORS do if n ~= "LotExit" or tg:FindFirstChild("Lot") then need(doors:FindFirstChild(n), "Doors." .. n) end end
 	local r = tg:FindFirstChild("Range")
 	need(r and r:FindFirstChild("Plates") and #r.Plates:GetChildren() == 3, "Range.Plates (3)")
 	need(r and r:FindFirstChild("Spots") and #r.Spots:GetChildren() >= 10, "Range.Spots")
@@ -1153,6 +1176,10 @@ function T.check(stage): string
 	end
 	table.insert(out, ("arrival points with something solid in them: %d"):format(stuck))
 	table.insert(out, ("markers outside the zone: %d"):format(outside))
+	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
+	if lotSrc and tg:FindFirstChild("Lot") then
+		for _, l in require(lotSrc:Clone()).check(tg, mk) do table.insert(out, l) end
+	end
 	return table.concat(out, "\n")
 end
 

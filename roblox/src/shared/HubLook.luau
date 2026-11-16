@@ -134,6 +134,14 @@ if script:GetAttribute("TrainingLook") == "v2" then
 	H.looks.training = H.looks.training_v2
 	H.plainSky.training = true
 end
+-- the training area's back lot (16 Nov 2026: TrainingLot builds it, TheLot opens it), out in the open behind the
+-- garage door: HubLife picks it for whoever is on the lot (the attribute OnLot). v2's light with more air: a thicker
+-- haze softens the far horizon (the playground's towers stand far beyond the hills to the south)
+H.looks.lot = with(H.looks.training_v2, {
+	Lighting = { Brightness = 2.4, OutdoorAmbient = Color3.fromRGB(156, 158, 164) },
+	Atmosphere = { Density = 0.42, Offset = 0.3, Haze = 1.8, Glare = 0.08, Color = Color3.fromRGB(196, 214, 236), Decay = Color3.fromRGB(176, 196, 224) },
+})
+H.plainSky.lot = true
 -- Rooftop v2 (ServerStorage.PolishBackup.RooftopV2, 16 Nov 2026): its own light, picked by HubLife in a match when
 -- workspace.Map's attribute Arena is "RooftopV2" (v1 keeps the saved evening). an early-afternoon sun from the
 -- south-west, high over the lanes, so neither team starts a round looking into a low sun (the first judging failed v2's

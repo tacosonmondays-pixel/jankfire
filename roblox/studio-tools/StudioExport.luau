@@ -41,7 +41,7 @@ local function scripts(): { { path: string, source: string } }
 		end
 	end
 	-- the edit-time helpers worth keeping
-	for _, n in { "PropPlacer", "OverlapCheck", "CozyKit", "Hub2Colors", "StudioExport", "HubLab", "HubRotunda", "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms", "KitImport", "HubReskin", "WeaponImport", "WeaponPaint", "WeaponKit", "SeriousPass", "StructurePass", "RooftopV2", "RooftopV2Layout", "TrainingV2", "RooftopV3", "RooftopV3Layout", "HatImport" } do
+	for _, n in { "PropPlacer", "OverlapCheck", "CozyKit", "Hub2Colors", "StudioExport", "HubLab", "HubRotunda", "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms", "KitImport", "HubReskin", "WeaponImport", "WeaponPaint", "WeaponKit", "SeriousPass", "StructurePass", "RooftopV2", "RooftopV2Layout", "TrainingV2", "TrainingLot", "RooftopV3", "RooftopV3Layout", "HatImport" } do
 		local d = ST.PolishBackup:FindFirstChild(n)
 		if d and d:IsA("LuaSourceContainer") then table.insert(out, { path = "studio-tools/" .. n .. ".luau", source = (d :: any).Source }) end
 	end

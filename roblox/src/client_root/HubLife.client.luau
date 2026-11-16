@@ -34,7 +34,7 @@ local function zoneLook(): string?
 end
 local function relook(snap: boolean)
 	local zone = me:GetAttribute("Zone")
-	local want = if zone == "match" then (if Arena.name() == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif Arena.name() == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" else "match") elseif zone == "training" then "training" elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
+	local want = if zone == "match" then (if Arena.name() == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif Arena.name() == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" else "match") elseif zone == "training" then (if me:GetAttribute("OnLot") and HubLook.looks.lot then "lot" else "training") elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
 	if want == "hub" then want = zoneLook() or "hub" end
 	if want == looking then return end
 	looking = want
@@ -42,6 +42,7 @@ local function relook(snap: boolean)
 end
 relook(true)
 me:GetAttributeChangedSignal("Zone"):Connect(function() relook(false) end)
+me:GetAttributeChangedSignal("OnLot"):Connect(function() relook(false) end) -- (the training area's back lot has its own light)
 task.spawn(function() -- (walking or hopping between hubs doesn't change the zone, so look again now and then)
 	while true do task.wait(0.4); relook(false) end
 end)

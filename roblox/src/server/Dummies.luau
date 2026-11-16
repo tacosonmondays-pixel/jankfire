@@ -102,10 +102,12 @@ local function plink(f: Fighter)
 	if not eye then return end
 	local best, bestD = nil, 60 * S
 	for _, t in Fight.all do
-		-- (not someone mid-run at Cardboard Carl's: the sign there says nobody shoots back)
-		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" and not (t.ref :: Player):GetAttribute("RangeRun") then
+		-- (not someone mid-run at Cardboard Carl's: the sign there says nobody shoots back; not anyone out on the back
+		-- lot behind the garage door, TheLot.server.luau)
+		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" and not (t.ref :: Player):GetAttribute("RangeRun") and not (t.ref :: Player):GetAttribute("OnLot") then
 			local c = Fight.root(t)
-			if c and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) then best, bestD = t, (c.Position - eye).Magnitude end
+			-- (nor through smoke: the web game's bots can't see through it either, room.js canSee)
+			if c and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) and not (Fight.smokeBlocks and Fight.smokeBlocks(eye, c.Position)) then best, bestD = t, (c.Position - eye).Magnitude end
 		end
 	end
 	if not best then return end

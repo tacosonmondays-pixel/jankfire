@@ -533,6 +533,61 @@ version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_mod
 - **The switch by hand:** `local R = require(game.ServerStorage.PolishBackup.RooftopV3:Clone())`, then `R.use("both")` (v2 and v3 take turns: the current setting), `R.use("all")` (adds v1), or `R.use("v1" | "v2" | "v3")` to pin one (the pool becomes just that one). `PolishBackup.RooftopV2`'s `R.use("v2")` also pins now. Or type `ArenaPool` on `workspace.Map` directly; then save and publish.
 - **Tested (solo Play test, 16 Nov; a queue pad set to one side inside the test only, so one player could start a match):** four matches back to back went v2, v3, v2, v3. In each: the team-1 spawn of that arena (v2 at (-130, 3.7, 17993), v3 at (-162, 2.7, -29991)), the fall line read from that arena (-484.8 for both), the match light switched while the game ran (v2: clock 13.2, fog 450 to 2600; v3: clock 13.5, fog 400 to 2300), and the banner said "ROOFTOP: SKYLINE" on v2 and "ROOFTOP" on v3. Photo of v3's banner: `roblox/docs/rooftop-v2/rotation_v3_banner.jpg`. **Not tested:** a real two-player match, 1v1v1 (the third team uses `Spawns` named Spawn11, 18, 14, 12, 13: all three arenas have them), phones.
 
+## 24. The back lot: a garage door off the dummy yard, an easter egg, and an open-air training ground behind it, 16 November 2026 (place version 309)
+
+The owner, 16 Nov: "can you add a large garage door that leads outside to the big rivals style training grounds, you have to do like a little easter egg to get it or something".
+
+**The door.** The dummy yard now ends on a 24 x 16.5 roll-up garage door, on the axis you look down when you arrive:
+- a slate roller box across its head, and a lit transom in the lunette under the last rib
+- warm daylight leaking under it, and amber beacons
+- two deep panels: "KEEP CLEAR" over the door's hazard band, and "LOCKED" over three cardboard-man figures labelled BENCH / RANGE / COURSE, a timer line and the hint "ask the gold ones."
+
+The yard's old end niche and bullseye are gone. The Plinker's stand moved off the axis, to (-15, -8246); it still sees none of the spawn points.
+
+**The egg.** Three gold Carls (real fighters of kind "dummy", like Cardboard Carl's, so every weapon works on them):
+- on the bench in the bench bay
+- on the range's first beam, looking down the lane
+- in the lit bay at the course's near end
+
+Each hit tells the shooter "GOLD n OF 3 · m:ss" with a chime; the first one starts 90 s. All three:
+- the door rolls up for 45 s, the panel's men light and the beacons turn
+- everyone in training hears "THE GARAGE IS OPEN"
+- its safety eye holds it open while anyone stands in the doorway
+- anyone who has opened it can stand at it for 2 s to open it again ("THE GARAGE REMEMBERS YOU")
+
+**The lot.** A loading bay, then a portal under a canopy onto an arrival terrace over an open-air ground (x -186..186, z -8304..-8734) in a valley:
+- **the LONG LANE:** twelve Carls at 25/50/75/100 m between gate posts, rows stepping up, side walls, three baffle frames, and a 30-high slate backstop with a cardboard man on it
+- **THE BLOCKS:** a container yard behind a container gateway; container walls 2 and 3 high; a raised pad under a three-storey house; a catwalk to a container tower; eight Carls
+- **THE CLIMB:** one slate plinth carrying a pad onto a deck, an off-white slide, a cut gap, stepping drums, a summit, a walled canyon with two grapple masts, and a 64-stud finish tower; stages numbered 1 to 6
+- **THE HILL:** three slate terraces with walled wedge ramps, and a lookout tower you are thrown up into through its core
+
+A ridge of hills, made of smooth ellipsoids from the kit's `tl_ball`, hides the playground's towers. `L.horizon` checks it with rays: all 76 tall playground tops are hidden from all six eye points. You leave by the EXIT door (back on the muster's spawns) or the garage while it is up.
+
+**Code.**
+- `ServerScriptService.Jankfire.TheLot` (`roblox/src/server/TheLot.server.luau`, new): the door, the egg, the lot's Carls (they fold when shot and stand up 2.6 s later), and the player attribute `OnLot`. In Studio only, `ServerStorage.LotTest` drives it for play tests.
+- `Dummies.luau`: the Plinker leaves `OnLot` players alone (he could see out through the open door). At the items session's request he also no longer sees through smoke (`Fight.smokeBlocks`, guarded).
+- `HubLook.looks.lot` plus `HubLife`: the lot's own light while `OnLot`.
+
+**Builders.**
+- `PolishBackup.TrainingLot` (`roblox/studio-tools/TrainingLot.luau`, new) is called by `TrainingV2.build`, now push 12.
+- The zone box takes the lot in. The hall's barrier stops at the façade, with a wall over it, and the lot has its own sides, back and lid.
+- `LotExit` is one of the doors the build owns.
+- `StudioExport` now lists `TrainingLot`.
+- Kit: `tools/roblox/lot_models.py`, 16 models, asset 80962685889163 (uploads are meshes in plain colours, no images).
+- `T.check()` now also reports: the lot's markers, the ridge's ray check, rays from three eye points to the watchtower (12/12 each), and the long lane's counter-to-Carl lines (0 of 36 blocked).
+
+**Tested in Play** (several tests across pushes):
+- Real shots through the Fire remote put each gold Carl down in 3. The count, the per-hit toasts, the opening, the doorway hold, the close and the reopen all worked.
+- The Plinker left a player in the bay alone with the door open.
+- Every lot pad lands: the climb deck, the finish tower at 104 up, and the watchtower lift.
+- Lot Carls come back; the EXIT lands on a muster spawn.
+
+**Judged.** Two rounds, vault `Reviews/Back lot - judge round 1.md` and `round 2.md`: round 1 had no PASS; round 2 had 1 PASS, 8 CLOSE, 2 FAIL. Pushes 7 and 10 are their reworks. Round 3 is pending.
+
+**Lost and redone.** Roblox's account warning (16 Nov 09:39, over another session's QR-like wrap image) closed the place and lost the work after 09:13. Version 297 still held push 9. Push 10 went in again on 297 and was saved as 309.
+
+**Not done yet.** `place/ServerStorage/JankfireMeshes.rbxm` has not been re-exported (6.4 MB for the whole bundle, so it was skipped this time), so the repo's copy lacks the `tl_` kit until the next export of that file.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
