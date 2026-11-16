@@ -20,7 +20,7 @@ local CollectionService = game:GetService("CollectionService")
 local R = {}
 R.NAME = "RooftopV2"
 R.KIT = "rooftop2"
-R.ASSET = 71153063483666 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_10"); set after each upload
+R.ASSET = 137402177931252 -- the uploaded rooftop2.glb (Model asset "jf_rooftop2_zf2": the flicker fix, zfightfix.py); set after each upload
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
 local SP = Enum.Material.SmoothPlastic
@@ -232,6 +232,7 @@ local function city(root: Instance, O: Vector3)
 			local r = r0 + srng:NextInteger(-90, 90)
 			local w, d = srng:NextInteger(60, 150), srng:NextInteger(60, 150)
 			local top = if srng:NextNumber() < 0.15 then srng:NextInteger(90, 190) else srng:NextInteger(-90, 80)
+			top += i * 0.05 + row * 0.025 -- (16 Nov: whole-stud tops met in one plane and flickered; ZFight)
 			local col = CITY.body[srng:NextInteger(1, #CITY.body)]:Lerp(CITY.horizon, 0.25 + 0.2 * row + srng:NextNumber() * 0.15)
 			local cf = CF(O + V3(math.sin(ang) * r, (top - 262) / 2, math.cos(ang) * r)) * CFrame.Angles(0, ang, 0)
 			look(f, "Far", cf, V3(w, top + 262, d), col)

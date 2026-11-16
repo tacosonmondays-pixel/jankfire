@@ -1338,6 +1338,10 @@ build_all()
 for line in check(): print('CHECK', line)
 write_luau(LUAU_OUT)
 if not CHECK_ONLY:
+    # no flicker: faces of different looks that share a plane are pushed apart (tools/roblox/zfightfix.py, 16 Nov).
+    # the tower designs r2_tw* each stand on their own in the city, so each is compared only with itself
+    import zfightfix
+    zfightfix.fix(PIECES, group=lambda m: m if m.startswith('r2_tw') else 'arena')
     flush()
     if PREVIEW:
         try: render_preview(PREVIEW)

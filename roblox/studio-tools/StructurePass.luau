@@ -600,9 +600,18 @@ function S.playground(): string
 	-- one read as copy and paste)
 	local function pylon(cx: number, cz: number, w: number, d: number, y0: number, y1: number)
 		local foot = math.max(y0, PG_GROUND)
-		stretched("pg_shaft", V3(cx, PG_DEEP, cz), V3(w / 16, (y1 - PG_DEEP) / 16, d / 16), pylons)
+		local shaft = stretched("pg_shaft", V3(cx, PG_DEEP, cz), V3(w / 16, (y1 - PG_DEEP) / 16, d / 16), pylons)
+		-- (16 Nov) the shaft's ribs ended in the concrete's own top, where players stand, and flickered: stop them 0.1 short
+		if shaft then
+			for _, p in shaft:GetChildren() do
+				if p:IsA("BasePart") and p.Material ~= Enum.Material.Concrete then
+					p.Size -= V3(0, 0.1, 0)
+					p.CFrame -= V3(0, 0.05, 0)
+				end
+			end
+		end
 		local kc = math.sqrt(math.max(w, d) / 16)
-		local y = y1 - 2.4 * kc
+		local y = y1 - 2.4 * kc - 0.05 -- (16 Nov: the collar's top met the shaft's top, where players stand, and flickered)
 		stretched("pg_collar", V3(cx, y, cz), V3(w / 16, kc, d / 16), pylons)
 		if y1 - foot > 150 then
 			local step = 72 + ((math.floor(math.abs(cx) / 8) + math.floor(math.abs(cz) / 8)) % 3) * 16

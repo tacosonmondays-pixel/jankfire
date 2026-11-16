@@ -1275,6 +1275,9 @@ def render_previews(folder):
 bpy.ops.wm.read_factory_settings(use_empty=True)
 build_all()
 write_luau(LUAU_OUT)
+# no flicker: faces of different looks that share a plane are pushed apart (tools/roblox/zfightfix.py, 16 Nov)
+import zfightfix
+zfightfix.fix(PIECES)
 flush()
 if PREVIEW:
     try: render_previews(PREVIEW)

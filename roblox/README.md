@@ -327,6 +327,31 @@ triangle counts: every piece is under Roblox's 20k cap, so nothing needed slimmi
 - Useful checks from the MCP: Play, then read `game.Players.LocalPlayer.Character.HumanoidRootPart.AssemblyLinearVelocity`
   while running/sliding; `workspace.Map.Rooftop.ModelMarkers` has a marker per Blender model.
 
+## Flicker check: run it after every rebuild
+
+Two visible surfaces in one plane that face the same way and overlap flicker as the camera moves (z-fighting: the
+owner saw it all over the maps on 16 Nov 2026). Builders must not leave any. After rebuilding a map, in Studio (Edit):
+
+```lua
+local Z = require(game.ServerStorage.PolishBackup.ZFight:Clone())
+print(Z.start({ workspace.Map.RooftopV3 }))        -- any roots: Map.Hub.Rotunda, Map.Hub.TrainingGround, ...
+repeat local s = Z.step(25) print(s) until s == "done"   -- big areas: one Z.step(25) per execute_luau call
+print(Z.report(30))                                 -- ranked: overlap area, distance from where players stand
+Z.clear()
+```
+
+`studio-tools/ZFight.luau` turns every visible part into triangles (blocks, wedges, cylinder caps, and MeshParts from
+their real mesh through `AssetService:CreateEditableMeshAsync`, so the colour-merged kits are checked face by face)
+and reports pairs of DIFFERENT looks (colour, material, variant, texture) whose faces lie within 0.02 studs, face the
+same way and overlap by more than 0.01 square studs. Same-look overlaps are invisible and skipped. Fix one in the
+builder, never only in the live parts: lift the detail (decal, trim, inlay, light panel) 0.03 to 0.05 studs proud,
+inset it, or delete the hidden duplicate.
+
+The Blender kits fix themselves: `rooftop2_models.py` and `rooftop3_models.py` call `tools/roblox/zfightfix.py` just
+before `flush()`, which pushes the smaller face of each clashing pair 0.04 studs out (never a `water` piece). Check a
+kit before uploading it: `blender -b --factory-startup -P tools/roblox/zfight_glb.py -- <kit.glb> [alone=r2_tw]`
+(`alone`: models placed on their own in Studio, like v2's city towers, are only compared with themselves).
+
 ## How it's built
 
 | Piece | Where |
