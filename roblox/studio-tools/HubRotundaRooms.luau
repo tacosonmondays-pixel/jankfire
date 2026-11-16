@@ -65,7 +65,7 @@ return function(B, R)
 		end
 		-- the duck: a projector on a round rug in the sunk middle, a faint beam, the duck turning in it
 		B.cyl(F, C, "Rug", 0, -0.04, 0.03, 46.5, 12.4, P.creamHi, nil, G)
-		B.cyl(F, C, "Rug", 0, -0.06, 0.07, 46.5, 11.4, P.band, nil, G)
+		B.cyl(F, C, "Rug", 0, -0.09, 0.07, 46.5, 11.4, P.band, nil, G)
 		B.put(F, "bc_holoprojector", "HoloProjector", 0, 0, 46.5, 0, { solid = true, color = { ["37d6ff"] = "ffe9a8", ["8fe6ff"] = "ffe9a8" } })
 		local duck = B.put(F, "pj_duck", "HoloDuck", 0, 4.2, 46.5, 0, { scale = 6, raw = true })
 		if duck then
@@ -209,7 +209,8 @@ return function(B, R)
 		-- cases on the counters
 		-- (no cases on the counters any more: the owner's play-test, 16 Nov, found an SMG through a case and the katana
 		-- through an ammo box. the boards' guns have the counters to themselves; R.check's OVERLAP test keeps it so)
-		B.paint(F, "Ray", -0.45, 0.45, -0.02, D0, 60.4, "9dbb93", 0.05)
+		-- (no guide line down the aisle to the gate: the owner called floor lines and arrows "ugly and redundant". the gate
+		-- reads on its own: TRAINING GROUND over the laser frame at the aisle's end)
 		-- the weapon boards: the game's own weapon models on dark boards over a counter, a light over each. the top row
 		-- holds one long gun, the lower row two short ones (round 1's judge: "the guns are small on big blank panels")
 		local racks = {
