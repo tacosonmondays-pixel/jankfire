@@ -9,7 +9,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local HubLook = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HubLook")) :: any
--- which arena a match is in (the Rooftop v1 keeps the saved light; v2 and v3 have their own looks, HubLook.looks.rooftop_v2 / _v3)
+-- which arena your match is in: your own attribute "Arena" (matches run side by side, each in its own arena or a copy;
+-- Matches sets it), else workspace.Map's. the Rooftop v1 keeps the saved light; v2 and v3 have their own looks,
+-- HubLook.looks.rooftop_v2 / _v3
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena")) :: any
 local me = Players.LocalPlayer
 local looking = "?"
@@ -34,7 +36,9 @@ local function zoneLook(): string?
 end
 local function relook(snap: boolean)
 	local zone = me:GetAttribute("Zone")
-	local want = if zone == "match" then (if Arena.name() == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif Arena.name() == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" else "match") elseif zone == "training" then (if me:GetAttribute("OnLot") and HubLook.looks.lot then "lot" else "training") elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
+	local an = me:GetAttribute("Arena")
+	if type(an) ~= "string" then an = Arena.name() end
+	local want = if zone == "match" then (if an == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif an == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" else "match") elseif zone == "training" then (if me:GetAttribute("OnLot") and HubLook.looks.lot then "lot" else "training") elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
 	if want == "hub" then want = zoneLook() or "hub" end
 	if want == looking then return end
 	looking = want
@@ -43,6 +47,7 @@ end
 relook(true)
 me:GetAttributeChangedSignal("Zone"):Connect(function() relook(false) end)
 me:GetAttributeChangedSignal("OnLot"):Connect(function() relook(false) end) -- (the training area's back lot has its own light)
+me:GetAttributeChangedSignal("Arena"):Connect(function() relook(false) end) -- (your match's arena)
 task.spawn(function() -- (walking or hopping between hubs doesn't change the zone, so look again now and then)
 	while true do task.wait(0.4); relook(false) end
 end)

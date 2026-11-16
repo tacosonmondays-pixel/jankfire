@@ -2,20 +2,24 @@
 -- the hub (Workspace.Map.Hub: THE LANES, a bowling alley) and its queue pads, Rivals-style. you spawn in the hub; the red
 -- door in its west wall is the way to the training room (its dummies shoot back in there, nowhere else). on the pads in
 -- front, one on each lane's approach: stand on a
--- side; when every side is full a 3 s countdown runs, then everyone on it goes to the arena for a match (the next one
--- in the rotation, workspace.Map's ArenaPool: Arena.luau; its name is the first banner):
+-- side; when every side is full a 3 s countdown runs, then everyone on it goes to the arena for a match (that pad's
+-- next one in the rotation, workspace.Map's ArenaPool: Arena.luau; its name is the first banner):
 -- rounds of one life each, last team standing takes the round, first to Matches.WIN rounds wins, then back to the hub.
 -- a round nobody wins outright (time up, or the last ones go down together) goes to whoever dealt the most damage in
 -- it, then whoever has the most HP left, then a coin flip (nobody shot anybody): there are no draws
--- one match at a time (the arenas take turns, matches don't run side by side): a full pad waits for it ("ARENA BUSY").
--- so the arena only ever switches when a match starts, never under a live one.
+-- matches run side by side (16 Nov 2026, more pads in the hub, the way big duel games do it): every live match has its
+-- own "site", the picked arena itself when no other match is in it, else a copy of it far out along x
+-- (Arena.copyOffset). a pad takes its site when its countdown starts (so a copy has reached every screen before anyone
+-- lands in it) and gives it back Matches.CLEAR s after its players are home: a copy is then cleared, its water too
+-- (JankWater). at most Matches.MAX_LIVE sites at once (no streaming: a v2 copy is ~4,600 parts on every screen); past
+-- that a full pad waits ("ALL ARENAS BUSY") and the pad that filled first goes first.
 -- other players can't hurt you in the hub or the training room; in a match only the other teams can
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
 
--- which arena (the Rooftop v1, v2 or v3): workspace.Map's attribute Arena, read through this; startMatch sets it from
--- the rotation (ArenaPool)
+-- the arenas (the Rooftop v1, v2 or v3), the rotation (workspace.Map's ArenaPool) and where copies go
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local RoundR = Remotes:WaitForChild("Round") :: RemoteEvent
@@ -28,27 +32,39 @@ Matches.COUNTDOWN = 3 -- s on a full pad before you go
 Matches.READY = 3 -- s from spawning in to the round going live (no damage till then)
 Matches.BETWEEN = 3 -- s between rounds
 Matches.AFTER = 7 -- s on the end screen, then back to the hub
+Matches.CLEAR = 3 -- s after a match's players are back in the hub, its site is free again (a copy is cleared)
+Matches.MAX_LIVE = 6 -- sites in use at once (live matches and counting-down pads; the arenas themselves count)
 
 local TEAM_NAMES = { "PINK", "CYAN", "YELLOW" }
 local TEAM_HEX = { "#ff4fd8", "#37d6ff", "#ffe14d" }
 
 type Fighter = any
+-- where a match is played: an arena under workspace.Map, or a copy of one in Map.ArenaCopies
+type Site = { name: string, model: Model, copy: boolean, slot: number }
 type Match = {
 	id: number, mode: string, teams: { { Player } }, wins: { number }, round: number,
 	phase: string, -- "ready" (spawned, not live yet) | "live" | "between" | "over"
 	roundEnds: number, pad: Model, fighters: { Fighter },
 	dmg: { number }, -- damage each team dealt to the others this round
-	arena: string, -- the arena it is played in (workspace.Map's child)
+	arena: string, -- the arena's name ("RooftopV2"): its banner and its light
+	site: Site, -- where it is played: that arena, or a copy of it
+	on: boolean, -- false once its players are back in the hub
+	ghost: number?, -- (Studio tests only: a match with nobody in it, over at this os.clock(): Matches.test)
 }
 
 local Fight: any
 local hub: Instance
-local current: Match? = nil
+local live: { Match } = {} -- the matches being played, oldest first
 local inMatch: { [Player]: { m: Match, team: number } } = {}
 local lastZone: { [Player]: string } = {}
-local padCount: { [Model]: number? } = {} -- when a full pad's countdown ends
+-- a full pad's countdown and the site it holds (lost: when the pad stopped being full, if it has)
+local padCount: { [Model]: { at: number, site: Site, arena: string, lost: number? } } = {}
+local fullSince: { [Model]: number } = {} -- when each full pad filled (the first to fill gets the next free site)
+local lastArena: { [Model]: string } = {} -- each pad's last arena (none yet after a server starts: the first pick is random)
+local padLast: { [Model]: Match } = {} -- each pad's latest match (its sign shows it)
+local busy: { [Model]: boolean } = {} -- the sites in use
+local copySlots: { [string]: { [number]: Model } } = {} -- each arena's copies by slot (Arena.copyOffset)
 local nextId = 0
-local lastArena: string? = nil -- the last match's arena (none yet after a server starts: the first pick is random)
 
 -- ------------------------------------------------------------------ where you are
 local function rootOf(p: Player): BasePart?
@@ -92,35 +108,98 @@ local function markers(name: string): { BasePart }
 	return out
 end
 
--- the arena's spawns per team: attackers' end, defenders' end, and (1v1v1) the middle
-local function teamSpawns(team: number): { CFrame }
-	local roof = Arena.get()
-	local cx = Arena.centreX()
+-- ------------------------------------------------------------------ sites (an arena, or a copy, per live match)
+local function sitesInUse(): number
+	local n = 0
+	for _ in busy do n += 1 end
+	return n
+end
+local function maxLive(): number
+	-- (test knob: a TestMaxLive attribute on this module, set on the running server, lowers the cap in a playtest)
+	local t = script:GetAttribute("TestMaxLive")
+	return if type(t) == "number" then t else Matches.MAX_LIVE
+end
+local function copiesFolder(): Instance
+	local map = workspace:WaitForChild("Map")
+	local f = map:FindFirstChild("ArenaCopies")
+	if not f then
+		f = Instance.new("Folder")
+		f.Name = "ArenaCopies"
+		f.Parent = map -- (inside Map: the map-only raycasts, Fight.castMap and the clients', see the copies)
+	end
+	return f :: Instance
+end
+-- a site in arena `name`: the arena itself if no match is in it, else a new copy. nil at the cap, or when the arena
+-- isn't built or can't be copied (v1)
+local function claimSite(name: string): Site?
+	if sitesInUse() >= maxLive() then return nil end
+	local map = workspace:FindFirstChild("Map")
+	local arena = map and map:FindFirstChild(name)
+	if not arena or not arena:IsA("Model") then return nil end
+	if not busy[arena] then
+		busy[arena] = true
+		return { name = name, model = arena, copy = false, slot = 0 }
+	end
+	if Arena.NO_COPY[name] then return nil end
+	local slots = copySlots[name] or {}
+	copySlots[name] = slots
+	local k = 1
+	while slots[k] do k += 1 end
+	local c = arena:Clone()
+	local off = Arena.copyOffset(k)
+	c:PivotTo(arena:GetPivot() + off) -- (before it is parented: JankWater fills the pool where the copy lands)
+	local cx = arena:GetAttribute("CentreX")
+	c:SetAttribute("CentreX", (if type(cx) == "number" then cx else 0) + off.X)
+	c:SetAttribute("CopyOf", name)
+	c.Name = ("%s_copy%d"):format(name, k)
+	c.Parent = copiesFolder()
+	slots[k] = c
+	busy[c] = true
+	return { name = name, model = c, copy = true, slot = k }
+end
+local function releaseSite(s: Site)
+	if not busy[s.model] then return end
+	busy[s.model] = nil
+	if s.copy then
+		local slots = copySlots[s.name]
+		if slots and slots[s.slot] == s.model then slots[s.slot] = nil end
+		s.model:Destroy()
+	end
+end
+
+-- the site's spawns per team: attackers' end, defenders' end, and (1v1v1) the middle
+local function teamSpawns(m: Match, team: number): { CFrame }
+	local roof = m.site.model
+	local cx = Arena.centreX(roof)
 	local out = {}
-	if roof then
-		local ts = roof:FindFirstChild("TeamSpawns")
-		local want = if team == 1 then "att" elseif team == 2 then "def" else nil
-		if ts and want then
-			for _, s in ts:GetChildren() do
-				if s:IsA("BasePart") and s.Name == want then table.insert(out, CFrame.lookAt(s.Position, Vector3.new(cx, s.Position.Y, s.Position.Z))) end
-			end
-		else
-			local sp = roof:FindFirstChild("Spawns")
-			for _, n in { "Spawn11", "Spawn18", "Spawn14", "Spawn12", "Spawn13" } do
-				local s = sp and sp:FindFirstChild(n) :: BasePart?
-				if s then table.insert(out, CFrame.lookAt(s.Position + Vector3.new(0, 0.1, 0), Vector3.new(s.Position.X + 1, s.Position.Y, s.Position.Z))) end
-			end
+	local ts = roof:FindFirstChild("TeamSpawns")
+	local want = if team == 1 then "att" elseif team == 2 then "def" else nil
+	if ts and want then
+		for _, s in ts:GetChildren() do
+			if s:IsA("BasePart") and s.Name == want then table.insert(out, CFrame.lookAt(s.Position, Vector3.new(cx, s.Position.Y, s.Position.Z))) end
+		end
+	else
+		local sp = roof:FindFirstChild("Spawns")
+		for _, n in { "Spawn11", "Spawn18", "Spawn14", "Spawn12", "Spawn13" } do
+			local s = sp and sp:FindFirstChild(n) :: BasePart?
+			if s then table.insert(out, CFrame.lookAt(s.Position + Vector3.new(0, 0.1, 0), Vector3.new(s.Position.X + 1, s.Position.Y, s.Position.Z))) end
 		end
 	end
-	if #out == 0 then table.insert(out, CFrame.new(team * 30, 5, 0)) end
+	if #out == 0 then table.insert(out, CFrame.new(roof:GetPivot().Position + Vector3.new(team * 30, 5, 0))) end
 	return out
+end
+
+-- the fall line under a player: their match's site's, else the default arena's (Main's "into the smog")
+function Matches.killY(p: Player): number
+	local im = inMatch[p]
+	return Arena.killY(if im then im.m.site.model else nil)
 end
 
 local function spawnAt(f: Fighter): (Vector3, Vector3?)
 	local p = f.ref :: Player
 	local im = inMatch[p]
 	if im then
-		local list = teamSpawns(im.team)
+		local list = teamSpawns(im.m, im.team)
 		local i = table.find(im.m.teams[im.team], p) or 1
 		local cf = list[(i - 1) % #list + 1]
 		return cf.Position, cf.LookVector
@@ -162,13 +241,18 @@ local function backToHub(m: Match)
 	each(m, function(p)
 		inMatch[p] = nil
 		lastZone[p] = "hub"
-		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil)
+		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil)
 		RoundR:FireClient(p, { hub = true })
 		local f = Fight.byPlayer[p]
 		if f then f.alive = false; task.spawn(Fight.spawn, f) end
 	end)
 	for p, im in inMatch do if im.m == m then inMatch[p] = nil end end
-	if current == m then current = nil end
+	m.on = false
+	local i = table.find(live, m)
+	if i then table.remove(live, i) end
+	if padLast[m.pad] == m then padLast[m.pad] = nil end
+	-- the site goes back once everyone is out of it (a copy is cleared)
+	task.delay(Matches.CLEAR, releaseSite, m.site)
 end
 
 local function endMatch(m: Match, winner: number?)
@@ -222,7 +306,11 @@ function Matches.pickWinner(cands: { number }, dmg: { number }, hp: { number }, 
 end
 
 local function checkRound(m: Match)
-	if current ~= m or m.phase == "over" then return end
+	if not m.on or m.phase == "over" then return end
+	if m.ghost then -- (a Studio test's empty match: over when its time is up)
+		if os.clock() >= m.ghost then endMatch(m, nil) end
+		return
+	end
 	-- everyone else left: the last team in wins outright
 	local left = teamsLeft(m)
 	if #left <= 1 then endMatch(m, left[1]); return end
@@ -261,7 +349,7 @@ local function checkRound(m: Match)
 		elseif how == "hp" then ("%s · %s HAS MORE HP"):format(head, name)
 		elseif shot then ("DEAD EVEN · COIN FLIP · %s"):format(name)
 		else ("NOBODY SHOT · COIN FLIP · %s"):format(name), 2.2)
-	task.delay(Matches.BETWEEN, function() if current == m and m.phase == "between" then startRound(m) end end)
+	task.delay(Matches.BETWEEN, function() if m.on and m.phase == "between" then startRound(m) end end)
 end
 
 startRound = function(m: Match)
@@ -278,15 +366,15 @@ startRound = function(m: Match)
 	-- HUD's announcer line
 	local first = m.round == 1
 	task.delay(0.6, function()
-		if current ~= m then return end
+		if not m.on then return end
 		if first then callAll(m, Arena.title(m.arena), 1.1) end
 		task.delay(if first then 1.2 else 0, function()
-			if current ~= m then return end
+			if not m.on then return end
 			each(m, function(p, t) CalloutR:FireClient(p, ("ROUND %d · you're %s"):format(m.round, TEAM_NAMES[t]), if first then 1.05 else 1.6) end)
 		end)
 	end)
 	task.delay(Matches.READY, function()
-		if current ~= m or m.phase ~= "ready" then return end
+		if not m.on or m.phase ~= "ready" then return end
 		m.phase = "live"
 		-- (test knob: a TestRoundTime attribute on this module, set on the running server, shortens rounds in a playtest)
 		m.roundEnds = os.clock() + ((script:GetAttribute("TestRoundTime") :: number?) or Matches.ROUND_TIME)
@@ -295,24 +383,21 @@ startRound = function(m: Match)
 	end)
 end
 
-local function startMatch(pad: Model, sides: { { Player } })
+-- `site` is the one the pad took when its countdown started (in arena `arena`, the pad's pick from the rotation)
+local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: string): Match
 	nextId += 1
 	local teams = {}
 	for t, list in sides do teams[t] = table.clone(list) end
 	local wins = {}
 	for t = 1, #teams do wins[t] = 0 end
-	-- the arena: the next in the rotation (workspace.Map's ArenaPool), set before anyone is moved in. only one match
-	-- runs at a time, so this never moves a live one. (no pool: "Arena" stays as it is set)
-	local pick = Arena.pick(Arena.pool(), lastArena, math.random)
-	local map = workspace:FindFirstChild("Map")
-	if pick and map then map:SetAttribute("Arena", pick) end
-	local arena = Arena.name()
-	lastArena = arena
-	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena }
-	current = m
+	lastArena[pad] = arena
+	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena, site = site, on = true }
+	table.insert(live, m)
+	padLast[pad] = m
 	each(m, function(p, t)
 		inMatch[p] = { m = m, team = t }
 		p:SetAttribute("Team", t)
+		p:SetAttribute("Arena", arena) -- (their screen's light follows it: HubLife)
 		local f = Fight.byPlayer[p]
 		if f then
 			table.insert(m.fighters, f)
@@ -321,6 +406,12 @@ local function startMatch(pad: Model, sides: { { Player } })
 		end
 	end)
 	startRound(m)
+	return m
+end
+
+-- the pad's next arena: the next one in the rotation for this pad (never its last one twice running), else "Arena"
+local function nextArena(pad: Model): string
+	return Arena.pick(Arena.pool(), lastArena[pad], math.random) or Arena.name()
 end
 
 -- ------------------------------------------------------------------ the pads
@@ -345,7 +436,13 @@ end
 local function padStep()
 	local pads = hub:FindFirstChild("QueuePads")
 	if not pads then return end
+	-- a pad taken out of the hub gives back the site it held
+	for pad, c in padCount do
+		if pad.Parent ~= pads then padCount[pad] = nil; releaseSite(c.site) end
+	end
+	for pad in fullSince do if pad.Parent ~= pads then fullSince[pad] = nil end end
 	local claimed: { [Player]: boolean } = {}
+	local seen: { [Model]: { sides: { { Player } }, counts: string, full: boolean } } = {}
 	for _, pad in pads:GetChildren() do
 		if not pad:IsA("Model") then continue end
 		local teams, size = pad:GetAttribute("Teams") :: number, pad:GetAttribute("Size") :: number
@@ -380,27 +477,57 @@ local function padStep()
 				if r.Transparency ~= want then r.Transparency = want end
 			end
 		end
-		local sub = "step on a side to queue"
+		seen[pad] = { sides = sides, counts = table.concat(counts, "   vs   "), full = full }
+		local c = padCount[pad]
 		if full then
-			if current then
+			fullSince[pad] = fullSince[pad] or os.clock()
+			if c and c.lost then c.lost = nil; c.at = os.clock() + Matches.COUNTDOWN end -- (back on: the count starts again)
+		else
+			fullSince[pad] = nil
+			-- someone stepped off: the count stops, and the site goes back if nobody steps on again within 1.5 s (so a
+			-- foot on the edge doesn't clear a copy and make it again)
+			if c then
+				c.lost = c.lost or os.clock()
+				if os.clock() - (c.lost :: number) > 1.5 then padCount[pad] = nil; releaseSite(c.site) end
+			end
+		end
+	end
+	-- full pads with no site yet take one in the order they filled. the first that can't get one (the cap) stops the
+	-- line: nobody jumps ahead of a pad that filled before them
+	local line: { Model } = {}
+	for pad, s in seen do if s.full and not padCount[pad] then table.insert(line, pad) end end
+	table.sort(line, function(a, b) return fullSince[a] < fullSince[b] end)
+	local waiting: { [Model]: number } = {}
+	for _, pad in line do
+		if next(waiting) == nil then
+			local arena = nextArena(pad)
+			local site = claimSite(arena)
+			if site then padCount[pad] = { at = os.clock() + Matches.COUNTDOWN, site = site, arena = arena }; continue end
+		end
+		local n = 0
+		for _ in waiting do n += 1 end
+		waiting[pad] = n -- (how many pads are ahead of it)
+	end
+	for pad, s in seen do
+		local sub = "step on a side to queue"
+		local c = padCount[pad]
+		if s.full then
+			if not c then
+				local ahead = waiting[pad] or 0
+				sub = if ahead == 0 then "ALL ARENAS BUSY · you're next" else ("ALL ARENAS BUSY · %d ahead of you"):format(ahead)
+			elseif os.clock() >= c.at then
 				padCount[pad] = nil
-				sub = "ARENA BUSY · you're next"
+				fullSince[pad] = nil
+				startMatch(pad, s.sides, c.site, c.arena)
+				sub = "GO!"
 			else
-				local at = padCount[pad] or (os.clock() + Matches.COUNTDOWN)
-				padCount[pad] = at
-				if os.clock() >= at then
-					padCount[pad] = nil
-					startMatch(pad, sides)
-					sub = "GO!"
-				else
-					sub = ("STARTING IN %d"):format(math.ceil(at - os.clock()))
-				end
+				sub = ("STARTING IN %d"):format(math.ceil(c.at - os.clock()))
 			end
 		else
-			padCount[pad] = nil
-			if current and current.pad == pad then sub = "match on · " .. hudText(current):gsub("<[^>]+>", "") end
+			local m = padLast[pad]
+			if m and m.on then sub = "match on · " .. hudText(m):gsub("<[^>]+>", "") end
 		end
-		padSign(pad, table.concat(counts, "   vs   "), sub)
+		padSign(pad, s.counts, sub)
 	end
 end
 
@@ -457,8 +584,61 @@ function Matches.init(fight: any)
 			end
 		end
 		padStep()
-		if current then checkRound(current) end
+		for _, m in table.clone(live) do checkRound(m) end
 	end)
+	-- (Studio play tests only, like TestHook's JankTest: ServerStorage.JankMatchTest reaches the running server)
+	if RunService:IsStudio() then
+		local old = ServerStorage:FindFirstChild("JankMatchTest")
+		if old then old:Destroy() end
+		local fn = Instance.new("BindableFunction")
+		fn.Name = "JankMatchTest"
+		fn.OnInvoke = function(op: string, a: any, b: any, c: any): any return Matches.test(op, a, b, c) end
+		fn.Parent = ServerStorage
+	end
+end
+
+-- ------------------------------------------------------------------ Studio tests (ServerStorage.JankMatchTest)
+-- a play test has one player, so it can't fill two pads at once. "ghost" starts a match with nobody in it (pad name,
+-- arena name or nil for the pad's next, seconds it lasts): it takes a site like any match, runs its rounds and ends
+-- the normal way. "state" reads the live matches, the sites in use, the copies and the pads' countdowns
+function Matches.test(op: string, a: any, b: any, c: any): any
+	if not RunService:IsStudio() then return nil end
+	if op == "ghost" then
+		local pads = hub:FindFirstChild("QueuePads")
+		local pad = pads and pads:FindFirstChild(tostring(a))
+		if not pad or not pad:IsA("Model") then return nil end
+		local arena = if type(b) == "string" then b else nextArena(pad)
+		local site = claimSite(arena)
+		if not site then return { refused = arena, inUse = sitesInUse(), cap = maxLive() } end
+		local sides = {}
+		for t = 1, (pad:GetAttribute("Teams") :: number) do sides[t] = {} end
+		local m = startMatch(pad, sides, site, arena)
+		m.ghost = os.clock() + (if type(c) == "number" then c else 30)
+		local sp = {}
+		for t = 1, #sides do
+			sp[t] = {}
+			for _, cf in teamSpawns(m, t) do table.insert(sp[t], cf.Position) end
+		end
+		return { id = m.id, arena = arena, site = site.model:GetFullName(), copy = site.copy, pivot = site.model:GetPivot().Position, killY = Arena.killY(site.model), centreX = Arena.centreX(site.model), spawns = sp }
+	elseif op == "state" then
+		local out = { live = {}, sites = {}, pads = {}, inMatch = 0, cap = maxLive() }
+		for _, m in live do
+			local n = 0
+			each(m, function() n += 1 end)
+			table.insert(out.live, { id = m.id, pad = m.pad.Name, arena = m.arena, site = m.site.model.Name, copy = m.site.copy, phase = m.phase, round = m.round, players = n, ghost = m.ghost ~= nil })
+		end
+		for model in busy do table.insert(out.sites, model:GetFullName()) end
+		for pad, cd in padCount do out.pads[pad.Name] = { arena = cd.arena, site = cd.site.model.Name, left = cd.at - os.clock() } end
+		for _ in inMatch do out.inMatch += 1 end
+		local map = workspace:FindFirstChild("Map")
+		local f = map and map:FindFirstChild("ArenaCopies")
+		out.copies = if f then #f:GetChildren() else 0
+		local slots = 0
+		for _, list in copySlots do for _ in list do slots += 1 end end
+		out.copySlots = slots
+		return out
+	end
+	return nil
 end
 
 return Matches

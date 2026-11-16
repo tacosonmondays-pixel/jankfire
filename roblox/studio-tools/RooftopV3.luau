@@ -7,7 +7,8 @@
 -- plays exactly like v1. the look is one Blender kit ("rooftop3": tools/roblox/rooftop3_models.py > rooftop3.glb > one
 -- Model asset) made from the same boxes (tools/roblox/rooftop3_v1.json). the city round it reuses v2's tower designs.
 -- v1 and v2 are never touched. which arena matches use is workspace.Map's attribute "Arena", and the rotation they
--- take turns from its attribute "ArenaPool" (ReplicatedStorage.Jankfire.Arena; Matches picks at each match's start).
+-- take turns from its attribute "ArenaPool" (ReplicatedStorage.Jankfire.Arena; each pad picks its next one). matches
+-- run side by side: one in the arena itself, more in copies Matches makes 7,000 studs along x and clears afterwards.
 -- run in Edit, from a clone (a require of the original is cached):
 --   local R = require(game.ServerStorage.PolishBackup.RooftopV3:Clone())
 --   R.import()        the kit's models into ServerStorage.JankfireMeshes (r3_*)
