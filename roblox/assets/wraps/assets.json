@@ -375,10 +375,6 @@
   "file": "aurora_emit.png",
   "id": 74105788849785
  },
- "9a61b6b46ac68a3c0ad561c27627dfa80d48a92b": {
-  "file": "barcode_color.png",
-  "id": 78038279441051
- },
  "6e45acf5510687f464acb8b9eea2fd15ba74539f": {
   "file": "bigwave_color.png",
   "id": 130236259278450
@@ -430,14 +426,6 @@
  "cdae55ba1744205e46390a1c83cf07d7cdf11917": {
   "file": "china_color.png",
   "id": 89582824955789
- },
- "7fc563c825067ab22141cf14e448b88a49b02a60": {
-  "file": "corp_color.png",
-  "id": 99492261189319
- },
- "15bd7d9610396dd3213d1d0610b0490ca78ed1e4": {
-  "file": "corp_emit.png",
-  "id": 113905953566739
  },
  "5527a2bef0ff74c1b29dce4855625d97fa183ae2": {
   "file": "crackle_color.png",
@@ -503,10 +491,6 @@
   "file": "jade_color.png",
   "id": 131428135391223
  },
- "2f6c40f1d57ed1ca13665fdba381573471a6e29a": {
-  "file": "jersey_color.png",
-  "id": 85136928830264
- },
  "4a835f2773cfc3aa4934a32ef15c0611685ee4d8": {
   "file": "jersey_normal.png",
   "id": 119039241767287
@@ -527,14 +511,6 @@
   "file": "lavalamp_emit.png",
   "id": 133756883761953
  },
- "9af4464e1c17242df3f5096b4764bad825b76682": {
-  "file": "meat_color.png",
-  "id": 133937980642403
- },
- "982c941a305941552550149cebcbc1993d75bcb8": {
-  "file": "memo_color.png",
-  "id": 131955730097491
- },
  "38bfe65c4c18a531d6d38a386b5f0983e8b6afb8": {
   "file": "memphis_color.png",
   "id": 106419701498240
@@ -554,14 +530,6 @@
  "d9bb1267fa762adae9e8cc52a67c02867f746634": {
   "file": "moss_normal.png",
   "id": 126314966950323
- },
- "1315090357b509a743e784adc11ca03fcdaac8c3": {
-  "file": "numsoup_color.png",
-  "id": 121622635248637
- },
- "226918dcddba6ae49ae52881bbd845af3c647ba0": {
-  "file": "numsoup_normal.png",
-  "id": 132921220914266
  },
  "eac798166db55193e7497ee88688a1cb9d6fb72b": {
   "file": "opal_color.png",

@@ -25,7 +25,7 @@ def sha(p):
 
 # never uploaded, whatever wraps.json says: on 16 Nov 2026 the owner's Roblox account was moderated over a wrap image
 # that looked like a QR code. Roblox does not allow QR codes (or anything that reads as one) in images.
-NEVER = {'qr'}
+NEVER = {'qr', 'barcode'}
 
 
 def load(p, d):

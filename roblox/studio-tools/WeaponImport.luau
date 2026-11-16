@@ -276,7 +276,13 @@ function W.kit(only)
 		if not m then continue end
 		m:SetAttribute("FileLo", g.lo); m:SetAttribute("FileHi", g.hi); m:SetAttribute("Set", "kit")
 		-- unfolded at export (tools/roblox/gun_uvs.py): its pieces can wear a wrap's picture (WeaponModels.wrap)
-		for _, d in m:GetDescendants() do if d:IsA("MeshPart") then d:SetAttribute("WrapUV", if g.uv then true else nil) end end
+		-- (never the glow or glass pieces: lenses, dots, lamps, vents, the marble jar keep their own look under any wrap)
+		for _, d in m:GetDescendants() do
+			if d:IsA("MeshPart") then
+				local lit = d.Material == Enum.Material.Neon or d.Material == Enum.Material.Glass
+				d:SetAttribute("WrapUV", if g.uv and not lit then true else nil)
+			end
+		end
 		-- the kit's finish, checked: flat colour, smooth plastic (or the one glowing / glass piece), no picture
 		for _, d in m:GetDescendants() do
 			if not d:IsA("MeshPart") then continue end
@@ -348,7 +354,8 @@ function W.kitShredder()
 		if not d:IsA("MeshPart") then continue end
 		local wz = string.match(string.lower(d.Name), "_wz(%a+)")
 		if wz then d:SetAttribute("WrapZone", wz) end
-		d:SetAttribute("WrapUV", if g.uv then true else nil) -- (unfolded at export: it can wear a wrap's picture)
+		local lit = d.Material == Enum.Material.Neon or d.Material == Enum.Material.Glass -- (glow / glass keep their look)
+		d:SetAttribute("WrapUV", if g.uv and not lit then true else nil) -- (unfolded at export: it can wear a wrap's picture)
 		d.Name = SHRED_NAMES[d.Name] or d.Name
 		d.Size *= K
 		d.CFrame = hd.CFrame * CFrame.new(hubH) * G * CFrame.new(d.Position * K)

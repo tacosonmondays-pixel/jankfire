@@ -1,4 +1,15 @@
 # JANKFIRE's loadout wraps as real textures for the Roblox guns (SurfaceAppearance maps), drawn fresh from each wrap's
+#
+# RULES FOR EVERY IMAGE (16 Nov 2026: the owner's Roblox account was moderated over a wrap image that looked like a QR
+# code, reason "Directing Users Off-Platform"). Every map this script draws is uploaded to Roblox, so:
+#   - no QR-like or barcode-like patterns, nothing a scanner or a person could take for a code ("QR Code" and
+#     "Barcode" are plain colour wraps: their designs are unregistered and wrap_upload.py refuses them);
+#   - no URLs, handles, @names, social or site logos;
+#   - no readable text at all, words or numbers: writing is drawn as rounded grey bars (ink_lines), a number as a blank
+#     panel, a stamp as an outline;
+#   - no 69 / 420 / 666 jokes, nothing sexual or about drugs, no blood, gore, body parts or raw flesh.
+# Look at every map at full size before an upload batch.
+#
 # idea and palette in the web game (public/js/wrappack.js, public/js/skins.js, shared/cosmetics.js).
 #
 #   py tools/roblox/wrap_textures.py <out_dir> [wrap ids ...]      (no ids = every wrap that has a design)
@@ -1122,7 +1133,8 @@ def urushi(t: Tex):
 
 @design('tokyo')
 def tokyo(t: Tex):
-    """tokyo night: a dark city of lit windows behind neon signs, each an outlined box of made-up glyphs that glows"""
+    """tokyo night: a dark city of lit windows behind neon signs that glow, each sign an outlined box with simple neon
+       marks inside (bars, rings, arrows: no letters or glyphs)"""
     n = t.n; r = t.rng
     t.rgb[:] = hexrgb('0a0816')
     for k in range(40):
@@ -1144,16 +1156,27 @@ def tokyo(t: Tex):
         halo = np.exp(-np.abs(sd + 4) / 7) * 0.45
         t.paint(idx, halo, c1, emit=halo)
         t.paint(idx, ring, c1, emit=1.0)
-        s = min(w, h) - 22
-        cnt = int((max(w, h) - 16) // (s + 8))
-        for q in range(max(1, cnt)):
-            gx = x - w / 2 + 11 + (0 if vert else q * (s + 8)); gy = y - h / 2 + 11 + (q * (s + 8) if vert else 0)
-            for st in range(r.integers(2, 4)):
-                kind = r.integers(0, 3); u0, u1 = r.uniform(), r.uniform()
-                if kind == 0: a, b = (gx, gy + s * u0), (gx + s, gy + s * u0)
-                elif kind == 1: a, b = (gx + s * u0, gy), (gx + s * u0, gy + s)
-                else: a, b = (gx + s * u0, gy), (gx + s * u1, gy + s)
-                t.paint(idx, cover(sd_segment(a[0], a[1], b[0], b[1], 2.2)(X, Y)), c2, emit=1.0)
+        kind = r.integers(0, 3)
+        if kind == 0:     # stacked neon bars
+            for q in range(3):
+                f = (q - 1) * 0.28
+                ax, ay = (x - w * 0.28, y + f * h) if vert else (x - w * 0.36, y + f * h * 0.9)
+                bx, by = (x + w * 0.28, y + f * h) if vert else (x + w * (0.1 + 0.25 * r.uniform()), y + f * h * 0.9)
+                if not vert: ay = by = y + (q - 1) * h * 0.25
+                t.paint(idx, cover(sd_segment(ax, ay, bx, by, 2.4)(X, Y)), c2, emit=1.0)
+        elif kind == 1:   # a ring and a dot
+            rr = min(w, h) * 0.26
+            t.paint(idx, cover(np.abs(np.hypot(X - x, Y - y) - rr) - 2.4), c2, emit=1.0)
+            t.paint(idx, cover(np.hypot(X - x, Y - y) - rr * 0.3), c2, emit=1.0)
+        else:             # an arrow
+            L = (h if vert else w) * 0.3
+            ang = math.pi / 2 if vert else 0.0
+            ax, ay = x - math.cos(ang) * L, y - math.sin(ang) * L
+            bx, by = x + math.cos(ang) * L, y + math.sin(ang) * L
+            t.paint(idx, cover(sd_segment(ax, ay, bx, by, 2.4)(X, Y)), c2, emit=1.0)
+            for s_ in (-1, 1):
+                hx, hy = bx - math.cos(ang + s_ * 0.6) * L * 0.4, by - math.sin(ang + s_ * 0.6) * L * 0.4
+                t.paint(idx, cover(sd_segment(bx, by, hx, hy, 2.4)(X, Y)), c2, emit=1.0)
     t.rough[:] = 0.25
     return {'emissive': 1.6, 'tint': 'ffffff'}
 
@@ -1402,7 +1425,7 @@ FONTS = {'bold': 'C:/Windows/Fonts/arialbd.ttf', 'reg': 'C:/Windows/Fonts/arial.
          'mono': 'C:/Windows/Fonts/consola.ttf', 'monob': 'C:/Windows/Fonts/consolab.ttf', 'din': 'C:/Windows/Fonts/bahnschrift.ttf'}
 
 
-def text_cover(n, items):
+def text_cover(n, items):  # NOT used by any registered wrap: no readable text may be drawn (the rules at the top)
     """anti-aliased coverage of text: items = (text, x, y, size px, font key, anchor 'lt'|'mm'|..., rotation degrees).
        drawn at the tile's wrap-round copies too, so a word across an edge comes back on the other side"""
     from PIL import Image, ImageDraw, ImageFont
@@ -1449,25 +1472,33 @@ def tape(t: Tex):
     return {}
 
 
+def ink_lines(t: Tex, x0, y0, rows, lh, h, col, r, x1=None):
+    """lines of 'writing' drawn as rounded grey bars of varied length (never letters): rows = how many, lh = line
+       pitch, h = bar height; x1 = the right margin"""
+    x1 = x1 or t.n - x0
+    for i in range(rows):
+        x = x0
+        while x < x1 - 20:
+            L = r.uniform(30, 150)
+            e = min(x + L, x1)
+            y = y0 + i * lh
+            t.shape((x - 2, y - h, e + 2, y + h), sd_round_rect((x + e) / 2, y, (e - x) / 2, h / 2, h / 2), color=col)
+            x = e + r.uniform(14, 26)
+
+
 @design('receipt')
 def receipt(t: Tex):
-    """receipt: thermal paper printed with a JANK MART till receipt and its barcode"""
+    """receipt: a till receipt on thermal paper, its lines of print drawn as grey bars (no letters or digits), a dashed
+       tear line between the items and the total"""
     n = t.n; r = t.rng
     t.rgb[:] = mix('e9e6dc', 'f3f0e8', smoothstep(-0.5, 0.5, FBM([2, 4], 491)(t.U, t.V)))
     t.rough[:] = 0.7
-    # (no 69 / 420 / 666 jokes anywhere on Roblox: the owner's account was moderated on 16 Nov 2026 while wraps that
-    # carried them were uploading)
-    rows = [('    JANK MART #0042', 1), ('------------------------', 0.6), ('1x BANANA          0.99', 1), ('1x MARBLES (BAG)   4.25', 1),
-            ('1x BREAD           2.50', 0.85), ('AMMO (BULK)       12.00', 1), ('1x DIGNITY         0.00', 0.6), ('SUBTOTAL          19.74', 1),
-            ('TAX (JANK)         1.58', 0.9), ('TOTAL             21.32', 1), ('  THANK U COME AGAIN', 0.75)]
-    for i, (txt, a) in enumerate(rows):
-        m = text_cover(n, [(txt, 40, 40 + i * 70, 44, 'monob', 'lt', 0)])
-        t.fill(m * a, '2c2c32')
-    x = 120.0
-    while x < 900:
-        bw = r.integers(1, 4) * 5
-        t.fill(cover(np.maximum(np.maximum(x - t.X, t.X - (x + bw)), np.maximum(830 - t.Y, t.Y - 990))), '26262c')
-        x += bw + r.integers(1, 3) * 5
+    t.shape((n * 0.3, 40, n * 0.7, 90), sd_round_rect(n / 2, 64, n * 0.18, 16, 16), color='34343a')
+    ink_lines(t, 60, 150, 7, 64, 14, '5a5a62', r)
+    for x in range(40, n - 40, 36):
+        t.shape((x - 2, 600, x + 22, 616), sd_round_rect(x + 10, 608, 10, 3, 3), color='8a8a90')
+    ink_lines(t, 60, 680, 2, 64, 18, '34343a', r)
+    ink_lines(t, 60, 830, 3, 56, 12, '8a8a90', r)
     return {}
 
 
@@ -1491,30 +1522,25 @@ def crt(t: Tex):
 
 @design('sheet')
 def sheet(t: Tex):
-    """spreadsheet: white cells and grey gridlines, a green header of column letters, numbers in the cells, one #REF"""
+    """spreadsheet: white cells and grey gridlines under a green header row, each cell's value a short grey bar (no
+       letters or digits), a few highlighted cells and one selected"""
     n = t.n; r = t.rng
     cw, ch = 128, 64
     t.rgb[:] = hexrgb('f6f6f2')
     t.fill(cover(np.maximum(-t.Y, t.Y - ch)), '3f9a4a')
-    t.fill(cover(np.maximum(-t.X, t.X - 64)) * cover(t.Y - ch - 0.5) * 1.0, 'e2e4de')
-    hi = {(3, 3): 'f6dc5a', (5, 6): 'f2a8c8', (2, 10): 'f6dc5a', (6, 13): 'a8d8f0'}
+    hi = {(3, 3): 'f6dc5a', (5, 6): 'f2a8c8', (2, 10): 'f6dc5a', (6, 13): 'a8d8f0', (4, 5): 'f6b8b0'}
     for (i, j), c in hi.items():
         t.fill(cover(np.maximum(np.maximum(i * cw - t.X, t.X - (i + 1) * cw), np.maximum(j * ch - t.Y, t.Y - (j + 1) * ch))), c)
-    gl = np.minimum(np.abs(((t.X + 64) % cw) - 64) if False else np.abs((t.X % cw) - 0), 1e9)
     t.fill(cover(np.minimum(np.abs(t.X % cw), np.abs(cw - t.X % cw)) - 1.0), 'b8bab4')
     t.fill(cover(np.minimum(np.abs(t.Y % ch), np.abs(ch - t.Y % ch)) - 1.0), 'b8bab4')
-    items = [(c, i * cw + cw / 2, ch / 2, 34, 'bold', 'mm', 0) for i, c in enumerate('ABCDEFGH')]
-    head = text_cover(n, items)
-    t.fill(head, 'ffffff')
-    cells = []
+    for i in range(8):
+        cx = i * cw + cw / 2
+        t.shape((cx - 30, ch / 2 - 10, cx + 30, ch / 2 + 10), sd_round_rect(cx, ch / 2, 14, 6, 6), color='d8eed8')
     for j in range(1, 16):
-        for i in range(0, 8):
-            if (i, j) == (4, 5): continue
+        for i in range(8):
             if r.uniform() < 0.25: continue
-            v = str(int(r.integers(0, 999)))
-            cells.append((v, i * cw + cw - 14, j * ch + ch / 2, 30, 'reg', 'rm', 0))
-    t.fill(text_cover(n, cells), '1c1c20')
-    t.fill(text_cover(n, [('#REF!', 4 * cw + cw - 12, 5 * ch + ch / 2, 30, 'bold', 'rm', 0)]), 'd01818')
+            L = r.uniform(20, 70); x1 = i * cw + cw - 16; y = j * ch + ch / 2
+            t.shape((x1 - L - 4, y - 10, x1 + 4, y + 10), sd_round_rect(x1 - L / 2, y, L / 2, 6, 6), color='c03030' if (i, j) == (4, 5) else '4a4a50')
     sx, sy = 3 * cw, 7 * ch
     t.fill(cover(np.abs(np.maximum(np.abs(t.X - sx - cw / 2) - cw / 2, np.abs(t.Y - sy - ch / 2) - ch / 2)) - 2.5), '1f7a2c')
     t.rough[:] = 0.5
@@ -1523,25 +1549,22 @@ def sheet(t: Tex):
 
 @design('memo')
 def memo(t: Tex):
-    """corporate memo: an office memo with its header, body lines, a red URGENT stamp askew and a coffee ring"""
+    """corporate memo: an office memo, its heading a thick black bar under a rule, its lines grey bars (no words), a red
+       stamp outline askew and a coffee ring"""
     n = t.n; r = t.rng
     t.rgb[:] = mix('ebe8de', 'f4f2ea', smoothstep(-0.5, 0.5, FBM([2, 4], 501)(t.U, t.V)))
     t.rough[:] = 0.75
-    t.fill(text_cover(n, [('MEMO', 40, 34, 110, 'black', 'lt', 0)]), '18181c')
-    t.fill(cover(np.maximum(np.abs(t.Y - 168) - 5, np.maximum(40 - t.X, t.X - 984))), '18181c')
-    t.fill(text_cover(n, [(s_, 44, 200 + i * 52, 38, 'reg', 'lt', 0) for i, s_ in enumerate(['TO: all associates', 'FROM: management :)', 'RE: fun is now mandatory'])]), '36363c')
-    for i in range(8):
-        x = 44.0
-        while x < 960:
-            L = r.uniform(30, 150)
-            t.fill(cover(np.maximum(np.abs(t.Y - (400 + i * 56)) - 8, np.maximum(x - t.X, t.X - min(x + L, 980)))), 'a4a4aa')
-            x += L + 22
-    t.fill(text_cover(n, [('URGENT', 640, 760, 92, 'black', 'mm', 16)]) * 0.85, 'c41c26')
-    sx, sy = 640, 760
+    t.shape((30, 40, 420, 150), sd_round_rect(220, 95, 180, 42, 8), color='18181c')
+    t.fill(cover(np.maximum(np.abs(t.Y - 178) - 5, np.maximum(40 - t.X, t.X - 984))), '18181c')
+    ink_lines(t, 44, 225, 3, 50, 14, '4a4a52', r, x1=600)
+    ink_lines(t, 44, 410, 8, 56, 14, 'a4a4aa', r)
+    sx, sy = 650, 770
     rot = math.radians(-16)
     c, s_ = math.cos(rot), math.sin(rot)
     px, py = (t.X - sx) * c + (t.Y - sy) * s_, -(t.X - sx) * s_ + (t.Y - sy) * c
-    t.fill(cover(np.abs(np.maximum(np.abs(px) - 250, np.abs(py) - 76)) - 7) * 0.85, 'c41c26')
+    stamp = cover(np.abs(np.maximum(np.abs(px) - 230, np.abs(py) - 70)) - 7)
+    bars = np.maximum(cover(np.maximum(np.abs(px) - 170, np.abs(py + 18) - 12)), cover(np.maximum(np.abs(px + 40) - 130, np.abs(py - 26) - 10)))
+    t.fill(np.maximum(stamp, bars) * 0.85, 'c41c26')
     d = np.hypot(t.X - 210, t.Y - 860)
     t.fill(cover(np.abs(d - 95) - 9, 3) * 0.3, '7a4a22')
     t.fill(cover(np.abs(d - 80) - 3, 2) * 0.18, '7a4a22')
@@ -1598,31 +1621,27 @@ def smiley(t: Tex, x, y, R, face, ink):
 
 @design('corp')
 def corp(t: Tex):
-    """☺ CORP: black with faint diagonal stripes, yellow smiley faces and the CORP name in pink, have a nice day"""
-    n = t.n
+    """☺ CORP: black with faint diagonal stripes, big yellow smiley faces ringed in pink (no lettering)"""
+    n = t.n; r = t.rng
     t.rgb[:] = hexrgb('121214')
     t.fill(cover(np.abs(((t.X - t.Y) % 64) - 32) - 10) * 0.5, '1c1c20')
-    for x, y in ((n * 0.25, n * 0.25), (n * 0.75, n * 0.75)):
-        smiley(t, x, y, 150, 'ecc834', '121214')
-    m = text_cover(n, [('CORP', n * 0.75, n * 0.27, 150, 'black', 'mm', 0), ('CORP', n * 0.25, n * 0.77, 150, 'black', 'mm', 0)])
-    t.fill(m, 'e04aa8', emit=0.6)
-    m2 = text_cover(n, [('have a nice day', n * 0.75, n * 0.42, 40, 'bold', 'mm', 0), ('have a nice day', n * 0.25, n * 0.92, 40, 'bold', 'mm', 0)])
-    t.fill(m2, 'ecc834')
+    for x, y, R in ((n * 0.25, n * 0.25, 150), (n * 0.75, n * 0.75, 150), (n * 0.78, n * 0.22, 70), (n * 0.2, n * 0.8, 70)):
+        t.shape((x - R - 30, y - R - 30, x + R + 30, y + R + 30), lambda X, Y, x=x, y=y, R=R: np.abs(np.hypot(X - x, Y - y) - R - 16) - 6, color='e04aa8', emit=0.6)
+        smiley(t, x, y, R, 'ecc834', '121214')
     t.rough[:] = 0.3
     return {'emissive': 0.9, 'tint': 'ffffff'}
 
 
 @design('jersey')
 def jersey(t: Tex):
-    """jersey: team red with white and navy hoops and a big white 07, in a fine sports mesh"""
+    """jersey: team red with white and navy hoops and a blank white number panel, in a fine sports mesh (no digits)"""
     n = t.n
     t.rgb[:] = hexrgb('b81c26')
     y0 = n * 0.12
     for a, b, col in ((y0, y0 + 60, 'efece4'), (y0 + 60, y0 + 140, '1c2a5e'), (y0 + 140, y0 + 200, 'efece4')):
         t.fill(cover(np.maximum(a - t.Y, t.Y - b)), col)
-    m = text_cover(n, [('07', n * 0.5, n * 0.64, 420, 'black', 'mm', 0)])
-    t.fill(np.clip(text_cover(n, [('07', n * 0.5 + 8, n * 0.64 + 8, 420, 'black', 'mm', 0)]) - m, 0, 1) * 0.6, '1c2a5e')
-    t.fill(m, 'efece4')
+    t.shape((n * 0.25, n * 0.42, n * 0.75, n * 0.88), sd_round_rect(n / 2, n * 0.65, n * 0.2, n * 0.19, 26), color='1c2a5e')
+    t.shape((n * 0.25, n * 0.42, n * 0.75, n * 0.88), sd_round_rect(n / 2, n * 0.65, n * 0.2 - 12, n * 0.19 - 12, 18), color='efece4')
     holes = (np.sin(t.X * TAU / 10) * np.sin(t.Y * TAU / 10))
     t.height[:] = -np.clip(holes, 0, 1) * 0.6
     t.rgb[:] = t.rgb * (1 - 0.06 * np.clip(holes, 0, 1))[..., None]
@@ -1662,7 +1681,8 @@ def sushi(t: Tex):
     return {}
 
 
-@design('barcode')
+# NOT a texture wrap (16 Nov 2026, after the account moderation): nothing that reads as a code is drawn. "Barcode" is a
+# colour wrap. Kept unregistered. Never register it again.
 def barcode(t: Tex):
     """barcode: white labels of crisp black bars with their digits under them"""
     n = t.n; r = t.rng
@@ -1747,24 +1767,25 @@ def qr(t: Tex):
 
 @design('organ')
 def organ(t: Tex):
-    """organ donor: a pink ☺ CORP donor card with a heart, the small print and an APPROVED stamp (a heart only: no
-       body parts, no blood)"""
-    n = t.n
+    """organ donor: a pink ☺ CORP donor card with a heart, its small print as grey bars, and a green stamp outline
+       (no words, no body parts, no blood)"""
+    n = t.n; r = t.rng
     t.rgb[:] = hexrgb('f6e6ea')
     t.fill(cover(np.maximum(-t.Y, t.Y - 170)), 'd8405e')
     t.fill(cover(t.Y - 940) * cover(n - t.Y), 'd8405e')
-    t.fill(text_cover(n, [('DONOR CARD', n / 2, 88, 100, 'black', 'mm', 0)]), 'fbeef0')
+    t.shape((n * 0.25, 60, n * 0.75, 115), sd_round_rect(n / 2, 86, n * 0.22, 18, 18), color='fbeef0')
     hx, hy, s = 230, 520, 150
-    heart = [(hx, hy + s * 0.9)] + bezier((hx, hy + s * 0.9), (hx - s * 1.4, hy - s * 0.1), (hx - s * 0.6, hy - s * 1.1), (hx, hy - s * 0.35)) +         bezier((hx, hy - s * 0.35), (hx + s * 0.6, hy - s * 1.1), (hx + s * 1.4, hy - s * 0.1), (hx, hy + s * 0.9))
+    heart = [(hx, hy + s * 0.9)] + bezier((hx, hy + s * 0.9), (hx - s * 1.4, hy - s * 0.1), (hx - s * 0.6, hy - s * 1.1), (hx, hy - s * 0.35)) + \
+        bezier((hx, hy - s * 0.35), (hx + s * 0.6, hy - s * 1.1), (hx + s * 1.4, hy - s * 0.1), (hx, hy + s * 0.9))
     t.shape(bbox_of(heart), sd_polygon(heart), color='d03050')
     t.shape((hx - 90, hy - 100, hx, hy - 20), sd_ellipse(hx - 48, hy - 60, 32, 17, -0.6), color='f08aa0')
-    lines = ['NAME: ____________', 'SIGNED: yes', 'HEART: kind', 'PROPERTY OF :) CORP']
-    t.fill(text_cover(n, [(s_, 420, 260 + i * 120, 46, 'bold', 'lt', 0) for i, s_ in enumerate(lines)]), '3a3a40')
-    m = text_cover(n, [('APPROVED', 760, 810, 70, 'black', 'mm', 17)])
+    ink_lines(t, 420, 270, 4, 110, 16, '5a5a62', r, x1=960)
     rot = math.radians(-17)
     c, s_ = math.cos(rot), math.sin(rot)
     px, py = (t.X - 760) * c + (t.Y - 810) * s_, -(t.X - 760) * s_ + (t.Y - 810) * c
-    t.fill((np.maximum(m, cover(np.abs(np.maximum(np.abs(px) - 220, np.abs(py) - 62)) - 6))) * 0.85, '1f8a44')
+    stamp = cover(np.abs(np.maximum(np.abs(px) - 210, np.abs(py) - 60)) - 6)
+    bar = cover(np.maximum(np.abs(px) - 150, np.abs(py) - 14))
+    t.fill(np.maximum(stamp, bar) * 0.85, '1f8a44')
     t.rough[:] = 0.45
     return {}
 
@@ -1793,7 +1814,8 @@ def dice(t: Tex):
 
 @design('numsoup')
 def numsoup(t: Tex):
-    """number soup: golden broth with pasta digits floating in it, a few carrot coins and herbs"""
+    """number soup (pasta shapes, not digits): golden broth with little pasta rings, stars and bow ties floating in it,
+       a few carrot coins and herbs"""
     n = t.n; r = t.rng
     t.rgb[:] = mix('c8862a', 'dca040', smoothstep(-0.5, 0.5, FBM([3, 6], 541)(t.U, t.V)))
     t.fill(field_cover(FBM([6, 12], 542)(t.U, t.V), 0.3) * 0.3, 'f0c870')
@@ -1801,15 +1823,20 @@ def numsoup(t: Tex):
     for x, y in scatter(r, n, 6, 200):
         t.shape((x - 40, y - 40, x + 40, y + 40), sd_circle(x, y, 30), color='e2661e')
         t.shape((x - 40, y - 40, x + 40, y + 40), lambda X, Y, x=x, y=y: np.abs(np.hypot(X - x, Y - y) - 18) - 2, color='f0943e')
-    items, shadow = [], []
-    for k, (x, y) in enumerate(scatter(r, n, 16, 170)):
-        d = str(int(r.integers(0, 10))); rot = r.uniform(-50, 50)
-        items.append((d, x, y, 150, 'black', 'mm', rot))
-        shadow.append((d, x + 6, y + 8, 150, 'black', 'mm', rot))
-    t.fill(text_cover(n, shadow) * 0.5, '7a4a14')
-    m = text_cover(n, items)
-    t.fill(m, 'f4e2a8')
-    t.height[:] = m * 3
+    for k, (x, y) in enumerate(scatter(r, n, 22, 140)):
+        a = r.uniform(0, TAU)
+        X, Y, idx = t.box(x - 60, y - 60, x + 60, y + 60)
+        if k % 3 == 0:
+            sd = np.abs(np.hypot(X - x, Y - y) - 30) - 11
+        elif k % 3 == 1:
+            sd = sd_star(x, y, 46, 22, 5, a, 6)(X, Y)
+        else:
+            c, s_ = math.cos(a), math.sin(a)
+            px, py = (X - x) * c + (Y - y) * s_, -(X - x) * s_ + (Y - y) * c
+            sd = np.maximum(np.abs(px) - 44, np.abs(py) - (8 + 0.45 * np.abs(px)))
+        t.paint(idx, cover(sd - 5, 4) * 0.45, '7a4a14')
+        t.paint(idx, cover(sd), 'f4e2a8')
+        t.paint(idx, cover(sd), height=np.clip(-sd / 8, 0, 1) * 3, hmode='max')
     for x, y in scatter(r, n, 10, 120):
         a = r.uniform(0, TAU)
         poly = transform(petal_outline(22, 9, 0.0), x, y, a)
@@ -1925,7 +1952,8 @@ def blackhole(t: Tex):
 
 @design('stonks')
 def stonks(t: Tex):
-    """market crash: a trading terminal on its worst day, a red line diving through candlesticks, the tickers lit up"""
+    """market crash: a trading terminal on its worst day, a red line diving through candlesticks, lit ticker bars
+       (no words or numbers)"""
     n = t.n; r = t.rng
     t.rgb[:] = hexrgb('05080a')
     t.fill(cover(np.minimum(t.X % 128, 128 - t.X % 128) - 1) * 0.8, '102016')
@@ -1941,9 +1969,8 @@ def stonks(t: Tex):
         t.shape((x - 4, yy - 70, x + 4, yy + 70), sd_segment(x, yy - 56, x, yy + 56, 1.5), color=c, emit=0.8)
     X, Y, idx = t.box(-40, 150, n + 40, 960)
     t.paint(idx, cover(sd_polyline(pts, 5)(X, Y)), 'ff3a3a', emit=1.0)
-    t.fill(text_cover(n, [(':) CORP -99.9%', 40, 930, 60, 'monob', 'lm', 0)]), 'ff3a3a', emit=1.0)
-    t.fill(text_cover(n, [('JANK +300%', 600, 70, 60, 'monob', 'lm', 0)]), '3aff5a', emit=1.0)
-    t.fill(text_cover(n, [('SELL SELL', 40, 70, 60, 'monob', 'lm', 0)]), 'ffd84a', emit=1.0)
+    for x0, y0, L, c in ((40, 70, 220, 'ffd84a'), (600, 70, 180, '3aff5a'), (40, 940, 300, 'ff3a3a')):
+        t.shape((x0 - 4, y0 - 20, x0 + L + 4, y0 + 20), sd_round_rect(x0 + L / 2, y0, L / 2, 12, 4), color=c, emit=1.0)
     t.rough[:] = 0.2
     return {'emissive': 1.3, 'tint': 'ffffff'}
 

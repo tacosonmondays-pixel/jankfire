@@ -11,6 +11,26 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 
 Photos: `wrap-textures/` (see "Judging" below).
 
+## Rules for every wrap image (read first)
+
+On 16 November 2026 at 09:39 UTC the owner's Roblox account was moderated and Studio was put out of the place. The
+notice named the **QR Code** wrap's first image (asset 86852454924459, "Your image broke the rules", reason "Directing
+Users Off-Platform"): random black and white modules with three finder squares and a smiley. It encoded nothing, but it
+looked like a QR code. Every image this pipeline draws is uploaded to Roblox, so from now on:
+
+- **No QR-like or barcode-like patterns**, nothing a scanner or a person could take for a code. "QR Code" and
+  "Barcode" are plain colour wraps; their designs are unregistered and `wrap_upload.py` refuses them (`NEVER`).
+- **No URLs, handles, @names, social or site logos.**
+- **No readable text at all, words or numbers.** Writing is drawn as rounded grey bars (`ink_lines`), a jersey number
+  as a blank panel, a stamp as an outline (Receipt, Spreadsheet, Corporate Memo, Organ Donor, ☺ CORP, Number Soup,
+  Market Crash, Tokyo Night were redrawn this way).
+- **No 69 / 420 / 666 jokes, nothing sexual or about drugs, no blood, gore, body parts or raw flesh** (Meat Suit is
+  salami, the organ card a heart).
+- Look at every map at full size before an upload batch, not just the contact sheet.
+
+The images uploaded before these rules that break them were taken out of `assets.json` and the book, and are to be
+archived on Roblox once the account is cleared: the list is in the shared notes (`wrap-uploads-16nov.md`).
+
 ## How it fits together
 
 | step | what | where |
@@ -48,22 +68,6 @@ The PNGs are not kept in git (about 1.5 MB each); the script draws them again, i
 
 A new wrap needs its row in `src/shared/Roster.luau` too (name, rarity, and the palette the old colour path still uses
 on pieces without UVs).
-
-## What may never be drawn (16 November 2026: the account was moderated)
-
-At 09:39 UTC on 16 November the owner's Roblox account was moderated and Studio was put out of the place, while the
-batch 3 and 4 maps were uploading. The cause traced was the **QR Code** wrap's first image: random modules with the
-three corner finder squares. It encoded nothing, but it looked like a QR code, and Roblox does not allow QR codes in
-images. Rules for every wrap from now on:
-
-- **Nothing that reads as a QR code** (or any scannable code with finder squares). "QR Code" is a plain colour wrap;
-  `wrap_upload.py` refuses it (`NEVER`), and its design is kept unregistered.
-- **No 69 / 420 / 666 jokes**, in text or numbers (they were in the web game's jersey, barcode, receipt, spreadsheet
-  and stonks). The jersey says 07 now.
-- **No body parts, blood or anything that reads as raw flesh**: the organ card has a heart only ("DONOR CARD"),
-  Meat Suit is salami.
-- No real script, no links, no names. Made-up glyphs only (Tokyo Night).
-- Before an upload batch, look at every colour map at full size, not only the contact sheet.
 
 ## Lessons
 
