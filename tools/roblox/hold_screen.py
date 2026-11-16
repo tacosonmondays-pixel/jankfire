@@ -5,7 +5,10 @@
 # gun covers (left, right, top, bottom; bottom is cut at the screen's edge) and how wide and tall that is, in % of the
 # screen from the top left (the crosshair is 50, 50). Used to put our guns where the Rivals-class measurements say
 # (the vault's Research note "Rivals first-person holds").
-#   py tools/roblox/hold_screen.py [--fov 70] [--holds other.json] [--look before|after|combined] [--ads] [id ...]   (--ads: the aimed view)
+#   py tools/roblox/hold_screen.py [--fov 70] [--holds other.json] [--look before|after|combined] [--ads] [id ...]
+#   --ads: the aimed view, measured on the guns' real triangles (an id may be id@skin): how much of the screen it
+#   covers, the top of its body, where it leaves the bottom edge, the sight's box (Rivals' rifles: about 8 % covered,
+#   the body's top at 52, leaving the bottom at 40 to 60)
 import json, math, os, re, sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
@@ -109,34 +112,92 @@ def read_ads():
     return out
 
 
-def measure_ads(wid, vm, holds, fov):
-    """the gun's screen box while aiming (Viewmodel.adsPos: the sight on the screen's centre line, no turn), at the
-       aimed FOV (fov / zoom)"""
+GX, GY = 192, 108  # the raster the aimed view is measured on (16:9)
+NEAR = 0.1  # the camera's near plane (studs)
+
+
+def tris(key):
+    """{piece name: (n, 3, 3) triangles} of w_<key>.glb (key = id or id@skin) in the file's frame (x right, y up,
+       z back, metres): the glb is the file turned half round about y"""
+    import struct
+    import numpy as np
+    b = open(os.path.join(ROOT, 'roblox/assets/weapons-kit/w_%s.glb' % key), 'rb').read()
+    L = struct.unpack('<I', b[12:16])[0]; j = json.loads(b[20:20 + L])
+    off = 20 + L; L2 = struct.unpack('<I', b[off:off + 4])[0]; bn = b[off + 8:off + 8 + L2]
+    out = {}
+    for n in j['nodes']:
+        if 'mesh' not in n: continue
+        for pr in j['meshes'][n['mesh']]['primitives']:
+            a = j['accessors'][pr['attributes']['POSITION']]; bv = j['bufferViews'][a['bufferView']]
+            pos = np.frombuffer(bn, dtype='<f4', count=a['count'] * 3, offset=bv.get('byteOffset', 0) + a.get('byteOffset', 0)).reshape(-1, 3) * np.array([-1, 1, -1])
+            ia = j['accessors'][pr['indices']]; ibv = j['bufferViews'][ia['bufferView']]
+            idx = np.frombuffer(bn, dtype={5121: 'u1', 5123: '<u2', 5125: '<u4'}[ia['componentType']], count=ia['count'], offset=ibv.get('byteOffset', 0) + ia.get('byteOffset', 0)).reshape(-1, 3)
+            out.setdefault('__'.join(n['name'].split('__')[:2]), []).append(pos[idx])
+    return {k: np.concatenate(v) for k, v in out.items()}
+
+
+def raster(tri_list, pos, k, fov, aspect=16 / 9):
+    """the screen cells (GY x GX) these triangles cover, the gun unturned at pos (camera space, studs), clipped at the
+       near plane"""
+    import numpy as np
+    m = np.zeros((GY, GX), bool)
+    t = math.tan(math.radians(fov) / 2)
+    xs = (np.arange(GX) + 0.5) * 100 / GX; ys = (np.arange(GY) + 0.5) * 100 / GY
+    for T in tri_list:
+        for tri in T * k + np.array(pos):
+            poly = []
+            for i in range(3):
+                A, B = tri[i], tri[(i + 1) % 3]
+                if A[2] <= -NEAR: poly.append(A)
+                if (A[2] <= -NEAR) != (B[2] <= -NEAR): poly.append(A + (B - A) * ((-NEAR - A[2]) / (B[2] - A[2])))
+            P = [(50 + 50 * q[0] / (-q[2] * t * aspect), 50 - 50 * q[1] / (-q[2] * t)) for q in poly]
+            for i in range(1, len(P) - 1):
+                a, b, c = P[0], P[i], P[i + 1]
+                d = (b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])
+                if abs(d) < 1e-12: continue
+                gx0, gx1 = max(0, int(min(a[0], b[0], c[0]) * GX / 100)), min(GX, int(max(a[0], b[0], c[0]) * GX / 100) + 1)
+                gy0, gy1 = max(0, int(min(a[1], b[1], c[1]) * GY / 100)), min(GY, int(max(a[1], b[1], c[1]) * GY / 100) + 1)
+                if gx1 <= gx0 or gy1 <= gy0: continue
+                X, Y = np.meshgrid(xs[gx0:gx1], ys[gy0:gy1])
+                w0 = ((b[0] - X) * (c[1] - Y) - (b[1] - Y) * (c[0] - X)) / d
+                w1 = ((c[0] - X) * (a[1] - Y) - (c[1] - Y) * (a[0] - X)) / d
+                m[gy0:gy1, gx0:gx1] |= (w0 >= 0) & (w1 >= 0) & (1 - w0 - w1 >= 0)
+    return m
+
+
+def measure_ads(key, vm, holds, fov):
+    """a gun (or id@skin) fully aimed, the way Viewmodel.adsPos places it: the aim line on the screen's centre, no
+       turn, 0.17 m + aimZ from the eye, pushed back by the zoom (so the zoom never enlarges it), the camera at
+       fov / zoom; a skin's hidden pieces left out. Returns % of the screen covered, the body's top, where it leaves
+       the bottom edge and the sight pieces' box"""
+    import numpy as np
+    wid, skin = (key.split('@') + [None])[:2]
     ads = read_ads().get(wid)
     if not ads: return None
     sight, zoom, scoped = ads
     p, r, s = vm[wid]
     row = row_of(holds, wid)
+    a = holds.get(wid, {}).get('ads', {})
+    sk = a.get('skins', {}).get(skin, {}) if skin else {}
     size = holds.get('_size', 1) * row.get('scale', 1)
     k = S * s * size
-    back = row.get('aimZ', 0)
-    if wid == 'redline': sight = [0, 0.0737, 0.1058]
-    if sight: pos = [0, -sight[1] * s * size * S, (-0.17 - back - sight[2] * s * size) * S]
-    else: pos = [0.06 * S, min(-0.1, -0.03 - 0.1479 * s * size) * S, (-0.3 - back) * S]
     f = fov / zoom
-    pts = []
-    for lo, hi in boxes(wid):
-        for cx in (lo[0], hi[0]):
-            for cy in (lo[1], hi[1]):
-                for cz in (lo[2], hi[2]):
-                    pts.append([pos[0] + cx * k, pos[1] + cy * k, pos[2] + cz * k])
-    scr = [project(c, f) for c in pts]
-    vis = [q for q in scr if q]
-    out = {'zoom': zoom, 'scoped': scoped, 'near': min(-c[2] for c in pts)}
-    if vis:
-        out.update(L=max(0, min(q[0] for q in vis)), R=min(100, max(q[0] for q in vis)), T=max(0, min(q[1] for q in vis)),
-                   B=100 if len(vis) < len(scr) else min(100, max(q[1] for q in vis)))
-        out['W'] = out['R'] - out['L']
+    back = (0.17 + sk.get('aimZ', a.get('aimZ', 0))) * math.tan(math.radians(fov) / 2) / math.tan(math.radians(f) / 2)
+    sight = sk.get('sight') or a.get('sight') or sight
+    if sight: pos = [0, -sight[1] * s * size * S, (-back - sight[2] * s * size) * S]
+    else: pos = [0.06 * S, min(-0.1, -0.03 - 0.1479 * s * size) * S, (-back - 0.13) * S]
+    hide = [h.lower() for h in sk.get('hide', [])]
+    T = {n: v for n, v in tris(key).items() if n.lower() not in hide}
+    body = raster([v for n, v in T.items() if not n.startswith('sight')], pos, k, f)
+    sig = raster([v for n, v in T.items() if n.startswith('sight')], pos, k, f)
+    out = {'zoom': zoom, 'scoped': scoped, 'cover': 100 * (body | sig).mean()}
+    rows = np.where(body.any(1))[0]
+    out['top'] = (rows[0] + 0.5) * 100 / GY if len(rows) else 100
+    last = np.where(body[-1])[0]
+    out['bottom'] = (last[0] * 100 / GX, (last[-1] + 1) * 100 / GX) if len(last) else None
+    if sig.any():
+        r2 = np.where(sig.any(1))[0]; c2 = np.where(sig.any(0))[0]
+        out['sight'] = (c2[0] * 100 / GX, (c2[-1] + 1) * 100 / GX, r2[0] * 100 / GY, (r2[-1] + 1) * 100 / GY)
     return out
 
 
@@ -155,11 +216,13 @@ def main():
     vm = read_vm()
     if '--ads' in args:
         args.remove('--ads')
-        print('weapon     zoom  left  right   top  bottom  wide  nearest   (aiming: the gun on the screen at fov / zoom)')
-        for wid in (args or list(read_ads())):
-            m = measure_ads(wid, vm, holds, fov)
-            if m and 'L' in m:
-                print('%-9s %5.2f %5.1f %5.1f %5.1f %5.1f %5.1f   %.2f%s' % (wid, m['zoom'], m['L'], m['R'], m['T'], m['B'], m['W'], m['near'], '  (scope overlay)' if m['scoped'] else ''))
+        print('weapon                  zoom  covers  body top  bottom edge   sight box (x, y)   (aimed, % of a 16:9 screen)')
+        for key in (args or list(read_ads())):
+            m = measure_ads(key, vm, holds, fov)
+            if not m: continue
+            bt = ('%4.0f to %3.0f' % m['bottom']) if m['bottom'] else '   clear   '
+            sg = ('%3.0f-%3.0f, %3.0f-%3.0f' % m['sight']) if m.get('sight') else '        -       '
+            print('%-22s %5.2f  %5.1f   %5.1f    %s   %s%s' % (key, m['zoom'], m['cover'], m['top'], bt, sg, '  (behind the scope)' if m['scoped'] else ''))
         return
     ids = args or [w for w in vm if os.path.exists(os.path.join(ROOT, 'roblox/assets/weapons-kit/w_%s.glb' % w))]
     f = lambda v: '%5.1f' % v

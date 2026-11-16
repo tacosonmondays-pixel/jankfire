@@ -22,6 +22,7 @@ local S = Weapons.S
 local VM = {}
 VM.onEvent = nil :: ((string) -> ())?
 VM.wid = ""
+VM.skin = nil :: string? -- (the held weapon's skin, if any)
 VM.model = nil :: Model?
 VM.hitStop = 0
 VM.parts = nil :: GunParts.State?
@@ -148,6 +149,14 @@ local function sizeOf(wid: string): number
 	local row = look(wid)
 	return SIZE * (if row and row.scale then row.scale else 1)
 end
+-- the aimed view (Holds ads): the weapon's row and the held skin's own part of it (a skin's aimZ / sight / pieces hidden)
+local function adsOf(wid: string): (any, any)
+	local h = Holds.holds[wid] :: any
+	local a = h and h.ads
+	local sk = a and a.skins and wid == VM.wid and VM.skin and a.skins[VM.skin]
+	return a, sk or nil
+end
+local adsHide: { BasePart } = {} -- (this skin's wings, horns and crowns: faded out while you aim)
 
 -- the katana's rest and parry poses (Holds.katana, from tools/roblox/holds.json): a turn and a shift laid over the web
 -- game's clips, so the flat of the blade, the guard and the wrapped handle face you. the cut itself is the web game's:
@@ -417,11 +426,26 @@ function VM.set(wid: string, kat: number)
 	offGone = false
 	VM.wid = wid
 	needles, vents = {}, {}
+	adsHide = {}
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
 	k = S * w.vm.s * sizeOf(wid)
-	local m = WeaponModels.build(wid, k, GunSkins.skinFor(game:GetService("Players").LocalPlayer, wid))
+	VM.skin = GunSkins.skinFor(game:GetService("Players").LocalPlayer, wid)
+	local m = WeaponModels.build(wid, k, VM.skin)
 	if not m or not m.PrimaryPart then return end
+	-- what the HUD draws while you aim this one (FightHud: sights take the crosshair's place, a dot sight shows a dot)
+	local ads, adsSkin = adsOf(wid)
+	LookPlayer:SetAttribute("AimSight", if ads then ads.kind elseif w.mdl and w.mdl.sight then "iron" else "none")
+	-- a skin's wings, horns and crowns (its pieces whose names start with these) fade out while you aim
+	if adsSkin and adsSkin.hide then
+		for _, d in m:GetDescendants() do
+			if not d:IsA("BasePart") then continue end
+			local n = string.lower(d.Name)
+			for _, pre in adsSkin.hide do
+				if string.sub(n, 1, #pre) == pre and (#n == #pre or string.sub(n, #pre + 1, #pre + 1) == "_") then table.insert(adsHide, d); break end
+			end
+		end
+	end
 	local root = m.PrimaryPart
 	root.Anchored = true
 	for _, d in m:GetDescendants() do
@@ -580,6 +604,11 @@ function VM.update(dt: number, c: Ctx)
 	-- scope) they go too, or the jerry can / marble bag hung where the hidden gun is, at the camera, behind you
 	if c.hidden then dropProp() else VM.props(m.PrimaryPart.CFrame) end
 	GunHats.aim(m, c.aim, clip and clip.name) -- (the hat steps out of the sight picture while you aim, like the web game)
+	-- so do a skin's wings, horns and crowns (after Arsenal has set each part's hidden-or-not for this frame)
+	if #adsHide > 0 then
+		local f = c.aim * c.aim * (3 - 2 * c.aim)
+		for _, d in adsHide do d.LocalTransparencyModifier = math.max(d.LocalTransparencyModifier, f) end
+	end
 	-- the fill light: up and left of the gun's middle in camera space, aimed at it, stopping short of the world
 	if fill then
 		fill.light.Enabled = not c.hidden
@@ -677,15 +706,28 @@ function VM.setKatana(n: number)
 	if VM.wid == "katana" and VM.model then WeaponModels.setKatana(VM.model, n, k) end
 end
 
--- where the sight sits while aiming (camera space, studs): on the screen's centre line (public/js/weapons.js adsPose)
+-- the aim's zoom narrows the camera; the gun is pushed back by as much, so zooming in never makes it bigger (Rivals and
+-- Valorant draw the gun with a view of its own: aimed, it stays small and low, most of the screen clear)
+local function unzoom(): number
+	local b = LookPlayer:GetAttribute("BaseFov")
+	local base = if type(b) == "number" then b else 70
+	local cur = camera.FieldOfView
+	if cur >= base - 0.01 or cur < 1 then return 1 end
+	return math.tan(math.rad(base) / 2) / math.tan(math.rad(cur) / 2)
+end
+
+-- where the sight sits while aiming (camera space, studs): on the screen's centre line (public/js/weapons.js adsPose),
+-- 0.17 m + the weapon's aimZ from your eye (fitted to Rivals' aimed sizes, tools/roblox/hold_screen.py --ads) and the
+-- zoom's push on top. the aim line: the skin's own, else the weapon's (Holds ads.sight: where the gun's Sight spot is
+-- blocked, the Redline's deck, Half a Shotgun's hinge), else the Sight spot
 function VM.adsPos(wid: string): Vector3?
 	local w = Weapons.list[wid]
 	if not w or not w.vm or not w.ads then return nil end
 	local s = w.vm.s * sizeOf(wid)
-	local row = look(wid)
-	local back = 0.17 + (if row and row.aimZ then row.aimZ else 0) -- (the sight's distance from your eye, metres)
-	if wid == "redline" then return Vector3.new(0, -0.0737 * s, -back - 0.1058 * s) * S end
-	local sight = w.mdl and w.mdl.sight -- a gun with sights: the same rule, from its row
+	local a, sk = adsOf(wid)
+	local az = (sk and sk.aimZ) or (a and a.aimZ) or 0
+	local back = (0.17 + az) * unzoom() -- (the sight's distance from your eye, metres)
+	local sight = (sk and sk.sight) or (a and a.sight) or (w.mdl and w.mdl.sight)
 	if sight then return Vector3.new(0, -sight.Y * s, -back - sight.Z * s) * S end
 	return Vector3.new(0.06, math.min(-0.1, -0.03 - 0.1479 * s), -back - 0.13) * S -- no sights: under and right of the middle
 end

@@ -39,6 +39,14 @@ for i, d in { Vector2.new(0, -1), Vector2.new(0, 1), Vector2.new(-1, 0), Vector2
 	local s = Instance.new("UIStroke"); s.Thickness = 1; s.Color = BLACK; s.Transparency = 0; s.Parent = b -- (a full dark outline: it has to read on a pale floor)
 	b.Parent = cross
 end
+-- a dot sight's reticle (the Redline aimed): a small red dot with a soft rim, a little under 1% of the screen's height
+local redDot = Instance.new("Frame")
+redDot.Name = "RedDot"; redDot.AnchorPoint = Vector2.new(0.5, 0.5); redDot.Position = UDim2.fromScale(0.5, 0.5)
+redDot.SizeConstraint = Enum.SizeConstraint.RelativeYY; redDot.Size = UDim2.fromScale(0.0085, 0.0085)
+redDot.BackgroundColor3 = Color3.fromRGB(255, 52, 52); redDot.BorderSizePixel = 0; redDot.Visible = false
+local rdc = Instance.new("UICorner"); rdc.CornerRadius = UDim.new(0.5, 0); rdc.Parent = redDot
+local redGlow = Instance.new("UIStroke"); redGlow.Thickness = 2; redGlow.Color = Color3.fromRGB(255, 120, 110); redGlow.Transparency = 1; redGlow.Parent = redDot
+redDot.Parent = gui
 local ring = Instance.new("Frame")
 ring.Name = "ParryRing"; ring.AnchorPoint = Vector2.new(0.5, 0.5); ring.Position = UDim2.fromScale(0.5, 0.5)
 ring.Size = UDim2.fromOffset(54, 54); ring.BackgroundTransparency = 1; ring.Visible = false; ring.Parent = gui
@@ -420,12 +428,13 @@ end
 function H.hideEnd() endTok += 1; endPanel.Visible = false; endShadow.Visible = false end
 
 -- the per-frame bits
--- the scopes. the Sniper's ("full"): black everywhere outside a lens 96% of the screen's height, its edge soft like
--- looking down a tube, thin black cross-hairs. the Second Opinion's ("short", not a sniper): a smaller lens in a dark
--- ring, the world still seen dimmed round it. (16 Nov 2026, owner: "aim down sights should look like the rivals ones",
--- "scopes look bad for the non snipers": Rivals' sniper lens is nearly the screen's height with a soft dark edge, and
--- only the sniper blacks the screen; ours was a 68% lens with a hard edge on both guns.) the black is one ring's very
--- thick outline; the soft edge is a few fainter rings inside it
+-- the scopes (a scoped gun hides itself behind them: Arsenal). Both black the screen outside a round lens with a soft
+-- edge, like looking down a tube (Rivals' and Valorant's snipers: the lens nearly the screen's height, the gun gone).
+-- the Sniper's ("full"): a lens 96% of the screen's height and a duplex reticle, thin lines through the middle and thick
+-- posts from the rim. the Second Opinion's ("short", the marksman's): a lens 88% high and its own reticle, a red dot
+-- with short side lines and a post from below. (16 Nov 2026, owner: "aim down sights should look like the rivals
+-- ones", "scopes look bad for the non snipers", later "reference rivals aim down sights and valorant ones".) the black
+-- is one ring's very thick outline; the soft edge is a few fainter rings inside it
 local scope = Instance.new("Frame")
 scope.Name = "Scope"; scope.BackgroundTransparency = 1; scope.Size = UDim2.fromScale(1, 1); scope.Visible = false; scope.ZIndex = 0
 scope.ClipsDescendants = true
@@ -437,18 +446,35 @@ lens.ZIndex = 0 -- (under the panels: HP, ammo and the top line stay readable th
 local lensCorner = Instance.new("UICorner"); lensCorner.CornerRadius = UDim.new(0.5, 0); lensCorner.Parent = lens
 local lensRim = Instance.new("UIStroke"); lensRim.Thickness = 2400; lensRim.Color = Color3.new(0, 0, 0); lensRim.Parent = lens
 lens.Parent = scope
-for _, sz in { UDim2.new(1, 0, 0, 2), UDim2.new(0, 2, 1, 0) } do
-	local hair = Instance.new("Frame")
-	hair.Name = "Hair"; hair.BorderSizePixel = 0; hair.BackgroundColor3 = Color3.new(0, 0, 0); hair.AnchorPoint = Vector2.new(0.5, 0.5)
-	hair.Position = UDim2.fromScale(0.5, 0.5); hair.Size = sz; hair.ZIndex = 0; hair.Parent = lens
+-- a reticle piece: a black bar (or a red dot) in the lens, placed by its anchor, position and size (lens scale + px)
+local function bar(parent: Instance, anchor: Vector2, pos: UDim2, size: UDim2, color: Color3?)
+	local f = Instance.new("Frame")
+	f.BorderSizePixel = 0; f.BackgroundColor3 = color or Color3.new(0, 0, 0); f.AnchorPoint = anchor
+	f.Position = pos; f.Size = size; f.ZIndex = 0; f.Parent = parent
+	return f
 end
--- the short scope's tube: a solid dark band round the lens
-local tube = Instance.new("Frame")
-tube.Name = "Tube"; tube.BackgroundTransparency = 1; tube.AnchorPoint = Vector2.new(0.5, 0.5); tube.Position = UDim2.fromScale(0.5, 0.5)
-tube.Size = UDim2.fromScale(1, 1); tube.ZIndex = 0; tube.Visible = false
-local tubeCorner = Instance.new("UICorner"); tubeCorner.CornerRadius = UDim.new(0.5, 0); tubeCorner.Parent = tube
-local tubeRim = Instance.new("UIStroke"); tubeRim.Color = Color3.fromRGB(12, 13, 15); tubeRim.Parent = tube
-tube.Parent = lens
+local function reticle(name: string): Frame
+	local r = Instance.new("Frame")
+	r.Name = name; r.BackgroundTransparency = 1; r.Size = UDim2.fromScale(1, 1); r.ZIndex = 0; r.Visible = false; r.Parent = lens
+	return r
+end
+local MID = Vector2.new(0.5, 0.5)
+-- the Sniper's duplex: thin lines right across, thick posts on the outer fifth of each arm
+local duplex = reticle("Duplex")
+bar(duplex, MID, UDim2.fromScale(0.5, 0.5), UDim2.new(1, 0, 0, 2))
+bar(duplex, MID, UDim2.fromScale(0.5, 0.5), UDim2.new(0, 2, 1, 0))
+bar(duplex, Vector2.new(0, 0.5), UDim2.fromScale(0, 0.5), UDim2.new(0.19, 0, 0, 6))
+bar(duplex, Vector2.new(1, 0.5), UDim2.fromScale(1, 0.5), UDim2.new(0.19, 0, 0, 6))
+bar(duplex, Vector2.new(0.5, 0), UDim2.fromScale(0.5, 0), UDim2.new(0, 6, 0.19, 0))
+bar(duplex, Vector2.new(0.5, 1), UDim2.fromScale(0.5, 1), UDim2.new(0, 6, 0.19, 0))
+-- the Second Opinion's: a red dot, short lines either side with a gap round it, a post coming up from below
+local marks = reticle("Marksman")
+bar(marks, Vector2.new(1, 0.5), UDim2.fromScale(0.465, 0.5), UDim2.new(0.3, 0, 0, 2))
+bar(marks, Vector2.new(0, 0.5), UDim2.fromScale(0.535, 0.5), UDim2.new(0.3, 0, 0, 2))
+bar(marks, Vector2.new(0.5, 0), UDim2.fromScale(0.5, 0.535), UDim2.new(0, 2, 0.2, 0))
+bar(marks, Vector2.new(0.5, 1), UDim2.fromScale(0.5, 1), UDim2.new(0, 6, 0.27, 0))
+local mdot = bar(marks, MID, UDim2.fromScale(0.5, 0.5), UDim2.fromScale(0.011, 0.011), Color3.fromRGB(255, 52, 52))
+local mdc = Instance.new("UICorner"); mdc.CornerRadius = UDim.new(0.5, 0); mdc.Parent = mdot
 -- the soft edge: rings just inside the lens's rim, darkest at the rim (their width follows the lens's size on screen)
 local SOFT = { 0.25, 0.45, 0.62, 0.76, 0.87, 0.94 } -- transparency, rim inward
 local softRings = {}
@@ -469,7 +495,6 @@ local function softFit()
 		r.frame.Size = UDim2.new(1, -inset, 1, -inset)
 		r.stroke.Thickness = w
 	end
-	tubeRim.Thickness = math.max(2, d * 0.09)
 end
 lens:GetPropertyChangedSignal("AbsoluteSize"):Connect(softFit)
 softFit()
@@ -480,9 +505,9 @@ function H.scope(on: boolean, kind: string?)
 	if on and kind ~= scopeKind then
 		scopeKind = kind
 		local short = kind == "short"
-		lens.Size = if short then UDim2.fromScale(0.62, 0.62) else UDim2.fromScale(0.96, 0.96)
-		lensRim.Transparency = if short then 0.4 else 0
-		tube.Visible = short
+		lens.Size = if short then UDim2.fromScale(0.88, 0.88) else UDim2.fromScale(0.96, 0.96)
+		duplex.Visible = not short
+		marks.Visible = short
 	end
 end
 
@@ -491,10 +516,24 @@ function H.step(dt: number, aim: number, scopeHide: boolean)
 	local rim = math.max(hurtA, lowA)
 	for _, r in rims do r.BackgroundTransparency = 1 - rim end
 	-- (no crosshair through the scope, over the end screen or under the settings panel)
-	cross.Visible = not scopeHide and not endPanel.Visible and me:GetAttribute("SettingsOpen") ~= true
+	local shown = not scopeHide and not endPanel.Visible and me:GetAttribute("SettingsOpen") ~= true
+	cross.Visible = shown
+	-- aiming down a gun's sights: the sights mark the middle and the crosshair goes (Rivals, Valorant); a dot sight
+	-- (Viewmodel's AimSight: the Redline) shows its red dot; a gun with no sights keeps a faint crosshair
+	local kind = me:GetAttribute("AimSight")
+	local sighted = kind == "iron" or kind == "dot"
+	local fade = if sighted then math.clamp((aim - 0.45) / 0.4, 0, 1) else aim * 0.6
 	for _, c in cross:GetChildren() do
-		if c:IsA("Frame") then c.BackgroundTransparency = aim * 0.6 end
+		if c:IsA("Frame") then
+			c.BackgroundTransparency = fade
+			local st = c:FindFirstChildOfClass("UIStroke")
+			if st then st.Transparency = fade end
+		end
 	end
+	local d = if kind == "dot" and shown then math.clamp((aim - 0.6) / 0.3, 0, 1) else 0
+	redDot.Visible = d > 0
+	redDot.BackgroundTransparency = 1 - d
+	redGlow.Transparency = 1 - d * 0.45
 end
 
 -- the controls line (bottom right) for step 2

@@ -247,6 +247,49 @@ the tool's own script dies with it, so Arsenal now clears a copy whose `Owner` t
 heat bar still stays until you respawn in that case. Not checked: other avatar bodies in the combined look (checked in after), third
 person (on the owner's avatar the held gun points backward; older code, not touched, needs its own fix).
 
+## Aiming down the sights (16 November 2026, place version 474)
+
+The owner: "aim down sights, scopes, etc some of them still look bad when you scope in, like the redline for example,
+it covers most of your screen", then "reference rivals aim down sights and valorant ones".
+
+**What the references do** (measured from video frames in the built-in browser; notes and numbers in the vault,
+`Research/Rivals and Valorant aim down sights.md`; no frame of theirs is kept in git):
+
+- Rivals: the gun is seen from straight behind. Only the rear sight sits on the crosshair; the body is a narrow column
+  under it, its top about 52 % down and leaving the bottom edge at about 40 to 60 % across, about 8 % of the screen
+  for a rifle. A handgun is smaller, with the hand below it. The move in takes under 0.2 s. Scoped weapons hide the gun
+  behind a round lens about the screen's height with a soft dark rim.
+- Valorant: the same idea. An optic's frame floats round the crosshair and the gun drops low, its top about 80 % down.
+  The snipers show the scope's own tube from behind, with a magnified lens about half the screen high.
+
+**What was wrong with ours.** Each gun sat 0.17 m behind its sight, and since the hold pass the guns are drawn bigger.
+The aim's zoom (Arsenal narrows the camera from 80 down to as little as 50) then made the gun bigger still. Rivals and
+Valorant draw the gun with a view of its own, so their zoom never touches it. Before this pass the Redline aimed
+covered 13 % of the screen and the rifle's back end spread 25 to 75 % across the bottom. Two guns also aimed through
+their own bodies. The Redline's sight line runs 8 mm under the top of its deck, so the deck filled the sight window.
+The Half a Shotgun's line ran inside its hinge.
+
+**What changed** (each weapon's `ads` row in `holds.json`, `Viewmodel.adsPos`, `FightHud`):
+
+- The gun is pushed back by the zoom's own amount (the ratio of the two views' tangents), so it keeps the size it has
+  at your own FOV. On top of that, an `aimZ` per gun is fitted to Rivals' rifle numbers: Redline 0.10 m, Assault
+  Rifle 0.05, SMG 0.09, Shotgun 0.15, Hat Trick 0.05, Belt Sander 0.17, Yeehaw 0.15, Lawn Mower 0.21, Marble Shotgun
+  0.06, Revolver and Plan B 0.03, Half a Shotgun 0.04. Every long gun now covers 6 to 8 %.
+- The Redline aims just over its housing with a red dot drawn on the crosshair. The Hot Rod skin's deck is low, so it
+  keeps the gun's own height, with a bump as the front post. The Half a Shotgun aims between its two hammers.
+- With iron sights the crosshair fades out as the sights come up, and the Marble Shotgun (no sights) keeps a faint one.
+- Both scopes black out the screen outside a round lens with a soft edge. The Sniper's lens is 96 % of the screen
+  high with a duplex reticle (thin lines through the middle, thick posts from the rim). The Second Opinion's is 88 %,
+  with a red dot, short side lines and a post from below. It used to be a smaller lens with the world dimmed round it.
+- Skins: the Seraph and Infernal sets fade their wings, horns and crowns out while aiming. The Seraph rifle's wings
+  would otherwise cover 84 % of the screen. Bulkier bodies sit further back: the Ticket Hat Trick at 0.14, the Dust
+  Yeehaw at 0.29 and the Star Yeehaw at 0.18. Every other skin was measured and passes as is.
+
+Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
+JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
+Not checked in pictures: the cute concepts, the duck guns and the Keytar (they measure within 1.25x of their gun in
+`hold_screen.py --ads`), other avatar bodies aimed, and third person. The shoulder camera has its own aim (TP).
+
 ## What is still not at the bar
 
 - The hands are Roblox's own, so on a blocky avatar they are mittens with no fingers: a trigger finger or fingers

@@ -137,9 +137,22 @@ about a quarter of the screen wide with its back end leaving the bottom edge at 
 turned so its side shows, the katana upright on the right. Per weapon, `holds.json` has `shift` (a move of the rest
 pose, camera space, metres), `scale` and `tilt` (degrees added to the rest turn), kept as three looks per weapon
 (`looks`: before / after / combined; `use` picks one; the player's `HoldLook` attribute previews one in a test).
-`aimZ` moves the sight further from the eye while aiming. `py tools/roblox/hold_screen.py [--look ...] [--ads]`
-prints where each gun lands on a 16:9 screen at the game's default FOV of 80, from the kit's part boxes, so a new gun
-can be placed before any Play test.
+`py tools/roblox/hold_screen.py [--look ...]` prints where each gun lands on a 16:9 screen at the game's default FOV
+of 80, from the kit's part boxes, so a new gun can be placed before any Play test.
+
+**Aiming down the sights** (16 November 2026, place version 474; the owner: aiming should look like Rivals and
+Valorant, the Redline "covers most of your screen") follows each weapon's `ads` row in `holds.json`. The sight sits on
+the crosshair, 0.17 m + `aimZ` from the eye, and the gun is pushed back by the zoom's own amount, so zooming in never
+makes it bigger (`Viewmodel.adsPos`). `sight` moves the aim line where the gun's own Sight spot is blocked, as on the
+Redline and Half a Shotgun. `kind` tells the HUD what to draw: `iron` (the crosshair fades out), `dot` (a red dot,
+the Redline), `none` (a faint crosshair, the Marble Shotgun), `scope` (the Sniper's and Second Opinion's lenses,
+each with its own reticle; the gun is hidden). `skins.<id>` gives a skin its own `aimZ` or `sight`, and `hide` lists
+its pieces that fade out while aiming: the wings, horns and crowns of the Seraph and Infernal sets. A long gun aimed
+covers about 6 to 8 % of the screen, its body starting just under the crosshair and leaving the bottom edge between
+40 and 60 % across, like Rivals' rifles. `py tools/roblox/hold_screen.py --ads [id or id@skin ...]` measures that on
+the guns' real triangles. A new gun or skin is checked there first: a piece over the crosshair or above it means a
+`sight` or a `hide` entry. Sheets: `docs/gun-hold/ads-1.jpg` to `ads-3.jpg`. Full account: `docs/GUN-PAINT.md`,
+"Aiming down the sights".
 
 Wraps are untouched by any of this: a wrap repaints pieces through `Color` and takes pictures off, then restores
 whatever the template had.

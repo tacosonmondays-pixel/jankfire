@@ -21,8 +21,12 @@ out = ['--!strict',
        '--     CFrame.Angles): +Y runs along the thing held, toward the thumb (palm: up into it); size = the hand against',
        '--     AvatarArms.HAND; elbow = this arm\'s own elbow spot; turn = an extra turn about the handle (radians)',
        '--   holds[weapon].shift: a move of the weapon\'s rest pose, camera space (metres); scale: its size against size;',
-       '--     tilt: a turn added to its rest pose (radians, x y z like vm.r); aimZ: the sight this much further off\n'
-       '--     while aiming (metres)',
+       '--     tilt: a turn added to its rest pose (radians, x y z like vm.r)',
+       '--   holds[weapon].ads: the aimed view (Viewmodel.adsPos). aimZ = the sight this much further from your eye (metres,',
+       '--     on top of 0.17; the zoom\'s own push comes on top of that), sight = where the aim line runs on the gun (file',
+       '--     metres; else the gun\'s own Sight spot), kind = iron / dot / none / scope (the HUD: the crosshair goes for',
+       '--     sights, a red dot shows in a dot sight), skins[id] = a skin\'s own aimZ / sight, hide = its pieces (names',
+       '--     start with these) faded out while aiming: wings, horns, crowns',
        '--   elbow: where each forearm comes from, in camera space (metres). size: every weapon in first person is drawn',
        '--     this much larger than the web game\'s scale (Viewmodel: k = S x vm.s x size), the hands with it',
        '--   katana: its rest and parry poses as a turn and a shift laid over the web game\'s clips, and when each is on',
@@ -59,6 +63,19 @@ for wid, h in H.items():
         sides.append('looks = { %s }' % ', '.join('%s = { %s }' % (n, ', '.join(pose(p))) for n, p in h['looks'].items()))
     else:
         sides += pose(h)
+    a = h.get('ads')
+    if a:
+        bits = ['aimZ = %s' % f(a.get('aimZ', 0)), 'kind = "%s"' % a.get('kind', 'iron')]
+        if a.get('sight'): bits.append('sight = %s' % V(a['sight']))
+        sk = []
+        for sid, row in a.get('skins', {}).items():
+            sb = []
+            if 'aimZ' in row: sb.append('aimZ = %s' % f(row['aimZ']))
+            if row.get('sight'): sb.append('sight = %s' % V(row['sight']))
+            if row.get('hide'): sb.append('hide = { %s }' % ', '.join('"%s"' % n.lower() for n in row['hide']))
+            sk.append('%s = { %s }' % (sid, ', '.join(sb)))
+        if sk: bits.append('skins = { %s }' % ', '.join(sk))
+        sides.append('ads = { %s }' % ', '.join(bits))
     out.append('\t\t%s = { %s },' % (wid, ', '.join(sides)))
 out.append('\t},')
 fx = L.katana_fixes(H)
