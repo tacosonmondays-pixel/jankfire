@@ -8,6 +8,13 @@
 -- with one pink line, wood dado, plain heavy lettering), as the ground-floor lobby of the arena. the pads are five open
 -- lifts up to the arena, on an arc behind the round room's northern piers: one opening and one floor line per lift.
 -- no pad corridor, no runway, no blast door.
+-- HOLOGRAMS (owner, 16 Nov: "in the hub can the center gun thingy cycle your loadout but hologram style? we also need
+-- holograms like in rivals with bundle sets that float and people can look at and interact with"): the builder only
+-- leaves their places, B.holo: an invisible drum tagged HubHolo the size of the space a hologram may fill (attributes
+-- Holo = "loadout" / "bundle", Slot, Radius, Height, Base = how far under its middle its lens is, Color = the palette's
+-- accent). StarterPlayerScripts.HubHolo draws them on each player's screen: over the platform your own loadout in
+-- turn, on the showroom's four plinths (the south wall either side of the lounge) the shop's bundles. R.check tests
+-- the sight lines and keep-clear zones against those drums as if they were solid.
 --   usage (Studio's command bar, Edit):
 --     local R = require(game.ServerStorage.PolishBackup.HubRotunda:Clone()); print(R.build("live")); print(R.check())
 --   R.build("stage")   a copy to look at, under workspace.Map.HubStage at R.STAGE (its pads are for show)
@@ -37,7 +44,11 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 20 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 32 -- (counts the pushes from the repo into Studio while the builder was being written)
+-- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
+-- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
+-- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
+R.PROPS = 94371006780646 -- (the kit's Model asset: rk_planter, rk_punchbag, rk_tyres, rk_coffeetable, rk_lockers, rk_dumbbells, rk_bench)
 -- the round room: 14 sides, 28 from the middle to a wall's face, walls and piers 3.4 thick, the ring balcony 14 up and
 -- 5.5 deep. side i is at bearing i * 360 / 14; R.OPEN says which sides are ways out
 R.N, R.A, R.WALL, R.RING_Y, R.RING_IN = 14, 28, 3.4, 14, 22.5
@@ -46,7 +57,7 @@ R.N, R.A, R.WALL, R.RING_Y, R.RING_IN = 14, 28, 3.4, 14, 22.5
 -- where you appear every lift is framed by its own two piers (from the room's own middle they would be too far round
 -- to the sides to be in a first look)
 R.FOCUS = 6
-R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift", [4] = "gym", [7] = "lounge", [10] = "armory" }
+R.OPEN = { [0] = "lift", [1] = "lift", [2] = "lift", [12] = "lift", [13] = "lift", [4] = "duels", [7] = "lounge", [10] = "armory" }
 local TEAM = { "ff4fd8", "37d6ff", "ffe14d" } -- the teams' colours, in Matches' order
 R.TEAM = TEAM
 -- the five modes, left to right as you spawn: its side of the round room, and its pad's width and depth
@@ -56,6 +67,18 @@ R.MODES = {
 	{ id = "2v2", title = "2V2", kind = "DUOS", teams = 2, size = 2, side = 0, w = 13.6, dp = 11 },
 	{ id = "3v3", title = "3V3", kind = "TRIOS", teams = 2, size = 3, side = 1, w = 14.4, dp = 11.2 },
 	{ id = "4v4", title = "4V4", kind = "SQUADS", teams = 2, size = 4, side = 2, w = 15.6, dp = 11.2 },
+}
+-- THE DUEL HALL (side 4, where the gym was; HubRotundaRooms builds it): seven more pads round its walls (owner, 16 Nov:
+-- "we also need more pads somewhere?"). R.HALL_BOX = x0, x1, the far wall's d, the height (side 4's frame: x to the
+-- right looking outward, d out from the round room's middle); each pad: its name (= its PadId), its mode (R.MODES index),
+-- the wall it stands against and where along it (far / near: x; left / right: d). R.HALL_SIZE = the hall pads' w, dp
+R.HALL_BOX = { -25, 25, 92, 18 }
+R.HALL_RING = 64 -- (how far out the ring's middle is, on the door's axis)
+R.HALL_SIZE = { ["1v1"] = { 10, 8 }, ["2v2"] = { 12, 9 }, ["3v3"] = { 13.6, 10 } }
+R.HALL = {
+	{ name = "1v1_h1", mode = 1, wall = "far", at = -15.5 }, { name = "3v3_h1", mode = 4, wall = "far", at = 0 }, { name = "1v1_h2", mode = 1, wall = "far", at = 15.5 },
+	{ name = "2v2_h1", mode = 3, wall = "left", at = 64 }, { name = "2v2_h2", mode = 3, wall = "right", at = 64 },
+	{ name = "1v1_h3", mode = 1, wall = "near", at = -14.5 }, { name = "1v1_h4", mode = 1, wall = "near", at = 14.5 },
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,
@@ -130,7 +153,45 @@ end
 local function hexOf(name) return name:match("_(%x%x%x%x%x%x)$") end
 
 -- where a build's pieces are: the real hub's own folders, or the staging copy's (its Game folder)
-function R.places(stage) -- (stage = the name of a staging copy's folder in workspace.Map; nil = the live hub, else HubStage)
+function R.prop(new, old) return if lib:FindFirstChild(new) then new else old end
+function R.propScale(new, sNew, sOld) return if lib:FindFirstChild(new) then sNew else sOld end
+-- the prop kit into ServerStorage.JankfireMeshes, split by the pieces' names ("<model><n>__<kind>_<hex>"), each model's
+-- pivot the file's own frame (its footprint's middle on the floor)
+function R.importProps(id)
+	id = id or R.PROPS
+	local ok, container = pcall(function() return game:GetService("InsertService"):LoadAsset(id) end)
+	if not ok or not container then return "LOAD FAILED " .. tostring(container) end
+	local MAT = { plastic = SP, neon = Neon }
+	local groups, bad = {}, 0
+	for _, d in container:GetDescendants() do
+		if not d:IsA("MeshPart") then continue end
+		local model, kind, h = string.match(d.Name, "^(.-)%d+__(%a+)_(%x%x%x%x%x%x)")
+		if not model or not MAT[kind] then bad += 1; continue end
+		d.Material = MAT[kind]; d.Color = Color3.fromHex(h); d.TextureID = ""
+		d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
+		d.CastShadow = kind ~= "neon"
+		groups[model] = groups[model] or {}
+		table.insert(groups[model], d)
+	end
+	local names = {}
+	for name, parts in groups do
+		local m = Instance.new("Model")
+		m.Name = name
+		for _, p in parts do p.Parent = m end
+		m.WorldPivot = CFrame.identity
+		m:SetAttribute("AssetId", id); m:SetAttribute("Kit", "rotunda")
+		local old = lib:FindFirstChild(name)
+		if old then old:Destroy() end
+		m.Parent = lib
+		local _, size = m:GetBoundingBox()
+		table.insert(names, ("%s %d (%.1f x %.1f x %.1f)"):format(name, #parts, size.X, size.Y, size.Z))
+	end
+	container:Destroy()
+	table.sort(names)
+	return #names .. " models" .. (if bad > 0 then ", " .. bad .. " pieces with no name rule" else "") .. "\n  " .. table.concat(names, "\n  ")
+end
+
+function R.places(stage) --(stage = the name of a staging copy's folder in workspace.Map; nil = the live hub, else HubStage)
 	if not stage then
 		local room = hub:FindFirstChild(R.ROOM)
 		if room then
@@ -364,6 +425,26 @@ function R.new(live, opts)
 		if l.Shadows then B.shadows += 1 end
 		return p
 	end
+	-- a hologram's place (see the top): its middle at (x, y, d), r across from its axis, h tall. o.base = how far under
+	-- its middle the lens it rises from is (0 = no beam), o.slot = which bundle, o.prompt = a ProximityPrompt on it
+	function B.holo(F, name, kind, x, y, d, r, h, o)
+		o = o or {}
+		local p = B.cyl(F, "Scenery", name, x, y - h / 2, y + h / 2, d, 2 * r, P.glow, nil, { ghost = true, tr = 1 })
+		p:SetAttribute("Holo", kind); p:SetAttribute("HoloEnvelope", true)
+		p:SetAttribute("Radius", r); p:SetAttribute("Height", h); p:SetAttribute("Base", o.base or 0)
+		p:SetAttribute("Color", P.holo or P.glow)
+		if o.slot then p:SetAttribute("Slot", o.slot) end
+		if o.prompt then
+			local pr = Instance.new("ProximityPrompt")
+			pr.Name = "BundlePrompt"; pr.ActionText = o.prompt; pr.ObjectText = "Bundle"
+			pr.KeyboardKeyCode = Enum.KeyCode.E; pr.GamepadKeyCode = Enum.KeyCode.ButtonX; pr.HoldDuration = 0
+			pr.MaxActivationDistance = 10; pr.RequiresLineOfSight = false; pr.ClickablePrompt = true
+			pr.Exclusivity = Enum.ProximityPromptExclusivity.OnePerButton
+			pr.Parent = p
+		end
+		game:GetService("CollectionService"):AddTag(p, "HubHolo")
+		return p
+	end
 	-- a white light panel let into a ceiling whose underside is y: w across, l deep. o.hex = its colour
 	function B.panel(F, x, y, d, w, l, o)
 		o = o or {}
@@ -379,8 +460,10 @@ function R.new(live, opts)
 	-- on its board read), a place for everybody on each plate: a socket with a white light in it, which is the Slot
 	-- Matches switches (Off = 1: clear while the place is empty). y = the top of the deck it lies on
 	function B.pad(F, md, x, y, d)
-		local m = Instance.new("Model"); m.Name = md.id
+		local m = Instance.new("Model"); m.Name = md.name or md.id
 		m:SetAttribute("Mode", md.id); m:SetAttribute("Teams", md.teams); m:SetAttribute("Size", md.size)
+		-- (several pads share a mode since the duel hall: PadId tells them apart, Bank says where it stands)
+		m:SetAttribute("PadId", m.Name); m:SetAttribute("Bank", md.bank or "lifts")
 		m:SetAttribute(if live then "Built" else "ForShow", if live then R.MARK else true)
 		local function plate(pn, cx, cd, sx, sd, hex, mat, yy, th)
 			local p = Instance.new("Part")
@@ -621,8 +704,11 @@ R.WALKS = {}
 R.LEAKS = {}
 -- what must show from every spawn point besides the pads' plates and boards: { what, its name in Scenery }
 R.SIGHTS = { { "the name on the gallery over the middle lift", "GalleryName" } }
+-- the overlap test: kit models set into walls, lids or floors on purpose are left out; parts are shrunk by this much first
+R.STRUCTURE = { Pier = true, Rail = true, DomeRing = true, Bezel = true, TrainingPortal = true, WallLight = true, DropLight = true, CrownDuck = true, HoloProjector = true, HoloDuck = true }
+R.OVERLAP_GAP = 0.06
 local STEP = 360 / R.N
-local GYM, LOUNGE, ARM = 4 * STEP, 7 * STEP, 10 * STEP
+local DUELS, LOUNGE, ARM = 4 * STEP, 7 * STEP, 10 * STEP
 R.DECK0, R.DECK1 = 49.8, 62.6 -- a lift's deck, from the focus: its front and the face of the wall behind it
 for _, md in R.MODES do
 	local b = R.liftBearing(md.side)
@@ -631,11 +717,12 @@ for _, md in R.MODES do
 	table.insert(R.LEAKS, { b, 0, 6, 43, R.FOCUS }); table.insert(R.LEAKS, { b, 0, 10, 56, R.FOCUS })
 	table.insert(R.SIGHTS, { md.title .. " over its way in", "Way_" .. md.id })
 end
-for _, w in { { "the way to the lounge", LOUNGE, -4.2, 4.2, 14, 41, 0 }, { "the way to the gym", GYM, -4.5, 4.5, 14, 44.5, 0 },
+for _, w in { { "the way to the lounge", LOUNGE, -4.2, 4.2, 14, 41, 0 }, { "the way into the duel hall", DUELS, -4.5, 4.5, 14, 44.5, 0 },
 	{ "the way to the training gate", ARM, -4.2, 4.2, 14, 60.4, 0 }, { "the armory's aisle", ARM, -6, 6, 38.6, 60.4, 0 } } do table.insert(R.WALKS, w) end
-for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 }, { GYM, 0, 6, 35 }, { GYM, 2, 8, 55 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
-for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "GYM over its door", "Way_gym" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", true },
-	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target at the gym's far end", "Target", true } } do table.insert(R.SIGHTS, w) end
+for _, p in { { 0, 0, 8, 0 }, { 0, 0, 22, 0 }, { 0, 0, 18, 25 }, { 180, 0, 18, 25 }, { LOUNGE, 0, 6, 34 }, { LOUNGE, 0, 6, 50 }, { DUELS, 0, 6, 35 }, { DUELS, 0, 9, 50 }, { DUELS, 0, 10, 82 }, { ARM, 0, 6, 34 }, { ARM, 0, 6, 50 } } do table.insert(R.LEAKS, p) end
+for _, w in { { "TRAINING over the armory's hatch", "Way_training" }, { "DUELS over its door", "Way_duels" }, { "LOUNGE over its arch", "Way_lounge" }, { "the duck in the lounge", "HoloDuck", true },
+	{ "the training gate at the armory's far end", "TrainingPortal", true }, { "the target over the duel hall's 3v3", "Target", true } } do table.insert(R.SIGHTS, w) end
+for k = 1, 3 do table.insert(R.SIGHTS, { "the bundle hologram on plinth " .. k, "HoloBundle" .. k, true }) end
 
 local function obb(cfA, hA, cfB, hB)
 	local A = { cfA.RightVector, cfA.UpVector, cfA.LookVector }
@@ -681,7 +768,7 @@ function R.check(stage)
 	local game_ = room:FindFirstChild("Game")
 	for _, p in room:GetDescendants() do
 		-- (a thing counts if you can see it or bump into it: lamp points and markers do not)
-		if not p:IsA("BasePart") or (p.Transparency >= 1 and not p.CanCollide) or (game_ and p:IsDescendantOf(game_)) then continue end
+		if not p:IsA("BasePart") or (p.Transparency >= 1 and not p.CanCollide and not p:GetAttribute("HoloEnvelope")) or (game_ and p:IsDescendantOf(game_)) then continue end
 		looked += 1
 		local round = p:IsA("Part") and p.Shape == Enum.PartType.Cylinder
 		for _, z in zones do
@@ -700,13 +787,44 @@ function R.check(stage)
 			end
 		end
 	end
+	-- props through props (the owner's play-test, 16 Nov: an SMG through a case, the katana through an ammo box): every
+	-- pair of kit models and display guns in Scenery, part against part, each part shrunk by R.OVERLAP_GAP so things
+	-- that only touch pass. the structural kit set into walls and lids on purpose (R.STRUCTURE) is left out
+	local props = {}
+	for _, m in room.Scenery:GetChildren() do
+		if not m:IsA("Model") or R.STRUCTURE[m.Name] then continue end
+		local parts = {}
+		for _, p in m:GetDescendants() do if p:IsA("BasePart") and p.Transparency < 0.95 then table.insert(parts, p) end end
+		if #parts > 0 then local cf, sz = m:GetBoundingBox(); table.insert(props, { m = m, parts = parts, cf = cf, half = sz / 2 }) end
+	end
+	local g = R.OVERLAP_GAP
+	local function shrunk(p) return Vector3.new(math.max(p.Size.X / 2 - g, 0.01), math.max(p.Size.Y / 2 - g, 0.01), math.max(p.Size.Z / 2 - g, 0.01)) end
+	local overlaps = 0
+	for i = 1, #props do
+		for j = i + 1, #props do
+			local a, b = props[i], props[j]
+			if not obb(a.cf, a.half, b.cf, b.half) then continue end
+			local hit = nil
+			for _, p in a.parts do
+				for _, q in b.parts do
+					if obb(p.CFrame, shrunk(p), q.CFrame, shrunk(q)) then hit = { p, q }; break end
+				end
+				if hit then break end
+			end
+			if hit then
+				overlaps += 1
+				local at = hit[1].Position - O
+				table.insert(issues, ("OVERLAP: %s (%s) goes into %s (%s) near (%.1f, %.1f, %.1f)"):format(a.m.Name, hit[1].Name, b.m.Name, hit[2].Name, at.X, at.Y, at.Z))
+			end
+		end
+	end
 	-- sight: from the eye over every spawn marker (4.7 over it) the middle of every pad's plates, three points across
 	-- every board and everything in R.SIGHTS must show. anything you can see counts as in the way, solid or not; a
 	-- part is tested as its own box, turned as it is turned
 	local blockers = {}
 	for _, f in { room, W.pads } do
 		for _, q in f:GetDescendants() do
-			if q:IsA("BasePart") and q.Transparency < 0.5 then
+			if q:IsA("BasePart") and (q.Transparency < 0.5 or q:GetAttribute("HoloEnvelope")) then -- (a hologram's drum: what may stand there)
 				local cf, h = q.CFrame, q.Size / 2
 				local r, u, l = cf.RightVector, cf.UpVector, cf.LookVector
 				local e = Vector3.new(math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z, math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z, math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z)
@@ -732,6 +850,7 @@ function R.check(stage)
 	end
 	local targets = {}
 	for _, pad in pads do
+		if pad:GetAttribute("Bank") == "hall" then continue end -- (the duel hall's pads are not seen from the spawn)
 		for _, c in pad:GetChildren() do
 			if c:IsA("BasePart") and c.Name:sub(1, 4) == "Side" then table.insert(targets, { "pad " .. pad.Name .. "'s " .. c.Name, c, c.Position, pad }) end
 		end
@@ -778,11 +897,11 @@ function R.check(stage)
 	for _, l in room:GetDescendants() do if l:IsA("Light") then lamps += 1; if l.Shadows then shadows += 1 end end end
 	if shadows > 11 then table.insert(issues, ("LAMPS: %d cast shadows (11 is the limit)"):format(shadows)) end
 	if spawnN < 8 then table.insert(issues, ("SPAWNS: %d spawn markers (8 wanted)"):format(spawnN)) end
-	if #pads ~= #R.MODES then table.insert(issues, ("PADS: %d pads (%d wanted)"):format(#pads, #R.MODES)) end
+	if #pads ~= #R.MODES + #R.HALL then table.insert(issues, ("PADS: %d pads (%d wanted)"):format(#pads, #R.MODES + #R.HALL)) end
 	local problems = #issues
 	for _, line in sights do table.insert(issues, line) end
-	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, lamps %d (%d with shadows)"):format(
-		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, lamps, shadows)
+	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, props %d, overlaps %d, lamps %d (%d with shadows), pads %d"):format(
+		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, #props, overlaps, lamps, shadows, #pads)
 	if W.live then PB:SetAttribute("LastOverlapCheck", msg) end
 	if #issues > 40 then local n = #issues; issues = table.move(issues, 1, 40, 1, {}); table.insert(issues, ("... and %d more"):format(n - 40)) end
 	return msg .. (if #issues > 0 then "\n" .. table.concat(issues, "\n") else "")
@@ -793,8 +912,11 @@ R.VIEWS = {
 	spawn = { { 0, 0, 5.9, -6 }, { 0, 0, 7, 50 } }, centre = { { 180, 0, 8, 23 }, { 0, 0, 11, 20 } }, dome = { { 180, 0, 3.5, 15 }, { 0, 0, 30, 3 } },
 	balcony = { { 180, 0, 19.2, 25 }, { 0, 0, 9, 32 } }, lifts = { { 334.3, 0, 5.2, 34.5 }, { 22, 0, 8, 52 } }, lift = { { 0, 0, 6, 33 }, { 0, 0, 9, 56 } },
 	back = { { 0, 0, 5.5, 41 }, { 180, 0, 9, 30 } }, lounge_door = { { 0, 0, 5.9, 3 }, { 180, 0, 5, 46 } }, lounge = { { 180, 6.5, 5.6, 39.5 }, { 180, -3, 4.2, 52 } },
-	gym_door = { { GYM + 180, 0, 5.9, 4 }, { GYM, 0, 6.5, 56 } }, gym = { { GYM, -3.6, 6.4, 41.5 }, { GYM, 7, 4.5, 62 } },
+	duels_door = { { DUELS + 180, 0, 5.9, 4 }, { DUELS, 0, 7, 76 } }, duels = { { DUELS, 0, 8.5, 41 }, { DUELS, 0, 5, 80 } },
+	duels_back = { { DUELS, 12, 9, 86 }, { DUELS, -6, 3.5, 50 } },
 	training_door = { { ARM + 180, 0, 5.9, 4 }, { ARM, 0, 5.5, 60 } }, armory = { { ARM, 8.5, 6, 39.5 }, { ARM, -7, 5.5, 58 } },
+	holo = { { 180, 0, 5.4, 15 }, { 0, 0, 12.6, 0 } }, showroom = { { 0, 0, 6.2, 7 }, { 180, 0, 4.6, 27 } },
+	plinth = { { 6 * STEP, -5, 5.6, 15.5 }, { 6 * STEP, 0, 4.8, 25 } },
 }
 -- every view as "name x y z x y z" lines, for the screen capture tool
 function R.views()

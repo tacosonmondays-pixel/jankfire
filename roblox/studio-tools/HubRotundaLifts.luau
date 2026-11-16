@@ -30,9 +30,9 @@ return function(B, R)
 		-- the bay's shell: floor, the ceiling over the walk, the shaft's front, lid and back wall
 		B.box(F, S, "LiftFloor", -wb, wb, -2, -0.02, w0 - 3.4, BACK, P.floor)
 		B.box(F, S, "WalkCeiling", -wf, wf, 14, 15, w0 - 2, D0 + 1.6, P.shell2)
-		B.box(F, S, "ShaftFront", -wf, wf, 15, 23, D0, D0 + 1.6, P.shell)
-		B.box(F, S, "ShaftLid", -wb, wb, 22, 23, D0, BACK, P.shell2)
-		B.box(F, S, "BackWall", -wb, wb, 0, 23, D1, BACK, P.bay)
+		B.box(F, S, "ShaftFront", -wf, wf, 15, 22.96, D0, D0 + 1.6, P.shell) -- (tops under the lid's: no shared plane, no flicker)
+		B.box(F, S, "ShaftLid", -wb + 0.05, wb - 0.05, 22, 23, D0 + 0.05, BACK - 0.05, P.shell2) -- (its sides inside the shaft's walls': no shared planes)
+		B.box(F, S, "BackWall", -wb, wb, 0, 22.9, D1, BACK, P.bay)
 		-- the lift's deck with a marked nosing, the pad on it
 		B.box(F, S, "Deck", -8, 8, 0, 0.6, D0, D1, P.deck)
 		B.paint(F, "Nosing", -8, 8, 0.6, D0, D0 + 0.6, P.ray, 0.02)
@@ -54,7 +54,6 @@ return function(B, R)
 		B.lamp(F, 0, 21.2, mid, 32, 1.7, P.light, { spot = true, angle = 80, shadows = true })
 		B.panel(F, 0, 14, (w0 + D0) / 2, 2.4, 6)
 		B.lamp(F, 0, 13, (w0 + D0) / 2, 20, 0.9)
-		B.paint(F, "Ray", -0.32, 0.32, -0.02, w0, D0, P.ray, 0.05)
 		B.lamp(F, 0, 9, D0 + 3, 15, 0.5) -- (a soft light in the mouth of the bay, on the board and the walls)
 	end
 
@@ -62,7 +61,7 @@ return function(B, R)
 	for i = 1, 4 do
 		local e = (bear[i] + bear[i + 1]) / 2
 		local F = B.lf(e)
-		B.box(F, S, "Fin", -1.3, 1.3, 0, 23, D0 - 0.6, BACK, P.shell)
+		B.box(F, S, "Fin", -1.3, 1.3, 0, 22.84, D0 - 0.6, BACK, P.shell)
 		B.box(F, C, "FinNose", -1, 1, 0, 14, D0 - 1.1, D0 - 0.6, P.pier2, nil, G)
 		B.box(F, C, "FinLight", -0.3, 0.3, 2.4, 11, D0 - 1.22, D0 - 1.1, P.strip, Neon, G)
 		B.box(F, C, "WalkRib", -0.7, 0.7, 13.1, 14, R.reach(e, A + T), D0 - 0.6, P.cream, nil, G)
@@ -73,10 +72,11 @@ return function(B, R)
 		local e = s * (bear[5] + half)
 		local F = B.lf(e)
 		local w0 = R.reach(e, A + 1)
-		B.box(F, S, "EndWall", -1.6, 1.6, 0, 23, w0, BACK, P.shell)
+		B.box(F, S, "EndWall", -1.6, 1.6, 0, 22.78, w0, BACK, P.shell)
 		B.box(F, C, "EndBase", -s * 1.6, -s * 1.95, 0, 0.7, w0 + 3, D0, P.pier2, nil, G)
 		B.box(F, C, "EndLedge", -s * 1.6, -s * 2.1, 5, 5.5, w0 + 3, D0, P.cream, nil, G)
 		B.box(F, C, "EndBand", -s * 1.6, -s * 1.75, 5.5, 7.2, w0 + 3, D0, P.band, nil, G)
-		B.put(F, "bc_plantbig", "Plant", -s * 2.4, -0.02, D0 - 1.9, 0, { scale = 0.42, color = GREEN })
+		-- (no pot plant here any more: the owner, 16 Nov, after a play-test: "in the match pads theres random pots on the
+		-- ground?". the walk past the lifts keeps clear floor)
 	end
 end

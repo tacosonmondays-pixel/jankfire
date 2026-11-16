@@ -2,7 +2,7 @@
 -- THE ROTUNDA, part 3: the three rooms off the round room, each down a short hall that frames it.
 --   the lounge   (south, behind the spawn, on the axis) small, low and warm: brick, timber beams, seats on a raised
 --                wooden border round a sunk middle, and the hologram duck turning over its projector
---   the gym      (east) tall, with girders: a boxing ring in the middle, bags, a climbing wall on the far wall
+--   the duels    (east) the gym's boxing ring, bigger, in the middle of a hall of seven more pads (R.HALL)
 --   the armory   (west, on the spawn's left) cut corners; the game's own weapons on boards down both walls, and at
 --                the far end of its aisle the red gate to the training ground
 -- called by HubRotunda.build with its helpers (B)
@@ -17,9 +17,9 @@ return function(B, R)
 
 	-- a hall from the round room's wall to a room: floor, two walls, a lid. hw = half its width, h = its height
 	local function hall(F, name, d1, hw, h, wall, floor, lid, wallMat, floorMat, lidMat)
-		B.box(F, S, name .. "HallFloor", -hw - 3.2, hw + 3.2, -2, -0.02, A + 1.5, d1 - 2, floor, floorMat)
+		B.box(F, S, name .. "HallFloor", -hw - 3.2, hw + 3.2, -2, -0.05, A + 1.5, d1 - 2, floor, floorMat) -- (under the round floor's top: no shared plane)
 		for _, s in { -1, 1 } do B.box(F, S, name .. "HallWall", s * hw, s * (hw + 3.2), 0, h + 1, D0 - 0.2, d1 - 0.1, wall, wallMat) end
-		B.box(F, S, name .. "HallLid", -hw - 3.2, hw + 3.2, h, 12.6, D0 - 0.2, d1 - 0.1, lid, lidMat)
+		B.box(F, S, name .. "HallLid", -hw - 3.15, hw + 3.15, h, 12.6, D0 - 0.15, d1 - 2, lid, lidMat) -- (meets the room's wall instead of running into it; inside the walls' sides)
 	end
 	-- a room: floor, lid, four walls, the near wall left open for its hall (hw wide, hh high)
 	local function room(F, name, x0, x1, d0, d1, h, hw, hh, wall, floor, lid, wallMat, floorMat)
@@ -65,7 +65,7 @@ return function(B, R)
 		end
 		-- the duck: a projector on a round rug in the sunk middle, a faint beam, the duck turning in it
 		B.cyl(F, C, "Rug", 0, -0.02, 0.03, 46.5, 12.4, P.creamHi, nil, G)
-		B.cyl(F, C, "Rug", 0, -0.02, 0.05, 46.5, 11.4, P.band, nil, G)
+		B.cyl(F, C, "Rug", 0, -0.06, 0.07, 46.5, 11.4, P.band, nil, G)
 		B.put(F, "bc_holoprojector", "HoloProjector", 0, 0, 46.5, 0, { solid = true, color = { ["37d6ff"] = "ffe9a8", ["8fe6ff"] = "ffe9a8" } })
 		local duck = B.put(F, "pj_duck", "HoloDuck", 0, 4.2, 46.5, 0, { scale = 6, raw = true })
 		if duck then
@@ -83,112 +83,115 @@ return function(B, R)
 			B.put(F, "hb_droplight", "DropLight", s * 10.6, 11, 48, 0, { seat = "top", scale = 0.7, color = { fff1d6 = P.warm } })
 			B.lamp(F, s * 10.6, 6.4, 48, 15, 0.9, P.warm, { shadows = s > 0 })
 			B.put(F, "hb_walllight", "WallLight", s * 8, 6.4, 59.95, 0, { back = true, seat = "centre" })
-			B.put(F, "bc_plantbig", "Plant", s * 11.4, 0.6, 42.5, 0, { scale = 0.5, color = GREEN })
+			B.put(F, R.prop("rk_planter", "bc_plantbig"), "Planter", s * 11.4, 0.6, 42.6, 0, { scale = R.propScale("rk_planter", 0.85, 0.5), solid = true, color = GREEN })
 		end
 		B.lamp(F, 0, 6.4, 58.6, 13, 0.7, P.warm)
-		B.put(F, "bc_coffeetable", "CoffeeTable", 0, 0.6, 58.6, 0, { solid = true })
+		B.put(F, R.prop("rk_coffeetable", "bc_coffeetable"), "CoffeeTable", 0, 0.6, 58.6, 0, { solid = true })
 		B.put(F, "bc_arcade", "Arcade", 10.6, 0.6, 56.6, -45, { solid = true, color = { ff4fd8 = P.pier2, ffe14d = P.band, ["120818"] = P.pier } })
 		B.put(F, "bc_fridge", "Fridge", -10.6, 0.6, 56.6, 45, { solid = true })
 		B.text(F, "LoungeRule", { { "WEAPONS HOLSTERED", P.pale, "B", 0.56 }, { "the lounge is neutral ground", "d8dbe2", "S", 0.4 } }, 7.4, 1.5, 0, 8.2, 59.9, 0, { flush = true })
 	end
 
-	-- ------------------------------------------------------------ the gym (side 4, east)
-	-- (round 1's judge, 16 Nov, its weakest room: "bare white walls, a blank gold rectangle, thin rope cords, empty corners
-	-- and flat light". so: what you see through the door is a lit target in a recess on the far wall; a chunky ring of its
-	-- own; piers on a 16-stud grid with the kit in groups between them; a light frame over the ring and the rest dimmer)
+	-- ------------------------------------------------------------ the duel hall (side 4, east): the ring and seven more pads
+	-- (owner, 16 Nov: "we also need more pads somewhere?", and of the gym's ring: "is that intended what should we do?
+	-- maybe make it a bit bigger". so the gym became the hall where most matches start, with its boxing ring kept as the
+	-- centrepiece, bigger and on the door's axis: through the door you see the ring under its light frame, the 3v3
+	-- straight ahead beyond it with the round target over its board, a 1v1 either side of it. R.HALL's pads stand round
+	-- the walls facing the ring (a 2v2 on each side wall, a 1v1 either side of the door), each with its board on the wall
+	-- behind it and a light panel over it, piers between them. 50 wide and 52 deep: its north wall is still about 5 clear
+	-- of the lift ring's end wall. no floor lines: the pads and their boards read on their own)
 	do
 		local F = B.side(4)
-		hall(F, "Gym", 40, 5, 11, P.shell2, P.floor, P.shell)
+		local X0, X1, D1, H = R.HALL_BOX[1], R.HALL_BOX[2], R.HALL_BOX[3], R.HALL_BOX[4]
+		hall(F, "Duels", 40, 5, 11, P.shell2, P.floor, P.shell)
 		for _, d in { 33.4, 37.8 } do -- two pale frames across the hall
 			for _, s in { -1, 1 } do B.box(F, C, "HallFrame", s * 4.55, s * 5, 0, 11, d - 0.5, d + 0.5, P.cream, nil, G) end
 			B.box(F, C, "HallFrame", -5, 5, 10.3, 11, d - 0.5, d + 0.5, P.cream, nil, G)
 		end
 		B.panel(F, 0, 11, 35.6, 2.4, 2.6)
 		B.lamp(F, 0, 9.6, 35.6, 13, 0.7)
-		room(F, "Gym", -15, 19, 40, 70, 15, 5, 11, P.gymWall, P.gymFloor, P.shell)
-		-- a dark dado with a teal line, the long walls' tops cut, three girders across
-		for _, w in { { -15, -14.8, 40, 70 }, { 18.8, 19, 40, 70 } } do
-			B.box(F, C, "GymDado", w[1], w[2], 0, 4, w[3], w[4], P.pier2, nil, G)
-			B.box(F, C, "GymLine", w[1] - 0.1, w[2] + 0.1, 4, 4.6, w[3], w[4], P.band, nil, G)
+		room(F, "Duels", X0, X1, 40, D1, H, 5, 11, P.gymWall, P.gymFloor, P.shell2)
+		-- the walls: a dark base, a pale band at shoulder height, the long walls' tops cut, two girders across
+		for _, w in { { X0, X0 + 0.25, 40, D1 }, { X1 - 0.25, X1, 40, D1 }, { X0 + 0.25, X1 - 0.25, D1 - 0.25, D1 }, { X0 + 0.25, -5, 40, 40.25 }, { 5, X1 - 0.25, 40, 40.25 } } do
+			B.box(F, C, "DuelsBase", w[1], w[2], 0, 0.8, w[3], w[4], P.pier, nil, G)
+			B.box(F, C, "DuelsBand", w[1], w[2], 9.4, 9.9, w[3], w[4], P.cream, nil, G)
 		end
-		B.box(F, C, "GymDado", -15, 19, 0, 4, 69.8, 70, P.pier2, nil, G)
-		B.box(F, C, "GymLine", -15, 19, 4, 4.6, 69.7, 70, P.band, nil, G)
-		cut(F, "GymCut", -1, 15, 15, 40, 70, 3, P.shell); cut(F, "GymCut", 1, 19, 15, 40, 70, 3, P.shell)
-		for _, d in { 47.5, 55, 62.5 } do B.box(F, C, "Girder", -15, 19, 13, 15, d - 0.8, d + 0.8, P.cream, nil, G) end
-		-- piers on a 16-stud grid, the kit in groups between them
-		for _, d in { 46, 62 } do
-			B.box(F, S, "GymPier", -15, -13.6, 0, 13, d - 1.1, d + 1.1, P.pier)
-			B.box(F, S, "GymPier", 17.6, 19, 0, 13, d - 1.1, d + 1.1, P.pier)
-		end
-		for _, x in { -9, 9 } do B.box(F, S, "GymPier", x - 1.1, x + 1.1, 0, 13, 68.6, 70, P.pier) end
-		-- the room's own light, dimmer than before: the ring is the brightest thing
-		for _, k in { { -8, 47.5 }, { 12, 47.5 }, { -8, 62.5 }, { 12, 62.5 } } do
-			B.panel(F, k[1], 15, k[2] + 3.6, 3, 3); B.lamp(F, k[1], 13.8, k[2] + 3.6, 22, 0.45)
-		end
-		-- the far wall, on the hall's axis: a lit recess with a target in it, washed by a warm light
-		B.box(F, C, "RecessBack", -6.6, 6.6, 1, 12, 69.35, 69.65, P.band, nil, G)
-		for _, s in { -1, 1 } do B.box(F, C, "RecessSide", s * 6.6, s * 7.8, 0, 12, 67.4, 69.7, P.pier, nil, G) end
-		B.box(F, C, "RecessHead", -7.8, 7.8, 12, 13, 67.4, 69.7, P.pier, nil, G)
-		B.box(F, C, "RecessSill", -6.6, 6.6, 0, 1, 67.4, 69.7, P.pier, nil, G)
-		for i, k in ipairs({ { 8.4, P.creamHi }, { 6.8, P.pier }, { 5.2, P.creamHi }, { 3.6, P.pier }, { 2, P.glow } }) do
-			local disc = B.cyl(F, C, "Target", 0, 0, 0.12, 0, k[1], k[2], if i == 5 then Enum.Material.Neon else nil, G)
-			disc.CFrame = F * CFrame.new(0, 6.5, -(69.25 - i * 0.1)) * CFrame.Angles(0, math.pi / 2, 0)
-		end
-		for _, t in { { 0, 1 }, { 0, -1 }, { 1, 0 }, { -1, 0 } } do -- four ticks round it, like sights
-			local cx, cy = t[1] * 5.2, 6.5 + t[2] * 5.2
-			B.box(F, C, "TargetTick", cx - (if t[1] == 0 then 0.3 else 0.6), cx + (if t[1] == 0 then 0.3 else 0.6), cy - (if t[2] == 0 then 0.3 else 0.6), cy + (if t[2] == 0 then 0.3 else 0.6), 68.95, 69.35, P.creamHi, nil, G)
-		end
-		B.lamp(F, 0, 12.2, 62.5, 16, 1.4, P.warm, { spot = true, angle = 70, face = Enum.NormalId.Front })
-		-- the ring: a padded platform, four fat posts, two fat rounded rails each side, two steps up on the door's side,
-		-- a square light frame over it with a warm lamp on each side
-		local RX, RD, RH = 3, 56.6, 1.4
-		B.box(F, S, "RingBase", RX - 8.5, RX + 8.5, 0, RH, RD - 8.5, RD + 8.5, P.pier2)
-		B.box(F, C, "RingApron", RX - 8.6, RX + 8.6, RH - 0.4, RH, RD - 8.6, RD + 8.6, P.creamHi, nil, G)
-		B.box(F, C, "RingMat", RX - 7.6, RX + 7.6, RH, RH + 0.08, RD - 7.6, RD + 7.6, P.band, nil, G)
-		B.box(F, C, "RingMatLine", RX - 7.6, RX + 7.6, RH + 0.08, RH + 0.1, RD - 0.25, RD + 0.25, P.creamHi, nil, G)
-		B.box(F, S, "RingStep", RX - 2, RX + 2, 0, RH / 2, RD - 9.7, RD - 8.5, P.pier2)
-		B.box(F, S, "RingStep", RX - 2, RX + 2, RH / 2, RH, RD - 9.1, RD - 8.5, P.pier2)
+		cut(F, "DuelsCut", -1, -X0, H, 40, D1, 3, P.shell2); cut(F, "DuelsCut", 1, X1, H, 40, D1, 3, P.shell2)
+		for _, d in { 51.5, 77 } do B.box(F, C, "Girder", X0, X1, H - 1.6, H, d - 0.7, d + 0.7, P.cream, nil, G) end
+
+		-- the ring, 20 across (the gym's was 17), its middle on the door's axis: a padded platform, four fat posts, two fat
+		-- rounded rails each side, two steps up on the door's side, a square light frame over it, a lamp at each corner
+		-- and the hall's one shadowed light straight over its middle
+		local RD, RS, RH = R.HALL_RING, 10, 1.4
+		local PO = RS - 0.7 -- (the posts' middles)
+		B.box(F, S, "RingBase", -RS, RS, 0, RH, RD - RS, RD + RS, P.pier2)
+		B.box(F, C, "RingApron", -RS - 0.1, RS + 0.1, RH - 0.4, RH - 0.04, RD - RS - 0.1, RD + RS + 0.1, P.creamHi, nil, G) -- (its top under the base's)
+		B.box(F, C, "RingMat", -RS + 1, RS - 1, RH, RH + 0.08, RD - RS + 1, RD + RS - 1, P.band, nil, G)
+		B.box(F, C, "RingMatLine", -RS + 1, RS - 1, RH + 0.08, RH + 0.1, RD - 0.25, RD + 0.25, P.creamHi, nil, G)
+		B.box(F, S, "RingStep", -2.2, 2.2, 0, RH / 2, RD - RS - 1.2, RD - RS, P.pier2)
+		B.box(F, S, "RingStep", -2.2, 2.2, RH / 2, RH, RD - RS - 0.6, RD - RS, P.pier2)
 		for _, cx in { -1, 1 } do for _, cz in { -1, 1 } do
-			B.cyl(F, C, "RingPost", RX + cx * 7.9, RH, RH + 4.6, RD + cz * 7.9, 1.5, P.cream, nil, G)
-			B.cyl(F, C, "RingPostCap", RX + cx * 7.9, RH + 4.6, RH + 5.1, RD + cz * 7.9, 1.9, P.band, nil, G)
+			B.cyl(F, C, "RingPost", cx * PO, RH, RH + 5, RD + cz * PO, 1.6, P.cream, nil, G)
+			B.cyl(F, C, "RingPostCap", cx * PO, RH + 5, RH + 5.5, RD + cz * PO, 2, P.band, nil, G)
 		end end
-		for _, h in { RH + 2, RH + 3.6 } do
+		for _, h in { RH + 2.1, RH + 3.9 } do
 			for _, sd in { { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 } } do
-				local rail = B.box(F, C, "RingRail", 0, 15, h - 0.4, h + 0.4, 0, 0.8, P.creamHi, nil, G)
-				rail.Shape = Enum.PartType.Cylinder; rail.Size = Vector3.new(15, 0.8, 0.8)
-				rail.CFrame = F * CFrame.new(RX + sd[1] * 7.9, h, -(RD + sd[2] * 7.9)) * (if sd[1] ~= 0 then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity)
+				local len = 2 * PO - 1.6
+				local rail = B.box(F, C, "RingRail", 0, len, h - 0.42, h + 0.42, 0, 0.84, P.creamHi, nil, G)
+				rail.Shape = Enum.PartType.Cylinder; rail.Size = Vector3.new(len, 0.84, 0.84)
+				rail.CFrame = F * CFrame.new(sd[1] * PO, h, -(RD + sd[2] * PO)) * (if sd[1] ~= 0 then CFrame.Angles(0, math.pi / 2, 0) else CFrame.identity)
 			end
 		end
-		B.lamp(F, RX, 14.2, RD, 34, 1.5, P.light, { spot = true, angle = 75, shadows = true })
+		B.lamp(F, 0, H - 1.6, RD, 36, 1.5, P.light, { spot = true, angle = 75, shadows = true })
+		local LF, LY = 7.6, H - 4.4
 		for _, s in { -1, 1 } do
-			B.box(F, C, "LightFrame", RX - 6.7, RX + 6.7, 11.4, 12, RD + s * 6.4 - 0.3, RD + s * 6.4 + 0.3, P.pier, nil, G)
-			B.box(F, C, "LightFrame", RX + s * 6.4 - 0.3, RX + s * 6.4 + 0.3, 11.4, 12, RD - 6.7, RD + 6.7, P.pier, nil, G)
+			B.box(F, C, "LightFrame", -LF - 0.3, LF + 0.3, LY, LY + 0.6, RD + s * LF - 0.3, RD + s * LF + 0.3, P.pier, nil, G)
+			B.box(F, C, "LightFrame", s * LF - 0.3, s * LF + 0.3, LY + 0.03, LY + 0.6, RD - LF - 0.3, RD + LF + 0.3, P.pier, nil, G)
 		end
 		for _, cx in { -1, 1 } do for _, cz in { -1, 1 } do
-			B.box(F, C, "FrameRod", RX + cx * 6.4 - 0.3, RX + cx * 6.4 + 0.3, 12, 15, RD + cz * 6.4 - 0.3, RD + cz * 6.4 + 0.3, P.pier, nil, G)
+			B.box(F, C, "FrameRod", cx * LF - 0.3, cx * LF + 0.3, LY + 0.6, H, RD + cz * LF - 0.3, RD + cz * LF + 0.3, P.pier, nil, G)
+			-- (the lamps at the frame's corners, off the door's axis: the view to the target runs between them)
+			B.put(F, "hb_droplight", "RingLamp", cx * 5.2, LY, RD + cz * 5.2, 0, { seat = "top", scale = 0.8, color = { fff1d6 = P.warm } })
+			B.lamp(F, cx * 5.2, LY - 3, RD + cz * 5.2, 16, 0.7, P.warm)
 		end end
-		for _, k in { { 6.4, 0 }, { -6.4, 0 }, { 0, 6.4 }, { 0, -6.4 } } do
-			B.put(F, "hb_droplight", "RingLamp", RX + k[1], 11.4, RD + k[2], 0, { seat = "top", scale = 0.8, color = { fff1d6 = P.warm } })
-			B.lamp(F, RX + k[1], 8.4, RD + k[2], 16, 0.8, P.warm)
+
+		-- the far wall, on the door's axis: a lit recess with the round target in it, over the 3v3's board
+		local TY = 13.5
+		B.box(F, C, "RecessBack", -5.6, 5.6, 9.8, 17.4, D1 - 0.65, D1 - 0.35, P.band, nil, G)
+		for _, s in { -1, 1 } do B.box(F, C, "RecessSide", s * 5.6, s * 6.6, 9.8, 17.4, D1 - 2, D1 - 0.3, P.pier, nil, G) end
+		B.box(F, C, "RecessHead", -6.6, 6.6, 17.4, 18, D1 - 2, D1 - 0.3, P.pier, nil, G)
+		B.box(F, C, "RecessSill", -6.6, 6.6, 9.4, 9.8, D1 - 2, D1 - 0.3, P.pier, nil, G)
+		for i, k in ipairs({ { 7, P.creamHi }, { 5.6, P.pier }, { 4.2, P.creamHi }, { 2.8, P.pier }, { 1.5, P.glow } }) do
+			local disc = B.cyl(F, C, "Target", 0, 0, 0.12, 0, k[1], k[2], if i == 5 then Neon else nil, G)
+			disc.CFrame = F * CFrame.new(0, TY, -(D1 - 0.75 - i * 0.1)) * CFrame.Angles(0, math.pi / 2, 0)
 		end
-		-- the groups: bags on a mat by the west wall, weights by the east wall, a sparring dummy in the far east corner
-		B.paint(F, "Mat", -14.4, -8.8, -0.02, 47.4, 60.6, P.band, 0.03)
-		for _, d in { 49.6, 54, 58.4 } do B.put(F, "bc_punchbag", "PunchBag", -11.6, 0, d, 90, { solid = Vector3.new(2.6, 9, 2.6), color = { c8262e = P.pier2, ["17141f"] = P.cream } }) end
-		B.put(F, "bc_lockers", "Lockers", -10.6, 0, 40.05, 180, { back = true, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
-		B.put(F, "bc_bench", "Bench", -10.6, 0, 45.6, 180, { solid = true, color = { ["3b2a52"] = P.wood } })
-		for _, d in { 51.2, 56.8 } do B.put(F, "bc_dumbbells", "Dumbbells", 16.1, 0, d, -90, { scale = 0.8, solid = true }) end
-		B.put(F, "bc_watercooler", "WaterCooler", 9.6, 0, 40.05, 180, { back = true, solid = true })
-		B.put(F, "bc_speaker", "Speaker", 17.4, 0, 68.4, -45, { solid = true })
-		B.put(F, "bc_tyres", "Tyres", -12.4, 0, 65.6, 90, { scale = 0.6, solid = true })
-		do -- the sparring dummy: a person-sized post with a torso and a head (it also shows the room's scale)
-			local x, d = 15, 65.6
-			B.cyl(F, S, "DummyBase", x, 0, 0.4, d, 2.8, P.pier2)
-			B.cyl(F, C, "DummyPost", x, 0.4, 3.2, d, 0.8, P.pier, nil, G)
-			B.box(F, C, "DummyBody", x - 1.2, x + 1.2, 3.2, 6.2, d - 0.65, d + 0.65, P.creamHi, nil, G)
-			local head = B.box(F, C, "DummyHead", x - 0.8, x + 0.8, 6.3, 7.9, d - 0.8, d + 0.8, P.creamHi, nil, G)
-			head.Shape = Enum.PartType.Ball
-			B.solid("DummyBox", Vector3.new(2.6, 8, 2.6), F * CFrame.new(x, 4, -d))
+		for _, s in { -1, 1 } do B.box(F, C, "TargetTick", s * 4.4 - 0.55, s * 4.4 + 0.55, TY - 0.3, TY + 0.3, D1 - 1.05, D1 - 0.65, P.creamHi, nil, G) end -- (two ticks, like sights)
+		B.lamp(F, 0, H - 1.2, D1 - 7, 18, 1.2, P.warm, { spot = true, angle = 60, face = Enum.NormalId.Front })
+
+		-- the pads: one frame per wall, its -Z out through the wall, x along the wall
+		local walls = {
+			far = function(at) return F * CFrame.new(at, 0, -D1) end,
+			near = function(at) return F * CFrame.new(at, 0, -40) * CFrame.Angles(0, math.pi, 0) end,
+			left = function(at) return F * CFrame.new(X0, 0, -at) * CFrame.Angles(0, math.pi / 2, 0) end,
+			right = function(at) return F * CFrame.new(X1, 0, -at) * CFrame.Angles(0, -math.pi / 2, 0) end,
+		}
+		for _, e in R.HALL do
+			local md = table.clone(R.MODES[e.mode])
+			md.name, md.bank = e.name, "hall"
+			md.w, md.dp = R.HALL_SIZE[md.id][1], R.HALL_SIZE[md.id][2]
+			local W = walls[e.wall](e.at)
+			local pad = B.pad(W, md, 0, 0, -(1.2 + md.dp / 2))
+			local bw = md.w - 1.4
+			B.board(pad, W, md, bw, bw / 2, 0, 5.4, -0.45, 0, { thick = 0.4 })
+			B.box(W, C, "BoardFrame", -bw / 2 - 0.35, bw / 2 + 0.35, 5.4 - bw / 4 - 0.35, 5.4 + bw / 4 + 0.35, -0.25, 0, P.pier2, nil, G)
+			B.panel(W, 0, H, -(1.2 + md.dp / 2), 3, 3)
+			B.lamp(W, 0, H - 1.2, -(1.2 + md.dp / 2), 22, 0.9, P.light, { spot = true, angle = 90 })
 		end
+		-- piers between the pads, floor to the lid's cut
+		local function pier(W, at) B.box(W, S, "DuelsPier", at - 0.7, at + 0.7, 0, H - 2.2, -1.4, 0, P.pier) end
+		for _, at in { -8.6, 8.6 } do pier(walls.far(0), at) end
+		for _, at in { 55.5, 72.5 } do pier(walls.left(0), at); pier(walls.right(0), -at) end
+		for _, at in { -6.8, 6.8 } do pier(walls.near(0), at) end
 	end
 
 	-- ------------------------------------------------------------ the armory and the training gate (side 10, west)
@@ -204,9 +207,8 @@ return function(B, R)
 		end
 		for _, d in { 45, 56 } do B.panel(F, 0, 12, d, 1.8, 6); B.lamp(F, 0, 10.8, d, 22, 0.8, P.light, { shadows = d == 45 }) end
 		-- cases on the counters
-		B.put(F, "bc_hardcase", "CounterCase", -12, 2.4, 43.2, 100, { scale = 0.7, color = { ["2f3b2a"] = P.band } })
-		B.put(F, "bc_ammocrate", "CounterCrate", 12.1, 2.4, 60.6, -80, { scale = 0.8, color = { ["4a5a2c"] = "66705a", ["3a4622"] = "566050" } })
-		B.put(F, "bc_ammocrate", "CounterCrate", -12.1, 2.4, 60.2, 95, { scale = 0.8, color = { ["4a5a2c"] = "66705a", ["3a4622"] = "566050" } })
+		-- (no cases on the counters any more: the owner's play-test, 16 Nov, found an SMG through a case and the katana
+		-- through an ammo box. the boards' guns have the counters to themselves; R.check's OVERLAP test keeps it so)
 		B.paint(F, "Ray", -0.45, 0.45, -0.02, D0, 60.4, "9dbb93", 0.05)
 		-- the weapon boards: the game's own weapon models on dark boards over a counter, a light over each. the top row
 		-- holds one long gun, the lower row two short ones (round 1's judge: "the guns are small on big blank panels")
@@ -217,10 +219,10 @@ return function(B, R)
 		for _, rk in racks do
 			local s, d = rk[1], rk[2]
 			B.box(F, C, "GunBoard", s * 12.55, s * 13, 2.4, 8.2, d - 4.8, d + 4.8, P.pier, nil, G)
-			B.box(F, S, "GunCounter", s * 11.3, s * 13, 0, 2, d - 4.8, d + 4.8, P.pier2)
+			B.box(F, S, "GunCounter", s * 11.3, s * 12.96, 0, 2, d - 4.8, d + 4.8, P.pier2)
 			B.box(F, C, "GunBoardLedge", s * 11.1, s * 13, 2, 2.4, d - 5, d + 5, P.cream, nil, G)
 			B.box(F, C, "GunBoardLight", s * 12.3, s * 13, 8.2, 8.6, d - 4.8, d + 4.8, P.pier2, nil, G)
-			B.box(F, C, "GunBoardGlow", s * 12.35, s * 12.9, 8.08, 8.2, d - 4.4, d + 4.4, P.strip, Neon, G)
+			B.box(F, C, "GunBoardGlow", s * 12.35, s * 12.9, 8.06, 8.16, d - 4.4, d + 4.4, P.strip, Neon, G)
 			B.lamp(F, s * 10.6, 7.4, d, 11, 0.8)
 			for row, names in rk[3] do
 				local len = if #names == 1 then 6.6 else 3.9
@@ -233,7 +235,10 @@ return function(B, R)
 		end
 		-- kit along the walls, the aisle left clear
 		B.put(F, "bc_toolbench", "ToolBench", 9.5, 0, 38.05, 180, { back = true, scale = 0.8, solid = true })
-		B.put(F, "bc_lockers", "Lockers", -9.5, 0, 38.05, 180, { back = true, scale = 0.9, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
+		-- a locker corner like a real one (the owner: the old lockers and bench were "too close together and looks
+		-- awkward"): the lockers against the near wall, the bench parallel in front of them with 3 studs to walk between
+		B.put(F, R.prop("rk_lockers", "bc_lockers"), "Lockers", -9.2, 0, 38.05, 180, { back = true, scale = 0.9, solid = true, color = { ["56683f"] = P.band, ["2a2d38"] = P.pier, b07a45 = P.wood } })
+		B.put(F, R.prop("rk_bench", "bc_bench"), "Bench", -8.6, 0, 44.2, 180, { solid = true, color = { ["3b2a52"] = P.wood } })
 		for _, k in { { -10.1, 52, 0.8 }, { 10.1, 52, 0.8 }, { -10.9, 62.2, 0.9 } } do
 			B.put(F, "wh_crate", "Crate", k[1], 0, k[2], 12, { scale = k[3] * 0.6, solid = true, color = { ff4fd8 = P.band, a8703a = P.wood, ["8a5a32"] = "9c8a6c" } })
 		end
