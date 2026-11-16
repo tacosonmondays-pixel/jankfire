@@ -62,6 +62,22 @@ row (held, ammo, fire rate, range, line of sight, that the shot was really aimed
 and for one-bullet guns that a claimed headshot crossed the head). Row fields the server acts on by itself: `kb` /
 `kbUp` (shove the victim), `lethalHead`, `burst` + `burstGap`, `ramp` + `chain`, `quick` + `qsDmg`, `fan`, `ricochet`.
 
+### The models are a switch: `kit` (the default) or `web`
+
+Since 16 November 2026 the weapons are new models built for Roblox (`docs/GUN-MODELS.md`): a few big chamfered
+pieces in flat colours, SmoothPlastic, no pictures. They come from `tools/roblox/gun_models.py` (built on
+`tools/roblox/gunkit.py`), go through `export_weapons.py --kit`, and live in `roblox/assets/weapons-kit/`; their book is
+`studio-tools/WeaponKit.luau` (= `ServerStorage.PolishBackup.WeaponKit`). Both sets are kept in
+`ServerStorage.PolishBackup.WeaponSets.{kit,web}`:
+
+```lua
+local W = require(game.ServerStorage.PolishBackup.WeaponImport:Clone())
+W.models()           -- the kit models in (the default)        W.models("web")  the web models back
+W.kit({ "ar" })      -- load a kit model from its asset again  W.skin("ar", "cardboard") / W.skin("ar")
+```
+
+The paint below applies to the **web** models only; a kit model wears its own colours (change them in its builder).
+
 ### The paint is a switch: `calm` (the default) or `web`
 
 The owner's direction (15 November 2026): the weapons and mechanics come from the web game, the finish is the Roblox
