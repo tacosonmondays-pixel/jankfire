@@ -2,17 +2,20 @@
 -- the hub (Workspace.Map.Hub: THE LANES, a bowling alley) and its queue pads, Rivals-style. you spawn in the hub; the red
 -- door in its west wall is the way to the training room (its dummies shoot back in there, nowhere else). on the pads in
 -- front, one on each lane's approach: stand on a
--- side; when every side is full a 3 s countdown runs, then everyone on it goes to the Rooftop arena for a match:
+-- side; when every side is full a 3 s countdown runs, then everyone on it goes to the arena for a match (the next one
+-- in the rotation, workspace.Map's ArenaPool: Arena.luau; its name is the first banner):
 -- rounds of one life each, last team standing takes the round, first to Matches.WIN rounds wins, then back to the hub.
 -- a round nobody wins outright (time up, or the last ones go down together) goes to whoever dealt the most damage in
 -- it, then whoever has the most HP left, then a coin flip (nobody shot anybody): there are no draws
--- there's one arena, so one match at a time: a full pad waits for it ("ARENA BUSY").
+-- one match at a time (the arenas take turns, matches don't run side by side): a full pad waits for it ("ARENA BUSY").
+-- so the arena only ever switches when a match starts, never under a live one.
 -- other players can't hurt you in the hub or the training room; in a match only the other teams can
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- which arena (the Rooftop v1, or v2): workspace.Map's attribute Arena, read through this
+-- which arena (the Rooftop v1, v2 or v3): workspace.Map's attribute Arena, read through this; startMatch sets it from
+-- the rotation (ArenaPool)
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local RoundR = Remotes:WaitForChild("Round") :: RemoteEvent
@@ -35,6 +38,7 @@ type Match = {
 	phase: string, -- "ready" (spawned, not live yet) | "live" | "between" | "over"
 	roundEnds: number, pad: Model, fighters: { Fighter },
 	dmg: { number }, -- damage each team dealt to the others this round
+	arena: string, -- the arena it is played in (workspace.Map's child)
 }
 
 local Fight: any
@@ -44,6 +48,7 @@ local inMatch: { [Player]: { m: Match, team: number } } = {}
 local lastZone: { [Player]: string } = {}
 local padCount: { [Model]: number? } = {} -- when a full pad's countdown ends
 local nextId = 0
+local lastArena: string? = nil -- the last match's arena (none yet after a server starts: the first pick is random)
 
 -- ------------------------------------------------------------------ where you are
 local function rootOf(p: Player): BasePart?
@@ -269,9 +274,16 @@ startRound = function(m: Match)
 		local f = Fight.byPlayer[p]
 		if f then f.alive = false; task.spawn(Fight.spawn, f) end
 	end)
+	-- the first round opens on the arena's name (Arena.title: "ROOFTOP: SKYLINE"), then the round line, both on the
+	-- HUD's announcer line
+	local first = m.round == 1
 	task.delay(0.6, function()
 		if current ~= m then return end
-		each(m, function(p, t) CalloutR:FireClient(p, ("ROUND %d · you're %s"):format(m.round, TEAM_NAMES[t]), 1.6) end)
+		if first then callAll(m, Arena.title(m.arena), 1.1) end
+		task.delay(if first then 1.2 else 0, function()
+			if current ~= m then return end
+			each(m, function(p, t) CalloutR:FireClient(p, ("ROUND %d · you're %s"):format(m.round, TEAM_NAMES[t]), if first then 1.05 else 1.6) end)
+		end)
 	end)
 	task.delay(Matches.READY, function()
 		if current ~= m or m.phase ~= "ready" then return end
@@ -289,7 +301,14 @@ local function startMatch(pad: Model, sides: { { Player } })
 	for t, list in sides do teams[t] = table.clone(list) end
 	local wins = {}
 	for t = 1, #teams do wins[t] = 0 end
-	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {} }
+	-- the arena: the next in the rotation (workspace.Map's ArenaPool), set before anyone is moved in. only one match
+	-- runs at a time, so this never moves a live one. (no pool: "Arena" stays as it is set)
+	local pick = Arena.pick(Arena.pool(), lastArena, math.random)
+	local map = workspace:FindFirstChild("Map")
+	if pick and map then map:SetAttribute("Arena", pick) end
+	local arena = Arena.name()
+	lastArena = arena
+	local m: Match = { id = nextId, mode = pad:GetAttribute("Mode") :: string, teams = teams, wins = wins, round = 0, phase = "ready", roundEnds = 0, pad = pad, fighters = {}, dmg = {}, arena = arena }
 	current = m
 	each(m, function(p, t)
 		inMatch[p] = { m = m, team = t }

@@ -6,13 +6,15 @@
 -- DressSolid cover, Pads, Spawns, TeamSpawns, Water) into workspace.Map.RooftopV3 at its own site, invisible, so v3
 -- plays exactly like v1. the look is one Blender kit ("rooftop3": tools/roblox/rooftop3_models.py > rooftop3.glb > one
 -- Model asset) made from the same boxes (tools/roblox/rooftop3_v1.json). the city round it reuses v2's tower designs.
--- v1 and v2 are never touched. which arena matches use is workspace.Map's attribute "Arena" (ReplicatedStorage.Jankfire.Arena).
+-- v1 and v2 are never touched. which arena matches use is workspace.Map's attribute "Arena", and the rotation they
+-- take turns from its attribute "ArenaPool" (ReplicatedStorage.Jankfire.Arena; Matches picks at each match's start).
 -- run in Edit, from a clone (a require of the original is cached):
 --   local R = require(game.ServerStorage.PolishBackup.RooftopV3:Clone())
 --   R.import()        the kit's models into ServerStorage.JankfireMeshes (r3_*)
 --   R.build()         wipe and rebuild workspace.Map.RooftopV3            R.clear()   take it away
 --   R.check()         the copy is v1's collision exactly; spawn sight lines, clear spawns, pad flights
---   R.use("v3")       matches go to v3 (R.use("v1") back to the old one: the default; "v2" for v2)
+--   R.use("both")     matches take turns on v2 and v3 (the owner's pick, 16 Nov); R.use("all") adds v1
+--   R.use("v3")       pins matches to v3 alone (the pool is just v3); "v2" for v2, "v1" for the old one
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
 local CollectionService = game:GetService("CollectionService")
@@ -384,11 +386,17 @@ function R.check(): string
 end
 
 -- ---------------------------------------------------------------- the switch
+-- one arena ("v1", "v2", "v3") pins matches to it: the pool is just that one. "both" = v2 and v3 take turns (Matches
+-- picks at each match's start, a random one first after a server starts, never the same twice in a row); "all" adds v1
+local USE = { v1 = "Rooftop", v2 = "RooftopV2", v3 = R.NAME, Rooftop = "Rooftop", RooftopV2 = "RooftopV2", RooftopV3 = R.NAME }
 function R.use(which: string): string
-	local name = if which == "v3" or which == R.NAME then R.NAME elseif which == "v2" or which == "RooftopV2" then "RooftopV2" else "Rooftop"
-	if name ~= "Rooftop" and not workspace.Map:FindFirstChild(name) then return name .. " is not built" end
-	workspace.Map:SetAttribute("Arena", name)
-	return "matches now use " .. name
+	local list = if which == "both" then { "RooftopV2", R.NAME } elseif which == "all" then { "Rooftop", "RooftopV2", R.NAME } else { USE[which] or "Rooftop" }
+	for _, n in list do
+		if not workspace.Map:FindFirstChild(n) then return n .. " is not built" end
+	end
+	workspace.Map:SetAttribute("ArenaPool", table.concat(list, ","))
+	workspace.Map:SetAttribute("Arena", list[1])
+	return "matches now use " .. table.concat(list, " and ")
 end
 
 return R

@@ -1,8 +1,9 @@
 --!nocheck
 -- ROOFTOP V2 (16 Nov 2026): a second Rooftop arena, built to the design principles of 16 Nov at its own site (world
 -- 0, 0, 8000). v1 (workspace.Map.Rooftop) is never touched. Which one matches are played in is the switch
--- workspace.Map's attribute "Arena" ("Rooftop" = v1, the default; "RooftopV2"), read by every script through
--- ReplicatedStorage.Jankfire.Arena.
+-- workspace.Map's attribute "Arena" ("Rooftop" = v1, the default; "RooftopV2"; "RooftopV3"), read by every script through
+-- ReplicatedStorage.Jankfire.Arena; matches take turns on the arenas its attribute "ArenaPool" lists (since 16 Nov
+-- v2 and v3: PolishBackup.RooftopV3's R.use("both") sets it).
 -- the look is one Blender kit ("rooftop2": tools/roblox/rooftop2_models.py > rooftop2.glb > one Model asset); the hit
 -- boxes, spawn points, team spawns, jump pads, water and lights come from the same Python run as RooftopV2Layout, so
 -- the look and the collision cannot drift apart. the city round it is built here (plain parts, a fixed seed).
@@ -11,7 +12,7 @@
 --   R.import()        the kit's models into ServerStorage.JankfireMeshes (r2_*)
 --   R.build()         wipe and rebuild workspace.Map.RooftopV2           R.clear()   take it away
 --   R.check()         spawn sight lines, clear spawn points, pad flights (the same checks the Python run makes)
---   R.use("v2")       matches go to v2 (R.use("v1") back to the old one: the default)
+--   R.use("v2")       pins matches to v2 alone (R.use("v1") to the old one). to rotate, PolishBackup.RooftopV3's R.use("both")
 local ServerStorage = game:GetService("ServerStorage")
 local InsertService = game:GetService("InsertService")
 local CollectionService = game:GetService("CollectionService")
@@ -414,6 +415,7 @@ end
 function R.use(which: string): string
 	local name = if which == "v2" or which == R.NAME then R.NAME else "Rooftop"
 	if name == R.NAME and not workspace.Map:FindFirstChild(R.NAME) then return "v2 is not built" end
+	workspace.Map:SetAttribute("ArenaPool", name) -- (a pin: the rotation is just this one)
 	workspace.Map:SetAttribute("Arena", name)
 	return "matches now use " .. name
 end
