@@ -128,6 +128,11 @@ local Holds = require(Shared:WaitForChild("Holds")) :: any
 -- 16 Nov 2026: "Can the weapons be a little larger, that way the arms dont look so long and lanky"). one number, in
 -- tools/roblox/holds.json (_size); the third-person guns and the loadout previews are not touched
 local SIZE: number = Holds.size or 1
+-- (a weapon's own scale on top: the one-handed guns are drawn smaller, their hand came too close to the camera)
+local function sizeOf(wid: string): number
+	local row = Holds.holds[wid]
+	return SIZE * (if row and row.scale then row.scale else 1)
+end
 
 -- the katana's rest and parry poses (Holds.katana, from tools/roblox/holds.json): a turn and a shift laid over the web
 -- game's clips, so the flat of the blade, the guard and the wrapped handle face you. the cut itself is the web game's:
@@ -234,7 +239,7 @@ end
 
 local function hands(m: Model, root: BasePart)
 	-- your own avatar's hands and forearms, held the way the hold table says (AvatarArms.hold)
-	armsOn = AvatarArms.hold(m, root, VM.wid, k, nil, SIZE)
+	armsOn = AvatarArms.hold(m, root, VM.wid, k, nil, sizeOf(VM.wid))
 	offHandSetup(m, root)
 	if armsOn then return end
 	-- your body may not be built yet (a spawn): plain boxes for now
@@ -263,7 +268,7 @@ local function hands(m: Model, root: BasePart)
 		for _ = 1, 24 do
 			task.wait(0.25)
 			if VM.model ~= m or not m.Parent then return end
-			if AvatarArms.hold(m, root, VM.wid, k, nil, SIZE) then
+			if AvatarArms.hold(m, root, VM.wid, k, nil, sizeOf(VM.wid)) then
 				armsOn = true
 				offHandSetup(m, root)
 				for _, n in { "HandGrip", "SleeveGrip", "HandFore", "SleeveFore" } do
@@ -286,7 +291,7 @@ function VM.set(wid: string, kat: number)
 	needles, vents = {}, {}
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
-	k = S * w.vm.s * SIZE
+	k = S * w.vm.s * sizeOf(wid)
 	local m = WeaponModels.build(wid, k)
 	if not m or not m.PrimaryPart then return end
 	local root = m.PrimaryPart
@@ -503,7 +508,7 @@ end
 function VM.adsPos(wid: string): Vector3?
 	local w = Weapons.list[wid]
 	if not w or not w.vm or not w.ads then return nil end
-	local s = w.vm.s * SIZE
+	local s = w.vm.s * sizeOf(wid)
 	if wid == "redline" then return Vector3.new(0, -0.0737 * s, -0.17 - 0.1058 * s) * S end
 	local sight = w.mdl and w.mdl.sight -- a gun with sights: the same rule, from its row
 	if sight then return Vector3.new(0, -sight.Y * s, -0.17 - sight.Z * s) * S end

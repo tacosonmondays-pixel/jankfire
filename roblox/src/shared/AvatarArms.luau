@@ -37,7 +37,7 @@ AvatarArms.KIT = {
 	-- (judge rounds on the hold: 46,48,54 merged into dark guns; 54,56,63 read as grey clay; a 20,21,24 sleeve was a
 	-- flat black cut-out and 22,23,27 on a long arm caught a glossy stripe. this pair sits between them)
 	glove = Color3.fromRGB(50, 52, 58),
-	sleeve = Color3.fromRGB(26, 28, 32),
+	sleeve = Color3.fromRGB(36, 38, 43), -- (judge 3: 26,28,32 vanished against the black guns)
 	-- tried in the hall, this close to the eye: Plastic and Rubber speckle, Fabric crumples, Leather turns a hand into
 	-- a rock, and an unlit sleeve (Neon in a dark colour) is a flat black bar once the forearm crosses the screen.
 	-- both are SmoothPlastic: clean, and the lamps still model the arm's faces
@@ -48,7 +48,7 @@ AvatarArms.KIT = {
 AvatarArms.STUDS = 3 -- studs per metre (the game's scale: Weapons.S)
 AvatarArms.HAND = 0.115 -- the hand across, metres, at a hold's size 1 (the hold table sizes it to each weapon)
 AvatarArms.FORE_L = 0.62 -- forearm length, metres: long enough to leave the screen, so no elbow end ever shows
-AvatarArms.SLEEVE = 1.1 -- the forearm's thickness against the hand's own scale (0.9 read as a stick under a ball)
+AvatarArms.SLEEVE = 1.35 -- the forearm's thickness against the hand's own scale (0.9 and 1.1 read as a pole under a ball)
 AvatarArms.SINK = 0.12 -- held from under: the thing sinks this far (of the hand's thickness) into the palm
 AvatarArms.PAST = 0.18 -- ... and the fingers reach this far (of the hand's length) past it
 

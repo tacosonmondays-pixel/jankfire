@@ -274,6 +274,103 @@ scores and the pictures: `roblox/docs/GUN-PAINT.md` and `roblox/docs/gun-paint/`
   colour chips for the Sniper and the Yeehaw still show their web colours (`color` in `Weapons`).
 - **Not tested:** the guns in another player's hands, the Rooftop's daylight, the loadout screen's previews.
 
+## 16. How the weapons are held, 15 November 2026 (place version 237)
+
+The job section 15 left open. Every weapon's first-person hold was reworked; numbers, names, mechanics, gimmicks and
+the paint are untouched. Full account, both judge rounds and the pictures: `roblox/docs/GUN-PAINT.md` ("The hold")
+and `roblox/docs/gun-hold/`.
+
+- **The hands are your own Roblox avatar's,** in the glove and sleeve colours. A modelled four-finger glove was built
+  and taken out the same hour on the owner's word ("I just want the roblox ones"). Do not bring in a custom hand.
+- **One table:** `tools/roblox/holds.json` -> `py tools/roblox/holds.py` -> `src/shared/Holds.luau`. A new weapon
+  needs a row there or its hands are not drawn.
+- **`AvatarArms.hold / aim / override`:** the hand grips at its own grip attachment and turns about the handle to
+  face an elbow spot fixed in camera space; the forearm runs wrist to elbow every frame and is never glued to the
+  gun. The Shredder's client uses the same calls.
+- **The Katana** has a new rest and parry pose laid over the web game's clips (flat of the blade, guard and handle
+  toward you); the cut is the web game's.
+- **The off hand does the reload** instead of hiding: magazine, pump, the Redline's can, the marble bag, clear of
+  the Yeehaw's spin.
+- **Bigger guns** (the owner, 16 Nov: "Can the weapons be a little larger, that way the arms dont look so long and
+  lanky"): `_size` 1.25 in `holds.json` scales every first-person weapon and its hands; the one-handed guns have
+  `scale` 0.8 on top. Third person and the loadout previews are untouched. The models themselves are being remade
+  in the Rivals class by the gun-models session (owner: "recreate the weapons in the rivals style"); holds are in
+  each weapon's file frame, so new models that keep the old spots need no hold work.
+- **HUD chips:** Sniper `a2457c`, Yeehaw `a58640` (`Weapons` and `Roster`).
+- **Judged three times** from before and after pictures: the weapons' hold went from about 3.5 of 10 to about 5.5
+  to 6; the Katana from 2 to 7 at best. Verdict each time: close, not at the bar. Weakest: the sidearms (reworked
+  after round 3, not judged again), the Yeehaw, the reload props.
+- **Not tested:** other avatar bodies, the bare-skin look, sights with every gun, the Rooftop's daylight. Open:
+  the reload props are plain boxes, and the Shredder's first-person copy stays in the camera if its Tool is destroyed
+  while held (an older fault, seen when a test deleted the tool).
+
+## 17. The structure pass: what paint could not fix, 15 and 16 November 2026 (place version 231)
+
+Section 14's judges said the rest of the Rooftop and the playground "cannot be fixed with paint". This pass builds
+it: models, structure and light. Review note, before and after photos, both judgings and the sheets:
+`Reviews\Structure pass.md` and `Reviews\structure-pass\` in the vault. No weapon, number, match rule or line of text
+changed; the hub, the guns and the HUD were not touched.
+
+- **The builder is a tool: `studio-tools/StructurePass.luau`** (`PolishBackup.StructurePass`). `S.import()` brings the
+  kits in, `S.rooftop()`, `S.skyline()`, `S.lounge()`, `S.pooldeck()`, `S.cabanas()`, `S.small()`, `S.playground()` each
+  rebuild their own part, `S.check()` proves the promises below, `S.clear(name)` takes a part away again, `S.all()` runs
+  everything. Safe to run again. Run from a clone: `require(game.ServerStorage.PolishBackup.StructurePass:Clone())`.
+- **Everything it adds lives in folders called `Dress`** (`Map.Rooftop.Dress`: `West`, `East`, `Lounge`, `Cabanas`,
+  `Skyline`; `Hub.Playground.Dress`; `Hub.TrainingGround.Dress`). The map's own boxes are never moved or removed:
+  where a model stands in for one, the box is hidden (attribute `DressHid`) and stays the collision. New solid boxes
+  are invisible parts named `DressSolid` (CanCollide and CanQuery, so shots and line of sight respect them).
+  `SeriousPass` skips `Dress` folders (and now holds three colour rules of this pass: the city's boxes grey, the
+  playground boards' rims warm white, the penthouse ceiling panels warmer), so a repaint does not undo anything.
+- **Kits** are Blender scripts in the chunky style, one .glb and one upload per kit: `tools/roblox/structkit.py`
+  (shared helpers: several models in one file, mirrored twins `<name>M`, a Cycles preview) with `roofdress_models.py`
+  (`rt_*`), `lounge_models.py` (`ph_*`, the cabana, the tent) and `playground_models.py` (`pg_*`). A piece is named
+  `<model><n>__<kind>_<hex>` (kind: plastic, concrete, neon, glass, fabric, wood; fabric is drawn as SmoothPlastic,
+  Roblox's Fabric weave is harsh); the importer paints from the name. The exporter turns the pieces first
+  (`rbxglb.turn_for_roblox`), so a template's pivot is the kit's own origin (floor, middle) and its front is +Z.
+- **Spawn roofs.** Laid out once for the west roof and mirrored onto the east one (x to -x, the mirrored model where a
+  piece is not the same both ways round): a chiller north of the lift hut with a lane between, vents on the hut's
+  south wall, a ridge skylight and a roof fan over two of the map's own low boxes, a stair head in the north-west
+  corner, a duct run, a tank under the billboard, a barrel rooflight; after the first judging a kerbed plinth with a
+  roof fan and three tall flues north of the spawns and a waist-high corner duct south of them. Coping and piers on
+  every parapet (lamps only on corners and gate posts), lamps on the hut, a low raised apron for the walkways, amber
+  thresholds and a muster box, a readable LIFT plate over the white-on-white one. East only: the wooden shed becomes
+  a plant room and the three plain benches loungers (same boxes).
+- **Skyline.** The eight towers round the arena and the three it stands on get facades made of parts, no pictures: a
+  dark glass skin, floor bands, piers, and warm-white lit windows one grid cell each, mostly on one or two lit floors
+  per tower.
+  Four styles (grid, ribbon, fins, brick), a crown on each tall tower (set-backs and a mast, a chisel roof, a lit
+  lantern, cooling drums, a glass vault on the south tower whose roof is level with yours), and a second row of plain
+  towers further out. Look-only: nothing is solid. A few far roof slabs that floated in the haze are hidden.
+- **Penthouse.** Sofas, bar, stools, standing tables, fridge, planter and pot plants stand over the map's own
+  furniture boxes; rugs, hanging light rafts, a ring light and a warm cove strip round both ceilings are look-only
+  and carry real lights.
+  New and solid: a pool table on the map's centre line, a low table before each upstairs sofa, a sideboard and two tub
+  chairs each side of the north door, two tub chairs at each standing table downstairs (all in mirrored pairs or on
+  the centre line).
+- **Cabanas.** The four old ones were baked into `arch_pooldeck`, so that model is replaced by one with them cut
+  out (`tools/roblox/cut_cabanas.py`, then `export_models.py`; the old template is in `PolishBackup.StructureBackup`).
+  Trap: MeshSwap reads a template's pieces in the frame of its bounding box, which follows the model's pivot, so an
+  upload's half turn is fixed by turning `WorldPivot`, not the pieces. The new cabana has a canvas roof with a plain
+  hanging band, a gathered drape at each post, two padded sides, a daybed and a lantern, on the map's own boxes.
+- **Playground.** A floodlit yard at dusk: every block of the course is hidden behind a piece made for it (pylons
+  with collars, decks with a lit amber edge, stepping stones, grapple pods hung by cables from eight light masts) over
+  nothing but a slate haze. Pads, hooks, the finish board, the fall reset and the return door are what they
+  were. Its light is the `playground` look in `HubLook` (the Rooftop's dusk with a slate haze; it was midday).
+- **Training hall:** the two tents with the baked red rug are hidden behind a plain grey tent with a table under it.
+- **Promises checked by `S.check()`** (all true at version 231): every new solid box on the west roof has its mirror
+  image on the east roof (19 and 19); no new box within 3 studs of a spawn (38 spawns, each also mirrored); none in a
+  jump pad's flight (10 flights).
+- **Tested in Play (solo):** all 35 Rooftop spawn points stand clear; all six Rooftop pads and the four playground pads
+  fly and land where they did; the playground's hooks still take a ray; a fall puts you back on the start; the return
+  door takes you to training; walking works. **Not tested:** a real two-player match on the new cover.
+- **Judged twice** by an independent agent from in-game photos. First round: spawn decks and penthouse CLOSE 6, tent
+  CLOSE 5, the rest PASS 7 to 8 (all had been 2 or 3). Second round (version 231): spawn decks, skyline, cabanas and
+  playground PASS 7.5, LIFT sign PASS 8, tent PASS 7, penthouse CLOSE 7 for its black ceilings ("Outdoors, mostly yes
+  now: the spawn roofs, skyline, cabanas and playground read as a deliberate, built place"). A fourth round answered
+  that (a cove strip of lights round both penthouse ceilings, no cloud floor, the far specks hidden, warm-white
+  windows, the city's brick and the plant a step greyer, the corner ducts moved off the east hot tub); **it was not
+  photographed or judged**: Studio's view came back blank white for the rest of the session.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
