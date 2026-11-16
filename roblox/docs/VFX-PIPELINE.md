@@ -268,3 +268,18 @@ person 7. Round 5's answers:
   own tracer starts 3.5 studs out and comes to a point at the gun end (taper 0.15).
 - Skins in first person go quiet while the gun is hidden (scope, a held camera) or while aiming (the view narrower
   than 0.95 of the widest seen lately): the bubbles drifted by the sight and hung in view when the gun was hidden.
+
+**Critic round 5** (strips `roblox/docs/vfx/round5/`): flash 7, frag 3, smoke bomb 7, black hole 6, Ducky revolver and
+katana 6. **Round 6** (place version 459):
+- Frag rebuilt: the web's boom sheet (256 px cells drawn 30 m across) was a blur and its dark late frames the "fog".
+  The fireball is now ~12 crisp lumpy puffs (`tools/roblox/vfx/lumps_sheet.py`, `vfx_lumps_4x4`: 16 different drawn
+  lumps, each particle holds one) whose colour burns white -> gold -> orange -> dark brown over 1.1 s, plus a charcoal
+  lumpy shell 15 % bigger from 0.35 s. Seen in Play: the crisp cauliflower outline is there; it ran near white at 0.2 s
+  and still bright orange at 0.73 s, so the saved version burns down sooner (orange by 0.3 s, dark brown with orange
+  inside by 0.7 s) and glows less (LightEmission 0.35, Brightness 1.2): not yet photographed.
+- Black hole: the halo's arcs over the top and under the bottom wider, thicker and the brightest part (halo v3), the
+  disk 35 % calmer, the band dimmer and lilac, white streaks (`vfx_streak`; the spark drawing is warm and read peach),
+  the flakes from 4.5 m.
+- Flash: tinted warm by default (255, 226, 150), so the star's body reads yellow and its tips orange.
+- Skins: no trails in first person (they drew as stray straight lines after the draw).
+- Smoke bomb: tried on the lumps (taller, see-through); back on the cotton puffs with less room light.

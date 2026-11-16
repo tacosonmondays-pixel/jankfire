@@ -64,12 +64,12 @@ rr = r / warp                                                # (the glow and arc
 rr0 = r / (1 + 0.006 * np.sin(2 * th + 0.7))
 ring = np.exp(-((rr0 - (RH + 0.022)) / 0.012) ** 2)         # the thin photon ring
 # the disk's far side, bent over the top and under the bottom: a thicker arc band whose strength follows |sin|
-arcs_w = np.abs(np.sin(th)) ** 3
-arcs = np.exp(-((rr - (RH + 0.075)) / 0.028) ** 2) * arcs_w   # (round 3: crisper, closer: the disk bent over the top)
-arcs *= 1 - 0.35 * (dy > 0)                                  # (the lower arc fainter: the disk is tilted)
+arcs_w = np.abs(np.sin(th)) ** 1.6   # (round 5: the arcs could not be seen: wider round, thicker, the brightest thing)
+arcs = np.exp(-((rr - (RH + 0.08)) / 0.045) ** 2) * arcs_w
+arcs *= 1 - 0.4 * (dy > 0)                                   # (the lower arc fainter: the disk is tilted)
 # the glow round it all, fading out to the sprite's edge
 glow = np.exp(-np.maximum(rr - RH, 0) / 0.07) * smooth(RH - 0.005, RH + 0.03, rr) * (1 - smooth(0.75, 0.98, r))  # (tight: ~1.2x)
-a_halo = np.clip(ring * 1.0 + arcs * 1.0 + glow * 0.3, 0, 1) * (r < 0.995)
+a_halo = np.clip(ring * 0.7 + arcs * 1.0 + glow * 0.3, 0, 1) * (r < 0.995)
 col_halo = ramp([(0.0, (252, 246, 255)), (0.12, (220, 196, 255)), (1.0, (150, 96, 232))],
                 np.clip((rr - RH) / 0.45, 0, 1))
 save('vfx_bhhalo.png', col_halo, a_halo)

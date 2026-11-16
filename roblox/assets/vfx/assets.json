@@ -137,11 +137,11 @@
   "prev_id": 131718682104772
  },
  "vfx_bhhalo": {
-  "id": 88245244526878,
-  "sha1": "a3eba1800dd2a39c673156bfdf536b660cafc5e1",
+  "id": 115358722214312,
+  "sha1": "56e5251988a44254cc1200c0eae9824f5d670679",
   "what": "its lensing halo: photon ring, the disk's far side bent over and under, a faint warped glow (additive)",
-  "uploaded": "2026-11-16 22:03 UTC (round 4: crisper, more violet, tighter halo arcs)",
-  "prev_id": 125683262291715
+  "uploaded": "2026-11-16 22:40 UTC (round 6: the arcs over the top and under the bottom wider, thicker, the brightest part)",
+  "prev_id": 88245244526878
  },
  "vfx_cotton_8x8": {
   "id": 96781809339333,
@@ -149,5 +149,17 @@
   "what": "thick lumpy smoke puff, 64 frames (8x8, 128 px), top-lit, thinning away (tools/roblox/vfx/cotton_sheet.py)",
   "uploaded": "2026-11-16 22:03 UTC (round 4: crisper lumpier edge)",
   "prev_id": 106873645818694
+ },
+ "vfx_lumps_4x4": {
+  "id": 82728391412819,
+  "sha1": "9205ff8a52c425f266278318ddaefff32d40d4b4",
+  "what": "16 dense crisp lumpy puffs, top-lit (4x4, 256 px; tools/roblox/vfx/lumps_sheet.py): the frag fireball and smoke, the smoke bomb",
+  "uploaded": "2026-11-16 22:38 UTC"
+ },
+ "vfx_streak": {
+  "id": 127914373549121,
+  "sha1": "209e7d44bc28fb6d81a5f1440b7369d4e44d4f28",
+  "what": "a soft white streak (64x256): the black hole infall",
+  "uploaded": "2026-11-16 22:38 UTC"
  }
 }
