@@ -12,7 +12,7 @@ wrap needs them. Wraps are cosmetics, so they carry colour; each is still meant 
 **Where it stands:** 79 of the 102 wraps are textures; the other 23 stay colour wraps (21 plain colours, plus QR Code
 and Barcode, which may never be images). Every kit gun the owner picked carries the flat-projection UVs (`gun_uvs.py`,
 live since place version 313, 242 `WrapUV` pieces) and `WrapUV` on every piece but the glow and glass ones. Photos:
-`wrap-textures/round3/` (the ten after the second judging, in hand in the hall, place version 327),
+`wrap-textures/in-hand-24.jpg` and `wrap-textures/round4/` (24 wraps in hand in the hall after the in-hand colour pass, place version 331), `wrap-textures/round3/` (the hardest ten after the second judging, place version 327),
 `wrap-textures/round2/` (in the hall on the flat-UV guns, plus Blender renders),
 `wrap-textures/galaxy-dots-before-after.jpg` (the owner's Galaxy note),
 `wrap-textures/batch1-sheet.jpg` and `wrap-textures/judge1/` (the first round).
@@ -90,10 +90,19 @@ hall, first and third person.
 | 2 | 5.75 | the mapping problems gone (stretch measured: no face over 1.8 times, and only small corner facets); warm and saturated bases ran hot under the hall's lamps (Tiger, Hazard, Sakura, Camo); carbon read as chrome basketweave; holo a pastel toy; damascus a contour map; small checks blurred to grey at range; hex panels mirrored the tan walls | Tiger amber-brown with dark brown stripes, Hazard ochre, Sakura plum-charcoal with blossoms of four sizes, Camo olive drab, Galaxy near-black with the dots gathered in its clouds; Carbon near black, weave relief a third; Holo dark chrome with narrow prismatic bands; Damascus dense half-and-half layers; Racing checks 3.1 cm; Hex panels satin |
 | 3 | 5.8 | Sakura 7.5 and Damascus 7 best; Holo 4 (thin lines read as crayon); Hazard's stripes change direction from face to face (each face family has its own projection); Racing's faded band reads as a second texture; stray light triangles on some corner bevels; Carbon now too dark in the hall | Tiger and Hazard corrected for the in-hand colour shift (below); Damascus contrast halved; Holo cool silver foil with a broad soft sheen and real sparkles and stars; Nebula's bright stars four-point twinkles again. Judging stopped here: three judges in a row moved by less than a point and reversed each other on Carbon and Damascus, so the open items are listed under "Next" |
 
-**Next** (not done): stripes that keep one direction across face families (Hazard; a world-space 45-degree band
-instead of per-face projections); the corner-bevel triangles (give bevels their own small UV space); Racing as one
-check size with no faded band; Carbon a touch lighter in the hall; a pass of the other 69 wraps for the in-hand
-colour shift (only the judged ten were corrected).
+After round 3, against a fixed checklist rather than more judging rounds:
+
+- **Stripes keep one direction across folds.** Every face family unfolds with u along the gun (`gun_uvs.py`), so a
+  band square to the gun folds onto the top, the grip and round the barrel without turning; a 45-degree band turns at
+  every fold and reads as a sawtooth. Hazard's bands now run straight across the gun. The other striped wraps already
+  ran along the gun (Jersey, Rainbow, Fade, Creamsicle) or across it (Tiger, Zebra), which fold cleanly too.
+- **The corner-bevel "triangles" are the guns' shading, not the wraps**: a plain grey wrap on the AR shows the same
+  light and dark corner facets (the kit's bevels are flat-shaded). Nothing to do in the textures or the UVs; smoothing
+  those normals would be a gun model change.
+- Racing is one even 3.1 cm grid of charcoal and off-white over the whole gun, no faded band.
+- Carbon a touch lighter (it read as plain black in the hall).
+- **Every wrap's colour map goes through the in-hand colour pass** (`hall_comp` in `wrap_textures.py`, below) except
+  the eleven tuned by hand in the hall (`HALL_TUNED`).
 
 ## In-hand colour
 
@@ -109,6 +118,12 @@ traffic-cone orange, ochre goes school-bus yellow, plum goes near black. So:
   only 0.13 apart in the map.
 - Glossy panels (roughness under about 0.3) mirror the warm walls at grazing angles and read as tan patches (Hex).
 - Judge colours from a hall photo, never from Blender or the map: Blender's neutral light hides all of this.
+
+As a model, fitted to every measured pair (Tiger, Hazard, Sakura, Carbon over three rounds), red and green come out
+near **1.2 × map − 33** and blue near **1.05 × map − 35** (0..255): more contrast, blue pulled down, darks crushed.
+`hall_comp` draws each wrap as intended and then moves its colour map 70% of the way to the inverse of that
+(`HALL_K = 0.7`: not all the way, since other zones light the guns more neutrally). In a neutral light the maps look a
+little lighter and cooler than intended; in hand they land near it.
 
 ## Lessons
 

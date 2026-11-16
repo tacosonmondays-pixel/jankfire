@@ -268,7 +268,7 @@ def carbon(t: Tex):
     dive = 1 - (np.abs(2 * f2 - 1) ** 6)
     h = bulge * (0.35 + 0.65 * dive)
     fib = 0.5 + 0.5 * np.cos(across * TAU * 4)    # fine fibres along the tow
-    lum = 0.06 + 0.11 * h * (0.85 + 0.15 * fib)   # near black (round 2: it read as chrome basketweave)
+    lum = 0.09 + 0.13 * h * (0.85 + 0.15 * fib)   # (round 3: plain black in the hall; a touch lighter)   # near black (round 2: it read as chrome basketweave)
     lum = lum * np.where(vert, 1.0, 0.86)          # the two directions catch the light differently
     base = np.array([1.0, 1.02, 1.12], np.float32)
     t.rgb[:] = np.clip(lum[..., None] * base, 0, 1)
@@ -323,9 +323,12 @@ def sakura(t: Tex):
 
 @design('hazard')
 def hazard(t: Tex):
-    """hazard stripes: crisp 45-degree yellow and black bands, a hair of relief at each edge like printed vinyl"""
-    s = (t.X + t.Y) % 256.0
-    sd = (np.abs(s - 64.0) - 64.0) / math.sqrt(2)    # < 0 inside the yellow band
+    """hazard stripes: crisp ochre and black bands across the gun, a hair of relief at each edge like printed vinyl"""
+    # bands straight across the gun: every face family unfolds with u along the gun (gun_uvs.py), so a band square to
+    # it folds onto the top, the grip and round the barrel without turning (round 3: 45-degree stripes changed
+    # direction at every fold and read as a sawtooth)
+    s = t.X % 192.0
+    sd = np.abs(s - 48.0) - 48.0                     # < 0 inside the ochre band (2.3 cm bands)
     a = cover(sd)
     t.rgb[:] = hexrgb('18181b')
     t.fill(a, 'b09c58')                 # muted ochre in hand (e2b200 was the loudest wrap; b08a1e came out ae7a02 and
@@ -337,16 +340,15 @@ def hazard(t: Tex):
 
 @design('racing')
 def racing(t: Tex):
-    """checkered flag: crisp 3.1 cm checks fading into gloss black and back, one band of them per tile height
-       (judge 1: checks over the whole gun strobed in first person)"""
+    """checkered flag: crisp 3.1 cm charcoal and off-white checks, one even grid over the whole gun"""
     def wave(x, cell):
         f = x % (2 * cell)
         e = np.where(f < cell, np.minimum(f, cell - f), -np.minimum(f - cell, 2 * cell - f))
         return np.clip(0.5 + e, 0, 1) * 2 - 1
     q = wave(t.X, 128.0) * wave(t.Y, 128.0)   # 3.1 cm (round 2: 1.6 cm blurred to a grey grid at range)
-    white = (1 + q) / 2 * (0.08 + 0.92 * smoothstep(0.15, 0.75, tri(t.V)))
-    t.rgb[:] = hexrgb('141416')
-    t.fill(white, 'ecebe6')
+    white = (1 + q) / 2                        # one regular check everywhere (round 3: the faded band read as a
+    t.rgb[:] = hexrgb('1c1c1f')                # second texture); charcoal and off-white, a perfectly even grid
+    t.fill(white, 'e2dfd8')
     t.rough[:] = 0.26 + 0.06 * white
     return {}
 
@@ -584,14 +586,18 @@ def seigaiha(t: Tex):
     n = t.n; R = 128.0
     t.rgb[:] = hexrgb('1b2a63')
     rings = [(1.0, '1b2a63'), (0.9, 'efe8d6'), (0.78, '1b2a63'), (0.66, 'efe8d6'), (0.54, '1b2a63'), (0.42, 'efe8d6'), (0.3, '1b2a63'), (0.2, '3fb8d8')]
-    rows = int(n / (R / 2)) + 3
-    for j in range(-2, rows):
+    rows = int(n / (R / 2))                   # 16 rows make one period
+    # each row lies over the row above it; round the tile that order is a cycle, so the first row is painted again
+    # at the end, but only over the row above it (its top half-band), not over the row below it (16 Nov: the old
+    # order broke the pattern along the tile's top edge)
+    for j in range(0, rows + 1):
         y = j * R / 2
         for i in range(-1, int(n / (2 * R)) + 2):
             x = i * 2 * R + (R if j % 2 else 0)
             X, Y, idx = t.box(x - R - 2, y - R - 2, x + R + 2, y + 2)
             d = np.hypot(X - x, Y - y)
             above = cover(Y - y)  # only the upper half shows (the next row down covers the rest)
+            if j == rows: above = above * cover(Y - (y - R / 2))
             for k, col in rings:
                 t.paint(idx, cover(d - R * k) * above, col)
     t.rough[:] = 0.4
@@ -1005,13 +1011,15 @@ def ketchup(t: Tex):
     t.rough[:] = 0.2
     for y0 in (n * 0.25, n * 0.75):
         pts = [(x, y0 + (36 if (k % 2) else -36)) for k, x in enumerate(np.arange(-128, n + 129, 64.0))]
-        X, Y, idx = t.box(-140, y0 - 70, n + 140, y0 + 70)
-        sd = sd_polyline(pts, 17)(X, Y)
-        dome = np.sqrt(np.clip(-sd / 17, 0, 1))
-        t.paint(idx, cover(sd - 3) * 0.35, '6a0c10')
-        t.paint(idx, cover(sd), mix('c99412', 'eec23a', dome))
-        t.paint(idx, cover(sd), height=dome * 4, hmode='max')
-        t.paint(idx, cover(sd_polyline([(x - 5, y - 6) for x, y in pts], 3.5)(X, Y)) * cover(sd) * 0.7, 'fff0b0')
+        for x0, x1 in ((-20, n / 2 + 20), (n / 2 - 20, n + 20)):   # two halves: one box can't be wider than the tile
+            X, Y, idx = t.box(x0, y0 - 70, x1, y0 + 70)
+            own = (X < n / 2) if x0 < 0 else (X >= n / 2)          # each half paints only its own side (no doubled edges)
+            sd = np.where(own, sd_polyline(pts, 17)(X, Y), 1e3)
+            dome = np.sqrt(np.clip(-sd / 17, 0, 1))
+            t.paint(idx, cover(sd - 3) * 0.35, '6a0c10')
+            t.paint(idx, cover(sd), mix('c99412', 'eec23a', dome))
+            t.paint(idx, cover(sd), height=dome * 4, hmode='max')
+            t.paint(idx, cover(sd_polyline([(x - 5, y - 6) for x, y in pts], 3.5)(X, Y)) * cover(sd) * 0.7 * own, 'fff0b0')
     return {}
 
 
@@ -1175,12 +1183,14 @@ def bigwave(t: Tex):
         xs = np.arange(-16, n + 17, 4.0)
         top = [(x, yf(x)) for x in xs]
         poly = top + [(n + 16, base + 300), (-16, base + 300)]
-        X, Y, idx = t.box(-16, base - 120, n + 16, base + 300)
-        sd = sd_polygon(poly)(X, Y)
-        t.paint(idx, cover(sd), '1b3a6c')
-        for off, col, w in ((22, '3f6aa6', 4), (44, '2a5592', 3.5), (70, '4a7cb8', 3), (100, '2a5592', 3), (135, '16305c', 4)):
-            t.paint(idx, cover(sd_polyline([(x, y + off) for x, y in top], w)(X, Y)) * cover(sd), col)
-        t.paint(idx, cover(sd_polyline(top, 5)(X, Y)), 'f3ecd8')
+        for x0, x1 in ((-8, n / 2 + 8), (n / 2 - 8, n + 8)):   # two halves: one box can't be wider than the tile
+            X, Y, idx = t.box(x0, base - 120, x1, base + 300)
+            own = ((X < n / 2) if x0 < 0 else (X >= n / 2)).astype(np.float32)   # each half paints only its own side
+            sd = sd_polygon(poly)(X, Y)
+            t.paint(idx, cover(sd) * own, '1b3a6c')
+            for off, col, w in ((22, '3f6aa6', 4), (44, '2a5592', 3.5), (70, '4a7cb8', 3), (100, '2a5592', 3), (135, '16305c', 4)):
+                t.paint(idx, cover(sd_polyline([(x, y + off) for x, y in top], w)(X, Y)) * cover(sd) * own, col)
+            t.paint(idx, cover(sd_polyline(top, 5)(X, Y)) * own, 'f3ecd8')
         for x in range(0, n, 24):
             k = max(0.0, math.sin(TAU * x / 512 + ph)) ** 3
             if k > 0.3:
@@ -1230,7 +1240,7 @@ def urushi(t: Tex):
 @design('tokyo')
 def tokyo(t: Tex):
     """tokyo night: a dark city of lit windows behind neon signs that glow, each sign an outlined box with simple neon
-       marks inside (bars, rings, arrows: no letters or glyphs)"""
+       marks inside (zigzags, rings, arrows: no letters or glyphs)"""
     n = t.n; r = t.rng
     t.rgb[:] = hexrgb('0a0816')
     for k in range(40):
@@ -1253,13 +1263,15 @@ def tokyo(t: Tex):
         t.paint(idx, halo, c1, emit=halo)
         t.paint(idx, ring, c1, emit=1.0)
         kind = r.integers(0, 3)
-        if kind == 0:     # stacked neon bars
-            for q in range(3):
-                f = (q - 1) * 0.28
-                ax, ay = (x - w * 0.28, y + f * h) if vert else (x - w * 0.36, y + f * h * 0.9)
-                bx, by = (x + w * 0.28, y + f * h) if vert else (x + w * (0.1 + 0.25 * r.uniform()), y + f * h * 0.9)
-                if not vert: ay = by = y + (q - 1) * h * 0.25
-                t.paint(idx, cover(sd_segment(ax, ay, bx, by, 2.4)(X, Y)), c2, emit=1.0)
+        if kind == 0:     # a neon zigzag down the sign (16 Nov: three stacked bars could read as the character for
+            L = (h if vert else w) * 0.34                     # "three", so no stacked bars)
+            A = (w if vert else h) * 0.18
+            zz = []
+            for q in range(11):                               # many small turns: a squiggle, not a letter
+                a_ = -L + 2 * L * q / 10
+                b_ = A * 0.8 if q % 2 else -A * 0.8
+                zz.append((x + b_, y + a_) if vert else (x + a_, y + b_))
+            t.paint(idx, cover(sd_polyline(zz, 2.4)(X, Y)), c2, emit=1.0)
         elif kind == 1:   # a ring and a dot
             rr = min(w, h) * 0.26
             t.paint(idx, cover(np.abs(np.hypot(X - x, Y - y) - rr) - 2.4), c2, emit=1.0)
@@ -2093,9 +2105,26 @@ def bowling(t: Tex):
 
 
 # ====================================================================== the run
+# IN-HAND COLOUR. In the training hall a held gun's colours come out with more contrast and less blue than the map:
+# measured over three Play rounds on Tiger, Hazard, Sakura, Carbon (16 Nov 2026), red and green land near
+# 1.2 x map - 33 and blue near 1.05 x map - 35 (0..255). A low blue channel goes to nothing, so warm colours turn hot
+# and darks crush. Every wrap's colour map is drawn as intended and then moved most of the way towards the inverse,
+# so it lands near the intended colour in hand. The wraps tuned by hand in the hall (HALL_TUNED) skip it.
+HALL_A = np.array([1.2, 1.2, 1.05], np.float32)
+HALL_B = np.array([-33, -33, -35], np.float32) / 255.0
+HALL_K = 0.7          # how far towards the full inverse (not all the way: other zones light the guns more neutrally)
+HALL_TUNED = {'galaxy', 'nebula', 'camo', 'hex', 'tiger', 'sakura', 'racing', 'carbon', 'hazard', 'holo', 'damascus'}
+
+
+def hall_comp(rgb):
+    inv = (rgb - HALL_B) / HALL_A
+    return np.clip(rgb + HALL_K * (inv - rgb), 0.0, 1.0)
+
+
 def build(wid, out_dir):
     t = Tex(seed=seed_of(wid))
     extra = DESIGNS[wid](t) or {}
+    if wid not in HALL_TUNED: t.rgb[:] = hall_comp(t.rgb)
     maps = t.save(os.path.join(out_dir, wid))
     rel = {k: (os.path.basename(v) if isinstance(v, str) else v) for k, v in maps.items()}
     return {'maps': rel, **extra}
