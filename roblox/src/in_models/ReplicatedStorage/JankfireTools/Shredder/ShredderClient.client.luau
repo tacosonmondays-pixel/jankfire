@@ -67,7 +67,15 @@ end)
 -- it bends the grip weld on your screen only.
 local Players_ = Players
 local h = tool:WaitForChild("Handle")
-local hub = tool:FindFirstChild("sh_hub", true)
+-- (a fresh copy in your backpack can arrive a piece at a time: wait for the pieces read below, or the script stopped
+-- here on a nil hub and the gun showed full size in first person, seen 16 Nov 2026)
+local function piece(name: string): BasePart
+	local p = tool:FindFirstChild(name, true)
+	local t0 = os.clock()
+	while not p and os.clock() - t0 < 15 do tool.DescendantAdded:Wait(); p = tool:FindFirstChild(name, true) end
+	return p :: BasePart
+end
+local hub = piece("sh_hub")
 local G0 = tool.Grip
 local axisH = h.CFrame:VectorToObjectSpace((h:WaitForChild("Muzzle").WorldPosition - hub.Position).Unit) -- muzzle dir, handle space
 local mA = G0:VectorToObjectSpace(axisH) -- muzzle dir in the hand's grip space with no swivel
@@ -140,9 +148,9 @@ end)
 -- first person: on your screen the gun is a copy locked to the camera (a viewmodel), so jump, fall, crouch and slide
 -- animations can't knock it around. it aims at the crosshair and swivels toward whoever it's eating, like the real
 -- one. the real gun stays in your hand for everyone else, and for you in third person (V).
-local VM_POS = Vector3.new(1.5, -0.95, -1.5) -- where the grip sits, camera space
+local VM_POS = Vector3.new(1.15, -1.0, -2.1) -- where the grip sits, camera space (further off since 16 Nov: the Rivals heavy-gun class, about 52 to 85 % across, not the whole lower right)
 local AIM = Vector3.new(0, 0, -30) -- the crosshair point, camera space
-local chuteP = tool:FindFirstChild("sh_bell2", true)
+local chuteP = piece("sh_bell2")
 local axisW = (h.Muzzle.WorldPosition - hub.Position).Unit
 local upW = chuteP.Position - hub.Position
 upW = (upW - axisW * axisW:Dot(upW)).Unit
