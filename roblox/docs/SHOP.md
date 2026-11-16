@@ -94,6 +94,53 @@ Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rot
 - **While it's up:** it raises the player attribute `LoadoutOpen` too (the flag every script reads as "a menu is
   up": no jumping, shooting or items, mouse arrow on) and its own `ShopOpen`.
 
+## VIP (a game pass)
+
+The owner, 16 Nov: "the ducky set is a high tier set you get by purchasing vip, it comes with a couple skins, a hat,
+a wrap, a border and a title? it also lets you enter the vip room?"
+
+- **Who is VIP** is decided on the server only, by `src/server/Vip.luau` (`ServerScriptService.Jankfire.Vip`, started
+  by `ShopReceipts` at server start). Any of these makes a player VIP:
+  - the game pass (`Shop.VIP_PASS`, 0 until it's made): `UserOwnsGamePassAsync` on join, and
+    `PromptGamePassPurchaseFinished` for a purchase made now;
+  - while the shop is free (`Config.LOOT_FREE`), anyone's **GET VIP · FREE WHILE TESTING**, kept in the DataStore
+    `JankfireVip_v1` so it lasts (and counts only while the shop is free);
+  - the place's owner in Studio: `JankfireRemotes.Vip ("dev", "unlock" | "lock")` turns VIP on or off for that session.
+- **For other server scripts** (the hub's VIP room door):
+  - `require(game.ServerScriptService.Jankfire:WaitForChild("Vip")).isVip(player)`;
+  - `Vip.changed:Connect(function(player, isVip) end)`.
+  The player attribute `VIP` is set by the server for client visuals only; never decide with it.
+- **The pack** is the shop's offer `"vip"` (type `"pass"`). Its contents (`Shop.vipItems()`) are everything that
+  exists and the loot module calls VIP-only (`LootTable.vipOnly`, read through `Shop.vipOnly`): the VIP skin set's
+  skins (`set_ducky`), every wrap and hat with `vip = true` (no weapon: worn on every gun), and the VIP card looks
+  (rarity `"vip"`).
+  - `Vip.luau` hands it over with `Loot.grant(p, "vip", "vip-<n>-<signature>")`, so a pack that gains things later
+    is granted again, once, and only the new things land.
+  - VIP things are never sold: no bundle, set banner, daily single or container (`Shop.vipOnly` filters, and the
+    loot module's pools).
+- **On screen:**
+  - A VIP tile tops BUNDLES: GAME PASS, VIP, the two perks, GET VIP, and the pack's top skin wearing the VIP hat
+    with every pack item along the bottom.
+  - Its inspect panel lists the pack ("Ducky · Every gun") and says "and the VIP room in the hub".
+  - VIP things sit in their own VIP section of the inventory, each once.
+- **Robux later:** make the pass on the Creator Hub (priced as `Shop.vip.robux`, 399), put its id in `Shop.VIP_PASS`
+  and turn `Config.LOOT_ROBUX` on. GET VIP then asks the server, which shows Roblox's pass prompt.
+
+Tested in solo Play (place version 437, the owner's account; photo sheet `roblox/docs/shop/shop-vip.jpg`):
+- **Before VIP:** the VIP tile topped BUNDLES above the real set banners (Seraph | Infernal, Witching Hour |
+  Tidecrest; the Ducky set not among them). Locked out of VIP, a character put inside the VIP room was moved back out
+  within 1.7 s (the hub's door, `HubVip`).
+- **Claiming:** GET VIP · FREE WHILE TESTING (from a panel opened straight onto `"vip"`) made the player VIP in
+  0.8 s. The pack landed: the 3 Ducky skins, the Ducky wrap on all 16 guns, the Ducky border and the VIP title. The
+  panel then read YOU'RE VIP with every item OWNED, and BACK shut the shop.
+- **In the room and wearing:** as VIP the character stayed inside the room. Bubble Bath was worn on the Belt Sander
+  (then put back) and the Ducky border on the player card (left on: the owner is VIP now).
+- **Locking and unlocking:** the owner's Studio "lock" moved the character out of the room again, and "unlock" made
+  them VIP again at once.
+
+Not tested yet: the Royal Duck hat (not in the place yet; the pack grows by itself when it lands) and the hub's
+server-only door (its push 44; the test used the first version, which also checks `Vip.isVip`).
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

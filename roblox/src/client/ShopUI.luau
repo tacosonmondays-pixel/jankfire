@@ -53,6 +53,7 @@ local function clock(sec: number): string
 	return string.format("%02d:%02d:%02d", sec // 3600, (sec % 3600) // 60, sec % 60)
 end
 local function rarityColor(r: string): Color3
+	if r == "vip" then return Shop.VIP_COLOR end
 	local e = Shop.RARITY[r]
 	return if e then e.color else T.MUTED
 end
@@ -60,6 +61,8 @@ local function rarityName(r: string): string
 	local e = Shop.RARITY[r]
 	return string.upper(if e then e.name else r)
 end
+-- VIP (the server's Vip.luau decides; the player attribute VIP is its word for the screen)
+local function isVip(): boolean return me:GetAttribute("VIP") == true end
 
 -- ======================================================================== the till (the loot server)
 local Till = {}
@@ -117,6 +120,11 @@ function Till.owns(kind: string, id: string, weapon: string?): boolean
 	local set = S.inv[kind]
 	if not set then return false end
 	if set[id] == true then return true end
+	-- (a VIP wrap or hat is worn on every gun: owned on one gun is owned)
+	if (kind == "wrap" or kind == "hat") and Shop.vipOnly(kind, id) then
+		for k in set do if Shop.unkey(k) == id then return true end end
+		return false
+	end
 	return weapon ~= nil and set[Shop.key(kind, id, weapon)] == true
 end
 function Till.count(cid: string): number return S.inv.containers[cid] or 0 end
@@ -390,6 +398,10 @@ end
 function V.offerModel(o: any, item: any?, boost: number?): Model?
 	if o.type == "container" then return V.container(o.id) end
 	if item then return V.item(item, boost) end
+	if o.type == "pass" then
+		local h = Shop.vipHero()
+		return if h then V.gun(h.weapon, h.wrap, h.hat, boost, h.skin) else nil
+	end
 	if o.type == "bundle" then
 		local h = o.hero or {}
 		return V.gun(h.weapon or "ar", h.wrap, h.hat, boost, h.skin)
@@ -721,6 +733,8 @@ do
 	}, pg_)
 	new("UIListLayout", { Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, UI.bundleScroll)
 	new("UIPadding", { PaddingRight = UDim.new(0, 8), PaddingBottom = UDim.new(0, 8) }, UI.bundleScroll)
+	-- VIP first: one wide tile (ShopUI.fillVip)
+	UI.vipHolder = new("Frame", { Name = "Vip", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 230), LayoutOrder = 0 }, UI.bundleScroll)
 	-- (a section's heading: one label, so the list has nothing empty in it)
 	UI.setsHead = txt(UI.bundleScroll, "SKIN SETS", 15, T.MUTED, T.FONT_BOLD)
 	UI.setsHead.Size = UDim2.new(1, 0, 0, 22); UI.setsHead.LayoutOrder = 1
@@ -732,6 +746,85 @@ do
 	UI.bundleLayout = new("UIGridLayout", { CellPadding = UDim2.fromOffset(14, 14), CellSize = UDim2.fromOffset(380, 300), SortOrder = Enum.SortOrder.LayoutOrder }, UI.bundleGrid)
 end
 S.setH = 250
+-- one thing of the VIP pack as a small square: a wrap's paint, anything else its still picture
+function V.packChip(cell: Frame, it: any)
+	if it.kind == "wrap" then
+		local chip = new("Frame", { BackgroundColor3 = T.TRACK, BorderSizePixel = 0, Position = UDim2.fromOffset(6, 6), Size = UDim2.new(1, -12, 1, -12), ZIndex = cell.ZIndex + 1 }, cell)
+		T.corner(chip, 3)
+		paintChip(chip, it.id)
+	else
+		local cv = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = cell.ZIndex + 1 }, cell)
+		V.chip(cv, it)
+	end
+end
+-- VIP: the game pass. a wide tile at the top of BUNDLES: the pack's top skin wearing the VIP hat, what's in the pack,
+-- the perks, and GET VIP (free while we test: the server's Vip.luau keeps the claim). click = the inspect panel
+function ShopUI.fillVip()
+	for _, c in UI.vipHolder:GetChildren() do c:Destroy() end
+	local o = Shop.vip
+	local k = S.compact
+	local vip = isVip()
+	local c = new("TextButton", { Name = "VipTile", Text = "", AutoButtonColor = false, BackgroundColor3 = T.CARD, BorderSizePixel = 0, ClipsDescendants = true, Size = UDim2.fromScale(1, 1) }, UI.vipHolder)
+	T.corner(c)
+	local st = T.edge(c, Shop.VIP_COLOR, 0.55)
+	c.MouseEnter:Connect(function() c.BackgroundColor3 = T.CARD_HI; st.Transparency = 0.35 end)
+	c.MouseLeave:Connect(function() c.BackgroundColor3 = T.CARD; st.Transparency = 0.55 end)
+	local wash = new("Frame", { BackgroundColor3 = Shop.VIP_COLOR, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 1 }, c)
+	T.corner(wash)
+	new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.45, 0.95), NumberSequenceKeypoint.new(1, 0.82) }) }, wash)
+	new("Frame", { Name = "Line", BackgroundColor3 = Shop.VIP_COLOR, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 1), Position = UDim2.fromScale(0, 1), Size = UDim2.new(1, 0, 0, 3), ZIndex = 6 }, c)
+	local pad = if k then 12 else 20
+	-- the words and the button on the left
+	local eb = txt(c, "GAME PASS", 11, Shop.VIP_COLOR, T.FONT_BOLD); eb.ZIndex = 3
+	eb.Position = UDim2.fromOffset(pad, if k then 10 else 16); eb.Size = UDim2.new(0.4, 0, 0, 14)
+	local name = txt(c, "VIP", if k then 26 else 36, T.TEXT, T.FONT_TITLE); name.ZIndex = 3
+	name.Position = UDim2.fromOffset(pad, if k then 26 else 34); name.Size = UDim2.new(0.4, 0, 0, if k then 30 else 42)
+	local y = if k then 60 else 84
+	for i, line in o.perks do
+		local dot = new("Frame", { BackgroundColor3 = Shop.VIP_COLOR, BorderSizePixel = 0, Position = UDim2.fromOffset(pad, y + (i - 1) * (if k then 22 else 26) + 6), Size = UDim2.fromOffset(5, 5), ZIndex = 3 }, c)
+		T.corner(dot, 99)
+		local l = txt(c, line, if k then 12 else 13, T.SOFT, T.FONT); l.ZIndex = 3
+		l.Position = UDim2.fromOffset(pad + 12, y + (i - 1) * (if k then 22 else 26)); l.Size = UDim2.new(0.42, -12, 0, 18)
+	end
+	local b = button(c, "", "main", UDim2.new(0.38, 0, 0, 44), UDim2.new(0, pad, 1, -(44 + (if k then 12 else 18))))
+	b.face.ZIndex = 4; b.face.TextSize = if k then 13 else 15
+	if vip then b.set("YOU'RE VIP", false)
+	elseif Shop.free() then b.set("GET VIP  ·  FREE WHILE TESTING", true)
+	else b.set("GET VIP  " .. ROBUX .. " " .. commas(o.robux), Shop.ROBUX and (tonumber(Shop.VIP_PASS) or 0) > 0) end
+	b.face.MouseButton1Click:Connect(function() ShopUI.getVip() end)
+	-- the pack on the right: its top piece big, everything in it along the bottom
+	local items = Shop.vipItems()
+	local chipsH = if k then 44 else 58
+	local hero = Shop.vipHero()
+	local view = new("Frame", { Name = "View", BackgroundTransparency = 1, Position = UDim2.new(0.44, 0, 0, 4), Size = UDim2.new(0.56, -8, 1, -(chipsH + 20)), ZIndex = 2 }, c)
+	if hero then V.show(view, V.gun(hero.weapon, hero.wrap, hero.hat, 1.4, hero.skin), "slow", 1.0) end
+	local row = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0, 1), Position = UDim2.new(0.44, 0, 1, -(if k then 9 else 12)), Size = UDim2.new(0.56, -pad, 0, chipsH), ZIndex = 3 }, c)
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder, HorizontalAlignment = Enum.HorizontalAlignment.Right }, row)
+	local n = math.max(#items, 5)
+	for i, it in items do
+		local cell = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.35, BorderSizePixel = 0, Size = UDim2.new(1 / n, -6 + 6 / n, 1, 0), LayoutOrder = i, ZIndex = 3 }, row)
+		T.corner(cell, 4)
+		V.packChip(cell, it)
+		if vip then new("Frame", { BackgroundColor3 = Shop.VIP_COLOR, BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -2), Size = UDim2.new(1, -12, 0, 2), ZIndex = 6 }, cell) end
+	end
+	c.MouseButton1Click:Connect(function() ShopUI.inspect("vip") end)
+end
+-- GET VIP: free while we test (the server keeps the claim), else Roblox's game pass prompt (the server's call)
+function ShopUI.getVip()
+	if isVip() or S.busy then return end
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Vip")
+	if not (r and r:IsA("RemoteFunction")) then Hud.callout("VIP ISN'T READY YET", 1.2); return end
+	play("click")
+	S.busy = true
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer(if Shop.free() then "claim" else "buy") end)
+	S.busy = false
+	if not ok or type(res) ~= "table" or not res.ok then
+		Hud.callout(string.upper(if ok and type(res) == "table" and res.why then res.why else "couldn't reach the server"), 1.4)
+		return
+	end
+	if res.vip then ShopUI.toast("YOU'RE VIP. THE DUCKY PACK IS IN YOUR INVENTORY") end
+end
 -- one skin set's banner: its colour washed in behind its top piece, its name, how much of it you own (a bar in the
 -- set's glow colour) and its five skins along the bottom (the ones you own lit, the rest dimmed). click = its
 -- "complete the set" panel (inspect)
@@ -800,6 +893,7 @@ local function setRow(r: { any }, order: number)
 	end
 end
 function ShopUI.fillBundles()
+	ShopUI.fillVip()
 	for _, c in UI.bundleGrid:GetChildren() do if c:IsA("GuiButton") then c:Destroy() end end
 	for _, c in UI.setRows:GetChildren() do if c:IsA("Frame") then c:Destroy() end end
 	-- the skin sets on sale: a pair on one row, the lone sets two to a row
@@ -956,21 +1050,28 @@ function ShopUI.fillInventory()
 	-- skins, wraps and hats, grouped by the weapon they're for (the loadout's order), rarest first in each
 	local byWeapon: { [string]: { any } } = {}
 	local KORDER = { skin = 1, wrap = 2, hat = 3 }
+	local seenVip: { [string]: boolean } = {}
 	for _, kind in { "skin", "wrap", "hat", "border", "banner", "title" } do
 		if f == "all" or f == kind or (f == "card" and Shop.isCard(kind)) then
 			for key in S.inv[kind] or {} do
 				local id, w = Shop.unkey(key)
 				if kind == "skin" then w = Shop.skinWeapon(id) end
-				if Shop.exists(kind, id, w) then
+				-- (the VIP pack in a section of its own, each thing once: a VIP wrap or hat is on every gun)
+				local vipThing = Shop.vipOnly(kind, id)
+				if vipThing and kind ~= "skin" then w = nil end
+				local dupe = vipThing and seenVip[kind .. ":" .. id]
+				if not dupe and Shop.exists(kind, id, w) then
+					if vipThing then seenVip[kind .. ":" .. id] = true end
 					local name, r = Shop.itemInfo(kind, id)
-					local g = if Shop.isCard(kind) then "_card" elseif w and Shop.WEAPON_SET[w] then w else "_any"
+					local g = if vipThing then "_vip" elseif Shop.isCard(kind) then "_card" elseif w and Shop.WEAPON_SET[w] then w else "_any"
 					byWeapon[g] = byWeapon[g] or {}
-					table.insert(byWeapon[g], { kind = kind, id = id, weapon = w, name = name, rarity = r })
+					table.insert(byWeapon[g], { kind = kind, id = id, weapon = w, name = name, rarity = r, vip = vipThing })
 				end
 			end
 		end
 	end
 	local groups = table.clone(Shop.WEAPONS)
+	table.insert(groups, 1, "_vip") -- (the VIP pack, first)
 	table.insert(groups, "_any") -- (things kept without a weapon, from an older save)
 	table.insert(groups, "_card") -- (the player card's looks)
 	for gi, g in groups do
@@ -981,7 +1082,7 @@ function ShopUI.fillInventory()
 				if Shop.rank(a.rarity) ~= Shop.rank(b.rarity) then return Shop.rank(a.rarity) > Shop.rank(b.rarity) end
 				return a.name < b.name
 			end)
-			local grid = invSection(if g == "_any" then "any weapon" elseif g == "_card" then "player card" else Shop.weaponName(g), #items, gi)
+			local grid = invSection(if g == "_vip" then "VIP" elseif g == "_any" then "any weapon" elseif g == "_card" then "player card" else Shop.weaponName(g), #items, gi)
 			for _, it in items do
 				n += 1; order += 1
 				local c = card(grid, it.rarity)
@@ -992,7 +1093,7 @@ function ShopUI.fillInventory()
 				name.Position = UDim2.new(0, 10, 1, -46); name.Size = UDim2.new(1, -20, 0, 18)
 				local rl = rarityLine(c, it.rarity, Shop.KIND_NAMES[it.kind], 10)
 				rl.Position = UDim2.new(0, 10, 1, -24); rl.Size = UDim2.new(1, -20, 0, 14)
-				local oid = Shop.singleId({ kind = it.kind, id = it.id, weapon = it.weapon or (if Shop.gunless(it.kind) then nil else V.yourGun()) })
+				local oid = if it.vip then "vip" else Shop.singleId({ kind = it.kind, id = it.id, weapon = it.weapon or (if Shop.gunless(it.kind) then nil else V.yourGun()) })
 				c.MouseButton1Click:Connect(function() ShopUI.inspect(oid) end)
 			end
 		end
@@ -1104,7 +1205,7 @@ function ShopUI.fillInspect()
 	UI.inspHint.Parent = UI.inspView
 	for _, c in UI.inspList:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	UI.inspEyebrow:Destroy()
-	local kindWord = if o.set then "SKIN SET  ·  " .. #o.items .. " WEAPON SKINS" elseif o.type == "bundle" then "BUNDLE  ·  " .. #o.items .. " ITEMS" elseif o.type == "container" then "CONTAINER" else (Shop.KIND_NAMES[o.kind] or "") .. "  ·  FOR " .. (if Shop.isCard(o.kind) then "YOUR CARD" else string.upper(Shop.weaponName(o.weapon)))
+	local kindWord = if o.type == "pass" then "GAME PASS  ·  " .. #Shop.vipItems() .. " ITEMS + THE VIP ROOM" elseif o.set then "SKIN SET  ·  " .. #o.items .. " WEAPON SKINS" elseif o.type == "bundle" then "BUNDLE  ·  " .. #o.items .. " ITEMS" elseif o.type == "container" then "CONTAINER" else (Shop.KIND_NAMES[o.kind] or "") .. "  ·  FOR " .. (if Shop.isCard(o.kind) then "YOUR CARD" else string.upper(Shop.weaponName(o.weapon)))
 	UI.inspEyebrow = rarityLine(UI.inspSide, o.rarity, kindWord, 12)
 	UI.inspEyebrow.Position = UDim2.fromOffset(0, 50)
 	for _, d in UI.inspEyebrow:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 23 end end
@@ -1136,7 +1237,16 @@ function ShopUI.fillInspect()
 	UI.inspList.Position = UDim2.fromOffset(0, listY)
 	UI.inspList.Size = UDim2.new(1, 0, 1, -(listY + foot + 26))
 	UI.inspBar.Visible = false
-	if o.type == "bundle" and o.set then
+	if o.type == "pass" then
+		-- VIP: what's in the pack (each OWNED once you're VIP), the VIP room, and GET VIP
+		UI.inspBlurb.Text = o.blurb
+		for i, it in Shop.vipItems() do listRow(it, i, o) end
+		local vip = isVip()
+		UI.inspNote.Text = if vip then "you're VIP. the VIP room in the hub is open to you" else "and the VIP room in the hub"
+		UI.inspBuy.set(if vip then "YOU'RE VIP"
+			elseif Shop.free() then "GET VIP  ·  FREE WHILE TESTING"
+			else "GET VIP  " .. ROBUX .. " " .. commas(o.robux), not vip and (Shop.free() or (Shop.ROBUX and (tonumber(Shop.VIP_PASS) or 0) > 0)))
+	elseif o.type == "bundle" and o.set then
 		-- a skin set: "complete the set". its five, each OWNED or not; how many you have; one button for the rest
 		UI.inspBlurb.Text = o.blurb
 		for i, it in o.items do listRow(it, i, o) end
@@ -1313,6 +1423,7 @@ end
 function ShopUI.ask(id: string)
 	local o = Shop.offer(id)
 	if not o or S.busy then return end
+	if o.type == "pass" then ShopUI.getVip(); return end -- (VIP: its own claim, not the till)
 	if o.type ~= "container" and Till.missing(o) == 0 then Hud.callout("ALREADY YOURS", 1); return end
 	if o.type == "container" then
 		local bs = Till.boxState(o.id)
@@ -1450,7 +1561,7 @@ function ShopUI.openBox(cid: string, n: number?)
 	end
 end
 -- the loot server says what you own changed (another screen, the opening's EQUIP, a receipt): refresh what's shown
-for _, a in { "LootOwned", "LootStock" } do
+for _, a in { "LootOwned", "LootStock", "VIP" } do
 	me:GetAttributeChangedSignal(a):Connect(function()
 		if S.open and not S.busy then task.defer(function() Till.refresh(); ShopUI.refill() end) end
 	end)
@@ -1598,6 +1709,7 @@ function ShopUI.layout()
 	-- the skin sets' banners: a row of two, as tall as fits the page (a phone shows one row and the start of the next)
 	S.setH = if compact then math.min(196, bh - 40) else 250
 	for _, r in UI.setRows:GetChildren() do if r:IsA("Frame") then r.Size = UDim2.new(1, 0, 0, S.setH) end end
+	UI.vipHolder.Size = UDim2.new(1, 0, 0, if compact then math.min(184, bh - 40) else 230)
 	-- inventory: small cards in each weapon's grid
 	local icols = math.max(3, math.floor((bw + 10) / (if compact then 150 else 180)))
 	local iw = math.floor((bw - 16 - (icols - 1) * 10) / icols)
@@ -1687,7 +1799,7 @@ function ShopUI.open(tab: string?, id: string?)
 	if not ok then if why then Hud.callout(why, 1.2) end; return end
 	if id and not tab then
 		local o = Shop.offer(id)
-		tab = if o and o.type == "container" then "containers" elseif o and o.type == "bundle" then "bundles" else "featured"
+		tab = if o and o.type == "container" then "containers" elseif o and (o.type == "bundle" or o.type == "pass") then "bundles" else "featured"
 	end
 	-- (opened straight onto one offer from outside the shop: BACK and the end of an opening take you back to the
 	-- game, not into the shop's lists. ShopUI.back, ShopUI.openBox)

@@ -8,6 +8,8 @@
 --               featured rotation; "skin:<id>" one weapon skin (a skin is already one gun's)
 --   skin sets   "<set id>" ("set_seraph"): every skin of one of SkinSets' sets, a bundle with a banner (the guns
 --               session's SkinSets.luau); on sale once all its skins are in the place
+--   VIP         "vip": the game pass (Vip.luau on the server decides who has it); its pack is every VIP-only thing
+--               (Shop.vipItems), handed over by the loot server, never sold on its own
 -- wraps and hats are owned per weapon: an item is { kind, id, weapon } (Shop.key: "sakura@smg")
 -- every offer has a Robux price (`robux`) and a slot for its developer product (`productId`), but nothing costs
 -- anything while the loot switch is on (Config.LOOT_FREE; Shop.free()) and no purchase prompt is ever shown while
@@ -70,8 +72,10 @@ end
 -- the loadout's Roster.RARITY if the loot module isn't there)
 Shop.RARITY = if LootTable and LootTable.RARITY then LootTable.RARITY else Roster.RARITY
 Shop.RARITY_ORDER = { "free", "common", "rare", "epic", "legendary" }
-local RANK = { free = 0, common = 1, rare = 2, epic = 3, legendary = 4 }
+local RANK = { free = 0, common = 1, rare = 2, epic = 3, legendary = 4, vip = 5 }
 function Shop.rank(r: string): number return RANK[r] or 0 end
+-- the VIP pack's own rarity colour (the player cards' VIP gold): a VIP thing reads "VIP", not a rarity
+Shop.VIP_COLOR = Color3.fromRGB(255, 208, 72)
 
 -- what a single costs, by kind and rarity (Robux; unused while free)
 Shop.PRICE = {
@@ -146,14 +150,40 @@ function Shop.skinLive(id: string): boolean
 	local m = lib and lib:FindFirstChild(id)
 	return m ~= nil and m:IsA("Model") and m:GetAttribute("Weapon") == row[3]
 end
--- every skin on sale, sorted by id
+-- every skin on sale, sorted by id (VIP ones aren't: they come with VIP)
 function Shop.liveSkins(): { string }
 	local out = {}
 	if LootTable and type(LootTable.SKINS) == "table" then
-		for id in LootTable.SKINS do if Shop.skinLive(id) then table.insert(out, id) end end
+		for id in LootTable.SKINS do if Shop.skinLive(id) and not Shop.vipOnly("skin", id) then table.insert(out, id) end end
 	end
 	table.sort(out)
 	return out
+end
+
+-- ---------------------------------------------------------------- VIP only
+-- a VIP thing (the Ducky set's skins, the VIP wrap and hat, the VIP card looks) comes only with VIP (Vip.luau, the
+-- game pass): never sold, never in a bundle, a set banner or the daily rotation, never in a container. what is VIP is
+-- each thing's own data, read by the loot module (LootTable.vipOnly: a wrap's or hat's vip = true, a skin of a VIP
+-- set, a card look of rarity "vip"), so this list never needs keeping
+function Shop.vipOnly(kind: string, id: string): boolean
+	if LootTable and type(LootTable.vipOnly) == "function" then
+		local ok, v = pcall(LootTable.vipOnly, kind, id)
+		if ok and v then return true end
+	end
+	if Shop.isCard(kind) and Shop.CardStyles then
+		local C = Shop.CardStyles :: any
+		if type(C.isVip) == "function" then
+			local ok, v = pcall(C.isVip, kind, id)
+			if ok and v then return true end
+		end
+	end
+	return false
+end
+-- a skin set that is VIP (the Ducky set): marked vip = true, or any of its skins is VIP
+local function vipSet(sid: string, s: any): boolean
+	if s.vip == true or sid == "set_ducky" then return true end
+	for _, kid in s.members or {} do if Shop.vipOnly("skin", kid) then return true end end
+	return false
 end
 
 -- ---------------------------------------------------------------- items
@@ -191,6 +221,7 @@ end
 function Shop.itemLabel(it: Item): string
 	local name = Shop.itemInfo(it.kind, it.id)
 	local w = it.weapon or (if it.kind == "skin" then Shop.skinWeapon(it.id) else nil)
+	if not w and (it.kind == "wrap" or it.kind == "hat") and Shop.vipOnly(it.kind, it.id) then return name .. " · Every gun" end
 	return if w then name .. " · " .. Shop.weaponName(w) else name
 end
 -- the single offer id for an item: "skin:<id>" / "border:<id>" (bare), "wrap:<id>@<weapon>"
@@ -265,6 +296,8 @@ if Shop.SkinSets then
 	local ids = if type(K.ordered) == "function" then K.ordered() else {}
 	for _, sid in ids do
 		local s = K.SETS[sid]
+		-- (the VIP set isn't sold: its skins are the VIP pack's)
+		if vipSet(sid, s) then continue end
 		local items, top, topR = {}, nil, -1
 		for _, kid in s.members do
 			local w = Shop.skinWeapon(kid)
@@ -339,21 +372,79 @@ function Shop.setPrice(o: Offer, missing: number?): number
 	return math.max(0, math.floor(o.robux * m / total / 10 + 0.5) * 10 - 1)
 end
 
--- the singles the rotation can show (wraps and hats that are not free and not held back)
+-- the singles the rotation can show (wraps and hats that are not free, not held back and not VIP)
 Shop.singlesPool = {} :: { Item }
 for _, w in Roster.wraps do
-	if w.rarity ~= "free" and not Shop.HELD_BACK[w.id] then table.insert(Shop.singlesPool, W(w.id)) end
+	if w.rarity ~= "free" and not Shop.HELD_BACK[w.id] and not Shop.vipOnly("wrap", w.id) then table.insert(Shop.singlesPool, W(w.id)) end
 end
 for _, id in GunHatData.ORDER do
 	local h = GunHatData.HATS[id]
-	if id ~= "none" and h and h.rarity ~= "free" then table.insert(Shop.singlesPool, H(id)) end
+	if id ~= "none" and h and h.rarity ~= "free" and not Shop.vipOnly("hat", id) then table.insert(Shop.singlesPool, H(id)) end
+end
+
+-- ---------------------------------------------------------------- VIP (a game pass; Vip.luau decides who has it)
+-- the game pass's id once it's made on the Creator Hub (Monetization > Passes); 0 = not made yet. with Shop.ROBUX on
+-- and this set, the shop's GET VIP shows Roblox's pass prompt; while the shop is free anyone can claim VIP
+Shop.VIP_PASS = 0
+Shop.vip = { id = "vip", type = "pass", name = "VIP", rarity = "vip", robux = 399, productId = nil,
+	blurb = "The Ducky pack and the VIP room.",
+	perks = { "The Ducky pack: its weapon skins, a wrap and a hat on every gun, a card border and a title",
+		"The VIP room in the hub" } } :: any
+Shop.byId.vip = Shop.vip
+-- what the VIP pack holds today: every VIP thing that's in the place (it grows as they land; Vip.luau grants the new
+-- ones once). wraps and hats have no weapon: they're worn on every gun
+function Shop.vipItems(): { Item }
+	local out = {}
+	if LootTable and type(LootTable.SKINS) == "table" then
+		local ids = {}
+		for id in LootTable.SKINS do if Shop.vipOnly("skin", id) and Shop.skinLive(id) then table.insert(ids, id) end end
+		-- (in the VIP set's own order: its first is the top piece, the Ducky LMG; then the rarest, then by id)
+		local at: { [string]: number } = {}
+		local K = Shop.SkinSets :: any
+		if K and type(K.SETS) == "table" then
+			for sid, s in K.SETS do
+				if vipSet(sid, s) then for i, kid in s.members or {} do at[kid] = i end end
+			end
+		end
+		table.sort(ids, function(a, b)
+			if (at[a] or 99) ~= (at[b] or 99) then return (at[a] or 99) < (at[b] or 99) end
+			local _, ra = Shop.itemInfo("skin", a)
+			local _, rb = Shop.itemInfo("skin", b)
+			if Shop.rank(ra) ~= Shop.rank(rb) then return Shop.rank(ra) > Shop.rank(rb) end
+			return a < b
+		end)
+		for _, id in ids do table.insert(out, { kind = "skin", id = id, weapon = Shop.skinWeapon(id) }) end
+	end
+	for _, w in Roster.wraps do if Shop.vipOnly("wrap", w.id) then table.insert(out, { kind = "wrap", id = w.id }) end end
+	for _, id in GunHatData.ORDER do if id ~= "none" and Shop.vipOnly("hat", id) then table.insert(out, { kind = "hat", id = id }) end end
+	if Shop.CardStyles then
+		local C = Shop.CardStyles :: any
+		for _, k in { "border", "banner", "title" } do
+			for _, cid in ((C.ORDER or {})[k] or {}) :: { string } do
+				if Shop.vipOnly(k, cid) then table.insert(out, { kind = k, id = cid }) end
+			end
+		end
+	end
+	return out
+end
+-- what the VIP tile shows big: the pack's top skin wearing the VIP hat (or a rifle with the VIP wrap)
+function Shop.vipHero(): Hero?
+	local skin, wrap, hat = nil, nil, nil
+	for _, it in Shop.vipItems() do
+		if it.kind == "skin" and not skin then skin = it end
+		if it.kind == "wrap" and not wrap then wrap = it.id end
+		if it.kind == "hat" and not hat then hat = it.id end
+	end
+	if skin then return { weapon = skin.weapon :: string, skin = skin.id, hat = hat } end
+	if wrap or hat then return { weapon = "ar", wrap = wrap, hat = hat } end
+	return nil
 end
 
 -- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"; one weapon skin,
 -- "skin:<id>" (its weapon is its own: the offer carries it, the id doesn't); or one card look, "border:<id>" /
 -- "banner:<id>" / "title:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
-	if not Shop.exists(kind, id, weapon) then return nil end
+	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
 	if rarity == "free" then return nil end
 	local oid = if Shop.gunless(kind) then kind .. ":" .. id else kind .. ":" .. id .. "@" .. (weapon :: string)
@@ -378,6 +469,7 @@ end
 -- what an offer gives, each { kind, id, weapon } (a container gives itself: the loot server adds one to your stock)
 function Shop.contents(o: Offer): { Item }
 	if o.type == "bundle" then return o.items :: { Item } end
+	if o.type == "pass" then return Shop.vipItems() end
 	if o.type == "single" then return { { kind = o.kind :: string, id = o.item :: string, weapon = o.weapon } } end
 	return {}
 end
@@ -430,7 +522,7 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 		for _, k in { "border", "banner", "title" } do
 			for _, cid in ((Shop.CardStyles :: any).ORDER[k] or {}) :: { string } do
 				local _, r = Shop.itemInfo(k, cid)
-				if r ~= "free" then table.insert(cards, k .. ":" .. cid) end
+				if r ~= "free" and not Shop.vipOnly(k, cid) then table.insert(cards, k .. ":" .. cid) end
 			end
 		end
 	end
@@ -480,6 +572,7 @@ end
 function Shop.onSale(id: string, t: number?): boolean
 	local o = Shop.offer(id)
 	if not o then return false end
+	if o.type == "pass" then return false end -- (VIP isn't bought through the till: Vip.luau, the game pass)
 	if o.type ~= "single" then return true end
 	local now = t or os.time()
 	if table.find(Shop.rotation(Shop.day(now)).daily, id) then return true end
