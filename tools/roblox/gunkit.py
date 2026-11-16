@@ -29,6 +29,32 @@ from mathutils import Vector, Matrix
 BEV_K = 0.5
 WTOP_K = 0.35
 SMOOTH_CYL = False
+# ROUND 8 (owner, 16 Nov 2026: "not completly block some rounded too ... a bix of the two versions"): a mix of round 5
+# and round 7. The square silhouettes stay; every chamfer becomes a soft round edge (BEV_SEG steps, shaded smooth while
+# the flat faces stay crisp) at three quarters of the builder's width; tapers back to two thirds; barrels, tubes and
+# rings shade round again, with CYL_SIDES sides when they are big; the parts the hand holds and the tubes (ROUND_NODES)
+# get a fuller round edge (ROUND_K times as wide, ROUND_SEG steps).
+BEV_K = 0.75
+WTOP_K = 0.65
+SMOOTH_CYL = True
+BEV_SEG = 2
+ROUND_NODES = {'grip', 'mag', 'pump', 'fore', 'handle', 'scope', 'cylinder', 'kat_tsuka', 'guard'}
+ROUND_K = 1.5
+ROUND_SEG = 3
+# the side-view corners of these nodes are rounded (radius, metres; never more than 45% of the shorter edge beside a
+# corner), except the corners on the end that joins the gun: (axis, end) = 'z-' front, 'z+' back, 'y+' top
+CORNER = {'grip': (0.016, 'y+'), 'mag': (0.012, 'y+'), 'stock': (0.03, 'z-'), 'guard': (0.012, 'z+'),
+          'fore': (0.012, 'z+'), 'pump': (0.012, None), 'kat_tsuka': (0.006, None)}
+CORNER_SEG = 4
+CYL_ROUND_R = 0.012  # an 8-sided cylinder or ring at least this thick (radius, metres) gets round_sides(r) sides
+# the big masses the player sees (top, back, left side): the full round edge, BODY_K times as wide, ROUND_SEG steps
+BODY_NODES = {'body', 'slide', 'motor', 'cover', 'lid', 'chute', 'receiver'}
+BODY_K = 2.0
+
+
+def round_sides(r):
+    """how many sides a round part gets: more the bigger it is, so no big part shows its facets"""
+    return 12 if r < 0.035 else (16 if r < 0.1 else 24)
 # ROUND 7 (judge 6: Rivals' blockiness is thick masses): every barrel this much thicker, its bore too. Applies to
 # cylinders whose piece is named barrel* or lmg_heat* (not the Marble Shotgun's bell, which is barrel_wzA)
 BARREL_K = 1.2
@@ -37,6 +63,63 @@ BARREL_K = 1.2
 def P(x, y, z):
     """weapon frame (x right, y up, z back) -> Blender (x, -z, y)"""
     return Vector((x, -z, y))
+
+
+def edge_style(piece, bev):
+    """(width, steps) of a solid's edges (round 8): ROUND_NODES get a fuller round edge, tiny chamfers stay one step"""
+    base = piece.split('__')[0].split('_wz')[0]
+    if base in ROUND_NODES: return bev * ROUND_K, ROUND_SEG
+    if base in BODY_NODES: return bev * BODY_K, ROUND_SEG
+    return bev, (BEV_SEG if bev >= 0.002 else 1)
+
+
+def fillet(prof, piece):
+    """round the corners of a side-view outline [(z, y)] for the piece's node (CORNER). returns (outline, arc) where
+       arc holds the index pairs (i, i + 1) of the outline's edges that run round a corner (their sides shade smooth)"""
+    base = piece.split('__')[0].split('_wz')[0]
+    if base not in CORNER or len(prof) < 3: return prof, set()
+    rad, keep_end = CORNER[base]
+    zs, ys = [q[0] for q in prof], [q[1] for q in prof]
+    def joined(q):
+        if keep_end is None: return False
+        ax, end = keep_end[0], keep_end[1]
+        vals = zs if ax == 'z' else ys
+        lo, hi = min(vals), max(vals)
+        band = 0.15 * (hi - lo)
+        v = q[0] if ax == 'z' else q[1]
+        return v <= lo + band if end == '-' else v >= hi - band
+    n = len(prof)
+    out, arc = [], set()
+    for i in range(n):
+        q = prof[i]
+        A, Pp, B = Vector(prof[i - 1]), Vector(q), Vector(prof[(i + 1) % n])
+        a, b = A - Pp, B - Pp
+        la, lb = a.length, b.length
+        if joined(q) or la < 1e-6 or lb < 1e-6: out.append(q); continue
+        d1, d2 = a / la, b / lb
+        th = math.acos(max(-1.0, min(1.0, d1.dot(d2))))
+        if th > math.pi - 0.05 or th < 0.05: out.append(q); continue
+        t = min(rad / math.tan(th / 2), 0.45 * min(la, lb))
+        r = t * math.tan(th / 2)
+        if r < 0.0008: out.append(q); continue
+        T1 = Pp + d1 * t
+        C = Pp + (d1 + d2).normalized() * (r / math.sin(th / 2))
+        T2 = Pp + d2 * t
+        a1 = math.atan2(T1.y - C.y, T1.x - C.x)
+        da = (math.atan2(T2.y - C.y, T2.x - C.x) - a1 + math.pi) % (2 * math.pi) - math.pi
+        start = len(out)
+        for k in range(CORNER_SEG + 1):
+            ang = a1 + da * k / CORNER_SEG
+            out.append((C.x + r * math.cos(ang), C.y + r * math.sin(ang)))
+        for k in range(CORNER_SEG): arc.add((start + k, start + k + 1))
+    return out, arc
+
+
+def soft_bevel(bm, geom, piece, bev):
+    """chamfer geom by bev in the piece's edge style; returns the new edge faces when they are round (shaded smooth)"""
+    bev, seg = edge_style(piece, bev)
+    res = bmesh.ops.bevel(bm, geom=geom, offset=bev, offset_type='OFFSET', segments=seg, profile=0.5, affect='EDGES', clamp_overlap=True)
+    return set(res['faces']) if seg > 1 else set()
 
 
 def lin(c): return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
@@ -95,6 +178,7 @@ class Gun:
            chamfered once by bev. shear moves the top sideways (rarely wanted)"""
         bev *= BEV_K
         if wtop is not None: wtop = w + (wtop - w) * WTOP_K
+        prof, arc = fillet(prof, piece)
         bm = bmesh.new()
         ys = [p[1] for p in prof]
         y0, y1 = min(ys), max(ys)
@@ -108,11 +192,16 @@ class Gun:
         bm.faces.new(L); bm.faces.new(R[::-1])
         for i in range(n):
             j = (i + 1) % n
-            bm.faces.new([L[i], R[i], R[j], L[j]])
+            f = bm.faces.new([L[i], R[i], R[j], L[j]])
+            f.smooth = (i, j) in arc  # (bevel copies the flag onto the face it rebuilds)
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-        if bev > 0:
-            bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bev, offset_type='OFFSET', segments=1, profile=0.5, affect='EDGES', clamp_overlap=True)
-        self._add(piece, bm)
+        geom = bm.edges[:]
+        if arc:  # the corners are round already: chamfer the two outlines, and the across edges only where square
+            geom = [e for e in geom if not (len(e.link_faces) == 2 and any(f.smooth for f in e.link_faces) and
+                                            all(len(f.verts) == 4 for f in e.link_faces) and
+                                            abs((e.verts[0].co - e.verts[1].co).normalized().x) > 0.99)]
+        soft = soft_bevel(bm, geom, piece, bev) if bev > 0 else set()
+        self._add(piece, bm, smooth=(lambda f: f.smooth or f in soft) if (soft or arc) else None)
 
     def box(self, piece, x, y, z, bev=0.004, wtop=None):
         """x, y, z = (lo, hi) each. wtop narrows (or widens) the top"""
@@ -130,9 +219,8 @@ class Gun:
             j = (i + 1) % n
             bm.faces.new([A[i], B[i], B[j], A[j]])
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-        if bev > 0:
-            bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bev, offset_type='OFFSET', segments=1, profile=0.5, affect='EDGES', clamp_overlap=True)
-        self._add(piece, bm)
+        soft = soft_bevel(bm, bm.edges[:], piece, bev) if bev > 0 else set()
+        self._add(piece, bm, smooth=(lambda f: f in soft) if soft else None)
 
     def yprism(self, piece, prof, y0, y1, bev=0.004):
         """an outline seen from ABOVE [(x, z)] pushed up from y0 to y1"""
@@ -146,9 +234,8 @@ class Gun:
             j = (i + 1) % n
             bm.faces.new([A[i], B[i], B[j], A[j]])
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-        if bev > 0:
-            bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bev, offset_type='OFFSET', segments=1, profile=0.5, affect='EDGES', clamp_overlap=True)
-        self._add(piece, bm)
+        soft = soft_bevel(bm, bm.edges[:], piece, bev) if bev > 0 else set()
+        self._add(piece, bm, smooth=(lambda f: f in soft) if soft else None)
 
     @staticmethod
     def _frame(a, b):
@@ -173,6 +260,7 @@ class Gun:
             r2 = None if r2 is None else r2 * BARREL_K
             hole = None if hole is None else (hole[0] * BARREL_K, hole[1])
         r2 = r if r2 is None else r2
+        if sides == 8 and SMOOTH_CYL and smooth and max(r, r2) >= CYL_ROUND_R: sides = round_sides(max(r, r2))
         off = math.pi / sides if flat else 0.0
         bm = bmesh.new()
         def loop(c, rad):
@@ -197,11 +285,12 @@ class Gun:
             bm.faces.new(A)
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
         keep = set(sides_f)
+        soft = set()
         if bev > 0:
             rim = [e for e in bm.edges if sum(1 for f in e.link_faces if f in keep) == 1 and not any(f in inner for f in e.link_faces)]
-            bmesh.ops.bevel(bm, geom=rim, offset=bev, offset_type='OFFSET', segments=1, profile=0.5, affect='EDGES', clamp_overlap=True)
+            soft = soft_bevel(bm, rim, piece, bev)
         axb = (P(*b) - P(*a)).normalized()  # (after the chamfer: the sides are the faces that still face straight out)
-        self._add(piece, bm, smooth=(lambda f: abs(f.normal.dot(axb)) < 0.45) if smooth else None)
+        self._add(piece, bm, smooth=(lambda f: f in soft or abs(f.normal.dot(axb)) < 0.45) if smooth else ((lambda f: f in soft) if soft else None))
 
     def cylz(self, piece, r, z0, z1, y=0.0, x=0.0, **kw):
         """a cylinder along the barrel; z0 is the end a `hole` goes into (give the muzzle end first)"""
@@ -211,6 +300,8 @@ class Gun:
         """a ring (a tube with a hole right through) between two points: sight frames, barrel bands, drum rims"""
         a, b, u, v = self._frame(a, b)
         bev *= BEV_K
+        smooth = smooth or SMOOTH_CYL
+        if sides == 8 and SMOOTH_CYL and ro >= CYL_ROUND_R: sides = round_sides(ro)
         off = math.pi / sides if flat else 0.0
         bm = bmesh.new()
         def loop(c, rad):
@@ -224,10 +315,9 @@ class Gun:
             bm.faces.new([AO[i], AO[j], AI[j], AI[i]])
             bm.faces.new([BO[i], BI[i], BI[j], BO[j]])
         bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
-        if bev > 0:
-            bmesh.ops.bevel(bm, geom=bm.edges[:], offset=bev, offset_type='OFFSET', segments=1, profile=0.5, affect='EDGES', clamp_overlap=True)
+        soft = soft_bevel(bm, bm.edges[:], piece, bev) if bev > 0 else set()
         axb = (P(*b) - P(*a)).normalized()
-        self._add(piece, bm, smooth=(lambda f: abs(f.normal.dot(axb)) < 0.45) if smooth else None)
+        self._add(piece, bm, smooth=(lambda f: f in soft or abs(f.normal.dot(axb)) < 0.45) if smooth else ((lambda f: f in soft) if soft else None))
 
     def window(self, piece, x, y, z, t, bev=0.003):
         """a square frame standing across the gun (a sight you look through): x, y = (lo, hi) of its OUTSIDE,

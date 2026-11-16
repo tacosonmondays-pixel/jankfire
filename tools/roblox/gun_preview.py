@@ -12,6 +12,9 @@ import numpy as np
 from mathutils import Matrix, Vector, Euler
 import gunkit, gun_models
 ALLG = dict(gun_models.BUILD); ALLG.update(gun_models.SKINS)
+if '--set' in sys.argv and sys.argv[sys.argv.index('--set') + 1] == 'c':  # version C (gun_models_c.py)
+    import gun_models_c
+    ALLG = dict(gun_models_c.BUILD)
 
 argv = sys.argv[sys.argv.index('--') + 1:]
 out_dir = argv[0]; rest = argv[1:]
@@ -19,6 +22,7 @@ old_dir = None; W, H = 640, 400; fov = 70.0; hold = 1.0
 if '--old' in rest: i = rest.index('--old'); old_dir = rest[i + 1]; del rest[i:i + 2]
 if '--size' in rest: i = rest.index('--size'); W, H = [int(x) for x in rest[i + 1].split('x')]; del rest[i:i + 2]
 if '--fov' in rest: i = rest.index('--fov'); fov = float(rest[i + 1]); del rest[i:i + 2]
+if '--set' in rest: i = rest.index('--set'); del rest[i:i + 2]
 if '--hold' in rest: i = rest.index('--hold'); hold = float(rest[i + 1]); del rest[i:i + 2]  # the viewmodel's size factor (Holds.size)
 ids = rest
 os.makedirs(out_dir, exist_ok=True)

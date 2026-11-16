@@ -441,7 +441,7 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   down to the engine (they stay with shadows, reflections, lamps, screen effects and haze off, and show on a plain
   Part too).
 
-## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 263)
+## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 281)
 
 After the calm paint the owner wrote "the gun textures look a little messed up?" and "would it be easier to recreate
 them in roblox? you can look up other rivals weapons and skins!", then "can you reference the rivals weapons when
@@ -449,7 +449,11 @@ remodeling these please" and "im mostly discontent with the snipers". All sixtee
 low-poly models built for Roblox; numbers, names, mechanics, gimmicks, spots and moving parts are untouched. After
 round 5 the owner asked for no "bullets attached on top", a one-piece Sniper stock, no cross on Second Opinion, and
 "a little blockier" like Rivals: round 6 did all four, round 7 made them chunkier (thicker barrels) and built a
-signature back into the guns that lost one. Full account, per-gun notes, every judge round and pictures:
+signature back into the guns that lost one. Then "not completly block some rounded too ... a bix of the two
+versions": round 8 (live, place version 281) mixes round 5's rounder look with round 7's blocks. Then "make the shapes
+cohesive, reference an actual gun ... reference rivals heavily ... put them side by side and ill pick each one":
+version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_models_c*.py`) waits for the owner's pick,
+A, B or C per gun (`gun-models/pick-1.jpg` to `-4.jpg`). Full account, per-gun notes, every judge round and pictures:
 `roblox/docs/GUN-MODELS.md` and `roblox/docs/gun-models/`.
 
 - **Built from a kit,** in headless Blender: `tools/roblox/gunkit.py` (chamfered blocks, eight-sided barrels, panels,
@@ -465,14 +469,15 @@ signature back into the guns that lost one. Full account, per-gun notes, every j
   cosmetics batch (ProfileStore first).
 - **Wraps** go on and come off every kit model exactly (102 wraps x 3 modes x 17 models).
 - **Judged every round** by an independent agent against "would this sit next to Rivals' guns?": 6.2, 6.6, 6.8,
-  7.4, 7.3, 7.25, 7.5 out of 10 (Rivals' own plain guns about 8 to 9). Round 6 answered the owner's four notes; its judge
+  7.4, 7.3, 7.25, 7.5, 7.5 out of 10 (Rivals' own plain guns about 8 to 9). Round 6 answered the owner's four notes; its judge
   said the long guns are still slim for "blockier", three guns lost their signature with what was taken off, and
   every gun reads near-black in hand. Round 7 (7.5) made them chunkier and gave back signatures; its judge said the
   main limit is now the light on the held gun, not the models: a soft fill light that travels with the first-person
-  gun is the next step (viewmodel code, untried), then re-shoot before any further model round. Weakest at the last
-  judging: the Shotgun, Plan B and Belt Sander; strongest: Hat Trick, Sniper, Redline, Marble Shotgun, Shredder.
+  gun was the next step, and is done (place version 280). Round 8 (7.5): the rounded mix; its judge said it was
+  timid where the player looks, so round 8b rounded the tops, scopes and big masses. Next: the owner's A/B/C pick, then
+  one rebuild of the picked set (with UVs for image wraps from the wrap session).
 - **The hub copies the templates:** after a gun change rebuild it (`R.build("live")` in `PolishBackup.HubRotunda`)
-  so the armory racks and the showpiece show the new models (done for round 7).
+  so the armory racks and the showpiece show the new models (done for round 8b).
 - **Not checked:** every gun firing (the Assault Rifle was), reload animations in motion on each new model, another
   player's view, the Rooftop's daylight.
 
@@ -503,6 +508,7 @@ signature back into the guns that lost one. Full account, per-gun notes, every j
 - **Judged** four times by fresh independent judges (vault `Reviews/Rooftop v3 - judge round 1` to `4`), a rework after each of the first three. Round 1: every view CLOSE 5 to 6 (v1 4 to 5). Round 3: the bridge PASS 8, the spawns, the middle, the stairs and the view from above CLOSE 7, the penthouse floors 6 to 6.5; "v3 now clearly beats v1 on shape, calm and finish; v1 keeps only its dusk mood". Round 4 (the last rework: warm-grey glass, mid-slate frames, a deeper lit door reveal, a heavier billboard word): the upper floor up to 7, the rest held (the bridge PASS 8, everything else CLOSE 7, the ground floor 6.5): "close to the RIVALS bar but not there". **Left by the last judge:** the penthouse ground floor still reads sepia (a warm-grey floor, an off-white ceiling, mid-slate cove housings and stool bases), the spawn forecourts still read as empty plates (and the off-frame water tower throws a big shadow across the west spawn's view), the billboard's letters fuse from the bridge, the sky could be calmer.
 - **Kept on purpose:** the team colours pink and cyan (the HUD's; matte, only the pads glow bright cyan), and the pool's surface (the game's own swimmable terrain water, shared with v1). Plan and build log: vault `Hubs/Rooftop v3 plan.md`; photos `Reviews/rooftop-v3/round1..4`, sheet `Reviews/rooftop-v3/sheet_v1_v2_v3.jpg`.
 - **The pool's water is fixed (place version 277).** The owner, after seeing v3 (16 Nov 2026): "rooftop v3 is amazing, if you keep the pool, can you keep the amazing water look". The water is the game's terrain water (`ServerScriptService.JankWater` fills the `JankWater` part) under v3's light. Its settings were one global set on `workspace.Terrain`, so another arena's change could have changed v3's pool. They are now pinned in v3's own look: `HubLook.looks.rooftop_v3.Terrain` (WaterColor 28, 150, 178; WaterTransparency 0.55; WaterReflectance 0.75; WaterWaveSize 0.08; WaterWaveSpeed 8). `HubLook`'s `target()` now also accepts `"Terrain"`, and every other look gets the place's saved water back. Checked in Play: with the water set to red and big waves on purpose, v3's look put it back. The kit's pool (the stone coping, the pale lining, the lamp strips under the water and the light below) is marked KEEP AS IS in `rooftop3_models.py`. Photo: `roblox/docs/rooftop-v3/v3_pool.jpg`. **Rule for later rounds:** any rework of v3 keeps the pool and its water exactly as they are.
+- **No coloured marks on v3's floors (place version 287).** The owner (16 Nov 2026): "can you remove he colored marks on the floor for rooftop, inhub its okay but not on matches". The only coloured paint on a walkable floor in v3 was the team stripe with its arrowhead on each spawn deck (`r3_deckW` pink b463a0, `r3_deckE` teal 45879a). It is gone from the kit (`rooftop3_models.py`, kit asset 109680564367482), so `R.build()` can't bring it back. Kept: the jump pads, the warm-white light strips (lamps), the neutral slate frames, the darker landing and the grey joints, and the team colour on the spawn houses' walls (lintel panel, beacon), which are not floors. A scan of every visible v3 part with a saturated colour now finds only the pads, the spawn houses' wall panels, planting, crates and tower glass. Nothing paints the floor during a match either: the runtime parts are bullet holes (dark), water ripples and the grapple rope. `R.check()` after the rebuild: 0 missing, 0 extra, every pad lands where it did. Photos: `roblox/docs/rooftop-v3/spawn_deck_before.jpg` and `spawn_deck_after.jpg`. **Rule:** no colour on any floor a player walks on in a match arena; mark things with the floor's own greys.
 
 ## 23. Matches take turns on Rooftop v2 and v3, 16 November 2026 (place version 283)
 

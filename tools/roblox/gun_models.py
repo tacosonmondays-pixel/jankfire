@@ -58,8 +58,8 @@ def notch_block(g, piece, z, yc, hw=0.028, zt=0.022, base=None, gap=0.012):
 
 
 def ring_sight(g, piece, z, yc, ro=0.024, ri=0.011, zt=0.022):
-    """a rear sight: an eight-sided aperture ring, its hole on the aim line"""
-    g.ring(piece, ro, ri, (0, yc, z - zt / 2), (0, yc, z + zt / 2), sides=8, bev=0.003)
+    """a rear sight: a round aperture ring (round 8), its hole on the aim line"""
+    g.ring(piece, ro, ri, (0, yc, z - zt / 2), (0, yc, z + zt / 2), sides=16, bev=0.003)
 
 
 def deck(g, piece, hw, y, z0, z1, t=0.007):
@@ -163,7 +163,7 @@ def ar():
     # a dark channel along the top, and the window sights (the aim line runs through the rear window to the dot)
     g.box('sight_wzN__deck', (-0.012, 0.012), (0.1, 0.108), (-0.2, 0.19), bev=0.002)
     g.box('sight_wzN__frame', (-0.03, 0.03), (0.09, 0.103), (0.196, 0.262), bev=0.004)
-    g.window('sight_wzN__frame', (-0.024, 0.024), (0.092, 0.137), (0.222, 0.246), 0.0105)
+    ring_sight(g, 'sight_wzN__frame', 0.234, 0.114, ro=0.0235, ri=0.0115, zt=0.024)  # round 8: a round rear sight
     g.box('sight_wzN__frame', (-0.03, 0.03), (0.09, 0.103), (-0.5, -0.446), bev=0.004)
     front_fork(g, 'sight_wzN__frame', -0.473, 0.1, 0.114, zt=0.036, dot_piece='dot_wzN__glow')
     # magazine (drops and tips in the reload: node "mag") with a base plate in the body colour
@@ -326,13 +326,16 @@ def revolver():
     # the heavy barrel: a slab with big chamfers, an underlug and a rib on top
     g.cylz('body_wzA__frame', 0.024, -0.29, -0.11, y=BY, sides=8, bev=0.004, hole=(0.012, 0.02))
     g.box('body_wzA__frame', (-0.009, 0.009), (0.048, 0.066), (-0.288, -0.112), bev=0.004)
-    g.box('body_wzA__frame', (-0.016, 0.016), (-0.022, 0.018), (-0.268, -0.11), bev=0.006)
+    g.box('body_wzA__frame', (-0.023, 0.023), (-0.022, BY), (-0.268, -0.11), bev=0.006)  # round 8: the lug as wide as the barrel
     # the frame round the cylinder: top strap, bottom, back
     g.box('body_wzA__frame', (-0.02, 0.02), (0.05, 0.07), (-0.125, 0.045), bev=0.006)
     g.box('body_wzA__frame', (-0.02, 0.02), (-0.05, -0.034), (-0.125, 0.03), bev=0.006)
     g.prism('body_wzA__frame', [(0.008, -0.04), (0.06, -0.04), (0.072, 0.0), (0.06, 0.062), (0.008, 0.062)], 0.042, bev=0.008)
     # the cylinder (node "cylinder": a chamber a shot): six flat sides in brass, the gun's colour
-    g.cyl('cylinder_wzB__steel', 0.043, (0, 0.009, -0.1), (0, 0.009, 0.001), sides=8, bev=0.006, flat=False, smooth=False)
+    g.cyl('cylinder_wzB__steel', 0.043, (0, 0.009, -0.1), (0, 0.009, 0.001), sides=8, bev=0.006)  # round 8: round
+    for k in range(6):  # round 8: six dark flutes between the chambers (symmetric, so a turn of the cylinder looks the same)
+        a = k * math.pi / 3
+        g.cylz('cylinder_wzN__black', 0.0062, -0.09, -0.009, y=0.009 + 0.0385 * math.sin(a), x=0.0385 * math.cos(a), sides=8, bev=0.002)
     for k in range(6):
         a = math.pi / 6 + k * math.pi / 3
         cx_, cy_ = 0.037 * math.cos(a), 0.009 + 0.037 * math.sin(a)
@@ -346,7 +349,7 @@ def revolver():
     g.prism('grip_wzA__wood', [(0.04, -0.06), (0.09, -0.056), (0.108, -0.1), (0.122, -0.16), (0.142, -0.178), (0.138, -0.2),
                                (0.08, -0.2), (0.058, -0.15), (0.042, -0.1)], 0.056, bev=0.012)
     g.prism('grip_wzN__dark', [(0.08, -0.193), (0.14, -0.193), (0.134, -0.212), (0.076, -0.212)], 0.06, bev=0.006)
-    guard(g, 'body_wzA__frame', -0.07, 0.035, -0.092, t=0.012, hw=0.01)
+    guard(g, 'body_wzA__frame', -0.07, 0.05, -0.092, t=0.012, hw=0.01)  # round 8: closed to the grip
     g.box('body_wzA__frame', (-0.014, 0.014), (-0.096, -0.03), (-0.084, -0.064), bev=0.005)
     trigger(g, 'body_wzA__frame', -0.01, -0.04, -0.07)
     # sights: a notch at the back of the top strap, a blade with an orange dot at the front
@@ -468,9 +471,9 @@ def autoshot():
     # the box magazine (node "mag") with a green plate
     # the drum magazine (node "mag"): a fat eight-sided drum across the gun, green faces, a dark neck
     g.box('mag_wzB__dark', (-0.026, 0.026), (-0.07, -0.03), (-0.15, -0.045), bev=0.006)
-    g.cyl('mag_wzB__dark', 0.088, (-0.038, -0.14, -0.098), (0.038, -0.14, -0.098), sides=8, bev=0.01, smooth=False)
+    g.cyl('mag_wzB__dark', 0.088, (-0.038, -0.14, -0.098), (0.038, -0.14, -0.098), sides=8, bev=0.01)
     for sx in (-1, 1):
-        g.cyl('mag_wzN__body', 0.058, (sx * 0.036, -0.14, -0.098), (sx * 0.043, -0.14, -0.098), sides=8, bev=0.003, smooth=False)
+        g.cyl('mag_wzN__body', 0.058, (sx * 0.036, -0.14, -0.098), (sx * 0.043, -0.14, -0.098), sides=8, bev=0.003)
         g.cyl('mag_wzN__dark', 0.016, (sx * 0.042, -0.14, -0.098), (sx * 0.048, -0.14, -0.098), sides=8, bev=0.002)
     # grip, guard, trigger
     g.prism('grip_wzB__dark', raked(0.133, -0.13, 0.175, 0.066, -0.367, taper=0.005), 0.052, bev=0.01)
@@ -544,6 +547,7 @@ def dmr():
     g.prism('body_wzB__frame', [(-0.17, -0.042), (0.1, -0.042), (0.14, -0.005), (0.14, 0.064), (-0.17, 0.064)], 0.072, bev=0.009)
     deck(g, 'deck_wzB__deck', 0.034, 0.062, -0.17, 0.14)
     rivets(g, 'rivet_wzN__steel', 0.036, [(-0.13, -0.022), (0.08, -0.022)])
+    panel(g, 'body_wzA__body', 0.036, -0.11, 0.06, -0.012, 0.04)  # round 8: the purple on the receiver's side too
     # the handguard: a fat eight-sided tube in the gun's colour, a lighter rail along its top, three slashes a side
     g.xprism('guard_wzA__body', octagon(0, 0.012, 0.05), -0.53, -0.165, bev=0.009)
     g.box('guard_wzB__deck', (-0.02, 0.02), (0.052, 0.07), (-0.525, -0.17), bev=0.004)
@@ -556,24 +560,26 @@ def dmr():
     g.cylz('trim_wzN__black', 0.016, -0.8915, -0.888, y=BY, sides=8, bev=0)
     for z0 in (-0.872, -0.836):
         g.box('trim_wzN__black', (-0.0415, 0.0415), (BY - 0.017, BY + 0.017), (z0, z0 + 0.02), bev=0.001)
-    # the box optic: a square body, a hood at the front with pale glass inside, a short eyepiece
-    g.box('scope_wzN__frame', (-0.034, 0.034), (SY - 0.034, SY + 0.034), (-0.12, 0.09), bev=0.011)
-    g.window('scope_wzN__frame', (-0.042, 0.042), (SY - 0.042, SY + 0.042), (-0.2, -0.115), 0.012)
-    g.box('lens_wzN__glow', (-0.031, 0.031), (SY - 0.031, SY + 0.031), (-0.14, -0.13), bev=0.002)
-    g.box('scope_wzN__frame', (-0.025, 0.025), (SY - 0.025, SY + 0.025), (0.08, 0.15), bev=0.007)
-    g.box('lens_wzN__glow', (-0.017, 0.017), (SY - 0.017, SY + 0.017), (0.148, 0.153), bev=0.001)
-    deck(g, 'scope_wzN__deck', 0.03, SY + 0.033, -0.11, 0.08)
-    # round 7, its name: a second opinion. a small square optic on the left of the first, its pale lens facing you
-    g.box('scope_wzN__frame', (-0.068, -0.03), (SY - 0.016, SY + 0.022), (-0.02, 0.07), bev=0.006)
-    g.box('lens_wzN__glow', (-0.062, -0.036), (SY - 0.01, SY + 0.016), (0.07, 0.074), bev=0.001)
+    # round 8: one fat ROUND scope (the owner's "some rounded too", on the top line the player looks along): a tube, a
+    # wider hood at the front with pale glass inside, a purple band, a short eyepiece; square mounts under it
+    g.cylz('scope_wzN__frame', 0.034, -0.125, 0.085, y=SY, bev=0.008)
+    g.cylz('scope_wzN__frame', 0.043, -0.2, -0.115, y=SY, bev=0.008, hole=(0.035, 0.03))
+    g.cylz('lens_wzN__glow', 0.0355, -0.172, -0.168, y=SY, bev=0)
+    g.cylz('scope_wzA__body', 0.0352, -0.105, -0.083, y=SY, bev=0.003)
+    g.cylz('scope_wzN__frame', 0.027, 0.08, 0.15, y=SY, bev=0.006)
+    g.cylz('lens_wzN__glow', 0.019, 0.149, 0.153, y=SY, bev=0)
+    # round 7, its name: a second opinion. round 8: a small ROUND optic on the left of the first, its pale lens facing you
+    g.cylz('scope_wzN__frame', 0.019, -0.02, 0.07, y=SY - 0.004, x=-0.05, bev=0.005)
+    g.cylz('lens_wzN__glow', 0.013, 0.069, 0.073, y=SY - 0.004, x=-0.05, bev=0)
+    g.box('scope_wzN__frame', (-0.045, -0.025), (SY - 0.014, SY + 0.002), (0.0, 0.05), bev=0.003)
     for z0 in (-0.075, 0.02):
         g.box('scope_wzN__frame', (-0.022, 0.022), (0.06, SY - 0.03), (z0, z0 + 0.042), bev=0.006)
     # magazine (node "mag"): big, ribbed, a plate in the gun's colour
-    g.prism('mag_wzB__dark', [(-0.085, -0.03), (0.032, -0.03), (0.022, -0.165), (-0.095, -0.165)], 0.052, bev=0.008)
-    g.prism('mag_wzN__body', [(-0.104, -0.16), (0.031, -0.16), (0.029, -0.188), (-0.106, -0.188)], 0.062, bev=0.006)
+    g.prism('mag_wzB__dark', [(-0.085, -0.03), (0.032, -0.03), (0.022, -0.165), (-0.095, -0.165)], 0.066, bev=0.008)  # round 8: body-wide
+    g.prism('mag_wzN__body', [(-0.104, -0.16), (0.031, -0.16), (0.029, -0.188), (-0.106, -0.188)], 0.074, bev=0.006)
     for y in (-0.07, -0.11):
         dz = -0.074 * (-0.03 - y)
-        g.box('mag_wzB__dark', (-0.029, 0.029), (y - 0.007, y + 0.007), (-0.082 + dz, 0.029 + dz), bev=0.003)
+        g.box('mag_wzB__dark', (-0.036, 0.036), (y - 0.007, y + 0.007), (-0.082 + dz, 0.029 + dz), bev=0.003)
     # the sporter stock: the grip (the hold's rake) grown into one slab that runs to the butt; a charcoal cheek riser,
     # a dark panel, a dark pad
     g.prism('stock_wzA__body', raked(0.24, -0.1, 0.172, 0.064, -0.646), 0.056, bev=0.012)
@@ -701,7 +707,8 @@ def lmg():
     g.box('stock_wzB__dark', (-0.035, 0.035), (-0.166, 0.066), (0.514, 0.545), bev=0.009)
     g.cyl('cord_wzN__dark', 0.024, (0, -0.15, 0.47), (0, -0.19, 0.47), sides=8, bev=0.004, r2=0.016)
     # sights
-    rear_window(g, 'sight_wzN__frame', 0.108, 0.10379, hw=0.027, inner=0.02, t=0.009, zt=0.022, base=0.05)
+    ring_sight(g, 'sight_wzN__frame', 0.108, 0.10379, ro=0.019, ri=0.0105, zt=0.022)  # round 8: a round rear sight
+    g.box('sight_wzN__frame', (-0.025, 0.025), (0.05, 0.0868), (0.085, 0.131), bev=0.004)
     front_fork(g, 'sight_wzN__frame', -0.47, 0.052, 0.10379, hw=0.04, ear=0.011, zt=0.034)
     g.box('trim_wzN__black', (0.0395, 0.0455), (0.018, 0.046), (-0.11, -0.01), bev=0.001)
     return g
@@ -840,7 +847,7 @@ def katana():
 
 
 # ----------------------------------------------------------------------------------------------------- Shredder
-def funnel(g, outer, inner, r0, r1, z0, z1, wall, sides=8):
+def funnel(g, outer, inner, r0, r1, z0, z1, wall, sides=24):
     """a hollow hopper along the barrel: mouth radius r0 at z0, throat radius r1 at z1. the outside is one piece,
        the inside another (so it can be darker and a skin can paint them apart)"""
     import bmesh
@@ -857,7 +864,7 @@ def funnel(g, outer, inner, r0, r1, z0, z1, wall, sides=8):
     for f in bm.faces:  # (an open shell: make sure the outside faces out)
         c = f.calc_center_median()
         if f.normal.x * c.x + f.normal.z * c.z < 0 and abs(f.normal.y) < 0.9: f.normal_flip()
-    g._add(outer, bm)
+    g._add(outer, bm, smooth=lambda f: abs(f.normal.y) < 0.9)  # round 8: a smooth round hopper
     bm = bmesh.new()
     Ai, Bi = loop(bm, r0 - wall, z0), loop(bm, r1 - wall * 0.6, z1)
     for i in range(sides):
@@ -868,7 +875,7 @@ def funnel(g, outer, inner, r0, r1, z0, z1, wall, sides=8):
     for f in bm.faces:  # the inside faces the axis
         c = f.calc_center_median()
         if f.normal.x * c.x + f.normal.z * c.z > 0: f.normal_flip()
-    g._add(inner, bm)
+    g._add(inner, bm, smooth=lambda f: abs(f.normal.y) < 0.9)
 
 
 def shredder():
@@ -886,7 +893,7 @@ def shredder():
     g.ring('cage_wzB__frame', 0.116, 0.09, (0, 0, 0.03), (0, 0, 0.058), sides=8, bev=0.004)
     for sx in (-1, 1):
         for sy in (-1, 1):
-            g.box('cage_wzB__frame', (sx * 0.073 - 0.012, sx * 0.073 + 0.012), (sy * 0.073 - 0.012, sy * 0.073 + 0.012), (-0.1, 0.045), bev=0.004)
+            g.cylz('cage_wzB__frame', 0.017, -0.1, 0.045, y=sy * 0.073, x=sx * 0.073, bev=0.004)  # round 8: round posts
     # the rotor: a shaft, six steel teeth, their red tips
     g.cylz('hub_wzN__dark', 0.034, -0.13, 0.05, sides=8, bev=0.004)
     for k in range(6):
@@ -899,7 +906,7 @@ def shredder():
     g.ring('band_wzA__body', 0.122, 0.07, (0, 0, 0.054), (0, 0, 0.08), sides=8, bev=0.004)
     g.box('motor_wzB__frame', (-0.097, 0.097), (-0.1, 0.1), (0.07, 0.33), bev=0.022)
     panel(g, 'motor_wzN__body', 0.097, 0.1, 0.3, -0.075, -0.06)
-    deck(g, 'motor_wzN__deck', 0.082, 0.098, 0.09, 0.31)
+    deck(g, 'motor_wzN__body', 0.082, 0.098, 0.09, 0.31)  # round 8: the motor's top in the amber (no dark on dark)
     for z0 in (0.13, 0.18, 0.23, 0.28):
         g.prism('vents_wzN__dark', slash(z0, z0 + 0.022, -0.055, 0.055, 0.024), 0.2, bev=0.002)
     g.box('motor_wzN__dark', (-0.078, 0.078), (-0.08, 0.08), (0.322, 0.346), bev=0.008)
