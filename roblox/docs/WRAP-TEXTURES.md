@@ -61,6 +61,66 @@ The three modes are unchanged: **normal** paints the `_wzA` pieces (the handle s
 (the business end), **full** everything; `_wzN` trims keep their look unless the wrap is on full. Server, client and
 preview paint the same pieces (the picture does not depend on any order).
 
+## Two-tone modes (16 Nov 2026)
+
+The owner asked for "the dual tone wraps like normal reversed full". All three modes work with every textured wrap
+on every kit gun. A check in Edit wrapped a clone of each of the 15 gun templates in each mode; per gun, normal /
+reverse / full paint:
+
+| gun | normal | reverse | full | gun | normal | reverse | full |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| ar | 3 | 6 | 16 | revolver | 2 | 1 | 9 |
+| smg | 3 | 6 | 15 | sawnoff | 2 | 3 | 18 |
+| burst | 3 | 7 | 17 | pistol | 2 | 3 | 12 |
+| lmg | 3 | 8 | 33 | marbles | 2 | 1 | 13 |
+| dmr | 3 | 6 | 16 | redline | 2 | 6 | 15 |
+| sniper | 1 | 8 | 19 | katana | 1 | 3 | 8 |
+| lever | 3 | 4 | 18 | autoshot | 4 | 6 | 21 |
+| shotgun | 2 | 4 | 12 | | | | |
+
+Normal and reverse leave the other pieces in the gun's factory paint, so the gun comes out two-tone. In the loadout
+the three mode chips (HANDLE, BUSINESS END, FULL SEND) sit at the top right of the wraps bar. Each now shows a small
+two-block gun (stock end left, muzzle right) with the painted half lit. Hovering a chip tries that mode on the big
+3D preview ("(trying it on)"), the way hovering a wrap chip does, and clicking wears it. Sheet:
+`wrap-textures/modes-in-hand.jpg`.
+
+## Animated wraps
+
+The web game animates 18 wraps in its shader: scrolling patterns, pulses running along traces, a glint sweeping over
+gold, hue that shifts with the angle, flicker. On Roblox a SurfaceAppearance cannot scroll its texture, and its maps
+can only be set in Edit. Stepping through pre-drawn frames would mean swapping whole SurfaceAppearances while playing,
+so each swap reloads the textures: a hitch and a blink. What can change while playing, cheaply, is the glow
+(`EmissiveStrength`, `EmissiveTint`) and the tint (`Color`). `client/WrapAnim.client.luau` animates those for 15 wraps,
+smoothly and off one shared clock (the server's time), so a wrap pulses in step on every screen. Nothing flickers.
+
+| wrap | on Roblox | on the web |
+| --- | --- | --- |
+| Neon Hex | glow breathes (2.6 s) | light runs along the grooves |
+| Circuit Board | glow breathes (2.0 s) | pulses run along the traces |
+| Kintsugi | a glint swells and fades on the gold (4.5 s) | a glint sweeps along the gold |
+| CRT | glow breathes (2.2 s) | a bright bar rolls up the screen |
+| Tokyo Night | a neon hum (1.6 s) | neon flicker |
+| Market Crash (stonks) | glow breathes (2.0 s) | the chart scrolls |
+| Vaporwave | glow breathes (5 s) | the grid scrolls |
+| ☺ CORP | glow breathes (2.1 s) | the smileys pulse |
+| Black Hole | glow breathes (4 s) | the disk swirls |
+| Lava Lamp | glow breathes (6 s) | the blobs rise and merge |
+| Glitch | glow drifts magenta to cyan (5 s) | bands jitter |
+| Aurora | glow drifts green to violet (9 s) and breathes (5 s) | the curtains flow |
+| Nebula | glow drifts pink to blue (10 s) and breathes (7 s) | the clouds drift |
+| Opal | the fire's hue cycles (12 s) | the fire shifts as it turns |
+| Holo | an iridescent tint cycles over the foil (8 s) | the hue sweeps with the angle |
+
+Not animated on Roblox: Sakura and Koi (on the web their petals and fish drift by scrolling, which a
+SurfaceAppearance cannot do), and Meat (its heartbeat; it is salami now). Stained Glass has a static glow on the web
+too.
+
+How it works: `WeaponModels.wrap` gives each worn picture the attribute `Wrap = <id>` and the tag `WrapSA`, on the
+server (other players' guns, the racks) and on the client (the held gun, the loadout previews). The client script
+finds them by the tag, works out each wrap's value once per step at 20 Hz, and writes it to that wrap's pieces. It
+skips pieces more than 160 studs from the camera, checking twice a second. Cost in Play: the slowest step was
+38 microseconds (the attribute `StepUs` on the script shows it live).
+
 ## Redrawing or adding a wrap
 
 ```bash

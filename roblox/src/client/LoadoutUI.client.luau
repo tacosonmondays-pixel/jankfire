@@ -230,7 +230,7 @@ local saveLbl = label(stage, "", 16, UDim2.fromOffset(1360, 100), UDim2.fromOffs
 -- ---------------------------------------------------------------- slot cards (left)
 type Card = { slot: string, holder: Frame, body: TextButton, st: UIStroke, name: TextLabel, wrap: TextLabel, bar: Frame, vp: ViewportFrame, cam: Camera, key: string? }
 local cards: { Card } = {}
-local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false, hatHover = nil :: string? }
+local state = { slot = "primary", focus = "redline", hover = nil :: string?, filter = "all", open = false, hatHover = nil :: string?, modeHover = nil :: string? }
 local refresh: () -> () = function() end
 local hatsRefresh: (any) -> () = function() end -- (the HATS tab: set below)
 
@@ -459,8 +459,22 @@ local wName = label(wbar, "", 16, UDim2.fromOffset(130, 12), UDim2.fromOffset(42
 wName.FontFace = FONT_BOLD
 wName.RichText = true; wName.TextWrapped = false
 local modeBtns: { [string]: Btn } = {}
+-- the three modes: HANDLE paints the handle side (the _wzA pieces), BUSINESS END the barrel end (_wzB), FULL SEND the
+-- whole gun; the first two leave the rest in its factory paint, so the gun comes out two-tone. each chip carries a small
+-- two-block gun (stock end left, muzzle right) with the painted half lit, and hovering a chip tries it on the preview
+local MODE_HALVES = { normal = { true, false }, reverse = { false, true }, full = { true, true } }
 for i, md in Roster.MODES do
 	local b = button(wbar, MODE_NAMES[md], "chip", UDim2.fromOffset(1250 - 20 - (4 - i) * 154, 10), UDim2.fromOffset(146, 30))
+	new("UIPadding", { PaddingLeft = UDim.new(0, 16) }, b.face)
+	for k, lit in MODE_HALVES[md] do
+		local blk = new("Frame", {
+			BackgroundColor3 = if lit then TEXT else DIM, BorderSizePixel = 0, AnchorPoint = Vector2.new(0, 0.5),
+			Position = UDim2.new(0, 8 + (k - 1) * 9, 0.5, 0), Size = UDim2.fromOffset(8, if k == 1 then 10 else 6), ZIndex = 4,
+		}, b.holder)
+		T.corner(blk, 2)
+	end
+	b.face.MouseEnter:Connect(function() state.modeHover = md; if state.open then refresh() end end)
+	b.face.MouseLeave:Connect(function() if state.modeHover == md then state.modeHover = nil; if state.open then refresh() end end end)
 	modeBtns[md] = b
 end
 local filters = { "all", "common", "rare", "epic", "legendary" }
@@ -608,6 +622,7 @@ end
 local function showPreview(id: string)
 	local wid, md = wrapOf(id)
 	if state.hover and Roster.byId[id] and Roster.byId[id].live then wid = state.hover end
+	if state.modeHover and Roster.byId[id] and Roster.byId[id].live then md = state.modeHover end
 	local hat = if state.hatHover and Roster.byId[id] and Roster.byId[id].live then state.hatHover else hatOf(id)
 	if shown and shown.id == id and shown.hat == hat then
 		local k = wid .. "/" .. md
@@ -686,7 +701,7 @@ refresh = function()
 	if wr then
 		local rc = Roster.RARITY[wr.rarity].color
 		wName.Text = ('%s  <font color="#%s">%s</font>%s'):format(wr.name, rc:ToHex(), string.upper(Roster.RARITY[wr.rarity].name),
-			if state.hover and state.hover ~= wid then '  <font color="#9ca2ac">(trying it on)</font>' else "")
+			if (state.hover and state.hover ~= wid) or (state.modeHover and state.modeHover ~= md) then '  <font color="#9ca2ac">(trying it on)</font>' else "")
 	end
 	noPaint.Visible = not e.live or e.slot == "utility"
 	noPaint.Text = if e.slot == "utility" then "items don't take paint." else "no paint on vapourware. pick something that's live."
@@ -826,7 +841,7 @@ local function setTab(t: string)
 	tab = t
 	wbar.Parent.Visible = t == "wraps"
 	hHolder.Visible = t == "hats"
-	state.hover, state.hatHover = nil, nil
+	state.hover, state.hatHover, state.modeHover = nil, nil, nil
 	for name, b in tabBtns do
 		b:set(string.upper(name), true, if name == t then T.CARD_HI else nil)
 		b.mark.Visible = name == t
@@ -962,7 +977,7 @@ setOpen = function(v: boolean)
 		me:SetAttribute("LoadoutOpen", true)
 		local p = pick()
 		state.focus = p[state.slot]
-		state.hover, state.hatHover = nil, nil
+		state.hover, state.hatHover, state.modeHover = nil, nil, nil
 		subtitle.Text = LINES[math.random(#LINES)]
 		-- the rest of the HUD steps aside while the screen is up (it comes back as it was)
 		table.clear(hidden)
@@ -990,7 +1005,7 @@ setOpen = function(v: boolean)
 		play("click")
 	else
 		state.open = false
-		state.hover, state.hatHover = nil, nil
+		state.hover, state.hatHover, state.modeHover = nil, nil, nil
 		me:SetAttribute("LoadoutOpen", false)
 		gui.Enabled = false
 		for g in hidden do if g.Parent then g.Enabled = true end end

@@ -211,8 +211,9 @@ local function fitImported(b: Builder, tmpl: Model, file: { lo: Vector3, hi: Vec
 	copy:Destroy()
 end
 
--- build a weapon. k = studs per web metre (viewmodel: 3 x its VM scale, third person: 3 x 1.5)
-function WeaponModels.build(id: string, k: number): Model?
+-- build a weapon. k = studs per web metre (viewmodel: 3 x its VM scale, third person: 3 x 1.5). skin = a weapon skin's
+-- id (GunSkins: its model in ReplicatedStorage.JankfireSkins, same frame and moving pieces as the gun): drawn instead
+function WeaponModels.build(id: string, k: number, skin: string?): Model?
 	local fn = BUILD[id]
 	local row = (Weapons.list :: any)[id]
 	local mdl = row and row.mdl
@@ -229,6 +230,9 @@ function WeaponModels.build(id: string, k: number): Model?
 	for _, c in m:GetChildren() do if c:IsA("BasePart") and c ~= root then c:SetAttribute("Code", true) end end
 	local lib = ReplicatedStorage:FindFirstChild("JankfireWeapons")
 	local tmpl = lib and lib:FindFirstChild("w_" .. id)
+	local skins = skin and ReplicatedStorage:FindFirstChild("JankfireSkins")
+	local st = skins and skins:FindFirstChild(skin :: string)
+	if st and st:IsA("Model") and st:GetAttribute("Weapon") == id then tmpl = st; m:SetAttribute("Skin", skin) end
 	local file = (WeaponModels.FILES :: any)["w_" .. id] or mdl -- (a plain gun keeps its bounds in its row)
 	-- the models are a switch (PolishBackup.WeaponImport, W.models): a kit model's box is not the web model's, so a
 	-- template carries its own file bounds and they win over the row's
@@ -446,6 +450,8 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 			p.Transparency = if type(t0) == "number" then t0 else 0
 			local s = pic:Clone()
 			s.Name = "WrapSA"
+			s:SetAttribute("Wrap", wr.id) -- (client/WrapAnim finds the animated ones by this and the tag: glow, tint)
+			s:AddTag("WrapSA")
 			s.Parent = p
 			continue
 		end
