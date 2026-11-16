@@ -123,17 +123,122 @@ function VM.jolt(up: number) rec.rv += Vector3.new(up, 0, 0); rec.pv += Vector3.
 function VM.punch(): CFrame return CFrame.fromEulerAnglesXYZ(punch.x.X, punch.x.Y, punch.x.Z) end
 
 local AvatarArms = require(game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):WaitForChild("AvatarArms"))
-local function hands(m: Model, root: BasePart)
-	-- your own avatar's hands and forearms (skin tone, shirt sleeves); the code boxes below if your body isn't there
-	local spots = {}
-	for _, spot in { "Grip", "Fore" } do
-		local a = root:FindFirstChild(spot) :: Attachment?
-		if not a then continue end
-		local fistCF = CFrame.new(a.Position) * CFrame.new(if spot == "Fore" then -0.01 * k else 0.01 * k, -0.02 * k, 0) -- (relative to root)
-		table.insert(spots, { side = if spot == "Grip" then "Right" else "Left", fist = fistCF, arm = fistCF * CFrame.Angles(0.5, if spot == "Fore" then -0.35 else 0.25, 0) })
+local Holds = require(Shared:WaitForChild("Holds")) :: any
+-- every weapon in first person is drawn this much larger than the web game's scale, the hands with it (the owner,
+-- 16 Nov 2026: "Can the weapons be a little larger, that way the arms dont look so long and lanky"). one number, in
+-- tools/roblox/holds.json (_size); the third-person guns and the loadout previews are not touched
+local SIZE: number = Holds.size or 1
+
+-- the katana's rest and parry poses (Holds.katana, from tools/roblox/holds.json): a turn and a shift laid over the web
+-- game's clips, so the flat of the blade, the guard and the wrapped handle face you. the cut itself is the web game's:
+-- the fix eases out as a swing winds up and back in as it recovers
+local function katanaFix(name: string?, t: number): (CFrame, Vector3)
+	local K = Holds.katana
+	local keys = if name then K.clips[name] else nil
+	if not keys then return K.fixes.rest.rot, K.fixes.rest.pos end
+	local a, b = keys[1], keys[#keys]
+	if t <= keys[1].t then b = keys[1] end
+	for i = 1, #keys - 1 do
+		if t >= keys[i].t and t < keys[i + 1].t then a, b = keys[i], keys[i + 1]; break end
 	end
-	if AvatarArms.build(m, root, spots, k) then return end
-	local kit = AvatarArms.look() == "kit"
+	local span = b.t - a.t
+	local u = if span > 0 then math.clamp((t - a.t) / span, 0, 1) else 1
+	u = u * u * (3 - 2 * u)
+	local fa, fb = K.fixes[a.fix], K.fixes[b.fix]
+	return fa.rot:Lerp(fb.rot, u), fa.pos:Lerp(fb.pos, u)
+end
+
+-- ---- the off hand. it is not glued to the gun (AvatarArms places it every frame), so it can do its own part of a
+-- reload instead of leaving the picture: it goes with the magazine out of the gun and back, rides the Shotgun's pump,
+-- holds the Redline's can and the marble bag, and stands clear while the Yeehaw spins. (a Grab = a piece it can be
+-- on, and the grip's frame against that piece: where the fist is, its +Y along the piece toward the thumb)
+type Grab = { part: BasePart, rel: CFrame }
+local armsOn = false -- (your arms are on the weapon: not the stand-in boxes)
+local ride: Grab? = nil -- the pump: the hand's own hold moves with it
+local magGrab: Grab? = nil -- the magazine, from below
+local function smoothstep(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+
+local function offHandSetup(m: Model, root: BasePart)
+	ride, magGrab = nil, nil
+	local hold = AvatarArms.holdFrame(VM.wid, "Left", k)
+	local st = VM.parts
+	if not armsOn or not hold or not st then return end
+	local function biggest(list: { any }?): BasePart?
+		local best: BasePart? = nil
+		for _, p in list or {} do
+			local part = p.part :: BasePart
+			if not best or part.Size.Magnitude > best.Size.Magnitude then best = part end
+		end
+		return best
+	end
+	local pump = biggest(st.nodes.pump)
+	if pump then ride = { part = pump, rel = pump.CFrame:ToObjectSpace(root.CFrame * hold) } end
+	local mags = st.nodes.mag
+	local mag = biggest(mags)
+	if mag and mags then
+		-- round the magazine's lower end, the thumb up toward the gun
+		local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+		for _, p in mags do
+			local part = p.part :: BasePart
+			local rel = root.CFrame:ToObjectSpace(part.CFrame)
+			local h = part.Size / 2
+			for _, c in { Vector3.new(h.X, h.Y, h.Z), Vector3.new(-h.X, h.Y, h.Z), Vector3.new(h.X, -h.Y, h.Z), Vector3.new(h.X, h.Y, -h.Z), Vector3.new(-h.X, -h.Y, h.Z), Vector3.new(-h.X, h.Y, -h.Z), Vector3.new(h.X, -h.Y, -h.Z), Vector3.new(-h.X, -h.Y, -h.Z) } do
+				local q = rel:PointToWorldSpace(c)
+				lo = lo:Min(q); hi = hi:Max(q)
+			end
+		end
+		local at = CFrame.new((lo.X + hi.X) / 2, lo.Y + math.min(0.04 * k, (hi.Y - lo.Y) * 0.35), (lo.Z + hi.Z) / 2)
+		magGrab = { part = mag, rel = mag.CFrame:ToObjectSpace(root.CFrame * at) }
+	end
+end
+
+-- where the off hand is this frame: (a frame in the world or nil for its hold, how far it has gone there, whether
+-- that frame is something held from under: AvatarArms.override)
+local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
+	local base: CFrame? = if ride then ride.part.CFrame * ride.rel else nil
+	if not clip then return base, if base then 1 else 0, false end
+	local a = Anims[clip.name]
+	local t = clip.t
+	local ch = a.ch
+	-- the whole gun turns round the other hand (the Yeehaw's spin-cock): clear of it, down out of the picture
+	local tw = ch and ch.twirl
+	if tw then
+		local t0, t1 = tw[1][1], tw[#tw][1]
+		for i = 1, #tw do if tw[i][2] ~= 0 then t0 = tw[math.max(1, i - 1)][1]; break end end
+		local mix = smoothstep((t - (t0 - 0.16)) / 0.16) * (1 - smoothstep((t - t1) / 0.2))
+		if mix > 0 then
+			local hold = root.CFrame * (AvatarArms.holdFrame(VM.wid, "Left", k) :: CFrame)
+			local away = CFrame.new(camera.CFrame:VectorToWorldSpace(Vector3.new(-0.1, -0.42, 0.12) * S)) * hold
+			return away, mix, false
+		end
+	end
+	-- the magazine: there before it leaves, down and back with it, off it once it is home
+	local mk = ch and ch.mag
+	if mk and magGrab and #mk >= 3 then
+		local t0, t1 = mk[2][1], mk[#mk][1]
+		local mix = smoothstep((t - (t0 - 0.2)) / 0.18) * (1 - smoothstep((t - t1) / 0.22))
+		if mix > 0 then return magGrab.part.CFrame * magGrab.rel, mix, false end
+	end
+	-- the reload props: the can and the bag sit in the hand (under their foot) from when they come up to when they go
+	if prop then
+		-- (when each is out, and how tall it is: VM.props below)
+		local win = if clip.name == "reload_redline" then { 0.2, 1.26, 0.11 } elseif clip.name == "reload_marbles" then { 0.4, 1.35, 0.12 } else nil
+		local hold = AvatarArms.holdFrame(VM.wid, "Left", k)
+		if win and hold then
+			local mix = math.min(smoothstep((t - win[1]) / 0.12), 1 - smoothstep((t - (win[2] - 0.2)) / 0.2))
+			return prop:GetPivot() * CFrame.new(0, -win[3] * S * SIZE / 2, 0), mix, true -- (under its foot, as it tips)
+		end
+	end
+	return base, if base then 1 else 0, false
+end
+
+local function hands(m: Model, root: BasePart)
+	-- your own avatar's hands and forearms, held the way the hold table says (AvatarArms.hold)
+	armsOn = AvatarArms.hold(m, root, VM.wid, k, nil, SIZE)
+	offHandSetup(m, root)
+	if armsOn then return end
+	-- your body may not be built yet (a spawn): plain boxes for now
+	local kit = AvatarArms.look() ~= "avatar"
 	local skin = if kit then AvatarArms.KIT.glove else Color3.fromRGB(255, 206, 160)
 	local sleeve = if kit then AvatarArms.KIT.sleeve else Color3.fromRGB(255, 79, 216)
 	for _, spot in { "Grip", "Fore" } do
@@ -153,12 +258,14 @@ local function hands(m: Model, root: BasePart)
 			p.Parent = m
 		end
 	end
-	-- your body may not be built yet (a spawn): keep trying for a few seconds, then swap the boxes for your arms
+	-- ... then keep trying for a few seconds, and swap the boxes for your arms
 	task.spawn(function()
 		for _ = 1, 24 do
 			task.wait(0.25)
 			if VM.model ~= m or not m.Parent then return end
-			if AvatarArms.build(m, root, spots, k) then
+			if AvatarArms.hold(m, root, VM.wid, k, nil, SIZE) then
+				armsOn = true
+				offHandSetup(m, root)
 				for _, n in { "HandGrip", "SleeveGrip", "HandFore", "SleeveFore" } do
 					local p = m:FindFirstChild(n)
 					if p then p:Destroy() end
@@ -179,7 +286,7 @@ function VM.set(wid: string, kat: number)
 	needles, vents = {}, {}
 	local w = Weapons.list[wid]
 	if not w or not w.vm then return end
-	k = S * w.vm.s
+	k = S * w.vm.s * SIZE
 	local m = WeaponModels.build(wid, k)
 	if not m or not m.PrimaryPart then return end
 	local root = m.PrimaryPart
@@ -247,11 +354,12 @@ function VM.update(dt: number, c: Ctx)
 	-- the off hand lets go for a plain gun's reload. (the web game animates it fetching the mag; that hand isn't
 	-- ported, and a forearm glued to a gun that rolls onto its side sweeps right across the screen. so it leaves the
 	-- picture and comes back when the gun is loaded)
-	local off = clip ~= nil and w.mdl ~= nil and string.sub(clip.name, 1, 7) == "reload_"
+	-- (your arms keep it: the off hand does the reload, see offHand above. only the stand-in boxes still hide)
+	local off = not armsOn and clip ~= nil and w.mdl ~= nil and string.sub(clip.name, 1, 7) == "reload_"
 	if off ~= offGone then
 		offGone = off
 		local arms = m:FindFirstChild("AvatarArms")
-		for _, n in { "LeftHand", "LeftLowerArm", "HandFore", "SleeveFore" } do
+		for _, n in { "LeftHand", "LeftCuff", "LeftSleeve", "LeftLowerArm", "HandFore", "SleeveFore" } do
 			local p = (arms and arms:FindFirstChild(n)) or m:FindFirstChild(n)
 			if p then p:SetAttribute("Hide", if off then true else nil) end
 		end
@@ -273,6 +381,8 @@ function VM.update(dt: number, c: Ctx)
 	kick = math.max(0, kick - 6 * dt)
 	swap = math.max(0, swap - 5 * dt)
 	local base, rot = w.vm.p, w.vm.r
+	local row = Holds.holds[VM.wid]
+	if row and row.shift then base += row.shift * S end -- (a gun whose hands sat under the HUD at the larger size)
 	local px, py, pz = base.X, base.Y - 0.3 * swap * S, base.Z
 	local rx, ry, rz = 0, 0, 0
 	-- footstep bob: one dip per foot strike
@@ -321,6 +431,11 @@ function VM.update(dt: number, c: Ctx)
 	pos += Vector3.new(rec.p.X * ra, rec.p.Y * (1 - c.aim * 0.3), (kick * 0.04 * S + rec.p.Z) * ra)
 	local baseRot = crot or CFrame.fromEulerAnglesXYZ(rot.X, rot.Y, rot.Z)
 	if ads and c.aim > 0 and not crot then baseRot = CFrame.fromEulerAnglesXYZ(rot.X, rot.Y, rot.Z):Lerp(CFrame.identity, c.aim) end
+	if VM.wid == "katana" then
+		local fr, fp = katanaFix(if clip then clip.name else nil, if clip then clip.t else 0)
+		baseRot *= fr
+		pos += fp * S
+	end
 	local jig = CFrame.fromEulerAnglesXYZ(rx + (kick * 0.12 + rec.r.X) * ra, ry, rz + rec.r.Z * ra)
 	m.PrimaryPart.CFrame = camera.CFrame * CFrame.new(pos) * jig * baseRot
 	VM.props(m.PrimaryPart.CFrame)
@@ -329,6 +444,12 @@ function VM.update(dt: number, c: Ctx)
 			clip = if clip then clip.name else nil, t = if clip then clip.t else 0, anims = Anims,
 			ammo = c.ammo or (w.mag or 0), mag = w.mag or 0, reloading = c.reloading == true, now = c.now, firedT = c.firedT,
 		}, w)
+	end
+	-- your arms, last: they read where the magazine, the pump and the props are this frame
+	if armsOn then
+		local to, mix, under = offHand(m, m.PrimaryPart)
+		AvatarArms.override(m, "Left", to, mix, under)
+		AvatarArms.aim(m, camera.CFrame)
 	end
 	-- the Redline's tachometer + vents (from your HP; it bangs off the limiter when it's in the red and firing)
 	if VM.wid == "redline" then
@@ -356,7 +477,7 @@ function VM.props(gun: CFrame)
 	local t = clip.t
 	if clip.name == "reload_redline" then
 		if t < 0.2 or t > 1.26 then if prop then prop:Destroy(); prop = nil end return end
-		if not prop then prop = Fx.prop("p_jerrycan", Vector3.new(0.035, 0.11, 0.09) * S, Color3.fromRGB(200, 20, 15)) end
+		if not prop then prop = Fx.prop("p_jerrycan", Vector3.new(0.035, 0.11, 0.09) * S * SIZE, Color3.fromRGB(200, 20, 15)) end
 		local inn = smooth((t - 0.2) / 0.16) * (1 - smooth((t - 1.0) / 0.26))
 		local tip = if t < 0.36 then 0 elseif t < 1.0 then smooth((t - 0.36) / 0.2) else 1 - smooth((t - 1.0) / 0.2)
 		local wob = if t > 0.45 and t < 1.0 then math.sin(t * 30) * 0.05 else 0
@@ -364,7 +485,7 @@ function VM.props(gun: CFrame)
 		prop:PivotTo(at * CFrame.Angles(0, 0, -1.6 * tip + wob))
 	elseif clip.name == "reload_marbles" then
 		if t < 0.4 or t > 1.35 then if prop then prop:Destroy(); prop = nil end return end
-		if not prop then prop = Fx.prop("p_marblebag", Vector3.new(0.09, 0.12, 0.09) * S, Color3.fromRGB(230, 90, 25)) end
+		if not prop then prop = Fx.prop("p_marblebag", Vector3.new(0.09, 0.12, 0.09) * S * SIZE, Color3.fromRGB(230, 90, 25)) end
 		local inn = smooth((t - 0.4) / 0.2) * (1 - smooth((t - 1.2) / 0.15))
 		local pour = if t > 0.6 and t < 1.2 then 1 else 0
 		local jig = if pour > 0 then math.abs(math.sin((t - 0.66) / 0.12 * math.pi)) * 0.25 else 0
@@ -382,7 +503,7 @@ end
 function VM.adsPos(wid: string): Vector3?
 	local w = Weapons.list[wid]
 	if not w or not w.vm or not w.ads then return nil end
-	local s = w.vm.s
+	local s = w.vm.s * SIZE
 	if wid == "redline" then return Vector3.new(0, -0.0737 * s, -0.17 - 0.1058 * s) * S end
 	local sight = w.mdl and w.mdl.sight -- a gun with sights: the same rule, from its row
 	if sight then return Vector3.new(0, -sight.Y * s, -0.17 - sight.Z * s) * S end

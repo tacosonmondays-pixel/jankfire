@@ -170,21 +170,17 @@ local function buildVM()
 		end
 	end
 	m.PrimaryPart = m:FindFirstChild("Handle")
-	-- your own avatar's hands on it, like the other weapons: the right round the grip, the left under the body
+	-- your own avatar's hands on it, like the other weapons: the right on the grip, the left under the body behind
+	-- the cone (the hold table's "shredder" row, in the gun's own frame G)
 	local hd = m.PrimaryPart
 	if hd then
 		local G = gunFrameH.Rotation
-		local LEFT = G * CFrame.new(-0.25, 0.22, -0.8)
-		local spots = {
-			{ side = "Right", kind = "gun", fist = G, arm = G * CFrame.Angles(0.5, 0.25, 0) },
-			{ side = "Left", kind = "gun", fist = LEFT, arm = LEFT * CFrame.Angles(0.5, -0.35, 0) },
-		}
-		if not AvatarArms.build(m, hd, spots, 3) then
+		if not AvatarArms.hold(m, hd, "shredder", 3, G) then
 			task.spawn(function() -- (your body may not be built yet: a spawn)
 				for _ = 1, 24 do
 					task.wait(0.25)
 					if vm ~= m then return end
-					if AvatarArms.build(m, hd, spots, 3) then return end
+					if AvatarArms.hold(m, hd, "shredder", 3, G) then return end
 				end
 			end)
 		end
@@ -235,6 +231,7 @@ RunService:BindToRenderStep(bindName, Enum.RenderPriority.Camera.Value + 2, func
 	local shake = if sucking then Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 0.05 else Vector3.zero
 	local F = CFrame.lookAt(VM_POS + shake, VM_POS + shake + vmDir, Vector3.yAxis)
 	vm:PivotTo(cam.CFrame * F * gunFrameH:Inverse())
+	AvatarArms.aim(vm, cam.CFrame) -- (your arms: each from its hold toward your elbow)
 end)
 tool.AncestryChanged:Connect(function()
 	if not tool:IsDescendantOf(game) then

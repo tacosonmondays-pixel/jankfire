@@ -61,9 +61,11 @@ Tested by sending the server's remotes fake messages from a client, the way an e
 ## What differs from the web game
 
 - **Reloads show the gun's own moving parts** (mag, charging handle, pump, bolt, lever and hammer, feed cover and
-  belt, slide, the sawn-off breaking open, the cylinder), driven by the web game's own keyframes. **The off hand and
-  the things it holds are not ported** (the spare mag, shells, the stripper clip, the speedloader): the left arm
-  leaves the picture for the length of a reload instead.
+  belt, slide, the sawn-off breaking open, the cylinder), driven by the web game's own keyframes. **The things the
+  off hand fetches are not ported** (the spare mag, shells, the stripper clip, the speedloader). Since the hold
+  rework (15 November, `GUN-PAINT.md`) the left hand stays in the picture: it goes down and back with the
+  magazine, rides the Shotgun's pump, holds the Redline's can and the marble bag, steps clear of the Yeehaw's spin,
+  and otherwise keeps its place on the gun.
 - **The Revolver's twirl** after a tap and its spin while fanning are fixed clips, not the web game's spring, and
   other players don't see them.
 - **The Sniper's extras are not ported:** the full-screen "NO-SCOPED" overlay, the fireworks that spell your name,

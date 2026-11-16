@@ -42,7 +42,7 @@ add({ id = "shotgun", slot = "primary", name = "Shotgun", color = "e0a060", live
 add({ id = "minigun", slot = "primary", name = "Minigun", color = "c8c8c8", live = false, gimmick = "",
 	desc = "Spins up then never stops. Its bullets shove people: hold it on someone and they get pushed away. The recoil is strong enough to fly on.",
 	stats = { { label = "DAMAGE", text = "6", bar = 0.05 }, { label = "FIRE RATE", text = "25/s", bar = 1 }, { label = "RANGE", text = "200 m", bar = 0.63 }, { label = "MAG", text = "250", bar = 1 } } })
-add({ id = "sniper", slot = "primary", name = "Sniper", color = "ff4fd8", live = true, gimmick = "a headshot always kills. a body shot sends them flying off the map.",
+add({ id = "sniper", slot = "primary", name = "Sniper", color = "a2457c", live = true, gimmick = "a headshot always kills. a body shot sends them flying off the map.",
 	desc = "Right click to scope. A headshot always kills, a body shot sends them flying off the map. Hipfire is a gamble.",
 	stats = { { label = "DAMAGE", text = "55", bar = 0.46 }, { label = "FIRE RATE", text = "0.91/s", bar = 0.04 }, { label = "RANGE", text = "500 m", bar = 1 }, { label = "MAG", text = "5", bar = 0.08 } } })
 add({ id = "chicken", slot = "primary", name = "Chicken Rocket", color = "ffe14d", live = false, gimmick = "",
@@ -69,7 +69,7 @@ add({ id = "lmg", slot = "primary", name = "Belt Sander", color = "ff5a1f", live
 add({ id = "dmr", slot = "primary", name = "Second Opinion", color = "b07dff", live = true, gimmick = "two to the body or one to the head. quick-scope it for a bit extra.",
 	desc = "A semi-auto marksman rifle with a little scope. Two to the body or one to the head. Quick-scope it for a bit extra.",
 	stats = { { label = "DAMAGE", text = "52", bar = 0.43 }, { label = "FIRE RATE", text = "1.82/s", bar = 0.08 }, { label = "RANGE", text = "400 m", bar = 0.89 }, { label = "MAG", text = "10", bar = 0.17 } } })
-add({ id = "lever", slot = "primary", name = "Yeehaw", color = "ff6b8b", live = true, gimmick = "keep hitting the same person and every hit stings more: x1.15, x1.3, x1.45.",
+add({ id = "lever", slot = "primary", name = "Yeehaw", color = "a58640", live = true, gimmick = "keep hitting the same person and every hit stings more: x1.15, x1.3, x1.45.",
 	desc = "A lever-action you crank after every shot. Keep hitting the same person and every hit stings a bit more. Spin-cocks on reload, obviously.",
 	stats = { { label = "DAMAGE", text = "30", bar = 0.25 }, { label = "FIRE RATE", text = "2.38/s", bar = 0.11 }, { label = "RANGE", text = "280 m", bar = 0.75 }, { label = "MAG", text = "8", bar = 0.13 } } })
 add({ id = "autoshot", slot = "primary", name = "Lawn Mower", color = "4ad66b", live = true, gimmick = "an automatic shotgun. less per shot than the pump, but it never stops.",

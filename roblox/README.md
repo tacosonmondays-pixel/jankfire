@@ -102,10 +102,18 @@ roblox/assets/weapons/w_*.glb`.
 `4a3222` walnut orange in the first photos. Look at the gun in hand in a Play test before keeping a colour. To see
 the other paint in a running test only (Edit untouched), run `W.use("web")` in the **Server** datamodel during Play.
 
-**The first-person arms** wear the game's own matte glove and plain dark sleeve (`AvatarArms.luau`,
-`AvatarArms.KIT`), built from your avatar's own arm shapes so they fit a blocky or a round arm. A pale avatar's bare arm blew out to a white
-shape under the lamps. The old look (your skin and shirt) is `AvatarArms.LOOK = "avatar"`, or the module's `Look`
-attribute.
+**The first-person arms** are your own avatar's hand and forearm shapes (so they fit a blocky or a round body) in
+the game's dark glove and darker sleeve (`AvatarArms.luau`, `AvatarArms.KIT`). A pale avatar's bare arm blew out to a
+white shape under the lamps. Your skin and shirt instead: `AvatarArms.LOOK = "avatar"`, or the module's `Look`
+attribute. They are never a custom hand model (the owner's rule, 15 November 2026).
+
+**How a weapon is held** is one table, `tools/roblox/holds.json`: per weapon and hand, the kind of hold (a handle
+through the fist, or held from under), where it is on the weapon and how it is turned; where each forearm comes from
+(an elbow spot in camera space); and the katana's rest and parry poses. `py tools/roblox/holds.py` writes
+`src/shared/Holds.luau` from it. The arms are placed every frame (`AvatarArms.aim`), never glued to the gun, so a
+forearm cannot sweep across the screen when the gun rolls; the off hand goes with the magazine, the pump and the
+reload props (`Viewmodel.luau`, "the off hand"). A new gun needs a row there (take the spots from its side view, as
+for `grip` and `fore`), or its hands are not drawn. Full account: `docs/GUN-PAINT.md`, "The hold".
 
 Wraps are untouched by any of this: a wrap repaints pieces through `Color` and takes pictures off, then restores
 whatever the template had.

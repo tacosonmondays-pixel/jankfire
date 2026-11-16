@@ -1,68 +1,78 @@
 --!strict
--- your own avatar's hands and forearms in first person (instead of code boxes): the hand and lower-arm meshes cloned
--- off your character into a little Humanoid model with a copy of your Shirt and BodyColors, so your skin tone and the
--- shirt's sleeves show on them like they do on your body. (layered clothing only renders on a full character, so a
--- layered jacket doesn't come along.) used by the weapons' Viewmodel and the Shredder's viewmodel.
--- the wrist stays straight: the hand carries on along its forearm and only turns about it, so a hand never folds back
--- on itself. what changes per hold is where the forearm comes from and which way the palm faces
+-- your own Roblox avatar's hands and forearms in first person: the hand and lower-arm meshes cloned off your character
+-- (so it is always YOUR body: blocky, slim, anything), scaled to the weapon and put on it by the hold table
+-- (Holds.luau, written from tools/roblox/holds.json). used by the weapons' Viewmodel and the Shredder's viewmodel.
 --
--- THE LOOK is a switch. "kit" (the default since 2026-11-15) dresses your arm shapes in the game's own glove and
--- sleeve, so the hands look finished whatever the avatar wears: a pale or untextured avatar arm blew out to a plain
--- white shape under the lamps. "avatar" is the first version: your skin tone and your shirt's sleeves.
+-- how an arm is placed, every frame (AvatarArms.aim):
+--   * the hand grips at its own GRIP ATTACHMENT, the spot and the turn Roblox itself uses for a held Tool, so the
+--     grip is right for any avatar's hand shape: what it holds (a pistol grip, the katana's hilt, a handguard, a
+--     magazine) runs through the fist, thumb side up the handle or toward the muzzle
+--   * the hand turns about that handle until its wrist faces your elbow, a spot fixed in camera space
+--   * the forearm is NOT glued to the weapon: it runs from the wrist to that elbow, so an arm never sweeps across the
+--     screen when the weapon rolls, swings or twirls
+--   * limbs are lined up by their rig attachments (grip, wrist, elbow), not by their boxes: on many bodies the arm
+--     meshes lie slanted inside their parts, and a box-aligned forearm showed as a wedge
+--   * a thing too big to grip (the Shredder's body, a reload prop's foot) is held from UNDER: the hand's palm side up
+--     against it, the arm on its line to the elbow
+--
+-- THE LOOK is a switch (the module's "Look" attribute, if set, wins over LOOK):
+--   "kit" (default): your arm shapes in the game's glove and sleeve colours, so the hands look the same whatever the
+--     avatar wears (a pale or untextured arm blew out to a plain white shape under the lamps)
+--   "avatar": your skin tone and your shirt's sleeves, as on your body
+-- (a modelled four-finger glove was tried on 2026-11-15 and taken out the same day: the owner wants Roblox's own hands)
 local Players = game:GetService("Players")
+local Holds = require(script.Parent:WaitForChild("Holds")) :: any
 
 local AvatarArms = {}
 
--- (the module's "Look" attribute, if it is set, wins over this: a place or a test can switch without editing code)
 AvatarArms.LOOK = "kit" -- "kit" | "avatar"
 function AvatarArms.look(): string
 	local a = script:GetAttribute("Look")
 	return if a == "kit" or a == "avatar" then a else AvatarArms.LOOK
 end
--- one matte charcoal family. the glove is a step LIGHTER than the guns (a black glove vanished into a black gun) and
--- the sleeve a step DARKER than the glove in paint: the lamps hit the top of a forearm full on, and a sleeve painted
--- lighter than the glove showed as a pale cone propping up the gun. (first judge round, 2026-11-15)
+-- one charcoal family. the glove is clearly LIGHTER than the guns (a glove of a dark gun's own value vanished into
+-- it: the Revolver looked unheld) and the sleeve clearly DARKER than the glove: the lamps hit the top of a forearm
+-- full on, and anything lighter showed as a pale cone propping up the gun. (judge rounds, 2026-11-15)
 AvatarArms.KIT = {
-	glove = Color3.fromRGB(46, 48, 54),
-	sleeve = Color3.fromRGB(34, 36, 41),
-	-- tried in the hall, this close to the eye (two judge rounds, 2026-11-15): Rubber speckles, Fabric crumples,
-	-- Leather turns a blocky hand into a rock, SmoothPlastic shines like moulded plastic. the glove is Plastic in a
-	-- dark slate: matte, with soft shading. the sleeve is drawn UNLIT (Neon in a near-black colour does not glow, it
-	-- just ignores the lamps): every lit material flashed pale or pebbled when a lamp was straight above the forearm
-	material = Enum.Material.Plastic,
-	sleeveMaterial = Enum.Material.Neon,
+	-- (judge rounds on the hold: 46,48,54 merged into dark guns; 54,56,63 read as grey clay; a 20,21,24 sleeve was a
+	-- flat black cut-out and 22,23,27 on a long arm caught a glossy stripe. this pair sits between them)
+	glove = Color3.fromRGB(50, 52, 58),
+	sleeve = Color3.fromRGB(26, 28, 32),
+	-- tried in the hall, this close to the eye: Plastic and Rubber speckle, Fabric crumples, Leather turns a hand into
+	-- a rock, and an unlit sleeve (Neon in a dark colour) is a flat black bar once the forearm crosses the screen.
+	-- both are SmoothPlastic: clean, and the lamps still model the arm's faces
+	material = Enum.Material.SmoothPlastic,
+	sleeveMaterial = Enum.Material.SmoothPlastic,
 }
 
--- sizes in metres x k (the viewmodel's studs per metre)
-AvatarArms.HAND = 0.12 -- the hand across
-AvatarArms.FORE_T = 0.12 -- forearm thickness
-AvatarArms.FORE_L = 0.75 -- forearm length: it runs back and down off screen, so the hands never float
+AvatarArms.STUDS = 3 -- studs per metre (the game's scale: Weapons.S)
+AvatarArms.HAND = 0.115 -- the hand across, metres, at a hold's size 1 (the hold table sizes it to each weapon)
+AvatarArms.FORE_L = 0.62 -- forearm length, metres: long enough to leave the screen, so no elbow end ever shows
+AvatarArms.SLEEVE = 1.1 -- the forearm's thickness against the hand's own scale (0.9 read as a stick under a ball)
+AvatarArms.SINK = 0.12 -- held from under: the thing sinks this far (of the hand's thickness) into the palm
+AvatarArms.PAST = 0.18 -- ... and the fingers reach this far (of the hand's length) past it
 
--- a hold, in the weapon's frame (+X right, +Y up, -Z forward):
---   back = the forearm's way from the wrist to the elbow (the fingers point the other way)
---   palm = the way the palm faces (it faces the grip, so the hand sits on the far side of the spot from it), or
---   across + sign = a handle running across the palm (katana): the palm faces across x back (sign flips it)
-type Pose = { back: Vector3, palm: Vector3?, across: Vector3?, sign: number? }
-AvatarArms.POSES = {
-	gun = {
-		Right = { back = Vector3.new(0.25, -0.5, 1), palm = Vector3.new(-1, 0, 0) }, -- round the grip from the right
-		Left = { back = Vector3.new(-0.35, -0.55, 0.8), palm = Vector3.new(0, 1, 0) }, -- flat under the barrel
-	},
-	katana = { -- both up the handle from below, the backs of the hands toward you
-		Right = { back = Vector3.new(0.779, -0.245, 0.577), across = Vector3.zAxis, sign = -1 },
-		Left = { back = Vector3.new(0.639, -0.243, 0.729), across = Vector3.zAxis, sign = -1 },
-	},
-} :: { [string]: { [string]: Pose } }
+local UNDER = { palm = true } -- (the hold table's poses that hold from under; every other pose is a grip)
 
--- fist is relative to `root` (the weapon's root part): its position is the grip spot, its rotation the weapon's frame
--- for the pose. kind picks the pose set (gun if unknown). (arm is from the old version and isn't used)
-export type Spot = { side: string, fist: CFrame, arm: CFrame?, kind: string? }
+type Arm = {
+	side: string, root: BasePart, rel: CFrame, under: boolean, elbow: Vector3, turn: number,
+	hand: BasePart, fore: BasePart,
+	gripInv: CFrame, -- the hand's grip attachment, inverted (part space, sized)
+	wrist: Vector3, -- the hand's wrist joint (part space, sized)
+	mid: CFrame, -- under holds: a frame at the hand's middle, its Y to the wrist
+	foreInv: CFrame, -- the forearm's own frame at its wrist joint (Y to the elbow), inverted
+	thick: number, long: number, ang: number,
+	over: CFrame?, mix: number, overUnder: boolean,
+}
+-- (a plain table, cleared when the arms are destroyed. NOT a weak one: an Instance's Luau handle can be collected
+-- while the Instance lives on, and a weak key went with it: the forearms froze a moment after every swap)
+local live: { [Instance]: { Arm } } = {}
 
 local KEEP = { SurfaceAppearance = true, SpecialMesh = true }
 local function limb(src: BasePart): BasePart
 	local c = src:Clone()
 	for _, d in c:GetChildren() do if not KEEP[d.ClassName] then d:Destroy() end end
-	c.Anchored = false; c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.CastShadow = false
+	c.Anchored = true; c.CanCollide = false; c.CanQuery = false; c.CanTouch = false; c.CastShadow = false
 	c.Massless = true; c.Transparency = 0
 	return c
 end
@@ -74,18 +84,33 @@ local function dress(p: BasePart, color: Color3, material: Enum.Material)
 	p.Color = color; p.Material = material; p.Reflectance = 0
 end
 
--- builds the arms under `parent`, welded to `root`; false if your character isn't ready (use the code hands then)
-function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: number): boolean
+local function spot(part: BasePart, name: string): Vector3?
+	local a = part:FindFirstChild(name)
+	return if a and a:IsA("Attachment") then a.Position else nil
+end
+
+-- a limb's own frame at a joint: its Y along the limb toward the elbow end, its X the part's X squared to that
+local function basisAt(joint: Vector3, toElbow: Vector3): CFrame
+	local y = if toElbow.Magnitude > 1e-4 then toElbow.Unit else Vector3.yAxis
+	local x = Vector3.xAxis - y * y.X
+	x = if x.Magnitude > 1e-3 then x.Unit else Vector3.zAxis
+	return CFrame.fromMatrix(joint, x, y, x:Cross(y))
+end
+
+-- the arms for a weapon, under `parent`, held as the hold table says. root = the weapon's root (its frame the
+-- weapon's own: -Z forward, +Y up), k = studs per metre of the weapon's file, frame = the weapon's frame against root
+-- if root is not it (the Shredder's handle), scale = the viewmodel's size (the hands grow with the weapon). false if
+-- your character isn't ready or the weapon has no row
+function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: number, frame: CFrame?, scale: number?): boolean
 	local ch = Players.LocalPlayer and Players.LocalPlayer.Character
-	if not ch or #spots == 0 or not ch:FindFirstChildOfClass("Humanoid") then return false end
-	for _, s in spots do
-		if not (ch:FindFirstChild(s.side .. "Hand") and ch:FindFirstChild(s.side .. "LowerArm")) then return false end
+	local rows = Holds.holds[wid]
+	if not ch or not rows or not ch:FindFirstChildOfClass("Humanoid") then return false end
+	for _, side in { "Right", "Left" } do
+		if rows[side] and not (ch:FindFirstChild(side .. "Hand") and ch:FindFirstChild(side .. "LowerArm")) then return false end
 	end
-	local old = parent:FindFirstChild("AvatarArms")
-	if old then old:Destroy() end
+	local kit = AvatarArms.look() == "kit"
 	local arms = Instance.new("Model")
 	arms.Name = "AvatarArms"
-	local kit = AvatarArms.look() == "kit"
 	if not kit then
 		-- (a Humanoid in the model makes the Shirt and BodyColors show on the limbs, as they do on your body)
 		local hum = Instance.new("Humanoid")
@@ -99,48 +124,126 @@ function AvatarArms.build(parent: Instance, root: BasePart, spots: { Spot }, k: 
 			if c:IsA("Shirt") or c:IsA("BodyColors") then c:Clone().Parent = arms end
 		end
 	end
-	for _, s in spots do
-		local set = AvatarArms.POSES[s.kind or (if parent.Name == "katana" then "katana" else "gun")] or AvatarArms.POSES.gun
-		local pz = set[s.side] or set.Right
-		local hand = limb(ch:FindFirstChild(s.side .. "Hand") :: BasePart)
-		local fore = limb(ch:FindFirstChild(s.side .. "LowerArm") :: BasePart)
-		hand.Size *= AvatarArms.HAND * k / math.max(hand.Size.X, hand.Size.Z)
-		fore.Size = Vector3.new(AvatarArms.FORE_T * k, AvatarArms.FORE_L * k, AvatarArms.FORE_T * k * fore.Size.Z / fore.Size.X)
-		local W = root.CFrame * s.fist
-		local Y = W:VectorToWorldSpace(pz.back.Unit) -- a limb mesh's +Y is its elbow end, -Y its fingers
-		local P: Vector3
-		if pz.across then
-			P = W:VectorToWorldSpace(pz.across):Cross(Y) * (pz.sign or 1)
-		else
-			P = W:VectorToWorldSpace((pz.palm :: Vector3).Unit)
-		end
-		P = P - Y * P:Dot(Y)
-		P = if P.Magnitude > 1e-4 then P.Unit else W.RightVector
-		local X = if s.side == "Right" then -P else P -- a right palm faces the mesh's -X, a left one +X
-		local Z = X:Cross(Y)
-		local thick = hand.Size.X
-		-- palm against the grip: the hand sits half a hand off it, the fingers a little past it
-		local centre = W.Position - P * thick * 0.5 - Y * hand.Size.Y * 0.1
-		hand.CFrame = CFrame.fromMatrix(centre, X, Y, Z)
-		local wrist = centre + Y * hand.Size.Y * 0.42
-		fore.CFrame = CFrame.fromMatrix(wrist + Y * fore.Size.Y * 0.5, X, Y, Z)
-		local set2: { BasePart } = { hand, fore }
+	local S = AvatarArms.STUDS
+	local list: { Arm } = {}
+	for _, side in { "Right", "Left" } do
+		local row = rows[side]
+		if not row then continue end
+		local srcHand = ch:FindFirstChild(side .. "Hand") :: BasePart
+		local srcFore = ch:FindFirstChild(side .. "LowerArm") :: BasePart
+		local hand, fore = limb(srcHand), limb(srcFore)
+		-- the hand keeps its shape; the forearm keeps its section (a little slimmer) and is drawn out to leave the screen
+		local f = AvatarArms.HAND * S * row.size * (scale or 1) / math.max(srcHand.Size.X, srcHand.Size.Z)
+		local fy = AvatarArms.FORE_L * S / srcFore.Size.Y
+		local fs = Vector3.new(f * AvatarArms.SLEEVE, fy, f * AvatarArms.SLEEVE)
+		hand.Size = srcHand.Size * f
+		fore.Size = srcFore.Size * fs
+		-- the joints, from the rig (a blocky body's are on its middle line; many others' are not)
+		local hw = (spot(srcHand, side .. "WristRigAttachment") or Vector3.new(0, srcHand.Size.Y * 0.42, 0)) * f
+		local fw = (spot(srcFore, side .. "WristRigAttachment") or Vector3.new(0, -srcFore.Size.Y / 2, 0)) * fs
+		local fe = (spot(srcFore, side .. "ElbowRigAttachment") or Vector3.new(0, srcFore.Size.Y / 2, 0)) * fs
+		-- the grip: where a Tool's handle sits in this hand, and how it is turned (its Y runs up the handle)
+		local ga = srcHand:FindFirstChild(side .. "GripAttachment")
+		local grip = if ga and ga:IsA("Attachment") then ga.CFrame.Rotation + ga.Position * f
+			else CFrame.Angles(-math.pi / 2, 0, 0) + Vector3.new(0, -srcHand.Size.Y * 0.2, 0) * f
+		-- (along the handle the hand sits on its own middle: some rigs put the attachment at the fist's edge)
+		local along = grip.YVector
+		grip -= along * grip.Position:Dot(along)
 		if kit then
 			local K = AvatarArms.KIT
 			dress(hand, K.glove, K.material)
 			dress(fore, K.sleeve, K.sleeveMaterial)
-			-- nothing is added at the wrist: the glove and the sleeve are the whole kit. three cuffs were tried and
-			-- each read as a fault from the player's eye: a thin slice of the forearm's own mesh (squashed, its
-			-- joint end became a disc with flaps and shards), a block (a brick on the wrist), and a plate on the
-			-- back of the hand (a grey square stuck on a box).
 		end
-		for _, p in set2 do
-			local w = Instance.new("WeldConstraint"); w.Part0 = root; w.Part1 = p; w.Parent = p
-			p.Parent = arms
+		hand.Name = side .. "Hand"; fore.Name = side .. "LowerArm"
+		hand.Parent = arms; fore.Parent = arms
+		table.insert(list, {
+			side = side, root = root, under = UNDER[row.pose] == true,
+			elbow = row.elbow or Holds.elbow[side], turn = row.turn or 0,
+			rel = (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z),
+			hand = hand, fore = fore,
+			gripInv = grip:Inverse(), wrist = hw, mid = basisAt(Vector3.zero, hw), foreInv = basisAt(fw, fe - fw):Inverse(),
+			thick = hand.Size.X, long = hand.Size.Y, ang = 0, mix = 0, overUnder = false,
+		})
+	end
+	if #list == 0 then return false end
+	local old = parent:FindFirstChild("AvatarArms")
+	if old then old:Destroy() end
+	live[arms] = list
+	arms.Destroying:Connect(function() live[arms] = nil end)
+	arms.Parent = parent
+	AvatarArms.aim(parent, (workspace.CurrentCamera :: Camera).CFrame)
+	return true
+end
+
+-- where a hand's hold sits against the weapon's root, and what kind it is (for a caller that sends the hand elsewhere)
+function AvatarArms.holdFrame(wid: string, side: string, k: number, frame: CFrame?): CFrame?
+	local rows = Holds.holds[wid]
+	local row = rows and rows[side]
+	if not row then return nil end
+	return (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z)
+end
+function AvatarArms.poseOf(wid: string, side: string): string?
+	local rows = Holds.holds[wid]
+	return if rows and rows[side] then rows[side].pose else nil
+end
+
+-- send a hand somewhere other than its hold: `to` = a frame in the world (nil = back on the weapon), mix = how far the
+-- hand has gone there (0 to 1). a grip: the frame's Y runs up the thing, through the fist. under = true: its position
+-- is the thing's underside and its Y points up into it. set it every frame it applies, before AvatarArms.aim
+function AvatarArms.override(parent: Instance, side: string, to: CFrame?, mix: number, under: boolean?)
+	local arms = parent:FindFirstChild("AvatarArms")
+	local list = arms and live[arms]
+	if not list then return end
+	for _, a in list do
+		if a.side == side then
+			a.over = to; a.mix = if to then math.clamp(mix, 0, 1) else 0; a.overUnder = under == true
 		end
 	end
-	arms.Parent = parent
-	return true
+end
+
+-- every frame, after the weapon (and whatever the off hand is on) is placed
+function AvatarArms.aim(parent: Instance, cam: CFrame)
+	local arms = parent:FindFirstChild("AvatarArms")
+	local list = arms and live[arms]
+	if not list then return end
+	local S = AvatarArms.STUDS
+	for _, a in list do
+		local F = a.root.CFrame * a.rel -- the hold's frame, in the world
+		local under = a.under
+		if a.over and a.mix > 0 then
+			F = F:Lerp(a.over, a.mix)
+			if a.mix > 0.5 then under = a.overUnder end
+		end
+		local elbow = cam:PointToWorldSpace(a.elbow * S)
+		local hand: CFrame
+		if under then
+			-- the arm on its line to the elbow, the palm side up into the thing as far as that line allows
+			local to = elbow - F.Position
+			local Y = if to.Magnitude > 1e-3 then to.Unit else -cam.LookVector
+			local n = F.YVector
+			local P = n - Y * n:Dot(Y)
+			P = if P.Magnitude > 1e-3 then P.Unit else cam.UpVector
+			local X = if a.side == "Right" then -P else P
+			local at = F.Position - P * a.thick * (0.5 - AvatarArms.SINK) - Y * a.long * AvatarArms.PAST
+			hand = CFrame.fromMatrix(at, X, Y, X:Cross(Y)) * a.mid:Inverse()
+		else
+			-- the grip on the handle, turned about it until the wrist faces the elbow
+			local w = a.gripInv * a.wrist -- (the wrist, seen from the grip)
+			local e = F:PointToObjectSpace(elbow)
+			if w.X * w.X + w.Z * w.Z > 1e-6 and e.X * e.X + e.Z * e.Z > 1e-6 then
+				a.ang = math.atan2(e.X, e.Z) - math.atan2(w.X, w.Z)
+			end
+			hand = F * CFrame.Angles(0, a.ang + a.turn, 0) * a.gripInv
+		end
+		a.hand.CFrame = hand
+		-- the forearm from the wrist to the elbow, its faces carrying on from the hand's
+		local wrist = hand:PointToWorldSpace(a.wrist)
+		local to = elbow - wrist
+		local Y = if to.Magnitude > 1e-3 then to.Unit else hand.YVector
+		local X = hand.XVector - Y * hand.XVector:Dot(Y)
+		X = if X.Magnitude > 1e-3 then X.Unit else hand.ZVector:Cross(Y).Unit
+		a.fore.CFrame = CFrame.fromMatrix(wrist, X, Y, X:Cross(Y)) * a.foreInv
+	end
 end
 
 return AvatarArms

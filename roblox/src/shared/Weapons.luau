@@ -110,7 +110,7 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	sniper = {
-		id = "sniper", name = "Sniper", slot = "primary", kind = "hitscan", color = rgb(0xff4fd8),
+		id = "sniper", name = "Sniper", slot = "primary", kind = "hitscan", color = rgb(0xa2457c), -- (its calm accent: the magenta mark)
 		desc = "right click to scope. a headshot always kills, a body shot sends them flying off the map. hipfire is a gamble.",
 		auto = false, rate = 1 / 1.1, mag = 5, reload = 2.2, pellets = 1, dmg = 55, head = 2, spread = 0.05,
 		kb = 75 * S, kbUp = 14 * S, recoil = 12 * S, kick = 0.06, range = 500 * S, lethalHead = true, noscope = true,
@@ -175,7 +175,7 @@ local W: { [string]: Weapon } = {
 		},
 	},
 	lever = {
-		id = "lever", name = "Yeehaw", slot = "primary", kind = "hitscan", color = rgb(0xff6b8b),
+		id = "lever", name = "Yeehaw", slot = "primary", kind = "hitscan", color = rgb(0xa58640), -- (its calm accent: the brass)
 		desc = "a lever-action you crank after every shot. keep hitting the same person and every hit stings a bit more.",
 		auto = false, rate = 1 / 0.42, mag = 8, reload = 2.6, pellets = 1, dmg = 30, head = 2, spread = 0.012,
 		kb = 2 * S, kbUp = 0.5 * S, recoil = 2 * S, kick = 0.04, range = 280 * S, ramp = 0.15, rampMax = 3, chain = 0.8,
