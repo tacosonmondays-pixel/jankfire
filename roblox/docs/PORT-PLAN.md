@@ -946,6 +946,14 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - `L.check`'s ring test casts rays from the floor, the long lane and the climb's top, every way but north, flat and up 20 and 35 degrees. Result: 357 rays, 0 leaks.
   - 814 parts; 70 trees, all seated.
 - Photos: `roblox/docs/training/back_lot_fence_sheet.jpg`.
+- **The mirror made cheap** (place version 441, after the owner's lag report, 9 to 12 fps in training). It was a full 1.8x avatar clone with layered clothing, an Animator, 288 scanline textures and a new CFrame every frame. Now it is a still statue:
+  - a plain copy: no layered clothing (WrapLayer and WrapTarget gone), nothing in its hands
+  - posed for 0.35 s in Roblox's idle, then every part anchored and its Humanoid and joints destroyed
+  - facing out of the bay; no spin
+  - the shared hologram look with lines, glitch and flicker off, and see 0.84 (without scanlines the neon bloomed white)
+  - made only when your character is (a spawn, CharacterAppearanceLoaded)
+  - checked in Play: 51 parts, 0 textures, 0 Humanoids
+- **The podium weapon** is built fresh from `WeaponModels`; a copy of the hand's model was invisible.
 
 **Traps:**
 - `screen_capture` calls in parallel time out: take them one at a time.

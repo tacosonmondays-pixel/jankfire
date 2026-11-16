@@ -179,22 +179,38 @@ end
 -- ---------------------------------------------------------------- the mirror
 local mirrorSpot: BasePart? = nil
 local holo: Model? = nil
-local holoSig, spin = "", 0
+local holoSig = ""
 local HOLO = Color3.fromRGB(143, 216, 255)
 local HOLO_SCALE = 1.8 -- (the owner, 16 Nov: "can hologram you be larger?": nearly twice you, still under the bay's ceiling)
+-- the look: the game's one hologram (ReplicatedStorage.Jankfire.Hologram, the VFX session's: ice-blue, an outline,
+-- scanlines, a sweep as it builds in), as the hub's holograms; this script's own plain tint if it is not there
+local holoMod = game:GetService("ReplicatedStorage"):WaitForChild("Jankfire"):FindFirstChild("Hologram")
+local Holo: any = nil
+if holoMod and holoMod:IsA("ModuleScript") then
+	local ok, h = pcall(require, holoMod)
+	if ok then Holo = h end
+end
 local function dropHolo()
-	if holo then holo:Destroy(); holo = nil end
+	if holo then
+		if Holo then pcall(function() local h = Holo.of(holo); if h then h:remove(0) end end) end
+		holo:Destroy(); holo = nil
+	end
 	holoSig = ""
 end
--- what you are holding, as a string (the hologram is made again when it changes)
-local function holding(ch: Model): string
-	local t = {}
-	for _, c in ch:GetChildren() do if c:IsA("Model") or c:IsA("Tool") then table.insert(t, c.Name) end end
-	table.sort(t)
-	return table.concat(t, ",")
-end
-local function buildHolo(ch: Model)
+-- (16 Nov evening, the owner's lag report, 12 fps in training: the mirror was a full 1.8x clone of your avatar with
+-- its layered clothing, an Animator playing, scanline textures on every face and a new CFrame every frame. it is a
+-- still statue now: a plain copy (no layered clothing, nothing in its hands), posed once in Roblox's idle and then
+-- anchored, its Humanoid and joints gone, facing out of the bay; the hologram look without scanlines, glitch or
+-- flicker; made only when your character is (a spawn, a new look). nothing about it runs per frame)
+local holoFor: Model? = nil
+local holoBusy = false
+local function buildHolo(ch: Model, spot: BasePart)
 	dropHolo()
+	holoFor = ch
+	local realHum = ch:FindFirstChildOfClass("Humanoid")
+	local realRoot = ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if not realHum or not realRoot then return end
+	local up = (realHum.HipHeight + realRoot.Size.Y / 2) * HOLO_SCALE
 	local was = ch.Archivable
 	ch.Archivable = true
 	local ok, c = pcall(function() return ch:Clone() end)
@@ -202,15 +218,19 @@ local function buildHolo(ch: Model)
 	if not ok or not c then return end
 	local m = c :: Model
 	m.Name = "MirrorHolo"
+	for _, d in m:GetChildren() do
+		-- (what it holds, and layered clothing: a WrapLayer deforms over the body every frame)
+		if d:IsA("Tool") or d.Name == "HeldWeapon" or (d:IsA("Accessory") and d:FindFirstChildWhichIsA("WrapLayer", true)) then d:Destroy() end
+	end
 	for _, d in m:GetDescendants() do
 		if d:IsA("BaseScript") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("Light") or d:IsA("BillboardGui")
-			or d:IsA("ProximityPrompt") or d:IsA("Highlight") or d:IsA("Beam") or d:IsA("Trail") then
+			or d:IsA("ProximityPrompt") or d:IsA("Highlight") or d:IsA("Beam") or d:IsA("Trail") or d:IsA("WrapTarget") or d:IsA("WrapLayer") then
 			d:Destroy()
 		elseif d:IsA("BasePart") then
 			d.Anchored = d.Name == "HumanoidRootPart"; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false
 			d.CastShadow = false; d.Massless = true; d.LocalTransparencyModifier = 0
-			if d.Transparency < 1 then d.Transparency = math.max(d.Transparency, 0.3) end
-		elseif d:IsA("Decal") then
+			if not Holo and d.Transparency < 1 then d.Transparency = math.max(d.Transparency, 0.3) end
+		elseif d:IsA("Decal") and not Holo then
 			d.Transparency = math.max(d.Transparency, 0.4)
 		end
 	end
@@ -220,44 +240,46 @@ local function buildHolo(ch: Model)
 		hum.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 		hum.PlatformStand = true
 	end
-	local hl = Instance.new("Highlight")
-	hl.FillColor = HOLO; hl.OutlineColor = HOLO; hl.FillTransparency = 0.8; hl.OutlineTransparency = 0.4
-	hl.DepthMode = Enum.HighlightDepthMode.Occluded
-	hl.Parent = m
+	if not Holo then
+		local hl = Instance.new("Highlight")
+		hl.FillColor = HOLO; hl.OutlineColor = HOLO; hl.FillTransparency = 0.8; hl.OutlineTransparency = 0.4
+		hl.DepthMode = Enum.HighlightDepthMode.Occluded
+		hl.Parent = m
+	end
 	m.Parent = workspace
 	pcall(function() m:ScaleTo(HOLO_SCALE) end)
-	-- the pose: whatever you are playing now (so it holds your gun the way you do)
-	local an = hum and hum:FindFirstChildOfClass("Animator")
-	local real = ch:FindFirstChildOfClass("Humanoid")
-	local ran = real and real:FindFirstChildOfClass("Animator")
-	if an and ran then
-		for _, tr in ran:GetPlayingAnimationTracks() do
-			pcall(function()
-				local t = an:LoadAnimation(tr.Animation)
-				t.Looped = true
-				t:Play(0, math.max(tr.WeightTarget, 0.01), 1)
-			end)
-		end
-	end
+	pcall(function() m:PivotTo(spot.CFrame * CFrame.new(0, up + 0.1, 0)) end)
 	holo = m
-	holoSig = holding(ch)
+	-- the pose: Roblox's own idle for a moment, then frozen where it is
+	local an = hum and hum:FindFirstChildOfClass("Animator")
+	if an and hum then
+		local a = Instance.new("Animation")
+		a.AnimationId = if hum.RigType == Enum.HumanoidRigType.R6 then "rbxassetid://180435571" else "rbxassetid://507766388"
+		pcall(function() an:LoadAnimation(a):Play(0) end)
+	end
+	holoBusy = true
+	task.delay(0.35, function()
+		holoBusy = false
+		if holo ~= m or not m.Parent then return end
+		for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true end end
+		for _, d in m:GetDescendants() do
+			if d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("Humanoid") or d:IsA("AnimationController") then d:Destroy() end
+		end
+		if Holo then pcall(function() Holo.apply(m, { build = 1.5, lines = false, glitch = false, flicker = 0, see = 0.84 }) end) end -- (see 0.84: with no scanlines the neon body bloomed white)
+	end)
 end
-local function mirrorStep(dt: number)
+local function mirrorStep(_dt: number)
 	local spot = mirrorSpot
 	local ch = me.Character
-	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
-	if not spot or not spot.Parent or not ch or not root or not hum or hum.Health <= 0 then dropHolo(); return end
+	if not spot or not spot.Parent or not ch or not hum then dropHolo(); holoFor = nil; return end
 	-- (always there while you are in training: the owner, 16 Nov: "can your big hologram just be active always?")
-	if me:GetAttribute("Zone") ~= "training" then dropHolo(); return end
-	if not holo or not holo.Parent or holding(ch) ~= holoSig then buildHolo(ch) end
-	local h = holo
-	local hr = h and h:FindFirstChild("HumanoidRootPart") :: BasePart?
-	if not h or not hr then return end
-	spin += dt * 0.32
-	local up = (hum.HipHeight + root.Size.Y / 2) * HOLO_SCALE
-	hr.CFrame = spot.CFrame * CFrame.new(0, up + 0.1, 0) * CFrame.Angles(0, spin, 0)
+	if me:GetAttribute("Zone") ~= "training" then dropHolo(); holoFor = nil; return end
+	if holoBusy then return end
+	if not holo or not holo.Parent or holoFor ~= ch then buildHolo(ch, spot) end
 end
+-- a new look (the avatar editor, a respawn's appearance arriving late): the statue is made again
+me.CharacterAppearanceLoaded:Connect(function() holoFor = nil end)
 
 -- ---------------------------------------------------------------- the mirror's podium
 -- the hologram stands on a two-step podium: the upper step's front shows your rank's badge, your name, @handle and
@@ -269,6 +291,9 @@ local RS = game:GetService("ReplicatedStorage")
 local SharedM = RS:WaitForChild("Jankfire")
 local Ranks = require(SharedM:WaitForChild("Ranks"))
 local Roster = require(SharedM:WaitForChild("Roster"))
+local WeaponModels = require(SharedM:WaitForChild("WeaponModels"))
+local GunSkins = require(SharedM:WaitForChild("GunSkins"))
+local GunHats = require(SharedM:WaitForChild("GunHats"))
 local MFONT = "rbxasset://fonts/families/Montserrat.json"
 local PALE, GREY, AMBER, DEEP = Color3.fromHex("eceae4"), Color3.fromHex("9aa0a8"), Color3.fromHex("f0a53a"), Color3.fromHex("2e3238")
 local boards: { [string]: BasePart } = {}
@@ -368,6 +393,65 @@ local function askCard()
 		fillStats()
 	end)
 end
+-- the weapon you have out, leaning against the podium's front corner: the same gun as the one in your hand (its skin,
+-- wrap and hat), made again whenever that one is (you switch, or change its look). (built fresh from WeaponModels: a
+-- copy of the hand's model came out invisible, as first person hides it on this screen) the owner, 16 Nov: "could you have
+-- whatever weapon you have equiped laying against it, and maybe it updates as you switch it". holstered: the last stays
+local leaning: Model? = nil
+local leaningFrom: Instance? = nil
+local function dropLeaning()
+	if leaning then leaning:Destroy(); leaning = nil end
+	leaningFrom = nil
+end
+local function along(bcf: CFrame, bsz: Vector3, d: Vector3): number
+	return math.abs(d:Dot(bcf.RightVector)) * bsz.X / 2 + math.abs(d:Dot(bcf.UpVector)) * bsz.Y / 2 + math.abs(d:Dot(bcf.LookVector)) * bsz.Z / 2
+end
+local function leanStep()
+	local pod = boards.MirrorPodium
+	if not pod or not pod.Parent or me:GetAttribute("Zone") ~= "training" then dropLeaning(); return end
+	local ch = me.Character
+	local held = ch and ch:FindFirstChild("HeldWeapon")
+	if not held or held == leaningFrom or not held:IsA("Model") then return end
+	local wid = held:GetAttribute("Weapon")
+	if type(wid) ~= "string" then return end
+	local ok, c = pcall(WeaponModels.build, wid, 4.5, GunSkins.skinFor(me, wid))
+	if not ok or not c then leaningFrom = held; return end
+	pcall(function()
+		local wr, md = WeaponModels.wrapFor(me, wid)
+		if wr then WeaponModels.wrap(c, wr, md) end
+	end)
+	pcall(function() GunHats.attach(c, wid, GunHats.hatFor(me, wid), 4.5, nil, GunHats.THIRD) end)
+	dropLeaning()
+	leaningFrom = held
+	local m = c :: Model
+	m.Name = "PodiumWeapon"
+	for _, d in m:GetDescendants() do
+		if d:IsA("BasePart") then
+			d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.LocalTransparencyModifier = 0
+		elseif d:IsA("JointInstance") or d:IsA("WeldConstraint") or d:IsA("Sound") or d:IsA("ParticleEmitter") or d:IsA("Light")
+			or d:IsA("Beam") or d:IsA("Trail") or d:IsA("BaseScript") then
+			d:Destroy()
+		end
+	end
+	if not m.PrimaryPart then m:Destroy(); return end
+	m.Parent = workspace
+	-- barrel up, leaning back 14 degrees onto the podium's front edge; its top toward the bay's wall, its side to you
+	local cf, half = pod.CFrame, pod.Size / 2
+	local b = (cf.UpVector * math.cos(math.rad(14)) + cf.LookVector * math.sin(math.rad(14))).Unit
+	local vY = cf.RightVector
+	local vZ = -b
+	m:PivotTo(CFrame.fromMatrix(Vector3.zero, vY:Cross(vZ), vY, vZ))
+	local bcf, bsz = m:GetBoundingBox()
+	-- no wider than the gap between the stat strip's end and the wall (1.25), no taller than 5
+	local f = math.min(1, 1.25 / math.max(along(bcf, bsz, vY) * 2, 0.01), 5 / math.max(bsz.Z, 0.01))
+	if f < 0.999 then pcall(function() m:ScaleTo(m:GetScale() * f) end); bcf, bsz = m:GetBoundingBox() end
+	local wide = along(bcf, bsz, vY)
+	local long = along(bcf, bsz, b)
+	local foot = cf.Position + cf.RightVector * (half.X - 0.15 + wide) + cf.UpVector * (-half.Y - 0.03) - cf.LookVector * (half.Z + 0.7)
+	local centre = foot + b * long
+	m:PivotTo(m:GetPivot() + (centre - bcf.Position))
+	leaning = m
+end
 local function boardsStep()
 	local spot = mirrorSpot
 	local ch = me.Character
@@ -431,7 +515,7 @@ local function scan()
 		table.clear(shutters)
 		pit = nil
 		mirrorSpot = nil
-		table.clear(boards); filledAt = -math.huge
+		table.clear(boards); filledAt = -math.huge; dropLeaning()
 		if tg then
 			for _, m in tg:GetDescendants() do
 				if m:GetAttribute("Shutter") == true then
@@ -444,7 +528,7 @@ local function scan()
 					pit = m
 				elseif m.Name == "MirrorSpot" and m:IsA("BasePart") then
 					mirrorSpot = m
-				elseif (m.Name == "MirrorPodiumName" or m.Name == "MirrorPodiumStats") and m:IsA("BasePart") then
+				elseif (m.Name == "MirrorPodiumName" or m.Name == "MirrorPodiumStats" or m.Name == "MirrorPodium") and m:IsA("BasePart") then
 					boards[m.Name] = m
 				end
 			end
@@ -496,5 +580,6 @@ RunService.RenderStepped:Connect(function(dt: number)
 	if root and hum then jumpWatch(root, hum) end
 	mirrorStep(dt)
 	boardsStep()
+	leanStep()
 end)
 scan()
