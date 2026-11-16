@@ -40,6 +40,9 @@ Fight.blocks = function(_by: Fighter?, _t: Fighter, _from: Vector3?): boolean re
 Fight.smokeBlocks = function(_a: Vector3, _c: Vector3): boolean return false end
 -- a reverse card: does t send this hit back to by (Utility.luau)
 Fight.reflects = function(_by: Fighter, _t: Fighter): boolean return false end
+-- sitting a pop quiz, or the seconds after acing one: no damage from anyone else (Utility.luau; the shove still lands,
+-- web room.js hitBlocked is checked in damage(), after the knock)
+Fight.invulnerable = function(_t: Fighter): boolean return false end
 
 local FFA = Weapons.FFA
 local now = os.clock
@@ -287,6 +290,7 @@ function Fight.hurt(t: Fighter, amt: number, by: Fighter?, wid: string, hs: bool
 	if kb then Fight.knock(t, kb, wid) end
 	-- (a shove with no damage still marks who did it, so a fall now is theirs: web hurt tags every hit)
 	if by and amt <= 0 and kb then Rules.tagged(t, by, wid, now()) end
+	if by and by ~= t and Fight.invulnerable(t) then return 0 end
 	local done, info = Rules.damage(t, amt, by, wid, now())
 	if done <= 0 and not info then return 0 end
 	if done > 0 then for _, fn in onHurtHooks do fn(t, done, by, wid) end end

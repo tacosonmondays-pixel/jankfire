@@ -1,0 +1,92 @@
+{
+ "unit": 10.0,
+ "items": {
+  "calc": {
+   "lo": [
+    -0.075,
+    -0.15,
+    -0.022
+   ],
+   "hi": [
+    0.075,
+    0.15,
+    0.016
+   ],
+   "tris": 2456,
+   "pieces": [
+    "body__body",
+    "screen__screen",
+    "keys__key",
+    "keys__accent"
+   ],
+   "grip": [
+    0,
+    -0.06,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  },
+  "laptop": {
+   "lo": [
+    -0.16,
+    -0.012,
+    -0.11
+   ],
+   "hi": [
+    0.16,
+    0.2068,
+    0.11
+   ],
+   "tris": 464,
+   "pieces": [
+    "body__body",
+    "keys__dark",
+    "lid__body",
+    "screen__screen"
+   ],
+   "grip": [
+    -0.17,
+    0,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  },
+  "nvg": {
+   "lo": [
+    -0.075,
+    -0.028,
+    -0.09
+   ],
+   "hi": [
+    0.075,
+    0.05,
+    0.03
+   ],
+   "tris": 1240,
+   "pieces": [
+    "body__body",
+    "tube__body",
+    "lens__lens",
+    "mount__mount"
+   ],
+   "grip": [
+    0,
+    0,
+    0
+   ],
+   "gripRot": [
+    0,
+    0,
+    0
+   ]
+  }
+ }
+}

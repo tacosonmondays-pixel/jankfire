@@ -52,6 +52,11 @@ function TestHook.init(Fight: any, Rules: any, Weapons: any)
 			return require(script.Parent:WaitForChild("Utility")).test(f, if type(b) == "string" then b else nil)
 		elseif op == "smoke" then -- (a, b: two points) does a smoke cloud stand between them
 			return Fight.smokeBlocks(a, b)
+		elseif op == "rev" then -- (a fighter's name, secs) a reverse card on them: Utility.testReverse
+			for _, f in Fight.all do
+				if f.name == a and f.alive then require(script.Parent:WaitForChild("Utility")).testReverse(f, if type(b) == "number" then b else 3); return true end
+			end
+			return false
 		elseif op == "hp" then
 			for _, f in Fight.all do
 				if f.name == a and f.alive and type(b) == "number" then f.hp = b; Fight.syncHp(f); return true end

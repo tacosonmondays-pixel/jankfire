@@ -51,7 +51,7 @@ Items.list = {
 		desc = "Blow a stream of soap bubbles. An enemy one touches is sealed in a giant bubble that floats up and away for 5 s, then pops and drops them. Over the void, that's your kill." },
 	camera = { id = "camera", name = "Instant Camera", color = hex("c9a7ff"), charges = 1, recharge = 42, carry = true, live = false,
 		desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it." },
-	quiz = { id = "quiz", name = "Pop Quiz", color = hex("7fffd4"), charges = 2, recharge = 40, carry = true, live = false,
+	quiz = { id = "quiz", name = "Pop Quiz", color = hex("7fffd4"), charges = 2, recharge = 40, carry = true, live = true, proj = "calc",
 		desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield." },
 	nvg = { id = "nvg", name = "Night Vision Goggles", color = hex("3dff8a"), charges = 2, recharge = 28, carry = true, keep = true, live = false,
 		desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see." },
@@ -77,6 +77,8 @@ Items.PROJ = {
 	smokegren = { speed = 22 * S, up = 3 * S, inherit = 0.35, grav = 22 * S, r = 0.15 * S, bounce = 0.35, fuse = 1.3, life = 5 },
 	-- the rubber duck (WEAPONS.duck :247): the fuse is when the hole opens where it is if it hasn't stuck to anyone
 	duck = { speed = 22 * S, up = 3 * S, inherit = 0.35, grav = 22 * S, r = 0.3 * S, bounce = 0.45, fuse = 1.0, life = 6 },
+	-- the pop quiz's calculator (WEAPONS.calc :263): thrown a bit softer, it hits the first enemy it touches; no fuse
+	calc = { speed = 30 * S, up = 2 * S, inherit = 0.3, grav = 16 * S, r = 0.22 * S, bounce = 0.35, fuse = math.huge, life = 3.5 },
 } :: { [string]: Proj }
 -- the duck's homing, sticking and black hole (WEAPONS.duck, room.js duckFly / makeHole / tickHoles, player.js holeEat):
 -- homes on the nearest enemy within homeR inside a cone (cos homeCos) of its flight, in sight, turning at most turn
@@ -100,6 +102,45 @@ Items.CENTRE = 0.9 * S -- a person's centre over their feet (web room.js center)
 Items.POPPER = { range = 9 * S, cone = 0.6, close = 1.5 * S, kb = 50 * S, kbUp = 12 * S, recoil = 17 * S, lift = 5 * S }
 -- the reverse card (web WEAPONS.reverse :242): for dur s every hit aimed at you goes back to whoever sent it
 Items.REVERSE = { dur = 3 }
+-- the laptop (web ADS :558, server/ads.js): the enemy nearest your aim (their feet + aimUp) within range and the cone,
+-- nothing solid closer than slack short of them; n pop-ups for dur s (sure of them come back once), then safe s before
+-- the next laptop can reach them
+Items.ADS = { range = 45 * S, cone = 0.3, aimUp = 1.1 * S, slack = 0.6 * S, n = 5, dur = 7, sure = 2, safe = 6 }
+-- the night vision goggles (web NVG :490, server/gear.js nvFlash): G puts them on or off (free, at most every toggle
+-- s; the server takes one every 0.7 of that), a flash (a charge) blinds everyone within range in the cone of your aim
+-- (any angle within close) in clear sight (walls, smoke, domes stop it) for lerp(dur, k) s, k = how straight they
+-- look at you, x nvMul if they wear goggles, x (1 - 0.3 dist / range)
+Items.NVG = { range = 34 * S, cone = 0.62, close = 2 * S, dur = { 0.6, 3.2 }, nvMul = 2, toggle = 0.35 }
+-- the pop quiz (web QUIZ :485, server/gear.js): time s to answer (+ slack), right = invuln s nothing hurts you, +heal
+-- up to healMax, x fast run speed for fastT s; wrong or slow = dead. safe s before another quiz; held within hold of
+-- the spot it hit you. bots (the dummies) get it right this often, after botT s
+Items.QUIZ = { time = 6, slack = 0.15, invuln = 2.5, heal = 25, healMax = 125, fast = 1.25, fastT = 4, safe = 10, hold = 0.8 * S, bot = 0.7, botT = { 1.3, 4.2 } }
+
+-- a pop quiz question (web makeQuestion, server/gear.js): one of ten kinds, small numbers, four options (the answer +
+-- plausible wrongs), shuffled. returns the question, the options and the index of the right one (never sent out)
+function Items.question(rnd: Random): (string, { number }, number)
+	local function ri(a: number, b: number): number return rnd:NextInteger(a, b) end
+	local kind = ri(0, 9)
+	local q, a
+	if kind <= 1 then local x, y = ri(12, 79), ri(11, 49); q, a = ("%d + %d"):format(x, y), x + y
+	elseif kind == 2 then local x = ri(40, 99); local y = ri(11, x - 5); q, a = ("%d − %d"):format(x, y), x - y
+	elseif kind <= 4 then local x, y = ri(3, 12), ri(3, 12); q, a = ("%d × %d"):format(x, y), x * y
+	elseif kind == 5 then local y, a0 = ri(2, 9), ri(3, 12); q, a = ("%d ÷ %d"):format(a0 * y, y), a0
+	elseif kind == 6 then local x, y, z = ri(2, 9), ri(2, 9), ri(2, 20); q, a = ("%d × %d + %d"):format(x, y, z), x * y + z
+	elseif kind == 7 then local x = ri(2, 13); q, a = ("%d²"):format(x), x * x
+	elseif kind == 8 then local x = ri(10, 60) * 2; q, a = ("half of %d"):format(x), x / 2
+	else local x, y, z = ri(20, 60), ri(5, 19), ri(2, 15); q, a = ("%d − %d + %d"):format(x, y, z), x - y + z end
+	-- wrong answers that look right: off by a bit, off by ten, digits swapped
+	local opts = { a }
+	local tries = { a + 1, a - 1, a + 2, a - 2, a + 10, a - 10, tonumber(string.reverse(tostring(a))) or a, a + ri(3, 9), a - ri(3, 9) }
+	while #opts < 4 do
+		local v
+		if #tries > 0 then v = table.remove(tries, ri(1, #tries)) else v = a + ri(-20, 20) end
+		if v and v >= 0 and v == math.floor(v) and not table.find(opts, v) then table.insert(opts, v) end
+	end
+	for i = #opts, 2, -1 do local j = ri(1, i); opts[i], opts[j] = opts[j], opts[i] end
+	return q, opts, table.find(opts, a) :: number
+end
 Items.SHAKE = 25 * S -- the screen shakes 1 - dist / this on a blast (web main.js:1932)
 
 -- ------------------------------------------------------------------ charges (web room.js itemCharges)

@@ -21,7 +21,7 @@ from mathutils import Vector, Matrix
 from gunkit import Gun, P
 
 UNIT = 10.0  # the upload is 10 x the item's size: one stud in the upload = 0.1 m (no tiny MeshParts)
-ITEMS = ['frag', 'smoke', 'medkit', 'bubble', 'popper', 'reverse', 'duck']
+ITEMS = ['frag', 'smoke', 'medkit', 'bubble', 'popper', 'reverse', 'duck', 'calc', 'laptop', 'nvg']
 
 # calm palette (memory less-colourful-look): olive and charcoal, a mid grey, an off-white, one muted red, one cyan
 OLIVE, OLIVE_D = '5d6741', '4a5334'
@@ -177,7 +177,73 @@ def duck():
     return g
 
 
-BUILD = {'duck': duck, 'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'popper': popper, 'reverse': reverse}
+LCD, KEYC, SCREEN, GREEN = '9fb59a', '6a7079', '2e4250', '5fbf86'
+
+
+def calc():
+    g = Gun('x_calc')
+    g.slot('body', CHAR); g.slot('screen', LCD); g.slot('key', KEYC); g.slot('accent', PALE)
+    # a pocket calculator at game size (0.15 x 0.3 m, web x_calc): a rounded charcoal slab, a pale LCD near the top
+    # (named "screen": the game writes the question on it), a grid of soft keys, one pale key. no printing on it
+    g.box('body__body', (-0.075, 0.075), (-0.15, 0.15), (-0.016, 0.016), bev=0.012)
+    g.box('screen__screen', (-0.058, 0.058), (0.072, 0.128), (-0.0205, -0.0155), bev=0.003)
+    for row in range(5):
+        for col in range(4):
+            x = -0.045 + col * 0.03
+            y = 0.035 - row * 0.034
+            slot = 'accent' if (row, col) == (4, 3) else 'key'
+            g.box('keys__' + slot, (x - 0.011, x + 0.011), (y - 0.012, y + 0.012), (-0.022, -0.015), bev=0.004)
+    g.spots = {'grip': [0, -0.06, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def laptop():
+    g = Gun('x_laptop')
+    g.slot('body', CHAR_L); g.slot('dark', CHAR); g.slot('screen', SCREEN)
+    # a small laptop held open toward whoever it's for: the deck flat, the lid up at its back edge with the screen
+    # facing forward (-z), away from you, a little past upright
+    g.box('body__body', (-0.16, 0.16), (-0.012, 0.012), (-0.11, 0.11), bev=0.006)
+    g.box('keys__dark', (-0.14, 0.14), (0.011, 0.014), (-0.08, 0.05), bev=0.002)
+    import math as _m
+    from mathutils import Matrix as _M
+    lid = Gun('tmp')
+    lid.slot('body', CHAR_L); lid.slot('screen', SCREEN)
+    a = -0.25  # the lid leans this far past upright (radians), toward the back
+    # build the lid upright at the origin, then turn it and move it to the deck's back edge
+    def put_lid(piece, x, y, z, bev):
+        bm_before = len(g.pieces)
+        g.box(piece, x, y, z, bev=bev)
+    # (the lid as boxes in place: upright panel from the hinge up, its screen on the front face)
+    import bmesh as _bm
+    for piece, x, y, z, bev in (('lid__body', (-0.16, 0.16), (0.0, 0.215), (0.098, 0.11), 0.005),
+                                 ('screen__screen', (-0.145, 0.145), (0.012, 0.2), (0.0955, 0.0985), 0.002)):
+        g.box(piece, x, y, z, bev=bev)
+    # lean the lid and its screen back about the hinge (the deck's back edge, y 0, z 0.11)
+    from gunkit import P as _P
+    hinge = _P(0, 0.0, 0.11)
+    rot = _M.Translation(hinge) @ _M.Rotation(a, 4, 'X') @ _M.Translation(-hinge)
+    for key in (('lid', 'body'), ('screen', 'screen')):
+        bm = g.pieces[key]
+        for v in bm.verts: v.co = rot @ v.co
+    g.spots = {'grip': [-0.17, 0, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+def nvg():
+    g = Gun('x_nvg')
+    g.slot('body', CHAR); g.slot('mount', CHAR_L); g.slot('lens', GREEN, 'n')
+    # night vision goggles as worn (the game sets them on a head): a housing across the eyes, two lens tubes forward,
+    # a mount block on top where they hinge up
+    g.box('body__body', (-0.075, 0.075), (-0.028, 0.028), (-0.03, 0.03), bev=0.012)
+    for x in (-0.038, 0.038):
+        g.cyl('tube__body', 0.024, (x, 0, -0.03), (x, 0, -0.085), sides=24, bev=0.004)
+        g.cyl('lens__lens', 0.019, (x, 0, -0.084), (x, 0, -0.09), sides=24, bev=0.002)
+    g.box('mount__mount', (-0.025, 0.025), (0.026, 0.05), (-0.02, 0.025), bev=0.006)
+    g.spots = {'grip': [0, 0, 0], 'gripRot': [0, 0, 0]}
+    return g
+
+
+BUILD = {'calc': calc, 'laptop': laptop, 'nvg': nvg, 'duck': duck, 'frag': frag, 'smoke': smoke, 'medkit': medkit, 'bubble': bubble, 'popper': popper, 'reverse': reverse}
 
 
 def look(slot):

@@ -182,7 +182,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 		elseif fwd and math.abs(look.Y) > 0.3 then up = look.Y * spd end
 		if up then st.vy += (up - st.vy) * math.min(1, dt * 5) end
 	else
-		st.speedMul = Body.speedMul -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming)
+		st.speedMul = Body.speedMul * Body.boost -- (the gun in your hands: the SMG is light, the Belt Sander isn't; slower while aiming)
 		event = Movement.step(st, inp, dt, workspace.Gravity, chest.X, chest.Y, chest.Z)
 	end
 	if Body.onStep then Body.onStep(st, chest, dt) end -- (a black hole eating your speed: Utility.client.luau)
@@ -218,7 +218,7 @@ RunService.PreSimulation:Connect(function(dt: number)
 	end
 	lv.PlaneVelocity = Vector2.new(st.vx, st.vz)
 	if math.abs(st.vy - v.Y) > 1e-3 then root.AssemblyLinearVelocity = Vector3.new(st.vx, st.vy, st.vz) end
-	hum.WalkSpeed = Config.gSpeed * (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * Body.speedMul
+	hum.WalkSpeed = Config.gSpeed * (if st.sprinting then Config.sprintMul elseif st.crouching then Config.crouchMul else 1) * Body.speedMul * Body.boost
 	-- the camera drops for a crouch / slide, the body sinks a bit into a slide (jank)
 	eye += (Movement.eyeTarget(st) - eye) * math.min(1, dt * 14)
 	hum.CameraOffset = Vector3.new(0, eye - Config.standEye, 0)

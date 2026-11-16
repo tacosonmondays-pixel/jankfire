@@ -30,11 +30,19 @@ local Utility = {}
 local Fight: any = nil
 
 -- ------------------------------------------------------------------ who carries what
-type St = { item: string, nextItem: string?, ic: Items.Ic?, save: { [string]: Items.Ic }, useT: number, heal: number, reverseUntil: number }
+type Quiz = { by: Fighter, ok: number, untilT: number, at: Vector3, botAt: number?, botOk: boolean? }
+type St = { item: string, nextItem: string?, ic: Items.Ic?, save: { [string]: Items.Ic }, useT: number, heal: number, reverseUntil: number,
+	-- the gadgets: goggles on and when they last flipped; a pop quiz being sat, when the next one may come, the gold
+	-- star's invulnerability; the laptop's ads and when the next laptop can reach you
+	nvOn: boolean, nvT: number, quiz: Quiz?, quizSafe: number, invulnUntil: number, adsUntil: number, adsSafe: number }
 local st: { [Fighter]: St } = {}
 local function stateOf(f: Fighter): St
 	local s = st[f]
-	if not s then s = { item = Items.DEFAULT, save = {}, useT = -math.huge, heal = 0, reverseUntil = -math.huge }; st[f] = s end
+	if not s then
+		s = { item = Items.DEFAULT, save = {}, useT = -math.huge, heal = 0, reverseUntil = -math.huge,
+			nvOn = false, nvT = -math.huge, quiz = nil, quizSafe = -math.huge, invulnUntil = -math.huge, adsUntil = -math.huge, adsSafe = -math.huge }
+		st[f] = s
+	end
 	return s
 end
 -- your charges right now (a gadget brings its own, kept across deaths and swaps)
@@ -363,6 +371,219 @@ local function reflects(by: Fighter, t: Fighter): boolean
 	return true
 end
 
+-- ------------------------------------------------------------------ the laptop (server/ads.js)
+-- the enemy nearest where you aim: alive, one you can hurt, not just done reading ads, in range and the cone, nothing
+-- solid closer than slack short of them
+local function adsTarget(f: Fighter, o: Vector3, d: Vector3): Fighter?
+	local A = Items.ADS
+	local t0 = now()
+	local best: Fighter? = nil
+	local bd = math.cos(A.cone)
+	for _, t in Fight.all do
+		if t == f or not t.alive or not Fight.allow(f, t) then continue end
+		local s = st[t]
+		if s and t0 < s.adsSafe then continue end
+		local feet = Fight.feet(t)
+		if not feet then continue end
+		local to = feet + Vector3.new(0, A.aimUp, 0) - o
+		local dist = to.Magnitude
+		if dist > A.range or dist < 0.03 then continue end
+		local dot = to:Dot(d) / dist
+		if dot < bd then continue end
+		local wall = Fight.castMap(o, to / dist, dist)
+		if wall and (wall.Position - o).Magnitude < dist - A.slack then continue end
+		best, bd = t, dot
+	end
+	return best
+end
+local function laptopUse(f: Fighter, o: Vector3, d: Vector3, c: Items.Ic)
+	local A = Items.ADS
+	local t = adsTarget(f, o, d)
+	local p = f.ref :: Player
+	if not t then
+		-- nobody to advertise to: the charge comes back
+		c.n = math.min(L.laptop.charges, c.n + 1)
+		if c.n >= L.laptop.charges then c.next = 0 end
+		publish(f)
+		ItemFx:FireClient(p, { k = "ads!" })
+		return
+	end
+	local by = f
+	local ts = stateOf(t)
+	if now() < ts.reverseUntil then -- (a reverse card: the ads come home)
+		ItemFx:FireAllClients({ k = "reflect", o = uidOf(t), by = uidOf(f), model = Fight.model(t) })
+		by, t = t, f
+		ts = stateOf(t)
+	end
+	ts.adsUntil = now() + A.dur
+	ts.adsSafe = ts.adsUntil + A.safe
+	Rules.tagged(t, by, "laptop", now()) -- (walked off a ledge reading about bread: the laptop's kill)
+	if t.kind == "player" then
+		ItemFx:FireClient(t.ref :: Player, { k = "ads", by = uidOf(by), n = A.n, dur = A.dur, sure = A.sure })
+	end
+	ItemFx:FireAllClients({ k = "adsfx", o = p.UserId, model = Fight.model(f), to = uidOf(t), tm = Fight.model(t), dur = A.dur })
+end
+
+-- ------------------------------------------------------------------ the goggles (server/gear.js onNv / nvFlash)
+local function setNv(f: Fighter, on: boolean)
+	local s = stateOf(f)
+	s.nvOn = on
+	if f.kind == "player" then (f.ref :: Player):SetAttribute("NV", if on then true else nil) end
+end
+local function onNv(f: Fighter, on: unknown)
+	local s = stateOf(f)
+	local t = now()
+	if not f.alive or s.item ~= "nvg" or t - s.nvT < Items.NVG.toggle * 0.7 then return end
+	s.nvT = t
+	setNv(f, on == true)
+end
+-- where someone is looking, as near as the server knows it (their body's facing; the camera's pitch isn't sent)
+local function lookOf(t: Fighter): Vector3
+	local r = Fight.root(t)
+	return if r then r.CFrame.LookVector else Vector3.zAxis
+end
+local function nvFlash(f: Fighter, e: Vector3, d: Vector3, reflected: boolean?)
+	local N = Items.NVG
+	if not reflected then ItemFx:FireAllClients({ k = "nvflash", o = uidOf(f), model = Fight.model(f), p = e, d = d }) end
+	local cc = math.cos(N.cone)
+	for _, t in table.clone(Fight.all) do
+		if t == f or not t.alive or not Fight.allow(f, t) then continue end
+		local h = Fight.eye(t)
+		if not h then continue end
+		local v = h - e
+		local dist = v.Magnitude
+		if dist > N.range or dist < 0.03 then continue end
+		local u = v / dist
+		if u:Dot(d) < cc and dist > N.close then continue end
+		if Fight.castMap(e, u, math.max(0, dist - 0.9)) or Utility.smokeBlocks(e, h) then continue end
+		local tf, ff = Fight.feet(t), Fight.feet(f)
+		if tf and ff and #bubbles > 0 and Items.blocks(bubbles, tf, ff, nil) then continue end
+		local ts = stateOf(t)
+		if not reflected and now() < ts.reverseUntil then -- (a reverse card flashes it back)
+			ItemFx:FireAllClients({ k = "reflect", o = uidOf(t), by = uidOf(f), model = Fight.model(t) })
+			nvFlash(t, h, -u, true)
+			continue
+		end
+		local face = -lookOf(t):Dot(u) -- (1 = staring right at you)
+		local k = math.clamp((face + 0.2) / 1.1, 0, 1)
+		local secs = (N.dur[1] + (N.dur[2] - N.dur[1]) * k) * (if ts.nvOn then N.nvMul else 1) * (1 - 0.3 * dist / N.range)
+		Rules.tagged(t, f, "nvg", now())
+		if t.kind == "player" then
+			ItemFx:FireClient(t.ref :: Player, { k = "flashed", by = uidOf(f), s = secs, p = e, nv = ts.nvOn })
+		end
+	end
+end
+
+-- ------------------------------------------------------------------ the pop quiz (server/gear.js)
+local rnd = Random.new()
+local function startQuiz(t: Fighter, by: Fighter, reflected: boolean?): boolean
+	local Q = Items.QUIZ
+	local n = now()
+	local s = stateOf(t)
+	if not t.alive or s.quiz or n < s.quizSafe then return false end
+	if by ~= t and t.kind == "player" and n - t.spawnT < 1.2 then return false end -- (spawn protection)
+	if not Fight.allow(by, t) then return false end
+	local tf, bf = Fight.feet(t), Fight.feet(by)
+	if tf and bf and #bubbles > 0 and by ~= t and Items.blocks(bubbles, tf, bf, nil) then
+		ItemFx:FireAllClients({ k = "bubhit", p = tf + Vector3.new(0, Items.CENTRE, 0) })
+		return false
+	end
+	if not reflected and by ~= t and by.alive and n < s.reverseUntil then -- (a reverse card: the thrower sits the exam)
+		ItemFx:FireAllClients({ k = "reflect", o = uidOf(t), by = uidOf(by), model = Fight.model(t) })
+		return startQuiz(by, t, true)
+	end
+	local q, opts, ok = Items.question(rnd)
+	local r = Fight.root(t)
+	local quiz: Quiz = { by = by, ok = ok, untilT = n + Q.time, at = if r then r.Position else Vector3.zero }
+	if t.kind ~= "player" then
+		quiz.botAt = n + Q.botT[1] + (Q.botT[2] - Q.botT[1]) * rnd:NextNumber()
+		quiz.botOk = rnd:NextNumber() < Q.bot
+	end
+	s.quiz = quiz
+	-- no shooting, swinging or guarding while you sit it (the server's own stagger clock, Rules.fire / swing / parry)
+	t.staggerUntil = math.max(t.staggerUntil, quiz.untilT + Q.slack)
+	Rules.tagged(t, by, "quiz", n)
+	if t.kind == "player" then (t.ref :: Player):SetAttribute("Quiz", true) end
+	ItemFx:FireAllClients({ k = "quiz", o = uidOf(t), model = Fight.model(t), by = uidOf(by), q = q, a = opts, left = Q.time, at = quiz.at })
+	return true
+end
+-- i = their pick (0-3, -1 = out of time). right: a gold star, HP and a few seconds nothing hurts them. wrong: dead
+local function endQuiz(t: Fighter, i: number, gone: boolean?)
+	local Q = Items.QUIZ
+	local s = stateOf(t)
+	local q = s.quiz
+	if not q then return end
+	s.quiz = nil
+	s.quizSafe = now() + Q.safe
+	t.staggerUntil = math.min(t.staggerUntil, now())
+	if t.kind == "player" then (t.ref :: Player):SetAttribute("Quiz", nil) end
+	local right = i == q.ok - 1
+	ItemFx:FireAllClients({ k = "quizx", o = uidOf(t), model = Fight.model(t), i = i, c = q.ok - 1, ok = right, gone = gone })
+	if gone then return end
+	if right then
+		s.invulnUntil = now() + Q.invuln
+		t.hp = math.min(math.max(Q.healMax, 100), t.hp + Q.heal)
+		Fight.syncHp(t)
+		if t.kind == "player" then (t.ref :: Player):SetAttribute("FastUntil", stamp(now() + Q.fastT)) end
+	else
+		local by = alive(q.by)
+		Fight.died(Rules.kill(t, if by and by ~= t then by else nil, "quiz", now()), Vector3.new(0, 20, 0))
+	end
+end
+local function tickQuizzes()
+	local n = now()
+	local Q = Items.QUIZ
+	for t, s in st do
+		local q = s.quiz
+		if not q then continue end
+		if not t.alive then endQuiz(t, -1, true); continue end
+		if q.botAt and n >= q.botAt then endQuiz(t, if q.botOk then q.ok - 1 else (q.ok - 1 + rnd:NextInteger(1, 3)) % 4); continue end
+		if n >= q.untilT + Q.slack then endQuiz(t, -1); continue end
+		-- you can't walk out of an exam: held within hold of where the calculator got you
+		local r = Fight.root(t)
+		if r and (r.Position - q.at).Magnitude > Q.hold + 1.5 then
+			if t.kind == "player" then (t.ref :: Player):SetAttribute("TeleportT", os.clock()) end
+			r.AssemblyLinearVelocity = Vector3.zero
+			r.CFrame = r.CFrame.Rotation + q.at
+		end
+	end
+end
+local function onAnswer(f: Fighter, i: unknown)
+	local s = st[f]
+	if not s or not s.quiz or type(i) ~= "number" or i ~= math.floor(i) or i < 0 or i > 3 then return end
+	endQuiz(f, i)
+end
+-- the calculator in flight: the first enemy it touches sits the quiz (it can't hit its thrower)
+local function calcFly(pr: Pr, owner: Fighter?): boolean
+	if not owner then return false end
+	local reach = pr.r
+	local from = pr.lp or pr.p
+	pr.lp = pr.p
+	local seg = pr.p - from
+	for _, t in Fight.all do
+		if t == owner or not t.alive or not Fight.allow(owner, t) then continue end
+		local ft = Fight.feet(t)
+		if not ft then continue end
+		local bl, bh, hl, hh = Hitbox.boxes(ft, 1, reach)
+		for _, box in { { bl, bh }, { hl, hh } } do
+			local lo, hi = box[1], box[2]
+			local inside = pr.p.X > lo.X and pr.p.Y > lo.Y and pr.p.Z > lo.Z and pr.p.X < hi.X and pr.p.Y < hi.Y and pr.p.Z < hi.Z
+			local swept = false
+			if not inside and seg.Magnitude > 1e-3 then
+				local dd = Hitbox.rayBox(from, seg.Unit, lo, hi)
+				swept = dd ~= nil and dd <= seg.Magnitude
+			end
+			if inside or swept then
+				dropProj(pr, pr.p)
+				ItemFx:FireAllClients({ k = "calchit", p = pr.p, model = Fight.model(t) })
+				startQuiz(t, owner)
+				return true
+			end
+		end
+	end
+	return false
+end
+
 -- every damage goes through Fight.hurt, and Fight.hurt asks this first (web hurt -> bubbleBlocks): a hit on someone in
 -- a dome from anyone outside it (or, with nobody behind it, from a point outside it) is dropped, shove and all
 local function blocked(by: Fighter?, t: Fighter, from: Vector3?): boolean
@@ -412,14 +633,19 @@ end
 local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if not spendMsg(p) then return end
 	local f = Fight.byPlayer[p]
-	if not f or type(i) ~= "string" or not table.find(Items.ORDER, i) then return end
+	if not f then return end
+	if i == "nv" then onNv(f, o); return end -- (G with the goggles: on / off, free)
+	if i == "ans" then onAnswer(f, o); return end -- (a pop quiz answer, 0-3)
+	if type(i) ~= "string" or not table.find(Items.ORDER, i) then return end
 	local s = stateOf(f)
 	local c = charges(s)
 	local t = now()
 	local it = L[i]
 	-- not alive, in the hub (weapons-free), not your item, not on roblox yet, out of charges, too soon: the real count
 	-- goes back so the HUD can't drift
-	if not f.alive or p:GetAttribute("Zone") == "hub" or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < Items.SPAM then
+	-- (sitting a quiz: no items; the goggles' flash only with them on)
+	if not f.alive or p:GetAttribute("Zone") == "hub" or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < Items.SPAM
+		or s.quiz or (i == "nvg" and not s.nvOn) then
 		publish(f)
 		return
 	end
@@ -446,6 +672,10 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 		popperUse(f, from, dir)
 	elseif i == "reverse" then
 		reverseUse(f)
+	elseif i == "laptop" then
+		laptopUse(f, from, dir, c)
+	elseif i == "nvg" then
+		nvFlash(f, from, dir)
 	end
 end
 
@@ -459,6 +689,7 @@ local function tick(dt: number)
 	for _, pr in table.clone(projs) do
 		local age = t - pr.born
 		if pr.k == "duck" and duckFly(pr, alive(pr.owner), dt) then continue end
+		if pr.k == "calc" and calcFly(pr, alive(pr.owner)) then continue end
 		local hit = Items.step(pr, dt, cast)
 		if hit > 4 and t - pr.syncT > 0.05 then
 			pr.syncT = t
@@ -482,6 +713,7 @@ local function tick(dt: number)
 	end
 	for i = #clouds, 1, -1 do if t >= clouds[i].untilT then table.remove(clouds, i) end end
 	tickHoles(dt)
+	tickQuizzes()
 	-- the medkit: 26 HP a second until the 45 is spent, never past 100 (web tickItems: it doesn't eat overheal, and
 	-- the heal keeps draining while you're full)
 	for f, s in st do
@@ -516,6 +748,10 @@ function Utility.init(fight: any)
 	Fight.blocks = blocked
 	Fight.smokeBlocks = Utility.smokeBlocks
 	Fight.reflects = reflects
+	Fight.invulnerable = function(t: Fighter): boolean
+		local s = st[t]
+		return s ~= nil and (s.quiz ~= nil or now() < s.invulnUntil)
+	end
 	-- a new life: the item you picked meanwhile, full charges (a gadget keeps its own), no heal left over
 	fight.onSpawn(function(f: Fighter)
 		local s = stateOf(f)
@@ -524,12 +760,18 @@ function Utility.init(fight: any)
 		s.heal = 0
 		s.reverseUntil = -math.huge
 		if f.kind == "player" then (f.ref :: Player):SetAttribute("ReverseUntil", nil) end
+		-- (web gearReset: goggles off, no exam, no gold star, no ads)
+		if s.quiz then endQuiz(f, -1, true) end
+		setNv(f, false)
+		s.invulnUntil, s.adsUntil = -math.huge, -math.huge
 		publish(f)
 	end)
 	fight.onKill(function(info: any)
 		local s = st[info.v]
 		if s then
 			s.heal = 0
+			if s.quiz then endQuiz(info.v, -1, true) end
+			setNv(info.v, false)
 			if s.reverseUntil > now() then -- (the card ends on death)
 				s.reverseUntil = -math.huge
 				if info.v.kind == "player" then (info.v.ref :: Player):SetAttribute("ReverseUntil", nil) end
@@ -553,13 +795,20 @@ function Utility.init(fight: any)
 	end)
 end
 
+-- Studio play tests (TestHook "rev"): a reverse card on any fighter (a dummy) for secs, so a solo test can send a
+-- laptop's ads, a goggles flash or a pop quiz back onto the player and see the victim's side
+function Utility.testReverse(f: Fighter, secs: number)
+	stateOf(f).reverseUntil = now() + secs
+end
+
 -- Studio play tests (TestHook): give a fighter an item this life with full charges, read the server's numbers
 function Utility.test(f: Fighter, id: string?): any
 	local s = stateOf(f)
 	if id and L[id] then s.item, s.nextItem, s.ic = id, nil, Items.fresh(id); publish(f) end
 	local c = charges(s)
 	return { item = s.item, n = c.n, next = if c.next > 0 then c.next - now() else 0, heal = s.heal, hp = f.hp,
-		reverse = math.max(0, s.reverseUntil - now()),
+		reverse = math.max(0, s.reverseUntil - now()), nv = s.nvOn, quiz = s.quiz ~= nil, invuln = math.max(0, s.invulnUntil - now()),
+		ads = math.max(0, s.adsUntil - now()),
 		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes, cloud = if #clouds > 0 then clouds[#clouds].p else nil }
 end
 

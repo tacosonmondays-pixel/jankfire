@@ -506,6 +506,9 @@ local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Thr
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or menuOpen() or inHub() then return end
 	local slot = KEYS[io.KeyCode]
+	-- (a key that's closing a pop-up ad or answering a pop quiz right now isn't a weapon key: Utility.client.luau)
+	local busy = me:GetAttribute("BusyKeys")
+	if slot and type(busy) == "string" and string.find(busy, tostring(slot), 1, true) then return end
 	local want = if slot then lo()[slot] else nil
 	if toolOut() then -- 1/2/3 put the Shredder away and take that weapon; the rest is the Shredder's
 		if want and want ~= "shredder" then

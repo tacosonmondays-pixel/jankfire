@@ -105,3 +105,19 @@ drift. Blast hits, heals and blocks are never reported by a client.
   not reflected: web rule), crushes the one it's on (1) and hurts anyone within 2 m (3), straight to HP (`Fight.hurt`'s
   new `plain`, like the web `damage()`); after 3 s it pops (9 m, 45 x f, the thrower: shove only). The momentum eater
   runs in your own movement step (`Body.onStep`, called by `Move.client.luau`); a rope within 6 m of the middle snaps.
+
+## Batch 3a: Pop Quiz (live since place version 318), Laptop and Night Vision Goggles (built, testing)
+
+![the batch 3a models](items/batch3a-models.png)
+
+| what | web game | measured | |
+| --- | --- | --- | --- |
+| the calculator | thrown like a frag (30 m/s + 2 up + 0.3 x your speed), hits the first enemy it touches | thrown at 0.05 s, hit the Stand at 0.22 s | ok |
+| a reverse card sends the exam back | the thrower sits it | the Stand held a card (test hook `"rev"`): the quiz came to me ("reflect", then "quiz" on me) | ok |
+| the exam | a question, four answers, 6 s; the right one never leaves the server until it's over | "84 − 74", answers 9 / 1 / 17 / 10 on keys 1-4, the clock running down; the right one (10) shown green only at the end | ok |
+| slow | dead, the thrower's kill | 6.38 s after it started: "PENS DOWN. TOO SLOW.", dead, the feed "Stand · Pop Quiz" (the card holder threw it back) | ok |
+| right | a gold star: +25 HP up to 125, nothing hurts you for 2.5 s, x1.25 run speed for 4 s | answered "24 + 38" right after 0.9 s: HP **100 -> 125**, the speed boost on for 4 s | ok |
+| no weapons while sitting it | | the server's own stagger clock runs to the end of the exam (no shots, swings or guards); keys 1-4 answer and don't switch weapons | ok |
+
+![a pop quiz timing out](items/quiz-timeout.jpg)
+

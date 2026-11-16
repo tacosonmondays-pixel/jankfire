@@ -179,16 +179,16 @@ add({ id = "wand", slot = "utility", name = "Bubble Wand", color = "9fe8ff", liv
 add({ id = "camera", slot = "utility", name = "Instant Camera", color = "c9a7ff", live = false, gimmick = "",
 	desc = "G snaps a photo. G again prints it as a frame you can walk into: it puts you back where you took it. Anyone can use it.",
 	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "42 s", 1, "FRAME", "20 s", 0.6, "TELEFRAG", "yes", 1) })
-add({ id = "quiz", slot = "utility", name = "Pop Quiz", color = "7fffd4", live = false, gimmick = "",
+add({ id = "quiz", slot = "utility", name = "Pop Quiz", color = "7fffd4", live = true, gimmick = "a thrown calculator. whoever it hits gets 6 s to answer a sum: wrong or slow and they die; right and they get a gold star.",
 	desc = "Throw a calculator. Whoever it hits gets a maths question. Wrong or slow: dead. Right: gold star, HP and a shield.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "40 s each", 0.95, "ANSWER", "6 s", 0.4, "WRONG", "dead", 1) })
-add({ id = "nvg", slot = "utility", name = "Night Vision Goggles", color = "3dff8a", live = false, gimmick = "",
+add({ id = "nvg", slot = "utility", name = "Night Vision Goggles", color = "3dff8a", live = false, gimmick = "G flips them on: green view, outlines on everyone you can see. N flashes everyone looking your way blind.",
 	desc = "G puts them on: the dark goes green, people glow. Middle click flashes everyone you can see.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "28 s each", 0.67, "FLASH", "34 m", 0.7, "BLIND", "up to 3.2 s", 0.5) })
 add({ id = "radar", slot = "utility", name = "Speed Trap", color = "2e7bff", live = false, gimmick = "",
 	desc = "Hold G to point a radar gun. Over 100 km/h: 3 s to slow down or jail. Over 200: jail on the spot.",
 	stats = st("CHARGES", "2 · kept", 1, "RECHARGE", "32 s each", 0.76, "LIMIT", "100 km/h", 0.5, "JAIL", "3.5 s", 0.35) })
-add({ id = "laptop", slot = "utility", name = "Laptop", color = "4fd8ff", live = false, gimmick = "",
+add({ id = "laptop", slot = "utility", name = "Laptop", color = "4fd8ff", live = false, gimmick = "open it at someone: five pop-up ads cover their screen for 7 s. they close them one key at a time.",
 	desc = "Open it at someone. Their screen fills with pop-up ads for 7 s. They can close them. There are a lot.",
 	stats = st("CHARGES", "1 · kept", 0.5, "RECHARGE", "42 s", 1, "ADS", "5 for 7 s", 0.5, "RANGE", "45 m", 0.6) })
 

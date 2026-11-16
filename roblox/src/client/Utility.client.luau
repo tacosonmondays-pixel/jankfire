@@ -82,6 +82,20 @@ local function standIn(name: string): Model
 		root = part(Enum.PartType.Ball, Vector3.new(1.4, 1.2, 1.7), Color3.fromHex("d8b440"))
 		local head = part(Enum.PartType.Ball, Vector3.one * 0.9, Color3.fromHex("d8b440"))
 		head.CFrame = CFrame.new(0, 0.7, -0.45); head.Parent = m
+	elseif name == "x_calc" then
+		root = part(Enum.PartType.Block, Vector3.new(0.45, 0.9, 0.12), Color3.fromHex("3b3f48"))
+		local scr = part(Enum.PartType.Block, Vector3.new(0.36, 0.2, 0.02), Color3.fromHex("9fb59a")); scr.Name = "screen"
+		scr.CFrame = CFrame.new(0, 0.28, -0.065); scr.Parent = m
+	elseif name == "x_laptop" then
+		root = part(Enum.PartType.Block, Vector3.new(0.9, 0.06, 0.6), Color3.fromHex("565b65"))
+		local lid = part(Enum.PartType.Block, Vector3.new(0.9, 0.6, 0.05), Color3.fromHex("3b3f48")); lid.Name = "lid"
+		lid.CFrame = CFrame.new(0, 0.3, 0.3) * CFrame.Angles(-0.25, 0, 0); lid.Parent = m
+	elseif name == "x_nvg" then
+		root = part(Enum.PartType.Block, Vector3.new(0.6, 0.22, 0.2), Color3.fromHex("3b3f48"))
+		for _, x in { -0.14, 0.14 } do
+			local l = part(Enum.PartType.Cylinder, Vector3.new(0.2, 0.16, 0.16), Color3.fromHex("4fbf7a"), Enum.Material.Neon); l.Name = "lens"
+			l.CFrame = CFrame.new(x, 0, -0.18) * CFrame.Angles(0, math.pi / 2, 0); l.Parent = m
+		end
 	elseif name == "x_reverse" then
 		root = part(Enum.PartType.Block, Vector3.new(0.21, 0.32, 0.02), Color3.fromHex("a23a34"))
 	else
@@ -96,7 +110,8 @@ local function standIn(name: string): Model
 	m.WorldPivot = CFrame.identity
 	return m
 end
-local MODEL = { frag = "x_frag", smokegren = "x_smoke", smoke = "x_smoke", medkit = "x_medkit", bubble = "x_bubble", popper = "x_popper", reverse = "x_reverse", duck = "x_duck" }
+local MODEL = { frag = "x_frag", smokegren = "x_smoke", smoke = "x_smoke", medkit = "x_medkit", bubble = "x_bubble", popper = "x_popper", reverse = "x_reverse", duck = "x_duck",
+	quiz = "x_calc", calc = "x_calc", laptop = "x_laptop", nvg = "x_nvg" }
 local function itemModel(id: string): Model
 	local name = MODEL[id] or ("x_" .. id)
 	local t = templates and templates:FindFirstChild(name)
@@ -151,7 +166,8 @@ local function hudStep()
 	local _, _, root = myChar()
 	plate.Visible = it ~= nil and it.live and not inHub() and not menuOpen() and root ~= nil
 	if not it or not plate.Visible then return end
-	if nameL.Text ~= it.name then nameL.Text = it.name end
+	local label = if it.id == "nvg" then (if me:GetAttribute("NV") then "Goggles · on  [N] flash" else "Night Vision Goggles") else it.name
+	if nameL.Text ~= label then nameL.Text = label end
 	chip.BackgroundColor3 = it.color
 	setPips(it.charges)
 	local n, at = charges()
@@ -189,6 +205,11 @@ local CLIPS = {
 	reverse = { dur = 0.8, out = 0.6, release = 9, inT = 0.05, keys = {
 		K(0, -0.45, -1.3, -1.0, 0.3, 0, 0.2), K(0.16, -0.3, -0.42, -1.25, 0, math.pi * 2, 0.05),
 		K(0.5, -0.3, -0.44, -1.25, 0, math.pi * 2 + 0.25, 0.05), K(0.62, -0.32, -0.5, -1.22, 0.1, math.pi * 2 + 0.2, 0.08), K(0.8, -0.5, -1.5, -1.0, 0.4, math.pi * 2, 0.25) } },
+	-- (web pop_laptop: up from below by 0.10 s, shoved forward screen first at 0.18 with an overshoot, held while it
+	-- "loads" to 0.7, dropped by 0.9)
+	laptop = { dur = 0.9, out = 0.7, release = 9, inT = 0.06, keys = {
+		K(0, -0.4, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.1, -0.3, -0.62, -1.2, 0.05, 0.25, 0.05),
+		K(0.18, -0.24, -0.55, -1.55, -0.1, 0.2, 0.0), K(0.7, -0.26, -0.58, -1.45, -0.05, 0.22, 0.02), K(0.9, -0.45, -1.5, -1.0, 0.5, 0.2, 0.2) } },
 	bubble = { dur = 0.66, out = 0.4, release = 0.5, keys = {
 		K(0, -0.45, -1.3, -1.0, 0.5, 0.1, 0.2), K(0.12, -0.3, -0.5, -1.35, -0.1, 0.2, 0.05),
 		K(0.3, -0.3, -0.52, -1.3, -0.15, 0.25, 0.05), K(0.66, -0.5, -1.5, -1.0, 0.5, 0.1, 0.3) } },
@@ -226,6 +247,7 @@ local function startHand(id: string)
 	dropHand()
 	if thirdPerson() or not VM.model then return end
 	local clip = CLIPS[id] or CLIPS.throw
+	if id == "nvg" then return end -- (the goggles go on your head, not in your hand: see the goggles below)
 	local m = itemModel(id)
 	m:ScaleTo(FP_K * (FP_SIZE[id] or 1))
 	m.Parent = camera
@@ -289,6 +311,7 @@ end
 
 -- ---------------------------------------------------------------- pressing G
 local lastUse = -math.huge
+local toggleGoggles: () -> () -- (the goggles below)
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or io.KeyCode ~= Enum.KeyCode.G then return end
 	if menuOpen() or inHub() then return end
@@ -297,6 +320,8 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	local id = me:GetAttribute("Item")
 	local it = if type(id) == "string" then L[id] else nil
 	if not it or not it.live then return end
+	if me:GetAttribute("Quiz") then return end -- (sitting a pop quiz: no items)
+	if it.id == "nvg" then toggleGoggles(); return end
 	local t = os.clock()
 	if t - lastUse < Items.SPAM_CLIENT then return end
 	local n = charges()
@@ -312,7 +337,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	ItemR:FireServer(it.id, eye, camera.CFrame.LookVector)
 	startHand(it.id)
 	handStep()
-	if it.id ~= "popper" and it.id ~= "reverse" then -- (those two make their sound when the server says it happened)
+	if it.id ~= "popper" and it.id ~= "reverse" and it.id ~= "laptop" then -- (those make their sound when the server says it happened)
 		Sfx.play(if it.id == "medkit" then "heal" elseif it.id == "bubble" then "reverse" else "swing")
 	end
 end)
@@ -904,6 +929,411 @@ local function squeezeStep()
 	end
 end
 
+-- ---------------------------------------------------------------- keys a pop-up or an exam has taken (Arsenal leaves them alone)
+local busy: { [string]: { number } } = {}
+local function setBusy(who: string, keys: { number }?)
+	busy[who] = keys
+	local all = {}
+	for _, ks in busy do for _, k in ks do if not table.find(all, k) then table.insert(all, k) end end end
+	table.sort(all)
+	me:SetAttribute("BusyKeys", if #all > 0 then table.concat(all, ",") else nil)
+end
+local NUM = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5,
+	[Enum.KeyCode.KeypadOne] = 1, [Enum.KeyCode.KeypadTwo] = 2, [Enum.KeyCode.KeypadThree] = 3, [Enum.KeyCode.KeypadFour] = 4, [Enum.KeyCode.KeypadFive] = 5 }
+local overlay = Instance.new("ScreenGui")
+overlay.Name = "JankfireItemsOverlay"; overlay.ResetOnSpawn = false; overlay.IgnoreGuiInset = true; overlay.DisplayOrder = 8
+overlay.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+overlay.Parent = me:WaitForChild("PlayerGui")
+local stage = T.scaled(overlay)
+
+-- ---------------------------------------------------------------- the laptop's pop-up ads (web public/js/ads.js)
+-- five windows at fixed spots over your view, one on the crosshair; each has its key in its close box (the mouse is
+-- busy aiming): 1-5 close them; closing one sometimes brings back an ARE YOU SURE? (at most `sure` of them). they all
+-- go when the time is up or you die. the words are the web game's own nonsense, minus anything Roblox wouldn't want
+local COPY = {
+	{ "CONGRATULATIONS", "you are the 1,000,000th person shot here today.", "CLAIM NOTHING" },
+	{ "DOCTORS HATE HIM", "local man stops dying with one weird trick (cover).", "LEARN COVER" },
+	{ "JANK COLA", "now with 30% more can.", "THIRST" },
+	{ "LOSE 100 HP FAST", "ask the person who sent you this.", "ASK THEM" },
+	{ "BREAD", "it's bread. buy bread.", "BREAD" },
+	{ "ONE WEIRD SPOON", "spoon owners in your area are furious.", "SEE SPOON" },
+	{ "IS YOUR GRASS TOUCHED?", "take our 40 minute quiz to find out.", "START QUIZ" },
+	{ "DEAD MALL CLEARANCE", "everything must go. it already went. come look at where it was.", "LOOK" },
+	{ "PREMIUM WALLS", "subscribe today. now 12% more solid.", "WALL ME" },
+	{ "A MESSAGE FROM HR", "the tall guy would like a word. he is somewhere else.", "OH NO" },
+	{ "MARBLES!", "you dropped these. all of them. everywhere.", "PICK UP" },
+	{ "RATE THIS DEATH", "how likely are you to recommend being shot to a friend?", "TEN" },
+	{ "FREE HAT", "the hat is free. the head costs extra.", "BUY HEAD" },
+}
+local SURE = { "ARE YOU SURE?", "closing ads hurts the ad's feelings.", "I'M SORRY" }
+local BARS = { Color3.fromRGB(206, 112, 150), Color3.fromRGB(96, 168, 196), Color3.fromRGB(214, 180, 90), Color3.fromRGB(120, 176, 120) }
+local SPOTS = { Vector2.new(0.5, 0.46), Vector2.new(0.26, 0.3), Vector2.new(0.74, 0.32), Vector2.new(0.3, 0.68), Vector2.new(0.72, 0.66) }
+type Ad = { slot: number, frame: Frame, sure: boolean }
+local ads = { live = {} :: { Ad }, queue = {} :: { number }, untilT = 0, sure = 0, qT = 0, n = 0, deck = {} :: { number } }
+local adTip: TextLabel? = nil
+local function adKeys()
+	local ks = {}
+	for _, a in ads.live do table.insert(ks, a.slot) end
+	setBusy("ads", if #ks > 0 then ks else nil)
+end
+local function nextCopy(): { string }
+	if #ads.deck == 0 then for i = 1, #COPY do table.insert(ads.deck, math.random(1, #ads.deck + 1), i) end end
+	return COPY[table.remove(ads.deck) :: number]
+end
+local function adOpen(slot: number, copy: { string }, isSure: boolean)
+	for _, a in ads.live do if a.slot == slot then return end end
+	ads.n += 1
+	local at = SPOTS[slot]
+	local f = T.new("Frame", { Name = "Ad", AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(at.X + (math.random() - 0.5) * 0.05, at.Y + (math.random() - 0.5) * 0.05),
+		Size = UDim2.fromOffset(300, 136), BackgroundColor3 = T.BG, BackgroundTransparency = 0.04, BorderSizePixel = 0, ZIndex = 10 + ads.n, Rotation = (math.random() - 0.5) * 4 }, stage)
+	T.corner(f, 6); T.edge(f, if isSure then T.DANGER else nil, if isSure then 0.2 else nil)
+	local bar = T.new("Frame", { Name = "Bar", BackgroundColor3 = if isSure then T.DANGER else BARS[ads.n % #BARS + 1], BorderSizePixel = 0, Size = UDim2.new(1, 0, 0, 30), ZIndex = 10 + ads.n }, f)
+	T.corner(bar, 6)
+	local title = T.text(bar, "Title", copy[1], 14, T.INK, T.FONT_HEAVY); title.Position = UDim2.fromOffset(12, 0); title.Size = UDim2.new(1, -60, 1, 0); title.ZIndex = 11 + ads.n
+	local key = T.key(bar, tostring(slot), UDim2.new(1, -30, 0, 4)); key.ZIndex = 11 + ads.n
+	for _, d in key:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 12 + ads.n end end
+	local body = T.text(f, "Body", copy[2], 15, T.TEXT, T.FONT); body.Position = UDim2.fromOffset(14, 38); body.Size = UDim2.new(1, -28, 0, 48)
+	body.TextWrapped = true; body.TextYAlignment = Enum.TextYAlignment.Top; body.ZIndex = 11 + ads.n
+	local btn = T.text(f, "Button", copy[3], 13, T.INK, T.FONT_BOLD, Enum.TextXAlignment.Center); btn.BackgroundColor3 = T.ACCENT; btn.BackgroundTransparency = 0
+	btn.Position = UDim2.fromOffset(14, 96); btn.Size = UDim2.fromOffset(130, 26); btn.ZIndex = 11 + ads.n; T.corner(btn, 4)
+	local sc = T.new("UIScale", { Scale = 0.3 }, f)
+	T.tween(sc, 0.14, { Scale = 1 }, Enum.EasingStyle.Back)
+	table.insert(ads.live, { slot = slot, frame = f, sure = isSure })
+	adKeys()
+	Sfx.play(if isSure then "empty" else "click", nil, 0.8)
+end
+local function adShut(a: Ad, quiet: boolean?)
+	local i = table.find(ads.live, a)
+	if i then table.remove(ads.live, i) end
+	local f = a.frame
+	local sc = f:FindFirstChildOfClass("UIScale")
+	if sc then T.tween(sc, 0.14, { Scale = 0.1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In) end
+	task.delay(0.16, function() f:Destroy() end)
+	adKeys()
+	if not quiet then Sfx.play("click") end
+end
+local function adsReset()
+	for _, a in table.clone(ads.live) do adShut(a, true) end
+	table.clear(ads.queue); ads.untilT = 0; ads.sure = 0
+	if adTip then adTip.Visible = false end
+	setBusy("ads", nil)
+end
+local function onAds(m: any)
+	adsReset()
+	local n = math.clamp(math.floor(tonumber(m.n) or Items.ADS.n), 1, #SPOTS)
+	local dur = math.clamp(tonumber(m.dur) or Items.ADS.dur, 1, 20)
+	ads.untilT = os.clock() + dur
+	ads.sure = math.clamp(math.floor(tonumber(m.sure) or 0), 0, 4)
+	for i = 1, n do table.insert(ads.queue, math.random(1, #ads.queue + 1), i) end
+	ads.qT = 0
+	Hud.callout(if m.by == me.UserId then "YOUR OWN ADS" else "YOU HAVE BEEN ADVERTISED TO", 1.6)
+	if not adTip then
+		adTip = T.text(stage, "AdTip", "", 15, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Center)
+		local tip = adTip :: TextLabel
+		tip.AnchorPoint = Vector2.new(0.5, 0); tip.Position = UDim2.new(0.5, 0, 0, 64); tip.Size = UDim2.fromOffset(0, 30)
+		tip.AutomaticSize = Enum.AutomaticSize.X; tip.BackgroundColor3 = T.BG; tip.BackgroundTransparency = 0.1; tip.ZIndex = 500
+		T.corner(tip, 4); T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, tip)
+	end
+end
+local function adsStep(dt: number)
+	if ads.untilT == 0 then return end
+	local _, _, root = myChar()
+	if os.clock() >= ads.untilT or not root then adsReset(); return end -- (time's up, or you died: the ads let you go)
+	if #ads.queue > 0 then
+		ads.qT -= dt
+		if ads.qT <= 0 then ads.qT = 0.16; adOpen(table.remove(ads.queue, 1) :: number, nextCopy(), false) end
+	end
+	local tip = adTip
+	if tip then
+		tip.Visible = true
+		tip.Text = ("press the number on an ad to close it  ·  %d left"):format(#ads.live + #ads.queue)
+	end
+end
+UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+	local k = NUM[io.KeyCode]
+	if not k or gp or #ads.live == 0 then return end
+	for _, a in ads.live do
+		if a.slot == k then
+			adShut(a)
+			if not a.sure and ads.sure > 0 and math.random() < 0.45 then
+				ads.sure -= 1
+				task.delay(0.26, function() if os.clock() < ads.untilT then adOpen(k, SURE, true) end end)
+			end
+			return
+		end
+	end
+end)
+
+-- ---------------------------------------------------------------- the night vision goggles (web public/js/goggles.js)
+-- G flips them down or up (free); with them on the dark goes green and everyone you can see gets a glowing outline
+-- (Roblox draws at most 31 outlines: the nearest; they don't show through walls); N or the middle button flashes
+-- (a charge). a flash on you: white, then fading, longer the more you looked at it (twice as long in goggles)
+local nvLook = Instance.new("ColorCorrectionEffect")
+nvLook.Name = "JankNightVision"; nvLook.Enabled = false; nvLook.Parent = game:GetService("Lighting")
+local nvK, nvLastT = 0, -math.huge
+local glows: { [Instance]: Highlight } = {}
+toggleGoggles = function()
+	local t = os.clock()
+	if t - nvLastT < Items.NVG.toggle then return end
+	nvLastT = t
+	local on = not (me:GetAttribute("NV") == true)
+	ItemR:FireServer("nv", on)
+	Sfx.play("click", nil, if on then 1 else 0.8, if on then 1.2 else 0.9)
+end
+local function glowsClear()
+	for m, h in glows do h:Destroy(); glows[m] = nil end
+end
+local function nvStep(dt: number)
+	local on = me:GetAttribute("NV") == true and not thirdPerson()
+	nvK = math.clamp(nvK + (if on then dt else -dt) / 0.3, 0, 1) -- (they flip down over 0.3 s)
+	nvLook.Enabled = nvK > 0.01
+	if nvLook.Enabled then
+		nvLook.TintColor = Color3.new(1, 1, 1):Lerp(Color3.fromRGB(150, 255, 170), nvK)
+		nvLook.Brightness = 0.18 * nvK
+		nvLook.Contrast = 0.12 * nvK
+		nvLook.Saturation = -0.7 * nvK
+	end
+	if not on then if next(glows) then glowsClear() end return end
+	-- the outlines: everyone else (players and dummies), nearest first, at most 31
+	local cam = camera.CFrame.Position
+	local list = {}
+	for _, pl in Players:GetPlayers() do
+		if pl ~= me and pl.Character then table.insert(list, pl.Character) end
+	end
+	local dummies = workspace:FindFirstChild("Dummies")
+	if dummies then for _, m in dummies:GetChildren() do if m:IsA("Model") then table.insert(list, m) end end end
+	local dist: { [Instance]: number } = {}
+	for _, m in list do
+		local r = m:FindFirstChild("HumanoidRootPart") :: BasePart?
+		dist[m] = if r then (r.Position - cam).Magnitude else math.huge
+	end
+	table.sort(list, function(a, b) return dist[a] < dist[b] end)
+	local keep: { [Instance]: boolean } = {}
+	for i = 1, math.min(31, #list) do
+		local m = list[i]
+		if dist[m] > 600 then break end
+		keep[m] = true
+		if not glows[m] then
+			local h = Instance.new("Highlight")
+			h.Adornee = m; h.FillTransparency = 1; h.OutlineColor = Color3.fromRGB(190, 255, 200); h.OutlineTransparency = 0.1
+			h.DepthMode = Enum.HighlightDepthMode.Occluded
+			h.Parent = folder
+			glows[m] = h
+		end
+	end
+	for m, h in glows do if not keep[m] then h:Destroy(); glows[m] = nil end end
+end
+-- goggles on everyone's head who wears them (web: lenses green)
+local headGoggles: { [Player]: Model } = {}
+local function headStep()
+	for _, pl in Players:GetPlayers() do
+		local on = pl:GetAttribute("NV") == true and pl.Character ~= nil
+		local g = headGoggles[pl]
+		local head = pl.Character and pl.Character:FindFirstChild("Head") :: BasePart?
+		if on and head and not (pl == me and not thirdPerson()) then
+			if not g then g = itemModel("nvg"); g:ScaleTo(1.25); g.Parent = folder; headGoggles[pl] = g end
+			(g :: Model):PivotTo(head.CFrame * CFrame.new(0, 0.15, -0.55))
+		elseif g then g:Destroy(); headGoggles[pl] = nil end
+	end
+	for pl, g in headGoggles do if not pl.Parent then g:Destroy(); headGoggles[pl] = nil end end
+end
+-- the flash: N or the middle mouse button, goggles on
+UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+	if gp or not (io.KeyCode == Enum.KeyCode.N or io.UserInputType == Enum.UserInputType.MouseButton3) then return end
+	if me:GetAttribute("Item") ~= "nvg" or me:GetAttribute("NV") ~= true or menuOpen() or inHub() then return end
+	local _, _, root = myChar()
+	if not root then return end
+	local n = charges()
+	if n <= 0 then Sfx.play("empty"); Hud.callout("night vision goggles: recharging", 0.8); return end
+	pend = { n = n - 1, t = os.clock() }
+	local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
+	ItemR:FireServer("nvg", eye, camera.CFrame.LookVector)
+end)
+local whiteout = T.new("Frame", { Name = "Flashed", BackgroundColor3 = Color3.new(1, 1, 1), BackgroundTransparency = 1, BorderSizePixel = 0,
+	Size = UDim2.fromScale(1, 1), ZIndex = 1000 }, overlay)
+local after = Instance.new("BlurEffect"); after.Name = "JankFlashed"; after.Size = 0; after.Enabled = false; after.Parent = game:GetService("Lighting")
+local function onFlashed(m: any)
+	local secs = math.clamp(tonumber(m.s) or 1, 0.1, 8)
+	whiteout.BackgroundTransparency = 0
+	after.Enabled = true; after.Size = 24
+	task.delay(secs * 0.4, function()
+		T.tween(whiteout, secs * 0.6, { BackgroundTransparency = 1 }, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+	end)
+	T.tween(after, math.max(1.3, secs), { Size = 0 })
+	task.delay(math.max(1.3, secs) + 0.05, function() if after.Size < 0.5 then after.Enabled = false end end)
+	local by = if type(m.by) == "number" then Players:GetPlayerByUserId(m.by) else nil
+	Hud.callout(if m.nv then "MY EYES! (THE GOGGLES MADE IT WORSE)" elseif by then "FLASHED BY " .. string.upper(by.DisplayName) else "FLASHED", 1.4)
+	shake = math.max(shake, 0.35)
+end
+local function nvflashFx(m: any)
+	if typeof(m.p) ~= "Vector3" then return end
+	local at = m.p + (if typeof(m.d) == "Vector3" then m.d * 1.5 else Vector3.zero)
+	local b = part(Enum.PartType.Ball, Vector3.one, Color3.fromRGB(220, 255, 225), Enum.Material.Neon)
+	b.CFrame = CFrame.new(at); b.Parent = folder
+	task.spawn(function()
+		local t0 = os.clock()
+		while b.Parent do
+			local u = (os.clock() - t0) / 0.35
+			if u >= 1 then break end
+			b.Size = Vector3.one * (1 + 9 * S * u) -- (web: grows to 9 m over 0.35 s)
+			b.Transparency = 0.3 + 0.7 * u
+			RunService.RenderStepped:Wait()
+		end
+		b:Destroy()
+	end)
+	Sfx.play("pop", at, 1.2)
+end
+
+-- ---------------------------------------------------------------- the pop quiz (web public/js/quiz.js)
+-- everyone sees a big calculator hovering in front of the one sitting it, the question on its screen and a sign over
+-- their head; the one sitting it gets the paper: the question, four answers on keys 1-4 (or a click), the clock.
+-- the right answer never comes from the server until it's over
+type Exam = { model: Instance?, calc: Model?, sign: BillboardGui?, untilT: number, mine: boolean, paper: Frame?, picked: boolean, at: Vector3? }
+local exams: { [string]: Exam } = {}
+local function keyOf(m: any): string return if type(m.o) == "number" then "p" .. m.o elseif typeof(m.model) == "Instance" then "m" .. m.model:GetFullName() else "?" end
+local function examClose(k: string)
+	local e = exams[k]
+	if not e then return end
+	exams[k] = nil
+	if e.calc then e.calc:Destroy() end
+	if e.sign then e.sign:Destroy() end
+	if e.paper then e.paper:Destroy() end
+	if e.mine then setBusy("quiz", nil) end
+end
+local function answer(i: number)
+	local e = exams["p" .. me.UserId]
+	if not e or e.picked or os.clock() > e.untilT + 0.15 then return end
+	e.picked = true
+	ItemR:FireServer("ans", i)
+	if e.paper then
+		local b = e.paper:FindFirstChild("A" .. i) :: TextButton?
+		if b then b.BackgroundColor3 = T.CARD_HI end
+	end
+	Sfx.play("click")
+end
+local function onQuiz(m: any)
+	local k = keyOf(m)
+	examClose(k)
+	local model = if typeof(m.model) == "Instance" then m.model else nil
+	local mine = m.o == me.UserId
+	local left = math.clamp(tonumber(m.left) or Items.QUIZ.time, 0, 10)
+	local e: Exam = { model = model, untilT = os.clock() + left, mine = mine, picked = false, at = if typeof(m.at) == "Vector3" then m.at else nil }
+	-- the calculator, 4.6 x, in front of their face, the question on its screen
+	local calc = itemModel("calc"); calc:ScaleTo(4.6); calc.Parent = folder
+	local scr = calc:FindFirstChild("screen", true) :: BasePart?
+	if scr then
+		local sg = Instance.new("SurfaceGui"); sg.Face = Enum.NormalId.Front; sg.LightInfluence = 0; sg.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; sg.PixelsPerStud = 60
+		local tl = T.text(sg, "Q", tostring(m.q) .. " = ?", 40, Color3.fromRGB(22, 34, 22), T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		tl.Size = UDim2.fromScale(1, 1); tl.TextScaled = true
+		sg.Parent = scr
+		-- (the screen faces both ways, so the one sitting it can read it too)
+		local sg2 = sg:Clone(); sg2.Face = Enum.NormalId.Back; sg2.Parent = scr
+	end
+	e.calc = calc
+	-- the sign over their head
+	local head = model and model:FindFirstChild("Head") :: BasePart?
+	if head then
+		local bb = Instance.new("BillboardGui"); bb.Size = UDim2.fromOffset(220, 58); bb.StudsOffset = Vector3.new(0, 4.2, 0); bb.AlwaysOnTop = false; bb.LightInfluence = 0
+		bb.Adornee = head; bb.Parent = folder
+		local plate = T.new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, bb)
+		T.corner(plate, 6)
+		local l1 = T.text(plate, "Title", "POP QUIZ", 14, T.ACCENT, T.FONT_HEAVY, Enum.TextXAlignment.Center); l1.Size = UDim2.new(1, 0, 0, 26)
+		local l2 = T.text(plate, "Q", tostring(m.q) .. " = ?", 18, T.TEXT, T.FONT_BOLD, Enum.TextXAlignment.Center); l2.Position = UDim2.fromOffset(0, 24); l2.Size = UDim2.new(1, 0, 0, 30)
+		e.sign = bb
+	end
+	if mine then
+		-- the paper: the question big, four answers on 1-4, the clock running down
+		local paper = T.plate(stage, "Exam", UDim2.new(0.5, -230, 0.5, 70), UDim2.fromOffset(460, 200))
+		paper.ZIndex = 300
+		local t1 = T.text(paper, "Title", "POP QUIZ  ·  pens up", 14, T.ACCENT, T.FONT_HEAVY); t1.Position = UDim2.fromOffset(18, 10); t1.Size = UDim2.new(1, -36, 0, 20); t1.ZIndex = 301
+		local q = T.text(paper, "Question", tostring(m.q) .. " = ?", 32, T.TEXT, T.FONT_HEAVY); q.Position = UDim2.fromOffset(18, 34); q.Size = UDim2.new(1, -120, 0, 42); q.ZIndex = 301
+		local clock = T.text(paper, "Clock", "", 28, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right); clock.Position = UDim2.new(1, -110, 0, 34); clock.Size = UDim2.fromOffset(92, 42); clock.ZIndex = 301
+		for i = 0, 3 do
+			local b = T.new("TextButton", { Name = "A" .. i, Text = "", AutoButtonColor = false, BackgroundColor3 = T.CARD, BorderSizePixel = 0,
+				Position = UDim2.fromOffset(18 + i * 106, 92), Size = UDim2.fromOffset(98, 88), ZIndex = 301 }, paper)
+			T.corner(b, 6); T.edge(b)
+			local kk = T.key(b, tostring(i + 1), UDim2.fromOffset(8, 8)); kk.ZIndex = 302
+			for _, d in kk:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 303 end end
+			local v = T.text(b, "Value", tostring((m.a or {})[i + 1] or "?"), 28, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+			v.Position = UDim2.fromOffset(0, 30); v.Size = UDim2.new(1, 0, 0, 48); v.ZIndex = 302
+			b.MouseButton1Click:Connect(function() answer(i) end)
+		end
+		e.paper = paper
+		setBusy("quiz", { 1, 2, 3, 4 })
+		Hud.callout("POP QUIZ!", 1.0)
+		-- (sitting it: off your rope)
+		local st = Body.st
+		if st and st.hook then st.hook = nil; GrappleR:FireServer("release") end
+	else
+		local by = if type(m.by) == "number" then Players:GetPlayerByUserId(m.by) else nil
+		if by == me then Hud.callout("POP QUIZ FOR " .. string.upper(if model then model.Name else "THEM"), 1.2) end
+	end
+	exams[k] = e
+end
+local function onQuizEnd(m: any)
+	local k = keyOf(m)
+	local e = exams[k]
+	local mine = m.o == me.UserId
+	if e and e.paper and type(m.c) == "number" then
+		-- the right one goes green, a wrong pick red, for a moment before it all goes
+		local good = e.paper:FindFirstChild("A" .. m.c) :: TextButton?
+		if good then good.BackgroundColor3 = Color3.fromRGB(64, 120, 78) end
+		if type(m.i) == "number" and m.i >= 0 and m.i ~= m.c then
+			local bad = e.paper:FindFirstChild("A" .. m.i) :: TextButton?
+			if bad then bad.BackgroundColor3 = Color3.fromRGB(140, 52, 50) end
+		end
+	end
+	local model = if e then e.model elseif typeof(m.model) == "Instance" then m.model else nil
+	local root = model and model:FindFirstChild("HumanoidRootPart") :: BasePart?
+	if m.ok then
+		if root then
+			emitter(host(root.Position + Vector3.new(0, 2, 0), 2), { Texture = TEX.blob, LightEmission = 0.8, LightInfluence = 0.2, Brightness = 2,
+				Color = cs(Color3.fromRGB(255, 226, 120), Color3.fromRGB(230, 180, 60)), Size = ns(0, 0.2 * S, 1, 0), Lifetime = NR(0.5, 0.9),
+				Speed = NR(3 * S, 7 * S), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -8 * S, 0) }):Emit(40)
+		end
+		if mine then Hud.callout("GOLD STAR!  NOTHING CAN HURT YOU", 1.6) end
+	elseif mine and not m.gone then
+		Hud.callout(if m.i == -1 then "PENS DOWN. TOO SLOW." else "WRONG.", 1.4)
+	end
+	task.delay(if mine then 0.9 else 0, function() examClose(k) end)
+end
+local function examStep()
+	local t = os.clock()
+	for k, e in exams do
+		local r = e.model and e.model:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if e.calc and r then
+			-- hovering in front of their face, bobbing, swaying (1.7 m out for your own, so you can read it)
+			local dist = (if e.mine then 1.7 else 1.05) * S
+			local cf = r.CFrame * CFrame.new(0, 1.9 + math.sin(t * 3) * 0.15, -dist) * CFrame.Angles(0, math.pi + math.sin(t * 1.3) * 0.1, 0)
+			e.calc:PivotTo(cf)
+		end
+		if e.paper then
+			local clock = e.paper:FindFirstChild("Clock") :: TextLabel?
+			if clock then
+				local left = math.max(0, e.untilT - t)
+				clock.Text = ("%.1f"):format(left)
+				clock.TextColor3 = if left < 2 then T.DANGER else T.TEXT
+			end
+		end
+		if t > e.untilT + 3 then examClose(k) end -- (a lost end message: don't leave it hanging)
+	end
+end
+UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
+	local k = NUM[io.KeyCode]
+	if gp or not k or k > 4 or not exams["p" .. me.UserId] then return end
+	answer(k - 1)
+end)
+-- sitting a quiz: you stay where it got you; the gold star: x1.25 run speed for 4 s
+local prevStep = Body.onStep
+Body.onStep = function(st: any, chest: Vector3, dt: number)
+	if prevStep then prevStep(st, chest, dt) end
+	if me:GetAttribute("Quiz") then st.vx, st.vz = 0, 0; if st.vy > 0 then st.vy = 0 end end
+end
+local function boostStep()
+	local fu = tonumber(me:GetAttribute("FastUntil")) or 0
+	Body.boost = if workspace:GetServerTimeNow() < fu then Items.QUIZ.fast else 1
+end
+
 -- ---------------------------------------------------------------- what the server says
 local function onFx(m: any)
 	if type(m) ~= "table" then return end
@@ -938,6 +1368,26 @@ local function onFx(m: any)
 		Sfx.play("quack", middleOf(if typeof(m.on) == "Instance" then m.on else nil))
 		if m.o == me.UserId then Hud.callout("QUACK! STUCK", 1.0) end
 		if m.onUid == me.UserId then Hud.callout("A DUCK IS STUCK TO YOU", 1.2) end
+	elseif k == "ads" then onAds(m)
+	elseif k == "ads!" then
+		pend = nil
+		Sfx.play("empty"); Hud.callout("NO SIGNAL · POINT IT AT SOMEONE", 1.0)
+	elseif k == "adsfx" then
+		local tm = if typeof(m.tm) == "Instance" then m.tm else nil
+		local r = tm and tm:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if r then confetti(r.Position + Vector3.new(0, 2.5, 0), Vector3.yAxis, 16, 5 * S) end
+		Sfx.play("click", nil, 0.9, 1.4)
+		if m.o == me.UserId and m.to ~= me.UserId then Hud.callout("ADS SERVED", 1.2) end
+	elseif k == "flashed" then onFlashed(m)
+	elseif k == "nvflash" then nvflashFx(m)
+	elseif k == "quiz" then onQuiz(m)
+	elseif k == "quizx" then onQuizEnd(m)
+	elseif k == "calchit" then
+		if typeof(m.p) == "Vector3" then
+			emitter(host(m.p, 2), { Texture = TEX.blob, LightEmission = 0.6, LightInfluence = 0.4, Color = cs(Color3.fromRGB(200, 240, 225), Color3.fromRGB(240, 240, 230)),
+				Size = ns(0, 0.15 * S, 1, 0), Lifetime = NR(0.3, 0.5), Speed = NR(3 * S, 6 * S), SpreadAngle = Vector2.new(180, 180) }):Emit(24)
+			Sfx.play("bonk", m.p)
+		end
 	elseif k == "hs" then addHole(m)
 	elseif k == "hu" then updHole(m)
 	elseif k == "he" then popHole(m)
@@ -955,5 +1405,10 @@ RunService.RenderStepped:Connect(function(dt: number)
 	cardStep(dt)
 	holeStep(dt)
 	squeezeStep()
+	adsStep(dt)
+	nvStep(dt)
+	headStep()
+	examStep()
+	boostStep()
 	hudStep()
 end)
