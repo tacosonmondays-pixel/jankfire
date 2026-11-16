@@ -439,7 +439,7 @@ local function add(anchor: Instance)
 	local h: Holo = { anchor = anchor, kind = kind, r = r, h = hh, color = color, rig = rig, disc = disc, beam = beam, light = light,
 		label = nil, card = nil, list = {}, idx = 0, cur = nil, cache = {}, failed = {}, phase = "idle", t = 0, spin = math.random() * 6, alpha = 0, bundle = nil, sig = "" }
 	if kind == "loadout" then
-		local lb = new("BillboardGui", { Name = "HoloLabel", Size = UDim2.new(9, 0, 1.9, 0), StudsOffsetWorldSpace = Vector3.new(0, -(hh / 2 + 1.1), 0),
+		local lb = new("BillboardGui", { Name = "HoloLabel", Size = UDim2.new(6.6, 0, 1.4, 0), StudsOffsetWorldSpace = Vector3.new(0, hh / 2 + 0.9, 0),
 			LightInfluence = 0, MaxDistance = 150, ResetOnSpawn = false }, rig)
 		text(lb, { Name = "Slot", TextColor3 = color, Size = UDim2.fromScale(1, 0.26) })
 		text(lb, { Name = "Title", FontFace = Font.new(FONT, Enum.FontWeight.Heavy), Position = UDim2.fromScale(0, 0.27), Size = UDim2.fromScale(1, 0.45) })

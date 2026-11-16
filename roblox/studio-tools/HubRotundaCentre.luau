@@ -118,14 +118,15 @@ return function(B, R)
 	for k = 0, 3 do B.lamp(B.fr(45 + 90 * k), 0, 24, 15, 28, 0.5) end
 
 	-- ---- the centrepiece: YOUR loadout as a hologram (owner, 16 Nov: "can the center gun thingy cycle your loadout but
-	-- hologram style?"), high over the platform inside the ring that hangs from the dome on four spokes, rising from the
-	-- lens in the platform. primary, secondary, melee, utility in turn, each in your wrap with your hat (HubHolo.client
-	-- draws it on each player's own screen; here only its place). (13.4 up, nine across, 3.4 tall: where the Redline
-	-- showpiece turned before, low enough to read from the floor, high enough to clear every sight line from the spawn
-	-- and from the room's south side; R.check tests them against the whole drum it may fill)
+	-- hologram style?"), over the platform under the ring that hangs from the dome on four spokes, rising from the lens
+	-- in the platform. primary, secondary, melee, utility in turn, each in your wrap with your hat (HubHolo.client draws
+	-- it on each player's own screen; here only its place). (first 13.4, then 13.9 up inside the ring; lowered to 9.5)
 	B.cyl(F0, C, "Rod", 0, 22.4, 40, 0, 1.2, P.pier, nil, G)
 	for k = 0, 3 do B.box(B.fr(45 + 90 * k), C, "Spoke", -0.5, 0.5, 21.6, 22.4, 0.6, 9.4, P.cream, nil, G) end
-	B.holo(F0, "HoloLoadout", "loadout", 0, 13.9, 0, 4.5, 3.4, { base = 13.9 - 1.4 }) -- (13.9: the drum clears the two southern spawn points' line to the gallery name)
+	-- (lowered on 16 Nov, the owner: "can the hologram in the hub be lowered down": its middle 9.5 up, just over the heads
+	-- of players on the platform, at eye level from across the room, instead of up in the ring. it is see-through and has
+	-- no collision, so R.check no longer counts it as a wall in the spawn's view or a thing in the spawn's keep-clear room)
+	B.holo(F0, "HoloLoadout", "loadout", 0, 9.5, 0, 4.2, 3.2, { base = 9.5 - 1.4 })
 	local up = B.lamp(F0, 0, 1.8, 0, 14, 1.6, P.light, { spot = true, angle = 30 }); up:FindFirstChildOfClass("SpotLight").Face = Enum.NormalId.Top
 	B.lamp(F0, 0, 15.6, 0, 26, 1, P.light, { spot = true, angle = 110, shadows = true })
 	-- (a secret: a small duck sits on top of the ring. only the balcony sees it)

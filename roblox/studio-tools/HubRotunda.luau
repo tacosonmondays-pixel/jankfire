@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 34 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 35 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -768,7 +768,7 @@ function R.check(stage)
 	local game_ = room:FindFirstChild("Game")
 	for _, p in room:GetDescendants() do
 		-- (a thing counts if you can see it or bump into it: lamp points and markers do not)
-		if not p:IsA("BasePart") or (p.Transparency >= 1 and not p.CanCollide and not p:GetAttribute("HoloEnvelope")) or (game_ and p:IsDescendantOf(game_)) then continue end
+		if not p:IsA("BasePart") or (p.Transparency >= 1 and not p.CanCollide and not (p:GetAttribute("HoloEnvelope") and p:GetAttribute("Holo") ~= "loadout")) or (game_ and p:IsDescendantOf(game_)) then continue end
 		looked += 1
 		local round = p:IsA("Part") and p.Shape == Enum.PartType.Cylinder
 		for _, z in zones do
@@ -824,7 +824,7 @@ function R.check(stage)
 	local blockers = {}
 	for _, f in { room, W.pads } do
 		for _, q in f:GetDescendants() do
-			if q:IsA("BasePart") and (q.Transparency < 0.5 or q:GetAttribute("HoloEnvelope")) then -- (a hologram's drum: what may stand there)
+			if q:IsA("BasePart") and (q.Transparency < 0.5 or (q:GetAttribute("HoloEnvelope") and q:GetAttribute("Holo") ~= "loadout")) then -- (a bundle hologram's drum: what may stand there. the loadout hologram over the platform is see-through and walk-through: it hides nothing)
 				local cf, h = q.CFrame, q.Size / 2
 				local r, u, l = cf.RightVector, cf.UpVector, cf.LookVector
 				local e = Vector3.new(math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z, math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z, math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z)
