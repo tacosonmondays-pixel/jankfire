@@ -43,7 +43,9 @@ SLATE, MID, DARK = '5d636c', '97958f', '4c5159'          # undersides, domes / p
 MIDSL = '8a8f97'                                          # a mid slate (the spawn screen's bands: SLATE read near-black in shade)
 SAGE, SAGE2 = '76866a', '687a5e'                         # the one muted tone: planting
 BODY, BODYG = 'b3aea4', '66707a'                         # the towers' stone bands / glass
-AMBER, LAMP, WARM = 'b8913f', 'f4efe6', 'f2dcc0'         # the one accent / light panels / warm light panels
+AMBER, LAMP, WARM = 'b8913f', 'f4efe6', 'f2dcc0'         # the one accent (never on a floor) / light panels / warm light panels
+SILL = '66635e'                                           # door sills and thresholds: the paving a step darker, not a colour.
+                                                          # the owner, 16 Nov: "remove the colored marks on the floor ... not on matches"
 PINK, CYAN = 'ff4fd8', '37d6ff'                          # team colours (attackers west, defenders east); pads cyan
 TEAMCOL = {-1: PINK, 1: CYAN}
 TEAMSIGN = {-1: 'a86195', 1: '66a0b0'}
@@ -501,7 +503,7 @@ def forecourt(s):
     fx0, fx1 = xr(CBX - 4.5, CBX - 4)
     slab_x(m, TRIM, door_outline(-11.6, 11.6, 0.0, 12.1, -7.0, 7.0, 9.0, 2.8), fx0, fx1, bev=0.15)
     B(m, TRIM, gx0 - 0.5, 11.5, -11.8, gx1 + 0.5, 12.3, 11.8, bev=0.3, solid=False)
-    B(m, AMBER, gx0 + 1.0, 0.0, -7.0, gx1 - 1.0, 0.06, 7.0, bev=0.03, solid=False)         # amber threshold
+    B(m, SILL, gx0 + 1.0, 0.0, -7.0, gx1 - 1.0, 0.06, 7.0, bev=0.03, solid=False)          # the gate's sill, dark stone
     lamp(m, X(CBX - 4.6), 10.3, -9.2, (-s, 0)); lamp(m, X(CBX - 4.6), 10.3, 9.2, (-s, 0))
     # a chest-high planter just inside the gate, on the axis
     px0, px1 = xr(52, 56)
@@ -700,9 +702,9 @@ def pavilion(s):
     B(m, STONE, xa, PAR_TOP, -64.0, xb, 12.2, -61.5, bev=0.3)
     for x in (xa + 1.0, xb - 1.0):
         B(m, TRIM, x - 1.3, 9.0, -61.8, x + 1.3, 10.0, -44.2, bev=0.25, solid=False)
-    B(m, AMBER, xa + 0.3, 0.0, da[0], xa + 1.7, 0.06, da[1], bev=0.03, solid=False)
-    B(m, AMBER, xb - 1.7, 0.0, db[0], xb - 0.3, 0.06, db[1], bev=0.03, solid=False)
-    B(m, AMBER, s * 45 - 4, 0.0, -45.8, s * 45 + 4, 0.06, -44.7, bev=0.03, solid=False)
+    B(m, SILL, xa + 0.3, 0.0, da[0], xa + 1.7, 0.06, da[1], bev=0.03, solid=False)      # the doors' sills, dark stone
+    B(m, SILL, xb - 1.7, 0.0, db[0], xb - 0.3, 0.06, db[1], bev=0.03, solid=False)
+    B(m, SILL, s * 45 - 4, 0.0, -45.8, s * 45 + 4, 0.06, -44.7, bev=0.03, solid=False)
     # coffered ceiling: a grid of beams under the roof, a warm panel in each coffer
     B(m, STONE2, xa + 2.0, 11.8, -61.5, xb - 2.0, 12.3, -46.0, bev=0.1, solid=False)
     for x in (xa + 2.0 + (xb - xa - 4.0) / 2,):
@@ -840,7 +842,7 @@ def spawn_roof(s):
     for zc in (-2.6, 2.6):
         box(m, TRIM, (em, 10.5, zc), (0.3, 0.42, 2.6), (0, 0, 0), bev=0.1, solid=False)
     a0, a1 = xr(107.3, 113.7)
-    B(m, AMBER, a0, 0.0, -5.0, a1, 0.06, 5.0, bev=0.03, solid=False)
+    B(m, SILL, a0, 0.0, -5.0, a1, 0.06, 5.0, bev=0.03, solid=False)                     # the way out: a dark stone sill
     # piers on the outside faces (3 wide, 2 deep): the front between the portal and the corners, the sides by the doors
     for zc in (-26.5, -16.0, 16.0, 26.5):
         q0, q1 = xr(109, 111)
@@ -858,7 +860,7 @@ def spawn_roof(s):
         zf0, zf1 = sorted((sz * 28.0, sz * 28.5))
         d0, d1 = xr(124, 132)
         slab_z(m, TRIM, door_outline(d0 - 1.2, d1 + 1.2, 0.0, 10.2, d0, d1, 9.0, 2.4), zf0, zf1, bev=0.15)
-        B(m, AMBER, d0, 0.0, z0 + 0.4, d1, 0.06, z1 - 0.4, bev=0.03, solid=False)
+        B(m, SILL, d0, 0.0, z0 + 0.4, d1, 0.06, z1 - 0.4, bev=0.03, solid=False)
         zi0, zi1 = sorted((sz * 25.0, sz * 26.0))
         for xc in (111 + 39.0 / 4, 111 + 3 * 39.0 / 4):     # in line with the ceiling's cross beams, up into them
             q0, q1 = xr(xc - 1.0, xc + 1.0)

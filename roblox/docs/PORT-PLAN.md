@@ -440,6 +440,15 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   the band's mauve inside; fine stripes on the court's step faces from about 30 studs away, which tests in Studio put
   down to the engine (they stay with shadows, reflections, lamps, screen effects and haze off, and show on a plain
   Part too).
+- **No coloured marks on the floors (place version 289).** The owner (16 Nov): "can you remove he colored marks on the
+  floor for rooftop, inhub its okay but not on matches". v2 had five amber strips on its floors (the spawn's way out
+  and its side doors, the two gates into the middle, the colonnade's doors). They are now sills in `SILL` (`66635e`,
+  the paving a step darker) in `rooftop2_models.py`; `AMBER` is no longer used on any floor. Kit asset
+  `jf_rooftop2_10` (71153063483666), rebuilt and checked (sight lines 0 open, spawns clear, pads land, the layout
+  unchanged). Left on purpose: the jump pads' cyan faces, the court's warm floor lamps, the team signs and marks on
+  walls. Nothing paints the floor during a match either: bullet holes are dark, water ripples white; the one coloured
+  thing that can lie on a floor is the Marble Shotgun's patch of marbles (a weapon's hazard, not paint, left as is).
+  Photo: `roblox/docs/rooftop-v2/v2_floor_marks_before_after.jpg`.
 
 ## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 281)
 
