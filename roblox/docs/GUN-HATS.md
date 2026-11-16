@@ -162,6 +162,14 @@ cushion toward the side the player sees; the cushion stays square to the gun. It
   axis), so `hat_spots.py` measured the handle's top instead: the Baguette, Bokken and Shirasaya hats stood about
   1.8 cm off-centre on their pommels since round 9. Both fixed; those three are back on the axis.
 - `hat_clip.py --hat <id>` checks one hat (no report written).
+- **After the guns' remodel batch** (16 Nov, ~22:00 UTC: the angel wings, Keytar v2, 24 remodelled skins, 10 cute
+  concept skins `ar_cute_a..e` / `pistol_cute_a..e`, two Ducky skins dropped): 76 seats (16 guns, 60 skins). 14 failed;
+  12 re-seated with `hat_solve.py`: the Pepper sawn-off 2 cm forward (its old seat measured down between the barrels,
+  25 mm in), the toy AR 3 cm forward, the Pen DMR 6 cm back onto the scope's rear, the calculator pistol 3 cm back on a
+  6 mm saddle, the lacquer AR on a 6 mm saddle, the drill revolver 3 cm back, the leaf and Ducky LMGs 1-2 cm back, the
+  trimmer, umbrella shotgun and musket 1 cm, the Ducky katana on its own (wider) pommel end. After: 1,672 pairs, at most
+  1.1 mm in, 1.0 mm out, feet at most 3.5 mm (checked again on the final models of place version 450). Live in place
+  version 452; skinned builds in Studio seat their hat at the new spots.
 - Live in place version 447. Checked there: the template's gold, crown, cushion and piping parts are Metal, the rest
   SmoothPlastic (`H.check()`: hats ok). In Edit, the Royal Duck on the Assault Rifle and the SMG (built like the held gun)
   reads as polished gold. In Play: `LootTable.vipOnly("hat", "royalduck")` is true and no container lists it; with the
@@ -247,7 +255,8 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 10** (asset 134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck), place version 447
-  (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins. Round 9 (asset 70496262106000) went live in place
+  (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
+  version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
   version 380; its seats were re-measured after the guns' z-fight fix in version 404. Older hat uploads and the push
   models are no longer used.
 - **After the guns' squash fix** (59fb8b4, place version 325: held guns were up to 41% squashed): the seats are measured
