@@ -38,7 +38,7 @@ local hub = workspace.Map.Hub
 local SP, NEON = Enum.Material.SmoothPlastic, Enum.Material.Neon
 local V3, CF = Vector3.new, CFrame.new
 
-T.KIT = 131746416943530 -- the kit's Model asset (tv_kit_6: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes)
+T.KIT = 122116496172350 -- the kit's Model asset (tv_kit_7: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
 T.PUSH = 15
 T.VERSION = "v2"
@@ -76,7 +76,7 @@ T.SPAWNS = { { -12.5, -8111.5 }, { -15.5, -8117.5 }, { -11.5, -8132 }, { 12.5, -
 -- (16 Nov, the owner: "maybe have dummies marked every so many meters, and an area where you can activate dummies that
 -- shoot back": two standing dummies on the 10 m line, the moving one on the 20 m line, and the two that shoot back at
 -- the far corners of the live-fire end, past the 30 m line)
-T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -7, 239, -8176 }, Stand2 = { 7, 239, -8176 } }
+T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -7, 239, -8173.5 }, Stand2 = { 7, 239, -8173.5 } } -- (the standing two just before the 10 m line, their rings clear of it)
 T.LIVE = { line = -8223 } -- the live-fire end: everything south of this line (the stage, the door)
 T.ZONE = { -94, 86, 232, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier)
 T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
@@ -533,7 +533,7 @@ local function muster(B)
 			local mid = (a + b) / 2 + n * 2
 			B.part("Shell", "PassageWall", CFrame.lookAt(V3(mid.X, 246.5, mid.Z), V3(mid.X, 246.5, mid.Z) + d), V3(4, 21, (b - a).Magnitude + 0.6), P.wall)
 		end
-		B.blk("Shell", "PassageCeiling", math.min(x0, x1) + 0.05, math.max(x0, x1) - 0.05, MY + 12, 257, MZ - 10, MZ + 10, P.ceil)
+		B.blk("Shell", "PassageCeiling", math.min(x0, x1) + 0.05, math.max(x0, x1) - 0.05, MY + 11.9, 257, MZ - 10, MZ + 10, P.ceil) -- (0.1 under the walls' heads, 0.05 under the frames' bands: flicker list)
 		B.blk("Scenery", "PassageLight", (x0 + x1) / 2 - 2, (x0 + x1) / 2 + 2, MY + 11.75, MY + 11.95, MZ - 1.5, MZ + 1.5, P.panel, { ghost = true, mat = NEON })
 		B.lamp((x0 + x1) / 2, MY + 11, MZ, "point", 14, 0.6, P.lampWhite)
 	end

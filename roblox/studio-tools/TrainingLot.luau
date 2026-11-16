@@ -28,7 +28,7 @@ local SP, NEON = Enum.Material.SmoothPlastic, Enum.Material.Neon
 local V3, CF = Vector3.new, CFrame.new
 local RAD = math.rad
 
-L.KIT = 75809148325346 -- the kit's Model asset (tl_kit_4: lot_models.py; kit 4 added tl_cylinder and tl_bank)
+L.KIT = 102031091411579 -- the kit's Model asset (tl_kit_5: lot_models.py; kit 5: flicker fixes in the frames and the roller)
 L.PUSH = 15
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
@@ -357,7 +357,7 @@ local function bay(beacon)
 	blk("BayFloor", -BX - 1.95, BX + 1.95, 236.05, Y, Z0, Z1 - 4, P.floor)
 	blk("BayWall", -BX - 2, -BX, 236, TOP + 2, Z0, Z1, P.wall2)
 	blk("BayWall", BX, BX + 2, 236, TOP + 2, Z0, Z1, P.wall2)
-	blk("BayCeiling", -BX - 1.95, BX + 1.95, TOP + 0.05, TOP + 2, Z0, Z1, P.ceil)
+	blk("BayCeiling", -BX - 1.95, BX + 1.95, TOP + 0.1, TOP + 1.95, Z0, Z1, P.ceil) -- (clear of the portal's head and the walls' tops: flicker list)
 	for _, sx in { -1, 1 } do
 		deco("BayDado", sx * BX, sx * (BX - 0.2), Y, Y + 1.2, Z0, Z1, P.floor2)
 		for _, z in { -8274, -8288 } do

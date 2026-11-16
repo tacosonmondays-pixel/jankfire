@@ -8,7 +8,8 @@
 --   * roll-up shutters: a Model with the attribute Shutter (the muster's gate home). it rolls up while anyone is within
 --     Near studs of its Center and rolls down after them. only on screen: its slats never block (walk in and the gate's
 --     trigger takes you home)
---   * laser gates: anything tagged LaserGate (CollectionService). its parts named LaserBar and LaserField switch off with
+--   * laser gates: anything tagged LaserGate (CollectionService). its parts named LaserBar and LaserField (or marked with
+--     the attribute Laser: the playground's gate home, StructurePass) switch off with
 --     a click while anyone is within Near (an attribute, default 9) of it, and back on with a click once they are gone.
 --     a gate's own builder only has to tag it
 --   * the course's long-jump pit (a part LongJumpPit with the attribute Edge, the take-off line's z): slide down the
@@ -105,7 +106,7 @@ local gates: { [Instance]: Gate } = {}
 local function gateOf(m: Instance): Gate
 	local parts = {}
 	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") and (d.Name == "LaserBar" or d.Name == "LaserField") then table.insert(parts, { p = d, tr = d.Transparency }) end
+		if d:IsA("BasePart") and (d.Name == "LaserBar" or d.Name == "LaserField" or d:GetAttribute("Laser") == true) then table.insert(parts, { p = d, tr = d.Transparency }) end
 	end
 	local center: Vector3
 	local c = m:GetAttribute("Center")

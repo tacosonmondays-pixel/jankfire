@@ -99,7 +99,7 @@ keep('tl_tyres')
 soft('plastic', PIER2, 29.0, 4.4, 4.4, 0, 0, 2.2, 1.9, pick='x', segs=3, small=0.1)
 for sx in (-1, 1):
     cy('plastic', TRIM, 2.55, 1.0, sx * 14.9, 0, 2.2, axis='x', segs=28, bevel=0.25)
-    cy('plastic', SLATE, 1.0, 1.2, sx * 15.0, 0, 2.2, axis='x', segs=16, bevel=0.15)
+    cy('plastic', SLATE, 1.0, 1.2, sx * 15.05, 0, 2.2, axis='x', segs=16, bevel=0.15)  # (its inner face 0.05 past the trim's)
 bx('plastic', SLATE, 28.0, 0.3, 0.6, 0, -2.15, 0.6, 0.05)
 keep('tl_roller')
 
@@ -119,7 +119,7 @@ def frame(name, W, H, jamb, head, cut, depth, col, guides=False):
         bx('plastic', SLATE, jamb + 0.4, depth + 0.4, 1.6, sx * (W / 2 + jamb / 2), 0, 0.8, 0.15)
         if guides:  # the channels the door runs in
             bx('plastic', SLATE, 1.0, 1.6, H - cut, sx * (W / 2 - 0.3), 0, (H - cut) / 2, 0.12)
-    bx('plastic', TRIM, W - 2 * cut + 0.3, depth + 0.15, 0.6, 0, 0, H + 0.3, 0.15)
+    bx('plastic', TRIM, W - 2 * cut + 0.3, depth + 0.15, 0.6, 0, 0, H + 0.25, 0.15)  # (0.05 proud of the opening's top)
     keep(name)
 
 frame('tl_garageFrame', 24.0, 16.5, 3.0, 3.5, 1.6, 6.4, PIER, guides=True)

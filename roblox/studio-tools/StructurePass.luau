@@ -710,6 +710,19 @@ function S.playground(): string
 		if d:IsA("BasePart") and d.Material == NEON and d.Color == AMBERGLOW then d.Color = hex("d48a22") end
 	end
 	-- (no cloud floor: two tries, snow hills and then one faceted mound. the slate haze carries the void below)
+	-- the gate back to training (a placed door kit, not built here) is a laser gate: tagged LaserGate, its laser (the
+	-- big neon piece of its frame) marked Laser, so it clicks off as you walk up and back on after you
+	-- (TrainingDoors.client; the owner, 16 Nov: "when you get close you hear a click and the laser gate turns off?")
+	local rd = pg:FindFirstChild("ReturnDoor")
+	if rd then
+		game:GetService("CollectionService"):AddTag(rd, "LaserGate")
+		local void = rd:FindFirstChild("LaserVoid")
+		if void and void:IsA("BasePart") then rd:SetAttribute("Center", void.Position - Vector3.new(0, void.Size.Y / 2, 0)) end
+		rd:SetAttribute("Near", 10)
+		for _, d in rd:GetDescendants() do
+			if d:IsA("BasePart") and d.Material == NEON and d.Size.X > 10 then d:SetAttribute("Laser", true) end
+		end
+	end
 	return ("playground: %d blocks dressed, %d things"):format(n, #dress:GetDescendants())
 end
 

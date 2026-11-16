@@ -35,7 +35,7 @@ soft('plastic', PIER, 8.8, 2.1, 3.5, 0, 0, 0.7 + 1.75, 0.35, pick='up', segs=3, 
 for sy in (-1, 1):
     soft('plastic', WALL2, 7.2, 0.16, 2.3, 0, sy * 1.05, 2.5, 0.25, pick='y', segs=2, small=0.04)
 for sx in (-1, 1):
-    soft('plastic', SLATE, 1.0, 2.55, 3.6, sx * 4.55, 0, 0.6 + 1.8, 0.35, pick='up', segs=3, small=0.12)
+    soft('plastic', SLATE, 1.0, 2.55, 3.7, sx * 4.55, 0, 0.6 + 1.85, 0.35, pick='up', segs=3, small=0.12)
 soft('plastic', TRIM, 10.3, 2.7, 0.55, 0, 0, 4.15 + 0.275, 0.25, pick='all', segs=2, small=0.0)
 keep('tv_cover')
 
@@ -52,7 +52,7 @@ for z, h in ((2.15, 2.1), (5.625, 1.9)):
         soft('plastic', WALL2, 2.5, 0.16, h, 0, -2.25, z, 0.2, pick='y', segs=2, small=0.04, M=rot)
 for sx in (-1, 1):
     for sy in (-1, 1):
-        soft('plastic', SLATE, 0.95, 0.95, 6.45, sx * 2.1, sy * 2.1, 0.6 + 3.225, 0.35, pick='up', segs=3, small=0.1)
+        soft('plastic', SLATE, 0.95, 0.95, 6.6, sx * 2.1, sy * 2.1, 0.55 + 3.3, 0.35, pick='up', segs=3, small=0.1)
 soft('plastic', TRIM, 5.3, 5.3, 0.55, 0, 0, 7.05 + 0.275, 0.3, pick='all', segs=2, small=0.0)
 keep('tv_block')
 
@@ -154,8 +154,8 @@ def oct8(kind, col, prof):
     pts = [(a * K8, z) for a, z in prof]
     lathe(kind, col, pts + [pts[0]], M=RZ(math.pi / 8), segs=8, cap=False)
 oct8('plastic', TRIM, [(20.0, 16.0), (16.0, 20.0), (16.0, 21.2), (24.5, 21.2), (24.5, 16.0)])
-oct8('plastic', 'aeaba5', [(16.0, 20.0), (12.0, 20.0), (12.0, 21.2), (16.0, 21.2)])
-oct8('plastic', WALL2, [(12.0, 20.05), (12.0, 32.0), (13.6, 32.0), (13.6, 20.05)])  # (its foot inside the ring: flicker list)
+oct8('plastic', 'aeaba5', [(16.0, 20.0), (12.05, 20.0), (12.05, 21.2), (16.0, 21.2)])  # (its inside face inside the drum)
+oct8('plastic', WALL2, [(12.0, 20.05), (12.0, 32.05), (13.6, 32.05), (13.6, 20.05)])  # (its foot inside the ring: flicker list)
 oct8('plastic', TRIM, [(12.0, 20.0), (11.4, 20.0), (11.4, 20.9), (12.0, 20.9)])
 lathe('plastic', 'aeaba5', [(13.6 * K8, 32.0), (0.0, 32.0), (0.0, 33.6), (13.6 * K8, 33.6), (13.6 * K8, 32.0)], M=RZ(math.pi / 8), segs=8, cap=False)
 keep('tv_crown')
@@ -172,7 +172,7 @@ keep('tv_vault')
 SLATE = '5f646e'  # mid slate in place of near-black on bases and housings
 # tv_towerOct: the course's tower as one big eight-sided piece (cut corners), 16 across the flats, 28 tall
 oct8('plastic', SLATE, [(8.15, 0.0), (8.15, 0.95), (0.0, 0.95), (0.0, 0.0)])  # (its top inside the body: flicker list)
-oct8('plastic', WALL2, [(8.0, 0.9), (8.0, 27.0), (0.0, 27.0), (0.0, 0.9)])
+oct8('plastic', WALL2, [(8.0, 0.9), (8.0, 27.05), (0.0, 27.05), (0.0, 0.9)])  # (its top inside the trim cap: flicker list)
 for zb in (9.0, 18.0):
     oct8('plastic', TRIM, [(8.45, zb - 0.45), (8.45, zb + 0.45), (7.9, zb + 0.45), (7.9, zb - 0.45)])
 oct8('plastic', TRIM, [(8.7, 27.0), (8.7, 28.0), (0.0, 28.0), (0.0, 27.0)])
@@ -197,7 +197,7 @@ cy('plastic', SLATE, 1.5, 0.5, 0, 0, -0.25, segs=24, bevel=0.15)
 cy('plastic', PIER, 0.8, 0.9, 0, 0, -0.75, segs=20, bevel=0.15)
 lathe('plastic', AMBER, ring_prof(2.4, 0.55, 10), segs=36, cap=False, M=T(0, 0, -0.75))
 for a in (0.0, math.pi / 3, 2 * math.pi / 3):
-    bx('plastic', SLATE, 4.2, 0.35, 0.3, 0, 0, -0.45, 0.06, rot=RZ(a))
+    bx('plastic', SLATE, 4.2, 0.35, 0.3, 0, 0, -0.5, 0.06, rot=RZ(a))  # (tops 0.05 under the stem's: flicker list)
 keep('tv_hoop')
 
 export_all('training_v2.glb')
