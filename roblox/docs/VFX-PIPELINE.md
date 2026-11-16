@@ -254,3 +254,17 @@ Seraph skin in first person 8. Its fixes, all in 454 (photos `roblox/docs/vfx/ro
   person 0.16 m ahead of the muzzle, its barrel flames 1.5x wider.
 - Skin particles in first person ride with the gun (LockedToPart): world-space ones were left floating when the view
   turned.
+
+**Critic round 4** (strips `roblox/docs/vfx/round4/`): flash 7, frag 4, smoke bomb 7, black hole 6, Ducky LMG in first
+person 7. Round 5's answers:
+- Frag: the hot pockets burned down by about 0.5 s (gold -> #c0561a, LightEmission 0.3 so overlaps stop stacking into
+  bright crescents), smaller uneven ragged lumps holding random frames, sorted behind the grey puffs (ZOffset -1.2 vs
+  +0.5); the smoke body wider than tall (a box 0.75 r x 0.12 r, centred 0.3 r up on the blast), 9 puffs of 3.9-6 m.
+- Black hole: a thin bright ring in the disk's plane at 2.25 m (the ring drawing) whose near arc crosses in front of
+  the horizon from the side; the streaks only in a flat band round the disk's plane (a flat cylinder emitter, 5 m out,
+  ending 1.2 m out, violet-white, shorter); the light halved and paler; the floor dust fainter; the flakes 2.5x bigger.
+- Smoke bomb: a cool base colour (226, 229, 232), less room light (LightInfluence 0.55), more puffs at the rim.
+- Flash: first person 0.72 of the viewmodel's scale (it was half the web's size on screen), LightEmission 0.3; your
+  own tracer starts 3.5 studs out and comes to a point at the gun end (taper 0.15).
+- Skins in first person go quiet while the gun is hidden (scope, a held camera) or while aiming (the view narrower
+  than 0.95 of the widest seen lately): the bubbles drifted by the sight and hung in view when the gun was hidden.

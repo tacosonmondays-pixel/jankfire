@@ -263,7 +263,7 @@ local HOT = cs(Color3.fromRGB(255, 255, 255), Color3.fromRGB(255, 242, 176), Col
 -- 0.05 s (0.035 s on guns over 8 shots a second); each flash flickers between the 4 drawn stars (the web re-rolls its
 -- star every frame), a random roll, 0.8-1.4 of its size
 local FLASH = emitters(6, { Texture = TEX.flash, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(60),
-	LightEmission = 0.45, LightInfluence = 0, Brightness = 1.15, ZOffset = 0.3, Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
+	LightEmission = 0.3, LightInfluence = 0, Brightness = 1.0, ZOffset = 0.3, Orientation = Enum.ParticleOrientation.VelocityPerpendicular,
 	Lifetime = NR(0.05), Speed = NR(0.01), Rotation = NR(0, 360), Transparency = ns(0, 0, 0.7, 0, 1, 0.3) })
 -- (one of the 4 stars per flash, held: a 2-3 frame flash must never be a playing flipbook, its blending blurs it)
 for _, e in FLASH.list do
@@ -357,9 +357,10 @@ end
 -- (round 2: less glow, so each gun's colour survives on screen: the critic saw them all wash to white)
 local TRACERS = beamPool(48, { Texture = TEX.tracer, LightEmission = 0.3, LightInfluence = 0, Brightness = 0.85 })
 local TR_WIDE = 1.5
-function Fx.tracer(from: Vector3, to: Vector3, color: Color3, width: number, life: number)
+-- taper: the near end's width as a share of the far end's (your own tracer comes to a point at the gun, round 4)
+function Fx.tracer(from: Vector3, to: Vector3, color: Color3, width: number, life: number, taper: number?)
 	if (to - from).Magnitude < 0.2 then return end
-	beam(TRACERS, from, to, color, width * TR_WIDE, width * TR_WIDE, life, true)
+	beam(TRACERS, from, to, color, width * TR_WIDE * (taper or 1), width * TR_WIDE, life, true)
 end
 -- the flash's flame along the barrel, exactly the web's way: two thin crossed planes (one upright, one flat) lying
 -- along the barrel, each showing the flame drawing on both faces, unlit. from behind the gun they are slivers, from the
@@ -687,7 +688,8 @@ function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast:
 	-- (first person: matched to the web's flash on screen in the frame captures, 16 Nov: 0.45 of the viewmodel's scale)
 	-- (round 2: a quarter bigger, 0.1 m ahead of the muzzle, the handguard hid a quarter of it; others' 1.4x so the star
 	-- reads at range instead of a dot)
-	local k = (if fpv then FPK * 0.56 else S * 1.4) * (if big then 1.6 else 1)
+	-- (round 4: on screen half the web's 0.24 m at its 1 m eye distance: 0.72 of the viewmodel's scale matches it)
+	local k = (if fpv then FPK * 0.72 else S * 1.4) * (if big then 1.6 else 1)
 	local life = if fast then 0.035 else 0.05
 	local pos, dir = at.Position, at.LookVector
 	if fpv then pos += dir * 0.16 * FPK end
@@ -730,14 +732,15 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	local life = if fast then 0.07 else 0.2
 	local a = at.Position
 	-- your own tracer starts 3 studs out, so it never reads as a line out of your eye (first person only)
-	if fpv and #ends > 0 and (ends[1] - a).Magnitude > 9 then a += (ends[1] - a).Unit * 3 end
+	if fpv and #ends > 0 and (ends[1] - a).Magnitude > 9 then a += (ends[1] - a).Unit * 3.5 end
+	local taper = if fpv then 0.15 else nil
 	if path then
 		for i, b in path do
-			if typeof(b) == "Vector3" and i <= 2 then Fx.tracer(a, b, col, wide, life); a = b end
+			if typeof(b) == "Vector3" and i <= 2 then Fx.tracer(a, b, col, wide, life, taper); a = b; taper = nil end
 		end
-		Fx.tracer(a, ends[1], col, wide, life)
+		Fx.tracer(a, ends[1], col, wide, life, taper)
 	else
-		for _, e in ends do Fx.tracer(a, e, col, wide, life) end
+		for _, e in ends do Fx.tracer(a, e, col, wide, life, taper) end
 	end
 end
 
@@ -1019,14 +1022,19 @@ local function newRig(): Rig
 	bb.Name = "FxBlastBody"; bb.Anchored = true; bb.CanCollide = false; bb.CanQuery = false; bb.CanTouch = false; bb.CastShadow = false
 	bb.Transparency = 1; bb.Size = Vector3.one; bb.CFrame = PARK; bb.Parent = folder
 	return { part = p, up = up, mid = mid, fl = fl, scorch = sc, mark = mark, markT = -1, bodyBox = bb,
-		body = rigEmitter(bb, { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = ONESHOT, LightEmission = 0, LightInfluence = 0.25,
+		body = rigEmitter(bb, { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = ONESHOT, LightEmission = 0, LightInfluence = 0.25, ZOffset = 0.5,
 			Color = cs(Color3.fromRGB(98, 96, 94), Color3.fromRGB(70, 69, 68)), Lifetime = NR(1.8, 2.6), Speed = NR(0.6 * S, 1.6 * S),
 			SpreadAngle = Vector2.new(45, 45), Drag = 1.2, Acceleration = Vector3.new(0, 0.35 * S, 0), Rotation = NR(0, 360),
 			RotSpeed = NR(-12, 12), Transparency = ns(0, 0.5, 0.06, 0.04, 0.65, 0.1, 1, 1) }),
-		hot = rigEmitter(bb, { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = ONESHOT, LightEmission = 1, LightInfluence = 0,
-			Brightness = 1.4, Color = cs(Color3.fromRGB(255, 204, 102), Color3.fromRGB(255, 154, 26), Color3.fromRGB(184, 74, 16)),
-			Lifetime = NR(0.6, 0.8), Speed = NR(0.3 * S, 0.8 * S), SpreadAngle = Vector2.new(60, 60), Drag = 2, ZOffset = 0.6,
-			Rotation = NR(0, 360), Transparency = ns(0, 0.7, 0.15, 0.3, 0.6, 0.45, 1, 1) }),
+		-- (round 4, main's note: three flat round discs in a row in front of the smoke. now smaller uneven lumps, each
+		-- holding one random frame of the lumpy sheet (some already thinning, so ragged), sorted behind the grey puffs so
+		-- the smoke overlaps their edges: glow buried inside the mass)
+		hot = rigEmitter(bb, { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = Enum.ParticleFlipbookMode.Loop,
+			FlipbookStartRandom = true, FlipbookFramerate = NR(0), LightEmission = 0.3, LightInfluence = 0,
+			-- (round 4: still full gold at 0.75 s; the web's fire has burned down to dim orange inside the smoke by then)
+			Brightness = 1.3, Color = cs(Color3.fromRGB(255, 196, 92), Color3.fromRGB(232, 120, 36), Color3.fromRGB(192, 86, 26)),
+			Lifetime = NR(0.35, 0.55), Speed = NR(0.2 * S, 0.6 * S), SpreadAngle = Vector2.new(70, 70), Drag = 2, ZOffset = -1.2,
+			Rotation = NR(0, 360), Transparency = ns(0, 0.6, 0.15, 0.25, 0.5, 0.5, 1, 1) }),
 		shards = rigEmitter(mid, { Texture = TEX.chips, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, FlipbookFramerate = NR(10, 16),
 			LightInfluence = 0.8, Color = cs(Color3.fromRGB(70, 66, 62), Color3.fromRGB(44, 42, 40)),
 			Size = ns(0, 0.3 * S * H, 1, 0.22 * S * H), Transparency = ns(0, 0, 0.8, 0, 1, 1), Lifetime = NR(0.9, 1.5),
@@ -1075,7 +1083,7 @@ function Fx.explosion(at: Vector3, R: number)
 	local rig = rigs[rigI] or newRig()
 	if not rig.blended then
 		rig.blended = true
-		oneshot(rig.big, 16); oneshot(rig.small, 16); oneshot(rig.soot, 64); oneshot(rig.kick, 16); oneshot(rig.body, 64); oneshot(rig.hot, 16)
+		oneshot(rig.big, 16); oneshot(rig.small, 16); oneshot(rig.soot, 64); oneshot(rig.kick, 16); oneshot(rig.body, 64)
 	end
 	rigs[rigI] = rig
 	local r = R / S
@@ -1097,17 +1105,18 @@ function Fx.explosion(at: Vector3, R: number)
 	emit(rig.shards, 14)
 	emit(rig.cinders, 30)
 	lightFlash(at, Color3.fromRGB(255, 200, 140), math.min(60, R * 1.6), 5, 0.25)
-	-- the smoke body takes over from the fireball: a cluster of grey puffs up off the floor (0.55 r wide, centred 0.4 r up),
-	-- orange pockets glowing inside it till about 1.1 s; small dark soot puffs from 0.65 s
+	-- the smoke body takes over from the fireball: a cluster of grey puffs up off the floor, wider than tall (round 4: one
+	-- tall ball up and left of the fire), centred on the blast; orange pockets glowing inside it till about 0.8 s; small
+	-- dark soot puffs from 0.65 s
 	local bb = rig.bodyBox
-	bb.Size = Vector3.new(0.55 * R, 0.25 * R, 0.55 * R)
-	bb.CFrame = CFrame.new(at + Vector3.new(0, 0.4 * R, 0))
+	bb.Size = Vector3.new(0.75 * R, 0.12 * R, 0.75 * R)
+	bb.CFrame = CFrame.new(at + Vector3.new(0, 0.3 * R, 0))
 	local body, hot, soot = rig.body, rig.hot, rig.soot
 	after(0.3, function()
-		body.Size = grow(2.8 * 1.3 * S * H, 5.2 * 1.3 * S * H, 0.4 * S * H)
-		emit(body, 11)
-		hot.Size = grow(1.4 * 1.3 * S * H, 2.4 * 1.3 * S * H)
-		emit(hot, 4)
+		body.Size = grow(3 * 1.3 * S * H, 4.6 * 1.3 * S * H, 0.6 * S * H)
+		emit(body, 9)
+		hot.Size = grow(0.7 * 1.3 * S * H, 1.4 * 1.3 * S * H, 0.6 * S * H) -- (uneven: 0.4 m either way)
+		emit(hot, 8)
 	end)
 	after(0.65, function()
 		soot.Size = grow(1.5 * 1.3 * S * H, 3.2 * 1.3 * S * H)
@@ -1144,7 +1153,7 @@ local SHELL = { { 0, 1.3, 0, 0.62 }, { 0.5, 0.9, 0, 0.42 }, { -0.5, 0.9, 0, 0.42
 	{ 0.3, 1.9, 0.25, 0.36 }, { -0.3, 1.8, -0.3, 0.36 } } -- { x / r, y (studs / S), z / r, radius / r }
 local clouds: { [any]: Cloud } = {}
 local spareClouds: { Cloud } = {}
-local SMOKE_GREY = Color3.fromRGB(214, 214, 214)
+local SMOKE_GREY = Color3.fromRGB(226, 229, 232) -- (round 4: a touch cool; the room's warm light made it cream)
 local function cloudPart(): BasePart
 	local p = Instance.new("Part")
 	p.Name = "FxCloud"; p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
@@ -1155,7 +1164,7 @@ end
 -- a solid white mass. now our own thick lumpy puff, which fills about 0.7 of its square: drawn 1.3x to keep the web's
 -- 3.3 -> 6.8 m puffs, a few more of them)
 local function puffs(parent: BasePart, rate: number): ParticleEmitter
-	local e = rigEmitter(parent, { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = ONESHOT, LightInfluence = 1, LightEmission = 0,
+	local e = rigEmitter(parent, { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = ONESHOT, LightInfluence = 0.55, LightEmission = 0,
 		Color = cs(SMOKE_GREY), Size = grow(2.2 * 1.3 * S * H, 4.4 * 1.3 * S * H, 0.5 * S * H), Transparency = ns(0, 0.08, 0.75, 0.08, 1, 1),
 		Lifetime = NR(3, 4.5), Rate = rate, Speed = NR(0.3, 1.1), SpreadAngle = Vector2.new(35, 35),
 		Rotation = NR(0, 360), RotSpeed = NR(-9, 9) })
@@ -1175,16 +1184,16 @@ function Fx.smokeCloud(id: any, at: Vector3, r: number, left: number)
 			b.Transparency = 1; b.CFrame = PARK; b.Parent = folder
 			table.insert(shell, b)
 		end
-		c = { lo = lo, hi = hi, a = puffs(lo, 26), b = puffs(hi, 10), untilT = 0, stopT = 0, live = true, shell = shell,
+		c = { lo = lo, hi = hi, a = puffs(lo, 32), b = puffs(hi, 10), untilT = 0, stopT = 0, live = true, shell = shell,
 			at = Vector3.zero, r = 1, t0 = 0 }
 	end
 	local cc = c :: Cloud
 	-- (round 3: low and wide like the web's 0.4-3.8 m, about 2.5 times as wide as it is tall)
-	cc.lo.Size = Vector3.new(1.6 * r, 0.8 * S, 1.6 * r); cc.lo.CFrame = CFrame.new(at + Vector3.new(0, 1.5 * S, 0))
+	cc.lo.Size = Vector3.new(1.75 * r, 0.8 * S, 1.75 * r); cc.lo.CFrame = CFrame.new(at + Vector3.new(0, 1.5 * S, 0)) -- (round 4: more at the rim)
 	cc.hi.Size = Vector3.new(1.1 * r, 0.8 * S, 1.1 * r); cc.hi.CFrame = CFrame.new(at + Vector3.new(0, 2.2 * S, 0))
 	cc.untilT = clockT + left; cc.stopT = clockT + math.max(0, left - 3); cc.live = true
 	cc.at, cc.r, cc.t0 = at, r, clockT
-	emit(cc.a, 22); emit(cc.b, 8)
+	emit(cc.a, 26); emit(cc.b, 8)
 	cc.a.Enabled = true; cc.b.Enabled = true
 	clouds[id] = cc
 end
@@ -1385,7 +1394,7 @@ local HZ = 1 * S -- the horizon's radius (the web's core is 2 m across)
 local DISK_W = 2.85 * S -- the disk sprite's half width (its inner edge, 0.38 of it, sits just outside the horizon)
 local HALO_W = 2.5 * S -- the halo sprite's half width (its photon ring at 0.42 of it)
 local TILT = CFrame.Angles(math.rad(20), 0, math.rad(-6)) -- (round 3: 14 read as a line from the side)
-type BH = { hz: BasePart, disk: ParticleEmitter, diskAtt: Attachment, halo: ParticleEmitter, swirl: BasePart, dust: ParticleEmitter,
+type BH = { hz: BasePart, disk: ParticleEmitter, diskAtt: Attachment, halo: ParticleEmitter, band: ParticleEmitter, swirl: BasePart, dust: ParticleEmitter,
 	dustAtt: Attachment, fall: ParticleEmitter, outer: BasePart, bits: ParticleEmitter, light: PointLight }
 type HoleFx = { at: Vector3, R: number, rig: BH, t: number, nextLayer: number, nextDust: number, ang: number, full: boolean }
 -- (each sprite: 1.2 s, in and out over 12 % of it; the next one starts as the last begins to go)
@@ -1407,46 +1416,54 @@ local function newBH(): BH
 		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), LockedToPart = true,
 		Size = NumberSequence.new(DISK_W), Transparency = ns(0, 1, 0.12, 0.08, 0.88, 0.08, 1, 1), Lifetime = NR(LAYER_LIFE),
 		Rotation = NR(0, 360), RotSpeed = NR(-200, -160) }) -- (about half a turn a second)
+	-- the bright band: a thin ring in the disk's plane at 2.25 m (the ring drawing's ring sits at 0.94 of its half width), so
+	-- from the side its near arc crosses in front of the horizon's lower half (round 4: the side view read as an eclipse)
+	local band = rigEmitter(diskAtt, { Texture = TEX.shock, LightEmission = 1, LightInfluence = 0, Brightness = 2.6,
+		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), LockedToPart = true,
+		Color = cs(Color3.fromRGB(236, 220, 255)), Size = NumberSequence.new(2.4 * S), Transparency = ns(0, 1, 0.12, 0.05, 0.88, 0.05, 1, 1),
+		Lifetime = NR(LAYER_LIFE) })
 	local haloAtt = Instance.new("Attachment"); haloAtt.Parent = hz -- (on the middle: an emitter on a part spawns anywhere in it)
 	local halo = rigEmitter(haloAtt, { Texture = TEX.bhhalo, LightEmission = 1, LightInfluence = 0, Brightness = 2,
 		Speed = NR(0), LockedToPart = true, Size = NumberSequence.new(HALO_W), Transparency = ns(0, 1, 0.12, 0.1, 0.88, 0.1, 1, 1),
 		Lifetime = NR(LAYER_LIFE), Rotation = NR(-4, 4) })
 	-- the streaks: from a shell 3.2 m out straight to the middle in the turning part's frame (a spiral in the world),
 	-- speeding up as they go (negative drag) and stretching along their flight
-	local swirl = bhPart("FxHoleSwirl", Enum.PartType.Ball)
-	swirl.Size = Vector3.one * 10 * S -- (round 3: too few, too faint, too close in: now from 5 m, more, brighter, longer)
+	local swirl = bhPart("FxHoleSwirl", Enum.PartType.Block) -- (a block: a ball part keeps its sides equal)
+	-- (round 4: straight scratches up to the ceiling: now only in a flat band round the disk's plane, 5 m out, ending
+	-- 1.2 m out, before the core; the part turning under them bends each path into a spiral)
+	swirl.Size = Vector3.new(10 * S, 1.6 * S, 10 * S)
 	local fall = rigEmitter(swirl, { Texture = TEX.spark, LightEmission = 1, LightInfluence = 0, Brightness = 4,
 		Orientation = Enum.ParticleOrientation.VelocityParallel, LockedToPart = true,
-		Color = cs(Color3.fromRGB(205, 175, 255), Color3.fromRGB(245, 238, 255)), Size = ns(0, 0.12 * S, 1, 0.2 * S),
-		Squash = ns(0, 0.5, 1, 2.8), Transparency = ns(0, 1, 0.15, 0.15, 0.85, 0.05, 1, 1), Lifetime = NR(0.8, 0.9),
-		Speed = NR(2.7 * S, 3.1 * S), Drag = -1.5, Shape = Enum.ParticleEmitterShape.Sphere,
+		Color = cs(Color3.fromRGB(216, 204, 255), Color3.fromRGB(250, 246, 255)), Size = ns(0, 0.1 * S, 1, 0.16 * S),
+		Squash = ns(0, 0.5, 1, 2), Transparency = ns(0, 1, 0.15, 0.15, 0.75, 0.1, 1, 1), Lifetime = NR(0.8, 0.9),
+		Speed = NR(2.6 * S, 2.9 * S), Drag = -1.5, Shape = Enum.ParticleEmitterShape.Cylinder,
 		ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface, ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Rate = 60 })
 	-- the loose bits: small dark flakes from 6 m out, slower, tumbling
 	local outer = bhPart("FxHoleDebris", Enum.PartType.Ball)
 	outer.Size = Vector3.one * 12 * S
 	local bits = rigEmitter(outer, { Texture = TEX.chips, FlipbookLayout = FLIP2, FlipbookMode = RANDOM, LightEmission = 0,
 		LightInfluence = 1, LockedToPart = true, Color = cs(Color3.fromRGB(92, 90, 98), Color3.fromRGB(44, 42, 50)),
-		Size = ns(0, 0.18 * S * H, 0.7, 0.16 * S * H, 1, 0.05 * S * H), Transparency = ns(0, 1, 0.15, 0, 0.9, 0, 1, 1), Lifetime = NR(1.5, 1.7),
+		Size = ns(0, 0.45 * S * H, 0.7, 0.4 * S * H, 1, 0.12 * S * H), Transparency = ns(0, 1, 0.15, 0, 0.9, 0, 1, 1), Lifetime = NR(1.5, 1.7),
 		Speed = NR(1.6 * S, 1.8 * S), Drag = -1, Rotation = NR(0, 360), RotSpeed = NR(-300, 300),
 		Orientation = Enum.ParticleOrientation.VelocityParallel, Squash = ns(0, 0, 0.7, 0, 1, 2.5), -- (stretched as they go in)
 		Shape = Enum.ParticleEmitterShape.Sphere, ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface,
-		ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Rate = 14 })
+		ShapeInOut = Enum.ParticleEmitterShapeInOut.Inward, Rate = 12 })
 	-- grey dust on the floor below drawn in: a flat ring shrinking to the middle, slow at first, quick at the end
 	local dustAtt = Instance.new("Attachment"); dustAtt.Parent = hz
 	local dust = rigEmitter(dustAtt, { Texture = TEX.shock, LightEmission = 0.3, LightInfluence = 0.7,
 		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), Color = cs(Color3.fromRGB(150, 148, 156)),
 		Size = ns(0, 6 * S * H * 2, 0.5, 4.6 * S * H * 2, 0.8, 2.8 * S * H * 2, 1, 1.2 * S * H * 2),
-		Transparency = ns(0, 1, 0.3, 0.72, 0.85, 0.75, 1, 1), Lifetime = NR(0.9) })
+		Transparency = ns(0, 1, 0.3, 0.84, 0.85, 0.86, 1, 1), Lifetime = NR(0.9) })
 	local light = Instance.new("PointLight")
 	-- (round 3: at 1.4-2 over 14 m it washed the whole room violet; a faint pulse on what is near)
-	light.Color = Color3.fromRGB(176, 146, 255); light.Range = math.min(60, 8 * S); light.Brightness = 0; light.Shadows = false
+	light.Color = Color3.fromRGB(192, 178, 236); light.Range = math.min(60, 8 * S); light.Brightness = 0; light.Shadows = false
 	light.Enabled = false; light.Parent = hz
-	return { hz = hz, disk = disk, diskAtt = diskAtt, halo = halo, swirl = swirl, dust = dust, dustAtt = dustAtt, fall = fall,
+	return { hz = hz, disk = disk, diskAtt = diskAtt, halo = halo, band = band, swirl = swirl, dust = dust, dustAtt = dustAtt, fall = fall,
 		outer = outer, bits = bits, light = light }
 end
 local function bhPark(b: BH)
 	b.fall.Enabled = false; b.bits.Enabled = false
-	b.disk:Clear(); b.halo:Clear(); b.fall:Clear(); b.bits:Clear(); b.dust:Clear()
+	b.disk:Clear(); b.halo:Clear(); b.band:Clear(); b.fall:Clear(); b.bits:Clear(); b.dust:Clear()
 	b.hz.CFrame = PARK; b.swirl.CFrame = PARK; b.outer.CFrame = PARK
 	b.light.Enabled = false
 	table.insert(bhFree, b)
@@ -1459,10 +1476,11 @@ local function bhScale(h: HoleFx, g: number)
 	if g < 1 then
 		b.disk.Size = NumberSequence.new(DISK_W * k)
 		b.halo.Size = NumberSequence.new(HALO_W * k)
+		b.band.Size = NumberSequence.new(2.4 * S * k)
 		h.full = false
 	elseif not h.full then
 		h.full = true
-		b.disk.Size = NumberSequence.new(DISK_W); b.halo.Size = NumberSequence.new(HALO_W)
+		b.disk.Size = NumberSequence.new(DISK_W); b.halo.Size = NumberSequence.new(HALO_W); b.band.Size = NumberSequence.new(2.4 * S)
 	end
 end
 -- returns true: Fx draws the whole hole (Utility then makes no core, shell or ring of its own)
@@ -1475,7 +1493,7 @@ function Fx.holeOpen(id: any, at: Vector3, R: number, age: number?): boolean
 	bhScale(h, math.min(1, h.t / 0.3))
 	b.fall.Enabled = true; b.bits.Enabled = true
 	b.light.Enabled = true
-	emit(b.disk, 1); emit(b.halo, 1)
+	emit(b.disk, 1); emit(b.halo, 1); emit(b.band, 1)
 	h.nextLayer = h.t + LAYER_EVERY
 	return true
 end
@@ -1489,7 +1507,7 @@ function Fx.holePop(id: any, at: Vector3?, r: number?)
 		holesFx[id] = nil
 		local b = h.rig
 		b.fall.Enabled = false; b.bits.Enabled = false
-		b.disk:Clear(); b.halo:Clear()
+		b.disk:Clear(); b.halo:Clear(); b.band:Clear()
 		table.insert(bhDying, { rig = b, t = 0 })
 	end
 	if not at then return end
@@ -1517,10 +1535,10 @@ local function holeFxStep(dt: number)
 		b.hz.CFrame = CFrame.new(at)
 		b.swirl.CFrame = CFrame.new(at) * TILT * CFrame.Angles(0, -h.ang * 3, 0)
 		b.outer.CFrame = CFrame.new(at) * TILT * CFrame.Angles(0, -h.ang * 0.9, 0)
-		b.light.Brightness = 0.45 + 0.2 * math.sin(h.t * 5)
+		b.light.Brightness = 0.22 + 0.1 * math.sin(h.t * 5) -- (round 4: the walls 10 m off still went lavender)
 		if h.t >= h.nextLayer then
 			h.nextLayer += LAYER_EVERY
-			emit(b.disk, 1); emit(b.halo, 1)
+			emit(b.disk, 1); emit(b.halo, 1); emit(b.band, 1)
 		end
 		-- grey dust on the floor under it drawn in (only when the floor is close below)
 		if h.t >= h.nextDust then
@@ -1548,7 +1566,8 @@ end
 -- colour; its own flash and tracer colours. Fx.skinIdle hangs the emitters on a built gun (WeaponModels.build: k =
 -- studs per metre; the viewmodel's and every third-person copy), and a shot from a registered gun takes its colours.
 -- cheap: a few slow particles each, nothing in front of the sights (the points are behind and beside the optic)
-type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number }
+type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
+	quiet: boolean }
 local skinned: { [Model]: SkinFx } = {}
 local function skinSpec(model: Model): any
 	local id = model:GetAttribute("Skin")
@@ -1600,7 +1619,8 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	local sp = spec or skinSpec(model)
 	local root = model.PrimaryPart
 	if not sp or not root then return end
-	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99 }
+	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99,
+		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false }
 	for _, e in sp.idle or {} do
 		local pts = {}
 		for _, p in e.at or {} do
@@ -1615,7 +1635,7 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 			if em.FlipbookMode == ONESHOT then oneshot(em, 16) end
 			em.Rate = (e.rate or 1) / #pts
 			em.Enabled = not e.afterFire
-			if e.afterFire then table.insert(S_.after, em) end
+			if e.afterFire then table.insert(S_.after, em) else table.insert(S_.idle, em) end
 		end
 	end
 	-- trails off glowing edges as the gun moves (spec.trail: segs = { { a, b }, ... } in the gun frame, metres; the ribbon
@@ -1670,11 +1690,27 @@ skinAt = function(p: Vector3): any
 	end
 	return nil
 end
+-- (round 4: first-person bubbles drifted by the sight while aiming, and hung in the view while the gun was hidden. the
+-- game's aim narrows the view (Arsenal: baseFov / zoom), so a view under 0.95 of the widest seen lately is aiming)
+local wideFov = 70
 local function skinStep()
+	local cam = workspace.CurrentCamera
+	local fov = if cam then cam.FieldOfView else 70
+	wideFov = math.max(fov, wideFov - 0.02)
+	local aiming = fov < wideFov * 0.95
 	for m, S_ in skinned do
 		if not m.Parent then skinned[m] = nil; continue end
+		if S_.fp then
+			local root = m.PrimaryPart
+			local hidden = root == nil or root.LocalTransparencyModifier >= 0.99 or root.Transparency >= 0.99
+			local quiet = hidden or aiming
+			if quiet ~= S_.quiet then
+				S_.quiet = quiet
+				for _, e in S_.idle do e.Enabled = not quiet; if hidden then e:Clear() end end
+			end
+		end
 		if #S_.after > 0 then
-			local on = clockT - S_.afterT < 1.5
+			local on = clockT - S_.afterT < 1.5 and not S_.quiet
 			for _, e in S_.after do if e.Enabled ~= on then e.Enabled = on end end
 		end
 	end
