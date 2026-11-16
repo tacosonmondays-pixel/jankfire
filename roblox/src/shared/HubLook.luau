@@ -153,6 +153,26 @@ H.looks.rooftop_v2 = {
 	SunRays = { Intensity = 0.02 },
 } :: Look
 H.plainSky.rooftop_v2 = true
+-- Rooftop v3 (ServerStorage.PolishBackup.RooftopV3, 16 Nov 2026: v1's layout redressed to the principles): its own light,
+-- picked by HubLife in a match when workspace.Map's attribute Arena is "RooftopV3". v2's afternoon a little warmer: a
+-- high sun from the south-west (neither team starts looking into it), a pale haze and a pale fog so the far city fades
+-- (v1's saved dusk fog is navy: it drew a black band on the horizon)
+H.looks.rooftop_v3 = {
+	Lighting = {
+		Ambient = Color3.fromRGB(118, 116, 114), OutdoorAmbient = Color3.fromRGB(132, 134, 140), Brightness = 2.5,
+		ExposureCompensation = -0.1, EnvironmentDiffuseScale = 0.5, EnvironmentSpecularScale = 0.45,
+		-- (round 2: "one pale colour under flat midday light") a lower, warmer sun from the south, across the lanes,
+		-- so shadows are long and neither team looks into it; a cooler, thicker haze so the city falls back
+		-- (measured: latitude 78 at 13:30 puts the sun about 31 degrees up, 14 degrees west of due south)
+		ClockTime = 13.5, GeographicLatitude = 78, ColorShift_Top = Color3.fromRGB(255, 226, 192),
+		FogColor = Color3.fromRGB(186, 194, 208), FogStart = 400, FogEnd = 2300,
+	},
+	Atmosphere = { Density = 0.38, Offset = 0.2, Haze = 2.0, Glare = 0.04, Color = Color3.fromRGB(194, 200, 210), Decay = Color3.fromRGB(140, 150, 166) },
+	Bloom = { Intensity = 0.2, Size = 20, Threshold = 2.4 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.1, TintColor = Color3.fromRGB(255, 248, 240) }, -- (rounds 3 and 4: a calmer sky)
+	SunRays = { Intensity = 0.02 },
+} :: Look
+H.plainSky.rooftop_v3 = true
 
 local function target(name: string): Instance?
 	return if name == "Lighting" then Lighting else Lighting:FindFirstChild(name)

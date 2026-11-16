@@ -9,7 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
 local HubLook = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HubLook")) :: any
--- which arena a match is in (the Rooftop v1 keeps the saved light; v2 has its own look, HubLook.looks.rooftop_v2)
+-- which arena a match is in (the Rooftop v1 keeps the saved light; v2 and v3 have their own looks, HubLook.looks.rooftop_v2 / _v3)
 local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena")) :: any
 local me = Players.LocalPlayer
 local looking = "?"
@@ -34,7 +34,7 @@ local function zoneLook(): string?
 end
 local function relook(snap: boolean)
 	local zone = me:GetAttribute("Zone")
-	local want = if zone == "match" then (if Arena.name() == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" else "match") elseif zone == "training" then "training" elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
+	local want = if zone == "match" then (if Arena.name() == "RooftopV2" and HubLook.looks.rooftop_v2 then "rooftop_v2" elseif Arena.name() == "RooftopV3" and HubLook.looks.rooftop_v3 then "rooftop_v3" else "match") elseif zone == "training" then "training" elseif zone == "playground" then "playground" else "hub" -- no zone yet = just joined = the hub
 	if want == "hub" then want = zoneLook() or "hub" end
 	if want == looking then return end
 	looking = want

@@ -47,7 +47,9 @@
         "StructurePass": { "$path": "studio-tools/StructurePass.luau" },
         "RooftopV2": { "$path": "studio-tools/RooftopV2.luau" },
         "RooftopV2Layout": { "$path": "studio-tools/RooftopV2Layout.luau" },
-        "TrainingV2": { "$path": "studio-tools/TrainingV2.luau" }
+        "TrainingV2": { "$path": "studio-tools/TrainingV2.luau" },
+        "RooftopV3": { "$path": "studio-tools/RooftopV3.luau" },
+        "RooftopV3Layout": { "$path": "studio-tools/RooftopV3Layout.luau" }
       }
     },
     "StarterPlayer": {
@@ -79,7 +81,8 @@
         "$className": "Folder",
         "Hub": { "$path": "place/Workspace/Map.Hub.rbxm" },
         "Rooftop": { "$path": "place/Workspace/Map.Rooftop.rbxm" },
-        "RooftopV2": { "$path": "place/Workspace/Map.RooftopV2.rbxm" }
+        "RooftopV2": { "$path": "place/Workspace/Map.RooftopV2.rbxm" },
+        "RooftopV3": { "$path": "place/Workspace/Map.RooftopV3.rbxm" }
       }
     },
     "Lighting": {
