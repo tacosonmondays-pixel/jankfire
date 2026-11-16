@@ -235,9 +235,10 @@ local CLIPS = {
 		K(0.5, -0.5, -0.44, -1.25, 0, math.pi * 2 + 0.25, 0.05), K(0.62, -0.52, -0.5, -1.22, 0.1, math.pi * 2 + 0.2, 0.08), K(0.8, -0.7, -1.5, -1.0, 0.4, math.pi * 2, 0.25) } },
 	-- (web pop_laptop: up from below by 0.10 s, shoved forward screen first at 0.18 with an overshoot, held while it
 	-- "loads" to 0.7, dropped by 0.9)
-	laptop = { dur = 0.9, out = 0.7, release = 9, inT = 0.06, keys = {
-		K(0, -0.4, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.1, -0.3, -0.62, -1.2, 0.05, 0.25, 0.05),
-		K(0.18, -0.24, -0.55, -1.55, -0.1, 0.2, 0.0), K(0.7, -0.26, -0.58, -1.45, -0.05, 0.22, 0.02), K(0.9, -0.45, -1.5, -1.0, 0.5, 0.2, 0.2) } },
+	laptop = { dur = 1.05, out = 0.85, release = 9, inT = 0.06, keys = { -- (held by its left edge, facing you: it opens, lights, goes out to them)
+		K(0, -0.85, -1.4, -1.0, 0.5, 0.2, 0.15), K(0.12, -0.75, -0.62, -1.2, 0.28, 0.25, 0.05),
+		K(0.4, -0.75, -0.6, -1.22, 0.22, 0.24, 0.04), K(0.5, -0.69, -0.55, -1.55, -0.1, 0.2, 0.0),
+		K(0.85, -0.71, -0.58, -1.45, -0.05, 0.22, 0.02), K(1.05, -0.9, -1.5, -1.0, 0.5, 0.2, 0.2) } },
 	radar = { dur = 1e6, out = 1e6 - 1, release = 1e9, inT = 0.06, keys = {
 		K(0, -0.7, -1.4, -1.0, 0.4, 0.2, 0.1), K(0.17, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04), K(1e6, -0.6, -0.5, -1.3, 0.04, 0.3, 0.04) } },
 	radarDown = { dur = 0.16, out = 0.0, release = 9, inT = 0.001, keys = {
@@ -297,6 +298,12 @@ local function startHand(id: string)
 	m:ScaleTo(FP_K * (FP_SIZE[id] or 1))
 	m.Parent = camera
 	local h: Hand = { id = id, clip = clip, t0 = os.clock(), model = m, grip = gripOf(m), gone = false }
+	if id == "quiz" then h.grip *= CFrame.Angles(0, -math.pi, 0) end -- (the calculator's screen and keys face you)
+	if id == "laptop" then
+		-- (the laptop faces you too, so you watch it open and light up: held by its other side edge, its left as you see it)
+		local gp = h.grip.Position
+		h.grip = CFrame.new(-gp.X, gp.Y, gp.Z) * CFrame.Angles(0, -math.pi, 0)
+	end
 	-- the gun's own left hand if it has one, else an arm of our own
 	local rows = Holds.holds[VM.wid]
 	if not (rows and rows.Left) then
@@ -363,6 +370,7 @@ local snapAt: (number) -> () -- (the camera below)
 local whiteFlash: (number, number) -> ()
 local printIn: () -> ()
 local wandIn: () -> () -- (the bubble wand below)
+local laptopIn: () -> () -- (the laptop's lid, below)
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 	if gp or io.KeyCode ~= Enum.KeyCode.G then return end
 	if menuOpen() or inHub() then return end
@@ -405,7 +413,7 @@ UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
 		return
 	end
 	startHand(it.id)
-	if it.id == "wand" then wandIn() end
+	if it.id == "wand" then wandIn() elseif it.id == "laptop" then laptopIn() end
 	handStep()
 	if it.id ~= "popper" and it.id ~= "reverse" and it.id ~= "laptop" and it.id ~= "wand" then -- (those make their sound when the server says it happened)
 		Sfx.play(if it.id == "medkit" then "heal" elseif it.id == "bubble" then "reverse" else "swing")
@@ -1301,8 +1309,17 @@ local function onQuiz(m: any)
 		local tl = T.text(sg, "Q", tostring(m.q) .. " = ?", 40, Color3.fromRGB(22, 34, 22), T.FONT_HEAVY, Enum.TextXAlignment.Center)
 		tl.Size = UDim2.fromScale(1, 1); tl.TextScaled = true
 		sg.Parent = scr
-		-- (the screen faces both ways, so the one sitting it can read it too)
-		local sg2 = sg:Clone(); sg2.Face = Enum.NormalId.Back; sg2.Parent = scr
+	end
+	-- (its face, screen and keys, looks at the one sitting it; everyone else sees its back: the question goes there too)
+	local body = calc:FindFirstChild("body", true) :: BasePart?
+	if body then
+		local sb = Instance.new("SurfaceGui"); sb.Face = Enum.NormalId.Back; sb.LightInfluence = 0; sb.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; sb.PixelsPerStud = 60
+		local lcd = T.new("Frame", { Name = "Lcd", BackgroundColor3 = Color3.fromHex("9fb59a"), BorderSizePixel = 0, AnchorPoint = Vector2.new(0.5, 0),
+			Position = UDim2.fromScale(0.5, 0.18), Size = UDim2.fromScale(0.8, 0.22) }, sb)
+		T.corner(lcd, 6)
+		local tb = T.text(lcd, "Q", tostring(m.q) .. " = ?", 40, Color3.fromRGB(22, 34, 22), T.FONT_HEAVY, Enum.TextXAlignment.Center)
+		tb.Size = UDim2.fromScale(1, 1); tb.TextScaled = true
+		sb.Parent = body
 	end
 	e.calc = calc
 	-- the sign over their head
@@ -1898,8 +1915,48 @@ local function wandStep(h: Hand, t: number)
 	e.film.Size = Vector3.new(th * S, 0.084 * S, 0.084 * S) * e.k
 	e.film.CFrame = h.model:GetPivot() * CFrame.new(0, 0, -th * S * e.k / 2) * CFrame.Angles(0, math.pi / 2, 0)
 end
+-- the laptop opens in your hand: the lid (and its screen) swing up about the hinge at the deck's back edge from shut,
+-- past open and back (an overshoot and a settle), then the screen lights: a pale glow on the keys and your hand
+local LIT = Color3.fromRGB(120, 172, 214) -- (Neon brightens it: on screen a pale blue)
+laptopIn = function()
+	local h = hand
+	if not h or h.id ~= "laptop" then return end
+	local m = h.model
+	local deck, lid, scr = m:FindFirstChild("body") :: BasePart?, m:FindFirstChild("lid") :: BasePart?, m:FindFirstChild("screen") :: BasePart?
+	if not deck or not lid then return end
+	-- (still lying as the template does, axis-aligned: the hinge is the deck's back edge at its middle height)
+	local piv = m:GetPivot()
+	local hinge = deck.Position + Vector3.new(0, 0, deck.Size.Z / 2)
+	local v = lid.Position - hinge
+	local lean = math.atan2(-v.Z, v.Y) -- (how far the open lid leans forward of upright)
+	local light = Instance.new("PointLight"); light.Color = LIT; light.Range = 7; light.Brightness = 0; light.Shadows = false
+	light.Parent = scr or lid
+	h.extra = { piv = piv, hinge = piv:PointToObjectSpace(hinge), shut = -(math.pi / 2 - lean - 0.06),
+		parts = { { p = lid, rel = piv:ToObjectSpace(lid.CFrame) }, if scr then { p = scr, rel = piv:ToObjectSpace(scr.CFrame) } else nil },
+		scr = scr, color = if scr then scr.Color else nil, light = light, lit = false, clicked = false }
+end
+local function laptopStep(h: Hand, t: number)
+	local e = h.extra
+	-- 0 = shut, 1 = open: an ease-out with a little overshoot past open (back-out), from 0.06 s to 0.4 s
+	local u = math.clamp((t - 0.06) / 0.34, 0, 1)
+	local c1 = 1.4
+	local open = 1 + (c1 + 1) * (u - 1) ^ 3 + c1 * (u - 1) ^ 2
+	local th = e.shut * (1 - open)
+	local base = h.model:GetPivot()
+	local hc = CFrame.new(e.hinge)
+	local swing = hc * CFrame.Angles(th, 0, 0) * hc:Inverse()
+	for _, q in e.parts do q.p.CFrame = base * swing * q.rel end
+	if not e.clicked and u >= 0.55 then e.clicked = true; Sfx.play("click", nil, 0.6, 1.5) end
+	-- the screen comes on: a white blink, then a pale glow
+	if e.scr and t >= 0.3 then
+		local k = math.clamp((t - 0.3) / 0.12, 0, 1)
+		if not e.lit then e.lit = true; e.scr.Material = Enum.Material.Neon end
+		e.scr.Color = Color3.new(1, 1, 1):Lerp(LIT, k)
+		e.light.Brightness = 2.2 - 1.2 * k
+	end
+end
 extraStep = function(h: Hand, t: number)
-	if h.id == "print" then X.printStep(h, t) elseif h.id == "wand" then wandStep(h, t) end
+	if h.id == "print" then X.printStep(h, t) elseif h.id == "wand" then wandStep(h, t) elseif h.id == "laptop" then laptopStep(h, t) end
 end
 
 type Soap = { p0: Vector3, v0: Vector3, t0: number, ball: BasePart }

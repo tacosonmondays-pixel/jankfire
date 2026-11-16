@@ -203,3 +203,16 @@ ropesnap) play.
 
 Nothing here needs a second player to check: the dummies and the test hook (`"rev"` for a reverse card, `"hurt"` for a
 hit) stand in for one.
+
+### The calculator faces you, the laptop opens (owner's asks, place version 362)
+
+- The Pop Quiz calculator is held turned round about your fist, so its screen and keys face you. Over someone sitting
+  a quiz it faces them; everyone else sees its back, which now shows the question on its own LCD panel too (the sign
+  over their head still shows it as well).
+- The laptop is held facing you by its left edge. Its lid (with the screen) swings up from shut about the hinge at the
+  deck's back edge, 0.06 to 0.4 s, 4 degrees past open and back (measured in Play: 69 degrees shut, open at 0.2 s, -4
+  at 0.3 s, settled at 0.4 s), with a click; the screen lights at 0.3 s (a white blink, then pale blue, with a soft light
+  on the keys and your hand); then it goes out toward them and is held while it "loads". The ads go out on the press,
+  as before: the animation doesn't hold them up.
+
+![the calculator and the laptop](items/calc-laptop-sheet.jpg)
