@@ -1,0 +1,1155 @@
+{
+ "_": "JankfireSounds from recordings (16 Nov 2026): Pro Sound Effects via Roblox, and Freesound CC0 cuts uploaded to the owner. L = loudness Studio measured (AudioAnalyzer, loudest 0.4 s, dB); offset moves the v2 list.json targets onto that scale; trim = per-name dB on top (bright sounds read low, bass-heavy ones high on the analyzer). region = [start, end] s of the clip that plays. vol = Volumes set by hand after the Play test level sweep (PlaybackLoudness), they win over the computed ones.",
+ "offset": -0.7,
+ "trim": {
+  "hit": -3,
+  "click": -3,
+  "empty": -3,
+  "loot_tick": -3,
+  "tink": -3,
+  "marble": -3,
+  "headshot": -3,
+  "headshot_ko": -3,
+  "boom": 2,
+  "gun_sniper": 2,
+  "gun_shotgun": 2,
+  "gun_sawnoff": 2,
+  "loot_land": 2,
+  "death": 2,
+  "hole": 2
+ },
+ "sounds": {
+  "gun_ar": [
+   {
+    "id": 9116337104,
+    "title": "Machine Gun 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -14
+   },
+   {
+    "id": 9116337462,
+    "title": "Machine Gun 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.8
+    ],
+    "L": -15
+   },
+   {
+    "id": 9116337319,
+    "title": "Machine Gun 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.85
+    ],
+    "L": -16
+   }
+  ],
+  "gun_smg": [
+   {
+    "id": 9113029078,
+    "title": "9 Mm Gun Firing 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -27
+   },
+   {
+    "id": 9113029461,
+    "title": "9 Mm Gun Firing 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -29
+   },
+   {
+    "id": 9113029219,
+    "title": "9 Mm Gun Firing 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -28
+   }
+  ],
+  "gun_burst": [
+   {
+    "id": 9113178194,
+    "title": "Assault Rifle 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.4
+    ],
+    "L": -21
+   },
+   {
+    "id": 9113180776,
+    "title": "Assault Rifle 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.01,
+     0.34
+    ],
+    "L": -22
+   },
+   {
+    "id": 9113180934,
+    "title": "Assault Rifle 13 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.35
+    ],
+    "L": -24
+   }
+  ],
+  "gun_lmg": [
+   {
+    "id": 9116343569,
+    "title": "Machine Gun 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.8
+    ],
+    "L": -15
+   },
+   {
+    "id": 9116343230,
+    "title": "Machine Gun 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.8
+    ],
+    "L": -15
+   },
+   {
+    "id": 9116340968,
+    "title": "Machine Gun 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.7
+    ],
+    "L": -16
+   }
+  ],
+  "gun_dmr": [
+   {
+    "id": 9114725315,
+    "title": "Gun Retort 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     2.2
+    ],
+    "L": -13
+   }
+  ],
+  "gun_sniper": [
+   {
+    "id": 9118173739,
+    "title": "Rifle Single Shots 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     2.6
+    ],
+    "L": -21
+   }
+  ],
+  "gun_shotgun": [
+   {
+    "id": 9114724430,
+    "title": "Gun Live Ammunition 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     1.78,
+     3.6
+    ],
+    "L": -20
+   }
+  ],
+  "gun_sawnoff": [
+   {
+    "id": 9112910526,
+    "title": "12 Gauge Shotgun 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     1.45
+    ],
+    "L": -15
+   }
+  ],
+  "gun_autoshot": [
+   {
+    "id": 9112912844,
+    "title": "12 Gauge Shotgun 301 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.9
+    ],
+    "L": -22
+   },
+   {
+    "id": 9112912379,
+    "title": "12 Gauge Shotgun 101 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.9
+    ],
+    "L": -21
+   }
+  ],
+  "gun_lever": [
+   {
+    "id": 9116335036,
+    "title": "Machine Gun 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     2
+    ],
+    "L": -16
+   }
+  ],
+  "gun_revolver": [
+   {
+    "id": 9119297472,
+    "title": "Smith Wesson 357 Magnum 11 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     2
+    ],
+    "L": -14
+   }
+  ],
+  "gun_pistol": [
+   {
+    "id": 9114720229,
+    "title": "Gun Live Ammunition 101 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -21
+   },
+   {
+    "id": 9114692535,
+    "title": "Gun 9 Mm Beretta 101 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -23
+   }
+  ],
+  "gun_marbles": [
+   {
+    "id": 9114706742,
+    "title": "Gun Live Ammunition 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.9
+    ],
+    "L": -18
+   }
+  ],
+  "gun_redline_k0": [
+   {
+    "id": 9116335315,
+    "title": "Machine Gun 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.4
+    ],
+    "L": -16
+   }
+  ],
+  "gun_redline_k5": [
+   {
+    "id": 9117399569,
+    "title": "Pistol Single Shots 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -31
+   }
+  ],
+  "gun_redline_k10": [
+   {
+    "id": 9113852816,
+    "title": "Colt 22 Revolver 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.18
+    ],
+    "L": -24
+   }
+  ],
+  "click": [
+   {
+    "id": 9117396968,
+    "title": "Pistol Handling 7 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.01,
+     0.14
+    ],
+    "L": -38
+   }
+  ],
+  "empty": [
+   {
+    "id": 9117396574,
+    "title": "Pistol Handling 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.01,
+     0.14
+    ],
+    "L": -39
+   }
+  ],
+  "reload": [
+   {
+    "id": 9113104337,
+    "title": "Ammo Magazine 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.01,
+     0.35
+    ],
+    "L": -24
+   }
+  ],
+  "thwack": [
+   {
+    "id": 9116642648,
+    "title": "Metal Hatch 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.43
+    ],
+    "L": -17
+   }
+  ],
+  "glug": [
+   {
+    "id": 9117645587,
+    "title": "Plastic Water Jug Glugs 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -13
+   }
+  ],
+  "rev_up": [
+   {
+    "id": 9119682372,
+    "title": "Surreal Car Rev 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.18,
+     0.88
+    ],
+    "L": -15
+   }
+  ],
+  "hit": [
+   {
+    "id": 9119072631,
+    "title": "Shield Impacts 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -22
+   }
+  ],
+  "headshot": [
+   {
+    "id": 9113133466,
+    "title": "Anvil Hits Ringing Metal Clinks Blacksmith 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -26
+   }
+  ],
+  "headshot_ko": [
+   {
+    "id": 9113133643,
+    "title": "Anvil Hits Ringing Metal Clinks Blacksmith 8 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -24
+   }
+  ],
+  "headshot_taken": [
+   {
+    "id": 9119072899,
+    "title": "Shield Impacts 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -20
+   }
+  ],
+  "headshot_taken_ko": [
+   {
+    "id": 9125819216,
+    "title": "Robot Impact Miscellaneous Metal Clangs Clun (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -9
+   }
+  ],
+  "hurt": [
+   {
+    "id": 9117969584,
+    "title": "Punch Kit Beefy Hit 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.01,
+     0.3
+    ],
+    "L": -12
+   }
+  ],
+  "kill": [
+   {
+    "id": 9126074189,
+    "title": "Synth Sparkle Tone High Pitch Tone Burst Din (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -19
+   }
+  ],
+  "swing": [
+   {
+    "id": 9126013644,
+    "title": "Swish Med High End Sharp Swords Fast Punches (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.46
+    ],
+    "L": -25
+   },
+   {
+    "id": 9126013382,
+    "title": "Swish Med High End Sharp Swords Fast Punches (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.06,
+     0.46
+    ],
+    "L": -22
+   }
+  ],
+  "bonk": [
+   {
+    "id": 9119747120,
+    "title": "Sword Impact 102 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.45
+    ],
+    "L": -20
+   }
+  ],
+  "tink": [
+   {
+    "id": 9125361455,
+    "title": "Anvil Hits Ringing Metal Clinks Blacksmith 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.25
+    ],
+    "L": -30
+   },
+   {
+    "id": 9125362690,
+    "title": "Anvil Hits Ringing Metal Clinks Some Muted 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.25
+    ],
+    "L": -29
+   }
+  ],
+  "ting": [
+   {
+    "id": 9119744718,
+    "title": "Sword Draw Clang Unsheathing Two Sabers 30 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -29
+   }
+  ],
+  "parry": [
+   {
+    "id": 9119072660,
+    "title": "Shield Clang As Hit Metal Sword Hubcap 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -12
+   }
+  ],
+  "parry_perfect": [
+   {
+    "id": 9119072674,
+    "title": "Shield Clang As Hit Metal Sword Hubcap 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -15
+   }
+  ],
+  "ricochet": [
+   {
+    "id": 9118168612,
+    "title": "Ricochet Metal 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.16,
+     0.61
+    ],
+    "L": -18
+   },
+   {
+    "id": 9118168943,
+    "title": "Ricochet Metal 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.16,
+     0.61
+    ],
+    "L": -17
+   }
+  ],
+  "loot_tick": [
+   {
+    "id": 9119717523,
+    "title": "Switch Click On Or Off Toggle Button 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.08
+    ],
+    "L": -29
+   }
+  ],
+  "loot_win_common": [
+   {
+    "id": 9119802022,
+    "title": "Synth Chime Single Synth Tone 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.9
+    ],
+    "L": -30
+   }
+  ],
+  "loot_win_rare": [
+   {
+    "id": 9126073318,
+    "title": "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.1,
+     1.2
+    ],
+    "L": -22
+   }
+  ],
+  "loot_win_epic": [
+   {
+    "id": 9126072698,
+    "title": "Synth Sparkle Tone High Pitch Bell Tone Ding (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.3,
+     2
+    ],
+    "L": -22
+   }
+  ],
+  "loot_win_legendary": [
+   {
+    "id": 9125641284,
+    "title": "Magic Synth Stinger Glassine Multi Tone Burs (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -23
+   }
+  ],
+  "step_metal": [
+   {
+    "id": 9114523167,
+    "title": "Footsteps Truck Bed 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.01,
+     0.28
+    ],
+    "L": -24
+   },
+   {
+    "id": 9114523167,
+    "title": "Footsteps Truck Bed 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.48,
+     0.78
+    ],
+    "L": -24
+   },
+   {
+    "id": 9114523167,
+    "title": "Footsteps Truck Bed 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     2.95,
+     3.25
+    ],
+    "L": -24
+   },
+   {
+    "id": 9114523167,
+    "title": "Footsteps Truck Bed 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     3.81,
+     4.11
+    ],
+    "L": -24
+   }
+  ],
+  "jump": [
+   {
+    "id": 9114890978,
+    "title": "Jump Swish 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.1,
+     0.4
+    ],
+    "L": -17
+   },
+   {
+    "id": 9114890995,
+    "title": "Jump Swish 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.15,
+     0.45
+    ],
+    "L": -17
+   }
+  ],
+  "land": [
+   {
+    "id": 9114742182,
+    "title": "Gym Bag Thudding 5 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.12,
+     0.52
+    ],
+    "L": -29
+   },
+   {
+    "id": 9113481839,
+    "title": "Body Fall Wood 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.07,
+     0.47
+    ],
+    "L": -24
+   }
+  ],
+  "boom": [
+   {
+    "id": 9114087096,
+    "title": "Dirt Explosion 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     2.6
+    ],
+    "L": -13
+   }
+  ],
+  "heal": [
+   {
+    "id": 9113046623,
+    "title": "Aerosol Spray Can 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.8
+    ],
+    "L": -21
+   }
+  ],
+  "reverse": [
+   {
+    "id": 9125981170,
+    "title": "Spaceship Pre Blast Electric Charge Up Glass (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.33,
+     1.23
+    ],
+    "L": -25
+   }
+  ],
+  "pop": [
+   {
+    "id": 9125625388,
+    "title": "Layered Rips High End Short Energy Bursts Sp (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.08,
+     0.53
+    ],
+    "L": -23
+   }
+  ],
+  "blow": [
+   {
+    "id": 9117895638,
+    "title": "Pressure Blast 43 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     1.13
+    ],
+    "L": -3
+   }
+  ],
+  "squeak": [
+   {
+    "id": 9125994310,
+    "title": "Squeeze Toy Squeaky Rubber With Noisemaker H (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -9
+   }
+  ],
+  "hole": [
+   {
+    "id": 9126102694,
+    "title": "Time Warp Searing Build Up Large Suck Rumble (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.12,
+     2.75
+    ],
+    "L": -12
+   }
+  ],
+  "shutter": [
+   {
+    "id": 9113678227,
+    "title": "Camera Shutter 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.31,
+     0.61
+    ],
+    "L": -36
+   }
+  ],
+  "whirr": [
+   {
+    "id": 9117733988,
+    "title": "Polaroid Camera 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     0.75
+    ],
+    "L": -24
+   }
+  ],
+  "photoin": [
+   {
+    "id": 9126228631,
+    "title": "Whoosh Back Zoom Swoosh Fast Camera In And O (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.1,
+     0.7
+    ],
+    "L": -12
+   }
+  ],
+  "photoout": [
+   {
+    "id": 9126228631,
+    "title": "Whoosh Back Zoom Swoosh Fast Camera In And O (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.58,
+     1.08
+    ],
+    "L": -12
+   }
+  ],
+  "framepop": [
+   {
+    "id": 9118833449,
+    "title": "Scrapbook Close 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -14
+   }
+  ],
+  "bloop": [
+   {
+    "id": 9112751731,
+    "title": "Bubble Bloop High Pitched Cute 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.2
+    ],
+    "L": -26
+   }
+  ],
+  "plip": [
+   {
+    "id": 9117838079,
+    "title": "Pop Airy 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.1
+    ],
+    "L": -27
+   }
+  ],
+  "glorp": [
+   {
+    "id": 9119990452,
+    "title": "Tentacle Slime 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     0.55
+    ],
+    "L": -24
+   }
+  ],
+  "bigpop": [
+   {
+    "id": 9113263454,
+    "title": "Balloon Pop 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -15
+   }
+  ],
+  "blub": [
+   {
+    "id": 9120310416,
+    "title": "Underwater Bubbles Deeper Med Short Bursts 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.04,
+     0.24
+    ],
+    "L": -23
+   }
+  ],
+  "whoops": [
+   {
+    "id": 75097487812181,
+    "title": "\"quick woosh\" by florianreichelt (683101)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "clatter": [
+   {
+    "id": 117109690226189,
+    "title": "\"Marbles Rolling.wav\" by DANGEROUSmusicKC (648957)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -13
+   }
+  ],
+  "marble": [
+   {
+    "id": 139494817928770,
+    "title": "\"marble drop\" by D.S.G. (240313)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -23
+   },
+   {
+    "id": 78937454002710,
+    "title": "\"marble.wav\" by jradcoolness (334222)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "boing": [
+   {
+    "id": 73569430599391,
+    "title": "\"marble.wav\" by jradcoolness (334222)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -17
+   }
+  ],
+  "round_start": [
+   {
+    "id": 92945871327015,
+    "title": "\"Transition Hit SFX -001.wav\" by AudioPapkin (648534)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -9
+   }
+  ],
+  "round_end": [
+   {
+    "id": 109925122413355,
+    "title": "\"Transition (hit and whoosh)\" by xkeril (736852)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -14
+   }
+  ],
+  "loot_land": [
+   {
+    "id": 111288200935954,
+    "title": "\"drop05.wav\" by newagesoup (339365)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -16
+   }
+  ],
+  "loot_pop": [
+   {
+    "id": 121491351821695,
+    "title": "\"Metallic latch release.wav\" by Crinkem (481789)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -28
+   }
+  ],
+  "death": [
+   {
+    "id": 94891602211657,
+    "title": "\"Low impact.wav\" by AudioPapkin (430978)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -13
+   }
+  ],
+  "step_hard": [
+   {
+    "id": 85913962863798,
+    "title": "\"Hiking Boot Footsteps on Stone\" by Fission9 (521590)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -24
+   },
+   {
+    "id": 82842044505739,
+    "title": "\"Hiking Boot Footsteps on Stone\" by Fission9 (521590)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -27
+   },
+   {
+    "id": 95197296619204,
+    "title": "\"Hiking Boot Footsteps on Stone\" by Fission9 (521590)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -26
+   },
+   {
+    "id": 78105880921323,
+    "title": "\"Hiking Boot Footsteps on Stone\" by Fission9 (521590)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -26
+   }
+  ],
+  "step_wood": [
+   {
+    "id": 101782137690892,
+    "title": "\"Footsteps_Boots_Wood_Mono.wav\" by Nox_Sound (533044)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -24
+   },
+   {
+    "id": 129017087260573,
+    "title": "\"Footsteps_Boots_Wood_Mono.wav\" by Nox_Sound (533044)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -18
+   },
+   {
+    "id": 80734730022649,
+    "title": "\"Footsteps_Boots_Wood_Mono.wav\" by Nox_Sound (533044)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -18
+   },
+   {
+    "id": 88542980715169,
+    "title": "\"Footsteps_Boots_Wood_Mono.wav\" by Nox_Sound (533044)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "step_soft": [
+   {
+    "id": 105250715056292,
+    "title": "\"Hiking Boot Footsteps on Grass\" by Fission9 (521587)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -21
+   },
+   {
+    "id": 79429759852152,
+    "title": "\"Hiking Boot Footsteps on Grass\" by Fission9 (521587)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -23
+   },
+   {
+    "id": 119511201769403,
+    "title": "\"Hiking Boot Footsteps on Grass\" by Fission9 (521587)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -21
+   },
+   {
+    "id": 133013021994977,
+    "title": "\"Hiking Boot Footsteps on Grass\" by Fission9 (521587)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -20
+   }
+  ],
+  "quack": [
+   {
+    "id": 93542098146921,
+    "title": "\"single quack from a duck\" by Mikes-MultiMedia (418509)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -21
+   }
+  ],
+  "popper": [
+   {
+    "id": 109274868324153,
+    "title": "\"partypopper.flac\" by Streety (26349)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -18
+   }
+  ],
+  "slide": [
+   {
+    "id": 9125380604,
+    "title": "Baseball Runner Slide On Dirt Into Home Plat (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     1.42,
+     2.22
+    ],
+    "L": -34
+   }
+  ],
+  "ropesnap": [
+   {
+    "id": 9120200619,
+    "title": "Towel Cracks Low Intensity Whipping Hits 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.4
+    ],
+    "L": -21
+   }
+  ]
+ },
+ "vol": {
+  "blow": 0.04,
+  "squeak": 0.08,
+  "parry": 0.25,
+  "shutter": 6,
+  "slide": 3.5,
+  "loot_win_common": 3.5,
+  "click": 2.6,
+  "empty": 3.2,
+  "gun_smg": 4.5,
+  "gun_redline_k5": 6,
+  "gun_sniper": 3,
+  "gun_sawnoff": 1.5,
+  "gun_shotgun": 2,
+  "gun_autoshot": 1.6,
+  "gun_marbles": 1.1,
+  "gun_burst": 1.5,
+  "gun_revolver": 0.75,
+  "headshot": 1.6,
+  "headshot_ko": 1.5,
+  "kill": 0.9,
+  "hurt": 0.12,
+  "headshot_taken_ko": 0.16,
+  "heal": 1,
+  "reverse": 2,
+  "pop": 1.4,
+  "whirr": 1.6,
+  "land": 1.4,
+  "loot_pop": 2.4,
+  "loot_win_epic": 1.8,
+  "loot_win_legendary": 2,
+  "framepop": 0.18
+ }
+}
