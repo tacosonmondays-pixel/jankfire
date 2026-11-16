@@ -37,7 +37,7 @@ local BACK_UP = 2.6   -- seconds a lot Carl lies down before he stands up again
 local GOLD_BACK = 4   -- seconds after the door is down before the gold Carls are back in their places
 local HP = 30         -- like Cardboard Carl's: three rifle rounds, two to the head
 local GOLD = Color3.fromRGB(242, 184, 75)
-local PIP_OFF = Color3.fromRGB(125, 131, 140) -- (mid grey: readable on the panel's dark inset from the yard's steps)
+local PIP_OFF = Color3.fromRGB(201, 198, 191) -- (pale: readable on the panel's inset from the yard's steps)
 
 type Entry = { spot: BasePart, gold: number? }
 local lot: Instance? = nil

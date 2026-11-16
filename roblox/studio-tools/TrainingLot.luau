@@ -29,7 +29,7 @@ local V3, CF = Vector3.new, CFrame.new
 local RAD = math.rad
 
 L.KIT = 80962685889163 -- the kit's Model asset (tl_kit_3: lot_models.py; kit 3 added tl_ball)
-L.PUSH = 10
+L.PUSH = 11
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
@@ -50,7 +50,7 @@ local C = { -- the lot's own colours (the hall's family, plus muted grass)
 	rust = "a2806a", blue = "748596", sand = "b9ab8f", grey = "8f959d", drum = "9a8a74",
 	-- (push 7, judge round 1: two muted container tones and one amber; the ridge; the door's mid-slate panels)
 	slateC = "6c727b", warmC = "9a948a", amberC = "c9973f", tyre = "6a6f78", ridge = "8b9580", ridgeHi = "a3ab9c",
-	housing = "7d8088", inset = "5d636d", pipOff = "7d838c", rock = "a39f98", glass = "aeb2b8",
+	housing = "8f9299", inset = "6c717a", pipOff = "c9c6bf", rock = "a39f98", glass = "aeb2b8",
 }
 
 local function folderIn(parent, name)
@@ -283,6 +283,8 @@ local function garage()
 		blk("GaragePanelInset", x0 + 0.6, x1 - 0.6, 244.2, 255.4, yardFace + 1.5, yardFace + 1.62, C.inset)
 	end
 	housing(15.6, 23.4); housing(-23.4, -15.6)
+	-- (judge round 3: the panels read near-black; a warm spot on each from the vault)
+	for _, x in { -19.5, 19.5 } do B.lamp(x, 257.5, yardFace + 8, "spot", 16, 0.9, P.warm, { look = V3(x, 249.5, yardFace), angle = 45 }) end
 	local front = yardFace + 1.66
 	local panel = LOT.Panel
 	sign("PanelHead", { { "LOCKED", P.amber, "B", 1 } }, 5.4, 1.3, 19.5, 254.6, front, V3(19.5, 0, -8000), { clear = true }).Parent = panel
@@ -446,6 +448,8 @@ local function bay(beacon)
 	sign("WordEXIT", { { "EXIT", P.amber, "B", 1 } }, 6, 1.4, (exitX0 + exitX1) / 2, G + 12.6, F.z1 - 1.2, V3((exitX0 + exitX1) / 2, 0, -9000), { plate = P.board, thick = 0.2 })
 	B.lamp((exitX0 + exitX1) / 2, G + 9, F.z1 - 3, "point", 12, 0.6, P.warm)
 	B.trigger("LotExit", exitX0 + 0.5, exitX1 - 0.5, G, G + 9, F.z0 - 0.6, F.z1 + 0.3, { Land = "@TrainSpawns", Say = "BACK INSIDE" })
+	-- the board: where everything is, on two posts on the terrace, facing the portal (judge round 3: on the façade it
+	-- faced the lot, so whoever read it had its left and right the wrong way round)
 	sign("LotBoard", {
 		{ "THE BACK LOT", P.amber, "B", 1.2 },
 		{ "LONG LANE  ·  RIGHT", P.pale, "B", 0.62 },
@@ -453,9 +457,8 @@ local function bay(beacon)
 		{ "THE CLIMB  ·  LEFT", P.pale, "B", 0.62 },
 		{ "THE HILL  ·  AT THE BACK", P.pale, "B", 0.62 },
 		{ "the way out is the door marked exit.", P.grey, "S", 0.42 },
-	}, 12, 9, -55, 248, F.z1 - 0.4, V3(-55, 0, -9000), { plate = P.board, thick = 0.3 })
-	local m = B.put("tv_lightbar", CF(-55, 254.2, F.z1 - 1.2), { name = "BoardLight" })
-	if m then m.Parent = B.root.LotScenery end
+	}, 12, 9, -26, 249.6, -8331, V3(-26, 0, -8000), { plate = P.board, thick = 0.3 })
+	for _, x in { -30.5, -21.5 } do post(x, -8331.3, G + 4, 245.2) end
 end
 
 -- ---------------------------------------------------------------- the ground, the spine, the berms, the near ridge
@@ -505,15 +508,25 @@ local function land()
 		local mesh = Instance.new("SpecialMesh"); mesh.MeshType = Enum.MeshType.Sphere; mesh.Parent = p
 		return p
 	end
-	for _, r in L.RIDGE do lump("NearRidge", CF(r[1], G, r[2]) * CFrame.Angles(0, RAD(r[6]), 0), V3(r[3], r[4], r[5]), C[r[7]]) end
+	-- (judge round 3: with their middles at ground level the lumps read as bald eggs with steep sides. each is now
+	-- 2.5 times taller and 1.4 times longer and deeper, sunk so its crest stays where it was: a hill's cap, wide feet)
+	local function sunk(r)
+		local h = r[4] / 2
+		local s = 2.5 * h
+		return CF(r[1], G + h - s, r[2]) * CFrame.Angles(0, RAD(r[6]), 0), V3(r[3] * 1.4, 2 * s, r[5] * 1.4)
+	end
+	for _, r in L.RIDGE do
+		local cf, size = sunk(r)
+		lump("NearRidge", cf, size, C[r[7]])
+	end
 	local function ridgeY(x, z) -- the ridge's surface height over a point (the highest lump there), or nil
 		local best
 		for _, r in L.RIDGE do
-			local c = CFrame.new(r[1], G, r[2]) * CFrame.Angles(0, RAD(r[6]), 0)
+			local c, size = sunk(r)
 			local q = c:PointToObjectSpace(V3(x, G, z))
-			local u = (q.X / (r[3] / 2)) ^ 2 + (q.Z / (r[5] / 2)) ^ 2
+			local u = (q.X / (size.X / 2)) ^ 2 + (q.Z / (size.Z / 2)) ^ 2
 			if u < 1 then
-				local y = G + r[4] / 2 * math.sqrt(1 - u)
+				local y = c.Position.Y + size.Y / 2 * math.sqrt(1 - u)
 				best = if best then math.max(best, y) else y
 			end
 		end
@@ -658,6 +671,7 @@ local function theBlocks()
 	stack(50, -8440, 90, 2, { C.warmC, C.slateC })
 	stack(50, -8510, 90, 2, { C.slateC, C.warmC })
 	stack(70, -8550, 90, 2, { C.warmC, C.slateC })
+	stack(78, -8470, 90, 2, { C.slateC, C.warmC }) -- (judge round 3: the east half was bare paving)
 	stack(-50, -8566, 90, 2, { C.slateC, C.warmC })
 	container(8, -8566, 0, C.amberC)
 	container(-26, -8584, 0, C.warmC)

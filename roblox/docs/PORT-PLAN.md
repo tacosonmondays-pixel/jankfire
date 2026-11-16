@@ -533,7 +533,7 @@ version C (a real gun each, built the way Rivals builds; `gunkit_c.py`, `gun_mod
 - **The switch by hand:** `local R = require(game.ServerStorage.PolishBackup.RooftopV3:Clone())`, then `R.use("both")` (v2 and v3 take turns: the current setting), `R.use("all")` (adds v1), or `R.use("v1" | "v2" | "v3")` to pin one (the pool becomes just that one). `PolishBackup.RooftopV2`'s `R.use("v2")` also pins now. Or type `ArenaPool` on `workspace.Map` directly; then save and publish.
 - **Tested (solo Play test, 16 Nov; a queue pad set to one side inside the test only, so one player could start a match):** four matches back to back went v2, v3, v2, v3. In each: the team-1 spawn of that arena (v2 at (-130, 3.7, 17993), v3 at (-162, 2.7, -29991)), the fall line read from that arena (-484.8 for both), the match light switched while the game ran (v2: clock 13.2, fog 450 to 2600; v3: clock 13.5, fog 400 to 2300), and the banner said "ROOFTOP: SKYLINE" on v2 and "ROOFTOP" on v3. Photo of v3's banner: `roblox/docs/rooftop-v2/rotation_v3_banner.jpg`. **Not tested:** a real two-player match, 1v1v1 (the third team uses `Spawns` named Spawn11, 18, 14, 12, 13: all three arenas have them), phones.
 
-## 24. The back lot: a garage door off the dummy yard, an easter egg, and an open-air training ground behind it, 16 November 2026 (place version 309)
+## 24. The back lot: a garage door off the dummy yard, an easter egg, and an open-air training ground behind it, 16 November 2026 (place version 316)
 
 The owner, 16 Nov: "can you add a large garage door that leads outside to the big rivals style training grounds, you have to do like a little easter egg to get it or something".
 
@@ -582,9 +582,19 @@ A ridge of hills, made of smooth ellipsoids from the kit's `tl_ball`, hides the 
 - Every lot pad lands: the climb deck, the finish tower at 104 up, and the watchtower lift.
 - Lot Carls come back; the EXIT lands on a muster spawn.
 
-**Judged.** Two rounds, vault `Reviews/Back lot - judge round 1.md` and `round 2.md`: round 1 had no PASS; round 2 had 1 PASS, 8 CLOSE, 2 FAIL. Pushes 7 and 10 are their reworks. Round 3 is pending.
+**Judged.** Three rounds, vault `Reviews/Back lot - judge round 1.md` to `round 3.md`:
+- round 1: no PASS
+- round 2: 1 PASS, 8 CLOSE, 2 FAIL
+- round 3: 5 PASS, 6 CLOSE, 1 FAIL (the climb from the ground). No blocker in play.
 
-**Lost and redone.** Roblox's account warning (16 Nov 09:39, over another session's QR-like wrap image) closed the place and lost the work after 09:13. Version 297 still held push 9. Push 10 went in again on 297 and was saved as 309.
+Pushes 7, 10 and 11 are the reworks. Push 11 did round 3's fix and quick wins: the direction board moved onto the terrace facing the portal (on the façade its left and right read mirrored), the door panels a step lighter with pale men and a warm spot on each, the ridge's lumps sunk and widened into hill caps, and a container wall on the yard's bare east side. The photo sheet is `roblox/docs/back-lot/back_lot.jpg`.
+
+**Left from round 3 (not done):**
+- the climb still reads as a long slate wall from the ground, and the masts' amber faces sit on the finish tower like eyes
+- the hill's big tier shows facets, and its ramp walls read as dark fins
+- the yard's east half could take a container bridge and a 3-high gateway
+
+**Lost and redone.** Roblox's account warning (16 Nov 09:39, over another session's QR-like wrap image) closed the place and lost the work after 09:13. Version 297 still held push 9. Push 10 went in again on 297 and was saved as 309; push 11 was saved as 316.
 
 **Not done yet.** `place/ServerStorage/JankfireMeshes.rbxm` has not been re-exported (6.4 MB for the whole bundle, so it was skipped this time), so the repo's copy lacks the `tl_` kit until the next export of that file.
 
