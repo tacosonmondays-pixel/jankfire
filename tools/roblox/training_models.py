@@ -23,25 +23,44 @@ from structkit import _emit
 
 WALL, WALL2, PIER, PIER2, TRIM = 'b9b5ae', 'c4c0b8', '8f9299', '7d8088', 'e2ded5'
 DARK, DEEP, AMBER, WHITE, TAN = '4a4e57', '3d414a', 'f0a53a', 'f4f6f8', 'b49a7a'
+SLATE = '62666f'
 reset()
 
 # ------------------------------------------------------------------ tv_cover
-soft('plastic', PIER, 10.0, 2.4, 3.7, 0, 0, 0.5 + 3.7 / 2, 0.6, pick='up', segs=3, small=0.15)
-soft('plastic', TRIM, 10.3, 2.7, 0.55, 0, 0, 4.2 + 0.275, 0.25, pick='all', segs=2, small=0.0)
-bx('plastic', DEEP, 9.6, 2.0, 0.5, 0, 0, 0.25, 0.08)
+# (16 Nov, the owner: "some of the props dont look super like rivals ones". rework: a barricade, not a slab: a dark
+# plinth, a body with a pale panel let into each long face, chunky slate end posts standing proud, a rounded cap rail.
+# same box as before: 10 x 2.4 x 4.7)
+soft('plastic', DEEP, 10.0, 2.4, 0.7, 0, 0, 0.35, 0.25, pick='all', segs=2, small=0.0)
+soft('plastic', PIER, 8.8, 2.1, 3.5, 0, 0, 0.7 + 1.75, 0.35, pick='up', segs=3, small=0.12)
+for sy in (-1, 1):
+    soft('plastic', WALL2, 7.2, 0.16, 2.3, 0, sy * 1.05, 2.5, 0.25, pick='y', segs=2, small=0.04)
+for sx in (-1, 1):
+    soft('plastic', SLATE, 1.0, 2.55, 3.6, sx * 4.55, 0, 0.6 + 1.8, 0.35, pick='up', segs=3, small=0.12)
+soft('plastic', TRIM, 10.3, 2.7, 0.55, 0, 0, 4.15 + 0.275, 0.25, pick='all', segs=2, small=0.0)
 keep('tv_cover')
 
 # ------------------------------------------------------------------ tv_block
-soft('plastic', PIER2, 5.0, 5.0, 3.4, 0, 0, 0.4 + 1.7, 0.8, pick='up', segs=3, small=0.15)
-bx('plastic', DEEP, 4.6, 4.6, 0.5, 0, 0, 3.8 + 0.25, 0.05)
-soft('plastic', PIER2, 5.0, 5.0, 3.0, 0, 0, 4.05 + 1.5, 0.8, pick='up', segs=3, small=0.15)
+# (rework, as tv_cover: a cover pillar. a dark plinth, two body blocks either side of a dark band, a pale panel let into
+# every face of each, slate corner guards up all four corners, a rounded cap. same box: 5 x 5 x 7.6)
+soft('plastic', DEEP, 5.0, 5.0, 0.6, 0, 0, 0.3, 0.3, pick='all', segs=2, small=0.0)
+soft('plastic', PIER2, 4.5, 4.5, 3.1, 0, 0, 0.6 + 1.55, 0.5, pick='up', segs=3, small=0.12)
+soft('plastic', DEEP, 4.65, 4.65, 0.5, 0, 0, 3.7 + 0.25, 0.2, pick='all', segs=2, small=0.0)
+soft('plastic', PIER2, 4.5, 4.5, 2.85, 0, 0, 4.2 + 1.425, 0.5, pick='up', segs=3, small=0.12)
+for z, h in ((2.15, 2.1), (5.625, 1.9)):
+    for a in range(4):
+        rot = RZ(a * math.pi / 2)
+        soft('plastic', WALL2, 2.5, 0.16, h, 0, -2.25, z, 0.2, pick='y', segs=2, small=0.04, M=rot)
+for sx in (-1, 1):
+    for sy in (-1, 1):
+        soft('plastic', SLATE, 0.95, 0.95, 6.45, sx * 2.1, sy * 2.1, 0.6 + 3.225, 0.35, pick='up', segs=3, small=0.1)
 soft('plastic', TRIM, 5.3, 5.3, 0.55, 0, 0, 7.05 + 0.275, 0.3, pick='all', segs=2, small=0.0)
-bx('plastic', DEEP, 4.6, 4.6, 0.4, 0, 0, 0.2, 0.05)
 keep('tv_block')
 
 # ------------------------------------------------------------------ tv_target (front -Y, centred)
-for r, t, col in ((8.0, 1.0, TRIM), (6.5, 1.15, DARK), (5.0, 1.25, TRIM), (3.4, 1.3, DARK), (1.8, 1.35, AMBER)):
-    cy('plastic', col, r, t, 0, -(t - 1.0) / 2, 0, axis='y', segs=40, bevel=0.18)
+# (16 Nov, the flicker list: the rings' backs all lay in one plane. each ring's back is now 0.04 in from the last)
+for k, (r, t, col) in enumerate(((8.0, 1.0, TRIM), (6.5, 1.15, DARK), (5.0, 1.25, TRIM), (3.4, 1.3, DARK), (1.8, 1.35, AMBER))):
+    front, back = -(t - 0.5), 0.5 - 0.04 * k
+    cy('plastic', col, r, back - front, 0, (front + back) / 2, 0, axis='y', segs=40, bevel=0.18)
 keep('tv_target')
 
 # ------------------------------------------------------------------ tv_hook (front -Y, centred)
@@ -84,7 +103,7 @@ def frame(name, W, H, jamb=2.4, head=2.4, cut=2.6, depth=4.8):
     for sx in (-1, 1):  # a darker foot on each jamb
         bx('plastic', DEEP, jamb + 0.3, depth + 0.3, 1.2, sx * (W / 2 + jamb / 2), 0, 0.6, 0.12)
     # a pale reveal band round the inside of the head
-    bx('plastic', TRIM, W - 2 * cut + 0.2, depth + 0.1, 0.5, 0, 0, H + 0.25, 0.12)
+    bx('plastic', TRIM, W - 2 * cut + 0.2, depth + 0.1, 0.5, 0, 0, H + 0.2, 0.12)  # (0.05 proud of the opening's top: flicker list)
     keep(name)
 
 frame('tv_frameWide', 16.0, 14.0)
@@ -96,14 +115,22 @@ bx('neon', WHITE, 7.0, 1.8, 0.3, 0, 0, -1.15, 0.08)
 keep('tv_lightbar')
 
 # ------------------------------------------------------------------ tv_booth
-soft('plastic', TRIM, 1.2, 5.0, 4.6, 0, 0, 0.4 + 2.3, 0.5, pick='top', segs=3, small=0.1)
-bx('plastic', DEEP, 1.0, 4.8, 0.4, 0, 0, 0.2, 0.05)
+# (rework: a framed divider, not a slab: a dark foot, a slate post at each end, a pale panel between, a rounded rail.
+# same box: 1.2 x 5 x 5)
+soft('plastic', DEEP, 1.2, 5.0, 0.5, 0, 0, 0.25, 0.2, pick='all', segs=2, small=0.0)
+for sy in (-1, 1):
+    soft('plastic', SLATE, 1.2, 0.8, 4.2, 0, sy * 2.1, 0.5 + 2.1, 0.3, pick='up', segs=3, small=0.1)
+soft('plastic', WALL2, 0.7, 3.5, 3.7, 0, 0, 0.5 + 1.85, 0.15, pick='all', segs=2, small=0.0)
+soft('plastic', TRIM, 1.4, 5.2, 0.45, 0, 0, 4.55 + 0.225, 0.2, pick='all', segs=2, small=0.0)
 keep('tv_booth')
 
 # ------------------------------------------------------------------ tv_bench
-soft('plastic', TAN, 8.0, 2.2, 0.6, 0, 0, 1.6, 0.25, pick='all', segs=2, small=0.0)
-for sx in (-3.0, 3.0):
-    bx('plastic', DARK, 1.0, 1.8, 1.3, sx, 0, 0.65, 0.12)
+# (rework: a thick rounded seat over a dark rim, on two solid pedestals with feet. same box: 8 x 2.2 x 1.9)
+soft('plastic', TAN, 8.0, 2.2, 0.45, 0, 0, 1.45 + 0.225, 0.2, pick='all', segs=2, small=0.0)
+soft('plastic', DARK, 7.5, 1.9, 0.25, 0, 0, 1.2 + 0.125, 0.1, pick='all', segs=2, small=0.0)
+for sx in (-2.8, 2.8):
+    soft('plastic', PIER2, 1.0, 1.7, 1.0, sx, 0, 0.25 + 0.5, 0.3, pick='up', segs=3, small=0.08)
+    soft('plastic', DEEP, 1.5, 2.0, 0.25, sx, 0, 0.125, 0.1, pick='all', segs=2, small=0.0)
 keep('tv_bench')
 
 # ------------------------------------------------------------------ tv_tower: 16 x 16 x 28, its deck on top
@@ -128,7 +155,7 @@ def oct8(kind, col, prof):
     lathe(kind, col, pts + [pts[0]], M=RZ(math.pi / 8), segs=8, cap=False)
 oct8('plastic', TRIM, [(20.0, 16.0), (16.0, 20.0), (16.0, 21.2), (24.5, 21.2), (24.5, 16.0)])
 oct8('plastic', 'aeaba5', [(16.0, 20.0), (12.0, 20.0), (12.0, 21.2), (16.0, 21.2)])
-oct8('plastic', WALL2, [(12.0, 20.0), (12.0, 32.0), (13.6, 32.0), (13.6, 20.0)])
+oct8('plastic', WALL2, [(12.0, 20.05), (12.0, 32.0), (13.6, 32.0), (13.6, 20.05)])  # (its foot inside the ring: flicker list)
 oct8('plastic', TRIM, [(12.0, 20.0), (11.4, 20.0), (11.4, 20.9), (12.0, 20.9)])
 lathe('plastic', 'aeaba5', [(13.6 * K8, 32.0), (0.0, 32.0), (0.0, 33.6), (13.6 * K8, 33.6), (13.6 * K8, 32.0)], M=RZ(math.pi / 8), segs=8, cap=False)
 keep('tv_crown')
@@ -144,7 +171,7 @@ keep('tv_vault')
 # ------------------------------------------------------------------ rework 1 (judge round 1, 16 Nov)
 SLATE = '5f646e'  # mid slate in place of near-black on bases and housings
 # tv_towerOct: the course's tower as one big eight-sided piece (cut corners), 16 across the flats, 28 tall
-oct8('plastic', SLATE, [(8.15, 0.0), (8.15, 0.9), (0.0, 0.9), (0.0, 0.0)])
+oct8('plastic', SLATE, [(8.15, 0.0), (8.15, 0.95), (0.0, 0.95), (0.0, 0.0)])  # (its top inside the body: flicker list)
 oct8('plastic', WALL2, [(8.0, 0.9), (8.0, 27.0), (0.0, 27.0), (0.0, 0.9)])
 for zb in (9.0, 18.0):
     oct8('plastic', TRIM, [(8.45, zb - 0.45), (8.45, zb + 0.45), (7.9, zb + 0.45), (7.9, zb - 0.45)])

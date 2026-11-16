@@ -3,10 +3,12 @@
 -- up one at a time down the lane; put each one down before he folds himself away. the board keeps count.
 -- a Carl is a real fighter of kind "dummy" (so every weapon, hit check, hit marker and DINK works on him exactly as
 -- on the dummies) with a cardboard body from ServerStorage.JankfireMeshes.bc_cutout. he never fights back.
--- one run at a time; it stops early if the runner leaves the hall or dies. while you run, the Plinker in the dummy
--- yard leaves you alone (the attribute RangeRun on the player). the lane is data in the map:
--- Hub.TrainingGround.Range.Plates (parts Easy / Medium / Hard), .Spots (where a Carl stands, facing the counters)
--- and .Board (a part whose Gui has Score, Left and Line)
+-- since 16 Nov (the owner: "keep in mind there will be multiple people in these hubs") the lane is three lanes, one per
+-- plate, and each has its own run at once: a Carl pops only on his lane's spots. a run stops early if the runner leaves
+-- the hall or dies. while you run, the dummy yard's shooters leave you alone (the attribute RangeRun on the player).
+-- the lanes are data in the map: Hub.TrainingGround.Range.Plates (parts Easy / Medium / Hard), .Spots (where a Carl
+-- stands, facing his plate; attribute Lane = the plate's name), .Board (a part whose Gui has RowEasy, RowMedium,
+-- RowHard and Line) and .BestBoard (Gui.Best: the best run per lane today)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -21,7 +23,7 @@ type Fighter = Rules.Fighter
 local RangeTest = {}
 local TOTAL = 25
 local HP = 30 -- three rifle rounds, two to the head, one katana swing
-local IDLE = "CARDBOARD CARL'S · stand on a plate. he won't shoot back."
+local IDLE = "stand on a plate. 25 cardboard men. he won't shoot back."
 -- up = seconds a Carl stays up, gap = seconds until the next one
 local LEVELS: { [string]: { up: number, gap: number, name: string } } = {
 	Easy = { up = 3.2, gap = 0.55, name = "CHILL" },
@@ -29,12 +31,13 @@ local LEVELS: { [string]: { up: number, gap: number, name: string } } = {
 	Hard = { up = 1.1, gap = 0.25, name = "SWEATY" },
 }
 type Run = { p: Player, level: string, score: number, left: number, cur: Fighter?, curUntil: number, nextAt: number, lastSpot: BasePart? }
-local run: Run? = nil
+local runs: { [string]: Run } = {}          -- by plate (lane)
 local best: { [string]: number } = {}       -- the best run per level since the server started
 local mustStepOff: { [Player]: boolean } = {} -- after a run you step off the plates before the next one
 local Fight: any
 local range: Instance? = nil
 local idleAt = 0
+local NAMES = { Easy = "CHILL", Medium = "NORMAL", Hard = "SWEATY" }
 
 local function setText(name: string, text: string)
 	local b = range and range:FindFirstChild("Board")
@@ -43,10 +46,19 @@ local function setText(name: string, text: string)
 	if l and l:IsA("TextLabel") and l.Text ~= text then l.Text = text end
 end
 local function show(line: string?)
-	local r = run
-	setText("Score", string.format("%02d", if r then r.score else 0))
-	setText("Left", string.format("%02d", if r then r.left else TOTAL))
+	for lane in LEVELS do
+		local r = runs[lane]
+		setText("Row" .. lane, if r then ("%s · %02d down · %02d left"):format(r.p.DisplayName, r.score, r.left) else "free")
+	end
 	if line then setText("Line", line) end
+	local bb = range and range:FindFirstChild("BestBoard")
+	local g = bb and bb:FindFirstChild("Gui")
+	local l = g and g:FindFirstChild("Best")
+	if l and l:IsA("TextLabel") then
+		local function b(k: string): string return if best[k] then tostring(best[k]) else "—" end
+		local t = ("BEST TODAY\nCHILL %s   NORMAL %s   SWEATY %s"):format(b("Easy"), b("Medium"), b("Hard"))
+		if l.Text ~= t then l.Text = t end
+	end
 end
 local function sound(name: string)
 	local b = range and range:FindFirstChild("Board")
@@ -87,7 +99,9 @@ local function pop(r: Run)
 	local spots = range and range:FindFirstChild("Spots")
 	if not spots then return end
 	local list = {}
-	for _, s in spots:GetChildren() do if s:IsA("BasePart") and s ~= r.lastSpot then table.insert(list, s) end end
+	for _, s in spots:GetChildren() do
+		if s:IsA("BasePart") and s ~= r.lastSpot and (s:GetAttribute("Lane") == nil or s:GetAttribute("Lane") == r.level) then table.insert(list, s) end
+	end
 	if #list == 0 then return end
 	local spot = list[math.random(#list)] :: BasePart
 	r.lastSpot = spot
@@ -149,12 +163,12 @@ end
 
 local function finish(r: Run, abandoned: boolean)
 	if r.cur then remove(r.cur, false); r.cur = nil end
-	run = nil
+	runs[r.level] = nil
 	idleAt = os.clock() + 8
 	mustStepOff[r.p] = true
 	if r.p.Parent then r.p:SetAttribute("RangeRun", nil) end
 	if abandoned then
-		setText("Line", "CARDBOARD CARL'S · run abandoned. he saw that.")
+		show(("%s left %s. he saw that."):format(r.p.DisplayName, NAMES[r.level]))
 		return
 	end
 	local lv = LEVELS[r.level]
@@ -163,15 +177,15 @@ local function finish(r: Run, abandoned: boolean)
 		elseif r.score >= 20 then "CARL IS IMPRESSED"
 		elseif r.score >= 12 then "CARL HAS SEEN BETTER"
 		else "CARL IS LAUGHING. HE'S CARDBOARD"
-	setText("Score", string.format("%02d", r.score)); setText("Left", "00")
-	setText("Line", ("%s · %d / %d on %s · best %d"):format(r.p.DisplayName, r.score, TOTAL, lv.name, best[r.level]))
+	show(("%s · %d / %d on %s · best %d"):format(r.p.DisplayName, r.score, TOTAL, lv.name, best[r.level]))
 	if r.p.Parent then CalloutR:FireClient(r.p, ("%d / %d · %s"):format(r.score, TOTAL, verdict), 3) end
 	sound("End")
 end
 
 local function onKill(info: any)
-	local r = run
-	if not r or not r.cur or info.v ~= r.cur then return end
+	local r: Run? = nil
+	for _, x in runs do if x.cur == info.v then r = x end end
+	if not r or not r.cur then return end
 	local f = r.cur :: Fighter
 	r.score += 1; r.left -= 1
 	r.cur = nil; r.nextAt = os.clock() + LEVELS[r.level].gap
@@ -198,10 +212,9 @@ local function tick(dt: number)
 	if acc < 0.05 then return end
 	acc = 0
 	local now = os.clock()
-	local r = run
-	if r then
+	for _, r in runs do
 		local f = Fight.byPlayer[r.p]
-		if not r.p.Parent or not f or not f.alive or r.p:GetAttribute("Zone") ~= "training" then finish(r, true); return end
+		if not r.p.Parent or not f or not f.alive or r.p:GetAttribute("Zone") ~= "training" then finish(r, true); continue end
 		if r.cur then
 			if now >= r.curUntil then -- too slow: he folds himself away, one fewer to go
 				local c = r.cur :: Fighter
@@ -211,24 +224,25 @@ local function tick(dt: number)
 			end
 		elseif r.left <= 0 then finish(r, false)
 		elseif now >= r.nextAt then pop(r) end
-		return
 	end
-	if idleAt > 0 and now >= idleAt then idleAt = 0; show(IDLE) end
+	if idleAt > 0 and now >= idleAt and next(runs) == nil then idleAt = 0; show(IDLE) end
 	for _, p in Players:GetPlayers() do
 		local f = Fight.byPlayer[p]
 		local root = if f and f.alive then Fight.root(f) else nil
 		if not root or p:GetAttribute("Zone") ~= "training" then mustStepOff[p] = nil; continue end
+		local running = false
+		for _, r in runs do if r.p == p then running = true end end
+		if running then continue end
 		local plate = onPlate(root.Position)
 		if not plate then
 			mustStepOff[p] = nil
-		elseif not mustStepOff[p] and LEVELS[plate] then
-			run = { p = p, level = plate, score = 0, left = TOTAL, cur = nil, curUntil = 0, nextAt = now + 1.2, lastSpot = nil }
+		elseif not mustStepOff[p] and LEVELS[plate] and not runs[plate] then
+			runs[plate] = { p = p, level = plate, score = 0, left = TOTAL, cur = nil, curUntil = 0, nextAt = now + 1.2, lastSpot = nil }
 			idleAt = 0
-			p:SetAttribute("RangeRun", true) -- the Plinker next door leaves a runner alone (Dummies.luau)
+			p:SetAttribute("RangeRun", true) -- the dummy yard's shooters leave a runner alone (Dummies.luau)
 			show(("%s · %s · 25 cardboard men incoming"):format(p.DisplayName, LEVELS[plate].name))
 			CalloutR:FireClient(p, "CARDBOARD CARL'S · " .. LEVELS[plate].name, 1.4)
 			sound("Start")
-			break
 		end
 	end
 end

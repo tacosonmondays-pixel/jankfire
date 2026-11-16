@@ -29,7 +29,7 @@ local V3, CF = Vector3.new, CFrame.new
 local RAD = math.rad
 
 L.KIT = 75809148325346 -- the kit's Model asset (tl_kit_4: lot_models.py; kit 4 added tl_cylinder and tl_bank)
-L.PUSH = 13
+L.PUSH = 15
 
 -- the plan (world coordinates). the yard's end wall is z -8258..-8262; the door runs in its middle plane
 local G = 240                                                     -- the lot's ground
@@ -37,11 +37,12 @@ L.DOOR = { x = 12, y0 = 242, y1 = 258.5, z = -8260 }              -- the opening
 L.BAY = { x = 22, z0 = -8262, z1 = -8300, top = 264 }             -- the loading bay, inside
 L.FACE = { x0 = -100, x1 = 92, z0 = -8300, z1 = -8304, top = 284 } -- the façade the lot sees
 L.GOLD = { -- the gold Carls: feet, and a point he looks toward
-	{ "bench bay", nil, nil },                                    -- (worked out from the muster below)
+	-- (16 Nov, the owner: a lone gold dummy in a wall opening "seems random". so each stands where targets belong: one
+	-- among the dummy yard's marked dummies on its 30 m line, one on the range's first beam, one on top of the course's
+	-- tower, the course's prize. the bench bay is the mirror now and the course bay is empty again)
+	{ "yard 30 m", V3(-8, 242, -8237), V3(-8, 242, -8146) },
 	{ "range beam", V3(66, 266.6, -8150), V3(66, 266.6, -8250) },
-	-- (in the lit bay at the course's near end, on its sill to one side. the skylight was tried first: up there the
-	-- drum's own walls and the hall's lid left only his head showing, and play tests could not hit him)
-	{ "course bay", V3(-66, 246, -8096.5), V3(-66, 246, -8200) },
+	{ "course tower", V3(-58, 268, -8170), V3(-30, 268, -8122) },
 }
 
 local C = { -- the lot's own colours (the hall's family, plus muted grass)
@@ -196,8 +197,8 @@ end
 -- a Carl's spot on the lot (TheLot stands a cardboard man here: he faces `look`)
 local function target(x, y, z, look)
 	B.marker(LOT.Targets, "Target", x, y, z, look)
-	B.drum("LotScenery", "TargetRing", x, z, y, y + 0.04, 4.2, P.trim, { ghost = true })
-	B.drum("LotScenery", "TargetRingIn", x, z, y, y + 0.05, 3.1, C.conc2, { ghost = true })
+	B.drum("LotScenery", "TargetRing", x, z, y + 0.03, y + 0.06, 4.2, P.trim, { ghost = true })
+	B.drum("LotScenery", "TargetRingIn", x, z, y + 0.06, y + 0.1, 3.1, C.conc2, { ghost = true })
 end
 
 -- ---------------------------------------------------------------- a cardboard man in parts, facing +z (the panel's men, the backstop's relief)
@@ -251,6 +252,12 @@ local function garage()
 	end
 	door:SetAttribute("Lift", N * H + GAP + 0.3)
 	door:SetAttribute("Top", D.y1)
+	-- (16 Nov, sealing: the slats are thin and a fast player can go through thin parts, so the doorway is also blocked
+	-- by one unseen block 4 thick. TheLot turns it off with the slats when the door is up)
+	local blockP = Instance.new("Part")
+	blockP.Name = "DoorBlock"; blockP.Anchored = true; blockP.Transparency = 1; blockP.CanCollide = true; blockP.CanQuery = true; blockP.CanTouch = false
+	blockP.Size = V3(24.6, D.y1 - D.y0, 4); blockP.CFrame = B.cf(0, (D.y0 + D.y1) / 2, D.z)
+	blockP.Parent = LOT
 	-- daylight under the door: a warm band that throws a fan of light across the yard's floor
 	local sill = deco("ThresholdLight", -12, 12, D.y0, D.y0 + GAP, D.z - 0.24, D.z + 0.24, "ffd296", { mat = NEON })
 	sill.CanQuery = true -- (sight lines and shots stop at the door, gap or not)
@@ -290,7 +297,7 @@ local function garage()
 	sign("PanelHead", { { "LOCKED", P.amber, "B", 1 } }, 5.4, 1.3, 19.5, 254.6, front, V3(19.5, 0, -8000), { clear = true }).Parent = panel
 	for i, x in { 17.3, 19.5, 21.7 } do
 		for _, q in cardMan("Pip", x, 249.7, front, 3.0, C.pipOff, 0.5, { ghost = true }) do q:SetAttribute("Pip", i); q.Parent = panel end
-		sign("PipLabel", { { ({ "BENCH", "RANGE", "COURSE" })[i], P.grey, "S", 1 } }, 2.1, 0.5, x, 248.9, front, V3(x, 0, -8000), { clear = true }).Parent = panel
+		sign("PipLabel", { { ({ "YARD", "RANGE", "COURSE" })[i], P.grey, "S", 1 } }, 2.1, 0.5, x, 248.9, front, V3(x, 0, -8000), { clear = true }).Parent = panel
 	end
 	local tm = Instance.new("Part")
 	tm.Name = "Timer"; tm.Anchored = true; tm.CanCollide = false; tm.CanQuery = false; tm.CanTouch = false; tm.CastShadow = false
@@ -304,10 +311,12 @@ local function garage()
 	tl.Parent = g; g.Parent = tm; tm.Parent = panel
 	-- (the door's own sounds play from here: TheLot plays Ding, Open, Close and Buzz)
 	local lib2 = game:GetService("ReplicatedStorage"):FindFirstChild("JankfireSounds")
-	for name, src in { Ding = "ting", Open = "rev_up", Close = "click", Buzz = "whoops" } do
-		local s = lib2 and lib2:FindFirstChild(src)
+	-- (16 Nov: it rolls up as you walk up to it. a motor's whirr up and down, a clatter when it is locked)
+	for name, src in { Ding = { "ting", 1 }, Open = { "whirr", 0.8 }, Close = { "whirr", 0.62 }, Buzz = { "whoops", 1 }, Rattle = { "clatter", 0.85 } } do
+		local s = lib2 and lib2:FindFirstChild(src[1])
 		if s and s:IsA("Sound") then
-			local c = s:Clone(); c.Name = name; c.RollOffMinDistance = 30; c.RollOffMaxDistance = 400; c.Parent = tm
+			local c = s:Clone(); c.Name = name; c.PlaybackSpeed = s.PlaybackSpeed * src[2]
+			c.RollOffMinDistance = 30; c.RollOffMaxDistance = 400; c.Parent = tm
 		end
 	end
 	sign("PanelHint", { { 'ask the <font color="#f2b84b">gold</font> ones.', P.grey, "S", 1 } }, 6, 1.35, 19.5, 245, front, V3(19.5, 0, -8000), { clear = true, rich = true }).Parent = panel
@@ -345,10 +354,10 @@ end
 local function bay(beacon)
 	local Y = L.DOOR.y0
 	local BX, Z0, Z1, TOP = L.BAY.x, L.BAY.z0, L.BAY.z1, L.BAY.top
-	blk("BayFloor", -BX - 2, BX + 2, 236, Y, Z0, Z1 - 4, P.floor)
+	blk("BayFloor", -BX - 1.95, BX + 1.95, 236.05, Y, Z0, Z1 - 4, P.floor)
 	blk("BayWall", -BX - 2, -BX, 236, TOP + 2, Z0, Z1, P.wall2)
 	blk("BayWall", BX, BX + 2, 236, TOP + 2, Z0, Z1, P.wall2)
-	blk("BayCeiling", -BX - 2, BX + 2, TOP, TOP + 2, Z0, Z1, P.ceil)
+	blk("BayCeiling", -BX - 1.95, BX + 1.95, TOP + 0.05, TOP + 2, Z0, Z1, P.ceil)
 	for _, sx in { -1, 1 } do
 		deco("BayDado", sx * BX, sx * (BX - 0.2), Y, Y + 1.2, Z0, Z1, P.floor2)
 		for _, z in { -8274, -8288 } do
@@ -379,7 +388,7 @@ local function bay(beacon)
 	local F = L.FACE
 	local exitX0, exitX1 = 52, 64 -- (full scale since judge round 3: it read bolted on)
 	local WIN = { { -92, -72 }, { -68, -40 }, { 40, 70 }, { 74, 86 } }
-	local holes = { { -18, 18, Y, TOP }, { exitX0, exitX1, G, G + 12 } }
+	local holes = { { -18, 18, Y - 0.05, TOP }, { exitX0, exitX1, G, G + 12 } }
 	for _, b in WIN do table.insert(holes, { b[1] + 2.5, b[2] - 2.5, 268, 279 }) end
 	wallX("Facade", F.x0, F.x1, 236, F.top, F.z0, F.z1, P.wall, holes)
 	for i, b in ipairs(WIN) do -- (pale glazing set back 2 in a slate frame; two of them lit from inside)
@@ -389,7 +398,7 @@ local function bay(beacon)
 			l.Parent = gl
 		end
 		blk("FacadeWindowFrame", b[1] + 2, b[2] - 2, 279.05, 279.65, F.z0 - 2, F.z1 - 0.4, P.slate)
-		blk("FacadeSill", b[1] + 2.5, b[2] - 2.5, 266.8, 268, F.z0 - 2, F.z1 - 1, C.housing)
+		blk("FacadeSill", b[1] + 2.5, b[2] - 2.5, 266.8, 268.04, F.z0 - 2, F.z1 - 1, C.housing)
 		local w = (b[2] - 2.5) - (b[1] + 2.5)
 		local n = math.clamp(math.floor(w / 9), 0, 2) -- (none in the narrow one: two read as bars)
 		for k = 1, n do
@@ -418,7 +427,7 @@ local function bay(beacon)
 		B.lamp(xm, 258, F.z1 - 9, "point", 18, 0.5, P.lampWhite)
 	end
 	-- the portal and its canopy, carried by the gate towers (no struts across the opening)
-	B.put("tl_portal", CF(0, Y, F.z1 + 3), { name = "LotPortal" }).Parent = B.root.LotScenery
+	B.put("tl_portal", CF(0, Y, F.z1 + 3.05), { name = "LotPortal" }).Parent = B.root.LotScenery
 	blk("Canopy", -28, 28, 270, 272, F.z1, F.z1 - 22, P.pier2)
 	blk("CanopyFascia", -28.5, 28.5, 269.2, 272.6, F.z1 - 22, F.z1 - 23.2, P.trim)
 	blk("CanopyUnder", -26, 26, 269.8, 270, F.z1 - 1, F.z1 - 21, P.ceil, { ghost = true })
@@ -585,7 +594,7 @@ local function longLane()
 	end
 	blk("ShelterDeck", X0, X1, G - 0.6, G + 1, -8380, Z, C.conc)
 	nose("ShelterDeckNose", "x", X0, X1, G + 0.5, Z, 1)
-	blk("ShelterBack", X0 - 2, X1 + 2, G, 257, -8378, -8380, P.wall)
+	blk("ShelterBack", X0 - 2, X1 + 2, G, 256.95, -8378, -8380, P.wall)
 	blk("ShelterRoof", X0 - 2, X1 + 2, 255, 257, -8378, Z - 3, P.slate)
 	blk("ShelterFascia", X0 - 2.4, X1 + 2.4, 254.2, 257.6, Z - 3, Z - 4.2, P.trim)
 	local PX = { X0, (X0 * 2 + X1) / 3, (X0 + X1 * 2) / 3, X1 }
@@ -620,8 +629,8 @@ local function longLane()
 	-- three baffle frames across the lane between the rows: legs at its edges, a lintel 22 up (every line from a shooter
 	-- to a Carl stays under about G+12)
 	for _, z in { -8440, -8515, -8590 } do
-		blk("BaffleLeg", X0 - 4, X0, G, G + 22, z - 2, z + 2, P.pier)
-		blk("BaffleLeg", X1, X1 + 4, G, G + 22, z - 2, z + 2, P.pier)
+		blk("BaffleLeg", X0 - 4, X0 + 0.05, G, G + 22, z - 2, z + 2, P.pier)
+		blk("BaffleLeg", X1 - 0.05, X1 + 4, G, G + 22, z - 2, z + 2, P.pier)
 		blk("BaffleLintel", X0 - 6, X1 + 6, G + 22, G + 26, z - 3, z + 3, P.pier)
 		nose("BaffleNose", "x", X0 - 6, X1 + 6, G + 22, z + 3, 1)
 	end
@@ -706,7 +715,6 @@ local function theBlocks()
 		blk("BridgeCoping", 54, 72, G + 29.3, G + 29.7, z - 0.7, z + 0.7, P.trim)
 	end
 	B.pad(63, G, -8496, V3(0, 76, -10))
-	B.chevron(63, G + 0.1, -8488.5, 0, -1, 5, P.cyan)
 	stack(-50, -8566, 90, 2, { C.slateC, C.warmC })
 	container(8, -8566, 0, C.amberC)
 	container(-26, -8584, 0, C.warmC)
@@ -793,7 +801,6 @@ local function theClimb()
 	slab("ClimbPlinth", X0, X1, -8512, -8616, 234, PL)
 	-- 1: a pad throws you onto the deck
 	B.pad(CX, G + 1, -8394, V3(0, 64, -21))
-	B.chevron(CX, G + 1.05, -8386.5, 0, -1, 5, P.cyan)
 	slab("Deck", X0, X1, -8410, -8440, PL, 262, C.house2, true)
 	-- 2: the slide: an off-white ramp (its sides too) with low slate parapets riding its edges, slate piers on its sides
 	part("SlideRamp", CF(CX, (PL + 262) / 2, -8470), V3(16, 262 - PL, 60), P.mass, { wedge = true })
@@ -819,7 +826,7 @@ local function theClimb()
 	slab("Summit", X0, X1, -8592, -8616, PL, PL + 20, C.house2, true)
 	-- 5: the canyon: two slate walls 18 high, a way out through the east one; two masts with lit heads
 	blk("CanyonWall", X0 - 2, X0, 234, G + 18, -8616, -8676, P.pier2)
-	wallZ("CanyonWall", -8676, -8616, 234, G + 18, X1, X1 + 2, P.pier2, { { -8648, -8640, G, G + 8 } })
+	wallZ("CanyonWall", -8676, -8616, 234, G + 18, X1, X1 + 2, P.pier2, { { -8648, -8640, G + 0.05, G + 8 } })
 	for _, x in { X0 - 1, X1 + 1 } do nose("CanyonWallNose", "z", -8616, -8676, G + 18, x, 1.2) end
 	-- (judge round 3: on the tower's line their amber faces read as eyes on the finish tower. off the line, faces east
 	-- and west)
@@ -938,7 +945,7 @@ local function theHill()
 		nose("TowerParapetNose", "x", HX - 7, HX + 7, DY + 3.5, HZ + sz * 9.5, 1.1)
 	end
 	for _, sx in { -1, 1 } do
-		blk("TowerSideWall", HX + sx * 7, HX + sx * 10, DY - 1.6, RY, HZ - 10, HZ + 10, P.slate)
+		blk("TowerSideWall", HX + sx * 7, HX + sx * 10, DY - 1.65, RY, HZ - 10, HZ + 10, P.slate)
 	end
 	blk("TowerRoof", HX - 11, HX + 11, RY, RY + 2, HZ - 11, HZ + 11, P.slate)
 	blk("TowerRoofEdge", HX - 11.3, HX + 11.3, RY - 0.4, RY + 0.2, HZ - 11.3, HZ + 11.3, P.trim)
@@ -950,11 +957,7 @@ end
 
 -- ---------------------------------------------------------------- the gold Carls (in the training rooms)
 local function gold()
-	local S = CF(0, 0, -8122) * CFrame.Angles(0, -RAD(225), 0) -- the muster's side 5: the bench bay
-	local at = S:PointToWorldSpace(V3(3.2, 241.8, -(24 + 4.4)))
-	local look = S:PointToWorldSpace(V3(3.2, 241.8, 0))
-	B.marker(LOT.GoldSpots, "Gold1", at.X, at.Y, at.Z, look)
-	for i = 2, 3 do
+	for i = 1, 3 do
 		local g = L.GOLD[i]
 		B.marker(LOT.GoldSpots, "Gold" .. i, g[2].X, g[2].Y, g[2].Z, g[3])
 	end
@@ -1079,7 +1082,7 @@ function L.axis(tg): string
 	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Exclude
 	local ex = {}
 	for _, d in tg:GetDescendants() do
-		if d:IsA("BasePart") and (string.sub(d.Name, 1, 5) == "Tower" or (tg:FindFirstChild("Lot") and d:IsDescendantOf(tg.Lot.Door))) then table.insert(ex, d) end
+		if d:IsA("BasePart") and (string.sub(d.Name, 1, 5) == "Tower" or (tg:FindFirstChild("Lot") and (d:IsDescendantOf(tg.Lot.Door) or d.Name == "DoorBlock"))) then table.insert(ex, d) end
 	end
 	local hub = workspace.Map:FindFirstChild("Hub")
 	if hub and hub:FindFirstChild("Barrier") then table.insert(ex, hub.Barrier) end

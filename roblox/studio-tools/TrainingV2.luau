@@ -38,9 +38,9 @@ local hub = workspace.Map.Hub
 local SP, NEON = Enum.Material.SmoothPlastic, Enum.Material.Neon
 local V3, CF = Vector3.new, CFrame.new
 
-T.KIT = 88505948716411 -- the kit's Model asset (tv_kit_4: training_models.py; rework 3 added the flat grapple hoop)
+T.KIT = 131746416943530 -- the kit's Model asset (tv_kit_6: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 13
+T.PUSH = 15
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -60,16 +60,24 @@ local Y0, MY = 240, 241                       -- the yard's floor (and the cours
 local MX, MZ, A, WALL = 0, -8122, 20, 4       -- the muster: its middle, its apothem, its wall
 local MTOP = MY + 16                           -- the muster's wall tops (the cove starts there)
 local TAN8 = math.tan(math.pi / 8)
-T.SPOTS = { -- Cardboard Carl's: { x, floor y, z } feet of each Carl, three rows at 15, 30 and 45 m from the plates
-	{ 37, 241.2, -8183 }, { 45.5, 241.2, -8183 }, { 54, 241.2, -8183 }, { 62.5, 241.2, -8183 }, { 71, 241.2, -8183 },
-	{ 37, 245.2, -8228 }, { 45.5, 245.2, -8228 }, { 54, 245.2, -8228 }, { 62.5, 245.2, -8228 }, { 71, 245.2, -8228 },
-	{ 38, 249.2, -8273 }, { 46, 249.2, -8273 }, { 54, 249.2, -8273 }, { 62, 249.2, -8273 }, { 70, 249.2, -8273 },
-}
+-- Cardboard Carl's: { x, floor y, z } feet of each Carl, three rows at 15, 30 and 45 m from the plates. since 16 Nov
+-- (the owner: "keep in mind there will be multiple people in these hubs") the lane is three lanes, one per plate, each
+-- with its own run: three spots per row in each (a spot's lane is the plate nearest it: attribute Lane)
+T.SPOTS = {}
+for _, row in { { 241.2, -8183 }, { 245.2, -8228 }, { 249.2, -8273 } } do
+	for _, lx in { 40, 54, 68 } do
+		for _, dx in { -4.5, 0, 4.5 } do table.insert(T.SPOTS, { lx + dx, row[1], row[2] }) end
+	end
+end
 T.PLATES = { { "Easy", 40, "CHILL", "chill" }, { "Medium", 54, "NORMAL", "normal" }, { "Hard", 68, "SWEATY", "sweaty" } }
 T.PLATE_Z = -8138
 -- spawn points: two arcs either side of the dais, out of the line the Plinker sees through the yard's opening
 T.SPAWNS = { { -12.5, -8111.5 }, { -15.5, -8117.5 }, { -11.5, -8132 }, { 12.5, -8111.5 }, { 15.5, -8117.5 }, { 11.5, -8132 } }
-T.DUMMIES = { Dummy = { 0, 239, -8202 }, Plinker = { -15, 245.2, -8246 }, Stand1 = { -16, 240, -8170 }, Stand2 = { 16, 240, -8178 } }
+-- (16 Nov, the owner: "maybe have dummies marked every so many meters, and an area where you can activate dummies that
+-- shoot back": two standing dummies on the 10 m line, the moving one on the 20 m line, and the two that shoot back at
+-- the far corners of the live-fire end, past the 30 m line)
+T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -7, 239, -8176 }, Stand2 = { 7, 239, -8176 } }
+T.LIVE = { line = -8223 } -- the live-fire end: everything south of this line (the stage, the door)
 T.ZONE = { -94, 86, 232, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier)
 T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
 T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid, its far end (the zone takes it in)
@@ -358,7 +366,8 @@ local function muster(B)
 	-- under the north side (the yard's floor is a step lower): solid to the ground either side of the opening
 	for _, sx in { -1, 1 } do B.blk("Shell", "NorthSill", sx * 6, sx * ((A + WALL) * TAN8 + 0.1), 236, MY, MZ - A, MZ - A - WALL, P.wall) end
 	-- the eight sides. holes = { w, y0, y1 } over the muster floor
-	local HOLES = { [0] = { 12, 0, 12 }, [2] = { 12, 0, 12 }, [6] = { 12, 0, 12 }, [4] = { 10.8, 0, 12 }, [5] = { 12, 0, 12 }, [3] = { 13, 2, 11.5, recess = 2 },
+	-- (the frames' openings are 12 x 12: the holes 0.05 bigger all round, so the walls' cut faces sit inside the frames)
+	local HOLES = { [0] = { 12.1, 0, 12.05 }, [2] = { 12.1, 0, 12.05 }, [6] = { 12.1, 0, 12.05 }, [4] = { 10.8, 0, 12 }, [5] = { 12.1, 0, 12.05 }, [3] = { 13, 2, 11.5, recess = 2 },
 		[1] = { 10.4, 1.5, 14, recess = 3, back = P.warmWall }, [7] = { 10.4, 1.5, 14, recess = 3, back = P.warmWall } }
 	for i = 0, 7 do
 		local F = sideFrame(B, i)
@@ -387,6 +396,16 @@ local function muster(B)
 	end
 	-- the crown: a cove off the wall tops, a ring, the lantern drum with lit panels, a round light in its cap
 	B.put("tv_crown", CF(MX, MY, MZ), { name = "MusterCrown" })
+	-- (16 Nov, the owner: "there is a roof ... that lets you clip through it and get outside". the crown is a mesh
+	-- that nothing touches: thick unseen solids just behind its inside faces, side by side all round)
+	for i = 0, 7 do
+		local F = sideFrame(B, i)
+		B.solid("CrownCoveSolid", F * CF(0, MY + 19.06, -19.06) * CFrame.Angles(math.rad(-45), 0, 0), V3(18.6, 3, 7.9))
+		B.solid("CrownCoveSolid", F * CF(0, MY + 18.6, -22.7), V3(21.5, 5.2, 4.6))
+		B.solid("CrownRingSolid", F * CF(0, MY + 21.5, -14.35), V3(14.5, 3, 4.7))
+		B.solid("CrownDrumSolid", F * CF(0, MY + 26.8, -13.9), V3(13.6, 13.6, 3.8))
+	end
+	B.solid("CrownCapSolid", CF(MX, MY + 34, MZ), V3(30, 4, 30))
 	for i = 0, 7 do
 		local F = sideFrame(B, i)
 		B.fbox(F, "Scenery", "LanternPanel", -3, 3, MY + 22.5, MY + 29.5, 11.75, 11.95, P.lantern, { ghost = true, mat = NEON })
@@ -400,8 +419,8 @@ local function muster(B)
 	-- the dais in the middle (one step up) and the lines from it to every way out
 	B.put("tv_dais", CF(MX, MY, MZ), { name = "Dais", unglow = true, color = { f0a53a = P.amber } })
 	B.drum("Collision", "DaisSolid", MX, MZ, MY, MY + 1, 14, P.pier, { tr = 1, noShadow = true })
-	B.drum("Scenery", "FloorRing", MX, MZ, MY, MY + 0.012, 21, P.line, { ghost = true })
-	B.drum("Scenery", "FloorRingIn", MX, MZ, MY, MY + 0.02, 19.4, P.floor2, { ghost = true })
+	B.drum("Scenery", "FloorRing", MX, MZ, MY + 0.03, MY + 0.06, 21, P.line, { ghost = true })
+	B.drum("Scenery", "FloorRingIn", MX, MZ, MY + 0.06, MY + 0.1, 19.4, P.floor2, { ghost = true })
 	B.line(MX, MZ - 7.2, MX, MZ - A, MY, 1.1, P.line)
 	B.line(MX + 7.2, MZ, MX + A, MZ, MY, 1.1, P.line)
 	B.line(MX - 7.2, MZ, MX - A, MZ, MY, 1.1, P.line)
@@ -419,10 +438,24 @@ local function muster(B)
 	-- across its head. walk into it and you are back in the hub
 	B.fbox(G, "Shell", "GateVoid", -5.4, 5.4, MY, MY + 12, A + 3.4, A + WALL, "33363d")
 	B.fbox(G, "Scenery", "ShutterBack", -4.2, 4.2, MY, MY + 9.96, A + 2.6, A + 2.9, "3a3e46", { ghost = true })
+	-- (owner, 16 Nov: "when you go up to garage doors can they slide up": the slats roll up into the head as you walk
+	-- up to it and back down after you, on every screen: TrainingDoors.client. Shut, Lift, Top, Center and Near say how)
+	local shutter = Instance.new("Model")
+	shutter.Name = "HubShutter"
+	local bottom: BasePart? = nil
 	for k = 0, 8 do
 		local y = MY + 0.2 + k * 1.08
-		B.fbox(G, "Scenery", "ShutterSlat", -4.2, 4.2, y, y + 0.95, A + 1.5, A + 1.9, P.pier2, { ghost = true })
+		local sl = B.fbox(G, "Scenery", "ShutterSlat", -4.2, 4.2, y, y + 0.95, A + 1.5, A + 1.9, P.pier2, { ghost = true })
+		sl:SetAttribute("Shut", sl.CFrame)
+		if not bottom then bottom = sl; shutter.Parent = sl.Parent end
+		sl.Parent = shutter
 	end
+	local b0 = bottom :: BasePart
+	shutter:SetAttribute("Shutter", true)
+	shutter:SetAttribute("Lift", 10.3)
+	shutter:SetAttribute("Top", b0.Position.Y - 0.475 + 9.76)
+	shutter:SetAttribute("Center", Vector3.new(b0.Position.X, b0.Position.Y - 0.675, b0.Position.Z))
+	shutter:SetAttribute("Near", 13)
 	B.fbox(G, "Scenery", "GateLightBar", -4.0, 4.0, MY + 9.95, MY + 10.35, A + 1.4, A + 1.7, P.amberGlow, { ghost = true, mat = NEON })
 	B.lamp(0, MY + 8, MZ + A - 1.5, "point", 10, 0.5, "ffc27a")
 	B.text("WordHUB", { { "HUB", P.amber, "B", 1 } }, 7.6, 1.6, G * CF(0, MY + 13.4, -(A - 0.32)) * CFrame.Angles(0, math.pi, 0), { plate = P.dark, thick = 0.25 })
@@ -430,23 +463,34 @@ local function muster(B)
 	-- the bench bay (south-west): the place to stop. low, warm, a bench, lockers, water
 	local S = sideFrame(B, 5)
 	-- (a step down into it, the same thick frame as the other doors, a low curved ceiling, one built-in bench)
-	B.fbox(S, "Shell", "BayFloor", -8, 8, 236, MY - 1, A + WALL, A + WALL + 7.5, P.floor2)
+	B.fbox(S, "Shell", "BayFloor", -7.95, 7.95, 236.05, MY - 1, A + WALL, A + WALL + 7.5, P.floor2)
 	B.part("Shell", "BayStepNose", S * CF(0, MY - 0.5, -(A + WALL + 0.05)), V3(12, 0.9, 0.9), P.trim, { cyl = true })
 	B.fbox(S, "Shell", "BayWall", -8, -6.2, MY - 1, MY + 13.5, A + WALL - 0.5, A + WALL + 7.5, P.warmWall)
 	B.fbox(S, "Shell", "BayWall", 6.2, 8, MY - 1, MY + 13.5, A + WALL - 0.5, A + WALL + 7.5, P.warmWall)
-	B.fbox(S, "Shell", "BayBack", -8, 8, MY - 1, MY + 13.5, A + WALL + 6, A + WALL + 7.5, P.warmWall)
-	B.fbox(S, "Shell", "BayCeiling", -8, 8, MY + 12.6, MY + 13.5, A + 0.5, A + WALL + 7.5, P.ceil)
+	B.fbox(S, "Shell", "BayBack", -7.95, 7.95, MY - 1, MY + 13.4, A + WALL + 6, A + WALL + 7.5, P.warmWall)
+	B.fbox(S, "Shell", "BayCeiling", -7.95, 7.95, MY + 12.6, MY + 13.45, A + 0.5, A + WALL + 7.5, P.ceil)
 	B.put("tv_frameMid", S * CF(0, MY, -(A + WALL / 2)), { name = "FrameBay" })
 	for _, d in { 1.9, 5.6 } do B.put("tv_vault", S * CF(0, MY + 9.4, -(A + WALL + d)), { name = "BayVault", scale = 0.26 }) end
-	B.fbox(S, "Shell", "BuiltInBench", -6, 6, MY - 1, MY + 0.8, A + WALL + 4.2, A + WALL + 6, P.tan)
-	B.fbox(S, "Shell", "BenchBack", -6, 6, MY + 0.8, MY + 3.4, A + WALL + 5.6, A + WALL + 6, P.tan)
+	-- (16 Nov, the owner, of the bay with a lone gold dummy in it: "it seems random having this opening with a dummy in
+	-- it, maybe it can be another room, or it can be a hologram version of your avatar". it is the mirror now: you, as
+	-- a hologram in the hub's style, holding your loadout and turning slowly over a lens. TrainingDoors.client draws it
+	-- on your screen only; MirrorSpot is where it stands)
+	B.fbox(S, "Shell", "MirrorPlinth", -3.4, 3.4, MY - 1, MY + 0.6, A + WALL + 1.6, A + WALL + 6, P.pier2)
+	B.part("Shell", "MirrorPlinthNose", S * CF(0, MY + 0.3, -(A + WALL + 1.6)), V3(6.8, 0.9, 0.9), P.trim, { cyl = true })
+	local lensAt = S * CF(0, MY + 0.6, -(A + WALL + 3.8))
+	B.part("Scenery", "MirrorLens", lensAt * CFrame.Angles(0, 0, math.pi / 2), V3(0.12, 4.2, 4.2), P.dark, { cyl = true, ghost = true })
+	B.part("Scenery", "MirrorLensGlow", lensAt * CF(0, 0.07, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.05, 3.2, 3.2), "8fd8ff", { cyl = true, ghost = true, mat = NEON })
+	local ms = B.marker(B.root.Scenery, "MirrorSpot", lensAt.X, lensAt.Y + 0.06, lensAt.Z, S:PointToWorldSpace(V3(0, MY, 0)))
+	ms:SetAttribute("Near", 18)
 	for _, sx in { -2.5, 2.5 } do
 		local q = S:PointToWorldSpace(V3(sx, MY + 6.5, -(A + WALL + 4.5)))
 		B.lamp(q.X, q.Y, q.Z, "point", 14, 0.8, P.warm)
 	end
-	for _, sx in { -2.5, 2.5 } do
+	for _, sx in { -5, 5 } do
 		B.put("bc_sconce", S * CF(sx, MY + 5.6, -(A + WALL + 5.5)), { name = "Sconce" })
 	end
+	B.text("WordMIRROR", { { "MIRROR", P.amber, "B", 1 } }, 9.2, 1.7, S * CF(0, MY + 13.2, -(A - 0.42)) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
+	B.fbox(S, "Shell", "BayCeilingSolid", -8, 8, MY + 13.5, MY + 16.5, A + 0.5, A + WALL + 7.5, P.ceil, { tr = 1, noShadow = true })
 	-- the board in the south-east recess: where everything is
 	local E = sideFrame(B, 3)
 	B.text("TrainingBoard", {
@@ -489,7 +533,7 @@ local function muster(B)
 			local mid = (a + b) / 2 + n * 2
 			B.part("Shell", "PassageWall", CFrame.lookAt(V3(mid.X, 246.5, mid.Z), V3(mid.X, 246.5, mid.Z) + d), V3(4, 21, (b - a).Magnitude + 0.6), P.wall)
 		end
-		B.blk("Shell", "PassageCeiling", x0, x1, MY + 12, 257, MZ - 10, MZ + 10, P.ceil)
+		B.blk("Shell", "PassageCeiling", math.min(x0, x1) + 0.05, math.max(x0, x1) - 0.05, MY + 12, 257, MZ - 10, MZ + 10, P.ceil)
 		B.blk("Scenery", "PassageLight", (x0 + x1) / 2 - 2, (x0 + x1) / 2 + 2, MY + 11.75, MY + 11.95, MZ - 1.5, MZ + 1.5, P.panel, { ghost = true, mat = NEON })
 		B.lamp((x0 + x1) / 2, MY + 11, MZ, "point", 14, 0.6, P.lampWhite)
 	end
@@ -513,7 +557,7 @@ local function yard(B)
 	B.blk("Shell", "YardFloor", -LANE.x, LANE.x, 236, Y0, YZ0 + 0.1, LANE.z0, P.floor)
 	B.blk("Shell", "YardFloor", -LANE.x, LANE.x, 236, Y0, LANE.z1, STAGE.z + 2, P.floor)
 	B.blk("Shell", "StageStep", -YX - 4, YX + 4, 236, Y0 + 1, STAGE.z + 2, STAGE.z, P.floor2)
-	B.blk("Shell", "Stage", -YX - 4, YX + 4, 236, STAGE.y, STAGE.z, YZ1 - 4, P.floor)
+	B.blk("Shell", "Stage", -YX - 3.95, YX + 3.95, 236.05, STAGE.y, STAGE.z, YZ1 - 3.95, P.floor)
 	B.part("Shell", "StageNose", CF(0, STAGE.y - 0.45, STAGE.z + 0.05), V3(2 * YX - 3.4, 0.9, 0.9), P.trim, { cyl = true })
 	B.part("Shell", "StepNose", CF(0, Y0 + 0.55, STAGE.z + 2.05), V3(2 * YX - 3.4, 0.9, 0.9), P.trim, { cyl = true })
 	B.blk("Shell", "Lane", -LANE.x, LANE.x, 236, LANE.y, LANE.z0, LANE.z1, P.floor2)
@@ -523,12 +567,25 @@ local function yard(B)
 		B.blk("Shell", "Kerb", sx * LANE.x, sx * (LANE.x + 0.7), Y0 - 0.05, Y0 + 0.2, LANE.z0, LANE.z1, P.trim)
 		B.blk("Shell", "KerbFace", sx * (LANE.x - 0.02), sx * (LANE.x - 0.1), LANE.y, Y0 - 0.05, LANE.z0, LANE.z1, P.slate, { ghost = true })
 	end
-	B.blk("Shell", "YardWallW", -YX - 4, -YX, 236, 258.6, YZ0, YZ1, P.wall)
-	B.blk("Shell", "YardWallE", YX, YX + 4, 236, 258.6, YZ0, YZ1, P.wall)
+	-- (16 Nov, the owner: "there is a roof in the dummy part of the training hub that lets you clip through it and get
+	-- outside": the vault is a mesh nothing touches, and these walls stopped at its springing, so over the vault the
+	-- sides were open. the walls go up to the roof now, and thick unseen solids line the vault's inside)
+	B.blk("Shell", "YardWallW", -YX - 4, -YX, 236, 272, YZ0, YZ1, P.wall)
+	B.blk("Shell", "YardWallE", YX, YX + 4, 236, 272, YZ0, YZ1, P.wall)
+	do
+		local R = (48 * 48 / 4 + 10 * 10) / (2 * 10) -- the vault's arc (tv_rib, tv_vault): span 48, rise 10 from y 258
+		local th0 = math.asin(24 / R)
+		local N = 16
+		for i = 0, N - 1 do
+			local a = -th0 + (i + 0.5) * 2 * th0 / N
+			local chord = 2 * (R + 4) * math.sin(th0 / N) + 0.6
+			B.solid("VaultSolid", CF(0, 258 + 10 - R, (YZ0 + YZ1) / 2) * CFrame.Angles(0, 0, -a) * CF(0, R + 2, 0), V3(chord, 4, YZ0 - YZ1))
+		end
+	end
 	-- the end wall: the garage door's opening on the axis (push 10; the door, its frame and panel: TrainingLot)
 	B.blk("Shell", "YardEnd", -YX - 4, -12, 236, 271, YZ1, YZ1 - 4, P.wall)
 	B.blk("Shell", "YardEnd", 12, YX + 4, 236, 271, YZ1, YZ1 - 4, P.wall)
-	B.blk("Shell", "YardEnd", -12, 12, 258.5, 271, YZ1, YZ1 - 4, P.wall)
+	B.blk("Shell", "YardEnd", -12, 12, 258.55, 271, YZ1, YZ1 - 4, P.wall)
 	B.blk("Shell", "YardFront", -YX - 4, -9.9, 236, 271, YZ0 + 4, YZ0, P.wall)
 	B.blk("Shell", "YardFront", 9.9, YX + 4, 236, 271, YZ0 + 4, YZ0, P.wall)
 	B.blk("Shell", "YardFront", -9.9, 9.9, MTOP, 271, YZ0 + 4, YZ0, P.wall)
@@ -578,18 +635,65 @@ local function yard(B)
 	end
 	for _, n in { "Stand1", "Stand2" } do
 		local d = T.DUMMIES[n]
-		B.drum("Scenery", "StandRing", d[1], d[3], d[2], d[2] + 0.05, 4, P.trim, { ghost = true })
-		B.drum("Scenery", "StandRingIn", d[1], d[3], d[2], d[2] + 0.06, 2.9, P.floor2, { ghost = true })
+		B.drum("Scenery", "StandRing", d[1], d[3], d[2] + 0.03, d[2] + 0.06, 4, P.trim, { ghost = true })
+		B.drum("Scenery", "StandRingIn", d[1], d[3], d[2] + 0.06, d[2] + 0.1, 2.9, P.floor2, { ghost = true })
 	end
+	-- the distances (owner, 16 Nov: "maybe have dummies marked every so many meters"): a line across the floor every
+	-- 10 m from the yard's mouth, its number big on the floor before it
+	for k, z in { -8176, -8206, -8236 } do
+		local fy = if z < STAGE.z then STAGE.y elseif z < LANE.z0 and z > LANE.z1 then LANE.y else Y0
+		if fy == LANE.y then
+			B.blk("Scenery", "DistLine", -LANE.x, LANE.x, fy + 0.03, fy + 0.06, z + 0.25, z - 0.25, P.line, { ghost = true })
+			for _, sx in { -1, 1 } do B.blk("Scenery", "DistLine", sx * (LANE.x + 0.7), sx * (YX - 1.6), Y0 + 0.03, Y0 + 0.06, z + 0.25, z - 0.25, P.line, { ghost = true }) end
+		else -- (on the stage: between the shooters' stands)
+			B.blk("Scenery", "DistLine", -10.4, 10.4, fy + 0.03, fy + 0.06, z + 0.25, z - 0.25, P.line, { ghost = true })
+		end
+		B.text("DistWord", { { ("%d M"):format(k * 10), P.pale, "B", 1 } }, 7, 2.6, CF(0, fy + 0.05, z + 2.2) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	end
+	-- the live-fire end: a hazard band across the floor at its line, LIVE FIRE on the stage, a console at the line
+	-- (hold E: the two at the back shoot at whoever is past the line for 90 s, and never past it: Dummies), a beacon
+	-- post at each end of the line that turns red while they are live
+	local lf = folderIn(B.root, "LiveFire")
+	lf:SetAttribute("Line", B.at(CF(0, 0, T.LIVE.line)).Position.Z)
+	local zp = Instance.new("Part")
+	zp.Name = "Zone"; zp.Anchored = true; zp.Transparency = 1; zp.CanCollide = false; zp.CanQuery = false; zp.CanTouch = false
+	zp.Size = V3(2 * YX, 30, T.LIVE.line - YZ1); zp.CFrame = B.cf(0, Y0 + 15, (T.LIVE.line + YZ1) / 2)
+	zp.Parent = lf
+	for k = 0, 23 do
+		local x0 = -YX + 2 * k
+		B.blk("Scenery", "LiveBand", x0, x0 + 2, Y0 + 0.03, Y0 + 0.07, T.LIVE.line + 0.7, T.LIVE.line - 0.7, if k % 2 == 0 then P.amber else P.slate, { ghost = true })
+	end
+	B.text("LiveWord", { { "LIVE FIRE", P.amber, "B", 1 } }, 13, 2.8, CF(0, STAGE.y + 0.05, STAGE.z - 2.5) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	for _, sx in { -1, 1 } do
+		local x = sx * (YX - 2.6)
+		B.blk("Shell", "LivePost", x - 0.7, x + 0.7, Y0, Y0 + 7, T.LIVE.line + 0.7, T.LIVE.line - 0.7, P.slate)
+		local lamp = B.blk("Scenery", "LiveLamp", x - 0.9, x + 0.9, Y0 + 7, Y0 + 8.4, T.LIVE.line + 0.9, T.LIVE.line - 0.9, "6b4a46", { ghost = true })
+		lamp:SetAttribute("Lamp", true)
+		lamp.Parent = lf
+		local pl = Instance.new("PointLight"); pl.Color = Color3.fromRGB(255, 70, 50); pl.Range = 16; pl.Brightness = 1.2; pl.Enabled = false; pl.Parent = lamp
+	end
+	-- the console: a slate pedestal with a sloped face and a big round button (hold E)
+	local cx, cz = -YX + 4.5, T.LIVE.line + 2.4
+	B.blk("Shell", "ConsoleBase", cx - 1.6, cx + 1.6, Y0, Y0 + 3.2, cz + 1.2, cz - 1.2, P.slate)
+	B.part("Shell", "ConsoleTop", CF(cx, Y0 + 3.75, cz) * CFrame.Angles(math.rad(-28), 0, 0), V3(3.6, 0.8, 2.9), P.pier2)
+	local btn = B.part("Scenery", "LiveButton", CF(cx, Y0 + 4.2, cz) * CFrame.Angles(math.rad(-28), 0, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.5, 1.7, 1.7), "8a3a33", { cyl = true, ghost = true })
+	btn:SetAttribute("Lamp", true)
+	btn.Parent = lf
+	local pr = Instance.new("ProximityPrompt")
+	pr.Name = "Prompt"; pr.ActionText = "Live fire on"; pr.ObjectText = "Shooting dummies"; pr.HoldDuration = 0.4
+	pr.MaxActivationDistance = 9; pr.RequiresLineOfSight = false; pr.KeyboardKeyCode = Enum.KeyCode.E
+	pr.Parent = btn
 	local dm = T.DUMMIES.Dummy
-	B.line(dm[1] - 12, dm[3], dm[1] + 12, dm[3], dm[2] + 0.02, 0.9, P.line, "DummyTrack")
-	for _, sx in { -12, 12 } do B.line(dm[1] + sx, dm[3] - 1.6, dm[1] + sx, dm[3] + 1.6, dm[2] + 0.03, 0.9, P.line, "DummyTrackEnd") end
-	-- the Plinker's round stand on the stage, and the target on the end wall behind it (the thing the yard ends on)
+	-- (the moving one strafes along the 20 m line: it is his track)
+	-- the shooters' round stands at the live-fire end's far corners
 	local pk = T.DUMMIES.Plinker
-	B.put("tv_pulpit", CF(pk[1], STAGE.y, pk[3]), { name = "PlinkerStand" })
-	B.drum("Collision", "PlinkerStandSolid", pk[1], pk[3], STAGE.y, STAGE.y + 2, 12.4, P.pier, { tr = 1, noShadow = true })
-	B.drum("Shell", "PlinkerTop", pk[1], pk[3], STAGE.y + 1.9, pk[2] - 0.3, 8, P.pier2)
-	B.drum("Shell", "PlinkerTopLip", pk[1], pk[3], pk[2] - 0.35, pk[2], 8.5, P.trim)
+	for _, n in { "Plinker", "Plinker2" } do
+		local q = T.DUMMIES[n]
+		B.put("tv_pulpit", CF(q[1], STAGE.y, q[3]), { name = "PlinkerStand" })
+		B.drum("Collision", "PlinkerStandSolid", q[1], q[3], STAGE.y, STAGE.y + 2, 12.4, P.pier, { tr = 1, noShadow = true })
+		B.drum("Shell", "PlinkerTop", q[1], q[3], STAGE.y + 1.9, q[2] - 0.3, 8, P.pier2)
+		B.drum("Shell", "PlinkerTopLip", q[1], q[3], q[2] - 0.35, q[2], 8.5, P.trim)
+	end
 	-- a round light in the vault's crown over the stage (on the axis: the stand is off it since push 12); two spots on
 	-- the garage door behind it
 	B.drum("Scenery", "StageLightStem", 0, pk[3], 266.8, 268.2, 2, P.dark)
@@ -645,10 +749,21 @@ local function range(B)
 	end
 	-- steps at the sides: deck to lane, lane to the first terrace, to the second
 	for _, x in { { RX0, RX0 + 5 }, { RX1 - 5, RX1 } } do
-		B.blk("Shell", "Step", x[1], x[2], 236, 241, DECK_Z, DECK_Z - 3, P.floor2)
-		B.blk("Shell", "Step", x[1], x[2], 236, 242, T1Z + 4, T1Z, P.floor2)
-		B.blk("Shell", "Step", x[1], x[2], 236, 246, T2Z + 4, T2Z, P.floor2)
+		B.blk("Shell", "Step", x[1], x[2], 236.05, 241, DECK_Z, DECK_Z - 3, P.floor2)
+		B.blk("Shell", "Step", x[1], x[2], 236.05, 242, T1Z + 4, T1Z, P.floor2)
+		B.blk("Shell", "Step", x[1], x[2], 236.05, 246, T2Z + 4, T2Z, P.floor2)
 	end
+	-- (16 Nov: three lanes, one per plate) low dividers down the lane between them, broken at the row plinths and the
+	-- terrace noses, so each runner has a lane of their own and the view down the lane stays open
+	for _, x in { 47, 61 } do
+		for _, seg in { { DECK_Z - 0.4, -8181, Y0 }, { -8185, T1Z + 1, Y0 }, { T1Z - 1, -8226, 244 }, { -8230, T2Z + 1, 244 }, { T2Z - 1, -8271, 248 }, { -8275, -8287, 248 } } do
+			B.blk("Shell", "LaneDivider", x - 0.6, x + 0.6, seg[3], seg[3] + 2.2, seg[1], seg[2], P.pier2)
+			B.part("Shell", "LaneDividerNose", CF(x, seg[3] + 2.2, (seg[1] + seg[2]) / 2) * CFrame.Angles(0, math.pi / 2, 0), V3(math.abs(seg[2] - seg[1]), 1.3, 1.3), P.trim, { cyl = true })
+		end
+	end
+	-- (16 Nov, sealing: the lane is open to the sky, so an unseen lid at the walls' tops keeps you inside, and a thick
+	-- one over the canopy)
+	B.solid("RangeLid", CF((RX0 + RX1) / 2, RTOP + 6, (DECK_Z + RZ1) / 2), V3(RX1 - RX0 + 8, 4, DECK_Z - RZ1 + 8)) -- (4 over the walls' tops: no room to stand on them; clear of the gold one on the beam)
 	-- the rows: a low plinth along each row of Carls, so the rows are there between runs too
 	for _, r in ROWS do
 		B.blk("Shell", "RowPlinth", RX0 + 3.5, RX1 - 3.5, r[2], r[2] + 1.2, r[1] + 1.8, r[1] - 1.8, P.pier2)
@@ -684,7 +799,7 @@ local function range(B)
 			local top = if sx == RX0 then RTOP_W else RTOP
 			B.blk("Shell", "Pier", sx, sx + s * 2.6, 236, top - 2, z - 2, z + 2, P.pier)
 			B.blk("Shell", "PierBase", sx, sx + s * 2.85, 236, fy + 1.3, z - 2.25, z + 2.25, P.deep)
-			B.blk("Shell", "PierCap", sx, sx + s * 3.0, top - 2.8, top - 2, z - 2.4, z + 2.4, P.trim)
+			B.blk("Shell", "PierCap", sx, sx + s * 3.0, top - 2.8, top - 1.95, z - 2.4, z + 2.4, P.trim)
 		end
 	end
 	for _, z in BEAMS do
@@ -696,10 +811,11 @@ local function range(B)
 	local CY = 258.5 -- (the canopy's underside, 16.5 over the deck)
 	B.blk("Shell", "Canopy", RX0, RX1, CY, CY + 1.5, RZ0, DECK_Z - 1, P.ceil)
 	B.blk("Shell", "CanopyRoof", RX0, RX1, CY + 1.5, CY + 1.8, RZ0, DECK_Z - 1, P.slate)
+	B.solid("CanopySolid", CF((RX0 + RX1) / 2, CY + 3.3, (RZ0 + DECK_Z - 1) / 2), V3(RX1 - RX0, 3, RZ0 - DECK_Z + 1))
 	for _, z in { -8114, -8126, -8138 } do B.blk("Shell", "CanopyBeam", RX0, RX1, CY - 1.4, CY, z - 0.7, z + 0.7, P.pier) end
 	for _, x in { 46, 62 } do B.blk("Shell", "CanopyBeam", x - 0.7, x + 0.7, CY - 1.4, CY, RZ0, DECK_Z, P.pier) end
 	B.blk("Shell", "Fascia", RX0, RX1, CY - 2.6, CY + 2, DECK_Z + 1, DECK_Z - 1.2, P.pier)
-	B.blk("Shell", "FasciaEdge", RX0, RX1, CY - 2.6, CY - 2.2, DECK_Z + 1.1, DECK_Z - 1.3, P.trim)
+	B.blk("Shell", "FasciaEdge", RX0, RX1, CY - 2.65, CY - 2.2, DECK_Z + 1.1, DECK_Z - 1.3, P.trim)
 	for _, x in { 38, 54, 70 } do
 		for _, z in { -8108, -8120, -8132, -8143 } do
 			B.blk("Scenery", "CanopyPanel", x - 3, x + 3, CY - 0.25, CY - 0.05, z - 2.6, z + 2.6, "a7acb3", { ghost = true, mat = NEON })
@@ -707,11 +823,39 @@ local function range(B)
 		B.lamp(x, CY - 0.7, -8137, "spot", 26, 1.0, P.lampWhite, { angle = 120, shadows = x == 54 })
 		B.lamp(x, CY - 0.7, -8110, "spot", 24, 0.7, P.warm, { angle = 120 })
 	end
-	-- kit at the back of the deck: cases and an ammo crate (what the place is for)
-	for _, c in { { 34.5, -8105.5, 0 }, { 73.5, -8105.5, 180 } } do
-		B.put("bc_hardcase", CF(c[1], DECK, c[2]) * CFrame.Angles(0, math.rad(c[3]), 0), { name = "HardCase", color = { ["2f3b2a"] = P.pier2 } })
-		B.solid("CaseBox", CF(c[1], DECK + 1, c[2]), V3(4, 2, 3))
-		B.put("bc_ammocrate", CF(c[1], DECK + 1.9, c[2]), { name = "AmmoCrate", color = { ["4a5a2c"] = "6c7466", ["3a4622"] = "5c6358" } })
+	-- the back of the deck (owner, 16 Nov: "the back part of the shooting range that's super empty"): a kit counter
+	-- along the back wall with a case and an ammo crate behind each lane, a slate rack panel over it with each lane's
+	-- name, the best runs on a board over the middle, and two benches facing the lanes
+	B.blk("Shell", "KitCounter", RX0 + 3, RX1 - 3, DECK, DECK + 3.2, RZ0 - 0.1, RZ0 - 3.4, P.pier)
+	B.blk("Shell", "KitCounterTop", RX0 + 2.8, RX1 - 2.8, DECK + 3.2, DECK + 3.7, RZ0 - 0.05, RZ0 - 3.7, P.trim)
+	B.blk("Shell", "KitCounterKick", RX0 + 3.2, RX1 - 3.2, DECK + 0.03, DECK + 0.6, RZ0 - 3.3, RZ0 - 3.5, P.deep)
+	B.blk("Shell", "KitRack", RX0 + 4, RX1 - 4, DECK + 5, DECK + 10, RZ0 - 0.1, RZ0 - 0.5, P.slate)
+	for _, pl in T.PLATES do
+		local x = pl[2]
+		B.put("bc_hardcase", CF(x - 3, DECK + 3.7, RZ0 - 1.9), { name = "HardCase", color = { ["2f3b2a"] = P.pier2 } })
+		B.put("bc_ammocrate", CF(x + 3, DECK + 3.7, RZ0 - 1.9), { name = "AmmoCrate", color = { ["4a5a2c"] = "6c7466", ["3a4622"] = "5c6358" } })
+		for _, dx in { -4, 0, 4 } do B.blk("Scenery", "RackPeg", x + dx - 0.25, x + dx + 0.25, DECK + 5.8, DECK + 9.4, RZ0 - 0.5, RZ0 - 1.3, P.pier2) end
+		B.text("RackName", { { pl[3], P[pl[4]], "B", 1 } }, 6, 1.2, CF(x, DECK + 10.7, RZ0 - 0.75), { plate = P.board, thick = 0.2 })
+	end
+	local best = Instance.new("Part")
+	best.Name = "BestBoard"; best.Anchored = true; best.CanCollide = false; best.CanQuery = false; best.CanTouch = false
+	best.Size = V3(13.6, 3.6, 0.4); best.Color = Color3.fromHex(P.board); best.Material = SP; best.CastShadow = false
+	best.CFrame = B.cf((RX0 + RX1) / 2, DECK + 13.3, RZ0 - 0.4) -- (its front, -z, faces the lanes)
+	best.Parent = B.root.Range
+	do
+		local g = Instance.new("SurfaceGui")
+		g.Name = "Gui"; g.Face = Enum.NormalId.Front; g.SizingMode = Enum.SurfaceGuiSizingMode.PixelsPerStud; g.PixelsPerStud = 32; g.LightInfluence = 0
+		local t = Instance.new("TextLabel")
+		t.Name = "Best"; t.BackgroundTransparency = 1; t.TextScaled = true; t.TextWrapped = true; t.RichText = true
+		t.Text = "BEST TODAY\nCHILL —   NORMAL —   SWEATY —"; t.TextColor3 = Color3.fromHex(P.pale)
+		t.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Heavy)
+		t.Size = UDim2.new(0.92, 0, 0.84, 0); t.Position = UDim2.new(0.04, 0, 0.08, 0)
+		t.Parent = g
+		g.Parent = best
+	end
+	for _, x in { 44, 64 } do
+		B.put("tv_bench", CF(x, DECK, -8110) * CFrame.Angles(0, math.pi, 0), { name = "DeckBench" })
+		B.solid("DeckBenchBox", CF(x, DECK + 0.95, -8110), V3(8, 1.9, 2.2))
 	end
 	-- the firing line: a counter (its box is the hub builders' RangeCounterBox), booths, three plates
 	B.blk("Scenery", "Counter", 36, 72, DECK, 244.8, DECK_Z + 2.4, DECK_Z + 0.2, P.pier, { nc = true })
@@ -759,16 +903,21 @@ local function range(B)
 		t.Position = UDim2.new(x, 0, y, 0); t.Size = UDim2.new(w, 0, h, 0)
 		t.Parent = g
 	end
-	lbl("ScoreT", "CARLS DOWN", 0.06, 0.07, 0.38, 0.12, P.grey, Enum.FontWeight.Bold)
-	lbl("LeftT", "CARLS LEFT", 0.56, 0.07, 0.38, 0.12, P.grey, Enum.FontWeight.Bold)
-	lbl("Score", "00", 0.06, 0.2, 0.38, 0.5, P.pale, Enum.FontWeight.Heavy)
-	lbl("Left", "25", 0.56, 0.2, 0.38, 0.5, P.amber, Enum.FontWeight.Heavy)
-	lbl("Line", "CARDBOARD CARL'S · stand on a plate. he won't shoot back.", 0.06, 0.72, 0.88, 0.25, P.pale, Enum.FontWeight.SemiBold)
+	-- (16 Nov: three lanes, a run on each at once: a row per lane, and the last thing that happened)
+	lbl("Title", "CARDBOARD CARL'S", 0.06, 0.05, 0.88, 0.14, P.amber, Enum.FontWeight.Heavy)
+	for i, pl in T.PLATES do
+		lbl("Name" .. pl[1], pl[3], 0.06, 0.12 + i * 0.15, 0.3, 0.12, P[pl[4]], Enum.FontWeight.Heavy)
+		lbl("Row" .. pl[1], "free", 0.38, 0.12 + i * 0.15, 0.56, 0.12, P.pale, Enum.FontWeight.Bold)
+	end
+	lbl("Line", "stand on a plate. 25 cardboard men. he won't shoot back.", 0.06, 0.78, 0.88, 0.18, P.grey, Enum.FontWeight.SemiBold)
 	g.Line.TextWrapped = true
 	g.Parent = board
 	-- the Carls' spots (each looks at the plates) on the row plinths, a foot-mark at each, the distance at each row
 	for _, s in T.SPOTS do
-		B.marker(B.root.Range.Spots, "Spot", s[1], s[2] + 0.1, s[3], V3(54, s[2], T.PLATE_Z))
+		local lane, lx = "Easy", 40
+		for _, pl in T.PLATES do if math.abs(pl[2] - s[1]) < math.abs(lx - s[1]) then lane, lx = pl[1], pl[2] end end
+		local m = B.marker(B.root.Range.Spots, "Spot", s[1], s[2] + 0.1, s[3], V3(lx, s[2], T.PLATE_Z))
+		m:SetAttribute("Lane", lane)
 		B.drum("Scenery", "CarlMark", s[1], s[3], s[2], s[2] + 0.05, 3.2, P.line, { ghost = true })
 	end
 	for _, row in { { -8183, "15 M" }, { -8221, "30 M" }, { -8280, "45 M" } } do
@@ -787,7 +936,7 @@ local function range(B)
 	B.part("Shell", "TargetRecess", CF(54, 261, BZ + 0.15) * CFrame.Angles(0, math.pi / 2, 0), V3(0.3, 25, 25), P.recess, { cyl = true })
 	B.put("tv_target", CF(54, 261, BZ + 1.0), { name = "EndTarget", scale = 1.4 })
 	B.blk("Shell", "Hood", RX0, RX1, 275.5, 277, -8279, RZ1, P.pier2)
-	B.blk("Shell", "HoodFascia", RX0, RX1, 274.2, 277.4, -8279, -8280.6, P.pier)
+	B.blk("Shell", "HoodFascia", RX0, RX1, 274.2, 277.4, -8278.95, -8280.6, P.pier)
 	B.lamp(42, 274.6, -8282, "spot", 40, 1.0, P.lampWhite, { look = V3(54, 261, BZ), angle = 55 })
 	B.lamp(66, 274.6, -8282, "spot", 40, 1.0, P.lampWhite, { look = V3(54, 261, BZ), angle = 55 })
 end
@@ -807,19 +956,34 @@ local LEDGES = { -- { name, x0, x1, z0, z1, top }
 local TOWER = { x = -58, z = -8170, top = 268 }
 local SKY = { x0 = -72, x1 = -44, z0 = -8150, z1 = -8182, top = 306 } -- the skylight drum, on the beam lines round the tower
 local function course(B)
-	-- floor round the pit, the pit (4 down) with a step out on its west side
-	B.blk("Shell", "CourseFloor", CX0 - 4, PIT.x0, 234, Y0, CZ0 + 4, CZ1 - 4, P.courseFloor)
-	B.blk("Shell", "CourseFloor", PIT.x0, CX1, 234, Y0, CZ0 + 4, PIT.z0, P.courseFloor)
-	B.blk("Shell", "CourseFloor", PIT.x0, CX1, 234, Y0, PIT.z1, CZ1 - 4, P.courseFloor)
-	B.blk("Shell", "PitFloor", PIT.x0, CX1, 232, 236, PIT.z0, PIT.z1, P.floor2)
-	B.blk("Shell", "PitStep", PIT.x0, PIT.x0 + 3, 236, 238, PIT.z0, PIT.z1, P.floor2)
-	B.blk("Shell", "PitFace", PIT.x0, CX1, 236, Y0, PIT.z0 - 0.02, PIT.z0 - 0.12, P.slate, { ghost = true })
-	B.blk("Shell", "PitFace", PIT.x0, CX1, 236, Y0, PIT.z1 + 0.02, PIT.z1 + 0.12, P.slate, { ghost = true })
-	B.blk("Shell", "PitFace", PIT.x0 + 0.02, PIT.x0 + 0.12, 238, Y0, PIT.z0, PIT.z1, P.slate, { ghost = true })
-	-- the slide lane down the east side to the pit: a darker strip, arrows, an amber edge to jump from
+	-- floor round the pit, and the pit: a long-jump pit (owner, 16 Nov: "on the right there are arrows leading to like a
+	-- rectangular hole in the ground is that going to be something?"). 1.5 down, sand-grey, a line every 4 studs with
+	-- its number; slide down the lane, jump at the amber line, and TrainingDoors.client says how far you got
+	B.blk("Shell", "CourseFloor", CX0 - 3.95, PIT.x0, 234, Y0, CZ0 + 3.95, CZ1 - 3.95, P.courseFloor)
+	B.blk("Shell", "CourseFloor", PIT.x0, CX1, 234, Y0, CZ0 + 3.95, PIT.z0, P.courseFloor)
+	B.blk("Shell", "CourseFloor", PIT.x0, CX1, 234, Y0, PIT.z1, CZ1 - 3.95, P.courseFloor)
+	local PY = Y0 - 1.5
+	B.blk("Shell", "PitFloor", PIT.x0, CX1, 232, PY, PIT.z0, PIT.z1, "a99d86")
+	B.blk("Shell", "PitFace", PIT.x0, CX1, PY, Y0, PIT.z0 - 0.02, PIT.z0 - 0.12, P.slate, { ghost = true })
+	B.blk("Shell", "PitFace", PIT.x0, CX1, PY, Y0, PIT.z1 + 0.02, PIT.z1 + 0.12, P.slate, { ghost = true })
+	B.blk("Shell", "PitFace", PIT.x0 + 0.02, PIT.x0 + 0.12, PY, Y0, PIT.z0, PIT.z1, P.slate, { ghost = true })
+	for k = 1, 5 do
+		local z = PIT.z0 - 4 * k
+		B.blk("Scenery", "PitMark", PIT.x0, CX1 - 2.4, PY, PY + 0.03, z + 0.15, z - 0.15, P.line, { ghost = true })
+		B.text("PitNumber", { { tostring(4 * k), P.amber, "B", 1 } }, 1.8, 1.3, CF(-33.8, PY + 0.04, z - 0.9) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	end
+	B.text("WordLongJump", { { "LONG JUMP", P.amber, "B", 1 }, { "slide, then jump at the line", P.pale, "S", 0.42 } }, 9.5, 3, CFrame.lookAt(V3(CX1 - 0.17, Y0 + 7.5, -8174), V3(CX1 - 10, Y0 + 7.5, -8174)), { plate = P.board, thick = 0.25 })
+	local lj = Instance.new("Part")
+	lj.Name = "LongJumpPit"; lj.Anchored = true; lj.Transparency = 1; lj.CanCollide = false; lj.CanQuery = false; lj.CanTouch = false
+	lj.Size = V3(PIT.x1 - PIT.x0, 4, PIT.z0 - PIT.z1)
+	lj.CFrame = B.at(CF((PIT.x0 + PIT.x1) / 2, Y0, (PIT.z0 + PIT.z1) / 2))
+	lj:SetAttribute("Edge", B.at(CF(0, 0, PIT.z0)).Position.Z)
+	lj.Parent = B.root.Scenery
+	-- the slide lane down the east side to the pit: a darker strip, an amber edge to jump from (the arrows went on 16
+	-- Nov, the owner: "an arrow that looks ugly and is redundant")
 	B.blk("Scenery", "SlideLane", PIT.x0, CX1, Y0, Y0 + 0.03, -8106, PIT.z0, P.floor2, { ghost = true })
-	for z = -8116, -8176, -15 do B.chevron(-35, Y0, z, 0, -1, 7, P.line) end
-	B.blk("Scenery", "JumpEdge", PIT.x0, CX1, Y0, Y0 + 0.05, PIT.z0, PIT.z0 + 0.9, P.amber, { ghost = true })
+	B.text("JumpWord", { { "JUMP", P.amber, "B", 1 } }, 6, 2.2, CF(-35, Y0 + 0.05, PIT.z0 + 4.3) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
+	B.blk("Scenery", "JumpEdge", PIT.x0, CX1, Y0 + 0.03, Y0 + 0.07, PIT.z0, PIT.z0 + 0.9, P.amber, { ghost = true })
 	B.blk("Scenery", "LandEdge", PIT.x0, CX1, Y0, Y0 + 0.05, PIT.z1, PIT.z1 - 0.9, P.line, { ghost = true })
 	B.text("SlideWord", { { "SLIDE", P.line, "B", 1 } }, 8, 2.6, CF(-35, Y0 + 0.05, -8108) * CFrame.Angles(0, math.pi, 0) * CFrame.Angles(math.pi / 2, 0, 0), { clear = true, thick = 0.05 })
 	-- walls (the east one with the passage from the muster)
@@ -854,7 +1018,7 @@ local function course(B)
 	end
 	-- piers on the beam grid down the east wall (the ceiling's beams land on them), bands at the ledges' heights
 	for _, z in { -8134, -8150, -8166, -8182, -8198, -8214 } do
-		local y0 = if z < PIT.z0 + 2 and z > PIT.z1 - 2 then 236 else Y0
+		local y0 = if z < PIT.z0 + 2 and z > PIT.z1 - 2 then Y0 - 1.5 else Y0
 		B.blk("Shell", "Pier", CX1, CX1 - 2.4, y0, CTOP, z - 1.6, z + 1.6, P.pier)
 		B.blk("Shell", "PierBase", CX1, CX1 - 2.65, y0, y0 + 1.3, z - 1.85, z + 1.85, P.deep)
 	end
@@ -868,22 +1032,24 @@ local function course(B)
 	-- the coffered ceiling: beams both ways, lit panels in every other coffer, and over the tower a skylight drum open
 	-- to the sky (the beams across it stay, as its bars)
 	local cy0, cy1 = CTOP + 4, CTOP + 6
-	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, CZ0 + 4, SKY.z0 - 1.2, P.ceil)
+	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, CZ0 + 4, SKY.z0 - 1.15, P.ceil)
 	B.blk("Shell", "CourseCoping", CX1 + 2.6, CX1 + 4.6, cy0 - 1, cy1 + 1.2, CZ0 + 4.4, CZ1 - 4.4, P.wall2, { nq = true })
 	B.blk("Shell", "CourseBand", CX1 + 4, CX1 + 4.3, 276, 277, CZ0 + 4, CZ1 - 4, P.trim, { ghost = true })
-	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, SKY.z1 + 1.2, CZ1 - 4, P.ceil)
-	B.blk("Shell", "CourseCeiling", CX0 - 4, SKY.x0 + 1.2, cy0, cy1, SKY.z0 - 1.2, SKY.z1 + 1.2, P.ceil)
-	B.blk("Shell", "CourseCeiling", SKY.x1 - 1.2, CX1 + 4, cy0, cy1, SKY.z0 - 1.2, SKY.z1 + 1.2, P.ceil)
+	B.blk("Shell", "CourseCeiling", CX0 - 4, CX1 + 4, cy0, cy1, SKY.z1 + 1.15, CZ1 - 4, P.ceil)
+	B.blk("Shell", "CourseCeiling", CX0 - 4, SKY.x0 + 1.15, cy0, cy1, SKY.z0 - 1.15, SKY.z1 + 1.15, P.ceil)
+	B.blk("Shell", "CourseCeiling", SKY.x1 - 1.15, CX1 + 4, cy0, cy1, SKY.z0 - 1.15, SKY.z1 + 1.15, P.ceil)
 	local zb = {}
 	for k = 1, 7 do table.insert(zb, CZ0 - 16 * k) end
-	for _, z in zb do B.blk("Shell", "CeilingBeam", CX0, CX1, CTOP, CTOP + 4, z - 1.2, z + 1.2, P.pier) end
-	for _, x in { -44, -58, -72 } do B.blk("Shell", "CeilingBeam", x - 1.2, x + 1.2, CTOP, CTOP + 4, CZ0, CZ1, P.pier) end
+	for _, z in zb do B.blk("Shell", "CeilingBeam", CX0, CX1, CTOP, CTOP + 4, z - 1.15, z + 1.15, P.pier) end
+	for _, x in { -44, -58, -72 } do B.blk("Shell", "CeilingBeam", x - 1.15, x + 1.15, CTOP, CTOP + 4, CZ0, CZ1, P.pier) end
 	for _, w in {
 		{ SKY.x0 - 1.2, SKY.x0 + 1.2, SKY.z0 + 1.2, SKY.z1 - 1.2 }, { SKY.x1 - 1.2, SKY.x1 + 1.2, SKY.z0 + 1.2, SKY.z1 - 1.2 },
 		{ SKY.x0 - 1.2, SKY.x1 + 1.2, SKY.z0 + 1.2, SKY.z0 - 1.2 }, { SKY.x0 - 1.2, SKY.x1 + 1.2, SKY.z1 + 1.2, SKY.z1 - 1.2 },
 	} do
 		B.blk("Shell", "SkyDrum", w[1], w[2], CTOP, SKY.top, w[3], w[4], P.wall2)
 	end
+	-- (16 Nov, sealing: the drum is open to the sky, so an unseen lid over it: you see out, you cannot grapple out)
+	B.solid("SkyLid", CF((SKY.x0 + SKY.x1) / 2, SKY.top + 2, (SKY.z0 + SKY.z1) / 2), V3(SKY.x1 - SKY.x0 + 4, 4, SKY.z0 - SKY.z1 + 4))
 	B.blk("Shell", "SkyCoping", SKY.x0 - 1.6, SKY.x1 + 1.6, SKY.top, SKY.top + 0.6, SKY.z0 + 1.6, SKY.z0 - 1.6, P.wall2)
 	B.blk("Shell", "SkyCoping", SKY.x0 - 1.6, SKY.x1 + 1.6, SKY.top, SKY.top + 0.6, SKY.z1 + 1.6, SKY.z1 - 1.6, P.wall2)
 	B.blk("Shell", "SkyCoping", SKY.x0 - 1.6, SKY.x0 + 1.6, SKY.top, SKY.top + 0.6, SKY.z0, SKY.z1, P.wall2)
@@ -921,32 +1087,15 @@ local function course(B)
 		end
 	end
 	-- jump pads: floor to ledge 1, ledge 1 to 2, 2 to 3, floor to the tower's top
-	B.pad(-66, Y0, -8136, V3(-14, 52, 0)) -- (between the chute's piers, where the line from the door leads)
+	B.pad(-66, Y0, -8136, V3(-14, 52, 0))
 	B.pad(-80, 250, -8143, V3(0, 52, -14))
 	B.pad(-80, 260, -8191, V3(0, 52, -14))
 	B.pad(-44, Y0, TOWER.z, V3(-12, 80, 0))
 	-- the tower (eight-sided, under the skylight), and the open chute from its top back down to the start
 	B.put("tv_towerOct", CF(TOWER.x, Y0, TOWER.z), { name = "Tower" })
 	B.drum("Collision", "TowerSolid", TOWER.x, TOWER.z, Y0, TOWER.top, 16.6, P.pier, { tr = 1, noShadow = true })
-	local cz0, cz1 = TOWER.z + 8, -8110 -- (the chute runs from the tower's south face to the floor near the start)
-	local clen = cz1 - cz0
-	local ch = TOWER.top - Y0
-	B.ramp("Shell", "Chute", "z", cz0, TOWER.top, cz1, Y0, TOWER.x - 4, TOWER.x + 4, P.ledge, { thick = 2 })
-	local slope = math.atan2(ch, clen)
-	-- (rework 3: two thick piers under it, not stilts; a head block where it meets the tower)
-	for _, z in { -8126, -8146 } do
-		local top = Y0 + (z - cz1) / (cz0 - cz1) * ch - 2 / math.cos(slope) + 0.2
-		B.blk("Shell", "ChutePier", TOWER.x - 3.5, TOWER.x + 3.5, Y0, top, z - 2, z + 2, P.pier)
-		B.blk("Shell", "ChutePierBase", TOWER.x - 3.8, TOWER.x + 3.8, Y0, Y0 + 1.3, z - 2.3, z + 2.3, P.deep)
-	end
-	B.blk("Shell", "ChuteHead", TOWER.x - 4, TOWER.x + 4, TOWER.top - 3, TOWER.top, cz0 + 1.6, cz0 - 0.6, P.ledge)
-	local L = math.sqrt(clen * clen + ch * ch)
-	for _, sx in { -4.4, 4.4 } do
-		-- (a curb along each side, stopping short of the tower's deck)
-		local cf = CF(TOWER.x + sx, Y0 + ch / 2 + 1.2, (cz0 + cz1) / 2) * CFrame.Angles(slope, 0, 0) * CF(0, 0, 1)
-		B.part("Shell", "ChuteCurb", cf, V3(1.2, 2.6, L - 2), P.ledge)
-		B.part("Scenery", "ChuteRail", cf * CF(0, 1.3, 0) * CFrame.Angles(0, math.pi / 2, 0), V3(L - 2, 1.4, 1.4), P.trim, { cyl = true, ghost = true })
-	end
+	-- (the open chute from the tower's top back down to the start went on 16 Nov, the owner: "what is the slope to the
+	-- cylinder thingy?" from below it read as a ramp up to the tower, and the pad already does that. you drop off)
 	-- grapple rings hanging from the ceiling beams: over the pit, between the tower and the gallery, over the tower (from
 	-- the skylight's bars), over the start
 	for _, h in { { -37, -8198 }, { -58, -8198 }, { -58, -8166 }, { -72, -8134 }, { -44, -8134 } } do
@@ -959,9 +1108,7 @@ local function course(B)
 	B.blk("Scenery", "TopLight", TOWER.x - 5, TOWER.x + 5, 279.6, 279.9, CZ1 + 0.3, CZ1 + 1.6, P.warm, { ghost = true, mat = NEON })
 	B.lamp(TOWER.x, 278, CZ1 + 3, "point", 16, 0.7, P.warm)
 	B.text("WordTOP", { { "TOP", P.amber, "B", 1 } }, 7, 1.5, CF(TOWER.x, 280.9, CZ1 + 3.85) * CFrame.Angles(0, math.pi, 0), { plate = P.pier, thick = 0.2 })
-	-- the way in: a line from the door to the first pad, an arrow at it
-	B.line(-31.5, MZ, -61.5, -8135.4, Y0, 0.9, P.line, "RouteLine")
-	B.chevron(-60.5, Y0, -8135.2, -1, 0, 5, P.line)
+	-- (the line and arrow from the door to the first pad went on 16 Nov: "an arrow that looks ugly and is redundant")
 	local bx, by, bz = -80, 283, CZ1 + 0.45 -- (over ledge 3, off the line you see from the entrance)
 	B.put("tv_target", CF(bx, by, bz), { name = "SecretBullseye", scale = 0.6 })
 	B.trigger("ToPlayground", bx - 3, bx + 3, by - 3, by + 3, CZ1 + 1.2, CZ1 + 4.2)
@@ -1131,7 +1278,9 @@ function T.check(stage): string
 	need(r and r:FindFirstChild("Plates") and #r.Plates:GetChildren() == 3, "Range.Plates (3)")
 	need(r and r:FindFirstChild("Spots") and #r.Spots:GetChildren() >= 10, "Range.Spots")
 	local gui = r and r:FindFirstChild("Board") and r.Board:FindFirstChild("Gui")
-	for _, n in { "Score", "Left", "Line" } do need(gui and gui:FindFirstChild(n), "Board.Gui." .. n) end
+	for _, n in { "RowEasy", "RowMedium", "RowHard", "Line" } do need(gui and gui:FindFirstChild(n), "Board.Gui." .. n) end
+	local lf = tg:FindFirstChild("LiveFire")
+	need(lf and lf:FindFirstChild("Zone") and lf:FindFirstChild("LiveButton") and lf.LiveButton:FindFirstChild("Prompt"), "LiveFire (Zone, LiveButton.Prompt)")
 	need(tg:FindFirstChild("PropCollision") and tg.PropCollision:FindFirstChild("RangeCounterBox"), "PropCollision.RangeCounterBox")
 	if bad > 0 then return table.concat(out, "\n") end
 	-- every marker inside the zone
@@ -1146,23 +1295,22 @@ function T.check(stage): string
 		local hit = workspace:Raycast(a, b - a, rp)
 		return hit == nil, hit
 	end
-	local pk = ds.Plinker.Position + V3(0, 4.8, 0)
-	local seen = 0
-	for _, s in sp:GetChildren() do
-		local ok = clear(pk, s.Position + V3(0, 3.5, 0))
-		if ok then seen += 1 end
-	end
-	table.insert(out, ("spawn points the Plinker can see: %d of %d"):format(seen, #sp:GetChildren()))
-	local blocked = 0
+	-- the shooters stand inside the live-fire end and fire only there
+	local zp = lf.Zone
+	local function inLive(p) local rel = zp.CFrame:PointToObjectSpace(p); local h = zp.Size / 2; return math.abs(rel.X) <= h.X and math.abs(rel.Z) <= h.Z end
+	table.insert(out, ("shooters inside the live-fire end: %d of 2"):format((if inLive(ds.Plinker.Position) then 1 else 0) + (if ds:FindFirstChild("Plinker2") and inLive(ds.Plinker2.Position) then 1 else 0)))
+	local blocked, lines = 0, 0
 	for _, pl in r.Plates:GetChildren() do
 		local eye = pl.Position + V3(0, 4.9, 0)
 		for _, s in r.Spots:GetChildren() do
+			if s:GetAttribute("Lane") ~= pl.Name then continue end
+			lines += 1
 			local okC = clear(eye, s.Position + V3(0, 3.6, 0))
 			local okH = clear(eye, s.Position + V3(0, 6.2, 0))
 			if not okC and not okH then blocked += 1; table.insert(out, ("Carl hidden from %s at (%.0f, %.0f, %.0f)"):format(pl.Name, s.Position.X - O.X, s.Position.Y, s.Position.Z)) end
 		end
 	end
-	table.insert(out, ("plate-to-Carl sight lines blocked: %d of %d"):format(blocked, #r.Plates:GetChildren() * #r.Spots:GetChildren()))
+	table.insert(out, ("plate-to-Carl sight lines blocked (each plate to its own lane): %d of %d"):format(blocked, lines))
 	local gunOk = clear(V3(-16, 245, -8150) + O, ds.Stand1.Position + V3(0, 4, 0))
 	table.insert(out, "gun sessions' test line (-16, 245, -8150) to Stand1: " .. (if gunOk then "clear" else "BLOCKED"))
 	-- nothing solid where you appear
@@ -1176,6 +1324,42 @@ function T.check(stage): string
 	end
 	table.insert(out, ("arrival points with something solid in them: %d"):format(stuck))
 	table.insert(out, ("markers outside the zone: %d"):format(outside))
+	-- the hall is sealed (owner, 16 Nov: "there is a roof in the dummy part ... that lets you clip through it and get
+	-- outside"). from points inside every room, a ray each way (26) must meet something you cannot walk through
+	-- (CanCollide) within 300 studs, like the hub's leak test, and what it meets must be at least 2 studs thick there:
+	-- a fast player (grapple, pads) goes through thin skins
+	local cp = RaycastParams.new(); cp.FilterType = Enum.RaycastFilterType.Include; cp.FilterDescendantsInstances = { tg }; cp.RespectCanCollide = true
+	local S5 = sideFrame(nil, 5)
+	local pts = {
+		V3(0, MY + 4, MZ), V3(0, MY + 14, MZ), V3(0, MY + 26, MZ), V3(12, MY + 4, MZ + 8), V3(-12, MY + 12, MZ - 8),
+		S5:PointToWorldSpace(V3(0, MY + 4, -(A + WALL + 3))), V3(26, MY + 4, MZ), V3(-26, MY + 4, MZ),
+		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
+		V3(-58, Y0 + 4, -8120), V3(-40, Y0 + 4, -8200), V3(-80, 274, -8225), V3(-58, 286, -8166), V3(-50, 280, -8130),
+	}
+	for _, z in { -8154, -8186, -8218, -8250 } do
+		for _, x in { -16, 0, 16 } do for _, y in { Y0 + 4, 252, 262 } do table.insert(pts, V3(x, y, z)) end end
+	end
+	local leaks, rays, thin = 0, 0, {}
+	for _, at in pts do
+		for x = -1, 1 do for y = -1, 1 do for z = -1, 1 do
+			if x == 0 and y == 0 and z == 0 then continue end
+			rays += 1
+			local h = workspace:Raycast(at + O, V3(x, y, z).Unit * 300, cp)
+			if not h then
+				leaks += 1
+				if leaks <= 12 then table.insert(out, ("LEAK from (%.0f, %.0f, %.0f) toward (%d, %d, %d)"):format(at.X, at.Y, at.Z, x, y, z)) end
+			elseif h.Instance:IsA("Part") and (h.Instance :: Part).Shape == Enum.PartType.Block then
+				local p = h.Instance :: Part
+				local n = p.CFrame:VectorToObjectSpace(h.Normal)
+				local t = if math.abs(n.X) > 0.7 then p.Size.X elseif math.abs(n.Y) > 0.7 then p.Size.Y elseif math.abs(n.Z) > 0.7 then p.Size.Z else math.min(p.Size.X, p.Size.Y, p.Size.Z)
+				-- (thin only matters where it is the last thing: past it, nothing)
+				if t < 1.9 and not workspace:Raycast(h.Position + V3(x, y, z).Unit * 0.02, V3(x, y, z).Unit * 300, cp) then thin[p:GetFullName()] = t end
+			end
+		end end end
+	end
+	local nThin = 0
+	for name, t in thin do nThin += 1; if nThin <= 12 then table.insert(out, ("THIN %.2f: %s"):format(t, name)) end end
+	table.insert(out, ("the hall sealed: %d rays from %d points, leaks %d, skins under 2 studs %d"):format(rays, #pts, leaks, nThin))
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	if lotSrc and tg:FindFirstChild("Lot") then
 		for _, l in require(lotSrc:Clone()).check(tg, mk) do table.insert(out, l) end

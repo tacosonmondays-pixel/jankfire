@@ -4,6 +4,13 @@
 -- the training room (feel getting shot, practise the katana parry on real bullets), and the yellow "Stand"s just
 -- stand there. they never count for score or the kill feed (like the web game's training dummies), but they do grow
 -- your katana. where they stand: the hub's DummySpots
+-- since 16 Nov (the owner: "an area where you can activate dummies that shoot back, that way they don't shoot into the
+-- main hub area of the training"): the shooters ("Plinker", "Plinker2") stand at the far corners of the yard's live-fire
+-- end and stay quiet until someone holds E at the console on its line; then for 90 s (or until the end has stood empty
+-- for 8 s) they fire at whoever is inside the end, and their shots never cross the line. the end is
+-- Hub.TrainingGround.LiveFire (TrainingV2): Zone (its box), LiveButton (with the Prompt), lamps (attribute Lamp), and
+-- the attribute Line (the z the shots stop at). the dummies are cardboard-coloured with a ring on the chest now, the
+-- shooters slate with a red one, and no name tags
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
@@ -14,6 +21,7 @@ local Arena = require(Shared:WaitForChild("Arena"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local ShotR = Remotes:WaitForChild("Shot") :: RemoteEvent
+local CalloutR = Remotes:WaitForChild("Callout") :: RemoteEvent
 
 type Fighter = Rules.Fighter
 local Dummies = {}
@@ -22,6 +30,49 @@ local list: { Fighter } = {}
 local brain: { [Fighter]: { home: Vector3, side: number, flip: number, shoot: number, slipUntil: number } } = {}
 local Fight: any
 local applyHitscan: any
+local TAN, SLATE, LEGS = Color3.fromRGB(180, 154, 122), Color3.fromRGB(98, 102, 111), Color3.fromRGB(74, 78, 87)
+local RED, PALE = Color3.fromRGB(200, 70, 60), Color3.fromRGB(236, 234, 228)
+local function shooter(name: string): boolean return string.sub(name, 1, 7) == "Plinker" end
+
+-- the live-fire end
+local LIVE_FOR, EMPTY_FOR = 90, 8
+local live, liveUntil, lastIn, lookAt = false, 0, 0, 0
+local lf: Instance? = nil
+local function liveFolder(): Instance?
+	local map = workspace:FindFirstChild("Map")
+	local hub = map and map:FindFirstChild("Hub")
+	local tg = hub and hub:FindFirstChild("TrainingGround")
+	return tg and tg:FindFirstChild("LiveFire")
+end
+local function inLive(pos: Vector3): boolean
+	local z = lf and lf:FindFirstChild("Zone") :: BasePart?
+	if not z then return false end
+	local rel = z.CFrame:PointToObjectSpace(pos)
+	local h = z.Size / 2
+	return math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y and math.abs(rel.Z) <= h.Z
+end
+local function setLive(on: boolean, by: Player?)
+	live = on
+	liveUntil = if on then os.clock() + LIVE_FOR else 0
+	lastIn = os.clock()
+	local f = lf
+	if not f then return end
+	f:SetAttribute("Live", on)
+	for _, d in f:GetDescendants() do
+		if d:IsA("BasePart") and d:GetAttribute("Lamp") then
+			d.Material = if on then Enum.Material.Neon else Enum.Material.SmoothPlastic
+			d.Color = if on then Color3.fromRGB(255, 72, 54) elseif d.Name == "LiveButton" then Color3.fromRGB(138, 58, 51) else Color3.fromRGB(107, 74, 70)
+			for _, l in d:GetChildren() do if l:IsA("Light") then l.Enabled = on end end
+		elseif d:IsA("ProximityPrompt") then
+			d.ActionText = if on then "Live fire off" else "Live fire on"
+		end
+	end
+	for _, p in Players:GetPlayers() do
+		if p:GetAttribute("Zone") == "training" and (p == by or inLive((p.Character and p.Character:GetPivot().Position) or Vector3.zero)) then
+			CalloutR:FireClient(p, if on then "LIVE FIRE · THE TWO AT THE BACK SHOOT BACK" else "LIVE FIRE OFF", 1.8)
+		end
+	end
+end
 
 local folder = Instance.new("Folder")
 folder.Name = "Dummies"
@@ -32,7 +83,7 @@ local function body(name: string, color: Color3): Model
 	local ok, m = pcall(function()
 		local d = Instance.new("HumanoidDescription")
 		d.HeadColor, d.TorsoColor = color, color
-		d.LeftArmColor, d.RightArmColor, d.LeftLegColor, d.RightLegColor = color, color, Color3.fromRGB(40, 40, 50), Color3.fromRGB(40, 40, 50)
+		d.LeftArmColor, d.RightArmColor, d.LeftLegColor, d.RightLegColor = color, color, LEGS, LEGS
 		return Players:CreateHumanoidModelFromDescription(d, Enum.HumanoidRigType.R15)
 	end)
 	if ok and m then (m :: Model).Name = name; return m :: Model end
@@ -57,8 +108,21 @@ local function body(name: string, color: Color3): Model
 end
 
 local function make(f: Fighter)
-	local plinker = f.name == "Plinker"
-	local m = body(f.name, if plinker then Color3.fromRGB(255, 59, 59) elseif f.name == "Dummy" then Color3.fromRGB(255, 150, 60) else Color3.fromRGB(255, 225, 77))
+	local plinker = shooter(f.name)
+	local m = body(f.name, if plinker then SLATE else TAN)
+	-- a target ring on the chest (red on the shooters, so you know which ones shoot back)
+	local torso = (m:FindFirstChild("UpperTorso") or m:FindFirstChild("Torso")) :: BasePart?
+	if torso then
+		for i, r in { { 1.7, if plinker then RED else PALE }, { 0.8, if plinker then PALE else RED } } do
+			local disc = Instance.new("Part")
+			disc.Name = "Ring"; disc.Shape = Enum.PartType.Cylinder; disc.Size = Vector3.new(0.12, r[1], r[1])
+			disc.Color = r[2]; disc.Material = Enum.Material.SmoothPlastic; disc.CanCollide = false; disc.CanQuery = false
+			disc.CanTouch = false; disc.Massless = true; disc.CastShadow = false
+			disc.CFrame = torso.CFrame * CFrame.new(0, 0.15, -(torso.Size.Z / 2 + 0.04 + 0.05 * i)) * CFrame.Angles(0, math.pi / 2, 0)
+			local w = Instance.new("WeldConstraint"); w.Part0 = torso; w.Part1 = disc; w.Parent = disc
+			disc.Parent = m
+		end
+	end
 	local b = brain[f]
 	local at = b.home + Vector3.new(0, Hitbox.ROOT_UP + 0.5, 0)
 	m:PivotTo(CFrame.lookAt(at, at + Vector3.zAxis)) -- facing the training room's door
@@ -68,6 +132,7 @@ local function make(f: Fighter)
 		hum.WalkSpeed = 22 -- quick enough to slip on marbles (safe speed is 16.5)
 		hum.BreakJointsOnDeath = true
 		hum.DisplayName = f.name
+		hum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 	end
 	local hs = m:FindFirstChild("Health")
 	if hs then hs:Destroy() end
@@ -98,6 +163,7 @@ end
 
 -- the Plinker's burst: the server's own ray from its eye (a bot fires on the server, web botFire), same spread maths
 local function plink(f: Fighter)
+	if not live then return end
 	local eye = Fight.eye(f)
 	if not eye then return end
 	local best, bestD = nil, 60 * S
@@ -107,7 +173,7 @@ local function plink(f: Fighter)
 		if t.kind == "player" and t.alive and (t.ref :: Player):GetAttribute("Zone") == "training" and not (t.ref :: Player):GetAttribute("RangeRun") and not (t.ref :: Player):GetAttribute("OnLot") then
 			local c = Fight.root(t)
 			-- (nor through smoke: the web game's bots can't see through it either, room.js canSee)
-			if c and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) and not (Fight.smokeBlocks and Fight.smokeBlocks(eye, c.Position)) then best, bestD = t, (c.Position - eye).Magnitude end
+			if c and inLive(c.Position) and (c.Position - eye).Magnitude < bestD and Fight.sees(eye, t) and not (Fight.smokeBlocks and Fight.smokeBlocks(eye, c.Position)) then best, bestD = t, (c.Position - eye).Magnitude end
 		end
 	end
 	if not best then return end
@@ -127,8 +193,11 @@ local function plink(f: Fighter)
 			local tf = Hitbox.feet(tr.Position)
 			local aim = (tf + Vector3.new(0, 3.5, 0) - e).Unit
 			local d = Hitbox.spreadDir(aim, (w.spread :: number) * 1 + 0.045, math.random(), math.random())
-			local hitMap = Fight.castMap(e, d, w.range)
-			local mapT = if hitMap then (hitMap.Position - e).Magnitude else w.range
+			local cap = w.range :: number
+			local line = lf and lf:GetAttribute("Line")
+			if type(line) == "number" and d.Z > 1e-4 then cap = math.min(cap, math.max(0, (line - e.Z) / d.Z)) end -- (never past the line)
+			local hitMap = Fight.castMap(e, d, cap)
+			local mapT = if hitMap then (hitMap.Position - e).Magnitude else cap
 			local t, head = Hitbox.ray(e, d, tf, Hitbox.distScale((tf - e).Magnitude))
 			local endT = mapT
 			if t and t < mapT then
@@ -143,6 +212,28 @@ end
 
 function Dummies.tick(n: number)
 	if not Fight then return end
+	if n - lookAt > 2 then -- (the end can be rebuilt: find it again, wire its console)
+		lookAt = n
+		local f = liveFolder()
+		if f ~= lf then
+			lf = f
+			live = false
+			local b = f and f:FindFirstChild("LiveButton")
+			local pr = b and b:FindFirstChild("Prompt")
+			if pr and pr:IsA("ProximityPrompt") then
+				pr.Triggered:Connect(function(p: Player) if lf == f then setLive(not live, p) end end)
+			end
+			setLive(false)
+		end
+	end
+	if live then
+		for _, p in Players:GetPlayers() do
+			local ch = p.Character
+			local r = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+			if r and inLive(r.Position) then lastIn = n; break end
+		end
+		if n > liveUntil or n - lastIn > EMPTY_FOR then setLive(false) end
+	end
 	local killY = Arena.killY() -- (the arena's: the Rooftop v1 or v2)
 	for _, f in list do
 		local b = brain[f]
@@ -153,7 +244,7 @@ function Dummies.tick(n: number)
 		if f.name == "Dummy" and n > b.flip and not hum.PlatformStand then
 			b.flip = n + 1.6; b.side = -b.side
 			hum:MoveTo(b.home + Vector3.new(b.side * 4 * S, 0, 0))
-		elseif f.name == "Plinker" and n > b.shoot then
+		elseif shooter(f.name) and n > b.shoot then
 			b.shoot = n + 3
 			plink(f)
 		end
@@ -165,7 +256,7 @@ function Dummies.init(fight: any, apply: any)
 	Fight.makeDummy = make
 	local spots = workspace:FindFirstChild("Map") and workspace.Map:FindFirstChild("Hub") and workspace.Map.Hub:FindFirstChild("DummySpots")
 	local sp = Fight.spawnPoints()
-	for i, name in { "Dummy", "Plinker", "Stand1", "Stand2" } do
+	for i, name in { "Dummy", "Plinker", "Plinker2", "Stand1", "Stand2" } do
 		local f = Rules.newFighter("dummy", if string.sub(name, 1, 5) == "Stand" then "Stand" else name, nil)
 		local spot = spots and spots:FindFirstChild(name) :: BasePart?
 		if not spot and not spots and i > 2 then continue end
@@ -174,6 +265,18 @@ function Dummies.init(fight: any, apply: any)
 		table.insert(list, f)
 		table.insert(Fight.all, f)
 		Fight.spawn(f)
+	end
+	-- Studio play tests only: ServerStorage.LiveTest answers "on", "off" (the live-fire end as if the console was
+	-- pressed by the first player) and "state"
+	if game:GetService("RunService"):IsStudio() then
+		local bf = Instance.new("BindableFunction")
+		bf.Name = "LiveTest"
+		bf.OnInvoke = function(op: string): any
+			if op == "on" then setLive(true, Players:GetPlayers()[1]); return true
+			elseif op == "off" then setLive(false, nil); return true end
+			return { live = live, left = math.max(0, liveUntil - os.clock()), folder = lf ~= nil }
+		end
+		bf.Parent = game:GetService("ServerStorage")
 	end
 end
 

@@ -6,7 +6,11 @@
 -- the blocks fold when shot and stand back up. you leave the lot by its side door (Doors.LotExit, LaserDoors) or the
 -- garage while it is open. while you are on the lot (attribute OnLot) the Plinker in the yard leaves you alone.
 -- a Carl here is a real fighter of kind "dummy", made like RangeTest's (so every weapon and hit check works on him).
--- the door is the server's: its slats are moved from here. the map is data, made by ServerStorage.PolishBackup.
+-- the door (owner, 16 Nov: "when you go up to garage doors can they slide up"): it rolls up when someone walks up to
+-- it. from the lot it always lets you back in; on the yard's side it rolls up for anyone who has opened it before
+-- (the egg), and for everyone else it lifts a hand's width, rattles and drops while LOCKED flashes. the slats move on
+-- each player's screen (TrainingDoors.client, from the Door's attributes From, Goal, Dur, Since and Rattle); here the
+-- server only decides when, and whether the slats block. the map is data, made by ServerStorage.PolishBackup.
 -- TrainingLot into Hub.TrainingGround.Lot:
 --   Door       (Model) parts with the attribute Shut (their shut CFrame); its attributes Lift (studs it goes up) and
 --              Top (a slat whose bottom is over this height is put away inside the wall)
@@ -32,7 +36,12 @@ local CalloutR = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild(
 
 local WINDOW = 90     -- seconds from the first gold Carl to get the other two
 local OPEN_FOR = 45   -- seconds the door stays up
-local MOVE_T = 4.2    -- seconds to roll up (and down)
+local MOVE_T = 4.2    -- seconds to roll up when the egg opens it (the reveal)
+local MOVE_FAST = 1.5 -- seconds to roll up when someone walks up to it
+local CLOSE_T = 2.0   -- seconds to roll down
+local NEAR = 11       -- studs out from the doorway (either side) that count as walking up to it
+local HOLD = 1.5      -- seconds it stays up after the last person near it has gone
+local PASS_U = 0.42   -- over this the bottom slat is high enough to walk under: the slats stop blocking
 local BACK_UP = 2.6   -- seconds a lot Carl lies down before he stands up again
 local GOLD_BACK = 4   -- seconds after the door is down before the gold Carls are back in their places
 local HP = 30         -- like Cardboard Carl's: three rifle rounds, two to the head
@@ -46,8 +55,11 @@ local found = { false, false, false }
 local firstAt = 0                            -- os.clock() of the first gold Carl down this try (0 = none yet)
 local finders: { [Player]: boolean } = {}
 local known: { [Player]: boolean } = {}      -- who has opened it this server: it rolls up for them on their own
-local waitAt: { [Player]: number } = {}
+local greeted: { [Player]: boolean } = {}    -- told "THE GARAGE REMEMBERS YOU" once
 local state = "shut"                          -- shut | opening | open | closing
+local eggOpen = false                         -- the egg opened it: up for OPEN_FOR, then the egg resets
+local moveT = MOVE_FAST
+local holdUntil, rattleAt = 0, 0
 local u = 0                                   -- how far up the door is: 0 shut .. 1 open
 local openUntil = 0
 local slats: { { p: BasePart, shut: CFrame, solid: boolean, query: boolean } } = {}
@@ -233,17 +245,67 @@ local function setBeacons(on: boolean)
 	end
 end
 
+local passable: boolean? = nil
 local function placeDoor()
+	-- (the slats stay at their shut places here; whether they block follows how far up the door is)
+	local up = u >= PASS_U
+	if up == passable then return end
+	passable = up
 	for _, s in slats do
-		local cf = s.shut + Vector3.new(0, u * lift, 0)
-		local away = cf.Y - s.p.Size.Y / 2 > top -- (inside the wall over the opening: put away)
-		s.p.CFrame = cf
-		if away ~= (s.p.Transparency == 1) then
-			s.p.Transparency = if away then 1 else 0
-			s.p.CanCollide = s.solid and not away
-			s.p.CanQuery = s.query and not away
+		s.p.CanCollide = s.solid and not up
+		s.p.CanQuery = s.query and not up
+	end
+	local blk = lot and lot:FindFirstChild("DoorBlock") :: BasePart?
+	if blk then blk.CanCollide = not up; blk.CanQuery = not up end
+end
+-- tell every screen to roll the door from where it is now to goal (0 shut, 1 up) over dur seconds
+local function publish(goal: number, dur: number)
+	local door = lot and lot:FindFirstChild("Door")
+	if not door then return end
+	door:SetAttribute("From", u); door:SetAttribute("Goal", goal); door:SetAttribute("Dur", dur)
+	door:SetAttribute("Since", workspace:GetServerTimeNow())
+end
+local function goUp(dur: number)
+	state = "opening"; moveT = dur
+	publish(1, dur)
+end
+-- locked: the door jumps a hand's width and drops (every screen), it clatters, and LOCKED over the panel flashes
+local function rattle()
+	local door = lot and lot:FindFirstChild("Door")
+	if door then door:SetAttribute("Rattle", workspace:GetServerTimeNow()) end
+	sound("Rattle")
+	local panel = lot and lot:FindFirstChild("Panel")
+	local head = panel and panel:FindFirstChild("PanelHead")
+	local g = head and head:FindFirstChild("Gui")
+	local l = g and g:FindFirstChild("Line1")
+	if l and l:IsA("TextLabel") then
+		task.spawn(function()
+			local was = l.TextColor3
+			for _ = 1, 3 do
+				l.TextColor3 = Color3.fromRGB(255, 92, 72); task.wait(0.14)
+				l.TextColor3 = was; task.wait(0.12)
+			end
+		end)
+	end
+end
+-- who is near the doorway, on the yard's side and on the lot's
+local function nearDoor(): ({ Player }, { Player })
+	local yard, back = {}, {}
+	local dw = lot and lot:FindFirstChild("Doorway") :: BasePart?
+	if not dw then return yard, back end
+	for _, p in Players:GetPlayers() do
+		local ch = p.Character
+		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+		local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+		if root and hum and hum.Health > 0 then
+			local rel = dw.CFrame:PointToObjectSpace(root.Position)
+			local h = dw.Size / 2
+			if math.abs(rel.X) <= h.X + 1 and math.abs(rel.Y) <= h.Y + 4 and math.abs(rel.Z) <= h.Z + NEAR then
+				if root.Position.Z > dw.Position.Z then table.insert(yard, p) else table.insert(back, p) end
+			end
 		end
 	end
+	return yard, back
 end
 
 local function someoneIn(part: BasePart, grow: number): boolean
@@ -265,14 +327,16 @@ local function count(): number
 	return n
 end
 
+-- the egg is done: the slow reveal, up for OPEN_FOR (if someone already had it up, it just stays up that long)
 local function open(by: Player?)
-	if state == "open" or state == "opening" then return end
-	state = "opening"
+	if eggOpen then return end
+	eggOpen = true
 	setPips(); setBeacons(true); setTimer("OPEN")
-	sound("Open")
 	sayTraining("THE GARAGE IS OPEN", 2.2)
-	if by then say(by, "YOU OPENED THE GARAGE", 2.4); known[by] = true end
-	for p in finders do known[p] = true end
+	if by then say(by, "YOU OPENED THE GARAGE", 2.4); known[by] = true; greeted[by] = true end
+	for p in finders do known[p] = true; greeted[p] = true end
+	if state == "shut" or state == "closing" then goUp(MOVE_T); sound("Open")
+	elseif state == "open" then openUntil = os.clock() + OPEN_FOR end
 end
 
 local function resetEgg()
@@ -284,7 +348,7 @@ local function resetEgg()
 end
 
 local function goldDown(i: number, k: any, spot: BasePart?)
-	if found[i] or state ~= "shut" then return end
+	if found[i] or eggOpen then return end
 	found[i] = true
 	if firstAt == 0 then firstAt = os.clock() end
 	local n = count()
@@ -319,8 +383,9 @@ local function setup(l: Instance)
 			end
 		end
 	end
-	state, u = "shut", 0
+	state, u, eggOpen, passable = "shut", 0, false, nil
 	placeDoor()
+	publish(0, 0)
 	resetEgg()
 	setBeacons(false)
 	local targets = l:FindFirstChild("Targets")
@@ -367,72 +432,73 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if not lot then return end
 	-- the door
 	if state == "opening" then
-		u = math.min(1, u + dt / MOVE_T)
+		u = math.min(1, u + dt / moveT)
 		placeDoor()
-		if u >= 1 then state = "open"; openUntil = now + OPEN_FOR end
+		if u >= 1 then state = "open"; openUntil = if eggOpen then now + OPEN_FOR else now end
 	elseif state == "closing" then
 		local dw = lot:FindFirstChild("Doorway") :: BasePart?
 		if dw and someoneIn(dw, 0.5) then
-			state = "opening"; sound("Open") -- (the safety eye: back up)
+			goUp(MOVE_FAST); sound("Open") -- (the safety eye: back up)
 		else
-			u = math.max(0, u - dt / MOVE_T)
+			u = math.max(0, u - dt / CLOSE_T)
 			placeDoor()
 			if u <= 0 then
 				state = "shut"
 				setBeacons(false)
-				resetEgg()
-				task.delay(GOLD_BACK, function() if lot and state == "shut" then goldBack() end end)
+				setPips()
+				if eggOpen then
+					eggOpen = false
+					resetEgg()
+					task.delay(GOLD_BACK, function() if lot and state == "shut" then goldBack() end end)
+				elseif firstAt == 0 then
+					setTimer("")
+				end
 			end
 		end
 	end
 	acc += dt
 	if acc < 0.2 then return end
 	acc = 0
+	-- who is at the door: from the lot it always lets you back in; on the yard's side it rolls up for anyone who has
+	-- opened it before, and for everyone else it rattles (LOCKED)
+	local yard, back = nearDoor()
+	local let: Player? = nil
+	for _, p in yard do if known[p] then let = p; break end end
+	if #back > 0 or let then
+		holdUntil = now + HOLD
+		if state == "shut" or state == "closing" then
+			if let and not greeted[let] then greeted[let] = true; say(let, "THE GARAGE REMEMBERS YOU", 1.8) end
+			goUp(MOVE_FAST)
+			sound("Open")
+			setBeacons(true); setPips()
+			if not eggOpen then setTimer("OPEN") end
+		end
+	elseif #yard > 0 and state == "shut" and now >= rattleAt then
+		rattleAt = now + 2.4
+		rattle()
+	end
 	if state == "open" then
 		local left = math.ceil(openUntil - now)
-		setTimer(if left > 0 then ("OPEN · %d"):format(left) else "OPEN")
-		if now >= openUntil then
+		if eggOpen then setTimer(if left > 0 then ("OPEN · %d"):format(left) else "OPEN") end
+		if now >= openUntil and now >= holdUntil then
 			local dw = lot:FindFirstChild("Doorway") :: BasePart?
 			if dw and someoneIn(dw, 0.5) then
-				openUntil = now + 1
+				holdUntil = now + 1
 			else
-				state = "closing"; setTimer(""); sound("Close")
+				state = "closing"; publish(0, CLOSE_T); sound("Close")
+				if eggOpen then setTimer("") end
 			end
 		end
 	end
-	-- someone who has opened it before stands at it for 2 s: it rolls up for them
-	if state == "shut" then
-		local dw = lot:FindFirstChild("Doorway") :: BasePart?
-		for p in known do
-			local ch = p.Character
-			local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
-			local at = false
-			if dw and root and p.Parent then
-				local rel = dw.CFrame:PointToObjectSpace(root.Position)
-				local h = dw.Size / 2
-				at = math.abs(rel.X) <= h.X and math.abs(rel.Y) <= h.Y + 3 and math.abs(rel.Z) <= h.Z + 3.5
-			end
-			if at then
-				waitAt[p] = waitAt[p] or now
-				if now - waitAt[p] >= 2 then
-					waitAt[p] = nil
-					say(p, "THE GARAGE REMEMBERS YOU", 1.8)
-					open(nil)
-					break
-				end
-			else
-				waitAt[p] = nil
-			end
-		end
-	end
-	if state == "shut" and firstAt > 0 then
+	-- the hunt's clock runs whatever the door is doing (it shows while the door is down)
+	if not eggOpen and firstAt > 0 then
 		local left = WINDOW - (now - firstAt)
 		if left <= 0 then
 			for p in finders do say(p, "TOO SLOW. THE GOLD ONES ARE BACK", 2) end
 			sound("Buzz")
 			resetEgg()
 			goldBack()
-		else
+		elseif state == "shut" then
 			setTimer(("%d:%02d"):format(math.floor(left / 60), math.floor(left % 60)))
 		end
 	end
@@ -457,7 +523,7 @@ if RunService:IsStudio() then
 	bf.Name = "LotTest"
 	bf.OnInvoke = function(op: string, a: any): any
 		if op == "state" then
-			return { state = state, u = u, found = table.clone(found), firstAt = firstAt, lot = lot ~= nil, slats = #slats, timer = shownText }
+			return { state = state, u = u, egg = eggOpen, found = table.clone(found), firstAt = firstAt, lot = lot ~= nil, slats = #slats, timer = shownText }
 		elseif op == "gold" then
 			for f, e in carls do
 				if e.gold == a then
@@ -479,7 +545,8 @@ if RunService:IsStudio() then
 			end
 			return nil
 		elseif op == "open" then open(Players:GetPlayers()[1]); return true
-		elseif op == "shut" then if state == "open" then openUntil = 0 end; return true
+		elseif op == "shut" then if state == "open" then openUntil = 0; holdUntil = 0 end; return true
+		elseif op == "know" then local p = Players:GetPlayers()[1]; if p then known[p] = a ~= false end; return true
 		elseif op == "carls" then
 			local out = {}
 			for f, e in carls do
