@@ -1005,6 +1005,12 @@ local function range(B)
 	end
 	local function ammoBox(cf, hex) bit("AmmoBox", cf * CF(0, 0.17, 0), V3(0.62, 0.36, 0.9), hex or "b49a7a") end
 	local function mag(cf) bit("Magazine", cf * CF(0, 0.12, 0), V3(0.95, 0.26, 0.5), "2e3238") end
+	-- a rug on the deck in front of the counter (the owner: "can you put a rug in the middle or something?"): a dark
+	-- field in a tan border, flat to the floor, nothing to trip on
+	B.blk("Scenery", "RugBorder", 45, 63, DECK - 0.02, DECK + 0.05, RZ0 - 9.6, RZ0 - 18.6, "a0835f", { ghost = true })
+	B.blk("Scenery", "Rug", 45.7, 62.3, DECK - 0.02, DECK + 0.08, RZ0 - 10.3, RZ0 - 17.9, "3e434b", { ghost = true })
+	B.blk("Scenery", "RugBand", 46.4, 61.6, DECK - 0.02, DECK + 0.1, RZ0 - 11.0, RZ0 - 11.25, "a0835f", { ghost = true })
+	B.blk("Scenery", "RugBand", 46.4, 61.6, DECK - 0.02, DECK + 0.1, RZ0 - 16.95, RZ0 - 17.2, "a0835f", { ghost = true })
 	-- the floor, west: two hard cases stacked, a duffel, a can, a spill
 	hardCase(35.2, DECK, RZ0 - 5.2, 0.05, 4.2)
 	hardCase(35.4, DECK + 0.58, RZ0 - 5.3, -0.08, 3.6)

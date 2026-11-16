@@ -626,11 +626,11 @@ local function land()
 	-- the edge: round trees along the berms' crests (west and east along z, the south and north ones along x)
 	for _, g in { { -204, -8330, 5 }, { -204, -8475, 4 }, { -204, -8640, 6 } } do grove(g[1], g[2], g[3], "round", 7, 15, 1.3, 1.9) end
 	for _, g in { { 204, -8370, 4 }, { 204, -8520, 6 }, { 204, -8690, 4 } } do grove(g[1], g[2], g[3], "round", 7, 15, 1.3, 1.9) end
-	for _, g in { { -140, -8754, 5 }, { -20, -8754, 3 }, { 100, -8754, 5 } } do grove(g[1], g[2], g[3], "round", 15, 7, 1.3, 1.9) end
+	for _, g in { { -140, -8764, 5 }, { -20, -8764, 3 }, { 100, -8764, 5 } } do grove(g[1], g[2], g[3], "round", 15, 4, 1.3, 1.9) end -- (behind the fence)
 	grove(-165, -8282, 4, "round", 12, 6, 1.2, 1.6)
 	grove(160, -8282, 3, "round", 10, 6, 1.2, 1.6)
 	-- higher: pines on the outer berms
-	for _, g in { { -234, -8400, 5 }, { -234, -8570, 4 }, { 234, -8440, 4 }, { 234, -8600, 5 } } do grove(g[1], g[2], g[3], "cone", 8, 14, 1.6, 2.3) end
+	for _, g in { { -241, -8400, 5 }, { -241, -8570, 4 }, { 241, -8440, 4 }, { 241, -8600, 5 } } do grove(g[1], g[2], g[3], "cone", 7, 14, 1.6, 2.3) end -- (outside the fence)
 	-- higher still: small groves of tall pines on the near ridge's tops (its crest line, where tree() finds it flat)
 	for _, r in L.RIDGE do
 		if r[7] == "ridge" and math.abs(r[2] + 8824) < 10 then
@@ -658,9 +658,57 @@ local function land()
 	for _, t in { { -70, -8556 }, { 88, -8396 }, { 90, -8470 }, { 88, -8560 }, { -60, -8640 }, { 86, -8700 } } do
 		grove(t[1], t[2], 2, "round", 6, 6, 1.1, 1.5)
 	end
+	-- the fence round the lot (16 Nov, the owner: "can you add a fence line in the outside section of the training, like
+	-- where the trees are, so you can't see the ugly parts of it?"): on the berms' outer slopes just behind the round
+	-- trees, closing on the façade's two ends. slate posts every 12 with pale caps, solid panels 16 high (a darker band
+	-- at the foot, a framed inset, a pale rail on top), each panel's foot on the ground at its posts (rays, as for the
+	-- trees). the groves and the hills show over it; what lies beyond it under the eye line does not. an unseen wall up
+	-- to 600 along it keeps everyone in (L.check's ring test)
+	local FH, STEP = 16, 12
+	local fenceParts = 0
+	local function fenceRun(x0, z0, x1, z1)
+		local a, e = V3(x0, 0, z0), V3(x1, 0, z1)
+		local len = (e - a).Magnitude
+		local n = math.max(1, math.round(len / STEP))
+		local dir = (e - a).Unit
+		local rot = CFrame.Angles(0, math.atan2(-dir.X, -dir.Z), 0) -- (its -Z runs along the line)
+		local prevQ, prevY = nil, nil
+		for i = 0, n do
+			local q = a + (e - a) * (i / n)
+			local gy = groundAt(q.X, q.Z)
+			if gy == -math.huge then gy = G end
+			part("FencePost", CF(q.X, gy - 1 + (FH + 1.6) / 2, q.Z) * rot, V3(1.4, FH + 1.6, 1.4), "5c6168")
+			part("FencePostCap", CF(q.X, gy + FH + 0.75, q.Z) * rot, V3(1.75, 0.4, 1.75), P.trim)
+			fenceParts += 2
+			if prevQ then
+				local mid = (prevQ + q) / 2
+				local seg = (q - prevQ).Magnitude - 1.2
+				local avg = (prevY + gy) / 2
+				local base = math.min(prevY, gy) - 1.5
+				local top = avg + FH
+				local F = CF(mid.X, 0, mid.Z) * rot
+				part("FencePanel", F * CF(0, (base + top) / 2, 0), V3(0.6, top - base, seg), "6c727b")
+				part("FenceBand", F * CF(0, (base + avg + 2.5) / 2, 0), V3(0.7, avg + 2.5 - base, seg - 0.1), "5a5f69")
+				part("FenceInset", F * CF(0, (avg + 3.3 + top - 1.2) / 2, 0), V3(0.7, top - 1.2 - avg - 3.3, seg - 2.4), "767b84")
+				part("FenceRail", F * CF(0, top + 0.15, 0), V3(0.9, 0.4, seg + 0.2), P.trim)
+				fenceParts += 4
+			end
+			prevQ, prevY = q, gy
+		end
+		B.solid("LotFenceWall", CF((x0 + x1) / 2, 480, (z0 + z1) / 2) * rot, V3(4, 560, len + 4)) -- (to 760: the ring test's long rays)
+	end
+	-- (the south side runs in front of the near ridge's foot and just behind the long lane's backstop: further out, the
+	-- ridge's face rises straight from the berm)
+	fenceRun(-226, -8302, -226, -8746)
+	fenceRun(-226, -8746, 226, -8746)
+	fenceRun(226, -8746, 226, -8302)
+	fenceRun(-226, -8302, L.FACE.x0, -8302)
+	fenceRun(L.FACE.x1, -8302, 226, -8302)
+	-- (and over the façade: the lot is closed in on every side)
+	B.solid("LotFaceWall", CF((L.FACE.x0 + L.FACE.x1) / 2, (L.FACE.top + 760) / 2, -8302), V3(L.FACE.x1 - L.FACE.x0 + 4, 760 - L.FACE.top, 4))
 	for _, sh in shapes do sh.p.Parent = sh.parent; sh.p.CanQuery = sh.q end
 	probeHome:Destroy()
-	B.treeNote = ("trees: %d moved to flatter ground, %d left out, %d feet"):format(moved, dropped, feet)
+	B.treeNote = ("trees: %d moved to flatter ground, %d left out, %d feet; fence %d parts"):format(moved, dropped, feet, fenceParts)
 end
 
 -- ---------------------------------------------------------------- the long lane (east): a roofed firing line, four rows
@@ -1175,6 +1223,27 @@ function L.check(tg, mk): { string }
 	end
 	for d, q in was do d.CanQuery = q end
 	table.insert(out, ("trees: %d, a gap under a side %d, deeper than %.1f at a side %d"):format(trees, gaps, L.TREE.deep, deep))
+	-- the fence keeps everyone in: from points on the lot (its floor, the long lane, the climb's top) rays every way but
+	-- north (the hall is that side), flat and up 20 and 35 degrees, must meet something solid within 900
+	local cp = RaycastParams.new(); cp.FilterType = Enum.RaycastFilterType.Include; cp.FilterDescendantsInstances = { tg }; cp.RespectCanCollide = true
+	local ring, leaks = 0, 0
+	for _, at in { V3(0, G + 4, -8500), V3(-150, G + 4, -8420), V3(150, G + 4, -8650), V3(0, G + 4, -8715), V3(-170, G + 4, -8330),
+		V3(170, G + 4, -8330), V3(-120, G + 69, -8684) } do
+		for k = 0, 23 do
+			local a = k * math.pi / 12
+			local h = V3(math.sin(a), 0, math.cos(a))
+			if h.Z > 0.5 then continue end
+			for _, el in { 0, 20, 35 } do
+				local d = (h * math.cos(math.rad(el)) + V3(0, math.sin(math.rad(el)), 0)).Unit
+				ring += 1
+				if not workspace:Raycast(at, d * 900, cp) then
+					leaks += 1
+					if leaks <= 6 then table.insert(out, ("LOT LEAK from (%.0f, %.0f, %.0f) toward (%.2f, %.2f, %.2f)"):format(at.X, at.Y, at.Z, d.X, d.Y, d.Z)) end
+				end
+			end
+		end
+	end
+	table.insert(out, ("the lot closed in: %d rays, leaks %d"):format(ring, leaks))
 	return out
 end
 

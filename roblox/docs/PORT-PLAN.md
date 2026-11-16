@@ -916,8 +916,20 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
 - The near ridge's tops proved too steep for the pine groves (all left out), so the hill faces stay grass.
 - Photo sheets: `roblox/docs/training/gun_shop_sheet.jpg` and `gun_shop_sheet2.jpg`.
 
+**Round 2 (place version 432):**
+- **The shop:** a rug in the middle (a dark field in a tan border).
+- **The mirror:** the hologram stands empty-handed in Roblox's plain idle, in the game's shared hologram look (`ReplicatedStorage.Jankfire.Hologram`, the VFX session's). Your weapon leans against the podium's front corner and changes when you switch (the owner: "could you have whatever weapon you have equiped laying against it"). The hub's loadout hologram is left as it is: it already cycles your loadout, and it is the hub session's.
+- **The back lot's fence** (the owner: "add a fence line ... where the trees are, so you can't see the ugly parts"):
+  - It runs on the berms' outer slopes just behind the round-tree groves, in front of the near ridge's foot and behind the long lane's backstop, and closes on the façade's two ends.
+  - Slate posts every 12 with pale caps; panels 16 high, with a dark foot band, a framed inset and a pale rail. Each panel's foot sits on the ground by rays.
+  - An unseen wall up to y 760 runs along it and over the façade.
+  - `L.check`'s ring test casts rays from the floor, the long lane and the climb's top, every way but north, flat and up 20 and 35 degrees. Result: 357 rays, 0 leaks.
+  - 814 parts; 70 trees, all seated.
+- Photos: `roblox/docs/training/back_lot_fence_sheet.jpg`.
+
 **Traps:**
 - `screen_capture` calls in parallel time out: take them one at a time.
+- A copy of the character's `HeldWeapon` comes out invisible on its own player's screen: first person hides it there. Build a display gun fresh from `WeaponModels` (skin, wrap and hat from `GunSkins`, `WeaponModels.wrapFor` and `GunHats`).
 - A commit swept in another session's unfinished Arsenal change (1fb2d29); a2d6e3c took it back. Before committing a shared file, check `git diff --cached` for other sessions' hunks, not just `--stat`.
 
 ## For the next Claude session
