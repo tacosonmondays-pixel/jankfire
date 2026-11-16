@@ -43,8 +43,12 @@ middle, feet + 0.9 m, at y 242.89). Distances in studs.
 | a hit from inside the same dome | lands | | the same shot from inside the dome: **10** damage | ok |
 | smoke fuse and cloud | fuse 1.3 s, a 6.5 m cloud for 10 s | 19.5 studs, 10 s | thrown at 0.06 s, cloud at 1.36 s: **1.30 s**; cloud r **19.5**, **10 s** | ok |
 | smoke blocks sight (server) | a sight line passing within 6.5 m of the middle is blocked | 19.5 studs | a line through the middle: **blocked**; passing 19.43 off: **blocked**; 20.02 off: clear; 30.1 off: clear | ok |
-| smoke looks thick enough to hide a player | | | first photo: the far door showed through it, so the puffs were doubled, made bigger and fully solid; the new one is still to photograph | to do |
-| the loadout screen | four slots | a fourth card, G | pushed, not photographed yet | to do |
+| smoke looks thick enough to hide a player | | | first photo: the far door showed through it, so the puffs were doubled, made bigger and fully solid; now the far end of the hall is gone behind it (photo below) | ok |
+| the loadout screen | four slots | a fourth card, G | four cards, the utility card on G ("2 charges · 18 s each"), "7 live · 6 coming soon", the item's stats, "ON G", "items don't take paint" (photo below) | ok |
+
+![the smoke cloud in the training hall](items/smoke-cloud.jpg)
+
+![the loadout screen with the utility slot](items/loadout-utility.jpg)
 
 (The Studio place was closed from 09:39 to 09:57 UTC: an account moderation warning about another session's uploaded
 image, not these items. The place reopened with Studio's recovered state, which held this batch; the rest went in at
@@ -83,7 +87,7 @@ drift. Blast hits, heals and blocks are never reported by a client.
 | duck flight | homes on the nearest enemy ahead | | thrown at 0.05 s, homing on the Stand at once, stuck at **0.25 s** | ok |
 | duck hole | opens 0.3 s after sticking, 3 s, then pops | pops 3.55 s after the throw | opened on the Stand (age -0.30), popped at **3.55 s** | ok |
 | duck end blast | 45 x f (f = 1 in the middle) | 45 on the Stand it's stuck to | **45** | ok |
-| duck crush | 1 every 0.1 s on the one it's stuck to | 30 in 3 s | **26**: the pulse clock lost a tick in six to rounding (every 0.117 s). Fixed (the clock adds 0.1 instead of restarting); to recheck | fixed |
+| duck crush | 1 every 0.1 s on the one it's stuck to | 30 or 31 in 3 s (a pulse as it opens, then every 0.1 s) | first **26**: the pulse clock lost a tick in six to rounding (every 0.117 s). Fixed (the clock adds 0.1 instead of restarting): **31**, then 45 at the pop | ok |
 | the thrower in their own hole | pulled, not hurt (web rule) | | 27 pulls toward it, no damage | ok |
 
 ![the batch 2 models](items/batch2-models.png)
