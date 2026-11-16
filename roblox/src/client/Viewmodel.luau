@@ -180,10 +180,12 @@ type Grab = { part: BasePart, rel: CFrame }
 local armsOn = false -- (your arms are on the weapon: not the stand-in boxes)
 local ride: Grab? = nil -- the pump: the hand's own hold moves with it
 local magGrab: Grab? = nil -- the magazine, from below
+local crankGrab: Grab? = nil -- a skin's crank (the Marble Shotgun's gumball machine): the hand rides it as it turns
+local lidTop: Vector3? = nil -- the top of the Marble Shotgun's lid, shut (the weapon's root frame, studs)
 local function smoothstep(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 
 local function offHandSetup(m: Model, root: BasePart)
-	ride, magGrab = nil, nil
+	ride, magGrab, crankGrab, lidTop = nil, nil, nil, nil
 	local hold = AvatarArms.holdFrame(VM.wid, "Left", k)
 	local st = VM.parts
 	if not armsOn or not hold or not st then return end
@@ -197,6 +199,27 @@ local function offHandSetup(m: Model, root: BasePart)
 	end
 	local pump = biggest(st.nodes.pump)
 	if pump then ride = { part = pump, rel = pump.CFrame:ToObjectSpace(root.CFrame * hold) } end
+	-- the crank: its handle (low at the back of its axle at rest, the gun-models session), the fist's +Y out to the left
+	local crank = biggest(st.nodes.crank)
+	if crank then
+		local at = root.CFrame * CFrame.new(Vector3.new(-0.05, -0.026, -0.07) * k) * CFrame.Angles(0, 0, math.pi / 2)
+		crankGrab = { part = crank, rel = crank.CFrame:ToObjectSpace(at) }
+	end
+	-- the lid's top, shut: the highest point of its pieces over their middle
+	local lids = st.nodes.lid
+	if lids and #lids > 0 then
+		local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+		for _, p in lids do
+			local part = p.part :: BasePart
+			local rel = root.CFrame:ToObjectSpace(part.CFrame)
+			local h = part.Size / 2
+			for _, sx in { -1, 1 } do for _, sy in { -1, 1 } do for _, sz in { -1, 1 } do
+				local q = rel:PointToWorldSpace(Vector3.new(sx * h.X, sy * h.Y, sz * h.Z))
+				lo = lo:Min(q); hi = hi:Max(q)
+			end end end
+		end
+		lidTop = Vector3.new((lo.X + hi.X) / 2, hi.Y, (lo.Z + hi.Z) / 2)
+	end
 	local mags = st.nodes.mag
 	local mag = biggest(mags)
 	if mag and mags then
@@ -252,6 +275,24 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 			local mix = math.min(smoothstep((t - win[1]) / 0.12), 1 - smoothstep((t - (win[2] - 0.2)) / 0.2))
 			return prop:GetPivot() * CFrame.new(0, -win[3] * S * SIZE / 2, 0), mix, true -- (under its foot, as it tips)
 		end
+	end
+	-- the Marble Shotgun, after the bag: up to the jar's lid and the palm down on it as it snaps shut (1.42-1.50,
+	-- the gun-models session's lid), then back; a skin with a crank: the hand rides the crank while it turns
+	if clip.name == "reload_marbles" and t > 1.33 then
+		local come = smoothstep((t - 1.35) / 0.1) -- (in from above)
+		local press = smoothstep((t - 1.42) / 0.08) -- (down with the lid)
+		local top = lidTop or Vector3.new(0, 0.17, -0.06) * k
+		local at = top + Vector3.new(0, (0.05 * (1 - come) + 0.01 * (1 - press)) * k, 0)
+		local lidF = root.CFrame * CFrame.new(at) * CFrame.Angles(math.pi, 0, 0) -- (palm down: held from above)
+		local mix = smoothstep((t - 1.33) / 0.1) * (1 - smoothstep((t - 1.56) / 0.28))
+		if crankGrab then
+			-- (from the lid straight down to the crank, then it rides the crank while it turns, 1.55-1.75)
+			local u = smoothstep((t - 1.5) / 0.07)
+			if u > 0 then
+				return lidF:Lerp(crankGrab.part.CFrame * crankGrab.rel, u), 1 - smoothstep((t - 1.75) / 0.13), u < 0.5
+			end
+		end
+		if mix > 0 then return lidF, mix, true end
 	end
 	return base, if base then 1 else 0, false
 end
@@ -608,7 +649,7 @@ function VM.props(gun: CFrame)
 		local inn = smooth((t - 0.4) / 0.2) * (1 - smooth((t - 1.2) / 0.15))
 		local pour = if t > 0.6 and t < 1.2 then 1 else 0
 		local jig = if pour > 0 then math.abs(math.sin((t - 0.66) / 0.12 * math.pi)) * 0.25 else 0
-		local at = gun * CFrame.new(Vector3.new(0, 0.2, -0.06) * k) * CFrame.new(0, -0.3 * S * (1 - inn), 0)
+		local at = gun * CFrame.new(Vector3.new(0, 0.2, -0.045) * k) * CFrame.new(0, -0.3 * S * (1 - inn), 0) -- (a touch behind the jar: its lid opens forward)
 		prop:PivotTo(at * CFrame.Angles(0, 0, 2.6 * smooth((t - 0.55) / 0.12) * (1 - smooth((t - 1.18) / 0.1)) + jig))
 	end
 end
