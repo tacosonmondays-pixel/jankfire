@@ -390,6 +390,40 @@ changed; the hub, the guns and the HUD were not touched.
 - **Not tested:** a match started from a pad (two players), phones and slow machines.
 - **Still weak (the judges' list):** the light is even and shadowless (the hub look in `HubLook` and the place's Lighting are outside this builder); the walk past the lifts is plain; the gym's boxing theme; props stand singly rather than in groups; the five bays could be one band with one sign line. The displayed weapon models carry the kit's own dark details.
 
+## 19. Rooftop v2: a second arena to the new principles, 16 November 2026 (place version 255)
+
+The owner: "can we rebuild a new training area too with our new design principles as well as a version of rooftop that
+follows our design principles? Keep the current one rooftop v1 vs v2 and we'll compare". **v1 (`Map.Rooftop`) is not
+touched and is still what matches use.** Plan, build log and judge reports: vault `Hubs/Rooftop v2 plan.md`,
+`Reviews/Rooftop v2 - judge round 1.md`, `... round 2.md`; RIVALS arena study: `Research/Rivals arenas - layout notes.md`.
+
+- **What v2 is:** a fight across three rooftops (`workspace.Map.RooftopV2`, world origin (0, 0, 18000)), mirrored
+  for the two teams. Each team starts in a spawn house (a coffered room over a podium, three framed doors, a baffle
+  wall outside the front door: no spawn sees the other). Three lanes: the Gallery (high, +10, a lookout room in the
+  middle), the Court (a sunken octagon round the Cistern, a drum with a dome standing in a pool you can swim in) and
+  the Colonnade (covered, a vault, a small room on each half). Cover at chest and head height, heights from -4.5 to
+  about +17, four jump pads, open gaps you can be knocked into ("into the smog"). Same size class as v1 (304 x 128).
+- **Its look:** few big bevelled flat-colour shapes (warm stone, mid-grey floors, a slate coping on every edge, sage
+  planting), colour only on pads, team signs and one amber accent; its own early-afternoon light
+  (`HubLook.looks.rooftop_v2`, picked by `HubLife` in a match when the arena is v2); a city of instanced towers with a
+  smog layer below.
+- **The switch:** `workspace.Map` attribute `Arena` = `"Rooftop"` (v1, the default; also when missing) or
+  `"RooftopV2"`. `ReplicatedStorage.Jankfire.Arena` answers for everyone: `Matches.teamSpawns`, `Fight.spawnPoints`,
+  `Main` and `Dummies` (the fall line `KillY`), `HubLife` (the light). From Studio:
+  `require(game.ServerStorage.PolishBackup.RooftopV2:Clone()).use("v2")` (or `"v1"`).
+- **How it is built:** `tools/roblox/rooftop2_models.py` describes the arena once; one headless Blender run writes the
+  meshes (`rooftop2.glb`, one Model asset, `R.ASSET` in the builder) and `studio-tools/RooftopV2Layout.luau` (hit boxes,
+  spawn points, team spawns, pads, water, lights), and checks spawn sight lines, clear spawns, pad flights and the
+  mirror. `PolishBackup.RooftopV2`: `R.import()`, `R.build()` (wipes and remakes the model), `R.check()`, `R.clear()`,
+  `R.use(...)`. Photo sheets: `tools/roblox/compare_sheet.py`.
+- **Tested** (solo Play tests, 16 Nov): both team spawns stand clean; all four pads throw you where meant; the pool is
+  swimmable; walking (30 studs/s), a slide, the low cover, the gate; the grapple to the Cistern; a fall into a gap
+  kills at the line. **Not tested:** a real two-player match on v2 (team spawns are read through the same code path
+  as v1, checked by reading, not played), a 1v1v1 match, phones.
+- **Judged:** round 1 middle PASS 7, the rest CLOSE 5 to 6, the defenders' spawn FAIL 4 (low sun on the spawn line);
+  round 2 middle and covered lane PASS 7, spawns and gallery CLOSE 6, the spawn house's outside FAIL 4; round 3
+  (spawn house outside, slate copings, lane cover, a deeper court, crisp floors, the border) built and saved.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

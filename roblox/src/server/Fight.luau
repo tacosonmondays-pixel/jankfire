@@ -10,6 +10,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
+local Arena = require(Shared:WaitForChild("Arena"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local R = {
@@ -288,8 +289,8 @@ end
 -- ------------------------------------------------------------------ spawning
 local function spawnPoints(): { Vector3 }
 	local out = {}
-	local map = workspace:FindFirstChild("Map")
-	local sp = map and map:FindFirstChild("Spawns", true)
+	local arena = Arena.get() -- (the Rooftop v1 or v2: workspace.Map's attribute Arena)
+	local sp = arena and arena:FindFirstChild("Spawns")
 	if sp then
 		for _, s in sp:GetChildren() do
 			if s:IsA("BasePart") then table.insert(out, s.Position + Vector3.new(0, 0.1, 0)) end

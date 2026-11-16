@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Weapons = require(Shared:WaitForChild("Weapons"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
+local Arena = require(Shared:WaitForChild("Arena"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local ShotR = Remotes:WaitForChild("Shot") :: RemoteEvent
@@ -140,9 +141,7 @@ end
 
 function Dummies.tick(n: number)
 	if not Fight then return end
-	local map = workspace:FindFirstChild("Map")
-	local m1 = map and map:FindFirstChildWhichIsA("Model")
-	local killY = (m1 and m1:GetAttribute("KillY")) or -485
+	local killY = Arena.killY() -- (the arena's: the Rooftop v1 or v2)
 	for _, f in list do
 		local b = brain[f]
 		local hum, root = Fight.hum(f), Fight.root(f)

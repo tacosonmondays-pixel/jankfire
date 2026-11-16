@@ -14,7 +14,8 @@ local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
 local CalloutRemote = Remotes:WaitForChild("Callout") :: RemoteEvent
 
 local map = workspace:WaitForChild("Map")
-local killY = (map:FindFirstChildWhichIsA("Model") and map:FindFirstChildWhichIsA("Model"):GetAttribute("KillY")) or -485
+-- the fall line is the arena's (the Rooftop v1 or v2: workspace.Map's attribute Arena)
+local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
 local swapped = MeshSwap.run(map)
 if swapped > 0 then print(("[jankfire] %d Blender models swapped in"):format(swapped)) end
 
@@ -96,6 +97,7 @@ end)
 -- the street, the teleport check
 RunService.Heartbeat:Connect(function()
 	local now = os.clock()
+	local killY = Arena.killY()
 	for p, i in info do
 		local hum, root = alive(p)
 		if not hum or not root then continue end

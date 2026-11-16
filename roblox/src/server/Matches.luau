@@ -12,6 +12,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- which arena (the Rooftop v1, or v2): workspace.Map's attribute Arena, read through this
+local Arena = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Arena"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local RoundR = Remotes:WaitForChild("Round") :: RemoteEvent
 local CalloutR = Remotes:WaitForChild("Callout") :: RemoteEvent
@@ -87,15 +89,15 @@ end
 
 -- the arena's spawns per team: attackers' end, defenders' end, and (1v1v1) the middle
 local function teamSpawns(team: number): { CFrame }
-	local map = workspace:FindFirstChild("Map")
-	local roof = map and map:FindFirstChild("Rooftop")
+	local roof = Arena.get()
+	local cx = Arena.centreX()
 	local out = {}
 	if roof then
 		local ts = roof:FindFirstChild("TeamSpawns")
 		local want = if team == 1 then "att" elseif team == 2 then "def" else nil
 		if ts and want then
 			for _, s in ts:GetChildren() do
-				if s:IsA("BasePart") and s.Name == want then table.insert(out, CFrame.lookAt(s.Position, Vector3.new(0, s.Position.Y, s.Position.Z))) end
+				if s:IsA("BasePart") and s.Name == want then table.insert(out, CFrame.lookAt(s.Position, Vector3.new(cx, s.Position.Y, s.Position.Z))) end
 			end
 		else
 			local sp = roof:FindFirstChild("Spawns")

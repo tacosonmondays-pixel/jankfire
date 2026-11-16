@@ -113,6 +113,23 @@ H.looks.lab_depot = with(HUB, {
 })
 -- looks that want the engine's own blue sky: the saved Sky (a sunset box) is put away while one is on
 H.plainSky = { lab_foodcourt = true } :: { [string]: boolean }
+-- Rooftop v2 (ServerStorage.PolishBackup.RooftopV2, 16 Nov 2026): its own light, picked by HubLife in a match when
+-- workspace.Map's attribute Arena is "RooftopV2" (v1 keeps the saved evening). an early-afternoon sun from the
+-- south-west, high over the lanes, so neither team starts a round looking into a low sun (the first judging failed v2's
+-- defenders' spawn for that); the engine's own sky; a little less exposure for its pale stone
+H.looks.rooftop_v2 = {
+	Lighting = {
+		Ambient = Color3.fromRGB(120, 119, 120), OutdoorAmbient = Color3.fromRGB(134, 135, 140), Brightness = 2.6,
+		ExposureCompensation = -0.1, EnvironmentDiffuseScale = 0.55, EnvironmentSpecularScale = 0.5,
+		ClockTime = 13.2, GeographicLatitude = 41,
+	},
+	-- (a denser pale haze: the far city fades instead of standing black on the horizon)
+	Atmosphere = { Density = 0.31, Offset = 0.15, Haze = 1.3, Glare = 0.05, Color = Color3.fromRGB(212, 216, 224), Decay = Color3.fromRGB(162, 170, 184) },
+	Bloom = { Intensity = 0.2, Size = 20, Threshold = 2.4 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.12, Saturation = -0.06, TintColor = Color3.fromRGB(255, 251, 246) },
+	SunRays = { Intensity = 0.02 },
+} :: Look
+H.plainSky.rooftop_v2 = true
 
 local function target(name: string): Instance?
 	return if name == "Lighting" then Lighting else Lighting:FindFirstChild(name)
