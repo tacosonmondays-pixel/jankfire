@@ -27,6 +27,18 @@ end
 
 local Shop = {}
 
+-- the player card's looks (the player-cards session's CardStyles: borders, backgrounds, titles), if it's in the place.
+-- they are gun-less: an item { kind = "border"|"banner"|"title", id }, kept under the bare id
+do
+	local m = script.Parent:FindFirstChild("CardStyles")
+	if m and m:IsA("ModuleScript") then
+		local ok, C = pcall(require, m)
+		if ok and type(C) == "table" and type((C :: any).info) == "function" then Shop.CardStyles = C end
+	end
+end
+Shop.CARD_KINDS = { border = true, banner = true, title = true }
+function Shop.isCard(kind: string?): boolean return kind ~= nil and Shop.CARD_KINDS[kind] == true end
+
 -- ---------------------------------------------------------------- switches
 -- real-money purchases: Config.LOOT_ROBUX (the loot module's switch, off). false = no prompt is ever shown and
 -- ShopReceipts doesn't even take receipts (nothing can be charged)
@@ -53,8 +65,11 @@ function Shop.rank(r: string): number return RANK[r] or 0 end
 Shop.PRICE = {
 	wrap = { free = 0, common = 75, rare = 150, epic = 300, legendary = 600 },
 	hat = { free = 0, common = 100, rare = 200, epic = 400, legendary = 750 },
+	border = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
+	banner = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
+	title = { free = 0, common = 40, rare = 80, epic = 160, legendary = 320 },
 }
-Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat" }
+Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", border = "Border", banner = "Background", title = "Title" }
 
 -- wraps that never go in a bundle or the rotation: their picture versions broke Roblox's image rules and they are
 -- plain colour wraps now (roblox-upload-content-rules), or they are the free ones everyone has
@@ -103,10 +118,16 @@ function Shop.itemInfo(kind: string, id: string): (string, string)
 	elseif kind == "hat" then
 		local h = GunHatData.HATS[id]
 		if h then return h.name, h.rarity end
+	elseif Shop.isCard(kind) and Shop.CardStyles then
+		local c = (Shop.CardStyles :: any).info(kind, id)
+		if c then return c.name, c.rarity end
 	end
 	return id, "common"
 end
 function Shop.exists(kind: string, id: string, weapon: string?): boolean
+	if Shop.isCard(kind) then -- (a card look is never for a gun)
+		return weapon == nil and Shop.CardStyles ~= nil and (Shop.CardStyles :: any).info(kind, id) ~= nil
+	end
 	if weapon ~= nil and not Shop.WEAPON_SET[weapon] then return false end
 	if kind == "wrap" then return Roster.wrapById[id] ~= nil end
 	if kind == "hat" then
@@ -114,7 +135,7 @@ function Shop.exists(kind: string, id: string, weapon: string?): boolean
 	end
 	return false
 end
--- "Sakura Storm · SMG"
+-- "Sakura Storm · SMG" ("Brackets" for a card look: it has no gun)
 function Shop.itemLabel(it: Item): string
 	local name = Shop.itemInfo(it.kind, it.id)
 	return if it.weapon then name .. " · " .. Shop.weaponName(it.weapon) else name
@@ -170,6 +191,15 @@ Shop.bundles = {
 		hero = { weapon = "redline", wrap = "marble", hat = "crown" } },
 } :: { Offer }
 
+-- the player card's set (the player-cards session's pick: a quiet, serious one). no hero: it dresses your card, not a
+-- gun, so it's never the day's featured bundle or a hub hologram's (those take bundles with a hero). last in the list
+if Shop.CardStyles then
+	table.insert(Shop.bundles, { id = "bundle_cards", type = "bundle", name = "Head Office", rarity = "rare",
+		blurb = "corner brackets, carbon weave and a title nobody asked for. for your player card.",
+		items = { { kind = "border", id = "brackets" }, { kind = "banner", id = "carbon" }, { kind = "title", id = "hs" } },
+		hero = nil } :: any)
+end
+
 -- ---------------------------------------------------------------- lookups
 Shop.byId = {} :: { [string]: Offer }
 for _, o in Shop.containers do Shop.byId[o.id] = o end
@@ -191,21 +221,25 @@ for _, id in GunHatData.ORDER do
 	if id ~= "none" and h and h.rarity ~= "free" then table.insert(Shop.singlesPool, H(id)) end
 end
 
--- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"
-local function single(kind: string, id: string, weapon: string): Offer?
+-- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"; or one card look,
+-- "border:<id>" / "banner:<id>" / "title:<id>" (no weapon)
+local function single(kind: string, id: string, weapon: string?): Offer?
 	if not Shop.exists(kind, id, weapon) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
-	return { id = kind .. ":" .. id .. "@" .. weapon, type = "single", name = name, rarity = rarity, blurb = "",
-		robux = Shop.singlePrice(kind, id), productId = nil, kind = kind, item = id, weapon = weapon }
+	if rarity == "free" then return nil end
+	return { id = kind .. ":" .. id .. (if weapon then "@" .. weapon else ""), type = "single", name = name, rarity = rarity,
+		blurb = "", robux = Shop.singlePrice(kind, id), productId = nil, kind = kind, item = id, weapon = weapon }
 end
 
--- any offer by id: a container, a bundle, or a single ("wrap:galaxy@smg", "hat:crown@katana")
+-- any offer by id: a container, a bundle, or a single ("wrap:galaxy@smg", "hat:crown@katana", "border:brackets")
 function Shop.offer(id: any): Offer?
 	if type(id) ~= "string" then return nil end
 	local o = Shop.byId[id]
 	if o then return o end
 	local kind, item, weapon = string.match(id, "^(%a+):([%w_]+)@([%w_]+)$")
 	if kind and item and weapon then return single(kind, item, weapon) end
+	local ck, cid = string.match(id, "^(%a+):([%w_]+)$")
+	if ck and cid and Shop.isCard(ck) then return single(ck, cid, nil) end
 	return nil
 end
 
@@ -236,7 +270,10 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 	local hit = rotCache[d]
 	if hit then return hit end
 	local rng = Random.new(d * 7919 + 17)
-	local hero = Shop.bundles[(d % #Shop.bundles) + 1].id
+	-- (the hero is a bundle with a hero piece: the gun sets, in a fixed cycle)
+	local heroes = {}
+	for _, b in Shop.bundles do if b.hero then table.insert(heroes, b.id) end end
+	local hero = heroes[(d % #heroes) + 1]
 	-- four wraps and two hats, each for one weapon, at least one epic-or-better, no cosmetic and no weapon twice
 	local wraps, hats = {}, {}
 	for _, it in Shop.singlesPool do table.insert(if it.kind == "wrap" then wraps else hats, it) end
@@ -254,8 +291,19 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 		end
 	end
 	local daily = {}
-	draw(wraps, Shop.DAILY - 2, daily)
+	-- (with the player card's looks in the place, one of the six is a border, background or title)
+	local cards = {}
+	if Shop.CardStyles then
+		for _, k in { "border", "banner", "title" } do
+			for _, cid in ((Shop.CardStyles :: any).ORDER[k] or {}) :: { string } do
+				local _, r = Shop.itemInfo(k, cid)
+				if r ~= "free" then table.insert(cards, k .. ":" .. cid) end
+			end
+		end
+	end
+	draw(wraps, Shop.DAILY - 2 - (if #cards > 0 then 1 else 0), daily)
 	draw(hats, 2, daily)
+	if #cards > 0 then table.insert(daily, cards[rng:NextInteger(1, #cards)]) end
 	local best = 0
 	for _, id in daily do
 		local o = Shop.offer(id)

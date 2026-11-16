@@ -133,3 +133,15 @@ Roblox's top bar and the previews were fitted to their frames).
   confirm panel (the inspect panel now hides under it), a stale inspect panel after an opening.
 
 Not tested: a real phone or tablet (only the phone-sized box), Robux (off), the hub's holograms (the hub session's).
+
+## Player card looks (16 Nov, place version 398)
+
+Borders, backgrounds ("banner") and titles from the player-cards session's `Shared.CardStyles` are sold too, when that
+module is in the place: gun-less items `{ kind = "border"|"banner"|"title", id }`, singles `"border:<id>"` etc. (one
+of the six daily singles), and the **Head Office** bundle (Brackets + Carbon + HEAD OF HR). They're drawn as flat card
+tiles (`CardStyles.preview` in a sized 2.4 : 1 frame), never a 3D model; a card-only bundle has no hero, so it's never
+the featured bundle or a hub hologram. The inventory has a PLAYER CARD section and a CARD filter. Ownership is the
+loot inventory's bare ids (`inv.border` / `inv.banner` / `inv.title`).
+
+Tested in solo Play (v398): Head Office claimed (all three owned), x5 Spray Cans with the live batch open (five reels,
+"YOU GOT 5" grid, back to the shop: "5 THINGS ARE YOURS"), the CARD inventory section.
