@@ -37,6 +37,15 @@ remodel with its own effects). A skin's card has a small "MID TIER" plate in its
 accent), the reveal says "LEGENDARY · SKIN · HIGH TIER", and a high-tier prize wears its effects as it turns
 (`SkinSets.FX` through the VFX session's `Fx.skinIdle`).
 
+**VIP only** (16 Nov, the owner's design: the Ducky set comes with the VIP game pass, which the shop session leads).
+`LootTable.vipOnly(type, id)`: an item listed in `LootTable.VIP_ONLY`, or whose own row says `vip = true` (a Roster
+wrap, a GunHats hat, a card look's info), or a skin of `set_ducky` or of any SkinSets set marked `vip = true`. A VIP
+item is in no container and no odds. Only `Loot.grant` gives it: the shop's offer `vip` (type `pass`; its `Vip` server
+module grants it once the player is VIP, receipt `vip-<signature of the list>`, so items added later are granted once),
+whose items have no weapon, so wraps and hats come on every gun. `("buy" / "claim", ...)` refuses a `pass` offer
+("comes with VIP"); and `Loot.owns` counts a VIP wrap or hat owned on one gun as owned on
+every gun, guns added later included.
+
 Free items (the Default / Pink / Wood wraps, the Party Hat and Traffic Cone) belong to everyone and never roll.
 Achievement items (`ach`, e.g. the Golden Sniper) are never in a container.
 
@@ -200,8 +209,18 @@ back, the bag's flaps folding out, the can's cap landing beside it) for the ring
    **DONE**.
 6. **Away.** The prize goes, the container sinks into the floor, the camera eases back to where it was.
 
-The opening keeps its own field of view while it runs (52° here, 62° to 68° for a ring): the settings' FOV and the
-guns' zoom set the camera's every frame, so any change from them is put straight back until it ends.
+The opening keeps its field of view while it runs (your own for one container, as before; 62° for a ring's overview,
+68° for the camera that turns): the settings' FOV and the guns' zoom set the camera's every frame, so any change from
+them is put straight back until it ends.
+
+**Guns at their true size** (16 Nov, the owner: "when opening chests, make sure the weapons are scaled properly when
+displayed!"). Every gun shown in an opening is built at its true size, as in the game, and all are shown at ONE scale:
+the assault rifle 4.6 studs long (what every prize used to be fitted to), so a pistol reads smaller than a sniper. Never
+fitted per gun. A ring's prizes are all made smaller together if the longest would touch its neighbour's as it turns;
+a long gun in the reveal pulls the camera back. Skin cards (the reel, the grid) show the gun built at its true size and
+every gun from the same distance, so a pistol is small in its card and a sniper fills it. The Shredder isn't a built gun: its prize is a copy of its
+tool (`JankfireTools.Shredder`, or `Shredder@<skin>`), without its suck field, at the hands' scale (4.5 studs a metre)
+brought to the same scale. Trails and beams are stripped from prizes (a blade's swing trail smeared as it turned).
 
 **SKIP [SPACE]** (a button too): during the drop and pop it cuts straight to a short reel; during the reel it lands at
 once. `opts.quick = true` (repeat opens) skips the drop's height and the rattle and spins for 1.4 s. A death or a
@@ -240,7 +259,8 @@ shrinking into a row any more.
 2. **The camera** eases back and up until it sees every container and the space over it (`frameAll`: from behind you,
    34° down for five, 56° for ten, as near as fits, field of view 62°). It must stay under the ceiling over your head,
    with nothing between your head and it and nothing (a wall, a beam) between it and most of the containers; if not,
-   it looks down more steeply. If no such view exists (ten round you under the hub's ring of beams), the camera stands
+   it looks down more steeply, never more than 16 studs over your head. If no such view exists (ten round you: a ring
+   that wide needs more height; or the hub's beams), the camera stands
    over you, as high as the ceiling lets it (5.5 to 10 studs), turns to each container as it opens, and at the end turns
    once all the way round the ring.
 3. **In turn.** Each container pops (lid, flaps or cap, its light on) as its quick reel (0.95 s) runs low on the
@@ -282,6 +302,34 @@ nothing at all.
 
 **Testing the bystander view alone:** `("dev", "show", { kind, n, rarity?, ahead?, side? })` (Studio + the owner)
 sends you the event for a made-up opening a few studs away; nothing is given.
+
+**Tested** (16 Nov, solo Play in the hub, place v424; a check after each that looks for any solid map piece inside
+every container part, containers touching each other, the lowest visible corner of every container every frame against
+the floor, and the camera inside a wall):
+
+| where | what | layout | walls inside | touching | lowest point vs floor |
+| --- | --- | --- | --- | --- | --- |
+| open floor (rotunda, 12 studs off the middle) | 1 bag | 8.3 studs ahead, full size | 0 | - | +0.04 |
+| open floor | 5 crates | half ring, 9.4 studs (one came in to 7.9 off a pad), full size | 0 | 0 | +0.04 |
+| open floor | 10 bags | ring at 12.8; three came in (10.6, 7.6, 4.6) round the dais' pieces | 0 | 0 | +0.04 |
+| open floor | 10 crates | ring at 9 to 9.8, two in at 3.8, all at 85% (no full-size fit there) | 0 | 0 | +0.04 |
+| corner (two walls within 3.2 studs, facing into it) | 1 crate | moved round to open floor, 7.6 studs out | 0 | - | +0.04 |
+| corner | 5 cans | half ring at 6.5, turned away from the walls | 0 | 0 | +0.04 |
+| corner (place v436) | 10 crates | round the open side at 85%, 6.5 to 13.3 studs out | 0 | - | +0.04 |
+
+**Guns at one scale** (place v436, a made-up opening, nothing given): one wrap on six guns, shown lengths in studs:
+Plan B 0.86, SMG 1.64, Shredder 1.22, katana 2.43, assault rifle 2.99, sniper 5.24 (the ring made them all 0.65 of
+the display scale together, the sniper being the longest). In the reveal the assault rifle is 4.6. The Shredder's size
+comes from its tool (1.96 studs at 4.5 studs a metre): if the tool isn't made at the hands' scale it will read wrong.
+Skin set check: the crate's pool has 45 skins with the set skins in (Seraph Rifle, Sakura ...), none of the Ducky ones
+(VIP); `LootTable.tier("ar_seraph")` = High; the reveal reads "LEGENDARY · SKIN · HIGH TIER" with the rifle's wings.
+
+![the ring, true sizes, tiers](loot/loot-ring-sheet.jpg)
+
+The first x10 tries showed the overview camera rising through the rotunda's ring of beams (24 studs up); it is now capped
+under every ceiling over you and the containers and at 16 studs, so a ten-ring in the hub gets the camera that turns.
+The prize signs were sized in studs and filled the screen over a container right under that camera; they are now a fixed
+size on screen.
 
 ## Nothing goes through the floor
 

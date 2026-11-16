@@ -153,6 +153,37 @@ end
 
 -- ------------------------------------------------------------------ the catalog: every item that can exist, by type
 -- (only what is on Roblox: wraps from Roster, hats from GunHatData, skins whose model is in the place)
+-- ---------------------------------------------------------------- VIP only
+-- the owner, 16 Nov: the Ducky set comes with the VIP game pass (the shop session's), never from a container. a VIP
+-- thing is in no container and no odds; only Loot.grant gives it (the shop's VIP offer), and a VIP wrap or hat is worn
+-- on every gun (Loot.owns). it's VIP when it's listed here, or its own data says vip = true (a wrap in Roster, a hat in
+-- GunHats, a card look in its module's info), or it's a skin of a SkinSets set marked vip = true (or the Ducky set)
+-- (the shop session's ids, 16 Nov: the Ducky wrap, the VIP duck hat, the Ducky border, the VIP title)
+L.VIP_ONLY = { skin = {}, wrap = { ducky = true }, hat = { vipduck = true }, border = { ducky = true }, title = { vip = true } } :: { [string]: { [string]: boolean } }
+function L.vipOnly(t: string, id: string): boolean
+	local list = L.VIP_ONLY[t]
+	if list and list[id] then return true end
+	if t == "wrap" then
+		local w = Roster.wrapById[id]
+		return w ~= nil and (w :: any).vip == true
+	elseif t == "hat" then
+		local h = GunHats.HATS[id]
+		return h ~= nil and (h :: any).vip == true
+	elseif t == "skin" then
+		local S = skinSets
+		local row = S and type(S.SKINS) == "table" and S.SKINS[id] or nil
+		local set = if type(row) == "table" then row[4] else nil
+		local info = if set and type(S.SETS) == "table" then S.SETS[set] else nil
+		return set == "set_ducky" or (type(info) == "table" and info.vip == true)
+	elseif isCardType(t) then
+		local cm = L.cardStyles()
+		if not cm or type(cm.info) ~= "function" then return false end
+		local ok, c = pcall(cm.info, t, id)
+		return ok and type(c) == "table" and c.vip == true
+	end
+	return false
+end
+
 local function skinsLive(): { [string]: boolean }
 	local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 	local out = {}
@@ -233,17 +264,17 @@ function L.cosmetics(kind: string): { Item }
 	for _, t in c.types do
 		if t == "wrap" then
 			for _, w in Roster.wraps do
-				if w.rarity ~= "free" and L.RARITY[w.rarity] then table.insert(out, { type = t, id = w.id, key = w.id, name = w.name, rarity = w.rarity }) end
+				if w.rarity ~= "free" and L.RARITY[w.rarity] and not L.vipOnly(t, w.id) then table.insert(out, { type = t, id = w.id, key = w.id, name = w.name, rarity = w.rarity }) end
 			end
 		elseif t == "hat" then
 			for _, id in GunHats.ORDER do
 				local h = GunHats.HATS[id]
-				if h and id ~= "none" and h.rarity ~= "free" and L.RARITY[h.rarity] then table.insert(out, { type = t, id = id, key = id, name = h.name, rarity = h.rarity }) end
+				if h and id ~= "none" and h.rarity ~= "free" and L.RARITY[h.rarity] and not L.vipOnly(t, id) then table.insert(out, { type = t, id = id, key = id, name = h.name, rarity = h.rarity }) end
 			end
 		elseif t == "skin" then
 			local live = skinsLive()
 			local ids = {}
-			for id in L.SKINS do if live[id] then table.insert(ids, id) end end
+			for id in L.SKINS do if live[id] and not L.vipOnly(t, id) then table.insert(ids, id) end end
 			table.sort(ids)
 			for _, id in ids do
 				local s = L.SKINS[id]
@@ -257,7 +288,7 @@ function L.cosmetics(kind: string): { Item }
 		for _, t in cm.TYPES do
 			for _, id in (cm.ORDER[t] or {}) do
 				local i = L.info(t, id)
-				if i and i.rarity ~= "free" and L.RARITY[i.rarity] then table.insert(out, i) end
+				if i and i.rarity ~= "free" and L.RARITY[i.rarity] and not L.vipOnly(t, id) then table.insert(out, i) end
 			end
 		end
 	end

@@ -108,7 +108,9 @@ function Loot.owns(p: Player, t: string, id: string, weapon: string?): boolean
 	if s.devAll and LootTable.info(t, id) then return true end -- (the owner's Studio "unlock": every pair, this session only)
 	local set = s.owned[t]
 	if not set then return false end
-	if t == "skin" or weapon then return set[LootTable.key(t, id, weapon)] == true end
+	if t == "skin" then return set[LootTable.key(t, id, weapon)] == true end
+	-- (a VIP wrap or hat is worn on every gun: owning it on one is owning it, guns added later too)
+	if weapon and not LootTable.vipOnly(t, id) then return set[LootTable.key(t, id, weapon)] == true end
 	for k in set do if LootTable.split(k) == id then return true end end
 	return false
 end
@@ -302,6 +304,8 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		local o = if c and type(c.offer) == "function" and type(a) == "string" then c.offer(a) else nil
 		if not o and type(a) == "string" and LootTable.CONTAINERS[a] then o = { id = a, type = "container", robux = 0 } end
 		if type(o) ~= "table" then return { ok = false, why = "that isn't for sale" } end
+		-- (a game pass's pack, the VIP one: only the shop's Vip module gives it, through Loot.grant)
+		if o.type == "pass" then return { ok = false, why = "comes with VIP" } end
 		if o.type == "single" and c and type(c.onSale) == "function" and not c.onSale(a) then return { ok = false, why = "that one's not in today's shop" } end
 		local n = if o.type == "container" and type(b) == "number" and b == math.floor(b) then b else 1
 		if n < 1 or n > BUY_MAX then return { ok = false, why = ("1 to %d at a time"):format(BUY_MAX) } end

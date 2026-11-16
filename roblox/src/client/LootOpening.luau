@@ -183,13 +183,64 @@ local function showWeapon(item: any): string?
 	end
 	return "ar"
 end
--- the weapon wearing the prize, about 4.6 studs long, pivot at its middle; returns the model and the weapon id
-local function prizeModel(item: any): (Model?, string?)
+-- ONE SCALE FOR EVERY GUN (the owner, 16 Nov: "when opening chests, make sure the weapons are scaled properly when
+-- displayed!"): a gun shown in an opening is built at its true size, like in the game, and every gun is then shown at
+-- the same scale, so a pistol reads smaller than a sniper. the scale puts the assault rifle at 4.6 studs long (what
+-- every prize used to be fitted to); a ring of them may all be smaller together, never one alone
+local displayK: number? = nil
+local function gunScale(): number -- (studs per metre for show)
+	if displayK then return displayK end
+	local k = 5
+	local ok, m = pcall(WeaponModels.build, "ar", 1)
+	if ok and m then
+		local _, size = m:GetBoundingBox()
+		local long = math.max(size.X, size.Y, size.Z)
+		if long > 0.05 then k = 4.6 / long end
+		m:Destroy()
+	end
+	displayK = k
+	return k
+end
+-- a prize model (built at 3 studs a metre) shown at k studs a metre
+local function showAt(m: Model, k: number)
+	pcall(function() m:ScaleTo(m:GetScale() * (k / 3)) end)
+end
+-- the Shredder isn't a built gun: it's its tool (ReplicatedStorage.JankfireTools.Shredder, or "Shredder@<skin>"), made
+-- at the hands' scale (TOOL_K studs a metre, as a gun in third person: 3 x 1.5); copied without its suck field
+local TOOL_K = 4.5
+local QUIET = { "Sound", "ParticleEmitter", "Light", "Beam", "Trail", "LuaSourceContainer", "ProximityPrompt", "BillboardGui",
+	"SurfaceGui", "ClickDetector", "Smoke", "Fire", "Sparkles", "Weld", "WeldConstraint", "Motor6D", "Attachment" }
+local function toolGun(skin: string?): Model?
+	local tools = ReplicatedStorage:FindFirstChild("JankfireTools")
+	local src = tools and ((skin and tools:FindFirstChild("Shredder@" .. skin)) or tools:FindFirstChild("Shredder"))
+	if not src then return nil end
+	local m = Instance.new("Model")
+	m.Name = "shredder"
+	local big: BasePart? = nil
+	for _, d in src:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 0.99 and d.Name ~= "SuckField" then
+			local c = d:Clone()
+			for _, x in c:GetChildren() do
+				for _, q in QUIET do if x:IsA(q) then x:Destroy(); break end end
+			end
+			c.Parent = m
+			if not big or c.Size.Magnitude > big.Size.Magnitude then big = c end
+		end
+	end
+	if not big then m:Destroy(); return nil end
+	m.PrimaryPart = big
+	pcall(function() m:ScaleTo(3 / TOOL_K) end) -- (to 3 studs a metre, like the built guns)
+	return m
+end
+-- the weapon wearing the prize, at its true size (3 studs a metre: call showAt to show it), pivot at its middle;
+-- returns the model, the weapon id and its length in metres
+local function prizeModel(item: any): (Model?, string?, number)
 	local wid: string?
 	local m: Model?
 	if item.type == "skin" then
 		wid = (LootTable.SKINS[item.id] or {})[3]
-		if wid then m = WeaponModels.build(wid, 3, item.id) end
+		if wid == "shredder" then m = toolGun(item.id)
+		elseif wid then m = WeaponModels.build(wid, 3, item.id) end
 		-- (a high-tier skin wears its own effects here too: SkinSets.FX, played by Fx.skinIdle)
 		local spec = LootTable.skinFx(item.id)
 		local fxm = script.Parent:FindFirstChild("Fx")
@@ -198,32 +249,57 @@ local function prizeModel(item: any): (Model?, string?)
 			if okF and type(Fx) == "table" and type((Fx :: any).skinIdle) == "function" then pcall((Fx :: any).skinIdle, m, 3, spec) end
 		end
 		if not m then
+			-- (no build for it: its template, at its true length (its file bounds are in metres))
 			local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
 			local t = lib and lib:FindFirstChild(item.id)
-			if t and t:IsA("Model") then m = t:Clone() end
+			local lo, hi = t and t:GetAttribute("FileLo"), t and t:GetAttribute("FileHi")
+			if t and t:IsA("Model") and typeof(lo) == "Vector3" and typeof(hi) == "Vector3" then
+				local c = t:Clone()
+				local _, ts = c:GetBoundingBox()
+				local long = math.max(ts.X, ts.Y, ts.Z)
+				local d = hi - lo
+				local want = math.max(d.X, d.Y, d.Z) * 3
+				if long > 1e-3 and want > 1e-3 then
+					pcall(function() c:ScaleTo(c:GetScale() * (want / long)) end)
+					m = c
+				else
+					c:Destroy()
+				end
+			end
 		end
 	else
 		wid = showWeapon(item)
-		m = WeaponModels.build(wid :: string, 3)
+		m = if wid == "shredder" then toolGun(nil) else WeaponModels.build(wid :: string, 3)
 	end
-	if not m then return nil, wid end
+	if not m then return nil, wid, 1 end
+	local parts = 0
 	for _, d in m:GetDescendants() do
-		if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false end
+		if d:IsA("BasePart") then
+			d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false; d.CastShadow = false
+			parts += 1
+		elseif d:IsA("Trail") or d:IsA("Beam") then
+			d:Destroy() -- (a swing's trail on a blade that turns draws a big smear)
+		end
 	end
+	if parts == 0 then m:Destroy(); return nil, wid, 1 end
 	if item.type == "wrap" then
 		pcall(WeaponModels.wrap, m, item.id, "full")
 	end
 	local _, size = m:GetBoundingBox()
-	local hm: Model? = nil
 	if item.type == "hat" and wid then
-		local ok, h = pcall(GunHats.attach, m, wid, item.id, 3, true, 2.4) -- (bigger than in the hand: it's the star here)
-		if ok then hm = h end
+		-- (bigger than in the hand: it's the star here)
+		if wid == "shredder" then
+			local tools = ReplicatedStorage:FindFirstChild("JankfireTools")
+			local tool = tools and tools:FindFirstChild("Shredder")
+			if tool and type((GunHats :: any).attachToolCopy) == "function" then pcall((GunHats :: any).attachToolCopy, m, tool, item.id) end
+		else
+			pcall(GunHats.attach, m, wid, item.id, 3, true, 2.4)
+		end
 	end
 	local long = math.max(size.X, size.Y, size.Z)
-	if long > 1e-3 then pcall(function() m:ScaleTo(m:GetScale() * (4.6 / long)) end) end
 	local cf = m:GetBoundingBox()
 	m.WorldPivot = cf
-	return m, wid
+	return m, wid, long / 3
 end
 
 -- ---------------------------------------------------------------- card pictures
@@ -259,7 +335,7 @@ local function wrapPicture(parent: GuiObject, id: string)
 	end
 	new("UIGradient", { Color = ColorSequence.new(kp), Rotation = if w and w.pat == "fade" then 0 else 55 }, f)
 end
-local function modelPicture(parent: GuiObject, m: Model?)
+local function modelPicture(parent: GuiObject, m: Model?, fixedR: number?)
 	if not m then return end
 	local vp = new("ViewportFrame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Ambient = Color3.fromRGB(150, 153, 162),
 		LightColor = Color3.fromRGB(255, 248, 240), LightDirection = Vector3.new(-0.5, -1, -0.7) }, parent)
@@ -268,19 +344,49 @@ local function modelPicture(parent: GuiObject, m: Model?)
 	for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.Anchored = true end end
 	m.Parent = vp
 	local cf, size = m:GetBoundingBox()
-	local r = size.Magnitude / 2
+	-- (fixedR: every gun seen from one distance; one bigger than that is seen whole)
+	local r = if fixedR then math.max(fixedR, size.Magnitude / 2 * 0.92) else size.Magnitude / 2
 	local dir = (Vector3.new(0.8, 0.5, -1)).Unit
 	cam.CFrame = CFrame.lookAt(cf.Position + dir * (r / math.tan(math.rad(15)) * 1.05), cf.Position)
 end
+local skinPics: { [string]: any } = {}
 local function cardPicture(parent: GuiObject, item: any)
 	if item.type == "wrap" then wrapPicture(parent, item.id)
 	elseif item.type == "hat" then
 		local t = GunHats.template(item.id)
 		modelPicture(parent, if t then t:Clone() else nil)
 	elseif item.type == "skin" then
-		local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
-		local t = lib and lib:FindFirstChild(item.id)
-		modelPicture(parent, if t and t:IsA("Model") then t:Clone() else nil)
+		-- (built at its true size, 1 stud a metre, once per skin; every gun from the same distance, so a pistol is small
+		-- in its card and a sniper fills it)
+		local m = skinPics[item.id]
+		local wid = (LootTable.SKINS[item.id] or {})[3]
+		if m == nil and wid == "shredder" then
+			-- (the Shredder is its tool: at 3 studs a metre from toolGun, made 1 here like the rest)
+			local okT, tg = pcall(toolGun, item.id)
+			if okT and tg then pcall(function() tg:ScaleTo(tg:GetScale() / 3) end) end
+			m = if okT and tg then tg else nil
+			skinPics[item.id] = m or false
+		end
+		if m == nil and wid then
+			local ok, b = pcall(WeaponModels.build, wid, 1, item.id)
+			if ok and b and b:GetAttribute("Skin") == item.id then
+				for _, d in b:GetDescendants() do
+					if d:IsA("BasePart") then d.Anchored = true; d.CanCollide = false; d.CanQuery = false; d.CanTouch = false end
+					if d:IsA("ParticleEmitter") or d:IsA("Light") then d:Destroy() end
+				end
+				m = b
+			elseif ok and b then
+				b:Destroy()
+			end
+			skinPics[item.id] = m or false
+		end
+		if m then
+			modelPicture(parent, (m :: Model):Clone(), 0.78)
+		else
+			local lib = ReplicatedStorage:FindFirstChild("JankfireSkins")
+			local t = lib and lib:FindFirstChild(item.id)
+			modelPicture(parent, if t and t:IsA("Model") then t:Clone() else nil)
+		end
 	else
 		-- (a player card's look: its own module draws it, if it can)
 		local cm = LootTable.cardStyles()
@@ -741,8 +847,10 @@ local function prizeSign(parent: Instance, at: Vector3, item: any, header: strin
 	local anchor = new("Part", { Name = "PrizeSign", Anchored = true, CanCollide = false, CanQuery = false, CanTouch = false, Transparency = 1,
 		Size = Vector3.new(0.2, 0.2, 0.2), CFrame = CFrame.new(at) }, parent)
 	local col = rcol(item.rarity)
-	local bb = new("BillboardGui", { Size = UDim2.new(6.6, 0, if header then 2.1 else 1.4, 0), MaxDistance = 160,
-		LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false }, anchor)
+	-- (a fixed size on screen: a sign sized in studs filled the screen over a container right under the camera. the small
+	-- ones only near; the one that says who opened what from further off)
+	local bb = new("BillboardGui", { Size = if header then UDim2.fromOffset(250, 76) else UDim2.fromOffset(176, 46),
+		MaxDistance = if header then 160 else 70, LightInfluence = 0, AlwaysOnTop = false, ResetOnSpawn = false }, anchor)
 	local plate = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.2, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, bb)
 	T.corner(plate, 6)
 	new("UIStroke", { Color = col, Thickness = 1.5, Transparency = 0.2 }, plate)
@@ -763,13 +871,23 @@ local function prizeSign(parent: Instance, at: Vector3, item: any, header: strin
 	return bb
 end
 
--- the longest a prize over a ring may be: the guns mustn't touch their neighbours' as they turn
-local function prizeLength(cfs: { CFrame }): number
+-- the prizes of a ring, built (true size) and all shown at ONE scale: the game's display scale, or smaller for all of
+-- them together if the longest would touch its neighbour's as they turn. returns the models (by index) and the scale
+local function ringPrizes(items: { any }, cfs: { CFrame }): ({ [number]: Model }, number)
 	local near = math.huge
 	for i, a in cfs do
 		for j = i + 1, #cfs do near = math.min(near, (a.Position - cfs[j].Position).Magnitude) end
 	end
-	return math.clamp(near * 0.82, 2.4, 4.6)
+	local models, longest = {}, 0.2
+	for i, item in items do
+		if cfs[i] then
+			local ok, m, _, metres = pcall(prizeModel, item)
+			if ok and m then models[i] = m; longest = math.max(longest, metres) end
+		end
+	end
+	local k = math.min(gunScale(), near * 0.85 / longest)
+	for _, m in models do showAt(m, k) end
+	return models, k
 end
 
 -- ---------------------------------------------------------------- several at once (x5, x10)
@@ -817,7 +935,7 @@ local function runMany(R: Run): string
 	R.height = boxes[1].h
 	local cfs = {}
 	for i, b in boxes do cfs[i] = b.at end
-	local prizeLen = prizeLength(cfs)
+	local built = ringPrizes(prizes, cfs) -- (all at one scale: a pistol stays smaller than a sniper)
 	-- the camera: back and up until it sees every container and what will come out of it
 	local pts = {}
 	for _, b in boxes do
@@ -936,10 +1054,9 @@ local function runMany(R: Run): string
 		b.light.Color = col
 		b.glowTo = 2 + rank
 		if b.opened then b.light.Brightness = b.glowTo end
-		local okM, m = pcall(prizeModel, item)
+		local m = built[i]
 		b.from, b.top = b.h, b.h + 2.4
-		if okM and m then
-			pcall(function() m:ScaleTo(m:GetScale() * (prizeLen / 4.6)) end)
+		if m then
 			b.from = b.h + LIFT + halfHeight(m) + 0.1 -- (up from just over the open top: never through it)
 			b.top = math.max(b.h + 2.2, b.from + 0.6)
 			b.riseT = os.clock()
@@ -1081,6 +1198,7 @@ local function runMany(R: Run): string
 		table.insert(all, b.m)
 		if b.prize then table.insert(all, b.prize) end
 	end
+	for i, m in built do if not boxes[i] or boxes[i].prize ~= m then m:Destroy() end end
 	fadeOut(all, 0.45)
 	while os.clock() - st < 0.45 do RunService.RenderStepped:Wait() end
 	return answer :: string
@@ -1108,9 +1226,9 @@ local function showOne(d: any)
 	local nOpened = math.max(count, tonumber(d.n) or 1)
 	local header = ("%s opened %s"):format(tostring(d.who or "someone"),
 		if nOpened > 1 then ("%d %s"):format(nOpened, string.lower(info.plural)) else "a " .. string.lower(info.name))
-	local used = {}
-	for i = 1, count do used[i] = cfs[i] end
-	local prizeLen = prizeLength(used)
+	local used, items = {}, {}
+	for i = 1, count do used[i] = cfs[i]; items[i] = d.prizes[i] end
+	local built = ringPrizes(items, used)
 	local boxes = {}
 	for i = 1, count do
 		local box = container(kind, k)
@@ -1171,10 +1289,9 @@ local function showOne(d: any)
 					particles(b.at.Position + Vector3.new(0, b.h, 0), col, if (RANK[item.rarity] or 0) >= 4 then "big" else "pop")
 					b.arc = b.m:GetAttribute("Open") == "pop"
 					b.light.Color = col
-					local okM, m = pcall(prizeModel, item)
+					local m = built[i]
 					b.from, b.top = b.h, b.h + 2.4
-					if okM and m then
-						pcall(function() m:ScaleTo(m:GetScale() * (prizeLen / 4.6)) end)
+					if m then
 						b.from = b.h + LIFT + halfHeight(m) + 0.1
 						b.top = math.max(b.h + 2.2, b.from + 0.6)
 						m.Parent = workspace
@@ -1374,6 +1491,12 @@ local function run(R: Run): string
 	ui.skip.Visible = false
 	tw(ui.title, 0.3, { TextTransparency = 1 }); tw(ui.odds, 0.3, { TextTransparency = 1 })
 	local m, wid = prizeModel(prize)
+	local shownLen = 4.6
+	if m then
+		showAt(m, gunScale())
+		local _, sz = m:GetBoundingBox()
+		shownLen = math.max(sz.X, sz.Y, sz.Z)
+	end
 	R.wid = wid
 	R.prizeY = math.min(R.height, 2.6) + 3.0
 	if m then
@@ -1397,7 +1520,7 @@ local function run(R: Run): string
 	end
 	local riseT0 = os.clock()
 	local focus = base.Position + Vector3.new(0, R.prizeY, 0)
-	local eye2 = base.Position - flat * (5.6 + math.max(0, R.height - 2.4) * 0.5) + right * 0.9 + Vector3.new(0, R.prizeY + (if prize.type == "hat" then 1.4 else 0.7), 0)
+	local eye2 = base.Position - flat * (5.6 + math.max(0, R.height - 2.4) * 0.5 + math.max(0, shownLen - 5) * 0.7) + right * 0.9 + Vector3.new(0, R.prizeY + (if prize.type == "hat" then 1.4 else 0.7), 0)
 	camTo(R, CFrame.lookAt(eye2, focus - Vector3.new(0, 0.25, 0)), 0.8)
 	R.dof.Enabled = true
 	R.dof.FocusDistance = (eye2 - focus).Magnitude
