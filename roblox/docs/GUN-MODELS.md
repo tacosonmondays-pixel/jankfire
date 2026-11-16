@@ -6,16 +6,18 @@ added "can you reference the rivals weapons when remodeling these please" and "i
 snipers". So all sixteen weapons were remade as new models built for Roblox. Their shapes, colours and themes are
 our own; Rivals' guns were studied for proportions and finish only. After round 5 the owner wrote "why do some guns
 have like bullets attached on top?", that the Sniper's stock "isnt one piece", that Second Opinion had "an ugly
-cross thingy", and "I think rivals weapons are a little blockier"; round 6 answered all four (below).
+cross thingy", and "I think rivals weapons are a little blockier"; round 6 answered all four, round 7 made the guns
+chunkier and gave back a signature to the guns that had lost theirs (below).
 
 **No weapon number, name, mechanic or gimmick changed.** Every new model keeps its gun's muzzle, sight, port, grip
 and fore spots, the names and pivots of the pieces that move, and the grip and handguard where the hands go, so the
 hold, the aim line, the flash, the brass and every reload clip work unchanged.
 
 Pictures: `gun-models/ar-sample.jpg` (the first sample, round 1), `gun-models/snipers-round2.jpg`,
-`gun-models/before-after-1.jpg` to `-4.jpg` (all sixteen in hand in the training hall: the old models left, round 6
-right), `gun-models/round6-changes.jpg` (the owner's four notes, round 5 against round 6), `gun-models/round6-hall.jpg`
-and `round5-hall.jpg` (every gun in hand, in game), `gun-models/round5-side.jpg` (round 5 from the side),
+`gun-models/before-after-1.jpg` to `-4.jpg` (all sixteen in hand in the training hall: the old models left, round 7
+right), `gun-models/round6-changes.jpg` (the owner's four notes, round 5 against round 6), `gun-models/round7-changes.jpg`
+(round 6 against round 7), `gun-models/round7-hall.jpg`, `round6-hall.jpg` and `round5-hall.jpg` (every gun in hand, in
+game), `gun-models/round5-side.jpg` (round 5 from the side),
 `gun-models/skin-cardboard.jpg`. Style notes from studying Rivals: the vault, `Research/Rivals weapons and skins - style notes.md`.
 
 ## What changed
@@ -33,7 +35,10 @@ down), the Marble Shotgun's jar of marbles on a blunderbuss, the Redline's rev-c
 your HP and its vents still glow), the Lawn Mower's mower deck, drum magazine and pull start, the Hat Trick's carry
 handle, Second Opinion's box optic, the Yeehaw's lever loop and stars, the Revolver's cylinder, Half a Shotgun's sawn
 ends, the Shredder's hopper and teeth. Round 6 took off what the owner did not want: the Hat Trick's three rounds,
-the Shotgun's shell saddle, the Belt Sander's brass rounds on top, Second Opinion's cross.
+the Shotgun's shell saddle, the Belt Sander's brass rounds on top, Second Opinion's cross. Round 7 built a signature
+back into those guns: three blue squares on the Hat Trick's carry handle (its three-round burst), a second small optic
+beside Second Opinion's first (its name), a boxy slotted shield over the Shotgun's barrel (so it no longer reads like
+the Yeehaw).
 
 ## How it is built
 
@@ -122,6 +127,7 @@ weakest were reworked after each round, with Rivals' matching guns open as the r
 | 4 (in the hall) | 7.4 | the Sniper's new eyepiece did not show from the eye; wood, tan and brass turn orange-gold under the lamps, so the set was not calmer than the old one; the Belt Sander, Lawn Mower and Half a Shotgun weakest | round 5 (below) |
 | 5 (in the hall) | 7.3 | the Sniper's lens now shows; the guns go near-black in hand (charcoal and the colour blocks merge), so fixes in the lighter values vanish; gold accents and a few full reds; the theme guns wear their theme as add-ons. Weakest: Belt Sander, Lawn Mower, Half a Shotgun | round 6 (below), with the owner's four notes |
 | 6 (in the hall) | 7.25 | all four owner notes answered (no rounds on top, the Sniper's stock one piece, no cross, blockier in the side views); still near-black in hand; "blockier" only partly: Rivals' blockiness is thick masses and the long guns are still slim; the Shotgun, Hat Trick and Second Opinion lost their signature with what was taken off. Weakest: Belt Sander, Shotgun, Lawn Mower | round 7: thicker barrels and tubes, chunkier long guns, a signature built into the body where one was taken off |
+| 7 (in the hall) | 7.5 | the owner's four notes still hold; the Hat Trick's squares and Second Opinion's second optic read in first person; the compact guns are properly blocky, the long guns still 4 to 5 times as long as tall (Rivals about 3); the held gun's left side faces away from the hall's lamps, so colour blocks go near-black. Weakest: Shotgun, Plan B, Belt Sander | first a fill light on the held gun (viewmodel code), re-shoot, then decide on another model round |
 
 Round 1 per gun: AR 6.5, SMG 5.5, Hat Trick 6, Belt Sander 6.5, Second Opinion 6, Sniper 6, Yeehaw 7, Shotgun 7.5,
 Lawn Mower 5, Redline 6.5, Marble Shotgun 6.5, Katana 6.5, Plan B 6.5, Revolver 4.5, Half a Shotgun 5.5, Shredder 7.
@@ -157,6 +163,21 @@ guns are not the photos: the held gun is lit darker than Blender shows, and a st
 gun's dark pixels only 0 to 6 levels. That points at the light on the held gun more than at the models (see "Not
 checked").
 
+**Round 7** (judge round 6): every barrel 1.2 times as thick (`BARREL_K` in `gunkit.py`, bores too); charcoal,
+near-black and the top decks another step lighter, the Assault Rifle's top rail on the deck colour; the Hat Trick's
+three blue squares; Second Opinion's second optic; the Shotgun's wider receiver, fatter pump and slotted barrel
+shield, the dark patch off its stock; the Belt Sander's links thinner with gaps; the Yeehaw's bands widened and one
+star; Plan B's rear sight charcoal; a green panel on the Lawn Mower's receiver, an amber strip on the Shredder's motor.
+
+Round 7 per gun: AR 7.5, SMG 7.5, Hat Trick 8, Belt Sander 7, Second Opinion 7.5, Sniper 8, Yeehaw 7.5, Shotgun 6.5,
+Lawn Mower 7, Redline 8, Marble Shotgun 8, Katana 7.5, Plan B 7, Revolver 7.5, Half a Shotgun 7.5, Shredder 8; the
+Cardboard skin 7.5. The judge's advice: more model rounds might add about 0.3; a soft fill light that travels with
+the held gun, aimed at its top and left side, would likely add 0.5 or more to every gun at once (most already look
+about 8 in Blender's neutral light). If another model round follows, its list: the long guns thicker in mass
+(handguards, receivers, stocks, not only barrels), the Shotgun's shield and receiver top on the deck colour, Plan B's
+blue moved onto the slide's left side, the Lawn Mower's green as one block, the Belt Sander's stock charcoal and a fat
+ammo box feeding the belt, fewer and deeper magazine ribs.
+
 ## Checked, and not checked
 
 - **Checked in Studio:** all sixteen load from their assets facing the right way (each template's box matches the
@@ -165,8 +186,8 @@ checked").
   kit models leaving each piece exactly as it was; the Assault Rifle fires through the game's own remote in a Play
   test (8 shots, 8 hits, the magazine 30 to 22, the dummy down 88 = 8 x 11, the rifle's damage); the third-person model
   the server builds in your hand comes from the new template; all sixteen photographed in hand in the training hall
-  after each round (round 6 too: place version 261), and the hold session moved three fists (Plan B, Revolver,
-  Shredder) onto the new grips.
+  after each round (round 6: place version 261, round 7: 263), and the hold session moved three fists (Plan B,
+  Revolver, Shredder) onto the new grips.
 - **Not checked:** every gun firing (only the Assault Rifle was shot; the others were armed and held, and the game's
   spots and moving-part names are unchanged, so their firing code has nothing new to meet); the reload animations'
   moving pieces on each new model (mag drops, pump, bolt, lever, cylinder, hinge) in motion; the Belt Sander's belt
@@ -176,6 +197,6 @@ checked").
 - **Open:** the held gun reads near-black in the training hall whatever its colours (judges 5 and 6). A soft fill
   light that only lights the first-person gun would likely do more than any further darkening or lightening of the
   models; that is viewmodel code, not the models, and was not tried.
-- **Uploads:** each round's models are new Roblox assets (`jf_kit_*` to `jf_kit6_*`, private to the owner); only the
+- **Uploads:** each round's models are new Roblox assets (`jf_kit_*` to `jf_kit7_*`, private to the owner); only the
   ids in `roblox/assets/weapons-kit/assets.json` are used. The older ones are harmless and can be deleted from the
   creator dashboard.

@@ -424,21 +424,22 @@ touched and is still what matches use.** Plan, build log and judge reports: vaul
   round 2 middle and covered lane PASS 7, spawns and gallery CLOSE 6, the spawn house's outside FAIL 4; round 3
   (spawn house outside, slate copings, lane cover, a deeper court, crisp floors, the border) built and saved.
 
-## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 261)
+## 20. The guns rebuilt for Roblox, 15 and 16 November 2026 (place version 263)
 
 After the calm paint the owner wrote "the gun textures look a little messed up?" and "would it be easier to recreate
 them in roblox? you can look up other rivals weapons and skins!", then "can you reference the rivals weapons when
 remodeling these please" and "im mostly discontent with the snipers". All sixteen weapons were remade as new
 low-poly models built for Roblox; numbers, names, mechanics, gimmicks, spots and moving parts are untouched. After
 round 5 the owner asked for no "bullets attached on top", a one-piece Sniper stock, no cross on Second Opinion, and
-"a little blockier" like Rivals: round 6 did all four. Full account, per-gun notes, every judge round and pictures:
+"a little blockier" like Rivals: round 6 did all four, round 7 made them chunkier (thicker barrels) and built a
+signature back into the guns that lost one. Full account, per-gun notes, every judge round and pictures:
 `roblox/docs/GUN-MODELS.md` and `roblox/docs/gun-models/`.
 
 - **Built from a kit,** in headless Blender: `tools/roblox/gunkit.py` (chamfered blocks, eight-sided barrels, panels,
   ribs, rivets, sights) and `tools/roblox/gun_models.py` (one builder per gun, plus skins). 8 to 31 big pieces a gun
   instead of 10 to 59 small ones; `SmoothPlastic` and flat colours, no pictures, no grainy materials. Since round 6
   the kit is blockier for every gun at once (`BEV_K`, `WTOP_K`, `SMOOTH_CYL` at the top of `gunkit.py`: half-width
-  chamfers, straighter sides, flat-faceted barrels). Rivals' guns were studied for proportions (vault:
+  chamfers, straighter sides, flat-faceted barrels; `BARREL_K` since round 7: barrels 1.2 times as thick). Rivals' guns were studied for proportions (vault:
   `Research/Rivals weapons and skins - style notes.md`); every design is our own.
 - **The models are a switch:** `PolishBackup.WeaponSets.{kit,web}`, `W.models()` / `W.models("web")` in
   `WeaponImport`. Each template carries its file bounds (`FileLo`, `FileHi`), which `WeaponModels.build` reads first.
@@ -447,13 +448,14 @@ round 5 the owner asked for no "bullets attached on top", a one-piece Sniper sto
   cosmetics batch (ProfileStore first).
 - **Wraps** go on and come off every kit model exactly (102 wraps x 3 modes x 17 models).
 - **Judged every round** by an independent agent against "would this sit next to Rivals' guns?": 6.2, 6.6, 6.8,
-  7.4, 7.3, 7.25 out of 10 (Rivals' own plain guns about 8 to 9). Round 6 answered the owner's four notes; its judge
+  7.4, 7.3, 7.25, 7.5 out of 10 (Rivals' own plain guns about 8 to 9). Round 6 answered the owner's four notes; its judge
   said the long guns are still slim for "blockier", three guns lost their signature with what was taken off, and
-  every gun reads near-black in hand (likely the light on the held gun, not the models: a fill light for the
-  first-person gun is untried). Weakest at the last judging: the Belt Sander, Shotgun and Lawn Mower; strongest:
-  the Marble Shotgun, Revolver and Half a Shotgun.
+  every gun reads near-black in hand. Round 7 (7.5) made them chunkier and gave back signatures; its judge said the
+  main limit is now the light on the held gun, not the models: a soft fill light that travels with the first-person
+  gun is the next step (viewmodel code, untried), then re-shoot before any further model round. Weakest at the last
+  judging: the Shotgun, Plan B and Belt Sander; strongest: Hat Trick, Sniper, Redline, Marble Shotgun, Shredder.
 - **The hub copies the templates:** after a gun change rebuild it (`R.build("live")` in `PolishBackup.HubRotunda`)
-  so the armory racks and the showpiece show the new models (done for round 6).
+  so the armory racks and the showpiece show the new models (done for round 7).
 - **Not checked:** every gun firing (the Assault Rifle was), reload animations in motion on each new model, another
   player's view, the Rooftop's daylight.
 
