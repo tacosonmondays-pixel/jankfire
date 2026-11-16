@@ -260,7 +260,8 @@ def write_kit(report, report_path):
         wid = gun[2:] if gun.startswith('w_') else gun
         if wid not in assets or not m.get('turned'): continue
         codes = ', '.join('["%s"] = "%s"' % (p['name'], web_code(p['look'])) for p in m['pieces'])
-        out.append('		["%s"] = { id = %d, lo = %s, hi = %s, tris = %d, paint = { %s } },' % (wid, assets[wid], vec(m['lo']), vec(m['hi']), m['tris'], codes))
+        uv = ', uv = true' if m.get('uv') else ''  # (unfolded for the wrap textures: tools/roblox/gun_uvs.py)
+        out.append('		["%s"] = { id = %d, lo = %s, hi = %s, tris = %d%s, paint = { %s } },' % (wid, assets[wid], vec(m['lo']), vec(m['hi']), m['tris'], uv, codes))
         n += 1
     out += ['	},', '}', '']
     with open(lp, 'w', newline=chr(10)) as fh: fh.write(chr(10).join(out))

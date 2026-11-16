@@ -1,0 +1,574 @@
+{
+ "b2cc6b6360b46d8ad6ac1cfdf36dc3d829af2af8": {
+  "file": "galaxy_color.png",
+  "id": 78471671586606
+ },
+ "71d32be5d7471b0eff570e77d86360191c913dec": {
+  "file": "camo_color.png",
+  "id": 94668406941167
+ },
+ "db632382ab017a67feab52d2785a58684c3f5948": {
+  "file": "const_rough_078.png",
+  "id": 126102538381289
+ },
+ "64468ceae24a00b9ad2858a73ea06db7f74408e5": {
+  "file": "carbon_color.png",
+  "id": 91461810427480
+ },
+ "326476535fb39a5117ed165131819f8449bc37ed": {
+  "file": "carbon_normal.png",
+  "id": 84130700721026
+ },
+ "a0adbda87613aa8ff524cf2a28fd5310cb2bd399": {
+  "file": "const_rough_020.png",
+  "id": 96708554609492
+ },
+ "aeeab81c76b4b99747c78e6c5921bd8dde4122c1": {
+  "file": "damascus_color.png",
+  "id": 103212566050673
+ },
+ "2c9f4189867282445ec2c0023cb2d47d55a32192": {
+  "file": "damascus_normal.png",
+  "id": 86845708258050
+ },
+ "e115a89ce655643b7a2aaf93a027ffca701a5b9d": {
+  "file": "damascus_rough.png",
+  "id": 78256108115867
+ },
+ "8342ba1fc2b988f390b5ac4e819c78bbf53be5bb": {
+  "file": "const_metal_100.png",
+  "id": 95597645833170
+ },
+ "8dcfa19970d443b624bd3c2474702d0005ca6c46": {
+  "file": "galaxy_rough.png",
+  "id": 138244824209095
+ },
+ "27d308cc9af8abf1aa8dd70a39544454df178f0a": {
+  "file": "galaxy_emit.png",
+  "id": 81082734001143
+ },
+ "ad163217a0b41413228f523a45ca0c18077e0545": {
+  "file": "hazard_color.png",
+  "id": 109295063872402
+ },
+ "3b833bef6932dba714a2b6a00c4d8c4265b80a58": {
+  "file": "hazard_normal.png",
+  "id": 103025088425060
+ },
+ "249bf86d34e55f6d6a8946643fce2e301707aed4": {
+  "file": "hazard_rough.png",
+  "id": 112183755247299
+ },
+ "420ba0a6c0bf0e863bec53382b30ab662dce2f05": {
+  "file": "hex_color.png",
+  "id": 84350552846203
+ },
+ "3d1c0272b0aaec66e99a86dc60d7fe790d28bc98": {
+  "file": "hex_normal.png",
+  "id": 99695979085821
+ },
+ "78c1234e1a9f7b1bd78fbe3d396a116df6a124bf": {
+  "file": "hex_rough.png",
+  "id": 125323608782833
+ },
+ "ce9b11c91fa925a2403842976b393a9a336bff86": {
+  "file": "hex_emit.png",
+  "id": 91331551837606
+ },
+ "64499dae7475f144a2d1c9d74719a9aea1188ea7": {
+  "file": "holo_color.png",
+  "id": 136888685234557
+ },
+ "4205e763177741de58208deddaf1c950aceb14dd": {
+  "file": "holo_rough.png",
+  "id": 132837909847918
+ },
+ "29857db4a0be4b7eb2e2eca65d9d4fb23892a39d": {
+  "file": "holo_metal.png",
+  "id": 85617601015288
+ },
+ "76c30d0befcf940d12da99a58944e34515f5e62d": {
+  "file": "holo_emit.png",
+  "id": 96000999778985
+ },
+ "02ce4748ee0557e40f09ee73a0947680c539879f": {
+  "file": "racing_color.png",
+  "id": 105983060039258
+ },
+ "00bec42142ed91f9a2b1adff265c08bae27b0519": {
+  "file": "racing_rough.png",
+  "id": 97778094706592
+ },
+ "8f7eec4304c6f7b594e179aff50a58da40da7049": {
+  "file": "sakura_color.png",
+  "id": 99608984229344
+ },
+ "868c966eb136758e23f9dcf9106fde5177541d4e": {
+  "file": "const_rough_036.png",
+  "id": 100254881567142
+ },
+ "659a176500810b25a63f31acdd1e0b4aa59eebb4": {
+  "file": "tiger_color.png",
+  "id": 104741252828462
+ },
+ "5ca15f50b5db9cb644d36c13c0aaac8588697330": {
+  "file": "tiger_rough.png",
+  "id": 136091365053225
+ },
+ "b4d19e659644852cc3e60eaf9024fb38dcd54914": {
+  "file": "arctic_color.png",
+  "id": 122653200371787
+ },
+ "01f57d13d15ede30fb296fbacba9b2824e68866e": {
+  "file": "const_rough_070.png",
+  "id": 122441279549464
+ },
+ "655a0cbe1d4491b938ee81e6ea9dff36aac053f1": {
+  "file": "brushed_color.png",
+  "id": 130857261912746
+ },
+ "1c212671db1cb9b4bd3579f739bc6819c20fa2f2": {
+  "file": "brushed_rough.png",
+  "id": 97334785930570
+ },
+ "49148f5b690c1a7ce8c541e9189364c7566054bf": {
+  "file": "bubblewrap_color.png",
+  "id": 96214018971024
+ },
+ "42fb6349cec5cf1de6327b40736bfb04cb7f0054": {
+  "file": "bubblewrap_normal.png",
+  "id": 135948762363155
+ },
+ "b183d5287a74b89d796ca4554476d77ebfafc919": {
+  "file": "const_rough_010.png",
+  "id": 135427404135006
+ },
+ "fe3a21112297f9b534e64817895ebe2437eefe34": {
+  "file": "const_rough_080.png",
+  "id": 129833091360678
+ },
+ "1f303bd9bc77cdc05646602661ef7566b932c0f9": {
+  "file": "circuit_color.png",
+  "id": 89745435099445
+ },
+ "96e48a828f356a61029085ba63d0b14eb0e0472e": {
+  "file": "circuit_normal.png",
+  "id": 79209172603020
+ },
+ "a6a23a1a4311ffdb8a9a9dcdd5c7da2bd3526b77": {
+  "file": "circuit_rough.png",
+  "id": 101139684309622
+ },
+ "ad378837c313ae00edb8e76c65156293754ed9b8": {
+  "file": "circuit_metal.png",
+  "id": 132899096981689
+ },
+ "297ea36639d972f9a181fa72c3c46f26a9331696": {
+  "file": "circuit_emit.png",
+  "id": 127478414693202
+ },
+ "4cde7075aff1e76f03d82a6b1273adc7cb0618f0": {
+  "file": "copper_color.png",
+  "id": 114721789398384
+ },
+ "acd664debaacbd63dd8a7b3de6367d4cc2bdb131": {
+  "file": "copper_normal.png",
+  "id": 73516055467163
+ },
+ "403044eb0ef3e2ca57679d6dae1f10ddd056429e": {
+  "file": "copper_rough.png",
+  "id": 115030226543865
+ },
+ "3ffc4f96784348a5c20afc538fd41d8feae1259c": {
+  "file": "copper_metal.png",
+  "id": 118901368522665
+ },
+ "c731def9f90afa08ed95cda3935fd508e2aff0ae": {
+  "file": "desert_color.png",
+  "id": 94514329214437
+ },
+ "03aa1b2bc1182911f604a120c4dfb426ab0f5ded": {
+  "file": "digital_color.png",
+  "id": 106794268393053
+ },
+ "0bfcbe0b0c14feeee0a2b3f140e8da052ca82376": {
+  "file": "hivis_color.png",
+  "id": 112072532619692
+ },
+ "76c2ad4c96bdd33f025beb22cfb889d318bd72f5": {
+  "file": "hivis_normal.png",
+  "id": 100601872257242
+ },
+ "68650ddcc3afd6f5df0d1fddf7bfdfb7ff77502d": {
+  "file": "hivis_rough.png",
+  "id": 100049284221474
+ },
+ "eb065c4146b1be3fc67c3915433240d4bc5c87e3": {
+  "file": "hivis_metal.png",
+  "id": 119626116283520
+ },
+ "c8cce4077bd90924c8943e26cc799424a4032bce": {
+  "file": "kintsugi_color.png",
+  "id": 120485576183409
+ },
+ "aea38ea58739d076d7ca4fcd5a0ed8e7a3aef98b": {
+  "file": "kintsugi_normal.png",
+  "id": 92385422590572
+ },
+ "c952b424b655c6583f67feba3752d122430f8089": {
+  "file": "kintsugi_rough.png",
+  "id": 81157308671890
+ },
+ "6dde00291b4d6f4cc46d53d44c149653bd8efa3b": {
+  "file": "kintsugi_metal.png",
+  "id": 125819875164655
+ },
+ "1cdd932509b19b0c1354cca53b44c519dd79ce35": {
+  "file": "kintsugi_emit.png",
+  "id": 76745022262678
+ },
+ "2cd93d92bdc0a2720212c2660da0d65f700cbf0a": {
+  "file": "koi_color.png",
+  "id": 98928043045440
+ },
+ "4c8faf515c09dfb6b0ed91c011e17caefe8d64e9": {
+  "file": "koi_rough.png",
+  "id": 130484103411824
+ },
+ "68008935d761514abc3ca83672c48ef6b69765cf": {
+  "file": "lava_color.png",
+  "id": 122424408170807
+ },
+ "4eb184542f88f1ef270341f705b1697e773eb4e4": {
+  "file": "lava_normal.png",
+  "id": 84589099529601
+ },
+ "c4cd4a1f9fb1d3525f0a543e3855bada3fb5f086": {
+  "file": "lava_rough.png",
+  "id": 107666942158176
+ },
+ "53bcca806695ef2c4562d27c978a0a32cd0c881a": {
+  "file": "lava_emit.png",
+  "id": 100946799625974
+ },
+ "ea4a0f07bffa966002f3ddc0577dae5966ec724f": {
+  "file": "leopard_color.png",
+  "id": 104125535886406
+ },
+ "9b307239e019351891c772860a8eadf3208b422d": {
+  "file": "const_rough_060.png",
+  "id": 110261407730083
+ },
+ "4618063c8cad7a6a59cb60e179b98f3a3a4015a0": {
+  "file": "marble_color.png",
+  "id": 126578164057279
+ },
+ "5da059097d8b054751e0648099001184700b922d": {
+  "file": "nebula_color.png",
+  "id": 135911134417307
+ },
+ "db877e330f9344865b30b20f003857f14d877a44": {
+  "file": "const_rough_030.png",
+  "id": 108755586406528
+ },
+ "1c4d92c2aeb2c475eb87030c68d08e0c32d02057": {
+  "file": "nebula_emit.png",
+  "id": 114828889148636
+ },
+ "e687cb0d566e9ce944df02f1c7710d5f2351f64b": {
+  "file": "plaid_color.png",
+  "id": 81621478850787
+ },
+ "d588f5e0c659a2f6a68152d3c91e5e4e40cbaa27": {
+  "file": "plaid_normal.png",
+  "id": 96298210684604
+ },
+ "4ac220cb704bb9532ed975cb4ad39d776aad55fe": {
+  "file": "const_rough_040.png",
+  "id": 86227588438345
+ },
+ "88af5e44166559c4222dc40db625b4cccc720eab": {
+  "file": "seigaiha_color.png",
+  "id": 75298249837689
+ },
+ "a2b8d8f3c53902ad68f1d4b732b026d78c521dcb": {
+  "file": "stained_color.png",
+  "id": 121543280195172
+ },
+ "2d87037d214df2684bae3d57705f7af44bf1df59": {
+  "file": "stained_normal.png",
+  "id": 108961383779777
+ },
+ "8380543744213e44ca9953f2c2f104b480997ea5": {
+  "file": "stained_rough.png",
+  "id": 84843164090769
+ },
+ "fd445a4ca12438f6486944ff1181182bf4e17901": {
+  "file": "stained_emit.png",
+  "id": 90026945083544
+ },
+ "1f3755c979d013ceed07bd30629cebe71e930669": {
+  "file": "sweater_color.png",
+  "id": 100822702193247
+ },
+ "981667d065c7526e7db99b7f6c89239806025664": {
+  "file": "sweater_normal.png",
+  "id": 113241976380581
+ },
+ "053b689ab8c07aa8fd32f8a566762bb3bae32295": {
+  "file": "titanium_color.png",
+  "id": 128813681896164
+ },
+ "83147b218252aeea26a14d2399b1c66154fd949c": {
+  "file": "urban_color.png",
+  "id": 105483348856404
+ },
+ "6a60baa4becaa674cdde6c8614b0abc8da297405": {
+  "file": "wood_color.png",
+  "id": 105844180881928
+ },
+ "603e675b624f145647700e13bc6aea3f1dbec6fb": {
+  "file": "wood_normal.png",
+  "id": 133301282355694
+ },
+ "5815b1ab7da5447bff352b9ee2cbe035400c3217": {
+  "file": "wood_rough.png",
+  "id": 118388130115383
+ },
+ "4a72561e8620970019b8f7069edabd6a2992d8e9": {
+  "file": "zebra_color.png",
+  "id": 116745609876049
+ },
+ "4df3fcb8817b304cdcf26666a502c2aed01e10a3": {
+  "file": "const_rough_050.png",
+  "id": 77905344163558
+ },
+ "f4393519db66c1031926c4dcf2c9eca3eea46c62": {
+  "file": "damascus_color.png",
+  "id": 130355206200564
+ },
+ "70870b0f6b61cfb9d824a67edf548cf86a43d79f": {
+  "file": "tiger_color.png",
+  "id": 111780313937157
+ },
+ "0c8d8cd398eb0a52a59df605bfaf050f80ede52e": {
+  "file": "arcade_color.png",
+  "id": 140574391186752
+ },
+ "e0c64558ae81d0856a7f7b5b316768fbe597f2ab": {
+  "file": "const_rough_090.png",
+  "id": 128687831759397
+ },
+ "f38f38c802c17284df4e88e16cbd398a37419487": {
+  "file": "arcade_emit.png",
+  "id": 102863458895998
+ },
+ "c4ff8fa1ff964c7d2d1ab30d00c5501066608b4f": {
+  "file": "asanoha_color.png",
+  "id": 79426852995806
+ },
+ "11a177bd55a5f2eccdc47932f053025f3e9cf791": {
+  "file": "aurora_color.png",
+  "id": 101580310091979
+ },
+ "2f2c2578712186864ccaa0e9ebd18f2f4c53f5a5": {
+  "file": "aurora_emit.png",
+  "id": 74105788849785
+ },
+ "9a61b6b46ac68a3c0ad561c27627dfa80d48a92b": {
+  "file": "barcode_color.png",
+  "id": 78038279441051
+ },
+ "6e45acf5510687f464acb8b9eea2fd15ba74539f": {
+  "file": "bigwave_color.png",
+  "id": 130236259278450
+ },
+ "119dc323c0652258133839732c7262c9a37c1876": {
+  "file": "blackhole_emit.png",
+  "id": 137979126721161
+ },
+ "03f2c183fa6424fbad0ea58bcb36566a3fd22179": {
+  "file": "blackhole_color.png",
+  "id": 113684446302164
+ },
+ "9a2239a0d8ae91288cda14ccb1bee1ec17cb7268": {
+  "file": "bowling_color.png",
+  "id": 80794490916358
+ },
+ "b33762690b2e9d4f2c9d1a9bc13512f7fba9cb3e": {
+  "file": "bubblegum_color.png",
+  "id": 81839128434414
+ },
+ "e16efc73d51fc18ed50ef2b90af1dd200d24247e": {
+  "file": "bubblegum_normal.png",
+  "id": 132187704167755
+ },
+ "d7aa520c86c14441c527b42cb42a8ca3793cdd4f": {
+  "file": "burl_color.png",
+  "id": 138570407028765
+ },
+ "373e43a0f800844a26cb97c2fa86780a4a6b609c": {
+  "file": "burl_normal.png",
+  "id": 138820025061307
+ },
+ "b714b8ea937b720997d43aeb2036d752e63110b3": {
+  "file": "candycorn_color.png",
+  "id": 133782256448525
+ },
+ "bc7c3b755c7149927687ede74f67a64de21de04a": {
+  "file": "candycorn_normal.png",
+  "id": 104481041018254
+ },
+ "6dfc22a8766f54b53b12b45e9db219f6e749f173": {
+  "file": "cheese_color.png",
+  "id": 115190401655456
+ },
+ "6ddf8fc5243c2369113656a1975e115f2793797a": {
+  "file": "cheese_normal.png",
+  "id": 129017312834983
+ },
+ "cdae55ba1744205e46390a1c83cf07d7cdf11917": {
+  "file": "china_color.png",
+  "id": 89582824955789
+ },
+ "7fc563c825067ab22141cf14e448b88a49b02a60": {
+  "file": "corp_color.png",
+  "id": 99492261189319
+ },
+ "15bd7d9610396dd3213d1d0610b0490ca78ed1e4": {
+  "file": "corp_emit.png",
+  "id": 113905953566739
+ },
+ "5527a2bef0ff74c1b29dce4855625d97fa183ae2": {
+  "file": "crackle_color.png",
+  "id": 112890006610710
+ },
+ "36c620c32655cd2f248135723db100d46c4e4a55": {
+  "file": "creamsicle_color.png",
+  "id": 127816552646351
+ },
+ "33f38e6a84d1ea69578666d6a4617e21ac262cd8": {
+  "file": "crt_color.png",
+  "id": 88581755945190
+ },
+ "7135596d8c89d6d5a05dcdb4bb035287888036e8": {
+  "file": "crt_emit.png",
+  "id": 100826356037114
+ },
+ "522cd18f6c0933162c342752b86ada3e51bf2c77": {
+  "file": "denim_color.png",
+  "id": 123547628225622
+ },
+ "8bb66dedb6e61a6d19f4fc175616d1f11d527764": {
+  "file": "denim_normal.png",
+  "id": 84565815336494
+ },
+ "048c21aafada5f98fbb0be56a920239ef17dc1cc": {
+  "file": "dice_color.png",
+  "id": 78662198586081
+ },
+ "d1bb1f549ae2b2805cb6ca5a878de85ad3cb047f": {
+  "file": "dice_normal.png",
+  "id": 111749295823016
+ },
+ "52507329b979f93c91ce10ad3f3808f4fca3df83": {
+  "file": "dice_rough.png",
+  "id": 107538643346182
+ },
+ "49a89e6d82ddc3862e4f74693fe1118b720238f8": {
+  "file": "fade_color.png",
+  "id": 126050983411323
+ },
+ "0fa655b7be7e998cf8fa813c56106f49d344a351": {
+  "file": "geode_color.png",
+  "id": 138412864085532
+ },
+ "86d4186f25ceaca25c6f50a3e6010596cbc99770": {
+  "file": "geode_normal.png",
+  "id": 116609429761653
+ },
+ "c4522e50d57d7d1bc8ff10b31a17479e468eecd2": {
+  "file": "glitch_color.png",
+  "id": 115216972049566
+ },
+ "906d6c7cf8c3f75ec863f612b2b91fc6f204742e": {
+  "file": "glitch_emit.png",
+  "id": 87698487163336
+ },
+ "c88c8562e110649cdb860f58d4bd0297ed1baed9": {
+  "file": "granite_color.png",
+  "id": 119935112659305
+ },
+ "a2106a55129d06735d1c7327760b53c533758c12": {
+  "file": "jade_color.png",
+  "id": 131428135391223
+ },
+ "2f6c40f1d57ed1ca13665fdba381573471a6e29a": {
+  "file": "jersey_color.png",
+  "id": 85136928830264
+ },
+ "4a835f2773cfc3aa4934a32ef15c0611685ee4d8": {
+  "file": "jersey_normal.png",
+  "id": 119039241767287
+ },
+ "9fb5ceb3eaac572502dfa0b7b5be5c27d6a13f26": {
+  "file": "ketchup_color.png",
+  "id": 126698816184344
+ },
+ "7a7eeb465c3fc35acecdd69188cc96cc9c236d10": {
+  "file": "ketchup_normal.png",
+  "id": 98874579917811
+ },
+ "f7279a3e1f03349e0ea304b773d0eb698cbb4024": {
+  "file": "lavalamp_color.png",
+  "id": 93120917262178
+ },
+ "2dfd763fcec44e897d48ee7006dcb95fac5f70ce": {
+  "file": "lavalamp_emit.png",
+  "id": 133756883761953
+ },
+ "9af4464e1c17242df3f5096b4764bad825b76682": {
+  "file": "meat_color.png",
+  "id": 133937980642403
+ },
+ "982c941a305941552550149cebcbc1993d75bcb8": {
+  "file": "memo_color.png",
+  "id": 131955730097491
+ },
+ "38bfe65c4c18a531d6d38a386b5f0983e8b6afb8": {
+  "file": "memphis_color.png",
+  "id": 106419701498240
+ },
+ "84ccede8a5274c4fb56219743515e5669983e47a": {
+  "file": "missing_color.png",
+  "id": 103806990680534
+ },
+ "a96dcb2567b22a77919676aa1fa39cca1d9897ee": {
+  "file": "missing_emit.png",
+  "id": 125033904066205
+ },
+ "130de3beb840d6d073630608cce5df56028ea533": {
+  "file": "moss_color.png",
+  "id": 77099482797348
+ },
+ "d9bb1267fa762adae9e8cc52a67c02867f746634": {
+  "file": "moss_normal.png",
+  "id": 126314966950323
+ },
+ "1315090357b509a743e784adc11ca03fcdaac8c3": {
+  "file": "numsoup_color.png",
+  "id": 121622635248637
+ },
+ "226918dcddba6ae49ae52881bbd845af3c647ba0": {
+  "file": "numsoup_normal.png",
+  "id": 132921220914266
+ },
+ "eac798166db55193e7497ee88688a1cb9d6fb72b": {
+  "file": "opal_color.png",
+  "id": 80579349500286
+ },
+ "9a1b4edd6345c255181885a4db6ae1ac6bc57ca2": {
+  "file": "opal_emit.png",
+  "id": 104909263064283
+ }
+}

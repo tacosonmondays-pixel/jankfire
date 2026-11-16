@@ -85,9 +85,10 @@ def bake_vertex_colours(obj, colour_of_face):
     return col
 
 
-def export_glb(path, vertex_colours=False):
+def export_glb(path, vertex_colours=False, tangents=False):
+    # tangents: for a normal map (the kit guns' wrap textures, a SurfaceAppearance needs them in the mesh)
     bpy.ops.export_scene.gltf(filepath=path, export_format='GLB', use_selection=False, export_apply=True,
-                              export_animations=False, export_yup=True,
+                              export_animations=False, export_yup=True, export_tangents=tangents,
                               export_vertex_color='ACTIVE' if vertex_colours else 'NONE', export_all_vertex_colors=False,
                               export_active_vertex_color_when_no_material=vertex_colours)
     return os.path.getsize(path)

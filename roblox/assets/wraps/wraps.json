@@ -1,0 +1,771 @@
+{
+ "arcade": {
+  "maps": {
+   "color": "arcade_color.png",
+   "normal": null,
+   "rough": 0.9,
+   "metal": 0.0,
+   "emit": "arcade_emit.png"
+  },
+  "emissive": 1.1,
+  "tint": "ffffff"
+ },
+ "arctic": {
+  "maps": {
+   "color": "arctic_color.png",
+   "normal": null,
+   "rough": 0.7,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "asanoha": {
+  "maps": {
+   "color": "asanoha_color.png",
+   "normal": null,
+   "rough": 0.4,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "aurora": {
+  "maps": {
+   "color": "aurora_color.png",
+   "normal": null,
+   "rough": 0.3,
+   "metal": 0.0,
+   "emit": "aurora_emit.png"
+  },
+  "emissive": 1.4,
+  "tint": "ffffff"
+ },
+ "barcode": {
+  "maps": {
+   "color": "barcode_color.png",
+   "normal": null,
+   "rough": 0.5,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "bigwave": {
+  "maps": {
+   "color": "bigwave_color.png",
+   "normal": null,
+   "rough": 0.6,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "blackhole": {
+  "maps": {
+   "color": "blackhole_color.png",
+   "normal": null,
+   "rough": 0.25,
+   "metal": 0.0,
+   "emit": "blackhole_emit.png"
+  },
+  "emissive": 1.6,
+  "tint": "ffffff"
+ },
+ "bowling": {
+  "maps": {
+   "color": "bowling_color.png",
+   "normal": null,
+   "rough": 0.12,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "brushed": {
+  "maps": {
+   "color": "brushed_color.png",
+   "normal": null,
+   "rough": "brushed_rough.png",
+   "metal": 1.0,
+   "emit": 0.0
+  }
+ },
+ "bubblegum": {
+  "maps": {
+   "color": "bubblegum_color.png",
+   "normal": "bubblegum_normal.png",
+   "rough": 0.25,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "bubblewrap": {
+  "maps": {
+   "color": "bubblewrap_color.png",
+   "normal": "bubblewrap_normal.png",
+   "rough": 0.12,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "burl": {
+  "maps": {
+   "color": "burl_color.png",
+   "normal": "burl_normal.png",
+   "rough": 0.3,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "camo": {
+  "maps": {
+   "color": "camo_color.png",
+   "normal": null,
+   "rough": 0.78,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "candycorn": {
+  "maps": {
+   "color": "candycorn_color.png",
+   "normal": "candycorn_normal.png",
+   "rough": 0.45,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "carbon": {
+  "maps": {
+   "color": "carbon_color.png",
+   "normal": "carbon_normal.png",
+   "rough": 0.2,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "cheese": {
+  "maps": {
+   "color": "cheese_color.png",
+   "normal": "cheese_normal.png",
+   "rough": 0.5,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "china": {
+  "maps": {
+   "color": "china_color.png",
+   "normal": null,
+   "rough": 0.1,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "circuit": {
+  "maps": {
+   "color": "circuit_color.png",
+   "normal": "circuit_normal.png",
+   "rough": "circuit_rough.png",
+   "metal": "circuit_metal.png",
+   "emit": "circuit_emit.png"
+  },
+  "emissive": 1.1,
+  "tint": "7dff6a"
+ },
+ "copper": {
+  "maps": {
+   "color": "copper_color.png",
+   "normal": "copper_normal.png",
+   "rough": "copper_rough.png",
+   "metal": "copper_metal.png",
+   "emit": 0.0
+  }
+ },
+ "corp": {
+  "maps": {
+   "color": "corp_color.png",
+   "normal": null,
+   "rough": 0.3,
+   "metal": 0.0,
+   "emit": "corp_emit.png"
+  },
+  "emissive": 0.9,
+  "tint": "ffffff"
+ },
+ "crackle": {
+  "maps": {
+   "color": "crackle_color.png",
+   "normal": null,
+   "rough": 0.08,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "creamsicle": {
+  "maps": {
+   "color": "creamsicle_color.png",
+   "normal": null,
+   "rough": 0.3,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "crt": {
+  "maps": {
+   "color": "crt_color.png",
+   "normal": null,
+   "rough": 0.08,
+   "metal": 0.0,
+   "emit": "crt_emit.png"
+  },
+  "emissive": 1.4,
+  "tint": "ffffff"
+ },
+ "damascus": {
+  "maps": {
+   "color": "damascus_color.png",
+   "normal": "damascus_normal.png",
+   "rough": "damascus_rough.png",
+   "metal": 1.0,
+   "emit": 0.0
+  }
+ },
+ "denim": {
+  "maps": {
+   "color": "denim_color.png",
+   "normal": "denim_normal.png",
+   "rough": 0.88,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "desert": {
+  "maps": {
+   "color": "desert_color.png",
+   "normal": null,
+   "rough": 0.75,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "dice": {
+  "maps": {
+   "color": "dice_color.png",
+   "normal": "dice_normal.png",
+   "rough": "dice_rough.png",
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "digital": {
+  "maps": {
+   "color": "digital_color.png",
+   "normal": null,
+   "rough": 0.74,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "fade": {
+  "maps": {
+   "color": "fade_color.png",
+   "normal": null,
+   "rough": 0.22,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "galaxy": {
+  "maps": {
+   "color": "galaxy_color.png",
+   "normal": null,
+   "rough": "galaxy_rough.png",
+   "metal": 0.0,
+   "emit": "galaxy_emit.png"
+  },
+  "emissive": 1.2,
+  "tint": "ffffff"
+ },
+ "geode": {
+  "maps": {
+   "color": "geode_color.png",
+   "normal": "geode_normal.png",
+   "rough": 0.12,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "glitch": {
+  "maps": {
+   "color": "glitch_color.png",
+   "normal": null,
+   "rough": 0.3,
+   "metal": 0.0,
+   "emit": "glitch_emit.png"
+  },
+  "emissive": 1.2,
+  "tint": "ffffff"
+ },
+ "granite": {
+  "maps": {
+   "color": "granite_color.png",
+   "normal": null,
+   "rough": 0.16,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "hazard": {
+  "maps": {
+   "color": "hazard_color.png",
+   "normal": "hazard_normal.png",
+   "rough": "hazard_rough.png",
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "hex": {
+  "maps": {
+   "color": "hex_color.png",
+   "normal": "hex_normal.png",
+   "rough": "hex_rough.png",
+   "metal": 0.0,
+   "emit": "hex_emit.png"
+  },
+  "emissive": 2.0,
+  "tint": "4fd8ff"
+ },
+ "hivis": {
+  "maps": {
+   "color": "hivis_color.png",
+   "normal": "hivis_normal.png",
+   "rough": "hivis_rough.png",
+   "metal": "hivis_metal.png",
+   "emit": 0.0
+  }
+ },
+ "holo": {
+  "maps": {
+   "color": "holo_color.png",
+   "normal": null,
+   "rough": "holo_rough.png",
+   "metal": "holo_metal.png",
+   "emit": "holo_emit.png"
+  },
+  "emissive": 0.9,
+  "tint": "ffffff"
+ },
+ "jade": {
+  "maps": {
+   "color": "jade_color.png",
+   "normal": null,
+   "rough": 0.1,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "jersey": {
+  "maps": {
+   "color": "jersey_color.png",
+   "normal": "jersey_normal.png",
+   "rough": 0.75,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "ketchup": {
+  "maps": {
+   "color": "ketchup_color.png",
+   "normal": "ketchup_normal.png",
+   "rough": 0.2,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "kintsugi": {
+  "maps": {
+   "color": "kintsugi_color.png",
+   "normal": "kintsugi_normal.png",
+   "rough": "kintsugi_rough.png",
+   "metal": "kintsugi_metal.png",
+   "emit": "kintsugi_emit.png"
+  },
+  "emissive": 0.6,
+  "tint": "ffd27a"
+ },
+ "koi": {
+  "maps": {
+   "color": "koi_color.png",
+   "normal": null,
+   "rough": "koi_rough.png",
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "lava": {
+  "maps": {
+   "color": "lava_color.png",
+   "normal": "lava_normal.png",
+   "rough": "lava_rough.png",
+   "metal": 0.0,
+   "emit": "lava_emit.png"
+  },
+  "emissive": 2.2,
+  "tint": "ffffff"
+ },
+ "lavalamp": {
+  "maps": {
+   "color": "lavalamp_color.png",
+   "normal": null,
+   "rough": 0.1,
+   "metal": 0.0,
+   "emit": "lavalamp_emit.png"
+  },
+  "emissive": 1.0,
+  "tint": "ffffff"
+ },
+ "leopard": {
+  "maps": {
+   "color": "leopard_color.png",
+   "normal": null,
+   "rough": 0.6,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "marble": {
+  "maps": {
+   "color": "marble_color.png",
+   "normal": null,
+   "rough": 0.14,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "meat": {
+  "maps": {
+   "color": "meat_color.png",
+   "normal": null,
+   "rough": 0.14,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "memo": {
+  "maps": {
+   "color": "memo_color.png",
+   "normal": null,
+   "rough": 0.75,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "memphis": {
+  "maps": {
+   "color": "memphis_color.png",
+   "normal": null,
+   "rough": 0.5,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "missing": {
+  "maps": {
+   "color": "missing_color.png",
+   "normal": null,
+   "rough": 0.4,
+   "metal": 0.0,
+   "emit": "missing_emit.png"
+  },
+  "emissive": 0.8,
+  "tint": "ffffff"
+ },
+ "moss": {
+  "maps": {
+   "color": "moss_color.png",
+   "normal": "moss_normal.png",
+   "rough": 0.95,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "nebula": {
+  "maps": {
+   "color": "nebula_color.png",
+   "normal": null,
+   "rough": 0.3,
+   "metal": 0.0,
+   "emit": "nebula_emit.png"
+  },
+  "emissive": 1.3,
+  "tint": "ffffff"
+ },
+ "numsoup": {
+  "maps": {
+   "color": "numsoup_color.png",
+   "normal": "numsoup_normal.png",
+   "rough": 0.15,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "opal": {
+  "maps": {
+   "color": "opal_color.png",
+   "normal": null,
+   "rough": 0.08,
+   "metal": 0.0,
+   "emit": "opal_emit.png"
+  },
+  "emissive": 0.7,
+  "tint": "ffffff"
+ },
+ "organ": {
+  "maps": {
+   "color": "organ_color.png",
+   "normal": null,
+   "rough": 0.45,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "pizza": {
+  "maps": {
+   "color": "pizza_color.png",
+   "normal": "pizza_normal.png",
+   "rough": 0.4,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "plaid": {
+  "maps": {
+   "color": "plaid_color.png",
+   "normal": "plaid_normal.png",
+   "rough": 0.85,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "qr": {
+  "maps": {
+   "color": "qr_color.png",
+   "normal": null,
+   "rough": 0.45,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "racing": {
+  "maps": {
+   "color": "racing_color.png",
+   "normal": null,
+   "rough": "racing_rough.png",
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "rainbow": {
+  "maps": {
+   "color": "rainbow_color.png",
+   "normal": null,
+   "rough": 0.24,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "receipt": {
+  "maps": {
+   "color": "receipt_color.png",
+   "normal": null,
+   "rough": 0.7,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "sakura": {
+  "maps": {
+   "color": "sakura_color.png",
+   "normal": null,
+   "rough": 0.36,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "seigaiha": {
+  "maps": {
+   "color": "seigaiha_color.png",
+   "normal": null,
+   "rough": 0.4,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "sheet": {
+  "maps": {
+   "color": "sheet_color.png",
+   "normal": null,
+   "rough": 0.5,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "shibori": {
+  "maps": {
+   "color": "shibori_color.png",
+   "normal": null,
+   "rough": 0.85,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "sprinkles": {
+  "maps": {
+   "color": "sprinkles_color.png",
+   "normal": "sprinkles_normal.png",
+   "rough": 0.35,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "stained": {
+  "maps": {
+   "color": "stained_color.png",
+   "normal": "stained_normal.png",
+   "rough": "stained_rough.png",
+   "metal": 0.0,
+   "emit": "stained_emit.png"
+  },
+  "emissive": 0.8,
+  "tint": "ffffff"
+ },
+ "stonks": {
+  "maps": {
+   "color": "stonks_color.png",
+   "normal": null,
+   "rough": 0.2,
+   "metal": 0.0,
+   "emit": "stonks_emit.png"
+  },
+  "emissive": 1.3,
+  "tint": "ffffff"
+ },
+ "sushi": {
+  "maps": {
+   "color": "sushi_color.png",
+   "normal": null,
+   "rough": 0.5,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "sweater": {
+  "maps": {
+   "color": "sweater_color.png",
+   "normal": "sweater_normal.png",
+   "rough": 0.95,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "tape": {
+  "maps": {
+   "color": "tape_color.png",
+   "normal": "tape_normal.png",
+   "rough": 0.5,
+   "metal": 0.35,
+   "emit": 0.0
+  }
+ },
+ "tiger": {
+  "maps": {
+   "color": "tiger_color.png",
+   "normal": null,
+   "rough": "tiger_rough.png",
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "titanium": {
+  "maps": {
+   "color": "titanium_color.png",
+   "normal": null,
+   "rough": 0.22,
+   "metal": 1.0,
+   "emit": 0.0
+  }
+ },
+ "tokyo": {
+  "maps": {
+   "color": "tokyo_color.png",
+   "normal": null,
+   "rough": 0.25,
+   "metal": 0.0,
+   "emit": "tokyo_emit.png"
+  },
+  "emissive": 1.6,
+  "tint": "ffffff"
+ },
+ "urban": {
+  "maps": {
+   "color": "urban_color.png",
+   "normal": null,
+   "rough": 0.72,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "urushi": {
+  "maps": {
+   "color": "urushi_color.png",
+   "normal": null,
+   "rough": "urushi_rough.png",
+   "metal": "urushi_metal.png",
+   "emit": 0.0
+  }
+ },
+ "vapor": {
+  "maps": {
+   "color": "vapor_color.png",
+   "normal": null,
+   "rough": 0.25,
+   "metal": 0.0,
+   "emit": "vapor_emit.png"
+  },
+  "emissive": 1.1,
+  "tint": "ffffff"
+ },
+ "washi": {
+  "maps": {
+   "color": "washi_color.png",
+   "normal": null,
+   "rough": 0.9,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "watermelon": {
+  "maps": {
+   "color": "watermelon_color.png",
+   "normal": null,
+   "rough": 0.35,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "wood": {
+  "maps": {
+   "color": "wood_color.png",
+   "normal": "wood_normal.png",
+   "rough": "wood_rough.png",
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ },
+ "zebra": {
+  "maps": {
+   "color": "zebra_color.png",
+   "normal": null,
+   "rough": 0.5,
+   "metal": 0.0,
+   "emit": 0.0
+  }
+ }
+}

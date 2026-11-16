@@ -25,6 +25,7 @@
 import bpy, sys, os, json, struct
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import rbxglb, weapon_paint
+import gun_uvs
 from rbxglb import srgb
 
 argv = sys.argv[sys.argv.index('--') + 1:]
@@ -216,11 +217,13 @@ for f in files:
         o.name = base + '__' + rbxglb.look_code(look)  # the WEB look rides in the name (the paint comes from the report)
         o.data.name = o.name
         pieces.append({'name': base, 'upload': o.name, 'tris': tris(o), 'look': look, 'lo': [round(x, 4) for x in plo], 'hi': [round(x, 4) for x in phi]})
+    if '--kit' in flags:  # UVs a wrap texture can follow (gun_uvs.py: one scale for the whole gun, seams out of sight)
+        gun_uvs.unwrap(objs, gun_uvs.SCALE.get(name[2:].split('@')[0], 1.0))
     rbxglb.turn_for_roblox(objs)  # so the upload lands in the file's frame (rbxglb.py: measured)
     out = os.path.join(out_dir, name + '.glb')
-    size = rbxglb.export_glb(out)
+    size = rbxglb.export_glb(out, tangents='--kit' in flags)
     report[name] = {'pieces': pieces, 'tris': sum(p['tris'] for p in pieces), 'lo': [round(x, 4) for x in lo], 'hi': [round(x, 4) for x in hi],
-                    'bytes': size, 'turned': True, 'meta': meta, 'nodes': origins}
+                    'bytes': size, 'turned': True, 'meta': meta, 'nodes': origins, 'uv': '--kit' in flags}
     print('EXPORTED', name, report[name]['tris'], 'tris', len(pieces), 'pieces', report[name]['lo'], report[name]['hi'], 'muzzle', meta.get('muzzle'), 'sight', meta.get('sight'))
 
 # keep the files exported earlier in the report (one run usually does a few weapons, not all of them)
