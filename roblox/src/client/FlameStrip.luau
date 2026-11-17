@@ -72,14 +72,16 @@ function FlameStrip.step(self: Strip, dt: number, level: number, sweep: number, 
 			f.im.ImageRectOffset = Vector2.new((k % GRID) * CELL, (k // GRID) * CELL)
 		end
 		local n = math.noise(f.seed, self.t * 1.4) * 0.5 + 0.5
-		-- settled: a low flicker 34-62 tall; the sweep: up to the frame's height and a bit over (the fire fills the lower
-		-- ~85 % of its cell)
-		local h = (34 + 28 * n) * level + sweep * H * (1.0 + 0.3 * n)
+		-- settled: a low flicker 56-96 tall, the tongues reaching up past the hot band into the dark panel; the sweep: up to
+		-- the frame's height and a bit over (the fire fills the lower ~85 % of its cell). (v586: 34-62 tall over a strong glow
+		-- read as one orange band, no flames)
+		local h = (56 + 40 * n) * level + sweep * H * (1.0 + 0.3 * n)
 		f.im.Size = UDim2.new(f.w, 0, 0, math.floor(h))
 		f.im.ImageTransparency = fade
 	end
-	self.glow.Size = UDim2.new(1, 0, 0, math.floor((46 * level + sweep * H * 0.9)))
-	self.glow.BackgroundTransparency = 0.15 + 0.85 * fade
+	-- (the glow faint, so the flames stand out against it: at 0.15 it was an orange band as bright as they are)
+	self.glow.Size = UDim2.new(1, 0, 0, math.floor((80 * level + sweep * H * 0.9)))
+	self.glow.BackgroundTransparency = 0.72 + 0.28 * fade
 end
 
 function FlameStrip.destroy(self: Strip)
