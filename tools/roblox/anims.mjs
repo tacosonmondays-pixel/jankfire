@@ -93,10 +93,13 @@ const A = {
     K(0), K(0.2, [0.02, -0.03, 0.02], [0.22, 0.3, 0.5]), K(1.26, [0.02, -0.035, 0.02], [0.24, 0.3, 0.5]),
     K(1.36, [0.02, -0.02, 0.02], [0.3, 0.32, 0.95], 'snap'), K(1.52, [0.02, -0.03, 0.02], [0.22, 0.3, 0.5]), K(1.8, [0, 0, 0], [0, 0, 0], 'back'),
   ], events: [[0.5, 'glug'], [0.72, 'glug'], [0.94, 'glug'], [1.3, 'revUp'], [1.6, 'click']] },
-  // the Marble Shotgun's 1.9 s jar refill (reloads.js:199): lid open, a net bag pours, one bounces out, lid shut, thwack
+  // the Marble Shotgun's 1.9 s jar refill (reloads.js:199): lid open, a net bag pours, one bounces out, lid shut, thwack.
+  // (17 Nov, the main session: the bag and the hand under it came up through the middle of the screen. the web's timing
+  // stays; the gun now rolls well over to the left and drops while it is open, so the jar's mouth faces down-left and
+  // the bag pours in from the lower left, the crosshair clear the whole time; it rolls back with the lid's thwack)
   reload_marbles: { keys: [
-    K(0), K(0.22, [0, -0.02, 0.03], [0.35, 0.15, 0.35]), K(1.48, [0, -0.025, 0.03], [0.36, 0.15, 0.35]),
-    K(1.53, [0, -0.04, 0.03], [0.28, 0.15, 0.4], 'snap'), K(1.9, [0, 0, 0], [0, 0, 0], 'back'),
+    K(0), K(0.22, [0, -0.08, 0.03], [0.35, 0.15, 1.0]), K(1.48, [0, -0.085, 0.03], [0.36, 0.15, 1.0]),
+    K(1.53, [0, -0.1, 0.03], [0.28, 0.15, 1.05], 'snap'), K(1.9, [0, 0, 0], [0, 0, 0], 'back'),
   ], events: [[0.3, 'click'], [0.66, 'rattle'], [0.78, 'rattle'], [0.9, 'rattle'], [1.02, 'rattle'], [1.12, 'boing'], [1.18, 'rattle'], [1.45, 'click'], [1.5, 'thwack'], [1.53, 'click']] },
 };
 

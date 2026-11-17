@@ -196,6 +196,9 @@ local lidTop: Vector3? = nil -- the top of the Marble Shotgun's lid, shut (the w
 -- 5 the cylinder (from under, as it swings out), 6 / 7 the thumb behind shell 1 / 2 (Half a Shotgun)
 local awayL = false
 local lhGrab: { [number]: { grab: Grab, under: boolean } } = {}
+-- the Revolver's speedloader (below): its spots in file metres, its times in s; the cylinder's back face it seats on
+local LOADER = { face = Vector3.new(0, 0.009, 0.004), knob = 0.031, show = { 0.45, 1.32 }, drop = 0.95 }
+local cylRear: { part: BasePart, rel: CFrame }? = nil -- (the cylinder's back face on its axis, against the cylinder piece)
 local function smoothstep(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
 -- a set of pieces' box in the weapon's root frame (studs, at rest)
 local function boxOf(list: { any }, root: BasePart): (Vector3, Vector3)
@@ -215,6 +218,7 @@ end
 local function offHandSetup(m: Model, root: BasePart)
 	ride, magGrab, crankGrab, lidTop = nil, nil, nil, nil
 	lhGrab = {}
+	cylRear = nil
 	local rowL = (AvatarArms.rows(VM.wid, VM.skin) or {}).Left
 	awayL = rowL ~= nil and rowL.away == true
 	local hold = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
@@ -227,6 +231,8 @@ local function offHandSetup(m: Model, root: BasePart)
 			local lo, hi = boxOf(cyl, root)
 			local main = cyl[1].part :: BasePart
 			lhGrab[5] = { grab = { part = main, rel = main.CFrame:ToObjectSpace(root.CFrame * CFrame.new((lo.X + hi.X) / 2, lo.Y, (lo.Z + hi.Z) / 2)) }, under = true }
+			-- (the Revolver loads it with a speedloader: its back face, on its axis, the gun's own turn)
+			if VM.wid == "revolver" then cylRear = { part = main, rel = main.CFrame:ToObjectSpace(root.CFrame * CFrame.new(LOADER.face * k)) } end
 		end
 		for i, node in { "shell1", "shell2" } do
 			local sh = st.nodes[node]
@@ -289,6 +295,75 @@ local function offHandSetup(m: Model, root: BasePart)
 	end
 end
 
+-- ---- the Revolver's speedloader (the web game's reloads.js p_speedloader, 17 Nov): the off hand brings it in behind
+-- the swung-out cylinder (0.32-0.76 s), seats it (0.92), the rounds drop into the chambers (0.95), a twist (1.1-1.2),
+-- it pulls away (1.24) and is gone (1.32). it rides in the hand, its knob in the fist; seated, it sits on the cylinder's
+-- back face, on its axis. built here in the kit's flat colours, sized to the gun (file metres x k)
+local function buildLoader(): Model
+	local m = Instance.new("Model")
+	m.Name = "p_speedloader"
+	local function cyl(name: string, d: number, len: number, at: Vector3, color: Color3): BasePart
+		local p = Instance.new("Part")
+		p.Name = name; p.Shape = Enum.PartType.Cylinder
+		p.Size = Vector3.new(len, d, d) * k; p.Color = color; p.Material = Enum.Material.SmoothPlastic
+		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
+		p:SetAttribute("At", at * k) -- (its spot in the loader's frame: z back from the cylinder's face)
+		p.Parent = m
+		return p
+	end
+	cyl("Body", 0.074, 0.02, Vector3.new(0, 0, 0.012), Color3.fromRGB(46, 48, 54))
+	cyl("Knob", 0.026, 0.018, Vector3.new(0, 0, LOADER.knob), Color3.fromRGB(74, 76, 84))
+	for i = 0, 5 do
+		local a = i * math.pi / 3
+		cyl("Round" .. i, 0.014, 0.034, Vector3.new(math.cos(a) * 0.026, math.sin(a) * 0.026, -0.012), Color3.fromRGB(214, 170, 80))
+	end
+	m.Parent = camera
+	return m
+end
+-- the loader's frame (world), seated or on its way, from its distance behind the face and its twist at t
+local function loaderSeat(t: number): CFrame?
+	local cr = cylRear
+	if not cr then return nil end
+	local d = if t < 0.76 then 0.03 + 0.09 * (1 - smoothstep((t - 0.5) / 0.26)) elseif t < 0.92 then 0.03 * (1 - smoothstep((t - 0.76) / 0.16))
+		elseif t < 1.2 then 0 else 0.09 * smoothstep((t - 1.2) / 0.1)
+	local tw = 1.2 * smoothstep((t - 1.1) / 0.1)
+	return cr.part.CFrame * cr.rel * CFrame.new(0, 0, d * k) * CFrame.Angles(0, 0, tw)
+end
+local function knobGrip(): CFrame return CFrame.new(0, 0, LOADER.knob * k) * CFrame.Angles(-math.pi / 2, 0, 0) end
+-- every frame (after offHand): the loader in the hand, where the hand is this frame
+local function placeLoader(root: BasePart, to: CFrame?, mix: number, hidden: boolean?)
+	local t = clip and clip.name == "reload_revolver" and clip.t
+	if hidden or not t or not cylRear or t < LOADER.show[1] or t > LOADER.show[2] or not to or mix < 0.05 then
+		if prop and prop.Name == "p_speedloader" then dropProp() end
+		return
+	end
+	local lp = prop or buildLoader()
+	prop = lp
+	local holdL = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
+	if not holdL then return end
+	local F = (root.CFrame * holdL):Lerp(to, mix) -- (the fist's frame, as AvatarArms places it)
+	local L = F * knobGrip():Inverse()
+	for _, p in lp:GetChildren() do
+		if not p:IsA("BasePart") then continue end
+		local at = p:GetAttribute("At")
+		-- (a Part cylinder's axis is its X: turned onto the loader's Z)
+		if typeof(at) == "Vector3" then p.CFrame = L * CFrame.new(at) * CFrame.Angles(0, math.pi / 2, 0) end
+		if string.sub(p.Name, 1, 5) == "Round" then p.Transparency = if t >= LOADER.drop then 1 else 0 end
+	end
+end
+
+-- what the away hand follows (the track's f) and whether it holds it from under: the Revolver's cylinder is its
+-- speedloader's knob while it loads, else the piece's grab
+local function lhFrame(f: number, t: number): (CFrame?, boolean)
+	if f == 5 and cylRear then
+		local seat = loaderSeat(t)
+		if seat then return seat * knobGrip(), false end
+	end
+	local g = lhGrab[f]
+	if not g then return nil, false end
+	return g.grab.part.CFrame * g.grab.rel, g.under
+end
+
 -- the reload's off-hand track at t: how far the hand is in (0 to 1) and what it follows (a fraction blends two)
 local function sampleLh(keys: { { number } }, t: number): (number, number)
 	if t <= keys[1][1] then return keys[1][2], keys[1][3] end
@@ -312,13 +387,12 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 		if not lh then return nil, 0, false end
 		local kIn, f = sampleLh(lh, clip.t)
 		local f0, f1 = math.floor(f), math.ceil(f)
-		local A, B = lhGrab[f0], lhGrab[f1]
-		if kIn <= 0.001 or not (A or B) then return nil, 0, false end
-		local FA = if A then A.grab.part.CFrame * A.grab.rel else nil
-		local FB = if B then B.grab.part.CFrame * B.grab.rel else nil
+		if kIn <= 0.001 then return nil, 0, false end
+		local FA, uA = lhFrame(f0, clip.t)
+		local FB, uB = lhFrame(f1, clip.t)
+		if not (FA or FB) then return nil, 0, false end
 		local to = if FA and FB then FA:Lerp(FB, f - f0) elseif FA then FA else FB
-		local under = (if A then A.under else false) or (if B then B.under else false)
-		return to, smoothstep(kIn), under
+		return to, smoothstep(kIn), uA or uB
 	end
 	local base: CFrame? = if ride then ride.part.CFrame * ride.rel else nil
 	if not clip then return base, if base then 1 else 0, false end
@@ -362,7 +436,8 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 		local top = lidTop or Vector3.new(0, 0.17, -0.06) * k
 		local at = top + Vector3.new(0, (0.05 * (1 - come) + 0.01 * (1 - press)) * k, 0)
 		local lidF = root.CFrame * CFrame.new(at) * CFrame.Angles(math.pi, 0, 0) -- (palm down: held from above)
-		local mix = smoothstep((t - 1.33) / 0.1) * (1 - smoothstep((t - 1.56) / 0.28))
+		-- (it lets go right after the thwack, before the gun swings back up to the middle: 17 Nov, the crosshair kept clear)
+		local mix = smoothstep((t - 1.33) / 0.1) * (1 - smoothstep((t - 1.53) / 0.1))
 		if crankGrab then
 			-- (from the lid straight down to the crank, then it rides the crank while it turns, 1.55-1.75)
 			local u = smoothstep((t - 1.5) / 0.07)
@@ -730,6 +805,7 @@ function VM.update(dt: number, c: Ctx)
 				if m2 > 0.5 then under = u2 end
 			end
 		end
+		placeLoader(m.PrimaryPart, to, mix, c.hidden)
 		AvatarArms.override(m, "Left", to, mix, under)
 		AvatarArms.aim(m, camera.CFrame)
 	end
