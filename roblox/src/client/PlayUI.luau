@@ -15,6 +15,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
 local Ranked = require(Shared:WaitForChild("Ranked"))
 local RankedStyle = require(Shared:WaitForChild("RankedStyle"))
+local ModesTab = require(script.Parent:WaitForChild("ModesTab"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local Remote = Remotes:WaitForChild("Play") :: RemoteFunction
 
@@ -298,7 +299,7 @@ UI.fire = fire
 
 -- ------------------------------------------------------------------ the modes (left): DUELS | MODES
 -- DUELS: the RANKED switch, your rank in the picked mode (badge, bar, 34/100), the 1V1..4V4 cards (1V1V1 while ranked
--- is off). MODES: PlayConfig.EXTRA, the slot a later session fills with JANKFIRE's classic modes
+-- is off). MODES: PARTY RANKED, then the QUICKPLAY and PARTY cards (client/ModesTab.luau) over the classic modes
 local refresh: () -> ()
 -- the rank line for a mode view: the bar's fill (0..1) and the number right of it ("34/100", "2/5", "APEX 245 RP")
 local function rankBar(v: any): (number, string)
@@ -390,27 +391,10 @@ local function modeList()
 			nt.AnchorPoint = Vector2.new(1, 0); nt.Position = UDim2.new(1, -10, 0, if c then 25 else 33); nt.Size = UDim2.fromOffset(60, 20)
 			y += (if c then 52 else 66) + 8
 		end
-		if #extra == 0 then
-			local e = text(left, "Empty", "No modes yet.", if c then 12 else 14, T.MUTED, T.FONT_BOLD)
-			e.Position = UDim2.fromOffset(16, y + 4); e.Size = UDim2.fromOffset(W - 32, 20); e.ZIndex = 3
-			y += 34
-		end
-		for _, m in extra do
-			local card = new("TextButton", { Name = m.id, AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
-				BackgroundColor3 = if pt and pt.mode == m.id then T.CARD_HI else T.CARD, BackgroundTransparency = 0.2,
-				Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, L.cardH) }, left)
-			T.corner(card, 5)
-			local nm = text(card, "Name", m.name, if c then 16 else 21, T.TEXT, T.FONT_TITLE); nm.ZIndex = 3
-			nm.Position = UDim2.fromOffset(14, if c then 5 else 9); nm.Size = UDim2.new(1, -24, 0, if c then 20 else 26)
-			local sl = text(card, "Sub", m.sub or "", if c then 10 else 12, T.MUTED, T.FONT); sl.ZIndex = 3
-			sl.Position = UDim2.fromOffset(14, if c then 25 else 36); sl.Size = UDim2.new(1, -24, 0, 16)
-			card.MouseButton1Click:Connect(function()
-				if not lead then notice("only the leader (" .. leaderName() .. ") picks the mode"); return end
-				task.spawn(ask, "mode", m.id, pon and m.ranked == true)
-			end)
-			y += L.cardH + 8
-		end
-		left.Size = UDim2.fromOffset(W, y + 12)
+		-- QUICKPLAY and PARTY (17 Nov, the owner: "modes should be quickplay or party"): client/ModesTab.luau
+		y = ModesTab.draw({ left = left, y = y, W = W, c = c, cardH = L.cardH, pt = pt, n = n, lead = lead, pon = pon,
+			ask = ask, notice = notice, leaderName = leaderName })
+		left.Size = UDim2.fromOffset(W, y + 4)
 		return
 	end
 	-- the RANKED switch
@@ -681,7 +665,10 @@ local function bottomBar()
 		local cancelB = button(bottom, "Cancel", "CANCEL", false, UDim2.fromOffset(if c then 64 else 96, bh), UDim2.fromOffset((W - bw) // 2 + bw + 8, y))
 		cancelB.MouseButton1Click:Connect(function() task.spawn(ask, "cancel") end)
 	elseif iLead() then
-		local b = button(bottom, "Find", "FIND MATCH", true, UDim2.fromOffset(bw, bh), UDim2.fromOffset((W - bw) // 2, y))
+		-- (a classic mode picked on the PARTY card without FILL FROM QUICKPLAY: the party plays it alone, now)
+		local pm = PlayConfig.byId[pt.mode] :: any
+		local alone = pm ~= nil and pm.ladder == "party" and not pm.quick and not pt.fill
+		local b = button(bottom, "Find", if alone then "START MATCH" else "FIND MATCH", true, UDim2.fromOffset(bw, bh), UDim2.fromOffset((W - bw) // 2, y))
 		b.FontFace = T.FONT_SHOUT; b.TextSize = if c then 16 else 20
 		b.MouseButton1Click:Connect(function() task.spawn(ask, "find") end)
 		main = b

@@ -88,8 +88,8 @@ local function pack(cands: { Entry }, teams: number, size: number, ok: (({ { Ent
 	return nil
 end
 
--- a free-for-all mode (an entry with ffa: the classic modes, Shared.ModeConfig): whole parties, min..max players, each
--- entry its own list in what comes back (Modes.luau makes every player their own side). it goes at max seats, or at min
+-- a free-for-all queue (an entry with ffa: QUICKPLAY, Shared.PlayConfig): whole parties, min..max players, each entry
+-- its own list in what comes back (Party.luau's vote then picks the mode; Modes.luau makes every player their own side). it goes at max seats, or at min
 -- once its oldest entry has waited fill s (a party of min or more may go on its own then). ranked: the oldest entry is
 -- the anchor and every other must sit inside both search windows, like the duels. pure
 local function formFfa(es: { Entry }, m: any, ranked: boolean, now: number): { { Entry } }?
@@ -108,7 +108,8 @@ local function formFfa(es: { Entry }, m: any, ranked: boolean, now: number): { {
 				end
 			end
 		end
-		if seats >= hi or (seats >= lo and now - anchor.since >= fill) then
+		-- (ranked: never one party alone, it would let friends farm each other)
+		if (seats >= hi or (seats >= lo and now - anchor.since >= fill)) and (not ranked or #pick >= 2) then
 			local out = {}
 			for _, e in pick do table.insert(out, { e }) end
 			return out
@@ -117,62 +118,84 @@ local function formFfa(es: { Entry }, m: any, ranked: boolean, now: number): { {
 	return nil
 end
 
--- a team mode (an entry with sides = 2: the classic team modes, Shared.ModeConfig): whole parties, each on one side, 1 to
--- size a side, the two sides at most one apart. the oldest entry is the anchor (ranked: the others inside both
--- windows); of the entries that could join it, the split that seats the most players (then the most even) wins. it goes
--- at size a side, or once the anchor has waited fill s. pure
-local function formTeams(es: { Entry }, m: any, ranked: boolean, now: number): { { Entry } }?
-	local cap = m.size or PlayConfig.PARTY_MAX
-	local open = {}
-	for _, e in es do if e.state == "search" and e.size <= cap then table.insert(open, e) end end
-	table.sort(open, function(a, b) return a.since < b.since end)
-	local fill = m.fill or 15
-	for ai, anchor in open do
-		local cands = { anchor }
-		local wa = Ranked.window(now - anchor.since)
-		for j, e in open do
-			if j ~= ai and #cands < 8 then
-				if not ranked or math.abs(e.rating - anchor.rating) <= math.min(wa, Ranked.window(now - e.since)) then table.insert(cands, e) end
-			end
+-- two sides from whole entries (parties kept together), each at most cap, at most one apart, every entry seated. the
+-- most even split, or nil when there is none (a team mode: the classic team modes in QUICKPLAY and party matches). pure
+function Queue.split(es: { Entry }, cap: number): { { Entry } }?
+	local n = #es
+	if n == 0 or n > 12 then return nil end
+	local best: { { Entry } }? = nil
+	local bestGap = math.huge
+	for mask = 0, 2 ^ n - 1 do
+		local a, b = 0, 0
+		for i = 1, n do
+			if bit32.btest(mask, 2 ^ (i - 1)) then b += es[i].size else a += es[i].size end
 		end
-		-- every way to put the others out, on the anchor's side or on the other (3^7 at most)
-		local n = #cands
-		local best: { { Entry } }? = nil
-		local bestN, bestGap = 0, math.huge
-		local side = table.create(n, 0)
-		local function rec(i: number, a: number, b: number)
-			if a > cap or b > cap then return end
-			if i > n then
-				if b < 1 or math.abs(a - b) > 1 then return end
-				local tot = a + b
-				if tot > bestN or (tot == bestN and math.abs(a - b) < bestGap) then
-					local A, B = {}, {}
-					for k = 1, n do
-						if side[k] == 1 then table.insert(A, cands[k]) elseif side[k] == 2 then table.insert(B, cands[k]) end
-					end
-					best, bestN, bestGap = { A, B }, tot, math.abs(a - b)
-				end
-				return
+		if a >= 1 and b >= 1 and a <= cap and b <= cap and math.abs(a - b) <= 1 and math.abs(a - b) < bestGap then
+			local A, B = {}, {}
+			for i = 1, n do
+				if bit32.btest(mask, 2 ^ (i - 1)) then table.insert(B, es[i]) else table.insert(A, es[i]) end
 			end
-			local sz = cands[i].size
-			if i == 1 then side[1] = 1; rec(2, a + sz, b); return end
-			side[i] = 0; rec(i + 1, a, b)
-			side[i] = 1; rec(i + 1, a + sz, b)
-			side[i] = 2; rec(i + 1, a, b + sz)
-			side[i] = 0
+			best, bestGap = { A, B }, math.abs(a - b)
+			if bestGap == 0 then break end
 		end
-		rec(1, 0, 0)
-		if best and (bestN >= 2 * cap or now - anchor.since >= fill) then return best end
 	end
-	return nil
+	return best
+end
+
+-- a party's pick with FILL FROM QUICKPLAY (the MODES tab's PARTY card; PlayConfig QUICKPLAY): the oldest party waiting
+-- for this mode is the anchor. the other parties waiting for it, then the quickplay queue (oldest first), top it up with
+-- whole parties to the mode's head-count (PlayConfig.counts). it goes full, or at the least once the anchor has waited
+-- fill s. a team mode also needs its seats to split into two sides (Queue.split), else it waits. ranked: everyone inside
+-- the anchor's and their own search windows, like the duels. pure (quick = the quickplay queue's entries)
+local function formFill(es: { Entry }, quick: { Entry }, m: any, ranked: boolean, now: number): { { Entry } }?
+	local lo, hi = PlayConfig.counts(m.id)
+	local own = {}
+	for _, e in es do if e.state == "search" and e.size <= PlayConfig.PARTY_MAX then table.insert(own, e) end end
+	if #own == 0 then return nil end
+	table.sort(own, function(a, b) return a.since < b.since end)
+	local anchor = own[1]
+	local pool = {}
+	for i = 2, #own do table.insert(pool, own[i]) end
+	local qs = {}
+	for _, e in quick do if e.state == "search" and e.size <= PlayConfig.PARTY_MAX then table.insert(qs, e) end end
+	table.sort(qs, function(a, b) return a.since < b.since end)
+	for _, e in qs do table.insert(pool, e) end
+	local pick, seats = { anchor }, anchor.size
+	local wa = Ranked.window(now - anchor.since)
+	for _, e in pool do
+		if seats + e.size <= hi and (not ranked or math.abs(e.rating - anchor.rating) <= math.min(wa, Ranked.window(now - e.since))) then
+			table.insert(pick, e)
+			seats += e.size
+		end
+	end
+	local waited = now - anchor.since >= (m.fill or 15)
+	if not (seats >= hi or (seats >= lo and waited)) then return nil end
+	if ranked and #pick < 2 then return nil end -- (ranked: never one party alone)
+	if m.sides == 2 then
+		-- the newest additions wait for the next match until the rest split into two sides; the party alone (one entry:
+		-- Party.luau splits its members over the sides) only once it has waited
+		while #pick > 1 do
+			local s = Queue.split(pick, PlayConfig.PARTY_MAX)
+			local n = 0
+			for _, e in pick do n += e.size end
+			if s and n >= lo then return s end
+			table.remove(pick)
+		end
+		return if anchor.size >= lo and waited then { pick } else nil
+	end
+	local out = {}
+	for _, e in pick do table.insert(out, { e }) end
+	return out
 end
 
 -- the teams for one match from this queue's searching entries (oldest first), or nil. pure
 function Queue.form(es: { Entry }, mode: string, ranked: boolean, now: number): { { Entry } }?
 	local m = PlayConfig.byId[mode]
 	if not m then return nil end
+	-- a classic mode picked by a party (PARTY card): its own queue topped up from quickplay's. quickplay itself and
+	-- any other free-for-all entry: formFfa
+	if (m :: any).ladder == "party" and not (m :: any).quick then return formFill(es, lists[Queue.key(PlayConfig.QUICKPLAY, ranked)] or {}, m, ranked, now) end
 	if (m :: any).ffa then return formFfa(es, m, ranked, now) end
-	if (m :: any).sides == 2 then return formTeams(es, m, ranked, now) end
 	local open = {}
 	for _, e in es do if e.state == "search" and e.size <= m.size then table.insert(open, e) end end
 	table.sort(open, function(a, b) return a.since < b.since end)
@@ -215,7 +238,16 @@ end
 -- one pass over every queue: each formed match goes to onFormed(key, teams). its entries are marked "found" (the
 -- caller drops them, or puts them back with Queue.back if the match couldn't start)
 function Queue.step(now: number, onFormed: (string, { { Entry } }) -> ())
-	for key, l in lists do
+	-- (the quickplay queues last: a party's pick with FILL FROM QUICKPLAY takes its fillers first)
+	local keys = {}
+	for key in lists do table.insert(keys, key) end
+	table.sort(keys, function(a, b)
+		local qa, qb = string.find(a, PlayConfig.QUICKPLAY, 1, true) ~= nil, string.find(b, PlayConfig.QUICKPLAY, 1, true) ~= nil
+		if qa ~= qb then return qb end
+		return a < b
+	end)
+	for _, key in keys do
+		local l = lists[key]
 		local mode = string.match(key, ":(.+)$") :: string
 		local ranked = string.sub(key, 1, 7) == "ranked:"
 		for _ = 1, 8 do -- (several matches a pass from one queue, if the pool allows)

@@ -38,6 +38,40 @@ function PlayConfig.ratingKey(modeId: string): string
 	return if m and (m :: any).ladder == "party" then "party" else modeId
 end
 
+-- QUICKPLAY and PARTY (17 Nov, the owner: "also modes should be quickplay or party choosing individual modes would be
+-- impossible to fill up with proper matches! maybe"). the MODES tab is two cards (client/ModesTab.luau):
+--   QUICKPLAY  one public queue for every classic mode, 2-8 players, whole parties. when a match forms, its players vote
+--              on 3 modes its head-count fits (Party.luau): most votes wins, a tie is drawn, no votes = a weighted draw;
+--              never the server's last quickplay mode twice running
+--   PARTY      the leader picks one mode (the classic modes below): the party plays it alone, or with FILL FROM QUICKPLAY
+--              on, the quickplay queue tops it up (Queue.luau's formFill)
+-- both are rated on the PARTY RANKED ladder like any classic mode, except a match of one party alone (it would let
+-- friends farm each other)
+PlayConfig.QUICKPLAY = "quickplay"
+PlayConfig.VOTE = 8 -- s the vote runs once a quickplay match forms
+PlayConfig.VOTE_SHOW = 2 -- s the picked mode shows before the match starts
+-- the head-count a classic mode takes in a quickplay or party match: 2-8 unless listed here (a mode's own addMode entry
+-- may say qmin / qmax instead). team modes need two a side; infection one to turn and three to chase
+PlayConfig.QUICK_COUNTS = { tdm = { 4, 8 }, tags = { 4, 8 }, inf = { 4, 8 } } :: { [string]: { number } }
+-- how likely a mode is to be one of the 3 on offer, and to win a vote nobody voted in: 1 unless listed
+PlayConfig.QUICK_WEIGHT = {} :: { [string]: number }
+-- (registered first, so it leads PlayConfig.EXTRA; ModeConfig adds the classic modes after it. min / max / fill are
+-- ModeConfig.MIN / MAX / FILL's numbers: the free-for-all queue's)
+PlayConfig.addMode({ id = PlayConfig.QUICKPLAY, name = "QUICKPLAY", sub = "every mode · 2 to 8 players · the match votes on its mode",
+	teams = 8, size = 4, ffa = true, min = 2, max = 8, fill = 15, pad = "modes", quick = true })
+-- a classic mode's head-count (lowest, highest) in a quickplay or party match
+function PlayConfig.counts(id: string): (number, number)
+	local m: any = PlayConfig.byId[id]
+	local c = PlayConfig.QUICK_COUNTS[id]
+	return (m and m.qmin) or (c and c[1]) or 2, (m and m.qmax) or (c and c[2]) or 8
+end
+-- the classic modes: what QUICKPLAY rotates through and a party leader picks from (every EXTRA entry but quickplay)
+function PlayConfig.classic(): { any }
+	local out = {}
+	for _, m in PlayConfig.EXTRA do if not m.quick then table.insert(out, m) end end
+	return out
+end
+
 PlayConfig.PARTY_MAX = 4 -- the biggest team
 PlayConfig.INVITE_TTL = 60 -- s an invite stays open
 PlayConfig.INVITES_PER_MIN = 6

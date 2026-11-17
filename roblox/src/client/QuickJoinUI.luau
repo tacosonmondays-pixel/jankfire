@@ -51,7 +51,9 @@ local function keyName(): string
 	end
 	return "F"
 end
-local cap = T.key(join, keyName(), UDim2.fromOffset(9, 9)) -- (T.key: no cap on a phone, the words centre instead)
+-- (the button's left padding moves its children too: -31 puts the cap 9 from its edge. T.key: no cap on a phone, the
+-- words centre instead)
+local cap = T.key(join, keyName(), UDim2.fromOffset(-31, 9))
 join.MouseEnter:Connect(function() join.BackgroundColor3 = T.ACCENT:Lerp(Color3.new(1, 1, 1), 0.18) end)
 join.MouseLeave:Connect(function() join.BackgroundColor3 = T.ACCENT end)
 local track = new("Frame", { Name = "Track", BorderSizePixel = 0, BackgroundColor3 = T.TRACK, Position = UDim2.new(0, 16, 1, -12),

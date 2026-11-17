@@ -30,10 +30,12 @@ local CrossServer = require(script.Parent:WaitForChild("CrossServer"))
 local Party = {}
 
 type Member = { id: number, player: Player?, name: string, display: string, model: Model?, rating: { [string]: any }?, inRoom: boolean? }
-type Found = { key: string, mode: string, ranked: boolean, teams: { { Queue.Entry } }, at: number, waiting: boolean? }
+-- (vote / pick: a QUICKPLAY match's vote on its mode, and the mode it picked)
+type Found = { key: string, mode: string, ranked: boolean, teams: { { Queue.Entry } }, at: number, waiting: boolean?, vote: any?, pick: string? }
 type PartyT = {
 	id: number, leader: Member, members: { Member }, mode: string, ranked: boolean, room: LobbyRooms.Room?,
 	entry: Queue.Entry?, found: Found?, match: number?,
+	fill: boolean?, -- (a classic mode picked on the PARTY card: FILL FROM QUICKPLAY)
 }
 type Invite = { id: number, from: Player, party: PartyT, to: Player?, toStand: Member?, expires: number }
 
@@ -99,6 +101,71 @@ local function inRoom(pt: PartyT): { Member }
 	return out
 end
 
+-- ------------------------------------------------------------------ QUICKPLAY's vote (PlayConfig QUICKPLAY)
+-- a quickplay match, once formed, votes on its mode: 3 of the classic modes its head-count fits (a team mode only when
+-- its parties split into two sides), drawn by PlayConfig.QUICK_WEIGHT, never this server's last quickplay mode unless
+-- nothing else fits. PlayConfig.VOTE s to tap one; most votes wins, a tie is drawn, no votes at all = a weighted draw
+local lastQuick: string? = nil
+local function quickFits(es: { Queue.Entry }): { string }
+	local n = 0
+	for _, e in es do n += e.size end
+	local out = {}
+	for _, m in PlayConfig.classic() do
+		local lo, hi = PlayConfig.counts(m.id)
+		if n >= lo and n <= hi and (m.sides ~= 2 or Queue.split(es, PlayConfig.PARTY_MAX) ~= nil) then table.insert(out, m.id) end
+	end
+	return out
+end
+local function drawOne(ids: { string }): string?
+	local sum = 0
+	for _, id in ids do sum += PlayConfig.QUICK_WEIGHT[id] or 1 end
+	local r = math.random() * sum
+	for _, id in ids do
+		r -= PlayConfig.QUICK_WEIGHT[id] or 1
+		if r <= 0 then return id end
+	end
+	return ids[#ids]
+end
+local function voteOffer(es: { Queue.Entry }): { string }
+	local fits = quickFits(es)
+	local pool = {}
+	for _, id in fits do if id ~= lastQuick then table.insert(pool, id) end end
+	if #pool == 0 then pool = fits end
+	local out = {}
+	while #out < 3 and #pool > 0 do
+		local id = drawOne(pool) :: string
+		table.insert(out, id)
+		table.remove(pool, table.find(pool, id) :: number)
+	end
+	return out
+end
+local function voteCounts(v: any): { [string]: number }
+	local counts = {}
+	for _, id in v.votes do counts[id] = (counts[id] or 0) + 1 end
+	return counts
+end
+local function voteResult(v: any): string
+	local counts = voteCounts(v)
+	local best, top = {}, 0
+	for _, id in v.options do
+		local c = counts[id] or 0
+		if c > top then best, top = { id }, c elseif c == top and c > 0 then table.insert(best, id) end
+	end
+	if top == 0 then return drawOne(v.options) :: string end
+	return best[math.random(#best)]
+end
+-- what a player's screen shows of it (client/QuickVoteUI.luau): the options, the clock, the counts, their own vote
+local function voteView(f: Found, forP: Player): any
+	local v = f.vote
+	if not v then return nil end
+	local opts = {}
+	for _, id in v.options do
+		local m = PlayConfig.byId[id]
+		table.insert(opts, { id = id, name = if m then m.name else id, sub = if m then (m :: any).sub else "" })
+	end
+	return { options = opts, ends = serverNow() + math.max(0, v.ends - now()), counts = voteCounts(v), mine = v.votes[forP.UserId] }
+end
+
 local function viewOf(pt: PartyT, forP: Player): any
 	local ms = {}
 	local here = inRoom(pt)
@@ -129,7 +196,9 @@ local function viewOf(pt: PartyT, forP: Player): any
 	return {
 		id = pt.id, me = forP.UserId, leader = pt.leader.id, mode = pt.mode, ranked = pt.ranked, members = ms,
 		max = PlayConfig.PARTY_MAX, queue = q,
-		found = if pt.found then { at = serverNow() + math.max(0, pt.found.at - now()), waiting = pt.found.waiting == true } else nil,
+		found = if pt.found then { at = serverNow() + math.max(0, pt.found.at - now()), waiting = pt.found.waiting == true,
+			vote = voteView(pt.found, forP), pick = pt.found.pick } else nil,
+		fill = pt.fill == true,
 		inMatch = pt.match ~= nil, outgoing = out, meIn = meIn,
 		-- (the room only for those standing in it: the client opens the lobby screen when it has one)
 		room = if pt.room and meIn then { cam = pt.room.cam, focus = pt.room.focus, spots = spots, slot = pt.room.slot } else nil,
@@ -519,7 +588,24 @@ local function setMode(p: Player, mode: any, ranked: any): (boolean, string?)
 	pushParty(pt)
 	return true, nil
 end
+-- the PARTY card's FILL FROM QUICKPLAY switch (the leader's)
+local function setFill(p: Player, on: any): (boolean, string?)
+	local pt = byPlayer[p]
+	if not pt then return false, "press PLAY first" end
+	if pt.leader.player ~= p then return false, "only the leader switches it" end
+	if (pt.fill == true) == (on == true) then return true, nil end
+	changed(pt, "fill changed: search stopped")
+	pt.fill = on == true
+	pushParty(pt)
+	return true, nil
+end
+-- a classic mode the party picked (PARTY card), not quickplay
+local function partyPicked(pt: PartyT): boolean
+	local m: any = PlayConfig.byId[pt.mode]
+	return m ~= nil and m.ladder == "party" and not m.quick
+end
 
+local onFormed: (string, { { Queue.Entry } }) -> ()
 local function find(p: Player): (boolean, string?)
 	local pt = byPlayer[p]
 	if not pt then return false, "press PLAY first" end
@@ -538,6 +624,17 @@ local function find(p: Player): (boolean, string?)
 	end
 	if pt.ranked and hi - lo > Ranked.PARTY_SPREAD then
 		return false, ("ranked parties must be within %d rating of each other"):format(Ranked.PARTY_SPREAD)
+	end
+	-- a party's own pick without FILL FROM QUICKPLAY: the party plays it alone, now, never rated
+	if partyPicked(pt) and not pt.fill then
+		local need = PlayConfig.counts(pt.mode)
+		if pt.ranked then return false, "PARTY RANKED needs other players: turn on FILL FROM QUICKPLAY" end
+		if #pt.members < need then return false, ("%s needs %d players: turn on FILL FROM QUICKPLAY"):format((mode :: any).name, need) end
+		local e: Queue.Entry = { key = Queue.key(pt.mode, false), mode = pt.mode, ranked = false, since = now(),
+			size = #pt.members, rating = sum / #pt.members, owner = pt, state = "found" }
+		pt.entry = e
+		onFormed(e.key, { { e } })
+		return true, nil
 	end
 	local e: Queue.Entry = { key = Queue.key(pt.mode, pt.ranked), mode = pt.mode, ranked = pt.ranked, since = now(),
 		size = #pt.members, rating = sum / #pt.members, owner = pt, state = "search" }
@@ -562,10 +659,27 @@ local function entryMembers(e: Queue.Entry): { Member }
 	return if o and o.members then o.members else {}
 end
 
--- a formed match: MATCH FOUND on every member's screen, the start PlayConfig.FOUND s later
-local function onFormed(key: string, teams: { { Queue.Entry } })
+-- every party in a found match sees it again (a vote's counts, its pick)
+local function pushFound(f: Found)
+	for _, list in f.teams do
+		for _, e in list do
+			local o = e.owner :: any
+			if o and o.leader and o.found == f then pushParty(o :: PartyT) end
+		end
+	end
+end
+
+-- a formed match: MATCH FOUND on every member's screen, the start PlayConfig.FOUND s later (a QUICKPLAY match votes on
+-- its mode first: PlayConfig.VOTE s, then the pick shows for VOTE_SHOW s)
+onFormed = function(key: string, teams: { { Queue.Entry } })
 	local mode = string.match(key, ":(.+)$") :: string
 	local f: Found = { key = key, mode = mode, ranked = string.sub(key, 1, 7) == "ranked:", teams = teams, at = now() + PlayConfig.FOUND }
+	if mode == PlayConfig.QUICKPLAY then
+		local es = {}
+		for _, list in teams do for _, e in list do table.insert(es, e) end end
+		f.vote = { options = voteOffer(es), votes = {}, ends = now() + PlayConfig.VOTE }
+		f.at = now() + PlayConfig.VOTE + PlayConfig.VOTE_SHOW
+	end
 	table.insert(founds, f)
 	for _, list in teams do
 		for _, e in list do
@@ -573,34 +687,60 @@ local function onFormed(key: string, teams: { { Queue.Entry } })
 			o.found = f
 			if o.leader then
 				pushParty(o :: PartyT)
-				for _, pl in realMembers(o :: PartyT) do push(pl, { t = "found", at = serverNow() + PlayConfig.FOUND, mode = mode, ranked = f.ranked }) end
+				for _, pl in realMembers(o :: PartyT) do push(pl, { t = "found", at = serverNow() + (f.at - now()), mode = mode, ranked = f.ranked }) end
 			end
 		end
 	end
 end
 
+-- a QUICKPLAY vote (the Play remote's "vote" op): one vote a player, changeable while the clock runs
+local function castVote(f: Found?, id: number, mode: any): (boolean, string?)
+	local v = f and f.vote
+	if not f or not v or f.pick or now() >= v.ends then return false, "no vote running" end
+	if type(mode) ~= "string" or not table.find(v.options, mode) then return false, "not one of the three" end
+	v.votes[id] = mode
+	pushFound(f)
+	return true, nil
+end
+
 -- start a found match through Matches (the pads' code: same rules, arenas, copies and cap). false = try again soon
 local function start(f: Found): boolean
-	local cfg = PlayConfig.byId[f.mode]
+	if f.vote and not f.pick then f.pick = voteResult(f.vote); lastQuick = f.pick end
+	local modeId = f.pick or f.mode
+	local cfg = PlayConfig.byId[modeId]
+	local all: { Queue.Entry } = {}
+	for _, list in f.teams do for _, e in list do table.insert(all, e) end end
+	-- the sides as the queue formed them, but a classic team mode splits whole parties into two (a quickplay vote only
+	-- offers one when they split), or a party alone into two halves
+	local groups: { { Member } } = {}
+	if (cfg :: any).sides == 2 and #all == 1 then
+		groups = { {}, {} }
+		for i, m in entryMembers(all[1]) do table.insert(groups[(i - 1) % 2 + 1], m) end
+	else
+		local teams = if (cfg :: any).sides == 2 then (Queue.split(all, PlayConfig.PARTY_MAX) or f.teams) else f.teams
+		for t, list in teams do
+			groups[t] = {}
+			for _, e in list do for _, m in entryMembers(e) do table.insert(groups[t], m) end end
+		end
+	end
 	local sides: { { Player } } = {}
-	local rated = { mode = f.mode, rkey = PlayConfig.ratingKey(f.mode), teams = {} }
+	local rated = { mode = modeId, rkey = PlayConfig.ratingKey(modeId), teams = {} }
 	local standIns = false
-	for t, list in f.teams do
+	for t, list in groups do
 		sides[t], rated.teams[t] = {}, {}
-		for _, e in list do
-			for _, m in entryMembers(e) do
-				local r, rd = ratingFor(m, f.mode)
-				table.insert(rated.teams[t], { id = m.id, r = r, rd = rd })
-				if m.player then
-					if not m.player.Parent or Matches.matchOf(m.player) then return false end
-					table.insert(sides[t], m.player)
-				else
-					standIns = true
-				end
+		for _, m in list do
+			local r, rd = ratingFor(m, modeId)
+			table.insert(rated.teams[t], { id = m.id, r = r, rd = rd })
+			if m.player then
+				if not m.player.Parent or Matches.matchOf(m.player) then return false end
+				table.insert(sides[t], m.player)
+			else
+				standIns = true
 			end
 		end
 	end
-	local opts: any = { queue = f.key, ranked = f.ranked, rated = rated }
+	-- (one party alone is never rated: friends could farm each other. the queue only forms a ranked match of two or more)
+	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated }
 	-- (Studio only: a match with stand-ins in it can't play out, so it is held and ends after testHold.secs)
 	if standIns and RunService:IsStudio() then
 		local win = testHold.win
@@ -674,6 +814,12 @@ local function tick()
 	pcall(crossTick)
 	Queue.step(now(), onFormed)
 	for _, f in table.clone(founds) do
+		-- (a quickplay vote's clock ran out: its pick shows for PlayConfig.VOTE_SHOW s, then the match starts)
+		if f.vote and not f.pick and now() >= f.vote.ends then
+			f.pick = voteResult(f.vote)
+			lastQuick = f.pick
+			pushFound(f)
+		end
 		if now() >= f.at then
 			if start(f) then
 				local i = table.find(founds, f)
@@ -821,6 +967,10 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		end
 		ok = true
 	elseif op == "mode" then ok, why = setMode(p, a, b)
+	elseif op == "fill" then ok, why = setFill(p, a)
+	elseif op == "vote" then
+		local pt = byPlayer[p]
+		ok, why = castVote(pt and pt.found, p.UserId, a)
 	elseif op == "find" then ok, why = find(p)
 	elseif op == "cancel" then ok, why = cancel(p)
 	elseif type(op) == "string" and Party.ops[op] then return Party.ops[op](p, a, b)
@@ -934,6 +1084,35 @@ function Party.test(op: string, a: any, b: any, c: any, d: any): any
 			PlayConfig.addMode({ id = "sample_zm", name = "ZOMBIES", sub = "your squad against the rounds", teams = 2, size = 4, pad = "4v4", ranked = false })
 		end
 		return #PlayConfig.EXTRA
+	elseif op == "qpvote" then
+		-- (QUICKPLAY: stand-in a votes for mode b in the found match it is in)
+		for _, f in founds do
+			for _, list in f.teams do
+				for _, e in list do
+					for _, m in entryMembers(e) do
+						if m.id == tonumber(a) then
+							local okV, whyV = castVote(f, m.id, b)
+							return { ok = okV, why = whyV, options = f.vote and f.vote.options }
+						end
+					end
+				end
+			end
+		end
+		return { ok = false, why = "no found match with " .. tostring(a) }
+	elseif op == "qpfill" then
+		-- (QUICKPLAY and party fills: how long the oldest waits before a match goes below full; 15 s in play)
+		for _, m in PlayConfig.EXTRA do (m :: any).fill = tonumber(a) or 15 end
+		return { ok = true, fill = tonumber(a) or 15 }
+	elseif op == "qpfound" then
+		-- (the found matches: mode, vote options and votes, pick, seconds left)
+		local out = {}
+		for _, f in founds do
+			local n = 0
+			for _, list in f.teams do for _, e in list do n += e.size end end
+			table.insert(out, { mode = f.mode, players = n, options = f.vote and f.vote.options, votes = f.vote and voteCounts(f.vote),
+				pick = f.pick, left = f.at - now(), ranked = f.ranked })
+		end
+		return out
 	elseif op == "state" then
 		local out = { parties = {}, queue = {}, founds = #founds, rooms = LobbyRooms.count(), pool = #standPool, invites = 0 }
 		for _, pt in parties do

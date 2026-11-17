@@ -164,8 +164,9 @@ local function step()
 	end
 end
 
--- move one body onto a pad side: its slot (Slot parts carry Team and Slot) or the middle of the side, facing the
--- pad's sign (the side's look). the anti-cheat's TeleportT stamp goes first, as every server move does
+-- move one body onto a pad side: its slot (Slot parts carry Team and Slot) or the middle of the side, facing into the
+-- hub (a side's look points out at the wall behind the pad: the first test faced you into the corner). the
+-- anti-cheat's TeleportT stamp goes first, as every server move does
 local function standOn(p: Player, pad: Model, t: number, slot: number)
 	local ch = p.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
@@ -179,7 +180,7 @@ local function standOn(p: Player, pad: Model, t: number, slot: number)
 	end
 	local top = spot + Vector3.new(0, side.Size.Y / 2, 0)
 	local pos = top + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
-	local look = side.CFrame.LookVector * Vector3.new(1, 0, 1)
+	local look = -side.CFrame.LookVector * Vector3.new(1, 0, 1)
 	if look.Magnitude < 0.1 then look = Vector3.new(0, 0, -1) end
 	local hum = ch:FindFirstChildOfClass("Humanoid")
 	if hum and hum.SeatPart then

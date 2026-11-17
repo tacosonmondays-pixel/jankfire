@@ -161,6 +161,58 @@ sides". Built in `server/QuickJoin.luau` and `client/QuickJoinUI.luau`.
   - It went the moment the other side filled, and when the one waiting stepped off.
   - With the 20 s gap on, new pop-ups within 20 s of the last one were held back.
 - Test ops: `qjstand pad side name`, `qjoff pad`, `qjgap secs`, `qjstate player`.
+- Place v650 fixed the key cap, which had sat over the words.
+
+  ![QUICK JOIN on a hub pad](matchmaking/24_quick_join.jpg)
+
+### The MODES tab: QUICKPLAY and PARTY (17 Nov 2026)
+
+The owner: "also modes should be quickplay or party choosing individual modes would be impossible to fill up with
+proper matches! maybe". The main session decided the shape; this section replaces "a card per classic mode".
+
+- **The tab** (`client/ModesTab.luau`, called from PlayUI's modeList) is PARTY RANKED, then two cards:
+  - **QUICKPLAY:** every mode, 2 to 8 players, "the match votes on its mode", and the modes in rotation along its
+    foot.
+  - **PARTY:** the leader picks one classic mode (two columns; on a small screen a `< MODE >` row), plus a FILL FROM
+    QUICKPLAY switch. The line under it says what the mode takes, or what stops the party playing it alone.
+  - The big button reads START MATCH for a party pick without fill: the party plays it alone, now.
+- **QUICKPLAY** (`PlayConfig.QUICKPLAY`, an EXTRA entry with `quick = true`) is one queue, casual or ranked.
+  - It forms like the free-for-all queue (`Queue.luau` formFfa): whole parties, 2 to 8 players. It goes at 8, or once
+    the oldest has waited 15 s.
+  - **The vote** (Party.luau, `client/QuickVoteUI.luau`): when a match forms, its players see 3 modes its head-count
+    fits and tap one, or press 1, 2 or 3. They have `PlayConfig.VOTE` (8 s).
+    - Most votes wins, a tie is drawn at random, and no votes at all is a draw weighted by `PlayConfig.QUICK_WEIGHT`.
+    - The pick shows for 2 s, then the match starts through the mode's own start (Modes.luau).
+    - This server's last quickplay mode is never on offer again straight away, unless nothing else fits.
+  - **What fits:** `PlayConfig.QUICK_COUNTS`. Team Deathmatch, Tags and Infection take 4 to 8; everything else 2 to 8.
+    A team mode is only offered when the parties split into two sides at most one apart (`Queue.split`). A mode's own
+    `qmin` / `qmax` wins over the table.
+- **PARTY with FILL FROM QUICKPLAY** (`Queue.luau` formFill):
+  - The oldest party that picked the mode is the anchor. Other parties that picked it, then the quickplay queue
+    (oldest first), top it up with whole parties to the mode's head-count.
+  - It goes full, or at the mode's least once the anchor has waited 15 s.
+  - The quickplay queue is looked at last each pass, so a waiting party gets its fillers first.
+- **Ranked:** quickplay and party matches are rated on the PARTY RANKED ladder like any classic mode (rkey "party",
+  rated.mode = the picked mode). One party alone is never rated, because friends could farm each other:
+  - a party pick without fill is casual, and PARTY RANKED asks for fill;
+  - the ranked queues never form a match of one party.
+- Test ops (JankPlayTest): `qpvote standInId mode`, `qpfill secs`, `qpfound`. A `rival` group can search
+  `"quickplay"` like any mode.
+- **Tested** in place versions 646 and 650 (17 Nov), with stand-ins:
+  - Head-count: 3 stand-ins were offered Gun Game, Randomizer and Duck Rain, with no team modes or Infection. 8 were
+    offered Infection, Spoons & Grapples and Duck Rain.
+  - Quickplay with 8 (me and 7 stand-ins): the vote came up with Tags, Infection and One in the Chamber.
+    - I pressed 2, two stand-ins voted Infection and one Tags, and the counts showed on the cards.
+    - Infection was picked and started with 8 seats on RooftopV3.
+  - A party of 4 (me and 3 stand-ins) that picked Infection without fill started at once with 4 seats.
+  - With Infection picked and a party of 1, the card says "needs 4 players, your party is 1: turn on fill" and the
+    button reads START MATCH.
+
+  ![the MODES tab with QUICKPLAY picked](matchmaking/25_modes_quickplay.jpg)
+  ![the PARTY card with Infection picked](matchmaking/26_modes_party_infection.jpg)
+  ![the quickplay vote](matchmaking/27_quickplay_vote.jpg)
+  ![the vote's pick: Infection with 8](matchmaking/28_quickplay_infection_8.jpg)
+  ![a party of 4 playing Infection](matchmaking/29_party_infection_4.jpg)
 
 ## 4. Ranked
 
