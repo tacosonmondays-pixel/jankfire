@@ -1030,6 +1030,19 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - Checks: the hall sealed (1560 rays from 60 points, 3 of them new in the stair hall; 0 leaks), the lot closed in (0 leaks), head room 0 within 0.6, ZFight 1 pair.
   - Photos: `basement_walkout_sheet.jpg` (the open EXIT door from the basement, flight A, the door out on the far terrace by the target, the stairs' foot with its floor closed).
   - Play test (no save): walked from the basement's floor up both flights to the corridor with nothing in the way (root 229.1 to 250.7). The door swung 90 degrees and stopped blocking. Out on the terrace, 8 studs away, it shut; pushing at it from the terrace stops you at its face, and it stays shut.
+- **17 Nov, the gold dummies are everyone's own (place version 715):** the owner, from the friends' preview: "yellow dummies to enter outside once shot by someone dont appear for others". The three gold Carls were shared, so one player's shot took a dummy away from everyone.
+  - Every player has their own three gold Carls, their own 90 s and their own count (TheLot's `hunts`). A gold Carl carries `Owner` (the player's UserId) and `f.onlyFor` (the player), the range's pattern: every other screen moves him out of its world (`TrainingDoors.client`'s Carl sort), and `Fight.hurt` drops anyone else's hit. The shot is still the server's to judge (Fire remote: eye, line of sight, aim).
+  - Shooting all three of your own gives you, and only you, the saved key (`LotKey`, `JankfireLot_v1`). The door rolls up on your screen (the reveal), with the door's whirr. The old 45 s opening for everyone is gone, so nobody else's door moves.
+  - A key holder has no gold Carls (found for good), and their panel shows all three lit and OPEN.
+  - The panel over the garage door is painted on each screen from your own attributes, `LotGold` (bits 1, 2, 4) and `LotGoldBy` (server time your clock runs out). The ding, the chime where he stood and the buzz when your time is up play on your screen only. The server no longer touches the pips or the clock.
+  - New `LotTest` ops: `ghost` (a stand-in hunter with its own UserId and three gold Carls, seen through the client's `ViewAs`), `ghostgold`, `ghostgone`, and `setkey` (put the saved key back exactly). `open` now finishes the first player's own hunt. Losing the key (`forget`, `setkey`) starts a fresh try with all three standing.
+  - Play test with two hunters (you, plus the stand-in, UserId 7):
+    - My real sniper shot at my gold 1 did 55, KO, "GOLD 1 OF 3". My screen then had my gold 2 and 3 only, while the stand-in still had all three.
+    - My shot at the stand-in's gold 1 landed nothing, and it still stood.
+    - The stand-in finished its three without touching my count. My clock ran out ("TOO SLOW", the buzz on my screen, all three of mine back, the panel idle at 1:30).
+    - Then I shot my three again: "THE GARAGE IS OPEN", ding and whirr, the door rising on my screen while the server's door stayed shut, the panel OPEN, my save key true.
+    - The Studio save was put back exactly afterwards (no key, eggAt 0).
+  - Photos: `gold_dummies_per_player_sheet.jpg` (B's screen with B's gold 1 standing, A's screen from the same camera without A's, A's panel at 1 of 3 with A's clock).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.

@@ -1,8 +1,15 @@
 --!strict
 -- THE BACK LOT (16 Nov 2026): the training area's secret outdoor grounds behind the big garage door at the end of the
 -- dummy yard, and the little easter egg that opens it. three GOLD CARLS hide in the training rooms; shoot all three
--- within 90 seconds of the first and the garage door rolls up for 45 seconds. the panel over the door lights one
--- cardboard man per gold Carl down and counts the time left. out on the lot, cardboard Carls on the long lane and in
+-- within 90 seconds of the first and the garage door is yours (the key, below). EVERYONE'S OWN (owner, 17 Nov, from
+-- the friends' preview: "yellow dummies to enter outside once shot by someone dont appear for others"): every player
+-- has their own three gold Carls, their own 90 s and their own count. a gold Carl carries the attribute Owner (the
+-- player's UserId: every other screen takes him out of its world, TrainingDoors.client, as the range's Carls) and
+-- f.onlyFor (the player: nobody else's shot lands on him, Fight.hurt), so the shot is still the server's to judge.
+-- how far you are is your attributes LotGold (bits 1, 2, 4: the ones you have found) and LotGoldBy (server time your
+-- clock runs out); the panel over the door shows yours on your screen (one cardboard man lit per gold Carl you found,
+-- your clock), with a ding where he stood and a buzz when your time is up. a key holder's are found for good: none
+-- stand for them, and the panel shows all three. out on the lot, cardboard Carls on the long lane and in
 -- the blocks fold when shot and stand back up. you leave the lot by its side door (EXIT: down to the basement and up
 -- its walk-out into the range, on foot) or the garage while it is open. while you are on the lot (attribute OnLot) the Plinker in the yard leaves you alone.
 -- a Carl here is a real fighter of kind "dummy", made like RangeTest's (so every weapon and hit check works on him).
@@ -11,25 +18,32 @@
 -- LOCKED flashes. the slats move on each player's screen (TrainingDoors.client, from the Door's attributes From,
 -- Goal, Dur, Since and Rattle); here the server only decides when, and whether the slats block.
 -- YOURS FOR GOOD (owner, 17 Nov: "once you find the golden dummies, the main garage is permanently open for you"):
--- everyone who shot a gold Carl in the try that opened it gets the key, kept in their own session-locked save
+-- whoever shoots their three gets the key, kept in their own session-locked save
 -- (Profiles, store "JankfireLot_v1": { egg, eggAt }, like Stats and Quests keep theirs, so a write here can never
 -- touch what you own) and shown as the player attribute LotKey. for a key holder the door is up on their own screen
 -- from the moment they are there, and its slats and block let them through (TrainingDoors.client: their own body is
--- theirs to move; the anti-cheat already skips this door). for everyone else it stays shut, the egg works as ever,
--- and its 45 s opening for all is still the shared moment. key holders don't open, hold or rattle the door for others. the map is data, made by ServerStorage.PolishBackup.
+-- theirs to move; the anti-cheat already skips this door): the reveal is the door rolling up on their screen. for
+-- everyone else it stays shut. key holders don't open, hold or rattle the door for others. the map is data, made by
+-- ServerStorage.PolishBackup.
 -- TrainingLot into Hub.TrainingGround.Lot:
 --   Door       (Model) parts with the attribute Shut (their shut CFrame); its attributes Lift (studs it goes up) and
 --              Top (a slat whose bottom is over this height is put away inside the wall)
 --   Doorway    (Part, unseen) a body inside it holds the door open (nobody is shut in it)
 --   Panel      parts with the attribute Pip (1, 2, 3: the cardboard men that light up) and a part Timer whose Gui has Text
+--              (both painted on each screen, TrainingDoors.client; the door's sounds are in Timer)
 --   Beacons    models tagged HubSpin (HubLife turns them while Spin > 0); parts in them with the attribute Lens glow
 --   GoldSpots  parts Gold1..Gold3: where a gold Carl stands (its look = the way he faces)
 --   Targets    parts: where a lot Carl stands (its look points at the shooters)
 --   Area       (Parts, unseen, one or more: the loading bay, past the façade) inside one a player is on the lot
 -- nothing happens while the training area is v1 (no Lot): it looks again every few seconds.
--- Studio play tests: ServerStorage.LotTest (a BindableFunction, Studio only) answers "state", "gold" (n: put gold Carl
--- n down as if the first player shot him), "lotcarl" (one lot Carl down), "open", "shut", "carls", "key" (the first
--- player's saved key: { egg, eggAt, save state }), "forget" (clear the first player's key and save it)
+-- Studio play tests: ServerStorage.LotTest (a BindableFunction, Studio only) answers "state" (the door, and every
+-- hunt: found, seconds left, done, which gold Carls stand), "gold" (n: the first player's own gold Carl n down as if
+-- they shot him), "lotcarl" (one lot Carl down), "open" (the first player's remaining gold Carls down: their key),
+-- "shut", "carls", "key" (the first player's saved key: { egg, eggAt, save state }), "forget" (clear the first
+-- player's key and save it: their gold Carls stand up), "setkey" ({ egg, eggAt }: put the first player's saved key
+-- back exactly, and save), "ghost" (uid: a stand-in hunter with that UserId, its own three gold Carls, nobody's to
+-- shoot: a second player for two-player tests, seen with the client's ViewAs), "ghostgold" (n: the stand-in's gold
+-- Carl n down), "ghostgone" (the stand-in and its Carls away)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -42,28 +56,23 @@ local Fight = require(script.Parent:WaitForChild("Fight")) :: any
 local Profiles = require(script.Parent:WaitForChild("Profiles"))
 local CalloutR = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("Callout") :: RemoteEvent
 
-local WINDOW = 90     -- seconds from the first gold Carl to get the other two
-local OPEN_FOR = 45   -- seconds the door stays up
-local MOVE_T = 4.2    -- seconds to roll up when the egg opens it (the reveal)
+local WINDOW = 90     -- seconds from your first gold Carl to get the other two
 local MOVE_FAST = 1.5 -- seconds to roll up when someone walks up to it
 local CLOSE_T = 2.0   -- seconds to roll down
 local NEAR = 11       -- studs out from the doorway (either side) that count as walking up to it
 local HOLD = 1.5      -- seconds it stays up after the last person near it has gone
 local PASS_U = 0.42   -- over this the bottom slat is high enough to walk under: the slats stop blocking
 local BACK_UP = 2.6   -- seconds a lot Carl lies down before he stands up again
-local GOLD_BACK = 4   -- seconds after the door is down before the gold Carls are back in their places
 local HP = 30         -- like Cardboard Carl's: three rifle rounds, two to the head
-local GOLD = Color3.fromRGB(242, 184, 75)
-local PIP_OFF = Color3.fromRGB(198, 192, 181) -- (pale: readable on the panel's inset from the yard's steps)
 
-type Entry = { spot: BasePart, gold: number? }
+-- one player's try at the egg (or a Studio stand-in's: p nil). who = the fighter's onlyFor (the Player itself)
+type Hunt = { p: Player?, uid: number, who: any, found: { boolean }, endsAt: number, by: number, done: boolean }
+type Entry = { spot: BasePart, gold: number?, hunt: Hunt? }
 local lot: Instance? = nil
-local carls: { [any]: Entry } = {}          -- fighter -> where he stands
-local found = { false, false, false }
-local firstAt = 0                            -- os.clock() of the first gold Carl down this try (0 = none yet)
-local finders: { [Player]: boolean } = {}
+local carls: { [any]: Entry } = {}          -- fighter -> where he stands (and, for a gold one, whose)
+local hunts: { [any]: Hunt } = {}           -- who -> their try
+local ready: { [Player]: boolean } = {}     -- their save is read: we know whether they have the key
 local state = "shut"                          -- shut | opening | open | closing
-local eggOpen = false                         -- the egg opened it: up for OPEN_FOR, then the egg resets
 local moveT = MOVE_FAST
 local holdUntil, rattleAt = 0, 0
 local u = 0                                   -- how far up the door is: 0 shut .. 1 open
@@ -75,12 +84,18 @@ local lift, top = 20.6, math.huge
 local store = Profiles.new("JankfireLot_v1", function() return { v = 1, egg = false, eggAt = 0 } end)
 local profs: { [Player]: Profiles.Profile } = {}
 local function hasKey(p: Player): boolean return p:GetAttribute("LotKey") == true end
+local startHunt: (Player) -> () -- (below: their own gold Carls, once we know about the key)
 local function joined(p: Player)
 	local prof = Profiles.load(store, "u" .. p.UserId, function() return p.Parent ~= nil end)
-	if not prof then return end
-	if not p.Parent then Profiles.release(store, prof); return end
-	profs[p] = prof
-	if prof.data.egg == true then p:SetAttribute("LotKey", true) end
+	if prof and not p.Parent then Profiles.release(store, prof); return end
+	if not p.Parent then return end
+	if prof then
+		profs[p] = prof
+		if prof.data.egg == true then p:SetAttribute("LotKey", true) end
+	end
+	-- (no save, saves off or failing: no key known, so they hunt; finding it still opens it for this visit)
+	ready[p] = true
+	if startHunt then startHunt(p) end -- (nil only if the save answered before this script's end ran: setup starts it)
 end
 -- found it: the key, saved now (and on screen at once, even if the save is slow or off)
 local function grantKey(p: Player)
@@ -94,7 +109,10 @@ local function grantKey(p: Player)
 end
 Players.PlayerAdded:Connect(function(p) task.spawn(joined, p) end)
 for _, p in Players:GetPlayers() do task.spawn(joined, p) end
+local endHunt: (any) -> () -- (below)
 Players.PlayerRemoving:Connect(function(p)
+	ready[p] = nil
+	if endHunt then endHunt(p) end
 	local prof = profs[p]
 	profs[p] = nil
 	if prof then Profiles.release(store, prof) end
@@ -111,19 +129,7 @@ local function sound(name: string)
 end
 
 local function say(p: Player, text: string, dur: number) CalloutR:FireClient(p, text, dur) end
--- a chime where a gold Carl stood (the shooter hears it, wherever the panel is)
-local function chime(at: BasePart?)
-	local lib = ReplicatedStorage:FindFirstChild("JankfireSounds")
-	local src = lib and lib:FindFirstChild("ting")
-	if not at or not src or not src:IsA("Sound") then return end
-	local s = src:Clone(); s.RollOffMaxDistance = 300; s.Parent = at; s:Play()
-	task.delay(3, function() s:Destroy() end)
-end
-local function sayTraining(text: string, dur: number)
-	for _, p in Players:GetPlayers() do
-		if p:GetAttribute("Zone") == "training" then say(p, text, dur) end
-	end
-end
+-- (a gold Carl's ding, chime and buzz are the finder's alone: their screen plays them, TrainingDoors.client)
 
 -- ---------------------------------------------------------------- the Carls
 -- a gold Carl is the cardboard man painted gold (light parts brighter, dark parts deeper)
@@ -174,10 +180,13 @@ local function makeCarl(e: Entry): any
 	hum.Parent = m
 	m:SetAttribute("Dummy", true); m:SetAttribute("Base", base)
 	if e.gold then m:SetAttribute("GoldCarl", e.gold) end
+	-- (someone's own gold Carl: only on their screen, only their shots land. set before he is in the world)
+	if e.hunt then m:SetAttribute("Owner", e.hunt.uid) end
 	m.Parent = dummyFolder()
 	local f = Rules.newFighter("dummy", if e.gold then "Gold Carl" else "Cardboard Carl", m)
 	Rules.spawn(f, os.clock())
 	f.hp = HP
+	if e.hunt then f.onlyFor = e.hunt.who end
 	Fight.byModel[m] = f
 	table.insert(Fight.all, f)
 	carls[f] = e
@@ -223,47 +232,91 @@ local function fold(f: any)
 	end)
 end
 
-local function goldStanding(i: number): boolean
-	for _, e in carls do if e.gold == i then return true end end
+local function goldStanding(h: Hunt, i: number): boolean
+	for _, e in carls do if e.hunt == h and e.gold == i then return true end end
 	return false
 end
 
--- every gold Carl who is down stands up again in his place
-local function goldBack()
+-- their gold Carls not found this try stand in their places (a finished hunt has none)
+local function goldBack(h: Hunt)
 	local spots = lot and lot:FindFirstChild("GoldSpots")
-	if not spots then return end
+	if not spots or h.done then return end
 	for i = 1, 3 do
 		local s = spots:FindFirstChild("Gold" .. i)
-		if s and s:IsA("BasePart") and not goldStanding(i) then makeCarl({ spot = s, gold = i }) end
+		if s and s:IsA("BasePart") and not h.found[i] and not goldStanding(h, i) then makeCarl({ spot = s, gold = i, hunt = h }) end
 	end
 end
+-- their gold Carls away (they left, or have the key)
+local function goldAway(h: Hunt)
+	for f, e in carls do if e.hunt == h then fold(f) end end
+end
 
--- ---------------------------------------------------------------- the panel and the door
-local function setPips()
-	local panel = lot and lot:FindFirstChild("Panel")
-	if not panel then return end
-	for _, d in panel:GetDescendants() do
-		local n = d:GetAttribute("Pip")
-		if d:IsA("BasePart") and type(n) == "number" then
-			local lit = found[n] == true or state ~= "shut"
-			d.Color = if lit then GOLD else PIP_OFF
-			d.Material = if lit then Enum.Material.Neon else Enum.Material.SmoothPlastic
-		end
+-- ---------------------------------------------------------------- the hunts: everyone's own
+local function countOf(h: Hunt): number
+	local n = 0
+	for i = 1, 3 do if h.found[i] then n += 1 end end
+	return n
+end
+-- how far they are, on their player for their screen: LotGold (bits 1, 2, 4), LotGoldBy (server time it runs out)
+local function showHunt(h: Hunt)
+	local p = h.p
+	if not p or not p.Parent then return end
+	local bits = 0
+	if not h.done then for i = 1, 3 do if h.found[i] then bits += 2 ^ (i - 1) end end end
+	p:SetAttribute("LotGold", if bits > 0 then bits else nil)
+	p:SetAttribute("LotGoldBy", if bits > 0 then h.by else nil)
+end
+local function huntOf(who: any, p: Player?, uid: number): Hunt
+	local h = hunts[who]
+	if not h then
+		h = { p = p, uid = uid, who = who, found = { false, false, false }, endsAt = 0, by = 0, done = false }
+		hunts[who] = h
 	end
+	return h :: Hunt
+end
+-- a new try: nothing found, no clock; their three stand
+local function resetHunt(h: Hunt)
+	h.found = { false, false, false }; h.endsAt = 0; h.by = 0
+	showHunt(h)
+	goldBack(h)
+end
+-- their hunt as their key says: a key holder's is done (no gold Carls), anyone else's starts (or carries on)
+startHunt = function(p: Player)
+	if not ready[p] or not p.Parent then return end
+	local h = huntOf(p, p, p.UserId)
+	local was = h.done
+	h.done = hasKey(p)
+	if h.done then goldAway(h); showHunt(h)
+	elseif was then resetHunt(h) -- (the key gone, a Studio test's forget: a fresh try, all three standing)
+	else goldBack(h); showHunt(h) end
+end
+endHunt = function(who: any)
+	local h = hunts[who]
+	if not h then return end
+	hunts[who] = nil
+	goldAway(h)
 end
 
-local shownText = ""
-local function setTimer(text: string)
-	if text == "" then text = "1:30" end -- (idle: the plate always reads LOCKED, three men, the clock's rule and a hint)
-	if text == shownText then return end
-	shownText = text
-	local panel = lot and lot:FindFirstChild("Panel")
-	local t = panel and panel:FindFirstChild("Timer")
-	local g = t and t:FindFirstChild("Gui")
-	local l = g and g:FindFirstChild("Text")
-	if l and l:IsA("TextLabel") then l.Text = text end
+-- one of their gold Carls is down (only their shot can do it: f.onlyFor)
+local function goldDown(h: Hunt, i: number)
+	if h.done or h.found[i] then return end
+	h.found[i] = true
+	if h.endsAt == 0 then h.endsAt = os.clock() + WINDOW; h.by = workspace:GetServerTimeNow() + WINDOW end
+	local n = countOf(h)
+	local p = h.p
+	if n == 3 then
+		h.done = true
+		-- the key first, so their screen has it before their count goes (TrainingDoors.client: no buzz)
+		if p then grantKey(p); say(p, "THE GARAGE IS OPEN", 2.2) end
+	elseif p then -- (every gold hit says how long is left: the clock runs from the first)
+		local left = math.max(0, h.endsAt - os.clock())
+		say(p, ("GOLD %d OF 3 · %d:%02d"):format(n, math.floor(left / 60), math.floor(left % 60)), 1.8)
+	end
+	showHunt(h)
 end
 
+-- ---------------------------------------------------------------- the door
+-- (the panel's men and clock are everyone's own now: each screen paints its player's, TrainingDoors.client)
 local function setBeacons(on: boolean)
 	local b = lot and lot:FindFirstChild("Beacons")
 	if not b then return end
@@ -358,51 +411,6 @@ local function someoneIn(part: BasePart, grow: number): boolean
 	return false
 end
 
-local function count(): number
-	local n = 0
-	for i = 1, 3 do if found[i] then n += 1 end end
-	return n
-end
-
--- the egg is done: the slow reveal, up for OPEN_FOR (if someone already had it up, it just stays up that long)
-local function open(by: Player?)
-	if eggOpen then return end
-	eggOpen = true
-	setPips(); setBeacons(true); setTimer("OPEN")
-	sayTraining("THE GARAGE IS OPEN", 2.2)
-	if by then grantKey(by) end
-	for p in finders do grantKey(p) end
-	if state == "shut" or state == "closing" then goUp(MOVE_T); sound("Open")
-	elseif state == "open" then openUntil = os.clock() + OPEN_FOR end
-end
-
-local function resetEgg()
-	found = { false, false, false }
-	firstAt = 0
-	table.clear(finders)
-	setPips()
-	setTimer("")
-end
-
-local function goldDown(i: number, k: any, spot: BasePart?)
-	if found[i] or eggOpen then return end
-	found[i] = true
-	if firstAt == 0 then firstAt = os.clock() end
-	local n = count()
-	setPips()
-	sound("Ding")
-	chime(spot)
-	local p = if k and k.kind == "player" then k.ref :: Player else nil
-	if p then
-		finders[p] = true
-		if n < 3 then -- (every gold hit says how long is left: the clock runs from the first)
-			local left = math.max(0, WINDOW - (os.clock() - firstAt))
-			say(p, ("GOLD %d OF 3 · %d:%02d"):format(n, math.floor(left / 60), math.floor(left % 60)), 1.8)
-		end
-	end
-	if n == 3 then open(p) end
-end
-
 -- ---------------------------------------------------------------- the lot coming and going (v1 has none)
 local function setup(l: Instance)
 	lot = l
@@ -420,16 +428,17 @@ local function setup(l: Instance)
 			end
 		end
 	end
-	state, u, eggOpen, passable = "shut", 0, false, nil
+	state, u, passable = "shut", 0, nil
 	placeDoor()
 	publish(0, 0)
-	resetEgg()
 	setBeacons(false)
 	local targets = l:FindFirstChild("Targets")
 	if targets then
 		for _, s in targets:GetChildren() do if s:IsA("BasePart") then makeCarl({ spot = s }) end end
 	end
-	goldBack()
+	-- everyone's own gold Carls, each try from the start (a stand-in's too)
+	for _, h in hunts do resetHunt(h) end
+	for p in ready do startHunt(p) end
 end
 
 local function teardown()
@@ -445,7 +454,7 @@ Fight.onKill(function(info: any)
 	if not e then return end
 	fold(v)
 	if e.gold then
-		goldDown(e.gold, info.k, e.spot)
+		if e.hunt then goldDown(e.hunt, e.gold) end
 	else
 		task.delay(BACK_UP, function()
 			if lot and e.spot.Parent then makeCarl(e) end
@@ -471,7 +480,7 @@ RunService.Heartbeat:Connect(function(dt: number)
 	if state == "opening" then
 		u = math.min(1, u + dt / moveT)
 		placeDoor()
-		if u >= 1 then state = "open"; openUntil = if eggOpen then now + OPEN_FOR else now end
+		if u >= 1 then state = "open"; openUntil = now end
 	elseif state == "closing" then
 		local dw = lot:FindFirstChild("Doorway") :: BasePart?
 		if dw and someoneIn(dw, 0.5) then
@@ -482,14 +491,6 @@ RunService.Heartbeat:Connect(function(dt: number)
 			if u <= 0 then
 				state = "shut"
 				setBeacons(false)
-				setPips()
-				if eggOpen then
-					eggOpen = false
-					resetEgg()
-					task.delay(GOLD_BACK, function() if lot and state == "shut" then goldBack() end end)
-				elseif firstAt == 0 then
-					setTimer("")
-				end
 			end
 		end
 	end
@@ -504,36 +505,27 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if state == "shut" or state == "closing" then
 			goUp(MOVE_FAST)
 			sound("Open")
-			setBeacons(true); setPips()
-			if not eggOpen then setTimer("OPEN") end
+			setBeacons(true)
 		end
 	elseif #yard > 0 and state == "shut" and now >= rattleAt then
 		rattleAt = now + 2.4
 		rattle()
 	end
 	if state == "open" then
-		local left = math.ceil(openUntil - now)
-		if eggOpen then setTimer(if left > 0 then ("OPEN · %d"):format(left) else "OPEN") end
 		if now >= openUntil and now >= holdUntil then
 			local dw = lot:FindFirstChild("Doorway") :: BasePart?
 			if dw and someoneIn(dw, 0.5) then
 				holdUntil = now + 1
 			else
 				state = "closing"; publish(0, CLOSE_T); sound("Close")
-				if eggOpen then setTimer("") end
 			end
 		end
 	end
-	-- the hunt's clock runs whatever the door is doing (it shows while the door is down)
-	if not eggOpen and firstAt > 0 then
-		local left = WINDOW - (now - firstAt)
-		if left <= 0 then
-			for p in finders do say(p, "TOO SLOW. THE GOLD ONES ARE BACK", 2) end
-			sound("Buzz")
-			resetEgg()
-			goldBack()
-		elseif state == "shut" then
-			setTimer(("%d:%02d"):format(math.floor(left / 60), math.floor(left % 60)))
+	-- everyone's own clock: out of time, their gold Carls stand up again (their screen buzzes)
+	for _, h in hunts do
+		if not h.done and h.endsAt > 0 and now >= h.endsAt then
+			if h.p then say(h.p, "TOO SLOW. THE GOLD ONES ARE BACK", 2) end
+			resetHunt(h)
 		end
 	end
 	-- who is on the lot
@@ -559,19 +551,38 @@ if RunService:IsStudio() then
 	local bf = Instance.new("BindableFunction")
 	bf.Name = "LotTest"
 	bf.OnInvoke = function(op: string, a: any): any
+		local function huntCarl(h: Hunt?, i: any): any
+			for f, e in carls do if h and e.hunt == h and e.gold == i then return f end end
+			return nil
+		end
 		if op == "state" then
-			return { state = state, u = u, egg = eggOpen, found = table.clone(found), firstAt = firstAt, lot = lot ~= nil, slats = #slats, timer = shownText }
-		elseif op == "gold" then
-			for f, e in carls do
-				if e.gold == a then
-					local p = Players:GetPlayers()[1]
-					local k = p and Fight.byPlayer[p]
-					local info = Rules.kill(f, k, "redline", os.clock())
-					Fight.died(info, nil)
-					return true
-				end
+			local hs = {}
+			for _, h in hunts do
+				local up = {}
+				for i = 1, 3 do if huntCarl(h, i) then table.insert(up, i) end end
+				hs[if h.p then h.p.Name else "ghost " .. h.uid] = { found = table.clone(h.found), done = h.done, standing = up,
+					left = if h.endsAt > 0 then math.max(0, h.endsAt - os.clock()) else nil }
 			end
-			return false
+			return { state = state, u = u, lot = lot ~= nil, slats = #slats, hunts = hs }
+		elseif op == "gold" or op == "ghostgold" then
+			local p = Players:GetPlayers()[1]
+			local h = if op == "gold" then (p and hunts[p]) else hunts.ghost
+			local f = huntCarl(h, a)
+			if not f then return false end
+			local k = if op == "gold" and p then Fight.byPlayer[p] else nil
+			local info = Rules.kill(f, k, "redline", os.clock())
+			Fight.died(info, nil)
+			return true
+		elseif op == "ghost" then -- a stand-in hunter: its own three, onlyFor "ghost" (no player's shot lands on them)
+			endHunt("ghost")
+			local h = huntOf("ghost", nil, if type(a) == "number" then a else 7)
+			goldBack(h)
+			local out = {}
+			for f, e in carls do if e.hunt == h then local r = Fight.root(f); out[e.gold :: number] = if r then r.Position else true end end
+			return out
+		elseif op == "ghostgone" then
+			endHunt("ghost")
+			return true
 		elseif op == "lotcarl" then -- put one lot Carl down (he stands up again after BACK_UP)
 			for f, e in carls do
 				if not e.gold then
@@ -581,7 +592,12 @@ if RunService:IsStudio() then
 				end
 			end
 			return nil
-		elseif op == "open" then open(Players:GetPlayers()[1]); return true
+		elseif op == "open" then
+			local p = Players:GetPlayers()[1]
+			local h = p and hunts[p]
+			if not h then return false end
+			for i = 1, 3 do local f = huntCarl(h, i); if f then Fight.died(Rules.kill(f, Fight.byPlayer[p], "redline", os.clock()), nil) end end
+			return h.done
 		elseif op == "shut" then if state == "open" then openUntil = 0; holdUntil = 0 end; return true
 		elseif op == "key" then
 			local p = Players:GetPlayers()[1]
@@ -593,12 +609,23 @@ if RunService:IsStudio() then
 			if not p or not prof then return false end
 			prof.data.egg = false; prof.data.eggAt = 0; prof.dirty = true
 			p:SetAttribute("LotKey", nil)
-			return Profiles.save(store, prof)
+			local ok = Profiles.save(store, prof)
+			startHunt(p)
+			return ok
+		elseif op == "setkey" then -- put the first player's saved key back exactly ({ egg, eggAt }) and save it
+			local p = Players:GetPlayers()[1]
+			local prof = p and profs[p]
+			if not p or not prof or type(a) ~= "table" then return false end
+			prof.data.egg = a.egg == true; prof.data.eggAt = if type(a.eggAt) == "number" then a.eggAt else 0; prof.dirty = true
+			p:SetAttribute("LotKey", if a.egg == true then true else nil)
+			local ok = Profiles.save(store, prof)
+			startHunt(p)
+			return ok
 		elseif op == "carls" then
 			local out = {}
 			for f, e in carls do
 				local r = Fight.root(f)
-				table.insert(out, { name = f.name, gold = e.gold, alive = f.alive, pos = if r then r.Position else nil })
+				table.insert(out, { name = f.name, gold = e.gold, owner = if e.hunt then e.hunt.uid else nil, alive = f.alive, pos = if r then r.Position else nil })
 			end
 			return out
 		end

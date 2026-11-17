@@ -9,6 +9,13 @@
 --     permanently open for you") it is up on your screen whatever the server's door does, and its slats and DoorBlock
 --     don't stop you (your own body is yours to move; the anti-cheat skips this door): straight up when you get there,
 --     rolling up with the reveal when you earn it
+--   * the panel over that door: your own hunt (owner, 17 Nov, from the friends' preview: "yellow dummies to enter
+--     outside once shot by someone dont appear for others"). TheLot gives every player their own three gold Carls (the
+--     Carls sort below keeps only yours in your world) and their own 90 s; your attributes LotGold (bits 1, 2, 4: the
+--     ones you have found) and LotGoldBy (server time your clock runs out) say how far you are. one cardboard man lit
+--     per gold Carl you found and your clock; all three and OPEN if you have the key or the door is up. a ding at the
+--     panel and a chime where he stood when you find one, the door's whirr when you find the third, a buzz when your
+--     time runs out: on your screen only
 --   * roll-up shutters: a Model with the attribute Shutter (the muster's gate home), in the training area or anywhere
 --     tagged "Shutter" (the hub's gate to here, GateKit: both sides are the same door). it rolls up while anyone is within
 --     Near studs of its Center and rolls down once they are 2 studs past that (so it can't flip-flop at the edge). only
@@ -39,7 +46,8 @@
 --     about its Hinge on your screen while you are in its Inside box, and stays open while you are within Near of its
 --     Center after (through the doorway and away); its leaf and Block don't stop you while it is open. from the other
 --     side it never opens: nobody in the hall gets down to the lot that way. a click when it opens and when it shuts
---   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
+--   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world. the back
+--     lot's gold Carls the same way: everyone has their own (TheLot)
 --   * the gun shop's keeper (ShopKeeper.server builds him): his idle (his attribute Idle: the owner's "cute sway waiting
 --     at the cases"; one clip or a few, the first most of the time) loops here, crossfading at each end, and he waves
 --     when WaveAt (server time) moves on. his gaze (owner, 17 Nov: "can my character look down I look high or at
@@ -150,6 +158,107 @@ me:GetAttributeChangedSignal("LotKey"):Connect(function()
 	-- (earned with the door in front of you: it rolls up from where it is; anywhere else it is up when you get there)
 	if me:GetAttribute("LotKey") == true and dr and dr.m:IsDescendantOf(workspace) then keyU = doorU(dr.m, workspace:GetServerTimeNow()) else keyU = nil end
 end)
+
+-- ---------------------------------------------------------------- the lot's panel: your own hunt (this screen's)
+local lotPanelStep: (now: number) -> ()
+do
+	local GOLD, PIP_OFF = Color3.fromRGB(242, 184, 75), Color3.fromRGB(198, 192, 181) -- (TheLot's old pair)
+	local pips: { { p: BasePart, n: number, lit: boolean? } } = {}
+	local timerText: TextLabel? = nil
+	local panelOf: Instance? = nil
+	local lastBits, lastKey, lastBy = 0, me:GetAttribute("LotKey") == true, 0
+	local function lotOf(): Instance?
+		local tg = trainingGround()
+		return tg and tg:FindFirstChild("Lot")
+	end
+	local function readPanel(panel: Instance?)
+		panelOf = panel
+		table.clear(pips)
+		timerText = nil
+		if not panel then return end
+		for _, d in panel:GetDescendants() do
+			local n = d:GetAttribute("Pip")
+			if d:IsA("BasePart") and type(n) == "number" then table.insert(pips, { p = d, n = n, lit = nil }) end
+		end
+		local t = panel:FindFirstChild("Timer")
+		local g = t and t:FindFirstChild("Gui")
+		local l = g and g:FindFirstChild("Text")
+		timerText = if l and l:IsA("TextLabel") then l else nil
+	end
+	-- one of the door's own sounds (in the panel's Timer: Ding, Open, Buzz), a copy on this screen alone
+	local function panelSound(name: string)
+		local lot = lotOf()
+		local panel = lot and lot:FindFirstChild("Panel")
+		local t = panel and panel:FindFirstChild("Timer")
+		local s = t and t:FindFirstChild(name)
+		if not s or not s:IsA("Sound") then return end
+		local c = s:Clone()
+		c.Parent = t
+		c.Ended:Once(function() c:Destroy() end)
+		c:Play()
+		task.delay(8, function() if c.Parent then c:Destroy() end end)
+	end
+	local function chimeAt(i: number)
+		local lot = lotOf()
+		local spots = lot and lot:FindFirstChild("GoldSpots")
+		local s = spots and spots:FindFirstChild("Gold" .. i)
+		if s and s:IsA("BasePart") then Sfx.play("ting", s.Position) end
+	end
+	-- your hunt moved on: a find, the last find (the key), or out of time
+	local function hunted()
+		local b = me:GetAttribute("LotGold")
+		local bits = if type(b) == "number" then b else 0
+		local by = me:GetAttribute("LotGoldBy")
+		if type(by) == "number" then lastBy = by end
+		local key = me:GetAttribute("LotKey") == true
+		local finished = key and not lastKey and lastBits ~= 0 -- (the third: the server takes your count away as the key comes)
+		local got = if finished then 7 else bits
+		for i = 1, 3 do
+			local m = 2 ^ (i - 1)
+			if bit32.btest(got, m) and not bit32.btest(lastBits, m) then panelSound("Ding"); chimeAt(i) end
+		end
+		if finished then panelSound("Open")
+		elseif not key and bits == 0 and lastBits ~= 0 then panelSound("Buzz") end
+		lastBits = if key then 0 else bits
+		lastKey = key
+	end
+	-- (the key and the count come together: look once both are here)
+	local function soon() task.delay(0.15, hunted) end
+	me:GetAttributeChangedSignal("LotGold"):Connect(soon)
+	me:GetAttributeChangedSignal("LotKey"):Connect(soon)
+	local inWorld = false
+	lotPanelStep = function(now: number)
+		local dr = door
+		if not dr or not dr.m:IsDescendantOf(workspace) then inWorld = false; return end
+		local panel = dr.m.Parent and dr.m.Parent:FindFirstChild("Panel")
+		if not inWorld or panel ~= panelOf then readPanel(panel) end -- (back in your world or rebuilt: paint it afresh)
+		inWorld = true
+		local key = me:GetAttribute("LotKey") == true
+		local all = key or doorU(dr.m, now) > 0.02
+		local b = me:GetAttribute("LotGold")
+		local bits = if type(b) == "number" then b else 0
+		for _, q in pips do
+			local lit = all or bit32.btest(bits, 2 ^ (q.n - 1))
+			if q.lit ~= lit and q.p.Parent then
+				q.lit = lit
+				q.p.Color = if lit then GOLD else PIP_OFF
+				q.p.Material = if lit then Enum.Material.Neon else Enum.Material.SmoothPlastic
+			end
+		end
+		local word = "1:30" -- (idle: the plate reads LOCKED, three men, the clock's rule and a hint)
+		if all then
+			word = "OPEN"
+		else
+			local by = me:GetAttribute("LotGoldBy")
+			if bits ~= 0 and type(by) == "number" then
+				local left = math.max(0, math.floor(by - now))
+				word = ("%d:%02d"):format(left // 60, left % 60)
+			end
+		end
+		local tl = timerText
+		if tl and tl.Text ~= word then tl.Text = word end
+	end
+end
 
 -- ---------------------------------------------------------------- shutters (on screen only)
 type Shutter = { r: Roller, center: Vector3, near: number, lin: number, goal: number, lastNear: number, shown: boolean }
@@ -814,6 +923,10 @@ RunService.RenderStepped:Connect(function(dt: number)
 			doorMoving = moving or shaking
 			keyShown = nil
 		end
+	end
+	do -- the panel over it: your own hunt
+		local okP, errP = pcall(lotPanelStep, now)
+		if not okP then warn("[TrainingDoors] lot panel: " .. tostring(errP)) end
 	end
 	-- shutters: open inside Near, shut once everyone is SHUTTER_SLACK past it (and SHUTTER_LINGER after); how far up it
 	-- is moves toward that every frame
