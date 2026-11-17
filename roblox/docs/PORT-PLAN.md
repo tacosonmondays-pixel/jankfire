@@ -1269,6 +1269,58 @@ The owner: "can the laser fence be on both side of the hub and same with the gar
   - `docs/hub/hub_queue_pads_open_dim_v664.jpg` (the open sides dimmer, from the spawn).
   - `docs/hub/hub_gate_black_676.jpg` (the open doorway black again).
 
+## 34. THE GUT: a new arena round the heart tower, with a subway and the train boss passing by, 17 November 2026 (place versions 694 to 697)
+
+The owner: "Can we have a map based on the gut district? We have this awesome heart tower build it would be a shame to not use it!! Maybe it can have a lower part that's a subway and the big train boss can pass by as an Easter egg".
+
+**Content rules first.** The web Gut is body horror (flesh, organs, a bone stair with skulls, a train full of bodies), and the account already has one warning. So this keeps the district's feel and silhouettes and nothing else.
+- Soft pinks, corals and creams. Rounded bubbly buildings with round windows. Smooth pale arches over the lanes (the rib arches as architecture). A soft covered tube street. A warm rose sky with a pink haze.
+- No flesh, organs, blood, teeth, bone, bodies or eyes. No text, no logos, no coloured marks on any floor you fight on.
+
+**The heart tower** (`tools/roblox/gut_heart.py`, numbers in `gut_heart_dims.py`): the web model's silhouette, made a clean sculpture.
+- An ivory column with a pale spiral stair round it, with a rail and balusters. A lattice of rods.
+- Four smooth legs holding a walkway balcony 21 studs up. You can climb to the balcony; above a gate the stair is look only.
+- A rose-gold jewel-setting cradle holds the heart.
+- Three takes on the heart (`docs/maps/gut_heart_takes.jpg`, `gut_takes.py`):
+  - A candy: a puffy glossy coral heart with cream piping.
+  - B gem: see-through faceted ruby glass with a neon heart inside.
+  - C lantern: glowing seams and a rose-gold hoop.
+- All three are in the kit (`gu_heartA/B/C`); the build keeps one (attribute `Heart`, A for now).
+- `GutLife.client` makes it beat on one shared clock (0.72 beats a second: a lub and a dub, a 6% swell, its light flares) and turn once every 48 s.
+
+**The layout** (`tools/roblox/gut_layout.py`; plan `docs/maps/gut_layout_plan.jpg`, drawn from the hit boxes by `gut_plan.py`). 300 x 208 studs, mirror-symmetric, site (0, 0, 66000).
+- **Halls:** attackers spawn in the west hall, defenders in the east. Each hall has two doors with screens in front, so no line runs hall to hall.
+- **Three lanes:** the covered Tube (north), the Approach (middle, a kiosk dome on the centre line), the open Avenue (south). Blocks with offset alleys split them.
+- **The Plaza** holds the tower, with a dome pavilion in the north court and a gazebo in the south court.
+- **The subway** at y -30 is one long platform under the south half. There are stairs up into each hall and two up to the Plaza.
+- Everything that is not walkable is solid to y 150 (no roofs to stand on), with a lid over the arena.
+- **Turned hit boxes:** WebArena and arenakit now take turned hit boxes (`solidR`: the spiral stair, the balcony, round posts). The flag "c" marks a box that stops you but takes no shots (rails).
+
+**The train** (the Easter egg):
+- **Its look:** the boss's ☺ station-sign mask: an off-white enamel disc, two dark oval eyes, a smile. Its hauling arms are plain dark cables. Behind it, three commuter wagons with dark windows.
+- **Where it runs:** on its own track behind a full-height glass screen. It never collides or takes shots, so it can never decide a fight.
+- **When:** `GutTrain.server` picks the times, first 12 to 30 s into a match, then every 58 to 103 s. It writes `TrainAt` and `TrainDir` on the arena (and on copies).
+- **Each run on screen** (`GutLife.client`): 6 s of warning (the signals and the lamps along the glass flash red and amber, the lights flicker, a rumble grows), then it passes at 120 studs a second.
+- **Sounds:** recordings, set as the arena's attributes `RumbleSound` (ProSoundEffects "Hollow Rumble 2", 9112795571) and `TrainSound` (5870203641, a subway express passing).
+- **Its light:** `HubLook.looks.gut` with its own sky. HubLook can now give a look its own Sky (`H.ownSky`): `Lighting.SkyParked.GutSky`, three plain gradient faces from `gut_sky.py`. The first, redder take flooded the arena with red; the second is a dusty rose. The sun is low from the south (latitude 92, 21 degrees up), across the halls' line.
+
+**Checks** (place version 696):
+- `W.check("Gut")`: 639 hit boxes built, every spawn and team spawn on a floor, 0 of 128 team spawn lines open (the door screens and one spawn moved), no kit part solid.
+- ZFight: one 20 sq stud contact on the platform's edge, fixed in the kit.
+- In Play:
+  - The train run measured on the client: it sets off on time, passes the station when `TrainAt` says, and parks. The signals flash, the lamps flicker, and the heart turns and swells.
+  - A real 1v1 started on the Gut: the attacker spawned in the west hall facing east, and the client switched to GutSky and the gut light.
+- **Cost:** 271k triangles in 105 meshes and 24 models; 822 parts with the hit boxes.
+- **Photos:** `docs/maps/gut_heart_takes.jpg`, `gut_layout_plan.jpg`, `gut_studio_v696.jpg`.
+
+**The rotation:** `ArenaPool` = `RooftopV2,RooftopV3,Crate,Platform,Bazaar,Gut`.
+
+**Not done / not tested:**
+- A real 2-player match.
+- The train sound's loudness in a live run (the passing sound is a Creator Store recording, not measured).
+- Phones.
+- The owner's pick of heart (A is in for now).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

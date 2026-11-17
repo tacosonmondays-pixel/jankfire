@@ -236,6 +236,25 @@ H.looks.bazaar = {
 } :: Look
 H.plainSky.bazaar = true
 H.byArena.Bazaar = "bazaar"
+-- THE GUT (ServerStorage.PolishBackup.WebArena; tools/roblox/gut_models.py): a soft pink district round the heart tower
+-- (17 Nov 2026: "Can we have a map based on the gut district?"). A warm red sky with a pink haze that swallows the far
+-- domes; a low warm sun from the south, across the halls' line, so neither team starts looking into it. The subway
+-- below has its own lamps
+H.looks.gut = {
+	Lighting = {
+		Ambient = Color3.fromRGB(138, 126, 126), OutdoorAmbient = Color3.fromRGB(160, 140, 138), Brightness = 2.2,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.25, EnvironmentSpecularScale = 0.3,
+		ClockTime = 12.5, GeographicLatitude = 92, ColorShift_Top = Color3.fromRGB(255, 222, 205),
+		FogColor = Color3.fromRGB(214, 140, 140), FogStart = 300, FogEnd = 1800,
+	},
+	Atmosphere = { Density = 0.38, Offset = 0.1, Haze = 2.0, Glare = 0.1, Color = Color3.fromRGB(242, 178, 172), Decay = Color3.fromRGB(176, 96, 100) },
+	Bloom = { Intensity = 0.32, Size = 24, Threshold = 2.0 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.1, Saturation = -0.08, TintColor = Color3.fromRGB(255, 246, 244) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.ownSky = {} :: { [string]: string }    -- a look with its own Sky: the Sky's name in Lighting.SkyParked (attribute OwnSky)
+H.ownSky.gut = "GutSky"                    -- (plain gradient faces, tools/roblox/gut_sky.py)
+H.byArena.Gut = "gut"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)
@@ -281,27 +300,36 @@ local function merged(look: Look?): Look
 end
 -- the saved Sky is put away in a folder under Lighting (a Sky only counts as Lighting's own child), never in this
 -- script: an edit-time preview may run from a throwaway copy of the module, and the Sky must outlive it
-local function sky(plain: boolean)
-	local park: Instance? = Lighting:FindFirstChild("SkyParked")
-	local s = Lighting:FindFirstChildOfClass("Sky") or (park and park:FindFirstChildOfClass("Sky")) or script:FindFirstChildOfClass("Sky")
-	if not s then return end
-	if plain then
-		if not park then
-			local f = Instance.new("Folder")
-			f.Name = "SkyParked"; f.Parent = Lighting
-			park = f
-		end
-		s.Parent = park
-	else
-		s.Parent = Lighting
+-- a look may bring its own Sky instead (H.ownSky: a Sky with the attribute OwnSky, kept in the same folder until its
+-- look is on)
+local function savedSky(within: Instance?): Sky?
+	if not within then return nil end
+	for _, c in within:GetChildren() do
+		if c:IsA("Sky") and not c:GetAttribute("OwnSky") then return c end
 	end
+	return nil
+end
+local function sky(plain: boolean, own: string?)
+	local park: Instance? = Lighting:FindFirstChild("SkyParked")
+	if (plain or own) and not park then
+		local f = Instance.new("Folder")
+		f.Name = "SkyParked"; f.Parent = Lighting
+		park = f
+	end
+	for _, c in Lighting:GetChildren() do
+		if c:IsA("Sky") and c:GetAttribute("OwnSky") and c.Name ~= own and park then c.Parent = park end
+	end
+	local s = savedSky(Lighting) or savedSky(park) or savedSky(script)
+	local mine = if own and park then park:FindFirstChild(own) else nil
+	if s then s.Parent = if (plain or mine) and park then park else Lighting end
+	if mine then mine.Parent = Lighting end
 end
 
 -- name = "hub" / "training" / "playground" (or any other key of H.looks), or nil for the saved (match) look. t = seconds to blend (nil or 0 snaps)
 function H.set(name: string?, t: number?)
 	if not saved then saved = capture() end
 	local to = merged(if name then H.looks[name] else nil)
-	sky(name ~= nil and H.plainSky[name] == true)
+	sky(name ~= nil and H.plainSky[name] == true, if name then H.ownSky[name] else nil)
 	for objName, props in to do
 		local inst = target(objName)
 		if not inst then continue end
@@ -330,7 +358,7 @@ function H.preview(name: any): string
 			local inst = target(objName)
 			if inst then for p, v in props do (inst :: any)[p] = v end end
 		end
-		sky(H.plainSky[name] == true)
+		sky(H.plainSky[name] == true, H.ownSky[name])
 		return name .. " look ON (preview). run preview(false) before saving"
 	end
 	if not parked then return "not previewing" end

@@ -24,7 +24,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
-W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791 } :: { [string]: number }
+W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839 } :: { [string]: number }
 
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
@@ -147,6 +147,23 @@ function W.build(name: string): string
 		p.Parent = solid
 		if i % 200 == 0 then task.wait() end
 	end
+	-- turned hit boxes (a layout may have them: the Gut's spiral stair, its balcony, round posts). flags "c": the box
+	-- stops you but takes no shots (rails you can shoot through)
+	for i, b in (L.solidR or {}) do
+		local mt = L.mats[b[8]]
+		local p = Instance.new("Part")
+		p.Name = "Solid"
+		p.Anchored = true; p.CanCollide = true; p.CanTouch = true; p.CastShadow = false
+		p.CanQuery = not string.find(b[9] or "", "c", 1, true)
+		p.Transparency = 1
+		p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Material = material(mt[1]); p.Color = hex(mt[2])
+		p.Size = V3(b[4], b[5], b[6])
+		p.CFrame = CF(O + V3(b[1], b[2], b[3])) * CFrame.Angles(0, math.rad(b[7]), 0)
+		p:SetAttribute("Mat", mt[3])
+		p.Parent = solid
+		if i % 200 == 0 then task.wait() end
+	end
 	for _, b in L.pads do
 		local p = Instance.new("Part")
 		p.Name = "pad"
@@ -213,7 +230,7 @@ function W.build(name: string): string
 	end
 	if nm == 0 then return "built " .. name .. " WITHOUT its kit (run W.import first)" end
 	return ("built %s at %s: %d kit models, %d hit boxes, %d pads, %d spawns, %d team spawns, %d water, %d lights, %d backdrop parts"):format(
-		name, tostring(O), nm, #L.solid, #L.pads, #L.spawns, #team:GetChildren(), #L.water, #L.lights, nb)
+		name, tostring(O), nm, #L.solid + #(L.solidR or {}), #L.pads, #L.spawns, #team:GetChildren(), #L.water, #L.lights, nb)
 end
 
 -- ---------------------------------------------------------------- checks
@@ -258,9 +275,13 @@ function W.check(name: string): string
 		end
 	end
 	local used = {}
+	local want = {}
 	for _, b in L.solid do
-		local c = V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2)
-		local size = V3(b[4] - b[1], b[5] - b[2], b[6] - b[3])
+		table.insert(want, { V3((b[1] + b[4]) / 2, (b[2] + b[5]) / 2, (b[3] + b[6]) / 2), V3(b[4] - b[1], b[5] - b[2], b[6] - b[3]) })
+	end
+	for _, b in (L.solidR or {}) do table.insert(want, { V3(b[1], b[2], b[3]), V3(b[4], b[5], b[6]) }) end
+	for _, w in want do
+		local c, size = w[1], w[2]
 		local found = false
 		for dx = -1, 1 do for dy = -1, 1 do for dz = -1, 1 do
 			if found then continue end
@@ -270,7 +291,7 @@ function W.check(name: string): string
 		end end end
 		if not found then bad += 1 end
 	end
-	table.insert(out, ("hit boxes: %d in the layout, %d built, %d missing"):format(#L.solid, #have, bad))
+	table.insert(out, ("hit boxes: %d in the layout, %d built, %d missing"):format(#want, #have, bad))
 	-- 2. every spawn stands on something solid within a stud under it
 	local rp = RaycastParams.new()
 	rp.FilterType = Enum.RaycastFilterType.Include
