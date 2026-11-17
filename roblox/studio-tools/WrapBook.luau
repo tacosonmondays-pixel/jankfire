@@ -77,6 +77,7 @@ local BOOK = {
 	tiger = { color = 81637732511452, rough = 79006320467584, emissive = 1, tint = "ffffff", finish = "", second = "737373", dark = "3c2a1e", accent = "d99a6b" },
 	titanium = { color = 94963598136207, rough = 96708554609492, metal = 95597645833170, emissive = 1, tint = "ffffff", finish = "SHINY", second = "636363", dark = "313147", accent = "4084eb" },
 	tokyo = { color = 119725128727905, rough = 86227588438345, emit = 97061756502056, emissive = 4.5, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "14131e", accent = "d5d5d9" },
+	triangulum = { color = 104795096778398, rough = 92546020020344, metal = 104519890010297, emit = 76013094530685, decal = 76642655906828, hole = 128820546348773, swatch = 77205152958807, emissive = 2.0, tint = "ffffff", finish = "SHINY", second = "737373", dark = "0f1120", accent = "ffe7a6", style = "mark", aspect = 2, stars = "150,292,67;876,151,74;842,398,52" },
 	urban = { color = 86689985934818, rough = 122441279549464, emissive = 1, tint = "ffffff", finish = "", second = "6a6a6a", dark = "31333b", accent = "bbbed9" },
 	urushi = { color = 107329828977429, rough = 133383085133211, metal = 138620902417082, emissive = 1, tint = "ffffff", finish = "SHINY", second = "737373", dark = "1f1112", accent = "d9aa5e" },
 	vapor = { color = 75388371446436, rough = 86227588438345, emit = 111791090444284, emissive = 1.1, tint = "ffffff", finish = "GLOWS", second = "737373", dark = "28152e", accent = "f68e7d" },
@@ -107,6 +108,9 @@ for wid, b in BOOK do
 	-- left face of the gun's biggest painted piece (docs/WRAP-TEXTURES.md, "One black hole")
 	sa:SetAttribute("Decal", if b.decal then id(b.decal) else nil)
 	sa:SetAttribute("DecalGlow", if b.hole then id(b.hole) else nil)
+	sa:SetAttribute("DecalStyle", b.style) -- ("hole": Black Hole's spin, ripple and motes; "mark": still, its stars breathe)
+	sa:SetAttribute("DecalAspect", b.aspect) -- (the picture's width over its height; 1 when unset)
+	sa:SetAttribute("DecalStars", b.stars) -- ("x,y,r;..." in the glow picture's pixels: one label a star)
 	sa:SetAttribute("Finish", if b.finish ~= "" then b.finish else nil) -- and this word (GLOWS / SHINY) in its corner
 	-- the wrap as a palette (docs/WRAP-TEXTURES.md, "A wrap is a palette"): Second tints the picture down to a dark tone
 	-- of itself for the other half of the gun, Dark is that tone as one colour (the chip's band), Accent goes on the

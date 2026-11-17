@@ -306,5 +306,8 @@ wrap("hex", "Neon Hex", "legendary", { "0a1a2a", "4fd8ff" }, "speck", nil, nil, 
 -- and the shop read vip); it comes with VIP, on every gun at once. The Ducky skin set's palette (yellow, bill orange)
 wrap("ducky", "Ducky", "legendary", { "d6bc48", "c06a2e" }, "speck", nil, 0.06)
 Roster.wrapById.ducky.vip = true
+-- the VIP daily reward only (17 Nov 2026, the Triangulum trio): VipDailyData.EXCLUSIVE is its daily-only mark, so the
+-- containers, the shop and the VIP pack skip it. Never vip = true here (the VIP pack would give it to every VIP)
+wrap("triangulum", "Triangulum", "legendary", { "2a355f", "bf9c55", "ffe7a6" }, "speck", nil, nil, nil, { 3 })
 
 return Roster

@@ -412,10 +412,20 @@ end
 -- hand (the stock: out of first person's view) or low (the mag: at the screen's bottom edge). It is as big as that face
 -- is tall and slides to the face's back end, nearest the eye (on the rifle: the receiver, just above the hand).
 -- client/WrapAnim turns the spiral inward, breathes the ring and sends a faint ripple down into the hole.
--- docs/WRAP-TEXTURES.md, "One black hole"
+-- docs/WRAP-TEXTURES.md, "One black hole". The picture's attribute DecalStyle picks the kind: "hole" (the default:
+-- Black Hole's spin, ripple and motes) or "mark" (Triangulum, 17 Nov: still; DecalAspect makes the picture wider than
+-- tall, and DecalStars gives each star of the glow picture its own label so WrapAnim breathes them one after another).
+-- A skin that carries its own mark refuses one (NO_HERO, or the model's attribute NoHeroDecal): no two marks on a gun
 local HOLE_PPS = 256 -- SurfaceGui pixels per stud
 WeaponModels.HOLE_PPS = HOLE_PPS
+local NO_HERO: { [string]: boolean } = { sniper_triangulum = true } -- (the Triangulum Sniper wears the mark already)
 local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAppearance)
+	local sk = m:GetAttribute("Skin")
+	if (type(sk) == "string" and NO_HERO[sk]) or m:GetAttribute("NoHeroDecal") then return end
+	local style = pic:GetAttribute("DecalStyle")
+	if type(style) ~= "string" then style = "hole" end
+	local asp = pic:GetAttribute("DecalAspect")
+	local aspect = if type(asp) == "number" and asp > 0 then asp else 1
 	local left, back, up = -ref.RightVector, -ref.LookVector, ref.UpVector
 	local grip = m:FindFirstChild("Grip", true)
 	local gp = if grip and grip:IsA("Attachment") then grip.WorldPosition else ref.Position
@@ -437,14 +447,20 @@ local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAp
 		end
 	end
 	if not best then return end
-	local d = math.min(bestW, bestH) * HOLE_PPS
+	local hS = math.min(bestH, bestW / aspect) -- (the picture's height in studs; its width is aspect times that)
+	local d = hS * HOLE_PPS
 	-- along a side face the canvas's +x runs to the right of someone facing it (-normal x the part's up: on Left, the
 	-- part's +Z); slide the hole that way or back, whichever is the gun's back, as far as it fits
 	local x = 0.5
 	local side = bestFace ~= Enum.NormalId.Top and bestFace ~= Enum.NormalId.Bottom
-	if side and bestW > math.min(bestW, bestH) * 1.15 then
-		local mx = math.min(bestW, bestH) * 0.55 / bestW
+	if side and bestW > hS * aspect * 1.15 then
+		local mx = hS * aspect * 0.55 / bestW
 		x = if (-bestN):Cross(best.CFrame.UpVector):Dot(back) > 0 then 1 - mx else mx
+	end
+	local stars = {}
+	local ss = pic:GetAttribute("DecalStars")
+	if style == "mark" and type(ss) == "string" then
+		for sx, sy, sr in string.gmatch(ss, "(%d+),(%d+),(%d+)") do table.insert(stars, { tonumber(sx), tonumber(sy), tonumber(sr) }) end
 	end
 	for _, spec in { { "WrapHole", pic:GetAttribute("Decal"), false }, { "WrapHoleGlow", pic:GetAttribute("DecalGlow"), true } } do
 		if type(spec[2]) ~= "string" then continue end
@@ -458,16 +474,39 @@ local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAp
 		g.ZOffset = if spec[3] then 0.02 else 0.01
 		g.ClipsDescendants = true
 		g:SetAttribute("D", d)
-		local im = Instance.new("ImageLabel")
-		im.Name = "Pic"
-		im.BackgroundTransparency = 1
-		im.Image = spec[2] :: string
-		im.AnchorPoint = Vector2.new(0.5, 0.5)
-		im.Position = UDim2.fromScale(x, 0.5)
-		im.Size = UDim2.fromOffset(d, d)
-		im.ZIndex = 2
-		im.Parent = g
-		if spec[3] then
+		g:SetAttribute("Style", style)
+		if spec[3] and #stars > 0 then
+			-- one label a star (the glow picture is 1024 px wide): its square of the picture, at its place on the face
+			local pw, ph = 1024, math.floor(1024 / aspect + 0.5)
+			for i, st in stars do
+				local R = math.floor(st[3] * 1.6)
+				local ox, oy = math.max(0, st[1] - R), math.max(0, st[2] - R)
+				local ex, ey = math.min(pw, st[1] + R), math.min(ph, st[2] + R)
+				local im = Instance.new("ImageLabel")
+				im.Name = "Star"
+				im.BackgroundTransparency = 1
+				im.Image = spec[2] :: string
+				im.ImageRectOffset = Vector2.new(ox, oy)
+				im.ImageRectSize = Vector2.new(ex - ox, ey - oy)
+				im.AnchorPoint = Vector2.new(0, 0)
+				im.Position = UDim2.new(x, (ox / pw - 0.5) * d * aspect, 0.5, (oy / ph - 0.5) * d)
+				im.Size = UDim2.fromOffset((ex - ox) / pw * d * aspect, (ey - oy) / ph * d)
+				im.ZIndex = 2
+				im:SetAttribute("I", i)
+				im.Parent = g
+			end
+		else
+			local im = Instance.new("ImageLabel")
+			im.Name = "Pic"
+			im.BackgroundTransparency = 1
+			im.Image = spec[2] :: string
+			im.AnchorPoint = Vector2.new(0.5, 0.5)
+			im.Position = UDim2.fromScale(x, 0.5)
+			im.Size = UDim2.fromOffset(d * aspect, d)
+			im.ZIndex = 2
+			im.Parent = g
+		end
+		if spec[3] and style == "hole" then
 			-- the ripple falling in (WrapAnim shrinks it from the rim to the ring and fades it in and out)
 			local pu = Instance.new("Frame")
 			pu.Name = "Pulse"

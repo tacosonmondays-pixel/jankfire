@@ -700,6 +700,24 @@
   "emissive": 4.5,
   "tint": "ffffff"
  },
+ "triangulum": {
+  "maps": {
+   "color": "triangulum_color.png",
+   "normal": null,
+   "rough": "triangulum_rough.png",
+   "metal": "triangulum_metal.png",
+   "emit": "triangulum_emit.png",
+   "decal": "triangulum_decal.png",
+   "hole": "triangulum_glow.png",
+   "swatch": "triangulum_chip.png"
+  },
+  "emissive": 2.0,
+  "tint": "ffffff",
+  "accent": "ffe7a6",
+  "decal_style": "mark",
+  "decal_aspect": 2,
+  "decal_stars": "150,292,67;876,151,74;842,398,52"
+ },
  "urban": {
   "maps": {
    "color": "urban_color.png",

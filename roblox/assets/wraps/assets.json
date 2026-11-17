@@ -1394,5 +1394,33 @@
  "e627a541458204d3dd76e0db319003832e7ca7a9": {
   "file": "sakura_normal.png",
   "id": 94216273200902
+ },
+ "8f66ab5c70d5c1563573c3f49e3e30dd6d41b479": {
+  "file": "triangulum_color.png",
+  "id": 104795096778398
+ },
+ "9525aed240899f6ca7cc93f39cb118cce872da46": {
+  "file": "triangulum_emit.png",
+  "id": 76013094530685
+ },
+ "7b9bf473b1308d373225b2acbab6564fff518c41": {
+  "file": "triangulum_metal.png",
+  "id": 104519890010297
+ },
+ "7d5310a5b1ca116b9c44b4a41a05a4f27c845184": {
+  "file": "triangulum_rough.png",
+  "id": 92546020020344
+ },
+ "f089ede3b22ca852470e464919cab54db38f0bcb": {
+  "file": "triangulum_decal.png",
+  "id": 76642655906828
+ },
+ "a53fedb99679b34e420ed2cf82dbc4a824853e50": {
+  "file": "triangulum_glow.png",
+  "id": 128820546348773
+ },
+ "fb906449f8096b0227f19e8055e6998643107aec": {
+  "file": "triangulum_chip.png",
+  "id": 77205152958807
  }
 }

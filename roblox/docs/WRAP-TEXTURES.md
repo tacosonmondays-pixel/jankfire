@@ -287,6 +287,32 @@ height maps on some."
   bubbles weren't in the frame when it was taken. Near the eye an ember is a soft orange blob a few centimetres
   across; if that reads too big, halve the sizes for first person in `rebuild` (`fp`).
 
+## Triangulum (VIP daily reward, 17 Nov 2026)
+
+One of the VIP daily reward's exclusive trio (with the Triangulum Sniper skin and the Star Tricorne hat); brief and
+concept sheet from the skin concepts session (notes folder: `triangulum-vip-brief.md`, `triangulum-vip-trio.jpg`), its
+draft design folded into `wrap_textures.py` (`triangulum`, `tri_*` helpers). Roster row `triangulum`, legendary, and
+NOT `vip = true`: the VIP pack hands out everything vip; `VipDailyData.EXCLUSIVE` is its daily-only mark, and the
+containers, the shop and the pack skip it.
+
+- **The tile:** a star chart of the night sky. Deep midnight with a slow, faint cloudiness, faint curved gold chart
+  lines running along the gun and one dashed gold arc, about 800 round dot stars, and three invented constellation
+  figures a tile (four-point stars joined by thin gold lines that stop short of each star, a thin gold ring round
+  each figure's brightest star). The draft's upright chart lines are off (`TRI_UPRIGHT`): at first-person scale the
+  two ways together read as a grid of cells; the lines along the gun alone read as a chart.
+- **The mark:** the Triangulum constellation, a long thin triangle of three stars, ONCE per gun through
+  `WeaponModels.hole`, apex toward the muzzle. Its own kind of hero decal (`DecalStyle` "mark"): still (no spin,
+  ripple or motes); a 2:1 picture (`DecalAspect`) so it runs about 15 cm along a receiver a third of a stud tall; the
+  lit decal is the gold lines over a soft midnight calm; the glow picture's three stars each get their own label
+  (`DecalStars`, cut from the one image with `ImageRectOffset`), so WrapAnim breathes them one after another.
+- **Not on the Triangulum Sniper:** the skin carries the mark already, so `hole` refuses a hero decal on a gun whose
+  `Skin` is in `NO_HERO` (`sniper_triangulum`) or that has the attribute `NoHeroDecal`.
+- Its accent (the gun's glow pieces) is starlight `ffe7a6`.
+- In hand (place version 564, `wrap-textures/triangulum-sheet.jpg`, frames and the chip in `wrap-textures/triangulum/`):
+  on the rifle the mark sits on the receiver above the hand, apex forward, its stars blooming; the midnight reads blue
+  in the hall. A gun given the Skin `sniper_triangulum` got no mark (0 SurfaceGuis, 2 without it). The Triangulum
+  Sniper skin wasn't in the place yet (only the wrap is under ReplicatedStorage), so it is untested on the real skin.
+
 ## Redrawing or adding a wrap
 
 ```bash

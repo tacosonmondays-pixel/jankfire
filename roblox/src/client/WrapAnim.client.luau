@@ -107,7 +107,18 @@ RunService.RenderStepped:Connect(function()
 		local show = p:IsA("BasePart") and p.LocalTransparencyModifier < 0.5 and p.Transparency < 0.99
 		if g.Enabled ~= show then g.Enabled = show end
 		if not show then continue end
-		if g.Name == "WrapHole" then
+		if g:GetAttribute("Style") == "mark" then
+			-- a mark (Triangulum) holds still; its stars breathe slowly, one after another (each its own label)
+			if g.Name ~= "WrapHole" then
+				for _, st in g:GetChildren() do
+					local i = st:GetAttribute("I")
+					if st:IsA("ImageLabel") and type(i) == "number" then
+						local f = 0.6 + 0.4 * (0.5 + 0.5 * math.sin(TAU * (t / 4.5 - i / 3))) ^ 2
+						st.ImageColor3 = Color3.new(f, f, f)
+					end
+				end
+			end
+		elseif g.Name == "WrapHole" then
 			local pic = g:FindFirstChild("Pic")
 			if pic and pic:IsA("ImageLabel") then pic.Rotation = -(t * HOLE_TURN) % 360 end
 		else

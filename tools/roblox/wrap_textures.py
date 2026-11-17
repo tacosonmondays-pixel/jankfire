@@ -2228,6 +2228,161 @@ def ducky(t: Tex):
     return {'emissive': 1.2, 'tint': 'ffffff', 'accent': 'e0883a'}   # (the gun's glow pieces take the bills' orange)
 
 
+
+# ---------------------------------------------------------------------------------------------------------- TRIANGULUM
+# Triangulum (VIP daily reward only, 17 Nov 2026; the skin concepts session's brief triangulum-vip-brief.md and its
+# draft tri_wrap.py, folded in here): a star chart of the night sky, and the Triangulum mark (the real constellation,
+# a long thin triangle of three stars) laid ONCE per gun like Black Hole's hole. NOT vip = true: the VIP pack would hand
+# it to every VIP; the reward table's VipDailyData.EXCLUSIVE is its daily-only mark.
+TRI_GOLD = 'c4a25a'
+TRI_GOLD_LIGHT = 'f1d996'
+
+
+def tri_curve(t, axis, c0, amp, phase, w, periods=1):
+    """a soft sine line across the whole tile (it wraps): axis 'h' = y = c0 + amp sin(...x), 'v' = x = c0 + ..."""
+    n = t.n
+    A, B = (t.X, t.Y) if axis == 'h' else (t.Y, t.X)
+    k = TAU * periods / n
+    f = c0 + amp * np.sin(k * A + phase)
+    d = np.abs(((B - f) + n / 2) % n - n / 2) / np.sqrt(1 + (amp * k * np.cos(k * A + phase)) ** 2)
+    return np.clip(0.5 + (w / 2 - d), 0, 1), A
+
+
+def tri_line(t, a, b, w, gap_a, gap_b, amp=0.6):
+    """a thin gold line from star a to star b, stopping short of both (star-chart style)"""
+    ax, ay = a; bx, by = b
+    L = math.hypot(bx - ax, by - ay)
+    ux, uy = (bx - ax) / L, (by - ay) / L
+    p, q = (ax + ux * gap_a, ay + uy * gap_a), (bx - ux * gap_b, by - uy * gap_b)
+    X, Y, idx = t.box(min(p[0], q[0]) - 6, min(p[1], q[1]) - 6, max(p[0], q[0]) + 6, max(p[1], q[1]) + 6)
+    a_ = cover(sd_segment(p[0], p[1], q[0], q[1], w / 2)(X, Y))
+    t.paint(idx, a_ * amp, TRI_GOLD, metal=0.9 * a_, rough=0.3)
+
+
+def tri_star(t, S, x, y, r, rot=0.0):
+    """a constellation star: a four-point star of light with a soft glow round it"""
+    X, Y, idx = t.box(x - r - 3, y - r - 3, x + r + 3, y + r + 3)
+    a = cover(sd_sparkle(x, y, r, w=0.2, rot=rot)(X, Y))
+    t.paint(idx, a, 'fff4d6', emit=a)
+    S.dot(x, y, r * 0.18, 0.0, 'ffe7b0', glow=0.35, glow_r=r * 0.55)
+
+
+TRI_FIGURES = {
+    # (stars as (x, y, size 0..1), edges): invented figures, nothing letter-like: a dipper, a kite with a tail, a chain
+    'dipper': ([(0, 0, .7), (78, -12, 1), (88, 52, .6), (8, 62, .5), (150, -40, .8), (212, -36, .55), (262, -70, .9)],
+               [(0, 1), (1, 2), (2, 3), (3, 0), (1, 4), (4, 5), (5, 6)]),
+    'kite': ([(0, 0, .6), (64, -54, 1), (128, -4, .7), (66, 40, .55), (196, 30, .5), (262, 4, .75)],
+             [(0, 1), (1, 2), (2, 3), (3, 0), (2, 4), (4, 5)]),
+    'chain': ([(0, 0, .8), (70, 22, .5), (150, 18, 1), (214, 52, .6), (296, 50, .7)],
+              [(0, 1), (1, 2), (2, 3), (3, 4)]),
+}
+TRI_GRATICULE = 0.14   # the chart lines' strength (the brief: fade, or drop the upright ones, if they read as cells)
+TRI_UPRIGHT = False    # the upright chart lines: off (17 Nov: at first-person scale the two ways together read as a grid of cells)
+
+
+@design('triangulum')
+def triangulum(t: Tex):
+    """Triangulum: a star chart of the night sky. Deep midnight with a slow faint cloudiness; a faint gold graticule
+       (curved chart lines, four each way) and one dashed gold arc; about 800 round dot stars (background stars are
+       never pointed); three invented constellation figures a tile, four-point stars joined by thin gold lines that stop
+       short of each star, a thin gold ring round each figure's brightest star, as old charts draw them. No figure reads
+       as a letter or digit"""
+    n, U, V = t.n, t.U, t.V
+    cl = smoothstep(0.25, 0.85, FBM([1, 2, 4], 901, 0.5)(U, V))
+    t.rgb[:] = mix('0d1330', '1a2650', cl * 0.85)
+    t.rough[:] = 0.42
+    for k in range(4):
+        a, _ = tri_curve(t, 'h', 128 + 256 * k, 26, 0.9 * k, 1.5)
+        t.fill(a * TRI_GRATICULE, TRI_GOLD, metal=a * 0.6)
+        if TRI_UPRIGHT:
+            a, _ = tri_curve(t, 'v', 128 + 256 * k, 20, 1.7 + 0.8 * k, 1.5)
+            t.fill(a * TRI_GRATICULE, TRI_GOLD, metal=a * 0.6)
+    a, A = tri_curve(t, 'h', 470, 95, 0.7, 2.2)
+    dash = ((A / 22.0) % 1.0 < 0.55).astype(np.float32)
+    t.fill(a * dash * 0.32, TRI_GOLD, metal=a * dash * 0.7)
+    r = t.rng
+    S = StarLight(t)
+    for _ in range(760):
+        x, y = r.uniform(0, n), r.uniform(0, n); k = r.uniform() ** 3
+        S.dot(x, y, 0.8 + 1.1 * k, 0.16 + 0.5 * k, r.choice(['ffffff', 'fff1d8', 'ffe2b0', 'dbe6ff'], p=[.4, .3, .18, .12]))
+    for _ in range(46):
+        x, y = r.uniform(0, n), r.uniform(0, n)
+        S.dot(x, y, r.uniform(1.6, 2.4), 0.75, r.choice(['ffffff', 'fff1d8', 'ffe2b0']), glow=0.08, glow_r=7)
+    for name, (cx, cy, rot, s) in (('dipper', (120, 260, 0.18, 1.0)), ('kite', (640, 150, -0.2, 1.0)),
+                                   ('chain', (470, 720, 0.12, 1.05))):
+        stars, edges = TRI_FIGURES[name]
+        c, sn = math.cos(rot), math.sin(rot)
+        P = [(cx + (x * c - y * sn) * s, cy + (x * sn + y * c) * s, m) for x, y, m in stars]
+        rs = [9 + 11 * m for _, _, m in P]
+        for i, j in edges:
+            tri_line(t, P[i][:2], P[j][:2], 2.0, rs[i] + 7, rs[j] + 7)
+        for (x, y, m), rr in zip(P, rs):
+            tri_star(t, S, x, y, rr, rot=0.0)
+            if m >= 0.95:
+                X, Y, idx = t.box(x - rr - 12, y - rr - 12, x + rr + 12, y + rr + 12)
+                ring = cover(np.abs(np.hypot(X - x, Y - y) - (rr + 6)) - 0.9)
+                t.paint(idx, ring * 0.55, TRI_GOLD, metal=ring * 0.9)
+    S.done(emit=0.7, rough=0.3)
+    more, stars = tri_mark_images(os.path.join(OUT['dir'], 'triangulum'), t)
+    # (the tile's stars at 0.7 to 1.0 x 2: they bloom a little; the mark's stars, in the glow decal, bloom the most)
+    return {'emissive': 2.0, 'tint': 'ffffff', 'accent': 'ffe7a6', 'more_maps': more, 'decal_style': 'mark', 'decal_aspect': 2,
+            'decal_stars': stars}
+
+
+# the mark in its own 2:1 picture (1024 x 512): apex alpha forward (the picture's left: on the gun's left face the
+# canvas's +x runs to the back, so the apex points at the muzzle), the base stars beta (top) and gamma at the back. A
+# long thin triangle, as the real constellation. Wide, so on a receiver only a third of a stud tall the mark still runs
+# about 15 cm along the gun
+TRI_MARK = {'a': (150, 292, 67), 'b': (876, 151, 74), 'g': (842, 398, 52)}
+
+
+def tri_mark_images(stem, t: Tex, w=1024, h=512):
+    """<stem>_decal.png (LIT): a soft deep-midnight calm round the mark so the busy chart quiets under it, and the three
+       gold lines (a lighter bead down each, stopping short of the stars); <stem>_glow.png (UNLIT, blooms): the three
+       four-point stars and their glow; <stem>_chip.png: both over the tile, for the loadout chip. Returns the maps and
+       the stars as "x,y,r;..." in the picture's pixels (WeaponModels gives each star its own label, so WrapAnim can
+       breathe them one after another)"""
+    from PIL import Image
+    yy, xx = np.mgrid[0:h, 0:w].astype(np.float32) + 0.5
+    pts = [TRI_MARK[k][:2] for k in 'abg']
+    tri = sd_polygon(pts)(xx, yy)
+    A = np.clip(0.62 * smoothstep(105, 15, tri), 0, 1)
+    rgb = np.zeros((h, w, 3), np.float32) + hexrgb('0b1029')
+    la = np.zeros((h, w), np.float32)
+    for (i, j) in ((0, 1), (1, 2), (2, 0)):
+        (ax, ay, ra), (bx, by, rb) = TRI_MARK['abg'[i]], TRI_MARK['abg'[j]]
+        L = math.hypot(bx - ax, by - ay); ux, uy = (bx - ax) / L, (by - ay) / L
+        p = (ax + ux * (ra * 0.55 + 18), ay + uy * (ra * 0.55 + 18)); q = (bx - ux * (rb * 0.55 + 18), by - uy * (rb * 0.55 + 18))
+        d = sd_segment(p[0], p[1], q[0], q[1], 6.0)(xx, yy)
+        cov = cover(d, 1.2)
+        bead = np.clip(1 - np.abs(d + 6.0) / 6.0, 0, 1) ** 1.5
+        col = mix(TRI_GOLD, TRI_GOLD_LIGHT, bead * 0.8)
+        rgb = rgb * (1 - cov[..., None]) + col * cov[..., None]
+        la = np.maximum(la, cov)
+    A = np.maximum(A, la)
+    Image.fromarray(np.concatenate([(np.clip(rgb, 0, 1) * 255 + 0.5).astype(np.uint8), (A[..., None] * 255 + 0.5).astype(np.uint8)], -1), 'RGBA').save(stem + '_decal.png', optimize=True)
+    G = np.zeros((h, w), np.float32); H = np.zeros((h, w), np.float32)
+    for k in 'abg':
+        x, y, r = TRI_MARK[k]
+        G = np.maximum(G, cover(sd_sparkle(x, y, r, w=0.17)(xx, yy), 1.5))
+        H = np.maximum(H, np.exp(-0.5 * (np.hypot(xx - x, yy - y) / (r * 0.42)) ** 2) * 0.75)
+    ga = np.clip(G + H * (1 - G), 0, 1)
+    grgb = (G[..., None] * hexrgb('fff8e6') + (H * (1 - G))[..., None] * hexrgb('ffd889')) / np.maximum(ga, 1e-4)[..., None]
+    Image.fromarray(np.concatenate([(np.clip(grgb, 0, 1) * 255 + 0.5).astype(np.uint8), (ga[..., None] * 255 + 0.5).astype(np.uint8)], -1), 'RGBA').save(stem + '_glow.png', optimize=True)
+    # the chip: a square from the middle of the tile with the mark scaled to fit across it
+    tile = Image.fromarray((np.clip(t.rgb, 0, 1) * 255 + 0.5).astype(np.uint8), 'RGB').resize((512, 512), Image.LANCZOS)
+    def scaled(img_rgb, alpha):
+        im = Image.fromarray(np.concatenate([(np.clip(img_rgb, 0, 1) * 255 + 0.5).astype(np.uint8), (alpha[..., None] * 255 + 0.5).astype(np.uint8)], -1), 'RGBA')
+        return im.resize((512, 256), Image.LANCZOS)
+    chip = tile.convert('RGBA')
+    chip.alpha_composite(scaled(rgb, A), (0, 128))
+    chip.alpha_composite(scaled(grgb, ga), (0, 128))
+    chip.convert('RGB').save(stem + '_chip.png', optimize=True)
+    stars = ';'.join('%d,%d,%d' % TRI_MARK[k] for k in 'abg')
+    return {'decal': os.path.basename(stem) + '_decal.png', 'hole': os.path.basename(stem) + '_glow.png',
+            'swatch': os.path.basename(stem) + '_chip.png'}, stars
+
+
 @design('stonks')
 def stonks(t: Tex):
     """market crash: a trading terminal on its worst day, a red line diving through candlesticks, lit ticker bars
