@@ -134,7 +134,10 @@ SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b"
 	"ar_cute_d", "pistol_cute_d",
 	-- the Ducklings (17 Nov, the owner: "Can you also tell it to make a few blender ducky skins?"): Wish Duck's family
 	-- built with the Blender-artist method and its baked shade shells (tools/roblox/gun_sets_ducky_art.py)
-	"ar_duckling", "smg_duckling", "pistol_duckling" } :: { string }
+	"ar_duckling", "smg_duckling", "pistol_duckling",
+	-- the owner's own Tripo angelic rifle (17 Nov), cleaned with tools/roblox/tripo_gun.py: v1's big rear wings (hidden
+	-- while aiming: holds.json ads.skins.ar_seraph_tripo), no front wings, a pearl-and-gold front sight
+	"ar_seraph_tripo" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in

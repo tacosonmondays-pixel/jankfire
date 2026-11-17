@@ -559,6 +559,41 @@ cleanup code is here: `tools/roblox/gun_tripo.py` (`blender -b --factory-startup
   which come back rounded. About 40k raw triangles is plenty. Aim for 1.5k for a bow or crystal cluster and 1.7-2.4k for
   a head or a teddy.
 
+### Whole Tripo guns: the owner's skin pipeline and the angel rifle (17 November 2026)
+
+The owner's plan: a picture per skin (ChatGPT, given our base gun's picture and a style), built whole in Tripo, then
+cleaned, fitted and coloured here.
+- **Reference pictures** of every base gun and live skin (left side and three-quarter, plain, no markers):
+  `tools/roblox/gun_refs.py`. The pictures live in the vault (`Assets/base-guns-17nov`, `Assets/skins-17nov`).
+- **The tool:** `tools/roblox/tripo_gun.py`, with a recipe per skin. It:
+  - welds and repairs the mesh;
+  - turns and scales it onto the base gun: muzzle, grip and the sight line;
+  - drops floating or sight-blocking parts;
+  - reshapes parts (scale, flatten onto a side, thickness, sharp feather tips);
+  - cuts moving nodes;
+  - adds the slim kit sights and small kit parts;
+  - colours regions by rule and adds gold rims;
+  - bakes Route S shade shells;
+  - renders a check sheet, with before/now panels and an aim view with a hide list.
+  `-- parts <raw.glb>` lists and renders every loose part first. Recipes, cleaned meshes and sheets stay in the vault
+  (`Assets/tripo-*/<gun>/`), never in git. `JF_EXTRA=tripo_gun` registers whatever exists there.
+- **The angelic rifle** (`ar_seraph_tripo`, a concept in `SkinSets.CONCEPTS`, not sold). The owner's picks over four rounds:
+  - v1's big rear wings: they stand above the sight line, so they are hidden while aiming (`holds.json` →
+    `ads.skins.ar_seraph_tripo.hide = rwing_*`);
+  - no front wings: they read as unattached;
+  - a front-sight block like a real AR's: a pearl tower, a gold post with a bead on the sight line, two gold ears;
+  - the floating halo rebuilt as a gold ring round the barrel.
+
+  A clean-up pass (v5) made the colour borders follow the surface and tidied the grip joint, front-sight base and
+  bore. 12,619 triangles with shells; asset 140181802705874 (place version 627); the shade picture's packed strips blurred before
+  upload so nothing in it reads as text.
+- **Prompt lessons:**
+  - Our base AR's two ring sights come back as "two scopes": ask for one low sight and no scope rings.
+  - ChatGPT refused "hellhound" and "cute devil" wordings; "stylized cartoon game cosmetic" wording passed.
+  - Ask for solid attached parts only, nothing tall on top, a plain background and no text.
+- **Images to ChatGPT:** the built-in browser pane can't attach files. The ChatGPT desktop app, driven by computer use,
+  can: its file dialog takes a typed path.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
