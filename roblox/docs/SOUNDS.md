@@ -1,3 +1,57 @@
+# Special skin layers and area stings (17 Nov 2026)
+
+## Special skins (place version 583)
+
+The owner: "make sure special weapons have custom bullet trails and sfx that match the style of the gun". Each
+high-tier skin plays a short themed recording ON TOP of its base gun's own sound, quieter (about 8 dB under the shot)
+and at most about 0.6 s, so gunfeel and loudness stay fair. Table: `roblox/src/shared/SkinSounds.luau`; played by
+`Sfx.gun` (your shots and other players', found by who stands at the muzzle), `Sfx.skinEvent` (one line in
+`Arsenal`'s `VM.onEvent`) and `Sfx.skinHit` (one line at the katana hit). Bullet trails are the VFX session's. The
+`skin_*` Sounds follow the WEAPONS volume (SettingsApply, place version 577).
+
+| skin | layer, when | layer, when |
+| --- | --- | --- |
+| Seraph Rifle `ar_seraph` | shot: PSE: Glass Tinks 2 (SFX) [0.15–0.65 s] | mag in: PSE: Violin String Pluck Single Notes 3 (SFX) [0–0.5 s] |
+| Infernal Rifle `ar_infernal` | shot: PSE: Fire Whoosh 15 (SFX) [0.05–0.6 s] | mag in: PSE: Sizzle Short And Explosive Sear 12 (SFX) [0.07–0.6 s] |
+| Pumpkin Patch `smg_pumpkin` | shot: PSE: Wood Impacts Soft Impacts On Temple Blocks 1 (SFX) | mag in: PSE: Wood Groan Creak Opening Wood Chest Coffin 1 (SFX) [0.1–0.6 s] |
+| Sakura `katana_sakura` | swing: PSE: Wind Chimes Random Metal Ceramic Clinks 1 (SFX) [0.1–0.6 s] | hit: PSE: Wood Impacts Soft Impacts On Temple Blocks 6 (SFX) |
+| Bubble Bath `lmg_ducky` | shot (+ squeak every 5th): PSE: Pop Airy 9 (SFX) [0–0.1 s] | mag in: PSE: Mud Puddle Splash Shallow Water Impacts Hits (SFX) [0–0.6 s]; squeak: PSE: Squeeze Toy Squeaky Rubber With Noisemaker H (SFX) [0–0.3 s] |
+| Wish Duck `revolver_ducky` | shot: PSE: Synth Sparkle Tone High Pitch Tone Burst Pin (SFX) [0–0.6 s] | cylinder spin: PSE: Squeeze Toy Squeaky Rubber With Noisemaker H (SFX) [0–0.26 s] |
+| Ribbon Duck `katana_ducky` |  | hit: PSE: Squeeze Toy Squeaky Rubber With Noisemaker H (SFX) [0.26–0.56 s] |
+| Dust Drover `revolver_dust` | 35% of shots: PSE: Ricochet Reverberant 3 (SFX) [0.06–0.6 s] | cylinder spin: PSE: Horse Harness Bells Small Metallic Ringing 3 (SFX) [0.84–1.4 s] |
+| Iron Horse `lever_dust` | shot: Freesound: "Musket Explosion" by Willlewis (244345) | lever cycle: PSE: Steam Piston Pump 10 (SFX) [0.04–0.6 s] |
+| Star Drover `revolver_star` | shot: PSE: Laser Cannon 1702 (SFX) [0.34–0.9 s] | cylinder in: PSE: Servo Motor 1 (SFX) [0.05–0.52 s] |
+| Streamliner `lever_star` | shot: PSE: Plasma Swish 1 (SFX) [0.03–0.5 s] | lever cycle: PSE: Relay Clicks 9 (SFX) [0–0.3 s] |
+| Triangulum `sniper_triangulum` | shot: PSE: Magic Glows Soft Clusters Of Chiming Hits 2 (SFX) [0–1 s] | bolt: PSE: Synth Sparkle Tone High Pitch Bell Tone Burs (SFX) [0.25–0.7 s] |
+
+Iron Horse has no train whistle on a kill (the sheet called it optional).
+
+## Area stings (place version 583)
+
+The owner: "can you have a sfx when entering and leaving areas?" `roblox/src/client/ZoneSounds.client.luau` plays
+one soft sting, for you alone, as you arrive in an area, so leaving one plays the next one's. About a second each,
+quiet (between footsteps and gunfire), on the EFFECTS volume.
+
+| area | how it's known | sting |
+| --- | --- | --- |
+| hub | server `Zone` = hub | Freesound: "Murmur.wav" by stewadosan (466767) |
+| training hall | `Zone` = training | Freesound: "Air Hiss" by Jofae (367125) |
+| playground | `Zone` = playground | Freesound: "light slow swoosh.mp3" by Mikes-MultiMedia (349698) |
+| back lot | `OnLot` (TheLot) | Freesound: "Wind Gust" by crashoverride6 (146932) |
+| VIP room | inside the part tagged `VipRoom` | Freesound: "singing bowl strike sound" by inoshirodesign (271370) |
+| private lobby | inside a room of `workspace.PartyLobbies` | PSE: Soft Suck Explosion Med Whoosh 8 (SFX) [0–1 s] |
+
+Quiet on purpose: the first area after spawning or respawning, anything to or from a match (the round has its own
+sounds), and a second sting within 1.5 s. The shop corner isn't an area of its own.
+
+Checks (place version 583, Play test): all 30 new Sounds load; the skin lookup maps each skin's weapon to its rows and
+every named Sound exists; moving the test character gave `zone_lot`, `zone_hub`, `zone_playground`, `zone_hub` in
+order. Not checked in the test: the training and VIP stings (the sealed hall and the VIP-only room put a teleported,
+non-VIP test player back out) and firing a skinned gun end to end (it needs a skin equipped; the test left the
+player's real skins alone). Nobody here can listen: the owner's ears are the real check.
+
+---
+
 # Sounds (take 3, 16 Nov 2026): recordings
 
 The owner, after take 2: "I don't want code generated sounds", and pointed at Freesound. Every sound the game plays is

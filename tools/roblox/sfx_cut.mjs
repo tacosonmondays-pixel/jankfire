@@ -1,7 +1,7 @@
 // look at and cut recorded sounds (the Freesound downloads, as WAV from audio_to_wav.py)
 //   node tools/roblox/sfx_cut.mjs info a.wav b.wav ...      -> length, peak, loudness (LUFS), onsets (s)
-//   node tools/roblox/sfx_cut.mjs cut in.wav out.wav <start> <end> [fadeOutMs=30]
-//       -> that slice, a 2 ms fade in, the fade out, rumble below 25 Hz off, peak at -1 dBFS
+//   node tools/roblox/sfx_cut.mjs cut in.wav out.wav <start> <end> [fadeOutMs=30] [fadeInMs=2]
+//       -> that slice, the fade in, the fade out, rumble below 25 Hz off, peak at -1 dBFS
 import path from 'node:path';
 import { SR, readWav, writeWav, loudness, hp, norm, db } from './sfx_dsp.mjs';
 
@@ -24,12 +24,12 @@ if (cmd === 'info') {
     console.log(`${path.basename(f, '.wav')} ${(data.length / SR).toFixed(2)}s pk ${o.top.toFixed(0)} L ${loudness(data).toFixed(1)} onsets ${o.list.join(',') || '-'}`);
   }
 } else if (cmd === 'cut') {
-  const [inp, out, st, en, fo] = a;
+  const [inp, out, st, en, fo, fin] = a;
   const { data } = readWav(inp);
   const s0 = Math.max(0, Math.round(Number(st) * SR)), s1 = Math.min(data.length, Math.round(Number(en) * SR));
   const b = data.slice(s0, s1);
   hp(b, 25, 0.7);
-  const fi = Math.round(SR * 0.002), fon = Math.min(b.length, Math.round(SR * Number(fo || 30) / 1000));
+  const fi = Math.round(SR * Number(fin || 2) / 1000), fon = Math.min(b.length, Math.round(SR * Number(fo || 30) / 1000));
   for (let i = 0; i < fi && i < b.length; i++) b[i] *= i / fi;
   for (let i = 0; i < fon; i++) b[b.length - 1 - i] *= i / fon;
   norm(b, db(-1));

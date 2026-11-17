@@ -16,7 +16,12 @@ for f in sorted(os.listdir(src)):
     out = os.path.join(dst, os.path.splitext(f)[0] + ".wav")
     if os.path.exists(out):
         continue
-    s = aud.Sound(os.path.join(src, f)).rechannel(1).resample(44100, False)
-    s.write(out, rate=44100, channels=aud.CHANNELS_MONO, format=aud.FORMAT_S16, container=aud.CONTAINER_WAV, codec=aud.CODEC_PCM)
-    n += 1
+    try:
+        s = aud.Sound(os.path.join(src, f)).rechannel(1).resample(44100, False)
+        s.write(out, rate=44100, channels=aud.CHANNELS_MONO, format=aud.FORMAT_S16, container=aud.CONTAINER_WAV, codec=aud.CODEC_PCM)
+        n += 1
+    except Exception as e:  # a file aud can't decode: skip it (and any half-written output), keep going
+        print("skipped", f, e)
+        if os.path.exists(out):
+            os.remove(out)
 print("converted", n)

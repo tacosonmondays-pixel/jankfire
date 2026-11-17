@@ -6,7 +6,7 @@
 // its category's level: the target per name is the one render_sfx.mjs used (roblox/assets/sounds/v2/list.json,
 // "target", LUFS) moved onto the analyzer's scale by store.json's "offset" (measured on the v2 renders).
 // a region plays only that slice of a clip (one shot out of a sequence, one footstep out of a walk).
-// prints the Luau to paste into Studio (Edit): node tools/roblox/store_sounds.mjs > swap.luau
+// prints the Luau to paste into Studio (Edit): node tools/roblox/store_sounds.mjs [only=skin_,zone_] > swap.luau
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,14 +16,20 @@ const store = JSON.parse(fs.readFileSync(path.join(ROOT, 'roblox/assets/sounds/s
 const list = JSON.parse(fs.readFileSync(path.join(ROOT, 'roblox/assets/sounds/v2/list.json'), 'utf8'));
 const off = store.offset ?? 0;
 const rows = [];
+// only=skin_,zone_ : just the names starting with those (leave the rest of the library as it is in Studio)
+const onlyArg = process.argv.find((x) => x.startsWith('only='));
+const ONLY = onlyArg ? onlyArg.slice(5).split(',') : null;
 for (const [name, takes] of Object.entries(store.sounds)) {
-  if (!list[name]) throw new Error('unknown sound ' + name);
+  if (ONLY && !ONLY.some((p) => name.startsWith(p))) continue;
+  const base = list[name]?.target ?? store.targets?.[name]; // (store.targets: names take 2 never had, e.g. skin_* and zone_*)
+  if (base == null) throw new Error('no target for ' + name);
   if (!takes.length) continue;
   const L = takes.reduce((a, t) => a + t.L, 0) / takes.length;
-  const target = list[name].target + off + (store.trim?.[name] ?? 0);
+  const target = base + off + (store.trim?.[name] ?? 0);
   const vol = store.vol?.[name] ?? Math.max(0.05, Math.min(3, Math.pow(10, (target - L) / 20))); // (store.vol: set by ear-substitute after Play)
   const t = takes.map((k) => `{${k.id},${k.region ? k.region[0] : -1},${k.region ? k.region[1] : -1}}`).join(',');
-  rows.push(`{"${name}",${Math.round(vol * 100) / 100},{${t}}}`);
+  const j = store.jitter?.[name];
+  rows.push(`{"${name}",${Math.round(vol * 100) / 100},{${t}}${j != null ? ',' + j : ''}}`);
 }
 console.log(`-- JankfireSounds from the licensed library (tools/roblox/store_sounds.mjs, roblox/assets/sounds/store.json)
 local lib = game.ReplicatedStorage.JankfireSounds
@@ -40,11 +46,12 @@ local function apply(s, take)
 end
 local n, takes = 0, 0
 for _, d in ipairs(D) do
-	local name, vol, list = d[1], d[2], d[3]
+	local name, vol, list, jit = d[1], d[2], d[3], d[4]
 	local s = lib:FindFirstChild(name)
 	if not s then s = Instance.new("Sound"); s.Name = name; s.Parent = lib end
 	if s:GetAttribute("SoundIdV2") == nil then s:SetAttribute("SoundIdV2", s.SoundId); s:SetAttribute("VolumeV2", s.Volume) end
 	s.Volume = vol
+	if jit then s:SetAttribute("Jitter", jit) end
 	apply(s, list[1])
 	for _, c in ipairs(lib:GetChildren()) do if string.match(c.Name, "^(.-)#%d+$") == name then c:Destroy() end end
 	for k = 2, #list do

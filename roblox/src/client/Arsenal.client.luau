@@ -318,6 +318,7 @@ local function eject(big: boolean)
 end
 
 VM.onEvent = function(ev: string)
+	Sfx.skinEvent(held, ev) -- (a special skin's own reload / cycle / swing layer: shared/SkinSounds)
 	if ev == "whoosh" then Sfx.play("swing")
 	elseif ev == "shing" then Sfx.play("ting")
 	elseif ev == "click" then Sfx.play("click")
@@ -525,6 +526,7 @@ local function resolveSwing()
 	VM.hitStop = if hv then 0.11 else 0.06
 	if firstAt then Fx.blast(firstAt, if hv then 1.1 else 0.6) end
 	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else "bonk")
+	Sfx.skinHit(wid)
 	if hv then Sfx.play("crunch") end
 	shake = math.max(shake, if hv then 0.6 else 0.35)
 	VM.jolt(-1.5)

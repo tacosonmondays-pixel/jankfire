@@ -1,7 +1,8 @@
 --!strict
 -- the sounds: every one is a Sound in ReplicatedStorage.JankfireSounds, played by name. since 16 Nov 2026 they are
--- layered synth renders (tools/roblox/render_sfx.mjs; the list, levels and before/after in roblox/docs/SOUNDS.md);
--- before that they were the web game's one-oscillator recipes. a Sound with an empty SoundId stays silent, never an error
+-- recordings: Pro Sound Effects (Roblox's licensed library) and Freesound CC0 cuts (roblox/assets/sounds/store.json;
+-- the list, levels and history in roblox/docs/SOUNDS.md). special skins add their own layers (shared/SkinSounds,
+-- below). a Sound with an empty SoundId stays silent, never an error
 -- takes: Sounds named "<name>#2", "<name>#3"... beside "<name>" are other takes of the same sound. play() picks one at
 -- random (never the same one twice running), so a burst of fire or a run of footsteps doesn't sound copied
 -- a Sound's attributes: Jitter = its pitch is nudged at random by up to that much (0.03 = 3%); RollMin / RollMax = how
@@ -110,6 +111,67 @@ function Sfx.gun(w: any, k: number, at: Vector3?, heat: number?)
 		local h = if w.heatUp and heat then heat else 0
 		Sfx.play(w.snd, at, 1 + 0.4 * h, 1 - 0.15 * h)
 	end
+	if type(w.id) == "string" then Sfx.skinFire(w.id, at) end
+end
+
+-- ---------------------------------------------------------------- the special skins' own layers (shared/SkinSounds)
+-- a high-tier skin adds a short themed recording on top of the base gun's sound (17 Nov 2026): on each shot, on its
+-- reload / cycle clip events and on a melee hit. yours from your own "Skins"; someone else's shot from the player
+-- standing at its muzzle
+local Players = game:GetService("Players")
+local me = Players.LocalPlayer
+local SkinSounds: any, GunSkins: any = nil, nil
+task.spawn(function()
+	local folder = ReplicatedStorage:WaitForChild("Jankfire", 10)
+	local a = folder and folder:WaitForChild("SkinSounds", 10)
+	local b = folder and folder:WaitForChild("GunSkins", 10)
+	if a then local ok, m = pcall(require, a); if ok then SkinSounds = m end end
+	if b then local ok, m = pcall(require, b); if ok then GunSkins = m end end
+end)
+local shotN: { [string]: number } = {}
+
+local function layersFor(p: Player?, wid: string): (string?, any)
+	if not (SkinSounds and GunSkins and p) then return nil, nil end
+	local id = GunSkins.skinFor(p, wid)
+	return id, if id then SkinSounds.skin[id] else nil
+end
+
+local function shooterAt(at: Vector3): Player?
+	local best, bd = nil, 8
+	for _, p in ipairs(Players:GetPlayers()) do
+		local ch = p.Character
+		local r = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
+		if p ~= me and r then
+			local d = (r.Position - at).Magnitude
+			if d < bd then best, bd = p, d end
+		end
+	end
+	return best
+end
+
+-- a shot's layer: at = nil for yours, else the muzzle out in the world
+function Sfx.skinFire(wid: string, at: Vector3?)
+	local p = if at then shooterAt(at) else me
+	local id, L = layersFor(p, wid)
+	if not (id and L) then return end
+	local key = id .. (if p then tostring(p.UserId) else "")
+	local n = (shotN[key] or 0) + 1
+	shotN[key] = n
+	if L.fire and (not L.chance or rng:NextNumber() < L.chance) then Sfx.play(L.fire, at) end
+	if L.alt and n % L.alt.every == 0 then Sfx.play(L.alt.name, at) end
+end
+
+-- your weapon's clip event (Reloads.luau: magIn, spinCyl, leverClack, shell, whoosh...)
+function Sfx.skinEvent(wid: string, ev: string)
+	local _, L = layersFor(me, wid)
+	local name = L and L.ev and L.ev[ev]
+	if name then Sfx.play(name) end
+end
+
+-- your melee hit landed
+function Sfx.skinHit(wid: string)
+	local _, L = layersFor(me, wid)
+	if L and L.hit then Sfx.play(L.hit) end
 end
 
 local _ = holder

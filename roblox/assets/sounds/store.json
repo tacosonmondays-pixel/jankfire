@@ -1117,6 +1117,342 @@
     ],
     "L": -21
    }
+  ],
+  "skin_ar_seraph_fire": [
+   {
+    "id": 9114619050,
+    "title": "Glass Tinks 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.15,
+     0.65
+    ],
+    "L": -30
+   }
+  ],
+  "skin_ar_seraph_reload": [
+   {
+    "id": 9120433172,
+    "title": "Violin String Pluck Single Notes 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -28
+   }
+  ],
+  "skin_ar_infernal_fire": [
+   {
+    "id": 9114446852,
+    "title": "Fire Whoosh 15 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     0.6
+    ],
+    "L": -24
+   }
+  ],
+  "skin_ar_infernal_reload": [
+   {
+    "id": 9119166435,
+    "title": "Sizzle Short And Explosive Sear 12 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.07,
+     0.6
+    ],
+    "L": -22
+   }
+  ],
+  "skin_smg_pumpkin_fire": [
+   {
+    "id": 9120917438,
+    "title": "Wood Impacts Soft Impacts On Temple Blocks 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -32
+   }
+  ],
+  "skin_smg_pumpkin_reload": [
+   {
+    "id": 9126263691,
+    "title": "Wood Groan Creak Opening Wood Chest Coffin 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.1,
+     0.6
+    ],
+    "L": -35
+   }
+  ],
+  "skin_katana_sakura_swing": [
+   {
+    "id": 9120751432,
+    "title": "Wind Chimes Random Metal Ceramic Clinks 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.1,
+     0.6
+    ],
+    "L": -35
+   }
+  ],
+  "skin_katana_sakura_hit": [
+   {
+    "id": 9120917813,
+    "title": "Wood Impacts Soft Impacts On Temple Blocks 6 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": null,
+    "L": -27
+   }
+  ],
+  "skin_lmg_ducky_fire": [
+   {
+    "id": 9117838079,
+    "title": "Pop Airy 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.1
+    ],
+    "L": -27
+   }
+  ],
+  "skin_lmg_ducky_squeak": [
+   {
+    "id": 9125994310,
+    "title": "Squeeze Toy Squeaky Rubber With Noisemaker H (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -9
+   }
+  ],
+  "skin_lmg_ducky_reload": [
+   {
+    "id": 9125702803,
+    "title": "Mud Puddle Splash Shallow Water Impacts Hits (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -33
+   }
+  ],
+  "skin_revolver_ducky_fire": [
+   {
+    "id": 9126076030,
+    "title": "Synth Sparkle Tone High Pitch Tone Burst Pin (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.6
+    ],
+    "L": -29
+   }
+  ],
+  "skin_revolver_ducky_cycle": [
+   {
+    "id": 9125994553,
+    "title": "Squeeze Toy Squeaky Rubber With Noisemaker H (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.26
+    ],
+    "L": -14
+   }
+  ],
+  "skin_katana_ducky_hit": [
+   {
+    "id": 9125994553,
+    "title": "Squeeze Toy Squeaky Rubber With Noisemaker H (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.26,
+     0.56
+    ],
+    "L": -14
+   }
+  ],
+  "skin_revolver_dust_fire": [
+   {
+    "id": 9118169272,
+    "title": "Ricochet Reverberant 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.06,
+     0.6
+    ],
+    "L": -24
+   }
+  ],
+  "skin_revolver_dust_reload": [
+   {
+    "id": 9114826593,
+    "title": "Horse Harness Bells Small Metallic Ringing 3 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.84,
+     1.4
+    ],
+    "L": -29
+   }
+  ],
+  "skin_lever_dust_fire": [
+   {
+    "id": 113029612758053,
+    "title": "\"Musket Explosion\" by Willlewis (244345)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -9
+   }
+  ],
+  "skin_lever_dust_cycle": [
+   {
+    "id": 9119623306,
+    "title": "Steam Piston Pump 10 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.04,
+     0.6
+    ],
+    "L": -14
+   }
+  ],
+  "skin_revolver_star_fire": [
+   {
+    "id": 9116236630,
+    "title": "Laser Cannon 1702 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.34,
+     0.9
+    ],
+    "L": -16
+   }
+  ],
+  "skin_revolver_star_reload": [
+   {
+    "id": 9118941667,
+    "title": "Servo Motor 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     0.52
+    ],
+    "L": -31
+   }
+  ],
+  "skin_lever_star_fire": [
+   {
+    "id": 9117405979,
+    "title": "Plasma Swish 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.03,
+     0.5
+    ],
+    "L": -16
+   }
+  ],
+  "skin_lever_star_cycle": [
+   {
+    "id": 9118138365,
+    "title": "Relay Clicks 9 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.3
+    ],
+    "L": -31
+   }
+  ],
+  "skin_sniper_triangulum_fire": [
+   {
+    "id": 9116394876,
+    "title": "Magic Glows Soft Clusters Of Chiming Hits 2 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     1
+    ],
+    "L": -30
+   }
+  ],
+  "skin_sniper_triangulum_cycle": [
+   {
+    "id": 9126072453,
+    "title": "Synth Sparkle Tone High Pitch Bell Tone Burs (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.25,
+     0.7
+    ],
+    "L": -20
+   }
+  ],
+  "zone_hub": [
+   {
+    "id": 104669963881856,
+    "title": "\"Murmur.wav\" by stewadosan (466767)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -14
+   }
+  ],
+  "zone_training": [
+   {
+    "id": 113734560794871,
+    "title": "\"Air Hiss\" by Jofae (367125)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -9
+   }
+  ],
+  "zone_playground": [
+   {
+    "id": 123953342057278,
+    "title": "\"light slow swoosh.mp3\" by Mikes-MultiMedia (349698)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -12
+   }
+  ],
+  "zone_lot": [
+   {
+    "id": 93553869070157,
+    "title": "\"Wind Gust\" by crashoverride6 (146932)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -12
+   }
+  ],
+  "zone_vip": [
+   {
+    "id": 83005532415755,
+    "title": "\"singing bowl strike sound\" by inoshirodesign (271370)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -10
+   }
+  ],
+  "zone_lobby": [
+   {
+    "id": 9119378289,
+    "title": "Soft Suck Explosion Med Whoosh 8 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     1
+    ],
+    "L": -18
+   }
   ]
  },
  "vol": {
@@ -1151,5 +1487,57 @@
   "loot_win_epic": 1.8,
   "loot_win_legendary": 2,
   "framepop": 0.18
+ },
+ "targets": {
+  "skin_ar_seraph_fire": -28,
+  "skin_ar_seraph_reload": -28,
+  "skin_ar_infernal_fire": -28,
+  "skin_ar_infernal_reload": -28,
+  "skin_smg_pumpkin_fire": -29,
+  "skin_smg_pumpkin_reload": -28,
+  "skin_katana_sakura_swing": -30,
+  "skin_katana_sakura_hit": -27,
+  "skin_lmg_ducky_fire": -28,
+  "skin_lmg_ducky_squeak": -28,
+  "skin_lmg_ducky_reload": -28,
+  "skin_revolver_ducky_fire": -26.5,
+  "skin_revolver_ducky_cycle": -28,
+  "skin_katana_ducky_hit": -27,
+  "skin_revolver_dust_fire": -26.5,
+  "skin_revolver_dust_reload": -28,
+  "skin_lever_dust_fire": -26.5,
+  "skin_lever_dust_cycle": -28,
+  "skin_revolver_star_fire": -26.5,
+  "skin_revolver_star_reload": -28,
+  "skin_lever_star_fire": -26.5,
+  "skin_lever_star_cycle": -28,
+  "skin_sniper_triangulum_fire": -25.5,
+  "skin_sniper_triangulum_cycle": -28,
+  "zone_hub": -31,
+  "zone_training": -31,
+  "zone_playground": -31,
+  "zone_lot": -31,
+  "zone_vip": -31,
+  "zone_lobby": -31
+ },
+ "jitter": {
+  "skin_ar_seraph_fire": 0.03,
+  "skin_ar_infernal_fire": 0.03,
+  "skin_smg_pumpkin_fire": 0.03,
+  "skin_katana_sakura_swing": 0.03,
+  "skin_lmg_ducky_fire": 0.03,
+  "skin_lmg_ducky_squeak": 0.03,
+  "skin_revolver_ducky_fire": 0.03,
+  "skin_revolver_dust_fire": 0.03,
+  "skin_lever_dust_fire": 0.03,
+  "skin_revolver_star_fire": 0.03,
+  "skin_lever_star_fire": 0.03,
+  "skin_sniper_triangulum_fire": 0.03,
+  "zone_hub": 0.03,
+  "zone_training": 0.03,
+  "zone_playground": 0.03,
+  "zone_lot": 0.03,
+  "zone_vip": 0.03,
+  "zone_lobby": 0.03
  }
 }
