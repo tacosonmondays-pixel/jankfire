@@ -322,6 +322,16 @@ The Half a Shotgun's line ran inside its hinge.
   wing's scaled pieces below 68 % of the screen's height.
 - Sheet: `gun-hold/ads-5.jpg`, every gun aimed in Play (both scopes too), the Ducky Belt Sander before and now, and the
   Seraph rifle at the console. Not pictured: skins aimed other than the Ducky Belt Sander (measured only).
+- Cute v3 concepts (place version 494; gun-models: big signature pieces sit by the aimed eye). Measured on the real
+  triangles, aimed and at the hip:
+  - Velvet rifle: its cushion stock and muff filled the whole bottom aimed (27.6 % of the screen against the
+    plain rifle's 13.3). They fade while aiming (`hide`), leaving 7.2 %. At the hip the muff is drawn at 60 % about
+    its foot (`near`, pivot (0, 0, 0.283)): 3.7 % of the screen down to 0.8 %, a sliver in the bottom-right corner.
+  - Glasswing rifle: the stock butterfly covered 13 % aimed. It fades while aiming, so the rifle covers 13.3 %, the
+    same as the plain one; at the hip it is 2.5 %, in the corner.
+  - Starlight and Sweet Shop rifles and the four cute Plan Bs measure within a point of their gun aimed and at the
+    hip: no rows.
+  - Sheet: `gun-hold/ads-6.jpg` (Velvet hip and aimed, Glasswing hip and aimed, Starlight and a cute Plan B aimed).
 
 Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
 JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
