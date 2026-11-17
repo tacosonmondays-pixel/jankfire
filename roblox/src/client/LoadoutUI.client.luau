@@ -1201,6 +1201,18 @@ setOpen = function(v: boolean)
 end
 
 done.face.MouseButton1Click:Connect(function() setOpen(false) end)
+-- kill effect and emotes have their own screen (FlairUI.luau, the flair session's; doc FLAIR.md): this button, left of
+-- DONE, opens it. the loadout steps aside first (its camera and blur would sit over that screen's preview)
+local flairBtn = button(stage, "KILL EFFECT  ·  EMOTES", "white", UDim2.fromOffset(1360, 40), UDim2.fromOffset(320, 50))
+flairBtn.face.MouseButton1Click:Connect(function()
+	local m = script.Parent:FindFirstChild("FlairUI")
+	if not m then return end
+	setOpen(false)
+	task.delay(0.05, function()
+		local ok, F = pcall(require, m)
+		if ok and type(F) == "table" then (F :: any).open() end
+	end)
+end)
 UIS.InputBegan:Connect(function(io, gp)
 	if io.KeyCode == Enum.KeyCode.L and not UIS:GetFocusedTextBox() then
 		if gp and not state.open then return end

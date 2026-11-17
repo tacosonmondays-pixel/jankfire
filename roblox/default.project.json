@@ -74,6 +74,12 @@
         "LootShow": {
           "$className": "RemoteEvent"
         },
+        "Flair": {
+          "$className": "RemoteFunction"
+        },
+        "FlairKill": {
+          "$className": "RemoteEvent"
+        },
         "Profile": {
           "$className": "RemoteFunction"
         },
