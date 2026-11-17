@@ -305,6 +305,7 @@ FireR.OnServerEvent:Connect(function(p: Player, wid: unknown, eye: unknown, ends
 	for _, o in Players:GetPlayers() do
 		if o ~= p then ShotR:FireClient(o, { by = p.UserId, model = p.Character, w = wid, ends = ends, path = path }) end
 	end
+	Fight.shotFx(f, wid, ends :: any) -- (the match recorder keeps it for killcams and replays)
 	local seen: { [Fighter]: boolean } = {}
 	local ff = Fight.feet(f) :: Vector3
 	local left = W[wid].pellets or 1 -- one shot's pellets in total, however many victims it claims
@@ -339,6 +340,7 @@ SwingR.OnServerEvent:Connect(function(p: Player, wid: unknown)
 	if Rules.swing(f, wid, now()) then return end
 	Fight.shot(f, wid)
 	FxR:FireAllClients({ k = "swing", model = Fight.model(f), w = wid, by = p.UserId })
+	Fight.shotFx(f, wid, nil, "swing")
 end)
 
 -- the swing's hit time: (weapon, look direction, the victims the client found in the cone)

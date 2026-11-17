@@ -13,6 +13,7 @@ local Stats = require(Jankfire:WaitForChild("Stats"))
 local RankedData = require(Jankfire:WaitForChild("RankedData"))
 local Party = require(Jankfire:WaitForChild("Party"))
 local CrossServer = require(Jankfire:WaitForChild("CrossServer"))
+local Recorder = require(Jankfire:WaitForChild("Recorder"))
 
 -- the remotes (in the saved place and default.project.json; made here too if missing)
 local remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -28,6 +29,8 @@ local pushR = remotes:WaitForChild("PlayPush") :: RemoteEvent
 RankedData.init(Matches, Stats, function(p: Player, msg: any) if p.Parent then pushR:FireClient(p, msg) end end)
 Party.init(Fight, Matches, RankedData, remotes)
 CrossServer.init(Matches, {}) -- (does nothing while PlayConfig.CROSS_SERVER is off)
+-- every match recorded (Recorder.luau): killcams, the play of the match, recordings for reports
+Recorder.init(Fight, Matches)
 
 -- ------------------------------------------------------------------ Studio play tests
 --   T:Invoke("standins", n, rating)   n stand-ins in this server's invite list (invite one: it joins after 1 s)

@@ -231,6 +231,16 @@ function Fight.onHurt(fn: (Fighter, number, Fighter?, string, boolean?) -> ()) t
 local onShotHooks: { (Fighter, string) -> () } = {}
 function Fight.onShot(fn: (Fighter, string) -> ()) table.insert(onShotHooks, fn) end
 function Fight.shot(f: Fighter, wid: string) for _, fn in onShotHooks do fn(f, wid) end end
+-- what a shot looked like (its end points) and swings (kind "swing"), for anyone keeping them: the match recorder
+-- (Recorder.luau). each hook runs in a pcall, so a slip there never stops a shot
+local shotFxHooks: { (Fighter, string, { Vector3 }?, string?) -> () } = {}
+function Fight.onShotFx(fn: (Fighter, string, { Vector3 }?, string?) -> ()) table.insert(shotFxHooks, fn) end
+function Fight.shotFx(f: Fighter, wid: string, ends: { Vector3 }?, kind: string?)
+	for _, fn in shotFxHooks do
+		local ok, err = pcall(fn, f, wid, ends, kind)
+		if not ok then warn("[jankfire] a shot hook failed: " .. tostring(err)) end
+	end
+end
 
 local function scheduleRespawn(f: Fighter)
 	local delay = if f.kind == "dummy" then 3 else FFA.respawn

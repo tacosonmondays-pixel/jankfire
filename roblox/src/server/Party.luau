@@ -170,7 +170,7 @@ local function place(pt: PartyT)
 	if pt.match then return end -- (in a match: they come back to their spots when it ends)
 	for i, m in here do
 		local cf = LobbyRooms.spot(room, i)
-		if cf then standAt(m, cf) end
+		if cf and not (m.player and Matches.matchOf(m.player)) then standAt(m, cf) end -- (never pull a body out of a match)
 	end
 end
 -- a fresh body where homeOf says (the plinth while in the room, else the hub)
@@ -666,7 +666,9 @@ end
 -- a party's match is over: its players respawn on their plinths (Matches.homeOf) once Matches sends them home
 local function onEnd(m: any)
 	if not m.queue then return end
-	task.delay((Matches.AFTER or 7) + 0.3, function()
+	-- (a play of the match keeps everyone in the arena longer: Matches.afterHook says how long)
+	local after = if Matches.afterHook then Matches.afterHook(m) else nil
+	task.delay((if after then after.total else (Matches.AFTER or 7)) + 0.3, function()
 		for _, pt in parties do
 			if pt.match == m.id then
 				pt.match = nil

@@ -85,6 +85,8 @@ function Matches.matchOf(p: Player): { id: number, mode: string, arena: string, 
 end
 -- (Party.luau) where a player who is not in a match respawns instead of the hub: their private lobby's plinth, or nil
 Matches.homeOf = nil :: ((Player) -> CFrame?)?
+-- (Recorder.luau) at a match's end: hold it for a replay? { wait = s on the end screen, total = s until home, label }
+Matches.afterHook = nil :: ((any) -> any?)?
 
 -- ------------------------------------------------------------------ where you are
 local function rootOf(p: Player): BasePart?
@@ -284,12 +286,15 @@ local function endMatch(m: Match, winner: number?)
 	setHud(m)
 	local board = Fight.board(m.fighters)
 	local name = if winner then teamLabel(m, winner) else nil
+	-- (Recorder.luau) a match with a play of the match stays on the end screen for after.wait s, then everyone watches
+	-- it, then home after after.total s
+	local after = if Matches.afterHook then Matches.afterHook(m) else nil
 	each(m, function(p, t)
 		local home = Matches.homeOf and Matches.homeOf(p)
-		RoundR:FireClient(p, { over = true, winner = name, youWon = winner == t, board = board, next = Matches.AFTER,
-			nextLabel = if home then "back to the lobby in %d" else "back to the hub in %d", ranked = m.ranked == true })
+		RoundR:FireClient(p, { over = true, winner = name, youWon = winner == t, board = board, next = if after then after.wait else Matches.AFTER,
+			nextLabel = if after then after.label elseif home then "back to the lobby in %d" else "back to the hub in %d", ranked = m.ranked == true })
 	end)
-	task.delay(Matches.AFTER, backToHub, m)
+	task.delay(if after then after.total else Matches.AFTER, backToHub, m)
 end
 
 -- teams with someone still standing

@@ -548,7 +548,8 @@ local function newRig(ch: Model): Rig?
 	if not hum or not root or not ch:FindFirstChild("UpperTorso") then return nil end
 	local r: Rig = {
 		ch = ch, hum = hum, root = root, ut = ch:FindFirstChild("UpperTorso") :: BasePart, head = nil, isMe = ch == me.Character,
-		player = Players:GetPlayerFromCharacter(ch),
+		-- (a test rig or a replay ghost may name its player in TPPlayer: its gun then gets that player's wrap and hat)
+		player = Players:GetPlayerFromCharacter(ch) or (if type(ch:GetAttribute("TPPlayer")) == "number" then Players:GetPlayerByUserId(ch:GetAttribute("TPPlayer") :: number) else nil),
 		J = {}, arms = {}, u = 1.5, Hs = 1, nk = Vector3.zero, headC1 = ID, geomT = 0, dirty = true,
 		src = nil, wid = "", cls = "", k = 3,
 		gun = nil, groot = nil, weld = nil, parts = nil, sight = Vector3.zero, gripPt = Vector3.zero, muzzle = nil,

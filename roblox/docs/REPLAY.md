@@ -67,6 +67,25 @@ clip = {
 }
 ```
 
-## Size (measured in Studio)
+## Measured (17 Nov 2026, place version 519)
 
-See section "Measured" at the end once tested.
+![the play of the match](replay/play_of_the_match.jpg)
+![a killcam](replay/killcam.jpg)
+
+**The test.** A Studio Play test recorded the training hall: me plus all 32 dummies, so 33 fighters. I killed two
+dummies, then:
+- **the play of the match:** my ghost over the shoulder, wearing my avatar, holding the rifle at its skin; banner,
+  progress bar, SKIP;
+- **a killcam:** from over the Plinker's shoulder, its rifle in hand, the KILLCAM banner with the weapon.
+
+**Size.** It came to about **15.5 KB of frames a minute per fighter**: 384 KB of frames for 33 fighters over 45 s.
+
+| players | memory a minute | a 5-minute match as a report export |
+|---|---|---|
+| 2v2 | about 62 KB | about 0.4 MB of base64 |
+| 4v4 | about 124 KB | about 0.8 MB |
+
+A DataStore key holds 4 MB, so even a long 4v4 fits.
+
+**Not yet tested.** The play of the match and the killcam in a real match need two real players. With one tester,
+stand-ins never fight. The pieces they run on were tested here: the end-screen hold, the kill hooks and the clips.
