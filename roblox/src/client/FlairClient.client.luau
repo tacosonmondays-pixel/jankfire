@@ -41,7 +41,9 @@ task.spawn(function()
 	if not ev then return end
 	ev.OnClientEvent:Connect(function(msg: any)
 		if type(msg) ~= "table" or typeof(msg.m) ~= "Instance" or not msg.m:IsA("Model") or type(msg.fx) ~= "string" then return end
-		KillFx.play(msg.m, msg.fx, { from = if typeof(msg.from) == "Vector3" then msg.from else nil })
+		-- (the settings page's GRAPHICS row OTHERS' KILL EFFECTS: off = someone else's kills just hide the body; yours always play)
+		local quiet = msg.k ~= me.UserId and KillFx.setting("gfx.othersKill", true) == false
+		KillFx.play(msg.m, msg.fx, { from = if typeof(msg.from) == "Vector3" then msg.from else nil, quiet = quiet })
 	end)
 end)
 
@@ -376,11 +378,27 @@ catcher.MouseButton1Click:Connect(function()
 end)
 me:GetAttributeChangedSignal("Emotes"):Connect(function() if W.open then fill(); show() end end)
 
+-- the emote key: the settings page's rebinding (StarterPlayerScripts.Jankfire.Binds, "emote"; the settings session's) when
+-- it's in, else T and D-pad right
+local BindsMod: any = nil
+local function emoteKey(io: InputObject): boolean
+	if BindsMod == nil then
+		local m = script.Parent:FindFirstChild("Binds")
+		local ok, res = false, nil
+		if m and m:IsA("ModuleScript") then ok, res = pcall(require, m) end
+		BindsMod = if ok and type(res) == "table" and type(res.is) == "function" then res else false
+	end
+	if BindsMod then
+		local ok, yes = pcall(BindsMod.is, "emote", io)
+		if ok then return yes == true end
+	end
+	return io.KeyCode == Enum.KeyCode.T or io.KeyCode == Enum.KeyCode.DPadRight
+end
 local WEAPON_KEYS = { [Enum.KeyCode.One] = true, [Enum.KeyCode.Two] = true, [Enum.KeyCode.Three] = true, [Enum.KeyCode.Four] = true,
 	[Enum.KeyCode.G] = true, [Enum.KeyCode.R] = true, [Enum.KeyCode.E] = true, [Enum.KeyCode.Space] = true, [Enum.KeyCode.C] = true }
 UIS.InputBegan:Connect(function(io, gp)
 	if UIS:GetFocusedTextBox() then return end
-	if io.KeyCode == Enum.KeyCode.T or io.KeyCode == Enum.KeyCode.DPadRight then
+	if emoteKey(io) then
 		if W.open then W.close(); return end
 		if gp then return end
 		W.held = true
@@ -395,7 +413,7 @@ UIS.InputBegan:Connect(function(io, gp)
 	end
 end)
 UIS.InputEnded:Connect(function(io)
-	if io.KeyCode ~= Enum.KeyCode.T and io.KeyCode ~= Enum.KeyCode.DPadRight then return end
+	if not emoteKey(io) then return end
 	if not W.held then return end
 	W.held = false
 	if not W.open then return end

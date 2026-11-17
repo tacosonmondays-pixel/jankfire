@@ -903,7 +903,7 @@ for i, hid in GunHats.ORDER do
 end
 -- ---------------------------------------------------------------- the skins (a third tab): another body per weapon
 -- the focused weapon's skins that are in the place (GunSkins.forWeapon), one card each plus DEFAULT; hover to try it
--- on in the big preview, click to wear it. a skin you don't own says so (the server checks: Inventory.owns)
+-- on in the big preview, click to wear it. a skin you don't own says so (the server checks: Loot.owns)
 local sHolder, sbar = panel(stage, UDim2.fromOffset(610, 852), UDim2.fromOffset(1250, 188))
 sHolder.Visible = false
 local sTitle = label(sbar, "SKINS", 18, UDim2.fromOffset(20, 12), UDim2.fromOffset(110, 26), TEXT)

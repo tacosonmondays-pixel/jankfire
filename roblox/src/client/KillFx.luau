@@ -5,7 +5,7 @@
 -- and a few particles and client-only parts do the rest; at the end the body is hidden for good (the respawn makes a
 -- new one). Rules (the owner's brief, Rivals research): 1.5 s at most, the size of a body (nothing reaches more than
 -- about 4 studs out), no tall pillars, no floor marks, no screen effects, quiet colours. A body further than FAR studs
--- from the camera just hides.
+-- from the camera, or any body when OTHERS' KILL EFFECTS is off in the settings (opts.quiet), just hides.
 -- K.play(model, id, opts?) -> run handle (opts.preview: a client-only mannequin, the equip screen's; opts.from: where the
 -- killer stood, for the ones that throw the body away from them)
 -- K.scale(): the workspace attribute FlairTimeScale (0 freezes every running effect for photos; default 1)
@@ -59,6 +59,31 @@ local function cs(...: any): ColorSequence
 	local kp = {}
 	for i = 1, #a, 2 do table.insert(kp, ColorSequenceKeypoint.new(a[i], a[i + 1])) end
 	return ColorSequence.new(kp)
+end
+
+-- the settings page's GRAPHICS rows (StarterPlayerScripts.Jankfire.Settings, the settings session's; defaults when it
+-- isn't in): "gfx.particles" (0.25..1) scales every burst and stream here
+local SettingsMod: any = nil
+function K.setting(key: string, default: any): any
+	if SettingsMod == nil then
+		local m = script.Parent:FindFirstChild("Settings")
+		local ok, res = false, nil
+		if m and m:IsA("ModuleScript") then ok, res = pcall(require, m) end
+		SettingsMod = if ok and type(res) == "table" and type(res.get) == "function" then res else false
+	end
+	if not SettingsMod then return default end
+	local ok, v = pcall(SettingsMod.get, key)
+	if ok and v ~= nil then return v end
+	return default
+end
+local function amount(): number
+	local k = K.setting("gfx.particles", 1)
+	return if type(k) == "number" then math.clamp(k, 0.25, 1) else 1
+end
+-- a burst of n, fewer on the LOW preset (a single flash or ring stays one)
+local function many(n: number): number
+	if n <= 1 then return n end
+	return math.max(1, math.floor(n * amount() + 0.5))
 end
 local function clamp01(x: number): number return math.clamp(x, 0, 1) end
 local function smooth(x: number): number x = clamp01(x); return x * x * (3 - 2 * x) end
@@ -119,7 +144,7 @@ local function emitter(r: Run, at: Instance, props: { [string]: any }): Particle
 end
 -- emit at a rate per second through the frames (an accumulator per emitter)
 local function pour(r: Run, key: string, e: ParticleEmitter, rate: number, dt: number)
-	local acc = (r.s[key] or 0) + rate * dt
+	local acc = (r.s[key] or 0) + rate * dt * amount()
 	local n = math.floor(acc)
 	r.s[key] = acc - n
 	if n > 0 then e:Emit(n) end
@@ -216,13 +241,13 @@ STEP.shatter = function(r, t, dt)
 			Texture = TEX.sparkle, Color = cs(Color3.fromRGB(236, 246, 255)), LightEmission = 1, LightInfluence = 0,
 			Size = ns(0, 0.4, 1, 0), Transparency = ns(0, 0, 1, 1), Lifetime = NumberRange.new(0.25, 0.5),
 			Speed = NumberRange.new(3, 8), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 90),
-		}):Emit(24)
+		}):Emit(many(24))
 		emitter(r, ep, {
 			Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
 			FlipbookFramerate = NumberRange.new(16 / 0.6), Color = cs(Color3.fromRGB(222, 232, 242)), LightInfluence = 0.6, LightEmission = 0.1,
 			Size = ns(0, 0.7, 1, 1.3), Transparency = ns(0, 0.55, 1, 1), Lifetime = NumberRange.new(0.6),
 			Speed = NumberRange.new(0.5, 1.5), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
-		}):Emit(5)
+		}):Emit(many(5))
 	end
 	local g = Vector3.new(0, -52, 0)
 	local fadeK = smooth((t - 0.55) / 0.4)
@@ -287,7 +312,7 @@ STEP.ink = function(r, t, dt)
 			Size = ns(0, 0.3, 0.25, 0.36, 1, 0.08), Transparency = ns(0, 0, 0.75, 0.05, 1, 1), Lifetime = NumberRange.new(0.45, 0.7),
 			Speed = NumberRange.new(6, 13), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -58, 0), Drag = 1.4,
 			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-120, 120),
-		}):Emit(20)
+		}):Emit(many(20))
 		-- (torn flakes between the blots: a splash, not a handful of balls)
 		emitter(r, ep, {
 			Texture = TEX.chips, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid2x2, FlipbookMode = Enum.ParticleFlipbookMode.Random,
@@ -295,12 +320,12 @@ STEP.ink = function(r, t, dt)
 			Size = ns(0, 0.24, 1, 0.1), Transparency = ns(0, 0, 0.8, 0.1, 1, 1), Lifetime = NumberRange.new(0.4, 0.65),
 			Speed = NumberRange.new(8, 15), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -62, 0), Drag = 1,
 			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-300, 300),
-		}):Emit(28)
+		}):Emit(many(28))
 		emitter(r, ep, {
 			Texture = TEX.glow, Color = cs(0, Color3.fromRGB(10, 10, 16), 1, Color3.fromRGB(40, 44, 84)), LightInfluence = 0.2, LightEmission = 0,
 			Size = ns(0, 0.14, 1, 0.07), Transparency = ns(0, 0, 0.8, 0.1, 1, 1), Lifetime = NumberRange.new(0.4, 0.7),
 			Speed = NumberRange.new(9, 17), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -70, 0), Drag = 0.6,
-		}):Emit(56)
+		}):Emit(many(56))
 	end
 end
 
@@ -420,7 +445,7 @@ STEP.static = function(r, t, dt)
 			Texture = TEX.spark, Color = cs(Color3.fromRGB(215, 245, 255)), LightEmission = 1, LightInfluence = 0,
 			Orientation = Enum.ParticleOrientation.VelocityParallel, Size = ns(0, 0.2, 1, 0), Transparency = ns(0, 0, 1, 1),
 			Lifetime = NumberRange.new(0.15, 0.25), Speed = NumberRange.new(10, 16), SpreadAngle = Vector2.new(180, 180),
-		}):Emit(12)
+		}):Emit(many(12))
 	end
 end
 
@@ -491,14 +516,14 @@ STEP.confetti = function(r, t, dt)
 			Transparency = ns(0, 0, 0.8, 0, 1, 1), Lifetime = NumberRange.new(1.0, 1.3), Speed = NumberRange.new(10, 17),
 			EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(40, 40), Acceleration = Vector3.new(0, -22, 0), Drag = 2.4,
 			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-420, 420),
-		}):Emit(18)
+		}):Emit(many(18))
 	end
 	emitter(r, ep, {
 		Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
 		FlipbookFramerate = NumberRange.new(16 / 0.5), Color = cs(Color3.fromRGB(240, 238, 232)), LightInfluence = 0.7,
 		Size = ns(0, 0.8, 1, 1.4), Transparency = ns(0, 0.5, 1, 1), Lifetime = NumberRange.new(0.5), Speed = NumberRange.new(0.5, 1.5),
 		SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
-	}):Emit(4)
+	}):Emit(many(4))
 end
 
 -- TOMBSTONE (common): the body sinks into the floor as a plain stone marker rises where it stood, then both go. no words on it
@@ -534,7 +559,7 @@ STEP.grave = function(r, t, dt)
 	st.plinth.CFrame = b * CFrame.new(0, 0.17, 0)
 	st.slab.CFrame = b * CFrame.new(0, 0.35 + st.h / 2, 0)
 	st.top.CFrame = b * CFrame.new(0, 0.35 + st.h, 0) * CFrame.Angles(0, math.pi / 2, 0)
-	if t > 0.14 and not s.puffed then s.puffed = true; s.dust:Emit(7) end
+	if t > 0.14 and not s.puffed then s.puffed = true; s.dust:Emit(many(7)) end
 	-- the body: down into the floor and out
 	local sink = smooth((t - 0.2) / 0.9)
 	moveBody(r, CFrame.new(0, -3.2 * sink, 0))
@@ -566,7 +591,7 @@ STEP.cash = function(r, t, dt)
 			Texture = TEX.sparkle, Color = cs(Color3.fromRGB(236, 244, 226)), LightEmission = 1, LightInfluence = 0,
 			Size = ns(0, 0.3, 1, 0), Transparency = ns(0, 0.1, 1, 1), Lifetime = NumberRange.new(0.3, 0.5),
 			Speed = NumberRange.new(3, 7), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 90),
-		}):Emit(8)
+		}):Emit(many(8))
 	end
 	flyBits(s.notes, dt, -26, 2.6)
 	if t > 1.0 then fadeBits(s.notes, smooth((t - 1.0) / 0.4)) end
@@ -681,7 +706,7 @@ STEP.chicken = function(r, t, dt)
 			Size = ns(0, 0.26, 1, 0.22), Transparency = ns(0, 0, 0.75, 0.1, 1, 1), Lifetime = NumberRange.new(0.9, 1.3),
 			Speed = NumberRange.new(5, 11), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -7, 0), Drag = 2.6,
 			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-220, 220),
-		}):Emit(24)
+		}):Emit(many(24))
 		s.birds = {}
 		local rng = Random.new()
 		local a0 = rng:NextNumber(0, math.pi * 2)
@@ -703,8 +728,10 @@ STEP.chicken = function(r, t, dt)
 	end
 end
 
--- BLUE SCREEN (epic): the body is replaced by a flat blue panel (blank grey bars where words would be, a bar filling up),
--- which then switches off like an old monitor: down to a bright line, a dot, gone
+-- BLUE SCREEN (epic): the body is replaced by a flat blue panel carrying the web game's words (FATAL ERROR, player.exe:
+-- the owner, 17 Nov, said text is fine here; it's drawn live in the game's font, never baked into an uploaded picture) and
+-- a bar filling up, which then switches off like an old monitor: down to a bright line, a dot, gone. the one kill effect
+-- with words on it
 STEP.bsod = function(r, t, dt)
 	local s = r.s
 	if not s.gui then
@@ -724,8 +751,15 @@ STEP.bsod = function(r, t, dt)
 			return f
 		end
 		local LITE = Color3.fromRGB(214, 224, 244)
-		bar(0.1, 0.1, 0.24, 0.1, LITE)
-		bar(0.1, 0.3, 0.8, 0.045, LITE, 0.15); bar(0.1, 0.38, 0.64, 0.045, LITE, 0.15); bar(0.1, 0.46, 0.72, 0.045, LITE, 0.15)
+		local function words(text: string, y: number, hh: number, weight: Enum.FontWeight, a: number)
+			local l = Instance.new("TextLabel")
+			l.BackgroundTransparency = 1; l.Position = UDim2.fromScale(0.1, y); l.Size = UDim2.fromScale(0.8, hh)
+			l.FontFace = Font.new("rbxasset://fonts/families/BuilderSans.json", weight); l.Text = text; l.TextScaled = true
+			l.TextColor3 = LITE; l.TextTransparency = a; l.TextXAlignment = Enum.TextXAlignment.Left; l.Parent = bg
+		end
+		words("FATAL ERROR", 0.1, 0.15, Enum.FontWeight.Bold, 0)
+		words("player.exe", 0.29, 0.085, Enum.FontWeight.Medium, 0.1)
+		bar(0.1, 0.46, 0.64, 0.035, LITE, 0.35); bar(0.1, 0.52, 0.5, 0.035, LITE, 0.35)
 		local track = bar(0.1, 0.7, 0.8, 0.06, Color3.fromRGB(20, 40, 96))
 		local fill = Instance.new("Frame")
 		fill.BackgroundColor3 = LITE; fill.BorderSizePixel = 0; fill.Size = UDim2.fromScale(0, 1); fill.Parent = track
@@ -748,7 +782,7 @@ STEP.bsod = function(r, t, dt)
 	local h = s.h2 * (0.92 + 0.08 * pin) * lerp(1, 0.035, off1)
 	g.Size = UDim2.new(w, 0, h, 0)
 	s.bg.BackgroundColor3 = Color3.fromRGB(38, 76, 160):Lerp(Color3.fromRGB(236, 242, 255), off1)
-	for _, c in s.bg:GetChildren() do if c:IsA("Frame") then c.Visible = off1 < 0.5 end end
+	for _, c in s.bg:GetChildren() do if c:IsA("GuiObject") then c.Visible = off1 < 0.5 end end
 	s.bg.BackgroundTransparency = smooth((t - 1.08) / 0.12)
 end
 
@@ -768,7 +802,7 @@ STEP.yeet = function(r, t, dt)
 			FlipbookFramerate = NumberRange.new(16 / 0.6), Color = cs(Color3.fromRGB(200, 198, 192)), LightInfluence = 0.9,
 			Size = ns(0, 0.7, 1, 1.5), Transparency = ns(0, 0.45, 1, 1), Lifetime = NumberRange.new(0.6), Speed = NumberRange.new(2, 4),
 			EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(80, 80), Rotation = NumberRange.new(0, 360),
-		}):Emit(6)
+		}):Emit(many(6))
 		s.glint = burstAt(r, r.cf, Vector3.new(0.2, 0.2, 0.2))
 		s.ge = emitter(r, s.glint, {
 			Texture = TEX.sparkle, Color = cs(Color3.fromRGB(255, 248, 230)), LightEmission = 1, LightInfluence = 0,
@@ -838,9 +872,9 @@ STEP.duck = function(r, t, dt)
 	if t >= 0.3 and not s.landed then
 		s.landed = true
 		fadeAll(r, 1)
-		s.puff:Emit(8)
+		s.puff:Emit(many(8))
 	end
-	if t >= 1.28 and not s.gone then s.gone = true; s.puff:Emit(6) end
+	if t >= 1.28 and not s.gone then s.gone = true; s.puff:Emit(many(6)) end
 	local base = s.foot * CFrame.new(0, y, 0) * s.face.Rotation * CFrame.Angles(0, math.rad(35) + (1 - shrink) * 2.5, 0)
 	for _, p in s.duck do
 		local off = p[2]
@@ -885,7 +919,7 @@ STEP.blastzone = function(r, t, dt)
 	if t < 0.06 then s.h.FillTransparency = lerp(1, 0, t / 0.06); return end
 	if not s.hit then
 		s.hit = true
-		s.ring:Emit(1); s.flash:Emit(1); s.sparks:Emit(18)
+		s.ring:Emit(1); s.flash:Emit(1); s.sparks:Emit(many(18))
 	end
 	s.h.FillTransparency = lerp(0, 1, smooth((t - 0.06) / 0.2))
 	s.h.OutlineTransparency = lerp(0.3, 1, smooth((t - 0.06) / 0.35))
@@ -920,7 +954,7 @@ local function finish(r: Run)
 	end))
 end
 
-function K.play(m: Model, id: string, opts: { preview: boolean?, from: Vector3? }?): Run?
+function K.play(m: Model, id: string, opts: { preview: boolean?, from: Vector3?, quiet: boolean? }?): Run?
 	local step = STEP[id]
 	local item = Flair.info("kill", id)
 	if not step or not item or not m or not m.Parent then return nil end
@@ -962,7 +996,7 @@ function K.play(m: Model, id: string, opts: { preview: boolean?, from: Vector3? 
 		end)
 	end
 	-- far away: no show, just gone
-	if cam and (cam.CFrame.Position - r.centre).Magnitude > FAR and not preview then
+	if (opts and opts.quiet) or (cam and (cam.CFrame.Position - r.centre).Magnitude > FAR and not preview) then
 		finish(r)
 		return r
 	end

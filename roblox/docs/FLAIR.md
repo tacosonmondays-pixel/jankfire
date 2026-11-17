@@ -26,7 +26,7 @@ rule), effect parts never collide, low flashes, quiet colours.
 ## Kill effects (`shared/Flair.luau` "kill", drawn by `client/KillFx.luau`)
 
 Since the same afternoon (the owner via the main session) the set is the **web game's own twelve** (`shared/cosmetics.js`
-`COSMETICS.kill`: same ids, names, rarities), restyled to the serious look (no text anywhere, no gore), with the five
+`COSMETICS.kill`: same ids, names, rarities), restyled to the serious look (no gore; no text except Blue Screen's own words), with the five
 built from the Rivals research beside them. Free: Gibs, Confetti, Dissolve; the rest roll from the Duffel Bag.
 
 | id | name | rarity | s | what plays |
@@ -41,7 +41,7 @@ built from the Rivals research beside them. Free: Gibs, Confetti, Dissolve; the 
 | shatter | Shatter | rare | 1.0 | glazes like ice for a beat, then breaks into ~28 ice wedges and glints |
 | ember | Ember | rare | 1.4 | chars dark with a glowing orange edge, burns away from the head down into embers and ash |
 | chicken | Chickens | epic | 1.5 | a soft pop of feathers; three small chunky chickens scatter and run off |
-| bsod | Blue Screen | epic | 1.2 | a flat blue panel (blank bars, a filling bar) replaces the body, then switches off like an old monitor |
+| bsod | Blue Screen | epic | 1.2 | a flat blue panel (FATAL ERROR, player.exe, a filling bar) replaces the body, then switches off like an old monitor. The only kill effect with words: the owner allowed it (17 Nov); drawn live with TextLabels in the game's font, never an uploaded picture |
 | yeet | Yeet | epic | 1.3 | launched straight up, spinning, a dotted streak under it, a glint high above |
 | ink | Ink | epic | 1.2 | floods solid black, bursts into blots, flakes and droplets that fall |
 | static | Static | epic | 1.0 | flickers, jitters and slices like a lost signal, then snaps out to a point |
@@ -108,6 +108,21 @@ How it works:
   move (the server ends it after 30 s).
 - **In a match**: while you emote, other players you couldn't see from your own eyes (rays against `workspace.Map`,
   three heights) are hidden from you, refreshed every 0.15 s; teammates stay.
+
+## Grapple skins
+
+The web game's eight (`COSMETICS.grapple`): Rope (free), Chain, Candy Cane (common), Plunger, Jungle Vine (rare), Laser,
+Sticky Hand (epic), Rainbow (legendary). One per player, everyone sees it. Worn grapple: `JankfireFlair_v1` (`grapple`),
+player attribute `Grapple`; the GRAPPLE tab of the equip screen. The look (Blender heads after the web game's own
+`make_grapples.py`, rope textures, `shared/GrappleLook.luau`, `client/GrappleSkins.client.luau`) is in GRAPPLES.md.
+A skin only rolls or sells once its head is in `ReplicatedStorage.JankfireGrapples` (`Flair.grappleReady`).
+
+## Settings hooks (the settings page, P)
+
+Three rows of the settings session's page reach in here, each looked up once (FindFirstChild + pcall) with today's
+behaviour as the fallback: GRAPHICS "OTHERS' KILL EFFECTS" off = someone else's kills only hide the body
+(`KillFx.play(..., { quiet = true })`); `gfx.particles` (0.25-1) scales every burst and stream; the emote key is
+`Binds.is("emote", io)` (T and D-pad right until rebound).
 
 ## Equip screen (`client/FlairUI.luau`)
 
