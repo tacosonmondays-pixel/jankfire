@@ -1666,8 +1666,29 @@ def katana_jp_a():
 
 
 # ================================================================================================ the set
-SKINS = {'ar@ar_jp_a': ar_jp_a, 'ar@ar_jp_b': ar_jp_b, 'ar@ar_jp_c': ar_jp_c, 'dmr@dmr_jp_a': dmr_jp_a,
-         'sawnoff@sawnoff_jp_a': sawnoff_jp_a, 'lever@lever_jp_a': lever_jp_a, 'katana@katana_jp_a': katana_jp_a}
+# (the three systems as concepts, 16-17 Nov; kept for reference, no longer built: the owner picked J-A)
+CONCEPT_SKINS = {'ar@ar_jp_a': ar_jp_a, 'ar@ar_jp_b': ar_jp_b, 'ar@ar_jp_c': ar_jp_c, 'dmr@dmr_jp_a': dmr_jp_a,
+                 'sawnoff@sawnoff_jp_a': sawnoff_jp_a, 'lever@lever_jp_a': lever_jp_a, 'katana@katana_jp_a': katana_jp_a}
+
+
+# THE PICK (17 Nov 2026: the owner marked the sheet J-A Maki-e yes, J-B and J-C no; J-A's Second Opinion, Half a
+# Shotgun, Yeehaw and Katana yes, the shotgun and katana twice). J-A goes LIVE as the Tidecrest set under the set's own
+# keys, so players who own those pieces keep them, now in black lacquer and gold: the Rifle ar_lacquer, the Second
+# Opinion dmr_nighttide, Half a Shotgun sawnoff_twintide, the Yeehaw lever_cloudlock, and the Katana katana_sakura (the
+# set's high piece; the owner loved the J-A katana). gun_set.py loads this file after the older Tidecrest builders.
+def _as(fn, name):
+    def build():
+        g = fn()
+        g.name = name
+        return g
+    build.__name__ = name
+    return build
+
+
+SKINS = {'ar@ar_lacquer': _as(ar_jp_a, 'w_ar@ar_lacquer'), 'dmr@dmr_nighttide': _as(dmr_jp_a, 'w_dmr@dmr_nighttide'),
+         'sawnoff@sawnoff_twintide': _as(sawnoff_jp_a, 'w_sawnoff@sawnoff_twintide'),
+         'lever@lever_cloudlock': _as(lever_jp_a, 'w_lever@lever_cloudlock'),
+         'katana@katana_sakura': _as(katana_jp_a, 'w_katana@katana_sakura')}
 
 CONCEPTS = {
     'a': {'name': 'Maki-e', 'key': 'ar@ar_jp_a',

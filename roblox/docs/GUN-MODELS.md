@@ -453,6 +453,24 @@ then "I want bigger more noticeable decorations".
   judges call Starlight's Plan B the weakest: its wing reads as a rosette in first person.
 - **Pictures:** `gun-models/cute-v3.jpg`, `cute-v3-in-hand.jpg` (Velvet rifle, Sweet Shop Plan B).
 
+### Tidecrest becomes J-A Maki-e (17 November 2026, place version 498)
+
+The owner marked the decorated Japanese sheet: J-A Maki-e yes, J-B and J-C no. On the J-A set pieces they marked Second
+Opinion and Yeehaw yes, and Half a Shotgun and the Katana yes twice.
+
+- **Live:** J-A is the Tidecrest set now, built by `tools/roblox/gun_sets_japan2.py` under the set's existing keys, so
+  owners keep their pieces. Black lacquer and gold, with the names kept:
+  - Yoroi `ar_lacquer`;
+  - Kintsugi `dmr_nighttide`;
+  - Twin Tide `sawnoff_twintide`;
+  - Cloudlock `lever_cloudlock`;
+  - Sakura `katana_sakura`, the J-A katana, the set's high piece.
+  The set's banner colours are now black lacquer and gold.
+- **Removed:** the seven concept keys (`ar_jp_a/b/c` and the J-A set copies) are gone from `SkinSets.CONCEPTS`,
+  `assets.json` and the place.
+- **Checked:** `gun_check` 0 loose on all five, the install, and in hand in Play (Twin Tide, Sakura). Picture:
+  `gun-models/tidecrest-maki-e-in-hand.jpg`.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

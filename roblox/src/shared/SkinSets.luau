@@ -36,9 +36,11 @@ SkinSets.SETS = {
 		colour = Color3.fromRGB(44, 38, 51), accent = Color3.fromRGB(255, 156, 69),
 		members = { "smg_pumpkin", "marbles_cauldron", "katana_hex", "revolver_candle", "shotgun_bone" },
 	},
-	set_tidecrest = { -- Japanese lacquer: red and black lacquer, gold wave crests, cloud scrolls, a sakura blossom
+	set_tidecrest = { -- Japanese maki-e (17 Nov, the owner's pick, J-A): black lacquer and gold, a gold tortoiseshell
+		-- ground on every black field, gold rims, a red sea-wave handguard, an inlaid vine, one flowering gold branch
+		-- (tools/roblox/gun_sets_japan2.py; the keys stay, so owners keep their pieces)
 		name = "Tidecrest", order = 4,
-		colour = Color3.fromRGB(106, 36, 32), accent = Color3.fromRGB(233, 183, 195),
+		colour = Color3.fromRGB(42, 37, 38), accent = Color3.fromRGB(217, 187, 114),
 		members = { "katana_sakura", "ar_lacquer", "lever_cloudlock", "dmr_nighttide", "sawnoff_twintide" },
 	},
 	set_ducky = { -- VIP (the owner: "the ducky set is a high tier set you get by purchasing vip"): the VIP pack's skins,
@@ -124,12 +126,9 @@ for id, row in SkinSets.SKINS do SkinSets.TIER[id] = row[5] end
 SkinSets.RENAME = { smg_uzi = "Hairdryer", sawnoff_pepper = "Double Chili" } :: { [string]: string }
 
 -- the cute-set concepts in the game for the owner to choose from (not sold, not in crates; one becomes the set)
--- and the decorated Japanese systems (17 Nov, the owner: "more decoared ... use referenmces"): J-A Maki-e, J-B Odoshi,
--- J-C Zogan on the rifle, J-A across the set; the pick is rebuilt under Tidecrest's own keys (tools/roblox/gun_sets_japan2.py)
 -- (cute v3, 17 Nov: A-D rebuilt with bigger signature pieces, tools/roblox/gun_sets_cute3.py; E Daydream dropped)
 SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b", "ar_cute_c", "pistol_cute_c",
-	"ar_cute_d", "pistol_cute_d",
-	"ar_jp_a", "ar_jp_b", "ar_jp_c", "dmr_jp_a", "sawnoff_jp_a", "lever_jp_a", "katana_jp_a" } :: { string }
+	"ar_cute_d", "pistol_cute_d" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in
