@@ -368,6 +368,8 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - Studio (the templates' `FileLo`/`FileHi` match the guns session's bounds): five rays under each foot. SMG, Plan B
     and the angel: 2.0 mm in throughout. Sniper: 11–12 mm over the scope on its puck, as on the plain Sniper. Katana:
     1.5 mm into the ring at the centre, up to 2.5 mm over its curve 1 cm out. Live in place version 678.
+  - v2 (guns place version 683: the waves cut in as flat colour regions, no shapes changed): rechecked. The seat
+    heights and all 96 pairs are the same; only the katana's ring piece under the foot is now `pearl`. No Studio push.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
