@@ -443,7 +443,7 @@ function F.play(msg: any): boolean
 	-- the overlay and the rest of the game
 	nameT.Text = string.upper(row.name)
 	local srow = SkinSets.SKINS[msg.skin]
-	skinT.Text = if srow then string.upper(srow[1]) else ""
+	skinT.Text = if srow then string.upper(srow[1]) elseif type(msg.skin) == "string" then string.upper(string.gsub(string.match(msg.skin, "_(.+)$") or msg.skin, "_", " ")) else ""
 	skinT.TextColor3 = row.colour
 	rule.BackgroundColor3 = row.colour
 	nameT.TextTransparency = 1; skinT.TextTransparency = 1
@@ -702,7 +702,7 @@ function F.preview(fid: string, opts: any?): boolean
 	local ch = me.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local at: CFrame = (opts and opts.at) or (if root then root.CFrame else CFrame.new(0, 10, 0))
-	local dist = (opts and opts.dist) or 16
+	local dist = (opts and opts.dist) or (if W[wid] and W[wid].kind == "melee" then 5 else 16)
 	local K = at.Position
 	local fwd = unitOr(flat(at.LookVector), Vector3.new(0, 0, -1))
 	local V = K + fwd * dist

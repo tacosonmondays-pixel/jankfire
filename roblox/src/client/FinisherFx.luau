@@ -796,7 +796,7 @@ FFx.THEMES.ink = {
 		local a = part(r, Vector3.new(0.2, 0.2, 0.2), CFrame.new(st.strokeFrom), nil, nil, 1)
 		local b = part(r, Vector3.new(0.2, 0.2, 0.2), CFrame.new(st.strokeFrom), nil, nil, 1)
 		st.strokeB = b
-		st.stroke = beamBetween(r, a, b, { Texture = TEX.streak, TextureMode = Enum.TextureMode.Stretch, Color = cs(Color3.fromRGB(18, 16, 20)),
+		st.stroke = beamBetween(r, a, b, { Texture = TEX.tracer, TextureMode = Enum.TextureMode.Stretch, Color = cs(Color3.fromRGB(18, 16, 20)),
 			LightEmission = 0, LightInfluence = 0, Width0 = 0.45, Width1 = 1.7, FaceCamera = true, Transparency = ns(0, 0.05, 1, 0.2),
 			CurveSize0 = 0.9, CurveSize1 = -0.9, Segments = 20 })
 		local e = emitter(r, anchor(r, CFrame.lookAt(c, c + across)), { Texture = TEX.glow, Color = cs(Color3.fromRGB(16, 14, 18)), LightEmission = 0,
@@ -950,17 +950,21 @@ FFx.THEMES.lantern = {
 			-- the carved face: two eyes and a nose (triangles), a zig-zag mouth; it lights from inside
 			st.face = {}
 			local function carve(list: { any }) for _, x in list do table.insert(st.face, x); add(x.p, x.rel) end end
-			carve(tri(r, CFrame.new(-1.35, 4.0, -4.05), 1.5, 1.3, 0.25, Color3.fromRGB(255, 196, 80)))
-			carve(tri(r, CFrame.new(1.35, 4.0, -4.05), 1.5, 1.3, 0.25, Color3.fromRGB(255, 196, 80)))
-			carve(tri(r, CFrame.new(0, 3.05, -4.12), 0.8, 0.7, 0.25, Color3.fromRGB(255, 196, 80)))
+			carve(tri(r, CFrame.new(-1.35, 4.0, -3.9), 1.5, 1.3, 0.1, Color3.fromRGB(255, 196, 80)))
+			carve(tri(r, CFrame.new(1.35, 4.0, -3.9), 1.5, 1.3, 0.1, Color3.fromRGB(255, 196, 80)))
+			carve(tri(r, CFrame.new(0, 3.05, -3.98), 0.8, 0.7, 0.1, Color3.fromRGB(255, 196, 80)))
 			for k = 0, 4 do
 				local x = -1.8 + k * 0.9
 				local up = k % 2 == 0
-				carve(tri(r, CFrame.new(x, 1.95, -3.98) * (if up then CFrame.new() else CFrame.Angles(0, 0, math.pi)), 0.95, 0.85, 0.25,
+				carve(tri(r, CFrame.new(x, 1.95, -3.82) * (if up then CFrame.new() else CFrame.Angles(0, 0, math.pi)), 0.95, 0.85, 0.1,
 					Color3.fromRGB(255, 186, 70)))
 			end
 			st.lamp = anchor(r, CFrame.new(V + Vector3.new(0, 3, 0)))
 			st.light = light(r, st.lamp, Color3.fromRGB(255, 150, 60), 20, 0)
+			-- (the face looks at the lens as the orbit starts, turned on by half the orbit's sweep: it reads all the way round)
+			local cam = workspace.CurrentCamera.CFrame.Position
+			local to = Vector3.new(cam.X - V.X, 0, cam.Z - V.Z)
+			st.faceDir = if to.Magnitude > 0.1 then to.Unit else -Vector3.new(S.fwd.X, 0, S.fwd.Z).Unit
 			st.smoke = emitter(r, anchor(r, CFrame.new(V), Vector3.new(1.4, 0.4, 1.4)), { Texture = TEX.smoke, Color = cs(Color3.fromRGB(120, 110, 104)),
 				LightEmission = 0, Size = ns(0, 0.8, 1, 2.8), Transparency = ns(0, 0.5, 1, 1), Lifetime = NumberRange.new(1, 1.5),
 				Speed = NumberRange.new(2, 4), EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(15, 15), RotSpeed = NumberRange.new(-40, 40),
@@ -973,7 +977,7 @@ FFx.THEMES.lantern = {
 		local riseK = backOut(seg(u, 0.1, 0.4))
 		local sinkK = smooth(seg(u, 0.84, 1)) ^ 1.5
 		local y = floorY - 7.6 + 7.6 * riseK - 8 * sinkK
-		local root = CFrame.lookAt(Vector3.new(V.X, y, V.Z), Vector3.new(V.X, y, V.Z) - Vector3.new(S.fwd.X, 0, S.fwd.Z)) -- (the face to the shooter)
+		local root = CFrame.lookAt(Vector3.new(V.X, y, V.Z), Vector3.new(V.X, y, V.Z) + st.faceDir) -- (the face to the lens)
 		for _, x in st.parts do x.p.CFrame = root * x.rel end
 		local lit = smooth(seg(u, 0.44, 0.52)) * (1 - sinkK) * (0.85 + 0.15 * math.noise(u * 30, 0.5))
 		for _, x in st.face do x.p.Transparency = 1 - lit end

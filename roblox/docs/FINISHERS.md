@@ -266,18 +266,26 @@ It needs Studio's **Test > Clients and Servers** with 2 players, which the owner
 or a live server with two accounts. The wiring is two lines: `Matches.onRound(fn)` and `Matches.onEnd(fn)` in
 FinisherServer.
 
-**The preview's facing.** In the first photos the preview's HERO and CHARGE shots showed the shooter from behind. Real
-kills showed the front. The first suspect is the aim flag, which was set on the preview's made-up frames (a real
-recording had it off). It is now off. Measured in Play:
-- the shooter's root faces the stand-in (0.94, 0, -0.34);
-- the stand-in faces back;
-- the HERO lens sits in front of the shooter (3.5 studs ahead along their facing), looking at them.
+**The preview's facing: fixed.** In the first photos the preview's HERO and CHARGE shots showed the shooter from
+behind; real kills showed the front. The aim flag was set on the preview's made-up frames (a real recording had it
+off). It is now off, and the v629 photos show the shooter's face (the Ascension strip's first frame).
 
-Not seen in a picture yet: Studio's window was minimised all through this pass, and a minimised Studio draws only the
-UI.
+**Fixed after the second pass's first photos (place v629):**
+- **Lantern Light's carved face** stuck out of the pumpkin as small prisms and faced the shooter, so the orbiting lens
+  saw it side-on. It now lies flat in the surface and turns toward the lens.
+- **Inkfall's ink stroke** didn't draw: the streak sprite runs the wrong way for a Beam. It now uses the beam texture.
+- **A blade's preview** stood the stand-in 16 studs away; it is now 5.
+- **The skin's name** is missing under a finisher whose skin isn't in a set (the Triangulum). The name now comes from
+  the skin id.
 
-**Photos still to take** (as soon as Studio draws again): the new wings in Ascension, High Noon, Inkfall, Warp Out,
-Lantern Light and Starchart, as held-frame strips, and the preview's HERO shot.
+**The strips** (held frames, place v624 to v629; Studio was minimised for an hour in between):
+
+![Ascension](finishers/ascension_strip.jpg)
+![High Noon](finishers/highnoon_strip.jpg)
+![Inkfall](finishers/inkfall_strip.jpg)
+![Warp Out](finishers/warpout_strip.jpg)
+![Lantern Light](finishers/lanternlight_strip.jpg)
+![Starchart](finishers/starchart_strip.jpg)
 
 **Not tested yet:** a real phone.
 
