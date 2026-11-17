@@ -116,6 +116,25 @@ local function rankMark(parent: Instance, x: number, y: number, size: number, c:
 	return plate, "LEVEL " .. lvl, T.MUTED
 end
 
+-- the second ladder (17 Nov: Party Ranked, the classic modes; the ranked session's card.partyRanked, drawn by the same
+-- RankedStyle): a smaller badge tucked at the main one's lower left. nil when the player has none, or it can't be drawn
+local function hasParty(c: any): boolean
+	return c.partyRanked ~= nil and rankedStyle() ~= nil
+end
+local function partyMark(parent: Instance, x: number, y: number, size: number, c: any): (GuiObject?, string, Color3)
+	local RS = rankedStyle()
+	if not RS or c.partyRanked == nil then return nil, "", T.SOFT end
+	local ok, f = pcall(RS.badge, parent, size, c.partyRanked)
+	if not ok or typeof(f) ~= "Instance" or not f:IsA("GuiObject") then return nil, "", T.SOFT end
+	f.Name = "PartyBadge"
+	f.Position = UDim2.fromOffset(x, y)
+	f.ZIndex = 5 -- (over the main badge's corner)
+	for _, d in f:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 6 end end
+	local okL, lab = pcall(RS.label, c.partyRanked)
+	local okC, col = pcall(RS.color, c.partyRanked)
+	return f, if okL and type(lab) == "string" then lab else "", if okC and typeof(col) == "Color3" then col else T.SOFT
+end
+
 -- ------------------------------------------------------------------ the screen
 local gui = new("ScreenGui", { Name = "JankProfile", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 24,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false }, me:WaitForChild("PlayerGui"))
@@ -236,7 +255,9 @@ local function header(parent: Instance, c: any)
 	local bs = if L.compact then 76 else 96
 	local right = W - L.btn - 22 - bs -- (left of the close button)
 	local x = pad + av + (if L.compact then 14 else 20)
-	local nameW = right - x - 12
+	local ps = math.floor(bs * 0.55) -- (the Party Ranked badge, when there is one)
+	local pOut = if hasParty(c) then math.floor(ps * 0.55) else 0 -- (how far it reaches left of the main badge)
+	local nameW = right - x - 12 - pOut
 	local name = txt(hdr, string.upper(c.display or c.name or "?"), if L.compact then 24 else 32, T.TEXT, T.FONT_TITLE)
 	at(name, x, (H - av) // 2 - (if L.compact then 4 else 6), nameW, if L.compact then 28 else 36)
 	name.ZIndex = 3
@@ -268,11 +289,19 @@ local function header(parent: Instance, c: any)
 	local fill = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromScale(math.max(0.02, rank.progress), 1), ZIndex = 4 }, track)
 	T.corner(fill, 3)
 	-- on the right: the ranked badge and its line (or the level), the line under it
-	local mark, line, col = rankMark(hdr, right, (H - bs) // 2 - 12, bs, c)
+	local my = (H - bs) // 2 - 12
+	local mark, line, col = rankMark(hdr, right, my, bs, c)
 	for _, d in mark:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
 	local rn = txt(hdr, line, if L.compact then 12 else 14, col, T.FONT_TITLE, Enum.TextXAlignment.Center)
-	at(rn, right - 50, (H - bs) // 2 - 12 + bs - 6, bs + 100, 18)
+	at(rn, right - 50, my + bs - 6, bs + 100, 18)
 	rn.ZIndex = 3
+	-- Party Ranked: the smaller badge at the main one's lower left (clear of the line), its own line under the main one
+	local pm, pline, pcol = partyMark(hdr, right - pOut, my + bs - ps - 4, ps, c)
+	if pm then
+		local pn = txt(hdr, pline, if L.compact then 10 else 12, pcol, T.FONT_BOLD, Enum.TextXAlignment.Center)
+		at(pn, right - 50, my + bs + 12, bs + 100, 14)
+		pn.ZIndex = 3
+	end
 	return hdr
 end
 
@@ -576,16 +605,20 @@ local function playersBlock(parent: Instance, y: number, W: number, list: { any 
 		at(img, 10, 10, av, av)
 		T.corner(img, 6)
 		local rank = Ranks.of(r.xp)
+		local bs = rh - 22
+		local ps = math.floor(bs * 0.6) -- (Party Ranked's small badge, when there is one)
+		local shift = if hasParty(r) then math.floor(ps * 0.55) + 4 else 0
 		local n = txt(b, string.upper(r.display or r.name), 16, T.TEXT, T.FONT_TITLE)
-		at(n, 20 + av, 12, rw - av - 170, 20)
+		at(n, 20 + av, 12, rw - av - 170 - shift, 20)
 		n.ZIndex = 3
 		local tt = CardStyles.titleText(r.look and r.look.title)
 		local s2 = txt(b, if tt ~= "" then tt else ("@" .. r.name), 12, if tt ~= "" then CardStyles.titleColor(r.look.title) else T.MUTED, T.FONT_BOLD)
-		at(s2, 20 + av, 34, rw - av - 170, 16)
+		at(s2, 20 + av, 34, rw - av - 170 - shift, 16)
 		s2.ZIndex = 3
-		local bs = rh - 22
-		local mark = rankMark(b, rw - bs - 54, 6, bs, r)
+		local mx = rw - bs - 54
+		local mark = rankMark(b, mx, 6, bs, r)
 		for _, d in mark:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
+		partyMark(b, mx - math.floor(ps * 0.55), 6 + bs - ps + 2, ps, r) -- (just the badge: no line in a row)
 		local lv = txt(b, ("LV %d"):format(rank.level), 13, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 		at(lv, rw - 58, 0, 46, rh)
 		lv.ZIndex = 3
@@ -593,7 +626,7 @@ local function playersBlock(parent: Instance, y: number, W: number, list: { any 
 			local you = txt(b, "YOU", 10, T.INK, T.FONT_HEAVY, Enum.TextXAlignment.Center)
 			you.BackgroundTransparency = 0
 			you.BackgroundColor3 = T.ACCENT
-			at(you, rw - bs - 54 - 44, (rh - 15) // 2, 34, 15) -- (left of the badge, clear of the name and title)
+			at(you, rw - bs - 54 - 44 - shift, (rh - 15) // 2, 34, 15) -- (left of the badges, clear of the name and title)
 			you.ZIndex = 3
 			T.corner(you, 3)
 		end

@@ -90,6 +90,10 @@ There are no assists. The web game has none, and its `tag()` only remembers the 
 - **Until that module and data exist:** a quiet plate with the level number ("LEVEL 17").
 - **The ranked data:** comes in through `Stats.cardExtra(fn)`, where `fn(target, viewer, card)` runs for every card and list row (private players too), each one pcall'd. The ranked session keeps its own store `JankfireRanked_v1`.
 - **The XP tier names** (Iron..Apex) left the card. Ranked may use those names and colours for its own badge.
+- **Party Ranked (17 Nov):** the classic modes' second ladder. When a player has played it, the ranked session's `card.partyRanked` (`ladder = "party"`) is drawn by the same `RankedStyle.badge`, smaller:
+  - **Card header:** 55% of the main badge (53 px on PC, 41 on a phone), tucked at the main badge's lower left and clear of its line. Its label ("CARDBOARD II  ·  PARTY") goes on a second, smaller line under the main one, in `RankedStyle.color`.
+  - **PLAYERS rows:** only the small badge (60%), at the main badge's lower left. The name and the YOU chip move left to make room.
+  - With no `partyRanked` nothing extra is drawn. The badge is pcall'd, so a slip in it never breaks the card.
 
 ## Custom profiles
 
