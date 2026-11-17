@@ -6,8 +6,14 @@
 --     Door's attributes From, Goal, Dur and Since (server time). this rolls the slats up smoothly, into the head one by
 --     one. Rattle (server time): the door jumps a hand's width and drops (LOCKED)
 --   * roll-up shutters: a Model with the attribute Shutter (the muster's gate home). it rolls up while anyone is within
---     Near studs of its Center and rolls down after them. only on screen: its slats never block (walk in and the gate's
---     trigger takes you home)
+--     Near studs of its Center and rolls down once they are 2 studs past that (so it can't flip-flop at the edge). only
+--     on screen: its slats never block (walk in and the gate's trigger takes you home). each one is a state, how far up
+--     it is, that moves toward open or shut every frame, so a reversal midway carries on from where it is. (17 Nov, the
+--     owner: "sometimes when you go through the door to the training hub, the door is stuck halfway open until you get
+--     near it, it then resets and opens up and closes": going home, ZoneCull takes the training area out of your world
+--     mid-close, and the area's rescan forgot the shutter, then met it again as shut with its slats left halfway. now
+--     the shutters outlive the area leaving your world, and one that comes back, or is met for the first time, is set
+--     straight to where it should be for who is near it, with no replay)
 --   * laser gates: anything tagged LaserGate (CollectionService). its parts named LaserBar and LaserField (or marked with
 --     the attribute Laser: the playground's gate home, StructurePass) switch off with
 --     a click while anyone is within Near (an attribute, default 9) of it, and back on with a click once they are gone.
@@ -98,8 +104,9 @@ local function rattleOff(m: Instance, now: number): (Vector3, boolean)
 end
 
 -- ---------------------------------------------------------------- shutters (on screen only)
-type Shutter = { r: Roller, center: Vector3, near: number, u: number, from: number, goal: number, since: number, dur: number, lastNear: number }
+type Shutter = { r: Roller, center: Vector3, near: number, lin: number, goal: number, lastNear: number, shown: boolean }
 local shutters: { Shutter } = {}
+local SHUTTER_UP, SHUTTER_DOWN, SHUTTER_SLACK, SHUTTER_LINGER = 1.1, 1.4, 2, 0.8 -- (seconds up, seconds down, studs, seconds)
 
 -- ---------------------------------------------------------------- laser gates
 type Gate = { m: Instance, parts: { { p: BasePart, tr: number } }, center: Vector3, near: number, off: boolean, lastNear: number }
@@ -325,7 +332,8 @@ local function scan()
 	local d = lot and lot:FindFirstChild("Door")
 	if d and (not door or door.m ~= d or #door.slats == 0) then door = readRoller(d); doorMoving = true
 	elseif not d then door = nil end
-	if tg ~= seen then
+	-- (a nil area is one ZoneCull has taken out of your world for now: keep what we know, it comes back as it was)
+	if tg and tg ~= seen then
 		seen = tg
 		table.clear(shutters)
 		pit = nil
@@ -336,7 +344,11 @@ local function scan()
 					local c, n = m:GetAttribute("Center"), m:GetAttribute("Near")
 					local r = readRoller(m)
 					if typeof(c) == "Vector3" and #r.slats > 0 then
-						table.insert(shutters, { r = r, center = c, near = if type(n) == "number" then n else 12, u = 0, from = 0, goal = 0, since = 0, dur = 1, lastNear = -math.huge })
+						local near = if type(n) == "number" then n else 12
+						-- (met for the first time: straight to open or shut, for who is near it now)
+						local up = if anyoneNear(c, near) then 1 else 0
+						place(r, up, Vector3.zero)
+						table.insert(shutters, { r = r, center = c, near = near, lin = up, goal = up, lastNear = if up == 1 then os.clock() else -math.huge, shown = true })
 					end
 				elseif m.Name == "LongJumpPit" and m:IsA("BasePart") then
 					pit = m
@@ -361,21 +373,27 @@ RunService.RenderStepped:Connect(function(dt: number)
 		if moving or shaking or doorMoving then place(dr, u, off) end
 		doorMoving = moving or shaking
 	end
-	-- shutters
+	-- shutters: open inside Near, shut once everyone is SHUTTER_SLACK past it (and SHUTTER_LINGER after); how far up it
+	-- is moves toward that every frame
 	for _, s in shutters do
-		local near = anyoneNear(s.center, s.near)
+		local near = anyoneNear(s.center, if s.goal == 1 then s.near + SHUTTER_SLACK else s.near)
 		if near then s.lastNear = clock end
-		local goal = if near or clock - s.lastNear < 0.8 then 1 else 0
+		local goal = if near or clock - s.lastNear < SHUTTER_LINGER then 1 else 0
+		if not s.r.m:IsDescendantOf(workspace) then s.shown = false; continue end -- (out of your world: nothing to move)
+		if not s.shown then
+			-- (back in your world: straight to where it should be, no replay and no sound)
+			s.shown, s.goal, s.lin = true, goal, goal
+			place(s.r, goal, Vector3.zero)
+			continue
+		end
 		if goal ~= s.goal then
-			s.from, s.goal, s.since = s.u, goal, clock
-			s.dur = if goal == 1 then 1.1 else 1.4
+			s.goal = goal
 			Sfx.play("whirr", s.center + Vector3.new(0, 5, 0), 0.9, if goal == 1 then 0.8 else 0.65)
 		end
-		local a = (clock - s.since) / s.dur
-		if a <= 1.05 then
-			s.u = s.from + (s.goal - s.from) * ease(a)
-			place(s.r, s.u, Vector3.zero)
-			if a >= 1 and s.goal == 0 and s.u ~= 0 then s.u = 0 end
+		if s.lin ~= goal then
+			local step = dt / (if goal == 1 then SHUTTER_UP else SHUTTER_DOWN)
+			s.lin = if goal > s.lin then math.min(goal, s.lin + step) else math.max(goal, s.lin - step)
+			place(s.r, ease(s.lin), Vector3.zero)
 		end
 	end
 	-- laser gates

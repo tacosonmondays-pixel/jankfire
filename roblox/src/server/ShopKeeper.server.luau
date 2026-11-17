@@ -4,8 +4,11 @@
 --   * the shopkeeper is the owner's own avatar, the same for everyone (the owner: "I'll be the shop owner"): made on
 --     the server from his user id when it starts (Players:CreateHumanoidModelFromUserId: his look of the day), or, if
 --     Roblox won't give it, a copy saved in the place (ServerStorage.ShopKeeperCopy). he stands behind the glass
---     counter at Range.Shop.ShopKeeperSpot, idling, anchored (nobody pushes him; his parts take no shots), with the shop
---     on his prompt: ShopOpen = "tab:featured" (ShopClient opens it). he waves when someone opens it
+--     counter at Range.Shop.ShopKeeperSpot, anchored (nobody pushes him; his parts take no shots), his feet on the floor.
+--     he is built as R15 from his avatar's description (like the hub's regulars), so his sway fits him. (17 Nov, the
+--     owner: "I give players 3 special discounts on random skins if you talk to me! I want a cute sway waiting at the
+--     cases"): he sways gently at the cases (SWAY), talking to him (DEALS, on E) opens your three deals of the day, and
+--     the shop itself is on F. he waves when someone uses either. his name and DEALS over him, like the hub's regulars
 --   * the guns on the slatwall, under the counter's glass and in the tall case are made here when the server starts,
 --     from WeaponModels at the size they are in your hands (so they are always today's models), at the Pegs TrainingV2
 --     leaves in Range.Shop: Gun = a weapon id or "item:<id>", Len = the longest it may be, High = the tallest, Out =
@@ -19,6 +22,14 @@ local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 
 local OWNER = 2833796200
 local K = 4.5 -- studs per metre: a gun's size in your hands (Fight's HAND_K)
+-- his idle at the cases: a slow side-to-side sway, his weight going foot to foot, hands clasped, made with Studio's
+-- prompt-to-animation tool on his avatar (17 Nov, its second take: the first barely moved). it loops as two copies
+-- crossfading at each end (the hub's regulars' way); Roblox's own idle (IDLE) if it won't load
+local SWAY = "rbxassetid://132873393676097"
+-- the talk prompt: { what it says, the attribute it carries, its value } (ShopClient reads ShopOpen). the hub's
+-- regulars' prompt style: on an attachment at chest height, E (gamepad X), no hold, 8 studs, no line of sight, clickable,
+-- his name under it
+local DEALS = { "Deals", "ShopOpen", "tab:deals" }
 local IDLE = { R15 = "rbxassetid://507766388", R6 = "rbxassetid://180435571" } -- (Roblox's own idle and wave)
 local WAVE = { R15 = "rbxassetid://507770239", R6 = "rbxassetid://128777973" }
 local QUIET = { "Sound", "ParticleEmitter", "Light", "Beam", "Trail", "LuaSourceContainer", "ProximityPrompt", "BillboardGui",
@@ -102,10 +113,51 @@ local function hang(peg: BasePart, into: Instance)
 	end
 end
 
--- the shopkeeper: the owner's avatar (the saved copy if Roblox won't give it), anchored, idling, the shop on his prompt
+-- a loop with no pop where it ends: two tracks of the clip, the next fading in as the last one runs out (HubNPCs')
+local function loop(animator: Animator, id: string): boolean
+	local a = Instance.new("Animation"); a.AnimationId = id
+	local ok1, t1 = pcall(function() return animator:LoadAnimation(a) end)
+	local ok2, t2 = pcall(function() return animator:LoadAnimation(a) end)
+	if not ok1 or not ok2 or not t1 or not t2 then return false end
+	for _, t in { t1, t2 } do t.Looped = false; t.Priority = Enum.AnimationPriority.Idle end
+	t1:Play(0.4)
+	task.spawn(function()
+		local cur = t1
+		while animator.Parent do
+			if cur.Length <= 0 then task.wait(0.2); continue end
+			local left = cur.Length - cur.TimePosition
+			if left > 0.8 then task.wait(left - 0.75); continue end
+			local nxt = if cur == t1 then t2 else t1
+			nxt:Play(0.7); cur:Stop(0.7)
+			cur = nxt
+			task.wait(0.9)
+		end
+	end)
+	return true
+end
+
+-- his name over him, then what he does for you in a quieter grey (the hub's regulars' label)
+local function label(head: BasePart, name: string)
+	local bb = Instance.new("BillboardGui")
+	bb.Name = "NameLabel"; bb.Size = UDim2.new(8.5, 0, 0.9, 0); bb.StudsOffsetWorldSpace = Vector3.new(0, 1.9, 0)
+	bb.LightInfluence = 0; bb.MaxDistance = 45; bb.AlwaysOnTop = false; bb.Adornee = head
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1; t.Size = UDim2.fromScale(1, 1); t.TextScaled = true; t.RichText = true
+	t.Text = ("%s  <font color=\"#98a2ac\">·  DEALS</font>"):format(string.upper(name))
+	t.TextColor3 = Color3.fromRGB(236, 240, 242); t.TextStrokeTransparency = 0.6
+	t.FontFace = Font.new("rbxasset://fonts/families/Montserrat.json", Enum.FontWeight.Bold)
+	t.Parent = bb
+	bb.Parent = head
+end
+
+-- the shopkeeper: the owner's avatar as R15 (the saved copy if Roblox won't give it), anchored, swaying, deals and the
+-- shop on his prompts
 local function keeper(spot: BasePart, into: Instance)
 	local m: Model? = nil
-	local ok, res = pcall(function() return Players:CreateHumanoidModelFromUserId(OWNER) end)
+	local ok, res = pcall(function()
+		local desc = Players:GetHumanoidDescriptionFromUserId(OWNER)
+		return Players:CreateHumanoidModelFromDescription(desc, Enum.HumanoidRigType.R15)
+	end)
 	if ok and res then
 		m = res
 	else
@@ -137,8 +189,14 @@ local function keeper(spot: BasePart, into: Instance)
 	root.Anchored = true
 	local r6 = hum.RigType == Enum.HumanoidRigType.R6
 	local up = if r6 then 3 else hum.HipHeight + root.Size.Y / 2
+	npc.PrimaryPart = root
 	npc:PivotTo(spot.CFrame * CFrame.new(0, up, 0))
 	npc.Parent = into
+	-- (a scaled R15 avatar's legs can be longer than its HipHeight says: lift him till his lowest part is on the floor)
+	local floorY = spot.Position.Y
+	local low = math.huge
+	for _, p in npc:GetDescendants() do if p:IsA("BasePart") and p.Transparency < 1 then low = math.min(low, p.Position.Y - p.Size.Y / 2) end end
+	if low < floorY - 0.05 and low > floorY - 3 then npc:PivotTo(npc:GetPivot() + Vector3.new(0, floorY - low, 0)) end
 	local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator")
 	an.Parent = hum
 	local rig = if r6 then "R6" else "R15"
@@ -150,22 +208,38 @@ local function keeper(spot: BasePart, into: Instance)
 		t.Looped = looped; t.Priority = pri
 		return t
 	end
-	local idle = track(IDLE[rig], true, Enum.AnimationPriority.Idle)
-	if idle then idle:Play() end
+	if r6 or SWAY == "" or not loop(an, SWAY) then
+		local idle = track(IDLE[rig], true, Enum.AnimationPriority.Idle)
+		if idle then idle:Play() end
+	end
 	local wave = track(WAVE[rig], false, Enum.AnimationPriority.Action)
-	local pr = Instance.new("ProximityPrompt")
-	pr.Name = "ShopPrompt"; pr.ActionText = "Shop"; pr.ObjectText = ""
-	pr.HoldDuration = 0; pr.MaxActivationDistance = 11; pr.RequiresLineOfSight = false
-	pr.KeyboardKeyCode = Enum.KeyCode.E
-	pr:SetAttribute("ShopOpen", "tab:featured")
-	pr.Parent = root
+	-- his prompts at his chest: Deals (E) over Shop (F)
+	local at = Instance.new("Attachment")
+	at.Name = "PromptAt"; at.Position = Vector3.new(0, floorY + 3.2 - root.Position.Y, 0); at.Parent = root
+	local function prompt(name: string, action: string, key: Enum.KeyCode, pad: Enum.KeyCode, attr: string, value: any, below: number): ProximityPrompt
+		local pr = Instance.new("ProximityPrompt")
+		pr.Name = name; pr.ActionText = action; pr.ObjectText = ""
+		pr.KeyboardKeyCode = key; pr.GamepadKeyCode = pad; pr.HoldDuration = 0
+		pr.MaxActivationDistance = 8; pr.RequiresLineOfSight = false; pr.ClickablePrompt = true
+		pr.UIOffset = Vector2.new(0, below)
+		pr:SetAttribute(attr, value)
+		pr.Parent = at
+		return pr
+	end
+	local deals = prompt("DealsPrompt", DEALS[1], Enum.KeyCode.E, Enum.KeyCode.ButtonX, DEALS[2], DEALS[3], 0)
+	local shopPr = prompt("ShopPrompt", "Shop", Enum.KeyCode.F, Enum.KeyCode.ButtonY, "ShopOpen", "tab:featured", 76)
 	local waved = -math.huge
-	pr.Triggered:Connect(function()
-		if wave and os.clock() - waved > 4 then waved = os.clock(); wave:Play(0.15) end
-	end)
+	for _, pr in { deals, shopPr } do
+		pr.Triggered:Connect(function()
+			if wave and os.clock() - waved > 4 then waved = os.clock(); wave:Play(0.15) end
+		end)
+	end
 	task.spawn(function()
 		local okN, name = pcall(function() return Players:GetNameFromUserIdAsync(OWNER) end)
-		if okN and type(name) == "string" then pr.ObjectText = name end
+		if not (okN and type(name) == "string") then name = "Shop" end
+		deals.ObjectText = name; shopPr.ObjectText = name
+		local head = npc:FindFirstChild("Head")
+		if head and head:IsA("BasePart") then label(head, name) end
 	end)
 end
 
