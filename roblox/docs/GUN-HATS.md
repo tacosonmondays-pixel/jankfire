@@ -213,6 +213,12 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
 - After: at most 0.8 mm into the Star lever, no gun into any hat, feet at most 3.2 mm. The spyglass snipers keep the
   sniper's 13 mm saddle on their scope. Skinned builds in Studio wear the hat at the new seats (all 17).
 - `hat_preview.py` needs its own line for a skin; use `--spots` with a copy of `hat_spots.json` that adds inherited lines.
+- **The Ducky VIP guns rebuilt (v3, place version 480):** the Bubble Bath LMG, Wish Duck revolver and Ribbon Duck katana
+  keep their keys. Build them with `JF_EXTRA=gun_sets_ducky_v3`. `hat_spots.py` now needs every in-progress set that has
+  its own line in `hat_spots.json`: `JF_EXTRA=gun_sets_west,gun_sets_japan2,gun_sets_ducky_v3`. The LMG keeps its seat
+  on the feed cover, now 1.6 cm higher on the rebuilt cover. The revolver keeps its seat. The katana's pommel end moved
+  in to z 0.1315, so its hat would have floated 6 mm off it; it now stands at z 0.130 on a 3 mm riser. All three: no
+  hat into a gun, no gun into a hat (place version 483).
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 

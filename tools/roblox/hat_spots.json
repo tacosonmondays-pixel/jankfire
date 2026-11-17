@@ -48,7 +48,7 @@
   "lmg@lmg_ducky": {"z": 0.0, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.5 mm (third person), 0.4 mm (first)"},
   "marbles@marbles_cauldron": {"z": -0.04, "s": 0.65, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "revolver@revolver_candle": {"z": -0.08, "s": 0.7, "note": "solved by hat_solve.py: worst clip 0.6 mm (third person), 0.6 mm (first)"},
-  "katana@katana_ducky": {"y": 0.0, "pitch": 90, "z": 0.138, "s": 0.6, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "katana@katana_ducky": {"y": 0.0, "pitch": 90, "z": 0.13, "s": 0.6, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "katana@katana_hex": {"y": 0.0, "pitch": 90, "z": 0.1423, "s": 0.6, "note": "solved by hat_solve.py: worst clip 0.4 mm (third person), 0.4 mm (first)"},
   "katana@katana_infernal": {"y": 0.0, "pitch": 90, "z": 0.1388, "s": 0.6, "saddle": 0.01, "note": "solved by hat_solve.py: worst clip 0.9 mm (third person), 0.9 mm (first)"},
   "katana@katana_sakura": {"y": 0.0, "pitch": 90, "z": 0.1358, "s": 0.6, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},

@@ -85,10 +85,10 @@ D.SPOTS = {
 	["katana@katana_neon"] = { at = Vector3.new(0, 0.03139, 0.08), s = 0.6, yaw = 0, pitch = 0 },  -- upright on top of the handle near its end (the pommel has a cord hanging off it); 1 cm in after the guns z-fight fix, solved by hat_solve.py: worst clip 0.0 mm
 	["ar@ar_seraph"] = { at = Vector3.new(0, 0.086, -0.14), s = 1, yaw = 0, pitch = 0 },  -- on the receiver rib ahead of the halo sight (solved onto the halo itself, 6 cm over the gun; moved by hand): worst clip 0.0 mm
 	["ar@ar_infernal"] = { at = Vector3.new(0, 0.07, -0.09), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
-	["lmg@lmg_ducky"] = { at = Vector3.new(0, 0.07721, 0), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.5 mm (third person), 0.4 mm (first)
+	["lmg@lmg_ducky"] = { at = Vector3.new(0, 0.093, 0), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.5 mm (third person), 0.4 mm (first)
 	["marbles@marbles_cauldron"] = { at = Vector3.new(0, 0.19262, -0.04), s = 0.65, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["revolver@revolver_candle"] = { at = Vector3.new(0, 0.0745, -0.08), s = 0.7, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.6 mm (third person), 0.6 mm (first)
-	["katana@katana_ducky"] = { at = Vector3.new(0, 0, 0.138), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["katana@katana_ducky"] = { at = Vector3.new(0, 0, 0.13), s = 0.6, yaw = 0, pitch = 90, saddle = 0.003 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["katana@katana_hex"] = { at = Vector3.new(0, 0, 0.1423), s = 0.6, yaw = 0, pitch = 90 },  -- solved by hat_solve.py: worst clip 0.4 mm (third person), 0.4 mm (first)
 	["katana@katana_infernal"] = { at = Vector3.new(0, 0, 0.1388), s = 0.6, yaw = 0, pitch = 90, saddle = 0.01 },  -- solved by hat_solve.py: worst clip 0.9 mm (third person), 0.9 mm (first)
 	["katana@katana_sakura"] = { at = Vector3.new(0, 0, 0.1358), s = 0.6, yaw = 0, pitch = 90, saddle = 0.003 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
