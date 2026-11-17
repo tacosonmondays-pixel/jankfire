@@ -292,6 +292,27 @@ The Half a Shotgun's line ran inside its hinge.
   corner at the bottom right. Every other skin was measured at the hip (`hold_screen.py --hip`) and covers within two
   points of its gun; the Seraph sniper's wing is already a small corner. Sheet: `gun-hold/ads-4.jpg`. The wing is
   being redrawn; its new pieces need the same check and maybe a new scale.
+- On the slim sights (place version 489; the owner: the sights "look bulky and not like the ones in rivals"; the
+  gun-models session made every sight thin and open in place version 484). Rivals' rear ring reads about 12 to 13 %
+  of the screen wide when aimed (vault `Research/Rivals sights.md`), ours read 4 to 6 % at the old distances, so each
+  gun's `aimZ` was refitted on the new models: Assault Rifle, Redline and Lawn Mower -0.06 m, Belt Sander -0.07, Hat
+  Trick -0.09, Shotgun -0.01, Plan B -0.01, SMG 0.05, Yeehaw 0.06, Half a Shotgun 0.02, Revolver 0.03 (as before; it
+  matches the owner's reference picture). The rings now read 9 to 13 % wide, the Hat Trick's handle block 14 %, the
+  notch blocks about 7 %, and a gun covers 9 to 13.5 % of the screen with nothing but ring walls above the crosshair.
+  The SMG and the Yeehaw were left further back: closer, their stocks spread across the whole bottom (the SMG to 21 %
+  of the screen). Moving closer means the stock, right at the lens, spreads wider at the bottom than in Rivals (their
+  gun is drawn with a narrower lens of its own). Squeezing the gun front to back while aiming would match that, but it
+  would also move the hands, the muzzle points and the moving parts every frame, so it was left out.
+- The Redline's line runs through its ring now (the cover hump was lowered), so it aims at its own Sight spot
+  (0, 0.0737, 0.1058) with iron sights and no red dot. That spot lives only in `WeaponModels.luau`, not in
+  `Weapons.luau`, so the `ads.sight` row stays: without it the Redline aims like a gun with no sights, off to the
+  right. The Half a Shotgun's Sight spot moved up between its hammers (0.065), so its override went.
+- The cardboard rifle's flap stands over the sight and would cover 28 % of the screen at the new distance: it fades
+  out while aiming. The Ticket Hat Trick sits at -0.06, the Capgun Yeehaw at 0.09, the Star and Japanese-concept
+  Yeehaws at 0.08. The Seraph skins keep their old sights until the angel set lands, and the cute concepts until cute
+  v3; the cute concept rifle E's black block covers the crosshair and needs the cute v3 sight.
+- Sheet: `gun-hold/ads-5.jpg`, ten guns aimed in Play. Not pictured: the Half a Shotgun, the Marble Shotgun, the
+  scopes (unchanged) and skins aimed.
 
 Checked in Play (sheets `gun-hold/ads-1.jpg` to `ads-3.jpg`, the game camera, the owner's own hands through
 JankTest): every weapon at hip and aimed, both scopes, the Seraph rifle and Hat Trick, and the Infernal Plan B.
