@@ -350,10 +350,15 @@ def soft(o, width, seg=2, angle=32.0, profile=0.6):
 
 def finish(o, sharp=36.0):
     """apply every modifier, then shade: faces smooth, edges sharper than `sharp` hard, and a WEIGHTED NORMAL pass
-       (face area, keep sharp) so big faces stay flat and round edges blend. returns a Mesh in world space"""
+       (face area, keep sharp) so big faces stay flat and round edges blend. sharp=None keeps the mesh's own smooth /
+       flat flags (a kit helper's round heads, eyes and bows: re-cutting them by angle left them faceted) and freezes
+       its normals as custom normals (so it merges cleanly with weighted-normal solids). returns a Mesh in world space"""
     dg = bpy.context.evaluated_depsgraph_get()
     me = bpy.data.meshes.new_from_object(o.evaluated_get(dg)); KEEP.append(me)
     me.transform(o.matrix_world)
+    if sharp is None:
+        me.normals_split_custom_set([tuple(n.vector) for n in me.corner_normals])
+        return me
     bm = bmesh.new(); bm.from_mesh(me)
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=1e-6)
     bmesh.ops.dissolve_degenerate(bm, edges=bm.edges[:], dist=1e-7)
@@ -393,6 +398,8 @@ class ArtGun(Gun):
         super().__init__(name)
         self.solids = {}
         self.ao = None     # the bake's AO reach (metres); None = from the gun's length
+        self.shell = None  # ROUTE S: the pieces ('node_wzX__slot') or nodes that get a shade shell; None = every painted
+                           # piece (to keep a gun in budget, shell only its big masses: the shells double what they cover)
 
     def put(self, piece, *objs):
         self.slots[piece.split('__')[1]]  # (an unknown slot fails here, not at export)
@@ -401,7 +408,7 @@ class ArtGun(Gun):
     def _sg(self, bm):
         me = bpy.data.meshes.new('sg'); KEEP.append(me)
         bm.to_mesh(me); bm.free()
-        return finish(_link(bpy.data.objects.new('sg', me)), sharp=40.0)
+        return finish(_link(bpy.data.objects.new('sg', me)), sharp=None)   # (as the helper shaded it)
 
     def done(self):
         keys = set(self.pieces) | {tuple(p.split('__')) for p in self.solids}
@@ -552,6 +559,7 @@ TOP, SIDE_, BOTTOM = 1.06, 0.97, 0.82   # the light by facing: a top face, a sid
 FALL = 0.13          # every piece is this much darker at its bottom than at its top (the soft top-down gradient)
 FLOOR = 0.6          # no texel darker than this times its flat colour (dark parts never sink into black mud)
 DARK_K = 0.5         # near-black colours get this much more shading contrast (on them the same multiply hardly shows)
+LIGHT_K = 0.35       # ... and bright ones this much less (a darkened buttercup reads khaki, not shaded)
 PAD = 24             # texels each island's colour is pushed out into the gaps (no grey halos once Roblox mipmaps it)
 MEAN = 1.0           # the bake's average multiplier over the gun (so the baked gun is as bright as the flat one)
 
@@ -728,7 +736,7 @@ def bake_gun(g, out_dir, ao=None):
     grad = face * (1 + FALL * (hgt - 0.5))   # (+8% at a piece's top, -8% at its bottom)
     mult = shade * grad
     lum = A[..., 0] * 0.2126 + A[..., 1] * 0.7152 + A[..., 2] * 0.0722
-    mult = 1 + (mult - 1) * (1 + DARK_K * np.clip((0.09 - lum) / 0.05, 0, 1))
+    mult = 1 + (mult - 1) * (1 + DARK_K * np.clip((0.09 - lum) / 0.05, 0, 1) - LIGHT_K * np.clip((lum - 0.25) / 0.25, 0, 1))
     mult = np.clip(mult * MEAN / max(float(mult[on].mean()), 1e-3), FLOOR, 1.12)
     col = _srgb(A * mult[..., None])
     col = col + (1 - col) * (edge * LIFT)[..., None]
@@ -769,8 +777,11 @@ def bake_gun(g, out_dir, ao=None):
     try: sm.surface_render_method = 'BLENDED'
     except Exception: pass
     shells = {}
+    want = getattr(g, 'shell', None)
     for o in painted:
         nodeb = o.name.split('.')[0].split('_wz')[0]
+        piece = '%s__%s' % (o.name.split('.')[0], o.data.materials[0].name.split('.')[0])
+        if want is not None and piece not in want and nodeb not in want: continue
         shells.setdefault(nodeb, bmesh.new()).from_mesh(o.data)
     shell_tris = 0
     for nodeb, bm in shells.items():
@@ -800,8 +811,10 @@ def bake_gun(g, out_dir, ao=None):
 
 
 # ================================================================================================ 4. export for Roblox
-# export_weapons.py needs two changes for a piece that carries a picture; until it has them they are made here, in
-# memory, on its own text (the file on disk is never touched; once it carries them this runs it unchanged):
+# export_weapons.py carries the two rules a piece with a picture needs (since 17 Nov 2026, commit 3cbcc20): its fallback
+# colour is its "jf_color", and it keeps its own UVs. roblox_export runs the file as it is when it finds them (MARKERS),
+# and an older copy is patched in memory (PATCHES; the file on disk is never touched)
+MARKERS = ("m['jf_color'] if m.get('jf_color')", "look_of(o.data.materials[0] if o.data.materials else None)['tex']]")
 PATCHES = [
     ("    out['color'] = rbxglb.rgb_hex(rgb)\n",
      "    out['color'] = m['jf_color'] if m.get('jf_color') else rbxglb.rgb_hex(rgb)  # (an atlas shared by pieces: each its own fallback)\n"),
@@ -817,8 +830,8 @@ def roblox_export(files, out_dir):
        unfold on every piece without a picture, export_report.json. Never point out_dir at roblox/assets"""
     src_path = os.path.join(HERE, 'export_weapons.py')
     src = open(src_path, encoding='utf8').read()
-    for old, new in PATCHES:
-        if new in src: continue
+    for marker, (old, new) in zip(MARKERS, PATCHES):
+        if marker in src: continue
         if old not in src: raise SystemExit('export_weapons.py changed: patch not found: ' + old.strip()[:60])
         src = src.replace(old, new)
     argv = sys.argv

@@ -128,7 +128,10 @@ SkinSets.RENAME = { smg_uzi = "Hairdryer", sawnoff_pepper = "Double Chili" } :: 
 -- the cute-set concepts in the game for the owner to choose from (not sold, not in crates; one becomes the set)
 -- (cute v3, 17 Nov: A-D rebuilt with bigger signature pieces, tools/roblox/gun_sets_cute3.py; E Daydream dropped)
 SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b", "ar_cute_c", "pistol_cute_c",
-	"ar_cute_d", "pistol_cute_d" } :: { string }
+	"ar_cute_d", "pistol_cute_d",
+	-- the Ducklings (17 Nov, the owner: "Can you also tell it to make a few blender ducky skins?"): Wish Duck's family
+	-- built with the Blender-artist method and its baked shade shells (tools/roblox/gun_sets_ducky_art.py)
+	"ar_duckling", "smg_duckling", "pistol_duckling" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in

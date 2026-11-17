@@ -503,6 +503,20 @@ then: if it goes well, apply it to all the new guns.
 - **Judges:** AR 7 against the current 5, Revolver 6 against 5.
 - **Picture:** `gun-models/artist-trial.jpg`.
 
+### The Ducklings: Blender-method Ducky concepts (17 November 2026, place version 511)
+
+The owner: "Can you also tell it to make a few blender ducky skins?"
+- **The guns:** three concepts in Wish Duck's family, built with the Blender-artist method: `ar_duckling`,
+  `smg_duckling`, `pistol_duckling`. The builder is `tools/roblox/gun_sets_ducky_art.py` (`JF_EXTRA=gun_sets_ducky_art`).
+- **The look:** each has a round head at the barrel's root with the muzzle out of the shared bill, a pink bow with a gold
+  star clip, pearl-over-pink wings, a chunky tail, coral feet on the grip, dimmed pink heart gems, and a plum business end.
+  The Plan B's slide nose is the duck's head and moves with the slide.
+- **Shading:** baked shade shells (route S). Each gun stays at or under 15k triangles including the shells.
+- **Not live:** they are concepts in `SkinSets.CONCEPTS`, so not sold, not in crates and not in the VIP pack.
+- **Where they live in the place:** the loaded models are kept in `PolishBackup.DucklingTrial`, and the live copies in
+  `WeaponSets.kit` / `JankfireSkins`. They are not in `assets.json`; their ids are in the upload log.
+- **Pictures:** `gun-models/ducklings.jpg`, `ducklings-in-hand.jpg`.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
