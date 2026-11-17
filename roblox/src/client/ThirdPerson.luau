@@ -541,6 +541,10 @@ local function buildGun(r: Rig, wid: string, src: Instance?)
 	local sk = if type(skin) == "string" then skin else nil
 	r.holdR, r.poseR, r.turnR = holdFrame(wid, "Right", r.k, nil, sk)
 	r.holdL, r.poseL, r.turnL = holdFrame(wid, "Left", r.k, nil, sk)
+	-- (the hold session) a one-handed gun's left hand waits off screen in first person (away): here the arm keeps its
+	-- own pose and only comes to the gun for the reload's grabs below
+	local rowL = (AvatarArms.rows(wid, sk) or {}).Left
+	if rowL and rowL.away then r.holdL, r.poseL = nil, nil end
 	-- (the hold session, 17 Nov 2026) the Zombie Claw: this body's own right hand is the claw. the nails and the cuff
 	-- go onto its real shape, and on this client the hand takes the claw's green while it is out (dropGun undoes it)
 	if r.poseR == "hand" and r.holdR then

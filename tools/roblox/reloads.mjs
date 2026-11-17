@@ -5,7 +5,10 @@
 //   public/js/anim.js                  pump_shotgun, bolt_sniper (the clips that play after a shot)
 // each clip = the body keys (camera-space offsets, metres / radians), the sound events, and `ch`: the gun's own moving
 // parts (mag, charging handle, pump, bolt, lever, hammer, feed cover, slide, hinge, cylinder, the whole-gun twirl).
-// the off hand and the hand-held props (the `lh` and `p_*` channels) are not ported. the Redline and the Marble
+// the off hand comes as `lh` = { { t, k, f } }: k 0 off screen..1 there, f what it follows (0 the gun, 1 the mag,
+// 2 the charging handle, 3 the pump, 4 the bolt, 5 the cylinder, 6 / 7 shell 1 / 2; a fraction blends two), without
+// the web's own offsets (Viewmodel puts the hand on each piece its own way). the hand-held props (`p_*`) are not
+// ported. the Redline and the Marble
 // Shotgun keep their hand-keyed clips in Anims.luau (tools/roblox/anims.mjs). no dependencies: the tables are cut out
 // of the sources and evaluated on their own, because the files themselves import three.js and browser modules.
 // run: node tools/roblox/reloads.mjs
@@ -75,7 +78,9 @@ let out = `--!strict
 return {
 `;
 const ids = [];
-function emit(name, r) {
+// the off hand's follow codes: reloads.js and rifles.js as they are; sidearms.js 1 the mag, 2 / 3 shell 1 / 2
+const SIDE_F = (f) => (f < 2 ? f : f + 4);
+function emit(name, r, mapF = (f) => f) {
   if (!Array.isArray(r.keys)) return;
   const dur = r.dur ?? r.keys[r.keys.length - 1].t;
   ids.push(name);
@@ -84,11 +89,13 @@ function emit(name, r) {
   out += `\t\t},\n\t\tevents = { ${(r.events || []).map(([t, nm]) => `{ ${n(t)}, "${nm}" }`).join(', ')} },\n`;
   const ch = Object.entries(r.ch || {}).filter(([k]) => PARTS.has(k));
   if (ch.length) out += `\t\tch = { ${ch.map(([k, rows]) => `${k} = { ${rows.map(v).join(', ')} }`).join(', ')} },\n`;
+  const lh = r.ch && r.ch.lh;
+  if (lh) out += `\t\tlh = { ${lh.map((row) => v([row[0], row[1], mapF(row[2] ?? 0)])).join(', ')} },\n`;
   out += '\t},\n';
 }
 for (const [id, r] of Object.entries(RL)) if (!SKIP.has(id)) emit('reload_' + id, r);
 for (const [name, r] of Object.entries(RIFLES)) if (WANT.test(name)) emit(name, r);
-for (const [name, r] of Object.entries(SIDE)) if (WANT.test(name) && !name.includes('akimbo')) emit(name, r);
+for (const [name, r] of Object.entries(SIDE)) if (WANT.test(name) && !name.includes('akimbo')) emit(name, r, SIDE_F);
 for (const [name, r] of Object.entries(FOLLOW)) emit(name, r);
 for (const [name, r] of Object.entries(TWIRL)) emit(name, r);
 out += '}\n';

@@ -191,13 +191,53 @@ local ride: Grab? = nil -- the pump: the hand's own hold moves with it
 local magGrab: Grab? = nil -- the magazine, from below
 local crankGrab: Grab? = nil -- a skin's crank (the Marble Shotgun's gumball machine): the hand rides it as it turns
 local lidTop: Vector3? = nil -- the top of the Marble Shotgun's lid, shut (the weapon's root frame, studs)
+-- a one-handed gun's left hand (its hold row says away): off screen and hidden, it comes in only for the reload's
+-- off-hand track (Reloads lh: { t, k 0 away..1 there, f what it follows }, the web game's timings): 1 the magazine,
+-- 5 the cylinder (from under, as it swings out), 6 / 7 the thumb behind shell 1 / 2 (Half a Shotgun)
+local awayL = false
+local lhGrab: { [number]: { grab: Grab, under: boolean } } = {}
 local function smoothstep(u: number): number u = math.clamp(u, 0, 1); return u * u * (3 - 2 * u) end
+-- a set of pieces' box in the weapon's root frame (studs, at rest)
+local function boxOf(list: { any }, root: BasePart): (Vector3, Vector3)
+	local lo, hi = Vector3.one * math.huge, -Vector3.one * math.huge
+	for _, p in list do
+		local part = p.part :: BasePart
+		local rel = root.CFrame:ToObjectSpace(part.CFrame)
+		local h = part.Size / 2
+		for _, sx in { -1, 1 } do for _, sy in { -1, 1 } do for _, sz in { -1, 1 } do
+			local q = rel:PointToWorldSpace(Vector3.new(sx * h.X, sy * h.Y, sz * h.Z))
+			lo = lo:Min(q); hi = hi:Max(q)
+		end end end
+	end
+	return lo, hi
+end
 
 local function offHandSetup(m: Model, root: BasePart)
 	ride, magGrab, crankGrab, lidTop = nil, nil, nil, nil
+	lhGrab = {}
+	local rowL = (AvatarArms.rows(VM.wid, VM.skin) or {}).Left
+	awayL = rowL ~= nil and rowL.away == true
 	local hold = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
 	local st = VM.parts
 	if not armsOn or not hold or not st then return end
+	-- (the away hand's pieces: the cylinder from under, palm up; the thumb behind each shell, pushing it home)
+	if awayL then
+		local cyl = st.nodes.cylinder
+		if cyl and #cyl > 0 then
+			local lo, hi = boxOf(cyl, root)
+			local main = cyl[1].part :: BasePart
+			lhGrab[5] = { grab = { part = main, rel = main.CFrame:ToObjectSpace(root.CFrame * CFrame.new((lo.X + hi.X) / 2, lo.Y, (lo.Z + hi.Z) / 2)) }, under = true }
+		end
+		for i, node in { "shell1", "shell2" } do
+			local sh = st.nodes[node]
+			if sh and #sh > 0 then
+				local lo, hi = boxOf(sh, root)
+				local main = sh[1].part :: BasePart
+				local at = CFrame.new((lo.X + hi.X) / 2 - 0.012 * k, (lo.Y + hi.Y) / 2 - 0.018 * k, hi.Z + 0.02 * k) * CFrame.Angles(-math.pi / 2, 0, 0)
+				lhGrab[5 + i] = { grab = { part = main, rel = main.CFrame:ToObjectSpace(root.CFrame * at) }, under = false }
+			end
+		end
+	end
 	local function biggest(list: { any }?): BasePart?
 		local best: BasePart? = nil
 		for _, p in list or {} do
@@ -245,12 +285,41 @@ local function offHandSetup(m: Model, root: BasePart)
 		end
 		local at = CFrame.new((lo.X + hi.X) / 2, lo.Y + math.min(0.04 * k, (hi.Y - lo.Y) * 0.35), (lo.Z + hi.Z) / 2)
 		magGrab = { part = mag, rel = mag.CFrame:ToObjectSpace(root.CFrame * at) }
+		lhGrab[1] = { grab = magGrab :: Grab, under = false }
 	end
+end
+
+-- the reload's off-hand track at t: how far the hand is in (0 to 1) and what it follows (a fraction blends two)
+local function sampleLh(keys: { { number } }, t: number): (number, number)
+	if t <= keys[1][1] then return keys[1][2], keys[1][3] end
+	for i = 1, #keys - 1 do
+		local a, b = keys[i], keys[i + 1]
+		if t < b[1] then
+			local u = (t - a[1]) / math.max(b[1] - a[1], 1e-4)
+			return a[2] + (b[2] - a[2]) * u, a[3] + (b[3] - a[3]) * u
+		end
+	end
+	local z = keys[#keys]
+	return z[2], z[3]
 end
 
 -- where the off hand is this frame: (a frame in the world or nil for its hold, how far it has gone there, whether
 -- that frame is something held from under: AvatarArms.override)
 local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
+	-- a one-handed gun: the left hand only comes in for its reload's off-hand track, then goes again
+	if awayL then
+		local lh = clip and Anims[clip.name].lh
+		if not lh then return nil, 0, false end
+		local kIn, f = sampleLh(lh, clip.t)
+		local f0, f1 = math.floor(f), math.ceil(f)
+		local A, B = lhGrab[f0], lhGrab[f1]
+		if kIn <= 0.001 or not (A or B) then return nil, 0, false end
+		local FA = if A then A.grab.part.CFrame * A.grab.rel else nil
+		local FB = if B then B.grab.part.CFrame * B.grab.rel else nil
+		local to = if FA and FB then FA:Lerp(FB, f - f0) elseif FA then FA else FB
+		local under = (if A then A.under else false) or (if B then B.under else false)
+		return to, smoothstep(kIn), under
+	end
 	local base: CFrame? = if ride then ride.part.CFrame * ride.rel else nil
 	if not clip then return base, if base then 1 else 0, false end
 	local a = Anims[clip.name]

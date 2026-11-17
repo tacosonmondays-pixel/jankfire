@@ -64,6 +64,7 @@ type Arm = {
 	foreInv: CFrame, -- the forearm's own frame at its wrist joint (Y to the elbow), inverted
 	thick: number, long: number, ang: number,
 	over: CFrame?, mix: number, overUnder: boolean,
+	away: boolean, idle: boolean?, -- (a hand that waits off screen: hidden while nothing calls it)
 }
 -- (a plain table, cleared when the arms are destroyed. NOT a weak one: an Instance's Luau handle can be collected
 -- while the Instance lives on, and a weak key went with it: the forearms froze a moment after every swap)
@@ -225,7 +226,7 @@ function AvatarArms.hold(parent: Instance, root: BasePart, wid: string, k: numbe
 			rel = (frame or CFrame.identity) * CFrame.new(row.at * k) * CFrame.fromEulerAnglesXYZ(row.rot.X, row.rot.Y, row.rot.Z),
 			hand = hand, fore = fore,
 			gripInv = grip:Inverse(), wrist = hw, mid = basisAt(Vector3.zero, hw), foreInv = basisAt(fw, fe - fw):Inverse(),
-			thick = hand.Size.X, long = hand.Size.Y, ang = 0, mix = 0, overUnder = false,
+			thick = hand.Size.X, long = hand.Size.Y, ang = 0, mix = 0, overUnder = false, away = row.away == true,
 		})
 	end
 	if #list == 0 then return false end
@@ -308,6 +309,16 @@ function AvatarArms.aim(parent: Instance, cam: CFrame)
 		local X = hand.XVector - Y * hand.XVector:Dot(Y)
 		X = if X.Magnitude > 1e-3 then X.Unit else hand.ZVector:Cross(Y).Unit
 		a.fore.CFrame = CFrame.fromMatrix(wrist, X, Y, X:Cross(Y)) * a.foreInv
+		-- a hand that waits off screen (a one-handed gun's left: away) is hidden until something calls it. the weapon's
+		-- own code hides any piece with the Hide attribute every frame (Arsenal), so it is set only when it changes
+		if a.away then
+			local idle = not (a.over ~= nil and a.mix > 0.001)
+			if idle ~= a.idle then
+				a.idle = idle
+				a.hand:SetAttribute("Hide", if idle then true else nil)
+				a.fore:SetAttribute("Hide", if idle then true else nil)
+			end
+		end
 	end
 end
 

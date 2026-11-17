@@ -21,7 +21,8 @@ out = ['--!strict',
        '--     turning its own axes, tint = its colour, the weapon nail_ / cuff_ pieces refitted onto it), at = where',
        '--     the fist is on the weapon (file metres), rot = radians (x, y, z as',
        '--     CFrame.Angles): +Y runs along the thing held, toward the thumb (palm: up into it); size = the hand against',
-       '--     AvatarArms.HAND; elbow = this arm\'s own elbow spot; turn = an extra turn about the handle (radians)',
+       '--     AvatarArms.HAND; elbow = this arm\'s own elbow spot; turn = an extra turn about the handle (radians);',
+       '--     away = this hand waits off screen, hidden, and only comes in for a reload\'s off-hand track or an item',
        '--   holds[weapon].skins[id].Right / Left: a skin\'s (or a mode look\'s: the knife\'s spoon) own hands, written whole',
        '--   holds[weapon].shift: a move of the weapon\'s rest pose, camera space (metres); scale: its size against size;',
        '--     tilt: a turn added to its rest pose (radians, x y z like vm.r)',
@@ -51,6 +52,7 @@ def hand_rows(wid, h):
         if s.get('elbow'): extra += ', elbow = %s' % V(s['elbow'])
         if s.get('turn'): extra += ', turn = %s' % f(math.radians(s['turn']))
         if s.get('tint'): extra += ', tint = Color3.fromRGB(%s)' % ', '.join(str(int(c)) for c in s['tint'])
+        if s.get('away'): extra += ', away = true'
         rows.append('%s = { pose = "%s", at = %s, rot = %s, size = %s%s }' % (
             long, s['pose'], V(s['at']), V([math.radians(a) for a in s.get('rot', (0, 0, 0))]), f(s.get('size', 1)), extra))
     return rows
