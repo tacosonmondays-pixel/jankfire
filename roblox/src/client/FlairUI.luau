@@ -120,6 +120,19 @@ local function lock(parent: GuiObject, z: number)
 	return veil
 end
 
+-- moving previews on the cards (the shop session's FlairAnim: kill effects as flipbooks once they have a sheet, emotes as
+-- your own avatar). the owner, 17 Nov: "for kill effects in shop can they be small previews? same with in inv?"
+local FlairAnimMod: any = nil
+local function flairAnim(): any
+	if FlairAnimMod == nil then
+		local m = script.Parent:FindFirstChild("FlairAnim")
+		local ok, r = false, nil
+		if m then ok, r = pcall(require, m) end
+		FlairAnimMod = if ok and type(r) == "table" then r else false
+	end
+	return if FlairAnimMod then FlairAnimMod else nil
+end
+
 -- a card: the drawn tile, the name, the rarity
 type Card = { id: string, t: string, btn: TextButton, st: UIStroke, tag: TextLabel, lockF: Frame?, pic: Frame }
 local function card(parent: Instance, t: string, id: string, w: number, h: number, order: number): Card
@@ -131,6 +144,10 @@ local function card(parent: Instance, t: string, id: string, w: number, h: numbe
 	local ph = h - 62
 	local pic = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(6, 6), Size = UDim2.fromOffset(w - 12, ph), ZIndex = 4 }, btn)
 	Flair.picture(t, id, pic)
+	if t == "kill" or t == "emote" then
+		local fa = flairAnim()
+		if fa then pcall(fa.attach, pic, t, id) end -- (nil when there's nothing to move yet: the still tile stays)
+	end
 	local nm = label(btn, string.upper(i.name), 17, UDim2.fromOffset(10, ph + 10), UDim2.fromOffset(w - 20, 22), T.TEXT, T.FONT_BOLD)
 	nm.ZIndex = 6; nm.TextScaled = true
 	new("UITextSizeConstraint", { MaxTextSize = 17 }, nm)
@@ -565,14 +582,15 @@ local function previewLoop()
 					if ok and tr then
 						tr.Priority = Enum.AnimationPriority.Action4
 						tr.Looped = false
-						tr:Play(0.2)
+						tr:Play(0.3)
 						local t0 = os.clock()
-						local len = if e.loop then e.len * 2 else e.len
+						local len = if e.loop then e.len * 2 else e.len + 3 -- (a one-shot ends on the track's own time, below)
 						while S.open and S.tok == tok and os.clock() - t0 < len do
-							if e.loop and not tr.IsPlaying then tr:Play(0) end
+							if e.loop and not tr.IsPlaying then tr:Play(0.3) end
+							if not e.loop and (tr.TimePosition >= e.len - 0.35 or (os.clock() - t0 > 1 and not tr.IsPlaying)) then break end
 							task.wait(0.05)
 						end
-						tr:Stop(0.25)
+						tr:Stop(0.35)
 					end
 					task.wait(0.7)
 				else

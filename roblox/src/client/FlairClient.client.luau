@@ -143,7 +143,7 @@ local function stopEmote(tellServer: boolean)
 	local id = E.id
 	if not id then return end
 	E.id = nil
-	if E.track then E.track:Stop(0.25) end
+	if E.track then E.track:Stop(0.35) end -- (a soft hand-back to idle: no snap)
 	E.track = nil
 	unhideAll()
 	local c = E.cam
@@ -167,14 +167,14 @@ local function startEmote(id: string)
 		return
 	end
 	if E.id then
-		if E.track then E.track:Stop(0.15) end
+		if E.track then E.track:Stop(0.3) end -- (cross-fades into the next one)
 		E.track = nil
 	end
 	local e = Flair.info("emote", id)
 	local tr = trackFor(hum, id)
 	if not e or not tr then task.spawn(ask, "stop"); return end
 	tr.Looped = e.loop
-	tr:Play(0.2, 1, 1)
+	tr:Play(0.3, 1, 1)
 	E.id, E.track, E.t0, E.len, E.loop = id, tr, os.clock(), e.len, e.loop
 	E.rootAt = root.Position
 	-- the camera swings out behind you (or keeps going if it's already out)
@@ -251,7 +251,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 	local el = os.clock() - E.t0
 	local moved = hum.MoveDirection.Magnitude > 0.1 or hum.Jump
 		or (Vector3.new(root.Position.X, 0, root.Position.Z) - Vector3.new(E.rootAt.X, 0, E.rootAt.Z)).Magnitude > 1.5
-	if (el > 0.25 and moved) or (not E.loop and el > E.len - 0.05) or me:GetAttribute("Emote") == nil and el > 1 then
+	-- (a one-shot starts its 0.35 s fade to idle that long before its last frame, so it settles instead of snapping. read
+	-- off the track, not the clock: a clip's first play waits ~0.6 s for the asset, and the clock would cut its end off)
+	local tr = E.track
+	local done = not E.loop and tr ~= nil and (tr.TimePosition >= E.len - 0.35 or (el > 1 and not tr.IsPlaying) or el > E.len + 3)
+	if (el > 0.25 and moved) or done or me:GetAttribute("Emote") == nil and el > 1 then
 		stopEmote(me:GetAttribute("Emote") ~= nil)
 		return
 	end

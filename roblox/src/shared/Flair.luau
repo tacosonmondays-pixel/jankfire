@@ -67,15 +67,17 @@ local GRAPPLES = {
 	{ "rainbow", "Rainbow", "legendary", Color3.fromRGB(240, 178, 52) },
 }
 -- emotes: id, name, rarity, animation, seconds, loops (one-shots end on their own; a loop runs till you move)
--- (the clips: generate_animation, 17 Nov 2026; wave and salute re-uploaded as Animations through Open Cloud (the tool's
--- own publish timed out), the rest as the tool published them. prompts in FLAIR.md)
+-- (the clips: generate_animation, 17 Nov 2026. the owner found the first set "really stiff..", so wave, salute, clap,
+-- fist pump and groove were remade the same day: 4 takes each (the owner's rule), the best kept on a frame strip and a
+-- motion meter (fewer frozen holds, smoother, more torso and legs, facing forward, settles back; groove loops seamlessly).
+-- wave and groove re-uploaded through Open Cloud (the tool's own publish timed out). prompts and numbers in FLAIR.md)
 local EMOTES = {
-	{ "wave", "Wave", "free", "rbxassetid://132747832692830", 2.97, false },
-	{ "salute", "Salute", "free", "rbxassetid://134567333056285", 2.97, false },
-	{ "clap", "Slow Clap", "common", "rbxassetid://77903138772400", 2.97, false },
-	{ "victory", "Fist Pump", "rare", "rbxassetid://89328448326408", 2.47, false },
+	{ "wave", "Wave", "free", "rbxassetid://90647186428374", 2.97, false },
+	{ "salute", "Salute", "free", "rbxassetid://70910733834944", 2.97, false },
+	{ "clap", "Slow Clap", "common", "rbxassetid://102241914870841", 2.97, false },
+	{ "victory", "Fist Pump", "rare", "rbxassetid://105471344218974", 2.97, false },
 	{ "bow", "Bow", "rare", "rbxassetid://87535060714783", 2.97, false },
-	{ "groove", "Groove", "epic", "rbxassetid://135577596597530", 3.97, true },
+	{ "groove", "Groove", "epic", "rbxassetid://115189819491542", 3.97, true },
 }
 
 F.ORDER = { kill = {}, emote = {}, grapple = {} } :: { [string]: { string } }

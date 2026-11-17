@@ -73,15 +73,56 @@ How it works:
 
 | id | name | rarity | s | clip |
 |---|---|---|---|---|
-| wave | Wave | free | 2.97 | 132747832692830 (uploaded through Open Cloud) |
-| salute | Salute | free | 2.97 | 134567333056285 (uploaded through Open Cloud) |
-| clap | Slow Clap | common | 2.97 | 77903138772400 |
-| victory | Fist Pump | rare | 2.47 | 89328448326408 |
-| bow | Bow | rare | 2.97 | 87535060714783 |
-| groove | Groove | epic | 3.97 (loops) | 135577596597530 |
+| wave | Wave | free | 2.97 | 90647186428374 (retake d, uploaded through Open Cloud) |
+| salute | Salute | free | 2.97 | 70910733834944 (retake c) |
+| clap | Slow Clap | common | 2.97 | 102241914870841 (retake d) |
+| victory | Fist Pump | rare | 2.97 | 105471344218974 (retake c) |
+| bow | Bow | rare | 2.97 | 87535060714783 (first set) |
+| groove | Groove | epic | 3.97 (loops) | 115189819491542 (retake c, uploaded through Open Cloud) |
 
-The clips come from Studio's prompt-to-animation tool (`generate_animation`, the owner's rule), one or two tries each,
-judged from pose strips. Prompts (all with `duration`):
+The clips come from Studio's prompt-to-animation tool (`generate_animation`, the owner's rule).
+
+### Retakes (17 Nov, the owner: "the animations seem really stiff..")
+
+Five of the six were remade with prompts that ask for loose, relaxed motion with the torso, head and legs moving along,
+facing forward with the feet planted. The owner's rule for anything generated is 4 at a time, so each got 4 takes (made
+in parallel, one rig each). The best take was kept, judged on a 6-frame pose strip (`docs/flair/emote-retakes-sheet.jpg`)
+and a motion meter. The meter samples each clip at 30 Hz on a rig:
+- **holds**: the share of time the body moves at under 35% of its median speed (frozen key poses);
+- **spike**: the 95th-percentile speed over the median (snapping from pose to pose);
+- **sec**: the share of all turning outside the arms (secondary motion);
+- **turn**: how far the body's root swings from where it started (two wave takes and the old groove turned sideways);
+- **home**: how far the last frame is from the first (does it settle; for a loop, the seam).
+
+| emote | old clip | kept take | why |
+|---|---|---|---|
+| wave | holds 24%, spike 3.3, sec 19%, turn 8° | holds 4%, spike 2.2, sec 21%, turn 19° | the only take that didn't turn sideways or end with the arm up |
+| salute | holds 25%, spike 2.2, sec 31%, home 141 | holds 21%, spike 1.9, sec 29%, home 116 | smoothest, settles closest to where it began |
+| clap | holds 2%, spike 2.3, sec 12%, home 176 | holds 1%, spike 2.0, sec 15%, home 156 | best on every count |
+| fist pump | holds 10%, spike 2.2, sec 27%, 2.47 s | holds 21%, spike 1.7, sec 34%, 2.97 s | smoothest; the arm comes down and settles |
+| groove | holds 34%, turn 82°, seam 694 | holds 19%, sec 44%, turn 27°, seam 0 | faces forward and loops without a jump |
+
+Bow was kept from the first set. In game every emote now fades in over 0.3 s and out over 0.35 s; a one-shot starts its
+fade-out 0.35 s before its last frame, so it settles into the idle instead of snapping. Switching straight from one
+emote to another cross-fades too.
+
+Play check (place v614): the new wave's weight, logged every 0.1 s, rose 0 to 1 over 0.3 s and fell back to 0 over 0.35 s
+with no jump. The same log showed that a clip's first play waits about 0.6 s for the asset while the timer counts, which
+cut the end off. One-shots now end on the track's own time (`TimePosition >= len - 0.35`), in the game and on the equip
+screen's preview. The equip screen's emote and kill cards also run the shop session's moving previews (`FlairAnim`).
+
+Retake prompts (3 s; groove 4 s):
+- wave: "A person standing relaxed with loose arms casually raises the right hand and waves it side to side in a friendly, easy way; the shoulders, torso and head sway gently with each wave and the weight shifts slightly between the feet, then the arm drops back down naturally with a little follow-through into a relaxed standing idle."
+- salute: "A crisp salute: a person standing relaxed, facing forward with the feet planted, draws up straight and smoothly brings the right hand up to the brow, holds it while breathing and settling slightly, then lowers the arm with an easy follow-through and relaxes back into a loose standing idle with the shoulders dropping."
+- clap: "A slow clap: a person standing relaxed, facing forward with the feet planted and loose arms, claps slowly and steadily four times in front of the chest; the shoulders, elbows and upper body move naturally with each clap and the head nods a little to the rhythm, then the hands drop easily back down into a relaxed standing idle."
+- fist pump: "A fist pump: a person standing relaxed, facing forward with the feet planted, pumps the right fist up into the air with energy twice; the torso and hips follow each pump, the weight rocks back slightly and the head tilts up, then the arm comes down and shakes out loosely as the body settles into a relaxed standing idle."
+- groove: "A relaxed groove: a person dances a smooth groove in place facing forward, bouncing lightly on the knees to a steady beat, hips swaying side to side and shoulders rolling, arms loose and swinging naturally with the body, a continuous flowing motion with no stiff poses, ending in the same pose it started in so it loops seamlessly."
+
+Lessons: "facing forward with the feet planted" matters (without it 2 of 4 wave takes swung the body sideways). Eight
+calls at once took 6 minutes, four took 3; most return their id, the ones that time out still leave their clip. The
+takes are in `ServerStorage.RBX_ASSISTANT_ANIMGEN` as `w2_*`, `s2_*`, `c2_*`, `v2_*`, `g2_*`.
+
+### First set (one or two tries each, judged from pose strips). Prompts (all with `duration`):
 - wave (3 s): "A person stands relaxed, raises the right hand above the shoulder and waves it side to side three times, then lowers the arm back down to a relaxed standing pose."
 - salute (3 s): "A person stands at attention, brings the right hand up to the forehead in a crisp military salute, holds it still for one second, then lowers the hand back to a relaxed standing pose."
 - clap (3 s): "A person stands relaxed and claps both hands together slowly four times in front of the chest, then lowers the hands to a relaxed standing pose."
