@@ -187,12 +187,22 @@ local function buildSet(parent: Instance, lo: number, ring: Color3?, big: boolea
 	local up = CFrame.Angles(0, 0, math.pi / 2)
 	-- the floor disc, and its thin ring in the rarity's colour
 	p(Vector3.new(0.4, 9 * k, 9 * k), CFrame.new(0, lo - 0.2, 0) * up, SET_FLOOR, Enum.PartType.Cylinder)
-	if ring then p(Vector3.new(0.38, 9.3 * k, 9.3 * k), CFrame.new(0, lo - 0.22, 0) * up, ring, Enum.PartType.Cylinder, Enum.Material.Neon) end
+	-- (a thin line, not a glow: on the big set it's plain and a little dimmed, the quiet palette's one accent)
+	if ring then
+		local rc = if big then ring:Lerp(SET_FLOOR, 0.3) else ring
+		p(Vector3.new(0.38, 9.16 * k, 9.16 * k), CFrame.new(0, lo - 0.22, 0) * up, rc, Enum.PartType.Cylinder, if big then Enum.Material.SmoothPlastic else Enum.Material.Neon)
+	end
 	-- the ground round it, a step darker, and the backdrop behind with a lighter seam where they meet
 	local wall = if big then Color3.fromRGB(44, 48, 57) else SET_WALL
 	p(Vector3.new(90, 0.4, 90), CFrame.new(0, lo - 0.45, 0), wall)
 	p(Vector3.new(90, 50, 0.6), CFrame.new(0, lo + 24.5, 6 * k), wall)
 	p(Vector3.new(90, 0.3, 0.7), CFrame.new(0, lo - 0.1, 6 * k - 0.1), SET_SEAM)
+	-- (the big set: two side walls turned in, so no sky shows past the backdrop's ends whatever the screen's width)
+	if big then
+		for _, sx in { -1, 1 } do
+			p(Vector3.new(0.6, 50, 40), CFrame.new(sx * 16, lo + 24.5, -4) * CFrame.Angles(0, sx * 0.5, 0), wall)
+		end
+	end
 end
 
 -- a card's scene: the frame's holder, a ViewportFrame with a WorldModel (so things animate), the set, a copy of you

@@ -477,7 +477,18 @@ Tested in solo Play (place version 638), as the owner:
   the camera on Custom and the set gone.
 - In the first try the set sat 11 studs low (its model pivot wasn't its origin) and the backdrop was nearly black.
   Both are fixed: `WorldPivot` at the origin, and two front lights.
-- Still to tune: the ring glows too much on the big set, and the backdrop's right end showed sky.
+- The ring on the big set is now a thin plain line, dimmed a little, and two side walls close the room, so no sky
+  shows.
+
+With KillFx's viewport option in (the flair session's place version 639), tested in solo Play (place version 648):
+- The cards play the real effects on the owner's avatar (`docs/shop/shop-kill-cards-live-1.jpg`, `-2.jpg`): Ascend
+  lifts it out of the frame, Big Duck turns it into the duck, Chickens run off, Tombstone rises, Balloons lift it.
+  Shatter's wedges and Ascend's light are brief. Each loop rests on the empty set for a moment before the avatar
+  comes back.
+- The inspect view showed Balloons lifting the avatar (`shop-kill-inspect-live.jpg`).
+- PREVIEW ON YOU on Balloons played the real effect, strings and glow, in the closed room with the thin blue ring
+  (`shop-kill-preview-on-you-2.jpg`).
+- The owner's inventory was put back.
 
 ### Finishers on skin cards (17 Nov)
 
