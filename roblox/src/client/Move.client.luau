@@ -356,6 +356,8 @@ RunService.PreSimulation:Connect(function(dt: number)
 	lastSet = Vector3.new(st.vx, st.vy, st.vz)
 	-- on the rope right now: GrappleImpacts only counts swings that are really on it
 	if player:GetAttribute("OnRope") ~= (st.hook ~= nil) then player:SetAttribute("OnRope", st.hook ~= nil) end
+	-- sprinting right now (SpeedLines.client's FOV kick: +6, as the web's)
+	if player:GetAttribute("Sprinting") ~= st.sprinting then player:SetAttribute("Sprinting", st.sprinting) end
 	local hs = math.sqrt(st.vx * st.vx + st.vz * st.vz)
 	if steering and not swimming then
 		if hs > 0.5 then

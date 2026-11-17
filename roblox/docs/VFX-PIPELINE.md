@@ -516,3 +516,31 @@ muzzle star, the hit mark on the dummy 24 studs off, a shell; your own line is m
 and 6 studs skipped, half the bits) and `round16/v630-fp-sakura-swing.jpg` (0.166 s: the pale swing trail with pink
 petals shed along the arc and round the guard). Scripted cameras first and a real first-person shot after don't mix in
 one Play: the game camera came back facing a pillar, with no gun in view.
+
+### Speed lines, wind and the FOV kick; the RANKED fire's base; the Tripo rifle's glow (17 Nov 2026, place version 644)
+
+**Speed lines** (the owner: "when you pick up speed with the grapple can you add those speed lines and wind effects from
+jank fire"): `SpeedLines.client.luau` ports the web's `speedlines.js`. White wedge streaks (`ui_speedline`) run in
+from the screen's edges toward where your velocity points on the screen, from 22 m/s, at full strength by 82 m/s
+(14 + 70k of them, redrawn at 30 fps), hot pink and yellow past mach 1. It reads the body's real speed (1 m = 3 studs),
+so grapple swings, pads and slides all count. A little wider and more opaque than the web's (0.25-0.75 x k): at the web's
+0.12-0.52 they vanished on the hub's light walls. Under every other screen (DisplayOrder -2), so the HUD and the touch
+buttons draw over them. The wind: a recorded loop (Pro Sound Effects "Barstow Wind Light Blustery Low Howl 1",
+9113286782) from 15 m/s, louder and a little faster with speed, on the EFFECTS volume; thin wind streaks in a ring at
+the edges of the view. The FOV kick is the web's (+ min(35, horizontal m/s x 0.3), + 6 sprinting, + the rope's swell),
+eased, as the player's `SpeedFov` attribute that Arsenal adds to the base FOV (`Move` now sets `Sprinting`). Settings
+`gfx.speedLines` and `fov.kick` (the settings session's rows), on unless set off. Off in menus, replays, finishers and
+while dead. Studio hook: the player attribute `SpeedLinesTest` = m/s. Strip `round17/v644-speedlines-40-75-360.jpg`
+(40, 75 and 360 m/s through the hook, so the focus is dead ahead; a real pad or swing not photographed).
+
+**The RANKED fire's base** (the owner: "the base of the flame jumps up too!"): the layer never moved, but each flame was
+stretched whole, so its solid hot base band grew to a third of the panel in the sweep. The flames are nine-sliced now
+(`ScaleType.Slice`, the cell's bottom 44 rows at the settled flame's scale), so the base stays a low band on the
+panel's edge and only the tongues climb; the glow is a fixed base glow plus a faint even one that rises with the
+sweep. `round17/v644-ranked-fire-hold-01-03-06-10.jpg` (FlameStripHold 0.1, 0.3, 0.6, 1.0 on the real panel).
+
+**The Tripo angel rifle** (`ar_seraph_tripo`, the owner: "Can it have some like cool glowing gold effects around the
+barrel or somethin?"): a breathing gold aura round the halo ring (new idle kind `aura`), sparkles round the ring, slow
+gold motes off the halo and the brake (new kind `mote`), a gold light on the barrel (`glow.at`). Idle rows may now carry
+`fp` (their rate's share in first person; 0 = none there) and `tint` (they take the wrap's glow colour, gold with none).
+Not yet photographed (the turn ran out after a teleport that didn't hold).

@@ -1929,7 +1929,7 @@ end
 -- cheap: a few slow particles each, nothing in front of the sights (the points are behind and beside the optic)
 type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
 	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number,
-	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart? }
+	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart?, tint: { ParticleEmitter } }
 local skinned: { [Model]: SkinFx } = {}
 local skinGlow: (any, boolean?) -> ()
 local function skinSpec(model: Model): any
@@ -1964,6 +1964,19 @@ local function skinProps(e: any, sz: number, k: number): { [string]: any }
 		return { Texture = TEX.glow, Color = cs(col, col:Lerp(Color3.fromRGB(120, 20, 0), 0.6)), LightInfluence = 0, LightEmission = 1, Brightness = 3,
 			Size = ns(0, sz / 0.45 * H, 1, 0), Transparency = ns(0, 0.1, 0.7, 0.3, 1, 1), Lifetime = life,
 			Speed = NR(0.05 * k, 0.25 * k), SpreadAngle = Vector2.new(30, 30), Acceleration = Vector3.new(0, (if fall then -0.3 else 0.6) * k, 0), Drag = 1.5 }
+	elseif kind == "mote" then -- (a soft glowing mote: fades in, drifts slowly, fades out, its colour kept; the glow's
+		-- bright middle is under half its width)
+		local w = sz / 0.45 * H
+		return { Texture = TEX.glow, Color = cs(col), LightInfluence = 0, LightEmission = 1, Brightness = 2,
+			Size = ns(0, 0, 0.25, w, 0.8, w * 0.9, 1, 0), Transparency = NumberSequence.new(0.15), Lifetime = life,
+			Speed = NR(0.02 * k, 0.07 * k), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, (if fall then -0.06 else 0.08) * k, 0),
+			Drag = 1.5 }
+	elseif kind == "aura" then -- (a soft glow round a piece: big faint glows swelling and fading in place, overlapping into
+		-- a slow breathing light; sz = the glow's visible width)
+		local w = sz / 0.45 * H
+		return { Texture = TEX.glow, Color = cs(col), LightInfluence = 0, LightEmission = 1, Brightness = 1,
+			Size = ns(0, w * 0.75, 1, w * 1.1), Transparency = ns(0, 1, 0.45, 0.8, 1, 1), Lifetime = life,
+			Speed = NR(0, 0), Rotation = NR(0, 360), RotSpeed = NR(-10, 10) }
 	elseif kind == "bubble" then -- (a soap bubble: rises with a slow wobble, swells a touch and is gone at the end: the pop)
 		local w = sz / 0.96 * H
 		return { Texture = TEX.bubble, Color = cs(col), LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
@@ -2040,6 +2053,9 @@ skinGlow = function(S_: any, force: boolean?)
 	local cs_ = flameCS(c)
 	for _, e in S_.flames do e.Color = cs_ end
 	for _, p in S_.lit do if p.Parent then p.Color = c end end
+	-- (idle bits marked `tint` and a `glow.tint` light take the wrap's glow colour too: gold with no wrap)
+	if #S_.tint > 0 then local q = ColorSequence.new(c); for _, e in S_.tint do e.Color = q end end
+	if S_.light and S_.spec.glow and S_.spec.glow.tint then S_.light.Color = c end
 end
 function Fx.skinIdle(model: Model, k: number, spec: any?)
 	if skinned[model] then return end
@@ -2048,7 +2064,7 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	if not sp or not root then return end
 	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99,
 		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false, flames = {}, lit = {}, glowId = nil, glow = nil,
-		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil }
+		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil, tint = {} }
 	-- (the piece that says whether your own gun is showing: its biggest visible one. the Root is always invisible, so
 	-- watching it, as rounds 4-10 did, kept every first-person skin effect off)
 	local best = 0
@@ -2059,6 +2075,9 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 		end
 	end
 	for _, e in sp.idle or {} do
+		-- (e.fp: the rate's share in first person, your own gun; 0 = none there)
+		local fpK = if S_.fp and type(e.fp) == "number" then e.fp else 1
+		if fpK <= 0 then continue end
 		local pts = {}
 		for _, p in e.at or {} do
 			table.insert(pts, Vector3.new(p[1], p[2], p[3]))
@@ -2070,9 +2089,10 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 			local em = rigEmitter(att, skinProps(e, (e.size or 0.02) * k, k))
 			em.LockedToPart = model:IsDescendantOf(workspace.CurrentCamera) -- (first person: they ride with the view)
 			if em.FlipbookMode == ONESHOT then oneshot(em, 16) end
-			em.Rate = (e.rate or 1) / #pts
+			em.Rate = (e.rate or 1) * fpK / #pts
 			em.Enabled = not e.afterFire
 			if e.afterFire then table.insert(S_.after, em) else table.insert(S_.idle, em) end
+			if e.tint then table.insert(S_.tint, em) end
 		end
 	end
 	-- each shot's and each lever cycle's bursts (the space-western pair: the hammer's spark, the rotor's sparks, gunsmoke
@@ -2185,8 +2205,10 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	end
 	if sp.glow and sp.glow.colour then
 		local att = Instance.new("Attachment"); att.Name = "SkinFx"; att.Parent = root
+		local ga = sp.glow.at -- (where the light sits, the gun frame in metres; the root by default)
+		if ga then att.Position = Vector3.new(ga[1], ga[2], ga[3]) * k end
 		local l = Instance.new("PointLight")
-		l.Color = sp.glow.colour; l.Brightness = 0.5; l.Range = 1.4 * k; l.Shadows = false; l.Parent = att
+		l.Color = sp.glow.colour; l.Brightness = sp.glow.bright or 0.5; l.Range = (sp.glow.range or 1.4) * k; l.Shadows = false; l.Parent = att
 		S_.light = l
 	end
 	skinned[model] = S_

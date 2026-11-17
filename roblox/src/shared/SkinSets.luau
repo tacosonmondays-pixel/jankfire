@@ -159,6 +159,27 @@ SkinSets.FX = {
 		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
 		bullet = { kind = "feathers" }, -- (its bullet trail, Fx.bulletTrail: a gold-white streak shedding white feathers, a gold flare where it lands)
 	},
+	-- the owner's Tripo angel rifle (a concept, 17 Nov: "Can it have some like cool glowing gold effects around the barrel
+	-- or somethin?"): a soft gold glow breathing round the halo (z -0.556, on the bore), twinkles running round its ring,
+	-- a few gold motes drifting up off the halo and the brake, a gold light on the barrel. All take a wrap's glow colour
+	-- (tint; gold with none); thinner in first person (fp), and off there while aiming. The halo's top is 5 cm under the
+	-- sight line
+	ar_seraph_tripo = {
+		idle = {
+			{ kind = "aura", colour = Color3.fromRGB(255, 204, 110), rate = 2.4, life = 1.5, size = 0.15,
+				at = { { 0, 0.015, -0.556 } }, tint = true, fp = 0.6 },
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 232, 170), rate = 4, life = 0.6, size = 0.012, drift = "rise",
+				at = { { 0, 0.056, -0.543 }, { -0.030, 0.044, -0.547 }, { -0.043, 0.015, -0.556 }, { -0.030, -0.014, -0.565 },
+					{ 0, -0.026, -0.569 }, { 0.030, -0.014, -0.565 }, { 0.043, 0.015, -0.556 }, { 0.030, 0.044, -0.547 } },
+				tint = true, fp = 0.5 }, -- (round the ring, 4.3 cm out)
+			{ kind = "mote", colour = Color3.fromRGB(255, 214, 120), rate = 3.5, life = 2.2, size = 0.009, drift = "rise",
+				at = { { -0.030, 0.064, -0.540 }, { -0.030, -0.034, -0.572 }, { 0.030, -0.034, -0.572 }, { 0.030, 0.064, -0.540 },
+					{ 0, 0.05, -0.64 }, { 0.036, 0.02, -0.68 }, { -0.036, 0.02, -0.68 } }, tint = true, fp = 0.5 }, -- (off the halo and the brake)
+		},
+		glow = { colour = Color3.fromRGB(255, 200, 90), at = { 0, 0.015, -0.556 }, bright = 0.8, range = 1.2, tint = true },
+		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
+		bullet = { kind = "feathers" }, -- (the Seraph's: a gold-white streak shedding white feathers)
+	},
 	ar_infernal = {
 		idle = {
 			{ kind = "ember", colour = Color3.fromRGB(255, 110, 40), rate = 3, life = 1.2, size = 0.012, drift = "rise",

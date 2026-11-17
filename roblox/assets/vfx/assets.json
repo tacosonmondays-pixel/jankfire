@@ -233,5 +233,11 @@
   "sha1": "bb4fa30424f91a0caca2b6822ffd9a8ddea96aca",
   "what": "a UI fire flipbook, 64 frames (8x8, 128 px cells), a ragged row of fire rising off the bottom edge, looping, coloured as drawn (normal blend), sides fading in alpha (FlameStrip.luau, the RANKED switch)",
   "uploaded": "2026-11-17 10:27 UTC (the owner: \"can the flames be actual flames?\"; tools/roblox/vfx/fire_sheet.py, nothing downloaded)"
+ },
+ "ui_speedline": {
+  "id": 103897494524802,
+  "sha1": "28a3547417469ad3987ea6536b00c059b9e97f30",
+  "what": "a white wedge, 512 x 32: its point at the left edge's middle, its base the whole right edge (SpeedLines.client's screen streaks, the web's speedlines.js triangles)",
+  "uploaded": "2026-11-17 16:03 UTC (the owner: speed lines and wind at speed; tools/roblox/vfx/speedline_sprite.py)"
  }
 }

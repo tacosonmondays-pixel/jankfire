@@ -23,11 +23,15 @@ FlameStrip.__index = FlameStrip
 
 FlameStrip.SHEET = "rbxassetid://79816315934163"
 local GRID, CELL, FRAMES, FPS = 8, 128, 64, 30
+-- (17 Nov, the owner on the sweep: "the base of the flame jumps up too!": stretched whole, a flame's solid bottom band
+-- grew with it to a third of the panel. Now each flame is nine-sliced: its cell's bottom BASE rows keep the settled
+-- size, so the solid base stays a low band on the panel's bottom edge and only the tongues above it stretch up)
+local BASE = 44 -- (cell rows 84-128: the solid hot base)
 local HOT = Color3.fromRGB(255, 150, 40)
 local DEEP = Color3.fromRGB(196, 46, 12)
 
 export type Strip = typeof(setmetatable({} :: {
-	root: Frame, glow: Frame, flames: { { im: ImageLabel, off: number, seed: number, w: number } }, t: number, frame: number,
+	root: Frame, glow: Frame, tall: Frame, flames: { { im: ImageLabel, off: number, seed: number, w: number } }, t: number, frame: number,
 }, FlameStrip))
 
 function FlameStrip.new(parent: GuiObject, opts: { count: number?, zIndex: number?, overlap: number? }?): Strip
@@ -47,11 +51,22 @@ function FlameStrip.new(parent: GuiObject, opts: { count: number?, zIndex: numbe
 	g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(0.5, 0.8), NumberSequenceKeypoint.new(1, 1) })
 	g.Parent = glow
 	glow.Parent = root
+	-- (the sweep's own glow: a faint even warmth rising with the tongues, its bottom on the edge too; the base glow keeps
+	-- its settled height, so its bright bottom band never climbs)
+	local tall = Instance.new("Frame")
+	tall.Name = "SweepGlow"; tall.BorderSizePixel = 0; tall.BackgroundColor3 = DEEP; tall.AnchorPoint = Vector2.new(0.5, 1)
+	tall.Position = UDim2.fromScale(0.5, 1); tall.Size = UDim2.new(1, 0, 0, 0); tall.ZIndex = z; tall.BackgroundTransparency = 1
+	local g2 = Instance.new("UIGradient")
+	g2.Rotation = 270
+	g2.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.6), NumberSequenceKeypoint.new(0.7, 0.75), NumberSequenceKeypoint.new(1, 1) })
+	g2.Parent = tall
+	tall.Parent = root
 	local flames = {}
 	for i = 1, count do
 		local im = Instance.new("ImageLabel")
 		im.Name = "Flame"; im.BackgroundTransparency = 1; im.Image = FlameStrip.SHEET
-		im.ImageRectSize = Vector2.new(CELL, CELL); im.ScaleType = Enum.ScaleType.Stretch
+		im.ImageRectSize = Vector2.new(CELL, CELL); im.ScaleType = Enum.ScaleType.Slice
+		im.SliceCenter = Rect.new(1, 0, CELL - 1, CELL - BASE) -- (the bottom BASE rows: the base, not stretched)
 		im.AnchorPoint = Vector2.new(0.5, 1); im.Position = UDim2.new((i - 0.5) / count, 0, 1, 0)
 		im.Size = UDim2.new((1 + overlap) / count, 0, 0, 0); im.ZIndex = z + 1
 		im.Parent = root
@@ -59,7 +74,7 @@ function FlameStrip.new(parent: GuiObject, opts: { count: number?, zIndex: numbe
 		table.insert(flames, { im = im, off = (i * 11) % FRAMES, seed = math.random() * 100, w = (1 + overlap) / count * (0.9 + math.random() * 0.25) })
 	end
 	root.Parent = parent
-	return setmetatable({ root = root, glow = glow, flames = flames, t = 0, frame = -1 }, FlameStrip)
+	return setmetatable({ root = root, glow = glow, tall = tall, flames = flames, t = 0, frame = -1 }, FlameStrip)
 end
 
 function FlameStrip.step(self: Strip, dt: number, level: number, sweep: number, H: number, hide: boolean?)
@@ -94,13 +109,19 @@ function FlameStrip.step(self: Strip, dt: number, level: number, sweep: number, 
 		-- settled: a low flicker 56-96 tall, the tongues reaching up past the hot band into the dark panel; the sweep: up to
 		-- the frame's height and a bit over (the fire fills the lower ~85 % of its cell). (v586: 34-62 tall over a strong glow
 		-- read as one orange band, no flames)
-		local h = (56 + 40 * n) * level + sweep * H * (1.0 + 0.3 * n)
+		local h0 = (56 + 40 * n) * math.max(level, math.min(1, sweep * 4))
+		local h = h0 + sweep * H * (1.0 + 0.3 * n)
 		f.im.Size = UDim2.new(f.w, 0, 0, math.floor(h))
+		-- (the slice scale: the cell's own size at the settled height, so the base band is the settled flame's base, held
+		-- there while the sweep stretches only the tongues)
+		f.im.SliceScale = math.max(0.01, h0 / CELL)
 		f.im.ImageTransparency = fade
 	end
 	-- (the glow faint, so the flames stand out against it: at 0.15 it was an orange band as bright as they are)
-	self.glow.Size = UDim2.new(1, 0, 0, math.floor((80 * level + sweep * H * 0.9)))
+	self.glow.Size = UDim2.new(1, 0, 0, math.floor(80 * math.max(level, math.min(1, sweep * 4))))
 	self.glow.BackgroundTransparency = 0.72 + 0.28 * fade
+	self.tall.Size = UDim2.new(1, 0, 0, math.floor(sweep * H * 1.05))
+	self.tall.BackgroundTransparency = if sweep > 0.01 then 0.55 + 0.45 * (1 - sweep) else 1
 end
 
 function FlameStrip.destroy(self: Strip)

@@ -823,6 +823,9 @@ RunService.RenderStepped:Connect(function(dt: number)
 	-- the base FOV is the P-menu slider's (JankSettings sets the BaseFov attribute); ADS zooms from it
 	local fovAttr = me:GetAttribute("BaseFov")
 	local baseFov = if type(fovAttr) == "number" then fovAttr else 70
+	-- (the speed FOV kick on top: SpeedLines.client's SpeedFov, the web's fovKick; zoomed with it down the sights)
+	local kick = me:GetAttribute("SpeedFov")
+	if type(kick) == "number" then baseFov += kick end
 	if w and w.ads then camera.FieldOfView = baseFov / (1 + (w.ads.zoom - 1) * aim) else camera.FieldOfView = baseFov end
 	-- full auto
 	local holstered = inHub()
