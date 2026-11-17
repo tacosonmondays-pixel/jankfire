@@ -668,9 +668,10 @@ for s in (-1, 1):
     hall(s); blocks(s); tube_street(s); arches(s)
     kiosk(s * 84.0, 0.0)
 pavilion(); gazebo(); edge(); cover(); street_rails(); station(); train()
-# the tower: legs on the axes, the stair's foot facing north; three hearts, each its own model (the place keeps one)
+# the tower: legs on the axes, the stair's foot facing north. the hearts, each its own model (the place keeps one, the
+# arena's attribute Heart): A, B, C the anatomical takes (the owner: "We can do an actual heart"), V the first candy one
 G.tower('gu', 'candy', phase=L.STAIR_PHASE, leg0=L.LEG0, heart=False)
-for code, take in (('A', 'candy'), ('B', 'gem'), ('C', 'lantern')):
+for code, take in (('A', 'chunky'), ('B', 'vessels'), ('C', 'grand'), ('V', 'candy')):
     G.heart_take('gu_heart' + code, take, Tr(0, T.HEART_Y, 0))
 
 # ================================================================ the layout

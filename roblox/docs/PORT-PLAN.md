@@ -1269,7 +1269,7 @@ The owner: "can the laser fence be on both side of the hub and same with the gar
   - `docs/hub/hub_queue_pads_open_dim_v664.jpg` (the open sides dimmer, from the spawn).
   - `docs/hub/hub_gate_black_676.jpg` (the open doorway black again).
 
-## 34. THE GUT: a new arena round the heart tower, with a subway and the train boss passing by, 17 November 2026 (place versions 694 to 697)
+## 34. THE GUT: a new arena round the heart tower, with a subway and the train boss passing by, 17 November 2026 (place versions 694 to 699)
 
 The owner: "Can we have a map based on the gut district? We have this awesome heart tower build it would be a shame to not use it!! Maybe it can have a lower part that's a subway and the big train boss can pass by as an Easter egg".
 
@@ -1312,6 +1312,17 @@ The owner: "Can we have a map based on the gut district? We have this awesome he
   - A real 1v1 started on the Gut: the attacker spawned in the west hall facing east, and the client switched to GutSky and the gut light.
 - **Cost:** 271k triangles in 105 meshes and 24 models; 822 parts with the hit boxes.
 - **Photos:** `docs/maps/gut_heart_takes.jpg`, `gut_layout_plan.jpg`, `gut_studio_v696.jpg`.
+
+**The heart, anatomical (place version 699).** After the first sheet the owner said "We can do an actual heart it's not like Roblox will say something against". So the Valentine takes are out of direction, and the heart is now a real one in the kit's clean style (`tools/roblox/gut_heart_anat.py`).
+- **What it has:** the ventricles' cone, the atria and auricles, the aortic arch with three branches, the pulmonary trunk, the venae cavae, coronary arteries (pink-red) and veins (blue) in their grooves. Flat deep reds and pinks; no blood, drips or wet look.
+- **Three takes** (`docs/maps/gut_heart_anatomical.jpg`):
+  - A chunky: the main vessels only.
+  - B vessels: the full coronary tree, forked branches, the pulmonary veins.
+  - C grand: closest to the web model, with the arch and the vena cava as ropes and feelers.
+- **Which is in:** B (`Heart` = "B"). The kit holds A, B, C and V (the first candy heart); the install keeps one.
+- **The beat:** GutLife flushes the heart's colours a little brighter on each beat, as well as the swell and the light. The flush is checked in Studio but not seen in Play yet; the swell and turn were measured at v695.
+- **Photo:** `docs/maps/gut_heart_anatomical_v699.jpg`.
+- The district, the stair (no skulls) and the train (its mask only) stay as they were.
 
 **The rotation:** `ArenaPool` = `RooftopV2,RooftopV3,Crate,Platform,Bazaar,Gut`.
 

@@ -246,6 +246,10 @@ def tower(m, take, x=0.0, y=0.0, z=0.0, yaw=0.0, legs=4, phase=0.0, heart=True, 
 
 def heart_take(m, take, M):
     """the heart itself, centred at M (its outline's inner point), facing M's +z, tipped a little"""
+    if take in ('chunky', 'vessels', 'grand'):      # the anatomical takes (the owner: "We can do an actual heart")
+        import gut_heart_anat
+        gut_heart_anat.anat_heart(m, take, M)
+        return
     T = M @ Rz(math.radians(-10))
     lo, hi = heart_extent(HEART_W)
     if take == 'candy':

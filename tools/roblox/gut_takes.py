@@ -13,7 +13,9 @@ import gut_heart as G
 
 OUT = K.ARGS[0] if K.ARGS else os.path.join(K.HERE, 'out_gut_takes')
 os.makedirs(OUT, exist_ok=True)
-TAKES = [('candy', -100.0), ('gem', 0.0), ('lantern', 100.0)]
+ANAT = '--anat' in K.FLAGS        # the anatomical takes (the owner's second word: "We can do an actual heart")
+TAKES = [('chunky', -100.0), ('vessels', 0.0), ('grand', 100.0)] if ANAT else [('candy', -100.0), ('gem', 0.0), ('lantern', 100.0)]
+PRE = 'anat_' if ANAT else 'take_'
 
 for take, tx in TAKES:
     G.tower('gt_' + take, take, x=tx)
@@ -58,7 +60,14 @@ def shot(name, cp, tp, lens, res):
     bpy.ops.render.render(write_still=True)
     print('RENDERED', sc.render.filepath)
 
-shot('take_wide', (0, 58, 345), (0, 80, 0), 26, (1800, 780))
+if ANAT:
+    shot(PRE + 'wide', (0, 74, 390), (0, 92, 0), 26, (1800, 780))
+else:
+    shot(PRE + 'wide', (0, 58, 345), (0, 80, 0), 26, (1800, 780))
 for take, tx in TAKES:
-    shot('take_%s_close' % take, (tx + 30, 128, 76), (tx, 128, 0), 44, (600, 600))
-    shot('take_%s_eye' % take, (tx + 34, 5.5, 74), (tx, 70, 0), 22, (600, 600))
+    if ANAT:
+        shot(PRE + '%s_close' % take, (tx + 26, 140, 74), (tx, 142, 0), 40, (600, 600))
+        shot(PRE + '%s_back' % take, (tx - 30, 146, -70), (tx, 143, 0), 40, (600, 600))
+    else:
+        shot(PRE + '%s_close' % take, (tx + 30, 128, 76), (tx, 128, 0), 44, (600, 600))
+        shot(PRE + '%s_eye' % take, (tx + 34, 5.5, 74), (tx, 70, 0), 22, (600, 600))

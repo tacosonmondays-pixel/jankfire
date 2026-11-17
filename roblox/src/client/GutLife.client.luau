@@ -26,7 +26,8 @@ local HEART_Y = 134           -- the heart's middle above the street (gut_heart_
 
 type Arena = {
 	root: Model, origin: CFrame,
-	heart: Model?, heartBase: CFrame?, heartLight: PointLight?, glows: { { part: BasePart, base: Color3 } }, scale: number,
+	heart: Model?, heartBase: CFrame?, heartLight: PointLight?, glows: { { part: BasePart, base: Color3 } },
+	flush: { { part: BasePart, h: number, s: number, v: number } }, scale: number,
 	train: Model?, sig: { BasePart }, lamps: { { light: PointLight, base: number } },
 	ran: number,               -- the TrainAt last run (so each run plays once)
 }
@@ -38,10 +39,10 @@ end
 
 local function setup(root: Model): Arena
 	local O = CFrame.new(root:GetPivot().Position)
-	local a: Arena = { root = root, origin = O, glows = {}, scale = 1, sig = {}, lamps = {}, ran = -1 }
+	local a: Arena = { root = root, origin = O, glows = {}, flush = {}, scale = 1, sig = {}, lamps = {}, ran = -1 }
 	local shell = root:FindFirstChild("Shell")
 	if shell then
-		for _, code in { "A", "B", "C" } do
+		for _, code in { "A", "B", "C", "V" } do -- (A B C the anatomical hearts, V the first candy one: the build keeps one)
 			local h = shell:FindFirstChild("gu_heart" .. code)
 			if h and h:IsA("Model") and not a.heart then
 				a.heart = h
@@ -50,7 +51,8 @@ local function setup(root: Model): Arena
 				a.heartBase = c
 				for _, p in h:GetDescendants() do
 					if p:IsA("BasePart") then
-						if p.Material == Enum.Material.Neon then table.insert(a.glows, { part = p, base = p.Color }) end
+						if p.Material == Enum.Material.Neon then table.insert(a.glows, { part = p, base = p.Color })
+						else local hh, ss, vv = p.Color:ToHSV(); table.insert(a.flush, { part = p, h = hh, s = ss, v = vv }) end
 					end
 				end
 				local first = h:FindFirstChildWhichIsA("BasePart", true)
@@ -127,6 +129,11 @@ local function heartStep(a: Arena, now: number)
 	for _, gl in a.glows do
 		local c = gl.base:Lerp(WHITE, 0.45 * g)
 		if gl.part.Color ~= c then gl.part.Color = c end
+	end
+	-- the muscle and vessels flush a little brighter on each beat
+	for _, f in a.flush do
+		local c = Color3.fromHSV(f.h, f.s * (1 - 0.08 * g), math.min(1, f.v * (1 + 0.2 * g)))
+		if f.part.Color ~= c then f.part.Color = c end
 	end
 end
 
