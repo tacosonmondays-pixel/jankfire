@@ -1114,5 +1114,6 @@ def pistol_cute_e():
 SKINS = {'ar@ar_cute_a': ar_cute_a, 'pistol@pistol_cute_a': pistol_cute_a,
          'ar@ar_cute_b': ar_cute_b, 'pistol@pistol_cute_b': pistol_cute_b,
          'ar@ar_cute_c': ar_cute_c, 'pistol@pistol_cute_c': pistol_cute_c,
-         'ar@ar_cute_d': ar_cute_d, 'pistol@pistol_cute_d': pistol_cute_d,
-         'ar@ar_cute_e': ar_cute_e, 'pistol@pistol_cute_e': pistol_cute_e}
+         'ar@ar_cute_d': ar_cute_d, 'pistol@pistol_cute_d': pistol_cute_d}
+# (E Daydream was dropped on 17 Nov: its builders stay above for reference but it is no longer a skin;
+#  A-D are rebuilt as v3 in gun_sets_cute3.py, which overrides these)
