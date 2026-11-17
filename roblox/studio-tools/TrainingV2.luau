@@ -40,7 +40,7 @@ local V3, CF = Vector3.new, CFrame.new
 
 T.KIT = 125980153806984 -- the kit's Model asset (tv_kit_8: training_models.py; 16 Nov: cover, block, booth and bench remodelled, flicker fixes in the kit)
 T.STAGE = V3(400, 0, 0)
-T.PUSH = 17
+T.PUSH = 18
 T.VERSION = "v2"
 
 -- the paint: one quiet family for the big surfaces, colour only where it tells the player something
@@ -81,6 +81,15 @@ T.LIVE = { line = -8223 } -- the live-fire end: everything south of this line (t
 T.ZONE = { -94, 86, 232, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier)
 T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
 T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid, its far end (the zone takes it in)
+-- head room (16 Nov, the hold session: strafing into the yard's console put your eye 0.6 from its top, which then filled
+-- a corner of the screen). wherever you can stand in the hall, nothing you can see at head height may come nearer your
+-- eye than `near`: `eye` is your eye over the floor, `body` the narrowest your body and head get (the test's stand-in,
+-- waist to crown). the props in `guard` get an unseen box `margin` past theirs each way (bodies stop on it, so your head
+-- stops short of the prop). walls and posts that run from your waist to over your head are left alone: you walk into
+-- those the same in every game
+-- (the first run's finds: the console's top; the shop shelf's top, where you could stand with your head in the headsets
+-- on the slatwall)
+T.HEAD = { eye = 4.5, near = 1.0, body = V3(1.2, 3.2, 1.2), margin = 0.8, guard = { "ConsoleTop", "ShelfTop" } }
 
 local function folderIn(parent, name)
 	local f = parent:FindFirstChild(name)
@@ -682,11 +691,13 @@ local function yard(B)
 		local pl = Instance.new("PointLight"); pl.Color = Color3.fromRGB(255, 70, 50); pl.Range = 16; pl.Brightness = 1.2; pl.Enabled = false; pl.Parent = lamp
 	end
 	-- the console: a slate pedestal with a sloped face and a big round button (hold E), just inside the yard's door on
-	-- the east walk, its face to you as you come in
-	local cx, cz = 16.5, YZ0 - 5
-	B.blk("Shell", "ConsoleBase", cx - 1.6, cx + 1.6, Y0, Y0 + 3.2, cz + 1.2, cz - 1.2, P.slate)
-	B.part("Shell", "ConsoleTop", CF(cx, Y0 + 3.75, cz) * CFrame.Angles(math.rad(28), 0, 0), V3(3.6, 0.8, 2.9), P.pier2)
-	local btn = B.part("Scenery", "LiveButton", CF(cx, Y0 + 3.75, cz) * CFrame.Angles(math.rad(28), 0, 0) * CF(0, 0.45, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.5, 1.7, 1.7), "8a3a33", { cyl = true, ghost = true })
+	-- the east walk, its face to you as you come in. (16 Nov: its top's high edge stood at 4.8, over your eye (4.2 on the
+	-- owner's avatar), and from 0.6 off it filled a corner of the screen. it is 1.2 lower now, a desk you look down on, and
+	-- T.HEAD.guard keeps your head off it)
+	local cx, cz, ch = 16.5, YZ0 - 5, Y0 + 2.55
+	B.blk("Shell", "ConsoleBase", cx - 1.6, cx + 1.6, Y0, ch - 0.55, cz + 1.2, cz - 1.2, P.slate)
+	B.part("Shell", "ConsoleTop", CF(cx, ch, cz) * CFrame.Angles(math.rad(28), 0, 0), V3(3.6, 0.8, 2.9), P.pier2)
+	local btn = B.part("Scenery", "LiveButton", CF(cx, ch, cz) * CFrame.Angles(math.rad(28), 0, 0) * CF(0, 0.45, 0) * CFrame.Angles(0, 0, math.pi / 2), V3(0.5, 1.7, 1.7), "8a3a33", { cyl = true, ghost = true })
 	btn:SetAttribute("Lamp", true)
 	btn.Parent = lf
 	local pr = Instance.new("ProximityPrompt")
@@ -1456,6 +1467,32 @@ function T.dezfight(root: Instance): string
 	return ("flicker pass (ZFight): %d visible pairs of faces in one plane before, %d after (%d block faces moved; %d pairs left in all, hidden ones and kit meshes)"):format(first or 0, last, moved, seen)
 end
 
+-- unseen boxes round the props named in T.HEAD.guard: the prop's box on the plan's axes plus T.HEAD.margin each way,
+-- from 3 under it to 8 over it (so nobody jumps onto one), in Collision. they stop bodies and shots like the hall's other
+-- solids; the prompts on those props do not need sight
+local function headGuards(B): number
+	local want = {}
+	for _, n in T.HEAD.guard do want[n] = true end
+	local n = 0
+	for _, d in B.root:GetDescendants() do
+		if not want[d.Name] then continue end
+		local cf, sz
+		if d:IsA("BasePart") then cf, sz = d.CFrame, d.Size elseif d:IsA("Model") then cf, sz = d:GetBoundingBox() else continue end
+		local R, U, L = cf.RightVector, cf.UpVector, cf.LookVector
+		local h = V3(math.abs(R.X) * sz.X + math.abs(U.X) * sz.Y + math.abs(L.X) * sz.Z,
+			math.abs(R.Y) * sz.X + math.abs(U.Y) * sz.Y + math.abs(L.Y) * sz.Z,
+			math.abs(R.Z) * sz.X + math.abs(U.Z) * sz.Y + math.abs(L.Z) * sz.Z) / 2
+		local m = T.HEAD.margin
+		local lo, hi = cf.Position.Y - h.Y - 3, cf.Position.Y + h.Y + 8
+		local g = B.boxSrc:Clone()
+		g.Name = "HeadGuard"; g:SetAttribute("For", d.Name)
+		g.Size = V3(2 * (h.X + m), hi - lo, 2 * (h.Z + m)); g.CFrame = CF(cf.Position.X, (lo + hi) / 2, cf.Position.Z)
+		g.Parent = B.root.Collision
+		n += 1
+	end
+	return n
+end
+
 function T.build(mode): string
 	local live = mode == "live"
 	if live then
@@ -1471,6 +1508,8 @@ function T.build(mode): string
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	local lotNote = ""
 	if lotSrc then lotNote = "\n" .. require(lotSrc:Clone()).build(B, T) end
+	local guards = headGuards(B)
+	lotNote ..= ("\nhead guards: %d"):format(guards)
 	bounds(B, lotSrc ~= nil)
 	local root = B.root
 	root:SetAttribute("Version", T.VERSION); root:SetAttribute("Push", T.PUSH)
@@ -1522,6 +1561,125 @@ end
 
 -- ---------------------------------------------------------------- checks
 -- live (or the staging copy with stage = true): the markers, the zone, sight lines that matter
+-- head room: from every spot on the hall's floors (`step` apart) where your body fits, nothing you can see at head height
+-- comes within T.HEAD.near of your eye. what counts: a prop whose top or underside is about your eye's height, a thing
+-- on a wall at head height, anything you could walk your head into. what does not: a wall or post from your waist to over
+-- your head (it stops your body first), and a table or counter you look down on (its top more than 0.4 under your eye)
+function T.headRoom(stage, step): (string, number)
+	local H = T.HEAD
+	local O = if stage then T.STAGE else Vector3.zero
+	local base = if stage then workspace.Map:FindFirstChild("TrainingStage") else hub
+	local tg = base and base:FindFirstChild("TrainingGround")
+	if not tg then return "head room: no TrainingGround", -1 end
+	step = step or 0.5
+	-- (parts you can see but not shoot are read too, and put back after)
+	local was = {}
+	for _, d in tg:GetDescendants() do
+		if d:IsA("BasePart") and not d.CanQuery and d.Transparency < 0.95 then was[d] = true; d.CanQuery = true end
+	end
+	local rp = RaycastParams.new(); rp.FilterType = Enum.RaycastFilterType.Include; rp.FilterDescendantsInstances = { tg }; rp.RespectCanCollide = true
+	local fit = OverlapParams.new(); fit.FilterType = Enum.RaycastFilterType.Include; fit.FilterDescendantsInstances = { tg }; fit.RespectCanCollide = true
+	local see = OverlapParams.new(); see.FilterType = Enum.RaycastFilterType.Include; see.FilterDescendantsInstances = { tg }
+	local body = Instance.new("Part")
+	body.Name = "HeadRoomProbe"; body.Anchored = true; body.CanCollide = false; body.CanQuery = false; body.CanTouch = false; body.Transparency = 1
+	body.Size = H.body; body.Parent = workspace
+	local ball = body:Clone(); ball.Shape = Enum.PartType.Ball; ball.Size = V3(2, 2, 2) * H.near; ball.Parent = workspace
+	local tight = body:Clone(); tight.Shape = Enum.PartType.Ball; tight.Size = V3(1.2, 1.2, 1.2); tight.Parent = workspace
+	local lot = tg:FindFirstChild("Lot")
+	local Z = T.ZONE
+	local spots, found, order = 0, {}, {}
+	-- (a kit model counts whole: a cover wall's cap is part of the wall)
+	local span = {}
+	local function spanOf(p)
+		local m = p:FindFirstAncestorOfClass("Model")
+		local o = if m and m:IsDescendantOf(tg) then m else p
+		local r = span[o]
+		if not r then
+			local c, sz
+			if o:IsA("Model") then c, sz = o:GetBoundingBox() else c, sz = o.CFrame, o.Size end
+			local hy = (math.abs(c.RightVector.Y) * sz.X + math.abs(c.UpVector.Y) * sz.Y + math.abs(c.LookVector.Y) * sz.Z) / 2
+			r = { c.Position.Y - O.Y - hy, c.Position.Y - O.Y + hy }
+			span[o] = r
+		end
+		return r[1], r[2]
+	end
+	local ok, err = pcall(function()
+		for x = Z[1] + 1, Z[2] - 1, step do
+			for z = T.FACE + 1, Z[5] - 1, step do
+				local y = Z[4]
+				for _ = 1, 5 do
+					local h = workspace:Raycast(V3(x, y, z) + O, V3(0, Z[3] - y, 0), rp)
+					if not h then break end
+					y = h.Position.Y - O.Y - 0.05
+					if h.Normal.Y < 0.7 then continue end
+					local f = h.Position.Y - O.Y
+					if f > Y0 + 14 then continue end -- (up in the vaults: lamp tops nobody stands on)
+					if not workspace:Raycast(V3(x, f + 0.5, z) + O, V3(0, 120, 0), rp) then continue end -- (a roof: outside)
+					body.CFrame = CF(V3(x, f + 2 + H.body.Y / 2, z) + O)
+					if #workspace:GetPartsInPart(body, fit) > 0 then continue end
+					spots += 1
+					local eye = V3(x, f + H.eye, z) + O
+					ball.CFrame = CF(eye)
+					local hits = workspace:GetPartsInPart(ball, see)
+					if #hits == 0 then continue end
+					local close = nil
+					for _, p in hits do
+						if p.Transparency >= 0.95 or (lot and p:IsDescendantOf(lot)) then continue end
+						local lo, hi = spanOf(p)
+						if lo <= f + 2.3 and hi >= f + H.eye + 0.15 then continue end -- (a wall: waist to over your eye; you see its face)
+						if hi < f + H.eye - 0.4 then continue end -- (under your eye: you look down on it)
+						-- (a thin sign or panel flat on a wall you walk into: the wall stops you, the same as the wall)
+						local sz = p.Size
+						local thin = math.min(sz.X, sz.Y, sz.Z)
+						if thin <= 0.4 then
+							local ax = if sz.X == thin then p.CFrame.RightVector elseif sz.Y == thin then p.CFrame.UpVector else p.CFrame.LookVector
+							local onWall = false
+							for _, sg in { 1, -1 } do
+								local w = workspace:Raycast(p.Position, ax * sg * (thin / 2 + 0.6), rp)
+								if w and w.Instance ~= p then
+									local wl, wh = spanOf(w.Instance)
+									if wl <= f + 2.3 and wh >= f + H.eye + 0.15 then onWall = true end
+								end
+							end
+							if onWall then continue end
+						end
+						if close == nil then
+							tight.CFrame = CF(eye)
+							close = {}
+							for _, q in workspace:GetPartsInPart(tight, see) do close[q] = true end
+						end
+						local key = p.Parent.Name .. "/" .. p.Name
+						local r = found[key]
+						if not r then r = { n = 0, min = H.near }; found[key] = r; table.insert(order, key) end
+						r.n += 1
+						local d = if close[p] then 0.6 else H.near
+						if d < r.min or not r.at then r.min = d; r.at = eye - O; r.f = f; r.lo = lo - f; r.hi = hi - f; r.ghost = not p.CanCollide end
+					end
+				end
+			end
+		end
+	end)
+	body:Destroy(); ball:Destroy(); tight:Destroy()
+	for d in was do d.CanQuery = false end
+	if not ok then return "head room: FAILED " .. tostring(err), -1 end
+	local out = {}
+	table.sort(order, function(a, b) return found[a].min < found[b].min or (found[a].min == found[b].min and found[a].n > found[b].n) end)
+	local tooNear = 0
+	for i, key in order do
+		local r = found[key]
+		if r.min < 0.61 then tooNear += 1 end
+		if i <= 30 then
+			table.insert(out, ("HEAD HEIGHT %s: your eye within %.1f at (%.1f, %.1f, %.1f), floor %.1f, it spans %.1f..%.1f over it%s (%d spots)"):format(
+				key, r.min, r.at.X, r.at.Y, r.at.Z, r.f, r.lo, r.hi, if r.ghost then ", walk-through" else "", r.n))
+		end
+	end
+	local guards = 0
+	for _, d in tg:GetDescendants() do if d.Name == "HeadGuard" then guards += 1 end end
+	table.insert(out, 1, ("head room: %d spots to stand on (%.1f apart); things at head height within %.1f of your eye %d (within 0.6: %d); guards %d"):format(
+		spots, step, H.near, #order, tooNear, guards))
+	return table.concat(out, "\n"), #order
+end
+
 function T.check(stage): string
 	local out, bad = {}, 0
 	local O = if stage then T.STAGE else Vector3.zero
@@ -1623,6 +1781,7 @@ function T.check(stage): string
 	local nThin = 0
 	for name, t in thin do nThin += 1; if nThin <= 12 then table.insert(out, ("THIN %.2f: %s"):format(t, name)) end end
 	table.insert(out, ("the hall sealed: %d rays from %d points, leaks %d, skins under 2 studs %d"):format(rays, #pts, leaks, nThin))
+	table.insert(out, (T.headRoom(stage)))
 	local lotSrc = SS.PolishBackup:FindFirstChild("TrainingLot")
 	if lotSrc and tg:FindFirstChild("Lot") then
 		for _, l in require(lotSrc:Clone()).check(tg, mk) do table.insert(out, l) end

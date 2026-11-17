@@ -964,8 +964,15 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - The steepness and depth allowances scale with a tree's size.
   - `L.check` now also checks the trees against the fence: each tree's whole box must clear `L.FENCE` by 2.5. Result: 27 trees, 0 over the line, nearest trunks 22.4 apart, 0 crowns touching, 0 gaps or buried.
   - Photos: `roblox/docs/training/trees_outside_sheet.jpg`.
+- **Head room (push 18 of TrainingV2, place version 492)**, from the hold session: strafing into the yard's live-fire console put the camera 0.6 from its top, which filled a corner of the screen.
+  - The console is 1.2 lower: its top's high edge was 4.8 over the floor, above the camera (4.17 on the owner's avatar, measured in Play); it is 3.58 now, a desk you look down on.
+  - `T.HEAD.guard` names props that get an unseen box 0.8 past theirs each way, from 3 under to 8 over (`HeadGuard` in `Collision`; it stops bodies and shots like the hall's other solids). Now: `ConsoleTop`, and `ShelfTop` (the shop shelf, where you could stand with your head in the slatwall's headsets).
+  - In Play, strafing right into it from the same spot: the camera stops 1.93 from the console top (was 0.6). Photo: `roblox/docs/training/console_head_room.jpg`.
+  - `T.headRoom(stage, step)`, run by `T.check`: from every spot 0.5 apart on the hall's floors where a 1.2 x 3.2 x 1.2 body fits, what you can see within 1.0 of your eye at head height. Walls and posts from your waist to over your eye, thin signs flat on such a wall, and tops more than 0.4 under your eye do not count. A kit model counts whole. Result: 0 within 0.6 (8 between 0.6 and 1.0: the terrace's lip, wall sconces, the garage's crates and drums).
+  - With the owner's eye height (4.2, `T.HEAD.eye` is 4.5) one spot remains: on top of the garage's crate stack (-20, -8268), next to the upper crate's top. Left as it is.
 
 **Traps:**
+- `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
 - `screen_capture` calls in parallel time out: take them one at a time.
 - A copy of the character's `HeldWeapon` comes out invisible on its own player's screen: first person hides it there. Build a display gun fresh from `WeaponModels` (skin, wrap and hat from `GunSkins`, `WeaponModels.wrapFor` and `GunHats`).
 - A commit swept in another session's unfinished Arsenal change (1fb2d29); a2d6e3c took it back. Before committing a shared file, check `git diff --cached` for other sessions' hunks, not just `--stat`.
