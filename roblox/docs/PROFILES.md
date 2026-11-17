@@ -292,4 +292,5 @@ The owner: "can titles appear above head".
   - Cool: APEX, PHANTOM, DEADEYE, ZERO RECOIL, NIGHTSHADE, HEADHUNTER, AFTERBURNER, COLD BLOODED, BLACKOUT, IRONCLAD.
   - Meme: SIGMA, SKILL ISSUE, ALPHA, LONE WOLF, SWEAT, NPC, BOT, CHUD.
   - JANKFIRE's own: JANK CERTIFIED, PATIENT ZERO, DUCK RAIN SURVIVOR, SPOON MAIN.
-  - DUCK RAIN SURVIVOR was photographed over a stand-in's head.
+  - Photographed in Play on v686 (`docs/profiles/titles-sheet.jpg`): DUCK RAIN SURVIVOR over a stand-in's head, and all of them on the card's CUSTOMIZE tab, where DUCK RAIN SURVIVOR fits on one line.
+  - During a real emote there was no HeldWeapon, no Tool and no visible viewmodel.
