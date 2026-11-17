@@ -495,10 +495,13 @@ local function modeList()
 	local foot = text(left, "Foot", "", if c then 10 else 12, T.MUTED, T.FONT); foot.ZIndex = 3
 	foot.Position = UDim2.fromOffset(14, y + 2); foot.Size = UDim2.fromOffset(W - 28, 34); foot.TextWrapped = true
 	foot.TextYAlignment = Enum.TextYAlignment.Top
+	-- (a dark outline: over the ranked fire's low flicker the small line was hard to read at phone size, 17 Nov)
+	foot.TextStrokeColor3 = Color3.fromRGB(16, 8, 6); foot.TextStrokeTransparency = 0.35
 	if pt and not lead then
 		foot.Text = "only the leader (" .. leaderName() .. ") picks the mode and starts the search"
 	elseif ranked then
 		foot.Text = ("%d placement matches, then your rank shows. a division is 100 points"):format(Ranked.PLACEMENTS)
+		foot.TextColor3 = T.SOFT -- (brighter over the fire)
 	else
 		foot.Text = "the same duels as the pads. your party plays on one team"
 	end
