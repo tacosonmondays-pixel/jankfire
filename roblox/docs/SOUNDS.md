@@ -46,8 +46,10 @@ sounds), and a second sting within 1.5 s. The shop corner isn't an area of its o
 
 Checks (place version 583, Play test): all 30 new Sounds load; the skin lookup maps each skin's weapon to its rows and
 every named Sound exists; moving the test character gave `zone_lot`, `zone_hub`, `zone_playground`, `zone_hub` in
-order. Not checked in the test: the training and VIP stings (the sealed hall and the VIP-only room put a teleported,
-non-VIP test player back out) and firing a skinned gun end to end (it needs a skin equipped; the test left the
+order. A second test (11:25 UTC) entered training through a door the server moves you by, and the VIP room as a
+session-only VIP (the VIP remote's Studio "dev" unlock): `zone_training`, `zone_hub`, `zone_vip`, `zone_hub`, so all six
+areas but the private lobby (its rooms only exist while a party is in one) were heard firing. Not checked: firing a
+skinned gun end to end (it needs a skin equipped; the test left the
 player's real skins alone). Nobody here can listen: the owner's ears are the real check.
 
 ---
