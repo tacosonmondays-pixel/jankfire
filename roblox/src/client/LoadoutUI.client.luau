@@ -1283,7 +1283,8 @@ for _, o in stage:GetChildren() do
 end
 
 local function canOpen(): (boolean, string?)
-	if me:GetAttribute("Zone") == "match" then return false, "NOT MID-MATCH, CHAMP" end
+	-- (in a match's loadout window the key opens the small picker instead: client/MatchLoadout.luau, play-party-ranked's)
+	if me:GetAttribute("Zone") == "match" then return false, if me:GetAttribute("LoadoutWindow") ~= nil then nil else "NOT MID-MATCH, CHAMP" end
 	local ch = me.Character
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then return false, nil end

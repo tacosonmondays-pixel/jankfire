@@ -30,6 +30,7 @@ Matches.WIN = 5 -- round wins that take the match
 Matches.ROUND_TIME = 120 -- s; time up = the most damage dealt takes it (then HP left, then a coin flip)
 Matches.COUNTDOWN = 3 -- s on a full pad before you go
 Matches.READY = 3 -- s from spawning in to the round going live (no damage till then)
+Matches.READY_FIRST = 8 -- (round 1: longer, the time to change your loadout before the first round. 17 Nov, the owner)
 Matches.BETWEEN = 3 -- s between rounds
 Matches.AFTER = 7 -- s on the end screen, then back to the hub
 Matches.CLEAR = 3 -- s after a match's players are back in the hub, its site is free again (a copy is cleared)
@@ -57,6 +58,7 @@ type Match = {
 	rated: any?, -- (everyone's rating when it started, stand-ins too: RankedData)
 	rules: any?, -- (a classic mode's match, Matches.startMode: Modes.luau runs its spawns, respawns, clock, HUD, board and end)
 	ms: any?, -- (and keeps its state here)
+	liveAt: number?, -- (the os.clock() the next round goes live: the loadout window shuts then, LoadoutWindow)
 }
 
 local Fight: any
@@ -271,7 +273,11 @@ end
 local function setHud(m: Match)
 	if m.rules then m.rules.setHud(m); return end -- (a classic mode: each player's own line, Modes.luau)
 	local txt = hudText(m)
-	each(m, function(p) p:SetAttribute("MatchHud", txt); p:SetAttribute("RoundEnds", if m.phase == "live" then workspace:GetServerTimeNow() + (m.roundEnds - os.clock()) else nil) end)
+	-- (the loadout window, 17 Nov, the owner: "allow us to change weapons before first round and between rounds". the
+	-- countdown before a round and the break between rounds; the server time it shuts. Loadout.luau takes picks while
+	-- it is set and puts them in your hands, client/MatchLoadout.luau opens on it)
+	local win = if (m.phase == "ready" or m.phase == "between") and m.liveAt then workspace:GetServerTimeNow() + math.max(0, (m.liveAt :: number) - os.clock()) else nil
+	each(m, function(p) p:SetAttribute("MatchHud", txt); p:SetAttribute("RoundEnds", if m.phase == "live" then workspace:GetServerTimeNow() + (m.roundEnds - os.clock()) else nil); p:SetAttribute("LoadoutWindow", win) end)
 end
 local function callAll(m: Match, text: string, dur: number)
 	each(m, function(p) CalloutR:FireClient(p, text, dur) end)
@@ -291,7 +297,7 @@ local function backToHub(m: Match)
 	each(m, function(p)
 		inMatch[p] = nil
 		lastZone[p] = "hub"
-		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil)
+		p:SetAttribute("Team", nil); p:SetAttribute("MatchHud", nil); p:SetAttribute("RoundEnds", nil); p:SetAttribute("Arena", nil); p:SetAttribute("LoadoutWindow", nil)
 		RoundR:FireClient(p, { hub = true })
 		local f = Fight.byPlayer[p]
 		if f then f.alive = false; task.spawn(Fight.spawn, f) end
@@ -393,6 +399,7 @@ local function checkRound(m: Match)
 		winner, how = Matches.pickWinner(cands, m.dmg, hp, math.random)
 	end
 	m.phase = "between"
+	m.liveAt = os.clock() + Matches.BETWEEN + Matches.READY
 	m.wins[winner] += 1
 	fire(hooks.round, m, winner)
 	setHud(m)
@@ -416,6 +423,8 @@ end
 startRound = function(m: Match)
 	m.round += 1
 	m.phase = "ready"
+	local ready = if m.round == 1 then Matches.READY_FIRST else Matches.READY
+	m.liveAt = os.clock() + ready
 	for t = 1, #m.teams do m.dmg[t] = 0 end
 	setHud(m)
 	-- a fresh body for everyone at their end (alive or not)
@@ -434,7 +443,7 @@ startRound = function(m: Match)
 			each(m, function(p, t) CalloutR:FireClient(p, ("ROUND %d · you're %s"):format(m.round, TEAM_NAMES[t]), if first then 1.05 else 1.6) end)
 		end)
 	end)
-	task.delay(Matches.READY, function()
+	task.delay(ready, function()
 		if not m.on or m.phase ~= "ready" then return end
 		m.phase = "live"
 		-- (test knob: a TestRoundTime attribute on this module, set on the running server, shortens rounds in a playtest)
@@ -748,6 +757,17 @@ function Matches.test(op: string, a: any, b: any, c: any, d: any, e: any): any
 			for _, cf in teamSpawns(m, t) do table.insert(sp[t], cf.Position) end
 		end
 		return { id = m.id, arena = arena, site = site.model:GetFullName(), copy = site.copy, pivot = site.model:GetPivot().Position, killY = Arena.killY(site.model), centreX = Arena.centreX(site.model), spawns = sp }
+	elseif op == "between" then
+		-- (the loadout window test: player a's match as if its round had just been won; the next round starts b s later)
+		local im = if typeof(a) == "Instance" then inMatch[a :: Player] else nil
+		if not im then return nil end
+		local m = im.m
+		local wait = tonumber(b) or Matches.BETWEEN
+		m.phase = "between"
+		m.liveAt = os.clock() + wait + Matches.READY
+		setHud(m)
+		task.delay(wait, function() if m.on and m.phase == "between" then startRound(m) end end)
+		return { round = m.round, opensFor = wait + Matches.READY }
 	elseif op == "state" then
 		local out = { live = {}, sites = {}, pads = {}, inMatch = 0, cap = maxLive() }
 		for _, m in live do

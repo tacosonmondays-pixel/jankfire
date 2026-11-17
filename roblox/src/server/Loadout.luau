@@ -174,9 +174,16 @@ end
 -- so it only happens where no fight counts: the hub, the training hall and its playground (an allow-list, so a new
 -- arena or match zone can never refill mid-fight; anti-cheat audit, 17 Nov 2026)
 local REARM_ZONES = { hub = true, training = true, playground = true }
+-- (and a round-based match's loadout window, 17 Nov, the owner: "allow us to change weapons before first round and
+-- between rounds": the countdown before a round and the break between rounds, when no damage counts. the server's
+-- Matches sets LoadoutWindow on its players for it and clears it the moment the round goes live; a classic mode never
+-- sets it. play-party-ranked's)
+local function inWindow(p: Player): boolean
+	return p:GetAttribute("Zone") == "match" and p:GetAttribute("LoadoutWindow") ~= nil
+end
 local function rearmInHub(p: Player): boolean
 	local f = Fight and Fight.byPlayer[p]
-	if not f or not f.alive or not REARM_ZONES[p:GetAttribute("Zone") :: any] then return false end
+	if not f or not f.alive or not (REARM_ZONES[p:GetAttribute("Zone") :: any] or inWindow(p)) then return false end
 	Rules.arm(f, os.clock())
 	local d = data[p]
 	if d then Utility.pick(f, d.pick.utility, true) end -- (the item too, charges used this life stay used)
@@ -376,10 +383,13 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown, c: unknown
 		local e = Roster.byId[b]
 		if not e or e.slot ~= a then return false, "wrong slot" end
 		if not e.live then return false, "coming soon. it's not on roblox yet" end
+		-- (in a match: only in the loadout window, never while a round is live)
+		if not free and p:GetAttribute("Zone") == "match" and not inWindow(p) then return false, "the loadout opens before a round and between rounds" end
 		if L.pick[a] == b then return true, nil end
 		L.pick[a] = b
 		done()
 		if free then tryArm(p) else pushNext(p) end
+		if not free and inWindow(p) then rearmInHub(p) end -- (the window: in your hands now; dead, at the next round's spawn)
 		return true, nil
 	elseif op == "wrap" then
 		if type(a) ~= "string" or type(b) ~= "string" or type(c) ~= "string" then return false, "nope" end

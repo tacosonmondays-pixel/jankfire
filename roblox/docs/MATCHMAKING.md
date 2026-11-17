@@ -254,6 +254,46 @@ map is named the way its first banner names it (`Arena.title`) and has a card pi
 
   ![the mode and map votes](matchmaking/35_vote_mode_and_map.jpg)
   ![Infection on THE GUT, the map that won](matchmaking/36_infection_on_the_gut.jpg)
+  ![a casual 1v1's map vote](matchmaking/38_duel_map_vote.jpg)
+- **Open question** (v719): in a casual 1v1 I pressed 1 (ROOFTOP), but the match went to CRATE. Either the key didn't
+  register (with no votes, one of the three is drawn) or ROOFTOP's site couldn't be claimed and the rotation took over.
+  To be rechecked with a logged stand-in vote.
+
+### Changing your loadout before and between rounds (17 Nov 2026)
+
+The owner: "allow us to change weapons before first round and between rounds".
+
+- **The window** is the server's. `Matches` sets the player attribute `LoadoutWindow` (the server time it shuts) in
+  every round-based match (duels and team duels, ranked too) during:
+  - the countdown before a round: `READY_FIRST` = 8 s before round 1 (it was 3), `READY` = 3 s before the others;
+  - the break between rounds (`BETWEEN`, 3 s).
+
+  It clears the moment the round goes live. A classic mode (`m.rules`) never opens it, so Gun Game, Spoons,
+  Infection and the rest keep their own weapons.
+- **The server checks** (`Loadout.luau`, the shop session's file, two hunks).
+  - A weapon pick in a match outside the window is refused: "the loadout opens before a round and between rounds".
+  - Inside it, the pick is checked the same way as in the hub (slot, live weapon). If you're alive (the countdown),
+    it goes into your hands at once through the hub's own re-arm (`armed`, `ArmT`). If you're dead (the break), you
+    spawn with it at the next round.
+- **The picker** (`client/MatchLoadout.client.luau`):
+  - "CHANGE LOADOUT [L] · 5" sits over the weapon bar while the window is open (a button on a phone).
+  - L opens a small panel: a row for each slot, `< WEAPON >` through the slot's live weapons, big arrows for thumbs,
+    and DONE.
+  - The window shutting closes it.
+  - The full loadout screen stays the hub's. In the window its L now opens nothing, so the picker has the key.
+- **Test hooks:** `JankMatchTest("between", player, secs)` ends a held match's round as if it had been won and starts
+  the next one `secs` later. The attribute `MatchLoadoutTest` takes `"open"`, `"close"`, `"pick:slot:weapon"` (the
+  answer goes on `MatchLoadoutResult`) or `"fake:844x390"`.
+- **Tested** in place v719 (17 Nov), a casual 1v1 against a stand-in:
+  - Round 1 opened the window with the hint and an 8 s count.
+  - Once the round was live, a pick was refused with the line above.
+  - I died, then forced the round end. In the break the picker took SMG (LoadoutNext `smg,…`), and round 2 spawned me
+    with the SMG.
+  - Not tested: a pick while alive in the countdown going straight into your hands. The round-2 countdown (3 s)
+    passed during my checks. It runs through the hub's re-arm, which the server allows in the window.
+
+  ![CHANGE LOADOUT before round 1](matchmaking/39_change_loadout_hint.jpg)
+  ![the picker in the break, dead: SMG for next round](matchmaking/40_loadout_between_rounds.jpg)
 
 ## 4. Ranked
 

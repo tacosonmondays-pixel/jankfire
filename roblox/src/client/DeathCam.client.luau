@@ -350,7 +350,8 @@ RunService:BindToRenderStep("JankDeathCam", Enum.RenderPriority.Last.Value + 65,
 	local dyaw, dpitch = turn.X, turn.Y
 	turn = Vector2.zero
 	if UIS.MouseEnabled then
-		if me:GetAttribute("SettingsOpen") == true then
+		-- (a menu needs the cursor: the settings panel, MenuCursor's menus such as the match's loadout picker)
+		if me:GetAttribute("SettingsOpen") == true or me:GetAttribute("MenuCursor") == true then
 			if UIS.MouseBehavior ~= Enum.MouseBehavior.Default then UIS.MouseBehavior = Enum.MouseBehavior.Default end
 		else
 			if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
