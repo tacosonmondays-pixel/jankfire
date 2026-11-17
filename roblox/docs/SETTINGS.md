@@ -23,30 +23,39 @@ respawn. In Studio without API access the save runs in memory and the page's foo
 
 ## The tabs
 
-- **CONTROLS.** Look speed (`look.sens`, Roblox's `MouseDeltaSensitivity`), up and down speed, invert, AIMING,
-  SNIPER SCOPE and SECOND OPINION SCOPE multipliers, controller look speed, field of view, FOV kick (the view widens with speed), screen shake, and hold or
-  toggle for aim, crouch and sprint.
-- **KEYBINDS.** Every action (QUICK JOIN on F answers the hub pad pop-up) with KEYBOARD, SECOND KEY and CONTROLLER columns. Click a cap, press the new key.
-  Backspace clears it, Esc keeps it, a click on the flashing cap binds the left mouse button. A key that another action
-  had swaps over (that action takes this one's old key). Move, jump and look are Roblox's own and shown greyed.
-- **CROSSHAIR.** A live preview at true size on a dark and a pale ground, four starting points (DEFAULT, DOT, SMALL
-  CROSS, CIRCLE), style (cross, dot, circle, T), colour (six swatches or any #RRGGBB), length, thickness, gap, outline,
-  centre dot, opacity, show spread, hide while aiming, and the share code.
-- **AUDIO.** Master, weapons, effects and interface, 0 to 150 %, and the hit and kill sounds on or off.
-- **GRAPHICS.** Quality AUTO / LOW / MEDIUM / HIGH (AUTO follows Roblox's own graphics level), shadows, particles,
-  bloom and sun rays, colour grading, speed lines (streaks, wind and its sound: SpeedLines.client), view distance, other players' kill effects, titles over heads (OverheadTitles.client), skin effects and finishers
-  (FinisherClient reads `gfx.othersFinisher`: off skips finishers you only watch; yours and the one you die to still
-  play), FPS counter.
-- **HUD.** HUD size, damage numbers, hit markers, kill feed, key hints, other players' crate openings, quick join pop-ups (QuickJoinUI), colour-blind
-  mode (team colours), enemy outline colour.
-- **PRIVACY.** HIDE MY STATS (Stats.luau keeps it) and SHOW MY OPENINGS (Loot.luau keeps it). The old
-  `LootSettings.client` row lives here now.
-- **TOUCH** (phones and tablets): touch look speed, button size (on top of the size that suits the device), button
-  opacity, aim help, auto fire, aim button toggles, left-handed. TouchControls (the touch session's) reads them and
-  turns the camera itself; a touch button's press is always a hold in `Binds.press` (TouchControls runs its own
-  toggles). More rows can come from `Settings.row("touch", ...)`.
+The owner, 17 Nov, after the first version: "I don't like the names of it though, can they be like csgo settings?
+Default names". So every label is the plain name competitive shooters use (keys and saved values unchanged, so no
+player loses a setting).
 
-Every tab has RESET TAB (click twice).
+- **CONTROLS.** SENSITIVITY (`look.sens`, Roblox's `MouseDeltaSensitivity`), VERTICAL SENSITIVITY (`look.ySpeed`),
+  INVERT MOUSE Y, ZOOM SENSITIVITY RATIO (`look.ads`, sights and red dots), SCOPED SENSITIVITY for the Sniper
+  (`look.sniper`) and the Second Opinion (`look.dmr`), CONTROLLER SENSITIVITY, FIELD OF VIEW, FOV KICK (`fov.kick`),
+  SCREEN SHAKE, and hold or toggle for AIM DOWN SIGHTS, CROUCH and SPRINT.
+- **KEYBINDS.** Every action with KEY, ALTERNATE and CONTROLLER columns: FIRE, AIM DOWN SIGHTS, RELOAD, PRIMARY /
+  SECONDARY / MELEE / SPECIAL WEAPON, NEXT WEAPON, UTILITY, UTILITY ALT, SPRINT, CROUCH, GRAPPLE, TOGGLE THIRD PERSON,
+  EMOTE WHEEL, the menus, SHOW KEY HINTS and QUICK JOIN (F, the hub pad pop-up). Click a cap, press the new key.
+  Backspace clears it, Esc cancels, a click on the flashing cap binds the left mouse button. A key that another
+  action had swaps over. MOVE FORWARD / BACK / LEFT / RIGHT and JUMP are Roblox's own and shown greyed.
+- **CROSSHAIR.** A true-size PREVIEW on a dark and a pale ground, four starting points (DEFAULT, DOT, SMALL CROSS,
+  CIRCLE), STYLE (cross, dot, circle, T), COLOR (six swatches or any #RRGGBB), SIZE, THICKNESS, GAP, OUTLINE, DOT,
+  ALPHA, DYNAMIC (the gap follows the spread), HIDE WHILE AIMING and the CROSSHAIR CODE.
+- **AUDIO.** MASTER, WEAPON, EFFECTS and UI VOLUME (0 to 150 %), HIT SOUND and KILL SOUND. There is no music or voice
+  in the game, so no slider for them.
+- **GRAPHICS.** GRAPHICS QUALITY AUTO / LOW / MEDIUM / HIGH (AUTO follows Roblox's own level), SHADOWS, PARTICLE DETAIL,
+  BLOOM, COLOR CORRECTION, SPEED LINES (`gfx.speedLines`: streaks, wind and its sound, SpeedLines.client), RENDER
+  DISTANCE (ZoneCull), OTHER PLAYERS' KILL EFFECTS, SHOW TITLES (`gfx.titles`, OverheadTitles.client), OTHER
+  PLAYERS' SKIN EFFECTS, OTHER PLAYERS' FINISHERS (`gfx.othersFinisher`, FinisherClient: off skips finishers you only
+  watch), SHOW FPS (and ping). No motion blur: the game has none.
+- **HUD.** HUD SCALE, DAMAGE NUMBERS, HIT MARKERS, KILL FEED, SHOW KEY HINTS, OTHER PLAYERS' CRATE OPENINGS, QUICK
+  JOIN POP-UPS (`hud.quickJoin`, QuickJoinUI), COLORBLIND MODE (team colors), ENEMY HIGHLIGHT COLOR.
+- **PRIVACY.** HIDE MY STATS (Stats.luau keeps it) and SHARE MY CRATE OPENINGS (Loot.luau keeps it). The old
+  `LootSettings.client` row lives here now.
+- **TOUCH** (phones and tablets, or whenever TouchControls' layout is on: `TouchOn`): TOUCH SENSITIVITY, BUTTON
+  SIZE (on top of the device's own size), AIM ASSIST, BUTTON OPACITY, AUTO FIRE, TOGGLE AIM DOWN SIGHTS, LEFT-HANDED
+  LAYOUT. TouchControls (the touch session's) reads them and turns the camera itself; a touch button's press is always
+  a hold in `Binds.press` (TouchControls runs its own toggles). More rows can come from `Settings.row("touch", ...)`.
+
+Every tab has RESET TO DEFAULT (click twice).
 
 ## How the look speed works
 

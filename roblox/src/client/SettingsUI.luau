@@ -229,7 +229,7 @@ local function colours(def)
 		T.corner(box, 4); T.edge(box)
 		box.FocusLost:Connect(function()
 			local h = string.lower(string.gsub(box.Text, "[^%x]", ""))
-			if #h == 6 then Settings.set(def.key, h) else say("A COLOUR IS SIX HEX DIGITS, LIKE #FFE14D", true) end
+			if #h == 6 then Settings.set(def.key, h) else say("A COLOR IS SIX HEX DIGITS, LIKE #FFE14D", true) end
 			box.Text = "#" .. string.upper(tostring(Settings.get(def.key)))
 		end)
 	end
@@ -387,7 +387,7 @@ local function preview()
 		local undo = T.new("UIScale", { Name = "Undo" }, holder)
 		table.insert(previewHolders, { holder = holder, undo = undo })
 	end
-	local tag = T.text(f, "Note", "TRUE SIZE", 11, T.MUTED, T.FONT_BOLD)
+	local tag = T.text(f, "Note", "PREVIEW", 11, T.MUTED, T.FONT_BOLD)
 	tag.Position = UDim2.fromOffset(12, 8); tag.Size = UDim2.fromOffset(120, 14)
 	return f
 end
@@ -404,7 +404,7 @@ end
 
 -- ------------------------------------------------------------------ the crosshair code row
 local function codeRow()
-	local r, ctl = rowFrame("SHARE CODE", "copy it to share, or paste one in and press Enter", nil, "Row_code")
+	local r, ctl = rowFrame("CROSSHAIR CODE", "copy to share, or paste one and press Enter", nil, "Row_code")
 	local box = T.new("TextBox", { Name = "Code", AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(240, 32),
 		BackgroundColor3 = T.BG, BorderSizePixel = 0, FontFace = Font.new("rbxasset://fonts/families/RobotoMono.json", Enum.FontWeight.Bold), TextSize = 14,
 		TextColor3 = T.TEXT, Text = "", ClearTextOnFocus = false, TextEditable = true }, ctl)
@@ -435,32 +435,32 @@ local XH_PRESETS = {
 tabs = {
 	{ id = "controls", title = "CONTROLS", reset = { "look.", "fov", "aim.toggle", "crouch.toggle", "sprint.toggle", "gfx.shake" }, build = function()
 		section("MOUSE")
-		slider({ key = "look.sens", label = "LOOK SPEED", sub = "how far the view turns for a move of the mouse", min = 0.05, max = 3, step = 0.01, fmt = function(v) return ("%.2f"):format(v) end })
-		slider({ key = "look.ySpeed", label = "UP AND DOWN SPEED", sub = "against the side to side speed", min = 0.5, max = 1.5, step = 0.01, fmt = pct, scale = 100 })
-		switch({ key = "look.invert", label = "INVERT UP AND DOWN", sub = "move the mouse up to look down" })
-		section("AIMING AND SCOPES", "1.00x turns the view as far across the screen as at the hip, at every zoom")
-		slider({ key = "look.ads", label = "AIMING", sub = "down the sights of every gun without a scope", min = 0.2, max = 2, step = 0.01, fmt = times })
-		slider({ key = "look.sniper", label = "SNIPER SCOPE", sub = "the Sniper's scope, 4x zoom", min = 0.2, max = 2, step = 0.01, fmt = times })
-		slider({ key = "look.dmr", label = "SECOND OPINION SCOPE", sub = "the Second Opinion's scope, 2.6x zoom", min = 0.2, max = 2, step = 0.01, fmt = times })
+		slider({ key = "look.sens", label = "SENSITIVITY", min = 0.05, max = 3, step = 0.01, fmt = function(v) return ("%.2f"):format(v) end })
+		slider({ key = "look.ySpeed", label = "VERTICAL SENSITIVITY", sub = "multiplier on up and down", min = 0.5, max = 1.5, step = 0.01, fmt = pct, scale = 100 })
+		switch({ key = "look.invert", label = "INVERT MOUSE Y" })
+		section("ZOOM", "1.00 keeps the same feel as hip fire at every zoom")
+		slider({ key = "look.ads", label = "ZOOM SENSITIVITY RATIO", sub = "iron sights and red dots", min = 0.2, max = 2, step = 0.01, fmt = times })
+		slider({ key = "look.sniper", label = "SCOPED SENSITIVITY", sub = "Sniper, 4x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
+		slider({ key = "look.dmr", label = "SCOPED SENSITIVITY", sub = "Second Opinion, 2.6x scope", min = 0.2, max = 2, step = 0.01, fmt = times })
 		section("CONTROLLER")
-		slider({ key = "look.pad", label = "CONTROLLER LOOK SPEED", sub = "the right stick", min = 0.2, max = 3, step = 0.05, fmt = times })
+		slider({ key = "look.pad", label = "CONTROLLER SENSITIVITY", min = 0.2, max = 3, step = 0.05, fmt = times })
 		section("VIEW")
-		slider({ key = "fov", label = "FIELD OF VIEW", sub = "how much you see, top to bottom, in degrees", min = 50, max = 120, step = 1, fmt = function(v) return tostring(v) end })
+		slider({ key = "fov", label = "FIELD OF VIEW", sub = "vertical, in degrees", min = 50, max = 120, step = 1, fmt = function(v) return tostring(v) end })
 		switch({ key = "fov.kick", label = "FOV KICK", sub = "the view widens as you speed up" })
-		switch({ key = "gfx.shake", label = "SCREEN SHAKE", sub = "the view shakes on big shots and parries" })
+		switch({ key = "gfx.shake", label = "SCREEN SHAKE" })
 		section("HOLD OR TOGGLE")
 		local ht = { { false, "HOLD" }, { true, "TOGGLE" } }
-		choice({ key = "aim.toggle", label = "AIM", sub = "toggle: press once to aim, again to stop", options = ht })
-		choice({ key = "crouch.toggle", label = "CROUCH", sub = "a slide still starts when you're running", options = ht })
+		choice({ key = "aim.toggle", label = "AIM DOWN SIGHTS", options = ht })
+		choice({ key = "crouch.toggle", label = "CROUCH", options = ht })
 		choice({ key = "sprint.toggle", label = "SPRINT", options = ht })
 	end },
 	{ id = "keys", title = "KEYBINDS", reset = { "bind." }, build = function()
 		local head = T.new("Frame", { Name = "Columns", BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 28), LayoutOrder = nextOrder() }, list)
-		for slot, text in { "KEYBOARD", "SECOND KEY", "CONTROLLER" } do
+		for slot, text in { "KEY", "ALTERNATE", "CONTROLLER" } do
 			local l = T.text(head, "Col", text, 11, T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
 			l.AnchorPoint = Vector2.new(1, 0.5); l.Position = UDim2.new(1, -16 - (3 - slot) * 112, 0.5, 0); l.Size = UDim2.fromOffset(104, 16)
 		end
-		local hint = T.text(head, "How", "click a key, then press the new one. Backspace clears it, Esc keeps it", 12, T.DIM)
+		local hint = T.text(head, "How", "click a key, then press the new one. Backspace clears, Esc cancels", 12, T.DIM)
 		hint.Position = UDim2.fromOffset(4, 6); hint.Size = UDim2.new(0.5, 0, 0, 16)
 		local group = nil
 		for _, a in Binds.ACTIONS do
@@ -486,64 +486,64 @@ tabs = {
 		choice({ key = "xh.style", label = "STYLE", options = { { "cross", "CROSS" }, { "dot", "DOT" }, { "circle", "CIRCLE" }, { "t", "T" } } })
 		local sw = {}
 		for _, h in XH.SWATCHES do table.insert(sw, { h, Color3.fromHex(h) }) end
-		colours({ key = "xh.color", label = "COLOUR", sub = "or type any colour as #RRGGBB", swatches = sw, hex = true })
-		slider({ key = "xh.size", label = "LENGTH", sub = "of each line (a circle's width grows with it)", min = 1, max = 20, step = 1, fmt = px })
+		colours({ key = "xh.color", label = "COLOR", sub = "or a hex code, #RRGGBB", swatches = sw, hex = true })
+		slider({ key = "xh.size", label = "SIZE", min = 1, max = 20, step = 1, fmt = px })
 		slider({ key = "xh.thick", label = "THICKNESS", min = 1, max = 6, step = 1, fmt = px })
-		slider({ key = "xh.gap", label = "GAP", sub = "from the middle to each line", min = 0, max = 20, step = 1, fmt = px })
-		slider({ key = "xh.outline", label = "OUTLINE", sub = "a dark edge so it reads on pale ground", min = 0, max = 3, step = 1, fmt = percentOff })
-		slider({ key = "xh.dot", label = "CENTRE DOT", min = 0, max = 6, step = 1, fmt = percentOff })
-		slider({ key = "xh.alpha", label = "OPACITY", min = 0.1, max = 1, step = 0.05, fmt = pct, scale = 100 })
-		switch({ key = "xh.spread", label = "SHOW SPREAD", sub = "the gap opens as your shots spread out" })
-		switch({ key = "xh.hideAim", label = "HIDE WHILE AIMING", sub = "sights and scopes mark the middle instead" })
+		slider({ key = "xh.gap", label = "GAP", min = 0, max = 20, step = 1, fmt = px })
+		slider({ key = "xh.outline", label = "OUTLINE", min = 0, max = 3, step = 1, fmt = percentOff })
+		slider({ key = "xh.dot", label = "DOT", min = 0, max = 6, step = 1, fmt = percentOff })
+		slider({ key = "xh.alpha", label = "ALPHA", min = 0.1, max = 1, step = 0.05, fmt = pct, scale = 100 })
+		switch({ key = "xh.spread", label = "DYNAMIC", sub = "the gap opens as your shots spread" })
+		switch({ key = "xh.hideAim", label = "HIDE WHILE AIMING" })
 		codeRow()
 	end },
 	{ id = "audio", title = "AUDIO", reset = { "vol.", "snd." }, build = function()
-		section("VOLUME", "100% is the game's own mix")
+		section("VOLUME")
 		local v = { min = 0, max = 150, step = 1, fmt = function(x) return ("%d%%"):format(x) end }
 		local function vol(key, label, sub) slider({ key = key, label = label, sub = sub, min = v.min, max = v.max, step = v.step, fmt = v.fmt }) end
-		vol("vol.master", "MASTER", "everything below")
-		vol("vol.weapons", "WEAPONS", "shots, reloads, blades, hits and kills")
-		vol("vol.effects", "EFFECTS", "steps, jumps, impacts, explosions, kill effects")
-		vol("vol.ui", "INTERFACE", "menus, crates, round start and end")
+		vol("vol.master", "MASTER VOLUME")
+		vol("vol.weapons", "WEAPON VOLUME", "guns, reloads, melee, hits")
+		vol("vol.effects", "EFFECTS VOLUME", "footsteps, impacts, explosions")
+		vol("vol.ui", "UI VOLUME", "menus and crates")
 		section("FEEDBACK")
-		switch({ key = "snd.hit", label = "HIT SOUND", sub = "a tick when your shot lands, a ring on a headshot" })
-		switch({ key = "snd.kill", label = "KILL SOUND", sub = "a chime when you take someone out" })
+		switch({ key = "snd.hit", label = "HIT SOUND" })
+		switch({ key = "snd.kill", label = "KILL SOUND" })
 	end },
 	{ id = "graphics", title = "GRAPHICS", reset = { "gfx.preset", "gfx.shadows", "gfx.particles", "gfx.bloom", "gfx.colour", "gfx.view", "gfx.othersKill", "gfx.othersSkin", "gfx.othersFinisher", "gfx.speedLines", "gfx.titles", "gfx.fps" }, build = function()
 		local NAMES = { low = "LOW", med = "MEDIUM", high = "HIGH" }
-		choice({ key = "gfx.preset", label = "QUALITY", options = { { "auto", "AUTO" }, { "low", "LOW" }, { "med", "MEDIUM" }, { "high", "HIGH" } },
+		choice({ key = "gfx.preset", label = "GRAPHICS QUALITY", options = { { "auto", "AUTO" }, { "low", "LOW" }, { "med", "MEDIUM" }, { "high", "HIGH" } },
 			subFn = function()
 				local p = Settings.get("gfx.preset")
-				if p == "auto" then return "follows Roblox's graphics level: " .. (NAMES[Settings.autoLevel and Settings.autoLevel() or "high"] or "HIGH") end
-				if p == "custom" then return "custom: your own mix of the switches below" end
-				return "sets the switches below"
+				if p == "auto" then return "auto: Roblox's graphics level, " .. (NAMES[Settings.autoLevel and Settings.autoLevel() or "high"] or "HIGH") end
+				if p == "custom" then return "custom" end
+				return "sets the options below"
 			end })
 		section("DETAIL")
 		switch({ key = "gfx.shadows", label = "SHADOWS", marks = "gfx.preset" })
-		slider({ key = "gfx.particles", label = "PARTICLES", sub = "sparks, smoke, splashes and effects", min = 0.25, max = 1, step = 0.05, fmt = pct, scale = 100, marks = "gfx.preset" })
-		switch({ key = "gfx.bloom", label = "BLOOM AND SUN RAYS", sub = "the glow round bright lights", marks = "gfx.preset" })
-		switch({ key = "gfx.colour", label = "COLOUR GRADING", sub = "each place's own colour and contrast" })
+		slider({ key = "gfx.particles", label = "PARTICLE DETAIL", min = 0.25, max = 1, step = 0.05, fmt = pct, scale = 100, marks = "gfx.preset" })
+		switch({ key = "gfx.bloom", label = "BLOOM", marks = "gfx.preset" })
+		switch({ key = "gfx.colour", label = "COLOR CORRECTION" })
 		switch({ key = "gfx.speedLines", label = "SPEED LINES", sub = "streaks and wind at speed" })
-		choice({ key = "gfx.view", label = "VIEW DISTANCE", sub = "how near you get before a far place is drawn", options = { { "near", "NEAR" }, { "normal", "NORMAL" }, { "far", "FAR" } }, marks = "gfx.preset" })
+		choice({ key = "gfx.view", label = "RENDER DISTANCE", options = { { "near", "NEAR" }, { "normal", "NORMAL" }, { "far", "FAR" } }, marks = "gfx.preset" })
 		section("OTHER PLAYERS")
-		switch({ key = "gfx.othersKill", label = "OTHERS' KILL EFFECTS", sub = "off: their kills play no effect on your screen" })
+		switch({ key = "gfx.othersKill", label = "OTHER PLAYERS' KILL EFFECTS" })
 		switch({ key = "gfx.titles", label = "SHOW TITLES", sub = "card titles over players' heads" })
-		switch({ key = "gfx.othersSkin", label = "OTHERS' SKIN EFFECTS", sub = "moving wraps and flames on their weapons" })
-		switch({ key = "gfx.othersFinisher", label = "OTHERS' FINISHERS", sub = "off: finishers you only watch are skipped; yours still play" })
-		section("READOUT")
-		switch({ key = "gfx.fps", label = "FPS COUNTER", sub = "frames a second and ping, top left" })
+		switch({ key = "gfx.othersSkin", label = "OTHER PLAYERS' SKIN EFFECTS", sub = "animated wraps and flames" })
+		switch({ key = "gfx.othersFinisher", label = "OTHER PLAYERS' FINISHERS" })
+		section("PERFORMANCE")
+		switch({ key = "gfx.fps", label = "SHOW FPS", sub = "and ping, top left" })
 	end },
 	{ id = "hud", title = "HUD", reset = { "hud." }, build = function()
-		slider({ key = "hud.scale", label = "HUD SIZE", sub = "health, ammo, the feed and the score", min = 0.75, max = 1.25, step = 0.05, fmt = pct, scale = 100 })
+		slider({ key = "hud.scale", label = "HUD SCALE", min = 0.75, max = 1.25, step = 0.05, fmt = pct, scale = 100 })
 		section("ON SCREEN")
-		switch({ key = "hud.dmg", label = "DAMAGE NUMBERS", sub = "the damage over whoever you hit" })
-		switch({ key = "hud.hits", label = "HIT MARKERS", sub = "the ticks round the crosshair on a hit" })
-		switch({ key = "hud.feed", label = "KILL FEED", sub = "who took out whom, top right" })
-		switch({ key = "hud.keys", label = "SHOW KEY HINTS", sub = "the controls line, all the time. off: hold " .. Binds.label("keys") })
-		switch({ key = "hud.othersLoot", label = "OTHERS' CRATE OPENINGS", sub = "see what players near you open" })
+		switch({ key = "hud.dmg", label = "DAMAGE NUMBERS" })
+		switch({ key = "hud.hits", label = "HIT MARKERS" })
+		switch({ key = "hud.feed", label = "KILL FEED" })
+		switch({ key = "hud.keys", label = "SHOW KEY HINTS", sub = "off: hold " .. Binds.label("keys") })
+		switch({ key = "hud.othersLoot", label = "OTHER PLAYERS' CRATE OPENINGS" })
 		switch({ key = "hud.quickJoin", label = "QUICK JOIN POP-UPS", sub = "when someone steps on a hub pad" })
-		section("COLOUR")
-		local cb = choice({ key = "hud.cb", label = "COLOUR-BLIND MODE", sub = "", options = { { "off", "OFF" }, { "protan", "PROTAN" }, { "deutan", "DEUTAN" }, { "tritan", "TRITAN" } } })
+		section("COLOR")
+		local cb = choice({ key = "hud.cb", label = "COLORBLIND MODE", sub = "", options = { { "off", "OFF" }, { "protan", "PROTAN" }, { "deutan", "DEUTAN" }, { "tritan", "TRITAN" } } })
 		-- (the three team colours as they'll look, in the sub line's place)
 		local sub = cb:FindFirstChild("Sub")
 		local chips = {}
@@ -552,12 +552,12 @@ tabs = {
 			T.corner(c, 3)
 			chips[i] = c
 		end
-		if sub then sub.Position = UDim2.fromOffset(18 + 3 * 22 + 4, 32); sub.Text = "the team colours" end
+		if sub then sub.Position = UDim2.fromOffset(18 + 3 * 22 + 4, 32); sub.Text = "team colors" end
 		local function paint() for i, c in chips do c.BackgroundColor3 = Color3.fromHex(string.sub(Settings.teamHex(i), 2)) end end
 		onKey("hud.cb", paint); paint()
 		local en = {}
 		for _, n in Settings.ENEMY_ORDER do table.insert(en, { n, Settings.ENEMY[n] }) end
-		colours({ key = "hud.enemy", label = "ENEMY OUTLINE", sub = "the night-vision goggles' outline on others", swatches = en })
+		colours({ key = "hud.enemy", label = "ENEMY HIGHLIGHT COLOR", swatches = en })
 	end },
 	{ id = "privacy", title = "PRIVACY", reset = {}, build = function()
 		switch({ label = "HIDE MY STATS", sub = "others see your name, rank and card only", attr = "StatsPrivate",
@@ -569,7 +569,7 @@ tabs = {
 					task.spawn(function() pcall(function() fn:InvokeServer("private", want) end) end)
 				end
 			end })
-		switch({ label = "SHOW MY OPENINGS", sub = "people near you see what you open", attr = "LootShowOpenings",
+		switch({ label = "SHARE MY CRATE OPENINGS", sub = "players near you see what you open", attr = "LootShowOpenings",
 			get = function() return me:GetAttribute("LootShowOpenings") ~= false end,
 			flip = function()
 				local fn = ReplicatedStorage:FindFirstChild("JankfireRemotes") and ReplicatedStorage.JankfireRemotes:FindFirstChild("Loot")
@@ -593,14 +593,14 @@ tabs = {
 		return UIS.TouchEnabled or me:GetAttribute("TouchOn") == true or me:GetAttribute("TouchForce") == true
 			or me:GetAttribute("SettingsAllTabs") == true
 	end, build = function()
-		slider({ key = "touch.sens", label = "TOUCH LOOK SPEED", sub = "dragging on the screen to look", min = 0.3, max = 3, step = 0.05, fmt = times })
-		slider({ key = "touch.size", label = "BUTTON SIZE", sub = "on top of the size that suits the device", min = 0.7, max = 1.4, step = 0.05, fmt = pct, scale = 100 })
-		slider({ key = "touch.assist", label = "AIM HELP", sub = "the aim slows on someone under the crosshair", min = 0, max = 1.5, step = 0.05,
+		slider({ key = "touch.sens", label = "TOUCH SENSITIVITY", min = 0.3, max = 3, step = 0.05, fmt = times })
+		slider({ key = "touch.size", label = "BUTTON SIZE", sub = "on top of the device's own size", min = 0.7, max = 1.4, step = 0.05, fmt = pct, scale = 100 })
+		slider({ key = "touch.assist", label = "AIM ASSIST", min = 0, max = 1.5, step = 0.05,
 			fmt = function(v) return if v <= 0 then "OFF" else ("%.2fx"):format(v) end })
 		slider({ key = "touch.alpha", label = "BUTTON OPACITY", min = 0.2, max = 1, step = 0.05, fmt = pct, scale = 100 })
 		switch({ key = "touch.autofire", label = "AUTO FIRE", sub = "shoots when the crosshair is on someone" })
-		switch({ key = "touch.aimToggle", label = "AIM BUTTON TOGGLES", sub = "off: hold it to aim" })
-		switch({ key = "touch.lefty", label = "LEFT-HANDED", sub = "the buttons swap sides" })
+		switch({ key = "touch.aimToggle", label = "TOGGLE AIM DOWN SIGHTS", sub = "off: hold to aim" })
+		switch({ key = "touch.lefty", label = "LEFT-HANDED LAYOUT" })
 		for _, def in Settings.extra.touch or {} do
 			if def.kind == "slider" then
 				slider({ key = def.key, label = def.label, sub = def.sub, min = def.min, max = def.max, step = def.step,
@@ -631,7 +631,7 @@ function UI.show(id)
 	header.Text = tab.title
 	message.Text = ""
 	resetArmed = 0
-	resetBtn.Text = "RESET TAB"
+	resetBtn.Text = "RESET TO DEFAULT"
 	tab.build()
 	list.CanvasPosition = Vector2.zero
 	for tid, b in tabButtons do
@@ -693,7 +693,7 @@ function UI.build(gui)
 	message.TextTruncate = Enum.TextTruncate.AtEnd
 	resetBtn = T.new("TextButton", { Name = "Reset", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -44, 0, 24), AutomaticSize = Enum.AutomaticSize.X,
 		Size = UDim2.fromOffset(0, 30), AutoButtonColor = false, BackgroundColor3 = T.TRACK, BorderSizePixel = 0, FontFace = T.FONT_BOLD, TextSize = 12,
-		TextColor3 = T.TEXT, Text = "RESET TAB" }, content)
+		TextColor3 = T.TEXT, Text = "RESET TO DEFAULT" }, content)
 	T.corner(resetBtn, 5)
 	T.new("UIPadding", { PaddingLeft = UDim.new(0, 12), PaddingRight = UDim.new(0, 12) }, resetBtn)
 	resetBtn.MouseButton1Click:Connect(function()
@@ -703,12 +703,12 @@ function UI.build(gui)
 			resetBtn.Text = "CLICK AGAIN TO RESET"
 			resetBtn.BackgroundColor3 = T.ACCENT; resetBtn.TextColor3 = T.INK
 			task.delay(3, function()
-				if os.clock() - resetArmed >= 3 then resetBtn.Text = "RESET TAB"; resetBtn.BackgroundColor3 = T.TRACK; resetBtn.TextColor3 = T.TEXT end
+				if os.clock() - resetArmed >= 3 then resetBtn.Text = "RESET TO DEFAULT"; resetBtn.BackgroundColor3 = T.TRACK; resetBtn.TextColor3 = T.TEXT end
 			end)
 			return
 		end
 		resetArmed = 0
-		resetBtn.Text = "RESET TAB"; resetBtn.BackgroundColor3 = T.TRACK; resetBtn.TextColor3 = T.TEXT
+		resetBtn.Text = "RESET TO DEFAULT"; resetBtn.BackgroundColor3 = T.TRACK; resetBtn.TextColor3 = T.TEXT
 		if current.onReset then current.onReset() end
 		if #current.reset > 0 then Settings.reset(current.reset) end
 		say(current.title .. " BACK TO THE DEFAULTS")

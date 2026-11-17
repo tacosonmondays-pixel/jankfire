@@ -21,34 +21,36 @@ local Binds = {}
 export type Action = { id: string, label: string, group: string, kb: { string }, pad: string?, toggle: string? }
 -- (order = the order of the KEYBINDS tab)
 Binds.ACTIONS = {
-	{ id = "fire", label = "FIRE", group = "COMBAT", kb = { "MouseButton1" }, pad = "ButtonR2" },
-	{ id = "aim", label = "AIM · PARRY", group = "COMBAT", kb = { "MouseButton2" }, pad = "ButtonL2", toggle = "aim.toggle" },
-	{ id = "reload", label = "RELOAD", group = "COMBAT", kb = { "R" }, pad = "ButtonX" },
-	{ id = "slot1", label = "WEAPON 1", group = "COMBAT", kb = { "One" } },
-	{ id = "slot2", label = "WEAPON 2", group = "COMBAT", kb = { "Two" } },
-	{ id = "slot3", label = "WEAPON 3", group = "COMBAT", kb = { "Three" } },
-	{ id = "slot4", label = "SHREDDER", group = "COMBAT", kb = { "Four" } },
-	{ id = "next", label = "NEXT WEAPON", group = "COMBAT", kb = {}, pad = "ButtonY" },
-	{ id = "item", label = "UTILITY ITEM", group = "COMBAT", kb = { "G" }, pad = "ButtonR1" },
-	{ id = "flash", label = "GOGGLES FLASH", group = "COMBAT", kb = { "N", "MouseButton3" } },
+	{ id = "fire", label = "FIRE", group = "WEAPONS", kb = { "MouseButton1" }, pad = "ButtonR2" },
+	{ id = "aim", label = "AIM DOWN SIGHTS", group = "WEAPONS", kb = { "MouseButton2" }, pad = "ButtonL2", toggle = "aim.toggle" },
+	{ id = "reload", label = "RELOAD", group = "WEAPONS", kb = { "R" }, pad = "ButtonX" },
+	{ id = "slot1", label = "PRIMARY WEAPON", group = "WEAPONS", kb = { "One" } },
+	{ id = "slot2", label = "SECONDARY WEAPON", group = "WEAPONS", kb = { "Two" } },
+	{ id = "slot3", label = "MELEE WEAPON", group = "WEAPONS", kb = { "Three" } },
+	{ id = "slot4", label = "SPECIAL WEAPON", group = "WEAPONS", kb = { "Four" } },
+	{ id = "next", label = "NEXT WEAPON", group = "WEAPONS", kb = {}, pad = "ButtonY" },
+	{ id = "item", label = "UTILITY", group = "WEAPONS", kb = { "G" }, pad = "ButtonR1" },
+	{ id = "flash", label = "UTILITY ALT", group = "WEAPONS", kb = { "N", "MouseButton3" } },
 	{ id = "sprint", label = "SPRINT", group = "MOVEMENT", kb = { "LeftShift", "RightShift" }, pad = "ButtonL3", toggle = "sprint.toggle" },
-	{ id = "crouch", label = "CROUCH · SLIDE", group = "MOVEMENT", kb = { "C", "LeftControl" }, pad = "ButtonB", toggle = "crouch.toggle" },
+	{ id = "crouch", label = "CROUCH", group = "MOVEMENT", kb = { "C", "LeftControl" }, pad = "ButtonB", toggle = "crouch.toggle" },
 	{ id = "grapple", label = "GRAPPLE", group = "MOVEMENT", kb = { "E" }, pad = "ButtonL1" },
-	{ id = "camera", label = "CAMERA VIEW", group = "MOVEMENT", kb = { "V" }, pad = "ButtonR3" },
+	{ id = "camera", label = "TOGGLE THIRD PERSON", group = "MOVEMENT", kb = { "V" }, pad = "ButtonR3" },
 	{ id = "emote", label = "EMOTE WHEEL", group = "MENUS", kb = { "T" }, pad = "DPadRight" },
 	{ id = "loadout", label = "LOADOUT", group = "MENUS", kb = { "L" } },
-	{ id = "play", label = "PLAY", group = "MENUS", kb = { "M" } },
+	{ id = "play", label = "PLAY MENU", group = "MENUS", kb = { "M" } },
 	{ id = "party", label = "PARTY", group = "MENUS", kb = { "J" } },
 	{ id = "shop", label = "SHOP", group = "MENUS", kb = { "B" } },
 	{ id = "profile", label = "PROFILE", group = "MENUS", kb = { "K" } },
 	{ id = "settings", label = "SETTINGS", group = "MENUS", kb = { "P" } },
-	{ id = "keys", label = "SHOW KEYS (HOLD)", group = "MENUS", kb = { "H" } },
+	{ id = "keys", label = "SHOW KEY HINTS (HOLD)", group = "MENUS", kb = { "H" } },
 	{ id = "quickjoin", label = "QUICK JOIN", group = "MENUS", kb = { "F" } }, -- (the hub pad pop-up: QuickJoinUI)
 } :: { Action }
 Binds.FIXED = { -- (shown in the tab, greyed: Roblox's own controls)
-	{ label = "MOVE", kb = "W A S D", pad = "Left stick" },
+	{ label = "MOVE FORWARD", kb = "W", pad = "Left stick" },
+	{ label = "MOVE BACK", kb = "S", pad = "Left stick" },
+	{ label = "MOVE LEFT", kb = "A", pad = "Left stick" },
+	{ label = "MOVE RIGHT", kb = "D", pad = "Left stick" },
 	{ label = "JUMP", kb = "Space", pad = "A" },
-	{ label = "LOOK", kb = "Mouse", pad = "Right stick" },
 }
 -- never bindable: Roblox's menu, chat, console and screenshot keys
 Binds.RESERVED = { Escape = true, Slash = true, Backquote = true, F9 = true, F11 = true, F12 = true, Unknown = true, ButtonStart = true, ButtonSelect = true }
