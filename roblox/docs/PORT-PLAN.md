@@ -1245,6 +1245,28 @@ The owner, on the regulars: "When they stand make sure they don't stand in their
   - `:Invoke("move", who, toIndex?, speed?)` makes that regular move now (0.2 = a fifth of normal speed, for photos).
   - `:Invoke("where", who)` returns their point, phase and position.
 
+## 33. The hub/training gate on one kit, and queue pads that glow, 17 November 2026 (place versions 641 to 676)
+
+The owner: "can the laser fence be on both side of the hub and same with the garage door because its weird to have the grid on one side and a garage door on the other", then "the garage door should be behind the laser, hello??", then "I like the old black entrances for doors idk if i like the gold..". On the pads: "can we try removing the circles on the pads and then make them glow?", then "pads should glow when you step on them!".
+
+- **One gate kit for both sides** (`roblox/studio-tools/GateKit.luau`, `K.build(F, parent, { door, lasers })`):
+  - The red laser fence is at the opening's face (Near 17). The roll-up garage door is just behind it (Near 13). Walking up, the lasers click off first, then the door rolls up. TrainingDoors.client does both on every screen.
+  - The kit's hb_portal frame is in amber trim on slate (`K.FRAME`), with an amber light bar over the head and a warm lamp out in front (`K.LAMP`).
+  - The hub's armory gate (HubRotundaRooms) and the training side's gate home (TrainingV2, the training session's) are both built with it.
+- **The open doorway is black.** The dark plate behind the door is `GateBack`, `K.COL.back` "2b2d33".
+  - The amber portal tried at v656 is gone: the swirl, the glow and the warm spill, along with GatePortal.client (676).
+  - The owner preferred the old black opening.
+- **Queue pads glow** (HubRotunda's `B.pad`, `roblox/src/client/PadGlow.client.luau`):
+  - There are no circles. Each side has a thin neon `Glow` in its team's colour over a darker plate, with a soft PointLight in it.
+  - An open side breathes quietly (see-through 0.78, light 0.12; v664).
+  - When someone steps on a side, it flares (a flash toward white and a burst of light for 0.5 s), then holds clearly bright while they stay.
+  - A side counts as taken when one of its `Slot` specks (buried in the plate) is shown.
+- **Photos:**
+  - `docs/hub/hub_gate_both_sides.jpg` (v649).
+  - `docs/hub/hub_gate_and_pads_v656.jpg` (the order fixed; the amber portal; the pad flare).
+  - `docs/hub/hub_queue_pads_open_dim_v664.jpg` (the open sides dimmer, from the spawn).
+  - `docs/hub/hub_gate_black_676.jpg` (the open doorway black again).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
