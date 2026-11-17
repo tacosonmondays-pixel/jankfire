@@ -41,7 +41,7 @@ local function scripts(): { { path: string, source: string } }
 		end
 	end
 	-- the edit-time helpers worth keeping
-	for _, n in { "PropPlacer", "OverlapCheck", "CozyKit", "Hub2Colors", "StudioExport", "HubLab", "HubRotunda", "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms", "KitImport", "HubReskin", "WeaponImport", "WeaponPaint", "WeaponKit", "SeriousPass", "StructurePass", "RooftopV2", "RooftopV2Layout", "TrainingV2", "TrainingLot", "RooftopV3", "RooftopV3Layout", "HatImport", "LootImport", "ZFight" } do
+	for _, n in { "PropPlacer", "OverlapCheck", "CozyKit", "Hub2Colors", "StudioExport", "HubLab", "HubRotunda", "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms", "KitImport", "HubReskin", "WeaponImport", "WeaponPaint", "WeaponKit", "SeriousPass", "StructurePass", "RooftopV2", "RooftopV2Layout", "TrainingV2", "TrainingLot", "RooftopV3", "RooftopV3Layout", "WebArena", "CrateLayout", "PlatformLayout", "BazaarLayout", "HatImport", "LootImport", "ZFight" } do
 		local d = ST.PolishBackup:FindFirstChild(n)
 		if d and d:IsA("LuaSourceContainer") then table.insert(out, { path = "studio-tools/" .. n .. ".luau", source = (d :: any).Source }) end
 	end
@@ -86,6 +86,9 @@ local function roots(): { { path: string, list: { Instance } } }
 		{ path = "place/Workspace/Map.Rooftop.rbxm", list = { workspace.Map.Rooftop } },
 		{ path = "place/Workspace/Map.RooftopV2.rbxm", list = { workspace.Map:FindFirstChild("RooftopV2") } },
 		{ path = "place/Workspace/Map.RooftopV3.rbxm", list = { workspace.Map:FindFirstChild("RooftopV3") } },
+		{ path = "place/Workspace/Map.Crate.rbxm", list = { workspace.Map:FindFirstChild("Crate") } },
+		{ path = "place/Workspace/Map.Platform.rbxm", list = { workspace.Map:FindFirstChild("Platform") } },
+		{ path = "place/Workspace/Map.Bazaar.rbxm", list = { workspace.Map:FindFirstChild("Bazaar") } },
 		{ path = "place/ServerStorage/JankfireMeshes.rbxm", list = { ST.JankfireMeshes } },
 	}
 	-- the show hubs built by HubLab (gone once the owner has picked one and the rest are archived)

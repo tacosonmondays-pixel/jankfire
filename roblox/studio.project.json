@@ -53,6 +53,10 @@
         "TrainingV2": { "$path": "studio-tools/TrainingV2.luau" },
         "RooftopV3": { "$path": "studio-tools/RooftopV3.luau" },
         "RooftopV3Layout": { "$path": "studio-tools/RooftopV3Layout.luau" },
+        "WebArena": { "$path": "studio-tools/WebArena.luau" },
+        "CrateLayout": { "$path": "studio-tools/CrateLayout.luau" },
+        "PlatformLayout": { "$path": "studio-tools/PlatformLayout.luau" },
+        "BazaarLayout": { "$path": "studio-tools/BazaarLayout.luau" },
         "HatImport": { "$path": "studio-tools/HatImport.luau" },
         "LootImport": { "$path": "studio-tools/LootImport.luau" }
       }
@@ -87,7 +91,10 @@
         "Hub": { "$path": "place/Workspace/Map.Hub.rbxm" },
         "Rooftop": { "$path": "place/Workspace/Map.Rooftop.rbxm" },
         "RooftopV2": { "$path": "place/Workspace/Map.RooftopV2.rbxm" },
-        "RooftopV3": { "$path": "place/Workspace/Map.RooftopV3.rbxm" }
+        "RooftopV3": { "$path": "place/Workspace/Map.RooftopV3.rbxm" },
+        "Crate": { "$path": "place/Workspace/Map.Crate.rbxm" },
+        "Platform": { "$path": "place/Workspace/Map.Platform.rbxm" },
+        "Bazaar": { "$path": "place/Workspace/Map.Bazaar.rbxm" }
       }
     },
     "Lighting": {
