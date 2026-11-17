@@ -283,6 +283,7 @@ local function takeVictim(s: any)
 				track.Priority = Enum.AnimationPriority.Action4
 				track:Play(0.05, 1, 0.35 * an.speed)
 				s.react = track
+				s.reactSpeed = an.speed
 			end
 		end
 	end
@@ -480,7 +481,7 @@ function F._step(dt: number)
 	local moving = s.w > before + 1e-6
 	FFx.timeScale(s.run, if not moving then 0 else (if s.shotName == "impact" then 0.35 elseif s.shotName == "chase" then 0.25 else 1)
 		* (if type(speed) == "number" then math.clamp(speed, 0.02, 1) else 1))
-	if s.react then s.react:AdjustSpeed(if not moving then 0 else (if s.shotName == "impact" then 0.35 else 1) * (if type(speed) == "number" then math.clamp(speed, 0, 1) else 1)) end
+	if s.react then s.react:AdjustSpeed(if not moving then 0 else (if s.shotName == "impact" then 0.35 else 1) * (s.reactSpeed or 1) * (if type(speed) == "number" then math.clamp(speed, 0, 1) else 1)) end
 	me:SetAttribute("FinisherT", math.floor(s.w * 100) / 100)
 	-- which shot
 	local acc, idx = 0, #s.cut

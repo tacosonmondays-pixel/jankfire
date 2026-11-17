@@ -73,12 +73,13 @@ Finishers.LIST = {
 	},
 } :: { [string]: Row }
 
--- the victim's reactions, made with Studio's prompt-to-animation (generate_animation, 4 takes each, the best kept:
--- FINISHERS.md). id = the published animation; until one is in, the victim is moved by code alone
+-- the victim's reactions, made with Studio's prompt-to-animation (generate_animation, 4 takes each, the best kept,
+-- 17 Nov: FINISHERS.md, docs/finishers/reaction_takes.jpg). id = the published animation (empty = moved by code
+-- alone). Each clip is 2.5 s; speed fits most of it into the impact and the resolve
 Finishers.ANIMS = {
-	lift = { id = "", speed = 1 }, -- struck, then rises with the arms opening and the head back
-	kneel = { id = "", speed = 1 }, -- struck, drops to the knees, slumps forward
-	shield = { id = "", speed = 1 }, -- struck, looks straight up and throws the arms over the head
+	lift = { id = "120752615367600", speed = 1.6 }, -- struck, then rises with the arms opening and the head back (take 4)
+	kneel = { id = "102848812527442", speed = 1.6 }, -- struck, drops to the knees, slumps forward (take 3)
+	shield = { id = "99441068703478", speed = 1.6 }, -- struck, looks straight up with the arms raised (take 3)
 } :: { [string]: { id: string, speed: number } }
 
 -- the shot lists: each shot is a camera move (client/Finisher.luau SHOTS) and its length in s. `full` is the match's

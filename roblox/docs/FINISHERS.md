@@ -57,8 +57,8 @@ Rules:
   - The end screen opens under it and shows once it ends. Respawns, rounds and the trip home are untouched.
 - **Skippable:** SPACE, B on a gamepad, or the SKIP button.
 - **The killcam:** for the victim, the finisher is that death's camera. Their killcam is skipped for that one death.
-- **Settings:** `gfx.othersFinisher` (off = don't show finishers you only watch). Your own always play.
-  The settings session adds the row. Until then the default is on.
+- **Settings:** GRAPHICS > OTHER PLAYERS > OTHERS' FINISHERS (`gfx.othersFinisher`, default on; the settings
+  session's, place v602). Off skips finishers you only watch. Your own, as the killer or the victim, always play.
 
 ### How it fits the replay system
 
@@ -127,15 +127,18 @@ At the impact the victim leaves the replay's control: no gun, no walk cycle, no 
 moves them: lifted, sunk or squashed, tinted with a Highlight, and faded at the end.
 
 Their body reaction comes from Studio's prompt-to-animation tool (`generate_animation`), following the owner's rules:
-4 takes a clip, the best kept. There are three clips (`Finishers.ANIMS`):
+4 takes a clip, the best kept. There are three clips (`Finishers.ANIMS`), each 2.5 s, made on 17 Nov:
 
-| clip | the prompt's idea |
-|---|---|
-| `lift` | struck, then rising with the arms opening and the head back |
-| `kneel` | struck, dropping to the knees, slumping forward |
-| `shield` | struck, looking straight up, throwing the arms over the head |
+| clip | finisher | the prompt's idea | kept | why |
+|---|---|---|---|---|
+| `lift` | Ascension | struck, then rising onto the toes with the arms spreading wide and the head back | take 4 (120752615367600) | the widest arms and the clearest head-back. Take 3 was close; 1 and 2 kept the arms by the head or on a hip |
+| `kneel` | Hellgate | struck, staggering back, down onto both knees, slumping forward | take 3 (102848812527442) | kneels and hunches forward. Take 4 collapses flat (nothing left to sink); 1 and 2 crouch with the arms out |
+| `shield` | Splashdown | struck, stumbling back, looking straight up in fear with both arms raised | take 3 (99441068703478) | the face turned up at the falling duck, both arms high. The 4th take (timed out, no id) shields with the head down, so the face is lost |
 
-Until a clip's id is in, the victim gets a code-only shove back and tilt. The shooter is never animated by a generated
+![the twelve takes held at 2.2 s](finishers/reaction_takes.jpg)
+
+The clips play at 1.6 times their speed (a third of that through the slowed impact), so most of each clip fits in the
+cut. A clip with no id falls back to a code-only shove back and tilt. The shooter is never animated by a generated
 clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as recorded.
 
 ### Cheap on phones
@@ -152,10 +155,11 @@ clip, because the tool can't hold a weapon. Their gun pose is ThirdPerson's, as 
 A finisher comes with its skin. There is no separate purchase, unlike Blade Ball, so it raises the value of the high
 tier (as Valorant's top level does).
 
-The shop session shows it:
-- a **FINISHER** badge on the skin's card, from `Finishers.forSkin(skinId)`;
-- a **preview** button that calls `Finisher.preview(id)`. That plays the full cut in front of you, from a made-up
-  recording of you and a stand-in.
+The shop shows it (the shop session, place v603):
+- A **FINISHER** pill in the finisher's colour on every card of a skin that owns one: daily, deals, inventory, inspect,
+  and the set and VIP pack rows. It comes from `Finishers.forSkin(skinId)`. The skin's blurb names the finisher.
+- **PREVIEW FINISHER** in the inspect panel calls `Finisher.preview(id, { skin = skinId })`. That plays the full cut
+  in front of you, from a made-up recording of you and a stand-in. The shop's blur and tint are off while it plays.
 
 ## Where it lives
 
@@ -192,3 +196,36 @@ The shot lists are shared. A theme only says how its orbit moves and what happen
   - `FinisherSpeed`: 0 to 1, slows the whole cut;
   - `FinisherFreeze`: holds the cut at that many seconds.
   - The player attribute `FinisherT` shows where the cut is.
+
+## Tested (17 Nov 2026, place version 617)
+
+**A real kill, end to end.** In the training hall:
+1. `JankReplayTest("record", p)` started recording me and every dummy.
+2. `JankFinisherTest("arm", p, "ar_infernal", "full")` armed the finisher.
+3. `JankFinisherTest("kill", p, "Dummy", "ar")` killed a dummy through `Fight.hurt`.
+
+The server cut the clip to two, the remote carried it, and the client played the full cut. Nothing in the output.
+Afterwards the camera was Custom again, and LoadoutOpen and `Finishing` were back to how they were.
+
+**Previews.** Ascension and Splashdown went through `Finisher.preview`, the path the shop uses.
+
+**Photos.** The frames were held with `FinisherFreeze`. Captures of a cut that is moving kept timing out.
+
+![Hellgate](finishers/hellgate_strip.jpg)
+![Ascension](finishers/ascension_strip.jpg)
+![Splashdown](finishers/splashdown_strip.jpg)
+
+**Not tested yet:**
+- **A real match end and a round win.** These need two players: with one tester, stand-ins don't fight. The choice
+  between the cuts is the pure `Finishers.decide`; the triggers are `Matches.onRound` and `onEnd`.
+- **The short cut and the victim's dropped killcam.** Same reason.
+- **A blade kill** (the WHIP shot).
+- **A real phone.**
+
+**Known issue:** in the preview only, the HERO and CHARGE shots show the shooter from behind. The real kill shows them
+from the front. Both ghosts' roots face each other, so something turns the preview's body round. The first suspect is
+the aim flag set on the preview's made-up frames; a real recording had it off. To check and fix in the next pass.
+
+**Sounds:** the cut uses recordings already in the game: the gun and the skin's own fire layer, photoin, hit,
+round_end, reverse, boom, death, squeak, blub, quack, bigpop and bloop. Each finisher's own layer is for the sound
+session.

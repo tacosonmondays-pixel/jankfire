@@ -110,6 +110,9 @@ Play check (place v614): the new wave's weight, logged every 0.1 s, rose 0 to 1 
 with no jump. The same log showed that a clip's first play waits about 0.6 s for the asset while the timer counts, which
 cut the end off. One-shots now end on the track's own time (`TimePosition >= len - 0.35`), in the game and on the equip
 screen's preview. The equip screen's emote and kill cards also run the shop session's moving previews (`FlairAnim`).
+Re-checked in Play the same day (no change, no save). A first play again waited about 0.2 s for the asset. The fade-out
+began at 2.62 s and ended on the clip's last frame (2.97 s). The groove looped twice in 9 s at full weight and stayed on
+until stopped. On the equip screen, all six emote cards moved, each showing a small copy of the avatar doing its emote.
 
 Retake prompts (3 s; groove 4 s):
 - wave: "A person standing relaxed with loose arms casually raises the right hand and waves it side to side in a friendly, easy way; the shoulders, torso and head sway gently with each wave and the weight shifts slightly between the feet, then the arm drops back down naturally with a little follow-through into a relaxed standing idle."
