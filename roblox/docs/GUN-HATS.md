@@ -219,6 +219,21 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   on the feed cover, now 1.6 cm higher on the rebuilt cover. The revolver keeps its seat. The katana's pommel end moved
   in to z 0.1315, so its hat would have floated 6 mm off it; it now stands at z 0.130 on a 3 mm riser. All three: no
   hat into a gun, no gun into a hat (place version 483).
+- **After the slim sights (place version 484, 50 guns and skins with slimmer Rivals-style sights and scopes):** all 50
+  match their installed glbs, and every seat was measured again (the default build plus
+  `JF_EXTRA=gun_sets_west,gun_sets_japan2`). 13 rows changed, all on those guns:
+  - Eight are only lower: burst, DMR and its Pen and Nighttide skins, label SMG, base sniper and its Infernal skin, and
+    the Musket (5 to 16 mm, the slimmer sights and scopes).
+  - Five failed the full check and were re-seated with `hat_solve.py`:
+    - Redline: the hats sat 14 mm lower, into the tach housing. They now stand on top of the receiver 12 cm forward,
+      just ahead of the gauge, without a saddle.
+    - Bullpup: its tall sight is gone, so it moved 9 cm lower and 1 cm back.
+    - Golden sniper: 5 cm back on its scope, off the crown, which moved onto the new turret.
+    - Cue sniper: 1 cm back.
+    - Infernal burst: 1 cm forward (its foot sank 4.3 mm).
+  - The base sniper keeps its seat and 13 mm saddle on the slimmer scope, now 13 mm lower, so it no longer floats.
+  - Full check: 93 seats, 2,046 pairs, at most 1.1 mm of hat in a gun, 1.0 mm of gun in a hat, feet at most 3.5 mm (the
+    same limits as before). Built guns in Studio wear their hats at the 13 changed seats. Live in place version 487.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 

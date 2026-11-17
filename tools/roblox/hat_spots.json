@@ -12,11 +12,11 @@
   "sawnoff": {"z": -0.1, "s": 0.85, "note": "on the barrels, back from the bead (it tips down with them when the gun breaks open)"},
   "pistol": {"z": -0.08, "s": 0.62, "note": "on the slide, back from the front sight (it rides the slide)"},
   "revolver": {"z": -0.05, "s": 0.7, "note": "on the top strap over the cylinder"},
-  "redline": {"z": -0.05, "s": 0.7, "saddle": 0.004, "note": "on the raised block over the receiver, on a saddle clear of the gauge's housing (round 9: behind the gauge the bigger hats in third person cut into the block and the rear sight)"},
+  "redline": {"z": -0.17, "s": 0.7, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "marbles": {"z": -0.06, "s": 0.65, "note": "on the marble jar's lid (it steps away while the reload pours marbles in: GunHats.HIDE_CLIPS); round 9: behind the jar it sat on the lock beside the hammer"},
   "katana": {"z": 0.128, "y": 0.0, "pitch": 90, "s": 0.6, "note": "on the pommel, standing off the end of the handle (round 4: on the blade it floated beside the edge)"},
   "shredder": {"z": -0.04, "s": 1.3, "note": "on top of the body behind the bell"},
-  "ar@ar_bullpup": {"z": -0.06, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "ar@ar_bullpup": {"z": -0.05, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "ar@ar_keytar": {"z": -0.06, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "ar@ar_toy": {"z": -0.11, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.5 mm (third person), 0.5 mm (first)"},
   "ar@cardboard": {"z": 0.06, "s": 0.8, "saddle": 0.003, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
@@ -39,8 +39,8 @@
   "shredder@shredder_chipper": {"z": -0.04, "s": 1.3, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "smg@smg_label": {"z": -0.1, "s": 0.85, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "smg@smg_uzi": {"z": -0.1, "s": 0.85, "saddle": 0.006, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "sniper@sniper_cue": {"z": 0.009, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "sniper@sniper_golden": {"z": 0.069, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "sniper@sniper_cue": {"z": 0.019, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "sniper@sniper_golden": {"z": 0.119, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "sniper@sniper_musket": {"z": 0.039, "s": 1.0, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "katana@katana_neon": {"z": 0.08, "s": 0.6, "note": "upright on top of the handle near its end (the pommel has a cord hanging off it); 1 cm in after the guns z-fight fix, solved by hat_solve.py: worst clip 0.0 mm"},
   "ar@ar_seraph": {"z": -0.14, "s": 1.0, "note": "on the receiver rib ahead of the halo sight (solved onto the halo itself, 6 cm over the gun; moved by hand): worst clip 0.0 mm"},
@@ -61,5 +61,6 @@
   "katana@katana_jp_a": {"y": 0.0, "pitch": 90, "z": 0.13, "s": 0.6, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "katana@katana_star": {"y": 0.0, "pitch": 90, "z": 0.129, "s": 0.6, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "lever@lever_star": {"z": -0.08, "s": 0.8, "note": "solved by hat_solve.py: worst clip 0.9 mm (third person), 0.9 mm (first)"},
-  "sawnoff@sawnoff_jp_a": {"z": -0.11, "s": 0.85, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"}
+  "sawnoff@sawnoff_jp_a": {"z": -0.11, "s": 0.85, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
+  "burst@burst_infernal": {"z": -0.11, "s": 0.9, "note": "solved by hat_solve.py: worst clip 0.5 mm (third person), 0.0 mm (first)"}
 }
