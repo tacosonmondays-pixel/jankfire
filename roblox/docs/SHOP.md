@@ -446,6 +446,9 @@ Tested in solo Play (place version 626), with six kill effects and two emotes ow
 - The emote cards' avatar copies, cameras and tracks were all there and playing, but the tiles were blank. The
   Studio window was hidden in that test, so no 3D drew anywhere: not the world, not the guns' previews. The new
   framing (on the body, feet near the bottom) still needs a look with the window shown.
+- Looked at later with the window shown (place version 626, no change): Groove, Fist Pump and Slow Clap fill their
+  tiles, feet near the bottom, the pastels cleaner than before (`docs/shop/shop-anim-emotes-framed.jpg`). A tall
+  accessory, the owner's strawberry staff, touches the top edge, since the body is what's framed.
 - The longest finisher blurb (the Infernal Rifle's, Hellgate) fits in full now that the blurb grows to its text
   (`shop-finisher-blurb.jpg`).
 - The owner's inventory was put back.
