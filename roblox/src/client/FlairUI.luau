@@ -107,16 +107,21 @@ end
 
 -- a lock over an item you don't own: a small padlock drawn from frames
 local function lock(parent: GuiObject, z: number)
-	local veil = new("Frame", { Name = "Lock", BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.45, BorderSizePixel = 0,
+	-- (a light dim, so you still see what it is, and a small padlock in the top-right corner, where a worn one has its
+	-- mark: a lock in the middle covered the picture. 17 Nov, the main session)
+	local veil = new("Frame", { Name = "Lock", BackgroundColor3 = Color3.fromRGB(8, 9, 12), BackgroundTransparency = 0.62, BorderSizePixel = 0,
 		Size = UDim2.fromScale(1, 1), ZIndex = z }, parent)
 	T.corner(veil, 6)
-	local body = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.new(0.5, 0, 0.5, 6), Size = UDim2.fromOffset(26, 20),
-		BackgroundColor3 = T.SOFT, BorderSizePixel = 0, ZIndex = z + 1 }, veil)
-	T.corner(body, 4)
-	local shackle = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0.5, -2), Size = UDim2.fromOffset(18, 18),
-		BackgroundTransparency = 1, ZIndex = z + 1 }, veil)
+	local badge = new("Frame", { Name = "Badge", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -5, 0, 5), Size = UDim2.fromOffset(22, 22),
+		BackgroundColor3 = Color3.fromRGB(14, 15, 19), BackgroundTransparency = 0.15, BorderSizePixel = 0, ZIndex = z + 1 }, veil)
+	T.corner(badge, 11)
+	local body = new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromOffset(11, 10), Size = UDim2.fromOffset(11, 8),
+		BackgroundColor3 = T.SOFT, BorderSizePixel = 0, ZIndex = z + 2 }, badge)
+	T.corner(body, 2)
+	local shackle = new("Frame", { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromOffset(11, 12), Size = UDim2.fromOffset(7, 8),
+		BackgroundTransparency = 1, ZIndex = z + 2 }, badge)
 	T.corner(shackle, 999)
-	T.edge(shackle, T.SOFT, 0, 3)
+	T.edge(shackle, T.SOFT, 0, 2)
 	return veil
 end
 

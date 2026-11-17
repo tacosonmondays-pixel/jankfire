@@ -549,9 +549,14 @@ local function customizeBlock(parent: Instance, y: number, W: number, c: any, ow
 				new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(11, 8.5), Size = UDim2.fromOffset(9, 2), Rotation = -50, BackgroundColor3 = T.INK, BorderSizePixel = 0, ZIndex = 42 }, tick)
 			end
 			if not has then
-				local dim = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.45, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 29 }, tile)
+				-- (a light dim so the words still read, and a small padlock in the top-right corner, where a worn one has
+				-- its tick: a lock in the middle hid the title's middle letters. 17 Nov, the main session)
+				local dim = new("Frame", { BackgroundColor3 = Color3.new(0, 0, 0), BackgroundTransparency = 0.62, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = 29 }, tile)
 				T.corner(dim, 6)
-				lock(tile, tw / 2, th / 2 - 4, 22, T.SOFT)
+				local badge = new("Frame", { Name = "Locked", AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -6, 0, 6), Size = UDim2.fromOffset(18, 18),
+					BackgroundColor3 = Color3.fromRGB(14, 15, 19), BackgroundTransparency = 0.1, BorderSizePixel = 0, ZIndex = 30 }, tile)
+				T.corner(badge, 9)
+				lock(badge, 9, 9, 11, T.SOFT)
 			end
 			local rc = CardStyles.RARITY_COLOR[info.rarity] or T.DIM
 			local cap = txt(parent, string.upper(info.name), 11, if has then T.SOFT else T.DIM, T.FONT_BOLD)
