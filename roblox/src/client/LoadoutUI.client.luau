@@ -1227,7 +1227,7 @@ flairBtn.face.MouseButton1Click:Connect(function()
 	end)
 end)
 UIS.InputBegan:Connect(function(io, gp)
-	if io.KeyCode == Enum.KeyCode.L and not UIS:GetFocusedTextBox() then
+	if require(script.Parent:WaitForChild("Binds")).is("loadout", io) and not UIS:GetFocusedTextBox() then -- (L, or the player's own key)
 		if gp and not state.open then return end
 		setOpen(not state.open)
 		return

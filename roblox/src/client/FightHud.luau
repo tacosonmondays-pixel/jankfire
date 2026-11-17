@@ -12,6 +12,8 @@ local Weapons = require(Shared:WaitForChild("Weapons"))
 local Items = require(Shared:WaitForChild("Items")) -- (the utility slot: a frag kill in the feed, G on the controls line)
 
 local T = require(script.Parent:WaitForChild("Theme"))
+local Settings = require(script.Parent:WaitForChild("Settings")) :: any -- (Settings > CROSSHAIR / HUD: what's shown and how)
+local XH = require(script.Parent:WaitForChild("Crosshair")) :: any
 local WHITE, BLACK = Color3.new(1, 1, 1), Color3.new(0, 0, 0)
 local me = Players.LocalPlayer
 
@@ -31,14 +33,9 @@ local hud = T.scaled(gui)
 local cross = Instance.new("Frame")
 cross.Name = "Crosshair"; cross.BackgroundTransparency = 1; cross.AnchorPoint = Vector2.new(0.5, 0.5)
 cross.Position = UDim2.fromScale(0.5, 0.5); cross.Size = UDim2.fromOffset(40, 40); cross.Parent = gui
-for i, d in { Vector2.new(0, -1), Vector2.new(0, 1), Vector2.new(-1, 0), Vector2.new(1, 0) } do
-	local b = Instance.new("Frame")
-	b.Name = "Bar" .. i; b.BorderSizePixel = 0; b.BackgroundColor3 = WHITE; b.AnchorPoint = Vector2.new(0.5, 0.5)
-	b.Size = if d.X == 0 then UDim2.fromOffset(2, 8) else UDim2.fromOffset(8, 2)
-	b.Position = UDim2.new(0.5, d.X * 9, 0.5, d.Y * 9)
-	local s = Instance.new("UIStroke"); s.Thickness = 1; s.Color = BLACK; s.Transparency = 0; s.Parent = b -- (a full dark outline: it has to read on a pale floor)
-	b.Parent = cross
-end
+-- (its pieces are the player's own design, Settings > CROSSHAIR: Crosshair.luau draws them here every frame. the
+-- defaults are the four white bars with a dark outline it always had)
+XH.draw(cross, XH.opts(), 0, 0)
 -- a dot sight's reticle (the Redline aimed): a small red dot with a soft rim, a little under 1% of the screen's height
 local redDot = Instance.new("Frame")
 redDot.Name = "RedDot"; redDot.AnchorPoint = Vector2.new(0.5, 0.5); redDot.Position = UDim2.fromScale(0.5, 0.5)
@@ -72,6 +69,7 @@ end
 
 local markTok = 0
 function H.hit(head: boolean)
+	if Settings.get("hud.hits") == false then return end -- (Settings > HUD: HIT MARKERS)
 	markTok += 1
 	local my = markTok
 	local s = if head then 34 else 26
@@ -95,6 +93,7 @@ end
 
 -- ---------------------------------------------------------------- damage numbers (over the victim, in the world)
 function H.dmgNum(at: Vector3, amount: number, head: boolean)
+	if Settings.get("hud.dmg") == false then return end -- (Settings > HUD: DAMAGE NUMBERS)
 	local a = Instance.new("Attachment")
 	a.WorldPosition = at + Vector3.new(math.random() - 0.5, 1, math.random() - 0.5)
 	a.Parent = workspace.Terrain
@@ -256,6 +255,7 @@ local topRaw = ""
 -- ("HUB · weapons away · ...") gets its place in white and the rest quieter; a match's line ("MODE · ROUND n ·
 -- score · clock", Matches.hudText + Arsenal's clock) is laid out as the scoreboard
 function H.top(text: string)
+	text = Settings.cbText(text) -- (the team colours, colour-blind safe if Settings > HUD says so)
 	if topRaw == text then return end
 	topRaw = text
 	local parts = if string.find(text, "<font", 1, true) then string.split(text, " · ") else nil
@@ -289,6 +289,7 @@ fl.SortOrder = Enum.SortOrder.LayoutOrder; fl.Parent = feed
 local feedN = 0
 -- a line: who  | weapon  who (your own name in amber). the weapon's colour is the small chip before its name
 function H.feed(killer: string?, wid: string, victim: string, suffix: string?)
+	if Settings.get("hud.feed") == false then return end -- (Settings > HUD: KILL FEED)
 	feedN += 1
 	local it = Items.list[wid]
 	local w: any = Weapons.list[wid] or (if it then { name = it.name, color = it.feed or it.color } else nil)
@@ -511,7 +512,11 @@ function H.scope(on: boolean, kind: string?)
 	end
 end
 
-function H.step(dt: number, aim: number, scopeHide: boolean)
+-- wid = the weapon in hand, spread = its spread now (radians: Arsenal's own number), for the look speed (Settings.live,
+-- SettingsApply) and a crosshair that shows the spread
+function H.step(dt: number, aim: number, scopeHide: boolean, wid: string?, spread: number?)
+	local L = Settings.live
+	L.aim = aim; L.scoped = scopeHide; L.wid = wid or ""; L.spread = spread or 0
 	hurtA = math.max(0, hurtA - dt * 0.9)
 	local rim = math.max(hurtA, lowA)
 	for _, r in rims do r.BackgroundTransparency = 1 - rim end
@@ -523,12 +528,12 @@ function H.step(dt: number, aim: number, scopeHide: boolean)
 	local kind = me:GetAttribute("AimSight")
 	local sighted = kind == "iron" or kind == "dot"
 	local fade = if sighted then math.clamp((aim - 0.45) / 0.4, 0, 1) else aim * 0.6
-	for _, c in cross:GetChildren() do
-		if c:IsA("Frame") then
-			c.BackgroundTransparency = fade
-			local st = c:FindFirstChildOfClass("UIStroke")
-			if st then st.Transparency = fade end
-		end
+	if shown then
+		local o = XH.opts()
+		if not o.hideAim then fade = 0 end -- (Settings: HIDE WHILE AIMING off keeps it up)
+		local cam = workspace.CurrentCamera
+		local extra = if o.spread and cam then math.min(60, XH.spreadPx(spread or 0, cam.FieldOfView, cam.ViewportSize.Y)) else 0
+		XH.draw(cross, o, fade, extra)
 	end
 	local d = if kind == "dot" and shown then math.clamp((aim - 0.6) / 0.3, 0, 1) else 0
 	redDot.Visible = d > 0
@@ -552,10 +557,12 @@ if hint then
 		local parts = {}
 		-- (each key in white, what it does in grey)
 		local function key(k: string, what: string) table.insert(parts, ('<font color="%s"><b>%s</b></font> %s'):format(T.hex(T.TEXT), k, what)) end
-		for i, id in ids do key(tostring(i), if WL[id] then WL[id].name else id) end
+		local B = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as the player bound them: Settings > KEYBINDS)
+		for i, id in ids do key(B.label("slot" .. i), if WL[id] then WL[id].name else id) end
 		local item = Items.list[lp:GetAttribute("Item") :: any]
-		if item and item.live then key("G", string.lower(item.name)) end
-		for _, p in { { "L", "loadout" }, { "LMB", "fire" }, { "RMB", "aim / parry" }, { "R", "reload" }, { "shift", "run" }, { "C", "slide" }, { "hold E", "grapple" }, { "V", "camera" }, { "hold H", "show keys" } } do
+		if item and item.live then key(B.label("item"), string.lower(item.name)) end
+		for _, p in { { B.label("loadout"), "loadout" }, { B.label("fire"), "fire" }, { B.label("aim"), "aim / parry" }, { B.label("reload"), "reload" }, { B.label("sprint"), "run" },
+			{ B.label("crouch"), "slide" }, { "hold " .. B.label("grapple"), "grapple" }, { B.label("camera"), "camera" }, { "hold " .. B.label("keys"), "show keys" } } do
 			key(p[1], p[2])
 		end
 		local line = hint :: TextLabel
@@ -564,6 +571,7 @@ if hint then
 	keysLine()
 	lp:GetAttributeChangedSignal("Loadout"):Connect(keysLine)
 	lp:GetAttributeChangedSignal("Item"):Connect(keysLine)
+	Settings.onAny(function(k: string) if string.sub(k, 1, 5) == "bind." then keysLine() end end)
 end
 end)
 

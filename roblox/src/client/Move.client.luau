@@ -14,6 +14,7 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Config = require(Shared:WaitForChild("Config"))
 local Movement = require(Shared:WaitForChild("Movement"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
+local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as bound, hold or toggle sprint and crouch: Settings)
 local Body = require(script.Parent:WaitForChild("Body")) -- step 2: lets the weapons push you (recoil, knockback, slips)
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
@@ -106,19 +107,19 @@ end)
 Keys.began(function(io: InputObject, gp: boolean)
 	if gp or game:GetService("Players").LocalPlayer:GetAttribute("LoadoutOpen") then return end -- (the loadout screen is up)
 	local k = io.KeyCode
-	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift then keys.sprint = true
-	elseif k == Enum.KeyCode.C or k == Enum.KeyCode.LeftControl then keys.crouch = true
+	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", true)
+	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", true)
 	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = true; keys.jumpPressed = true; pressT = os.clock()
-	elseif k == Enum.KeyCode.E or k == Enum.KeyCode.ButtonL2 then keys.hook = true; tryHook()
-	elseif k == Enum.KeyCode.V then thirdPerson = not thirdPerson; setCamera()
+	elseif Binds.is("grapple", io) then keys.hook = true; tryHook()
+	elseif Binds.is("camera", io) then thirdPerson = not thirdPerson; setCamera()
 	end
 end)
 Keys.ended(function(io: InputObject)
 	local k = io.KeyCode
-	if k == Enum.KeyCode.LeftShift or k == Enum.KeyCode.RightShift then keys.sprint = false
-	elseif k == Enum.KeyCode.C or k == Enum.KeyCode.LeftControl then keys.crouch = false
+	if Binds.is("sprint", io) then keys.sprint = Binds.press("sprint", false)
+	elseif Binds.is("crouch", io) then keys.crouch = Binds.press("crouch", false)
 	elseif k == Enum.KeyCode.Space or k == Enum.KeyCode.ButtonA then keys.jump = false
-	elseif k == Enum.KeyCode.E or k == Enum.KeyCode.ButtonL2 then keys.hook = false; releaseHook(true)
+	elseif Binds.is("grapple", io) then keys.hook = false; releaseHook(true)
 	end
 end)
 
@@ -129,6 +130,9 @@ local hipBase = 2
 local function setup(ch: Model)
 	releaseHook(false)
 	st = Movement.newState()
+	-- (a toggled sprint or crouch ends with the life)
+	if Binds.toggles("sprint") then keys.sprint = false; Binds.clear("sprint") end
+	if Binds.toggles("crouch") then keys.crouch = false; Binds.clear("crouch") end
 	local hum = ch:WaitForChild("Humanoid") :: Humanoid
 	local root = ch:WaitForChild("HumanoidRootPart") :: BasePart
 	hum.UseJumpPower = true

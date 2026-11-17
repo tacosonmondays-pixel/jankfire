@@ -14,7 +14,7 @@ local me = Players.LocalPlayer
 local pg = me:WaitForChild("PlayerGui")
 
 UIS.InputBegan:Connect(function(io, gp)
-	if io.KeyCode ~= Enum.KeyCode.B or UIS:GetFocusedTextBox() then return end
+	if not require(script.Parent:WaitForChild("Binds")).is("shop", io) or UIS:GetFocusedTextBox() then return end -- (B, or the player's own key)
 	if gp and not ShopUI.isOpen() then return end
 	ShopUI.toggle()
 end)

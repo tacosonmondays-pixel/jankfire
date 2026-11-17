@@ -219,7 +219,7 @@ RunService:BindToRenderStep("JankShoulderCam", Enum.RenderPriority.Camera.Value 
 		if UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
 		local d = UIS:GetMouseDelta()
 		yaw -= d.X * C.turnX
-		pitch -= d.Y * C.turnY
+		pitch -= d.Y * C.turnY * ((me:GetAttribute("LookY") :: number?) or 1) -- (Settings: up and down speed, inverted = -1)
 	end
 	pitch = math.clamp(pitch, -C.pitchMax, C.pitchMax)
 	local rot = CFrame.fromOrientation(pitch, yaw, 0)

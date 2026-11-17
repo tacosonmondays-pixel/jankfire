@@ -11,7 +11,7 @@ task.spawn(function()
 	end
 end)
 UIS.InputBegan:Connect(function(io, gp)
-	if gp or io.KeyCode ~= Enum.KeyCode.Four or me:GetAttribute("LoadoutOpen") then return end
+	if gp or not require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Binds")).is("slot4", io) or me:GetAttribute("LoadoutOpen") then return end -- (4, or the player's own key)
 	local ch = me.Character
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if not hum or hum.Health <= 0 then return end

@@ -232,7 +232,7 @@ end
 local function emit(pe: ParticleEmitter, n: number)
 	if n <= 0 then return end
 	STAT.emits += 1; STAT.particles += n
-	pe:Emit(n)
+	pe:Emit(math.max(1, math.floor(n * ((Fx :: any).density or 1) + 0.5))) -- (Settings > GRAPHICS: PARTICLES)
 end
 -- the next emitter of a pool, moved to `at`, its +Y (where it emits) along `dir`
 local function emAt(p: EmPool, at: Vector3, dir: Vector3): ParticleEmitter

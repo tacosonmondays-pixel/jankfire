@@ -17,6 +17,7 @@ local CollectionService = game:GetService("CollectionService")
 local remote = game:GetService("ReplicatedStorage"):WaitForChild("PoseRemote")
 
 local lp = Players.LocalPlayer
+local Binds = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Binds")) :: any -- (the crouch, held or toggled: Settings)
 local Keys = require(script.Parent:WaitForChild("Jankfire"):WaitForChild("Keys")) -- (C held: a keyboard, or the phone's SLIDE)
 -- the third-person weapon pose (Jankfire.ThirdPerson) has the last word on the upper body: it runs right after these
 -- bends every frame, so the gun, the chest and the hands are placed on top of the crouch and the slide
@@ -137,7 +138,7 @@ local function myPose(ch, hum)
 	if hum.PlatformStand or hum.Health <= 0 then return "stand" end
 	hipBase = math.max(hipBase or hum.HipHeight, hum.HipHeight)
 	if hum.HipHeight < hipBase - 0.5 then return "slide" end
-	if not UIS:GetFocusedTextBox() and (Keys.isDown(Enum.KeyCode.C) or Keys.isDown(Enum.KeyCode.LeftControl)) then return "crouch" end
+	if not UIS:GetFocusedTextBox() and Binds.on("crouch") then return "crouch" end -- (held or toggled, any key bound to it: Jankfire.Binds)
 	return "stand"
 end
 lp.CharacterAdded:Connect(function() hipBase = nil; sent = "stand" end)

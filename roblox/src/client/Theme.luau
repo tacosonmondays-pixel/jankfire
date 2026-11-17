@@ -90,6 +90,10 @@ function T.hex(c: Color3): string return "#" .. c:ToHex() end
 
 -- how much the HUD grows with the screen: plates are laid out for a 720-pixel-tall screen and scale up from there
 -- (1.5x at 1080p, 2x at 1440p and above), so they are as easy to read on a big monitor as on a small window
+-- Settings > HUD: HUD SIZE scales every scaled holder below on top of the screen's own scale (SettingsApply sets it
+-- and fires rescaled)
+T.hudScale = 1
+T.rescaled = Instance.new("BindableEvent")
 function T.scaleNow(): number
 	local cam = workspace.CurrentCamera
 	return math.clamp((if cam then cam.ViewportSize.Y else 720) / 720, 1, 2)
@@ -101,13 +105,14 @@ function T.scaled(gui: Instance): Frame
 	local f = T.new("Frame", { Name = "Scaled", BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1) }, gui)
 	local sc = T.new("UIScale", {}, f)
 	local function fit()
-		local s = T.scaleNow()
+		local s = T.scaleNow() * T.hudScale
 		sc.Scale = s
 		f.Size = UDim2.fromScale(1 / s, 1 / s)
 	end
 	fit()
 	local cam = workspace.CurrentCamera
 	if cam then cam:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
+	T.rescaled.Event:Connect(fit)
 	return f
 end
 

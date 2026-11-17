@@ -6,5 +6,9 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Opening = require(script.Parent:WaitForChild("LootOpening"))
 local ev = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("LootShow", 60)
 if ev and ev:IsA("RemoteEvent") then
-	ev.OnClientEvent:Connect(function(data) Opening.show(data) end)
+	local Settings = require(script.Parent:WaitForChild("Settings")) :: any
+	ev.OnClientEvent:Connect(function(data)
+		if Settings.get("hud.othersLoot") == false then return end -- (Settings > HUD: OTHERS' CRATE OPENINGS off)
+		Opening.show(data)
+	end)
 end

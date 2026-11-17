@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local SoundService = game:GetService("SoundService")
 
 local Sfx = {}
+Sfx.mute = {} :: { [string]: boolean } -- (names that stay quiet: Settings > AUDIO, HIT SOUND / KILL SOUND off)
 local lib = ReplicatedStorage:WaitForChild("JankfireSounds", 5)
 local holder = Instance.new("Part")
 holder.Name = "JankfireSfx"; holder.Anchored = true; holder.CanCollide = false; holder.CanQuery = false; holder.CanTouch = false
@@ -61,6 +62,7 @@ end
 
 -- play a sound: on you (no position) or out in the world at `at`
 function Sfx.play(name: string, at: Vector3?, vol: number?, pitch: number?)
+	if Sfx.mute[name] then return end
 	local s = src(name)
 	if not s then return end
 	local c = s:Clone()

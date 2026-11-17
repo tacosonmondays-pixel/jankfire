@@ -53,7 +53,7 @@ end
 
 UIS.InputBegan:Connect(function(io, gp)
 	if UIS:GetFocusedTextBox() then return end
-	if io.KeyCode == Enum.KeyCode.K then
+	if require(script.Parent:WaitForChild("Binds")).is("profile", io) then -- (K, or the player's own key)
 		if gp and not ProfileUI.isOpen() then return end
 		if menuUp() and not ProfileUI.isOpen() then return end
 		ProfileUI.toggle()

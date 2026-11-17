@@ -20,6 +20,8 @@ local VM = require(script.Parent:WaitForChild("Viewmodel"))
 local Fx = require(script.Parent:WaitForChild("Fx"))
 local Sfx = require(script.Parent:WaitForChild("Sfx"))
 local Body = require(script.Parent:WaitForChild("Body"))
+local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as the player bound them, hold or toggle aim: Settings)
+local Settings = require(script.Parent:WaitForChild("Settings")) :: any
 -- every body handling its weapon in third person (ThirdPerson.luau). if it ever fails to load, the weapons still work
 local TP: any = nil
 do
@@ -170,7 +172,8 @@ RunService:BindToRenderStep("JankfireCamera", Enum.RenderPriority.Camera.Value +
 	-- the camera module reads the look back each frame, so visual offsets are applied as a change from last frame's
 	local pr = VM.punch()
 	local px, py, pz = pr:ToEulerAnglesXYZ()
-	local sx, sy = (math.random() - 0.5) * shake * 0.02, (math.random() - 0.5) * shake * 0.02
+	local sk = if Settings.get("gfx.shake") == false then 0 else shake -- (Settings > CONTROLS: SCREEN SHAKE)
+	local sx, sy = (math.random() - 0.5) * sk * 0.02, (math.random() - 0.5) * sk * 0.02
 	local tp, ty = px + sx, py + sy
 	camera.CFrame = camera.CFrame * CFrame.Angles(tp - view.pitch, ty - view.yaw, 0) * CFrame.Angles(0, 0, pz)
 	view.pitch, view.yaw = tp, ty
@@ -285,6 +288,7 @@ local function equip(wid: string)
 	equipT = os.clock()
 	aim = 0
 	burstLeft = 0
+	if Binds.toggles("aim") then aimHeld = false end -- (a toggled aim doesn't carry over to the next weapon)
 	VM.set(wid, kat())
 	table.clear(smearPts)
 	EquipR:FireServer(wid)
@@ -529,11 +533,15 @@ local KEYS = { [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Thr
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
 Keys.began(function(io: InputObject, gp: boolean)
 	if gp or menuOpen() or inHub() then return end
-	local slot = KEYS[io.KeyCode]
+	local slot = Binds.slot(io)
 	-- (a key that's closing a pop-up ad or answering a pop quiz right now isn't a weapon key: Utility.client.luau)
 	local busy = me:GetAttribute("BusyKeys")
 	if slot and type(busy) == "string" and string.find(busy, tostring(slot), 1, true) then return end
 	local want = if slot then lo()[slot] else nil
+	if not want and Binds.is("next", io) then -- (a controller's next-weapon button: round the loadout)
+		local l = lo()
+		want = l[(table.find(l, held) or 0) % #l + 1]
+	end
 	if toolOut() then -- 1/2/3 put the Shredder away and take that weapon; the rest is the Shredder's
 		if want and want ~= "shredder" then
 			local _, hum = myChar()
@@ -545,7 +553,7 @@ Keys.began(function(io: InputObject, gp: boolean)
 	if want then equip(want); return end
 	if held == "shredder" then return end -- (the Shredder put away with 4: nothing to fire till you pick a slot)
 	local now = os.clock()
-	if io.UserInputType == Enum.UserInputType.MouseButton1 then
+	if Binds.is("fire", io) then
 		trigger = true
 		pressT = now
 		fanArmed = true
@@ -553,15 +561,15 @@ Keys.began(function(io: InputObject, gp: boolean)
 		if not root then return end
 		if held == "katana" then swing(now)
 		elseif not W[held].auto and now >= nextShot[held] then fireGun(now) end
-	elseif io.UserInputType == Enum.UserInputType.MouseButton2 then
-		aimHeld = true
+	elseif Binds.is("aim", io) then
+		aimHeld = Binds.press("aim", true, aimHeld) -- (hold or toggle: Settings > CONTROLS)
 		tryParry(now)
-	elseif io.KeyCode == Enum.KeyCode.R then reload()
+	elseif Binds.is("reload", io) then reload()
 	end
 end)
 Keys.ended(function(io: InputObject)
-	if io.UserInputType == Enum.UserInputType.MouseButton1 then trigger = false
-	elseif io.UserInputType == Enum.UserInputType.MouseButton2 then aimHeld = false end
+	if Binds.is("fire", io) then trigger = false
+	elseif Binds.is("aim", io) then aimHeld = Binds.press("aim", false, aimHeld) end
 end)
 UserInputService.InputChanged:Connect(function(io: InputObject, gp: boolean)
 	if gp or io.UserInputType ~= Enum.UserInputType.MouseWheel or toolOut() or menuOpen() or inHub() then return end
@@ -651,7 +659,7 @@ remote("Fx").OnClientEvent:Connect(function(f: any)
 		if f.by ~= me.UserId then
 			local r = m and m:FindFirstChild("HumanoidRootPart") :: BasePart?
 			if r then Sfx.play("swing", r.Position) end
-			Fx.swingFlames(m) -- (their angel katana's flame arc)
+			if Settings.get("gfx.othersSkin") ~= false then Fx.swingFlames(m) end -- (their angel katana's flame arc; Settings: OTHERS' SKIN EFFECTS)
 		end
 	elseif f.k == "parry" then
 		local from = if typeof(f.from) == "Vector3" then f.from else nil
@@ -839,7 +847,7 @@ RunService.RenderStepped:Connect(function(dt: number)
 	else
 		smearStep(now, true)
 	end
-	H.step(dt, aim, scoped)
+	H.step(dt, aim, scoped, held, if w and w.kind ~= "melee" then ((w.spread or 0) + bloom) * (1 + ((if w.ads then w.ads.spread else 1) - 1) * aim) else 0)
 	-- the Shredder's copy: its own script goes with its tool (a death, a test deleting it) and can't clear it, so a copy
 	-- whose tool is gone would stay in your camera (seen 16 Nov 2026)
 	for _, c in camera:GetChildren() do

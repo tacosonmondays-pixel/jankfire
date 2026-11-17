@@ -83,6 +83,9 @@
         "Profile": {
           "$className": "RemoteFunction"
         },
+        "Settings": {
+          "$className": "RemoteFunction"
+        },
         "Item": {
           "$className": "RemoteEvent"
         },

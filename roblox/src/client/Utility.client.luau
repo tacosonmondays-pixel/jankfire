@@ -432,7 +432,7 @@ local printIn: () -> ()
 local wandIn: () -> () -- (the bubble wand below)
 local laptopIn: () -> () -- (the laptop's lid, below)
 ;(require(script.Parent:WaitForChild("Keys")) :: any).began(function(io: InputObject, gp: boolean) -- (Keys: the phone's item plate presses G too)
-	if gp or io.KeyCode ~= Enum.KeyCode.G then return end
+	if gp or not require(script.Parent:WaitForChild("Binds")).is("item", io) then return end -- (G, or the player's own key: Settings)
 	if menuOpen() or inHub() then return end
 	local _, _, root = myChar()
 	if not root then return end
@@ -1244,7 +1244,7 @@ local function headStep()
 end
 -- the flash: N or the middle mouse button, goggles on
 UserInputService.InputBegan:Connect(function(io: InputObject, gp: boolean)
-	if gp or not (io.KeyCode == Enum.KeyCode.N or io.UserInputType == Enum.UserInputType.MouseButton3) then return end
+	if gp or not require(script.Parent:WaitForChild("Binds")).is("flash", io) then return end -- (N / the middle button, or the player's own)
 	if me:GetAttribute("Item") ~= "nvg" or me:GetAttribute("NV") ~= true or menuOpen() or inHub() then return end
 	local _, _, root = myChar()
 	if not root then return end
@@ -1489,7 +1489,7 @@ radarHold = function(on: boolean)
 	end
 end
 ;(require(script.Parent:WaitForChild("Keys")) :: any).ended(function(io: InputObject)
-	if io.KeyCode == Enum.KeyCode.G and radarOn then radarHold(false) end
+	if radarOn and require(script.Parent:WaitForChild("Binds")).is("item", io) then radarHold(false) end
 end)
 local function radarStep()
 	if not radarOn then return end

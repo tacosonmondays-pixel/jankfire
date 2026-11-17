@@ -93,11 +93,12 @@ end)
 me:GetAttributeChangedSignal("Zone"):Connect(function() task.defer(sync) end)
 
 UIS.InputBegan:Connect(function(io, gp)
-	if io.KeyCode == Enum.KeyCode.J and not gp and not UIS:GetFocusedTextBox() and me:GetAttribute("Zone") ~= "match" then
+	local Binds = require(script.Parent:WaitForChild("Binds")) -- (J and M, or the player's own keys: Settings > KEYBINDS)
+	if Binds.is("party", io) and not gp and not UIS:GetFocusedTextBox() and me:GetAttribute("Zone") ~= "match" then
 		if PartyUI.isOpen() or me:GetAttribute("LoadoutOpen") ~= true or PlayUI.isOpen() then PartyUI.toggle() end
 		return
 	end
-	if io.KeyCode ~= Enum.KeyCode.M or gp or UIS:GetFocusedTextBox() then return end
+	if not Binds.is("play", io) or gp or UIS:GetFocusedTextBox() then return end
 	if PlayUI.isOpen() then return end -- (in the lobby the screen stays: LEAVE LOBBY takes you out)
 	if me:GetAttribute("LoadoutOpen") == true then return end
 	task.spawn(play)

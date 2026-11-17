@@ -121,12 +121,13 @@ local function step()
 			local lo, hi, n = box(i)
 			if n > 0 then pc.lo, pc.hi = lo, hi end
 		end
-		local keep = near(pc, at, MARGIN) or near(pc, eye, MARGIN) or (type(arena) == "string" and i.Name == arena)
+		local m = (script:GetAttribute("Margin") :: number?) or MARGIN -- (Settings > GRAPHICS: VIEW DISTANCE)
+		local keep = near(pc, at, m) or near(pc, eye, m) or (type(arena) == "string" and i.Name == arena)
 		if keep then
 			pc.away = 0
 			show(pc)
 		elseif not pc.out then
-			if near(pc, at, MARGIN + SLACK) or near(pc, eye, MARGIN + SLACK) then
+			if near(pc, at, m + SLACK) or near(pc, eye, m + SLACK) then
 				pc.away = 0
 			else
 				if pc.away == 0 then pc.away = now end
