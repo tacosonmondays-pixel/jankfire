@@ -171,7 +171,7 @@ end)
 - **When the anti-cheat calls it (agreed 17 Nov):**
   - **`restoreFor`:** only when the owner presses CONFIRM CHEATER or bans from the panel. Never from the auto-ban or an automatic flag.
   - **`since`:** the earliest evidence on record minus one day (their first catch or the first report against them; both are kept 30 days). It is 0 when the owner picks ALL or there is no evidence.
-  - **`undoRestore`:** the panel's UNCONFIRM. I asked that UNBAN not undo the reset, because a served ban isn't a wrong catch.
+  - **`undoRestore`:** only the panel's UNCONFIRM. UNBAN and a timed ban running out never call it, because a served ban isn't a wrong catch.
   - Both calls run in `task.spawn`. Results go into the anti-cheat's moderation log, and a failed read is retried.
   - While a restored cheater stays in this server, nothing more counts for them. That covers the moment between the call and a kick.
 - **Who gets it when:**
