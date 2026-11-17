@@ -29,7 +29,9 @@ Settings.DEFAULTS = {
 	["vol.master"] = 100, ["vol.weapons"] = 100, ["vol.effects"] = 100, ["vol.ui"] = 100, ["snd.hit"] = true, ["snd.kill"] = true,
 	-- graphics
 	["gfx.preset"] = "auto", ["gfx.shadows"] = true, ["gfx.particles"] = 1, ["gfx.bloom"] = true, ["gfx.colour"] = true,
-	["gfx.view"] = "normal", ["gfx.shake"] = true, ["gfx.othersKill"] = true, ["gfx.othersSkin"] = true, ["gfx.fps"] = false,
+	["gfx.view"] = "normal", ["gfx.shake"] = true, ["gfx.othersKill"] = true, ["gfx.othersSkin"] = true,
+	["gfx.othersFinisher"] = true, -- (the finisher session's FinisherClient reads it: off skips finishers you only watch)
+	["gfx.fps"] = false,
 	-- hud and gameplay
 	["hud.scale"] = 1, ["hud.dmg"] = true, ["hud.hits"] = true, ["hud.feed"] = true, ["hud.keys"] = false,
 	["hud.cb"] = "off", ["hud.enemy"] = "green", ["hud.othersLoot"] = true,
