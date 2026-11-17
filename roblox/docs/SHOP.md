@@ -259,5 +259,10 @@ temporary `SkinSets` of four sets made from live skins, deleted before saving. P
   shop shut.
 - The owner's inventory was put back to its 138 items afterwards.
 
-Not tested: the real sets (Seraph, Infernal, Witching Hour, Tidecrest, Ducky), which show up by themselves once their
-models and `SkinSets` are in the place.
+Later:
+- The real sets showed up by themselves (place version 437): Seraph | Infernal on one row, Witching Hour and Tidecrest
+  on the next. Ducky is VIP only, so it isn't among them.
+- The space-western pair (place version 478): Dust Drover | Star Drover (`set_dust`, `set_star`, orders 6 and 7) are
+  both ready, with 5 skins each, a revolver as the top piece and 2,339 each. They take the third row, as a pair. This
+  was checked by reading the shop in Edit, not on screen.
+- The 17 concepts (the new decorated ones included) aren't live and have no offer.
