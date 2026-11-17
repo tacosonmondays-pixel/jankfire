@@ -59,6 +59,10 @@ end
 local stores: { Store } = {}
 
 function Profiles.new(name: string, template: () -> any): Store
+	-- Studio saves into its own stores ("<name>_studio"), never the live game's (17 Nov 2026, after the first publish:
+	-- a Studio play test loads the owner's save, takes its lock after WAIT s, and the live server that had the owner
+	-- lost the lock and kicked them: "it keeps kicking me from my own game")
+	if RunService:IsStudio() then name ..= "_studio" end
 	local ds: DataStore? = nil
 	local ok, s = pcall(function() return DataStoreService:GetDataStore(name) end)
 	if ok then ds = s end
