@@ -1088,13 +1088,34 @@ def _grey(objs):
         if o.type == 'MESH': o.data.materials.clear(); o.data.materials.append(m)
 
 
+COMPOSE = r'''
+import json, sys
+from PIL import Image, ImageDraw, ImageFont
+s = json.load(open(sys.argv[1]))
+W, H = s['w'], s['h']; n = len(s['panels']); cols = 3; rows = (n + cols - 1) // cols
+try: F = ImageFont.truetype('arialbd.ttf', 22); FT = ImageFont.truetype('arialbd.ttf', 28)
+except Exception: F = FT = ImageFont.load_default()
+out = Image.new('RGB', (W * cols, H * rows + 44), (30, 32, 38))
+d = ImageDraw.Draw(out)
+d.text((14, 8), s['title'], fill=(240, 240, 240), font=FT)
+for i, (p, label) in enumerate(s['panels']):
+    im = Image.open(p).convert('RGB'); im.thumbnail((W, H))
+    x, y = (i % cols) * W, 44 + (i // cols) * H
+    out.paste(im, (x + (W - im.width) // 2, y + (H - im.height) // 2))
+    d.rectangle([x, y + H - 34, x + W, y + H], fill=(20, 20, 24))
+    d.text((x + 10, y + H - 30), label, fill=(235, 235, 235), font=F)
+out.save(s['out'], quality=90)
+print('SHEET', s['out'])
+'''
+
+
 def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None, rec=None, Wd=900, Ht=560):
     """the verdict panels (PNG) in out_dir/sheet, composed with labels into sheet_path by plain Python + PIL.
        compare = a folder holding an earlier version's _p_hand.png and _p_aim.png: shown beside this version's"""
     import gun_set
     sh = os.path.join(out_dir, K + '_sh.glb')
     meta = json.load(open(os.path.join(out_dir, K + '_clean.json')))
-    pdir = os.path.join(out_dir, 'sheet'); os.makedirs(pdir, exist_ok=True)   # (the panels)
+    pdir = os.path.join(out_dir, 'sheet', K); os.makedirs(pdir, exist_ok=True)   # (the panels, per gun)
     lo, hi = meta.get('bounds', ([-0.05, -0.3, -0.72], [0.05, 0.15, 0.47]))
     cy, cz = (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2
     L = hi[2] - lo[2]
@@ -1149,6 +1170,15 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
     eye = B((0, sp[1], sp[2] + 0.11))
     _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
     panels.append((_render(os.path.join(pdir, '_p_aim.png')), 'aim view (approx.: eye 0.11 m behind the rear sight)'))
+    hide = ((rec or meta.get('recipe', {})).get('sheet') or {}).get('aim_hide')   # piece-name prefixes (holds.json ads hide)
+    aim_hidden = None
+    if hide:
+        sc = _scene(Wd, Ht); objs = _import(sh)
+        for o in objs:
+            if o.type == 'MESH' and any(o.name.startswith(h) for h in hide): bpy.data.objects.remove(o, do_unlink=True)
+        _sun(sc, (math.radians(35), 0, math.radians(20)))
+        _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
+        aim_hidden = (_render(os.path.join(pdir, '_p_aim_hidden.png')), 'aim view, %s hidden (ADS hide list)' % ', '.join(hide))
     P = dict(zip(('raw', '34', 'side', 'top', 'hand', 'base', 'aim'), panels))
     relabel = lambda pl, l: (pl[0], l)
     if compare and close and os.path.exists(os.path.join(compare, '_p_close.png')):
@@ -1161,32 +1191,14 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
         panels = [P['raw'], P['34'], P['side'], P['top'],
                   (os.path.join(compare, '_p_hand.png'), 'BEFORE: in hand'), relabel(P['hand'], 'NOW: in hand'),
                   (os.path.join(compare, '_p_aim.png'), 'BEFORE: aim view'), relabel(P['aim'], 'NOW: aim view'), P['base']]
-    elif close:
-        panels.append(close)
+    else:
+        if aim_hidden: panels.append(aim_hidden)
+        if close: panels.append(close)
     if concept: panels.insert(0, (concept, "owner's concept"))
     spec = {'panels': panels, 'out': sheet_path, 'w': Wd, 'h': Ht, 'title': meta.get('name', K)}
     js = os.path.join(pdir, '_sheet.json')
     with open(js, 'w') as fh: json.dump(spec, fh)
-    code = r'''
-import json, sys
-from PIL import Image, ImageDraw, ImageFont
-s = json.load(open(sys.argv[1]))
-W, H = s['w'], s['h']; n = len(s['panels']); cols = 3; rows = (n + cols - 1) // cols
-try: F = ImageFont.truetype('arialbd.ttf', 22); FT = ImageFont.truetype('arialbd.ttf', 28)
-except Exception: F = FT = ImageFont.load_default()
-out = Image.new('RGB', (W * cols, H * rows + 44), (30, 32, 38))
-d = ImageDraw.Draw(out)
-d.text((14, 8), s['title'], fill=(240, 240, 240), font=FT)
-for i, (p, label) in enumerate(s['panels']):
-    im = Image.open(p).convert('RGB'); im.thumbnail((W, H))
-    x, y = (i % cols) * W, 44 + (i // cols) * H
-    out.paste(im, (x + (W - im.width) // 2, y + (H - im.height) // 2))
-    d.rectangle([x, y + H - 34, x + W, y + H], fill=(20, 20, 24))
-    d.text((x + 10, y + H - 30), label, fill=(235, 235, 235), font=F)
-out.save(s['out'], quality=90)
-print('SHEET', s['out'])
-'''
-    r = subprocess.run([PY, '-c', code, js], capture_output=True, text=True)   # (PIL is in the user's site-packages)
+    r = subprocess.run([PY, '-c', COMPOSE, js], capture_output=True, text=True)   # (PIL is in the user's site-packages)
     print(r.stdout.strip(), r.stderr.strip()[-400:])
     return sheet_path
 
@@ -1290,7 +1302,20 @@ def parts_view(raw, out_dir, rec=None, base_id=None):
 
 
 # ================================================================================================ the command line
+def compose(out, title, panels, Wd=900, Ht=560):
+    """panels [(png, label)] into a labelled 3-column sheet (plain Python + PIL)"""
+    spec = {'panels': panels, 'out': out, 'w': Wd, 'h': Ht, 'title': title}
+    js = os.path.splitext(out)[0] + '_sheet.json'
+    with open(js, 'w') as fh: json.dump(spec, fh)
+    r = subprocess.run([PY, '-c', COMPOSE, js], capture_output=True, text=True)
+    print(r.stdout.strip(), r.stderr.strip()[-400:])
+    os.remove(js)
+
+
 def main(argv):
+    if argv and argv[0] == 'compose':   # compose <out.jpg> <title> <png> <label> [<png> <label> ...]
+        compose(argv[1], argv[2], [(argv[i], argv[i + 1]) for i in range(3, len(argv) - 1, 2)])
+        return
     if argv and argv[0] == 'parts':
         rec = json.load(open(argv[3])) if len(argv) > 4 else None
         parts_view(argv[1], argv[2], rec, argv[4] if len(argv) > 4 else None)
@@ -1319,8 +1344,7 @@ def main(argv):
     os.environ['JF_TRIPO_ROOT'] = os.environ.get('JF_TRIPO_ROOT', ROOT)
     global SKINS
     SKINS = discover()
-    if key not in SKINS:   # (an out_dir outside ROOT: build it straight from its own json)
-        SKINS[key] = builder(os.path.join(out_dir, K + '_clean.json'))
+    SKINS[key] = builder(os.path.join(out_dir, K + '_clean.json'))   # (this run's own files, wherever out_dir is)
     import gun_set, gun_zfix
     if key not in gun_set.SKINS: gun_set.SKINS[key] = SKINS[key]
     g = SKINS[key]()
