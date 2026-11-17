@@ -41,7 +41,7 @@ local Matches: any
 local remote: RemoteEvent
 local live: { Session } = {}
 local of: { [Fighter]: Session } = {} -- the live session each fighter is in
-local lastOf: { [Player]: { s: Session, expires: number } } = {} -- each player's last finished match, for reports
+local lastOf: { [number]: { s: Session, expires: number } } = {} -- each player's last finished match by user id, for reports (a leaver's too)
 local byMatch: { [number]: Session } = {}
 local nextId = 0
 
@@ -87,7 +87,7 @@ local function finish(s: Session)
 	if i then table.remove(live, i) end
 	for _, f in s.fighters do
 		if of[f] == s then of[f] = nil end
-		if f.kind == "player" then lastOf[f.ref :: Player] = { s = s, expires = now() + Recorder.KEEP_AFTER } end
+		if f.kind == "player" then lastOf[(f.ref :: Player).UserId] = { s = s, expires = now() + Recorder.KEEP_AFTER } end
 	end
 	if s.match then task.delay(Recorder.KEEP_AFTER, function() if byMatch[s.match.id] == s then byMatch[s.match.id] = nil end end) end
 end
@@ -341,12 +341,22 @@ function Recorder.export(s: Session): any
 end
 
 -- the recording a report about this player should keep: the match they are in now, else their last one (kept
--- KEEP_AFTER s after it ended). nil when there is none. the anti-cheat session saves it in its own store
-function Recorder.forReport(p: Player): any?
-	local f = Fight.byPlayer[p]
+-- KEEP_AFTER s after it ended). nil when there is none. the anti-cheat session saves it in its own store.
+-- who = the Player, or their user id (a player who left: a match still running that recorded them, or their last one)
+function Recorder.forReport(who: Player | number): any?
+	local uid = if typeof(who) == "Instance" then (who :: Player).UserId else tonumber(who)
+	if not uid then return nil end
+	local p = if typeof(who) == "Instance" then who :: Player else Players:GetPlayerByUserId(uid)
+	local f = if p then Fight.byPlayer[p] else nil
 	local s = if f then of[f] else nil
 	if not s then
-		local l = lastOf[p]
+		for _, x in live do
+			for _, i in x.info do if i.kind == "player" and i.id == uid then s = x; break end end
+			if s then break end
+		end
+	end
+	if not s then
+		local l = lastOf[uid]
 		if l and now() < l.expires then s = l.s end
 	end
 	return if s then Recorder.export(s) else nil
@@ -391,12 +401,7 @@ function Recorder.init(fight: any, matches: any)
 			if not ok then warn("[jankfire] recorder: " .. tostring(err)) end
 		end
 		local t = now()
-		for p, l in lastOf do if t > l.expires or not p.Parent then lastOf[p] = nil end end
-	end)
-	Players.PlayerRemoving:Connect(function(p)
-		-- (a leaver's last match stays for a report about them until KEEP_AFTER runs out)
-		local l = lastOf[p]
-		if l then task.delay(math.max(0, l.expires - now()), function() lastOf[p] = nil end) end
+		for id, l in lastOf do if t > l.expires then lastOf[id] = nil end end -- (a leaver's stays until KEEP_AFTER runs out)
 	end)
 	if RunService:IsStudio() then
 		local old = ServerStorage:FindFirstChild("JankReplayTest")
@@ -413,7 +418,7 @@ end
 -- ("stop", player)     end it (it becomes the player's last recording)
 -- ("potm", player)     send the player the test session's play of the match now (its best kill run)
 -- ("killcam", player, name)   send the player a killcam of the last 5 s from over `name`'s shoulder
--- ("stats")            what is recorded and its size;  ("export", player) Recorder.forReport's size and shape
+-- ("stats")            what is recorded and its size;  ("export", player or user id) Recorder.forReport's size and shape
 function Recorder.test(op: string, a: any, b: any): any
 	if not RunService:IsStudio() then return nil end
 	local p = if typeof(a) == "Instance" and a:IsA("Player") then a else nil
@@ -429,14 +434,14 @@ function Recorder.test(op: string, a: any, b: any): any
 		if s then finish(s) end
 		return s ~= nil
 	elseif op == "potm" and p then
-		local s = (f and of[f]) or (lastOf[p] and lastOf[p].s)
+		local s = (f and of[f]) or (lastOf[p.UserId] and lastOf[p.UserId].s)
 		local bst = s and s.best
 		if not s or not bst then return "no kills recorded" end
 		local c = Recorder.clip(s, bst.t0, math.min(bst.t1, bst.t0 + Recorder.POTM.max, now()))
 		remote:FireClient(p, { t = "potm", clip = c, focus = bst.focus, label = bst.label, name = bst.name, at = workspace:GetServerTimeNow() + 0.3, slowKills = true })
 		return { label = bst.label, frames = #c.frames, events = #c.ev, secs = c.t1 - c.t0 }
 	elseif op == "killcam" and p then
-		local s = (f and of[f]) or (lastOf[p] and lastOf[p].s)
+		local s = (f and of[f]) or (lastOf[p.UserId] and lastOf[p.UserId].s)
 		if not s then return "not recording" end
 		local focus = nil
 		for slot, i in s.info do if i.name == b then focus = slot end end
@@ -445,8 +450,8 @@ function Recorder.test(op: string, a: any, b: any): any
 		return { frames = #c.frames, focus = focus }
 	elseif op == "stats" then
 		return Recorder.stats()
-	elseif op == "export" and p then
-		local x = Recorder.forReport(p)
+	elseif op == "export" and (p or type(a) == "number") then
+		local x = Recorder.forReport(p or a)
 		if not x then return "nothing" end
 		return { bytes = x.bytes, frameChars = #x.frames, eventChars = #x.events, secs = x.secs, players = x.players, weapons = x.weapons }
 	end

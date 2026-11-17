@@ -34,7 +34,8 @@ frames plus events plus who's who, the play of the round is picked by a score) t
    - A match with no kills has no replay, and the end screen runs as it always did.
 4. **Reports.** `Recorder.forReport(player)` gives the anti-cheat session the current or last match's recording of
    that player, as plain strings (base64 frames + JSON events + who's who), to save with a report in its own moderation
-   store with its own expiry. Only reported matches are ever kept.
+   store with its own expiry. Only reported matches are ever kept. It also takes a user id, for a player who has left:
+   a match still running that recorded them, or their last match for 10 minutes after it ended.
 5. **Every match:** casual, ranked, pad matches, and the Modes tab later (anything that runs through Matches).
 
 ## How the pieces fit

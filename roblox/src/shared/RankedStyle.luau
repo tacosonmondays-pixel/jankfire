@@ -72,16 +72,25 @@ end
 local DRAW: { [string]: (Frame, number, any) -> () } = {}
 -- (each draws into a square of s px, centred on (s/2, s*0.44): the pips sit under it)
 DRAW.napkin = function(b, s, c)
-	local cx, cy, w = s / 2, s * 0.44, s * 0.56
-	local sheet = box(b, "Napkin", cx, cy, w, w, c.color, 2, -8)
-	round(sheet, math.floor(w * 0.12))
-	sheet.ClipsDescendants = true
-	-- the folded corner: a turned square half inside the sheet's top right
-	local fold = box(sheet, "Fold", w, 0, w * 0.62, w * 0.62, c.deep:Lerp(c.color, 0.45), 3, 45)
-	local _ = fold
-	-- two drips under it
-	for i, o in { { -0.12, 0.5 }, { 0.14, 0.58 } } do
-		local d = box(b, "Drip" .. i, cx + o[1] * s, cy + o[2] * s * 0.62, s * 0.07, s * 0.1, c.deep, 2)
+	local cx, cy, w = s / 2, s * 0.37, math.floor(s * 0.54)
+	-- a square sheet with its top right corner dog-eared: the sheet less that corner, and the flap folded down over it
+	-- (built from straight pieces, so nothing is painted in the background's colour)
+	local sheet = new("Frame", { Name = "Napkin", BackgroundTransparency = 1, ZIndex = 2, AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromOffset(cx, cy), Size = UDim2.fromOffset(w, w) }, b)
+	local L = math.max(2, math.floor(w * 0.36))
+	local function piece(name: string, x: number, y: number, pw: number, ph: number)
+		new("Frame", { Name = name, BorderSizePixel = 0, BackgroundColor3 = c.color, ZIndex = 2,
+			Position = UDim2.fromOffset(x, y), Size = UDim2.fromOffset(pw, ph) }, sheet)
+	end
+	piece("Left", 0, 0, w - L, w)
+	piece("LowerRight", w - L, L, L, w - L)
+	-- the flap: the lower left half of the corner's square, cut by a clipped turned square
+	local corner = new("Frame", { Name = "Corner", BackgroundTransparency = 1, ClipsDescendants = true, ZIndex = 3,
+		Position = UDim2.fromOffset(w - L, 0), Size = UDim2.fromOffset(L, L) }, sheet)
+	box(corner, "Flap", 0, L, L * 1.42, L * 1.42, c.deep:Lerp(c.color, 0.4), 3, 45)
+	-- two drips hanging under it
+	for i, o in { { -0.13, 0.27, 0.1 }, { 0.12, 0.29, 0.14 } } do
+		local d = box(b, "Drip" .. i, cx + o[1] * s, cy + o[2] * s, s * 0.065, s * o[3], c.deep, 1)
 		round(d)
 	end
 end
@@ -180,13 +189,19 @@ local function partyBadge(parent: Instance, s: number, v: any): Frame
 	end
 	local c = PARTY[v.tier] or PARTY.napkin
 	local draw = DRAW[v.tier] or DRAW.napkin
-	draw(b, s, c)
+	-- the drawing is scaled up in its box so it fills it like the duels' shields fill theirs (the player-cards session:
+	-- at 53 px the art was about 30 px). its centre stays at (s/2, s*0.44), or s/2 for the top tier, which has no pips
+	local S = math.floor(s * 1.3)
+	local cy = if v.div ~= nil then s * 0.44 else s * 0.5
+	local art = new("Frame", { Name = "Art", BackgroundTransparency = 1, Size = UDim2.fromOffset(S, S),
+		Position = UDim2.fromOffset(math.floor(s / 2 - S / 2), math.floor(cy - S * 0.44)) }, b)
+	draw(art, S, c)
 	-- the division: pips under it
 	if v.div ~= nil then
 		local count = math.clamp(math.floor(v.div), 1, 3)
 		local dot = math.max(3, math.floor(s * 0.075))
 		for i = 1, count do
-			local p = box(b, "Pip", s / 2 + (i - (count + 1) / 2) * dot * 1.7, s * 0.88, dot, dot, c.color:Lerp(Color3.new(1, 1, 1), 0.3), 5)
+			local p = box(b, "Pip", s / 2 + (i - (count + 1) / 2) * dot * 1.7, s * 0.91, dot, dot, c.color:Lerp(Color3.new(1, 1, 1), 0.3), 5)
 			round(p)
 		end
 	end

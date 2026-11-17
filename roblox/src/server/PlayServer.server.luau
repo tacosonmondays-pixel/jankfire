@@ -50,7 +50,7 @@ if RunService:IsStudio() then
 	local fn = Instance.new("BindableFunction")
 	fn.Name = "JankPlayTest"
 	fn.OnInvoke = function(op: string, a: any, b: any, c: any, d: any): any
-		if op == "ranked" or op == "setranked" or op == "resetranked" or op == "restore" or op == "fixes" or op == "pull" or op == "log" then return RankedData.test(op, a, b, c) end
+		if op == "ranked" or op == "setranked" or op == "resetranked" or op == "restore" or op == "unrestore" or op == "fixes" or op == "pull" or op == "log" then return RankedData.test(op, a, b, c) end
 		if op == "play" then return Party.enter(a) end
 		if op == "leave" then Party.leave(a); return true end
 		return Party.test(op, a, b, c, d)

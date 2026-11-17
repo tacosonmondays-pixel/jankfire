@@ -90,6 +90,11 @@ local leaveB = new("TextButton", { Name = "Leave", AutoButtonColor = false, Back
 	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -32, 0, 28), Size = UDim2.fromOffset(150, 36), FontFace = T.FONT_BOLD, TextSize = 13,
 	Text = "LEAVE LOBBY", TextColor3 = T.TEXT }, lobby)
 T.corner(leaveB); T.edge(leaveB)
+-- LEADERBOARD, beside it (LeaderboardUI, through UI.openBoard: PlayClient sets it)
+local boardB = new("TextButton", { Name = "Board", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
+	AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -190, 0, 28), Size = UDim2.fromOffset(140, 36), FontFace = T.FONT_BOLD, TextSize = 13,
+	Text = "LEADERBOARD", TextColor3 = T.TEXT }, lobby)
+T.corner(boardB); T.edge(boardB)
 
 -- the panels (placed by fit())
 local left = T.plate(lobby, "Modes", UDim2.fromOffset(32, 96), UDim2.fromOffset(300, 460))
@@ -148,6 +153,9 @@ local function fit()
 	leaveB.Position = UDim2.new(1, -pad, 0, if c then 12 else 28)
 	leaveB.Size = UDim2.fromOffset(if c then 112 else 150, if c then 30 else 36)
 	leaveB.TextSize = if c then 11 else 13
+	boardB.Position = UDim2.new(1, -pad - (if c then 112 else 150) - 8, 0, if c then 12 else 28)
+	boardB.Size = UDim2.fromOffset(if c then 112 else 140, if c then 30 else 36)
+	boardB.TextSize = if c then 11 else 13
 	left.Position = UDim2.fromOffset(pad, L.top)
 	right.Position = UDim2.new(1, -pad, 0, L.top)
 	bottom.Position = UDim2.new(0.5, 0, 1, if c then -10 else -28)
@@ -848,6 +856,9 @@ function UI.close()
 	controls(true)
 end
 
+boardB.MouseButton1Click:Connect(function()
+	if UI.openBoard then UI.openBoard() end
+end)
 leaveB.MouseButton1Click:Connect(function()
 	task.spawn(function()
 		ask("leave") -- (back to the hub, still in the party: the push closes this screen)

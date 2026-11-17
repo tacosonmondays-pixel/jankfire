@@ -10,6 +10,10 @@
 local Ranked = {}
 
 Ranked.SEASON = 1
+Ranked.SEASON_NAME = "SEASON 1"
+-- when the season ends (os.time, UTC): the leaderboard counts down to it. the reset itself is still by hand (bump
+-- SEASON, name and end together). 1 Jan 2027 00:00 UTC is a placeholder until the owner picks a date
+Ranked.SEASON_ENDS = 1798761600
 Ranked.MODES = { "1v1", "2v2", "3v3", "4v4" } -- the ranked queues (1v1v1 stays casual)
 Ranked.SIZE = { ["1v1"] = 1, ["2v2"] = 2, ["3v3"] = 3, ["4v4"] = 4 }
 Ranked.START = { r = 1500, rd = 250, vol = 0.06 }

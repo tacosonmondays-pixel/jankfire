@@ -191,6 +191,10 @@ function Party.homeOf(p: Player): CFrame?
 	return nil
 end
 function Party.inLobby(p: Player): boolean return Party.homeOf(p) ~= nil end
+-- the ranked leaderboard on this player's screen (the hub's RANKED regular; tab "duels" or "party", nil = duels)
+function Party.openBoard(p: Player, tab: string?)
+	push(p, { t = "openBoard", tab = tab })
+end
 -- how many are in this player's party (stand-ins too), 0 when they have none (the quests session: "play 2 matches with your party")
 function Party.sizeOf(p: Player): number
 	local pt = byPlayer[p]
@@ -697,6 +701,26 @@ local function spend(p: Player): boolean
 	return true
 end
 
+-- the ops that respawn bodies or claim / free a room go one per HEAVY_GAP s per player (the anti-cheat audit: a client
+-- spamming PLAY / LEAVE could rebuild rooms and bodies several times a second). a request inside the gap waits out the
+-- rest of it, so a quick LEAVE then PLAY still works; another one while that waits is refused quietly
+local HEAVY_GAP = 2
+local HEAVY = { play = true, leave = true, leaveparty = true, answer = true, kick = true }
+local heavyAt: { [Player]: number } = {}
+local heavyWaiting: { [Player]: boolean } = {}
+local function heavyTurn(p: Player): boolean
+	local left = (heavyAt[p] or -math.huge) + HEAVY_GAP - now()
+	if left > 0 then
+		if heavyWaiting[p] then return false end
+		heavyWaiting[p] = true
+		task.wait(left)
+		heavyWaiting[p] = nil
+		if not p.Parent then return false end
+	end
+	heavyAt[p] = now()
+	return true
+end
+
 local function players(p: Player): any
 	local mine = byPlayer[p]
 	local out = {}
@@ -732,11 +756,38 @@ local function stateOf(p: Player): any
 		best = RankedData.summary(p), cross = PlayConfig.CROSS_SERVER }
 end
 
+-- (Studio: the leaderboard lists the stand-ins too, so a one-player test has a list to look at)
+local function boardStandIns(r: any)
+	if not RunService:IsStudio() or type(r) ~= "table" or not r.ok then return end
+	local all, seen = {}, {}
+	for _, m in standPool do table.insert(all, m) end
+	for _, pt in parties do for _, m in pt.members do if not m.player then table.insert(all, m) end end end
+	local function lpOf(q: any): number return math.floor(if type(q.lp) == "number" then q.lp else Ranked.ladderOf(q.r)) end
+	for _, m in all do
+		if seen[m.id] or not m.rating then continue end
+		seen[m.id] = true
+		local rt = m.rating :: any
+		local mode, q = Ranked.best(rt)
+		if mode and q and q.placed then table.insert(r.duels, { id = m.id, name = m.display, lp = lpOf(q), v = RankedData.view(q, mode) }) end
+		local pq = rt[Ranked.PARTY_KEY]
+		if pq and pq.placed then table.insert(r.party, { id = m.id, name = m.display, lp = lpOf(pq), v = RankedData.view(pq, Ranked.PARTY_KEY) }) end
+	end
+	for _, list in { r.duels, r.party } do
+		table.sort(list, function(x, y) if x.lp ~= y.lp then return x.lp > y.lp end return x.name < y.name end)
+	end
+end
+
 local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	if not spend(p) then return { ok = false, why = "slow down" } end
+	-- (declining an invite moves nobody, so only a yes counts as heavy)
+	if type(op) == "string" and HEAVY[op] and not (op == "answer" and b ~= true) and not heavyTurn(p) then return { ok = false } end
 	local ok, why
 	if op == "state" then return stateOf(p)
 	elseif op == "players" then return { ok = true, list = players(p) }
+	elseif op == "board" then
+		local r = RankedData.board(p, a == true)
+		boardStandIns(r)
+		return r
 	elseif op == "play" then ok, why = Party.enter(p)
 	elseif op == "leave" then Party.exit(p); ok = true -- (LEAVE LOBBY)
 	elseif op == "leaveparty" then Party.leave(p); ok = true
@@ -788,6 +839,8 @@ function Party.init(fight: any, matches: any, rankedData: any, remotes: Instance
 		Party.leave(p)
 		sent[p] = nil
 		budget[p] = nil
+		heavyAt[p] = nil
+		heavyWaiting[p] = nil
 	end)
 	local acc = 0
 	RunService.Heartbeat:Connect(function(dt)
@@ -852,6 +905,15 @@ function Party.test(op: string, a: any, b: any, c: any, d: any): any
 		place(pt)
 		pushParty(pt)
 		return { id = m.id, name = m.name }
+	elseif op == "boardsample" then
+		-- (the leaderboard photo: the pool's stand-ins spread over the ladders)
+		for i, m in standPool do
+			for mode, q in (m.rating :: any) do
+				q.lp = math.max(0, 1880 - i * 150 + (i % 3) * 37 - (if mode == Ranked.PARTY_KEY then 90 else 0) + (if mode == "2v2" then 12 else 0))
+				q.w, q.l = math.max(0, 22 - i), 6 + i
+			end
+		end
+		return #standPool
 	elseif op == "samplemodes" then
 		-- (the same three sample classic modes the client's PlayTest "samplemodes" shows)
 		if not PlayConfig.byId.sample_qp then

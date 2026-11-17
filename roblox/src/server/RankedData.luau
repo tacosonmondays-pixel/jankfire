@@ -117,6 +117,9 @@ end
 -- applied on their next join (their own save is session-locked, so nothing else writes into it). with
 -- PlayConfig.CROSS_SERVER on, MessagingService ("JankRankedFix") tells the server they're on to take it now.
 -- the restored player sees "RANKED RATING RESTORED +N"
+-- RankedData.undoRestore(uid), for a wrong catch (the anti-cheat session's UNCONFIRM / UNBAN): the accused's season
+-- comes back as it was before the void. the players who got RP back keep it, and the matches stay marked restored, so a
+-- later CONFIRM never pays anyone twice
 local DataStoreService = game:GetService("DataStoreService")
 local MessagingService = game:GetService("MessagingService")
 local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
@@ -186,6 +189,10 @@ end
 
 -- a voided season: every mode back to where it started, no placements, no RP; the save says so
 local function voidSeason(d: any)
+	-- (kept, so a wrong catch can be undone: RankedData.undoRestore)
+	local keep = {}
+	for mode, q in d.modes do if type(q) == "table" then keep[mode] = table.clone(q) end end
+	d.voidBackup = { season = d.season, modes = keep }
 	for mode, q in d.modes do
 		if type(q) == "table" then
 			local s0 = tonumber(q.s0) or Ranked.START.r
@@ -197,7 +204,7 @@ local function voidSeason(d: any)
 	d.void = { t = os.time(), season = d.season }
 end
 
--- apply fixes to a loaded save: { k, mode, rp, mmr, season } refunds and { void = true } (each key once)
+-- apply fixes to a loaded save: { k, mode, rp, mmr, season } refunds, { void = true } and { unvoid = true } (each key once)
 local function apply(p: Player, fixes: { any })
 	local d = dataOf(p)
 	if not d then return end
@@ -208,6 +215,14 @@ local function apply(p: Player, fixes: { any })
 		d.fixed[fx.k] = os.time()
 		if fx.void then
 			voidSeason(d)
+		elseif fx.unvoid then
+			-- a wrong catch: the season as it was before the void (matches played since the void are dropped with it), and
+			-- a later CONFIRM can void it again
+			local b = d.voidBackup
+			if d.void and type(b) == "table" and b.season == d.season and type(b.modes) == "table" then d.modes = b.modes end
+			d.void, d.voidBackup = nil, nil
+			d.fixed[("void:%d:%d"):format(p.UserId, d.season)] = nil
+			any = true
 		elseif fx.season == d.season and type(fx.mode) == "string" then
 			local q = d.modes[fx.mode]
 			if type(q) == "table" then
@@ -226,6 +241,7 @@ local function apply(p: Player, fixes: { any })
 	local s = st[p]
 	if s and s.prof then s.prof.dirty = true end
 	publish(p)
+	RankedData.topWrite(p) -- (a refund moves them on the global lists; a void takes them off)
 	if (any or total > 0) and push then
 		(push :: any)(p, { t = "toast", text = if total > 0 then ("RANKED RATING RESTORED +%d"):format(total) else "RANKED RATING RESTORED", refresh = true })
 	end
@@ -314,6 +330,115 @@ function RankedData.restoreFor(cheaterId: number, since: number?, forceStore: bo
 	return out
 end
 
+-- a wrong catch (UNCONFIRM / UNBAN): the accused's voided season back as it was (now if they're here, else on their
+-- next join; a void still waiting in the store is applied first, then undone). returns { ok, now } or { ok = false, why }
+function RankedData.undoRestore(uid: number, forceStore: boolean?): any
+	if type(uid) ~= "number" then return { ok = false, why = "no user id" } end
+	local t = os.time()
+	local here = deliver(uid, { k = ("unvoid:%d:%d:%d"):format(uid, Ranked.SEASON, t), unvoid = true, season = Ranked.SEASON, t = t }, forceStore)
+	if not here and not fixStore then return { ok = false, why = "no DataStore here" } end
+	return { ok = true, now = here }
+end
+
+-- ------------------------------------------------------------------ the leaderboard
+-- (17 Nov: the hub's RANKED regular, Frisk1636, opens it, and so does the Play screen's LEADERBOARD.) this server's
+-- placed players by rank points on each ladder (the duels: each player's best mode), the viewer's own ranks, the
+-- season and its end. with PlayConfig.CROSS_SERVER on, also a global top 100 per ladder from an OrderedDataStore of rank
+-- points: written after every rated match and every restore (a voided season drops out), read at most once a minute
+-- per server. that part is OFF and untested until the place is published
+local TOP_N = 100
+local UserService = game:GetService("UserService")
+local function lpOf(q: any): number
+	return math.max(0, math.floor(if type(q.lp) == "number" then q.lp else Ranked.ladderOf(q.r)))
+end
+local topStores: { [string]: OrderedDataStore } = {}
+local function topStore(ladder: string): OrderedDataStore?
+	if topStores[ladder] then return topStores[ladder] end
+	local ok, s = pcall(function()
+		return DataStoreService:GetOrderedDataStore(("JankfireRankedTop%s_s%d_%s"):format(if studio then "_studio" else "_v1", Ranked.SEASON, ladder))
+	end)
+	if ok and s then topStores[ladder] = s; return s end
+	return nil
+end
+-- this player's place on the global lists (their best duels mode, and Party Ranked), or off them when not placed
+function RankedData.topWrite(p: Player)
+	if not PlayConfig.CROSS_SERVER then return end
+	local d = dataOf(p)
+	if not d then return end
+	local uid = tostring(p.UserId)
+	local _, q = Ranked.best(d.modes)
+	local pq = d.modes[Ranked.PARTY_KEY]
+	local want = {
+		duels = if q and q.placed then lpOf(q) else false,
+		party = if type(pq) == "table" and pq.placed then lpOf(pq) else false,
+	}
+	task.spawn(function()
+		for ladder, v in want do
+			local s = topStore(ladder)
+			if s then pcall(function() if v then s:SetAsync(uid, v) else s:RemoveAsync(uid) end end) end
+		end
+	end)
+end
+local topCache: { [string]: { t: number, rows: { any } } } = {}
+local topBusy: { [string]: boolean } = {}
+local function globalTop(ladder: string): { any }?
+	if not PlayConfig.CROSS_SERVER then return nil end
+	local c = topCache[ladder]
+	if (c and os.clock() - c.t < 60) or topBusy[ladder] then return if c then c.rows else nil end
+	local s = topStore(ladder)
+	if not s then return nil end
+	topBusy[ladder] = true
+	local ok, page = pcall(function() return (s :: OrderedDataStore):GetSortedAsync(false, TOP_N):GetCurrentPage() end)
+	if ok and type(page) == "table" then
+		local ids = {}
+		for _, e in page do local id = tonumber(e.key); if id then table.insert(ids, id) end end
+		local who: { [number]: any } = {}
+		pcall(function() for _, u in UserService:GetUserInfosByUserIdsAsync(ids) do who[u.Id] = u end end)
+		local rows = {}
+		for _, e in page do
+			local id = tonumber(e.key)
+			local u = if id then who[id] else nil
+			local q = { placed = true, lp = tonumber(e.value) or 0, n = Ranked.PLACEMENTS, r = Ranked.START.r }
+			table.insert(rows, { id = id, name = if u then u.DisplayName else "?", user = if u then u.Username else nil,
+				v = RankedData.view(q :: any, if ladder == "party" then Ranked.PARTY_KEY else nil) })
+		end
+		c = { t = os.clock(), rows = rows }
+		topCache[ladder] = c
+	end
+	topBusy[ladder] = nil
+	return if c then c.rows else nil
+end
+
+-- what the leaderboard panel shows. global = also the global lists (only with CROSS_SERVER on)
+function RankedData.board(viewer: Player, global: boolean?): any
+	local lists = { duels = {}, party = {} }
+	for _, p in Players:GetPlayers() do
+		local d = dataOf(p)
+		if not d then continue end
+		local mode, q = Ranked.best(d.modes)
+		if mode and q and q.placed then
+			table.insert(lists.duels, { id = p.UserId, name = p.DisplayName, user = p.Name, lp = lpOf(q), v = RankedData.view(q, mode) })
+		end
+		local pq = d.modes[Ranked.PARTY_KEY]
+		if type(pq) == "table" and pq.placed then
+			table.insert(lists.party, { id = p.UserId, name = p.DisplayName, user = p.Name, lp = lpOf(pq), v = RankedData.view(pq, Ranked.PARTY_KEY) })
+		end
+	end
+	for _, list in lists do
+		table.sort(list, function(a, b) if a.lp ~= b.lp then return a.lp > b.lp end return a.name < b.name end)
+		for i = #list, TOP_N + 1, -1 do list[i] = nil end
+	end
+	local views = RankedData.modes(viewer)
+	return {
+		ok = true,
+		season = { n = Ranked.SEASON, name = Ranked.SEASON_NAME, ends = Ranked.SEASON_ENDS, now = os.time() },
+		duels = lists.duels, party = lists.party,
+		me = { duels = RankedData.summary(viewer), party = views[Ranked.PARTY_KEY], modes = views },
+		cross = PlayConfig.CROSS_SERVER,
+		global = if global and PlayConfig.CROSS_SERVER then { duels = globalTop("duels"), party = globalTop("party") } else nil,
+	}
+end
+
 -- ------------------------------------------------------------------ a finished match
 -- rate one player in a finished (or left) match. rated = m.rated: { mode, teams = { { { id, r, rd } } } }
 -- an FFA match (the classic modes, m.ffa): where this player finished among how many, and every other player as an
@@ -379,6 +504,7 @@ local function rate(p: Player, m: any, team: number, won: boolean, left: boolean
 	while #d.recent > RECENT do table.remove(d.recent) end
 	if s.prof then s.prof.dirty = true end
 	publish(p)
+	RankedData.topWrite(p)
 	return res
 end
 
@@ -415,7 +541,7 @@ local function seasonCheck(d: any)
 		end
 	end
 	d.season = Ranked.SEASON
-	d.log, d.fixed, d.void = {}, {}, nil -- (a new season: a new log)
+	d.log, d.fixed, d.void, d.voidBackup = {}, {}, nil, nil -- (a new season: a new log)
 end
 
 local function join(p: Player)
@@ -497,6 +623,9 @@ function RankedData.test(op: string, p: Player?, a: any, b: any): any
 	elseif op == "restore" then
 		-- (p here is the cheater's user id; a = since; b = true: queue every fix in the store, even for players here)
 		return RankedData.restoreFor(p :: any, a, b == true)
+	elseif op == "unrestore" then
+		-- (p here is the accused's user id; a = true: through the store, even if they're here)
+		return RankedData.undoRestore(p :: any, a == true)
 	elseif op == "fixes" and fixStore then
 		local ok, v = pcall(function() return (fixStore :: DataStore):GetAsync("r:" .. tostring(p)) end)
 		return if ok then v else tostring(v)
@@ -504,7 +633,7 @@ function RankedData.test(op: string, p: Player?, a: any, b: any): any
 		pull(p :: Player)
 		return true
 	elseif op == "log" and d then
-		return { log = d.log, fixed = d.fixed, void = d.void }
+		return { log = d.log, fixed = d.fixed, void = d.void, backup = d.voidBackup ~= nil }
 	elseif op == "resetranked" and d then
 		d.modes, d.past, d.recent, d.season = {}, {}, {}, Ranked.SEASON
 		local s = st[p :: Player]

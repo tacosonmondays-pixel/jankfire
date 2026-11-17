@@ -197,6 +197,42 @@ level only (LV and the XP bar). Its right-hand mark is the ranked badge with its
 `r = 1500 + (r - 1500) × 0.6`, `RD = max(RD, 180)`, 3 placements, and the old season's peak is kept in `past`.
 Rewards are not built.
 
+**The season's name and end** are `Ranked.SEASON_NAME` ("SEASON 1") and `Ranked.SEASON_ENDS` (os.time, UTC). The
+leaderboard counts down to the end. The end date is a placeholder, 1 Jan 2027, until the owner picks one. The reset
+is still done by hand: bump all three together.
+
+### The leaderboard (17 Nov 2026)
+
+Frisk1636, the hub's RANKED regular, opens it with his prompt. The Play screen has a **LEADERBOARD** button beside
+LEAVE LOBBY.
+
+- **Tabs:** DUELS | PARTY RANKED.
+- **Your own rank** at the top: the badge, the rank and the RP bar ("34/100"), or PLACEMENTS 2/5 with a cell per
+  match, or UNRANKED. Your W-L, and your place on the list when you're on it.
+- **The list:** this server's placed players by rank points, the top 100. On DUELS each player's best mode counts,
+  and its tag shows ("2V2"). Each row has the place, the badge, the name, the rank and the RP.
+- **The season** and the time left, top right: "SEASON 1 · 44D 14H LEFT".
+- **Global top 100** (behind `PlayConfig.CROSS_SERVER`, off and untested): a THIS SERVER | GLOBAL switch.
+  - An OrderedDataStore per ladder and season (`JankfireRankedTop_v1_s1_duels` / `_party`, `_studio` in Studio)
+    holds each placed player's rank points.
+  - It is written after every rated match and every restore. A voided or unplaced player is removed.
+  - A server reads it at most once a minute, with names from UserService.
+- Quiet: names and numbers only.
+- **Opening it:**
+  - a ProximityPrompt with the attribute `RankedBoard = "duels" | "party"` (or `RankedOpen = true`, the hub's name);
+  - `Party.openBoard(player, tab?)` on the server;
+  - `LeaderboardUI.open(tab?)` on the client.
+
+**Tested 17 Nov, place version 551** (Studio Play, me plus 8 stand-ins spread over both ladders with `boardsample`;
+in Studio the board lists stand-ins too):
+- DUELS: MASTER I down to GOLD II, my row #9 marked, my block GOLD II 34/100, 5-3, #9.
+- PARTY RANKED: BULLETPROOF GLASS II down to CARDBOARD II, the same layout.
+- Opened from the Play screen's LEADERBOARD button (`PlayTest` "board").
+- Not tested: the global lists (CROSS_SERVER is off) and the hub prompt (the hub session's push).
+
+![the leaderboard, duels](matchmaking/20_leaderboard_duels.jpg)
+![the leaderboard, Party Ranked](matchmaking/21_leaderboard_party.jpg)
+
 ### The save
 
 - Its own store `JankfireRanked_v1` through `Profiles.luau` (the session-locked layer loot and stats use), key
@@ -252,6 +288,10 @@ The MODES tab (JANKFIRE's classic modes, which a modes session adds through `Pla
     it back.
   - The result card says the place: "2ND OF 6  ·  PARTY RANKED GUN GAME".
 
+**The badges were made bigger at place version 551.** The player-cards session found the art only about 30 px in a
+53 px box. It is now drawn 1.3 times larger, so it fills its box like the shields. The napkin's folded corner is drawn
+from straight pieces now: a turned frame doesn't clip, and its fold used to stick out past the sheet.
+
 **Tested 17 Nov, place version 538** (Studio Play, one player plus three sample modes from `samplemodes`):
 - The maths, from GOLD II 0/100 in a 6-player FFA: 1st +35 RP (MMR +86), 3rd +7 (MMR +17), 6th -35 (MMR -86).
 - The name at RP 734 on the Party ladder: PAPER BAG II.
@@ -300,6 +340,15 @@ when a cheater was in your match.
 - The restored player sees `RANKED RATING RESTORED +N`.
 - The player-cards session restores stats the same way through `Stats.restoreFor`, with the same call shape.
 
+**A wrong catch:** `RankedData.undoRestore(userId)`, called by the anti-cheat session on UNCONFIRM or UNBAN.
+- The accused's season comes back from a copy kept when the void was applied. It goes through the same path: at once
+  if they're here, else on their next join. A void still waiting in the store is applied first, then undone.
+- The players who got RP back keep it. The matches stay marked restored, so a later CONFIRM can void the season again
+  but never pays anyone twice.
+- Ranked matches the accused played after the void are dropped with the undo.
+- **Tested 17 Nov, place version 551:** GOLD II 34/100 (5-4); `restore` on my own id voided it (unranked, a copy
+  kept); `unrestore` brought back GOLD II 34/100, 5-4, with no void and no copy left.
+
 **Tested 17 Nov, place version 524.** I played ranked 1v1s against a stand-in "cheater" (id -7).
 - **Before:** GOLD II at 34/100, rating 1530, losses 3.
 - **Two losses to the cheater:** -22 RP and -24 RP, ending at GOLD III 88/100.
@@ -326,11 +375,20 @@ when a cheater was in your match.
 | `src/server/CrossServer.luau` | MemoryStore queue, MessagingService invites, reserved match servers. OFF, untested |
 | `src/server/PlayServer.server.luau` | wires them to Fight, Matches and Stats; the Studio test hook |
 | `src/client/PlayUI.luau` | the Play screen, party panel, invite toasts, ranked results |
-| `src/client/PlayClient.client.luau` | the PLAY button, M, the lobby camera, the test attribute |
+| `src/client/PlayClient.client.luau` | the PLAY button, M, the lobby camera, the test attribute, the `RankedBoard` prompts |
+| `src/client/LeaderboardUI.luau` | the ranked leaderboard panel |
 | `Matches.luau` (small edits) | `Matches.startQueued`, `Matches.homeOf` (where a lobby player respawns), ranked in the HUD line, "back to the lobby" |
 
 Remotes: `JankfireRemotes.Play` (RemoteFunction, every request) and `JankfireRemotes.PlayPush` (RemoteEvent, party
 state, invites, results). The server checks every request: who leads, sizes, modes, rate limits; the client only asks.
+
+**Rate limits.**
+- Every request: 6 a second, in bursts of up to 20.
+- PLAY, LEAVE LOBBY, LEAVE PARTY, accepting an invite and KICK respawn bodies or claim and free rooms. They go once
+  every 2 s per player (the anti-cheat session's audit). One inside the gap waits out the rest of it, so a quick LEAVE
+  then PLAY still works. Another one while that waits is refused with no message.
+- Tested at place version 551: PLAY answered at 0.09 s, a LEAVE sent right after waited to 2.08 s, a PLAY sent while
+  it waited was refused with no message, and the next PLAY waited to 4.10 s.
 
 ### Studio test hook
 
@@ -348,12 +406,14 @@ the ratings, but they never enter a match. A match with stand-ins is held like a
 - `:Invoke("setranked", player, mode, { r, rd, n, placed, need })` and `:Invoke("resetranked", player)` (Studio
   store only)
 - `:Invoke("play", player)` / `:Invoke("leave", player)` what PLAY and LEAVE LOBBY do
+- `:Invoke("restore", userId, since, viaStore)` / `:Invoke("unrestore", userId, viaStore)` the cheat restore and
+  its undo; `:Invoke("log", player)` the season log, fixes and void
 - `:Invoke("samplemodes")` three sample classic modes (QUICK PLAY, PLANT & DEFUSE, ZOMBIES unranked); use
   `setranked` with mode `"party"` for the Party ladder
 
 Client side: the local player's attribute `PlayTest` = `play`, `open`, `close`, `tab:duels`, `tab:modes`, `invite`,
 `uninvite`, `fake:844x390`, `real`, `state`, `badges` / `nobadges` (both ladders on one sheet), `samplemodes` (the
-same sample modes on the client). The remote also works from a Client `execute_luau`
+same sample modes on the client), `board` / `board:party` / `noboard` / `boardfake:844x390` (the leaderboard). The remote also works from a Client `execute_luau`
 (`JankfireRemotes.Play:InvokeServer("find")`).
 
 A full run (about 40 s): `standins 3`, PLAY, invite `-2`, `mode 2v2 true`, `setranked` with `n = 4` (the next match

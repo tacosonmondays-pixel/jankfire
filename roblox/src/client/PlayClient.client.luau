@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlayUI = require(script.Parent:WaitForChild("PlayUI"))
 local PartyUI = require(script.Parent:WaitForChild("PartyUI"))
+local LeaderboardUI = require(script.Parent:WaitForChild("LeaderboardUI"))
 local T = require(script.Parent:WaitForChild("Theme"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local PushR = Remotes:WaitForChild("PlayPush") :: RemoteEvent
@@ -68,6 +69,7 @@ PushR.OnClientEvent:Connect(function(msg: any)
 		if hadRoom and not (msg.party and msg.party.room) and not (msg.party and msg.party.inMatch) then PlayUI.close(); dip() end
 		sync()
 		PartyUI.changed()
+	elseif msg.t == "openBoard" then LeaderboardUI.open(msg.tab) -- (Party.openBoard: the hub's RANKED regular)
 	elseif msg.t == "invite" then PlayUI.onInvite(msg)
 	elseif msg.t == "inviteGone" then PlayUI.onInviteGone(msg.id)
 	elseif msg.t == "toast" and type(msg.text) == "string" then
@@ -128,6 +130,16 @@ partyB.MouseEnter:Connect(function() partyB.BackgroundTransparency = 0.1 end)
 partyB.MouseLeave:Connect(function() partyB.BackgroundTransparency = T.BG_A end)
 partyB.MouseButton1Click:Connect(function() PartyUI.toggle() end)
 PlayUI.openParty = function() PartyUI.open() end
+(PlayUI :: any).openBoard = function() LeaderboardUI.open() end
+-- any ProximityPrompt with the attribute RankedBoard = "duels" | "party" (or RankedOpen = true, the hub's name for it)
+-- opens the leaderboard on that tab (the hub's RANKED regular, Frisk1636)
+game:GetService("ProximityPromptService").PromptTriggered:Connect(function(prompt, who)
+	if who ~= me then return end
+	local v = prompt:GetAttribute("RankedBoard")
+	if v == nil or v == false then v = prompt:GetAttribute("RankedOpen") end
+	if v == nil or v == false then return end
+	LeaderboardUI.open(if v == "party" then "party" else "duels")
+end)
 RunService.Heartbeat:Connect(function()
 	local show = not PlayUI.isOpen() and me:GetAttribute("LoadoutOpen") ~= true and me:GetAttribute("Zone") ~= "match"
 	if face.Visible ~= show then face.Visible = show end
@@ -149,7 +161,8 @@ end)
 -- a test hook (Play tests driven from Studio can't call into this script's modules): set the local player's attribute
 -- PlayTest to "play", "open", "close", "tab:duels", "tab:modes", "invite", "uninvite", "fake:844x390", "real", "state",
 -- "party", "unparty", "partyfake:844x390" (the PARTY panel), "badges" / "nobadges" (both ladders on one sheet),
--- "samplemodes" (Studio: three sample classic modes on the MODES tab; JankPlayTest "samplemodes" for the server)
+-- "samplemodes" (Studio: three sample classic modes on the MODES tab; JankPlayTest "samplemodes" for the server),
+-- "board" / "board:party" / "noboard" / "boardfake:844x390" (the ranked leaderboard)
 me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 	local v = me:GetAttribute("PlayTest")
 	if type(v) ~= "string" or v == "" then return end
@@ -168,6 +181,11 @@ me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 	elseif cmd == "badges" then PlayUI.badgeSheet(true)
 	elseif cmd == "nobadges" then PlayUI.badgeSheet(false)
 	elseif cmd == "samplemodes" then PlayUI.sampleModes()
+	elseif cmd == "board" then LeaderboardUI.open(if a ~= "" then a else nil)
+	elseif cmd == "noboard" then LeaderboardUI.close()
+	elseif cmd == "boardfake" then
+		local w, h = string.match(a, "^(%d+)x(%d+)$")
+		LeaderboardUI.fakeScreen(if w then Vector2.new(tonumber(w) :: number, tonumber(h) :: number) else nil)
 	elseif cmd == "party" then PartyUI.open()
 	elseif cmd == "unparty" then PartyUI.close()
 	elseif cmd == "partyfake" then
