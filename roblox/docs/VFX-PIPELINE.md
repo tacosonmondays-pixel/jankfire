@@ -481,3 +481,29 @@ lavender with many holes; `roblox/docs/modes/duck-rain-hud.jpg`), sheet `round15
   screen tint 7 m from the nearest; the hall keeps its own colours.
 - Not clean: the throw at the floor. The first hole had pulled the player up to the dummy and the second duck stuck to
   it. A floor duck's hole sends age 0, the same message the sky-hole test sent, so its opening is that path.
+
+### Kill effect previews for the shop's cards (17 Nov 2026, place version 625)
+
+The owner: "for kill effects in shop can they be small previews? same with in inv?". The shop session's `FlairAnim`
+plays a sheet per effect from `Shared.FlairSheets.kill`; the sheets are ours: 4x4 frames of 256 px (1024 px images),
+0.1 s apart, on the flair tile's dark (22, 24, 30), no text in any image (`roblox/assets/kill-previews/`, ids in its
+`assets.json`).
+- Captured in Play (`tools/roblox/vfx/kill_capture.luau`, Client): a box far above the maps (Neon walls in the card's
+  dark, which Studio draws black), its own Camera (a game script forces the main camera to FOV 80 every frame; ours FOV 10
+  from 178 studs, nearly flat), two SurfaceLights, six training-dummy copies 12 studs apart cropped to 8 studs (so
+  no effect spills into a neighbour's square), each playing `KillFx.play(copy, id, { preview = true })` from the client's
+  own KillFx copy on the frozen `FlairTimeScale` clock; `C.runTo(t)` runs to each frame time then freezes. Gibs ("none")
+  is moved by hand (flung, falling, a short skid where each piece lands). Blue Screen's TextLabels are hidden for the
+  shot; its words come back as live text (`words`, over frames 2-9 on the panel's top line).
+- `tools/roblox/vfx/kill_sheets.py <job.json> <out>` cuts each square out of 16 captures, shifts the frame so the
+  wall reads exactly (22, 24, 30), and lays out the sheet. Ember's last four frames had the next square's chickens
+  walking in: painted out by hand.
+- `n` per sheet stops a loop before its empty tail (Yeet 8, Blast Zone 6, Shatter 9, Static 10, Gibs 10: the body
+  is out of sight, or lies still), so each comes round after a short beat.
+- Checked in Play: the shop's inspect card for Blue Screen steps its frames and shows the words on frames 2-9 (a
+  property check; Studio's window was hidden, so no photo).
+- Not done: Ink. Its black blots fall on the box's black and the capture clips them to nothing (the sheet goes blank
+  from frame 5). The retake shoots it on a lighter wall and maps that wall back to the card's dark (`"remap": true` in
+  the job; `C.backdrop(color)` in the capture script). The first try came back blank white, every shot, even the
+  card-dark wall and the camera on the player: Studio's window was hidden, not the wall. Until then Ink keeps its
+  still tile.

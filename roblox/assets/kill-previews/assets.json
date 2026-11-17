@@ -1,0 +1,98 @@
+{
+ "kill_none": {
+  "id": 92097830523226,
+  "sha1": "64b3252ec9e51536c1a9cc648010939e4f307782",
+  "what": "the none kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.none)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_confetti": {
+  "id": 78711723291776,
+  "sha1": "7af6e1f5468c4704152ced6a138423b6d94ed457",
+  "what": "the confetti kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.confetti)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_dissolve": {
+  "id": 85070467429892,
+  "sha1": "1e0092dac99e8577c65f58fbf46c0691d8f52cd5",
+  "what": "the dissolve kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.dissolve)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_grave": {
+  "id": 100876377252714,
+  "sha1": "f0093192171241aec75fb2358014ac677254a13d",
+  "what": "the grave kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.grave)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_cash": {
+  "id": 129154762764065,
+  "sha1": "515a185094e1a7745aeb435269f4153cbde35110",
+  "what": "the cash kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.cash)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_pixel": {
+  "id": 90481731860274,
+  "sha1": "30e172b2bc23909663e1bddb9ce9af88f953ae94",
+  "what": "the pixel kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.pixel)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_balloon": {
+  "id": 87486225947491,
+  "sha1": "986fda95f17433460a46243df3034276e0e26f6f",
+  "what": "the balloon kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.balloon)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_shatter": {
+  "id": 99080843960243,
+  "sha1": "2ff345c9fe8594e746c27e39d3ee7b14f20a742b",
+  "what": "the shatter kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.shatter)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_ember": {
+  "id": 131676615523232,
+  "sha1": "56d40eb1206ec5df2f965b076c494d440050c175",
+  "what": "the ember kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.ember)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_chicken": {
+  "id": 134327025965380,
+  "sha1": "0a129e8d84917b662b6dd7b15238053928b94d26",
+  "what": "the chicken kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.chicken)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_bsod": {
+  "id": 98981813962072,
+  "sha1": "003495074aebe3cdf5c00d29f7d559aa964520c9",
+  "what": "the bsod kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.bsod)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_yeet": {
+  "id": 138930126356222,
+  "sha1": "1212c73d5fe4fd0a1adf8f32b07d10b77eebbad8",
+  "what": "the yeet kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.yeet)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_static": {
+  "id": 70597060116498,
+  "sha1": "84734331160dab0bc7d81b3dd051df5f61615d2c",
+  "what": "the static kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.static)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_ascend": {
+  "id": 74885896822851,
+  "sha1": "950c117f530ac144238637f6f9e02d79ed6c8d19",
+  "what": "the ascend kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.ascend)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_duck": {
+  "id": 121664077077152,
+  "sha1": "ec0080b2998d8cb1bc5b6694a277e851b929f57c",
+  "what": "the duck kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.duck)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ },
+ "kill_blastzone": {
+  "id": 127042928731850,
+  "sha1": "fe9fcbfc1f06c70bedc74c2f9e222aac4ccd4495",
+  "what": "the blastzone kill effect's card preview: 4x4 frames of 256 px, 0.1 s apart, on a stand-in, backdrop (22, 24, 30), no text (FlairSheets.kill.blastzone)",
+  "uploaded": "2026-11-17 13:26 UTC (the owner: \"for kill effects in shop can they be small previews? same with in inv?\"; tools/roblox/vfx/kill_sheets.py)"
+ }
+}
