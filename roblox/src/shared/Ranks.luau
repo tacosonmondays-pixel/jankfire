@@ -1,5 +1,7 @@
 --!strict
--- XP, level and rank. the level is the web game's, exactly (server/accounts.js levelOf / xpForLevel: no cap) and so is
+-- XP, level and rank. (16 Nov, agreed with the ranked session: the card shows the level only, and "rank" means the
+-- ranked ladder, which may use these tier names and colours for its own badge (RankedStyle). the tier maths and the
+-- diamond badge below stay for anyone who wants them.) the level is the web game's, exactly (server/accounts.js levelOf / xpForLevel: no cap) and so is
 -- the XP that counts on roblox (server/room.js): a kill on a player +20, a round won +50, 2 a minute of match time.
 -- the hub and the training hall give nothing (the web lobby and training mode don't). the web game has no rank, so
 -- the rank is ours: eight tiers over the levels, three divisions each (III, then II, then I), and the top tier shows

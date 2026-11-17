@@ -85,6 +85,12 @@ There are no assists. The web game has none, and its `tag()` only remembers the 
   - a crest from Master.
   - Inside the diamond, 1 to 3 bars show the division.
 
+**Ranked (17 Nov, place version 502).** Agreed with the play/party/ranked session (option B): "rank" means the ranked ladder, and the XP side is a level.
+- **The card:** shows LV and the XP bar (amber). On the right is the player's ranked badge with its line (for example "GOLD II · 2v2 · 1,640", "PLACEMENTS 2/5" or "UNRANKED"), drawn by the ranked session's `ReplicatedStorage.Jankfire.RankedStyle` (`badge(parent, size, ranked)`, `label(ranked)`, `color(ranked)`) from `card.ranked`. The player list rows show the same.
+- **Until that module and data exist:** a quiet plate with the level number ("LEVEL 17").
+- **The ranked data:** comes in through `Stats.cardExtra(fn)`, where `fn(target, viewer, card)` runs for every card and list row (private players too), each one pcall'd. The ranked session keeps its own store `JankfireRanked_v1`.
+- **The XP tier names** (Iron..Apex) left the card. Ranked may use those names and colours for its own badge.
+
 ## Custom profiles
 
 Everything is drawn in the GUI from frames, gradients and strokes. Nothing is uploaded, and no picture holds text,

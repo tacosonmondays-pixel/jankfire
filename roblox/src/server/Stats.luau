@@ -15,7 +15,8 @@
 --
 -- the remote ReplicatedStorage.JankfireRemotes.Profile (RemoteFunction), always a table { ok, why?, ... }:
 --   ("card", userId)    -> { card }: anyone in this server. a private player's card has no stats/weapons/recent
---   ("list")            -> { players = { { id, name, display, xp, look, private } } }: everyone here, for the player list
+--   ("list")            -> { players = { { id, name, display, xp, look, private, ranked? } } }: everyone here, for the player list
+-- a card or a row can carry more from other modules (Stats.cardExtra): ranked = the ranked session's (RankedStyle reads it)
 --   ("owned")           -> { owned = { border = { id = true }, ... } }: which card looks you may wear
 --   ("look", type, id)  -> { look }: wear one (it must be free or yours)
 --   ("private", bool)   -> { private }
@@ -258,6 +259,19 @@ local function hookMatches()
 end
 
 -- ------------------------------------------------------------------ the card
+-- other modules add to a card or a player-list row (the ranked session's module sets card.ranked): fn(target, viewer,
+-- card) runs for every card and every row, a private player's too (rank shows even when stats are hidden). each one
+-- runs in a pcall, so a slip there never breaks a card
+local extras: { (Player, Player?, any) -> () } = {}
+function Stats.cardExtra(fn: (Player, Player?, any) -> ()) table.insert(extras, fn) end
+local function extra(target: Player, viewer: Player?, card: any): any
+	for _, fn in extras do
+		local ok, err = pcall(fn, target, viewer, card)
+		if not ok then warn("[jankfire] stats: a card extra failed: " .. tostring(err)) end
+	end
+	return card
+end
+
 local SHOWN = { "k", "d", "m", "w", "rp", "rw", "sh", "hi", "hc", "hs", "hk", "dmg", "best", "time" }
 local function cardOf(target: Player, viewer: Player?): any
 	local s = st[target]
@@ -265,13 +279,13 @@ local function cardOf(target: Player, viewer: Player?): any
 	local card: any = { id = target.UserId, name = target.Name, display = target.DisplayName, ready = s ~= nil and s.ready }
 	if not d then
 		card.xp, card.look, card.private = 0, table.clone(CardStyles.DEFAULT), false
-		return card
+		return extra(target, viewer, card)
 	end
 	card.xp = math.floor(tonumber(d.xp) or 0)
 	card.look = { border = d.look.border, banner = d.look.banner, title = d.look.title }
 	card.private = d.private == true
 	card.since = d.since
-	if card.private and viewer ~= target then return card end
+	if card.private and viewer ~= target then return extra(target, viewer, card) end
 	local stats = {}
 	for _, k in SHOWN do stats[k] = math.floor((tonumber(d[k]) or 0) + 0.5) end
 	card.stats = stats
@@ -296,7 +310,7 @@ local function cardOf(target: Player, viewer: Player?): any
 	end
 	card.weapons = top
 	card.recent = d.recent
-	return card
+	return extra(target, viewer, card)
 end
 
 local function owns(p: Player, t: string, id: string): boolean
@@ -337,9 +351,9 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		local out = {}
 		for _, o in Players:GetPlayers() do
 			local d = dataOf(st[o])
-			table.insert(out, { id = o.UserId, name = o.Name, display = o.DisplayName, xp = if d then math.floor(tonumber(d.xp) or 0) else 0,
+			table.insert(out, extra(o, p, { id = o.UserId, name = o.Name, display = o.DisplayName, xp = if d then math.floor(tonumber(d.xp) or 0) else 0,
 				look = if d then { border = d.look.border, banner = d.look.banner, title = d.look.title } else table.clone(CardStyles.DEFAULT),
-				private = d ~= nil and d.private == true })
+				private = d ~= nil and d.private == true }))
 		end
 		return { ok = true, players = out }
 	elseif op == "owned" then

@@ -76,6 +76,46 @@ local function headshot(id: number): string
 	return ("rbxthumb://type=AvatarHeadShot&id=%d&w=150&h=150"):format(id)
 end
 
+-- the ranked session's look for a rank: ReplicatedStorage.Jankfire.RankedStyle (badge(parent, size, ranked),
+-- label(ranked), color(ranked)) when it is in the place; the card's `ranked` field is theirs (Stats.cardExtra)
+local rankedMod: any = false
+local function rankedStyle(): any
+	if rankedMod == false then
+		rankedMod = nil
+		local m = Shared:FindFirstChild("RankedStyle")
+		if m and m:IsA("ModuleScript") then
+			local ok, r = pcall(require, m)
+			if ok and type(r) == "table" and type(r.badge) == "function" then rankedMod = r end
+		end
+	end
+	return rankedMod
+end
+-- the mark on the right of a card or a row (16 Nov, agreed with the ranked session: "rank" means ranked, the XP side
+-- is a level): the ranked badge and its line, or with no ranked data a quiet plate with the level number.
+-- returns the mark, the line under it and that line's colour
+local function rankMark(parent: Instance, x: number, y: number, size: number, c: any): (GuiObject, string, Color3)
+	local RS = rankedStyle()
+	if RS and c.ranked ~= nil then
+		local ok, f = pcall(RS.badge, parent, size, c.ranked)
+		if ok and typeof(f) == "Instance" and f:IsA("GuiObject") then
+			f.Position = UDim2.fromOffset(x, y)
+			f.ZIndex = 3
+			local okL, lab = pcall(RS.label, c.ranked)
+			local okC, col = pcall(RS.color, c.ranked)
+			return f, if okL and type(lab) == "string" then lab else "", if okC and typeof(col) == "Color3" then col else T.SOFT
+		end
+	end
+	local lvl = Ranks.levelOf(tonumber(c.xp) or 0)
+	local plate = new("Frame", { Name = "LevelMark", BackgroundColor3 = T.CARD_HI, BackgroundTransparency = 0.15, BorderSizePixel = 0, ZIndex = 3,
+		Position = UDim2.fromOffset(x + math.floor(size * 0.12), y + math.floor(size * 0.12)), Size = UDim2.fromOffset(math.floor(size * 0.76), math.floor(size * 0.76)) }, parent)
+	T.corner(plate, math.floor(size * 0.18))
+	T.edge(plate, T.ACCENT, 0.55, 1.5)
+	local n = T.text(plate, "Level", tostring(lvl), math.max(12, math.floor(size * 0.34)), T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Center)
+	n.Size = UDim2.fromScale(1, 1)
+	n.ZIndex = 4
+	return plate, "LEVEL " .. lvl, T.MUTED
+end
+
 -- ------------------------------------------------------------------ the screen
 local gui = new("ScreenGui", { Name = "JankProfile", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 24,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false }, me:WaitForChild("PlayerGui"))
@@ -225,15 +265,13 @@ local function header(parent: Instance, c: any)
 	local track = new("Frame", { Name = "XpTrack", BackgroundColor3 = T.TRACK, BorderSizePixel = 0, ZIndex = 3 }, hdr)
 	at(track, x, barY, math.min(nameW, 360), 6)
 	T.corner(track, 3)
-	local fill = new("Frame", { BackgroundColor3 = rank.tier.color, BorderSizePixel = 0, Size = UDim2.fromScale(math.max(0.02, rank.progress), 1), ZIndex = 4 }, track)
+	local fill = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Size = UDim2.fromScale(math.max(0.02, rank.progress), 1), ZIndex = 4 }, track)
 	T.corner(fill, 3)
-	-- the rank badge on the right, its name under it
-	local badge = Ranks.badge(hdr, bs, rank)
-	badge.Position = UDim2.fromOffset(right, (H - bs) // 2 - 12)
-	badge.ZIndex = 3
-	for _, d in badge:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
-	local rn = txt(hdr, rank.name, if L.compact then 12 else 14, rank.tier.color:Lerp(Color3.new(1, 1, 1), 0.3), T.FONT_TITLE, Enum.TextXAlignment.Center)
-	at(rn, right - 30, (H - bs) // 2 - 12 + bs - 6, bs + 60, 18)
+	-- on the right: the ranked badge and its line (or the level), the line under it
+	local mark, line, col = rankMark(hdr, right, (H - bs) // 2 - 12, bs, c)
+	for _, d in mark:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
+	local rn = txt(hdr, line, if L.compact then 12 else 14, col, T.FONT_TITLE, Enum.TextXAlignment.Center)
+	at(rn, right - 50, (H - bs) // 2 - 12 + bs - 6, bs + 100, 18)
 	rn.ZIndex = 3
 	return hdr
 end
@@ -530,10 +568,8 @@ local function playersBlock(parent: Instance, y: number, W: number, list: { any 
 		at(s2, 20 + av, 34, rw - av - 170, 16)
 		s2.ZIndex = 3
 		local bs = rh - 22
-		local badge = Ranks.badge(b, bs, rank)
-		badge.Position = UDim2.fromOffset(rw - bs - 54, 6)
-		badge.ZIndex = 3
-		for _, d in badge:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
+		local mark = rankMark(b, rw - bs - 54, 6, bs, r)
+		for _, d in mark:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex += 3 end end
 		local lv = txt(b, ("LV %d"):format(rank.level), 13, T.TEXT, T.FONT_HEAVY, Enum.TextXAlignment.Right)
 		at(lv, rw - 58, 0, 46, rh)
 		lv.ZIndex = 3
