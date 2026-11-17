@@ -47,9 +47,19 @@ function Arena.centreX(site: Instance?): number
 	return if type(x) == "number" then x else 0
 end
 
--- the rotation's arenas: the built ones ArenaPool names, in its order, each once. with a team size, only the arenas that
--- take it (an arena's attribute "MaxTeam": the ported web maps, 17 Nov; Crate is too small for a 4v4); if none does,
--- all of them
+-- an arena's own switch (17 Nov, the owner: "suburb can you take it out until its finished"): its attribute "Enabled"
+-- set to false keeps it out of every match, vote and pick (Arena.pool below) while it stays built and in ArenaPool, so
+-- putting it back is one flip: workspace.Map.<name>:SetAttribute("Enabled", true) (or clear the attribute), then save.
+-- missing or true = in
+function Arena.enabled(name: string): boolean
+	local m = map()
+	local a = m and m:FindFirstChild(name)
+	return a ~= nil and a:GetAttribute("Enabled") ~= false
+end
+
+-- the rotation's arenas: the built, switched-on ones ArenaPool names, in its order, each once. with a team size, only
+-- the arenas that take it (an arena's attribute "MaxTeam": the ported web maps, 17 Nov; Crate is too small for a 4v4);
+-- if none does, all of them
 function Arena.pool(teamSize: number?): { string }
 	local m = map()
 	local s = m and m:GetAttribute("ArenaPool")
@@ -57,7 +67,7 @@ function Arena.pool(teamSize: number?): { string }
 	if type(s) == "string" and m then
 		for n in string.gmatch(s, "[^,%s]+") do
 			local a = m:FindFirstChild(n)
-			if a and not table.find(out, n) then
+			if a and a:GetAttribute("Enabled") ~= false and not table.find(out, n) then
 				table.insert(out, n)
 				local cap = a:GetAttribute("MaxTeam")
 				if not (teamSize and type(cap) == "number" and cap > 0 and teamSize > cap) then table.insert(fits, n) end
