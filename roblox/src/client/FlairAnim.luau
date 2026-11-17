@@ -209,7 +209,7 @@ end
 -- framed on your body (feet just above the bottom edge, a fifth over the head for raised arms), from the front a
 -- little to the side. returns nil with no avatar to copy
 type Scene = { holder: Frame, vp: ViewportFrame, world: WorldModel, cam: Camera, m: Model, lo: number, hi: number }
-local function scene(frame: GuiObject, ring: Color3?): Scene?
+local function scene(frame: GuiObject, ring: Color3?, spread: number?): Scene?
 	local src = avatar()
 	if not src then return nil end
 	local z = frame.ZIndex + 3
@@ -226,7 +226,7 @@ local function scene(frame: GuiObject, ring: Color3?): Scene?
 	buildSet(world, lo, ring, false)
 	local cam = new("Camera", { FieldOfView = 30 }, vp)
 	vp.CurrentCamera = cam
-	local r = (hi - lo) * 0.64
+	local r = (hi - lo) * (spread or 0.64) -- (half the height the frame shows: a kill effect's card a little wider)
 	local d = r / math.tan(math.rad(cam.FieldOfView / 2))
 	local look = Vector3.new(0, lo + r * 0.93, 0)
 	local face = Vector3.new(0, 0, -1)
@@ -360,19 +360,85 @@ local function kill(frame: GuiObject, id: string): Handle?
 	local F = flair()
 	local info = F and F.info("kill", id)
 	if not info then return nil end
-	local sc = scene(frame, rarityColor("kill", id))
+	local sc = scene(frame, rarityColor("kill", id), 0.74)
 	if not sc then return nil end
 	local stand = idle(sc.m)
 	local K = killfx()
 	local live3d = K ~= nil and K.VIEWPORT == true
 	local dur = math.max(0.8, tonumber(info.dur) or 1.2)
-	local t, running = 0, false
+	-- (each loop: you stand a moment, the effect plays, a short beat, you're back. cards side by side start apart so a row
+	-- never goes blank at once, and the camera follows the body while it rises or flies, so it never leaves the tile)
+	local START, REST = 0.7, 0.3
+	local t, running = -math.random() * 1.6, false
 	local undo: (() -> ())? = nil
+	local cam0 = sc.cam.CFrame
+	local body = {}
+	local function collect()
+		table.clear(body)
+		for _, p in sc.m:GetChildren() do if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then table.insert(body, p) end end
+	end
+	collect()
+	local function centre(): Vector3?
+		local sum, n = Vector3.zero, 0
+		for _, p in body do
+			if p.Transparency < 0.95 and p.LocalTransparencyModifier < 0.95 then sum += p.Position; n += 1 end
+		end
+		return if n > 0 then sum / n else nil
+	end
+	local c0 = centre() or Vector3.zero
+	local follow = Vector3.zero
+	-- (what the run adds to the card, KillFx parenting its pieces here: a duck, chickens, wedges. once nothing of the
+	-- body or those is in view for a moment, the loop ends early, so the card is never long empty)
+	local props: { Instance } = {}
+	local addCon = sc.world.ChildAdded:Connect(function(c) if running then table.insert(props, c) end end)
+	local tanHalf = math.tan(math.rad(sc.cam.FieldOfView / 2)) * 1.05
+	local function inView(pos: Vector3): boolean
+		local rel = sc.cam.CFrame:PointToObjectSpace(pos)
+		if rel.Z > -0.1 then return false end
+		return math.abs(rel.Y) / -rel.Z < tanHalf and math.abs(rel.X) / -rel.Z < tanHalf
+	end
+	local function seen(): boolean
+		for _, p in body do
+			if p.Transparency < 0.95 and p.LocalTransparencyModifier < 0.95 and inView(p.Position) then return true end
+		end
+		for _, x in props do
+			if x.Parent then
+				if x:IsA("BasePart") then
+					if x.Transparency < 0.95 and inView(x.Position) then return true end
+				else
+					for _, q in x:GetDescendants() do
+						if q:IsA("BasePart") and q.Transparency < 0.95 and inView(q.Position) then return true end
+					end
+				end
+			end
+		end
+		return false
+	end
+	local emptyFor = 0
 	local h: Handle
 	local function reset()
 		if undo then pcall(undo); undo = nil end
-		if live3d and K then pcall(K.reset, sc.m) end
+		if live3d and K and id ~= "none" then
+			pcall(K.reset, sc.m)
+			-- (a run that ended on its own leaves the body hidden for good, as a dead body should: a fresh copy of you each
+			-- loop, like the equip screen's stand-in)
+			local src = avatar()
+			if src then
+				local fresh = src:Clone()
+				fresh:PivotTo(CFrame.identity)
+				fresh.Parent = sc.world
+				sc.m:Destroy()
+				sc.m = fresh
+				collect()
+				if stand then pcall(function() (stand :: AnimationTrack):Stop(0) end) end
+				stand = idle(fresh)
+			end
+		end
 		running = false
+		follow = Vector3.zero
+		sc.cam.CFrame = cam0
+		table.clear(props)
+		emptyFor = 0
 	end
 	h = {
 		frame = frame, kind = "kill", root = sc.holder, dead = false,
@@ -380,15 +446,29 @@ local function kill(frame: GuiObject, id: string): Handle?
 			if stand then stand:AdjustSpeed(if on then 1 else 0) end
 			if not on or not (live3d or id == "none") then return end
 			t += dt
-			if not running and t >= 0.8 then
+			if not running and t >= START then
 				running = true
 				if id == "none" then undo = gibs(sc.m, sc.lo)
 				elseif K then pcall(K.play, sc.m, id, { preview = true, parent = sc.world, camera = sc.cam }) end
 			end
-			if running and t >= 0.8 + dur + 0.9 then reset(); t = 0 end
+			if running then
+				-- (follow up and sideways, never down: a body sinking into its grave stays framed with its stone)
+				local c = centre()
+				if c then
+					local d = (c - c0) * Vector3.new(0.6, 0.9, 0.6)
+					follow = follow:Lerp(Vector3.new(d.X, math.max(0, d.Y), d.Z), math.min(1, dt * 8))
+				end
+				sc.cam.CFrame = cam0 + follow
+				if t > START + 0.2 then
+					emptyFor = if seen() then 0 else emptyFor + dt
+					if emptyFor >= 0.25 then reset(); t = 0; return end
+				end
+			end
+			if running and t >= START + dur + REST then reset(); t = 0 end
 		end,
 		stop = function()
 			h.dead = true
+			addCon:Disconnect()
 			reset()
 			sc.holder:Destroy()
 		end,

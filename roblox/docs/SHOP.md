@@ -490,6 +490,19 @@ With KillFx's viewport option in (the flair session's place version 639), tested
   (`shop-kill-preview-on-you-2.jpg`).
 - The owner's inventory was put back.
 
+**The card loop** (place versions 651 to 668, after the main session saw too many empty cards):
+- Each loop starts with you standing (0.7 s); the effect plays; a beat of 0.3 s; then you're back.
+- Cards side by side start up to 1.6 s apart, so a row never goes blank at once.
+- The camera follows the body up and sideways while it rises or flies (Ascend, Balloons, Yeet), never down, so
+  Tombstone stays framed with its stone. The frame is a little wider for kill effects.
+- Once nothing of the body or the run's pieces (the duck, chickens, wedges) is in view for 0.25 s, the loop ends
+  early.
+- Each loop starts from a fresh copy of you. A KillFx run that ends on its own hides the body for good, as a dead
+  body should, and `K.reset` only undoes a run still going, so after the first loop the cards stayed empty until
+  this fix (version 668).
+- Tested (version 668), with captures several loops in (`docs/shop/shop-kill-cards-loop-1.jpg`, `-2.jpg`): the
+  avatar comes back every loop, and five of six cards show you or the effect at any moment.
+
 ### Finishers on skin cards (17 Nov)
 
 The finishers session's cinematic finishers (roblox/docs/FINISHERS.md) belong to a few top-tier skins:
