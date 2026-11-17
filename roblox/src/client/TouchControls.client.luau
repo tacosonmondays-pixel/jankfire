@@ -415,14 +415,14 @@ local function build()
 	-- the weapon chips (slots 1-3), bottom middle; the ammo plate and the item plate stack over them (moved there
 	-- on a phone: the corner is the thumb's, like the web's touch.css)
 	chips = T.new("Frame", { Name = "Chips", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -24),
-		Size = UDim2.fromOffset(232, 30), BackgroundTransparency = 1 }, pad) :: Frame
+		Size = UDim2.fromOffset(312, 30), BackgroundTransparency = 1 }, pad) :: Frame
 	T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center,
 		Padding = UDim.new(0, 6), SortOrder = Enum.SortOrder.LayoutOrder }, chips)
 	for i = 1, 3 do
 		local f = newFace(chips, "Slot" .. i, "", false)
 		f.AnchorPoint = Vector2.zero
 		f.LayoutOrder = i
-		f.Size = UDim2.fromOffset(73, 30)
+		f.Size = UDim2.fromOffset(100, 30)
 		f.TextSize = 11
 		f.FontFace = T.FONT_BOLD
 		f.TextTruncate = Enum.TextTruncate.AtEnd
@@ -777,11 +777,15 @@ local function hubButton(gname: string, child: string?): GuiObject?
 	for _, c in sc:GetChildren() do if c:IsA("GuiObject") then return c end end -- (LoadoutUI's: a holder frame)
 	return nil
 end
-local function placeHub(on: boolean)
+local function placeHub(mode: string?) -- "hub": the right side; "away": off the screen (a fight outside a match)
 	for _, h in HUB do
 		local o = hubButton(h[1], h[2])
 		if o then
-			if on then
+			if mode == "away" then
+				if not moved[o] then moved[o] = o.Position end
+				local want = UDim2.new(0, -4000, moved[o].Y.Scale, moved[o].Y.Offset)
+				if o.Position ~= want then o.Position = want end
+			elseif mode == "hub" then
 				if not moved[o] then moved[o] = o.Position end
 				local orig = moved[o]
 				-- right edge 160 points in from the right (JUMP, SLIDE and HOOK keep the corner), 76 lower than on the left
@@ -929,12 +933,18 @@ RunService.Heartbeat:Connect(function()
 			end
 		end
 	end
-	-- the HUD boxes, over the chips (design pixels of the HUD's own scaled frame)
-	if fight then
-		placeHudBox("Ammo", UDim2.new(0.5, -116, 1, -24 - 30 - 6 - 64), function() Keys.tap(Enum.KeyCode.R) end)
-		placeHudBox("Utility", UDim2.new(0.5, -116, 1, -24 - 30 - 6 - 64 - 6 - 42), function() itemPress(true) end, function() itemPress(false) end)
+	-- the HUD boxes, over the chips (design pixels of the HUD's own scaled frame), in every zone (the hub has a
+	-- holstered ammo plate too); the speed readout goes up over the health plate, clear of the chips
+	placeHudBox("Ammo", UDim2.new(0.5, -116, 1, -24 - 30 - 6 - 64), function() Keys.tap(Enum.KeyCode.R) end)
+	placeHudBox("Utility", UDim2.new(0.5, -116, 1, -24 - 30 - 6 - 64 - 6 - 42), function() itemPress(true) end, function() itemPress(false) end)
+	local hudGui = pg:FindFirstChild("JankfireHud")
+	local speed = hudGui and hudGui:FindFirstChild("Scaled") and (hudGui :: any).Scaled:FindFirstChild("Speed")
+	if speed and speed:IsA("GuiObject") then
+		if not moved[speed] then moved[speed] = speed.Position end
+		local want = UDim2.new(0, 24, 1, -88 - 8 - 64)
+		if speed.Position ~= want then speed.Position = want end
 	end
-	placeHub(hub)
+	placeHub(if hub then "hub" elseif fight then "away" else nil)
 end)
 
 RunService.RenderStepped:Connect(function()

@@ -7,6 +7,9 @@
 --   Keys.press(code, down)  a button goes down / up. code: an Enum.KeyCode, or Enum.UserInputType.MouseButton1/2/3
 --   Keys.tap(code)          down and up at once
 --   Keys.isDown(code)       the real key, or a touch button holding it (the crouch pose reads C this way)
+--   Keys.fromTouch(io)      true for a touch button's pretend press. USE THIS, never io.Touch: a real InputObject
+--                           throws on a field it doesn't have ("Touch is not a valid member of InputObject"; it bit the
+--                           settings page's Binds and the emote wheel on 17 Nov)
 --   Keys.isTouch()          a phone or a tablet: touch and no keyboard (a touch laptop plays with its keys). Studio
 --                           tests force it with the attribute TouchForce = true on the player, or on StarterPlayer
 --                           (set in Edit before Play, so the HUD is made the phone's way from the start; take it off
@@ -28,6 +31,10 @@ function Keys.isTouch(): boolean
 	local me = Players.LocalPlayer
 	if (me and me:GetAttribute("TouchForce") == true) or StarterPlayer:GetAttribute("TouchForce") == true then return true end
 	return UIS.TouchEnabled and not UIS.KeyboardEnabled
+end
+
+function Keys.fromTouch(io: any): boolean
+	return typeof(io) == "table" and io.Touch == true
 end
 
 function Keys.began(fn: Handler)

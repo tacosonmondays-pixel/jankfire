@@ -9,6 +9,9 @@ Ported from the web game (`public/js/touch.js`, `touch.css`, `autofire.js`), 17 
   (a table: `KeyCode`, `UserInputType`, `UserInputState`, `Touch = true`, gameProcessed false). Also `Keys.isDown`
   (real key or a touch button holding it), `Keys.isTouch`, `Keys.name`, `Keys.say` (a hint's keys swapped for button
   names on a phone).
+  **Rule for every listener:** tell a touch press apart with `Keys.fromTouch(io)`, never `io.Touch`. A real
+  InputObject throws on a field it doesn't have ("Touch is not a valid member of InputObject"); on 17 Nov that broke the
+  settings page's Binds (08:55-08:59 UTC) and the emote wheel until both guarded it.
 - `src/client/TouchControls.client.luau`: the layer, the stick, the look, auto fire, the HUD moves.
 - One-line hooks (a listener moved from `UIS.InputBegan` to `Keys.began`, etc.): `Move.client` (Shift, C, Space, E),
   `Arsenal.client` (fire, aim, R, 1-3), `Utility.client` (G down/up, ad numbers, a tapped ad presses its number,
@@ -52,3 +55,14 @@ test fakes the screen:
   (ids: fire, jump, crouch, aim, hook, melee, swap, reload), `stick:<x>,<y>` (`stick:0,0` lets go), `look:<dx>,<dy>`,
   `chip:<n>`, `item:down|up`, `ammo`, `auto:on|off`, `settings`, `state` (writes `TouchState` JSON).
 - Real touches can't be sent; the hook calls the same press functions the buttons do.
+
+## Tested (17 Nov, place versions 560 and 572, phone box 844x390 and tablet box 1133x744)
+
+Sheet: `docs/touch/touch-sheet.jpg`. In training, through the TouchTest presses (the same press functions the buttons
+call): look 100 pt = 50.5 deg (the web's 0.0088 rad/pt); stick walks 10 m/s, a full push runs 14.5 m/s (Shift),
+stops dead on release; JUMP; HOOK on and off the rope; FIRE held, 4 hits on the Stand; AIM toggle 80 -> 71 deg and
+back, lit while on; auto fire 4 hits on the body, 0 through a wall; aim assist pulls onto the body (0.2 deg after
+0.6 s), nothing with strength 0, no target through a wall; RELOAD; chips 1/2/3; SWAP back to the last weapon; STAB =
+katana; EMOTE pill opens the touch wheel and an emote plays; SETTINGS pill opens the settings page; Loadout phone
+pages; Shop's own phone layout. Not checked: a real phone, two-finger use (Studio sends one pointer), slide speed
+(the run hit a wall), the Laptop item use.
