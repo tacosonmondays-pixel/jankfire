@@ -509,7 +509,7 @@ tabs = {
 		switch({ key = "snd.hit", label = "HIT SOUND", sub = "a tick when your shot lands, a ring on a headshot" })
 		switch({ key = "snd.kill", label = "KILL SOUND", sub = "a chime when you take someone out" })
 	end },
-	{ id = "graphics", title = "GRAPHICS", reset = { "gfx.preset", "gfx.shadows", "gfx.particles", "gfx.bloom", "gfx.colour", "gfx.view", "gfx.othersKill", "gfx.othersSkin", "gfx.othersFinisher", "gfx.speedLines", "gfx.fps" }, build = function()
+	{ id = "graphics", title = "GRAPHICS", reset = { "gfx.preset", "gfx.shadows", "gfx.particles", "gfx.bloom", "gfx.colour", "gfx.view", "gfx.othersKill", "gfx.othersSkin", "gfx.othersFinisher", "gfx.speedLines", "gfx.titles", "gfx.fps" }, build = function()
 		local NAMES = { low = "LOW", med = "MEDIUM", high = "HIGH" }
 		choice({ key = "gfx.preset", label = "QUALITY", options = { { "auto", "AUTO" }, { "low", "LOW" }, { "med", "MEDIUM" }, { "high", "HIGH" } },
 			subFn = function()
@@ -527,6 +527,7 @@ tabs = {
 		choice({ key = "gfx.view", label = "VIEW DISTANCE", sub = "how near you get before a far place is drawn", options = { { "near", "NEAR" }, { "normal", "NORMAL" }, { "far", "FAR" } }, marks = "gfx.preset" })
 		section("OTHER PLAYERS")
 		switch({ key = "gfx.othersKill", label = "OTHERS' KILL EFFECTS", sub = "off: their kills play no effect on your screen" })
+		switch({ key = "gfx.titles", label = "SHOW TITLES", sub = "card titles over players' heads" })
 		switch({ key = "gfx.othersSkin", label = "OTHERS' SKIN EFFECTS", sub = "moving wraps and flames on their weapons" })
 		switch({ key = "gfx.othersFinisher", label = "OTHERS' FINISHERS", sub = "off: finishers you only watch are skipped; yours still play" })
 		section("READOUT")

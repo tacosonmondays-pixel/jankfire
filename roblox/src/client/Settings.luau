@@ -32,6 +32,7 @@ Settings.DEFAULTS = {
 	["gfx.speedLines"] = true, -- (fov.kick and gfx.speedLines: the VFX session's SpeedLines.client reads them, nil = on)
 	["gfx.view"] = "normal", ["gfx.shake"] = true, ["gfx.othersKill"] = true, ["gfx.othersSkin"] = true,
 	["gfx.othersFinisher"] = true, -- (the finisher session's FinisherClient reads it: off skips finishers you only watch)
+	["gfx.titles"] = true, -- (card titles over players' heads: the cosmetics session's OverheadTitles.client)
 	["gfx.fps"] = false,
 	-- hud and gameplay
 	["hud.scale"] = 1, ["hud.dmg"] = true, ["hud.hits"] = true, ["hud.feed"] = true, ["hud.keys"] = false,

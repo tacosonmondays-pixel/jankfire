@@ -34,7 +34,7 @@ respawn. In Studio without API access the save runs in memory and the page's foo
   centre dot, opacity, show spread, hide while aiming, and the share code.
 - **AUDIO.** Master, weapons, effects and interface, 0 to 150 %, and the hit and kill sounds on or off.
 - **GRAPHICS.** Quality AUTO / LOW / MEDIUM / HIGH (AUTO follows Roblox's own graphics level), shadows, particles,
-  bloom and sun rays, colour grading, speed lines (streaks, wind and its sound: SpeedLines.client), view distance, other players' kill effects, skin effects and finishers
+  bloom and sun rays, colour grading, speed lines (streaks, wind and its sound: SpeedLines.client), view distance, other players' kill effects, titles over heads (OverheadTitles.client), skin effects and finishers
   (FinisherClient reads `gfx.othersFinisher`: off skips finishers you only watch; yours and the one you die to still
   play), FPS counter.
 - **HUD.** HUD size, damage numbers, hit markers, kill feed, key hints, other players' crate openings, quick join pop-ups (QuickJoinUI), colour-blind
