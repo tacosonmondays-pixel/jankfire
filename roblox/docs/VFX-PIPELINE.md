@@ -31,6 +31,7 @@ Our own pipeline; nothing in it comes from anyone else's recipes.
 | frame strips | `tools/roblox/vfx/strip.py` |
 | the critic's brief | `tools/roblox/vfx/critic_brief.md` |
 | proof (strips, scores) | `roblox/docs/vfx/` |
+| technique notes from three open-source Roblox VFX references, and the claims to test | `roblox/docs/VFX-STUDY.md` |
 
 ## 1. Reference capture
 
@@ -67,6 +68,14 @@ one-shot flipbook plays at its `FlipbookFramerate` (default 1 a second, at most 
 every one-shot emitter sets it to frames / lifetime (`oneshot()` in Fx.luau) and short-lived ones use 16-frame sheets; `FlipbookBlendFrames`
 cross-fades frames (on for smoke and fire, off for flashes); a particle's `Size` is half its width; a particle's Size
 and Color belong to its emitter (pools cycle through several emitters so a new shot does not recolour the last one).
+
+Outside art (decided 17 Nov): sheets come from our own references, Blender or maths. The one exception so far is the
+muzzle flash's flame shapes (Kenney's Particle Pack, CC0; round 13). **Fallback for an effect that stalls** (as the
+frag did for seven rounds): Unity Labs' 2016 flipbooks, which Unity released under CC0 (public domain), not its usual
+Unity-only sample licence: 28 Houdini-simulated sheets of smoke, clouds, fire, fireballs and explosions, with links
+alive on 17 Nov ([the post](https://unity.com/blog/engine-platform/free-vfx-image-sequences-flipbooks)). They are not
+downloaded. A download is the owner's call: tell the main session which effect stalled, and it asks for that one
+download (name, source, size).
 
 ## 3. Capture in Studio
 
@@ -142,7 +151,7 @@ scanline Textures, every part rewritten every frame): no Texture objects at all 
 dressed and written per frame only during the 1.5 s build-in and the 0.45 s scan-out, and then only when a value
 changes by a visible step. A standing hologram's frame is the one Highlight (two writes, only on a visible step) and
 the one sweep disc (skipped with `band = false, glitch = false`). One RenderStepped for all; nothing past 260 studs;
-in Studio it obeys `FxTimeScale`. Highlights are capped at 31 on a client: a hologram uses one.
+in Studio it obeys `FxTimeScale`. Highlights are capped at 255 on a client, and disabled ones still count (the docs, checked 16 Nov; this line said 31 before): a hologram uses one.
 
 ## High-tier skins (`SkinSets.FX`, the gun models session's spec)
 
