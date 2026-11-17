@@ -16,6 +16,57 @@ invites to friends in other servers, reserved match servers) are written but **o
 Inspired by the big Roblox duel games and by Valorant, Overwatch and Rocket League; nothing is copied. Research notes
 with sources are at the end.
 
+## 0. Second pass: the owner's spec (17 Nov 2026)
+
+The owner, relayed by the main session: "There will be a party button that displays everyone in the lobby, if you
+invite them and perhaps even trade and you can view their card. Once invited there will be a play button, press it,
+and it will display 1v1 2v2 3v3 4v4 and there will be a toggle for rank that will have a flame like transition and add
+like a cool fire effect maybe? It'll also display your rank with a bar and a number on the right of the bar with how
+much progression you're missing before next rank up like 34/100 or whatever. Game modes will be there too? ... pads
+will be standard gameplay!!"
+
+What changes from the first build (this section wins where it disagrees with sections 1, 2 and 4):
+
+1. **PARTY button** (HUD, under PLAY, key **J**; also in the lobby).
+   - It opens a list of everyone in the server, your party first.
+   - Each row has the player's headshot, name and ranked badge, then **INVITE**, **VIEW CARD** (opens their player
+     card, the player-cards session's screen) and **TRADE**.
+   - TRADE is a disabled slot: trading is its own system with confirm screens, and a later session builds it.
+   - Your party's rows have LEAD and KICK (for the leader), and the panel has **LEAVE PARTY**.
+2. **A party no longer needs the lobby room.**
+   - You can invite from the hub, and a party of people walking around the hub is a party.
+   - The lobby room opens when someone presses **PLAY**:
+     - the leader pressing PLAY takes every member who isn't in a match into the room;
+     - a member pressing PLAY goes in alone.
+   - **LEAVE LOBBY** takes you back to the hub, still in the party. LEAVE PARTY (in the PARTY panel) takes you out.
+   - Accepting an invite to a party whose room is open puts you in the room.
+   - FIND MATCH takes every member who isn't in a pad match. After the match the whole party lands in the room.
+3. **The Play screen:**
+   - Left panel tabs: **DUELS** | **MODES**.
+   - DUELS shows the 1V1 / 2V2 / 3V3 / 4V4 cards (1V1V1 too while ranked is off) and a **RANKED** switch.
+   - MODES is an empty, hooked slot: `PlayConfig.EXTRA` lists modes when a later session ports JANKFIRE's classic
+     modes. The Play screen draws a card per entry and sends the pick to the server's queue unchanged.
+4. **The RANKED switch has a flame transition.** Turning it on:
+   - sends fire sweeping up the mode panel: a rising front of flame tongues, a warm gradient, a glow along the bottom;
+   - bursts embers;
+   - then leaves a low flicker of flames and a few rising embers while ranked stays on.
+   - Turning it off cools the panel back down.
+   - All of it is drawn from frames and gradients (nothing uploaded, so no image moderation). A flipbook from the VFX
+     session can replace the tongues later.
+5. **Rank points.** The rank shown is a ladder of **rank points (RP)**, 100 per division, on top of the hidden MMR (the
+   Glicko-2 rating, which still decides matchmaking). This is the kind of system Valorant's RR is.
+   - The rank display is the badge, the rank name, a bar, and right of the bar the points: **34/100**. APEX shows its
+     points with no cap ("APEX 245 RP").
+   - A win gives about 20 RP and a loss takes about 20. The gap between where your MMR says you belong and where your
+     RP is moves both: if your MMR is above your rank, you gain more and lose less, and the other way round.
+     - `ΔRP = ±20 + (MMR's ladder spot − your ladder spot) / 10`, then clamped: a win 8 to 40, a loss −6 to −40.
+     - MMR's ladder spot: each 50 rating is 100 RP, with BRONZE III at 1150 (the tier table in section 4).
+   - Placements: after the 5th, your RP starts at the MMR's ladder spot (rounded down to 10). It is capped at DIAMOND I,
+     so 5 lucky wins can't place anyone in MASTER.
+   - RP never drops below 0 (BRONZE III, 0/100). 100 RP is a promotion; going below the division's 0 is a demotion.
+   - The rating number is no longer shown anywhere. The searching line shows only the time.
+6. **Pads stay standard gameplay:** the walk-on duels as they are. The Play menu queues the same duels.
+
 ## 1. The flow
 
 1. **PLAY** (button over PROFILE in the hub HUD, or **M**): you go to a private lobby. If you are not in a party you
