@@ -80,6 +80,9 @@
         "FlairKill": {
           "$className": "RemoteEvent"
         },
+        "Finisher": {
+          "$className": "RemoteEvent"
+        },
         "Profile": {
           "$className": "RemoteFunction"
         },

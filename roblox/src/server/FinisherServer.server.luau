@@ -1,0 +1,228 @@
+--!strict
+-- FINISHERS on the server (shared/Finishers.luau; roblox/docs/FINISHERS.md). It watches the kills and the rounds:
+--   * a round won within Finishers.FRESH s of its last kill, by the killer's team, the killer still standing, the victim
+--     a player, the killer's skin on the weapon that killed owning a finisher -> the short cut to the killer and the
+--     victim; when that round wins the match -> the full cut to everyone in the match
+--   * a classic mode's end (Matches.finish) right after its last kill -> the full cut to everyone in it
+-- What it sends (JankfireRemotes.Finisher, made here if missing): the last Finishers.LEAD s of the match recording
+-- (Recorder.recent), cut down to the killer and the victim, plus who's who. The camera, the bodies and the effects are
+-- the client's (client/Finisher.luau). Nothing here holds a round or a match: the cuts fit the windows that are already
+-- there (the 3 s between rounds, the end screen), and the client ends one early when a round starts.
+-- Studio only: ServerStorage.JankFinisherTest (BindableFunction):
+--   ("arm", player, skinId?, kind?, all?)  the player's next kill plays that skin's finisher ("full" | "short"), to the
+--                                         player (all = true: to everyone in the server), whatever they wear
+--   ("kill", player, n|name, weapon?)      kill a live training dummy now through Fight.hurt (with that weapon, default ar)
+--   ("decide", table)                      Finishers.decide on a table
+--   ("state")                              what is armed, the last kill of each live match
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ServerStorage = game:GetService("ServerStorage")
+
+local Jankfire = script.Parent
+local Shared = ReplicatedStorage:WaitForChild("Jankfire")
+local Finishers = require(Shared:WaitForChild("Finishers")) :: any
+local GunSkins = require(Shared:WaitForChild("GunSkins")) :: any
+local Weapons = require(Shared:WaitForChild("Weapons")) :: any
+local Fight = require(Jankfire:WaitForChild("Fight")) :: any
+local Matches = require(Jankfire:WaitForChild("Matches")) :: any
+local Recorder = require(Jankfire:WaitForChild("Recorder")) :: any
+local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
+
+local remote = Remotes:FindFirstChild("Finisher") :: RemoteEvent?
+if not remote then
+	local r = Instance.new("RemoteEvent")
+	r.Name = "Finisher"
+	r.Parent = Remotes
+	remote = r
+end
+local R = remote :: RemoteEvent
+
+type Kill = { k: any, v: any, w: string, t: number, skin: string?, fid: string? }
+local lastKill: { [any]: Kill } = {} -- each live match's last kill by a player
+local played: { [any]: boolean } = {} -- matches whose last round already played the full cut
+local armed: { [Player]: { skin: string?, kind: string, all: boolean } } = {} -- (Studio tests)
+
+-- the weapon a kill counts as (a parry is the katana's)
+local function weaponOf(w: string): string
+	return if w == "parry" then "katana" else w
+end
+local function isMelee(w: string): boolean
+	local row = Weapons.list[w]
+	return row ~= nil and row.kind == "melee"
+end
+
+-- the clip cut down to two fighters: every frame keeps only their records
+local function onlyTwo(clip: any, a: number, b: number): any
+	local REC = clip.rec or 24
+	local frames = {}
+	for _, f in clip.frames do
+		local src = f.b
+		local n = buffer.len(src) // REC
+		local keep = {}
+		for k = 0, n - 1 do
+			local slot = buffer.readu32(src, k * REC)
+			if slot == a or slot == b then table.insert(keep, k) end
+		end
+		local out = buffer.create(#keep * REC)
+		for i, k in keep do buffer.copy(out, (i - 1) * REC, src, k * REC, REC) end
+		table.insert(frames, { s = f.s, b = out })
+	end
+	local ev = {}
+	for _, e in clip.ev do
+		local who = e.id or e.k
+		if (e.t == "shot" or e.t == "swing") and (who == a) then table.insert(ev, e)
+		elseif e.t == "kill" and e.v == b then table.insert(ev, e) end
+	end
+	-- (string keys: a sparse number-keyed table would not survive the remote whole)
+	local info = {}
+	for slot, i in clip.info do if slot == a or slot == b then info[tostring(slot)] = i end end
+	return { t0 = clip.t0, t1 = clip.t1, frames = frames, ev = ev, info = info, weapons = clip.weapons, rec = REC }
+end
+
+-- send a finisher of kill `x` to `viewers`
+local function play(x: Kill, kind: string, viewers: { Player }, fid: string, skin: string)
+	local clip, slots = Recorder.recent(x.k, Finishers.LEAD + 0.25)
+	if not clip or not slots then return false, "not recorded" end
+	local ks, vs = slots[x.k], slots[x.v]
+	if not ks or not vs then return false, "not both in the recording" end
+	local c = onlyTwo(clip, ks, vs)
+	if #c.frames < 4 then return false, "too short" end
+	-- (the killer's look in the clip wears the finisher's skin on the weapon that killed: a test arms one they don't wear)
+	local w = weaponOf(x.w)
+	local ki = c.info[tostring(ks)]
+	if ki then
+		ki = table.clone(ki)
+		local skins = if type(ki.skins) == "string" then ki.skins else ""
+		local list = {}
+		for wid, sk in string.gmatch(skins, "([%w_]+)=([%w_]+)") do if wid ~= w then table.insert(list, wid .. "=" .. sk) end end
+		table.insert(list, w .. "=" .. skin)
+		ki.skins = table.concat(list, ";")
+		c.info[tostring(ks)] = ki
+	end
+	local msg = { t = "finisher", id = fid, kind = kind, clip = c, focus = ks, victim = vs, w = w, skin = skin, melee = isMelee(w),
+		by = x.k.name, byId = if x.k.kind == "player" then (x.k.ref :: Player).UserId else nil, kill = x.t,
+		vid = if x.v.kind == "player" then (x.v.ref :: Player).UserId else nil }
+	for _, p in viewers do
+		if p.Parent then
+			local m = table.clone(msg)
+			m.role = if x.k.ref == p then "killer" elseif x.v.ref == p then "victim" else "watch"
+			R:FireClient(p, m)
+		end
+	end
+	return true, ("%s %s to %d"):format(fid, kind, #viewers)
+end
+
+-- the finisher a killer's skin on that weapon owns
+local function ownedFor(k: any, w: string): (string?, string?)
+	if k.kind ~= "player" then return nil, nil end
+	local skin = GunSkins.skinFor(k.ref :: Player, w)
+	local fid = Finishers.forSkin(skin)
+	return fid, skin
+end
+
+local function everyone(m: any): { Player }
+	local out = {}
+	for _, list in m.teams do for _, p in list do if p.Parent then table.insert(out, p) end end end
+	return out
+end
+
+local function teamOf(m: any, p: Player): number?
+	for t, list in m.teams do if table.find(list, p) then return t end end
+	return nil
+end
+
+-- ------------------------------------------------------------------ the hooks
+Fight.onKill(function(info: any)
+	local k, v = info.k, info.v
+	if not k or k == v or k.kind ~= "player" then return end
+	local kp = k.ref :: Player
+	local w = weaponOf(info.w)
+	local t = os.clock()
+	local a = armed[kp]
+	if a then -- (a Studio test: this kill plays it, match or not)
+		armed[kp] = nil
+		local skin = a.skin or select(2, ownedFor(k, w))
+		local fid = Finishers.forSkin(skin)
+		if not fid or not skin then return end
+		task.defer(function() -- (after the recorder has logged the kill)
+			local ok, why = play({ k = k, v = v, w = info.w, t = t }, a.kind, if a.all then Players:GetPlayers() else { kp }, fid, skin)
+			kp:SetAttribute("FinisherTestResult", ("%s: %s"):format(tostring(ok), tostring(why)))
+		end)
+		return
+	end
+	local m = Matches.raw(kp)
+	if not m then return end
+	local fid, skin = ownedFor(k, w)
+	lastKill[m] = { k = k, v = v, w = info.w, t = t, fid = fid, skin = skin }
+end)
+
+Matches.onRound(function(m: any, winner: number)
+	local x = lastKill[m]
+	if not x then return end
+	local kp = x.k.ref :: Player
+	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
+		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "round", wins = m.wins[winner],
+		need = Matches.WIN, classic = m.rules ~= nil })
+	if not kind or not x.fid or not x.skin then return end
+	if kind == "full" then
+		played[m] = true
+		play(x, "full", everyone(m), x.fid, x.skin)
+	else
+		local viewers = { kp }
+		if x.v.kind == "player" and (x.v.ref :: Player).Parent then table.insert(viewers, x.v.ref) end
+		play(x, "short", viewers, x.fid, x.skin)
+	end
+end)
+
+Matches.onEnd(function(m: any, winner: number?)
+	local x = lastKill[m]
+	local done = played[m]
+	lastKill[m] = nil
+	played[m] = nil
+	if done or not x or not winner then return end
+	local kp = x.k.ref :: Player
+	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
+		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "end", classic = m.rules ~= nil })
+	if kind and x.fid and x.skin then play(x, kind, everyone(m), x.fid, x.skin) end
+end)
+
+Players.PlayerRemoving:Connect(function(p) armed[p] = nil end)
+
+-- ------------------------------------------------------------------ Studio tests (ServerStorage.JankFinisherTest)
+if RunService:IsStudio() then
+	local old = ServerStorage:FindFirstChild("JankFinisherTest")
+	if old then old:Destroy() end
+	local fn = Instance.new("BindableFunction")
+	fn.Name = "JankFinisherTest"
+	fn.OnInvoke = function(op: string, a: any, b: any, c: any, d: any): any
+		if op == "arm" and typeof(a) == "Instance" and a:IsA("Player") then
+			if b ~= nil and not Finishers.forSkin(b) then return "no finisher on " .. tostring(b) end
+			armed[a] = { skin = b, kind = if c == "short" then "short" else "full", all = d == true }
+			a:SetAttribute("FinisherTestResult", nil)
+			return "armed"
+		elseif op == "kill" and typeof(a) == "Instance" and a:IsA("Player") then
+			local f = Fight.byPlayer[a]
+			local list = {}
+			for _, x in Fight.all do if x.kind == "dummy" and x.alive then table.insert(list, x) end end
+			local t = list[tonumber(b) or 1]
+			if type(b) == "string" and not tonumber(b) then
+				t = nil
+				for _, x in list do if string.find(x.name, b, 1, true) then t = x; break end end
+			end
+			if not f or not t then return "no fighter or no live dummy (" .. #list .. " live)" end
+			local w = if type(c) == "string" and Weapons.list[c] then c else "ar"
+			local done = Fight.hurt(t, 99999, f, w, false)
+			return ("hurt %s for %s with %s"):format(t.name, tostring(done), w)
+		elseif op == "decide" then
+			return Finishers.decide(a)
+		elseif op == "state" then
+			local out = { armed = {}, matches = {} }
+			for p, x in armed do out.armed[p.Name] = x end
+			for m, x in lastKill do table.insert(out.matches, { id = m.id, by = x.k.name, w = x.w, fid = x.fid, ago = os.clock() - x.t }) end
+			return out
+		end
+		return nil
+	end
+	fn.Parent = ServerStorage
+end

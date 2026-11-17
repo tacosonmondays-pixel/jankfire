@@ -179,6 +179,17 @@ function Recorder.clip(s: Session, t0: number, t1: number): any
 	end
 	return { t0 = t0, t1 = t1, frames = frames, ev = ev, info = info, weapons = s.weapons, rec = Recorder.REC }
 end
+-- (FinisherServer) the last `before` s of the recording a fighter is in, up to now: the clip and every fighter's slot in
+-- it. their live match, else (a player) the one that just ended. nil when nobody is recording them
+function Recorder.recent(f: Fighter, before: number): (any?, { [Fighter]: number }?)
+	local s = of[f]
+	if not s and f.kind == "player" then
+		local l = lastOf[(f.ref :: Player).UserId]
+		if l and now() < l.expires then s = l.s end
+	end
+	if not s then return nil, nil end
+	return Recorder.clip(s, now() - before, now()), s.slot
+end
 local function clipLen(b: Best): number
 	return math.min(Recorder.POTM.max, b.t1 - b.t0) + b.kills * Recorder.POTM.slowPerKill
 end

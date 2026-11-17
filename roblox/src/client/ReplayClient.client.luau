@@ -48,6 +48,7 @@ Remotes:WaitForChild("Replay").OnClientEvent:Connect(function(msg: any)
 	if type(msg) ~= "table" then return end
 	if msg.t == "killcam" then
 		if Replay.mode() == "potm" then return end
+		if me:GetAttribute("Finishing") then return end -- (a finisher is this death's camera: client/Finisher.luau)
 		Replay.play(msg)
 	elseif msg.t == "potm" then
 		potmTok += 1

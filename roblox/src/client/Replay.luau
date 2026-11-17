@@ -93,6 +93,7 @@ end
 
 -- a clean copy of a body to make a ghost from: the player's kept look, else their body as it is, else the dummy
 local function sourceFor(info: any): Model?
+	if typeof(info.template) == "Instance" then return info.template end -- (a finisher's own copy: a dummy as it spawned)
 	if info.kind == "player" then
 		local t = Replay.templates[info.id]
 		if t then return t end
@@ -561,5 +562,14 @@ function Replay.play(msg: any, opts: any?): boolean
 end
 
 skipB.MouseButton1Click:Connect(function() Replay.stop() end)
+
+-- (the finishers, client/Finisher.luau: the same ghosts, poses and camera walls, with a scripted camera of their own)
+Replay.decode = decode
+Replay.makeGhost = makeGhost
+Replay.poseGhost = poseGhost
+Replay.eyeOf = eyeOf
+Replay.clearTo = clearTo
+Replay.hideLive = hideLive
+Replay.ghostFolder = ghostFolder
 
 return Replay
