@@ -55,6 +55,41 @@ frames plus events plus who's who, the play of the round is picked by a score) t
 (the gun in their hands at its real skin, wrap and hat, the aim, the kick of each shot). The recorded look and flags
 go on their `TP` attribute. Walking legs come from their own Animate script's run animation.
 
+## The death camera and spectating (17 Nov 2026)
+
+The owner: dying in first person left the camera stuck, and only V (third person) let you look round. Then: "when
+you die let it spectate the someone else team or in 1v1v1 a random someone".
+
+`client/DeathCam.client.luau` has the camera from your death until your new body comes:
+
+- **In a match:** the killcam first, unless Settings > HUD > KILLCAM is off. Then it spectates:
+  - A camera sits behind a living teammate's shoulder, looking where they look.
+  - With no teammate alive (a 1v1, a free-for-all, the last of your side) it watches any living player in your
+    match, picked at random.
+  - Click, or ← / →, or the shoulder buttons on a pad, goes to the next one. A phone gets arrows on the bar.
+  - The bar at the bottom says SPECTATING and the name. If the one you watch dies, it moves on to the next.
+  - The match comes from the player attributes Matches sets (`Arena`, `Team`, or `ModeTeam` in a classic mode). Only
+    bodies within 3,000 studs count, because a copy of the arena shares its name.
+  - Nothing new is sent: the dead player's own client moves its own camera to bodies it already has.
+- **The hub, training, and a match with nobody alive to watch:** the camera pulls back out of your eyes into an orbit
+  round your body. It turns at first so your killer is in the picture, and then it's yours to turn with the mouse, a
+  finger or the stick; the wheel goes nearer and further.
+- **It steps aside** for a killcam or the play of the match, a finisher (`Finishing`), One in the Chamber's own
+  watching (`ModeOut`), menus (`LoadoutOpen`) and emotes. If you're still dead afterwards, it takes over again.
+- **Your new body** (a respawn, the next round) puts the camera straight back to Roblox's own: first person, or the
+  shoulder camera if V had it on.
+- **Test hooks:** the attribute `DeathCamTest` takes `"x,y"` (an orbit turn), `"next"` or `"prev"`; `DeathCamState`
+  can be read. In Studio, Models in `workspace.JankSpectateTest` with `Arena` / `Team` / `Name` count as players of
+  your match, so one tester can watch stand-in bodies.
+- **Tested** in place v716 (17 Nov):
+  - Hub death: the orbit round the body. The test turn moved it (yaw 0 to -2.62), and after the respawn the camera
+    was back in first person.
+  - Infection on THE GUT, with two stand-in bodies on my side: dying put the camera behind STAND-IN 2 with the bar.
+  - Not tested: real players in 2v2 / 1v1v1 / 1v1 (one tester), and touch arrows on a real phone.
+
+![the orbit after a hub death](matchmaking/34_death_orbit_hub.jpg)
+![spectating a teammate](matchmaking/37_spectating.jpg)
+
 ## Clip format (the web game's, in Luau)
 
 ```

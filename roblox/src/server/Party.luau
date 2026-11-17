@@ -9,7 +9,7 @@
 -- the remote ReplicatedStorage.JankfireRemotes.Play (RemoteFunction), always { ok, why?, ... }:
 --   ("state") -> { party?, invites, ranked }      ("play") enter your lobby      ("leave") back to the hub
 --   ("players") -> { list }    ("invite", userId)    ("answer", inviteId, yes)    ("kick", id)    ("promote", id)
---   ("mode", modeId, ranked)   ("find")   ("cancel")
+--   ("mode", modeId, ranked)   ("find")   ("cancel")   ("map", arena | "random")   ("vote", modeId)   ("mapvote", arena)
 -- and JankfireRemotes.PlayPush (RemoteEvent) to the client: { t = "party", party? } | { t = "invite", ... } |
 -- { t = "inviteGone", id } | { t = "found", at } | { t = "ranked", result } | { t = "toast", text }
 -- Studio play tests: stand-ins (a regular's avatar from ServerStorage.JankfireNPCs, negative ids) join parties and
@@ -23,6 +23,8 @@ local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
 local Ranked = require(Shared:WaitForChild("Ranked"))
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
+local Arena = require(Shared:WaitForChild("Arena"))
+local MapCards = require(Shared:WaitForChild("MapCards"))
 local LobbyRooms = require(script.Parent:WaitForChild("LobbyRooms"))
 local Queue = require(script.Parent:WaitForChild("Queue"))
 local CrossServer = require(script.Parent:WaitForChild("CrossServer"))
@@ -30,12 +32,15 @@ local CrossServer = require(script.Parent:WaitForChild("CrossServer"))
 local Party = {}
 
 type Member = { id: number, player: Player?, name: string, display: string, model: Model?, rating: { [string]: any }?, inRoom: boolean? }
--- (vote / pick: a QUICKPLAY match's vote on its mode, and the mode it picked)
-type Found = { key: string, mode: string, ranked: boolean, teams: { { Queue.Entry } }, at: number, waiting: boolean?, vote: any?, pick: string? }
+-- (vote / pick: a QUICKPLAY match's vote on its mode, and the mode it picked. mvote / map: the map vote of a
+-- QUICKPLAY or casual duel match, and the arena it picked; a party pick's map is its leader's)
+type Found = { key: string, mode: string, ranked: boolean, teams: { { Queue.Entry } }, at: number, waiting: boolean?, vote: any?, pick: string?,
+	mvote: any?, map: string? }
 type PartyT = {
 	id: number, leader: Member, members: { Member }, mode: string, ranked: boolean, room: LobbyRooms.Room?,
 	entry: Queue.Entry?, found: Found?, match: number?,
 	fill: boolean?, -- (a classic mode picked on the PARTY card: FILL FROM QUICKPLAY)
+	map: string?, -- (the leader's map for a PARTY card pick: an arena in the rotation; nil = RANDOM)
 }
 type Invite = { id: number, from: Player, party: PartyT, to: Player?, toStand: Member?, expires: number }
 
@@ -166,6 +171,57 @@ local function voteView(f: Found, forP: Player): any
 	return { options = opts, ends = serverNow() + math.max(0, v.ends - now()), counts = voteCounts(v), mine = v.votes[forP.UserId] }
 end
 
+-- ------------------------------------------------------------------ the map (17 Nov, the owner: "also add map selector before hand")
+-- the maps are the rotation's (Arena.pool: workspace.Map's ArenaPool, the hub session's), named as the first banner
+-- names them (Arena.title) with their card pictures (shared/MapCards.luau).
+--   a PARTY card pick: the leader picks one, or RANDOM (the rotation, as before)
+--   QUICKPLAY and casual duels: a map vote of 3 from the rotation, in the same PlayConfig.VOTE s as the mode vote;
+--   most votes wins, a tie is drawn, no votes = a draw of the three; never the last map that vote picked
+--   RANKED (duels and PARTY RANKED): the rotation, a fair random one, no vote
+local function mapCard(id: string): any
+	return { id = id, title = Arena.title(id), thumb = MapCards.thumb(id) }
+end
+local function mapList(teamSize: number?): { any }
+	local out = {}
+	for _, id in Arena.pool(teamSize) do table.insert(out, mapCard(id)) end
+	return out
+end
+local lastMap: { [string]: string } = {} -- (per vote: "quick", "duel")
+local function mapOffer(kind: string, teamSize: number?): { string }
+	local pool = table.clone(Arena.pool(teamSize))
+	local others = {}
+	for _, id in pool do if id ~= lastMap[kind] then table.insert(others, id) end end
+	if #others > 0 then pool = others end
+	local out = {}
+	while #out < 3 and #pool > 0 do
+		table.insert(out, table.remove(pool, math.random(#pool)) :: string)
+	end
+	return out
+end
+local function mapResult(v: any): string?
+	local counts = voteCounts(v)
+	local best, top = {}, 0
+	for _, id in v.options do
+		local c = counts[id] or 0
+		if c > top then best, top = { id }, c elseif c == top then table.insert(best, id) end
+	end
+	return if #best > 0 then best[math.random(#best)] else nil
+end
+local function mapVoteView(f: Found, forP: Player): any
+	local v = f.mvote
+	if not v then return nil end
+	local opts = {}
+	for _, id in v.options do table.insert(opts, mapCard(id)) end
+	return { options = opts, ends = serverNow() + math.max(0, v.ends - now()), counts = voteCounts(v), mine = v.votes[forP.UserId] }
+end
+-- a map vote's clock ran out (or the match is starting): its pick
+local function settleMap(f: Found)
+	local v = f.mvote
+	if not v or f.map then return end
+	f.map = mapResult(v)
+	if f.map then lastMap[v.kind] = f.map end
+end
+
 local function viewOf(pt: PartyT, forP: Player): any
 	local ms = {}
 	local here = inRoom(pt)
@@ -197,8 +253,11 @@ local function viewOf(pt: PartyT, forP: Player): any
 		id = pt.id, me = forP.UserId, leader = pt.leader.id, mode = pt.mode, ranked = pt.ranked, members = ms,
 		max = PlayConfig.PARTY_MAX, queue = q,
 		found = if pt.found then { at = serverNow() + math.max(0, pt.found.at - now()), waiting = pt.found.waiting == true,
-			vote = voteView(pt.found, forP), pick = pt.found.pick } else nil,
+			vote = voteView(pt.found, forP), pick = pt.found.pick,
+			mvote = mapVoteView(pt.found, forP), map = if pt.found.map then mapCard(pt.found.map) else nil } else nil,
 		fill = pt.fill == true,
+		-- (the PARTY card's map: the leader's pick, nil = RANDOM, out of maps)
+		map = pt.map, maps = mapList(),
 		inMatch = pt.match ~= nil, outgoing = out, meIn = meIn,
 		-- (the room only for those standing in it: the client opens the lobby screen when it has one)
 		room = if pt.room and meIn then { cam = pt.room.cam, focus = pt.room.focus, spots = spots, slot = pt.room.slot } else nil,
@@ -599,6 +658,22 @@ local function setFill(p: Player, on: any): (boolean, string?)
 	pushParty(pt)
 	return true, nil
 end
+-- the PARTY card's MAP (the leader's): an arena in the rotation, or "random" / nil for the rotation's own pick
+local function setMap(p: Player, id: any): (boolean, string?)
+	local pt = byPlayer[p]
+	if not pt then return false, "press PLAY first" end
+	if pt.leader.player ~= p then return false, "only the leader picks the map" end
+	if pt.found then return false, "the match is already found" end
+	local want: string? = nil
+	if type(id) == "string" and id ~= "random" then
+		if not table.find(Arena.pool(), id) then return false, "that map isn't in the rotation" end
+		want = id
+	end
+	if pt.map == want then return true, nil end
+	pt.map = want
+	pushParty(pt)
+	return true, nil
+end
 -- a classic mode the party picked (PARTY card), not quickplay
 local function partyPicked(pt: PartyT): boolean
 	local m: any = PlayConfig.byId[pt.mode]
@@ -674,11 +749,33 @@ end
 onFormed = function(key: string, teams: { { Queue.Entry } })
 	local mode = string.match(key, ":(.+)$") :: string
 	local f: Found = { key = key, mode = mode, ranked = string.sub(key, 1, 7) == "ranked:", teams = teams, at = now() + PlayConfig.FOUND }
+	local es = {}
+	for _, list in teams do for _, e in list do table.insert(es, e) end end
+	local cfg: any = PlayConfig.byId[mode]
 	if mode == PlayConfig.QUICKPLAY then
-		local es = {}
-		for _, list in teams do for _, e in list do table.insert(es, e) end end
 		f.vote = { options = voteOffer(es), votes = {}, ends = now() + PlayConfig.VOTE }
 		f.at = now() + PlayConfig.VOTE + PlayConfig.VOTE_SHOW
+	end
+	-- the map: ranked = the rotation's; a party's own pick = its leader's (the party that waited longest); quickplay and
+	-- casual duels vote, in the same clock as the mode vote. (quickplay's maps take half its head-count a side: Crate
+	-- holds 3 a side, so it sits out an 8-player match)
+	if not f.ranked then
+		if cfg and cfg.ladder == "party" and not cfg.quick then
+			local oldest: Queue.Entry? = nil
+			for _, e in es do
+				local o = e.owner :: any
+				if o and o.leader and (oldest == nil or e.since < (oldest :: Queue.Entry).since) then oldest = e end
+			end
+			local o = oldest and (oldest.owner :: any)
+			if o and type(o.map) == "string" and table.find(Arena.pool(), o.map) then f.map = o.map end
+		elseif mode == PlayConfig.QUICKPLAY or (cfg and cfg.pad and cfg.ladder ~= "party") then
+			local n = 0
+			for _, e in es do n += e.size end
+			local size = if mode == PlayConfig.QUICKPLAY then (if n >= 4 then math.ceil(n / 2) else nil) else cfg.size
+			local kind = if mode == PlayConfig.QUICKPLAY then "quick" else "duel"
+			f.mvote = { options = mapOffer(kind, size), votes = {}, ends = now() + PlayConfig.VOTE, kind = kind }
+			f.at = now() + PlayConfig.VOTE + PlayConfig.VOTE_SHOW
+		end
 	end
 	table.insert(founds, f)
 	for _, list in teams do
@@ -702,10 +799,20 @@ local function castVote(f: Found?, id: number, mode: any): (boolean, string?)
 	pushFound(f)
 	return true, nil
 end
+-- a map vote (the Play remote's "mapvote" op), the same way
+local function castMapVote(f: Found?, id: number, map: any): (boolean, string?)
+	local v = f and f.mvote
+	if not f or not v or f.map or now() >= v.ends then return false, "no map vote running" end
+	if type(map) ~= "string" or not table.find(v.options, map) then return false, "not one of the three" end
+	v.votes[id] = map
+	pushFound(f)
+	return true, nil
+end
 
 -- start a found match through Matches (the pads' code: same rules, arenas, copies and cap). false = try again soon
 local function start(f: Found): boolean
 	if f.vote and not f.pick then f.pick = voteResult(f.vote); lastQuick = f.pick end
+	settleMap(f)
 	local modeId = f.pick or f.mode
 	local cfg = PlayConfig.byId[modeId]
 	local all: { Queue.Entry } = {}
@@ -740,7 +847,7 @@ local function start(f: Found): boolean
 		end
 	end
 	-- (one party alone is never rated: friends could farm each other. the queue only forms a ranked match of two or more)
-	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated }
+	local opts: any = { queue = f.key, ranked = f.ranked and #all >= 2, rated = rated, arena = f.map }
 	-- (Studio only: a match with stand-ins in it can't play out, so it is held and ends after testHold.secs)
 	if standIns and RunService:IsStudio() then
 		local win = testHold.win
@@ -818,6 +925,10 @@ local function tick()
 		if f.vote and not f.pick and now() >= f.vote.ends then
 			f.pick = voteResult(f.vote)
 			lastQuick = f.pick
+			settleMap(f)
+			pushFound(f)
+		elseif f.mvote and not f.map and now() >= f.mvote.ends then
+			settleMap(f)
 			pushFound(f)
 		end
 		if now() >= f.at then
@@ -971,6 +1082,10 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 	elseif op == "vote" then
 		local pt = byPlayer[p]
 		ok, why = castVote(pt and pt.found, p.UserId, a)
+	elseif op == "mapvote" then
+		local pt = byPlayer[p]
+		ok, why = castMapVote(pt and pt.found, p.UserId, a)
+	elseif op == "map" then ok, why = setMap(p, a)
 	elseif op == "find" then ok, why = find(p)
 	elseif op == "cancel" then ok, why = cancel(p)
 	elseif type(op) == "string" and Party.ops[op] then return Party.ops[op](p, a, b)
@@ -1099,6 +1214,21 @@ function Party.test(op: string, a: any, b: any, c: any, d: any): any
 			end
 		end
 		return { ok = false, why = "no found match with " .. tostring(a) }
+	elseif op == "qpmap" then
+		-- (the map vote: stand-in a votes for map b in the found match it is in)
+		for _, f in founds do
+			for _, list in f.teams do
+				for _, e in list do
+					for _, m in entryMembers(e) do
+						if m.id == tonumber(a) then
+							local okV, whyV = castMapVote(f, m.id, b)
+							return { ok = okV, why = whyV, options = f.mvote and f.mvote.options }
+						end
+					end
+				end
+			end
+		end
+		return { ok = false, why = "no found match with " .. tostring(a) }
 	elseif op == "qpfill" then
 		-- (QUICKPLAY and party fills: how long the oldest waits before a match goes below full; 15 s in play)
 		for _, m in PlayConfig.EXTRA do (m :: any).fill = tonumber(a) or 15 end
@@ -1110,7 +1240,8 @@ function Party.test(op: string, a: any, b: any, c: any, d: any): any
 			local n = 0
 			for _, list in f.teams do for _, e in list do n += e.size end end
 			table.insert(out, { mode = f.mode, players = n, options = f.vote and f.vote.options, votes = f.vote and voteCounts(f.vote),
-				pick = f.pick, left = f.at - now(), ranked = f.ranked })
+				pick = f.pick, left = f.at - now(), ranked = f.ranked,
+				maps = f.mvote and f.mvote.options, mapVotes = f.mvote and voteCounts(f.mvote), map = f.map })
 		end
 		return out
 	elseif op == "state" then

@@ -225,6 +225,36 @@ proper matches! maybe". The main session decided the shape; this section replace
   ![the vote's pick: Infection with 8](matchmaking/28_quickplay_infection_8.jpg)
   ![a party of 4 playing Infection](matchmaking/29_party_infection_4.jpg)
 
+### Picking the map (17 Nov 2026)
+
+The owner: "also add map selector before hand". The maps are the rotation's: `Arena.pool`, built from workspace.Map's
+`ArenaPool` and an arena's `Enabled` switch (the hub session's; Suburb v2 is switched off until it's finished). Each
+map is named the way its first banner names it (`Arena.title`) and has a card picture (`shared/MapCards.luau`).
+
+- **The pictures:** one per arena, taken in Studio Edit from over a corner of the play area under the arena's own
+  look (`HubLook.preview`), then uploaded as decals (no text, signs or logos in any). An arena without a picture gets
+  a plain card.
+- **A party's own pick** (the PARTY card): a MAP row under the modes, with a picture, a name, and `< >` through RANDOM
+  and every map in the rotation. Only the leader can change it; the others see it. The party plays there, alone or
+  filled from quickplay. RANDOM is the rotation's draw, as before.
+- **QUICKPLAY and casual duels:** a map vote of 3 cards from the rotation, in the same `PlayConfig.VOTE` (8 s) as the
+  mode vote.
+  - Under a mode vote the keys are 4, 5 and 6; a duel's map vote alone is 1, 2 and 3. Tapping works too.
+  - Most votes wins, a tie is drawn at random, and no votes is a draw of the three.
+  - The map that vote last picked is never on offer again straight away.
+  - Quickplay's maps take half its head-count a side, so Crate (3 a side at most) sits out an 8-player match.
+- **RANKED** (duels and PARTY RANKED): no pick and no vote, a fair random draw from the rotation. The DUELS foot and
+  the MODES tab say so.
+- **Server:** `Party.luau` (Found `mvote` / `map`, ops `map` and `mapvote`, test op `qpmap standInId arena`).
+  `Matches.startQueued` and `startMode` take `opts.arena`; one that can't be had right now (while there's room for a
+  match) gives way to the rotation's.
+- **Tested** in place v716 (17 Nov, 23:41 UTC), quickplay with me and 3 stand-ins: the panel offered Infection, Duck
+  Rain and One in the Chamber, and THE GUT, CRATE and DESERT: CANYON with pictures. I pressed 4 and 1, and a stand-in
+  voted the same, so both cards showed 2 votes. Infection then started on THE GUT.
+
+  ![the mode and map votes](matchmaking/35_vote_mode_and_map.jpg)
+  ![Infection on THE GUT, the map that won](matchmaking/36_infection_on_the_gut.jpg)
+
 ## 4. Ranked
 
 ### The rating: Glicko-2 with a team composite

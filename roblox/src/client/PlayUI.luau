@@ -505,14 +505,15 @@ local function modeList()
 	elseif ranked then
 		-- (and ranked's one rule of its own: the grapple's charges, shared/HookCharges.luau)
 		local HC = require(Shared:WaitForChild("HookCharges")) :: any
-		foot.Text = ("%d placement matches, then your rank shows. a division is 100 points\ngrapple: %d charges, one back every %d s"):format(
+		-- (and its maps: a fair draw from the rotation, no vote. server/Party.luau)
+		foot.Text = ("%d placement matches, then your rank shows. a division is 100 points\ngrapple: %d charges, one back every %d s\nmaps: a random rotation, no vote"):format(
 			Ranked.PLACEMENTS, HC.CHARGES, HC.CD)
 		foot.TextColor3 = T.SOFT -- (brighter over the fire)
-		foot.Size = UDim2.fromOffset(W - 28, if c then 40 else 50)
+		foot.Size = UDim2.fromOffset(W - 28, if c then 54 else 66)
 	else
-		foot.Text = "the same duels as the pads. your party plays on one team"
+		foot.Text = "the same duels as the pads. your party plays on one team. the match votes on its map"
 	end
-	left.Size = UDim2.fromOffset(W, y + (if ranked then (if c then 50 else 60) else 44))
+	left.Size = UDim2.fromOffset(W, y + (if ranked then (if c then 64 else 76) else 44))
 end
 
 -- ------------------------------------------------------------------ the party (right)

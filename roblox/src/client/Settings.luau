@@ -37,6 +37,7 @@ Settings.DEFAULTS = {
 	-- hud and gameplay
 	["hud.scale"] = 1, ["hud.dmg"] = true, ["hud.hits"] = true, ["hud.feed"] = true, ["hud.keys"] = false,
 	["hud.cb"] = "off", ["hud.enemy"] = "green", ["hud.othersLoot"] = true, ["hud.quickJoin"] = true, -- (QuickJoinUI, play-party-ranked's)
+	["hud.killcam"] = true, -- (ReplayClient: off = no killcam, DeathCam.client's orbit instead; play-party-ranked's)
 	-- touch (the web game's touch settings and defaults)
 	-- (TouchControls reads them: touch.size multiplies the size that suits the device, x1.2 on a tablet; touch.assist
 	-- is the web game's aim help, 0 = off)

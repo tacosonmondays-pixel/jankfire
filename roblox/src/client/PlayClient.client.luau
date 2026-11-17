@@ -165,7 +165,7 @@ task.spawn(function()
 end)
 
 -- a test hook (Play tests driven from Studio can't call into this script's modules): set the local player's attribute
--- PlayTest to "play", "open", "close", "tab:duels", "tab:modes", "invite", "uninvite", "fake:844x390", "real", "state",
+-- PlayTest to "play", "open", "close", "tab:duels", "tab:modes", "invite", "uninvite", "fake:844x390", "votefake:844x390", "real", "state",
 -- "party", "unparty", "partyfake:844x390" (the PARTY panel), "badges" / "nobadges" (both ladders on one sheet),
 -- "samplemodes" (Studio: three sample classic modes on the MODES tab; JankPlayTest "samplemodes" for the server),
 -- "board" / "board:party" / "noboard" / "boardfake:844x390" (the ranked leaderboard)
@@ -183,7 +183,10 @@ me:GetAttributeChangedSignal("PlayTest"):Connect(function()
 	elseif cmd == "fake" then
 		local w, h = string.match(a, "^(%d+)x(%d+)$")
 		if w then PlayUI.fakeScreen(Vector2.new(tonumber(w) :: number, tonumber(h) :: number)) end
-	elseif cmd == "real" then PlayUI.fakeScreen(nil)
+	elseif cmd == "real" then PlayUI.fakeScreen(nil); QuickVoteUI.fakeScreen(nil)
+	elseif cmd == "votefake" then -- (the mode and map votes, laid out as on a screen this size)
+		local w, h = string.match(a, "^(%d+)x(%d+)$")
+		QuickVoteUI.fakeScreen(if w then Vector2.new(tonumber(w) :: number, tonumber(h) :: number) else nil)
 	elseif cmd == "badges" then PlayUI.badgeSheet(true)
 	elseif cmd == "nobadges" then PlayUI.badgeSheet(false)
 	elseif cmd == "samplemodes" then PlayUI.sampleModes()

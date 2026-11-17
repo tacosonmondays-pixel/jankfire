@@ -71,7 +71,10 @@ function ModesTab.draw(ctx: any): number
 	local chipH, gap = if c then 26 else 28, 6
 	local rows = math.ceil(#classic / 2)
 	local listH = if c then chipH else rows * chipH + (rows - 1) * gap
-	local pH = (if c then 44 else 58) + listH + 8 + (if c then 26 else 30) + (if c then 20 else 24)
+	-- (the MAP row: a party's own pick plays on the leader's map. ranked has no pick: the rotation's)
+	local mapOn = partyOn and not ctx.pon and pt ~= nil and type(pt.maps) == "table" and #pt.maps > 0
+	local mapH = if c then 40 else 46
+	local pH = (if c then 44 else 58) + listH + 8 + (if mapOn then mapH + 8 else 0) + (if c then 26 else 30) + (if c then 20 else 24)
 	local p = new("TextButton", { Name = "Party", AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 2,
 		BackgroundColor3 = if partyOn then T.CARD_HI else T.CARD, BackgroundTransparency = if partyOn then 0.05 else 0.2,
 		Position = UDim2.fromOffset(12, y), Size = UDim2.fromOffset(W - 24, pH) }, left)
@@ -120,6 +123,46 @@ function ModesTab.draw(ctx: any): number
 		end
 	end
 	ly += listH + 8
+	-- MAP: a picture of it, its name, < > through RANDOM and the rotation's maps (the leader's; the others see it)
+	if mapOn then
+		local maps = pt.maps :: { any }
+		local list: { any } = { { id = "random", title = "RANDOM", thumb = "" } }
+		for _, m in maps do table.insert(list, m) end
+		local idx = 1
+		for i, m in list do if m.id == pt.map then idx = i end end
+		local cur = list[idx]
+		local row = new("Frame", { Name = "Map", BorderSizePixel = 0, BackgroundColor3 = T.BG, BackgroundTransparency = 0.35, ZIndex = 3,
+			Position = UDim2.fromOffset(14, ly), Size = UDim2.fromOffset(iw, mapH) }, p)
+		T.corner(row, 4)
+		local th = mapH - 8
+		local pic = new("ImageLabel", { Name = "Thumb", BorderSizePixel = 0, BackgroundColor3 = T.CARD, BackgroundTransparency = 0, ZIndex = 4,
+			Image = cur.thumb or "", ScaleType = Enum.ScaleType.Crop, Position = UDim2.fromOffset(4, 4), Size = UDim2.fromOffset(math.floor(th * 16 / 9), th) }, row)
+		T.corner(pic, 3)
+		local tx = 4 + math.floor(th * 16 / 9) + 10
+		local aw = if lead then (if c then 40 else 34) else 0
+		local lab = text(row, "Label", "MAP", if c then 8 else 9, T.MUTED, T.FONT_BOLD); lab.ZIndex = 4
+		lab.Position = UDim2.fromOffset(tx, if c then 5 else 7); lab.Size = UDim2.fromOffset(iw - tx - aw * 2 - 12, 12)
+		local nm = text(row, "Title", cur.title or cur.id, if c then 11 else 13, T.TEXT, T.FONT_HEAVY); nm.ZIndex = 4
+		nm.Position = UDim2.fromOffset(tx, if c then 17 else 21); nm.Size = UDim2.fromOffset(iw - tx - aw * 2 - 12, if c then 16 else 18)
+		nm.TextScaled = true
+		new("UITextSizeConstraint", { MaxTextSize = if c then 11 else 13, MinTextSize = 7 }, nm)
+		if lead then
+			local function arrow(name: string, label: string, x: number, step: number)
+				local b = new("TextButton", { Name = name, AutoButtonColor = false, BorderSizePixel = 0, ZIndex = 4, Text = label,
+					BackgroundColor3 = T.CARD, BackgroundTransparency = 0.1, AnchorPoint = Vector2.new(0, 0.5),
+					Position = UDim2.new(0, x, 0.5, 0), Size = UDim2.fromOffset(aw, mapH - 8), FontFace = T.FONT_HEAVY,
+					TextSize = if c then 14 else 13, TextColor3 = T.TEXT }, row)
+				T.corner(b, 4)
+				b.MouseButton1Click:Connect(function()
+					local nx = list[(idx - 1 + step) % #list + 1]
+					task.spawn(ctx.ask, "map", nx.id)
+				end)
+			end
+			arrow("Prev", "<", iw - aw * 2 - 8, -1)
+			arrow("Next", ">", iw - aw - 4, 1)
+		end
+		ly += mapH + 8
+	end
 	-- FILL FROM QUICKPLAY
 	local fillOn = pt ~= nil and pt.fill == true
 	local sw = new("TextButton", { Name = "Fill", AutoButtonColor = false, BorderSizePixel = 0, Text = "", ZIndex = 3,
@@ -161,6 +204,10 @@ function ModesTab.draw(ctx: any): number
 		local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HookCharges")) :: any
 		local g = text(left, "Grapple", ("ranked: grapple %d charges, one back every %d s"):format(HC.CHARGES, HC.CD), if c then 9 else 11, T.MUTED, T.FONT_BOLD)
 		g.Position = UDim2.fromOffset(16, y - 2); g.Size = UDim2.fromOffset(W - 32, 14); g.ZIndex = 3; g.TextTruncate = Enum.TextTruncate.AtEnd
+		y += 16
+		-- (and the map: no pick, no vote, a fair draw from the rotation)
+		local mp = text(left, "Maps", "ranked: maps in a random rotation, no vote", if c then 9 else 11, T.MUTED, T.FONT_BOLD)
+		mp.Position = UDim2.fromOffset(16, y - 2); mp.Size = UDim2.fromOffset(W - 32, 14); mp.ZIndex = 3; mp.TextTruncate = Enum.TextTruncate.AtEnd
 		y += 16
 	end
 	return y

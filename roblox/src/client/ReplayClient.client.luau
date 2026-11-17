@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Replay = require(script.Parent:WaitForChild("Replay"))
+local Settings = require(script.Parent:WaitForChild("Settings"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 
 local me = Players.LocalPlayer
@@ -49,6 +50,7 @@ Remotes:WaitForChild("Replay").OnClientEvent:Connect(function(msg: any)
 	if msg.t == "killcam" then
 		if Replay.mode() == "potm" then return end
 		if me:GetAttribute("Finishing") then return end -- (a finisher is this death's camera: client/Finisher.luau)
+		if Settings.get("hud.killcam") == false then return end -- (Settings > HUD: KILLCAM off. DeathCam.client's orbit stays)
 		Replay.play(msg)
 	elseif msg.t == "potm" then
 		potmTok += 1

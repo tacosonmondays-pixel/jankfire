@@ -495,8 +495,14 @@ function Matches.startQueued(padMode: string, sides: { { Player } }, opts: any):
 	end
 	if not pad then return nil, "no pad plays " .. padMode end
 	for _, list in sides do for _, p in list do if inMatch[p] then return nil, "in a match" end end end
-	local arena = nextArena(pad)
+	-- (opts.arena: the map its players picked, the leader's or a vote's. one that can't be had now, while there's room
+	-- for a match, gives way to the rotation's)
+	local arena = if type(opts.arena) == "string" then opts.arena else nextArena(pad)
 	local site = claimSite(arena)
+	if not site and type(opts.arena) == "string" and sitesInUse() < maxLive() then
+		arena = nextArena(pad)
+		site = claimSite(arena)
+	end
 	if not site then return nil, "busy" end
 	local m = startMatch(pad, sides, site, arena, opts)
 	if opts.hold and RunService:IsStudio() then
@@ -521,6 +527,10 @@ function Matches.startMode(sides: { { Player } }, opts: any): (Match?, string?)
 	local pad = modePad :: Model
 	local arena = if type(opts.arena) == "string" then opts.arena else nextArena(pad)
 	local site = claimSite(arena)
+	if not site and type(opts.arena) == "string" and sitesInUse() < maxLive() then
+		arena = nextArena(pad)
+		site = claimSite(arena)
+	end
 	if not site then return nil, "busy" end
 	return startMatch(pad, sides, site, arena, opts), nil
 end

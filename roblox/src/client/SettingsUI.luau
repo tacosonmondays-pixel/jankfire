@@ -542,6 +542,7 @@ tabs = {
 		switch({ key = "hud.keys", label = "SHOW KEY HINTS", sub = "off: hold " .. Binds.label("keys") })
 		switch({ key = "hud.othersLoot", label = "OTHER PLAYERS' CRATE OPENINGS" })
 		switch({ key = "hud.quickJoin", label = "QUICK JOIN POP-UPS", sub = "when someone steps on a hub pad" })
+		switch({ key = "hud.killcam", label = "KILLCAM", sub = "your last seconds from your killer's side" })
 		section("COLOR")
 		local cb = choice({ key = "hud.cb", label = "COLORBLIND MODE", sub = "", options = { { "off", "OFF" }, { "protan", "PROTAN" }, { "deutan", "DEUTAN" }, { "tritan", "TRITAN" } } })
 		-- (the three team colours as they'll look, in the sub line's place)
