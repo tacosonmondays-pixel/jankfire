@@ -206,12 +206,13 @@ return function(B, R)
 	end
 	-- a regular (R.NPCS; HubNPCs builds them at start): Frisk1636 on the balcony over the lifts, the ranked guy. he moves
 	-- between four spots on the rail (by the piers between the doorways), pausing at each, looking down at the platform;
-	-- a via halfway between each two keeps his walk on the curve of the balcony (a straight line cuts in toward the rail)
+	-- a via halfway between each two keeps his walk on the curve of the balcony (a straight line cuts in toward the rail);
+	-- 3 out from the rail: the rail's ends by the piers and the banners on the wall leave about 3.3 between them
 	for k = 1, 7 do
 		local b = (-1.5 + (k - 1) * 0.5) * step
-		if k == 1 then B.npc(B.fr(b), "Frisk1636", 0, RY + 0.04, RIN + 2.8, 180) end
-		if k % 2 == 1 then B.npcPoint(B.fr(b), "Frisk1636", k, "stop", "stand", 0, RY + 0.04, RIN + 2.8, 180, { pause = { 8, 16 } })
-		else B.npcPoint(B.fr(b), "Frisk1636", k, "via", "stand", 0, RY + 0.04, RIN + 2.8, 180) end
+		if k == 1 then B.npc(B.fr(b), "Frisk1636", 0, RY + 0.04, RIN + 3, 180) end
+		if k % 2 == 1 then B.npcPoint(B.fr(b), "Frisk1636", k, "stop", "stand", 0, RY + 0.04, RIN + 3, 180, { pause = { 8, 16 } })
+		else B.npcPoint(B.fr(b), "Frisk1636", k, "via", "stand", 0, RY + 0.04, RIN + 3, 180) end
 	end
 	-- ---- the showroom: sides 5, 6, 8 and 9, the south wall either side of the lounge's arch (owner, 16 Nov: "we also need
 	-- holograms like in rivals with bundle sets that float and people can look at and interact with"). on each a round

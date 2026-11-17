@@ -1158,7 +1158,7 @@ Now (push 45, place version 448): `R.check()` 46 keep-clear zones, 0 problems, 0
 
 **Not done:** Looticus's and Frisk's prompts were not pressed in Play here (Dune's was, by the quests session).
 
-## 32. The regulars get up and sit down, and move less stiffly; motion capture, 17 November 2026 (place version 616)
+## 32. The regulars get up and sit down, and move less stiffly; motion capture, 17 November 2026 (place versions 616 to 623)
 
 The owner, on the regulars: "When they stand make sure they don't stand in their seats like clipped into it! Idk how you would do it but make them leaving their seat natural?", then "also the animations seem really stiff..", then "When you generate generate 4 at a time!". The owner then approved Mixamo motion capture for them (the FBX files stay in the vault, `Assets\mixamo-17nov`, never in git).
 
@@ -1183,18 +1183,23 @@ The owner, on the regulars: "When they stand make sure they don't stand in their
   - They were uploaded as Animations. Seated loops have their hips levelled about the clip's middle. The transitions have no hips travel; their path became the server's tenths.
   - They were compared side by side with the live clips and the generated takes (four standing up, two sitting down; the generator lost two sit-down takes): `docs/hub/hub_regulars_takes.jpg`. The mocap was kept in every slot.
   - Two of the four generated stand-ups had a broken pose mid-way. The old generated seated stretch looked contorted, so Looticus's seated one-shot is now the mocap glance, and his standing one-shot is the mocap stretch.
-- **R.check sweeps a body** (`R.NPC_BODY` 3.8 × 5.2 × 1.2, its feet 0.35 over the floor):
+- **R.check sweeps a body** (`R.NPC_BODY`: 5.2 tall, 1.2 deep, each regular's own width across their hands: Looticus 4, Dune 3.9, Trisangle 3.4, Frisk 3.2; its feet 0.35 over the floor):
   - It stands one on every point they stop at and sweeps it every 0.5 stud along every walk, the same walks HubNPCs uses.
-  - Trisangle's 12 seat-to-seat walks are clear.
-  - Push 53 fixed three of the first four hits. Three remain:
-    - Looticus's west standing spot touches the LoungeStep.
-    - Frisk's walk touches one rail piece (`hb_rail3`).
-    - Dune's moved corner touches the RingBase.
-- **Checked in Play (v616):** Trisangle's whole seat change, slowed to a fifth: `docs/hub/hub_trisangle_seat_change.jpg`. Looticus's client Animator played the mocap idle.
-- **Not done:**
-  - Looticus's SHOP and Frisk's RANKED prompts were pressed in Play, by `InputHoldBegin` and by a `user_keyboard_input` E within 4 studs, and the panels did not open. The cause was not found.
-  - The 6-frame strips for Looticus, Dune and Frisk were not taken (only two frames of Trisangle seated).
-  - The three paths above.
+  - It counts what can be seen. The invisible collision boxes round the kit (a sofa's, a rail's) are bigger than the things.
+  - Clean since push 56 (place version 623): 14 ways, 636 body boxes, 0 problems.
+  - To get there, an in-Studio probe tried candidate points:
+    - Looticus's standing spots moved onto the lower floor in front of the arcade and the fridge.
+    - Frisk walks 3 out from the rail, with a point between each two stops so he follows the curve.
+    - Dune walks round three sides of the ring and back. On the door's side, the ring's corners and the benches leave less room than he is wide.
+- **Checked in Play:**
+  - Trisangle's whole seat change, slowed to a fifth (v616): `docs/hub/hub_trisangle_seat_change.jpg`.
+  - The regulars' panels and frames (v620 to v623): `docs/hub/hub_regulars_panels.jpg`.
+  - Both prompts are shown to a player 4 studs away (ProximityPromptService.PromptShown fired for ShopPrompt and RankedPrompt). Both are enabled, with range 8 and no line of sight needed.
+  - The panels open from the prompts' own values: the shop on CONTAINERS (`ShopTest`), the leaderboard on DUELS (`PlayTest board:duels`).
+- **Not done or not checkable here:**
+  - The MCP cannot fire a prompt. `InputHoldBegin` and `user_keyboard_input` E both do nothing while Studio's window is not in front (rule 11 keeps it so). The press itself is the only step not seen.
+  - The frame strips have 2 to 4 frames each, not 6. Captures run about 5 s apart, and in the last turn the viewport drew blank white (the window not drawn).
+
 - **Test hook** `ServerStorage.JankNPCTest`:
   - `:Invoke("move", who, toIndex?, speed?)` makes that regular move now (0.2 = a fifth of normal speed, for photos).
   - `:Invoke("where", who)` returns their point, phase and position.

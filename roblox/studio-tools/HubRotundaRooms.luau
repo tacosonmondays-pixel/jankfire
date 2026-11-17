@@ -100,9 +100,9 @@ return function(B, R)
 		-- a regular (HubNPCs builds them at start): Looticus on the east sofa, at its door end, looking over at the duck.
 		-- (the seat's top on the sofa's cushion: its fabric starts at 1.92, the cushion's top about 2.45)
 		B.npc(F, "Looticus", 11.2, 2.35, 46.6, 90)
-		-- where he puffs to: either end of either sofa, or standing by the arcade or the fridge (clear of the armchairs by the
-		-- VIP door: R.check stands a body on each)
-		for k, w in { { "sit", 11.2, 2.35, 46.6, 90 }, { "sit", 11.2, 2.35, 49.6, 90 }, { "sit", -11.2, 2.35, 46.6, -90 }, { "sit", -11.2, 2.35, 49.6, -90 }, { "stand", 8, 0.6, 53, -60 }, { "stand", -8, 0.6, 53, 60 } } do
+		-- where he puffs to: either end of either sofa, or standing on the sunk floor in front of the arcade or the fridge
+		-- (clear of the armchairs by the VIP door and of the raised border's edge: R.check stands a body on each)
+		for k, w in { { "sit", 11.2, 2.35, 46.6, 90 }, { "sit", 11.2, 2.35, 49.6, 90 }, { "sit", -11.2, 2.35, 46.6, -90 }, { "sit", -11.2, 2.35, 49.6, -90 }, { "stand", 6.5, 0, 51.8, -60 }, { "stand", -6.5, 0, 51.8, 60 } } do
 			B.npcPoint(F, "Looticus", k, "spot", w[1], w[2], w[3], w[4], w[5])
 		end
 
@@ -328,11 +328,12 @@ return function(B, R)
 			head.Shape = Enum.PartType.Ball
 			B.solid("DummyBox", Vector3.new(2.6, 8, 2.6), F * CFrame.new(x, 4, -d))
 		end
-		-- a regular (R.NPCS; HubNPCs builds them at start): Dune, the quests guy, walking a loop round the ring (the aisles
-		-- either side, behind it, past the door), pausing at the weights, behind the ring, at the bags and by the door,
-		-- always facing the ring there. the walk stays clear of the posts, the benches, the bags and the tyres
+		-- a regular (R.NPCS; HubNPCs builds them at start): Dune, the quests guy, walking round three sides of the ring and
+		-- back (the aisles either side and behind it; on the door's side the ring's corners and the benches leave less
+		-- room than he is wide), pausing at the weights, behind the ring and at the bags, always facing the ring there.
+		-- the walk stays clear of the posts, the benches, the bags and the tyres (R.check sweeps his body along it)
 		B.npc(F, "Dune", 11.9, 0, 58, 90)
-		for k, w in { { "stop", 11.9, 58, 90 }, { "via", 11.9, 70.4, 0 }, { "stop", 0, 71, 180 }, { "via", -11.4, 69.8, 0 }, { "stop", -13, 58, -90 }, { "via", -11.2, 47.2, 0 }, { "stop", 0, 45.6, 0 }, { "via", 11.2, 47.2, 0 } } do
+		for k, w in { { "stop", 11.9, 58, 90 }, { "via", 11.9, 70.4, 0 }, { "stop", 0, 71.6, 180 }, { "via", -12, 71, 0 }, { "stop", -13, 58, -90 } } do
 			B.npcPoint(F, "Dune", k, w[1], "stand", w[2], 0, w[3], w[4], { pause = if w[1] == "stop" then { 4, 8 } else nil })
 		end
 

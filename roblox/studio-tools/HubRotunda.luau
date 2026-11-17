@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 53 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 56 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -104,9 +104,11 @@ R.GYM_RING = 58.5 -- the ring's middle, on the door's axis
 -- seat's Stand point, R.NPC_STAND in front of it (clear of the cushion by more than half a body), take a step out to
 -- its approach before they turn, and sit down from the Stand point with their back to the seat. R.check sweeps a body
 -- (R.NPC_BODY: across, tall, deep; its feet R.NPC_LIFT over the floor, so rugs and sills don't count) along every way
--- they walk, every R.NPC_STEP studs, and stands one on every point they stop at
+-- they walk, every R.NPC_STEP studs, and stands one on every point they stop at. across, each regular's own width
+-- (R.NPCS width: their hands at rest; walking, the hands swing to the front and back). what counts is what can be seen:
+-- the invisible collision boxes round the kit (a sofa's, a rail's) are bigger than the things and don't show
 R.NPC_STAND = 1.9 -- (the sofas reach 1.1 in front of their seat points; a body is 1.2 deep)
-R.NPC_BODY = Vector3.new(3.8, 5.2, 1.2) -- (the four regulars: 3.4 to 4 across at the hands, 5.2 tall, 1.2 deep)
+R.NPC_BODY = Vector3.new(3.8, 5.2, 1.2) -- (5.2 tall, 1.2 deep; across: each regular's own width, R.NPCS width, at the hands)
 R.NPC_LIFT = 0.35
 R.NPC_STEP = 0.5
 -- the clips (owner, 17 Nov: "also the animations seem really stiff.."; then Mixamo motion capture the owner approved, put
@@ -123,10 +125,10 @@ local MX = {
 }
 local GEN_WALK = "rbxassetid://135619112265836" -- (generated; only for an avatar with no walk of its own)
 R.NPCS = {
-	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport", idle = MX.lootIdle, extra = MX.look, extraLen = 4, extraStand = MX.stretch, extraStandLen = 8.9, every = { 15, 30 }, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 }, -- on the lounge's sofa; now and then up, a puff, and he is on another seat or by the arcade or the fridge
-	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "loop", idle = MX.duneIdle, extra = MX.shift, extraLen = 9.4, every = { 20, 40 }, walk = GEN_WALK }, -- in the gym, walking round the ring
-	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedBoard", "duels" }, moves = "pingpong", idle = MX.friskIdle, walk = GEN_WALK }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
-	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", moveEvery = { 45, 90 }, idle = MX.trisIdle, extra = MX.look, extraLen = 4, every = { 12, 25 }, walk = GEN_WALK, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
+	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport", width = 4, idle = MX.lootIdle, extra = MX.look, extraLen = 4, extraStand = MX.stretch, extraStandLen = 8.9, every = { 15, 30 }, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 }, -- on the lounge's sofa; now and then up, a puff, and he is on another seat or by the arcade or the fridge
+	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "pingpong", width = 3.9, idle = MX.duneIdle, extra = MX.shift, extraLen = 9.4, every = { 20, 40 }, walk = GEN_WALK }, -- in the gym, walking round three sides of the ring and back
+	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedBoard", "duels" }, moves = "pingpong", width = 3.2, idle = MX.friskIdle, walk = GEN_WALK }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
+	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", width = 3.4, moveEvery = { 45, 90 }, idle = MX.trisIdle, extra = MX.look, extraLen = 4, every = { 12, 25 }, walk = GEN_WALK, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,
@@ -537,6 +539,7 @@ function R.new(live, opts)
 			p:SetAttribute("Settle", info.settle); p:SetAttribute("SettleLen", info.settleLen or 2.5)
 		end
 		if info.id then p:SetAttribute("UserId", info.id) end
+		if info.width then p:SetAttribute("Width", info.width) end -- (R.check's body across, for them)
 		p.Parent = root.Scenery
 		game:GetService("CollectionService"):AddTag(p, "HubNPC")
 		return p
@@ -1149,7 +1152,7 @@ function R.check(stage)
 		end
 		local things = {}
 		for _, q in room:GetDescendants() do
-			if not q:IsA("BasePart") or (q.Transparency >= 0.95 and not q.CanCollide) or CS:HasTag(q, "HubNPC") or CS:HasTag(q, "NPCPoint") then continue end
+			if not q:IsA("BasePart") or q.Transparency >= 0.95 or CS:HasTag(q, "HubNPC") or CS:HasTag(q, "NPCPoint") then continue end
 			local cf, h = q.CFrame, q.Size / 2
 			local r, u, l = cf.RightVector, cf.UpVector, cf.LookVector
 			local e = Vector3.new(math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z, math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z, math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z)
@@ -1160,6 +1163,7 @@ function R.check(stage)
 		local reach = Vector3.new(half.X + half.Z, half.Y, half.X + half.Z)
 		local function body(at, dir, what)
 			npcBoxes += 1
+			local reach = Vector3.new(half.X + half.Z, half.Y, half.X + half.Z)
 			local hit = workspace:Raycast(at + Vector3.new(0, 4, 0), Vector3.new(0, -9, 0), rp3)
 			if not hit then
 				table.insert(issues, ("REGULAR: no floor under %s at (%.1f, %.1f, %.1f)"):format(what, at.X - O.X, at.Y - O.Y, at.Z - O.Z))
@@ -1199,6 +1203,8 @@ function R.check(stage)
 			table.sort(list, function(a, b) return (a:GetAttribute("Index") or 0) < (b:GetAttribute("Index") or 0) end)
 			local place = places[who]
 			local mode = place and place:GetAttribute("Moves")
+			local w = place and place:GetAttribute("Width")
+			half = Vector3.new((if type(w) == "number" then w else BODY.X) / 2, BODY.Y / 2, BODY.Z / 2)
 			for _, p in list do
 				if p:GetAttribute("Kind") ~= "via" then body(standOf(p), p.CFrame.LookVector, ("%s standing at their point %d"):format(who, p:GetAttribute("Index") or 0)) end
 			end
