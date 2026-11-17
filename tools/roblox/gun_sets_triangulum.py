@@ -53,7 +53,7 @@ LINE = 0.013                     # the gold lines' width: the brief's 11 mm, wid
 
 
 # ------------------------------------------------------------------------------------------------ the mark's outlines
-def sparkle(c, r, k=2.6, n=32):
+def sparkle(c, r, k=2.6, n=24):   # (v2: 24 points, not 32: 0.3k triangles for the decoration)
     """a four-point star with concave sides round c (z, y), r to its points"""
     out = []
     for i in range(n):
@@ -154,7 +154,107 @@ def shell_drop(c, n):
             return True
     if FE - FDEEP - 0.0005 < ax < FE - 0.00005 and -0.522 < z < -0.077 and -0.0635 < y < -0.0235:
         return True
+    if x < 0 and FE - FDEEP - 0.0006 < ax < FE - 0.00005 and -0.658 < z < -0.066 and -0.066 < y < -0.0045:
+        return True   # (v2: the left flank's constellation)
     return False
+
+
+# ------------------------------------------------------------------------------------------------ v2: the decoration
+# (17 Nov, v2: in first person the v1 read as a plain dark-blue sniper with one star at the bottom edge. Added where
+# first person looks, out of the sight picture and off the scope's axis, every piece still flicker-free:)
+#   - THE LEFT FLANK'S CONSTELLATION: the fore-end's 4 mm gold line carries star studs and runs on as a constellation:
+#     forward and up under the shroud, back and down along the panel's slanted end (V-grooved lines, studs let in FDEEP)
+#   - THE SCOPE'S STAR BAND: two thin gold rings and eight small faceted four-point stars round the tube, -0.35..-0.315
+#   - THE BOLT KNOB'S STAR: a midnight disc let into the gold knob's end, a faceted gold star on it
+#   - STAR DUST: small gold pips on the deep-midnight fore-end panels and in the mark's fills
+CONST = [(-0.648, -0.034, 0.0070), (-0.590, -0.050, 0.0080), (-0.520, -0.0265, 0.0085), (-0.405, -0.0265, 0.0070),
+         (-0.275, -0.0265, 0.0090), (-0.150, -0.0265, 0.0075), (-0.112, -0.0405, 0.0070), (-0.078, -0.056, 0.0085),
+         (-0.462, -0.0125, 0.0055), (-0.336, -0.0120, 0.0060), (-0.206, -0.0130, 0.0055)]
+# (the run 2 .. 5 is the fore-end's own straight line; 8 .. 10 zigzag above it along the top edge)
+CLINES = [(0, 1), (1, 2), (5, 6), (6, 7), (2, 8), (8, 3), (3, 9), (9, 4), (4, 10), (10, 5)]
+CLH = 0.0016                                       # half the constellation lines' width (3.2 mm)
+
+
+def flank_star(c, r, sx, fe, deep, proud=0.0015, crown=0.0016, n=16):
+    """a small gold four-point star stud let into a flank at |x| fe: its walls from deep below up to `proud` above,
+       then facets rising to a point (no face of it lies parallel to the flank)"""
+    pts = sparkle(c, r, k=2.5, n=n)
+    bm = bmesh.new()
+    A = [bm.verts.new(P(sx * (fe - deep), y, z)) for z, y in pts]
+    B = [bm.verts.new(P(sx * (fe + proud), y, z)) for z, y in pts]
+    T = bm.verts.new(P(sx * (fe + proud + crown), c[1], c[0]))
+    bm.faces.new(A)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new([A[i], A[j], B[j], B[i]])
+        bm.faces.new([B[i], B[j], T])
+    return K._obj(bm)
+
+
+def side_prism(prof, x0, x1, sx):
+    """a side-view outline [(z, y)] as a solid from |x| = x0 to x1 on the side sx"""
+    return prism(prof, x1 - x0, x=sx * (x0 + x1) / 2)
+
+
+def vgroove(p0, p1, sx, lh, line=False, ext=0.003, top=0.004):
+    """along a flank segment p0 -> p1 ((z, y), stretched ext at both ends into the studs): the V groove's cutter (FDEEP
+       deep, 2 lh wide at the flank, its top `top` outside) or, line=True, the gold line in it standing 1 mm proud.
+       (cutters that meet at a star must not share their top planes: the EXACT solver then emptied the whole fore-end)"""
+    t = Vector((p1[0] - p0[0], p1[1] - p0[1])); L = t.length; t /= L
+    nrm = Vector((-t.y, t.x))
+    k = lh / FDEEP
+    sec = ([(FE - FDEEP, 0.0), (FE, -lh), (FE + 0.001, -lh), (FE + 0.001, lh), (FE, lh)] if line else
+           [(FE - FDEEP, 0.0), (FE + top, -(lh + k * top)), (FE + top, lh + k * top)])
+    bm = bmesh.new()
+    ends = []
+    for e in (-ext, L + ext):
+        c = Vector(p0) + t * e
+        ends.append([bm.verts.new(P(sx * ax, c.y + nrm.y * s_, c.x + nrm.x * s_)) for ax, s_ in sec])
+    A, B = ends
+    bm.faces.new(A); bm.faces.new(B[::-1])
+    n = len(sec)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new([A[i], A[j], B[j], B[i]])
+    return K._obj(bm)
+
+
+def pip(c, r, sx, fe, h=0.0009, turn=0.0):
+    """a pip of star dust: a small gold diamond (an octahedron) half sunk in a flank at |x| fe"""
+    bm = bmesh.new()
+    ca, sa = math.cos(turn), math.sin(turn)
+    ring = [bm.verts.new(P(sx * fe, c[1] + r * (sa * u + ca * v), c[0] + r * (ca * u - sa * v)))
+            for u, v in ((1, 0), (0, 1), (-1, 0), (0, -1))]
+    top = bm.verts.new(P(sx * (fe + h), c[1], c[0])); bot = bm.verts.new(P(sx * (fe - h), c[1], c[0]))
+    for i in range(4):
+        j = (i + 1) % 4
+        bm.faces.new([ring[i], ring[j], top]); bm.faces.new([ring[j], ring[i], bot])
+    return K._obj(bm)
+
+
+def sky_star(c, e, t1, t2, rad, r, sink=0.0006, girdle=0.0005, crown=0.0011, n=8):
+    """a small faceted four-point star on a curved or tilted surface: c + e * rad is its centre on the surface (e the
+       surface's outward normal there, t1 / t2 its axes); its foot sunk `sink`, a girdle to `girdle` above, facets to
+       a point `crown` higher (nothing of it parallel to the surface)"""
+    pts = sparkle((0.0, 0.0), r, k=2.4, n=n)
+    bm = bmesh.new()
+    o = c + e * rad
+    A = [bm.verts.new(P(*(o - e * sink + t1 * a + t2 * b))) for a, b in pts]
+    B = [bm.verts.new(P(*(o + e * girdle + t1 * a + t2 * b))) for a, b in pts]
+    T = bm.verts.new(P(*(o + e * (girdle + crown))))
+    bm.faces.new(A)
+    for i in range(n):
+        j = (i + 1) % n
+        bm.faces.new([A[i], A[j], B[j], B[i]])
+        bm.faces.new([B[i], B[j], T])
+    return K._obj(bm)
+
+
+DUST_PANEL = [(-0.494, -0.046, 0.0022), (-0.468, -0.056, 0.0016), (-0.440, -0.040, 0.0027), (-0.385, -0.051, 0.0018),
+              (-0.352, -0.039, 0.0021), (-0.322, -0.056, 0.0026), (-0.300, -0.044, 0.0015), (-0.238, -0.047, 0.0018),
+              (-0.212, -0.039, 0.0028), (-0.186, -0.055, 0.0020), (-0.452, -0.050, 0.0014)]
+DUST_MARK = [(0.268, 0.024, 0.0024), (0.330, 0.004, 0.0018), (0.372, 0.031, 0.0021), (0.402, -0.022, 0.0026),
+             (0.448, -0.002, 0.0017), (0.436, -0.064, 0.0021), (0.470, 0.036, 0.0016), (0.300, 0.022, 0.0015)]
 
 
 # ------------------------------------------------------------------------------------------------ the Sniper
@@ -182,9 +282,18 @@ def sniper_triangulum():
     k = LH / FDEEP
     lin = [xprism([(sx * (FE - FDEEP), LY), (sx * (FE + 0.004), LY - LH - k * 0.004), (sx * (FE + 0.004), LY + LH + k * 0.004)],
                   -0.52, -0.15) for sx in (-1, 1)]
-    g.put('stock_wzA__night', cut(fe, *pan, *lin))
+    # v2: the left flank's constellation: its V grooves and its studs' recesses (each stud's 0.2 mm deeper than the panel)
+    # (the studs' recesses before the grooves: the other way round the EXACT solver emptied the whole fore-end)
+    con = [side_prism(sparkle((z, y), r, k=2.5, n=16), FE - FDEEP - 0.0002, FE + 0.02, -1) for z, y, r in CONST]
+    con += [vgroove(CONST[a][:2], CONST[b][:2], -1, CLH, top=0.0047 + 0.0004 * i) for i, (a, b) in enumerate(CLINES)]
+    g.put('stock_wzA__night', cut(fe, *pan, *lin, *con))
     for sx in (-1, 1):
-        g.put('stock_wzN__night2', prism(PAN, FDEEP, x=sx * (FE - FDEEP / 2)))
+        panel = prism(PAN, FDEEP, x=sx * (FE - FDEEP / 2))
+        if sx < 0:   # (the studs on the line bite into the panel's top edge: the panel gives way to them)
+            panel = cut(panel, *[side_prism(sparkle((z, y), r, k=2.5, n=16), FE - FDEEP - 0.001, FE + 0.003, -1) for z, y, r in CONST])
+        g.put('stock_wzN__night2', panel)
+        for z, y, r in DUST_PANEL:   # v2: star dust on the panel
+            g.put('dust_wzN__gold', pip((z, y), r, sx, FE, turn=0.4 * (z * 97 % 1)))
         g.put('fore_wzN__gold', soft(xprism([(sx * (FE - FDEEP), LY), (sx * FE, LY - LH), (sx * (FE + 0.001), LY - LH),
                                              (sx * (FE + 0.001), LY + LH), (sx * FE, LY + LH)], -0.52, -0.15), 0.0004, seg=1))
     # ---- the grip (graphite: the hand's part stays dark)
@@ -195,6 +304,17 @@ def sniper_triangulum():
                         (0.58, 0.088, 0.006), (0.32, 0.088, 0.02), (0.23, 0.062, 0.02), (0.05, 0.062, 'c')]), 2 * FLANK)
     soft(st, 0.005, seg=2)
     g.put('stock_wzA__night', the_mark(g, st))
+    # v2: the constellation's lines and studs (node "const": the fore-end's own line stays "fore")
+    for a, b in CLINES:
+        g.put('const_wzN__gold', vgroove(CONST[a][:2], CONST[b][:2], -1, CLH, line=True))
+    for z, y, r in CONST:
+        g.put('const_wzN__gold', flank_star((z, y), r, -1, FE, FDEEP + 0.0002))
+    # v2: star dust in the mark's fills, clear of the lines and the stars' settings
+    fill_in = inset([(z, y) for z, y, r in MARK], LINE / 2 + 0.003)
+    for sx in (-1, 1):
+        for z, y, r in DUST_MARK:
+            if _in_tri(fill_in, z, y) and all(math.hypot(z - mz, y - my) > mr + 0.004 for mz, my, mr in MARK):
+                g.put('dust_wzN__gold', pip((z, y), r, sx, FLANK, turn=0.5 * (y * 131 % 1)))
     g.put('stock_wzN__gold', soft(prism(outline([(0.58, -0.2486, 0.0), (0.596, -0.2555, 0.004), (0.596, 0.088, 0.004), (0.58, 0.088, 0.0)]),
                                         0.074), 0.003, seg=2))
     # ---- the action (graphite), the port on the right, the lighter deck
@@ -238,6 +358,14 @@ def sniper_triangulum():
     g.put('scope_wzN__night', soft(tube(0.0332, 0.030, (0, SY, -0.452), (0, SY, -0.444), sides=16), 0.0006, seg=1))
     g.put('scope_wzN__night', cyl(R, (0, SY, -0.362), (0, SY, 0.085), sides=16))
     g.put('scope_wzN__gold', soft(cyl(R + 0.0018, (0, SY, -0.306), (0, SY, -0.294), sides=16), 0.0012, seg=1))
+    # v2: the star band between the taper and the band: two thin rings (facets turned off the tube's) and eight small
+    # faceted four-point stars round the tube, alternately a little forward and back
+    for z0 in (-0.3515, -0.3170):
+        g.put('scope_wzN__gold', tube(R + 0.0011, R - 0.002, (0, SY, z0), (0, SY, z0 + 0.0024), sides=16, turn=math.pi / 16))
+    for i in range(8):
+        th = math.radians(22.5 + 45 * i)
+        e = Vector((math.cos(th), math.sin(th), 0.0)); t2 = Vector((-math.sin(th), math.cos(th), 0.0)); t1 = Vector((0, 0, 1.0))
+        g.put('scope_wzN__gold', sky_star(Vector((0, SY, -0.334 + (0.0035 if i % 2 else -0.0035))), e, t1, t2, R, 0.0048))
     eye = cyl(0.029, (0, SY, 0.083), (0, SY, 0.175), sides=16)
     g.put('scope_wzN__gold', soft(cut(eye, cyl(0.0215, (0, SY, 0.157), (0, SY, 0.19), sides=16)), 0.002, seg=1))
     g.put('lens_wzN__glass', cyl(0.0252, (0, SY, -0.469), (0, SY, -0.466), sides=16))
@@ -258,15 +386,24 @@ def sniper_triangulum():
     for v in bm.verts: v.co += P(0.098, BY - 0.036, 0.062)
     knob = K._obj(bm)
     for p in knob.data.polygons: p.use_smooth = True
+    # v2: the knob's star: a midnight disc let into the knob's end (along the handle), a faceted gold star on it
+    KC = Vector((0.098, BY - 0.036, 0.062))
+    kd = (Vector((0.09, BY - 0.032, 0.06)) - Vector((0.032, BY, 0.04))).normalized()
+    ku = kd.cross(Vector((0, 0, 1))).normalized(); kv = kd.cross(ku).normalized()
+    knob = cut(knob, cyl(0.0105, tuple(KC + kd * 0.004), tuple(KC + kd * 0.03), sides=16))
     g.put('bolt_wzN__gold', knob)
+    g.put('bolt_wzN__night', cyl(0.0105, tuple(KC + kd * 0.004), tuple(KC + kd * 0.0135), sides=16))
+    g.put('bolt_wzN__gold', sky_star(KC, kd, ku, kv, 0.0135, 0.0082, sink=0.001, girdle=0.0006, crown=0.0018, n=16))
     # (the ribs joined to the magazine: as solids of their own their sides lay 3 mm off its sides)
-    ribs = [prism(outline(rrect(-0.231, -0.094, y - 0.007, y + 0.007, 0.003)), 0.066) for y in (-0.103, -0.128)]
-    g.put('mag_wzB__graph', soft(union(prism(outline(rrect(-0.235, -0.09, -0.15, -0.06, 0.008)), 0.06), *ribs), 0.002, seg=1))
+    ribs = [prism([(-0.231, y - 0.007), (-0.094, y - 0.007), (-0.094, y + 0.007), (-0.231, y + 0.007)], 0.066) for y in (-0.103, -0.128)]
+    g.put('mag_wzB__graph', soft(union(prism(outline(rrect(-0.235, -0.09, -0.15, -0.06, 0.006), step=0.012), 0.06), *ribs), 0.002, seg=1))
     g.put('guard_wzB__graph', soft(prism(outline(rrect(-0.0, 0.11, -0.115, -0.097, 0.006)), 0.03), 0.003, seg=1))
     g.put('guard_wzB__graph', soft(prism(outline(rrect(-0.014, 0.006, -0.115, -0.058, 0.004)), 0.026), 0.003, seg=1))
     g.put('guard_wzB__graph', soft(prism(outline([(0.044, -0.064, 'c'), (0.066, -0.064, 'c'), (0.06, -0.097, 0.003), (0.05, -0.097, 0.003)]), 0.014),
                                    0.002, seg=1))
-    g.shell = {'stock_wzA__night', 'body_wzB__graph', 'grip_wzB__graph', 'barrel_wzB__graph'}
+    # (v2: the barrel left out of the shells, 1.8k triangles for the decoration: dark graphite, where the shade barely
+    # shows)
+    g.shell = {'stock_wzA__night', 'body_wzB__graph', 'grip_wzB__graph'}
     g.shell_drop = shell_drop
     return g.done()
 
