@@ -547,3 +547,17 @@ Photos `round17/v644-tripo-halo-closeup-and-fp.jpg`: up close in the training ha
 barrel, the halo's lit ring and the brake's star bright, the light warming the barrel) and in first person (the halo far
 down the barrel by the crosshair, its bits small and calm, the sights clear). The breathing aura is faint in the lit hall:
 stronger if wanted (`aura` rate or size in the row).
+
+### Jump pads light up (17 Nov 2026, place version 667)
+
+The owner: "pads should glow when you step on them!". `PadFlare.client.luau` lights any part with a `Pad` attribute
+(Move throws you off it), in every map: on a throw its kit's coloured pieces (the `JumpPad` model laid over the
+see-through `JumpPadTop`, found by name: its meshes don't answer spatial queries) turn Neon in the pad's colour, a light
+pulses, a glow lies on the face and a ring of light spreads off it, motes shoot up; about 0.6 s. While someone stands on
+it, a steady fainter glow and light. The throws come from `PadSignal.luau`, one client-side signal that Steps.client
+(the sound session's) fires with its launch sound for every character, so everyone sees everyone's; the standing is a
+look at each character's floor ten times a second. Nothing runs for an idle pad. It never touches the hub's queue pads
+(PadGlow.client's `Glow` parts: Team attribute, under QueuePads). Studio hook: the player attribute `PadFlareTest` =
+"launch" / "stand" / "both" (the nearest pad). Strips `round17/v667-padglow-hub-idle-stand-launch.jpg` and
+`-training-rooftop-launch.jpg`; a real step-on throw off a hub pad was checked by its light (peak 4.7 of a flare's 5).
+Rooftop pads only throw in a match, so they were flared through the hook.
