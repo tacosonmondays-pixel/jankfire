@@ -167,7 +167,12 @@ end)
 - **Per-match records.** Every finished match writes one record into each player's own save (`log`, newest first, 100 kept), keyed by the match's `key`. `Matches` now gives every match a key that is unique across servers (`<first 8 of JobId>-<id>-<os.time>`), and `matchOf(p)` returns it. A record holds `{ id = key, t (the end), mode, map, team, ranked?, r, k, d, rp, rw, xp, foes = { userIds }, mates = { userIds } }`. Foes are taken when the match starts, so a player who leaves is still in it. The `recent` rows carry the key too.
 - **The victims.** These are everyone on the other side of the cheater in each logged match that ended at or after `since`. Each victim gets that match's **deaths** taken off. If they **lost** it, the match and the rounds they lost come off too. Their kills, their XP and a win stay. On the card, a lost row shows **VOID** in grey.
 - **The cheater** (my call: **reset**). Every number and the XP go back to zero: totals, weapons, recent matches, best streak, level. Their card shows a **STATS RESET** strip with the day, to everyone, even when the player keeps their stats private. Hiding the numbers would have kept fake records (a best streak, weapon numbers) waiting to come back. A reset of the whole save, not only the period, is safer because a catch usually comes after cheating started. The look, the privacy switch and the loot are left alone.
-  - The old numbers are kept in `backup`. If a catch was wrong (an UNBAN), `Stats.undoRestore(userId)` adds them back to whatever was played since. Victims keep their restore.
+  - The old numbers are kept in `backup`. If a catch was wrong, `Stats.undoRestore(userId)` adds them back to whatever was played since. Victims keep their restore.
+- **When the anti-cheat calls it (agreed 17 Nov):**
+  - **`restoreFor`:** only when the owner presses CONFIRM CHEATER or bans from the panel. Never from the auto-ban or an automatic flag.
+  - **`since`:** the earliest evidence on record minus one day (their first catch or the first report against them; both are kept 30 days). It is 0 when the owner picks ALL or there is no evidence.
+  - **`undoRestore`:** the panel's UNCONFIRM. I asked that UNBAN not undo the reset, because a served ban isn't a wrong catch.
+  - Both calls run in `task.spawn`. Results go into the anti-cheat's moderation log, and a failed read is retried.
   - While a restored cheater stays in this server, nothing more counts for them. That covers the moment between the call and a kick.
 - **Who gets it when:**
   - **Players in this server:** at once, and their save is written.
