@@ -1029,11 +1029,13 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
     - `L.check` checks the trigger and its landing, and casts 39 rays across the shut door for gaps.
   - Checks: the hall sealed (1560 rays from 60 points, 3 of them new in the stair hall; 0 leaks), the lot closed in (0 leaks), head room 0 within 0.6, ZFight 1 pair.
   - Photos: `basement_walkout_sheet.jpg` (the open EXIT door from the basement, flight A, the door out on the far terrace by the target, the stairs' foot with its floor closed).
+  - Play test (no save): walked from the basement's floor up both flights to the corridor with nothing in the way (root 229.1 to 250.7). The door swung 90 degrees and stopped blocking. Out on the terrace, 8 studs away, it shut; pushing at it from the terrace stops you at its face, and it stays shut.
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
 - With ZoneCull on, hop into the hall with the root anchored for about 1.5 s (`HumanoidRootPart.Anchored = true`, `PivotTo`, wait, unanchor): the client brings the area back before the body falls. Don't park a photo camera in the hall while testing the trip home: ZoneCull keeps an area by the camera too.
 - `Humanoid:MoveTo` from the client doesn't move the character in this game: drive it with `Humanoid:Move(direction)` every frame.
+- From `execute_luau` on the client, the player's ControlModule writes `Move` every frame and wins: first `require(PlayerScripts.PlayerModule):GetControls():Disable()`, then call `Move` from `BindToRenderStep` at `Enum.RenderPriority.Character.Value + 5` (unbind after).
 - `screen_capture` calls in parallel time out: take them one at a time.
 - A copy of the character's `HeldWeapon` comes out invisible on its own player's screen: first person hides it there. Build a display gun fresh from `WeaponModels` (skin, wrap and hat from `GunSkins`, `WeaponModels.wrapFor` and `GunHats`).
 - A commit swept in another session's unfinished Arsenal change (1fb2d29); a2d6e3c took it back. Before committing a shared file, check `git diff --cached` for other sessions' hunks, not just `--stat`.
