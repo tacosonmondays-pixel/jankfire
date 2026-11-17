@@ -71,11 +71,40 @@ How it works:
 
 ## Emotes (`shared/Flair.luau` "emote", played by `client/FlairClient.client.luau`)
 
-| id | name | rarity | s | clip |
-|---|---|---|---|---|
-| wave | Wave | free | 2.97 | 90647186428374 (retake d, uploaded through Open Cloud) |
-| salute | Salute | free | 2.97 | 70910733834944 (retake c) |
-| clap | Slow Clap | common | 2.97 | 102241914870841 (retake d) |
+**Since 17 Nov (place v670) the emotes are Roblox's own.** The owner: our generated ones "looked really really bad", and
+"are there free roblox emotes we can download? I have purchased some with robux".
+
+The free set, every one free for everybody and never sold (`Flair.luau` EMOTES, the one table):
+
+| id | name | s | loops | animation | from |
+|---|---|---|---|---|---|
+| wave | Wave | 1.75 | no | 507770239 | Roblox's default emote |
+| hello | Hello | 1.77 | no | 10714359093 | catalog emote 3576686446 |
+| salute | Salute | 3.70 | no | 10714389988 | catalog emote 3360689775 |
+| point | Point | 2.30 | no | 10714395441 | catalog emote 3576823880 |
+| shrug | Shrug | 2.03 | no | 10714374484 | catalog emote 3576968026 |
+| cheer | Cheer | 2.50 | no | 507770677 | Roblox's default emote |
+| laugh | Laugh | 3.29 | no | 507770818 | Roblox's default emote |
+| stadium | Stadium | 3.63 | yes | 10714356920 | catalog emote 3360686498 |
+| tilt | Tilt | 4.80 | yes | 10714338461 | catalog emote 3360692915 |
+| dance | Dance | 1.08 | yes | 507771019 | Roblox's default emote |
+
+- **How the animations were found.** Each catalog emote is a model holding one full-body Animation (all 16 joints; Roblox names them "<X> Face" since the 2022 face update). It's read with `InsertService:LoadAsset`, and lengths and looping come from `KeyframeSequenceProvider`.
+- **Why our own system plays them** (not `Humanoid:PlayEmote`): they're Roblox's, so they play in any game for any account, and our blend, camera, holster, cooldown and match rules all apply.
+- **Wheels saved before (save v1)** get these in their empty slots on load. The default wheel is wave, hello, salute, point, shrug, cheer, laugh, dance.
+- **Our generated clips are gone:** Slow Clap and the retakes are out of the catalogue.
+
+**Your own Roblox emotes** (the wheel's ROBLOX pages):
+- `StarterPlayer.UserEmotesEnabled` is on, so a player's bought emotes are in their character's HumanoidDescription.
+- FlairServer reads `GetEmotes` once the look has loaded: the ones equipped on Roblox first, then the rest by name, up to 96. It publishes them as the `RbxEmotes` attribute (JSON `[{n, a}]`).
+- The wheel shows them 8 to a page, behind the JANKFIRE / ROBLOX tabs over the ring. Clicking ROBLOX again goes to its next page; the mouse wheel goes through every page. Each slot's picture is Roblox's catalog thumbnail.
+- Playing one (`emote` with id `rbx:<name>`): the server checks it's on your avatar and loads the catalog emote's animation the first time anyone plays it, then keeps it. Creators' own emotes load too. It sends the id back, and the client plays it on our track, with its length and looping read off the clip.
+- Roblox's own emote menu is turned off (`SetCoreGuiEnabled(EmotesMenu, false)`), so the T wheel is the only one.
+- The owner's avatar has 98 emotes, none equipped on Roblox.
+
+Photos: `docs/flair/roblox-emotes-sheet.jpg`.
+
+The generated set, for the record (all removed):
 
 **Removed 17 Nov** (the owner, in a Play test: "remove groove, fist bump and bow they dont work"):
 - Fist Pump (105471344218974), Bow (87535060714783) and Groove (115189819491542) are out of the catalogue.

@@ -30,6 +30,8 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local InsertService = game:GetService("InsertService")
+local HttpService = game:GetService("HttpService")
 
 local Jankfire = script.Parent
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
@@ -52,11 +54,11 @@ local Remote = remote("Flair", "RemoteFunction") :: RemoteFunction
 local KillEvent = remote("FlairKill", "RemoteEvent") :: RemoteEvent
 
 local store = Profiles.new("JankfireFlair_v1", function()
-	return { v = 1, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes) }
+	return { v = 2, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes) }
 end)
 
 type State = { prof: any, ready: boolean, emote: { id: string, t0: number, len: number, loop: boolean }?, last: number,
-	budget: number, budgetT: number, devAll: boolean }
+	budget: number, budgetT: number, devAll: boolean, rbx: { [string]: number }? }
 local st: { [Player]: State } = {}
 
 -- ------------------------------------------------------------------ owning and wearing
@@ -126,22 +128,89 @@ local function endEmote(p: Player, reshow: boolean)
 		if f and f.alive then Fight.showWeapon(f) end
 	end
 end
-local function startEmote(p: Player, id: any): (boolean, string?, number?)
+-- a catalog emote's body animation (InsertService:LoadAsset; Roblox's and creators' emotes both load), kept for everyone
+local rbxAnim: { [number]: string | false } = {}
+local function animOf(asset: number): string?
+	local c = rbxAnim[asset]
+	if c ~= nil then return if c then c else nil end
+	local ok, m = pcall(InsertService.LoadAsset, InsertService, asset)
+	local id: string? = nil
+	if ok and m then
+		local a = m:FindFirstChildWhichIsA("Animation", true)
+		if a and a.AnimationId ~= "" then id = a.AnimationId end
+		m:Destroy()
+	end
+	rbxAnim[asset] = id or false
+	return id
+end
+local function startEmote(p: Player, id: any): (boolean, string?, number?, string?)
 	local s = st[p]
 	if not s then return false, "loading", nil end
-	local e = Flair.info("emote", id)
-	if not e or e.anim == "rbxassetid://0" then return false, "no such emote", nil end
-	if not owns(p, "emote", id) then return false, "not owned", nil end
-	if not table.find(slots(p), id) then return false, "not on your wheel", nil end
+	-- one of your own Roblox emotes (the wheel's second page): it has to be on your avatar, read by readRbx below
+	local mine = if type(id) == "string" and string.sub(id, 1, 4) == "rbx:" and s.rbx then s.rbx[string.sub(id, 5)] else nil
+	local e = if mine then nil else Flair.info("emote", id)
+	if not mine then
+		if not e or e.anim == "rbxassetid://0" then return false, "no such emote", nil end
+		if not owns(p, "emote", id) then return false, "not owned", nil end
+		if not table.find(slots(p), id) then return false, "not on your wheel", nil end
+	end
 	local f = Fight.byPlayer[p]
 	if not f or not f.alive then return false, "dead", nil end
 	local now = os.clock()
 	if now - s.last < Flair.COOLDOWN then return false, "too soon", nil end
 	s.last = now
-	s.emote = { id = id, t0 = now, len = e.len, loop = e.loop }
+	-- (your own: its animation is read out of the catalog emote the first time anyone plays it, then kept)
+	local anim = if mine then animOf(mine) else nil
+	if mine and not anim then return false, "can't play that one", nil end
+	-- (your own: its length is the clip's, which the client reads off the track and says stop at; here only a cap)
+	s.emote = if mine then { id = id, t0 = now, len = 30, loop = true } else { id = id, t0 = now, len = e.len, loop = e.loop }
 	p:SetAttribute("Emote", id)
 	holster(p)
+	if mine then return true, nil, nil, anim end
 	return true, nil, e.len
+end
+
+-- ------------------------------------------------------------------ your own Roblox emotes
+-- the emotes on your Roblox avatar (the ones you bought, StarterPlayer.UserEmotesEnabled), read from the description
+-- your character was built from once its look has loaded: the ones you have equipped on Roblox first (by their slot),
+-- then the rest by name, up to MAX_RBX (the wheel shows them 8 to a page). published as the player's RbxEmotes
+-- attribute: JSON [{ n = name, a = catalog asset id }] for the wheel's pictures and names. each one's animation is read
+-- when it's first played (startEmote)
+local MAX_RBX = 96
+local function readRbx(p: Player)
+	local s = st[p]
+	local ch = p.Character
+	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
+	if not s or not hum then return end
+	local ok, desc = pcall(hum.GetAppliedDescription, hum)
+	if not ok or not desc then return end
+	local okE, emotes = pcall(desc.GetEmotes, desc)
+	if not okE or type(emotes) ~= "table" then return end
+	local okQ, equipped = pcall(desc.GetEquippedEmotes, desc)
+	local order, seen = {}, {}
+	if okQ and type(equipped) == "table" then
+		table.sort(equipped, function(a: any, b: any) return (tonumber(a.Slot) or 99) < (tonumber(b.Slot) or 99) end)
+		for _, q in equipped do
+			if type(q.Name) == "string" and emotes[q.Name] and not seen[q.Name] then seen[q.Name] = true; table.insert(order, q.Name) end
+		end
+	end
+	local rest = {}
+	for name in emotes do if type(name) == "string" and not seen[name] then table.insert(rest, name) end end
+	table.sort(rest, function(a: string, b: string) return string.lower(a) < string.lower(b) end)
+	for _, n in rest do table.insert(order, n) end
+	local list, map = {}, {}
+	for _, name in order do
+		if #list >= MAX_RBX then break end
+		local ids = emotes[name]
+		local asset = type(ids) == "table" and tonumber(ids[1]) or nil
+		if asset then
+			map[name] = asset
+			table.insert(list, { n = name, a = asset })
+		end
+	end
+	if st[p] ~= s or not p.Parent then return end
+	s.rbx = map
+	p:SetAttribute("RbxEmotes", HttpService:JSONEncode(list))
 end
 
 -- ------------------------------------------------------------------ kill effects
@@ -201,8 +270,8 @@ local function handle(p: Player, op: any, a: any, b: any): any
 			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none" }
 	end
 	if op == "emote" then
-		local ok, why, len = startEmote(p, a)
-		return { ok = ok, why = why, len = len }
+		local ok, why, len, anim = startEmote(p, a)
+		return { ok = ok, why = why, len = len, anim = anim }
 	elseif op == "stop" then
 		endEmote(p, true)
 		return { ok = true }
@@ -258,6 +327,16 @@ local function added(p: Player)
 	for i = 1, Flair.SLOTS do if d.emotes[i] ~= "" and not Flair.info("emote", d.emotes[i]) then d.emotes[i] = "" end end
 	if not Flair.info("kill", d.kill) then d.kill = Flair.DEFAULT.kill end
 	if not Flair.info("grapple", d.grapple) then d.grapple = Flair.DEFAULT.grapple end
+	-- (v2, 17 Nov: Roblox's free emotes are the starter set: a wheel saved before then gets them in its empty slots)
+	if (tonumber(d.v) or 1) < 2 then
+		for _, id in Flair.DEFAULT.emotes do
+			if id ~= "" and not table.find(d.emotes, id) then
+				local i = table.find(d.emotes, "")
+				if i then d.emotes[i] = id end
+			end
+		end
+		d.v = 2
+	end
 	s.prof = prof
 	s.ready = true
 	prof.onLost.Event:Connect(function() publish(p) end)
@@ -266,6 +345,21 @@ end
 
 for _, p in Players:GetPlayers() do task.spawn(added, p) end
 Players.PlayerAdded:Connect(added)
+-- your own Roblox emotes, read each time your character's look is in (and once for anyone already here)
+local function watchLook(p: Player)
+	local function soon()
+		-- (once the character's look is in: before that its description has no emotes)
+		local t0 = os.clock()
+		while p.Parent and not p:HasAppearanceLoaded() and os.clock() - t0 < 15 do task.wait(0.25) end
+		task.wait(0.5)
+		readRbx(p)
+	end
+	p.CharacterAdded:Connect(function() task.spawn(soon) end)
+	p.CharacterAppearanceLoaded:Connect(function() task.spawn(readRbx, p) end)
+	if p.Character then task.spawn(soon) end
+end
+for _, p in Players:GetPlayers() do watchLook(p) end
+Players.PlayerAdded:Connect(watchLook)
 Players.PlayerRemoving:Connect(function(p)
 	local s = st[p]
 	st[p] = nil

@@ -19,12 +19,12 @@ F.TYPES = { "kill", "emote", "grapple" }
 F.TYPE_NAMES = { kill = "Kill Effect", emote = "Emote", grapple = "Grapple" }
 F.CONTAINER = "bag"
 F.SLOTS = 8 -- the emote wheel (Fortnite's current wheel has 8; a slot may repeat an emote)
-F.DEFAULT = { kill = "none", grapple = "rope", emotes = { "wave", "salute", "", "", "", "", "", "" } }
+F.DEFAULT = { kill = "none", grapple = "rope", emotes = { "wave", "hello", "salute", "point", "shrug", "cheer", "laugh", "dance" } }
 F.COOLDOWN = 2 -- s between emotes (Rivals has none; spam guard)
 
 export type Item = { type: string, id: string, name: string, rarity: string, vip: boolean? }
 export type Kill = Item & { dur: number, tint: Color3 }
-export type Emote = Item & { anim: string, len: number, loop: boolean }
+export type Emote = Item & { anim: string, len: number, loop: boolean, catalog: number }
 
 -- rarity tints (the same as LootTable.RARITY; copied so this module needs nothing else)
 F.RARITY_COLOR = {
@@ -66,17 +66,24 @@ local GRAPPLES = {
 	{ "sticky", "Sticky Hand", "epic", Color3.fromRGB(112, 188, 124) },
 	{ "rainbow", "Rainbow", "legendary", Color3.fromRGB(240, 178, 52) },
 }
--- emotes: id, name, rarity, animation, seconds, loops (one-shots end on their own; a loop runs till you move)
--- (the clips: generate_animation, 17 Nov 2026. the owner found the first set "really stiff..", so wave, salute, clap,
--- fist pump and groove were remade the same day: 4 takes each (the owner's rule), the best kept on a frame strip and a
--- motion meter (fewer frozen holds, smoother, more torso and legs, facing forward, settles back; groove loops seamlessly).
--- wave and groove re-uploaded through Open Cloud (the tool's own publish timed out). prompts and numbers in FLAIR.md)
--- (Groove, Fist Pump and Bow were taken out on 17 Nov, the owner: "remove groove, fist bump and bow they dont work".
--- a saved wheel slot holding one is emptied when the save loads: FlairServer)
+-- emotes: id, name, rarity, animation, seconds, loops (one-shots end on their own; a loop runs till you move), and the
+-- Roblox catalog emote it comes from (0: one of Roblox's default emotes, every avatar's own wave/cheer/laugh/dance).
+-- (17 Nov 2026: our own generate_animation clips "looked really really bad" to the owner, so the free set is Roblox's
+-- own free emotes now, every one of them free for everybody: the body animation inside each catalog emote, read with
+-- InsertService:LoadAsset + KeyframeSequenceProvider (owned by Roblox, so they play in any game). never sold in the
+-- shop (forSale skips free). a player's OWN bought Roblox emotes are the wheel's second page: FlairServer reads their
+-- avatar's (StarterPlayer.UserEmotesEnabled), ids "rbx:<name>", never stored in this table)
 local EMOTES = {
-	{ "wave", "Wave", "free", "rbxassetid://90647186428374", 2.97, false },
-	{ "salute", "Salute", "free", "rbxassetid://70910733834944", 2.97, false },
-	{ "clap", "Slow Clap", "common", "rbxassetid://102241914870841", 2.97, false },
+	{ "wave", "Wave", "free", "rbxassetid://507770239", 1.75, false, 0 },
+	{ "hello", "Hello", "free", "rbxassetid://10714359093", 1.77, false, 3576686446 },
+	{ "salute", "Salute", "free", "rbxassetid://10714389988", 3.70, false, 3360689775 },
+	{ "point", "Point", "free", "rbxassetid://10714395441", 2.30, false, 3576823880 },
+	{ "shrug", "Shrug", "free", "rbxassetid://10714374484", 2.03, false, 3576968026 },
+	{ "cheer", "Cheer", "free", "rbxassetid://507770677", 2.50, false, 0 },
+	{ "laugh", "Laugh", "free", "rbxassetid://507770818", 3.29, false, 0 },
+	{ "stadium", "Stadium", "free", "rbxassetid://10714356920", 3.63, true, 3360686498 },
+	{ "tilt", "Tilt", "free", "rbxassetid://10714338461", 4.80, true, 3360692915 },
+	{ "dance", "Dance", "free", "rbxassetid://507771019", 1.08, true, 0 },
 }
 
 F.ORDER = { kill = {}, emote = {}, grapple = {} } :: { [string]: { string } }
@@ -87,7 +94,7 @@ for _, r in KILLS do
 end
 for _, r in EMOTES do
 	table.insert(F.ORDER.emote, r[1])
-	F.ITEMS.emote[r[1]] = { type = "emote", id = r[1], name = r[2], rarity = r[3], anim = r[4], len = r[5], loop = r[6] }
+	F.ITEMS.emote[r[1]] = { type = "emote", id = r[1], name = r[2], rarity = r[3], anim = r[4], len = r[5], loop = r[6], catalog = r[7] }
 end
 for _, r in GRAPPLES do
 	table.insert(F.ORDER.grapple, r[1])
@@ -169,7 +176,14 @@ end
 local ARMS = {
 	wave = { { 0.36, 0.34, 0.26, 0.5, 0.3, 0.64 }, { 0.64, 0.34, 0.8, 0.22, 0.78, 0.06 } },
 	salute = { { 0.36, 0.34, 0.3, 0.5, 0.32, 0.64 }, { 0.64, 0.34, 0.78, 0.3, 0.6, 0.16 } },
-	clap = { { 0.36, 0.34, 0.34, 0.5, 0.48, 0.44 }, { 0.64, 0.34, 0.66, 0.5, 0.52, 0.44 } },
+	hello = { { 0.36, 0.34, 0.26, 0.5, 0.3, 0.64 }, { 0.64, 0.34, 0.8, 0.22, 0.78, 0.06 } },
+	point = { { 0.36, 0.34, 0.3, 0.5, 0.32, 0.64 }, { 0.64, 0.34, 0.8, 0.36, 0.96, 0.36 } },
+	shrug = { { 0.36, 0.34, 0.28, 0.5, 0.14, 0.42 }, { 0.64, 0.34, 0.72, 0.5, 0.86, 0.42 } },
+	cheer = { { 0.36, 0.34, 0.28, 0.2, 0.26, 0.04 }, { 0.64, 0.34, 0.72, 0.2, 0.74, 0.04 } },
+	laugh = { { 0.36, 0.34, 0.3, 0.5, 0.46, 0.56 }, { 0.64, 0.34, 0.7, 0.5, 0.54, 0.56 } },
+	stadium = { { 0.36, 0.34, 0.24, 0.22, 0.16, 0.08 }, { 0.64, 0.34, 0.76, 0.22, 0.84, 0.08 } },
+	tilt = { { 0.36, 0.34, 0.3, 0.5, 0.28, 0.66 }, { 0.64, 0.34, 0.7, 0.5, 0.72, 0.66 } },
+	dance = { { 0.36, 0.34, 0.24, 0.42, 0.22, 0.26 }, { 0.64, 0.34, 0.74, 0.46, 0.8, 0.6 } },
 }
 
 local function figure(box: Frame, body: Color3, arms: any, lean: number)

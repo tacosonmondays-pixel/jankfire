@@ -10,12 +10,22 @@
 --     stops it. in a match, while you emote, enemies you couldn't see from your own eyes are hidden from you (Rivals
 --     does the same: the camera can't be used to look round corners).
 -- test hook (Play tests driven from Studio): the local player's attribute FlairTest = "wheel" | "close" | "pick:<slot>"
+--   | "page:<1|2>" | "emote:rbx:<name>" (one of your own Roblox emotes)
 --   | "emote:<id>" | "stop" | "ui" | "ui:emote" | "ui:kill" | "uiclose" | "preview:<id>" (the equip screen's preview)
 --   | "fake:844x390" (the equip screen's phone layout in a box that size) | "real"
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local HttpService = game:GetService("HttpService")
+local StarterGui = game:GetService("StarterGui")
+-- (Roblox's own emote menu stays off: with UserEmotesEnabled on, your Roblox emotes are on this script's wheel instead)
+task.spawn(function()
+	for _ = 1, 20 do
+		if pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.EmotesMenu, false) end) then break end
+		task.wait(0.5)
+	end
+end)
 
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Flair = require(Shared:WaitForChild("Flair")) :: any
@@ -60,7 +70,7 @@ end
 
 -- ------------------------------------------------------------------ playing an emote
 local E = {
-	id = nil :: string?, track = nil :: AnimationTrack?, t0 = 0, len = 0, loop = false,
+	id = nil :: string?, track = nil :: AnimationTrack?, t0 = 0, len = 0, loop = false, rbx = false,
 	cam = nil :: { yaw: number, pitch: number, dist: number, saved: CFrame, savedType: Enum.CameraType, t0: number, out: number?, from: CFrame? }?,
 	hidden = {} :: { [Instance]: number }, hideT = 0, starting = false, rootAt = Vector3.zero,
 	-- (your own body: first person hides it, and that hiding stays when the camera turns Scriptable. while the camera
@@ -78,16 +88,16 @@ local function myChar(): (Model?, Humanoid?, BasePart?)
 	return ch, hum, root
 end
 
-local function trackFor(hum: Humanoid, id: string): AnimationTrack?
+local function trackFor(hum: Humanoid, id: string, anim: string?): AnimationTrack?
 	local e = Flair.info("emote", id)
-	if not e then return nil end
+	if not e and not anim then return nil end
 	if tracksFor ~= hum.Parent then table.clear(tracks); tracksFor = hum.Parent :: Model end
 	local tr = tracks[id]
 	if tr then return tr end
 	local an = hum:FindFirstChildOfClass("Animator")
 	if not an then return nil end
 	local a = Instance.new("Animation")
-	a.AnimationId = e.anim
+	a.AnimationId = if anim then anim else e.anim
 	local ok, t = pcall(an.LoadAnimation, an, a)
 	if not ok or not t then return nil end
 	t.Priority = Enum.AnimationPriority.Action4
@@ -170,12 +180,15 @@ local function startEmote(id: string)
 		if E.track then E.track:Stop(0.3) end -- (cross-fades into the next one)
 		E.track = nil
 	end
-	local e = Flair.info("emote", id)
-	local tr = trackFor(hum, id)
+	-- (one of your own Roblox emotes: the server sends its animation; its length and looping are the clip's own, read
+	-- off the track once it has loaded)
+	local rbx = string.sub(id, 1, 4) == "rbx:"
+	local e = if rbx then { len = 0, loop = false } else Flair.info("emote", id)
+	local tr = trackFor(hum, id, if rbx and type(res.anim) == "string" then res.anim else nil)
 	if not e or not tr then task.spawn(ask, "stop"); return end
-	tr.Looped = e.loop
+	if not rbx then tr.Looped = e.loop end
 	tr:Play(0.3, 1, 1)
-	E.id, E.track, E.t0, E.len, E.loop = id, tr, os.clock(), e.len, e.loop
+	E.id, E.track, E.t0, E.len, E.loop, E.rbx = id, tr, os.clock(), e.len, e.loop, rbx
 	E.rootAt = root.Position
 	-- the camera swings out behind you (or keeps going if it's already out)
 	local cam = workspace.CurrentCamera
@@ -254,7 +267,10 @@ RunService.Heartbeat:Connect(function(dt: number)
 	-- (a one-shot starts its 0.35 s fade to idle that long before its last frame, so it settles instead of snapping. read
 	-- off the track, not the clock: a clip's first play waits ~0.6 s for the asset, and the clock would cut its end off)
 	local tr = E.track
-	local done = not E.loop and tr ~= nil and (tr.TimePosition >= E.len - 0.35 or (el > 1 and not tr.IsPlaying) or el > E.len + 3)
+	if E.rbx and tr and tr.Length > 0 then E.len, E.loop = tr.Length, tr.Looped end
+	local ready = tr ~= nil and (not E.rbx or tr.Length > 0)
+	local done = (not E.loop and ready and tr ~= nil and (tr.TimePosition >= E.len - 0.35 or (el > 1 and not tr.IsPlaying) or el > E.len + 3))
+		or (not ready and el > 8) -- (a clip that never loads)
 	if (el > 0.25 and moved) or done or me:GetAttribute("Emote") == nil and el > 1 then
 		stopEmote(me:GetAttribute("Emote") ~= nil)
 		return
@@ -270,7 +286,7 @@ end)
 me.CharacterAdded:Connect(function() stopEmote(false); table.clear(tracks); table.clear(E.shown) end)
 
 -- ------------------------------------------------------------------ the wheel
-local W = { open = false, hover = 0, held = false, touch = false, savedOpen = false, t0 = 0, slots = {} :: { any } }
+local W = { open = false, hover = 0, held = false, touch = false, savedOpen = false, t0 = 0, slots = {} :: { any }, page = 1 }
 local gui = T.new("ScreenGui", { Name = "JankEmoteWheel", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 40,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false }, pg)
 local catcher = T.new("TextButton", { Text = "", AutoButtonColor = false, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), Modal = true }, gui)
@@ -289,6 +305,32 @@ hubName.ZIndex = 3; hubName.TextScaled = true
 T.new("UITextSizeConstraint", { MaxTextSize = 22 }, hubName)
 local hubBar = T.new("Frame", { AnchorPoint = Vector2.new(0.5, 0), Position = UDim2.fromScale(0.5, 0.62), Size = UDim2.fromOffset(40, 3),
 	BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, ZIndex = 3 }, hub)
+
+-- pages when you have Roblox emotes of your own: JANKFIRE (the 8 slots you set), then ROBLOX, 8 to a page (the ones on
+-- your Roblox avatar, equipped ones first: the server's RbxEmotes). the tabs over the ring (ROBLOX again: its next page)
+-- or the mouse wheel go through them
+local function rbxList(): { { n: string, a: number } }
+	local raw = me:GetAttribute("RbxEmotes")
+	if type(raw) ~= "string" or raw == "" then return {} end
+	local ok, t = pcall(HttpService.JSONDecode, HttpService, raw)
+	return if ok and type(t) == "table" then t else {}
+end
+local tabs = T.new("Frame", { Name = "Pages", AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 0.5, -(RING + CELL / 2 + 20) - 10),
+	Size = UDim2.fromOffset(300, 40), BackgroundTransparency = 1, Visible = false }, wroot)
+T.new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, HorizontalAlignment = Enum.HorizontalAlignment.Center, Padding = UDim.new(0, 8),
+	SortOrder = Enum.SortOrder.LayoutOrder }, tabs)
+local tabBtns = {}
+local setPage: (number, boolean?) -> () = function() end
+for i, word in { "JANKFIRE", "ROBLOX" } do
+	local b = T.new("TextButton", { Name = word, AutoButtonColor = false, Size = UDim2.fromOffset(140, 36), BackgroundColor3 = T.CARD,
+		BackgroundTransparency = 0.15, BorderSizePixel = 0, FontFace = T.FONT_BOLD, TextSize = 15, Text = word, TextColor3 = T.DIM, LayoutOrder = i }, tabs)
+	T.corner(b, 8)
+	local st = T.edge(b)
+	tabBtns[i] = { b = b, st = st }
+	b.MouseButton1Click:Connect(function()
+		if i == 1 then setPage(1) else setPage(if W.page >= 2 then W.page + 1 else 2, true) end
+	end)
+end
 
 for i = 1, Flair.SLOTS do
 	local a = math.rad(-90 + (i - 1) * 360 / Flair.SLOTS)
@@ -313,13 +355,36 @@ for i = 1, Flair.SLOTS do
 	end)
 end
 
+local function rbxPages(n: number): number return math.ceil(n / Flair.SLOTS) end
 local function fill()
+	local list = rbxList()
+	local pages = rbxPages(#list)
+	if W.page > 1 + pages then W.page = 1 end
+	tabs.Visible = #list > 0
+	tabBtns[2].b.Text = if W.page >= 2 and pages > 1 then string.format("ROBLOX %d/%d", W.page - 1, pages) else "ROBLOX"
+	for i, t in tabBtns do
+		local on = i == W.page
+		t.b.TextColor3 = if on then T.TEXT else T.DIM
+		t.st.Color = if on then T.ACCENT else T.EDGE
+		t.st.Transparency = if on then 0 else T.EDGE_A
+	end
 	local s = Flair.slotsOf(me:GetAttribute("Emotes"))
 	for i, sl in W.slots do
-		if sl.id ~= s[i] then
-			sl.id = s[i]
+		local want, name, asset = s[i], nil, nil
+		if W.page >= 2 then
+			local r = list[(W.page - 2) * Flair.SLOTS + i]
+			want, name, asset = if r then "rbx:" .. tostring(r.n) else "", r and tostring(r.n), r and tonumber(r.a)
+		end
+		sl.name = name
+		if sl.id ~= want then
+			sl.id = want
 			for _, c in sl.pic:GetChildren() do c:Destroy() end
-			if sl.id ~= "" then Flair.picture("emote", sl.id, sl.pic) end
+			if asset then
+				-- (your own emote's picture: Roblox's catalog thumbnail of it)
+				local img = T.new("ImageLabel", { Name = "RbxPic", BackgroundColor3 = Color3.fromRGB(22, 24, 30), BorderSizePixel = 0, Size = UDim2.fromScale(1, 1),
+					Image = "rbxthumb://type=Asset&id=" .. asset .. "&w=150&h=150", ScaleType = Enum.ScaleType.Fit, ZIndex = 4 }, sl.pic)
+				T.corner(img, 6)
+			elseif sl.id ~= "" then Flair.picture("emote", sl.id, sl.pic) end
 			sl.empty.Visible = sl.id == ""
 		end
 	end
@@ -334,9 +399,20 @@ local function show()
 	end
 	local id = if W.hover > 0 then W.slots[W.hover].id else ""
 	local e = Flair.info("emote", id)
-	hubName.Text = if e then string.upper(e.name) else ""
-	hubBar.Visible = e ~= nil
-	if e then hubBar.BackgroundColor3 = Flair.RARITY_COLOR[e.rarity] or T.ACCENT end
+	local own = if W.hover > 0 then W.slots[W.hover].name else nil
+	hubName.Text = if e then string.upper(e.name) elseif own then string.upper(own) else ""
+	hubBar.Visible = e ~= nil or own ~= nil
+	if e then hubBar.BackgroundColor3 = Flair.RARITY_COLOR[e.rarity] or T.ACCENT elseif own then hubBar.BackgroundColor3 = T.ACCENT end
+end
+setPage = function(n: number, wrap: boolean?)
+	local total = 1 + rbxPages(#rbxList())
+	if wrap then n = if n > total then 2 else n end -- (ROBLOX's tab cycles through its own pages)
+	n = math.clamp(n, 1, total)
+	if n == W.page then return end
+	W.page = n
+	W.hover = 0
+	fill()
+	show()
 end
 
 function W.openWheel(touch: boolean)
@@ -382,6 +458,15 @@ catcher.MouseButton1Click:Connect(function()
 	W.close()
 end)
 me:GetAttributeChangedSignal("Emotes"):Connect(function() if W.open then fill(); show() end end)
+me:GetAttributeChangedSignal("RbxEmotes"):Connect(function() if W.open then fill(); show() end end)
+-- (the other page: the mouse wheel while the wheel is up; Tab is Roblox's player list)
+UIS.InputChanged:Connect(function(io)
+	if not W.open or io.UserInputType ~= Enum.UserInputType.MouseWheel or #rbxList() == 0 then return end
+	local total = 1 + rbxPages(#rbxList())
+	local n = W.page + (if io.Position.Z < 0 then 1 else -1)
+	setPage(if n > total then 1 elseif n < 1 then total else n)
+end)
+
 
 -- the emote key: the settings page's rebinding (StarterPlayerScripts.Jankfire.Binds, "emote"; the settings session's) when
 -- it's in, else T and D-pad right
@@ -479,6 +564,7 @@ me:GetAttributeChangedSignal("FlairTest"):Connect(function()
 	if cmd == "wheel" then W.openWheel(rest == "touch")
 	elseif cmd == "close" then W.close()
 	elseif cmd == "hover" then W.hover = tonumber(rest) or 0; show()
+	elseif cmd == "page" then setPage(tonumber(rest) or 1) -- (the wheel's page: 2 = your own Roblox emotes)
 	elseif cmd == "pick" then
 		local i = tonumber(rest) or 1
 		W.close()

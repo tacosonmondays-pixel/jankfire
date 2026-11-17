@@ -105,6 +105,9 @@ local function publish(s: State)
 	p:SetAttribute("Level", Ranks.levelOf(xp))
 	p:SetAttribute("StatsSave", if not s.ready then "loading" elseif s.prof then s.prof.state else "off")
 	p:SetAttribute("StatsPrivate", d ~= nil and d.private == true) -- (the settings panel's switch shows it)
+	-- (the card title you wear, for the one over your head: client/OverheadTitles; "none" shows nothing)
+	local title = if d and type(d.look) == "table" and type(d.look.title) == "string" then d.look.title else "none"
+	if p:GetAttribute("CardTitle") ~= title then p:SetAttribute("CardTitle", title) end
 end
 local function dirty(s: State)
 	if s.prof then s.prof.dirty = true end
@@ -496,6 +499,7 @@ local function handle(p: Player, op: unknown, a: unknown, b: unknown): any
 		if not owns(p, a, b) then return { ok = false, why = "you don't own that yet" } end
 		d.look[a] = b
 		dirty(s)
+		publish(s)
 		return { ok = true, look = { border = d.look.border, banner = d.look.banner, title = d.look.title } }
 	elseif op == "private" then
 		d.private = a == true
@@ -736,6 +740,7 @@ local function recheck(p: Player)
 	for _, t in CardStyles.TYPES do
 		if not owns(p, t, d.look[t]) then d.look[t] = CardStyles.DEFAULT[t]; dirty(s) end
 	end
+	publish(s)
 end
 
 local function added(p: Player)

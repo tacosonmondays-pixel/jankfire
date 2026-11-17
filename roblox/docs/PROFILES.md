@@ -269,3 +269,20 @@ Not checked end to end:
 - **A real second player.** Studio's MCP only starts solo tests.
 
 ![photo sheet](profiles/profiles-sheet.jpg)
+
+## Titles over heads (17 Nov 2026, place v672)
+
+The owner: "can titles appear above head".
+- **Where it comes from:** `server/Stats.luau` publishes the card title you wear as the player attribute `CardTitle` (on load, on every look change, and when a title you no longer own comes off).
+- **Who draws it:** `client/OverheadTitles.client.luau` draws it for every player, just under their Roblox name: one fixed-size BillboardGui per character, made on each client (nothing replicates).
+- **Look:** the title's words in its rarity colour (`CardStyles.RARITY_COLOR`), Montserrat Bold with a dark outline, like the regulars' nametags. "No Title" (`none`) shows nothing.
+- **Hidden** on anyone in a match (Zone `match`): it stays on the scoreboard and the card. It's drawn on top of hats but hidden behind walls (one ray per player, 10 times a second). Your own title shows only when your camera is out, not from your own eyes.
+- **Fade:** from 45 to 60 studs; gone past 60.
+- **Switch:** Settings `gfx.titles` (SHOW TITLES on the settings page, GRAPHICS > OTHER PLAYERS; nil = on).
+- **Studio test hook:** the attribute `TitleZoneTest = "match"` stands a player in a match.
+- **Play check (v672, a test title on the attribute only):**
+  - text EMPLOYEE OF THE MONTH, on its head;
+  - 10 and 30 studs on, 50 at fade 0.34, 58 at 0.87, 70 off;
+  - in a match off, switch off off, switch back on.
+  - No photo yet: the test camera never framed the avatar.
+- **Adding a title** is one row in `CardStyles` TITLES (`{ id, WORDS, rarity }`). The card, shop, crates and the overhead title all read it.

@@ -272,7 +272,10 @@ local function build(L: any): any
 	local e = L.emotes
 	local holder: Instance
 	if L.ring then
-		holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(e[1], e[2]), Size = UDim2.fromOffset(e[3], e[4]), ZIndex = 3 }, M.frame)
+		-- (one row that scrolls sideways: ten free emotes since 17 Nov, six fit)
+		holder = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(e[1], e[2]), Size = UDim2.fromOffset(e[3], e[4] + 12),
+			CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
+			ScrollBarThickness = 6, ScrollBarImageColor3 = T.DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3 }, M.frame)
 		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, e[7]), SortOrder = Enum.SortOrder.LayoutOrder }, holder)
 	else
 		holder = grid(M.frame, e)
