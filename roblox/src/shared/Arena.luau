@@ -1,7 +1,8 @@
 --!strict
 -- which arena matches are played in. workspace.Map's attribute "Arena" names a model under Map: "Rooftop" (v1, the
--- default, also when the attribute is missing), "RooftopV2" (v2, built by ServerStorage.PolishBackup.RooftopV2) or
--- "RooftopV3" (v3, v1's layout redressed: PolishBackup.RooftopV3).
+-- default, also when the attribute is missing), "RooftopV2" (v2, built by ServerStorage.PolishBackup.RooftopV2),
+-- "RooftopV3" (v3, v1's layout redressed: PolishBackup.RooftopV3) or one of the maps ported from the web game
+-- (17 Nov: "Crate"; built by PolishBackup.WebArena, which gives each its Title, Look and MaxTeam attributes).
 -- the rotation: workspace.Map's attribute "ArenaPool" is a comma list of arenas ("RooftopV2,RooftopV3", the owner's
 -- pick of 16 Nov: "Why not both XD"). each pad takes the next one from it for its next match (Arena.pick); with no
 -- pool, matches use "Arena". PolishBackup.RooftopV3's R.use("both") / R.use("v1"|"v2"|"v3") sets both attributes.
@@ -46,17 +47,24 @@ function Arena.centreX(site: Instance?): number
 	return if type(x) == "number" then x else 0
 end
 
--- the rotation's arenas: the built ones ArenaPool names, in its order, each once
-function Arena.pool(): { string }
+-- the rotation's arenas: the built ones ArenaPool names, in its order, each once. with a team size, only the arenas that
+-- take it (an arena's attribute "MaxTeam": the ported web maps, 17 Nov; Crate is too small for a 4v4); if none does,
+-- all of them
+function Arena.pool(teamSize: number?): { string }
 	local m = map()
 	local s = m and m:GetAttribute("ArenaPool")
-	local out = {}
+	local out, fits = {}, {}
 	if type(s) == "string" and m then
 		for n in string.gmatch(s, "[^,%s]+") do
-			if m:FindFirstChild(n) and not table.find(out, n) then table.insert(out, n) end
+			local a = m:FindFirstChild(n)
+			if a and not table.find(out, n) then
+				table.insert(out, n)
+				local cap = a:GetAttribute("MaxTeam")
+				if not (teamSize and type(cap) == "number" and cap > 0 and teamSize > cap) then table.insert(fits, n) end
+			end
 		end
 	end
-	return out
+	return if #fits > 0 then fits else out
 end
 
 -- the next arena out of `pool`: never `last` again while there is another one (two arenas take turns); the first

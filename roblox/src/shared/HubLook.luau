@@ -184,6 +184,58 @@ H.looks.rooftop_v3 = {
 	Terrain = { WaterColor = Color3.fromRGB(28, 150, 178), WaterTransparency = 0.55, WaterReflectance = 0.75, WaterWaveSize = 0.08, WaterWaveSpeed = 8 },
 } :: Look
 H.plainSky.rooftop_v3 = true
+-- the maps ported from the web game (17 Nov 2026): each arena model's name -> its look here (HubLife, in a match)
+H.byArena = {} :: { [string]: string }
+-- CRATE (ServerStorage.PolishBackup.WebArena): a toy chest on a tower of giant blocks in a giant child's playroom. The
+-- room is closed but for one big window in its north wall: a low sun from the north comes in through it onto the chest
+-- (long soft shadows, the far side of the room in its light), the rest is warm indoor light; a pale warm haze
+H.looks.crate = {
+	Lighting = {
+		Ambient = Color3.fromRGB(150, 142, 136), OutdoorAmbient = Color3.fromRGB(150, 144, 140), Brightness = 2.4,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.4, EnvironmentSpecularScale = 0.3,
+		ClockTime = 12, GeographicLatitude = -45, ColorShift_Top = Color3.fromRGB(255, 236, 214),
+		FogColor = Color3.fromRGB(214, 206, 198), FogStart = 900, FogEnd = 5200,
+	},
+	Atmosphere = { Density = 0.22, Offset = 0, Haze = 0.6, Glare = 0, Color = Color3.fromRGB(222, 214, 205), Decay = Color3.fromRGB(196, 186, 176) },
+	Bloom = { Intensity = 0.25, Size = 22, Threshold = 2.2 },
+	ColorCorrection = { Brightness = 0.02, Contrast = 0.1, Saturation = -0.08, TintColor = Color3.fromRGB(255, 249, 242) },
+	SunRays = { Intensity = 0.04 },
+} :: Look
+H.plainSky.crate = true
+H.byArena.Crate = "crate"
+-- PLATFORM (ServerStorage.PolishBackup.WebArena): an oil rig in a grey northern sea. A bright overcast afternoon: a soft
+-- high sun from the south-west, a pale grey-blue haze that swallows the horizon, the sea a step darker than the sky
+H.looks.platform = {
+	Lighting = {
+		Ambient = Color3.fromRGB(128, 132, 138), OutdoorAmbient = Color3.fromRGB(146, 150, 158), Brightness = 2.0,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.5, EnvironmentSpecularScale = 0.4,
+		ClockTime = 14.5, GeographicLatitude = 50, ColorShift_Top = Color3.fromRGB(240, 236, 230),
+		FogColor = Color3.fromRGB(196, 204, 212), FogStart = 350, FogEnd = 2600,
+	},
+	Atmosphere = { Density = 0.42, Offset = 0.1, Haze = 2.4, Glare = 0, Color = Color3.fromRGB(202, 210, 218), Decay = Color3.fromRGB(150, 160, 172) },
+	Bloom = { Intensity = 0.2, Size = 20, Threshold = 2.4 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.12, Saturation = -0.12, TintColor = Color3.fromRGB(248, 250, 255) },
+	SunRays = { Intensity = 0.01 },
+} :: Look
+H.plainSky.platform = true
+H.byArena.Platform = "platform"
+-- BAZAAR (ServerStorage.PolishBackup.WebArena): a walled desert market town at the end of the day. A warm sun from the
+-- south-west, about 35 degrees up (across the gate plazas' line, so neither team starts looking into it), long shadows
+-- down the streets, a pale sand haze that hides the desert's edge
+H.looks.bazaar = {
+	Lighting = {
+		Ambient = Color3.fromRGB(138, 128, 118), OutdoorAmbient = Color3.fromRGB(150, 140, 128), Brightness = 2.4,
+		ExposureCompensation = -0.05, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.35,
+		ClockTime = 15.5, GeographicLatitude = 35, ColorShift_Top = Color3.fromRGB(255, 230, 200),
+		FogColor = Color3.fromRGB(226, 210, 186), FogStart = 400, FogEnd = 2600,
+	},
+	Atmosphere = { Density = 0.34, Offset = 0.15, Haze = 2.0, Glare = 0.1, Color = Color3.fromRGB(226, 210, 186), Decay = Color3.fromRGB(190, 160, 130) },
+	Bloom = { Intensity = 0.22, Size = 22, Threshold = 2.3 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.12, Saturation = -0.1, TintColor = Color3.fromRGB(255, 246, 236) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.plainSky.bazaar = true
+H.byArena.Bazaar = "bazaar"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)

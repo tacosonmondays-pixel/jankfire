@@ -74,7 +74,7 @@ local function consider(i: Instance, home: Instance)
 	if pieces[i] then return end
 	if not (i:IsA("Model") or i:IsA("Folder")) then return end
 	local lo, hi, n = box(i)
-	if n < MIN_PARTS then return end
+	if n < MIN_PARTS and i:GetAttribute("ZonePiece") ~= true then return end -- (a small arena says so: Crate, 17 Nov)
 	pieces[i] = { inst = i, home = home, lo = lo, hi = hi, boxT = os.clock(), away = 0, out = false }
 	i.AncestryChanged:Connect(function(_, parent)
 		local pc = pieces[i]

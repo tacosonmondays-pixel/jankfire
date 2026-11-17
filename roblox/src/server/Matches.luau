@@ -198,12 +198,18 @@ local function teamSpawns(m: Match, team: number): { CFrame }
 	local cx = Arena.centreX(roof)
 	local out = {}
 	local ts = roof:FindFirstChild("TeamSpawns")
-	local want = if team == 1 then "att" elseif team == 2 then "def" else nil
-	if ts and want then
+	-- (a 1v1v1's third side: the arena's "mid" team spawns, facing its middle; the ported web maps have them, 17 Nov)
+	local want = if team == 1 then "att" elseif team == 2 then "def" else "mid"
+	local mid = roof:GetPivot().Position
+	if ts then
 		for _, s in ts:GetChildren() do
-			if s:IsA("BasePart") and s.Name == want then table.insert(out, CFrame.lookAt(s.Position, Vector3.new(cx, s.Position.Y, s.Position.Z))) end
+			if s:IsA("BasePart") and s.Name == want then
+				local toward = if want == "mid" then Vector3.new(mid.X, s.Position.Y, mid.Z) else Vector3.new(cx, s.Position.Y, s.Position.Z)
+				if (toward - s.Position).Magnitude > 0.1 then table.insert(out, CFrame.lookAt(s.Position, toward)) else table.insert(out, CFrame.new(s.Position)) end
+			end
 		end
-	else
+	end
+	if #out == 0 and (want == "mid" or not ts) then
 		local sp = roof:FindFirstChild("Spawns")
 		for _, n in { "Spawn11", "Spawn18", "Spawn14", "Spawn12", "Spawn13" } do
 			local s = sp and sp:FindFirstChild(n) :: BasePart?
@@ -445,9 +451,12 @@ local function startMatch(pad: Model, sides: { { Player } }, site: Site, arena: 
 	return m
 end
 
--- the pad's next arena: the next one in the rotation for this pad (never its last one twice running), else "Arena"
+-- the pad's next arena: the next one in the rotation for this pad (never its last one twice running), else "Arena".
+-- only arenas that take the pad's team size (an arena's MaxTeam: Arena.pool)
 local function nextArena(pad: Model): string
-	return Arena.pick(Arena.pool(), lastArena[pad], math.random) or Arena.name()
+	local mode = pad:GetAttribute("Mode")
+	local size = if type(mode) == "string" then tonumber(string.match(mode, "^(%d+)")) else nil
+	return Arena.pick(Arena.pool(size), lastArena[pad], math.random) or Arena.name()
 end
 
 -- (Party.luau, the Play queue) a match the queue found: the pad of that mode (the one by the lifts first) gives its
