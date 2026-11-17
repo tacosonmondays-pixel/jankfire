@@ -181,6 +181,7 @@ local TEX = {
 	cotton2 = "rbxassetid://96781809339333", -- a thick lumpy smoke puff, 64 frames (8x8; tools/roblox/vfx/cotton_sheet.py)
 	lumps = "rbxassetid://82728391412819", -- 16 dense crisp lumpy puffs (4x4; tools/roblox/vfx/lumps_sheet.py): fireball, smoke
 	streak = "rbxassetid://127914373549121", -- a soft white streak (the spark drawing is warm)
+	pulse = "rbxassetid://84623963828273", -- a Beam strip: one soft bead of light along u, a tight core across v (tools/roblox/vfx/vine_sprite.py)
 	flame = "rbxassetid://77597527828324", -- a flame tongue licking up, 16 frames (4x4; tools/roblox/vfx/flame_sheet.py)
 	-- the muzzle flash since 17 Nov (the owner: the web's 16-point star "looks kinda ugly"): flame tongues from Kenney's
 	-- Particle Pack (CC0, kenney.nl) laid out by tools/roblox/vfx/mflash_sheet.py; warm as drawn, the N ones white for
@@ -1930,7 +1931,7 @@ end
 type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
 	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number,
 	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart?, tint: { ParticleEmitter },
-	coils: { any } }
+	coils: { any }, coilBeams: { any } }
 local skinned: { [Model]: SkinFx } = {}
 local skinGlow: (any, boolean?) -> ()
 local function skinSpec(model: Model): any
@@ -2043,9 +2044,33 @@ local function modelWrap(m: Model): string?
 	end
 	return nil
 end
--- (re)colour a skin's flames and lit parts from its gun's wrap; cheap to call: only acts when the wrap changed
+-- a coiling vine's layers from its colour c: the soft halo c, the body a deeper gold (normal blend: it holds on a white
+-- gun and light walls), the core white-hot, the running beads between
+local VINE_DEEP = Color3.fromRGB(190, 105, 10)
+local function coilShade(c: Color3, role: string): Color3
+	if role == "body" then return c:Lerp(VINE_DEEP, 0.45)
+	elseif role == "core" then return c:Lerp(FWHITE, 0.7)
+	elseif role == "bead" then return c:Lerp(FWHITE, 0.5)
+	end
+	return c
+end
+-- a vine's joints on its helix at time t: each joint's X axis along the helix (so the beams between bend into their
+-- arcs), its Y axis out from the axis; the helix turns round its axis at cl.rate rad/s (`spin` mirrors the far side)
+local function coilPlace(cl: any, t: number)
+	local off = t * cl.rate * cl.spin + cl.phase
+	local w = cl.T * 2 * math.pi
+	for j = 0, cl.n do
+		local u = j / cl.n
+		local th = u * w * cl.spin + off
+		local c_, s_ = math.cos(th), math.sin(th)
+		local rad = cl.e1 * c_ + cl.e2 * s_
+		local tan = cl.d + (cl.e2 * c_ - cl.e1 * s_) * (cl.r * w * cl.spin)
+		cl.atts[j].CFrame = CFrame.fromMatrix(cl.a + cl.d * u + rad * cl.r, tan.Unit, rad)
+	end
+end
+-- (re)colour a skin's flames, lit parts and vines from its gun's wrap; cheap to call: only acts when the wrap changed
 skinGlow = function(S_: any, force: boolean?)
-	if #S_.flames == 0 and #S_.lit == 0 then return end
+	if #S_.flames == 0 and #S_.lit == 0 and #S_.coilBeams == 0 then return end
 	local id = modelWrap(S_.model)
 	if not force and S_.glow and id == S_.glowId then return end
 	S_.glowId = id
@@ -2056,6 +2081,7 @@ skinGlow = function(S_: any, force: boolean?)
 	for _, p in S_.lit do if p.Parent then p.Color = c end end
 	-- (idle bits marked `tint` and a `glow.tint` light take the wrap's glow colour too: gold with no wrap)
 	if #S_.tint > 0 then local q = ColorSequence.new(c); for _, e in S_.tint do e.Color = q end end
+	for _, cb in S_.coilBeams do if cb.tint then cb.b.Color = ColorSequence.new(coilShade(c, cb.role)) end end
 	if S_.light and S_.spec.glow and S_.spec.glow.tint then S_.light.Color = c end
 end
 function Fx.skinIdle(model: Model, k: number, spec: any?)
@@ -2065,7 +2091,8 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	if not sp or not root then return end
 	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99,
 		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false, flames = {}, lit = {}, glowId = nil, glow = nil,
-		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil, tint = {}, coils = {} }
+		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil, tint = {}, coils = {},
+		coilBeams = {} }
 	-- (the piece that says whether your own gun is showing: its biggest visible one. the Root is always invisible, so
 	-- watching it, as rounds 4-10 did, kept every first-person skin effect off)
 	local best = 0
@@ -2167,12 +2194,15 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 			end
 		end
 	end
-	-- coiling light (17 Nov, the owner's reference clip: weapons wrapped in coiling ribbons of golden light, like glowing
-	-- vines): spec.coil = { { a, b (the axis, gun frame, metres), r (radius), turns (along it), speed (passes a second),
-	-- strands, colour, size (the glow's width, metres), rate (a strand), life, bright, fp, tint, both } }. Each strand is one
-	-- glow emitter on an attachment that runs along a helix round the axis (skinStep moves it); its particles stay in the
-	-- world where they were shed, so they draw the ribbon behind it, which fades over `life` (locked to the part, they rode
-	-- along with the attachment as one ball). World-space trails smear as you turn, so first person wants fp = 0
+	-- coiling vines of light (17 Nov, the owner's reference clip: weapons wrapped in coiling ribbons of golden light, like
+	-- glowing vines; particle strands first, which read as thin dotted arcs): spec.coil = { { a, b (the axis, gun frame,
+	-- metres), r (radius), turns (along it), spin (rad/s the helix turns round its axis), strands, colour, size (the
+	-- vine's width, metres), pulse (the running beads' TextureSpeed; 0 = none), beads (a quarter turn), fp (its width in
+	-- first person, your own gun; 0 = none there), tint, both } }. Each strand is a chain of Beams, one a quarter turn or
+	-- less, between attachments on the helix whose X axes lie along it, so each beam bends into its arc (a cubic Bezier:
+	-- CurveSize = 4/3 tan(dθ/4) |dp/dθ|). Four layers an arc: a wide soft halo, a deep-gold body, a white-hot core, beads
+	-- of light running along; the vine tapers to nothing at both ends. skinStep turns the helix, so it winds along the gun
+	-- like a barber's pole. Beams ride the gun, so first person has them too (the particles smeared there)
 	for _, c in sp.coil or {} do
 		local fpK = if S_.fp and type(c.fp) == "number" then c.fp else 1
 		if fpK <= 0 then continue end
@@ -2180,34 +2210,63 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 		if c.both and math.abs(c.a[1]) + math.abs(c.b[1]) > 1e-3 then
 			table.insert(axes, { Vector3.new(-c.a[1], c.a[2], c.a[3]), Vector3.new(-c.b[1], c.b[2], c.b[3]) })
 		end
+		local col = c.colour or GOLD
+		local T = c.turns or 1.5
+		local nArc = math.max(2, math.ceil(T * 4 - 1e-6))
+		local tw = T * 2 * math.pi
+		local dth = tw / nArc
+		local r = (c.r or 0.05) * k
+		local w = (c.size or 0.012) * k * fpK
+		local function taper(t: number): number return math.clamp(math.min(t, 1 - t) / 0.2, 0, 1) ^ 0.6 end
 		for ai, ab in axes do
-			local d = ab[2] - ab[1]
+			local d = (ab[2] - ab[1]) * k
 			local dir = d.Unit
 			local e1 = dir:Cross(Vector3.yAxis)
 			if e1.Magnitude < 1e-3 then e1 = dir:Cross(Vector3.xAxis) end
 			e1 = e1.Unit
 			local e2 = dir:Cross(e1)
+			local spd = math.sqrt((d.Magnitude / tw) ^ 2 + r * r) -- |dp/dθ|, the same all along a helix
+			local curve = 4 / 3 * math.tan(dth / 4) * spd
+			local arcLen = spd * dth
 			local n = c.strands or 2
-			local w = (c.size or 0.012) * k
 			for i = 1, n do
-				local att = Instance.new("Attachment")
-				att.Name = "SkinFx"; att.Position = ab[1] * k; att.Parent = root
-				local col = c.colour or GOLD
-				local em = rigEmitter(att, { Texture = TEX.glow, Color = cs(col), LightEmission = 1, LightInfluence = 0,
-					Brightness = c.bright or 2.5, Size = ns(0, w * 1.8 / 0.45 * H, 1, 0), Transparency = ns(0, 0.15, 0.6, 0.45, 1, 1),
-					Lifetime = NR(c.life or 0.4), Speed = NR(0, 0), LockedToPart = false, ZOffset = 0.05 })
-				-- (a solid deeper-gold core under the glow: additive gold alone vanished on the white gun and light walls)
-				local core = rigEmitter(att, { Texture = TEX.glow, Color = cs(col:Lerp(Color3.fromRGB(200, 120, 20), 0.45)),
-					LightEmission = 0.25, LightInfluence = 0, Brightness = 1.6, Size = ns(0, w / 0.45 * H, 1, 0),
-					Transparency = ns(0, 0, 0.6, 0.2, 1, 1), Lifetime = NR(c.life or 0.4), Speed = NR(0, 0), LockedToPart = false })
-				for _, e in { em, core } do
-					e.Rate = (c.rate or 70) * fpK
-					e.Enabled = true
-					table.insert(S_.idle, e)
-					if c.tint then table.insert(S_.tint, e) end
+				local atts = {}
+				for j = 0, nArc do
+					local att = Instance.new("Attachment")
+					att.Name = "SkinFx"; att.Parent = root
+					atts[j] = att
 				end
-				table.insert(S_.coils, { att = att, a = ab[1] * k, d = d * k, e1 = e1, e2 = e2, r = (c.r or 0.05) * k,
-					turns = c.turns or 1.5, speed = c.speed or 0.6, phase = (i - 1) / n, spin = if ai == 2 then -1 else 1 })
+				local cl = { atts = atts, a = ab[1] * k, d = d, e1 = e1, e2 = e2, r = r, T = T, n = nArc,
+					spin = if ai == 2 then -1 else 1, rate = c.spin or 1.5, phase = (i - 1) / n * 2 * math.pi }
+				coilPlace(cl, clockT)
+				table.insert(S_.coils, cl)
+				for j = 0, nArc - 1 do
+					local t0, t1 = taper(j / nArc), taper((j + 1) / nArc)
+					local layers = {
+						{ "halo", TEX.tracer, 3.2, 1, 1.2, 0.55, 0 },
+						{ "body", TEX.tracer, 1.5, 0.15, 1, 0, 0.001 },
+						{ "core", TEX.tracer, 0.7, 1, 3.5, 0, 0.002 },
+					}
+					if (c.pulse or 1) ~= 0 then table.insert(layers, { "bead", TEX.pulse, 2, 1, 4, 0, 0.003 }) end
+					for _, L in layers do
+						local b = Instance.new("Beam")
+						b.Attachment0 = atts[j]; b.Attachment1 = atts[j + 1]
+						b.CurveSize0 = curve; b.CurveSize1 = curve; b.Segments = 10; b.FaceCamera = true
+						b.Texture = L[2]; b.Width0 = w * L[3] * t0; b.Width1 = w * L[3] * t1
+						b.LightEmission = L[4]; b.LightInfluence = 0; b.Brightness = L[5]
+						b.Transparency = NumberSequence.new(L[6]); b.ZOffset = L[7]
+						b.Color = ColorSequence.new(coilShade(col, L[1]))
+						if L[1] == "bead" then
+							-- (one bead or more a quarter turn: a whole number to an arc, so they run on across the joins)
+							b.TextureMode = Enum.TextureMode.Wrap; b.TextureLength = arcLen / (c.beads or 1)
+							b.TextureSpeed = c.pulse or 1
+						else
+							b.TextureMode = Enum.TextureMode.Stretch; b.TextureLength = 1
+						end
+						b.Name = "SkinFx"; b.Parent = root
+						table.insert(S_.coilBeams, { b = b, role = L[1], tint = c.tint })
+					end
+				end
 			end
 		end
 	end
@@ -2423,16 +2482,13 @@ local function skinStep()
 			if quiet ~= S_.quiet then
 				S_.quiet = quiet
 				for _, e in S_.idle do e.Enabled = not quiet; if hidden then e:Clear() end end
+				for _, cb in S_.coilBeams do cb.b.Enabled = not quiet end
 			end
 		end
-		if (#S_.flames > 0 or #S_.lit > 0) and clockT - S_.glowT > 1 then S_.glowT = clockT; skinGlow(S_) end
-		-- (the coils' strands run round their helixes; nothing while the gun is quiet)
+		if (#S_.flames > 0 or #S_.lit > 0 or #S_.coilBeams > 0) and clockT - S_.glowT > 1 then S_.glowT = clockT; skinGlow(S_) end
+		-- (the vines' helixes turn; nothing while the gun is quiet)
 		if #S_.coils > 0 and not S_.quiet then
-			for _, cl in S_.coils do
-				local u = (clockT * cl.speed + cl.phase) % 1
-				local ang = (u * cl.turns + cl.phase) * math.pi * 2 * cl.spin
-				cl.att.Position = cl.a + cl.d * u + (cl.e1 * math.cos(ang) + cl.e2 * math.sin(ang)) * cl.r
-			end
+			for _, cl in S_.coils do coilPlace(cl, clockT) end
 		end
 		if #S_.after > 0 then
 			local on = clockT - S_.afterT < 1.5 and not S_.quiet

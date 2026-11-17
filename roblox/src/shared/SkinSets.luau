@@ -194,14 +194,15 @@ SkinSets.FX = {
 				at = { { 0.053, 0.13, 0.194 }, { 0, 0.015, -0.735 } }, both = true, tint = true, fp = 0.25 }, -- (a big star glint now and then at the wing tips and the muzzle)
 		},
 		-- (17 Nov: flame licks along the wing tops were tried and dropped, the owner: "those flames look so buns". After the
-		-- owner's reference clip, weapons wrapped in coiling ribbons of golden light: these)
+		-- owner's reference clip, weapons wrapped in coiling ribbons of golden light: these, vines of light (Beams; Fx's
+		-- coil block), turning slowly round the gun with beads of light running along them)
 		coil = {
-			-- two gold strands spiralling round the barrel from the handguard cap past the brake (under the sight line)
-			{ a = { 0, 0.015, -0.47 }, b = { 0, 0.015, -0.76 }, r = 0.075, turns = 1.25, speed = 0.8, strands = 2,
-				colour = Color3.fromRGB(255, 214, 120), size = 0.011, rate = 110, life = 0.3, tint = true, fp = 0 },
-			-- one strand winding up each rear wing to its tip
-			{ a = { 0.038, 0.07, -0.06 }, b = { 0.055, 0.132, 0.2 }, r = 0.03, turns = 1, speed = 0.6, strands = 1, both = true,
-				colour = Color3.fromRGB(255, 226, 150), size = 0.01, rate = 90, life = 0.35, tint = true, fp = 0 },
+			-- two gold vines winding round the barrel from the handguard cap past the brake (under the sight line)
+			{ a = { 0, 0.015, -0.47 }, b = { 0, 0.015, -0.76 }, r = 0.065, turns = 1.5, spin = 1.6, strands = 2,
+				colour = Color3.fromRGB(255, 214, 120), size = 0.011, pulse = 1, tint = true, fp = 0.75 },
+			-- one vine winding up each rear wing to its tip
+			{ a = { 0.038, 0.07, -0.06 }, b = { 0.055, 0.132, 0.2 }, r = 0.032, turns = 1.25, spin = 1.2, strands = 1, both = true,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.008, pulse = 1, tint = true, fp = 0.7 },
 		},
 		-- a short glowing trail off each wing tip as the gun moves (third person and other players; never on a gun in first
 		-- person)

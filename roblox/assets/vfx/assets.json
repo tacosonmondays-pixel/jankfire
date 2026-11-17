@@ -239,5 +239,11 @@
   "sha1": "28a3547417469ad3987ea6536b00c059b9e97f30",
   "what": "a white wedge, 512 x 32: its point at the left edge's middle, its base the whole right edge (SpeedLines.client's screen streaks, the web's speedlines.js triangles)",
   "uploaded": "2026-11-17 16:03 UTC (the owner: speed lines and wind at speed; tools/roblox/vfx/speedline_sprite.py)"
+ },
+ "vfx_pulse": {
+  "id": 84623963828273,
+  "sha1": "4e21916c2e19ee04151350b7babb4e07e39119ed",
+  "what": "a Beam strip, white, additive, 256 x 64: one soft bead of light in the middle of u, a tight core across v; wrapped and scrolled it runs along the angel rifle's vines of light",
+  "uploaded": "2026-11-17 21:23 UTC (the owner's reference clip: coiling ribbons of golden light; tools/roblox/vfx/vine_sprite.py)"
  }
 }

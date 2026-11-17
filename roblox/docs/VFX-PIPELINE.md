@@ -578,3 +578,16 @@ you turn). Also twinkles along the wings' lit loops and a big star glint now and
 First look `round17/angel-v6-coils-first-look.jpg`: the coils read as thin gold arcs round the barrel, not yet the
 thick glowing vines of the reference. Next, from the research (`docs/vfx/research/stylized-weapon-vfx-2026-11-17.md`):
 the coils as Beams on a spinning holder (a real ribbon), the glint with a halo, white-hot cores.
+
+**The angel rifle, vines of light** (place version 701; the research's recipe 3): `coil` rebuilt from particles into
+Beams. Each strand is a chain of Beams, one a quarter turn or less, between attachments on the helix whose X axes lie
+along it, so each beam bends into its arc (CurveSize = 4/3 tan(dθ/4) |dp/dθ|, the circle-arc rule with the helix's
+speed). Four layers an arc: a wide soft halo (additive, 0.55 clear), a deep-gold body (LightEmission 0.15, so it holds
+on the white gun and light walls), a white-hot core (Brightness 3.5) and beads of light (`TEX.pulse`, new:
+`tools/roblox/vfx/vine_sprite.py`, one soft bead a strip; Wrap with TextureLength a whole fraction of the arc, so the
+beads run on across the joins; TextureSpeed = `pulse`). The vine tapers to nothing at both ends; skinStep turns the
+helix at `spin` rad/s, so it winds along the gun like a barber's pole; the mirrored side turns the other way. Beams ride
+the gun, so first person has them now (`fp` = their width share there; off while aiming, with the rest). A wrap's glow
+colour reaches every layer (`coilShade`). The row: two vines round the barrel (r 6.5 cm, 1.5 turns), one up each wing.
+88 beams a gun. Photos `round17/angel-vines-v701-close-side-fp.jpg` (taken before the bead texture had processed: halo,
+body and core only).
