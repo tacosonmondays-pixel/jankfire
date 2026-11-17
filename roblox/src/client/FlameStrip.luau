@@ -13,6 +13,11 @@
 --     sweep: the climb (0 -> 1 -> 0 over a sweep: the flames run up to H and settle back)
 --     H: the frame's height in the units its children use; hide: true to hide it (Party Ranked shows bubbles)
 --   strip:destroy()
+-- photos (Studio only): the workspace attribute FlameStripHold = a number holds every strip's sweep there (0..1, 1 = the
+-- peak) at full heat, so a real panel can be photographed mid-sweep (its layer lifted over the cards, as in a real
+-- sweep); remove it to let them run
+local RunService = game:GetService("RunService")
+local STUDIO = RunService:IsStudio()
 local FlameStrip = {}
 FlameStrip.__index = FlameStrip
 
@@ -58,6 +63,20 @@ function FlameStrip.new(parent: GuiObject, opts: { count: number?, zIndex: numbe
 end
 
 function FlameStrip.step(self: Strip, dt: number, level: number, sweep: number, H: number, hide: boolean?)
+	if STUDIO then
+		local hold = workspace:GetAttribute("FlameStripHold")
+		if type(hold) == "number" then
+			level, sweep = 1, math.clamp(hold, 0, 1)
+			-- (mid-sweep the fire runs over the panel's cards: lift the layer it sits in above its siblings, as the caller
+			-- does while a real sweep runs)
+			local layer = self.root.Parent
+			if sweep > 0.02 and layer and layer:IsA("GuiObject") and layer.Parent then
+				local top = 0
+				for _, c in layer.Parent:GetChildren() do if c ~= layer and c:IsA("GuiObject") then top = math.max(top, c.ZIndex) end end
+				layer.ZIndex = top + 1
+			end
+		end
+	end
 	local show = not hide and (level > 0.01 or sweep > 0.01)
 	if self.root.Visible ~= show then self.root.Visible = show end
 	if not show then return end
