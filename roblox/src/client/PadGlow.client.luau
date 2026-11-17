@@ -9,8 +9,8 @@
 -- left alone
 local RunService = game:GetService("RunService")
 
-local OPEN, BREATH, TAKEN = 0.62, 0.05, 0.03 -- (the Glow's see-through: open, how far it breathes, taken)
-local LIGHT_OPEN, LIGHT_TAKEN, LIGHT_FLARE = 0.22, 1.6, 4.5 -- (its light's brightness: open, taken, at the flare's peak)
+local OPEN, BREATH, TAKEN = 0.78, 0.04, 0.03 -- (the Glow's see-through: open, how far it breathes, taken)
+local LIGHT_OPEN, LIGHT_TAKEN, LIGHT_FLARE = 0.12, 1.6, 4.5 -- (its light's brightness: open, taken, at the flare's peak)
 local RANGE, RANGE_FLARE = 7, 13 -- (its light's reach, and at the flare's peak)
 local FLARE = 0.5 -- (seconds the flare takes to settle)
 local PERIOD = 3.4 -- (seconds a breath)

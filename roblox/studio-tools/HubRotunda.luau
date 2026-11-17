@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 59 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 60 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -607,10 +607,10 @@ function R.new(live, opts)
 			s.Color = Color3.fromHex(TEAM[i]):Lerp(Color3.fromHex("1c1f26"), 0.55)
 			s:SetAttribute("Team", i)
 			local g = plate("Glow", cx, 0, pw - 0.5, pd - 0.5, TEAM[i], Neon, 0.24, 0.04) -- (its top 0.07 over the plate's: no flicker)
-			g.CanQuery = false; g.CanTouch = false; g.Transparency = 0.45
+			g.CanQuery = false; g.CanTouch = false; g.Transparency = 0.78 -- (open: dim; PadGlow.client lights it when taken)
 			g:SetAttribute("Team", i)
 			local gl = Instance.new("PointLight")
-			gl.Color = Color3.fromHex(TEAM[i]); gl.Range = 7; gl.Brightness = 0.45; gl.Shadows = false
+			gl.Color = Color3.fromHex(TEAM[i]); gl.Range = 7; gl.Brightness = 0.12; gl.Shadows = false
 			gl.Parent = g
 			for sl = 1, md.size do
 				local c, r = (sl - 1) % cols, math.floor((sl - 1) / cols)
