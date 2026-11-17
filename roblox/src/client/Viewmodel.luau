@@ -298,7 +298,9 @@ end
 -- ---- the Revolver's speedloader (the web game's reloads.js p_speedloader, 17 Nov): the off hand brings it in behind
 -- the swung-out cylinder (0.32-0.76 s), seats it (0.92), the rounds drop into the chambers (0.95), a twist (1.1-1.2),
 -- it pulls away (1.24) and is gone (1.32). it rides in the hand, its knob in the fist; seated, it sits on the cylinder's
--- back face, on its axis. built here in the kit's flat colours, sized to the gun (file metres x k)
+-- back face, on its axis. built here in the kit's flat colours, sized to the gun (file metres x k). our hand is far
+-- bigger than the web game's fist and, holding the knob from behind, hid the whole loader: so it lets go once the
+-- loader is seated (0.8-0.92), the rounds drop in plain sight, and it comes back for the twist and the pull (1.0-1.12)
 local function buildLoader(): Model
 	local m = Instance.new("Model")
 	m.Name = "p_speedloader"
@@ -330,19 +332,38 @@ local function loaderSeat(t: number): CFrame?
 	return cr.part.CFrame * cr.rel * CFrame.new(0, 0, d * k) * CFrame.Angles(0, 0, tw)
 end
 local function knobGrip(): CFrame return CFrame.new(0, 0, LOADER.knob * k) * CFrame.Angles(-math.pi / 2, 0, 0) end
+-- how far the hand is on the loader at t (0 away, hidden .. 1 on the knob)
+local function loaderHand(t: number): number
+	if t < 0.32 or (t >= 0.92 and t < 1) or t >= 1.42 then return 0 end
+	if t < 0.6 then return smoothstep((t - 0.32) / 0.28) end
+	if t < 0.8 then return 1 end
+	if t < 0.92 then return 1 - smoothstep((t - 0.8) / 0.12) end
+	if t < 1.12 then return smoothstep((t - 1) / 0.12) end
+	if t < 1.32 then return 1 end
+	return 1 - smoothstep((t - 1.32) / 0.1)
+end
 -- every frame (after offHand): the loader in the hand, where the hand is this frame
 local function placeLoader(root: BasePart, to: CFrame?, mix: number, hidden: boolean?)
 	local t = clip and clip.name == "reload_revolver" and clip.t
-	if hidden or not t or not cylRear or t < LOADER.show[1] or t > LOADER.show[2] or not to or mix < 0.05 then
+	-- (in the hand on its way in and on its way out; on the cylinder by itself in between)
+	local inHand = t and (t < 0.8 or t > 1.22)
+	if hidden or not t or not cylRear or t < LOADER.show[1] or t > LOADER.show[2] or (inHand and (not to or mix < 0.05)) then
 		if prop and prop.Name == "p_speedloader" then dropProp() end
 		return
 	end
+	local L: CFrame
+	if inHand and to then
+		local holdL = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
+		if not holdL then return end
+		local F = (root.CFrame * holdL):Lerp(to, mix) -- (the fist's frame, as AvatarArms places it)
+		L = F * knobGrip():Inverse()
+	else
+		local seat = loaderSeat(t)
+		if not seat then return end
+		L = seat
+	end
 	local lp = prop or buildLoader()
 	prop = lp
-	local holdL = AvatarArms.holdFrame(VM.wid, "Left", k, nil, VM.skin)
-	if not holdL then return end
-	local F = (root.CFrame * holdL):Lerp(to, mix) -- (the fist's frame, as AvatarArms places it)
-	local L = F * knobGrip():Inverse()
 	for _, p in lp:GetChildren() do
 		if not p:IsA("BasePart") then continue end
 		local at = p:GetAttribute("At")
@@ -386,6 +407,7 @@ local function offHand(m: Model, root: BasePart): (CFrame?, number, boolean)
 		local lh = clip and Anims[clip.name].lh
 		if not lh then return nil, 0, false end
 		local kIn, f = sampleLh(lh, clip.t)
+		if cylRear and clip.name == "reload_revolver" then kIn, f = loaderHand(clip.t), 5 end
 		local f0, f1 = math.floor(f), math.ceil(f)
 		if kIn <= 0.001 then return nil, 0, false end
 		local FA, uA = lhFrame(f0, clip.t)
