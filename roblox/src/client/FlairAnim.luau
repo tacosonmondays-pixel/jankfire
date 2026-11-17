@@ -120,7 +120,10 @@ local function flipbook(frame: GuiObject, id: string): Handle?
 	return h
 end
 
--- ---------------------------------------------------------------- emotes: you, doing it
+-- ---------------------------------------------------------------- you, on a little set
+-- (the owner, 17 Nov: "kill effects should display your character over surrounds, and the preview should be your
+-- avatar". a copy of your own avatar stands on a small set inside the card: a floor disc with a thin ring in the
+-- item's rarity colour, a dark backdrop behind; the game's quiet palette)
 local tpl: Model? = nil
 local tplFor: Model? = nil
 local function avatar(): Model?
@@ -150,32 +153,8 @@ local function avatar(): Model?
 	return m
 end
 
-local function emote(frame: GuiObject, id: string): Handle?
-	local F = flair()
-	local e = F and F.info("emote", id)
-	if not e or type(e.anim) ~= "string" or e.anim == "rbxassetid://0" then return nil end
-	local src = avatar()
-	if not src then return nil end
-	local z = frame.ZIndex + 3
-	local holder = new("Frame", { Name = "FlairAnim", BackgroundColor3 = BG, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = z, ClipsDescendants = true }, frame)
-	round(holder, 6)
-	local rc = F.RARITY_COLOR and F.RARITY_COLOR[e.rarity]
-	if rc then
-		local glow = new("Frame", { BackgroundColor3 = rc, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = z }, holder)
-		round(glow, 6)
-		new("UIGradient", { Rotation = 90, Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.7, 0.92), NumberSequenceKeypoint.new(1, 0.7) }) }, glow)
-	end
-	-- (the shop's own 3D light, V.show's: the pastel colours read as they do on the guns and in the inspect panel)
-	local vp = new("ViewportFrame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = z + 1,
-		Ambient = Color3.fromRGB(150, 153, 162), LightColor = Color3.fromRGB(255, 248, 240), LightDirection = Vector3.new(-0.5, -1, -0.7) }, holder)
-	local world = new("WorldModel", {}, vp)
-	local m = src:Clone()
-	m:PivotTo(CFrame.identity)
-	m.Parent = world
-	local cam = new("Camera", { FieldOfView = 30 }, vp)
-	vp.CurrentCamera = cam
-	-- (framed on the body, not its accessories (a big hat or a staff would shrink it): feet just above the bottom edge,
-	-- the head with room for raised arms, from the front a little to the side)
+-- the body's own height (its parts, not its accessories: a big hat or a staff would shrink it)
+local function bodySpan(m: Model): (number, number)
 	local lo, hi = math.huge, -math.huge
 	for _, p in m:GetChildren() do
 		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
@@ -183,16 +162,102 @@ local function emote(frame: GuiObject, id: string): Handle?
 			hi = math.max(hi, p.Position.Y + p.Size.Y / 2)
 		end
 	end
-	local cf, size = m:GetBoundingBox()
-	if lo == math.huge then lo, hi = cf.Position.Y - size.Y / 2, cf.Position.Y + size.Y / 2 end
-	local r = (hi - lo) * 0.64 -- (half the height the frame shows: a fifth over the head for raised arms)
+	if lo == math.huge then
+		local cf, size = m:GetBoundingBox()
+		lo, hi = cf.Position.Y - size.Y / 2, cf.Position.Y + size.Y / 2
+	end
+	return lo, hi
+end
+
+local SET_FLOOR = Color3.fromRGB(52, 56, 66)
+local SET_WALL = Color3.fromRGB(32, 35, 42)
+local SET_SEAM = Color3.fromRGB(62, 66, 76)
+-- the set's pieces round a body standing at the origin, its feet at `lo`, facing -Z (the camera is in front, on -Z)
+local function buildSet(parent: Instance, lo: number, ring: Color3?, big: boolean?)
+	local function p(size: Vector3, cf: CFrame, c: Color3, shape: Enum.PartType?, mat: Enum.Material?): Part
+		local x = Instance.new("Part")
+		x.Anchored = true; x.CanCollide = big == true; x.CanQuery = false; x.CanTouch = false; x.CastShadow = big == true
+		x.Shape = shape or Enum.PartType.Block
+		x.Size = size; x.CFrame = cf; x.Color = c; x.Material = mat or Enum.Material.SmoothPlastic
+		x.TopSurface = Enum.SurfaceType.Smooth; x.BottomSurface = Enum.SurfaceType.Smooth
+		x.Parent = parent
+		return x
+	end
+	local k = if big then 1.6 else 1
+	local up = CFrame.Angles(0, 0, math.pi / 2)
+	-- the floor disc, and its thin ring in the rarity's colour
+	p(Vector3.new(0.4, 9 * k, 9 * k), CFrame.new(0, lo - 0.2, 0) * up, SET_FLOOR, Enum.PartType.Cylinder)
+	if ring then p(Vector3.new(0.38, 9.3 * k, 9.3 * k), CFrame.new(0, lo - 0.22, 0) * up, ring, Enum.PartType.Cylinder, Enum.Material.Neon) end
+	-- the ground round it, a step darker, and the backdrop behind with a lighter seam where they meet
+	local wall = if big then Color3.fromRGB(44, 48, 57) else SET_WALL
+	p(Vector3.new(90, 0.4, 90), CFrame.new(0, lo - 0.45, 0), wall)
+	p(Vector3.new(90, 50, 0.6), CFrame.new(0, lo + 24.5, 6 * k), wall)
+	p(Vector3.new(90, 0.3, 0.7), CFrame.new(0, lo - 0.1, 6 * k - 0.1), SET_SEAM)
+end
+
+-- a card's scene: the frame's holder, a ViewportFrame with a WorldModel (so things animate), the set, a copy of you
+-- framed on your body (feet just above the bottom edge, a fifth over the head for raised arms), from the front a
+-- little to the side. returns nil with no avatar to copy
+type Scene = { holder: Frame, vp: ViewportFrame, world: WorldModel, cam: Camera, m: Model, lo: number, hi: number }
+local function scene(frame: GuiObject, ring: Color3?): Scene?
+	local src = avatar()
+	if not src then return nil end
+	local z = frame.ZIndex + 3
+	local holder = new("Frame", { Name = "FlairAnim", BackgroundColor3 = SET_WALL, BorderSizePixel = 0, Size = UDim2.fromScale(1, 1), ZIndex = z, ClipsDescendants = true }, frame)
+	round(holder, 6)
+	-- (the shop's own 3D light, V.show's, so the pastel colours read as they do on the guns and in the inspect panel)
+	local vp = new("ViewportFrame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = z + 1,
+		Ambient = Color3.fromRGB(150, 153, 162), LightColor = Color3.fromRGB(255, 248, 240), LightDirection = Vector3.new(-0.5, -1, -0.7) }, holder)
+	local world = new("WorldModel", {}, vp)
+	local m = src:Clone()
+	m:PivotTo(CFrame.identity)
+	m.Parent = world
+	local lo, hi = bodySpan(m)
+	buildSet(world, lo, ring, false)
+	local cam = new("Camera", { FieldOfView = 30 }, vp)
+	vp.CurrentCamera = cam
+	local r = (hi - lo) * 0.64
 	local d = r / math.tan(math.rad(cam.FieldOfView / 2))
-	local look = Vector3.new(cf.Position.X, lo + r * 0.93, cf.Position.Z)
-	local face = (m:GetPivot().LookVector * Vector3.new(1, 0, 1)).Unit
-	if face.Magnitude ~= face.Magnitude then face = Vector3.new(0, 0, -1) end
+	local look = Vector3.new(0, lo + r * 0.93, 0)
+	local face = Vector3.new(0, 0, -1)
 	cam.CFrame = CFrame.lookAt(look + (face * d) + face:Cross(Vector3.yAxis) * (d * 0.2), look)
+	return { holder = holder, vp = vp, world = world, cam = cam, m = m, lo = lo, hi = hi }
+end
+
+local function animator(m: Model): Animator?
 	local hum = m:FindFirstChildOfClass("Humanoid")
-	local an = hum and (hum:FindFirstChildOfClass("Animator") or new("Animator", {}, hum))
+	if not hum then return nil end
+	return hum:FindFirstChildOfClass("Animator") or new("Animator", {}, hum)
+end
+-- Roblox's own idle, so a copy doesn't stand in its rig's T pose
+local IDLE = { [Enum.HumanoidRigType.R15] = "rbxassetid://507766388", [Enum.HumanoidRigType.R6] = "rbxassetid://180435571" }
+local function idle(m: Model): AnimationTrack?
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	local an = animator(m)
+	if not hum or not an then return nil end
+	local a = new("Animation", { AnimationId = IDLE[hum.RigType] or IDLE[Enum.HumanoidRigType.R15] })
+	local ok, tr = pcall(function() return (an :: Animator):LoadAnimation(a) end)
+	if not ok or not tr then return nil end
+	tr.Looped = true
+	tr.Priority = Enum.AnimationPriority.Idle
+	tr:Play(0)
+	return tr
+end
+
+local function rarityColor(kind: string, id: string): Color3?
+	local F = flair()
+	local i = F and F.info(kind, id)
+	return i and F.RARITY_COLOR and F.RARITY_COLOR[i.rarity] or nil
+end
+
+-- ---------------------------------------------------------------- emotes: you, doing it
+local function emote(frame: GuiObject, id: string): Handle?
+	local F = flair()
+	local e = F and F.info("emote", id)
+	if not e or type(e.anim) ~= "string" or e.anim == "rbxassetid://0" then return nil end
+	local sc = scene(frame, rarityColor("emote", id))
+	if not sc then return nil end
+	local an = animator(sc.m)
 	-- (the flair session's way, FlairUI's stand-in: priority Action4, in over 0.3 s; a one-shot is let go 0.35 s before
 	-- its end, rests about 0.7 s, and starts again, so it never snaps back at a loop's seam. a looping emote just loops.
 	-- the clip, its length and whether it loops are read from Flair now: the ids change when the emotes are remade)
@@ -213,7 +278,7 @@ local function emote(frame: GuiObject, id: string): Handle?
 	local going, playing = false, false
 	local h: Handle
 	h = {
-		frame = frame, kind = "emote", root = holder, dead = false,
+		frame = frame, kind = "emote", root = sc.holder, dead = false,
 		step = function(dt: number, on: boolean)
 			local tr = track
 			if not tr then return end
@@ -231,15 +296,196 @@ local function emote(frame: GuiObject, id: string): Handle?
 		stop = function()
 			h.dead = true
 			if track then pcall(function() (track :: AnimationTrack):Stop(0) end) end
-			holder:Destroy()
+			sc.holder:Destroy()
 		end,
 	}
 	return h
 end
 
+-- ---------------------------------------------------------------- kill effects: you, taking it
+-- the flair session's own KillFx run on the copy inside the card. a ViewportFrame draws parts and the body's fades and
+-- moves, not particles or Highlights; KillFx parents its pieces where it's told (opts.parent) and faces the camera it's
+-- given (opts.camera) since it set K.VIEWPORT. before that: you on the set, still (PREVIEW ON YOU shows the real one)
+local function killfx(): any
+	local m = script.Parent:FindFirstChild("KillFx")
+	if not (m and m:IsA("ModuleScript")) then return nil end
+	local ok, K = pcall(require, m)
+	return if ok and type(K) == "table" then K else nil
+end
+
+-- Gibs (the default, "none"): the body falls apart. a WorldModel doesn't simulate, so the pieces are thrown by hand
+local function gibs(m: Model, floorY: number): () -> ()
+	local bits = {}
+	for _, d in m:GetDescendants() do
+		if d:IsA("Motor6D") then d.Enabled = false end
+	end
+	for _, p in m:GetDescendants() do
+		if p:IsA("BasePart") and p.Name ~= "HumanoidRootPart" then
+			table.insert(bits, { p = p, cf = p.CFrame, v = Vector3.new(math.random() * 6 - 3, math.random() * 5 + 1, math.random() * 6 - 3),
+				w = Vector3.new(math.random() * 6 - 3, math.random() * 6 - 3, math.random() * 6 - 3) })
+		end
+	end
+	local t0 = os.clock()
+	local con: RBXScriptConnection? = nil
+	con = RunService.RenderStepped:Connect(function(dt)
+		if os.clock() - t0 > 1.4 then if con then con:Disconnect() end return end
+		for _, b in bits do
+			if b.p.Parent then
+				b.v -= Vector3.new(0, 30 * dt, 0)
+				local pos = b.p.Position + b.v * dt
+				local half = b.p.Size.Magnitude * 0.25
+				if pos.Y < floorY + half then pos = Vector3.new(pos.X, floorY + half, pos.Z); b.v = Vector3.new(b.v.X * 0.5, 0, b.v.Z * 0.5); b.w *= 0.5 end
+				b.p.CFrame = CFrame.new(pos) * (b.p.CFrame - b.p.CFrame.Position) * CFrame.Angles(b.w.X * dt, b.w.Y * dt, b.w.Z * dt)
+			end
+		end
+	end)
+	return function()
+		if con then con:Disconnect() end
+		for _, b in bits do if b.p.Parent then b.p.CFrame = b.cf end end
+		for _, d in m:GetDescendants() do if d:IsA("Motor6D") then d.Enabled = true end end
+	end
+end
+
+local function kill(frame: GuiObject, id: string): Handle?
+	local F = flair()
+	local info = F and F.info("kill", id)
+	if not info then return nil end
+	local sc = scene(frame, rarityColor("kill", id))
+	if not sc then return nil end
+	local stand = idle(sc.m)
+	local K = killfx()
+	local live3d = K ~= nil and K.VIEWPORT == true
+	local dur = math.max(0.8, tonumber(info.dur) or 1.2)
+	local t, running = 0, false
+	local undo: (() -> ())? = nil
+	local h: Handle
+	local function reset()
+		if undo then pcall(undo); undo = nil end
+		if live3d and K then pcall(K.reset, sc.m) end
+		running = false
+	end
+	h = {
+		frame = frame, kind = "kill", root = sc.holder, dead = false,
+		step = function(dt: number, on: boolean)
+			if stand then stand:AdjustSpeed(if on then 1 else 0) end
+			if not on or not (live3d or id == "none") then return end
+			t += dt
+			if not running and t >= 0.8 then
+				running = true
+				if id == "none" then undo = gibs(sc.m, sc.lo)
+				elseif K then pcall(K.play, sc.m, id, { preview = true, parent = sc.world, camera = sc.cam }) end
+			end
+			if running and t >= 0.8 + dur + 0.9 then reset(); t = 0 end
+		end,
+		stop = function()
+			h.dead = true
+			reset()
+			sc.holder:Destroy()
+		end,
+	}
+	return h
+end
+
+-- ---------------------------------------------------------------- PREVIEW ON YOU: the real thing, full screen
+-- a kill effect played for real (particles, light and all) on a copy of you standing on a set off the map, with the
+-- camera on it: the shop's inspect panel's PREVIEW ON YOU. every ScreenGui steps aside and comes back after; SPACE or
+-- a click ends it early. returns once it's over
+local STAGE = CFrame.new(0, 1800, 0) -- (well above everything: nothing else is up here)
+local showing = false
+function A.isShowing(): boolean return showing end
+function A.showcase(id: string): boolean
+	if showing then return false end
+	local F = flair()
+	local info = F and F.info("kill", id)
+	local K = killfx()
+	local src = avatar()
+	if not info or not K or not src then return false end
+	showing = true
+	local cam = workspace.CurrentCamera
+	local pg = me:FindFirstChildOfClass("PlayerGui")
+	local hidden = {}
+	if pg then
+		for _, g in pg:GetChildren() do
+			if g:IsA("ScreenGui") and g.Enabled then g.Enabled = false; table.insert(hidden, g) end
+		end
+	end
+	local set = new("Model", { Name = "JankShowcase" }, workspace)
+	local m = src:Clone()
+	m:PivotTo(CFrame.identity)
+	local lo, hi = bodySpan(m)
+	-- (the set is built round the origin, then the whole lot moved up to the stage)
+	buildSet(set, lo, rarityColor("kill", id), true)
+	m.Parent = set
+	for _, d in m:GetDescendants() do if d:IsA("BasePart") then d.CanCollide = true end end
+	set.WorldPivot = CFrame.identity -- (it moves by its own origin, where the body stands)
+	set:PivotTo(STAGE)
+	-- light from the front: a warm key high on the left and a cool fill on the right (the sun up here is behind the wall)
+	for _, l in { { -6, 9, -9, 2.2, Color3.fromRGB(255, 240, 224) }, { 7, 5, -8, 1.2, Color3.fromRGB(214, 226, 255) } } do
+		local lamp = new("Part", { Anchored = true, CanCollide = false, CanQuery = false, Transparency = 1, Size = Vector3.one,
+			CFrame = STAGE * CFrame.new(l[1], lo + l[2], l[3]) }, set)
+		new("PointLight", { Brightness = l[4], Range = 30, Color = l[5], Shadows = false }, lamp)
+	end
+	local stand = idle(m)
+	-- the camera: in front, a little to the side, easing in while it plays
+	local h = hi - lo
+	local look = STAGE * Vector3.new(0, lo + h * 0.55, 0)
+	local from = STAGE * Vector3.new(h * 0.55, lo + h * 0.75, -h * 2.4)
+	local to = STAGE * Vector3.new(h * 0.35, lo + h * 0.65, -h * 1.9)
+	local oldType, oldFov, oldSubject = cam.CameraType, cam.FieldOfView, cam.CameraSubject
+	cam.CameraType = Enum.CameraType.Scriptable
+	cam.FieldOfView = 40
+	cam.CFrame = CFrame.lookAt(from, look)
+	-- SKIP, the only words on screen
+	local skipGui = new("ScreenGui", { Name = "JankShowcaseSkip", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 60 }, pg)
+	local skip = new("TextLabel", { BackgroundColor3 = Color3.fromRGB(16, 18, 22), BackgroundTransparency = 0.25, BorderSizePixel = 0,
+		AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -24, 1, -24), Size = UDim2.fromOffset(150, 40),
+		Text = "SKIP  [SPACE]", TextColor3 = Color3.fromRGB(240, 242, 245), TextSize = 14, Font = Enum.Font.GothamBold }, skipGui)
+	round(skip, 6)
+	local over = false
+	local UIS = game:GetService("UserInputService")
+	local inp = UIS.InputBegan:Connect(function(io)
+		if io.KeyCode == Enum.KeyCode.Space or io.KeyCode == Enum.KeyCode.Escape or io.UserInputType == Enum.UserInputType.MouseButton1
+			or io.UserInputType == Enum.UserInputType.Touch or io.KeyCode == Enum.KeyCode.ButtonB then over = true end
+	end)
+	local total = 0.6 + (tonumber(info.dur) or 1.2) + 1.1
+	local t0 = os.clock()
+	local fired = false
+	while not over and os.clock() - t0 < total do
+		local a = math.clamp((os.clock() - t0) / total, 0, 1)
+		local e = 1 - (1 - a) * (1 - a)
+		cam.CFrame = CFrame.lookAt(from:Lerp(to, e), look)
+		if not fired and os.clock() - t0 >= 0.6 then
+			fired = true
+			if id == "none" then
+				for _, d in m:GetDescendants() do
+					if d:IsA("Motor6D") then d:Destroy()
+					elseif d:IsA("BasePart") then
+						d.Anchored = false
+						d.AssemblyLinearVelocity = Vector3.new(math.random() * 8 - 4, math.random() * 6, math.random() * 8 - 4)
+					end
+				end
+			else
+				pcall(K.play, m, id, { preview = true })
+			end
+		end
+		RunService.RenderStepped:Wait()
+	end
+	inp:Disconnect()
+	pcall(K.reset, m)
+	if stand then pcall(function() (stand :: AnimationTrack):Stop(0) end) end
+	skipGui:Destroy()
+	set:Destroy()
+	cam.CameraType = oldType
+	cam.FieldOfView = oldFov
+	if oldSubject then cam.CameraSubject = oldSubject end
+	for _, g in hidden do if g.Parent then g.Enabled = true end end
+	showing = false
+	return true
+end
+
 -- ---------------------------------------------------------------- the stepper
 function A.attach(frame: GuiObject, kind: string, id: string): any
-	local h = if kind == "kill" then flipbook(frame, id) elseif kind == "emote" then emote(frame, id) else nil
+	local h = if kind == "kill" then (kill(frame, id) or flipbook(frame, id)) elseif kind == "emote" then emote(frame, id) else nil
 	if not h then return nil end
 	table.insert(live, h)
 	return h

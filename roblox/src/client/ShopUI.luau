@@ -528,6 +528,20 @@ function Fin.preview(skin: string?)
 		end)
 	end
 end
+-- a kill effect played for real on a copy of you (FlairAnim.showcase), the shop's blur and tint off while it plays
+function Fin.showcase(id: string)
+	local m = script.Parent:FindFirstChild("FlairAnim")
+	if not (m and m:IsA("ModuleScript")) then return end
+	local ok, FA = pcall(require, m)
+	if not ok or type(FA) ~= "table" or type((FA :: any).showcase) ~= "function" then return end
+	if type((FA :: any).isShowing) == "function" and (FA :: any).isShowing() then return end
+	play("click")
+	UI.blur.Enabled = false; UI.tint.Enabled = false
+	task.spawn(function()
+		pcall((FA :: any).showcase, id)
+		if S.open then UI.blur.Enabled = true; UI.tint.Enabled = true end
+	end)
+end
 -- a small still picture of one item (a chip in a list or a strip): a hat on its own, a skin's whole gun, a card tile
 function V.chip(parent: GuiObject, it: any)
 	if Shop.isCard(it.kind) then V.card(parent, it.kind, it.id)
@@ -1453,7 +1467,9 @@ do
 	-- (a skin with a finisher, or a set or the VIP pack with one: its cinematic, played in front of you)
 	UI.inspFin = button(Sd, "PREVIEW FINISHER", "dark", UDim2.new(1, 0, 0, 44), UDim2.new(0, 0, 1, -100))
 	UI.inspFin.face.ZIndex = 23; UI.inspFin.face.Visible = false
-	UI.inspFin.face.MouseButton1Click:Connect(function() if S.finSkin then Fin.preview(S.finSkin) end end)
+	UI.inspFin.face.MouseButton1Click:Connect(function()
+		if S.showKill then Fin.showcase(S.showKill) elseif S.finSkin then Fin.preview(S.finSkin) end
+	end)
 	UI.inspOdds = button(Sd, "ODDS", "dark", UDim2.new(0.5, -5, 0, 40), UDim2.new(0, 0, 1, -94))
 	UI.inspOdds.face.ZIndex = 23
 	UI.inspOdds.face.MouseButton1Click:Connect(function() if S.inspect then ShopUI.odds(S.inspect) end end)
@@ -1555,11 +1571,14 @@ function ShopUI.fillInspect()
 	elseif o.type == "pass" or o.set then
 		for _, it in Shop.contents(o) do if it.kind == "skin" and Fin.of(it.id) then S.finSkin = it.id; break end end
 	end
-	UI.inspFin.face.Visible = S.finSkin ~= nil
+	-- (a kill effect: PREVIEW ON YOU, the real effect on a copy of you on a set off the map, full screen: FlairAnim)
+	S.showKill = if o.type == "single" and o.kind == "kill" then o.item else nil
+	UI.inspFin.face.Visible = S.finSkin ~= nil or S.showKill ~= nil
+	UI.inspFin.set(if S.showKill then "PREVIEW ON YOU" else "PREVIEW FINISHER", true)
 	local oldFin = UI.inspView:FindFirstChild("Finisher")
 	if oldFin then oldFin:Destroy() end
 	if S.finSkin and o.type == "single" then Fin.badge(UI.inspView, S.finSkin, UDim2.new(1, -10, 0, 10), 24) end
-	local foot = if isBox or S.finSkin then 104 else 56 -- what sits under the note: odds + open + buy, or just buy
+	local foot = if isBox or S.finSkin or S.showKill then 104 else 56 -- what sits under the note: odds + open + buy, or just buy
 	UI.inspEyebrow.Position = UDim2.fromOffset(0, if c then 46 else 50)
 	UI.inspName.Position = UDim2.fromOffset(0, nameY)
 	UI.inspName.TextSize = if c then 22 else 30

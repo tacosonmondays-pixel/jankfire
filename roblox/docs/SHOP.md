@@ -453,6 +453,32 @@ Tested in solo Play (place version 626), with six kill effects and two emotes ow
   (`shop-finisher-blurb.jpg`).
 - The owner's inventory was put back.
 
+### Kill effects on you (17 Nov, place version 638)
+
+The owner: "kill effects should display your character over surrounds, and the preview should be your avatar, when
+you look at it in the shop it looks pretty bad". So the flipbooks of a grey stand-in are out (kept only for a player
+with no avatar to copy):
+- **Cards** (and the inspect panel's view): a copy of your own avatar stands on a small set inside the card. The set
+  is a floor disc with a thin ring in the item's rarity colour and a dark backdrop, the game's quiet palette. Your
+  avatar stands in Roblox's idle. The flair session's real KillFx runs on it inside the card once KillFx sets
+  `K.VIEWPORT` (its `opts.parent` / `opts.camera`). A ViewportFrame draws its solid pieces and the body's fades and
+  moves (Big Duck, Tombstone, Chickens, Shatter's wedges), not particles, Highlights or Blue Screen's SurfaceGui
+  words. Gibs is thrown by hand, since a WorldModel doesn't simulate. Emote cards stand on the same set.
+- **PREVIEW ON YOU** in the inspect panel: the real effect, particles and all, played full screen on a copy of you.
+  It runs on a set built high above the map (y 1,800), with a warm key light and a cool fill, the camera easing in. It
+  takes about 2 to 3 s; SKIP / SPACE / a click ends it early. Every ScreenGui steps aside and comes back after, and so
+  do the shop's blur and tint.
+
+Tested in solo Play (place version 638), as the owner:
+- Three kill effects in the inventory showed the owner's avatar on the set (`docs/shop/shop-kill-cards-set.jpg`).
+  KillFx's viewport option isn't in Studio yet, so the effect doesn't run on the cards yet.
+- Big Duck's inspect view showed the avatar big on the set with its gold ring (`shop-kill-inspect-set.jpg`).
+- PREVIEW ON YOU played the real Big Duck on the set (`shop-kill-preview-on-you.jpg`), then the shop came back with
+  the camera on Custom and the set gone.
+- In the first try the set sat 11 studs low (its model pivot wasn't its origin) and the backdrop was nearly black.
+  Both are fixed: `WorldPivot` at the origin, and two front lights.
+- Still to tune: the ring glows too much on the big set, and the backdrop's right end showed sky.
+
 ### Finishers on skin cards (17 Nov)
 
 The finishers session's cinematic finishers (roblox/docs/FINISHERS.md) belong to a few top-tier skins:
