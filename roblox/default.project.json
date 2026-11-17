@@ -97,6 +97,12 @@
         },
         "PlayPush": {
           "$className": "RemoteEvent"
+        },
+        "Quests": {
+          "$className": "RemoteFunction"
+        },
+        "QuestPush": {
+          "$className": "RemoteEvent"
         }
       },
       "Match": {

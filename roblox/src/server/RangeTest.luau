@@ -30,6 +30,9 @@ local CalloutR = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild(
 
 type Fighter = Rules.Fighter
 local RangeTest = {}
+-- (Quests.luau: a finished run's score, for the range quests) fn(player, plate "Easy"|"Medium"|"Hard", score, total)
+local runHooks: { (Player, string, number, number) -> () } = {}
+function RangeTest.onRun(fn: (Player, string, number, number) -> ()) table.insert(runHooks, fn) end
 local TOTAL = 25
 local HP = 30 -- three rifle rounds, two to the head, one katana swing
 local QUICKEST = 0.12 -- a kill sooner than this after a Carl starts up doesn't count
@@ -216,6 +219,7 @@ local function finish(r: Run, abandoned: boolean)
 	if not best[r.level] or r.score > best[r.level] then best[r.level] = r.score end
 	show(("%s · %d / %d on %s · best %d"):format(r.who, r.score, TOTAL, lv.name, best[r.level]))
 	if p and p.Parent then CalloutR:FireClient(p, ("%d / %d"):format(r.score, TOTAL), 3) end
+	if p then for _, fn in runHooks do task.spawn(fn, p, r.level, r.score, TOTAL) end end
 	sound("End")
 end
 
