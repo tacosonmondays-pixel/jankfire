@@ -71,7 +71,8 @@ every gun, guns added later included.
 
 **The VIP daily reward's exclusives** (17 Nov, the shop session's `Shared.VipDailyData`: a VIP talks to Trisangle in the
 VIP room once a day). `VipDailyData.EXCLUSIVE` names a wrap (`triangulum`), a hat (`tricorne`) and a skin
-(`sniper_triangulum`) only that reward gives. `LootTable.exclusive(type, id)` asks `VipDailyData.isExclusive`;
+(`sniper_triangulum`) only that reward gives. `LootTable.exclusive(type, id)` checks its own `LootTable.DAILY_ONLY` (the
+trio by name, so a model that lands before VipDailyData can't roll meanwhile), then asks `VipDailyData.isExclusive`;
 `LootTable.cosmetics` leaves them out of every container (and so out of the odds and the reels). The reward pays them
 through `Loot.grant(p, "vipdaily:<kind>:<id>", "vd-<uid>-<day>")` (a one-item `pass` offer, which buy / claim refuse);
 `LootTable.SKINS.sniper_triangulum` is there so the skin's pair can be written (a SkinSets row for it wins). Like a VIP
@@ -289,7 +290,9 @@ moves to the top right (touch screens say just SKIP), and every button is at lea
 list is as big as fits between the title and the buttons. The reward's big card fits the space between the title and
 the reveal. A test: `Opening.setTestBox(Vector2.new(844, 390))` lays it out in a box that size mid-screen (nil to stop).
 Measured at v547 in an 844 x 390 box: the reveal's buttons 155 x 44 and 93 x 44, after a five-ring the cards 109 x 131
-and OPEN 5 MORE / DONE 196 x 44 and 149 x 44. Not yet seen: a single opening in the box, the 1133 x 744 box, a real phone.
+and OPEN 5 MORE / DONE 196 x 44 and 149 x 44. At v565: a single opening in the 844 x 390 box, reel cards 109 x 131 and
+SKIP 162 x 44 in the top right; in a 1133 x 744 box the reveal's EQUIP ON SMG / OPEN ANOTHER / DONE 154 / 136 / 92 x 44.
+Not yet seen on a real phone (the camera framing of the 3D prize follows the real screen, not the test box).
 
 ## Several at once, and others seeing it
 

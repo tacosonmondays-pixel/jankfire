@@ -233,7 +233,11 @@ end
 -- the VIP daily reward's own exclusives (the shop session's Shared.VipDailyData: EXCLUSIVE = { wrap, hat, skin },
 -- isExclusive(kind, id)): only the daily reward gives them (a hidden "pass" offer through Loot.grant), never a container
 local vipDaily: any = nil
+-- (the trio by name too: a model may land in the place before VipDailyData does, and must not roll meanwhile)
+L.DAILY_ONLY = { wrap = { triangulum = true }, hat = { tricorne = true }, skin = { sniper_triangulum = true } } :: { [string]: { [string]: boolean } }
 function L.exclusive(t: string, id: string): boolean
+	local own = L.DAILY_ONLY[t]
+	if own and own[id] then return true end
 	if vipDaily == nil then
 		local m = Shared:FindFirstChild("VipDailyData")
 		if m and m:IsA("ModuleScript") then
