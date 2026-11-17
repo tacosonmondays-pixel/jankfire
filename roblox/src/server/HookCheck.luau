@@ -12,6 +12,8 @@ local function finite(x: number): boolean return x == x and x > -math.huge and x
 function HookCheck.point(px: unknown, py: unknown, pz: unknown): string?
 	if type(px) ~= "number" or type(py) ~= "number" or type(pz) ~= "number" then return "bad point" end
 	if not (finite(px) and finite(py) and finite(pz)) then return "bad point" end
+	-- (huge but finite: its distance overflows to inf before the range check, and the ray gets a NaN direction)
+	if math.abs(px) > 1e6 or math.abs(py) > 1e6 or math.abs(pz) > 1e6 then return "bad point" end
 	return nil
 end
 

@@ -25,7 +25,7 @@ task.spawn(function()
 end)
 
 local ASK_TTL = 600 -- s: how long a "this single, please" waits for its receipt
-local asked: { [number]: { offer: string, product: number, t: number } } = {}
+local asked: { [string]: { offer: string, product: number, t: number } } = {} -- ("<userId>:<productId>")
 local lastAsk: { [Player]: number } = {}
 
 local function loot(): any
@@ -43,6 +43,12 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 	lastAsk[p] = now
 	local o = Shop.offer(offerId)
 	if not o or not Shop.onSale(o.id) then return end
+	-- a paid random item (a container) never goes to a player Roblox's policy keeps them from (the shop's screen hides
+	-- the button; this is the server's own say, the anti-cheat audit, 17 Nov 2026)
+	if o.type == "container" then
+		local L = loot()
+		if not L or type(L.restricted) ~= "function" or L.restricted(p) then return end
+	end
 	-- (a skin set you already have some of: the "complete the set" product for the count you're missing)
 	local missing: number? = nil
 	if o.set then
@@ -55,7 +61,7 @@ Remote.OnServerEvent:Connect(function(p: Player, offerId: unknown)
 	end
 	local pid = Shop.productFor(o, missing)
 	if not pid then return end
-	asked[p.UserId] = { offer = o.id, product = pid, t = now }
+	asked[p.UserId .. ":" .. pid] = { offer = o.id, product = pid, t = now } -- (per product: a second ask can't strand the first's receipt)
 	MarketplaceService:PromptProductPurchase(p, pid)
 end)
 Players.PlayerRemoving:Connect(function(p) lastAsk[p] = nil end)
@@ -72,7 +78,7 @@ if Shop.ROBUX then
 		local offerId = key
 		if not Shop.byId[key] then
 			-- a shared single product ("wrap:epic"): the single this player asked for
-			local a = asked[info.PlayerId]
+			local a = asked[info.PlayerId .. ":" .. info.ProductId]
 			if not a or a.product ~= info.ProductId or os.clock() - a.t > ASK_TTL then
 				warn("[jankfire] a single's receipt with no matching ask: " .. info.PurchaseId)
 				return Enum.ProductPurchaseDecision.NotProcessedYet
@@ -83,7 +89,8 @@ if Shop.ROBUX then
 		if not L or type(L.grant) ~= "function" then return Enum.ProductPurchaseDecision.NotProcessedYet end
 		local ok, granted = pcall(L.grant, p, offerId, info.PurchaseId)
 		if ok and granted == true then
-			if asked[info.PlayerId] and asked[info.PlayerId].offer == offerId then asked[info.PlayerId] = nil end
+			local ak = info.PlayerId .. ":" .. info.ProductId
+			if asked[ak] and asked[ak].offer == offerId then asked[ak] = nil end
 			return Enum.ProductPurchaseDecision.PurchaseGranted
 		end
 		if not ok then warn("[jankfire] Loot.grant failed: " .. tostring(granted)) end

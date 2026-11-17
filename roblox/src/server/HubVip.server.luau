@@ -82,6 +82,7 @@ while true do
 				local out, look = room:GetAttribute("Out"), room:GetAttribute("OutLook")
 				if typeof(out) == "Vector3" then
 					local dir = if typeof(look) == "Vector3" then look else Vector3.new(0, 0, 1)
+					p:SetAttribute("TeleportT", os.clock()) -- (a server teleport: the anti-cheat starts afresh from the door)
 					ch:PivotTo(CFrame.lookAt(out, out + dir))
 					root.AssemblyLinearVelocity = Vector3.zero
 				end

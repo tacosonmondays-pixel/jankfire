@@ -1,7 +1,7 @@
 --!strict
--- JANKFIRE (Roblox) server, step 1: run around Rooftop. it owns: the grapple's say-so (range, sight, rate), the
--- street below (fall in and you die: "into the smog"), and a teleport check. movement itself is the client's, like the
--- web game; damage and hits will be the server's too when weapons land (step 2)
+-- JANKFIRE (Roblox) server, step 1: run around Rooftop. it owns: the grapple's say-so (range, sight, rate) and the
+-- street below (fall in and you die: "into the smog"). movement itself is the client's, like the web game; the
+-- movement checks (teleport, noclip, fly, speed) are AntiCheat.server.luau's; damage and hits are Combat's (step 2)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -95,35 +95,20 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	i.rope, i.anchor = b, a1
 end)
 
--- the street, the teleport check
+-- the street
 RunService.Heartbeat:Connect(function()
-	local now = os.clock()
 	for p, i in info do
 		local hum, root = alive(p)
 		if not hum or not root then continue end
 		local pos = root.Position
 		local killY = Matches.killY(p)
-		-- a server teleport (the hub's laser doors: Jankfire.LaserDoors) stamps the player's TeleportT attribute: the
-		-- teleport check starts afresh from the new spot instead of putting them back
-		local tp = p:GetAttribute("TeleportT")
-		if type(tp) == "number" and tp ~= i.tp then i.tp = tp; i.last = nil; i.lastT = now + 0.5 end
 		if pos.Y < killY then
 			hum.Health = 0
 			dropRope(i)
 			CalloutRemote:FireClient(p, "INTO THE SMOG", 1.5)
 			continue
 		end
-		if now - i.lastT >= 0.25 then
-			if i.last then
-				local d = (pos - i.last).Magnitude
-				if d > Config.check.maxSpeed * (now - i.lastT) + Config.check.slack then
-					root.CFrame = CFrame.new(i.last) * root.CFrame.Rotation -- back where you were
-					root.AssemblyLinearVelocity = Vector3.zero
-					warn(("[jankfire] %s moved %d studs in %.2fs: put back"):format(p.Name, d, now - i.lastT))
-					pos = i.last
-				end
-			end
-			i.last, i.lastT = pos, now
-		end
+		-- (the teleport check is AntiCheat.server.luau's now, with the fly, noclip and speed checks: a server teleport
+		-- still stamps the player's TeleportT attribute so it starts afresh from the new spot)
 	end
 end)

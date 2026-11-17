@@ -83,6 +83,8 @@ remote.OnServerEvent:Connect(function(p, kind, look)
 	if kind == "stop" then s.on = false return end
 	if kind == "sw" then -- the gun's swivel toward its target, for everyone else to see: a rotation of at most 40°
 		if typeof(look) ~= "CFrame" then return end
+		if now - (s.swT or 0) < 1 / 15 then return end -- (a replicated attribute: at most 15 a second, not 40)
+		s.swT = now
 		local tool = equipped(p)
 		if not tool then return end
 		local axis, ang = look:ToAxisAngle()
@@ -237,7 +239,7 @@ end
 local function allowed(p, t)
 	if not Fight then return true end
 	local me, them = Fight.of(p), Fight.of(t.player or t.model)
-	if not me or not them then return true end
+	if not me or not them then return t.player == nil end -- (a player the fight system doesn't know yet: hands off)
 	return Fight.allow(me, them)
 end
 

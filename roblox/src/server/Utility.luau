@@ -767,7 +767,9 @@ local function onRadar(f: Fighter, d: unknown, named: unknown)
 	if f.kind == "player" then (f.ref :: Player):SetAttribute("Radar", true) end
 	if n - s.radarT < SP.scan * 0.8 then return end
 	s.radarT = n
-	local look = if typeof(d) == "Vector3" and d.Magnitude > 0.5 and d.Magnitude < 1.5 then d.Unit else (Fight.root(f) :: BasePart).CFrame.LookVector
+	local fr = Fight.root(f)
+	if not fr then return end -- (the body's gone mid-life: nothing to aim from)
+	local look = if typeof(d) == "Vector3" and d.Magnitude > 0.5 and d.Magnitude < 1.5 then d.Unit else fr.CFrame.LookVector
 	local t = secTarget(f, look, Fight.of(named))
 	if t then radarRead(f, t) end
 end
@@ -1153,8 +1155,10 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 		local s0 = stateOf(f)
 		if s0.item == "camera" and not s0.photo and f.alive and not s0.quiz and not s0.jail and not s0.trap and p:GetAttribute("Zone") ~= "hub" then
 			if now() - s0.useT < Items.SPAM then return end
+			local fr = Fight.root(f)
+			if not fr then return end -- (the body's gone mid-life)
 			s0.useT = now()
-			snapPhoto(f, if finiteV(d) and (d :: Vector3).Magnitude > 1e-3 then (d :: Vector3).Unit else (Fight.root(f) :: BasePart).CFrame.LookVector)
+			snapPhoto(f, if finiteV(d) and (d :: Vector3).Magnitude > 1e-3 then (d :: Vector3).Unit else fr.CFrame.LookVector)
 			return
 		end
 	end

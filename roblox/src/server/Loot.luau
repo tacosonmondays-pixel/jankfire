@@ -187,7 +187,13 @@ end
 local function addStock(s: State, grant: { [string]: number })
 	local d = (s.prof :: Profiles.Profile).data
 	for kind, n in grant do
-		if LootTable.CONTAINERS[kind] and type(n) == "number" and n > 0 then d.stock[kind] = (tonumber(d.stock[kind]) or 0) + math.floor(n) end
+		if LootTable.CONTAINERS[kind] and type(n) == "number" and n > 0 then
+			local have = (tonumber(d.stock[kind]) or 0) + math.floor(n)
+			-- while containers are free (LOOT_FREE) a "buy" costs nothing: keep that stock small, or a script spamming
+			-- "buy" builds a saved hoard that still opens once they cost robux (the anti-cheat audit, 17 Nov 2026)
+			if Config.LOOT_FREE then have = math.min(have, BUY_MAX) end
+			d.stock[kind] = have
+		end
 	end
 end
 
