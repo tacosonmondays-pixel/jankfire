@@ -91,7 +91,10 @@ kill effects then leave it it renders your gun away for a second"):
 - On closing, the camera flew back out there. First person hides the gun whenever the camera is more than 4.5 studs from the body, so the gun stayed hidden until Roblox's camera took over again.
 - The server's re-arm on closing the loadout isn't it: with no weapon change it answers "same" and rebuilds nothing.
 - Fix (v639): the button passes the loadout's saved view (your own, from before the loadout opened) and `FlairUI.open(tab, home)` returns to it. Opened while any other screen's camera is out, it returns to your own eyes.
-- Not yet run through in Play. Studio's viewport is short, so the button sits off the top of the screen, and a synthetic click on it didn't register.
+- Play check (v639, no edits): the button sits off the top of Studio's short viewport, so the same timing was made by hand. The loadout was opened in the training hall and closed with L, and the equip screen opened 0.05 s later, while the loadout's camera was still out (CameraType Scriptable at that moment: the bug's condition). That's the no-`home` fallback path; the button's path differs only by passing the loadout's saved view. Logged every frame for each tab:
+  - kill: gun back 0.02 s after closing, camera at most 2.7 studs from the body, no rebuild;
+  - emote: 0.03 s, 2.4 studs, no rebuild;
+  - grapple: 0.03 s, 2.4 studs, no rebuild.
 
 **KillFx for the shop's cards** (v639): `K.play(m, id, { parent = WorldModel, camera = Camera })` puts the run's pieces under `parent` and faces `camera`. `K.VIEWPORT = true` says the options are there.
 
