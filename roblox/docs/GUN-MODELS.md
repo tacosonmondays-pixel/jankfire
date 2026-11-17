@@ -587,6 +587,32 @@ cleaned, fitted and coloured here.
   A clean-up pass (v5) made the colour borders follow the surface and tidied the grip joint, front-sight base and
   bore. 12,619 triangles with shells; asset 140181802705874 (place version 627); the shade picture's packed strips blurred before
   upload so nothing in it reads as text.
+
+  v6 (place version 669, asset 130346853233717) answered "the barrel needs some touch up on angel, also, can there be
+  more glowing parts". The changes:
+  - the bare barrel became a pearl shroud with two gold bands;
+  - the brake is a 12-sided pearl brake with three ports a side and a lit star let into each flank;
+  - new lit lines run round the rear wings' tops, down the handguard flanks and along the butt edge.
+
+  13,843 triangles. The lit lines' points for the VFX session are in the notes folder's `angel-v6-lit-lines.json`.
+- **The Ducky bundle** (place version 669, all four in `SkinSets.CONCEPTS`). These are the owner's own Tripo models of
+  their bundle picks. The owner asked to "break down the weapons into pieces the best you can, and repair what needs to
+  be repaired", so each was split into its parts, and each part was repaired on its own (straightened, holes closed,
+  mirrored). A part too broken to save was rebuilt from kit shapes.
+  - `smg_ducky_tripo` (99482354209343): the lopsided rail to the barrel was straightened and centred, and the whole
+    gun mirrored. The keychain charm now hangs from an anchor ring and links.
+  - `katana_ducky_tripo` (121784713173285): Tripo's blade was a soft lump with 167 open edges, so it was replaced with a
+    kit blade: a bevel down to the edge, a wave band, a gold spine. The grip is a kit candy-stripe grip, and the pommel
+    a kit life-ring loop. The duck guard, crown and collar are Tripo's own, centred and mirrored.
+  - `sniper_ducky_tripo` (138491983190218):
+    - mirroring the body gave the duck head both eyes;
+    - Tripo's scope was swapped for the live slim scope on the live sight axis;
+    - the chain was fixed at both ends;
+    - the one-sided props (life ring, wing, banner) were kept as they were.
+  - `pistol_ducky_tripo` (100816221116160): the fused body was cut into a `slide` node and the frame, with `mag` and
+    `hammer` nodes and one low sight. The duck nose and crown sit under the sight line.
+
+  Every new kit piece and cutting fix is in `tools/roblox/tripo_gun.py`. The Tripo files and recipes stay in the vault.
 - **Prompt lessons:**
   - Our base AR's two ring sights come back as "two scopes": ask for one low sight and no scope rings.
   - ChatGPT refused "hellhound" and "cute devil" wordings; "stylized cartoon game cosmetic" wording passed.
