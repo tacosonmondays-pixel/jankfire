@@ -24,6 +24,10 @@
 --     hub's style (see-through, a soft fill and outline, turning slowly over its lens), holding what you hold. the owner,
 --     16 Nov: "it can be a hologram version of your avatar"; it stands on a plain round projector
 --   * the range's Carls: every runner has his own (RangeTest); this screen keeps only its own in its world
+--   * the gun shop's keeper (ShopKeeper.server builds him): his idle (his attribute Idle: the owner's "cute sway waiting
+--     at the cases") loops here as two copies crossfading at each end, and he waves when WaveAt (server time) moves on.
+--     played here, not on the server: ZoneCull takes the training area out of your world while you are away, and the
+--     server's tracks don't come back with it. it starts again whenever he is back in your world
 -- the slats' shut places are their attribute Shut (a CFrame); a Model's Lift is how far up they go and Top the height
 -- over which a slat is inside the wall (hidden)
 local Players = game:GetService("Players")
@@ -323,6 +327,48 @@ task.spawn(function()
 end)
 me:GetAttributeChangedSignal("ViewAs"):Connect(resort)
 
+-- ---------------------------------------------------------------- the gun shop's keeper: his sway and wave
+type Keeper = { m: Model, t1: AnimationTrack, t2: AnimationTrack, cur: AnimationTrack?, wave: AnimationTrack?, waveAt: number }
+local keeper: Keeper? = nil
+local function keeperOf(m: Instance): Keeper?
+	if not m:IsA("Model") then return nil end
+	local hum = m:FindFirstChildOfClass("Humanoid")
+	local an = hum and hum:FindFirstChildOfClass("Animator")
+	local id = m:GetAttribute("Idle")
+	if not an or type(id) ~= "string" or id == "" then return nil end -- (not ready yet: the next look tries again)
+	local a = Instance.new("Animation"); a.AnimationId = id
+	local ok1, t1 = pcall(function() return an:LoadAnimation(a) end)
+	local ok2, t2 = pcall(function() return an:LoadAnimation(a) end)
+	if not ok1 or not ok2 or not t1 or not t2 then return nil end
+	for _, t in { t1, t2 } do t.Looped = false; t.Priority = Enum.AnimationPriority.Idle end
+	local wave: AnimationTrack? = nil
+	local wid = m:GetAttribute("Wave")
+	if type(wid) == "string" and wid ~= "" then
+		local w = Instance.new("Animation"); w.AnimationId = wid
+		local okW, tw = pcall(function() return an:LoadAnimation(w) end)
+		if okW and tw then tw.Looped = false; tw.Priority = Enum.AnimationPriority.Action; wave = tw end
+	end
+	local at = m:GetAttribute("WaveAt")
+	return { m = m, t1 = t1, t2 = t2, cur = nil, wave = wave, waveAt = if type(at) == "number" then at else 0 }
+end
+local function keeperStep()
+	local k = keeper
+	if not k then return end
+	if not k.m:IsDescendantOf(workspace) then k.cur = nil; return end -- (out of your world: start afresh when he is back)
+	local cur = k.cur
+	if not cur or not (k.t1.IsPlaying or k.t2.IsPlaying) then
+		k.t2:Stop(0); k.t1:Play(0.4); k.cur = k.t1
+	elseif cur.Length > 0 and cur.Length - cur.TimePosition < 0.75 then
+		local nxt = if cur == k.t1 then k.t2 else k.t1
+		nxt:Play(0.7); cur:Stop(0.7); k.cur = nxt
+	end
+	local at = k.m:GetAttribute("WaveAt")
+	if type(at) == "number" and at > k.waveAt then
+		k.waveAt = at
+		if k.wave and workspace:GetServerTimeNow() - at < 2 then k.wave:Play(0.15) end
+	end
+end
+
 -- ---------------------------------------------------------------- find the training area's pieces (it can be rebuilt)
 local seen: Instance? = nil
 local look, doorMoving = 0, true
@@ -332,6 +378,13 @@ local function scan()
 	local d = lot and lot:FindFirstChild("Door")
 	if d and (not door or door.m ~= d or #door.slats == 0) then door = readRoller(d); doorMoving = true
 	elseif not d then door = nil end
+	-- (the shop's keeper: Range.Shop.Stock.ShopKeeper, made at server start)
+	local range = tg and tg:FindFirstChild("Range")
+	local shop = range and range:FindFirstChild("Shop")
+	local stock = shop and shop:FindFirstChild("Stock")
+	local km = stock and stock:FindFirstChild("ShopKeeper")
+	if km and (not keeper or keeper.m ~= km) then keeper = keeperOf(km)
+	elseif tg and not km then keeper = nil end
 	-- (a nil area is one ZoneCull has taken out of your world for now: keep what we know, it comes back as it was)
 	if tg and tg ~= seen then
 		seen = tg
@@ -409,5 +462,6 @@ RunService.RenderStepped:Connect(function(dt: number)
 	local hum = ch and ch:FindFirstChildOfClass("Humanoid")
 	if root and hum then jumpWatch(root, hum) end
 	mirrorStep(dt)
+	keeperStep()
 end)
 scan()

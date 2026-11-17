@@ -23,8 +23,10 @@ local WeaponModels = require(Shared:WaitForChild("WeaponModels"))
 local OWNER = 2833796200
 local K = 4.5 -- studs per metre: a gun's size in your hands (Fight's HAND_K)
 -- his idle at the cases: a slow side-to-side sway, his weight going foot to foot, hands clasped, made with Studio's
--- prompt-to-animation tool on his avatar (17 Nov, its second take: the first barely moved). it loops as two copies
--- crossfading at each end (the hub's regulars' way); Roblox's own idle (IDLE) if it won't load
+-- prompt-to-animation tool on his avatar (17 Nov, its second take: the first barely moved); Roblox's own idle (IDLE)
+-- if he is R6. every screen plays it itself (TrainingDoors.client: two copies crossfading at each end), from his
+-- attributes Idle, Wave and WaveAt: ZoneCull takes the training area out of your world while you are away, and what
+-- the server plays does not come back with it (in Play on 17 Nov the server's track ran and no screen showed it)
 local SWAY = "rbxassetid://132873393676097"
 -- the talk prompt: { what it says, the attribute it carries, its value } (ShopClient reads ShopOpen). the hub's
 -- regulars' prompt style: on an attachment at chest height, E (gamepad X), no hold, 8 studs, no line of sight, clickable,
@@ -113,29 +115,6 @@ local function hang(peg: BasePart, into: Instance)
 	end
 end
 
--- a loop with no pop where it ends: two tracks of the clip, the next fading in as the last one runs out (HubNPCs')
-local function loop(animator: Animator, id: string): boolean
-	local a = Instance.new("Animation"); a.AnimationId = id
-	local ok1, t1 = pcall(function() return animator:LoadAnimation(a) end)
-	local ok2, t2 = pcall(function() return animator:LoadAnimation(a) end)
-	if not ok1 or not ok2 or not t1 or not t2 then return false end
-	for _, t in { t1, t2 } do t.Looped = false; t.Priority = Enum.AnimationPriority.Idle end
-	t1:Play(0.4)
-	task.spawn(function()
-		local cur = t1
-		while animator.Parent do
-			if cur.Length <= 0 then task.wait(0.2); continue end
-			local left = cur.Length - cur.TimePosition
-			if left > 0.8 then task.wait(left - 0.75); continue end
-			local nxt = if cur == t1 then t2 else t1
-			nxt:Play(0.7); cur:Stop(0.7)
-			cur = nxt
-			task.wait(0.9)
-		end
-	end)
-	return true
-end
-
 -- his name over him, then what he does for you in a quieter grey (the hub's regulars' label)
 local function label(head: BasePart, name: string)
 	local bb = Instance.new("BillboardGui")
@@ -200,19 +179,9 @@ local function keeper(spot: BasePart, into: Instance)
 	local an = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator")
 	an.Parent = hum
 	local rig = if r6 then "R6" else "R15"
-	local function track(id: string, looped: boolean, pri: Enum.AnimationPriority): AnimationTrack?
-		local a = Instance.new("Animation")
-		a.AnimationId = id
-		local ok3, t = pcall(function() return an:LoadAnimation(a) end)
-		if not ok3 or not t then return nil end
-		t.Looped = looped; t.Priority = pri
-		return t
-	end
-	if r6 or SWAY == "" or not loop(an, SWAY) then
-		local idle = track(IDLE[rig], true, Enum.AnimationPriority.Idle)
-		if idle then idle:Play() end
-	end
-	local wave = track(WAVE[rig], false, Enum.AnimationPriority.Action)
+	-- (what every screen plays on him: TrainingDoors.client)
+	npc:SetAttribute("Idle", if r6 or SWAY == "" then IDLE[rig] else SWAY)
+	npc:SetAttribute("Wave", WAVE[rig])
 	-- his prompts at his chest: Deals (E) over Shop (F)
 	local at = Instance.new("Attachment")
 	at.Name = "PromptAt"; at.Position = Vector3.new(0, floorY + 3.2 - root.Position.Y, 0); at.Parent = root
@@ -228,10 +197,11 @@ local function keeper(spot: BasePart, into: Instance)
 	end
 	local deals = prompt("DealsPrompt", DEALS[1], Enum.KeyCode.E, Enum.KeyCode.ButtonX, DEALS[2], DEALS[3], 0)
 	local shopPr = prompt("ShopPrompt", "Shop", Enum.KeyCode.F, Enum.KeyCode.ButtonY, "ShopOpen", "tab:featured", 76)
+	-- he waves when someone uses either (every screen near him plays it: WaveAt is the server's time)
 	local waved = -math.huge
 	for _, pr in { deals, shopPr } do
 		pr.Triggered:Connect(function()
-			if wave and os.clock() - waved > 4 then waved = os.clock(); wave:Play(0.15) end
+			if os.clock() - waved > 4 then waved = os.clock(); npc:SetAttribute("WaveAt", workspace:GetServerTimeNow()) end
 		end)
 	end
 	task.spawn(function()

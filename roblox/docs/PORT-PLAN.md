@@ -970,9 +970,23 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - In Play, strafing right into it from the same spot: the camera stops 1.93 from the console top (was 0.6). Photo: `roblox/docs/training/console_head_room.jpg`.
   - `T.headRoom(stage, step)`, run by `T.check`: from every spot 0.5 apart on the hall's floors where a 1.2 x 3.2 x 1.2 body fits, what you can see within 1.0 of your eye at head height. Walls and posts from your waist to over your eye, thin signs flat on such a wall, and tops more than 0.4 under your eye do not count. A kit model counts whole. Result: 0 within 0.6 (8 between 0.6 and 1.0: the terrace's lip, wall sconces, the garage's crates and drums).
   - With the owner's eye height (4.2, `T.HEAD.eye` is 4.5) one spot remains: on top of the garage's crate stack (-20, -8268), next to the upper crate's top. Left as it is.
+- **17 Nov: the shopkeeper talks deals and sways; the hub gate's shutter no longer sticks (place versions 576 and 590).**
+  - The owner: "I give players 3 special discounts on random skins if you talk to me! I want a cute sway waiting at the cases."
+    - Deals prompt (E, ButtonX) with `ShopOpen = "tab:deals"`: opens the shop on DEALS, the shop session's three picks. Shop moved to F, just under it.
+    - Prompt style as the hub regulars': an attachment at chest height, no hold, 8 studs, no line of sight, clickable. "NAME · DEALS" floats over him.
+    - He is built as R15 from his avatar's description, lifted until his lowest part is on the floor.
+    - The sway is Studio's prompt-to-animation on his avatar, second take (132873393676097, 3.97 s): head about 0.25 left and right, hands clasped, feet planted. The first take barely moved.
+  - **Animations the server plays don't reach the screen after ZoneCull.** In Play the server's track ran at weight 1, but the client had no tracks and a still head. So ShopKeeper.server only sets `Idle`, `Wave` and `WaveAt` (server time) on him, and TrainingDoors.client plays them: two copies crossfading at each end, restarted whenever he is back under workspace. The hub's regulars moved to the same pattern (hub push 52).
+  - **The owner's door bug:** "the door is stuck halfway open until you get near it". Going home, ZoneCull took the training area out of the world mid-close; the 2 s rescan saw no area, forgot the shutter, then re-read it as shut without placing its slats.
+    - Each shutter is now a state moved toward open or shut every frame, so a reversal carries on from where it is. It opens inside Near (13) and closes past Near + 2, after 0.8 s.
+    - It is kept while the area is out of your world, and set straight to the right state, with no sound, when it is back.
+    - Tested: frozen 8.81 up when the area left, every slat 0 on return; opens walking up from the east and the west, shuts walking away.
+  - Photos: `roblox/docs/training/hub_gate_shutter_strip.jpg`, `shopkeeper_sway_strip.jpg` (four moments of the sway, a wave, the DEALS tab), `shopkeeper_deals.jpg`.
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
+- With ZoneCull on, hop into the hall with the root anchored for about 1.5 s (`HumanoidRootPart.Anchored = true`, `PivotTo`, wait, unanchor): the client brings the area back before the body falls. Don't park a photo camera in the hall while testing the trip home: ZoneCull keeps an area by the camera too.
+- `Humanoid:MoveTo` from the client doesn't move the character in this game: drive it with `Humanoid:Move(direction)` every frame.
 - `screen_capture` calls in parallel time out: take them one at a time.
 - A copy of the character's `HeldWeapon` comes out invisible on its own player's screen: first person hides it there. Build a display gun fresh from `WeaponModels` (skin, wrap and hat from `GunSkins`, `WeaponModels.wrapFor` and `GunHats`).
 - A commit swept in another session's unfinished Arsenal change (1fb2d29); a2d6e3c took it back. Before committing a shared file, check `git diff --cached` for other sessions' hunks, not just `--stat`.
