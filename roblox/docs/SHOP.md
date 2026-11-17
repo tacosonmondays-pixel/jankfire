@@ -437,8 +437,8 @@ Tested in solo Play (place version 588):
 - Switched to FEATURED, the same tracks held at speed 0.
 - The inspect panel showed Groove big (`shop-anim-inspect.jpg`).
 - The owner's inventory was put back.
-- The kill effects' sheets came from the VFX session (place version 625): 16 of 17, all but Ink, which is being
-  retaken on a lighter backdrop. Ink keeps its still tile until then.
+- The kill effects' sheets came from the VFX session: 16 in place version 625, and Ink in version 630, retaken on a
+  lighter wall and mapped back to the card's dark so its black ink shows. All 17 move now.
 
 Tested in solo Play (place version 626), with six kill effects and two emotes owned for the test:
 - The KILL EFFECTS cards stepped their flipbooks: Ascend, Big Duck, Blue Screen, Chickens, Shatter, Tombstone.
