@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 49 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 50 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -93,12 +93,12 @@ R.GYM_RING = 58.5 -- the ring's middle, on the door's axis
 -- ServerStorage.JankfireNPCs if the avatar call fails). who = the label over them, user = their Roblox username. their
 -- purposes (owner, 17 Nov: "Dune is the quests guy, maybe Frisk does one. Maybe Looticus the shop? ... I want to give
 -- them purposes"): role = the word after their name over them; prompt = { its action, the attribute it carries, its
--- value }: the panel's own client opens on that attribute (ShopOpen: ShopClient; QuestsOpen: QuestClient; RankedOpen:
--- the ranked panel). Trisangle's prompt is the shop's VipDaily's
+-- value }: the panel's own client opens on that attribute (ShopOpen: ShopClient; QuestsOpen: QuestClient; RankedBoard:
+-- the ranked leaderboard, "duels" or "party"). Trisangle's prompt is the shop's VipDaily's
 R.NPCS = {
 	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport" }, -- on the lounge's sofa; now and then a puff and he is on another seat or by the arcade or the fridge
 	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "loop" }, -- in the gym, walking round the ring
-	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedOpen", true }, moves = "pingpong" }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
+	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedBoard", "duels" }, moves = "pingpong" }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
 	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", moveEvery = { 45, 90 } }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
