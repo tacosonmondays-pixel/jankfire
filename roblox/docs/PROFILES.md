@@ -275,8 +275,9 @@ Not checked end to end:
 The owner: "can titles appear above head".
 - **Where it comes from:** `server/Stats.luau` publishes the card title you wear as the player attribute `CardTitle` (on load, on every look change, and when a title you no longer own comes off).
 - **Who draws it:** `client/OverheadTitles.client.luau` draws it for every player, just under their Roblox name: one fixed-size BillboardGui per character, made on each client (nothing replicates).
-- **Look:** the title's words in its rarity colour (`CardStyles.RARITY_COLOR`), Montserrat Bold with a dark outline, like the regulars' nametags. "No Title" (`none`) shows nothing.
-- **Hidden** on anyone in a match (Zone `match`): it stays on the scoreboard and the card. It's drawn on top of hats but hidden behind walls (one ray per player, 10 times a second). Your own title shows only when your camera is out, not from your own eyes.
+- **Look:** the title's words in its rarity colour (`CardStyles.RARITY_COLOR`), Montserrat Bold with a dark outline. It's made like the regulars' nametags: on the character's Head, 7 studs wide, words scaled to fit up to 22 px, not AlwaysOnTop. An AlwaysOnTop billboard didn't draw at all in a Play test (v686). "No Title" (`none`) shows nothing.
+- **Hidden** on anyone in a match (Zone `match`): it stays on the scoreboard and the card. Hidden behind walls (one ray per player, 10 times a second). Your own title shows only when your camera is out, not from your own eyes.
+- **Studio stand-in:** a Model with the attribute `TitleStandIn = true` and its own `CardTitle` shows like a player (for photos).
 - **Fade:** from 45 to 60 studs; gone past 60.
 - **Switch:** Settings `gfx.titles` (SHOW TITLES on the settings page, GRAPHICS > OTHER PLAYERS; nil = on).
 - **Studio test hook:** the attribute `TitleZoneTest = "match"` stands a player in a match.
@@ -286,3 +287,9 @@ The owner: "can titles appear above head".
   - in a match off, switch off off, switch back on.
   - No photo yet: the test camera never framed the avatar.
 - **Adding a title** is one row in `CardStyles` TITLES (`{ id, WORDS, rarity }`). The card, shop, crates and the overhead title all read it.
+- **17 Nov, the owner's picks** (v685): 31 titles, rarities set by the main session.
+  - Cute: PRINCESS, STARDUST, DUCKLING, SOFT SERVE, CUTIE, BUNNY, BONBON, KITTEN, SQUISHY.
+  - Cool: APEX, PHANTOM, DEADEYE, ZERO RECOIL, NIGHTSHADE, HEADHUNTER, AFTERBURNER, COLD BLOODED, BLACKOUT, IRONCLAD.
+  - Meme: SIGMA, SKILL ISSUE, ALPHA, LONE WOLF, SWEAT, NPC, BOT, CHUD.
+  - JANKFIRE's own: JANK CERTIFIED, PATIENT ZERO, DUCK RAIN SURVIVOR, SPOON MAIN.
+  - DUCK RAIN SURVIVOR was photographed over a stand-in's head.

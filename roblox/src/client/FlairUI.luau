@@ -277,6 +277,14 @@ local function build(L: any): any
 			CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X,
 			ScrollBarThickness = 6, ScrollBarImageColor3 = T.DIM, VerticalScrollBarInset = Enum.ScrollBarInset.None, ZIndex = 3 }, M.frame)
 		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, e[7]), SortOrder = Enum.SortOrder.LayoutOrder }, holder)
+		-- (the mouse wheel moves a sideways row too: a wheel over it scrolls it across, a card at a time)
+		local row = holder :: ScrollingFrame
+		row.InputChanged:Connect(function(io: InputObject)
+			if io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
+			local most = math.max(0, row.AbsoluteCanvasSize.X - row.AbsoluteWindowSize.X)
+			local step = (e[5] + e[7]) * (row.AbsoluteSize.X / math.max(1, e[3]))
+			row.CanvasPosition = Vector2.new(math.clamp(row.CanvasPosition.X - io.Position.Z * step, 0, most), 0)
+		end)
 	else
 		holder = grid(M.frame, e)
 	end
@@ -430,12 +438,28 @@ local function findSpot(): { s: Vector3, face: Vector3 }?
 	local base = Vector3.new(look.X, 0, look.Z)
 	base = if base.Magnitude > 1e-3 then base.Unit else Vector3.new(0, 0, -1)
 	local from = root.Position + Vector3.new(0, 1, 0)
-	for k = 0, 7 do
-		local a = math.rad(({ 0, 45, -45, 90, -90, 135, -135, 180 })[k + 1])
-		local d = CFrame.fromAxisAngle(Vector3.yAxis, a):VectorToWorldSpace(base)
-		if not workspace:Raycast(from, d * 11, params) then
-			local floor = workspace:Raycast(root.Position + d * 7 + Vector3.new(0, 3, 0), Vector3.new(0, -12, 0), params)
-			if floor then return { s = floor.Position, face = -d } end
+	-- (not with one of the hub's holograms behind it: the loadout one floats just over heads, and seen past the copy
+	-- of you it looks like a gun floating on it. the holograms' places are the parts tagged HubHolo, HubHolo.client)
+	local holos = game:GetService("CollectionService"):GetTagged("HubHolo")
+	local function holoBehind(d: Vector3): boolean
+		for _, h in holos do
+			if h:IsA("BasePart") then
+				local v = (h.Position - root.Position) * Vector3.new(1, 0, 1)
+				local along = v:Dot(d)
+				local r = tonumber(h:GetAttribute("Radius")) or 3
+				if along > 2 and along < 45 and (v - d * along).Magnitude < r + 4 then return true end
+			end
+		end
+		return false
+	end
+	for pass = 1, 2 do
+		for k = 0, 7 do
+			local a = math.rad(({ 0, 45, -45, 90, -90, 135, -135, 180 })[k + 1])
+			local d = CFrame.fromAxisAngle(Vector3.yAxis, a):VectorToWorldSpace(base)
+			if (pass == 2 or not holoBehind(d)) and not workspace:Raycast(from, d * 11, params) then
+				local floor = workspace:Raycast(root.Position + d * 7 + Vector3.new(0, 3, 0), Vector3.new(0, -12, 0), params)
+				if floor then return { s = floor.Position, face = -d } end
+			end
 		end
 	end
 	return { s = root.Position + base * 6 - Vector3.new(0, 3, 0), face = -base }

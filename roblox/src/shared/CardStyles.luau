@@ -73,6 +73,24 @@ local TITLES = {
 	{ "void", "WASTE DISPOSAL", "rare" },
 	{ "multi3", "BULK DISCOUNT", "epic" }, { "streak", "ON A TEAR", "epic" }, { "fast", "OVER THE LIMIT", "epic" },
 	{ "untouch", "UNTOUCHABLE", "legendary" }, { "mvp", "EMPLOYEE OF THE MONTH", "legendary" },
+	-- (17 Nov 2026: the owner's picks, "can one be princess some cute ones cool ones meme ones etc"; rarities the main
+	-- session's, the owner may move them. they also show over heads: client/OverheadTitles)
+	-- cute
+	{ "princess", "PRINCESS", "legendary" }, { "stardust", "STARDUST", "epic" }, { "duckling", "DUCKLING", "rare" },
+	{ "soft_serve", "SOFT SERVE", "rare" }, { "cutie", "CUTIE", "rare" }, { "bunny", "BUNNY", "common" },
+	{ "bonbon", "BONBON", "common" }, { "kitten", "KITTEN", "common" }, { "squishy", "SQUISHY", "common" },
+	-- cool
+	{ "apex", "APEX", "legendary" }, { "phantom", "PHANTOM", "epic" }, { "deadeye", "DEADEYE", "epic" },
+	{ "zero_recoil", "ZERO RECOIL", "epic" }, { "nightshade", "NIGHTSHADE", "epic" }, { "headhunter", "HEADHUNTER", "rare" },
+	{ "afterburner", "AFTERBURNER", "rare" }, { "cold_blooded", "COLD BLOODED", "rare" }, { "blackout", "BLACKOUT", "rare" },
+	{ "ironclad", "IRONCLAD", "common" },
+	-- meme
+	{ "sigma", "SIGMA", "epic" }, { "skill_issue", "SKILL ISSUE", "rare" }, { "alpha", "ALPHA", "rare" },
+	{ "lone_wolf", "LONE WOLF", "rare" }, { "sweat", "SWEAT", "common" }, { "npc", "NPC", "common" }, { "bot", "BOT", "common" },
+	{ "chud", "CHUD", "common" },
+	-- JANKFIRE's own
+	{ "jank_certified", "JANK CERTIFIED", "legendary" }, { "patient_zero", "PATIENT ZERO", "epic" },
+	{ "duck_rain_survivor", "DUCK RAIN SURVIVOR", "epic" }, { "spoon_main", "SPOON MAIN", "rare" },
 	{ "vip", "VIP", "vip", "VIP" }, -- (the VIP pack's title, words "VIP"; 4th: its name when it isn't sentence case)
 }
 

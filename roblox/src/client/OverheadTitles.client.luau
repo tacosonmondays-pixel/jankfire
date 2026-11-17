@@ -6,8 +6,11 @@
 --   * hidden on anyone in a match (Zone == "match"), to keep fights clean: the scoreboard and the cards still have it.
 --   * fades out from 45 to 60 studs; your own only shows when your camera is out (third person, menus).
 --   * Settings "gfx.titles" (the settings page's SHOW TITLES; nil = on) turns them all off, for you only.
--- light on purpose: one BillboardGui per character, made here on this client (nothing replicates), fixed pixel size
--- like Roblox's own name; one loop every 0.1 s for the distance fade and the hiding rules.
+-- light on purpose: one BillboardGui per character, made here on this client and put on that character's Head, like
+-- the regulars' nametags (nothing replicates), the same make as theirs (sized in studs, not always on top); one loop
+-- every 0.1 s for the distance fade and the hiding rules.
+-- Studio tests: a Model in the Workspace with the attribute TitleStandIn = true and its own CardTitle / Zone is shown
+-- like a player (a copy of you, for a photo).
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -37,37 +40,51 @@ local function shown(): boolean
 	return not (ok and v == false)
 end
 
--- all of them live in one folder in your own PlayerGui (a Billboard there still draws on its Adornee)
+-- (where a Billboard waits while its character has no head yet)
 local folder = Instance.new("Folder")
 folder.Name = "JankTitles"
 folder.Parent = pg
 
-type Tag = { bb: BillboardGui, label: TextLabel, head: BasePart?, p: Player, id: string }
-local tags: { [Player]: Tag } = {}
+-- p: the Player, or a Studio stand-in Model (both answer GetAttribute; charOf gives the body)
+type Tag = { bb: BillboardGui, label: TextLabel, head: BasePart?, p: any, id: string }
+local tags: { [any]: Tag } = {}
+local function charOf(p: any): Model?
+	return if typeof(p) == "Instance" and p:IsA("Player") then p.Character else p
+end
 
-local function make(p: Player): Tag
+local function make(p: any): Tag
 	local bb = Instance.new("BillboardGui")
 	bb.Name = "Title_" .. p.Name
-	bb.Size = UDim2.fromOffset(260, 18)
-	-- (just under Roblox's own name: it sits about this high over the head)
+	-- (the regulars' nametag's own make: sized in studs, the words scaled to fit. an AlwaysOnTop one didn't draw at
+	-- all in a Play test, so it isn't; just under Roblox's own name, which sits about this high over the head)
+	bb.Size = UDim2.new(7, 0, 0.55, 0)
 	bb.StudsOffsetWorldSpace = Vector3.new(0, 2.05, 0)
 	bb.LightInfluence = 0
-	bb.AlwaysOnTop = true -- (over big hats, like the name itself; past walls it's hidden by the loop below)
+	bb.AlwaysOnTop = false
 	bb.MaxDistance = FAR + 2
 	bb.ResetOnSpawn = false
+	bb.Archivable = false -- (copies of a body, the equip screen's stand-in, replays, leave it behind)
 	bb.Enabled = false
 	local t = Instance.new("TextLabel")
 	t.Name = "Title"
 	t.BackgroundTransparency = 1
 	t.Size = UDim2.fromScale(1, 1)
 	t.FontFace = FONT
-	t.TextSize = 14
+	t.TextScaled = true
 	t.TextStrokeTransparency = 0.55
 	t.TextStrokeColor3 = Color3.fromRGB(10, 12, 16)
 	t.Text = ""
+	local cap = Instance.new("UITextSizeConstraint")
+	cap.MaxTextSize = 22
+	cap.Parent = t
 	t.Parent = bb
 	bb.Parent = folder
 	return { bb = bb, label = t, head = nil, p = p, id = "" }
+end
+local function rebuild(g: Tag)
+	-- (the old one went with its head: a new one, the same in every way)
+	local n = make(g.p)
+	g.bb, g.label = n.bb, n.label
 end
 
 local function refresh(g: Tag)
@@ -78,8 +95,14 @@ local function refresh(g: Tag)
 	local words = if i and type(i.text) == "string" then i.text else ""
 	g.label.Text = words
 	g.label.TextColor3 = (i and CardStyles.RARITY_COLOR[i.rarity]) or Color3.fromRGB(236, 240, 242)
-	local ch = g.p.Character
+	local ch = charOf(g.p)
 	local head = ch and ch:FindFirstChild("Head") :: BasePart?
+	if not pcall(function() g.bb.Parent = head or folder end) then
+		rebuild(g)
+		g.label.Text = words
+		g.label.TextColor3 = (i and CardStyles.RARITY_COLOR[i.rarity]) or Color3.fromRGB(236, 240, 242)
+		g.bb.Parent = head or folder
+	end
 	g.head = head
 	g.bb.Adornee = head
 end
@@ -102,6 +125,20 @@ Players.PlayerRemoving:Connect(function(p)
 	tags[p] = nil
 	if g then g.bb:Destroy() end
 end)
+if RunService:IsStudio() then
+	local function standIn(m: Instance)
+		if not m:IsA("Model") or m:GetAttribute("TitleStandIn") ~= true or tags[m] then return end
+		local g = make(m)
+		tags[m] = g
+		refresh(g)
+		m:GetAttributeChangedSignal("CardTitle"):Connect(function() refresh(g) end)
+		m.AncestryChanged:Connect(function()
+			if not m:IsDescendantOf(workspace) then tags[m] = nil; g.bb:Destroy() end
+		end)
+	end
+	for _, m in workspace:GetChildren() do standIn(m) end
+	workspace.ChildAdded:Connect(function(m) task.defer(standIn, m) end)
+end
 
 -- the hiding rules and the fade, ten times a second
 local ray = RaycastParams.new()
@@ -125,8 +162,8 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if show and p == me and d < 4 then show = false end -- (your own: not from your own eyes)
 		if show and d > FAR then show = false end
 		if show and p ~= me and head then
-			-- (always drawn on top of hats, so hidden behind walls: one ray from the camera to the head)
-			local ch = p.Character
+			-- (hidden behind walls: one ray from the camera to the head)
+			local ch = charOf(p)
 			local mine = me.Character
 			ray.FilterDescendantsInstances = if mine then { ch :: Instance, mine } else { ch :: Instance }
 			local hit = workspace:Raycast(camPos, head.Position - camPos, ray)
