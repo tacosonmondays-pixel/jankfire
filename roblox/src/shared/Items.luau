@@ -15,6 +15,11 @@ Items.DEFAULT = "frag" -- (web DEFAULT_LOADOUT.item)
 
 Items.SPAM = 0.4 -- s between two uses the server accepts (web room.js useItem: 400 ms; the client waits 420)
 Items.SPAM_CLIENT = 0.42
+-- in training (the server's zone: the hall, its back lot and basement, the playground; Zones.luau) items cost nothing
+-- and never recharge: only this short gap between two uses stays, so a held-down G can't flood the room (the owner,
+-- 17 Nov 2026: "training room should also have no cooldown on stuff since its for training")
+Items.SPAM_FREE = 0.2
+Items.SPAM_FREE_CLIENT = 0.22
 Items.EYE = 4 * S -- a claimed throw point must be this close to the server's eye (and in clear sight of it), else the eye is used
 Items.SWAP = 5.25 -- s into a life a new pick still lands at once (web selectItem: 5 s + a round trip, max 1 s)
 Items.THROW = 0.7 * S -- thrown items leave this far along your look from the throw point (web makeProj call)
@@ -191,6 +196,11 @@ function Items.tick(c: Ic, now: number)
 		c.n += 1
 		c.next = if c.n < it.charges then c.next + it.recharge else 0
 	end
+end
+-- every charge back at once, no clock running (training)
+function Items.refill(c: Ic)
+	c.n = Items.list[c.i].charges
+	c.next = 0
 end
 -- use one: the clock starts if it wasn't running
 function Items.spend(c: Ic, now: number)

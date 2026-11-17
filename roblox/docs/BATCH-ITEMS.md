@@ -270,3 +270,29 @@ printing itself is never refused for the ground: a wall pulls the frame back, no
 ![before: the HUD says print, the print is refused](items/camera-before-recharging.jpg)
 
 ![after: the wait shown](items/camera-print-wait.jpg)
+
+### Free items in training (owner's ask, place version 682)
+
+The owner: "training room should also have no cooldown on stuff since its for training". In the training hall, its
+back lot and basement, and the playground, every item is free: all its charges all the time, nothing starts a clock.
+Everywhere else nothing changed.
+
+- **Who decides:** the server, from its own zone (`Zones.luau`: `Zones.training(p)` asks `Matches.zoneOf`, the same
+  answer the `Zone` attribute is made from). The shop session's try-anything-in-training layer (Loadout) uses the same
+  helper, so a new training room is one line in `Zones.TRAINING`.
+- **What the client sees:** player attribute `ItemFree` (true in training). The plate's pips stay full and the
+  client's own "one gone" guess is skipped.
+- **The one gap left:** 0.2 s between two uses (0.22 s on the client; 0.4 s elsewhere), so a held G can't flood the
+  room. The room caps (40 thrown items, 24 domes, 30 clouds, 12 holes) still hold.
+- **Dummies you practise on** get none of their "safe" seconds from you: a new quiz, laptop ads, a speed trap ticket or
+  cage, or a soap bubble can land on the same dummy straight away. The speed trap's 0.9 s gap between your tickets is
+  gone in training too.
+- **Kept on purpose:** the goggles' on/off debounce, the photo frame's 1.6 s before it can send the same person again,
+  the slide's and the parry's cooldowns, reloads and magazines. The grapple is already free outside ranked.
+- **Anti-cheat:** no exception needed. It doesn't rate-limit the item remote (an item use only gives a short movement
+  grace); Utility's own message budget (20, +8 a second) leaves room for 5 uses a second.
+
+Play test (real G presses, solo): in training, Rubber Duck 4 presses 0.3 s apart = 4 ducks (it holds 1, 20 s to come
+back), Shield Bubble 3 presses = 3 domes (holds 1, 28 s), Frag 5 presses 0.25 s apart = 5 frags (holds 2); `ItemN`
+stayed full, `ItemAt` 0, the plate's pips full. Back in the hub `ItemFree` was gone. In a one-player match: Frag 4
+presses 0.55 s apart = 2 frags, then `ItemN` 0, the 18 s clock running and the plate filling from empty: as before.

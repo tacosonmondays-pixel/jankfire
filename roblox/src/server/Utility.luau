@@ -15,6 +15,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shared = ReplicatedStorage:WaitForChild("Jankfire")
 local Items = require(Shared:WaitForChild("Items"))
 local Rules = require(script.Parent:WaitForChild("Rules"))
+local Zones = require(script.Parent:WaitForChild("Zones")) -- (where you are: training makes items free)
 local Hitbox = require(Shared:WaitForChild("Hitbox"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local ItemR = Remotes:WaitForChild("Item") :: RemoteEvent
@@ -55,6 +56,16 @@ local function stateOf(f: Fighter): St
 	end
 	return s
 end
+-- training (the owner, 17 Nov 2026: "training room should also have no cooldown on stuff since its for training"):
+-- a player in the training hall, its back lot and basement or the playground (the server's own zone, Zones.luau)
+-- has every charge of their item all the time, and nothing they use starts a clock. the HUD reads ItemFree. a dummy
+-- they practise on gets none of its "safe" seconds (no new quiz / ads / ticket / bubble for a while) from them either
+local function free(f: Fighter?): boolean
+	return f ~= nil and f.kind == "player" and (f.ref :: Player).Parent ~= nil and Zones.training(f.ref :: Player)
+end
+local function practice(by: Fighter?, t: Fighter): boolean
+	return t.kind == "dummy" and free(by)
+end
 -- your charges right now (a gadget brings its own, kept across deaths and swaps)
 local function charges(s: St): Items.Ic
 	local it = L[s.item]
@@ -70,7 +81,10 @@ local function publish(f: Fighter)
 	if not p.Parent then return end
 	local s = stateOf(f)
 	local c = charges(s)
+	local fr = free(f)
+	if fr then Items.refill(c) end -- (training: always full)
 	p:SetAttribute("Item", if Fight.noItems(f) then nil else s.item) -- (none in a classic mode without items: Modes.luau)
+	p:SetAttribute("ItemFree", if fr then true else nil)
 	p:SetAttribute("ItemN", c.n)
 	p:SetAttribute("ItemAt", if c.next > 0 then stamp(c.next) else 0)
 	p:SetAttribute("ItemNext", s.nextItem)
@@ -467,7 +481,7 @@ local function laptopUse(f: Fighter, o: Vector3, d: Vector3, c: Items.Ic)
 		ts = stateOf(t)
 	end
 	ts.adsUntil = now() + A.dur
-	ts.adsSafe = ts.adsUntil + A.safe
+	ts.adsSafe = if practice(by, t) then now() else ts.adsUntil + A.safe
 	Rules.tagged(t, by, "laptop", now()) -- (walked off a ledge reading about bread: the laptop's kill)
 	if t.kind == "player" then
 		ItemFx:FireClient(t.ref :: Player, { k = "ads", by = uidOf(by), n = A.n, dur = A.dur, sure = A.sure })
@@ -565,7 +579,7 @@ local function endQuiz(t: Fighter, i: number, gone: boolean?)
 	local q = s.quiz
 	if not q then return end
 	s.quiz = nil
-	s.quizSafe = now() + Q.safe
+	s.quizSafe = if practice(q.by, t) then now() else now() + Q.safe
 	t.staggerUntil = math.min(t.staggerUntil, now())
 	if t.kind == "player" then (t.ref :: Player):SetAttribute("Quiz", nil) end
 	local right = i == q.ok - 1
@@ -712,7 +726,7 @@ local function jailP(t: Fighter, by: Fighter?, v: number)
 		if hit and hit.Normal.Y > 0.5 then at = hit.Position + Vector3.new(0, Hitbox.ROOT_UP, 0) end
 	end
 	ts.jail = { untilT = now() + SP.jailT, at = at }
-	ts.radarSafe = now() + SP.safe
+	ts.radarSafe = if practice(by, t) then now() else now() + SP.safe
 	t.staggerUntil = math.max(t.staggerUntil, now() + SP.jailT) -- (no shooting, swinging or guarding from a cage)
 	hold(t, at)
 	if by then Rules.tagged(t, by, "radar", now()) end
@@ -732,6 +746,7 @@ local function radarSpend(f: Fighter): boolean
 	local s = stateOf(f)
 	if s.item ~= "radar" then return false end
 	local c = charges(s)
+	if free(f) then publish(f); return true end -- (training: free)
 	if c.n <= 0 then return false end
 	Items.spend(c, now())
 	publish(f)
@@ -751,7 +766,7 @@ local function radarRead(f: Fighter, t: Fighter)
 	end
 	if v <= SP.limit or ts.ticket or ts.jail or n < ts.radarSafe or not secOk(f, t) or n < fs.ticketT then return end
 	if not radarSpend(f) then return end
-	fs.ticketT = n + SP.gap
+	fs.ticketT = if free(f) then n else n + SP.gap
 	local by = f
 	if n < ts.reverseUntil then -- (a reverse card: you get the ticket)
 		ItemFx:FireAllClients({ k = "reflect", o = uidOf(t), by = uidOf(f), model = Fight.model(t) })
@@ -792,7 +807,7 @@ local function tickRadar()
 		if tk and t.alive and n - tk.at >= SP.grace then
 			if speedKmh(t) <= SP.limit then
 				s.ticket = nil
-				s.radarSafe = n + SP.warnSafe
+				s.radarSafe = if practice(tk.by, t) then n else n + SP.warnSafe
 				ItemFx:FireAllClients({ k = "ticketx", o = uidOf(t), model = Fight.model(t), ok = true })
 			elseif n >= tk.untilT then
 				ItemFx:FireAllClients({ k = "ticketx", o = uidOf(t), model = Fight.model(t), ok = false })
@@ -1039,7 +1054,7 @@ local function popTrap(t: Fighter, why: string, by: Fighter?, w: string?): boole
 	if not s or not tr then return false end
 	s.trap = nil
 	local n = now()
-	s.trapSafe = n + math.max(W.safe, (n - (tr.untilT - W.dur)) * W.safeK)
+	s.trapSafe = if practice(tr.by, t) then n else n + math.max(W.safe, (n - (tr.untilT - W.dur)) * W.safeK)
 	t.staggerUntil = math.min(t.staggerUntil, n)
 	local owner = alive(tr.by)
 	if t.alive and (why == "hit" or why == "time") then
@@ -1162,7 +1177,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	if i == "camera" then -- (the camera's first press, the snap, is free; the print below costs the charge)
 		local s0 = stateOf(f)
 		if s0.item == "camera" and not s0.photo and f.alive and not s0.quiz and not s0.jail and not s0.trap and p:GetAttribute("Zone") ~= "hub" then
-			if now() - s0.useT < Items.SPAM then return end
+			if now() - s0.useT < (if free(f) then Items.SPAM_FREE else Items.SPAM) then return end
 			local fr = Fight.root(f)
 			if not fr then return end -- (the body's gone mid-life)
 			s0.useT = now()
@@ -1175,10 +1190,12 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	local c = charges(s)
 	local t = now()
 	local it = L[i]
+	local fr = free(f) -- (training: every charge, the short gap, nothing spent)
+	if fr then Items.refill(c) end
 	-- not alive, in the hub (weapons-free), not your item, not on roblox yet, out of charges, too soon: the real count
 	-- goes back so the HUD can't drift
 	-- (sitting a quiz: no items; the goggles' flash only with them on)
-	if not f.alive or p:GetAttribute("Zone") == "hub" or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < Items.SPAM
+	if not f.alive or p:GetAttribute("Zone") == "hub" or i ~= s.item or not it.live or c.n <= 0 or t - s.useT < (if fr then Items.SPAM_FREE else Items.SPAM)
 		or s.quiz or s.trap or (i == "nvg" and not s.nvOn) then
 		publish(f)
 		return
@@ -1186,7 +1203,7 @@ local function use(p: Player, i: unknown, o: unknown, d: unknown)
 	local eye = Fight.eye(f)
 	if not eye then return end
 	s.useT = t
-	Items.spend(c, t)
+	if not fr then Items.spend(c, t) end
 	publish(f)
 	-- where from: your real head unless the claimed point is close and in clear sight of it
 	local from = eye
@@ -1334,6 +1351,15 @@ function Utility.init(fight: any)
 	end)
 	ItemR.OnServerEvent:Connect(use)
 	Players.PlayerAdded:Connect(welcome)
+	-- (into training: every charge back, ItemFree on; out of it: the clock from there, as anywhere)
+	local function watchZone(p: Player)
+		p:GetAttributeChangedSignal("Zone"):Connect(function()
+			local f = Fight.byPlayer[p]
+			if f then publish(f) end
+		end)
+	end
+	Players.PlayerAdded:Connect(watchZone)
+	for _, p in Players:GetPlayers() do watchZone(p) end
 	Players.PlayerRemoving:Connect(function(p)
 		budget[p] = nil
 		local f = Fight.byPlayer[p]
@@ -1366,7 +1392,7 @@ function Utility.test(f: Fighter, id: string?): any
 	local s = stateOf(f)
 	if id and L[id] then s.item, s.nextItem, s.ic = id, nil, Items.fresh(id); publish(f) end
 	local c = charges(s)
-	return { item = s.item, n = c.n, next = if c.next > 0 then c.next - now() else 0, heal = s.heal, hp = f.hp,
+	return { item = s.item, n = c.n, next = if c.next > 0 then c.next - now() else 0, heal = s.heal, hp = f.hp, free = free(f),
 		reverse = math.max(0, s.reverseUntil - now()), nv = s.nvOn, quiz = s.quiz ~= nil, invuln = math.max(0, s.invulnUntil - now()),
 		ads = math.max(0, s.adsUntil - now()),
 		projs = #projs, bubbles = #bubbles, clouds = #clouds, holes = #holes, cloud = if #clouds > 0 then clouds[#clouds].p else nil,

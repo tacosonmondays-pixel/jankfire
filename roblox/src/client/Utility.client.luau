@@ -180,13 +180,15 @@ local function setPips(n: number)
 	while #pips > n do (table.remove(pips) :: Pip).box:Destroy() end
 end
 local pend: { n: number, t: number }? = nil -- a use the server hasn't answered yet (shown at once, like the web HUD)
+-- (training, the server's zone: it sets ItemFree. items cost nothing and never recharge, so the plate stays full)
 local function charges(): (number, number)
 	local n = tonumber(me:GetAttribute("ItemN")) or 0
-	if pend and os.clock() - pend.t < 1 then n = math.min(n, pend.n) end
+	if pend and os.clock() - pend.t < 1 and me:GetAttribute("ItemFree") ~= true then n = math.min(n, pend.n) end
 	local at = tonumber(me:GetAttribute("ItemAt")) or 0
 	return n, at
 end
 me:GetAttributeChangedSignal("ItemN"):Connect(function() pend = nil end)
+me:GetAttributeChangedSignal("ItemFree"):Connect(function() pend = nil end)
 local function hudStep()
 	local id = me:GetAttribute("Item")
 	local it = if type(id) == "string" then L[id] else nil
@@ -444,8 +446,10 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 	if it.id == "nvg" then toggleGoggles(); return end
 	if it.id == "radar" then radarHold(true); return end
 	local t = os.clock()
+	-- (training, ItemFree: only the short training gap between two presses)
+	local useGap = if me:GetAttribute("ItemFree") == true then Items.SPAM_FREE_CLIENT else Items.SPAM_CLIENT
 	if it.id == "camera" and not me:GetAttribute("Photo") then
-		if t - lastUse < Items.SPAM_CLIENT then return end
+		if t - lastUse < useGap then return end
 		lastUse = t
 		local eye = if thirdPerson() then root.Position + Vector3.new(0, Hitbox.EYE_UP - Hitbox.ROOT_UP, 0) else camera.CFrame.Position
 		ItemR:FireServer("camera", eye, camera.CFrame.LookVector)
@@ -454,10 +458,10 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 		handStep()
 		return
 	end
-	if it.id == "camera" and t - lastUse < Items.SPAM_CLIENT then
+	if it.id == "camera" and t - lastUse < useGap then
 		-- (G again straight after the snap: the print goes as soon as the server will take it, not lost)
 		local again = lastUse
-		task.delay(Items.SPAM_CLIENT - (t - lastUse) + 0.03, function()
+		task.delay(useGap - (t - lastUse) + 0.03, function()
 			if lastUse ~= again or not me:GetAttribute("Photo") or me:GetAttribute("Item") ~= "camera" then return end
 			local n0 = charges()
 			if n0 <= 0 then return end
@@ -473,7 +477,7 @@ local laptopIn: () -> () -- (the laptop's lid, below)
 		end)
 		return
 	end
-	if t - lastUse < Items.SPAM_CLIENT then return end
+	if t - lastUse < useGap then return end
 	local n, nextAt = charges()
 	if n <= 0 then
 		Sfx.play("empty")
