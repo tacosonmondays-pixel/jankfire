@@ -166,11 +166,9 @@ SkinSets.FX = {
 	-- the owner's Tripo angel rifle (a concept, 17 Nov: "Can it have some like cool glowing gold effects around the barrel
 	-- or somethin?", then "can there be more glowing parts with cool vfx?"; v6's glowing lines, the gun models session's
 	-- angel-v6-lit-lines). Round the halo (z -0.556, on the bore): a soft gold glow breathing, twinkles running round its
-	-- ring, gold motes drifting up off the halo and the ported brake, a gold light. Along the new lines: small gold flame
-	-- licks rising off each rear wing's top edge (they take the wrap's glow, as the lit lines do), feathers shed off the
-	-- wings, twinkles along the handguard's lines and on the brake's stars, a short glowing trail off each wing tip as the
-	-- gun moves. Everything takes a wrap's glow colour (tint; gold with none); thinner in first person (fp), the flames
-	-- there a third, and the idle bits off there while aiming (the wings are hidden then too). The halo's top is 5 cm under
+	-- ring, gold motes drifting up off the halo and the ported brake, a gold light. Along the new lines: twinkles running
+	-- along each rear wing's lit loop (light catching the gold trim), feathers shed off the wings, twinkles along the handguard's lines and on the brake's stars, a short glowing trail off each wing tip as the
+	-- gun moves. Everything takes a wrap's glow colour (tint; gold with none); thinner in first person (fp), and the idle bits off there while aiming (the wings are hidden then too). The halo's top is 5 cm under
 	-- the sight line
 	ar_seraph_tripo = {
 		idle = {
@@ -188,10 +186,23 @@ SkinSets.FX = {
 					{ 0.034, 0.015, -0.6325 } }, both = true, tint = true, fp = 0.3 }, -- (and the brake's stars)
 			{ kind = "feather", colour = Color3.fromRGB(250, 244, 230), rate = 2.4, life = 1.8, size = 0.026, drift = "fall",
 				at = { { 0.068, 0.108, 0.136 }, { 0.079, 0.090, 0.030 }, { 0.053, 0.129, 0.19 } }, both = true, fp = 0.3 }, -- (shed off the wings' outer edges)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 240, 200), rate = 7, life = 0.55, size = 0.011, drift = "rise",
+				at = { { 0.032, 0.088, -0.007 }, { 0.038, 0.093, 0.047 }, { 0.044, 0.1, 0.1 }, { 0.049, 0.115, 0.148 },
+					{ 0.053, 0.13, 0.194 }, { 0.068, 0.109, 0.136 }, { 0.079, 0.091, 0.03 }, { 0.080, 0.054, -0.033 } },
+				both = true, tint = true, fp = 0.35 }, -- (light catching the gold trim: twinkles along each wing's lit loop)
+			{ kind = "sparkle", colour = Color3.fromRGB(255, 246, 220), rate = 1.2, life = 0.55, size = 0.045, drift = "rise",
+				at = { { 0.053, 0.13, 0.194 }, { 0, 0.015, -0.735 } }, both = true, tint = true, fp = 0.25 }, -- (a big star glint now and then at the wing tips and the muzzle)
 		},
-		-- small flame licks along each rear wing's top edge, up to its tip (the lit loop's upper run), mirrored
-		flame = { segs = { { { 0.032, 0.087, -0.007 }, { 0.044, 0.099, 0.100 }, { 0.053, 0.129, 0.194 } } }, both = true,
-			size = 0.05, rate = 40, step = 0.05, fp = 0.35, lift = 0.25 }, -- (lift: they lick off the edge, not float above it)
+		-- (17 Nov: flame licks along the wing tops were tried and dropped, the owner: "those flames look so buns". After the
+		-- owner's reference clip, weapons wrapped in coiling ribbons of golden light: these)
+		coil = {
+			-- two gold strands spiralling round the barrel from the handguard cap past the brake (under the sight line)
+			{ a = { 0, 0.015, -0.47 }, b = { 0, 0.015, -0.76 }, r = 0.075, turns = 1.25, speed = 0.8, strands = 2,
+				colour = Color3.fromRGB(255, 214, 120), size = 0.011, rate = 110, life = 0.3, tint = true, fp = 0 },
+			-- one strand winding up each rear wing to its tip
+			{ a = { 0.038, 0.07, -0.06 }, b = { 0.055, 0.132, 0.2 }, r = 0.03, turns = 1, speed = 0.6, strands = 1, both = true,
+				colour = Color3.fromRGB(255, 226, 150), size = 0.01, rate = 90, life = 0.35, tint = true, fp = 0 },
+		},
 		-- a short glowing trail off each wing tip as the gun moves (third person and other players; never on a gun in first
 		-- person)
 		trail = { colour = Color3.fromRGB(255, 214, 120), life = 0.18, width0 = 0.024, width1 = 0,

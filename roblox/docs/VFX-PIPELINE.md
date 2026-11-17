@@ -568,3 +568,13 @@ new `lift` 0.25: at the Seraph's lift, flames this small floated well above the 
 outer edges, twinkles along the handguard's lines and on the brake's stars, a short trail off each wing tip; the brake's
 motes moved clear of v6's wider ported brake. `flame` rows may now carry `fp` (first-person share; the wings sit close
 to the eye there, 0.35), `step` and `lift`. Photos `round17/angel-v6-effects-wings-barrel-fp.jpg`.
+
+**The angel rifle, second pass** (the owner: "those flames look so buns", then a reference clip of weapons wrapped in
+coiling ribbons of golden light): the wing flames are out. New `Fx` option `coil` (spec.coil: strands running round a
+helix along an axis, each a glow emitter that leaves a fading ribbon in the world; skinStep moves them): two round the
+barrel, one up each wing, with a gold core under each glow (additive gold alone vanished on the white gun). In the
+world, not locked to the gun (locked, they rode along as one ball), so off in first person (fp 0: they would smear as
+you turn). Also twinkles along the wings' lit loops and a big star glint now and then at the wing tips and the muzzle.
+First look `round17/angel-v6-coils-first-look.jpg`: the coils read as thin gold arcs round the barrel, not yet the
+thick glowing vines of the reference. Next, from the research (`docs/vfx/research/stylized-weapon-vfx-2026-11-17.md`):
+the coils as Beams on a spinning holder (a real ribbon), the glint with a halo, white-hot cores.

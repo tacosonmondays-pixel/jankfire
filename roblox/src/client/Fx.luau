@@ -1929,7 +1929,8 @@ end
 -- cheap: a few slow particles each, nothing in front of the sights (the points are behind and beside the optic)
 type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
 	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number,
-	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart?, tint: { ParticleEmitter } }
+	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart?, tint: { ParticleEmitter },
+	coils: { any } }
 local skinned: { [Model]: SkinFx } = {}
 local skinGlow: (any, boolean?) -> ()
 local function skinSpec(model: Model): any
@@ -2064,7 +2065,7 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	if not sp or not root then return end
 	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99,
 		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false, flames = {}, lit = {}, glowId = nil, glow = nil,
-		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil, tint = {} }
+		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil, tint = {}, coils = {} }
 	-- (the piece that says whether your own gun is showing: its biggest visible one. the Root is always invisible, so
 	-- watching it, as rounds 4-10 did, kept every first-person skin effect off)
 	local best = 0
@@ -2163,6 +2164,50 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 				t.MinLength = 0.02 * k
 				if fp then t.MaxLength = 0.35 * k end
 				t.Parent = root
+			end
+		end
+	end
+	-- coiling light (17 Nov, the owner's reference clip: weapons wrapped in coiling ribbons of golden light, like glowing
+	-- vines): spec.coil = { { a, b (the axis, gun frame, metres), r (radius), turns (along it), speed (passes a second),
+	-- strands, colour, size (the glow's width, metres), rate (a strand), life, bright, fp, tint, both } }. Each strand is one
+	-- glow emitter on an attachment that runs along a helix round the axis (skinStep moves it); its particles stay in the
+	-- world where they were shed, so they draw the ribbon behind it, which fades over `life` (locked to the part, they rode
+	-- along with the attachment as one ball). World-space trails smear as you turn, so first person wants fp = 0
+	for _, c in sp.coil or {} do
+		local fpK = if S_.fp and type(c.fp) == "number" then c.fp else 1
+		if fpK <= 0 then continue end
+		local axes = { { Vector3.new(c.a[1], c.a[2], c.a[3]), Vector3.new(c.b[1], c.b[2], c.b[3]) } }
+		if c.both and math.abs(c.a[1]) + math.abs(c.b[1]) > 1e-3 then
+			table.insert(axes, { Vector3.new(-c.a[1], c.a[2], c.a[3]), Vector3.new(-c.b[1], c.b[2], c.b[3]) })
+		end
+		for ai, ab in axes do
+			local d = ab[2] - ab[1]
+			local dir = d.Unit
+			local e1 = dir:Cross(Vector3.yAxis)
+			if e1.Magnitude < 1e-3 then e1 = dir:Cross(Vector3.xAxis) end
+			e1 = e1.Unit
+			local e2 = dir:Cross(e1)
+			local n = c.strands or 2
+			local w = (c.size or 0.012) * k
+			for i = 1, n do
+				local att = Instance.new("Attachment")
+				att.Name = "SkinFx"; att.Position = ab[1] * k; att.Parent = root
+				local col = c.colour or GOLD
+				local em = rigEmitter(att, { Texture = TEX.glow, Color = cs(col), LightEmission = 1, LightInfluence = 0,
+					Brightness = c.bright or 2.5, Size = ns(0, w * 1.8 / 0.45 * H, 1, 0), Transparency = ns(0, 0.15, 0.6, 0.45, 1, 1),
+					Lifetime = NR(c.life or 0.4), Speed = NR(0, 0), LockedToPart = false, ZOffset = 0.05 })
+				-- (a solid deeper-gold core under the glow: additive gold alone vanished on the white gun and light walls)
+				local core = rigEmitter(att, { Texture = TEX.glow, Color = cs(col:Lerp(Color3.fromRGB(200, 120, 20), 0.45)),
+					LightEmission = 0.25, LightInfluence = 0, Brightness = 1.6, Size = ns(0, w / 0.45 * H, 1, 0),
+					Transparency = ns(0, 0, 0.6, 0.2, 1, 1), Lifetime = NR(c.life or 0.4), Speed = NR(0, 0), LockedToPart = false })
+				for _, e in { em, core } do
+					e.Rate = (c.rate or 70) * fpK
+					e.Enabled = true
+					table.insert(S_.idle, e)
+					if c.tint then table.insert(S_.tint, e) end
+				end
+				table.insert(S_.coils, { att = att, a = ab[1] * k, d = d * k, e1 = e1, e2 = e2, r = (c.r or 0.05) * k,
+					turns = c.turns or 1.5, speed = c.speed or 0.6, phase = (i - 1) / n, spin = if ai == 2 then -1 else 1 })
 			end
 		end
 	end
@@ -2381,6 +2426,14 @@ local function skinStep()
 			end
 		end
 		if (#S_.flames > 0 or #S_.lit > 0) and clockT - S_.glowT > 1 then S_.glowT = clockT; skinGlow(S_) end
+		-- (the coils' strands run round their helixes; nothing while the gun is quiet)
+		if #S_.coils > 0 and not S_.quiet then
+			for _, cl in S_.coils do
+				local u = (clockT * cl.speed + cl.phase) % 1
+				local ang = (u * cl.turns + cl.phase) * math.pi * 2 * cl.spin
+				cl.att.Position = cl.a + cl.d * u + (cl.e1 * math.cos(ang) + cl.e2 * math.sin(ang)) * cl.r
+			end
+		end
 		if #S_.after > 0 then
 			local on = clockT - S_.afterT < 1.5 and not S_.quiet
 			for _, e in S_.after do if e.Enabled ~= on then e.Enabled = on end end
