@@ -51,28 +51,28 @@ Finishers.LIST = {
 		-- behind them (a dolly zoom); the victim spins and drops, a dust devil turns, a tumbleweed rolls through
 		name = "High Noon", set = "set_dust", skins = { "revolver_dust", "lever_dust" }, theme = "dust", order = 4, built = true,
 		colour = Color3.fromRGB(255, 196, 106), accent = Color3.fromRGB(206, 182, 142),
-		grade = { tint = Color3.fromRGB(255, 232, 196), sat = -0.3, con = 0.15, bright = 0 }, anim = "kneel",
+		grade = { tint = Color3.fromRGB(255, 232, 196), sat = -0.3, con = 0.15, bright = 0 }, anim = "spinfall",
 		cut = { full = { { "eyes", 0.72 }, { "chase", 0.5 }, { "impact", 0.42 }, { "resolve", 1.18 } } },
 	},
 	inkfall = { -- Tidecrest: one ink-wash brush slash across the frame, the victim splits into sakura petals
 		name = "Inkfall", set = "set_tidecrest", skins = { "katana_sakura" }, theme = "ink", order = 5, built = true,
 		colour = Color3.fromRGB(236, 186, 200), accent = Color3.fromRGB(217, 187, 114),
-		grade = { tint = Color3.fromRGB(246, 238, 232), sat = -0.5, con = 0.16, bright = 0 }, anim = "kneel",
+		grade = { tint = Color3.fromRGB(246, 238, 232), sat = -0.5, con = 0.16, bright = 0 }, anim = "bowdown",
 	},
 	warpout = { -- Star Drover: the victim is pulled into a teal hard-light ring and the stars streak past in a warp
 		name = "Warp Out", set = "set_star", skins = { "revolver_star", "lever_star" }, theme = "warp", order = 6, built = true,
 		colour = Color3.fromRGB(69, 230, 214), accent = Color3.fromRGB(201, 164, 216),
-		grade = { tint = Color3.fromRGB(226, 246, 255), sat = 0, con = 0.12, bright = -0.02 }, anim = "lift",
+		grade = { tint = Color3.fromRGB(226, 246, 255), sat = 0, con = 0.12, bright = -0.02 }, anim = "pulled",
 	},
 	lanternlight = { -- Pumpkin Patch: a giant carved pumpkin closes round the victim and its face lights up from inside
 		name = "Lantern Light", set = "set_halloween", skins = { "smg_pumpkin" }, theme = "lantern", order = 7, built = true,
 		colour = Color3.fromRGB(255, 156, 69), accent = Color3.fromRGB(179, 165, 151),
-		grade = { tint = Color3.fromRGB(236, 226, 246), sat = -0.2, con = 0.14, bright = -0.03 }, anim = "shield",
+		grade = { tint = Color3.fromRGB(236, 226, 246), sat = -0.2, con = 0.14, bright = -0.03 }, anim = "cower",
 	},
 	starchart = { -- Triangulum: stars light on the victim's joints and the lines draw between them, then it fades to sky
 		name = "Starchart", set = "", skins = { "sniper_triangulum" }, theme = "stars", order = 8, built = true,
 		colour = Color3.fromRGB(255, 231, 166), accent = Color3.fromRGB(255, 236, 196),
-		grade = { tint = Color3.fromRGB(205, 214, 255), sat = -0.15, con = 0.12, bright = -0.07 }, anim = "lift",
+		grade = { tint = Color3.fromRGB(205, 214, 255), sat = -0.15, con = 0.12, bright = -0.07 }, anim = "starpose",
 	},
 } :: { [string]: Row }
 
@@ -83,9 +83,12 @@ Finishers.ANIMS = {
 	lift = { id = "120752615367600", speed = 1.6 }, -- struck, then rises with the arms opening and the head back (take 4)
 	kneel = { id = "102848812527442", speed = 1.6 }, -- struck, drops to the knees, slumps forward (take 3)
 	shield = { id = "99441068703478", speed = 1.6 }, -- struck, looks straight up with the arms raised (take 3)
-	-- (the second pass reuses these: High Noon and Inkfall kneel, Warp Out and Starchart lift, Lantern Light shields. Their
-	-- own clips (a spin and fall, a bow to one knee, a pull off the feet) wait for the generator: on 17 Nov ~13:25 UTC it
-	-- timed out on every call)
+	-- the second pass's own clips (17 Nov ~14:30-15:30 UTC, 4 takes each; sheet docs/finishers/reaction_takes2.jpg)
+	spinfall = { id = "80430806221753", speed = 1.6 }, -- High Noon: shot in the shoulder, spins half round and falls back to the ground (take 1)
+	bowdown = { id = "108121066232094", speed = 1.6 }, -- Inkfall: stands frozen after the cut, then sinks to one knee and bows the head (take 1)
+	pulled = { id = "122059547987683", speed = 1.6 }, -- Warp Out: yanked backwards off the feet, arms reaching forward (take 3)
+	cower = { id = "137185623825862", speed = 1.6 }, -- Lantern Light: looks up in fright, stumbles back, crouches low with the arms over the head (take 4)
+	starpose = { id = "125088229863050", speed = 1.6 }, -- Starchart: rises onto the toes, arms and legs spread wide like a star, head up (take 4)
 } :: { [string]: { id: string, speed: number } }
 
 -- the shot lists: each shot is a camera move (client/Finisher.luau SHOTS) and its length in s. `full` is the match's

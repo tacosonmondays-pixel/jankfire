@@ -138,7 +138,8 @@ At the impact the victim leaves the replay's control: no gun, no walk cycle, no 
 moves them: lifted, sunk or squashed, tinted with a Highlight, and faded at the end.
 
 Their body reaction comes from Studio's prompt-to-animation tool (`generate_animation`), following the owner's rules:
-4 takes a clip, the best kept. There are three clips (`Finishers.ANIMS`), each 2.5 s, made on 17 Nov:
+4 takes a clip, the best kept. There are eight clips (`Finishers.ANIMS`), one per finisher, each 2.5 s, made on 17 Nov.
+The first three:
 
 | clip | finisher | the prompt's idea | kept | why |
 |---|---|---|---|---|
@@ -148,13 +149,23 @@ Their body reaction comes from Studio's prompt-to-animation tool (`generate_anim
 
 ![the twelve takes held at 2.2 s](finishers/reaction_takes.jpg)
 
-The second pass reuses these three:
-- High Noon and Inkfall: kneel.
-- Warp Out and Starchart: lift. Starchart draws its constellation on the open-armed pose.
-- Lantern Light: shield.
+The second pass's five got their own clips the same afternoon (17 Nov, about 14:30 to 15:30 UTC), one call at a
+time, 4 takes each:
 
-Their own clips (a spin and fall, a bow to one knee, a pull off the feet) wait for the generator: on 17 Nov at about
-13:25 UTC every call timed out. One left a clip with no id (`fin_spin_x1`), not used.
+| clip | finisher | the prompt's idea | kept | why |
+|---|---|---|---|---|
+| `spinfall` | High Noon | shot in the shoulder, spins half round and falls back to the ground | take 1 (80430806221753) | the clearest turn before the fall, and it ends down on the ground (a duel's fall). Its call timed out, so the clip had no id: it was exported from Studio and uploaded as an Animation |
+| `bowdown` | Inkfall | stands frozen after the sword cut, then sinks to one knee and bows the head | take 1 (108121066232094) | one knee down, head bowed: the still beat a blade finisher wants. The other three came from timed-out calls with no id |
+| `pulled` | Warp Out | yanked backwards off the feet as if by a rope round the waist, arms reaching forward | take 3 (122059547987683) | thrown back off the feet with the arms out toward the lens, so the ring visibly takes them |
+| `cower` | Lantern Light | looks up in fright, stumbles back, crouches low with both arms over the head | take 4 (137185623825862) | the lowest crouch with both arms over the head. Take 3 stays standing; 1 and 2 hunch or twist |
+| `starpose` | Starchart | struck, rises onto the toes, arms and legs spread wide like a star, head up | take 4 (125088229863050) | the widest arms and legs, so the stars on the joints make the clearest figure. Take 3 is close; 1 and 2 bend the arms |
+
+![the second pass's takes side by side](finishers/reaction_takes2.jpg)
+
+The generator was slow all day: about half its calls timed out. A timed-out call sometimes still leaves a clip in
+`ServerStorage.RBX_ASSISTANT_ANIMGEN` with no id. To use one, export it (`SerializationService:SerializeInstancesAsync`
+and base64, read in slices under the MCP's 100,000-character result cap), save it as an .rbxm, and upload it through
+Open Cloud with `assetType = "Animation"`.
 
 The clips play at 1.6 times their speed (a third of that through the slowed impact), so most of each clip fits in the
 cut. A clip with no id falls back to a code-only shove back and tilt. The shooter is never animated by a generated
