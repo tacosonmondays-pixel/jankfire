@@ -3,7 +3,7 @@
 -- emote wheel and playing an emote.
 --   * the wheel: hold T (Rivals' key), point at a slot, let go to play it (or click one). on a phone, the EMOTE
 --     button opens it and a tap plays. 8 slots, set on the equip screen (FlairUI.luau: the loadout's KILL EFFECT ·
---     EMOTES button). while it's up the mouse is free and everything else holds still (LoadoutOpen).
+--     EMOTES button). on a phone the EMOTE button (top right) opens it. while it's up the mouse is free and everything else holds still (LoadoutOpen).
 --   * an emote: the server says yes (owned, on your wheel, alive, not too soon) and puts your weapon away; this plays
 --     the clip on your own character (it replicates to everyone) and swings the camera out behind you (third person:
 --     the mouse turns it round you). moving, jumping, a weapon key, a click, T again, dying or the server ending it
@@ -41,7 +41,7 @@ task.spawn(function()
 	if not ev then return end
 	ev.OnClientEvent:Connect(function(msg: any)
 		if type(msg) ~= "table" or typeof(msg.m) ~= "Instance" or not msg.m:IsA("Model") or type(msg.fx) ~= "string" then return end
-		KillFx.play(msg.m, msg.fx)
+		KillFx.play(msg.m, msg.fx, { from = if typeof(msg.from) == "Vector3" then msg.from else nil })
 	end)
 end)
 
@@ -415,7 +415,8 @@ do
 		ZIndexBehavior = Enum.ZIndexBehavior.Sibling }, pg)
 	local face = T.new("TextButton", {
 		Name = "Emote", AutoButtonColor = false, BackgroundColor3 = T.BG, BackgroundTransparency = T.BG_A, BorderSizePixel = 0,
-		Position = UDim2.new(0, 24, 1, -218), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "EMOTE",
+		-- (top right, under the settings button: the left-hand stack is PLAY, PARTY, PROFILE, SHOP, LOADOUT)
+		Position = UDim2.new(1, -160, 0, 72), Size = UDim2.fromOffset(136, 36), FontFace = T.FONT_BOLD, TextSize = 13, Text = "EMOTE",
 		TextColor3 = T.TEXT, Visible = false,
 	}, T.scaled(bgui))
 	T.corner(face); T.edge(face)

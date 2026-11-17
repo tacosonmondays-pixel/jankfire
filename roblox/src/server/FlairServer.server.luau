@@ -14,11 +14,14 @@
 -- remote ReplicatedStorage.JankfireRemotes.Flair (RemoteFunction, made here if missing), always answers a table:
 --   ("state")         -> { ok, kill, emotes = { 8 ids or "" }, owned = { kill = { ids }, emote = { ids } }, save }
 --   ("kill", id)      -> wear a kill effect ("none" = the default)
+--   ("grapple", id)   -> wear a grapple skin ("rope" = the default)
 --   ("slot", i, id)   -> put an emote on wheel slot i (1..8; "" empties it; an emote may sit on several slots)
 --   ("emote", id)     -> start one: { ok, len } / { ok = false, why }
 --   ("stop")          -> end it
--- remote FlairKill (RemoteEvent, made here): { m = the body, fx = id, k = killer's UserId } to every client.
--- player attributes: KillFx (the worn effect), Emotes ("wave,salute,,,,,,"), Emote (playing now, or nil), FlairSave.
+-- remote FlairKill (RemoteEvent, made here): { m = the body, fx = id, k = killer's UserId, from = where they stood } to
+-- every client.
+-- player attributes: KillFx (the worn effect), Grapple (the worn grapple skin), Emotes ("wave,salute,,,,,,"), Emote
+-- (playing now, or nil), FlairSave.
 -- Studio only: ServerStorage.JankFlairTest (BindableFunction):
 --   ("fx", model, id)          an effect on any model, as a kill would (frozen + FlairKill)
 --   ("kill", player, n|name)   you kill a training dummy, the n-th or the first whose name has it (the real path: Fight.hurt)
@@ -49,7 +52,7 @@ local Remote = remote("Flair", "RemoteFunction") :: RemoteFunction
 local KillEvent = remote("FlairKill", "RemoteEvent") :: RemoteEvent
 
 local store = Profiles.new("JankfireFlair_v1", function()
-	return { v = 1, kill = Flair.DEFAULT.kill, emotes = table.clone(Flair.DEFAULT.emotes) }
+	return { v = 1, kill = Flair.DEFAULT.kill, grapple = Flair.DEFAULT.grapple, emotes = table.clone(Flair.DEFAULT.emotes) }
 end)
 
 type State = { prof: any, ready: boolean, emote: { id: string, t0: number, len: number, loop: boolean }?, last: number,
@@ -74,6 +77,12 @@ local function worn(p: Player): string
 	local k = d and d.kill
 	return if type(k) == "string" and Flair.info("kill", k) and owns(p, "kill", k) then k else "none"
 end
+-- the grapple skin worn (owned, else the plain rope): the player attribute Grapple, which every client's GrappleSkins reads
+local function wornGrapple(p: Player): string
+	local d = dataOf(p)
+	local g = d and d.grapple
+	return if type(g) == "string" and Flair.info("grapple", g) and owns(p, "grapple", g) then g else Flair.DEFAULT.grapple
+end
 local function slots(p: Player): { string }
 	local d = dataOf(p)
 	local out = {}
@@ -88,6 +97,7 @@ local function publish(p: Player)
 	local s = st[p]
 	if not s or not p.Parent then return end
 	p:SetAttribute("KillFx", worn(p))
+	p:SetAttribute("Grapple", wornGrapple(p))
 	p:SetAttribute("Emotes", table.concat(slots(p), ","))
 	p:SetAttribute("FlairSave", if not s.ready then "loading" elseif s.prof then s.prof.state else "off")
 end
@@ -145,10 +155,10 @@ local function freeze(m: Model)
 	end
 	m:SetAttribute("FlairFrozen", true)
 end
-local function playOn(m: Model, id: string, killer: number?)
+local function playOn(m: Model, id: string, killer: number?, from: Vector3?)
 	freeze(m)
 	m:SetAttribute("KillFx", id)
-	KillEvent:FireAllClients({ m = m, fx = id, k = killer })
+	KillEvent:FireAllClients({ m = m, fx = id, k = killer, from = from })
 end
 local function onKill(info: any)
 	local k, v = info.k, info.v
@@ -160,7 +170,8 @@ local function onKill(info: any)
 	if id == "none" then return end
 	local m = Fight.model(v)
 	if not m or not m.Parent then return end
-	playOn(m, id, kp.UserId)
+	local kr = kp.Character and kp.Character:FindFirstChild("HumanoidRootPart") :: BasePart?
+	playOn(m, id, kp.UserId, kr and kr.Position) -- (where the killer stood: Blast Zone throws the body away from them)
 end
 
 -- ------------------------------------------------------------------ the remote
@@ -172,7 +183,7 @@ local function spend(s: State): boolean
 	return true
 end
 local function ownedList(p: Player): any
-	local out = { kill = {}, emote = {} }
+	local out = { kill = {}, emote = {}, grapple = {} }
 	for _, t in Flair.TYPES do
 		for _, id in Flair.ORDER[t] do if owns(p, t, id) then table.insert(out[t], id) end end
 	end
@@ -184,8 +195,8 @@ local function handle(p: Player, op: any, a: any, b: any): any
 	if not s then return { ok = false, why = "loading" } end
 	if op == "state" then
 		local d = dataOf(p)
-		return { ok = true, kill = worn(p), emotes = slots(p), owned = ownedList(p), save = p:GetAttribute("FlairSave"),
-			picked = d and d.kill or "none" }
+		return { ok = true, kill = worn(p), grapple = wornGrapple(p), emotes = slots(p), owned = ownedList(p),
+			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none" }
 	end
 	if not spend(s) then return { ok = false, why = "slow down" } end
 	if op == "emote" then
@@ -201,6 +212,11 @@ local function handle(p: Player, op: any, a: any, b: any): any
 		if type(a) ~= "string" or not Flair.info("kill", a) then return { ok = false, why = "no such kill effect" } end
 		if not owns(p, "kill", a) then return { ok = false, why = "not owned" } end
 		if d.kill ~= a then d.kill = a; changed(p) end
+		return { ok = true }
+	elseif op == "grapple" then
+		if type(a) ~= "string" or not Flair.info("grapple", a) then return { ok = false, why = "no such grapple" } end
+		if not owns(p, "grapple", a) then return { ok = false, why = "not owned" } end
+		if d.grapple ~= a then d.grapple = a; changed(p) end
 		return { ok = true }
 	elseif op == "slot" then
 		if type(a) ~= "number" or a ~= math.floor(a) or a < 1 or a > Flair.SLOTS then return { ok = false, why = "no such slot" } end
@@ -234,6 +250,7 @@ local function added(p: Player)
 	-- (a save from before a new slot count or with junk in it: cleaned to the shape the server keeps)
 	local d = prof.data
 	if type(d.kill) ~= "string" then d.kill = Flair.DEFAULT.kill end
+	if type(d.grapple) ~= "string" then d.grapple = Flair.DEFAULT.grapple end
 	if type(d.emotes) ~= "table" then d.emotes = table.clone(Flair.DEFAULT.emotes) end
 	for i = 1, Flair.SLOTS do if type(d.emotes[i]) ~= "string" then d.emotes[i] = "" end end
 	s.prof = prof
@@ -320,8 +337,8 @@ if RunService:IsStudio() then
 			local s = st[a]
 			if not s then return "no player" end
 			local d = dataOf(a)
-			return ("ready=%s save=%s kill=%s worn=%s slots=%s emote=%s"):format(tostring(s.ready), tostring(a:GetAttribute("FlairSave")),
-				tostring(d and d.kill), worn(a), table.concat(slots(a), ","), tostring(s.emote and s.emote.id))
+			return ("ready=%s save=%s kill=%s worn=%s grapple=%s slots=%s emote=%s"):format(tostring(s.ready), tostring(a:GetAttribute("FlairSave")),
+				tostring(d and d.kill), worn(a), wornGrapple(a), table.concat(slots(a), ","), tostring(s.emote and s.emote.id))
 		end
 		return "ops: fx, kill, unlock, state"
 	end

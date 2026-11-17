@@ -6,7 +6,8 @@
 -- new one). Rules (the owner's brief, Rivals research): 1.5 s at most, the size of a body (nothing reaches more than
 -- about 4 studs out), no tall pillars, no floor marks, no screen effects, quiet colours. A body further than FAR studs
 -- from the camera just hides.
--- K.play(model, id, opts?) -> run handle (opts.preview: a client-only mannequin, the equip screen's)
+-- K.play(model, id, opts?) -> run handle (opts.preview: a client-only mannequin, the equip screen's; opts.from: where the
+-- killer stood, for the ones that throw the body away from them)
 -- K.scale(): the workspace attribute FlairTimeScale (0 freezes every running effect for photos; default 1)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
@@ -28,6 +29,8 @@ local TEX = {
 	spark = "rbxassetid://73042129135061", -- a streak
 	ring = "rbxassetid://136567724057402", -- a ring
 	tracer = "rbxassetid://72229869149513", -- a beam core (v runs across)
+	feather = "rbxassetid://92745845385867", -- a soft white feather
+	streak = "rbxassetid://127914373549121", -- a soft white streak
 }
 task.spawn(function()
 	local list = {}
@@ -72,7 +75,7 @@ type Run = {
 	m: Model, id: string, t: number, dur: number, parts: { P }, objs: { Instance }, emitters: { ParticleEmitter },
 	hl: Highlight?, y0: number, y1: number, centre: Vector3, size: Vector3, width: number, cf: CFrame,
 	step: (Run, number, number) -> (), s: { [string]: any }, done: boolean, own: boolean, preview: boolean,
-	hold: { RBXScriptConnection },
+	hold: { RBXScriptConnection }, from: Vector3?,
 }
 local runs: { Run } = {}
 local busy: { [Model]: Run } = {}
@@ -421,6 +424,483 @@ STEP.static = function(r, t, dt)
 	end
 end
 
+-- ------------------------------------------------------------------ the web game's twelve, restyled (17 Nov: the owner
+-- asked for the web list itself; ids, names and rarities as shared/cosmetics.js has them, the look made quiet and serious:
+-- no text anywhere, no gore, ≤1.5 s, nothing past a few studs except what leaves for good)
+
+-- the whole body moved as one: each part from where it was when the effect began, through `T` (a CFrame about the world)
+local function moveBody(r: Run, T: CFrame)
+	if r.own then return end
+	local s = r.s
+	if not s.base then
+		s.base = {}
+		for _, p in r.parts do s.base[p] = p.part.CFrame end
+	end
+	for _, p in r.parts do
+		local b = s.base[p]
+		if b then p.part.CFrame = T * b end
+	end
+end
+-- a client-only piece of a prop (anchored, no collisions), kept in the run's objects
+local function prop(r: Run, shape: Enum.PartType?, size: Vector3, color: Color3, mat: Enum.Material?): Part
+	local p = part(r, size, r.cf)
+	p.Shape = shape or Enum.PartType.Block
+	p.Transparency = 0; p.Color = color; p.Material = mat or Enum.Material.SmoothPlastic
+	p.TopSurface = Enum.SurfaceType.Smooth; p.BottomSurface = Enum.SurfaceType.Smooth
+	return p
+end
+-- loose bits flying with gravity and drag (notes, cubes): { p, cf, v, spin, size? }
+local function flyBits(bits: { any }, dt: number, g: number, drag: number)
+	local k = math.max(0, 1 - drag * dt)
+	for _, b in bits do
+		b.v = Vector3.new(b.v.X * k, b.v.Y * k + g * dt, b.v.Z * k)
+		b.cf = (b.cf + b.v * dt) * CFrame.Angles(b.spin.X * dt, b.spin.Y * dt, b.spin.Z * dt)
+		b.p.CFrame = b.cf
+	end
+end
+local function fadeBits(bits: { any }, a: number)
+	for _, b in bits do b.p.Transparency = math.max(b.p.Transparency, a) end
+end
+-- facing the camera, flat (for props that show a front)
+local function toCamera(r: Run): CFrame
+	local cam = workspace.CurrentCamera
+	local d = (cam.CFrame.Position - r.centre) * Vector3.new(1, 0, 1)
+	d = if d.Magnitude > 1e-3 then d.Unit else Vector3.new(0, 0, 1)
+	return CFrame.lookAt(Vector3.zero, d)
+end
+local function burstAt(r: Run, at: CFrame, size: Vector3): Part
+	return part(r, size, at)
+end
+
+-- GIBS ("none", free): the body falls apart as it always has. nothing to draw
+
+-- CONFETTI (free): a white pop, then the body bursts into paper confetti that flutters down. quiet paper colours, one amber
+STEP.confetti = function(r, t, dt)
+	local s = r.s
+	if not s.h then s.h = highlight(r, Color3.fromRGB(250, 248, 242), Color3.fromRGB(255, 255, 255)) end
+	if t < 0.08 then s.h.FillTransparency = lerp(1, 0.15, t / 0.08); return end
+	if s.popped then return end
+	s.popped = true
+	fadeAll(r, 1)
+	s.h.FillTransparency = 1
+	local ep = burstAt(r, r.cf * CFrame.new(0, r.size.Y * 0.12, 0), Vector3.new(r.width * 0.6, r.size.Y * 0.4, r.width * 0.4))
+	for _, c in { Color3.fromRGB(242, 238, 228), Color3.fromRGB(236, 196, 96), Color3.fromRGB(150, 160, 176), Color3.fromRGB(200, 156, 124) } do
+		emitter(r, ep, {
+			Texture = TEX.chips, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid2x2, FlipbookMode = Enum.ParticleFlipbookMode.Random,
+			Color = cs(c), LightInfluence = 0.9, LightEmission = 0.05, Size = ns(0, 0.16, 1, 0.13),
+			Transparency = ns(0, 0, 0.8, 0, 1, 1), Lifetime = NumberRange.new(1.0, 1.3), Speed = NumberRange.new(10, 17),
+			EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(40, 40), Acceleration = Vector3.new(0, -22, 0), Drag = 2.4,
+			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-420, 420),
+		}):Emit(18)
+	end
+	emitter(r, ep, {
+		Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+		FlipbookFramerate = NumberRange.new(16 / 0.5), Color = cs(Color3.fromRGB(240, 238, 232)), LightInfluence = 0.7,
+		Size = ns(0, 0.8, 1, 1.4), Transparency = ns(0, 0.5, 1, 1), Lifetime = NumberRange.new(0.5), Speed = NumberRange.new(0.5, 1.5),
+		SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
+	}):Emit(4)
+end
+
+-- TOMBSTONE (common): the body sinks into the floor as a plain stone marker rises where it stood, then both go. no words on it
+STEP.grave = function(r, t, dt)
+	local s = r.s
+	if not s.stone then
+		local face = toCamera(r)
+		local w = math.clamp(r.width * 0.95, 1.8, 2.6)
+		local hgt = w * 1.05
+		local STONE = Color3.fromRGB(120, 124, 130)
+		local slab = prop(r, nil, Vector3.new(w, hgt, 0.55), STONE, Enum.Material.Slate)
+		local top = prop(r, Enum.PartType.Cylinder, Vector3.new(0.55, w, w), STONE, Enum.Material.Slate)
+		local plinth = prop(r, nil, Vector3.new(w + 0.5, 0.35, 1.0), Color3.fromRGB(96, 100, 106), Enum.Material.Slate)
+		s.stone = { slab = slab, top = top, plinth = plinth, face = face, w = w, h = hgt }
+		local base = CFrame.new(r.centre.X, r.y0, r.centre.Z) * face.Rotation
+		s.stoneBase = base
+		local dp = burstAt(r, base, Vector3.new(w + 1, 0.3, 1.4))
+		s.dust = emitter(r, dp, {
+			Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+			FlipbookFramerate = NumberRange.new(16 / 0.7), Color = cs(Color3.fromRGB(150, 146, 138)), LightInfluence = 0.9,
+			Size = ns(0, 0.7, 1, 1.5), Transparency = ns(0, 0.45, 1, 1), Lifetime = NumberRange.new(0.7), Speed = NumberRange.new(1, 3),
+			EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(70, 70), Rotation = NumberRange.new(0, 360),
+		})
+	end
+	local st = s.stone
+	-- the stone: up from under the floor (0.12-0.5 s, a little overshoot), held, back down from 1.15 s
+	local up = smooth((t - 0.12) / 0.38)
+	local over = math.sin(math.clamp((t - 0.12) / 0.38, 0, 1) * math.pi) * 0.12
+	local down = smooth((t - 1.15) / 0.35)
+	local rise = (up + over) * (1 - down)
+	local y = -(st.h + st.w / 2 + 0.4) * (1 - rise)
+	local b = s.stoneBase * CFrame.new(0, y, 0)
+	st.plinth.CFrame = b * CFrame.new(0, 0.17, 0)
+	st.slab.CFrame = b * CFrame.new(0, 0.35 + st.h / 2, 0)
+	st.top.CFrame = b * CFrame.new(0, 0.35 + st.h, 0) * CFrame.Angles(0, math.pi / 2, 0)
+	if t > 0.14 and not s.puffed then s.puffed = true; s.dust:Emit(7) end
+	-- the body: down into the floor and out
+	local sink = smooth((t - 0.2) / 0.9)
+	moveBody(r, CFrame.new(0, -3.2 * sink, 0))
+	for _, p in r.parts do fade(r, p, clamp01((t - 0.35) / 0.7)) end
+end
+
+-- MAKE IT RAIN (common): the body pops into a shower of plain paper notes (no print on them) that drift down
+STEP.cash = function(r, t, dt)
+	local s = r.s
+	if not s.h then s.h = highlight(r, Color3.fromRGB(196, 214, 184), Color3.fromRGB(230, 240, 222)) end
+	if t < 0.1 then s.h.FillTransparency = lerp(1, 0.35, t / 0.1); return end
+	if not s.notes then
+		fadeAll(r, 1)
+		s.h.FillTransparency = 1
+		s.notes = {}
+		local rng = Random.new()
+		for i = 1, 22 do
+			local c = Color3.fromRGB(116 + rng:NextInteger(-8, 8), 148 + rng:NextInteger(-8, 8), 104 + rng:NextInteger(-6, 6))
+			local n = prop(r, nil, Vector3.new(0.66, 0.03, 0.32), c)
+			local at = r.centre + Vector3.new(rng:NextNumber(-0.5, 0.5) * r.width, rng:NextNumber(-0.3, 0.45) * r.size.Y, rng:NextNumber(-0.5, 0.5) * r.width)
+			local cf = CFrame.new(at) * CFrame.Angles(rng:NextNumber(0, 6.28), rng:NextNumber(0, 6.28), rng:NextNumber(0, 6.28))
+			local out = (at - r.centre) * Vector3.new(1, 0, 1)
+			out = if out.Magnitude > 1e-3 then out.Unit else Vector3.new(1, 0, 0)
+			table.insert(s.notes, { p = n, cf = cf, v = out * rng:NextNumber(3, 7) + Vector3.new(0, rng:NextNumber(8, 14), 0),
+				spin = Vector3.new(rng:NextNumber(-7, 7), rng:NextNumber(-7, 7), rng:NextNumber(-7, 7)) })
+		end
+		local ep = burstAt(r, r.cf, r.size * Vector3.new(0.6, 0.6, 0.6))
+		emitter(r, ep, {
+			Texture = TEX.sparkle, Color = cs(Color3.fromRGB(236, 244, 226)), LightEmission = 1, LightInfluence = 0,
+			Size = ns(0, 0.3, 1, 0), Transparency = ns(0, 0.1, 1, 1), Lifetime = NumberRange.new(0.3, 0.5),
+			Speed = NumberRange.new(3, 7), SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 90),
+		}):Emit(8)
+	end
+	flyBits(s.notes, dt, -26, 2.6)
+	if t > 1.0 then fadeBits(s.notes, smooth((t - 1.0) / 0.4)) end
+end
+
+-- MISSING TEXTURE (rare): the body flickers and breaks into small cubes, near-black and one muted magenta (the old
+-- missing-texture check, quietened), which drift off and blink out
+STEP.pixel = function(r, t, dt)
+	local s = r.s
+	local MAG, BLK = Color3.fromRGB(170, 60, 150), Color3.fromRGB(24, 24, 30)
+	if not s.h then s.h = highlight(r, MAG, BLK); s.tick = -1 end
+	if t < 0.14 then
+		local k = math.floor(t / 0.035)
+		if k ~= s.tick then s.tick = k; s.h.FillTransparency = if k % 2 == 0 then 0.25 else 0.7; s.h.OutlineTransparency = 0.3 end
+		return
+	end
+	if not s.cubes then
+		fadeAll(r, 1)
+		s.h.FillTransparency = 1; s.h.OutlineTransparency = 1
+		s.cubes = {}
+		local rng = Random.new()
+		local list = table.clone(r.parts)
+		table.sort(list, function(a, b) return a.part.Size.Magnitude > b.part.Size.Magnitude end)
+		for i = 1, math.min(15, #list) do
+			local pp = list[i].part
+			for j = 1, 2 do
+				local sz = rng:NextNumber(0.3, 0.46)
+				local c = prop(r, nil, Vector3.new(sz, sz, sz), if (i + j) % 2 == 0 then MAG else BLK)
+				local off = Vector3.new(rng:NextNumber(-0.3, 0.3) * pp.Size.X, rng:NextNumber(-0.35, 0.35) * pp.Size.Y, rng:NextNumber(-0.3, 0.3) * pp.Size.Z)
+				local cf = pp.CFrame * CFrame.new(off)
+				local out = (cf.Position - r.centre) * Vector3.new(1, 0, 1)
+				out = if out.Magnitude > 1e-3 then out.Unit else Vector3.new(0, 0, 1)
+				table.insert(s.cubes, { p = c, cf = cf, v = out * rng:NextNumber(1.5, 4) + Vector3.new(0, rng:NextNumber(1.5, 5), 0),
+					spin = Vector3.new(rng:NextNumber(-3, 3), rng:NextNumber(-3, 3), rng:NextNumber(-3, 3)) })
+			end
+		end
+	end
+	flyBits(s.cubes, dt, -11, 0.8)
+	local k = math.floor(t / 0.06)
+	if k ~= s.tick then
+		s.tick = k
+		local rng = Random.new(k)
+		for _, c in s.cubes do
+			local gone = clamp01((t - 0.75) / 0.45)
+			c.p.Transparency = if rng:NextNumber() < gone then 1 elseif rng:NextNumber() < 0.15 then 0.6 else 0
+		end
+	end
+end
+
+-- BALLOONS (rare): a small bunch of plain balloons ties on, and the body floats up and away, fading
+STEP.balloon = function(r, t, dt)
+	local s = r.s
+	if not s.balls then
+		s.balls = {}
+		local cols = { Color3.fromRGB(236, 230, 214), Color3.fromRGB(176, 182, 192), Color3.fromRGB(226, 178, 84), Color3.fromRGB(116, 134, 162), Color3.fromRGB(226, 220, 204) }
+		local hold = part(r, Vector3.new(0.2, 0.2, 0.2), CFrame.new(r.centre.X, r.y1 - 1.2, r.centre.Z))
+		local a0 = Instance.new("Attachment"); a0.Parent = hold
+		s.hold = hold
+		local rng = Random.new()
+		for i, c in cols do
+			local d = rng:NextNumber(1.0, 1.25)
+			local b = prop(r, Enum.PartType.Ball, Vector3.new(d, d * 1.12, d), c)
+			b.Reflectance = 0.04
+			local ang = (i - 1) / #cols * math.pi * 2 + rng:NextNumber(-0.3, 0.3)
+			local off = Vector3.new(math.cos(ang) * 0.9, 2.4 + rng:NextNumber(0, 1.3), math.sin(ang) * 0.9)
+			local a1 = Instance.new("Attachment"); a1.Position = Vector3.new(0, -d * 0.5, 0); a1.Parent = b
+			local str = Instance.new("Beam")
+			str.Attachment0 = a0; str.Attachment1 = a1; str.Width0 = 0.03; str.Width1 = 0.03; str.FaceCamera = true; str.Segments = 1
+			str.Color = ColorSequence.new(Color3.fromRGB(214, 218, 224)); str.LightInfluence = 1; str.Transparency = NumberSequence.new(0.15)
+			str.Parent = b
+			table.insert(s.balls, { p = b, off = off, d = d, beam = str })
+		end
+	end
+	local pop = smooth(t / 0.18)
+	local lift = 6.5 * smooth((t - 0.22) / 1.28) ^ 1.4
+	local sway = math.sin(t * 3.2) * 0.35 * smooth((t - 0.2) / 0.5)
+	local T = CFrame.new(sway, lift, 0)
+	moveBody(r, T)
+	s.hold.CFrame = T * CFrame.new(r.centre.X, r.y1 - 1.2, r.centre.Z)
+	for i, b in s.balls do
+		local bob = math.sin(t * 4 + i) * 0.08
+		b.p.Size = Vector3.new(b.d, b.d * 1.12, b.d) * math.max(0.05, pop)
+		b.p.CFrame = T * CFrame.new(r.centre.X + b.off.X, r.y1 + b.off.Y * pop + bob, r.centre.Z + b.off.Z)
+		local f = smooth((t - 1.2) / 0.3)
+		b.p.Transparency = f
+		b.beam.Transparency = NumberSequence.new(lerp(0.15, 1, f))
+	end
+	for _, p in r.parts do fade(r, p, smooth((t - 0.85) / 0.6)) end
+end
+
+-- CHICKENS (epic): a soft pop of feathers, and where the body was, three small chickens scatter and run off
+local function chicken(r: Run): { any }
+	local W, BEAK, COMB = Color3.fromRGB(238, 230, 212), Color3.fromRGB(214, 150, 70), Color3.fromRGB(176, 72, 66)
+	local body = prop(r, Enum.PartType.Ball, Vector3.new(0.95, 0.85, 1.05), W)
+	local head = prop(r, Enum.PartType.Ball, Vector3.new(0.55, 0.58, 0.55), W)
+	local beak = prop(r, nil, Vector3.new(0.18, 0.12, 0.26), BEAK)
+	local comb = prop(r, Enum.PartType.Ball, Vector3.new(0.12, 0.24, 0.26), COMB)
+	local tail = prop(r, nil, Vector3.new(0.5, 0.42, 0.18), W)
+	return { { body, CFrame.new(0, 0.5, 0) }, { head, CFrame.new(0, 1.0, -0.42) }, { beak, CFrame.new(0, 0.98, -0.75) },
+		{ comb, CFrame.new(0, 1.3, -0.42) }, { tail, CFrame.new(0, 0.82, 0.48) * CFrame.Angles(math.rad(-30), 0, 0) } }
+end
+STEP.chicken = function(r, t, dt)
+	local s = r.s
+	if not s.h then s.h = highlight(r, Color3.fromRGB(246, 240, 228), Color3.fromRGB(255, 255, 255)) end
+	if t < 0.1 then s.h.FillTransparency = lerp(1, 0.2, t / 0.1); return end
+	if not s.birds then
+		fadeAll(r, 1)
+		s.h.FillTransparency = 1
+		local ep = burstAt(r, r.cf, r.size * Vector3.new(0.6, 0.6, 0.6))
+		emitter(r, ep, {
+			Texture = TEX.feather, Color = cs(Color3.fromRGB(244, 238, 226)), LightInfluence = 0.8, LightEmission = 0.05,
+			Size = ns(0, 0.26, 1, 0.22), Transparency = ns(0, 0, 0.75, 0.1, 1, 1), Lifetime = NumberRange.new(0.9, 1.3),
+			Speed = NumberRange.new(5, 11), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -7, 0), Drag = 2.6,
+			Rotation = NumberRange.new(0, 360), RotSpeed = NumberRange.new(-220, 220),
+		}):Emit(24)
+		s.birds = {}
+		local rng = Random.new()
+		local a0 = rng:NextNumber(0, math.pi * 2)
+		for i = 1, 3 do
+			local ang = a0 + (i - 1) * math.pi * 2 / 3 + rng:NextNumber(-0.3, 0.3)
+			table.insert(s.birds, { bits = chicken(r), dir = Vector3.new(math.cos(ang), 0, math.sin(ang)), speed = rng:NextNumber(6.5, 8.5), ph = rng:NextNumber(0, 6) })
+		end
+	end
+	local run = t - 0.1
+	for _, b in s.birds do
+		local at = Vector3.new(r.centre.X, r.y0, r.centre.Z) + b.dir * (0.4 + b.speed * run)
+		local hop = math.abs(math.sin(run * 16 + b.ph)) * 0.22
+		local base = CFrame.lookAt(at, at + b.dir) * CFrame.new(0, hop, 0) * CFrame.Angles(0, 0, math.sin(run * 16 + b.ph) * 0.12)
+		local f = smooth((t - 1.15) / 0.35)
+		for _, bit in b.bits do
+			bit[1].CFrame = base * bit[2]
+			bit[1].Transparency = f
+		end
+	end
+end
+
+-- BLUE SCREEN (epic): the body is replaced by a flat blue panel (blank grey bars where words would be, a bar filling up),
+-- which then switches off like an old monitor: down to a bright line, a dot, gone
+STEP.bsod = function(r, t, dt)
+	local s = r.s
+	if not s.gui then
+		s.h = highlight(r, Color3.fromRGB(60, 100, 190), Color3.fromRGB(150, 180, 240))
+		local hold = part(r, Vector3.new(0.2, 0.2, 0.2), CFrame.new(r.centre))
+		local w, h = math.max(2.6, r.width * 1.35), math.max(3.2, r.size.Y * 0.82)
+		local g = Instance.new("BillboardGui")
+		g.Size = UDim2.new(w, 0, h, 0); g.AlwaysOnTop = false; g.LightInfluence = 0; g.Brightness = 1.3
+		g.MaxDistance = 400; g.Adornee = hold; g.Parent = hold
+		local bg = Instance.new("Frame")
+		bg.BackgroundColor3 = Color3.fromRGB(38, 76, 160); bg.BorderSizePixel = 0; bg.AnchorPoint = Vector2.new(0.5, 0.5)
+		bg.Position = UDim2.fromScale(0.5, 0.5); bg.Size = UDim2.fromScale(1, 1); bg.Parent = g
+		local function bar(x: number, y: number, ww: number, hh: number, c: Color3, a: number?): Frame
+			local f = Instance.new("Frame")
+			f.BackgroundColor3 = c; f.BorderSizePixel = 0; f.Position = UDim2.fromScale(x, y); f.Size = UDim2.fromScale(ww, hh)
+			f.BackgroundTransparency = a or 0; f.Parent = bg
+			return f
+		end
+		local LITE = Color3.fromRGB(214, 224, 244)
+		bar(0.1, 0.1, 0.24, 0.1, LITE)
+		bar(0.1, 0.3, 0.8, 0.045, LITE, 0.15); bar(0.1, 0.38, 0.64, 0.045, LITE, 0.15); bar(0.1, 0.46, 0.72, 0.045, LITE, 0.15)
+		local track = bar(0.1, 0.7, 0.8, 0.06, Color3.fromRGB(20, 40, 96))
+		local fill = Instance.new("Frame")
+		fill.BackgroundColor3 = LITE; fill.BorderSizePixel = 0; fill.Size = UDim2.fromScale(0, 1); fill.Parent = track
+		s.gui, s.bg, s.fill, s.w, s.h2 = g, bg, fill, w, h
+		g.Enabled = false
+	end
+	if t < 0.06 then s.h.FillTransparency = lerp(1, 0.2, t / 0.06); return end
+	if not s.on then
+		s.on = true
+		fadeAll(r, 1)
+		s.h.FillTransparency = 1; s.h.OutlineTransparency = 1
+		s.gui.Enabled = true
+	end
+	local g = s.gui :: BillboardGui
+	local pin = smooth((t - 0.06) / 0.08)
+	s.fill.Size = UDim2.fromScale(clamp01((t - 0.15) / 0.6) * 0.75, 1)
+	local off1 = smooth((t - 0.8) / 0.14) -- down to a line
+	local off2 = smooth((t - 0.94) / 0.14) -- in to a dot
+	local w = s.w * (0.92 + 0.08 * pin) * lerp(1, 0.04, off2)
+	local h = s.h2 * (0.92 + 0.08 * pin) * lerp(1, 0.035, off1)
+	g.Size = UDim2.new(w, 0, h, 0)
+	s.bg.BackgroundColor3 = Color3.fromRGB(38, 76, 160):Lerp(Color3.fromRGB(236, 242, 255), off1)
+	for _, c in s.bg:GetChildren() do if c:IsA("Frame") then c.Visible = off1 < 0.5 end end
+	s.bg.BackgroundTransparency = smooth((t - 1.08) / 0.12)
+end
+
+-- YEET (epic): the body is launched straight up, spinning, a dotted streak under it, and blinks out high above with a glint
+STEP.yeet = function(r, t, dt)
+	local s = r.s
+	if not s.e then
+		s.h = highlight(r, Color3.fromRGB(236, 242, 255), Color3.fromRGB(255, 255, 255))
+		s.ep = part(r, Vector3.new(r.width * 0.5, 0.4, r.width * 0.5), r.cf)
+		s.e = emitter(r, s.ep, {
+			Texture = TEX.glow, Color = cs(Color3.fromRGB(236, 242, 252)), LightEmission = 0.8, LightInfluence = 0,
+			Size = ns(0, 0.22, 1, 0), Transparency = ns(0, 0.1, 1, 1), Lifetime = NumberRange.new(0.35, 0.5), Speed = NumberRange.new(0, 0.6),
+		})
+		local feet = burstAt(r, CFrame.new(r.centre.X, r.y0 + 0.2, r.centre.Z), Vector3.new(r.width, 0.3, r.width))
+		emitter(r, feet, {
+			Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+			FlipbookFramerate = NumberRange.new(16 / 0.6), Color = cs(Color3.fromRGB(200, 198, 192)), LightInfluence = 0.9,
+			Size = ns(0, 0.7, 1, 1.5), Transparency = ns(0, 0.45, 1, 1), Lifetime = NumberRange.new(0.6), Speed = NumberRange.new(2, 4),
+			EmissionDirection = Enum.NormalId.Top, SpreadAngle = Vector2.new(80, 80), Rotation = NumberRange.new(0, 360),
+		}):Emit(6)
+		s.glint = burstAt(r, r.cf, Vector3.new(0.2, 0.2, 0.2))
+		s.ge = emitter(r, s.glint, {
+			Texture = TEX.sparkle, Color = cs(Color3.fromRGB(255, 248, 230)), LightEmission = 1, LightInfluence = 0,
+			Size = ns(0, 0.4, 0.3, 1.4, 1, 0), Transparency = ns(0, 0, 1, 0.4), Lifetime = NumberRange.new(0.35), Speed = NumberRange.new(0),
+			Rotation = NumberRange.new(0, 45),
+		})
+	end
+	s.h.FillTransparency = lerp(1, 0.55, smooth(t / 0.08)) + 0.45 * smooth((t - 0.2) / 0.3)
+	local u = math.max(0, t - 0.06)
+	local up = 22 * u + 34 * u * u
+	local spin = u * 11
+	local c = r.centre
+	local T = CFrame.new(c + Vector3.new(0, up, 0)) * CFrame.Angles(math.sin(u * 3) * 0.25, spin, 0) * CFrame.new(-c)
+	moveBody(r, T)
+	if t < 1.0 then
+		s.ep.CFrame = CFrame.new(c + Vector3.new(0, up - r.size.Y * 0.3, 0))
+		pour(r, "a", s.e, 90, dt)
+	end
+	if t > 0.98 and not s.dinged then
+		s.dinged = true
+		s.glint.CFrame = CFrame.new(c + Vector3.new(0, up, 0))
+		s.ge:Emit(1)
+		fadeAll(r, 1)
+	elseif not s.dinged then
+		for _, p in r.parts do fade(r, p, smooth((t - 0.7) / 0.28) * 0.6) end
+	end
+end
+
+-- BIG DUCK (legendary): a big rubber duck drops onto the body, settles with a squash, gulps, and shrinks away with a puff.
+-- built from a few round pieces, the game's own duck yellow
+local function duck(r: Run): { any }
+	local Y, BEAK, EYE = Color3.fromRGB(236, 196, 72), Color3.fromRGB(214, 128, 52), Color3.fromRGB(26, 26, 30)
+	local pieces = {
+		{ prop(r, Enum.PartType.Ball, Vector3.new(4.0, 3.0, 4.6), Y), CFrame.new(0, 1.5, 0.2), Vector3.new(4.0, 3.0, 4.6) },
+		{ prop(r, Enum.PartType.Ball, Vector3.new(2.4, 2.4, 2.4), Y), CFrame.new(0, 3.5, -1.3), Vector3.new(2.4, 2.4, 2.4) },
+		{ prop(r, Enum.PartType.Ball, Vector3.new(1.3, 0.55, 1.2), BEAK), CFrame.new(0, 3.3, -2.6), Vector3.new(1.3, 0.55, 1.2) },
+		{ prop(r, Enum.PartType.Ball, Vector3.new(0.32, 0.32, 0.32), EYE), CFrame.new(0.62, 3.85, -2.2), Vector3.new(0.32, 0.32, 0.32) },
+		{ prop(r, Enum.PartType.Ball, Vector3.new(0.32, 0.32, 0.32), EYE), CFrame.new(-0.62, 3.85, -2.2), Vector3.new(0.32, 0.32, 0.32) },
+		{ prop(r, Enum.PartType.Ball, Vector3.new(1.6, 1.4, 1.6), Y), CFrame.new(0, 2.4, 2.4) * CFrame.Angles(math.rad(-35), 0, 0), Vector3.new(1.6, 1.4, 1.6) },
+	}
+	for _, p in pieces do p[1].Material = Enum.Material.SmoothPlastic; p[1].Reflectance = 0.05 end
+	return pieces
+end
+STEP.duck = function(r, t, dt)
+	local s = r.s
+	if not s.duck then
+		s.duck = duck(r)
+		s.face = toCamera(r)
+		local foot = CFrame.new(r.centre.X, r.y0, r.centre.Z)
+		s.foot = foot
+		local ep = burstAt(r, foot * CFrame.new(0, 1.2, 0), Vector3.new(3.5, 1.5, 3.5))
+		s.puff = emitter(r, ep, {
+			Texture = TEX.dust, FlipbookLayout = Enum.ParticleFlipbookLayout.Grid4x4, FlipbookMode = Enum.ParticleFlipbookMode.OneShot,
+			FlipbookFramerate = NumberRange.new(16 / 0.6), Color = cs(Color3.fromRGB(244, 240, 228)), LightInfluence = 0.8,
+			Size = ns(0, 0.9, 1, 1.8), Transparency = ns(0, 0.4, 1, 1), Lifetime = NumberRange.new(0.6), Speed = NumberRange.new(2, 5),
+			SpreadAngle = Vector2.new(180, 180), Rotation = NumberRange.new(0, 360),
+		})
+	end
+	-- drop (0-0.3), squash on landing (0.3-0.5), a gulp (0.6-0.8), shrink away (0.95-1.3)
+	local drop = clamp01(t / 0.3)
+	local y = 9 * (1 - drop * drop)
+	local land = clamp01((t - 0.3) / 0.2)
+	local sq = if t >= 0.3 then 1 - 0.22 * math.sin(land * math.pi) else 1
+	local gulp = if t > 0.6 and t < 0.8 then math.sin((t - 0.6) / 0.2 * math.pi) * 0.12 else 0
+	local shrink = 1 - smooth((t - 0.95) / 0.35)
+	local k = math.max(0.02, shrink)
+	if t >= 0.3 and not s.landed then
+		s.landed = true
+		fadeAll(r, 1)
+		s.puff:Emit(8)
+	end
+	if t >= 1.28 and not s.gone then s.gone = true; s.puff:Emit(6) end
+	local base = s.foot * CFrame.new(0, y, 0) * s.face.Rotation * CFrame.Angles(0, math.rad(35) + (1 - shrink) * 2.5, 0)
+	for _, p in s.duck do
+		local off = p[2]
+		local scaleY = sq * (1 + gulp)
+		local pos = Vector3.new(off.X * k * (2 - sq), off.Y * k * scaleY, off.Z * k)
+		p[1].Size = Vector3.new(p[3].X * (2 - sq), p[3].Y * scaleY, p[3].Z) * k
+		p[1].CFrame = base * CFrame.new(pos) * off.Rotation
+		p[1].Transparency = if k <= 0.03 then 1 else 0
+	end
+end
+
+-- BLAST ZONE (legendary): a white-hot flash and shock ring, and the body is knocked clean away from whoever got the
+-- kill, spinning, out of sight
+STEP.blastzone = function(r, t, dt)
+	local s = r.s
+	if not s.h then
+		s.h = highlight(r, Color3.fromRGB(255, 232, 196), Color3.fromRGB(255, 246, 230))
+		local away = (r.centre - (r.from or (r.centre - workspace.CurrentCamera.CFrame.LookVector))) * Vector3.new(1, 0, 1)
+		away = if away.Magnitude > 1e-3 then away.Unit else Vector3.new(0, 0, -1)
+		s.dir = (away + Vector3.new(0, 0.32, 0)).Unit
+		s.axis = away:Cross(Vector3.yAxis)
+		local ep = burstAt(r, r.cf, Vector3.new(0.4, 0.4, 0.4))
+		s.ring = emitter(r, ep, {
+			Texture = TEX.ring, Color = cs(Color3.fromRGB(255, 236, 206)), LightEmission = 1, LightInfluence = 0,
+			Size = ns(0, 0.6, 1, 4.2), Transparency = ns(0, 0.2, 1, 1), Lifetime = NumberRange.new(0.32), Speed = NumberRange.new(0),
+		})
+		s.flash = emitter(r, ep, {
+			Texture = TEX.glow, Color = cs(Color3.fromRGB(255, 244, 226)), LightEmission = 1, LightInfluence = 0,
+			Size = ns(0, 2.4, 1, 0), Transparency = ns(0, 0, 1, 0.5), Lifetime = NumberRange.new(0.2), Speed = NumberRange.new(0),
+		})
+		s.sparks = emitter(r, ep, {
+			Texture = TEX.spark, Color = cs(0, Color3.fromRGB(255, 240, 214), 1, Color3.fromRGB(255, 170, 90)), LightEmission = 1, LightInfluence = 0,
+			Orientation = Enum.ParticleOrientation.VelocityParallel, Size = ns(0, 0.34, 1, 0), Transparency = ns(0, 0, 1, 1),
+			Lifetime = NumberRange.new(0.18, 0.3), Speed = NumberRange.new(28, 46), SpreadAngle = Vector2.new(180, 180),
+		})
+		s.tp = part(r, Vector3.new(r.width * 0.5, r.size.Y * 0.5, r.width * 0.5), r.cf)
+		s.trail = emitter(r, s.tp, {
+			Texture = TEX.glow, Color = cs(Color3.fromRGB(255, 232, 200)), LightEmission = 0.9, LightInfluence = 0,
+			Size = ns(0, 0.3, 1, 0), Transparency = ns(0, 0.15, 1, 1), Lifetime = NumberRange.new(0.25, 0.35), Speed = NumberRange.new(0, 0.5),
+		})
+	end
+	if t < 0.06 then s.h.FillTransparency = lerp(1, 0, t / 0.06); return end
+	if not s.hit then
+		s.hit = true
+		s.ring:Emit(1); s.flash:Emit(1); s.sparks:Emit(18)
+	end
+	s.h.FillTransparency = lerp(0, 1, smooth((t - 0.06) / 0.2))
+	s.h.OutlineTransparency = lerp(0.3, 1, smooth((t - 0.06) / 0.35))
+	local u = t - 0.06
+	local dist = 150 * u - 20 * u * u
+	local c = r.centre
+	local T = CFrame.new(c + s.dir * dist) * CFrame.fromAxisAngle(s.axis, u * 22) * CFrame.new(-c)
+	moveBody(r, T)
+	if t < 0.75 then
+		s.tp.CFrame = CFrame.new(c + s.dir * dist)
+		pour(r, "a", s.trail, 140, dt)
+	end
+	if t > 0.7 then for _, p in r.parts do fade(r, p, smooth((t - 0.7) / 0.25)) end end
+end
+
 -- ------------------------------------------------------------------ playing
 local function finish(r: Run)
 	if r.done then return end
@@ -440,7 +920,7 @@ local function finish(r: Run)
 	end))
 end
 
-function K.play(m: Model, id: string, opts: { preview: boolean? }?): Run?
+function K.play(m: Model, id: string, opts: { preview: boolean?, from: Vector3? }?): Run?
 	local step = STEP[id]
 	local item = Flair.info("kill", id)
 	if not step or not item or not m or not m.Parent then return nil end
@@ -453,6 +933,7 @@ function K.play(m: Model, id: string, opts: { preview: boolean? }?): Run?
 		m = m, id = id, t = 0, dur = item.dur, parts = {}, objs = {}, emitters = {}, hl = nil,
 		y0 = math.huge, y1 = -math.huge, centre = cf.Position, size = size, width = math.clamp(math.max(size.X, size.Z), 1.4, 4),
 		cf = cf, step = step, s = {}, done = false, own = (m == me.Character) and not preview, preview = preview, hold = {},
+		from = opts and opts.from,
 	}
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.Transparency < 0.99 then

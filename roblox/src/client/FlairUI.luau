@@ -1,5 +1,5 @@
 --!strict
--- the equip screen for kill effects and emotes (doc FLAIR.md). FlairUI.open(tab?) / close() / isOpen() / preview(id).
+-- the equip screen for kill effects, emotes and grapple skins (doc FLAIR.md). FlairUI.open(tab?) / close() / isOpen() / preview(id).
 -- the loadout's KILL EFFECT · EMOTES button opens it (the loadout steps aside first); not mid-match, like the loadout.
 -- left: the items (a grid of kill effects; or the emote wheel's 8 slots over a row of emotes). right: the world, with a
 -- copy of your own avatar standing in front of you (client-only) playing whatever you point at: the kill effect on it
@@ -18,8 +18,8 @@ local pg = me:WaitForChild("PlayerGui")
 
 local FlairUI = {}
 local S = {
-	open = false, tab = "kill", pick = { kill = "none", emote = "wave" } :: { [string]: string }, slot = 1,
-	owned = { kill = {}, emote = {} } :: { [string]: { [string]: boolean } }, tok = 0, hidden = {} :: { [ScreenGui]: boolean },
+	open = false, tab = "kill", pick = { kill = "none", emote = "wave", grapple = "rope" } :: { [string]: string }, slot = 1,
+	owned = { kill = {}, emote = {}, grapple = {} } :: { [string]: { [string]: boolean } }, tok = 0, hidden = {} :: { [ScreenGui]: boolean },
 	cam = { active = false, closing = false, t0 = 0, dur = 0.5, from = CFrame.new(), to = CFrame.new(), saved = CFrame.new(), savedType = Enum.CameraType.Custom },
 	spot = nil :: { s: Vector3, face: Vector3 }?, template = nil :: Model?, dummy = nil :: Model?, savedOpen = false,
 }
@@ -81,9 +81,12 @@ end
 
 -- the two tabs, as the title
 local tabs: { [string]: { b: TextButton, rule: Frame } } = {}
-for i, t in { "kill", "emote" } do
-	local b = new("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(60 + (i - 1) * 380, 34),
-		Size = UDim2.fromOffset(360, 60), FontFace = T.FONT_TITLE, TextSize = 40, Text = if t == "kill" then "KILL EFFECT" else "EMOTES",
+local TAB_X = { kill = 60, emote = 400, grapple = 690 }
+local TAB_W = { kill = 320, emote = 270, grapple = 300 }
+local TAB_TEXT = { kill = "KILL EFFECT", emote = "EMOTES", grapple = "GRAPPLE" }
+for _, t in { "kill", "emote", "grapple" } do
+	local b = new("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(TAB_X[t], 34),
+		Size = UDim2.fromOffset(TAB_W[t], 60), FontFace = T.FONT_TITLE, TextSize = 40, Text = TAB_TEXT[t],
 		TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 }, stage)
 	local rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, 62), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, b)
 	tabs[t] = { b = b, rule = rule }
@@ -199,11 +202,28 @@ do
 	M.note = label(M.frame, "", 16, UDim2.fromOffset(520, 820), UDim2.fromOffset(340, 24), T.MUTED, T.FONT_BOLD)
 end
 
+-- ------------------------------------------------------------------ the grapple tab: the eight skins
+local G = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Visible = false }, panel), cards = {} :: { Card } }
+do
+	local grid = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(20, 20), Size = UDim2.fromOffset(840, 720),
+		CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
+		ScrollBarThickness = 6, ScrollBarImageColor3 = T.DIM, ZIndex = 3 }, G.frame)
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(196, 236), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
+	new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4) }, grid)
+	for i, id in Flair.ORDER.grapple do table.insert(G.cards, card(grid, "grapple", id, 196, 236, i)) end
+	G.equip = button(G.frame, "EQUIP", "main", UDim2.fromOffset(20, 800), UDim2.fromOffset(300, 64))
+	G.note = label(G.frame, "", 16, UDim2.fromOffset(340, 820), UDim2.fromOffset(520, 24), T.MUTED, T.FONT_BOLD)
+end
+
 -- ------------------------------------------------------------------ what's on screen
 local function slots(): { string } return Flair.slotsOf(me:GetAttribute("Emotes")) end
 local function wornKill(): string
 	local k = me:GetAttribute("KillFx")
 	return if type(k) == "string" and Flair.info("kill", k) then k else "none"
+end
+local function wornGrapple(): string
+	local g = me:GetAttribute("Grapple")
+	return if type(g) == "string" and Flair.info("grapple", g) then g else "rope"
 end
 local function owns(t: string, id: string): boolean return Flair.isFree(t, id) or S.owned[t][id] == true end
 
@@ -224,6 +244,13 @@ local function refresh()
 	end
 	K.frame.Visible = S.tab == "kill"
 	M.frame.Visible = S.tab == "emote"
+	G.frame.Visible = S.tab == "grapple"
+	local wg = wornGrapple()
+	for _, c in G.cards do paintCard(c, c.id == S.pick.grapple, c.id == wg) end
+	local gid = S.pick.grapple
+	if not owns("grapple", gid) then G.equip:set("LOCKED", false); G.note.Text = "FROM DUFFEL BAGS AND THE SHOP"
+	elseif gid == wg then G.equip:set("EQUIPPED", false); G.note.Text = ""
+	else G.equip:set("EQUIP", true); G.note.Text = "" end
 	local worn = wornKill()
 	for _, c in K.cards do paintCard(c, c.id == S.pick.kill, c.id == worn) end
 	local kid = S.pick.kill
@@ -398,6 +425,37 @@ local function previewLoop()
 					KillFx.play(m, id, { preview = true })
 					task.wait((Flair.info("kill", id).dur or 1) + 0.9)
 				end
+			elseif t == "grapple" then
+				-- a rope from the stand-in's right hand up past its shoulder to a point overhead, the skin's head on the end
+				-- (shared/GrappleLook.luau draws it, the grapple look's own module; a plain cable if it isn't in yet)
+				local m = standIn(true)
+				if not m then return end
+				local hand = m:FindFirstChild("RightHand") :: BasePart?
+				local a0 = hand and (hand:FindFirstChild("RightGripAttachment") or hand:FindFirstChildWhichIsA("Attachment")) :: Attachment?
+				local sp = S.spot
+				local cleanup: (() -> ())? = nil
+				if a0 and sp then
+					local side = sp.face:Cross(Vector3.yAxis)
+					local to = a0.WorldPosition + Vector3.new(0, 7.5, 0) - sp.face * 3 + side * 3
+					local mod = ReplicatedStorage.Jankfire:FindFirstChild("GrappleLook")
+					local ok, GL = false, nil
+					if mod then ok, GL = pcall(require, mod) end
+					if ok and type(GL) == "table" and type((GL :: any).preview) == "function" then
+						local ok2, c = pcall((GL :: any).preview, a0, to, id)
+						if ok2 and type(c) == "function" then cleanup = c end
+					else
+						local a1 = Instance.new("Attachment")
+						a1.WorldPosition = to
+						a1.Parent = workspace.Terrain
+						local b = Instance.new("Beam")
+						b.Attachment0 = a0; b.Attachment1 = a1; b.Width0 = 0.25; b.Width1 = 0.25; b.FaceCamera = true; b.Segments = 1
+						b.Color = ColorSequence.new(Color3.fromRGB(236, 238, 242), Color3.fromRGB(176, 182, 192))
+						b.Parent = workspace.Terrain
+						cleanup = function() b:Destroy(); a1:Destroy() end
+					end
+				end
+				while S.open and S.tok == tok do task.wait(0.1) end
+				if cleanup then pcall(cleanup) end
 			else
 				local m = standIn(false)
 				if not m then return end
@@ -440,7 +498,7 @@ end
 function FlairUI.isOpen(): boolean return S.open end
 
 function FlairUI.open(tab: string?)
-	if tab == "kill" or tab == "emote" then S.tab = tab end
+	if tab == "kill" or tab == "emote" or tab == "grapple" then S.tab = tab end
 	if S.open then refresh(); previewLoop(); return end
 	if not canOpen() then return end
 	if me:GetAttribute("LoadoutOpen") == true then return end -- (another screen is up)
@@ -454,6 +512,7 @@ function FlairUI.open(tab: string?)
 	S.pick.kill = wornKill()
 	local sl = slots()
 	S.pick.emote = if sl[S.slot] ~= "" then sl[S.slot] else Flair.ORDER.emote[1]
+	S.pick.grapple = wornGrapple()
 	table.clear(S.hidden)
 	for _, g in pg:GetChildren() do
 		if g:IsA("ScreenGui") and g ~= gui and g.Enabled then S.hidden[g] = true; g.Enabled = false end
@@ -526,6 +585,20 @@ for i, s in M.slots do
 		refresh()
 	end)
 end
+for _, c in G.cards do
+	c.btn.MouseButton1Click:Connect(function()
+		S.pick.grapple = c.id
+		refresh()
+		previewLoop()
+	end)
+end
+G.equip.face.MouseButton1Click:Connect(function()
+	if not G.equip.enabled then return end
+	local res = ask("grapple", S.pick.grapple)
+	if not res.ok then G.note.Text = string.upper(tostring(res.why or "")) end
+	task.wait(0.1)
+	refresh()
+end)
 K.equip.face.MouseButton1Click:Connect(function()
 	if not K.equip.enabled then return end
 	local res = ask("kill", S.pick.kill)
@@ -551,7 +624,7 @@ catcher.MouseButton1Click:Connect(function() end)
 UIS.InputBegan:Connect(function(io, _gp)
 	if S.open and io.KeyCode == Enum.KeyCode.Escape then FlairUI.close() end
 end)
-for _, a in { "KillFx", "Emotes", "FlairSave", "LootOwned" } do
+for _, a in { "KillFx", "Emotes", "Grapple", "FlairSave", "LootOwned" } do
 	me:GetAttributeChangedSignal(a):Connect(function()
 		if not S.open then return end
 		if a == "LootOwned" then task.spawn(function() fetch(); if S.open then refresh() end end) else refresh() end

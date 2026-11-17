@@ -1,4 +1,4 @@
-# Kill effects and emotes ("flair")
+# Kill effects, emotes and grapple skins ("flair")
 
 17 Nov 2026. The owner asked: "Can we also have basic kill effects? Reference the rivals ones!! As well as other
 games and maybe some emotes??" Built by the flair session (a side session of the main session).
@@ -25,18 +25,32 @@ rule), effect parts never collide, low flashes, quiet colours.
 
 ## Kill effects (`shared/Flair.luau` "kill", drawn by `client/KillFx.luau`)
 
+Since the same afternoon (the owner via the main session) the set is the **web game's own twelve** (`shared/cosmetics.js`
+`COSMETICS.kill`: same ids, names, rarities), restyled to the serious look (no text anywhere, no gore), with the five
+built from the Rivals research beside them. Free: Gibs, Confetti, Dissolve; the rest roll from the Duffel Bag.
+
 | id | name | rarity | s | what plays |
 |---|---|---|---|---|
-| none | Default | free | - | the body falls apart (unchanged) |
+| none | Gibs | free | - | the body falls apart, as it always has (no blood) |
+| confetti | Confetti | free | 1.3 | a white pop, then paper confetti (cream, amber, slate, clay) flutters down |
 | dissolve | Dissolve | free | 1.3 | washes pale, comes apart from the feet up into fine motes that drift up |
-| shatter | Shatter | free | 1.0 | glazes like ice for a beat, then breaks into ~28 glass wedges and glints |
+| grave | Tombstone | common | 1.5 | the body sinks into the floor as a plain stone marker (no words) rises where it stood, then both go |
+| cash | Make It Rain | common | 1.4 | the body pops into 22 plain paper notes (no print) that drift down |
+| pixel | Missing Texture | rare | 1.2 | flickers, breaks into small near-black and muted-magenta cubes that drift and blink out |
+| balloon | Balloons | rare | 1.5 | five plain balloons tie on and the body floats up 6.5 studs, fading |
+| shatter | Shatter | rare | 1.0 | glazes like ice for a beat, then breaks into ~28 ice wedges and glints |
 | ember | Ember | rare | 1.4 | chars dark with a glowing orange edge, burns away from the head down into embers and ash |
-| ink | Ink | epic | 1.2 | floods solid black, bursts into heavy ink blots and droplets that fall |
-| ascend | Ascend | epic | 1.5 | a soft shaft of warm light (top 2.6 studs over the head) gathers; the body glows, lifts 1.6 studs and goes up as motes (the web game's legendary "Ascend", made quiet) |
-| static | Static | legendary | 1.0 | flickers, jitters and slices like a lost signal, then snaps out to a point |
+| chicken | Chickens | epic | 1.5 | a soft pop of feathers; three small chunky chickens scatter and run off |
+| bsod | Blue Screen | epic | 1.2 | a flat blue panel (blank bars, a filling bar) replaces the body, then switches off like an old monitor |
+| yeet | Yeet | epic | 1.3 | launched straight up, spinning, a dotted streak under it, a glint high above |
+| ink | Ink | epic | 1.2 | floods solid black, bursts into blots, flakes and droplets that fall |
+| static | Static | epic | 1.0 | flickers, jitters and slices like a lost signal, then snaps out to a point |
+| ascend | Ascend | legendary | 1.5 | a soft shaft of warm light (top 2.6 studs over the head) gathers; the body glows, lifts and goes up as motes |
+| duck | Big Duck | legendary | 1.5 | a big rubber duck (round pieces, the game's duck yellow) drops on the body, squashes, gulps, shrinks away |
+| blastzone | Blast Zone | legendary | 1.0 | a white-hot flash and shock ring; the body is knocked clean away from the killer, spinning, out of sight |
 
-All drawn from the VFX pipeline's approved sprites (glow, sparkle, chips, dust 4x4, lumps 4x4, spark, ring, tracer):
-no new uploads. Particle `Size` is half the width (VFX-PIPELINE.md).
+All drawn from the VFX pipeline's approved sprites (glow, sparkle, chips, dust 4x4, lumps 4x4, spark, ring, tracer,
+feather) and plain client parts (stone, notes, cubes, balloons, chickens, the duck): no new uploads. Particle `Size` is half the width (VFX-PIPELINE.md).
 
 How it works:
 - **Server** (`server/FlairServer.server.luau`, hooked on `Fight.onKill`): the killer must be a player, not the victim;
@@ -104,8 +118,8 @@ front of you and plays what you point at, on a loop (a ViewportFrame can't draw 
 
 ## Owning and saving
 
-- **Owned**: the loot save's (`Loot.owns(p, "kill" | "emote", id)`, bare ids like card looks). Free: kill
-  none / dissolve / shatter; emote wave / salute. The rest roll from the Duffel Bag and sell in the shop (the loot and
+- **Owned**: the loot save's (`Loot.owns(p, "kill" | "emote" | "grapple", id)`, bare ids like card looks). Free: kill
+  none / confetti / dissolve; emote wave / salute; grapple rope. The rest roll from the Duffel Bag and sell in the shop (the loot and
   shop sessions wire `Shared.Flair` into LootTable and Shop the way they read CardStyles: `TYPES`, `info`, `ORDER`,
   `CONTAINER = "bag"`, `forSale`, `picture`).
 - **Worn**: FlairServer's own session-locked store `JankfireFlair_v1` (Profiles.luau): `{ v = 1, kill, emotes = { 8 } }`.
