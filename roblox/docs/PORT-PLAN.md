@@ -988,6 +988,17 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - Side by side on his avatar against the generated sway (132873393676097), the mocap looked more natural. On the floor for all three: feet within 0.1.
   - `Idle` now takes a comma-separated list: the first plays most of the time, and after it one of the others about one loop in three (`SOMETIMES = 0.35`), then back. In Play: 105 > 788 > 105, crossfading.
   - Photo: `roblox/docs/training/shopkeeper_mocap_compare.jpg` (generated sway, idle 1, idle 2 at two moments, then him in the shop).
+- **17 Nov: the back lot's EXIT leads down to a basement (place version 653).** The owner: the EXIT door "seemly leads no where, can it be like a basement section?"
+  - `T.BASEMENT` (TrainingV2): the façade's door (x 52..64), the stairwell (`well`: x 52..78, z -8300..-8290, up to 252), the basement floor 226.4 and its room (x 40..78, z -8288..-8262, ceiling 234.9) under the range's far terrace.
+  - range() cuts the well out of the Backstop, the RangeEnd wall (the door's hole) and Terrace2. `T.ZONE` now starts at y 220.
+  - TrainingLot `basement()` builds the rest:
+    - a landing behind the door, then 16 steps running down east, solid to the bottom, a handrail on each wall, two caged lamps
+    - an opening at the foot into the room: pipes on brackets, a boiler with a flue, a tank, shelves of crates, a fuse box, three caged lamps
+    - the way out: a door in a niche in the west wall, EXIT over it, with the LotExit trigger (back on the muster's spawns), replacing the old recess trigger
+  - Below the hall's floors (236) it has walls of its own, all 2 thick.
+  - Checks: the hall sealed (1482 rays from 57 points, now including the stairwell's foot and the basement; 0 leaks). Head room 0 within 0.6. The lot closed in (0 leaks). ZFight 1 visible pair (the old kit target).
+  - Trap: a solid block's footprint is not the only thing in a hollow. The first build left Terrace2 (236..248) filling the stairwell; T.check's head-room line caught it ("Terrace2 within 1.0, floor 230.6").
+  - Photos: `roblox/docs/training/basement_sheet.jpg` (the doorway from the lot, the stairs, the basement, the way out).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.

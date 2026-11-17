@@ -96,7 +96,7 @@ function L.import(): string
 end
 
 -- ---------------------------------------------------------------- helpers on top of TrainingV2's build context B
-local B, P, LOT
+local B, P, LOT, TV
 local function blk(name, x0, x1, y0, y1, z0, z1, hex, o) return B.blk("LotShell", name, x0, x1, y0, y1, z0, z1, hex, o) end
 local function deco(name, x0, x1, y0, y1, z0, z1, hex, o)
 	local t = table.clone(o or {}); t.ghost = true
@@ -351,6 +351,112 @@ local function garage()
 end
 
 -- ---------------------------------------------------------------- the loading bay and the façade the lot sees
+-- ---------------------------------------------------------------- the basement behind the EXIT door (T.BASEMENT)
+-- (17 Nov, the owner: the EXIT door "seemly leads no where, can it be like a basement section?") a landing behind the
+-- door, sixteen steps cut into the range's backstop running down east (a handrail on each wall, two caged lamps), and at
+-- their foot an opening north into the basement under the range's far terrace: pipes along its ceiling on brackets, a
+-- boiler with its flue and a squat tank, shelves of crates, a fuse box, caged lamps. its far door, in the west wall, is
+-- the way out (LotExit: back on the muster's spawns, as the old door did). below the hall's floors (236) it has walls
+-- of its own; everything bounding it is solid and 2 thick (T.check's seal test has points in it)
+local function cagedLamp(x, y, z, range, bright)
+	B.drum("LotScenery", "CagedLampBase", x, z, y - 0.3, y, 1.6, P.slate, { ghost = true })
+	B.drum("LotScenery", "CagedLampBulb", x, z, y - 1.2, y - 0.3, 0.9, P.warm, { ghost = true, mat = NEON })
+	for k = 0, 3 do
+		local a = k * math.pi / 2 + math.pi / 4
+		local cx, cz = x + math.cos(a) * 0.62, z + math.sin(a) * 0.62
+		deco("CagedLampBar", cx - 0.06, cx + 0.06, y - 1.4, y - 0.3, cz - 0.06, cz + 0.06, P.slate)
+	end
+	deco("CagedLampRing", x - 0.7, x + 0.7, y - 1.5, y - 1.4, z - 0.7, z + 0.7, P.slate)
+	B.lamp(x, y - 1.7, z, "point", range, bright, P.warm)
+end
+local function basement(BS)
+	local W, R, FL = BS.well, BS.room, BS.floor
+	local LOW = FL - 2 -- (the bottom of everything: solid down to here)
+	local N = 16
+	local xs = W.x0 + 4 -- (the landing behind the door, then the first step)
+	local rise = (G - FL) / N
+	local run = (W.x1 - 6 - W.x0 - 4) / N -- (the steps stop 6 short of the east wall: the foot's landing)
+	local xf = xs + N * run
+	-- the landing, the steps and the foot, each solid down to LOW
+	blk("WellLanding", W.x0, xs, LOW, G, W.z0, W.z1, P.floor2)
+	for i = 0, N - 1 do
+		local xa = xs + i * run
+		local top = G - rise * (i + 1)
+		blk("WellStep", xa, xa + run, LOW, top, W.z0, W.z1, P.floor2)
+		deco("WellStepEdge", xa + run - 0.3, xa + run, top, top + 0.04, W.z0 + 0.4, W.z1 - 0.4, P.trim)
+	end
+	blk("WellFoot", xf, W.x1, LOW, FL, W.z0, W.z1, P.floor2)
+	-- a handrail on each wall, 3 over the steps' edges, on brackets
+	local len = math.sqrt((N * run) ^ 2 + (G - FL) ^ 2)
+	local ang = math.atan2(G - FL, N * run)
+	local mid = (W.z0 + W.z1) / 2
+	for _, z in { W.z0 + 0.45, W.z1 - 0.45 } do
+		part("WellRail", CF(xs + N * run / 2, (G + FL) / 2 + 3, z) * CFrame.Angles(0, 0, -ang), V3(len, 0.35, 0.35), P.trim, { cyl = true })
+		for k = 0, 3 do
+			local x = xs + (k + 0.5) * N * run / 4
+			local y = G - (x - xs) * (G - FL) / (N * run) + 3
+			blk("WellRailBracket", x - 0.15, x + 0.15, y - 0.3, y + 0.05, z, if z < mid then W.z0 else W.z1, P.slate)
+		end
+	end
+	cagedLamp(W.x0 + 3, W.top - 0.1, mid, 24, 0.7)
+	cagedLamp(W.x1 - 3, W.top - 0.1, mid, 30, 0.7)
+	-- below the hall's floors: walls of its own round the well and the basement
+	blk("WellWallS", W.x0 - 2, W.x1 + 2, LOW, 236, W.z0 - 2, W.z0, P.pier2)
+	blk("BaseWallE", W.x1, W.x1 + 2, LOW, 236, W.z0 - 2, R.z1 + 2, P.pier2)
+	blk("BaseWallS", R.x0 - 2, xf, LOW, 236, W.z1, R.z0, P.pier2) -- (open at the foot: the way in)
+	blk("BaseWallN", R.x0 - 2, W.x1 + 2, LOW, 236, R.z1, R.z1 + 2, P.pier2)
+	blk("BaseFloor", R.x0, R.x1, LOW, FL, R.z0, R.z1, P.floor2)
+	blk("BaseCeiling", R.x0, R.x1, R.ceil, 235.9, R.z0, R.z1, P.ceil)
+	deco("BaseSkirt", R.x0, R.x1, FL, FL + 1, R.z1 - 0.1, R.z1, P.slate)
+	deco("BaseSkirt", R.x0, xf, FL, FL + 1, R.z0, R.z0 + 0.1, P.slate)
+	-- the way out: a door 6 wide in a niche in the west wall, EXIT over it
+	local DZ0, DZ1, DH = -8279, -8273, FL + 6.6
+	local NX = R.x0 - 2
+	wallZ("BaseWallW", R.z0 - 2, R.z1 + 2, LOW, 236, NX, R.x0, P.pier2, { { DZ0, DZ1, FL, DH } })
+	blk("ExitNicheFloor", NX - 3.4, NX, LOW, FL, DZ0 - 2, DZ1 + 2, P.floor2)
+	blk("ExitNicheTop", NX - 3.4, NX, DH, 236, DZ0 - 2, DZ1 + 2, P.pier2)
+	blk("ExitNicheBack", NX - 3.4, NX - 2.4, FL, DH, DZ0 - 2, DZ1 + 2, P.pier2)
+	blk("ExitNicheSide", NX - 2.4, NX, FL, DH, DZ0 - 2, DZ0, P.pier2)
+	blk("ExitNicheSide", NX - 2.4, NX, FL, DH, DZ1, DZ1 + 2, P.pier2)
+	blk("ExitLeaf", NX - 2.4, NX - 2.1, FL, DH, DZ0, DZ1, P.dark)
+	deco("ExitPushBar", NX - 2.1, NX - 1.85, FL + 3.4, FL + 3.8, DZ0 + 0.8, DZ1 - 0.8, P.trim)
+	blk("ExitJamb", R.x0, R.x0 + 0.4, FL, DH + 0.4, DZ0 - 0.8, DZ0, P.slate)
+	blk("ExitJamb", R.x0, R.x0 + 0.4, FL, DH + 0.4, DZ1, DZ1 + 0.8, P.slate)
+	blk("ExitHead", R.x0, R.x0 + 0.4, DH, DH + 0.4, DZ0, DZ1, P.slate)
+	sign("WordBaseEXIT", { { "EXIT", P.amber, "B", 1 } }, 3.6, 1.0, R.x0 + 0.25, DH + 0.95, (DZ0 + DZ1) / 2, V3(R.x0 + 50, 0, (DZ0 + DZ1) / 2), { plate = P.board, thick = 0.2 })
+	B.trigger("LotExit", NX - 2.1, R.x0 + 0.6, FL, DH - 0.4, DZ0 + 0.4, DZ1 - 0.4, { Land = "@TrainSpawns", Say = "BACK INSIDE" })
+	-- pipes along the ceiling on brackets
+	for _, pp in { { R.z1 - 1.6, 1.4, C.slateC }, { R.z1 - 3.4, 1.0, P.pier }, { R.z1 - 4.9, 0.8, C.drum } } do
+		part("BasePipe", CF((R.x0 + R.x1) / 2, R.ceil - 1.1, pp[1]), V3(R.x1 - R.x0, pp[2], pp[2]), pp[3], { cyl = true })
+	end
+	for x = R.x0 + 4, R.x1 - 2, 8 do blk("BasePipeBracket", x - 0.2, x + 0.2, R.ceil - 1.9, R.ceil, R.z1 - 5.6, R.z1 - 0.6, C.housing) end
+	-- the boiler and its flue, a squat tank by it
+	local bx, bz = R.x1 - 7, R.z1 - 9
+	B.drum("LotShell", "BoilerBase", bx, bz, FL, FL + 0.6, 6.6, P.slate)
+	B.drum("LotShell", "Boiler", bx, bz, FL + 0.6, FL + 6.4, 6, C.housing)
+	B.drum("LotShell", "BoilerCap", bx, bz, FL + 6.4, FL + 7, 6.4, P.trim)
+	B.drum("LotShell", "BoilerFlue", bx, bz, FL + 7, R.ceil, 1.2, C.slateC)
+	part("BoilerDial", CF(bx - 3.02, FL + 3.6, bz), V3(0.12, 1.3, 1.3), P.pale, { cyl = true, ghost = true })
+	B.drum("LotShell", "Tank", R.x1 - 16, R.z1 - 4.5, FL, FL + 4.6, 4.2, C.warmC)
+	B.drum("LotShell", "TankCap", R.x1 - 16, R.z1 - 4.5, FL + 4.6, FL + 5, 4.4, P.trim)
+	-- shelves of crates along the north wall
+	local sx0, sx1, sz0, sz1 = R.x0 + 2, R.x0 + 16, R.z1 - 2.6, R.z1
+	for _, x in { sx0, (sx0 + sx1) / 2 - 0.2, sx1 - 0.4 } do blk("ShelfPost", x, x + 0.4, FL, FL + 7.4, sz0, sz1, P.slate) end
+	local boards = { FL + 1.2, FL + 3.8, FL + 6.4 }
+	for _, y in boards do blk("ShelfBoard", sx0, sx1, y - 0.3, y, sz0, sz1, P.pier2) end
+	for _, c in { { 0.6, 3.6, 1, 2.2, C.warmC }, { 4.2, 6.4, 1, 1.8, C.sand }, { 7.6, 10.8, 1, 2.2, C.slateC }, { 11.4, 13.4, 1, 1.6, C.warmC },
+		{ 1, 4, 2, 2, C.sand }, { 8.2, 12.6, 2, 2.1, C.warmC }, { 0.8, 2.8, 3, 1.4, C.slateC }, { 9, 12, 3, 1.6, C.sand } } do
+		local y = boards[c[3]]
+		blk("ShelfCrate", sx0 + c[1], sx0 + c[2], y, y + c[4], sz0 + 0.3, sz1 - 0.1, c[5])
+	end
+	-- a fuse box on the south wall, its conduit up to the ceiling
+	blk("FuseBox", R.x0 + 18, R.x0 + 21.5, FL + 1.8, FL + 5.4, R.z0, R.z0 + 0.8, C.housing)
+	deco("FuseBoxDoor", R.x0 + 18.3, R.x0 + 21.2, FL + 2.1, FL + 5.1, R.z0 + 0.8, R.z0 + 0.86, C.inset)
+	blk("FuseConduit", R.x0 + 19.5, R.x0 + 20, FL + 5.4, R.ceil, R.z0, R.z0 + 0.5, C.slateC)
+	-- caged lamps along the room
+	for _, x in { R.x0 + 8, R.x0 + 20, R.x0 + 32 } do cagedLamp(x, R.ceil, (R.z0 + R.z1) / 2 - 4, 18, 0.55) end -- (south of the middle: clear of the boiler)
+end
+
 local function bay(beacon)
 	local Y = L.DOOR.y0
 	local BX, Z0, Z1, TOP = L.BAY.x, L.BAY.z0, L.BAY.z1, L.BAY.top
@@ -457,13 +563,12 @@ local function bay(beacon)
 	for _, sp in { { -44, -36 }, { 36, 44 } } do
 		B.ramp("LotShell", "TerraceRamp", "z", -8352, G, -8336, TT, sp[1], sp[2], C.conc, { thick = 2 })
 	end
-	-- the exit: a door in a recess beside the portal, EXIT over it; walk in and you are back on the muster's spawns
-	blk("ExitBack", exitX0, exitX1, G, G + 12, F.z0, F.z0 - 0.6, P.slate)
+	-- the exit: a door beside the portal, EXIT over it, down to the basement and out by its far door (basement)
 	blk("ExitFloor", exitX0, exitX1, G - 1, G, F.z0, F.z1, P.floor2)
 	B.put("tv_frameMid", CF((exitX0 + exitX1) / 2, G, F.z1 - 0.6) * CFrame.Angles(0, math.pi, 0), { name = "ExitFrame" }).Parent = B.root.LotScenery
 	sign("WordEXIT", { { "EXIT", P.amber, "B", 1 } }, 7, 1.7, (exitX0 + exitX1) / 2, G + 16.4, F.z1 - 1.2, V3((exitX0 + exitX1) / 2, 0, -9000), { plate = P.board, thick = 0.2 })
 	B.lamp((exitX0 + exitX1) / 2, G + 11, F.z1 - 3, "point", 14, 0.6, P.warm)
-	B.trigger("LotExit", exitX0 + 0.5, exitX1 - 0.5, G, G + 11, F.z0 - 0.6, F.z1 + 0.3, { Land = "@TrainSpawns", Say = "BACK INSIDE" })
+	basement(TV.BASEMENT)
 	-- the board: where everything is, on two posts on the terrace, facing the portal (judge round 3: on the façade it
 	-- faced the lot, so whoever read it had its left and right the wrong way round)
 	sign("LotBoard", {
@@ -1126,7 +1231,7 @@ end
 
 -- ---------------------------------------------------------------- build (called by TrainingV2.build with its context)
 function L.build(b, T): string
-	B, P = b, T.P
+	B, P, TV = b, T.P, T
 	local root = B.root
 	for _, n in { "LotShell", "LotScenery" } do folderIn(root, n) end
 	LOT = folderIn(root, "Lot")

@@ -78,7 +78,14 @@ T.SPAWNS = { { -12.5, -8111.5 }, { -15.5, -8117.5 }, { -11.5, -8132 }, { 12.5, -
 -- the far corners of the live-fire end, past the 30 m line)
 T.DUMMIES = { Dummy = { 0, 239, -8206 }, Plinker = { -17, 245.2, -8240 }, Plinker2 = { 17, 245.2, -8240 }, Stand1 = { -7, 239, -8173.5 }, Stand2 = { 7, 239, -8173.5 } } -- (the standing two just before the 10 m line, their rings clear of it)
 T.LIVE = { line = -8223 } -- the live-fire end: everything south of this line (the stage, the door)
-T.ZONE = { -94, 86, 232, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier)
+T.ZONE = { -94, 86, 220, 312, -8092, -8308 } -- x0, x1, y0, y1, z0, z1 (the hall: its barrier; down to 220 for the basement)
+-- the back lot's way down (17 Nov, the owner: the lot's EXIT door "seemly leads no where, can it be like a basement
+-- section?"): the façade's opening (door, x) leads onto a landing at the top of a stairwell cut into the range's
+-- backstop (well: range() leaves it out of the backstop and the end wall); the stairs run down east to floor, and the
+-- basement (room) lies under the range's far terrace (its underside is 236). TrainingLot builds the stairs, the
+-- basement, its things and its way out
+T.BASEMENT = { door = { 52, 64 }, well = { x0 = 52, x1 = 78, z0 = -8300, z1 = -8290, top = 252 }, floor = 226.4,
+	room = { x0 = 40, x1 = 78, z0 = -8288, z1 = -8262, ceil = 234.9 } }
 T.FACE = -8300                                 -- the hall's back since push 10: the inside of the back lot's facade
 T.LOT = { -186, 186, 440, -8734 }              -- the back lot: x0, x1, its lid, its far end (the zone takes it in)
 -- head room (16 Nov, the hold session: strafing into the yard's console put your eye 0.6 from its top, which then filled
@@ -759,7 +766,9 @@ local function range(B)
 	B.blk("Shell", "Deck", RX0, RX1, 236, DECK, RZ0, DECK_Z, P.floor)
 	B.blk("Shell", "Lane", RX0, RX1, 236, Y0, DECK_Z, T1Z, P.floor)
 	B.blk("Shell", "Terrace1", RX0, RX1, 236, 244, T1Z, T2Z, P.floor)
-	B.blk("Shell", "Terrace2", RX0, RX1, 236, 248, T2Z, RZ1, P.floor)
+	-- (the second terrace stops short of the basement's stairwell, T.BASEMENT.well, cut into the backstop over it)
+	B.blk("Shell", "Terrace2", RX0, RX1, 236, 248, T2Z, T.BASEMENT.well.z1, P.floor)
+	B.blk("Shell", "Terrace2", RX0, T.BASEMENT.well.x0, 236, 248, T.BASEMENT.well.z1, RZ1, P.floor)
 	B.blk("Shell", "EdgeFace", RX0, RX1, Y0, DECK - 0.6, DECK_Z - 0.05, DECK_Z - 0.15, P.slate, { ghost = true })
 	B.blk("Shell", "EdgeCap", RX0, RX1, DECK - 0.6, DECK + 0.05, DECK_Z + 0.3, DECK_Z - 0.35, P.trim)
 	-- each terrace: a darker face and a thick rounded nose along its edge (open at the side steps)
@@ -797,7 +806,12 @@ local function range(B)
 	B.blk("Shell", "RangeWallW", RX0 - 4, RX0, MY + 12, RTOP_W, MZ + PASS, MZ - PASS, P.wall)
 	B.blk("Shell", "RangeWallE", RX1, RX1 + 4, 236, RTOP, RZ0 + 4, RZ1 - 4, P.wall)
 	B.blk("Shell", "RangeBack", RX0 - 4, RX1 + 4, 236, RTOP, RZ0 + 4, RZ0, P.wall)
-	B.blk("Shell", "RangeEnd", RX0 - 4, RX1 + 4, 236, RTOP, RZ1, RZ1 - 4, P.wall)
+	-- (the end wall has the lot's exit door in it: T.BASEMENT.door, up to the well's top)
+	local BD, BW = T.BASEMENT.door, T.BASEMENT.well
+	B.blk("Shell", "RangeEnd", RX0 - 4, BD[1], 236, RTOP, RZ1, RZ1 - 4, P.wall)
+	B.blk("Shell", "RangeEnd", BD[2], RX1 + 4, 236, RTOP, RZ1, RZ1 - 4, P.wall)
+	B.blk("Shell", "RangeEnd", BD[1], BD[2], BW.top, RTOP, RZ1, RZ1 - 4, P.wall)
+	B.blk("Shell", "RangeEnd", BD[1], BD[2], 236, 239, RZ1, RZ1 - 4, P.wall) -- (under the lot's threshold, ExitFloor 239..240)
 	for _, sx in { RX0, RX1 } do
 		B.part("Shell", "WallCut", CF(sx, if sx == RX0 then RTOP_W else RTOP, (RZ0 + RZ1) / 2) * CFrame.Angles(0, 0, math.rad(45)), V3(2.83, 2.83, math.abs(RZ1 - RZ0)), P.wall2)
 	end
@@ -1141,7 +1155,11 @@ local function range(B)
 	-- (rework 4: one thick slate backstop the full width, its top edge cut, the big target in a round recess on it, and
 	-- a hood over the end, so the lane ends under cover)
 	local BZ = -8288
-	B.blk("Shell", "Backstop", RX0, RX1, 236, 274, BZ, RZ1, P.pier2)
+	-- (the stairwell down to the basement is a hollow in it: T.BASEMENT.well)
+	local W = T.BASEMENT.well
+	B.blk("Shell", "Backstop", RX0, W.x0, 236, 274, BZ, RZ1, P.pier2)
+	B.blk("Shell", "Backstop", W.x0, RX1, 236, 274, BZ, W.z1, P.pier2)
+	B.blk("Shell", "Backstop", W.x0, RX1, W.top, 274, W.z1, RZ1, P.pier2)
 	B.part("Shell", "BackstopCut", CF((RX0 + RX1) / 2, 274, BZ) * CFrame.Angles(math.rad(45), 0, 0), V3(RX1 - RX0, 2.83, 2.83), P.pier2)
 	B.part("Scenery", "TargetRim", CF(54, 261, BZ + 0.05) * CFrame.Angles(0, math.pi / 2, 0), V3(0.1, 26.6, 26.6), P.litEdge, { cyl = true, ghost = true, mat = NEON })
 	B.part("Shell", "TargetRecess", CF(54, 261, BZ + 0.15) * CFrame.Angles(0, math.pi / 2, 0), V3(0.3, 25, 25), P.recess, { cyl = true })
@@ -1756,6 +1774,7 @@ function T.check(stage): string
 		S5:PointToWorldSpace(V3(0, MY + 4, -(A + WALL + 3))), V3(26, MY + 4, MZ), V3(-26, MY + 4, MZ),
 		V3(54, DECK + 4, -8125), V3(54, DECK + 14, -8125), V3(54, Y0 + 4, -8170), V3(40, 252, -8270), V3(68, 266, -8240),
 		V3(-58, Y0 + 4, -8120), V3(-40, Y0 + 4, -8200), V3(-80, 274, -8225), V3(-58, 286, -8166), V3(-50, 280, -8130),
+		V3(72, 238, -8295), V3(48, 230, -8275), V3(70, 230, -8270), -- (the stairwell's foot and the basement; rays from the stairs' top would go out the door onto the lot)
 	}
 	for _, z in { -8154, -8186, -8218, -8250 } do
 		for _, x in { -16, 0, 16 } do for _, y in { Y0 + 4, 252, 262 } do table.insert(pts, V3(x, y, z)) end end
