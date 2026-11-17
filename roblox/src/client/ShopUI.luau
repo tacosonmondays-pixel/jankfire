@@ -624,6 +624,68 @@ UI.close.face.TextXAlignment = Enum.TextXAlignment.Left
 new("UIPadding", { PaddingLeft = UDim.new(0, 14) }, UI.close.face)
 UI.close.face.MouseButton1Click:Connect(function() ShopUI.close() end)
 
+-- the quests' wallet (the quests session's Brass and Crate Tickets, roblox/docs/QUESTS.md section 6): the player
+-- attributes Brass and CrateTickets, which its server keeps. shown in the header (under the pill on a computer, in its
+-- place on a phone), with its icons (QuestUI.icon, drawn from frames). a container can be redeemed with them
+-- (Shop.redeemPrice; JankfireRemotes.Quests "redeem" puts one in stock, then it opens as usual)
+local Purse = {}
+function Purse.has(): boolean return me:GetAttribute("Brass") ~= nil or me:GetAttribute("CrateTickets") ~= nil end
+function Purse.of(cur: string): number return tonumber(me:GetAttribute(if cur == "tix" then "CrateTickets" else "Brass")) or 0 end
+function Purse.remote(): RemoteFunction?
+	local f = ReplicatedStorage:FindFirstChild("JankfireRemotes")
+	local r = f and f:FindFirstChild("Quests")
+	return if r and r:IsA("RemoteFunction") then r else nil
+end
+-- a container can be redeemed here: it has a price in tickets or Brass and the quests server is up
+function Purse.price(cid: string): { tix: number?, brass: number? }?
+	if not Purse.remote() or not Purse.has() then return nil end
+	return Shop.redeemPrice(cid)
+end
+-- "12 TICKETS" / "1 TICKET" / "2,500 BRASS"
+function Purse.words(cur: string, n: number): string
+	if cur == "tix" then return commas(n) .. (if n == 1 then " TICKET" else " TICKETS") end
+	return commas(n) .. " BRASS"
+end
+-- the quests' icon for "brass" / "tix" in a frame (false: QuestUI isn't there, the words say it instead)
+function Purse.icon(kind: string, parent: GuiObject, size: number): boolean
+	local m = script.Parent:FindFirstChild("QuestUI")
+	if not (m and m:IsA("ModuleScript")) then return false end
+	local ok, Q = pcall(require, m)
+	if not ok or type(Q) ~= "table" or type((Q :: any).icon) ~= "function" then return false end
+	return (pcall((Q :: any).icon, kind, parent, size))
+end
+function Purse.draw()
+	if not UI.purse then
+		UI.purse = new("Frame", { Name = "Purse", BackgroundColor3 = T.BG, BackgroundTransparency = 1, BorderSizePixel = 0, AutomaticSize = Enum.AutomaticSize.X,
+			Size = UDim2.fromOffset(0, 22), Visible = false }, UI.top)
+		T.corner(UI.purse)
+		UI.purseEdge = T.edge(UI.purse)
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 5), VerticalAlignment = Enum.VerticalAlignment.Center,
+			SortOrder = Enum.SortOrder.LayoutOrder }, UI.purse)
+		UI.pursePad = new("UIPadding", {}, UI.purse)
+		UI.purseBits = {}
+		for i, cur in { "brass", "tix" } do
+			if i == 2 then new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(6, 1), LayoutOrder = 2 }, UI.purse) end
+			local ic = new("Frame", { Name = cur, BackgroundTransparency = 1, Size = UDim2.fromOffset(18, 18), LayoutOrder = i * 3 - 2 }, UI.purse)
+			local drawn = Purse.icon(cur, ic, 18)
+			ic.Visible = drawn
+			local l = txt(UI.purse, "", 14, T.TEXT, T.FONT_BOLD)
+			l.TextTruncate = Enum.TextTruncate.None; l.AutomaticSize = Enum.AutomaticSize.X
+			l.Size = UDim2.fromOffset(0, 22); l.LayoutOrder = i * 3 - 1
+			UI.purseBits[cur] = { label = l, drawn = drawn }
+		end
+	end
+	for cur, b in UI.purseBits do
+		local n = Purse.of(cur)
+		b.label.Text = if b.drawn then commas(n) else Purse.words(cur, n)
+	end
+end
+-- its width on a phone's top row (a guess before it's drawn: the numbers' lengths)
+function Purse.width(): number
+	if UI.purse and UI.purse.AbsoluteSize.X > 4 then return UI.purse.AbsoluteSize.X / S.scale end
+	return 150
+end
+
 -- the pages, one per tab, all in the same box under the top
 UI.body = new("Frame", { Name = "Body", BackgroundTransparency = 1 }, UI.stage)
 UI.pages = {}
@@ -980,6 +1042,15 @@ function ShopUI.fillContainers()
 		local hv = txt(c, if have > 0 then "YOU HAVE " .. have else "", 12, T.SOFT, T.FONT_BOLD)
 		hv.Position = UDim2.new(0, pad, 1, if k then -100 else -116); hv.Size = UDim2.new(0.5, 0, 0, 16)
 		hv.Visible = not k
+		-- (what it redeems for with the quests' wallet, on the same line, right: "OR 6 TICKETS · 2,500 BRASS")
+		local rp = Purse.price(o.id)
+		if rp and not k then
+			local bits = {}
+			if rp.tix then table.insert(bits, Purse.words("tix", rp.tix)) end
+			if rp.brass then table.insert(bits, Purse.words("brass", rp.brass)) end
+			local rl = txt(c, "OR " .. table.concat(bits, "  ·  "), 12, T.SOFT, T.FONT_BOLD, Enum.TextXAlignment.Right)
+			rl.Position = UDim2.new(0.3, 0, 1, -116); rl.Size = UDim2.new(0.7, -pad, 0, 16)
+		end
 		-- two rows of 44-tall buttons: ODDS and the x1 / x5 / x10 picker; then OPEN (only with some in stock) and CLAIM
 		local bh = 44 -- (a touch target)
 		local n = S.count[o.id] or 1
@@ -999,7 +1070,7 @@ function ShopUI.fillContainers()
 		local word = if n > 1 then "  x" .. n else ""
 		if bs == "soon" then buy.set("COMING SOON", false)
 		elseif bs == "empty" then buy.set("YOU HAVE IT ALL", false)
-		elseif S.restricted and not Shop.free() then buy.set("NOT AVAILABLE HERE", false)
+		elseif S.restricted and not Shop.free() then if Purse.price(o.id) then buy.set("REDEEM", true) else buy.set("NOT AVAILABLE HERE", false) end
 		else buy.set((if Shop.free() then "CLAIM" else "BUY") .. word .. "  " .. priceText(o.robux * n), true) end
 		buy.face.MouseButton1Click:Connect(function() ShopUI.ask(o.id) end)
 		c.MouseButton1Click:Connect(function() ShopUI.inspect(o.id) end)
@@ -1296,7 +1367,7 @@ function ShopUI.fillInspect()
 		UI.inspBlurb.Text = o.blurb
 		for i, it in Shop.vipItems() do listRow(it, i, o) end
 		local vip = isVip()
-		UI.inspNote.Text = if vip then "you're VIP. the VIP room in the hub is open to you" else "and the VIP room in the hub"
+		UI.inspNote.Text = if vip then "you're VIP. the VIP room in the hub is open to you: see Trisangle daily" else "and the VIP room in the hub, with a daily reward"
 		UI.inspBuy.set(if vip then "YOU'RE VIP"
 			elseif Shop.free() then "GET VIP  ·  FREE WHILE TESTING"
 			else "GET VIP  " .. ROBUX .. " " .. commas(o.robux), not vip and (Shop.free() or (Shop.ROBUX and (tonumber(Shop.VIP_PASS) or 0) > 0)))
@@ -1334,7 +1405,7 @@ function ShopUI.fillInspect()
 		local word = if n > 1 then "  x" .. n else ""
 		if bs == "soon" then UI.inspBuy.set("COMING SOON", false)
 		elseif bs == "empty" then UI.inspBuy.set("YOU HAVE IT ALL", false)
-		elseif S.restricted and not Shop.free() then UI.inspBuy.set("NOT AVAILABLE HERE", false)
+		elseif S.restricted and not Shop.free() then if Purse.price(o.id) then UI.inspBuy.set("REDEEM", true) else UI.inspBuy.set("NOT AVAILABLE HERE", false) end
 		else UI.inspBuy.set((if Shop.free() then "CLAIM" else "BUY") .. word .. "  " .. priceText(o.robux * n), true) end
 		ShopUI.oddsRows(UI.inspList, o.id, 24)
 	else
@@ -1471,6 +1542,33 @@ do
 	UI.cYes.face.ZIndex = 41
 	UI.cNo.face.MouseButton1Click:Connect(function() ShopUI.unconfirm() end)
 	UI.cYes.face.MouseButton1Click:Connect(function() ShopUI.commit() end)
+	-- a container: REDEEM with Crate Tickets / Brass, a row over CANCEL and BUY (only with the quests' wallet)
+	UI.cRedeem = {}
+	for _, cur in { "tix", "brass" } do
+		local b = button(UI.confirm, "", "dark", UDim2.new(0.5, -27, 0, 44), UDim2.new(0, 22, 1, -114))
+		b.face.ZIndex = 41; b.face.TextSize = 14; b.face.Visible = false
+		b.face.MouseButton1Click:Connect(function() if b.enabled then ShopUI.redeem(cur) end end)
+		UI.cRedeem[cur] = b
+	end
+end
+-- the REDEEM row for the container being confirmed: its prices, greyed where you're short. returns the height it adds
+function Purse.row(cid: string, n: number): number
+	local p = Purse.price(cid)
+	local shown = {}
+	for _, cur in { "tix", "brass" } do
+		local b = UI.cRedeem[cur]
+		local cost = p and (p :: any)[cur]
+		b.face.Visible = cost ~= nil
+		if cost then
+			b.set((if n > 1 then "REDEEM 1  ·  " else "REDEEM  ·  ") .. Purse.words(cur, cost), Purse.of(cur) >= cost)
+			table.insert(shown, b)
+		end
+	end
+	for i, b in shown do
+		if #shown == 1 then b.face.Position = UDim2.new(0, 22, 1, -114); b.face.Size = UDim2.new(1, -44, 0, 44)
+		else b.face.Position = if i == 1 then UDim2.new(0, 22, 1, -114) else UDim2.new(0.5, 5, 1, -114); b.face.Size = UDim2.new(0.5, -27, 0, 44) end
+	end
+	return if #shown > 0 then 52 else 0
 end
 function ShopUI.unconfirm()
 	S.pending = nil
@@ -1487,8 +1585,9 @@ function ShopUI.ask(id: string)
 		local bs = Till.boxState(o.id)
 		if bs == "soon" then Hud.callout("COMING SOON", 1); return end
 		if bs == "empty" then Hud.callout("YOU HAVE EVERYTHING IN IT", 1.2); return end
-		-- (where paid random items aren't allowed, a paid container isn't sold: PolicyService, the loot server's answer)
-		if S.restricted and not Shop.free() then Hud.callout("NOT AVAILABLE WHERE YOU ARE", 1.2); return end
+		-- (where paid random items aren't allowed, a paid container isn't sold: PolicyService, the loot server's answer.
+		-- it can still be redeemed with tickets or Brass, which are earned, not bought)
+		if S.restricted and not Shop.free() and not Purse.price(o.id) then Hud.callout("NOT AVAILABLE WHERE YOU ARE", 1.2); return end
 	end
 	if not Shop.onSale(id) then Hud.callout("NOT ON SALE TODAY", 1); return end
 	-- with real Robux on, Roblox's own prompt is the confirm for a fixed item. a container always comes here first:
@@ -1522,7 +1621,10 @@ function ShopUI.ask(id: string)
 	end
 	local price = if o.type == "bundle" then bundlePrice(o, Till.missing(o)) else o.robux * n
 	if free then UI.cBody.Text ..= string.format('<br/><font color="%s">free while we test. later: %s %s</font>', T.hex(T.MUTED), ROBUX, commas(price)) end
-	UI.cYes.set(if free then (if n > 1 then "CLAIM  x" .. n else "CLAIM") else "BUY  " .. ROBUX .. " " .. commas(price), canGo)
+	-- (a container: the REDEEM row, with the quests' wallet)
+	h += Purse.row(if o.type == "container" then o.id else "", n)
+	if o.type == "container" and S.restricted and not free then UI.cYes.set("NOT AVAILABLE HERE", false)
+	else UI.cYes.set(if free then (if n > 1 then "CLAIM  x" .. n else "CLAIM") else "BUY  " .. ROBUX .. " " .. commas(price), canGo) end
 	UI.confirm.Size = UDim2.fromOffset(460, h)
 	UI.confirm.Visible = true
 	ShopUI.layer()
@@ -1558,6 +1660,30 @@ function ShopUI.commit()
 	ShopUI.toast(string.upper(if o.type == "single" then Shop.itemLabel({ kind = o.kind, id = o.item, weapon = o.weapon }) else o.name)
 		.. (if cardOnly then " ADDED. WEAR IT ON YOUR PLAYER CARD" elseif flairOnly then " ADDED. PICK IT IN THE LOADOUT [L]" else " ADDED. WEAR IT FROM THE LOADOUT [L]"))
 	ShopUI.refill()
+end
+
+-- REDEEM (from the confirm panel): the quests server takes the tickets or Brass and puts one container in stock
+-- (Loot.grant, its own receipt id), then it opens from stock like any other
+function ShopUI.redeem(cur: string)
+	local id = S.pending
+	local o = id and Shop.offer(id)
+	if not o or o.type ~= "container" or S.busy then return end
+	local p = Purse.price(o.id)
+	local cost = p and (p :: any)[cur]
+	local r = Purse.remote()
+	if not cost or not r or Purse.of(cur) < cost then return end
+	ShopUI.unconfirm()
+	S.busy = true
+	local ok, res = pcall(function() return (r :: RemoteFunction):InvokeServer("redeem", o.id, cur) end)
+	S.busy = false
+	if not ok or type(res) ~= "table" or res.ok ~= true then
+		local why = if ok and type(res) == "table" and type(res.why) == "string" then res.why else "couldn't redeem it. try again"
+		Hud.callout(string.upper(why), 1.6)
+		return
+	end
+	play("click")
+	Till.refresh()
+	ShopUI.openBox(o.id, 1)
 end
 
 -- open a container you have: the till rolls it, the loot module's opening plays (the shop steps aside), then the
@@ -1628,6 +1754,21 @@ end
 for _, a in { "LootOwned", "LootStock", "VIP" } do
 	me:GetAttributeChangedSignal(a):Connect(function()
 		if S.open and not S.busy then task.defer(function() Till.refresh(); ShopUI.refill() end) end
+	end)
+end
+-- the quests' wallet changed: the header's numbers, the REDEEM buttons' grey, and the cards' prices when it first shows
+for _, a in { "Brass", "CrateTickets" } do
+	me:GetAttributeChangedSignal(a):Connect(function()
+		if not S.open then return end
+		task.defer(function()
+			local was = UI.purse ~= nil and UI.purse.Visible
+			Purse.draw()
+			if not was then ShopUI.layout(); if S.tab == "containers" then ShopUI.refill() end end
+			if UI.confirm.Visible and S.pending then
+				local o = Shop.offer(S.pending)
+				if o and o.type == "container" then Purse.row(o.id, S.pendingN or 1) end
+			end
+		end)
 	end)
 end
 
@@ -1712,8 +1853,13 @@ function ShopUI.layout()
 	local walletW = if compact then 70 else 170
 	local titleW = if compact then 78 else 190
 	local tabsW = tabW * 4 + 18
-	local showWallet = topW >= titleW + tabsW + walletW + closeW + 16
-	local showTitle = topW >= titleW + tabsW + closeW + 8
+	-- (the quests' Brass and tickets: on a phone they take the FREE pill's place, then the title goes if it must)
+	local purse = Purse.has()
+	if purse then Purse.draw() end
+	local purseW = if compact and purse then Purse.width() + 4 else 0
+	local showWallet = topW >= titleW + tabsW + walletW + closeW + 16 and not (compact and purse)
+	local showPurse = purse and (not compact or topW >= tabsW + purseW + closeW + 16)
+	local showTitle = topW >= titleW + tabsW + closeW + 8 + (if showPurse and compact then purseW + 8 else 0)
 	UI.title.Visible = showTitle; UI.rule.Visible = showTitle
 	UI.title.TextSize = if compact then 22 else 34
 	UI.title.Position = UDim2.fromOffset(0, 0); UI.title.Size = UDim2.fromOffset(160, if compact then 28 else 40)
@@ -1734,6 +1880,23 @@ function ShopUI.layout()
 	UI.wallet.AnchorPoint = Vector2.new(1, 0)
 	UI.wallet.Position = UDim2.new(1, -(closeW + 8), 0, 0)
 	UI.wallet.Size = UDim2.fromOffset(walletW, 44)
+	if UI.purse then
+		UI.purse.Visible = showPurse
+		UI.purse.AnchorPoint = Vector2.new(1, 0)
+		if compact then
+			-- (a pill like the FREE one, left of CLOSE)
+			UI.purse.Position = UDim2.new(1, -(closeW + 8), 0, 0)
+			UI.purse.Size = UDim2.fromOffset(0, 44)
+			UI.purse.BackgroundTransparency = 0.1; UI.purseEdge.Enabled = true
+			UI.pursePad.PaddingLeft = UDim.new(0, 12); UI.pursePad.PaddingRight = UDim.new(0, 12)
+		else
+			-- (a line under the pill and CLOSE, right-aligned)
+			UI.purse.Position = UDim2.new(1, -2, 0, 52)
+			UI.purse.Size = UDim2.fromOffset(0, 22)
+			UI.purse.BackgroundTransparency = 1; UI.purseEdge.Enabled = false
+			UI.pursePad.PaddingLeft = UDim.new(0, 0); UI.pursePad.PaddingRight = UDim.new(0, 0)
+		end
+	end
 	-- the body
 	local by = topY + topH + (if compact then 4 else 6)
 	local bottom = if compact then 8 else 24
@@ -1811,7 +1974,7 @@ end
 
 -- ======================================================================== tabs, refills, open / close
 function ShopUI.tab(t: string)
-	if not UI.pages[t] then return end
+	if not UI.pages[t] then t = "featured" end -- (a tab this shop doesn't have: a prompt made for a newer one)
 	if S.tab ~= t then play("click"); ShopUI.shutOverlays() end -- (a new tab: whatever panel was up goes)
 	S.tab = t
 	for k, b in UI.tabs do b.pick(k == t) end

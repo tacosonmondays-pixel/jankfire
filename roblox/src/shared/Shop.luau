@@ -71,6 +71,20 @@ function Shop.flairForSale(kind: string, id: string): boolean
 	for _, i in list do if i.id == id then return true end end
 	return false
 end
+-- the VIP daily reward's table (VipDailyData): its three daily-only things (a wrap, a hat, a weapon skin) are never
+-- sold, never in the rotation, a bundle or the VIP pack; the server pays them through Loot.grant with a hidden offer
+-- "vipdaily:<kind>:<id>" (Shop.offer; type "pass", so the loot server's "buy" refuses it)
+do
+	local m = script.Parent:FindFirstChild("VipDailyData")
+	if m and m:IsA("ModuleScript") then
+		local ok, D = pcall(require, m)
+		if ok and type(D) == "table" and type((D :: any).isExclusive) == "function" then Shop.VipDaily = D end
+	end
+end
+function Shop.dailyOnly(kind: string, id: string): boolean
+	local D = Shop.VipDaily :: any
+	return D ~= nil and D.isExclusive(kind, id) == true
+end
 -- kept under the bare id, not "<id>@<weapon>": card looks, kill effects and emotes (no gun) and weapon skins (already
 -- one gun's)
 function Shop.gunless(kind: string?): boolean return kind == "skin" or Shop.isCard(kind) or Shop.isFlair(kind) end
@@ -182,7 +196,7 @@ end
 function Shop.liveSkins(): { string }
 	local out = {}
 	if LootTable and type(LootTable.SKINS) == "table" then
-		for id in LootTable.SKINS do if Shop.skinLive(id) and not Shop.vipOnly("skin", id) then table.insert(out, id) end end
+		for id in LootTable.SKINS do if Shop.skinLive(id) and not Shop.vipOnly("skin", id) and not Shop.dailyOnly("skin", id) then table.insert(out, id) end end
 	end
 	table.sort(out)
 	return out
@@ -308,6 +322,27 @@ do
 	end
 end
 
+-- redeeming a container with the quests' currencies (the quests session's QuestData.PRICES, roblox/docs/QUESTS.md
+-- section 6): { crate = { tix = 12 }, bag = { tix = 6, brass = 2500 }, ... }; tix = Crate Tickets, brass = Brass, a
+-- missing one = that currency can't buy it (Brass never buys a Crate). the quests server takes the price and puts the
+-- container in stock (JankfireRemotes.Quests "redeem"); the shop then opens it from stock
+do
+	local m = script.Parent:FindFirstChild("QuestData")
+	if m and m:IsA("ModuleScript") then
+		local ok, Q = pcall(require, m)
+		if ok and type(Q) == "table" and type((Q :: any).PRICES) == "table" then Shop.QuestData = Q end
+	end
+end
+function Shop.redeemPrice(cid: string): { tix: number?, brass: number? }?
+	local Q = Shop.QuestData :: any
+	local p = Q and Q.PRICES[cid]
+	if type(p) ~= "table" then return nil end
+	local tix = if type(p.tix) == "number" and p.tix > 0 then p.tix else nil
+	local brass = if type(p.brass) == "number" and p.brass > 0 then p.brass else nil
+	if not tix and not brass then return nil end
+	return { tix = tix, brass = brass }
+end
+
 -- ---------------------------------------------------------------- bundles
 -- themed sets that dress several guns: every wrap and hat in a set is for one named weapon. hero = what the big
 -- preview and the hub's hologram show: one weapon wearing its wrap and hat from the set. robux is about 60% of the
@@ -357,6 +392,7 @@ if Shop.SkinSets then
 		if vipSet(sid, s) then continue end
 		local items, top, topR = {}, nil, -1
 		for _, kid in s.members do
+			if Shop.dailyOnly("skin", kid) then continue end -- (the VIP daily reward's own skin never comes in a set)
 			local w = Shop.skinWeapon(kid)
 			table.insert(items, { kind = "skin", id = kid, weapon = w })
 			local _, r = Shop.itemInfo("skin", kid)
@@ -433,11 +469,11 @@ end
 -- the singles the rotation can show (wraps and hats that are not free, not held back and not VIP)
 Shop.singlesPool = {} :: { Item }
 for _, w in Roster.wraps do
-	if w.rarity ~= "free" and not Shop.HELD_BACK[w.id] and not Shop.vipOnly("wrap", w.id) then table.insert(Shop.singlesPool, W(w.id)) end
+	if w.rarity ~= "free" and not Shop.HELD_BACK[w.id] and not Shop.vipOnly("wrap", w.id) and not Shop.dailyOnly("wrap", w.id) then table.insert(Shop.singlesPool, W(w.id)) end
 end
 for _, id in GunHatData.ORDER do
 	local h = GunHatData.HATS[id]
-	if id ~= "none" and h and h.rarity ~= "free" and not Shop.vipOnly("hat", id) then table.insert(Shop.singlesPool, H(id)) end
+	if id ~= "none" and h and h.rarity ~= "free" and not Shop.vipOnly("hat", id) and not Shop.dailyOnly("hat", id) then table.insert(Shop.singlesPool, H(id)) end
 end
 
 -- ---------------------------------------------------------------- VIP (a game pass; Vip.luau decides who has it)
@@ -445,9 +481,9 @@ end
 -- and this set, the shop's GET VIP shows Roblox's pass prompt; while the shop is free anyone can claim VIP
 Shop.VIP_PASS = 0
 Shop.vip = { id = "vip", type = "pass", name = "VIP", rarity = "vip", robux = 399, productId = nil,
-	blurb = "The Ducky pack and the VIP room.",
+	blurb = "The Ducky pack, the VIP room and a daily reward.",
 	perks = { "The Ducky pack: its weapon skins, a wrap and a hat on every gun, a card border and a title",
-		"The VIP room in the hub" } } :: any
+		"The VIP room in the hub", "A daily reward from Trisangle in the VIP room" } } :: any
 Shop.byId.vip = Shop.vip
 -- what the VIP pack holds today: every VIP thing that's in the place (it grows as they land; Vip.luau grants the new
 -- ones once). wraps and hats have no weapon: they're worn on every gun
@@ -455,7 +491,7 @@ function Shop.vipItems(): { Item }
 	local out = {}
 	if LootTable and type(LootTable.SKINS) == "table" then
 		local ids = {}
-		for id in LootTable.SKINS do if Shop.vipOnly("skin", id) and Shop.skinLive(id) then table.insert(ids, id) end end
+		for id in LootTable.SKINS do if Shop.vipOnly("skin", id) and Shop.skinLive(id) and not Shop.dailyOnly("skin", id) then table.insert(ids, id) end end
 		-- (in the VIP set's own order: its first is the top piece, the Ducky LMG; then the rarest, then by id)
 		local at: { [string]: number } = {}
 		local K = Shop.SkinSets :: any
@@ -473,8 +509,8 @@ function Shop.vipItems(): { Item }
 		end)
 		for _, id in ids do table.insert(out, { kind = "skin", id = id, weapon = Shop.skinWeapon(id) }) end
 	end
-	for _, w in Roster.wraps do if Shop.vipOnly("wrap", w.id) then table.insert(out, { kind = "wrap", id = w.id }) end end
-	for _, id in GunHatData.ORDER do if id ~= "none" and Shop.vipOnly("hat", id) then table.insert(out, { kind = "hat", id = id }) end end
+	for _, w in Roster.wraps do if Shop.vipOnly("wrap", w.id) and not Shop.dailyOnly("wrap", w.id) then table.insert(out, { kind = "wrap", id = w.id }) end end
+	for _, id in GunHatData.ORDER do if id ~= "none" and Shop.vipOnly("hat", id) and not Shop.dailyOnly("hat", id) then table.insert(out, { kind = "hat", id = id }) end end
 	if Shop.CardStyles then
 		local C = Shop.CardStyles :: any
 		for _, k in { "border", "banner", "title" } do
@@ -510,7 +546,7 @@ end
 -- "skin:<id>" (its weapon is its own: the offer carries it, the id doesn't); or one card look, "border:<id>" /
 -- "banner:<id>" / "title:<id>", kill effect "kill:<id>" or emote "emote:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
-	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) then return nil end
+	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) or Shop.dailyOnly(kind, id) then return nil end
 	if Shop.isFlair(kind) and not Shop.flairForSale(kind, id) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
 	if rarity == "free" then return nil end
@@ -526,6 +562,14 @@ function Shop.offer(id: any): Offer?
 	if type(id) ~= "string" then return nil end
 	local o = Shop.byId[id]
 	if o then return if Shop.ready(o) then o else nil end
+	-- (one of the VIP daily reward's own three: never on sale, only the server's Loot.grant takes it)
+	local dk, did = string.match(id, "^vipdaily:(%a+):([%w_]+)$")
+	if dk and did then
+		if not Shop.dailyOnly(dk, did) or not Shop.exists(dk, did) then return nil end
+		local name, rarity = Shop.itemInfo(dk, did)
+		return { id = id, type = "pass", name = name, rarity = rarity, blurb = "", robux = 0, productId = nil,
+			items = { { kind = dk, id = did, weapon = if dk == "skin" then Shop.skinWeapon(did) else nil } } }
+	end
 	local kind, item, weapon = string.match(id, "^(%a+):([%w_]+)@([%w_]+)$")
 	if kind and item and weapon and not Shop.gunless(kind) then return single(kind, item, weapon) end
 	local ck, cid = string.match(id, "^(%a+):([%w_]+)$")
@@ -536,7 +580,7 @@ end
 -- what an offer gives, each { kind, id, weapon } (a container gives itself: the loot server adds one to your stock)
 function Shop.contents(o: Offer): { Item }
 	if o.type == "bundle" then return o.items :: { Item } end
-	if o.type == "pass" then return Shop.vipItems() end
+	if o.type == "pass" then return (o.items :: { Item }?) or Shop.vipItems() end
 	if o.type == "single" then return { { kind = o.kind :: string, id = o.item :: string, weapon = o.weapon } } end
 	return {}
 end

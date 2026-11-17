@@ -15,14 +15,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Shop = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Shop"))
 local Remote = ReplicatedStorage:WaitForChild("JankfireRemotes"):WaitForChild("ShopBuy") :: RemoteEvent
 
--- VIP (a game pass, not a developer product: no receipt here) is Vip.luau's; requiring it starts it
-task.spawn(function()
-	local m = script.Parent:WaitForChild("Vip", 30)
-	if m and m:IsA("ModuleScript") then
-		local ok, err = pcall(require, m)
-		if not ok then warn("[jankfire] vip didn't start: " .. tostring(err)) end
-	end
-end)
+-- VIP (a game pass, not a developer product: no receipt here) is Vip.luau's, and its daily reward from Trisangle
+-- VipDaily.luau's; requiring them starts them
+for _, name in { "Vip", "VipDaily" } do
+	task.spawn(function()
+		local m = script.Parent:WaitForChild(name, 30)
+		if m and m:IsA("ModuleScript") then
+			local ok, err = pcall(require, m)
+			if not ok then warn("[jankfire] " .. string.lower(name) .. " didn't start: " .. tostring(err)) end
+		end
+	end)
+end
 
 local ASK_TTL = 600 -- s: how long a "this single, please" waits for its receipt
 local asked: { [string]: { offer: string, product: number, t: number } } = {} -- ("<userId>:<productId>")

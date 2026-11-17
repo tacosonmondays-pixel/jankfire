@@ -152,6 +152,125 @@ Later checks:
 - **Concept skins:** the guns session's concepts (`SkinSets.CONCEPTS`) are never on sale (`Shop.skinLive` refuses
   them).
 
+## VIP daily reward (Trisangle, 17 Nov)
+
+The owner: "If you talk to Trisangle in the vip room as long as you have vip you get a random daily reward with the best
+thing being a special wrap skin hat anddddd skin case. Bags cans coins etc will be filler rewards".
+
+- **Where:** a ProximityPrompt (E) on Trisangle's seat in the VIP room. It goes on the hub's HubNPC spot whose `Who` is
+  Trisangle, or any HubNPC part with `VipDaily = true`. Each player's prompt reads "Daily reward" when ready, "Back in
+  7h 12m" once taken, and "VIP daily reward" for a player who isn't VIP.
+- **Who:** VIP only, checked on the server (`Vip.isVip`). A press without VIP opens the shop straight onto the VIP
+  tile.
+- **When:** once a day per player; a new day starts at 00:00 UTC. A second press the same day gets "Tomorrow." from
+  her and the time left.
+- **The save:** its own session-locked profile (`Profiles.luau`, `JankfireVipDaily_v1`, `_studio` in Studio). A claim
+  writes the day and the prize before paying, so a second claim that day is refused, in this server or any other.
+- **Paying:** each prize is paid with the receipt id `vd-<userId>-<day>`, and both payers are idempotent.
+  - Brass: through the quests server (`Quests.giveBrass`).
+  - A container or one of the three daily-only items: through `Loot.grant`.
+  - If a pay fails, the prize stays pending and is paid on the next try or the next join.
+- **The prompt moves with her:** the hub walks her between the VIP room's seats and moves the prompt onto her avatar.
+  The spot keeps a `VipDailyHooked` mark, so no second prompt is made.
+- **The reveal:** Trisangle says "Here." over her head, then the loot session's `LootOpening.reward` reel plays,
+  titled DAILY REWARD, FROM TRISANGLE, with the prize's card and DONE. If that isn't in the place, a plain reel in
+  the shop's style lands on the prize instead.
+- **Files:** `src/shared/VipDailyData.luau` (the table, the roll, the odds), `src/server/VipDaily.luau` (claim, save,
+  pay, the prompt), `src/client/VipDailyClient.client.luau` (the prompt's words, her line, the reveal). `ShopReceipts`
+  starts the server module.
+
+**The table** (`VipDailyData.TABLE`, weights out of 1,000):
+
+| prize | tier | weight | chance | about every |
+|---|---|---|---|---|
+| 40 Brass | filler | 420 | 42.4% | 2.4 days |
+| 100 Brass | filler | 270 | 27.3% | 3.7 days |
+| Spray Can | filler | 130 | 13.1% | 7.6 days |
+| 250 Brass | filler | 110 | 11.1% | 9 days |
+| Duffel Bag | filler | 50 | 5.1% | 20 days |
+| Crate (the skin case) | rare | 10 | 1.0% | 99 days |
+| the daily wrap | best | 4 | 0.4% | 250 days |
+| the daily hat | best | 3 | 0.3% | 333 days |
+| the daily weapon skin | best | 3 | 0.3% | 333 days |
+
+The chances are for today, with the three daily-only things off: they don't exist yet, so the other 990 share the
+odds. Once all three are on, the filler and the Crate drop a little (42.0%, 27.0%, 13.0%, 11.0%, 5.0%, 1.0%) and
+one of the three comes about every 100 days.
+
+The Crate was 2% at first. The quests session ran the odds through its economy sim (QUESTS.md, section 3): at 2%,
+the daily nearly halved a regular VIP's wait for a Crate (48 days to 27). It suggested 0.5%, but that would make the
+Crate rarer than the daily-only wrap. So it's 1%, with the other 1% on the Spray Can: the Crate stays mainly a ticket
+reward and stays above the three in the order the owner gave.
+
+**How generous:** about 72 Brass a day, plus containers worth about 255 Brass more at the shop's Brass prices. That's
+about 330 Brass' worth a day, next to a quest grinder's 231 Brass a day (QUESTS.md). A Crate about every 100 days on
+top of the quests' one every 19 to 204 days.
+
+**Rules on top:**
+- One of the three you already have becomes another of them you lack; with all three owned, a Crate.
+- While containers are free, a container you already hold 10 of (`Loot`'s cap) becomes 100 Brass.
+
+**The three daily-only things** are the Triangulum trio, from the skin-concepts session (shared notes
+`triangulum-vip-brief.md`). They are listed in `VipDailyData.EXCLUSIVE`:
+- wrap `triangulum` (wraps session);
+- hat `tricorne`, Star Tricorne (hats session);
+- skin `sniper_triangulum`, Triangulum, for the Sniper (gun models session).
+
+That list is the daily-only mark: no `daily` flag on the items, and never `vip`, since the VIP pack gives every vip
+thing (`Shop.vipItems` skips them anyway). A slot turns on by itself once its item is in the place:
+- the roll includes it;
+- the shop never sells it (`Shop.dailyOnly`: not a single, not in the rotation, a bundle or the VIP pack);
+- the server pays it through the hidden offer `"vipdaily:<kind>:<id>"` (type `"pass"`, so the loot server's buy
+  refuses it). A wrap or hat comes on every gun, like the VIP pack's.
+- The loot module's container pools skip them (`LootTable.exclusive`, which asks `VipDailyData.isExclusive`), and
+  the skin has a `LootTable.SKINS` row so the grant can write it.
+
+**Simulated** (10,000 claims, seed 17, owning none of the three, room for everything):
+- three off: 40 Brass 4,273 · 100 Brass 2,671 · Spray Can 1,296 · 250 Brass 1,121 · Duffel Bag 544 · Crate 95;
+- three on: 4,237 · 2,632 · 1,286 · 1,098 · 556 · 99, and wrap 29 · hat 31 · skin 32.
+- Owning all three, with the Spray Can at the cap (3,000 claims): no daily-only item; Crate 67 (2.2%: its own 1%
+  plus the three's 1%); 100 Brass 1,163 (38.8%: its own 27% plus the Spray Can's 13%).
+
+**Tested in solo Play (place version 549)**, as the owner (VIP):
+- A claim with the prize forced to a Spray Can (`JankVipDailyTest("claim", p, "spray")`) answered "won". The day was
+  written (`VipDailyNext` = the next 00:00 UTC) and the Spray Can was in stock. The loot session's reveal played:
+  DAILY REWARD, FROM TRISANGLE, the reel, then the Spray Can card and DONE (photo `docs/shop/vip-daily-reveal.jpg`).
+- A second claim the same day answered "later", with the next one 890 minutes away.
+- A Brass prize (40) was paid through `Quests.giveBrass`: the wallet went 600 to 640.
+- Not VIP: the client's answer opened the shop straight onto the VIP panel. It now says "and the VIP room in the
+  hub, with a daily reward" (`vip-daily-notvip.jpg`).
+- Not tested: the server's own VIP refusal. A `require` of Vip from the command bar made a second copy of the Vip
+  and Loot modules, which took over their remotes, so the owner's Studio lock never reached the copy the daily asks.
+  That check is one line (`if not Vip.isVip(p)`). Never `require` a server module from the command bar during a test.
+- Put back afterwards: the owner's Studio quest balance (1 ticket, 335 Brass), and the daily (claimable again).
+- Not put back: the second loot copy blocked the restore, so the owner kept a Spray Can in stock and one SMG item
+  from the redeemed Duffel Bag. Both are free while testing.
+
+## Redeeming with Crate Tickets and Brass (17 Nov, place version 549)
+
+The quests session's currencies (roblox/docs/QUESTS.md, section 6) buy containers in the shop.
+- **The wallet:** the player attributes `Brass` and `CrateTickets` (the quests server sets them on everyone at join),
+  with the quests' icons (`QuestUI.icon`). On a computer it's a line under the FREE pill and CLOSE; on a phone it takes
+  the pill's place.
+- **The prices:** `QuestData.PRICES`, read by `Shop.redeemPrice(cid)`: a Crate is 12 tickets (Brass never buys a
+  Crate), a Duffel Bag 6 tickets or 2,500 Brass, a Spray Can 3 tickets or 1,000 Brass. On a computer each container
+  card shows them over its buttons ("OR 6 TICKETS · 2,500 BRASS").
+- **The buttons:** CLAIM / BUY opens the confirm panel, where the odds are on screen. It has a row over CANCEL and
+  BUY: "REDEEM · 6 TICKETS" and "REDEEM · 2,500 BRASS", greyed when you have too little ("REDEEM 1 · ..." with x5 or
+  x10 picked: a redeem is always one).
+- **The call:** `JankfireRemotes.Quests:InvokeServer("redeem", cid, "tix" | "brass")`. The quests server takes the
+  price and has `Loot.grant` put one in stock, then the shop opens it like any other. A refusal shows its words as a
+  callout ("not enough Brass", "you have 10 of those: open some first"...).
+- **Where paid random items aren't allowed** (PolicyService): CLAIM / BUY reads REDEEM, since tickets and Brass are
+  earned, not bought.
+
+Tested in solo Play (place version 549), with 13 tickets and 600 Brass:
+- The CONTAINERS tab showed the wallet (600 and 13 with their icons), each card's redeem prices, and the three
+  containers' 3D previews (`docs/shop/shop-redeem-containers.jpg`). The quests session's earlier photo with empty
+  previews was taken before the meshes had loaded.
+- The Duffel Bag's confirm panel had REDEEM · 6 TICKETS lit and REDEEM · 2,500 BRASS grey (`shop-redeem-confirm.jpg`).
+- REDEEM · 6 TICKETS took the tickets from 13 to 7 and the Duffel Bag's opening played.
+
 ## Robux, later
 
 1. Make the developer products on the Creator Hub (one per container and bundle; one per kind and rarity for the

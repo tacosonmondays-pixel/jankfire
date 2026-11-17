@@ -50,6 +50,7 @@ me:GetAttributeChangedSignal("ShopTest"):Connect(function()
 		local cid, nn = string.match(rest or "", "^([%w_]+):(%d+)$")
 		if cid then ShopUI.S.count[cid] = tonumber(nn); if ShopUI.isOpen() then ShopUI.refill() end end
 	elseif cmd == "commit" then ShopUI.commit()
+	elseif cmd == "redeem" then ShopUI.redeem(rest) -- ("redeem:tix" / "redeem:brass": the confirm panel's REDEEM)
 	elseif cmd == "back" then ShopUI.back() -- (the inspect panel's BACK: closes a shop opened straight onto it)
 	end
 end)
