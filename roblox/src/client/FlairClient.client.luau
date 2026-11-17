@@ -11,6 +11,7 @@
 --     does the same: the camera can't be used to look round corners).
 -- test hook (Play tests driven from Studio): the local player's attribute FlairTest = "wheel" | "close" | "pick:<slot>"
 --   | "emote:<id>" | "stop" | "ui" | "ui:emote" | "ui:kill" | "uiclose" | "preview:<id>" (the equip screen's preview)
+--   | "fake:844x390" (the equip screen's phone layout in a box that size) | "real"
 local Players = game:GetService("Players")
 local UIS = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
@@ -394,11 +395,29 @@ local function emoteKey(io: InputObject): boolean
 	end
 	return io.KeyCode == Enum.KeyCode.T or io.KeyCode == Enum.KeyCode.DPadRight
 end
+-- every key arrives through the touch-controls session's Keys (client/Keys.luau): real input plus the phone's buttons,
+-- which press the same keys (a touch press is a plain table with Touch = true). without it, the raw input events
+local KeysMod: any = nil
+do
+	local m = script.Parent:WaitForChild("Keys", 5)
+	if m and m:IsA("ModuleScript") then
+		local ok, res = pcall(require, m)
+		if ok and type(res) == "table" and type(res.began) == "function" then KeysMod = res end
+	end
+end
+local function onBegan(fn: (any, boolean) -> ())
+	if KeysMod then KeysMod.began(fn) else UIS.InputBegan:Connect(fn) end
+end
+local function onEnded(fn: (any, boolean) -> ())
+	if KeysMod and type(KeysMod.ended) == "function" then KeysMod.ended(fn) else UIS.InputEnded:Connect(fn) end
+end
 local WEAPON_KEYS = { [Enum.KeyCode.One] = true, [Enum.KeyCode.Two] = true, [Enum.KeyCode.Three] = true, [Enum.KeyCode.Four] = true,
 	[Enum.KeyCode.G] = true, [Enum.KeyCode.R] = true, [Enum.KeyCode.E] = true, [Enum.KeyCode.Space] = true, [Enum.KeyCode.C] = true }
-UIS.InputBegan:Connect(function(io, gp)
+onBegan(function(io: any, gp: boolean)
 	if UIS:GetFocusedTextBox() then return end
 	if emoteKey(io) then
+		-- (the phone's EMOTE button: a tap opens the touch wheel, a tap again closes it)
+		if typeof(io) == "table" and io.Touch then if W.open then W.close() else W.openWheel(true) end; return end
 		if W.open then W.close(); return end
 		if gp then return end
 		W.held = true
@@ -412,8 +431,8 @@ UIS.InputBegan:Connect(function(io, gp)
 		stopEmote(true)
 	end
 end)
-UIS.InputEnded:Connect(function(io)
-	if not emoteKey(io) then return end
+onEnded(function(io: any)
+	if (typeof(io) == "table" and io.Touch) or not emoteKey(io) then return end
 	if not W.held then return end
 	W.held = false
 	if not W.open then return end
@@ -440,7 +459,9 @@ do
 	T.corner(face); T.edge(face)
 	face.MouseButton1Click:Connect(function() if W.open then W.close() else W.openWheel(true) end end)
 	RunService.Heartbeat:Connect(function()
-		local show = UIS.TouchEnabled and not UIS.KeyboardEnabled and (me:GetAttribute("LoadoutOpen") ~= true or W.open) and myChar() ~= nil
+		-- (the phone layout of TouchControls has its own EMOTE in its top row: this one only shows without it)
+		local show = me:GetAttribute("TouchOn") ~= true and UIS.TouchEnabled and not UIS.KeyboardEnabled
+			and (me:GetAttribute("LoadoutOpen") ~= true or W.open) and myChar() ~= nil
 		if face.Visible ~= show then face.Visible = show end
 	end)
 end
@@ -464,5 +485,10 @@ me:GetAttributeChangedSignal("FlairTest"):Connect(function()
 	elseif cmd == "ui" then local U = ui(); if U then U.open(if rest ~= "" then rest else nil) end
 	elseif cmd == "uiclose" then local U = ui(); if U then U.close() end
 	elseif cmd == "preview" then local U = ui(); if U then U.preview(rest) end
+	elseif cmd == "fake" then -- "fake:844x390": the equip screen's phone layout in a box that size (points)
+		local U = ui()
+		local w, h = string.match(rest or "", "^(%d+)x(%d+)$")
+		if U and w and h then U.fakeScreen(Vector2.new(tonumber(w) :: number, tonumber(h) :: number)) end
+	elseif cmd == "real" then local U = ui(); if U then U.fakeScreen(nil) end
 	end
 end)

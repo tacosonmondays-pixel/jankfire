@@ -1,7 +1,7 @@
 --!strict
 -- the equip screen for kill effects, emotes and grapple skins (doc FLAIR.md). FlairUI.open(tab?) / close() / isOpen() / preview(id).
 -- the loadout's KILL EFFECT · EMOTES button opens it (the loadout steps aside first); not mid-match, like the loadout.
--- left: the items (a grid of kill effects; or the emote wheel's 8 slots over a row of emotes). right: the world, with a
+-- left: the items (a grid of kill effects or grapples; or the emote wheel's 8 slots over the emotes). right: the world, with a
 -- copy of your own avatar standing in front of you (client-only) playing whatever you point at: the kill effect on it
 -- (real particles: a ViewportFrame can't draw them), or the emote. the server owns every pick (FlairServer): this asks.
 -- the look is Theme.luau's: dark plates, white words, one amber accent for the one button that does something.
@@ -22,6 +22,7 @@ local S = {
 	owned = { kill = {}, emote = {}, grapple = {} } :: { [string]: { [string]: boolean } }, tok = 0, hidden = {} :: { [ScreenGui]: boolean },
 	cam = { active = false, closing = false, t0 = 0, dur = 0.5, from = CFrame.new(), to = CFrame.new(), saved = CFrame.new(), savedType = Enum.CameraType.Custom },
 	spot = nil :: { s: Vector3, face: Vector3 }?, template = nil :: Model?, dummy = nil :: Model?, savedOpen = false,
+	fake = nil :: Vector2?, -- (a phone-sized test box: FlairUI.fakeScreen)
 }
 local controls: any = nil
 task.spawn(function()
@@ -41,6 +42,12 @@ local function label(parent: Instance, text: string, size: number, pos: UDim2, s
 end
 
 -- ------------------------------------------------------------------ the screen
+-- two layouts on the same rules: the desktop's 1920 x 1080 stage, and a compact 960 x 440 one for phones and tablets
+-- (the mobile session measured the big one at ~36 % on a phone: DONE ~18 pt). on the compact stage every tap target is at
+-- least 52 design px (measured 17 Nov in an 844 x 390 box: DONE and tabs 46 pt, EQUIP 46, wheel slots 51, cards 144 x 149), the screen keeps to the device's safe area (ScreenInsets), and the
+-- kill effect / grapple grids are three across. which one: a touch device (the touch-controls session's Keys.isTouch,
+-- which tests can force with TouchForce; else touch and no keyboard) or a fake box (FlairUI.fakeScreen, tests).
+-- a layout is built the first time it's needed
 local gui = new("ScreenGui", { Name = "JankFlair", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 31,
 	ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false }, pg)
 -- (a full-screen button under everything: Modal frees the mouse from first person; dark on the left, clear on the right
@@ -49,13 +56,32 @@ local catcher = new("TextButton", { Text = "", AutoButtonColor = false, Backgrou
 	BackgroundTransparency = 0, Size = UDim2.fromScale(1, 1), Modal = true }, gui)
 new("UIGradient", { Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(0.42, 0.35),
 	NumberSequenceKeypoint.new(0.62, 1), NumberSequenceKeypoint.new(1, 1) }) }, catcher)
-local stage = new("Frame", { BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
-	Size = UDim2.fromOffset(1920, 1080) }, gui)
-local uiScale = new("UIScale", {}, stage)
-local function fit()
-	local v = (workspace.CurrentCamera :: Camera).ViewportSize
-	uiScale.Scale = math.min(v.X / 1920, v.Y / 1080)
-end
+local guiUI = new("ScreenGui", { Name = "JankFlairUI", ResetOnSpawn = false, IgnoreGuiInset = true, DisplayOrder = 32,
+	ZIndexBehavior = Enum.ZIndexBehavior.Sibling, Enabled = false, ScreenInsets = Enum.ScreenInsets.DeviceSafeInsets }, pg)
+-- the room the screen has: the safe area, or a fake box the size of a phone (tests)
+local box = new("Frame", { Name = "Box", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+	Size = UDim2.fromScale(1, 1), ClipsDescendants = false }, guiUI)
+
+local DESK = {
+	key = "desk", W = 1920, H = 1080,
+	tabs = { y = 34, h = 60, font = 40, ruleY = 62, x = { kill = 60, emote = 400, grapple = 690 }, w = { kill = 320, emote = 270, grapple = 300 } },
+	done = { 1700, 40, 160, 50, "DONE  [ESC]" }, save = { 1360, 100, 500, 22, 16 },
+	panel = { 60, 130, 880, 900 },
+	grid = { 20, 20, 840, 720, 196, 236, 12 }, equip = { 20, 800, 300, 64 }, note = { 340, 820, 520, 24, 16 },
+	ring = { cx = 440, cy = 280, R = 196, cell = 100 },
+	emotes = { 20, 560, 840, 190, 131, 190, 10 }, clear = { 336, 812, 170, 40 }, mnote = { 520, 820, 340, 24, 16 },
+	name = { 1160, 880, 700, 54, 18 },
+}
+local PHONE = {
+	key = "phone", W = 960, H = 440,
+	tabs = { y = 5, h = 52, font = 26, ruleY = 46, x = { kill = 16, emote = 210, grapple = 356 }, w = { kill = 186, emote = 138, grapple = 160 } },
+	done = { 836, 5, 112, 52, "DONE" }, save = { 576, 60, 372, 16, 12 },
+	panel = { 16, 62, 548, 372 },
+	grid = { 8, 8, 532, 298, 164, 170, 8 }, equip = { 8, 312, 200, 54 }, note = { 218, 330, 322, 20, 12 },
+	row = { x = 8, y = 8, cell = 58, gap = 8 },
+	emotes = { 8, 74, 532, 232, 164, 170, 8 }, clear = { 216, 312, 150, 54 }, mnote = { 376, 330, 164, 20, 12 },
+	name = { 590, 352, 360, 30, 13 },
+}
 
 -- a flat button (the loadout's look): main = amber with dark words; chip/white = a dark card
 type Btn = { face: TextButton, kind: string, enabled: boolean, base: Color3, set: (Btn, string, boolean?) -> () }
@@ -78,34 +104,6 @@ local function button(parent: Instance, text: string, kind: string, pos: UDim2, 
 	end
 	return b
 end
-
--- the two tabs, as the title
-local tabs: { [string]: { b: TextButton, rule: Frame } } = {}
-local TAB_X = { kill = 60, emote = 400, grapple = 690 }
-local TAB_W = { kill = 320, emote = 270, grapple = 300 }
-local TAB_TEXT = { kill = "KILL EFFECT", emote = "EMOTES", grapple = "GRAPPLE" }
-for _, t in { "kill", "emote", "grapple" } do
-	local b = new("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(TAB_X[t], 34),
-		Size = UDim2.fromOffset(TAB_W[t], 60), FontFace = T.FONT_TITLE, TextSize = 40, Text = TAB_TEXT[t],
-		TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 }, stage)
-	local rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, 62), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, b)
-	tabs[t] = { b = b, rule = rule }
-end
-local done = button(stage, "DONE  [ESC]", "white", UDim2.fromOffset(1700, 40), UDim2.fromOffset(160, 50))
-local saveLbl = label(stage, "", 16, UDim2.fromOffset(1360, 100), UDim2.fromOffset(500, 22), T.MUTED, nil, Enum.TextXAlignment.Right)
-
--- the panel on the left
-local panel = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.12, BorderSizePixel = 0, Position = UDim2.fromOffset(60, 130),
-	Size = UDim2.fromOffset(880, 900), ZIndex = 2 }, stage)
-T.corner(panel, 8); T.edge(panel)
-
--- the name of what the preview shows (bottom right, over the world)
-local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(1160, 880), Size = UDim2.fromOffset(700, 140) }, stage)
-local bigName = label(nameBox, "", 54, UDim2.fromOffset(0, 0), UDim2.fromOffset(700, 64), T.TEXT, T.FONT_TITLE)
-bigName.TextStrokeTransparency = 0.7
-local bigRule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, 70), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, nameBox)
-local bigSub = label(nameBox, "", 18, UDim2.fromOffset(2, 82), UDim2.fromOffset(700, 24), T.SOFT, T.FONT_BOLD)
-bigSub.TextStrokeTransparency = 0.75
 
 -- a lock over an item you don't own: a small padlock drawn from frames
 local function lock(parent: GuiObject, z: number)
@@ -150,69 +148,162 @@ local function card(parent: Instance, t: string, id: string, w: number, h: numbe
 	return c
 end
 
--- ------------------------------------------------------------------ the kill effect tab
-local K = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2 }, panel), cards = {} :: { Card } }
-do
-	local grid = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(20, 20), Size = UDim2.fromOffset(840, 720),
+-- ------------------------------------------------------------------ a layout: tabs, the panel and its three tabs' contents
+-- (what a press does is shared by both layouts: set below)
+local onTab: (string) -> () = function() end
+local onPick: (string, string) -> () = function() end
+local onSlot: (number) -> () = function() end
+local onEquip: (string) -> () = function() end
+local onClear: () -> () = function() end
+
+local function at(r: { any }): (UDim2, UDim2) return UDim2.fromOffset(r[1], r[2]), UDim2.fromOffset(r[3], r[4]) end
+local function grid(parent: Instance, g: { number }): ScrollingFrame
+	local sf = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(g[1], g[2]), Size = UDim2.fromOffset(g[3], g[4]),
 		CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
-		ScrollBarThickness = 6, ScrollBarImageColor3 = T.DIM, ZIndex = 3 }, K.frame)
-	new("UIGridLayout", { CellSize = UDim2.fromOffset(196, 236), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
-	new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4) }, grid)
-	for i, id in Flair.ORDER.kill do
-		local c = card(grid, "kill", id, 196, 236, i)
-		table.insert(K.cards, c)
-	end
-	K.equip = button(K.frame, "EQUIP", "main", UDim2.fromOffset(20, 800), UDim2.fromOffset(300, 64))
-	K.note = label(K.frame, "", 16, UDim2.fromOffset(340, 820), UDim2.fromOffset(520, 24), T.MUTED, T.FONT_BOLD)
+		ScrollBarThickness = 6, ScrollBarImageColor3 = T.DIM, ZIndex = 3 }, parent)
+	new("UIGridLayout", { CellSize = UDim2.fromOffset(g[5], g[6]), CellPadding = UDim2.fromOffset(g[7], g[7]), SortOrder = Enum.SortOrder.LayoutOrder }, sf)
+	new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4) }, sf)
+	return sf
+end
+local function slotCell(parent: Instance, i: number, pos: UDim2, cell: number, anchor: Vector2): any
+	local btn = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = anchor, Position = pos, Size = UDim2.fromOffset(cell, cell),
+		BackgroundColor3 = T.CARD, BorderSizePixel = 0, ZIndex = 3 }, parent)
+	T.corner(btn, 10)
+	local st = T.edge(btn)
+	local pic = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -10, 1, -10), ZIndex = 4 }, btn)
+	local empty = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(22, 22),
+		BackgroundTransparency = 1, ZIndex = 4 }, btn)
+	T.corner(empty, 999)
+	T.edge(empty, T.DIM, 0.4, 2)
+	local num = label(btn, tostring(i), 12, UDim2.fromOffset(6, 4), UDim2.fromOffset(20, 14), T.DIM, T.FONT_BOLD)
+	num.ZIndex = 6
+	btn.MouseButton1Click:Connect(function() onSlot(i) end)
+	return { btn = btn, st = st, pic = pic, empty = empty, id = "" }
 end
 
--- ------------------------------------------------------------------ the emote tab: the wheel's slots over the emotes
-local M = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Visible = false }, panel),
-	slots = {} :: { { btn: TextButton, st: UIStroke, pic: Frame, empty: Frame, id: string } }, cards = {} :: { Card } }
-do
-	local cx, cy, R, CELL = 440, 280, 196, 100
-	local ring = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(cx, cy), Size = UDim2.fromOffset(R * 2 + CELL + 24, R * 2 + CELL + 24),
-		BackgroundColor3 = T.CARD, BackgroundTransparency = 0.6, BorderSizePixel = 0, ZIndex = 2 }, M.frame)
-	T.corner(ring, 999)
-	M.centre = label(M.frame, "", 22, UDim2.fromOffset(cx - 120, cy - 30), UDim2.fromOffset(240, 30), T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
-	M.centreSub = label(M.frame, "", 14, UDim2.fromOffset(cx - 120, cy + 4), UDim2.fromOffset(240, 20), T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
-	for i = 1, Flair.SLOTS do
-		local a = math.rad(-90 + (i - 1) * 360 / Flair.SLOTS)
-		local btn = new("TextButton", { Text = "", AutoButtonColor = false, AnchorPoint = Vector2.new(0.5, 0.5),
-			Position = UDim2.fromOffset(cx + math.cos(a) * R, cy + math.sin(a) * R), Size = UDim2.fromOffset(CELL, CELL),
-			BackgroundColor3 = T.CARD, BorderSizePixel = 0, ZIndex = 3 }, M.frame)
-		T.corner(btn, 10)
-		local st = T.edge(btn)
-		local pic = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(5, 5), Size = UDim2.new(1, -10, 1, -10), ZIndex = 4 }, btn)
-		local empty = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromOffset(24, 24),
-			BackgroundTransparency = 1, ZIndex = 4 }, btn)
-		T.corner(empty, 999)
-		T.edge(empty, T.DIM, 0.4, 2)
-		local num = label(btn, tostring(i), 12, UDim2.fromOffset(6, 4), UDim2.fromOffset(20, 14), T.DIM, T.FONT_BOLD)
-		num.ZIndex = 6
-		M.slots[i] = { btn = btn, st = st, pic = pic, empty = empty, id = "" }
+local function build(L: any): any
+	local V: any = { L = L }
+	local stage = new("Frame", { Name = L.key, BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromOffset(L.W, L.H), Visible = false }, box)
+	V.stage = stage
+	V.scale = new("UIScale", {}, stage)
+	-- the three tabs, as the title
+	V.tabs = {}
+	for _, t in { "kill", "emote", "grapple" } do
+		local b = new("TextButton", { AutoButtonColor = false, BackgroundTransparency = 1, Position = UDim2.fromOffset(L.tabs.x[t], L.tabs.y),
+			Size = UDim2.fromOffset(L.tabs.w[t], L.tabs.h), FontFace = T.FONT_TITLE, TextSize = L.tabs.font,
+			Text = ({ kill = "KILL EFFECT", emote = "EMOTES", grapple = "GRAPPLE" })[t],
+			TextColor3 = T.TEXT, TextXAlignment = Enum.TextXAlignment.Left, ZIndex = 3 }, stage)
+		local rule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, L.tabs.ruleY), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, b)
+		V.tabs[t] = { b = b, rule = rule }
+		b.MouseButton1Click:Connect(function() onTab(t) end)
 	end
-	local row = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(20, 560), Size = UDim2.fromOffset(840, 190), ZIndex = 3 }, M.frame)
-	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 10), SortOrder = Enum.SortOrder.LayoutOrder }, row)
+	local p, s = at(L.done)
+	V.done = button(stage, L.done[5], "white", p, s)
+	V.done.face.MouseButton1Click:Connect(function() FlairUI.close() end)
+	p, s = at(L.save)
+	V.saveLbl = label(stage, "", L.save[5], p, s, T.MUTED, nil, Enum.TextXAlignment.Right)
+	-- the panel on the left
+	p, s = at(L.panel)
+	local panel = new("Frame", { BackgroundColor3 = T.BG, BackgroundTransparency = 0.12, BorderSizePixel = 0, Position = p, Size = s, ZIndex = 2 }, stage)
+	T.corner(panel, 8); T.edge(panel)
+	-- the name of what the preview shows (bottom right, over the world)
+	local n = L.name
+	local nameBox = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(n[1], n[2]), Size = UDim2.fromOffset(n[3], n[4] * 2.6) }, stage)
+	V.bigName = label(nameBox, "", n[4], UDim2.fromOffset(0, 0), UDim2.fromOffset(n[3], n[4] * 1.2), T.TEXT, T.FONT_TITLE)
+	V.bigName.TextStrokeTransparency = 0.7
+	V.bigRule = new("Frame", { BackgroundColor3 = T.ACCENT, BorderSizePixel = 0, Position = UDim2.fromOffset(2, n[4] * 1.3), Size = UDim2.fromOffset(44, 3), ZIndex = 3 }, nameBox)
+	V.bigSub = label(nameBox, "", n[5], UDim2.fromOffset(2, n[4] * 1.3 + 10), UDim2.fromOffset(n[3], n[5] + 6), T.SOFT, T.FONT_BOLD)
+	V.bigSub.TextStrokeTransparency = 0.75
+
+	-- kill effects and grapples: a grid of cards, EQUIP under it
+	for _, t in { "kill", "grapple" } do
+		local X = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Visible = false }, panel), cards = {} }
+		local g = grid(X.frame, L.grid)
+		for i, id in Flair.ORDER[t] do
+			local c = card(g, t, id, L.grid[5], L.grid[6], i)
+			c.btn.MouseButton1Click:Connect(function() onPick(t, id) end)
+			table.insert(X.cards, c)
+		end
+		p, s = at(L.equip)
+		X.equip = button(X.frame, "EQUIP", "main", p, s)
+		X.equip.face.MouseButton1Click:Connect(function() onEquip(t) end)
+		p, s = at(L.note)
+		X.note = label(X.frame, "", L.note[5], p, s, T.MUTED, T.FONT_BOLD)
+		if t == "kill" then V.K = X else V.G = X end
+	end
+
+	-- emotes: the wheel's 8 slots (a ring on the desktop, a row on a phone) over the emotes
+	local M = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Visible = false }, panel), slots = {}, cards = {} }
+	if L.ring then
+		local r = L.ring
+		local ring = new("Frame", { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromOffset(r.cx, r.cy), Size = UDim2.fromOffset(r.R * 2 + r.cell + 24, r.R * 2 + r.cell + 24),
+			BackgroundColor3 = T.CARD, BackgroundTransparency = 0.6, BorderSizePixel = 0, ZIndex = 2 }, M.frame)
+		T.corner(ring, 999)
+		M.centre = label(M.frame, "", 22, UDim2.fromOffset(r.cx - 120, r.cy - 30), UDim2.fromOffset(240, 30), T.TEXT, T.FONT_TITLE, Enum.TextXAlignment.Center)
+		M.centreSub = label(M.frame, "", 14, UDim2.fromOffset(r.cx - 120, r.cy + 4), UDim2.fromOffset(240, 20), T.MUTED, T.FONT_BOLD, Enum.TextXAlignment.Center)
+		for i = 1, Flair.SLOTS do
+			local a = math.rad(-90 + (i - 1) * 360 / Flair.SLOTS)
+			M.slots[i] = slotCell(M.frame, i, UDim2.fromOffset(r.cx + math.cos(a) * r.R, r.cy + math.sin(a) * r.R), r.cell, Vector2.new(0.5, 0.5))
+		end
+	else
+		local r = L.row
+		for i = 1, Flair.SLOTS do
+			M.slots[i] = slotCell(M.frame, i, UDim2.fromOffset(r.x + (i - 1) * (r.cell + r.gap), r.y), r.cell, Vector2.zero)
+		end
+	end
+	local e = L.emotes
+	local holder: Instance
+	if L.ring then
+		holder = new("Frame", { BackgroundTransparency = 1, Position = UDim2.fromOffset(e[1], e[2]), Size = UDim2.fromOffset(e[3], e[4]), ZIndex = 3 }, M.frame)
+		new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, e[7]), SortOrder = Enum.SortOrder.LayoutOrder }, holder)
+	else
+		holder = grid(M.frame, e)
+	end
 	for i, id in Flair.ORDER.emote do
-		table.insert(M.cards, card(row, "emote", id, 131, 190, i))
+		local c = card(holder, "emote", id, e[5], e[6], i)
+		c.btn.MouseButton1Click:Connect(function() onPick("emote", id) end)
+		table.insert(M.cards, c)
 	end
-	M.equip = button(M.frame, "PUT IN SLOT 1", "main", UDim2.fromOffset(20, 800), UDim2.fromOffset(300, 64))
-	M.clear = button(M.frame, "EMPTY SLOT", "chip", UDim2.fromOffset(336, 812), UDim2.fromOffset(170, 40))
-	M.note = label(M.frame, "", 16, UDim2.fromOffset(520, 820), UDim2.fromOffset(340, 24), T.MUTED, T.FONT_BOLD)
+	p, s = at(L.equip)
+	M.equip = button(M.frame, "PUT IN SLOT 1", "main", p, s)
+	M.equip.face.MouseButton1Click:Connect(function() onEquip("emote") end)
+	p, s = at(L.clear)
+	M.clear = button(M.frame, "EMPTY SLOT", "chip", p, s)
+	M.clear.face.MouseButton1Click:Connect(function() onClear() end)
+	p, s = at(L.mnote)
+	M.note = label(M.frame, "", L.mnote[5], p, s, T.MUTED, T.FONT_BOLD)
+	V.M = M
+	return V
 end
 
--- ------------------------------------------------------------------ the grapple tab: the eight skins
-local G = { frame = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = 2, Visible = false }, panel), cards = {} :: { Card } }
-do
-	local grid = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Position = UDim2.fromOffset(20, 20), Size = UDim2.fromOffset(840, 720),
-		CanvasSize = UDim2.new(), AutomaticCanvasSize = Enum.AutomaticSize.Y, ScrollingDirection = Enum.ScrollingDirection.Y,
-		ScrollBarThickness = 6, ScrollBarImageColor3 = T.DIM, ZIndex = 3 }, G.frame)
-	new("UIGridLayout", { CellSize = UDim2.fromOffset(196, 236), CellPadding = UDim2.fromOffset(12, 12), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
-	new("UIPadding", { PaddingTop = UDim.new(0, 4), PaddingLeft = UDim.new(0, 4) }, grid)
-	for i, id in Flair.ORDER.grapple do table.insert(G.cards, card(grid, "grapple", id, 196, 236, i)) end
-	G.equip = button(G.frame, "EQUIP", "main", UDim2.fromOffset(20, 800), UDim2.fromOffset(300, 64))
-	G.note = label(G.frame, "", 16, UDim2.fromOffset(340, 820), UDim2.fromOffset(520, 24), T.MUTED, T.FONT_BOLD)
+local VIEWS: { [string]: any } = {}
+local V: any = nil -- the layout on screen
+local KeysMod: any = nil
+local function touchDevice(): boolean
+	if KeysMod == nil then
+		local m = script.Parent:FindFirstChild("Keys")
+		local ok, res = false, nil
+		if m and m:IsA("ModuleScript") then ok, res = pcall(require, m) end
+		KeysMod = if ok and type(res) == "table" and type(res.isTouch) == "function" then res else false
+	end
+	if KeysMod then
+		local ok, yes = pcall(KeysMod.isTouch)
+		if ok then return yes == true end
+	end
+	return UIS.TouchEnabled and not UIS.KeyboardEnabled
+end
+local function useView()
+	local L = if S.fake or touchDevice() then PHONE else DESK
+	if not VIEWS[L.key] then VIEWS[L.key] = build(L) end
+	V = VIEWS[L.key]
+	for _, v in VIEWS do v.stage.Visible = v == V end
+end
+local function fit()
+	if not V then return end
+	local s = box.AbsoluteSize
+	if s.X < 2 or s.Y < 2 then return end
+	V.scale.Scale = math.min(s.X / V.L.W, s.Y / V.L.H)
 end
 
 -- ------------------------------------------------------------------ what's on screen
@@ -238,7 +329,9 @@ local function paintCard(c: Card, selected: boolean, worn: boolean)
 end
 
 local function refresh()
-	for t, x in tabs do
+	if not V then return end
+	local K, M, G = V.K, V.M, V.G
+	for t, x in V.tabs do
 		x.b.TextColor3 = if S.tab == t then T.TEXT else T.DIM
 		x.rule.Visible = S.tab == t
 	end
@@ -272,8 +365,10 @@ local function refresh()
 	end
 	for _, c in M.cards do paintCard(c, c.id == S.pick.emote, table.find(sl, c.id) ~= nil) end
 	local inSlot = Flair.info("emote", sl[S.slot])
-	M.centre.Text = if inSlot then string.upper(inSlot.name) else ""
-	M.centreSub.Text = "SLOT " .. S.slot
+	if M.centre then
+		M.centre.Text = if inSlot then string.upper(inSlot.name) else ""
+		M.centreSub.Text = "SLOT " .. S.slot
+	end
 	local eid = S.pick.emote
 	if not owns("emote", eid) then M.equip:set("LOCKED", false); M.note.Text = "FROM DUFFEL BAGS AND THE SHOP"
 	elseif sl[S.slot] == eid then M.equip:set("IN SLOT " .. S.slot, false); M.note.Text = ""
@@ -281,11 +376,11 @@ local function refresh()
 	M.clear:set("EMPTY SLOT", sl[S.slot] ~= "")
 	-- the big name over the world
 	local i = Flair.info(S.tab, S.pick[S.tab])
-	bigName.Text = if i then string.upper(i.name) else ""
-	bigRule.BackgroundColor3 = if i then (Flair.RARITY_COLOR[i.rarity] or T.ACCENT) else T.ACCENT
-	bigSub.Text = if i then (string.upper(i.rarity) .. "  ·  " .. string.upper(Flair.TYPE_NAMES[S.tab])) else ""
+	V.bigName.Text = if i then string.upper(i.name) else ""
+	V.bigRule.BackgroundColor3 = if i then (Flair.RARITY_COLOR[i.rarity] or T.ACCENT) else T.ACCENT
+	V.bigSub.Text = if i then (string.upper(i.rarity) .. "  ·  " .. string.upper(Flair.TYPE_NAMES[S.tab])) else ""
 	local sv = me:GetAttribute("FlairSave")
-	saveLbl.Text = if sv == "off" then "NOT SAVING THIS SESSION" elseif sv == "lost" then "SAVED ELSEWHERE: CHANGES HERE WON'T KEEP" else ""
+	V.saveLbl.Text = if sv == "off" then "NOT SAVING THIS SESSION" elseif sv == "lost" then "SAVED ELSEWHERE: CHANGES HERE WON'T KEEP" else ""
 end
 
 local function fetch()
@@ -515,11 +610,13 @@ function FlairUI.open(tab: string?)
 	S.pick.grapple = wornGrapple()
 	table.clear(S.hidden)
 	for _, g in pg:GetChildren() do
-		if g:IsA("ScreenGui") and g ~= gui and g.Enabled then S.hidden[g] = true; g.Enabled = false end
+		if g:IsA("ScreenGui") and g ~= gui and g ~= guiUI and g.Enabled then S.hidden[g] = true; g.Enabled = false end
 	end
+	useView()
 	fit()
 	refresh()
 	gui.Enabled = true
+	guiUI.Enabled = true
 	catcher.BackgroundTransparency = 1
 	T.tween(catcher, 0.35, { BackgroundTransparency = 0 })
 	local cam = workspace.CurrentCamera :: Camera
@@ -536,6 +633,7 @@ function FlairUI.close()
 	S.open = false
 	S.tok += 1
 	gui.Enabled = false
+	guiUI.Enabled = false
 	me:SetAttribute("LoadoutOpen", false)
 	for g in S.hidden do if g.Parent then g.Enabled = true end end
 	table.clear(S.hidden)
@@ -555,71 +653,46 @@ function FlairUI.preview(id: string)
 	if S.open then refresh(); previewLoop() end
 end
 
--- ------------------------------------------------------------------ input
-for t, x in tabs do
-	x.b.MouseButton1Click:Connect(function()
-		if S.tab == t then return end
-		S.tab = t
-		refresh()
-		previewLoop()
-	end)
+-- a phone-sized box for tests (Vector2, points), or nil for the real screen: the compact layout in that box
+function FlairUI.fakeScreen(v: Vector2?)
+	S.fake = v
+	box.Size = if v then UDim2.fromOffset(v.X, v.Y) else UDim2.fromScale(1, 1)
+	if S.open then useView(); fit(); refresh() end
 end
-for _, c in K.cards do
-	c.btn.MouseButton1Click:Connect(function()
-		S.pick.kill = c.id
-		refresh()
-		previewLoop()
-	end)
+
+-- ------------------------------------------------------------------ input (both layouts call these)
+onTab = function(t: string)
+	if S.tab == t then return end
+	S.tab = t
+	refresh()
+	previewLoop()
 end
-for _, c in M.cards do
-	c.btn.MouseButton1Click:Connect(function()
-		S.pick.emote = c.id
-		refresh()
-		previewLoop()
-	end)
+onPick = function(t: string, id: string)
+	S.pick[t] = id
+	refresh()
+	previewLoop()
 end
-for i, s in M.slots do
-	s.btn.MouseButton1Click:Connect(function()
-		S.slot = i
-		if s.id ~= "" then S.pick.emote = s.id; previewLoop() end
-		refresh()
-	end)
+onSlot = function(i: number)
+	S.slot = i
+	local id = slots()[i]
+	if id and id ~= "" then S.pick.emote = id; previewLoop() end
+	refresh()
 end
-for _, c in G.cards do
-	c.btn.MouseButton1Click:Connect(function()
-		S.pick.grapple = c.id
-		refresh()
-		previewLoop()
-	end)
-end
-G.equip.face.MouseButton1Click:Connect(function()
-	if not G.equip.enabled then return end
-	local res = ask("grapple", S.pick.grapple)
-	if not res.ok then G.note.Text = string.upper(tostring(res.why or "")) end
+onEquip = function(t: string)
+	if not V then return end
+	local X = if t == "kill" then V.K elseif t == "grapple" then V.G else V.M
+	if not X.equip.enabled then return end
+	local res = if t == "emote" then ask("slot", S.slot, S.pick.emote) else ask(t, S.pick[t])
+	if not res.ok then X.note.Text = string.upper(tostring(res.why or "")) end
 	task.wait(0.1)
 	refresh()
-end)
-K.equip.face.MouseButton1Click:Connect(function()
-	if not K.equip.enabled then return end
-	local res = ask("kill", S.pick.kill)
-	if not res.ok then K.note.Text = string.upper(tostring(res.why or "")) end
-	task.wait(0.1)
-	refresh()
-end)
-M.equip.face.MouseButton1Click:Connect(function()
-	if not M.equip.enabled then return end
-	local res = ask("slot", S.slot, S.pick.emote)
-	if not res.ok then M.note.Text = string.upper(tostring(res.why or "")) end
-	task.wait(0.1)
-	refresh()
-end)
-M.clear.face.MouseButton1Click:Connect(function()
-	if not M.clear.enabled then return end
+end
+onClear = function()
+	if not V or not V.M.clear.enabled then return end
 	ask("slot", S.slot, "")
 	task.wait(0.1)
 	refresh()
-end)
-done.face.MouseButton1Click:Connect(FlairUI.close)
+end
 catcher.MouseButton1Click:Connect(function() end)
 UIS.InputBegan:Connect(function(io, _gp)
 	if S.open and io.KeyCode == Enum.KeyCode.Escape then FlairUI.close() end

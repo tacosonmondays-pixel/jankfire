@@ -127,9 +127,23 @@ behaviour as the fallback: GRAPHICS "OTHERS' KILL EFFECTS" off = someone else's 
 ## Equip screen (`client/FlairUI.luau`)
 
 The loadout screen has a KILL EFFECT · EMOTES button left of DONE; it closes the loadout and opens this screen (not in
-a match). Left: the kill effect grid (EQUIP) or the wheel's 8 slots over the emotes (pick a slot, pick an emote, PUT IN
-SLOT n; EMPTY SLOT). Locked items show a padlock. Right: a client-only copy of your own avatar stands in the world in
-front of you and plays what you point at, on a loop (a ViewportFrame can't draw particles). DONE or Esc closes.
+a match). Three tabs: KILL EFFECT, EMOTES, GRAPPLE. A grid of cards (EQUIP), or the wheel's 8 slots over the emotes (pick
+a slot, pick an emote, PUT IN SLOT n; EMPTY SLOT). Locked items show a padlock. On the right a client-only copy of your
+own avatar stands in the world in front of you and plays what you point at, on a loop (a ViewportFrame can't draw
+particles). DONE or Esc closes.
+
+Two layouts (17 Nov, after the mobile session measured the desktop one at ~36 % on a phone, DONE ~18 pt):
+- **Desktop:** a 1920 x 1080 stage scaled to fit; the wheel's slots as a ring.
+- **Phones and tablets** (`Keys.isTouch`, the touch-controls session's; else touch and no keyboard): a compact 960 x 440
+  stage inside the device's safe area (`ScreenInsets`), three cards across, the wheel's slots as a row of squares, every
+  tap target 52 design px or more. Measured in an 844 x 390 box: tabs and DONE 46 pt, EQUIP 47, slots 51, cards
+  144 x 149; in 1133 x 744 everything x1.18 (DONE 61 pt). Photos: `flair/equip-screen-phone-sheet.jpg`.
+- Test hook: the player attribute `FlairTest = "fake:844x390"` puts the compact layout in a box that size; `"real"` undoes it.
+
+Input and the phone (the touch-controls session): every key arrives through its `Keys` (`Keys.began` / `Keys.ended`,
+real input plus the phone's buttons as plain tables with `Touch = true`); its EMOTE button opens the touch wheel; FIRE,
+AIM, JUMP, HOOK and the rest stop an emote as their keys do. My own phone EMOTE button only shows when its phone layout
+(`TouchOn`) isn't on. Trap met: reading `.Touch` on a real InputObject throws, so it checks `typeof(io) == "table"` first.
 
 ## Owning and saving
 
@@ -140,7 +154,8 @@ front of you and plays what you point at, on a loop (a ViewportFrame can't draw 
 - **Worn**: FlairServer's own session-locked store `JankfireFlair_v1` (Profiles.luau): `{ v = 1, kill, emotes = { 8 } }`.
   Nothing else's save is touched. A saved pick you don't own stays saved but isn't worn.
 - Player attributes: `KillFx` (worn), `Emotes` ("wave,salute,,,,,,"), `Emote` (playing now), `FlairSave`.
-- Remotes: `JankfireRemotes.Flair` (RemoteFunction: state / kill / slot / emote / stop) and `FlairKill` (RemoteEvent),
+- Remotes: `JankfireRemotes.Flair` (RemoteFunction: state / kill / grapple / slot / emote / stop; every request pays
+  the rate budget first, "state" too: the anti-cheat audit) and `FlairKill` (RemoteEvent),
   made by FlairServer when missing (also in `default.project.json`).
 
 ## Test hooks

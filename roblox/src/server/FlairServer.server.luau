@@ -193,12 +193,13 @@ end
 local function handle(p: Player, op: any, a: any, b: any): any
 	local s = st[p]
 	if not s then return { ok = false, why = "loading" } end
+	-- (every request pays first, "state" too: nothing here answers for free)
+	if not spend(s) then return { ok = false, why = "slow down" } end
 	if op == "state" then
 		local d = dataOf(p)
 		return { ok = true, kill = worn(p), grapple = wornGrapple(p), emotes = slots(p), owned = ownedList(p),
 			save = p:GetAttribute("FlairSave"), picked = d and d.kill or "none" }
 	end
-	if not spend(s) then return { ok = false, why = "slow down" } end
 	if op == "emote" then
 		local ok, why, len = startEmote(p, a)
 		return { ok = ok, why = why, len = len }
