@@ -144,6 +144,8 @@ function Replay.clean(c: Model): Model
 			d.LocalTransparencyModifier = 0
 		end
 	end
+	-- (a body the flair session froze for a kill effect carries these; its fade must never touch a ghost)
+	c:SetAttribute("FlairFrozen", nil); c:SetAttribute("KillFx", nil)
 	if runId then c:SetAttribute("RunAnim", runId) end
 	if idleId then c:SetAttribute("IdleAnim", idleId) end
 	return c
@@ -281,8 +283,67 @@ local function applyEvent(e: any)
 end
 
 -- ------------------------------------------------------------------ the camera: over the focus's shoulder
-local rayP = RaycastParams.new()
-rayP.FilterType = Enum.RaycastFilterType.Include
+-- the camera's walls: most of the map's kit has CanQuery off, so a raycast passes straight through it (the first
+-- photos had a pillar filling a third of the frame). instead, at the start, every solid-looking map part near the
+-- action is kept, and the camera's rays are tested against their boxes (a popper cam of our own)
+local camParts: { BasePart } = {}
+local function gatherCamParts(center: Vector3)
+	table.clear(camParts)
+	local map = workspace:FindFirstChild("Map")
+	if not map then return end
+	for _, d in map:GetDescendants() do
+		if d:IsA("BasePart") and d.Transparency < 0.85 then
+			local s = d.Size
+			if math.max(s.X, s.Y, s.Z) >= 1.2 and (d.Position - center).Magnitude < 140 + s.Magnitude / 2 then table.insert(camParts, d) end
+		end
+	end
+end
+Replay.gatherCamParts = gatherCamParts
+
+-- where a ray (o, unit d, length len) first enters a part's box, or nil (a box holding o doesn't count)
+local function rayBox(o: Vector3, d: Vector3, len: number, p: BasePart): number?
+	local cf = p.CFrame
+	local lo = cf:PointToObjectSpace(o)
+	local ld = cf:VectorToObjectSpace(d)
+	local h = p.Size / 2
+	if math.abs(lo.X) <= h.X and math.abs(lo.Y) <= h.Y and math.abs(lo.Z) <= h.Z then return nil end
+	local tmin, tmax = 0, len
+	for _, ax in { { lo.X, ld.X, h.X }, { lo.Y, ld.Y, h.Y }, { lo.Z, ld.Z, h.Z } } do
+		local oa, da, ha = ax[1], ax[2], ax[3]
+		if math.abs(da) < 1e-6 then
+			if math.abs(oa) > ha then return nil end
+		else
+			local t1, t2 = (-ha - oa) / da, (ha - oa) / da
+			if t1 > t2 then t1, t2 = t2, t1 end
+			if t1 > tmin then tmin = t1 end
+			if t2 < tmax then tmax = t2 end
+			if tmin > tmax then return nil end
+		end
+	end
+	return tmin
+end
+-- how far the camera can go from `from` toward `to` before something solid (minus a margin), checked along three
+-- rays (the middle and two a little to the sides, so the lens doesn't graze a corner)
+local function clearTo(from: Vector3, to: Vector3): number
+	local d = to - from
+	local L = d.Magnitude
+	if L < 0.05 then return L end
+	local u = d / L
+	local side = u:Cross(Vector3.yAxis)
+	side = if side.Magnitude > 1e-3 then side.Unit * 0.7 else Vector3.xAxis * 0.7
+	local best = L
+	for _, off in { Vector3.zero, side, -side } do
+		local o = from + off * 0.35
+		for _, p in camParts do
+			if (p.Position - o).Magnitude <= L + p.Size.Magnitude / 2 then
+				local t = rayBox(o, u, best, p)
+				if t and t < best then best = t end
+			end
+		end
+	end
+	return if best < L then math.max(0.8, best - 1.1) else L
+end
+
 local function camStep(dt: number)
 	local cam = workspace.CurrentCamera :: Camera
 	cam.CameraType = Enum.CameraType.Scriptable
@@ -300,23 +361,24 @@ local function camStep(dt: number)
 		return
 	end
 	local right = Vector3.new(math.cos(yaw), 0, -math.sin(yaw))
-	local map = workspace:FindFirstChild("Map")
-	rayP.FilterDescendantsInstances = if map then { map } else {}
+	-- the shoulder with the most room (this side, the other side, then up and behind)
 	local best = nil
 	for _, o in { { st.side or 1, CAM.up }, { -(st.side or 1), CAM.up }, { 0, CAM.up * 2.6 } } do
 		local want = eye - dir * CAM.back + right * (o[1] * CAM.side) + Vector3.new(0, o[2], 0)
-		local d = want - eye
-		local L = d.Magnitude
-		local hit = workspace:Raycast(eye, d, rayP)
-		local free = if hit then math.max(1, (hit.Position - eye).Magnitude - 1) else L
-		if not best or free > best.free + 1.2 then best = { free = free, d = d.Unit, side = o[1] } end
-		if free >= L then break end
+		local L = (want - eye).Magnitude
+		local free = clearTo(eye, want)
+		if not best or free > best.free + 1.2 then best = { free = free, d = (want - eye).Unit, side = o[1] } end
+		if free >= L - 0.01 then break end
 	end
 	if best.side ~= 0 then st.side = best.side end
 	local pos = eye + best.d * best.free
 	local look = eye + dir * 90
 	if not st.camPos then st.camPos, st.camLook = pos, look end
 	st.camPos = st.camPos:Lerp(pos, math.min(1, dt * 12))
+	-- never let the smoothing carry the lens into a wall: pull it in front of anything between the eye and it
+	local toCam = st.camPos - eye
+	local free = clearTo(eye, st.camPos)
+	if free < toCam.Magnitude - 0.01 then st.camPos = eye + toCam.Unit * free end
 	st.camLook = st.camLook:Lerp(look, math.min(1, dt * 9))
 	cam.CFrame = CFrame.lookAt(st.camPos, st.camLook)
 	cam.Focus = CFrame.new(eye)
@@ -384,6 +446,7 @@ function Replay.stop()
 	pcall(function() ContextActionService:UnbindAction("JankReplaySkip") end)
 	if s.conn then s.conn:Disconnect() end
 	for _, g in s.ghosts do g.model:Destroy() end
+	table.clear(camParts)
 	hideLive(false)
 	gui.Enabled = false
 	for g in hidden do if g.Parent then g.Enabled = true end end
@@ -419,6 +482,10 @@ function Replay.play(msg: any, opts: any?): boolean
 	if mode == "potm" then
 		for _, e in clip.ev do if e.t == "kill" and e.k == msg.focus then table.insert(slow, { e.s - SLOW.before, e.s + SLOW.after }) end end
 	end
+	-- (the camera's walls: the map round where the focus goes)
+	local ft = tracks[msg.focus]
+	local center = if ft and #ft.p > 0 then ft.p[math.max(1, #ft.p // 2)] else (if next(tracks) then (tracks[next(tracks) :: number] :: Track).p[1] else Vector3.zero)
+	gatherCamParts(center)
 	local cam = workspace.CurrentCamera :: Camera
 	st = { mode = mode, clip = clip, ghosts = ghosts, focus = msg.focus, t = t0, t0 = t0, t1 = t1, ei = 1, slow = slow, kills = 0,
 		fov = cam.FieldOfView, camPos = nil, camLook = nil, side = 1, lastEye = nil, lastYaw = 0, onEnd = opts and opts.onEnd,

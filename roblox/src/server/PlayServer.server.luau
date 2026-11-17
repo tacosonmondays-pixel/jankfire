@@ -39,7 +39,10 @@ Recorder.init(Fight, Matches)
 --   T:Invoke("hold", secs, win)       a match with stand-ins in it lasts secs, then team `win` takes it
 --   T:Invoke("state")                 parties, queues, rooms
 --   T:Invoke("ranked", player)        the player's ratings (Studio's own store, JankfireRanked_studio)
---   T:Invoke("setranked", player, mode, { r, rd, n, placed, need })   T:Invoke("resetranked", player)
+--   T:Invoke("setranked", player, mode, { r, rd, n, placed, need, lp })   T:Invoke("resetranked", player)
+--   T:Invoke("restore", cheaterId, since, queueAll)   a confirmed cheater: RankedData.restoreFor (queueAll: fixes go to the
+--     store even for players here);  T:Invoke("fixes", userId) the fixes waiting for them;  T:Invoke("pull", player)
+--     take and apply them (what a join does);  T:Invoke("log", player) their season's ranked log
 --   T:Invoke("play", player) / ("leave", player)   what the PLAY and LEAVE buttons do
 if RunService:IsStudio() then
 	local old = ServerStorage:FindFirstChild("JankPlayTest")
@@ -47,7 +50,7 @@ if RunService:IsStudio() then
 	local fn = Instance.new("BindableFunction")
 	fn.Name = "JankPlayTest"
 	fn.OnInvoke = function(op: string, a: any, b: any, c: any, d: any): any
-		if op == "ranked" or op == "setranked" or op == "resetranked" then return RankedData.test(op, a, b, c) end
+		if op == "ranked" or op == "setranked" or op == "resetranked" or op == "restore" or op == "fixes" or op == "pull" or op == "log" then return RankedData.test(op, a, b, c) end
 		if op == "play" then return Party.enter(a) end
 		if op == "leave" then Party.leave(a); return true end
 		return Party.test(op, a, b, c, d)

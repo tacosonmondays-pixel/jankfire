@@ -795,10 +795,10 @@ end
 -- ------------------------------------------------------------------ Studio tests (PlayServer's JankPlayTest)
 local NPC_NAMES = { "Looticus", "Dune", "Frisk1636", "Trisangle" }
 local standN = 0
-local function newStandIn(rating: number?): Member
+local function newStandIn(rating: number?, id: number?): Member
 	standN += 1
 	local name = NPC_NAMES[(standN - 1) % #NPC_NAMES + 1]
-	local m: Member = { id = -standN, name = name, display = name, rating = {} }
+	local m: Member = { id = id or -standN, name = name, display = name, rating = {} }
 	for _, mode in Ranked.MODES do
 		local q = Ranked.fresh()
 		q.r = rating or 1500; q.rd = 90; q.n = 12; q.placed = true
@@ -818,12 +818,19 @@ function Party.test(op: string, a: any, b: any, c: any, d: any): any
 		-- a stand-in group searching for (mode, ranked) with `size` members rated `rating`
 		local mode = if type(a) == "string" then a else "2v2"
 		local group: any = { rival = true, members = {} }
-		for _ = 1, math.clamp(tonumber(c) or 1, 1, 4) do table.insert(group.members, newStandIn(tonumber(d))) end
+		-- (c: how many, or a list of stand-in ids, so the same stand-in can play several matches: a cheat restore test)
+		if type(c) == "table" then
+			for _, id in c do table.insert(group.members, newStandIn(tonumber(d), tonumber(id))) end
+		else
+			for _ = 1, math.clamp(tonumber(c) or 1, 1, 4) do table.insert(group.members, newStandIn(tonumber(d))) end
+		end
 		local e: Queue.Entry = { key = Queue.key(mode, b == true), mode = mode, ranked = b == true, since = now(), size = #group.members,
 			rating = tonumber(d) or 1500, owner = group, state = "search" }
 		group.entry = e
 		Queue.add(e)
-		return { key = e.key, size = e.size, rating = e.rating }
+		local ids = {}
+		for _, m in group.members do table.insert(ids, m.id) end
+		return { key = e.key, size = e.size, rating = e.rating, ids = ids }
 	elseif op == "hold" then
 		testHold.secs = tonumber(a) or testHold.secs
 		testHold.win = if b == "party" or b == "rival" then b else (tonumber(b) or testHold.win)

@@ -25,13 +25,13 @@ local Q = 173.7178 -- Glicko-2's scale: 400 / ln 10
 local PI2 = math.pi * math.pi
 
 export type Rating = { r: number, rd: number, vol: number, n: number?, w: number?, l: number?, peak: number?,
-	last: number?, placed: boolean?, need: number?, lp: number? }
+	last: number?, placed: boolean?, need: number?, lp: number?, s0: number? }
 -- n games, w/l, peak (the best RP), last os.time(), need = placements this season, lp = the ladder RP once placed
 
 -- a fresh rating for a mode
 function Ranked.fresh(): Rating
 	return { r = Ranked.START.r, rd = Ranked.START.rd, vol = Ranked.START.vol, n = 0, w = 0, l = 0, peak = 0, last = 0,
-		placed = false, need = Ranked.PLACEMENTS }
+		placed = false, need = Ranked.PLACEMENTS, s0 = Ranked.START.r } -- (s0: the MMR this season started at: a voided season goes back to it)
 end
 
 local function g(phi: number): number
@@ -109,6 +109,7 @@ function Ranked.seasonReset(p: Rating): Rating
 	out.need = Ranked.PLACEMENTS_RESET
 	out.peak = 0
 	out.lp = nil -- (placements again: the RP comes back from them)
+	out.s0 = out.r
 	return out
 end
 

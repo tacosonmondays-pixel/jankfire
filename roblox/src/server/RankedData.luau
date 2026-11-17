@@ -21,7 +21,7 @@ local RankedData = {}
 local RECENT = 10
 
 local function template(): any
-	return { v = 1, season = Ranked.SEASON, modes = {}, past = {}, recent = {} }
+	return { v = 1, season = Ranked.SEASON, modes = {}, past = {}, recent = {}, log = {}, fixed = {} }
 end
 local store = Profiles.new(if RunService:IsStudio() then "JankfireRanked_studio" else "JankfireRanked_v1", template)
 
@@ -98,6 +98,211 @@ local function publish(p: Player)
 	if p:GetAttribute("RankedBest") ~= label then p:SetAttribute("RankedBest", label) end
 end
 
+-- ------------------------------------------------------------------ restoring after a cheater (17 Nov, the owner:
+-- "If someone is caught cheating give back any ranked stuff or stats!!"; the kind of restore Valorant does)
+-- every ranked match goes in an index store (logStore): "m:<match key>" = its teams (user ids, stand-ins too) and each
+-- real player's change { team, won, rp, mmr }; "u:<user id>" = the keys of that player's ranked matches. each player's
+-- own save keeps the same per match in d.log (their history for the season).
+-- RankedData.restoreFor(cheaterId, since), called by the anti-cheat session when a cheater is CONFIRMED (an owner ban
+-- or confirm, never an automatic flag): for every ranked match the cheater played since `since` (default: the last
+-- 14 days of this season), once per match (the record is marked restored):
+--   * each player on the OTHER team who LOST gets back the RP and the MMR they lost, and the loss comes off their W/L
+--   * the cheater's teammates are left alone: they didn't cheat, their result stands either way
+--   * the cheater's season is voided: every mode back to the MMR it started the season at, RP and placements reset,
+--     their save flagged (d.void)
+-- a player online in this server gets it at once; anyone else gets a pending fix in fixStore ("r:<user id>"), taken and
+-- applied on their next join (their own save is session-locked, so nothing else writes into it). with
+-- PlayConfig.CROSS_SERVER on, MessagingService ("JankRankedFix") tells the server they're on to take it now.
+-- the restored player sees "RANKED RATING RESTORED +N"
+local DataStoreService = game:GetService("DataStoreService")
+local MessagingService = game:GetService("MessagingService")
+local PlayConfig = require(Shared:WaitForChild("PlayConfig"))
+local studio = RunService:IsStudio()
+local logStore: DataStore? = nil
+local fixStore: DataStore? = nil
+pcall(function()
+	logStore = DataStoreService:GetDataStore(if studio then "JankfireRankedLog_studio" else "JankfireRankedLog_v1")
+	fixStore = DataStoreService:GetDataStore(if studio then "JankfireRankedFix_studio" else "JankfireRankedFix_v1")
+end)
+local LOG_KEEP = 300 -- matches in a player's own log
+local INDEX_DAYS = 30 -- a "u:" index keeps this long
+local RESTORE_DAYS = 14
+
+local matchRes: { [string]: { [string]: any } } = {} -- each live ranked match's results so far (leavers included)
+
+local function idsOf(rated: any): { { number } }
+	local out = {}
+	for t, list in rated.teams do
+		out[t] = {}
+		for _, x in list do table.insert(out[t], x.id) end
+	end
+	return out
+end
+
+-- the player's own log line for a match (rate() calls this)
+local function logMatch(p: Player, d: any, m: any, team: number, won: boolean, res: any)
+	local teams = idsOf(m.rated)
+	local mates, foes = {}, {}
+	for t, ids in teams do
+		for _, id in ids do
+			if t == team then if id ~= p.UserId then table.insert(mates, id) end else table.insert(foes, id) end
+		end
+	end
+	d.log = d.log or {}
+	table.insert(d.log, 1, { k = m.key, t = os.time(), mode = m.rated.mode, team = team, mates = mates, foes = foes,
+		rp = res.delta, mmr = res.mmrDelta, won = won, season = d.season })
+	while #d.log > LOG_KEEP do table.remove(d.log) end
+	local key = tostring(m.key)
+	matchRes[key] = matchRes[key] or {}
+	matchRes[key][tostring(p.UserId)] = { team = team, won = won, rp = res.delta, mmr = res.mmrDelta, placed = res.delta == nil }
+end
+
+-- after a ranked match: its record and every player's index line (in the background, retried by the store)
+local function writeIndex(m: any)
+	local store = logStore
+	if not store or type(m.key) ~= "string" then return end
+	local key = m.key :: string
+	local rec = { t = os.time(), mode = m.rated.mode, season = Ranked.SEASON, teams = idsOf(m.rated), res = matchRes[key] or {} }
+	matchRes[key] = nil
+	pcall(function() (store :: DataStore):SetAsync("m:" .. key, rec) end)
+	local cut = os.time() - INDEX_DAYS * 86400
+	for t, ids in rec.teams do
+		for _, id in ids do
+			pcall(function()
+				(store :: DataStore):UpdateAsync("u:" .. id, function(old: any)
+					local list = {}
+					for _, e in (if type(old) == "table" then old else {}) do if type(e) == "table" and (e.t or 0) >= cut then table.insert(list, e) end end
+					table.insert(list, { k = key, t = rec.t, team = t })
+					while #list > LOG_KEEP do table.remove(list, 1) end
+					return list
+				end)
+			end)
+		end
+	end
+end
+
+-- a voided season: every mode back to where it started, no placements, no RP; the save says so
+local function voidSeason(d: any)
+	for mode, q in d.modes do
+		if type(q) == "table" then
+			local s0 = tonumber(q.s0) or Ranked.START.r
+			local f = Ranked.fresh()
+			f.r, f.s0 = s0, s0
+			d.modes[mode] = f
+		end
+	end
+	d.void = { t = os.time(), season = d.season }
+end
+
+-- apply fixes to a loaded save: { k, mode, rp, mmr, season } refunds and { void = true } (each key once)
+local function apply(p: Player, fixes: { any })
+	local d = dataOf(p)
+	if not d then return end
+	d.fixed = d.fixed or {}
+	local total, any = 0, false
+	for _, fx in fixes do
+		if type(fx) ~= "table" or type(fx.k) ~= "string" or d.fixed[fx.k] then continue end
+		d.fixed[fx.k] = os.time()
+		if fx.void then
+			voidSeason(d)
+		elseif fx.season == d.season and type(fx.mode) == "string" then
+			local q = d.modes[fx.mode]
+			if type(q) == "table" then
+				local rp = math.max(0, tonumber(fx.rp) or 0)
+				if q.placed and rp > 0 then
+					q.lp = (if type(q.lp) == "number" then q.lp else Ranked.ladderOf(q.r)) + rp
+					total += rp
+				end
+				q.r += math.max(0, tonumber(fx.mmr) or 0)
+				q.l = math.max(0, (q.l or 0) - 1)
+				any = true
+				for _, e in d.log or {} do if e.k == fx.k then e.restored = true end end
+			end
+		end
+	end
+	local s = st[p]
+	if s and s.prof then s.prof.dirty = true end
+	publish(p)
+	if (any or total > 0) and push then
+		(push :: any)(p, { t = "toast", text = if total > 0 then ("RANKED RATING RESTORED +%d"):format(total) else "RANKED RATING RESTORED" })
+	end
+end
+
+-- take this player's pending fixes out of the store and apply them (on join, or when another server says so)
+local function pull(p: Player)
+	local store = fixStore
+	if not store or not dataOf(p) then return end
+	local got: { any } = {}
+	local ok = pcall(function()
+		(store :: DataStore):UpdateAsync("r:" .. p.UserId, function(old: any)
+			got = if type(old) == "table" then old else {}
+			if #got == 0 then return nil end
+			return {}
+		end)
+	end)
+	if ok and #got > 0 then apply(p, got) end
+end
+
+-- a fix for one player: now if they're here, else waiting in the store (and a word to their server)
+local function deliver(uid: number, fx: any, forceStore: boolean?): boolean
+	local p = Players:GetPlayerByUserId(uid)
+	if p and dataOf(p) and not forceStore then apply(p, { fx }); return true end
+	local store = fixStore
+	if not store then return false end
+	pcall(function()
+		(store :: DataStore):UpdateAsync("r:" .. uid, function(old: any)
+			local list = if type(old) == "table" then old else {}
+			for _, e in list do if type(e) == "table" and e.k == fx.k then return nil end end
+			table.insert(list, fx)
+			return list
+		end)
+	end)
+	if PlayConfig.CROSS_SERVER and not studio then
+		pcall(function() MessagingService:PublishAsync("JankRankedFix", { u = uid }) end)
+	end
+	return false
+end
+
+-- the anti-cheat session's call when a cheater is CONFIRMED. since = os.time() seconds (nil / 0: the last 14 days).
+-- returns { ok, matches, victims, now, queued } or { ok = false, why }. safe to call again: each match restores once
+function RankedData.restoreFor(cheaterId: number, since: number?, forceStore: boolean?): any
+	local store = logStore
+	if type(cheaterId) ~= "number" then return { ok = false, why = "no user id" } end
+	if not store then return { ok = false, why = "no DataStore here" } end
+	local from = if type(since) == "number" and since > 0 then since else os.time() - RESTORE_DAYS * 86400
+	local okI, idx = pcall(function() return (store :: DataStore):GetAsync("u:" .. cheaterId) end)
+	if not okI then return { ok = false, why = "couldn't read the match index: " .. tostring(idx) } end
+	local out = { ok = true, matches = 0, victims = 0, now = 0, queued = 0 }
+	for _, e in (if type(idx) == "table" then idx else {}) do
+		if type(e) ~= "table" or (e.t or 0) < from or type(e.k) ~= "string" then continue end
+		local rec: any = nil
+		pcall(function()
+			(store :: DataStore):UpdateAsync("m:" .. e.k, function(old: any)
+				rec = nil
+				if type(old) ~= "table" or old.restored then return nil end
+				old.restored = { by = cheaterId, t = os.time() }
+				rec = old
+				return old
+			end)
+		end)
+		if not rec or rec.season ~= Ranked.SEASON then continue end
+		out.matches += 1
+		local cteam = e.team
+		for uidS, r in rec.res or {} do
+			local uid = tonumber(uidS)
+			if uid and uid ~= cheaterId and r.team ~= cteam and r.won == false then
+				local fx = { k = e.k, mode = rec.mode, season = rec.season, by = cheaterId, t = os.time(),
+					rp = if type(r.rp) == "number" and r.rp < 0 then -r.rp else 0, mmr = if type(r.mmr) == "number" and r.mmr < 0 then -r.mmr else 0 }
+				out.victims += 1
+				if deliver(uid, fx, forceStore) then out.now += 1 else out.queued += 1 end
+			end
+		end
+	end
+	-- the cheater's own season, voided (now if they're here, else on their next join)
+	deliver(cheaterId, { k = ("void:%d:%d"):format(cheaterId, Ranked.SEASON), void = true, season = Ranked.SEASON, t = os.time() }, forceStore)
+	return out
+end
+
 -- ------------------------------------------------------------------ a finished match
 -- rate one player in a finished (or left) match. rated = m.rated: { mode, teams = { { { id, r, rd } } } }
 local function rate(p: Player, m: any, team: number, won: boolean): any?
@@ -120,6 +325,7 @@ local function rate(p: Player, m: any, team: number, won: boolean): any?
 	if (q.last or 0) > 0 then q.rd = Ranked.idle(q, (os.time() - (q.last :: number)) / 86400) end
 	local res = Ranked.apply(q, teamR, oppR, oppRd, won, os.time())
 	res.mode = rated.mode
+	pcall(logMatch, p, d, m, team, won, res) -- (its line in the season's log and the match's record, for a cheat restore)
 	res.rank = RankedData.view(q, rated.mode)
 	-- (what the card animates from; the Rank tables carry the hidden MMR, so they stay here)
 	local rb = res.rankBefore
@@ -151,6 +357,7 @@ local function onEnd(m: any, winner: number?)
 			end
 		end
 	end
+	task.spawn(writeIndex, m) -- (the match's record and everyone's index line: RankedData.restoreFor reads them)
 end
 
 -- ------------------------------------------------------------------ players
@@ -165,6 +372,7 @@ local function seasonCheck(d: any)
 		end
 	end
 	d.season = Ranked.SEASON
+	d.log, d.fixed, d.void = {}, {}, nil -- (a new season: a new log)
 end
 
 local function join(p: Player)
@@ -178,6 +386,8 @@ local function join(p: Player)
 	seasonCheck(prof.data)
 	s.ready = true
 	publish(p)
+	-- (fixes waiting from a cheat restore while they were away: a moment after joining, so the notice reaches their screen)
+	task.delay(3, function() if st[p] == s then pcall(pull, p) end end)
 	prof.onLost.Event:Connect(function() warn("[jankfire] ranked: " .. p.Name .. "'s save was opened elsewhere") end)
 end
 
@@ -205,6 +415,17 @@ function RankedData.init(matches: any, stats: any?, pushFn: (Player, any) -> ())
 	Players.PlayerAdded:Connect(function(p) task.spawn(join, p) end)
 	for _, p in Players:GetPlayers() do task.spawn(join, p) end
 	Players.PlayerRemoving:Connect(leave)
+	-- (PlayConfig.CROSS_SERVER only, untested until publish: a restore in another server tells this one to take a
+	-- player's fixes now)
+	if PlayConfig.CROSS_SERVER and not studio then
+		pcall(function()
+			MessagingService:SubscribeAsync("JankRankedFix", function(msg: any)
+				local u = type(msg.Data) == "table" and tonumber(msg.Data.u)
+				local p = u and Players:GetPlayerByUserId(u)
+				if p then task.spawn(pull, p) end
+			end)
+		end)
+	end
 end
 
 -- ------------------------------------------------------------------ Studio tests (PlayServer's JankPlayTest)
@@ -222,6 +443,17 @@ function RankedData.test(op: string, p: Player?, a: any, b: any): any
 		if s and s.prof then s.prof.dirty = true end
 		publish(p :: Player)
 		return RankedData.view(q, a)
+	elseif op == "restore" then
+		-- (p here is the cheater's user id; a = since; b = true: queue every fix in the store, even for players here)
+		return RankedData.restoreFor(p :: any, a, b == true)
+	elseif op == "fixes" and fixStore then
+		local ok, v = pcall(function() return (fixStore :: DataStore):GetAsync("r:" .. tostring(p)) end)
+		return if ok then v else tostring(v)
+	elseif op == "pull" and d then
+		pull(p :: Player)
+		return true
+	elseif op == "log" and d then
+		return { log = d.log, fixed = d.fixed, void = d.void }
 	elseif op == "resetranked" and d then
 		d.modes, d.past, d.recent, d.season = {}, {}, {}, Ranked.SEASON
 		local s = st[p :: Player]

@@ -202,7 +202,56 @@ Rewards are not built.
 - Its own store `JankfireRanked_v1` through `Profiles.luau` (the session-locked layer loot and stats use), key
   `u<userId>`. It never touches another system's store.
 - **Studio uses its own store, `JankfireRanked_studio`**, so test matches never reach live ratings.
-- `{ v, season, modes = { ["2v2"] = { r, rd, vol, n, w, l, peak, last, placed } }, past = {}, recent = { last 10 } }`.
+- `{ v, season, modes = { ["2v2"] = { r, rd, vol, n, w, l, peak, last, placed, lp, s0 } }, past = {}, recent = { last 10 },
+  log = { this season's ranked matches }, fixed = { restores applied }, void? }`.
+
+### When a cheater is caught (17 Nov 2026)
+
+The owner: "If someone is caught cheating give back any ranked stuff or stats!!". This works like Valorant's restore
+when a cheater was in your match.
+
+**The log.**
+- Every ranked match goes in each real player's own save (`d.log`): its key (`m.key`), when, mode, team, teammates'
+  and opponents' user ids, the RP and MMR change, and the result.
+- It also goes in an index store `JankfireRankedLog_v1` (`_studio` in Studio):
+  - `m:<key>` holds the teams and every real player's change;
+  - `u:<user id>` lists that player's match keys for 30 days. Stand-ins are listed too, so a stand-in can play the
+    cheater in a Studio test.
+
+**The call:** `RankedData.restoreFor(cheaterUserId, since)`.
+- The anti-cheat session calls it when a cheater is **confirmed**: an owner ban or confirm, never an automatic flag.
+- `since` defaults to the last 14 days of this season.
+- It covers every ranked match of the cheater's in that window, once per match (the record is marked restored).
+
+**What changes for whom:**
+
+| who | what happens | why |
+|---|---|---|
+| the other team's players who **lost** | the RP and the MMR they lost come back; the loss comes off their W/L | they lost to a cheater |
+| the other team's players who won | nothing | they lost nothing |
+| the cheater's **teammates** | nothing: their result stands, a win's RP and a loss's alike | they didn't cheat, and reversing their win would punish them for a teammate; taking their loss back would reward it |
+| the **cheater** | the season is voided: every mode back to the MMR it started the season at (`s0`), RP and placements reset, `d.void` set | their ranked record this season can't be trusted |
+
+**Who gets it, and when:**
+- A player in this server gets it at once.
+- Anyone else gets a pending fix in `JankfireRankedFix_v1` (`r:<user id>`). It is taken and applied 3 s after their
+  next join, inside their own session-locked save. Nothing else ever writes into a player's save.
+- With `PlayConfig.CROSS_SERVER` on, MessagingService (`JankRankedFix`) tells the server they're on to take it right
+  away.
+- The restored player sees `RANKED RATING RESTORED +N`.
+- The player-cards session restores stats the same way through `Stats.restoreFor`, with the same call shape.
+
+**Tested 17 Nov, place version 524.** I played ranked 1v1s against a stand-in "cheater" (id -7).
+- **Before:** GOLD II at 34/100, rating 1530, losses 3.
+- **Two losses to the cheater:** -22 RP and -24 RP, ending at GOLD III 88/100.
+- **`restoreFor(-7)`:** 2 matches and 2 refunds, applied at once. Everything came back exactly: GOLD II 34/100,
+  rating 1530.2, losses 3. The notice showed.
+- **Calling it again:** nothing happens.
+- **The cheater's season wipe:** waits in the pending store until they next join.
+- **The offline path:** a third loss went to 13/100. The fix was queued in the store, and the join pull took it:
+  back to 34/100, store empty, notice "RANKED RATING RESTORED +21".
+
+![the notice in the lobby](matchmaking/15_restore_notice.jpg)
 
 ## 5. How it is built
 
