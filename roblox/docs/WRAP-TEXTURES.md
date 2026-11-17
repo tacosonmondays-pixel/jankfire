@@ -312,6 +312,10 @@ containers, the shop and the pack skip it.
   on the rifle the mark sits on the receiver above the hand, apex forward, its stars blooming; the midnight reads blue
   in the hall. A gun given the Skin `sniper_triangulum` got no mark (0 SurfaceGuis, 2 without it). The Triangulum
   Sniper skin wasn't in the place yet (only the wrap is under ReplicatedStorage), so it is untested on the real skin.
+- **Clean shape (17 Nov, the skin concepts session from the v564 sheet):** the rifle's olive kit-mark slots and a rivet
+  stood inside the triangle and broke its one clean read (they did the same over Black Hole's hole). Now `hole` hides
+  the gun's small trims (`_wzN` pieces) that stand over the picture on that face while it shows (Transparency 1,
+  remembered, so changing or taking off the wrap brings them back). Applies to every hero decal.
 
 ## Redrawing or adding a wrap
 

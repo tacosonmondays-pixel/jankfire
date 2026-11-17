@@ -419,7 +419,7 @@ end
 local HOLE_PPS = 256 -- SurfaceGui pixels per stud
 WeaponModels.HOLE_PPS = HOLE_PPS
 local NO_HERO: { [string]: boolean } = { sniper_triangulum = true } -- (the Triangulum Sniper wears the mark already)
-local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAppearance)
+local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAppearance, all: { BasePart })
 	local sk = m:GetAttribute("Skin")
 	if (type(sk) == "string" and NO_HERO[sk]) or m:GetAttribute("NoHeroDecal") then return end
 	local style = pic:GetAttribute("DecalStyle")
@@ -456,6 +456,28 @@ local function hole(m: Instance, worn: { BasePart }, ref: CFrame, pic: SurfaceAp
 	if side and bestW > hS * aspect * 1.15 then
 		local mx = hS * aspect * 0.55 / bestW
 		x = if (-bestN):Cross(best.CFrame.UpVector):Dot(back) > 0 then 1 - mx else mx
+	end
+	-- the gun's small trims standing over the picture (the rifle's olive kit-mark slots, a rivet: _wzN pieces) broke its
+	-- one clean shape (the skin concepts session, 17 Nov, from the v564 sheet): they hide while it shows. Remembered like
+	-- any wrapped piece, so changing or taking off the wrap brings them back
+	if side then
+		local n, upv = bestN, best.CFrame.UpVector
+		local xdir = (-n):Cross(upv)
+		local function half(b: BasePart, v: Vector3): number
+			local c, z = b.CFrame, b.Size
+			return math.abs(v:Dot(c.RightVector)) * z.X / 2 + math.abs(v:Dot(c.UpVector)) * z.Y / 2 + math.abs(v:Dot(c.LookVector)) * z.Z / 2
+		end
+		local facePt = best.Position + n * half(best, n)
+		local rc = facePt + xdir * ((x - 0.5) * bestW)
+		local hx, hy = hS * aspect * 0.45, hS * 0.45
+		for _, p in all do
+			if p == best or zoneOf(p, m) ~= "n" then continue end
+			local rel = p.Position - rc
+			if math.abs(rel:Dot(xdir)) > hx + half(p, xdir) or math.abs(rel:Dot(upv)) > hy + half(p, upv) then continue end
+			if (p.Position - facePt):Dot(n) + half(p, n) < 0.002 then continue end -- (inside the body: it covers nothing)
+			remember(p)
+			p.Transparency = 1
+		end
 	end
 	local stars = {}
 	local ss = pic:GetAttribute("DecalStars")
@@ -661,7 +683,7 @@ function WeaponModels.wrap(m: Instance, wrapId: string?, mode: string?)
 	if pic and unfolded and pic:GetAttribute("Decal") then
 		local worn = {}
 		for _, p in list do if p:FindFirstChild("WrapSA") then table.insert(worn, p) end end
-		hole(m, worn, ref, pic)
+		hole(m, worn, ref, pic, list)
 	end
 	local acc = if pic then pic:GetAttribute("Accent") else nil
 	if typeof(acc) == "Color3" then
