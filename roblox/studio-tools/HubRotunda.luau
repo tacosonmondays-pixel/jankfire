@@ -95,7 +95,7 @@ R.NPCS = {
 	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit" }, -- on the lounge's sofa
 	Dune = { user = "Doonamei", id = 56917496, pose = "stand" }, -- by the ring in the gym, watching it
 	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand" }, -- on the balcony over the lifts, looking down at the platform
-	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit" }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
+	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,
@@ -479,6 +479,7 @@ function R.new(live, opts)
 		p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.Transparency = 1; p.CastShadow = false
 		if p:IsA("Seat") then p.Disabled = true end -- (HubNPCs.server opens it for its regular only)
 		p:SetAttribute("Who", who); p:SetAttribute("User", info.user); p:SetAttribute("Pose", info.pose)
+		if info.vipDaily then p:SetAttribute("VipDaily", true) end -- (the shop's VipDaily puts the VIP daily reward's prompt on this spot)
 		if info.id then p:SetAttribute("UserId", info.id) end
 		p.Parent = root.Scenery
 		game:GetService("CollectionService"):AddTag(p, "HubNPC")
