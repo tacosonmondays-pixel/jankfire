@@ -247,9 +247,9 @@ H.looks.gut = {
 		ClockTime = 12.5, GeographicLatitude = 92, ColorShift_Top = Color3.fromRGB(255, 222, 205),
 		FogColor = Color3.fromRGB(214, 140, 140), FogStart = 300, FogEnd = 1800,
 	},
-	Atmosphere = { Density = 0.38, Offset = 0.1, Haze = 2.0, Glare = 0.1, Color = Color3.fromRGB(242, 178, 172), Decay = Color3.fromRGB(176, 96, 100) },
+	Atmosphere = { Density = 0.3, Offset = 0.1, Haze = 1.5, Glare = 0.1, Color = Color3.fromRGB(242, 178, 172), Decay = Color3.fromRGB(176, 96, 100) },
 	Bloom = { Intensity = 0.32, Size = 24, Threshold = 2.0 },
-	ColorCorrection = { Brightness = 0, Contrast = 0.1, Saturation = -0.08, TintColor = Color3.fromRGB(255, 246, 244) },
+	ColorCorrection = { Brightness = -0.02, Contrast = 0.17, Saturation = -0.06, TintColor = Color3.fromRGB(255, 246, 244) }, -- (round 2: less haze, more contrast: players must read against the pink)
 	SunRays = { Intensity = 0.03 },
 } :: Look
 H.ownSky = {} :: { [string]: string }    -- a look with its own Sky: the Sky's name in Lighting.SkyParked (attribute OwnSky)

@@ -152,7 +152,7 @@ def ball(model, col, p, r, kind='plastic', sy=1.0):
 # the numbers (shared with the hit boxes in gut_layout.py)
 from gut_heart_dims import *
 
-def tower(m, take, x=0.0, y=0.0, z=0.0, yaw=0.0, legs=4, phase=0.0, heart=True, leg0=None):
+def tower(m, take, x=0.0, y=0.0, z=0.0, yaw=0.0, legs=4, phase=0.0, heart=True, leg0=None, cradle=1.0):
     """the whole tower at (x, y, z), turned yaw radians round its up axis. the stair starts at angle `phase` (in the
     tower's own frame) and climbs 315 degrees round to the balcony, then on up to the cradle (look only above a gate).
     models: <m>_tw (plinth, core, legs, balcony, stair), <m>_cr (the cradle), <m>_ht (the heart: its own model so the
@@ -232,14 +232,15 @@ def tower(m, take, x=0.0, y=0.0, z=0.0, yaw=0.0, legs=4, phase=0.0, heart=True, 
         tube(mt, IVORY, [V((BALC_R1 - 1.0) * math.cos(a), BALC_Y + 3.6, (BALC_R1 - 1.0) * math.sin(a)), V(15.2 * math.cos(a), 72.0, 15.2 * math.sin(a)),
                          V(12.0 * math.cos(a), CORE_TOP + 2.0, 12.0 * math.sin(a))], 0.45, segs=6)
     # the cradle: a flared cup on the core and six prongs that hold the heart's lower half from outside, like a jewel's
-    K.lathe(mc, ROSEGOLD, [(0, CORE_TOP - 2), (5.2, CORE_TOP - 2), (7.5, CORE_TOP + 1.5), (12.5, CORE_TOP + 4.0),
-                            (13.0, CORE_TOP + 5.0), (11.6, CORE_TOP + 5.0), (6.0, CORE_TOP + 3.0), (0, CORE_TOP + 3.0)], x, y, z, segs=40)
+    c = cradle
+    K.lathe(mc, ROSEGOLD, [(0, CORE_TOP - 2), (5.2, CORE_TOP - 2), (7.5 * c, CORE_TOP + 1.5 * c), (12.5 * c, CORE_TOP + 4.0 * c),
+                            (13.0 * c, CORE_TOP + 5.0 * c), (11.6 * c, CORE_TOP + 5.0 * c), (6.0 * c, CORE_TOP + 3.0 * c), (0, CORE_TOP + 3.0 * c)], x, y, z, segs=40)
     for i in range(6):
         a = 2 * math.pi * i / 6
         ca, sa = math.cos(a), math.sin(a)
-        pts = bez(V(12.2 * ca, CORE_TOP + 4.5, 12.2 * sa), V(21.5 * ca, CORE_TOP + 11, 21.5 * sa), V(19.0 * ca, CORE_TOP + 21, 19.0 * sa), 12)
-        tube(mc, ROSEGOLD, pts, [1.25 - 0.45 * (k / 11) for k in range(12)], segs=8)
-        ball(mc, ROSEGOLD2, pts[-1], 1.3)
+        pts = bez(V(12.2 * c * ca, CORE_TOP + 4.5 * c, 12.2 * c * sa), V(21.5 * c * ca, CORE_TOP + 11 * c, 21.5 * c * sa), V(19.0 * c * ca, CORE_TOP + 21 * c, 19.0 * c * sa), 12)
+        tube(mc, ROSEGOLD, pts, [(1.25 - 0.45 * (k / 11)) * c ** 0.7 for k in range(12)], segs=8)
+        ball(mc, ROSEGOLD2, pts[-1], 1.3 * c ** 0.7)
     if heart:
         heart_take(mh, take, O @ Tr(0, HEART_Y, 0))
     return tr, nwalk

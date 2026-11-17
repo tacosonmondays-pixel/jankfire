@@ -46,8 +46,9 @@ local function setup(root: Model): Arena
 			local h = shell:FindFirstChild("gu_heart" .. code)
 			if h and h:IsA("Model") and not a.heart then
 				a.heart = h
-				local c = O * CFrame.new(0, HEART_Y, 0)
-				h.WorldPivot = c                 -- (turn and swell round its own middle)
+				local py = root:GetAttribute("HeartPivotY")      -- (the big anatomical heart rests on its apex: it swells and turns round that)
+				local c = O * CFrame.new(0, if type(py) == "number" then py else HEART_Y, 0)
+				h.WorldPivot = c                 -- (turn and swell round this point)
 				a.heartBase = c
 				for _, p in h:GetDescendants() do
 					if p:IsA("BasePart") then

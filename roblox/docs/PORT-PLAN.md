@@ -1269,7 +1269,7 @@ The owner: "can the laser fence be on both side of the hub and same with the gar
   - `docs/hub/hub_queue_pads_open_dim_v664.jpg` (the open sides dimmer, from the spawn).
   - `docs/hub/hub_gate_black_676.jpg` (the open doorway black again).
 
-## 34. THE GUT: a new arena round the heart tower, with a subway and the train boss passing by, 17 November 2026 (place versions 694 to 699)
+## 34. THE GUT: a new arena round the heart tower, with a subway and the train boss passing by, 17 November 2026 (place versions 694 to 700)
 
 The owner: "Can we have a map based on the gut district? We have this awesome heart tower build it would be a shame to not use it!! Maybe it can have a lower part that's a subway and the big train boss can pass by as an Easter egg".
 
@@ -1322,6 +1322,11 @@ The owner: "Can we have a map based on the gut district? We have this awesome he
 - **Which is in:** B (`Heart` = "B"). The kit holds A, B, C and V (the first candy heart); the install keeps one.
 - **The beat:** GutLife flushes the heart's colours a little brighter on each beat, as well as the swell and the light. The flush is checked in Studio but not seen in Play yet; the swell and turn were measured at v695.
 - **Photo:** `docs/maps/gut_heart_anatomical_v699.jpg`.
+- **Bigger, and firmer contrast (place version 700).** Main: "Make it bigger ... so it dominates the skyline from every lane", and keep the pink from washing out contrast.
+  - The heart is 1.7 times the sheet's size, 64 x 116 studs, its top about 240 up. It rests on its apex (y 118) on the tower's axis, in a cradle 1.35 times bigger. It beats and turns round that point (the arena's `HeartPivotY`).
+  - The windows' dark glass is deeper (3e2530) as the contrast anchors.
+  - The gut look has less haze (Density 0.3, Haze 1.5) and more contrast (0.17).
+  - Photo: `docs/maps/gut_big_heart_v700.jpg`.
 - The district, the stair (no skulls) and the train (its mask only) stay as they were.
 
 **The rotation:** `ArenaPool` = `RooftopV2,RooftopV3,Crate,Platform,Bazaar,Gut`.

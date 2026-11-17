@@ -39,7 +39,7 @@ rnd = random.Random(1717)
 # ---------------------------------------------------------------- palette: soft pinks, corals, creams; quiet base
 PAVE, PAVE2, KERB = 'e8d7ca', 'dccabd', 'd2bdb0'          # street paving, its joints, kerbs (the floor's own tones)
 WALL, WALL2, WALL3 = 'e4bcb5', 'd9aaa4', 'c99a96'         # the buildings' enamel, a deeper one, the plinths
-TRIM, BAND, DARK = 'f2e6da', 'c78f90', '5a3842'           # cream trim, a dusky rose band, the windows' dark glass
+TRIM, BAND, DARK = 'f2e6da', 'c78f90', '3e2530'           # cream trim, a dusky rose band, the windows' dark glass (deep: the contrast anchors in the haze)
 DOME, DOME2 = 'ecccc4', 'd99d9b'                          # domes, the few deeper ones
 ROSEGOLD, LAMP, WARM = 'd8a28c', 'fff1e6', 'ffd9c8'
 SHRUB, SOIL = 'c98a8f', '8f6a6c'
@@ -662,6 +662,16 @@ def train():
         B(m, BOGIE, x0 - 2.0, -28.5, zc - 1.6, x0, -24.5, zc + 1.6, bev=0.3)      # the gangway to the next car
         x = x0 - 2.0
 
+# ================================================================ the heart's size and seat
+HEART_SCALE = 1.7             # the anatomical heart, this much bigger than on the sheet
+CRADLE = 1.35                 # and the cradle with it
+APEX_Y = 118.0                # its apex rests here, on the tower's axis (GutLife beats and turns it round this point)
+def heart_frame():
+    import gut_heart_anat as GA
+    apex = GA.BASE + GA.AX * GA.L                # (the apex in the heart's own frame)
+    t = Vector((0.0, APEX_Y, 0.0)) - apex * HEART_SCALE
+    return Tr(t.x, t.y, t.z) @ Matrix.Scale(HEART_SCALE, 4)
+
 # ================================================================ build
 paving()
 for s in (-1, 1):
@@ -670,9 +680,10 @@ for s in (-1, 1):
 pavilion(); gazebo(); edge(); cover(); street_rails(); station(); train()
 # the tower: legs on the axes, the stair's foot facing north. the hearts, each its own model (the place keeps one, the
 # arena's attribute Heart): A, B, C the anatomical takes (the owner: "We can do an actual heart"), V the first candy one
-G.tower('gu', 'candy', phase=L.STAIR_PHASE, leg0=L.LEG0, heart=False)
-for code, take in (('A', 'chunky'), ('B', 'vessels'), ('C', 'grand'), ('V', 'candy')):
-    G.heart_take('gu_heart' + code, take, Tr(0, T.HEART_Y, 0))
+G.tower('gu', 'candy', phase=L.STAIR_PHASE, leg0=L.LEG0, heart=False, cradle=CRADLE)
+for code, take in (('A', 'chunky'), ('B', 'vessels'), ('C', 'grand')):
+    G.heart_take('gu_heart' + code, take, heart_frame())
+G.heart_take('gu_heartV', 'candy', Tr(0, T.HEART_Y + 10, 0) @ Matrix.Scale(1.35, 4))
 
 # ================================================================ the layout
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.SOLID]
@@ -688,6 +699,7 @@ VIEWS = [
     ('tube', (-110, 6, -84), (-56, 8, -84), 22),
     ('avenue', (-120, 6, 90), (0, 18, 80), 22),
     ('station', (-96, -25, 22), (40, -22, 52), 18),
+    ('skyline', (-104, 6, 0), (0, 120, 0), 24),
     ('train', (-440, -26, 52), (-470, -24, 58), 22),
 ]
 if PREVIEW and '--no-preview' not in K.FLAGS:
