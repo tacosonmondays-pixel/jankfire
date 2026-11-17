@@ -627,6 +627,34 @@ cleaned, fitted and coloured here.
   - katana 122632316158289
   - sniper 112944176569314
   - Plan B 117844930479923
+
+  v3 (place version 708) answered two owner notes. "It's a good base but with a lot of these you might have to rebuild
+  them a bit!! Make sure it has proper gun elements" got round-2 shapes from `tripo_gun.py`:
+  - Plan B's red-pen marks fixed: notched rear sight and white-dot front post, round duck head under the sight line,
+    clean frame seam, flat reliefs, slide serrations, an ejection port, a bore in the duck's mouth;
+  - SMG and sniper bores and ports.
+
+  "Ducky looks so simple now" got a baked surface from `tools/roblox/tripo_bake.py`:
+  - the same meshes with the shade shells dropped;
+  - 1024 atlases (SMG 2, Plan B 2, sniper 3, katana 1), each with a NormalMap from Tripo's own surface, a painted
+    ColorMap (AO, cavity, edge light, foam lines, clouds, mag wave bands, banner crown and duck, piping, rivets) and
+    glossy Roughness plus gold Metalness;
+  - one SurfaceAppearance per pictured piece (AlphaMode Overlay, white). Dark, metal, neon and glass pieces stay plain;
+  - `WrapUV` is off on these skins because a wrap picture on the atlas UVs would come out 2 to 5 times too big. Picture
+    wraps fall back to their palette colours on them, and solid wraps work. Taking a wrap off brings the baked look back.
+
+  Before upload, every normal, metal and roughness map went through `tools/roblox/bake_guard.py`. It blurs the packed
+  small-island strips and drops lone metal motifs (a banner crown on its side reads like a letter). The katana's
+  blade dots that landed on the gold spine were painted out by hand. Triangles: SMG 12,272, Plan B 12,654, sniper
+  13,755, katana 10,252. Models:
+  - SMG 72904091721393
+  - katana 73021117796404
+  - sniper 139142913295194
+  - Plan B 81405719351973
+
+  The 32 map ids are in the notes folder's `gun-models-uploads-16nov.md`. The install is
+  `w_<key>_install.luau`-style Luau run in Edit: the maps are PluginSecurity. The live angel v6 was left as it is; its
+  bake is kept as an option only.
 - **Prompt lessons:**
   - Our base AR's two ring sights come back as "two scopes": ask for one low sight and no scope rings.
   - ChatGPT refused "hellhound" and "cute devil" wordings; "stylized cartoon game cosmetic" wording passed.
