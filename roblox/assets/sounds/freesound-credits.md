@@ -31,3 +31,4 @@
 - 146932.ogg: "Wind Gust" by crashoverride6, https://freesound.org/people/crashoverride6/sounds/146932/ (CC0)
 - 367125.ogg: "Air Hiss" by Jofae, https://freesound.org/people/Jofae/sounds/367125/ (CC0)
 - 349698.ogg: "light slow swoosh.mp3" by Mikes-MultiMedia, https://freesound.org/people/Mikes-MultiMedia/sounds/349698/ (CC0)
+- 739487.ogg: "Fire Trap" by qubodup, https://freesound.org/people/qubodup/sounds/739487/ (CC0)

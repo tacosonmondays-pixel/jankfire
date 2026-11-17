@@ -1453,6 +1453,51 @@
     ],
     "L": -18
    }
+  ],
+  "door_vip_bell": [
+   {
+    "id": 9125485591,
+    "title": "Desk Bell Counter Service Single Ringing Din (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.17,
+     1.4
+    ],
+    "L": -18
+   }
+  ],
+  "door_vip_slide": [
+   {
+    "id": 9119203830,
+    "title": "Sliding Glass Door 1 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0.05,
+     1
+    ],
+    "L": -20
+   }
+  ],
+  "pad_launch": [
+   {
+    "id": 9113050965,
+    "title": "Air Bolt Gun 4 (SFX)",
+    "source": "Pro Sound Effects (Roblox licensed library)",
+    "region": [
+     0,
+     0.5
+    ],
+    "L": -13
+   }
+  ],
+  "ranked_fire": [
+   {
+    "id": 139573953220947,
+    "title": "\"Fire Trap\" by qubodup (739487)",
+    "source": "Freesound, CC0",
+    "region": null,
+    "L": -14
+   }
   ]
  },
  "vol": {
@@ -1518,7 +1563,11 @@
   "zone_playground": -31,
   "zone_lot": -31,
   "zone_vip": -31,
-  "zone_lobby": -31
+  "zone_lobby": -31,
+  "door_vip_bell": -27,
+  "door_vip_slide": -26,
+  "pad_launch": -27,
+  "ranked_fire": -25
  },
  "jitter": {
   "skin_ar_seraph_fire": 0.03,
@@ -1538,6 +1587,7 @@
   "zone_playground": 0.03,
   "zone_lot": 0.03,
   "zone_vip": 0.03,
-  "zone_lobby": 0.03
+  "zone_lobby": 0.03,
+  "pad_launch": 0.04
  }
 }

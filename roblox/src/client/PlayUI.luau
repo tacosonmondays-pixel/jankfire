@@ -201,6 +201,15 @@ local heatGrad = new("UIGradient", { Rotation = 270, Color = ColorSequence.new({
 	Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.45, 0.88), NumberSequenceKeypoint.new(1, 1) }) }, heat)
 local _ = heatGrad
 local FlameStrip = require(script.Parent:WaitForChild("FlameStrip"))
+local Sfx = require(script.Parent:WaitForChild("Sfx"))
+local TweenService = game:GetService("TweenService")
+-- the flame's sound (17 Nov, the owner: "there should be like a rahh flame fshhh sound when its turned on"): a recorded
+-- gas-flame ignition, ranked_fire in JankfireSounds, on your screen only, as the sweep starts when YOU turn RANKED on;
+-- never on opening the panel with it already on (that's instant), at most one per WHOOSH_GAP, and switching off while it
+-- plays ducks it instead of stacking a second. Party Ranked's bubbles stay quiet
+local WHOOSH_GAP = 1.5
+local whoosh: Sound? = nil
+local lastWhoosh = -math.huge
 local flames = FlameStrip.new(fireLayer, { count = 8, zIndex = 1 })
 local embers: { any } = {}
 local fire = { level = 0, want = 0, sweep = 1, burst = 0, party = false }
@@ -239,6 +248,15 @@ local function setFire(on: boolean, instant: boolean?)
 		local W, H = left.AbsoluteSize.X / math.max(0.01, T.scaleNow()), left.AbsoluteSize.Y / math.max(0.01, T.scaleNow())
 		local pp = partyPick()
 		for _ = 1, if pp then 26 else 36 do if pp then bubble(W, H, true) else ember(W, H, true) end end
+		if not pp and os.clock() - lastWhoosh >= WHOOSH_GAP then
+			lastWhoosh = os.clock()
+			whoosh = Sfx.play("ranked_fire")
+		end
+	elseif not on and whoosh then
+		-- (switched off while it roars: duck it, never stack)
+		local w = whoosh
+		whoosh = nil
+		if w.Parent and w.IsPlaying then TweenService:Create(w, TweenInfo.new(0.2), { Volume = 0 }):Play() end
 	end
 end
 local fireT = 0

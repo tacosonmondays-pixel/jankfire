@@ -61,11 +61,11 @@ local function num(s: Sound, key: string, default: number): number
 	return if type(v) == "number" then v else default
 end
 
--- play a sound: on you (no position) or out in the world at `at`
-function Sfx.play(name: string, at: Vector3?, vol: number?, pitch: number?)
-	if Sfx.mute[name] then return end
+-- play a sound: on you (no position) or out in the world at `at`. returns the playing copy (to duck or stop it), or nil
+function Sfx.play(name: string, at: Vector3?, vol: number?, pitch: number?): Sound?
+	if Sfx.mute[name] then return nil end
 	local s = src(name)
-	if not s then return end
+	if not s then return nil end
 	local c = s:Clone()
 	c.Volume = s.Volume * (vol or 1)
 	local j = num(s, "Jitter", 0)
@@ -94,6 +94,7 @@ function Sfx.play(name: string, at: Vector3?, vol: number?, pitch: number?)
 		c:Play()
 		task.delay(6, function() if c.Parent then c:Destroy() end end)
 	end
+	return c
 end
 
 -- the Redline gets brighter, higher and shorter as k (0 full HP -> 1 at 0 HP) rises: three renders + a pitch nudge

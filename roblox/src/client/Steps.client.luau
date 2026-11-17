@@ -9,6 +9,10 @@
 -- sets again), and Died too: the kill and death stings say that now.
 -- sliding is read the way CrouchPoses reads it: your own from the hip dropping, everyone else's from the "Pose"
 -- attribute the server puts on their character.
+-- jump pads (17 Nov 2026, the owner: "do bounce pads have a sound effect?"): Move.client throws you when you stand on a
+-- part with a Pad attribute; here, when any body leaves the ground fast upward, one short ray down asks whether it left
+-- a pad, and if so "pad_launch" plays: for you, on you; for anyone else, at the pad, a little quieter. at most once per
+-- PAD_GAP per body (Move's own guard is 0.4 s); the landing after is the usual "land", louder the harder you come down.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
@@ -26,13 +30,29 @@ local function floorKind(m: Enum.Material): string
 end
 
 local MUTE = { Running = true, Jumping = true, Landing = true, Died = true }
+local PAD_UP, PAD_GAP = 25, 0.4 -- (studs/s upward that counts as a launch; seconds between two launch sounds of one body)
+local padRay = RaycastParams.new()
+padRay.FilterType = Enum.RaycastFilterType.Exclude
+-- the one shared launch signal (PadSignal, the VFX session's: its PadFlare lights the pad from it), found when needed so
+-- the steps never wait on it
+local PadSignal: any = nil
+local function padSignal(): any
+	if PadSignal == nil then
+		local m = script.Parent:FindFirstChild("PadSignal")
+		if m and m:IsA("ModuleScript") then
+			local ok, P = pcall(require, m)
+			if ok and type(P) == "table" then PadSignal = P end
+		end
+	end
+	return PadSignal
+end
 local function mute(s: Instance)
 	if s:IsA("Sound") and MUTE[s.Name] then s.SoundId = "" end
 end
 
 type Body = {
 	ch: Model, hum: Humanoid, root: BasePart, mine: boolean, hip: number,
-	dist: number, air: boolean, fall: number, sliding: boolean, lastLand: number,
+	dist: number, air: boolean, fall: number, sliding: boolean, lastLand: number, lastPad: number,
 }
 local bodies: { [Model]: Body } = {}
 
@@ -63,7 +83,7 @@ local function track(ch: Model, mine: boolean)
 	root.ChildAdded:Connect(mute)
 	local b: Body = {
 		ch = ch, hum = hum, root = root, mine = mine, hip = hum.HipHeight,
-		dist = 0, air = false, fall = 0, sliding = false, lastLand = 0,
+		dist = 0, air = false, fall = 0, sliding = false, lastLand = 0, lastPad = 0,
 	}
 	bodies[ch] = b
 	hum.StateChanged:Connect(function(_, new)
@@ -88,6 +108,17 @@ RunService.Heartbeat:Connect(function(dt)
 		if not b.root.Parent then bodies[ch] = nil; continue end
 		local v = b.root.AssemblyLinearVelocity
 		if b.hum.FloorMaterial == Enum.Material.Air then
+			if not b.air and v.Y > PAD_UP and os.clock() - b.lastPad > PAD_GAP then
+				-- (just left the ground going up fast: off a jump pad?)
+				padRay.FilterDescendantsInstances = { ch }
+				local hit = workspace:Raycast(b.root.Position, Vector3.new(0, -(b.hum.HipHeight + b.root.Size.Y / 2 + 4), 0), padRay)
+				if hit and typeof(hit.Instance:GetAttribute("Pad")) == "Vector3" then
+					b.lastPad = os.clock()
+					if b.mine then Sfx.play("pad_launch") else Sfx.play("pad_launch", hit.Position, 0.75) end
+					local P = padSignal()
+					if P and type(P.fire) == "function" then pcall(P.fire, hit.Instance, ch, b.mine) end
+				end
+			end
 			b.air = true
 			b.fall = math.min(b.fall, v.Y)
 			continue

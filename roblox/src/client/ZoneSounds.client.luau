@@ -4,11 +4,13 @@
 -- the training hall plays the hub's: recordings (Freesound CC0 / Pro Sound Effects), each about a second, quiet.
 --   hub        a crowd murmur swelling up             training   a pneumatic air hiss (the hall's doors)
 --   playground a light, slow swoosh                    lot        a gust of wind (the back lot, outdoors)
---   vip        a singing-bowl strike, warm and low     lobby      a soft whoosh into your party's room
+--   vip        (none: its door rings, see below)        lobby      a soft whoosh into your party's room
 -- where you are: the server's "Zone" attribute (hub / training / playground / match, Matches.zoneOf), its "OnLot"
 -- (TheLot), and here: inside a part tagged VipRoom, or inside a room of workspace.PartyLobbies.
 -- quiet on purpose: the first area after you spawn or respawn, anything to or from a match (the round has its own
--- sounds), and a second sting within 1.5 s (walking back and forth over a line doesn't spam). the Sounds are named
+-- sounds), through the VIP door either way (the owner, 17 Nov: "when you step out I think there's like a crowd sound
+-- effect, I don't want that, cut it to just the bell": the door's own chime and slide, HubVip.client, are the only
+-- sounds there), and a second sting within 1.5 s (walking back and forth over a line doesn't spam). the Sounds are named
 -- "zone_<area>" in JankfireSounds, so the settings page's EFFECTS volume covers them (SettingsApply).
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
@@ -79,6 +81,7 @@ while true do
 		local quiet = from == nil -- (the first area after you spawn: no sting)
 			or now - spawnedAt < SPAWN_QUIET
 			or a == "match" or from == "match"
+			or (a == "vip" and from == "hub") or (a == "hub" and from == "vip") -- (the VIP door has its own sounds)
 			or now - lastSting < COOLDOWN
 		if not quiet then
 			lastSting = now

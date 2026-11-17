@@ -1,3 +1,50 @@
+# VIP door, jump pads, the RANKED flame (17 Nov 2026, place version 654)
+
+Four recordings, each asked for by the owner:
+
+| Sound | what | where it's played | recording |
+| --- | --- | --- | --- |
+| `door_vip_slide` | the VIP door's leaves sliding open (and, softer and a little lower, shut) | `HubVip.client`, at the door, VIPs only | PSE: Sliding Glass Door 1 (SFX) [0.05–1.0 s] |
+| `door_vip_bell` | a counter bell, once the leaves are fully open | `HubVip.client`, at the door | PSE: Desk Bell Counter Service Single Ringing Din (SFX) [0.17–1.4 s] |
+| `pad_launch` | a jump pad throwing a body | `Steps.client`: yours on you, anyone else's at the pad, quieter | PSE: Air Bolt Gun 4 (SFX) [0–0.5 s], pitch ±4% |
+| `ranked_fire` | the RANKED switch's flames lighting | `PlayUI` (`setFire`), on your screen | Freesound: "Fire Trap" by qubodup (739487), CC0 |
+
+**VIP door.** The owner: "the door to the vip can you make a sliding door sound with the bell happening before it
+opens? make it to it cant be spammed!", then "when the vip doors open after they open ding, I think thats a good spot".
+Each door is one state (closed, opening, open, closing). It opens within 10 studs and closes only past 14, so walking
+along the edge can't flap it. It stays open at least 2 s. It dings once per opening, and never twice within 5 s (a quick
+reopen just slides). Non-VIPs: the door stays shut and silent. When ZoneCull brings the hub back, the door is set
+straight to where it should be, with no sound. The owner also said "when you step out I think there's like a crowd
+sound effect, I don't want that, cut it to just the bell", so `ZoneSounds` plays nothing between the hub and the VIP
+room in either direction. `zone_hub` still plays for every other way into the hub, and `zone_vip` is now never played.
+
+**Jump pads.** The owner: "do bounce pads have a sound effect?" `Move.client` throws you off a part whose `Pad`
+attribute is a Vector3. `Steps.client` watches every body: when one leaves the ground going up faster than 25
+studs/s, one short ray down asks whether it left a pad, and if so `pad_launch` plays, at most once per 0.4 s per body.
+The same spot calls `PadSignal.fire(pad, character, mine)` (the VFX session's module, found without waiting) so the
+pad's glow and the sound start together.
+
+**RANKED flame.** The owner: "also there should be like a rahh flame fshhh sound when its turned on". It plays as the
+flame sweep starts when you switch RANKED on, never when the panel opens with ranked already on (that's drawn
+instantly). At most one per 1.5 s, and switching off while it plays fades it out in 0.2 s instead of stacking another.
+Party Ranked's bubbles stay quiet. `Sfx.play` now returns the playing copy so a caller can fade or stop it.
+
+Levels (an AudioAnalyzer's loudest 0.4 s → targets, `store.json` `targets`): bell −27, slide −26, pad −27, flame
+−25, set by `node tools/roblox/store_sounds.mjs only=door_,pad_,ranked_`. All four load.
+
+Checks (place version 654, one Play test, 16:57–17:02 UTC, logging when each sound starts):
+- VIP door, as a session-only VIP: from 21 studs out to 8, the slide at 1.03 s and the bell at 1.30 s (the
+  leaves done). Six hops between 12 and 13.5 studs, then the doorway: nothing. Out to 19 studs: the soft slide. Back
+  within 5 s: the slide, no bell. Out again, wait 6 s, back: slide and bell. Into the VIP room and out: no `zone_*`.
+- Hub pad (the Rotunda's): placed on it twice, 3 s apart: thrown twice, `pad_launch` twice, each 0.04 s after the throw.
+- RANKED: ON, OFF 0.5 s later, ON 0.4 s after that: one `ranked_fire`, faded out at OFF, none at the second ON.
+  Closing and reopening the panel (the `PlayTest` hook) with ranked on: silent.
+- Not proved: a Rooftop pad. Standing on `Map.Rooftop.Pads.pad` outside a match didn't throw the body at all
+  (`Move.client`'s own check), so there was nothing to hear. The sound code doesn't depend on which map the pad is in.
+  Nobody here can listen: the owner's ears are the real check.
+
+---
+
 # Special skin layers and area stings (17 Nov 2026)
 
 ## Special skins (place version 583)
@@ -38,7 +85,7 @@ quiet (between footsteps and gunfire), on the EFFECTS volume.
 | training hall | `Zone` = training | Freesound: "Air Hiss" by Jofae (367125) |
 | playground | `Zone` = playground | Freesound: "light slow swoosh.mp3" by Mikes-MultiMedia (349698) |
 | back lot | `OnLot` (TheLot) | Freesound: "Wind Gust" by crashoverride6 (146932) |
-| VIP room | inside the part tagged `VipRoom` | Freesound: "singing bowl strike sound" by inoshirodesign (271370) |
+| VIP room | inside the part tagged `VipRoom` | Freesound: "singing bowl strike sound" by inoshirodesign (271370); since place version 654 never played (the door's slide and bell instead) |
 | private lobby | inside a room of `workspace.PartyLobbies` | PSE: Soft Suck Explosion Med Whoosh 8 (SFX) [0–1 s] |
 
 Quiet on purpose: the first area after spawning or respawning, anything to or from a match (the round has its own
