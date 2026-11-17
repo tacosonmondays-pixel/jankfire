@@ -254,6 +254,10 @@ local function added(p: Player)
 	if type(d.grapple) ~= "string" then d.grapple = Flair.DEFAULT.grapple end
 	if type(d.emotes) ~= "table" then d.emotes = table.clone(Flair.DEFAULT.emotes) end
 	for i = 1, Flair.SLOTS do if type(d.emotes[i]) ~= "string" then d.emotes[i] = "" end end
+	-- (an emote or kill effect taken out of the game leaves its slot empty, not an error: 17 Nov, Groove, Fist Pump, Bow)
+	for i = 1, Flair.SLOTS do if d.emotes[i] ~= "" and not Flair.info("emote", d.emotes[i]) then d.emotes[i] = "" end end
+	if not Flair.info("kill", d.kill) then d.kill = Flair.DEFAULT.kill end
+	if not Flair.info("grapple", d.grapple) then d.grapple = Flair.DEFAULT.grapple end
 	s.prof = prof
 	s.ready = true
 	prof.onLost.Event:Connect(function() publish(p) end)

@@ -610,7 +610,11 @@ end
 
 function FlairUI.isOpen(): boolean return S.open end
 
-function FlairUI.open(tab: string?)
+-- home: the camera to come back to, when a screen that had the camera opens this one (the loadout's button passes its own
+-- saved view: at that moment the loadout's camera is still flying home, and coming back to it put the camera out at the
+-- loadout's showcase spot after DONE, so first person's gun was hidden until it got back. 17 Nov, the owner: "when you go
+-- to loadout and kill effects then leave it it renders your gun away for a second")
+function FlairUI.open(tab: string?, home: CFrame?)
 	if tab == "kill" or tab == "emote" or tab == "grapple" then S.tab = tab end
 	if S.open then refresh(); previewLoop(); return end
 	if not canOpen() then return end
@@ -640,6 +644,14 @@ function FlairUI.open(tab: string?)
 	local cam = workspace.CurrentCamera :: Camera
 	local c = S.cam
 	c.saved, c.savedType = cam.CFrame, cam.CameraType
+	if home then
+		c.saved, c.savedType = home, Enum.CameraType.Custom
+	elseif cam.CameraType == Enum.CameraType.Scriptable then
+		-- (some other screen's camera is out: come back to your own eyes, facing the way you face)
+		local ch, root = myParts()
+		local h = ch and ch:FindFirstChild("Head") :: BasePart?
+		if h and root then c.saved, c.savedType = CFrame.lookAt(h.Position, h.Position + root.CFrame.LookVector), Enum.CameraType.Custom end
+	end
 	c.from, c.to, c.t0, c.dur, c.closing, c.active = cam.CFrame, to, os.clock(), 0.55, false, true
 	if controls then pcall(function() controls:Disable() end) end
 	task.spawn(function() fetch(); if S.open then refresh() end end)

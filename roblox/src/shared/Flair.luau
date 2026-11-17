@@ -71,13 +71,12 @@ local GRAPPLES = {
 -- fist pump and groove were remade the same day: 4 takes each (the owner's rule), the best kept on a frame strip and a
 -- motion meter (fewer frozen holds, smoother, more torso and legs, facing forward, settles back; groove loops seamlessly).
 -- wave and groove re-uploaded through Open Cloud (the tool's own publish timed out). prompts and numbers in FLAIR.md)
+-- (Groove, Fist Pump and Bow were taken out on 17 Nov, the owner: "remove groove, fist bump and bow they dont work".
+-- a saved wheel slot holding one is emptied when the save loads: FlairServer)
 local EMOTES = {
 	{ "wave", "Wave", "free", "rbxassetid://90647186428374", 2.97, false },
 	{ "salute", "Salute", "free", "rbxassetid://70910733834944", 2.97, false },
 	{ "clap", "Slow Clap", "common", "rbxassetid://102241914870841", 2.97, false },
-	{ "victory", "Fist Pump", "rare", "rbxassetid://105471344218974", 2.97, false },
-	{ "bow", "Bow", "rare", "rbxassetid://87535060714783", 2.97, false },
-	{ "groove", "Groove", "epic", "rbxassetid://115189819491542", 3.97, true },
 }
 
 F.ORDER = { kill = {}, emote = {}, grapple = {} } :: { [string]: { string } }
@@ -171,9 +170,6 @@ local ARMS = {
 	wave = { { 0.36, 0.34, 0.26, 0.5, 0.3, 0.64 }, { 0.64, 0.34, 0.8, 0.22, 0.78, 0.06 } },
 	salute = { { 0.36, 0.34, 0.3, 0.5, 0.32, 0.64 }, { 0.64, 0.34, 0.78, 0.3, 0.6, 0.16 } },
 	clap = { { 0.36, 0.34, 0.34, 0.5, 0.48, 0.44 }, { 0.64, 0.34, 0.66, 0.5, 0.52, 0.44 } },
-	victory = { { 0.36, 0.34, 0.3, 0.5, 0.32, 0.64 }, { 0.64, 0.34, 0.74, 0.2, 0.7, 0.04 } },
-	bow = { { 0.38, 0.4, 0.4, 0.52, 0.52, 0.48 }, { 0.62, 0.4, 0.66, 0.56, 0.64, 0.68 } },
-	groove = { { 0.36, 0.34, 0.22, 0.42, 0.2, 0.28 }, { 0.64, 0.34, 0.74, 0.5, 0.86, 0.46 } },
 }
 
 local function figure(box: Frame, body: Color3, arms: any, lean: number)
@@ -453,8 +449,7 @@ function F.picture(t: string, id: string, frame: GuiObject)
 			if not drawKillWeb(box, id, i.tint) then drawKill(box, id, i.tint) end
 		elseif t == "grapple" then drawGrapple(box, id, i.tint)
 		else
-			local lean = if id == "bow" then 0.16 elseif id == "groove" then -0.06 else 0
-			figure(box, PALE, ARMS[id] or DOWN, lean)
+			figure(box, PALE, ARMS[id] or DOWN, 0)
 		end
 	end
 	draw()

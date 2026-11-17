@@ -76,9 +76,24 @@ How it works:
 | wave | Wave | free | 2.97 | 90647186428374 (retake d, uploaded through Open Cloud) |
 | salute | Salute | free | 2.97 | 70910733834944 (retake c) |
 | clap | Slow Clap | common | 2.97 | 102241914870841 (retake d) |
-| victory | Fist Pump | rare | 2.97 | 105471344218974 (retake c) |
-| bow | Bow | rare | 2.97 | 87535060714783 (first set) |
-| groove | Groove | epic | 3.97 (loops) | 115189819491542 (retake c, uploaded through Open Cloud) |
+
+**Removed 17 Nov** (the owner, in a Play test: "remove groove, fist bump and bow they dont work"):
+- Fist Pump (105471344218974), Bow (87535060714783) and Groove (115189819491542) are out of the catalogue.
+- That takes them out of the wheel, the equip screen, the shop and the Duffel Bag, which all read `Flair`.
+- When a save loads, FlairServer empties any wheel slot holding an emote that's gone. It also resets a kill effect or grapple that's gone.
+- What the server saw in that test: the owner owned only the free Wave and Salute, and those were the only two on their wheel. The other emotes, Slow Clap included, show LOCKED for them, so they can only be previewed.
+- All six clips loaded for the owner's account (`ContentProvider:PreloadAsync`: Success), and neither log had a flair error.
+- Play check (place v639): Wave, Salute and Slow Clap each blend in by 0.47 s, fade out from 2.65 s to their last frame, and end. The server answers Groove with "no such emote".
+
+**The gun vanishing after the loadout's KILL EFFECT · EMOTES button** (the owner, 17 Nov: "when you go to loadout and
+kill effects then leave it it renders your gun away for a second"):
+- Cause: the button closes the loadout, then opens this screen 0.05 s later, while the loadout's camera is still out at its showcase spot. This screen saved that spot as the camera to return to.
+- On closing, the camera flew back out there. First person hides the gun whenever the camera is more than 4.5 studs from the body, so the gun stayed hidden until Roblox's camera took over again.
+- The server's re-arm on closing the loadout isn't it: with no weapon change it answers "same" and rebuilds nothing.
+- Fix (v639): the button passes the loadout's saved view (your own, from before the loadout opened) and `FlairUI.open(tab, home)` returns to it. Opened while any other screen's camera is out, it returns to your own eyes.
+- Not yet run through in Play. Studio's viewport is short, so the button sits off the top of the screen, and a synthetic click on it didn't register.
+
+**KillFx for the shop's cards** (v639): `K.play(m, id, { parent = WorldModel, camera = Camera })` puts the run's pieces under `parent` and faces `camera`. `K.VIEWPORT = true` says the options are there.
 
 The clips come from Studio's prompt-to-animation tool (`generate_animation`, the owner's rule).
 

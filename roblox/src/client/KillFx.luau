@@ -17,6 +17,7 @@ local Flair = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("F
 local me = Players.LocalPlayer
 
 local K = {}
+K.VIEWPORT = true -- (K.play takes opts.parent / opts.camera: the shop's cards check this before passing them)
 local FAR = 320
 
 -- the VFX pipeline's approved sprites (roblox/assets/vfx/assets.json): no new uploads for these effects
@@ -101,6 +102,7 @@ type Run = {
 	hl: Highlight?, y0: number, y1: number, centre: Vector3, size: Vector3, width: number, cf: CFrame,
 	step: (Run, number, number) -> (), s: { [string]: any }, done: boolean, own: boolean, preview: boolean,
 	hold: { RBXScriptConnection }, from: Vector3?,
+	folder: Instance, cam: Camera?, -- (where this run's pieces go, and the camera they face: opts.parent / opts.camera)
 }
 local runs: { Run } = {}
 local busy: { [Model]: Run } = {}
@@ -126,7 +128,7 @@ local function part(r: Run, size: Vector3, cf: CFrame): Part
 	local p = Instance.new("Part")
 	p.Anchored = true; p.CanCollide = false; p.CanQuery = false; p.CanTouch = false; p.CastShadow = false
 	p.Transparency = 1; p.Size = size; p.CFrame = cf
-	p.Parent = folder
+	p.Parent = r.folder
 	table.insert(r.objs, p)
 	return p
 end
@@ -155,7 +157,7 @@ local function highlight(r: Run, fill: Color3, outline: Color3): Highlight
 	h.DepthMode = Enum.HighlightDepthMode.Occluded
 	h.FillColor = fill; h.OutlineColor = outline
 	h.FillTransparency = 1; h.OutlineTransparency = 1
-	h.Parent = folder
+	h.Parent = r.folder
 	r.hl = h
 	table.insert(r.objs, h)
 	return h
@@ -227,7 +229,7 @@ STEP.shatter = function(r, t, dt)
 				local off = Vector3.new(rng:NextNumber(-0.25, 0.25) * sz.X, (j - 1.5) * 0.5 * sz.Y, rng:NextNumber(-0.25, 0.25) * sz.Z)
 				local cf = p.part.CFrame * CFrame.new(off) * CFrame.Angles(rng:NextNumber(0, 6.28), rng:NextNumber(0, 6.28), 0)
 				w.CFrame = cf
-				w.Parent = folder
+				w.Parent = r.folder
 				table.insert(r.objs, w)
 				local out = cf.Position - r.centre
 				out = Vector3.new(out.X, 0, out.Z)
@@ -488,7 +490,7 @@ local function fadeBits(bits: { any }, a: number)
 end
 -- facing the camera, flat (for props that show a front)
 local function toCamera(r: Run): CFrame
-	local cam = workspace.CurrentCamera
+	local cam = r.cam or workspace.CurrentCamera
 	local d = (cam.CFrame.Position - r.centre) * Vector3.new(1, 0, 1)
 	d = if d.Magnitude > 1e-3 then d.Unit else Vector3.new(0, 0, 1)
 	return CFrame.lookAt(Vector3.zero, d)
@@ -892,7 +894,7 @@ STEP.blastzone = function(r, t, dt)
 	local s = r.s
 	if not s.h then
 		s.h = highlight(r, Color3.fromRGB(255, 232, 196), Color3.fromRGB(255, 246, 230))
-		local away = (r.centre - (r.from or (r.centre - workspace.CurrentCamera.CFrame.LookVector))) * Vector3.new(1, 0, 1)
+		local away = (r.centre - (r.from or (r.centre - (r.cam or workspace.CurrentCamera).CFrame.LookVector))) * Vector3.new(1, 0, 1)
 		away = if away.Magnitude > 1e-3 then away.Unit else Vector3.new(0, 0, -1)
 		s.dir = (away + Vector3.new(0, 0.32, 0)).Unit
 		s.axis = away:Cross(Vector3.yAxis)
@@ -954,20 +956,23 @@ local function finish(r: Run)
 	end))
 end
 
-function K.play(m: Model, id: string, opts: { preview: boolean?, from: Vector3?, quiet: boolean? }?): Run?
+-- opts: preview (a stand-in, not a kill), from (the killer's position), quiet (others' effects turned off),
+-- parent (an Instance, e.g. a ViewportFrame's WorldModel: the run's pieces go there instead of the shared folder),
+-- camera (a Camera, e.g. that ViewportFrame's: what faces the camera faces it). the shop's cards use parent + camera
+function K.play(m: Model, id: string, opts: { preview: boolean?, from: Vector3?, quiet: boolean?, parent: Instance?, camera: Camera? }?): Run?
 	local step = STEP[id]
 	local item = Flair.info("kill", id)
 	if not step or not item or not m or not m.Parent then return nil end
 	local old = busy[m]
 	if old then finish(old); for _, x in old.hold do x:Disconnect() end end
 	local cf, size = m:GetBoundingBox()
-	local cam = workspace.CurrentCamera
+	local cam = (opts and opts.camera) or workspace.CurrentCamera
 	local preview = opts ~= nil and opts.preview == true
 	local r: Run = {
 		m = m, id = id, t = 0, dur = item.dur, parts = {}, objs = {}, emitters = {}, hl = nil,
 		y0 = math.huge, y1 = -math.huge, centre = cf.Position, size = size, width = math.clamp(math.max(size.X, size.Z), 1.4, 4),
 		cf = cf, step = step, s = {}, done = false, own = (m == me.Character) and not preview, preview = preview, hold = {},
-		from = opts and opts.from,
+		from = opts and opts.from, folder = (opts and opts.parent) or folder, cam = opts and opts.camera,
 	}
 	for _, d in m:GetDescendants() do
 		if d:IsA("BasePart") and d.Name ~= "HumanoidRootPart" and d.Transparency < 0.99 then

@@ -1220,10 +1220,11 @@ local flairBtn = button(stage, "KILL EFFECT  ·  EMOTES", "white", UDim2.fromOff
 flairBtn.face.MouseButton1Click:Connect(function()
 	local m = script.Parent:FindFirstChild("FlairUI")
 	if not m then return end
+	local home = cam.saved -- (your own view from before the loadout: the flair screen comes back to it, not to the loadout's)
 	setOpen(false)
 	task.delay(0.05, function()
 		local ok, F = pcall(require, m)
-		if ok and type(F) == "table" then (F :: any).open() end
+		if ok and type(F) == "table" then (F :: any).open(nil, home) end
 	end)
 end)
 UIS.InputBegan:Connect(function(io, gp)
