@@ -196,6 +196,24 @@ on the Tiny Duck) is sunk between them, so the mouth line reads from the side an
   hats ok. In Edit, the Royal Duck on the AR shows the flat bill with its mouth line and lifted tip. Saved as place
   version 476.
 
+## Seats for the space-western pair and the Japanese concepts (17 Nov 2026, place version 481)
+
+The guns session installed 17 skins in place version 478. Ten are live: Dust Drover and Star Drover on the revolver,
+lever, sawn-off, sniper and katana. Seven are concepts, not sold: `ar_jp_a..c`, `dmr_jp_a`, `sawnoff_jp_a`,
+`lever_jp_a` and `katana_jp_a`. Their builders are in-progress files, built only when named:
+`JF_EXTRA=gun_sets_west,gun_sets_japan2` before `hat_spots.py`, `hat_clip.py`, `hat_solve.py` and `hat_preview.py`.
+The builders gave the same bounds as the installed source glbs. The rest of the shared tree still had the guns
+session's slim-sights rework, so only the 17 new rows went into `GunHatData`; every other seat stayed as it is live.
+
+- First check, every hat on the gun's own seat (374 pairs): 11 passed. Six clipped: the three AR concepts on their
+  lacquered body, the Japanese katana's gold trims, the Star lever's canopy, and the Japanese sawn-off's gold hinge.
+  The two Drover katanas sat at 1 mm.
+- `hat_solve.py` moved eight: the AR concepts 1-2 cm forward, the Japanese sawn-off 1 cm forward, the Star lever 1 cm
+  back, and the three katanas 1-2 mm further off their pommel ends.
+- After: at most 0.8 mm into the Star lever, no gun into any hat, feet at most 3.2 mm. The spyglass snipers keep the
+  sniper's 13 mm saddle on their scope. Skinned builds in Studio wear the hat at the new seats (all 17).
+- `hat_preview.py` needs its own line for a skin; use `--spots` with a copy of `hat_spots.json` that adds inherited lines.
+
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
 - every hat on the Assault Rifle from the eye; one hat on each of the other guns from the eye: nothing over the
@@ -273,7 +291,8 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476. Round 10 (asset
+- **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476; seats on 16 guns and
+  77 skins since place version 481. Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
