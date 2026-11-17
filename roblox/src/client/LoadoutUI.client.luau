@@ -868,10 +868,13 @@ local CARD_TURN = { eyes = math.pi, halo = math.pi }
 type HatCard = { id: string, chip: TextButton, st: UIStroke, tick: TextLabel, spin: Model? }
 local hatCards: { HatCard } = {}
 local onHat: (string) -> () = function() end
+-- (the cards share the row: 102 px each up to eleven, narrower past that so None and every hat fit; round 12 made it
+-- thirteen)
+local CW = math.min(102, math.floor((1226 - 6 - 8 * (#GunHats.ORDER - 1)) / #GunHats.ORDER))
 for i, hid in GunHats.ORDER do
 	local h = GunHats.HATS[hid]
-	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(102, 128), LayoutOrder = i, ZIndex = 4 }, hatRow)
-	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(102, 88), ZIndex = 5 }, holder)
+	local holder = new("Frame", { BackgroundTransparency = 1, Size = UDim2.fromOffset(CW, 128), LayoutOrder = i, ZIndex = 4 }, hatRow)
+	local chip = new("TextButton", { Text = "", AutoButtonColor = false, BackgroundColor3 = CARD, BorderSizePixel = 0, Size = UDim2.fromOffset(CW, 88), ZIndex = 5 }, holder)
 	T.corner(chip, 4)
 	local st = T.edge(chip, nil, 0.8)
 	local spinM: Model? = nil
@@ -891,10 +894,12 @@ for i, hid in GunHats.ORDER do
 	end
 	local tick = label(chip, "\u{2713}", 20, UDim2.fromOffset(2, 0), UDim2.fromOffset(22, 22), WHITE, Enum.TextXAlignment.Center)
 	tick.ZIndex = 7; tick.Visible = false; tick.TextStrokeColor3 = Color3.new(0, 0, 0); tick.TextStrokeTransparency = 0.3
-	local line = new("Frame", { BackgroundColor3 = Roster.RARITY[h.rarity].color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 93), Size = UDim2.fromOffset(94, 3), ZIndex = 4 }, holder)
+	local line = new("Frame", { BackgroundColor3 = Roster.RARITY[h.rarity].color, BorderSizePixel = 0, Position = UDim2.fromOffset(4, 93), Size = UDim2.fromOffset(CW - 8, 3), ZIndex = 4 }, holder)
 	T.corner(line, 2)
-	local nm = label(holder, h.name, 14, UDim2.fromOffset(0, 100), UDim2.fromOffset(102, 26), GREY, Enum.TextXAlignment.Center)
+	local nm = label(holder, h.name, 14, UDim2.fromOffset(0, 100), UDim2.fromOffset(CW, 18), GREY, Enum.TextXAlignment.Center)
 	nm.TextYAlignment = Enum.TextYAlignment.Top; nm.ZIndex = 5
+	nm.TextScaled = true -- (a long name on a narrow card shrinks to fit, at most 14)
+	new("UITextSizeConstraint", { MaxTextSize = 14 }, nm)
 	chip.MouseEnter:Connect(function() state.hatHover = hid; if state.open then refresh() end end)
 	chip.MouseLeave:Connect(function() if state.hatHover == hid then state.hatHover = nil end; if state.open then refresh() end end)
 	chip.MouseButton1Click:Connect(function() onHat(hid) end)
@@ -1041,8 +1046,16 @@ onHat = function(hid: string)
 	if not owns("hat", hid) then
 		play("empty")
 		local h = GunHats.HATS[hid] :: any
-		-- (a VIP hat, GunHatData vip = true, comes with the VIP pack on every gun, never from a container)
-		say(if h.vip then ("the %s comes with VIP. see the shop [B]."):format(string.lower(h.name))
+		-- (a VIP hat, GunHatData vip = true, comes with the VIP pack on every gun, never from a container; the VIP daily
+		-- reward's own hat, Shared.VipDailyData's EXCLUSIVE, only from Trisangle)
+		local daily = false
+		local vd = Shared:FindFirstChild("VipDailyData")
+		if vd and vd:IsA("ModuleScript") then
+			local okD, VD = pcall(require, vd)
+			daily = okD and type(VD) == "table" and type((VD :: any).isExclusive) == "function" and (VD :: any).isExclusive("hat", hid) == true
+		end
+		say(if daily then ("the %s comes only from Trisangle's VIP daily reward, in the VIP room."):format(string.lower(h.name))
+			elseif h.vip then ("the %s comes with VIP. see the shop [B]."):format(string.lower(h.name))
 			else ("a %s for the %s comes in duffel bags. open one in the shop [B]."):format(string.lower(h.name), string.lower(e.name)), RED)
 		return
 	end

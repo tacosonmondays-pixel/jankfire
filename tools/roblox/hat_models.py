@@ -15,7 +15,7 @@
 # Neon only for the halo, whose glow is the point. What each hat is comes from the web game (shared/cosmetics.js,
 # public/js/skins.js HAT_BUILD); the shapes and colours are our own.
 # MOVING BITS (named nodes, run on the client by GunHats.luau): the propeller's `prop` spins, the halo's `halo`
-# bobs, the googly eyes' `pupil_l` / `pupil_r` rattle in the eyes' plane.
+# bobs, the googly eyes' `pupil_l` / `pupil_r` rattle in the eyes' plane, the tricorne's three stars twinkle in turn.
 import bpy, bmesh, sys, os, math, json
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mathutils import Vector, Matrix
@@ -24,14 +24,16 @@ from gunkit import Gun, P, lin, hex_rgb
 HERE = os.path.dirname(os.path.abspath(__file__))
 UNIT = 10.0  # the upload is 10 x the hat's size: one stud in the template = 0.1 m (no tiny MeshParts)
 
-HATS = ['party', 'cone', 'cowboy', 'chef', 'propeller', 'eyes', 'tophat', 'halo', 'crown', 'duck', 'royalduck']
+HATS = ['party', 'cone', 'cowboy', 'chef', 'propeller', 'eyes', 'tophat', 'halo', 'crown', 'duck', 'royalduck', 'tricorne']
 NAMES = {'party': 'Party Hat', 'cone': 'Traffic Cone', 'cowboy': 'Cowboy Hat', 'chef': 'Chef Hat',
          'propeller': 'Propeller Cap', 'eyes': 'Googly Eyes', 'tophat': 'Top Hat', 'halo': 'Halo', 'crown': 'Crown',
-         'duck': 'Tiny Duck', 'royalduck': 'Royal Duck'}
+         'duck': 'Tiny Duck', 'royalduck': 'Royal Duck', 'tricorne': 'Star Tricorne'}
 RARITY = {'party': 'free', 'cone': 'free', 'cowboy': 'common', 'chef': 'common', 'propeller': 'rare', 'eyes': 'rare',
-          'tophat': 'epic', 'halo': 'epic', 'crown': 'legendary', 'duck': 'legendary', 'royalduck': 'legendary'}
+          'tophat': 'epic', 'halo': 'epic', 'crown': 'legendary', 'duck': 'legendary', 'royalduck': 'legendary',
+          'tricorne': 'legendary'}
 # VIP only (the shop session's VIP pack, 16 Nov 2026): in no container and no shop rotation, worn on every gun once
-# owned. GunHatData marks the hat vip = true; LootTable.vipOnly reads it
+# owned. GunHatData marks the hat vip = true; LootTable.vipOnly reads it. (NOT the Star Tricorne: it is the VIP daily
+# reward's, and the VIP pack hands out every vip thing; its daily-only mark is the shop's VipDailyData.EXCLUSIVE)
 VIP = {'royalduck'}
 
 
@@ -256,10 +258,10 @@ CREAM = 'c9c1b0'   # warm off-white
 SLATE = '3c4048'   # the foot every hat stands on
 FOOT_H = 0.0045    # the foot's height: every hat stands this much higher than it is built
 # each hat's size against how it is built (applied round the foot), a turn round its up axis, its foot
-SIZE = {'crown': 1.3, 'duck': 1.12, 'halo': 1.0, 'cone': 1.05, 'chef': 0.95, 'royalduck': 1.05}
+SIZE = {'crown': 1.3, 'duck': 1.12, 'halo': 1.0, 'cone': 1.05, 'chef': 0.95, 'royalduck': 1.05, 'tricorne': 0.85}
 TURN = {'duck': 35}  # degrees, the face toward the gun's left: the side the player sees in first person
 FOOT = {'party': 0.031, 'cowboy': 0.0255, 'chef': 0.0275, 'propeller': 0.0325, 'tophat': 0.025, 'halo': 0.016,
-        'crown': 0.0315, 'duck': 0.026, 'eyes': 0.0315, 'cone': 0.029, 'royalduck': 0.0235}
+        'crown': 0.0315, 'duck': 0.026, 'eyes': 0.0315, 'cone': 0.029, 'royalduck': 0.0235, 'tricorne': 0.0235}
 
 
 @hat
@@ -512,6 +514,97 @@ def royalduck():
     return g
 
 
+# THE STAR TRICORNE (17 Nov 2026, round 12): the VIP daily reward's hat, one of the Triangulum trio (the skin-concepts
+# session's design: shared notes triangulum-vip-brief.md, sheet triangulum-vip-trio.jpg; its blockout triangulum/
+# tri_hat.py is the base of this one). Only Trisangle's daily reward gives it: the shop session's VipDailyData.EXCLUSIVE
+# is its daily-only mark (never sold, never in a container, a skin set or the VIP pack), so it is NOT in VIP (the VIP
+# pack hands out every vip thing). Worn on every gun once owned (Loot.owns, LootTable.exclusive).
+# A navigator's three-cornered hat, made the way a real tricorne is: a round brim folded up along a triangle into three
+# walls, so from above it IS the Triangulum mark (three corners, the braid as its lines, a star on each corner). The
+# triangle is long at the front like the constellation: the apex forward, the two base corners at the back, the
+# brightest star on the back-left (the player's side).
+TRI_FELT = '262d4a'     # midnight felt (a step darker and greyer than the gun's 2a355f, as the hats run)
+TRI_STAR = 'b9a26c'     # the stars' muted warm-gold light (Neon, a little see-through: pale Neon blows out)
+TRI_CORNERS = ((0.0, 'starf', 0.0085), (232.0, 'starl', 0.0095), (128.0, 'starr', 0.0068))  # degrees (0 = front, 90 =
+#                                                                                            right), node, star radius
+TRI_R = 0.046           # the brim's radius before it is folded up (the corners' reach)
+TRI_RI = 0.0165         # the crown's radius
+TRI_TW = 0.0034         # the felt's thickness
+TRI_LEAN = 0.22         # how far the walls lean out (per unit of height)
+TRI_HMIN = 0.0065       # the corners keep a small upright point
+
+
+def tri_fold(th):
+    """the fold line's distance from the centre at angle th (degrees): the triangle's edge there"""
+    c = sorted(a for a, _, _ in TRI_CORNERS)
+    c = c + [c[0] + 360.0]
+    t = th % 360.0
+    for a, b in zip(c, c[1:]):
+        if a - 1e-9 <= t <= b + 1e-9:
+            m, half = (a + b) / 2, (b - a) / 2
+            return TRI_R * math.cos(math.radians(half)) / math.cos(math.radians(t - m))
+    return TRI_R
+
+
+def sparkle(r, k=3.4, n=48, ky=1.2):
+    """a four-point star's outline (a superellipse pinched to points), a little taller than wide"""
+    out = []
+    for i in range(n):
+        t = 2 * math.pi * i / n
+        x, y = math.cos(t), math.sin(t)
+        out.append((r * math.copysign(abs(x) ** k, x), r * math.copysign(abs(y) ** k, y) * ky))
+    return out
+
+
+@hat
+def tricorne():
+    """STAR TRICORNE (VIP daily reward): a midnight felt brim folded up into three walls round a low crown, brass braid
+       (Metal) along the walls' top edges, a crossed four-point star of light on each corner (they twinkle in turn)"""
+    g = Gun('hat_tricorne')
+    g.slot('felt', TRI_FELT); g.slot('gold', ROYAL_GOLD, 'm'); g.slot('star', TRI_STAR, 'n', 0.85)
+    # the brim and its walls: one closed section swept round, flat from the crown to the fold, then up the wall
+    N = 26
+    c = sorted(a for a, _, _ in TRI_CORNERS)
+    c = c + [c[0] + 360.0]
+    ths = []
+    for a, b in zip(c, c[1:]):
+        ths += [a + (b - a) * k / N for k in range(N)]
+    bm = bmesh.new()
+    loops, tops = [], []
+    for th in ths:
+        rf = min(tri_fold(th), TRI_R)
+        h = max(TRI_R - rf, TRI_HMIN)
+        s, co = math.sin(math.radians(th)), -math.cos(math.radians(th))
+        sec = [(TRI_RI, 0.0), (rf + TRI_TW, 0.0), (rf + TRI_TW + TRI_LEAN * h, h), (rf + TRI_LEAN * h, h), (rf, TRI_TW),
+               (TRI_RI, TRI_TW)]
+        loops.append([V(bm, I4, r * s, y, r * co) for r, y in sec])
+        rt = rf + TRI_TW / 2 + TRI_LEAN * h
+        tops.append((rt * s, h + 0.0006, rt * co))
+    n = len(loops[0])
+    for i in range(len(loops)):
+        A, B = loops[i], loops[(i + 1) % len(loops)]
+        for j in range(n):
+            k = (j + 1) % n
+            bm.faces.new([A[j], A[k], B[k], B[j]])
+    put(g, 'brim__felt', bm, 38)
+    # the crown: a low rounded dome on the brim
+    lathe(g, 'crown__felt', rounded([(0, TRI_TW - 0.001), (TRI_RI + 0.0006, TRI_TW - 0.001), (TRI_RI + 0.0004, 0.022),
+                                     (0, 0.0285)], [0, 0, 0.012]), 32)
+    # the braid: a brass cord along every wall's top edge
+    for p, q in zip(tops, tops[1:] + tops[:1]):
+        g.cyl('braid__gold', 0.0017, p, q, sides=6, bev=0.0)
+    # a star of light at each corner, two crossed blades so it reads from the side and from above; each its own node
+    # (MOVES: they twinkle one after another)
+    for th, node, r in TRI_CORNERS:
+        s, co = math.sin(math.radians(th)), -math.cos(math.radians(th))
+        rr = TRI_R + TRI_TW / 2 + TRI_LEAN * TRI_HMIN + 0.002
+        at = T(rr * s, TRI_HMIN + r * 0.75, rr * co)
+        for extra in (0.0, 90.0):
+            slab(g, '%s__star' % node, sparkle(r), 0.0018, at @ RY(math.pi - math.radians(th) + math.radians(extra)),
+                 bev=0.0003)
+    return g
+
+
 def foot(g, kind):
     """the set's mount: a thin slate plate with a brass rim under the hat (a disc of radius `kind`, or a pill)"""
     g.slots.setdefault('foot', {'color': SLATE, 'kind': 'p', 'alpha': 1.0})
@@ -553,6 +646,11 @@ MOVES = {
                  'u': [round(c, 4) for c in (RZ(-s_ * EYE_SPLAY) @ RX(EYE_TILT)).to_3x3() @ Vector((1, 0, 0))],
                  'v': [round(c, 4) for c in (RZ(-s_ * EYE_SPLAY) @ RX(EYE_TILT)).to_3x3() @ Vector((0, 0, 1))]}
              for s_, n in ((-1, 'pupil_l'), (1, 'pupil_r'))},
+    # (round 12) the tricorne's three stars twinkle one after another: front, back-left, back-right, then a rest.
+    # twinkle = a brightness pulse on the part's Transparency: it rests dim + `dim` above its own and flares to `lift`
+    # below it for the first `width` of each turn (speed = turns a second), `phase` later than the turn's start
+    'tricorne': {n: {'kind': 'twinkle', 'speed': 0.22, 'phase': ph, 'dim': 0.2, 'lift': 0.1, 'width': 0.25}
+                 for n, ph in (('starf', 0.0), ('starl', 0.25), ('starr', 0.5))},
 }
 
 

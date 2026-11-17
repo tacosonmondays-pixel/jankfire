@@ -5,7 +5,7 @@ local D = {}
 
 -- the hats, in the loadout's order (shared/cosmetics.js COSMETICS.hat). "none" = no hat. vip = VIP only: in no
 -- container and no shop rotation, worn on every gun once owned (LootTable.vipOnly)
-D.ORDER = { "none", "party", "cone", "cowboy", "chef", "propeller", "eyes", "tophat", "halo", "crown", "duck", "royalduck" }
+D.ORDER = { "none", "party", "cone", "cowboy", "chef", "propeller", "eyes", "tophat", "halo", "crown", "duck", "royalduck", "tricorne" }
 D.HATS = {
 	none = { name = "None", rarity = "free" },
 	party = { name = "Party Hat", rarity = "free", lo = Vector3.new(-0.0324, -0, -0.0324), hi = Vector3.new(0.0324, 0.1042, 0.0324) },
@@ -19,17 +19,20 @@ D.HATS = {
 	crown = { name = "Crown", rarity = "legendary", lo = Vector3.new(-0.0428, -0, -0.0428), hi = Vector3.new(0.0428, 0.0547, 0.0428) },
 	duck = { name = "Tiny Duck", rarity = "legendary", lo = Vector3.new(-0.032, -0, -0.0404), hi = Vector3.new(0.0335, 0.0713, 0.0352) },
 	royalduck = { name = "Royal Duck", rarity = "legendary", vip = true, lo = Vector3.new(-0.0282, -0, -0.0326), hi = Vector3.new(0.0282, 0.0742, 0.0283) },
+	tricorne = { name = "Star Tricorne", rarity = "legendary", lo = Vector3.new(-0.0411, -0, -0.0507), hi = Vector3.new(0.0393, 0.0276, 0.0336) },
 }
 -- the upload (every hat in one model, 10 x size: one template stud = UNIT metres)
-D.ASSET = 83292486542416
+D.ASSET = 100913123667082
 D.UNIT = 0.1
 
 -- the moving bits (client only): spin = round the hat's up axis (rad/s), bob = up and down (metres, Hz),
--- rattle = jitter in the plane u, v (metres; the googly pupils)
+-- rattle = jitter in the plane u, v (metres; the googly pupils), twinkle = a Transparency pulse (dim above the
+-- part's own at rest, lift below it at the peak, for `width` of each turn, `phase` into it: the tricorne's stars)
 D.MOVES = {
 	propeller = { prop = { kind = "spin", speed = 9 } },
 	halo = { halo = { kind = "bob", speed = 1.2, amp = 0.0022 } },
 	eyes = { pupil_l = { kind = "rattle", amp = 0.002, u = Vector3.new(0.866, 0.5, 0), v = Vector3.new(0.25, -0.433, 0.866) }, pupil_r = { kind = "rattle", amp = 0.002, u = Vector3.new(0.866, -0.5, 0), v = Vector3.new(-0.25, -0.433, 0.866) } },
+	tricorne = { starf = { kind = "twinkle", speed = 0.22, phase = 0, dim = 0.2, lift = 0.1, width = 0.25 }, starl = { kind = "twinkle", speed = 0.22, phase = 0.25, dim = 0.2, lift = 0.1, width = 0.25 }, starr = { kind = "twinkle", speed = 0.22, phase = 0.5, dim = 0.2, lift = 0.1, width = 0.25 } },
 }
 
 -- where the hat sits on each weapon: at = the foot of the hat (metres, the weapon frame: x right, y up, z back,

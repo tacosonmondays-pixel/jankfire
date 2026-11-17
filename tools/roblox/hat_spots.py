@@ -94,13 +94,14 @@ def main():
     w('D.UNIT = %g' % (1.0 / hat_models.UNIT))
     w('')
     w('-- the moving bits (client only): spin = round the hat\'s up axis (rad/s), bob = up and down (metres, Hz),')
-    w('-- rattle = jitter in the plane u, v (metres; the googly pupils)')
+    w('-- rattle = jitter in the plane u, v (metres; the googly pupils), twinkle = a Transparency pulse (dim above the')
+    w("-- part's own at rest, lift below it at the peak, for `width` of each turn, `phase` into it: the tricorne's stars)")
     w('D.MOVES = {')
     for h, nodes in hat_models.MOVES.items():
         parts = []
         for n, m in nodes.items():
             kv = ['kind = "%s"' % m['kind']]
-            for k in ('speed', 'amp'):
+            for k in ('speed', 'amp', 'phase', 'dim', 'lift', 'width'):
                 if k in m: kv.append('%s = %g' % (k, m[k]))
             for k in ('u', 'v'):
                 if k in m: kv.append('%s = %s' % (k, lua_vec(m[k])))

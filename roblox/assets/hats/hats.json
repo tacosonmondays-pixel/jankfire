@@ -231,5 +231,28 @@
    "foot__foot",
    "foot__gold"
   ]
+ },
+ "tricorne": {
+  "lo": [
+   -0.0411,
+   -0.0,
+   -0.0507
+  ],
+  "hi": [
+   0.0393,
+   0.0276,
+   0.0336
+  ],
+  "tris": 12232,
+  "pieces": [
+   "brim__felt",
+   "crown__felt",
+   "braid__gold",
+   "starf__star",
+   "starl__star",
+   "starr__star",
+   "foot__foot",
+   "foot__gold"
+  ]
  }
 }

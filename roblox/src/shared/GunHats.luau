@@ -122,6 +122,13 @@ function GunHats.make(id: string, foot: CFrame, f: number, carrier: BasePart?, s
 			p:SetAttribute("HatAmp", (mv.amp or 0) * spm)
 			if mv.u then p:SetAttribute("HatU", mv.u) end
 			if mv.v then p:SetAttribute("HatV", mv.v) end
+			if mv.kind == "twinkle" then
+				p:SetAttribute("HatBase", src.Transparency)
+				p:SetAttribute("HatPhase", mv.phase or 0)
+				p:SetAttribute("HatDim", mv.dim or 0)
+				p:SetAttribute("HatLift", mv.lift or 0)
+				p:SetAttribute("HatWidth", mv.width or 0.25)
+			end
 			if not anchored then
 				local w = Instance.new("Weld")
 				w.Name = "HatJoint"; w.Part0 = base; w.Part1 = p; w.C0 = at
@@ -281,7 +288,9 @@ function GunHats.aim(m: Model, aim: number, clip: string?)
 end
 
 -- ------------------------------------------------------------------ the moving bits (client, every frame)
--- spin: round the hat's up axis; bob: up and down; rattle: a new jitter in the eyes' plane twenty times a second.
+-- spin: round the hat's up axis; bob: up and down; rattle: a new jitter in the eyes' plane twenty times a second;
+-- twinkle: a brightness pulse on the part's Transparency (the Star Tricorne's stars, one after another; aiming hides
+-- the hat through LocalTransparencyModifier, so the two never fight).
 -- a welded bit is moved through its joint, an anchored one (a preview, a rack, the Shredder's first-person copy) from
 -- its hat's foot. bits far from the camera are left alone
 local live: { [BasePart]: boolean } = {}
@@ -309,6 +318,18 @@ function GunHats.step(dt: number)
 		local kind = p:GetAttribute("HatKind")
 		local amp = (p:GetAttribute("HatAmp") :: number?) or 0
 		local speed = (p:GetAttribute("HatSpeed") :: number?) or 0
+		if kind == "twinkle" then
+			-- rests `dim` above its own Transparency, flares to `lift` below it: a smooth hump over the first `width` of
+			-- each turn, `phase` into the turn
+			local base = (p:GetAttribute("HatBase") :: number?) or 0
+			local dim = (p:GetAttribute("HatDim") :: number?) or 0
+			local lift = (p:GetAttribute("HatLift") :: number?) or 0
+			local width = math.max((p:GetAttribute("HatWidth") :: number?) or 0.25, 0.01)
+			local t = (now * speed - ((p:GetAttribute("HatPhase") :: number?) or 0)) % 1
+			local pulse = if t < width then math.sin(math.pi * t / width) ^ 2 else 0
+			p.Transparency = math.clamp(base + dim - (dim + lift) * pulse, 0, 1)
+			continue
+		end
 		local off: CFrame
 		if kind == "spin" then
 			off = rest * CFrame.Angles(0, (now * speed) % (2 * math.pi), 0)

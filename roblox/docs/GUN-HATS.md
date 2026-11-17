@@ -4,7 +4,7 @@ The owner asked: "can you start workin on the wepaon hats modeling them?". JANKF
 a small hat that sits on your gun, one per weapon (`shared/cosmetics.js`, `COSMETICS.hat`: Party Hat, Traffic Cone,
 Cowboy Hat, Chef Hat, Propeller Cap, Googly Eyes, Top Hat, Halo, Crown, Tiny Duck, plus None). The Roblox port now has
 all ten, as new models built for Roblox, a Hat slot in the loadout, and the hat on every view of the gun; and one of its
-own, the VIP-only **Royal Duck** (below).
+own: the VIP-only **Royal Duck** and the VIP daily reward's **Star Tricorne** (below).
 
 What each hat is and roughly where it sits come from the web game (`public/js/skins.js` `HAT_BUILD` and its "sit it
 on top" rule; `tools/blender/make_gunhats.py`). The shapes and colours are our own, in the gun kit's style: a few big
@@ -25,13 +25,13 @@ the nine guns that moved, from the side).
 
 | where | what happens | code |
 |---|---|---|
-| the loadout screen (L) | a **HATS** tab beside **WRAPS** over the bottom bar: twelve cards (None and the eleven hats, each turning slowly with its moving bits going, a line in its rarity's colour); hover to try one on, click to put it on. The big preview and the slot cards show the hat | `LoadoutUI.client.luau` (the "hats" block, `previewModel(id, hat)`) |
+| the loadout screen (L) | a **HATS** tab beside **WRAPS** over the bottom bar: thirteen cards (None and the twelve hats, each turning slowly with its moving bits going, a line in its rarity's colour); hover to try one on, click to put it on. The big preview and the slot cards show the hat | `LoadoutUI.client.luau` (the "hats" block, `previewModel(id, hat)`) |
 | the server | one hat per weapon, checked against the hat list, saved with the loadout (`hats` in the DataStore payload beside `wraps`), published as the player attribute `Hats` = `"ar=crown;katana=duck"`; a change goes on at once (your third-person gun, the Shredder) | `Loadout.luau` (op `"hat"`) |
 | first person | the hat rides the gun piece under it (so it moves with a slide, a feed cover or the Half a Shotgun's barrels), **hides while you aim** (aim 0.3 or more, as in the web game) so it is never in the sight picture, and rebuilds when you change it | `Viewmodel.luau` (`VM.set`, `VM.update`) |
 | third person | on every player's held gun, drawn 1.5 times the first-person size (`GunHats.THIRD`: at 1x it was a few pixels on someone else's gun) | `Fight.showWeapon` |
 | the Shredder (a Tool) | on its Handle in the kit model's frame (the frame is a constant in `GunHats.luau`, measured from the web Tool; a Tool may carry its own as attributes `HatFrame` / `HatK`) | `GunHats.attachTool`, `Loadout.syncTools` |
 | the hub armory | the display guns on the boards (`Rack_w_<id>`) wear **your own** hat for that weapon, on your screen only | `GunHatsClient.client.luau` |
-| moving bits | the propeller spins, the halo bobs, the googly pupils rattle: client only, every frame, skipped past 150 studs | `GunHats.step` |
+| moving bits | the propeller spins, the halo bobs, the googly pupils rattle, the Star Tricorne's stars twinkle in turn: client only, every frame, skipped past 150 studs | `GunHats.step` |
 
 **A wrap never paints a hat.** A hat is a Model named `GunHat` inside the gun's model (so it moves, hides and goes away
 with the gun), and every hat part carries the attributes `NoWrap = true` and `WrapTr = 1`; `WeaponModels.wrap` skips
@@ -42,7 +42,7 @@ colour and material as it was.
 
 | what | where |
 |---|---|
-| the eleven hats (one function each, on `gunkit.Gun`), the VIP list and what moves | `tools/roblox/hat_models.py` |
+| the twelve hats (one function each, on `gunkit.Gun`), the VIP list and what moves | `tools/roblox/hat_models.py` |
 | where each hat sits on each gun (z along the gun, size, turn, notes) | `tools/roblox/hat_spots.json` |
 | the height under each spot, measured on the kit model with a ray; writes the book | `tools/roblox/hat_spots.py` |
 | the book the game reads (generated: hats, rarities, file bounds, asset id, spots, moving bits) | `roblox/src/shared/GunHatData.luau` |
@@ -195,6 +195,54 @@ on the Tiny Duck) is sunk between them, so the mouth line reads from the side an
 - Studio: the seat data (only the two duck rows and the asset id) was pushed, `H.load(83292486542416)`, `H.check()`:
   hats ok. In Edit, the Royal Duck on the AR shows the flat bill with its mouth line and lifted tip. Saved as place
   version 476.
+
+## Round 12: the Star Tricorne, the VIP daily reward's hat (17 Nov 2026)
+
+The skin-concepts session designed the **Triangulum** trio for the main session: a wrap, a Sniper skin and a hat that
+only Trisangle's VIP daily reward gives. Its brief, sheet and blockout are in the shared notes (`triangulum-vip-brief.md`,
+`triangulum-vip-trio.jpg`, `triangulum/tri_hat.py`). **`tricorne`, "Star Tricorne"**, rarity legendary, is a navigator's
+three-cornered hat in midnight felt (`262d4a`). It is built the way a real tricorne is made: a round brim (R 46 mm) folded
+up along a triangle into three walls that lean out. From above it is the Triangulum mark:
+- three corners: the apex forward, the two base corners at the back;
+- a brass braid along the walls' top edges, as the mark's lines;
+- a crossed four-point star of light on each corner (Neon `b9a26c` at 0.85 opacity), the brightest on the back-left,
+  the player's side.
+
+A low felt dome sits in the middle, and the hat stands on the set's slate foot (r 23.5 mm) at size 0.85: 8.0 × 8.4 cm,
+2.8 cm tall, 12,232 triangles, 8 pieces. The braid is Metal, in the Royal Duck's brighter gold (`a8894c`), because the
+set's darker brass reads dull as Metal. `gun-hats/star-tricorne.png` has the Blender close-ups.
+
+- **Daily-only, not VIP:** the shop session's `VipDailyData.EXCLUSIVE.hat = "tricorne"` is its mark. It is never sold,
+  never in a container, a skin set or the VIP pack, and it is worn on every gun once owned (`LootTable.exclusive`,
+  `Loot.owns`). It is deliberately **not** in `hat_models.VIP`: the VIP pack hands out every `vip = true` thing. Its
+  reward slot turns on by itself once the hat is in the place (`Shop.exists`).
+- **Moving bits:** a new kind, `twinkle`, in `GunHats.step`. Each star is its own node (`starf`, `starl`, `starr`). It
+  rests 0.2 dimmer than its own Transparency and flares to 0.1 brighter over the first quarter of each 4.5 s turn:
+  front, then back-left, then back-right, then a rest. It pulses `Transparency`; aiming hides the hat through
+  `LocalTransparencyModifier`, so the two don't fight. `hat_spots.py` writes the new fields (`phase`, `dim`, `lift`,
+  `width`).
+- **Clipping:** the tricorne on all 87 seats, first and third person (174 pairs). It stays inside the set's existing
+  limits:
+  - feet at most 3.5 mm, on the Toy rifle's rail, as the Cowboy Hat does there;
+  - at most 1.0 mm of hat in a gun (the katana's grip, first person);
+  - at most 0.4 mm of gun in the hat (the calculator Plan B's key).
+  The scopes and rails needed no new seats. The whole report is now 2,088 rows (87 seats × 12 hats × 2 views).
+- **Upload:** round 12, asset 100913123667082, with all twelve hats. The other eleven are unchanged (identical bounds and
+  pieces).
+- **Loadout:** the HATS row was a fixed 1,226 px, which fits 11 cards of 102 px; the Royal Duck's twelfth already ran
+  past it. The cards now share the row (`CW`: 86 px for thirteen), and long names shrink to fit. An unowned tricorne
+  says it comes only from Trisangle's VIP daily reward (`LoadoutUI.client.luau`).
+- **Studio (place version 554):**
+  - Pushes: the data, `GunHats` and the `LoadoutUI` patch, each as a guarded find/replace. The live `LoadoutUI` was
+    66 bytes ahead of git (another session's push), and the patch kept that change.
+  - Import: `H.load(100913123667082)` loaded twelve hats; `H.check()`: hats ok. The tricorne has 8 pieces: Neon stars at
+    Transparency 0.15, the braid and the foot rim Metal.
+  - Built guns: no `vip` flag, `GunHats.valid` true, three twinkling stars on each.
+    - Rifle, Plan B and Duckling SMG: the foot 2.0 mm into the gun.
+    - Sniper: on its 13 mm saddle.
+    - Katana: 3.0 mm into the pommel, as the clip check found.
+  - Play (client): each star rests at 0.35 and flares to 0.05 in turn (front, back-left, back-right), then all three
+    rest. The HATS row holds 13 cards at 86 px (1,220 of 1,226 px).
 
 ## Seats for the space-western pair and the Japanese concepts (17 Nov 2026, place version 481)
 
@@ -357,7 +405,8 @@ front others see their backs); a new concept would do more for it than another r
 
 ## Not done / open
 
-- **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476; seats on 16 guns and
+- **Live: round 12** (asset 100913123667082: the eleven hats plus the Star Tricorne), place version 554. Round 11
+  (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
   71 skins since place version 512 (68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
