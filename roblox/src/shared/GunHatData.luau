@@ -103,10 +103,11 @@ D.SPOTS = {
 	["lever@lever_star"] = { at = Vector3.new(0, 0.04827, -0.08), s = 0.8, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.9 mm (third person), 0.9 mm (first)
 	["sawnoff@sawnoff_jp_a"] = { at = Vector3.new(0, 0.04448, -0.11), s = 0.85, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["burst@burst_infernal"] = { at = Vector3.new(0, 0.13, -0.11), s = 0.9, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.5 mm (third person), 0.0 mm (first)
-	["ar@ar_cute_a"] = { at = Vector3.new(0, 0.076, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
-	["ar@ar_cute_b"] = { at = Vector3.new(0, 0.07, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
-	["ar@ar_cute_c"] = { at = Vector3.new(0, 0.072, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
-	["ar@ar_cute_d"] = { at = Vector3.new(0, 0.0764, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["pistol@pistol_cute_d"] = { at = Vector3.new(0, 0.05242, -0.11), s = 0.62, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
+	["ar@ar_cute_a"] = { at = Vector3.new(0, 0.10338, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["ar@ar_cute_b"] = { at = Vector3.new(0, 0.10367, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["ar@ar_cute_c"] = { at = Vector3.new(0, 0.10353, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["ar@ar_cute_d"] = { at = Vector3.new(0, 0.10389, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["ar@ar_cute_e"] = { at = Vector3.new(0, 0.072, -0.07), s = 1, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["burst@burst_seraph"] = { at = Vector3.new(0, 0.1348, -0.1), s = 0.9, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["dmr@dmr_jp_a"] = { at = Vector3.new(0, 0.13228, 0.11), s = 0.95, yaw = 0, pitch = 0, saddle = 0.004 },  -- skin: its gun's spot, height measured on the skin
@@ -114,10 +115,9 @@ D.SPOTS = {
 	["lever@lever_cloudlock"] = { at = Vector3.new(0, 0.042, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["lever@lever_dust"] = { at = Vector3.new(0, 0.0495, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["lever@lever_jp_a"] = { at = Vector3.new(0, 0.049, -0.09), s = 0.8, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
-	["pistol@pistol_cute_a"] = { at = Vector3.new(0, 0.0528, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
+	["pistol@pistol_cute_a"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_cute_b"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_cute_c"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
-	["pistol@pistol_cute_d"] = { at = Vector3.new(0, 0.05276, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_cute_e"] = { at = Vector3.new(0, 0.05, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_infernal"] = { at = Vector3.new(0, 0.054, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin
 	["pistol@pistol_seraph"] = { at = Vector3.new(0, 0.054, -0.08), s = 0.62, yaw = 0, pitch = 0 },  -- skin: its gun's spot, height measured on the skin

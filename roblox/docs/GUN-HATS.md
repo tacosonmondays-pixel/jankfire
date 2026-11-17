@@ -234,6 +234,17 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
   - The base sniper keeps its seat and 13 mm saddle on the slimmer scope, now 13 mm lower, so it no longer floats.
   - Full check: 93 seats, 2,046 pairs, at most 1.1 mm of hat in a gun, 1.0 mm of gun in a hat, feet at most 3.5 mm (the
     same limits as before). Built guns in Studio wear their hats at the 13 changed seats. Live in place version 487.
+- **The cute v3 concepts (place version 493, same keys `ar_cute_a..d`, `pistol_cute_a..d`; concept E left the place):**
+  they build by default now (`gun_sets_cute3`). All eight match their installed glbs.
+  - The four rifles now share the base rifle's receiver: their hats stand on the rail at 10.3 cm, up from about 7 cm. The
+    new pieces beside the rail (locket, wing, butterfly, band) stay clear.
+  - Plan B A to C keep the slide seat.
+  - Plan B D: at the old seat three brims went 1.9 mm into its ribbon band. `hat_solve.py` moved the hat 3 cm forward,
+    onto the band, so it stands on the ribbon over the bow.
+  - Full check of the eight: at most 0.1 mm of hat in a gun, none of a gun in a hat, feet 2.0 mm.
+  - Concept E's two lines stay in the generated data while `gun_sets_cute.py` still builds it (harmless: no such gun in
+    the place).
+  - Built guns in Studio wear their hats at all eight seats. Live in place version 495.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -313,7 +324,7 @@ front others see their backs); a new concept would do more for it than another r
 ## Not done / open
 
 - **Live: round 11** (asset 83292486542416: the two ducks with a real bill), place version 476; seats on 16 guns and
-  77 skins since place version 481. Round 10 (asset
+  77 skins since place version 481 (latest seats: place version 495). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place

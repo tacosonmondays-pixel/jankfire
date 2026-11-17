@@ -62,5 +62,6 @@
   "katana@katana_star": {"y": 0.0, "pitch": 90, "z": 0.129, "s": 0.6, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
   "lever@lever_star": {"z": -0.08, "s": 0.8, "note": "solved by hat_solve.py: worst clip 0.9 mm (third person), 0.9 mm (first)"},
   "sawnoff@sawnoff_jp_a": {"z": -0.11, "s": 0.85, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"},
-  "burst@burst_infernal": {"z": -0.11, "s": 0.9, "note": "solved by hat_solve.py: worst clip 0.5 mm (third person), 0.0 mm (first)"}
+  "burst@burst_infernal": {"z": -0.11, "s": 0.9, "note": "solved by hat_solve.py: worst clip 0.5 mm (third person), 0.0 mm (first)"},
+  "pistol@pistol_cute_d": {"z": -0.11, "s": 0.62, "note": "solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)"}
 }
