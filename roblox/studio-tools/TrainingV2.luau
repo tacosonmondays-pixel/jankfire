@@ -451,31 +451,16 @@ local function muster(B)
 	end
 	-- the gate back to the hub (south): the hub's own gate on this side too
 	local G = sideFrame(B, 4)
-	B.put("hb_portal", G * CF(0, MY, -(A + 1.2)), { name = "HubGate", scale = 0.6, color = { ff4fd8 = P.amber, ["2e3140"] = P.dark, a4aab8 = P.pier } })
-	-- this side of the gate is calm (the hub's side keeps its red bars): a slate shutter of slats, one amber light bar
-	-- across its head. walk into it and you are back in the hub
+	-- the gate's kit, the same as on the hub's side (GateKit, the hub session's; owner, 17 Nov: "can the laser fence be on
+	-- both side of the hub and same with the garage door because its weird to have the grid on one side and a garage door
+	-- on the other"): the same frame and colours, a roll-up garage door with the laser fence just inside it, the dark
+	-- plate behind, the amber light bar over the head. walk up and the door rolls up, then the lasers click off (both on
+	-- every screen: TrainingDoors.client); walk into it and you are back in the hub
+	local GK = require(game.ServerStorage.PolishBackup.GateKit:Clone())
+	B.put("hb_portal", G * CF(0, MY, -(A + 1.2)), { name = "HubGate", scale = GK.FRAME.scale, color = GK.FRAME.color })
 	B.fbox(G, "Shell", "GateVoid", -5.4, 5.4, MY, MY + 12, A + 3.4, A + WALL, "33363d")
-	B.fbox(G, "Scenery", "ShutterBack", -4.2, 4.2, MY, MY + 9.96, A + 2.6, A + 2.9, "3a3e46", { ghost = true })
-	-- (owner, 16 Nov: "when you go up to garage doors can they slide up": the slats roll up into the head as you walk
-	-- up to it and back down after you, on every screen: TrainingDoors.client. Shut, Lift, Top, Center and Near say how)
-	local shutter = Instance.new("Model")
-	shutter.Name = "HubShutter"
-	local bottom: BasePart? = nil
-	for k = 0, 8 do
-		local y = MY + 0.2 + k * 1.08
-		local sl = B.fbox(G, "Scenery", "ShutterSlat", -4.2, 4.2, y, y + 0.95, A + 1.5, A + 1.9, P.pier2, { ghost = true })
-		sl:SetAttribute("Shut", sl.CFrame)
-		if not bottom then bottom = sl; shutter.Parent = sl.Parent end
-		sl.Parent = shutter
-	end
-	local b0 = bottom :: BasePart
-	shutter:SetAttribute("Shutter", true)
-	shutter:SetAttribute("Lift", 10.3)
-	shutter:SetAttribute("Top", b0.Position.Y - 0.475 + 9.76)
-	shutter:SetAttribute("Center", Vector3.new(b0.Position.X, b0.Position.Y - 0.675, b0.Position.Z))
-	shutter:SetAttribute("Near", 13)
-	B.fbox(G, "Scenery", "GateLightBar", -4.0, 4.0, MY + 9.95, MY + 10.35, A + 1.4, A + 1.7, P.amberGlow, { ghost = true, mat = NEON })
-	B.lamp(0, MY + 8, MZ + A - 1.5, "point", 10, 0.5, "ffc27a")
+	GK.build(B.at(G * CF(0, MY, -(A + 1.5))), B.root.Scenery, { door = "HubShutter", lasers = "HubLaserGate" })
+	B.lamp(0, MY + GK.LAMP.up, MZ + A + 1.5 - GK.LAMP.out, "point", GK.LAMP.range, GK.LAMP.bright, GK.LAMP.hex)
 	B.text("WordHUB", { { "HUB", P.amber, "B", 1 } }, 7.6, 1.6, G * CF(0, MY + 13.4, -(A - 0.32)) * CFrame.Angles(0, math.pi, 0), { plate = P.dark, thick = 0.25 })
 	B.trigger("ToHub", MX - 4.2, MX + 4.2, MY, MY + 10, MZ + A + 0.6, MZ + A + 3.6)
 	-- the bench bay (south-west): the place to stop. low, warm, a bench, lockers, water

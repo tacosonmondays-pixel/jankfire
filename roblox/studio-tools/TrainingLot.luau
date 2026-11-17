@@ -386,16 +386,22 @@ local function basement(BS)
 		deco("WellStepEdge", xa + run - 0.3, xa + run, top, top + 0.04, W.z0 + 0.4, W.z1 - 0.4, P.trim)
 	end
 	blk("WellFoot", xf, W.x1, LOW, FL, W.z0, W.z1, P.floor2)
-	-- a handrail on each wall, 3 over the steps' edges, on brackets
-	local len = math.sqrt((N * run) ^ 2 + (G - FL) ^ 2)
+	-- a handrail on each wall, 3 over the steps' edges, on brackets into the wall. (owner, 17 Nov: "the railing down
+	-- should be against the wall because the one that isnt is just floating": the south rail ran across the door's
+	-- opening with nothing behind it; it now starts where it drops under the opening's sill, the wall behind it)
 	local ang = math.atan2(G - FL, N * run)
 	local mid = (W.z0 + W.z1) / 2
-	for _, z in { W.z0 + 0.45, W.z1 - 0.45 } do
-		part("WellRail", CF(xs + N * run / 2, (G + FL) / 2 + 3, z) * CFrame.Angles(0, 0, -ang), V3(len, 0.35, 0.35), P.trim, { cyl = true })
-		for k = 0, 3 do
-			local x = xs + (k + 0.5) * N * run / 4
-			local y = G - (x - xs) * (G - FL) / (N * run) + 3
-			blk("WellRailBracket", x - 0.15, x + 0.15, y - 0.3, y + 0.05, z, if z < mid then W.z0 else W.z1, P.slate)
+	local function railY(x) return G + 3 - (x - xs) * (G - FL) / (N * run) end
+	local underSill = xs + (G + 3 - (G - 0.4)) * (N * run) / (G - FL) -- (where the rail is 0.4 under the opening's sill)
+	for _, r in { { W.z0 + 0.45, W.z0, math.max(xs, underSill) }, { W.z1 - 0.45, W.z1, xs } } do
+		local z, wz, xa = r[1], r[2], r[3]
+		local xb = xf
+		part("WellRail", CF((xa + xb) / 2, (railY(xa) + railY(xb)) / 2, z) * CFrame.Angles(0, 0, -ang), V3((xb - xa) / math.cos(ang), 0.35, 0.35), P.trim, { cyl = true })
+		local nb = math.max(2, math.floor((xb - xa) / 4.5))
+		for k = 0, nb - 1 do
+			local x = xa + (k + 0.5) * (xb - xa) / nb
+			local y = railY(x)
+			blk("WellRailBracket", x - 0.15, x + 0.15, y - 0.3, y + 0.05, z, wz, P.slate)
 		end
 	end
 	cagedLamp(W.x0 + 3, W.top - 0.1, mid, 24, 0.7)
@@ -453,6 +459,24 @@ local function basement(BS)
 	blk("FuseBox", R.x0 + 18, R.x0 + 21.5, FL + 1.8, FL + 5.4, R.z0, R.z0 + 0.8, C.housing)
 	deco("FuseBoxDoor", R.x0 + 18.3, R.x0 + 21.2, FL + 2.1, FL + 5.1, R.z0 + 0.8, R.z0 + 0.86, C.inset)
 	blk("FuseConduit", R.x0 + 19.5, R.x0 + 20, FL + 5.4, R.ceil, R.z0, R.z0 + 0.5, C.slateC)
+	-- a regular down here (owner, 17 Nov: "can you add oxex21 @joxex21 down there"): the owner's friend on a crate in
+	-- front of the shelves, facing the way in, clear of the walk to the far door. HubNPCs builds them from this place
+	-- (a Seat tagged HubNPC) as it does the hub's regulars: their own avatar (or the saved copy JankfireNPCs.<Who>), their
+	-- name over them, anchored, no shots; their clips and the living layer (breath, the head drifting, now and then to
+	-- you) play on each screen. Idle: the hub's Mixamo seated breathing; Extra: a glance to the side now and then
+	blk("SitCrate", R.x0 + 10.4, R.x0 + 13.6, FL, FL + 2.2, R.z1 - 7.6, R.z1 - 4.4, C.warmC)
+	deco("SitCrateBand", R.x0 + 10.35, R.x0 + 13.65, FL + 0.9, FL + 1.3, R.z1 - 7.65, R.z1 - 4.35, C.slateC)
+	local seat = Instance.new("Seat")
+	seat.Name = "Regular_joxex21_Place"; seat.Size = V3(2, 0.2, 2); seat.Anchored = true; seat.CanCollide = false; seat.CanQuery = false
+	seat.CanTouch = false; seat.Transparency = 1; seat.CastShadow = false; seat.Disabled = true
+	local sat = V3(R.x0 + 12, FL + 2.3, R.z1 - 6)
+	seat.CFrame = B.at(CFrame.lookAt(sat, V3(R.x0 + 22, FL + 2.3, R.z1 - 16)))
+	seat:SetAttribute("Who", L.FRIEND.who); seat:SetAttribute("User", L.FRIEND.user); seat:SetAttribute("Pose", "sit")
+	if L.FRIEND.id then seat:SetAttribute("UserId", L.FRIEND.id) end
+	seat:SetAttribute("Idle", "rbxassetid://81991323034085") -- (the hub's seated breathing, Looticus's)
+	seat:SetAttribute("Extra", "rbxassetid://114005193645149"); seat:SetAttribute("ExtraLen", 4); seat:SetAttribute("ExtraEvery", Vector2.new(15, 30))
+	seat.Parent = B.root.LotScenery
+	CollectionService:AddTag(seat, "HubNPC")
 	-- caged lamps along the room
 	for _, x in { R.x0 + 8, R.x0 + 20, R.x0 + 32 } do cagedLamp(x, R.ceil, (R.z0 + R.z1) / 2 - 4, 18, 0.55) end -- (south of the middle: clear of the boiler)
 end
@@ -602,6 +626,8 @@ L.TREE = { r = 0.8, sink = 0.3, steep = 1.6, deep = 2.3 }
 -- the fence's line round the lot (plan x from -x to x, z from z0 to z1; its north side runs by the façade), and how far
 -- every tree's box stays clear of it
 L.FENCE = { x = 226, z0 = -8746, z1 = -8302, clear = 2.5 }
+-- the regular in the basement (the owner's friend): the name over them, their Roblox username, their user id
+L.FRIEND = { who = "joxex21", user = "joxex21", id = 194032313 } -- (their display name is their username)
 local function treeSides(r) return { V3(r, 0, 0), V3(-r, 0, 0), V3(0, 0, r), V3(0, 0, -r) } end
 local function land()
 	local F = L.FACE
@@ -789,47 +815,48 @@ local function land()
 	-- north, either side of the hall: round trees on the north berms' crest
 	band(-240, -8283, L.FACE.x0 - 4, -8283, -2, 2, { "round" }, 1.4, 1.9)
 	band(L.FACE.x1 + 4, -8283, 240, -8283, -2, 2, { "round" }, 1.4, 1.9)
-	-- far off: plain dark crowns along the tall ridge's crest (low detail: one ball each, half sunk)
-	do
-		local far = L.RIDGE[1]
-		local c, size = CF(far[1], G + far[4] / 2 - 2.5 * far[4] / 2, far[2]) * CFrame.Angles(0, RAD(far[6]), 0), V3(far[3] * 1.4, 5 * far[4] / 2, far[5] * 1.4)
-		for k = -6, 6 do
-			local qx = k * size.X / 2 / 8.5 + rng:NextNumber(-8, 8)
-			local u = (qx / (size.X / 2)) ^ 2
-			if u >= 0.9 then continue end
-			local y = c.Position.Y + size.Y / 2 * math.sqrt(1 - u)
-			local w = 30 + rng:NextNumber() * 16
-			lump("FarTrees", c * CF(qx, y - c.Position.Y - 4, 6), V3(w, 18 + rng:NextNumber() * 6, w * 0.8), if k % 2 == 0 then "6f7d68" else "748270")
-		end
-	end
+	-- (the far ridge's row of plain dark crowns along its crest is gone: owner, 17 Nov, "can you get rid of the little
+	-- dark green lumps on the hills?": the hills are smooth)
 	-- the fence round the lot (16 Nov, the owner: "can you add a fence line in the outside section of the training, like
 	-- where the trees are, so you can't see the ugly parts of it?"): on the berms' outer slopes just behind the round
 	-- trees, closing on the façade's two ends. slate posts every 12 with pale caps, solid panels 16 high (a darker band
 	-- at the foot, a framed inset, a pale rail on top), each panel's foot on the ground at its posts (rays, as for the
 	-- trees). the groves and the hills show over it; what lies beyond it under the eye line does not. an unseen wall up
-	-- to 600 along it keeps everyone in (L.check's ring test)
+	-- to 600 along it keeps everyone in (L.check's ring test). (owner, 17 Nov: "can you raise the wall on the left side so
+	-- its complete wall all at the same height": its top is one height all the way round, FH over the highest ground any
+	-- post stands on; each panel reaches down to the ground at its own posts)
 	local FH, STEP = 16, 12
 	local fenceParts = 0
-	local function fenceRun(x0, z0, x1, z1)
+	local function postsOf(x0, z0, x1, z1)
 		local a, e = V3(x0, 0, z0), V3(x1, 0, z1)
-		local len = (e - a).Magnitude
-		local n = math.max(1, math.round(len / STEP))
-		local dir = (e - a).Unit
-		local rot = CFrame.Angles(0, math.atan2(-dir.X, -dir.Z), 0) -- (its -Z runs along the line)
-		local prevQ, prevY = nil, nil
+		local n = math.max(1, math.round((e - a).Magnitude / STEP))
+		local out = {}
 		for i = 0, n do
 			local q = a + (e - a) * (i / n)
 			local gy = groundAt(q.X, q.Z)
 			if gy == -math.huge then gy = G end
-			part("FencePost", CF(q.X, gy - 1 + (FH + 1.6) / 2, q.Z) * rot, V3(1.4, FH + 1.6, 1.4), "5c6168")
-			part("FencePostCap", CF(q.X, gy + FH + 0.75, q.Z) * rot, V3(1.75, 0.4, 1.75), P.trim)
+			table.insert(out, { q = q, gy = gy })
+		end
+		return out
+	end
+	local FTOP = -math.huge -- (set below, from every run's posts)
+	local function fenceRun(x0, z0, x1, z1)
+		local a, e = V3(x0, 0, z0), V3(x1, 0, z1)
+		local len = (e - a).Magnitude
+		local dir = (e - a).Unit
+		local rot = CFrame.Angles(0, math.atan2(-dir.X, -dir.Z), 0) -- (its -Z runs along the line)
+		local prevQ, prevY = nil, nil
+		for _, pt in postsOf(x0, z0, x1, z1) do
+			local q, gy = pt.q, pt.gy
+			part("FencePost", CF(q.X, (gy - 1 + FTOP + 0.6) / 2, q.Z) * rot, V3(1.4, FTOP + 0.6 - (gy - 1), 1.4), "5c6168")
+			part("FencePostCap", CF(q.X, FTOP + 0.75, q.Z) * rot, V3(1.75, 0.4, 1.75), P.trim)
 			fenceParts += 2
 			if prevQ then
 				local mid = (prevQ + q) / 2
 				local seg = (q - prevQ).Magnitude - 1.2
 				local avg = (prevY + gy) / 2
 				local base = math.min(prevY, gy) - 1.5
-				local top = avg + FH
+				local top = FTOP
 				local F = CF(mid.X, 0, mid.Z) * rot
 				part("FencePanel", F * CF(0, (base + top) / 2, 0), V3(0.6, top - base, seg), "6c727b")
 				part("FenceBand", F * CF(0, (base + avg + 2.5) / 2, 0), V3(0.7, avg + 2.5 - base, seg - 0.1), "5a5f69")
@@ -844,6 +871,9 @@ local function land()
 	-- (the south side runs in front of the near ridge's foot and just behind the long lane's backstop: further out, the
 	-- ridge's face rises straight from the berm)
 	local FX, FZ0, FZ1 = L.FENCE.x, L.FENCE.z0, L.FENCE.z1
+	local RUNS = { { -FX, FZ1, -FX, FZ0 }, { -FX, FZ0, FX, FZ0 }, { FX, FZ0, FX, FZ1 }, { -FX, FZ1, L.FACE.x0, FZ1 }, { L.FACE.x1, FZ1, FX, FZ1 } }
+	for _, r in RUNS do for _, pt in postsOf(r[1], r[2], r[3], r[4]) do FTOP = math.max(FTOP, pt.gy + FH) end end
+	B.fenceTop = FTOP
 	fenceRun(-FX, FZ1, -FX, FZ0)
 	fenceRun(-FX, FZ0, FX, FZ0)
 	fenceRun(FX, FZ0, FX, FZ1)
@@ -1105,7 +1135,8 @@ local function theClimb()
 			part("MastFace", CF(mx + sx * 2.05, 284, z), V3(0.2, 3.2, 3.2), P.amber, { cyl = true, ghost = true, mat = SP })
 		end
 	end
-	-- 6: the finish tower: 64 high, rounded corners, a lit band with the pale top over it, a flag; a strong pad at its foot
+	-- 6: the finish tower: 64 high, rounded corners, a lit band with the pale top over it, a flag. (its strong pad at the
+	-- foot is gone: owner, 17 Nov, "remove this ... bounce pad": the climb itself is the way up)
 	local TX0, TX1, TZ0, TZ1, TT = CX - 8, CX + 8, -8676, -8692, G + 64
 	for _, band in { { 234, TT - 13, P.pier2 }, { TT - 12, TT - 1, P.mass } } do
 		blk("FinishTower", TX0 + 1.5, TX1 - 1.5, band[1], band[2], TZ0, TZ1, band[3])
@@ -1118,7 +1149,6 @@ local function theClimb()
 	part("FinishFlagPole", CF(CX + 5, TT + 5.6, TZ1 + 4) * CFrame.Angles(0, 0, math.pi / 2), V3(10, 0.7, 0.7), P.pier, { cyl = true })
 	part("FinishFlag", CF(CX + 5, TT + 8.6, TZ1 + 1.8), V3(0.25, 3.2, 4.4), P.amber)
 	sign("WordTop", { { "TOP", P.amber, "B", 1 } }, 6, 1.8, CX, TT - 17, TZ0 + 0.2, V3(CX, 0, -8000), { plate = P.board, thick = 0.25 })
-	B.pad(CX + 22, G, (TZ0 + TZ1) / 2, V3(-12.8, 104, 0)) -- (feet about 3 over the edge as they cross it)
 	for _, z in { -8382, -8386 } do B.chevron(CX, G + 0.05, z, 0, -1, 4, P.line) end
 	-- the stages' numbers on the course's east face
 	for i, z in { -8425, -8470, -8516, -8566, -8604, -8630 } do

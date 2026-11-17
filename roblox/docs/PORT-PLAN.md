@@ -999,6 +999,18 @@ The owner asked for a gun shop behind the range ("with an npc me"), for every pl
   - Checks: the hall sealed (1482 rays from 57 points, now including the stairwell's foot and the basement; 0 leaks). Head room 0 within 0.6. The lot closed in (0 leaks). ZFight 1 visible pair (the old kit target).
   - Trap: a solid block's footprint is not the only thing in a hollow. The first build left Terrace2 (236..248) filling the stairwell; T.check's head-room line caught it ("Terrace2 within 1.0, floor 230.6").
   - Photos: `roblox/docs/training/basement_sheet.jpg` (the doorway from the lot, the stairs, the basement, the way out).
+- **17 Nov, the lot round 4 (place version 662):**
+  - The owner's bounce pad, matched by photo, was the finish tower's strong pad at (-98, 240, -8684); it is gone, so the climb is the way to the TOP. Photo: `bounce_pad_found.jpg`.
+  - joxex21 (the owner: "can you add oxex21 @joxex21 down there"; user id 194032313, display name joxex21) sits on a crate in front of the basement's shelves, facing the way in.
+    - A HubNPC Seat built by HubNPCs like the hub's regulars: their own avatar (fallback ServerStorage.JankfireNPCs.joxex21), name label, anchored, no shots.
+    - Idle: the hub's Mixamo seated breathing (81991323034085), with a glance now and then (114005193645149). The clips and the living layer play on each screen.
+    - In Play: nothing they touch but their crate; their track plays on the client.
+  - The stairwell's south handrail (the owner: "the one that isnt is just floating") starts where it drops under the door's sill, so there is wall behind it all the way; brackets into the wall on both.
+  - The hills' dark lumps (the owner: "get rid of the little dark green lumps on the hills") were the far ridge's FarTrees crowns: gone.
+  - The fence (the owner: "raise the wall on the left side so its complete wall all at the same height"): one top all the way round, 16 over the highest ground any post stands on (rails at 277.7); each panel reaches down to its own ground.
+  - The muster's gate home is on the hub session's corrected GateKit: the laser fence at the face, the roll-up door behind it, the amber portal (GatePortal).
+  - Checks: the hall sealed (0 leaks, 57 points), the lot closed in (0 leaks), head room 0 within 0.6, trees all outside the fence, ZFight 1 pair.
+  - Photos: `lot_lumps_fence_before_after.jpg` (the owner's high angle), `lot_round4_sheet.jpg` (the rails, the gate home, joxex21).
 
 **Traps:**
 - `ZoneCull` is on now: a server-side `PivotTo` into the hall drops the character through a floor its client has not drawn yet. In a Play test set `workspace:SetAttribute("ZoneCull", false)` on the server first.
