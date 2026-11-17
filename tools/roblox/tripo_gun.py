@@ -78,6 +78,11 @@
 #   "decals": [{"part": {...}, "box": .., "sides": [-1, 1], "tag": "wave", "polys": [[[z, y], ...]]}],   flat painted
 #                shapes (a wave band, foam dots, a duck icon) CUT into the side faces along their outlines (seen
 #                along x): new edges, no picture, nothing laid on top; colour them by tag
+#   "planar": [{"part": {...}, "box": .., "axis": "x", "nmin": 0.9, "sides": [-1, 1], "max_move": 0.002}],   a lumpy
+#                face that should be flat put on one plane per side (polish)
+#   "smooth": [{"part": {...}, "box": .., "iters": 4, "factor": 0.5, "pin": 32, "max_move": 0.0015, "soft_deg": 70}],
+#                a lumpy part evened (Taubin smoothing, no shrinking, each vert moved at most max_move), verts on sharp
+#                creases and open borders pinned, shaded smooth across facets up to soft_deg (polish)
 #   "lines": [{"part": {...}, "box": .., "absx": .., "cf_at": 0.5 | "plane": {"co", "no"}, "width": 0.0012,
 #              "tag": "rwlit"}],   a thin strip along a contour border or a plane cut, tagged (glow lines)
 #   "contours": [{"part": {...}, "box": .., "absx": .., "field": "ny", "smooth": 2, "at": 0.5}],   cut a soft surface
@@ -407,18 +412,74 @@ def flatten(bm, op):
     # outside would stay whole across the plane, and the cap would then close a loop far beyond it)
     faces = [f for f in bm.faces if f[lay] and (_inbox(W(f.calc_center_median()), op['box']) or
                                                 any(_inbox(W(v.co), op['box']) for v in f.verts))]
-    co, no = _plane(op.get('axis', 'y'), op['at'])
+    if 'no' in op:   # (any plane, weapon frame: {"co", "no"}; the side `no` points to is cut away)
+        pco, pno = Vector(op['co']), Vector(op['no']).normalized()
+        co, no = B(pco), B(pno) - B(Vector((0.0, 0.0, 0.0)))
+        def beyond(c): return (c - pco).dot(pno) > 1e-6
+    else:
+        co, no = _plane(op.get('axis', 'y'), op['at'])
+        k = AX[op.get('axis', 'y').upper()]
+        keep_below = op.get('keep', 'below') == 'below'
+        def beyond(c): return (c[k] > op['at'] + 1e-6) if keep_below else (c[k] < op['at'] - 1e-6)
     geom = list(set(faces) | {e for f in faces for e in f.edges} | {v for f in faces for v in f.verts})
     bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, dist=1e-6)
-    k = AX[op.get('axis', 'y').upper()]
-    keep_below = op.get('keep', 'below') == 'below'
-    def beyond(c): return (c[k] > op['at'] + 1e-6) if keep_below else (c[k] < op['at'] - 1e-6)
     gone = [f for f in bm.faces if f[lay] and _inbox(W(f.calc_center_median()), op['box'], 1e-4) and beyond(W(f.calc_center_median()))]
     bmesh.ops.delete(bm, geom=gone, context='FACES')
     loose = [v for v in bm.verts if not v.link_faces]
     if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    if 'no' in op and op.get('cap', True):   # (only the cut's own opening is closed: a global fill would also cap the
+        # openings a Tripo part keeps on purpose, e.g. the pocket a grip panel sits in, and z-fight with it)
+        on = [e for e in bm.edges if e.is_boundary and all(abs((W(v.co) - pco).dot(pno)) < 1e-5 for v in e.verts)]
+        r = bmesh.ops.holes_fill(bm, edges=on, sides=100000) if on else {'faces': []}
+        caps = list(r['faces'])
+        if caps: bmesh.ops.triangulate(bm, faces=[f for f in caps if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
+        return {'faces_cut': len(gone), 'caps': len(caps)}
     caps = fill_holes(bm, 100000) if op.get('cap', True) else []   # (cap false: an end hidden inside a kit part)
     return {'faces_cut': len(gone), 'caps': len(caps)}
+
+
+def carve(bm, op):
+    """a stepped Tripo block taken out to make room for a clean kit one: the selected parts cut along a box (weapon
+       frame), the inside deleted, the cut capped. {"part", "box"}"""
+    pid, info = parts_of(bm)
+    ps = select_parts(op.get('part'), info, bm)
+    inside = box_cut(bm, [f for f in bm.faces if pid[f] in ps], op['box'])
+    bmesh.ops.delete(bm, geom=inside, context='FACES')
+    loose = [v for v in bm.verts if not v.link_faces]
+    if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    # (only the cut's openings, on the box's faces, are closed: not a pocket the part keeps, e.g. a grip panel's)
+    lo, hi = op['box']
+    def onplane(e):
+        return any(all(abs(W(v.co)[k] - at) < 1e-5 for v in e.verts) for k in range(3) for at in (lo[k], hi[k]))
+    on = [e for e in bm.edges if e.is_boundary and onplane(e)]
+    caps = list(bmesh.ops.holes_fill(bm, edges=on, sides=100000)['faces']) if on else []
+    if caps: bmesh.ops.triangulate(bm, faces=[f for f in caps if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
+    return {'faces_cut': len(inside), 'caps': len(caps)}
+
+
+def press(bm, op):
+    """a relief that tilts and sticks out laid flat: every vertex of the selected parts inside the box (weapon frame)
+       standing out past |x| = `x_max` pressed back to it (an even face parallel to the side), and the relief's open
+       foot (its border edges) sunk to |x| = `x_foot` so no gap shows under it. {"part", "box", "x_max", "x_foot"}"""
+    pid, info = parts_of(bm)
+    ps = select_parts(op.get('part'), info, bm)
+    vs = {v for f in bm.faces if pid[f] in ps for v in f.verts if _inbox(W(v.co), op['box'])}
+    n = m = 0
+    xb = op.get('x_base')   # (mode "scale": everything standing out past x_base squeezed toward it so the highest point
+    if xb is not None:      # lands on x_max: the relief keeps its shape, only thinner; nothing folds flat onto itself)
+        peak = max((abs(W(v.co).x) for v in vs), default=xb)
+        k = (op['x_max'] - xb) / max(peak - xb, 1e-6)
+    for v in vs:
+        p = W(v.co); s = 1.0 if p.x >= 0 else -1.0
+        x0 = abs(p.x)
+        if xb is not None:
+            if x0 > xb:
+                p.x = s * (xb + (x0 - xb) * k); v.co = B(p); n += 1
+        elif abs(p.x) > op['x_max']:
+            p.x = s * op['x_max']; v.co = B(p); n += 1
+        if 'x_foot' in op and x0 >= op.get('foot_from', op['x_foot']) and any(e.is_boundary for e in v.link_edges):
+            p.x = s * op['x_foot']; v.co = B(p); m += 1   # (only the relief's own foot: `foot_from` out, not the side's seams)
+    return {'pressed': n, 'feet': m}
 
 
 def straighten(bm, op):
@@ -480,6 +541,387 @@ def mirror(bm, op):
             'seam_verts_welded': n0 - len(bm.verts)}
 
 
+def smooth_parts(bm, op):
+    """a lumpy part made an even toy shape: Laplacian smoothing (volume kept) of the selected parts' faces inside the
+       box, the verts on sharp edges (> pin degrees: a bill's crease, a rim) and on open borders pinned, so outlines
+       and colour creases stay where they are. {"part", "box", "iters": 4, "factor": 0.6, "pin": 32}"""
+    pid, info = parts_of(bm)
+    ps = select_parts(op.get('part'), info, bm)
+    box = op.get('box')
+    fs = [f for f in bm.faces if pid[f] in ps and (box is None or _inbox(W(f.calc_center_median()), box))]
+    vs = list({v for f in fs for v in f.verts})
+    pin = math.radians(op.get('pin', 32.0))
+    bm.normal_update()
+    def pinned(v):
+        for e in v.link_edges:
+            lf = e.link_faces
+            if len(lf) != 2: return True
+            if lf[0].normal.angle(lf[1].normal, 0.0) > pin: return True
+        return any(f not in fset for f in v.link_faces)
+    fset = set(fs)
+    free = [v for v in vs if not pinned(v)]
+    before = {v: v.co.copy() for v in free}
+    lam = op.get('factor', 0.5); mu = -1.04 * lam   # (Taubin: a smoothing step, then an inflating one: no shrinking)
+    for _ in range(op.get('iters', 4)):
+        for k in (lam, mu):
+            new = {}
+            for v in free:
+                nb = [e.other_vert(v) for e in v.link_edges]
+                if not nb: continue
+                avg = sum((u.co for u in nb), Vector()) / len(nb)
+                new[v] = v.co + (avg - v.co) * k
+            for v, c in new.items(): v.co = c
+    cap = op.get('max_move', 0.0015)   # (never more than this from where it was: the shape stays, only the noise goes)
+    for v, c in before.items():
+        d = v.co - c
+        if d.length > cap: v.co = c + d.normalized() * cap
+    bm.normal_update()
+    moved = max(((v.co - c).length for v, c in before.items()), default=0.0)
+    soft = bm.faces.layers.int.get('_soft')
+    if soft is not None:   # (and shaded smooth across its facets: a toy shape, no facet noise; creases stay sharp)
+        for f in fs: f[soft] = int(op.get('soft_deg', 70))
+    return {'faces': len(fs), 'free_verts': len(free), 'pinned': len(vs) - len(free), 'max_move_mm': round(moved * 1000, 2)}
+
+
+def planar(bm, op):
+    """a face that should be flat made flat: the verts of the selected faces (inside the box, facing +-axis by nmin)
+       moved onto one plane per side, at the median of their coordinates along the axis (a slide's or receiver's
+       side, a panel). {"part", "box", "axis": "x", "nmin": 0.9, "sides": [-1, 1], "max_move": 0.002}"""
+    pid, info = parts_of(bm)
+    ps = select_parts(op.get('part'), info, bm)
+    box = op.get('box'); k = AX[op.get('axis', 'x').upper()]; nmin = op.get('nmin', 0.9); lim = op.get('max_move', 0.002)
+    out = []
+    bm.normal_update()
+    for s in op.get('sides', (-1, 1)):
+        fs = []
+        for f in bm.faces:
+            if pid.get(f) not in ps: continue
+            if box is not None and not _inbox(W(f.calc_center_median()), box): continue
+            n = W(f.normal) - W(Vector((0.0, 0.0, 0.0)))
+            if n[k] * s >= nmin: fs.append(f)
+        vs = list({v for f in fs for v in f.verts})
+        if not vs: continue
+        vals = sorted(W(v.co)[k] for v in vs)
+        if op.get('pick', 'median') == 'outer':   # (the outermost face of that side: a panel, not the walls inside it)
+            sv = sorted(vals, key=lambda x: -x * s)
+            med = sv[max(0, len(sv) // 10)]
+        else:
+            med = vals[len(vals) // 2]
+        n = 0
+        for v in vs:
+            w = W(v.co)
+            if abs(w[k] - med) <= lim:
+                w[k] = med; v.co = B(w); n += 1
+        out.append({'side': s, 'faces': len(fs), 'verts_moved': n, 'plane': round(med, 5)})
+    bm.normal_update()
+    return out
+
+
+def _taubin(bm, verts, iters, lam=0.5):
+    """volume-keeping smoothing of these verts (a smoothing step, then an inflating one)"""
+    for _ in range(iters):
+        for k in (lam, -1.04 * lam):
+            new = {}
+            for v in verts:
+                nb = [e.other_vert(v) for e in v.link_edges]
+                if nb: new[v] = v.co + (sum((u.co for u in nb), Vector()) / len(nb) - v.co) * k
+            for v, c in new.items(): v.co = c
+
+
+def _relax(bm, iters, flat_deg=25.0):
+    """even triangles on the same surface: near-flat edges flipped to fatter triangles, then each vertex slid along
+       the surface toward its neighbours' middle and put back onto the surface it started on (decimation slivers
+       shade as streaks; even triangles catch light evenly)"""
+    def flip():
+        bm.normal_update()
+        ok = [e for e in bm.edges if len(e.link_faces) == 2 and
+              e.link_faces[0].normal.angle(e.link_faces[1].normal, 0.0) < math.radians(flat_deg)]
+        if ok: bmesh.ops.beautify_fill(bm, faces=list({f for e in ok for f in e.link_faces}), edges=ok)
+    flip()
+    ref = BVHTree.FromBMesh(bm)
+    for _ in range(iters):
+        bm.normal_update()
+        new = {}
+        for v in bm.verts:
+            nb = [e.other_vert(v) for e in v.link_edges]
+            if len(nb) < 3: continue
+            d = sum((u.co for u in nb), Vector()) / len(nb) - v.co
+            d -= v.normal * d.dot(v.normal)
+            p = v.co + d * 0.5
+            hit = ref.find_nearest(p)
+            new[v] = hit[0] if hit[0] is not None else p
+        for v, c in new.items(): v.co = c
+        flip()
+
+
+def _iso_cut(bm, faces, val, t):
+    """cut the faces along the iso-line val = t of a field on their verts (marching triangles); the new verts get t"""
+    newv = set()
+    for e in list({e for f in faces for e in f.edges}):
+        a, b = e.verts
+        if a not in val or b not in val: continue
+        sa, sb = val[a] - t, val[b] - t
+        if sa * sb >= 0 or abs(sa - sb) < 1e-9: continue
+        fac = sa / (sa - sb)
+        if fac < 0.04 or fac > 0.96:   # (a crossing next to a vertex: that vertex goes onto the line instead)
+            val[a if fac < 0.04 else b] = t; continue
+        pa, pb = a.co.copy(), b.co.copy()
+        ne, nv = bmesh.utils.edge_split(e, a, fac)
+        nv.co = pa.lerp(pb, fac)
+        val[nv] = t; newv.add(nv)
+    for f in list({f for v in newv for f in v.link_faces}):
+        on = [v for v in f.verts if v in newv or abs(val.get(v, t + 1) - t) < 1e-9]
+        if len(on) == 2 and not any(e for e in on[0].link_edges if e.other_vert(on[0]) is on[1]):
+            try:
+                bmesh.utils.face_split(f, on[0], on[1])
+            except ValueError: pass
+    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+
+
+def remesh(bm, op, tags):
+    """a lumpy Tripo toy (a duck head, a bill, a relief) rebuilt as one even surface, each selected part on its own:
+       voxel remesh (`voxel` m), `smooth` Taubin passes, decimated back to `ratio` x its old triangles, then drawn back
+       onto the old part's size and outline by a SMOOTHED displacement (`fit`, `fit_smooth` passes: the old lumps
+       do not come back, only its silhouette). Colour patches of the old part (`zones`: [{"tag", "where": a region
+       condition, read on the old faces}]) are carried over by nearest face and cut along a smoothed border, so a
+       region rule {"tag": ...} colours them with a clean edge. The new faces shade smooth up to `soft_deg`.
+       {"part", "voxel": 0.0006, "smooth": 4, "ratio": 1.0, "fit": 1.0, "fit_smooth": 12, "soft_deg": 80, "zones": []}"""
+    pid, info = parts_of(bm)
+    ids = select_parts(op['part'], info, bm)
+    groups = [info[i]['faces'] for i in sorted(ids)]
+    if op.get('lobes'):   # (a fan of feathers / lobes: each patch between creases sharper than `lobes` degrees rebuilt
+        # on its own, so the grooves between them stay clean; patches under `lobe_min` faces join a neighbour)
+        bm.normal_update()
+        split = []
+        for fs in groups:
+            fset = set(fs); left = set(fs); pats = []
+            while left:
+                g_ = grow(bm, [next(iter(left))], op['lobes'], fset); pats.append(g_); left -= g_
+            big = [p for p in pats if len(p) >= op.get('lobe_min', 20)] or [max(pats, key=len)]
+            for p in pats:
+                if any(p is b for b in big): continue
+                nbrs = [b for b in big if any(g in b for f in p for e in f.edges for g in e.link_faces)]
+                (max(nbrs, key=len) if nbrs else big[0]).update(p)
+            split += [list(b) for b in big]
+        groups = split
+    log = []
+    for fs in groups:
+        fs = [f for f in fs if f.is_valid]
+        if not fs: continue
+        before = sum(len(f.verts) - 2 for f in fs)
+        P0 = [W(v.co) for v in {v for f in fs for v in f.verts}]
+        lo0 = [min(p[a] for p in P0) for a in range(3)]; hi0 = [max(p[a] for p in P0) for a in range(3)]
+        zsets = []
+        if op.get('zones'):
+            cx = Ctx(bm, tags, None)
+            for z in op['zones']:
+                zsets.append({f for f in fs if match(z['where'], f, cx)})
+        bm.faces.index_update()
+        order = sorted(fs, key=lambda f: f.index)
+        zone_of = [next((k for k, zs in enumerate(zsets) if f in zs), -1) for f in order]
+        sub = split_off(bm, order)   # (the i-th face of sub is order[i]; the other groups' faces stay valid)
+        sub.faces.ensure_lookup_table()
+        tree = BVHTree.FromBMesh(sub)
+        is_open = any(e.is_boundary for e in sub.edges)
+        fit_tree = tree
+        o = _bm_obj(sub)
+        if op.get('solidify') and is_open:   # (an open Tripo shell, a relief with no back: given a back first, or the
+            # voxels see only a film and come out in crumbs; the fit then aims at the thickened shell, front AND back,
+            # or the new back would be pulled through onto the old front)
+            sm = o.modifiers.new('so', 'SOLIDIFY'); sm.thickness = op['solidify']; sm.offset = -1.0; sm.use_even_offset = True
+            o2 = _bm_obj(sub.copy())
+            sm2 = o2.modifiers.new('so', 'SOLIDIFY'); sm2.thickness = op['solidify']; sm2.offset = -1.0; sm2.use_even_offset = True
+            sb = _obj_bm(o2); fit_tree = BVHTree.FromBMesh(sb); sb.free()
+        m = o.modifiers.new('rm', 'REMESH'); m.mode = 'VOXEL'; m.voxel_size = op.get('voxel', 0.0006); m.adaptivity = 0.0
+        nb = _obj_bm(o)
+        bmesh.ops.triangulate(nb, faces=nb.faces[:])
+        # (crumbs: any piece under 3% of the biggest goes)
+        nb.verts.index_update()
+        par = list(range(len(nb.verts)))
+        def fnd(i):
+            while par[i] != i:
+                par[i] = par[par[i]]; i = par[i]
+            return i
+        for e in nb.edges:
+            a_, b_ = fnd(e.verts[0].index), fnd(e.verts[1].index)
+            if a_ != b_: par[a_] = b_
+        comp = {}
+        for f in nb.faces: comp.setdefault(fnd(f.verts[0].index), []).append(f)
+        big = max(len(c) for c in comp.values())
+        crumbs = [f for c in comp.values() if len(c) < 0.03 * big for f in c]
+        if crumbs:
+            bmesh.ops.delete(nb, geom=crumbs, context='FACES')
+            bmesh.ops.delete(nb, geom=[v for v in nb.verts if not v.link_faces], context='VERTS')
+        voxel_tris = len(nb.faces)
+        _taubin(nb, list(nb.verts), op.get('smooth', 4))
+        target = max(24, int(before * op.get('ratio', 1.0)))
+        if len(nb.faces) > target:
+            o = _bm_obj(nb); nb.free()
+            m = o.modifiers.new('dec', 'DECIMATE'); m.decimate_type = 'COLLAPSE'; m.ratio = target / voxel_tris
+            m.use_collapse_triangulate = True
+            nb = _obj_bm(o)
+            bmesh.ops.dissolve_degenerate(nb, edges=nb.edges[:], dist=1e-7)
+            bmesh.ops.triangulate(nb, faces=[f for f in nb.faces if len(f.verts) > 3])
+        _relax(nb, op.get('relax', 4))
+        _taubin(nb, list(nb.verts), op.get('smooth_after', 1), lam=0.35)
+        # back onto the old size and outline: the displacement to the old surface, low-passed over the new one
+        disp = {}
+        for v in nb.verts:
+            hit = fit_tree.find_nearest(v.co)
+            disp[v] = (hit[0] - v.co) if hit[0] is not None else Vector()
+        for _ in range(op.get('fit_smooth', 12)):
+            disp = {v: (disp[v] + sum((disp[e.other_vert(v)] for e in v.link_edges), Vector())) / (1 + len(v.link_edges))
+                    for v in nb.verts}
+        for v in nb.verts: v.co += disp[v] * op.get('fit', 1.0)
+        dm = op.get('dome')   # ({"c", "r", "y0", "blend"}: a head cut flat on top made round: above y0 the surface
+        if dm:                # eased onto a sphere, fully by y0 + blend)
+            dc = Vector(dm['c'])
+            for v in nb.verts:
+                p = W(v.co)
+                u = (p.y - dm['y0']) / dm['blend']
+                if u <= 0: continue
+                wgt = 1.0 if u >= 1 else 3 * u * u - 2 * u ** 3
+                v.co = B(p.lerp(dc + (p - dc).normalized() * dm['r'], wgt))
+        for cl in op.get('clamp', []):   # ({"box", "y_max"}: kept under a cap sitting on it, e.g. a crown's base)
+            for v in nb.verts:
+                p = W(v.co)
+                if _inbox(p, cl['box']) and p.y > cl['y_max']:
+                    p.y = cl['y_max']; v.co = B(p)
+        for nm in ('tag', 'node', '_sel', '_soft'):
+            if nm not in nb.faces.layers.int: nb.faces.layers.int.new(nm)
+        if 'cf' not in nb.verts.layers.float: nb.verts.layers.float.new('cf')
+        # the colour patches, carried over by nearest old face, cut along a smoothed border
+        cuts = []
+        for k, z in enumerate(op.get('zones', [])):
+            tid = tags.setdefault(z['tag'], len(tags) + 1)
+            val = {}
+            for v in nb.verts:
+                hit = tree.find_nearest(v.co)
+                val[v] = 1.0 if hit[2] is not None and zone_of[hit[2]] == k else 0.0
+            for _ in range(z.get('smooth', 2)):
+                val = {v: (val[v] + sum(val[e.other_vert(v)] for e in v.link_edges)) / (1 + len(v.link_edges)) for v in nb.verts}
+            n0 = len(nb.faces)
+            _iso_cut(nb, list(nb.faces), val, 0.5)
+            lay = nb.faces.layers.int['tag']
+            hits = 0
+            for f in nb.faces:
+                if sum(val.get(v, 0.0) for v in f.verts) / len(f.verts) > 0.5:
+                    f[lay] = tid; hits += 1
+            cuts.append({'tag': z['tag'], 'old_faces': len(zsets[k]), 'faces': hits, 'cut_tris': len(nb.faces) - n0})
+        soft = nb.faces.layers.int['_soft']
+        for f in nb.faces: f[soft] = int(op.get('soft_deg', 80))
+        P = [W(v.co) for v in nb.verts]
+        lo1 = [min(p[a] for p in P) for a in range(3)]; hi1 = [max(p[a] for p in P) for a in range(3)]
+        sub.free()
+        log.append({'from': before, 'voxel_tris': voxel_tris, 'to': len(nb.faces), 'zones': cuts,
+                    'open': sum(1 for e in nb.edges if len(e.link_faces) != 2),
+                    'lo': [round(x, 4) for x in lo1], 'hi': [round(x, 4) for x in hi1],
+                    'size_change_mm': [round(((hi1[a] - lo1[a]) - (hi0[a] - lo0[a])) * 1000, 2) for a in range(3)],
+                    'centre_shift_mm': [round(((hi1[a] + lo1[a]) - (hi0[a] + lo0[a])) * 500, 2) for a in range(3)]})
+        merge_in(bm, nb)
+    return log
+
+
+def relief(bm, op):
+    """a flat Tripo relief (a cloud, a wing on a grip panel) rebuilt clean from its own side outline: the part seen
+       along x, its outline read as a distance from its middle per angle (`bins`), that curve smoothed (`smooth`
+       passes: the jags go, the lobes stay), and a new relief extruded through it from its old back to its old face
+       (`face_pct` percentile of how far out it reaches: a stray spike does not count) with a rounded front edge
+       (`bevel` m, `bevel_steps`); `n` points round, evenly along it. {"part", "n": 44, "bins": 240, "smooth": 4,
+       "bevel": 0.001, "bevel_steps": 1, "back_pct": 0.03, "face_pct": 0.97}"""
+    pid, info = parts_of(bm)
+    ids = select_parts(op['part'], info, bm)
+    groups = [info[i]['faces'] for i in sorted(ids)]
+    log = []
+    for fs in groups:
+        fs = [f for f in fs if f.is_valid]
+        if not fs: continue
+        before = sum(len(f.verts) - 2 for f in fs)
+        vs = list({v for f in fs for v in f.verts})
+        P = [W(v.co) for v in vs]
+        side = 1.0 if sum(p.x for p in P) > 0 else -1.0
+        ax = sorted(abs(p.x) for p in P)
+        x_back = op.get('back', ax[int(len(ax) * op.get('back_pct', 0.03))])
+        x_face = op.get('face', ax[min(len(ax) - 1, int(len(ax) * op.get('face_pct', 0.97)))])
+        # the outline seen along x: dense samples on every edge, as (y, z)
+        S = []
+        x_min = x_back + op.get('min_h', 0.0) * (x_face - x_back)   # (a low ramp below this height is not outline)
+        for e in {e for f in fs for e in f.edges}:
+            a, b = W(e.verts[0].co), W(e.verts[1].co)
+            k = max(1, int((a - b).length / 0.0004))
+            for j in range(k + 1):
+                q = a.lerp(b, j / k)
+                if abs(q.x) >= x_min: S.append((q.y, q.z))
+        cy = op.get('centre', [sum(s[0] for s in S) / len(S), sum(s[1] for s in S) / len(S)])
+        nb_ = op.get('bins', 240)
+        rad = [0.0] * nb_
+        for y, z in S:
+            th = math.atan2(z - cy[1], y - cy[0]) % (2 * math.pi)
+            i = int(th / (2 * math.pi) * nb_) % nb_
+            rad[i] = max(rad[i], math.hypot(y - cy[0], z - cy[1]))
+        for i in range(nb_):   # (an empty bin: its neighbours' mean)
+            if rad[i] == 0.0:
+                j0 = next(j for j in range(1, nb_) if rad[(i - j) % nb_] > 0); j1 = next(j for j in range(1, nb_) if rad[(i + j) % nb_] > 0)
+                rad[i] = (rad[(i - j0) % nb_] * j1 + rad[(i + j1) % nb_] * j0) / (j0 + j1)
+        for _ in range(op.get('smooth', 4)):
+            rad = [(rad[i - 1] + 2 * rad[i] + rad[(i + 1) % nb_]) / 4.0 for i in range(nb_)]
+        n = op.get('n', 44)
+        def r_at(th):
+            u = (th % (2 * math.pi)) / (2 * math.pi) * nb_ - 0.5
+            i0 = int(math.floor(u)); fr = u - i0
+            return rad[i0 % nb_] * (1 - fr) + rad[(i0 + 1) % nb_] * fr
+        dense = [(cy[0] + r_at(2 * math.pi * j / 1440) * math.cos(2 * math.pi * j / 1440),
+                  cy[1] + r_at(2 * math.pi * j / 1440) * math.sin(2 * math.pi * j / 1440)) for j in range(1440)]
+        cl = op.get('clamp', {})   # ({"y": [lo, hi], "z": [lo, hi]}: kept off an edge it would lie flush with)
+        ylo, yhi = cl.get('y', [-9, 9]); zlo, zhi = cl.get('z', [-9, 9])
+        dense = [(min(max(y, ylo), yhi), min(max(z, zlo), zhi)) for y, z in dense]
+        acc = [0.0]   # (the n points evenly spaced ALONG the outline: a long shape's far lobes get their share)
+        for j in range(1, 1441): acc.append(acc[-1] + math.dist(dense[j - 1], dense[j % 1440]))
+        O, j = [], 0
+        for q in range(n):
+            s = acc[-1] * q / n
+            while acc[j + 1] < s: j += 1
+            fr = (s - acc[j]) / max(acc[j + 1] - acc[j], 1e-12)
+            a, b = dense[j], dense[(j + 1) % 1440]
+            O.append((a[0] + (b[0] - a[0]) * fr, a[1] + (b[1] - a[1]) * fr))
+        N2 = []   # (outward 2D normals of the outline)
+        for j in range(n):
+            a, b = Vector(O[j - 1]), Vector(O[(j + 1) % n])
+            t2 = (b - a).normalized(); nn = Vector((t2.y, -t2.x))
+            if nn.dot(Vector(O[j]) - Vector(cy)) < 0: nn = -nn
+            N2.append(nn)
+        bev = op.get('bevel', 0.001); bs = op.get('bevel_steps', 1)
+        rings = []
+        def ring_at(xa, inset):
+            rings.append([(side * xa, O[j][0] - N2[j].x * inset, O[j][1] - N2[j].y * inset) for j in range(n)])
+        ring_at(x_back, 0.0)
+        ring_at(x_face - bev, 0.0)
+        for s in range(1, bs + 1):
+            al = math.pi / 2 * s / bs
+            ring_at(x_face - bev + bev * math.sin(al), bev * (1 - math.cos(al)))
+        split_off(bm, fs).free()
+        # the new relief, into bm: sides smooth with the given normals, the face flat (a cap)
+        new = bmesh.new()
+        V = [[new.verts.new(B(Vector(p))) for p in rg] for rg in rings]
+        for i in range(len(rings) - 1):
+            for k in range(n):
+                j = (k + 1) % n
+                new.faces.new([V[i][k], V[i][j], V[i + 1][j], V[i + 1][k]])
+        new.faces.new(V[0][::-1]); new.faces.new(V[-1])
+        bmesh.ops.recalc_face_normals(new, faces=new.faces[:])
+        bmesh.ops.triangulate(new, faces=new.faces[:], quad_method='BEAUTY', ngon_method='BEAUTY')
+        for nm in ('tag', 'node', '_sel', '_soft'): new.faces.layers.int.new(nm)
+        new.verts.layers.float.new('cf')
+        soft = new.faces.layers.int['_soft']
+        new.normal_update()
+        for f in new.faces:   # (walls and the rounded edge shade smooth; the flat face and the hidden back stay flat)
+            if abs(W(f.normal).x - W(Vector()).x) < 0.95: f[soft] = 80
+        log.append({'from': before, 'to': len(new.faces), 'side': int(side), 'x_back': round(x_back, 4), 'x_face': round(x_face, 4),
+                    'centre': [round(cy[0], 4), round(cy[1], 4)], 'r': [round(min(rad), 4), round(max(rad), 4)]})
+        merge_in(bm, new)
+    return log
+
+
 def _span(P):
     lo = Vector([min(p[k] for p in P) for k in range(3)]); hi = Vector([max(p[k] for p in P) for k in range(3)])
     return [round(x, 4) for x in lo], [round(x, 4) for x in hi]
@@ -519,6 +961,9 @@ def reshape(bm, op):
         if 'scale3' in op:   # (per axis, weapon frame, about the pivot: a crown squashed under the sight line)
             k3 = op['scale3']
             P = [Vector((pv.x + (p.x - pv.x) * k3[0], pv.y + (p.y - pv.y) * k3[1], pv.z + (p.z - pv.z) * k3[2])) for p in P]
+        if 'tilt' in op:   # (degrees about x through the pivot, its top leaning forward toward -z: a crown on a brow)
+            ca, sa = math.cos(math.radians(op['tilt'])), math.sin(math.radians(op['tilt']))
+            P = [Vector((p.x, pv.y + (p.y - pv.y) * ca + (p.z - pv.z) * sa, pv.z - (p.y - pv.y) * sa + (p.z - pv.z) * ca)) for p in P]
         if 'thick' in op:
             xs = [p.x for p in P]; cx = (max(xs) + min(xs)) / 2; k = op['thick'] / max(max(xs) - min(xs), 1e-6)
             P = [Vector((cx + (p.x - cx) * k, p.y, p.z)) for p in P]
@@ -898,6 +1343,7 @@ def run_inlays(bm, rec, tags):
         else:
             poly = star_outline(cy, cz, il['R'], il['r'], il.get('points', 4), il.get('turn', 0.0))
         tools = []
+        tops = []
         for sx in il.get('sides', [-1, 1]):
             # the surface's height under the star: the farthest the part reaches out on that side inside its footprint
             ys = [p[0] for p in poly]; zs = [p[1] for p in poly]
@@ -906,6 +1352,7 @@ def run_inlays(bm, rec, tags):
             top = (max(xs) if xs else il.get('x', 0.03)) + il.get('proud', 0.0015)
             inner = max(0.002, top - il.get('depth', 0.012))
             tools.append(star_prism(poly, sx * inner, sx * top))
+            tops.append([sx, len(xs), round(top, 4)])
         n0 = tri_count(base)
         out = union_bms(base, tools)
         tid = tags.setdefault(il['tag'], len(tags) + 1)
@@ -913,7 +1360,7 @@ def run_inlays(bm, rec, tags):
         for f in out.faces:
             if f.material_index == 1: f[lay] = tid
             f.material_index = 0
-        log.append({'tag': il['tag'], 'base_tris': n0, 'after': tri_count(out)})
+        log.append({'tag': il['tag'], 'base_tris': n0, 'after': tri_count(out), 'tops': tops})
         merge_in(bm, out)
     return log
 
@@ -1054,10 +1501,14 @@ def shade_and_split(bm, piece_of, sharp):
     for f in bm.faces: f.material_index = pidx[piece_of[f]]
     bm.normal_update()
     lim = math.radians(sharp)
+    soft = bm.faces.layers.int.get('_soft')
     for f in bm.faces: f.smooth = True
     for e in bm.edges:
         fs = e.link_faces
-        e.smooth = len(fs) == 2 and fs[0].normal.angle(fs[1].normal, 0.0) < lim
+        el = lim
+        if soft is not None and len(fs) == 2 and fs[0][soft] and fs[1][soft]:   # (a smoothed toy shape)
+            el = max(lim, math.radians(min(fs[0][soft], fs[1][soft])))
+        e.smooth = len(fs) == 2 and fs[0].normal.angle(fs[1].normal, 0.0) < el
     o = _bm_obj(bm, 'whole')
     me = o.data
     oi = me.attributes.new('oi', 'INT', 'FACE')
@@ -1137,7 +1588,7 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     s, t, R, fit = solve_fit(rec, spots)
     meta['fit'] = fit
     fit_bmesh(bm, s, t, R)
-    for nm in ('tag', 'node', '_sel'): bm.faces.layers.int.new(nm)   # (all working layers up front)
+    for nm in ('tag', 'node', '_sel', '_soft'): bm.faces.layers.int.new(nm)   # (all working layers up front)
     bm.verts.layers.float.new('cf')
     v0 = len(bm.verts)
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=rec.get('weld', 1e-4) * s)
@@ -1160,10 +1611,17 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     meta['nonmanifold_after_flatten'] = sum(1 for e in bm.edges if not e.is_manifold)
     meta['reshape'] = [reshape(bm, op) for op in rec.get('reshape', [])]
     meta['blends'] = [blend(bm, op) for op in rec.get('blend', [])]
-    meta['parts_turned_out'] += normals_out(bm)
+    meta['carve'] = [carve(bm, op) for op in rec.get('carve', [])]     # (polish 2: stepped blocks out, kit ones in)
     tags = {}
+    meta['remesh'] = [remesh(bm, op, tags) for op in rec.get('remesh', [])]   # (polish 2: lumpy toys rebuilt even)
+    meta['relief'] = [relief(bm, op) for op in rec.get('relief', [])]          # (polish 2: flat reliefs rebuilt clean)
+    meta['planar'] = [planar(bm, op) for op in rec.get('planar', [])]          # (polish: true flats flat)
+    meta['smooth'] = [smooth_parts(bm, op) for op in rec.get('smooth', [])]    # (polish: lumps evened, creases kept)
+    meta['parts_turned_out'] += normals_out(bm)
     meta['unions'] = run_unions(bm, rec, tags)
     meta['inlays'] = run_inlays(bm, rec, tags)
+    meta['press'] = [press(bm, op) for op in rec.get('press', [])]     # (polish 2: tilted reliefs laid flat, after the
+    # painted face's inlays are in: a boolean against the pressed relief can fail, and the inlay then squeezes with it)
     meta['rims'] = [rims(bm, op, tags) for op in rec.get('rims', [])]
     # straight region borders: parts cut along planes (nothing removed), so a colour edge can follow a line
     for sp in rec.get('splits', []):
@@ -1210,7 +1668,19 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     meta['lines'] = [lines(bm, op, tags) for op in rec.get('lines', [])]
     meta['turned_parts'] = TURNED
     meta['duplicate_faces'] += dedupe_faces(bm)   # (a hole fill can lay a copy over a face Tripo left unwelded)
-    for f in fill_holes(bm, 16):   # (and close what the copy's removal opened; the patch joins its neighbour's node)
+    ff = rec.get('fill_final', {})   # (polish: close every crack and hole up to `sides`, except the boxes left open)
+    skip = ff.get('skip', [])
+    keep_open = [e for e in bm.edges if e.is_boundary and any(_inbox(W((e.verts[0].co + e.verts[1].co) / 2), b) for b in skip)]
+    for e in keep_open: e.tag = True
+    bnd = [e for e in bm.edges if e.is_boundary and not e.tag]
+    r = bmesh.ops.holes_fill(bm, edges=bnd, sides=ff.get('sides', 16))
+    fills = list(r['faces'])
+    if fills:
+        t = bmesh.ops.triangulate(bm, faces=[f for f in fills if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
+        fills = [f for f in set(fills) | set(t['faces']) if f.is_valid]
+    for e in bm.edges: e.tag = False
+    meta['fill_final'] = len(fills)
+    for f in fills:   # (and close what the copy's removal opened; the patch joins its neighbour's node)
         nb = [g for e in f.edges for g in e.link_faces if g is not f]
         f[node_lay] = nb[0][node_lay] if nb else 0
     meta['duplicate_faces'] += dedupe_faces(bm)
@@ -1227,6 +1697,19 @@ def clean(raw, base_id, skin_id, rec, out_dir):
                                  'wire': sum(1 for e in bm.edges if not e.link_faces),
                                  'at': sorted({tuple(round(x, 2) for x in W((e.verts[0].co + e.verts[1].co) / 2))
                                                for e in bm.edges if not e.is_manifold})}
+    # each edge left open: a hairline (another face passes through its middle: a T-junction, no hole to see) or a gap
+    bm.faces.ensure_lookup_table()
+    tree = BVHTree.FromBMesh(bm)
+    rows = []
+    for e in bm.edges:
+        if e.is_manifold or not e.link_faces: continue
+        mid = (e.verts[0].co + e.verts[1].co) / 2
+        own = set(e.link_faces)
+        near = [h for h in tree.find_nearest_range(mid, 0.0003) if h[2] is not None and bm.faces[h[2]] not in own]
+        rows.append({'a': [round(x, 4) for x in W(e.verts[0].co)], 'b': [round(x, 4) for x in W(e.verts[1].co)],
+                     'faces': len(e.link_faces), 'piece': piece_of[e.link_faces[0]], 'hairline': bool(near)})
+    meta['nonmanifold_final']['edges'] = rows
+    meta['nonmanifold_final']['gaps'] = sum(1 for r in rows if not r['hairline'] and r['faces'] == 1)
     bm.free()
     rec_copy = {k: v for k, v in rec.items() if not k.startswith('_')}
     for r in rec_copy.get('regions', []): r.pop('_hits', None)
@@ -1458,7 +1941,75 @@ def hoop(g, pieces, c, R, r, n=12, sides=12, steps=3, bands=(), band_w=14.0, ban
         cuts.append((a0, a1, pieces[2] if inb else pieces[int(mid // seg) % 2], r * band_r if inb else r))
     for a0, a1, piece, rad in cuts:
         st = max(1, int(round((a1 - a0) / 30.0 * steps)))
-        g.put(piece, _loft([ring(math.radians(a0 + (a1 - a0) * j / st), rad) for j in range(st + 1)]))
+        phis = [math.radians(a0 + (a1 - a0) * j / st) for j in range(st + 1)]
+        rings = [ring(ph, rad) for ph in phis]
+        # (true tube normals, drawn straight into the piece: through put() the weighted-normal pass shades each
+        # segment from its own faces only, so every band and segment end showed as a facet)
+        norms = [[tuple((Vector(p) - (c + Vector((0.0, math.sin(ph), -math.cos(ph))) * R)).normalized()) for p in rg]
+                 for ph, rg in zip(phis, rings)]
+        _smooth_solid(g, piece, rings, norms)
+
+
+def _smooth_solid(g, piece, rings, norms):
+    """a closed solid through rings of weapon-frame points (as _loft) with its side normals given (weapon frame),
+       flat caps; drawn straight into g.pieces so the normals are kept (the clean pieces' path), not re-shaded"""
+    node, slot = piece.split('__')
+    g.slots[slot]   # (an unknown slot fails here)
+    bm = bmesh.new()
+    V = [[bm.verts.new(B(Vector(p))) for p in rg] for rg in rings]
+    nrm = {}
+    for rg, nr in zip(V, norms):
+        for v, n in zip(rg, nr): nrm[v] = Vector((n[0], -n[2], n[1]))   # (weapon -> Blender frame)
+    m = len(rings[0])
+    for i in range(len(rings) - 1):
+        for k in range(m):
+            j = (k + 1) % m
+            bm.faces.new([V[i][k], V[i][j], V[i + 1][j], V[i + 1][k]])
+    caps = {bm.faces.new(V[0][::-1]), bm.faces.new(V[-1])}
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    for f in bm.faces: f.smooth = True
+    me = bpy.data.meshes.new('ss')
+    bm.verts.index_update(); bm.faces.index_update()
+    capi = {f.index for f in caps}
+    vn = {v.index: nrm[v] for v in bm.verts}
+    bm.to_mesh(me); bm.free()
+    loops = []
+    for p in me.polygons:
+        for li in p.loop_indices:
+            loops.append(tuple(p.normal) if p.index in capi else tuple(vn[me.loops[li].vertex_index]))
+    me.normals_split_custom_set(loops)
+    g.pieces.setdefault((node, slot), bmesh.new()).from_mesh(me)
+    bpy.data.meshes.remove(me)
+
+
+def clip(g, piece, c, R, r, phi, x_in, w=0.007, t=0.0015, rc=0.002, k=2, shape='wrap', seg=8):
+    """a strap clip holding a hoop (see hoop: tube radius r on a circle of radius R round c, in the y-z plane) to the
+       body beside it: a straight band `w` m wide and `t` thick wrapped round the tube at angle `phi` (degrees, 0 =
+       toward -z, 90 = up), from inside the body (x = x_in) out over the tube. shape 'wrap': a U strap hugging the
+       tube's outer half (`seg` steps round it) and running straight back into the body; 'box': a rounded rectangle"""
+    c = Vector(c)
+    side = 1.0 if x_in > c.x else -1.0          # (the body is on this side of the ring)
+    prof, pn = [], []   # (the section in (x, rho), in order round it; and its outward normals)
+    if shape == 'wrap':
+        rr = r + t
+        for j in range(seg + 1):
+            b = math.radians(-90.0 + 180.0 * j / seg)
+            prof.append((c.x - side * rr * math.cos(b), R + rr * math.sin(b))); pn.append((-side * math.cos(b), math.sin(b)))
+        prof += [(x_in, R + rr), (x_in, R - rr)]; pn += [(0.0, 1.0), (0.0, -1.0)]
+    else:
+        x0, x1 = x_in, c.x - side * (r + t)          # (inner end, sunk in the body .. outer face)
+        r0, r1 = R - r - t, R + r + t
+        xa, xb = min(x0, x1), max(x0, x1)
+        cr = min(rc, (xb - xa) / 2.01, (r1 - r0) / 2.01)
+        for (cx_, cr_, a0) in ((xb - cr, r1 - cr, 0.0), (xa + cr, r1 - cr, 90.0), (xa + cr, r0 + cr, 180.0), (xb - cr, r0 + cr, 270.0)):
+            for j in range(k + 1):
+                a = math.radians(a0 + 90.0 * j / k)
+                prof.append((cx_ + cr * math.cos(a), cr_ + cr * math.sin(a))); pn.append((math.cos(a), math.sin(a)))
+    ph = math.radians(phi)
+    d = Vector((0.0, math.sin(ph), -math.cos(ph))); tg = Vector((0.0, math.cos(ph), math.sin(ph)))
+    rings = [[tuple(Vector((px, c.y, c.z)) + d * pr + tg * s) for px, pr in prof] for s in (-w / 2.0, w / 2.0)]
+    norms = [[tuple(Vector((nx, 0.0, 0.0)) + d * nr) for nx, nr in pn]] * 2
+    _smooth_solid(g, piece, rings, norms)
 
 
 def _sub(v, SY, BY):
@@ -1479,6 +2030,7 @@ def add_kit(g, items, SY, BY):
         elif fn == 'kblade': kblade(g, it['pieces'], **kw)
         elif fn == 'candy': candy(g, it['pieces'], **kw)
         elif fn == 'hoop': hoop(g, it['pieces'], **kw)
+        elif fn == 'clip': clip(g, piece, **kw)
         elif fn in ('box', 'prism', 'cyl', 'cylz', 'ring', 'ball', 'xprism', 'yprism', 'window'):
             args = [tuple(a) if isinstance(a, list) and fn in ('box', 'cyl', 'ring', 'ball') else a for a in args]
             if fn in ('prism', 'xprism', 'yprism'): args = [[tuple(p) for p in args[0]]] + list(args[1:])
@@ -1780,15 +2332,31 @@ VIEWS = {'left': (Vector((-1, 0, 0)), Vector((0, 0, 1))), 'right': (Vector((1, 0
          'lb': (Vector((-1, -0.35, -0.3)).normalized(), Vector((0, 0, 1)))}   # (Blender frame: -x left, +y muzzle, +z up)
 
 
-def closeups(glb, spots, pdir, Wd=900, Ht=560):
+def closeups(glb, spots, pdir, Wd=900, Ht=560, preturned=False):
     """close views of details: spots [{"name", "at": [x, y, z] (weapon frame), "size": m, "view": VIEWS key, "label"}]
-       -> pdir/_c_<name>.png; returns [(png, label)]"""
+       -> pdir/_c_<name>.png; returns [(png, label)]. preturned: the glb is an exported (PRE_TURN) one, e.g. the
+       live copy, turned back half a turn so the same cameras see the same spots (the BEFORE pictures)"""
     out = []
     os.makedirs(pdir, exist_ok=True)
     for sp in spots:
-        sc = _scene(Wd, Ht); _import(glb)
+        sc = _scene(Wd, Ht); objs = _import(glb, Matrix.Rotation(math.pi, 4, 'Z') if preturned else None)
         d, up = VIEWS[sp.get('view', 'left')]
-        _sun(sc, (math.radians(50), 0, math.radians(-60)), strength=0.5 if sp.get('dark') else 1.8)
+        if sp.get('rake'):   # (polish sheets: plain grey clay under a low raking light, so wobble shows)
+            clay = bpy.data.materials.new('clay'); clay.use_nodes = True
+            bsdf = clay.node_tree.nodes.get('Principled BSDF')
+            bsdf.inputs['Base Color'].default_value = (0.62, 0.62, 0.62, 1); bsdf.inputs['Roughness'].default_value = 0.45
+            for o in objs:
+                if o.type == 'MESH':
+                    for i in range(len(o.material_slots)): o.material_slots[i].material = clay
+                    if not o.material_slots: o.data.materials.append(clay)
+            sc.world.node_tree.nodes['Background'].inputs[1].default_value = 0.45
+            side = Vector((d.y, -d.x, 0.0)) if abs(d.z) < 0.9 else Vector((1.0, 0.0, 0.0))
+            ldir = (side * 0.7 + up * 0.35 + d * 0.35).normalized()   # (light skimming across the surface, toward the camera)
+            ls = bpy.data.lights.new('rake', 'SUN'); ls.energy = 4.5; ls.angle = 0.04
+            lo = bpy.data.objects.new('rake', ls); sc.collection.objects.link(lo)
+            lo.rotation_euler = (-ldir).to_track_quat('-Z', 'Y').to_euler()
+        else:
+            _sun(sc, (math.radians(50), 0, math.radians(-60)), strength=0.5 if sp.get('dark') else 1.8)
         if sp.get('dark'):   # (a dusk light: the Neon glow reads)
             sc.world.node_tree.nodes['Background'].inputs[1].default_value = 0.06
         at = B(sp['at'])
@@ -1926,7 +2494,7 @@ def main(argv):
     t0 = time.time()
     if opt('--stage') == 'closeups':   # (the recipe's sheet.closeups from out_dir's shelled glb, into --into <dir>)
         spots = (rec.get('sheet') or {}).get(opt('--set') or 'closeups', [])
-        glb = os.path.join(out_dir, K + '_sh.glb')
+        glb = opt('--glb') or os.path.join(out_dir, K + '_sh.glb')   # (--glb <exported glb> --preturned: the live one)
         into = opt('--into') or os.path.join(out_dir, 'sheet', K)
         if '--raw' in rest:   # (the same views of the RAW model, fitted into the kit frame: the BEFORE pictures)
             os.makedirs(into, exist_ok=True)
@@ -1936,7 +2504,7 @@ def main(argv):
             o = _bm_obj(bm, 'raw'); bm.free(); _grey([o])
             glb = os.path.join(into, '_rawfit.glb')
             bpy.ops.export_scene.gltf(filepath=glb, export_format='GLB', use_selection=False, export_yup=True)
-        for png, label in closeups(glb, spots, into):
+        for png, label in closeups(glb, spots, into, preturned='--preturned' in rest):
             print('CLOSEUP', png, label)
         return
     if opt('--stage') == 'sheet':   # (only the sheet again, from the files a full run left in out_dir)
