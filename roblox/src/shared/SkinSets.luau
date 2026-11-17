@@ -48,6 +48,20 @@ SkinSets.SETS = {
 		colour = Color3.fromRGB(214, 189, 74), accent = Color3.fromRGB(192, 106, 46),
 		members = { "lmg_ducky", "revolver_ducky", "katana_ducky" },
 	},
+	-- SPACE WESTERN, a pair (17 Nov, the owner, after seeing a frontier skin line elsewhere: a classic and a futuristic look
+	-- of the same weapons; ours is our own): Dust Drover is the frontier (case iron, walnut, brass, a 7-point star, a horse,
+	-- a train, a wagon wheel, a spyglass, a horseshoe); Star Drover the same five built in the far future (plum graphite,
+	-- tan ceramic, brass, teal hard light). Models: tools/roblox/gun_sets_west.py
+	set_dust = {
+		name = "Dust Drover", pair = "set_star", order = 6,
+		colour = Color3.fromRGB(107, 74, 50), accent = Color3.fromRGB(196, 164, 99),
+		members = { "revolver_dust", "lever_dust", "sawnoff_dust", "sniper_dust", "katana_dust" },
+	},
+	set_star = {
+		name = "Star Drover", pair = "set_dust", order = 7,
+		colour = Color3.fromRGB(62, 53, 70), accent = Color3.fromRGB(69, 230, 214),
+		members = { "revolver_star", "lever_star", "sawnoff_star", "sniper_star", "katana_star" },
+	},
 } :: { [string]: SetInfo }
 
 -- id = { name, rarity, weapon, set, tier }. In the pair the rifle is the headline (the high tier: remodel + effects)
@@ -75,6 +89,16 @@ SkinSets.SKINS = {
 	lmg_ducky = { "Bubble Bath", "legendary", "lmg", "set_ducky", "high" },
 	revolver_ducky = { "Wish Duck", "legendary", "revolver", "set_ducky", "high" },
 	katana_ducky = { "Ribbon Duck", "legendary", "katana", "set_ducky", "high" },
+	revolver_dust = { "Dust Drover", "legendary", "revolver", "set_dust", "high" },
+	lever_dust = { "Iron Horse", "legendary", "lever", "set_dust", "high" },
+	sawnoff_dust = { "Wagon Wheel", "epic", "sawnoff", "set_dust", "mid" },
+	sniper_dust = { "Brass Spyglass", "epic", "sniper", "set_dust", "mid" },
+	katana_dust = { "Horseshoe", "rare", "katana", "set_dust", "basic" },
+	revolver_star = { "Star Drover", "legendary", "revolver", "set_star", "high" },
+	lever_star = { "Streamliner", "legendary", "lever", "set_star", "high" },
+	sawnoff_star = { "Warp Wheel", "epic", "sawnoff", "set_star", "mid" },
+	sniper_star = { "Star Spyglass", "epic", "sniper", "set_star", "mid" },
+	katana_star = { "Star Horseshoe", "rare", "katana", "set_star", "basic" },
 } :: { [string]: { any } }
 
 SkinSets.TIERS = {
@@ -100,8 +124,11 @@ for id, row in SkinSets.SKINS do SkinSets.TIER[id] = row[5] end
 SkinSets.RENAME = { smg_uzi = "Hairdryer", sawnoff_pepper = "Double Chili" } :: { [string]: string }
 
 -- the cute-set concepts in the game for the owner to choose from (not sold, not in crates; one becomes the set)
+-- and the decorated Japanese systems (17 Nov, the owner: "more decoared ... use referenmces"): J-A Maki-e, J-B Odoshi,
+-- J-C Zogan on the rifle, J-A across the set; the pick is rebuilt under Tidecrest's own keys (tools/roblox/gun_sets_japan2.py)
 SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b", "ar_cute_c", "pistol_cute_c",
-	"ar_cute_d", "pistol_cute_d", "ar_cute_e", "pistol_cute_e" } :: { string }
+	"ar_cute_d", "pistol_cute_d", "ar_cute_e", "pistol_cute_e",
+	"ar_jp_a", "ar_jp_b", "ar_jp_c", "dmr_jp_a", "sawnoff_jp_a", "lever_jp_a", "katana_jp_a" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in
@@ -178,6 +205,40 @@ SkinSets.FX = {
 		glow = { colour = Color3.fromRGB(242, 122, 168) },
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.04, width1 = 0, -- (a glitter swing trail off the blade)
 			segs = { { { 0, 0.006, -0.26 }, { 0, 0.083, -0.836 } } } },
+	},
+	-- the space-western high pieces (the model builder's EFFECTS in gun_sets_west.py also proposes shot and lever-cycle
+	-- puffs and sparks for the VFX session): warm dust motes and a gold tracer on the frontier side, teal light on the star side
+	revolver_dust = {
+		idle = {
+			{ kind = "sparkle", colour = Color3.fromRGB(232, 201, 154), rate = 1.5, life = 1.8, size = 0.007, drift = "rise",
+				at = { { -0.05, 0.03, -0.05 }, { -0.04, 0.0, 0.06 } } },
+		},
+		flash = Color3.fromRGB(255, 196, 106), tracer = Color3.fromRGB(242, 220, 160),
+	},
+	revolver_star = {
+		idle = {
+			{ kind = "sparkle", colour = Color3.fromRGB(201, 164, 216), rate = 1.5, life = 1.8, size = 0.007, drift = "rise",
+				at = { { -0.05, 0.03, -0.05 }, { -0.04, 0.0, 0.06 } } },
+		},
+		glow = { colour = Color3.fromRGB(69, 230, 214) },
+		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
+	},
+	lever_dust = {
+		idle = {
+			{ kind = "haze", colour = Color3.fromRGB(169, 162, 154), rate = 0.5, life = 1.2, size = 0.02, drift = "rise",
+				at = { { 0.0, 0.066, -0.655 } } },
+			{ kind = "sparkle", colour = Color3.fromRGB(232, 201, 154), rate = 1.2, life = 1.8, size = 0.007, drift = "rise",
+				at = { { -0.06, 0.0, -0.25 } } },
+		},
+		flash = Color3.fromRGB(255, 196, 106), tracer = Color3.fromRGB(242, 220, 160),
+	},
+	lever_star = {
+		idle = {
+			{ kind = "sparkle", colour = Color3.fromRGB(69, 230, 214), rate = 1.5, life = 0.8, size = 0.008, drift = "fall",
+				at = { { 0.0, -0.085, -0.6 }, { 0.0, -0.085, -0.47 } } },
+		},
+		glow = { colour = Color3.fromRGB(69, 230, 214) },
+		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
 	},
 	katana_sakura = { -- petals drifting off the blossom guard, the sprig and the blade's back (the blade points move with its stretch)
 		idle = {

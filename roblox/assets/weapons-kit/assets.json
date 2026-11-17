@@ -75,5 +75,22 @@
  "ar@ar_cute_d": 100437432296947,
  "pistol@pistol_cute_d": 129267818849885,
  "ar@ar_cute_e": 85781071572824,
- "pistol@pistol_cute_e": 74259390917483
+ "pistol@pistol_cute_e": 74259390917483,
+ "revolver@revolver_dust": 108076348926771,
+ "revolver@revolver_star": 76237203650129,
+ "lever@lever_dust": 103446318850384,
+ "lever@lever_star": 127398421910324,
+ "sawnoff@sawnoff_dust": 134539122238926,
+ "sawnoff@sawnoff_star": 85212296333376,
+ "sniper@sniper_dust": 96831077661498,
+ "sniper@sniper_star": 82105327549572,
+ "katana@katana_dust": 106180027298287,
+ "katana@katana_star": 81800613418966,
+ "ar@ar_jp_a": 110335269437998,
+ "ar@ar_jp_b": 135703661445552,
+ "ar@ar_jp_c": 112005189561578,
+ "dmr@dmr_jp_a": 137428600991856,
+ "sawnoff@sawnoff_jp_a": 114670272858243,
+ "lever@lever_jp_a": 95996560495284,
+ "katana@katana_jp_a": 122017278094448
 }

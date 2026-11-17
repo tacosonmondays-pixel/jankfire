@@ -362,6 +362,27 @@ rebuilt, each with one big new shape the hand view sees, and fewer colours.
   `ducky-magical.jpg`, `cute-concepts.jpg`, `angel-eagle.jpg`. Not checked: the new effects' frame cost on a slow
   device, and the cute concepts in third person.
 
+### Space western and the decorated Japanese concepts (17 November 2026, place version 478)
+
+- **Space western, a pair (live).** The owner asked for a classic and a futuristic look of the same weapons, after
+  seeing a frontier line elsewhere; ours is our own. Both sets: Revolver and Yeehaw high, Half a Shotgun and Sniper mid,
+  Katana basic.
+  - Dust Drover (`set_dust`): Dust Drover revolver (horse-head grip, a 7-point star), Iron Horse (Yeehaw as a
+    locomotive), Wagon Wheel (Half a Shotgun), Brass Spyglass (Sniper), Horseshoe (Katana).
+  - Star Drover (`set_star`): the same five in plum graphite, tan ceramic and teal hard light (Star Drover, Streamliner,
+    Warp Wheel, Star Spyglass, Star Horseshoe).
+  - Models: `tools/roblox/gun_sets_west.py`. Its `EFFECTS` proposes shot and lever-cycle puffs and sparks for the VFX
+    session. `SkinSets.FX` has the high pieces' idle effects.
+- **Decorated Japanese (concepts, not sold).** The owner: "more decoared ... use referenmces". Three systems on the
+  Rifle, J-A carried across the set: J-A Maki-e (`ar_jp_a`, `dmr_jp_a`, `sawnoff_jp_a`, `lever_jp_a`, `katana_jp_a`),
+  J-B Odoshi (`ar_jp_b`), J-C Zogan (`ar_jp_c`). They are in `SkinSets.CONCEPTS` until the owner picks one; the pick is
+  rebuilt under Tidecrest's own keys. Models: `tools/roblox/gun_sets_japan2.py`.
+- Both files build only when named (`JF_EXTRA=gun_sets_west,gun_sets_japan2`), so an unfinished set can't change live
+  skins in other builds.
+- Checked: `gun_check` (0 loose on all 17), the install (17 guns, 0 problems, 76 skins in `JankfireSkins`), and in hand
+  in Play (Dust Drover with a wood wrap on, Streamliner, J-A rifle). Pictures: `gun-models/space-western.jpg`,
+  `japanese-decorated.jpg`, `skins-in-hand-v478.jpg`.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against
