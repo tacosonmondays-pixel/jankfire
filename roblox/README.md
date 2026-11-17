@@ -140,6 +140,12 @@ pose, camera space, metres), `scale` and `tilt` (degrees added to the rest turn)
 `py tools/roblox/hold_screen.py [--look ...]` prints where each gun lands on a 16:9 screen at the game's default FOV
 of 80, from the kit's part boxes, so a new gun can be placed before any Play test.
 
+**The one-handed guns' reloads** (17 November 2026, place version 679; sheet `docs/gun-hold/secondaries-1.jpg`): Plan
+B, the Revolver and Half a Shotgun have a left-hand row with `away = true`. That hand waits off screen, hidden, and
+comes in only on the reload's off-hand track: `lh = { t, k, f }` in `Reloads.luau`, ported from the web game by
+`tools/roblox/reloads.mjs`. It takes the magazine, holds the swung-out cylinder from under, and thumbs each shell home.
+Utility items use the same hand. They also point straight at the crosshair now (no side turn), like every other gun.
+
 **The one-handed melee weapons** (17 November 2026, place version 597; sheet `docs/gun-hold/melee-1.jpg`): the Knife
 stands up in the right hand, leaning toward the crosshair with its flat toward you, and the Spoon look (the classic
 modes' `SpoonLook`) shares its hold. The Zombie Claw is the hold pose `hand`: your own right hand is the weapon, placed
