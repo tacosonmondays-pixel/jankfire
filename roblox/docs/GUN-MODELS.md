@@ -613,6 +613,20 @@ cleaned, fitted and coloured here.
     `hammer` nodes and one low sight. The duck nose and crown sit under the sight line.
 
   Every new kit piece and cutting fix is in `tools/roblox/tripo_gun.py`. The Tripo files and recipes stay in the vault.
+
+  v2 (place version 683) added the concepts' painted details, cut into the mesh as flat colour regions by the `decals`
+  recipe step (no picture textures):
+  - SMG: blue curling waves, foam dots and drops, plus a duck print on each receiver side;
+  - sniper: a wave band along the barrel;
+  - katana: curling crests with foam curls and dots on the blade;
+  - Plan B: waves along the slide's lower edge and on the grip panels.
+
+  The light slot moved halfway from pearl toward each concept's blush (e.g. SMG `ebdfde`). Some shade shells were
+  dropped to stay under 15k triangles. Assets:
+  - SMG 96541562068186
+  - katana 122632316158289
+  - sniper 112944176569314
+  - Plan B 117844930479923
 - **Prompt lessons:**
   - Our base AR's two ring sights come back as "two scopes": ask for one low sight and no scope rings.
   - ChatGPT refused "hellhound" and "cute devil" wordings; "stylized cartoon game cosmetic" wording passed.
