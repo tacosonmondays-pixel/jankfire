@@ -180,7 +180,7 @@ with our quiet colours:
   out across the floor. Sprites drawn from maths (`tools/roblox/vfx/bh_sheets.py`: `vfx_bhdisk`, `vfx_bhhalo`). The
   owner's reference clip for this was a glowing floor field; only its layering (a ground disc, streaks falling in) was
   taken.
-  **v3 since 17 Nov (place version 540)**, after the owner's second reference clip (a black-hole effect video: a hot pink
+  **v3 since 17 Nov (place versions 540, 552)**, after the owner's second reference clip (a black-hole effect video: a hot pink
   spark, a white-gold lens flare, then a black shadow with a warm photon ring, lensed arcs and a wide purple-magenta disk
   with an orange inner edge; the sequence and colours taken, nothing traced). The hole now opens with the spark (0 s)
   and the flare (0.07 s, biggest about 0.17 s), then grows in over 0.2-0.53 s; it collapses to a point over the last
@@ -437,3 +437,16 @@ orbiting duck is not in the frames): `round15/blackhole-v3-first-look.jpg`.
   swirling nebula with an orange inner edge. Reads on the hall's light walls.
 - Opening: the spark's pink light and the flare's warm light flood the near wall (frozen at full strength), and the
   flare itself is faint against the lit wall.
+
+**Second turn (place version 552)**, sheet `round15/blackhole-v3.jpg`: the spark's light 3 -> 1.1 over 3.5 m (was 5 m),
+the flare's 4 -> 1.6 over 6 m (was 9 m); the flare 3.4 m wide at its biggest (was 2.8) at Brightness 4 (was 2.6); the
+warm band moved from 2.25 m (a pale ring round the middle of the disk, a Saturn look) to the disk's hot inner edge
+(1.17 m), where its near arc crosses the shadow's lower part. Seen:
+- 0.17 s: a bright white-gold star with a long level streak and thin rays, the wall no longer flooded; 0.32 s: the
+  hole opening inside it with the hot band across its lower edge.
+- 1.4 s from the side: no outer ring; the nebula disk round the shadow, the warm ring and the arc over the top.
+- 2.93 s: shrunk to about a third, streaks still falling in; 3.05 s: the pop's flash (its light frozen at full, so the
+  hall reads pink-white; in play it fades in 0.3 s, and Utility's own violet flash and fire bits are not in the frame).
+- First person with the hole on you (camera 1.25 studs from its middle): the view stays clear, only a few streaks
+  and a flake cross it.
+- Not checked: a real thrown duck end to end (the frames call Fx directly); the spark at its new light strength.

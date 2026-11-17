@@ -1448,7 +1448,7 @@ end
 --       a second; copies crossfade (mirror ramps, so the brightness holds) so the clouds keep changing
 --     its dark twin under it (vfx_bhshade, normal blend, deep purple): the room behind the disk goes dark so the colours
 --       keep their strength on our light maps (VFX-STUDY: dark twins)
---     a warm band in the disk's plane at 2.25 m whose near arc crosses in front of the horizon from the side
+--     a warm band in the disk's plane at its hot inner edge, whose near arc crosses the horizon's lower part from the side
 --     the lensing halo (vfx_bhhalo3, camera-facing): the thin warm photon ring, the disk's far side bent over the top
 --       and under the bottom; a dark round shade behind it (the shadow round the horizon)
 --     streaks falling in on a spiral, magenta far out and white-hot at the end; dark flakes on a slower spiral; grey
@@ -1462,8 +1462,9 @@ local BHK = {
 	DISK_W = 3.6 * S, -- the disk sprite's half width (its inner edge, 0.29 of it, just outside the horizon)
 	HALO_W = 2.5 * S, -- the halo's (its photon ring at 0.42 of it)
 	SHADE_W = 2.1 * S, -- the round shade behind the halo
-	BAND_W = 2.4 * S, -- the band (the ring drawing's ring at 0.94 of it: 2.25 m)
-	FLARE_W = 2.8 * S, -- the opening flare at its biggest
+	BAND_W = 1.24 * S, -- the band (the ring drawing's ring at 0.94 of it: 1.17 m, the disk's hot inner edge; round 15: at
+	-- 2.25 m it drew a pale ring round the middle of the disk, a Saturn look)
+	FLARE_W = 3.4 * S, -- the opening flare at its biggest (round 15: 2.8 read faint against a lit wall)
 	TILT = CFrame.Angles(math.rad(20), 0, math.rad(-6)), -- (round 3: 14 read as a line from the side)
 	FLARE_T = 0.07, OPEN0 = 0.2, OPEN1 = 0.53, COLLAPSE = 0.16,
 	HOLE_T = ((require(Shared:WaitForChild("Items")) :: any).DUCK.holeTime :: number),
@@ -1499,8 +1500,8 @@ local function newBH(): BH
 		Rotation = NR(0, 360), RotSpeed = NR(-200, -160) }) -- (about half a turn a second)
 	-- the warm band: from the side its near arc crosses in front of the horizon's lower half (round 4: the side view
 	-- read as an eclipse without it)
-	local band = rigEmitter(diskAtt, { Texture = TEX.shock, LightEmission = 1, LightInfluence = 0, Brightness = 1.3,
-		Orientation = flat, Speed = NR(0.01), LockedToPart = true, Color = cs(Color3.fromRGB(255, 196, 140)),
+	local band = rigEmitter(diskAtt, { Texture = TEX.shock, LightEmission = 1, LightInfluence = 0, Brightness = 1.1,
+		Orientation = flat, Speed = NR(0.01), LockedToPart = true, Color = cs(Color3.fromRGB(255, 214, 160)),
 		Size = NumberSequence.new(0.01), Lifetime = NR(K.LONG), ZOffset = 0.1 })
 	local haloAtt = Instance.new("Attachment"); haloAtt.Parent = hz -- (on the middle: an emitter on a part spawns anywhere in it)
 	local haloShade = rigEmitter(haloAtt, { Texture = TEX.bhshade, LightEmission = 0, LightInfluence = 0, Color = cs(Color3.fromRGB(10, 4, 18)),
@@ -1515,7 +1516,7 @@ local function newBH(): BH
 	local sparkGlow = rigEmitter(haloAtt, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 1.2,
 		Color = cs(Color3.fromRGB(255, 92, 178)), Speed = NR(0), LockedToPart = true,
 		Size = ns(0, 0.2 * S, 0.3, 0.8 * S, 1, 0.5 * S), Transparency = ns(0, 0.45, 0.5, 0.6, 1, 1), Lifetime = NR(0.26), ZOffset = 0.4 })
-	local flare = rigEmitter(haloAtt, { Texture = TEX.bhflare, LightEmission = 1, LightInfluence = 0, Brightness = 2.6,
+	local flare = rigEmitter(haloAtt, { Texture = TEX.bhflare, LightEmission = 1, LightInfluence = 0, Brightness = 4,
 		Speed = NR(0), LockedToPart = true, Rotation = NR(-8, 8), RotSpeed = NR(-25, 25), Lifetime = NR(0.42) })
 	-- the streaks: from a flat band round the disk's plane, 5 m out, ending 1.2 m out (round 4: straight scratches up to
 	-- the ceiling); the part turning under them bends each path into a spiral. magenta far out, white-hot at the end
@@ -1603,7 +1604,7 @@ function Fx.holeOpen(id: any, at: Vector3, R: number, age: number?): boolean
 		if not cam or (cam.CFrame.Position - at).Magnitude > 2.3 * BHK.HZ then -- (not in the face of the one it's stuck to)
 			emit(b.spark, 1); emit(b.sparkGlow, 1)
 		end
-		lightFlash(at, Color3.fromRGB(255, 92, 182), 5 * S, 3, 0.3)
+		lightFlash(at, Color3.fromRGB(255, 92, 182), 3.5 * S, 1.1, 0.25) -- (round 15: at 3 over 15 studs it flooded the near wall)
 	elseif h.u > BHK.FLARE_T + 0.15 then
 		h.flared = true -- (a late joiner: no opening)
 	end
@@ -1647,7 +1648,7 @@ local function holeFxStep(dt: number)
 		if not h.flared and h.u >= K.FLARE_T then
 			h.flared = true
 			bhFlare(b, false)
-			lightFlash(at, Color3.fromRGB(255, 226, 180), 9 * S, 4, 0.4)
+			lightFlash(at, Color3.fromRGB(255, 226, 180), 6 * S, 1.6, 0.35) -- (round 15: 4 over 27 studs washed the hall out)
 		end
 		if not h.opened and h.u >= K.OPEN0 then
 			h.opened = true
