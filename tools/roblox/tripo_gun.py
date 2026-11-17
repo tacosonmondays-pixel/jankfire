@@ -48,31 +48,44 @@
 # {
 #   "name": "Seraph Rifle (Tripo)",
 #   "turn": {"axes": ["+Y", "+Z", "+X"],        weapon x, y, z = these raw axes (Blender import frame: Z up)
+#            "matrix": [[..], [..], [..]],        or rows = weapon x, y, z as raw directions (a model at any angle)
 #            "pre": [["Z", -34.0]]},            raw turns first (degrees about raw X / Y / Z): a gun lying diagonal
 #   "fit": {"muzzle": [-0.5, 0.0053, 0.2376],   RAW points: the bore's centre at the muzzle face, the grip spot's match
 #           "grip": [0.1867, 0.0053, 0.1386],   (as far up the grip, as far back in it, as the base gun's)
 #           "centre": [-0.5, 0.0053, 0.24],     a raw point on the gun's middle plane (weapon x = 0; default: muzzle)
 #           "weights": {"muzzle_y": 10, "muzzle_z": 3, "grip_y": 1, "grip_z": 3},  ("scale": 1.17 fixes the scale)
+#           "anchors": [[raw point, [x, y, z] target, weight y, weight z]],   more matches (weights 0 on muzzle/grip
+#                                               drop those: a katana fits its guard face and blade tip)
 #           "report": {"rear sight top": [-0.02, 0.0053, 0.3071]}},   raw points printed in the kit frame
 #   "weld": 0.0001, "fill": 64, "sharp": 40,    merge distance, biggest hole filled (edges), shading angle (deg)
 #   "drop": [{"box": [[x0,y0,z0],[x1,y1,z1]]}, {"near": [x,y,z]}, {"tris_below": 14}, {"index": 9}],   parts out
 #   "decimate": {"default": 1.0, "parts": [{"part": {"near": [..]}, "ratio": 0.6}]},   Collapse per part
+#   "straighten": [{"part": {...}, "centre": true}],   turn a part that drifts sideways along its length straight
+#                (seen from the top), and with centre slide it onto the centre plane; "turn": false only slides;
+#                "shift": [dx, dy, dz] moves every selected part the same (a head off the middle, with its eyes)
+#   "mirror": {"keep": [{...}, ...]},   mirror-symmetric about x = 0 (the fit's "centre" point sets the plane): every
+#                part but the kept one-sided props loses its right half and gets its left half mirrored across
 #   "flatten": [{"part": {...}, "box": [lo, hi], "axis": "y", "keep": "below", "at": 0.068, "cap": true}],   cut + cap
 #   "reshape": [{"part": {...}, "side_flat": true, "pivot": [x, y, z], "scale": 0.58, "thick": 0.007, "x_in": 0.044,
 #                "y_top": 0.068, "z_back": 0.05, "sharpen": {"prom": 0.005, "tip": 0.004, "pinch": 0.55, "radius": 0.012,
-#                "notch": 0.002}}],   re-pose a part (a wing: flat on the side, smaller, thinner, lower), see reshape()
+#                "notch": 0.002}, "scale3": [1, 0.5, 1], "shift": [dx, dy, dz]}],   re-pose a part (a wing: flat on
+#                the side, smaller, thinner, lower), see reshape(); scale3 per axis, shift not mirrored by side
 #   "rims": [{"tag": ["rwing", "fwing"], "width": 0.0018}],   a chamfer round a fused part's outer face (trim line)
 #   "splits": [{"part": {...}, "box": [lo, hi], "co": [x, y, z], "no": [x, y, z]}],   cut along a plane (a straight
 #                colour border; box: only faces whose centre is in it)
 #   "blend": [{"part": {...}, "box": [lo, hi], "to": 0.0425, "fade": {"axis": "y", "from": -0.03, "to": -0.012}}],
 #                pull a lip that overhangs past |x| = to flush (fully below fade.from, not at all at fade.to)
+#   "lines": [{"part": {...}, "box": .., "absx": .., "cf_at": 0.5 | "plane": {"co", "no"}, "width": 0.0012,
+#              "tag": "rwlit"}],   a thin strip along a contour border or a plane cut, tagged (glow lines)
 #   "contours": [{"part": {...}, "box": .., "absx": .., "field": "ny", "smooth": 2, "at": 0.5}],   cut a soft surface
 #                along an iso-line of its smoothed vertex normals ("rz" + "axis": [x, y]: the distance from a bore's
 #                axis, a clean circle); colour with {"cf": [lo, hi]} (smooth borders)
 #   "nodes": [{"node": "mag", "part": {...}}, {"node": "grip", "part": {...}, "box": [lo, hi]}],  whole part / box cut
 #   "unions": [{"parts": [{...base}, {...}, {...}], "tag": "bstar"}],   parts after the first get the tag
 #   "inlays": [{"part": {...}, "tag": "mstar", "shape": "star", "points": 4, "R": 0.026, "r": 0.007, "c": [y, z],
-#               "sides": [-1, 1], "proud": 0.0015, "turn": 0}],   a kit star let into a part's side faces (union)
+#               "sides": [-1, 1], "proud": 0.0015, "turn": 0}],   a kit star let into a part's side faces (union);
+#               "shape": "oval" with "ry", "rz" instead: an ellipse (a face's eyes and bill); "x": the side's |x|
+#               where no vertex of the part lies inside the footprint (a big flat face)
 #   "palette": {"pearl": "eeece6", "gold": "c9a456", "lit": ["ffd58a", "n"]},   slot -> colour or [colour, kind]
 #   "default": {"node": "body", "zone": "A", "slot": "pearl"},
 #   "regions": [{"where": {"part": {...}, "box": [lo, hi], "absx": [a, b], "n": {"x": [lo, hi]}, "an": {"x": [lo, hi]},
@@ -86,7 +99,10 @@
 #           {"fn": "halo", "piece": "halo_wzN", "kw": {"c": [0, "BY", -0.556], "ro": 0.046, "ri": 0.038, "li": 0.034,
 #                                                     "L": 0.009, "tilt": 18, "spokes": 3, "r_hub": 0.012}}],
 #        fn: a Gun method (box prism cyl cylz ring ball xprism yprism window), a gun_sights.py helper (rifle_rear
-#        rifle_front notch blade bead), gun_models' trigger / guard, or halo (a tilted ring on spokes, below)
+#        rifle_front notch blade bead), gun_models' trigger / guard, or halo (a tilted ring on spokes, below);
+#        with "pieces": brake (a ported muzzle brake + shroud), kblade (a katana blade, one kit solid from an outline:
+#        sharp edge, wave band, spine; every colour's back end at the stretch origin), candy (a striped round grip),
+#        hoop (a striped pommel loop with gold collars)
 #   "shell": ["body_wzA__pearl", "rwing"],      Route S shells: pieces or nodes (budget: <= 15k tris with shells)
 #   "sheet": {"closeup": {"at": [x, y, z], "size": 0.16, "label": "front sight"}},   an extra close side view
 #   "ao": null                                  the bake's AO reach (metres; null = from the gun's length)
@@ -139,6 +155,10 @@ def load_raw(path):
 def turn_matrix(rec):
     """3x3: raw -> weapon axes (no scale)"""
     t = rec.get('turn', {})
+    if 'matrix' in t:   # (rows = weapon x, y, z as raw directions: a model lying at any angle, measured by PCA)
+        M = Matrix(t['matrix'])
+        for i in range(3): M[i].normalize()
+        return M
     R = Matrix.Identity(3)
     for ax, deg in t.get('pre', []):
         R = Matrix.Rotation(math.radians(deg), 3, ax.upper()) @ R
@@ -158,6 +178,9 @@ def solve_fit(rec, spots):
     w = dict(muzzle_y=10.0, muzzle_z=3.0, grip_y=1.0, grip_z=3.0); w.update(f.get('weights', {}))
     rows = [((m.y, 1.0, 0.0), M0.y, w['muzzle_y']), ((m.z, 0.0, 1.0), M0.z, w['muzzle_z']),
             ((gp.y, 1.0, 0.0), G0.y, w['grip_y']), ((gp.z, 0.0, 1.0), G0.z, w['grip_z'])]
+    for a in f.get('anchors', []):   # [raw point, weapon target, weight y, weight z]: any pair of matches (a katana's
+        q = R @ Vector(a[0])          # guard face and blade tip instead of a gun's muzzle and grip)
+        rows += [((q.y, 1.0, 0.0), a[1][1], a[2]), ((q.z, 0.0, 1.0), a[1][2], a[3])]
     fixed = f.get('scale')
     if fixed:   # (only the offsets left)
         rows = [((0.0, a[1], a[2]), b - a[0] * fixed, k) for a, b, k in rows]
@@ -178,6 +201,8 @@ def solve_fit(rec, spots):
            'grip_at': [round(x, 4) for x in wp(f['grip'])], 'grip_spot': list(spots['grip'])}
     res['muzzle_miss_mm'] = [round((wp(f['muzzle'])[i] - spots['muzzle'][i]) * 1000, 1) for i in range(3)]
     res['grip_miss_mm'] = [round((wp(f['grip'])[i] - spots['grip'][i]) * 1000, 1) for i in range(3)]
+    for k, a in enumerate(f.get('anchors', [])):
+        res['anchor %d miss_mm' % k] = [round((wp(a[0])[i] - a[1][i]) * 1000, 1) for i in range(3)]
     for name, p in f.get('report', {}).items():
         q = wp(p)
         res['at ' + name] = [round(x, 4) for x in q]
@@ -231,6 +256,8 @@ def select_parts(sel, info, bm=None):
         lo, hi = sel['box']
         out |= {p['index'] for p in info if all(lo[k] <= p['centre'][k] <= hi[k] for k in range(3))}
     if 'tris_below' in sel: out |= {p['index'] for p in info if p['tris'] < sel['tris_below']}
+    if 'max_tris' in sel:   # (an AND filter on what the other keys picked: a box's small parts only, e.g. rivets)
+        out = {i for i in out if info[i]['tris'] < sel['max_tris']}
     if 'near' in sel:
         owner = {f: p['index'] for p in info for f in p['faces']}
         bm.faces.ensure_lookup_table()
@@ -288,8 +315,11 @@ def dedupe_faces(bm):
 def fill_holes(bm, sides):
     bnd = [e for e in bm.edges if e.is_boundary]
     r = bmesh.ops.holes_fill(bm, edges=bnd, sides=sides)
-    if r['faces']: bmesh.ops.triangulate(bm, faces=[f for f in r['faces'] if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
-    return r['faces']
+    out = list(r['faces'])
+    if out:   # (every triangle of every cap: the caller colours and turns them)
+        t = bmesh.ops.triangulate(bm, faces=[f for f in out if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
+        out = [f for f in set(out) | set(t['faces']) if f.is_valid]
+    return out
 
 
 def _bm_obj(bm, name='tmp'):
@@ -370,7 +400,10 @@ def flatten(bm, op):
     ps = select_parts(op.get('part'), info, bm)
     lay = bm.faces.layers.int['_sel']   # (made once in clean(): a new layer would orphan every face reference)
     for f in bm.faces: f[lay] = 1 if pid[f] in ps else 0   # (bisect copies the mark onto the faces it splits)
-    faces = [f for f in bm.faces if f[lay] and _inbox(W(f.calc_center_median()), op['box'])]
+    # (a face is cut when any corner is in the box, not only its middle: a long Tripo triangle whose middle lies
+    # outside would stay whole across the plane, and the cap would then close a loop far beyond it)
+    faces = [f for f in bm.faces if f[lay] and (_inbox(W(f.calc_center_median()), op['box']) or
+                                                any(_inbox(W(v.co), op['box']) for v in f.verts))]
     co, no = _plane(op.get('axis', 'y'), op['at'])
     geom = list(set(faces) | {e for f in faces for e in f.edges} | {v for f in faces for v in f.verts})
     bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, dist=1e-6)
@@ -383,6 +416,65 @@ def flatten(bm, op):
     if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
     caps = fill_holes(bm, 100000) if op.get('cap', True) else []   # (cap false: an end hidden inside a kit part)
     return {'faces_cut': len(gone), 'caps': len(caps)}
+
+
+def straighten(bm, op):
+    """a part that drifts sideways along its length (seen from the top) turned about the vertical so its front and back
+       ends line up along z (the middle of its front third against its back third); centre: true also slides it so
+       its middle is on the gun's centre plane (x = 0)"""
+    pid, info = parts_of(bm)
+    out = []
+    for i in sorted(select_parts(op['part'], info, bm)):
+        vs = list({v for f in info[i]['faces'] for v in f.verts})
+        P = [W(v.co) for v in vs]
+        z0, z1 = min(p.z for p in P), max(p.z for p in P)
+        L = z1 - z0
+        fr = [p.x for p in P if p.z < z0 + L / 3]; bk = [p.x for p in P if p.z > z1 - L / 3]
+        xf, xb = (min(fr) + max(fr)) / 2, (min(bk) + max(bk)) / 2
+        zf = sum(p.z for p in P if p.z < z0 + L / 3) / len(fr); zb = sum(p.z for p in P if p.z > z1 - L / 3) / len(bk)
+        ang = math.atan2(xb - xf, zb - zf) if op.get('turn', True) else 0.0   # (its drift: x per z)
+        c = sum(P, Vector()) / len(P)
+        R = Matrix.Rotation(ang, 3, 'Y')    # (weapon frame: about y, turning x toward z)
+        P = [c + R @ (p - c) for p in P]
+        dx = 0.0
+        if op.get('centre'):
+            dx = -(min(p.x for p in P) + max(p.x for p in P)) / 2
+        sh = Vector(op.get('shift', (0.0, 0.0, 0.0)))   # (every selected part the same move: a head with its eyes)
+        for v, p in zip(vs, P): v.co = B(Vector((p.x + dx + sh.x, p.y + sh.y, p.z + sh.z)))
+        out.append({'part': i, 'drift_mm': round((xb - xf) * 1000, 2), 'turned_deg': round(math.degrees(ang), 3),
+                    'moved_x_mm': round(dx * 1000, 2)})
+    return out
+
+
+def mirror(bm, op):
+    """the gun made mirror-symmetric about its centre plane (x = 0, the plane the fit's centre point sets): every part
+       except the `keep` ones (one-sided props: a charm, a chain, a charging handle) is cut on the plane, its right half
+       (x > 0) deleted and its left half (x < 0, the side first person sees) copied across, the seam welded"""
+    pid, info = parts_of(bm)
+    keep = set()
+    for sel in op.get('keep', []): keep |= select_parts(sel, info, bm)
+    lay = bm.faces.layers.int['_sel']
+    for f in bm.faces: f[lay] = 0 if pid[f] in keep else 1
+    fs = [f for f in bm.faces if f[lay]]
+    geom = list(set(fs) | {e for f in fs for e in f.edges} | {v for f in fs for v in f.verts})
+    bmesh.ops.bisect_plane(bm, geom=geom, plane_co=Vector((0, 0, 0)), plane_no=Vector((1, 0, 0)), dist=1e-6)
+    gone = [f for f in bm.faces if f[lay] and W(f.calc_center_median()).x > 1e-7]
+    bmesh.ops.delete(bm, geom=gone, context='FACES')
+    loose = [v for v in bm.verts if not v.link_faces]
+    if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
+    left = [f for f in bm.faces if f[lay]]
+    seam = {v for f in left for v in f.verts if abs(v.co.x) < 1e-6}
+    for v in seam: v.co.x = 0.0
+    dup = bmesh.ops.duplicate(bm, geom=list(set(left) | {e for f in left for e in f.edges} | {v for f in left for v in f.verts}))
+    nv = [g for g in dup['geom'] if isinstance(g, bmesh.types.BMVert)]
+    nf = [g for g in dup['geom'] if isinstance(g, bmesh.types.BMFace)]
+    for v in nv: v.co.x = -v.co.x
+    bmesh.ops.reverse_faces(bm, faces=nf)
+    on = [v for v in bm.verts if abs(v.co.x) < 1e-6 and v.link_faces]
+    n0 = len(bm.verts)
+    bmesh.ops.remove_doubles(bm, verts=on, dist=op.get('weld', 1e-5))
+    return {'kept_parts': sorted(keep), 'right_faces_deleted': len(gone), 'left_faces_copied': len(nf),
+            'seam_verts_welded': n0 - len(bm.verts)}
 
 
 def _span(P):
@@ -421,6 +513,9 @@ def reshape(bm, op):
         pv.x = side * abs(pv.x)
         sc = op.get('scale', 1.0)
         P = [pv + (p - pv) * sc for p in P]
+        if 'scale3' in op:   # (per axis, weapon frame, about the pivot: a crown squashed under the sight line)
+            k3 = op['scale3']
+            P = [Vector((pv.x + (p.x - pv.x) * k3[0], pv.y + (p.y - pv.y) * k3[1], pv.z + (p.z - pv.z) * k3[2])) for p in P]
         if 'thick' in op:
             xs = [p.x for p in P]; cx = (max(xs) + min(xs)) / 2; k = op['thick'] / max(max(xs) - min(xs), 1e-6)
             P = [Vector((cx + (p.x - cx) * k, p.y, p.z)) for p in P]
@@ -430,6 +525,7 @@ def reshape(bm, op):
         if 'z_back' in op: d.z = op['z_back'] - max(p.z for p in P)
         if 'z_front' in op: d.z = op['z_front'] - min(p.z for p in P)
         mv = op.get('move', (0, 0, 0)); d += Vector((side * mv[0], mv[1], mv[2]))
+        d += Vector(op.get('shift', (0, 0, 0)))   # (absolute: not mirrored by side)
         P = [p + d for p in P]
         root = pv + d
         tips = []
@@ -544,6 +640,34 @@ def contour(bm, op):
             except ValueError: pass
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
     return {'faces': len(fs), 'cuts': cut}
+
+
+def lines(bm, op, tags):
+    """a thin crisp strip (a glow line) along a border on the op's faces: the contour iso-line of field value `cf_at`
+       (the edges whose two corners carry it, see contour()) or a plane cut (`plane`: {"co", "no"}, weapon frame); those
+       edges are bevelled `width` to each side and the new faces tagged `tag` (colour them with {"tag": ..})"""
+    lay = bm.verts.layers.float['cf']
+    tl = bm.faces.layers.int['tag']
+    if 'plane' in op:
+        fs = _faces_of(bm, op)
+        co, no = B(op['plane']['co']), B(op['plane']['no']).normalized()
+        geom = list(set(fs) | {e for f in fs for e in f.edges} | {v for f in fs for v in f.verts})
+        bmesh.ops.bisect_plane(bm, geom=geom, plane_co=co, plane_no=no, dist=1e-6)
+        fset = set(_faces_of(bm, op))
+        on = lambda v: abs((v.co - co).dot(no)) < 1e-6
+    else:
+        fset = set(_faces_of(bm, op))
+        t = op['cf_at']
+        on = lambda v: abs(v[lay] - t) < 1e-6
+    eds = [e for e in bm.edges if on(e.verts[0]) and on(e.verts[1]) and len(e.link_faces) == 2
+           and all(f in fset for f in e.link_faces)]
+    if not eds: return {'tag': op['tag'], 'edges': 0}
+    res = bmesh.ops.bevel(bm, geom=eds, offset=op.get('width', 0.0012), offset_type='OFFSET', segments=1, profile=0.5,
+                          affect='EDGES', clamp_overlap=True)
+    tid = tags.setdefault(op['tag'], len(tags) + 1)
+    for f in res['faces']: f[tl] = tid
+    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    return {'tag': op['tag'], 'edges': len(eds), 'faces': len(res['faces'])}
 
 
 def blend(bm, op):
@@ -683,13 +807,18 @@ def run_inlays(bm, rec, tags):
         ids = select_parts(il['part'], info, bm)
         base = split_off(bm, [f for f in bm.faces if pid[f] in ids])
         cy, cz = il['c']
-        poly = star_outline(cy, cz, il['R'], il['r'], il.get('points', 4), il.get('turn', 0.0))
+        if il.get('shape') == 'oval':   # (a painted-on face's eye or bill: an ellipse ry tall, rz long)
+            ry, rz, nn = il['ry'], il['rz'], il.get('n', 20)
+            poly = [(cy + ry * math.sin(2 * math.pi * i / nn), cz + rz * math.cos(2 * math.pi * i / nn)) for i in range(nn)]
+        else:
+            poly = star_outline(cy, cz, il['R'], il['r'], il.get('points', 4), il.get('turn', 0.0))
         tools = []
         for sx in il.get('sides', [-1, 1]):
             # the surface's height under the star: the farthest the part reaches out on that side inside its footprint
             ys = [p[0] for p in poly]; zs = [p[1] for p in poly]
             xs = [abs(W(v.co).x) for v in base.verts if sx * W(v.co).x > 0 and min(ys) <= W(v.co).y <= max(ys) and min(zs) <= W(v.co).z <= max(zs)]
-            top = (max(xs) if xs else il.get('x', 0.03)) + il.get('proud', 0.0015)
+            if 'x' in il: xs.append(il['x'])   # (a floor: the corners in a small footprint can all be inside ones)
+            top = (max(xs) if xs else 0.03) + il.get('proud', 0.0015)
             inner = max(0.002, top - il.get('depth', 0.012))
             tools.append(star_prism(poly, sx * inner, sx * top))
         n0 = tri_count(base)
@@ -878,7 +1007,7 @@ def hexrgb(h):
 def palette_of(rec):
     out = {}
     for k, v in rec.get('palette', {}).items():
-        out[k] = {'color': v, 'kind': 'p', 'alpha': 1.0} if isinstance(v, str) else {'color': v[0], 'kind': v[1], 'alpha': 1.0}
+        out[k] = {'color': v, 'kind': 'p', 'alpha': 1.0} if isinstance(v, str) else             {'color': v[0], 'kind': v[1], 'alpha': float(v[2]) if len(v) > 2 else 1.0}   # ([colour, 'g', 0.7]: glass)
     return out
 
 
@@ -940,6 +1069,8 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     meta['parts_turned_out'] = 0
     meta['decimate'] = decimate_parts(bm, rec)
     meta['nonmanifold_after_decimate'] = sum(1 for e in bm.edges if not e.is_manifold)
+    meta['straighten'] = [straighten(bm, op) for op in rec.get('straighten', [])]
+    if rec.get('mirror'): meta['mirror'] = mirror(bm, rec['mirror'])
     meta['flatten'] = [flatten(bm, op) for op in rec.get('flatten', [])]
     meta['nonmanifold_after_flatten'] = sum(1 for e in bm.edges if not e.is_manifold)
     meta['reshape'] = [reshape(bm, op) for op in rec.get('reshape', [])]
@@ -973,12 +1104,24 @@ def clean(raw, base_id, skin_id, rec, out_dir):
             for f in caps:   # (a cap belongs to the side it closes)
                 nb = [g for e in f.edges for g in e.link_faces if g is not f]
                 f[node_lay] = k if any(g in ins for g in nb) else (nb[0][node_lay] if nb else 0)
+            # (each cap facing out of its own half: a Tripo part is often open, so the fill can come out facing in,
+            # and then it lies on the other half's cap facing the same way, a flicker pair the size of the cut)
+            lo, hi = nd['box']
+            for f in caps:
+                f.normal_update()
+                c = W(f.calc_center_median()); nrm = W(f.normal) - W(Vector((0.0, 0.0, 0.0)))
+                for a in range(3):
+                    for at, sgn in ((lo[a], -1.0), (hi[a], 1.0)):
+                        if abs(c[a] - at) < 1e-5:
+                            want = sgn if f[node_lay] == k else -sgn   # (the inside's cap faces out of the box)
+                            if nrm[a] * want < 0: f.normal_flip()
             meta['nodes'].append({'node': nd['node'], 'cut_faces': len(inside), 'caps': len(caps)})
         else:
             for f in faces: f[node_lay] = k
             meta['nodes'].append({'node': nd['node'], 'parts': sorted(ids), 'tris': sum(len(f.verts) - 2 for f in faces)})
     rec['_node_names'] = names
     meta['contours'] = [contour(bm, op) for op in rec.get('contours', [])]
+    meta['lines'] = [lines(bm, op, tags) for op in rec.get('lines', [])]
     meta['turned_parts'] = TURNED
     meta['duplicate_faces'] += dedupe_faces(bm)   # (a hole fill can lay a copy over a face Tripo left unwelded)
     for f in fill_holes(bm, 16):   # (and close what the copy's removal opened; the patch joins its neighbour's node)
@@ -1027,6 +1170,194 @@ def halo(g, piece, c, ro, ri, li, L=0.009, tilt=18.0, spokes=3, r_hub=0.012, spo
         g.cyl(piece + '__gold', spoke_r, tuple(c + d * r_hub), tuple(c + d * (ri + 0.0035)), sides=6, bev=0.0)
 
 
+def brake(g, pieces, y, z_tip, z_rear, r=0.033, ri=0.024, ports=3, star=0.016, shroud=None, bands=(), inner=0.0145,
+          bore=0.0085, sides=12, shroud_sides=14):
+    """a shaped muzzle brake on the bore line (y), built the Blender-artist way (artist_kit booleans + bevels):
+       a hollow body (r / ri, a flat facet facing each side) with `ports` slots through each side showing a dark inner
+       barrel, gold rims at both ends, a chamfered nose with the bore, and a lit 4-point star let into each flank in a
+       moat (its face 0.8 mm under the facet, 3.7 mm over the moat's floor: nothing to flicker). shroud = (r, z_front,
+       z_back): a round tube over the bare barrel behind it, cut into pearl and gold bands at `bands` [(z0, z1), ...]
+       (adjacent segments, one radius: nothing laid on anything). pieces: {"body", "gold", "dark", "lit"} piece names"""
+    import artist_kit as AK
+    tw = math.pi / sides   # (a flat facet facing each side: the stars' seat)
+    def C(z): return (0.0, y, z)
+    zr0, zr1 = z_rear - 0.010, z_rear + 0.002          # the rear rim (overlaps the barrel's end)
+    zf0, zf1 = z_tip + 0.020, z_tip + 0.012            # front rim .. nose
+    rim_r = AK.tube(r, inner + 0.0015, C(zr1), C(zr0), sides=sides, turn=tw)
+    body = AK.tube(r, ri, C(zr0), C(zf0), sides=sides, turn=tw)
+    rim_f = AK.tube(r, bore + 0.002, C(zf0), C(zf1), sides=sides, turn=tw)
+    nose = AK.cut(AK.cyl(r * 0.86, C(z_tip), C(zf1), sides=sides, r2=r, turn=tw), AK.cyl(bore, C(z_tip - 0.01), C(zf1 + 0.003), sides=10))
+    core = AK.cyl(inner, C(zf0 - 0.004), C(zr0 + 0.002), sides=8)
+    L = zr0 - zf0                                   # (negative: the body runs toward -z)
+    cut = []
+    star_z = zr0 - 0.22 * abs(L) if star else None
+    fx = r * math.cos(tw)
+    pz0 = (star_z - star - 0.004) if star else zr0 - 0.006
+    span = pz0 - (zf0 + 0.005)
+    plen = span / ports - 0.004
+    for k in range(ports):
+        z1 = pz0 - k * (plen + 0.004); z0 = z1 - plen
+        for sx in (-1, 1):
+            cut.append(AK.prism([(z0, y - 0.0045), (z1, y - 0.0045), (z1, y + 0.0045), (z0, y + 0.0045)], 0.022, x=sx * fx))
+    stars = []
+    if star:
+        def st(R, rr):
+            return [(R * math.sin(a) if i % 2 == 0 else rr * math.sin(a), R * math.cos(a) if i % 2 == 0 else rr * math.cos(a))
+                    for i, a in enumerate(math.pi / 4 * k for k in range(8))]
+        for sx in (-1, 1):
+            U, V = (0.0, 0.0, -sx), (0.0, 1.0, 0.0)
+            O = (sx * fx, y, star_z)
+            cut.append(AK.oprism(st(star + 0.0022, star * 0.36 + 0.0016), O, U, V, -0.0045, 0.01))
+            stars.append(AK.oprism(st(star, star * 0.33), O, U, V, -0.0046, -0.0008))
+    g.put(pieces['body'], AK.cut(body, *cut), AK.soft(nose, 0.0015, seg=1))
+    g.put(pieces['gold'], AK.soft(rim_r, 0.0012, seg=1), AK.soft(rim_f, 0.0012, seg=1))
+    g.put(pieces['dark'], core)
+    if stars: g.put(pieces['lit'], *stars)
+    if shroud:
+        sr, s0, s1 = shroud
+        cuts = sorted([s0, s1] + [z for b in bands for z in b])
+        segs = list(zip(cuts[:-1], cuts[1:]))
+        for z0, z1 in segs:
+            is_band = any(abs(z0 - b[0]) < 1e-9 and abs(z1 - b[1]) < 1e-9 for b in bands)
+            g.put(pieces['gold'] if is_band else pieces['shroud'], AK.cyl(sr, C(z0), C(z1), sides=shroud_sides))
+
+
+def _loft(rings, caps=(True, True)):
+    """an artist_kit solid through rings of weapon-frame points (every ring the same count, in order round it)"""
+    import artist_kit as AK
+    bm = bmesh.new()
+    V = [[bm.verts.new(B(Vector(p))) for p in ring] for ring in rings]
+    m = len(rings[0])
+    for i in range(len(rings) - 1):
+        for k in range(m):
+            j = (k + 1) % m
+            bm.faces.new([V[i][k], V[i][j], V[i + 1][j], V[i + 1][k]])
+    if caps[0]: bm.faces.new(V[0][::-1])
+    if caps[1]: bm.faces.new(V[-1])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    return AK._obj(bm)
+
+
+def kblade(g, pieces, outline, z0=-0.139, tk=(0.0056, 0.0046), ty=0.834, n=96, m=10, edge=0.24, spine=0.12,
+           tip_w=0.0024, waves=3.5, band=(0.34, 0.2), skew=0.16, foam=0.0, tip_piece=None):
+    """a katana blade rebuilt in kit (a Tripo blade is a soft lump): ONE closed solid lofted through sections of the
+       outline [(z, y_edge, y_back)] from the root (z0: the game stretches every kat_blade piece from here, and every
+       colour's faces start at the root ring, so each piece's back end is exactly z0) to the tip, its faces coloured:
+       a bevel to a SHARP edge (pieces['edge']), the flat face with a wave band (pieces['wave'], its top a run of
+       `waves` rolling crests leaning toward the tip; an optional thin `foam` line, pieces['foam']), the pale face
+       (pieces['blade']) and a chamfered spine (pieces['spine']); past `ty` (the yokote) the point in pieces['edge'] (or
+       tip_piece). One solid: no hidden faces inside it to flicker"""
+    def at(z):
+        for i in range(len(outline) - 1):
+            (za, ea, ba), (zb, eb, bb) = outline[i], outline[i + 1]
+            if za >= z >= zb:
+                u = (za - z) / (za - zb) if za != zb else 0.0
+                return ea + (eb - ea) * u, ba + (bb - ba) * u
+        return outline[-1][1], outline[-1][2]
+    zt = outline[-1][0]
+    def sec(t):
+        z = z0 + (zt - z0) * t
+        ye, yb = at(z)
+        if yb - ye < tip_w:
+            c = (ye + yb) / 2; ye, yb = c - tip_w / 2, c + tip_w / 2
+        k = tk[0] + (tk[1] - tk[0]) * min(t / ty, 1.0)
+        if t > ty: k *= 1.0 - 0.7 * ((t - ty) / (1 - ty)) ** 1.3
+        return z, ye, yb, k
+    def thick(f):
+        if f <= edge: return 0.1 + 0.9 * f / edge
+        if f >= 1 - spine: return 1.0 - 0.45 * (f - (1 - spine)) / spine
+        return 1.0
+    def crest(t):   # 0..1: a rolling wave, its crest pushed toward the tip by `skew`
+        p = t / ty * waves
+        p = p + skew * math.sin(2 * math.pi * p)
+        return 0.5 - 0.5 * math.cos(2 * math.pi * p)
+    def hband(t):
+        tt = min(t, ty)
+        return band[0] + band[1] * crest(tt) * min(1.0, tt / 0.05 + 0.3)
+    use_foam = foam > 0
+    def fs(t):   # the section's cut points across the blade, edge (0) to back (1)
+        h = hband(t)
+        out = [0.0, edge, h] + ([h + foam] if use_foam else []) + [1 - spine, 1.0]
+        return out
+    names = ['edge', 'wave'] + (['foam'] if use_foam else []) + ['blade', 'spine']   # (the band between cut k, k+1)
+    ts = [ty * i / n for i in range(n + 1)] + [ty + (1 - ty) * i / m for i in range(1, m + 1)]
+    bm = bmesh.new()
+    rings = []
+    for t in ts:
+        z, ye, yb, k = sec(t)
+        F = fs(t)
+        right = [(thick(f) * k, ye + (yb - ye) * f, z) for f in F]
+        left = [(-x, y, zz) for x, y, zz in reversed(right)]
+        rings.append([bm.verts.new(B(Vector(p))) for p in right + left])
+    nf = len(fs(0.0))
+    cnt = 2 * nf
+    def colour(k, tmid):   # ring edge k (right side k = 0..nf-2 up, top k = nf-1, left down, bottom k = 2nf-1)
+        if k == nf - 1: return pieces['spine']   # (the spine's flat top)
+        if k == cnt - 1: return pieces['edge']    # (the edge's thin bottom)
+        band_i = k if k < nf - 1 else (cnt - 2 - k)
+        nm = names[band_i]
+        if tmid > ty and nm != 'spine': return tip_piece or pieces['edge']
+        return pieces[nm]
+    col = {}
+    for i in range(len(rings) - 1):
+        tmid = (ts[i] + ts[i + 1]) / 2
+        for k in range(cnt):
+            j = (k + 1) % cnt
+            f = bm.faces.new([rings[i][k], rings[i][j], rings[i + 1][j], rings[i + 1][k]])
+            col[f] = colour(k, tmid)
+    f = bm.faces.new(rings[0][::-1]); col[f] = pieces['blade']        # (the root: inside the habaki)
+    f = bm.faces.new(rings[-1]); col[f] = tip_piece or pieces['edge']
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    import artist_kit as AK
+    for piece in sorted(set(col.values())):
+        sub = bm.copy()
+        sub.faces.ensure_lookup_table(); bm.faces.ensure_lookup_table()
+        gone = [sub.faces[i] for i, f in enumerate(bm.faces) if col[f] != piece]
+        bmesh.ops.delete(sub, geom=gone, context='FACES')
+        g.put(piece, AK._obj(sub))
+    bm.free()
+
+
+def candy(g, pieces, y, z0, z1, r, n=7, tilt=24.0, sides=16, x=0.0):
+    """a striped round grip (a candy-cane wrap) along z on (x, y): n slabs between parallel planes tilted `tilt`
+       degrees (flat ends), alternating pieces[0], pieces[1]; each slab a closed solid, neighbours share hidden caps"""
+    tn = math.tan(math.radians(tilt))
+    L = (z1 - z0) / n
+    def ring(zc, slant):
+        return [(x + r * math.cos(2 * math.pi * i / sides), y + r * math.sin(2 * math.pi * i / sides),
+                 zc + (r * math.sin(2 * math.pi * i / sides) * tn if slant else 0.0)) for i in range(sides)]
+    for k in range(n):
+        a = ring(z0 + L * k, k > 0)
+        b = ring(z0 + L * (k + 1), k < n - 1)
+        g.put(pieces[k % 2], _loft([a, b]))
+
+
+def hoop(g, pieces, c, R, r, n=12, sides=12, steps=3, bands=(), band_w=14.0, band_r=1.14, gap=None):
+    """a striped ring standing in the y-z plane (a pommel loop) round c: tube radius r on a circle of radius R, cut
+       into n segments alternating pieces[0], pieces[1]; `bands` = angles (degrees, 0 = toward -z, 90 = up) of gold
+       collars (pieces[2], radius r * band_r, band_w degrees wide); gap = (from, to) degrees left open (a hook)"""
+    c = Vector(c)
+    def ring(phi, rad):
+        d = Vector((0.0, math.sin(phi), -math.cos(phi)))   # (the loop's radial direction in the y-z plane)
+        o = c + d * R
+        return [tuple(o + (Vector((1.0, 0.0, 0.0)) * math.cos(2 * math.pi * i / sides) + d * math.sin(2 * math.pi * i / sides)) * rad)
+                for i in range(sides)]
+    marks = sorted([(b - band_w / 2, b + band_w / 2) for b in bands])
+    seg = 360.0 / n
+    def in_band(a):
+        return any(m0 <= a + w <= m1 for m0, m1 in marks for w in (-360.0, 0.0, 360.0))
+    edges = sorted({round(seg * i, 6) for i in range(n + 1)} | {round(e % 360.0, 6) for mk in marks for e in mk})
+    cuts = []   # (start deg, end deg, piece, radius)
+    for a0, a1 in zip(edges[:-1], edges[1:]):
+        mid = (a0 + a1) / 2
+        if gap and gap[0] <= mid <= gap[1]: continue
+        inb = in_band(mid)
+        cuts.append((a0, a1, pieces[2] if inb else pieces[int(mid // seg) % 2], r * band_r if inb else r))
+    for a0, a1, piece, rad in cuts:
+        st = max(1, int(round((a1 - a0) / 30.0 * steps)))
+        g.put(piece, _loft([ring(math.radians(a0 + (a1 - a0) * j / st), rad) for j in range(st + 1)]))
+
+
 def _sub(v, SY, BY):
     if isinstance(v, str): return {'SY': SY, 'BY': BY}.get(v, v)
     if isinstance(v, list): return [_sub(x, SY, BY) for x in v]
@@ -1041,11 +1372,15 @@ def add_kit(g, items, SY, BY):
         it = _sub(it, SY, BY)
         fn, piece, args, kw = it['fn'], it.get('piece'), it.get('args', []), it.get('kw', {})
         if fn == 'halo': halo(g, piece, **kw)
+        elif fn == 'brake': brake(g, it['pieces'], **kw)
+        elif fn == 'kblade': kblade(g, it['pieces'], **kw)
+        elif fn == 'candy': candy(g, it['pieces'], **kw)
+        elif fn == 'hoop': hoop(g, it['pieces'], **kw)
         elif fn in ('box', 'prism', 'cyl', 'cylz', 'ring', 'ball', 'xprism', 'yprism', 'window'):
             args = [tuple(a) if isinstance(a, list) and fn in ('box', 'cyl', 'ring', 'ball') else a for a in args]
             if fn in ('prism', 'xprism', 'yprism'): args = [[tuple(p) for p in args[0]]] + list(args[1:])
             getattr(g, fn)(piece, *args, **kw)
-        elif fn in ('rifle_rear', 'rifle_front', 'notch', 'blade', 'bead'): getattr(SG, fn)(g, piece, *args, **kw)
+        elif fn in ('rifle_rear', 'rifle_front', 'notch', 'blade', 'bead', 'scope_slim'): getattr(SG, fn)(g, piece, *args, **kw)
         elif fn in ('trigger', 'guard'): getattr(GM, fn)(g, piece, *args, **kw)
         else: raise SystemExit('tripo_gun: unknown add fn %r' % fn)
 
@@ -1061,8 +1396,8 @@ def builder(meta_path):
         gunkit.use_style('C')
         g = ArtGun('w_' + meta['key'])
         g.spots = dict(base.spots)
-        for k, v in palette_of(rec).items(): g.slot(k, v['color'], v['kind'])
-        SY, BY = g.spots['sight'][1], g.spots['muzzle'][1]
+        for k, v in palette_of(rec).items(): g.slot(k, v['color'], v['kind'], v['alpha'])
+        SY, BY = g.spots.get('sight', g.spots['muzzle'])[1], g.spots['muzzle'][1]   # (a melee base has no sight)
         add_kit(g, rec.get('add', []), SY, BY)
         g.done()
         blend = os.path.join(os.path.dirname(meta_path), os.path.basename(meta['blend']))
@@ -1247,7 +1582,7 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
     o = _bm_obj(bm, 'raw'); bm.free(); _grey([o])
     _sun(sc, (math.radians(60), 0, math.radians(-90)))
     _cam(sc, mid + side, mid, ortho=L * 1.12)
-    panels.append((_render(os.path.join(pdir, '_p_raw.png')), 'Tripo raw (grey), fitted to the AR'))
+    panels.append((_render(os.path.join(pdir, '_p_raw.png')), 'Tripo raw (grey), fitted to the %s' % base_id.upper()))
     # cleaned + coloured + shells: three-quarter, left side
     sc = _scene(Wd, Ht); _import(sh)
     _sun(sc, (math.radians(50), 0, math.radians(-40)))
@@ -1279,22 +1614,37 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
     _sun(sc, (math.radians(35), 0, math.radians(20)))
     _cam(sc, (0, 0, 0), (0, 1, 0), fov=70)
     panels.append((_render(os.path.join(pdir, '_p_base.png'), crop=True), 'live base %s in hand, for scale' % base_id.upper()))
-    # aim view (approximate: the eye 0.11 m behind the sight spot, zoom 1.5)
-    sc = _scene(Wd, Ht); _import(sh)
-    _sun(sc, (math.radians(35), 0, math.radians(20)))
-    sp = meta['spots']['sight']
-    eye = B((0, sp[1], sp[2] + 0.11))
-    _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
-    panels.append((_render(os.path.join(pdir, '_p_aim.png')), 'aim view (approx.: eye 0.11 m behind the rear sight)'))
-    hide = ((rec or meta.get('recipe', {})).get('sheet') or {}).get('aim_hide')   # piece-name prefixes (holds.json ads hide)
+    sp = meta['spots'].get('sight')
     aim_hidden = None
-    if hide:
-        sc = _scene(Wd, Ht); objs = _import(sh)
-        for o in objs:
-            if o.type == 'MESH' and any(o.name.startswith(h) for h in hide): bpy.data.objects.remove(o, do_unlink=True)
+    if sp is None:   # (a melee weapon has no sight: that panel shows it from the tip instead, edge on)
+        sc = _scene(Wd, Ht); _import(sh)
+        _sun(sc, (math.radians(35), 0, math.radians(20)))
+        _cam(sc, mid + B((0, 0, -3.0)), mid, ortho=max(hi[1] - lo[1], hi[0] - lo[0]) * 1.4)
+        panels.append((_render(os.path.join(pdir, '_p_aim.png')), 'from the tip, edge on'))
+    else:
+        # aim view (approximate: the eye 0.11 m behind the sight spot, zoom 1.5)
+        sc = _scene(Wd, Ht); _import(sh)
+        _sun(sc, (math.radians(35), 0, math.radians(20)))
+        try:   # (the eye's distance behind the sight: 0.17 + the gun's holds.json ads aimZ; the AR's is -0.06)
+            hj = json.load(open(os.path.join(HERE, 'holds.json')))
+            back = 0.17 + float(hj.get(base_id, {}).get('ads', {}).get('aimZ', -0.06))
+        except Exception: back = 0.11
+        eye = B((0, sp[1], sp[2] + back))
+        _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
+        panels.append((_render(os.path.join(pdir, '_p_aim.png')), 'aim view (approx.: eye %.2f m behind the sight)' % back))
+        sc = _scene(Wd, Ht)   # (the live base gun from the same eye: what the aim picture should look like)
+        gun_set.BUILD[base_id]().to_scene()
         _sun(sc, (math.radians(35), 0, math.radians(20)))
         _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
-        aim_hidden = (_render(os.path.join(pdir, '_p_aim_hidden.png')), 'aim view, %s hidden (ADS hide list)' % ', '.join(hide))
+        _render(os.path.join(pdir, '_p_base_aim.png'))
+        hide = ((rec or meta.get('recipe', {})).get('sheet') or {}).get('aim_hide')   # piece-name prefixes (holds.json ads hide)
+        if hide:
+            sc = _scene(Wd, Ht); objs = _import(sh)
+            for o in objs:
+                if o.type == 'MESH' and any(o.name.startswith(h) for h in hide): bpy.data.objects.remove(o, do_unlink=True)
+            _sun(sc, (math.radians(35), 0, math.radians(20)))
+            _cam(sc, eye, eye + B((0, 0, -1)), fov=70 / 1.5)
+            aim_hidden = (_render(os.path.join(pdir, '_p_aim_hidden.png')), 'aim view, %s hidden (ADS hide list)' % ', '.join(hide))
     P = dict(zip(('raw', '34', 'side', 'top', 'hand', 'base', 'aim'), panels))
     relabel = lambda pl, l: (pl[0], l)
     if compare and close and os.path.exists(os.path.join(compare, '_p_close.png')):
@@ -1335,7 +1685,9 @@ def closeups(glb, spots, pdir, Wd=900, Ht=560):
     for sp in spots:
         sc = _scene(Wd, Ht); _import(glb)
         d, up = VIEWS[sp.get('view', 'left')]
-        _sun(sc, (math.radians(50), 0, math.radians(-60)))
+        _sun(sc, (math.radians(50), 0, math.radians(-60)), strength=0.5 if sp.get('dark') else 1.8)
+        if sp.get('dark'):   # (a dusk light: the Neon glow reads)
+            sc.world.node_tree.nodes['Background'].inputs[1].default_value = 0.06
         at = B(sp['at'])
         _cam(sc, at + d * 3.0, at, ortho=sp.get('size', 0.15), up=up)
         out.append((_render(os.path.join(pdir, '_c_%s.png' % sp['name'])), sp.get('label', sp['name'])))
@@ -1471,7 +1823,17 @@ def main(argv):
     t0 = time.time()
     if opt('--stage') == 'closeups':   # (the recipe's sheet.closeups from out_dir's shelled glb, into --into <dir>)
         spots = (rec.get('sheet') or {}).get(opt('--set') or 'closeups', [])
-        for png, label in closeups(os.path.join(out_dir, K + '_sh.glb'), spots, opt('--into') or os.path.join(out_dir, 'sheet', K)):
+        glb = os.path.join(out_dir, K + '_sh.glb')
+        into = opt('--into') or os.path.join(out_dir, 'sheet', K)
+        if '--raw' in rest:   # (the same views of the RAW model, fitted into the kit frame: the BEFORE pictures)
+            os.makedirs(into, exist_ok=True)
+            import gun_set
+            s_, t_, R_, _ = solve_fit(rec, dict(gun_set.BUILD[base_id]().spots))
+            bm = load_raw(raw); fit_bmesh(bm, s_, t_, R_)
+            o = _bm_obj(bm, 'raw'); bm.free(); _grey([o])
+            glb = os.path.join(into, '_rawfit.glb')
+            bpy.ops.export_scene.gltf(filepath=glb, export_format='GLB', use_selection=False, export_yup=True)
+        for png, label in closeups(glb, spots, into):
             print('CLOSEUP', png, label)
         return
     if opt('--stage') == 'sheet':   # (only the sheet again, from the files a full run left in out_dir)
