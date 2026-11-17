@@ -383,6 +383,27 @@ rebuilt, each with one big new shape the hand view sees, and fewer colours.
   in Play (Dust Drover with a wood wrap on, Streamliner, J-A rifle). Pictures: `gun-models/space-western.jpg`,
   `japanese-decorated.jpg`, `skins-in-hand-v478.jpg`.
 
+### Ducky VIP v3 (17 November 2026, place version 480)
+
+The owner: "Can we do a complete redo of the ducky guns except the revolver it looks clean on it and cute!!", then
+"The duck beak is what looks bad looks nothing like beak!!".
+- Bubble Bath (Belt Sander) and Ribbon Duck (Katana) are rebuilt in Wish Duck's clean style, on their base guns' own
+  outlines. All three keep their keys, so VIP owners keep them.
+- **The shared bill:** one rubber-duck bill on all three, shaped like the Royal Duck hat's bill. It is `duck_bill()` in
+  `tools/roblox/gun_sets_ducky_v3.py`: a wide flat spoon about 1.8 times as wide as it is deep, the upper half
+  overhanging, a dark seam, the tip turned up.
+- Wish Duck changed only its bill. Its barrel is now a slim muzzle tube coming out of the mouth.
+- **Bubble Bath:** the duck's head holds the barrel, three glowing hearts sit on the dark ammo box, and soap bubbles
+  puff from the bill after a burst (`SkinSets.FX`, `afterFire`).
+- **Ribbon Duck:** a clean blade with the duck's head as the guard and hearts on the pommel.
+- **Checked:** `gun_check` 0 loose, the z-fight scan 0 pairs on the exported glbs, the install, and in hand in Play.
+- **Pictures:** `gun-models/ducky-v3.jpg`, `ducky-v3-bills.jpg`, `ducky-v3-in-hand.jpg`. The revolver in the in-hand
+  photo wears the test player's wood wrap.
+- **Not yet right:** the dimmed hearts still look pale near the camera. The exporter brightens the Neon colour, so the
+  dim slot needs a darker source colour. That fix goes in with the slim-sights rebuild.
+- `gun_sets_ducky_v3.py` builds only when named (`JF_EXTRA=gun_sets_ducky_v3`) until the slim-sight kit
+  (`gun_sights.py`) it imports is committed.
+
 ## How it was judged
 
 An independent judge (a separate agent that saw only the pictures and the style notes) scored every weapon against

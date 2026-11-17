@@ -171,17 +171,22 @@ SkinSets.FX = {
 		glow = { colour = Color3.fromRGB(255, 156, 69) },
 		flash = Color3.fromRGB(255, 156, 69), tracer = Color3.fromRGB(255, 156, 69),
 	},
-	-- the magical-girl Ducky: twinkling sparkles off the gems and the bow's star clip, soap bubbles drifting up, a pink-gold
-	-- glitter trail along a wing's gold edge (the katana: its blade), a soft pink-gold flash, a pink tracer
+	-- the Ducky VIP set (v3, 17 Nov: Bubble Bath and Ribbon Duck redone in Wish Duck's clean style, one shared rubber-duck
+	-- bill on all three): sparkles off the heart gems and the bow's star clip, soap bubbles from the bill (a puff after a
+	-- burst), a pink-gold trail, a soft pink-gold flash, a pink tracer
 	lmg_ducky = {
 		idle = {
 			{ kind = "sparkle", colour = Color3.fromRGB(246, 215, 138), rate = 3, life = 0.6, size = 0.012, drift = "rise",
-				at = { { -0.061, 0.068, -0.136 }, { -0.063, 0.038, -0.024 }, { -0.098, -0.152, -0.096 } } },
-			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 1, life = 1.6, size = 0.02, drift = "rise",
-				at = { { -0.086, -0.066, -0.13 }, { -0.066, 0.014, -0.09 }, { 0, 0.095, 0.47 } } },
+				at = { { -0.096, -0.149, -0.137 }, { -0.096, -0.149, -0.089 }, { -0.096, -0.149, -0.041 }, -- the heart box (rides the mag)
+					{ -0.072, 0.041, -0.51 } } }, -- the bow's star clip, left of the head
+			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 0.8, life = 1.6, size = 0.018, drift = "rise",
+				at = { { -0.04, 0.014, -0.66 }, { -0.02, 0.03, -0.684 } } }, -- the bill's left mouth corner and tip
+			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 6, life = 1.2, size = 0.014, drift = "rise",
+				at = { { -0.04, 0.014, -0.66 }, { -0.02, 0.03, -0.684 } }, afterFire = true }, -- a puff after a burst
 		},
 		glow = { colour = Color3.fromRGB(242, 122, 168) },
-		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.02, width1 = 0, segs = { { { -0.05, 0.051, -0.044 }, { -0.046, 0.07, 0.064 } } } },
+		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.02, width1 = 0,
+			segs = { { { -0.048, 0.037, 0.014 }, { -0.049, 0.052, 0.105 } } } }, -- the left wing's gold edge
 		flash = Color3.fromRGB(255, 225, 234), tracer = Color3.fromRGB(244, 154, 192),
 	},
 	revolver_ducky = {
@@ -198,9 +203,7 @@ SkinSets.FX = {
 	katana_ducky = {
 		idle = {
 			{ kind = "sparkle", colour = Color3.fromRGB(246, 215, 138), rate = 2.5, life = 0.6, size = 0.01, drift = "rise",
-				at = { { -0.04, 0.072, -0.12 }, { 0.04, 0.072, -0.12 }, { 0, 0.003, 0.143 } } },
-			{ kind = "bubble", colour = Color3.fromRGB(241, 228, 234), rate = 0.9, life = 1.5, size = 0.018, drift = "rise",
-				at = { { 0, 0.058, -0.25 }, { 0, 0.07, -0.15 } } },
+				at = { { -0.027, 0.002, 0.115 }, { -0.036, 0.048, -0.102 } } }, -- the left pommel heart, the bow's star clip
 		},
 		glow = { colour = Color3.fromRGB(242, 122, 168) },
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.04, width1 = 0, -- (a glitter swing trail off the blade)

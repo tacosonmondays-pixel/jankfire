@@ -40828,11 +40828,11 @@
     "paint": "p3e3b47"
    },
    {
-    "name": "belt_00_wzN__pearl",
-    "upload": "belt_00_wzN__pearl__pece6e1",
-    "tris": 80,
+    "name": "barrel_wzB__metal2",
+    "upload": "barrel_wzB__metal2__p4b4254",
+    "tris": 352,
     "look": {
-     "color": "ece6e1",
+     "color": "4b4254",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -40840,47 +40840,95 @@
      "tex": false
     },
     "lo": [
-     -0.0666,
+     -0.024,
+     -0.034,
+     -0.783
+    ],
+    "hi": [
+     0.058,
+     0.05,
+     -0.27
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_00_wzN__metal2",
+    "upload": "belt_00_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0618,
+     -0.0017,
+     -0.115
+    ],
+    "hi": [
+     -0.0477,
+     0.0126,
+     -0.05
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_01_wzN__metal2",
+    "upload": "belt_01_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0673,
+     -0.0069,
+     -0.108
+    ],
+    "hi": [
+     -0.0527,
+     0.0071,
+     -0.043
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_02_wzN__metal2",
+    "upload": "belt_02_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0725,
+     -0.0124,
+     -0.115
+    ],
+    "hi": [
+     -0.0572,
      0.0012,
-     -0.0932
+     -0.05
     ],
-    "hi": [
-     -0.046,
-     0.0228,
-     -0.0716
-    ],
-    "paint": "pece6e1"
+    "paint": "p4b4254"
    },
    {
-    "name": "belt_01_wzN__bubble",
-    "upload": "belt_01_wzN__bubble__gcbd9e68c",
-    "tris": 80,
+    "name": "belt_03_wzN__metal2",
+    "upload": "belt_03_wzN__metal2__p4b4254",
+    "tris": 44,
     "look": {
-     "color": "cbd9e6",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 0.55,
-     "tex": false
-    },
-    "lo": [
-     -0.0766,
-     -0.0061,
-     -0.095
-    ],
-    "hi": [
-     -0.0551,
-     0.0166,
-     -0.0724
-    ],
-    "paint": "gcbd9e68c"
-   },
-   {
-    "name": "belt_02_wzN__pearl",
-    "upload": "belt_02_wzN__pearl__pece6e1",
-    "tris": 80,
-    "look": {
-     "color": "ece6e1",
+     "color": "4b4254",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -40888,167 +40936,23 @@
      "tex": false
     },
     "lo": [
-     -0.0738,
-     -0.0133,
-     -0.1175
+     -0.0772,
+     -0.0181,
+     -0.108
     ],
     "hi": [
-     -0.0512,
-     0.0104,
-     -0.0938
+     -0.0613,
+     -0.0053,
+     -0.043
     ],
-    "paint": "pece6e1"
+    "paint": "p4b4254"
    },
    {
-    "name": "belt_03_wzN__pearl",
-    "upload": "belt_03_wzN__pearl__pece6e1",
-    "tris": 80,
+    "name": "belt_04_wzN__metal2",
+    "upload": "belt_04_wzN__metal2__p4b4254",
+    "tris": 44,
     "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0715,
-     -0.0206,
-     -0.0929
-    ],
-    "hi": [
-     -0.048,
-     0.0042,
-     -0.0681
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "belt_04_wzN__bubble",
-    "upload": "belt_04_wzN__bubble__gcbd9e68c",
-    "tris": 80,
-    "look": {
-     "color": "cbd9e6",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 0.55,
-     "tex": false
-    },
-    "lo": [
-     -0.0835,
-     -0.0278,
-     -0.0952
-    ],
-    "hi": [
-     -0.0589,
-     -0.002,
-     -0.0693
-    ],
-    "paint": "gcbd9e68c"
-   },
-   {
-    "name": "belt_05_wzN__pearl",
-    "upload": "belt_05_wzN__pearl__pece6e1",
-    "tris": 80,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0796,
-     -0.0351,
-     -0.1224
-    ],
-    "hi": [
-     -0.054,
-     -0.0082,
-     -0.0955
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "belt_06_wzN__pearl",
-    "upload": "belt_06_wzN__pearl__pece6e1",
-    "tris": 80,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0765,
-     -0.0423,
-     -0.0926
-    ],
-    "hi": [
-     -0.0499,
-     -0.0144,
-     -0.0647
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "belt_07_wzN__bubble",
-    "upload": "belt_07_wzN__bubble__gcbd9e68c",
-    "tris": 80,
-    "look": {
-     "color": "cbd9e6",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 0.55,
-     "tex": false
-    },
-    "lo": [
-     -0.0903,
-     -0.0496,
-     -0.0953
-    ],
-    "hi": [
-     -0.0628,
-     -0.0206,
-     -0.0663
-    ],
-    "paint": "gcbd9e68c"
-   },
-   {
-    "name": "belt_08_wzN__pearl",
-    "upload": "belt_08_wzN__pearl__pece6e1",
-    "tris": 80,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0854,
-     -0.0568,
-     -0.1273
-    ],
-    "hi": [
-     -0.0568,
-     -0.0268,
-     -0.0973
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "belt_09_wzN__pearl",
-    "upload": "belt_09_wzN__pearl__pece6e1",
-    "tris": 80,
-    "look": {
-     "color": "ece6e1",
+     "color": "4b4254",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -41057,46 +40961,22 @@
     },
     "lo": [
      -0.0814,
-     -0.0641,
-     -0.0923
+     -0.024,
+     -0.115
     ],
     "hi": [
-     -0.0519,
-     -0.033,
-     -0.0612
+     -0.0648,
+     -0.0122,
+     -0.05
     ],
-    "paint": "pece6e1"
+    "paint": "p4b4254"
    },
    {
-    "name": "belt_10_wzN__bubble",
-    "upload": "belt_10_wzN__bubble__gcbd9e68c",
-    "tris": 80,
+    "name": "belt_05_wzN__metal2",
+    "upload": "belt_05_wzN__metal2__p4b4254",
+    "tris": 44,
     "look": {
-     "color": "cbd9e6",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 0.55,
-     "tex": false
-    },
-    "lo": [
-     -0.0972,
-     -0.0713,
-     -0.0955
-    ],
-    "hi": [
-     -0.0666,
-     -0.0392,
-     -0.0633
-    ],
-    "paint": "gcbd9e68c"
-   },
-   {
-    "name": "belt_11_wzN__pearl",
-    "upload": "belt_11_wzN__pearl__pece6e1",
-    "tris": 80,
-    "look": {
-     "color": "ece6e1",
+     "color": "4b4254",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -41104,21 +40984,189 @@
      "tex": false
     },
     "lo": [
-     -0.0911,
-     -0.0786,
-     -0.1322
+     -0.0846,
+     -0.0303,
+     -0.108
     ],
     "hi": [
-     -0.0596,
-     -0.0454,
-     -0.099
+     -0.0676,
+     -0.0196,
+     -0.043
     ],
-    "paint": "pece6e1"
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_06_wzN__metal2",
+    "upload": "belt_06_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0869,
+     -0.0367,
+     -0.115
+    ],
+    "hi": [
+     -0.0696,
+     -0.0275,
+     -0.05
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_07_wzN__metal2",
+    "upload": "belt_07_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.088,
+     -0.0431,
+     -0.108
+    ],
+    "hi": [
+     -0.0708,
+     -0.036,
+     -0.043
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_08_wzN__metal2",
+    "upload": "belt_08_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.088,
+     -0.0505,
+     -0.115
+    ],
+    "hi": [
+     -0.0709,
+     -0.0436,
+     -0.05
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_09_wzN__metal2",
+    "upload": "belt_09_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0871,
+     -0.0589,
+     -0.108
+    ],
+    "hi": [
+     -0.0698,
+     -0.05,
+     -0.043
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_10_wzN__metal2",
+    "upload": "belt_10_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.085,
+     -0.0668,
+     -0.115
+    ],
+    "hi": [
+     -0.0679,
+     -0.0565,
+     -0.05
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_11_wzN__metal2",
+    "upload": "belt_11_wzN__metal2__p4b4254",
+    "tris": 44,
+    "look": {
+     "color": "4b4254",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.082,
+     -0.0744,
+     -0.108
+    ],
+    "hi": [
+     -0.0653,
+     -0.0629,
+     -0.043
+    ],
+    "paint": "p4b4254"
+   },
+   {
+    "name": "belt_wzN__pink",
+    "upload": "belt_wzN__pink__pdc9db3",
+    "tris": 92,
+    "look": {
+     "color": "dc9db3",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.036,
+     -0.066,
+     -0.468
+    ],
+    "hi": [
+     0.036,
+     -0.006,
+     -0.215
+    ],
+    "paint": "pdc9db3"
    },
    {
     "name": "body_wzA__duck",
     "upload": "body_wzA__duck__pd0b551",
-    "tris": 524,
+    "tris": 56,
     "look": {
      "color": "d0b551",
      "metal": 0.0,
@@ -41128,21 +41176,45 @@
      "tex": false
     },
     "lo": [
-     -0.0606,
-     -0.1074,
-     -0.15
+     -0.039,
+     -0.066,
+     -0.205
     ],
     "hi": [
-     0.0606,
-     0.0594,
-     0.234
+     0.039,
+     0.052,
+     0.205
     ],
     "paint": "pd0b551"
+   },
+   {
+    "name": "body_wzB__metal",
+    "upload": "body_wzB__metal__p3e3b47",
+    "tris": 88,
+    "look": {
+     "color": "3e3b47",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.048,
+     -0.018,
+     -0.182
+    ],
+    "hi": [
+     0.056,
+     0.034,
+     -0.032
+    ],
+    "paint": "p3e3b47"
    },
    {
     "name": "body_wzN__gold",
     "upload": "body_wzN__gold__pe6b64c",
-    "tris": 512,
+    "tris": 376,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -41152,23 +41224,23 @@
      "tex": false
     },
     "lo": [
-     -0.06,
-     -0.0115,
-     -0.1155
+     -0.0424,
+     -0.0601,
+     -0.1993
     ],
     "hi": [
-     -0.044,
-     0.0395,
-     -0.0645
+     0.0424,
+     -0.0535,
+     0.1683
     ],
     "paint": "pe6b64c"
    },
    {
-    "name": "cover_wzA__duck",
-    "upload": "cover_wzA__duck__pd0b551",
-    "tris": 428,
+    "name": "cover_wzA__duck2",
+    "upload": "cover_wzA__duck2__pc2a548",
+    "tris": 68,
     "look": {
-     "color": "d0b551",
+     "color": "c2a548",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -41176,45 +41248,21 @@
      "tex": false
     },
     "lo": [
-     -0.0437,
-     0.0261,
-     -0.12
+     -0.0356,
+     0.05,
+     -0.146
     ],
     "hi": [
-     0.0437,
-     0.0808,
-     0.103
+     0.0356,
+     0.095,
+     0.088
     ],
-    "paint": "pd0b551"
+    "paint": "pc2a548"
    },
    {
-    "name": "fore_wzA__pearl",
-    "upload": "fore_wzA__pearl__pece6e1",
-    "tris": 284,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0377,
-     -0.0598,
-     -0.53
-    ],
-    "hi": [
-     0.0377,
-     0.0118,
-     -0.355
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "fore_wzN__gold",
-    "upload": "fore_wzN__gold__pe6b64c",
-    "tris": 184,
+    "name": "cover_wzN__gold",
+    "upload": "cover_wzN__gold__pe6b64c",
+    "tris": 44,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -41224,14 +41272,14 @@
      "tex": false
     },
     "lo": [
-     -0.0407,
-     -0.0627,
-     -0.507
+     -0.03,
+     0.042,
+     -0.15
     ],
     "hi": [
-     0.0407,
-     0.0147,
-     -0.3755
+     0.03,
+     0.06,
+     0.092
     ],
     "paint": "pe6b64c"
    },
@@ -41262,7 +41310,7 @@
    {
     "name": "grip_wzN__bill",
     "upload": "grip_wzN__bill__pd88c5c",
-    "tris": 832,
+    "tris": 1792,
     "look": {
      "color": "d88c5c",
      "metal": 0.0,
@@ -41272,12 +41320,12 @@
      "tex": false
     },
     "lo": [
-     -0.034,
+     -0.0333,
      -0.2063,
      0.1112
     ],
     "hi": [
-     0.034,
+     0.0333,
      -0.0734,
      0.1921
     ],
@@ -41302,7 +41350,7 @@
     ],
     "hi": [
      0.015,
-     -0.064,
+     -0.06,
      0.12
     ],
     "paint": "p3e3b47"
@@ -41320,21 +41368,21 @@
      "tex": false
     },
     "lo": [
-     -0.0654,
-     -0.0763,
-     -0.2656
+     -0.0714,
+     -0.0694,
+     -0.6206
     ],
     "hi": [
-     0.0654,
-     0.0923,
-     -0.0904
+     0.0714,
+     0.0734,
+     -0.4694
     ],
     "paint": "pd0b551"
    },
    {
     "name": "head_wzN__bill",
     "upload": "head_wzN__bill__pd88c5c",
-    "tris": 792,
+    "tris": 1240,
     "look": {
      "color": "d88c5c",
      "metal": 0.0,
@@ -41344,16 +41392,40 @@
      "tex": false
     },
     "lo": [
-     -0.0375,
-     -0.0169,
-     -0.345
+     -0.0499,
+     -0.0033,
+     -0.688
     ],
     "hi": [
-     0.0375,
-     0.0606,
-     -0.243
+     0.0499,
+     0.0498,
+     -0.592
     ],
     "paint": "pd88c5c"
+   },
+   {
+    "name": "head_wzN__seam",
+    "upload": "head_wzN__seam__p4a2c26",
+    "tris": 492,
+    "look": {
+     "color": "4a2c26",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0427,
+     0.008,
+     -0.6753
+    ],
+    "hi": [
+     0.0427,
+     0.015,
+     -0.5918
+    ],
+    "paint": "p4a2c26"
    },
    {
     "name": "head_wzN__black",
@@ -41368,14 +41440,14 @@
      "tex": false
     },
     "lo": [
-     -0.0578,
-     0.0101,
-     -0.2561
+     -0.0574,
+     0.0415,
+     -0.5883
     ],
     "hi": [
-     0.0578,
-     0.0471,
-     -0.226
+     0.0571,
+     0.0668,
+     -0.5566
     ],
     "paint": "p2a2530"
    },
@@ -41392,14 +41464,14 @@
      "tex": false
     },
     "lo": [
-     -0.0498,
-     0.03,
-     -0.2532
+     -0.0469,
+     0.0575,
+     -0.5815
     ],
     "hi": [
-     0.0498,
-     0.0433,
-     -0.2425
+     0.0464,
+     0.0666,
+     -0.5707
     ],
     "paint": "pece6e1"
    },
@@ -41416,14 +41488,14 @@
      "tex": false
     },
     "lo": [
-     -0.0811,
-     0.0192,
-     -0.1879
+     -0.0821,
+     -0.0041,
+     -0.5574
     ],
     "hi": [
-     -0.0227,
-     0.0912,
-     -0.0895
+     -0.0467,
+     0.056,
+     -0.4629
     ],
     "paint": "pdc9db3"
    },
@@ -41440,14 +41512,14 @@
      "tex": false
     },
     "lo": [
-     -0.0693,
-     0.0527,
-     -0.151
+     -0.0771,
+     0.0269,
+     -0.524
     ],
     "hi": [
-     -0.0448,
-     0.082,
-     -0.1202
+     -0.0588,
+     0.0528,
+     -0.4967
     ],
     "paint": "pb8862b"
    },
@@ -41464,21 +41536,21 @@
      "tex": false
     },
     "lo": [
-     -0.0707,
-     0.0585,
-     -0.1464
+     -0.0788,
+     0.0317,
+     -0.5227
     ],
     "hi": [
-     -0.0524,
-     0.0822,
-     -0.1207
+     -0.0662,
+     0.0529,
+     -0.4983
     ],
     "paint": "pe6b64c"
    },
    {
     "name": "lmg_heat_wzN__metal",
     "upload": "lmg_heat_wzN__metal__p3e3b47",
-    "tris": 140,
+    "tris": 280,
     "look": {
      "color": "3e3b47",
      "metal": 0.0,
@@ -41490,19 +41562,19 @@
     "lo": [
      -0.0256,
      0.0123,
-     -0.74
+     -0.742
     ],
     "hi": [
      0.0256,
      0.0449,
-     -0.4
+     -0.33
     ],
     "paint": "p3e3b47"
    },
    {
     "name": "mag_wzB__metal",
     "upload": "mag_wzB__metal__p3e3b47",
-    "tris": 476,
+    "tris": 88,
     "look": {
      "color": "3e3b47",
      "metal": 0.0,
@@ -41512,21 +41584,21 @@
      "tex": false
     },
     "lo": [
-     -0.09,
-     -0.2196,
-     -0.205
+     -0.086,
+     -0.236,
+     -0.178
     ],
     "hi": [
-     0.0257,
-     -0.0813,
-     0.015
+     0.022,
+     -0.058,
+     -0.0
     ],
     "paint": "p3e3b47"
    },
    {
     "name": "mag_wzN__gold",
     "upload": "mag_wzN__gold__pe6b64c",
-    "tris": 1332,
+    "tris": 1956,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -41536,166 +41608,46 @@
      "tex": false
     },
     "lo": [
-     -0.0982,
-     -0.2003,
-     -0.2175
+     -0.092,
+     -0.1665,
+     -0.184
     ],
     "hi": [
-     0.0365,
-     -0.0715,
-     0.0275
+     0.028,
+     -0.071,
+     0.006
     ],
     "paint": "pe6b64c"
    },
    {
-    "name": "mag_wzN__pearl",
-    "upload": "mag_wzN__pearl__pece6e1",
-    "tris": 988,
+    "name": "mag_wzN__glowdim",
+    "upload": "mag_wzN__glowdim__nde6d9d",
+    "tris": 636,
     "look": {
-     "color": "ece6e1",
+     "color": "a34e72",
      "metal": 0.0,
      "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0992,
-     -0.086,
-     -0.224
-    ],
-    "hi": [
-     0.0254,
-     -0.045,
-     0.029
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "mag_wzN__gold2",
-    "upload": "mag_wzN__gold2__pb8862b",
-    "tris": 748,
-    "look": {
-     "color": "b8862b",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.082,
-     -0.227,
-     -0.1725
-    ],
-    "hi": [
-     0.0139,
-     -0.1163,
-     -0.0175
-    ],
-    "paint": "pb8862b"
-   },
-   {
-    "name": "mag_wzN__bubble",
-    "upload": "mag_wzN__bubble__gcbd9e68c",
-    "tris": 240,
-    "look": {
-     "color": "cbd9e6",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 0.55,
-     "tex": false
-    },
-    "lo": [
-     -0.0983,
-     -0.083,
-     -0.151
-    ],
-    "hi": [
-     -0.0136,
-     -0.049,
-     0.035
-    ],
-    "paint": "gcbd9e68c"
-   },
-   {
-    "name": "mag_wzN__glow",
-    "upload": "mag_wzN__glow__nff81b1",
-    "tris": 212,
-    "look": {
-     "color": "f27aa8",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 1.776,
+     "glow": 1.0,
      "alpha": 1.0,
      "tex": false,
-     "glowColor": "ff81b1"
+     "glowColor": "de6d9d"
     },
     "lo": [
-     -0.106,
-     -0.1748,
-     -0.1211
+     -0.095,
+     -0.1622,
+     -0.1514
     ],
     "hi": [
-     -0.087,
-     -0.1294,
-     -0.0709
+     -0.0874,
+     -0.1361,
+     -0.0266
     ],
-    "paint": "nff81b1"
+    "paint": "nde6d9d"
    },
    {
-    "name": "shroud_wzN__pink",
-    "upload": "shroud_wzN__pink__pdc9db3",
-    "tris": 388,
-    "look": {
-     "color": "dc9db3",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0294,
-     -0.0022,
-     -0.7124
-    ],
-    "hi": [
-     0.0294,
-     0.0494,
-     -0.5576
-    ],
-    "paint": "pdc9db3"
-   },
-   {
-    "name": "sight_wzN__metal",
-    "upload": "sight_wzN__metal__p3e3b47",
-    "tris": 432,
-    "look": {
-     "color": "3e3b47",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.024,
-     0.034,
-     -0.808
-    ],
-    "hi": [
-     0.024,
-     0.1204,
-     0.14
-    ],
-    "paint": "p3e3b47"
-   },
-   {
-    "name": "sight_wzN__gold",
-    "upload": "sight_wzN__gold__pe6b64c",
-    "tris": 500,
+    "name": "roller_wzN__gold",
+    "upload": "roller_wzN__gold__pe6b64c",
+    "tris": 120,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -41705,21 +41657,21 @@
      "tex": false
     },
     "lo": [
-     -0.0299,
-     0.0442,
-     -0.801
+     -0.046,
+     -0.0572,
+     -0.4592
     ],
     "hi": [
-     0.0299,
-     0.086,
-     -0.789
+     0.046,
+     -0.0148,
+     -0.2238
     ],
     "paint": "pe6b64c"
    },
    {
-    "name": "stock_wzA__duck",
-    "upload": "stock_wzA__duck__pd0b551",
-    "tris": 232,
+    "name": "sander_wzA__duck",
+    "upload": "sander_wzA__duck__pd0b551",
+    "tris": 56,
     "look": {
      "color": "d0b551",
      "metal": 0.0,
@@ -41729,69 +41681,21 @@
      "tex": false
     },
     "lo": [
-     -0.046,
-     -0.0854,
-     0.186
+     -0.0408,
+     -0.03,
+     -0.49
     ],
     "hi": [
-     0.036,
-     0.0886,
-     0.485
+     0.0408,
+     0.024,
+     -0.206
     ],
     "paint": "pd0b551"
    },
    {
-    "name": "stock_wzA__duck2",
-    "upload": "stock_wzA__duck2__pc2a548",
-    "tris": 232,
-    "look": {
-     "color": "c2a548",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.038,
-     -0.1313,
-     0.1847
-    ],
-    "hi": [
-     0.028,
-     0.0409,
-     0.4833
-    ],
-    "paint": "pc2a548"
-   },
-   {
-    "name": "stock_wzN__pearl",
-    "upload": "stock_wzN__pearl__pece6e1",
-    "tris": 704,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.044,
-     -0.1349,
-     0.4323
-    ],
-    "hi": [
-     0.0325,
-     0.09,
-     0.5409
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "trim_wzN__black",
-    "upload": "trim_wzN__black__p2a2530",
-    "tris": 132,
+    "name": "sight_wzN__black",
+    "upload": "sight_wzN__black__p2a2530",
+    "tris": 648,
     "look": {
      "color": "2a2530",
      "metal": 0.0,
@@ -41801,14 +41705,110 @@
      "tex": false
     },
     "lo": [
-     -0.0292,
-     0.0113,
+     -0.0199,
+     0.0001,
+     -0.803
+    ],
+    "hi": [
+     0.0199,
+     0.1238,
+     0.1185
+    ],
+    "paint": "p2a2530"
+   },
+   {
+    "name": "sight_wzN__gold",
+    "upload": "sight_wzN__gold__pe6b64c",
+    "tris": 116,
+    "look": {
+     "color": "e6b64c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0111,
+     0.0541,
+     -0.8041
+    ],
+    "hi": [
+     -0.0061,
+     0.0714,
+     -0.7859
+    ],
+    "paint": "pe6b64c"
+   },
+   {
+    "name": "stock_wzA__duck",
+    "upload": "stock_wzA__duck__pd0b551",
+    "tris": 296,
+    "look": {
+     "color": "d0b551",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.031,
+     -0.155,
+     0.198
+    ],
+    "hi": [
+     0.031,
+     0.1,
+     0.54
+    ],
+    "paint": "pd0b551"
+   },
+   {
+    "name": "stock_wzB__bill",
+    "upload": "stock_wzB__bill__pd88c5c",
+    "tris": 44,
+    "look": {
+     "color": "d88c5c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.035,
+     -0.162,
+     0.512
+    ],
+    "hi": [
+     0.035,
+     0.064,
+     0.545
+    ],
+    "paint": "pd88c5c"
+   },
+   {
+    "name": "trim_wzN__black",
+    "upload": "trim_wzN__black__p2a2530",
+    "tris": 220,
+    "look": {
+     "color": "2a2530",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.056,
+     -0.008,
      -0.8574
     ],
     "hi": [
-     0.0575,
-     0.05,
-     -0.042
+     0.047,
+     0.0529,
+     -0.01
     ],
     "paint": "p2a2530"
    },
@@ -41825,14 +41825,14 @@
      "tex": false
     },
     "lo": [
-     -0.0615,
-     -0.0189,
-     -0.0505
+     -0.0453,
+     -0.0365,
+     0.0032
     ],
     "hi": [
-     0.0615,
-     0.0747,
-     0.0956
+     0.0453,
+     0.0588,
+     0.1318
     ],
     "paint": "pdc9db3"
    },
@@ -41849,21 +41849,21 @@
      "tex": false
     },
     "lo": [
-     -0.0712,
-     -0.007,
-     -0.0498
+     -0.0507,
+     -0.0263,
+     0.0041
     ],
     "hi": [
-     0.065,
-     0.0723,
-     0.0681
+     0.0507,
+     0.0545,
+     0.1087
     ],
     "paint": "pece6e1"
    },
    {
     "name": "wing_wzN__gold",
     "upload": "wing_wzN__gold__pe6b64c",
-    "tris": 772,
+    "tris": 504,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -41873,93 +41873,44 @@
      "tex": false
     },
     "lo": [
-     -0.0725,
-     0.0228,
-     -0.0493
+     -0.0529,
+     0.0312,
+     0.009
     ],
     "hi": [
-     0.0557,
-     0.0727,
-     0.0642
+     0.0529,
+     0.0547,
+     0.1073
     ],
     "paint": "pe6b64c"
-   },
-   {
-    "name": "wing_wzN__gold2",
-    "upload": "wing_wzN__gold2__pb8862b",
-    "tris": 428,
-    "look": {
-     "color": "b8862b",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0576,
-     0.0183,
-     -0.0444
-    ],
-    "hi": [
-     -0.0389,
-     0.0564,
-     -0.0036
-    ],
-    "paint": "pb8862b"
-   },
-   {
-    "name": "wing_wzN__glow",
-    "upload": "wing_wzN__glow__nff81b1",
-    "tris": 212,
-    "look": {
-     "color": "f27aa8",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 1.776,
-     "alpha": 1.0,
-     "tex": false,
-     "glowColor": "ff81b1"
-    },
-    "lo": [
-     -0.0632,
-     0.0278,
-     -0.0369
-    ],
-    "hi": [
-     -0.0526,
-     0.0512,
-     -0.0111
-    ],
-    "paint": "nff81b1"
    }
   ],
-  "tris": 16348,
+  "tris": 13756,
   "lo": [
-   -0.106,
-   -0.227,
+   -0.095,
+   -0.236,
    -0.87
   ],
   "hi": [
-   0.0654,
-   0.1204,
-   0.5409
+   0.0714,
+   0.1238,
+   0.545
   ],
-  "bytes": 1341700,
+  "bytes": 1185176,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "lmg@lmg_ducky",
    "set": "kit",
    "lo": [
-    -0.106,
-    -0.227,
+    -0.095,
+    -0.236,
     -0.87
    ],
    "hi": [
-    0.0654,
-    0.1204,
-    0.5409
+    0.0714,
+    0.1238,
+    0.545
    ],
    "spots": {
     "muzzle": [
@@ -42094,7 +42045,23 @@
     ],
     "turned": false
    },
+   "belt_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
    "body_wzA": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "body_wzB": {
     "at": [
      0.0,
      0.0,
@@ -42118,15 +42085,7 @@
     ],
     "turned": false
    },
-   "fore_wzA": {
-    "at": [
-     0.0,
-     0.0,
-     0.0
-    ],
-    "turned": false
-   },
-   "fore_wzN": {
+   "cover_wzN": {
     "at": [
      0.0,
      0.0,
@@ -42198,7 +42157,15 @@
     ],
     "turned": false
    },
-   "shroud_wzN": {
+   "roller_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "sander_wzA": {
     "at": [
      0.0,
      0.0,
@@ -42222,7 +42189,7 @@
     ],
     "turned": false
    },
-   "stock_wzN": {
+   "stock_wzB": {
     "at": [
      0.0,
      0.0,
@@ -42261,11 +42228,11 @@
  "w_katana@katana_ducky": {
   "pieces": [
    {
-    "name": "kat_blade_wzB__pearl",
-    "upload": "kat_blade_wzB__pearl__pece6e1",
+    "name": "kat_blade_wzB__edge",
+    "upload": "kat_blade_wzB__edge__pcdd2d8",
     "tris": 352,
     "look": {
-     "color": "ece6e1",
+     "color": "cdd2d8",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -42282,14 +42249,14 @@
      0.0811,
      -0.139
     ],
-    "paint": "pece6e1"
+    "paint": "pcdd2d8"
    },
    {
     "name": "kat_blade_wzB__steel",
-    "upload": "kat_blade_wzB__steel__p4b4859",
-    "tris": 500,
+    "upload": "kat_blade_wzB__steel__p858c96",
+    "tris": 292,
     "look": {
-     "color": "4b4859",
+     "color": "858c96",
      "metal": 0.0,
      "rough": 0.75,
      "glow": 0.0,
@@ -42298,7 +42265,31 @@
     },
     "lo": [
      -0.0075,
-     -0.0092,
+     -0.0076,
+     -0.7617
+    ],
+    "hi": [
+     0.0075,
+     0.0609,
+     -0.139
+    ],
+    "paint": "p858c96"
+   },
+   {
+    "name": "kat_blade_wzB__spine",
+    "upload": "kat_blade_wzB__spine__p5f666f",
+    "tris": 348,
+    "look": {
+     "color": "5f666f",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0075,
+     0.0158,
      -0.8357
     ],
     "hi": [
@@ -42306,7 +42297,7 @@
      0.082,
      -0.139
     ],
-    "paint": "p4b4859"
+    "paint": "p5f666f"
    },
    {
     "name": "kat_guard_wzA__duck",
@@ -42321,69 +42312,21 @@
      "tex": false
     },
     "lo": [
-     -0.0377,
-     -0.0406,
-     -0.2118
+     -0.0436,
+     -0.0106,
+     -0.1908
     ],
     "hi": [
-     0.0377,
-     0.0526,
-     -0.1182
+     0.0436,
+     0.0786,
+     -0.0992
     ],
     "paint": "pd0b551"
    },
    {
-    "name": "kat_guard_wzA__pink",
-    "upload": "kat_guard_wzA__pink__pdc9db3",
-    "tris": 912,
-    "look": {
-     "color": "dc9db3",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0573,
-     -0.0098,
-     -0.158
-    ],
-    "hi": [
-     0.0573,
-     0.0873,
-     -0.082
-    ],
-    "paint": "pdc9db3"
-   },
-   {
-    "name": "kat_guard_wzA__pearl",
-    "upload": "kat_guard_wzA__pearl__pece6e1",
-    "tris": 912,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0556,
-     -0.0075,
-     -0.1601
-    ],
-    "hi": [
-     0.0556,
-     0.0732,
-     -0.0995
-    ],
-    "paint": "pece6e1"
-   },
-   {
     "name": "kat_guard_wzN__bill",
     "upload": "kat_guard_wzN__bill__pd88c5c",
-    "tris": 712,
+    "tris": 1240,
     "look": {
      "color": "d88c5c",
      "metal": 0.0,
@@ -42393,16 +42336,40 @@
      "tex": false
     },
     "lo": [
-     -0.0243,
-     -0.038,
-     -0.256
+     -0.0288,
+     0.0329,
+     -0.228
     ],
     "hi": [
-     0.0243,
-     0.0535,
-     -0.196
+     0.0288,
+     0.0528,
+     -0.168
     ],
     "paint": "pd88c5c"
+   },
+   {
+    "name": "kat_guard_wzN__seam",
+    "upload": "kat_guard_wzN__seam__p4a2c26",
+    "tris": 492,
+    "look": {
+     "color": "4a2c26",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.025,
+     0.0373,
+     -0.2203
+    ],
+    "hi": [
+     0.025,
+     0.0439,
+     -0.1679
+    ],
+    "paint": "p4a2c26"
    },
    {
     "name": "kat_guard_wzN__black",
@@ -42417,14 +42384,14 @@
      "tex": false
     },
     "lo": [
-     -0.0352,
-     0.0099,
-     -0.2034
+     -0.0416,
+     0.0523,
+     -0.1659
     ],
     "hi": [
-     0.0352,
-     0.0306,
-     -0.1856
+     0.0416,
+     0.0695,
+     -0.1455
     ],
     "paint": "p2a2530"
    },
@@ -42441,14 +42408,14 @@
      "tex": false
     },
     "lo": [
-     -0.031,
-     0.0212,
-     -0.2013
+     -0.0371,
+     0.063,
+     -0.1618
     ],
     "hi": [
-     0.031,
-     0.0287,
-     -0.195
+     0.0368,
+     0.0692,
+     -0.1551
     ],
     "paint": "pece6e1"
    },
@@ -42465,14 +42432,14 @@
      "tex": false
     },
     "lo": [
-     -0.035,
-     0.0252,
-     -0.1508
+     -0.0526,
+     0.0168,
+     -0.1324
     ],
     "hi": [
-     0.035,
-     0.0605,
-     -0.1092
+     -0.0057,
+     0.066,
+     -0.0847
     ],
     "paint": "pdc9db3"
    },
@@ -42489,21 +42456,21 @@
      "tex": false
     },
     "lo": [
-     -0.0101,
-     0.045,
-     -0.1401
+     -0.0421,
+     0.038,
+     -0.1123
     ],
     "hi": [
-     0.0101,
-     0.0599,
-     -0.1223
+     -0.0261,
+     0.0565,
+     -0.097
     ],
     "paint": "pb8862b"
    },
    {
     "name": "kat_guard_wzN__gold",
     "upload": "kat_guard_wzN__gold__pe6b64c",
-    "tris": 460,
+    "tris": 56,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -42513,21 +42480,69 @@
      "tex": false
     },
     "lo": [
-     -0.0465,
-     -0.0313,
-     -0.1665
+     -0.0431,
+     0.0398,
+     -0.1083
     ],
     "hi": [
-     0.0465,
-     0.0757,
-     -0.1215
+     -0.0298,
+     0.0564,
+     -0.0958
+    ],
+    "paint": "pe6b64c"
+   },
+   {
+    "name": "kat_trims_wzA__duck",
+    "upload": "kat_trims_wzA__duck__pd0b551",
+    "tris": 216,
+    "look": {
+     "color": "d0b551",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0117,
+     0.0167,
+     0.092
+    ],
+    "hi": [
+     0.0117,
+     0.0573,
+     0.1338
+    ],
+    "paint": "pd0b551"
+   },
+   {
+    "name": "kat_trims_wzN__gold",
+    "upload": "kat_trims_wzN__gold__pe6b64c",
+    "tris": 2508,
+    "look": {
+     "color": "e6b64c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0225,
+     -0.0504,
+     -0.0608
+    ],
+    "hi": [
+     0.0225,
+     0.0288,
+     0.1259
     ],
     "paint": "pe6b64c"
    },
    {
     "name": "kat_trims_wzN__gold2",
     "upload": "kat_trims_wzN__gold2__pb8862b",
-    "tris": 472,
+    "tris": 408,
     "look": {
      "color": "b8862b",
      "metal": 0.0,
@@ -42537,94 +42552,46 @@
      "tex": false
     },
     "lo": [
-     -0.0227,
-     -0.0222,
-     -0.132
+     -0.0332,
+     -0.0238,
+     -0.1075
     ],
     "hi": [
-     0.0227,
-     0.0262,
-     0.13
+     0.0332,
+     0.0333,
+     0.1315
     ],
     "paint": "pb8862b"
    },
    {
-    "name": "kat_trims_wzN__gold",
-    "upload": "kat_trims_wzN__gold__pe6b64c",
-    "tris": 496,
+    "name": "kat_trims_wzN__glowdim",
+    "upload": "kat_trims_wzN__glowdim__nde6d9d",
+    "tris": 424,
     "look": {
-     "color": "e6b64c",
+     "color": "a34e72",
      "metal": 0.0,
      "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0194,
-     -0.0215,
-     0.104
-    ],
-    "hi": [
-     0.0194,
-     0.0255,
-     0.138
-    ],
-    "paint": "pe6b64c"
-   },
-   {
-    "name": "kat_trims_wzN__glow",
-    "upload": "kat_trims_wzN__glow__nff81b1",
-    "tris": 212,
-    "look": {
-     "color": "f27aa8",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 1.776,
+     "glow": 1.0,
      "alpha": 1.0,
      "tex": false,
-     "glowColor": "ff81b1"
+     "glowColor": "de6d9d"
     },
     "lo": [
-     -0.0144,
-     -0.01,
-     0.1335
+     -0.0274,
+     -0.0034,
+     0.1091
     ],
     "hi": [
-     0.0144,
-     0.0159,
-     0.1401
+     0.0274,
+     0.0072,
+     0.1205
     ],
-    "paint": "nff81b1"
+    "paint": "nde6d9d"
    },
    {
-    "name": "kat_tsuka_wzA__pearl",
-    "upload": "kat_tsuka_wzA__pearl__pece6e1",
-    "tris": 44,
-    "look": {
-     "color": "ece6e1",
-     "metal": 0.0,
-     "rough": 0.75,
-     "glow": 0.0,
-     "alpha": 1.0,
-     "tex": false
-    },
-    "lo": [
-     -0.0166,
-     -0.0188,
-     -0.124
-    ],
-    "hi": [
-     0.0166,
-     0.0228,
-     0.11
-    ],
-    "paint": "pece6e1"
-   },
-   {
-    "name": "kat_tsuka_wzN__pink",
-    "upload": "kat_tsuka_wzN__pink__pdc9db3",
-    "tris": 440,
+    "name": "kat_trims_wzN__pink",
+    "upload": "kat_trims_wzN__pink__pdc9db3",
+    "tris": 188,
     "look": {
      "color": "dc9db3",
      "metal": 0.0,
@@ -42634,44 +42601,164 @@
      "tex": false
     },
     "lo": [
-     -0.0246,
-     -0.0268,
-     -0.1178
+     -0.0042,
+     -0.0423,
+     0.1102
     ],
     "hi": [
-     0.0246,
-     0.0308,
-     0.1058
+     0.0042,
+     -0.0097,
+     0.1208
     ],
     "paint": "pdc9db3"
+   },
+   {
+    "name": "kat_tsuka_wzA__duck",
+    "upload": "kat_tsuka_wzA__duck__pd0b551",
+    "tris": 60,
+    "look": {
+     "color": "d0b551",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0172,
+     -0.0195,
+     -0.142
+    ],
+    "hi": [
+     0.0172,
+     0.0235,
+     0.105
+    ],
+    "paint": "pd0b551"
+   },
+   {
+    "name": "kat_tsuka_wzA__pink",
+    "upload": "kat_tsuka_wzA__pink__pdc9db3",
+    "tris": 608,
+    "look": {
+     "color": "dc9db3",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.022,
+     0.003,
+     -0.0971
+    ],
+    "hi": [
+     0.022,
+     0.039,
+     -0.0493
+    ],
+    "paint": "pdc9db3"
+   },
+   {
+    "name": "kat_tsuka_wzA__pearl",
+    "upload": "kat_tsuka_wzA__pearl__pece6e1",
+    "tris": 608,
+    "look": {
+     "color": "ece6e1",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0274,
+     0.0045,
+     -0.0971
+    ],
+    "hi": [
+     0.0274,
+     0.0351,
+     -0.0586
+    ],
+    "paint": "pece6e1"
+   },
+   {
+    "name": "kat_tsuka_wzN__pink",
+    "upload": "kat_tsuka_wzN__pink__pdc9db3",
+    "tris": 120,
+    "look": {
+     "color": "dc9db3",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0194,
+     -0.0216,
+     -0.0585
+    ],
+    "hi": [
+     0.0194,
+     0.0256,
+     0.0725
+    ],
+    "paint": "pdc9db3"
+   },
+   {
+    "name": "kat_tsuka_wzN__gold",
+    "upload": "kat_tsuka_wzN__gold__pe6b64c",
+    "tris": 504,
+    "look": {
+     "color": "e6b64c",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0288,
+     0.0159,
+     -0.1015
+    ],
+    "hi": [
+     0.0288,
+     0.0368,
+     -0.06
+    ],
+    "paint": "pe6b64c"
    }
   ],
-  "tris": 6968,
+  "tris": 9880,
   "lo": [
-   -0.0573,
-   -0.0406,
+   -0.0526,
+   -0.0504,
    -0.8357
   ],
   "hi": [
-   0.0573,
-   0.0873,
-   0.1401
+   0.0436,
+   0.082,
+   0.1338
   ],
-  "bytes": 589932,
+  "bytes": 712884,
   "turned": true,
   "meta": {
    "kind": "weapon",
    "id": "katana@katana_ducky",
    "set": "kit",
    "lo": [
-    -0.0573,
-    -0.0406,
+    -0.0526,
+    -0.0504,
     -0.8357
    ],
    "hi": [
-    0.0573,
-    0.0873,
-    0.1401
+    0.0436,
+    0.082,
+    0.1338
    ],
    "spots": {
     "muzzle": [
@@ -42709,6 +42796,14 @@
     "turned": false
    },
    "kat_guard_wzN": {
+    "at": [
+     0.0,
+     0.0,
+     0.0
+    ],
+    "turned": false
+   },
+   "kat_trims_wzA": {
     "at": [
      0.0,
      0.0,
@@ -43406,14 +43501,14 @@
      "tex": false
     },
     "lo": [
-     -0.0185,
-     0.0115,
+     -0.0074,
+     0.0226,
      -0.29
     ],
     "hi": [
-     0.0185,
-     0.0485,
-     -0.115
+     0.0074,
+     0.0374,
+     -0.2
     ],
     "paint": "p3e3b47"
    },
@@ -43444,7 +43539,7 @@
    {
     "name": "body_wzN__bill",
     "upload": "body_wzN__bill__pd88c5c",
-    "tris": 712,
+    "tris": 1240,
     "look": {
      "color": "d88c5c",
      "metal": 0.0,
@@ -43454,16 +43549,40 @@
      "tex": false
     },
     "lo": [
-     -0.0243,
-     -0.0031,
-     -0.288
+     -0.0233,
+     0.0181,
+     -0.246
     ],
     "hi": [
-     0.0243,
-     0.0643,
-     -0.2
+     0.0233,
+     0.0424,
+     -0.195
     ],
     "paint": "pd88c5c"
+   },
+   {
+    "name": "body_wzN__seam",
+    "upload": "body_wzN__seam__p4a2c26",
+    "tris": 492,
+    "look": {
+     "color": "4a2c26",
+     "metal": 0.0,
+     "rough": 0.75,
+     "glow": 0.0,
+     "alpha": 1.0,
+     "tex": false
+    },
+    "lo": [
+     -0.0204,
+     0.0251,
+     -0.2396
+    ],
+    "hi": [
+     0.0204,
+     0.0303,
+     -0.1948
+    ],
+    "paint": "p4a2c26"
    },
    {
     "name": "body_wzN__black",
@@ -43658,17 +43777,17 @@
     "paint": "pe6b64c"
    },
    {
-    "name": "cylinder_wzN__glow",
-    "upload": "cylinder_wzN__glow__nff81b1",
+    "name": "cylinder_wzN__glowdim",
+    "upload": "cylinder_wzN__glowdim__nde6d9d",
     "tris": 1272,
     "look": {
-     "color": "f27aa8",
+     "color": "a34e72",
      "metal": 0.0,
      "rough": 0.75,
-     "glow": 1.776,
+     "glow": 1.0,
      "alpha": 1.0,
      "tex": false,
-     "glowColor": "ff81b1"
+     "glowColor": "de6d9d"
     },
     "lo": [
      -0.0494,
@@ -43680,7 +43799,7 @@
      0.0547,
      -0.0402
     ],
-    "paint": "nff81b1"
+    "paint": "nde6d9d"
    },
    {
     "name": "grip_wzB__metal",
@@ -43829,7 +43948,7 @@
    {
     "name": "sight_wzN__gold",
     "upload": "sight_wzN__gold__pe6b64c",
-    "tris": 160,
+    "tris": 172,
     "look": {
      "color": "e6b64c",
      "metal": 0.0,
@@ -43839,21 +43958,21 @@
      "tex": false
     },
     "lo": [
-     -0.0121,
-     0.056,
-     -0.272
+     -0.0083,
+     0.0365,
+     -0.2705
     ],
     "hi": [
-     0.0121,
-     0.086,
-     -0.264
+     0.0083,
+     0.0823,
+     -0.2611
     ],
     "paint": "pe6b64c"
    },
    {
     "name": "sight_wzN__metal",
     "upload": "sight_wzN__metal__p3e3b47",
-    "tris": 88,
+    "tris": 100,
     "look": {
      "color": "3e3b47",
      "metal": 0.0,
@@ -43863,14 +43982,14 @@
      "tex": false
     },
     "lo": [
-     -0.019,
-     0.064,
-     0.02
+     -0.014,
+     0.0695,
+     0.027
     ],
     "hi": [
-     0.019,
-     0.0915,
-     0.044
+     0.014,
+     0.0833,
+     0.037
     ],
     "paint": "p3e3b47"
    },
@@ -43996,7 +44115,7 @@
     "paint": "nff81b1"
    }
   ],
-  "tris": 13380,
+  "tris": 14424,
   "lo": [
    -0.0494,
    -0.2169,
@@ -44004,10 +44123,10 @@
   ],
   "hi": [
    0.0494,
-   0.0915,
+   0.0833,
    0.14
   ],
-  "bytes": 1212536,
+  "bytes": 1257076,
   "turned": true,
   "meta": {
    "kind": "weapon",
@@ -44020,7 +44139,7 @@
    ],
    "hi": [
     0.0494,
-    0.0915,
+    0.0833,
     0.14
    ],
    "spots": {
