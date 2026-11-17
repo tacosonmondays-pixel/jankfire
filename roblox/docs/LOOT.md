@@ -49,12 +49,16 @@ the player card's looks (border / banner / title); Flair is the flair session's 
 true, in `LootTable.ownTypes()` (so the save, dev "unlock" / "reset" / "set" cover them). The Duffel Bag rolls what
 `forSale(t)` lists (Flair leaves out the free ones, VIP ones and emotes whose clip isn't uploaded), never a free or VIP
 one. In a roll each gun-less type is one more "gun": the card looks share `card`, a kill effect is `kill`, an emote
-`emote`, so a bag lands on one about as often as on one gun's hats. Owning nothing, 20,000 rolls at v515 gave hats
-86.8%, emotes 5.3%, kill effects 2.4%, titles 2.5%, banners 1.6%, borders 1.4%. The reel's card draws the module's
-`picture`; the prize that comes up out of the bag is a flat dark tile with the picture on both faces (0.6 m by 0.75 m
-at the guns' scale), and its sign says KILL EFFECT / EMOTE (a card look: PLAYER CARD). No EQUIP button for these:
-what's worn lives in the owning session's store (Flair: `JankfireFlair_v1`). A grapple module can join the list the
-same way.
+`emote`, a grapple `grapple`, so a bag lands on one about as often as on one gun's hats. A type only gets a share of
+the rarities it has: with the web game's kill effects (Flair, after v515: 14 that roll, common to legendary) the
+chances owning nothing (`LootTable.odds`) are hats 84.4%, kill effects 5.3%, emotes 5.1%, titles 2.3%, banners 1.7%,
+borders 1.2%; at v515, with no common kill effect, it was 2.4%. No extra weight: kill effects came level with emotes by
+themselves. Grapples (Flair's `grapple`, the web's eight, Rope free) roll only once their head model is in
+`ReplicatedStorage.JankfireGrapples` (`Flair.forSale` / `grappleReady`); each will take about one more gun's share.
+The reel's card draws the module's `picture`; the prize that comes up out of the bag is a flat dark tile with the
+picture on both faces (0.6 m by 0.75 m at the guns' scale), and its sign says KILL EFFECT / EMOTE / GRAPPLE (a card
+look: PLAYER CARD). No EQUIP button for these: what's worn lives in the owning session's store (Flair:
+`JankfireFlair_v1`).
 
 **VIP only** (16 Nov, the owner's design: the Ducky set comes with the VIP game pass, which the shop session leads).
 `LootTable.vipOnly(type, id)`: an item listed in `LootTable.VIP_ONLY`, or whose own row says `vip = true` (a Roster
