@@ -85,7 +85,7 @@ The phone's buttons (`Keys.luau`, TouchControls) press an action's default key a
 ## Sound groups
 
 `SoundService.JankMaster` (MASTER) holds `Weapons`, `Effects` and `Interface`. Library sounds get their group by name
-(`gun_*`, `draw_*`, handling, blades, hits and kills are WEAPONS; `loot_*`, `round_*` and `ui_*` are INTERFACE; the
+(`gun_*`, `draw_*`, `skin_*` (special skins' shot and reload layers), handling, blades, hits and kills are WEAPONS; `loot_*`, `round_*` and `ui_*` are INTERFACE; the
 rest is EFFECTS). Any other Sound that turns up without a group goes to EFFECTS, or to INTERFACE inside the screen
 gui. There is no music or voice in the game yet, so there are no sliders for them.
 

@@ -90,7 +90,8 @@ local WEAPON_NAMES = { click = true, empty = true, reload = true, thwack = true,
 	hit = true, headshot = true, headshot_ko = true, kill = true }
 local function kind(name: string): string
 	local base = string.match(name, "^(.-)#%d+$") or name
-	if string.sub(base, 1, 4) == "gun_" or string.sub(base, 1, 5) == "draw_" or WEAPON_NAMES[base] then return "weapons" end
+	-- (skin_<skin>_<kind>: a special skin's shot and reload layers, the sound session's: they go with the guns)
+	if string.sub(base, 1, 4) == "gun_" or string.sub(base, 1, 5) == "draw_" or string.sub(base, 1, 5) == "skin_" or WEAPON_NAMES[base] then return "weapons" end
 	if string.sub(base, 1, 5) == "loot_" or string.sub(base, 1, 6) == "round_" or string.sub(base, 1, 3) == "ui_" then return "ui" end
 	return "effects"
 end

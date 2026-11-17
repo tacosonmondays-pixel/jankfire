@@ -583,7 +583,10 @@ tabs = {
 		end)
 	end },
 	{ id = "touch", title = "TOUCH", reset = { "touch." }, visible = function()
-		return UIS.TouchEnabled or me:GetAttribute("TouchForce") == true or me:GetAttribute("SettingsAllTabs") == true
+		-- (TouchOn: TouchControls has the phone layout up, its StarterPlayer TouchForce test included, so the tab and the
+		-- buttons always agree)
+		return UIS.TouchEnabled or me:GetAttribute("TouchOn") == true or me:GetAttribute("TouchForce") == true
+			or me:GetAttribute("SettingsAllTabs") == true
 	end, build = function()
 		slider({ key = "touch.sens", label = "TOUCH LOOK SPEED", sub = "dragging on the screen to look", min = 0.3, max = 3, step = 0.05, fmt = times })
 		slider({ key = "touch.size", label = "BUTTON SIZE", sub = "on top of the size that suits the device", min = 0.7, max = 1.4, step = 0.05, fmt = pct, scale = 100 })
