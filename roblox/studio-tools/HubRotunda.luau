@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 56 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 57 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -576,8 +576,11 @@ function R.new(live, opts)
 	end
 
 	-- a queue pad: a dark base, the team plates side by side (pink on the left as you face outward, the way the counts
-	-- on its board read), a place for everybody on each plate: a socket with a white light in it, which is the Slot
-	-- Matches switches (Off = 1: clear while the place is empty). y = the top of the deck it lies on
+	-- on its board read), each plate's face glowing in its team's colour (owner, 17 Nov: "can we try removing the circles
+	-- on the pads and then make them glow?"): a thin neon Glow over the plate with a soft light, which PadGlow.client
+	-- breathes slowly while the side is open and brightens while someone stands on it. no circles: a place for everybody
+	-- is still a Slot, the marker Matches switches (Off = 1: clear while the place is empty; it says on a screen that
+	-- the side is taken), now a speck inside the plate that never shows. y = the top of the deck it lies on
 	function B.pad(F, md, x, y, d)
 		local m = Instance.new("Model"); m.Name = md.name or md.id
 		m:SetAttribute("Mode", md.id); m:SetAttribute("Teams", md.teams); m:SetAttribute("Size", md.size)
@@ -600,26 +603,26 @@ function R.new(live, opts)
 		for i = 1, n do
 			local cx = -(md.w - 1.2) / 2 + pw / 2 + (i - 1) * (pw + 0.8)
 			local s = plate("Side" .. i, cx, 0, pw, pd, TEAM[i], nil, 0.12, 0.14)
-			if P.padCalm then s.Color = s.Color:Lerp(Color3.fromHex("8a8f98"), P.padCalm) end -- (a little under the full team colour: the plates were the loudest thing in the hub)
+			-- (the plate itself a deep shade of the team's colour; the light is the Glow's)
+			s.Color = Color3.fromHex(TEAM[i]):Lerp(Color3.fromHex("1c1f26"), 0.55)
 			s:SetAttribute("Team", i)
+			local g = plate("Glow", cx, 0, pw - 0.5, pd - 0.5, TEAM[i], Neon, 0.24, 0.04) -- (its top 0.07 over the plate's: no flicker)
+			g.CanQuery = false; g.CanTouch = false; g.Transparency = 0.45
+			g:SetAttribute("Team", i)
+			local gl = Instance.new("PointLight")
+			gl.Color = Color3.fromHex(TEAM[i]); gl.Range = 7; gl.Brightness = 0.45; gl.Shadows = false
+			gl.Parent = g
 			for sl = 1, md.size do
 				local c, r = (sl - 1) % cols, math.floor((sl - 1) / cols)
 				local ox = if cols == 1 then 0 else (c - 0.5) * (pw / 2)
 				local od = pd * (0.5 - (r + 0.5) / rows)
-				local at = F * CFrame.new(x + cx + ox, y + 0.25, -(d + od)) * CFrame.Angles(0, 0, math.pi / 2)
-				for _, k in { { "Socket", 3.2, 0.12, -0.04 }, { "Slot", 2.3, 0.14, 0 } } do
-					local q = Instance.new("Part")
-					q.Name = k[1]; q.Shape = Enum.PartType.Cylinder; q.Anchored = true; q.Size = Vector3.new(k[3], k[2], k[2])
-					q.CFrame = at * CFrame.new(k[4], 0, 0)
-					q.CanCollide = false; q.CanQuery = false; q.CanTouch = false; q.CastShadow = false
-					if k[1] == "Slot" then
-						q.Color = Color3.fromHex("f4f8ff"); q.Material = Neon; q.Transparency = 1
-						q:SetAttribute("Team", i); q:SetAttribute("Slot", sl); q:SetAttribute("Off", 1)
-					else
-						q.Color = s.Color:Lerp(Color3.new(0, 0, 0), 0.22); q.Material = SP
-					end
-					q.Parent = m
-				end
+				local q = Instance.new("Part") -- (Matches' place marker: a speck inside the plate, seen by no one)
+				q.Name = "Slot"; q.Anchored = true; q.Size = Vector3.new(0.05, 0.05, 0.05)
+				q.CFrame = F * CFrame.new(x + cx + ox, y + 0.12, -(d + od))
+				q.CanCollide = false; q.CanQuery = false; q.CanTouch = false; q.CastShadow = false
+				q.Color = Color3.fromHex(TEAM[i]); q.Transparency = 1
+				q:SetAttribute("Team", i); q:SetAttribute("Slot", sl); q:SetAttribute("Off", 1)
+				q.Parent = m
 			end
 		end
 		for _, e in { { 0, md.dp / 2 - 0.2, md.w, 0.4 }, { 0, -md.dp / 2 + 0.2, md.w, 0.4 }, { md.w / 2 - 0.2, 0, 0.4, md.dp }, { -md.w / 2 + 0.2, 0, 0.4, md.dp } } do
