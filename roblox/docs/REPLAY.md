@@ -71,6 +71,9 @@ clip = {
 
 ![the play of the match](replay/play_of_the_match.jpg)
 ![a killcam](replay/killcam.jpg)
+![the same play, starting in the hub](replay/play_of_the_match_hub.jpg)
+
+**The camera (re-shot at place version 531).** Most of the map's kit has CanQuery off, so a raycast passes through it, and the first photos had a pillar filling a third of the frame. The replay camera now tests the boxes of the solid map parts near the action itself, like a popper cam. It tries the hero's shoulder, the other shoulder, up and behind, then higher and closer spots, and it wants room beside a shoulder spot (no wall right next to the lens). A raised spot looks at a nearer point, so the hero stays in the frame, and the hero fades when the lens gets close.
 
 **The test.** A Studio Play test recorded the training hall: me plus all 32 dummies, so 33 fighters. I killed two
 dummies, then:

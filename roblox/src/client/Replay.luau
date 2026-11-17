@@ -368,19 +368,27 @@ local function camStep(dt: number)
 	-- right behind the hero); the first one with all its room wins
 	local s1 = st.side or 1
 	local best = nil
-	for _, o in { { s1, CAM.up, CAM.back }, { -s1, CAM.up, CAM.back }, { 0, CAM.up * 2.6, CAM.back }, { s1 * 0.6, 4.5, 7 }, { -s1 * 0.6, 4.5, 7 }, { 0, 6, 4.5 } } do
+	-- (o = side, up, back, how far ahead it looks: a raised spot looks at a nearer point, so the hero stays in the frame)
+	for _, o in { { s1, CAM.up, CAM.back, 90 }, { -s1, CAM.up, CAM.back, 90 }, { 0, CAM.up * 2.6, CAM.back, 22 }, { s1 * 0.6, 4.5, 7, 18 },
+		{ -s1 * 0.6, 4.5, 7, 18 }, { 0, 6, 4.5, 12 } } do
 		local want = eye - dir * o[3] + right * (o[1] * CAM.side) + Vector3.new(0, o[2], 0)
 		local L = (want - eye).Magnitude
 		local free, hitP = clearTo(eye, want)
 		local score = free / L + free * 0.02 -- (a short clear spot beats a long blocked one)
-		if not best or score > best.score + 0.05 then best = { free = free, d = (want - eye).Unit, side = o[1], score = score, hit = hitP } end
-		if free >= L - 0.01 then break end
+		-- a shoulder spot right beside a wall fills a third of the frame with it: it needs room on its own side too
+		if o[1] ~= 0 and free >= L - 0.01 then
+			local spot = eye + (want - eye).Unit * free
+			local room = clearTo(spot, spot + right * (o[1] * 3.5))
+			if room < 3.2 then score -= (3.2 - room) * 0.25 end
+		end
+		if not best or score > best.score + 0.05 then best = { free = free, d = (want - eye).Unit, side = o[1], score = score, hit = hitP, ahead = o[4] } end
+		if free >= L - 0.01 and score >= 1 then break end
 	end
 	local fold = folder
 	if fold then fold:SetAttribute("CamBlock", if best.hit then best.hit:GetFullName() else nil); fold:SetAttribute("CamFree", math.floor(best.free * 10) / 10) end
 	if best.side ~= 0 then st.side = best.side end
 	local pos = eye + best.d * best.free
-	local look = eye + dir * 90
+	local look = eye + dir * (best.ahead or 90)
 	if not st.camPos then st.camPos, st.camLook = pos, look end
 	st.camPos = st.camPos:Lerp(pos, math.min(1, dt * 12))
 	-- never let the smoothing carry the lens into a wall: pull it in front of anything between the eye and it
