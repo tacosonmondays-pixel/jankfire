@@ -438,6 +438,7 @@ local timers: { { at: number, fn: () -> () } } = {}
 local function after(d: number, fn: () -> ()) table.insert(timers, { at = clockT + d, fn = fn }) end
 -- the high-tier skin whose gun a shot left from (set by the skins section further down)
 local skinAt: (p: Vector3) -> any = function(_p: Vector3): any return nil end
+local skinShot: (S_: any) -> () = function(_S: any) end
 local function drops(size: number, speed: number, spread: number, life: number): EmPool
 	return emitters(5, { Texture = TEX.blob, LightInfluence = 0.5, LightEmission = 0.45, Color = cs(Color3.fromRGB(225, 246, 255)),
 		Size = ns(0, size, 1, size * 0.45), Transparency = ns(0, 0.1, 0.7, 0.35, 1, 1),
@@ -737,7 +738,7 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	local big = w.id == "shotgun" or w.id == "sniper" or w.id == "autoshot" or w.id == "dmr"
 	-- a high-tier skin's own flash and tracer colours (SkinSets.FX), and its after-firing effects switch on
 	local sk = skinAt(at.Position)
-	if sk then sk.afterT = clockT end
+	if sk then sk.afterT = clockT; skinShot(sk) end
 	if not noFlash then
 		Fx.muzzle(at, big, fpv, if sk then sk.spec.flash else nil, fast)
 		if sk and sk.glow and #sk.flames > 0 then
@@ -1576,7 +1577,8 @@ end
 -- studs per metre; the viewmodel's and every third-person copy), and a shot from a registered gun takes its colours.
 -- cheap: a few slow particles each, nothing in front of the sights (the points are behind and beside the optic)
 type SkinFx = { model: Model, spec: any, muzzle: Attachment?, after: { ParticleEmitter }, afterT: number, idle: { ParticleEmitter }, fp: boolean,
-	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number }
+	quiet: boolean, flames: { ParticleEmitter }, lit: { BasePart }, glowId: string?, glow: Color3?, glowT: number, k: number,
+	shot: { any }, lever: { any }, pulse: { BasePart }, pulsing: boolean, light: PointLight?, vis: BasePart? }
 local skinned: { [Model]: SkinFx } = {}
 local skinGlow: (any, boolean?) -> ()
 local function skinSpec(model: Model): any
@@ -1622,6 +1624,31 @@ local function skinProps(e: any, sz: number, k: number): { [string]: any }
 		return { Texture = TEX.soft4, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, Color = cs(col), LightInfluence = 0.6,
 			Size = grow(sz * H, sz * 2.5 * H), Transparency = ns(0, 0.85, 0.5, 0.75, 1, 1), Lifetime = life,
 			Speed = NR(0.1 * k, 0.3 * k), SpreadAngle = Vector2.new(20, 20), Acceleration = Vector3.new(0, (if fall then -0.2 else 0.4) * k, 0), Drag = 1 }
+	end
+end
+-- a shot's or a lever cycle's burst (spec.shot / spec.lever): a spark (a hot streak flying off, falling), a puff (a small
+-- soft curl of gunsmoke) or steam (a round white chuff: the lumpy cotton puff). sz = the spec's size (metres) x k
+local function burstProps(e: any, sz: number, k: number): { [string]: any }
+	local col = e.colour or Color3.new(1, 1, 1)
+	local life = e.life or (if e.kind == "spark" then 0.15 else 0.8)
+	local sp = e.speed or (if e.kind == "spark" then 1.2 elseif e.kind == "steam" then 0.4 else 0.15)
+	local spread = e.spread or (if e.kind == "spark" then 35 else 20)
+	if e.kind == "spark" then
+		return { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1, LightInfluence = 0,
+			-- (the drawing's streak fills under a third of its square, as the frag's sparks: x3.4. round 11 in Play: at x1 unseen)
+			Brightness = 3, Color = cs(col:Lerp(FWHITE, 0.55), col), Size = ns(0, sz * 3.4 * H, 1, sz * 1.4 * H),
+			Transparency = ns(0, 0, 0.7, 0.2, 1, 1), Lifetime = NR(life * 0.6, life), Speed = NR(sp * 0.5 * k, sp * k),
+			SpreadAngle = Vector2.new(spread, spread), Acceleration = Vector3.new(0, -6 * k, 0), Drag = 2 }
+	elseif e.kind == "steam" then
+		return { Texture = TEX.cotton2, FlipbookLayout = FLIP8, FlipbookMode = ONESHOT, LightEmission = 0.1, LightInfluence = 0.5,
+			Color = cs(col), Size = grow(sz * H, sz * 2.6 * H), Transparency = ns(0, 0.25, 0.5, 0.45, 1, 1),
+			Lifetime = NR(life * 0.8, life * 1.1), Speed = NR(sp * 0.6 * k, sp * k), SpreadAngle = Vector2.new(spread, spread),
+			Acceleration = Vector3.new(0, 0.35 * k, 0), Drag = 2.5, Rotation = NR(0, 360), RotSpeed = NR(-40, 40) }
+	else
+		return { Texture = TEX.soft4, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightInfluence = 0.7,
+			Color = cs(col), Size = grow(sz * H, sz * 3 * H), Transparency = ns(0, 0.45, 0.5, 0.6, 1, 1),
+			Lifetime = NR(life * 0.8, life * 1.2), Speed = NR(sp * 0.5 * k, sp * k), SpreadAngle = Vector2.new(spread, spread),
+			Acceleration = Vector3.new(0, 0.3 * k, 0), Drag = 1.5, Rotation = NR(0, 360), RotSpeed = NR(-70, 70) }
 	end
 end
 -- a wrap's glow colour: its own `glow` (hex or Color3), else its neon palette slot, else its brightest saturated colour,
@@ -1670,7 +1697,16 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 	if not sp or not root then return end
 	local S_: SkinFx = { model = model, spec = sp, muzzle = root:FindFirstChild("Muzzle") :: Attachment?, after = {}, afterT = -99,
 		idle = {}, fp = model:IsDescendantOf(workspace.CurrentCamera), quiet = false, flames = {}, lit = {}, glowId = nil, glow = nil,
-		glowT = 0, k = k }
+		glowT = 0, k = k, shot = {}, lever = {}, pulse = {}, pulsing = false, light = nil, vis = nil }
+	-- (the piece that says whether your own gun is showing: its biggest visible one. the Root is always invisible, so
+	-- watching it, as rounds 4-10 did, kept every first-person skin effect off)
+	local best = 0
+	for _, d in model:GetDescendants() do
+		if d:IsA("BasePart") and d ~= root and d.Transparency < 0.99 and not d:GetAttribute("Hide") then
+			local v = d.Size.X * d.Size.Y * d.Size.Z
+			if v > best then best = v; S_.vis = d end
+		end
+	end
 	for _, e in sp.idle or {} do
 		local pts = {}
 		for _, p in e.at or {} do
@@ -1686,6 +1722,44 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 			em.Rate = (e.rate or 1) / #pts
 			em.Enabled = not e.afterFire
 			if e.afterFire then table.insert(S_.after, em) else table.insert(S_.idle, em) end
+		end
+	end
+	-- each shot's and each lever cycle's bursts (the space-western pair: the hammer's spark, the rotor's sparks, gunsmoke
+	-- curling off the muzzle, the Iron Horse's steam chuffs and wheel sparks): spec.shot / spec.lever = { kind, colour, n
+	-- (or { min, max }) a point, size (metres), life, speed (m/s), spread, delay (s after the shot; a lever's after its
+	-- clack), at = points, dir = where they fly (the gun frame; default up), both = mirrored }. emitters wait at the points
+	-- (riding the view in first person) and Emit when Fx.gunShot sees a shot from this gun
+	local function bursts(list: { any }?, into: { any })
+		for _, e in list or {} do
+			local d0 = if e.dir then Vector3.new(e.dir[1], e.dir[2], e.dir[3]) else Vector3.yAxis
+			local pts = {}
+			for _, p in e.at or {} do
+				table.insert(pts, { Vector3.new(p[1], p[2], p[3]), d0 })
+				if e.both and math.abs(p[1]) > 1e-3 then table.insert(pts, { Vector3.new(-p[1], p[2], p[3]), d0 * Vector3.new(-1, 1, 1) }) end
+			end
+			for _, pd in pts do
+				local att = Instance.new("Attachment")
+				att.Name = "SkinFx"; att.Parent = root
+				local d = if pd[2].Magnitude > 1e-4 then pd[2].Unit else Vector3.yAxis
+				local up = if math.abs(d.Y) > 0.98 then Vector3.xAxis else Vector3.yAxis
+				att.CFrame = CFrame.lookAt(pd[1] * k, pd[1] * k + d, up) * CFrame.Angles(-math.pi / 2, 0, 0) -- (+Y along d)
+				local em = rigEmitter(att, burstProps(e, (e.size or 0.03) * k, k))
+				em.LockedToPart = S_.fp
+				if e.kind == "steam" then oneshot(em, 64) elseif e.kind ~= "spark" then oneshot(em, 16) end
+				table.insert(into, { em = em, n = e.n or 1, delay = e.delay or 0, puff = e.kind ~= "spark", at = att })
+			end
+		end
+	end
+	bursts(sp.shot, S_.shot)
+	bursts(sp.lever, S_.lever)
+	-- glow pieces that flare on each shot (spec.pulse = { parts = name starts, t = s }: pieces named "<start>...__glow")
+	if sp.pulse and sp.pulse.parts then
+		for _, d in model:GetDescendants() do
+			if d:IsA("BasePart") and string.sub(d.Name, -6) == "__glow" then
+				for _, pre in sp.pulse.parts do
+					if string.sub(d.Name, 1, #pre) == pre then table.insert(S_.pulse, d); break end
+				end
+			end
 		end
 	end
 	-- trails off glowing edges as the gun moves (spec.trail: segs = { { a, b }, ... } in the gun frame, metres; the ribbon
@@ -1762,6 +1836,7 @@ function Fx.skinIdle(model: Model, k: number, spec: any?)
 		local att = Instance.new("Attachment"); att.Name = "SkinFx"; att.Parent = root
 		local l = Instance.new("PointLight")
 		l.Color = sp.glow.colour; l.Brightness = 0.5; l.Range = 1.4 * k; l.Shadows = false; l.Parent = att
+		S_.light = l
 	end
 	skinned[model] = S_
 	skinGlow(S_, true)
@@ -1781,6 +1856,42 @@ skinAt = function(p: Vector3): any
 		if mz and (mz.WorldPosition - p).Magnitude < 2.5 then return S_ end
 	end
 	return nil
+end
+-- a shot from a registered skinned gun: its shot bursts, its lever bursts at the lever cycle's clack, its glow pieces
+-- flare for spec.pulse.t. your own in first person: none while aiming or hidden, no puff across the middle fifth
+local LEVER_CLACK = 0.04 + 0.19 -- (Weapons' lever: its cycle starts 0.04 s in; Reloads' lever_cycle clacks at 0.19 s)
+skinShot = function(S_: any)
+	if not S_.quiet then
+		local function go(list: { any }, base: number)
+			for _, b in list do
+				after(base + b.delay, function()
+					if not b.em.Parent or S_.quiet then return end
+					local cam = workspace.CurrentCamera
+					if b.puff and S_.fp and cam then
+						local sp = cam:WorldToViewportPoint(b.at.WorldPosition)
+						local vp = cam.ViewportSize
+						if math.abs(sp.X - vp.X / 2) < vp.X * 0.1 and math.abs(sp.Y - vp.Y / 2) < vp.Y * 0.1 then return end
+					end
+					emit(b.em, if type(b.n) == "table" then math.random(b.n[1], b.n[2]) else b.n)
+				end)
+			end
+		end
+		go(S_.shot, 0)
+		go(S_.lever, LEVER_CLACK)
+	end
+	if #S_.pulse > 0 and not S_.pulsing then
+		S_.pulsing = true
+		local was = {}
+		for i, p in S_.pulse do was[i] = p.Color; p.Color = p.Color:Lerp(FWHITE, 0.55) end
+		local l = S_.light
+		local lb = if l then l.Brightness else 0
+		if l then l.Brightness = lb + 2 end
+		after(S_.spec.pulse.t or 0.1, function()
+			for i, p in S_.pulse do if p.Parent then p.Color = was[i] end end
+			if l then l.Brightness = lb end
+			S_.pulsing = false
+		end)
+	end
 end
 -- (round 4: first-person bubbles drifted by the sight while aiming, and hung in the view while the gun was hidden. the
 -- game's aim narrows the view (Arsenal: baseFov / zoom), so a view under 0.95 of the widest seen lately is aiming)
@@ -1855,8 +1966,8 @@ local function skinStep()
 	for m, S_ in skinned do
 		if not m.Parent then skinned[m] = nil; continue end
 		if S_.fp then
-			local root = m.PrimaryPart
-			local hidden = root == nil or root.LocalTransparencyModifier >= 0.99 or root.Transparency >= 0.99
+			local vis = S_.vis
+			local hidden = vis == nil or vis.Parent == nil or vis.LocalTransparencyModifier >= 0.99 or vis.Transparency >= 0.99
 			local quiet = hidden or aiming
 			if quiet ~= S_.quiet then
 				S_.quiet = quiet

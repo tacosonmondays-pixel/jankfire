@@ -326,3 +326,28 @@ Trail on the viewmodel), guns' trails stay off in first person.
   dimmer and never in the middle fifth of the screen; Arsenal's slash smear takes the glow colour (`Fx.bladeGlow`).
   Photos `round8/katana-trail.jpg`: first person right (thin gold licks along the arc, the crosshair clear); third
   person was too thin and faint, so it is now wider (0.09 m), brighter (3) and three licks a frame: not re-photographed.
+
+### Round 11: the space-western pair's shot and lever-cycle effects; first-person skin effects back on (17 Nov 2026, place version 482)
+
+- **Shot and lever bursts** (the gun models session's `EFFECTS` in `tools/roblox/gun_sets_west.py`, which the idle rows
+  could not express). `SkinSets.FX[skin]` now takes `shot` and `lever` lists of bursts: `kind` spark (a hot streak
+  thrown off and falling), puff (a soft curl of gunsmoke) or steam (a round white chuff, the lumpy cotton puff); `n`
+  (or `{ min, max }`) per point, `size`, `life`, `speed`, `spread`, `delay`, `at`, `dir` (where they fly, in the gun's
+  frame) and `both`. `Fx.skinIdle` hangs the emitters at the points (riding the view in first person) and
+  `Fx.gunShot` fires them: shot bursts at the shot, lever bursts at the lever's clack (0.23 s after the shot, the
+  same for you and for everyone watching). `pulse = { parts = { name starts }, t }` flares the pieces named
+  `<start>...__glow` toward white, and lifts the skin's glow light, for `t` seconds on each shot.
+- What each gun does: Dust Drover: a spark off the falling hammer, then gunsmoke curling off the muzzle and the
+  cylinder gap 0.3 s later. Star Drover: teal sparks off the rotor's sides, and the rotor's hub flares. Iron Horse
+  (its wheels never turn, so the lever cycle is its moving moment): a steam chuff out of the stack on the shot, then at
+  the clack another chuff, steam out of both cylinder cocks and sparks off the drive wheels' rims. Streamliner: teal
+  sparks drop from under the hover rings at the clack, and the nose ring and the light line flare on each shot.
+- Your own in first person: none while aiming or hidden, and no puff across the middle fifth of the screen.
+- **Fixed: first-person skin effects were always off.** The check for whether your own gun is showing (round 4) read
+  the model's Root, which is always invisible, so every skin's first-person idle effects (bubbles, feathers, sparkles,
+  the angel flames) stayed off. It now watches the gun's biggest visible piece.
+- In Play (`round11/`; stand-ins at twice third-person scale, frozen with `FxTimeScale`): the Iron Horse's wheel
+  sparks and the Streamliner's falling teal sparks read well at 0.3 s; the Star Drover's hub flare shows at 0.05 s.
+  The revolvers' sparks did not show at all at first (the spark drawing needs the frag's x3.4); fixed and checked
+  live on the levers. The steam chuffs read too small, so they are about 1.7x bigger now. Not re-photographed after
+  those two fixes, and nothing photographed in first person yet.

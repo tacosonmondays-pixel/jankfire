@@ -209,12 +209,19 @@ SkinSets.FX = {
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.04, width1 = 0, -- (a glitter swing trail off the blade)
 			segs = { { { 0, 0.006, -0.26 }, { 0, 0.083, -0.836 } } } },
 	},
-	-- the space-western high pieces (the model builder's EFFECTS in gun_sets_west.py also proposes shot and lever-cycle
-	-- puffs and sparks for the VFX session): warm dust motes and a gold tracer on the frontier side, teal light on the star side
+	-- the space-western high pieces: warm dust motes and a gold tracer on the frontier side, teal light on the star side; the
+	-- model builder's shot and lever-cycle effects (EFFECTS in gun_sets_west.py) as `shot` / `lever` bursts and a `pulse`
+	-- (Fx.skinIdle says what each field means: kind spark / puff / steam, n, size, life, speed, delay, at, dir, both)
 	revolver_dust = {
 		idle = {
 			{ kind = "sparkle", colour = Color3.fromRGB(232, 201, 154), rate = 1.5, life = 1.8, size = 0.007, drift = "rise",
 				at = { { -0.05, 0.03, -0.05 }, { -0.04, 0.0, 0.06 } } },
+		},
+		shot = {
+			{ kind = "spark", colour = Color3.fromRGB(255, 210, 122), n = { 2, 3 }, size = 0.025, life = 0.14, speed = 1.2, -- (the hammer falling)
+				at = { { 0.0, 0.07, 0.06 } }, dir = { 0, 1, 0.6 } },
+			{ kind = "puff", colour = Color3.fromRGB(184, 173, 156), size = 0.03, life = 0.8, delay = 0.3, -- (curling up off the muzzle and the cylinder gap)
+				at = { { 0.0, 0.035, -0.3 }, { -0.045, 0.02, -0.1 } } },
 		},
 		flash = Color3.fromRGB(255, 196, 106), tracer = Color3.fromRGB(242, 220, 160),
 	},
@@ -224,6 +231,11 @@ SkinSets.FX = {
 				at = { { -0.05, 0.03, -0.05 }, { -0.04, 0.0, 0.06 } } },
 		},
 		glow = { colour = Color3.fromRGB(69, 230, 214) },
+		shot = {
+			{ kind = "spark", colour = Color3.fromRGB(69, 230, 214), n = { 2, 3 }, size = 0.022, life = 0.15, speed = 1.4, spread = 25, -- (off the rotor's sides as it clicks round)
+				at = { { 0.047, 0.009, -0.05 } }, dir = { 1, 0.3, 0 }, both = true },
+		},
+		pulse = { parts = { "cylinder" }, t = 0.1 }, -- (the rotor's hub flares on each shot)
 		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
 	},
 	lever_dust = {
@@ -233,6 +245,16 @@ SkinSets.FX = {
 			{ kind = "sparkle", colour = Color3.fromRGB(232, 201, 154), rate = 1.2, life = 1.8, size = 0.007, drift = "rise",
 				at = { { -0.06, 0.0, -0.25 } } },
 		},
+		shot = {
+			{ kind = "steam", colour = Color3.fromRGB(233, 230, 223), size = 0.07, life = 0.7, speed = 0.5, at = { { 0.0, 0.066, -0.655 } } }, -- (a chuff out of the stack)
+		},
+		lever = { -- (the Iron Horse's wheels don't turn: the lever cycle is its moving moment)
+			{ kind = "steam", colour = Color3.fromRGB(233, 230, 223), size = 0.05, life = 0.6, speed = 0.4, at = { { 0.0, 0.066, -0.655 } } },
+			{ kind = "steam", colour = Color3.fromRGB(233, 230, 223), size = 0.05, life = 0.5, speed = 0.5, -- (the cylinder cocks by the wheels)
+				at = { { -0.05, -0.05, -0.66 } }, dir = { -1, -0.2, 0 }, both = true },
+			{ kind = "spark", colour = Color3.fromRGB(255, 179, 90), n = { 1, 2 }, size = 0.022, life = 0.18, speed = 1.3, -- (off the drive wheels' rims)
+				at = { { -0.05, -0.09, -0.6 }, { -0.05, -0.09, -0.48 } }, dir = { 0, -0.4, 1 }, both = true },
+		},
 		flash = Color3.fromRGB(255, 196, 106), tracer = Color3.fromRGB(242, 220, 160),
 	},
 	lever_star = {
@@ -241,6 +263,11 @@ SkinSets.FX = {
 				at = { { 0.0, -0.085, -0.6 }, { 0.0, -0.085, -0.47 } } },
 		},
 		glow = { colour = Color3.fromRGB(69, 230, 214) },
+		lever = {
+			{ kind = "spark", colour = Color3.fromRGB(69, 230, 214), n = { 2, 3 }, size = 0.02, life = 0.3, speed = 0.6, spread = 20, -- (dropping from under the hover rings)
+				at = { { 0.0, -0.085, -0.6 }, { 0.0, -0.085, -0.47 } }, dir = { 0, -1, 0 } },
+		},
+		pulse = { parts = { "barrel" }, t = 0.1 }, -- (the nose ring and the light line flare on each shot)
 		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
 	},
 	katana_sakura = { -- petals drifting off the blossom guard, the sprig and the blade's back (the blade points move with its stretch)
