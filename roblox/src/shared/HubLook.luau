@@ -255,6 +255,57 @@ H.looks.gut = {
 H.ownSky = {} :: { [string]: string }    -- a look with its own Sky: the Sky's name in Lighting.SkyParked (attribute OwnSky)
 H.ownSky.gut = "GutSky"                    -- (plain gradient faces, tools/roblox/gut_sky.py)
 H.byArena.Gut = "gut"
+-- BAZAAR v2, "BAZAAR: ROOFTOPS" (ServerStorage.PolishBackup.WebArena; tools/roblox/bazaar2_models.py): a new desert market
+-- town with a second level on its roofs (17 Nov 2026). A warm afternoon: the sun from the south about 33 degrees up
+-- (across the courtyards' line, so neither team starts looking into it), a pale sand haze over the dunes
+H.looks.bazaar2 = {
+	Lighting = {
+		Ambient = Color3.fromRGB(140, 128, 112), OutdoorAmbient = Color3.fromRGB(156, 142, 124), Brightness = 2.5,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.35,
+		ClockTime = 13.0, GeographicLatitude = 80, ColorShift_Top = Color3.fromRGB(255, 228, 196),
+		FogColor = Color3.fromRGB(226, 206, 176), FogStart = 400, FogEnd = 2600,
+	},
+	Atmosphere = { Density = 0.3, Offset = 0.12, Haze = 1.6, Glare = 0.15, Color = Color3.fromRGB(232, 214, 184), Decay = Color3.fromRGB(196, 160, 120) },
+	Bloom = { Intensity = 0.24, Size = 22, Threshold = 2.2 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.06, TintColor = Color3.fromRGB(255, 246, 234) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.plainSky.bazaar2 = true
+H.byArena.BazaarV2 = "bazaar2"
+-- DESERT v2, "DESERT: CANYON" (WebArena; tools/roblox/desert2_models.py): a winding canyon between two mesas, a rope
+-- bridge, sandstorms (DesertStorm.client eases this look's Atmosphere into a sandy wall and back). Hot afternoon light,
+-- the sun from the south about 33 degrees up (across the camps' line), a pale dust haze
+H.looks.desert2 = {
+	Lighting = {
+		Ambient = Color3.fromRGB(140, 126, 112), OutdoorAmbient = Color3.fromRGB(156, 140, 122), Brightness = 2.6,
+		ExposureCompensation = -0.05, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.3,
+		ClockTime = 13.0, GeographicLatitude = 80, ColorShift_Top = Color3.fromRGB(255, 232, 200),
+		FogColor = Color3.fromRGB(228, 206, 172), FogStart = 400, FogEnd = 2600,
+	},
+	Atmosphere = { Density = 0.3, Offset = 0.12, Haze = 1.6, Glare = 0.15, Color = Color3.fromRGB(232, 210, 176), Decay = Color3.fromRGB(196, 158, 112) },
+	Bloom = { Intensity = 0.2, Size = 22, Threshold = 2.3 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.14, Saturation = -0.08, TintColor = Color3.fromRGB(255, 246, 234) },
+	SunRays = { Intensity = 0.03 },
+} :: Look
+H.plainSky.desert2 = true
+H.byArena.DesertV2 = "desert2"
+-- SUBURB v2, "SUBURB: CUL-DE-SAC" (WebArena; tools/roblox/suburb2_models.py): a quiet suburb on a clear afternoon. A
+-- warm sun from the south about 38 degrees up (across the cul-de-sacs' line), a clean blue sky, a light haze over the
+-- far hills
+H.looks.suburb2 = {
+	Lighting = {
+		Ambient = Color3.fromRGB(132, 134, 138), OutdoorAmbient = Color3.fromRGB(150, 152, 156), Brightness = 2.4,
+		ExposureCompensation = 0, EnvironmentDiffuseScale = 0.45, EnvironmentSpecularScale = 0.35,
+		ClockTime = 13.0, GeographicLatitude = 75, ColorShift_Top = Color3.fromRGB(255, 240, 222),
+		FogColor = Color3.fromRGB(200, 212, 224), FogStart = 400, FogEnd = 2600,
+	},
+	Atmosphere = { Density = 0.28, Offset = 0.08, Haze = 1.2, Glare = 0.05, Color = Color3.fromRGB(204, 216, 228), Decay = Color3.fromRGB(150, 166, 186) },
+	Bloom = { Intensity = 0.22, Size = 22, Threshold = 2.3 },
+	ColorCorrection = { Brightness = 0, Contrast = 0.12, Saturation = -0.08, TintColor = Color3.fromRGB(255, 250, 244) },
+	SunRays = { Intensity = 0.02 },
+} :: Look
+H.plainSky.suburb2 = true
+H.byArena.SuburbV2 = "suburb2"
 
 local function target(name: string): Instance?
 	if name == "Terrain" then return workspace.Terrain end -- (a look may pin the water: rooftop_v3)

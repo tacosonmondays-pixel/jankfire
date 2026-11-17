@@ -1337,6 +1337,53 @@ The owner: "Can we have a map based on the gut district? We have this awesome he
 - Phones.
 - The owner's pick of heart (A is in for now).
 
+## 35. Three v2 maps: Bazaar v2, Desert v2, Suburb v2, each its own shape and its own tricks, 17 November 2026 (place versions 702 to 705)
+
+The owner: "can you create an entirely new bazar desert, suburb, make the shape unique, give it like usnique properties, maybe bazar has an upper area or something", then "theyre all v2 versions".
+
+Three new hand-made arenas on the Gut's pipeline. Each has:
+- `tools/roblox/<map>2_layout.py`: plain Python with the hit boxes, turned boxes, pads, water and spawns.
+- `<map>2_models.py`: a headless Blender kit that writes `roblox/studio-tools/<Name>V2Layout.luau`.
+- A plan drawn from its boxes by the new generic `tools/roblox/arena_plan.py`, and offline spawn and sight-line checks (`tools/roblox/arena_check.py`).
+
+Bazaar v2 was built here. Desert v2 and Suburb v2 were built by two parallel helpers that shared this session's context, then reviewed and installed here.
+
+- **BAZAAR: ROOFTOPS** (`BazaarV2`, site z 78000; `docs/maps/bazaar2_layout_plan.jpg`)
+  - **Shape:** an oval walled desert town, 330 x 250, round a square oasis pool, mirror-symmetric (gate courtyards west and east).
+  - **The upper area:** every block's flat roof (y 18) is one network, joined by plank bridges over the streets. It has parapets and roof clutter (stair-houses, water tanks, cloth screens) for cover. You get up by outside stairs and by canvas springboards (pads) that throw you onto the roofs.
+  - **Street level:** a covered souk with lanterns runs under the north roofs into a domed market hall you walk through (a raised fountain breaks the souk-to-souk line). The open spice market is south.
+  - **The plaza:** the pool is swimmable, with a domed well house on its island that blocks the street-to-street line.
+  - **The look:** whitewashed plaster, sand flagstones, beam ends, arched dark windows. Palms, clay pots, market stalls with cloth awnings. The muted teal (hall dome, pool tiles, springboards) is the one accent.
+  - **Cost:** 190k triangles.
+- **DESERT: CANYON** (`DesertV2`, site z 90000; `docs/maps/desert2_layout_plan.jpg`)
+  - **Shape:** a W-shaped canyon between layered mesas. Each camp leads through a corridor, up a north leg, along under the north mesa and down a south leg into a shared basin. Every bend breaks the long lines.
+  - **Mesa tops** (y 26) have rock spires, ruins and lips, reached by 10 stairs carved into the walls.
+  - **The rope bridge** spans the basin from the north mesa's tongue to the south mesa.
+  - **The sandstorm** (unique):
+    - `DesertStorm.server` writes `StormAt` and `StormLen` (first 20-40 s in, then every 70-120 s, 18 s each).
+    - `DesertStorm.client` eases Lighting's Atmosphere to a thick ochre wall and back, blows sand past the camera, and plays the arena's `WindSound` (81404060588532, "Howling Wind").
+    - It stops at once if your match or arena changes.
+  - **Cost:** 113k triangles.
+- **SUBURB: CUL-DE-SAC** (`SuburbV2`, site z 102000; `docs/maps/suburb2_layout_plan.jpg`)
+  - **Shape:** a dumbbell: a round cul-de-sac at each end (the spawns, behind the planted island and parked cars), the street between with a hedged village green in the middle.
+  - **Houses you go through:** 8 of them, with front and back doors, a stair, and upstairs windows over the street and yards.
+  - **Garage roofs** (y 11) lead in through an upstairs window.
+  - **North yards:** two swimmable pools, a hot tub, a tree house (platform at 14).
+  - **South yards:** trampolines (pads onto the garage roofs and the play fort), sheds, barbecues, a play fort with a slide.
+  - **Cost:** 93k triangles.
+- **Shared code:**
+  - `HubLook.looks.bazaar2 / desert2 / suburb2`, each with a sun measured at 32-37 degrees from the south, across the teams' line.
+  - `W.ASSETS` BazaarV2 131330198115223, DesertV2 127676315267642, SuburbV2 127392071390257.
+  - **The rotation:** `ArenaPool` = `RooftopV2,RooftopV3,Crate,Platform,Bazaar,Gut,BazaarV2,DesertV2,SuburbV2`. The old Bazaar (the web port) stays in; removing it is the owner's call.
+- **Checks** (`W.check` in Studio):
+  - Every hit box built (480, 401, 527), every spawn and team spawn on a floor, 0 of 128 team spawn lines open on each map.
+  - All pads land where they should (8 Bazaar springboards on roofs; 4 Suburb trampolines on garage roofs and the fort).
+  - ZFight: 1 contact of 0.1 sq studs on the Bazaar, 0 on the others.
+  - In Play, a real 1v1 started on each map, spawning the attacker at the west end, and the pools filled with water.
+  - The desert storm starts on the client (haze up, sand blowing), but a one-player test can't hold a match long enough to watch it whole.
+- **Photo:** `docs/maps/v2_maps_studio_v705.jpg`.
+- **Not done / not tested:** real 2-player matches, a whole storm in a live match, phones.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.

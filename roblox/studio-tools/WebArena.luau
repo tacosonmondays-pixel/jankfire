@@ -24,7 +24,8 @@ local CollectionService = game:GetService("CollectionService")
 
 local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
-W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839 } :: { [string]: number }
+W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791, Gut = 117631287535839,
+	BazaarV2 = 131330198115223, DesertV2 = 127676315267642, SuburbV2 = 127392071390257 } :: { [string]: number }
 
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
