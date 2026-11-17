@@ -1096,7 +1096,12 @@ Now (push 45, place version 448): `R.check()` 46 keep-clear zones, 0 problems, 0
 - **Two traps met (in memory `roblox-web-arenas`)**:
   - Roblox shrinks a whole uploaded Model until its biggest extent fits 2,048 studs: Crate's 2,536-stud room drew its kit at 81%, Platform's 7,500-stud sea at 27% (hit boxes fine, the look tiny). Kits now stay inside +-1,000 studs (`arenakit.KIT_LIMIT`); anything bigger or farther becomes a backdrop box that WebArena builds as tiled Parts. The Blender log prints `KIT EXTENT`.
   - Studio caps a script's Source at 200,000 characters: the Bazaar layout was 304 KB. Layouts now list hit boxes as numbers with an index into a small `mats` table (152 KB).
-- **Not done / not tested**: a real 2-player match on any of them (stand-in ghost matches only), 4v4 on Platform and Bazaar, phones. Platform's galley interior is plain grey inside; Crate's corner spawns face the window, not the middle, until the camera turns.
+- **Second pass (place version 546), after the main session's look at the first photos**:
+  - **Spawn facing**: a round could open on a blank wall, because the camera kept its old heading through a respawn. Now Fight sends the spawn's heading with the Spawn remote, and Body turns the client's camera to it. A team spawn can also carry its own heading (attribute `Face`, from the layout's team entries). Crate's spawns face the middle of the lid, and Platform's galley spawns face their door. Checked in Play: a 2v2 on Platform opens facing the galley door with no camera help.
+  - **Structure over colour**: Platform's cabins have steel panel ribs every 3.6 studs on both faces, beams under every floor, and a panelled compressor house. Crate's playroom has pilasters every 220 studs, a picture rail and raised panels.
+  - **Bazaar's outskirts**: the web's dunes (four flat layers each) are drawn as smooth dunes. The ones at the kit's edge stay layered, in the backdrop.
+  - **Sheets**: `roblox/docs/maps/sheet_crate.jpg`, `sheet_platform.jpg`, `sheet_bazaar.jpg`.
+- **Not done / not tested**: a real 2-player match on any of them (stand-in ghost matches only), 4v4 on Platform and Bazaar, phones.
 
 ## For the next Claude session
 

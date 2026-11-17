@@ -108,6 +108,13 @@ def wall_panel(m, x0, y0, z0, x1, y1, z1, col=WHITE):
         if thinX: B(m, c, x0 - out, yy0, z0 + 0.02, x1 + out, yy1, z1 - 0.02, bev=0.06, segs=1)
         else: B(m, c, x0 + 0.02, yy0, z0 - out, x1 - 0.02, yy1, z1 + out, bev=0.06, segs=1)
     # the storeys: 0, 10.8, 21.6, 32.4 studs (the web's 0, 3.6, 7.2, 10.8 m)
+    # (17 Nov, the first photos: "big flat grey walls") the cabins' steel panels: a rib every 3.6 studs on both faces
+    L_ = (z1 - z0) if thinX else (x1 - x0)
+    nrib = int(L_ / 3.6)
+    for k in range(1, nrib):
+        t = (z0 if thinX else x0) + L_ * k / nrib
+        if thinX: B(m, WHITE2, x0 - 0.14, y0 + 0.9, t - 0.2, x1 + 0.14, y1 - 0.25, t + 0.2, bev=0.06, segs=1)
+        else: B(m, WHITE2, t - 0.2, y0 + 0.9, z0 - 0.14, t + 0.2, y1 - 0.25, z1 + 0.14, bev=0.06, segs=1)
     lvl = min((0.0, 10.8, 21.6, 32.4), key=lambda v: abs(y0 - v) if y0 >= v - 0.5 else 99)
     if y0 - lvl > 1.5:      # it starts above its floor: the top of a window or a door, a lintel
         band(y0, y0 + 0.5, TRIMW, 0.2)
@@ -308,9 +315,18 @@ def dress_boxes():
             B('pf_quarters', STEEL2, x0, y0, z0, x1, y1 - 0.3, z1, bev=0.1)
             B('pf_quarters', top, x0 + 0.05, y1 - 0.32, z0 + 0.05, x1 - 0.05, y1, z1 - 0.05, bev=0.0, flat=True)
             B('pf_quarters', 'c9c6be', x0 + 0.4, y0 - 0.04, z0 + 0.4, x1 - 0.4, y0 + 0.02, z1 - 0.4, bev=0.0)   # the ceiling under it
+            alongX = (x1 - x0) >= (z1 - z0)                     # beams under it, every 9 studs across its span
+            span0, span1 = (x0, x1) if alongX else (z0, z1)
+            nb = int((span1 - span0) / 9.0)
+            for k in range(1, nb):
+                t = span0 + (span1 - span0) * k / nb
+                if alongX: B('pf_quarters', STEEL2, t - 0.5, y0 - 1.1, z0 + 0.6, t + 0.5, y0 - 0.02, z1 - 0.6, bev=0.1, segs=1)
+                else: B('pf_quarters', STEEL2, x0 + 0.6, y0 - 1.1, t - 0.5, x1 - 0.6, y0 - 0.02, t + 0.5, bev=0.1, segs=1)
             continue
         if mat == 'rigwhite' and min(sx, sz) <= 1.2 and sy > 1.5:
             wall_panel('pf_quarters', x0, y0, z0, x1, y1, z1); continue
+        if mat == 'rigblue' and min(sx, sz) <= 1.2 and sy > 6 and max(sx, sz) > 3:    # the compressor house's walls
+            wall_panel('pf_process', x0, y0, z0, x1, y1, z1, col=BLUE); continue
         if mat == 'rigyellow' and max(sx, sz) <= 6 and sy > 8:        # columns, the crane pedestals: chamfered
             K.chamfer('pf_columns', YEL, x0, y0, z0, x1, y1, z1, ch=0.6); continue
         model = {'rigred': 'pf_drill', 'bop': 'pf_drill', 'rigblue': 'pf_process', 'pipe': 'pf_process', 'rigsteel': 'pf_process',
@@ -375,7 +391,13 @@ def layout():
         solid.append((x0, y0, z0, x1, y1, z1, mat, col, b['mat']))
     spawns = [tuple(v * S for v in p) for p in D['spawns']]
     ts = D['teamSpawns']
-    team = {'att': [tuple(v * S for v in p) for p in ts['att']], 'def': [tuple(v * S for v in p) for p in ts['def']],
+    def to_door(p):                       # (the galley's west wall has a door each side of the middle, z -11..-9, 9..11 m)
+        x, y, z = (v * S for v in p)
+        dz = -30.0 if z <= 0 else 30.0
+        fx, fz = 54.0 - x, dz - z
+        n = math.hypot(fx, fz)
+        return (x, y, z, fx / n, fz / n)
+    team = {'att': [to_door(p) for p in ts['att']], 'def': [tuple(v * S for v in p) for p in ts['def']],
             # (1v1v1's third side: the laydown deck north and south of the process deck, from the web's own spawns)
             'mid': [(-8 * S, 0.1 * S, -20 * S), (-4 * S, 0.1 * S, 19 * S)]}
     return solid, [], spawns, team

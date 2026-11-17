@@ -24,7 +24,7 @@ local CollectionService = game:GetService("CollectionService")
 
 local W = {}
 -- the uploaded <kit>.glb per arena (Model asset "jf_<kit>_<n>"); set after each upload
-W.ASSETS = { Crate = 136114146456712, Platform = 83733721313105, Bazaar = 77644687095814 } :: { [string]: number }
+W.ASSETS = { Crate = 89096180387869, Platform = 96303120157194, Bazaar = 111940015941791 } :: { [string]: number }
 
 local hex = Color3.fromHex
 local V3, CF = Vector3.new, CFrame.new
@@ -162,7 +162,10 @@ function W.build(name: string): string
 		marker(spawns, "Spawn" .. i, CF(O + V3(s[1], s[2], s[3])), V3(4, 0.2, 4))
 	end
 	for _, side in { "att", "def", "mid" } do
-		for _, s in (L.team[side] or {}) do marker(team, side, CF(O + V3(s[1], s[2], s[3])), V3(2, 0.2, 2)) end
+		for _, s in (L.team[side] or {}) do
+			local p = marker(team, side, CF(O + V3(s[1], s[2], s[3])), V3(2, 0.2, 2))
+			if s[4] then p:SetAttribute("Face", V3(s[4], 0, s[5])) end -- (its heading; Matches.teamSpawns turns you to it)
+		end
 	end
 	for i, w in L.water do
 		local p = marker(water, "Water" .. i, CF(O + V3((w[1] + w[4]) / 2, (w[2] + w[5]) / 2, (w[3] + w[6]) / 2)), V3(w[4] - w[1], w[5] - w[2], w[6] - w[3]))

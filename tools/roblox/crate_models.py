@@ -309,6 +309,19 @@ def room():
             xx = x0 + sx * k * 26
             B(m, CURTAIN, xx - 15, 60, zf + 14, xx + 15, 760, zf + 40 + (k % 2) * 8, bev=10.0)
     B(m, SKIRT, -680, 760, zf + 8, 680, 774, zf + 26, bev=4.0)                 # the curtain rail
+    # structure on the big walls: pilasters every 220 studs (not across the window), a picture rail, raised panels below
+    for f in range(4):
+        M = Ry(f * math.pi / 2)
+        for k in range(-4, 5):
+            px = k * 220.0
+            if f == 0 and -560 < px < 560: continue
+            B(m, WALL2, px - 16, F + 36, -RW, px + 16, TOP - 30, -RW + 7, bev=2.5, M=M)
+            B(m, SKIRT, px - 20, F, -RW, px + 20, F + 40, -RW + 9, bev=2.0, M=M)
+        B(m, WALL2, -RW, F + 470, -RW, RW, F + 480, -RW + 3, bev=1.0, M=M)
+        for k in range(-4, 4):
+            a0, a1 = k * 220.0 + 34, (k + 1) * 220.0 - 34
+            if f == 0 and a1 > -560 and a0 < 560: continue
+            B(m, WALL, a0, F + 54, -RW, a1, F + 134, -RW + 2.5, bev=1.5, M=M)
 
 def furniture():
     m = 'cr_furn'
@@ -371,6 +384,9 @@ def layout():
         'def': [(33, 0.3, 33), (33, 0.3, -33), (39, 0.3, 12), (39, 0.3, -12)],
         'mid': [(0, 0.3, -39), (0, 0.3, 39)],
     }
+    # (each one faces the middle of the lid: a round opens on the sorter and the crates, not on the room)
+    for k in team:
+        team[k] = [(x, y, z, -x / math.hypot(x, z), -z / math.hypot(x, z)) for (x, y, z) in team[k]]
     return solid, pads_, spawns, team
 
 VIEWS = [

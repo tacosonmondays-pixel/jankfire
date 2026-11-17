@@ -214,9 +214,25 @@ def dress():
             B('bz_walls', col, x0, y0, z0, x1, y1, z1, bev=0.15, segs=1); continue
         B('bz_goods', col, x0, y0, z0, x1, y1, z1, bev=min(0.3, min(sx, sy, sz) * 0.3), segs=1)
 
-def deco():
+def dunes():
+    """the web's dunes, each four flat layers of sand smaller as they go up (they read as stepped pyramids from the
+    walls): one smooth squashed dome each instead. returns the dunes' footprints so deco() skips their layers"""
+    feet = []
+    for b in D['deco']:
+        if b['mat'] != 'sand' or abs(b['min'][1] + 0.05) > 0.02: continue
+        x0, y0, z0, x1, y1, z1 = sb(b)
+        w, h, d = x1 - x0, (y1 - y0) * 4, z1 - z0
+        if h < 1.0: continue
+        if max(abs(x0), abs(x1), abs(z0), abs(z1)) * 1.12 > 980: continue    # (near the kit's edge: stays layered, in the backdrop)
+        blob('bz_dunes', SAND2, (x0 + x1) / 2 + w * 0.05, y0 - h * 0.12, (z0 + z1) / 2, 1.0, sy=h * 1.1, sub=3, sx=w * 0.56, sz=d * 0.56)
+        feet.append((x0, z0, x1, z1))
+    return feet
+
+def deco(feet=()):
     """the web's render-only boxes that matter: the canal's water, the dye in the vats, awnings, lamps, hanging goods"""
     for b in D['deco']:
+        if b['mat'] == 'sand' and b['min'][1] > -0.1 and any(f[0] - 1 <= (b['min'][0] + b['max'][0]) * 1.5 <= f[2] + 1 and f[1] - 1 <= (b['min'][2] + b['max'][2]) * 1.5 <= f[3] + 1 for f in feet):
+            continue                                            # (a dune's layer: drawn by dunes())
         if b.get('fit') or is_dome(b) or b['mat'].startswith('ad') or b['mat'].startswith('neon'): continue
         x0, y0, z0, x1, y1, z1 = sb(b)
         sx, sy, sz = x1 - x0, y1 - y0, z1 - z0
@@ -309,7 +325,7 @@ import bpy
 bpy.ops.wm.read_factory_settings(use_empty=True)
 G = merged_ground()
 print('GROUND: %d web boxes -> %d merged' % (sum(1 for b in D['boxes'] if b.get('ter')), len(G)))
-dress(); domes(); lamp_tower(); heightfield(); deco(); lights_()
+dress(); domes(); lamp_tower(); heightfield(); deco(dunes()); lights_()
 solid, pads_, spawns, team = layout(G)
 K.write_layout(LAYOUT, INFO, solid, pads_, spawns, team, src='tools/roblox/bazaar_models.py')
 K.finish('bazaar', OUT_DIR, PREVIEW, VIEWS, prefix='bazaar', sky=(0.8, 0.74, 0.66), sun_rot=(62, 0, -60))

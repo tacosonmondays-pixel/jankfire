@@ -397,7 +397,7 @@ function Fight.spawn(f: Fighter)
 	local pos = at + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
 	local look = if face and Vector3.new(face.X, 0, face.Z).Magnitude > 1e-3 then Vector3.new(face.X, 0, face.Z).Unit else nil
 	ch:PivotTo(if look then CFrame.lookAt(pos, pos + look) else CFrame.new(pos))
-	R.Spawn:FireClient(p, at)
+	R.Spawn:FireClient(p, at, look) -- (and which way: the client turns its camera to it)
 	syncHp(f)
 	p:SetAttribute("Kat", 0)
 	Fight.showWeapon(f)

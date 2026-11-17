@@ -205,6 +205,8 @@ local function teamSpawns(m: Match, team: number): { CFrame }
 		for _, s in ts:GetChildren() do
 			if s:IsA("BasePart") and s.Name == want then
 				local toward = if want == "mid" then Vector3.new(mid.X, s.Position.Y, mid.Z) else Vector3.new(cx, s.Position.Y, s.Position.Z)
+				local f = s:GetAttribute("Face") -- (a spawn's own heading, 17 Nov: a galley spawn looks at its door, not its wall)
+				if typeof(f) == "Vector3" and Vector3.new(f.X, 0, f.Z).Magnitude > 0.01 then toward = s.Position + Vector3.new(f.X, 0, f.Z) end
 				if (toward - s.Position).Magnitude > 0.1 then table.insert(out, CFrame.lookAt(s.Position, toward)) else table.insert(out, CFrame.new(s.Position)) end
 			end
 		end

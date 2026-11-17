@@ -105,15 +105,24 @@ end)
 Remotes:WaitForChild("Slip").OnClientEvent:Connect(function(kind: unknown)
 	Body.slip(if type(kind) == "string" then kind else "marbles")
 end)
--- the server picked a spawn: put yourself there (your client owns your character's position)
-Remotes:WaitForChild("Spawn").OnClientEvent:Connect(function(at: unknown)
+-- the server picked a spawn: put yourself there (your client owns your character's position), facing the way the
+-- spawn faces (17 Nov: the camera kept its old heading through a respawn, so a round could open on a blank wall)
+Remotes:WaitForChild("Spawn").OnClientEvent:Connect(function(at: unknown, look: unknown)
 	if typeof(at) ~= "Vector3" then return end
+	local face = if typeof(look) == "Vector3" and Vector3.new(look.X, 0, look.Z).Magnitude > 1e-3 then Vector3.new(look.X, 0, look.Z).Unit else nil
 	task.defer(function()
 		local ch = Players.LocalPlayer.Character
 		local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 		if root and (root.Position - at).Magnitude > 6 then
-			(ch :: Model):PivotTo(CFrame.new(at + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)))
+			local pos = at + Vector3.new(0, Hitbox.ROOT_UP + 0.2, 0)
+			;(ch :: Model):PivotTo(if face then CFrame.lookAt(pos, pos + face) else CFrame.new(pos))
 			root.AssemblyLinearVelocity = Vector3.zero
+		end
+		if face then
+			task.wait(0.05)
+			local cam = workspace.CurrentCamera
+			local p = cam.CFrame.Position
+			cam.CFrame = CFrame.lookAt(p, p + face)
 		end
 	end)
 end)
