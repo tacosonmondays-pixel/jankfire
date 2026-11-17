@@ -87,6 +87,7 @@ D.SPOTS = {
 	["sniper@sniper_musket"] = { at = Vector3.new(0, 0.14184, 0.039), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["katana@katana_neon"] = { at = Vector3.new(0, 0.03139, 0.08), s = 0.6, yaw = 0, pitch = 0 },  -- upright on top of the handle near its end (the pommel has a cord hanging off it); 1 cm in after the guns z-fight fix, solved by hat_solve.py: worst clip 0.0 mm
 	["ar@ar_seraph"] = { at = Vector3.new(0, 0.086, -0.14), s = 1, yaw = 0, pitch = 0 },  -- on the receiver rib ahead of the halo sight (solved onto the halo itself, 6 cm over the gun; moved by hand): worst clip 0.0 mm
+	["ar@ar_seraph_tripo"] = { at = Vector3.new(0, 0.06672, -0.15), s = 1, yaw = 0, pitch = 0 },  -- on the pearl rail ahead of the receiver, the whole foot on its flat (the solver's -0.11 hung half off its back edge): worst clip 0.0 mm
 	["ar@ar_infernal"] = { at = Vector3.new(0, 0.07, -0.09), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)
 	["lmg@lmg_ducky"] = { at = Vector3.new(0, 0.093, 0), s = 1, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.5 mm (third person), 0.4 mm (first)
 	["marbles@marbles_cauldron"] = { at = Vector3.new(0, 0.19262, -0.04), s = 0.65, yaw = 0, pitch = 0 },  -- solved by hat_solve.py: worst clip 0.0 mm (third person), 0.0 mm (first)

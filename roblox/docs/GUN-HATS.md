@@ -337,6 +337,19 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
     plain Sniper. Whole set: 88 seats, 2,112 rows.
   - Studio (v2 template, its `FileLo`/`FileHi` set): every hat stands 11.0 mm over the tube (the saddle less the 2 mm
     sink), the same as on the plain Sniper and the Star skin. Live in place version 598.
+- **The Seraph Rifle (Tripo) (guns place version 627, hats 628):** `ar@ar_seraph_tripo`, a concept skin (in CONCEPTS,
+  not sold yet): the owner's Tripo angelic rifle, cleaned by `tools/roblox/tripo_gun.py`. Its builder loads the cleaned
+  pieces from the vault (`Assets/tripo-17nov/angel-rifle`), so the hat tools need
+  **`JF_EXTRA=gun_sets_ducky_art,gun_sets_triangulum,tripo_gun`** on this machine; without the vault's files the line
+  drops out (nothing fails). Its renders stay in the vault with the owner's other files, not in git.
+  - Its own seat, z −0.15, on the pearl rail ahead of the receiver (a flat block z −0.19..−0.11, y 0.0687). The rifle's
+    spot (z −0.07) is a 1 cm ridge over a deck 13 mm lower. The solver's first clean seat, z −0.11, hung half the foot
+    off the block's back edge. The wings rise behind the receiver and stay clear of every hat, the pearl front-sight
+    block too.
+  - Full check of the twelve hats: no hat in a gun, no gun in a hat, the foot exactly its 2.0 mm in (24 pairs). Whole
+    set: 89 seats, 2,136 rows.
+  - Studio: the template's `FileLo`/`FileHi` match the builder (plus its shade shells). Every hat's foot is 2.0 mm into
+    the rail at its centre and 1.6–2.0 mm at 3 cm fore and aft. Live in place version 628.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
@@ -417,7 +430,7 @@ front others see their backs); a new concept would do more for it than another r
 
 - **Live: round 12** (asset 100913123667082: the eleven hats plus the Star Tricorne), place version 554. Round 11
   (asset 83292486542416: the two ducks with a real bill) went live in place version 476. Seats on 16 guns and
-  72 skins since place version 598 (71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
+  73 skins since place version 628 (72 from 598, 71 from 512, 68 from 500, 77 from 481 to 495; latest seats: the last bullet of the section above). Round 10 (asset
   134178407944653: round 9's ten hats unchanged plus the VIP Royal Duck) went live in place version 447
   (16 Nov 2026, ~21:57 UTC), with seats on 16 guns and 52 skins; seats re-solved for the guns' remodel batch in place
   version 452 (16 guns, 60 skins). Round 9 (asset 70496262106000) went live in place
