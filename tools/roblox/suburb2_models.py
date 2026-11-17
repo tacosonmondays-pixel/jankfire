@@ -290,7 +290,45 @@ def trees():
             rr = big * (0.55 if k else 0.0)
             blob(m, LEAF if k % 2 == 0 else LEAF2, cx + rr * math.cos(a), h + 4 + big * 0.5 + rnd.random() * 2, cz + rr * math.sin(a), big * (0.9 if k == 0 else 0.7), sy=0.82, sub=2)
 
-def cars():
+BRICK, BIN1, BIN2, MAILC, MAILD = 'b3a596', '4f5b54', '676b70', 'cfccc4', 'a9a69f'
+def street_sets():
+    """where the cars were (the owner: "remove the cars on suburb"): garden walls with clipped hedges in front of the
+    spawns; along the kerbs a brick planter with a hedge, a mailbox cluster and two wheelie bins"""
+    for (x0, z0, x1, z1, kind) in L.STREETSETS:
+        if kind == 'wall':
+            m = 'sb_hedge'
+            B('sb_yard', COPING, x0 - 0.1, 0, z0 - 0.1, x1 + 0.1, 0.6, z1 + 0.1, bev=0.15)
+            B(m, HEDGE, x0 + 0.1, 0.5, z0 + 0.1, x1 - 0.1, 5.4, z1 - 0.1, bev=0.9)
+            xs = x1 if abs(x1) < abs(x0) else x0                     # (the wall on its street side)
+            B('sb_yard', BRICK, min(xs, xs + (0.9 if xs == x0 else -0.9)), 0, z0, max(xs, xs + (0.9 if xs == x0 else -0.9)), 3.0, z1, bev=0.2)
+            B('sb_yard', COPING, min(xs, xs + (0.9 if xs == x0 else -0.9)) - 0.1, 3.0, z0 - 0.1, max(xs, xs + (0.9 if xs == x0 else -0.9)) + 0.1, 3.35, z1 + 0.1, bev=0.1)
+        else:
+            a, b = (x0, x1) if abs(x0) > abs(x1) else (x1, x0)
+            sg = 1.0 if b > a else -1.0
+            u = lambda t: a + sg * t
+            lo, hi = lambda p, q: min(p, q), lambda p, q: max(p, q)
+            # the planter: brick, a coping, a clipped hedge on it
+            B('sb_yard', BRICK, lo(u(0), u(7)), 0, z0, hi(u(0), u(7)), 2.2, z1, bev=0.2)
+            B('sb_yard', COPING, lo(u(0), u(7)) - 0.1, 2.2, z0 - 0.1, hi(u(0), u(7)) + 0.1, 2.5, z1 + 0.1, bev=0.1)
+            B('sb_hedge', HEDGE, lo(u(0.3), u(6.7)), 2.4, z0 + 0.3, hi(u(0.3), u(6.7)), 5.4, z1 - 0.3, bev=0.8)
+            # the mailbox cluster: a pale metal cabinet on a short plinth, door panels (no writing)
+            B('sb_yard', MAILD, lo(u(7.4), u(9.0)), 0, z0 + 1.6, hi(u(7.4), u(9.0)), 0.6, z1 - 1.6, bev=0.1)
+            B('sb_yard', MAILC, lo(u(7.2), u(9.2)), 0.6, z0 + 1.2, hi(u(7.2), u(9.2)), 5.0, z1 - 1.2, bev=0.25)
+            for k in range(3):
+                zz0 = z0 + 1.6 + k * (z1 - z0 - 3.2) / 3
+                for yy in (1.4, 2.9):
+                    face = hi(u(7.2), u(9.2)) if sg > 0 else lo(u(7.2), u(9.2))
+                    xx0, xx1 = face - 0.05, face + 0.04
+                    B('sb_yard', MAILD, lo(xx0, xx1), yy, zz0 + 0.12, hi(xx0, xx1), yy + 1.2, zz0 + (z1 - z0 - 3.2) / 3 - 0.12, bev=0.0)
+            # two wheelie bins side by side, lids and small wheels
+            for k, col in enumerate((BIN1, BIN2)):
+                za, zb = (z0 + 0.6, (z0 + z1) / 2 - 0.1) if k == 0 else ((z0 + z1) / 2 + 0.1, z1 - 0.6)
+                B('sb_yard', col, lo(u(9.5), u(11.9)), 0.4, za, hi(u(9.5), u(11.9)), 3.8, zb, bev=0.3)
+                B('sb_yard', col, lo(u(9.4), u(12.0)), 3.8, za - 0.05, hi(u(9.4), u(12.0)), 4.2, zb + 0.05, bev=0.12)
+                for zz in (za + 0.5, zb - 0.5):
+                    cylz('sb_yard', TYRE, zz - 0.15, zz + 0.15, u(11.6), 0.4, 0.4, segs=10, bev=0.02)
+
+def cars_removed():
     m = 'sb_car'
     for i, (x0, z0, x1, z1) in enumerate(L.CARS):
         col = CARS[(int(abs(x0)) // 7 + int(abs(z0)) // 5) % len(CARS)]
@@ -471,7 +509,7 @@ def edge():
         blob(mf, '8a9a78' if k % 2 else '7f9070', rr * math.cos(a), -10, rr * math.sin(a) * 0.9, 90 + 60 * rnd.random(), sy=0.35, sub=2)
 
 # ================================================================ build
-ground(); houses(); fences(); trees(); cars(); lamps(); yards(); green(); tree_house(); play_fort(); edge()
+ground(); houses(); fences(); trees(); street_sets(); lamps(); yards(); green(); tree_house(); play_fort(); edge()
 solid = [(b[0], b[1], b[2], b[3], b[4], b[5]) + HIT[b[6]] for b in L.SOLID]
 rotb = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) + HIT[r[7]] + (r[8],) for r in L.ROT]
 pads = [tuple(p) for p in L.PADS]

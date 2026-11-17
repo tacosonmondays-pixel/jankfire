@@ -1337,7 +1337,7 @@ The owner: "Can we have a map based on the gut district? We have this awesome he
 - Phones.
 - The owner's pick of heart (A is in for now).
 
-## 35. Three v2 maps: Bazaar v2, Desert v2, Suburb v2, each its own shape and its own tricks, 17 November 2026 (place versions 702 to 705)
+## 35. Three v2 maps: Bazaar v2, Desert v2, Suburb v2, each its own shape and its own tricks, 17 November 2026 (place versions 702 to 706)
 
 The owner: "can you create an entirely new bazar desert, suburb, make the shape unique, give it like usnique properties, maybe bazar has an upper area or something", then "theyre all v2 versions".
 
@@ -1382,6 +1382,11 @@ Bazaar v2 was built here. Desert v2 and Suburb v2 were built by two parallel hel
   - In Play, a real 1v1 started on each map, spawning the attacker at the west end, and the pools filled with water.
   - The desert storm starts on the client (haze up, sand blowing), but a one-player test can't hold a match long enough to watch it whole.
 - **Photo:** `docs/maps/v2_maps_studio_v705.jpg`.
+- **The cars came off the Suburb (place version 706).** The owner said "remove the cars on suburb". Each car (5.4 tall) became cover of the same footprint, so the lanes and lines didn't change:
+  - in front of each cul-de-sac's spawns, a brick garden wall with a clipped hedge;
+  - at the kerbs, a brick planter with a hedge, a mailbox cluster and two wheelie bins.
+  - `W.check` still finds 539/539 hit boxes, 0 of 128 spawn lines open, the pads landing right, and ZFight 0.
+  - Before/after photos: `docs/maps/suburb2_cars_removed_v706.jpg`.
 - **Not done / not tested:** real 2-player matches, a whole storm in a live match, phones.
 
 ## For the next Claude session

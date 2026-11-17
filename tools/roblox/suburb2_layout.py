@@ -4,7 +4,7 @@
 # (suburb2_models.py) read the same numbers.
 #
 # The shape is a dumbbell, mirror-symmetric across x = 0 (attackers spawn in the west bulb, defenders in the east):
-#   a round cul-de-sac at each end (the turning circle, a planted island, parked cars as spawn cover, houses round it)
+#   a round cul-de-sac at each end (the turning circle, a planted island, garden hedges as spawn cover, houses round it)
 #   a main street between them, opening in the middle onto a village green (a hedged square with a bandstand)
 #   two-storey houses along the street you can go through: front door, back door, a stair, upstairs windows over the
 #   street and the yards; garages with flat roofs that lead in through an upstairs window
@@ -53,7 +53,9 @@ ROUNDS = []      # (cx, cz, r, y0, y1, mat)
 BULB_HOUSES = [] # (cx, cz, angle (radians, the way the front faces), width, depth)
 STAIRS = []      # (x0, z0, x1, z1, axis 'x'|'z', direction +1|-1, steps): every stair, for the kit
 OPENS = []       # (x0, y0, z0, x1, y1, z1, kind): door and window openings (the kit frames them)
-CARS = []        # (x0, z0, x1, z1)
+CARS = []        # (no cars any more: the owner, 17 Nov, "remove the cars on suburb")
+STREETSETS = []  # (x0, z0, x1, z1, kind): where the cars stood, cover of the same size: 'wall' a garden wall and clipped
+                 # hedge (in front of the spawns), 'kerb' a brick planter with a hedge, a mailbox cluster and wheelie bins
 FENCES = []      # (x0, z0, x1, z1)
 
 def box(x0, y0, z0, x1, y1, z1, m):
@@ -93,7 +95,7 @@ class Mirror:
     def lists(self):
         return {'SOLID': SOLID, 'ROT': ROT, 'PADS': PADS, 'WATER': WATER, 'HOUSES': HOUSES, 'GARAGES': GARAGES,
                 'POOLS': POOLS, 'ROUNDS': ROUNDS, 'BULB_HOUSES': BULB_HOUSES, 'STAIRS': STAIRS, 'OPENS': OPENS,
-                'CARS': CARS, 'FENCES': FENCES, 'NOTES': NOTES}
+                'CARS': CARS, 'FENCES': FENCES, 'NOTES': NOTES, 'STREETSETS': STREETSETS}
     def __exit__(self, *a):
         L = self.lists()
         new = {k: list(v[self.n[k]:]) for k, v in L.items()}
@@ -114,6 +116,7 @@ class Mirror:
             STAIRS.append((-x1, z0, -x0, z1, ax, -d if ax == 'x' else d, n))
         for o in new['OPENS']: OPENS.append((-o[3], o[1], o[2], -o[0], o[4], o[5], o[6]))
         for c in new['CARS']: CARS.append((-c[2], c[1], -c[0], c[3]))
+        for c in new['STREETSETS']: STREETSETS.append((-c[2], c[1], -c[0], c[3], c[4]))
         for f in new['FENCES']: FENCES.append((-f[2], f[1], -f[0], f[3]))
         for n_ in new['NOTES']: NOTES.append((-n_[0], n_[1], n_[2], n_[3]))
 
@@ -204,9 +207,21 @@ def fence(x0, z0, x1, z1, gates=()):
         if along_x: box(u0, 0, z0, u1, FENCE, z1, 'fence'); FENCES.append((u0, z0, u1, z1))
         else: box(x0, 0, u0, x1, FENCE, u1, 'fence'); FENCES.append((x0, u0, x1, u1))
 
-def car(x0, z0, x1, z1):
-    CARS.append((x0, z0, x1, z1))
-    box(x0, 0, z0, x1, 5.4, z1, 'car')
+def hedge_wall(x0, z0, x1, z1):
+    """a garden wall with a clipped hedge behind it: the size and height a parked car was (full cover)"""
+    STREETSETS.append((x0, z0, x1, z1, 'wall'))
+    box(x0, 0, z0, x1, 5.4, z1, 'hedge')
+
+def kerb_set(x0, z0, x1, z1):
+    """along the kerb where a car was: a brick planter with a hedge on it (5.4, full cover), a mailbox cluster (5.0) and
+    two wheelie bins (4.2) at its east end, all in the car's footprint"""
+    STREETSETS.append((x0, z0, x1, z1, 'kerb'))
+    a, b = (x0, x1) if abs(x0) > abs(x1) else (x1, x0)        # (a: the end away from the middle)
+    sg = 1.0 if b > a else -1.0
+    u = lambda t: a + sg * t
+    box(u(0.0), 0, z0, u(7.0), 2.4, z1, 'stone'); box(u(0.0), 2.4, z0, u(7.0), 5.4, z1, 'hedge')
+    box(u(7.2), 0, z0 + 1.2, u(9.2), 5.0, z1 - 1.2, 'rail')
+    box(u(9.4), 0, z0 + 0.6, u(12.0), 4.2, z1 - 0.6, 'cover')
 
 def pool(x0, z0, x1, z1):
     POOLS.append((x0, z0, x1, z1))
@@ -249,17 +264,17 @@ with Mirror():
     box(-X_EDGE, 0, -64.0, -166.0, LID, 64.0, 'hedge')             # behind them
     box(-X_EDGE, 0, -Z_EDGE, -150.0, LID, -50.0, 'hedge')          # the far corners
     box(-X_EDGE, 0, 50.0, -150.0, LID, Z_EDGE, 'hedge')
-    # the island in the turning circle (a planter and a tree), parked cars in front of the spawns
+    # the island in the turning circle (a planter and a tree), garden hedges in front of the spawns (where cars were)
     round_(bx, bz, 6.0, 0, 2.4, 'cover')
     tree(bx, bz, 1.5, 34.0)
     # the lawns either side of the turning circle: a low hedge and a tree each (cover between the spawn and the yards)
     box(-128.0, 0, -29.4, -116.0, 3.0, -28.0, 'hedge'); tree(-100.0, -34.0, 1.3, 30.0)
     box(-128.0, 0, 28.0, -116.0, 3.0, 29.4, 'hedge'); tree(-100.0, 34.0, 1.3, 30.0)
-    car(-102.0, -17.0, -96.0, -5.0)
-    car(-102.0, 5.0, -96.0, 17.0)
+    hedge_wall(-102.0, -17.0, -96.0, -5.0)
+    hedge_wall(-102.0, 5.0, -96.0, 17.0)
     # ---------------------------------------------------------- the street (west half)
-    car(-78.0, -11.5, -66.0, -5.5)                                 # parked along the kerbs
-    car(-50.0, 5.5, -38.0, 11.5)
+    kerb_set(-78.0, -11.5, -66.0, -5.5)                            # along the kerbs (where parked cars were)
+    kerb_set(-50.0, 5.5, -38.0, 11.5)
     for x in (-88.0, -60.0, -36.0):
         round_(x, -19.0, 0.45, 0, 13.0, 'rail', n=2)               # street lamps
         round_(x, 19.0, 0.45, 0, 13.0, 'rail', n=2)
@@ -351,7 +366,7 @@ FLOORS = ('asphalt', 'lawn', 'floor', 'step')
 COLOURS = {'asphalt': (120, 122, 128), 'lawn': (150, 170, 128), 'house': (150, 88, 98), 'roof': (110, 70, 80),
            'garage': (205, 180, 160), 'fence': (245, 240, 230), 'hedge': (80, 110, 70), 'wood': (176, 132, 96),
            'car': (160, 170, 180), 'tree': (120, 90, 60), 'stone': (214, 208, 196), 'floor': (200, 170, 130)}
-PLAN_NOTE = ('a dumbbell: a cul-de-sac at each end (spawns behind the island and the cars), the street with the hedged green '
+PLAN_NOTE = ('a dumbbell: a cul-de-sac at each end (spawns behind the island and the garden hedges), the street with the hedged green '
              'in the middle; houses you can go through (doors, a stair, upstairs windows); garage roofs into the upstairs; '
              'north yards: pools, a tree house; south yards: trampolines, a play fort')
 
