@@ -44,7 +44,7 @@ R.MARK = "Rotunda" -- the Built attribute on what the server finds by name
 R.SITE = Vector3.new(-200, 240, -10000) -- the hub's site (the bowling centre's too: only one of them is built at a time)
 R.STAGE = Vector3.new(200, 240, -10000)
 R.PARTS = { "HubRotundaCentre", "HubRotundaLifts", "HubRotundaRooms" }
-R.PUSH = 51 -- (counts the pushes from the repo into Studio while the builder was being written)
+R.PUSH = 53 -- (counts the pushes from the repo into Studio while the builder was being written)
 -- the hub's own prop kit (tools/roblox/rotunda_props.py, one upload): chunky pieces that replaced the weakest old bc_
 -- props on 16 Nov (owner: "some of the props dont look super like rivals ones!"). R.importProps() brings them into
 -- JankfireMeshes; R.prop(new, old) places the new one if it is there, else the old
@@ -94,14 +94,39 @@ R.GYM_RING = 58.5 -- the ring's middle, on the door's axis
 -- purposes (owner, 17 Nov: "Dune is the quests guy, maybe Frisk does one. Maybe Looticus the shop? ... I want to give
 -- them purposes"): role = the word after their name over them; prompt = { its action, the attribute it carries, its
 -- value }: the panel's own client opens on that attribute (ShopOpen: ShopClient; QuestsOpen: QuestClient; RankedBoard:
--- the ranked leaderboard, "duels" or "party"). idle / walk / extra: their clips, made with Studio's prompt-to-animation tool
--- (17 Nov; the seated ones re-uploaded with the hips levelled, as Roblox's own sit has them, so they don't sink into
--- the sofas). every = { min, max } seconds between the extra one-shots Trisangle's prompt is the shop's VipDaily's
+-- the ranked leaderboard, "duels" or "party"). idle / extra / extraStand / walk: their clips (MX below; a seated one's
+-- hips levelled about the clip's own middle, as Roblox's own sit has them, so they don't sink into the sofas; walk only
+-- for an avatar with none of its own). every = { min, max } seconds between the one-shots. Trisangle's prompt is the
+-- shop's VipDaily's
+-- getting up and sitting down (owner, 17 Nov: "When they stand make sure they don't stand in their seats like clipped
+-- into it! Idk how you would do it but make them leaving their seat natural?"): rise / settle = the two clips (motion
+-- capture; uploaded with their hips kept still: HubNPCs moves the body along the hips' own path). they stand up onto a
+-- seat's Stand point, R.NPC_STAND in front of it (clear of the cushion by more than half a body), take a step out to
+-- its approach before they turn, and sit down from the Stand point with their back to the seat. R.check sweeps a body
+-- (R.NPC_BODY: across, tall, deep; its feet R.NPC_LIFT over the floor, so rugs and sills don't count) along every way
+-- they walk, every R.NPC_STEP studs, and stands one on every point they stop at
+R.NPC_STAND = 1.9 -- (the sofas reach 1.1 in front of their seat points; a body is 1.2 deep)
+R.NPC_BODY = Vector3.new(3.8, 5.2, 1.2) -- (the four regulars: 3.4 to 4 across at the hands, 5.2 tall, 1.2 deep)
+R.NPC_LIFT = 0.35
+R.NPC_STEP = 0.5
+-- the clips (owner, 17 Nov: "also the animations seem really stiff.."; then Mixamo motion capture the owner approved, put
+-- onto R15 by my own retarget (the scratchpad's mixamo\retarget.py; the FBX stay in the vault, Assets\mixamo-17nov) and
+-- set side by side with the live clips and the generated takes (four standing up, two sitting down; PORT-PLAN
+-- section 32): the mocap won every slot. each with its
+-- length in seconds where the server times something by it. one seated glance serves Trisangle and Looticus
+local MX = {
+	rise = "rbxassetid://117955942892612", settle = "rbxassetid://97331327036036", -- (2.27 s, 2.23 s; uploaded with the hips kept still)
+	trisIdle = "rbxassetid://122668447841808", look = "rbxassetid://114005193645149", -- (legs swinging on a high perch; a glance to the side, 4 s)
+	lootIdle = "rbxassetid://81991323034085", stretch = "rbxassetid://75542542460583", -- (breathing, seated; an arm stretch standing, 8.87 s)
+	duneIdle = "rbxassetid://90791386511358", shift = "rbxassetid://86800381172094", -- (breathing, standing; a weight shift, 9.43 s)
+	friskIdle = "rbxassetid://132599545925485", -- (looking around)
+}
+local GEN_WALK = "rbxassetid://135619112265836" -- (generated; only for an avatar with no walk of its own)
 R.NPCS = {
-	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport", idle = "rbxassetid://81632050089862", extra = "rbxassetid://71884246597796", every = { 15, 30 } }, -- on the lounge's sofa; now and then a puff and he is on another seat or by the arcade or the fridge
-	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "loop", idle = "rbxassetid://127219539482270", walk = "rbxassetid://135619112265836" }, -- in the gym, walking round the ring
-	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedBoard", "duels" }, moves = "pingpong", idle = "rbxassetid://98265160247529", walk = "rbxassetid://135619112265836" }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
-	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", moveEvery = { 45, 90 }, idle = "rbxassetid://109986198247610", walk = "rbxassetid://135619112265836" }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
+	Looticus = { user = "roblox_user_4547551380", id = 4547551380, pose = "sit", role = "SHOP", prompt = { "Shop", "ShopOpen", "tab:containers" }, moves = "teleport", idle = MX.lootIdle, extra = MX.look, extraLen = 4, extraStand = MX.stretch, extraStandLen = 8.9, every = { 15, 30 }, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 }, -- on the lounge's sofa; now and then up, a puff, and he is on another seat or by the arcade or the fridge
+	Dune = { user = "Doonamei", id = 56917496, pose = "stand", role = "QUESTS", prompt = { "Quests", "QuestsOpen", true }, badge = "QuestNews", moves = "loop", idle = MX.duneIdle, extra = MX.shift, extraLen = 9.4, every = { 20, 40 }, walk = GEN_WALK }, -- in the gym, walking round the ring
+	Frisk1636 = { user = "BruhFrisk1636", id = 5028123368, pose = "stand", role = "RANKED", prompt = { "Ranked", "RankedBoard", "duels" }, moves = "pingpong", idle = MX.friskIdle, walk = GEN_WALK }, -- on the balcony over the lifts, moving between four spots on the rail, looking down
+	Trisangle = { user = "Xxxglowingstarlightx", id = 2321239144, pose = "sit", vipDaily = true, role = "DAILY REWARD", moves = "seats", moveEvery = { 45, 90 }, idle = MX.trisIdle, extra = MX.look, extraLen = 4, every = { 12, 25 }, walk = GEN_WALK, rise = MX.rise, riseLen = 2.27, settle = MX.settle, settleLen = 2.23 }, -- in the VIP room, on a sofa (owner, 16 Nov: "Can you put this person inside the VIP room")
 }
 -- the paint. one palette is one switch (R.PALETTE); every palette paints the same build. the owner on the round hubs C to
 -- G (16 Nov): "I like how it looked, I think with the new diesgn principles building somelike like it could be cool,
@@ -504,7 +529,13 @@ function R.new(live, opts)
 		-- (how they move about: HubNPCs reads Moves and walks or jumps between their points, B.npcPoint)
 		if info.moves then p:SetAttribute("Moves", info.moves) end
 		if info.moveEvery then p:SetAttribute("MoveEvery", Vector2.new(info.moveEvery[1], info.moveEvery[2])) end
-		if info.extra then p:SetAttribute("Extra", info.extra); p:SetAttribute("ExtraEvery", Vector2.new(info.every[1], info.every[2])) end
+		if info.extra then p:SetAttribute("Extra", info.extra); p:SetAttribute("ExtraLen", info.extraLen or 4) end -- (a one-shot while they keep still: a seated one's while seated)
+		if info.extraStand then p:SetAttribute("ExtraStand", info.extraStand); p:SetAttribute("ExtraStandLen", info.extraStandLen or 4) end -- (a seated one's while standing somewhere)
+		if info.every then p:SetAttribute("ExtraEvery", Vector2.new(info.every[1], info.every[2])) end
+		if info.rise then -- (standing up from a seat, sitting down on one, each with its length)
+			p:SetAttribute("Rise", info.rise); p:SetAttribute("RiseLen", info.riseLen or 2)
+			p:SetAttribute("Settle", info.settle); p:SetAttribute("SettleLen", info.settleLen or 2.5)
+		end
 		if info.id then p:SetAttribute("UserId", info.id) end
 		p.Parent = root.Scenery
 		game:GetService("CollectionService"):AddTag(p, "HubNPC")
@@ -513,7 +544,8 @@ function R.new(live, opts)
 	-- one of a regular's points (HubNPCs walks or jumps them between these): index 1 is where they start (their place);
 	-- kind "seat" / "spot" / "stop" (pause there) / "via" (walk on through); pose "sit" / "stand"; (x, y, d) and yaw as
 	-- for B.npc (a seat point stands where a Seat would, so the way they sit on it carries over). o.pause = { min, max }
-	-- seconds; o.approach / o.aisle = world points on the floor a seat is reached by
+	-- seconds; o.approach / o.aisle = world points on the floor a seat is reached by. a seat's Stand: where they stand up
+	-- to and sit down from, R.NPC_STAND in front of it (o.stand: another world point)
 	function B.npcPoint(F, who, index, kind, pose, x, y, d, yaw, o)
 		o = o or {}
 		local p = Instance.new("Part")
@@ -524,6 +556,7 @@ function R.new(live, opts)
 		if o.pause then p:SetAttribute("Pause", Vector2.new(o.pause[1], o.pause[2])) end
 		if o.approach then p:SetAttribute("Approach", o.approach) end
 		if o.aisle then p:SetAttribute("Aisle", o.aisle) end
+		if pose == "sit" then p:SetAttribute("Stand", o.stand or p.CFrame * Vector3.new(0, 0, -R.NPC_STAND)) end
 		p.Parent = root.Scenery
 		game:GetService("CollectionService"):AddTag(p, "NPCPoint")
 		return p
@@ -1098,10 +1131,104 @@ function R.check(stage)
 	if shadows > 11 then table.insert(issues, ("LAMPS: %d cast shadows (11 is the limit)"):format(shadows)) end
 	if spawnN < 8 then table.insert(issues, ("SPAWNS: %d spawn markers (8 wanted)"):format(spawnN)) end
 	if #pads ~= #R.MODES + #R.UPPER then table.insert(issues, ("PADS: %d pads (%d wanted)"):format(#pads, #R.MODES + #R.UPPER)) end
+	-- the regulars' ways (the owner, 17 Nov: "When they stand make sure they don't stand in their seats like clipped into
+	-- it!"): a body (R.NPC_BODY, its feet R.NPC_LIFT over the floor) stood on every point they stop at (a seat's Stand,
+	-- facing the way the seat does) and swept every R.NPC_STEP along every way they walk, the same ways HubNPCs walks
+	-- them: seat to seat by the Stand, the Approach, the Aisles and the place's Door (straight along the front of a sofa
+	-- when both seats share an aisle); a loop's or a rail's points in order. anything seen or solid in it is a problem
+	local npcWays, npcBoxes = 0, 0
+	do
+		local CS = game:GetService("CollectionService")
+		local BODY, LIFT, STEP = R.NPC_BODY, R.NPC_LIFT, R.NPC_STEP
+		local places, pts = {}, {}
+		for _, q in room.Scenery:GetChildren() do
+			local who = q:GetAttribute("Who")
+			if type(who) ~= "string" then continue end
+			if CS:HasTag(q, "HubNPC") then places[who] = q
+			elseif CS:HasTag(q, "NPCPoint") then pts[who] = pts[who] or {}; table.insert(pts[who], q) end
+		end
+		local things = {}
+		for _, q in room:GetDescendants() do
+			if not q:IsA("BasePart") or (q.Transparency >= 0.95 and not q.CanCollide) or CS:HasTag(q, "HubNPC") or CS:HasTag(q, "NPCPoint") then continue end
+			local cf, h = q.CFrame, q.Size / 2
+			local r, u, l = cf.RightVector, cf.UpVector, cf.LookVector
+			local e = Vector3.new(math.abs(r.X) * h.X + math.abs(u.X) * h.Y + math.abs(l.X) * h.Z, math.abs(r.Y) * h.X + math.abs(u.Y) * h.Y + math.abs(l.Y) * h.Z, math.abs(r.Z) * h.X + math.abs(u.Z) * h.Y + math.abs(l.Z) * h.Z)
+			table.insert(things, { p = q, lo = cf.Position - e, hi = cf.Position + e, round = q:IsA("Part") and q.Shape == Enum.PartType.Cylinder and math.abs(r.Y) > 0.99 })
+		end
+		local rp3 = RaycastParams.new(); rp3.FilterType = Enum.RaycastFilterType.Include; rp3.FilterDescendantsInstances = { room }; rp3.RespectCanCollide = false
+		local half = BODY / 2
+		local reach = Vector3.new(half.X + half.Z, half.Y, half.X + half.Z)
+		local function body(at, dir, what)
+			npcBoxes += 1
+			local hit = workspace:Raycast(at + Vector3.new(0, 4, 0), Vector3.new(0, -9, 0), rp3)
+			if not hit then
+				table.insert(issues, ("REGULAR: no floor under %s at (%.1f, %.1f, %.1f)"):format(what, at.X - O.X, at.Y - O.Y, at.Z - O.Z))
+				return false
+			end
+			local c = Vector3.new(at.X, hit.Position.Y + LIFT + half.Y, at.Z)
+			local flat = Vector3.new(dir.X, 0, dir.Z)
+			local cf = CFrame.lookAt(c, c + (if flat.Magnitude > 1e-3 then flat else Vector3.new(0, 0, -1)))
+			local lo, hi = c - reach, c + reach
+			for _, k in things do
+				if k.hi.X < lo.X or k.lo.X > hi.X or k.hi.Y < lo.Y or k.lo.Y > hi.Y or k.hi.Z < lo.Z or k.lo.Z > hi.Z then continue end
+				local into = obb(cf, half, k.p.CFrame, k.p.Size / 2)
+				if into and k.round then -- (a drum on its flat: how far its axis is from the body decides)
+					local q = k.p.CFrame:PointToObjectSpace(c)
+					into = math.sqrt(q.Y * q.Y + q.Z * q.Z) < k.p.Size.Y / 2 + math.min(half.X, half.Z)
+				end
+				if into then
+					table.insert(issues, ("REGULAR: %s goes through %s near (%.1f, %.1f, %.1f)"):format(what, k.p.Name, c.X - O.X, hit.Position.Y - O.Y, c.Z - O.Z))
+					return false
+				end
+			end
+			return true
+		end
+		local function way(list, what)
+			npcWays += 1
+			for k = 1, #list - 1 do
+				local a, b = list[k], list[k + 1]
+				local d = Vector3.new(b.X - a.X, 0, b.Z - a.Z)
+				local steps = math.max(1, math.ceil(d.Magnitude / STEP))
+				for i = (if k == 1 then 0 else 1), steps do
+					if not body(a + (b - a) * (i / steps), d, what) then return end
+				end
+			end
+		end
+		local function standOf(p) local s = p:GetAttribute("Stand"); return if typeof(s) == "Vector3" then s else p.Position end
+		for who, list in pts do
+			table.sort(list, function(a, b) return (a:GetAttribute("Index") or 0) < (b:GetAttribute("Index") or 0) end)
+			local place = places[who]
+			local mode = place and place:GetAttribute("Moves")
+			for _, p in list do
+				if p:GetAttribute("Kind") ~= "via" then body(standOf(p), p.CFrame.LookVector, ("%s standing at their point %d"):format(who, p:GetAttribute("Index") or 0)) end
+			end
+			if mode == "seats" then
+				for _, a in list do
+					for _, b in list do
+						if a == b then continue end
+						local w = { standOf(a), a:GetAttribute("Approach") }
+						if a:GetAttribute("Aisle") ~= b:GetAttribute("Aisle") then
+							table.insert(w, a:GetAttribute("Aisle")); table.insert(w, place:GetAttribute("Door")); table.insert(w, b:GetAttribute("Aisle"))
+						end
+						table.insert(w, b:GetAttribute("Approach")); table.insert(w, standOf(b))
+						local ok = true
+						for i = 1, #w do if typeof(w[i]) ~= "Vector3" then ok = false end end
+						if ok then way(w, ("%s's walk from seat %d to seat %d"):format(who, a:GetAttribute("Index"), b:GetAttribute("Index")))
+						else table.insert(issues, ("REGULAR: %s's seats %d and %d have no full way between them"):format(who, a:GetAttribute("Index"), b:GetAttribute("Index"))) end
+					end
+				end
+			elseif mode == "loop" or mode == "pingpong" then
+				local w = {}
+				for _, p in list do table.insert(w, p.Position) end
+				if mode == "loop" then table.insert(w, list[1].Position) end
+				way(w, ("%s's %s"):format(who, if mode == "loop" then "loop" else "walk along the rail"))
+			end
+		end
+	end
 	local problems = #issues
 	for _, line in sights do table.insert(issues, line) end
-	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, props %d, overlaps %d, lamps %d (%d with shadows), pads %d, walked to %d"):format(
-		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, #props, overlaps, lamps, shadows, #pads, routes)
+	local msg = ("%s (%s): %d keep-clear zones, %d parts looked at, %d problems, leaks %d, sight lines %d, hidden %d, props %d, overlaps %d, lamps %d (%d with shadows), pads %d, walked to %d, regulars' ways %d (%d body boxes)"):format(
+		R.ROOM, if W.live then "live" else "staging copy", #zones, looked, problems + #sights, leaks, lines, shut, #props, overlaps, lamps, shadows, #pads, routes, npcWays, npcBoxes)
 	if W.live then PB:SetAttribute("LastOverlapCheck", msg) end
 	if #issues > 40 then local n = #issues; issues = table.move(issues, 1, 40, 1, {}); table.insert(issues, ("... and %d more"):format(n - 40)) end
 	return msg .. (if #issues > 0 then "\n" .. table.concat(issues, "\n") else "")

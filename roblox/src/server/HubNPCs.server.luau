@@ -11,16 +11,35 @@
 -- what they do (owner, 17 Nov: "Can they have idle animations? ..." and "Can Trisangle sometimes stand up and then sit
 -- back down on other seats? Maybe Looticus has a teleport ability but will always be in that room, Dune can walk around
 -- the gym and Frisk can move to different spots on the railing?"):
---   Idle: an animation (Studio's prompt-to-animation tool) looped with no pop (two copies crossfading at each end); none:
---   Roblox's own idle or sit. Extra: a one-shot now and then over it (ExtraEvery = Vector2 seconds), while seated
---   Walk: the walk played while they move (none: Roblox's own)
+--   this script only moves their bodies and says what they are doing; their clips are played on each player's own
+--   screen (HubNPCs.client), from the body's attributes: Pose, Idle, StandIdle, Walk, Rise / Settle (with RiseLen /
+--   SettleLen), Extra (ExtraLen), ExtraStand (ExtraStandLen), and as they go Phase ("seated", "stood", "rise", "settle", "walk", "turn"), PhaseAt
+--   (the server's time it began), PhaseLen (how long a rise or settle takes), WalkRate (the walk's speed), ExtraAt (a
+--   one-shot began). (a clip the server played would be lost on a screen once ZoneCull had taken the Rotunda out of
+--   that player's world and brought it back)
+--   Idle: their clip (Studio's prompt-to-animation tool, or motion capture); none: Roblox's own sit, or their avatar's
+--   own idle. Extra: a one-shot now and then over it while they keep still (ExtraEvery = Vector2 seconds; a seated
+--   one's while seated); ExtraStand: a seated one's while they stand somewhere
+--   Walk: their own avatar's walk (its animation pack's, or Roblox's own: the Animate their avatar comes with), sped
+--   to how fast they really go so the feet don't slide; Walk (attribute): only if the avatar has none
+--   Rise / Settle: standing up from a seat and sitting down on one (made with the same tool, uploaded with their hips
+--   kept still: the body itself goes along the hips' own path in the clip, RISE / SETTLE below)
 --   Moves on the place: "seats" (stand, walk to another seat, sit: MoveEvery = Vector2 seconds between), "teleport" (a
 --   soft puff, gone, a puff at another spot), "loop" (walk round the points in order, pausing at the stops), "pingpong"
 --   (now and then walk to a neighbouring stop). their points are parts tagged "NPCPoint": Who, Index (1 = where they
 --   start), Kind ("seat" / "spot" / "stop" / "via"), Pose ("sit" / "stand"), Pause (Vector2), facing = the part's own;
---   a seat's Approach and Aisle (Vector3s on the floor; the place's Door joins the two aisles). they walk only along
---   those, which the builder lays clear of walls and furniture, and wait while a player stands in their way. all of it
---   in one Heartbeat loop: an anchored body's CFrame, no physics
+--   a seat's Stand (where they stand in front of it, clear of it), Approach and Aisle (Vector3s on the floor; the
+--   place's Door joins the two aisles). they walk only along those, which the builder lays clear of walls and
+--   furniture (HubRotunda's R.check sweeps a body-sized box along every one), and wait while a player stands in their
+--   way. an anchored body's CFrame, no physics; each regular's own thread, awake only while they move
+-- getting up and sitting down (owner, 17 Nov: "When they stand make sure they don't stand in their seats like clipped
+-- into it! Idk how you would do it but make them leaving their seat natural?"): they stand up out of the seat onto its
+-- Stand point (forward over the feet, then up), take a step out to the Approach before turning, and at the next seat
+-- stop on its Stand point, turn their back to it and sit down (down, then back onto the seat). Looticus stands up
+-- first, puffs away from in front of his seat, puffs in standing in front of the next one, and sits.
+-- not stiff (owner, 17 Nov: "also the animations seem really stiff.."): walking eases in and out (no constant-speed
+-- glide), turns on the spot before walking off, and the walk runs at the speed they really go; HubNPCs.client fades
+-- every change of clip, varies each idle and lays a small living layer over every clip
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 local ServerStorage = game:GetService("ServerStorage")
@@ -29,10 +48,18 @@ local Debris = game:GetService("Debris")
 
 local TAG, POINT = "HubNPC", "NPCPoint"
 local WALK = 5 -- studs a second
-local ANIM = { -- Roblox's own default animations
-	[Enum.HumanoidRigType.R15] = { stand = "rbxassetid://507766388", sit = "rbxassetid://2506281703", walk = "rbxassetid://507777826" },
-	[Enum.HumanoidRigType.R6] = { stand = "rbxassetid://180435571", sit = "rbxassetid://178130996", walk = "rbxassetid://180426354" },
-}
+local ACCEL, BRAKE = 9, 6 -- studs a second, a second: getting going, stopping
+-- a walk clip's own speed: Roblox's Animate plays its walk at full speed at 6.4 studs a second on a body of the
+-- standard height (HipHeight 2) and in proportion on taller or shorter ones; packs are made to the same
+local WALK_NATURAL = 6.4
+local STAND_OUT = 1.9 -- (a seat with no Stand: they stand this far in front of it)
+-- where the body is through a transition, as parts of the way from one place to the other at each tenth of the clip:
+-- h along the floor, v up or down. from the clips' own hips (their LowerTorso's travel, which the uploaded clips leave
+-- out; the motion-capture clips' hips, 17 Nov): standing up, a lean first, then forward over the feet and up; sitting
+-- down, back and down together through the middle of the clip
+local RISE = { h = { 0, 0, 0, 0.01, 0.17, 0.36, 0.56, 0.76, 0.86, 0.94, 1 }, v = { 0, 0, 0, 0, 0.09, 0.48, 0.82, 0.94, 0.97, 0.98, 1 } }
+local SETTLE = { h = { 0, 0.01, 0.07, 0.18, 0.42, 0.7, 0.9, 0.99, 1, 1, 1 }, v = { 0, 0, 0.01, 0.04, 0.16, 0.43, 0.76, 1, 1, 1, 1 } }
+local DEF = { stand = "rbxassetid://507766388", sit = "rbxassetid://2506281703", walk = "rbxassetid://507777826" } -- (Roblox's own, R15)
 
 local function userIdOf(spot: BasePart): number?
 	local id = spot:GetAttribute("UserId")
@@ -64,39 +91,6 @@ local function avatar(spot: BasePart, who: string): Model?
 	if saved and saved:IsA("Model") then return saved:Clone() end
 	warn("[jankfire] no avatar for the hub's " .. who)
 	return nil
-end
-
--- an animation that can be started and stopped: a generated clip loops with no pop where it ends (two tracks, the next
--- fading in as the last runs out); a default one simply loops
-type Ctl = { start: (number?) -> (), stop: (number?) -> () }
-local function anim(animator: Animator, id: string, priority: Enum.AnimationPriority, speed: number, seamless: boolean): Ctl?
-	local a = Instance.new("Animation"); a.AnimationId = id
-	local ok1, t1 = pcall(function() return animator:LoadAnimation(a) end)
-	if not ok1 or not t1 then return nil end
-	if not seamless then
-		t1.Looped = true; t1.Priority = priority
-		return { start = function(f) if not t1.IsPlaying then t1:Play(f or 0.4, 1, speed) end end, stop = function(f) t1:Stop(f or 0.4) end }
-	end
-	local ok2, t2 = pcall(function() return animator:LoadAnimation(a) end)
-	if not ok2 or not t2 then return nil end
-	for _, t in { t1, t2 } do t.Looped = false; t.Priority = priority end
-	local on, cur = false, t1
-	task.spawn(function()
-		while animator.Parent do
-			if not on or cur.Length <= 0 then task.wait(0.2); continue end
-			local left = (cur.Length - cur.TimePosition) / speed
-			if left > 0.8 then task.wait(math.min(left - 0.75, 1)); continue end
-			if not on then continue end
-			local nxt = if cur == t1 then t2 else t1
-			nxt:Play(0.7, 1, speed); cur:Stop(0.7)
-			cur = nxt
-			task.wait(0.9)
-		end
-	end)
-	return {
-		start = function(f) if on then return end; on = true; cur = t1; t1:Play(f or 0.4, 1, speed) end,
-		stop = function(f) on = false; t1:Stop(f or 0.4); t2:Stop(f or 0.4) end,
-	}
 end
 
 local function label(m: Model, text: string, role: string?, head: BasePart?, badge: string?)
@@ -143,8 +137,23 @@ local function floorAt(at: Vector3, skip: { Instance }): number
 end
 local function yawCF(pos: Vector3, yaw: number): CFrame return CFrame.new(pos) * CFrame.Angles(0, yaw, 0) end
 local function yawOf(cf: CFrame): number local lv = cf.LookVector; return math.atan2(-lv.X, -lv.Z) end
+local function turnBy(from: number, to: number): number return (to - from + math.pi) % (2 * math.pi) - math.pi end
+local function ease(x: number): number x = math.clamp(x, 0, 1); return x * x * (3 - 2 * x) end
+local function along(list: { number }, k: number): number -- (a tenths table read at k, 0..1)
+	local x = math.clamp(k, 0, 1) * (#list - 1)
+	local i = math.min(math.floor(x), #list - 2)
+	return list[i + 1] + (list[i + 2] - list[i + 1]) * (x - i)
+end
+local function idOf(v: any): string? return if type(v) == "string" and v ~= "" then v else nil end
 
 local npcs = {} -- the ones that move
+
+-- what they are doing now, for every screen (HubNPCs.client plays the clips from it)
+local function setPhase(n, phase: string, len: number?)
+	n.m:SetAttribute("PhaseLen", len or 0)
+	n.m:SetAttribute("PhaseAt", workspace:GetServerTimeNow())
+	n.m:SetAttribute("Phase", phase)
+end
 
 local function place(spot: BasePart)
 	if spot:GetAttribute("Built") then return end
@@ -153,6 +162,14 @@ local function place(spot: BasePart)
 	local m = avatar(spot, who)
 	if not m then return end
 	m.Name = "Regular_" .. who
+	-- (their avatar's Animate, before the scripts go: its walk and idle, a pack's or Roblox's own)
+	local function own(folder: string): string?
+		local a = m:FindFirstChild("Animate")
+		local f = a and a:FindFirstChild(folder)
+		local x = f and f:FindFirstChildWhichIsA("Animation")
+		return x and idOf(x.AnimationId)
+	end
+	local ownWalk, ownIdle = own("walk"), own("idle")
 	local hum = m:FindFirstChildOfClass("Humanoid")
 	local root = m:FindFirstChild("HumanoidRootPart") :: BasePart?
 	if not hum or not root then m:Destroy(); return end
@@ -166,11 +183,24 @@ local function place(spot: BasePart)
 	hum:SetStateEnabled(Enum.HumanoidStateType.Dead, false)
 	hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
 	hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+	if not hum:FindFirstChildOfClass("Animator") then Instance.new("Animator").Parent = hum end -- (each screen plays on it)
 	m.PrimaryPart = root
 	local pose = if spot:GetAttribute("Pose") == "sit" and spot:IsA("Seat") then "sit" else "stand"
 	local skip = { m }
 	for _, r in CollectionService:GetTagged(TAG) do table.insert(skip, r) end
 	for _, r in CollectionService:GetTagged(POINT) do table.insert(skip, r) end
+	-- their clips, for every screen
+	m:SetAttribute("Who", who)
+	m:SetAttribute("Pose", pose)
+	m:SetAttribute("Idle", idOf(spot:GetAttribute("Idle")) or (if pose == "sit" then DEF.sit else ownIdle or DEF.stand))
+	m:SetAttribute("StandIdle", ownIdle or DEF.stand)
+	m:SetAttribute("Walk", ownWalk or idOf(spot:GetAttribute("Walk")) or DEF.walk)
+	for _, k in { "Rise", "Settle", "RiseLen", "SettleLen", "Extra", "ExtraLen", "ExtraStand", "ExtraStandLen" } do
+		local v = spot:GetAttribute(k)
+		if v ~= nil then m:SetAttribute(k, v) end
+	end
+	m:SetAttribute("WalkRate", 1)
+	m:SetAttribute("Phase", if pose == "sit" then "seated" else "stood")
 	m.Parent = spot.Parent
 	-- standing: the root's height over the floor (a scaled avatar's longer legs put on the floor). seated: how the root
 	-- sits on a seat, measured once by sitting on this place's Seat, then kept with the body anchored
@@ -203,46 +233,34 @@ local function place(spot: BasePart)
 	local function adopt(d: Instance) if d:IsA("ProximityPrompt") then task.defer(function() d.Parent = at end) end end
 	for _, d in spot:GetDescendants() do adopt(d) end
 	spot.DescendantAdded:Connect(adopt)
-	-- animations
-	local animator = hum:FindFirstChildOfClass("Animator") or Instance.new("Animator")
-	animator.Parent = hum
-	local def = ANIM[hum.RigType] or ANIM[Enum.HumanoidRigType.R15]
-	local function ctlFor(attr: string, fallback: string, priority: Enum.AnimationPriority, speed: number): Ctl?
-		local id = spot:GetAttribute(attr)
-		local c = if type(id) == "string" and id ~= "" then anim(animator, id, priority, 1, true) else nil
-		return c or anim(animator, fallback, priority, speed, false)
-	end
-	local idle = ctlFor("Idle", def[pose], Enum.AnimationPriority.Idle, if pose == "stand" then 0.8 else 1)
-	local standIdle = if pose == "sit" then anim(animator, def.stand, Enum.AnimationPriority.Idle, 0.8, false) else nil
-	local walk = ctlFor("Walk", def.walk, Enum.AnimationPriority.Movement, 0.9)
-	if idle then idle.start(0.3) end
 	local n = {
-		who = who, m = m, root = root, hip = hip, sitOffset = sitOffset, skip = skip,
-		pose = pose, seated = pose == "sit", idle = idle, standIdle = standIdle, walk = walk,
-		mode = spot:GetAttribute("Moves"), points = {}, at = 1, path = nil, i = 0, final = nil, waitUntil = 0, blockedSince = nil,
+		who = who, m = m, root = root, hip = hip, sitOffset = sitOffset, skip = skip, pose = pose, seated = pose == "sit",
+		natural = WALK_NATURAL * math.max(hum.HipHeight, 0.5) / 2,
+		mode = spot:GetAttribute("Moves"), points = {}, at = 1, busy = false, extraOn = false, speed = 1, kick = false, forceTo = nil,
 		moveEvery = spot:GetAttribute("MoveEvery"), door = spot:GetAttribute("Door"),
 	}
-	local extra, every = spot:GetAttribute("Extra"), spot:GetAttribute("ExtraEvery")
-	if type(extra) == "string" and extra ~= "" then
-		local a = Instance.new("Animation"); a.AnimationId = extra
-		local ok, t = pcall(function() return animator:LoadAnimation(a) end)
-		if ok and t then
-			t.Looped = false; t.Priority = Enum.AnimationPriority.Action
-			local range = if typeof(every) == "Vector2" then every else Vector2.new(15, 30)
-			task.spawn(function()
-				while m.Parent do
-					task.wait(range.X + math.random() * math.max(range.Y - range.X, 0))
-					if not m.Parent then break end
-					if not n.seated or n.path then continue end -- (a seated one-shot, while sitting still)
-					t:Play(0.6)
-					local t0 = os.clock()
-					while t.Length <= 0 and os.clock() - t0 < 5 do task.wait(0.1) end
-					task.wait(math.max(t.Length - 0.7, 0.2))
-					t:Stop(0.7)
-				end
-			end)
-		end
+	setPhase(n, if pose == "sit" then "seated" else "stood")
+	-- a one-shot now and then while they keep still: a seated one's Extra while seated, its ExtraStand while standing;
+	-- a standing one's Extra (every screen plays the one that fits how they are: HubNPCs.client)
+	local every = spot:GetAttribute("ExtraEvery")
+	if idOf(spot:GetAttribute("Extra")) or idOf(spot:GetAttribute("ExtraStand")) then
+		local range = if typeof(every) == "Vector2" then every else Vector2.new(15, 30)
+		task.spawn(function()
+			while m.Parent do
+				task.wait(range.X + math.random() * math.max(range.Y - range.X, 0))
+				if not m.Parent then break end
+				if n.busy then continue end
+				local standing = n.pose == "sit" and not n.seated
+				if not idOf(m:GetAttribute(if standing then "ExtraStand" else "Extra")) then continue end
+				local len = m:GetAttribute(if standing then "ExtraStandLen" else "ExtraLen")
+				n.extraOn = true
+				m:SetAttribute("ExtraAt", workspace:GetServerTimeNow())
+				task.wait(if type(len) == "number" and len > 0 then len else 4)
+				n.extraOn = false
+			end
+		end)
 	end
+	CollectionService:AddTag(m, "HubRegular") -- (HubNPCs.client: their clips and the living layer)
 	local role, badge = spot:GetAttribute("Role"), spot:GetAttribute("Badge")
 	label(m, tostring(who), if type(role) == "string" then role else nil, m:FindFirstChild("Head") :: BasePart?, if type(badge) == "string" then badge else nil)
 	-- their points, if they move
@@ -251,77 +269,11 @@ local function place(spot: BasePart)
 			if p:IsA("BasePart") and p:GetAttribute("Who") == who then table.insert(n.points, p) end
 		end
 		table.sort(n.points, function(a, b) return (a:GetAttribute("Index") or 0) < (b:GetAttribute("Index") or 0) end)
-		if #n.points > 1 then
-			n.waitUntil = os.clock() + 5 + math.random() * 8
-			table.insert(npcs, n)
-		end
+		if #n.points > 1 then table.insert(npcs, n) end
 	end
 end
 
 -- ---------------------------------------------------------------- moving
-local function rest(n, p: BasePart)
-	-- at a point: sit on a seat, or stand facing the way the point faces
-	if p:GetAttribute("Pose") == "sit" and n.sitOffset then
-		n.root.CFrame = p.CFrame * n.sitOffset
-		n.seated = true
-		if n.standIdle then n.standIdle.stop(0.4) end
-		if n.idle then n.idle.start(0.5) end
-	else
-		n.root.CFrame = yawCF(Vector3.new(p.Position.X, floorAt(p.Position, n.skip) + n.hip, p.Position.Z), yawOf(p.CFrame))
-		n.seated = false
-		if n.pose == "sit" then
-			if n.idle then n.idle.stop(0.4) end
-			if n.standIdle then n.standIdle.start(0.4) end
-		elseif n.idle then n.idle.start(0.5) end
-	end
-end
-local function walkTo(n, list: { Vector3 }, final: BasePart)
-	-- off along a path of floor points (heights put right as they go), ending at a point
-	n.path = list; n.i = 1; n.final = final
-	if n.idle then n.idle.stop(0.3) end
-	if n.standIdle then n.standIdle.stop(0.3) end
-	n.seated = false
-	if n.walk then n.walk.start(0.3) end
-end
-local function choose(n): number?
-	local pts, mode = n.points, n.mode
-	if mode == "teleport" then
-		local j = n.at
-		while j == n.at do j = math.random(1, #pts) end
-		puff(n.root.Position)
-		rest(n, pts[j]); n.at = j
-		puff(n.root.Position)
-		return 60 + math.random() * 60
-	elseif mode == "seats" then
-		local j = n.at
-		while j == n.at do j = math.random(1, #pts) end
-		local a, b = pts[n.at], pts[j]
-		local list = { a:GetAttribute("Approach"), a:GetAttribute("Aisle") }
-		if a:GetAttribute("Aisle") ~= b:GetAttribute("Aisle") then table.insert(list, n.door); table.insert(list, b:GetAttribute("Aisle")) end
-		table.insert(list, b:GetAttribute("Approach"))
-		for _, v in list do if typeof(v) ~= "Vector3" then return 30 end end
-		walkTo(n, list, b); n.at = j
-		return nil
-	elseif mode == "loop" or mode == "pingpong" then
-		-- the next stop (loop: onward round; pingpong: a neighbour either way), through the "via" points between
-		local count, cur = #pts, n.at
-		local dir = if mode == "loop" then 1 else (if math.random() < 0.5 then -1 else 1)
-		if mode == "pingpong" and (cur + dir < 1 or cur + dir > count) then dir = -dir end
-		local list, j = {}, cur
-		for _ = 1, count do
-			j += dir
-			if mode == "loop" then j = (j - 1) % count + 1 end
-			if j < 1 or j > count then return 10 end
-			if pts[j]:GetAttribute("Kind") ~= "via" then break end
-			table.insert(list, pts[j].Position)
-		end
-		if j == cur then return 10 end
-		walkTo(n, list, pts[j]); n.at = j
-		return nil
-	end
-	return 30
-end
-
 local function blocked(ahead: Vector3): boolean
 	for _, pl in Players:GetPlayers() do
 		local ch = pl.Character
@@ -333,63 +285,240 @@ local function blocked(ahead: Vector3): boolean
 	end
 	return false
 end
+local function seatedAt(n, p: BasePart): CFrame return p.CFrame * n.sitOffset end
+-- where they stand at a point, the root at standing height: in front of a seat (its Stand), facing the way it faces
+local function standOf(n, p: BasePart): CFrame
+	local s = p:GetAttribute("Stand")
+	local at = if typeof(s) == "Vector3" then s elseif p:GetAttribute("Pose") == "sit" then p.CFrame * Vector3.new(0, 0, -STAND_OUT) else p.Position
+	return yawCF(Vector3.new(at.X, floorAt(at, n.skip) + n.hip, at.Z), yawOf(p.CFrame))
+end
+local function isSeat(n, p: BasePart): boolean return p:GetAttribute("Pose") == "sit" and n.sitOffset ~= nil end
+local function setRate(n, r: number) n.m:SetAttribute("WalkRate", math.floor(r * 100 + 0.5) / 100) end
 
-RunService.Heartbeat:Connect(function(dt)
-	local now = os.clock()
-	for _, n in npcs do
-		if not n.m.Parent then continue end
-		if not n.path then
-			if now >= n.waitUntil then
-				local wait = choose(n)
-				if wait then n.waitUntil = now + wait end
-			end
-			continue
-		end
-		-- walking: along the path's floor points, then onto the final point (a seat: straight into the seated place)
-		local root = n.root
-		local pos = root.Position
-		local lastLeg = n.i > #n.path
-		local f = n.final
-		local target = if not lastLeg then n.path[n.i] elseif f:GetAttribute("Pose") == "sit" and n.sitOffset then (f.CFrame * n.sitOffset).Position else f.Position
-		if not (lastLeg and f:GetAttribute("Pose") == "sit" and n.sitOffset) then target = Vector3.new(target.X, floorAt(target, n.skip) + n.hip, target.Z) end
-		local d = target - pos
-		local dist = d.Magnitude
-		if dist < 0.15 then
-			if lastLeg then
-				if n.walk then n.walk.stop(0.4) end
-				n.path = nil
-				rest(n, f)
-				local pause, every = f:GetAttribute("Pause"), n.moveEvery
-				n.waitUntil = now + (if typeof(pause) == "Vector2" then pause.X + math.random() * (pause.Y - pause.X)
-					elseif typeof(every) == "Vector2" then every.X + math.random() * (every.Y - every.X) else 8)
-			else
-				n.i += 1
-			end
-			continue
-		end
-		local flat = Vector3.new(d.X, 0, d.Z)
-		local face = if flat.Magnitude > 0.05 then flat.Unit else root.CFrame.LookVector
-		if blocked(pos + face * 1.8) then
-			if not n.blockedSince then
-				n.blockedSince = now
-				if n.walk then n.walk.stop(0.3) end
-				if n.pose == "stand" and n.idle then n.idle.start(0.3) elseif n.standIdle then n.standIdle.start(0.3) end
-			end
-			continue
-		elseif n.blockedSince then
-			n.blockedSince = nil
-			if n.pose == "stand" and n.idle then n.idle.stop(0.3) elseif n.standIdle then n.standIdle.stop(0.3) end
-			if n.walk then n.walk.start(0.3) end
-		end
-		local npos = pos + d.Unit * math.min(WALK * dt, dist)
-		-- turn smoothly toward the way they walk; at the end of the last leg, toward the point's own facing
-		local want = math.atan2(-face.X, -face.Z)
-		if lastLeg and dist < 1.2 then want = yawOf(f.CFrame) end
-		local have = yawOf(root.CFrame)
-		local dy = (want - have + math.pi) % (2 * math.pi) - math.pi
-		root.CFrame = yawCF(npos, have + dy * math.min(1, dt * 8))
+-- a transition between seated and standing ("rise" / "settle"): every screen plays its clip over the time it takes
+-- here while the body goes from one place to the other along the clip's own hips (w: RISE or SETTLE)
+local function transition(n, kind: string, from: CFrame, to: CFrame, w)
+	local own = n.m:GetAttribute(if kind == "rise" then "RiseLen" else "SettleLen")
+	local len = (if type(own) == "number" and own > 0 then own else 1.2) / n.speed
+	setPhase(n, kind, len)
+	local ya, dy = yawOf(from), turnBy(yawOf(from), yawOf(to))
+	local t = 0
+	while t < len and n.m.Parent do
+		t += RunService.Heartbeat:Wait()
+		local k = t / len
+		local h, v = along(w.h, k), along(w.v, k)
+		n.root.CFrame = yawCF(Vector3.new(from.X + (to.X - from.X) * h, from.Y + (to.Y - from.Y) * v, from.Z + (to.Z - from.Z) * h), ya + dy * h)
 	end
-end)
+	n.root.CFrame = to
+end
+local function getUp(n, p: BasePart): boolean
+	if not n.seated then return true end
+	local to = standOf(n, p)
+	if blocked(to.Position) then return false end -- (someone right in front of them: later)
+	while n.extraOn do task.wait(0.2) end
+	transition(n, "rise", n.root.CFrame, to, RISE)
+	n.seated = false
+	setPhase(n, "stood")
+	return true
+end
+local function sitDown(n, p: BasePart)
+	transition(n, "settle", n.root.CFrame, seatedAt(n, p), SETTLE)
+	n.seated = true
+	setPhase(n, "seated")
+end
+-- turn on the spot (stepping round: the walk at a slow step while they turn)
+local function turnTo(n, yaw: number)
+	local root = n.root
+	local have = yawOf(root.CFrame)
+	local dy = turnBy(have, yaw)
+	if math.abs(dy) < 0.05 then return end
+	local dur, pos, t = (0.3 + math.abs(dy) / math.pi * 0.6) / n.speed, root.Position, 0
+	setRate(n, 0.55 * n.speed)
+	setPhase(n, "turn", dur)
+	while t < dur and n.m.Parent do
+		t += RunService.Heartbeat:Wait()
+		root.CFrame = yawCF(pos, have + dy * ease(t / dur))
+	end
+	setPhase(n, "stood")
+end
+-- walk along floor points (each on its own floor), easing in at the start and braking to stop at the end, turning
+-- smoothly the way they go, the walk's speed told to every screen as it changes; they wait while a player stands in
+-- their way
+local function walkAlong(n, list: { Vector3 })
+	local root = n.root
+	local pts = { root.Position }
+	for _, p in list do table.insert(pts, Vector3.new(p.X, floorAt(p, n.skip) + n.hip, p.Z)) end
+	local total = 0
+	for i = 1, #pts - 1 do total += (pts[i + 1] - pts[i]).Magnitude end
+	if total < 0.05 then return end
+	-- far round from the way they face: turn on the spot first
+	for i = 2, #pts do
+		local d = pts[i] - pts[1]
+		if Vector3.new(d.X, 0, d.Z).Magnitude > 0.3 then
+			local want = math.atan2(-d.X, -d.Z)
+			if math.abs(turnBy(yawOf(root.CFrame), want)) > math.rad(35) then turnTo(n, want) end
+			break
+		end
+	end
+	local sp = n.speed
+	local top, acc, brake = WALK * sp, ACCEL * sp * sp, BRAKE * sp * sp
+	setRate(n, 0.1)
+	setPhase(n, "walk")
+	local i, gone, v, shown = 1, 0, 0, 0.1 -- (the leg, how far along it, the speed, the walk's rate last told)
+	while i < #pts and n.m.Parent do
+		local a, b = pts[i], pts[i + 1]
+		local leg = (b - a).Magnitude
+		if gone >= leg - 1e-3 then i += 1; gone = 0; continue end
+		local dir = (b - a) / leg
+		local flat = Vector3.new(dir.X, 0, dir.Z)
+		local face = if flat.Magnitude > 0.05 then flat.Unit else root.CFrame.LookVector
+		local pos = root.Position
+		if blocked(pos + face * 1.8) then
+			setPhase(n, "stood")
+			repeat task.wait(0.25) until not n.m.Parent or not blocked(pos + face * 1.8)
+			v = 0; shown = 0.1
+			setRate(n, 0.1)
+			setPhase(n, "walk")
+			continue
+		end
+		local dt = RunService.Heartbeat:Wait()
+		local left = leg - gone -- (what is left of the whole way: brake in time to stop at its end)
+		for k = i + 1, #pts - 1 do left += (pts[k + 1] - pts[k]).Magnitude end
+		v = math.min(v + acc * dt, top, math.sqrt(2 * brake * math.max(left, 0)) + 0.15 * sp)
+		gone = math.min(gone + v * dt, leg)
+		local have = yawOf(root.CFrame)
+		root.CFrame = yawCF(a + dir * gone, have + turnBy(have, math.atan2(-face.X, -face.Z)) * math.min(1, dt * 7 * sp))
+		local r = math.max(v / n.natural, 0.1) -- (the walk's rate: how fast they go over what the clip is made for)
+		if math.abs(r - shown) > 0.05 then shown = r; setRate(n, r) end
+	end
+	setPhase(n, "stood")
+end
+-- at a point with nothing in between (after a fault): sat on a seat, or stood facing its way
+local function rest(n, p: BasePart)
+	if isSeat(n, p) then
+		n.root.CFrame = seatedAt(n, p); n.seated = true; setPhase(n, "seated")
+	else
+		n.root.CFrame = standOf(n, p); n.seated = false; setPhase(n, "stood")
+	end
+end
+local function pauseAt(n, p: BasePart): number
+	local pause, every = p:GetAttribute("Pause"), n.moveEvery
+	if typeof(pause) == "Vector2" then return pause.X + math.random() * (pause.Y - pause.X) end
+	if typeof(every) == "Vector2" then return every.X + math.random() * (every.Y - every.X) end
+	return 8
+end
+-- one move (blocking while it lasts); how long to wait before the next
+local function move(n): number
+	local pts, mode = n.points, n.mode
+	local a = pts[n.at]
+	local function pick(): number
+		local f = n.forceTo
+		if type(f) == "number" and f >= 1 and f <= #pts and f ~= n.at then return f end
+		local j = n.at
+		while j == n.at do j = math.random(1, #pts) end
+		return j
+	end
+	if mode == "teleport" then
+		local j = pick()
+		local b = pts[j]
+		local there = standOf(n, b)
+		if blocked(there.Position) then return 5 end
+		if not getUp(n, a) then return 5 end
+		task.wait(0.5 / n.speed)
+		puff(n.root.Position)
+		n.root.CFrame = there; n.at = j
+		setPhase(n, "stood")
+		puff(there.Position)
+		if isSeat(n, b) then task.wait(0.7 / n.speed); sitDown(n, b) end
+		return 60 + math.random() * 60
+	elseif mode == "seats" then
+		local j = pick()
+		local b = pts[j]
+		-- out of the seat, a step out to the front of it, round by the aisles (the door joins the two sides), to the
+		-- front of the other, onto its stand point; their back to it; down. (R.check sweeps a body along the same)
+		local list = { a:GetAttribute("Approach") }
+		if a:GetAttribute("Aisle") ~= b:GetAttribute("Aisle") then
+			table.insert(list, a:GetAttribute("Aisle")); table.insert(list, n.door); table.insert(list, b:GetAttribute("Aisle"))
+		end
+		table.insert(list, b:GetAttribute("Approach"))
+		for _, v in list do if typeof(v) ~= "Vector3" then return 30 end end
+		table.insert(list, standOf(n, b).Position)
+		if not getUp(n, a) then return 5 end
+		task.wait(0.35 / n.speed)
+		walkAlong(n, list)
+		n.at = j
+		turnTo(n, yawOf(b.CFrame))
+		if isSeat(n, b) then task.wait(0.2 / n.speed); sitDown(n, b) end
+		return pauseAt(n, b)
+	elseif mode == "loop" or mode == "pingpong" then
+		-- the next stop (loop: onward round; pingpong: a neighbour either way), through the "via" points between
+		local count, cur = #pts, n.at
+		local dir = if mode == "loop" then 1 else (if math.random() < 0.5 then -1 else 1)
+		if mode == "pingpong" and (cur + dir < 1 or cur + dir > count) then dir = -dir end
+		local list, j = {}, cur
+		for _ = 1, count do
+			j += dir
+			if mode == "loop" then j = (j - 1) % count + 1 end
+			if j < 1 or j > count then return 10 end
+			table.insert(list, pts[j].Position)
+			if pts[j]:GetAttribute("Kind") ~= "via" then break end
+		end
+		if j == cur then return 10 end
+		walkAlong(n, list)
+		n.at = j
+		turnTo(n, yawOf(pts[j].CFrame))
+		return pauseAt(n, pts[j])
+	end
+	return 30
+end
+local function nap(n, secs: number) -- (cut short by the test hook)
+	local t0 = os.clock()
+	while os.clock() - t0 < secs and not n.kick do task.wait(0.2) end
+	n.kick = false
+end
+local function life(n)
+	nap(n, 5 + math.random() * 8)
+	while n.m.Parent do
+		n.busy = true
+		n.m:SetAttribute("MoveCount", (n.m:GetAttribute("MoveCount") or 0) + 1)
+		local ok, res = pcall(move, n)
+		n.busy = false; n.speed = 1; n.forceTo = nil
+		if not ok then
+			warn("[jankfire] the hub's " .. n.who .. ": " .. tostring(res))
+			pcall(rest, n, n.points[n.at])
+			res = 20
+		end
+		nap(n, res)
+	end
+end
+-- the test hook (Play tests; in ServerStorage, so only the server's own code reaches it):
+--   JankNPCTest:Invoke("move", who, to?, speed?) -> "ok": who moves now (to = their point's index; speed < 1 slows the
+--   whole move, 0.25 = a quarter, for photos). "where", who -> their point, phase, seated, the root's position
+local hook = Instance.new("BindableFunction")
+hook.Name = "JankNPCTest"
+hook.OnInvoke = function(op, who, to, speed)
+	for _, n in npcs do
+		if n.who ~= who then continue end
+		if op == "move" then
+			if n.busy then return "busy" end
+			n.forceTo = to; n.speed = math.clamp(tonumber(speed) or 1, 0.1, 2); n.kick = true
+			return "ok"
+		elseif op == "where" then
+			local p = n.root.Position
+			return ("%s: point %d, phase %s, seated %s, busy %s, moves %d, at (%.2f, %.2f, %.2f)"):format(n.who, n.at, tostring(n.m:GetAttribute("Phase")), tostring(n.seated), tostring(n.busy), n.m:GetAttribute("MoveCount") or 0, p.X, p.Y, p.Z)
+		end
+	end
+	return "no regular called " .. tostring(who)
+end
+hook.Parent = ServerStorage
 
-CollectionService:GetInstanceAddedSignal(TAG):Connect(function(s) if s:IsA("BasePart") then task.spawn(place, s) end end)
-for _, s in CollectionService:GetTagged(TAG) do if s:IsA("BasePart") then task.spawn(place, s) end end
+local started = {}
+local function begin(s: Instance)
+	if not s:IsA("BasePart") then return end
+	place(s)
+	for _, n in npcs do
+		if not started[n] then started[n] = true; task.spawn(life, n) end
+	end
+end
+CollectionService:GetInstanceAddedSignal(TAG):Connect(function(s) task.spawn(begin, s) end)
+for _, s in CollectionService:GetTagged(TAG) do task.spawn(begin, s) end

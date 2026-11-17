@@ -1158,6 +1158,47 @@ Now (push 45, place version 448): `R.check()` 46 keep-clear zones, 0 problems, 0
 
 **Not done:** Looticus's and Frisk's prompts were not pressed in Play here (Dune's was, by the quests session).
 
+## 32. The regulars get up and sit down, and move less stiffly; motion capture, 17 November 2026 (place version 616)
+
+The owner, on the regulars: "When they stand make sure they don't stand in their seats like clipped into it! Idk how you would do it but make them leaving their seat natural?", then "also the animations seem really stiff..", then "When you generate generate 4 at a time!". The owner then approved Mixamo motion capture for them (the FBX files stay in the vault, `Assets\mixamo-17nov`, never in git).
+
+- **Getting up and sitting down** (HubNPCs.server):
+  - A seated regular stands up onto the seat's `Stand` point, `R.NPC_STAND` (1.9) in front of it. The sofas reach 1.1 in front of their seat points and a body is 1.2 deep.
+  - The body follows the hips' path from the motion-capture clip (the RISE / SETTLE tenths): a lean first, then forward over the feet and up.
+  - They step out to the seat's `Approach` before turning, walk the aisles, stop on the next seat's `Stand` point, turn their back to it, and sit (down and back together).
+  - Looticus stands up before he puffs away, lands standing in front of the next seat, then sits.
+- **The clips play on each player's own screen** (HubNPCs.client).
+  - The server only moves the bodies and sets attributes: Phase / PhaseAt / PhaseLen, WalkRate, ExtraAt, and the clip ids.
+  - Why: a clip the server plays is lost on a screen once ZoneCull takes the Rotunda out of that player's world and brings it back (found by the training session).
+  - The client stops everything when the body leaves workspace and re-enters the current phase when it is back.
+- **Less stiff:**
+  - Every clip change fades over 0.3 to 0.5 s.
+  - Walks ease in and brake to a stop. They turn on the spot before walking off. The walk is each avatar's own (Trisangle has a walk pack; the others use Roblox's default), sped to their real speed by Roblox Animate's rule: full speed at 6.4 studs a second at HipHeight 2.
+  - Each idle runs at its own speed (0.9 to 1.1) from its own start point.
+  - One-shots play while they keep still: `Extra` (a seated regular's while seated), `ExtraStand` (a seated regular's while standing).
+  - A living layer on the client: breathing in the waist, the head drifting between things to look at (now and then at you), shoulders swaying. It writes to the joints' C0, or to an AnimationConstraint's Attachment0.
+- **Roblox's newer avatar joints:** the regulars' bodies (and the blank R15 rig) have `AnimationConstraint` joints, not Motor6Ds. Anything that poses joints by hand must handle both kinds.
+- **The clips** (`MX` in HubRotunda):
+  - All nine Mixamo clips were retargeted to R15 with my own Blender script. Each part takes its bone's world turn away from the T-pose rest, laid on R15's T-pose. A direction check matched every limb to within 4° (the spine within 7°).
+  - They were uploaded as Animations. Seated loops have their hips levelled about the clip's middle. The transitions have no hips travel; their path became the server's tenths.
+  - They were compared side by side with the live clips and the generated takes (four standing up, two sitting down; the generator lost two sit-down takes): `docs/hub/hub_regulars_takes.jpg`. The mocap was kept in every slot.
+  - Two of the four generated stand-ups had a broken pose mid-way. The old generated seated stretch looked contorted, so Looticus's seated one-shot is now the mocap glance, and his standing one-shot is the mocap stretch.
+- **R.check sweeps a body** (`R.NPC_BODY` 3.8 × 5.2 × 1.2, its feet 0.35 over the floor):
+  - It stands one on every point they stop at and sweeps it every 0.5 stud along every walk, the same walks HubNPCs uses.
+  - Trisangle's 12 seat-to-seat walks are clear.
+  - Push 53 fixed three of the first four hits. Three remain:
+    - Looticus's west standing spot touches the LoungeStep.
+    - Frisk's walk touches one rail piece (`hb_rail3`).
+    - Dune's moved corner touches the RingBase.
+- **Checked in Play (v616):** Trisangle's whole seat change, slowed to a fifth: `docs/hub/hub_trisangle_seat_change.jpg`. Looticus's client Animator played the mocap idle.
+- **Not done:**
+  - Looticus's SHOP and Frisk's RANKED prompts were pressed in Play, by `InputHoldBegin` and by a `user_keyboard_input` E within 4 studs, and the panels did not open. The cause was not found.
+  - The 6-frame strips for Looticus, Dune and Frisk were not taken (only two frames of Trisangle seated).
+  - The three paths above.
+- **Test hook** `ServerStorage.JankNPCTest`:
+  - `:Invoke("move", who, toIndex?, speed?)` makes that regular move now (0.2 = a fifth of normal speed, for photos).
+  - `:Invoke("where", who)` returns their point, phase and position.
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
