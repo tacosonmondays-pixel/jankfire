@@ -370,6 +370,9 @@ session's slim-sights rework, so only the 17 new rows went into `GunHatData`; ev
     1.5 mm into the ring at the centre, up to 2.5 mm over its curve 1 cm out. Live in place version 678.
   - v2 (guns place version 683: the waves cut in as flat colour regions, no shapes changed): rechecked. The seat
     heights and all 96 pairs are the same; only the katana's ring piece under the foot is now `pearl`. No Studio push.
+  - v3 (guns place version 708: round-2 shapes, ports and bores, baked SurfaceAppearance maps): rechecked. The seat
+    heights and all 96 pairs are the same as v2. In Studio the new models (SurfaceAppearances on) give the same
+    gaps under every foot. No push.
 
 ## Checked (16 November 2026, solo Play tests in Studio, round-1 to round-3 models)
 
