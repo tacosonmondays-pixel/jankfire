@@ -801,27 +801,27 @@ end
 --   stars     (Triangulum) a thin gold-white line with small stars twinkling along it; a fading star where it lands
 local TRP = {
 	feather = emitters(4, { Texture = TEX.feather, LightInfluence = 0.5, LightEmission = 0.3, Color = cs(Color3.fromRGB(252, 248, 238)),
-		Size = NumberSequence.new(0.07 * S / 0.88 * H), Transparency = ns(0, 0.05, 0.7, 0.15, 1, 1), Lifetime = NR(0.9, 1.3),
+		Size = NumberSequence.new(0.15 * S / 0.88 * H), Transparency = ns(0, 0.05, 0.7, 0.15, 1, 1), Lifetime = NR(1, 1.4), -- (round 16: 0.07 m read as specks at 16 studs)
 		Speed = NR(0.3 * S, 0.8 * S), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -1.2 * S, 0), Drag = 2.5,
 		Rotation = NR(0, 360), RotSpeed = NR(-140, 140) }),
 	spark = emitters(6, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1,
 		LightInfluence = 0, Brightness = 3, Color = cs(Color3.fromRGB(255, 214, 140), Color3.fromRGB(255, 84, 28)),
-		Size = ns(0, 0.035 * S * 3.4 * H, 1, 0.012 * S * 3.4 * H), Transparency = ns(0, 0, 0.7, 0.2, 1, 1), Lifetime = NR(0.25, 0.45),
+		Size = ns(0, 0.05 * S * 3.4 * H, 1, 0.016 * S * 3.4 * H), Transparency = ns(0, 0, 0.7, 0.2, 1, 1), Lifetime = NR(0.3, 0.5),
 		Speed = NR(0.6 * S, 2.2 * S), SpreadAngle = Vector2.new(70, 70), Acceleration = Vector3.new(0, -12 * S, 0), Drag = 1.5 }),
 	bubble = emitters(4, { Texture = TEX.bubble, LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
-		Color = cs(Color3.fromRGB(255, 230, 242)), Size = ns(0, 0.05 * S * H, 0.15, 0.1 * S * H, 0.85, 0.105 * S * H, 0.93, 0.12 * S * H, 1, 0.02 * S * H),
+		Color = cs(Color3.fromRGB(255, 230, 242)), Size = ns(0, 0.1 * S * H, 0.15, 0.2 * S * H, 0.85, 0.21 * S * H, 0.93, 0.24 * S * H, 1, 0.04 * S * H),
 		Transparency = ns(0, 0.5, 0.15, 0, 0.85, 0.05, 0.93, 0.3, 1, 1), Lifetime = NR(0.4, 0.55), Speed = NR(0.1 * S, 0.4 * S),
 		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 1.5, Rotation = NR(-10, 10) }),
 	heart = emitters(6, { Texture = TEX.heart, LightEmission = 0.7, LightInfluence = 0, Brightness = 1.6,
-		Color = cs(Color3.fromRGB(255, 150, 196)), Size = nsk({ { 0, 0 }, { 0.3, 0.05 * S * H / 0.6, 0.012 * S }, { 1, 0 } }),
+		Color = cs(Color3.fromRGB(255, 150, 196)), Size = nsk({ { 0, 0 }, { 0.3, 0.12 * S * H / 0.6, 0.03 * S }, { 1, 0 } }),
 		Transparency = NumberSequence.new(0.05), Lifetime = NR(0.35, 0.55), Speed = NR(0.1 * S, 0.4 * S),
 		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 2, Rotation = NR(-20, 20) }),
 	star = emitters(8, { Texture = TEX.sparkle, LightEmission = 1, LightInfluence = 0, Brightness = 2.5,
-		Color = cs(Color3.fromRGB(255, 240, 204)), Size = nsk({ { 0, 0 }, { 0.35, 0.05 * S / 0.97 * H, 0.02 * S }, { 1, 0 } }),
+		Color = cs(Color3.fromRGB(255, 240, 204)), Size = nsk({ { 0, 0 }, { 0.35, 0.12 * S / 0.97 * H, 0.04 * S }, { 1, 0 } }),
 		Transparency = NumberSequence.new(0.05), Lifetime = NR(0.4, 0.75), Speed = NR(0.05 * S, 0.2 * S),
 		SpreadAngle = Vector2.new(180, 180), Drag = 3, Rotation = NR(-15, 15), RotSpeed = NR(-60, 60) }),
 	big = emitters(4, { Texture = TEX.sparkle, LightEmission = 1, LightInfluence = 0, Brightness = 3,
-		Size = ns(0, 0, 0.2, 0.22 * S / 0.97 * H, 1, 0), Transparency = ns(0, 0, 0.6, 0.15, 1, 1), Lifetime = NR(0.55),
+		Size = ns(0, 0, 0.2, 0.4 * S / 0.97 * H, 1, 0), Transparency = ns(0, 0, 0.6, 0.15, 1, 1), Lifetime = NR(0.6),
 		Speed = NR(0), Rotation = NR(-10, 10), RotSpeed = NR(-40, 40) }),
 	glow = emitters(6, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 2, Speed = NR(0),
 		Transparency = ns(0, 0.1, 1, 1) }),
@@ -886,7 +886,7 @@ function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
 	elseif kind == "ember" then
 		Fx.tracer(a, b, Color3.fromRGB(255, 150, 66), o.wide * 0.85, o.life, o.taper)
 		local sa = if o.fpv then a + dir * math.min(len * 0.5, 4) else a
-		beam(TRP.smoke, sa, b, Color3.fromRGB(62, 50, 46), tw * 1.6, tw * 2.4, 0.45, true, if o.fpv then 0.8 else 0.55)
+		beam(TRP.smoke, sa, b, Color3.fromRGB(62, 50, 46), tw * 1.8, tw * 2.8, 0.7, true, if o.fpv then 0.75 else 0.4) -- (round 16: 0.45 s from 0.55 was gone by 0.3)
 		along(TRP.spark, 4, -dir * 0.3 + Vector3.new(0, -0.6, 0))
 		if o.last then
 			emit(emAt(TRP.spark, b - dir * 0.1, -dir + Vector3.new(0, 0.6, 0)), 6)
