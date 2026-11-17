@@ -127,6 +127,8 @@ A flag goes into the review log at most once every 5 minutes per player and kind
   - **LOG**: the review log from every server.
   - **UNBAN** by user id (with bans on).
 
+![The owner's panel in a Studio Play test, after the cheat runs](anticheat/panel.jpg)
+
 ## The remote audit (17 Nov 2026)
 
 Every client→server remote and its handler was read. No high-severity gap was found.
@@ -171,7 +173,7 @@ Results of the 17 Nov tests: see "Test results" below.
 
 ## Test results
 
-All in Studio Play tests on 17 Nov 2026, with `StudioOn` set and one player. `worst` is how close each check came on that player (1 = the line).
+All in Studio Play tests on 17 Nov 2026, with `StudioOn` set and one player. Saved as place version 542. `worst` is how close each check came on that player (1 = the line).
 
 **Legit moves: zero catches.**
 
@@ -183,6 +185,7 @@ All in Studio Play tests on 17 Nov 2026, with `StudioOn` set and one player. `wo
 | 2 | Knockback on the ground (0, 60, 90), again mid-air (60, 70, 0), a sniper-sized one (−225, 42, 0), 20 black-hole pulses 0.1 s apart, a 1.5 s Shredder pull (the real `JFShredded` group and "pull" messages) | 0 | fly 0.60, climb 0.49, teleport 0.23 |
 | 2 | Teleported onto pads directly (the take-off happened inside the half-second teleport grace) | **2 false climbs**. Fixed: a take-off the server never saw gets the most any take-off can give. | |
 | 3 | All three pads stepped onto from beside them (+25, +105, +72); the Rotunda→training laser door | 0 | climb 0.24, fly −0.06, teleport 0.15 |
+| 4 | The popper (G: thrown 47 studs back); the rope hooked 230 studs away, pulled, and a grapple jump (180 studs travelled); swimming the Rooftop pool and climbing out at its edge; a death and respawn | 0 points. One **log-only** note, no put back: climbing out of the pool up its wall read as "hovering, beside a wall". Fixed: water counts as support within 6 studs of the pool (its Terrain fill reaches past the part). | climb 0.19, teleport 0.16 |
 
 **Simulated cheats (the client moving its own body, like an exploit): each one caught.**
 
@@ -192,7 +195,24 @@ All in Studio Play tests on 17 Nov 2026, with `StudioOn` set and one player. `wo
 | Teleport 350 studs up | teleport, "226 studs in 0.12 s (room 79)", put back |
 | Hover 12 studs up for 3.5 s | fly, "hovering: fell at 1 studs/s² over 1.1 s (gravity 78)", put back three times, then **would kick** at 11 points |
 | Fly straight up at 15 studs/s | fly, "climbed 25 studs with nothing under it (its take-off allows 23)", put back four times |
-| Walk through the range's hollow wall `RangeWallW` (two thin skins) with collisions off | **missed** in run 3: each skin was under the 0.6-stud minimum and the body was never inside a part. Fixed: the minimum is 0.1 studs. |
+| Walk through the range's wall at 12 studs/s with collisions off | run 3: not seen. Two later walks showed why: the test client's walk didn't actually cross the wall. The minimum was lowered to 0.1 studs anyway, because many walls are thin skins. Run 4, walking straight through `RangeWallW` + `YardWallE` (a 6-stud slab): **inside, "middle inside RangeWallW for 0.3 s", put back** |
+| Speed hack: 90 studs/s on the ground (round a 10-stud circle on the Rotunda floor) | speed, **"92 studs/s on the ground for 1.6 s (limit 76)"**, put back. The circle also ran through a `PierBox` twice: noclip, put back. |
+| Speed hack round a 14-stud circle in the training yard | it ran through a container: inside, "middle inside tl_containerBox", then noclip, then put back |
+| A 113-stud hop by the client before a walk | teleport, "113 studs in 0.10 s (room 72)", put back |
+
+**Aim signals (run 5, the LMG against the training dummy `Stand`, shots fired through the real Fire remote):**
+
+- **Snaps.** 34 shots, each after the view jumped 70° away and back onto the target. The server paid all 34 as body shots: the test aimed at the model's Head part, not the server's head box, and the server re-checks every headshot claim. The flick showed in the body's yaw on 5 of the 34; the next 32 flicks added 7 more.
+  - So snaps are a **weak** signal. The body turns after the view, a little late, and a 0.2 s flick often lands inside that lag. That's one more reason they're only written down.
+  - Making it strong would need a small aim stream from the client: easy to fake, but its jumps would at least be visible.
+- **Headshot share.** 32 shots at the server's head box: all 32 were headshots. Mixed with the 34 body shots, 32 of 66 (48%) stayed under the line: no flag, correctly. After a reset, 32 clean headshots gave the flag **"30 headshots in 30 hits (100%)"**.
+- **Remote probe.** Firing the server-only `Knock` remote from the client was flagged: "fired Knock, a server-only remote (1 so far)".
+- **Smoke.** Not exercised live: the test's smoke grenade wasn't thrown (its charges didn't drop), so no cloud stood between. The check uses the game's own `Fight.smokeBlocks`, the same one the bots' eyes use.
+- No movement points came up while standing and shooting.
+
+The review log in the owner's panel after the runs (read back from the DataStore, so catches from every Play run are there):
+
+![The review log](anticheat/log.jpg)
 
 Log excerpt (run 3, the server's own verdict list via `JankAC`):
 
