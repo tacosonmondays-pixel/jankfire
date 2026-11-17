@@ -77,7 +77,9 @@ function QuickVoteUI.draw()
 		if mine and not won then T.edge(b, T.ACCENT, 0.3, 1) end
 		local ink = if won then T.INK elseif pick then T.DIM else T.TEXT
 		local nm = text(b, "Name", o.name or o.id, if c then 13 else 16, ink, T.FONT_TITLE)
-		nm.Position = UDim2.fromOffset(10, if c then 6 else 9); nm.Size = UDim2.new(1, -40, 0, 20); nm.TextTruncate = Enum.TextTruncate.AtEnd
+		-- (a long name shrinks to fit rather than being cut: ONE IN THE CHAMBER, SPOONS & GRAPPLES)
+		nm.Position = UDim2.fromOffset(10, if c then 6 else 9); nm.Size = UDim2.new(1, -40, 0, if c then 16 else 20); nm.TextScaled = true
+		new("UITextSizeConstraint", { MaxTextSize = if c then 13 else 16, MinTextSize = 8 }, nm)
 		local sb = text(b, "Sub", o.sub or "", if c then 9 else 10, if won then T.INK else T.MUTED, T.FONT)
 		sb.Position = UDim2.fromOffset(10, if c then 24 else 30); sb.Size = UDim2.new(1, -20, 0, if c then 24 else 30)
 		sb.TextWrapped = true; sb.TextYAlignment = Enum.TextYAlignment.Top; sb.TextTruncate = Enum.TextTruncate.AtEnd

@@ -502,12 +502,16 @@ local function modeList()
 	if pt and not lead then
 		foot.Text = "only the leader (" .. leaderName() .. ") picks the mode and starts the search"
 	elseif ranked then
-		foot.Text = ("%d placement matches, then your rank shows. a division is 100 points"):format(Ranked.PLACEMENTS)
+		-- (and ranked's one rule of its own: the grapple's charges, shared/HookCharges.luau)
+		local HC = require(Shared:WaitForChild("HookCharges")) :: any
+		foot.Text = ("%d placement matches, then your rank shows. a division is 100 points\ngrapple: %d charges, one back every %d s"):format(
+			Ranked.PLACEMENTS, HC.CHARGES, HC.CD)
 		foot.TextColor3 = T.SOFT -- (brighter over the fire)
+		foot.Size = UDim2.fromOffset(W - 28, if c then 40 else 50)
 	else
 		foot.Text = "the same duels as the pads. your party plays on one team"
 	end
-	left.Size = UDim2.fromOffset(W, y + 44)
+	left.Size = UDim2.fromOffset(W, y + (if ranked then (if c then 50 else 60) else 44))
 end
 
 -- ------------------------------------------------------------------ the party (right)

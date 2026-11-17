@@ -167,11 +167,11 @@ end
 -- move one body onto a pad side: its slot (Slot parts carry Team and Slot) or the middle of the side, facing into the
 -- hub (a side's look points out at the wall behind the pad: the first test faced you into the corner). the
 -- anti-cheat's TeleportT stamp goes first, as every server move does
-local function standOn(p: Player, pad: Model, t: number, slot: number)
+local function standOn(p: Player, pad: Model, t: number, slot: number): Vector3?
 	local ch = p.Character
 	local root = ch and ch:FindFirstChild("HumanoidRootPart") :: BasePart?
 	local side = pad:FindFirstChild("Side" .. t) :: BasePart?
-	if not ch or not root or not side then return end
+	if not ch or not root or not side then return nil end
 	local spot = side.Position
 	for _, c in pad:GetChildren() do
 		if c.Name == "Slot" and c:IsA("BasePart") and c:GetAttribute("Team") == t and c:GetAttribute("Slot") == slot then
@@ -190,6 +190,7 @@ local function standOn(p: Player, pad: Model, t: number, slot: number)
 	p:SetAttribute("TeleportT", os.clock()) -- (the anti-cheat's teleport check starts afresh from the pad)
 	root.AssemblyLinearVelocity = Vector3.zero
 	ch:PivotTo(CFrame.lookAt(pos, pos + look.Unit))
+	return look.Unit
 end
 
 -- the QUICK JOIN button (the Play remote's "quickjoin" op, a = the pop-up's id)
@@ -204,11 +205,14 @@ function QuickJoin.join(p: Player, id: any): any
 	local v = viewOf(pad, Matches.padView()[pad])
 	local t = sideFor(v, #group)
 	if not t then return { ok = false, why = "that pad is full" } end
+	local facing: Vector3? = nil
 	for i, m in group do
-		standOn(m, pad, t, v.counts[t] + i)
+		local lv = standOn(m, pad, t, v.counts[t] + i)
+		if m == p then facing = lv end
 		if m ~= p then drop(m) end
 	end
-	return { ok = true, side = t, moved = #group }
+	-- (look: where to turn the camera; a first-person camera keeps its own direction through a server move)
+	return { ok = true, side = t, moved = #group, look = if facing then { facing.X, facing.Z } else nil }
 end
 
 function QuickJoin.init(matches: any, party: any, remotes: Instance)

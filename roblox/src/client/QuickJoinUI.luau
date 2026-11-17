@@ -101,6 +101,14 @@ function QuickJoinUI.press()
 	task.spawn(function()
 		local r = PlayUI.ask("quickjoin", c.id)
 		if type(r) == "table" and not r.ok and type(r.why) == "string" then PlayUI.notice(r.why) end
+		-- the server turned you into the hub, but a first-person camera keeps its own direction: turn it too
+		local lk = if type(r) == "table" and r.ok and type(r.look) == "table" then Vector3.new(tonumber(r.look[1]) or 0, 0, tonumber(r.look[2]) or 0) else nil
+		local cam = workspace.CurrentCamera
+		if lk and cam and lk.Magnitude > 0.1 then
+			task.wait() -- (the move reaches this screen first)
+			local pos = cam.CFrame.Position
+			cam.CFrame = CFrame.lookAt(pos, pos + lk.Unit)
+		end
 	end)
 end
 

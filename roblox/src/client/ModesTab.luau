@@ -93,6 +93,10 @@ function ModesTab.draw(ctx: any): number
 			TextSize = if c then 10 else 11, TextColor3 = if on then T.TEXT else T.MUTED, TextTruncate = Enum.TextTruncate.AtEnd }, parent)
 		T.corner(b, 4)
 		if on then T.edge(b, T.ACCENT, 0.3, 1) end
+		-- (a long name shrinks to fit the button rather than being cut: the phone's < MODE > row is narrow)
+		b.TextScaled = true
+		new("UITextSizeConstraint", { MaxTextSize = if c then 10 else 11, MinTextSize = 7 }, b)
+		new("UIPadding", { PaddingLeft = UDim.new(0, 4), PaddingRight = UDim.new(0, 4), PaddingTop = UDim.new(0, 5), PaddingBottom = UDim.new(0, 5) }, b)
 		return b
 	end
 	if c then
@@ -152,6 +156,13 @@ function ModesTab.draw(ctx: any): number
 	local nt = text(p, "Note", note, if c then 9 else 11, if warn then T.ACCENT else T.MUTED, T.FONT_BOLD); nt.ZIndex = 3
 	nt.Position = UDim2.fromOffset(14, ly); nt.Size = UDim2.fromOffset(iw, 14); nt.TextTruncate = Enum.TextTruncate.AtEnd
 	y += pH + 8
+	-- (PARTY RANKED's one rule of its own: the grapple's charges, shared/HookCharges.luau)
+	if ctx.pon then
+		local HC = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("HookCharges")) :: any
+		local g = text(left, "Grapple", ("ranked: grapple %d charges, one back every %d s"):format(HC.CHARGES, HC.CD), if c then 9 else 11, T.MUTED, T.FONT_BOLD)
+		g.Position = UDim2.fromOffset(16, y - 2); g.Size = UDim2.fromOffset(W - 32, 14); g.ZIndex = 3; g.TextTruncate = Enum.TextTruncate.AtEnd
+		y += 16
+	end
 	return y
 end
 

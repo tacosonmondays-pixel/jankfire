@@ -8,6 +8,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage:WaitForChild("Jankfire"):WaitForChild("Config"))
 local HookCheck = require(script.Parent:WaitForChild("HookCheck"))
+local HookChargeServer = require(script.Parent:WaitForChild("HookChargeServer")) -- (ranked: 2 grapple charges)
 local MeshSwap = require(script.Parent:WaitForChild("MeshSwap"))
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
@@ -77,6 +78,8 @@ GrappleRemote.OnServerEvent:Connect(function(p: Player, what: unknown, point: un
 	local hit = workspace:Raycast(from, dir * (toPoint + 3), params)
 	bad = HookCheck.reach((pt - root.Position).Magnitude, toPoint, hit and (hit.Position - from).Magnitude or nil)
 	if bad then return cut(bad) end
+	-- (a RANKED duel or PARTY RANKED: a hook spends one of 2 charges; none left = cut. shared/HookCharges.luau)
+	if not HookChargeServer.allow(p) then return cut("recharging") end
 	-- the rope everyone sees (the hooker's own client hides this one: it draws its own right away)
 	dropRope(i)
 	local a1 = Instance.new("Attachment")

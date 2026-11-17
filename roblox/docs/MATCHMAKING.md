@@ -162,6 +162,10 @@ sides". Built in `server/QuickJoin.luau` and `client/QuickJoinUI.luau`.
   - With the 20 s gap on, new pop-ups within 20 s of the last one were held back.
 - Test ops: `qjstand pad side name`, `qjoff pad`, `qjgap secs`, `qjstate player`.
 - Place v650 fixed the key cap, which had sat over the words.
+- Place v658 turns the camera into the hub after the move. The server turns the body, but a first-person camera
+  keeps its own direction, so the client turns it to the direction the server sends back (`look`).
+
+  ![after F: on the pad, facing the hub](matchmaking/30_quick_join_facing.jpg)
 
   ![QUICK JOIN on a hub pad](matchmaking/24_quick_join.jpg)
 
@@ -205,6 +209,13 @@ proper matches! maybe". The main session decided the shape; this section replace
     - I pressed 2, two stand-ins voted Infection and one Tags, and the counts showed on the cards.
     - Infection was picked and started with 8 seats on RooftopV3.
   - A party of 4 (me and 3 stand-ins) that picked Infection without fill started at once with 4 seats.
+  - Quickplay with 4 (v658): offered Team Deathmatch, Randomizer and Tags. With no votes, Tags was drawn and started
+    with 4 seats.
+  - Long names shrink to fit (v658), on the vote cards and on the PARTY buttons. On a phone-sized screen (844x390)
+    the `< MODE >` row shows ONE IN THE CHAMBER in full.
+
+  ![the vote with 4](matchmaking/32_quickplay_vote_4.jpg)
+  ![the MODES tab at 844x390](matchmaking/31_modes_phone.jpg)
   - With Infection picked and a party of 1, the card says "needs 4 players, your party is 1: turn on fill" and the
     button reads START MATCH.
 
@@ -395,6 +406,38 @@ from straight pieces now: a turned frame doesn't clip, and its fold used to stic
 
 ![both ladders' badges](matchmaking/18_party_ranked_badges.jpg)
 ![the MODES tab with PARTY RANKED on](matchmaking/19_party_ranked_modes_tab.jpg)
+
+### Grapple charges in ranked (17 Nov 2026)
+
+The owner: "For competitive should we limit the grapple to like 2 grapples with a short cooldown between recharge?"
+Main's decision: yes, with the web game's own Jank Royale rule (`shared/royale.js` `BR.hook = { charges: 2, cd: 8 }`).
+
+- **Where it counts:** a RANKED duel and a PARTY RANKED match: `Matches.matchOf(p).ranked`. Casual duels, casual
+  quickplay, training and the hub keep the free grapple.
+- **The numbers** are in `shared/HookCharges.luau`: 2 charges, coming back one at a time every 6 s. The web's 8 s
+  was for the royale's big map, and the owner asked for a short cooldown.
+- **The server counts** (`server/HookChargeServer.luau`).
+  - Main's grapple check calls `HookChargeServer.allow(p)` once a hook has passed range and sight.
+  - In a ranked match the hook spends a charge. With none left the rope is cut ("recharging").
+  - A new body (each round, each respawn) starts full.
+  - It publishes the attributes `HookLimit`, `HookN` and `HookT0` (the server time the returning charge started).
+- **The client predicts** (`client/HookChargesUI.luau`, asked by Move's tryHook):
+  - With no charge it doesn't fire. It says "GRAPPLE RECHARGING · N S" on the quiet line and plays `hook_empty`.
+  - Two pips sit under the crosshair while the charges count. A used one fills from the bottom as it comes back, and
+    `hook_ready` plays when it lands.
+  - A cut from the server resyncs the count: the server spends nothing on a hook it refused. This was added after
+    the test below, where a hook the server refused for range left the screen one charge short; it is compile-checked
+    only.
+  - The two sounds are the sound session's recordings; until they exist nothing plays.
+- **The rules line:** under the RANKED duel cards, and under the MODES cards with PARTY RANKED on: "grapple: 2
+  charges, one back every 6 s".
+- **Tested** in place v658 (17 Nov, 17:10 UTC), a ranked 1v1 against a stand-in:
+  - Two hooks went, and the third was refused with the line and the pips.
+  - On the server: n 1, then 0, then the third was cut "recharging". One charge came back at 6.2 s and the second at
+    12.2 s.
+  - In the hub, three hooks in a row all went (`HookLimit` false).
+
+  ![ranked: the third hook refused](matchmaking/33_grapple_charges.jpg)
 
 ### When a cheater is caught (17 Nov 2026)
 

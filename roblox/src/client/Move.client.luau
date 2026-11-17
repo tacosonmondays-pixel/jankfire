@@ -16,6 +16,7 @@ local Movement = require(Shared:WaitForChild("Movement"))
 local Hud = require(script.Parent:WaitForChild("Hud"))
 local Binds = require(script.Parent:WaitForChild("Binds")) :: any -- (the keys as bound, hold or toggle sprint and crouch: Settings)
 local Body = require(script.Parent:WaitForChild("Body")) -- step 2: lets the weapons push you (recoil, knockback, slips)
+local HookChargesUI = require(script.Parent:WaitForChild("HookChargesUI")) -- (ranked: 2 grapple charges)
 local Keys = require(script.Parent:WaitForChild("Keys")) -- (the keys, and the phone's buttons pressing them: TouchControls)
 local Remotes = ReplicatedStorage:WaitForChild("JankfireRemotes")
 local GrappleRemote = Remotes:WaitForChild("Grapple") :: RemoteEvent
@@ -81,6 +82,7 @@ local function tryHook()
 		Hud.callout("TOO FAR", 0.5)
 		return
 	end
+	if not HookChargesUI.try() then return end -- (ranked: no charge left, it says so)
 	local p = hit.Position
 	st.hook = { ax = p.X, ay = p.Y, az = p.Z, len = nil }
 	GrappleRemote:FireServer("hook", p)
