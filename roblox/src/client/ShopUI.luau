@@ -91,12 +91,12 @@ function Till.adopt(raw: any)
 			elseif type(v) == "string" then inv[kind][v] = true end
 		end
 	end
-	inv.skin = {}; inv.border = {}; inv.banner = {}; inv.title = {}
+	inv.skin = {}; inv.border = {}; inv.banner = {}; inv.title = {}; inv.kill = {}; inv.emote = {}
 	set("wrap", src.wrap or src.wraps or src.finish)
 	set("hat", src.hat or src.hats)
 	set("skin", src.skin or src.skins)
-	-- the player card's looks: bare ids
-	for _, k in { "border", "banner", "title" } do set(k, src[k] or (type(raw) == "table" and raw.owned and raw.owned[k])) end
+	-- the player card's looks, the kill effects and the emotes: bare ids
+	for _, k in { "border", "banner", "title", "kill", "emote" } do set(k, src[k] or (type(raw) == "table" and raw.owned and raw.owned[k])) end
 	S.restricted = type(raw) == "table" and raw.restricted == true
 	local c = src.containers or src.stock or {}
 	if type(c) == "table" then
@@ -129,7 +129,12 @@ function Till.owns(kind: string, id: string, weapon: string?): boolean
 end
 function Till.count(cid: string): number return S.inv.containers[cid] or 0 end
 -- what you own as the loot module's odds want it ({ wrap = { [id] = true }, hat = ..., skin = ... })
-function Till.ownedSets(): any return { wrap = S.inv.wrap, hat = S.inv.hat, skin = S.inv.skin or {} } end
+function Till.ownedSets(): any
+	local o = { wrap = S.inv.wrap, hat = S.inv.hat, skin = S.inv.skin or {} }
+	-- (the Duffel Bag's gun-less things too, so its odds count what you have of them)
+	for _, k in { "border", "banner", "title", "kill", "emote" } do if S.inv[k] then o[k] = S.inv[k] end end
+	return o
+end
 -- a container that can't give you anything right now: "soon" (nothing in it on roblox yet), "empty" (you own it all)
 function Till.boxState(cid: string): string?
 	if Shop.soon(cid) then return "soon" end
@@ -386,6 +391,7 @@ end
 -- an item on the weapon it's for: a wrap paints it, a hat sits on it (boost: the hat drawn bigger, for small cards).
 -- an item with no weapon (an older save) goes on your primary
 function V.item(it: any, boost: number?): Model?
+	if Shop.isCard(it.kind) or Shop.isFlair(it.kind) then return nil end -- (no gun: drawn as tiles, V.put)
 	if it.kind == "skin" then
 		local sw = it.weapon or Shop.skinWeapon(it.id)
 		return if sw then V.gun(sw, nil, nil, nil, it.id) else nil
@@ -431,6 +437,17 @@ function V.card(parent: GuiObject, kind: string, id: string)
 	local f = cardFrame(parent)
 	if CS then pcall(CS.preview, kind, id, f) end
 end
+-- a kill effect or an emote: no 3D model either, a square tile drawn by Flair (a figure in the effect's colour, or
+-- doing the move)
+function V.flair(parent: GuiObject, kind: string, id: string)
+	local F = Shop.Flair :: any
+	clearPreview(parent)
+	local holder = new("Frame", { Name = "Preview", BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), ZIndex = parent.ZIndex + 1 }, parent)
+	local f = new("Frame", { Name = "Tile", BackgroundTransparency = 1, AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5),
+		Size = UDim2.fromScale(0.92, 0.92), ZIndex = parent.ZIndex + 2 }, holder)
+	new("UIAspectRatioConstraint", { AspectRatio = 1 }, f)
+	if F and type(F.picture) == "function" then pcall(F.picture, kind, id, f) end
+end
 -- a whole card dressed in a set's background, border and title (the Head Office bundle's picture)
 function V.cardSet(parent: GuiObject, items: { any })
 	local CS = Shop.CardStyles :: any
@@ -449,9 +466,18 @@ function V.cardSet(parent: GuiObject, items: { any })
 		new("UITextSizeConstraint", { MaxTextSize = 28 }, l)
 	end
 end
+-- what a single is for, in words: "FOR SMG", "FOR YOUR PLAYER CARD" ("FOR YOUR CARD" short), "FOR EVERY KILL" (a kill
+-- effect plays on every kill, any gun), "FOR YOUR EMOTE WHEEL"
+function V.forWords(kind: string, weapon: string?, short: boolean?): string
+	if Shop.isCard(kind) then return if short then "FOR YOUR CARD" else "FOR YOUR PLAYER CARD" end
+	if kind == "kill" then return "FOR EVERY KILL" end
+	if kind == "emote" then return "FOR YOUR EMOTE WHEEL" end
+	return "FOR " .. string.upper(Shop.weaponName(weapon))
+end
 -- a small still picture of one item (a chip in a list or a strip): a hat on its own, a skin's whole gun, a card tile
 function V.chip(parent: GuiObject, it: any)
 	if Shop.isCard(it.kind) then V.card(parent, it.kind, it.id)
+	elseif Shop.isFlair(it.kind) then V.flair(parent, it.kind, it.id)
 	elseif it.kind == "skin" then V.show(parent, V.item(it), "none", 1.0)
 	else V.show(parent, V.hat(it.id), "none", 1.1) end
 end
@@ -459,6 +485,7 @@ end
 function V.put(parent: GuiObject, o: any?, item: any?, spin: string, zoom: number?, boost: number?)
 	local it = item or (if o and o.type == "single" then { kind = o.kind, id = o.item, weapon = o.weapon } else nil)
 	if it and Shop.isCard(it.kind) then V.card(parent, it.kind, it.id); return end
+	if it and Shop.isFlair(it.kind) then V.flair(parent, it.kind, it.id); return end
 	if o and o.type == "bundle" and not o.hero then V.cardSet(parent, o.items); return end
 	V.show(parent, if o then V.offerModel(o, item, boost) else V.item(it, boost), spin, zoom)
 end
@@ -621,7 +648,7 @@ local function singleCard(parent: Instance, o: any, order: number): TextButton
 	local name = txt(c, o.name, 16, T.TEXT, T.FONT_BOLD)
 	name.Position = UDim2.new(0, 12, 1, -74); name.Size = UDim2.new(1, -24, 0, 20)
 	-- the weapon it's for: a wrap or a hat is owned for one weapon
-	local wl = txt(c, if Shop.isCard(o.kind) then "FOR YOUR PLAYER CARD" else "FOR " .. string.upper(Shop.weaponName(o.weapon)), 12, T.SOFT, T.FONT_BOLD)
+	local wl = txt(c, V.forWords(o.kind, o.weapon), 12, T.SOFT, T.FONT_BOLD)
 	wl.Position = UDim2.new(0, 12, 1, -53); wl.Size = UDim2.new(1, -24, 0, 15)
 	-- (on a phone the kind word goes: the rarity alone fits beside the price)
 	local rl = rarityLine(c, o.rarity, Shop.KIND_NAMES[o.kind] or o.kind, if S.compact then 12 else 11, S.compact)
@@ -982,11 +1009,20 @@ end
 -- ------------------------------------------------------------------------ INVENTORY: what you own
 do
 	local pg_ = UI.pages.inventory
-	UI.invFilters = new("Frame", { BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 36) }, pg_)
+	-- (the filters scroll sideways when they don't all fit, on a phone; the count sits to their right)
+	UI.invFilters = new("ScrollingFrame", { BackgroundTransparency = 1, BorderSizePixel = 0, Size = UDim2.new(1, -120, 0, 36), CanvasSize = UDim2.new(),
+		AutomaticCanvasSize = Enum.AutomaticSize.X, ScrollingDirection = Enum.ScrollingDirection.X, ScrollBarThickness = 0, ScrollBarImageTransparency = 1 }, pg_)
 	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 8), SortOrder = Enum.SortOrder.LayoutOrder }, UI.invFilters)
+	new("UIPadding", { PaddingLeft = UDim.new(0, 1), PaddingRight = UDim.new(0, 1), PaddingTop = UDim.new(0, 1), PaddingBottom = UDim.new(0, 1) }, UI.invFilters)
 	UI.invBtns = {}
-	for i, f in { "all", "containers", "skin", "wrap", "hat", "card" } do
-		local b = button(UI.invFilters, ({ all = "ALL", containers = "CONTAINERS", skin = "SKINS", wrap = "WRAPS", hat = "HATS", card = "CARD" })[f], "dark", UDim2.fromOffset(120, 34))
+	UI.invMins = {} :: { UISizeConstraint }
+	local FILTER_WORDS = { all = "ALL", containers = "CONTAINERS", skin = "SKINS", wrap = "WRAPS", hat = "HATS", card = "CARD", kill = "KILL EFFECTS", emote = "EMOTES" }
+	for i, f in { "all", "containers", "skin", "wrap", "hat", "card", "kill", "emote" } do
+		if Shop.isFlair(f) and not Shop.Flair then continue end
+		local b = button(UI.invFilters, FILTER_WORDS[f], "dark", UDim2.fromOffset(0, 34))
+		b.face.AutomaticSize = Enum.AutomaticSize.X
+		new("UIPadding", { PaddingLeft = UDim.new(0, 16), PaddingRight = UDim.new(0, 16) }, b.face)
+		table.insert(UI.invMins, new("UISizeConstraint", { MinSize = Vector2.new(120, 0) }, b.face))
 		b.face.LayoutOrder = i; b.face.TextSize = 13
 		b.face.MouseButton1Click:Connect(function() S.invFilter = f; ShopUI.fillInventory() end)
 		UI.invBtns[f] = b
@@ -1051,7 +1087,7 @@ function ShopUI.fillInventory()
 	local byWeapon: { [string]: { any } } = {}
 	local KORDER = { skin = 1, wrap = 2, hat = 3 }
 	local seenVip: { [string]: boolean } = {}
-	for _, kind in { "skin", "wrap", "hat", "border", "banner", "title" } do
+	for _, kind in { "skin", "wrap", "hat", "border", "banner", "title", "kill", "emote" } do
 		if f == "all" or f == kind or (f == "card" and Shop.isCard(kind)) then
 			for key in S.inv[kind] or {} do
 				local id, w = Shop.unkey(key)
@@ -1063,7 +1099,8 @@ function ShopUI.fillInventory()
 				if not dupe and Shop.exists(kind, id, w) then
 					if vipThing then seenVip[kind .. ":" .. id] = true end
 					local name, r = Shop.itemInfo(kind, id)
-					local g = if vipThing then "_vip" elseif Shop.isCard(kind) then "_card" elseif w and Shop.WEAPON_SET[w] then w else "_any"
+					local g = if vipThing then "_vip" elseif Shop.isCard(kind) then "_card" elseif Shop.isFlair(kind) then "_" .. kind
+						elseif w and Shop.WEAPON_SET[w] then w else "_any"
 					byWeapon[g] = byWeapon[g] or {}
 					table.insert(byWeapon[g], { kind = kind, id = id, weapon = w, name = name, rarity = r, vip = vipThing })
 				end
@@ -1074,6 +1111,8 @@ function ShopUI.fillInventory()
 	table.insert(groups, 1, "_vip") -- (the VIP pack, first)
 	table.insert(groups, "_any") -- (things kept without a weapon, from an older save)
 	table.insert(groups, "_card") -- (the player card's looks)
+	table.insert(groups, "_kill"); table.insert(groups, "_emote") -- (kill effects, emotes)
+	local GROUP_WORDS = { _vip = "VIP", _any = "any weapon", _card = "player card", _kill = "kill effects", _emote = "emotes" }
 	for gi, g in groups do
 		local items = byWeapon[g]
 		if items and #items > 0 then
@@ -1082,7 +1121,7 @@ function ShopUI.fillInventory()
 				if Shop.rank(a.rarity) ~= Shop.rank(b.rarity) then return Shop.rank(a.rarity) > Shop.rank(b.rarity) end
 				return a.name < b.name
 			end)
-			local grid = invSection(if g == "_vip" then "VIP" elseif g == "_any" then "any weapon" elseif g == "_card" then "player card" else Shop.weaponName(g), #items, gi)
+			local grid = invSection(GROUP_WORDS[g] or Shop.weaponName(g), #items, gi)
 			for _, it in items do
 				n += 1; order += 1
 				local c = card(grid, it.rarity)
@@ -1098,7 +1137,16 @@ function ShopUI.fillInventory()
 			end
 		end
 	end
-	UI.invCount.Text = if S.invOk then n .. " THINGS" else ""
+	UI.invCount.Text = if S.invOk then n .. (if n == 1 then " THING" else " THINGS") else ""
+	-- (on a phone the filters scroll: keep the picked one in view)
+	local sel = UI.invBtns[S.invFilter]
+	if sel then
+		local fr = UI.invFilters
+		local x0 = sel.face.AbsolutePosition.X - fr.AbsolutePosition.X + fr.CanvasPosition.X
+		local w, view = sel.face.AbsoluteSize.X, fr.AbsoluteSize.X
+		if x0 < fr.CanvasPosition.X then fr.CanvasPosition = Vector2.new(math.max(0, x0 - 8), 0)
+		elseif x0 + w > fr.CanvasPosition.X + view then fr.CanvasPosition = Vector2.new(x0 + w - view + 8, 0) end
+	end
 	UI.invEmpty.Text = if not S.invOk then "can't load your inventory right now."
 		elseif n == 0 then "nothing here yet. claim a bundle or open a container." else ""
 end
@@ -1153,6 +1201,12 @@ do
 	UI.inspBuy.face.TextSize = 17; UI.inspBuy.face.ZIndex = 23
 	UI.inspBuy.face.MouseButton1Click:Connect(function() if S.inspect then ShopUI.ask(S.inspect) end end)
 end
+-- "DRAG TO TURN" on the big preview, only when it's a 3D model (a card look, kill effect or emote is a flat tile)
+function V.hint()
+	UI.inspHint.Parent = UI.inspView
+	local p = UI.inspView:FindFirstChild("Preview")
+	UI.inspHint.Visible = p ~= nil and p:IsA("ViewportFrame")
+end
 -- one row in a bundle's list: its chip, name, kind and rarity; OWNED on the right. click = see it on the big preview
 local function listRow(it: any, order: number, o: any)
 	local name, r = Shop.itemInfo(it.kind, it.id)
@@ -1194,7 +1248,7 @@ local function listRow(it: any, order: number, o: any)
 			row.BackgroundColor3 = T.CARD_HI; st.Color = T.ACCENT; st.Transparency = 0.3
 			V.put(UI.inspView, o, it, "drag", if it.kind == "hat" then 1.0 else 1.1)
 		end
-		UI.inspHint.Parent = UI.inspView
+		V.hint()
 	end)
 end
 function ShopUI.fillInspect()
@@ -1202,10 +1256,10 @@ function ShopUI.fillInspect()
 	if not o then return end
 	S.preview = nil
 	V.put(UI.inspView, o, nil, "drag", if o.type == "container" then 0.95 elseif o.kind == "hat" then 1.0 else 1.1)
-	UI.inspHint.Parent = UI.inspView
+	V.hint()
 	for _, c in UI.inspList:GetChildren() do if c:IsA("GuiObject") then c:Destroy() end end
 	UI.inspEyebrow:Destroy()
-	local kindWord = if o.type == "pass" then "GAME PASS  ·  " .. #Shop.vipItems() .. " ITEMS + THE VIP ROOM" elseif o.set then "SKIN SET  ·  " .. #o.items .. " WEAPON SKINS" elseif o.type == "bundle" then "BUNDLE  ·  " .. #o.items .. " ITEMS" elseif o.type == "container" then "CONTAINER" else (Shop.KIND_NAMES[o.kind] or "") .. "  ·  FOR " .. (if Shop.isCard(o.kind) then "YOUR CARD" else string.upper(Shop.weaponName(o.weapon)))
+	local kindWord = if o.type == "pass" then "GAME PASS  ·  " .. #Shop.vipItems() .. " ITEMS + THE VIP ROOM" elseif o.set then "SKIN SET  ·  " .. #o.items .. " WEAPON SKINS" elseif o.type == "bundle" then "BUNDLE  ·  " .. #o.items .. " ITEMS" elseif o.type == "container" then "CONTAINER" else string.upper(Shop.KIND_NAMES[o.kind] or "") .. "  ·  " .. V.forWords(o.kind, o.weapon, true)
 	UI.inspEyebrow = rarityLine(UI.inspSide, o.rarity, kindWord, 12)
 	UI.inspEyebrow.Position = UDim2.fromOffset(0, 50)
 	for _, d in UI.inspEyebrow:GetDescendants() do if d:IsA("GuiObject") then d.ZIndex = 23 end end
@@ -1293,10 +1347,14 @@ function ShopUI.fillInspect()
 			for _, so in Shop.sets do for _, it in so.items do if it.id == o.item then setName = so.name end end end
 		end
 		UI.inspBlurb.Text = if card then "a " .. string.lower(Shop.KIND_NAMES[o.kind] or "look") .. " for your player card. everyone who sees your card sees it."
+			elseif o.kind == "kill" then "a kill effect: it plays on the body when you get a kill, with any gun. pick it in the loadout [L]."
+			elseif o.kind == "emote" then "an emote for your wheel (hold T). put it on the wheel in the loadout [L]."
 			elseif o.kind == "skin" then "a weapon skin for your " .. wn .. (if setName then ", from the " .. setName .. " set" else "") .. ". wear it from the loadout [L]."
 			elseif o.kind == "hat" then "a hat for your " .. wn .. ". it goes on that gun only. wear it from the loadout [L]."
 			else "a wrap for your " .. wn .. ". it paints that gun only. pick how much it covers in the loadout [L]."
-		UI.inspNote.Text = if own then (if card then "it's yours. wear it on your player card." else "it's yours. wear it from the loadout [L].")
+		UI.inspNote.Text = if own then (if card then "it's yours. wear it on your player card."
+				elseif Shop.isFlair(o.kind) then "it's yours. pick it in the loadout [L]."
+				else "it's yours. wear it from the loadout [L].")
 			elseif onSale then "in today's daily rotation" else "not in today's rotation"
 		UI.inspBuy.set(if own then "OWNED" elseif not onSale then "NOT ON SALE TODAY" elseif Shop.free() then "CLAIM  " .. priceText(o.robux) else "BUY  " .. priceText(o.robux), not own and onSale)
 	end
@@ -1492,9 +1550,13 @@ function ShopUI.commit()
 		return
 	end
 	Till.refresh()
-	local cardOnly = true
-	for _, it in Shop.contents(o) do if not Shop.isCard(it.kind) then cardOnly = false end end
-	ShopUI.toast(string.upper(if o.type == "single" then Shop.itemLabel({ kind = o.kind, id = o.item, weapon = o.weapon }) else o.name) .. (if cardOnly then " ADDED. WEAR IT ON YOUR PLAYER CARD" else " ADDED. WEAR IT FROM THE LOADOUT [L]"))
+	local cardOnly, flairOnly = true, true
+	for _, it in Shop.contents(o) do
+		if not Shop.isCard(it.kind) then cardOnly = false end
+		if not Shop.isFlair(it.kind) then flairOnly = false end
+	end
+	ShopUI.toast(string.upper(if o.type == "single" then Shop.itemLabel({ kind = o.kind, id = o.item, weapon = o.weapon }) else o.name)
+		.. (if cardOnly then " ADDED. WEAR IT ON YOUR PLAYER CARD" elseif flairOnly then " ADDED. PICK IT IN THE LOADOUT [L]" else " ADDED. WEAR IT FROM THE LOADOUT [L]"))
 	ShopUI.refill()
 end
 
@@ -1553,7 +1615,9 @@ function ShopUI.openBox(cid: string, n: number?)
 		elseif type(it) == "table" and it.id then
 			local name = it.name or Shop.itemInfo(it.kind or it.type, it.id)
 			if it.weapon then name ..= " · " .. Shop.weaponName(it.weapon) end
-			ShopUI.toast(string.upper(name) .. " IS YOURS. WEAR IT FROM THE LOADOUT [L]")
+			local k = it.kind or it.type
+			ShopUI.toast(string.upper(name) .. (if Shop.isCard(k) then " IS YOURS. WEAR IT ON YOUR PLAYER CARD"
+				elseif Shop.isFlair(k) then " IS YOURS. PICK IT IN THE LOADOUT [L]" else " IS YOURS. WEAR IT FROM THE LOADOUT [L]"))
 		end
 		S.invFilter = "all"
 		ShopUI.shutOverlays()
@@ -1715,8 +1779,9 @@ function ShopUI.layout()
 	local iw = math.floor((bw - 16 - (icols - 1) * 10) / icols)
 	S.invCell = UDim2.fromOffset(iw, math.floor(iw * 1.12))
 	for _, g in UI.invScroll:GetDescendants() do if g:IsA("UIGridLayout") then g.CellSize = S.invCell end end
-	for _, b in UI.invBtns do b.face.Size = UDim2.fromOffset(if compact then 104 else 120, if compact then 44 else 40); b.face.TextSize = if compact then 14 else 13 end
-	UI.invFilters.Size = UDim2.new(1, 0, 0, if compact then 44 else 40)
+	for _, b in UI.invBtns do b.face.Size = UDim2.fromOffset(0, if compact then 44 else 40); b.face.TextSize = if compact then 14 else 13 end
+	for _, m in UI.invMins do m.MinSize = Vector2.new(if compact then 96 else 120, 0) end
+	UI.invFilters.Size = UDim2.new(1, -120, 0, if compact then 46 else 42)
 	UI.invCount.Size = UDim2.new(1, 0, 0, if compact then 44 else 40)
 	UI.invScroll.Position = UDim2.fromOffset(0, if compact then 52 else 52)
 	UI.invScroll.Size = UDim2.new(1, 0, 1, -52)

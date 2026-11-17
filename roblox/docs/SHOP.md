@@ -39,7 +39,9 @@ Three kinds of offer, each with an id:
   weapon, wrap and hat the big preview and the hub's hologram show). Six to start: Night Shift, Field Issue, Tea House,
   Deep Space, Machine Shop, Quarry. A bundle's price is about 60% of its items one by one (`Shop.worth`).
 - **singles** `wrap:<id>@<weapon>`, `hat:<id>@<weapon>`: one item for one weapon; `skin:<id>`: one weapon skin
-  (see "Weapon skins and skin sets" below). On sale only while it is in today's rotation (`Shop.onSale`).
+  (see "Weapon skins and skin sets" below); `border:<id>` / `banner:<id>` / `title:<id>`: one player card look;
+  `kill:<id>` / `emote:<id>`: one kill effect or emote (see "Kill effects and emotes" below). On sale only while it is
+  in today's rotation (`Shop.onSale`).
 - **skin sets** `<set id>` (`set_seraph`): every skin of one set, with a banner.
 
 **Wraps and hats are owned per weapon** (the owner, 16 Nov: a spray can gives a wrap "for only one gun at a time").
@@ -51,12 +53,14 @@ older save) counts for every weapon.
 Wraps whose picture versions broke Roblox's image rules (QR Code, Barcode, Meat Suit, Organ Donor, CORP, Corporate
 Memo, Jersey) never appear in a bundle or the rotation (`Shop.HELD_BACK`).
 
-**The featured rotation** (`Shop.rotation(day)`): one hero bundle and six singles (four wraps, two hats, at least one
-epic or better) a day, seeded by the UTC day number, so every server and every client agrees without storing
-anything. It turns over at 00:00 UTC; a single from yesterday stays buyable for 5 minutes after the turn.
+**The featured rotation** (`Shop.rotation(day)`): one hero bundle and six singles a day, seeded by the UTC day number,
+so every server and every client agrees without storing anything. The six, with everything in the place: two wraps,
+one hat, one player card look, one weapon skin and one kill effect or emote, at least one epic or better (without the
+card looks, skins or flair, wraps fill their slots, and there are two hats when there's no flair). It turns over at 00:00 UTC; a single from yesterday stays buyable for 5 minutes after the turn.
 
-**Prices** (`Shop.PRICE`, Robux, unused while free): wraps 75 / 150 / 300 / 600, hats 100 / 200 / 400 / 750 by
-rarity; containers 120 / 90 / 60; bundles from their worth.
+**Prices** (`Shop.PRICE`, Robux, unused while free): wraps 75 / 150 / 300 / 600, hats 100 / 200 / 400 / 750,
+weapon skins 150 / 300 / 600 / 1,200, kill effects and emotes 100 / 200 / 400 / 800 by rarity (common / rare / epic /
+legendary); card looks less; containers 120 / 90 / 60; bundles from their worth.
 
 Useful calls: `Shop.offer(id)`, `Shop.contents(offer)`, `Shop.free()`, `Shop.rotation()`, `Shop.secondsLeft()`,
 `Shop.onSale(id)`, `Shop.odds(containerId, owned)`, `Shop.productFor(offer)`, `Shop.itemInfo(kind, id)`,
@@ -204,6 +208,29 @@ loot inventory's bare ids (`inv.border` / `inv.banner` / `inv.title`).
 
 Tested in solo Play (v398): Head Office claimed (all three owned), x5 Spray Cans with the live batch open (five reels,
 "YOU GOT 5" grid, back to the shop: "5 THINGS ARE YOURS"), the CARD inventory section.
+
+## Kill effects and emotes (17 Nov, place version 517)
+
+The flair session's `Shared.Flair` (`roblox/src/shared/Flair.luau`) is sold like the card looks, when it's in the
+place: gun-less items `{ kind = "kill"|"emote", id }`, singles `"kill:<id>"` / `"emote:<id>"` kept under the bare id.
+- **What's for sale** is `Flair.forSale(kind)`: not free, not VIP, and an emote only once its clip is uploaded. Today
+  that's Ember (rare), Ink and Ascend (epic), Static (legendary); Slow Clap (common), Fist Pump and Bow (rare), Groove
+  (epic). Dissolve, Shatter, Wave, Salute and the default ("none") are free for everyone and never sold.
+- **Where:** one of the six daily singles is a kill effect or an emote (it takes a hat's place). The Duffel Bag's line
+  names them once the loot module keeps them (`LootTable.ownTypes()` has `kill` and `emote`).
+- **On screen:** a square tile drawn by `Flair.picture` (`V.flair`), never a 3D model, so the inspect panel shows no
+  DRAG TO TURN. A card reads "FOR EVERY KILL" or "FOR YOUR EMOTE WHEEL"; a claim's toast says PICK IT IN THE LOADOUT
+  [L] (the equip screen is the flair session's FlairUI, from the loadout's KILL EFFECT · EMOTES button).
+- **Inventory:** KILL EFFECTS and EMOTES sections and filters. The filter row scrolls sideways when it doesn't fit
+  (a phone), and keeps the picked filter in view.
+- **VIP:** a kill effect or emote of rarity "vip" (`Flair.isVip`) would join the VIP pack by itself; none is yet.
+
+Tested in solo Play (place version 517): today's six had Static first (photo `docs/shop/shop-flair-daily.jpg`); its
+inspect panel showed the tile, "LEGENDARY · KILL EFFECT · FOR EVERY KILL" and CLAIM 800 (`shop-flair-inspect.jpg`);
+CLAIM gave the owner Static (the loot inventory's `kill` list) with "STATIC ADDED. PICK IT IN THE LOADOUT [L]"; the
+KILL EFFECTS filter showed it (`shop-flair-inventory.jpg`); at phone size (844 x 390) the filters scrolled. The owner's
+inventory was put back afterwards (195 things, no kill effect). Not seen on screen: an emote tile, and the picked
+filter scrolling into view (added after the test).
 
 ## Weapon skins and skin sets (16 Nov)
 

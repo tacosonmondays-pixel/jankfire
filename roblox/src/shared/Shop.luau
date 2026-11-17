@@ -5,7 +5,8 @@
 --   bundles     "bundle_<name>": a fixed themed set of wraps and hats, each for a named weapon (only things that exist
 --               on roblox today)
 --   singles     "wrap:<id>@<weapon>" / "hat:<id>@<weapon>": one item for one weapon, sold only while it is in today's
---               featured rotation; "skin:<id>" one weapon skin (a skin is already one gun's)
+--               featured rotation; "skin:<id>" one weapon skin (a skin is already one gun's); "border:<id>" etc. one
+--               player card look; "kill:<id>" / "emote:<id>" one kill effect or emote (the flair session's Flair.luau)
 --   skin sets   "<set id>" ("set_seraph"): every skin of one of SkinSets' sets, a bundle with a banner (the guns
 --               session's SkinSets.luau); on sale once all its skins are in the place
 --   VIP         "vip": the game pass (Vip.luau on the server decides who has it); its pack is every VIP-only thing
@@ -50,8 +51,29 @@ do
 		if ok and type(K) == "table" and type((K :: any).SETS) == "table" then Shop.SkinSets = K end
 	end
 end
--- kept under the bare id, not "<id>@<weapon>": card looks (no gun) and weapon skins (already one gun's)
-function Shop.gunless(kind: string?): boolean return kind == "skin" or Shop.isCard(kind) end
+-- kill effects and emotes (the flair session's Flair), if it's in the place. gun-less like the card looks: an item
+-- { kind = "kill"|"emote", id }, kept under the bare id; one kill effect for every gun, emotes on the wheel
+do
+	local m = script.Parent:FindFirstChild("Flair")
+	if m and m:IsA("ModuleScript") then
+		local ok, F = pcall(require, m)
+		if ok and type(F) == "table" and type((F :: any).info) == "function" then Shop.Flair = F end
+	end
+end
+Shop.FLAIR_KINDS = { kill = true, emote = true }
+function Shop.isFlair(kind: string?): boolean return kind ~= nil and Shop.FLAIR_KINDS[kind] == true end
+-- a kill effect or emote that can be sold: Flair.forSale's (not free, not VIP, an emote only once its clip is uploaded)
+function Shop.flairForSale(kind: string, id: string): boolean
+	local F = Shop.Flair :: any
+	if not (F and Shop.isFlair(kind) and type(F.forSale) == "function") then return false end
+	local ok, list = pcall(F.forSale, kind)
+	if not ok or type(list) ~= "table" then return false end
+	for _, i in list do if i.id == id then return true end end
+	return false
+end
+-- kept under the bare id, not "<id>@<weapon>": card looks, kill effects and emotes (no gun) and weapon skins (already
+-- one gun's)
+function Shop.gunless(kind: string?): boolean return kind == "skin" or Shop.isCard(kind) or Shop.isFlair(kind) end
 
 -- ---------------------------------------------------------------- switches
 -- real-money purchases: Config.LOOT_ROBUX (the loot module's switch, off). false = no prompt is ever shown and
@@ -85,8 +107,11 @@ Shop.PRICE = {
 	border = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
 	banner = { free = 0, common = 50, rare = 100, epic = 200, legendary = 400 },
 	title = { free = 0, common = 40, rare = 80, epic = 160, legendary = 320 },
+	kill = { free = 0, common = 100, rare = 200, epic = 400, legendary = 800 },
+	emote = { free = 0, common = 100, rare = 200, epic = 400, legendary = 800 },
 }
-Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", border = "Border", banner = "Background", title = "Title" }
+Shop.KIND_NAMES = { wrap = "Wrap", hat = "Hat", skin = "Skin", border = "Border", banner = "Background", title = "Title",
+	kill = "Kill Effect", emote = "Emote" }
 
 -- wraps that never go in a bundle or the rotation: their picture versions broke Roblox's image rules and they are
 -- plain colour wraps now (roblox-upload-content-rules), or they are the free ones everyone has
@@ -180,6 +205,13 @@ function Shop.vipOnly(kind: string, id: string): boolean
 			if ok and v then return true end
 		end
 	end
+	if Shop.isFlair(kind) and Shop.Flair then
+		local F = Shop.Flair :: any
+		if type(F.isVip) == "function" then
+			local ok, v = pcall(F.isVip, kind, id)
+			if ok and v then return true end
+		end
+	end
 	return false
 end
 -- a skin set that is VIP (the Ducky set): marked vip = true, or any of its skins is VIP
@@ -203,12 +235,18 @@ function Shop.itemInfo(kind: string, id: string): (string, string)
 	elseif Shop.isCard(kind) and Shop.CardStyles then
 		local c = (Shop.CardStyles :: any).info(kind, id)
 		if c then return c.name, c.rarity end
+	elseif Shop.isFlair(kind) and Shop.Flair then
+		local f = (Shop.Flair :: any).info(kind, id)
+		if f then return f.name, f.rarity end
 	end
 	return id, "common"
 end
 function Shop.exists(kind: string, id: string, weapon: string?): boolean
 	if Shop.isCard(kind) then -- (a card look is never for a gun)
 		return weapon == nil and Shop.CardStyles ~= nil and (Shop.CardStyles :: any).info(kind, id) ~= nil
+	end
+	if Shop.isFlair(kind) then -- (nor is a kill effect or an emote; "none" is no kill effect)
+		return weapon == nil and id ~= "none" and Shop.Flair ~= nil and (Shop.Flair :: any).info(kind, id) ~= nil
 	end
 	if kind == "skin" then -- (a skin is its own gun's: a weapon given must be that one)
 		return Shop.skinLive(id) and (weapon == nil or weapon == Shop.skinWeapon(id))
@@ -250,8 +288,24 @@ Shop.containers = {
 	{ id = "spray", type = "container", name = "Spray Can", rarity = "common", robux = 60, productId = nil,
 		blurb = "One wrap you don't have yet, for one gun.", pool = "wraps" },
 } :: { Offer }
-if Shop.CardStyles and (Shop.CardStyles :: any).CONTAINER == "bag" then
-	Shop.containers[2].blurb = "One hat for one gun, or a player card look, you don't have yet."
+-- (the Duffel Bag also holds the player card's looks and the kill effects and emotes, once the loot module keeps them)
+do
+	local kept: { [string]: boolean } = {}
+	if LootTable and type(LootTable.ownTypes) == "function" then
+		local ok, ts = pcall(LootTable.ownTypes)
+		if ok and type(ts) == "table" then for _, t in ts do kept[t] = true end end
+	end
+	local more = {}
+	if Shop.CardStyles and (Shop.CardStyles :: any).CONTAINER == "bag" then table.insert(more, "a player card look") end
+	if Shop.Flair and (Shop.Flair :: any).CONTAINER == "bag" then
+		if kept.kill then table.insert(more, "a kill effect") end
+		if kept.emote then table.insert(more, "an emote") end
+	end
+	if #more == 1 then
+		Shop.containers[2].blurb = "One hat for one gun, or " .. more[1] .. ", you don't have yet."
+	elseif #more > 1 then
+		Shop.containers[2].blurb = "One thing you don't have yet: a hat for one gun, " .. table.concat(more, ", ", 1, #more - 1) .. " or " .. more[#more] .. "."
+	end
 end
 
 -- ---------------------------------------------------------------- bundles
@@ -333,7 +387,8 @@ function Shop.describe(items: { Item }): string
 		if c == 1 then table.insert(parts, one) elseif c > 1 then table.insert(parts, c .. " " .. many) end
 	end
 	add(n.skin, "a weapon skin", "weapon skins"); add(n.wrap, "a wrap", "wraps"); add(n.hat, "a hat", "hats")
-	if n.card > 0 then return "A border, a background and a title for your player card." end
+	add(n.kill or 0, "a kill effect", "kill effects"); add(n.emote or 0, "an emote", "emotes")
+	if n.card > 0 and #parts == 0 then return "A border, a background and a title for your player card." end
 	local what = joinWords(parts)
 	what = string.upper(string.sub(what, 1, 1)) .. string.sub(what, 2)
 	return if #guns > 0 then what .. " for the " .. joinWords(guns) .. "." else what .. "."
@@ -428,6 +483,14 @@ function Shop.vipItems(): { Item }
 			end
 		end
 	end
+	if Shop.Flair then
+		local F = Shop.Flair :: any
+		for _, k in { "kill", "emote" } do
+			for _, fid in ((F.ORDER or {})[k] or {}) :: { string } do
+				if Shop.vipOnly(k, fid) then table.insert(out, { kind = k, id = fid }) end
+			end
+		end
+	end
 	return out
 end
 -- what the VIP tile shows big: the pack's top skin wearing the VIP hat (or a rifle with the VIP wrap)
@@ -445,9 +508,10 @@ end
 
 -- a single: one wrap or hat for one weapon, id "wrap:<id>@<weapon>" / "hat:<id>@<weapon>"; one weapon skin,
 -- "skin:<id>" (its weapon is its own: the offer carries it, the id doesn't); or one card look, "border:<id>" /
--- "banner:<id>" / "title:<id>" (no weapon)
+-- "banner:<id>" / "title:<id>", kill effect "kill:<id>" or emote "emote:<id>" (no weapon)
 local function single(kind: string, id: string, weapon: string?): Offer?
 	if not Shop.exists(kind, id, weapon) or Shop.vipOnly(kind, id) then return nil end
+	if Shop.isFlair(kind) and not Shop.flairForSale(kind, id) then return nil end
 	local name, rarity = Shop.itemInfo(kind, id)
 	if rarity == "free" then return nil end
 	local oid = if Shop.gunless(kind) then kind .. ":" .. id else kind .. ":" .. id .. "@" .. (weapon :: string)
@@ -502,7 +566,8 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 	for _, b in Shop.shown(true) do if b.hero then table.insert(heroes, b.id) end end
 	local hero = heroes[(d % #heroes) + 1]
 	-- wraps and two hats, each for one weapon, at least one epic-or-better, no cosmetic and no weapon twice; with
-	-- weapon skins in the place one of the six is a skin, and with the player card's looks one is a card look
+	-- weapon skins in the place one of the six is a skin, with the player card's looks one is a card look, and with
+	-- kill effects and emotes one is one of those (and one hat, not two)
 	local wraps, hats = {}, {}
 	for _, it in Shop.singlesPool do table.insert(if it.kind == "wrap" then wraps else hats, it) end
 	local weapons = table.clone(Shop.WEAPONS)
@@ -534,10 +599,22 @@ function Shop.rotation(day: number?): { hero: string, daily: { string } }
 		local _, r = Shop.itemInfo("skin", sid)
 		if r ~= "free" then table.insert(skins, "skin:" .. sid) end
 	end
-	draw(wraps, Shop.DAILY - 2 - (if #cards > 0 then 1 else 0) - (if #skins > 0 then 1 else 0), daily)
-	draw(hats, 2, daily)
+	-- (with kill effects and emotes in the place, one of the six is one of them, in a hat's place)
+	local flair = {}
+	if Shop.Flair then
+		for _, k in { "kill", "emote" } do
+			local ok, list = pcall((Shop.Flair :: any).forSale, k)
+			if ok and type(list) == "table" then
+				for _, i in list do if single(k, i.id, nil) then table.insert(flair, k .. ":" .. i.id) end end
+			end
+		end
+	end
+	local nHats = if #flair > 0 then 1 else 2
+	draw(wraps, Shop.DAILY - nHats - (if #cards > 0 then 1 else 0) - (if #skins > 0 then 1 else 0) - (if #flair > 0 then 1 else 0), daily)
+	draw(hats, nHats, daily)
 	if #cards > 0 then table.insert(daily, cards[rng:NextInteger(1, #cards)]) end
 	if #skins > 0 then table.insert(daily, skins[rng:NextInteger(1, #skins)]) end
+	if #flair > 0 then table.insert(daily, flair[rng:NextInteger(1, #flair)]) end
 	local best = 0
 	for _, id in daily do
 		local o = Shop.offer(id)
@@ -617,6 +694,7 @@ Shop.PRODUCTS = {
 	-- ["wrap:common"] = 0, ["wrap:rare"] = 0, ["wrap:epic"] = 0, ["wrap:legendary"] = 0,
 	-- ["hat:common"] = 0, ["hat:rare"] = 0, ["hat:epic"] = 0, ["hat:legendary"] = 0,
 	-- ["skin:common"] = 0, ["skin:rare"] = 0, ["skin:epic"] = 0, ["skin:legendary"] = 0,
+	-- ["kill:rare"] = 0, ["kill:epic"] = 0, ["kill:legendary"] = 0, ["emote:common"] = 0, ["emote:rare"] = 0, ...
 } :: { [string]: number }
 Shop.byProduct = {} :: { [number]: string } -- product id -> offer id, or a tier ("wrap:epic")
 for key, pid in Shop.PRODUCTS do
