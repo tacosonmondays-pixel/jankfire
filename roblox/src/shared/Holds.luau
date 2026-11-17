@@ -43,8 +43,8 @@ return {
 		sawnoff = { Right = { pose = "grip", at = V(0, -0.055, 0.1), rot = V(-0.59341, 0, 0), size = 0.95, elbow = V(0.3, -0.42, 0.15) }, shift = V(-0.1092, 0.067, 0), scale = 0.8, tilt = V(0, -0.05061, 0), use = "combined", looks = { before = { shift = V(0, 0.02, 0), scale = 0.8 }, after = { shift = V(-0.071, 0.006, -0.22), scale = 1, tilt = V(0.03491, -0.05061, 0) }, combined = { shift = V(-0.1092, 0.067, 0), scale = 0.8, tilt = V(0, -0.05061, 0) } }, ads = { aimZ = 0.02, kind = "iron" } },
 		katana = { Right = { pose = "fist", at = V(0, 0, -0.045), rot = V(-1.5708, 0, 0), size = 0.8 }, Left = { pose = "fist", at = V(0, 0, 0.088), rot = V(-1.5708, 0, 0), size = 0.8 }, use = "combined", looks = { before = {  }, after = {  }, combined = {  } } },
 		shredder = { Right = { pose = "grip", at = V(0.002, -0.033, 0.003), rot = V(-0.20944, 0, 0), size = 1.3 }, Left = { pose = "palm", at = V(-0.075, 0.045, -0.115), rot = V(0, 0, -0.95993), size = 1.45, elbow = V(-0.1, -0.75, -0.2) } },
-		knife = { Right = { pose = "grip", at = V(0, 0, 0.03), rot = V(-1.5708, 0, 0), size = 0.85 } },
-		claw = { Right = { pose = "hand", at = V(0, 0, 0), rot = V(1.5708, 1.5708, 0), size = 1, tint = Color3.fromRGB(111, 154, 58) } },
+		knife = { Right = { pose = "grip", at = V(0, 0, 0.03), rot = V(-1.5708, 0, 0), size = 0.85 }, shift = V(0.02, 0.02, 0), scale = 1.15, tilt = V(1.0472, 0.5236, -1.5708) },
+		claw = { Right = { pose = "hand", at = V(0, 0, 0), rot = V(1.5708, 1.5708, 0), size = 1, tint = Color3.fromRGB(111, 154, 58) }, shift = V(0.02, 0.04, 0), scale = 1, tilt = V(1.22173, 0.34907, 0) },
 	},
 	katana = {
 		fixes = {

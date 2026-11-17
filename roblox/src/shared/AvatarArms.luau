@@ -102,22 +102,26 @@ end
 -- (pieces named nail_*) and the cuff (cuff_*), built round a reference hand (REF, file metres: its middle at the
 -- hold's spot, palm down, fingers forward, thumb to the left). every body's hand is another shape (a blocky hand is a
 -- slab a third as long as it is wide), so the nails go onto THIS hand's fingertip end and the cuff onto its wrist,
--- grown or shrunk to its width (the cuff: to its width or thickness, the larger). handRel = the hand part's frame
--- against the weapon's root, size = the hand part's size, wrist = its wrist joint (part space), all in studs. the
--- hand's own axes: x through it (palm to back), y to the wrist, z across. the pieces remember how they were built
--- (attributes FitRel / FitSize), so fitting again starts from there. used by first and third person
+-- spread to its width and thickness (the nails grow with its width only; the cuff stretches round it). handRel =
+-- the hand part's frame against the weapon's root, size = the hand part's size, wrist = its wrist joint (part
+-- space), all in studs. the hand's own axes: x through it (palm to back), y to the wrist, z across. the pieces
+-- remember how they were built (attributes FitRel / FitSize), so fitting again starts from there. first and third
+-- person both use it
 AvatarArms.REF = { wide = 0.115, thick = 0.06, long = 0.10 }
 local FIT = { nail = "tips", cuff = "wrist" }
 function AvatarArms.fitOver(root: BasePart, k: number, handRel: CFrame, size: Vector3, wrist: Vector3?)
 	local m = root.Parent
 	if not m then return end
 	local R = AvatarArms.REF
-	local sw = size.Z / (R.wide * k)
-	local sc = math.max(sw, size.X / (R.thick * k))
+	local sw = size.Z / (R.wide * k) -- (across)
+	local st = size.X / (R.thick * k) -- (through: most avatars' hands are far thicker than the reference)
+	local s3 = Vector3.new(st, sw, sw) -- (per hand axis: spots spread with the hand; the cuff stretches with it)
 	local spots = {
-		tips = { from = Vector3.new(0, -R.long / 2 * k, 0), to = Vector3.new(0, -size.Y / 2, 0), s = sw },
-		wrist = { from = Vector3.new(0, R.long / 2 * k, 0), to = wrist or Vector3.new(0, size.Y * 0.42, 0), s = sc },
+		tips = { from = Vector3.new(0, -R.long / 2 * k, 0), to = Vector3.new(0, -size.Y / 2, 0), stretch = false },
+		wrist = { from = Vector3.new(0, R.long / 2 * k, 0), to = wrist or Vector3.new(0, size.Y * 0.42, 0), stretch = true },
 	}
+	-- (a piece's size along one of its own axes, v in the hand's axes: the hand's stretch along it)
+	local function along(v: Vector3): number return math.sqrt((v.X * st) ^ 2 + (v.Y * sw) ^ 2 + (v.Z * sw) ^ 2) end
 	for _, d in m:GetDescendants() do
 		if not d:IsA("BasePart") or d == root or d:FindFirstAncestor("AvatarArms") then continue end
 		local n = string.lower(d.Name)
@@ -134,8 +138,10 @@ function AvatarArms.fitOver(root: BasePart, k: number, handRel: CFrame, size: Ve
 		local inH = handRel:ToObjectSpace(rel0 :: CFrame) -- (the piece against the hand's middle, the hand's axes)
 		local wc = d:FindFirstChildOfClass("WeldConstraint")
 		if wc then wc.Enabled = false end -- (moved alone, then welded where it now is)
-		d.Size = (size0 :: Vector3) * g.s
-		d.CFrame = root.CFrame * handRel * CFrame.new(g.to + (inH.Position - g.from) * g.s) * inH.Rotation
+		-- the nails keep their shape (grown with the hand's width); the cuff stretches round this hand
+		local Rr = inH.Rotation
+		d.Size = (size0 :: Vector3) * (if g.stretch then Vector3.new(along(Rr.XVector), along(Rr.YVector), along(Rr.ZVector)) else Vector3.one * sw)
+		d.CFrame = root.CFrame * handRel * CFrame.new(g.to + (inH.Position - g.from) * s3) * Rr
 		if wc then wc.Enabled = true end
 	end
 end

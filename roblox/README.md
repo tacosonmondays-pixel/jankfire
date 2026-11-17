@@ -140,6 +140,15 @@ pose, camera space, metres), `scale` and `tilt` (degrees added to the rest turn)
 `py tools/roblox/hold_screen.py [--look ...]` prints where each gun lands on a 16:9 screen at the game's default FOV
 of 80, from the kit's part boxes, so a new gun can be placed before any Play test.
 
+**The one-handed melee weapons** (17 November 2026, place version 597; sheet `docs/gun-hold/melee-1.jpg`): the Knife
+stands up in the right hand, leaning toward the crosshair with its flat toward you, and the Spoon look (the classic
+modes' `SpoonLook`) shares its hold. The Zombie Claw is the hold pose `hand`: your own right hand is the weapon, placed
+whole and tinted green, raised with its back toward you. The claw's model is only nails (`nail*`) and a cuff
+(`cuff*`) built round a reference hand, and `AvatarArms.fitOver` moves them onto each body's real fingertips and wrist.
+A skin or mode look that holds differently gets its own hand rows (`holds.json` `<weapon>.skins.<id>.R / L`). In third
+person every melee weapon but the katana takes a one-handed stance at the right hip and plays the first-person
+slashes and stab (`ThirdPerson.luau`, the "melee" class).
+
 **Aiming down the sights** (16 November 2026, place version 474; the owner: aiming should look like Rivals and
 Valorant, the Redline "covers most of your screen") follows each weapon's `ads` row in `holds.json`. The sight sits on
 the crosshair, 0.17 m + `aimZ` from the eye, and the gun is pushed back by the zoom's own amount, so zooming in never
