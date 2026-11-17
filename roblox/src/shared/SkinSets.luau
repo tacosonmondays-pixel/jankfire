@@ -137,7 +137,11 @@ SkinSets.CONCEPTS = { "ar_cute_a", "pistol_cute_a", "ar_cute_b", "pistol_cute_b"
 	"ar_duckling", "smg_duckling", "pistol_duckling",
 	-- the owner's own Tripo angelic rifle (17 Nov), cleaned with tools/roblox/tripo_gun.py: v1's big rear wings (hidden
 	-- while aiming: holds.json ads.skins.ar_seraph_tripo), no front wings, a pearl-and-gold front sight
-	"ar_seraph_tripo" } :: { string }
+	"ar_seraph_tripo",
+	-- the owner's Tripo Ducky bundle (17 Nov, their picks from the bundle grids), each split into its parts, repaired,
+	-- mirrored and fitted with tools/roblox/tripo_gun.py: SMG, katana (kit blade and candy grip on the Tripo duck guard),
+	-- sniper (the live slim scope) and Plan B (slide/mag/hammer nodes, one low sight)
+	"smg_ducky_tripo", "katana_ducky_tripo", "sniper_ducky_tripo", "pistol_ducky_tripo" } :: { string }
 
 -- THE HIGH TIER'S EFFECTS (played by the VFX session's Fx; the owner: "the angel gun can have cool angel themed design
 -- white and gold with a black and gold glow and maybe feathers coming off it"). Points are in the gun's frame in
