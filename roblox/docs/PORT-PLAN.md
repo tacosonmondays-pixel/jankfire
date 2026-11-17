@@ -1103,6 +1103,41 @@ Now (push 45, place version 448): `R.check()` 46 keep-clear zones, 0 problems, 0
   - **Sheets**: `roblox/docs/maps/sheet_crate.jpg`, `sheet_platform.jpg`, `sheet_bazaar.jpg`.
 - **Not done / not tested**: a real 2-player match on any of them (stand-in ghost matches only), 4v4 on Platform and Bazaar, phones.
 
+## 31. The hub's regulars: purposes, idles, moving about, 17 November 2026 (place version 571)
+
+**The owner's words (17 November 2026), relayed by the main session:**
+- "Can they have idle animations? Frisk looks around, Trisangle kicking her feet, Looticus will occasionally stretch and Dune will like breathe so his model looks more lively"
+- "Dune is the quests guy, maybe Frisk does one. Maybe Looticus the shop? Idk.. I want to give them purposes"
+- "Can Trisangle sometimes stand up and then sit back down on other seats? Maybe Looticus has a teleport ability but will always be in that room, Dune can walk around the gym and Frisk can move to different spots on the railing?"
+
+**Purposes:** each regular has one prompt in one style: E, no hold, 8 studs, no line of sight, ObjectText = their name. Their label reads "NAME · PURPOSE".
+- Dune · QUESTS: `QuestsOpen = true`, which the quests session's QuestClient opens on. An amber dot follows his name for a player whose `QuestNews` is true (`HubNPCs.client`). Tested by the quests session in place v563.
+- Looticus · SHOP: `ShopOpen = "tab:containers"` (ShopClient).
+- Frisk1636 · RANKED: `RankedBoard = "duels"`, which opens the ranked leaderboard (the play-party-ranked session, live in v551).
+- Trisangle · DAILY REWARD: the shop session's `VipDailyPrompt` (its VipDaily module; her place carries `VipDaily = true`).
+- Prompts ride on the regular's body: `HubNPCs` moves any prompt on their place onto an Attachment `PromptAt` on their root, including one another script adds later.
+
+**Idles** come from Studio's prompt-to-animation tool (the owner's rule):
+- Dune breathing (127219539482270), Frisk looking around (98265160247529), Trisangle kicking her feet (109986198247610).
+- Looticus a calm seated idle (81632050089862), with a stretch every 15 to 30 s (71884246597796).
+- One relaxed walk (135619112265836) for the three who walk.
+- The seated clips lowered the hips 0.9 to 1.9 studs, which would have sunk them into the sofas. They were re-uploaded as Animation assets with the hips levelled, as Roblox's own sit has them. The walk call timed out at the bridge twice, so its clip was uploaded the same way.
+- A generated clip loops with no pop: two tracks of it, the next fading in as the last runs out.
+- Every regular is built as R15 from their avatar's description (Dune's avatar is R6), and the saved copies in `ServerStorage.JankfireNPCs` are R15 too.
+
+**Moving about:** bodies are always anchored and moved in one Heartbeat loop. They walk only between points the builders lay (`B.npcPoint`, tag `NPCPoint`), clear of walls and furniture, and wait while a player stands in their way.
+- Trisangle ("seats"): every 45 to 90 s she walks to another end of the two VIP sofas, by the aisle beside the table and across by the door.
+- Looticus ("teleport"): every 60 to 120 s, a soft puff and he is on another sofa seat or standing by the arcade or the fridge.
+- Dune ("loop"): walks round the gym ring, pausing at the weights, behind the ring, at the bags and by the door.
+- Frisk1636 ("pingpong"): moves between four spots on the balcony rail.
+
+**Tested in Play** (place version 571, by the builder): all four built, anchored, with their prompts on their bodies (the shop's VipDailyPrompt on Trisangle's).
+- Within 13 s Trisangle had walked to another seat and sat, Frisk had moved along the rail, Dune was walking his loop, and Looticus had puffed to a standing spot.
+- The seated clips keep them on the cushions.
+- Photos: `roblox/docs/hub/hub_regulars_sheet.jpg`.
+
+**Not done:** Looticus's and Frisk's prompts were not pressed in Play here (Dune's was, by the quests session).
+
 ## For the next Claude session
 
 - Recover state: memory `roblox-session-recovery`. Lighting: `roblox-zone-lighting`. Rules for the shared Studio: `studio-play-sharing`, `auto-save-place`.
