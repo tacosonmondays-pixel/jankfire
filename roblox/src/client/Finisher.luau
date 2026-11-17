@@ -172,6 +172,16 @@ function SHOTS.hero(s: any, u: number): (Vector3, Vector3, number, number)
 	return safe(focus, p), focus + f * 0.9, lerp(54, 43, smooth(u)), -sd * lerp(6, 2, u)
 end
 
+-- EYES (High Noon, in place of HERO): the standoff. Straight in on the shooter's eyes from in front, pushing in while
+-- the lens widens, so they hold their size and the world behind them stretches away (a dolly zoom)
+function SHOTS.eyes(s: any, u: number): (Vector3, Vector3, number, number)
+	local head = s.kg.model:FindFirstChild("Head") :: BasePart?
+	local eye = (if head then head.Position else s.kg.root.Position + UP * 1.6) + UP * 0.12
+	local e = smooth(u)
+	local p = eye + s.fwd * lerp(7.5, 2.6, e) + s.right * s.side * lerp(0.6, 0.25, e)
+	return safe(eye, p), eye, lerp(17, 46, e), 0
+end
+
 -- CHARGE: tight on the gun from beside the muzzle, looking back along it, a slow push as the light gathers
 function SHOTS.charge(s: any, u: number): (Vector3, Vector3, number, number)
 	local M = s.M :: Vector3
@@ -229,7 +239,7 @@ end
 -- the clip time each shot plays at (s from the kill tk), u = 0..1 through the shot
 local function clipTime(s: any, shot: string, u: number): number
 	local tk = s.tk
-	if shot == "hero" then return tk - 0.45 + 0.4 * u
+	if shot == "hero" or shot == "eyes" then return tk - 0.45 + 0.4 * u
 	elseif shot == "charge" then return tk - 0.05 + 0.02 * u
 	elseif shot == "chase" then return tk - 0.03
 	elseif shot == "whip" then return tk - 0.3 + 0.27 * u
@@ -397,7 +407,7 @@ function F.play(msg: any): boolean
 		end
 	end
 	local melee = msg.melee == true or (W[msg.w] and W[msg.w].kind == "melee")
-	local cut = Finishers.cut(if msg.kind == "short" then "short" else "full", melee)
+	local cut = Finishers.cut(if msg.kind == "short" then "short" else "full", melee, row)
 	local total = 0
 	for _, sh in cut do total += sh[2] end
 	-- the hero's side: the one with more room in front of them
@@ -522,6 +532,7 @@ function F._step(dt: number)
 		sfx("skin_" .. tostring(s.msg.skin) .. "_swing", 1)
 	end
 	-- the theme
+	if name == "impact" and s.theme.impactStep then pcall(s.theme.impactStep, s.run, s.S, u) end
 	if s.resolved and name == "resolve" then
 		pcall(s.theme.resolve, s.run, s.S, u, dt)
 		for _, c in s.theme.sounds.resolve or {} do
@@ -600,6 +611,8 @@ function F._enter(s: any, name: string)
 	local S = s.S
 	if name == "hero" then
 		sfx("photoin", 0.45)
+	elseif name == "eyes" then
+		sfx("reverse", 0.5)
 	elseif name == "charge" then
 		-- the light gathers at the muzzle
 		s.M = TP.muzzle(s.kg.model) or (s.kg.root.Position + UP * 1.5 + s.fwd * 1.5)
@@ -699,7 +712,7 @@ function F.preview(fid: string, opts: any?): boolean
 	local t0 = os.clock()
 	for i = 0, 18 do
 		local t = t0 + i / 12
-		table.insert(frames, { s = t, b = packFrame({ { 1, K, kyaw, 1, 1 }, { 2, V + at.RightVector * math.sin(i / 3) * 0.3, vyaw, 1, 0 } }) })
+		table.insert(frames, { s = t, b = packFrame({ { 1, K, kyaw, 1, 0 }, { 2, V + at.RightVector * math.sin(i / 3) * 0.3, vyaw, 1, 0 } }) })
 	end
 	local tk = t0 + 1.4
 	local H = V + Vector3.new(0, 0.9, 0)

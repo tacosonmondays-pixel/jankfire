@@ -14,6 +14,12 @@
 --   ("kill", player, n|name, weapon?)      kill a live training dummy now through Fight.hurt (with that weapon, default ar)
 --   ("decide", table)                      Finishers.decide on a table
 --   ("state")                              what is armed, the last kill of each live match
+--   ("round", player, "full"|"short", skin) the MATCH PATH with one tester: the real round handler (the function
+--                                         Matches.onRound calls) on the player's real match (JankMatchTest "ghost"
+--                                         with the player on team 1) and the player's real last kill in it (a training
+--                                         dummy, counted as a player for this test only); "full" = that round wins the
+--                                         match, "short" = it doesn't. Only Matches' own call is left out: a round
+--                                         ends on a kill of a real second player, which one tester can't make
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -157,23 +163,24 @@ Fight.onKill(function(info: any)
 	lastKill[m] = { k = k, v = v, w = info.w, t = t, fid = fid, skin = skin }
 end)
 
-Matches.onRound(function(m: any, winner: number)
+local function onRound(m: any, winner: number): (string?, any)
 	local x = lastKill[m]
-	if not x then return end
+	if not x then return nil, "no kill" end
 	local kp = x.k.ref :: Player
 	local kind = Finishers.decide({ since = os.clock() - x.t, owned = x.fid ~= nil, weapon = x.w, killerAlive = x.k.alive == true,
-		victimPlayer = x.v.kind == "player", sameTeam = teamOf(m, kp) == winner, event = "round", wins = m.wins[winner],
-		need = Matches.WIN, classic = m.rules ~= nil })
-	if not kind or not x.fid or not x.skin then return end
+		victimPlayer = x.v.kind == "player" or x.testVictim == true, sameTeam = teamOf(m, kp) == winner, event = "round",
+		wins = m.wins[winner], need = Matches.WIN, classic = m.rules ~= nil })
+	if not kind or not x.fid or not x.skin then return nil, "decided none" end
 	if kind == "full" then
 		played[m] = true
-		play(x, "full", everyone(m), x.fid, x.skin)
+		return kind, table.pack(play(x, "full", everyone(m), x.fid, x.skin))
 	else
 		local viewers = { kp }
 		if x.v.kind == "player" and (x.v.ref :: Player).Parent then table.insert(viewers, x.v.ref) end
-		play(x, "short", viewers, x.fid, x.skin)
+		return kind, table.pack(play(x, "short", viewers, x.fid, x.skin))
 	end
-end)
+end
+Matches.onRound(function(m: any, winner: number) onRound(m, winner) end)
 
 Matches.onEnd(function(m: any, winner: number?)
 	local x = lastKill[m]
@@ -216,6 +223,21 @@ if RunService:IsStudio() then
 			return ("hurt %s for %s with %s"):format(t.name, tostring(done), w)
 		elseif op == "decide" then
 			return Finishers.decide(a)
+		elseif op == "round" and typeof(a) == "Instance" and a:IsA("Player") then
+			local m = Matches.raw(a)
+			if not m then return "not in a match: JankMatchTest(\"ghost\", pad, nil, secs, player) first" end
+			local x = lastKill[m]
+			if not x then return "no kill in this match yet" end
+			local skin = if type(c) == "string" then c else x.skin
+			x.fid, x.skin = Finishers.forSkin(skin), skin
+			x.testVictim = true
+			x.t = os.clock()
+			local team = teamOf(m, a) or 1
+			local was = m.wins[team]
+			m.wins[team] = if b == "short" then 1 else Matches.WIN
+			local kind, res = onRound(m, team)
+			m.wins[team] = was
+			return { kind = kind, sent = res, viewers = #everyone(m), match = m.id }
 		elseif op == "state" then
 			local out = { armed = {}, matches = {} }
 			for p, x in armed do out.armed[p.Name] = x end

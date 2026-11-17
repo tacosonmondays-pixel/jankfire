@@ -23,6 +23,7 @@ export type Row = {
 	accent: Color3, -- its second colour
 	grade: { tint: Color3, sat: number, con: number, bright: number }, -- the colour grade while it plays
 	anim: string?, -- the victim's reaction (Finishers.ANIMS key)
+	cut: any?, -- (optional) its own shot lists by cut kind, in place of CUTS for guns ({ full = { ... } })
 	order: number,
 	vip: boolean?,
 	built: boolean, -- false = planned (a row the next pass builds), never chosen
@@ -45,31 +46,33 @@ Finishers.LIST = {
 		colour = Color3.fromRGB(247, 182, 205), accent = Color3.fromRGB(246, 215, 138),
 		grade = { tint = Color3.fromRGB(255, 236, 244), sat = 0.08, con = 0.04, bright = 0.03 }, anim = "shield",
 	},
-	-- planned (FINISHERS.md, "Next"): the rows are here so the shop and the docs can show what is coming; never chosen
-	highnoon = { -- Dust Drover: a high-noon standoff zoom on the shooter's eyes, a dust devil, a tumbleweed rolls through
-		name = "High Noon", set = "set_dust", skins = { "revolver_dust", "lever_dust" }, theme = "dust", order = 4, built = false,
+	-- the second pass (17 Nov): the other five high-tier looks
+	highnoon = { -- Dust Drover: a high-noon standoff, the lens pushing in on the shooter's eyes as the world stretches
+		-- behind them (a dolly zoom); the victim spins and drops, a dust devil turns, a tumbleweed rolls through
+		name = "High Noon", set = "set_dust", skins = { "revolver_dust", "lever_dust" }, theme = "dust", order = 4, built = true,
 		colour = Color3.fromRGB(255, 196, 106), accent = Color3.fromRGB(206, 182, 142),
-		grade = { tint = Color3.fromRGB(255, 232, 196), sat = -0.3, con = 0.15, bright = 0 },
+		grade = { tint = Color3.fromRGB(255, 232, 196), sat = -0.3, con = 0.15, bright = 0 }, anim = "kneel",
+		cut = { full = { { "eyes", 0.72 }, { "chase", 0.5 }, { "impact", 0.42 }, { "resolve", 1.18 } } },
 	},
 	inkfall = { -- Tidecrest: one ink-wash brush slash across the frame, the victim splits into sakura petals
-		name = "Inkfall", set = "set_tidecrest", skins = { "katana_sakura" }, theme = "ink", order = 5, built = false,
+		name = "Inkfall", set = "set_tidecrest", skins = { "katana_sakura" }, theme = "ink", order = 5, built = true,
 		colour = Color3.fromRGB(236, 186, 200), accent = Color3.fromRGB(217, 187, 114),
-		grade = { tint = Color3.fromRGB(246, 238, 232), sat = -0.45, con = 0.12, bright = 0 },
+		grade = { tint = Color3.fromRGB(246, 238, 232), sat = -0.5, con = 0.16, bright = 0 }, anim = "kneel",
 	},
 	warpout = { -- Star Drover: the victim is pulled into a teal hard-light ring and the stars streak past in a warp
-		name = "Warp Out", set = "set_star", skins = { "revolver_star", "lever_star" }, theme = "warp", order = 6, built = false,
+		name = "Warp Out", set = "set_star", skins = { "revolver_star", "lever_star" }, theme = "warp", order = 6, built = true,
 		colour = Color3.fromRGB(69, 230, 214), accent = Color3.fromRGB(201, 164, 216),
-		grade = { tint = Color3.fromRGB(226, 246, 255), sat = 0, con = 0.12, bright = -0.02 },
+		grade = { tint = Color3.fromRGB(226, 246, 255), sat = 0, con = 0.12, bright = -0.02 }, anim = "lift",
 	},
 	lanternlight = { -- Pumpkin Patch: a giant carved pumpkin closes round the victim and its face lights up from inside
-		name = "Lantern Light", set = "set_halloween", skins = { "smg_pumpkin" }, theme = "lantern", order = 7, built = false,
+		name = "Lantern Light", set = "set_halloween", skins = { "smg_pumpkin" }, theme = "lantern", order = 7, built = true,
 		colour = Color3.fromRGB(255, 156, 69), accent = Color3.fromRGB(179, 165, 151),
-		grade = { tint = Color3.fromRGB(236, 226, 246), sat = -0.2, con = 0.14, bright = -0.03 },
+		grade = { tint = Color3.fromRGB(236, 226, 246), sat = -0.2, con = 0.14, bright = -0.03 }, anim = "shield",
 	},
 	starchart = { -- Triangulum: stars light on the victim's joints and the lines draw between them, then it fades to sky
-		name = "Starchart", set = "", skins = { "sniper_triangulum" }, theme = "stars", order = 8, built = false,
+		name = "Starchart", set = "", skins = { "sniper_triangulum" }, theme = "stars", order = 8, built = true,
 		colour = Color3.fromRGB(255, 231, 166), accent = Color3.fromRGB(255, 236, 196),
-		grade = { tint = Color3.fromRGB(222, 228, 255), sat = -0.1, con = 0.1, bright = -0.04 },
+		grade = { tint = Color3.fromRGB(205, 214, 255), sat = -0.15, con = 0.12, bright = -0.07 }, anim = "lift",
 	},
 } :: { [string]: Row }
 
@@ -80,6 +83,9 @@ Finishers.ANIMS = {
 	lift = { id = "120752615367600", speed = 1.6 }, -- struck, then rises with the arms opening and the head back (take 4)
 	kneel = { id = "102848812527442", speed = 1.6 }, -- struck, drops to the knees, slumps forward (take 3)
 	shield = { id = "99441068703478", speed = 1.6 }, -- struck, looks straight up with the arms raised (take 3)
+	-- (the second pass reuses these: High Noon and Inkfall kneel, Warp Out and Starchart lift, Lantern Light shields. Their
+	-- own clips (a spin and fall, a bow to one knee, a pull off the feet) wait for the generator: on 17 Nov ~13:25 UTC it
+	-- timed out on every call)
 } :: { [string]: { id: string, speed: number } }
 
 -- the shot lists: each shot is a camera move (client/Finisher.luau SHOTS) and its length in s. `full` is the match's
@@ -120,14 +126,15 @@ function Finishers.ordered(): { string }
 	return ids
 end
 
--- the shot list for a cut ("full" | "short") and a weapon class (melee or not)
-function Finishers.cut(kind: string, melee: boolean): { { any } }
+-- the shot list for a cut ("full" | "short") and a weapon class (melee or not); a finisher's own list (row.cut) for a gun
+function Finishers.cut(kind: string, melee: boolean, row: Row?): { { any } }
+	if row and row.cut and row.cut[kind] and not melee then return row.cut[kind] end
 	if melee then return Finishers.CUTS.melee[kind] or Finishers.CUTS.melee.full end
 	return Finishers.CUTS[kind] or Finishers.CUTS.full
 end
-function Finishers.length(kind: string, melee: boolean): number
+function Finishers.length(kind: string, melee: boolean, row: Row?): number
 	local n = 0
-	for _, s in Finishers.cut(kind, melee) do n += s[2] end
+	for _, s in Finishers.cut(kind, melee, row) do n += s[2] end
 	return n
 end
 

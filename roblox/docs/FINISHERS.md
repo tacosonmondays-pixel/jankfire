@@ -77,6 +77,7 @@ The finisher is built on the match recording and the replay player that the play
 
 | shot | full | short | what the lens does | the recording |
 |---|---|---|---|---|
+| *EYES* (High Noon) | 0.72 s | – | In place of HERO and CHARGE: the standoff. Straight in on the shooter's eyes from in front, pushing from 7.5 to 2.6 studs while the lens widens from 17 to 46 degrees. They hold their size and the world behind them stretches away (a dolly zoom). | runs at about half speed up to the shot |
 | **HERO** | 0.5 s | – | Low and in front of the shooter, off to the side with more room. It pushes in and up as they line up the shot (FOV 54 → 43, a slight tilt). | runs at about half speed up to the shot |
 | **CHARGE** | 0.38 s | – | Tight on the gun from beside the muzzle, looking back along it, a slow push (FOV 44 → 36). The skin's light gathers into a swelling orb at the muzzle, motes drawn in from all round. | held a breath before the shot |
 | **CHASE** | 0.48 s | 0.45 s | The killing shot becomes a slug in the skin's colours, leaving its trail and the theme's bits behind. The lens rides just behind and beside it with a wide FOV punch that settles (84 → 58). It whips in from the previous view. | frozen (bullet time) |
@@ -92,30 +93,40 @@ Around the shots:
 
 ### The finishers
 
-Each finisher belongs to a skin set. The skins that own one are that set's high-tier pieces (and the VIP Ducky set). The
-first three are built. The other five are rows in the data, marked `built = false`, waiting for their themes.
+Each finisher belongs to a skin set. The skins that own one are that set's high-tier pieces (and the VIP Ducky set). All
+eight are built: the first three on 17 Nov, the other five in the second pass the same day.
 
 | finisher | set | skins that own it | the theme |
 |---|---|---|---|
-| **Ascension** | Seraph | Seraph Rifle | A column of gold-white light falls on the victim. Two great wings of long rounded feathers (white with a gold leading edge) unfold behind them. They rise into the light and go to white. A gold halo settles over the head, feathers drift down, and they end in a burst of feathers. |
+| **Ascension** | Seraph | Seraph Rifle | A column of gold-white light falls on the victim. Two big emblem wings open behind them (see "The wings" below). They rise into the light and go to white. A gold halo settles over the head, feathers drift down, and they end in a burst of feathers. |
 | **Hellgate** | Infernal | Infernal Rifle | Seven glowing cracks race out across the floor from under the victim. A pit opens with a molten rim. Flames, embers and smoke climb out. The victim tips forward and sinks into it, burning dark. A last gout of fire, and it seals over. |
 | **Splashdown** | Ducky (VIP) | Bubble Bath, Wish Duck, Ribbon Duck | A giant rubber duck in the VIP set's look drops out of the sky: rubber yellow, an orange bill, a pink bow with a gold star clip. It stretches as it falls and casts a real shadow. It squashes on landing in a burst of soap bubbles and a pink ring, wobbles, quacks, then pops into bubbles and gold sparkles. |
-| *High Noon* (planned) | Dust Drover | Dust Drover, Iron Horse | a slow standoff zoom on the shooter's eyes, a dust devil, a tumbleweed |
-| *Inkfall* (planned) | Tidecrest | Sakura | one ink-wash brush slash across the frame, the victim breaks into sakura petals |
-| *Warp Out* (planned) | Star Drover | Star Drover, Streamliner | a teal hard-light ring pulls the victim in, the stars streak past |
-| *Lantern Light* (planned) | Witching Hour | Pumpkin Patch | a giant carved pumpkin closes round the victim and its face lights up from inside |
-| *Starchart* (planned) | (lone skin) | Triangulum | stars light on the victim's joints, the lines draw between them, it fades to sky |
+| **High Noon** | Dust Drover | Dust Drover, Iron Horse | Its own shot list: the EYES standoff zoom instead of the hero and charge shots. Then the victim drops in the dust, a dust devil turns off to one side, a tumbleweed of thin dry sticks rolls through, and a low sun glares behind. |
+| **Inkfall** | Tidecrest | Sakura (a blade: the WHIP cut) | One black ink-wash brush stroke is drawn across the victim in the slowed impact, with ink thrown off it. They drop to a knee and come apart into sakura petals while the stroke fades. The grade is nearly monochrome. |
+| **Warp Out** | Star Drover | Star Drover, Streamliner | A teal hard-light ring of 28 glowing segments spins open behind the victim. Star streaks rush out of it past the lens. The victim is pulled back through it, and it snaps shut in a ring burst. |
+| **Lantern Light** | Witching Hour | Pumpkin Patch | A giant ribbed pumpkin rises out of the floor round the victim. Its carved face (triangle eyes and nose, a zig-zag mouth) lights up from inside and flickers, and smoke curls off the stem. Then it sinks back down in a puff. |
+| **Starchart** | (a lone skin) | Triangulum | Stars light on the victim's joints one by one and the lines of their figure draw between them. The body fades, and the constellation rises into a field of sparkles and goes. The grade is a night blue. |
 
-**Why the first three:** they are the first three on the owner's list. The Heaven and Hell pair shows how one shot list
-carries two opposite moods (up into light, down into fire). The Ducky set is the VIP pack's.
+**The wings (second pass).** The first cut's wings were a fan of thin rounded blades. That is a look the owner had
+already rejected for the Seraph guns, as "plucked chicken" wings. The rule they set after about nine wing rounds is
+classic emblem wings: one smooth curved leading edge sweeping to a point, with 4-5 long feathers with crisp pointed tips
+stepping down underneath, white with gold trim.
+- The silhouette follows the owner's side-wing rifle reference, nothing else of it.
+- The wings are built in Blender as one curve profile a side, extruded and bevelled: `tools/roblox/finisher_wings.py`.
+  - Five pointed feathers fan from one wrist, each 11 degrees further down and shorter than the one above.
+  - Behind the white silhouette sits a slightly bigger copy of it as the gold rim (Neon in the game), with a gold line
+    along each feather.
+- They are uploaded once (model 90841956601094) and kept as MeshParts in `ReplicatedStorage.JankfireFinisherKit.Wings`.
+- They open from folded down the back to spread wide and raised, at 1.3x size (about 9 studs a side), and beat once.
+
+![the wings, Cycles preview](finishers/wings_preview.png)
 
 **Which skins qualify.** Each high-tier skin owns its set's finisher, and the VIP Ducky set owns one. The high tier
 today is:
 
 | | skins |
 |---|---|
-| built | Seraph Rifle, Infernal Rifle, Bubble Bath, Wish Duck, Ribbon Duck |
-| planned | Dust Drover, Iron Horse, Star Drover, Streamliner, Sakura, Pumpkin Patch, Triangulum |
+| built | all 12: Seraph Rifle, Infernal Rifle, Bubble Bath, Wish Duck, Ribbon Duck, Dust Drover, Iron Horse, Star Drover, Streamliner, Sakura, Pumpkin Patch, Triangulum |
 
 These are all 12 high-tier skins in `SkinSets` (the gun models session checked the list, 17 Nov). The Lantern Light and
 Starchart ideas come from that session's special-skins sheet. The gun models session will say when a new skin
@@ -136,6 +147,14 @@ Their body reaction comes from Studio's prompt-to-animation tool (`generate_anim
 | `shield` | Splashdown | struck, stumbling back, looking straight up in fear with both arms raised | take 3 (99441068703478) | the face turned up at the falling duck, both arms high. The 4th take (timed out, no id) shields with the head down, so the face is lost |
 
 ![the twelve takes held at 2.2 s](finishers/reaction_takes.jpg)
+
+The second pass reuses these three:
+- High Noon and Inkfall: kneel.
+- Warp Out and Starchart: lift. Starchart draws its constellation on the open-armed pose.
+- Lantern Light: shield.
+
+Their own clips (a spin and fall, a bow to one knee, a pull off the feet) wait for the generator: on 17 Nov at about
+13:25 UTC every call timed out. One left a clip with no id (`fin_spin_x1`), not used.
 
 The clips play at 1.6 times their speed (a third of that through the slowed impact), so most of each clip fits in the
 cut. A clip with no id falls back to a code-only shove back and tilt. The shooter is never animated by a generated
@@ -165,18 +184,21 @@ The shop shows it (the shop session, place v603):
 
 | file | what |
 |---|---|
-| `src/shared/Finishers.luau` | the data: `LIST` (each finisher's name, set, skins, theme, colours, grade, victim clip, `built`), `BY_SKIN`, `ANIMS`, the shot lists `CUTS`, `LEAD`, `FRESH`, `forSkin`, `cut`, `length`, the pure `decide` |
+| `src/shared/Finishers.luau` | the data: `LIST` (each finisher's name, set, skins, theme, colours, grade, victim clip, `built`, an optional own shot list `cut`), `BY_SKIN`, `ANIMS`, the shot lists `CUTS`, `LEAD`, `FRESH`, `forSkin`, `cut`, `length`, the pure `decide` |
 | `src/server/FinisherServer.server.luau` | the kill and round hooks, the clip cut to two, the remote, the Studio test hook |
 | `src/client/Finisher.luau` | the player: ghosts, the shots, the wall test, the overlay, the grade, SKIP, `preview` |
-| `src/client/FinisherFx.luau` | the slug and the three themes |
+| `src/client/FinisherFx.luau` | the slug, the charge, the smoke, the kit wings (`kitWings`, `placeWings`) and the eight themes |
 | `src/client/FinisherClient.client.luau` | the remote, stopping on a round or a respawn, the settings row, the test attribute |
 | `Recorder.luau` (small) | `Recorder.recent(fighter, secs)` |
 | `Replay.luau` (small) | exports `decode`, `makeGhost`, `poseGhost`, `eyeOf`, `clearTo`, `hideLive`, `ghostFolder`; a ghost may be built from a given body (`info.template`) |
+| `tools/roblox/finisher_wings.py` | the emblem wings in headless Blender: the curve profile, the gold rim and lines, a Cycles preview |
+| `ReplicatedStorage.JankfireFinisherKit` | the uploaded wing MeshParts (`place/ReplicatedStorage/JankfireFinisherKit.rbxm`) |
 | `ReplayClient.client.luau` (one line) | no killcam while a finisher is that death's camera (the player attribute `Finishing`) |
 
 **To add a finisher:**
 1. Add a row to `Finishers.LIST`.
-2. Add a theme to `FinisherFx.THEMES`: its slug look, flash colour, orbit, sounds, and `impact` / `resolve` functions.
+2. Add a theme to `FinisherFx.THEMES`: its slug look, flash and smoke colours, orbit, sounds, and `impact` / `resolve`
+   functions. Add `impactStep` if it moves during the impact, and a row `cut` if it needs its own shots.
 3. Set `built = true`.
 
 The shot lists are shared. A theme only says how its orbit moves and what happens in it.
@@ -187,6 +209,9 @@ The shot lists are shared. A theme only says how its orbit moves and what happen
   - `("arm", player, skinId, "full" | "short", all?)`: the player's next kill plays that skin's finisher.
   - `("kill", player, n | name, weapon)`: kills a training dummy through `Fight.hurt`.
   - `("decide", t)` and `("state")`.
+  - `("round", player, "full" | "short", skin)`: the match path. It runs the real round handler (the function
+    `Matches.onRound` calls) on the player's real match and their real last kill in it. Start with
+    `JankMatchTest("ghost", pad, nil, secs, player)`, then record and kill a dummy.
 - Recording a test kill: `ServerStorage.JankReplayTest("record", player)` first (the training hall, every dummy
   recorded), then arm, then kill.
 - The player attribute `FinisherTest`:
@@ -215,16 +240,46 @@ Afterwards the camera was Custom again, and LoadoutOpen and `Finishing` were bac
 ![Ascension](finishers/ascension_strip.jpg)
 ![Splashdown](finishers/splashdown_strip.jpg)
 
-**Not tested yet:**
-- **A real match end and a round win.** These need two players: with one tester, stand-ins don't fight. The choice
-  between the cuts is the pure `Finishers.decide`; the triggers are `Matches.onRound` and `onEnd`.
-- **The short cut and the victim's dropped killcam.** Same reason.
-- **A blade kill** (the WHIP shot).
-- **A real phone.**
+## Tested, second pass (17 Nov 2026, place version 624)
 
-**Known issue:** in the preview only, the HERO and CHARGE shots show the shooter from behind. The real kill shows them
-from the front. Both ghosts' roots face each other, so something turns the preview's body round. The first suspect is
-the aim flag set on the preview's made-up frames; a real recording had it off. To check and fix in the next pass.
+**All eight run clean.** High Noon, Inkfall (the blade's WHIP cut), Warp Out, Lantern Light, Starchart and Ascension
+with its new wings each ran as a preview, at normal speed, end to end:
+- Each reached its full length (2.78 to 2.88 s).
+- No errors.
+- `Finishing` cleared, and the effects were removed.
+- The most effect instances at once: 14 (Inkfall) to 97 (Starchart).
+
+**The match path.** The setup was a real match from `JankMatchTest("ghost", "1v1", nil, 40, player)` with me on team 1,
+the Recorder on, and a real kill of a training dummy. Then the round handler that `Matches.onRound` calls ran on that
+match:
+- "full" sent Ascension's full cut to everyone in the match, and my client played it to its end (2.9 s).
+- "short" sent Hellgate's short cut to the killer.
+
+Below this test sits the same `Finishers.decide` and the same clip, remote and player as a real round.
+
+**Not proven: a round won by killing a real second player.** `Matches.onRound` only fires then, and one tester can't
+make that. A Studio solo test has no second player:
+- the lobby's stand-ins are display models, not fighters;
+- the classic modes' test "ghosts" die outside Fight.
+
+It needs Studio's **Test > Clients and Servers** with 2 players, which the owner can run (the MCP only starts solo Play),
+or a live server with two accounts. The wiring is two lines: `Matches.onRound(fn)` and `Matches.onEnd(fn)` in
+FinisherServer.
+
+**The preview's facing.** In the first photos the preview's HERO and CHARGE shots showed the shooter from behind. Real
+kills showed the front. The first suspect is the aim flag, which was set on the preview's made-up frames (a real
+recording had it off). It is now off. Measured in Play:
+- the shooter's root faces the stand-in (0.94, 0, -0.34);
+- the stand-in faces back;
+- the HERO lens sits in front of the shooter (3.5 studs ahead along their facing), looking at them.
+
+Not seen in a picture yet: Studio's window was minimised all through this pass, and a minimised Studio draws only the
+UI.
+
+**Photos still to take** (as soon as Studio draws again): the new wings in Ascension, High Noon, Inkfall, Warp Out,
+Lantern Light and Starchart, as held-frame strips, and the preview's HERO shot.
+
+**Not tested yet:** a real phone.
 
 **Sounds:** the cut uses recordings already in the game: the gun and the skin's own fire layer, photoin, hit,
 round_end, reverse, boom, death, squeak, blub, quack, bigpop and bloop. Each finisher's own layer is for the sound

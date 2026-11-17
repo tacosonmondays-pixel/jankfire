@@ -14,7 +14,8 @@
       "JankfireLoot": { "$path": "place/ReplicatedStorage/JankfireLoot.rbxm" },
       "ShredderRemote": { "$path": "place/ReplicatedStorage/ShredderRemote.rbxm" },
       "ImpactRemote": { "$path": "place/ReplicatedStorage/ImpactRemote.rbxm" },
-      "PoseRemote": { "$path": "place/ReplicatedStorage/PoseRemote.rbxm" }
+      "PoseRemote": { "$path": "place/ReplicatedStorage/PoseRemote.rbxm" },
+      "JankfireFinisherKit": { "$path": "place/ReplicatedStorage/JankfireFinisherKit.rbxm" }
     },
     "Players": {
       "$properties": { "CharacterAutoLoads": false, "RespawnTime": 5 }
