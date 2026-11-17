@@ -187,8 +187,9 @@ end
 -- ------------------------------------------------------------------ the ranked fire (the mode panel)
 -- (17 Nov, the owner: "a toggle for rank that will have a flame like transition and add like a cool fire effect").
 -- turning RANKED on: a front of flame tongues sweeps up the panel, a warm gradient and a glow along the bottom, a
--- burst of embers; then a low flicker and a few rising embers while ranked stays on. off: it cools down. all frames
--- and gradients (nothing uploaded). it lives in its own layer under the panel's cards, so a refresh keeps it
+-- burst of embers; then a low flicker and a few rising embers while ranked stays on. off: it cools down. it lives in
+-- its own layer under the panel's cards, so a refresh keeps it. (17 Nov, the owner: "can the flames be actual
+-- flames?": the tongues are a flipbook fire now, FlameStrip, the VFX session's; the rest is frames and gradients)
 local FIRE_HOT = Color3.fromRGB(255, 196, 61) -- (the HUD amber at the tips)
 local FIRE_MID = Color3.fromRGB(255, 122, 32)
 local FIRE_DEEP = Color3.fromRGB(200, 52, 18)
@@ -198,16 +199,8 @@ local heat = new("Frame", { Name = "Heat", BorderSizePixel = 0, BackgroundColor3
 local heatGrad = new("UIGradient", { Rotation = 270, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, FIRE_MID), ColorSequenceKeypoint.new(0.35, FIRE_DEEP), ColorSequenceKeypoint.new(1, T.BG) }),
 	Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.55), NumberSequenceKeypoint.new(0.45, 0.88), NumberSequenceKeypoint.new(1, 1) }) }, heat)
 local _ = heatGrad
-local TONGUES = 16
-local tongues: { { f: Frame, seed: number, w: number } } = {}
-for i = 1, TONGUES do
-	local f = new("Frame", { Name = "Tongue", BorderSizePixel = 0, BackgroundColor3 = Color3.new(1, 1, 1), AnchorPoint = Vector2.new(0.5, 1), ZIndex = 1,
-		Position = UDim2.new((i - 0.5) / TONGUES, 0, 1, 18), Size = UDim2.fromOffset(30, 0) }, fireLayer)
-	T.corner(f, 15)
-	new("UIGradient", { Rotation = 270, Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, FIRE_DEEP), ColorSequenceKeypoint.new(0.45, FIRE_MID), ColorSequenceKeypoint.new(1, FIRE_HOT) }),
-		Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.6, 0.45), NumberSequenceKeypoint.new(1, 1) }) }, f)
-	table.insert(tongues, { f = f, seed = math.random() * 100, w = 0.9 + math.random() * 0.5 })
-end
+local FlameStrip = require(script.Parent:WaitForChild("FlameStrip"))
+local flames = FlameStrip.new(fireLayer, { count = 8, zIndex = 1 })
 local embers: { any } = {}
 local fire = { level = 0, want = 0, sweep = 1, burst = 0, party = false }
 -- (Party Ranked, the classic modes' playful ladder, gets something lighter than flames: soap bubbles rising)
@@ -272,15 +265,7 @@ RunService.RenderStepped:Connect(function(dt)
 	heat.Visible = fire.level > 0
 	-- the tongues: a flicker that climbs with the sweep (up to the panel's height at its peak) and settles low
 	local sweepH = math.sin(math.min(1, fire.sweep) * math.pi) -- (0 -> 1 -> 0 over the sweep)
-	for i, t in tongues do
-		local n = math.noise(t.seed, fireT * 2.2) * 0.5 + 0.5
-		local n2 = math.noise(t.seed + 9, fireT * 5.1) * 0.5 + 0.5
-		local base = (24 + 40 * n + 14 * n2) * fire.level
-		local h = base + sweepH * H * (0.75 + 0.35 * n)
-		t.f.Size = UDim2.fromOffset(math.floor((W / TONGUES) * 1.9 * t.w), math.floor(h))
-		t.f.Position = UDim2.new((i - 0.5) / TONGUES, math.floor((n2 - 0.5) * 6), 1, 18)
-		t.f.Visible = h > 1 and not pp
-	end
+	flames:step(dt, fire.level, sweepH, H, pp) -- (hidden for Party Ranked: bubbles there)
 	-- embers: a few rising while it's hot
 	if fire.level > 0.5 and math.random() < dt * 4 then if pp then bubble(W, H, false) else ember(W, H, false) end end
 	for i = #embers, 1, -1 do

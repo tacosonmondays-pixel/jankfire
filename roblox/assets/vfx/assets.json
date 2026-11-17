@@ -215,5 +215,23 @@
   "sha1": "c2858fa5874269d5a6cea4d55606fce7a14eff85",
   "what": "the hole's opening lens flare, additive: a hot core, a long thin level streak, a shorter upright one, four thin uneven rays",
   "uploaded": "2026-11-17 08:16 UTC (black hole v3, after the owner's reference clip; tools/roblox/vfx/bh3_sheets.py)"
+ },
+ "vfx_heart": {
+  "id": 108731430634300,
+  "sha1": "dd162579afb8c308bd9a73b10e18a855b99676f1",
+  "what": "a small soft heart, white with a faint glow, additive (Wish Duck's trail)",
+  "uploaded": "2026-11-17 10:19 UTC (the high-tier skins' bullet trails; tools/roblox/vfx/trail_sheets.py)"
+ },
+ "vfx_dash": {
+  "id": 100999224406963,
+  "sha1": "edd89cdcf0557501439ada65076451fe24063e43",
+  "what": "a Beam strip, white, additive: one dash and a gap along u, a soft core across v; wrapped into a dashed rail (Streamliner)",
+  "uploaded": "2026-11-17 10:19 UTC (the high-tier skins' bullet trails; tools/roblox/vfx/trail_sheets.py)"
+ },
+ "vfx_fire_8x8": {
+  "id": 79816315934163,
+  "sha1": "bb4fa30424f91a0caca2b6822ffd9a8ddea96aca",
+  "what": "a UI fire flipbook, 64 frames (8x8, 128 px cells), a ragged row of fire rising off the bottom edge, looping, coloured as drawn (normal blend), sides fading in alpha (FlameStrip.luau, the RANKED switch)",
+  "uploaded": "2026-11-17 10:27 UTC (the owner: \"can the flames be actual flames?\"; tools/roblox/vfx/fire_sheet.py, nothing downloaded)"
  }
 }

@@ -175,6 +175,9 @@ local TEX = {
 	bhhalo3 = "rbxassetid://135232907882413", -- the warm photon ring and the lensed arcs over the top and under the bottom
 	bhshade = "rbxassetid://121099071721160", -- a soft round shade, white (tinted dark: the dark twins)
 	bhflare = "rbxassetid://100443875393789", -- the opening's lens flare: a hot core, a long thin level streak, thin rays
+	-- the high-tier skins' bullet trails (17 Nov; tools/roblox/vfx/trail_sheets.py), white for Fx to tint
+	heart = "rbxassetid://108731430634300", -- a small soft heart (Wish Duck)
+	dash = "rbxassetid://100999224406963", -- a Beam strip: one dash and a gap along its length, wrapped into a rail (Streamliner)
 	cotton2 = "rbxassetid://96781809339333", -- a thick lumpy smoke puff, 64 frames (8x8; tools/roblox/vfx/cotton_sheet.py)
 	lumps = "rbxassetid://82728391412819", -- 16 dense crisp lumpy puffs (4x4; tools/roblox/vfx/lumps_sheet.py): fireball, smoke
 	streak = "rbxassetid://127914373549121", -- a soft white streak (the spark drawing is warm)
@@ -348,7 +351,7 @@ end
 
 -- beams (the tracers; the flash's flame along the barrel): two pooled attachments each, shown for a while on the
 -- effect clock; fade = the opacity runs 1 -> 0 over the life (else on, then off, like the web's flash)
-type Bm = { b: Beam, a0: Attachment, a1: Attachment, t: number, life: number, live: boolean, fade: boolean }
+type Bm = { b: Beam, a0: Attachment, a1: Attachment, t: number, life: number, live: boolean, fade: boolean, tr0: number }
 type BmPool = { list: { Bm }, i: number, n: number, props: { [string]: any } }
 local beamPools: { BmPool } = {}
 local function beamPool(n: number, props: { [string]: any }): BmPool
@@ -356,7 +359,9 @@ local function beamPool(n: number, props: { [string]: any }): BmPool
 	table.insert(beamPools, p)
 	return p
 end
-local function beam(pool: BmPool, from: Vector3, to: Vector3, color: Color3, w0: number, w1: number, life: number, fade: boolean)
+-- (tr0: its opacity at the start, 0 = solid; the beam is handed back for a caller that bends it)
+local function beam(pool: BmPool, from: Vector3, to: Vector3, color: Color3, w0: number, w1: number, life: number, fade: boolean,
+	tr0: number?): Bm
 	pool.i = pool.i % pool.n + 1
 	local B = pool.list[pool.i]
 	if not B then
@@ -367,15 +372,16 @@ local function beam(pool: BmPool, from: Vector3, to: Vector3, color: Color3, w0:
 		b.FaceCamera = true; b.Segments = 1; b.Enabled = false
 		for k, v in pool.props do (b :: any)[k] = v end
 		b.Parent = host
-		B = { b = b, a0 = a0, a1 = a1, t = 0, life = 1, live = false, fade = true }
+		B = { b = b, a0 = a0, a1 = a1, t = 0, life = 1, live = false, fade = true, tr0 = 0 }
 		pool.list[pool.i] = B
 	end
 	local X = B :: Bm
 	X.a0.WorldPosition = from; X.a1.WorldPosition = to
 	X.b.Color = ColorSequence.new(color); X.b.Width0 = w0; X.b.Width1 = w1
-	X.b.Transparency = NumberSequence.new(0); X.b.Enabled = true
-	X.t, X.life, X.live, X.fade = 0, life, true, fade
+	X.b.Transparency = NumberSequence.new(tr0 or 0); X.b.Enabled = true
+	X.t, X.life, X.live, X.fade, X.tr0 = 0, life, true, fade, tr0 or 0
 	STAT.beams += 1
+	return X
 end
 -- tracers (fx.js tracer): a straight line from the muzzle to the hit in the gun's colour, its opacity running 1 -> 0
 -- over its life; a soft core (the texture's solid middle is about half the beam's width, hence TR_WIDE)
@@ -776,6 +782,197 @@ function Fx.muzzle(at: CFrame, big: boolean, fpv: boolean, color: Color3?, fast:
 	end
 end
 
+-- ---- the high-tier skins' bullet trails (the owner, 17 Nov: "make sure special weapons have custom bullet trails ... that
+-- match the style of the gun"; the gun models session's sheet, one trail shape per skin): SkinSets.FX[id].bullet =
+-- { kind = ..., colour = ... } replaces the plain tracer with the kind's own line, a few particles along it and a small
+-- flourish where it ends. Cheap: one or two beams and a handful of particles a shot. Your own shot (first person):
+-- nothing within 6 studs of the eye or in the first quarter of the path, half as many bits, no ring at the muzzle, the
+-- smoke lighter; the line itself starts 3.5 studs out (Fx.gunShot)
+--   feathers  (Seraph) a gold-white streak shedding 3-4 white feathers that drift down; a soft gold flare where it lands
+--   ember     (Infernal) a hot orange core, a dark smoke wisp lingering behind it, sparks falling off; an ember burst
+--   wisp      (Pumpkin Patch) an orange flame wisp, gently S-curved (a curved Beam); a grey puff at the muzzle every
+--             third shot
+--   bubbles   (Bubble Bath) the pink tracer with soap bubbles along it that swell and pop in ~0.45 s
+--   hearts    (Wish Duck) the pink tracer with tiny hearts twinkling along it; a sparkle burst where it lands
+--   dust      (Dust Drover) a warm gold streak; a dust kick where it lands
+--   powder    (Iron Horse) the gold tracer; a black-powder puff off the muzzle
+--   hardlight (Star Drover) a thin white-teal core in a teal glow, a ring flaring off the muzzle; a ring burst where it lands
+--   rail      (Streamliner) a teal rail of dashes running forward (vfx_dash, wrapped) with rings along it
+--   stars     (Triangulum) a thin gold-white line with small stars twinkling along it; a fading star where it lands
+local TRP = {
+	feather = emitters(4, { Texture = TEX.feather, LightInfluence = 0.5, LightEmission = 0.3, Color = cs(Color3.fromRGB(252, 248, 238)),
+		Size = NumberSequence.new(0.07 * S / 0.88 * H), Transparency = ns(0, 0.05, 0.7, 0.15, 1, 1), Lifetime = NR(0.9, 1.3),
+		Speed = NR(0.3 * S, 0.8 * S), SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, -1.2 * S, 0), Drag = 2.5,
+		Rotation = NR(0, 360), RotSpeed = NR(-140, 140) }),
+	spark = emitters(6, { Texture = TEX.spark, Orientation = Enum.ParticleOrientation.VelocityParallel, LightEmission = 1,
+		LightInfluence = 0, Brightness = 3, Color = cs(Color3.fromRGB(255, 214, 140), Color3.fromRGB(255, 84, 28)),
+		Size = ns(0, 0.035 * S * 3.4 * H, 1, 0.012 * S * 3.4 * H), Transparency = ns(0, 0, 0.7, 0.2, 1, 1), Lifetime = NR(0.25, 0.45),
+		Speed = NR(0.6 * S, 2.2 * S), SpreadAngle = Vector2.new(70, 70), Acceleration = Vector3.new(0, -12 * S, 0), Drag = 1.5 }),
+	bubble = emitters(4, { Texture = TEX.bubble, LightInfluence = 0.3, LightEmission = 0.35, Brightness = 1.2,
+		Color = cs(Color3.fromRGB(255, 230, 242)), Size = ns(0, 0.05 * S * H, 0.15, 0.1 * S * H, 0.85, 0.105 * S * H, 0.93, 0.12 * S * H, 1, 0.02 * S * H),
+		Transparency = ns(0, 0.5, 0.15, 0, 0.85, 0.05, 0.93, 0.3, 1, 1), Lifetime = NR(0.4, 0.55), Speed = NR(0.1 * S, 0.4 * S),
+		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 1.5, Rotation = NR(-10, 10) }),
+	heart = emitters(6, { Texture = TEX.heart, LightEmission = 0.7, LightInfluence = 0, Brightness = 1.6,
+		Color = cs(Color3.fromRGB(255, 150, 196)), Size = nsk({ { 0, 0 }, { 0.3, 0.05 * S * H / 0.6, 0.012 * S }, { 1, 0 } }),
+		Transparency = NumberSequence.new(0.05), Lifetime = NR(0.35, 0.55), Speed = NR(0.1 * S, 0.4 * S),
+		SpreadAngle = Vector2.new(180, 180), Acceleration = Vector3.new(0, 0.5 * S, 0), Drag = 2, Rotation = NR(-20, 20) }),
+	star = emitters(8, { Texture = TEX.sparkle, LightEmission = 1, LightInfluence = 0, Brightness = 2.5,
+		Color = cs(Color3.fromRGB(255, 240, 204)), Size = nsk({ { 0, 0 }, { 0.35, 0.05 * S / 0.97 * H, 0.02 * S }, { 1, 0 } }),
+		Transparency = NumberSequence.new(0.05), Lifetime = NR(0.4, 0.75), Speed = NR(0.05 * S, 0.2 * S),
+		SpreadAngle = Vector2.new(180, 180), Drag = 3, Rotation = NR(-15, 15), RotSpeed = NR(-60, 60) }),
+	big = emitters(4, { Texture = TEX.sparkle, LightEmission = 1, LightInfluence = 0, Brightness = 3,
+		Size = ns(0, 0, 0.2, 0.22 * S / 0.97 * H, 1, 0), Transparency = ns(0, 0, 0.6, 0.15, 1, 1), Lifetime = NR(0.55),
+		Speed = NR(0), Rotation = NR(-10, 10), RotSpeed = NR(-40, 40) }),
+	glow = emitters(6, { Texture = TEX.glow, LightEmission = 1, LightInfluence = 0, Brightness = 2, Speed = NR(0),
+		Transparency = ns(0, 0.1, 1, 1) }),
+	ring = emitters(8, { Texture = TEX.shock, LightEmission = 1, LightInfluence = 0, Brightness = 2,
+		Orientation = Enum.ParticleOrientation.VelocityPerpendicular, Speed = NR(0.01), Transparency = ns(0, 0.1, 1, 1) }),
+	puff = emitters(6, { Texture = TEX.soft4, FlipbookLayout = FLIP4, FlipbookMode = ONESHOT, LightInfluence = 0.7,
+		LightEmission = 0.05, Transparency = ns(0, 0.35, 0.5, 0.55, 1, 1), Lifetime = NR(0.6, 0.9), Speed = NR(0.3 * S, 0.9 * S),
+		SpreadAngle = Vector2.new(40, 40), Acceleration = Vector3.new(0, 0.4 * S, 0), Drag = 2.5, Rotation = NR(0, 360), RotSpeed = NR(-40, 40) }),
+	petal = emitters(6, { Texture = TEX.petal, LightInfluence = 0.7, LightEmission = 0.15,
+		Color = cs(Color3.fromRGB(240, 176, 194), Color3.fromRGB(250, 226, 232)), Size = NumberSequence.new(0.026 * S / 0.8 * H),
+		Transparency = ns(0, 0.05, 0.75, 0.15, 1, 1), Lifetime = NR(0.7, 1.1), SpreadAngle = Vector2.new(50, 50),
+		Acceleration = Vector3.new(0, -0.8 * S, 0), Drag = 3, Rotation = NR(0, 360), RotSpeed = NR(-160, 160) }),
+	smoke = beamPool(16, { Texture = TEX.tracer, LightEmission = 0, LightInfluence = 0.6, Brightness = 1 }),
+	hard = beamPool(12, { Texture = TEX.tracer, LightEmission = 1, LightInfluence = 0, Brightness = 2.4 }),
+	dash = beamPool(8, { Texture = TEX.dash, TextureMode = Enum.TextureMode.Wrap, TextureLength = 0.8 * S, TextureSpeed = 2.5,
+		LightEmission = 1, LightInfluence = 0, Brightness = 2 }),
+	wisp = beamPool(16, { Texture = TEX.tracer, LightEmission = 0.6, LightInfluence = 0, Brightness = 1.3, Segments = 12 }),
+	n = setmetatable({}, { __mode = "k" }) :: any, -- (shots per gun spec: the pumpkin's puff every third)
+}
+for _, e in TRP.puff.list do oneshot(e.pe, 16) end
+type TrailO = { col: Color3, wide: number, life: number, fpv: boolean, taper: number?, first: boolean, last: boolean, spec: any }
+-- points along a -> b at fractions spread over u0..u1 (jittered), skipping any too near the eye
+local function trailPts(a: Vector3, b: Vector3, n: number, u0: number, u1: number, eye: Vector3?, keep: number): { Vector3 }
+	local out = {}
+	for i = 1, n do
+		local u = u0 + (u1 - u0) * ((i - 0.5 + (math.random() - 0.5) * 0.8) / n)
+		local p = a:Lerp(b, u)
+		if not eye or (p - eye).Magnitude > keep then table.insert(out, p) end
+	end
+	return out
+end
+-- an attachment's frame at p with its X axis (a Beam's curve leaves along it) along x
+local function axisCF(p: Vector3, x: Vector3): CFrame
+	local up = if math.abs(x.Y) > 0.95 then Vector3.xAxis else Vector3.yAxis
+	local z = x:Cross(up).Unit
+	return CFrame.fromMatrix(p, x, z:Cross(x).Unit, z)
+end
+function Fx.bulletTrail(bs: any, a: Vector3, b: Vector3, o: TrailO)
+	local len = (b - a).Magnitude
+	if len < 0.2 then return end
+	local dir = (b - a) / len
+	local kind = bs.kind
+	local col = bs.colour or o.col
+	local cam = workspace.CurrentCamera
+	local eye = if o.fpv and cam then cam.CFrame.Position else nil
+	local keep = 6
+	local u0 = if o.fpv then 0.25 else 0.08
+	local function count(n: number): number return if o.fpv then math.max(1, math.floor(n / 2)) else n end
+	local function along(pool: EmPool, n: number, d: Vector3?)
+		for _, p in trailPts(a, b, count(n), u0, 0.95, eye, keep) do emit(emAt(pool, p, d or Vector3.yAxis), 1) end
+	end
+	local function glowAt(c: Color3, size: number, life: number)
+		local g = emAt(TRP.glow, b - dir * 0.15, -dir)
+		g.Color = cs(c); g.Size = ns(0, size * 0.6, 0.3, size, 1, size * 0.4); g.Lifetime = NR(life)
+		emit(g, 1)
+	end
+	local tw = o.wide * TR_WIDE
+	if kind == "feathers" then
+		Fx.tracer(a, b, col, o.wide * 1.1, o.life * 1.15, o.taper)
+		along(TRP.feather, 4)
+		if o.last then glowAt(Color3.fromRGB(255, 214, 130), 0.35 * S, 0.2) end
+	elseif kind == "ember" then
+		Fx.tracer(a, b, Color3.fromRGB(255, 150, 66), o.wide * 0.85, o.life, o.taper)
+		local sa = if o.fpv then a + dir * math.min(len * 0.5, 4) else a
+		beam(TRP.smoke, sa, b, Color3.fromRGB(62, 50, 46), tw * 1.6, tw * 2.4, 0.45, true, if o.fpv then 0.8 else 0.55)
+		along(TRP.spark, 4, -dir * 0.3 + Vector3.new(0, -0.6, 0))
+		if o.last then
+			emit(emAt(TRP.spark, b - dir * 0.1, -dir + Vector3.new(0, 0.6, 0)), 6)
+			glowAt(Color3.fromRGB(255, 120, 50), 0.3 * S, 0.15)
+		end
+	elseif kind == "wisp" then
+		local B = beam(TRP.wisp, a, b, col, tw * 0.9 * (o.taper or 1), tw * 1.1, o.life * 1.2, true)
+		local side = dir:Cross(Vector3.new(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5))
+		side = if side.Magnitude > 1e-3 then side.Unit else dir:Cross(Vector3.yAxis).Unit
+		local x = (dir + side * 0.12).Unit
+		B.a0.WorldCFrame = axisCF(a, x); B.a1.WorldCFrame = axisCF(b, x)
+		B.b.CurveSize0 = len * 0.33; B.b.CurveSize1 = len * 0.33
+		B.b.Color = cs(Color3.fromRGB(255, 206, 120), col, Color3.fromRGB(255, 104, 36))
+		if o.first and not o.fpv then
+			local n = (TRP.n[bs] or 0) + 1
+			TRP.n[bs] = n
+			if n % 3 == 0 then
+				local p = emAt(TRP.puff, a + dir * 0.3 * S, dir + Vector3.new(0, 0.4, 0))
+				p.Color = cs(Color3.fromRGB(176, 168, 160)); p.Size = grow(0.1 * S * H, 0.32 * S * H)
+				emit(p, 1)
+			end
+		end
+	elseif kind == "bubbles" then
+		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
+		along(TRP.bubble, 2)
+	elseif kind == "hearts" then
+		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
+		along(TRP.heart, 5)
+		if o.last then
+			local s = emAt(TRP.star, b - dir * 0.15, -dir)
+			s.Color = cs(Color3.fromRGB(255, 226, 150), Color3.fromRGB(255, 160, 200)); s.Speed = NR(0.8 * S, 2 * S)
+			emit(s, 6)
+		end
+	elseif kind == "dust" then
+		Fx.tracer(a, b, col, o.wide * 1.15, o.life, o.taper)
+		if o.last then
+			local p = emAt(TRP.puff, b - dir * 0.2, -dir + Vector3.new(0, 0.8, 0))
+			p.Color = cs(Color3.fromRGB(206, 182, 142)); p.Size = grow(0.12 * S * H, 0.45 * S * H)
+			emit(p, 2)
+		end
+	elseif kind == "powder" then
+		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
+		if o.first and not o.fpv then
+			local p = emAt(TRP.puff, a + dir * 0.35 * S, dir + Vector3.new(0, 0.25, 0))
+			p.Color = cs(Color3.fromRGB(74, 68, 64)); p.Size = grow(0.15 * S * H, 0.55 * S * H)
+			emit(p, 2)
+		end
+	elseif kind == "hardlight" then
+		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
+		beam(TRP.hard, a, b, Color3.fromRGB(214, 255, 250), tw * 0.35 * (o.taper or 1), tw * 0.35, o.life, true)
+		if o.first and not o.fpv then
+			local r = emAt(TRP.ring, a + dir * 0.35 * S, dir)
+			r.Color = cs(col); r.Size = ns(0, 0.04 * S, 1, 0.3 * S); r.Lifetime = NR(0.15)
+			emit(r, 1)
+		end
+		if o.last then
+			local r = emAt(TRP.ring, b - dir * 0.1, -dir)
+			r.Color = cs(col); r.Size = ns(0, 0.08 * S, 1, 0.6 * S); r.Lifetime = NR(0.22)
+			emit(r, 1)
+			glowAt(col, 0.25 * S, 0.12)
+		end
+	elseif kind == "rail" then
+		beam(TRP.dash, a, b, col, tw * 1.3 * (o.taper or 1), tw * 1.3, o.life * 1.3, true)
+		for _, p in trailPts(a, b, count(5), u0, 0.95, eye, keep) do
+			local r = emAt(TRP.ring, p, dir)
+			r.Color = cs(col); r.Size = NumberSequence.new(0.16 * S); r.Lifetime = NR(0.25)
+			emit(r, 1)
+		end
+	elseif kind == "stars" then
+		Fx.tracer(a, b, col, o.wide * 0.6, o.life * 1.2, o.taper)
+		local s = TRP.star
+		for _, p in trailPts(a, b, count(7), u0, 0.97, eye, keep) do
+			local e = emAt(s, p, Vector3.yAxis)
+			e.Color = cs(col); e.Speed = NR(0.05 * S, 0.2 * S)
+			emit(e, 1)
+		end
+		if o.last then
+			local e = emAt(TRP.big, b - dir * 0.2, -dir)
+			e.Color = cs(col)
+			emit(e, 1)
+		end
+	else
+		Fx.tracer(a, b, col, o.wide, o.life, o.taper)
+	end
+end
+
 -- one gun shot as everyone sees it (weapons.js fire feedback): the flash (not through a scope) and a tracer from the
 -- muzzle to each end, bent at each bounce (the Revolver). w = the weapon's row in Weapons. the web's numbers: tracer
 -- 0.045 m thick for 0.2 s, 0.03 m for 0.07 s on guns over 8 shots a second, the row's own `thick` (sniper, dmr) else
@@ -805,13 +1002,24 @@ function Fx.gunShot(w: any, at: CFrame, ends: { Vector3 }, path: { any }?, fpv: 
 	-- your own tracer starts 3 studs out, so it never reads as a line out of your eye (first person only)
 	if fpv and #ends > 0 and (ends[1] - a).Magnitude > 9 then a += (ends[1] - a).Unit * 3.5 end
 	local taper = if fpv then 0.15 else nil
-	if path then
-		for i, b in path do
-			if typeof(b) == "Vector3" and i <= 2 then Fx.tracer(a, b, col, wide, life, taper); a = b; taper = nil end
+	-- (a high-tier skin's own bullet trail, SkinSets.FX[id].bullet: Fx.bulletTrail; its muzzle bits on the first leg only,
+	-- its flourish where the last one ends)
+	local bs = if sk then sk.spec.bullet else nil
+	local function line(p: Vector3, q: Vector3, tp: number?, first: boolean, last: boolean)
+		if bs then
+			Fx.bulletTrail(bs, p, q, { col = col, wide = wide, life = life, fpv = fpv, taper = tp, first = first, last = last, spec = bs })
+		else
+			Fx.tracer(p, q, col, wide, life, tp)
 		end
-		Fx.tracer(a, ends[1], col, wide, life, taper)
+	end
+	if path then
+		local first = true
+		for i, b in path do
+			if typeof(b) == "Vector3" and i <= 2 then line(a, b, taper, first, false); a = b; taper = nil; first = false end
+		end
+		line(a, ends[1], taper, first, true)
 	else
-		for _, e in ends do Fx.tracer(a, e, col, wide, life, taper) end
+		for _, e in ends do line(a, e, taper, true, true) end
 	end
 end
 
@@ -2059,7 +2267,11 @@ function Fx.bladeGlow(model: Model?): Color3?
 end
 function Fx.bladeFlames(model: Model?, a: Vector3, b: Vector3)
 	local S_ = if model then skinned[model] else nil
-	if not model or not S_ or #S_.flames == 0 or not S_.glow then return end
+	-- (a high-tier katana's own swing bits, SkinSets.FX[id].swing: Sakura's petals, Ribbon Duck's sparkles, shed along the
+	-- blade's path, flung a little with it)
+	local sw = if S_ then S_.spec.swing else nil
+	local fl = S_ ~= nil and #S_.flames > 0 and S_.glow ~= nil
+	if not model or not S_ or not (fl or sw) then return end
 	local last = bladeLast[model]
 	bladeLast[model] = { a = a, b = b, t = clockT }
 	local dt = if last then clockT - last.t else 0
@@ -2067,7 +2279,7 @@ function Fx.bladeFlames(model: Model?, a: Vector3, b: Vector3)
 	local kk = S_.k
 	local cam = workspace.CurrentCamera
 	local vp = if cam then cam.ViewportSize else Vector2.new(1, 1)
-	local c = flameCS(S_.glow)
+	local c = if fl then flameCS(S_.glow :: Color3) else nil
 	-- (round 10 in Play: right in first person; in third person too thin and faint to read: wider, brighter, one more)
 	for _, u in (if S_.fp then { 0.7, 0.95 } else { 0.55, 0.75, 0.95 }) do
 		local pNow, pWas = a:Lerp(b, u), last.a:Lerp(last.b, u)
@@ -2077,13 +2289,32 @@ function Fx.bladeFlames(model: Model?, a: Vector3, b: Vector3)
 			local sp = cam:WorldToViewportPoint(pNow)
 			if math.abs(sp.X - vp.X / 2) < vp.X * 0.1 and math.abs(sp.Y - vp.Y / 2) < vp.Y * 0.1 then continue end
 		end
-		local e = emAt(FLAMEARC, pWas:Lerp(pNow, math.random()), v)
-		local w = (if S_.fp then 0.025 else 0.09) * kk
-		e.Color = c; e.Size = ns(0, w * 0.7, 0.3, w, 1, w * 0.4)
-		e.Speed = NR(v.Magnitude * 0.06, v.Magnitude * 0.1)
-		e.Brightness = if S_.fp then 1.2 else 3
-		emit(e, 1)
+		local at = pWas:Lerp(pNow, math.random())
+		if c then
+			local e = emAt(FLAMEARC, at, v)
+			local w = (if S_.fp then 0.025 else 0.09) * kk
+			e.Color = c; e.Size = ns(0, w * 0.7, 0.3, w, 1, w * 0.4)
+			e.Speed = NR(v.Magnitude * 0.06, v.Magnitude * 0.1)
+			e.Brightness = if S_.fp then 1.2 else 3
+			emit(e, 1)
+		end
+		if sw then
+			local e = emAt(if sw.kind == "petal" then TRP.petal else TRP.star, at, v)
+			e.Speed = NR(v.Magnitude * 0.04, v.Magnitude * 0.09)
+			if sw.kind ~= "petal" then e.Color = cs(sw.colour or Color3.fromRGB(255, 226, 150)) end
+			emit(e, if S_.fp then 1 else 2)
+		end
 	end
+end
+-- your melee hit landing with a high-tier katana (Arsenal, next to Sfx.skinHit): a burst of its swing bits on them
+function Fx.skinHit(model: Model?, at: Vector3)
+	local S_ = if model then skinned[model] else nil
+	local sw = if S_ then S_.spec.swing else nil
+	if not sw then return end
+	local e = emAt(if sw.kind == "petal" then TRP.petal else TRP.star, at, Vector3.yAxis)
+	e.Speed = NR(1.2 * S, 3 * S)
+	if sw.kind ~= "petal" then e.Color = cs(sw.colour or Color3.fromRGB(255, 226, 150)) end
+	emit(e, 7)
 end
 -- someone else's swing: their flame skin's blade flares for 0.25 s (Arsenal's swing event; your own blade is fed frame by
 -- frame from the first-person smear)
@@ -2092,7 +2323,7 @@ local swingsLive: { SwingF } = {}
 function Fx.swingFlames(char: Model?)
 	if not char then return end
 	for m, S_ in skinned do
-		if #S_.flames > 0 and m:IsDescendantOf(char) then table.insert(swingsLive, { m = m, t = 0 }) end
+		if (#S_.flames > 0 or S_.spec.swing) and m:IsDescendantOf(char) then table.insert(swingsLive, { m = m, t = 0 }) end
 	end
 end
 local function swingFlameStep(dt: number)
@@ -2157,7 +2388,7 @@ RunService.RenderStepped:Connect(function(rdt: number)
 			B.t += dt
 			local u = B.t / B.life
 			if u >= 1 then B.live = false; B.b.Enabled = false; continue end
-			if B.fade then B.b.Transparency = NumberSequence.new(u) end
+			if B.fade then B.b.Transparency = NumberSequence.new(B.tr0 + (1 - B.tr0) * u) end
 		end
 	end
 	for _, F in flames do

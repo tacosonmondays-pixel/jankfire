@@ -525,6 +525,7 @@ local function resolveSwing()
 	-- the hit, felt right away: hit-stop, the flash, a bonk (a spoon tings; a stab crunches), a punch
 	VM.hitStop = if hv then 0.11 else 0.06
 	if firstAt then Fx.blast(firstAt, if hv then 1.1 else 0.6) end
+	if firstAt then Fx.skinHit(VM.model, firstAt) end -- (a high-tier katana's own burst: Sakura's petals, Ribbon Duck's sparkles)
 	Sfx.play(if wid == "knife" and me:GetAttribute("SpoonLook") then "ting" else "bonk")
 	Sfx.skinHit(wid)
 	if hv then Sfx.play("crunch") end

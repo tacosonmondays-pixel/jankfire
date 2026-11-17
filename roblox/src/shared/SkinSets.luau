@@ -154,6 +154,7 @@ SkinSets.FX = {
 		trail = { colour = Color3.fromRGB(255, 214, 120), life = 0.18, width0 = 0.03, width1 = 0,
 			segs = { { { 0.084, 0.071, 0.416 }, { 0.13, 0.11, 0.646 } } }, both = true },
 		flash = Color3.fromRGB(255, 226, 150), tracer = Color3.fromRGB(255, 205, 95),
+		bullet = { kind = "feathers" }, -- (its bullet trail, Fx.bulletTrail: a gold-white streak shedding white feathers, a gold flare where it lands)
 	},
 	ar_infernal = {
 		idle = {
@@ -166,6 +167,7 @@ SkinSets.FX = {
 		trail = { colour = Color3.fromRGB(255, 96, 34), life = 0.18, width0 = 0.03, width1 = 0,
 			segs = { { { 0.075, 0.06, 0.418 }, { 0.126, 0.077, 0.672 } } }, both = true },
 		flash = Color3.fromRGB(255, 120, 50), tracer = Color3.fromRGB(255, 80, 30),
+		bullet = { kind = "ember" }, -- (an orange core, a dark smoke wisp, falling sparks; an ember burst)
 	},
 	smg_pumpkin = { -- a thin curl of smoke out of the jack-o'-lantern's face, embers out of the receiver's carved grin
 		idle = {
@@ -176,6 +178,7 @@ SkinSets.FX = {
 		},
 		glow = { colour = Color3.fromRGB(255, 156, 69) },
 		flash = Color3.fromRGB(255, 156, 69), tracer = Color3.fromRGB(255, 156, 69),
+		bullet = { kind = "wisp" }, -- (an orange flame wisp, gently curved; a grey puff at the muzzle every third shot)
 	},
 	-- the Ducky VIP set (v3, 17 Nov: Bubble Bath and Ribbon Duck redone in Wish Duck's clean style, one shared rubber-duck
 	-- bill on all three): sparkles off the heart gems and the bow's star clip, soap bubbles from the bill (a puff after a
@@ -194,6 +197,7 @@ SkinSets.FX = {
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.02, width1 = 0,
 			segs = { { { -0.048, 0.037, 0.014 }, { -0.049, 0.052, 0.105 } } } }, -- the left wing's gold edge
 		flash = Color3.fromRGB(255, 225, 234), tracer = Color3.fromRGB(244, 154, 192),
+		bullet = { kind = "bubbles" }, -- (the pink tracer with soap bubbles along it that pop)
 	},
 	revolver_ducky = {
 		idle = {
@@ -205,6 +209,7 @@ SkinSets.FX = {
 		glow = { colour = Color3.fromRGB(242, 122, 168) },
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.015, width1 = 0, segs = { { { -0.028, 0.051, 0.003 }, { -0.028, 0.063, 0.068 } } } },
 		flash = Color3.fromRGB(255, 225, 234), tracer = Color3.fromRGB(244, 154, 192),
+		bullet = { kind = "hearts" }, -- (the pink tracer with tiny hearts twinkling along it; a sparkle burst)
 	},
 	katana_ducky = {
 		idle = {
@@ -214,6 +219,7 @@ SkinSets.FX = {
 		glow = { colour = Color3.fromRGB(242, 122, 168) },
 		trail = { colour = Color3.fromRGB(247, 182, 205), life = 0.4, width0 = 0.04, width1 = 0, -- (a glitter swing trail off the blade)
 			segs = { { { 0, 0.006, -0.26 }, { 0, 0.083, -0.836 } } } },
+		swing = { kind = "sparkle", colour = Color3.fromRGB(255, 214, 150) }, -- (gold sparkles shed along each swing, a burst on a hit)
 	},
 	-- the space-western high pieces: warm dust motes and a gold tracer on the frontier side, teal light on the star side; the
 	-- model builder's shot and lever-cycle effects (EFFECTS in gun_sets_west.py) as `shot` / `lever` bursts and a `pulse`
@@ -230,6 +236,7 @@ SkinSets.FX = {
 				at = { { 0.0, 0.035, -0.3 }, { -0.045, 0.02, -0.1 } } },
 		},
 		flash = Color3.fromRGB(255, 196, 106), tracer = Color3.fromRGB(242, 220, 160),
+		bullet = { kind = "dust" }, -- (a warm gold streak; a dust kick where it lands)
 	},
 	revolver_star = {
 		idle = {
@@ -243,6 +250,7 @@ SkinSets.FX = {
 		},
 		pulse = { parts = { "cylinder" }, t = 0.1 }, -- (the rotor's hub flares on each shot)
 		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
+		bullet = { kind = "hardlight" }, -- (a thin white-teal core in a teal glow, a ring off the muzzle; a ring burst)
 	},
 	lever_dust = {
 		idle = {
@@ -262,6 +270,7 @@ SkinSets.FX = {
 				at = { { -0.05, -0.09, -0.6 }, { -0.05, -0.09, -0.48 } }, dir = { 0, -0.4, 1 }, both = true },
 		},
 		flash = Color3.fromRGB(255, 196, 106), tracer = Color3.fromRGB(242, 220, 160),
+		bullet = { kind = "powder" }, -- (the gold tracer; a black-powder puff off the muzzle)
 	},
 	lever_star = {
 		idle = {
@@ -275,6 +284,7 @@ SkinSets.FX = {
 		},
 		pulse = { parts = { "barrel" }, t = 0.1 }, -- (the nose ring and the light line flare on each shot)
 		flash = Color3.fromRGB(191, 247, 240), tracer = Color3.fromRGB(69, 230, 214),
+		bullet = { kind = "rail" }, -- (a teal rail of dashes running forward with rings along it)
 	},
 	katana_sakura = { -- (the J-A Maki-e katana since v498) petals drifting off the guard's gold rim, the hilt's two blossom
 		-- ornaments and the blade's back (the blade points move with its stretch). points measured on the model, 17 Nov: the
@@ -288,6 +298,13 @@ SkinSets.FX = {
 		glow = { colour = Color3.fromRGB(236, 186, 200) },
 		trail = { colour = Color3.fromRGB(246, 196, 212), life = 0.2, width0 = 0.04, width1 = 0, -- (a swing trail off the blade)
 			segs = { { { 0, 0.035, -0.25 }, { 0, 0.077, -0.78 } } } },
+		swing = { kind = "petal" }, -- (petals shed along each swing, a burst of them on a hit)
+	},
+	-- the Triangulum (the VIP daily sniper): no idle bits (the mark's six star cores are its glow); starlight FFE7A6 flash
+	-- and a thin gold-white line with stars twinkling along it
+	sniper_triangulum = {
+		flash = Color3.fromRGB(255, 236, 196), tracer = Color3.fromRGB(255, 231, 166),
+		bullet = { kind = "stars" }, -- (a thin gold-white line with small stars twinkling along it; a fading star where it lands)
 	},
 } :: { [string]: any }
 

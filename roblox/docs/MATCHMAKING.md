@@ -51,8 +51,8 @@ What changes from the first build (this section wins where it disagrees with sec
    - bursts embers;
    - then leaves a low flicker of flames and a few rising embers while ranked stays on.
    - Turning it off cools the panel back down.
-   - All of it is drawn from frames and gradients (nothing uploaded, so no image moderation). A flipbook from the VFX
-     session can replace the tongues later.
+   - The flames are a looping fire flipbook (`FlameStrip.luau`, `vfx_fire_8x8` drawn from maths by the VFX session,
+     17 Nov, after the owner's "can the flames be actual flames?"); the gradient, the glow and the embers are frames.
 5. **Rank points.** The rank shown is a ladder of **rank points (RP)**, 100 per division, on top of the hidden MMR (the
    Glicko-2 rating, which still decides matchmaking). This is the kind of system Valorant's RR is.
    - The rank display is the badge, the rank name, a bar, and right of the bar the points: **34/100**. APEX shows its

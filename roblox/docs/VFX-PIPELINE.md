@@ -159,6 +159,19 @@ Per skin: idle particles at points on the gun (metres in the gun frame, `both` m
 after each shot, a glow (a faint light), and the skin's own flash and tracer colours. Sprites: feather, petal, four-point
 sparkle (Blender, `vfx_sheets.py`); ember = the glow, haze = the soft smoke sheet. Rule: nothing in front of the sights.
 
+**Bullet trails and swing bits (17 Nov, the owner: "make sure special weapons have custom bullet trails and sfx that
+match the style of the gun"; the gun models session's sheet `special-skins-trails-sfx.md` in main's notes).** A gun
+skin's row may carry `bullet = { kind = ... }` (optional `colour`): `Fx.bulletTrail` draws that kind's line, a few
+particles along it and a flourish where it ends, in place of the plain tracer (Fx.gunShot: muzzle bits on the first
+leg of a bent path, the flourish on the last). Kinds: `feathers` (Seraph), `ember` (Infernal), `wisp` (Pumpkin Patch,
+a curved Beam), `bubbles` (Bubble Bath), `hearts` (Wish Duck, `vfx_heart`), `dust` (Dust Drover), `powder` (Iron
+Horse), `hardlight` (Star Drover), `rail` (Streamliner, `vfx_dash` wrapped and scrolling), `stars` (Triangulum). A
+katana's row may carry `swing = { kind = "petal" | "sparkle", colour? }`: shed along each swing (Fx.bladeFlames,
+yours frame by frame, others' for 0.25 s) and a burst on your melee hit (`Fx.skinHit`, Arsenal next to Sfx.skinHit).
+Your own shot: nothing within 6 studs of the eye or in the first quarter of the path, half the bits, no muzzle ring or
+puff, lighter smoke. Sounds are the sound session's (`SkinSounds.luau`). A new special skin: add its `bullet` (or
+`swing`) line; new kinds go in `Fx.bulletTrail`.
+
 ## Item looks after the owner's reference clips (16 Nov)
 
 The owner sent five clips of layered ability effects and asked for new effects like them. Read as the kind of layering
