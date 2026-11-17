@@ -300,6 +300,8 @@ type St = {
 	cfWrites: number, -- server writes to the root's CFrame seen (tests: physics must never count here)
 	slipSeen: number?, -- the fighter's last marble slip already counted as a push
 	kickSeen: number, -- the last upward kick already judged
+	hookAsks: { number }, -- hook requests in the last 10 s
+	noCharge: { number }, -- hook requests with no charge left (ranked), last 60 s
 	-- the climb: from the last take-off (the ground, a missed landing, a push), how high, and how fast it could go up
 	baseY: number, baseT: number, maxY: number, v0: number,
 	speedNow: number,
@@ -314,7 +316,7 @@ local function fresh(): St
 		insideN = 0, tp = nil, points = {}, kicked = false, acc = 0, worst = {}, verdicts = {},
 		aims = {}, aimT = 0, shot = nil, hits = 0, heads = 0, snaps = 0, smoke = 0, gunHits = 0, flagT = {},
 		probes = 0, probeT = 0, selfT = -math.huge, cfWrites = 0, kickSeen = -math.huge,
-		baseY = 0, baseT = -math.huge, maxY = 0, v0 = 0, speedNow = 0, knownGround = false,
+		baseY = 0, baseT = -math.huge, maxY = 0, v0 = 0, speedNow = 0, knownGround = false, hookAsks = {}, noCharge = {},
 	}
 end
 
@@ -445,7 +447,24 @@ local function listen(name: string, parent: Instance, fn: (Player, ...any) -> ()
 end
 listen("Swing", Remotes, function(p) pushed(p, 30) end)
 listen("Item", Remotes, function(p) pushed(p, 80) end)
-listen("Grapple", Remotes, function(p, what) if what == "hook" then local s = st[p]; if s then s.rope = now() end end end)
+-- a hook request: whether it swings anyone is decided in look() (the server's own Rope_<id>, or a refused hook's
+-- round trip, a few at most). in a ranked match with no charge left (HookChargeServer: HookLimit, HookN) the client
+-- should never have asked: its own gate was skipped. written down, never acted on
+listen("Grapple", Remotes, function(p, what)
+	if what ~= "hook" then return end
+	local s = st[p]
+	if not s then return end
+	local t = now()
+	table.insert(s.hookAsks, t)
+	while #s.hookAsks > 0 and t - s.hookAsks[1] > 10 do table.remove(s.hookAsks, 1) end
+	if p:GetAttribute("HookLimit") == true and p:GetAttribute("HookN") == 0 then
+		table.insert(s.noCharge, t)
+		while #s.noCharge > 0 and t - s.noCharge[1] > 60 do table.remove(s.noCharge, 1) end
+		if #s.noCharge >= 3 then
+			caught(p, s, "hook", ("%d hooks asked for with no charge left in 60 s (the client's own gate skipped)"):format(#s.noCharge), nil, true)
+		end
+	end
+end)
 listen("ImpactRemote", ReplicatedStorage, function(p, kind) if kind == "launch" or kind == "ragdoll" then pushed(p, 300) end end)
 
 -- ------------------------------------------------------------------ one look at one body
@@ -488,7 +507,6 @@ local function look(p: Player, s: St)
 		if f.staggerUntil and f.staggerUntil > t then pushed(p, 40, true) end
 	end
 	if root.CollisionGroup == "JFShredded" then pushed(p, 90, true) end -- (in a Shredder's stream: Shredder pulls you)
-	if Terrain:FindFirstChild("Rope_" .. p.UserId) then s.rope = t end
 	local bound = p:GetAttribute("Trap") or p:GetAttribute("Jail") or p:GetAttribute("Quiz")
 	if bound then s.rope = t end -- (a soap bubble floats you, a cage hangs you, a quiz holds you: no fly or speed checks)
 	-- a mode that runs everyone faster (classic modes: Spoons & Grapples x1.6) sets ACSpeed for the match: the ground
@@ -497,6 +515,15 @@ local function look(p: Player, s: St)
 	local sm = if type(am) == "number" and am > 1 then math.min(am, 3) else 1
 	local group = root.CollisionGroup
 	local ping = math.clamp(p:GetNetworkPing(), 0, 1)
+	-- on a rope: the server's own (Main draws Rope_<id> for a hook it accepted). a hook it refused still swings the
+	-- client until the "cut" gets there, a round trip: that counts too, but only while the client isn't asking more
+	-- than 4 times in 10 s (asking over and over to keep the fly check away is no rope)
+	if Terrain:FindFirstChild("Rope_" .. p.UserId) then
+		s.rope = t
+	else
+		local ask = s.hookAsks[#s.hookAsks]
+		if ask and t - ask < 0.3 + 2 * ping and #s.hookAsks <= 4 then s.rope = math.max(s.rope, ask) end
+	end
 	local from = s.trusted :: Vector3
 	local step = pos - from
 	local dist = step.Magnitude

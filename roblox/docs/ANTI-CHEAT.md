@@ -58,7 +58,7 @@ The ten looks a second can miss a bhop's ground contact, which lasts a few ticks
 - A shot with a big recoil (8+ studs/s: the shotgun, the sniper, the DMR, the autoshot, the revolver, the sawn-off, the marbles). Smaller recoils can't hold a body up, even sprayed straight down at full rate: the Redline's 0.9 × 22 a second is 20 of gravity's 78.
 - Any item use (the popper's recoil, the frag at your feet).
 - A swing.
-- A rope. That's the server's own `Rope_<userId>`, and any hook request: a refused hook still swings the client until the "cut" arrives.
+- A rope: the server's own `Rope_<userId>`, drawn only for a hook it accepted. A refused hook also counts for one round trip, because it still swings the client until the "cut" arrives, but only while the client asks at most 4 times in 10 s. A cheat spamming hook requests to keep the fly check paused gets nothing from it. (A cheat holding a real, accepted rope while flying elsewhere isn't caught: checking that motion fits the rope would be the next step.)
 - A ledge launch or a BONK (ImpactRemote).
 - A marble slip (`Fighter.slipT`).
 - A parry stagger.
@@ -113,6 +113,8 @@ All three come from the server's own view of each hit (`Fight.onHurt`):
 - **Hits through smoke**: 6+ hits that crossed a smoke cloud (`Fight.smokeBlocks`), and more than 30% of all hits.
 
 A flag goes into the review log at most once every 5 minutes per player and kind, with its numbers. The owner decides.
+
+**Hooks with no charge** are written down. In a ranked match the grapple has 2 charges (the play/party/ranked session's `HookChargeServer`, which sets the attributes `HookLimit` and `HookN`). A real client never asks for a hook with none left, so 3 requests with `HookN` at 0 within 60 s mean its own gate was skipped. The server refuses those hooks anyway.
 
 **Remote probes** are also written down. A client that fires one of the 14 server-only remotes (Ammo, Callout, Dmg, Fx, Kill, Knock, Patch, Round, Shot, Slip, Spawn, ItemFx, LootShow, PlayPush) is poking at the game: no real client ever does. Each of those remotes also has a server listener now, so those fires no longer pile up in Roblox's queue and spam warnings.
 
@@ -303,6 +305,12 @@ The review log in the owner's panel after the runs (read back from the DataStore
 ![The report window](anticheat/report-dialog.jpg)
 
 ![A report in the owner's panel](anticheat/report-detail.jpg)
+
+**Hooks (run 8, place version 663).**
+
+- A real grapple (E held, then a grapple jump) on the training floor pulled the body about 80 studs: 0 points.
+- Hovering 12 studs up while firing 22 refused hook requests (each at empty sky) was caught three times: "hovering: fell at 0 studs/s² over 1.0 s". Before this fix, every hook request counted as a rope, so that spam would have kept the fly check paused.
+- The no-charge flag isn't tested live: outside a ranked match `HookChargeServer` sets `HookLimit` back to false at once, so it needs a real ranked match.
 
 Log excerpt (run 3, the server's own verdict list via `JankAC`):
 
