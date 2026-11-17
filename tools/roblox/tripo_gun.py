@@ -57,12 +57,18 @@
 #   "weld": 0.0001, "fill": 64, "sharp": 40,    merge distance, biggest hole filled (edges), shading angle (deg)
 #   "drop": [{"box": [[x0,y0,z0],[x1,y1,z1]]}, {"near": [x,y,z]}, {"tris_below": 14}, {"index": 9}],   parts out
 #   "decimate": {"default": 1.0, "parts": [{"part": {"near": [..]}, "ratio": 0.6}]},   Collapse per part
-#   "flatten": [{"part": {...}, "box": [lo, hi], "axis": "y", "keep": "below", "at": 0.068}],   cut + cap
+#   "flatten": [{"part": {...}, "box": [lo, hi], "axis": "y", "keep": "below", "at": 0.068, "cap": true}],   cut + cap
 #   "reshape": [{"part": {...}, "side_flat": true, "pivot": [x, y, z], "scale": 0.58, "thick": 0.007, "x_in": 0.044,
 #                "y_top": 0.068, "z_back": 0.05, "sharpen": {"prom": 0.005, "tip": 0.004, "pinch": 0.55, "radius": 0.012,
 #                "notch": 0.002}}],   re-pose a part (a wing: flat on the side, smaller, thinner, lower), see reshape()
 #   "rims": [{"tag": ["rwing", "fwing"], "width": 0.0018}],   a chamfer round a fused part's outer face (trim line)
-#   "splits": [{"part": {...}, "co": [x, y, z], "no": [x, y, z]}],   cut along a plane (a straight colour border)
+#   "splits": [{"part": {...}, "box": [lo, hi], "co": [x, y, z], "no": [x, y, z]}],   cut along a plane (a straight
+#                colour border; box: only faces whose centre is in it)
+#   "blend": [{"part": {...}, "box": [lo, hi], "to": 0.0425, "fade": {"axis": "y", "from": -0.03, "to": -0.012}}],
+#                pull a lip that overhangs past |x| = to flush (fully below fade.from, not at all at fade.to)
+#   "contours": [{"part": {...}, "box": .., "absx": .., "field": "ny", "smooth": 2, "at": 0.5}],   cut a soft surface
+#                along an iso-line of its smoothed vertex normals ("rz" + "axis": [x, y]: the distance from a bore's
+#                axis, a clean circle); colour with {"cf": [lo, hi]} (smooth borders)
 #   "nodes": [{"node": "mag", "part": {...}}, {"node": "grip", "part": {...}, "box": [lo, hi]}],  whole part / box cut
 #   "unions": [{"parts": [{...base}, {...}, {...}], "tag": "bstar"}],   parts after the first get the tag
 #   "inlays": [{"part": {...}, "tag": "mstar", "shape": "star", "points": 4, "R": 0.026, "r": 0.007, "c": [y, z],
@@ -246,6 +252,27 @@ def drop_parts(bm, rec):
     return dropped
 
 
+def normals_out(bm):
+    """recalc_face_normals, then a check per connected part: its faces must point away from its middle (signed
+       volume about its centroid > 0); a part that came out inside-out is turned the right way. (The angel's rail, cut
+       open at the front-sight block, came back inside-out: Roblox culls back faces, so it would have vanished)"""
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    bm.normal_update()
+    pid, info = parts_of(bm)
+    flipped = 0
+    for p in info:
+        c = B(p['centre'])
+        vol = sum((f.calc_center_median() - c).dot(f.normal) * f.calc_area() for f in p['faces'])
+        if vol < 0:
+            bmesh.ops.reverse_faces(bm, faces=p['faces']); flipped += 1
+            TURNED.append({'centre': [round(x, 3) for x in p['centre']], 'tris': p['tris']})
+    bm.normal_update()
+    return flipped
+
+
+TURNED = []   # (the parts normals_out turned the right way, for the clean json)
+
+
 def dedupe_faces(bm):
     """a face on the same corners as another (Tripo leaves a few): the copy goes (glTF calls the mesh invalid)"""
     bm.verts.index_update()
@@ -354,7 +381,7 @@ def flatten(bm, op):
     bmesh.ops.delete(bm, geom=gone, context='FACES')
     loose = [v for v in bm.verts if not v.link_faces]
     if loose: bmesh.ops.delete(bm, geom=loose, context='VERTS')
-    caps = fill_holes(bm, 100000)
+    caps = fill_holes(bm, 100000) if op.get('cap', True) else []   # (cap false: an end hidden inside a kit part)
     return {'faces_cut': len(gone), 'caps': len(caps)}
 
 
@@ -457,6 +484,84 @@ def _sharpen(P, root, sh):
             wgt = (1 - dist / (rad * 0.7)) ** 2
             out[k] = out[k] - a * (nd * wgt)
     return [Vector((p.x, root.y + o.y, root.z + o.x)) for p, o in zip(P, out)], tips
+
+
+def _faces_of(bm, op):
+    """the faces an op works on: its part selector, then an optional box and |x| range on face centres"""
+    pid, info = parts_of(bm)
+    ps = select_parts(op.get('part'), info, bm)
+    fs = [f for f in bm.faces if pid[f] in ps]
+    if 'box' in op: fs = [f for f in fs if _inbox(W(f.calc_center_median()), op['box'])]
+    if 'absx' in op: fs = [f for f in fs if op['absx'][0] <= abs(W(f.calc_center_median()).x) <= op['absx'][1]]
+    return fs
+
+
+def contour(bm, op):
+    """a clean colour border on a soft Tripo surface: a field on the vertices (a component of the vertex normal,
+       weapon frame: "nx" / "ny" / "nz", or "anx" for |nx|), smoothed over the surface `smooth` times, and the faces CUT
+       along its iso-line at `at` (marching triangles), so a region rule {"cf": [lo, hi]} on the field gives a smooth
+       border instead of one that steps along the triangles. The field is kept in the vertex layer 'cf'"""
+    fs = _faces_of(bm, op)
+    lay = bm.verts.layers.float['cf']
+    bm.normal_update()
+    verts = {v for f in fs for v in f.verts}
+    fld = op.get('field', 'ny')
+    if fld == 'rz':   # distance from the line along z through op['axis'] = [x, y] (a bore's rim)
+        ax_ = op.get('axis', [0.0, 0.0])
+        val = {v: math.hypot(W(v.co).x - ax_[0], W(v.co).y - ax_[1]) for v in verts}
+    else:
+        k = AX[fld[-1].upper()]
+        val = {v: (abs(W(v.normal)[k]) if fld.startswith('a') else W(v.normal)[k]) for v in verts}
+    for _ in range(op.get('smooth', 2)):
+        nv = {}
+        for v in verts:
+            nb = [e.other_vert(v) for e in v.link_edges if e.other_vert(v) in verts]
+            nv[v] = (val[v] + sum(val[u] for u in nb)) / (1 + len(nb))
+        val = nv
+    t = op['at']
+    for v in verts: v[lay] = val[v]
+    newv = set()
+    for e in list({e for f in fs for e in f.edges}):
+        a, b = e.verts
+        if a not in val or b not in val: continue
+        sa, sb = val[a] - t, val[b] - t
+        if sa * sb >= 0 or abs(sa - sb) < 1e-9: continue
+        fac = sa / (sa - sb)
+        if fac < 0.02 or fac > 0.98:   # (a crossing next to a vertex: move that vertex onto the line instead)
+            v = a if fac < 0.02 else b
+            v[lay] = t; continue
+        pa, pb = a.co.copy(), b.co.copy()
+        ne, nv = bmesh.utils.edge_split(e, a, fac)
+        nv.co = pa.lerp(pb, fac)
+        nv[lay] = t
+        newv.add(nv)
+    cut = 0
+    for f in list({f for v in newv for f in v.link_faces}):
+        on = [v for v in f.verts if v in newv]
+        if len(on) == 2 and not any(e for e in on[0].link_edges if e.other_vert(on[0]) is on[1]):
+            try:
+                bmesh.utils.face_split(f, on[0], on[1]); cut += 1
+            except ValueError: pass
+    bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3])
+    return {'faces': len(fs), 'cuts': cut}
+
+
+def blend(bm, op):
+    """pull an overhanging lip flush: every vertex of the op's faces sticking out past |x| = to is drawn in toward it,
+       fully below `fade.from` (along fade.axis) and not at all at `fade.to`"""
+    fs = _faces_of(bm, op)
+    fd = op['fade']; k = AX[fd['axis'].upper()]
+    n = 0
+    for v in {v for f in fs for v in f.verts}:
+        w_ = W(v.co)
+        if abs(w_.x) <= op['to']: continue
+        u = (w_[k] - fd['from']) / (fd['to'] - fd['from'])
+        wgt = 1.0 if u <= 0 else (0.0 if u >= 1 else 1 - (3 * u * u - 2 * u ** 3))   # (smoothstep)
+        if wgt <= 0: continue
+        sx = 1.0 if w_.x > 0 else -1.0
+        w_.x = sx * (op['to'] + (abs(w_.x) - op['to']) * (1 - wgt))
+        v.co = B(w_); n += 1
+    return {'verts_moved': n}
 
 
 def rims(bm, op, tags):
@@ -684,6 +789,10 @@ def match(cond, f, cx):
             if (c - Vector(v['co'])).dot(Vector(v['no'])) < 0: return False
         elif k == 'rz':     # [x, y, rmin, rmax]: distance from the line along z through (x, y) (a bore)
             if not (v[2] <= math.hypot(c.x - v[0], c.y - v[1]) <= v[3]): return False
+        elif k == 'cf':     # [lo, hi]: the face's contour field (its corners' mean), see contour()
+            lay = cx.bm.verts.layers.float['cf']
+            m = sum(v[lay] for v in f.verts) / len(f.verts)
+            if not (v[0] - 1e-6 <= m <= v[1] + 1e-6): return False
         elif k == 'ellipsoid':
             q, r = Vector(v[0]), v[1]
             if sum(((c[i] - q[i]) / r[i]) ** 2 for i in range(3)) > 1: return False
@@ -815,6 +924,7 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     meta['fit'] = fit
     fit_bmesh(bm, s, t, R)
     for nm in ('tag', 'node', '_sel'): bm.faces.layers.int.new(nm)   # (all working layers up front)
+    bm.verts.layers.float.new('cf')
     v0 = len(bm.verts)
     bmesh.ops.remove_doubles(bm, verts=bm.verts[:], dist=rec.get('weld', 1e-4) * s)
     meta['welded'] = v0 - len(bm.verts)
@@ -825,21 +935,23 @@ def clean(raw, base_id, skin_id, rec, out_dir):
                           'hi': [round(x, 3) for x in p['hi']]} for p in info]
     meta['dropped'] = drop_parts(bm, rec)
     meta['holes_filled'] = len(fill_holes(bm, rec.get('fill', 64)))
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    normals_out(bm)
     meta['nonmanifold_after_fill'] = sum(1 for e in bm.edges if not e.is_manifold)
+    meta['parts_turned_out'] = 0
     meta['decimate'] = decimate_parts(bm, rec)
+    meta['nonmanifold_after_decimate'] = sum(1 for e in bm.edges if not e.is_manifold)
     meta['flatten'] = [flatten(bm, op) for op in rec.get('flatten', [])]
+    meta['nonmanifold_after_flatten'] = sum(1 for e in bm.edges if not e.is_manifold)
     meta['reshape'] = [reshape(bm, op) for op in rec.get('reshape', [])]
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    meta['blends'] = [blend(bm, op) for op in rec.get('blend', [])]
+    meta['parts_turned_out'] += normals_out(bm)
     tags = {}
     meta['unions'] = run_unions(bm, rec, tags)
     meta['inlays'] = run_inlays(bm, rec, tags)
     meta['rims'] = [rims(bm, op, tags) for op in rec.get('rims', [])]
     # straight region borders: parts cut along planes (nothing removed), so a colour edge can follow a line
     for sp in rec.get('splits', []):
-        pid, info = parts_of(bm)
-        ps = select_parts(sp.get('part'), info, bm)
-        fs = [f for f in bm.faces if pid[f] in ps]
+        fs = _faces_of(bm, sp)   # (its part, and only faces in its box when it has one)
         geom = list(set(fs) | {e for f in fs for e in f.edges} | {v for f in fs for v in f.verts})
         bmesh.ops.bisect_plane(bm, geom=geom, plane_co=B(sp['co']), plane_no=B(sp['no']), dist=1e-6)
     bmesh.ops.triangulate(bm, faces=[f for f in bm.faces if len(f.verts) > 3], quad_method='BEAUTY', ngon_method='BEAUTY')
@@ -866,12 +978,14 @@ def clean(raw, base_id, skin_id, rec, out_dir):
             for f in faces: f[node_lay] = k
             meta['nodes'].append({'node': nd['node'], 'parts': sorted(ids), 'tris': sum(len(f.verts) - 2 for f in faces)})
     rec['_node_names'] = names
+    meta['contours'] = [contour(bm, op) for op in rec.get('contours', [])]
+    meta['turned_parts'] = TURNED
     meta['duplicate_faces'] += dedupe_faces(bm)   # (a hole fill can lay a copy over a face Tripo left unwelded)
     for f in fill_holes(bm, 16):   # (and close what the copy's removal opened; the patch joins its neighbour's node)
         nb = [g for e in f.edges for g in e.link_faces if g is not f]
         f[node_lay] = nb[0][node_lay] if nb else 0
     meta['duplicate_faces'] += dedupe_faces(bm)
-    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    meta['parts_turned_out'] += normals_out(bm)
     bm.faces.index_update()
     piece_of = assign_regions(bm, rec, tags, node_lay)
     meta['regions'] = [{'slot': r.get('slot'), 'node': r.get('node'), 'zone': r.get('zone'), 'faces': r.get('_hits')}
@@ -881,7 +995,9 @@ def clean(raw, base_id, skin_id, rec, out_dir):
     meta['tris'] = sum(meta['pieces'].values())
     meta['nonmanifold_final'] = {'open': sum(1 for e in bm.edges if len(e.link_faces) == 1),
                                  'three_way': sum(1 for e in bm.edges if len(e.link_faces) > 2),
-                                 'wire': sum(1 for e in bm.edges if not e.link_faces)}
+                                 'wire': sum(1 for e in bm.edges if not e.link_faces),
+                                 'at': sorted({tuple(round(x, 2) for x in W((e.verts[0].co + e.verts[1].co) / 2))
+                                               for e in bm.edges if not e.is_manifold})}
     bm.free()
     rec_copy = {k: v for k, v in rec.items() if not k.startswith('_')}
     for r in rec_copy.get('regions', []): r.pop('_hits', None)
@@ -1203,6 +1319,29 @@ def sheet(K, base_id, out_dir, sheet_path, raw, fit, concept=None, compare=None,
     return sheet_path
 
 
+VIEWS = {'left': (Vector((-1, 0, 0)), Vector((0, 0, 1))), 'right': (Vector((1, 0, 0)), Vector((0, 0, 1))),
+         'top': (Vector((0, 0, 1)), Vector((1, 0, 0))), 'below': (Vector((0, 0, -1)), Vector((1, 0, 0))),
+         'front': (Vector((0, 1, 0)), Vector((0, 0, 1))), 'back': (Vector((0, -1, 0)), Vector((0, 0, 1))),
+         'q34': (Vector((-0.75, 0.8, 0.42)).normalized(), Vector((0, 0, 1))),
+         'lq': (Vector((-1, 0.35, 0.45)).normalized(), Vector((0, 0, 1))),
+         'lb': (Vector((-1, -0.35, -0.3)).normalized(), Vector((0, 0, 1)))}   # (Blender frame: -x left, +y muzzle, +z up)
+
+
+def closeups(glb, spots, pdir, Wd=900, Ht=560):
+    """close views of details: spots [{"name", "at": [x, y, z] (weapon frame), "size": m, "view": VIEWS key, "label"}]
+       -> pdir/_c_<name>.png; returns [(png, label)]"""
+    out = []
+    os.makedirs(pdir, exist_ok=True)
+    for sp in spots:
+        sc = _scene(Wd, Ht); _import(glb)
+        d, up = VIEWS[sp.get('view', 'left')]
+        _sun(sc, (math.radians(50), 0, math.radians(-60)))
+        at = B(sp['at'])
+        _cam(sc, at + d * 3.0, at, ortho=sp.get('size', 0.15), up=up)
+        out.append((_render(os.path.join(pdir, '_c_%s.png' % sp['name'])), sp.get('label', sp['name'])))
+    return out
+
+
 def preview(glb, out_dir):
     """the cleaned glb in its flat slot colours (workbench): preview_left / right / top / front.png"""
     bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -1330,6 +1469,11 @@ def main(argv):
     key = '%s@%s' % (base_id, skin_id)
     K = 'w_' + key
     t0 = time.time()
+    if opt('--stage') == 'closeups':   # (the recipe's sheet.closeups from out_dir's shelled glb, into --into <dir>)
+        spots = (rec.get('sheet') or {}).get(opt('--set') or 'closeups', [])
+        for png, label in closeups(os.path.join(out_dir, K + '_sh.glb'), spots, opt('--into') or os.path.join(out_dir, 'sheet', K)):
+            print('CLOSEUP', png, label)
+        return
     if opt('--stage') == 'sheet':   # (only the sheet again, from the files a full run left in out_dir)
         meta = json.load(open(os.path.join(out_dir, K + '_clean.json')))
         s, t, R, _ = solve_fit(rec, meta['spots'])
