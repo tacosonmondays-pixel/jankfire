@@ -43,6 +43,7 @@ Binds.ACTIONS = {
 	{ id = "profile", label = "PROFILE", group = "MENUS", kb = { "K" } },
 	{ id = "settings", label = "SETTINGS", group = "MENUS", kb = { "P" } },
 	{ id = "keys", label = "SHOW KEYS (HOLD)", group = "MENUS", kb = { "H" } },
+	{ id = "quickjoin", label = "QUICK JOIN", group = "MENUS", kb = { "F" } }, -- (the hub pad pop-up: QuickJoinUI)
 } :: { Action }
 Binds.FIXED = { -- (shown in the tab, greyed: Roblox's own controls)
 	{ label = "MOVE", kb = "W A S D", pad = "Left stick" },

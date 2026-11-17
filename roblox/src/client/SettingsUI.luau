@@ -446,6 +446,7 @@ tabs = {
 		slider({ key = "look.pad", label = "CONTROLLER LOOK SPEED", sub = "the right stick", min = 0.2, max = 3, step = 0.05, fmt = times })
 		section("VIEW")
 		slider({ key = "fov", label = "FIELD OF VIEW", sub = "how much you see, top to bottom, in degrees", min = 50, max = 120, step = 1, fmt = function(v) return tostring(v) end })
+		switch({ key = "fov.kick", label = "FOV KICK", sub = "the view widens as you speed up" })
 		switch({ key = "gfx.shake", label = "SCREEN SHAKE", sub = "the view shakes on big shots and parries" })
 		section("HOLD OR TOGGLE")
 		local ht = { { false, "HOLD" }, { true, "TOGGLE" } }
@@ -508,7 +509,7 @@ tabs = {
 		switch({ key = "snd.hit", label = "HIT SOUND", sub = "a tick when your shot lands, a ring on a headshot" })
 		switch({ key = "snd.kill", label = "KILL SOUND", sub = "a chime when you take someone out" })
 	end },
-	{ id = "graphics", title = "GRAPHICS", reset = { "gfx.preset", "gfx.shadows", "gfx.particles", "gfx.bloom", "gfx.colour", "gfx.view", "gfx.othersKill", "gfx.othersSkin", "gfx.othersFinisher", "gfx.fps" }, build = function()
+	{ id = "graphics", title = "GRAPHICS", reset = { "gfx.preset", "gfx.shadows", "gfx.particles", "gfx.bloom", "gfx.colour", "gfx.view", "gfx.othersKill", "gfx.othersSkin", "gfx.othersFinisher", "gfx.speedLines", "gfx.fps" }, build = function()
 		local NAMES = { low = "LOW", med = "MEDIUM", high = "HIGH" }
 		choice({ key = "gfx.preset", label = "QUALITY", options = { { "auto", "AUTO" }, { "low", "LOW" }, { "med", "MEDIUM" }, { "high", "HIGH" } },
 			subFn = function()
@@ -522,6 +523,7 @@ tabs = {
 		slider({ key = "gfx.particles", label = "PARTICLES", sub = "sparks, smoke, splashes and effects", min = 0.25, max = 1, step = 0.05, fmt = pct, scale = 100, marks = "gfx.preset" })
 		switch({ key = "gfx.bloom", label = "BLOOM AND SUN RAYS", sub = "the glow round bright lights", marks = "gfx.preset" })
 		switch({ key = "gfx.colour", label = "COLOUR GRADING", sub = "each place's own colour and contrast" })
+		switch({ key = "gfx.speedLines", label = "SPEED LINES", sub = "streaks and wind at speed" })
 		choice({ key = "gfx.view", label = "VIEW DISTANCE", sub = "how near you get before a far place is drawn", options = { { "near", "NEAR" }, { "normal", "NORMAL" }, { "far", "FAR" } }, marks = "gfx.preset" })
 		section("OTHER PLAYERS")
 		switch({ key = "gfx.othersKill", label = "OTHERS' KILL EFFECTS", sub = "off: their kills play no effect on your screen" })
@@ -538,6 +540,7 @@ tabs = {
 		switch({ key = "hud.feed", label = "KILL FEED", sub = "who took out whom, top right" })
 		switch({ key = "hud.keys", label = "SHOW KEY HINTS", sub = "the controls line, all the time. off: hold " .. Binds.label("keys") })
 		switch({ key = "hud.othersLoot", label = "OTHERS' CRATE OPENINGS", sub = "see what players near you open" })
+		switch({ key = "hud.quickJoin", label = "QUICK JOIN POP-UPS", sub = "when someone steps on a hub pad" })
 		section("COLOUR")
 		local cb = choice({ key = "hud.cb", label = "COLOUR-BLIND MODE", sub = "", options = { { "off", "OFF" }, { "protan", "PROTAN" }, { "deutan", "DEUTAN" }, { "tritan", "TRITAN" } } })
 		-- (the three team colours as they'll look, in the sub line's place)

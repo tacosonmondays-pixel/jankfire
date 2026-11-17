@@ -24,9 +24,9 @@ respawn. In Studio without API access the save runs in memory and the page's foo
 ## The tabs
 
 - **CONTROLS.** Look speed (`look.sens`, Roblox's `MouseDeltaSensitivity`), up and down speed, invert, AIMING,
-  SNIPER SCOPE and SECOND OPINION SCOPE multipliers, controller look speed, field of view, screen shake, and hold or
+  SNIPER SCOPE and SECOND OPINION SCOPE multipliers, controller look speed, field of view, FOV kick (the view widens with speed), screen shake, and hold or
   toggle for aim, crouch and sprint.
-- **KEYBINDS.** Every action with KEYBOARD, SECOND KEY and CONTROLLER columns. Click a cap, press the new key.
+- **KEYBINDS.** Every action (QUICK JOIN on F answers the hub pad pop-up) with KEYBOARD, SECOND KEY and CONTROLLER columns. Click a cap, press the new key.
   Backspace clears it, Esc keeps it, a click on the flashing cap binds the left mouse button. A key that another action
   had swaps over (that action takes this one's old key). Move, jump and look are Roblox's own and shown greyed.
 - **CROSSHAIR.** A live preview at true size on a dark and a pale ground, four starting points (DEFAULT, DOT, SMALL
@@ -34,10 +34,10 @@ respawn. In Studio without API access the save runs in memory and the page's foo
   centre dot, opacity, show spread, hide while aiming, and the share code.
 - **AUDIO.** Master, weapons, effects and interface, 0 to 150 %, and the hit and kill sounds on or off.
 - **GRAPHICS.** Quality AUTO / LOW / MEDIUM / HIGH (AUTO follows Roblox's own graphics level), shadows, particles,
-  bloom and sun rays, colour grading, view distance, other players' kill effects, skin effects and finishers
+  bloom and sun rays, colour grading, speed lines (streaks, wind and its sound: SpeedLines.client), view distance, other players' kill effects, skin effects and finishers
   (FinisherClient reads `gfx.othersFinisher`: off skips finishers you only watch; yours and the one you die to still
   play), FPS counter.
-- **HUD.** HUD size, damage numbers, hit markers, kill feed, key hints, other players' crate openings, colour-blind
+- **HUD.** HUD size, damage numbers, hit markers, kill feed, key hints, other players' crate openings, quick join pop-ups (QuickJoinUI), colour-blind
   mode (team colours), enemy outline colour.
 - **PRIVACY.** HIDE MY STATS (Stats.luau keeps it) and SHOW MY OPENINGS (Loot.luau keeps it). The old
   `LootSettings.client` row lives here now.

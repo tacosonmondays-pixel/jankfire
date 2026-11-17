@@ -21,7 +21,7 @@ local Settings = {}
 Settings.DEFAULTS = {
 	-- controls (the web game's sens / adsSens: aiming turns 1/zoom as fast, times the multiplier)
 	["look.sens"] = 1, ["look.ySpeed"] = 1, ["look.ads"] = 1, ["look.sniper"] = 1, ["look.dmr"] = 1, ["look.invert"] = false, ["look.pad"] = 1,
-	["fov"] = 80, ["aim.toggle"] = false, ["crouch.toggle"] = false, ["sprint.toggle"] = false,
+	["fov"] = 80, ["fov.kick"] = true, ["aim.toggle"] = false, ["crouch.toggle"] = false, ["sprint.toggle"] = false,
 	-- crosshair (the defaults draw the crosshair the game always had: four white bars, 8 x 2, 5 px from the middle)
 	["xh.style"] = "cross", ["xh.color"] = "ffffff", ["xh.size"] = 8, ["xh.thick"] = 2, ["xh.gap"] = 5, ["xh.outline"] = 1,
 	["xh.dot"] = 0, ["xh.alpha"] = 1, ["xh.spread"] = false, ["xh.hideAim"] = true,
@@ -29,12 +29,13 @@ Settings.DEFAULTS = {
 	["vol.master"] = 100, ["vol.weapons"] = 100, ["vol.effects"] = 100, ["vol.ui"] = 100, ["snd.hit"] = true, ["snd.kill"] = true,
 	-- graphics
 	["gfx.preset"] = "auto", ["gfx.shadows"] = true, ["gfx.particles"] = 1, ["gfx.bloom"] = true, ["gfx.colour"] = true,
+	["gfx.speedLines"] = true, -- (fov.kick and gfx.speedLines: the VFX session's SpeedLines.client reads them, nil = on)
 	["gfx.view"] = "normal", ["gfx.shake"] = true, ["gfx.othersKill"] = true, ["gfx.othersSkin"] = true,
 	["gfx.othersFinisher"] = true, -- (the finisher session's FinisherClient reads it: off skips finishers you only watch)
 	["gfx.fps"] = false,
 	-- hud and gameplay
 	["hud.scale"] = 1, ["hud.dmg"] = true, ["hud.hits"] = true, ["hud.feed"] = true, ["hud.keys"] = false,
-	["hud.cb"] = "off", ["hud.enemy"] = "green", ["hud.othersLoot"] = true,
+	["hud.cb"] = "off", ["hud.enemy"] = "green", ["hud.othersLoot"] = true, ["hud.quickJoin"] = true, -- (QuickJoinUI, play-party-ranked's)
 	-- touch (the web game's touch settings and defaults)
 	-- (TouchControls reads them: touch.size multiplies the size that suits the device, x1.2 on a tablet; touch.assist
 	-- is the web game's aim help, 0 = off)
