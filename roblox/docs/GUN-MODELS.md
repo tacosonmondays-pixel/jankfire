@@ -516,6 +516,10 @@ The owner: "Can you also tell it to make a few blender ducky skins?"
 - **Where they live in the place:** the loaded models are kept in `PolishBackup.DucklingTrial`, and the live copies in
   `WeaponSets.kit` / `JankfireSkins`. They are not in `assets.json`; their ids are in the upload log.
 - **Pictures:** `gun-models/ducklings.jpg`, `ducklings-in-hand.jpg`.
+- **Install trap (found by the hats session):** a model put into `WeaponSets.kit` by hand (not through `W.kit`) needs
+  its `FileLo` / `FileHi` attributes set to its own export bounds. Without them `WeaponModels.build` fits it into the
+  base gun's box from `Weapons.luau`, squashing it per axis. In v511 the Duckling AR came out 55% as wide and 118% as
+  tall. `W.kit` sets them from the kit book; a hand install must copy the import's box check values.
 
 ## How it was judged
 
