@@ -155,6 +155,11 @@ end
 function L.skinFx(id: string): any
 	return skinSets and type(skinSets.FX) == "table" and skinSets.FX[id] or nil
 end
+-- one of the guns session's concepts for the owner to choose from (SkinSets.CONCEPTS): its model is in JankfireSkins,
+-- but it's in no roll, even if it gets a row
+function L.concept(id: string): boolean
+	return skinSets ~= nil and type(skinSets.CONCEPTS) == "table" and table.find(skinSets.CONCEPTS, id) ~= nil
+end
 
 -- ------------------------------------------------------------------ the catalog: every item that can exist, by type
 -- (only what is on Roblox: wraps from Roster, hats from GunHatData, skins whose model is in the place)
@@ -279,7 +284,7 @@ function L.cosmetics(kind: string): { Item }
 		elseif t == "skin" then
 			local live = skinsLive()
 			local ids = {}
-			for id in L.SKINS do if live[id] and not L.vipOnly(t, id) then table.insert(ids, id) end end
+			for id in L.SKINS do if live[id] and not L.vipOnly(t, id) and not L.concept(id) then table.insert(ids, id) end end
 			table.sort(ids)
 			for _, id in ids do
 				local s = L.SKINS[id]
