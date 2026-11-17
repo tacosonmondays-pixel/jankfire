@@ -37,8 +37,9 @@ remodel with its own effects). A skin's card has a small "MID TIER" plate in its
 accent), the reveal says "LEGENDARY · SKIN · HIGH TIER", and a high-tier prize wears its effects as it turns
 (`SkinSets.FX` through the VFX session's `Fx.skinIdle`). New sets need nothing here: the Dust Drover and Star Drover
 pair (place v478) rolled from the crate as soon as their rows and models were in, 55 skins in the crate at v479. The
-guns session's concepts (`SkinSets.CONCEPTS`: the cute and the decorated Japanese ones) have models in `JankfireSkins`
-for the owner to choose from, but `LootTable.concept(id)` keeps them out of every roll, even if one gets a row.
+guns session's concepts (`SkinSets.CONCEPTS`, read when the module loads: the ids come and go as the owner picks) have
+models in `JankfireSkins` for the owner to choose from, but `LootTable.concept(id)` keeps them out of every roll, even if
+one gets a row. A concept picked for a set is rebuilt under that set's own keys (Tidecrest, v498), and rolls as that.
 
 **VIP only** (16 Nov, the owner's design: the Ducky set comes with the VIP game pass, which the shop session leads).
 `LootTable.vipOnly(type, id)`: an item listed in `LootTable.VIP_ONLY`, or whose own row says `vip = true` (a Roster
